@@ -3361,6 +3361,7 @@ static inline bool sema_rewrite_typeid_len(Expr *expr, Expr *parent, Expr *curre
 			case TYPE_INFERRED_ARRAY:
 			case TYPE_VECTOR:
 				len = type->array.len;
+				break;
 			default:
 				SEMA_ERROR(expr, "Cannot access 'len' of non array/vector type %s.", type_quoted_error_string(current_parent->const_expr.typeid));
 				return false;
