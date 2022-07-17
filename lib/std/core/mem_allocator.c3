@@ -208,14 +208,14 @@ fn void DynamicArenaAllocator.destroy(DynamicArenaAllocator* this)
 	while (page)
 	{
 		DynamicArenaPage* next_page = page.prev_arena;
-		this.backing_allocator.free(page);
+		this.backing_allocator.free(page)!!;
 		page = next_page;
 	}
 	page = this.unused_page;
 	while (page)
 	{
 		DynamicArenaPage* next_page = page.prev_arena;
-		this.backing_allocator.free(page);
+		this.backing_allocator.free(page)!!;
 		page = next_page;
 	}
 	this.page = null;
@@ -297,7 +297,7 @@ private fn void*! DynamicArenaAllocator.alloc_new(DynamicArenaAllocator* this, u
 	DynamicArenaPage*! page = this.backing_allocator.alloc(DynamicArenaPage.sizeof);
 	if (catch err = page)
 	{
-		this.backing_allocator.free(mem);
+		this.backing_allocator.free(mem)?;
 		return err!;
 	}
     page.memory = mem;

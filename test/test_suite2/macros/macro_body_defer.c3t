@@ -87,17 +87,17 @@ loop.exit:                                        ; preds = %loop.body
   br label %loop.body2
 
 loop.body2:                                       ; preds = %loop.exit
-  call void (ptr, ...) @printf(ptr @.str.13)
+  call void (ptr, ...) @printf(ptr @.str.10)
   store i32 3, ptr %i3, align 4
-  call void (ptr, ...) @printf(ptr @.str.14)
-  call void (ptr, ...) @printf(ptr @.str.15)
+  call void (ptr, ...) @printf(ptr @.str.11)
+  call void (ptr, ...) @printf(ptr @.str.12)
   %3 = load i32, ptr %i3, align 4
-  call void (ptr, ...) @printf(ptr @.str.16, i32 %3)
-  call void (ptr, ...) @printf(ptr @.str.17)
+  call void (ptr, ...) @printf(ptr @.str.13, i32 %3)
+  call void (ptr, ...) @printf(ptr @.str.14)
   ret i64 0
 
 loop.exit4:                                       ; No predecessors!
-  call void (ptr, ...) @printf(ptr @.str.21)
+  call void (ptr, ...) @printf(ptr @.str.15)
   ret i64 0
 }
 

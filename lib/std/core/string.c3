@@ -196,7 +196,7 @@ fn void String.destroy(String* str)
 	if (!*str) return;
 	StringData* data = str.data();
 	if (!data) return;
-	data.allocator.free(data);
+	data.allocator.free(data)!!;
 	*str = (String)null;
 }
 

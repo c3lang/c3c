@@ -17,7 +17,7 @@ fn void Summary.print(Summary *s, CFile out)
 	// We don't have a native printf in C3 yet, so use libc,
 	// which is not all that nice for the strings but...
 	char[] title = s.title ? *s.title : "missing";
-	libc::fprintf(out, "Summary({ .title = %.*s, .ok = %s})", (int)title.len, title.ptr, s.ok ? "true" : "false");
+	libc::fprintf(out, "Summary({ .title = %.*s, .ok = %s})", (int)title.len, title.ptr, s.ok ? (char*)"true" : (char*)"false");
 }
 
 fn bool contains(char[] haystack, char[] needle)
@@ -144,7 +144,7 @@ fn void main()
         bool! has_title = readWhetherTitleNonEmpty(url);
         // This looks a bit less than elegant, but as you see it's mostly due to having to
         // use printf here.
-        libc::printf("  Has title: %s vs %s\n", bool_to_string(has_title) ?? nameFromError(catch(has_title)), (has_title ?? false) ? "true" : "false");
+        libc::printf("  Has title: %s vs %s\n", bool_to_string(has_title) ?? nameFromError(catch(has_title)), (has_title ?? false) ? (char*)"true" : (char*)"false");
     }
 }
 
@@ -757,8 +757,9 @@ err_retblock:                                     ; preds = %error3, %error
 define i8* @test.bool_to_string(i8 zeroext %0) #0 {
 entry:
   %1 = trunc i8 %0 to i1
-  %ternary = select i1 %1, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str.7, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str.8, i32 0, i32 0)
-  ret i8* %ternary
+  %ternary = select i1 %1, %"char[]" { i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str.7, i32 0, i32 0), i64 4 }, %"char[]" { i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str.8, i32 0, i32 0), i64 5 }
+  %2 = extractvalue %"char[]" %ternary, 0
+  ret i8* %2
 }
 
 ; Function Attrs: nounwind

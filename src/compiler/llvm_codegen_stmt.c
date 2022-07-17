@@ -228,8 +228,9 @@ static inline void llvm_emit_block_exit_return(GenContext *c, Ast *ast)
 
 	LLVMBasicBlockRef error_return_block = NULL;
 	LLVMValueRef error_out = NULL;
-	c->error_var = c->block_error_var;
-	c->catch_block = c->block_failable_exit;
+	BlockExit *exit = *ast->return_stmt.block_exit_ref;
+	c->error_var = exit->block_error_var;
+	c->catch_block = exit->block_failable_exit;
 
 	LLVMBasicBlockRef err_cleanup_block = NULL;
 	Expr *ret_expr = ast->return_stmt.expr;
@@ -250,21 +251,21 @@ static inline void llvm_emit_block_exit_return(GenContext *c, Ast *ast)
 	POP_ERROR();
 
 	llvm_emit_statement_chain(c, ast->return_stmt.cleanup);
-	if (c->return_out && return_value.value)
+	if (exit->block_return_out && return_value.value)
 	{
-		llvm_store_value_aligned(c, c->return_out, &return_value, type_alloca_alignment(return_value.type));
+		llvm_store_value_aligned(c, exit->block_return_out, &return_value, type_alloca_alignment(return_value.type));
 	}
 
 	if (err_cleanup_block)
 	{
-		llvm_emit_br(c, c->block_return_exit);
+		llvm_emit_br(c, exit->block_return_exit);
 		llvm_emit_block(c, err_cleanup_block);
 		llvm_emit_statement_chain(c, ast->return_stmt.cleanup);
-		llvm_emit_jmp(c, c->block_failable_exit);
+		llvm_emit_jmp(c, exit->block_failable_exit);
 	}
 	else
 	{
-		llvm_emit_jmp(c, c->block_return_exit);
+		llvm_emit_jmp(c, exit->block_return_exit);
 	}
 }
 
