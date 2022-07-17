@@ -1548,6 +1548,11 @@ static inline bool sema_expr_analyse_call_invocation(SemaContext *context, Expr 
 				// foo
 				if (!sema_analyse_expr_rhs(context, type, arg, true)) return false;
 				if (IS_FAILABLE(arg)) *failable = true;
+				if (arg->type == type_complist)
+				{
+					SEMA_ERROR(arg, "An untyped list can only be passed as a compile time parameter.");
+					return false;
+				}
 				if (param && !param->alignment)
 				{
 					param->alignment = type_alloca_alignment(arg->type);
@@ -2179,7 +2184,7 @@ static bool sema_analyse_body_expansion(SemaContext *macro_context, Expr *call)
 			if (!sema_add_local(context, param)) return SCOPE_POP_ERROR();
 		}
 		Ast *ast = call->body_expansion_expr.ast = ast_macro_copy(macro_context->yield_body);
-		success = sema_analyse_statement(context, ast);
+		if (!sema_analyse_statement(context, ast)) return SCOPE_POP_ERROR();
 		assert(ast->ast_kind == AST_COMPOUND_STMT);
 		if (context->active_scope.jump_end)
 		{
@@ -2192,7 +2197,7 @@ static bool sema_analyse_body_expansion(SemaContext *macro_context, Expr *call)
 		}
 	SCOPE_END;
 
-	return success;
+	return true;
 }
 
 bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl, Expr *struct_var, bool failable)
@@ -4580,6 +4585,7 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ext
 
 static inline bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *expr)
 {
+	if (!to) to = type_complist;
 	assert(to);
 	Type *assigned = type_flatten(to);
 	switch (assigned->type_kind)
@@ -7659,8 +7665,8 @@ bool sema_analyse_inferred_expr(SemaContext *context, Type *infer_type, Expr *ex
 
 	switch (expr->expr_kind)
 	{
-		case EXPR_INITIALIZER_LIST:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
+		case EXPR_INITIALIZER_LIST:
 			if (!sema_expr_analyse_initializer_list(context, infer_type, expr)) return expr_poison(expr);
 			break;
 		case EXPR_EXPR_BLOCK:
