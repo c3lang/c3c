@@ -13,13 +13,13 @@ struct Bar
     int x;
 }
 
-fn void! test1()
+fn void! test1() @maydiscard
 {
     Bar! x = Foo.MY_VAL1!;
     Bar y = x?;
 }
 
-fn void! test2()
+fn void! test2() @maydiscard
 {
     Bar! x = {};
     Bar y = x?;

@@ -1611,9 +1611,25 @@ static inline bool sema_expr_analyse_func_invocation(SemaContext *context, Funct
 		SEMA_ERROR(expr, "Only '@pure' functions may be called, you can override this with an attribute.");
 		return false;
 	}
+
+	bool is_unused = expr->call_expr.result_unused;
 	if (!sema_expr_analyse_call_invocation(context, expr, callee, &failable)) return false;
 
 	Type *rtype = prototype->rtype;
+
+	if (is_unused && rtype != type_void && decl && decl->decl_kind == DECL_FUNC)
+	{
+		if (decl->func_decl.attr_nodiscard)
+		{
+			SEMA_ERROR(expr, "The result of the function must be used.");
+			return false;
+		}
+		if (type_is_failable(rtype) && !decl->func_decl.attr_maydiscard)
+		{
+			SEMA_ERROR(expr, "The optional result of the macro must be used.");
+			return false;
+		}
+	}
 
 	expr->type = type_get_opt_fail(rtype, failable);
 
@@ -1882,6 +1898,9 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	macro_context.yield_context = context;
 	macro_context.original_inline_line = context->original_inline_line ? context->original_inline_line : call_expr->span.row;
 
+	BlockExit** block_exit_ref = MALLOCS(BlockExit*);
+	macro_context.block_exit_ref = block_exit_ref;
+
 	VECEACH(params, i)
 	{
 		Decl *param = params[i];
@@ -1944,7 +1963,32 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		if (!sum_returns) return SCOPE_POP_ERROR();
 		call_expr->type = type_get_opt_fail(sum_returns, failable);
 	}
-	if (vec_size(macro_context.returns) == 1)
+
+	if (call_expr->call_expr.result_unused)
+	{
+		Type *type = call_expr->type;
+		if (type != type_void)
+		{
+			if (decl->macro_decl.attr_nodiscard)
+			{
+				SEMA_ERROR(call_expr, "The result of the macro must be used.");
+				return SCOPE_POP_ERROR();
+			}
+			if (type_is_failable(type) && !decl->macro_decl.attr_maydiscard)
+			{
+				SEMA_ERROR(call_expr, "The optional result of the macro must be used.");
+				return SCOPE_POP_ERROR();
+			}
+		}
+	}
+	unsigned returns_found = vec_size(macro_context.returns);
+	// We may have zero normal macro returns but the active scope still has a "jump end".
+	// In this case it is triggered by the @body()
+	if (!returns_found && macro_context.active_scope.jump_end)
+	{
+		is_no_return = true;
+	}
+	if (returns_found == 1)
 	{
 		Ast *ret = macro_context.returns[0];
 		Expr *result = ret ? ret->return_stmt.expr : NULL;
@@ -1962,6 +2006,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	call_expr->macro_block.first_stmt = body->compound_stmt.first_stmt;
 	call_expr->macro_block.params = params;
 	call_expr->macro_block.args = args;
+	call_expr->macro_block.block_exit = block_exit_ref;
 EXIT:
 	assert(context->active_scope.defer_last == context->active_scope.defer_start);
 	context->active_scope = old_scope;
@@ -2107,7 +2152,6 @@ static bool sema_analyse_body_expansion(SemaContext *macro_context, Expr *call)
 	SemaContext *context = macro_context->yield_context;
 	Decl **params = macro_context->yield_params;
 
-
 	Expr *func_expr = exprptr(call_expr->function);
 	assert(func_expr->expr_kind == EXPR_MACRO_BODY_EXPANSION);
 	expr_replace(call, func_expr);
@@ -2115,6 +2159,7 @@ static bool sema_analyse_body_expansion(SemaContext *macro_context, Expr *call)
 	call->body_expansion_expr.declarations = macro_context->yield_params;
 	AstId last_defer = context->active_scope.defer_last;
 	bool success;
+	bool ends_in_jump;
 	SCOPE_START
 
 		if (macro_defer)
@@ -2133,15 +2178,20 @@ static bool sema_analyse_body_expansion(SemaContext *macro_context, Expr *call)
 			Decl *param = params[i];
 			if (!sema_add_local(context, param)) return SCOPE_POP_ERROR();
 		}
-		call->body_expansion_expr.ast = ast_macro_copy(macro_context->yield_body);
-		success = sema_analyse_statement(context, call->body_expansion_expr.ast);
-
+		Ast *ast = call->body_expansion_expr.ast = ast_macro_copy(macro_context->yield_body);
+		success = sema_analyse_statement(context, ast);
+		assert(ast->ast_kind == AST_COMPOUND_STMT);
+		if (context->active_scope.jump_end)
+		{
+			macro_context->active_scope.jump_end = true;
+		}
 		if (first_defer)
 		{
 			first_defer->defer_stmt.prev_defer = 0;
 			context->active_scope.defer_last = last_defer;
 		}
 	SCOPE_END;
+
 	return success;
 }
 
@@ -3473,6 +3523,7 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr)
 		if (parent->expr_kind != EXPR_TYPEINFO)
 		{
 			SEMA_ERROR(expr, "'typeid' can only be used with types, not values");
+			return false;
 		}
 
 		expr->type = type_typeid;
@@ -6439,6 +6490,10 @@ static inline bool sema_expr_analyse_expr_block(SemaContext *context, Type *infe
 	Ast **saved_returns = context_push_returns(context);
 	Type *stored_block_type = context->expected_block_type;
 	context->expected_block_type = infer_type;
+	BlockExit **ref = MALLOCS(BlockExit*);
+	BlockExit **stored_block_exit = context->block_exit_ref;
+	context->block_exit_ref = ref;
+	expr->expr_block.block_exit_ref = ref;
 	SCOPE_START_WITH_FLAGS(SCOPE_EXPR_BLOCK)
 
 		context->block_return_defer = context->active_scope.defer_last;
@@ -6487,6 +6542,7 @@ static inline bool sema_expr_analyse_expr_block(SemaContext *context, Type *infe
 		context_pop_defers(context, &stmt->next);
 	SCOPE_END;
 	context->expected_block_type = stored_block_type;
+	context->block_exit_ref = stored_block_exit;
 	context_pop_returns(context, saved_returns);
 
 	return success;

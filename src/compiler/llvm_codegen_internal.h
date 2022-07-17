@@ -99,9 +99,6 @@ typedef struct
 	Module *code_module;
 	LLVMValueRef return_out;
 	LLVMValueRef failable_out;
-	LLVMBasicBlockRef block_return_exit;
-	LLVMBasicBlockRef block_failable_exit;
-	LLVMValueRef block_error_var;
 	BEValue retval;
 	int in_block;
 	bool current_block_is_target : 1;

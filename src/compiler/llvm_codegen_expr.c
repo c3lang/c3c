@@ -4943,7 +4943,7 @@ static inline void gencontext_emit_expression_list_expr(GenContext *context, BEV
 	}
 }
 
-static inline void llvm_emit_return_block(GenContext *context, BEValue *be_value, Type *type, AstId current)
+static inline void llvm_emit_return_block(GenContext *context, BEValue *be_value, Type *type, AstId current, BlockExit **block_exit)
 {
 	// First case - an empty block
 	if (!current)
@@ -4954,25 +4954,26 @@ static inline void llvm_emit_return_block(GenContext *context, BEValue *be_value
 
 	Type *type_lowered = type_lowering(type);
 	LLVMValueRef old_ret_out = context->return_out;
-	LLVMBasicBlockRef saved_block_return_exit = context->block_return_exit;
-	LLVMBasicBlockRef saved_block_failable_exit = context->block_failable_exit;
-	LLVMValueRef saved_block_error = context->block_error_var;
 	context->in_block++;
 
-	LLVMBasicBlockRef expr_block = llvm_basic_block_new(context, "expr_block.exit");
-	context->block_return_exit = expr_block;
-
-	LLVMValueRef return_out = NULL;
 	LLVMValueRef error_out = context->error_var;
 	LLVMBasicBlockRef error_block = context->catch_block;
+	LLVMValueRef return_out = NULL;
+	LLVMBasicBlockRef expr_block = llvm_basic_block_new(context, "expr_block.exit");
+
+	BlockExit exit = {
+			.block_return_exit = expr_block,
+			.block_failable_exit = error_block,
+			.block_error_var = error_out,
+			.block_return_out = NULL,
+	};
+
+	*block_exit= &exit;
 
 	if (type_no_fail(type_lowered) != type_void)
 	{
-		return_out = llvm_emit_alloca_aligned(context, type_lowered, "blockret");
+		exit.block_return_out = llvm_emit_alloca_aligned(context, type_lowered, "blockret");
 	}
-	context->block_error_var = error_out;
-	context->block_failable_exit = error_block;
-	context->return_out = return_out;
 	context->error_var = NULL;
 	context->catch_block = NULL;
 
@@ -5013,7 +5014,7 @@ static inline void llvm_emit_return_block(GenContext *context, BEValue *be_value
 		// Optimization, emit directly to value
 		llvm_emit_expr(context, be_value, ret_expr);
 		// And remove the alloca
-		LLVMInstructionEraseFromParent(context->return_out);
+		LLVMInstructionEraseFromParent(exit.block_return_out);
 		goto DONE;
 
 	} while (0);
@@ -5034,9 +5035,9 @@ static inline void llvm_emit_return_block(GenContext *context, BEValue *be_value
 	// Emit the exit block.
 	llvm_emit_block(context, expr_block);
 
-	if (return_out)
+	if (exit.block_return_out)
 	{
-		llvm_value_set_address_abi_aligned(be_value, return_out, type_lowered);
+		llvm_value_set_address_abi_aligned(be_value, exit.block_return_out, type_lowered);
 	}
 	else
 	{
@@ -5047,16 +5048,13 @@ DONE:
 	context->return_out = old_ret_out;
 	context->catch_block = error_block;
 	context->error_var = error_out;
-	context->block_return_exit = saved_block_return_exit;
-	context->block_failable_exit = saved_block_failable_exit;
-	context->block_error_var = saved_block_error;
 	context->in_block--;
 
 }
 
 static inline void llvm_emit_expr_block(GenContext *context, BEValue *be_value, Expr *expr)
 {
-	llvm_emit_return_block(context, be_value, expr->type, expr->expr_block.first_stmt);
+	llvm_emit_return_block(context, be_value, expr->type, expr->expr_block.first_stmt, expr->expr_block.block_exit_ref);
 }
 
 static inline void llvm_emit_macro_block(GenContext *context, BEValue *be_value, Expr *expr)
@@ -5098,7 +5096,8 @@ static inline void llvm_emit_macro_block(GenContext *context, BEValue *be_value,
 		llvm_emit_expr(context, &value, expr->macro_block.args[i]);
 		llvm_store_decl_raw(context, decl, llvm_load_value_store(context, &value));
 	}
-	llvm_emit_return_block(context, be_value, expr->type, expr->macro_block.first_stmt);
+
+	llvm_emit_return_block(context, be_value, expr->type, expr->macro_block.first_stmt, expr->macro_block.block_exit);
 }
 
 LLVMValueRef llvm_emit_call_intrinsic(GenContext *context, unsigned intrinsic, LLVMTypeRef *types, unsigned type_count,

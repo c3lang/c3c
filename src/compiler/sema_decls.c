@@ -1163,6 +1163,8 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			                    ATTR_MEMBER,
 			[ATTRIBUTE_INLINE] = ATTR_FUNC | ATTR_CALL,
 			[ATTRIBUTE_NOINLINE] = ATTR_FUNC | ATTR_CALL,
+			[ATTRIBUTE_NODISCARD] = ATTR_FUNC | ATTR_MACRO,
+			[ATTRIBUTE_MAYDISCARD] = ATTR_FUNC | ATTR_MACRO,
 			[ATTRIBUTE_BIGENDIAN] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_LITTLEENDIAN] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_USED] = (AttributeDomain)~ATTR_CALL,
@@ -1339,6 +1341,22 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 		case ATTRIBUTE_NOINLINE:
 			decl->func_decl.attr_noinline = true;
 			decl->func_decl.attr_inline = false;
+			break;
+		case ATTRIBUTE_NODISCARD:
+			if (domain == ATTR_MACRO)
+			{
+				decl->macro_decl.attr_nodiscard = true;
+				break;
+			}
+			decl->func_decl.attr_nodiscard = true;
+			break;
+		case ATTRIBUTE_MAYDISCARD:
+			if (domain == ATTR_MACRO)
+			{
+				decl->macro_decl.attr_maydiscard = true;
+				break;
+			}
+			decl->func_decl.attr_maydiscard = true;
 			break;
 		case ATTRIBUTE_INLINE:
 			decl->func_decl.attr_inline = true;
@@ -1689,9 +1707,27 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl)
 	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_FUNC)) return decl_poison(decl);
 
 	Type *func_type = sema_analyse_function_signature(context, decl->func_decl.function_signature.abi, &decl->func_decl.function_signature, true);
-	
 	decl->type = func_type;
 	if (!func_type) return decl_poison(decl);
+	TypeInfo *rtype_info = type_infoptr(decl->func_decl.function_signature.returntype);
+	assert(rtype_info);
+	Type *rtype = rtype_info->type->canonical;
+	if (decl->func_decl.attr_nodiscard)
+	{
+		if (rtype == type_void)
+		{
+			SEMA_ERROR(rtype_info, "@nodiscard cannot be used on functions returning 'void'.");
+			return decl_poison(decl);
+		}
+	}
+	if (decl->func_decl.attr_maydiscard)
+	{
+		if (!type_is_failable(rtype))
+		{
+			SEMA_ERROR(rtype_info, "@maydiscard can only be used on functions returning optional values.");
+			return decl_poison(decl);
+		}
+	}
 	if (decl->func_decl.type_parent)
 	{
 		if (!sema_analyse_method(context, decl)) return decl_poison(decl);
@@ -1749,9 +1785,28 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl)
 
 	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_MACRO)) return decl_poison(decl);
 
-
-	TypeInfo *rtype = type_infoptr(decl->macro_decl.rtype);
-	if (decl->macro_decl.rtype && !sema_resolve_type_info(context, rtype)) return decl_poison(decl);
+	if (decl->macro_decl.rtype)
+	{
+		TypeInfo *rtype_info = type_infoptr(decl->macro_decl.rtype);
+		if (!sema_resolve_type_info(context, rtype_info)) return decl_poison(decl);
+		Type *rtype = rtype_info->type;
+		if (decl->macro_decl.attr_nodiscard)
+		{
+			if (rtype == type_void)
+			{
+				SEMA_ERROR(rtype_info, "@nodiscard cannot be used on macros returning 'void'.");
+				return decl_poison(decl);
+			}
+		}
+		if (decl->macro_decl.attr_maydiscard)
+		{
+			if (!type_is_failable(rtype))
+			{
+				SEMA_ERROR(rtype_info, "@maydiscard can only be used on macros returning optional values.");
+				return decl_poison(decl);
+			}
+		}
+	}
 	decl->macro_decl.unit = context->unit;
 	Decl **parameters = decl->macro_decl.parameters;
 	unsigned param_count = vec_size(parameters);

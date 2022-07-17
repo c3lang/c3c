@@ -65,6 +65,20 @@ static void linker_setup_windows(const char ***args_ref, LinkerType linker_type)
 {
 	if (linker_type == LINKER_CC) return;
 	//add_arg("/MACHINE:X64");
+	switch (active_target.debug_info)
+	{
+		case DEBUG_INFO_NOT_SET:
+			break;
+		case DEBUG_INFO_NONE:
+			add_arg("/DEBUG:NONE");
+			break;
+		case DEBUG_INFO_LINE_TABLES:
+		case DEBUG_INFO_FULL:
+			add_arg("/DEBUG:FULL");
+			break;
+		default:
+			UNREACHABLE
+	}
 	if (active_target.win.sdk)
 	{
 		add_arg(str_printf("/LIBPATH:%s", active_target.win.sdk));

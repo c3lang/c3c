@@ -458,6 +458,8 @@ typedef struct
 		bool attr_noinline : 1;
 		bool attr_extname : 1;
 		bool attr_naked : 1;
+		bool attr_nodiscard : 1;
+		bool attr_maydiscard: 1;
 	};
 	TypeInfoId type_parent;
 	FunctionSignature function_signature;
@@ -498,6 +500,8 @@ typedef struct
 	struct
 	{
 		bool attr_noreturn : 1;
+		bool attr_nodiscard : 1;
+		bool attr_maydiscard : 1;
 	};
 	TypeInfoId type_parent; // May be 0
 	TypeInfoId rtype; // May be 0
@@ -687,6 +691,7 @@ typedef struct
 	bool is_builtin : 1;
 	bool is_func_ref : 1;
 	bool attr_pure : 1;
+	bool result_unused : 1;
 	AstId body;
 	union
 	{
@@ -810,14 +815,25 @@ typedef struct
 
 typedef struct
 {
+	void *block_return_exit;
+	void *block_failable_exit;
+	void *block_error_var;
+	void *block_return_out;
+} BlockExit;
+
+typedef struct
+{
 	AstId first_stmt;
+	BlockExit **block_exit_ref;
 } ExprFuncBlock;
+
 
 typedef struct
 {
 	AstId first_stmt;
 	Expr **args;
 	Decl **params;
+	BlockExit **block_exit;
 } ExprMacroBlock;
 
 
@@ -982,6 +998,7 @@ typedef struct
 {
 	Expr *expr; // May be NULL
 	AstId cleanup;
+	BlockExit** block_exit_ref; // For block exits
 } AstReturnStmt;
 
 typedef struct
@@ -1412,6 +1429,7 @@ typedef struct SemaContext_
 		uint32_t original_inline_line;
 		Decl **yield_params;
 		Ast *yield_body;
+		BlockExit** block_exit_ref;
 		Type *expected_block_type;
 		Ast **returns;
 		// Reusable returns cache.

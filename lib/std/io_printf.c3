@@ -542,7 +542,7 @@ private fn void! etoa(PrintParam* param, FloatType value)
 	if (minwidth)
 	{
 		// output the exponential symbol
-		param.out(param.flags.uppercase ? 'E' : 'e');
+		param.out(param.flags.uppercase ? 'E' : 'e')?;
 		// output the exponent value
 		param.flags = { .zeropad = true, .plus = true };
 		param.width = minwidth - 1;
@@ -653,7 +653,7 @@ private fn NtoaType int_from_variant(variant arg, bool *is_neg)
 }
 
 
-fn usize! printf(char[] format, args...)
+fn usize! printf(char[] format, args...) @maydiscard
 {
   return vsnprintf(&out_putchar_fn, " ", format, args);
 }

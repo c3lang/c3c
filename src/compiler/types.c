@@ -1501,6 +1501,14 @@ Type *type_find_max_type(Type *type, Type *other)
 				{
 					return other;
 				}
+				if (other->type_kind == TYPE_POINTER)
+				{
+					Type *other_pointer = other->pointer;
+					if (other_pointer->type_kind == TYPE_ARRAY && other_pointer->array.base->canonical == array_base)
+					{
+						return type_get_subarray(array_base);
+					}
+				}
 			}
 			if (type->pointer->type_kind == TYPE_VECTOR)
 			{

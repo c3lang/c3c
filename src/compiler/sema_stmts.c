@@ -126,6 +126,7 @@ static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *state
 			return false;
 		}
 	}
+	statement->return_stmt.block_exit_ref = context->block_exit_ref;
 	statement->return_stmt.cleanup = context_get_defers(context, context->active_scope.defer_last, context->block_return_defer);
 	vec_add(context->returns, statement);
 	return true;
@@ -706,10 +707,28 @@ static inline bool sema_analyse_declare_stmt(SemaContext *context, Ast *statemen
 	return sema_analyse_var_decl(context, statement->declare_stmt, true);
 }
 
+static inline bool expr_is_assign(Expr *expr)
+{
+	switch (expr->expr_kind)
+	{
+		case EXPR_DECL:
+		case EXPR_BITASSIGN:
+		case EXPR_SLICE_ASSIGN:
+			return true;
+		case EXPR_BINARY:
+			return expr->binary_expr.operator >= BINARYOP_ASSIGN;
+		default:
+			return false;
+	}
+}
 static inline bool sema_analyse_expr_stmt(SemaContext *context, Ast *statement)
 {
-	if (!sema_analyse_expr(context, statement->expr_stmt)) return false;
-	return true;
+	Expr *expr = statement->expr_stmt;
+	if (expr->expr_kind == EXPR_CALL)
+	{
+		expr->call_expr.result_unused = true;
+	}
+	return sema_analyse_expr(context, expr);
 }
 
 bool sema_analyse_defer_stmt_body(SemaContext *context, Ast *statement, Ast *body)

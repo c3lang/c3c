@@ -230,6 +230,8 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_PURE] = kw_at_pure;
 	attribute_list[ATTRIBUTE_REFLECT] = KW_DEF("@reflect");
 	attribute_list[ATTRIBUTE_AUTOIMPORT] = KW_DEF("@autoimport");
+	attribute_list[ATTRIBUTE_MAYDISCARD] = KW_DEF("@maydiscard");
+	attribute_list[ATTRIBUTE_NODISCARD] = KW_DEF("@nodiscard");
 
 	for (unsigned i = 0; i < NUMBER_OF_ATTRIBUTES; i++)
 	{
