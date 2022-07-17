@@ -36,7 +36,7 @@ macro bool less(Type x, Type y)
 
 macro bool greater(Type x, Type y)
 {
-  $if ($defined(Type.less)):
+  $if ($defined(Type.greater)):
     return x.greater(y);
   $else:
     return x > y;
