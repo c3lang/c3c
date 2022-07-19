@@ -12,11 +12,11 @@ uint foo = '謝';
 
 /* #expect: foo.ll
 
-@foo.aa = local_unnamed_addr global i32 228, align 4
-@foo.x = local_unnamed_addr global i32 1094861636, align 4
-@foo.y = local_unnamed_addr global i32 1214606447, align 4
-@foo.z = local_unnamed_addr global i16 12594, align 2
-@foo.d = local_unnamed_addr global i32 49, align 4
-@foo.b = local_unnamed_addr global i8 64, align 1
-@foo.abc = local_unnamed_addr global i32 322052779, align 4
-@foo.foo = local_unnamed_addr global i32 35613, align 4
+@foo_aa = local_unnamed_addr global i32 228, align 4
+@foo_x = local_unnamed_addr global i32 1094861636, align 4
+@foo_y = local_unnamed_addr global i32 1214606447, align 4
+@foo_z = local_unnamed_addr global i16 12594, align 2
+@foo_d = local_unnamed_addr global i32 49, align 4
+@foo_b = local_unnamed_addr global i8 64, align 1
+@foo_abc = local_unnamed_addr global i32 322052779, align 4
+@foo_foo = local_unnamed_addr global i32 35613, align 4

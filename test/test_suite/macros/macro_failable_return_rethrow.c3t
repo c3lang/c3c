@@ -16,13 +16,13 @@ fn void main()
 
 /* #expect: test.ll
 
-define void @test.main() #0 {
+define void @test_main() #0 {
 entry:
   %error_var = alloca i64, align 8
   %blockret = alloca i32, align 4
   %error_var1 = alloca i64, align 8
   %retparam = alloca i32, align 4
-  %0 = call i64 @test.xy(i32* %retparam)
+  %0 = call i64 @test_xy(i32* %retparam)
   %not_err = icmp eq i64 %0, 0
   br i1 %not_err, label %after.errcheck, label %error
 

@@ -21,7 +21,7 @@ fn void test(int i)
 
 /* #expect: defer_next_switch.ll
 
-define void @defer_next_switch.test(i32 %0) #0 {
+define void @defer_next_switch_test(i32 %0) #0 {
 entry:
   %b = alloca i8, align 1
   %switch = alloca i32, align 4
@@ -42,16 +42,16 @@ switch.case:                                      ; preds = %switch.entry
   br i1 %3, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %switch.case
-  call void @defer_next_switch.test2()
+  call void @defer_next_switch_test2()
   br label %switch.case1
 
 if.exit:                                          ; preds = %switch.case
-  call void @defer_next_switch.test1()
-  call void @defer_next_switch.test2()
+  call void @defer_next_switch_test1()
+  call void @defer_next_switch_test2()
   br label %switch.exit
 
 switch.case1:                                     ; preds = %switch.entry, %if.then
-  call void @defer_next_switch.test1()
+  call void @defer_next_switch_test1()
   br label %switch.exit
 
 switch.exit:                                      ; preds = %switch.case1, %if.exit, %switch.entry

@@ -20,7 +20,7 @@ fn void hello(Foo f)
 
 declare void @hello2(i64, i64) #0
 
-define void @unionx64.hello(i64 %0, i64 %1) #0 {
+define void @unionx64_hello(i64 %0, i64 %1) #0 {
 entry:
   %f = alloca %Foo, align 8
   %2 = getelementptr inbounds { i64, i64 }, ptr %f, i32 0, i32 0

@@ -36,7 +36,7 @@ fn int test()
 %Bar = type { i32, i32 }
 %Baz = type { double }
 
-define i32 @zero_init.test() #0 {
+define i32 @zero_init_test() #0 {
 entry:
   %m = alloca %Mega, align 4
   %azz = alloca [1 x i32], align 4

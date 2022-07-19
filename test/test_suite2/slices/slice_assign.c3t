@@ -23,7 +23,7 @@ fn void main()
 ; Function Attrs: nounwind
 declare void @printf(ptr, ...) #0
 
-define void @test.main() #0 {
+define void @test_main() #0 {
 entry:
   %x = alloca [8 x i32], align 16
   %anon = alloca i64, align 8
@@ -84,6 +84,6 @@ exit:                                             ; preds = %cond
 ; Function Attrs: nounwind
 define i32 @main(i32 %0, ptr %1) #0 {
 entry:
-  call void @test.main()
+  call void @test_main()
   ret i32 0
 }

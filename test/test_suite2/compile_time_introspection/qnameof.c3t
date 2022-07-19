@@ -1,3 +1,4 @@
+// #target: macos-x64
 module qnametest;
 
 extern fn int printf(char *, ...);
@@ -21,8 +22,8 @@ fn void main()
 
 /* #expect: qnametest.ll
 
-@.typeid.qnametest.Blob = linkonce constant { i8, i64 } { i8 10, i64 2 }, comdat, align 8
-@qnametest.x = local_unnamed_addr global i32 0, align 4
+@"ct$qnametest_Blob" = linkonce constant %.introspect { i8 10, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@qnametest_x = local_unnamed_addr global i32 0, align 4
 @.str = private unnamed_addr constant [12 x i8] c"printf: %s\0A\00", align 1
 @.str.1 = private unnamed_addr constant [7 x i8] c"printf\00", align 1
 @.str.2 = private unnamed_addr constant [13 x i8] c"printfq: %s\0A\00", align 1
@@ -42,7 +43,7 @@ fn void main()
 @.str.16 = private unnamed_addr constant [15 x i8] c"Blob**[3]: %s\0A\00", align 1
 @.str.17 = private unnamed_addr constant [10 x i8] c"Blob**[3]\00", align 1
 
-define void @qnametest.main() #0 {
+define void @qnametest_main() #0 {
 entry:
   %help = alloca i32, align 4
   store i32 0, ptr %help, align 4

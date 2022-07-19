@@ -10,7 +10,7 @@ fn void! test()
 
 // #expect: rethrow.ll
 
-define i64 @rethrow.test() #0 {
+define i64 @rethrow_test() #0 {
 entry:
   %i = alloca i32, align 4
   %i.f = alloca i64, align 8

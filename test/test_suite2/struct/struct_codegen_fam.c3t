@@ -22,7 +22,7 @@ fn void test(Bar b)
 %Bar = type { %anon, i32, [0 x i32] }
 %anon = type { i32 }
 
-define void @foo.test(ptr byval(%Bar) align 8 %0) #0 {
+define void @foo_test(ptr byval(%Bar) align 8 %0) #0 {
 entry:
   %b = alloca %Bar, align 4
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %b, ptr align 8 %0, i32 8, i1 false)

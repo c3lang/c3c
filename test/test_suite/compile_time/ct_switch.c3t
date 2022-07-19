@@ -52,7 +52,7 @@ fn void main()
 ; Function Attrs: nounwind
 declare void @printf(i8*, ...) #0
 ; Function Attrs: nounwind
-define void @test.main() #0 {
+define void @test_main() #0 {
 entry:
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), [5 x i8]* bitcast ([6 x i8]* @.str.1 to [5 x i8]*))
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.2, i32 0, i32 0), [9 x i8]* bitcast ([10 x i8]* @.str.3 to [9 x i8]*))

@@ -5327,7 +5327,7 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 	if (active_target.feature.safe_mode || expr->typeid_info_expr.kind == TYPEID_INFO_KIND)
 	{
 		kind = llvm_emit_struct_gep_raw(c, ref, c->introspect_type, INTROSPECT_INDEX_KIND, align, &alignment);
-		kind = llvm_load(c, c->byte_type, ref, alignment, "typeid.kind");
+		kind = llvm_load(c, c->byte_type, kind, alignment, "typeid.kind");
 	}
 	switch (expr->typeid_info_expr.kind)
 	{

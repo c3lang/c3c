@@ -43,9 +43,9 @@ fn void main()
 @.str.6 = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
 @.str.7 = private unnamed_addr constant [4 x i8] c"Foo\00", align 1
 @.str.8 = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
-@.str.9 = private unnamed_addr constant [13 x i8] c"mymodule.Foo\00", align 1
+@.str.9 = private unnamed_addr constant [13 x i8] c"mymodule_Foo\00", align 1
 @.str.10 = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
-@.str.11 = private unnamed_addr constant [13 x i8] c"mymodule.Foo\00", align 1
+@.str.11 = private unnamed_addr constant [13 x i8] c"mymodule_Foo\00", align 1
 @.str.12 = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
 @.str.13 = private unnamed_addr constant [12 x i8] c"mymodule::b\00", align 1
 @.str.14 = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
@@ -55,9 +55,9 @@ fn void main()
 @.str.18 = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
 @.str.19 = private unnamed_addr constant [2 x i8] c"b\00", align 1
 @.str.20 = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
-@.str.21 = private unnamed_addr constant [11 x i8] c"mymodule.b\00", align 1
+@.str.21 = private unnamed_addr constant [11 x i8] c"mymodule_b\00", align 1
 @.str.22 = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
-@.str.23 = private unnamed_addr constant [11 x i8] c"mymodule.b\00", align 1
+@.str.23 = private unnamed_addr constant [11 x i8] c"mymodule_b\00", align 1
 @.str.24 = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
 @.str.25 = private unnamed_addr constant [2 x i8] c"a\00", align 1
 @.str.26 = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1

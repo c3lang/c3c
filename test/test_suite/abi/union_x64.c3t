@@ -14,13 +14,13 @@ fn void hello(Foo f)
     hello2(f);
 }
 
-// #expect: unionx64.ll
+/* #expect: unionx64.ll
 
 %Foo = type { i64, [8 x i8] }
 
 declare void @hello2(i64, i64) #0
 
-define void @unionx64.hello(i64 %0, i64 %1) #0 {
+define void @unionx64_hello(i64 %0, i64 %1) #0 {
 entry:
   %f = alloca %Foo, align 8
   %pair = bitcast %Foo* %f to { i64, i64 }*

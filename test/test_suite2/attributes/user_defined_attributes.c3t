@@ -28,18 +28,18 @@ fn void main() @TestZero
 
 %Foo = type { i32, [1020 x i8], i32, [1020 x i8] }
 
-@.typeid.test.Foo = linkonce constant { i8, i64 } { i8 10, i64 2 }, align 8
-@test.f = local_unnamed_addr global %Foo zeroinitializer, align 1024
+@"ct$test_Foo" = linkonce constant %.introspect { i8 10, i64 2048, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@test_f = local_unnamed_addr global %Foo zeroinitializer, align 1024
 
-define void @test.testme() #0 {
+define void @test_testme() #0 {
 entry:
   %x = alloca i32, align 4
   store i32 0, ptr %x, align 4
   ret void
 }
 
-define void @test.main() #1 {
+define void @test_main() #1 {
 entry:
-  call void @test.testme()
+  call void @test_testme()
   ret void
 }

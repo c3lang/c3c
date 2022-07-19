@@ -73,7 +73,7 @@ target triple = "x86_64-apple-darwin"
 declare void @printf(ptr, ...) #0
 
 ; Function Attrs: nounwind
-define void @test.main() #0 {
+define void @test_main() #0 {
 entry:
   %foo = alloca [3 x float], align 4
   %foo2 = alloca <3 x float>, align 16
@@ -361,6 +361,6 @@ loop.exit80:                                      ; preds = %loop.cond74
 ; Function Attrs: nounwind
 define i32 @main(i32 %0, ptr %1) #0 {
 entry:
-  call void @test.main()
+  call void @test_main()
   ret i32 0
 }

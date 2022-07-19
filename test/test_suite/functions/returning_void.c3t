@@ -16,5 +16,5 @@ if.then:
   ret void
 
 if.exit:
-  call void @returning_void.test1()
+  call void @returning_void_test1()
   ret void

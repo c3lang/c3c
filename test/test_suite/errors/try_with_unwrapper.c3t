@@ -44,7 +44,7 @@ fn void test2()
 
 
 ; Function Attrs: nounwind
-define i32 @try_with_unwrapper.hello(i32 %0) #0 {
+define i32 @try_with_unwrapper_hello(i32 %0) #0 {
 entry:
   %add = add i32 %0, 1
   ret i32 %add
@@ -54,7 +54,7 @@ entry:
 declare i32 @printf(i8*, ...) #0
 
 ; Function Attrs: nounwind
-define i64 @try_with_unwrapper.tester(i32* %0) #0 {
+define i64 @try_with_unwrapper_tester(i32* %0) #0 {
 entry:
   %reterr = alloca i64, align 8
   %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @.str, i32 0, i32 0))
@@ -63,7 +63,7 @@ entry:
 }
 
 ; Function Attrs: nounwind
-define void @try_with_unwrapper.test1() #0 {
+define void @try_with_unwrapper_test1() #0 {
 entry:
   %a = alloca i32, align 4
   %a.f = alloca i64, align 8
@@ -91,7 +91,7 @@ phi_try_catch:                                    ; preds = %catch_landing, %aft
 
 chain_next:                                       ; preds = %phi_try_catch
   store i32 0, i32* %c, align 4
-  %2 = call i64 @try_with_unwrapper.tester(i32* %retparam)
+  %2 = call i64 @try_with_unwrapper_tester(i32* %retparam)
   %not_err1 = icmp eq i64 %2, 0
   br i1 %not_err1, label %after.errcheck, label %catch_landing2
 
@@ -119,7 +119,7 @@ end_chain:                                        ; preds = %fail_chain, %chain_
 
 if.then:                                          ; preds = %end_chain
   %4 = load i32, i32* %b, align 4
-  %5 = call i32 @try_with_unwrapper.hello(i32 %4)
+  %5 = call i32 @try_with_unwrapper_hello(i32 %4)
   %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.1, i32 0, i32 0), i32 %5)
   %7 = load i32, i32* %c, align 4
   %8 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.2, i32 0, i32 0), i32 %7)
@@ -131,7 +131,7 @@ if.exit:                                          ; preds = %if.then, %end_chain
 
 
 ; Function Attrs: nounwind
-define void @try_with_unwrapper.test2() #0 {
+define void @try_with_unwrapper_test2() #0 {
 entry:
   %a = alloca i32, align 4
   %a.f = alloca i64, align 8
@@ -157,7 +157,7 @@ phi_try_catch:                                    ; preds = %catch_landing, %aft
 
 chain_next:                                       ; preds = %phi_try_catch
   %2 = load i32, i32* %b, align 4
-  %3 = call i32 @try_with_unwrapper.hello(i32 %2)
+  %3 = call i32 @try_with_unwrapper_hello(i32 %2)
   %intbool = icmp ne i32 %3, 0
   br i1 %intbool, label %chain_next1, label %fail_chain
 
@@ -174,7 +174,7 @@ end_chain:                                        ; preds = %fail_chain, %chain_
 if.then:                                          ; preds = %end_chain
   %4 = load i32, i32* %b, align 4
   %add = add i32 %4, 1
-  %5 = call i32 @try_with_unwrapper.hello(i32 %add)
+  %5 = call i32 @try_with_unwrapper_hello(i32 %add)
   br label %if.exit
 
 if.exit:                                          ; preds = %if.then, %end_chain

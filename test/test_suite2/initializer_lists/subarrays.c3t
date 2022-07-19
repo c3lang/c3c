@@ -51,14 +51,14 @@ fn int main()
 %"int[]" = type { ptr, i64 }
 %Baz = type { double }
 
-@.typeid.subarrays.Baz = linkonce constant { i8, i64 } { i8 11, i64 2 }, align 8
-@.typeid.subarrays.Bar = linkonce constant { i8, i64 } { i8 10, i64 2 }, align 8
+@"ct$subarrays_Baz" = linkonce constant %.introspect { i8 11, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"ct$subarrays_Bar" = linkonce constant %.introspect { i8 10, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @.taddr = private global [2 x %Bar] [%Bar { i32 3, i32 4 }, %Bar { i32 8, i32 9 }], align 8
-@subarrays.arrbar = local_unnamed_addr global %"Bar[]" { ptr @.taddr, i64 2 }, align 8
+@subarrays_arrbar = local_unnamed_addr global %"Bar[]" { ptr @.taddr, i64 2 }, align 8
 @.taddr.3 = private global [2 x i32] [i32 1, i32 2], align 4
-@subarrays.xd = local_unnamed_addr global %"int[]" { ptr @.taddr.3, i64 2 }, align 8
+@subarrays_xd = local_unnamed_addr global %"int[]" { ptr @.taddr.3, i64 2 }, align 8
 @.taddr.4 = private global [2 x i32] [i32 3, i32 4], align 4
-@subarrays.fofeo = local_unnamed_addr global ptr @.taddr.4, align 8
+@subarrays_fofeo = local_unnamed_addr global ptr @.taddr.4, align 8
 @.str = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
 @.str.5 = private unnamed_addr constant [7 x i8] c"Start:\00", align 1
 @.str.6 = private unnamed_addr constant [26 x i8] c"X len: %d mid element %d\0A\00", align 1
@@ -86,10 +86,10 @@ entry:
   %foo = alloca %"Bar[]", align 8
   %literal9 = alloca [0 x %Bar], align 4
   %baz = alloca [3 x %Baz], align 16
-  %0 = load ptr, ptr @subarrays.arrbar, align 8
+  %0 = load ptr, ptr @subarrays_arrbar, align 8
   %ptroffset = getelementptr inbounds %Bar, ptr %0, i64 1
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %w, ptr align 4 %ptroffset, i32 8, i1 false)
-  %1 = load ptr, ptr @subarrays.arrbar, align 8
+  %1 = load ptr, ptr @subarrays_arrbar, align 8
   %ptroffset1 = getelementptr inbounds %Bar, ptr %1, i64 1
   %2 = getelementptr inbounds %Bar, ptr %ptroffset1, i32 0, i32 0
   %3 = load i32, ptr %2, align 4
@@ -110,7 +110,7 @@ entry:
   %12 = getelementptr inbounds [3 x i32], ptr %literal2, i64 0, i64 2
   store i32 567, ptr %12, align 4
   store ptr %literal2, ptr %y, align 8
-  %13 = call i32 @"std::io.println"(ptr @.str.5) #3
+  %13 = call i32 @std_io_println(ptr @.str.5) #3
   %14 = getelementptr inbounds %"int[]", ptr %x, i32 0, i32 1
   %15 = load i64, ptr %14, align 8
   %uisitrunc = trunc i64 %15 to i32
@@ -123,7 +123,7 @@ entry:
   %ptroffset4 = getelementptr inbounds i32, ptr %20, i64 1
   %21 = load i32, ptr %ptroffset4, align 4
   %22 = call i32 (ptr, ...) @printf(ptr @.str.7, i32 %21)
-  %23 = load ptr, ptr @subarrays.fofeo, align 8
+  %23 = load ptr, ptr @subarrays_fofeo, align 8
   %ptroffset5 = getelementptr inbounds i32, ptr %23, i64 1
   %24 = load i32, ptr %ptroffset5, align 4
   %25 = call i32 (ptr, ...) @printf(ptr @.str.8, i32 %24)
@@ -148,7 +148,7 @@ entry:
   br i1 %not7, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %entry
-  %36 = call i32 @"std::io.println"(ptr @.str.9) #3
+  %36 = call i32 @std_io_println(ptr @.str.9) #3
   br label %if.exit
 
 if.exit:                                          ; preds = %if.then, %entry

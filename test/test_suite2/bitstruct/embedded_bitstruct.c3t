@@ -46,7 +46,7 @@ fn void main()
 
 /* #expect: foo.ll
 
-define void @foo.main() #0 {
+define void @foo_main() #0 {
 entry:
   %b = alloca %Bar, align 4
   %f = alloca %Foo, align 4
@@ -60,7 +60,7 @@ entry:
   %6 = shl i32 %5, 21
   %7 = ashr i32 %6, 23
   call void (ptr, ...) @printf(ptr @.str, i32 %3, i32 %7)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %f, ptr align 4 @.__const.5, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %f, ptr align 4 @.__const.10, i32 16, i1 false)
   %8 = getelementptr inbounds %Foo, ptr %f, i32 0, i32 0
   %9 = getelementptr inbounds %anon.1, ptr %8, i32 0, i32 0
   %10 = getelementptr inbounds %anon.2, ptr %9, i32 0, i32 0
@@ -74,6 +74,6 @@ entry:
   %18 = load i32, ptr %17, align 4
   %19 = getelementptr inbounds %Foo, ptr %f, i32 0, i32 1
   %20 = load i32, ptr %19, align 4
-  call void (ptr, ...) @printf(ptr @.str.6, i32 %11, i32 %15, i32 %18, i32 %20)
+  call void (ptr, ...) @printf(ptr @.str.11, i32 %11, i32 %15, i32 %18, i32 %20)
   ret void
 }

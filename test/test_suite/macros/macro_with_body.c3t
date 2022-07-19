@@ -45,8 +45,7 @@ fn void main()
 
 /* #expect: withbody.ll
 
-
-define i32 @withbody.Foo__mutate(%Foo* %0) #0 {
+define i32 @withbody_Foo_mutate(%Foo* %0) #0 {
 entry:
   %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @.str.2, i32 0, i32 0))
   %2 = getelementptr inbounds %Foo, %Foo* %0, i32 0, i32 0
@@ -57,7 +56,7 @@ entry:
   ret i32 %mul
 }
 
-define void @withbody.main() #0 {
+define void @withbody_main() #0 {
 entry:
   %f = alloca %Foo, align 4
   %y = alloca i32, align 4
@@ -75,7 +74,7 @@ entry:
   %2 = getelementptr inbounds %Foo, %Foo* %foo, i32 0, i32 0
   %3 = load i32, i32* %2, align 4
   store i32 %3, i32* %y, align 4
-  %4 = call i32 @withbody.Foo__mutate(%Foo* %foo)
+  %4 = call i32 @withbody_Foo_mutate(%Foo* %foo)
   store i32 %4, i32* %x, align 4
   %5 = load i32, i32* %y, align 4
   store i32 %5, i32* %dy, align 4

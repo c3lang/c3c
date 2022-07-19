@@ -10,15 +10,15 @@ fn void main()
 /* #expect: foo.ll
 
 
-@"std::math.DIV_1_SQRT2" = external global double
+@std_math_DIV_1_SQRT2 = external global double
 
-define void @foo.main() #0 {
+define void @foo_main() #0 {
 entry:
   %foekf = alloca i8*, align 8
   %xok = alloca double*, align 8
-  store i8* bitcast (double (double)* @"std::math.log" to i8*), i8** %foekf, align 8
-  store double* @"std::math.DIV_1_SQRT2", double** %xok, align 8
+  store i8* bitcast (double (double)* @std_math_log to i8*), i8** %foekf, align 8
+  store double* @std_math_DIV_1_SQRT2, double** %xok, align 8
   ret void
 }
 
-declare double @"std::math.log"(double)
+declare double @std_math_log(double)

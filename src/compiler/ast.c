@@ -128,7 +128,7 @@ void module_append_name_to_scratch(Module *module)
 		switch (c)
 		{
 			case '_':
-				scratch_buffer_append("__");
+				scratch_buffer_append("_");
 				break;
 			case ':':
 				scratch_buffer_append_char('_');
@@ -151,7 +151,7 @@ void decl_set_external_name(Decl *decl)
 	}
 	scratch_buffer_clear();
 	module_append_name_to_scratch(decl->module);
-	scratch_buffer_append("__");
+	scratch_buffer_append("_");
 	scratch_buffer_append(decl->name ? decl->name : "anon");
 	decl->extname = scratch_buffer_copy();
 }

@@ -37,7 +37,7 @@ fn void main()
 declare void @printf(ptr, ...) #0
 
 ; Function Attrs: nounwind
-define void @test.main() #0 {
+define void @test_main() #0 {
 entry:
   call void (ptr, ...) @printf(ptr @.str, ptr @.str.1)
   call void (ptr, ...) @printf(ptr @.str.2, ptr @.str.3)

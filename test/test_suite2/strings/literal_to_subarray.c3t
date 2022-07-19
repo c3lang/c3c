@@ -12,11 +12,11 @@ fn void test()
 %"char[]" = type { ptr, i64 }
 
 @.str = private unnamed_addr constant [6 x i8] c"hello\00", align 1
-@literal_to_subarray.y = local_unnamed_addr global %"char[]" { ptr @.str, i64 5 }, align 8
+@literal_to_subarray_y = local_unnamed_addr global %"char[]" { ptr @.str, i64 5 }, align 8
 @.str.1 = private unnamed_addr constant [6 x i8] c"world\00", align 1
 
 ; Function Attrs: nounwind
-define void @literal_to_subarray.test() #0 {
+define void @literal_to_subarray_test() #0 {
 entry:
   %x = alloca %"char[]", align 8
   store %"char[]" { ptr @.str.1, i64 5 }, ptr %x, align 8

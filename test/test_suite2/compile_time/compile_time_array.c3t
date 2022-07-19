@@ -18,7 +18,7 @@ fn void test()
 @.str = private unnamed_addr constant [2 x i8] c"a\00", align 1
 
 ; Function Attrs: nounwind
-define void @test.test() #0 {
+define void @test_test() #0 {
 entry:
   %x = alloca i32, align 4
   %z = alloca %"char[]", align 8

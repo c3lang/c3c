@@ -37,24 +37,26 @@ fn void main()
 %anon.0 = type { float, float, float, float }
 %Matrix2x2_b = type { %anon.1 }
 %anon.1 = type { [4 x float] }
-@.typeid.foo.anon = linkonce constant { i8, i64 } { i8 10, i64 4 }, align 8
-@.typeid.foo.anon.1 = linkonce constant { i8, i64 } { i8 11, i64 2 }, align 8
-@.typeid.foo.Matrix2x2 = linkonce constant { i8, i64 } { i8 10, i64 1 }, align 8
-@.typeid.foo.anon.2 = linkonce constant { i8, i64 } { i8 10, i64 4 }, align 8
-@.typeid.foo.anon.3 = linkonce constant { i8, i64 } { i8 11, i64 2 }, align 8
-@.typeid.foo.Matrix2x2_b = linkonce constant { i8, i64 } { i8 10, i64 1 }, align 8
+
+@"ct$foo_anon" = linkonce constant %.introspect { i8 10, i64 16, i64 0, i64 4, [0 x i64] zeroinitializer }, align 8
+@"ct$foo_anon.3" = linkonce constant %.introspect { i8 11, i64 16, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"ct$foo_Matrix2x2" = linkonce constant %.introspect { i8 10, i64 16, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
+@"ct$foo_anon.6" = linkonce constant %.introspect { i8 10, i64 16, i64 0, i64 4, [0 x i64] zeroinitializer }, align 8
+@"ct$foo_anon.7" = linkonce constant %.introspect { i8 11, i64 16, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"ct$foo_Matrix2x2_b" = linkonce constant %.introspect { i8 10, i64 16, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
 @.__const = private unnamed_addr constant %Matrix2x2 { %anon { %anon.0 { float 1.000000e+00, float 2.000000e+00, float 3.000000e+00, float 4.000000e+00 } } }, align 4
-@.__const.4 = private unnamed_addr constant %Matrix2x2_b { %anon.1 { [4 x float] [float 1.000000e+00, float 2.000000e+00, float 3.000000e+00, float 4.000000e+00] } }, align 4
+@.__const.8 = private unnamed_addr constant %Matrix2x2_b { %anon.1 { [4 x float] [float 1.000000e+00, float 2.000000e+00, float 3.000000e+00, float 4.000000e+00] } }, align 4
 @.str = private unnamed_addr constant [13 x i8] c"%f %f %f %f\0A\00", align 1
+
 ; Function Attrs: nounwind
-define void @foo.main() #0 {
+define void @foo_main() #0 {
 entry:
   %m = alloca %Matrix2x2, align 4
   %m2 = alloca %Matrix2x2_b, align 4
   %0 = bitcast %Matrix2x2* %m to i8*
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %0, i8* align 4 bitcast (%Matrix2x2* @.__const to i8*), i32 16, i1 false)
   %1 = bitcast %Matrix2x2_b* %m2 to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %1, i8* align 4 bitcast (%Matrix2x2_b* @.__const.4 to i8*), i32 16, i1 false)
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %1, i8* align 4 bitcast (%Matrix2x2_b* @.__const.8 to i8*), i32 16, i1 false)
   %2 = getelementptr inbounds %Matrix2x2, %Matrix2x2* %m, i32 0, i32 0
   %3 = bitcast %anon* %2 to %anon.0*
   %4 = getelementptr inbounds %anon.0, %anon.0* %3, i32 0, i32 0
@@ -78,9 +80,10 @@ entry:
   %18 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str, i32 0, i32 0), double %fpfpext, double %fpfpext1, double %fpfpext2, double %fpfpext3)
   ret void
 }
+
 ; Function Attrs: nounwind
 define i32 @main(i32 %0, i8** %1) #0 {
 entry:
-  call void @foo.main()
+  call void @foo_main()
   ret i32 0
 }

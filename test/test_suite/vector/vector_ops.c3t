@@ -98,7 +98,7 @@ fn void main()
 /* #expect: vector_ops.ll
 
 ; Function Attrs: nounwind
-define void @vector_ops.testf() #0 {
+define void @vector_ops_testf() #0 {
 entry:
   %y = alloca <4 x float>, align 16
   %z = alloca <4 x float>, align 16
@@ -262,7 +262,7 @@ entry:
 }
 
 ; Function Attrs: nounwind
-define void @vector_ops.testb() #0 {
+define void @vector_ops_testb() #0 {
 entry:
   %y = alloca <4 x i8>, align 4
   %z = alloca <4 x i8>, align 4
@@ -381,7 +381,7 @@ entry:
 }
 
 ; Function Attrs: nounwind
-define void @vector_ops.testi() #0 {
+define void @vector_ops_testi() #0 {
 entry:
   %y = alloca <4 x i32>, align 16
   %z = alloca <4 x i32>, align 16

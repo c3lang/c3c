@@ -41,16 +41,16 @@ loop.body:                                        ; preds = %loop.cond
   br i1 %eq, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %loop.body
-  call void @test.testA()
-  call void @test.testB()
-  call void @test.test2()
+  call void @test_testA()
+  call void @test_testB()
+  call void @test_test2()
   br label %loop.exit
 
 if.exit:                                          ; preds = %loop.body
-  call void @test.test3()
-  call void @test.testA()
-  call void @test.testB()
-  call void @test.test2()
+  call void @test_test3()
+  call void @test_testA()
+  call void @test_testB()
+  call void @test_test2()
   br label %loop.cond
 
 loop.exit:                                        ; preds = %if.then, %loop.cond

@@ -33,14 +33,14 @@ fn void main()
 
 /* #expect: test.ll
 
-define i64 @test.test1() #0 {
+define i64 @test_test1() #0 {
 entry:
   %x = alloca %Bar, align 4
   %x.f = alloca i64, align 8
   %y = alloca %Bar, align 4
   %error_var = alloca i64, align 8
   %reterr = alloca i64, align 8
-  store i64 ptrtoint (i8* @test.Foo.MY_VAL1 to i64), i64* %x.f, align 8
+  store i64 ptrtoint (i8* @"test_Foo$MY_VAL1" to i64), i64* %x.f, align 8
   %0 = load i64, i64* %x.f, align 8
   %not_err = icmp eq i64 %0, 0
   br i1 %not_err, label %after_check, label %error
@@ -63,7 +63,8 @@ noerr_block:                                      ; preds = %after_check
   ret i64 0
 }
 
-define i64 @test.test2() #0 {
+; Function Attrs: nounwind
+define i64 @test_test2() #0 {
 entry:
   %x = alloca %Bar, align 4
   %x.f = alloca i64, align 8
@@ -96,9 +97,9 @@ noerr_block:                                      ; preds = %after_check
 }
 
 ; Function Attrs: nounwind
-define void @test.main() #0 {
+define void @test_main() #0 {
 entry:
-  %0 = call i64 @test.test1()
+  %0 = call i64 @test_test1()
   %not_err = icmp eq i64 %0, 0
   br i1 %not_err, label %after.errcheck, label %voiderr
 
@@ -106,7 +107,7 @@ after.errcheck:                                   ; preds = %entry
   br label %voiderr
 
 voiderr:                                          ; preds = %after.errcheck, %entry
-  %1 = call i64 @test.test2()
+  %1 = call i64 @test_test2()
   %not_err1 = icmp eq i64 %1, 0
   br i1 %not_err1, label %after.errcheck2, label %voiderr3
 

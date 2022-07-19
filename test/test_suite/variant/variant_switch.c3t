@@ -30,11 +30,11 @@ fn int main()
 
 /* #expect: foo.ll
 
-@.typeid.int = linkonce constant { i8, i16 } { i8 2, i16 32 }, align 2
-@.typeid.double = linkonce constant { i8, i16 } { i8 4, i16 64 }, align 2
-@.typeid.bool = linkonce constant { i8 } { i8 1 }, align 1
+@"ct$int" = linkonce constant %.introspect { i8 2, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
+@"ct$double" = linkonce constant %.introspect { i8 4, i64 8, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
+@"ct$bool" = linkonce constant %.introspect { i8 1, i64 1, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
 
-define void @foo.test(i64 %0, i8* %1) #0 {
+define void @foo_test(i64 %0, i8* %1) #0 {
 entry:
   %z = alloca %variant, align 8
   %switch = alloca i64, align 8
@@ -52,7 +52,7 @@ entry:
 
 switch.entry:                                     ; preds = %entry
   %6 = load i64, i64* %switch, align 8
-  %eq = icmp eq i64 ptrtoint ({ i8, i16 }* @.typeid.int to i64), %6
+  %eq = icmp eq i64 ptrtoint (%.introspect* @"ct$int" to i64), %6
   br i1 %eq, label %switch.case, label %next_if
 
 switch.case:                                      ; preds = %switch.entry
@@ -68,7 +68,7 @@ switch.case:                                      ; preds = %switch.entry
   br label %switch.exit
 
 next_if:                                          ; preds = %switch.entry
-  %eq2 = icmp eq i64 ptrtoint ({ i8, i16 }* @.typeid.double to i64), %6
+  %eq2 = icmp eq i64 ptrtoint (%.introspect* @"ct$double" to i64), %6
   br i1 %eq2, label %switch.case3, label %next_if5
 
 switch.case3:                                     ; preds = %next_if
@@ -91,7 +91,7 @@ switch.default:                                   ; preds = %next_if5
 switch.exit:                                      ; preds = %switch.default, %switch.case3, %switch.case
   %18 = getelementptr inbounds %variant, %variant* %z, i32 0, i32 1
   %19 = load i64, i64* %18, align 8
-  %eq6 = icmp eq i64 %19, ptrtoint ({ i8, i16 }* @.typeid.int to i64)
+  %eq6 = icmp eq i64 %19, ptrtoint (%.introspect* @"ct$int" to i64)
   br i1 %eq6, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %switch.exit
@@ -118,34 +118,34 @@ entry:
   store double 1.230000e+02, double* %taddr, align 8
   %0 = bitcast double* %taddr to i8*
   %1 = insertvalue %variant undef, i8* %0, 0
-  %2 = insertvalue %variant %1, i64 ptrtoint ({ i8, i16 }* @.typeid.double to i64), 1
+  %2 = insertvalue %variant %1, i64 ptrtoint (%.introspect* @"ct$double" to i64), 1
   store %variant %2, %variant* %taddr1, align 8
   %3 = bitcast %variant* %taddr1 to { i64, i8* }*
   %4 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %3, i32 0, i32 0
   %lo = load i64, i64* %4, align 8
   %5 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %3, i32 0, i32 1
   %hi = load i8*, i8** %5, align 8
-  call void @foo.test(i64 %lo, i8* %hi)
+  call void @foo_test(i64 %lo, i8* %hi)
   store i32 1, i32* %taddr2, align 4
   %6 = bitcast i32* %taddr2 to i8*
   %7 = insertvalue %variant undef, i8* %6, 0
-  %8 = insertvalue %variant %7, i64 ptrtoint ({ i8, i16 }* @.typeid.int to i64), 1
+  %8 = insertvalue %variant %7, i64 ptrtoint (%.introspect* @"ct$int" to i64), 1
   store %variant %8, %variant* %taddr3, align 8
   %9 = bitcast %variant* %taddr3 to { i64, i8* }*
   %10 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %9, i32 0, i32 0
   %lo4 = load i64, i64* %10, align 8
   %11 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %9, i32 0, i32 1
   %hi5 = load i8*, i8** %11, align 8
-  call void @foo.test(i64 %lo4, i8* %hi5)
+  call void @foo_test(i64 %lo4, i8* %hi5)
   store i8 1, i8* %taddr6, align 1
   %12 = insertvalue %variant undef, i8* %taddr6, 0
-  %13 = insertvalue %variant %12, i64 ptrtoint ({ i8 }* @.typeid.bool to i64), 1
+  %13 = insertvalue %variant %12, i64 ptrtoint (%.introspect* @"ct$bool" to i64), 1
   store %variant %13, %variant* %taddr7, align 8
   %14 = bitcast %variant* %taddr7 to { i64, i8* }*
   %15 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %14, i32 0, i32 0
   %lo8 = load i64, i64* %15, align 8
   %16 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %14, i32 0, i32 1
   %hi9 = load i8*, i8** %16, align 8
-  call void @foo.test(i64 %lo8, i8* %hi9)
+  call void @foo_test(i64 %lo8, i8* %hi9)
   ret i32 0
 }

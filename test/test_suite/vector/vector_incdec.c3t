@@ -38,7 +38,7 @@ fn void main()
 
 /* #expect: vector_incdec.ll
 
-define void @vector_incdec.testf() #0 {
+define void @vector_incdec_testf() #0 {
 entry:
   %y = alloca <4 x float>, align 16
   %z = alloca <4 x float>, align 16
@@ -113,7 +113,7 @@ entry:
 }
 
 ; Function Attrs: nounwind
-define void @vector_incdec.testi() #0 {
+define void @vector_incdec_testi() #0 {
 entry:
   %y = alloca <4 x i32>, align 16
   %z = alloca <4 x i32>, align 16
@@ -182,9 +182,9 @@ entry:
   ret void
 }
 
-define void @vector_incdec.main() #0 {
+define void @vector_incdec_main() #0 {
 entry:
-  call void @vector_incdec.testf()
-  call void @vector_incdec.testi()
+  call void @vector_incdec_testf()
+  call void @vector_incdec_testi()
   ret void
 }

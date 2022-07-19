@@ -17,7 +17,7 @@ fn bool elvis3(bool x, bool y)
 
 // #expect: elvis.ll
 
-define i32* @elvis.elvis(i32* %0, i32* %1) #0 {
+define i32* @elvis_elvis(i32* %0, i32* %1) #0 {
 entry:
   %ptrbool = icmp ne i32* %0, null
   br i1 %ptrbool, label %cond.phi, label %cond.rhs
@@ -30,7 +30,7 @@ cond.phi:                                         ; preds = %cond.rhs, %entry
   ret i32* %val
 }
 
-define i32* @elvis.elvis2(i32* %0, i32* %1) #0 {
+define i32* @elvis_elvis2(i32* %0, i32* %1) #0 {
 entry:
   %ptrbool = icmp ne i32* %0, null
   br i1 %ptrbool, label %cond.phi3, label %cond.rhs
@@ -51,7 +51,7 @@ cond.phi3:                                        ; preds = %cond.phi, %entry
   ret i32* %val4
 }
 
-define zeroext i8 @elvis.elvis3(i8 zeroext %0, i8 zeroext %1) #0 {
+define zeroext i8 @elvis_elvis3(i8 zeroext %0, i8 zeroext %1) #0 {
 entry:
   %2 = trunc i8 %0 to i1
   br i1 %2, label %cond.phi, label %cond.rhs

@@ -22,9 +22,9 @@ fn int main()
 
 /* #expect: test.ll
 
-@.typeid.int = linkonce constant { i8, i16 } { i8 2, i16 32 }, align 2
+@"ct$int" = linkonce constant %.introspect { i8 2, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
 
-define void @test.retest(ptr %0, i64 %1) #0 {
+define void @test_retest(ptr %0, i64 %1) #0 {
 entry:
   %foo = alloca %"variant[]", align 8
   %vararg = alloca %"variant[]", align 8
@@ -38,11 +38,11 @@ entry:
   %lo = load ptr, ptr %6, align 8
   %7 = getelementptr inbounds { ptr, i64 }, ptr %foo, i32 0, i32 1
   %hi = load i64, ptr %7, align 8
-  call void @test.test(ptr %lo, i64 %hi)
+  call void @test_test(ptr %lo, i64 %hi)
   ret void
 }
 
-define void @test.test(ptr %0, i64 %1) #0 {
+define void @test_test(ptr %0, i64 %1) #0 {
 entry:
   %foo = alloca %"variant[]", align 8
   %2 = getelementptr inbounds { ptr, i64 }, ptr %foo, i32 0, i32 0
@@ -71,7 +71,7 @@ entry:
   store i32 1, ptr %i, align 4
   store i32 1, ptr %taddr, align 4
   %0 = insertvalue %variant undef, ptr %taddr, 0
-  %1 = insertvalue %variant %0, i64 ptrtoint (ptr @.typeid.int to i64), 1
+  %1 = insertvalue %variant %0, i64 ptrtoint (ptr @"ct$int" to i64), 1
   %2 = getelementptr inbounds [1 x %variant], ptr %varargslots, i64 0, i64 0
   store %variant %1, ptr %2, align 16
   %3 = getelementptr inbounds %"variant[]", ptr %vararg, i32 0, i32 1
@@ -82,10 +82,10 @@ entry:
   %lo = load ptr, ptr %5, align 8
   %6 = getelementptr inbounds { ptr, i64 }, ptr %vararg, i32 0, i32 1
   %hi = load i64, ptr %6, align 8
-  call void @test.test(ptr %lo, i64 %hi)
+  call void @test_test(ptr %lo, i64 %hi)
   store i32 1, ptr %taddr3, align 4
   %7 = insertvalue %variant undef, ptr %taddr3, 0
-  %8 = insertvalue %variant %7, i64 ptrtoint (ptr @.typeid.int to i64), 1
+  %8 = insertvalue %variant %7, i64 ptrtoint (ptr @"ct$int" to i64), 1
   %9 = getelementptr inbounds [1 x %variant], ptr %varargslots2, i64 0, i64 0
   store %variant %8, ptr %9, align 16
   %10 = getelementptr inbounds %"variant[]", ptr %vararg1, i32 0, i32 1
@@ -96,6 +96,6 @@ entry:
   %lo4 = load ptr, ptr %12, align 8
   %13 = getelementptr inbounds { ptr, i64 }, ptr %vararg1, i32 0, i32 1
   %hi5 = load i64, ptr %13, align 8
-  call void @test.retest(ptr %lo4, i64 %hi5)
+  call void @test_retest(ptr %lo4, i64 %hi5)
   ret i32 1
 }

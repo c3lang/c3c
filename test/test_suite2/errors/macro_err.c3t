@@ -18,7 +18,7 @@ fn void main()
 /* #expect: test.ll
 
 
-define i64 @test.abc(ptr %0) #0 {
+define i64 @test_abc(ptr %0) #0 {
 entry:
   %reterr = alloca i64, align 8
   store i32 1, ptr %0, align 4
@@ -26,11 +26,11 @@ entry:
 }
 
 ; Function Attrs: nounwind
-define void @test.main() #0 {
+define void @test_main() #0 {
 entry:
   %error_var = alloca i64, align 8
   %retparam = alloca i32, align 4
-  %0 = call i64 @test.abc(ptr %retparam)
+  %0 = call i64 @test_abc(ptr %retparam)
   %not_err = icmp eq i64 %0, 0
   br i1 %not_err, label %after.errcheck, label %error
 

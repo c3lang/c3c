@@ -68,7 +68,7 @@ fn void main()
 
 /* #expect: mymodule.ll
 
-define void @mymodule.test() #0 {
+define void @mymodule_test() #0 {
 entry:
   %x = alloca i32, align 4
   %x.f = alloca i64, align 8
@@ -81,8 +81,8 @@ entry:
   %zy = alloca i32, align 4
   %switch17 = alloca i32, align 4
   %switch27 = alloca i8, align 1
-  store i64 ptrtoint (ptr @mymodule.ByeErr.BAR to i64), ptr %x.f, align 8
-  store i64 ptrtoint (ptr @.typeid.int to i64), ptr %z, align 8
+  store i64 ptrtoint (ptr @"mymodule_ByeErr$BAR" to i64), ptr %x.f, align 8
+  store i64 ptrtoint (ptr @"ct$int" to i64), ptr %z, align 8
   br label %testblock
 
 testblock:                                        ; preds = %entry
@@ -109,7 +109,7 @@ if.then:                                          ; preds = %end_block
 
 switch.entry:                                     ; preds = %if.then
   %2 = load i64, ptr %switch, align 8
-  %eq = icmp eq i64 ptrtoint (ptr @mymodule.HelloErr.FOO to i64), %2
+  %eq = icmp eq i64 ptrtoint (ptr @"mymodule_HelloErr$FOO" to i64), %2
   br i1 %eq, label %switch.case, label %next_if
 
 switch.case:                                      ; preds = %switch.entry
@@ -117,7 +117,7 @@ switch.case:                                      ; preds = %switch.entry
   br label %switch.exit
 
 next_if:                                          ; preds = %switch.entry
-  %eq1 = icmp eq i64 ptrtoint (ptr @mymodule.ByeErr.BAR to i64), %2
+  %eq1 = icmp eq i64 ptrtoint (ptr @"mymodule_ByeErr$BAR" to i64), %2
   br i1 %eq1, label %switch.case2, label %next_if3
 
 switch.case2:                                     ; preds = %next_if
@@ -141,7 +141,7 @@ if.exit:                                          ; preds = %switch.exit, %end_b
 
 switch.entry5:                                    ; preds = %if.exit
   %4 = load i64, ptr %switch4, align 8
-  %eq6 = icmp eq i64 ptrtoint (ptr @.typeid.int to i64), %4
+  %eq6 = icmp eq i64 ptrtoint (ptr @"ct$int" to i64), %4
   br i1 %eq6, label %switch.case7, label %next_if8
 
 switch.case7:                                     ; preds = %switch.entry5
@@ -149,14 +149,14 @@ switch.case7:                                     ; preds = %switch.entry5
   br label %switch.exit16
 
 next_if8:                                         ; preds = %switch.entry5
-  %eq9 = icmp eq i64 ptrtoint (ptr @.typeid.bool to i64), %4
+  %eq9 = icmp eq i64 ptrtoint (ptr @"ct$bool" to i64), %4
   br i1 %eq9, label %switch.case10, label %next_if11
 
 switch.case10:                                    ; preds = %next_if8
   br label %switch.case13
 
 next_if11:                                        ; preds = %next_if8
-  %eq12 = icmp eq i64 ptrtoint (ptr @.typeid.double to i64), %4
+  %eq12 = icmp eq i64 ptrtoint (ptr @"ct$double" to i64), %4
   br i1 %eq12, label %switch.case13, label %next_if14
 
 switch.case13:                                    ; preds = %next_if11, %switch.case10

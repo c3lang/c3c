@@ -72,25 +72,25 @@ fn void main()
 
 /* #expect: foo.ll
 
-define void @foo.Foo__hello(i64* %0) #0 {
+define void @foo_Foo_hello(i64* %0) #0 {
 entry:
-  %1 = call i32 @"std::io.println"(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str.6, i32 0, i32 0)) #1
+  %1 = call i32 @std_io_println(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str.6, i32 0, i32 0)) #1
   ret void
 }
 
-define void @foo.Bar__hello(i32* %0) #0 {
+define void @foo_Bar_hello(i32* %0) #0 {
 entry:
-  %1 = call i32 @"std::io.println"(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str.7, i32 0, i32 0)) #1
+  %1 = call i32 @std_io_println(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str.7, i32 0, i32 0)) #1
   ret void
 }
 
-define void @foo.MyEnum__hello(i32* %0) #0 {
+define void @foo_MyEnum_hello(i32* %0) #0 {
 entry:
-  %1 = call i32 @"std::io.println"(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @.str.8, i32 0, i32 0)) #1
+  %1 = call i32 @std_io_println(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @.str.8, i32 0, i32 0)) #1
   ret void
 }
 
-define void @foo.main() #0 {
+define void @foo_main() #0 {
 entry:
   %f = alloca i64, align 8
   %ef = alloca i64, align 8
@@ -98,8 +98,8 @@ entry:
   %z = alloca i64, align 8
   %b = alloca i32, align 4
   %a = alloca i32, align 4
-  store i64 ptrtoint (i8* @foo.Foo.X to i64), i64* %f, align 8
-  store i64 ptrtoint (i8* @foo.Foo.Y to i64), i64* %ef, align 8
+  store i64 ptrtoint (i8* @"foo_Foo$X" to i64), i64* %f, align 8
+  store i64 ptrtoint (i8* @"foo_Foo$Y" to i64), i64* %ef, align 8
   %0 = load i64, i64* %f, align 8
   store i64 %0, i64* %x, align 8
   %1 = load i64, i64* %x, align 8
@@ -112,30 +112,30 @@ entry:
   store i64 %5, i64* %z, align 8
   %6 = load i64, i64* %z, align 8
   %7 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str.1, i32 0, i32 0), i64 %6)
-  store i64 ptrtoint (i8* @foo.Foo.W to i64), i64* %x, align 8
+  store i64 ptrtoint (i8* @"foo_Foo$W" to i64), i64* %x, align 8
   %8 = load i64, i64* %x, align 8
   store i64 %8, i64* %z, align 8
   %9 = load i64, i64* %z, align 8
   %10 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.2, i32 0, i32 0), i64 %9)
-  store i64 ptrtoint (i8* @foo.Foo.W1 to i64), i64* %x, align 8
+  store i64 ptrtoint (i8* @"foo_Foo$W1" to i64), i64* %x, align 8
   %11 = load i64, i64* %x, align 8
   store i64 %11, i64* %z, align 8
   %12 = load i64, i64* %z, align 8
   %13 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.3, i32 0, i32 0), i64 %12)
-  store i64 ptrtoint (i8* @foo.Foob.X1 to i64), i64* %x, align 8
+  store i64 ptrtoint (i8* @"foo_Foob$X1" to i64), i64* %x, align 8
   %14 = load i64, i64* %x, align 8
   store i64 %14, i64* %z, align 8
   %15 = load i64, i64* %z, align 8
   %16 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str.4, i32 0, i32 0), i64 %15)
-  store i64 ptrtoint (i8* @foo.Foob.Y2 to i64), i64* %x, align 8
+  store i64 ptrtoint (i8* @"foo_Foob$Y2" to i64), i64* %x, align 8
   %17 = load i64, i64* %x, align 8
   store i64 %17, i64* %z, align 8
   %18 = load i64, i64* %z, align 8
   %19 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str.5, i32 0, i32 0), i64 %18)
   store i32 0, i32* %b, align 4
   store i32 0, i32* %a, align 4
-  call void @foo.Foo__hello(i64* %f)
-  call void @foo.Bar__hello(i32* %b)
-  call void @foo.MyEnum__hello(i32* %a)
+  call void @foo_Foo_hello(i64* %f)
+  call void @foo_Bar_hello(i32* %b)
+  call void @foo_MyEnum_hello(i32* %a)
   ret void
 }

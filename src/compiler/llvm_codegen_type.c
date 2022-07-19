@@ -548,6 +548,7 @@ static inline LLVMValueRef llvm_generate_introspection_global(GenContext *c, LLV
 	if (original_global)
 	{
 		LLVMReplaceAllUsesWith(original_global, global_name);
+		LLVMDeleteGlobal(original_global);
 	}
 	else
 	{

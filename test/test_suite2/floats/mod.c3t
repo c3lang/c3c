@@ -7,7 +7,7 @@ fn double x(double a, double b)
 
 /* #expect: mod.ll
 
-define double @mod.x(double %0, double %1) #0 {
+define double @mod_x(double %0, double %1) #0 {
 entry:
   %fmod = frem double %0, %1
   ret double %fmod

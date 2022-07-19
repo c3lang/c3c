@@ -20,7 +20,7 @@ fn void test()
 
 declare i32 @sum_us([2 x i64]) #0
 
-define void @splat.test() #0 {
+define void @splat_test() #0 {
 entry:
   %vararg = alloca %"int[]", align 8
   %varargslots = alloca [3 x i32], align 4

@@ -20,7 +20,7 @@ fn Foo getFoo(Foo f)
 
 /* #expect: test.ll
 
-define i32 @test.testing() #0 {
+define i32 @test_testing() #0 {
 entry:
   %y = alloca %Foo, align 1
   %literal = alloca %Foo, align 1
@@ -36,7 +36,7 @@ entry:
   %4 = bitcast %Foo* %literal to i8*
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %3, i8* align 1 %4, i32 3, i1 false)
   %5 = load i24, i24* %tempcoerce, align 4
-  %6 = call i24 @test.getFoo(i24 %5)
+  %6 = call i24 @test_getFoo(i24 %5)
   %7 = bitcast %Foo* %result to i24*
   store i24 %6, i24* %7, align 1
   %8 = bitcast %Foo* %y to i8*
@@ -52,7 +52,7 @@ entry:
   ret i32 %add
 }
 ; Function Attrs: nounwind
-define i24 @test.getFoo(i24 %0) #0 {
+define i24 @test_getFoo(i24 %0) #0 {
 entry:
   %f = alloca %Foo, align 1
   %literal = alloca %Foo, align 1

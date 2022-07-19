@@ -27,9 +27,9 @@ fn void main()
 
 %Foo = type { i32, i32 }
 
-@.typeid.test.Foo = linkonce constant { i8, i64 } { i8 10, i64 2 }, align 8
-@test.MyErr.FOO = linkonce constant i8 1, align 1
-@.typeid.test.MyErr = linkonce constant { i8, i64, [1 x i64] } { i8 9, i64 1, [1 x i64] [i64 ptrtoint (ptr @test.MyErr.FOO to i64)] }, align 8
+@"ct$test_Foo" = linkonce constant %.introspect { i8 10, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"test_MyErr$FOO" = linkonce constant i8 1, align 1
+@"ct$test_MyErr" = linkonce constant %.introspect { i8 9, i64 8, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
 @.str = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
 @.str.1 = private unnamed_addr constant [17 x i8] c"Not visible: %d\0A\00", align 1
 
@@ -37,7 +37,7 @@ fn void main()
 declare i32 @printf(ptr, ...) #0
 
 ; Function Attrs: nounwind
-define void @test.main() #0 {
+define void @test_main() #0 {
 entry:
   %z = alloca i32, align 4
   %z.f = alloca i64, align 8
@@ -78,7 +78,7 @@ after_check2:                                     ; preds = %after_assign
   br label %voiderr
 
 voiderr:                                          ; preds = %after_check2, %after_assign
-  store i64 ptrtoint (ptr @test.MyErr.FOO to i64), ptr %z.f, align 8
+  store i64 ptrtoint (ptr @"test_MyErr$FOO" to i64), ptr %z.f, align 8
   br label %voiderr3
 
 voiderr3:                                         ; preds = %voiderr

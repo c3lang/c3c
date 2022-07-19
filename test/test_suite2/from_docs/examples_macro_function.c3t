@@ -23,13 +23,13 @@ fn int test()
 
 /* #expect: example.ll
 
-define i32 @example.square(i32 %0) #0 {
+define i32 @example_square(i32 %0) #0 {
 entry:
   %mul = mul i32 %0, %0
   ret i32 %mul
 }
 
-define i32 @example.test() #0 {
+define i32 @example_test() #0 {
 entry:
   %a = alloca i32, align 4
   %b = alloca i32, align 4
@@ -37,7 +37,7 @@ entry:
   %b2 = alloca i32, align 4
   store i32 2, ptr %a, align 4
   store i32 3, ptr %b, align 4
-  store ptr @example.square, ptr %a1, align 8
+  store ptr @example_square, ptr %a1, align 8
   store i32 2, ptr %b2, align 4
   %0 = load ptr, ptr %a1, align 8
   %1 = load i32, ptr %b2, align 4

@@ -46,15 +46,14 @@ fn void main()
 
 /* #expect: demo.ll
 
-
-define i64 @demo.divide(ptr %0, i32 %1, i32 %2) #0 {
+define i64 @demo_divide(ptr %0, i32 %1, i32 %2) #0 {
 entry:
   %reterr = alloca i64, align 8
   %eq = icmp eq i32 %2, 0
   br i1 %eq, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %entry
-  ret i64 ptrtoint (ptr @demo.MathError.DIVISION_BY_ZERO to i64)
+  ret i64 ptrtoint (ptr @"demo_MathError$DIVISION_BY_ZERO" to i64)
 
 if.exit:                                          ; preds = %entry
   %sifp = sitofp i32 %1 to double
@@ -64,14 +63,14 @@ if.exit:                                          ; preds = %entry
   ret i64 0
 }
 
-define i64 @demo.testMayError() #0 {
+define i64 @demo_testMayError() #0 {
 entry:
   %error_var = alloca i64, align 8
   %retparam = alloca double, align 8
   %reterr = alloca i64, align 8
-  %0 = call i32 @demo.foo()
-  %1 = call i32 @demo.bar()
-  %2 = call i64 @demo.divide(ptr %retparam, i32 %0, i32 %1)
+  %0 = call i32 @demo_foo()
+  %1 = call i32 @demo_bar()
+  %2 = call i64 @demo_divide(ptr %retparam, i32 %0, i32 %1)
   %not_err = icmp eq i64 %2, 0
   br i1 %not_err, label %after.errcheck, label %error
 
@@ -90,16 +89,16 @@ noerr_block:                                      ; preds = %after.errcheck
   ret i64 0
 }
 
-define void @demo.main() #0 {
+define void @demo_main() #0 {
 entry:
   %ratio = alloca double, align 8
   %ratio.f = alloca i64, align 8
   %retparam = alloca double, align 8
   %err = alloca i64, align 8
   %switch = alloca i64, align 8
-  %0 = call i32 @demo.foo()
-  %1 = call i32 @demo.bar()
-  %2 = call i64 @demo.divide(ptr %retparam, i32 %0, i32 %1)
+  %0 = call i32 @demo_foo()
+  %1 = call i32 @demo_bar()
+  %2 = call i64 @demo_divide(ptr %retparam, i32 %0, i32 %1)
   %not_err = icmp eq i64 %2, 0
   br i1 %not_err, label %after.errcheck, label %error
 
@@ -140,7 +139,7 @@ if.then:                                          ; preds = %end_block
 
 switch.entry:                                     ; preds = %if.then
   %6 = load i64, ptr %switch, align 8
-  %eq = icmp eq i64 ptrtoint (ptr @demo.MathError.DIVISION_BY_ZERO to i64), %6
+  %eq = icmp eq i64 ptrtoint (ptr @"demo_MathError$DIVISION_BY_ZERO" to i64), %6
   br i1 %eq, label %switch.case, label %next_if
 
 switch.case:                                      ; preds = %switch.entry

@@ -9,7 +9,7 @@ fn void main()
 
 /* #expect: foo.ll
 
-define void @foo.main() #0 {
+define void @foo_main() #0 {
 entry:
   %x = alloca i32*, align 8
   %y = alloca i32, align 4
@@ -19,7 +19,7 @@ entry:
   br i1 %checknull, label %panic, label %checkok
 
 panic:                                            ; preds = %entry
-  call void @"std::core::builtin.panic"(i8* getelementptr inbounds ([28 x i8], [28 x i8]* @.zstr, i64 0, i64 0), i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.zstr.1, i64 0, i64 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.zstr.2, i64 0, i64 0), i32 6)
+  call void @std_core_builtin_panic(i8* getelementptr inbounds ([28 x i8], [28 x i8]* @.zstr, i64 0, i64 0), i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.zstr.1, i64 0, i64 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.zstr.2, i64 0, i64 0), i32 6)
   br label %checkok
 
 checkok:                                          ; preds = %panic, %entry
