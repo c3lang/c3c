@@ -462,6 +462,43 @@ Decl *sema_find_extension_method_in_module(Module *module, Type *type, const cha
 	return NULL;
 }
 
+typedef enum
+{
+	METHOD_SEARCH_SUBMODULE_CURRENT,
+	METHOD_SEARCH_IMPORTED,
+	METHOD_SEARCH_CURRENT,
+	METHOD_SEARCH_PRIVATE_IMPORTED
+} MethodSearchType;
+
+
+Decl *sema_resolve_method_in_module(Module *module, Type *actual_type, const char *method_name,
+									Decl **private_found, Decl **ambiguous, MethodSearchType search_type)
+{
+	if (module->is_generic) return NULL;
+	Decl *found = sema_find_extension_method_in_module(module, actual_type, method_name);
+	// The found one might not be visible
+	if (found && search_type < METHOD_SEARCH_CURRENT && found->visibility < VISIBLE_PUBLIC)
+	{
+		*private_found = found;
+		found = NULL;
+	}
+	if (found && search_type == METHOD_SEARCH_CURRENT) return found;
+	// We are now searching submodules, so hide the private ones.
+	if (search_type == METHOD_SEARCH_CURRENT) search_type = METHOD_SEARCH_SUBMODULE_CURRENT;
+	VECEACH(module->sub_modules, i)
+	{
+		Decl *new_found = sema_resolve_method_in_module(module->sub_modules[i], actual_type, method_name, private_found, ambiguous, search_type);
+		if (new_found)
+		{
+			*ambiguous = new_found;
+			return found;
+		}
+		found = new_found;
+	}
+	// We might have it ambiguous due to searching sub modules.
+	return found;
+}
+
 Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref)
 {
 	// 1. Look at the previously defined ones.
@@ -470,39 +507,44 @@ Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_
 		Decl *func = type->methods[i];
 		if (method_name == func->name) return func;
 	}
-	// 2. Make a module lookup
-	Decl *previously_found = NULL;
+
 	Type *actual_type = type->type;
-	Decl *private_type = NULL;
-	Decl *result = NULL;
+	Decl *private = NULL;
+	Decl *ambiguous = NULL;
+	Decl *found = sema_resolve_method_in_module(unit->module, actual_type, method_name, &private, &ambiguous, METHOD_SEARCH_CURRENT);
+	if (ambiguous)
+	{
+		*ambiguous_ref = ambiguous;
+		assert(found);
+		return found;
+	}
+
+	// 2. Lookup in imports
 	VECEACH(unit->imports, i)
 	{
 		Decl *import = unit->imports[i];
-
 		if (import->module->is_generic) continue;
 
-		Decl *found = sema_find_extension_method_in_module(import->module, actual_type, method_name);
-		if (!found) continue;
-		if (found->visibility <= VISIBLE_MODULE && !import->import.private)
+		Decl *new_found = sema_resolve_method_in_module(import->module, actual_type, method_name,
+		                                                &private, &ambiguous,
+		                                                import->import.private
+		                                                ? METHOD_SEARCH_PRIVATE_IMPORTED
+		                                                : METHOD_SEARCH_IMPORTED);
+		if (!new_found) continue;
+		if (found)
 		{
-			private_type = found;
-			continue;
+			*ambiguous_ref = new_found;
+			return found;
 		}
-
-		if (result)
+		found = new_found;
+		if (ambiguous)
 		{
-			*ambiguous_ref = previously_found;
-			*private_ref = NULL;
-			return NULL;
+			*ambiguous_ref = ambiguous;
+			return found;
 		}
-		result = found;
 	}
-
-	if (result && private_type)
-	{
-		private_type = NULL;
-	}
-	return result;
+	if (private) *private_ref = private;
+	return found;
 }
 
 Decl *unit_resolve_parameterized_symbol(CompilationUnit *unit, NameResolve *name_resolve)

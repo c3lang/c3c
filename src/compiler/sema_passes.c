@@ -45,7 +45,7 @@ void sema_analyse_pass_module_hierarchy(Module *module)
 		if (memcmp(checked_name->module, slice.ptr, slice.len) == 0)
 		{
 			module->parent_module = checked;
-			vec_add(module->sub_modules, module);
+			vec_add(checked->sub_modules, module);
 			return;
 		}
 	}

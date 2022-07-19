@@ -3670,11 +3670,17 @@ CHECK_DEEPER:
 		expr_replace(expr, copy_init);
 		return true;
 	}
+	Decl *private = NULL;
 	if (!member)
 	{
 		Decl *ambiguous = NULL;
-		Decl *private = NULL;
 		member = sema_resolve_method(context->unit, decl, kw, &ambiguous, &private);
+		if (ambiguous)
+		{
+			SEMA_ERROR(expr, "'%s' is an ambiguous name and so cannot be resolved, it may refer to method defined in '%s' or one in '%s'",
+					   kw, member->module->name->module, ambiguous->module->name->module);
+			return false;
+		}
 	}
 
 	if (member && member->decl_kind == DECL_FUNC)
@@ -3695,6 +3701,11 @@ CHECK_DEEPER:
 		}
 
 		// 11b. Otherwise we give up.
+		if (private)
+		{
+			SEMA_ERROR(expr, "The method '%s' has private visibility.", kw);
+			return false;
+		}
 		SEMA_ERROR(expr, "There is no field or method '%s.%s'.", decl->name, kw);
 		return false;
 	}

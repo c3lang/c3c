@@ -912,7 +912,6 @@ static inline void find_operator_parameters(Decl *method, TypeInfoId *rtype_ptr,
 
 }
 
-
 static bool sema_analyse_operator_common(Decl *method, TypeInfo **rtype_ptr, Decl ***params_ptr, uint32_t parameters)
 {
 	TypeInfoId rtype_id;
@@ -948,7 +947,25 @@ static bool sema_analyse_operator_common(Decl *method, TypeInfo **rtype_ptr, Dec
 	return true;
 }
 
-
+static inline Decl *operator_in_module(SemaContext *c, Module *module, OperatorOverload operator_overload)
+{
+	if (module->is_generic) return NULL;
+	Decl **extensions = module->method_extensions;
+	VECEACH(extensions, j)
+	{
+		Decl *extension = extensions[j];
+		if (extension->operator == operator_overload)
+		{
+			unit_register_external_symbol(c->compilation_unit, extension);
+			return extension;
+		}
+	}
+	VECEACH(module->sub_modules, i)
+	{
+		return operator_in_module(c, module->sub_modules[i], operator_overload);
+	}
+	return NULL;
+}
 Decl *sema_find_operator(SemaContext *context, Expr *expr, OperatorOverload operator_overload)
 {
 	Decl *ambiguous = NULL;
@@ -966,24 +983,14 @@ Decl *sema_find_operator(SemaContext *context, Expr *expr, OperatorOverload oper
 			return func;
 		}
 	}
+	Decl *extension = operator_in_module(context, context->compilation_unit->module, operator_overload);
+	if (extension) return extension;
+
 	Decl **imports = context->unit->imports;
 	VECEACH(imports, i)
 	{
-		Decl *import = imports[i];
-		Module *module = import->module;
-
-		if (module->is_generic) continue;
-
-		Decl **extensions = module->method_extensions;
-		VECEACH(extensions, j)
-		{
-			Decl *extension = extensions[j];
-			if (extension->operator == operator_overload)
-			{
-				unit_register_external_symbol(context->compilation_unit, extension);
-				return extension;
-			}
-		}
+		extension = operator_in_module(context, imports[i]->module, operator_overload);
+		if (extension) return extension;
 	}
 	return NULL;
 }
@@ -1101,14 +1108,14 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 {
 	TypeInfo *parent_type = type_infoptr(decl->func_decl.type_parent);
 	if (!sema_resolve_type_info(context, parent_type)) return false;
-	if (!type_may_have_sub_elements(parent_type->type))
+	Type *type = parent_type->type->canonical;
+	if (!type_may_have_sub_elements(type))
 	{
 		SEMA_ERROR(decl,
 		           "Methods can not be associated with '%s'",
 		           type_to_error_string(parent_type->type));
 		return false;
 	}
-	Type *type = parent_type->type->canonical;
 	return unit_add_method_like(context->unit, type, decl);
 }
 

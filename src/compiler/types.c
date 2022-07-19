@@ -1328,7 +1328,7 @@ Type *type_from_token(TokenType type)
 bool type_may_have_sub_elements(Type *type)
 {
 	// An alias is not ok.
-	switch (type->type_kind)
+	switch (type->canonical->type_kind)
 	{
 		case TYPE_DISTINCT:
 		case TYPE_UNION:
