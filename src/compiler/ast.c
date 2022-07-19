@@ -118,6 +118,28 @@ const char *decl_to_name(Decl *decl)
 	}
 	UNREACHABLE
 }
+
+void module_append_name_to_scratch(Module *module)
+{
+	const char *name = module->name->module;
+	char c;
+	while ((c = *(name++)) != 0)
+	{
+		switch (c)
+		{
+			case '_':
+				scratch_buffer_append("__");
+				break;
+			case ':':
+				scratch_buffer_append_char('_');
+				name++;
+				break;
+			default:
+				scratch_buffer_append_char(c);
+				break;
+		}
+	}
+}
 void decl_set_external_name(Decl *decl)
 {
 	if (decl->has_extname) return;
@@ -128,8 +150,8 @@ void decl_set_external_name(Decl *decl)
 		return;
 	}
 	scratch_buffer_clear();
-	scratch_buffer_append(decl->module->name->module);
-	scratch_buffer_append(".");
+	module_append_name_to_scratch(decl->module);
+	scratch_buffer_append("__");
 	scratch_buffer_append(decl->name ? decl->name : "anon");
 	decl->extname = scratch_buffer_copy();
 }
@@ -229,6 +251,8 @@ bool expr_is_pure(Expr *expr)
 	{
 		case EXPR_BUILTIN:
 			return false;
+		case EXPR_VARIANT:
+			return exprid_is_pure(expr->variant_expr.type_id) && exprid_is_pure(expr->variant_expr.ptr);
 		case EXPR_COMPILER_CONST:
 		case EXPR_CONST:
 		case EXPR_IDENTIFIER:

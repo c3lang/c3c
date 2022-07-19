@@ -85,6 +85,7 @@ typedef struct
 	LLVMValueRef error_var;
 	LLVMTypeRef bool_type;
 	LLVMTypeRef byte_type;
+	LLVMTypeRef introspect_type;
 	Decl *panicfn;
 	Decl *cur_code_decl;
 	Decl *cur_func_decl;
@@ -208,6 +209,7 @@ void gencontext_init_file_emit(GenContext *c, CompilationUnit *unit);
 void gencontext_end_file_emit(GenContext *c, CompilationUnit *ast);
 void gencontext_end_module(GenContext *context);
 
+void LLVMEnableOpaquePointers(LLVMContextRef ctx);
 LLVMValueRef LLVMConstBswap(LLVMValueRef ConstantVal);
 #ifndef LLVMCreateTypeAttribute
 LLVMAttributeRef LLVMCreateTypeAttribute(LLVMContextRef C, unsigned KindID,

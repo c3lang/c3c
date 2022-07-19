@@ -462,6 +462,69 @@ bool type_is_comparable(Type *type)
 	}
 }
 
+void type_mangle_introspect_name_to_buffer(Type *type)
+{
+	switch (type->type_kind)
+	{
+		case TYPE_POISONED:
+		case TYPE_TYPEINFO:
+		case TYPE_INFERRED_ARRAY:
+		case TYPE_UNTYPED_LIST:
+		case TYPE_FAILABLE_ANY:
+			UNREACHABLE
+		case TYPE_VOID:
+		case TYPE_BOOL:
+		case ALL_INTS:
+		case ALL_FLOATS:
+		case TYPE_ANY:
+		case TYPE_ANYERR:
+		case TYPE_TYPEID:
+			scratch_buffer_append(type->name);
+			return;
+		case TYPE_POINTER:
+			scratch_buffer_append("p$");
+			type_mangle_introspect_name_to_buffer(type->pointer);
+			return;
+		case TYPE_SUBARRAY:
+			scratch_buffer_append("sa$");
+			type_mangle_introspect_name_to_buffer(type->array.base);
+			return;
+		case TYPE_FLEXIBLE_ARRAY:
+			scratch_buffer_append("a0$");
+			type_mangle_introspect_name_to_buffer(type->array.base);
+			return;
+		case TYPE_FAILABLE:
+			scratch_buffer_append("f$");
+			type_mangle_introspect_name_to_buffer(type->failable);
+			return;
+		case TYPE_VECTOR:
+			scratch_buffer_append_char('v');
+			scratch_buffer_append_unsigned_int(type->array.len);
+			scratch_buffer_append_char('$');
+			type_mangle_introspect_name_to_buffer(type->array.base);
+			return;
+		case TYPE_ARRAY:
+			scratch_buffer_append_char('a');
+			scratch_buffer_append_unsigned_int(type->array.len);
+			scratch_buffer_append_char('$');
+			type_mangle_introspect_name_to_buffer(type->array.base);
+			return;
+		case TYPE_ENUM:
+		case TYPE_FUNC:
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		case TYPE_BITSTRUCT:
+		case TYPE_FAULTTYPE:
+		case TYPE_DISTINCT:
+			scratch_buffer_append(type->decl->extname);
+			return;
+		case TYPE_TYPEDEF:
+			type_mangle_introspect_name_to_buffer(type->canonical);
+			return;
+	}
+	UNREACHABLE
+}
+
 AlignSize type_abi_alignment(Type *type)
 {
 	RETRY:

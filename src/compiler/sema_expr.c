@@ -326,6 +326,8 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 			return false;
 		case EXPR_BITASSIGN:
 			return false;
+		case EXPR_VARIANT:
+			return exprid_is_constant_eval(expr->variant_expr.type_id, eval_kind) && exprid_is_constant_eval(expr->variant_expr.ptr, eval_kind);
 		case EXPR_BINARY:
 			return expr_binary_is_constant_eval(expr, eval_kind);
 		case EXPR_CAST:
@@ -3502,6 +3504,21 @@ static inline bool sema_rewrite_typeid_len(Expr *expr, Expr *parent, Expr *curre
 	return true;
 }
 
+static inline bool sema_rewrite_typeid_sizeof(Expr *expr, Expr *parent, Expr *current_parent)
+{
+	if (current_parent->expr_kind == EXPR_CONST)
+	{
+		Type *type = type_flatten_distinct(current_parent->const_expr.typeid);
+		expr_rewrite_to_int_const(expr, type_usize, type_size(type), true);
+		return true;
+	}
+	expr->expr_kind = EXPR_TYPEID_INFO;
+	expr->typeid_info_expr.parent = exprid(parent);
+	expr->typeid_info_expr.kind = TYPEID_INFO_SIZEOF;
+	expr->type = type_usize;
+	return true;
+}
+
 /**
  * Analyse "x.y"
  */
@@ -3594,7 +3611,7 @@ CHECK_DEEPER:
 			expr->resolve_status = RESOLVE_DONE;
 			return true;
 		}
-		if (flat_type->type_kind == TYPE_ARRAY)
+		if (flat_type->type_kind == TYPE_ARRAY || flat_type->type_kind == TYPE_VECTOR)
 		{
 			expr_rewrite_to_int_const(expr, type_isize, flat_type->array.len, true);
 			return true;
@@ -3614,6 +3631,10 @@ CHECK_DEEPER:
 		if (kw == kw_len)
 		{
 			return sema_rewrite_typeid_len(expr, parent, current_parent);
+		}
+		if (kw == kw_sizeof)
+		{
+			return sema_rewrite_typeid_sizeof(expr, parent, current_parent);
 		}
 	}
 
@@ -7120,6 +7141,26 @@ NOT_DEFINED:
 	return true;
 }
 
+static inline bool sema_expr_analyse_variant(SemaContext *context, Expr *expr)
+{
+	Expr *ptr = exprptr(expr->variant_expr.ptr);
+	Expr *typeid = exprptr(expr->variant_expr.type_id);
+	if (!sema_analyse_expr(context, ptr)) return false;
+	if (!sema_analyse_expr(context, typeid)) return false;
+	if (!type_is_pointer(ptr->type))
+	{
+		SEMA_ERROR(ptr, "This must be a pointer, but is %s.", type_quoted_error_string(ptr->type));
+		return false;
+	}
+	if (typeid->type != type_typeid)
+	{
+		SEMA_ERROR(ptr, "This must of type 'typeid', but was %s.", type_quoted_error_string(ptr->type));
+		return false;
+	}
+	expr->type = type_any;
+	return true;
+}
+
 static inline bool sema_expr_analyse_ct_stringify(SemaContext *context, Expr *expr)
 {
 	Expr *inner = expr->inner_expr;
@@ -7282,6 +7323,8 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 		case EXPR_VARIANTSWITCH:
 		case EXPR_TYPEID_INFO:
 			UNREACHABLE
+		case EXPR_VARIANT:
+			return sema_expr_analyse_variant(context, expr);
 		case EXPR_STRINGIFY:
 			if (!sema_expr_analyse_ct_stringify(context, expr)) return false;
 			return true;

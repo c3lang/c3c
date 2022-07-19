@@ -114,10 +114,6 @@ typedef struct ConstInitializer_
 	};
 } ConstInitializer;
 
-
-
-
-
 typedef struct
 {
 	ConstKind const_kind : 8;
@@ -145,6 +141,7 @@ typedef struct
 		ConstInitializer *list;
 	};
 } ExprConst;
+
 
 typedef uint16_t FileId;
 typedef struct
@@ -725,6 +722,11 @@ typedef struct
 	ExprId right;
 } ExprSliceAssign;
 
+typedef struct
+{
+	ExprId ptr;
+	ExprId type_id;
+} ExprVariant;
 
 typedef struct
 {
@@ -949,6 +951,7 @@ struct Expr_
 		ExprVariantSwitch variant_switch;           // 32
 		ExprLen len_expr;                           // 8
 		ExprCast cast_expr;                         // 12
+		ExprVariant variant_expr;
 		TypeInfo *type_expr;                        // 8
 		ExprConst const_expr;                       // 32
 		ExprArgv argv_expr;                         // 16
@@ -2044,6 +2047,7 @@ void c_abi_func_create(FunctionPrototype *proto);
 bool token_is_any_type(TokenType type);
 const char *token_type_to_string(TokenType type);
 
+void type_mangle_introspect_name_to_buffer(Type *type);
 AlignSize type_abi_alignment(Type *type);
 AlignSize type_alloca_alignment(Type *type);
 

@@ -5321,10 +5321,13 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 	llvm_value_rvalue(c, value);
 
 	LLVMValueRef kind;
+	LLVMValueRef ref = LLVMBuildIntToPtr(c->builder, value->value, LLVMPointerType(c->introspect_type, 0), "introspect*");
+	AlignSize align = llvm_abi_alignment(c, c->introspect_type);
+	AlignSize alignment;
 	if (active_target.feature.safe_mode || expr->typeid_info_expr.kind == TYPEID_INFO_KIND)
 	{
-		LLVMValueRef ref = LLVMBuildIntToPtr(c->builder, value->value, llvm_get_ptr_type(c, type_char), "");
-		kind = llvm_load(c, c->byte_type, ref, 1, "");
+		kind = llvm_emit_struct_gep_raw(c, ref, c->introspect_type, INTROSPECT_INDEX_KIND, align, &alignment);
+		kind = llvm_load(c, c->byte_type, ref, alignment, "typeid.kind");
 	}
 	switch (expr->typeid_info_expr.kind)
 	{
@@ -5356,9 +5359,8 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 			}
 			{
 				LLVMTypeRef typeid = llvm_get_type(c, type_typeid);
-				LLVMValueRef ref = LLVMBuildIntToPtr(c->builder, value->value, llvm_get_ptr_type(c, type_typeid), "");
-				LLVMValueRef val = llvm_emit_pointer_gep_raw(c, typeid, ref, llvm_const_int(c, type_usize, 1));
-				val = llvm_load(c, typeid, val, type_abi_alignment(type_typeid), "");
+				LLVMValueRef val = llvm_emit_struct_gep_raw(c, ref, c->introspect_type, INTROSPECT_INDEX_INNER, align, &alignment);
+				val = llvm_load(c, typeid, val, alignment, "typeid.inner");
 				llvm_value_set(value, val, expr->type);
 			}
 			break;
@@ -5384,10 +5386,17 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 				llvm_emit_block(c, exit);
 			}
 			{
-				LLVMTypeRef typeid = llvm_get_type(c, type_usize);
-				LLVMValueRef ref = LLVMBuildIntToPtr(c->builder, value->value, llvm_get_ptr_type(c, type_usize), "");
-				LLVMValueRef val = llvm_emit_pointer_gep_raw(c, typeid, ref, llvm_const_int(c, type_usize, 2));
-				val = llvm_load(c, typeid, val, type_abi_alignment(type_usize), "");
+				LLVMTypeRef usize = llvm_get_type(c, type_usize);
+				LLVMValueRef val = llvm_emit_struct_gep_raw(c, ref, c->introspect_type, INTROSPECT_INDEX_LEN, align, &alignment);
+				val = llvm_load(c, usize, val, alignment, "typeid.len");
+				llvm_value_set(value, val, expr->type);
+			}
+			break;
+		case TYPEID_INFO_SIZEOF:
+			{
+				LLVMTypeRef usize = llvm_get_type(c, type_usize);
+				LLVMValueRef val = llvm_emit_struct_gep_raw(c, ref, c->introspect_type, INTROSPECT_INDEX_SIZEOF, align, &alignment);
+				val = llvm_load(c, usize, val, alignment, "typeid.size");
 				llvm_value_set(value, val, expr->type);
 			}
 			break;
@@ -5443,6 +5452,21 @@ void llvm_emit_try_unwrap_chain(GenContext *c, BEValue *value, Expr *expr)
 
 	llvm_value_set_bool(value, chain_result);
 
+}
+
+static inline void llvm_emit_variant(GenContext *c, BEValue *value, Expr *expr)
+{
+	BEValue ptr;
+	llvm_emit_exprid(c, &ptr, expr->variant_expr.ptr);
+	llvm_value_rvalue(c, &ptr);
+	BEValue typeid;
+	llvm_emit_exprid(c, &typeid, expr->variant_expr.type_id);
+	llvm_value_rvalue(c, &typeid);
+	LLVMTypeRef variant_type = llvm_get_type(c, type_any);
+	LLVMValueRef var = LLVMGetUndef(variant_type);
+	var = llvm_emit_insert_value(c, var, ptr.value, 0);
+	var = llvm_emit_insert_value(c, var, typeid.value, 1);
+	llvm_value_set(value, var, type_any);
 }
 
 static inline void llvm_emit_argv_to_subarray(GenContext *c, BEValue *value, Expr *expr)
@@ -5538,6 +5562,9 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			UNREACHABLE
 		case EXPR_RETVAL:
 			*value = c->retval;
+			return;
+		case EXPR_VARIANT:
+			llvm_emit_variant(c, value, expr);
 			return;
 		case EXPR_ARGV_TO_SUBARRAY:
 			llvm_emit_argv_to_subarray(c, value, expr);

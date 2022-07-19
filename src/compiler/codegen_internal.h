@@ -1,5 +1,15 @@
 #include "compiler_internal.h"
 
+enum IntrospectIndex
+{
+	INTROSPECT_INDEX_KIND = 0,
+	INTROSPECT_INDEX_SIZEOF = 1,
+	INTROSPECT_INDEX_INNER = 2,
+	INTROSPECT_INDEX_LEN = 3,
+	INTROSPECT_INDEX_ADDITIONAL = 4,
+	INTROSPECT_INDEX_TOTAL,
+};
+
 bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements);
 static inline Type *type_reduced_from_expr(Expr *expr);
 static inline bool abi_type_is_type(AbiType type);
