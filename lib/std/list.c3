@@ -95,7 +95,7 @@ fn Type* List.last(List *list)
 
 fn bool List.isEmpty(List *list)
 {
-    return list.size;
+    return list.size == 0;
 }
 
 fn usize List.len(List *list) @operator(len)
