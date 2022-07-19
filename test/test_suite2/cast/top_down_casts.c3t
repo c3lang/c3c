@@ -17,7 +17,7 @@ fn void test()
 
 // #expect: top_down_casts.ll
 
-define void @top_down_casts.test() #0 {
+define void @top_down_casts_test() #0 {
 entry:
   %x = alloca i32, align 4
   %y = alloca i32, align 4

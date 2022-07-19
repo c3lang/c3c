@@ -10,7 +10,7 @@ fn void test1()
 
 // #expect: comparison_widening.ll
 
-define void @comparison_widening.test1() #0 {
+define void @comparison_widening_test1() #0 {
 entry:
   %a = alloca i8, align 1
   %b = alloca i32, align 4

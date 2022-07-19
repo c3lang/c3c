@@ -55,7 +55,7 @@ if.then:                                          ; preds = %entry
   br label %expr_block.exit
 
 if.exit:                                          ; preds = %entry
-  store i64 ptrtoint (ptr @failable_catch.MyErr.TEST to i64), ptr %a.f, align 8
+  store i64 ptrtoint (ptr @"failable_catch_MyErr$TEST" to i64), ptr %a.f, align 8
   br label %after_assign
 
 expr_block.exit:                                  ; preds = %if.then
@@ -90,7 +90,7 @@ if.then4:                                         ; preds = %phi_block
   br label %expr_block.exit6
 
 if.exit5:                                         ; preds = %phi_block
-  store i64 ptrtoint (ptr @failable_catch.MyErr.TEST to i64), ptr %b.f, align 8
+  store i64 ptrtoint (ptr @"failable_catch_MyErr$TEST" to i64), ptr %b.f, align 8
   br label %after_assign7
 
 expr_block.exit6:                                 ; preds = %if.then4
@@ -111,7 +111,7 @@ if.then11:                                        ; preds = %after_assign7
   br label %expr_block.exit13
 
 if.exit12:                                        ; preds = %after_assign7
-  store i64 ptrtoint (ptr @failable_catch.MyErr.TEST to i64), ptr %c.f, align 8
+  store i64 ptrtoint (ptr @"failable_catch_MyErr$TEST" to i64), ptr %c.f, align 8
   br label %after_assign14
 
 expr_block.exit13:                                ; preds = %if.then11

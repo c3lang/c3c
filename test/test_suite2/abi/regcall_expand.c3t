@@ -21,13 +21,13 @@ fn int main()
 
 %Foo = type { [2 x float] }
 
-$.typeid.test.Foo = comdat any
+$"ct$test_Foo" = comdat any
 
-@.typeid.test.Foo = linkonce constant { i8, i64 } { i8 10, i64 1 }, comdat, align 8
+@"ct$test_Foo" = linkonce constant %.introspect { i8 10, i64 8, i64 0, i64 1, [0 x i64] zeroinitializer }, comdat, align 8
 
 declare void @printf(ptr, ...) #0
 
-define x86_regcallcc void @test.test(float %0, float %1) #0 {
+define x86_regcallcc void @test_test(float %0, float %1) #0 {
 entry:
   %x = alloca %Foo, align 4
   %2 = getelementptr inbounds %Foo, ptr %x, i32 0, i32 0
@@ -52,6 +52,6 @@ entry:
   %loadexpanded = load float, ptr %4, align 4
   %5 = getelementptr inbounds [2 x float], ptr %3, i64 0, i64 1
   %loadexpanded1 = load float, ptr %5, align 4
-  call x86_regcallcc void @test.test(float %loadexpanded, float %loadexpanded1)
+  call x86_regcallcc void @test_test(float %loadexpanded, float %loadexpanded1)
   ret i32 0
 }

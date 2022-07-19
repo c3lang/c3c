@@ -31,7 +31,6 @@ fn void main()
 extern fn int printf(char *fmt, ...);
 
 /* #expect: foo.ll
-
 source_filename = "foo"
 target datalayout = "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-apple-darwin"
@@ -39,12 +38,12 @@ target triple = "x86_64-apple-darwin"
 %Foo = type { %"int[]" }
 %"int[]" = type { ptr, i64 }
 
-@.typeid.foo.Foo = linkonce constant { i8, i64 } { i8 10, i64 1 }, align 8
+@"ct$foo_Foo" = linkonce constant %.introspect { i8 10, i64 16, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
 @.__const = private unnamed_addr constant [3 x i32] [i32 1, i32 3, i32 10], align 4
 @.str = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
 
 ; Function Attrs: nounwind
-define void @foo.main() #0 {
+define void @foo_main() #0 {
 entry:
   %i = alloca [3 x i32], align 4
   %x = alloca %Foo, align 8
@@ -97,7 +96,7 @@ declare i32 @printf(ptr, ...) #0
 ; Function Attrs: nounwind
 define i32 @main(i32 %0, ptr %1) #0 {
 entry:
-  call void @foo.main()
+  call void @foo_main()
   ret i32 0
 }
 

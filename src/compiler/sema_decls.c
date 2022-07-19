@@ -1086,7 +1086,7 @@ static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type
 		else
 		{
 			scratch_buffer_append(parent->extname);
-			scratch_buffer_append("__");
+			scratch_buffer_append("_");
 			scratch_buffer_append(method_like->name);
 		}
 		method_like->extname = scratch_buffer_copy();
@@ -2241,14 +2241,13 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 	}
 	scratch_buffer_clear();
 	scratch_buffer_append_len(module->name->module, module->name->len);
-	scratch_buffer_append_char('$');
+	scratch_buffer_append("$$");
 	VECEACH(decl->define_decl.generic_params, i)
 	{
 		TypeInfo *type_info = decl->define_decl.generic_params[i];
 		if (!sema_resolve_type_info(c, type_info)) return decl_poison(decl);
-		if (i != 0) scratch_buffer_append_char('$');
-		const char *type_name = type_info->type->canonical->name;
-		scratch_buffer_append(type_name);
+		if (i != 0) scratch_buffer_append_char('.');
+		type_mangle_introspect_name_to_buffer(type_info->type->canonical);
 	}
 	TokenType ident_type = TOKEN_IDENT;
 	const char *path_string = scratch_buffer_interned();

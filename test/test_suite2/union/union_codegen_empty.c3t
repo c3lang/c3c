@@ -26,7 +26,7 @@ fn void test()
 /* #expect: union_codegen_empty.ll
 
 source_filena
-define void @union_codegen_empty.test() #0 {
+define void @union_codegen_empty_test() #0 {
 entry:
   %a = alloca %UnionA, align 4
   %a2 = alloca %UnionA, align 4

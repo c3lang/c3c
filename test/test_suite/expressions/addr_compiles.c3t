@@ -49,16 +49,16 @@ fn void test3()
 
 /* #expect: test.ll
 
-define void @test.main() #0 {
+define void @test_main() #0 {
 entry:
-  call void @test.test()
-  call void @test.test2()
-  call void @test.test3()
+  call void @test_test()
+  call void @test_test2()
+  call void @test_test3()
   ret void
 }
 
 ; Function Attrs: nounwind
-define void @test.test() #0 {
+define void @test_test() #0 {
 entry:
   %f = alloca i32, align 4
   %x = alloca i32*, align 8
@@ -80,10 +80,10 @@ entry:
 }
 
 ; Function Attrs: nounwind
-define void @test.test2() #0 {
+define void @test_test2() #0 {
 entry:
   %w = alloca i32*, align 8
-  store i32* @test.XX, i32** %w, align 8
+  store i32* @test_XX, i32** %w, align 8
   %0 = load i32*, i32** %w, align 8
   %1 = load i32, i32* %0, align 8
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @.str.1, i32 0, i32 0), i32 %1)
@@ -91,7 +91,7 @@ entry:
 }
 
 ; Function Attrs: nounwind
-define void @test.test3() #0 {
+define void @test_test3() #0 {
 entry:
   %h = alloca %Foo, align 4
   %zx = alloca i32*, align 8

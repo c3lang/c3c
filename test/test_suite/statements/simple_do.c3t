@@ -27,7 +27,7 @@ fn void main()
 
 // #expect: foo.ll
 
-define void @foo.main() #0 {
+define void @foo_main() #0 {
 entry:
   %i = alloca i32, align 4
   store i32 10, i32* %i, align 4
@@ -41,7 +41,7 @@ loop.cond:                                        ; preds = %if.exit
   br i1 %gt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond, %entry
-  %1 = call i32 @foo.test()
+  %1 = call i32 @foo_test()
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 %1)
   %2 = load i32, i32* %i, align 4
   %gt1 = icmp sgt i32 %2, 100
@@ -66,7 +66,7 @@ loop.cond2:                                       ; preds = %if.exit5
 
 loop.body3:                                       ; preds = %loop.cond2, %loop.exit
   %4 = load i32, i32* %i, align 4
-  %5 = call i32 @foo.test()
+  %5 = call i32 @foo_test()
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.1, i32 0, i32 0), i32 %4, i32 %5)
   %6 = load i32, i32* %i, align 4
   %smod = srem i32 %6, 3

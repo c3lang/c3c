@@ -42,13 +42,13 @@ fn void testSimple()
 %anon = type { i32, i32 }
 %anon.0 = type { double }
 
-@.typeid.pointer_access.c = linkonce constant { i8, i64 } { i8 10, i64 5 }, align 8
-@.typeid.pointer_access.anon = linkonce constant { i8, i64 } { i8 10, i64 2 }, align 8
-@.typeid.pointer_access.anon.1 = linkonce constant { i8, i64 } { i8 11, i64 2 }, align 8
-@.typeid.pointer_access.ExtraSimple = linkonce constant { i8, i64 } { i8 10, i64 6 }, align 8
+@"ct$pointer_access_c" = linkonce constant %.introspect { i8 10, i64 40, i64 0, i64 5, [0 x i64] zeroinitializer }, align 8
+@"ct$pointer_access_anon" = linkonce constant %.introspect { i8 10, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"ct$pointer_access_anon.4" = linkonce constant %.introspect { i8 11, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"ct$pointer_access_ExtraSimple" = linkonce constant %.introspect { i8 10, i64 72, i64 0, i64 6, [0 x i64] zeroinitializer }, align 8
 @.str = private unnamed_addr constant [71 x i8] c"a = %d, c.e = %f, c.f = %f, c.j = %f, g = %d, o0 = %f, r = %d, s = %d\0A\00", align 1
 
-define void @pointer_access.testSimple() #0 {
+define void @pointer_access_testSimple() #0 {
 entry:
   %a = alloca %ExtraSimple, align 8
   %0 = getelementptr inbounds %ExtraSimple, ptr %a, i32 0, i32 0

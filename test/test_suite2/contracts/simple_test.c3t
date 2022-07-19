@@ -43,7 +43,7 @@ fn void main()
 
 /* #expect: simple_test.ll
 
-define void @simple_test.test(ptr %0, i32 %1) #0 {
+define void @simple_test_test(ptr %0, i32 %1) #0 {
 entry:
   %gt = icmp sgt i32 %1, 100
   call void @llvm.assume(i1 %gt)
@@ -51,7 +51,7 @@ entry:
   ret void
 }
 
-define i32 @simple_test.test2(ptr %0, i32 %1) #0 {
+define i32 @simple_test_test2(ptr %0, i32 %1) #0 {
 entry:
   %gt = icmp sgt i32 %1, 100
   call void @llvm.assume(i1 %gt)
@@ -61,7 +61,7 @@ entry:
   ret i32 %1
 }
 
-define i32 @simple_test.test3(i32 %0) #0 {
+define i32 @simple_test_test3(i32 %0) #0 {
 entry:
   %gt = icmp sgt i32 %0, 0
   call void @llvm.assume(i1 %gt)
@@ -71,13 +71,13 @@ entry:
   ret i32 %add
 }
 
-define void @simple_test.main() #0 {
+define void @simple_test_main() #0 {
 entry:
   %fooofke = alloca i32, align 4
   store i32 0, ptr %fooofke, align 4
-  call void @simple_test.test(ptr %fooofke, i32 330)
-  %0 = call i32 @simple_test.test2(ptr %fooofke, i32 150)
-  %1 = call i32 @simple_test.test3(i32 123)
+  call void @simple_test_test(ptr %fooofke, i32 330)
+  %0 = call i32 @simple_test_test2(ptr %fooofke, i32 150)
+  %1 = call i32 @simple_test_test3(i32 123)
   %2 = load i32, ptr %fooofke, align 4
   call void (ptr, ...) @printf(ptr @.str, i32 %2)
   ret void
@@ -85,6 +85,6 @@ entry:
 
 define i32 @main(i32 %0, ptr %1) #0 {
 entry:
-  call void @simple_test.main()
+  call void @simple_test_main()
   ret i32 0
 }

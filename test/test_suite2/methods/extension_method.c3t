@@ -33,8 +33,8 @@ define i32 @main() #0 {
 entry:
   %bar = alloca %Bar, align 4
   store i32 0, ptr %bar, align 4
-  call void @foo.Bar__test(ptr %bar)
+  call void @foo_Bar_test(ptr %bar)
   ret i32 0
 }
 
-declare void @foo.Bar__test(ptr)
+declare void @foo_Bar_test(ptr)

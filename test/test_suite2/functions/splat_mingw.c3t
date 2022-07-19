@@ -15,7 +15,7 @@ fn void test()
 
 /* #expect: splat.ll
 
-define void @splat.test() #0 {
+define void @splat_test() #0 {
 entry:
   %vararg = alloca %"int[]", align 8
   %varargslots = alloca [3 x i32], align 4

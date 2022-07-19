@@ -17,7 +17,7 @@ fn void test()
 
 /* #expect: varargs.ll
 
-define void @varargs.test() #0 {
+define void @varargs_test() #0 {
 entry:
   %x1 = alloca i8, align 1
   %b = alloca i8, align 1

@@ -11,12 +11,12 @@ fn void test()
 
 // #expect: abc.ll
 
-@abc.foo = local_unnamed_addr global i32 0, align 32
+@abc_foo = local_unnamed_addr global i32 0, align 32
 
-define void @abc.test() #0 {
+define void @abc_test() #0 {
 entry:
   %x = alloca i32, align 4
-  %0 = load i32, i32* @abc.foo, align 32
+  %0 = load i32, i32* @abc_foo, align 32
   store i32 %0, i32* %x, align 4
   ret void
 }

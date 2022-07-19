@@ -19,7 +19,7 @@ fn void example()
 
 /* #expect: pass_large.ll
 
-define void @pass_large.example()
+define void @pass_large_example()
 entry:
   %l = alloca %Large, align 8
   %indirectarg = alloca %Large, align 8

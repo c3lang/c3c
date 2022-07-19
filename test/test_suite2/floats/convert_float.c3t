@@ -9,7 +9,7 @@ fn void test()
 }
 
 /* #expect: foo.ll
-define void @foo.test() #0 {
+define void @foo_test() #0 {
 entry:
   %x = alloca float, align 4
   %y = alloca double, align 8

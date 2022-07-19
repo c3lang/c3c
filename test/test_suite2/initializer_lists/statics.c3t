@@ -35,13 +35,13 @@ fn int main()
 %Bar = type { i32, i32 }
 %"Bar[]" = type { ptr, i64 }
 
-@.typeid.statics.Baz = linkonce constant { i8, i64 } { i8 11, i64 2 }, align 8
-@.typeid.statics.Bar = linkonce constant { i8, i64 } { i8 10, i64 2 }, align 8
+@"ct$statics_Baz" = linkonce constant %.introspect { i8 11, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"ct$statics_Bar" = linkonce constant %.introspect { i8 10, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @.taddr = private global [1 x %Bar] [%Bar { i32 1, i32 2 }], align 8
-@test.c = internal unnamed_addr global %"Bar[]" { ptr @.taddr, i64 1 }, align 8
+@"test$c" = internal unnamed_addr global %"Bar[]" { ptr @.taddr, i64 1 }, align 8
 @.str = private unnamed_addr constant [7 x i8] c"%d %d\0A\00", align 1
 
-define void @statics.test() #0 {
+define void @statics_test() #0 {
 entry:
   %b = alloca %"Bar[]", align 8
   %literal = alloca [1 x %Bar], align 4
@@ -58,7 +58,7 @@ entry:
   %ptroffset = getelementptr inbounds %Bar, ptr %6, i64 0
   %7 = getelementptr inbounds %Bar, ptr %ptroffset, i32 0, i32 1
   %8 = load i32, ptr %7, align 4
-  %9 = load ptr, ptr @test.c, align 8
+  %9 = load ptr, ptr @"test$c", align 8
   %ptroffset1 = getelementptr inbounds %Bar, ptr %9, i64 0
   %10 = getelementptr inbounds %Bar, ptr %ptroffset1, i32 0, i32 1
   %11 = load i32, ptr %10, align 4
@@ -70,7 +70,7 @@ entry:
   %16 = load i32, ptr %15, align 4
   %add = add i32 %16, 1
   store i32 %add, ptr %15, align 4
-  %17 = load ptr, ptr @test.c, align 8
+  %17 = load ptr, ptr @"test$c", align 8
   %ptroffset3 = getelementptr inbounds %Bar, ptr %17, i64 0
   %18 = getelementptr inbounds %Bar, ptr %ptroffset3, i32 0, i32 1
   %19 = load i32, ptr %18, align 4
@@ -81,9 +81,9 @@ entry:
 
 define i32 @main() #0 {
 entry:
-  call void @statics.test()
-  call void @statics.test()
-  call void @statics.test()
+  call void @statics_test()
+  call void @statics_test()
+  call void @statics_test()
   ret i32 1
 }
 

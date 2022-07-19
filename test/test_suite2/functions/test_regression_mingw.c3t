@@ -245,26 +245,29 @@ fn Type getValue(Blob blob)
 %List = type { i64, i64, ptr }
 %Foo = type { i32, i32 }
 
-$.typeid.test.Bobo = comdat any
+$"ct$test_Bobo" = comdat any
 
-$.typeid.test.Blob = comdat any
+$"ct$test_Blob" = comdat any
 
-$.typeid.test.Foor = comdat any
+$"ct$test_Foor" = comdat any
 
-$.typeid.test.Foo2 = comdat any
+$"ct$test_Foo2" = comdat any
 
-$.typeid.test.Foo = comdat any
+$"ct$test_Foo" = comdat any
 
-$.typeid.test.MyEnum = comdat any
+$"ct$int" = comdat any
 
-@.typeid.test.Bobo = linkonce constant { i8, i64 } { i8 10, i64 6 }, comdat, align 8
-@.typeid.test.Blob = linkonce constant { i8, i64 } { i8 10, i64 2 }, comdat, align 8
-@.typeid.test.Foor = linkonce constant { i8, i64 } { i8 11, i64 2 }, comdat, align 8
-@.typeid.test.Foo2 = linkonce constant { i8, i64 } { i8 10, i64 1 }, comdat, align 8
-@.typeid.test.Foo = linkonce constant { i8, i64 } { i8 10, i64 2 }, comdat, align 8
-@.typeid.test.MyEnum = linkonce constant { i8, i64, i64 } { i8 8, i64 3, i64 0 }, comdat, align 8
+$"ct$test_MyEnum" = comdat any
+
+@"ct$test_Bobo" = linkonce constant %.introspect { i8 10, i64 20, i64 0, i64 6, [0 x i64] zeroinitializer }, comdat, align 8
+@"ct$test_Blob" = linkonce constant %.introspect { i8 10, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, comdat, align 8
+@"ct$test_Foor" = linkonce constant %.introspect { i8 11, i64 16, i64 0, i64 2, [0 x i64] zeroinitializer }, comdat, align 8
+@"ct$test_Foo2" = linkonce constant %.introspect { i8 10, i64 4, i64 0, i64 1, [0 x i64] zeroinitializer }, comdat, align 8
+@"ct$test_Foo" = linkonce constant %.introspect { i8 10, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, comdat, align 8
+@"ct$int" = linkonce constant %.introspect { i8 2, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, comdat, align 8
+@"ct$test_MyEnum" = linkonce constant %.introspect { i8 8, i64 4, i64 ptrtoint (ptr @"ct$int" to i64), i64 3, [0 x i64] zeroinitializer }, comdat, align 8
 @.str = private unnamed_addr constant [13 x i8] c"helloWorld!\0A\00", align 1
-@test_static.x = internal unnamed_addr global i32 1, align 4
+@"test_static$x" = internal unnamed_addr global i32 1, align 4
 @.str.1 = private unnamed_addr constant [16 x i8] c"Test static %d\0A\00", align 1
 @.__const = private unnamed_addr constant [3 x i32] [i32 1, i32 2, i32 3], align 4
 @.str.2 = private unnamed_addr constant [17 x i8] c"Element[%d]: %d\0A\00", align 1
@@ -290,7 +293,7 @@ $.typeid.test.MyEnum = comdat any
 @.str.22 = private unnamed_addr constant [9 x i8] c"Mutating\00", align 1
 
 ; Function Attrs: nounwind
-define void @test.Foo2__printme(ptr %0) #0 {
+define void @test_Foo2_printme(ptr %0) #0 {
 entry:
   %1 = getelementptr inbounds %Foo2, ptr %0, i32 0, i32 0
   %2 = load i32, ptr %1, align 8
@@ -299,7 +302,7 @@ entry:
 }
 
 ; Function Attrs: nounwind
-define i32 @test.Foo2__mutate(ptr %0) #0 {
+define i32 @test_Foo2_mutate(ptr %0) #0 {
 entry:
   %1 = call i32 (ptr, ...) @printf(ptr @.str.22)
   %2 = getelementptr inbounds %Foo2, ptr %0, i32 0, i32 0
@@ -313,26 +316,26 @@ entry:
 declare i32 @printf(ptr, ...) #0
 
 ; Function Attrs: nounwind
-define void @test.helloWorld() #0 {
+define void @test_helloWorld() #0 {
 entry:
   %0 = call i32 (ptr, ...) @printf(ptr @.str)
   ret void
 }
 
 ; Function Attrs: nounwind
-define i32 @test.test_static() #0 {
+define i32 @test_test_static() #0 {
 entry:
-  %0 = load i32, ptr @test_static.x, align 4
+  %0 = load i32, ptr @"test_static$x", align 4
   %add = add i32 %0, 1
-  store i32 %add, ptr @test_static.x, align 4
-  %1 = load i32, ptr @test_static.x, align 4
+  store i32 %add, ptr @"test_static$x", align 4
+  %1 = load i32, ptr @"test_static$x", align 4
   %2 = call i32 (ptr, ...) @printf(ptr @.str.1, i32 %1)
-  %3 = load i32, ptr @test_static.x, align 4
+  %3 = load i32, ptr @"test_static$x", align 4
   ret i32 %3
 }
 
 ; Function Attrs: nounwind
-define i32 @test.helo(double %0, ptr align 4 %1) #0 {
+define i32 @test_helo(double %0, ptr align 4 %1) #0 {
 entry:
   %b = alloca %Bobo, align 4
   %de = alloca [3 x i32], align 4
@@ -342,12 +345,12 @@ entry:
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %de, ptr align 4 @.__const, i32 12, i1 false)
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %c, ptr align 4 %b, i32 20, i1 false)
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %indirectarg, ptr align 4 %c, i32 20, i1 false)
-  %2 = call i32 @test.helo(double 1.000000e+00, ptr align 4 %indirectarg)
+  %2 = call i32 @test_helo(double 1.000000e+00, ptr align 4 %indirectarg)
   ret i32 1
 }
 
 ; Function Attrs: nounwind
-define i32 @test.test1(i32 %0, i32 %1) #0 {
+define i32 @test_test1(i32 %0, i32 %1) #0 {
 entry:
   %a = alloca i32, align 4
   store i32 %0, ptr %a, align 4
@@ -367,7 +370,7 @@ if.exit:                                          ; preds = %entry
 }
 
 ; Function Attrs: nounwind
-define i32 @test.sum_us(ptr align 8 %0) #0 {
+define i32 @test_sum_us(ptr align 8 %0) #0 {
 entry:
   %x = alloca %"int[]", align 8
   %sum = alloca i32, align 4
@@ -401,7 +404,7 @@ if.exit:                                          ; preds = %entry
   %13 = getelementptr inbounds %"int[]", ptr %vararg, i32 0, i32 1
   %14 = getelementptr inbounds %"int[]", ptr %vararg, i32 0, i32 0
   store %"int[]" %12, ptr %indirectarg, align 8
-  %15 = call i32 @test.sum_us(ptr %indirectarg)
+  %15 = call i32 @test_sum_us(ptr %indirectarg)
   %add = add i32 %6, %15
   %add2 = add i32 %3, %add
   store i32 %add2, ptr %sum, align 4
@@ -410,7 +413,7 @@ if.exit:                                          ; preds = %entry
 }
 
 ; Function Attrs: nounwind
-define i32 @test.sumd(ptr align 8 %0) #0 {
+define i32 @test_sumd(ptr align 8 %0) #0 {
 entry:
   %x = alloca %"int[]", align 8
   %sum = alloca i32, align 4
@@ -451,7 +454,7 @@ loop.exit:                                        ; preds = %loop.cond
 }
 
 ; Function Attrs: nounwind
-define void @test.main() #0 {
+define void @test_main() #0 {
 entry:
   %list = alloca %LinkedList, align 8
   %i = alloca i32, align 4
@@ -482,20 +485,20 @@ entry:
   %indirectarg20 = alloca %"int[]", align 8
   %a1 = alloca ptr, align 8
   %b2 = alloca ptr, align 8
-  %0 = call i32 @test.test_static()
-  %1 = call i32 @test.test_static()
-  %2 = call i32 @test.test_static()
-  call void @hello_world.hello()
+  %0 = call i32 @test_test_static()
+  %1 = call i32 @test_test_static()
+  %2 = call i32 @test_test_static()
+  call void @hello_world_hello()
   call void @llvm.memset.p0.i64(ptr align 8 %list, i8 0, i64 24, i1 false)
-  call void @"std::array::linkedlist.int.LinkedList__push"(ptr %list, i32 10)
-  call void @"std::array::linkedlist.int.LinkedList__push"(ptr %list, i32 15)
-  call void @"std::array::linkedlist.int.LinkedList__push"(ptr %list, i32 30)
+  call void @"std_array_linkedlist$$int_LinkedList_push"(ptr %list, i32 10)
+  call void @"std_array_linkedlist$$int_LinkedList_push"(ptr %list, i32 15)
+  call void @"std_array_linkedlist$$int_LinkedList_push"(ptr %list, i32 30)
   store i32 0, ptr %i, align 4
   br label %loop.cond
 
 loop.cond:                                        ; preds = %loop.body, %entry
   %3 = load i32, ptr %i, align 4
-  %4 = call i64 @"std::array::linkedlist.int.LinkedList__len"(ptr %list) #3
+  %4 = call i64 @"std_array_linkedlist$$int_LinkedList_len"(ptr %list) #3
   %uisitrunc = trunc i64 %4 to i32
   %lt = icmp slt i32 %3, %uisitrunc
   br i1 %lt, label %loop.body, label %loop.exit
@@ -504,7 +507,7 @@ loop.body:                                        ; preds = %loop.cond
   %5 = load i32, ptr %i, align 4
   %6 = load i32, ptr %i, align 4
   %siuiext = sext i32 %6 to i64
-  %7 = call i32 @"std::array::linkedlist.int.LinkedList__get"(ptr %list, i64 %siuiext)
+  %7 = call i32 @"std_array_linkedlist$$int_LinkedList_get"(ptr %list, i64 %siuiext)
   %8 = call i32 (ptr, ...) @printf(ptr @.str.2, i32 %5, i32 %7)
   %9 = load i32, ptr %i, align 4
   %add = add i32 %9, 1
@@ -512,22 +515,22 @@ loop.body:                                        ; preds = %loop.cond
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
-  call void @"std::array::linkedlist.int.LinkedList__free"(ptr %list)
+  call void @"std_array_linkedlist$$int_LinkedList_free"(ptr %list)
   %10 = call i32 (ptr, ...) @printf(ptr @.str.3, i32 3)
   store i32 3, ptr %elements, align 4
   %11 = call i32 (ptr, ...) @printf(ptr @.str.4)
   call void @llvm.memset.p0.i64(ptr align 8 %array, i8 0, i64 24, i1 false)
-  call void @"std::array::list.int.List__append"(ptr %array, i32 100)
-  call void @"std::array::list.int.List__append"(ptr %array, i32 200)
-  call void @"std::array::list.int.List__append"(ptr %array, i32 400)
-  call void @"std::array::list.int.List__push"(ptr %array, i32 600) #3
-  call void @"std::array::list.int.List__insertAt"(ptr %array, i64 2, i32 300)
+  call void @"std_array_list$$int_List_append"(ptr %array, i32 100)
+  call void @"std_array_list$$int_List_append"(ptr %array, i32 200)
+  call void @"std_array_list$$int_List_append"(ptr %array, i32 400)
+  call void @"std_array_list$$int_List_push"(ptr %array, i32 600) #3
+  call void @"std_array_list$$int_List_insertAt"(ptr %array, i64 2, i32 300)
   store i32 0, ptr %i1, align 4
   br label %loop.cond2
 
 loop.cond2:                                       ; preds = %loop.body5, %loop.exit
   %12 = load i32, ptr %i1, align 4
-  %13 = call i64 @"std::array::list.int.List__len"(ptr %array)
+  %13 = call i64 @"std_array_list$$int_List_len"(ptr %array)
   %uisitrunc3 = trunc i64 %13 to i32
   %lt4 = icmp slt i32 %12, %uisitrunc3
   br i1 %lt4, label %loop.body5, label %loop.exit8
@@ -536,7 +539,7 @@ loop.body5:                                       ; preds = %loop.cond2
   %14 = load i32, ptr %i1, align 4
   %15 = load i32, ptr %i1, align 4
   %siuiext6 = sext i32 %15 to i64
-  %16 = call i32 @"std::array::list.int.List__get"(ptr %array, i64 %siuiext6)
+  %16 = call i32 @"std_array_list$$int_List_get"(ptr %array, i64 %siuiext6)
   %17 = call i32 (ptr, ...) @printf(ptr @.str.5, i32 %14, i32 %16)
   %18 = load i32, ptr %i1, align 4
   %add7 = add i32 %18, 1
@@ -544,23 +547,23 @@ loop.body5:                                       ; preds = %loop.cond2
   br label %loop.cond2
 
 loop.exit8:                                       ; preds = %loop.cond2
-  call void @"std::array::list.int.List__free"(ptr %array)
+  call void @"std_array_list$$int_List_free"(ptr %array)
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %a, ptr align 4 @.__const.6, i32 4, i1 false)
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %b, ptr align 8 @.__const.7, i32 8, i1 false)
   %19 = getelementptr inbounds %Blob, ptr %a, i32 0, i32 0
   %20 = load i32, ptr %19, align 4
-  %21 = call i32 @test2.int.getValue(i32 %20)
+  %21 = call i32 @"test2$$int_getValue"(i32 %20)
   %22 = call i32 (ptr, ...) @printf(ptr @.str.8, i32 %21)
   %23 = getelementptr inbounds %Blob.0, ptr %b, i32 0, i32 0
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %tempcoerce, ptr align 8 %23, i32 8, i1 false)
   %24 = load i64, ptr %tempcoerce, align 8
-  %25 = call double @test2.double.getValue(i64 %24)
+  %25 = call double @"test2$$double_getValue"(i64 %24)
   %26 = call i32 (ptr, ...) @printf(ptr @.str.9, double %25)
-  %27 = call i32 @test2.int.getMult(i32 25)
+  %27 = call i32 @"test2$$int_getMult"(i32 25)
   %28 = call i32 (ptr, ...) @printf(ptr @.str.10, i32 %27)
-  %29 = call double @test2.double.getMult(double 3.300000e+00)
+  %29 = call double @"test2$$double_getMult"(double 3.300000e+00)
   %30 = call i32 (ptr, ...) @printf(ptr @.str.11, double %29)
-  call void @test.helloWorld()
+  call void @test_helloWorld()
   %31 = getelementptr inbounds %Foo, ptr %ddx, i32 0, i32 0
   store i32 0, ptr %31, align 4
   %32 = getelementptr inbounds %Foo, ptr %ddx, i32 0, i32 1
@@ -573,7 +576,7 @@ loop.exit8:                                       ; preds = %loop.cond2
   store i64 4, ptr %34, align 8
   store ptr %x, ptr %35, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %indirectarg, ptr align 8 %vararg, i32 16, i1 false)
-  %36 = call i32 @test.sum_us(ptr %indirectarg)
+  %36 = call i32 @test_sum_us(ptr %indirectarg)
   %37 = call i32 (ptr, ...) @printf(ptr @.str.13, i32 %36)
   %add9 = add i32 %33, %37
   store i32 %add9, ptr %fro, align 4
@@ -588,12 +591,12 @@ loop.exit8:                                       ; preds = %loop.cond2
   store i64 4, ptr %42, align 8
   store ptr %x, ptr %43, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %indirectarg11, ptr align 8 %vararg10, i32 16, i1 false)
-  %44 = call i32 @test.sum_us(ptr %indirectarg11)
+  %44 = call i32 @test_sum_us(ptr %indirectarg11)
   %45 = call i32 (ptr, ...) @printf(ptr @.str.16, i32 %44)
   %46 = getelementptr inbounds %"int[]", ptr %vararg12, i32 0, i32 1
   %47 = getelementptr inbounds %"int[]", ptr %vararg12, i32 0, i32 0
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %indirectarg13, ptr align 8 %z, i32 16, i1 false)
-  %48 = call i32 @test.sum_us(ptr %indirectarg13)
+  %48 = call i32 @test_sum_us(ptr %indirectarg13)
   %49 = call i32 (ptr, ...) @printf(ptr @.str.17, i32 %48)
   %50 = getelementptr inbounds [4 x i32], ptr %varargslots, i64 0, i64 0
   store i32 1, ptr %50, align 4
@@ -608,7 +611,7 @@ loop.exit8:                                       ; preds = %loop.cond2
   %55 = getelementptr inbounds %"int[]", ptr %vararg14, i32 0, i32 0
   store ptr %varargslots, ptr %55, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %indirectarg15, ptr align 8 %vararg14, i32 16, i1 false)
-  %56 = call i32 @test.sum_us(ptr %indirectarg15)
+  %56 = call i32 @test_sum_us(ptr %indirectarg15)
   %57 = call i32 (ptr, ...) @printf(ptr @.str.18, i32 %56)
   %58 = getelementptr inbounds [1 x i32], ptr %varargslots17, i64 0, i64 0
   store i32 1, ptr %58, align 4
@@ -617,12 +620,12 @@ loop.exit8:                                       ; preds = %loop.cond2
   %60 = getelementptr inbounds %"int[]", ptr %vararg16, i32 0, i32 0
   store ptr %varargslots17, ptr %60, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %indirectarg18, ptr align 8 %vararg16, i32 16, i1 false)
-  %61 = call i32 @test.sum_us(ptr %indirectarg18)
+  %61 = call i32 @test_sum_us(ptr %indirectarg18)
   %62 = call i32 (ptr, ...) @printf(ptr @.str.19, i32 %61)
   %63 = getelementptr inbounds %"int[]", ptr %vararg19, i32 0, i32 1
   store i64 0, ptr %63, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %indirectarg20, ptr align 8 %vararg19, i32 16, i1 false)
-  %64 = call i32 @test.sum_us(ptr %indirectarg20)
+  %64 = call i32 @test_sum_us(ptr %indirectarg20)
   %65 = call i32 (ptr, ...) @printf(ptr @.str.20, i32 %64)
   store ptr null, ptr %a1, align 8
   store ptr null, ptr %b2, align 8
@@ -631,50 +634,44 @@ loop.exit8:                                       ; preds = %loop.cond2
 
 declare void @llvm.memcpy.p0.p0.i32(ptr noalias nocapture writeonly, ptr noalias nocapture readonly, i32, i1 immarg) #1
 
-declare void @hello_world.hello()
+declare void @hello_world_hello()
 
 declare void @llvm.memset.p0.i64(ptr nocapture writeonly, i8, i64, i1 immarg) #2
 
-declare void @"std::array::linkedlist.int.LinkedList__push"(ptr, i32)
+declare void @"std_array_linkedlist$$int_LinkedList_push"(ptr, i32)
 
-declare i64 @"std::array::linkedlist.int.LinkedList__len"(ptr)
+declare i64 @"std_array_linkedlist$$int_LinkedList_len"(ptr)
 
-declare i32 @"std::array::linkedlist.int.LinkedList__get"(ptr, i64)
+declare i32 @"std_array_linkedlist$$int_LinkedList_get"(ptr, i64)
 
-declare void @"std::array::linkedlist.int.LinkedList__free"(ptr)
+declare void @"std_array_linkedlist$$int_LinkedList_free"(ptr)
 
-declare void @"std::array::list.int.List__append"(ptr, i32)
+declare void @"std_array_list$$int_List_append"(ptr, i32)
 
-declare void @"std::array::list.int.List__push"(ptr, i32)
+declare void @"std_array_list$$int_List_push"(ptr, i32)
 
-declare void @"std::array::list.int.List__insertAt"(ptr, i64, i32)
+declare void @"std_array_list$$int_List_insertAt"(ptr, i64, i32)
 
-declare i64 @"std::array::list.int.List__len"(ptr)
+declare i64 @"std_array_list$$int_List_len"(ptr)
 
-declare i32 @"std::array::list.int.List__get"(ptr, i64)
+declare i32 @"std_array_list$$int_List_get"(ptr, i64)
 
-declare void @"std::array::list.int.List__free"(ptr)
+declare double @"test2$$double_getMult"(double)
 
-declare i32 @test2.int.getValue(i32)
-
-declare double @test2.double.getValue(i64)
-
-declare i32 @test2.int.getMult(i32)
-
-declare double @test2.double.getMult(double)
 
 // #expect: hello_world.ll
 
-define void @hello_world.hello()
+define void @hello_world_hello() #0 {
 entry:
   %0 = call i32 (ptr, ...) @printf(ptr @.str)
-  %1 = call double @foo.double.check(double 1.110000e+01)
+  %1 = call double @"foo$$double_check"(double 1.110000e+01)
   %2 = call i32 (ptr, ...) @printf(ptr @.str.1, double %1)
   ret void
+}
 
 // #expect: foo.double.ll
 
-define double @foo.double.check(double %0)
+define double @"foo$$double_check"(double %0)
 entry:
   %fmul = fmul double %0, %0
   ret double %fmul
@@ -683,19 +680,19 @@ entry:
 // #expect: test2.int.ll
 
 %Blob = type { i32 }
-@test2.int.argh = local_unnamed_addr global i32 234, align 4
+@"test2$$int_argh" = local_unnamed_addr global i32 234, align 4
 
-define i32 @test2.int.getMult(i32 %0)
+define i32 @"test2$$int_getMult"(i32 %0)
 entry:
   %mul = mul i32 %0, %0
   ret i32 %mul
 
-define i32 @test2.int.hello()
+define i32 @"test2$$int_hello"()
 entry:
   ret i32 1
 }
 
-define i32 @test2.int.getValue(i32 %0)
+define i32 @"test2$$int_getValue"(i32 %0)
 entry:
   %blob = alloca %Blob, align 4
   %1 = getelementptr inbounds %Blob, ptr %blob, i32 0, i32 0
@@ -708,19 +705,19 @@ entry:
 // #expect: test2.double.ll
 
 %Blob = type { double }
-@test2.double.argh = local_unnamed_addr global double 2.340000e+02, align 8
+@"test2$$double_argh" = local_unnamed_addr global double 2.340000e+02, align 8
 
-define double @test2.double.getMult(double %0)
+define double @"test2$$double_getMult"(double %0)
 entry:
   %fmul = fmul double %0, %0
   ret double %fmul
 
 
-define i32 @test2.double.hello()
+define i32 @"test2$$double_hello"()
 entry:
   ret i32 1
 
-define double @test2.double.getValue(i64 %0)
+define double @"test2$$double_getValue"(i64 %0)
 entry:
   %blob = alloca %Blob, align 8
   %1 = getelementptr inbounds %Blob, ptr %blob, i32 0, i32 0

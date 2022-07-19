@@ -19,8 +19,8 @@ fn void test()
 
 /* #expect: baz.ll
 
-define void @baz.test() #0 {
+define void @baz_test() #0 {
 entry:
-  call void @foo.foo1()
+  call void @foo_foo1()
   ret void
 }

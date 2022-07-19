@@ -22,7 +22,7 @@ fn void test(Bar b)
 %Bar = type { %anon, i32, [0 x i32] }
 %anon = type { i32 }
 
-define void @foo.test(%Bar* byval(%Bar) align 8 %0) #0 {
+define void @foo_test(%Bar* byval(%Bar) align 8 %0) #0 {
 entry:
   %b = alloca %Bar, align 4
   %1 = bitcast %Bar* %b to i8*

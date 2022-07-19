@@ -14,11 +14,10 @@ fn void test()
 
 /* #expect: unreachable.ll
 
-
-define void @unreachable.test() #0 {
+define void @unreachable_test() #0 {
 entry:
   %x = alloca i32, align 4
-  %0 = call i32 @unreachable.foo()
+  %0 = call i32 @unreachable_foo()
   store i32 %0, ptr %x, align 4
   %1 = load i32, ptr %x, align 4
   %gt = icmp sgt i32 %1, 0
@@ -28,7 +27,7 @@ if.then:                                          ; preds = %entry
   ret void
 
 if.exit:                                          ; preds = %entry
-  call void @"std::core::builtin.panic"(ptr @.str, ptr @.str.1, ptr @.str.2, i32 10)
+  call void @std_core_builtin_panic(ptr @.str, ptr @.str.1, ptr @.str.2, i32 10)
   unreachable
 
 after.unreachable:                                ; No predecessors!

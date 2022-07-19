@@ -20,23 +20,23 @@ fn void main()
 
 /* #expect: foob.ll
 
-define void @foob.Foo__test(ptr %0) #0 {
+define void @foob_Foo_test(ptr %0) #0 {
 entry:
   ret void
 }
 
 // #expect: baz.ll
 
-define void @foob.Foo__test2(ptr %0, i32 %1) #0 {
+define void @foob_Foo_test2(ptr %0, i32 %1) #0 {
 entry:
   ret void
 }
 
-define void @baz.main() #0 {
+define void @baz_main() #0 {
 entry:
   %f = alloca %Foo, align 4
   store i32 0, ptr %f, align 4
-  call void @foob.Foo__test(ptr %f)
-  call void @foob.Foo__test2(ptr %f, i32 123)
+  call void @foob_Foo_test(ptr %f)
+  call void @foob_Foo_test2(ptr %f, i32 123)
   ret void
 }

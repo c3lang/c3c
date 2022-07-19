@@ -48,7 +48,7 @@ fn void main()
 
 /* #expect: foo.ll
 
-define void @foo.test() #0 {
+define void @foo_test() #0 {
 entry:
   %b = alloca i32, align 4
   %x = alloca i32, align 4
@@ -74,7 +74,7 @@ entry:
 }
 
 ; Function Attrs: nounwind
-define void @foo.test2() #0 {
+define void @foo_test2() #0 {
 entry:
   %b = alloca [4 x i8], align 1
   %x = alloca i32, align 4

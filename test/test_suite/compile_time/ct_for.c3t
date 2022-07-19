@@ -19,7 +19,7 @@ fn void main()
 
 /* #expect: test.ll
 
-define void @test.main() #0 {
+define void @test_main() #0 {
 entry:
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str, i32 0, i32 0), i32 0)
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.1, i32 0, i32 0), i32 1)

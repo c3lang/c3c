@@ -15,7 +15,7 @@ fn void test(int[10] x, int[<10>] y)
 
 /* #expect: test.ll
 
-define void @test.test(ptr byval([10 x i32]) align 8 %0, ptr byval(<10 x i32>) align 64 %1) #0 {
+define void @test_test(ptr byval([10 x i32]) align 8 %0, ptr byval(<10 x i32>) align 64 %1) #0 {
 entry:
   %x = alloca [10 x i32], align 4
   %y = alloca <10 x i32>, align 64

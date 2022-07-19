@@ -19,7 +19,7 @@ fn Large f_scalar_stack_2(double a, int128 b, float128 c, V32i8 d,
 
 /* #expect: test.ll
 
-define signext i32 @test.f_scalar_stack_1(i32 signext %0, i128 %1, float %2, fp128 %3, ptr align 32 %4, i8 zeroext %5, i8 %6, i8 %7) #0 {
+define signext i32 @test_f_scalar_stack_1(i32 signext %0, i128 %1, float %2, fp128 %3, ptr align 32 %4, i8 zeroext %5, i8 %6, i8 %7) #0 {
 entry:
   %e = alloca <32 x i8>, align 32
   call void @llvm.memcpy.p0.p0.i32(ptr align 32 %e, ptr align 32 %4, i32 32, i1 false)
@@ -29,7 +29,7 @@ entry:
   ret i32 %add
 }
 
-define void @test.f_scalar_stack_2(ptr noalias sret(%Large) align 8 %0, double %1, i128 %2, fp128 %3, ptr align 32 %4, i8 zeroext %5, i8 %6, i8 %7) #0 {
+define void @test_f_scalar_stack_2(ptr noalias sret(%Large) align 8 %0, double %1, i128 %2, fp128 %3, ptr align 32 %4, i8 zeroext %5, i8 %6, i8 %7) #0 {
 entry:
   %d = alloca <32 x i8>, align 32
   %literal = alloca %Large, align 8

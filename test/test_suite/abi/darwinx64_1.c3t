@@ -37,12 +37,12 @@ fn void f8_2(Struct8 a0) {}
 
 /* #expect: test.ll
 
-define zeroext i8 @test.f0()
-define signext i16 @test.f1()
-define i32 @test.f2()
-define float @test.f3()
-define double @test.f4()
-define void @test.f6(i8 zeroext %0, i16 signext %1, i32 %2, i64 %3, i8* %4)
-define void @test.f7(i32 %0)
-define i64 @test.f8_1()
-define void @test.f8_2(i64 %0) #0 {
+define zeroext i8 @test_f0()
+define signext i16 @test_f1()
+define i32 @test_f2()
+define float @test_f3()
+define double @test_f4()
+define void @test_f6(i8 zeroext %0, i16 signext %1, i32 %2, i64 %3, i8* %4)
+define void @test_f7(i32 %0)
+define i64 @test_f8_1()
+define void @test_f8_2(i64 %0) #0 {

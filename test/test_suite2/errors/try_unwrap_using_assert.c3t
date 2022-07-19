@@ -13,7 +13,7 @@ fn int tester(int n)
 
 // #expect: test.ll
 
-define i32 @test.tester(i32 %0) #0 {
+define i32 @test_tester(i32 %0) #0 {
 entry:
   %num = alloca i32, align 4
   %num.f = alloca i64, align 8

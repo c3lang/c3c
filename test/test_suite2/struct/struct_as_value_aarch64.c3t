@@ -15,7 +15,7 @@ fn Event test(int x)
 
 /* #expect: test.ll
 
-define i32 @test.test(i32 %0) #0 {
+define i32 @test_test(i32 %0) #0 {
 entry:
   %foo = alloca %Event, align 4
   %bar = alloca %Event, align 4

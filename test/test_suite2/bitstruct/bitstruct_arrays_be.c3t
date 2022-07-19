@@ -37,7 +37,7 @@ fn void test3()
 
 /* #expect: foo.ll
 
-define void @foo.test3() #0 {
+define void @foo_test3() #0 {
 entry:
   %xx = alloca [4 x i8], align 1
   %xy = alloca [4 x i8], align 1

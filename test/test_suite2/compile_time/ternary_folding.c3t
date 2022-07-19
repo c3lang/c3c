@@ -13,11 +13,11 @@ fn int test2() { return 3; }
 
 // #expect: ternary_folding.ll
 
-@ternary_folding.foo = local_unnamed_addr global i32 1, align 4
-@ternary_folding.bar = local_unnamed_addr global double 2.000000e+00, align 8
-@ternary_folding.baz = local_unnamed_addr global i8 0, align 1
+@ternary_folding_foo = local_unnamed_addr global i32 1, align 4
+@ternary_folding_bar = local_unnamed_addr global double 2.000000e+00, align 8
+@ternary_folding_baz = local_unnamed_addr global i8 0, align 1
 
-define void @ternary_folding.test() #0 {
+define void @ternary_folding_test() #0 {
 entry:
   %x = alloca i32, align 4
   store i32 0, ptr %x, align 4

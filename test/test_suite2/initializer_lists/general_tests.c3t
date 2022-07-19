@@ -38,14 +38,14 @@ fn int test()
 %"int[]" = type { ptr, i64 }
 %"Bar[]" = type { ptr, i64 }
 
-@.typeid.general_tests.Baz = linkonce constant { i8, i64 } { i8 11, i64 2 }, align 8
-@.typeid.general_tests.Bar = linkonce constant { i8, i64 } { i8 10, i64 2 }, align 8
+@"ct$general_tests_Baz" = linkonce constant %.introspect { i8 11, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"ct$general_tests_Bar" = linkonce constant %.introspect { i8 10, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @.__const = private unnamed_addr constant { i32, [4 x i8] } { i32 1, [4 x i8] undef }, align 8
-@test.foo1 = internal unnamed_addr global i32 22, align 4
+@"test$foo1" = internal unnamed_addr global i32 22, align 4
 @.str = private unnamed_addr constant [7 x i8] c"Hello!\00", align 1
 
 ; Function Attrs: nounwind
-define i32 @general_tests.test() #0 {
+define i32 @general_tests_test() #0 {
 entry:
   %ffe = alloca %Baz, align 8
   %azz = alloca [1 x i32], align 4

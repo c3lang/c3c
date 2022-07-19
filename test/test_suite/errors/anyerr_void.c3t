@@ -26,14 +26,12 @@ fn void main()
 
 /* #expect: anyerr_void.ll
 
-; Function Attrs: nounwind
-define i64 @anyerr_void.errorThing() #0 {
+define i64 @anyerr_void_errorThing() #0 {
 entry:
-  ret i64 ptrtoint (i8* @anyerr_void.MyError.BAR to i64)
+  ret i64 ptrtoint (i8* @"anyerr_void_MyError$BAR" to i64)
 }
 
-; Function Attrs: nounwind
-define i64 @anyerr_void.errorThing2() #0 {
+define i64 @anyerr_void_errorThing2() #0 {
 entry:
   %reterr = alloca i64, align 8
   ret i64 0
@@ -43,13 +41,13 @@ entry:
 declare void @printf(i8*, ...) #0
 
 ; Function Attrs: nounwind
-define void @anyerr_void.main() #0 {
+define void @anyerr_void_main() #0 {
 entry:
   %z = alloca i64, align 8
   %error_var = alloca i64, align 8
   %error_var1 = alloca i64, align 8
   store i64 0, i64* %error_var, align 8
-  %0 = call i64 @anyerr_void.errorThing()
+  %0 = call i64 @anyerr_void_errorThing()
   %not_err = icmp eq i64 %0, 0
   br i1 %not_err, label %after.errcheck, label %error
 
@@ -65,10 +63,10 @@ noerr_block:                                      ; preds = %after.errcheck, %er
   store i64 %1, i64* %z, align 8
   %2 = load i64, i64* %z, align 8
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @.str, i32 0, i32 0), i64 %2)
-  call void (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @.str.1, i32 0, i32 0), i64 ptrtoint (i8* @anyerr_void.MyError.BAR to i64))
-  call void (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @.str.2, i32 0, i32 0), i64 ptrtoint (i8* @anyerr_void.MyError.FOO to i64))
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @.str.1, i32 0, i32 0), i64 ptrtoint (i8* @"anyerr_void_MyError$BAR" to i64))
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @.str.2, i32 0, i32 0), i64 ptrtoint (i8* @"anyerr_void_MyError$FOO" to i64))
   store i64 0, i64* %error_var1, align 8
-  %3 = call i64 @anyerr_void.errorThing2()
+  %3 = call i64 @anyerr_void_errorThing2()
   %not_err2 = icmp eq i64 %3, 0
   br i1 %not_err2, label %after.errcheck4, label %error3
 

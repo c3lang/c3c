@@ -36,7 +36,7 @@ fn void main()
 
 // #expect: try_catch_if.ll
 
-define i64 @try_catch_if.tester(i32* %0) #0 {
+define i64 @try_catch_if_tester(i32* %0) #0 {
 entry:
   %reterr = alloca i64, align 8
   %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @.str, i32 0, i32 0))
@@ -44,7 +44,7 @@ entry:
   ret i64 0
 }
 
-define void @try_catch_if.test1() #0 {
+define void @try_catch_if_test1() #0 {
 entry:
   %a = alloca i32, align 4
   %a.f = alloca i64, align 8
@@ -67,7 +67,7 @@ after_check:                                      ; preds = %testblock
   br label %testblock1
 
 testblock1:                                       ; preds = %after_check
-  %1 = call i64 @try_catch_if.tester(i32* %retparam)
+  %1 = call i64 @try_catch_if_tester(i32* %retparam)
   %not_err2 = icmp eq i64 %1, 0
   br i1 %not_err2, label %after.errcheck, label %error3
 

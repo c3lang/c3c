@@ -49,14 +49,14 @@ fn void! main()
 
 /* #expect: foo.ll
 
-define i64 @foo.foo(ptr %0) #0 {
+define i64 @foo_foo(ptr %0) #0 {
 entry:
   %reterr = alloca i64, align 8
   store i32 1, ptr %0, align 4
   ret i64 0
 }
 
-define i64 @foo.main() #0 {
+define i64 @foo_main() #0 {
 entry:
   %i = alloca i32, align 4
   %i1 = alloca i32, align 4
@@ -104,7 +104,7 @@ loop.exit4:                                       ; No predecessors!
 ; Function Attrs: nounwind
 define i32 @main(i32 %0, ptr %1) #0 {
 entry:
-  %2 = call i64 @foo.main()
+  %2 = call i64 @foo_main()
   %not_err = icmp eq i64 %2, 0
   br i1 %not_err, label %after.errcheck, label %error_block
 

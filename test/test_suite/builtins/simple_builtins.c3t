@@ -18,7 +18,7 @@ fn int foo(double b)
 
 // #expect: foo.ll
 
-define i32 @foo.foo(double %0) #0 {
+define i32 @foo_foo(double %0) #0 {
 entry:
   %d = alloca double, align 8
   %e = alloca double, align 8

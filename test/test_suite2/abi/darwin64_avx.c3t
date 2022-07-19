@@ -112,18 +112,18 @@ declare void @f38(<8 x float>)
 declare void @f37(<8 x float>)
 
 declare void @func40(ptr byval(%Two128) align 16)
-define void @test.func41(ptr byval(%Two128) align 16 %0)
+define void @test_func41(ptr byval(%Two128) align 16 %0)
 
 declare void @func42(ptr byval(%Sa) align 16)
-define void @test.func43(ptr byval(%Sa) align 16 %0)
+define void @test_func43(ptr byval(%Sa) align 16 %0)
 
 declare void @f46(double, double, double, double, double, double, double, double, ptr byval(<2 x float>) align 8, ptr byval(<2 x float>) align 8) #0
 declare void @f47(i32, i32, i32, i32, i32, i32, i32)
 
-declare void @test.test49_helper(double, ...)
-define void @test.test49(double %0, double %1)
+declare void @test_test49_helper(double, ...)
+define void @test_test49(double %0, double %1)
 entry:
-  call void (double, ...) @test.test49_helper(double %0, double %1)
+  call void (double, ...) @test_test49_helper(double %0, double %1)
   ret void
 
   call void (i32, ...) @test52_helper(i32 0, <8 x float> %0, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double %lo, double %hi)
@@ -134,8 +134,8 @@ declare void @f55(ptr byval(%St512) align 64)
 declare void @f56(ptr byval(<16 x float>) align 64)
 
 declare void @f58(ptr byval(%Two256) align 32)
-define void @test.f59(ptr byval(%Two256) align 32 %0)
+define void @test_f59(ptr byval(%Two256) align 32 %0)
 
 declare void @f60(ptr byval(%SAtwo256) align 32)
 
-define void @test.f61(ptr byval(%SAtwo256) align 32 %0) #0 {
+define void @test_f61(ptr byval(%SAtwo256) align 32 %0) #0 {

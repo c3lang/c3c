@@ -43,21 +43,21 @@ fn int main()
 
 /* #expect: foo.ll
 
-define void @foo.Foo__hello(ptr %0) #0 {
+define void @foo_Foo_hello(ptr %0) #0 {
 entry:
-  %1 = call i32 @"std::io.println"(ptr @.str) #1
+  %1 = call i32 @std_io_println(ptr @.str) #1
   ret void
 }
 
-define void @foo.Bar__hello(ptr %0) #0 {
+define void @foo_Bar_hello(ptr %0) #0 {
 entry:
-  %1 = call i32 @"std::io.println"(ptr @.str.1) #1
+  %1 = call i32 @std_io_println(ptr @.str.1) #1
   ret void
 }
 
-define void @foo.MyEnum__hello(ptr %0) #0 {
+define void @foo_MyEnum_hello(ptr %0) #0 {
 entry:
-  %1 = call i32 @"std::io.println"(ptr @.str.2) #1
+  %1 = call i32 @std_io_println(ptr @.str.2) #1
   ret void
 }
 
@@ -69,8 +69,8 @@ entry:
   store i64 0, ptr %f, align 8
   store i32 0, ptr %b, align 4
   store i32 0, ptr %a, align 4
-  call void @foo.Foo__hello(ptr %f)
-  call void @foo.Bar__hello(ptr %b)
-  call void @foo.MyEnum__hello(ptr %a)
+  call void @foo_Foo_hello(ptr %f)
+  call void @foo_Bar_hello(ptr %b)
+  call void @foo_MyEnum_hello(ptr %a)
   ret i32 0
 }

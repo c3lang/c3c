@@ -35,13 +35,13 @@ fn int main()
 %Bar = type { i32, i32 }
 %"Bar[]" = type { %Bar*, i64 }
 
-@.typeid.statics.Baz = linkonce constant { i8, i64 } { i8 11, i64 2 }, align 8
-@.typeid.statics.Bar = linkonce constant { i8, i64 } { i8 10, i64 2 }, align 8
+@"ct$statics_Baz" = linkonce constant %.introspect { i8 11, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"ct$statics_Bar" = linkonce constant %.introspect { i8 10, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @.taddr = private global [1 x %Bar] [%Bar { i32 1, i32 2 }], align 8
-@test.c = internal unnamed_addr global %"Bar[]" { %Bar* getelementptr inbounds ([1 x %Bar], [1 x %Bar]* @.taddr, i32 0, i32 0), i64 1 }, align 8
+@"test$c" = internal unnamed_addr global %"Bar[]" { %Bar* getelementptr inbounds ([1 x %Bar], [1 x %Bar]* @.taddr, i32 0, i32 0), i64 1 }, align 8
 @.str = private unnamed_addr constant [7 x i8] c"%d %d\0A\00", align 1
 
-define void @statics.test() #0 {
+define void @statics_test() #0 {
 entry:
   %b = alloca %"Bar[]", align 8
   %literal = alloca [1 x %Bar], align 4
@@ -59,7 +59,7 @@ entry:
   %ptroffset = getelementptr inbounds %Bar, %Bar* %7, i64 0
   %8 = getelementptr inbounds %Bar, %Bar* %ptroffset, i32 0, i32 1
   %9 = load i32, i32* %8, align 4
-  %10 = load %Bar*, %Bar** getelementptr inbounds (%"Bar[]", %"Bar[]"* @test.c, i32 0, i32 0), align 8
+  %10 = load %Bar*, %Bar** getelementptr inbounds (%"Bar[]", %"Bar[]"* @"test$c", i32 0, i32 0), align 8
   %ptroffset1 = getelementptr inbounds %Bar, %Bar* %10, i64 0
   %11 = getelementptr inbounds %Bar, %Bar* %ptroffset1, i32 0, i32 1
   %12 = load i32, i32* %11, align 4
@@ -71,7 +71,7 @@ entry:
   %17 = load i32, i32* %16, align 4
   %add = add i32 %17, 1
   store i32 %add, i32* %16, align 4
-  %18 = load %Bar*, %Bar** getelementptr inbounds (%"Bar[]", %"Bar[]"* @test.c, i32 0, i32 0), align 8
+  %18 = load %Bar*, %Bar** getelementptr inbounds (%"Bar[]", %"Bar[]"* @"test$c", i32 0, i32 0), align 8
   %ptroffset3 = getelementptr inbounds %Bar, %Bar* %18, i64 0
   %19 = getelementptr inbounds %Bar, %Bar* %ptroffset3, i32 0, i32 1
   %20 = load i32, i32* %19, align 4
@@ -80,11 +80,12 @@ entry:
   ret void
 }
 
+; Function Attrs: nounwind
 define i32 @main() #0 {
 entry:
-  call void @statics.test()
-  call void @statics.test()
-  call void @statics.test()
+  call void @statics_test()
+  call void @statics_test()
+  call void @statics_test()
   ret i32 1
 }
 

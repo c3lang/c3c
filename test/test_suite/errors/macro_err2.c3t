@@ -21,16 +21,16 @@ fn void main()
 
 /* #expect: test.ll
 
-define i64 @test.abc(i32* %0) #0 {
+define i64 @test_abc(i32* %0) #0 {
 entry:
-  ret i64 ptrtoint (i8* @test.Tester.FOO to i64)
+  ret i64 ptrtoint (i8* @"test_Tester$FOO" to i64)
 }
 
-define void @test.main() #0 {
+define void @test_main() #0 {
 entry:
   %blockret = alloca i32, align 4
   %retparam = alloca i32, align 4
-  %0 = call i64 @test.abc(i32* %retparam)
+  %0 = call i64 @test_abc(i32* %retparam)
   %not_err = icmp eq i64 %0, 0
   br i1 %not_err, label %after.errcheck, label %opt_block_cleanup
 

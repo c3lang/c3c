@@ -42,7 +42,7 @@ fn void main()
 @.str.4 = private unnamed_addr constant [10 x i8] c"1 + 3 + a\00", align 1
 @.str.5 = private unnamed_addr constant [15 x i8] c"Result was %d\0A\00", align 1
 
-define void @test.test() #0 {
+define void @test_test() #0 {
 entry:
   %i = alloca i32, align 4
   store i32 0, ptr %i, align 4
@@ -65,7 +65,7 @@ loop.exit:                                        ; preds = %loop.cond
   ret void
 }
 
-define void @test.main() #0 {
+define void @test_main() #0 {
 entry:
   %t = alloca i64, align 8
   %diff = alloca i64, align 8
@@ -76,7 +76,7 @@ entry:
   %diff2 = alloca i64, align 8
   %0 = call i64 @clock()
   store i64 %0, ptr %t, align 8
-  call void @test.test()
+  call void @test_test()
   %1 = call i64 @clock()
   %2 = load i64, ptr %t, align 8
   %sub = sub i64 %1, %2
@@ -104,6 +104,6 @@ entry:
 
 define i32 @main(i32 %0, ptr %1) #0 {
 entry:
-  call void @test.main()
+  call void @test_main()
   ret i32 0
 }
