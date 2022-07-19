@@ -5,6 +5,24 @@
 #include "llvm_codegen_internal.h"
 
 
+
+static inline LLVMTypeRef create_introspection_type(GenContext *c)
+{
+	LLVMTypeRef type = LLVMStructCreateNamed(c->context, ".introspect");
+	LLVMTypeRef typeid_type = llvm_get_type(c, type_typeid);
+	LLVMTypeRef kind_type = llvm_get_type(c, type_char);
+	LLVMTypeRef usize_type = llvm_get_type(c, type_usize);
+	LLVMTypeRef introspect_type[INTROSPECT_INDEX_TOTAL] = {
+			[INTROSPECT_INDEX_KIND] = kind_type,
+			[INTROSPECT_INDEX_SIZEOF] = usize_type,
+			[INTROSPECT_INDEX_INNER] = typeid_type,
+			[INTROSPECT_INDEX_LEN] = usize_type,
+			[INTROSPECT_INDEX_ADDITIONAL] = LLVMArrayType(typeid_type, 0),
+	};
+	LLVMStructSetBody(type, introspect_type, INTROSPECT_INDEX_TOTAL, false);
+	return type;
+}
+
 void gencontext_begin_module(GenContext *c)
 {
 	assert(!c->module && "Expected no module");
@@ -84,6 +102,10 @@ void gencontext_begin_module(GenContext *c)
 				break;
 		}
 	}
+	c->bool_type = LLVMInt1TypeInContext(c->context);
+	c->byte_type = LLVMInt8TypeInContext(c->context);
+	c->introspect_type = create_introspection_type(c);
+
 	if (c->panicfn) c->panicfn->backend_ref = NULL;
 
 	if (active_target.debug_info != DEBUG_INFO_NONE)

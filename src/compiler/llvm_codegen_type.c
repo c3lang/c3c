@@ -496,79 +496,70 @@ static inline Module *type_base_module(Type *type)
 	}
 	UNREACHABLE
 }
-LLVMValueRef llvm_get_introspection_for_derived_type(GenContext *c, IntrospectType kind, Type *type, Type *inner, LLVMValueRef extra)
+
+static inline LLVMValueRef llvm_generate_temp_introspection_global(GenContext *c, Type *type)
 {
-	LLVMValueRef value = llvm_get_typeid(c, inner);
-	LLVMValueRef values[3] = { llvm_const_int(c, type_char, kind), value };
-	int count = 2;
-	if (extra)
-	{
-		values[2] = extra;
-		count = 3;
-	}
-	LLVMValueRef strukt = LLVMConstStructInContext(c->context, values, count, false);
-	scratch_buffer_clear();
-	scratch_buffer_append(".typeid.");
-	Module *module = type_base_module(inner);
-	if (module)
-	{
-		scratch_buffer_append(module->name->module);
-		scratch_buffer_append_char('.');
-	}
-	scratch_buffer_append(type->name);
-	LLVMValueRef global_name = LLVMAddGlobal(c->module, LLVMTypeOf(strukt), scratch_buffer_to_string());
-	LLVMSetAlignment(global_name, llvm_abi_alignment(c, LLVMTypeOf(strukt)));
-	LLVMSetGlobalConstant(global_name, 1);
-	LLVMSetInitializer(global_name, strukt);
-	llvm_set_linkonce(c, global_name);
-	return type->backend_typeid = LLVMConstPointerCast(global_name, llvm_get_type(c, type_typeid));
+	assert(!type->backend_typeid);
+	LLVMValueRef temp = LLVMAddGlobal(c->module, c->introspect_type, "tempid");
+	type->backend_typeid = LLVMConstPointerCast(temp, llvm_get_type(c, type_typeid));
+	return temp;
 }
 
+static inline LLVMValueRef llvm_generate_introspection_global(GenContext *c, LLVMValueRef original_global, Type *type, IntrospectType introspect_type,
+                                                              Type *inner, size_t len, LLVMValueRef additional, bool is_external)
+{
+	if (original_global)
+	{
+		assert(type->backend_typeid);
+	}
+	LLVMValueRef values[INTROSPECT_INDEX_TOTAL] = {
+			[INTROSPECT_INDEX_KIND] = llvm_const_int(c, type_char, introspect_type),
+			[INTROSPECT_INDEX_SIZEOF] = llvm_const_int(c, type_usize, type_size(type)),
+			[INTROSPECT_INDEX_INNER] = inner ? llvm_get_typeid(c, inner) : llvm_get_zero(c, type_typeid),
+			[INTROSPECT_INDEX_LEN] = llvm_const_int(c, type_usize, len),
+			[INTROSPECT_INDEX_ADDITIONAL] = additional ? additional : LLVMConstArray(llvm_get_type(c, type_typeid), NULL, 0)
+	};
+	LLVMValueRef global_name;
+	scratch_buffer_clear();
+	scratch_buffer_append("ct$");
+	type_mangle_introspect_name_to_buffer(type);
+	if (additional)
+	{
+		LLVMValueRef constant = LLVMConstStructInContext(c->context, values, INTROSPECT_INDEX_TOTAL, false);
+		global_name = LLVMAddGlobal(c->module, LLVMTypeOf(constant), scratch_buffer_to_string());
+		LLVMSetInitializer(global_name, constant);
+	}
+	else
+	{
+		LLVMValueRef strukt = LLVMConstNamedStruct(c->introspect_type, values, INTROSPECT_INDEX_TOTAL);
+		global_name = LLVMAddGlobal(c->module, c->introspect_type, scratch_buffer_to_string());
+		LLVMSetInitializer(global_name, strukt);
+	}
+	LLVMSetAlignment(global_name, llvm_abi_alignment(c, c->introspect_type));
+	LLVMSetGlobalConstant(global_name, 1);
+	if (is_external)
+	{
+		LLVMSetLinkage(global_name, LLVMExternalLinkage);
+	}
+	else
+	{
+		llvm_set_linkonce(c, global_name);
+	}
+	if (original_global)
+	{
+		LLVMReplaceAllUsesWith(original_global, global_name);
+	}
+	else
+	{
+		type->backend_typeid = LLVMConstPointerCast(global_name, llvm_get_type(c, type_typeid));
+	}
+	return type->backend_typeid;
+}
 static LLVMValueRef llvm_get_introspection_for_builtin_type(GenContext *c, Type *type, IntrospectType introspect_type, int bits)
 {
-	LLVMValueRef values[2];
-	int count = 1;
-	values[0] = llvm_const_int(c, type_char, introspect_type);
-	if (bits)
-	{
-		values[1] = llvm_const_int(c, type_ushort, bits);
-		count = 2;
-	}
-	LLVMValueRef strukt = LLVMConstStructInContext(c->context, values, count, false);
-	scratch_buffer_clear();
-	scratch_buffer_append(".typeid.");
-	scratch_buffer_append(type->name);
-	LLVMValueRef global_name = LLVMAddGlobal(c->module, LLVMTypeOf(strukt), scratch_buffer_to_string());
-	LLVMSetAlignment(global_name, llvm_abi_alignment(c, LLVMTypeOf(strukt)));
-	LLVMSetGlobalConstant(global_name, 1);
-	LLVMSetInitializer(global_name, strukt);
-	llvm_set_linkonce(c, global_name);
-	return type->backend_typeid = LLVMConstPointerCast(global_name, llvm_get_type(c, type_typeid));
+	return llvm_generate_introspection_global(c, NULL, type, introspect_type, NULL, 0, NULL, false);
 }
 
-static LLVMValueRef llvm_get_introspection_weak(GenContext *c, Type *type, const char *name, LLVMValueRef data)
-{
-	scratch_buffer_clear();
-	scratch_buffer_append(".typeid.");
-	scratch_buffer_append(name);
-	LLVMValueRef global_name = LLVMAddGlobal(c->module, LLVMTypeOf(data), scratch_buffer_to_string());
-	LLVMSetAlignment(global_name, llvm_abi_alignment(c, LLVMTypeOf(data)));
-	LLVMSetGlobalConstant(global_name, 1);
-	LLVMSetInitializer(global_name, data);
-	llvm_set_linkonce(c, global_name);
-	return type->backend_typeid = LLVMConstPointerCast(global_name, llvm_get_type(c, type_typeid));
-}
-
-static LLVMValueRef llvm_get_introspection_external(GenContext *c, Type *type, LLVMValueRef data)
-{
-	scratch_buffer_clear();
-	scratch_buffer_append(".typeid.");
-	scratch_buffer_append(type->name);
-	LLVMValueRef global_name = LLVMAddGlobal(c->module, LLVMTypeOf(data), scratch_buffer_to_string());
-	LLVMSetAlignment(global_name, llvm_abi_alignment(c, LLVMTypeOf(data)));
-	LLVMSetLinkage(global_name, LLVMExternalLinkage);
-	return type->backend_typeid = LLVMConstPointerCast(global_name, llvm_get_type(c, type_typeid));
-}
 
 static LLVMValueRef llvm_get_introspection_for_enum(GenContext *c, Type *type)
 {
@@ -589,12 +580,10 @@ static LLVMValueRef llvm_get_introspection_for_enum(GenContext *c, Type *type)
 	                             llvm_const_int(c, type_usize, associated_value_count) };
 	LLVMValueRef strukt = LLVMConstStructInContext(c->context, en_values, 3, false);
 
-	if (is_external && !is_dynamic)
-	{
-		return llvm_get_introspection_external(c, type, strukt);
-	}
+	if (!is_dynamic) is_external = false;
 
-	LLVMValueRef val = llvm_get_introspection_weak(c, type, decl_get_extname(decl), strukt);
+	LLVMValueRef ref = llvm_generate_temp_introspection_global(c, type);
+	LLVMValueRef  val = llvm_generate_introspection_global(c, ref, type, INTROSPECT_TYPE_ENUM, type_flatten(type), elements, NULL, is_external);
 	if (!associated_value_count) return val;
 
 	LLVMValueRef *values = elements ? malloc_arena(elements * sizeof(LLVMValueRef)) : NULL;
@@ -624,7 +613,7 @@ static LLVMValueRef llvm_get_introspection_for_enum(GenContext *c, Type *type)
 		                                                                                                     elements);
 		scratch_buffer_clear();
 		scratch_buffer_append(decl->extname);
-		scratch_buffer_append(".");
+		scratch_buffer_append("$");
 		scratch_buffer_append(associated_value->name);
 		LLVMValueRef global_ref = llvm_add_global_type(c,
 		                                               scratch_buffer_to_string(),
@@ -650,6 +639,7 @@ static LLVMValueRef llvm_get_introspection_for_struct_union(GenContext *c, Type 
 {
 	Decl *decl = type->decl;
 	Decl **decls = decl->strukt.members;
+	LLVMValueRef ref = llvm_generate_temp_introspection_global(c, type);
 	VECEACH(decls, i)
 	{
 		Decl *member_decl = decls[i];
@@ -658,10 +648,10 @@ static LLVMValueRef llvm_get_introspection_for_struct_union(GenContext *c, Type 
 			llvm_get_typeid(c, member_decl->type);
 		}
 	}
-	LLVMValueRef values[] = { llvm_const_int(c, type_char, decl->decl_kind == DECL_STRUCT ? INTROSPECT_TYPE_STRUCT : INTROSPECT_TYPE_UNION ),
-							  llvm_const_int(c, type_usize, vec_size(decls)) };
-	LLVMValueRef strukt = LLVMConstStructInContext(c->context, values, 2, false);
-	return llvm_get_introspection_weak(c, type, decl_get_extname(decl), strukt);
+
+	return llvm_generate_introspection_global(c, ref, type, decl->decl_kind == DECL_UNION ? INTROSPECT_TYPE_UNION : INTROSPECT_TYPE_STRUCT,
+											  NULL,
+											  vec_size(decls), NULL, false);
 }
 
 static LLVMValueRef llvm_get_introspection_for_fault(GenContext *c, Type *type)
@@ -669,12 +659,13 @@ static LLVMValueRef llvm_get_introspection_for_fault(GenContext *c, Type *type)
 	Decl *decl = type->decl;
 	Decl **fault_vals = decl->enums.values;
 	unsigned elements = vec_size(fault_vals);
+	LLVMValueRef ref = llvm_generate_temp_introspection_global(c, type);
 	AlignSize store_align;
 	for (unsigned i = 0; i < elements; i++)
 	{
 		scratch_buffer_clear();
 		scratch_buffer_append(decl_get_extname(decl));
-		scratch_buffer_append_char('.');
+		scratch_buffer_append_char('$');
 		Decl *val = fault_vals[i];
 		scratch_buffer_append(val->name);
 		LLVMValueRef global_name = llvm_add_global_var(c, scratch_buffer_to_string(), type_char, 0);
@@ -689,10 +680,7 @@ static LLVMValueRef llvm_get_introspection_for_fault(GenContext *c, Type *type)
 	{
 		values[i] = LLVMConstBitCast(fault_vals[i]->backend_ref, element_type);
 	}
-	LLVMValueRef svalues[] = { llvm_const_int(c, type_char, INTROSPECT_TYPE_FAULT ), llvm_const_int(c, type_usize, elements),
-	                           LLVMConstArray(element_type, values, elements) };
-	LLVMValueRef strukt = LLVMConstStructInContext(c->context, svalues, 3, false);
-	return llvm_get_introspection_weak(c, type, decl_get_extname(decl), strukt);
+	return llvm_generate_introspection_global(c, ref, type, INTROSPECT_TYPE_FAULT, NULL, elements, NULL, false);
 }
 
 
@@ -703,22 +691,19 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 	switch (type->type_kind)
 	{
 		case TYPE_FAILABLE:
-			return llvm_get_introspection_for_derived_type(c, INTROSPECT_TYPE_FAILABLE, type, type->failable, NULL);
+			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_FAILABLE, type->failable, 0, NULL, false);
 		case TYPE_FLEXIBLE_ARRAY:
-			return llvm_get_introspection_for_derived_type(c, INTROSPECT_TYPE_ARRAY, type, type->array.base,
-			                                               llvm_const_int(c, type_usize, 0));
+			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_ARRAY, type->array.base, 0, NULL, false);
 		case TYPE_VECTOR:
-			return llvm_get_introspection_for_derived_type(c, INTROSPECT_TYPE_VECTOR, type, type->array.base,
-			                                               llvm_const_int(c, type_usize, type->array.len));
+			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_VECTOR, type->array.base, type->array.len, NULL, false);
 		case TYPE_ARRAY:
-			return llvm_get_introspection_for_derived_type(c, INTROSPECT_TYPE_ARRAY, type, type->array.base,
-			                                               llvm_const_int(c, type_usize, type->array.len));
+			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_ARRAY, type->array.base, type->array.len, NULL, false);
 		case TYPE_SUBARRAY:
-			return llvm_get_introspection_for_derived_type(c, INTROSPECT_TYPE_SUBARRAY, type, type->array.base, NULL);
+			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_SUBARRAY, type->array.base, 0, NULL, false);
 		case TYPE_POINTER:
-			return llvm_get_introspection_for_derived_type(c, INTROSPECT_TYPE_POINTER, type, type->pointer, NULL);
+			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_POINTER, type->pointer, 0, NULL, false);
 		case TYPE_DISTINCT:
-			return llvm_get_introspection_for_derived_type(c, INTROSPECT_TYPE_DISTINCT, type, type->decl->distinct_decl.base_type, NULL);
+			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_DISTINCT, type->decl->distinct_decl.base_type, 0, NULL, false);
 		case TYPE_ENUM:
 			return llvm_get_introspection_for_enum(c, type);
 		case TYPE_FAULTTYPE:
@@ -728,16 +713,13 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 			return llvm_get_introspection_for_struct_union(c, type);
 		case TYPE_FUNC:
 		{
-			LLVMValueRef values[] = { llvm_const_int(c, type_char, INTROSPECT_TYPE_FUNC ) };
-			LLVMValueRef strukt = LLVMConstStructInContext(c->context, values, 1, false);
-			return llvm_get_introspection_weak(c, type, decl_get_extname(type->decl), strukt);
-
+			LLVMValueRef ref = llvm_generate_temp_introspection_global(c, type);
+			return llvm_generate_introspection_global(c, ref, type, INTROSPECT_TYPE_FUNC, NULL, 0, NULL, false);
 		}
 		case TYPE_BITSTRUCT:
 		{
-			LLVMValueRef values[] = { llvm_const_int(c, type_char, INTROSPECT_TYPE_BITSTRUCT ) };
-			LLVMValueRef strukt = LLVMConstStructInContext(c->context, values, 1, false);
-			return llvm_get_introspection_weak(c, type, decl_get_extname(type->decl), strukt);
+			LLVMValueRef ref = llvm_generate_temp_introspection_global(c, type);
+			return llvm_generate_introspection_global(c, ref, type, INTROSPECT_TYPE_BITSTRUCT, NULL, 0, NULL, false);
 		}
 		case TYPE_TYPEDEF:
 			return llvm_get_typeid(c, type->canonical);

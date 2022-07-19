@@ -1626,7 +1626,16 @@ Expr *parse_type_compound_literal_expr_after_type(ParseContext *c, TypeInfo *typ
 }
 
 
-
+Expr *parse_any_expression(ParseContext *c, TypeInfo *type)
+{
+	Expr *expr = expr_new(EXPR_VARIANT, type->span);
+	advance_and_verify(c, TOKEN_LBRACE);
+	ASSIGN_EXPRID_OR_RET(expr->variant_expr.ptr, parse_expr(c), poisoned_expr);
+	TRY_CONSUME_OR_RET(TOKEN_COMMA, "Expected a ','", poisoned_expr);
+	ASSIGN_EXPRID_OR_RET(expr->variant_expr.type_id, parse_expr(c), poisoned_expr);
+	TRY_CONSUME_OR_RET(TOKEN_RBRACE, "Missing end '}'", poisoned_expr);
+	return expr;
+}
 /**
  * type_identifier ::= TYPE_IDENT initializer_list?
  *
@@ -1652,6 +1661,10 @@ Expr *parse_type_expression_with_path(ParseContext *c, Path *path)
 	}
 	if (tok_is(c, TOKEN_LBRACE))
 	{
+		if (type->resolve_status == RESOLVE_DONE && type->type == type_any)
+		{
+			return parse_any_expression(c, type);
+		}
 		return parse_type_compound_literal_expr_after_type(c, type);
 	}
 	Expr *expr = expr_new(EXPR_TYPEINFO, type->span);

@@ -85,11 +85,55 @@ private fn void! out_str(PrintParam* param, variant arg)
 		case FLOAT:
 			return ftoa(param, float_from_variant(arg));
 		case ARRAY:
-			return out_substr(param, "[]");
+			// this is SomeType[*] so grab the "SomeType"
+			typeid inner = arg.type.inner;
+			usize size = inner.sizeof;
+			usize len = arg.type.len;
+			// Pretend this is a char[]
+			void* ptr = (void*)arg.ptr;
+			param.out('[')?;
+			for (usize i = 0; i < len; i++)
+			{
+				if (i != 0) out_substr(param, ", ")?;
+				out_str(param, variant { ptr, inner })?;
+				ptr += size;
+			}
+			return param.out(']');
 		case VECTOR:
-			return out_substr(param, "[]");
+			// this is SomeType[*] so grab the "SomeType"
+			typeid inner = arg.type.inner;
+			usize size = inner.sizeof;
+			usize len = arg.type.len;
+			// Pretend this is a char[]
+			void* ptr = (void*)arg.ptr;
+			out_substr(param, "[<")?;
+			for (usize i = 0; i < len; i++)
+			{
+				if (i != 0) out_substr(param, ", ")?;
+				out_str(param, variant { ptr, inner })?;
+				ptr += size;
+			}
+			return out_substr(param, ">]");
 		case SUBARRAY:
-			return out_substr(param, *(char[]*)arg.ptr);
+			// this is SomeType[] so grab the "SomeType"
+			typeid inner = arg.type.inner;
+			if (inner == char.typeid)
+			{
+				return out_substr(param, *(char[]*)arg);
+			}
+			usize size = inner.sizeof;
+            // Pretend this is a char[]
+			char[]* temp = (void*)arg.ptr;
+			void* ptr = (void*)temp.ptr;
+			usize len = temp.len;
+			param.out('[')?;
+			for (usize i = 0; i < len; i++)
+			{
+				if (i != 0) out_substr(param, ", ")?;
+				out_str(param, variant { ptr, inner })?;
+				ptr += size;
+			}
+			param.out(']')?;
 		case BOOL:
 			if (*(bool*)arg.ptr)
 			{

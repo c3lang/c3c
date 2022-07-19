@@ -47,7 +47,7 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 		{
 			scratch_buffer_clear();
 			scratch_buffer_append(decl->extname);
-			scratch_buffer_append(".f");
+			scratch_buffer_append("$f");
 			decl->var.failable_ref = llvm_add_global_var(c, scratch_buffer_to_string(), type_anyerr, 0);
 		}
 		llvm_emit_global_variable_init(c, decl);

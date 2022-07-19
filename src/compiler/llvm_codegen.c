@@ -41,8 +41,6 @@ static void gencontext_init(GenContext *context, Module *module)
 {
 	memset(context, 0, sizeof(GenContext));
 	context->context = LLVMContextCreate();
-	context->bool_type = LLVMInt1TypeInContext(context->context);
-	context->byte_type = LLVMInt8TypeInContext(context->context);
 	LLVMContextSetDiagnosticHandler(context->context, &diagnostics_handler, context);
 	context->code_module = module;
 }

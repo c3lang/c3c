@@ -187,6 +187,10 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_DECL:
 			MACRO_COPY_DECL(expr->decl_expr);
 			return expr;
+		case EXPR_VARIANT:
+			MACRO_COPY_EXPRID(expr->variant_expr.ptr);
+			MACRO_COPY_EXPRID(expr->variant_expr.type_id);
+			return expr;
 		case EXPR_CT_CALL:
 			MACRO_COPY_EXPR(expr->ct_call_expr.main_var);
 			return expr;

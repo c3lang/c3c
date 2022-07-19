@@ -248,6 +248,7 @@ typedef enum
 	EXPR_VARIANTSWITCH,
 	EXPR_NOP,
 	EXPR_TYPEID_INFO,
+	EXPR_VARIANT,
 } ExprKind;
 
 typedef enum
@@ -257,6 +258,7 @@ typedef enum
 	TYPEID_INFO_MAX,
 	TYPEID_INFO_INNER,
 	TYPEID_INFO_LEN,
+	TYPEID_INFO_SIZEOF,
 } TypeIdInfoKind;
 
 typedef enum
