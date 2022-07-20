@@ -15,7 +15,6 @@ fn int test()
 {
     Baz ffe = { .x = 1 };
     int[1] azz = {};
-    int[*] a = {};
     var $foo = { 11, 22, 33 };
     static int foo1 = $foo[1];
     int foo2 = $foo[2];
@@ -49,7 +48,6 @@ define i32 @general_tests_test() #0 {
 entry:
   %ffe = alloca %Baz, align 8
   %azz = alloca [1 x i32], align 4
-  %a = alloca [0 x i32], align 4
   %foo2 = alloca i32, align 4
   %str = alloca i8*, align 8
   %x = alloca i8, align 1
@@ -57,9 +55,7 @@ entry:
   %b = alloca %Bar, align 4
   %z = alloca %Baz, align 8
   %sub = alloca %"int[]", align 8
-  %literal1 = alloca [0 x i32], align 4
   %foo = alloca %"Bar[]", align 8
-  %literal2 = alloca [0 x %Bar], align 4
   %baz = alloca [3 x %Baz], align 16
   %0 = bitcast %Baz* %ffe to i8*
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %0, i8* align 8 bitcast ({ i32, [4 x i8] }* @.__const to i8*), i32 8, i1 false)
@@ -86,17 +82,9 @@ entry:
   store i32 0, i32* %11, align 4
   %12 = bitcast %Baz* %z to i8*
   call void @llvm.memset.p0i8.i64(i8* align 8 %12, i8 0, i64 8, i1 false)
-  store [0 x i32] zeroinitializer, [0 x i32]* %literal1, align 4
-  %13 = bitcast [0 x i32]* %literal1 to i32*
-  %14 = insertvalue %"int[]" undef, i32* %13, 0
-  %15 = insertvalue %"int[]" %14, i64 0, 1
-  store %"int[]" %15, %"int[]"* %sub, align 8
-  store [0 x %Bar] zeroinitializer, [0 x %Bar]* %literal2, align 4
-  %16 = bitcast [0 x %Bar]* %literal2 to %Bar*
-  %17 = insertvalue %"Bar[]" undef, %Bar* %16, 0
-  %18 = insertvalue %"Bar[]" %17, i64 0, 1
-  store %"Bar[]" %18, %"Bar[]"* %foo, align 8
-  %19 = bitcast [3 x %Baz]* %baz to i8*
-  call void @llvm.memset.p0i8.i64(i8* align 16 %19, i8 0, i64 24, i1 false)
+  store %"int[]" zeroinitializer, %"int[]"* %sub, align 8
+  store %"Bar[]" zeroinitializer, %"Bar[]"* %foo, align 8
+  %13 = bitcast [3 x %Baz]* %baz to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 16 %13, i8 0, i64 24, i1 false)
   ret i32 1
 }

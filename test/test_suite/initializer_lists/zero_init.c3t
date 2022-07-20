@@ -20,7 +20,6 @@ fn int test()
 {
     Mega m = {};
     int[1] azz = {};
-    int[*] a = {};
     Bar b = {};
     Baz z = {};
     int[] sub = {};
@@ -39,13 +38,10 @@ define i32 @zero_init_test() #0 {
 entry:
   %m = alloca %Mega, align 4
   %azz = alloca [1 x i32], align 4
-  %a = alloca [0 x i32], align 4
   %b = alloca %Bar, align 4
   %z = alloca %Baz, align 8
   %sub = alloca %"int[]", align 8
-  %literal = alloca [0 x i32], align 4
   %foo = alloca %"Bar[]", align 8
-  %literal1 = alloca [0 x %Bar], align 4
   %baz = alloca [3 x %Baz], align 16
   %0 = bitcast %Mega* %m to i8*
   call void @llvm.memset.p0i8.i64(i8* align 4 %0, i8 0, i64 40, i1 false)
@@ -57,17 +53,9 @@ entry:
   store i32 0, i32* %3, align 4
   %4 = bitcast %Baz* %z to i8*
   call void @llvm.memset.p0i8.i64(i8* align 8 %4, i8 0, i64 8, i1 false)
-  store [0 x i32] zeroinitializer, [0 x i32]* %literal, align 4
-  %5 = bitcast [0 x i32]* %literal to i32*
-  %6 = insertvalue %"int[]" undef, i32* %5, 0
-  %7 = insertvalue %"int[]" %6, i64 0, 1
-  store %"int[]" %7, %"int[]"* %sub, align 8
-  store [0 x %Bar] zeroinitializer, [0 x %Bar]* %literal1, align 4
-  %8 = bitcast [0 x %Bar]* %literal1 to %Bar*
-  %9 = insertvalue %"Bar[]" undef, %Bar* %8, 0
-  %10 = insertvalue %"Bar[]" %9, i64 0, 1
-  store %"Bar[]" %10, %"Bar[]"* %foo, align 8
-  %11 = bitcast [3 x %Baz]* %baz to i8*
-  call void @llvm.memset.p0i8.i64(i8* align 16 %11, i8 0, i64 24, i1 false)
+  store %"int[]" zeroinitializer, %"int[]"* %sub, align 8
+  store %"Bar[]" zeroinitializer, %"Bar[]"* %foo, align 8
+  %5 = bitcast [3 x %Baz]* %baz to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 16 %5, i8 0, i64 24, i1 false)
   ret i32 1
 }

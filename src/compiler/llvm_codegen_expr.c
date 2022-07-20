@@ -1060,11 +1060,19 @@ static inline void llvm_emit_initialize_reference(GenContext *c, BEValue *value,
  */
 static void llvm_emit_arr_to_subarray_cast(GenContext *c, BEValue *value, Type *to_type)
 {
-	llvm_value_rvalue(c, value);
 	ByteSize size = value->type->pointer->array.len;
+	LLVMValueRef pointer;
 	Type *array_type = value->type->pointer->array.base;
-	LLVMTypeRef subarray_type = llvm_get_type(c, to_type);
-	LLVMValueRef pointer = llvm_emit_bitcast(c, value->value, type_get_ptr(array_type));
+	if (size)
+	{
+		llvm_value_rvalue(c, value);
+		LLVMTypeRef subarray_type = llvm_get_type(c, to_type);
+		pointer = llvm_emit_bitcast(c, value->value, type_get_ptr(array_type));
+	}
+	else
+	{
+		pointer = llvm_get_zero(c, type_get_ptr(array_type));
+	}
 	LLVMValueRef len = llvm_const_int(c, type_usize, size);
 	llvm_set_aggregate_two(c, value, to_type, pointer, len);
 }

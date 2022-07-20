@@ -527,6 +527,11 @@ static inline Ast *parse_decl_or_expr_stmt(ParseContext *c)
 	{
 		ast->ast_kind = AST_EXPR_STMT;
 		ast->expr_stmt = expr;
+		if (tok_is(c, TOKEN_IDENT) && expr->expr_kind == EXPR_IDENTIFIER)
+		{
+			SEMA_ERROR(expr, "Expected a type here.");
+			return poisoned_ast;
+		}
 	}
 	CONSUME_OR_RET(TOKEN_EOS, poisoned_ast);
 	return ast;

@@ -4579,7 +4579,8 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ext
 	{
 		if (external_type->type_kind == TYPE_INFERRED_ARRAY)
 		{
-			REMINDER("Handle zero size inferred array.");
+			SEMA_ERROR(expr, "Zero length arrays are not permitted.");
+			return false;
 		}
 		external_type = sema_type_lower_by_size(external_type, 0);
 		expr->type = external_type;
@@ -4632,6 +4633,13 @@ static inline bool sema_expr_analyse_initializer_list(SemaContext *context, Type
 			return sema_expr_analyse_initializer(context, to, assigned, expr);
 		case TYPE_SUBARRAY:
 		{
+			if (expr->expr_kind == EXPR_INITIALIZER_LIST && !vec_size(expr->initializer_list))
+			{
+				expr->expr_kind = EXPR_CONST;
+				expr->const_expr.const_kind = CONST_POINTER;
+				expr->type = assigned;
+				return true;
+			}
 			// Resolve this as an inferred array.
 			Type *type = type_get_inferred_array(assigned->array.base);
 			if (!sema_expr_analyse_initializer(context, type, type, expr)) return false;

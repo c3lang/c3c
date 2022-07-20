@@ -31,7 +31,6 @@ fn int main()
     libc::printf("Fofeo second element %d\n", fofeo[1]);
     Baz ffe = { .x = 1 };
     int[1] azz = {};
-    int[*] a = {};
 
     //var $foo = { 1, 2, 3 };
     bool xy = ! int[] { 1, 2, 3 };
@@ -76,15 +75,12 @@ entry:
   %literal2 = alloca [3 x i32], align 4
   %ffe = alloca %Baz, align 8
   %azz = alloca [1 x i32], align 4
-  %a = alloca [0 x i32], align 4
   %xy = alloca i8, align 1
   %literal6 = alloca [3 x i32], align 4
   %b = alloca %Bar, align 4
   %z = alloca %Baz, align 8
   %sub = alloca %"int[]", align 8
-  %literal8 = alloca [0 x i32], align 4
   %foo = alloca %"Bar[]", align 8
-  %literal9 = alloca [0 x %Bar], align 4
   %baz = alloca [3 x %Baz], align 16
   %0 = load ptr, ptr @subarrays_arrbar, align 8
   %ptroffset = getelementptr inbounds %Bar, ptr %0, i64 1
@@ -157,14 +153,8 @@ if.exit:                                          ; preds = %if.then, %entry
   %38 = getelementptr inbounds %Bar, ptr %b, i32 0, i32 1
   store i32 0, ptr %38, align 4
   call void @llvm.memset.p0.i64(ptr align 8 %z, i8 0, i64 8, i1 false)
-  store [0 x i32] zeroinitializer, ptr %literal8, align 4
-  %39 = insertvalue %"int[]" undef, ptr %literal8, 0
-  %40 = insertvalue %"int[]" %39, i64 0, 1
-  store %"int[]" %40, ptr %sub, align 8
-  store [0 x %Bar] zeroinitializer, ptr %literal9, align 4
-  %41 = insertvalue %"Bar[]" undef, ptr %literal9, 0
-  %42 = insertvalue %"Bar[]" %41, i64 0, 1
-  store %"Bar[]" %42, ptr %foo, align 8
+  store %"int[]" zeroinitializer, ptr %sub, align 8
+  store %"Bar[]" zeroinitializer, ptr %foo, align 8
   call void @llvm.memset.p0.i64(ptr align 16 %baz, i8 0, i64 24, i1 false)
   ret i32 1
 }

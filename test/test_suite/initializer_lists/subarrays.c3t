@@ -31,7 +31,6 @@ fn int main()
     libc::printf("Fofeo second element %d\n", fofeo[1]);
     Baz ffe = { .x = 1 };
     int[1] azz = {};
-    int[*] a = {};
 
     //var $foo = { 1, 2, 3 };
     bool xy = ! int[] { 1, 2, 3 };
@@ -66,6 +65,7 @@ fn int main()
 @.str.8 = private unnamed_addr constant [25 x i8] c"Fofeo second element %d\0A\00", align 1
 @.__const = private unnamed_addr constant { i32, [4 x i8] } { i32 1, [4 x i8] undef }, align 8
 @.str.9 = private unnamed_addr constant [3 x i8] c"Ok\00", align 1
+
 ; Function Attrs: nounwind
 define i32 @main() #0 {
 entry:
@@ -76,15 +76,12 @@ entry:
   %literal2 = alloca [3 x i32], align 4
   %ffe = alloca %Baz, align 8
   %azz = alloca [1 x i32], align 4
-  %a = alloca [0 x i32], align 4
   %xy = alloca i8, align 1
   %literal6 = alloca [3 x i32], align 4
   %b = alloca %Bar, align 4
   %z = alloca %Baz, align 8
   %sub = alloca %"int[]", align 8
-  %literal8 = alloca [0 x i32], align 4
   %foo = alloca %"Bar[]", align 8
-  %literal9 = alloca [0 x %Bar], align 4
   %baz = alloca [3 x %Baz], align 16
   %0 = load %Bar*, %Bar** getelementptr inbounds (%"Bar[]", %"Bar[]"* @subarrays_arrbar, i32 0, i32 0), align 8
   %ptroffset = getelementptr inbounds %Bar, %Bar* %0, i64 1
@@ -152,9 +149,11 @@ entry:
   %40 = trunc i8 %39 to i1
   %not7 = xor i1 %40, true
   br i1 %not7, label %if.then, label %if.exit
+
 if.then:                                          ; preds = %entry
   %41 = call i32 @std_io_println(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @.str.9, i32 0, i32 0)) #3
   br label %if.exit
+
 if.exit:                                          ; preds = %if.then, %entry
   %42 = getelementptr inbounds %Bar, %Bar* %b, i32 0, i32 0
   store i32 0, i32* %42, align 4
@@ -162,17 +161,9 @@ if.exit:                                          ; preds = %if.then, %entry
   store i32 0, i32* %43, align 4
   %44 = bitcast %Baz* %z to i8*
   call void @llvm.memset.p0i8.i64(i8* align 8 %44, i8 0, i64 8, i1 false)
-  store [0 x i32] zeroinitializer, [0 x i32]* %literal8, align 4
-  %45 = bitcast [0 x i32]* %literal8 to i32*
-  %46 = insertvalue %"int[]" undef, i32* %45, 0
-  %47 = insertvalue %"int[]" %46, i64 0, 1
-  store %"int[]" %47, %"int[]"* %sub, align 8
-  store [0 x %Bar] zeroinitializer, [0 x %Bar]* %literal9, align 4
-  %48 = bitcast [0 x %Bar]* %literal9 to %Bar*
-  %49 = insertvalue %"Bar[]" undef, %Bar* %48, 0
-  %50 = insertvalue %"Bar[]" %49, i64 0, 1
-  store %"Bar[]" %50, %"Bar[]"* %foo, align 8
-  %51 = bitcast [3 x %Baz]* %baz to i8*
-  call void @llvm.memset.p0i8.i64(i8* align 16 %51, i8 0, i64 24, i1 false)
+  store %"int[]" zeroinitializer, %"int[]"* %sub, align 8
+  store %"Bar[]" zeroinitializer, %"Bar[]"* %foo, align 8
+  %45 = bitcast [3 x %Baz]* %baz to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 16 %45, i8 0, i64 24, i1 false)
   ret i32 1
 }
