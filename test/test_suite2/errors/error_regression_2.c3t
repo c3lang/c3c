@@ -401,7 +401,7 @@ if.then27:                                        ; preds = %if.exit21
   %38 = getelementptr inbounds %Doc, ptr %literal29, i32 0, i32 0
   store ptr null, ptr %literal32, align 8
   %39 = getelementptr inbounds %Head, ptr %literal32, i32 0, i32 0
-  store %"char[]" { ptr @.str.4, i64 0 }, ptr %value34, align 8
+  store %"char[]" zeroinitializer, ptr %value34, align 8
   %40 = call ptr @std_core_mem_alloc(i64 16, i64 0)
   store ptr %40, ptr %temp35, align 8
   %41 = load ptr, ptr %temp35, align 8
@@ -835,7 +835,7 @@ cond.rhs:                                         ; preds = %loop.body
   br label %cond.phi
 
 cond.phi:                                         ; preds = %cond.rhs, %cond.lhs
-  %val = phi %"char[]" [ %29, %cond.lhs ], [ { ptr @.str.21, i64 0 }, %cond.rhs ]
+  %val = phi %"char[]" [ %29, %cond.lhs ], [ zeroinitializer, %cond.rhs ]
   store %"char[]" %val, ptr %title_sure, align 8
   %30 = getelementptr inbounds %"char[]", ptr %title_sure, i32 0, i32 1
   %31 = load i64, ptr %30, align 8
