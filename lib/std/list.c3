@@ -113,6 +113,7 @@ fn void List.free(List *list)
     mem::free(list.entries);
     list.capacity = 0;
     list.size = 0;
+    list.entries = (Type*)0;
 }
 
 fn void List.swap(List *list, usize i, usize j)
