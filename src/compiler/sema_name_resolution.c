@@ -449,11 +449,11 @@ Decl *sema_find_extension_method_in_module(Module *module, Type *type, const cha
 		switch (extension->decl_kind)
 		{
 			case DECL_FUNC:
-				if (type_infoptr(extension->func_decl.type_parent)->type == type) return extension;
+				if (type_infoptr(extension->func_decl.type_parent)->type->canonical == type) return extension;
 				break;
 			case DECL_MACRO:
 			case DECL_GENERIC:
-				if (type_infoptr(extension->macro_decl.type_parent)->type == type) return extension;
+				if (type_infoptr(extension->macro_decl.type_parent)->type->canonical == type) return extension;
 				break;
 			default:
 				UNREACHABLE
