@@ -419,7 +419,7 @@ if.then27:                                        ; preds = %if.exit21
   %53 = bitcast %Head* %literal32 to %"char[]"**
   store %"char[]"* null, %"char[]"** %53, align 8
   %54 = getelementptr inbounds %Head, %Head* %literal32, i32 0, i32 0
-  store %"char[]" { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @.str.4, i32 0, i32 0), i64 0 }, %"char[]"* %value34, align 8
+  store %"char[]" zeroinitializer, %"char[]"* %value34, align 8
   %55 = call i8* @std_core_mem_alloc(i64 16, i64 0)
   %ptrptr36 = bitcast i8* %55 to %"char[]"*
   store %"char[]"* %ptrptr36, %"char[]"** %temp35, align 8
@@ -890,7 +890,7 @@ cond.rhs:                                         ; preds = %loop.body
   br label %cond.phi
 
 cond.phi:                                         ; preds = %cond.rhs, %cond.lhs
-  %val = phi %"char[]" [ %38, %cond.lhs ], [ { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @.str.21, i32 0, i32 0), i64 0 }, %cond.rhs ]
+  %val = phi %"char[]" [ %38, %cond.lhs ], [ zeroinitializer, %cond.rhs ]
   store %"char[]" %val, %"char[]"* %title_sure, align 8
   %39 = getelementptr inbounds %"char[]", %"char[]"* %title_sure, i32 0, i32 1
   %40 = load i64, i64* %39, align 8

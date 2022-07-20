@@ -20,7 +20,6 @@ fn int test()
 {
     Mega m = {};
     int[1] azz = {};
-    int[*] a = {};
     Bar b = {};
     Baz z = {};
     int[] sub = {};

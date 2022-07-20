@@ -31,7 +31,6 @@ fn int main()
     libc::printf("Fofeo second element %d\n", fofeo[1]);
     Baz ffe = { .x = 1 };
     int[1] azz = {};
-    int[*] a = {};
 
     //var $foo = { 1, 2, 3 };
     bool xy = ! int[] { 1, 2, 3 };
