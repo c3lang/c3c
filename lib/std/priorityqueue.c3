@@ -25,81 +25,101 @@ import std::array::list;
 
 
 // Helper macros to allow arbitrary non-primitive types to be comparable
-macro bool less(Type x, Type y)
+private macro bool less(Type x, Type y)
 {
-  $if ($defined(Type.less)):
-    return x.less(y);
-  $else:
-    return x < y;
-  $endif;
+	$if ($defined(Type.less)):
+		return x.less(y);
+	$else:
+		return x < y;
+	$endif;
 }
 
-macro bool greater(Type x, Type y)
+private macro bool greater(Type x, Type y)
 {
-  $if ($defined(Type.greater)):
-    return x.greater(y);
-  $else:
-    return x > y;
-  $endif;
+	$if ($defined(Type.greater)):
+		return x.greater(y);
+	$else:
+		return x > y;
+	$endif;
 }
 
 define Heap = List<Type>;
 
-struct PriorityQueue {
-    Heap heap;
-    bool max;  // true if max-heap, false if min-heap
+struct PriorityQueue
+{
+	Heap heap;
+	bool max;  // true if max-heap, false if min-heap
 }
 
-fn void PriorityQueue.push(PriorityQueue *pq, Type element) {
-    pq.heap.push(element);
-    usize i = pq.heap.len() - 1;
-    while (i > 0) {
-        usize parent = (i - 1) / 2;
-        if ((pq.max && greater(pq.heap.get(i), pq.heap.get(parent))) || (!pq.max && less(pq.heap.get(i), pq.heap.get(parent)))) {
-            pq.heap.swap(i, parent);
-            i = parent;
-        } else {
-            break;
-        }
-    }
-}
-
-/**
- * @require pq.heap.len() > 0
- */
-fn Type PriorityQueue.pop(PriorityQueue *pq) {
-    usize i = 0;
-    usize newCount = pq.heap.len() - 1;
-    pq.heap.swap(0, newCount);
-    while ((2 * i + 1) < newCount){
-        usize j = 2 * i + 1;
-        if (((j + 1) < newCount) && 
-            ((pq.max && greater(pq.heap.get(j + 1), pq.heap[j])) || 
-                (!pq.max && less(pq.heap.get(j + 1), pq.heap.get(j))))) {
-            j++;
-        }
-        if ((pq.max && less(pq.heap.get(i), pq.heap.get(j))) || (!pq.max && greater(pq.heap.get(i), pq.heap.get(j)))) {
-            pq.heap.swap(i, j);
-            i = j;
-        } else {
-            break;
-        }
-    }
-
-    return pq.heap.pop();
+fn void PriorityQueue.push(PriorityQueue* pq, Type element)
+{
+	pq.heap.push(element);
+	usize i = pq.heap.len() - 1;
+	while (i > 0)
+	{
+		usize parent = (i - 1) / 2;
+		if ((pq.max && greater(pq.heap.get(i), pq.heap.get(parent))) || (!pq.max && less(pq.heap.get(i), pq.heap.get(parent))))
+		{
+			pq.heap.swap(i, parent);
+			i = parent;
+			continue;
+		}
+		break;
+	}
 }
 
 /**
- * @require pq.heap.len() > 0
+* @require pq != null
+*/
+fn Type! PriorityQueue.pop(PriorityQueue* pq)
+{
+	usize i = 0;
+	usize len = pq.heap.len() @inline;
+	if (!len) return IteratorResult.NO_MORE_ELEMENT!;
+	usize newCount = len - 1;
+	pq.heap.swap(0, newCount);
+	while ((2 * i + 1) < newCount)
+	{
+		usize j = 2 * i + 1;
+		if (((j + 1) < newCount) &&
+			((pq.max && greater(pq.heap.get(j + 1), pq.heap[j]))
+				|| (!pq.max && less(pq.heap.get(j + 1), pq.heap.get(j)))))
+		{
+			j++;
+		}
+		if ((pq.max && less(pq.heap.get(i), pq.heap.get(j))) || (!pq.max && greater(pq.heap.get(i), pq.heap.get(j))))
+		{
+			pq.heap.swap(i, j);
+			i = j;
+			continue;
+		}
+		break;
+	}
+
+	return pq.heap.pop();
+}
+
+/**
+ * @require pq != null
  */
-fn Type PriorityQueue.peek(PriorityQueue *pq) {
-    return pq.heap.get(0);
+fn Type! PriorityQueue.peek(PriorityQueue* pq)
+{
+	if (!pq.len()) return IteratorResult.NO_MORE_ELEMENT!;
+	return pq.heap.get(0);
 }
 
-fn void PriorityQueue.free(PriorityQueue *pq) {
-    pq.heap.free();
+/**
+ * @require pq != null
+ */
+fn void PriorityQueue.free(PriorityQueue* pq)
+{
+	pq.heap.free();
 }
 
-fn usize PriorityQueue.len(PriorityQueue *pq) @operator(len) {
-    return pq.heap.len();
+/**
+ * @require pq != null
+ */
+fn usize PriorityQueue.len(PriorityQueue* pq) @operator(len)
+{
+	return pq.heap.len();
 }

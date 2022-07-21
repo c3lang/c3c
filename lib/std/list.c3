@@ -10,7 +10,7 @@ struct List
     Type *entries;
 }
 
-private fn void List.ensureCapacity(List *list) @inline
+private fn void List.ensure_capacity(List *list) @inline
 {
     if (list.capacity == list.size)
     {
@@ -26,7 +26,7 @@ fn void List.push(List *list, Type element) @inline
 
 fn void List.append(List *list, Type element)
 {
-    list.ensureCapacity();
+    list.ensure_capacity();
     list.entries[list.size++] = element;
 }
 
@@ -41,14 +41,14 @@ fn Type List.pop(List *list)
 /**
  * @require list.size > 0
  */
-fn Type List.popFirst(List *list)
+fn Type List.pop_first(List *list)
 {
     Type value = list.entries[0];
-    list.removeAt(0);
+    list.remove_at(0);
     return value;
 }
 
-fn void List.removeAt(List *list, usize index)
+fn void List.remove_at(List *list, usize index)
 {
     for (usize i = index + 1; i < list.size; i++)
     {
@@ -57,14 +57,14 @@ fn void List.removeAt(List *list, usize index)
     list.size--;
 }
 
-fn void List.pushFront(List *list, Type type) @inline
+fn void List.push_front(List *list, Type type) @inline
 {
-    list.insertAt(0, type);
+    list.insert_at(0, type);
 }
 
-fn void List.insertAt(List *list, usize index, Type type)
+fn void List.insert_at(List *list, usize index, Type type)
 {
-    list.ensureCapacity();
+    list.ensure_capacity();
     for (usize i = list.size; i > index; i--)
     {
         list.entries[i] = list.entries[i - 1];
@@ -73,14 +73,14 @@ fn void List.insertAt(List *list, usize index, Type type)
     list.entries[index] = type;
 }
 
-fn void List.removeLast(List *list)
+fn void List.remove_last(List *list)
 {
     list.size--;
 }
 
-fn void List.removeFirst(List *list)
+fn void List.remove_first(List *list)
 {
-    list.removeAt(0);
+    list.remove_at(0);
 }
 
 fn Type* List.first(List *list)
@@ -93,7 +93,7 @@ fn Type* List.last(List *list)
     return list.size ? &list.entries[list.size - 1] : null;
 }
 
-fn bool List.isEmpty(List *list)
+fn bool List.is_empty(List *list)
 {
     return !list.size;
 }
@@ -113,6 +113,7 @@ fn void List.free(List *list)
     mem::free(list.entries);
     list.capacity = 0;
     list.size = 0;
+    list.entries = null;
 }
 
 fn void List.swap(List *list, usize i, usize j)
