@@ -19,7 +19,7 @@ fn int main(char[][] argv)
         stk.push(i);
     }
 
-    for (;!stk.isEmpty();) {
+    for (;!stk.is_empty();) {
         int value = stk.pop();
         printf("%i\n", value);
     }

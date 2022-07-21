@@ -135,7 +135,9 @@ void expr_insert_addr(Expr *original)
 	}
 	Expr *inner = expr_copy(original);
 	original->expr_kind = EXPR_UNARY;
-	original->type = type_get_ptr(inner->type);
+	Type *inner_type = inner->type;
+	bool failable = type_is_failable(inner->type);
+	original->type = type_get_opt_fail(type_get_ptr(type_no_fail(inner->type)), failable);
 	original->unary_expr.operator = UNARYOP_ADDR;
 	original->unary_expr.expr = inner;
 }
