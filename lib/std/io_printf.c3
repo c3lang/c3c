@@ -68,9 +68,9 @@ private fn void! out_str(PrintParam* param, variant arg)
 		case FUNC:
         	return out_substr(param, "<func>");
 		case FAILABLE:
-        	return out_substr(param, "<failable>");
+			unreachable();
 		case DISTINCT:
-        	return out_substr(param, "<distinct>");
+        	return out_str(param, variant { arg.ptr, arg.type.inner });
 		case POINTER:
 			typeid inner = arg.type.inner;
 			if (inner.kind == TypeKind.ARRAY && inner.inner == char.typeid)

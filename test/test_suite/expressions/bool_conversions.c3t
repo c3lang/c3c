@@ -1,0 +1,33 @@
+// #target: macos-x64
+
+private fn bool f0_0(void* a0) {  return (bool)a0; }
+
+fn int f0() { return (int)f0_0((void*)0x2); }
+
+define Test = fn void();
+
+fn bool f1() { return (bool){| Test x = void; return x = (Test)0; |}; }
+
+/* #expect: bool_conversions.ll
+
+define internal zeroext i8 @bool_conversions_f0_0(i8* %0) #0 {
+entry:
+  %ptrbool = icmp ne i8* %0, null
+  %1 = zext i1 %ptrbool to i8
+  ret i8 %1
+}
+
+define i32 @bool_conversions_f0() #0 {
+entry:
+  %0 = call i8 @bool_conversions_f0_0(i8* inttoptr (i64 2 to i8*))
+  %1 = trunc i8 %0 to i1
+  %boolsi = zext i1 %1 to i32
+  ret i32 %boolsi
+}
+
+define zeroext i8 @bool_conversions_f1() #0 {
+entry:
+  %x = alloca void ()*, align 8
+  store void ()* null, void ()** %x, align 8
+  ret i8 0
+}
