@@ -171,6 +171,15 @@ You should now have a `c3c` executable.
 
 You can try it out by running some sample code: `c3c.exe compile ../resources/examples/hash.c3`
 
+#### Installing on Arch Linux
+There is an AUR package for the C3C compiler : [c3c-git](https://aur.archlinux.org/packages/c3c-git)  
+You can use your AUR package manager or clone it manually:  
+```sh
+git clone https://aur.archlinux.org/c3c-git.git
+cd c3c-git
+makepkg -si
+```
+
 #### Installing on Ubuntu 20.10
 
 1. Make sure you have a C compiler that handles C11 and a C++ compiler, such as GCC or Clang. Git also needs to be installed.
