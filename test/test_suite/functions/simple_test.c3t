@@ -1,0 +1,30 @@
+// #target: macos-x64
+
+fn int foo()
+{
+  char *pp;
+  uint w_cnt;
+
+  w_cnt += *pp;
+
+  return w_cnt;
+}
+
+/* #expect: simple_test.ll
+
+
+define i32 @simple_test_foo() #0 {
+entry:
+  %pp = alloca i8*, align 8
+  %w_cnt = alloca i32, align 4
+  store i8* null, i8** %pp, align 8
+  store i32 0, i32* %w_cnt, align 4
+  %0 = load i32, i32* %w_cnt, align 4
+  %1 = load i8*, i8** %pp, align 8
+  %2 = load i8, i8* %1, align 8
+  %uiuiext = zext i8 %2 to i32
+  %add = add i32 %0, %uiuiext
+  store i32 %add, i32* %w_cnt, align 4
+  %3 = load i32, i32* %w_cnt, align 4
+  ret i32 %3
+}
