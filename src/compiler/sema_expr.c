@@ -3427,7 +3427,9 @@ static inline void sema_rewrite_typeid_kind(Expr *expr, Expr *parent, Expr *curr
 	if (current_parent->expr_kind == EXPR_CONST)
 	{
 		unsigned val = type_get_introspection_kind(current_parent->const_expr.typeid->type_kind);
-		expr_rewrite_to_int_const(expr, type_for_kind, val, false);
+		assert(type_for_kind->type_kind == TYPE_ENUM);
+		expr_rewrite_to_int_const(expr, type_flatten(type_for_kind), val, false);
+		cast(expr, type_for_kind);
 		return;
 	}
 	expr->expr_kind = EXPR_TYPEID_INFO;
@@ -3450,6 +3452,9 @@ static inline bool sema_rewrite_typeid_inner(Expr *expr, Expr *parent, Expr *cur
 			case TYPE_FAILABLE:
 				inner = type->failable;
 				break;
+			case TYPE_DISTINCT:
+				inner = type->decl->distinct_decl.base_type->canonical;
+				break;
 			case TYPE_ARRAY:
 			case TYPE_FLEXIBLE_ARRAY:
 			case TYPE_SUBARRAY:
@@ -3463,7 +3468,7 @@ static inline bool sema_rewrite_typeid_inner(Expr *expr, Expr *parent, Expr *cur
 		}
 		if (!inner)
 		{
-			SEMA_ERROR(expr, "Cannot access 'inner' of non pointer/array type %s.", type_quoted_error_string(current_parent->const_expr.typeid));
+			SEMA_ERROR(expr, "Cannot %s does not have a property 'inner'.", type_quoted_error_string(current_parent->const_expr.typeid));
 			return false;
 		}
 		expr_replace(expr, current_parent);

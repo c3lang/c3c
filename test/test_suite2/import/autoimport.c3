@@ -1,11 +1,11 @@
 module foo;
 
-fn int test() @autoimport
+fn int test() @builtin
 {
     return 1;
 }
 
-macro int testm() @autoimport
+macro int testm() @builtin
 {
     return 1;
 }
