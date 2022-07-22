@@ -67,12 +67,12 @@ const QUAD_MIN_EXP = -16481;
 const QUAD_EPSILON = 1.92592994438723585305597794258492732e-34;
 */
 
-macro max(x, y) @autoimport
+macro max(x, y) @builtin
 {
     return x > y ? x : y;
 }
 
-macro min(x, y) @autoimport
+macro min(x, y) @builtin
 {
     return x < y ? x : y;
 }

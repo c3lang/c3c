@@ -1287,6 +1287,7 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 			if (type_is_float(to)) return int_to_float(expr, CAST_UIFP, to, to_type);
 			if (to == type_bool) return integer_to_bool(expr, to_type);
 			if (to->type_kind == TYPE_POINTER) return int_to_pointer(expr, to_type);
+			if (to->type_kind == TYPE_ENUM) return lit_integer_to_enum(expr, to, to_type);
 			break;
 		case ALL_FLOATS:
 			if (type_is_integer(to)) return float_to_integer(expr, to, to_type);

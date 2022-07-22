@@ -229,7 +229,7 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_OPERATOR] = KW_DEF("@operator");
 	attribute_list[ATTRIBUTE_PURE] = kw_at_pure;
 	attribute_list[ATTRIBUTE_REFLECT] = KW_DEF("@reflect");
-	attribute_list[ATTRIBUTE_AUTOIMPORT] = KW_DEF("@autoimport");
+	attribute_list[ATTRIBUTE_BUILTIN] = KW_DEF("@builtin");
 	attribute_list[ATTRIBUTE_MAYDISCARD] = KW_DEF("@maydiscard");
 	attribute_list[ATTRIBUTE_NODISCARD] = KW_DEF("@nodiscard");
 

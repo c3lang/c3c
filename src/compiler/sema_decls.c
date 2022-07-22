@@ -1183,7 +1183,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_REGCALL] = ATTR_FUNC,
 			[ATTRIBUTE_FASTCALL] = ATTR_FUNC,
 			[ATTRIBUTE_OVERLAP] = ATTR_BITSTRUCT,
-			[ATTRIBUTE_AUTOIMPORT] = ATTR_MACRO | ATTR_FUNC,
+			[ATTRIBUTE_BUILTIN] = ATTR_MACRO | ATTR_FUNC,
 			[ATTRIBUTE_OPERATOR] = ATTR_MACRO | ATTR_FUNC,
 			[ATTRIBUTE_REFLECT] = ATTR_ENUM,
 			[ATTRIBUTE_PURE] = ATTR_CALL,
@@ -1385,7 +1385,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			assert(domain == ATTR_FUNC);
 			decl->func_decl.attr_naked = true;
 			break;
-		case ATTRIBUTE_AUTOIMPORT:
+		case ATTRIBUTE_BUILTIN:
 			decl->is_autoimport = true;
 			break;
 		case ATTRIBUTE_OVERLAP:
