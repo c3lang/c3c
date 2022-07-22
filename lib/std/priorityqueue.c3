@@ -23,26 +23,6 @@
 module std::priorityqueue<Type>;
 import std::array::list;
 
-
-// Helper macros to allow arbitrary non-primitive types to be comparable
-private macro bool less(Type x, Type y)
-{
-	$if ($defined(Type.less)):
-		return x.less(y);
-	$else:
-		return x < y;
-	$endif;
-}
-
-private macro bool greater(Type x, Type y)
-{
-	$if ($defined(Type.greater)):
-		return x.greater(y);
-	$else:
-		return x > y;
-	$endif;
-}
-
 define Heap = List<Type>;
 
 struct PriorityQueue

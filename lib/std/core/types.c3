@@ -77,6 +77,49 @@ macro variant_to_int(variant v, $Type)
 	}
 }
 
+macro bool is_numerical($Type)
+{
+	var $kind = $Type.typeid.kind;
+	$if ($kind == TypeKind.DISTINCT):
+		return is_numerical($Type.typeid.inner);
+	$else:
+		return $kind == TypeKind.SIGNED_INT || $kind == TypeKind.UNSIGNED_INT || $kind == TypeKind.FLOAT
+			|| $kind == TypeKind.VECTOR;
+	$endif;
+}
+
+macro bool is_comparable($Type)
+{
+	var $kind = $Type.typeid.kind;
+	$if ($kind == TypeKind.DISTINCT):
+		return is_comparable($Type.typeid.inner);
+	$else:
+		return $kind == TypeKind.SIGNED_INT || $kind == TypeKind.UNSIGNED_INT || $kind == TypeKind.FLOAT
+			|| $kind == TypeKind.VECTOR || $kind == TypeKind.BOOL || $kind == TypeKind.POINTER
+			|| $kind == TypeKind.ENUM;
+	$endif;
+}
+
+macro bool is_equatable_value(value)
+{
+	$if ($defined(value.less) || $defined(value.compare_to) || $defined(value.equals)):
+		return true;
+	$else:
+		return is_comparable($typeof(value));
+	$endif;
+}
+
+macro bool is_comparable_value(value)
+{
+	$if ($defined(value.less) || $defined(value.compare_to)):
+		return true;
+	$else:
+		return is_comparable($typeof(value));
+	$endif;
+}
+
+
+
 enum TypeKind : char
 {
     VOID,

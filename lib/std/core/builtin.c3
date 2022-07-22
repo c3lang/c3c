@@ -1,4 +1,4 @@
-// Copyright (c) 2021 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2021-2022 Christoffer Lerno and contributors. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::builtin;
@@ -20,14 +20,14 @@ fault VarCastResult
  *
  * @param variable `the variable to store and restore`
  **/
-macro void @scope(&variable; @body) @autoimport
+macro void @scope(&variable; @body) @builtin
 {
 	$typeof(variable) temp = variable;
 	defer variable = temp;
 	@body();
 }
 
-macro void @swap(&a, &b) @autoimport
+macro void @swap(&a, &b) @builtin
 {
 	$typeof(a) temp = a;
     a = b;
@@ -41,7 +41,7 @@ macro void @swap(&a, &b) @autoimport
  * @param $Type `the type to convert to`
  * @return `The variant.ptr converted to its type.`
  **/
-macro varcast(variant v, $Type) @autoimport
+macro varcast(variant v, $Type) @builtin
 {
 	if (v.type != $Type.typeid) return VarCastResult.TYPE_MISMATCH!;
 	return ($Type*)v.ptr;
@@ -56,7 +56,7 @@ struct CallstackElement
 	char* file;
 	uint line;
 }
-fn void panic(char* message, char *file, char *function, uint line) @autoimport
+fn void panic(char* message, char *file, char *function, uint line) @builtin
 {
 	CallstackElement* stack = $$stacktrace();
 	$if ($defined(libc::stderr) && $defined(libc::fprintf)):
@@ -82,11 +82,13 @@ fn void panic(char* message, char *file, char *function, uint line) @autoimport
 	$$trap();
 }
 
-macro unreachable($string = "Unreachable statement reached.") @autoimport @noreturn
+macro unreachable($string = "Unreachable statement reached.") @builtin @noreturn
 {
 	panic($string, $$FILE, $$FUNC, $$LINE);
 	$$unreachable();
 }
+
+
 
 /*
 enum TypeKind
