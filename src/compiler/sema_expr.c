@@ -2897,6 +2897,7 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr)
 	if (!sema_analyse_expr(context, subscripted)) return false;
 	bool failable = IS_FAILABLE(subscripted);
 	Type *type = type_flatten(subscripted->type);
+	Type *original_type = type_no_fail(subscripted->type);
 	Expr *start = exprptr(expr->slice_expr.start);
 	Expr *end = exprptrzero(expr->slice_expr.end);
 
@@ -2990,8 +2991,14 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr)
 		}
 	}
 
-
-	expr->type = type_get_opt_fail(type_get_subarray(inner_type), failable);
+	// Retain the original type when doing distinct slices.
+	Type *result_type = type_get_subarray(inner_type);
+	Type *original_type_canonical = original_type->canonical;
+	if (original_type_canonical->type_kind == TYPE_DISTINCT && type_flatten_distinct(original_type_canonical) == result_type)
+	{
+		result_type = original_type;
+	}
+	expr->type = type_get_opt_fail(result_type, failable);
 	return true;
 }
 
