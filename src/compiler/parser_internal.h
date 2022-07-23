@@ -13,6 +13,7 @@
 #define TRY_EXPECT_OR_RET(_tok, _message, _type) do { if (!tok_is(c, _tok)) { SEMA_ERROR_HERE(_message); return _type; } } while(0)
 #define TRY_CONSUME_OR_RET(_tok, _message, _type) do { if (!consume(c, _tok, _message)) return _type; } while(0)
 #define TRY_CONSUME(_tok, _message) TRY_CONSUME_OR_RET(_tok, _message, poisoned_ast)
+#define TRY_CONSUME_AFTER(_tok, _message, _type) do { if (!try_consume(c, _tok)) { sema_error_at_after(c->prev_span, _message); return _type; } } while(0)
 #define CHECK_EXPR_OR_RET(_expr) do { if (!expr_ok(_expr)) return _expr; } while(0)
 
 Decl *parse_top_level_statement(ParseContext *c);

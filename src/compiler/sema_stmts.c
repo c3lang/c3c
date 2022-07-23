@@ -1531,8 +1531,7 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 			}
 			ExprConst *const_expr = &case_stmt->case_stmt.expr->const_expr;
 			ExprConst *to_const_expr = case_stmt->case_stmt.to_expr ? &case_stmt->case_stmt.to_expr->const_expr : const_expr;
-			if (expr_const_compare(&target->const_expr, const_expr, BINARYOP_GE) &&
-				expr_const_compare(&target->const_expr, to_const_expr, BINARYOP_LE))
+			if (expr_const_in_range(&target->const_expr, const_expr, to_const_expr))
 			{
 				statement->nextcase_stmt.case_switch_stmt = astid(case_stmt);
 				return true;
@@ -1753,7 +1752,7 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 		if (other->ast_kind != AST_CASE_STMT) continue;
 		ExprConst *other_const = &other->case_stmt.expr->const_expr;
 		ExprConst *other_to_const = other->case_stmt.to_expr ? &other->case_stmt.to_expr->const_expr : other_const;
-		if (expr_const_compare(const_expr, other_to_const, BINARYOP_LE) && expr_const_compare(to_const_expr, other_const, BINARYOP_GE))
+		if (expr_const_in_range(const_expr, other_const, other_to_const))
 		{
 			SEMA_ERROR(case_stmt, "The same case value appears more than once.");
 			SEMA_PREV(other, "Here is the previous use of that value.");
@@ -1937,14 +1936,14 @@ static bool sema_analyse_ct_switch_body(SemaContext *context, Ast *statement)
 					if (other_stmt->ast_kind == AST_DEFAULT_STMT) continue;
 					ExprConst *other_const = &other_stmt->case_stmt.expr->const_expr;
 					ExprConst *other_const_to = other_stmt->case_stmt.to_expr ? &other_stmt->case_stmt.to_expr->const_expr : other_const;
-					if (expr_const_compare(const_expr, other_const_to, BINARYOP_LE) && expr_const_compare(const_to_expr, other_const, BINARYOP_GE))
+					if (expr_const_in_range(const_expr, other_const, other_const_to))
 					{
 						SEMA_ERROR(stmt, "'%s' appears more than once.", expr_const_to_error_string(const_expr));
 						SEMA_PREV(cases[j]->case_stmt.expr, "The previous $case was here.");
 						return false;
 					}
 				}
-				if (expr_const_compare(switch_expr_const, const_expr, BINARYOP_GE) && expr_const_compare(switch_expr_const, const_to_expr, BINARYOP_LE))
+				if (expr_const_in_range(switch_expr_const, const_expr, const_to_expr))
 				{
 					matched_case = (int) i;
 				}

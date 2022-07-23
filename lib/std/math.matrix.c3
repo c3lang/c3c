@@ -1,4 +1,4 @@
-module std::math;
+module std::math::matrix;
 
 fault MatrixError {
     MATRIX_INVERSE_DOESNT_EXIST,
@@ -360,7 +360,7 @@ fn Matrix4x4 Matrix4x4.scale(Matrix4x4* m, float[<3>] v) {
 }
 
 
-fn Matrix4x4 Matrix4x4.ortho(float left, float right, float top, float bottom, float near, float far) {
+fn Matrix4x4 ortho(float left, float right, float top, float bottom, float near, float far) {
     float width = right - left;
     float height = top - bottom;
     float depth = far - near;
@@ -375,7 +375,7 @@ fn Matrix4x4 Matrix4x4.ortho(float left, float right, float top, float bottom, f
 }
 
 // fov in radians
-fn Matrix4x4 Matrix4x4.perspective(float fov, float aspect_ratio, float near, float far) {
+fn Matrix4x4 perspective(float fov, float aspect_ratio, float near, float far) {
     float top = ((float)math::sin(fov / 2) / (float)math::cos(fov / 2)) * near;
     float right = top * aspect_ratio;
     float depth = far - near;

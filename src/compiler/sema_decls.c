@@ -5,6 +5,7 @@
 #include "sema_internal.h"
 
 
+static inline bool sema_is_valid_method_param(SemaContext *context, Decl *param, Type *parent_type);
 static bool sema_analyse_struct_union(SemaContext *context, Decl *decl);
 static bool sema_analyse_attributes(SemaContext *context, Decl *decl, Attr** attrs, AttributeDomain domain);
 static bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl);
@@ -1116,6 +1117,14 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 		           type_to_error_string(parent_type->type));
 		return false;
 	}
+	Decl **params = decl->func_decl.function_signature.params;
+	if (!vec_size(params))
+	{
+		SEMA_ERROR(decl, "A method must start with a parameter of type %s or %s.",
+		           type_quoted_error_string(parent_type->type), type_quoted_error_string(type_get_ptr(parent_type->type)));
+		return false;
+	}
+	if (!sema_is_valid_method_param(context, params[0], type)) return false;
 	return unit_add_method_like(context->unit, type, decl);
 }
 
@@ -1755,6 +1764,24 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl)
 	return true;
 }
 
+static inline bool sema_is_valid_method_param(SemaContext *context, Decl *param, Type *parent_type)
+{
+	assert(parent_type->canonical == parent_type && "Expected already the canonical version.");
+	Type *param_type = param->type;
+
+	if (!param_type) goto ERROR;
+	param_type = param_type->canonical;
+	// 1. Same type ok!
+	if (param_type == parent_type) return true;
+	// 2. A pointer is ok!
+	if (param_type->type_kind == TYPE_POINTER && param_type->pointer == parent_type) return true;
+
+ERROR:
+	SEMA_ERROR(param, "The first parameter must be of type %s or %s.", type_quoted_error_string(parent_type),
+	           type_quoted_error_string(type_get_ptr(parent_type)));
+	return false;
+}
+
 static bool sema_analyse_macro_method(SemaContext *context, Decl *decl)
 {
 	TypeInfo *parent_type_info = type_infoptr(decl->macro_decl.type_parent);
@@ -1769,18 +1796,16 @@ static bool sema_analyse_macro_method(SemaContext *context, Decl *decl)
 	}
 	if (!vec_size(decl->macro_decl.parameters))
 	{
-		SEMA_ERROR(decl, "Expected at least one parameter - of type &%s.", type_to_error_string(parent_type));
+		SEMA_ERROR(decl, "Expected at least one parameter - of type %s.", type_to_error_string(parent_type));
 		return false;
 	}
 	Decl *first_param = decl->macro_decl.parameters[0];
-	if (!first_param->type || first_param->type->canonical != parent_type->canonical)
+
+	if (!sema_is_valid_method_param(context, first_param, parent_type->canonical)) return false;
+
+	if (first_param->var.kind != VARDECL_PARAM_REF && first_param->var.kind != VARDECL_PARAM)
 	{
-		SEMA_ERROR(first_param, "The first parameter must be &%s.", type_to_error_string(parent_type));
-		return false;
-	}
-	if (first_param->var.kind != VARDECL_PARAM_REF)
-	{
-		SEMA_ERROR(first_param, "The first parameter must be a ref (&) parameter.");
+		SEMA_ERROR(first_param, "The first parameter must be a regular or ref (&) type.");
 		return false;
 	}
 	return unit_add_method_like(context->unit, parent_type, decl);

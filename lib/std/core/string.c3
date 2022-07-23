@@ -41,14 +41,12 @@ fn String new(char[] c)
 	return (String)data;
 }
 
-fn ZString String.zstr(String* str)
+fn ZString String.zstr(String str)
 {
-	if (!str) return (ZString)"";
 	StringData* data = str.data();
 	if (!data) return (ZString)"";
 	if (data.capacity == data.len)
 	{
-		libc::printf("feofk\n");
 		str.reserve(1);
 		data.chars[data.len] = 0;
 	}
@@ -59,24 +57,24 @@ fn ZString String.zstr(String* str)
 	return (ZString)&data.chars[0];
 }
 
-fn usize String.len(String* this)
+fn usize String.len(String this)
 {
-	if (!*this) return 0;
+	if (!this) return 0;
 	return this.data().len;
 }
 
 /**
  * @require new_size <= this.len()
  */
-fn void String.chop(String* this, usize new_size)
+fn void String.chop(String this, usize new_size)
 {
-	if (!*this) return;
+	if (!this) return;
 	this.data().len = new_size;
 }
 
-fn char[] String.str(String* str)
+fn char[] String.str(String str)
 {
-	StringData* data = (StringData*)*str;
+	StringData* data = (StringData*)str;
 	return data.chars[0..data.len - 1];
 }
 
@@ -92,7 +90,7 @@ fn void String.append_utf32(String* str, Char32[] chars)
 /**
  * @require index < str.len()
  **/
-fn void String.set(String* str, usize index, char c)
+fn void String.set(String str, usize index, char c)
 {
 	str.data().chars[index] = c;
 }
@@ -147,7 +145,7 @@ fn void String.append_char32(String* str, Char32 c)
 
 fn String String.copy(String* str, Allocator allocator = { null, null })
 {
-	if (!*str)
+	if (!str)
 	{
 		if (allocator.function) return new_with_capacity(0, allocator);
 		return (String)null;
@@ -175,7 +173,7 @@ fn ZString String.copy_zstr(String* str, Allocator allocator = { null, null })
 	return (ZString)zstr;
 }
 
-fn bool String.equals(String* str, String other_string)
+fn bool String.equals(String str, String other_string)
 {
 	StringData *str1 = str.data();
 	StringData *str2 = other_string.data();
@@ -200,7 +198,7 @@ fn void String.destroy(String* str)
 	*str = (String)null;
 }
 
-fn bool String.less(String* str, String other_string)
+fn bool String.less(String str, String other_string)
 {
 	StringData* str1 = str.data();
 	StringData* str2 = other_string.data();
@@ -217,7 +215,7 @@ fn bool String.less(String* str, String other_string)
 	return true;
 }
 
-fn void String.append(String* this, char[] str)
+fn void String.append_chars(String* this, char[] str)
 {
 	usize other_len = str.len;
 	if (!other_len) return;
@@ -255,28 +253,49 @@ fn void String.append_char(String* str, char c)
 	data.chars[data.len++] = c;
 }
 
-macro void String.@append(String &str, value)
+macro bool is_pointer_char_array($Type)
 {
-	$switch ($typeof(value)):
+	var $Type2 = $Type;
+	$if ($Type.typeid.kind != TypeKind.POINTER):
+		return false;
+	$elif ($Type.typeid.inner.kind != TypeKind.ARRAY):
+		return false;
+	$elif ($Type.typeid.inner.inner != char.typeid):
+		return false;
+	$else:
+		return true;
+	$endif;
+}
+
+macro void String.append(String* str, value)
+{
+	var $Type = $typeof(value);
+	$switch ($Type):
 		$case char:
+		$case ichar:
 			str.append_char(value);
 		$case String:
 			str.append_string(value);
 		$case char[]:
-			str.append(value);
-		$case char32:
+			str.append_chars(value);
+		$case Char32:
 			str.append_char32(value);
 		$default:
-			$assert("Unsupported type for appending");
+			$if ($Type.typeid.kind == TypeKind.SIGNED_INT || $Type.typeid.kind == TypeKind.UNSIGNED_INT):
+				str.append_char32((Char32)value);
+			$elif (is_pointer_char_array($Type)):
+				str.append_chars(value);
+			$else:
+				$assert("Unsupported type for appending");
+			$endif;
 	$endswitch;
 }
 
 
-private fn StringData* String.data(String* str) @inline
+private fn StringData* String.data(String str) @inline
 {
-	return (StringData*)*str;
+	return (StringData*)str;
 }
-
 
 private fn void String.reserve(String* str, usize addition)
 {

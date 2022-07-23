@@ -242,16 +242,14 @@ static inline bool sema_analyse_top_level_switch(SemaContext *context, Decl *ct_
 				ExprConst *other_const = &other_case->ct_case_decl.expr->const_expr;
 				ExprConst *other_const_to = other_case->ct_case_decl.to_expr
 						? &other_case->ct_case_decl.to_expr->const_expr : other_const;
-				if (expr_const_compare(const_expr, other_const_to, BINARYOP_LE) &&
-				expr_const_compare(const_to_expr, other_const, BINARYOP_GE))
+				if (expr_const_in_range(const_expr, other_const, other_const_to))
 				{
 					SEMA_ERROR(kase, "'%s' appears more than once.", expr_const_to_error_string(const_expr));
 					SEMA_PREV(cases[j]->ct_case_decl.expr, "The previous $case was here.");
 					return false;
 				}
 			}
-			if (expr_const_compare(switch_expr_const, const_expr, BINARYOP_GE) &&
-			expr_const_compare(switch_expr_const, const_to_expr, BINARYOP_LE))
+			if (expr_const_in_range(switch_expr_const, const_expr, const_to_expr))
 			{
 				matched_case = (int)i;
 			}

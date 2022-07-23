@@ -585,7 +585,7 @@ static inline Ast* parse_ct_else_stmt(ParseContext *c)
 {
 	Ast *ast = new_ast(AST_CT_ELSE_STMT, c->span);
 	advance_and_verify(c, TOKEN_CT_ELSE);
-	TRY_CONSUME(TOKEN_COLON, "$else needs a ':', did you forget it?");
+	TRY_CONSUME_AFTER(TOKEN_COLON, "$else needs a ':', did you forget it?", poisoned_ast);
 	if (!parse_ct_compound_stmt(c, &ast->ct_else_stmt)) return poisoned_ast;
 	return ast;
 }
@@ -604,11 +604,11 @@ static inline Ast* parse_ct_if_stmt(ParseContext *c, bool is_elif)
 	ASSIGN_EXPR_OR_RET(ast->ct_if_stmt.expr, parse_const_paren_expr(c), poisoned_ast);
 	if (is_elif)
 	{
-		TRY_CONSUME(TOKEN_COLON, "$elif needs a ':' after the expression, did you forget it?");
+		TRY_CONSUME_AFTER(TOKEN_COLON, "$elif needs a ':' after the expression, did you forget it?", poisoned_ast);
 	}
 	else
 	{
-		TRY_CONSUME(TOKEN_COLON, "$if needs a ':' after the expression, did you forget it?");
+		TRY_CONSUME_AFTER(TOKEN_COLON, "$if needs a ':' after the expression, did you forget it?", poisoned_ast);
 	}
 	if (!parse_ct_compound_stmt(c, &ast->ct_if_stmt.then)) return poisoned_ast;
 

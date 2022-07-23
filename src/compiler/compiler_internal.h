@@ -1913,6 +1913,7 @@ void expr_const_set_float(ExprConst *expr, Real d, TypeKind kind);
 void expr_const_set_bool(ExprConst *expr, bool b);
 void expr_const_set_null(ExprConst *expr);
 
+bool expr_const_in_range(const ExprConst *left, const ExprConst *right, const ExprConst *right_to);
 bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp op);
 bool expr_const_will_overflow(const ExprConst *expr, TypeKind kind);
 
