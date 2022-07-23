@@ -102,7 +102,8 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 			is_eq = !strncmp(left->string.chars, right->string.chars, left->string.len);
 			break;
 		case CONST_TYPEID:
-			return left->typeid == right->typeid;
+			is_eq = left->typeid == right->typeid;
+			break;
 		case CONST_ERR:
 		case CONST_ENUM:
 		{
@@ -149,6 +150,15 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 	}
 	assert((op == BINARYOP_EQ) || (op == BINARYOP_NE));
 	return (op == BINARYOP_EQ) && is_eq;
+}
+
+bool expr_const_in_range(const ExprConst *left, const ExprConst *right, const ExprConst *right_to)
+{
+	if (right == right_to)
+	{
+		return expr_const_compare(left, right, BINARYOP_EQ);
+	}
+	return expr_const_compare(left, right, BINARYOP_GE) && expr_const_compare(left, right_to, BINARYOP_LE);
 }
 
 bool float_const_fits_type(const ExprConst *expr_const, TypeKind kind)

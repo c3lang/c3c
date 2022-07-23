@@ -2488,10 +2488,24 @@ static inline bool sema_expr_analyse_call(SemaContext *context, Expr *expr)
 			break;
 		case EXPR_ACCESS:
 			decl = func_expr->access_expr.ref;
-			if (decl->decl_kind == DECL_FUNC || decl->decl_kind == DECL_MACRO)
+			switch (decl->decl_kind)
 			{
-				if (decl->decl_kind != DECL_MACRO) expr_insert_addr(func_expr->access_expr.parent);
-				struct_var = func_expr->access_expr.parent;
+				case DECL_MACRO:
+					if (decl->macro_decl.parameters[0]->type->type_kind == TYPE_POINTER)
+					{
+						expr_insert_addr(func_expr->access_expr.parent);
+					}
+					struct_var = func_expr->access_expr.parent;
+					break;
+				case DECL_FUNC:
+					if (decl->func_decl.function_signature.params[0]->type->type_kind == TYPE_POINTER)
+					{
+						expr_insert_addr(func_expr->access_expr.parent);
+					}
+					struct_var = func_expr->access_expr.parent;
+					break;
+				default:
+					break;
 			}
 			break;
 		case EXPR_TYPEINFO:
