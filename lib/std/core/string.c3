@@ -200,7 +200,7 @@ fn void String.destroy(String* str)
 	*str = (String)null;
 }
 
-fn bool String.less_than(String* str, String other_string)
+fn bool String.less(String* str, String other_string)
 {
 	StringData* str1 = str.data();
 	StringData* str2 = other_string.data();
@@ -254,6 +254,23 @@ fn void String.append_char(String* str, char c)
 	StringData* data = (StringData*)*str;
 	data.chars[data.len++] = c;
 }
+
+macro void String.@append(String &str, value)
+{
+	$switch ($typeof(value)):
+		$case char:
+			str.append_char(value);
+		$case String:
+			str.append_string(value);
+		$case char[]:
+			str.append(value);
+		$case char32:
+			str.append_char32(value);
+		$default:
+			$assert("Unsupported type for appending");
+	$endswitch;
+}
+
 
 private fn StringData* String.data(String* str) @inline
 {

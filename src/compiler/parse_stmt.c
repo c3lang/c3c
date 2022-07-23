@@ -17,7 +17,7 @@ static inline Ast *parse_declaration_stmt(ParseContext *c)
 {
 	Ast *decl_stmt = new_ast(AST_DECLARE_STMT, c->span);
 	ASSIGN_DECL_OR_RET(decl_stmt->declare_stmt, parse_decl(c), poisoned_ast);
-	CONSUME_OR_RET(TOKEN_EOS, poisoned_ast);
+	CONSUME_EOS_OR_RET(poisoned_ast);
 	return decl_stmt;
 }
 
@@ -60,7 +60,7 @@ static inline Ast* parse_asm_stmt(ParseContext *c)
 	ast->asm_stmt.is_volatile = true;
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_ast);
 	RANGE_EXTEND_PREV(ast);
-	CONSUME_OR_RET(TOKEN_EOS, poisoned_ast);
+	CONSUME_EOS_OR_RET(poisoned_ast);
 	return ast;
 }
 
@@ -92,7 +92,7 @@ static inline Ast* parse_do_stmt(ParseContext *c)
 		CONSUME_OR_RET(TOKEN_LPAREN, poisoned_ast);
 		ASSIGN_EXPRID_OR_RET(do_ast->for_stmt.cond, parse_expr(c), poisoned_ast);
 		CONSUME_OR_RET(TOKEN_RPAREN, poisoned_ast);
-		CONSUME_OR_RET(TOKEN_EOS, poisoned_ast);
+		CONSUME_EOS_OR_RET(poisoned_ast);
 	}
 	return do_ast;
 }
@@ -232,7 +232,11 @@ static inline Ast *parse_case_stmt(ParseContext *c, TokenType case_type, TokenTy
 	{
 		ASSIGN_EXPR_OR_RET(ast->case_stmt.to_expr, parse_expr(c), poisoned_ast);
 	}
-	TRY_CONSUME(TOKEN_COLON, "Missing ':' after case");
+	if (!try_consume(c, TOKEN_COLON))
+	{
+		sema_error_at(c->prev_span, "Missing ':' after case");
+		return poisoned_ast;
+	}
 	RANGE_EXTEND_PREV(ast);
 	ASSIGN_AST_OR_RET(ast->case_stmt.body, parse_case_stmts(c, case_type, default_type), poisoned_ast);
 	return ast;
@@ -342,15 +346,14 @@ static inline Ast* parse_for_stmt(ParseContext *c)
 	{
 		ast->for_stmt.init = 0;
 	}
-
-	CONSUME_OR_RET(TOKEN_EOS, poisoned_ast);
+	CONSUME_EOS_OR_RET(poisoned_ast);
 
 	if (!tok_is(c, TOKEN_EOS))
 	{
 		ASSIGN_EXPRID_OR_RET(ast->for_stmt.cond, parse_cond(c), poisoned_ast);
 	}
 
-	CONSUME_OR_RET(TOKEN_EOS, poisoned_ast);
+	CONSUME_EOS_OR_RET(poisoned_ast);
 
 	if (!tok_is(c, TOKEN_RPAREN))
 	{
@@ -495,7 +498,7 @@ static inline Ast *parse_expr_stmt(ParseContext *c)
 	{
 		if (!tok_is(c, TOKEN_EOS))
 		{
-			sema_error_at_after(c->prev_span, "Expected ';'");
+			sema_error_at_after(c->prev_span, "Expected ';' after the expression.");
 			return poisoned_ast;
 		}
 		advance(c);
@@ -533,7 +536,7 @@ static inline Ast *parse_decl_or_expr_stmt(ParseContext *c)
 			return poisoned_ast;
 		}
 	}
-	CONSUME_OR_RET(TOKEN_EOS, poisoned_ast);
+	CONSUME_EOS_OR_RET(poisoned_ast);
 	return ast;
 }
 
@@ -702,11 +705,11 @@ static inline Ast* parse_ct_for_stmt(ParseContext *c)
 	{
 		ASSIGN_EXPRID_OR_RET(ast->for_stmt.init, parse_ct_expression_list(c, true), poisoned_ast);
 	}
-	CONSUME_OR_RET(TOKEN_EOS, poisoned_ast);
+	CONSUME_EOS_OR_RET(poisoned_ast);
 
 	// Cond is required.
 	ASSIGN_EXPRID_OR_RET(ast->for_stmt.cond, parse_expr(c), poisoned_ast);
-	CONSUME_OR_RET(TOKEN_EOS, poisoned_ast);
+	CONSUME_EOS_OR_RET(poisoned_ast);
 
 	if (!tok_is(c, TOKEN_RPAREN))
 	{

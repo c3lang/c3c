@@ -138,7 +138,7 @@ static inline Decl *parse_ct_if_top_level(ParseContext *c)
 		if (!parse_top_level_block(c, &ct_else->ct_else_decl, TOKEN_CT_ENDIF, TOKEN_CT_ENDIF, TOKEN_CT_ENDIF)) return poisoned_decl;
 	}
 	CONSUME_OR_RET(TOKEN_CT_ENDIF, poisoned_decl);
-	CONSUME_OR_RET(TOKEN_EOS, poisoned_decl);
+	CONSUME_EOS_OR_RET(poisoned_decl);
 	return ct;
 }
 
@@ -194,7 +194,7 @@ static inline Decl *parse_ct_switch_top_level(ParseContext *c)
 		ASSIGN_DECL_OR_RET(Decl * result, parse_ct_case(c), poisoned_decl);
 		vec_add(ct->ct_switch_decl.cases, result);
 	}
-	CONSUME_OR_RET(TOKEN_EOS, poisoned_decl);
+	CONSUME_EOS_OR_RET(poisoned_decl);
 	return ct;
 }
 
@@ -1325,7 +1325,7 @@ bool parse_struct_body(ParseContext *c, Decl *parent)
 				return false;
 			}
 		}
-		CONSUME_OR_RET(TOKEN_EOS, false);
+		CONSUME_EOS_OR_RET(false);
 	}
 	advance_and_verify(c, TOKEN_RBRACE);
 	return true;
@@ -1398,7 +1398,7 @@ static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl)
 		{
 			member_decl->var.end = NULL;
 		}
-		CONSUME_OR_RET(TOKEN_EOS, false);
+		CONSUME_EOS_OR_RET(false);
 		vec_add(decl->bitstruct.members, member_decl);
 	}
 
