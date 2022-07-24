@@ -8,7 +8,6 @@
 
 #define IF_TRY_CATCH_PREC (PREC_AND + 1)
 typedef Expr *(*ParseFn)(ParseContext *context, Expr *);
-static Expr *parse_expr_or_type_prec(ParseContext *c, TypeInfo **type_ref, Precedence prec);
 
 typedef struct
 {
@@ -83,10 +82,10 @@ static inline Expr *parse_catch_unwrap(ParseContext *c)
 	Expr *expr = expr_new(EXPR_CATCH_UNWRAP, c->span);
 	advance_and_verify(c, TOKEN_CATCH);
 	TypeInfo *type = NULL;
-	ASSIGN_EXPR_OR_RET(Expr * lhs, parse_expr_or_type_prec(c, &type, IF_TRY_CATCH_PREC), poisoned_expr);
-	if (!lhs)
+	ASSIGN_EXPR_OR_RET(Expr * lhs, parse_precedence(c, IF_TRY_CATCH_PREC), poisoned_expr);
+	if (lhs->expr_kind == EXPR_TYPEINFO)
 	{
-		ASSIGN_TYPE_OR_RET(expr->catch_unwrap_expr.type, type, poisoned_expr);
+		expr->catch_unwrap_expr.type = lhs->type_expr;
 		ASSIGN_EXPR_OR_RET(expr->catch_unwrap_expr.variable, parse_precedence(c, IF_TRY_CATCH_PREC), poisoned_expr);
 	}
 	else
@@ -131,18 +130,17 @@ static inline Expr *parse_try_unwrap(ParseContext *c)
 {
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_TRY_UNWRAP);
 	advance_and_verify(c, TOKEN_TRY);
-	TypeInfo *type = NULL;
-	ASSIGN_EXPR_OR_RET(Expr * lhs, parse_expr_or_type_prec(c, &type, IF_TRY_CATCH_PREC), poisoned_expr);
-	if (!lhs)
+	ASSIGN_EXPR_OR_RET(Expr *lhs, parse_precedence(c, IF_TRY_CATCH_PREC), poisoned_expr);
+	if (lhs->expr_kind == EXPR_TYPEINFO)
 	{
-		ASSIGN_TYPE_OR_RET(expr->try_unwrap_expr.type, type, poisoned_expr);
+		expr->try_unwrap_expr.type = lhs->type_expr;
 		ASSIGN_EXPR_OR_RET(expr->try_unwrap_expr.variable, parse_precedence(c, IF_TRY_CATCH_PREC), poisoned_expr);
 	}
 	else
 	{
 		expr->try_unwrap_expr.variable = lhs;
 	}
-	if (type && expr->try_unwrap_expr.variable->expr_kind != EXPR_IDENTIFIER)
+	if (lhs->expr_kind == EXPR_TYPEINFO && expr->try_unwrap_expr.variable->expr_kind != EXPR_IDENTIFIER)
 	{
 		SEMA_ERROR(expr->try_unwrap_expr.variable, "A new variable was expected.");
 		return poisoned_expr;
@@ -910,6 +908,21 @@ static Expr *parse_ct_call(ParseContext *c, Expr *left)
 	return expr;
 }
 
+static Expr *parse_ct_conv(ParseContext *c, Expr *left)
+{
+	assert(!left && "Unexpected left hand side");
+	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_CONV);
+	expr->ct_call_expr.token_type = c->tok;
+	advance(c);
+	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
+	ASSIGN_TYPEID_OR_RET(expr->ct_call_expr.type_from, parse_type(c), poisoned_expr);
+	TRY_CONSUME_AFTER(TOKEN_COMMA, "Expected ',' here.", poisoned_expr);
+	ASSIGN_TYPEID_OR_RET(expr->ct_call_expr.type_to, parse_type(c), poisoned_expr);
+	TRY_CONSUME_AFTER(TOKEN_RPAREN, "Expected ')' here.", poisoned_expr);
+	RANGE_EXTEND_PREV(expr);
+	return expr;
+}
+
 static Expr *parse_identifier(ParseContext *c, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
@@ -926,90 +939,6 @@ static Expr *parse_identifier(ParseContext *c, Expr *left)
 	return expr;
 }
 
-static Expr *parse_type_or_expression_with_path(ParseContext *c, Path *path, TypeInfo **type_ref)
-{
-	TypeInfo *type;
-	if (path)
-	{
-		type = type_info_new(TYPE_INFO_IDENTIFIER, path->span);
-		type->unresolved.path = path;
-		type->unresolved.name = symstr(c);
-		advance_and_verify(c, TOKEN_TYPE_IDENT);
-		RANGE_EXTEND_PREV(type);
-		ASSIGN_TYPE_OR_RET(type, parse_type_with_base(c, type), poisoned_expr);
-		type->failable = try_consume(c, TOKEN_BANG);
-	}
-	else
-	{
-		ASSIGN_TYPE_OR_RET(type, parse_failable_type(c), poisoned_expr);
-	}
-	if (tok_is(c, TOKEN_LBRACE))
-	{
-		return parse_type_compound_literal_expr_after_type(c, type);
-	}
-	if (tok_is(c, TOKEN_DOT))
-	{
-		Expr *expr = expr_new(EXPR_TYPEINFO, type->span);
-		expr->type_expr = type;
-		return parse_access_expr(c, expr);
-	}
-	*type_ref = type;
-	return NULL;
-}
-
-
-
-static Expr *parse_expr_or_type_prec(ParseContext *c, TypeInfo **type_ref, Precedence prec)
-{
-	switch (c->tok)
-	{
-		case TYPELIKE_TOKENS:
-			return parse_type_or_expression_with_path(c, NULL, type_ref);
-		case TOKEN_IDENT:
-		{
-			bool had_error;
-			Path *path = parse_path_prefix(c, &had_error);
-			if (had_error) return poisoned_expr;
-			if (!path) return parse_precedence(c, prec);
-			bool is_const = false;
-			switch (c->tok)
-			{
-				case TOKEN_TYPE_IDENT:
-					return parse_type_or_expression_with_path(c, path, type_ref);
-				case TOKEN_CONST_IDENT:
-					is_const = true;
-					FALLTHROUGH;
-				case TOKEN_IDENT:
-				{
-					Expr *expr = EXPR_NEW_TOKEN(EXPR_IDENTIFIER);
-					expr->identifier_expr.ident = symstr(c);
-					expr->identifier_expr.is_const = is_const;
-					expr->identifier_expr.path = path;
-					advance(c);
-					return parse_precedence_with_left_side(c, expr, prec);
-				}
-				case TOKEN_HASH_IDENT:
-				case TOKEN_HASH_CONST_IDENT:
-				case TOKEN_HASH_TYPE_IDENT:
-				case TOKEN_CT_CONST_IDENT:
-				case TOKEN_CT_IDENT:
-				case TOKEN_CT_TYPE_IDENT:
-					SEMA_ERROR_HERE("'%s' cannot be used with paths.", symstr(c));
-					return poisoned_expr;
-				default:
-					SEMA_ERROR_HERE("An identifier was expected after the path.");
-					return poisoned_expr;
-			}
-		}
-		default:
-			return parse_precedence(c, prec);
-	}
-}
-
-Expr *parse_expr_or_type(ParseContext *c, TypeInfo **type_ref)
-{
-	return parse_expr_or_type_prec(c, type_ref, PREC_ASSIGNMENT);
-}
 
 static Expr *parse_identifier_starting_expression(ParseContext *c, Expr *left)
 {
@@ -1795,5 +1724,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_CT_TYPEOF] = { parse_type_expr, NULL, PREC_NONE },
 		[TOKEN_CT_STRINGIFY] = { parse_ct_stringify, NULL, PREC_NONE },
 		[TOKEN_CT_EVALTYPE] = { parse_type_expr, NULL, PREC_NONE },
+		[TOKEN_CT_CONVERTABLE] = { parse_ct_conv, NULL, PREC_NONE },
+		[TOKEN_CT_CASTABLE] = { parse_ct_conv, NULL, PREC_NONE },
 		[TOKEN_LBRACE] = { parse_initializer_list, NULL, PREC_NONE },
 };

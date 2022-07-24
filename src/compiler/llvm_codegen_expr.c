@@ -5567,6 +5567,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 	{
 		case NON_RUNTIME_EXPR:
 		case EXPR_COND:
+		case EXPR_CT_CONV:
 			UNREACHABLE
 		case EXPR_RETVAL:
 			*value = c->retval;

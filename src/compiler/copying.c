@@ -184,6 +184,10 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_BUILTIN:
 		case EXPR_RETVAL:
 			return expr;
+		case EXPR_CT_CONV:
+			MACRO_COPY_TYPEID(expr->ct_call_expr.type_from);
+			MACRO_COPY_TYPEID(expr->ct_call_expr.type_to);
+			return expr;
 		case EXPR_DECL:
 			MACRO_COPY_DECL(expr->decl_expr);
 			return expr;

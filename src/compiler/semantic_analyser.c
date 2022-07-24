@@ -27,7 +27,6 @@ bool sema_resolve_type_info(SemaContext *context, TypeInfo *type_info)
 }
 
 
-
 void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags)
 {
 	unsigned depth = context->active_scope.depth + 1;

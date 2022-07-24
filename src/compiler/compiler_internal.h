@@ -792,10 +792,18 @@ typedef struct
 typedef struct
 {
 	TokenType token_type;
-	struct
+	union
 	{
-		Expr *main_var;
-		ExprFlatElement *flat_path;
+		struct
+		{
+			Expr *main_var;
+			ExprFlatElement *flat_path;
+		};
+		struct
+		{
+			TypeInfoId type_from;
+			TypeInfoId type_to;
+		};
 	};
 } ExprCtCall;
 
@@ -1613,6 +1621,8 @@ extern const char *kw_min;
 extern const char *kw_elements;
 extern const char *kw_align;
 
+extern const char *kw_castable;
+extern const char *kw_convertable;
 extern const char *kw_sizeof;
 extern const char *kw_in;
 extern const char *kw_out;
@@ -2536,6 +2546,7 @@ const char *arch_to_linker_arch(ArchType arch);
 #define ASSIGN_EXPR_OR_RET(_assign, _expr_stmt, _res) Expr* TEMP(_expr) = (_expr_stmt); if (!expr_ok(TEMP(_expr))) return _res; _assign = TEMP(_expr)
 #define ASSIGN_EXPRID_OR_RET(_assign, _expr_stmt, _res) Expr* TEMP(_expr) = (_expr_stmt); if (!expr_ok(TEMP(_expr))) return _res; _assign = exprid(TEMP(_expr))
 #define ASSIGN_TYPE_OR_RET(_assign, _type_stmt, _res) TypeInfo* TEMP(_type) = (_type_stmt); if (!type_info_ok(TEMP(_type))) return _res; _assign = TEMP(_type)
+#define ASSIGN_TYPEID_OR_RET(_assign, _type_stmt, _res) TypeInfo* TEMP(_type) = (_type_stmt); if (!type_info_ok(TEMP(_type))) return _res; _assign = type_infoid(TEMP(_type))
 #define ASSIGN_DECL_OR_RET(_assign, _decl_stmt, _res) Decl* TEMP(_decl) = (_decl_stmt); if (!decl_ok(TEMP(_decl))) return _res; _assign = TEMP(_decl)
 
 

@@ -374,6 +374,10 @@ const char *token_type_to_string(TokenType type)
 			return "$switch";
 		case TOKEN_CT_TYPEOF:
 			return "$typeof";
+		case TOKEN_CT_CONVERTABLE:
+			return "$convertable";
+		case TOKEN_CT_CASTABLE:
+			return "$castable";
 		case TOKEN_CT_STRINGIFY:
 			return "$stringify";
 		case TOKEN_EOF:
