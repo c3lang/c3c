@@ -788,9 +788,9 @@ Decl *parse_decl(ParseContext *c)
 Expr *parse_decl_or_expr(ParseContext *c, Decl **decl_ref)
 {
 	TypeInfo *type_info;
-	Expr *expr = parse_expr_or_type(c, &type_info);
-	if (expr) return expr;
-	ASSIGN_DECL_OR_RET(*decl_ref, parse_decl_after_type(c, type_info), poisoned_expr);
+	Expr *expr = parse_expr(c);
+	if (expr->expr_kind != EXPR_TYPEINFO) return expr;
+	ASSIGN_DECL_OR_RET(*decl_ref, parse_decl_after_type(c, expr->type_expr), poisoned_expr);
 	return NULL;
 }
 

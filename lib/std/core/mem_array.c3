@@ -1,23 +1,22 @@
 // Copyright (c) 2021 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
-module std::array;
+module std::core::mem::array;
 
 /**
- * @require elements > 0
+ * @require usize.typeid.max / elements > $Type.sizeof
  **/
 macro alloc($Type, usize elements)
 {
     $Type* ptr = mem::alloc($Type.sizeof * elements, $alignof($Type));
-    return ptr[0..(elements - 1)];
+    return ptr[:elements];
 }
 
 /**
- * @require elements > 0
+ * @require (usize.typeid.max / elements > $Type.sizeof)
  **/
-macro calloc($Type, usize elements)
+macro make($Type, usize elements)
 {
-	assert($Type.max / elements < $Type.sizeof);
     $Type* ptr = mem::calloc($sizeof($Type) * elements, $alignof($Type));
-    return ptr[0..(elements - 1)];
+    return ptr[:elements];
 }

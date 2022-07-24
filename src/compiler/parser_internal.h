@@ -53,7 +53,6 @@ bool try_consume(ParseContext *c, TokenType type);
 bool consume(ParseContext *c, TokenType type, const char *message, ...);
 bool consume_const_name(ParseContext *c, const char* type);
 Expr *parse_precedence_with_left_side(ParseContext *c, Expr *left_side, Precedence precedence);
-Expr *parse_expr_or_type(ParseContext *c, TypeInfo **type_ref);
 
 INLINE const char *symstr(ParseContext *c)
 {

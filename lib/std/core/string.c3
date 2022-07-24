@@ -253,19 +253,6 @@ fn void String.append_char(String* str, char c)
 	data.chars[data.len++] = c;
 }
 
-macro bool is_pointer_char_array($Type)
-{
-	var $Type2 = $Type;
-	$if ($Type.typeid.kind != TypeKind.POINTER):
-		return false;
-	$elif ($Type.typeid.inner.kind != TypeKind.ARRAY):
-		return false;
-	$elif ($Type.typeid.inner.inner != char.typeid):
-		return false;
-	$else:
-		return true;
-	$endif;
-}
 
 macro void String.append(String* str, value)
 {
@@ -281,9 +268,9 @@ macro void String.append(String* str, value)
 		$case Char32:
 			str.append_char32(value);
 		$default:
-			$if ($Type.typeid.kind == TypeKind.SIGNED_INT || $Type.typeid.kind == TypeKind.UNSIGNED_INT):
-				str.append_char32((Char32)value);
-			$elif (is_pointer_char_array($Type)):
+			$if ($convertable($Type, Char32)):
+				str.append_char32(value);
+			$elif ($convertable($Type, char[])):
 				str.append_chars(value);
 			$else:
 				$assert("Unsupported type for appending");

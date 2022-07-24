@@ -210,6 +210,7 @@ typedef enum
 	EXPR_COMPOUND_LITERAL,
 	EXPR_CONST,
 	EXPR_CT_CALL,
+	EXPR_CT_CONV,
 	EXPR_CT_IDENT,
 	EXPR_CT_EVAL,
 	EXPR_COND,
@@ -526,6 +527,8 @@ typedef enum
 	TOKEN_CT_STRINGIFY,     // $stringify
 	TOKEN_CT_SWITCH,        // $switch
 	TOKEN_CT_TYPEOF,        // $typeof
+	TOKEN_CT_CONVERTABLE,   // $convertable
+	TOKEN_CT_CASTABLE,      // $castable
 
 	TOKEN_DOCS_START,       // /**
 	TOKEN_DOCS_END,         // */ (may start with an arbitrary number of `*`

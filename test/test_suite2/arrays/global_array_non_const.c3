@@ -1,7 +1,7 @@
 
 const int CONSTANT = 1;
 int[CONSTANT] a2;
-
+int[3] a3 = { [CONSTANT] = 1 };
 const bool B = true;
 int[B] c2;      // #error: Expected an integer size.
 

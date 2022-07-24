@@ -88,7 +88,7 @@ struct Allocator
     AllocatorFunction function;
 }
 
-macro malloc($Type)
+macro malloc($Type) @builtin
 {
     return ($Type*)(mem::alloc($Type.sizeof));
 }
@@ -147,7 +147,7 @@ fn void*! realloc_checked(void *ptr, usize new_size, usize alignment = 0)
 	return thread_allocator.realloc(ptr, new_size, alignment);
 }
 
-fn void free(void* ptr)
+fn void free(void* ptr) @builtin
 {
 	return thread_allocator.free(ptr)!!;
 }
