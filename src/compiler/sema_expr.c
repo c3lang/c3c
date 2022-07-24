@@ -748,7 +748,9 @@ static inline bool sema_type_error_on_binop(Expr *expr)
 
 static bool expr_cast_to_index(Expr *index)
 {
-	switch (index->type->canonical->type_kind)
+	Type *type = index->type->canonical;
+	RETRY:
+	switch (type->type_kind)
 	{
 		case TYPE_I8:
 		case TYPE_I16:
@@ -764,8 +766,11 @@ static bool expr_cast_to_index(Expr *index)
 			SEMA_ERROR(index, "You need to explicitly cast this to a uint or ulong.");
 			return false;
 		case TYPE_I128:
-			SEMA_ERROR(index, "You need to explicitly cast this to a int or long.");
+			SEMA_ERROR(index, "index->type->canonical this to an int or long.");
 			return false;
+		case TYPE_ENUM:
+			type = type->decl->enums.type_info->type->canonical;
+			goto RETRY;
 		default:
 			SEMA_ERROR(index, "Cannot implicitly convert '%s' to an index.", type_to_error_string(index->type));
 			return false;
