@@ -11,11 +11,11 @@ fault ConversionResult
 	VALUE_OUT_OF_UNSIGNED_RANGE,
 }
 /**
- * @require type.typeid == SIGNED_INT || type.typeid == UNSIGNED_INT, "Argument was not an integer"
+ * @require type.kind == SIGNED_INT || type.kind == UNSIGNED_INT, "Argument was not an integer"
  **/
 macro variant_to_int(variant v, $Type)
 {
-	bool is_mixed_signed = $Type.typeid.kind != v.type.kind;
+	bool is_mixed_signed = $Type.kind != v.type.kind;
 	$Type max = $Type.max;
 	$Type min = $Type.min;
 	switch (v)
@@ -79,9 +79,9 @@ macro variant_to_int(variant v, $Type)
 
 macro bool is_numerical($Type)
 {
-	var $kind = $Type.typeid.kind;
+	var $kind = $Type.kind;
 	$if ($kind == TypeKind.DISTINCT):
-		return is_numerical($Type.typeid.inner);
+		return is_numerical($Type.inner);
 	$else:
 		return $kind == TypeKind.SIGNED_INT || $kind == TypeKind.UNSIGNED_INT || $kind == TypeKind.FLOAT
 			|| $kind == TypeKind.VECTOR;
@@ -90,9 +90,9 @@ macro bool is_numerical($Type)
 
 macro bool is_comparable($Type)
 {
-	var $kind = $Type.typeid.kind;
+	var $kind = $Type.kind;
 	$if ($kind == TypeKind.DISTINCT):
-		return is_comparable($Type.typeid.inner);
+		return is_comparable($Type.inner);
 	$else:
 		return $kind == TypeKind.SIGNED_INT || $kind == TypeKind.UNSIGNED_INT || $kind == TypeKind.FLOAT
 			|| $kind == TypeKind.VECTOR || $kind == TypeKind.BOOL || $kind == TypeKind.POINTER

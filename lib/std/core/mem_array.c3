@@ -4,7 +4,7 @@
 module std::core::mem::array;
 
 /**
- * @require usize.typeid.max / elements > $Type.sizeof
+ * @require usize.max / elements > $Type.sizeof
  **/
 macro alloc($Type, usize elements)
 {
@@ -13,7 +13,7 @@ macro alloc($Type, usize elements)
 }
 
 /**
- * @require (usize.typeid.max / elements > $Type.sizeof)
+ * @require (usize.max / elements > $Type.sizeof)
  **/
 macro make($Type, usize elements)
 {

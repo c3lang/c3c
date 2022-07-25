@@ -634,7 +634,7 @@ bool cast_may_implicit(Type *from_type, Type *to_type, bool is_simple_expr, bool
 
 	if (to_type->type_kind == TYPE_INFERRED_ARRAY)
 	{
-		if (from_type->type_kind == TYPE_ARRAY && type_flatten_distinct(from_type->array.base) == type_flatten_distinct(to_type->array.base)) return true;
+		if (from->type_kind == TYPE_ARRAY && type_flatten_distinct(from->array.base) == type_flatten_distinct(to_type->array.base)) return true;
 		return false;
 	}
 
@@ -663,7 +663,7 @@ bool cast_may_implicit(Type *from_type, Type *to_type, bool is_simple_expr, bool
 	// 9. Any cast
 	if (to->type_kind == TYPE_ANY)
 	{
-		return from_type->type_kind == TYPE_POINTER;
+		return from->type_kind == TYPE_POINTER;
 	}
 
 

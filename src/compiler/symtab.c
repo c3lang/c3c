@@ -43,8 +43,6 @@ const char *kw_std__core;
 const char *kw_std__core__types;
 const char *kw_typekind;
 
-const char *kw_castable;
-const char *kw_convertable;
 const char *kw_in;
 const char *kw_out;
 const char *kw_inout;

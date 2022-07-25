@@ -483,7 +483,6 @@ typedef enum
 	TOKEN_FOR,
 	TOKEN_FOREACH,
 	TOKEN_FN,
-	TOKEN_FUNC,
 	TOKEN_GENERIC,
 	TOKEN_TLOCAL,
 	TOKEN_IF,
@@ -527,7 +526,7 @@ typedef enum
 	TOKEN_CT_STRINGIFY,     // $stringify
 	TOKEN_CT_SWITCH,        // $switch
 	TOKEN_CT_TYPEOF,        // $typeof
-	TOKEN_CT_CONVERTABLE,   // $convertable
+	TOKEN_CT_CONVERTIBLE,   // $convertible
 	TOKEN_CT_CASTABLE,      // $castable
 
 	TOKEN_DOCS_START,       // /**

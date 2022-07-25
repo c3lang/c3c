@@ -243,7 +243,7 @@ struct Type_
 		TypeBuiltin builtin;
 		// Type[], Type[*], Type[123], Type[<123>] or Type<[123]>
 		TypeArray array;
-		// func Type1(Type2, Type3, ...) throws Err1, Err2, ...
+		// fn Type1(Type2, Type3, ...) throws Err1, Err2, ...
 		TypeFunc func;
 		// Type*
 		Type *pointer;
@@ -1621,8 +1621,6 @@ extern const char *kw_min;
 extern const char *kw_elements;
 extern const char *kw_align;
 
-extern const char *kw_castable;
-extern const char *kw_convertable;
 extern const char *kw_sizeof;
 extern const char *kw_in;
 extern const char *kw_out;
