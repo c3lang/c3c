@@ -184,6 +184,9 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_BUILTIN:
 		case EXPR_RETVAL:
 			return expr;
+		case EXPR_BUILTIN_ACCESS:
+			MACRO_COPY_EXPRID(expr->builtin_access_expr.inner);
+			return expr;
 		case EXPR_CT_CONV:
 			MACRO_COPY_TYPEID(expr->ct_call_expr.type_from);
 			MACRO_COPY_TYPEID(expr->ct_call_expr.type_to);
@@ -237,16 +240,11 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			MACRO_COPY_EXPRID(expr->slice_expr.start);
 			MACRO_COPY_EXPRID(expr->slice_expr.end);
 			return expr;
-		case EXPR_LEN:
-			MACRO_COPY_EXPR(expr->len_expr.inner);
-			return expr;
 		case EXPR_FORCE_UNWRAP:
 		case EXPR_TRY:
 		case EXPR_CATCH:
 		case EXPR_FAILABLE:
 		case EXPR_GROUP:
-		case EXPR_TYPEOFANY:
-		case EXPR_PTR:
 		case EXPR_STRINGIFY:
 		case EXPR_CT_EVAL:
 			MACRO_COPY_EXPR(expr->inner_expr);

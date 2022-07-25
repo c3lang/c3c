@@ -56,10 +56,18 @@ int BINOP_PREC_REQ[BINARYOP_LAST + 1] =
 		[BINARYOP_SHR] = 3,
 		[BINARYOP_SHL] = 3,
 
-
 };
 
 const char *ct_eval_error = "EVAL_ERROR";
+
+void expr_rewrite_to_builtin_access(SemaContext *context, Expr *expr, Expr *parent, BuiltinAccessKind kind, Type *type)
+{
+	expr->expr_kind = EXPR_BUILTIN_ACCESS;
+	expr->builtin_access_expr.kind = kind;
+	expr->builtin_access_expr.inner = exprid(parent);
+	expr->type = type;
+	expr->resolve_status = RESOLVE_DONE;
+}
 
 const char *ct_eval_expr(SemaContext *c, const char *expr_type, Expr *inner, TokenType *type, Path **path_ref, bool report_missing)
 {
@@ -332,6 +340,18 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 			return false;
 		case EXPR_BITASSIGN:
 			return false;
+		case EXPR_BUILTIN_ACCESS:
+			switch (expr->builtin_access_expr.kind)
+			{
+				case ACCESS_ENUMNAME:
+				case ACCESS_LEN:
+				case ACCESS_PTR:
+					break;
+				case ACCESS_TYPEOFANY:
+					if (eval_kind != CONSTANT_EVAL_ANY) return false;
+					break;
+			}
+			return exprid_is_constant_eval(expr->builtin_access_expr.inner, eval_kind);
 		case EXPR_VARIANT:
 			return exprid_is_constant_eval(expr->variant_expr.type_id, eval_kind) && exprid_is_constant_eval(expr->variant_expr.ptr, eval_kind);
 		case EXPR_BINARY:
@@ -389,13 +409,6 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 			return expr_list_is_constant_eval(expr->initializer_list, eval_kind);
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 			return expr_list_is_constant_eval(expr->designated_init_list, eval_kind);
-		case EXPR_LEN:
-			expr = expr->len_expr.inner;
-			goto RETRY;
-		case EXPR_TYPEOFANY:
-			if (eval_kind != CONSTANT_EVAL_ANY) return false;
-			expr = expr->inner_expr;
-			goto RETRY;
 		case EXPR_SLICE:
 			if (expr->slice_expr.start && !exprid_is_constant_eval(expr->slice_expr.start, CONSTANT_EVAL_FOLDABLE)) return false;
 			if (expr->slice_expr.end && !exprid_is_constant_eval(expr->slice_expr.end, CONSTANT_EVAL_FOLDABLE)) return false;
@@ -433,7 +446,6 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_FORCE_UNWRAP:
 		case EXPR_TRY:
 		case EXPR_CATCH:
-		case EXPR_PTR:
 			expr = expr->inner_expr;
 			goto RETRY;
 		case EXPR_TYPEID:
@@ -3572,6 +3584,7 @@ static bool sema_expr_apply_type_property(SemaContext *context, Expr *expr, Type
 	}
 	return false;
 }
+
 /**
  * Analyse "x.y"
  */
@@ -3645,9 +3658,7 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr)
 
 	if (kw_type == kw && flat_type->type_kind == TYPE_ANY)
 	{
-		expr->expr_kind = EXPR_TYPEOFANY;
-		expr->inner_expr = parent;
-		expr->type = type_typeid;
+		expr_rewrite_to_builtin_access(context, expr, parent, ACCESS_TYPEOFANY, type_typeid);
 		return true;
 	}
 
@@ -3658,10 +3669,7 @@ CHECK_DEEPER:
 	{
 		if (flat_type->type_kind == TYPE_SUBARRAY)
 		{
-			expr->expr_kind = EXPR_LEN;
-			expr->len_expr.inner = parent;
-			expr->type = type_usize;
-			expr->resolve_status = RESOLVE_DONE;
+			expr_rewrite_to_builtin_access(context, expr, current_parent, ACCESS_LEN, type_usize);
 			return true;
 		}
 		if (flat_type->type_kind == TYPE_ARRAY || flat_type->type_kind == TYPE_VECTOR)
@@ -3682,18 +3690,12 @@ CHECK_DEEPER:
 	{
 		if (flat_type->type_kind == TYPE_SUBARRAY)
 		{
-			expr->expr_kind = EXPR_PTR;
-			expr->inner_expr = parent;
-			expr->type = type_get_ptr(flat_type->array.base);
-			expr->resolve_status = RESOLVE_DONE;
+			expr_rewrite_to_builtin_access(context, expr, current_parent, ACCESS_PTR, type_get_ptr(flat_type->array.base));
 			return true;
 		}
 		if (flat_type->type_kind == TYPE_ANY)
 		{
-			expr->expr_kind = EXPR_PTR;
-			expr->inner_expr = parent;
-			expr->type = type_voidptr;
-			expr->resolve_status = RESOLVE_DONE;
+			expr_rewrite_to_builtin_access(context, expr, current_parent, ACCESS_PTR, type_voidptr);
 			return true;
 		}
 	}
@@ -3702,9 +3704,25 @@ CHECK_DEEPER:
 	{
 		if (type->type_kind == TYPE_ENUM)
 		{
-			if (!cast(parent, type->decl->enums.type_info->type)) return false;
-			expr_replace(expr, parent);
+			if (!cast(current_parent, type->decl->enums.type_info->type)) return false;
+			expr_replace(expr, current_parent);
 			return true;
+		}
+	}
+	if (kw == kw_nameof)
+	{
+		if (type->type_kind == TYPE_ENUM)
+		{
+			if (current_parent->expr_kind == EXPR_CONST)
+			{
+				expr_rewrite_to_string(expr, current_parent->const_expr.enum_val->name);
+				return true;
+			}
+			else
+			{
+				expr_rewrite_to_builtin_access(context, expr, current_parent, ACCESS_ENUMNAME, type_get_subarray(type_char));
+				return true;
+			}
 		}
 	}
 
@@ -3726,7 +3744,7 @@ CHECK_DEEPER:
 	if (member && decl_is_enum_kind(decl) && parent->expr_kind == EXPR_CONST)
 	{
 		assert(parent->const_expr.const_kind == CONST_ENUM);
-		Expr *copy_init = expr_macro_copy(parent->const_expr.enum_val->enum_constant.args[member->var.index]);
+		Expr *copy_init = expr_macro_copy(current_parent->const_expr.enum_val->enum_constant.args[member->var.index]);
 		expr_replace(expr, copy_init);
 		return true;
 	}
@@ -7402,7 +7420,6 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 		case EXPR_TRY_UNWRAP_CHAIN:
 		case EXPR_TRY_UNWRAP:
 		case EXPR_CATCH_UNWRAP:
-		case EXPR_PTR:
 		case EXPR_VARIANTSWITCH:
 		case EXPR_TYPEID_INFO:
 			UNREACHABLE
@@ -7436,9 +7453,8 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 			return sema_expr_analyse_compiler_const(context, expr);
 		case EXPR_POISONED:
 			return false;
-		case EXPR_LEN:
 		case EXPR_SLICE_ASSIGN:
-		case EXPR_TYPEOFANY:
+		case EXPR_BUILTIN_ACCESS:
 			// Created during semantic analysis
 			UNREACHABLE
 		case EXPR_MACRO_BLOCK:

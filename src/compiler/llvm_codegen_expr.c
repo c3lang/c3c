@@ -2183,11 +2183,6 @@ void llvm_emit_len_for_expr(GenContext *c, BEValue *be_value, BEValue *expr_to_l
 			UNREACHABLE
 	}
 }
-static void llvm_emit_len(GenContext *c, BEValue *be_value, Expr *expr)
-{
-	llvm_emit_expr(c, be_value, expr->len_expr.inner);
-	llvm_emit_len_for_expr(c, be_value, be_value);
-}
 
 static void llvm_emit_trap_negative(GenContext *c, Expr *expr, LLVMValueRef value, const char *error)
 {
@@ -3493,26 +3488,6 @@ static inline void llvm_emit_rethrow_expr(GenContext *c, BEValue *be_value, Expr
 
 }
 
-static inline void llvm_emit_typeofany(GenContext *c, BEValue *be_value, Expr *expr)
-{
-	llvm_emit_expr(c, be_value, expr->inner_expr);
-	llvm_value_fold_failable(c, be_value);
-	if (llvm_value_is_addr(be_value))
-	{
-		AlignSize alignment = 0;
-		LLVMValueRef pointer_addr = llvm_emit_struct_gep_raw(c,
-															 be_value->value,
-															 llvm_get_type(c, type_any),
-															 1,
-															 be_value->alignment,
-															 &alignment);
-		llvm_value_set_address(be_value, pointer_addr, type_typeid, alignment);
-	}
-	else
-	{
-		llvm_value_set(be_value, llvm_emit_extract_value(c, be_value->value, 1), type_typeid);
-	}
-}
 
 /**
  * This is the foo? instruction.
@@ -5311,17 +5286,6 @@ void llvm_emit_catch_unwrap(GenContext *c, BEValue *value, Expr *expr)
 	llvm_value_set(value, addr.value, type_anyerr);
 }
 
-static inline void llvm_emit_ptr(GenContext *c, BEValue *value, Expr *expr)
-{
-	llvm_emit_expr(c, value, expr->inner_expr);
-	if (value->type == type_any)
-	{
-		llvm_emit_any_pointer(c, value, value);
-		return;
-	}
-	assert(value->type->type_kind == TYPE_SUBARRAY);
-	llvm_emit_subarray_pointer(c, value, value);
-}
 
 static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *expr)
 {
@@ -5560,6 +5524,46 @@ static inline void llvm_emit_argv_to_subarray(GenContext *c, BEValue *value, Exp
 	EMIT_LOC(c, expr);
 }
 
+static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Expr *expr)
+{
+	llvm_emit_exprid(c, be_value, expr->builtin_access_expr.inner);
+	llvm_value_fold_failable(c, be_value);
+	switch (expr->builtin_access_expr.kind)
+	{
+		case ACCESS_LEN:
+			llvm_emit_len_for_expr(c, be_value, be_value);
+			return;
+		case ACCESS_PTR:
+			if (be_value->type == type_any)
+			{
+				llvm_emit_any_pointer(c, be_value, be_value);
+				return;
+			}
+			assert(be_value->type->type_kind == TYPE_SUBARRAY);
+			llvm_emit_subarray_pointer(c, be_value, be_value);
+			return;
+		case ACCESS_ENUMNAME:
+			TODO
+		case ACCESS_TYPEOFANY:
+			if (llvm_value_is_addr(be_value))
+			{
+				AlignSize alignment = 0;
+				LLVMValueRef pointer_addr = llvm_emit_struct_gep_raw(c,
+				                                                     be_value->value,
+				                                                     llvm_get_type(c, type_any),
+				                                                     1,
+				                                                     be_value->alignment,
+				                                                     &alignment);
+				llvm_value_set_address(be_value, pointer_addr, type_typeid, alignment);
+			}
+			else
+			{
+				llvm_value_set(be_value, llvm_emit_extract_value(c, be_value->value, 1), type_typeid);
+			}
+			return;
+	}
+	UNREACHABLE
+}
 void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 {
 	EMIT_LOC(c, expr);
@@ -5569,6 +5573,9 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_COND:
 		case EXPR_CT_CONV:
 			UNREACHABLE
+		case EXPR_BUILTIN_ACCESS:
+			llvm_emit_builtin_access(c, value, expr);
+			return;
 		case EXPR_RETVAL:
 			*value = c->retval;
 			return;
@@ -5587,9 +5594,6 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_CATCH_UNWRAP:
 			llvm_emit_catch_unwrap(c, value, expr);
 			return;
-		case EXPR_PTR:
-			llvm_emit_ptr(c, value, expr);
-			return;
 		case EXPR_TYPEID_INFO:
 			llvm_emit_typeid_info(c, value, expr);
 			return;
@@ -5603,9 +5607,6 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			return;
 		case EXPR_SLICE:
 			gencontext_emit_slice(c, value, expr);
-			return;
-		case EXPR_LEN:
-			llvm_emit_len(c, value, expr);
 			return;
 		case EXPR_FAILABLE:
 			llvm_emit_failable(c, value, expr);
@@ -5657,9 +5658,6 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			return;
 		case EXPR_RETHROW:
 			llvm_emit_rethrow_expr(c, value, expr);
-			return;
-		case EXPR_TYPEOFANY:
-			llvm_emit_typeofany(c, value, expr);
 			return;
 		case EXPR_TYPEID:
 		case EXPR_GROUP:

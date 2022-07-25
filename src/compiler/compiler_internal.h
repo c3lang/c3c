@@ -728,6 +728,19 @@ typedef struct
 	ExprId type_id;
 } ExprVariant;
 
+typedef enum
+{
+	ACCESS_LEN,
+	ACCESS_PTR,
+	ACCESS_TYPEOFANY,
+	ACCESS_ENUMNAME,
+} BuiltinAccessKind;
+
+typedef struct
+{
+	BuiltinAccessKind kind : 8;
+	ExprId inner;
+} ExprBuiltinAccess;
 typedef struct
 {
 	Expr *parent;
@@ -957,7 +970,6 @@ struct Expr_
 	union {
 		ExprTypeidInfo typeid_info_expr;
 		ExprVariantSwitch variant_switch;           // 32
-		ExprLen len_expr;                           // 8
 		ExprCast cast_expr;                         // 12
 		ExprVariant variant_expr;
 		TypeInfo *type_expr;                        // 8
@@ -974,6 +986,7 @@ struct Expr_
 		ExprCall call_expr;                         // 32
 		ExprSlice slice_expr;                       // 16
 		Expr *inner_expr;                           // 8
+		ExprBuiltinAccess builtin_access_expr;
 		ExprCatchUnwrap catch_unwrap_expr;          // 24
 		ExprSubscript subscript_expr;               // 12
 		ExprAccess access_expr;                     // 16
@@ -1621,6 +1634,7 @@ extern const char *kw_min;
 extern const char *kw_elements;
 extern const char *kw_align;
 
+extern const char *kw_nameof;
 extern const char *kw_sizeof;
 extern const char *kw_in;
 extern const char *kw_out;
@@ -1929,6 +1943,7 @@ Expr *expr_generate_decl(Decl *decl, Expr *assign);
 void expr_insert_addr(Expr *original);
 void expr_insert_deref(Expr *expr);
 Expr *expr_variable(Decl *decl);
+void expr_rewrite_to_builtin_access(SemaContext *context, Expr *expr, Expr *parent, BuiltinAccessKind kind, Type *type);
 typedef enum
 {
 	CONSTANT_EVAL_ANY,

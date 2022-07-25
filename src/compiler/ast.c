@@ -251,13 +251,14 @@ bool expr_is_pure(Expr *expr)
 	{
 		case EXPR_BUILTIN:
 			return false;
+		case EXPR_BUILTIN_ACCESS:
+			return exprid_is_pure(expr->builtin_access_expr.inner);
 		case EXPR_VARIANT:
 			return exprid_is_pure(expr->variant_expr.type_id) && exprid_is_pure(expr->variant_expr.ptr);
 		case EXPR_COMPILER_CONST:
 		case EXPR_CONST:
 		case EXPR_IDENTIFIER:
 		case EXPR_NOP:
-		case EXPR_PTR:
 		case EXPR_STRINGIFY:
 		case EXPR_RETVAL:
 		case EXPR_CT_CONV:
@@ -320,11 +321,8 @@ bool expr_is_pure(Expr *expr)
 			return true;
 		case EXPR_TYPEID_INFO:
 			return exprid_is_pure(expr->typeid_info_expr.parent);
-		case EXPR_TYPEOFANY:
 		case EXPR_CT_EVAL:
 			return expr_is_pure(expr->inner_expr);
-		case EXPR_LEN:
-			return expr_is_pure(expr->len_expr.inner);
 		case EXPR_SLICE:
 			return exprid_is_pure(expr->slice_expr.expr)
 			       && exprid_is_pure(expr->slice_expr.start)
