@@ -86,6 +86,7 @@ typedef struct
 	LLVMTypeRef bool_type;
 	LLVMTypeRef byte_type;
 	LLVMTypeRef introspect_type;
+	LLVMTypeRef fault_type;
 	LLVMTypeRef size_type;
 	Decl *panicfn;
 	Decl *cur_code_decl;

@@ -735,6 +735,7 @@ typedef enum
 	ACCESS_PTR,
 	ACCESS_TYPEOFANY,
 	ACCESS_ENUMNAME,
+	ACCESS_FAULTNAME,
 } BuiltinAccessKind;
 
 typedef struct

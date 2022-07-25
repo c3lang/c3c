@@ -344,6 +344,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 			switch (expr->builtin_access_expr.kind)
 			{
 				case ACCESS_ENUMNAME:
+				case ACCESS_FAULTNAME:
 				case ACCESS_LEN:
 				case ACCESS_PTR:
 					break;
@@ -3724,6 +3725,16 @@ CHECK_DEEPER:
 				expr_rewrite_to_builtin_access(context, expr, current_parent, ACCESS_ENUMNAME, type_chars);
 				return true;
 			}
+		}
+		if (type->type_kind == TYPE_FAULTTYPE || type->type_kind == TYPE_ANYERR)
+		{
+			if (current_parent->expr_kind == EXPR_CONST)
+			{
+				expr_rewrite_to_string(expr, current_parent->const_expr.enum_val->name);
+				return true;
+			}
+			expr_rewrite_to_builtin_access(context, expr, current_parent, ACCESS_FAULTNAME, type_chars);
+			return true;
 		}
 	}
 

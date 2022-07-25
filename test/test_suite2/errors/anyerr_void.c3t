@@ -26,7 +26,6 @@ fn void main()
 
 /* #expect: anyerr_void.ll
 
-; Function Attrs: nounwind
 define i64 @anyerr_void_errorThing() #0 {
 entry:
   ret i64 ptrtoint (ptr @"anyerr_void_MyError$BAR" to i64)
@@ -65,8 +64,8 @@ noerr_block:                                      ; preds = %after.errcheck, %er
   store i64 %1, ptr %z, align 8
   %2 = load i64, ptr %z, align 8
   call void (ptr, ...) @printf(ptr @.str, i64 %2)
-  call void (ptr, ...) @printf(ptr @.str.1, i64 ptrtoint (ptr @"anyerr_void_MyError$BAR" to i64))
-  call void (ptr, ...) @printf(ptr @.str.2, i64 ptrtoint (ptr @"anyerr_void_MyError$FOO" to i64))
+  call void (ptr, ...) @printf(ptr @.str.2, i64 ptrtoint (ptr @"anyerr_void_MyError$BAR" to i64))
+  call void (ptr, ...) @printf(ptr @.str.3, i64 ptrtoint (ptr @"anyerr_void_MyError$FOO" to i64))
   store i64 0, ptr %error_var1, align 8
   %3 = call i64 @anyerr_void_errorThing2()
   %not_err2 = icmp eq i64 %3, 0
@@ -83,6 +82,6 @@ noerr_block5:                                     ; preds = %after.errcheck4, %e
   %4 = load i64, ptr %error_var1, align 8
   store i64 %4, ptr %z, align 8
   %5 = load i64, ptr %z, align 8
-  call void (ptr, ...) @printf(ptr @.str.3, i64 %5)
+  call void (ptr, ...) @printf(ptr @.str.4, i64 %5)
   ret void
 }

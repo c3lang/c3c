@@ -1,5 +1,4 @@
 module test;
-
 import libc;
 
 struct Doc { Head *head; }
@@ -108,20 +107,6 @@ fn char* bool_to_string(bool b)
 {
 	return b ? "true" : "false";
 }
-fn char* nameFromError(anyerr e)
-{
-	switch (e)
-	{
-		case TitleResult.TITLE_MISSING:
-			return "no title";
-		case ReadError.BAD_READ:
-			return "bad read";
-		case AllocationFailure.OUT_OF_MEMORY:
-			return "out of memory";
-		default:
-			return "unknown error";
-	}
-}
 
 
 fn void main()
@@ -145,7 +130,7 @@ fn void main()
             bool! has_title = readWhetherTitleNonEmpty(url);
             // This looks a bit less than elegant, but as you see it's mostly due to having to
             // use printf here.
-            libc::printf("  Has title: %s vs %s\n", bool_to_string(has_title) ?? nameFromError(catch(has_title)), (has_title ?? false) ? "true" : "false");
+            libc::printf("  Has title: %s vs %s\n", bool_to_string(has_title) ?? catch(has_title).nameof, (has_title ?? false) ? "true" : "false");
         };
         allocator.reset();
     }

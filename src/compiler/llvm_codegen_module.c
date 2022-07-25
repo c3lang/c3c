@@ -23,6 +23,19 @@ static inline LLVMTypeRef create_introspection_type(GenContext *c)
 	return type;
 }
 
+static inline LLVMTypeRef create_fault_type(GenContext *c)
+{
+	LLVMTypeRef type = LLVMStructCreateNamed(c->context, ".fault");
+	LLVMTypeRef typeid_type = llvm_get_type(c, type_typeid);
+	LLVMTypeRef chars_type = llvm_get_type(c, type_chars);
+	LLVMTypeRef fault_type[] = {
+			[0] = typeid_type,
+			[1] = chars_type,
+	};
+	LLVMStructSetBody(type, fault_type, 2, false);
+	return type;
+}
+
 void gencontext_begin_module(GenContext *c)
 {
 	assert(!c->module && "Expected no module");
@@ -105,6 +118,7 @@ void gencontext_begin_module(GenContext *c)
 	c->bool_type = LLVMInt1TypeInContext(c->context);
 	c->byte_type = LLVMInt8TypeInContext(c->context);
 	c->introspect_type = create_introspection_type(c);
+	c->fault_type = create_fault_type(c);
 	c->size_type = llvm_get_type(c, type_usize);
 	if (c->panicfn) c->panicfn->backend_ref = NULL;
 

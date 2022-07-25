@@ -687,9 +687,15 @@ static LLVMValueRef llvm_get_introspection_for_fault(GenContext *c, Type *type)
 		scratch_buffer_append_char('$');
 		Decl *val = fault_vals[i];
 		scratch_buffer_append(val->name);
-		LLVMValueRef global_name = llvm_add_global_var(c, scratch_buffer_to_string(), type_char, 0);
+		LLVMValueRef global_name = LLVMAddGlobal(c->module, c->fault_type, scratch_buffer_to_string());
+		LLVMSetAlignment(global_name, LLVMPreferredAlignmentOfGlobal(c->target_data, global_name));
 		LLVMSetGlobalConstant(global_name, 1);
-		LLVMSetInitializer(global_name, LLVMConstInt(llvm_get_type(c, type_char), 1, false));
+
+		LLVMValueRef vals[2] = { LLVMConstPtrToInt(ref, llvm_get_type(c, type_typeid)),
+								 llvm_emit_aggregate_two(c, type_chars, llvm_emit_zstring_named(c, val->name, ".fault"),
+		                                                      llvm_const_int(c, type_usize, strlen(val->name))) };
+
+		LLVMSetInitializer(global_name, LLVMConstNamedStruct(c->fault_type, vals, 2));
 		llvm_set_linkonce(c, global_name);
 		val->backend_ref = LLVMConstPointerCast(global_name, llvm_get_type(c, type_typeid));
 	}

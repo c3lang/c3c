@@ -5574,6 +5574,36 @@ static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Ex
 			assert(be_value->type->type_kind == TYPE_SUBARRAY);
 			llvm_emit_subarray_pointer(c, be_value, be_value);
 			return;
+		case ACCESS_FAULTNAME:
+		{
+			assert(inner->type->canonical->type_kind == TYPE_FAULTTYPE || inner->type->canonical->type_kind == TYPE_ANYERR);
+			llvm_value_rvalue(c, be_value);
+			LLVMValueRef val = llvm_emit_alloca_aligned(c, type_chars, "faultname_zero");
+			BEValue zero;
+			llvm_value_set_address_abi_aligned(&zero, val, type_chars);
+			LLVMBasicBlockRef exit_block = llvm_basic_block_new(c, "faultname_exit");
+			LLVMBasicBlockRef zero_block = llvm_basic_block_new(c, "faultname_no");
+			LLVMBasicBlockRef ok_block = llvm_basic_block_new(c, "faultname_ok");
+			BEValue check;
+			llvm_emit_int_comp_zero(c, &check, be_value, BINARYOP_EQ);
+			llvm_emit_cond_br(c, &check, zero_block, ok_block);
+			llvm_emit_block(c, zero_block);
+			llvm_store_zero(c, &zero);
+			llvm_emit_br(c, exit_block);
+			llvm_emit_block(c, ok_block);
+			LLVMValueRef fault_data = LLVMBuildIntToPtr(c->builder, be_value->value,
+														LLVMPointerType(c->fault_type, 0), "");
+			LLVMTypeRef subarray = llvm_get_type(c, type_chars);
+			LLVMValueRef ptr = LLVMBuildStructGEP2(c->builder, c->fault_type, fault_data, 1, "");
+			llvm_emit_br(c, exit_block);
+			llvm_emit_block(c, exit_block);
+			LLVMValueRef phi = LLVMBuildPhi(c->builder, llvm_get_ptr_type(c, type_chars), "faultname");
+			LLVMValueRef values[] = { zero.value, ptr };
+			LLVMBasicBlockRef blocks[] = { zero_block, ok_block };
+			LLVMAddIncoming(phi, values, blocks, 2);
+			llvm_value_set_address_abi_aligned(be_value, phi, type_chars);
+			return;
+		}
 		case ACCESS_ENUMNAME:
 		{
 			assert(inner->type->canonical->type_kind == TYPE_ENUM);

@@ -948,6 +948,7 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 				case ACCESS_TYPEOFANY:
 				case ACCESS_PTR:
 				case ACCESS_ENUMNAME:
+				case ACCESS_FAULTNAME:
 					return NULL;
 			}
 			UNREACHABLE;

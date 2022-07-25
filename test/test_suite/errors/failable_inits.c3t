@@ -40,7 +40,7 @@ entry:
   %y = alloca %Bar, align 4
   %error_var = alloca i64, align 8
   %reterr = alloca i64, align 8
-  store i64 ptrtoint (i8* @"test_Foo$MY_VAL1" to i64), i64* %x.f, align 8
+  store i64 ptrtoint (%.fault* @"test_Foo$MY_VAL1" to i64), i64* %x.f, align 8
   %0 = load i64, i64* %x.f, align 8
   %not_err = icmp eq i64 %0, 0
   br i1 %not_err, label %after_check, label %error
