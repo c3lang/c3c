@@ -1065,10 +1065,15 @@ void gencontext_emit_expr_stmt(GenContext *c, Ast *ast)
 
 LLVMValueRef llvm_emit_zstring(GenContext *c, const char *str)
 {
+	return llvm_emit_zstring_named(c, str, ".zstr");
+}
+
+LLVMValueRef llvm_emit_zstring_named(GenContext *c, const char *str, const char *extname)
+{
 	LLVMTypeRef char_type = llvm_get_type(c, type_char);
 	unsigned len = (unsigned)strlen(str);
 	LLVMTypeRef char_array_type = LLVMArrayType(char_type, len + 1);
-	LLVMValueRef global_string = llvm_add_global_type(c, ".zstr", char_array_type, 0);
+	LLVMValueRef global_string = llvm_add_global_type(c, extname, char_array_type, 0);
 	llvm_set_internal_linkage(global_string);
 	LLVMSetGlobalConstant(global_string, 1);
 	LLVMSetInitializer(global_string, LLVMConstStringInContext(c->context, str, len, 0));

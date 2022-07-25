@@ -634,7 +634,7 @@ bool cast_may_implicit(Type *from_type, Type *to_type, bool is_simple_expr, bool
 
 	if (to_type->type_kind == TYPE_INFERRED_ARRAY)
 	{
-		if (from_type->type_kind == TYPE_ARRAY && type_flatten_distinct(from_type->array.base) == type_flatten_distinct(to_type->array.base)) return true;
+		if (from->type_kind == TYPE_ARRAY && type_flatten_distinct(from->array.base) == type_flatten_distinct(to_type->array.base)) return true;
 		return false;
 	}
 
@@ -663,7 +663,7 @@ bool cast_may_implicit(Type *from_type, Type *to_type, bool is_simple_expr, bool
 	// 9. Any cast
 	if (to->type_kind == TYPE_ANY)
 	{
-		return from_type->type_kind == TYPE_POINTER;
+		return from->type_kind == TYPE_POINTER;
 	}
 
 
@@ -823,14 +823,11 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 		case EXPR_TYPEINFO:
 		case EXPR_CT_CALL:
 		case EXPR_NOP:
-		case EXPR_LEN:
 		case EXPR_CATCH:
 		case EXPR_BUILTIN:
 		case EXPR_TRY_UNWRAP:
 		case EXPR_TRY_UNWRAP_CHAIN:
 		case EXPR_SUBSCRIPT_ADDR:
-		case EXPR_TYPEOFANY:
-		case EXPR_PTR:
 		case EXPR_VARIANTSWITCH:
 		case EXPR_ARGV_TO_SUBARRAY:
 		case EXPR_COMPILER_CONST:
@@ -839,6 +836,8 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 		case EXPR_VARIANT:
 		case EXPR_CT_CONV:
 			UNREACHABLE
+		case EXPR_BUILTIN_ACCESS:
+			return false;
 		case EXPR_POST_UNARY:
 			return recursive_may_narrow_float(expr->unary_expr.expr, type);
 		case EXPR_TRY:
@@ -940,9 +939,19 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 		case EXPR_TYPEID_INFO:
 			if (type_size(expr->type) > type_size(type)) return expr;
 			return NULL;
-		case EXPR_LEN:
-			if (type_size(type) < type_size(type_cint)) return expr;
-			return NULL;
+		case EXPR_BUILTIN_ACCESS:
+			switch (expr->builtin_access_expr.kind)
+			{
+				case ACCESS_LEN:
+					if (type_size(type) < type_size(type_cint)) return expr;
+					return NULL;
+				case ACCESS_TYPEOFANY:
+				case ACCESS_PTR:
+				case ACCESS_ENUMNAME:
+				case ACCESS_FAULTNAME:
+					return NULL;
+			}
+			UNREACHABLE;
 		case EXPR_EXPRESSION_LIST:
 			return recursive_may_narrow_int(VECLAST(expr->expression_list), type);
 		case EXPR_RETHROW:
@@ -984,8 +993,6 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 		case EXPR_TRY_UNWRAP:
 		case EXPR_TRY_UNWRAP_CHAIN:
 		case EXPR_SUBSCRIPT_ADDR:
-		case EXPR_TYPEOFANY:
-		case EXPR_PTR:
 		case EXPR_ARGV_TO_SUBARRAY:
 		case EXPR_VARIANTSWITCH:
 		case EXPR_COMPILER_CONST:

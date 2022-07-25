@@ -1139,9 +1139,10 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		}
 		else
 		{
-			len_call = expr_new(EXPR_LEN, enumerator->span);
+			len_call = expr_new(EXPR_BUILTIN_ACCESS, enumerator->span);
 			if (!sema_analyse_expr(context, enum_val)) return false;
-			len_call->len_expr.inner = enum_val;
+			len_call->builtin_access_expr.inner = exprid(enum_val);
+			len_call->builtin_access_expr.kind = ACCESS_LEN;
 			len_call->resolve_status = RESOLVE_DONE;
 			len_call->type = type_isize;
 		}
@@ -2087,9 +2088,7 @@ static bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement)
 					inner->type = type_any;
 					inner->resolve_status = RESOLVE_DONE;
 				}
-				last->type = type_typeid;
-				last->expr_kind = EXPR_TYPEOFANY;
-				last->inner_expr = inner;
+				expr_rewrite_to_builtin_access(context, last, inner, ACCESS_TYPEOFANY, type_typeid);
 				switch_type = type_typeid;
 				cond->type = type_typeid;
 			}

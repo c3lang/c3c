@@ -49,7 +49,6 @@ void recover_top_level(ParseContext *c)
 			case TOKEN_CT_IF:
 			case TOKEN_CT_FOR:
 			case TOKEN_CT_SWITCH:
-			case TOKEN_FUNC:
 			case TOKEN_FN:
 			case TOKEN_STRUCT:
 			case TOKEN_UNION:
@@ -1495,7 +1494,7 @@ static inline TypeInfo **parse_generic_parameters(ParseContext *c)
 /**
  * define_type_body ::= TYPE_IDENT '=' 'distinct'? (func_typedef | type generic_params?) ';'
  *
- * func_typedef ::= 'func' failable_type parameter_type_list
+ * func_typedef ::= 'fn' failable_type parameter_type_list
  */
 static inline Decl *parse_define_type(ParseContext *c, Visibility visibility)
 {
@@ -1513,8 +1512,8 @@ static inline Decl *parse_define_type(ParseContext *c, Visibility visibility)
 		advance(c);
 	}
 
-	// 1. Did we have `func`? In that case it's a function pointer.
-	if (try_consume(c, TOKEN_FUNC) || try_consume(c, TOKEN_FN))
+	// 1. Did we have `fn`? In that case it's a function pointer.
+	if (try_consume(c, TOKEN_FN))
 	{
 		Decl *decl = decl_new_with_type(alias_name, name_loc, DECL_TYPEDEF, visibility);
 		decl->typedef_decl.is_func = true;
@@ -1913,6 +1912,8 @@ static inline Decl *parse_enum_declaration(ParseContext *c, Visibility visibilit
 		if (!parse_enum_spec(c, &type, &decl->enums.parameters, visibility)) return poisoned_decl;
 	}
 
+	if (!parse_attributes(c, &decl->attributes)) return poisoned_decl;
+
 	CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
 
 	decl->enums.type_info = type ? type : type_info_new_base(type_int, decl->span);
@@ -1957,7 +1958,7 @@ static inline Decl *parse_enum_declaration(ParseContext *c, Visibility visibilit
 
 
 /**
- * Starts after 'func'
+ * Starts after 'fn'
  *
  * func_name
  *		: path TYPE_IDENT '.' IDENT
@@ -1979,14 +1980,7 @@ static inline Decl *parse_enum_declaration(ParseContext *c, Visibility visibilit
  */
 static inline Decl *parse_func_definition(ParseContext *c, Visibility visibility, AstId docs, bool is_interface)
 {
-	if (tok_is(c, TOKEN_FUNC))
-	{
-		advance_and_verify(c, TOKEN_FUNC);
-	}
-	else
-	{
-		advance_and_verify(c, TOKEN_FN);
-	}
+	advance_and_verify(c, TOKEN_FN);
 	Decl *func = decl_calloc();
 	func->decl_kind = DECL_FUNC;
 	func->visibility = visibility;
@@ -2369,7 +2363,6 @@ Decl *parse_top_level_statement(ParseContext *c)
 			ASSIGN_DECL_OR_RET(decl, parse_define(c, visibility), poisoned_decl);
 			break;
 		}
-		case TOKEN_FUNC:
 		case TOKEN_FN:
 		{
 			ASSIGN_DECL_OR_RET(decl, parse_func_definition(c, visibility, docs, false), poisoned_decl);

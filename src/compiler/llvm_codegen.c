@@ -266,8 +266,6 @@ void llvm_emit_ptr_from_array(GenContext *c, BEValue *value)
 			return;
 		case TYPE_SUBARRAY:
 		{
-			// TODO insert trap on overflow.
-			assert(value->kind == BE_ADDRESS);
 			BEValue member;
 			llvm_emit_subarray_pointer(c, value, &member);
 			llvm_value_rvalue(c, &member);

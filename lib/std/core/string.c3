@@ -268,9 +268,9 @@ macro void String.append(String* str, value)
 		$case Char32:
 			str.append_char32(value);
 		$default:
-			$if ($convertable($Type, Char32)):
+			$if ($convertible($Type, Char32)):
 				str.append_char32(value);
-			$elif ($convertable($Type, char[])):
+			$elif ($convertible($Type, char[])):
 				str.append_chars(value);
 			$else:
 				$assert("Unsupported type for appending");

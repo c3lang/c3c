@@ -74,19 +74,19 @@ fn void main()
 
 define void @foo_Foo_hello(ptr %0) #0 {
 entry:
-  %1 = call i32 @std_io_println(ptr @.str.6) #1
+  %1 = call i32 @std_io_println(ptr @.str.12) #1
   ret void
 }
 
 define void @foo_Bar_hello(ptr %0) #0 {
 entry:
-  %1 = call i32 @std_io_println(ptr @.str.7) #1
+  %1 = call i32 @std_io_println(ptr @.str.13) #1
   ret void
 }
 
 define void @foo_MyEnum_hello(ptr %0) #0 {
 entry:
-  %1 = call i32 @std_io_println(ptr @.str.8) #1
+  %1 = call i32 @std_io_println(ptr @.str.14) #1
   ret void
 }
 
@@ -111,27 +111,27 @@ entry:
   %5 = load i64, ptr %x, align 8
   store i64 %5, ptr %z, align 8
   %6 = load i64, ptr %z, align 8
-  %7 = call i32 (ptr, ...) @printf(ptr @.str.1, i64 %6)
+  %7 = call i32 (ptr, ...) @printf(ptr @.str.7, i64 %6)
   store i64 ptrtoint (ptr @"foo_Foo$W" to i64), ptr %x, align 8
   %8 = load i64, ptr %x, align 8
   store i64 %8, ptr %z, align 8
   %9 = load i64, ptr %z, align 8
-  %10 = call i32 (ptr, ...) @printf(ptr @.str.2, i64 %9)
+  %10 = call i32 (ptr, ...) @printf(ptr @.str.8, i64 %9)
   store i64 ptrtoint (ptr @"foo_Foo$W1" to i64), ptr %x, align 8
   %11 = load i64, ptr %x, align 8
   store i64 %11, ptr %z, align 8
   %12 = load i64, ptr %z, align 8
-  %13 = call i32 (ptr, ...) @printf(ptr @.str.3, i64 %12)
+  %13 = call i32 (ptr, ...) @printf(ptr @.str.9, i64 %12)
   store i64 ptrtoint (ptr @"foo_Foob$X1" to i64), ptr %x, align 8
   %14 = load i64, ptr %x, align 8
   store i64 %14, ptr %z, align 8
   %15 = load i64, ptr %z, align 8
-  %16 = call i32 (ptr, ...) @printf(ptr @.str.4, i64 %15)
+  %16 = call i32 (ptr, ...) @printf(ptr @.str.10, i64 %15)
   store i64 ptrtoint (ptr @"foo_Foob$Y2" to i64), ptr %x, align 8
   %17 = load i64, ptr %x, align 8
   store i64 %17, ptr %z, align 8
   %18 = load i64, ptr %z, align 8
-  %19 = call i32 (ptr, ...) @printf(ptr @.str.5, i64 %18)
+  %19 = call i32 (ptr, ...) @printf(ptr @.str.11, i64 %18)
   store i32 0, ptr %b, align 4
   store i32 0, ptr %a, align 4
   call void @foo_Foo_hello(ptr %f)

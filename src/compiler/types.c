@@ -43,6 +43,7 @@ Type *type_usize = &t.usz;
 Type *type_anyerr = &t.anyerr;
 Type *type_complist = &t.ctlist;
 Type *type_anyfail = &t.anyfail;
+Type *type_chars = NULL;
 
 static unsigned size_subarray;
 static AlignSize alignment_subarray;
@@ -1213,7 +1214,6 @@ void type_setup(PlatformTarget *target)
 	type_create("complist", &t.ctlist, TYPE_UNTYPED_LIST, 1, 1, 1);
 	type_create("void!", &t.anyfail, TYPE_FAILABLE_ANY, 1, 1, 1);
 	type_init("typeid", &t.typeid, TYPE_TYPEID, target->width_pointer, target->align_pointer);
-
 	type_init("void*", &t.voidstar, TYPE_POINTER, target->width_pointer, target->align_pointer);
 	create_type_cache(type_void);
 	type_void->type_cache[0] = &t.voidstar;
@@ -1222,7 +1222,6 @@ void type_setup(PlatformTarget *target)
 
 	type_create_alias("usize", &t.usz, type_int_unsigned_by_bitsize(target->width_pointer));
 	type_create_alias("isize", &t.isz, type_int_signed_by_bitsize(target->width_pointer));
-
 	type_create_alias("uptr", &t.uptr, type_int_unsigned_by_bitsize(target->width_pointer));
 	type_create_alias("iptr", &t.iptr, type_int_signed_by_bitsize(target->width_pointer));
 
@@ -1232,6 +1231,8 @@ void type_setup(PlatformTarget *target)
 	alignment_subarray = MAX(type_abi_alignment(&t.voidstar), type_abi_alignment(t.usz.canonical));
 	size_subarray = (unsigned)(alignment_subarray * 2);
 	type_init("anyerr", &t.anyerr, TYPE_ANYERR, target->width_pointer, target->align_pointer);
+	type_chars = type_get_subarray(type_char);
+
 }
 
 int type_kind_bitsize(TypeKind kind)

@@ -1724,7 +1724,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_CT_TYPEOF] = { parse_type_expr, NULL, PREC_NONE },
 		[TOKEN_CT_STRINGIFY] = { parse_ct_stringify, NULL, PREC_NONE },
 		[TOKEN_CT_EVALTYPE] = { parse_type_expr, NULL, PREC_NONE },
-		[TOKEN_CT_CONVERTABLE] = { parse_ct_conv, NULL, PREC_NONE },
+		[TOKEN_CT_CONVERTIBLE] = { parse_ct_conv, NULL, PREC_NONE },
 		[TOKEN_CT_CASTABLE] = { parse_ct_conv, NULL, PREC_NONE },
 		[TOKEN_LBRACE] = { parse_initializer_list, NULL, PREC_NONE },
 };

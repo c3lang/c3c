@@ -703,7 +703,6 @@ static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param, bo
 		SEMA_ERROR(param, "An associated value must be a normal typed parameter.");
 		return false;
 	}
-
 	if (vec_size(param->attributes))
 	{
 		SEMA_ERROR(param->attributes[0], "There are no valid attributes for associated values.");
@@ -715,6 +714,19 @@ static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param, bo
 		param->var.type_info->type = type_get_subarray(param->var.type_info->type);
 	}
 	param->type = param->var.type_info->type;
+	assert(param->name);
+	if (param->name == kw_nameof)
+	{
+		SEMA_ERROR(param, "'nameof' is not a valid parameter name for enums.");
+		return false;
+	}
+	Decl *other = sema_resolve_symbol_in_current_dynamic_scope(context, param->name);
+	if (other)
+	{
+		SEMA_ERROR(param, "Duplicate parameter name '%s'.", param->name);
+		return false;
+	}
+	sema_add_member(context, param);
 	if (param->var.init_expr)
 	{
 		Expr *expr = param->var.init_expr;
@@ -753,10 +765,13 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl)
 
 	DEBUG_LOG("* Enum type resolved to %s.", type->name);
 
+	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_ENUM)) return decl_poison(decl);
+
 	Decl **associated_values = decl->enums.parameters;
 	unsigned associated_value_count = vec_size(associated_values);
 	unsigned mandatory_count = 0;
 	bool default_values_used = false;
+	SCOPE_START
 	for (unsigned i = 0; i < associated_value_count; i++)
 	{
 		Decl *value = associated_values[i];
@@ -766,25 +781,26 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl)
 				continue;
 			case RESOLVE_RUNNING:
 				SEMA_ERROR(value, "Recursive definition found.");
-				return false;
+				return SCOPE_POP_ERROR();
 			case RESOLVE_NOT_DONE:
 				value->resolve_status = RESOLVE_RUNNING;
 				break;
 		}
 		bool has_default = false;
-		if (!sema_analyse_enum_param(context, value, &has_default)) return false;
+		if (!sema_analyse_enum_param(context, value, &has_default)) return SCOPE_POP_ERROR();
 		if (!has_default)
 		{
 			mandatory_count++;
 			if (default_values_used && !value->var.vararg)
 			{
 				SEMA_ERROR(value, "Non-default parameters cannot appear after default parameters.");
-				return false;
+				return SCOPE_POP_ERROR();
 			}
 		}
 		default_values_used |= has_default;
 		value->resolve_status = RESOLVE_DONE;
 	}
+	SCOPE_END;
 
 	bool success = true;
 	unsigned enums = vec_size(decl->enums.values);
@@ -1195,6 +1211,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_BUILTIN] = ATTR_MACRO | ATTR_FUNC,
 			[ATTRIBUTE_OPERATOR] = ATTR_MACRO | ATTR_FUNC,
 			[ATTRIBUTE_REFLECT] = ATTR_ENUM,
+			[ATTRIBUTE_OBFUSCATE] = ATTR_ENUM,
 			[ATTRIBUTE_PURE] = ATTR_CALL,
 	};
 
@@ -1430,6 +1447,9 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			UNREACHABLE
 		case ATTRIBUTE_REFLECT:
 			decl->will_reflect = true;
+			break;
+		case ATTRIBUTE_OBFUSCATE:
+			decl->obfuscate = true;
 			break;
 		case ATTRIBUTE_NONE:
 			UNREACHABLE

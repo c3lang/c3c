@@ -233,8 +233,6 @@ const char *token_type_to_string(TokenType type)
 			return "foreach";
 		case TOKEN_FN:
 			return "fn";
-		case TOKEN_FUNC:
-			return "func";
 		case TOKEN_GENERIC:
 			return "generic";
 		case TOKEN_IF:
@@ -374,8 +372,8 @@ const char *token_type_to_string(TokenType type)
 			return "$switch";
 		case TOKEN_CT_TYPEOF:
 			return "$typeof";
-		case TOKEN_CT_CONVERTABLE:
-			return "$convertable";
+		case TOKEN_CT_CONVERTIBLE:
+			return "$convertible";
 		case TOKEN_CT_CASTABLE:
 			return "$castable";
 		case TOKEN_CT_STRINGIFY:

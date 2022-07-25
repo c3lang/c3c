@@ -40,7 +40,7 @@ fn void l()
 
 fn void m()
 {
-    int v = $sizeof(int[4].len); // #error: 'int[4]' does not have a property 'len'
+    int v = $sizeof(int[4].len);
 }
 
 fn void n()

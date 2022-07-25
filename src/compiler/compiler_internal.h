@@ -243,7 +243,7 @@ struct Type_
 		TypeBuiltin builtin;
 		// Type[], Type[*], Type[123], Type[<123>] or Type<[123]>
 		TypeArray array;
-		// func Type1(Type2, Type3, ...) throws Err1, Err2, ...
+		// fn Type1(Type2, Type3, ...) throws Err1, Err2, ...
 		TypeFunc func;
 		// Type*
 		Type *pointer;
@@ -583,6 +583,7 @@ typedef struct Decl_
 	bool is_maybe_unused : 1;
 	bool is_must_use : 1;
 	bool will_reflect : 1;
+	bool obfuscate : 1;
 	bool is_dynamic : 1;
 	OperatorOverload operator : 4;
 	union
@@ -728,6 +729,20 @@ typedef struct
 	ExprId type_id;
 } ExprVariant;
 
+typedef enum
+{
+	ACCESS_LEN,
+	ACCESS_PTR,
+	ACCESS_TYPEOFANY,
+	ACCESS_ENUMNAME,
+	ACCESS_FAULTNAME,
+} BuiltinAccessKind;
+
+typedef struct
+{
+	BuiltinAccessKind kind : 8;
+	ExprId inner;
+} ExprBuiltinAccess;
 typedef struct
 {
 	Expr *parent;
@@ -957,7 +972,6 @@ struct Expr_
 	union {
 		ExprTypeidInfo typeid_info_expr;
 		ExprVariantSwitch variant_switch;           // 32
-		ExprLen len_expr;                           // 8
 		ExprCast cast_expr;                         // 12
 		ExprVariant variant_expr;
 		TypeInfo *type_expr;                        // 8
@@ -974,6 +988,7 @@ struct Expr_
 		ExprCall call_expr;                         // 32
 		ExprSlice slice_expr;                       // 16
 		Expr *inner_expr;                           // 8
+		ExprBuiltinAccess builtin_access_expr;
 		ExprCatchUnwrap catch_unwrap_expr;          // 24
 		ExprSubscript subscript_expr;               // 12
 		ExprAccess access_expr;                     // 16
@@ -1607,6 +1622,8 @@ extern Type *type_complist;
 extern Type *type_anyfail;
 extern Type *type_cint;
 extern Type *type_cuint;
+extern Type *type_chars;
+
 
 extern const char *attribute_list[NUMBER_OF_ATTRIBUTES];
 extern const char *builtin_list[NUMBER_OF_BUILTINS];
@@ -1621,8 +1638,8 @@ extern const char *kw_min;
 extern const char *kw_elements;
 extern const char *kw_align;
 
-extern const char *kw_castable;
-extern const char *kw_convertable;
+extern const char *kw_nameof;
+extern const char *kw_names;
 extern const char *kw_sizeof;
 extern const char *kw_in;
 extern const char *kw_out;
@@ -1931,6 +1948,7 @@ Expr *expr_generate_decl(Decl *decl, Expr *assign);
 void expr_insert_addr(Expr *original);
 void expr_insert_deref(Expr *expr);
 Expr *expr_variable(Decl *decl);
+void expr_rewrite_to_builtin_access(SemaContext *context, Expr *expr, Expr *parent, BuiltinAccessKind kind, Type *type);
 typedef enum
 {
 	CONSTANT_EVAL_ANY,

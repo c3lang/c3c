@@ -86,6 +86,8 @@ typedef struct
 	LLVMTypeRef bool_type;
 	LLVMTypeRef byte_type;
 	LLVMTypeRef introspect_type;
+	LLVMTypeRef fault_type;
+	LLVMTypeRef size_type;
 	Decl *panicfn;
 	Decl *cur_code_decl;
 	Decl *cur_func_decl;
@@ -331,6 +333,7 @@ void llvm_emit_memcpy(GenContext *c, LLVMValueRef dest, unsigned dest_align, LLV
 void llvm_emit_memcpy_to_decl(GenContext *c, Decl *decl, LLVMValueRef source, unsigned source_alignment);
 void llvm_emit_stmt(GenContext *c, Ast *ast);
 LLVMValueRef llvm_emit_zstring(GenContext *c, const char *str);
+LLVMValueRef llvm_emit_zstring_named(GenContext *c, const char *str, const char *extname);
 static inline LLVMValueRef llvm_emit_store(GenContext *c, Decl *decl, LLVMValueRef value);
 void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *panic_name, SourceSpan loc);
 void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_name, SourceSpan loc);

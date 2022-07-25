@@ -9,6 +9,8 @@
  * - Disallow jumping in and out of an expression block.
  */
 
+static bool sema_expr_apply_typeid_property(SemaContext *context, Expr *expr, Expr *typeid, const char *kw);
+static bool sema_expr_apply_type_property(SemaContext *context, Expr *expr, Type *type, const char *kw);
 static inline bool sema_expr_analyse_ct_eval(SemaContext *context, Expr *expr);
 static bool sema_take_addr_of(Expr *inner);
 static inline bool sema_expr_analyse_binary(SemaContext *context, Expr *expr);
@@ -54,10 +56,18 @@ int BINOP_PREC_REQ[BINARYOP_LAST + 1] =
 		[BINARYOP_SHR] = 3,
 		[BINARYOP_SHL] = 3,
 
-
 };
 
 const char *ct_eval_error = "EVAL_ERROR";
+
+void expr_rewrite_to_builtin_access(SemaContext *context, Expr *expr, Expr *parent, BuiltinAccessKind kind, Type *type)
+{
+	expr->expr_kind = EXPR_BUILTIN_ACCESS;
+	expr->builtin_access_expr.kind = kind;
+	expr->builtin_access_expr.inner = exprid(parent);
+	expr->type = type;
+	expr->resolve_status = RESOLVE_DONE;
+}
 
 const char *ct_eval_expr(SemaContext *c, const char *expr_type, Expr *inner, TokenType *type, Path **path_ref, bool report_missing)
 {
@@ -330,6 +340,19 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 			return false;
 		case EXPR_BITASSIGN:
 			return false;
+		case EXPR_BUILTIN_ACCESS:
+			switch (expr->builtin_access_expr.kind)
+			{
+				case ACCESS_ENUMNAME:
+				case ACCESS_FAULTNAME:
+				case ACCESS_LEN:
+				case ACCESS_PTR:
+					break;
+				case ACCESS_TYPEOFANY:
+					if (eval_kind != CONSTANT_EVAL_ANY) return false;
+					break;
+			}
+			return exprid_is_constant_eval(expr->builtin_access_expr.inner, eval_kind);
 		case EXPR_VARIANT:
 			return exprid_is_constant_eval(expr->variant_expr.type_id, eval_kind) && exprid_is_constant_eval(expr->variant_expr.ptr, eval_kind);
 		case EXPR_BINARY:
@@ -387,13 +410,6 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 			return expr_list_is_constant_eval(expr->initializer_list, eval_kind);
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 			return expr_list_is_constant_eval(expr->designated_init_list, eval_kind);
-		case EXPR_LEN:
-			expr = expr->len_expr.inner;
-			goto RETRY;
-		case EXPR_TYPEOFANY:
-			if (eval_kind != CONSTANT_EVAL_ANY) return false;
-			expr = expr->inner_expr;
-			goto RETRY;
 		case EXPR_SLICE:
 			if (expr->slice_expr.start && !exprid_is_constant_eval(expr->slice_expr.start, CONSTANT_EVAL_FOLDABLE)) return false;
 			if (expr->slice_expr.end && !exprid_is_constant_eval(expr->slice_expr.end, CONSTANT_EVAL_FOLDABLE)) return false;
@@ -431,7 +447,6 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_FORCE_UNWRAP:
 		case EXPR_TRY:
 		case EXPR_CATCH:
-		case EXPR_PTR:
 			expr = expr->inner_expr;
 			goto RETRY;
 		case EXPR_TYPEID:
@@ -3196,157 +3211,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 
 	if (!is_const)
 	{
-		TypeKind kind = canonical->type_kind;
-		if (name == kw_min)
-		{
-			if (type_is_integer(canonical))
-			{
-				expr->expr_kind = EXPR_CONST;
-				expr->const_expr.const_kind = CONST_INTEGER;
-				expr->type = parent->type;
-				expr->resolve_status = RESOLVE_DONE;
-				expr->const_expr.ixx.type = kind;
-				switch (kind)
-				{
-					case TYPE_I8:
-						expr->const_expr.ixx.i = (Int128){ 0, 0xFF };
-						break;
-					case TYPE_I16:
-						expr->const_expr.ixx.i = (Int128){ 0, 0xFFFF };
-						break;
-					case TYPE_I32:
-						expr->const_expr.ixx.i = (Int128){ 0, 0xFFFFFFFFLL };
-						break;
-					case TYPE_I64:
-						expr->const_expr.ixx.i = (Int128){ 0, ~((uint64_t)0) };
-						break;
-					case TYPE_I128:
-						expr->const_expr.ixx.i = (Int128){ ~((uint64_t)0), ~((uint64_t)0) };
-						break;
-					default:
-						expr->const_expr.ixx.i = (Int128){ 0, 0 };
-						break;
-				}
-				return true;
-			}
-			if (type_is_float(canonical))
-			{
-				expr->expr_kind = EXPR_CONST;
-				expr->const_expr.const_kind = CONST_FLOAT;
-				expr->type = parent->type;
-				expr->resolve_status = RESOLVE_DONE;
-				expr->const_expr.fxx.type = kind;
-				switch (kind)
-				{
-					case TYPE_F32:
-						expr->const_expr.fxx.f = FLT_MIN;
-						break;
-					case TYPE_F64:
-						expr->const_expr.fxx.f = DBL_MIN;
-						break;
-					case TYPE_F128:
-						REMINDER("Float 128 not complete");
-						expr->const_expr.fxx.f = DBL_MIN;
-						break;
-					default:
-						UNREACHABLE;
-				}
-				return true;
-			}
-		}
-		if (name == kw_max)
-		{
-			if (type_is_integer(canonical))
-			{
-				expr->expr_kind = EXPR_CONST;
-				expr->const_expr.const_kind = CONST_INTEGER;
-				expr->type = parent->type;
-				expr->resolve_status = RESOLVE_DONE;
-				expr->const_expr.ixx.type = kind;
-				switch (kind)
-				{
-					case TYPE_I8:
-						expr->const_expr.ixx.i = (Int128){ 0, 0x7F };
-						break;
-					case TYPE_I16:
-						expr->const_expr.ixx.i = (Int128){ 0, 0x7FFF };
-						break;
-					case TYPE_I32:
-						expr->const_expr.ixx.i = (Int128){ 0, 0x7FFFFFFFLL };
-						break;
-					case TYPE_I64:
-						expr->const_expr.ixx.i = (Int128){ 0, 0x7FFFFFFFFFFFFFFFLL };
-						break;
-					case TYPE_I128:
-						expr->const_expr.ixx.i = (Int128){ 0x7FFFFFFFFFFFFFFFLL, 0xFFFFFFFFFFFFFFFFLL };
-						break;
-					case TYPE_U8:
-						expr->const_expr.ixx.i = (Int128){ 0, 0xFF };
-						break;
-					case TYPE_U16:
-						expr->const_expr.ixx.i = (Int128){ 0, 0xFFFF };
-						break;
-					case TYPE_U32:
-						expr->const_expr.ixx.i = (Int128){ 0, 0xFFFFFFFFLL };
-						break;
-					case TYPE_U64:
-						expr->const_expr.ixx.i = (Int128){ 0, 0xFFFFFFFFFFFFFFFFLL };
-						break;
-					case TYPE_U128:
-						expr->const_expr.ixx.i = (Int128){ 0xFFFFFFFFFFFFFFFFLL, 0xFFFFFFFFFFFFFFFFLL };
-						break;
-					default:
-						UNREACHABLE
-				}
-				return true;
-			}
-			if (type_is_float(canonical))
-			{
-				expr->expr_kind = EXPR_CONST;
-				expr->const_expr.const_kind = CONST_FLOAT;
-				expr->type = parent->type;
-				expr->resolve_status = RESOLVE_DONE;
-				expr->const_expr.fxx.type = kind;
-				switch (kind)
-				{
-					case TYPE_F32:
-						expr->const_expr.fxx.f = FLT_MAX;
-						break;
-					case TYPE_F64:
-						expr->const_expr.fxx.f = DBL_MAX;
-						break;
-					case TYPE_F128:
-						REMINDER("Float 128 not complete");
-						expr->const_expr.fxx.f = DBL_MAX;
-						break;
-					default:
-						UNREACHABLE;
-				}
-				return true;
-			}
-		}
-	}
-	// 3. Handle float.nan, double.inf etc
-	if (!is_const && type_is_float(canonical))
-	{
-		if (name == kw_nan)
-		{
-			expr->expr_kind = EXPR_CONST;
-			expr->const_expr.const_kind = CONST_FLOAT;
-			expr->const_expr.fxx = (Float) { nan(""), canonical->type_kind };
-			expr->type = parent->type;
-			expr->resolve_status = RESOLVE_DONE;
-			return true;
-		}
-		if (name == kw_inf)
-		{
-			expr->expr_kind = EXPR_CONST;
-			expr->const_expr.const_kind = CONST_FLOAT;
-			expr->const_expr.fxx = (Float) { INFINITY, parent->type->canonical->type_kind };
-			expr->type = parent->type->canonical;
-			expr->resolve_status = RESOLVE_DONE;
-			return true;
-		}
+		if (sema_expr_apply_type_property(context, expr, canonical, name)) return true;
 	}
 
 	if (!type_may_have_sub_elements(canonical))
@@ -3383,7 +3248,6 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 			break;
 		case DECL_FAULT:
 			unit_register_external_symbol(context->compilation_unit, decl);
-
 			if (is_const)
 			{
 				if (!sema_expr_analyse_enum_constant(expr, name, decl))
@@ -3413,13 +3277,11 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 		add_members_to_context(context, decl);
 		member = sema_resolve_symbol_in_current_dynamic_scope(context, name);
 	SCOPE_END;
-
 	if (!member)
 	{
 		SEMA_ERROR(expr, "No method or inner struct/union '%s.%s' found.", type_to_error_string(decl->type), name);
 		return false;
 	}
-
 
 	if (member->decl_kind == DECL_VAR)
 	{
@@ -3447,111 +3309,282 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 	return true;
 }
 
-static inline void sema_rewrite_typeid_kind(Expr *expr, Expr *parent, Expr *current_parent)
+static inline void sema_rewrite_typeid_kind(Expr *expr, Expr *parent)
 {
 	Module *module = global_context_find_module(kw_std__core__types);
 	Decl *type_kind = module ? module_find_symbol(module, kw_typekind) : NULL;
 	Type *type_for_kind = type_kind ? type_kind->type : type_char;
-	if (current_parent->expr_kind == EXPR_CONST)
-	{
-		unsigned val = type_get_introspection_kind(current_parent->const_expr.typeid->type_kind);
-		assert(type_for_kind->type_kind == TYPE_ENUM);
-		expr_rewrite_to_int_const(expr, type_flatten(type_for_kind), val, false);
-		cast(expr, type_for_kind);
-		return;
-	}
 	expr->expr_kind = EXPR_TYPEID_INFO;
 	expr->typeid_info_expr.parent = exprid(parent);
 	expr->typeid_info_expr.kind = TYPEID_INFO_KIND;
 	expr->type = type_for_kind;
 }
 
-static inline bool sema_rewrite_typeid_inner(Expr *expr, Expr *parent, Expr *current_parent)
+
+static inline bool sema_create_const_kind(SemaContext *context, Expr *expr, Type *type)
 {
-	if (current_parent->expr_kind == EXPR_CONST)
+	Module *module = global_context_find_module(kw_std__core__types);
+	Decl *type_kind = module ? module_find_symbol(module, kw_typekind) : NULL;
+	Type *type_for_kind = type_kind ? type_kind->type : type_char;
+	unsigned val = type_get_introspection_kind(type->type_kind);
+	assert(type_for_kind->type_kind == TYPE_ENUM);
+	expr_rewrite_to_int_const(expr, type_flatten(type_for_kind), val, false);
+	return cast(expr, type_for_kind);
+}
+
+static inline bool sema_create_const_len(SemaContext *context, Expr *expr, Type *type)
+{
+	assert(type == type_flatten_distinct(type) && "Should be flattened already.");
+	size_t len;
+	switch (type->type_kind)
 	{
-		Type *type = type_flatten_distinct(current_parent->const_expr.typeid);
-		Type *inner = NULL;
-		switch (type->type_kind)
-		{
-			case TYPE_POINTER:
-				inner = type->pointer;
-				break;
-			case TYPE_FAILABLE:
-				inner = type->failable;
-				break;
-			case TYPE_DISTINCT:
-				inner = type->decl->distinct_decl.base_type->canonical;
-				break;
-			case TYPE_ARRAY:
-			case TYPE_FLEXIBLE_ARRAY:
-			case TYPE_SUBARRAY:
-			case TYPE_INFERRED_ARRAY:
-			case TYPE_VECTOR:
-				inner = type->array.base;
-				break;
-			default:
-				inner = NULL;
-				break;
-		}
-		if (!inner)
-		{
-			SEMA_ERROR(expr, "Cannot %s does not have a property 'inner'.", type_quoted_error_string(current_parent->const_expr.typeid));
+		case TYPE_ARRAY:
+		case TYPE_VECTOR:
+			len = type->array.len;
+			break;
+		case TYPE_ENUM:
+		case TYPE_FAULTTYPE:
+			len = vec_size(type->decl->enums.values);
+			break;
+		case TYPE_INFERRED_ARRAY:
+		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_SUBARRAY:
+		default:
 			return false;
-		}
-		expr_replace(expr, current_parent);
-		expr->const_expr.typeid = inner;
-		return true;
 	}
-	expr->expr_kind = EXPR_TYPEID_INFO;
-	expr->typeid_info_expr.parent = exprid(parent);
-	expr->typeid_info_expr.kind = TYPEID_INFO_INNER;
-	expr->type = type_typeid;
+	expr_rewrite_to_int_const(expr, type_usize, len, true);
 	return true;
 }
 
-static inline bool sema_rewrite_typeid_len(Expr *expr, Expr *parent, Expr *current_parent)
+static inline bool sema_create_const_inner(SemaContext *context, Expr *expr, Type *type)
 {
-	if (current_parent->expr_kind == EXPR_CONST)
+	Type *inner = NULL;
+	switch (type->type_kind)
 	{
-		Type *type = type_flatten_distinct(current_parent->const_expr.typeid);
-		size_t len;
-		switch (type->type_kind)
+		case TYPE_POINTER:
+			inner = type->pointer;
+			break;
+		case TYPE_FAILABLE:
+			inner = type->failable;
+			break;
+		case TYPE_DISTINCT:
+			inner = type->decl->distinct_decl.base_type->canonical;
+			break;
+		case TYPE_ENUM:
+			inner = type->decl->enums.type_info->type->canonical;
+			break;
+		case TYPE_ARRAY:
+		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_SUBARRAY:
+		case TYPE_INFERRED_ARRAY:
+		case TYPE_VECTOR:
+			inner = type->array.base;
+			break;
+		default:
+			return false;
+	}
+	expr->expr_kind = EXPR_CONST;
+	expr->const_expr.const_kind = CONST_TYPEID;
+	expr->const_expr.typeid = inner->canonical;
+	return true;
+}
+
+static inline bool sema_create_const_min(SemaContext *context, Expr *expr, Type *type, Type *flat)
+{
+	if (type_is_float(flat))
+	{
+		expr->expr_kind = EXPR_CONST;
+		expr->const_expr.const_kind = CONST_FLOAT;
+		expr->type = type;
+		expr->resolve_status = RESOLVE_DONE;
+		expr->const_expr.fxx.type = flat->type_kind;
+		switch (flat->type_kind)
 		{
-			case TYPE_ARRAY:
-			case TYPE_FLEXIBLE_ARRAY:
-			case TYPE_SUBARRAY:
-			case TYPE_INFERRED_ARRAY:
-			case TYPE_VECTOR:
-				len = type->array.len;
+			case TYPE_F32:
+				expr->const_expr.fxx.f = FLT_MIN;
+				break;
+			case TYPE_F64:
+				expr->const_expr.fxx.f = DBL_MIN;
+				break;
+			case TYPE_F128:
+				REMINDER("Float 128 not complete");
+				expr->const_expr.fxx.f = DBL_MIN;
 				break;
 			default:
-				SEMA_ERROR(expr, "Cannot access 'len' of non array/vector type %s.", type_quoted_error_string(current_parent->const_expr.typeid));
-				return false;
+				UNREACHABLE;
 		}
-		expr_rewrite_to_int_const(expr, type_usize, len, true);
 		return true;
 	}
-	expr->expr_kind = EXPR_TYPEID_INFO;
-	expr->typeid_info_expr.parent = exprid(parent);
-	expr->typeid_info_expr.kind = TYPEID_INFO_LEN;
-	expr->type = type_usize;
-	return true;
+	else if (type_is_integer(type))
+	{
+		expr->expr_kind = EXPR_CONST;
+		expr->const_expr.const_kind = CONST_INTEGER;
+		expr->type = type;
+		expr->resolve_status = RESOLVE_DONE;
+		expr->const_expr.ixx.type = flat->type_kind;
+		switch (flat->type_kind)
+		{
+			case TYPE_I8:
+				expr->const_expr.ixx.i = (Int128){ 0, 0xFF };
+				break;
+			case TYPE_I16:
+				expr->const_expr.ixx.i = (Int128){ 0, 0xFFFF };
+				break;
+			case TYPE_I32:
+				expr->const_expr.ixx.i = (Int128){ 0, 0xFFFFFFFFLL };
+				break;
+			case TYPE_I64:
+				expr->const_expr.ixx.i = (Int128){ 0, ~((uint64_t)0) };
+				break;
+			case TYPE_I128:
+				expr->const_expr.ixx.i = (Int128){ ~((uint64_t)0), ~((uint64_t)0) };
+				break;
+			default:
+				expr->const_expr.ixx.i = (Int128){ 0, 0 };
+				break;
+		}
+		return true;
+	}
+	return false;
 }
 
-static inline bool sema_rewrite_typeid_sizeof(Expr *expr, Expr *parent, Expr *current_parent)
+static inline bool sema_create_const_max(SemaContext *context, Expr *expr, Type *type, Type *flat)
 {
-	if (current_parent->expr_kind == EXPR_CONST)
+	if (type_is_integer(flat))
 	{
-		Type *type = type_flatten_distinct(current_parent->const_expr.typeid);
+		expr->expr_kind = EXPR_CONST;
+		expr->const_expr.const_kind = CONST_INTEGER;
+		expr->type = type;
+		expr->resolve_status = RESOLVE_DONE;
+		expr->const_expr.ixx.type = flat->type_kind;
+		switch (flat->type_kind)
+		{
+			case TYPE_I8:
+				expr->const_expr.ixx.i = (Int128){ 0, 0x7F };
+				break;
+			case TYPE_I16:
+				expr->const_expr.ixx.i = (Int128){ 0, 0x7FFF };
+				break;
+			case TYPE_I32:
+				expr->const_expr.ixx.i = (Int128){ 0, 0x7FFFFFFFLL };
+				break;
+			case TYPE_I64:
+				expr->const_expr.ixx.i = (Int128){ 0, 0x7FFFFFFFFFFFFFFFLL };
+				break;
+			case TYPE_I128:
+				expr->const_expr.ixx.i = (Int128){ 0x7FFFFFFFFFFFFFFFLL, 0xFFFFFFFFFFFFFFFFLL };
+				break;
+			case TYPE_U8:
+				expr->const_expr.ixx.i = (Int128){ 0, 0xFF };
+				break;
+			case TYPE_U16:
+				expr->const_expr.ixx.i = (Int128){ 0, 0xFFFF };
+				break;
+			case TYPE_U32:
+				expr->const_expr.ixx.i = (Int128){ 0, 0xFFFFFFFFLL };
+				break;
+			case TYPE_U64:
+				expr->const_expr.ixx.i = (Int128){ 0, 0xFFFFFFFFFFFFFFFFLL };
+				break;
+			case TYPE_U128:
+				expr->const_expr.ixx.i = (Int128){ 0xFFFFFFFFFFFFFFFFLL, 0xFFFFFFFFFFFFFFFFLL };
+				break;
+			default:
+				UNREACHABLE
+		}
+		return true;
+	}
+	else if (type_is_float(flat))
+	{
+		expr->expr_kind = EXPR_CONST;
+		expr->const_expr.const_kind = CONST_FLOAT;
+		expr->type = type;
+		expr->resolve_status = RESOLVE_DONE;
+		expr->const_expr.fxx.type = flat->type_kind;
+		switch (flat->type_kind)
+		{
+			case TYPE_F32:
+				expr->const_expr.fxx.f = FLT_MAX;
+				break;
+			case TYPE_F64:
+				expr->const_expr.fxx.f = DBL_MAX;
+				break;
+			case TYPE_F128:
+				REMINDER("Float 128 not complete");
+				expr->const_expr.fxx.f = DBL_MAX;
+				break;
+			default:
+				UNREACHABLE;
+		}
+		return true;
+	}
+	return false;
+}
+
+static bool sema_expr_rewrite_typeid_call(Expr *expr, Expr *typeid, TypeIdInfoKind kind, Type *result_type)
+{
+	expr->expr_kind = EXPR_TYPEID_INFO;
+	expr->typeid_info_expr.parent = exprid(typeid);
+	expr->typeid_info_expr.kind = kind;
+	expr->type = result_type;
+	return true;
+}
+static bool sema_expr_apply_typeid_property(SemaContext *context, Expr *expr, Expr *typeid, const char *kw)
+{
+	if (typeid->expr_kind == EXPR_CONST)
+	{
+		if (kw_min == kw) return false;
+		if (kw_min == kw) return false;
+		if (kw_inf == kw) return false;
+		if (kw_nan == kw) return false;
+		return sema_expr_apply_type_property(context, expr, typeid->const_expr.typeid, kw);
+	}
+	if (kw == kw_kind)
+	{
+		sema_rewrite_typeid_kind(expr, typeid);
+		return true;
+	}
+	if (kw == kw_inner) return sema_expr_rewrite_typeid_call(expr, typeid, TYPEID_INFO_INNER, type_typeid);
+	if (kw == kw_len) return sema_expr_rewrite_typeid_call(expr, typeid, TYPEID_INFO_LEN, type_usize);
+	if (kw == kw_sizeof) return sema_expr_rewrite_typeid_call(expr, typeid, TYPEID_INFO_SIZEOF, type_usize);
+	if (kw == kw_names) return sema_expr_rewrite_typeid_call(expr, typeid, TYPEID_INFO_NAMES, type_get_subarray(type_chars));
+	return false;
+}
+
+static bool sema_expr_apply_type_property(SemaContext *context, Expr *expr, Type *type, const char *kw)
+{
+	assert(type == type->canonical);
+	if (kw == kw_sizeof)
+	{
 		expr_rewrite_to_int_const(expr, type_usize, type_size(type), true);
 		return true;
 	}
-	expr->expr_kind = EXPR_TYPEID_INFO;
-	expr->typeid_info_expr.parent = exprid(parent);
-	expr->typeid_info_expr.kind = TYPEID_INFO_SIZEOF;
-	expr->type = type_usize;
-	return true;
+	if (kw == kw_kind) return sema_create_const_kind(context, expr, type);
+	if (kw == kw_inner) return sema_create_const_inner(context, expr, type);
+
+	Type *flat = type_flatten_distinct(type);
+	if (kw == kw_len) return sema_create_const_len(context, expr, type);
+	if (kw == kw_min) return sema_create_const_min(context, expr, type, flat);
+	if (kw == kw_max) return sema_create_const_max(context, expr, type, flat);
+	if (kw == kw_nan && type_is_float(flat))
+	{
+		expr->expr_kind = EXPR_CONST;
+		expr->const_expr.const_kind = CONST_FLOAT;
+		expr->const_expr.fxx = (Float) { nan(""), flat->type_kind };
+		expr->type = type;
+		expr->resolve_status = RESOLVE_DONE;
+		return true;
+	}
+	if (kw == kw_inf && type_is_float(flat))
+	{
+		expr->expr_kind = EXPR_CONST;
+		expr->const_expr.const_kind = CONST_FLOAT;
+		expr->const_expr.fxx = (Float) { INFINITY, flat->type_kind };
+		expr->type = type;
+		expr->resolve_status = RESOLVE_DONE;
+		return true;
+	}
+	return false;
 }
 
 /**
@@ -3627,9 +3660,7 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr)
 
 	if (kw_type == kw && flat_type->type_kind == TYPE_ANY)
 	{
-		expr->expr_kind = EXPR_TYPEOFANY;
-		expr->inner_expr = parent;
-		expr->type = type_typeid;
+		expr_rewrite_to_builtin_access(context, expr, parent, ACCESS_TYPEOFANY, type_typeid);
 		return true;
 	}
 
@@ -3640,10 +3671,7 @@ CHECK_DEEPER:
 	{
 		if (flat_type->type_kind == TYPE_SUBARRAY)
 		{
-			expr->expr_kind = EXPR_LEN;
-			expr->len_expr.inner = parent;
-			expr->type = type_usize;
-			expr->resolve_status = RESOLVE_DONE;
+			expr_rewrite_to_builtin_access(context, expr, current_parent, ACCESS_LEN, type_usize);
 			return true;
 		}
 		if (flat_type->type_kind == TYPE_ARRAY || flat_type->type_kind == TYPE_VECTOR)
@@ -3654,23 +3682,9 @@ CHECK_DEEPER:
 	}
 	if (flat_type->type_kind == TYPE_TYPEID)
 	{
-		if (kw == kw_kind)
-		{
-			sema_rewrite_typeid_kind(expr, parent, current_parent);
-			return true;
-		}
-		if (kw == kw_inner)
-		{
-			return sema_rewrite_typeid_inner(expr, parent, current_parent);
-		}
-		if (kw == kw_len)
-		{
-			return sema_rewrite_typeid_len(expr, parent, current_parent);
-		}
-		if (kw == kw_sizeof)
-		{
-			return sema_rewrite_typeid_sizeof(expr, parent, current_parent);
-		}
+		if (sema_expr_apply_typeid_property(context, expr, parent, kw)) return true;
+		SEMA_ERROR(identifier, "'%s' is not a valid proprty for typeid.", kw);
+		return false;
 	}
 
 	// Hard coded ptr on subarrays and variant
@@ -3678,18 +3692,12 @@ CHECK_DEEPER:
 	{
 		if (flat_type->type_kind == TYPE_SUBARRAY)
 		{
-			expr->expr_kind = EXPR_PTR;
-			expr->inner_expr = parent;
-			expr->type = type_get_ptr(flat_type->array.base);
-			expr->resolve_status = RESOLVE_DONE;
+			expr_rewrite_to_builtin_access(context, expr, current_parent, ACCESS_PTR, type_get_ptr(flat_type->array.base));
 			return true;
 		}
 		if (flat_type->type_kind == TYPE_ANY)
 		{
-			expr->expr_kind = EXPR_PTR;
-			expr->inner_expr = parent;
-			expr->type = type_voidptr;
-			expr->resolve_status = RESOLVE_DONE;
+			expr_rewrite_to_builtin_access(context, expr, current_parent, ACCESS_PTR, type_voidptr);
 			return true;
 		}
 	}
@@ -3698,8 +3706,34 @@ CHECK_DEEPER:
 	{
 		if (type->type_kind == TYPE_ENUM)
 		{
-			if (!cast(parent, type->decl->enums.type_info->type)) return false;
-			expr_replace(expr, parent);
+			if (!cast(current_parent, type->decl->enums.type_info->type)) return false;
+			expr_replace(expr, current_parent);
+			return true;
+		}
+	}
+	if (kw == kw_nameof)
+	{
+		if (type->type_kind == TYPE_ENUM)
+		{
+			if (current_parent->expr_kind == EXPR_CONST)
+			{
+				expr_rewrite_to_string(expr, current_parent->const_expr.enum_val->name);
+				return true;
+			}
+			else
+			{
+				expr_rewrite_to_builtin_access(context, expr, current_parent, ACCESS_ENUMNAME, type_chars);
+				return true;
+			}
+		}
+		if (type->type_kind == TYPE_FAULTTYPE || type->type_kind == TYPE_ANYERR)
+		{
+			if (current_parent->expr_kind == EXPR_CONST)
+			{
+				expr_rewrite_to_string(expr, current_parent->const_expr.enum_val->name);
+				return true;
+			}
+			expr_rewrite_to_builtin_access(context, expr, current_parent, ACCESS_FAULTNAME, type_chars);
 			return true;
 		}
 	}
@@ -3722,7 +3756,7 @@ CHECK_DEEPER:
 	if (member && decl_is_enum_kind(decl) && parent->expr_kind == EXPR_CONST)
 	{
 		assert(parent->const_expr.const_kind == CONST_ENUM);
-		Expr *copy_init = expr_macro_copy(parent->const_expr.enum_val->enum_constant.args[member->var.index]);
+		Expr *copy_init = expr_macro_copy(current_parent->const_expr.enum_val->enum_constant.args[member->var.index]);
 		expr_replace(expr, copy_init);
 		return true;
 	}
@@ -7324,7 +7358,7 @@ static inline bool sema_expr_analyse_ct_conv(SemaContext *c, Expr *expr)
 	bool result;
 	switch (expr->ct_call_expr.token_type)
 	{
-		case TOKEN_CT_CONVERTABLE:
+		case TOKEN_CT_CONVERTIBLE:
 			result = cast_may_implicit(from_type, to_type, true, false);
 			break;
 		case TOKEN_CT_CASTABLE:
@@ -7398,7 +7432,6 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 		case EXPR_TRY_UNWRAP_CHAIN:
 		case EXPR_TRY_UNWRAP:
 		case EXPR_CATCH_UNWRAP:
-		case EXPR_PTR:
 		case EXPR_VARIANTSWITCH:
 		case EXPR_TYPEID_INFO:
 			UNREACHABLE
@@ -7408,7 +7441,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 			if (!sema_expr_analyse_ct_stringify(context, expr)) return false;
 			return true;
 		case EXPR_ARGV_TO_SUBARRAY:
-			expr->type = type_get_subarray(type_get_subarray(type_char));
+			expr->type = type_get_subarray(type_chars);
 			return true;
 		case EXPR_DECL:
 			if (!sema_analyse_var_decl(context, expr->decl_expr, true)) return false;
@@ -7432,9 +7465,8 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 			return sema_expr_analyse_compiler_const(context, expr);
 		case EXPR_POISONED:
 			return false;
-		case EXPR_LEN:
 		case EXPR_SLICE_ASSIGN:
-		case EXPR_TYPEOFANY:
+		case EXPR_BUILTIN_ACCESS:
 			// Created during semantic analysis
 			UNREACHABLE
 		case EXPR_MACRO_BLOCK:

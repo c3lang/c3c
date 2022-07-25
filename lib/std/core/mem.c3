@@ -88,6 +88,13 @@ struct Allocator
     AllocatorFunction function;
 }
 
+macro @clone(&value) @builtin
+{
+	$typeof(value)* x = malloc($typeof(value));
+	*x = value;
+	return x;
+}
+
 macro malloc($Type) @builtin
 {
     return ($Type*)(mem::alloc($Type.sizeof));

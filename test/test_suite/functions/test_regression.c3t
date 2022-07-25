@@ -250,9 +250,7 @@ fn Type getValue(Blob blob)
 @"ct$test_Foo2" = linkonce constant %.introspect { i8 10, i64 4, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
 @"ct$test_Foo" = linkonce constant %.introspect { i8 10, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @"ct$int" = linkonce constant %.introspect { i8 2, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
-@"ct$test_MyEnum" = linkonce constant %.introspect { i8 8, i64 4, i64 ptrtoint (%.introspect* @"ct$int" to i64), i64 3, [0 x i64] zeroinitializer }, align 8
-@"test_static$x" = internal unnamed_addr global i32 1, align 4
-
+@"ct$test_MyEnum" = linkonce constant { i8, i64, i64, i64, [3 x %"char[]"] } { i8 8, i64 4, i64 ptrtoint (%.introspect* @"ct$int" to i64), i64 3, [3 x %"char[]"] [%"char[]" { i8* getelementptr
 define void @test_Foo2_printme(%Foo2* %0) #0 {
 entry:
   %1 = getelementptr inbounds %Foo2, %Foo2* %0, i32 0, i32 0

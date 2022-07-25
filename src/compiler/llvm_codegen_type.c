@@ -576,19 +576,37 @@ static LLVMValueRef llvm_get_introspection_for_enum(GenContext *c, Type *type)
 	{
 		elements = 0;
 	}
-	LLVMValueRef en_values[] = { llvm_const_int(c, type_char, INTROSPECT_TYPE_ENUM ),
-	                             llvm_const_int(c, type_usize, elements),
-	                             llvm_const_int(c, type_usize, associated_value_count) };
-	LLVMValueRef strukt = LLVMConstStructInContext(c->context, en_values, 3, false);
 
 	if (!is_dynamic) is_external = false;
 
-	LLVMValueRef ref = llvm_generate_temp_introspection_global(c, type);
-	LLVMValueRef  val = llvm_generate_introspection_global(c, ref, type, INTROSPECT_TYPE_ENUM, type_flatten(type), elements, NULL, is_external);
-	if (!associated_value_count) return val;
-
+	LLVMTypeRef subarray = llvm_get_type(c, type_chars);
 	LLVMValueRef *values = elements ? malloc_arena(elements * sizeof(LLVMValueRef)) : NULL;
+
+	bool obfuscate = decl->obfuscate;
+	for (unsigned i = 0; i < elements; i++)
+	{
+		BEValue value;
+		const char *name = enum_vals[i]->name;
+		size_t len = strlen(name);
+		scratch_buffer_clear();
+		scratch_buffer_append(".enum.");
+		scratch_buffer_append_unsigned_int(i);
+		const char *name_desc = scratch_buffer_to_string();
+		if (obfuscate)
+		{
+			len = strlen(name_desc);
+			name = name_desc;
+		}
+		LLVMValueRef name_ref = llvm_emit_zstring_named(c, name, scratch_buffer_to_string());
+		LLVMValueRef data[2] = { name_ref, llvm_const_int(c, type_usize, len) };
+		values[i] = LLVMConstNamedStruct(subarray, data, 2);
+	}
+	LLVMValueRef names = LLVMConstArray(subarray, values, elements);
+
+	LLVMValueRef val = llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_ENUM, type_flatten(type), elements, names, is_external);
 	LLVMTypeRef val_type;
+
+
 	VECEACH(associated_values, ai)
 	{
 		val_type = NULL;
@@ -669,9 +687,15 @@ static LLVMValueRef llvm_get_introspection_for_fault(GenContext *c, Type *type)
 		scratch_buffer_append_char('$');
 		Decl *val = fault_vals[i];
 		scratch_buffer_append(val->name);
-		LLVMValueRef global_name = llvm_add_global_var(c, scratch_buffer_to_string(), type_char, 0);
+		LLVMValueRef global_name = LLVMAddGlobal(c->module, c->fault_type, scratch_buffer_to_string());
+		LLVMSetAlignment(global_name, LLVMPreferredAlignmentOfGlobal(c->target_data, global_name));
 		LLVMSetGlobalConstant(global_name, 1);
-		LLVMSetInitializer(global_name, LLVMConstInt(llvm_get_type(c, type_char), 1, false));
+
+		LLVMValueRef vals[2] = { LLVMConstPtrToInt(ref, llvm_get_type(c, type_typeid)),
+								 llvm_emit_aggregate_two(c, type_chars, llvm_emit_zstring_named(c, val->name, ".fault"),
+		                                                      llvm_const_int(c, type_usize, strlen(val->name))) };
+
+		LLVMSetInitializer(global_name, LLVMConstNamedStruct(c->fault_type, vals, 2));
 		llvm_set_linkonce(c, global_name);
 		val->backend_ref = LLVMConstPointerCast(global_name, llvm_get_type(c, type_typeid));
 	}
