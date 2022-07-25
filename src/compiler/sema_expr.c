@@ -3524,7 +3524,7 @@ static bool sema_expr_rewrite_typeid_call(Expr *expr, Expr *typeid, TypeIdInfoKi
 {
 	expr->expr_kind = EXPR_TYPEID_INFO;
 	expr->typeid_info_expr.parent = exprid(typeid);
-	expr->typeid_info_expr.kind = TYPEID_INFO_INNER;
+	expr->typeid_info_expr.kind = kind;
 	expr->type = result_type;
 	return true;
 }
@@ -3546,6 +3546,7 @@ static bool sema_expr_apply_typeid_property(SemaContext *context, Expr *expr, Ex
 	if (kw == kw_inner) return sema_expr_rewrite_typeid_call(expr, typeid, TYPEID_INFO_INNER, type_typeid);
 	if (kw == kw_len) return sema_expr_rewrite_typeid_call(expr, typeid, TYPEID_INFO_LEN, type_usize);
 	if (kw == kw_sizeof) return sema_expr_rewrite_typeid_call(expr, typeid, TYPEID_INFO_SIZEOF, type_usize);
+	if (kw == kw_names) return sema_expr_rewrite_typeid_call(expr, typeid, TYPEID_INFO_NAMES, type_get_subarray(type_chars));
 	return false;
 }
 
@@ -3720,7 +3721,7 @@ CHECK_DEEPER:
 			}
 			else
 			{
-				expr_rewrite_to_builtin_access(context, expr, current_parent, ACCESS_ENUMNAME, type_get_subarray(type_char));
+				expr_rewrite_to_builtin_access(context, expr, current_parent, ACCESS_ENUMNAME, type_chars);
 				return true;
 			}
 		}
@@ -7429,7 +7430,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 			if (!sema_expr_analyse_ct_stringify(context, expr)) return false;
 			return true;
 		case EXPR_ARGV_TO_SUBARRAY:
-			expr->type = type_get_subarray(type_get_subarray(type_char));
+			expr->type = type_get_subarray(type_chars);
 			return true;
 		case EXPR_DECL:
 			if (!sema_analyse_var_decl(context, expr->decl_expr, true)) return false;

@@ -105,7 +105,7 @@ void gencontext_begin_module(GenContext *c)
 	c->bool_type = LLVMInt1TypeInContext(c->context);
 	c->byte_type = LLVMInt8TypeInContext(c->context);
 	c->introspect_type = create_introspection_type(c);
-
+	c->size_type = llvm_get_type(c, type_usize);
 	if (c->panicfn) c->panicfn->backend_ref = NULL;
 
 	if (active_target.debug_info != DEBUG_INFO_NONE)

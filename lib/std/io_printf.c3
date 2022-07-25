@@ -56,7 +56,7 @@ private fn void! out_str(PrintParam* param, variant arg)
 		case VARIANT:
         	return out_substr(param, "<variant>");
 		case ENUM:
-        	return out_substr(param, "<enum>");
+        	return out_substr(param, arg.type.names[types::variant_to_int(arg, usize)!!]);
 		case FAULT:
         	return out_substr(param, "<fault>");
 		case STRUCT:

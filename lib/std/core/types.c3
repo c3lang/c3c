@@ -1,5 +1,5 @@
 module std::core::types;
-
+import libc;
 macro bool kind_is_int(TypeKind kind)
 {
 	return kind == TypeKind.SIGNED_INT || kind == TypeKind.UNSIGNED_INT;
@@ -11,37 +11,44 @@ fault ConversionResult
 	VALUE_OUT_OF_UNSIGNED_RANGE,
 }
 /**
- * @require type.kind == SIGNED_INT || type.kind == UNSIGNED_INT, "Argument was not an integer"
+ * @require type.kind == SIGNED_INT || type.kind == UNSIGNED_INT || type.kind == ENUM, "Argument was not an integer"
  **/
 macro variant_to_int(variant v, $Type)
 {
-	bool is_mixed_signed = $Type.kind != v.type.kind;
+	typeid variant_type = v.type;
+	TypeKind kind = variant_type.kind;
+	if (kind == TypeKind.ENUM)
+	{
+		variant_type = variant_type.inner;
+		kind = variant_type.kind;
+	}
+	bool is_mixed_signed = $Type.kind != variant_type.kind;
 	$Type max = $Type.max;
 	$Type min = $Type.min;
-	switch (v)
+	switch (variant_type)
 	{
 		case ichar:
-			ichar c = *v;
+			ichar c = *(char*)v.ptr;
 			if (is_mixed_signed && c < 0) return ConversionResult.VALUE_OUT_OF_UNSIGNED_RANGE!;
 			return ($Type)c;
 		case short:
-			short s = *v;
+			short s = *(short*)v.ptr;
 			if (is_mixed_signed && s < 0) return ConversionResult.VALUE_OUT_OF_UNSIGNED_RANGE!;
 			if (s > max || s < min) return ConversionResult.VALUE_OUT_OF_RANGE!;
 			return ($Type)s;
 		case int:
-			int i = *v;
+			int i = *(int*)v.ptr;
 			if (is_mixed_signed && i < 0) return ConversionResult.VALUE_OUT_OF_UNSIGNED_RANGE!;
 			if (i > max || i < min) return ConversionResult.VALUE_OUT_OF_RANGE!;
 			return ($Type)i;
 		case long:
-			long l = *v;
+			long l = *(long*)v.ptr;;
 			if (is_mixed_signed && l < 0) return ConversionResult.VALUE_OUT_OF_UNSIGNED_RANGE!;
 			if (l > max || l < min) return ConversionResult.VALUE_OUT_OF_RANGE!;
 			return ($Type)l;
 		case int128:
 			$if (env::I128_SUPPORT):
-				int128 i = *v;
+				int128 i = *(int128*)v.ptr;
 				if (is_mixed_signed && i < 0) return ConversionResult.VALUE_OUT_OF_UNSIGNED_RANGE!;
 				if (i > max || i < min) return ConversionResult.VALUE_OUT_OF_RANGE!;
 				return ($Type)i;
@@ -49,24 +56,24 @@ macro variant_to_int(variant v, $Type)
 				unreachable();
 			$endif;
 		case char:
-			char c = *v;
+			char c = *(char*)v.ptr;
 			if (c > max) return ConversionResult.VALUE_OUT_OF_RANGE!;
 			return ($Type)c;
 		case ushort:
-			ushort s = *v;
+			ushort s = *(ushort*)v.ptr;;
 			if (s > max || s < min) return ConversionResult.VALUE_OUT_OF_RANGE!;
 			return ($Type)s;
 		case uint:
-			uint i = *v;
+			uint i = *(uint*)v.ptr;;
 			if (i > max || i < min) return ConversionResult.VALUE_OUT_OF_RANGE!;
 			return ($Type)i;
 		case ulong:
-			ulong l = *v;
+			ulong l = *(ulong*)v.ptr;;
 			if (l > max || l < min) return ConversionResult.VALUE_OUT_OF_RANGE!;
 			return ($Type)l;
 		case uint128:
 			$if (env::I128_SUPPORT):
-				uint128 i = *v;
+				uint128 i = *(uint128*)v.ptr;
 				if (i > max || i < min) return ConversionResult.VALUE_OUT_OF_RANGE!;
 				return ($Type)i;
 			$else:

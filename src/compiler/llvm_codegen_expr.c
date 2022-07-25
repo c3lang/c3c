@@ -5336,14 +5336,45 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 				llvm_value_set(value, val, expr->type);
 			}
 			break;
+		case TYPEID_INFO_NAMES:
+			if (active_target.feature.safe_mode)
+			{
+				BEValue check;
+				LLVMBasicBlockRef exit = llvm_basic_block_new(c, "check_type_ok");
+				IntrospectType checks[1] = { INTROSPECT_TYPE_ENUM };
+				for (int i = 0; i < 1; i++)
+				{
+					llvm_emit_int_comp(c, &check, type_char, type_char, kind, llvm_const_int(c, type_char, checks[i]), BINARYOP_EQ);
+					LLVMBasicBlockRef next = llvm_basic_block_new(c, "check_next");
+					llvm_emit_cond_br(c, &check, exit, next);
+					llvm_emit_block(c, next);
+				}
+				File  *file = source_file_by_id(expr->span.file_id);
+				llvm_emit_panic(c, "Attempted to access 'names' on non enum/fault type.", file->name, c->cur_func_decl->name, expr->span.row);
+				c->current_block = NULL;
+				c->current_block_is_target = false;
+				LLVMBuildUnreachable(c->builder);
+				llvm_emit_block(c, exit);
+			}
+			{
+				LLVMTypeRef typeid = llvm_get_type(c, type_typeid);
+				LLVMValueRef len = llvm_emit_struct_gep_raw(c, ref, c->introspect_type, INTROSPECT_INDEX_LEN, align, &alignment);
+				len = llvm_load(c, c->size_type, len, alignment, "namelen");
+				LLVMValueRef val = llvm_emit_struct_gep_raw(c, ref, c->introspect_type, INTROSPECT_INDEX_ADDITIONAL, align, &alignment);
+				LLVMValueRef ptr_to_first = llvm_emit_bitcast(c, val, type_get_ptr(type_chars));
+				Type *subarray = type_get_subarray(type_chars);
+				llvm_value_set(value, llvm_emit_aggregate_two(c, subarray, ptr_to_first, len), subarray);
+			}
+			break;
 		case TYPEID_INFO_LEN:
 			if (active_target.feature.safe_mode)
 			{
 				BEValue check;
 				LLVMBasicBlockRef exit = llvm_basic_block_new(c, "check_type_ok");
-				IntrospectType checks[3] = { INTROSPECT_TYPE_ARRAY, INTROSPECT_TYPE_VECTOR,
+				IntrospectType checks[4] = { INTROSPECT_TYPE_ARRAY, INTROSPECT_TYPE_VECTOR,
+											 INTROSPECT_TYPE_ENUM,
 				                             INTROSPECT_TYPE_SUBARRAY };
-				for (int i = 0; i < 3; i++)
+				for (int i = 0; i < 4; i++)
 				{
 					llvm_emit_int_comp(c, &check, type_char, type_char, kind, llvm_const_int(c, type_char, checks[i]), BINARYOP_EQ);
 					LLVMBasicBlockRef next = llvm_basic_block_new(c, "check_next");
@@ -5452,7 +5483,7 @@ static inline void llvm_emit_argv_to_subarray(GenContext *c, BEValue *value, Exp
 	llvm_value_rvalue(c, &argv_value);
 	LLVMValueRef argv_ptr = argv_value.value;
 	LLVMValueRef count = argc_value.value;
-	Type *arg_array_type = type_get_subarray(type_char);
+	Type *arg_array_type = type_chars;
 	AlignSize alignment = type_alloca_alignment(type_get_array(arg_array_type, 1));
 	LLVMTypeRef arg_array_elem_type = llvm_get_type(c, arg_array_type);
 	LLVMValueRef arg_array = LLVMBuildArrayAlloca(c->builder, arg_array_elem_type, count, "argarray");
@@ -5526,7 +5557,8 @@ static inline void llvm_emit_argv_to_subarray(GenContext *c, BEValue *value, Exp
 
 static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Expr *expr)
 {
-	llvm_emit_exprid(c, be_value, expr->builtin_access_expr.inner);
+	Expr *inner = exprptr(expr->builtin_access_expr.inner);
+	llvm_emit_expr(c, be_value, inner);
 	llvm_value_fold_failable(c, be_value);
 	switch (expr->builtin_access_expr.kind)
 	{
@@ -5543,7 +5575,21 @@ static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Ex
 			llvm_emit_subarray_pointer(c, be_value, be_value);
 			return;
 		case ACCESS_ENUMNAME:
-			TODO
+		{
+			assert(inner->type->canonical->type_kind == TYPE_ENUM);
+			llvm_value_rvalue(c, be_value);
+			LLVMTypeRef subarray = llvm_get_type(c, type_chars);
+
+			LLVMTypeRef backend = LLVMTypeOf(inner->type->canonical->backend_typeid);
+			LLVMValueRef to_introspect = LLVMBuildIntToPtr(c->builder, inner->type->canonical->backend_typeid,
+			                                              LLVMPointerType(c->introspect_type, 0), "");
+			LLVMValueRef ptr = LLVMBuildStructGEP2(c->builder, c->introspect_type, to_introspect, INTROSPECT_INDEX_ADDITIONAL, "");
+			LLVMValueRef ptr_to_first = llvm_emit_bitcast(c, ptr, type_get_ptr(type_chars));
+			LLVMValueRef val = llvm_zext_trunc(c, be_value->value, llvm_get_type(c, type_usize));
+			llvm_value_set_address(be_value, llvm_emit_pointer_gep_raw(c, subarray, ptr_to_first, val),
+			                       type_chars, llvm_abi_alignment(c, subarray));
+			return;
+		}
 		case ACCESS_TYPEOFANY:
 			if (llvm_value_is_addr(be_value))
 			{

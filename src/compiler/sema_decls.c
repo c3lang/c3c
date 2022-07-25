@@ -753,6 +753,8 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl)
 
 	DEBUG_LOG("* Enum type resolved to %s.", type->name);
 
+	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_ENUM)) return decl_poison(decl);
+
 	Decl **associated_values = decl->enums.parameters;
 	unsigned associated_value_count = vec_size(associated_values);
 	unsigned mandatory_count = 0;
@@ -1195,6 +1197,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_BUILTIN] = ATTR_MACRO | ATTR_FUNC,
 			[ATTRIBUTE_OPERATOR] = ATTR_MACRO | ATTR_FUNC,
 			[ATTRIBUTE_REFLECT] = ATTR_ENUM,
+			[ATTRIBUTE_OBFUSCATE] = ATTR_ENUM,
 			[ATTRIBUTE_PURE] = ATTR_CALL,
 	};
 
@@ -1430,6 +1433,9 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			UNREACHABLE
 		case ATTRIBUTE_REFLECT:
 			decl->will_reflect = true;
+			break;
+		case ATTRIBUTE_OBFUSCATE:
+			decl->obfuscate = true;
 			break;
 		case ATTRIBUTE_NONE:
 			UNREACHABLE

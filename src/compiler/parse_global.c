@@ -1912,6 +1912,8 @@ static inline Decl *parse_enum_declaration(ParseContext *c, Visibility visibilit
 		if (!parse_enum_spec(c, &type, &decl->enums.parameters, visibility)) return poisoned_decl;
 	}
 
+	if (!parse_attributes(c, &decl->attributes)) return poisoned_decl;
+
 	CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
 
 	decl->enums.type_info = type ? type : type_info_new_base(type_int, decl->span);

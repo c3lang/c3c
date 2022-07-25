@@ -583,6 +583,7 @@ typedef struct Decl_
 	bool is_maybe_unused : 1;
 	bool is_must_use : 1;
 	bool will_reflect : 1;
+	bool obfuscate : 1;
 	bool is_dynamic : 1;
 	OperatorOverload operator : 4;
 	union
@@ -1620,6 +1621,8 @@ extern Type *type_complist;
 extern Type *type_anyfail;
 extern Type *type_cint;
 extern Type *type_cuint;
+extern Type *type_chars;
+
 
 extern const char *attribute_list[NUMBER_OF_ATTRIBUTES];
 extern const char *builtin_list[NUMBER_OF_BUILTINS];
@@ -1635,6 +1638,7 @@ extern const char *kw_elements;
 extern const char *kw_align;
 
 extern const char *kw_nameof;
+extern const char *kw_names;
 extern const char *kw_sizeof;
 extern const char *kw_in;
 extern const char *kw_out;
