@@ -1,4 +1,6 @@
 module game_of_life;
+import std::io;
+import libc;
 
 extern fn void usleep(int time);
 
@@ -14,16 +16,16 @@ struct GameBoard
 fn void GameBoard.show(GameBoard *board)
 {
 
-	libc::printf("\e[H");
+	io::printf("\e[H");
 	char* current = board.world;
 	for (int y = 0; y < board.h; y++)
 	{
 		for (int x = 0; x < board.w; x++)
 		{
-			libc::printf(*current ? "\e[07m  \e[m" : "  ");
+			io::printf(*current ? "\e[07m  \e[m" : "  ");
 			current++;
 		}
-		libc::printf("\e[E");
+		io::printf("\e[E");
 	}
 	libc::fflush(libc::stdout());
 }
@@ -67,8 +69,8 @@ fn int main(int c, char** v)
 	GameBoard board;
 	board.w = w;
 	board.h = h;
-	board.world = libc::malloc((ulong)(h * w));
-	board.temp = libc::malloc((ulong)(h * w));
+	board.world = mem::alloc((ulong)(h * w));
+	board.temp = mem::alloc((ulong)(h * w));
 
 	for (int i = h * w - 1; i >= 0; i--)
 	{

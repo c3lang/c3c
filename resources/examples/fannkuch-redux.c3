@@ -1,8 +1,8 @@
 module fannkuch;
 import std::array;
+import std::io;
+import std::math;
 import libc;
-import std::mem;
-
 
 fn int fannkuchredux(int n)
 {
@@ -46,7 +46,7 @@ fn int fannkuchredux(int n)
 		{
 			if (r == n)
 			{
-				libc::printf("%d\n", checksum);
+				io::printf("%d\n", checksum);
 				return max_flips_count;
 			}
 
@@ -71,6 +71,6 @@ fn int fannkuchredux(int n)
 fn int main(int argc, char** argv)
 {
 	int n = argc > 1 ? libc::atoi(argv[1]) : 7;
-	libc::printf("Pfannkuchen(%d) = %d\n", n, fannkuchredux(n));
+	io::printf("Pfannkuchen(%d) = %d\n", n, fannkuchredux(n));
 	return 0;
 }

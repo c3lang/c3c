@@ -1,4 +1,5 @@
 module fasta;
+import std::io;
 import libc;
 
 const IM = 139968;
@@ -59,10 +60,10 @@ fn void repeat_fasta(char[] seq, int n)
 	int i = void;
 	for (i = 0; i < n; i++)
 	{
-		libc::putchar(seq[i % len]);
-		if (i % LINELEN == LINELEN - 1) libc::putchar('\n');
+		io::putchar(seq[i % len]);
+		if (i % LINELEN == LINELEN - 1) io::putchar('\n');
 	}
-	if (i % LINELEN != 0) libc::putchar('\n');
+	if (i % LINELEN != 0) io::putchar('\n');
 }
 
 fn void random_fasta(char[] symb, double[] probability, int n)
@@ -80,10 +81,10 @@ fn void random_fasta(char[] symb, double[] probability, int n)
 			v -= probability[j];
 			if (v < 0) break;
 		}
-		libc::putchar(symb[j]);
-		if (i % LINELEN == LINELEN - 1) libc::putchar('\n');
+		io::putchar(symb[j]);
+		if (i % LINELEN == LINELEN - 1) io::putchar('\n');
 	}
-	if (i % LINELEN != 0) libc::putchar('\n');
+	if (i % LINELEN != 0) io::putchar('\n');
 }
 
 fn void main(int argc, char **argv)
@@ -91,13 +92,13 @@ fn void main(int argc, char **argv)
 	int n = 1000;
 	if (argc > 1) n = libc::atoi(argv[1]);
 
-	libc::printf(">ONE Homo sapiens alu\n");
+	io::printf(">ONE Homo sapiens alu\n");
 	repeat_fasta(alu, n * 2);
 
-	libc::printf(">TWO IUB ambiguity codes\n");
+	io::printf(">TWO IUB ambiguity codes\n");
 	random_fasta(iub, iub_p, n * 3);
 
-	libc::printf(">THREE Homo sapiens frequency\n");
+	io::printf(">THREE Homo sapiens frequency\n");
 	random_fasta(homosapiens, homosapiens_p, n * 5);
 
 }

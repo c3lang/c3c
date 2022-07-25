@@ -1,13 +1,13 @@
 module binarydigits;
 import std::math;
-import libc;
+import std::io;
 fn void main()
 {
     for (int i = 0; i < 20; i++)
     {
         String s = bin(i);
         defer s.destroy();
-        libc::printf("%s\n", s.zstr());
+        io::printf("%s\n", s);
     }
 }
 

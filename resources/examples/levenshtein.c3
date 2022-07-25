@@ -22,5 +22,5 @@ fn int levenshtein(char[] s, char[] t)
 	int b = levenshtein(s, t[0..^2]);
 	int c = levenshtein(s[0..^2], t);
 
-	return @min(@min(a, b), c) + 1;
+	return min(min(a, b), c) + 1;
 }

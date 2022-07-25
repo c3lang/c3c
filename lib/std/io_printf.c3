@@ -69,6 +69,10 @@ private fn void! out_str(PrintParam* param, variant arg)
 		case FAILABLE:
 			unreachable();
 		case DISTINCT:
+			if (arg.type == String.typeid)
+			{
+				return out_substr(param, ((String*)arg).str());
+			}
         	return out_str(param, variant { arg.ptr, arg.type.inner });
 		case POINTER:
 			typeid inner = arg.type.inner;
