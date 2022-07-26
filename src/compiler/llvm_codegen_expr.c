@@ -5576,7 +5576,8 @@ static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Ex
 			return;
 		case ACCESS_FAULTNAME:
 		{
-			assert(inner->type->canonical->type_kind == TYPE_FAULTTYPE || inner->type->canonical->type_kind == TYPE_ANYERR);
+			Type *inner_type = type_no_fail(inner->type)->canonical;
+			assert(inner_type->type_kind == TYPE_FAULTTYPE || inner_type->type_kind == TYPE_ANYERR);
 			llvm_value_rvalue(c, be_value);
 			LLVMValueRef val = llvm_emit_alloca_aligned(c, type_chars, "faultname_zero");
 			BEValue zero;
@@ -5606,12 +5607,13 @@ static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Ex
 		}
 		case ACCESS_ENUMNAME:
 		{
-			assert(inner->type->canonical->type_kind == TYPE_ENUM);
+			Type *inner_type = type_no_fail(inner->type)->canonical;
+			assert(inner_type->canonical->type_kind == TYPE_ENUM);
 			llvm_value_rvalue(c, be_value);
 			LLVMTypeRef subarray = llvm_get_type(c, type_chars);
 
-			LLVMTypeRef backend = LLVMTypeOf(inner->type->canonical->backend_typeid);
-			LLVMValueRef to_introspect = LLVMBuildIntToPtr(c->builder, inner->type->canonical->backend_typeid,
+			LLVMTypeRef backend = LLVMTypeOf(inner_type->backend_typeid);
+			LLVMValueRef to_introspect = LLVMBuildIntToPtr(c->builder, inner_type->backend_typeid,
 			                                              LLVMPointerType(c->introspect_type, 0), "");
 			LLVMValueRef ptr = LLVMBuildStructGEP2(c->builder, c->introspect_type, to_introspect, INTROSPECT_INDEX_ADDITIONAL, "");
 			LLVMValueRef ptr_to_first = llvm_emit_bitcast(c, ptr, type_get_ptr(type_chars));

@@ -229,10 +229,19 @@ static bool int_literal_to_int(Expr *expr, Type *canonical, Type *type)
 /**
  * Convert from compile time int to any enum
  */
-bool lit_integer_to_enum(Expr *expr, Type *canonical, Type *type)
+bool integer_to_enum(Expr *expr, Type *canonical, Type *type)
 {
 	assert(canonical->type_kind == TYPE_ENUM);
-	unsigned max_enums = vec_size(canonical->decl->enums.values);
+	Decl *enum_decl = canonical->decl;
+	if (expr->expr_kind != EXPR_CONST)
+	{
+		REMINDER("Add check for runtime enum conversions");
+		Type *underlying_type = enum_decl->enums.type_info->type->canonical;
+		if (!cast(expr, underlying_type)) return false;
+		expr->type = type;
+		return true;
+	}
+	unsigned max_enums = vec_size(enum_decl->enums.values);
 	Int to_convert = expr->const_expr.ixx;
 	if (int_is_neg(to_convert))
 	{
@@ -245,7 +254,7 @@ bool lit_integer_to_enum(Expr *expr, Type *canonical, Type *type)
 		SEMA_ERROR(expr, "This value exceeds the number of enums in %s.", canonical->decl->name);
 		return false;
 	}
-	Decl *decl = canonical->decl->enums.values[to_convert.i.low];
+	Decl *decl = enum_decl->enums.values[to_convert.i.low];
 	expr->const_expr = (ExprConst) {
 		.enum_val = decl,
 		.const_kind = CONST_ENUM
@@ -1288,7 +1297,7 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 			if (type_is_float(to)) return int_to_float(expr, CAST_SIFP, to, to_type);
 			if (to == type_bool) return integer_to_bool(expr, to_type);
 			if (to->type_kind == TYPE_POINTER) return int_to_pointer(expr, to_type);
-			if (to->type_kind == TYPE_ENUM) return lit_integer_to_enum(expr, to, to_type);
+			if (to->type_kind == TYPE_ENUM) return integer_to_enum(expr, to, to_type);
 			break;
 		case ALL_UNSIGNED_INTS:
 			if (type_is_integer_unsigned(to)) return int_conversion(expr, CAST_UIUI, to, to_type);
@@ -1296,7 +1305,7 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 			if (type_is_float(to)) return int_to_float(expr, CAST_UIFP, to, to_type);
 			if (to == type_bool) return integer_to_bool(expr, to_type);
 			if (to->type_kind == TYPE_POINTER) return int_to_pointer(expr, to_type);
-			if (to->type_kind == TYPE_ENUM) return lit_integer_to_enum(expr, to, to_type);
+			if (to->type_kind == TYPE_ENUM) return integer_to_enum(expr, to, to_type);
 			break;
 		case ALL_FLOATS:
 			if (type_is_integer(to)) return float_to_integer(expr, to, to_type);

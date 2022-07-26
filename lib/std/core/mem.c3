@@ -51,8 +51,6 @@ macro void memset(void* dst, char val, usize bytes, bool $is_volatile = false, u
 }
 
 
-
-
 enum AllocationKind
 {
     ALLOC,

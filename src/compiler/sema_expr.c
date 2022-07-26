@@ -65,7 +65,7 @@ void expr_rewrite_to_builtin_access(SemaContext *context, Expr *expr, Expr *pare
 	expr->expr_kind = EXPR_BUILTIN_ACCESS;
 	expr->builtin_access_expr.kind = kind;
 	expr->builtin_access_expr.inner = exprid(parent);
-	expr->type = type;
+	expr->type = type_get_opt_fail(type, IS_FAILABLE(parent));
 	expr->resolve_status = RESOLVE_DONE;
 }
 
@@ -3683,7 +3683,7 @@ CHECK_DEEPER:
 	if (flat_type->type_kind == TYPE_TYPEID)
 	{
 		if (sema_expr_apply_typeid_property(context, expr, parent, kw)) return true;
-		SEMA_ERROR(identifier, "'%s' is not a valid proprty for typeid.", kw);
+		SEMA_ERROR(identifier, "'%s' is not a valid property for typeid.", kw);
 		return false;
 	}
 

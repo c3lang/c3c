@@ -48,6 +48,15 @@ fn ZString tcopy_zstring(char[] s)
     return (ZString)str;
 }
 
+fn bool compare(char[] a, char[] b)
+{
+	if (a.len != b.len) return false;
+	foreach (i, c : a)
+	{
+		if (c != b[i]) return false;
+	}
+	return true;
+}
 fault UnicodeResult
 {
 	INVALID_UTF8,

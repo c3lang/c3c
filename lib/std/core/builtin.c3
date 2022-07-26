@@ -9,6 +9,11 @@ fault IteratorResult
 	NO_MORE_ELEMENT
 }
 
+fault SearchResult
+{
+	MISSING
+}
+
 fault VarCastResult
 {
 	TYPE_MISMATCH
@@ -92,7 +97,19 @@ macro bitcast(expr, $Type) @builtin
     var $size = (usize)($sizeof(expr));
     $assert($size == $Type.sizeof, "Cannot bitcast between types of different size.");
     $Type x = void;
-    memcpy(&x, &expr, $size, false, $alignof($Type), $alignof(expr));
+    mem::memcpy(&x, &expr, $size, false, $alignof($Type), $alignof(expr));
     return x;
 }
 
+/**
+ * @require $Type.kind == TypeKind.ENUM `Only enums may be used`
+ **/
+macro enum_by_name($Type, char[] enum_name) @builtin
+{
+	typeid x = $Type.typeid;
+	foreach (i, name : x.names)
+	{
+		if (str::compare(name, enum_name)) return ($Type)i;
+	}
+	return SearchResult.MISSING!;
+}
