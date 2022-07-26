@@ -50,14 +50,7 @@ macro void memset(void* dst, char val, usize bytes, bool $is_volatile = false, u
 	$$memset(dst, val, bytes, $is_volatile, $dst_align);
 }
 
-macro bitcast(expr, $Type)
-{
-    var $size = (usize)($sizeof(expr));
-    $assert($size == $Type.sizeof, "Cannot bitcast between types of different size.");
-    $Type x = void;
-    @memcpy(&x, &expr, $size, false, $alignof($Type), $alignof(expr));
-    return x;
-}
+
 
 
 enum AllocationKind
