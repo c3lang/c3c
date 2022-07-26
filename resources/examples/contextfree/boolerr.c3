@@ -1,5 +1,6 @@
 module test;
 import libc;
+import std::io;
 
 struct Doc { Head *head; }
 struct Head { char[]* title; }
@@ -12,7 +13,7 @@ struct Summary
 
 fn void Summary.print(Summary *s, CFile out)
 {
-	// We don't have a native printf in C3 yet, so use libc,
+	// We don't have a native fprintf in C3 yet, so use libc,
 	// which is not all that nice for the strings but...
 	char[] title = s.title ? *s.title : "missing";
 	libc::fprintf(out, "Summary({ .title = %.*s, .ok = %s})", (int)title.len, title.ptr, s.ok ? "true" : "false");
@@ -103,7 +104,7 @@ fn bool! readWhetherTitleNonEmpty(char[] url)
     return isTitleNonEmpty(readDoc(url));
 }
 
-fn char* bool_to_string(bool b)
+fn char[] bool_to_string(bool b)
 {
 	return b ? "true" : "false";
 }
@@ -119,18 +120,17 @@ fn void main()
     {
         mem::@with_allocator(allocator)
         {
-	        // Yes, it's pretty onerous to print strings for the moment in C3
-            libc::printf(`Checking "https://%.*s/":` "\n", (int)url.len, url.ptr);
+            io::printf(`Checking "https://%s/":` "\n", url);
             Summary summary = readAndBuildSummary(url);
-            libc::printf("  Summary: ");
+            io::printf("  Summary: ");
             summary.print(libc::stdout());
-            libc::printf("\n");
+            io::println("");
             char[] title_sure = summary.title ? *summary.title : "";
-            libc::printf("  Title: %.*s\n", (int)title_sure.len, title_sure.ptr);
+            io::printf("  Title: %s\n", title_sure);
             bool! has_title = readWhetherTitleNonEmpty(url);
             // This looks a bit less than elegant, but as you see it's mostly due to having to
             // use printf here.
-            libc::printf("  Has title: %s vs %s\n", bool_to_string(has_title) ?? catch(has_title).nameof, (has_title ?? false) ? "true" : "false");
+            io::printf("  Has title: %s vs %s\n", bool_to_string(has_title) ?? catch(has_title).nameof, has_title ?? false);
         };
         allocator.reset();
     }
