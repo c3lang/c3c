@@ -112,7 +112,7 @@ bool context_set_module(ParseContext *context, Path *path, const char **generic_
     // Note that we allow the illegal name for now, to be able to parse further.
     if (!str_has_no_uppercase(path->module))
     {
-    	SEMA_ERROR(path, "A module name may not have any upper case characters.");
+    	SEMA_ERROR(path, "A module name may not have any uppercase characters.");
         return false;
     }
 
@@ -284,7 +284,7 @@ bool unit_add_import(CompilationUnit *unit, Path *path, bool private_import)
 
 	if (!str_has_no_uppercase(path->module))
 	{
-		SEMA_ERROR(path, "A module is not expected to have any upper case characters, please change it.");
+		SEMA_ERROR(path, "A module is not expected to have any uppercase characters, please change it.");
 		return false;
 	}
 

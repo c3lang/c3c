@@ -387,12 +387,12 @@ static bool consume_type_name(ParseContext *c, const char* type)
 {
 	if (tok_is(c, TOKEN_IDENT) || token_is_keyword(c->tok))
 	{
-		SEMA_ERROR_HERE("Names of %ss must start with an upper case letter.", type);
+		SEMA_ERROR_HERE("Names of %ss must start with an uppercase letter.", type);
 		return false;
 	}
 	if (tok_is(c, TOKEN_CONST_IDENT))
 	{
-		SEMA_ERROR_HERE("Names of %ss cannot be all upper case.", type);
+		SEMA_ERROR_HERE("Names of %ss cannot be all uppercase.", type);
 		return false;
 	}
 	if (!consume(c, TOKEN_TYPE_IDENT, "'%s' should be followed by the name of the %s.", type, type)) return false;
@@ -403,7 +403,7 @@ bool consume_const_name(ParseContext *c, const char* type)
 {
 	if (tok_is(c, TOKEN_IDENT) || tok_is(c, TOKEN_TYPE_IDENT))
 	{
-		SEMA_ERROR_HERE("Names of %ss must be all upper case.", type);
+		SEMA_ERROR_HERE("Names of %ss must be all uppercase.", type);
 		return false;
 	}
 	if (!consume(c, TOKEN_CONST_IDENT, "A constant name was expected here, did you forget it?")) return false;
@@ -1086,6 +1086,10 @@ bool parse_parameters(ParseContext *c, Visibility visibility, Decl ***params_ref
 		bool vararg_implicit = false;
 		switch (c->tok)
 		{
+			case TOKEN_CONST_IDENT:
+			case TOKEN_CT_CONST_IDENT:
+				SEMA_ERROR_HERE("Parameter names may not be all uppercase.");
+				return false;
 			case TOKEN_IDENT:
 				// normal foo
 				name = symstr(c);
@@ -1618,7 +1622,7 @@ static inline Decl *parse_define_ident(ParseContext *c, Visibility visibility)
 	{
 		if (token_is_any_type(c->tok) || tok_is(c, TOKEN_TYPE_IDENT))
 		{
-			SEMA_ERROR(decl, "A type alias must start with an upper case letter and contain at least one lower case letter.");
+			SEMA_ERROR(decl, "A type alias must start with an uppercase letter and contain at least one lower case letter.");
 			return poisoned_decl;
 		}
 		if (alias_type == TOKEN_CONST_IDENT)

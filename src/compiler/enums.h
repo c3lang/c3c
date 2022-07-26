@@ -429,7 +429,7 @@ typedef enum
 
 	// Literals.
 	TOKEN_IDENT,            // Any normal ident.
-	TOKEN_CONST_IDENT,      // Any purely upper case ident,
+	TOKEN_CONST_IDENT,      // Any purely uppercase ident,
 	TOKEN_TYPE_IDENT,       // Any ident on the format FooBar or __FooBar
 
 	// Asm

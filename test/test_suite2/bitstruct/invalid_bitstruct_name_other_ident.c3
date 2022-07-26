@@ -1,4 +1,4 @@
-bitstruct test : int // #error: Names of bitstructs must start with an upper case letter.
+bitstruct test : int // #error: Names of bitstructs must start with an uppercase letter.
 {
     int a : 1..3;
     int b : 5..10;
@@ -12,7 +12,7 @@ bitstruct $if : int // #error: 'bitstruct' should be followed by the name of the
     uint c : 20..20;
 }
 
-bitstruct if : int // #error: Names of bitstructs must start with an upper case letter.
+bitstruct if : int // #error: Names of bitstructs must start with an uppercase letter.
 {
     int a : 1..3;
     int b : 5..10;
