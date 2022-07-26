@@ -722,7 +722,7 @@ fn usize! String.printf(String* str, char[] format, args...) @maydiscard
 	return vsnprintf(&out_string_append_fn, str, format, args);
 }
 
-fn usize! fprintf(File file, char[] format, args...) @maydiscard
+fn usize! File.printf(File file, char[] format, args...) @maydiscard
 {
   return vsnprintf(&out_putchar_fn, &file, format, args);
 }

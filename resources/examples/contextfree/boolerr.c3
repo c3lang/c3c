@@ -22,7 +22,7 @@ private struct StringData
 fn void Summary.print(Summary *s, File out)
 {
 	char[] title = s.title ? s.title.str() : "missing";
-	io::fprintf(out, "Summary({ .title = %s, .ok = %s})", title, s.ok);
+	out.printf("Summary({ .title = %s, .ok = %s})", title, s.ok);
 }
 
 fn bool contains(char[] haystack, char[] needle)
@@ -132,6 +132,8 @@ fn void main()
             char[] title_sure = summary.title ? summary.title.str() : "";
             io::printf("  Title: %s\n", title_sure);
             bool! has_title = readWhetherTitleNonEmpty(url);
+            // This looks a bit less than elegant, but as you see it's mostly due to having to
+            // use printf here.
             io::printf("  Has title: %s vs %s\n", bool_to_string(has_title) ?? catch(has_title).nameof, has_title ?? false);
         };
         allocator.reset();
