@@ -116,6 +116,9 @@ $case OsType.WIN32:
     macro CFile stdout() { return __acrt_iob_func(1); }
     macro CFile stderr() { return __acrt_iob_func(2); }
 $default:
+    macro CFile stdin() { return (CFile*)(uptr)0; }
+    macro CFile stdout() { return (CFile*)(uptr)1; }
+    macro CFile stderr() { return (CFile*)(uptr)2; }
 $endswitch;
 
 // The following needs to be set per arch+os
