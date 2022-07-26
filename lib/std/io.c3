@@ -166,6 +166,11 @@ fn usize! File.println(File* file, char[] string)
     return len + 1;
 }
 
+fn File stdout()
+{
+	return { libc::stdout() };
+}
+
 /*
 
 

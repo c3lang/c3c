@@ -75,7 +75,8 @@ fn void String.chop(String this, usize new_size)
 fn char[] String.str(String str)
 {
 	StringData* data = (StringData*)str;
-	return data.chars[0..data.len - 1];
+	if (!data) return char[] {};
+	return data.chars[:data.len];
 }
 
 fn void String.append_utf32(String* str, Char32[] chars)
@@ -171,6 +172,11 @@ fn ZString String.copy_zstr(String* str, Allocator allocator = { null, null })
 	mem::copy(zstr, &data.chars, str_len);
 	zstr[str_len] = 0;
 	return (ZString)zstr;
+}
+
+fn char[] String.copy_str(String* str, Allocator allocator = { null, null })
+{
+	return str.copy_zstr(allocator)[:str.len()];
 }
 
 fn bool String.equals(String str, String other_string)

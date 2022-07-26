@@ -3,20 +3,26 @@ import libc;
 import std::io;
 
 struct Doc { Head *head; }
-struct Head { char[]* title; }
+struct Head { String* title; }
 
 struct Summary
 {
-	char[]* title;
+	String* title;
 	bool ok;
 }
 
-fn void Summary.print(Summary *s, CFile out)
+private struct StringData
 {
-	// We don't have a native fprintf in C3 yet, so use libc,
-	// which is not all that nice for the strings but...
-	char[] title = s.title ? *s.title : "missing";
-	libc::fprintf(out, "Summary({ .title = %.*s, .ok = %s})", (int)title.len, title.ptr, s.ok ? "true" : "false");
+	Allocator allocator;
+	usize len;
+	usize capacity;
+	char[*] chars;
+}
+
+fn void Summary.print(Summary *s, File out)
+{
+	char[] title = s.title ? s.title.str() : "missing";
+	io::fprintf(out, "Summary({ .title = %s, .ok = %s})", title, s.ok);
 }
 
 fn bool contains(char[] haystack, char[] needle)
@@ -36,7 +42,7 @@ fn bool contains(char[] haystack, char[] needle)
 	return false;
 }
 
-macro dupe(value)
+macro @dupe(value)
 {
 	$typeof(&value) temp = mem::alloc_checked($sizeof(value))?;
 	*temp = value;
@@ -52,13 +58,11 @@ fn Doc! readDoc(char[] url)
 {
 	if (contains(url, "fail")) return ReadError.BAD_READ!;
 	if (contains(url, "head-missing")) return { .head = null };
-	if (contains(url, "title-missing")) return { dupe(Head { .title = null })? };
-	if (contains(url, "title-empty")) return { dupe(Head { .title = dupe((char[])"")? })? };
-	// Not particularly elegant due to missing string functions.
-	int len = libc::snprintf(null, 0, "Title of %.*s", (int)url.len, url.ptr);
-	char* str = mem::alloc_checked(len + 1)?;
-	libc::snprintf(str, len + 1, "Title of %.*s", (int)url.len, url.ptr);
-	return { dupe(Head { .title = dupe(str[..len - 1])? })? };
+	if (contains(url, "title-missing")) return { @dupe(Head { .title = null }) };
+	if (contains(url, "title-empty")) return { @dupe(Head { .title = @dupe((String)null) }) };
+	String str;
+	str.printf("Title of %s", url);
+	return { @dupe(Head { .title = @dupe(str) }) };
 }
 
 fn Summary buildSummary(Doc doc)
@@ -93,9 +97,9 @@ fault TitleResult
 fn bool! isTitleNonEmpty(Doc doc)
 {
 	if (!doc.head) return TitleResult.TITLE_MISSING!;
-	char[]* head = doc.head.title;
+	String* head = doc.head.title;
 	if (!head) return TitleResult.TITLE_MISSING!;
-	return (*head).len > 0;
+	return head.len() > 0;
 }
 
 
@@ -123,13 +127,11 @@ fn void main()
             io::printf(`Checking "https://%s/":` "\n", url);
             Summary summary = readAndBuildSummary(url);
             io::printf("  Summary: ");
-            summary.print(libc::stdout());
+            summary.print(io::stdout());
             io::println("");
-            char[] title_sure = summary.title ? *summary.title : "";
+            char[] title_sure = summary.title ? summary.title.str() : "";
             io::printf("  Title: %s\n", title_sure);
             bool! has_title = readWhetherTitleNonEmpty(url);
-            // This looks a bit less than elegant, but as you see it's mostly due to having to
-            // use printf here.
             io::printf("  Has title: %s vs %s\n", bool_to_string(has_title) ?? catch(has_title).nameof, has_title ?? false);
         };
         allocator.reset();

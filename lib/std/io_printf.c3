@@ -28,14 +28,14 @@ bitstruct PrintFlags : uint
 struct PrintParam
 {
 	OutputFn outfn;
-	char[] buffer;
+	void* buffer;
 	PrintFlags flags;
 	uint width;
 	uint prec;
 	usize idx;
 }
 
-define OutputFn = fn void!(char c, char[] buffer, usize buffer_idx);
+define OutputFn = fn void!(char c, void* buffer, usize buffer_idx);
 
 fn void! PrintParam.out(PrintParam* param, char c)
 {
@@ -207,13 +207,25 @@ private fn void! out_buffer_fn(char c, char[] buffer, usize buffer_idx)
 	buffer[buffer_idx] = c;
 }
 
-private fn void! out_null_fn(char c @unused, char[] buffer @unused, usize idx @unused)
+private fn void! out_null_fn(char c @unused, void* data @unused, usize idx @unused)
 {
 }
 
-private fn void! out_putchar_fn(char c, char[] buffer @unused, usize idx @unused)
+private fn void! out_putchar_fn(char c, void* data @unused, usize idx @unused)
 {
 	libc::putchar(c);
+}
+
+private fn void! out_fputchar_fn(char c, void* data, usize idx @unused)
+{
+	File* f = data;
+	f.putc(c)?;
+}
+
+private fn void! out_string_append_fn(char c, void* data, usize idx @unused)
+{
+	String* s = data;
+	s.append_char(c);
 }
 
 private fn void! PrintParam.out_reverse(PrintParam* param, char[] buf)
@@ -702,7 +714,17 @@ private fn NtoaType int_from_variant(variant arg, bool *is_neg)
 
 fn usize! printf(char[] format, args...) @maydiscard
 {
-  return vsnprintf(&out_putchar_fn, " ", format, args);
+  return vsnprintf(&out_putchar_fn, null, format, args);
+}
+
+fn usize! String.printf(String* str, char[] format, args...) @maydiscard
+{
+	return vsnprintf(&out_string_append_fn, str, format, args);
+}
+
+fn usize! fprintf(File file, char[] format, args...) @maydiscard
+{
+  return vsnprintf(&out_putchar_fn, &file, format, args);
 }
 
 private fn void! PrintParam.left_adjust(PrintParam* param, usize len)
@@ -737,14 +759,14 @@ private fn void! out_substr(PrintParam* param, char[] str)
 	return param.left_adjust(l);
 }
 
-private fn usize! vsnprintf(OutputFn out, char[] buffer, char[] format, variant[] variants)
+private fn usize! vsnprintf(OutputFn out, void* data, char[] format, variant[] variants)
 {
-	if (!buffer)
+	if (!out)
 	{
 		// use null output function
 		out = &out_null_fn;
 	}
-	PrintParam param = { .outfn = out, .buffer = buffer };
+	PrintParam param = { .outfn = out, .buffer = data };
 	usize format_len = format.len;
 	usize variant_index = 0;
 	for (usize i = 0; i < format_len; i++)
