@@ -306,19 +306,21 @@ bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *
 	{
 		Expr *expr = NULL;
 		DesignatorElement **path;
+		SourceSpan start_span = c->span;
 		if (!parse_param_path(c, &path)) return false;
 		if (path != NULL)
 		{
 			// Create the parameter expr
-			expr = EXPR_NEW_TOKEN(EXPR_DESIGNATOR);
+			expr = expr_new(EXPR_DESIGNATOR, start_span);
 			expr->designator_expr.path = path;
-			RANGE_EXTEND_PREV(expr);
 
 			// Expect the '=' after.
 			CONSUME_OR_RET(TOKEN_EQ, false);
 
 			// Now parse the rest
 			ASSIGN_EXPR_OR_RET(expr->designator_expr.value, parse_expr_or_initializer_list(c), false);
+
+			RANGE_EXTEND_PREV(expr);
 		}
 		else
 		{

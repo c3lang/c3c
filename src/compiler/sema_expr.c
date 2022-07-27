@@ -1334,7 +1334,7 @@ static inline bool sema_expand_call_arguments(SemaContext *context, CalledDecl *
 		//     like foo(.a = 1, 3) => error.
 		if (uses_named_parameters)
 		{
-			SEMA_ERROR(call, "A regular parameter cannot follow a named parameter.");
+			SEMA_ERROR(arg, "A regular parameter cannot follow a named parameter.");
 			return false;
 		}
 
