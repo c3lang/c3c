@@ -12,35 +12,34 @@ private const uint UTF16_SURROGATE_HIGH_VALUE = 0xD800;
 /**
  * @param c `The utf32 codepoint to convert`
  * @param [out] output `the resulting buffer`
- * @param [inout] size `the size available`
+ * @param available `the size available`
  **/
-fn void! char32_to_utf8(Char32 c, char* output, usize *size)
+fn usize! char32_to_utf8(Char32 c, char* output, usize available)
 {
-	usize available = *size;
 	if (!available) return UnicodeResult.CONVERSION_FAILED!;
 	switch (true)
 	{
 		case c < 0x7f:
 			output[0] = (char)c;
-			*size = 1;
+			return 1;
 		case c < 0x7ff:
 	        if (available < 2) return UnicodeResult.CONVERSION_FAILED!;
 			output[0] = (char)(0xC0 | c >> 6);
             output[1] = (char)(0x80 | (c & 0x3F));
-            *size = 2;
+            return 2;
         case c < 0xffff:
 	        if (available < 3) return UnicodeResult.CONVERSION_FAILED!;
             output[0] = (char)(0xE0 | c >> 12);
             output[1] = (char)(0x80 | (c >> 6 & 0x3F));
             output[2] = (char)(0x80 | (c & 0x3F));
-            *size = 3;
+            return 3;
         default:
 	        if (available < 4) return UnicodeResult.CONVERSION_FAILED!;
 		    output[0] = (char)(0xF0 | c >> 18);
             output[1] = (char)(0x80 | (c >> 12 & 0x3F));
             output[2] = (char)(0x80 | (c >> 6 & 0x3F));
             output[3] = (char)(0x80 | (c & 0x3F));
-            *size = 4;
+            return 4;
 	}
 }
 
@@ -297,10 +296,9 @@ fn usize! utf32to8(Char32[] utf32, char[] utf8_buffer)
 	char* ptr = utf8_buffer.ptr;
 	foreach (Char32 uc : utf32)
 	{
-		usize size = len;
-		char32_to_utf8(uc, ptr, &size) @inline?;
-		len -= size;
-		ptr += size;
+		usize used = char32_to_utf8(uc, ptr, len) @inline?;
+		len -= used;
+		ptr += used;
 	}
 	return utf8_buffer.len - len;
 }

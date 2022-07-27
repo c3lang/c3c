@@ -1,5 +1,5 @@
 // TODO: ensure the type is an enum first.
-module enumset<Enum>;
+module std::enumset<Enum>;
 
 $assert(Enum.elements < 64, "Maximum number of elements for an enum used as enum set is 63");
 
@@ -24,17 +24,17 @@ $endswitch;
 
 define EnumSet = distinct EnumSetType;
 
-fn void EnumSet.add(EnumSet *this, Enum v)
+fn void EnumSet.add(EnumSet* this, Enum v)
 {
     *this = (EnumSet)((EnumSetType)*this | 1u << (EnumSetType)v);
 }
 
-fn void EnumSet.clear(EnumSet *this)
+fn void EnumSet.clear(EnumSet* this)
 {
     *this = 0;
 }
 
-fn bool EnumSet.remove(EnumSet *this, Enum v)
+fn bool EnumSet.remove(EnumSet* this, Enum v)
 {
     EnumSetType old = (EnumSetType)*this;
     EnumSetType new = old & ~(1u << (EnumSetType)v);
@@ -42,37 +42,42 @@ fn bool EnumSet.remove(EnumSet *this, Enum v)
     return old != new;
 }
 
-fn bool EnumSet.has(EnumSet *this, Enum v)
+fn bool EnumSet.has(EnumSet* this, Enum v)
 {
     return ((EnumSetType)*this & (1u << (EnumSetType)v)) != 0;
 }
 
-fn void EnumSet.add_all(EnumSet *this, EnumSet s)
+fn void EnumSet.add_all(EnumSet* this, EnumSet s)
 {
     *this = (EnumSet)((EnumSetType)*this | (EnumSetType)s);
 }
 
-fn void EnumSet.retain_all(EnumSet *this, EnumSet s)
+fn void EnumSet.retain_all(EnumSet* this, EnumSet s)
 {
     *this = (EnumSet)((EnumSetType)*this & (EnumSetType)s);
 }
 
-fn EnumSet EnumSet.and_of(EnumSet *this, EnumSet s)
+fn void EnumSet.remove_all(EnumSet* this, EnumSet s)
+{
+    *this = (EnumSet)((EnumSetType)*this & ~(EnumSetType)s);
+}
+
+fn EnumSet EnumSet.and_of(EnumSet* this, EnumSet s)
 {
     return (EnumSet)((EnumSetType)*this & (EnumSetType)s);
 }
 
-fn EnumSet EnumSet.or_of(EnumSet *this, EnumSet s)
+fn EnumSet EnumSet.or_of(EnumSet* this, EnumSet s)
 {
     return (EnumSet)((EnumSetType)*this | (EnumSetType)s);
 }
 
-fn EnumSet EnumSet.diff_of(EnumSet *this, EnumSet s)
+fn EnumSet EnumSet.diff_of(EnumSet* this, EnumSet s)
 {
     return (EnumSet)((EnumSetType)*this & ~(EnumSetType)s);
 }
 
-fn EnumSet EnumSet.xor_of(EnumSet *this, EnumSet s)
+fn EnumSet EnumSet.xor_of(EnumSet* this, EnumSet s)
 {
     return (EnumSet)((EnumSetType)*this ^ (EnumSetType)s);
 }

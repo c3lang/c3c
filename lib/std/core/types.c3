@@ -1,9 +1,6 @@
 module std::core::types;
 import libc;
-macro bool kind_is_int(TypeKind kind)
-{
-	return kind == TypeKind.SIGNED_INT || kind == TypeKind.UNSIGNED_INT;
-}
+
 
 fault ConversionResult
 {
@@ -95,6 +92,11 @@ macro bool is_numerical($Type)
 	$endif;
 }
 
+fn bool TypeKind.is_int(TypeKind kind) @inline
+{
+	return kind == TypeKind.SIGNED_INT || kind == TypeKind.UNSIGNED_INT;
+}
+
 macro bool is_comparable($Type)
 {
 	var $kind = $Type.kind;
@@ -124,8 +126,6 @@ macro bool is_comparable_value(value)
 		return is_comparable($typeof(value));
 	$endif;
 }
-
-
 
 enum TypeKind : char
 {

@@ -556,6 +556,7 @@ static void copy_function_signature_deep(CopyStruct *c, FunctionSignature *signa
 void copy_decl_type(Decl *decl)
 {
 	Type *type = decl->type;
+	if (!type) return;
 	Type *copy = type_new(type->type_kind, type->name);
 	*copy = *type;
 	copy->type_cache = NULL;
@@ -608,10 +609,16 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			MACRO_COPY_DECL_LIST(copy->methods);
 			break;
 		case DECL_DECLARRAY:
-		case DECL_BITSTRUCT:
 			UNREACHABLE
+		case DECL_BITSTRUCT:
+			copy_decl_type(copy);
+			MACRO_COPY_DECL_LIST(copy->bitstruct.members);
+			MACRO_COPY_TYPE(copy->bitstruct.base_type);
+			MACRO_COPY_DECL_LIST(copy->methods);
+			MACRO_COPY_DECL_LIST(copy->methods);
+			break;
 		case DECL_ENUM:
-			case DECL_FAULT:
+		case DECL_FAULT:
 			copy_decl_type(copy);
 			MACRO_COPY_DECL_LIST(copy->methods);
 			MACRO_COPY_DECL_LIST(copy->enums.parameters);
@@ -619,6 +626,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			MACRO_COPY_DECL_LIST(copy->enums.values);
 			break;
 		case DECL_FUNC:
+			copy_decl_type(copy);
 			MACRO_COPY_TYPEID(copy->func_decl.type_parent);
 			MACRO_COPY_ASTID(copy->func_decl.docs);
 			copy_function_signature_deep(c, &copy->func_decl.function_signature);
@@ -644,6 +652,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 		case DECL_FAULTVALUE:
 			break;
 		case DECL_TYPEDEF:
+			copy_decl_type(copy);
 			if (copy->typedef_decl.is_func)
 			{
 				copy_function_signature_deep(c, &copy->typedef_decl.function_signature);
@@ -652,6 +661,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			MACRO_COPY_TYPE(copy->typedef_decl.type_info);
 			break;
 		case DECL_DISTINCT:
+			copy_decl_type(copy);
 			MACRO_COPY_DECL_LIST(copy->methods);
 			if (copy->distinct_decl.typedef_decl.is_func)
 			{

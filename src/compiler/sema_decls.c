@@ -2103,7 +2103,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 		if (!sema_add_local(context, decl)) return decl_poison(decl);
 	}
 
-	// 1. Local constants: const int FOO = 123.
+	// 1. Local or global constants: const int FOO = 123.
 	if (decl->var.kind == VARDECL_CONST)
 	{
 		Expr *init_expr = decl->var.init_expr;
@@ -2117,6 +2117,11 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 		if (!decl->var.type_info)
 		{
 			if (!sema_analyse_expr(context, init_expr)) return false;
+			if (is_global && !expr_is_constant_eval(init_expr, CONSTANT_EVAL_ANY))
+			{
+				SEMA_ERROR(init_expr, "This expression cannot be evaluated at compile time.");
+				return false;
+			}
 			decl->type = init_expr->type;
 			if (!decl->alignment) decl->alignment = type_alloca_alignment(decl->type);
 			if (!sema_analyse_decl_type(context, decl->type, init_expr->span)) return false;

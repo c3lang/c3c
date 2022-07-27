@@ -194,7 +194,7 @@ private fn int! printf_parse_format_field(variant* args_ptr, usize args_len, usi
 	if (c != '*') return 0;
 	printf_advance_format(format_len, index_ptr)?;
 	variant val = next_variant(args_ptr, args_len, args_index_ptr)?;
-    if (!types::kind_is_int(val.type.kind)) return FormattingFault.INVALID_WIDTH_ARG!;
+    if (!val.type.kind.is_int()) return FormattingFault.INVALID_WIDTH_ARG!;
     uint! intval = types::variant_to_int(val, int);
 	if (catch intval) return FormattingFault.INVALID_WIDTH_ARG!;
 	return intval;

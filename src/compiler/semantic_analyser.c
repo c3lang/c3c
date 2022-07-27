@@ -190,19 +190,19 @@ static void register_generic_decls(Module *module, Decl **decls)
 			case DECL_ATTRIBUTE:
 				break;
 			case DECL_CT_CASE:
-				register_generic_decls(module, decl->ct_case_decl.body);
+//				register_generic_decls(module, decl->ct_case_decl.body);
 				continue;
 			case DECL_CT_ELIF:
-				register_generic_decls(module, decl->ct_elif_decl.then);
+//				register_generic_decls(module, decl->ct_elif_decl.then);
 				continue;
 			case DECL_CT_ELSE:
-				register_generic_decls(module, decl->ct_else_decl);
+//				register_generic_decls(module, decl->ct_else_decl);
 				continue;
 			case DECL_CT_IF:
-				register_generic_decls(module, decl->ct_if_decl.then);
+//				register_generic_decls(module, decl->ct_if_decl.then);
 				continue;
 			case DECL_CT_SWITCH:
-				register_generic_decls(module, decl->ct_switch_decl.cases);
+//				register_generic_decls(module, decl->ct_switch_decl.cases);
 				continue;
 			case DECL_MACRO:
 			case DECL_DEFINE:
