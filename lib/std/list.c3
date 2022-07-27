@@ -19,12 +19,13 @@ private fn void List.ensure_capacity(List *list) @inline
     }
 }
 
+
 fn void List.push(List *list, Type element) @inline
 {
     list.append(element);
 }
 
-fn void List.append(List *list, Type element)
+fn void List.append(List* list, Type element)
 {
     list.ensure_capacity();
     list.entries[list.size++] = element;
@@ -33,7 +34,7 @@ fn void List.append(List *list, Type element)
 /**
  * @require list.size > 0
  */
-fn Type List.pop(List *list)
+fn Type List.pop(List* list)
 {
     return list.entries[--list.size];
 }
@@ -62,7 +63,7 @@ fn void List.push_front(List *list, Type type) @inline
     list.insert_at(0, type);
 }
 
-fn void List.insert_at(List *list, usize index, Type type)
+fn void List.insert_at(List* list, usize index, Type type)
 {
     list.ensure_capacity();
     for (usize i = list.size; i > index; i--)
@@ -73,7 +74,7 @@ fn void List.insert_at(List *list, usize index, Type type)
     list.entries[index] = type;
 }
 
-fn void List.remove_last(List *list)
+fn void List.remove_last(List* list)
 {
     list.size--;
 }

@@ -1,0 +1,203 @@
+// #target: macos-x64
+module test;
+import std::io;
+import std::enumset;
+
+define AbcEnumSet = EnumSet<Abc>;
+
+enum Abc
+{
+	HELLO,
+	WORLD
+}
+fn void main()
+{
+	AbcEnumSet set;
+	io::printf("Has WORLD: %s\n", set.has(Abc.WORLD));
+	set.add(Abc.HELLO);
+	io::printf("Has WORLD: %s\n", set.has(Abc.WORLD));
+	set.add(Abc.WORLD);
+	io::printf("Has WORLD: %s\n", set.has(Abc.WORLD));
+	AbcEnumSet set2;
+	set2.add_all(set);
+	io::printf("Has WORLD: %s\n", set2.has(Abc.WORLD));
+	set.remove_all(set2);
+	io::printf("Has WORLD: %s\n", set.has(Abc.WORLD));
+}
+
+/* #expect: test.ll
+
+define void @test_main() #0 {
+entry:
+  %set = alloca i32, align 4
+  %retparam = alloca i64, align 8
+  %taddr = alloca %"char[]", align 8
+  %vararg = alloca %"variant[]", align 8
+  %varargslots = alloca [1 x %variant], align 16
+  %taddr1 = alloca i8, align 1
+  %retparam4 = alloca i64, align 8
+  %taddr5 = alloca %"char[]", align 8
+  %vararg8 = alloca %"variant[]", align 8
+  %varargslots9 = alloca [1 x %variant], align 16
+  %taddr10 = alloca i8, align 1
+  %retparam16 = alloca i64, align 8
+  %taddr17 = alloca %"char[]", align 8
+  %vararg20 = alloca %"variant[]", align 8
+  %varargslots21 = alloca [1 x %variant], align 16
+  %taddr22 = alloca i8, align 1
+  %set2 = alloca i32, align 4
+  %retparam28 = alloca i64, align 8
+  %taddr29 = alloca %"char[]", align 8
+  %vararg32 = alloca %"variant[]", align 8
+  %varargslots33 = alloca [1 x %variant], align 16
+  %taddr34 = alloca i8, align 1
+  %retparam40 = alloca i64, align 8
+  %taddr41 = alloca %"char[]", align 8
+  %vararg44 = alloca %"variant[]", align 8
+  %varargslots45 = alloca [1 x %variant], align 16
+  %taddr46 = alloca i8, align 1
+  store i32 0, ptr %set, align 4
+  store %"char[]" { ptr @.str, i64 14 }, ptr %taddr, align 8
+  %0 = getelementptr inbounds { ptr, i64 }, ptr %taddr, i32 0, i32 0
+  %lo = load ptr, ptr %0, align 8
+  %1 = getelementptr inbounds { ptr, i64 }, ptr %taddr, i32 0, i32 1
+  %hi = load i64, ptr %1, align 8
+  %2 = call i8 @"std_enumset$$test_Abc_EnumSet_has"(ptr %set, i32 1)
+  store i8 %2, ptr %taddr1, align 1
+  %3 = insertvalue %variant undef, ptr %taddr1, 0
+  %4 = insertvalue %variant %3, i64 ptrtoint (ptr @"ct$bool" to i64), 1
+  %5 = getelementptr inbounds [1 x %variant], ptr %varargslots, i64 0, i64 0
+  store %variant %4, ptr %5, align 16
+  %6 = getelementptr inbounds %"variant[]", ptr %vararg, i32 0, i32 1
+  store i64 1, ptr %6, align 8
+  %7 = getelementptr inbounds %"variant[]", ptr %vararg, i32 0, i32 0
+  store ptr %varargslots, ptr %7, align 8
+  %8 = getelementptr inbounds { ptr, i64 }, ptr %vararg, i32 0, i32 0
+  %lo2 = load ptr, ptr %8, align 8
+  %9 = getelementptr inbounds { ptr, i64 }, ptr %vararg, i32 0, i32 1
+  %hi3 = load i64, ptr %9, align 8
+  %10 = call i64 @std_io_printf(ptr %retparam, ptr %lo, i64 %hi, ptr %lo2, i64 %hi3)
+  %not_err = icmp eq i64 %10, 0
+  br i1 %not_err, label %after.errcheck, label %voiderr
+
+after.errcheck:                                   ; preds = %entry
+  br label %voiderr
+
+voiderr:                                          ; preds = %after.errcheck, %entry
+  call void @"std_enumset$$test_Abc_EnumSet_add"(ptr %set, i32 0)
+  store %"char[]" { ptr @.str.1, i64 14 }, ptr %taddr5, align 8
+  %11 = getelementptr inbounds { ptr, i64 }, ptr %taddr5, i32 0, i32 0
+  %lo6 = load ptr, ptr %11, align 8
+  %12 = getelementptr inbounds { ptr, i64 }, ptr %taddr5, i32 0, i32 1
+  %hi7 = load i64, ptr %12, align 8
+  %13 = call i8 @"std_enumset$$test_Abc_EnumSet_has"(ptr %set, i32 1)
+  store i8 %13, ptr %taddr10, align 1
+  %14 = insertvalue %variant undef, ptr %taddr10, 0
+  %15 = insertvalue %variant %14, i64 ptrtoint (ptr @"ct$bool" to i64), 1
+  %16 = getelementptr inbounds [1 x %variant], ptr %varargslots9, i64 0, i64 0
+  store %variant %15, ptr %16, align 16
+  %17 = getelementptr inbounds %"variant[]", ptr %vararg8, i32 0, i32 1
+  store i64 1, ptr %17, align 8
+  %18 = getelementptr inbounds %"variant[]", ptr %vararg8, i32 0, i32 0
+  store ptr %varargslots9, ptr %18, align 8
+  %19 = getelementptr inbounds { ptr, i64 }, ptr %vararg8, i32 0, i32 0
+  %lo11 = load ptr, ptr %19, align 8
+  %20 = getelementptr inbounds { ptr, i64 }, ptr %vararg8, i32 0, i32 1
+  %hi12 = load i64, ptr %20, align 8
+  %21 = call i64 @std_io_printf(ptr %retparam4, ptr %lo6, i64 %hi7, ptr %lo11, i64 %hi12)
+  %not_err13 = icmp eq i64 %21, 0
+  br i1 %not_err13, label %after.errcheck14, label %voiderr15
+
+after.errcheck14:                                 ; preds = %voiderr
+  br label %voiderr15
+
+voiderr15:                                        ; preds = %after.errcheck14, %voiderr
+  call void @"std_enumset$$test_Abc_EnumSet_add"(ptr %set, i32 1)
+  store %"char[]" { ptr @.str.2, i64 14 }, ptr %taddr17, align 8
+  %22 = getelementptr inbounds { ptr, i64 }, ptr %taddr17, i32 0, i32 0
+  %lo18 = load ptr, ptr %22, align 8
+  %23 = getelementptr inbounds { ptr, i64 }, ptr %taddr17, i32 0, i32 1
+  %hi19 = load i64, ptr %23, align 8
+  %24 = call i8 @"std_enumset$$test_Abc_EnumSet_has"(ptr %set, i32 1)
+  store i8 %24, ptr %taddr22, align 1
+  %25 = insertvalue %variant undef, ptr %taddr22, 0
+  %26 = insertvalue %variant %25, i64 ptrtoint (ptr @"ct$bool" to i64), 1
+  %27 = getelementptr inbounds [1 x %variant], ptr %varargslots21, i64 0, i64 0
+  store %variant %26, ptr %27, align 16
+  %28 = getelementptr inbounds %"variant[]", ptr %vararg20, i32 0, i32 1
+  store i64 1, ptr %28, align 8
+  %29 = getelementptr inbounds %"variant[]", ptr %vararg20, i32 0, i32 0
+  store ptr %varargslots21, ptr %29, align 8
+  %30 = getelementptr inbounds { ptr, i64 }, ptr %vararg20, i32 0, i32 0
+  %lo23 = load ptr, ptr %30, align 8
+  %31 = getelementptr inbounds { ptr, i64 }, ptr %vararg20, i32 0, i32 1
+  %hi24 = load i64, ptr %31, align 8
+  %32 = call i64 @std_io_printf(ptr %retparam16, ptr %lo18, i64 %hi19, ptr %lo23, i64 %hi24)
+  %not_err25 = icmp eq i64 %32, 0
+  br i1 %not_err25, label %after.errcheck26, label %voiderr27
+
+after.errcheck26:                                 ; preds = %voiderr15
+  br label %voiderr27
+
+voiderr27:                                        ; preds = %after.errcheck26, %voiderr15
+  store i32 0, ptr %set2, align 4
+  %33 = load i32, ptr %set, align 4
+  call void @"std_enumset$$test_Abc_EnumSet_add_all"(ptr %set2, i32 %33)
+  store %"char[]" { ptr @.str.3, i64 14 }, ptr %taddr29, align 8
+  %34 = getelementptr inbounds { ptr, i64 }, ptr %taddr29, i32 0, i32 0
+  %lo30 = load ptr, ptr %34, align 8
+  %35 = getelementptr inbounds { ptr, i64 }, ptr %taddr29, i32 0, i32 1
+  %hi31 = load i64, ptr %35, align 8
+  %36 = call i8 @"std_enumset$$test_Abc_EnumSet_has"(ptr %set2, i32 1)
+  store i8 %36, ptr %taddr34, align 1
+  %37 = insertvalue %variant undef, ptr %taddr34, 0
+  %38 = insertvalue %variant %37, i64 ptrtoint (ptr @"ct$bool" to i64), 1
+  %39 = getelementptr inbounds [1 x %variant], ptr %varargslots33, i64 0, i64 0
+  store %variant %38, ptr %39, align 16
+  %40 = getelementptr inbounds %"variant[]", ptr %vararg32, i32 0, i32 1
+  store i64 1, ptr %40, align 8
+  %41 = getelementptr inbounds %"variant[]", ptr %vararg32, i32 0, i32 0
+  store ptr %varargslots33, ptr %41, align 8
+  %42 = getelementptr inbounds { ptr, i64 }, ptr %vararg32, i32 0, i32 0
+  %lo35 = load ptr, ptr %42, align 8
+  %43 = getelementptr inbounds { ptr, i64 }, ptr %vararg32, i32 0, i32 1
+  %hi36 = load i64, ptr %43, align 8
+  %44 = call i64 @std_io_printf(ptr %retparam28, ptr %lo30, i64 %hi31, ptr %lo35, i64 %hi36)
+  %not_err37 = icmp eq i64 %44, 0
+  br i1 %not_err37, label %after.errcheck38, label %voiderr39
+
+after.errcheck38:                                 ; preds = %voiderr27
+  br label %voiderr39
+
+voiderr39:                                        ; preds = %after.errcheck38, %voiderr27
+  %45 = load i32, ptr %set2, align 4
+  call void @"std_enumset$$test_Abc_EnumSet_remove_all"(ptr %set, i32 %45)
+  store %"char[]" { ptr @.str.4, i64 14 }, ptr %taddr41, align 8
+  %46 = getelementptr inbounds { ptr, i64 }, ptr %taddr41, i32 0, i32 0
+  %lo42 = load ptr, ptr %46, align 8
+  %47 = getelementptr inbounds { ptr, i64 }, ptr %taddr41, i32 0, i32 1
+  %hi43 = load i64, ptr %47, align 8
+  %48 = call i8 @"std_enumset$$test_Abc_EnumSet_has"(ptr %set, i32 1)
+  store i8 %48, ptr %taddr46, align 1
+  %49 = insertvalue %variant undef, ptr %taddr46, 0
+  %50 = insertvalue %variant %49, i64 ptrtoint (ptr @"ct$bool" to i64), 1
+  %51 = getelementptr inbounds [1 x %variant], ptr %varargslots45, i64 0, i64 0
+  store %variant %50, ptr %51, align 16
+  %52 = getelementptr inbounds %"variant[]", ptr %vararg44, i32 0, i32 1
+  store i64 1, ptr %52, align 8
+  %53 = getelementptr inbounds %"variant[]", ptr %vararg44, i32 0, i32 0
+  store ptr %varargslots45, ptr %53, align 8
+  %54 = getelementptr inbounds { ptr, i64 }, ptr %vararg44, i32 0, i32 0
+  %lo47 = load ptr, ptr %54, align 8
+  %55 = getelementptr inbounds { ptr, i64 }, ptr %vararg44, i32 0, i32 1
+  %hi48 = load i64, ptr %55, align 8
+  %56 = call i64 @std_io_printf(ptr %retparam40, ptr %lo42, i64 %hi43, ptr %lo47, i64 %hi48)
+  %not_err49 = icmp eq i64 %56, 0
+  br i1 %not_err49, label %after.errcheck50, label %voiderr51
+
+after.errcheck50:                                 ; preds = %voiderr39
+  br label %voiderr51
+
+voiderr51:                                        ; preds = %after.errcheck50, %voiderr39
+  ret void
+}

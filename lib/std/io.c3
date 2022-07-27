@@ -171,6 +171,16 @@ fn File stdout()
 	return { libc::stdout() };
 }
 
+fn File stderr()
+{
+	return { libc::stderr() };
+}
+
+fn File stdin()
+{
+	return { libc::stdin() };
+}
+
 /*
 
 

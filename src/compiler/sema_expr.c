@@ -3796,7 +3796,7 @@ CHECK_DEEPER:
 			SEMA_ERROR(expr, "The method '%s' has private visibility.", kw);
 			return false;
 		}
-		SEMA_ERROR(expr, "There is no field or method '%s.%s'.", decl->name, kw);
+		SEMA_ERROR(expr, "There is no field or method '%s.%s'.", type_to_error_string(parent->type), kw);
 		return false;
 	}
 

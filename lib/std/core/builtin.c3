@@ -86,7 +86,7 @@ fn void panic(char* message, char *file, char *function, uint line) @builtin
 	$$trap();
 }
 
-macro unreachable($string = "Unreachable statement reached.") @builtin @noreturn
+macro void unreachable($string = "Unreachable statement reached.") @builtin @noreturn
 {
 	panic($string, $$FILE, $$FUNC, $$LINE);
 	$$unreachable();
