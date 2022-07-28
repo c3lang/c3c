@@ -349,6 +349,7 @@ typedef struct VarDecl_
 		Expr *init_expr;
 		Decl *alias;
 	};
+	struct CompilationUnit_ *unit;
 	union
 	{
 		int32_t index;

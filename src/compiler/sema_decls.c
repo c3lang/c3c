@@ -563,16 +563,13 @@ static inline bool sema_analyse_function_param(SemaContext *context, Decl *param
 	{
 		Expr *expr = param->var.init_expr;
 
-		if (!sema_analyse_expr_rhs(context, param->type, expr, true)) return false;
-		if (IS_FAILABLE(expr))
+		if (expr->expr_kind == EXPR_CONST)
 		{
-			SEMA_ERROR(expr, "Default arguments may not be failable.");
-			return false;
+			if (!sema_analyse_expr_rhs(context, param->type, expr, true)) return false;
 		}
-		if (!expr_is_constant_eval(expr, CONSTANT_EVAL_ANY))
+		else
 		{
-			SEMA_ERROR(expr, "Only constant expressions may be used as default values.");
-			return false;
+			param->var.unit = context->unit;
 		}
 		*has_default = true;
 	}
@@ -2099,6 +2096,16 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 	}
 	else
 	{
+		if (!context->current_function)
+		{
+			if (context->current_macro)
+			{
+				SEMA_ERROR(decl, "Macros with declarations may not be used outside of functions.");
+				return false;
+			}
+			SEMA_ERROR(decl, "Variable declarations may not be used outside of functions.");
+			return false;
+		}
 		// Add a local to the current context, will throw error on shadowing.
 		if (!sema_add_local(context, decl)) return decl_poison(decl);
 	}
