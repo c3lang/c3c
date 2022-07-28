@@ -1378,17 +1378,23 @@ static inline bool sema_expand_call_arguments(SemaContext *context, CalledDecl *
 
 		if (is_func_ptr) goto FAIL_MISSING;
 		// 17b. Set the init expression.
-		Expr *init_expr = params[i]->var.init_expr;
+		Decl *param = params[i];
+		Expr *init_expr = param->var.init_expr;
 		if (init_expr)
 		{
-			if (callee->macro)
+			Expr *arg = actual_args[i] = expr_macro_copy(init_expr);
+			if (arg->resolve_status != RESOLVE_DONE)
 			{
-				actual_args[i] = expr_macro_copy(init_expr);
-			}
-			else
-			{
-				assert(init_expr->resolve_status == RESOLVE_DONE);
-				actual_args[i] = init_expr;
+				SemaContext default_context;
+				Type *rtype = NULL;
+				sema_context_init(&default_context, param->var.unit);
+				default_context.compilation_unit = context->unit;
+				default_context.current_function = context->current_function;
+				context_change_scope_with_flags(&default_context, SCOPE_NONE);
+				default_context.original_inline_line = context->original_inline_line ? context->original_inline_line : init_expr->span.row;
+				bool success = sema_analyse_expr_rhs(&default_context, param->type, arg, true);
+				sema_context_destroy(&default_context);
+				if (!success) return false;
 			}
 			continue;
 		}
