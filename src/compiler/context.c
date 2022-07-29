@@ -122,7 +122,7 @@ bool context_set_module(ParseContext *context, Path *path, const char **generic_
 
 void unit_register_external_symbol(CompilationUnit *unit, Decl *decl)
 {
-	if (!decl->module || decl->module == unit->module || !decl->extname) return;
+	if (!decl->unit || decl->unit->module == unit->module || !decl->extname) return;
 	decl->is_external_visible = true;
 }
 
@@ -166,8 +166,8 @@ void decl_register(Decl *decl)
 
 void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 {
-	assert(!decl->module || decl->module->is_generic);
-	decl->module = unit->module;
+	assert(!decl->unit || decl->unit->module->is_generic);
+	decl->unit = unit;
 
 	switch (decl->decl_kind)
 	{

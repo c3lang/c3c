@@ -71,8 +71,8 @@ static inline bool sema_check_no_duplicate_parameter(Decl **decls, Decl *current
 
 static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent, Decl *decl)
 {
-	assert(!decl->module || decl->module->is_generic);
-	decl->module = parent->module;
+	assert(!decl->unit || decl->unit->module->is_generic);
+	decl->unit = parent->unit;
 	if (decl->name)
 	{
 		Decl *other = sema_resolve_symbol_in_current_dynamic_scope(context, decl->name);
@@ -533,6 +533,7 @@ static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl)
 static inline bool sema_analyse_function_param(SemaContext *context, Decl *param, bool is_function, bool *has_default)
 {
 	*has_default = false;
+	param->unit = context->unit;
 	assert(param->decl_kind == DECL_VAR);
 	// We need to check that the parameters are not typeless nor are of any macro parameter kind.
 	if (param->var.kind != VARDECL_PARAM)
@@ -566,10 +567,6 @@ static inline bool sema_analyse_function_param(SemaContext *context, Decl *param
 		if (expr->expr_kind == EXPR_CONST)
 		{
 			if (!sema_analyse_expr_rhs(context, param->type, expr, true)) return false;
-		}
-		else
-		{
-			param->var.unit = context->unit;
 		}
 		*has_default = true;
 	}
@@ -1003,7 +1000,7 @@ Decl *sema_find_operator(SemaContext *context, Expr *expr, OperatorOverload oper
 	Decl **imports = context->unit->imports;
 	VECEACH(imports, i)
 	{
-		extension = operator_in_module(context, imports[i]->module, operator_overload);
+		extension = operator_in_module(context, imports[i]->import.module, operator_overload);
 		if (extension) return extension;
 	}
 	return NULL;
@@ -1106,7 +1103,7 @@ static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type
 		method_like->extname = scratch_buffer_copy();
 	}
 	DEBUG_LOG("Method-like '%s.%s' analysed.", parent->name, method_like->name);
-	if (parent->module == unit->module)
+	if (parent->unit->module == unit->module)
 	{
 		vec_add(parent->methods, method_like);
 	}
@@ -1669,7 +1666,7 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	}
 	Decl *function = decl_new(DECL_FUNC, NULL, decl->span, VISIBLE_EXTERN);
 	function->name = kw_mainstub;
-	function->module = decl->module;
+	function->unit = decl->unit;
 	function->extname = kw_main;
 	function->has_extname = true;
 	function->func_decl.function_signature.returntype = type_infoid(type_info_new_base(type_cint, decl->span));
@@ -1863,6 +1860,7 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl)
 	for (unsigned i = 0; i < param_count; i++)
 	{
 		Decl *param = parameters[i];
+		param->unit = context->unit;
 		param->resolve_status = RESOLVE_RUNNING;
 		assert(param->decl_kind == DECL_VAR);
 		switch (param->var.kind)
@@ -2284,7 +2282,7 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 		return decl_poison(decl);
 	}
 
-	Module *module = alias->module;
+	Module *module = alias->unit->module;
 	TypeInfo **params = decl->define_decl.generic_params;
 	unsigned parameter_count = vec_size(module->parameters);
 	assert(parameter_count > 0);
@@ -2400,58 +2398,58 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 {
 	if (decl->resolve_status == RESOLVE_DONE) return decl_ok(decl);
 
+	SemaContext temp_context;
+	context = transform_context_for_eval(context, &temp_context, decl->unit);
 	DEBUG_LOG(">>> Analysing %s.", decl->name ? decl->name : "anon");
 	if (decl->resolve_status == RESOLVE_RUNNING)
 	{
 		SEMA_ERROR(decl, "Recursive definition of '%s'.", decl->name ? decl->name : "anon");
-		decl_poison(decl);
-		return false;
+		goto FAILED;
 	}
-
 	decl->resolve_status = RESOLVE_RUNNING;
-	assert(decl->module);
+	assert(decl->unit);
 	switch (decl->decl_kind)
 	{
 		case DECL_BITSTRUCT:
-			if (!sema_analyse_bitstruct(context, decl)) return decl_poison(decl);
+			if (!sema_analyse_bitstruct(context, decl)) goto FAILED;
 			decl_set_external_name(decl);
 			break;
 		case DECL_STRUCT:
 		case DECL_UNION:
-			if (!sema_analyse_struct_union(context, decl)) return decl_poison(decl);
+			if (!sema_analyse_struct_union(context, decl)) goto FAILED;
 			decl_set_external_name(decl);
 			break;
 		case DECL_FUNC:
-			if (!sema_analyse_func(context, decl)) return decl_poison(decl);
+			if (!sema_analyse_func(context, decl)) goto FAILED;
 			break;
 		case DECL_MACRO:
 		case DECL_GENERIC:
-			if (!sema_analyse_macro(context, decl)) return decl_poison(decl);
+			if (!sema_analyse_macro(context, decl)) goto FAILED;
 			break;
 		case DECL_VAR:
-			if (!sema_analyse_var_decl(context, decl, false)) return decl_poison(decl);
+			if (!sema_analyse_var_decl(context, decl, false)) goto FAILED;
 			decl_set_external_name(decl);
 			break;
 		case DECL_ATTRIBUTE:
-			if (!sema_analyse_attribute_decl(context, decl)) return decl_poison(decl);
+			if (!sema_analyse_attribute_decl(context, decl)) goto FAILED;
 			break;
 		case DECL_DISTINCT:
-			if (!sema_analyse_distinct(context, decl)) return decl_poison(decl);
+			if (!sema_analyse_distinct(context, decl)) goto FAILED;
 			decl_set_external_name(decl);
 			break;
 		case DECL_TYPEDEF:
-			if (!sema_analyse_typedef(context, decl)) return decl_poison(decl);
+			if (!sema_analyse_typedef(context, decl)) goto FAILED;
 			break;
 		case DECL_ENUM:
-			if (!sema_analyse_enum(context, decl)) return decl_poison(decl);
+			if (!sema_analyse_enum(context, decl)) goto FAILED;
 			decl_set_external_name(decl);
 			break;
 		case DECL_FAULT:
-			if (!sema_analyse_error(context, decl)) return decl_poison(decl);
+			if (!sema_analyse_error(context, decl)) goto FAILED;
 			decl_set_external_name(decl);
 			break;
 		case DECL_DEFINE:
-			if (!sema_analyse_define(context, decl)) return decl_poison(decl);
+			if (!sema_analyse_define(context, decl)) goto FAILED;
 			break;
 		case DECL_POISONED:
 		case DECL_IMPORT:
@@ -2469,5 +2467,9 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 			UNREACHABLE
 	}
 	decl->resolve_status = RESOLVE_DONE;
+	sema_context_destroy(&temp_context);
 	return true;
+FAILED:
+	sema_context_destroy(&temp_context);
+	return decl_poison(decl);
 }

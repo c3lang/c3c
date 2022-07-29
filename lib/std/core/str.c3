@@ -76,9 +76,8 @@ fn usize utf8_codepoints(char[] utf8)
 	return len;
 }
 
-fn Char32[]! utf8to32(char[] utf8, Allocator allocator = { null, null })
+fn Char32[]! utf8to32(char[] utf8, Allocator* allocator = mem::current_allocator)
 {
-	if (!allocator.function) allocator = mem::current_allocator();
 	usize codepoints = conv::utf8_codepoints(utf8);
 	Char32* data = allocator.alloc(Char32.sizeof * (codepoints + 1))?;
 	conv::utf8to32_unsafe(utf8, data)?;
@@ -86,19 +85,17 @@ fn Char32[]! utf8to32(char[] utf8, Allocator allocator = { null, null })
 	return data[0..codepoints - 1];
 }
 
-fn char[] utf32to8(Char32[] utf32, Allocator allocator = { null, null })
+fn char[] utf32to8(Char32[] utf32, Allocator* allocator = mem::current_allocator)
 {
 	usize len = conv::utf8len_for_utf32(utf32);
-	if (!allocator.function) allocator = mem::current_allocator();
 	char* data = allocator.alloc(len + 1)!!;
 	conv::utf32to8_unsafe(utf32, data);
 	data[len] = 0;
 	return data[0..len - 1];
 }
 
-fn Char16[]! utf8to16(char[] utf8, Allocator allocator = { null, null })
+fn Char16[]! utf8to16(char[] utf8, Allocator* allocator = mem::current_allocator)
 {
-	if (!allocator.function) allocator = mem::current_allocator();
 	usize len16 = conv::utf16len_for_utf8(utf8);
 	Char16* data = allocator.alloc((len16 + 1) * Char16.sizeof)?;
 	conv::utf8to16_unsafe(utf8, data)?;
@@ -107,9 +104,8 @@ fn Char16[]! utf8to16(char[] utf8, Allocator allocator = { null, null })
 }
 
 
-fn char[]! utf16to8(Char16[] utf16, Allocator allocator = { null, null })
+fn char[]! utf16to8(Char16[] utf16, Allocator* allocator = mem::current_allocator())
 {
-	if (!allocator.function) allocator = mem::current_allocator();
 	usize len = conv::utf8len_for_utf16(utf16);
 	char* data = allocator.alloc(len + 1)?;
 	conv::utf16to8_unsafe(utf16, data)?;

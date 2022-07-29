@@ -30,12 +30,12 @@ fn void*! SlotAllocator.alloc(SlotAllocator *allocator, usize size)
     if (*page_pointer)
     {
         // TODO fix
-        main_allocator.free(*page_pointer)?;
+        thread_allocator.free(*page_pointer)?;
         *page_pointer = null;
     }
     if (size > allocator.page_size - $sizeof(page_pointer))
     {
-        void* mem = main_allocator.alloc(size)?;
+        void* mem = thread_allocator.alloc(size)?;
         *page_pointer = mem;
         allocator.current_page = (allocator.current_page + 1) & (allocator.bitmask);
         return mem;

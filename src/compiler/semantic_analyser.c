@@ -171,12 +171,12 @@ void sema_analyze_stage(Module *module, AnalysisStage stage)
 	}
 }
 
-static void register_generic_decls(Module *module, Decl **decls)
+static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 {
 	VECEACH(decls, i)
 	{
 		Decl *decl = decls[i];
-		decl->module = module;
+		decl->unit = unit;
 		switch (decl->decl_kind)
 		{
 			case DECL_POISONED:
@@ -219,7 +219,7 @@ static void register_generic_decls(Module *module, Decl **decls)
 			case DECL_BODYPARAM:
 				break;
 		}
-		htable_set(&module->symbols, decl->name, decl);
+		htable_set(&unit->module->symbols, decl->name, decl);
 		if (decl->visibility == VISIBLE_PUBLIC) global_context_add_generic_decl(decl);
 	}
 
@@ -231,7 +231,8 @@ static void analyze_generic_module(Module *module)
 	assert(module->parameters && module->is_generic);
 	VECEACH(module->units, index)
 	{
-		register_generic_decls(module, module->units[index]->global_decls);
+		CompilationUnit *unit = module->units[index];
+		register_generic_decls(unit, unit->global_decls);
 	}
 	sema_analyze_stage(module, ANALYSIS_MODULE_HIERARCHY);
 }
@@ -346,6 +347,7 @@ void sema_context_init(SemaContext *context, CompilationUnit *unit)
 
 void sema_context_destroy(SemaContext *context)
 {
+	if (!context->unit) return;
 	generic_context_release_locals_list(context->locals);
 }
 
@@ -363,4 +365,19 @@ Decl **global_context_acquire_locals_list(void)
 void generic_context_release_locals_list(Decl **list)
 {
 	vec_add(global_context.locals_list, list);
+}
+
+SemaContext *transform_context_for_eval(SemaContext *context, SemaContext *temp_context, CompilationUnit *eval_unit)
+{
+	if (eval_unit == context->unit)
+	{
+		temp_context->unit = NULL;
+		return context;
+	}
+	DEBUG_LOG("Changing compilation unit to %s", eval_unit->file->name);
+	sema_context_init(temp_context, eval_unit);
+	temp_context->compilation_unit = context->compilation_unit;
+	temp_context->current_function = context->current_function;
+	temp_context->current_macro = context->current_macro;
+	return temp_context;
 }

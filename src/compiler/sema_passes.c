@@ -110,7 +110,7 @@ void sema_analysis_pass_process_imports(Module *module)
 
 			// 8. Assign the module.
 			DEBUG_LOG("* Import of %s.", path->module);
-			import->module = import_module;
+			import->import.module = import_module;
 		}
 		import_count += imports;
 	}

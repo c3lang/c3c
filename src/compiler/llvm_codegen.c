@@ -664,7 +664,7 @@ void llvm_set_weak(GenContext *c, LLVMValueRef global)
 
 void llvm_set_linkage(GenContext *c, Decl *decl, LLVMValueRef value)
 {
-	if (decl->module != c->code_module)
+	if (decl->unit->module != c->code_module)
 	{
 		llvm_set_linkonce(c, value);
 		return;
@@ -832,7 +832,7 @@ void llvm_add_global(GenContext *c, Decl *decl)
 {
 	assert(decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST);
 
-	const char *name = decl->module == c->code_module ? "tempglobal" : decl_get_extname(decl);
+	const char *name = decl->unit->module == c->code_module ? "tempglobal" : decl_get_extname(decl);
 	decl->backend_ref = llvm_add_global_var(c, name, decl->type, decl->alignment);
 	llvm_set_alignment(decl->backend_ref, decl->alignment);
 
@@ -873,7 +873,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 			return decl->backend_ref;
 		case DECL_FUNC:
 			backend_ref = decl->backend_ref = LLVMAddFunction(c->module, decl_get_extname(decl), llvm_get_type(c, decl->type));
-			if (decl->module == c->code_module && !decl->is_external_visible && !visible_external(decl->visibility))
+			if (decl->unit->module == c->code_module && !decl->is_external_visible && !visible_external(decl->visibility))
 			{
 				llvm_set_internal_linkage(backend_ref);
 			}

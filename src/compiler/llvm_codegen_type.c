@@ -475,7 +475,7 @@ static inline Module *type_base_module(Type *type)
 		case TYPE_BITSTRUCT:
 		case TYPE_FAULTTYPE:
 		case TYPE_DISTINCT:
-			return type->decl->module;
+			return type->decl->unit->module;
 		case TYPE_TYPEDEF:
 			type = type->canonical;
 			goto RETRY;
@@ -565,7 +565,7 @@ static LLVMValueRef llvm_get_introspection_for_builtin_type(GenContext *c, Type 
 static LLVMValueRef llvm_get_introspection_for_enum(GenContext *c, Type *type)
 {
 	Decl *decl = type->decl;
-	bool is_external = decl->module != c->code_module;
+	bool is_external = decl->unit->module != c->code_module;
 	bool is_dynamic = decl->is_dynamic;
 
 	Decl **enum_vals = decl->enums.values;
