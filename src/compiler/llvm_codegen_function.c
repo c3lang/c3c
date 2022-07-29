@@ -422,7 +422,7 @@ void llvm_emit_function_body(GenContext *c, Decl *decl)
 		if (c->debug.enable_stacktrace)
 		{
 			scratch_buffer_clear();
-			scratch_buffer_append(decl->module->name->module);
+			scratch_buffer_append(decl->unit->module->name->module);
 			scratch_buffer_append("::");
 			scratch_buffer_append(decl->name ? decl->name : "anon");
 			c->debug.func_name = llvm_emit_zstring(c, scratch_buffer_to_string());

@@ -119,10 +119,9 @@ fn void main()
     const char[][] URLS = { "good", "title-empty", "title-missing", "head-missing", "fail" };
     DynamicArenaAllocator dynamic_arena;
 	dynamic_arena.init(1024);
-    Allocator allocator = mem::dynamic_arena_allocator(&dynamic_arena);
     foreach (char[] url : URLS)
     {
-        mem::@with_allocator(allocator)
+        mem::@with_allocator(&dynamic_arena)
         {
             io::printf(`Checking "https://%s/":` "\n", url);
             Summary summary = readAndBuildSummary(url);
@@ -136,7 +135,7 @@ fn void main()
             // use printf here.
             io::printf("  Has title: %s vs %s\n", bool_to_string(has_title) ?? catch(has_title).nameof, has_title ?? false);
         };
-        allocator.reset();
+        dynamic_arena.reset();
     }
     dynamic_arena.destroy();
 }

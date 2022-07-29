@@ -80,6 +80,7 @@ void expr_rewrite_to_int_const(Expr *expr_to_rewrite, Type *type, uint64_t value
 void expr_rewrite_to_string(Expr *expr_to_rewrite, const char *string);
 const char *ct_eval_expr(SemaContext *c, const char *expr_type, Expr *inner, TokenType *type, Path **path_ref, bool report_missing);
 extern const char *ct_eval_error;
+SemaContext *transform_context_for_eval(SemaContext *context, SemaContext *temp_context, CompilationUnit *eval_unit);
 
 static inline bool expr_is_const(Expr *expr);
 

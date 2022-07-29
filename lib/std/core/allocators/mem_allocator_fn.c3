@@ -1,7 +1,10 @@
-module std::core::mem;
+module std::core::mem::allocator;
 import libc;
 
-private fn void*! null_allocator_fn(void *data, usize bytes, usize alignment, void* old_pointer, AllocationKind kind)
+private const Allocator _NULL_ALLOCATOR = { &null_allocator_fn };
+private const Allocator _SYSTEM_ALLOCATOR = { &libc_allocator_fn };
+
+private fn void*! null_allocator_fn(Allocator* this, usize bytes, usize alignment, void* old_pointer, AllocationKind kind)
 {
 	switch (kind)
 	{
@@ -14,7 +17,7 @@ private fn void*! null_allocator_fn(void *data, usize bytes, usize alignment, vo
 	}
 }
 
-fn void*! libc_allocator_fn(void *unused, usize bytes, usize alignment, void* old_pointer, AllocationKind kind) @inline
+fn void*! libc_allocator_fn(Allocator* unused, usize bytes, usize alignment, void* old_pointer, AllocationKind kind) @inline
 {
 	if (!alignment) alignment = DEFAULT_MEM_ALIGNMENT;
 	assert(math::is_power_of_2(alignment), "Alignment was not a power of 2");
@@ -25,7 +28,7 @@ fn void*! libc_allocator_fn(void *unused, usize bytes, usize alignment, void* ol
         case ALLOC:
             if (alignment > DEFAULT_MEM_ALIGNMENT)
             {
-	            data = (void*)aligned_offset((iptr)libc::malloc(bytes + alignment), alignment);
+	            data = (void*)mem::aligned_offset((iptr)libc::malloc(bytes + alignment), alignment);
             }
             else
             {
@@ -36,7 +39,7 @@ fn void*! libc_allocator_fn(void *unused, usize bytes, usize alignment, void* ol
         case CALLOC:
             if (alignment > DEFAULT_MEM_ALIGNMENT)
             {
-	            data = (void*)aligned_offset((iptr)libc::calloc(bytes + alignment, 1), alignment);
+	            data = (void*)mem::aligned_offset((iptr)libc::calloc(bytes + alignment, 1), alignment);
             }
             else
             {
@@ -47,7 +50,7 @@ fn void*! libc_allocator_fn(void *unused, usize bytes, usize alignment, void* ol
         case REALLOC:
             if (alignment > DEFAULT_MEM_ALIGNMENT)
             {
-	            data = (void*)aligned_offset((iptr)libc::realloc(old_pointer, bytes + alignment), alignment);
+	            data = (void*)mem::aligned_offset((iptr)libc::realloc(old_pointer, bytes + alignment), alignment);
             }
             else
             {

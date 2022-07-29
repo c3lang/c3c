@@ -953,7 +953,7 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 
 	if (decl->decl_kind == DECL_VAR || decl->decl_kind == DECL_FUNC || decl->decl_kind == DECL_MACRO || decl->decl_kind == DECL_GENERIC)
 	{
-		if (decl->module != context->unit->module && !decl->is_autoimport && !expr->identifier_expr.path)
+		if (decl->unit->module != context->unit->module && !decl->is_autoimport && !expr->identifier_expr.path)
 		{
 			const char *message;
 			switch (decl->decl_kind)
@@ -1385,14 +1385,15 @@ static inline bool sema_expand_call_arguments(SemaContext *context, CalledDecl *
 			Expr *arg = actual_args[i] = expr_macro_copy(init_expr);
 			if (arg->resolve_status != RESOLVE_DONE)
 			{
+
 				SemaContext default_context;
 				Type *rtype = NULL;
-				sema_context_init(&default_context, param->var.unit);
-				default_context.compilation_unit = context->unit;
-				default_context.current_function = context->current_function;
-				context_change_scope_with_flags(&default_context, SCOPE_NONE);
-				default_context.original_inline_line = context->original_inline_line ? context->original_inline_line : init_expr->span.row;
-				bool success = sema_analyse_expr_rhs(&default_context, param->type, arg, true);
+				SemaContext *new_context = transform_context_for_eval(context, &default_context, param->unit);
+				bool success;
+				SCOPE_START
+					new_context->original_inline_line = context->original_inline_line ? context->original_inline_line : init_expr->span.row;
+					success = sema_analyse_expr_rhs(new_context, param->type, arg, true);
+				SCOPE_END;
 				sema_context_destroy(&default_context);
 				if (!success) return false;
 			}
@@ -2115,7 +2116,7 @@ static inline bool sema_expr_analyse_generic_call(SemaContext *context, Expr *ca
 		scratch_buffer_append(arg->type->canonical->name);
 	}
 	const char *mangled_name = scratch_buffer_interned();
-	Decl **generic_cache = decl->module->generic_cache;
+	Decl **generic_cache = decl->unit->module->generic_cache;
 	Decl *found = NULL;
 	VECEACH(generic_cache, i)
 	{
@@ -3774,7 +3775,7 @@ CHECK_DEEPER:
 		if (ambiguous)
 		{
 			SEMA_ERROR(expr, "'%s' is an ambiguous name and so cannot be resolved, it may refer to method defined in '%s' or one in '%s'",
-					   kw, member->module->name->module, ambiguous->module->name->module);
+					   kw, member->unit->module->name->module, ambiguous->unit->module->name->module);
 			return false;
 		}
 	}
@@ -7000,13 +7001,13 @@ static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr)
 			expr_rewrite_to_string(expr, decl->extname);
 			return true;
 		}
-		if (!decl->module || name_type == TOKEN_CT_NAMEOF || decl_is_local(decl))
+		if (!decl->unit || name_type == TOKEN_CT_NAMEOF || decl_is_local(decl))
 		{
 			expr_rewrite_to_string(expr, decl->name);
 			return true;
 		}
 		scratch_buffer_clear();
-		scratch_buffer_append(decl->module->name->module);
+		scratch_buffer_append(decl->unit->module->name->module);
 		scratch_buffer_append("::");
 		scratch_buffer_append(decl->name);
 		expr_rewrite_to_string(expr, scratch_buffer_copy());
@@ -7032,7 +7033,7 @@ static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr)
 		return true;
 	}
 	scratch_buffer_clear();
-	scratch_buffer_append(type->decl->module->name->module);
+	scratch_buffer_append(type->decl->unit->module->name->module);
 	scratch_buffer_append("::");
 	scratch_buffer_append(type->name);
 	expr_rewrite_to_string(expr, scratch_buffer_copy());

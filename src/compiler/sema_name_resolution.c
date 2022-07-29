@@ -59,10 +59,10 @@ static Decl *sema_find_decl_in_imports(Decl **imports, NameResolve *name_resolve
 	VECEACH(imports, i)
 	{
 		Decl *import = imports[i];
-		if (import->module->is_generic != want_generic) continue;
+		if (import->import.module->is_generic != want_generic) continue;
 
 		// Is the decl in the import.
-		Decl *found = sema_find_decl_in_module(import->module, path, symbol, &name_resolve->path_found);
+		Decl *found = sema_find_decl_in_module(import->import.module, path, symbol, &name_resolve->path_found);
 
 		// No match, so continue
 		if (!found) continue;
@@ -133,7 +133,7 @@ static Decl *sema_find_decl_in_global(DeclTable *table, Module **module_list, Na
 	// There might just be a single match.
 	if (decls->decl_kind != DECL_DECLARRAY)
 	{
-		if (path && !matches_subpath(decls->module->name, path)) return false;
+		if (path && !matches_subpath(decls->unit->module->name, path)) return false;
 		name_resolve->private_decl = NULL;
 		return decls;
 	}
@@ -145,7 +145,7 @@ static Decl *sema_find_decl_in_global(DeclTable *table, Module **module_list, Na
 	VECEACH(decl_list, i)
 	{
 		Decl *candidate = decl_list[i];
-		if (!ambiguous && (!path || matches_subpath(candidate->module->name, path)))
+		if (!ambiguous && (!path || matches_subpath(candidate->unit->module->name, path)))
 		{
 			ambiguous = decl;
 			decl = candidate;
@@ -158,7 +158,7 @@ static Decl *sema_find_decl_in_global(DeclTable *table, Module **module_list, Na
 
 static bool decl_is_visible(CompilationUnit *unit, Decl *decl)
 {
-	Module *module = decl->module;
+	Module *module = decl->unit->module;
 	// 1. Same module as unit -> ok
 	if (module == unit->module) return true;
 	Module *top = module->top_module;
@@ -176,7 +176,7 @@ static bool decl_is_visible(CompilationUnit *unit, Decl *decl)
 	VECEACH(unit->imports, i)
 	{
 		Decl *import = unit->imports[i];
-		Module *import_module = import->module;
+		Module *import_module = import->import.module;
 		// 4. Same as import
 		if (import_module == module) return true;
 		// 5. If import and decl doesn't share a top module -> no match
@@ -210,7 +210,7 @@ static Decl *sema_find_decl_in_global_new(CompilationUnit *unit, DeclTable *tabl
 	// There might just be a single match.
 	if (decls->decl_kind != DECL_DECLARRAY)
 	{
-		if (path && !matches_subpath(decls->module->name, path)) return NULL;
+		if (path && !matches_subpath(decls->unit->module->name, path)) return NULL;
 		if (!decl_is_visible(unit, decls))
 		{
 			name_resolve->maybe_decl = decls;
@@ -227,7 +227,7 @@ static Decl *sema_find_decl_in_global_new(CompilationUnit *unit, DeclTable *tabl
 	VECEACH(decl_list, i)
 	{
 		Decl *candidate = decl_list[i];
-		if (path && !matches_subpath(candidate->module->name, path)) continue;
+		if (path && !matches_subpath(candidate->unit->module->name, path)) continue;
 		if (!decl_is_visible(unit, candidate))
 		{
 			maybe_decl = candidate;
@@ -358,7 +358,7 @@ static void sema_report_error_on_decl(Decl *found, NameResolve *name_resolve)
 	if (!found && name_resolve->maybe_decl)
 	{
 		const char *maybe_name = decl_to_name(name_resolve->maybe_decl);
-		const char *module_name = name_resolve->maybe_decl->module->name->module;
+		const char *module_name = name_resolve->maybe_decl->unit->module->name->module;
 		if (path_name)
 		{
 			sema_error_at(span, "Did you mean the %s '%s::%s' in module %s? If so please add 'import %s'.",
@@ -377,8 +377,8 @@ static void sema_report_error_on_decl(Decl *found, NameResolve *name_resolve)
 	{
 		assert(found);
 		const char *symbol_type = decl_to_name(found);
-		const char *found_path = found->module->name->module;
-		const char *other_path = name_resolve->ambiguous_other_decl->module->name->module;
+		const char *found_path = found->unit->module->name->module;
+		const char *other_path = name_resolve->ambiguous_other_decl->unit->module->name->module;
 		if (path_name)
 		{
 			sema_error_at(span,
@@ -414,6 +414,10 @@ INLINE Decl *sema_resolve_symbol_common(SemaContext *context, NameResolve *name_
 	name_resolve->private_decl = NULL;
 	name_resolve->path_found = false;
 	Decl *decl;
+	if (strcmp(name_resolve->symbol, "_NULL_ALLOCATOR") == 0)
+	{
+		decl = NULL;
+	}
 	if (name_resolve->path)
 	{
 		decl = sema_resolve_path_symbol(context, name_resolve);
@@ -523,9 +527,9 @@ Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_
 	VECEACH(unit->imports, i)
 	{
 		Decl *import = unit->imports[i];
-		if (import->module->is_generic) continue;
+		if (import->import.module->is_generic) continue;
 
-		Decl *new_found = sema_resolve_method_in_module(import->module, actual_type, method_name,
+		Decl *new_found = sema_resolve_method_in_module(import->import.module, actual_type, method_name,
 		                                                &private, &ambiguous,
 		                                                import->import.private
 		                                                ? METHOD_SEARCH_PRIVATE_IMPORTED
@@ -597,7 +601,7 @@ bool sema_symbol_is_defined_in_scope(SemaContext *c, const char *symbol)
 	// Unknown symbol => not defined
 	if (!decl) return false;
 	// Defined in the same module => defined
-	if (decl->module == c->unit->module) return true;
+	if (decl->unit->module == c->unit->module) return true;
 	// Not a variable or function => defined
 	if (decl->decl_kind != DECL_VAR && decl->decl_kind != DECL_FUNC) return true;
 	// Otherwise defined only if autoimport.
@@ -657,14 +661,15 @@ void sema_add_member(SemaContext *context, Decl *decl)
 
 bool sema_add_local(SemaContext *context, Decl *decl)
 {
-	Module *current_module = decl->module = context->unit->module;
+	CompilationUnit *current_unit = decl->unit = context->unit;
+
 	// Ignore synthetic locals.
 	if (!decl->name) return true;
 	if (decl->decl_kind == DECL_VAR && decl->var.shadow) goto ADD_VAR;
 
 	Decl *other = sema_find_local(context, decl->name);
-	assert(!other || other->module);
-	if (other && (other->module == current_module || other->is_autoimport))
+	assert(!other || other->unit->module);
+	if (other && (other->unit->module == current_unit->module || other->is_autoimport))
 	{
 		sema_shadow_error(decl, other);
 		decl_poison(decl);

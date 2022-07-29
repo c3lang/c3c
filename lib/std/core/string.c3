@@ -5,7 +5,7 @@ define String = distinct void*;
 
 private struct StringData
 {
-	Allocator allocator;
+	Allocator* allocator;
 	usize len;
 	usize capacity;
 	char[*] chars;
@@ -13,14 +13,9 @@ private struct StringData
 
 const usize MIN_CAPACITY = 16;
 
-fn String new_with_capacity(usize capacity, Allocator allocator = { null, null })
+fn String new_with_capacity(usize capacity, Allocator* allocator = mem::current_allocator())
 {
 	if (capacity < MIN_CAPACITY) capacity = MIN_CAPACITY;
-	if (!allocator.function)
-	{
-		allocator = mem::current_allocator();
-	}
-	assert(allocator.function, "Expected an allocator to be present.");
 	StringData* data = allocator.alloc(StringData.sizeof + capacity)!!;
 	data.allocator = allocator;
 	data.len = 0;
@@ -144,29 +139,27 @@ fn void String.append_char32(String* str, Char32 c)
     data.chars[data.len++] = (char)(0x80 | (c & 0x3F));
 }
 
-fn String String.copy(String* str, Allocator allocator = { null, null })
+fn String String.copy(String* str, Allocator* allocator = null)
 {
 	if (!str)
 	{
-		if (allocator.function) return new_with_capacity(0, allocator);
+		if (allocator) return new_with_capacity(0, allocator);
 		return (String)null;
 	}
-	if (!allocator.function) allocator = mem::current_allocator();
+	if (!allocator) allocator = mem::current_allocator();
 	StringData* data = str.data();
 	String new_string = new_with_capacity(data.capacity, allocator);
 	mem::copy((char*)new_string.data(), (char*)data, StringData.sizeof + data.len);
 	return new_string;
 }
 
-fn ZString String.copy_zstr(String* str, Allocator allocator = { null, null })
+fn ZString String.copy_zstr(String* str, Allocator* allocator = mem::current_allocator())
 {
 	usize str_len = str.len();
 	if (!str_len)
 	{
-		if (allocator.function) return (ZString)allocator.calloc(1, 1)!!;
-		return (ZString)mem::calloc(1, 1);
+		return (ZString)allocator.calloc(1, 1)!!;
 	}
-	if (!allocator.function) allocator = mem::current_allocator();
 	char* zstr = allocator.alloc(str_len + 1)!!;
 	StringData* data = str.data();
 	mem::copy(zstr, &data.chars, str_len);
@@ -174,7 +167,7 @@ fn ZString String.copy_zstr(String* str, Allocator allocator = { null, null })
 	return (ZString)zstr;
 }
 
-fn char[] String.copy_str(String* str, Allocator allocator = { null, null })
+fn char[] String.copy_str(String* str, Allocator* allocator = mem::current_allocator())
 {
 	return str.copy_zstr(allocator)[:str.len()];
 }
@@ -236,7 +229,7 @@ fn void String.append_chars(String* this, char[] str)
 	data.len += other_len;
 }
 
-fn Char32[] String.copy_utf32(String* this, Allocator allocator = { null, null })
+fn Char32[] String.copy_utf32(String* this, Allocator* allocator = mem::current_allocator())
 {
 	return str::utf8to32(this.str(), allocator) @inline!!;
 }

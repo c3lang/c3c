@@ -306,6 +306,7 @@ typedef struct
 {
 	Path *path;
 	bool private;
+	Module *module;
 } ImportDecl;
 
 typedef struct
@@ -349,7 +350,6 @@ typedef struct VarDecl_
 		Expr *init_expr;
 		Decl *alias;
 	};
-	struct CompilationUnit_ *unit;
 	union
 	{
 		int32_t index;
@@ -607,7 +607,7 @@ typedef struct Decl_
 		uint32_t counter;
 	};
 	uint32_t size;*/
-	Module *module;
+	struct CompilationUnit_ *unit;
 	Attr** attributes;
 	Type *type;
 	union
