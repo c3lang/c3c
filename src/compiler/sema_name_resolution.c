@@ -279,28 +279,26 @@ static Decl *sema_resolve_path_symbol(SemaContext *context, NameResolve *name_re
 static inline Decl *sema_find_local(SemaContext *context, const char *symbol)
 {
 	Decl **locals = context->locals;
-	if (context->active_scope.current_local > 0)
+	if (!locals || !context->active_scope.current_local) return NULL;
+	int64_t first = 0;
+	int64_t current = context->active_scope.current_local - 1;
+	while (current >= first)
 	{
-		int64_t first = 0;
-		int64_t current = context->active_scope.current_local - 1;
-		while (current >= first)
+		Decl *cur = locals[current];
+		if (cur->name == symbol)
 		{
-			Decl *cur = locals[current];
-			if (cur->name == symbol)
+			// We patch special behaviour here.
+			if (cur->decl_kind == DECL_VAR)
 			{
-				// We patch special behaviour here.
-				if (cur->decl_kind == DECL_VAR)
-				{
-					VarDeclKind kind = cur->var.kind;
+				VarDeclKind kind = cur->var.kind;
 
-					// In this case, we erase the value from parent scopes, so it isn't visible here.
-					if (kind == VARDECL_ERASE) return NULL;
-					if (kind == VARDECL_REWRAPPED) return cur->var.alias;
-				}
-				return cur;
+				// In this case, we erase the value from parent scopes, so it isn't visible here.
+				if (kind == VARDECL_ERASE) return NULL;
+				if (kind == VARDECL_REWRAPPED) return cur->var.alias;
 			}
-			current--;
+			return cur;
 		}
+		current--;
 	}
 	return NULL;
 }
@@ -414,10 +412,6 @@ INLINE Decl *sema_resolve_symbol_common(SemaContext *context, NameResolve *name_
 	name_resolve->private_decl = NULL;
 	name_resolve->path_found = false;
 	Decl *decl;
-	if (strcmp(name_resolve->symbol, "_NULL_ALLOCATOR") == 0)
-	{
-		decl = NULL;
-	}
 	if (name_resolve->path)
 	{
 		decl = sema_resolve_path_symbol(context, name_resolve);
@@ -587,7 +581,7 @@ Decl *sema_find_symbol(SemaContext *context, const char *symbol)
 	NameResolve resolve = {
 			.suppress_error = true,
 			.symbol = symbol,
-			};
+	};
 	return sema_resolve_symbol_common(context, &resolve);
 }
 
@@ -596,7 +590,7 @@ bool sema_symbol_is_defined_in_scope(SemaContext *c, const char *symbol)
 	NameResolve resolve = {
 			.suppress_error = true,
 			.symbol = symbol,
-			};
+	};
 	Decl *decl = sema_resolve_symbol_common(c, &resolve);
 	// Unknown symbol => not defined
 	if (!decl) return false;
@@ -614,7 +608,7 @@ Decl *sema_find_path_symbol(SemaContext *context, const char *symbol, Path *path
 			.suppress_error = true,
 			.symbol = symbol,
 			.path = path
-			};
+	};
 	return sema_resolve_symbol_common(context, &resolve);
 }
 
@@ -626,11 +620,6 @@ Decl *sema_resolve_symbol(SemaContext *context, const char *symbol, Path *path, 
 			.span = span
 	};
 	return sema_resolve_symbol_common(context, &resolve);
-}
-
-Decl *sema_resolve_normal_symbol(SemaContext *context, NameResolve *name_resolve)
-{
-	return sema_resolve_symbol_common(context, name_resolve);
 }
 
 

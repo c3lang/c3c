@@ -294,20 +294,23 @@ void sema_analysis_pass_conditional_compilation(Module *module)
 			SemaContext context;
 			sema_context_init(&context, unit);
 			Decl *decl = unit->ct_ifs[i];
+			bool success;
 			switch (decl->decl_kind)
 			{
 				case DECL_CT_IF:
-					sema_analyse_top_level_if(&context, decl);
+					success = sema_analyse_top_level_if(&context, decl);
 					break;
 				case DECL_CT_SWITCH:
-					sema_analyse_top_level_switch(&context, decl);
+					success = sema_analyse_top_level_switch(&context, decl);
 					break;
 				default:
 					UNREACHABLE
 			}
 			sema_context_destroy(&context);
+			if (!success) goto END;
 		}
 	}
+END:
 	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);
 }
 
@@ -319,11 +322,17 @@ void sema_analysis_pass_ct_assert(Module *module)
 		SemaContext context;
 		sema_context_init(&context, module->units[index]);
 		Decl **asserts = context.unit->ct_asserts;
+		bool success = true;
 		VECEACH(asserts, i)
 		{
-			sema_analyse_ct_assert_stmt(&context, asserts[i]->ct_assert_decl);
+			if (!sema_analyse_ct_assert_stmt(&context, asserts[i]->ct_assert_decl))
+			{
+				success = false;
+				break;
+			}
 		}
 		sema_context_destroy(&context);
+		if (!success) break;
 	}
 	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);
 }
