@@ -34,6 +34,7 @@ typedef uint64_t BitSize;
 #define INITIAL_GENERIC_SYMBOL_MAP 0x1000
 #define MAX_MACRO_ITERATIONS 0xFFFFFF
 #define MAX_PARAMS 512
+#define MAX_BITSTRUCT 0x1000
 #define MAX_MEMBERS ((MemberIndex)(((uint64_t)2) << 28))
 #define MAX_ALIGNMENT ((MemberIndex)(((uint64_t)2) << 28))
 #define MAX_TYPE_SIZE UINT32_MAX
@@ -466,7 +467,6 @@ typedef struct
 
 typedef struct
 {
-	struct CompilationUnit_ *unit;
 	Decl **params;
 	Attr **attrs;
 } AttrDecl;
@@ -2018,7 +2018,7 @@ Decl *sema_find_decl_in_modules(Module **module_list, Path *path, const char *in
 Decl *unit_resolve_parameterized_symbol(CompilationUnit *unit, NameResolve *name_resolve);
 Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref);
 Decl *sema_find_extension_method_in_module(Module *module, Type *type, const char *method_name);
-Decl *sema_resolve_normal_symbol(SemaContext *context, NameResolve *name_resolve);
+
 Decl *sema_find_symbol(SemaContext *context, const char *symbol);
 Decl *sema_find_path_symbol(SemaContext *context, const char *symbol, Path *path);
 Decl *sema_resolve_symbol(SemaContext *context, const char *symbol, Path *path, SourceSpan span);

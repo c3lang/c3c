@@ -45,7 +45,7 @@ static bool sema_check_section(SemaContext *context, Attr *attr)
 		SEMA_ERROR(attr->exprs[0], "Mach-o requires the section to be at the most 16 characters, can you shorten it?");
 		return false;
 	}
-	// TODO improve checking
+	REMINDER("Improve section type checking for Mach-o like Clang has.");
 	return true;
 }
 
@@ -411,35 +411,58 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *dec
 {
 	Decl **members = decl->strukt.members;
 	Decl *member = members[index];
+
+	// Resolve the type.
 	if (!sema_resolve_type_info(context, member->var.type_info)) return false;
-	Type *member_type = type_flatten_for_bitstruct(member->var.type_info->type);
 	member->type = member->var.type_info->type;
+
+	// Flatten the distinct and enum types.
+	Type *member_type = type_flatten_for_bitstruct(member->type);
+
+	// Only accept (flattened) integer and bool types
 	if (!type_is_integer(member_type) && member_type != type_bool)
 	{
 		SEMA_ERROR(member->var.type_info, "%s is not supported in a bitstruct, only enums, integer and boolean values may be used.",
-		           type_quoted_error_string(member->var.type_info->type));
+		           type_quoted_error_string(member->type));
 		return false;
 	}
-	BitSize bits = type_size(decl->bitstruct.base_type->type) * 8;
+
+	// Grab the underlying bit type size.
+	BitSize bits = type_size(decl->bitstruct.base_type->type) * (BitSize)8;
+
+	if (bits > MAX_BITSTRUCT)
+	{
+		SEMA_ERROR(decl->bitstruct.base_type, "Bitstruct size may not exceed %d bits.", MAX_BITSTRUCT);
+		return false;
+	}
 	Int max_bits = (Int) { .type = TYPE_I64, .i = { .low =  bits } };
+
+	// Resolve the bit range, starting with the beginning
 	Expr *start = member->var.start;
-	Expr *end = member->var.end;
 	if (!sema_analyse_expr(context, start)) return false;
-	unsigned start_bit;
-	unsigned end_bit;
+
+	// Check for negative, non integer or non const values.
 	if (start->expr_kind != EXPR_CONST || !type_is_integer(start->type) || int_is_neg(start->const_expr.ixx))
 	{
 		SEMA_ERROR(start, "This must be a constant non-negative integer value.");
 		return false;
 	}
+
+	// Check that we didn't exceed max bits.
 	if (int_comp(start->const_expr.ixx, max_bits, BINARYOP_GE))
 	{
 		SEMA_ERROR(start, "Expected at the most a bit index of %d\n", bits - 1);
 		return false;
 	}
+
+	unsigned start_bit, end_bit;
 	end_bit = start_bit = (unsigned)start->const_expr.ixx.i.low;
+
+	// Handle the end
+	Expr *end = member->var.end;
 	if (end)
 	{
+		// Analyse the end
 		if (!sema_analyse_expr(context, start)) return false;
 		if (end->expr_kind != EXPR_CONST || !type_is_integer(end->type) || int_is_neg(end->const_expr.ixx))
 		{
@@ -455,27 +478,41 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *dec
 	}
 	else
 	{
+		// No end bit, this is only ok if the type is bool, otherwise a range is needed.
+		// This prevents confusion with C style bits.
 		if (member_type->type_kind != TYPE_BOOL)
 		{
 			SEMA_ERROR(member, "Only booleans may use non-range indices, try using %d..%d instead.", start_bit, start_bit);
 			return false;
 		}
 	}
+
+	// Check that we actually have a positive range.
 	if (start_bit > end_bit)
 	{
 		SEMA_ERROR(start, "The start bit must be smaller than the end bit index.");
 		return false;
 	}
+
+	// Check how many bits we need.
 	TypeSize bitsize_type = member_type == type_bool ? 1 : type_size(member_type) * 8;
+
+	// And how many we have.
 	TypeSize bits_available = end_bit + 1 - start_bit;
+
+	// Assigning more than needed is not allowed.
 	if (bitsize_type < bits_available)
 	{
 		SEMA_ERROR(member, "The bit width of %s (%d) is less than the assigned bits (%d), try reducing the range.",
 		           type_quoted_error_string(member->type), (int)bitsize_type, (int)bits_available);
 		return false;
 	}
+
+	// Store the bits.
 	member->var.start_bit = start_bit;
 	member->var.end_bit = end_bit;
+
+	// Check for duplicate members.
 	for (unsigned i = 0; i < index; i++)
 	{
 		Decl *other_member = members[i];
@@ -485,7 +522,9 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *dec
 			SEMA_PREV(other_member, "The other member was declared here.");
 			return false;
 		}
+		// And possibly overlap.
 		if (allow_overlap) continue;
+
 		// Check for overlap.
 		if ((start_bit >= other_member->var.start_bit || end_bit >= other_member->var.start_bit)
 			&& start_bit <= other_member->var.end_bit)
@@ -1457,69 +1496,99 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 
 }
 
-static bool sema_analyse_attributes(SemaContext *context, Decl *decl, Attr** attrs, AttributeDomain domain)
+// TODO consider doing this evaluation early, it should be possible.
+static bool sema_analyse_attributes_inner(SemaContext *context, Decl *decl, Attr** attrs, AttributeDomain domain, Decl *top, int counter)
 {
+	// Detect cycles of the type @Foo = @BarCyclic, @BarCyclic = @BarCyclic
+	if (counter > 1000)
+	{
+		SEMA_ERROR(top, "Recursive declaration of attribute '%s'.", top->name);
+		return false;
+	}
 	int count = vec_size(attrs);
 	for (int i = 0; i < count; i++)
 	{
 		Attr *attr = attrs[i];
-		if (attr->is_custom)
+		// The simple case,
+		if (!attr->is_custom)
 		{
-			Decl *attr_decl = sema_find_symbol(context, attr->name);
-			if (!attr_decl || attr_decl->decl_kind != DECL_ATTRIBUTE)
-			{
-				SEMA_ERROR(attr, "The attribute '%s' could not be found.", attr->name);
-				return false;
-			}
-			Decl **params = attr_decl->attr_decl.params;
-			unsigned param_count = vec_size(params);
-			Expr **args = attr->exprs;
-			if (param_count != vec_size(args))
-			{
-				SEMA_ERROR(attr, "Expected %d parameter(s).", param_count);
-				return false;
-			}
-
-			Attr **attributes = attr_decl->attr_decl.attrs;
-			if (context->current_function == attr_decl)
-			{
-				SEMA_ERROR(attr_decl, "Recursive declaration of attribute '%s' – it contains itself.", attr_decl->name);
-				return false;
-			}
-			SemaContext eval_context;
-			sema_context_init(&eval_context, attr_decl->attr_decl.unit);
-			eval_context.compilation_unit = context->unit;
-			// We need to track recursion:
-			if (context->current_function && context->current_function->decl_kind == DECL_ATTRIBUTE)
-			{
-				eval_context.current_function = context->current_function;
-			}
-			else
-			{
-				eval_context.current_function = attr_decl;
-			}
-			for (int j = 0; j < param_count; j++)
-			{
-				if (!sema_analyse_ct_expr(context, args[j]))
-				{
-					sema_context_destroy(&eval_context);
-					return false;
-				}
-				params[i]->var.init_expr = args[j];
-				params[i]->var.kind = VARDECL_CONST;
-				sema_add_local(&eval_context, params[i]);
-			}
-			if (!sema_analyse_attributes(&eval_context, decl, attributes, domain))
-			{
-				sema_context_destroy(&eval_context);
-				return false;
-			}
-			sema_context_destroy(&eval_context);
+			// Analyse it and move on.
+			if (!sema_analyse_attribute(context, decl, attr, domain)) return false;
 			continue;
 		}
-		if (!sema_analyse_attribute(context, decl, attr, domain)) return false;
+
+		// Custom attributes.
+		// First find it.
+		Decl *attr_decl = sema_find_symbol(context, attr->name);
+		if (!attr_decl || attr_decl->decl_kind != DECL_ATTRIBUTE)
+		{
+			SEMA_ERROR(attr, "The attribute '%s' could not be found.", attr->name);
+			return false;
+		}
+
+		// Detect direct cycles @Foo = @Bar @Bar = @Foo
+		if (attr_decl == top)
+		{
+			SEMA_ERROR(top, "Recursive declaration of attribute '%s'.", top->name);
+			return false;
+		}
+
+		// Handle the case where the current function is the declaration itself.
+		if (context->current_function == attr_decl)
+		{
+			SEMA_ERROR(attr_decl, "Recursive declaration of attribute '%s' – it contains itself.", attr_decl->name);
+			return false;
+		}
+
+		// Grab all the parameters.
+		Decl **params = attr_decl->attr_decl.params;
+		unsigned param_count = vec_size(params);
+		Expr **args = attr->exprs;
+
+		// Check that the parameters match. No varargs, little use for it.
+		if (param_count != vec_size(args))
+		{
+			SEMA_ERROR(attr, "Expected %d parameter(s).", param_count);
+			return false;
+		}
+
+		// Ok, we have the list of inner attributes.
+		Attr **attributes = attr_decl->attr_decl.attrs;
+
+		// Now we need to evaluate these attributes in the attribute definition
+		// context.
+		SemaContext eval_context;
+		sema_context_init(&eval_context, attr_decl->unit);
+
+		// We copy the compilation unit.
+		eval_context.compilation_unit = context->unit;
+
+		// First we need to analyse each expression in the current scope
+		for (int j = 0; j < param_count; j++)
+		{
+			if (!sema_analyse_ct_expr(context, args[j])) goto ERR;
+			params[i]->var.init_expr = args[j];
+			params[i]->var.kind = VARDECL_CONST;
+			// Then add them to the evaluation context.
+			// (Yes this is messy)
+			sema_add_local(&eval_context, params[i]);
+		}
+		// Now we've added everything to the evaluation context, so we can (recursively)
+		// apply it to the contained attributes, which in turn may be derived attributes.
+		if (!sema_analyse_attributes_inner(&eval_context, decl, attributes, domain, top ? top : attr_decl, counter + 1)) goto ERR;
+		// Then destroy the eval context.
+		sema_context_destroy(&eval_context);
+		continue;
+ERR:
+		sema_context_destroy(&eval_context);
+		return false;
 	}
 	return true;
+}
+
+static bool sema_analyse_attributes(SemaContext *context, Decl *decl, Attr** attrs, AttributeDomain domain)
+{
+	return sema_analyse_attributes_inner(context, decl, attrs, domain, NULL, 0);
 }
 
 static inline bool sema_analyse_doc_header(AstId doc, Decl **params, Decl **extra_params, bool *pure_ref)
@@ -2340,7 +2409,6 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 
 static inline bool sema_analyse_attribute_decl(SemaContext *c, Decl *decl)
 {
-	decl->attr_decl.unit = c->compilation_unit;
 	Decl **params = decl->attr_decl.params;
 	Attr **attrs = decl->attr_decl.attrs;
 	unsigned param_count = vec_size(params);
