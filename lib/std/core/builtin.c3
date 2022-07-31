@@ -113,3 +113,12 @@ macro enum_by_name($Type, char[] enum_name) @builtin
 	}
 	return SearchResult.MISSING!;
 }
+
+/**
+ * @require $Type.kind == TypeKind.ENUM `Only enums may be used`
+ **/
+macro enum_names($Type, char[] enum_name) @builtin
+{
+	typeid x = $Type.typeid;
+	return x.names;
+}
