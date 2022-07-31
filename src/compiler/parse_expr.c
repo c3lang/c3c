@@ -420,6 +420,11 @@ static Expr *parse_type_expr(ParseContext *c, Expr *left)
 	ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_type(c), poisoned_expr);
 	expr->span = type->span;
 	expr->type_expr = type;
+	if (tok_is(c, TOKEN_SCOPE))
+	{
+		SEMA_ERROR_HERE("A type is never followed by '::', did you mean '.'?");
+		return poisoned_expr;
+	}
 	return expr;
 }
 
@@ -1600,6 +1605,11 @@ Expr *parse_type_expression_with_path(ParseContext *c, Path *path)
 	}
 	Expr *expr = expr_new(EXPR_TYPEINFO, type->span);
 	expr->type_expr = type;
+	if (tok_is(c, TOKEN_SCOPE))
+	{
+		SEMA_ERROR_HERE("A type is never followed by '::', did you mean '.'?");
+		return poisoned_expr;
+	}
 	return expr;
 }
 
