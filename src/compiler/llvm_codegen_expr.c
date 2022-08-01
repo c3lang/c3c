@@ -3752,12 +3752,13 @@ void gencontext_emit_ternary_expr(GenContext *c, BEValue *value, Expr *expr)
 		llvm_value_set(value, rhs_value, rhs.type);
 		return;
 	}
-	LLVMValueRef phi = LLVMBuildPhi(c->builder, llvm_get_type(c, expr->type), "val");
+	Type *expr_type = type_flatten(expr->type);
+	LLVMValueRef phi = LLVMBuildPhi(c->builder, llvm_get_type(c, expr_type), "val");
 	LLVMValueRef logic_values[2] = { lhs_value, rhs_value };
 	LLVMBasicBlockRef blocks[2] = { lhs_exit, rhs_exit };
 	LLVMAddIncoming(phi, logic_values, blocks, 2);
 
-	llvm_value_set(value, phi, expr->type);
+	llvm_value_set(value, phi, expr_type);
 }
 static LLVMValueRef llvm_emit_real(LLVMTypeRef type, Float f)
 {
