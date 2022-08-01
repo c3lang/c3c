@@ -54,7 +54,7 @@ private fn void*! DynamicArenaAllocator.realloc(DynamicArenaAllocator* this, voi
 		return old_pointer;
 	}
 	void* new_mem = this.alloc(size, alignment)?;
-	mem::copy(new_mem, old_pointer, old_size);
+	mem::memcpy(new_mem, old_pointer, old_size, false, DEFAULT_MEM_ALIGNMENT);
 	return new_mem;
 }
 
@@ -154,7 +154,7 @@ private fn void*! dynamic_arena_allocator_function(Allocator* data, usize size, 
 			assert(!old_pointer, "Unexpected no old pointer for calloc.");
 			if (!size) return null;
 			void* mem = allocator.alloc(size, alignment)?;
-			mem::set(mem, 0, size);
+			mem::memset(mem, 0, size, false, DEFAULT_MEM_ALIGNMENT);
 			return mem;
 		case ALLOC:
 			assert(!old_pointer, "Unexpected no old pointer for alloc.");
@@ -174,6 +174,8 @@ private fn void*! dynamic_arena_allocator_function(Allocator* data, usize size, 
 			if (!old_pointer) return null;
 			allocator.free(old_pointer);
 			return null;
+		case MARK:
+			unreachable("Tried to mark a dynamic arena");
 		case RESET:
 			allocator.reset();
 			return null;

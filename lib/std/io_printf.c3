@@ -674,7 +674,7 @@ private fn NtoaType int_from_variant(variant arg, bool *is_neg)
 
 	if (arg.type.kind == TypeKind.POINTER)
 	{
-		return (NtoaType)(uptr)(void*)arg.ptr;
+		return (NtoaType)(uptr)*(void**)arg.ptr;
 	}
 	switch (arg)
 	{
@@ -873,7 +873,6 @@ private fn usize! vsnprintf(OutputFn out, void* data, char[] format, variant[] v
 				out_str(&param, current)?;
 				continue;
 			case 'p':
-				param.width = (uint)(void*.sizeof * 2);
 				param.flags.zeropad = true;
 				param.flags.hash = true;
 				base = 16;

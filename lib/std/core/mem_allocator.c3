@@ -22,12 +22,14 @@ enum AllocationKind
     REALLOC,
     FREE,
     RESET,
+    MARK,
 }
 
 fault AllocationFailure
 {
     OUT_OF_MEMORY,
     UNSUPPORTED_OPERATION,
+    CHUNK_TOO_LARGE,
 }
 
 
@@ -48,6 +50,11 @@ fn void*! Allocator.realloc(Allocator* allocator, void* old_pointer, usize size,
 	return allocator.function(allocator, size, alignment, old_pointer, REALLOC);
 }
 
+fn usize! Allocator.mark(Allocator* allocator) @inline
+{
+	return (usize)(uptr)allocator.function(allocator, 0, 0, null, MARK);
+}
+
 /**
  * @require !alignment || math::is_power_of_2(alignment)
  */
@@ -61,9 +68,9 @@ fn void! Allocator.free(Allocator* allocator, void* old_pointer) @inline
 	allocator.function(allocator, 0, 0, old_pointer, FREE)?;
 }
 
-fn void Allocator.reset(Allocator* allocator)
+fn void Allocator.reset(Allocator* allocator, usize mark = 0)
 {
-	allocator.function(allocator, 0, 0, null, RESET)!!;
+	allocator.function(allocator, mark, 0, null, RESET)!!;
 }
 
 private fn usize alignment_for_allocation(usize alignment) @inline
@@ -121,11 +128,10 @@ fn void DynamicArenaAllocator.destroy(DynamicArenaAllocator* this)
 }
 
 
-struct MemoryArena
+struct ArenaAllocator
 {
 	inline Allocator allocator;
-	void* memory;
-	usize total;
+	char[] data;
 	usize used;
 }
 
@@ -134,18 +140,17 @@ struct MemoryArena
  *
  * @require this != null
  **/
-fn void MemoryArena.init(MemoryArena* this, char[] data)
+fn void ArenaAllocator.init(ArenaAllocator* this, char[] data)
 {
 	this.function = &arena_allocator_function;
-	this.memory = data.ptr;
-	this.total = data.len;
+	this.data = data;
 	this.used = 0;
 }
 
 /**
  * @require this != null
  **/
-fn void MemoryArena.reset(MemoryArena* this)
+fn void ArenaAllocator.reset(ArenaAllocator* this)
 {
 	this.used = 0;
 }

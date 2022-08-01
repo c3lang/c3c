@@ -126,7 +126,7 @@ fn void free(void* ptr) @builtin
 /**
  * Run with a specific allocator inside of the macro body.
  **/
-macro void @with_allocator(Allocator* allocator; @body())
+macro void @scoped(Allocator* allocator; @body())
 {
 	Allocator* old_allocator = thread_allocator;
 	thread_allocator = allocator;
@@ -134,12 +134,52 @@ macro void @with_allocator(Allocator* allocator; @body())
 	@body();
 }
 
-fn void*! talloc(usize size)
+macro void @tscoped(;@body())
 {
-    return temp_allocator.alloc(size);
+	Allocator* old_allocator = thread_allocator;
+	TempAllocator* temp = temp_allocator();
+	usize mark = temp.mark()!!;
+	thread_allocator = temp;
+	defer temp.reset(mark);
+	defer thread_allocator = old_allocator;
+	@body();
+}
+
+fn void* talloc(usize size, usize alignment = 0)
+{
+    return temp_allocator().alloc(size, alignment)!!;
+}
+
+fn void* tcalloc(usize size, usize alignment = 0)
+{
+	return temp_allocator().calloc(size, alignment)!!;
+}
+
+fn void* trealloc(void* ptr, usize size, usize alignment = 0)
+{
+	return temp_allocator().realloc(ptr, size, alignment)!!;
+}
+
+macro void @pool(;@body) @builtin
+{
+	TempAllocator* temp = temp_allocator();
+	usize mark = temp.used;
+	defer temp.reset(mark);
+	@body();
 }
 
 private tlocal Allocator* thread_allocator = allocator::LIBC_ALLOCATOR;
+private tlocal TempAllocator* thread_temp_allocator = null;
+
+macro TempAllocator* temp_allocator()
+{
+	if (!thread_temp_allocator)
+	{
+		thread_temp_allocator = allocator::new_temp(env::TEMP_ALLOCATOR_SIZE, allocator::LIBC_ALLOCATOR)!!;
+	}
+	return thread_temp_allocator;
+}
+
 macro Allocator* current_allocator()
 {
 	return thread_allocator;

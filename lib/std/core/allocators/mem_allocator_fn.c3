@@ -28,7 +28,8 @@ fn void*! libc_allocator_fn(Allocator* unused, usize bytes, usize alignment, voi
         case ALLOC:
             if (alignment > DEFAULT_MEM_ALIGNMENT)
             {
-	            data = (void*)mem::aligned_offset((iptr)libc::malloc(bytes + alignment), alignment);
+                if (alignment > bytes) bytes = alignment;
+	            data = libc::aligned_alloc(alignment, bytes);
             }
             else
             {
@@ -39,23 +40,36 @@ fn void*! libc_allocator_fn(Allocator* unused, usize bytes, usize alignment, voi
         case CALLOC:
             if (alignment > DEFAULT_MEM_ALIGNMENT)
             {
-	            data = (void*)mem::aligned_offset((iptr)libc::calloc(bytes + alignment, 1), alignment);
+                if (alignment > bytes) bytes = alignment;
+                data = libc::aligned_alloc(bytes, alignment);
+                mem::memset(data, 0, bytes, false, DEFAULT_MEM_ALIGNMENT);
             }
             else
             {
-                data = libc::malloc(bytes);
+                data = libc::calloc(bytes, 1);
             }
             if (!data) return AllocationFailure.OUT_OF_MEMORY!;
             return data;
         case REALLOC:
-            if (alignment > DEFAULT_MEM_ALIGNMENT)
-            {
-	            data = (void*)mem::aligned_offset((iptr)libc::realloc(old_pointer, bytes + alignment), alignment);
-            }
-            else
-            {
-                data = libc::realloc(old_pointer, bytes);
-            }
+            if (!bytes) nextcase FREE;
+            if (!old_pointer) nextcase CALLOC;
+            $if (libc::HAS_MALLOC_SIZE):
+	            if (alignment > DEFAULT_MEM_ALIGNMENT)
+                {
+                    usize size = libc::malloc_size(old_pointer);
+                if (alignment > bytes) bytes = alignment;
+	                data = libc::aligned_alloc(bytes, alignment);
+		            if (!data) return AllocationFailure.OUT_OF_MEMORY!;
+	                if (bytes > size)
+	                {
+	                    mem::memset(data + size, 0, bytes - size, false, DEFAULT_MEM_ALIGNMENT);
+	                }
+                    mem::memcpy(data, old_pointer, size, false, DEFAULT_MEM_ALIGNMENT, DEFAULT_MEM_ALIGNMENT);
+                    libc::free(old_pointer);
+                    return data;
+                }
+            $endif;
+            data = libc::realloc(old_pointer, bytes);
             if (!data) return AllocationFailure.OUT_OF_MEMORY!;
             return data;
         case RESET:

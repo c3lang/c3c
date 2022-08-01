@@ -13,10 +13,28 @@ macro alloc($Type, usize elements)
 }
 
 /**
+ * @require usize.max / elements > $Type.sizeof
+ **/
+macro talloc($Type, usize elements)
+{
+    $Type* ptr = mem::talloc($Type.sizeof * elements, $alignof($Type[1]));
+    return ptr[:elements];
+}
+
+/**
  * @require (usize.max / elements > $Type.sizeof)
  **/
 macro make($Type, usize elements)
 {
-    $Type* ptr = mem::calloc($sizeof($Type) * elements, $alignof($Type));
+    $Type* ptr = mem::calloc($sizeof($Type) * elements, $alignof($Type[1]));
+    return ptr[:elements];
+}
+
+/**
+ * @require (usize.max / elements > $Type.sizeof)
+ **/
+macro tmake($Type, usize elements)
+{
+    $Type* ptr = mem::tcalloc($sizeof($Type) * elements, $alignof($Type[1]));
     return ptr[:elements];
 }

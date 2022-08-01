@@ -121,7 +121,7 @@ fn void main()
 	dynamic_arena.init(1024);
     foreach (char[] url : URLS)
     {
-        mem::@with_allocator(&dynamic_arena)
+        mem::@scoped(&dynamic_arena)
         {
             io::printf(`Checking "https://%s/":` "\n", url);
             Summary summary = readAndBuildSummary(url);

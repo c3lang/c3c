@@ -42,7 +42,7 @@ fn ZString copy_zstring(char[] s)
 fn ZString tcopy_zstring(char[] s)
 {
     usize len = s.len;
-    char* str = mem::talloc(len + 1)!!;
+    char* str = mem::talloc(len + 1);
     mem::copy(str, s.ptr, len);
     str[len] = 0;
     return (ZString)str;
@@ -129,7 +129,7 @@ fn char[] tcopy(char[] s)
 fn char[] tconcat(char[] s1, char[] s2)
 {
     usize full_len = s1.len + s2.len;
-    char* str = mem::talloc(full_len + 1)!!;
+    char* str = mem::talloc(full_len + 1);
     usize s1_len = s1.len;
     mem::copy(str, s1.ptr, s1_len);
     mem::copy(str + s1_len, s2.ptr, s2.len);

@@ -87,6 +87,7 @@ extern fn usize strxfrm(char* dest, char* src, usize n);
 
 // malloc
 extern fn void* malloc(usize size);
+extern fn void* aligned_alloc(usize align, usize size);
 extern fn void* calloc(usize count, usize size);
 extern fn void* free(void*);
 extern fn void* realloc(void* ptr, usize size);
@@ -95,11 +96,14 @@ extern fn void* realloc(void* ptr, usize size);
 
 define Fpos = long;
 define CFile = void*;
+
 $switch (env::OS_TYPE):
 $case OsType.LINUX:
     extern CFile __stdin @extname("stdin");
     extern CFile __stdout @extname("stdout");
     extern CFile __stderr @extname("stderr");
+    extern fn usize malloc_usable_size(void* ptr);
+    macro usize malloc_size(void* ptr) { return malloc_usable_size(ptr); }
     macro CFile stdin() { return __stdin; }
     macro CFile stdout() { return __stdout; }
     macro CFile stderr() { return __stderr; }
@@ -107,11 +111,14 @@ $case OsType.MACOSX:
     extern CFile __stdinp;
     extern CFile __stdoutp;
     extern CFile __stderrp;
+    extern fn usize malloc_size(void* ptr);
     macro CFile stdin() { return __stdinp; }
     macro CFile stdout() { return __stdoutp; }
     macro CFile stderr() { return __stderrp; }
 $case OsType.WIN32:
     extern fn CFile __acrt_iob_func(CInt c);
+    extern fn usize _msize(void* ptr);
+    macro usize malloc_size(void* ptr) { return _msize(ptr); }
     macro CFile stdin() { return __acrt_iob_func(0); }
     macro CFile stdout() { return __acrt_iob_func(1); }
     macro CFile stderr() { return __acrt_iob_func(2); }
@@ -120,6 +127,11 @@ $default:
     macro CFile stdout() { return (CFile*)(uptr)1; }
     macro CFile stderr() { return (CFile*)(uptr)2; }
 $endswitch;
+
+const HAS_MALLOC_SIZE =
+	env::OS_TYPE == OsType.LINUX
+	|| env::OS_TYPE == OsType.WIN32
+	|| env::OS_TYPE == OsType.MACOSX;
 
 // The following needs to be set per arch+os
 // For now I have simply pulled the defaults from MacOS

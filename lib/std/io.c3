@@ -41,8 +41,8 @@ fn int println(char *message = "") @inline
 
 fn void! File.open(File* file, char[] filename, char[] mode)
 {
-    char* filename_copy = mem::talloc(filename.len + 1)!!;
-    char* mode_copy = mem::talloc(mode.len + 1)!!;
+    char* filename_copy = mem::talloc(filename.len + 1);
+    char* mode_copy = mem::talloc(mode.len + 1);
 
     mem::copy(filename_copy, (char*)(filename), filename.len);
     mem::copy(mode_copy, (char*)(mode), mode.len);
