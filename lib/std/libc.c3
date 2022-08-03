@@ -87,7 +87,6 @@ extern fn usize strxfrm(char* dest, char* src, usize n);
 
 // malloc
 extern fn void* malloc(usize size);
-extern fn void* aligned_alloc(usize align, usize size);
 extern fn void* calloc(usize count, usize size);
 extern fn void* free(void*);
 extern fn void* realloc(void* ptr, usize size);
@@ -104,6 +103,7 @@ $case OsType.LINUX:
     extern CFile __stderr @extname("stderr");
     extern fn usize malloc_usable_size(void* ptr);
     macro usize malloc_size(void* ptr) { return malloc_usable_size(ptr); }
+	extern fn void* aligned_alloc(usize align, usize size);
     macro CFile stdin() { return __stdin; }
     macro CFile stdout() { return __stdout; }
     macro CFile stderr() { return __stderr; }
@@ -112,7 +112,8 @@ $case OsType.MACOSX:
     extern CFile __stdoutp;
     extern CFile __stderrp;
     extern fn usize malloc_size(void* ptr);
-    macro CFile stdin() { return __stdinp; }
+    extern fn void* aligned_alloc(usize align, usize size);
+	macro CFile stdin() { return __stdinp; }
     macro CFile stdout() { return __stdoutp; }
     macro CFile stderr() { return __stderrp; }
 $case OsType.WIN32:

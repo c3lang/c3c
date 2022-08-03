@@ -3184,7 +3184,7 @@ void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValu
 					val = LLVMBuildExactSDiv(c->builder, val, llvm_const_int(c, type_iptrdiff, type_abi_alignment(lhs_type->pointer)), "");
 					break;
 				}
-				rhs_value = LLVMConstNeg(rhs_value);
+				rhs_value = is_constant ? LLVMConstNeg(rhs_value) : LLVMBuildNeg(c->builder, rhs_value, "");
 				val = llvm_emit_pointer_gep_raw(c, llvm_get_pointee_type(c, lhs_type), lhs_value, rhs_value);
 				break;
 			}

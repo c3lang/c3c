@@ -21,6 +21,11 @@ fn usize aligned_offset(usize offset, usize alignment)
 	return alignment * ((offset + alignment - 1) / alignment);
 }
 
+macro void* aligned_pointer(void* ptr, usize alignment)
+{
+	return (void*)(uptr)aligned_offset((uptr)ptr, alignment);
+}
+
 
 /**
  * @require math::is_power_of_2(alignment)
@@ -50,8 +55,6 @@ macro void memset(void* dst, char val, usize bytes, bool $is_volatile = false, u
 	$$memset(dst, val, bytes, $is_volatile, $dst_align);
 }
 
-
-
 macro @clone(&value) @builtin
 {
 	$typeof(value)* x = malloc($typeof(value));
@@ -66,61 +69,72 @@ macro malloc($Type) @builtin
 
 fn char[] alloc_bytes(usize bytes) @inline
 {
-	return ((char*)thread_allocator.alloc(bytes, 1))[0..bytes - 1]!!;
+	return ((char*)thread_allocator.alloc(bytes))[:bytes]!!;
+}
+
+fn void* alloc(usize size)
+{
+	return thread_allocator.alloc(size)!!;
+}
+
+fn void*! alloc_checked(usize size)
+{
+	return thread_allocator.alloc(size);
 }
 
 /**
- * @require !alignment || math::is_power_of_2(alignment)
+ * @require alignment && math::is_power_of_2(alignment)
  */
-fn void* alloc(usize size, usize alignment = 0)
+fn void*! alloc_aligned(usize size, usize alignment)
 {
-	return thread_allocator.alloc(size, alignment)!!;
+	return thread_allocator.alloc_aligned(size, alignment);
+}
+
+fn void* calloc(usize size)
+{
+	return thread_allocator.calloc(size)!!;
+}
+
+fn void*! calloc_checked(usize size)
+{
+	return thread_allocator.calloc(size);
 }
 
 /**
- * @require !alignment || math::is_power_of_2(alignment)
+ * @require alignment && math::is_power_of_2(alignment)
  */
-fn void*! alloc_checked(usize size, usize alignment = 0)
+fn void*! calloc_aligned(usize size, usize alignment)
 {
-	return thread_allocator.alloc(size, alignment);
+	return thread_allocator.calloc_aligned(size, alignment);
 }
 
 
-/**
- * @require !alignment || math::is_power_of_2(alignment)
- */
-fn void* calloc(usize size, usize alignment = 0)
+fn void* realloc(void *ptr, usize new_size)
 {
-	return thread_allocator.calloc(size, alignment)!!;
+	return thread_allocator.realloc(ptr, new_size)!!;
+}
+
+fn void*! realloc_checked(void *ptr, usize new_size)
+{
+	return thread_allocator.realloc(ptr, new_size);
 }
 
 /**
- * @require !alignment || math::is_power_of_2(alignment)
+ * @require alignment && math::is_power_of_2(alignment)
  */
-fn void*! calloc_checked(usize size, usize alignment = 0)
+fn void*! realloc_aligned(void *ptr, usize new_size, usize alignment)
 {
-	return thread_allocator.calloc(size, alignment);
-}
-
-/**
- * @require !alignment || math::is_power_of_2(alignment)
- */
-fn void* realloc(void *ptr, usize new_size, usize alignment = 0)
-{
-	return thread_allocator.realloc(ptr, new_size, alignment)!!;
-}
-
-/**
- * @require !alignment || math::is_power_of_2(alignment)
- */
-fn void*! realloc_checked(void *ptr, usize new_size, usize alignment = 0)
-{
-	return thread_allocator.realloc(ptr, new_size, alignment);
+	return thread_allocator.realloc_aligned(ptr, new_size, alignment);
 }
 
 fn void free(void* ptr) @builtin
 {
 	return thread_allocator.free(ptr)!!;
+}
+
+fn void free_aligned(void* ptr)
+{
+	return thread_allocator.free_aligned(ptr)!!;
 }
 
 /**
@@ -147,17 +161,17 @@ macro void @tscoped(;@body())
 
 fn void* talloc(usize size, usize alignment = 0)
 {
-    return temp_allocator().alloc(size, alignment)!!;
+    return temp_allocator().alloc_aligned(size, alignment)!!;
 }
 
 fn void* tcalloc(usize size, usize alignment = 0)
 {
-	return temp_allocator().calloc(size, alignment)!!;
+	return temp_allocator().calloc_aligned(size, alignment)!!;
 }
 
 fn void* trealloc(void* ptr, usize size, usize alignment = 0)
 {
-	return temp_allocator().realloc(ptr, size, alignment)!!;
+	return temp_allocator().realloc_aligned(ptr, size, alignment)!!;
 }
 
 macro void @pool(;@body) @builtin

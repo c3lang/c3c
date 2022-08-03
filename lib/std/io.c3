@@ -166,6 +166,15 @@ fn usize! File.println(File* file, char[] string)
     return len + 1;
 }
 
+/**
+ * @param [&in] file
+ * @require file.file `File must be initialized`
+ */
+fn void File.flush(File* file)
+{
+	libc::fflush(file.file);
+}
+
 fn File stdout()
 {
 	return { libc::stdout() };

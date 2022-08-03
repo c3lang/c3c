@@ -1,0 +1,87 @@
+// #target: macos-x64
+module test;
+import std::io;
+import libc;
+enum Foo
+{
+	ABC
+}
+
+fn void print_pages()
+{
+	mem::temp_allocator().print_pages(io::stdout());
+}
+
+fn void setstring(char* dst, char[] str)
+{
+	foreach (char c : str)
+	{
+		dst++[0] = c;
+	}
+	dst[0] = 0;
+}
+
+fn void testAllocator(Allocator* a, int val)
+{
+	io::println("Test");
+	void* data = a.alloc_aligned(val, 128, 16)!!;
+	io::printf("Aligned with offset %p, align 16: %s offset align 128: %s\n", data, mem::ptr_is_aligned(data, 16), mem::ptr_is_aligned(data + 16, 128));
+	data = a.calloc_aligned(val, 128, 16)!!;
+	io::printf("Aligned with offset %p, align 16: %s offset align 128: %s\n", data, mem::ptr_is_aligned(data, 16), mem::ptr_is_aligned(data + 16, 128));
+	data = a.realloc_aligned(data, val + 1, 128, 16)!!;
+	io::printf("Aligned with offset %p, align 16: %s offset align 128: %s\n", data, mem::ptr_is_aligned(data, 16), mem::ptr_is_aligned(data + 16, 128));
+	data = a.realloc_aligned(data, val + 1, 128, 0)!!;
+	io::printf("No offset %p, align 16: %s offset align 128: %s\n", data, mem::ptr_is_aligned(data, 16), mem::ptr_is_aligned(data + 16, 128));
+	io::printfln("Freeing %p", data);
+	a.free_aligned(data)!!;
+}
+fn void main()
+{
+	char* small = mem::talloc(128);
+	setstring(small, "small");
+	libc::printf("Small1: %p %s\n", small, small);
+	print_pages();
+	small = mem::trealloc(small, 129, 1024 * 16);
+	libc::printf("Small2: %p %s\n", small, small);
+	print_pages();
+	small = mem::trealloc(small, 12933);
+	libc::printf("Small3: %p %s\n", small, small);
+	print_pages();
+	char* first_big = mem::talloc(9512);
+	void *big = mem::talloc(4095);
+	io::printf("Big: %p\n", big);
+	io::printf("Small: %p\n", mem::talloc(13));
+	print_pages();
+	@pool() {
+	big = mem::trealloc(big, 5067);
+	print_pages();
+	void* hidden = mem::talloc(4096);
+	io::printf("Hidden: %p\n", hidden);
+	io::printf("Big: %p\n", big);
+	big = mem::trealloc(big, 4096, 256);
+	io::printf("Big: %p\n", big);
+	io::printf("First big: %p\n", first_big);
+	print_pages();
+	};
+	mem::@tscoped()
+	{
+		io::printf("Malloc: %p\n", mem::alloc(23));
+		io::printf("Malloc: %p\n", mem::alloc(23));
+	};
+	io::printf("Malloc: %p\n", mem::alloc(23));
+	@pool()
+	{
+		io::printf("Talloc: %p\n", mem::talloc(22));
+	};
+	testAllocator(mem::temp_allocator(), 126);
+	testAllocator(mem::temp_allocator(), 12600);
+	ArenaAllocator aa;
+	aa.init(&&char[1024] {});
+	testAllocator(&aa, 126);
+	io::println("Test dynamic arena");
+	DynamicArenaAllocator dynamic_arena;
+	dynamic_arena.init(1024);
+    testAllocator(&dynamic_arena, 112);
+    testAllocator(&dynamic_arena, 712);
+	first_big[3] = 123;
+}

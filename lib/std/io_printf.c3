@@ -717,14 +717,36 @@ fn usize! printf(char[] format, args...) @maydiscard
   return vsnprintf(&out_putchar_fn, null, format, args);
 }
 
+fn usize! printfln(char[] format, args...) @maydiscard
+{
+	usize size = vsnprintf(&out_putchar_fn, null, format, args)?;
+	putchar('\n');
+	return size + 1;
+}
+
 fn usize! String.printf(String* str, char[] format, args...) @maydiscard
 {
 	return vsnprintf(&out_string_append_fn, str, format, args);
 }
 
+fn usize! String.printfln(String* str, char[] format, args...) @maydiscard
+{
+	usize size = vsnprintf(&out_string_append_fn, str, format, args)?;
+	str.append('\n');
+	return size + 1;
+}
+
 fn usize! File.printf(File file, char[] format, args...) @maydiscard
 {
-  return vsnprintf(&out_putchar_fn, &file, format, args);
+    return vsnprintf(&out_putchar_fn, &file, format, args);
+}
+
+fn usize! File.printfln(File file, char[] format, args...) @maydiscard
+{
+	usize size = vsnprintf(&out_putchar_fn, &file, format, args)?;
+	file.putc('\n')?;
+	file.flush();
+	return size + 1;
 }
 
 private fn void! PrintParam.left_adjust(PrintParam* param, usize len)

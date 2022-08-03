@@ -158,7 +158,7 @@ fn ZString String.copy_zstr(String* str, Allocator* allocator = mem::current_all
 	usize str_len = str.len();
 	if (!str_len)
 	{
-		return (ZString)allocator.calloc(1, 1)!!;
+		return (ZString)allocator.calloc(1)!!;
 	}
 	char* zstr = allocator.alloc(str_len + 1)!!;
 	StringData* data = str.data();

@@ -29,7 +29,6 @@ fn String join(char[][] s, char[] joiner)
 	return res;
 }
 
-
 fn ZString copy_zstring(char[] s)
 {
     usize len = s.len;

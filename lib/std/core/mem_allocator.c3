@@ -8,7 +8,7 @@ const DEFAULT_SIZE_PREFIX_ALIGNMENT = $alignof(usize);
 const Allocator* NULL_ALLOCATOR = &_NULL_ALLOCATOR;
 const Allocator* LIBC_ALLOCATOR = &_SYSTEM_ALLOCATOR;
 
-define AllocatorFunction = fn void*!(Allocator* allocator, usize new_size, usize alignment, void* old_pointer, AllocationKind kind);
+define AllocatorFunction = fn void*!(Allocator* allocator, usize new_size, usize alignment, usize offset, void* old_pointer, AllocationKind kind);
 
 struct Allocator
 {
@@ -21,6 +21,10 @@ enum AllocationKind
     CALLOC,
     REALLOC,
     FREE,
+    ALIGNED_ALLOC,
+    ALIGNED_CALLOC,
+    ALIGNED_REALLOC,
+    ALIGNED_FREE,
     RESET,
     MARK,
 }
@@ -34,50 +38,71 @@ fault AllocationFailure
 
 
 
-/**
- * @require !alignment || math::is_power_of_2(alignment)
- */
-fn void*! Allocator.alloc(Allocator* allocator, usize size, usize alignment = 0) @inline
+fn void*! Allocator.alloc(Allocator* allocator, usize size) @inline
 {
-	return allocator.function(allocator, size, alignment, null, ALLOC);
+	return allocator.function(allocator, size, 0, 0, null, ALLOC);
 }
 
 /**
- * @require !alignment || math::is_power_of_2(alignment)
+ * @require alignment && math::is_power_of_2(alignment)
  */
-fn void*! Allocator.realloc(Allocator* allocator, void* old_pointer, usize size, usize alignment = 0) @inline
+fn void*! Allocator.alloc_aligned(Allocator* allocator, usize size, usize alignment, usize offset = 0) @inline
 {
-	return allocator.function(allocator, size, alignment, old_pointer, REALLOC);
+	return allocator.function(allocator, size, alignment, offset, null, ALIGNED_ALLOC);
+}
+
+fn void*! Allocator.realloc(Allocator* allocator, void* old_pointer, usize size) @inline
+{
+	return allocator.function(allocator, size, 0, 0, old_pointer, REALLOC);
+}
+
+/**
+ * @require alignment && math::is_power_of_2(alignment)
+ */
+fn void*! Allocator.realloc_aligned(Allocator* allocator, void* old_pointer, usize size, usize alignment, usize offset = 0) @inline
+{
+	return allocator.function(allocator, size, alignment, offset, old_pointer, ALIGNED_REALLOC);
 }
 
 fn usize! Allocator.mark(Allocator* allocator) @inline
 {
-	return (usize)(uptr)allocator.function(allocator, 0, 0, null, MARK);
+	return (usize)(uptr)allocator.function(allocator, 0, 0, 0, null, MARK);
+}
+
+
+fn void*! Allocator.calloc(Allocator* allocator, usize size) @inline
+{
+	return allocator.function(allocator, size, 0, 0, null, CALLOC);
 }
 
 /**
- * @require !alignment || math::is_power_of_2(alignment)
+ * @require alignment && math::is_power_of_2(alignment)
  */
-fn void*! Allocator.calloc(Allocator* allocator, usize size, usize alignment = 0) @inline
+fn void*! Allocator.calloc_aligned(Allocator* allocator, usize size, usize alignment, usize offset = 0) @inline
 {
-	return allocator.function(allocator, size, alignment, null, CALLOC);
+	return allocator.function(allocator, size, alignment, offset, null, ALIGNED_CALLOC);
 }
 
 fn void! Allocator.free(Allocator* allocator, void* old_pointer) @inline
 {
-	allocator.function(allocator, 0, 0, old_pointer, FREE)?;
+	allocator.function(allocator, 0, 0, 0, old_pointer, FREE)?;
+}
+
+fn void! Allocator.free_aligned(Allocator* allocator, void* old_pointer) @inline
+{
+	allocator.function(allocator, 0, 0, 0, old_pointer, ALIGNED_FREE)?;
 }
 
 fn void Allocator.reset(Allocator* allocator, usize mark = 0)
 {
-	allocator.function(allocator, mark, 0, null, RESET)!!;
+	allocator.function(allocator, mark, 0, 0, null, RESET)!!;
 }
 
 private fn usize alignment_for_allocation(usize alignment) @inline
 {
 	if (alignment < DEFAULT_MEM_ALIGNMENT)
 	{
-		alignment = DEFAULT_SIZE_PREFIX_ALIGNMENT;
+		alignment = DEFAULT_MEM_ALIGNMENT;
 	}
 	return alignment;
 }
@@ -95,7 +120,7 @@ struct DynamicArenaAllocator
  * @require page_size >= 128
  * @require this != null
  **/
-fn void DynamicArenaAllocator.init(DynamicArenaAllocator* this, usize page_size, Allocator* backing_allocator = mem::allocator())
+fn void DynamicArenaAllocator.init(DynamicArenaAllocator* this, usize page_size, Allocator* backing_allocator = mem::current_allocator())
 {
 	this.function = &dynamic_arena_allocator_function;
 	this.page = null;
