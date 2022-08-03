@@ -3202,6 +3202,28 @@ static inline void expr_replace_with_enum_array(Expr *enum_array_expr, Decl *enu
 	enum_array_expr->resolve_status = RESOLVE_NOT_DONE;
 }
 
+static inline void expr_replace_with_enum_name_array(Expr *enum_array_expr, Decl *enum_decl)
+{
+	Decl **values = enum_decl->enums.values;
+	SourceSpan span = enum_array_expr->span;
+	Expr *initializer = expr_new(EXPR_INITIALIZER_LIST, span);
+	ArraySize elements = vec_size(values);
+	Expr **element_values = elements > 0 ? VECNEW(Expr*, elements) : NULL;
+	Type *kind = enum_decl->type;
+	for (ArraySize i = 0; i < elements; i++)
+	{
+		Decl *decl = values[i];
+		Expr *expr = expr_new(EXPR_CONST, span);
+		expr_rewrite_to_string(expr, decl->name);
+		vec_add(element_values, expr);
+	}
+	initializer->initializer_list = element_values;
+	enum_array_expr->expr_kind = EXPR_COMPOUND_LITERAL;
+	enum_array_expr->expr_compound_literal.initializer = initializer;
+	enum_array_expr->expr_compound_literal.type_info = type_info_new_base(type_get_subarray(type_chars), span);
+	enum_array_expr->resolve_status = RESOLVE_NOT_DONE;
+}
+
 static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *expr, TypeInfo *parent, bool was_group, Expr *identifier)
 {
 	assert(identifier->expr_kind == EXPR_IDENTIFIER);
@@ -3246,11 +3268,15 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 				expr_rewrite_to_int_const(expr, type_isize, vec_size(decl->enums.values), true);
 				return true;
 			}
+			if (name == kw_names)
+			{
+				expr_replace_with_enum_name_array(expr, decl);
+				return sema_analyse_expr(context, expr);
+			}
 			if (name == kw_values)
 			{
 				expr_replace_with_enum_array(expr, decl);
 				return sema_analyse_expr(context, expr);
-				return true;
 			}
 			break;
 		case DECL_FAULT:
