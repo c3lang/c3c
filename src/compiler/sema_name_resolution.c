@@ -78,6 +78,19 @@ static Decl *sema_find_decl_in_imports(Decl **imports, NameResolve *name_resolve
 		// Did we already have a match?
 		if (decl)
 		{
+			if (!path)
+			{
+				// Prefer already found builtin over new found no builtin
+				if (decl->is_autoimport && !found->is_autoimport) continue;
+				// Prefer new builtin over non-builtin
+				if (found->is_autoimport && !decl->is_autoimport)
+				{
+					decl = found;
+					name_resolve->private_decl = NULL;
+					name_resolve->ambiguous_other_decl = NULL;
+					continue;
+				}
+			}
 			// 11. Then set an ambiguous match.
 			name_resolve->ambiguous_other_decl = found;
 			continue;
@@ -237,6 +250,19 @@ static Decl *sema_find_decl_in_global_new(CompilationUnit *unit, DeclTable *tabl
 		{
 			ambiguous = decl;
 			decl = candidate;
+			if (ambiguous)
+			{
+				// If we have a same match but one is builtin, prefer builtin.
+				if (!ambiguous->is_autoimport && decl->is_autoimport)
+				{
+					ambiguous = NULL;
+				}
+				else if (ambiguous->is_autoimport && !decl->is_autoimport)
+				{
+					decl = ambiguous;
+					ambiguous = NULL;
+				}
+			}
 		}
 	}
 	name_resolve->ambiguous_other_decl = ambiguous;
@@ -320,13 +346,25 @@ static Decl *sema_resolve_no_path_symbol(SemaContext *context, NameResolve *name
 
 	if (decl) return decl;
 
-
 	// Search in the module.
 	decl = module_find_symbol(unit->module, symbol);
 
 	if (decl) return decl;
 
 	decl = sema_find_decl_in_imports(unit->imports, name_resolve, false);
+
+	// Special case: the declaration in import is not autoimport and is not a type (which won't be @builtin)
+	// e.g we have a malloc builtin and libc::malloc
+	if (decl && !decl->is_autoimport && !decl_is_user_defined_type(decl))
+	{
+		// Find the global
+		NameResolve copy = *name_resolve;
+		Decl *global = sema_find_decl_in_global_new(context->unit, &global_context.symbols, NULL, name_resolve, false);
+		// If it exists and is autoimport, then prefer it.
+		if (global && global->is_autoimport) return global;
+		*name_resolve = copy;
+		return decl;
+	}
 	return decl ? decl : sema_find_decl_in_global_new(context->unit, &global_context.symbols, NULL, name_resolve, false);
 }
 

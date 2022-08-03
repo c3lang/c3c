@@ -32,7 +32,7 @@ fn int! askGuess(int high)
 
 fn char[]! readLine()
 {
-	char* chars = mem::talloc(1024)?;
+	char* chars = tmalloc(1024)?;
 	isize loaded = getline(&chars, &&(usize)1023, libc::stdin());
 	if (loaded < 0) return InputResult.FAILED_TO_READ!;
 	chars[loaded] = 0;

@@ -25,7 +25,7 @@ fn void LinkedList.push(LinkedList *list, Type value)
 private fn void LinkedList.linkFirst(LinkedList *list, Type value)
 {
     Node *first = list.first;
-    Node *new_node = mem::malloc(Node);
+    Node *new_node = mem::alloc(Node);
     *new_node = { .next = first, .value = value };
     list.first = new_node;
     if (!first)
@@ -42,7 +42,7 @@ private fn void LinkedList.linkFirst(LinkedList *list, Type value)
 private fn void LinkedList.linkLast(LinkedList *list, Type value)
 {
     Node *last = list.last;
-    Node *new_node = mem::alloc(Node.sizeof);
+    Node *new_node = mem::alloc(Node);
     *new_node = { .prev = last, .value = value };
     list.last = new_node;
     if (!last)
@@ -61,7 +61,7 @@ fn void LinkedList.free(LinkedList *list)
     for (Node* node = list.first; node != null;)
     {
         Node* next = node.next;
-        mem::free(node);
+        free(node);
         node = next;
     }
     list.first = null;
@@ -89,7 +89,7 @@ fn Type LinkedList.get(LinkedList* list, usize index)
 private fn void LinkedList.linkBefore(LinkedList *list, Node *succ, Type value)
 {
     Node* pred = succ.prev;
-    Node* new_node = mem::malloc(Node);
+    Node* new_node = mem::alloc(Node);
     *new_node = { .prev = pred, .next = succ, .value = value };
     succ.prev = new_node;
     if (!pred)
@@ -109,7 +109,7 @@ private fn void LinkedList.linkBefore(LinkedList *list, Node *succ, Type value)
 private fn void unlinkFirst(LinkedList* list, Node* f)
 {
     Node* next = f.next;
-    mem::free(f);
+    free(f);
     list.first = next;
     if (!next)
     {
@@ -129,7 +129,7 @@ private fn void LinkedList.unlinkLast(LinkedList *list, Node* l)
 {
     Node* prev = l.prev;
     list.last = prev;
-    mem::free(l);
+    free(l);
     if (!prev)
     {
         list.first = null;
@@ -164,6 +164,6 @@ private fn void LinkedList.unlink(LinkedList* list, Node* x)
     {
         next.prev = prev;
     }
-    mem::free(x);
+    free(x);
     list.size--;
 }

@@ -66,7 +66,7 @@ private fn void* _libc_aligned_realloc(void* old_pointer, usize bytes, usize ali
 	AlignedBlock* desc = (AlignedBlock*)old_pointer - 1;
     void* data_start = desc.start;
     void* new_data = _libc_aligned_calloc(bytes, alignment, offset);
-	mem::memcpy(new_data, old_pointer, desc.len > bytes ? desc.len : bytes, false, DEFAULT_MEM_ALIGNMENT, DEFAULT_MEM_ALIGNMENT);
+	mem::copy(new_data, old_pointer, desc.len > bytes ? desc.len : bytes, DEFAULT_MEM_ALIGNMENT, DEFAULT_MEM_ALIGNMENT);
 	libc::free(data_start);
 	return new_data;
 }

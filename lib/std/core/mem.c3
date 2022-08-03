@@ -35,24 +35,19 @@ fn bool ptr_is_aligned(void* ptr, usize alignment) @inline
 	return (uptr)ptr & ((uptr)alignment - 1) == 0;
 }
 
-fn void copy(char* dst, char* src, usize size) @inline
+macro void copy(void* dst, void* src, usize len, usize $dst_align = 0, usize $src_align = 0, bool $is_volatile = false)
 {
-	memcpy(dst, src, size);
+	$$memcpy(dst, src, len, $is_volatile, $dst_align, $src_align);
 }
 
-macro void memcpy(void* dst, void* src, usize size, bool $is_volatile = false, usize $dst_align = 0, usize $src_align = 0)
+macro void set(void* dst, char val, usize len, usize $dst_align = 0, bool $is_volatile = false)
 {
-	$$memcpy(dst, src, size, $is_volatile, $dst_align, $src_align);
+	$$memset(dst, val, len, $is_volatile, $dst_align);
 }
 
-fn void set(void* dst, char val, usize bytes) @inline
+macro void clear(void* dst, usize len, usize $dst_align = 0, bool $is_volatile = false)
 {
-	memset(dst, val, bytes);
-}
-
-macro void memset(void* dst, char val, usize bytes, bool $is_volatile = false, usize $dst_align = 0)
-{
-	$$memset(dst, val, bytes, $is_volatile, $dst_align);
+	$$memset(dst, (char)0, len, $is_volatile, $dst_align);
 }
 
 macro @clone(&value) @builtin
@@ -62,22 +57,19 @@ macro @clone(&value) @builtin
 	return x;
 }
 
-macro malloc($Type) @builtin
+macro @tclone(&value) @builtin
 {
-    return ($Type*)(mem::alloc($Type.sizeof));
+	$typeof(value)* x = talloc($typeof(value));
+	*x = value;
+	return x;
 }
 
-fn char[] alloc_bytes(usize bytes) @inline
-{
-	return ((char*)thread_allocator.alloc(bytes))[:bytes]!!;
-}
-
-fn void* alloc(usize size)
+fn void* malloc(usize size) @builtin @inline
 {
 	return thread_allocator.alloc(size)!!;
 }
 
-fn void*! alloc_checked(usize size)
+fn void*! malloc_checked(usize size) @builtin @inline
 {
 	return thread_allocator.alloc(size);
 }
@@ -85,17 +77,28 @@ fn void*! alloc_checked(usize size)
 /**
  * @require alignment && math::is_power_of_2(alignment)
  */
-fn void*! alloc_aligned(usize size, usize alignment)
+fn void*! malloc_aligned(usize size, usize alignment) @builtin @inline
 {
 	return thread_allocator.alloc_aligned(size, alignment);
 }
 
-fn void* calloc(usize size)
+fn char[] alloc_bytes(usize bytes) @inline
+{
+	return ((char*)thread_allocator.alloc(bytes))[:bytes]!!;
+}
+
+macro alloc($Type)
+{
+	return ($Type*)thread_allocator.alloc($Type.sizeof)!!;
+}
+
+
+fn void* calloc(usize size) @builtin @inline
 {
 	return thread_allocator.calloc(size)!!;
 }
 
-fn void*! calloc_checked(usize size)
+fn void*! calloc_checked(usize size) @builtin @inline
 {
 	return thread_allocator.calloc(size);
 }
@@ -103,18 +106,17 @@ fn void*! calloc_checked(usize size)
 /**
  * @require alignment && math::is_power_of_2(alignment)
  */
-fn void*! calloc_aligned(usize size, usize alignment)
+fn void*! calloc_aligned(usize size, usize alignment) @builtin @inline
 {
 	return thread_allocator.calloc_aligned(size, alignment);
 }
 
-
-fn void* realloc(void *ptr, usize new_size)
+fn void* realloc(void *ptr, usize new_size) @builtin @inline
 {
 	return thread_allocator.realloc(ptr, new_size)!!;
 }
 
-fn void*! realloc_checked(void *ptr, usize new_size)
+fn void*! realloc_checked(void *ptr, usize new_size) @builtin @inline
 {
 	return thread_allocator.realloc(ptr, new_size);
 }
@@ -122,17 +124,17 @@ fn void*! realloc_checked(void *ptr, usize new_size)
 /**
  * @require alignment && math::is_power_of_2(alignment)
  */
-fn void*! realloc_aligned(void *ptr, usize new_size, usize alignment)
+fn void*! realloc_aligned(void *ptr, usize new_size, usize alignment) @builtin @inline
 {
 	return thread_allocator.realloc_aligned(ptr, new_size, alignment);
 }
 
-fn void free(void* ptr) @builtin
+fn void free(void* ptr) @builtin @inline
 {
 	return thread_allocator.free(ptr)!!;
 }
 
-fn void free_aligned(void* ptr)
+fn void free_aligned(void* ptr) @builtin @inline
 {
 	return thread_allocator.free_aligned(ptr)!!;
 }
@@ -159,17 +161,22 @@ macro void @tscoped(;@body())
 	@body();
 }
 
-fn void* talloc(usize size, usize alignment = 0)
+macro talloc($Type) @builtin
+{
+	return temp_allocator().alloc_aligned($Type.sizeof, $alignof($Type))!!;
+}
+
+fn void* tmalloc(usize size, usize alignment = 0) @builtin @inline
 {
     return temp_allocator().alloc_aligned(size, alignment)!!;
 }
 
-fn void* tcalloc(usize size, usize alignment = 0)
+fn void* tcalloc(usize size, usize alignment = 0) @builtin @inline
 {
 	return temp_allocator().calloc_aligned(size, alignment)!!;
 }
 
-fn void* trealloc(void* ptr, usize size, usize alignment = 0)
+fn void* trealloc(void* ptr, usize size, usize alignment = 0) @builtin @inline
 {
 	return temp_allocator().realloc_aligned(ptr, size, alignment)!!;
 }

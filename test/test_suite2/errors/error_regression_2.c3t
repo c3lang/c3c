@@ -39,7 +39,7 @@ fn bool contains(char[] haystack, char[] needle)
 
 macro dupe(value)
 {
-	$typeof(&value) temp = mem::alloc($sizeof(value));
+	$typeof(&value) temp = malloc($sizeof(value));
 	if (!temp) return ReadError.OUT_OF_MEMORY!;
 	*temp = value;
 	return temp;
@@ -59,7 +59,7 @@ fn Doc! readDoc(char[] url)
 	if (contains(url, "title-empty")) return { dupe(Head { .title = dupe((char[])"")? })? };
 	// Not particularly elegant due to missing string functions.
 	int len = libc::snprintf(null, 0, "Title of %.*s", (int)url.len, url.ptr);
-	char* str = mem::alloc(len + 1);
+	char* str = malloc(len + 1);
 	if (!str) return ReadError.OUT_OF_MEMORY!;
 	libc::snprintf(str, len + 1, "Title of %.*s", (int)url.len, url.ptr);
 	return { dupe(Head { .title = dupe(str[..len - 1])? })? };
@@ -358,7 +358,7 @@ if.then15:                                        ; preds = %if.exit9
   store ptr null, ptr %25, align 8
   %26 = load %Head, ptr %literal18, align 8
   store %Head %26, ptr %value, align 8
-  %27 = call ptr @std_core_mem_alloc(i64 8)
+  %27 = call ptr @std_core_mem_malloc(i64 8)
   store ptr %27, ptr %temp, align 8
   %28 = load ptr, ptr %temp, align 8
   %not = icmp eq ptr %28, null
@@ -402,7 +402,7 @@ if.then27:                                        ; preds = %if.exit21
   store ptr null, ptr %literal32, align 8
   %39 = getelementptr inbounds %Head, ptr %literal32, i32 0, i32 0
   store %"char[]" zeroinitializer, ptr %value34, align 8
-  %40 = call ptr @std_core_mem_alloc(i64 16)
+  %40 = call ptr @std_core_mem_malloc(i64 16)
   store ptr %40, ptr %temp35, align 8
   %41 = load ptr, ptr %temp35, align 8
   %not36 = icmp eq ptr %41, null
@@ -426,7 +426,7 @@ noerr_block40:                                    ; preds = %if.exit38
   store ptr %44, ptr %39, align 8
   %45 = load %Head, ptr %literal32, align 8
   store %Head %45, ptr %value31, align 8
-  %46 = call ptr @std_core_mem_alloc(i64 8)
+  %46 = call ptr @std_core_mem_malloc(i64 8)
   store ptr %46, ptr %temp41, align 8
   %47 = load ptr, ptr %temp41, align 8
   %not42 = icmp eq ptr %47, null
@@ -462,7 +462,7 @@ if.exit47:                                        ; preds = %if.exit21
   %56 = load i32, ptr %len, align 4
   %siuiext = sext i32 %56 to i64
   %add = add i64 %siuiext, 1
-  %57 = call ptr @std_core_mem_alloc(i64 %add)
+  %57 = call ptr @std_core_mem_malloc(i64 %add)
   store ptr %57, ptr %str, align 8
   %58 = load ptr, ptr %str, align 8
   %not48 = icmp eq ptr %58, null
@@ -495,7 +495,7 @@ if.exit50:                                        ; preds = %if.exit47
   %71 = insertvalue %"char[]" undef, ptr %ptroffset, 0
   %72 = insertvalue %"char[]" %71, i64 %size, 1
   store %"char[]" %72, ptr %value60, align 8
-  %73 = call ptr @std_core_mem_alloc(i64 16)
+  %73 = call ptr @std_core_mem_malloc(i64 16)
   store ptr %73, ptr %temp61, align 8
   %74 = load ptr, ptr %temp61, align 8
   %not62 = icmp eq ptr %74, null
@@ -519,7 +519,7 @@ noerr_block66:                                    ; preds = %if.exit64
   store ptr %77, ptr %67, align 8
   %78 = load %Head, ptr %literal58, align 8
   store %Head %78, ptr %value57, align 8
-  %79 = call ptr @std_core_mem_alloc(i64 8)
+  %79 = call ptr @std_core_mem_malloc(i64 8)
   store ptr %79, ptr %temp67, align 8
   %80 = load ptr, ptr %temp67, align 8
   %not68 = icmp eq ptr %80, null

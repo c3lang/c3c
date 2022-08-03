@@ -37,41 +37,41 @@ fn void testAllocator(Allocator* a, int val)
 }
 fn void main()
 {
-	char* small = mem::talloc(128);
+	char* small = tmalloc(128);
 	setstring(small, "small");
 	libc::printf("Small1: %p %s\n", small, small);
 	print_pages();
-	small = mem::trealloc(small, 129, 1024 * 16);
+	small = trealloc(small, 129, 1024 * 16);
 	libc::printf("Small2: %p %s\n", small, small);
 	print_pages();
-	small = mem::trealloc(small, 12933);
+	small = trealloc(small, 12933);
 	libc::printf("Small3: %p %s\n", small, small);
 	print_pages();
-	char* first_big = mem::talloc(9512);
-	void *big = mem::talloc(4095);
+	char* first_big = tmalloc(9512);
+	void *big = tmalloc(4095);
 	io::printf("Big: %p\n", big);
-	io::printf("Small: %p\n", mem::talloc(13));
+	io::printf("Small: %p\n", tmalloc(13));
 	print_pages();
 	@pool() {
-	big = mem::trealloc(big, 5067);
+	big = trealloc(big, 5067);
 	print_pages();
-	void* hidden = mem::talloc(4096);
+	void* hidden = tmalloc(4096);
 	io::printf("Hidden: %p\n", hidden);
 	io::printf("Big: %p\n", big);
-	big = mem::trealloc(big, 4096, 256);
+	big = trealloc(big, 4096, 256);
 	io::printf("Big: %p\n", big);
 	io::printf("First big: %p\n", first_big);
 	print_pages();
 	};
 	mem::@tscoped()
 	{
-		io::printf("Malloc: %p\n", mem::alloc(23));
-		io::printf("Malloc: %p\n", mem::alloc(23));
+		io::printf("Malloc: %p\n", malloc(23));
+		io::printf("Malloc: %p\n", malloc(23));
 	};
-	io::printf("Malloc: %p\n", mem::alloc(23));
+	io::printf("Malloc: %p\n", malloc(23));
 	@pool()
 	{
-		io::printf("Talloc: %p\n", mem::talloc(22));
+		io::printf("Talloc: %p\n", tmalloc(22));
 	};
 	testAllocator(mem::temp_allocator(), 126);
 	testAllocator(mem::temp_allocator(), 12600);

@@ -58,7 +58,7 @@ private fn void*! DynamicArenaAllocator._realloc(DynamicArenaAllocator* this, vo
 		return old_pointer;
 	}
 	void* new_mem = this._alloc(size, alignment, offset)?;
-	mem::memcpy(new_mem, old_pointer, old_size, false, DEFAULT_MEM_ALIGNMENT);
+	mem::copy(new_mem, old_pointer, old_size, DEFAULT_MEM_ALIGNMENT);
 	return new_mem;
 }
 
@@ -164,7 +164,7 @@ private fn void*! dynamic_arena_allocator_function(Allocator* data, usize size, 
 			assert(!old_pointer, "Unexpected no old pointer for calloc.");
 			if (!size) return null;
 			void* mem = allocator._alloc(size, alignment, offset)?;
-			mem::memset(mem, 0, size, false, DEFAULT_MEM_ALIGNMENT);
+			mem::clear(mem, size, DEFAULT_MEM_ALIGNMENT);
 			return mem;
 		case ALLOC:
 		case ALIGNED_ALLOC:

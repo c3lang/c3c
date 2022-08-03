@@ -39,7 +39,7 @@ fn bool contains(char[] haystack, char[] needle)
 
 macro dupe(value)
 {
-	$typeof(&value) temp = mem::alloc($sizeof(value));
+	$typeof(&value) temp = malloc($sizeof(value));
 	if (!temp) return ReadError.OUT_OF_MEMORY!;
 	*temp = value;
 	return temp;
@@ -59,7 +59,7 @@ fn Doc! readDoc(char[] url)
 	if (contains(url, "title-empty")) return { dupe(Head { .title = dupe((char[])"")? })? };
 	// Not particularly elegant due to missing string functions.
 	int len = libc::snprintf(null, 0, "Title of %.*s", (int)url.len, url.ptr);
-	char* str = mem::alloc(len + 1);
+	char* str = malloc(len + 1);
 	if (!str) return ReadError.OUT_OF_MEMORY!;
 	libc::snprintf(str, len + 1, "Title of %.*s", (int)url.len, url.ptr);
 	return { dupe(Head { .title = dupe(str[..len - 1])? })? };
@@ -368,7 +368,7 @@ if.then15:                                        ; preds = %if.exit9
   store %"char[]"* null, %"char[]"** %33, align 8
   %34 = load %Head, %Head* %literal18, align 8
   store %Head %34, %Head* %value, align 8
-  %35 = call i8* @std_core_mem_alloc(i64 8)
+  %35 = call i8* @std_core_mem_malloc(i64 8) #2
   %ptrptr = bitcast i8* %35 to %Head*
   store %Head* %ptrptr, %Head** %temp, align 8
   %36 = load %Head*, %Head** %temp, align 8
@@ -420,7 +420,7 @@ if.then27:                                        ; preds = %if.exit21
   store %"char[]"* null, %"char[]"** %53, align 8
   %54 = getelementptr inbounds %Head, %Head* %literal32, i32 0, i32 0
   store %"char[]" zeroinitializer, %"char[]"* %value34, align 8
-  %55 = call i8* @std_core_mem_alloc(i64 16)
+  %55 = call i8* @std_core_mem_malloc(i64 16) #2
   %ptrptr36 = bitcast i8* %55 to %"char[]"*
   store %"char[]"* %ptrptr36, %"char[]"** %temp35, align 8
   %56 = load %"char[]"*, %"char[]"** %temp35, align 8
@@ -447,7 +447,7 @@ noerr_block41:                                    ; preds = %if.exit39
   store %"char[]"* %61, %"char[]"** %54, align 8
   %62 = load %Head, %Head* %literal32, align 8
   store %Head %62, %Head* %value31, align 8
-  %63 = call i8* @std_core_mem_alloc(i64 8)
+  %63 = call i8* @std_core_mem_malloc(i64 8) #2
   %ptrptr43 = bitcast i8* %63 to %Head*
   store %Head* %ptrptr43, %Head** %temp42, align 8
   %64 = load %Head*, %Head** %temp42, align 8
@@ -488,7 +488,7 @@ if.exit49:                                        ; preds = %if.exit21
   %77 = load i32, i32* %len, align 4
   %siuiext = sext i32 %77 to i64
   %add = add i64 %siuiext, 1
-  %78 = call i8* @std_core_mem_alloc(i64 %add)
+  %78 = call i8* @std_core_mem_malloc(i64 %add) #2
   store i8* %78, i8** %str, align 8
   %79 = load i8*, i8** %str, align 8
   %not50 = icmp eq i8* %79, null
@@ -522,7 +522,7 @@ if.exit52:                                        ; preds = %if.exit49
   %93 = insertvalue %"char[]" undef, i8* %ptroffset, 0
   %94 = insertvalue %"char[]" %93, i64 %size, 1
   store %"char[]" %94, %"char[]"* %value62, align 8
-  %95 = call i8* @std_core_mem_alloc(i64 16)
+  %95 = call i8* @std_core_mem_malloc(i64 16) #2
   %ptrptr64 = bitcast i8* %95 to %"char[]"*
   store %"char[]"* %ptrptr64, %"char[]"** %temp63, align 8
   %96 = load %"char[]"*, %"char[]"** %temp63, align 8
@@ -549,7 +549,7 @@ noerr_block69:                                    ; preds = %if.exit67
   store %"char[]"* %101, %"char[]"** %89, align 8
   %102 = load %Head, %Head* %literal60, align 8
   store %Head %102, %Head* %value59, align 8
-  %103 = call i8* @std_core_mem_alloc(i64 8)
+  %103 = call i8* @std_core_mem_malloc(i64 8) #2
   %ptrptr71 = bitcast i8* %103 to %Head*
   store %Head* %ptrptr71, %Head** %temp70, align 8
   %104 = load %Head*, %Head** %temp70, align 8

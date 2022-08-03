@@ -8,7 +8,7 @@ module std::core::mem::array;
  **/
 macro alloc($Type, usize elements)
 {
-    $Type* ptr = mem::alloc($Type.sizeof * elements, $alignof($Type));
+    $Type* ptr = malloc($Type.sizeof * elements);
     return ptr[:elements];
 }
 
@@ -17,7 +17,7 @@ macro alloc($Type, usize elements)
  **/
 macro talloc($Type, usize elements)
 {
-    $Type* ptr = mem::talloc($Type.sizeof * elements, $alignof($Type[1]));
+    $Type* ptr = tmalloc($Type.sizeof * elements, $alignof($Type[1]));
     return ptr[:elements];
 }
 
@@ -26,7 +26,7 @@ macro talloc($Type, usize elements)
  **/
 macro make($Type, usize elements)
 {
-    $Type* ptr = mem::calloc($sizeof($Type) * elements, $alignof($Type[1]));
+    $Type* ptr = calloc($sizeof($Type) * elements);
     return ptr[:elements];
 }
 
@@ -35,6 +35,6 @@ macro make($Type, usize elements)
  **/
 macro tmake($Type, usize elements)
 {
-    $Type* ptr = mem::tcalloc($sizeof($Type) * elements, $alignof($Type[1]));
+    $Type* ptr = tcalloc($sizeof($Type) * elements, $alignof($Type[1]));
     return ptr[:elements];
 }

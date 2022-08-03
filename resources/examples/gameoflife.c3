@@ -69,8 +69,8 @@ fn int main(int c, char** v)
 	GameBoard board;
 	board.w = w;
 	board.h = h;
-	board.world = mem::alloc((ulong)(h * w));
-	board.temp = mem::alloc((ulong)(h * w));
+	board.world = malloc((ulong)(h * w));
+	board.temp = malloc((ulong)(h * w));
 
 	for (int i = h * w - 1; i >= 0; i--)
 	{

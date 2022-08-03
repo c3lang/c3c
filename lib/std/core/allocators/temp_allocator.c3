@@ -134,7 +134,7 @@ private fn void*! TempAllocator._realloc_page(TempAllocator* this, TempAllocator
 	usize page_size = page.pagesize();
 	// Clear on size > original size.
 	void* data = this._alloc(size, alignment, offset, false)?;
-	mem::memcpy(data, &page.data[0], page_size, false, DEFAULT_MEM_ALIGNMENT, DEFAULT_MEM_ALIGNMENT);
+	mem::copy(data, &page.data[0], page_size, DEFAULT_MEM_ALIGNMENT, DEFAULT_MEM_ALIGNMENT);
 	if (page.is_aligned())
 	{
 		this.backing_allocator.free_aligned(real_pointer)?;
@@ -161,7 +161,7 @@ private fn void*! TempAllocator._realloc(TempAllocator* this, void* pointer, usi
 
 	// TODO optimize last allocation
 	TempAllocatorChunk* data = this._alloc(size, alignment, offset, size > chunk.size)?;
-	mem::memcpy(data, pointer, chunk.size, false, DEFAULT_MEM_ALIGNMENT, DEFAULT_MEM_ALIGNMENT);
+	mem::copy(data, pointer, chunk.size, DEFAULT_MEM_ALIGNMENT, DEFAULT_MEM_ALIGNMENT);
 
 	return data;
 }
@@ -190,7 +190,7 @@ private fn void*! TempAllocator._alloc(TempAllocator* this, usize size, usize al
 		TempAllocatorChunk* chunk_start = mem - TempAllocatorChunk.sizeof;
     	chunk_start.size = size;
     	this.used = new_usage;
-    	if (clear) mem::memset(mem, 0, size, false, DEFAULT_MEM_ALIGNMENT);
+    	if (clear) mem::clear(mem, size, DEFAULT_MEM_ALIGNMENT);
     	return mem;
 	}
 

@@ -33,7 +33,7 @@ fn void getComm(uint len, char* src)
     uint size;
     size = len - 2;
     char* comm = malloc(size + 1);
-    memcpy(comm, src, size);
+    mem::copy(comm, src, size);
 }
 
 fn uint* decode_fh(uint* p, SvcFh* fhp)
@@ -42,7 +42,7 @@ fn uint* decode_fh(uint* p, SvcFh* fhp)
     fh_init(fhp, NFS3_FHSIZE);
     size = ntohl(*p++);
     if (size > NFS3_FHSIZE) return NULL;
-    memcpy(&fhp.fh_handle.fh_base, p, size);
+    mem::copy(&fhp.fh_handle.fh_base, p, size);
     fhp.fh_handle.fh_size = size;
     return p + XDR_QUADLEN(size);
 }

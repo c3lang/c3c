@@ -118,8 +118,8 @@ fn void! Parser.parse(Parser* p, char* input, char* diagMsg, Blocks* blocks)
     p.errorMsg[0] = 0;
 
     p.blocks = blocks;
-    memset(p.parents, 0, sizeof(Node*)*MaxDepth);
-    memset(p.lastChild, 0, sizeof(Node*)*MaxDepth);
+    mem::set(p.parents, 0, sizeof(Node*)*MaxDepth);
+    mem::set(p.lastChild, 0, sizeof(Node*)*MaxDepth);
     p.numParents = 0;
     p.topParent = nil;
 
@@ -438,13 +438,13 @@ fn const Node* Reader.findNode(const Reader* r, const char* key)
         switch (*cp) {
         case 0:
             len = cast<u32>(cp - start);
-            memcpy(name, start, len);
+            mem::copy(name, start, len);
             name[len] = 0;
             node = r.blocks.findNode(name, node);
             return node;
         case '.':
             len = cast<u32>(cp - start);
-            memcpy(name, start, len);
+            mem::copy(name, start, len);
             name[len] = 0;
             start = cp + 1;
             node = r.blocks.findNode(name, node);
@@ -644,7 +644,7 @@ public type Blocks struct {
 } @(opaque)
 
 fn void Blocks.init(Blocks* b) {
-    memset(b, 0, sizeof(Blocks));
+    mem::set(b, 0, sizeof(Blocks));
     b.nodes = calloc(MaxNodes, sizeof(Node));
 
     b.namesSize = MaxNames;
@@ -659,7 +659,7 @@ fn void Blocks.init(Blocks* b) {
 
     b.lastCache = 0;
     //memset(b.namesCache, 0, sizeof(b.namesCache));    // sizeof(struct member) not supported yet
-    memset(b.namesCache, 0, sizeof(u32)*NamesCacheSize);
+    mem::set(b.namesCache, 0, sizeof(u32)*NamesCacheSize);
 }
 
 fn void Blocks.destroy(Blocks* b) {
@@ -702,7 +702,7 @@ fn u32 Blocks.addNode(Blocks* b, const char* name, NodeKind k) {
             nameOffset = b.namesOffset;
             node.nameOffset = nameOffset;
             char* newname = &b.names[nameOffset];
-            memcpy(newname, name, len);
+            mem::copy(newname, name, len);
             b.namesCache[b.lastCache] = nameOffset;
             b.lastCache = (b.lastCache + 1) % NamesCacheSize;
             b.namesOffset += len;
@@ -716,7 +716,7 @@ fn u32 Blocks.addValue(Blocks* b, const char* value) {
     if (value[0] == 0) return 0;
     u32 off = b.valuesOffset;
     u32 len = cast<u32>(strlen(value)) + 1;
-    memcpy(&b.values[off], value, len);
+    mem::copy(&b.values[off], value, len);
     b.valuesOffset += len;
     return off;
 }

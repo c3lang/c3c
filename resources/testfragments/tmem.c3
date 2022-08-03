@@ -13,14 +13,14 @@ struct String
 fn void String.init(String *s, char[] c)
 {
     s.capacity = c.len + 16;
-    s.ptr = mem::_malloc(s.capacity);
+    s.ptr = malloc(s.capacity);
     s.len = c.len;
     mem::copy(s.ptr, (char*)(c), c.len);
 }
 
 fn char* String.zstr(String *s)
 {
-    char* c = mem::_malloc(s.len + 1);
+    char* c = malloc(s.len + 1);
     mem::copy(c, s.ptr, s.len);
     c[s.len] = 0;
     return c;
@@ -31,7 +31,7 @@ fn void String.appendc(String *s, char c)
     if (s.capacity == s.len)
     {
         s.capacity *= 2;
-        char* new_ptr = mem::_malloc(s.capacity);
+        char* new_ptr = malloc(s.capacity);
         mem::copy(new_ptr, s.ptr, s.len);
         s.ptr = new_ptr;
     }
@@ -47,7 +47,7 @@ fn void String.append(String *s, char[] other_string)
             s.capacity *= 2;
         }
         while (s.capacity < s.len + other_string.len);
-        char* new_ptr = mem::_malloc(s.capacity);
+        char* new_ptr = malloc(s.capacity);
         mem::copy(new_ptr, s.ptr, s.len);
         s.ptr = new_ptr;
     }
@@ -64,7 +64,7 @@ fn void String.concat(String *s, String* other_string)
             s.capacity *= 2;
         }
         while (s.capacity < s.len + other_string.len);
-        char* new_ptr = mem::_malloc(s.capacity);
+        char* new_ptr = malloc(s.capacity);
         mem::copy(new_ptr, s.ptr, s.len);
         s.ptr = new_ptr;
     }

@@ -25,7 +25,7 @@ private fn void*! arena_allocator_function(Allocator* data, usize size, usize al
 			if (!size) return null;
 			alignment = alignment_for_allocation(alignment);
 			void* mem = arena._alloc(size, alignment, offset)?;
-			if (clear) mem::memset(mem, 0, size, false, DEFAULT_MEM_ALIGNMENT);
+			if (clear) mem::clear(mem, size, DEFAULT_MEM_ALIGNMENT);
         	return mem;
 		case ALIGNED_REALLOC:
 		case REALLOC:
@@ -114,6 +114,6 @@ private fn void*! ArenaAllocator._realloc(ArenaAllocator* this, void *old_pointe
 	}
 	// Otherwise just allocate new memory.
 	void* mem = this._alloc(size, alignment, offset)?;
-	mem::memcpy(mem, old_pointer, old_size, false, DEFAULT_MEM_ALIGNMENT, DEFAULT_MEM_ALIGNMENT);
+	mem::copy(mem, old_pointer, old_size, DEFAULT_MEM_ALIGNMENT, DEFAULT_MEM_ALIGNMENT);
 	return mem;
 }

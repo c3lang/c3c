@@ -44,7 +44,7 @@ fn bool contains(char[] haystack, char[] needle)
 
 macro @dupe(value)
 {
-	$typeof(&value) temp = mem::alloc_checked($sizeof(value))?;
+	$typeof(&value) temp = malloc_checked($sizeof(value))?;
 	*temp = value;
 	return temp;
 }

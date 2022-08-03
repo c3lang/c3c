@@ -15,7 +15,7 @@ private fn void List.ensure_capacity(List *list) @inline
     if (list.capacity == list.size)
     {
         list.capacity = list.capacity ? 2 * list.capacity : 16;
-        list.entries = mem::realloc(list.entries, Type.sizeof * list.capacity);
+        list.entries = realloc(list.entries, Type.sizeof * list.capacity);
     }
 }
 
@@ -111,7 +111,7 @@ fn Type List.get(List *list, usize index)
 
 fn void List.free(List *list)
 {
-    mem::free(list.entries);
+    free(list.entries);
     list.capacity = 0;
     list.size = 0;
     list.entries = null;

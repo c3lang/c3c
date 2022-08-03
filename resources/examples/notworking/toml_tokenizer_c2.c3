@@ -269,7 +269,7 @@ fn void Tokenizer.parseText(Tokenizer* t, Token* result)
 
     uint len = (uint)(t.current - start);
     // assert(len < MaxText);
-    memcpy(t.text as start, len);
+    mem::copy(t.text as start, len);
     t.text[len] = 0;
     result.kind = TokenKind.Text;
     result.text = t.text;
@@ -310,7 +310,7 @@ fn void! Tokenizer.parseMultiText(Tokenizer* t, Token* result)
 
     uint len = uint(t.current - start);
     // assert(len < MaxText);
-    memcpy(t.text, start, len);
+    mem::copy(t.text, start, len);
     t.text[len] = 0;
     result.kind = TokenKind.Text;
     result.text = t.text;
@@ -349,7 +349,7 @@ fn void Tokenizer.parseKey(Tokenizer* t, Token* result)
 
     uint len = (uint)(t.current - start);
     // assert(len < MaxText);
-    memcpy(t.text, start, len);
+    mem::copy(t.text, start, len);
     t.text[len] = 0;
     result.kind = TokenKind.Word;
     result.text = t.text;
