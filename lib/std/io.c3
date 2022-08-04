@@ -41,15 +41,18 @@ fn int println(char *message = "") @inline
 
 fn void! File.open(File* file, char[] filename, char[] mode)
 {
-    char* filename_copy = tmalloc(filename.len + 1);
-    char* mode_copy = tmalloc(mode.len + 1);
+	@pool()
+	{
+	    char* filename_copy = tmalloc(filename.len + 1);
+        char* mode_copy = tmalloc(mode.len + 1);
 
-    mem::copy(filename_copy, (char*)(filename), filename.len);
-    mem::copy(mode_copy, (char*)(mode), mode.len);
-    filename_copy[filename.len] = 0;
-    mode_copy[filename.len] = 0;
-    file.file = libc::fopen(filename_copy, mode_copy);
-    if (!file.file) return IoError.FILE_NOT_FOUND!;
+	    mem::copy(filename_copy, (char*)(filename), filename.len);
+        mem::copy(mode_copy, (char*)(mode), mode.len);
+        filename_copy[filename.len] = 0;
+        mode_copy[filename.len] = 0;
+        file.file = libc::fopen(filename_copy, mode_copy);
+        if (!file.file) return IoError.FILE_NOT_FOUND!;
+	};
 }
 
 enum Seek
