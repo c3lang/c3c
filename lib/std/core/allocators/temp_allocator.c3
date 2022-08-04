@@ -101,7 +101,7 @@ private fn void! TempAllocator._free(TempAllocator* this, void* old_pointer)
 private fn void! TempAllocator._reset(TempAllocator* this, usize mark)
 {
 	TempAllocatorPage *last_page = this.last_page;
-	while (last_page && last_page.mark < mark)
+	while (last_page && last_page.mark >= mark)
 	{
 		TempAllocatorPage *to_free = last_page;
 		last_page = last_page.prev_page;
