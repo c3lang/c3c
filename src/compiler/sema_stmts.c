@@ -2446,15 +2446,20 @@ static bool sema_analyse_checked(SemaContext *context, Ast *directive, AstId **a
 {
 	Expr *declexpr = directive->doc_stmt.contract.decl_exprs;
 	bool success = true;
+	bool suppress_error = global_context.suppress_errors;
+	global_context.suppress_errors = true;
 	SCOPE_START
 		VECEACH(declexpr->cond_expr, j)
 		{
 			Expr *expr = declexpr->cond_expr[j];
+
+			const char *comment = directive->doc_stmt.contract.comment;
+			global_context.suppress_errors = comment != NULL;
 			if (!sema_analyse_cond_expr(context, expr))
 			{
-				const char *comment = directive->doc_stmt.contract.comment;
 				if (comment)
 				{
+					global_context.suppress_errors = false;
 					SEMA_ERROR(expr, comment);
 				}
 				success = false;
@@ -2463,10 +2468,20 @@ static bool sema_analyse_checked(SemaContext *context, Ast *directive, AstId **a
 		}
 END:
 	SCOPE_END;
+	global_context.suppress_errors = suppress_error;
 	return success;
 }
 
-static bool sema_analyse_contracts(SemaContext *context, AstId doc, AstId **asserts)
+void sema_append_contract_asserts(AstId assert_first, Ast* compound_stmt)
+{
+	assert(compound_stmt->ast_kind == AST_COMPOUND_STMT);
+	if (!assert_first) return;
+	Ast *ast = new_ast(AST_COMPOUND_STMT, compound_stmt->span);
+	ast->compound_stmt.first_stmt = assert_first;
+	ast_prepend(&compound_stmt->compound_stmt.first_stmt, ast);
+}
+
+bool sema_analyse_contracts(SemaContext *context, AstId doc, AstId **asserts)
 {
 	while (doc)
 	{
@@ -2548,12 +2563,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 		}
 		else
 		{
-			if (assert_first)
-			{
-				Ast *ast = new_ast(AST_COMPOUND_STMT, body->span);
-				ast->compound_stmt.first_stmt = assert_first;
-				ast_prepend(&body->compound_stmt.first_stmt, ast);
-			}
+			sema_append_contract_asserts(assert_first, body);
 			Type *canonical_rtype = type_no_fail(prototype->rtype)->canonical;
 			// Insert an implicit return
 			if (canonical_rtype == type_void)

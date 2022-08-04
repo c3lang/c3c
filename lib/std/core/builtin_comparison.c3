@@ -4,7 +4,7 @@
 module std::core::builtin;
 
 /**
- * @require is_comparable_value(a) && is_comparable_value(b)
+ * @require types::is_comparable_value(a) && types::is_comparable_value(b)
  **/
 macro less(a, b) @builtin
 {
@@ -18,7 +18,7 @@ macro less(a, b) @builtin
 }
 
 /**
- * @require is_comparable_value(a) && is_comparable_value(b)
+ * @require types::is_comparable_value(a) && types::is_comparable_value(b)
  **/
 macro less_eq(a, b) @builtin
 {
@@ -32,7 +32,7 @@ macro less_eq(a, b) @builtin
 }
 
 /**
- * @require is_comparable_value(a) && is_comparable_value(b)
+ * @require types::is_comparable_value(a) && types::is_comparable_value(b)
  **/
 macro greater(a, b) @builtin
 {
@@ -46,7 +46,7 @@ macro greater(a, b) @builtin
 }
 
 /**
- * @require is_comparable_value(a) && is_comparable_value(b)
+ * @require types::is_comparable_value(a) && types::is_comparable_value(b)
  **/
 macro greater_eq(a, b) @builtin
 {
@@ -60,7 +60,7 @@ macro greater_eq(a, b) @builtin
 }
 
 /**
- * @require is_equatable_value(a) && is_equatable_value(b) `values must be equatable`
+ * @require types::is_equatable_value(a) && types::is_equatable_value(b) `values must be equatable`
  **/
 macro bool equals(a, b) @builtin
 {

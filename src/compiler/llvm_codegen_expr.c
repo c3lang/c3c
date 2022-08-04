@@ -2342,7 +2342,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 	{
 		assert(len.value);
 		BEValue exceeds_size;
-		llvm_emit_int_comparison(c, &exceeds_size, &start_index, &len, BINARYOP_GE);
+		llvm_emit_int_comparison(c, &exceeds_size, &start_index, &len, BINARYOP_GT);
 		llvm_emit_panic_if_true(c, &exceeds_size, "Index exceeds array length.", slice->span);
 	}
 

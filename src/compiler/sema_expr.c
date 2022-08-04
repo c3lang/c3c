@@ -1420,7 +1420,7 @@ FAIL_MISSING:
 
 static inline bool sema_expr_analyse_call_invocation(SemaContext *context, Expr *call, CalledDecl callee, bool *failable)
 {
-	// 1. Check body arguments.
+	// 1. Check body arguments (for macro calls, or possibly broken )
 	if (!sema_check_invalid_body_arguments(context, call, &callee)) return false;
 
 	// 2. Pick out all the arguments and parameters.
@@ -1944,6 +1944,12 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		Decl *param = params[i];
 		if (!sema_add_local(&macro_context, param)) goto EXIT_FAIL;
 	}
+
+	AstId assert_first = 0;
+	AstId* next = &assert_first;
+
+	if (!sema_analyse_contracts(&macro_context, decl->macro_decl.docs, &next)) return false;
+	sema_append_contract_asserts(assert_first, body);
 
 	if (!sema_analyse_statement(&macro_context, body)) goto EXIT_FAIL;
 
@@ -3786,7 +3792,7 @@ CHECK_DEEPER:
 		member = sema_resolve_symbol_in_current_dynamic_scope(context, kw);
 	SCOPE_END;
 
-	if (member && decl_is_enum_kind(decl) && parent->expr_kind == EXPR_CONST)
+	if (member && decl_is_enum_kind(decl) && member->decl_kind == DECL_VAR && parent->expr_kind == EXPR_CONST)
 	{
 		assert(parent->const_expr.const_kind == CONST_ENUM);
 		Expr *copy_init = expr_macro_copy(current_parent->const_expr.enum_val->enum_constant.args[member->var.index]);

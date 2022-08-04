@@ -8,7 +8,7 @@ fault ConversionResult
 	VALUE_OUT_OF_UNSIGNED_RANGE,
 }
 /**
- * @require type.kind == SIGNED_INT || type.kind == UNSIGNED_INT || type.kind == ENUM, "Argument was not an integer"
+ * @require $Type.kind.is_int() || $Type.kind == TypeKind.ENUM "Argument was not an integer"
  **/
 macro variant_to_int(variant v, $Type)
 {

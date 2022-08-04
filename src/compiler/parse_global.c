@@ -1778,7 +1778,7 @@ static inline bool parse_func_macro_header(ParseContext *c, bool is_macro,
 /**
  * macro ::= macro_header '(' macro_params ')' compound_statement
  */
-static inline Decl *parse_macro_declaration(ParseContext *c, Visibility visibility)
+static inline Decl *parse_macro_declaration(ParseContext *c, Visibility visibility, AstId docs)
 {
 	DeclKind kind = try_consume(c, TOKEN_MACRO) ? DECL_MACRO : DECL_GENERIC;
 	if (kind == DECL_GENERIC) advance_and_verify(c, TOKEN_GENERIC);
@@ -1786,6 +1786,7 @@ static inline Decl *parse_macro_declaration(ParseContext *c, Visibility visibili
 	Decl *decl = decl_calloc();
 	decl->decl_kind = kind;
 	decl->visibility = visibility;
+	decl->macro_decl.docs = docs;
 	TypeInfoId *rtype_ref = &decl->macro_decl.rtype;
 	TypeInfoId *method_type_ref = &decl->macro_decl.type_parent;
 	if (!parse_func_macro_header(c, true, rtype_ref, method_type_ref, &decl->name, &decl->span)) return poisoned_decl;
@@ -2426,7 +2427,7 @@ Decl *parse_top_level_statement(ParseContext *c)
 		case TOKEN_GENERIC:
 		case TOKEN_MACRO:
 		{
-			ASSIGN_DECL_OR_RET(decl, parse_macro_declaration(c, visibility), poisoned_decl);
+			ASSIGN_DECL_OR_RET(decl, parse_macro_declaration(c, visibility, docs), poisoned_decl);
 			break;
 		}
 		case TOKEN_ENUM:

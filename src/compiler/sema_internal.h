@@ -58,7 +58,8 @@ bool splitpathref(const char *string, ArraySize len, Path **path_ref, const char
 
 bool expr_is_ltype(Expr *expr);
 bool sema_expr_check_assign(SemaContext *c, Expr *expr);
-
+bool sema_analyse_contracts(SemaContext *context, AstId doc, AstId **asserts);
+void sema_append_contract_asserts(AstId assert_first, Ast* compound_stmt);
 void sema_context_init(SemaContext *context, CompilationUnit *unit);
 void sema_context_destroy(SemaContext *context);
 Decl **global_context_acquire_locals_list(void);

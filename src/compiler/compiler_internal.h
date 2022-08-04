@@ -1482,6 +1482,7 @@ typedef struct
 	bool in_test_mode : 1;
 	unsigned errors_found;
 	unsigned warnings_found;
+	bool suppress_errors;
 	Decl ***locals_list;
 	HTable compiler_defines;
 	Module std_module;
@@ -1906,8 +1907,6 @@ static inline Decl *decl_flatten(Decl *decl)
 
 // --- Diag functions
 
-
-void diag_verror_range(SourceSpan location, const char *message, va_list args);
 
 #define EXPR_NEW_EXPR(kind_, expr_) expr_new(kind_, (expr_)->span)
 #define EXPR_NEW_TOKEN(kind_) expr_new(kind_, c->span)

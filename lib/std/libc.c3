@@ -186,6 +186,7 @@ extern fn int putchar(int c);
 extern fn int puts(char* str);
 extern fn int ungetc(int c, CFile stream);
 extern fn void perror(char* str);
+extern fn isize getline(char** linep, usize* linecapp, CFile stream);
 
 // vsprintf vprintf not supported
 

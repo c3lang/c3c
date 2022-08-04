@@ -173,6 +173,22 @@ fn usize! File.println(File* file, char[] string)
  * @param [&in] file
  * @require file.file `File must be initialized`
  */
+fn String File.getline(File* file, Allocator* allocator = mem::current_allocator())
+{
+	String s = string::new_with_capacity(120, allocator);
+	while (!file.eof())
+	{
+		int c = libc::fgetc(file.file);
+		if (c == '\n') break;
+		s.append_char((char)c);
+	}
+	return s;
+}
+
+/**
+ * @param [&in] file
+ * @require file.file `File must be initialized`
+ */
 fn void File.flush(File* file)
 {
 	libc::fflush(file.file);

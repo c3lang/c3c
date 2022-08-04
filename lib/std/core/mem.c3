@@ -166,17 +166,17 @@ macro talloc($Type) @builtin
 	return temp_allocator().alloc_aligned($Type.sizeof, $alignof($Type))!!;
 }
 
-fn void* tmalloc(usize size, usize alignment = 0) @builtin @inline
+fn void* tmalloc(usize size, usize alignment = allocator::DEFAULT_MEM_ALIGNMENT) @builtin @inline
 {
     return temp_allocator().alloc_aligned(size, alignment)!!;
 }
 
-fn void* tcalloc(usize size, usize alignment = 0) @builtin @inline
+fn void* tcalloc(usize size, usize alignment = allocator::DEFAULT_MEM_ALIGNMENT) @builtin @inline
 {
 	return temp_allocator().calloc_aligned(size, alignment)!!;
 }
 
-fn void* trealloc(void* ptr, usize size, usize alignment = 0) @builtin @inline
+fn void* trealloc(void* ptr, usize size, usize alignment = allocator::DEFAULT_MEM_ALIGNMENT) @builtin @inline
 {
 	return temp_allocator().realloc_aligned(ptr, size, alignment)!!;
 }

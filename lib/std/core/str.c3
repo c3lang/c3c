@@ -29,6 +29,32 @@ fn String join(char[][] s, char[] joiner)
 	return res;
 }
 
+fn usize! str_index_of(char[] s, char[] needle)
+{
+	usize match = 0;
+	usize needed = needle.len;
+	if (!needed) return SearchResult.MISSING!;
+	usize index_start = 0;
+	char search = needle[0];
+	foreach (usize i, char c : s)
+	{
+		if (c == search)
+		{
+			if (!match) index_start = i;
+			match++;
+			if (match == needed) return i;
+			search = needle[match];
+			continue;
+		}
+		if (match)
+		{
+			match = 0;
+			search = needle[0];
+		}
+	}
+	return SearchResult.MISSING!;
+}
+
 fn ZString copy_zstring(char[] s)
 {
     usize len = s.len;

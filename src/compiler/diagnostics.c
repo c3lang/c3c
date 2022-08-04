@@ -152,17 +152,9 @@ static void vprint_error(SourceSpan location, const char *message, va_list args)
 }
 
 
-void diag_verror_range(SourceSpan location, const char *message, va_list args)
-{
-	if (global_context.in_panic_mode) return;
-	global_context.in_panic_mode = true;
-	vprint_error(location, message, args);
-	global_context.errors_found++;
-}
-
-
 void sema_verror_range(SourceSpan location, const char *message, va_list args)
 {
+	if (global_context.suppress_errors) return;
 	vprint_error(location, message, args);
 	global_context.errors_found++;
 }
@@ -208,6 +200,7 @@ void sema_error_prev_at(SourceSpan loc, const char *message, ...)
 
 void sema_error(ParseContext *context, const char *message, ...)
 {
+	if (global_context.suppress_errors) return;
 	global_context.errors_found++;
 	File *file = context->unit->file;
 	va_list list;
