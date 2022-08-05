@@ -4409,11 +4409,10 @@ static inline LLVMValueRef llvm_syscall_asm(GenContext *c, LLVMTypeRef func_type
 	return LLVMGetInlineAsm(func_type, call, strlen(call),
 							scratch_buffer_to_string(), scratch_buffer.len,
 							true, true, LLVMInlineAsmDialectATT
-#if LLVM_VERSION_MAJOR >= 13
-			, false
+#if LLVM_VERSION_MAJOR > 12
+			, /* can throw */ false
 #endif
 							);
-
 }
 
 static inline void llvm_emit_syscall(GenContext *c, BEValue *be_value, Expr *expr)
@@ -4453,36 +4452,31 @@ static inline void llvm_emit_syscall(GenContext *c, BEValue *be_value, Expr *exp
 			inline_asm = llvm_syscall_asm(c, func_type, "svc #0x80");
 			break;
 		case ARCH_TYPE_X86:
+		{
 			scratch_buffer_append("={eax}");
 			assert(arguments < 8);
-			for (unsigned i = 0; i < arguments && i < 6; i++)
-			{
-				scratch_buffer_append(",{");
-				static char const *regs[] = { "eax", "ebx", "ecx", "edx", "esi", "edi" };
-				scratch_buffer_append(regs[i]);
-				scratch_buffer_append("}");
-			}
+			static char const *regs[] = { "eax", "ebx", "ecx", "edx", "esi", "edi" };
+			llvm_syscall_write_regs_to_scratch(regs, MIN(arguments, 6));
 			if (arguments == 7)
 			{
-				char *asm_str = "push %[arg6]\npush %%ebp\nmov 4(%%esp), %%ebp\nint $0x80\npop %%ebp\nadd $4, %%esp";
 				scratch_buffer_append(",rm");
-				inline_asm = LLVMGetInlineAsm(func_type, asm_str, strlen(asm_str), scratch_buffer_to_string(), scratch_buffer.len, true, false, LLVMInlineAsmDialectATT, false);
+				char *asm_str = "push %[arg6]\npush %%ebp\nmov 4(%%esp), %%ebp\nint $0x80\npop %%ebp\nadd $4, %%esp";
+				inline_asm = llvm_syscall_asm(c, func_type, asm_str);
+				break;
 			}
-			inline_asm = LLVMGetInlineAsm(func_type, "int $0x80", 9, scratch_buffer_to_string(), scratch_buffer.len, true, false, LLVMInlineAsmDialectATT, false);
+			inline_asm = llvm_syscall_asm(c, func_type, "int $0x80");
 			break;
+		}
 		case ARCH_TYPE_X86_64:
 			scratch_buffer_append("={rax}");
 			assert(arguments < 8);
-			for (unsigned i = 0; i < arguments; i++)
 			{
-				scratch_buffer_append(",{");
 				static char const *regs[] = { "rax", "rdi", "rsi", "rdx", "r10", "r8", "r9" };
-				scratch_buffer_append(regs[i]);
-				scratch_buffer_append("}");
+				llvm_syscall_write_regs_to_scratch(regs, arguments);
 			}
 			// Check clobbers on different OSes
 			scratch_buffer_append(",~{rcx},~{r11},~{memory}");
-			inline_asm = LLVMGetInlineAsm(func_type, "syscall", 7, scratch_buffer_to_string(), scratch_buffer.len, true, false, LLVMInlineAsmDialectATT, false);
+			inline_asm = llvm_syscall_asm(c, func_type, "syscall");
 			break;
 		case ARCH_UNSUPPORTED:
 		default:
