@@ -50,6 +50,58 @@ macro void clear(void* dst, usize len, usize $dst_align = 0, bool $is_volatile =
 	$$memset(dst, (char)0, len, $is_volatile, $dst_align);
 }
 
+/**
+ * @require $typeof(a).kind == TypeKind.SUBARRAY || $typeof(a).kind == TypeKind.POINTER
+ * @require $typeof(b).kind == TypeKind.SUBARRAY || $typeof(b).kind == TypeKind.POINTER
+ * @require $typeof(a).kind != TypeKind.SUBARRAY || len == -1
+ * @require $typeof(a).kind != TypeKind.POINTER || len > -1
+ * @checked (a = b), (b = a)
+ **/
+macro bool equals(a, b, isize len = -1, usize $alignment = 0)
+{
+	var $align = $alignment;
+	$if (!$alignment):
+		$align = $alignof($typeof(a[0]));
+	$endif;
+	void* x = void;
+	void* y = void;
+	$if ($typeof(a).kind == TypeKind.SUBARRAY):
+		len = a.len;
+		if (len != b.len) return false;
+		x = a.ptr;
+		y = b.ptr;
+	$else:
+		x = a;
+		y = b;
+		assert(len >= 0, "A zero or positive length must be given when comparing pointers.");
+	$endif;
+
+	if (!len) return true;
+    $switch ($align):
+		$case 1:
+			var $Type = char;
+		$case 2:
+			var $Type = ushort;
+		$case 4:
+			var $Type = uint;
+		$case 8:
+		$default:
+			var $Type = ulong;
+	$endswitch;
+	var $step = $Type.sizeof;
+	usize end = len / $step;
+	for (usize i = 0; i < end; i++)
+	{
+		if ((($Type*)x)[i] != (($Type*)y)[i]) return false;
+	}
+	usize last = len % $align;
+	for (usize i = len - last; i < len; i++)
+	{
+		if (((char*)x)[i] != ((char*)y)[i]) return false;
+	}
+	return true;
+}
+
 macro @clone(&value) @builtin
 {
 	$typeof(value)* x = malloc($typeof(value));

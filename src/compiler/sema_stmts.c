@@ -1977,10 +1977,7 @@ static bool sema_analyse_ct_switch_body(SemaContext *context, Ast *statement)
 		statement->ast_kind = AST_NOP_STMT;
 		return true;
 	}
-	if (!sema_analyse_statement(context, body)) return false;
-
-	*statement = *body;
-	return true;
+	return sema_analyse_then_overwrite(context, statement, body->compound_stmt.first_stmt);
 }
 
 static bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statement)

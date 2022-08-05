@@ -109,6 +109,18 @@ macro bool is_comparable($Type)
 	$endif;
 }
 
+macro bool is_subarray_convertable($Type)
+{
+	$switch ($Type.kind):
+		$case SUBARRAY:
+			return true;
+		$case POINTER:
+			return $Type.inner.kind == TypeKind.ARRAY;
+		$default:
+			return false;
+	$endswitch;
+}
+
 macro bool is_equatable_value(value)
 {
 	$if ($defined(value.less) || $defined(value.compare_to) || $defined(value.equals)):

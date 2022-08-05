@@ -2226,7 +2226,7 @@ static inline bool type_info_poison(TypeInfo *type)
 static inline bool type_is_arraylike(Type *type)
 {
 	DECL_TYPE_KIND_REAL(kind, type);
-	return kind == TYPE_ARRAY || kind == TYPE_VECTOR;
+	return kind == TYPE_ARRAY || kind == TYPE_VECTOR || kind == TYPE_FLEXIBLE_ARRAY;
 }
 
 static inline CanonicalType *type_pointer_type(Type *type)

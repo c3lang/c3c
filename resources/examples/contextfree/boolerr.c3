@@ -34,7 +34,7 @@ fn bool contains(char[] haystack, char[] needle)
 	len -= needle_len - 1;
 	for (usize i = 0; i < len; i++)
 	{
-		if (libc::memcmp(&haystack[i], needle.ptr, needle_len) == 0)
+		if (mem::equals(haystack[i..], needle))
 		{
 			return true;
 		}

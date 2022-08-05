@@ -97,12 +97,12 @@ private fn void*! DynamicArenaAllocator._alloc_new(DynamicArenaAllocator* this, 
 	}
     page.memory = mem;
     void* mem_start = mem::aligned_pointer(mem + offset + DynamicArenaChunk.sizeof, alignment) - offset;
-    assert(mem_start + DynamicArenaChunk.sizeof + size < mem + page_size);
+    assert(mem_start + size < mem + page_size);
     DynamicArenaChunk* chunk = (DynamicArenaChunk*)mem_start - 1;
     chunk.size = size;
 	page.prev_arena = this.page;
 	page.total = page_size;
-	page.used = size + offset;
+	page.used = mem_start + size - page.memory;
 	this.page = page;
 	page.last_ptr = mem_start;
 	return mem_start;
@@ -144,6 +144,7 @@ private fn void*! DynamicArenaAllocator._alloc(DynamicArenaAllocator* this, usiz
     }
 
     page.used = new_used;
+	assert(start + size == page.memory + page.used);
     void* mem = start;
     DynamicArenaChunk* chunk = (DynamicArenaChunk*)mem - 1;
     chunk.size = size;
