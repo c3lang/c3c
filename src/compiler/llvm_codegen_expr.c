@@ -4373,6 +4373,7 @@ unsigned llvm_get_intrinsic(BuiltinFunction func)
 			return intrinsic_id.memset;
 		case BUILTIN_VOLATILE_STORE:
 		case BUILTIN_VOLATILE_LOAD:
+		case BUILTIN_SYSCALL:
 			UNREACHABLE
 	}
 	UNREACHABLE
@@ -4393,6 +4394,103 @@ LLVMAtomicOrdering llvm_atomic_ordering(Atomicity atomicity)
 	UNREACHABLE
 }
 
+static inline void llvm_syscall_write_regs_to_scratch(const char** registers, unsigned args)
+{
+	for (unsigned i = 0; i < args; i++)
+	{
+		scratch_buffer_append(",{");
+		scratch_buffer_append(registers[i]);
+		scratch_buffer_append("}");
+	}
+}
+
+static inline LLVMValueRef llvm_syscall_asm(GenContext *c, LLVMTypeRef func_type, char *call)
+{
+	return LLVMGetInlineAsm(func_type, call, strlen(call),
+							scratch_buffer_to_string(), scratch_buffer.len,
+							true, true, LLVMInlineAsmDialectATT
+#if LLVM_VERSION_MAJOR >= 13
+			, false
+#endif
+							);
+
+}
+
+static inline void llvm_emit_syscall(GenContext *c, BEValue *be_value, Expr *expr)
+{
+	unsigned arguments = vec_size(expr->call_expr.arguments);
+	assert(arguments < 10 && "Only has room for 10");
+	LLVMValueRef arg_results[10];
+	LLVMTypeRef arg_types[10];
+	Expr **args = expr->call_expr.arguments;
+	LLVMTypeRef type = llvm_get_type(c, type_uptr);
+	for (unsigned i = 0; i < arguments; i++)
+	{
+		llvm_emit_expr(c, be_value, args[i]);
+		llvm_value_rvalue(c, be_value);
+		arg_results[i] = be_value->value;
+		arg_types[i] = type;
+	}
+	LLVMTypeRef func_type = LLVMFunctionType(type, arg_types, arguments, false);
+	scratch_buffer_clear();
+	LLVMValueRef inline_asm;
+	switch (platform_target.arch)
+	{
+		case ARCH_TYPE_AARCH64:
+		case ARCH_TYPE_AARCH64_BE:
+			scratch_buffer_append("={x0}");
+			assert(arguments < 8);
+			if (os_is_apple(platform_target.os))
+			{
+				static char const *regs[] = { "x16", "x0", "x1", "x2", "x3", "x4", "x5" };
+				llvm_syscall_write_regs_to_scratch(regs, arguments);
+			}
+			else
+			{
+				static char const *regs[] = { "x8", "x0", "x1", "x2", "x3", "x4", "x5" };
+				llvm_syscall_write_regs_to_scratch(regs, arguments);
+			}
+			inline_asm = llvm_syscall_asm(c, func_type, "svc #0x80");
+			break;
+		case ARCH_TYPE_X86:
+			scratch_buffer_append("={eax}");
+			assert(arguments < 8);
+			for (unsigned i = 0; i < arguments && i < 6; i++)
+			{
+				scratch_buffer_append(",{");
+				static char const *regs[] = { "eax", "ebx", "ecx", "edx", "esi", "edi" };
+				scratch_buffer_append(regs[i]);
+				scratch_buffer_append("}");
+			}
+			if (arguments == 7)
+			{
+				char *asm_str = "push %[arg6]\npush %%ebp\nmov 4(%%esp), %%ebp\nint $0x80\npop %%ebp\nadd $4, %%esp";
+				scratch_buffer_append(",rm");
+				inline_asm = LLVMGetInlineAsm(func_type, asm_str, strlen(asm_str), scratch_buffer_to_string(), scratch_buffer.len, true, false, LLVMInlineAsmDialectATT, false);
+			}
+			inline_asm = LLVMGetInlineAsm(func_type, "int $0x80", 9, scratch_buffer_to_string(), scratch_buffer.len, true, false, LLVMInlineAsmDialectATT, false);
+			break;
+		case ARCH_TYPE_X86_64:
+			scratch_buffer_append("={rax}");
+			assert(arguments < 8);
+			for (unsigned i = 0; i < arguments; i++)
+			{
+				scratch_buffer_append(",{");
+				static char const *regs[] = { "rax", "rdi", "rsi", "rdx", "r10", "r8", "r9" };
+				scratch_buffer_append(regs[i]);
+				scratch_buffer_append("}");
+			}
+			// Check clobbers on different OSes
+			scratch_buffer_append(",~{rcx},~{r11},~{memory}");
+			inline_asm = LLVMGetInlineAsm(func_type, "syscall", 7, scratch_buffer_to_string(), scratch_buffer.len, true, false, LLVMInlineAsmDialectATT, false);
+			break;
+		case ARCH_UNSUPPORTED:
+		default:
+			UNREACHABLE
+	}
+	LLVMValueRef result = LLVMBuildCall2(c->builder, func_type, inline_asm, arg_results, arguments, "syscall");
+	llvm_value_set(be_value, result, type_uptr);
+}
 void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 {
 	BuiltinFunction func = exprptr(expr->call_expr.function)->builtin_expr.builtin;
@@ -4435,6 +4533,11 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 		result_value->type = type_lowering(result_value->type->pointer);
 		llvm_value_rvalue(c, result_value);
 		LLVMSetVolatile(result_value->value, true);
+		return;
+	}
+	if (func == BUILTIN_SYSCALL)
+	{
+		llvm_emit_syscall(c, result_value, expr);
 		return;
 	}
 	llvm_emit_intrinsic_expr(c, llvm_get_intrinsic(func), result_value, expr);

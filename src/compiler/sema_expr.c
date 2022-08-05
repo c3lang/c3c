@@ -2281,6 +2281,7 @@ static inline unsigned builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_TRAP:
 		case BUILTIN_STACKTRACE:
 			return 0;
+		case BUILTIN_SYSCALL:
 		case BUILTIN_CEIL:
 		case BUILTIN_TRUNC:
 		case BUILTIN_SQRT:
@@ -2400,8 +2401,9 @@ static inline bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *ex
 	Expr **args = expr->call_expr.arguments;
 	unsigned arg_count = vec_size(args);
 
+	bool is_vararg = func == BUILTIN_SYSCALL;
 	// 1. Handle arg count, so at least we know that is ok.
-	if (expected_args != arg_count)
+	if (expected_args != arg_count && !is_vararg)
 	{
 		if (arg_count == 0)
 		{
@@ -2416,7 +2418,11 @@ static inline bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *ex
 		SEMA_ERROR(args[expected_args], "Too many arguments.");
 		return false;
 	}
-
+	if (is_vararg && expected_args > arg_count)
+	{
+		SEMA_ERROR(expr, "Expected at least %d arguments to builtin.\n", expected_args);
+		return false;
+	}
 	bool failable = false;
 
 	// 2. We can now check all the arguments, since they in general work on the
@@ -2430,9 +2436,32 @@ static inline bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *ex
 	Type *rtype = NULL;
 	switch (func)
 	{
+
 		case BUILTIN_UNREACHABLE:
 		case BUILTIN_TRAP:
 			rtype = type_void;
+			break;
+		case BUILTIN_SYSCALL:
+			if (arg_count > 7)
+			{
+				SEMA_ERROR(args[7], "Only 7 arguments supported for $$syscall.");
+			}
+			rtype = type_uptr;
+			for (unsigned i = 0; i < arg_count; i++)
+			{
+				if (!cast_implicit(args[i], type_uptr)) return false;
+			}
+			switch (platform_target.arch)
+			{
+				case ARCH_TYPE_AARCH64:
+				case ARCH_TYPE_AARCH64_BE:
+				case ARCH_TYPE_X86:
+				case ARCH_TYPE_X86_64:
+					break;
+				default:
+					SEMA_ERROR(expr, "Target does not support $$syscall.");
+					return false;
+			}
 			break;
 		case BUILTIN_MEMCOPY:
 			if (!sema_check_builtin_args(args,

@@ -199,7 +199,7 @@ void llvm_dump(void)
 }
 
 
-static inline bool os_is_apple(OsType os_type)
+bool os_is_apple(OsType os_type)
 {
 	return os_type == OS_TYPE_TVOS || os_type == OS_TYPE_WATCHOS ||
 	       os_type == OS_TYPE_MACOSX || os_type == OS_TYPE_IOS;

@@ -2065,6 +2065,7 @@ const char *symtab_find(const char *symbol, uint32_t len, uint32_t fnv1hash, Tok
 void *llvm_target_machine_create(void);
 void target_setup(BuildTarget *build_target);
 int target_alloca_addr_space();
+bool os_is_apple(OsType os_type);
 
 const char *macos_sysroot(void);
 MacSDK *macos_sysroot_sdk_information(const char *sdk_path);

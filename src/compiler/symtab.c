@@ -195,6 +195,7 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_FABS] = KW_DEF("fabs");
 	builtin_list[BUILTIN_VOLATILE_STORE] = KW_DEF("volatile_store");
 	builtin_list[BUILTIN_VOLATILE_LOAD] = KW_DEF("volatile_load");
+	builtin_list[BUILTIN_SYSCALL] = KW_DEF("syscall");
 	builtin_list[BUILTIN_MEMCOPY] = KW_DEF("memcpy");
 	builtin_list[BUILTIN_MEMSET] = KW_DEF("memset");
 
