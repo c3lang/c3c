@@ -13,7 +13,6 @@ jobs:
 
   build-msvc:
     runs-on: windows-latest
-    if: ${{ false }}
     strategy:
       # Don't abort runners if a single one fails
       fail-fast: false
@@ -50,7 +49,6 @@ jobs:
 
   build-msys2-mingw:
     runs-on: windows-latest
-    if: ${{ false }}
     strategy:
       # Don't abort runners if a single one fails
       fail-fast: false
@@ -129,10 +127,8 @@ jobs:
       # Don't abort runners if a single one fails
       fail-fast: false
       matrix:
-        #build_type: [Release, Debug]
-        #llvm_version: [12, 13, 14, 15, 16]
-        build_type: [Release]
-        llvm_version: [14]
+        build_type: [Release, Debug]
+        llvm_version: [12, 13, 14, 15, 16]
 
     steps:
       - uses: actions/checkout@v3
@@ -188,7 +184,6 @@ jobs:
 
   build-mac:
     runs-on: macos-latest
-    if: ${{ false }}
     strategy:
       # Don't abort runners if a single one fails
       fail-fast: false
@@ -234,8 +229,8 @@ jobs:
 
   release:
     runs-on: ubuntu-latest
-    #needs: [build-msvc, build-linux, build-mac]
-    needs: [build-linux]
+    needs: [build-msvc, build-linux, build-mac]
+    if: github.ref == 'refs/heads/master'
 
     steps:
       - uses: actions/checkout@v3
@@ -268,7 +263,6 @@ jobs:
       - run: zip -r windows.zip windows
       - run: tar czf linux.tar.gz linux
       - run: zip -r macos.zip macos
-      
 
       - id: create_release
         uses: actions/create-release@v1
