@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ master ]
 
+env:
+  LLVM_RELEASE_VERSION: 14
+
 jobs:
 
   build-msvc:
@@ -36,6 +39,13 @@ jobs:
         run: |
           cd test
           python3.exe src/tester.py ..\build\${{ matrix.build_type }}\c3c.exe test_suite/
+
+      - name: upload artifacts
+        if: matrix.build_type == 'Release'
+        uses: actions/upload-artifact@v3
+        with:
+          name: windows
+          path: build\Release\c3c.exe
 
   build-msys2-mingw:
     runs-on: windows-latest
@@ -165,6 +175,13 @@ jobs:
             python3 src/tester.py ../build/c3c test_suite2/
           fi
 
+      - name: upload artifacts
+        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION && matrix.build_type == 'Release'
+        uses: actions/upload-artifact@v3
+        with:
+          name: linux
+          path: build/c3c
+
   build-mac:
     runs-on: macos-latest
     strategy:
@@ -201,3 +218,84 @@ jobs:
         run: |
           cd test
           python3 src/tester.py ../build/c3c test_suite/
+
+      - name: upload artifacts
+        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION && matrix.build_type == 'Release'
+        uses: actions/upload-artifact@v3
+        with:
+          name: macos
+          path: build/c3c
+
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [build-msvc, build-linux, build-mac]
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: delete tag
+        continue-on-error: true
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.git.deleteRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: 'tags/latest',
+              sha: context.sha
+            })
+      - name: create tag
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: 'refs/tags/latest',
+              sha: context.sha
+            })
+
+      - uses: actions/download-artifact@v3
+      - run: zip -r windows.zip windows
+      - run: tar czf linux.tar.gz linux
+      - run: zip -r macos.zip macos
+
+      - id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: latest
+          release_name: latest
+          draft: false
+          prerelease: false
+
+      - name: upload windows
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: windows.zip
+          asset_name: windows.zip
+          asset_content_type: application/zip
+
+      - name: upload linux
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: linux.tar.gz
+          asset_name: linux.tar.gz
+          asset_content_type: application/gzip
+
+      - name: upload macos
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: macos.zip
+          asset_name: macos.zip
+          asset_content_type: application/zip
