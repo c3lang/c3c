@@ -149,7 +149,7 @@ The compiler is currently verified to compile on Linux, Windows and MacOS.
 
 - If you wish to contribute with ideas, please file issues or discuss on Discord.
 - Interested in contributing to the stdlib? Please get in touch on Discord.
-- Install instructions for other Linux and Unix variants are appreciated.
+- Compilation instructions for other Linux and Unix variants are appreciated.
 - Would you like to contribute bindings to some library? It would be nice to have support for SDL, Raylib and more.
 - Build something with C3 and show it off and give feedback. The language is still open for significant tweaks.
 - Start work on the C -> C3 converter which takes C code and does a "best effort" to translate it to C3. The first version only needs to work on C headers.
@@ -157,44 +157,34 @@ The compiler is currently verified to compile on Linux, Windows and MacOS.
 
 ### Installing
 
-#### Installing on Windows
-
+#### Installing on Windows with precompiled binaries
 1. Make sure you have Visual Studio 17 2022 installed.
-2. Install CMake
-3. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
-4. Enter the C3C directory `cd c3c`.
-5. Set up the CMake build `cmake -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release`
-6. Build: `cmake --build build --config Release`
-7. You should now have the c3c.exe
+2. Download the zip file: [https://github.com/c3lang/c3c/releases/download/latest/c3-windows.zip](https://github.com/c3lang/c3c/releases/download/latest/c3-windows.zip) 
+(debug version [here](https://github.com/c3lang/c3c/releases/download/latest/c3-windows-debug.zip))
+3. Unzip exe and standard lib.
+4. Run `c3c.exe`.
 
-You should now have a `c3c` executable.
+#### Installing on Debian with precompiled binaries
+1. Download tar file: [https://github.com/c3lang/c3c/releases/download/latest/c3-linux.tar.gz](https://github.com/c3lang/c3c/releases/download/latest/c3-linux.tar.gz)
+   (debug version [here](https://github.com/c3lang/c3c/releases/download/latest/c3-linux-debug.tar.gz))
+2. Unpack executable and standard lib.
+3. Run `./c3c`.
 
-You can try it out by running some sample code: `c3c.exe compile ../resources/examples/hash.c3`
+#### Installing on Mac with precompiled binaries
+1. Make sure you have XCode with command line tools installed.
+2. Download the zip file: [https://github.com/c3lang/c3c/releases/download/latest/c3-macos.zip](https://github.com/c3lang/c3c/releases/download/latest/c3-macos.zip)
+   (debug version [here](https://github.com/c3lang/c3c/releases/download/latest/c3-macos-debug.zip))
+3. Unzip executable and standard lib.
+4. Run `./c3c`.
 
 #### Installing on Arch Linux
-There is an AUR package for the C3C compiler : [c3c-git](https://aur.archlinux.org/packages/c3c-git)  
-You can use your AUR package manager or clone it manually:  
+There is an AUR package for the c3c compiler : [c3c-git](https://aur.archlinux.org/packages/c3c-git)  
+You can use your AUR package manager or clone it manually:
 ```sh
 git clone https://aur.archlinux.org/c3c-git.git
 cd c3c-git
 makepkg -si
 ```
-
-#### Installing on Ubuntu 20.10
-
-1. Make sure you have a C compiler that handles C11 and a C++ compiler, such as GCC or Clang. Git also needs to be installed.
-2. Install CMake: `sudo apt install cmake`
-3. Install LLVM 12 (or greater: C3C supports LLVM 12-15): `sudo apt-get install clang-12 zlib1g zlib1g-dev libllvm12 llvm-12 llvm-12-dev llvm-12-runtime liblld-12-dev liblld-12`
-4. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
-5. Enter the C3C directory `cd c3c`.
-6. Create a build directory `mkdir build`
-7. Change directory to the build directory `cd build`
-8. Set up CMake build: `cmake ..`
-9. Build: `cmake --build .`
-
-You should now have a `c3c` executable.
-
-You can try it out by running some sample code: `./c3c compile ../resources/examples/hash.c3`
 
 #### Building via Docker
 
@@ -224,18 +214,6 @@ A `c3c` executable will be found under `bin/`.
 8. Set up CMake build for debug: `cmake ..`
 9. Build: `cmake --build .`
 
-#### Installing on other Linux / Unix variants
-
-1. Install CMake.
-2. Install or compile LLVM and LLD *libraries* (version 12+ or higher)
-3. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
-4. Enter the C3C directory `cd c3c`.
-5. Create a build directory `mkdir build`
-6. Change directory to the build directory `cd build`
-7. Set up CMake build for debug: `cmake ..`. At this point you may need to manually 
-provide the link path to the LLVM CMake directories, e.g. `cmake -DLLVM_DIR=/usr/local/opt/llvm/lib/cmake/llvm/ ..`
-8. Build: `cmake --build .`
- 
 #### Getting started with a "hello world"
 
 Create a `main.c3` file with:
@@ -257,6 +235,52 @@ c3c compile main.c3
 ```
 
 The generated binary will be called `a.out`.
+
+### Compiling
+
+#### Compiling on Windows
+
+1. Make sure you have Visual Studio 17 2022 installed.
+2. Install CMake
+3. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
+4. Enter the C3C directory `cd c3c`.
+5. Set up the CMake build `cmake -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release`
+6. Build: `cmake --build build --config Release`
+7. You should now have the c3c.exe
+
+You should now have a `c3c` executable.
+
+You can try it out by running some sample code: `c3c.exe compile ../resources/examples/hash.c3`
+
+
+#### Compiling on Ubuntu 20.10
+
+1. Make sure you have a C compiler that handles C11 and a C++ compiler, such as GCC or Clang. Git also needs to be installed.
+2. Install CMake: `sudo apt install cmake`
+3. Install LLVM 12 (or greater: C3C supports LLVM 12-15): `sudo apt-get install clang-12 zlib1g zlib1g-dev libllvm12 llvm-12 llvm-12-dev llvm-12-runtime liblld-12-dev liblld-12`
+4. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
+5. Enter the C3C directory `cd c3c`.
+6. Create a build directory `mkdir build`
+7. Change directory to the build directory `cd build`
+8. Set up CMake build: `cmake ..`
+9. Build: `cmake --build .`
+
+You should now have a `c3c` executable.
+
+You can try it out by running some sample code: `./c3c compile ../resources/examples/hash.c3`
+
+
+#### Compiling on other Linux / Unix variants
+
+1. Install CMake.
+2. Install or compile LLVM and LLD *libraries* (version 12+ or higher)
+3. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
+4. Enter the C3C directory `cd c3c`.
+5. Create a build directory `mkdir build`
+6. Change directory to the build directory `cd build`
+7. Set up CMake build for debug: `cmake ..`. At this point you may need to manually 
+provide the link path to the LLVM CMake directories, e.g. `cmake -DLLVM_DIR=/usr/local/opt/llvm/lib/cmake/llvm/ ..`
+8. Build: `cmake --build .`
 
 #### Licensing
 
