@@ -44,8 +44,8 @@ jobs:
         if: matrix.build_type == 'Release'
         uses: actions/upload-artifact@v3
         with:
-          name: windows
-          path: build\Release\c3c.exe
+          name: c3-windows-${{ matrix.build_type }}
+          path: build\${{ matrix.build_type }}\c3c.exe
 
   build-msys2-mingw:
     runs-on: windows-latest
@@ -175,12 +175,21 @@ jobs:
             python3 src/tester.py ../build/c3c test_suite2/
           fi
 
+      - name: bundle_output
+        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION
+        run: |
+          mkdir linux
+          cp -r lib/ linux
+          cp build/c3c linux
+          tar czf c3-linux-${{matrix.build_type}}.tar.gz linux
+
       - name: upload artifacts
-        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION && matrix.build_type == 'Release'
+        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION
         uses: actions/upload-artifact@v3
         with:
-          name: linux
-          path: build/c3c
+          name: c3-linux-${{matrix.build_type}}
+          path: c3-linux-${{matrix.build_type}}.tar.gz
+
 
   build-mac:
     runs-on: macos-latest
@@ -219,12 +228,20 @@ jobs:
           cd test
           python3 src/tester.py ../build/c3c test_suite/
 
+      - name: bundle_output
+        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION
+        run: |
+          mkdir macos
+          cp -r lib/ macos
+          cp build/c3c macos
+          zip -r c3-macos-${{matrix.build_type}}.zip macos
+
       - name: upload artifacts
-        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION && matrix.build_type == 'Release'
+        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION
         uses: actions/upload-artifact@v3
         with:
-          name: macos
-          path: build/c3c
+          name: c3-macos-${{matrix.build_type}}
+          path: c3-macos-${{matrix.build_type}}.zip
 
 
   release:
@@ -257,12 +274,10 @@ jobs:
             })
 
       - uses: actions/download-artifact@v3
-      - run: cp -r lib/ windows
-      - run: cp -r lib/ linux
-      - run: cp -r lib/ macos
-      - run: zip -r windows.zip windows
-      - run: tar czf linux.tar.gz linux
-      - run: zip -r macos.zip macos
+      - run: cp -r lib/ c3-windows-Release
+      - run: cp -r lib/ c3-windows-Debug
+      - run: zip -r windows-Release.zip windows-Release
+      - run: zip -r windows-Debug.zip windows-Debug
 
       - id: create_release
         uses: actions/create-release@v1
@@ -280,8 +295,18 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: windows.zip
+          asset_path: windows-Release.zip
           asset_name: windows.zip
+          asset_content_type: application/zip
+
+      - name: upload windows debug
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: windows-Debug.zip
+          asset_name: windows-debug.zip
           asset_content_type: application/zip
 
       - name: upload linux
@@ -290,8 +315,18 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: linux.tar.gz
+          asset_path: linux-Release/linux-Release.tar.gz
           asset_name: linux.tar.gz
+          asset_content_type: application/gzip
+
+      - name: upload linux debug
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: linux-Debug/linux-Debug.tar.gz
+          asset_name: linux-debug.tar.gz
           asset_content_type: application/gzip
 
       - name: upload macos
@@ -300,6 +335,16 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: macos.zip
+          asset_path: macos-Release/macos-Release.zip
           asset_name: macos.zip
+          asset_content_type: application/zip
+
+      - name: upload macos debug
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: macos-Debug/macos-Debug.zip
+          asset_name: macos-debug.zip
           asset_content_type: application/zip
