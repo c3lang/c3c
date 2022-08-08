@@ -41,7 +41,6 @@ jobs:
           python3.exe src/tester.py ..\build\${{ matrix.build_type }}\c3c.exe test_suite/
 
       - name: upload artifacts
-        if: matrix.build_type == 'Release'
         uses: actions/upload-artifact@v3
         with:
           name: c3-windows-${{ matrix.build_type }}
