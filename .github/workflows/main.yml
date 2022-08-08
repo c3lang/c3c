@@ -324,7 +324,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: c3-linux-Debug/linux-Debug.tar.gz
+          asset_path: c3-linux-Debug/c3-linux-Debug.tar.gz
           asset_name: c3-linux-debug.tar.gz
           asset_content_type: application/gzip
 
@@ -334,7 +334,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: c3-macos-Release/macos-Release.zip
+          asset_path: c3-macos-Release/c3-macos-Release.zip
           asset_name: c3-macos.zip
           asset_content_type: application/zip
 
@@ -344,6 +344,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: c3-macos-Debug/macos-Debug.zip
+          asset_path: c3-macos-Debug/c3-macos-Debug.zip
           asset_name: c3-macos-debug.zip
           asset_content_type: application/zip
