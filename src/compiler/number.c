@@ -28,7 +28,7 @@ void expr_const_set_bool(ExprConst *expr, bool b)
 
 void expr_const_set_null(ExprConst *expr)
 {
-	expr->ixx = (Int) { .i = (Int128) { 0, 0 }, .type = type_iptr->canonical->type_kind };
+	expr->ptr = 0;
 	expr->const_kind = CONST_POINTER;
 }
 
@@ -87,7 +87,11 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 		case CONST_FLOAT:
 			return compare_fps(left->fxx.f, right->fxx.f, op);
 		case CONST_POINTER:
-			return true;
+		{
+			Int a = { .i.low = left->ptr, .type = TYPE_U64 };
+			Int b = { .i.low = right->ptr, .type = TYPE_U64 };
+			return int_comp(a, b, op);
+		}
 		case CONST_STRING:
 			if (left->string.len != right->string.len)
 			{
@@ -212,7 +216,8 @@ const char *expr_const_to_error_string(const ExprConst *expr)
 	switch (expr->const_kind)
 	{
 		case CONST_POINTER:
-			return "null";
+			if (!expr->ptr) return "null";
+			return str_printf("%p", (void*)expr->ptr);
 		case CONST_BOOL:
 			return expr->b ? "true" : "false";
 		case CONST_INTEGER:

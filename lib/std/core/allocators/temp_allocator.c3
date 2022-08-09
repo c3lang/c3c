@@ -218,7 +218,7 @@ private fn void*! TempAllocator._alloc(TempAllocator* this, usize size, usize al
 		// Here we might need to pad
 		usize padded_header_size = mem::aligned_offset(TempAllocatorPage.sizeof, DEFAULT_MEM_ALIGNMENT);
 		usize total_alloc_size = padded_header_size + size;
-		void* alloc = clear ? this.backing_allocator.calloc(total_alloc_size) : this.backing_allocator.alloc(total_alloc_size)?;
+		void* alloc = (clear ? this.backing_allocator.calloc(total_alloc_size) : this.backing_allocator.alloc(total_alloc_size))?;
 
 		// Find the page.
 		page = alloc + padded_header_size - TempAllocatorPage.sizeof;

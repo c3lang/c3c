@@ -830,19 +830,32 @@ static inline bool sema_expr_analyse_ternary(SemaContext *context, Expr *expr)
 	Expr *right = exprptr(expr->ternary_expr.else_expr);
 	if (!sema_analyse_expr(context, right)) return expr_poison(expr);
 
+	bool is_failable = false;
 	Type *left_canonical = left->type->canonical;
 	Type *right_canonical = right->type->canonical;
 	if (left_canonical != right_canonical)
 	{
-		Type *max = type_find_max_type(left_canonical, right_canonical);
+		Type *max;
+		if (left_canonical->type_kind == TYPE_FAILABLE_ANY)
+		{
+			max = right_canonical;
+		}
+		else if (right_canonical->type_kind == TYPE_FAILABLE_ANY)
+		{
+			max = left_canonical;
+		}
+		else
+		{
+			max = type_find_max_type(type_no_fail(left_canonical), type_no_fail(right_canonical));
+		}
 		if (!max)
 		{
 			SEMA_ERROR(expr, "Cannot find a common parent type of '%s' and '%s'",
-			           type_to_error_string(left_canonical), type_to_error_string(right_canonical));
+			           type_to_error_string(left->type), type_to_error_string(right->type));
 			return false;
 		}
 		Type *no_fail_max = type_no_fail(max);
-		if (!cast_implicit(left, no_fail_max) || !cast_implicit(right, max)) return false;
+		if (!cast_implicit(left, no_fail_max) || !cast_implicit(right, no_fail_max)) return false;
 	}
 
 	if (path > -1)
@@ -4774,6 +4787,7 @@ static inline bool sema_expr_analyse_initializer_list(SemaContext *context, Type
 			{
 				expr->expr_kind = EXPR_CONST;
 				expr->const_expr.const_kind = CONST_POINTER;
+				expr->const_expr.ptr = 0;
 				expr->type = assigned;
 				return true;
 			}
@@ -4833,7 +4847,7 @@ static inline bool sema_expr_analyse_cast(SemaContext *context, Expr *expr)
 	}
 	if (!cast_may_explicit(inner->type, target_type, true, inner->expr_kind == EXPR_CONST))
 	{
-		return sema_failed_cast(expr, type_no_fail(inner->type), target_type);
+		return sema_error_failed_cast(expr, type_no_fail(inner->type), target_type);
 	}
 	if (!cast(inner, target_type))
 	{
@@ -4874,7 +4888,7 @@ bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type 
 			return false;
 		}
 		if (!left_type) left_type = type_no_fail(right->type);
-		return sema_failed_cast(right, right->type, left_type);
+		return sema_error_failed_cast(right, right->type, left_type);
 	}
 
 	// 3. Set the result to the type on the right side.
@@ -5313,6 +5327,12 @@ static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, 
 				return false;
 			}
 
+			if (expr_both_const(left, right))
+			{
+				expr_rewrite_to_int_const(expr, type_iptrdiff, (left->const_expr.ptr - right->const_expr.ptr) /
+						type_size(left_type->pointer), false);
+				return true;
+			}
 			// 3b. Set the type
 			expr->type = type_iptrdiff;
 
@@ -5338,8 +5358,17 @@ static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, 
 		// 6. Convert to iptrdiff
 		if (!cast_implicit(right, type_iptrdiff)) return true;
 
-		// 7. Assign the type of the left side.
+		// Constant fold.
+		if (expr_both_const(left, right))
+		{
+			left->const_expr.ptr -= right->const_expr.ixx.i.low * type_size(left_type->pointer);
+
+			expr_replace(expr, left);
+		}
+
+		// Assign the type of the left side.
 		expr->type = left->type;
+
 		if (cast_to_iptr)
 		{
 			expr->resolve_status = RESOLVE_DONE;
@@ -5435,8 +5464,19 @@ static bool sema_expr_analyse_add(SemaContext *context, Expr *expr, Expr *left, 
 		assert(success && "This should always work");
 		(void)success;
 
-		// 3c. Set the type and other properties.
-		expr->type = left->type;
+		if (expr_both_const(left, right))
+		{
+			assert(left->const_expr.const_kind == CONST_POINTER);
+			assert(right->const_expr.const_kind == CONST_INTEGER);
+			uint64_t low_bits = right->const_expr.ixx.i.low;
+			left->const_expr.ptr += low_bits * type_size(left_type->pointer);
+			expr_replace(expr, left);
+		}
+		else
+		{
+			// Set the type and other properties.
+			expr->type = left->type;
+		}
 
 		if (cast_to_iptr)
 		{

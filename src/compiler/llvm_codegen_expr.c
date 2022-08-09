@@ -3702,7 +3702,7 @@ void gencontext_emit_ternary_expr(GenContext *c, BEValue *value, Expr *expr)
 
 	Expr *else_expr = exprptr(expr->ternary_expr.else_expr);
 	Expr *then_expr = exprptr(expr->ternary_expr.then_expr);
-	if (expr_is_constant_eval(else_expr, CONSTANT_EVAL_ANY) && expr_is_constant_eval(then_expr, CONSTANT_EVAL_ANY))
+	if (!IS_FAILABLE(expr) && expr_is_constant_eval(else_expr, CONSTANT_EVAL_ANY) && expr_is_constant_eval(then_expr, CONSTANT_EVAL_ANY))
 	{
 		BEValue left;
 		llvm_emit_expr(c, &left, then_expr);
@@ -3833,7 +3833,14 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 			llvm_value_set(be_value, llvm_emit_real(llvm_get_type(c, type), expr->const_expr.fxx), type);
 			return;
 		case CONST_POINTER:
-			llvm_value_set(be_value, LLVMConstNull(llvm_get_type(c, type)), type);
+			if (!expr->const_expr.ptr)
+			{
+				llvm_value_set(be_value, LLVMConstNull(llvm_get_type(c, type)), type);
+			}
+			else
+			{
+				llvm_value_set(be_value, LLVMConstIntToPtr(LLVMConstInt(llvm_get_type(c, type_uptr), expr->const_expr.ptr, false), llvm_get_type(c, type)), type);
+			}
 			return;
 		case CONST_BOOL:
 			llvm_value_set_bool(be_value, LLVMConstInt(c->bool_type, expr->const_expr.b ? 1 : 0, 0));
@@ -5188,9 +5195,6 @@ LLVMValueRef llvm_emit_call_intrinsic(GenContext *context, unsigned intrinsic, L
 	LLVMTypeRef type = LLVMIntrinsicGetType(context->context, intrinsic, types, arg_count);
 	return LLVMBuildCall2(context->builder, type, decl, values, arg_count, "");
 }
-
-
-
 
 static inline void llvm_emit_failable(GenContext *c, BEValue *be_value, Expr *expr)
 {

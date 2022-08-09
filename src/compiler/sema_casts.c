@@ -7,8 +7,6 @@
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "ConstantFunctionResult"
 
-
-
 static bool bitstruct_cast(Expr *expr, Type *from_type, Type *to, Type *to_type);
 static void sema_error_const_int_out_of_range(Expr *expr, Expr *problem, Type *to_type);
 static Expr *recursive_may_narrow_float(Expr *expr, Type *type);
@@ -27,7 +25,7 @@ static inline bool insert_cast(Expr *expr, CastKind kind, Type *type)
 	return true;
 }
 
-bool sema_failed_cast(Expr *expr, Type *from, Type *to)
+bool sema_error_failed_cast(Expr *expr, Type *from, Type *to)
 {
 	SEMA_ERROR(expr, "The cast %s to %s is not allowed.", type_quoted_error_string(from), type_quoted_error_string(to));
 	return false;
@@ -44,8 +42,8 @@ bool pointer_to_integer(Expr *expr, Type *type)
 {
 	if (insert_runtime_cast_unless_const(expr, CAST_PTRXI, type)) return true;
 
-	// Must have been a null
-	expr_const_set_int(&expr->const_expr, 0, TYPE_POINTER);
+	// Revisit this to support pointers > 64 bits.
+	expr_const_set_int(&expr->const_expr, expr->const_expr.ixx.i.low, TYPE_POINTER);
 	expr->type = type;
 	expr->const_expr.narrowable = false;
 	expr->const_expr.is_hex = false;
@@ -314,14 +312,18 @@ static bool int_literal_to_bool(Expr *expr, Type *type)
  */
 static bool int_to_pointer(Expr *expr, Type *type)
 {
+	assert(type_bit_size(type_uptr) <= 64 && "For > 64 bit pointers, this code needs updating.");
 	if (expr->expr_kind == EXPR_CONST)
 	{
-		if (int_is_zero(expr->const_expr.ixx))
+		if (!int_fits(expr->const_expr.ixx, type_uptr->canonical->type_kind))
 		{
-			expr_const_set_null(&expr->const_expr);
-			expr->type = type;
-			return true;
+			SEMA_ERROR(expr, "'0x%s' does not fit in a pointer.", int_to_str(expr->const_expr.ixx, 16));
+			return false;
 		}
+		expr->const_expr.ptr = expr->const_expr.ixx.i.low;
+		expr->type = type;
+		expr->const_expr.const_kind = CONST_POINTER;
+		return true;
 	}
 	cast(expr, type_uptr);
 	return insert_cast(expr, CAST_XIPTR, type);
@@ -1055,6 +1057,7 @@ static inline bool cast_maybe_null_to_distinct_voidptr(Expr *expr, Type *expr_ca
 {
 	if (expr->expr_kind != EXPR_CONST || expr->const_expr.const_kind != CONST_POINTER) return false;
 	if (expr_canonical != type_voidptr) return false;
+	if (expr->const_expr.ptr) return false;
 	if (to_canonical->type_kind != TYPE_DISTINCT) return false;
 	return to_canonical->decl->distinct_decl.base_type->canonical->type_kind == TYPE_POINTER;
 }

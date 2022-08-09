@@ -508,12 +508,12 @@ static Expr *parse_ternary_expr(ParseContext *c, Expr *left_side)
 			RANGE_EXTEND_PREV(expr_ternary);
 			return expr_ternary;
 		}
-		ASSIGN_EXPR_OR_RET(Expr * true_expr, parse_precedence(c, PREC_TERNARY + 1), poisoned_expr);
+		ASSIGN_EXPR_OR_RET(Expr * true_expr, parse_expr(c), poisoned_expr);
 		expr_ternary->ternary_expr.then_expr = exprid(true_expr);
 		CONSUME_OR_RET(TOKEN_COLON, poisoned_expr);
 	}
 
-	ASSIGN_EXPRID_OR_RET(expr_ternary->ternary_expr.else_expr, parse_precedence(c, PREC_TERNARY + 1), poisoned_expr);
+	ASSIGN_EXPRID_OR_RET(expr_ternary->ternary_expr.else_expr, parse_precedence(c, PREC_TERNARY), poisoned_expr);
 	RANGE_EXTEND_PREV(expr_ternary);
 	return expr_ternary;
 }
@@ -1546,6 +1546,7 @@ static Expr *parse_null(ParseContext *c, Expr *left)
 	assert(!left && "Had left hand side");
 	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST);
 	number->const_expr.const_kind = CONST_POINTER;
+	number->const_expr.ptr = 0;
 	number->type = type_voidptr;
 	advance(c);
 	return number;

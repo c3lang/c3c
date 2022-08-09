@@ -664,7 +664,7 @@ static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType 
 		// 3e. Expect that it isn't a failable
 		if (IS_FAILABLE(init) && !decl->var.unwrap)
 		{
-			return sema_failed_cast(last, last->type, cast_to_bool ? type_bool : init->type);
+			return sema_error_failed_cast(last, last->type, cast_to_bool ? type_bool : init->type);
 			return false;
 		}
 		// TODO document
@@ -683,7 +683,7 @@ static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType 
 			SEMA_ERROR(last, "The expression may not be a failable, but was %s.", type_quoted_error_string(last->type));
 			return false;
 		}
-		sema_failed_cast(last, type_no_fail(last->type), type_bool);
+		sema_error_failed_cast(last, type_no_fail(last->type), type_bool);
 		return false;
 	}
 	// 3b. Cast to bool if that is needed

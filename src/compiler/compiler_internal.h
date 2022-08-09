@@ -125,6 +125,7 @@ typedef struct
 	{
 		Float fxx;
 		Int ixx;
+		uint64_t ptr;
 		bool b;
 		struct
 		{
@@ -1991,7 +1992,7 @@ Path *path_create_from_string(const char *string, uint32_t len, SourceSpan span)
 
 void sema_analysis_run(void);
 
-bool sema_failed_cast(Expr *expr, Type *from, Type *to);
+bool sema_error_failed_cast(Expr *expr, Type *from, Type *to);
 void sema_add_member(SemaContext *context, Decl *decl);
 bool sema_add_local(SemaContext *context, Decl *decl);
 void sema_unwrap_var(SemaContext *context, Decl *decl);
@@ -2188,7 +2189,7 @@ static inline Type *type_with_added_failability(Expr *expr, bool add_failable)
 
 static inline Type *type_get_opt_fail(Type *type, bool add_failable)
 {
-	if (!add_failable || type->type_kind == TYPE_FAILABLE) return type;
+	if (!add_failable || type->type_kind == TYPE_FAILABLE || type->type_kind == TYPE_FAILABLE_ANY) return type;
 	return type_get_failable(type);
 }
 

@@ -1,0 +1,35 @@
+// #target: macos-x64
+module test;
+
+const uptr ABC = 0x213;
+const void* BAC = (void*)144 - 1;
+const void* EXX = (void*)155;
+const iptrdiff KEX = BAC - EXX;
+const void* CAB = BAC;
+const uptr ZAB = (uptr)CAB;
+const int* BOB = (int*)16 - 1;
+const int* BAB = (int*)16 + 1;
+const iptrdiff AO = BAB - BOB;
+
+$if (ZAB > 100):
+int abc = 123;
+$endif;
+
+fn void test()
+{
+	abc++;
+	uptr foo = (uptr)BAC;
+}
+
+/* #expect: test.ll
+
+@test_ABC = local_unnamed_addr constant i64 531, align 8
+@test_BAC = local_unnamed_addr constant ptr inttoptr (i64 143 to ptr), align 8
+@test_EXX = local_unnamed_addr constant ptr inttoptr (i64 155 to ptr), align 8
+@test_KEX = local_unnamed_addr constant i64 -12, align 8
+@test_CAB = local_unnamed_addr constant ptr inttoptr (i64 143 to ptr), align 8
+@test_ZAB = local_unnamed_addr constant i64 144, align 8
+@test_BOB = local_unnamed_addr constant ptr inttoptr (i64 12 to ptr), align 8
+@test_BAB = local_unnamed_addr constant ptr inttoptr (i64 20 to ptr), align 8
+@test_AO = local_unnamed_addr constant i64 2, align 8
+@test_abc = local_unnamed_addr global i32 123, align 4

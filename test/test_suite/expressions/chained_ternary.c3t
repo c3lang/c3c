@@ -1,0 +1,228 @@
+// #target: macos-x64
+module test;
+
+fault Test { FOO, BAR }
+
+fn void test()
+{
+	void* a;
+	void* b;
+	void* c;
+	a = !a ? a : !a ? b : c;
+	void*! x;
+	void*! y = !a ? x : b;
+	y = !a ? b : x;
+	y = !a ? x : x;
+	y = !a ? x : Test.FOO!;
+	y = !a ? Test.FOO! : x;
+	y = !a ? Test.FOO! : Test.BAR!;
+}
+
+/* #expect: test.ll
+
+  %0 = load i8*, i8** %a, align 8
+  %not = icmp eq i8* %0, null
+  br i1 %not, label %cond.lhs, label %cond.rhs
+
+cond.lhs:                                         ; preds = %entry
+  %1 = load i8*, i8** %a, align 8
+  br label %cond.phi4
+
+cond.rhs:                                         ; preds = %entry
+  %2 = load i8*, i8** %a, align 8
+  %not1 = icmp eq i8* %2, null
+  br i1 %not1, label %cond.lhs2, label %cond.rhs3
+
+cond.lhs2:                                        ; preds = %cond.rhs
+  %3 = load i8*, i8** %b, align 8
+  br label %cond.phi
+
+cond.rhs3:                                        ; preds = %cond.rhs
+  %4 = load i8*, i8** %c, align 8
+  br label %cond.phi
+
+cond.phi:                                         ; preds = %cond.rhs3, %cond.lhs2
+  %val = phi i8* [ %3, %cond.lhs2 ], [ %4, %cond.rhs3 ]
+  br label %cond.phi4
+
+cond.phi4:                                        ; preds = %cond.phi, %cond.lhs
+  %val5 = phi i8* [ %1, %cond.lhs ], [ %val, %cond.phi ]
+  store i8* %val5, i8** %a, align 8
+  store i64 0, i64* %x.f, align 8
+  store i8* null, i8** %x, align 8
+  %5 = load i8*, i8** %a, align 8
+  %not6 = icmp eq i8* %5, null
+  br i1 %not6, label %cond.lhs7, label %cond.rhs8
+
+cond.lhs7:                                        ; preds = %cond.phi4
+  %6 = load i64, i64* %x.f, align 8
+  %not_err = icmp eq i64 %6, 0
+  br i1 %not_err, label %after_check, label %error
+
+error:                                            ; preds = %cond.lhs7
+  store i64 %6, i64* %y.f, align 8
+  br label %after_assign
+
+after_check:                                      ; preds = %cond.lhs7
+  %7 = load i8*, i8** %x, align 8
+  br label %cond.phi9
+
+cond.rhs8:                                        ; preds = %cond.phi4
+  %8 = load i8*, i8** %b, align 8
+  br label %cond.phi9
+
+cond.phi9:                                        ; preds = %cond.rhs8, %after_check
+  %val10 = phi i8* [ %7, %after_check ], [ %8, %cond.rhs8 ]
+  store i8* %val10, i8** %y, align 8
+  store i64 0, i64* %y.f, align 8
+  br label %after_assign
+
+after_assign:                                     ; preds = %cond.phi9, %error
+  %9 = load i8*, i8** %a, align 8
+  %not11 = icmp eq i8* %9, null
+  br i1 %not11, label %cond.lhs12, label %cond.rhs13
+
+cond.lhs12:                                       ; preds = %after_assign
+  %10 = load i8*, i8** %b, align 8
+  br label %cond.phi17
+
+cond.rhs13:                                       ; preds = %after_assign
+  %11 = load i64, i64* %x.f, align 8
+  %not_err14 = icmp eq i64 %11, 0
+  br i1 %not_err14, label %after_check16, label %error15
+
+error15:                                          ; preds = %cond.rhs13
+  store i64 %11, i64* %y.f, align 8
+  br label %after_assign19
+
+after_check16:                                    ; preds = %cond.rhs13
+  %12 = load i8*, i8** %x, align 8
+  br label %cond.phi17
+
+cond.phi17:                                       ; preds = %after_check16, %cond.lhs12
+  %val18 = phi i8* [ %10, %cond.lhs12 ], [ %12, %after_check16 ]
+  store i8* %val18, i8** %y, align 8
+  store i64 0, i64* %y.f, align 8
+  br label %after_assign19
+
+after_assign19:                                   ; preds = %cond.phi17, %error15
+  br label %voiderr
+
+voiderr:                                          ; preds = %after_assign19
+  %13 = load i8*, i8** %a, align 8
+  %not20 = icmp eq i8* %13, null
+  br i1 %not20, label %cond.lhs21, label %cond.rhs25
+
+cond.lhs21:                                       ; preds = %voiderr
+  %14 = load i64, i64* %x.f, align 8
+  %not_err22 = icmp eq i64 %14, 0
+  br i1 %not_err22, label %after_check24, label %error23
+
+error23:                                          ; preds = %cond.lhs21
+  store i64 %14, i64* %y.f, align 8
+  br label %after_assign31
+
+after_check24:                                    ; preds = %cond.lhs21
+  %15 = load i8*, i8** %x, align 8
+  br label %cond.phi29
+
+cond.rhs25:                                       ; preds = %voiderr
+  %16 = load i64, i64* %x.f, align 8
+  %not_err26 = icmp eq i64 %16, 0
+  br i1 %not_err26, label %after_check28, label %error27
+
+error27:                                          ; preds = %cond.rhs25
+  store i64 %16, i64* %y.f, align 8
+  br label %after_assign31
+
+after_check28:                                    ; preds = %cond.rhs25
+  %17 = load i8*, i8** %x, align 8
+  br label %cond.phi29
+
+cond.phi29:                                       ; preds = %after_check28, %after_check24
+  %val30 = phi i8* [ %15, %after_check24 ], [ %17, %after_check28 ]
+  store i8* %val30, i8** %y, align 8
+  store i64 0, i64* %y.f, align 8
+  br label %after_assign31
+
+after_assign31:                                   ; preds = %cond.phi29, %error27, %error23
+  br label %voiderr32
+
+voiderr32:                                        ; preds = %after_assign31
+  %18 = load i8*, i8** %a, align 8
+  %not33 = icmp eq i8* %18, null
+  br i1 %not33, label %cond.lhs34, label %cond.rhs38
+
+cond.lhs34:                                       ; preds = %voiderr32
+  %19 = load i64, i64* %x.f, align 8
+  %not_err35 = icmp eq i64 %19, 0
+  br i1 %not_err35, label %after_check37, label %error36
+
+error36:                                          ; preds = %cond.lhs34
+  store i64 %19, i64* %y.f, align 8
+  br label %after_assign40
+
+after_check37:                                    ; preds = %cond.lhs34
+  %20 = load i8*, i8** %x, align 8
+  br label %cond.phi39
+
+cond.rhs38:                                       ; preds = %voiderr32
+  store i64 ptrtoint (%.fault* @"test_Test$FOO" to i64), i64* %y.f, align 8
+  br label %after_assign40
+
+cond.phi39:                                       ; preds = %after_check37
+  store i8* %20, i8** %y, align 8
+  store i64 0, i64* %y.f, align 8
+  br label %after_assign40
+
+after_assign40:                                   ; preds = %cond.phi39, %cond.rhs38, %error36
+  br label %voiderr41
+
+voiderr41:                                        ; preds = %after_assign40
+  %21 = load i8*, i8** %a, align 8
+  %not42 = icmp eq i8* %21, null
+  br i1 %not42, label %cond.lhs43, label %cond.rhs44
+
+cond.lhs43:                                       ; preds = %voiderr41
+  store i64 ptrtoint (%.fault* @"test_Test$FOO" to i64), i64* %y.f, align 8
+  br label %after_assign49
+
+cond.rhs44:                                       ; preds = %voiderr41
+  %22 = load i64, i64* %x.f, align 8
+  %not_err45 = icmp eq i64 %22, 0
+  br i1 %not_err45, label %after_check47, label %error46
+
+error46:                                          ; preds = %cond.rhs44
+  store i64 %22, i64* %y.f, align 8
+  br label %after_assign49
+
+after_check47:                                    ; preds = %cond.rhs44
+  %23 = load i8*, i8** %x, align 8
+  br label %cond.phi48
+
+cond.phi48:                                       ; preds = %after_check47
+  store i8* %23, i8** %y, align 8
+  store i64 0, i64* %y.f, align 8
+  br label %after_assign49
+
+after_assign49:                                   ; preds = %cond.phi48, %error46, %cond.lhs43
+  br label %voiderr50
+
+voiderr50:                                        ; preds = %after_assign49
+  %24 = load i8*, i8** %a, align 8
+  %not51 = icmp eq i8* %24, null
+  br i1 %not51, label %cond.lhs52, label %cond.rhs53
+
+cond.lhs52:                                       ; preds = %voiderr50
+  store i64 ptrtoint (%.fault* @"test_Test$FOO" to i64), i64* %y.f, align 8
+  br label %after_assign55
+
+cond.rhs53:                                       ; preds = %voiderr50
+  store i64 ptrtoint (%.fault* @"test_Test$BAR" to i64), i64* %y.f, align 8
+  br label %after_assign55
+
+after_assign55:                                   ; preds = %cond.rhs53, %cond.lhs52
+  br label %voiderr56
+
+voiderr56:                                        ; preds = %after_assign55
+  ret void
