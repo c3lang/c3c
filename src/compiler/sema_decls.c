@@ -1796,6 +1796,15 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	assert(body);
 	function->func_decl.body = astid(body);
 	context->unit->main_function = function;
+	if (global_context.main)
+	{
+		SEMA_ERROR(function, "Duplicate main functions found.");
+		SEMA_PREV(global_context.main, "The first one was found here.");
+	}
+	else
+	{
+		global_context.main = function;
+	}
 	return true;
 }
 

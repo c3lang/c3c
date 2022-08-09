@@ -1491,6 +1491,7 @@ typedef struct
 	DeclTable generic_symbols;
 	Path std_module_path;
 	Decl *panic_fn;
+	Decl *main;
 } GlobalContext;
 
 

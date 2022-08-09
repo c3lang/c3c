@@ -234,7 +234,9 @@ Then run
 c3c compile main.c3
 ```
 
-The generated binary will be called `a.out`.
+The generated binary will by default be named after the module that contains the main
+function. In our case that is `hello_world`, so the resulting binary will be
+called `hello_world` or `hello_world.exe`depending on platform.
 
 ### Compiling
 

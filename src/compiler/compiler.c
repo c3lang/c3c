@@ -123,21 +123,36 @@ void thread_compile_task_tb(void *compile_data)
 }
 
 
-static const char *active_target_name(void)
+static const char *exe_name(void)
 {
+	assert(global_context.main);
+	const char *name;
+	if (active_target.name)
+	{
+		name = active_target.name;
+	}
+	else
+	{
+		Path *path = global_context.main->unit->module->name;
+		size_t first = 0;
+		for (size_t i = path->len; i > 0; i--)
+		{
+			if (path->module[i - 1] == ':')
+			{
+				first = i;
+				break;
+			}
+		}
+		name = &path->module[first];
+	}
 	switch (active_target.arch_os_target)
 	{
 		case WINDOWS_X86:
 		case WINDOWS_X64:
 		case MINGW_X64:
-			if (active_target.name)
-			{
-				return str_cat(active_target.name, ".exe");
-			}
-			return "a.exe";
+			return str_cat(name, ".exe");
 		default:
-			if (active_target.name) return active_target.name;
-			return "a.out";
+			return name;
 	}
 }
 
@@ -268,11 +283,20 @@ void compiler_compile(void)
 	}
 	compiler_ir_gen_time = bench_mark();
 
+	const char *output_exe = NULL;
+	if (!active_target.no_link && !active_target.test_output && (active_target.type == TARGET_TYPE_EXECUTABLE || active_target.type == TARGET_TYPE_TEST))
+	{
+		if (!global_context.main)
+		{
+			puts("No main function was found, compilation only object files are generated.");
+		}
+		else
+		{
+			output_exe = exe_name();
+		}
+	}
 
 	free_arenas();
-
-
-	bool create_exe = !active_target.no_link && !active_target.test_output && (active_target.type == TARGET_TYPE_EXECUTABLE || active_target.type == TARGET_TYPE_TEST);
 
 	uint32_t output_file_count = vec_size(gen_contexts);
 	unsigned cfiles = vec_size(active_target.csources);
@@ -322,26 +346,27 @@ void compiler_compile(void)
 	for (unsigned i = 0; i < output_file_count; i++)
 	{
 		obj_files[i] = compile_data[i].object_name;
-		assert(obj_files[i] || !create_exe);
+		assert(obj_files[i] || !output_exe);
 	}
+
+
 
 	output_file_count += cfiles;
 	free(compile_data);
 	compiler_codegen_time = bench_mark();
 
-	if (create_exe)
+	if (output_exe)
 	{
-		const char *output_name = active_target_name();
 		if (platform_target.os != OS_TYPE_WIN32 && active_target.arch_os_target == default_target && !active_target.force_linker)
 		{
-			platform_linker(output_name, obj_files, output_file_count);
+			platform_linker(output_exe, obj_files, output_file_count);
 			compiler_link_time = bench_mark();
 			compiler_print_bench();
 		}
 		else
 		{
 			compiler_print_bench();
-			if (!obj_format_linking_supported(platform_target.object_format) || !linker(output_name, obj_files,
+			if (!obj_format_linking_supported(platform_target.object_format) || !linker(output_exe, obj_files,
 			                                                                            output_file_count))
 			{
 				printf("No linking is performed due to missing linker support.\n");
@@ -352,8 +377,8 @@ void compiler_compile(void)
 		if (active_target.run_after_compile)
 		{
 			DEBUG_LOG("Will run");
-			printf("Launching %s...\n", output_name);
-			int ret = system(platform_target.os == OS_TYPE_WIN32 ? output_name : str_printf("./%s", output_name));
+			printf("Launching %s...\n", output_exe);
+			int ret = system(platform_target.os == OS_TYPE_WIN32 ? output_exe : str_printf("./%s", output_exe));
 			printf("Program finished with exit code %d.", ret);
 		}
 	}
@@ -536,6 +561,7 @@ void compile()
 		active_target.csources = target_expand_source_names(active_target.csource_dirs, c_suffix_list, 1, false);
 	}
 	global_context.sources = active_target.sources;
+	global_context.main = NULL;
 	target_setup(&active_target);
 	resolve_libraries();
 
