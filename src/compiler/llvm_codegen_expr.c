@@ -4154,6 +4154,7 @@ static void llvm_emit_intrinsic_expr(GenContext *c, unsigned intrinsic, BEValue 
 	{
 		call_args = 1;
 		call_type[0] = llvm_get_type(c, expr->type);
+		if (intrinsic == intrinsic_id.readcyclecounter) call_args = 0;
 	}
 	else if (intrinsic == intrinsic_id.memcpy)
 	{
@@ -4344,6 +4345,8 @@ unsigned llvm_get_intrinsic(BuiltinFunction func)
 		case BUILTIN_UNREACHABLE:
 		case BUILTIN_STACKTRACE:
 			UNREACHABLE
+		case BUILTIN_SYSCLOCK:
+			return intrinsic_id.readcyclecounter;
 		case BUILTIN_TRAP:
 			return intrinsic_id.trap;
 		case BUILTIN_CEIL:

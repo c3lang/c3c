@@ -177,6 +177,7 @@ void symtab_init(uint32_t capacity)
 	kw_mainstub = KW_DEF("_$mainstub");
 
 	builtin_list[BUILTIN_TRAP] = KW_DEF("trap");
+	builtin_list[BUILTIN_SYSCLOCK] = KW_DEF("sysclock");
 	builtin_list[BUILTIN_UNREACHABLE] = KW_DEF("unreachable");
 	builtin_list[BUILTIN_STACKTRACE] = KW_DEF("stacktrace");
 	builtin_list[BUILTIN_CEIL] = KW_DEF("ceil");

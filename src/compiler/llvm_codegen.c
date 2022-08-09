@@ -617,6 +617,8 @@ void llvm_codegen_setup()
 	intrinsic_id.umax = lookup_intrinsic("llvm.umax");
 	intrinsic_id.umin = lookup_intrinsic("llvm.umin");
 
+	intrinsic_id.readcyclecounter = lookup_intrinsic("llvm.readcyclecounter");
+
 	intrinsic_id.memset = lookup_intrinsic("llvm.memset");
 	intrinsic_id.memcpy = lookup_intrinsic("llvm.memcpy");
 

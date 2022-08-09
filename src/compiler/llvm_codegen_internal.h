@@ -178,6 +178,7 @@ typedef struct
 	unsigned lifetime_end;
 	unsigned memcpy;
 	unsigned memset;
+	unsigned readcyclecounter;
 } LLVMIntrinsics;
 
 extern LLVMIntrinsics intrinsic_id;

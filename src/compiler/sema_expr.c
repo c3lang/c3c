@@ -2293,6 +2293,7 @@ static inline unsigned builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_UNREACHABLE:
 		case BUILTIN_TRAP:
 		case BUILTIN_STACKTRACE:
+		case BUILTIN_SYSCLOCK:
 			return 0;
 		case BUILTIN_SYSCALL:
 		case BUILTIN_CEIL:
@@ -2453,6 +2454,9 @@ static inline bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *ex
 		case BUILTIN_UNREACHABLE:
 		case BUILTIN_TRAP:
 			rtype = type_void;
+			break;
+		case BUILTIN_SYSCLOCK:
+			rtype = type_ulong;
 			break;
 		case BUILTIN_SYSCALL:
 			if (arg_count > 7)
