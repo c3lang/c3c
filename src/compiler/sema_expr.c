@@ -929,7 +929,7 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 	Decl *private_symbol = NULL;
 
 	assert(expr && expr->identifier_expr.ident);
-	DEBUG_LOG("Now resolving %s", expr->identifier_expr.ident);
+	DEBUG_LOG("Resolving identifier '%s'", expr->identifier_expr.ident);
 
 	DeclId body_param;
 	if (!expr->identifier_expr.path && context->current_macro && (body_param = context->current_macro->macro_decl.body_param))
@@ -1032,7 +1032,6 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 	if (!decl->type) decl->type = type_void;
 	expr->identifier_expr.decl = decl;
 	expr->type = decl->type;
-	DEBUG_LOG("Resolution successful of %s.", decl->name);
 	return true;
 }
 
@@ -1041,7 +1040,7 @@ static inline bool sema_expr_analyse_ct_identifier(SemaContext *context, Expr *e
 {
 	assert(expr && expr->ct_ident_expr.identifier);
 
-	DEBUG_LOG("Now resolving %s", expr->ct_ident_expr.identifier);
+	DEBUG_LOG("Resolving identifier '%s'", expr->ct_ident_expr.identifier);
 	Decl *decl = sema_resolve_symbol(context, expr->ct_ident_expr.identifier, NULL, expr->span);
 
 	// Already handled
@@ -1050,7 +1049,6 @@ static inline bool sema_expr_analyse_ct_identifier(SemaContext *context, Expr *e
 		return expr_poison(expr);
 	}
 
-	DEBUG_LOG("Resolution successful of %s.", decl->name);
 	assert(decl->decl_kind == DECL_VAR);
 	assert(decl->resolve_status == RESOLVE_DONE);
 
@@ -1062,7 +1060,7 @@ static inline bool sema_expr_analyse_ct_identifier(SemaContext *context, Expr *e
 static inline bool sema_expr_analyse_hash_identifier(SemaContext *context, Expr *expr)
 {
 	assert(expr && expr->hash_ident_expr.identifier);
-	DEBUG_LOG("Now resolving %s", expr->hash_ident_expr.identifier);
+	DEBUG_LOG("Resolving identifier '%s'", expr->hash_ident_expr.identifier);
 	Decl *decl = sema_resolve_symbol(context, expr->hash_ident_expr.identifier, NULL, expr->span);
 
 	// Already handled
@@ -1071,7 +1069,6 @@ static inline bool sema_expr_analyse_hash_identifier(SemaContext *context, Expr 
 		return expr_poison(expr);
 	}
 
-	DEBUG_LOG("Resolution successful of %s.", decl->name);
 	assert(decl->decl_kind == DECL_VAR);
 
 	expr_replace(expr, expr_macro_copy(decl->var.init_expr));
@@ -4924,7 +4921,7 @@ static inline bool sema_expr_analyse_ct_identifier_lvalue(SemaContext *context, 
 	Decl *ambiguous_decl = NULL;
 	Decl *private_symbol = NULL;
 	assert(expr && expr->ct_ident_expr.identifier);
-	DEBUG_LOG("Now resolving %s", expr->ct_ident_expr.identifier);
+	DEBUG_LOG("Resolving identifier '%s'", expr->ct_ident_expr.identifier);
 	Decl *decl = sema_find_symbol(context, expr->ct_ident_expr.identifier);
 
 	if (!decl)

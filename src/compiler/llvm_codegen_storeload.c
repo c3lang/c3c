@@ -170,5 +170,5 @@ void llvm_store_zero(GenContext *c, BEValue *ref)
 			return;
 		}
 	}
-	llvm_emit_memclear_size_align(c, ref->value, type_size(ref->type), ref->alignment, true);
+	llvm_emit_memclear_size_align(c, ref->value, type_size(ref->type), ref->alignment);
 }

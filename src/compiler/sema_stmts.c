@@ -840,7 +840,7 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 		// Conditional scope start
 		SCOPE_START_WITH_LABEL(statement->for_stmt.flow.label)
 
-		if (!do_loop)
+			if (!do_loop)
 			{
 				if (!sema_analyse_for_cond(context, &statement->for_stmt.cond, &is_infinite) || !success)
 				{
@@ -869,6 +869,12 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 					return false;
 				}
 			SCOPE_END;
+			// Rewrite do { } while(true) to while(true) { }
+			if (is_infinite)
+			{
+				assert(!statement->for_stmt.cond);
+				statement->for_stmt.flow.skip_first = false;
+			}
 		}
 
 		if (success && statement->for_stmt.incr)

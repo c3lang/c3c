@@ -4,16 +4,19 @@
 
 #include "llvm_codegen_internal.h"
 
-static void gencontext_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *switch_ast);
+static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *switch_ast);
 
-
+// Emit a regular compound statement.
 void llvm_emit_compound_stmt(GenContext *c, Ast *ast)
 {
+	assert(ast->ast_kind == AST_COMPOUND_STMT);
+
+	// Push the lexical scope if debug.
 	if (llvm_use_debug(c))
 	{
 		llvm_debug_push_lexical_scope(c, ast->span);
 	}
-	assert(ast->ast_kind == AST_COMPOUND_STMT);
+	// Emit the statement chain
 	llvm_emit_statement_chain(c, ast->compound_stmt.first_stmt);
 	if (llvm_use_debug(c))
 	{
@@ -325,7 +328,7 @@ void llvm_emit_if(GenContext *c, Ast *ast)
 		llvm_emit_cond_br(c, &comp, then_block, else_block);
 		llvm_emit_br(c, then_block);
 		llvm_emit_block(c, then_block);
-		gencontext_emit_switch_body(c, &be_value, then_body);
+		llvm_emit_switch_body(c, &be_value, then_body);
 		llvm_emit_br(c, exit_block);
 		goto EMIT_ELSE;
 	}
@@ -739,7 +742,7 @@ static void llvm_emit_switch_jump_table(GenContext *c,
  #endif
 }
 
-static void gencontext_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *switch_ast)
+static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *switch_ast)
 {
 	bool is_if_chain = switch_ast->switch_stmt.flow.if_chain;
 	Type *switch_type = switch_ast->ast_kind == AST_IF_CATCH_SWITCH_STMT ? type_lowering(type_anyerr) : exprptr(switch_ast->switch_stmt.cond)->type;
@@ -862,7 +865,7 @@ void gencontext_emit_switch(GenContext *context, Ast *ast)
 {
 	BEValue switch_value;
 	llvm_emit_decl_expr_list(context, &switch_value, exprptr(ast->switch_stmt.cond), false);
-	gencontext_emit_switch_body(context, &switch_value, ast);
+	llvm_emit_switch_body(context, &switch_value, ast);
 }
 
 

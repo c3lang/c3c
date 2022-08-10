@@ -58,22 +58,25 @@ LLVMValueRef llvm_emit_is_no_error(GenContext *c, LLVMValueRef error_value)
 	return LLVMBuildICmp(c->builder, LLVMIntEQ, error_value, llvm_get_zero(c, type_anyerr), "not_err");
 }
 
-
-LLVMValueRef llvm_emit_memclear_size_align(GenContext *c, LLVMValueRef ref, uint64_t size, AlignSize align, bool bitcast)
+LLVMValueRef llvm_emit_memclear_size_align(GenContext *c, LLVMValueRef ptr, uint64_t size, AlignSize align)
 {
-
-	LLVMValueRef target = bitcast ? LLVMBuildBitCast(c->builder, ref, llvm_get_type(c, type_get_ptr(type_char)), "") : ref;
-	return LLVMBuildMemSet(c->builder, target, LLVMConstInt(llvm_get_type(c, type_char), 0, false),
-	                       LLVMConstInt(llvm_get_type(c, type_ulong), size, false), align);
-
+#if LLVM_VERSION_MAJOR < 15
+	ptr = LLVMBuildBitCast(c->builder, ptr, llvm_get_type(c, type_get_ptr(type_char)), "");
+#endif
+	return LLVMBuildMemSet(c->builder, ptr, llvm_get_zero(c, type_char), llvm_const_int(c, type_usize, size), align);
 }
 
-LLVMValueRef llvm_emit_const_array_padding(LLVMTypeRef element_type, IndexDiff diff, bool *modified)
+/**
+ * Consider the case when we have int[5] x = { [0] = 1, [1] = 3 }
+ * In this case we want this: { i32 0, i32 2, [8 x i32] zeroinitializer }
+ * If it's just a single element we don't use [1 x i32] but just i32 0. If it's
+ * an array then this is modifying the original type.
+ */
+static LLVMValueRef llvm_emit_const_array_padding(LLVMTypeRef element_type, IndexDiff diff, bool *modified)
 {
 	if (diff == 1) return LLVMConstNull(element_type);
 	*modified = true;
-	LLVMTypeRef padding_type = LLVMArrayType(element_type, (unsigned)diff);
-	return LLVMConstNull(padding_type);
+	return LLVMConstNull(LLVMArrayType(element_type, (unsigned)diff));
 }
 
 LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_init)
