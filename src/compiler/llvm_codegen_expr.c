@@ -3277,6 +3277,11 @@ void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValu
 			UNREACHABLE
 	}
 	assert(val);
+	if (lhs.type == type_bool)
+	{
+		llvm_value_set_bool(be_value, val);
+		return;
+	}
 	llvm_value_set(be_value, val, expr->type);
 }
 

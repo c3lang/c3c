@@ -1,0 +1,14 @@
+// #target: macos-x64
+module bitop;
+
+fn bool is_newline_codepoint(uint codepoint) {
+    return (bool)((codepoint == 0x00_00_24_24) | (codepoint == 0x00_00_2B_92));
+}
+
+/* #expect: bitop.ll
+
+  %eq = icmp eq i32 %0, 9252
+  %eq1 = icmp eq i32 %0, 11154
+  %or = or i1 %eq, %eq1
+  %1 = zext i1 %or to i8
+  ret i8 %1
