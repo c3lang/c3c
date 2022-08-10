@@ -412,26 +412,12 @@ static void parse_option(BuildOptions *options)
 			return;
 		case 'L':
 			if (at_end() || next_is_opt()) error_exit("error: -L needs a directory.");
-			add_linker_arg(options, "-L");
-			add_linker_arg(options, check_dir(next_arg()));
+			options->linker_lib_dir[options->linker_lib_dir_count++] = check_dir(next_arg());
 			return;
 		case 'l':
-		{
 			if (at_end() || next_is_opt()) error_exit("error: -l needs a library name.");
-			const char *lib = next_arg();
-			const char *framework = str_remove_suffix(lib, ".framework");
-			if (framework)
-			{
-				add_linker_arg(options, "-framework");
-				add_linker_arg(options, framework);
-			}
-			else
-			{
-				add_linker_arg(options, "-l");
-				add_linker_arg(options, lib);
-			}
+			options->linker_libs[options->linker_lib_count++] = next_arg();
 			return;
-		}
 		case 'P':
 			if (options->compile_option != COMPILE_NORMAL)
 			{

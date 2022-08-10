@@ -93,6 +93,14 @@ const char *str_remove_suffix(const char *name, const char *suffix)
 	return name_copy;
 }
 
+bool str_has_suffix(const char *name, const char *suffix)
+{
+	size_t name_len = strlen(name);
+	size_t suffix_len = strlen(suffix);
+	if (name_len <= suffix_len) return false;
+	return memcmp(name + name_len - suffix_len, suffix, suffix_len) == 0;
+}
+
 
 StringSlice slice_next_token(StringSlice *slice, char separator)
 {

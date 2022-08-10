@@ -402,7 +402,14 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 		}
 		if (use_win)
 		{
-			add_arg2(lib, ".lib");
+			if (str_has_suffix(lib, ".lib"))
+			{
+				add_arg(lib);
+			}
+			else
+			{
+				add_arg2(lib, ".lib");
+			}
 		}
 		else
 		{

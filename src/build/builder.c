@@ -176,6 +176,14 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	{
 		vec_add(target->link_args, options->linker_args[i]);
 	}
+	for (int i = 0; i < options->linker_lib_dir_count; i++)
+	{
+		vec_add(target->linker_libdirs, options->linker_lib_dir[i]);
+	}
+	for (int i = 0; i < options->linker_lib_count; i++)
+	{
+		vec_add(target->linker_libs, options->linker_libs[i]);
+	}
 	target->no_stdlib = options->no_stdlib;
 	target->emit_llvm = options->emit_llvm;
 	target->emit_asm = options->emit_asm;

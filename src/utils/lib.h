@@ -99,6 +99,7 @@ void taskqueue_wait_for_completion(TaskQueueRef queue);
 
 
 const char *str_remove_suffix(const char *name, const char *suffix);
+bool str_has_suffix(const char *name, const char *suffix);
 char *str_trim(char *str);
 const char *str_trim_start(const char *str);
 void str_trim_end(char *str);
