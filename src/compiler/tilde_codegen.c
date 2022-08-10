@@ -772,7 +772,7 @@ void llvm_value_fold_failable(GenContext *c, BEValue *value)
 		llvm_value_set_bool(&comp, llvm_emit_is_no_error_value(c, &error_value));
 		if (c->error_var)
 		{
-			LLVMBasicBlockRef error_block = llvm_basic_block_new(c, "error");
+			LLVMBasicBlockRef error_block = llvm_basic_block_new(c, "assign_optional");
 			llvm_emit_cond_br(c, &comp, after_block, error_block);
 			llvm_emit_block(c, error_block);
 			llvm_store_bevalue_dest_aligned(c, c->error_var, &error_value);

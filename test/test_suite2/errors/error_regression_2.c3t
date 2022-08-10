@@ -358,7 +358,7 @@ if.then15:                                        ; preds = %if.exit9
   store ptr null, ptr %25, align 8
   %26 = load %Head, ptr %literal18, align 8
   store %Head %26, ptr %value, align 8
-  %27 = call ptr @std_core_mem_malloc(i64 8)
+  %27 = call ptr @std_core_mem_malloc(i64 8) #2
   store ptr %27, ptr %temp, align 8
   %28 = load ptr, ptr %temp, align 8
   %not = icmp eq ptr %28, null
@@ -402,7 +402,7 @@ if.then27:                                        ; preds = %if.exit21
   store ptr null, ptr %literal32, align 8
   %39 = getelementptr inbounds %Head, ptr %literal32, i32 0, i32 0
   store %"char[]" zeroinitializer, ptr %value34, align 8
-  %40 = call ptr @std_core_mem_malloc(i64 16)
+  %40 = call ptr @std_core_mem_malloc(i64 16) #2
   store ptr %40, ptr %temp35, align 8
   %41 = load ptr, ptr %temp35, align 8
   %not36 = icmp eq ptr %41, null
@@ -426,7 +426,7 @@ noerr_block40:                                    ; preds = %if.exit38
   store ptr %44, ptr %39, align 8
   %45 = load %Head, ptr %literal32, align 8
   store %Head %45, ptr %value31, align 8
-  %46 = call ptr @std_core_mem_malloc(i64 8)
+  %46 = call ptr @std_core_mem_malloc(i64 8) #2
   store ptr %46, ptr %temp41, align 8
   %47 = load ptr, ptr %temp41, align 8
   %not42 = icmp eq ptr %47, null
@@ -462,7 +462,7 @@ if.exit47:                                        ; preds = %if.exit21
   %56 = load i32, ptr %len, align 4
   %siuiext = sext i32 %56 to i64
   %add = add i64 %siuiext, 1
-  %57 = call ptr @std_core_mem_malloc(i64 %add)
+  %57 = call ptr @std_core_mem_malloc(i64 %add) #2
   store ptr %57, ptr %str, align 8
   %58 = load ptr, ptr %str, align 8
   %not48 = icmp eq ptr %58, null
@@ -495,7 +495,7 @@ if.exit50:                                        ; preds = %if.exit47
   %71 = insertvalue %"char[]" undef, ptr %ptroffset, 0
   %72 = insertvalue %"char[]" %71, i64 %size, 1
   store %"char[]" %72, ptr %value60, align 8
-  %73 = call ptr @std_core_mem_malloc(i64 16)
+  %73 = call ptr @std_core_mem_malloc(i64 16) #2
   store ptr %73, ptr %temp61, align 8
   %74 = load ptr, ptr %temp61, align 8
   %not62 = icmp eq ptr %74, null
@@ -519,7 +519,7 @@ noerr_block66:                                    ; preds = %if.exit64
   store ptr %77, ptr %67, align 8
   %78 = load %Head, ptr %literal58, align 8
   store %Head %78, ptr %value57, align 8
-  %79 = call ptr @std_core_mem_malloc(i64 8)
+  %79 = call ptr @std_core_mem_malloc(i64 8) #2
   store ptr %79, ptr %temp67, align 8
   %80 = load ptr, ptr %temp67, align 8
   %not68 = icmp eq ptr %80, null
@@ -602,9 +602,9 @@ entry:
   %hi = load i64, ptr %5, align 8
   %6 = call i64 @test_readDoc(ptr %retparam, ptr %lo, i64 %hi)
   %not_err = icmp eq i64 %6, 0
-  br i1 %not_err, label %after.errcheck, label %else_block
+  br i1 %not_err, label %after_check, label %else_block
 
-after.errcheck:                                   ; preds = %entry
+after_check:                                      ; preds = %entry
   %7 = getelementptr inbounds %Doc, ptr %retparam, i32 0, i32 0
   %8 = load ptr, ptr %7, align 8
   %9 = call { ptr, i8 } @test_buildSummary(ptr %8)
@@ -620,8 +620,8 @@ else_block:                                       ; preds = %entry
   %13 = load %Summary, ptr %literal, align 8
   br label %phi_block
 
-phi_block:                                        ; preds = %else_block, %after.errcheck
-  %val = phi %Summary [ %10, %after.errcheck ], [ %13, %else_block ]
+phi_block:                                        ; preds = %else_block, %after_check
+  %val = phi %Summary [ %10, %after_check ], [ %13, %else_block ]
   store %Summary %val, ptr %taddr, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %tempcoerce, ptr align 8 %taddr, i32 16, i1 false)
   %14 = load { ptr, i8 }, ptr %tempcoerce, align 8
@@ -684,29 +684,29 @@ entry:
   %hi = load i64, ptr %6, align 8
   %7 = call i64 @test_readDoc(ptr %retparam1, ptr %lo, i64 %hi)
   %not_err = icmp eq i64 %7, 0
-  br i1 %not_err, label %after.errcheck, label %error
+  br i1 %not_err, label %after_check, label %assign_optional
 
-error:                                            ; preds = %entry
+assign_optional:                                  ; preds = %entry
   store i64 %7, ptr %reterr, align 8
   br label %err_retblock
 
-after.errcheck:                                   ; preds = %entry
+after_check:                                      ; preds = %entry
   %8 = getelementptr inbounds %Doc, ptr %retparam1, i32 0, i32 0
   %9 = load ptr, ptr %8, align 8
   %10 = call i64 @test_isTitleNonEmpty(ptr %retparam, ptr %9)
   %not_err2 = icmp eq i64 %10, 0
-  br i1 %not_err2, label %after.errcheck4, label %error3
+  br i1 %not_err2, label %after_check4, label %assign_optional3
 
-error3:                                           ; preds = %after.errcheck
+assign_optional3:                                 ; preds = %after_check
   store i64 %10, ptr %reterr, align 8
   br label %err_retblock
 
-after.errcheck4:                                  ; preds = %after.errcheck
+after_check4:                                     ; preds = %after_check
   %11 = load i8, ptr %retparam, align 1
   store i8 %11, ptr %0, align 1
   ret i64 0
 
-err_retblock:                                     ; preds = %error3, %error
+err_retblock:                                     ; preds = %assign_optional3, %assign_optional
   %12 = load i64, ptr %reterr, align 8
   ret i64 %12
 }
@@ -791,7 +791,7 @@ entry:
   store i64 %8, ptr %anon2, align 8
   br label %loop.cond
 
-loop.cond:                                        ; preds = %phi_block11, %entry
+loop.cond:                                        ; preds = %phi_block12, %entry
   %9 = load i64, ptr %anon, align 8
   %10 = load i64, ptr %anon2, align 8
   %lt = icmp ult i64 %9, %10
@@ -849,24 +849,24 @@ cond.phi:                                         ; preds = %cond.rhs, %cond.lhs
   %hi5 = load i64, ptr %36, align 8
   %37 = call i64 @test_readWhetherTitleNonEmpty(ptr %retparam, ptr %lo4, i64 %hi5)
   %not_err = icmp eq i64 %37, 0
-  br i1 %not_err, label %after.errcheck, label %error
+  br i1 %not_err, label %after_check, label %assign_optional
 
-error:                                            ; preds = %cond.phi
+assign_optional:                                  ; preds = %cond.phi
   store i64 %37, ptr %has_title.f, align 8
   br label %after_assign
 
-after.errcheck:                                   ; preds = %cond.phi
+after_check:                                      ; preds = %cond.phi
   %38 = load i8, ptr %retparam, align 1
   store i8 %38, ptr %has_title, align 1
   store i64 0, ptr %has_title.f, align 8
   br label %after_assign
 
-after_assign:                                     ; preds = %after.errcheck, %error
+after_assign:                                     ; preds = %after_check, %assign_optional
   %39 = load i64, ptr %has_title.f, align 8
   %not_err6 = icmp eq i64 %39, 0
-  br i1 %not_err6, label %after_check, label %else_block
+  br i1 %not_err6, label %after_check7, label %else_block
 
-after_check:                                      ; preds = %after_assign
+after_check7:                                     ; preds = %after_assign
   %40 = load i8, ptr %has_title, align 1
   %41 = call ptr @test_bool_to_string(i8 %40)
   br label %phi_block
@@ -876,24 +876,24 @@ else_block:                                       ; preds = %after_assign
   %43 = call ptr @test_nameFromError(i64 %42)
   br label %phi_block
 
-phi_block:                                        ; preds = %else_block, %after_check
-  %val7 = phi ptr [ %41, %after_check ], [ %43, %else_block ]
+phi_block:                                        ; preds = %else_block, %after_check7
+  %val8 = phi ptr [ %41, %after_check7 ], [ %43, %else_block ]
   %44 = load i64, ptr %has_title.f, align 8
-  %not_err8 = icmp eq i64 %44, 0
-  br i1 %not_err8, label %after_check9, label %else_block10
+  %not_err9 = icmp eq i64 %44, 0
+  br i1 %not_err9, label %after_check10, label %else_block11
 
-after_check9:                                     ; preds = %phi_block
+after_check10:                                    ; preds = %phi_block
   %45 = load i8, ptr %has_title, align 1
   %46 = trunc i8 %45 to i1
-  br label %phi_block11
+  br label %phi_block12
 
-else_block10:                                     ; preds = %phi_block
-  br label %phi_block11
+else_block11:                                     ; preds = %phi_block
+  br label %phi_block12
 
-phi_block11:                                      ; preds = %else_block10, %after_check9
-  %val12 = phi i1 [ %46, %after_check9 ], [ false, %else_block10 ]
-  %ternary = select i1 %val12, ptr @.str.26, ptr @.str.27
-  %47 = call i32 (ptr, ...) @printf(ptr @.str.25, ptr %val7, ptr %ternary)
+phi_block12:                                      ; preds = %else_block11, %after_check10
+  %val13 = phi i1 [ %46, %after_check10 ], [ false, %else_block11 ]
+  %ternary = select i1 %val13, ptr @.str.26, ptr @.str.27
+  %47 = call i32 (ptr, ...) @printf(ptr @.str.25, ptr %val8, ptr %ternary)
   %48 = load i64, ptr %anon, align 8
   %add = add i64 %48, 1
   store i64 %add, ptr %anon, align 8

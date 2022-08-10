@@ -31,19 +31,19 @@ entry:
   %retparam1 = alloca i32, align 4
   %0 = call i64 @readLine(ptr %retparam)
   %not_err = icmp eq i64 %0, 0
-  br i1 %not_err, label %after.errcheck, label %error
+  br i1 %not_err, label %after_check, label %assign_optional
 
-error:                                            ; preds = %entry
+assign_optional:                                  ; preds = %entry
   store i64 %0, ptr %line.f, align 8
   br label %after_assign
 
-after.errcheck:                                   ; preds = %entry
+after_check:                                      ; preds = %entry
   %1 = load ptr, ptr %retparam, align 8
   store ptr %1, ptr %line, align 8
   store i64 0, ptr %line.f, align 8
   br label %after_assign
 
-after_assign:                                     ; preds = %after.errcheck, %error
+after_assign:                                     ; preds = %after_check, %assign_optional
   %load.err = load i64, ptr %line.f, align 8
   %result = icmp eq i64 %load.err, 0
   br i1 %result, label %if.then, label %if.exit9
@@ -52,19 +52,19 @@ if.then:                                          ; preds = %after_assign
   %2 = load ptr, ptr %line, align 8
   %3 = call i64 @atoi(ptr %retparam1, ptr %2)
   %not_err2 = icmp eq i64 %3, 0
-  br i1 %not_err2, label %after.errcheck4, label %error3
+  br i1 %not_err2, label %after_check4, label %assign_optional3
 
-error3:                                           ; preds = %if.then
+assign_optional3:                                 ; preds = %if.then
   store i64 %3, ptr %val.f, align 8
   br label %after_assign5
 
-after.errcheck4:                                  ; preds = %if.then
+after_check4:                                     ; preds = %if.then
   %4 = load i32, ptr %retparam1, align 4
   store i32 %4, ptr %val, align 4
   store i64 0, ptr %val.f, align 8
   br label %after_assign5
 
-after_assign5:                                    ; preds = %after.errcheck4, %error3
+after_assign5:                                    ; preds = %after_check4, %assign_optional3
   %load.err6 = load i64, ptr %val.f, align 8
   %result7 = icmp eq i64 %load.err6, 0
   br i1 %result7, label %if.then8, label %if.exit

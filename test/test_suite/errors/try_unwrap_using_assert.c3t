@@ -11,7 +11,7 @@ fn int tester(int n)
     return num;
 }
 
-// #expect: test.ll
+/* #expect: test.ll
 
 define i32 @test_tester(i32 %0) #0 {
 entry:
@@ -21,19 +21,19 @@ entry:
   %x = alloca i32, align 4
   %1 = call i64 @maybe(i32* %retparam)
   %not_err = icmp eq i64 %1, 0
-  br i1 %not_err, label %after.errcheck, label %error
+  br i1 %not_err, label %after_check, label %assign_optional
 
-error:                                            ; preds = %entry
+assign_optional:                                  ; preds = %entry
   store i64 %1, i64* %num.f, align 8
   br label %after_assign
 
-after.errcheck:                                   ; preds = %entry
+after_check:                                      ; preds = %entry
   %2 = load i32, i32* %retparam, align 4
   store i32 %2, i32* %num, align 4
   store i64 0, i64* %num.f, align 8
   br label %after_assign
 
-after_assign:                                     ; preds = %after.errcheck, %error
+after_assign:                                     ; preds = %after_check, %assign_optional
   %3 = load i32, i32* %num, align 4
   store i32 %3, i32* %x, align 4
   %4 = load i32, i32* %num, align 4

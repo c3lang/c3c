@@ -47,7 +47,7 @@ void llvm_value_addr(GenContext *c, BEValue *value)
 
 void llvm_value_rvalue(GenContext *c, BEValue *value)
 {
-	if (value->kind != BE_ADDRESS && value->kind != BE_ADDRESS_FAILABLE)
+	if (!llvm_value_is_addr(value))
 	{
 		if (value->type->type_kind == TYPE_BOOL && value->kind != BE_BOOLEAN)
 		{
@@ -71,27 +71,50 @@ void llvm_value_rvalue(GenContext *c, BEValue *value)
 	value->kind = BE_VALUE;
 }
 
-void llvm_value_fold_failable(GenContext *c, BEValue *value)
+void llvm_emit_jump_to_optional_exit(GenContext *c, LLVMValueRef err_value)
 {
-	if (value->kind == BE_ADDRESS_FAILABLE)
+	assert(c->catch_block && "unexpected emit");
+	bool is_constant_err = LLVMIsConstant(err_value);
+
+	// Maybe we don't need to emit anything?
+	if (is_constant_err && LLVMIsNull(err_value)) return;
+
+	LLVMBasicBlockRef after_block = llvm_basic_block_new(c, "after_check");
+	// No error variable
+	if (!c->error_var)
 	{
-		LLVMBasicBlockRef after_block = llvm_basic_block_new(c, "after_check");
-		LLVMValueRef err_value = llvm_load_natural_alignment(c, type_anyerr, value->failable, "");
-		LLVMValueRef was_ok = llvm_emit_is_no_error(c, err_value);
-		if (c->error_var)
+		// No error var and a constant error means jumping to the "catch" block
+		if (is_constant_err)
 		{
-			LLVMBasicBlockRef error_block = llvm_basic_block_new(c, "error");
-			llvm_emit_cond_br_raw(c, was_ok, after_block, error_block);
-			llvm_emit_block(c, error_block);
-			llvm_store_raw_abi_alignment(c, c->error_var, err_value, type_anyerr);
 			llvm_emit_br(c, c->catch_block);
 		}
 		else
 		{
-			assert(c->catch_block);
-			llvm_emit_cond_br_raw(c, was_ok, after_block, c->catch_block);
+			llvm_emit_cond_br_raw(c, llvm_emit_is_no_error(c, err_value), after_block, c->catch_block);
 		}
 		llvm_emit_block(c, after_block);
+		return;
+	}
+
+	// If it's not a constant, then jump conditionally
+	if (!is_constant_err)
+	{
+		LLVMValueRef was_ok = llvm_emit_is_no_error(c, err_value);
+		LLVMBasicBlockRef error_block = llvm_basic_block_new(c, "assign_optional");
+		llvm_emit_cond_br_raw(c, was_ok, after_block, error_block);
+		llvm_emit_block(c, error_block);
+	}
+
+	llvm_store_raw_abi_alignment(c, c->error_var, err_value, type_anyerr);
+	llvm_emit_br(c, c->catch_block);
+	llvm_emit_block(c, after_block);
+}
+
+void llvm_value_fold_failable(GenContext *c, BEValue *value)
+{
+	if (value->kind == BE_ADDRESS_FAILABLE)
+	{
+		llvm_emit_jump_to_optional_exit(c, llvm_load_natural_alignment(c, type_anyerr, value->failable, ""));
 		value->kind = BE_ADDRESS;
 	}
 }

@@ -32,9 +32,9 @@ entry:
   %retparam = alloca i32, align 4
   %0 = call i64 @test_abc(ptr %retparam)
   %not_err = icmp eq i64 %0, 0
-  br i1 %not_err, label %after.errcheck, label %opt_block_cleanup
+  br i1 %not_err, label %after_check, label %opt_block_cleanup
 
-after.errcheck:                                   ; preds = %entry
+after_check:                                      ; preds = %entry
   %1 = call i32 (ptr, ...) @printf(ptr @.str.1)
   %2 = load i32, ptr %retparam, align 4
   store i32 %2, ptr %blockret, align 4
@@ -44,7 +44,7 @@ opt_block_cleanup:                                ; preds = %entry
   %3 = call i32 (ptr, ...) @printf(ptr @.str.2)
   br label %else_block
 
-expr_block.exit:                                  ; preds = %after.errcheck
+expr_block.exit:                                  ; preds = %after_check
   %4 = load i32, ptr %blockret, align 4
   br label %phi_block
 

@@ -643,9 +643,9 @@ entry:
   %hi = load i64, i64* %6, align 8
   %7 = call i64 @test_readDoc(%Doc* %retparam, i8* %lo, i64 %hi)
   %not_err = icmp eq i64 %7, 0
-  br i1 %not_err, label %after.errcheck, label %else_block
+  br i1 %not_err, label %after_check, label %else_block
 
-after.errcheck:                                   ; preds = %entry
+after_check:                                      ; preds = %entry
   %8 = getelementptr inbounds %Doc, %Doc* %retparam, i32 0, i32 0
   %9 = load %Head*, %Head** %8, align 8
   %10 = call { %"char[]"*, i8 } @test_buildSummary(%Head* %9)
@@ -662,8 +662,8 @@ else_block:                                       ; preds = %entry
   %15 = load %Summary, %Summary* %literal, align 8
   br label %phi_block
 
-phi_block:                                        ; preds = %else_block, %after.errcheck
-  %val = phi %Summary [ %12, %after.errcheck ], [ %15, %else_block ]
+phi_block:                                        ; preds = %else_block, %after_check
+  %val = phi %Summary [ %12, %after_check ], [ %15, %else_block ]
   store %Summary %val, %Summary* %taddr, align 8
   %16 = bitcast { %"char[]"*, i8 }* %tempcoerce to i8*
   %17 = bitcast %Summary* %taddr to i8*
@@ -730,29 +730,29 @@ entry:
   %hi = load i64, i64* %7, align 8
   %8 = call i64 @test_readDoc(%Doc* %retparam1, i8* %lo, i64 %hi)
   %not_err = icmp eq i64 %8, 0
-  br i1 %not_err, label %after.errcheck, label %error
+  br i1 %not_err, label %after_check, label %assign_optional
 
-error:                                            ; preds = %entry
+assign_optional:                                  ; preds = %entry
   store i64 %8, i64* %reterr, align 8
   br label %err_retblock
 
-after.errcheck:                                   ; preds = %entry
+after_check:                                      ; preds = %entry
   %9 = getelementptr inbounds %Doc, %Doc* %retparam1, i32 0, i32 0
   %10 = load %Head*, %Head** %9, align 8
   %11 = call i64 @test_isTitleNonEmpty(i8* %retparam, %Head* %10)
   %not_err2 = icmp eq i64 %11, 0
-  br i1 %not_err2, label %after.errcheck4, label %error3
+  br i1 %not_err2, label %after_check4, label %assign_optional3
 
-error3:                                           ; preds = %after.errcheck
+assign_optional3:                                 ; preds = %after_check
   store i64 %11, i64* %reterr, align 8
   br label %err_retblock
 
-after.errcheck4:                                  ; preds = %after.errcheck
+after_check4:                                     ; preds = %after_check
   %12 = load i8, i8* %retparam, align 1
   store i8 %12, i8* %0, align 1
   ret i64 0
 
-err_retblock:                                     ; preds = %error3, %error
+err_retblock:                                     ; preds = %assign_optional3, %assign_optional
   %13 = load i64, i64* %reterr, align 8
   ret i64 %13
 }
@@ -840,7 +840,7 @@ entry:
   store i64 %11, i64* %anon2, align 8
   br label %loop.cond
 
-loop.cond:                                        ; preds = %phi_block11, %entry
+loop.cond:                                        ; preds = %phi_block12, %entry
   %12 = load i64, i64* %anon, align 8
   %13 = load i64, i64* %anon2, align 8
   %lt = icmp ult i64 %12, %13
@@ -905,24 +905,24 @@ cond.phi:                                         ; preds = %cond.rhs, %cond.lhs
   %hi5 = load i64, i64* %46, align 8
   %47 = call i64 @test_readWhetherTitleNonEmpty(i8* %retparam, i8* %lo4, i64 %hi5)
   %not_err = icmp eq i64 %47, 0
-  br i1 %not_err, label %after.errcheck, label %error
+  br i1 %not_err, label %after_check, label %assign_optional
 
-error:                                            ; preds = %cond.phi
+assign_optional:                                  ; preds = %cond.phi
   store i64 %47, i64* %has_title.f, align 8
   br label %after_assign
 
-after.errcheck:                                   ; preds = %cond.phi
+after_check:                                      ; preds = %cond.phi
   %48 = load i8, i8* %retparam, align 1
   store i8 %48, i8* %has_title, align 1
   store i64 0, i64* %has_title.f, align 8
   br label %after_assign
 
-after_assign:                                     ; preds = %after.errcheck, %error
+after_assign:                                     ; preds = %after_check, %assign_optional
   %49 = load i64, i64* %has_title.f, align 8
   %not_err6 = icmp eq i64 %49, 0
-  br i1 %not_err6, label %after_check, label %else_block
+  br i1 %not_err6, label %after_check7, label %else_block
 
-after_check:                                      ; preds = %after_assign
+after_check7:                                     ; preds = %after_assign
   %50 = load i8, i8* %has_title, align 1
   %51 = call i8* @test_bool_to_string(i8 %50)
   br label %phi_block
@@ -932,24 +932,24 @@ else_block:                                       ; preds = %after_assign
   %53 = call i8* @test_nameFromError(i64 %52)
   br label %phi_block
 
-phi_block:                                        ; preds = %else_block, %after_check
-  %val7 = phi i8* [ %51, %after_check ], [ %53, %else_block ]
+phi_block:                                        ; preds = %else_block, %after_check7
+  %val8 = phi i8* [ %51, %after_check7 ], [ %53, %else_block ]
   %54 = load i64, i64* %has_title.f, align 8
-  %not_err8 = icmp eq i64 %54, 0
-  br i1 %not_err8, label %after_check9, label %else_block10
+  %not_err9 = icmp eq i64 %54, 0
+  br i1 %not_err9, label %after_check10, label %else_block11
 
-after_check9:                                     ; preds = %phi_block
+after_check10:                                    ; preds = %phi_block
   %55 = load i8, i8* %has_title, align 1
   %56 = trunc i8 %55 to i1
-  br label %phi_block11
+  br label %phi_block12
 
-else_block10:                                     ; preds = %phi_block
-  br label %phi_block11
+else_block11:                                     ; preds = %phi_block
+  br label %phi_block12
 
-phi_block11:                                      ; preds = %else_block10, %after_check9
-  %val12 = phi i1 [ %56, %after_check9 ], [ false, %else_block10 ]
-  %ternary = select i1 %val12, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str.26, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str.27, i32 0, i32 0)
-  %57 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([23 x i8], [23 x i8]* @.str.25, i32 0, i32 0), i8* %val7, i8* %ternary)
+phi_block12:                                      ; preds = %else_block11, %after_check10
+  %val13 = phi i1 [ %56, %after_check10 ], [ false, %else_block11 ]
+  %ternary = select i1 %val13, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str.26, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str.27, i32 0, i32 0)
+  %57 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([23 x i8], [23 x i8]* @.str.25, i32 0, i32 0), i8* %val8, i8* %ternary)
   %58 = load i64, i64* %anon, align 8
   %add = add i64 %58, 1
   store i64 %add, i64* %anon, align 8

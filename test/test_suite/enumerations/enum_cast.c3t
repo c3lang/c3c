@@ -78,9 +78,9 @@ entry:
   store i64 0, i64* %e.f, align 8
   %3 = load i64, i64* %xf.f, align 8
   %not_err = icmp eq i64 %3, 0
-  br i1 %not_err, label %after_check, label %error
+  br i1 %not_err, label %after_check, label %assign_optional
 
-error:                                            ; preds = %entry
+assign_optional:                                  ; preds = %entry
   store i64 %3, i64* %e.f, align 8
   br label %after_assign
 
@@ -91,7 +91,7 @@ after_check:                                      ; preds = %entry
   store i64 0, i64* %e.f, align 8
   br label %after_assign
 
-after_assign:                                     ; preds = %after_check, %error
+after_assign:                                     ; preds = %after_check, %assign_optional
   br label %voiderr
 
 voiderr:                                          ; preds = %after_assign

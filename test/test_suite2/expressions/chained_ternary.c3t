@@ -56,9 +56,9 @@ cond.phi4:                                        ; preds = %cond.phi, %cond.lhs
 cond.lhs7:                                        ; preds = %cond.phi4
   %6 = load i64, ptr %x.f, align 8
   %not_err = icmp eq i64 %6, 0
-  br i1 %not_err, label %after_check, label %error
+  br i1 %not_err, label %after_check, label %assign_optional
 
-error:                                            ; preds = %cond.lhs7
+assign_optional:                                  ; preds = %cond.lhs7
   store i64 %6, ptr %y.f, align 8
   br label %after_assign
 
@@ -76,7 +76,7 @@ cond.phi9:                                        ; preds = %cond.rhs8, %after_c
   store i64 0, ptr %y.f, align 8
   br label %after_assign
 
-after_assign:                                     ; preds = %cond.phi9, %error
+after_assign:                                     ; preds = %cond.phi9, %assign_optional
   %9 = load ptr, ptr %a, align 8
   %not11 = icmp eq ptr %9, null
   br i1 %not11, label %cond.lhs12, label %cond.rhs13
@@ -88,9 +88,9 @@ cond.lhs12:                                       ; preds = %after_assign
 cond.rhs13:                                       ; preds = %after_assign
   %11 = load i64, ptr %x.f, align 8
   %not_err14 = icmp eq i64 %11, 0
-  br i1 %not_err14, label %after_check16, label %error15
+  br i1 %not_err14, label %after_check16, label %assign_optional15
 
-error15:                                          ; preds = %cond.rhs13
+assign_optional15:                                ; preds = %cond.rhs13
   store i64 %11, ptr %y.f, align 8
   br label %after_assign19
 
@@ -104,7 +104,7 @@ cond.phi17:                                       ; preds = %after_check16, %con
   store i64 0, ptr %y.f, align 8
   br label %after_assign19
 
-after_assign19:                                   ; preds = %cond.phi17, %error15
+after_assign19:                                   ; preds = %cond.phi17, %assign_optional15
   br label %voiderr
 
 voiderr:                                          ; preds = %after_assign19
@@ -115,9 +115,9 @@ voiderr:                                          ; preds = %after_assign19
 cond.lhs21:                                       ; preds = %voiderr
   %14 = load i64, ptr %x.f, align 8
   %not_err22 = icmp eq i64 %14, 0
-  br i1 %not_err22, label %after_check24, label %error23
+  br i1 %not_err22, label %after_check24, label %assign_optional23
 
-error23:                                          ; preds = %cond.lhs21
+assign_optional23:                                ; preds = %cond.lhs21
   store i64 %14, ptr %y.f, align 8
   br label %after_assign31
 
@@ -128,9 +128,9 @@ after_check24:                                    ; preds = %cond.lhs21
 cond.rhs25:                                       ; preds = %voiderr
   %16 = load i64, ptr %x.f, align 8
   %not_err26 = icmp eq i64 %16, 0
-  br i1 %not_err26, label %after_check28, label %error27
+  br i1 %not_err26, label %after_check28, label %assign_optional27
 
-error27:                                          ; preds = %cond.rhs25
+assign_optional27:                                ; preds = %cond.rhs25
   store i64 %16, ptr %y.f, align 8
   br label %after_assign31
 
@@ -144,7 +144,7 @@ cond.phi29:                                       ; preds = %after_check28, %aft
   store i64 0, ptr %y.f, align 8
   br label %after_assign31
 
-after_assign31:                                   ; preds = %cond.phi29, %error27, %error23
+after_assign31:                                   ; preds = %cond.phi29, %assign_optional27, %assign_optional23
   br label %voiderr32
 
 voiderr32:                                        ; preds = %after_assign31
@@ -155,9 +155,9 @@ voiderr32:                                        ; preds = %after_assign31
 cond.lhs34:                                       ; preds = %voiderr32
   %19 = load i64, ptr %x.f, align 8
   %not_err35 = icmp eq i64 %19, 0
-  br i1 %not_err35, label %after_check37, label %error36
+  br i1 %not_err35, label %after_check37, label %assign_optional36
 
-error36:                                          ; preds = %cond.lhs34
+assign_optional36:                                ; preds = %cond.lhs34
   store i64 %19, ptr %y.f, align 8
   br label %after_assign40
 
@@ -174,7 +174,7 @@ cond.phi39:                                       ; preds = %after_check37
   store i64 0, ptr %y.f, align 8
   br label %after_assign40
 
-after_assign40:                                   ; preds = %cond.phi39, %cond.rhs38, %error36
+after_assign40:                                   ; preds = %cond.phi39, %cond.rhs38, %assign_optional36
   br label %voiderr41
 
 voiderr41:                                        ; preds = %after_assign40
@@ -189,9 +189,9 @@ cond.lhs43:                                       ; preds = %voiderr41
 cond.rhs44:                                       ; preds = %voiderr41
   %22 = load i64, ptr %x.f, align 8
   %not_err45 = icmp eq i64 %22, 0
-  br i1 %not_err45, label %after_check47, label %error46
+  br i1 %not_err45, label %after_check47, label %assign_optional46
 
-error46:                                          ; preds = %cond.rhs44
+assign_optional46:                                ; preds = %cond.rhs44
   store i64 %22, ptr %y.f, align 8
   br label %after_assign49
 
@@ -204,7 +204,7 @@ cond.phi48:                                       ; preds = %after_check47
   store i64 0, ptr %y.f, align 8
   br label %after_assign49
 
-after_assign49:                                   ; preds = %cond.phi48, %error46, %cond.lhs43
+after_assign49:                                   ; preds = %cond.phi48, %assign_optional46, %cond.lhs43
   br label %voiderr50
 
 voiderr50:                                        ; preds = %after_assign49

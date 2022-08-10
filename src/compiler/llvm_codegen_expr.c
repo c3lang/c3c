@@ -22,35 +22,59 @@ static inline void llvm_emit_initialize_reference(GenContext *c, BEValue *ref, E
 BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValueRef failable)
 {
 	assert(ref->kind == BE_ADDRESS || ref->kind == BE_ADDRESS_FAILABLE);
-	LLVMBasicBlockRef assign_block = NULL;
+
+	assert(failable || !IS_FAILABLE(expr));
+	// Special optimization of handling of failable
+	if (expr->expr_kind == EXPR_FAILABLE)
+	{
+		PUSH_ERROR();
+
+		c->error_var = NULL;
+		c->catch_block = NULL;
+		BEValue result;
+		// Emit the fault type.
+		llvm_emit_expr(c, &result, expr->inner_expr);
+		LLVMValueRef err_val = result.value;
+		// Store it in the failable
+		llvm_store_value_dest_aligned(c, failable, &result);
+		// Set the result to an undef value
+		llvm_value_set(&result, LLVMGetUndef(llvm_get_type(c, ref->type)), ref->type);
+
+		POP_ERROR();
+
+		// If we had a catch block outside then we want to jump to that exit.
+		if (c->catch_block) llvm_emit_jump_to_optional_exit(c, err_val);
+
+		// This return value will not be used.
+		return result;
+	}
 
 	PUSH_ERROR();
 
-	if (failable)
+
+	LLVMBasicBlockRef assign_block = NULL;
+	LLVMBasicBlockRef rejump_block = NULL;
+
+	if (IS_FAILABLE(expr))
 	{
-		if (IS_FAILABLE(expr))
+		assign_block = llvm_basic_block_new(c, "after_assign");
+		assert(failable);
+		if (c->error_var)
 		{
-			if (expr->expr_kind == EXPR_FAILABLE)
-			{
-				c->error_var = NULL;
-				c->catch_block = NULL;
-				BEValue result;
-				llvm_emit_expr(c, &result, expr->inner_expr);
-				llvm_store_value_dest_aligned(c, failable, &result);
-				llvm_value_set(&result, LLVMGetUndef(llvm_get_type(c, ref->type)), ref->type);
-				POP_ERROR();
-				return result;
-			}
-			assign_block = llvm_basic_block_new(c, "after_assign");
-			c->error_var = failable;
-			c->catch_block = assign_block;
+			c->catch_block = rejump_block = llvm_basic_block_new(c, "optional_assign_jump");
 		}
 		else
 		{
-			c->error_var = NULL;
-			c->catch_block = NULL;
+			c->catch_block = assign_block;
 		}
+		c->error_var = failable;
 	}
+	else
+	{
+		c->error_var = NULL;
+		c->catch_block = NULL;
+	}
+
 	BEValue value;
 	if (type_is_vector(expr->type))
 	{
@@ -79,9 +103,16 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 	}
 	POP_ERROR();
 
-	if (failable && IS_FAILABLE(expr))
+	if (assign_block)
 	{
 		llvm_emit_br(c, assign_block);
+		if (rejump_block)
+		{
+			llvm_emit_block(c, rejump_block);
+			LLVMValueRef error = llvm_load_natural_alignment(c, type_anyerr, failable, "reload_err");
+			llvm_store_raw_abi_alignment(c, c->error_var, error, type_anyerr);
+			llvm_emit_br(c, c->catch_block);
+		}
 		llvm_emit_block(c, assign_block);
 	}
 
@@ -4983,30 +5014,20 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 		{
 			llvm_value_set_address_abi_aligned(&error_holder, c->error_var, type_anyerr);
 		}
-		// 17b. Generate a boolean switch.
-		llvm_value_set_bool(&no_err, llvm_emit_is_no_error(c, llvm_load_value(c, &error_holder)));
 
-		// 17c. If we have an error var, or we aren't interested in the error variable
-		//      - then it's straightforward. We just jump to the catch block.
-		LLVMBasicBlockRef after_block = llvm_basic_block_new(c, "after.errcheck");
-		if (error_var || !c->error_var)
+		LLVMValueRef stored_error;
+
+		if (error_var)
 		{
-			llvm_emit_cond_br(c, &no_err, after_block, c->catch_block);
+			stored_error = c->error_var;
+			c->error_var = NULL;
 		}
-		else
+		llvm_emit_jump_to_optional_exit(c, llvm_load_value(c, &error_holder));
+		if (error_var)
 		{
-			// 17d. If we have an error var we need to assign, then we need to
-			//      first jump to an error block, where we do the copy.
-			LLVMBasicBlockRef error_block = llvm_basic_block_new(c, "error");
-			llvm_emit_cond_br(c, &no_err, after_block, error_block);
-			llvm_emit_block(c, error_block);
-			llvm_store_value_aligned(c, c->error_var, result_value, type_alloca_alignment(type_anyerr));
-			// 17e. Then jump to the catch.
-			llvm_emit_br(c, c->catch_block);
+			c->error_var = stored_error;
 		}
 
-		// 17f. Emit the "after" block.
-		llvm_emit_block(c, after_block);
 
 		// 17g. If void, be_value contents should be skipped.
 		if (!prototype->ret_by_ref)

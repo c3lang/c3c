@@ -27,24 +27,24 @@ entry:
   store i32 0, ptr %val, align 4
   %0 = call i64 @readLine(ptr %retparam1)
   %not_err = icmp eq i64 %0, 0
-  br i1 %not_err, label %after.errcheck, label %catch_landing
+  br i1 %not_err, label %after_check, label %catch_landing
 
-after.errcheck:                                   ; preds = %entry
+after_check:                                      ; preds = %entry
   %1 = load ptr, ptr %retparam1, align 8
   %2 = call i64 @atoi(ptr %retparam, ptr %1)
   %not_err2 = icmp eq i64 %2, 0
-  br i1 %not_err2, label %after.errcheck3, label %catch_landing
+  br i1 %not_err2, label %after_check3, label %catch_landing
 
-after.errcheck3:                                  ; preds = %after.errcheck
+after_check3:                                     ; preds = %after_check
   %3 = load i32, ptr %retparam, align 4
   store i32 %3, ptr %val, align 4
   br label %phi_try_catch
 
-catch_landing:                                    ; preds = %after.errcheck, %entry
+catch_landing:                                    ; preds = %after_check, %entry
   br label %phi_try_catch
 
-phi_try_catch:                                    ; preds = %catch_landing, %after.errcheck3
-  %val4 = phi i1 [ true, %after.errcheck3 ], [ false, %catch_landing ]
+phi_try_catch:                                    ; preds = %catch_landing, %after_check3
+  %val4 = phi i1 [ true, %after_check3 ], [ false, %catch_landing ]
   br i1 %val4, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %phi_try_catch

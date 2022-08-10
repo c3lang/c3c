@@ -94,28 +94,28 @@ chain_next:                                       ; preds = %phi_try_catch
   store i32 0, ptr %c, align 4
   %2 = call i64 @try_with_unwrapper_tester(ptr %retparam)
   %not_err1 = icmp eq i64 %2, 0
-  br i1 %not_err1, label %after.errcheck, label %catch_landing2
+  br i1 %not_err1, label %after_check2, label %catch_landing3
 
-after.errcheck:                                   ; preds = %chain_next
+after_check2:                                     ; preds = %chain_next
   %3 = load i32, ptr %retparam, align 4
   store i32 %3, ptr %c, align 4
-  br label %phi_try_catch3
+  br label %phi_try_catch4
 
-catch_landing2:                                   ; preds = %chain_next
-  br label %phi_try_catch3
+catch_landing3:                                   ; preds = %chain_next
+  br label %phi_try_catch4
 
-phi_try_catch3:                                   ; preds = %catch_landing2, %after.errcheck
-  %val4 = phi i1 [ true, %after.errcheck ], [ false, %catch_landing2 ]
-  br i1 %val4, label %chain_next5, label %fail_chain
+phi_try_catch4:                                   ; preds = %catch_landing3, %after_check2
+  %val5 = phi i1 [ true, %after_check2 ], [ false, %catch_landing3 ]
+  br i1 %val5, label %chain_next6, label %fail_chain
 
-chain_next5:                                      ; preds = %phi_try_catch3
+chain_next6:                                      ; preds = %phi_try_catch4
   br label %end_chain
 
-fail_chain:                                       ; preds = %phi_try_catch3, %phi_try_catch
+fail_chain:                                       ; preds = %phi_try_catch4, %phi_try_catch
   br label %end_chain
 
-end_chain:                                        ; preds = %fail_chain, %chain_next5
-  %chain.phi = phi i1 [ true, %chain_next5 ], [ false, %fail_chain ]
+end_chain:                                        ; preds = %fail_chain, %chain_next6
+  %chain.phi = phi i1 [ true, %chain_next6 ], [ false, %fail_chain ]
   br i1 %chain.phi, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %end_chain

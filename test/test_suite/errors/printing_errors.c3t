@@ -70,11 +70,11 @@ faultname_exit:                                   ; preds = %faultname_ok, %faul
   %hi3 = load i64, i64* %20, align 8
   %21 = call i64 @std_io_printf(i64* %retparam, i8* %lo, i64 %hi, i8* %lo2, i64 %hi3)
   %not_err = icmp eq i64 %21, 0
-  br i1 %not_err, label %after.errcheck, label %voiderr
+  br i1 %not_err, label %after_check, label %voiderr
 
-after.errcheck:                                   ; preds = %faultname_exit
+after_check:                                      ; preds = %faultname_exit
   br label %voiderr
 
-voiderr:                                          ; preds = %after.errcheck, %faultname_exit
+voiderr:                                          ; preds = %after_check, %faultname_exit
   ret void
 }

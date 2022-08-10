@@ -24,19 +24,19 @@ entry:
   %retparam = alloca i32, align 4
   %0 = call i64 @test_xy(ptr %retparam)
   %not_err = icmp eq i64 %0, 0
-  br i1 %not_err, label %after.errcheck, label %error
+  br i1 %not_err, label %after_check, label %assign_optional
 
-error:                                            ; preds = %entry
+assign_optional:                                  ; preds = %entry
   store i64 %0, ptr %error_var1, align 8
   br label %guard_block
 
-after.errcheck:                                   ; preds = %entry
+after_check:                                      ; preds = %entry
   br label %noerr_block
 
-guard_block:                                      ; preds = %error
+guard_block:                                      ; preds = %assign_optional
   ret void
 
-noerr_block:                                      ; preds = %after.errcheck
+noerr_block:                                      ; preds = %after_check
   store i32 1, ptr %blockret, align 4
   br label %expr_block.exit
 

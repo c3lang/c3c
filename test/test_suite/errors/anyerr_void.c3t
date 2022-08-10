@@ -49,16 +49,16 @@ entry:
   store i64 0, i64* %error_var, align 8
   %0 = call i64 @anyerr_void_errorThing()
   %not_err = icmp eq i64 %0, 0
-  br i1 %not_err, label %after.errcheck, label %error
+  br i1 %not_err, label %after_check, label %assign_optional
 
-error:                                            ; preds = %entry
+assign_optional:                                  ; preds = %entry
   store i64 %0, i64* %error_var, align 8
   br label %noerr_block
 
-after.errcheck:                                   ; preds = %entry
+after_check:                                      ; preds = %entry
   br label %noerr_block
 
-noerr_block:                                      ; preds = %after.errcheck, %error
+noerr_block:                                      ; preds = %after_check, %assign_optional
   %1 = load i64, i64* %error_var, align 8
   store i64 %1, i64* %z, align 8
   %2 = load i64, i64* %z, align 8
@@ -68,16 +68,16 @@ noerr_block:                                      ; preds = %after.errcheck, %er
   store i64 0, i64* %error_var1, align 8
   %3 = call i64 @anyerr_void_errorThing2()
   %not_err2 = icmp eq i64 %3, 0
-  br i1 %not_err2, label %after.errcheck4, label %error3
+  br i1 %not_err2, label %after_check4, label %assign_optional3
 
-error3:                                           ; preds = %noerr_block
+assign_optional3:                                 ; preds = %noerr_block
   store i64 %3, i64* %error_var1, align 8
   br label %noerr_block5
 
-after.errcheck4:                                  ; preds = %noerr_block
+after_check4:                                     ; preds = %noerr_block
   br label %noerr_block5
 
-noerr_block5:                                     ; preds = %after.errcheck4, %error3
+noerr_block5:                                     ; preds = %after_check4, %assign_optional3
   %4 = load i64, i64* %error_var1, align 8
   store i64 %4, i64* %z, align 8
   %5 = load i64, i64* %z, align 8

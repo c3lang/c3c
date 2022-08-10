@@ -106,12 +106,12 @@ define i32 @main(i32 %0, ptr %1) #0 {
 entry:
   %2 = call i64 @foo_main()
   %not_err = icmp eq i64 %2, 0
-  br i1 %not_err, label %after.errcheck, label %error_block
+  br i1 %not_err, label %after_check, label %error_block
 
-after.errcheck:                                   ; preds = %entry
+after_check:                                      ; preds = %entry
   br label %noerr_block
 
-noerr_block:                                      ; preds = %after.errcheck
+noerr_block:                                      ; preds = %after_check
   br label %phi_trycatch_block
 
 error_block:                                      ; preds = %entry

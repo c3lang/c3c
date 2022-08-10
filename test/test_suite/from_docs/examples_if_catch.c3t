@@ -74,20 +74,20 @@ entry:
   %1 = call i32 @demo_bar()
   %2 = call i64 @demo_divide(double* %retparam, i32 %0, i32 %1)
   %not_err = icmp eq i64 %2, 0
-  br i1 %not_err, label %after.errcheck, label %error
+  br i1 %not_err, label %after_check, label %assign_optional
 
-error:                                            ; preds = %entry
+assign_optional:                                  ; preds = %entry
   store i64 %2, i64* %error_var, align 8
   br label %guard_block
 
-after.errcheck:                                   ; preds = %entry
+after_check:                                      ; preds = %entry
   br label %noerr_block
 
-guard_block:                                      ; preds = %error
+guard_block:                                      ; preds = %assign_optional
   %3 = load i64, i64* %error_var, align 8
   ret i64 %3
 
-noerr_block:                                      ; preds = %after.errcheck
+noerr_block:                                      ; preds = %after_check
   ret i64 0
 }
 
@@ -103,35 +103,35 @@ entry:
   %1 = call i32 @demo_bar()
   %2 = call i64 @demo_divide(double* %retparam, i32 %0, i32 %1)
   %not_err = icmp eq i64 %2, 0
-  br i1 %not_err, label %after.errcheck, label %error
+  br i1 %not_err, label %after_check, label %assign_optional
 
-error:                                            ; preds = %entry
+assign_optional:                                  ; preds = %entry
   store i64 %2, i64* %ratio.f, align 8
   br label %after_assign
 
-after.errcheck:                                   ; preds = %entry
+after_check:                                      ; preds = %entry
   %3 = load double, double* %retparam, align 8
   store double %3, double* %ratio, align 8
   store i64 0, i64* %ratio.f, align 8
   br label %after_assign
 
-after_assign:                                     ; preds = %after.errcheck, %error
+after_assign:                                     ; preds = %after_check, %assign_optional
   br label %testblock
 
 testblock:                                        ; preds = %after_assign
   %4 = load i64, i64* %ratio.f, align 8
   %not_err1 = icmp eq i64 %4, 0
-  br i1 %not_err1, label %after_check, label %error2
+  br i1 %not_err1, label %after_check3, label %assign_optional2
 
-error2:                                           ; preds = %testblock
+assign_optional2:                                 ; preds = %testblock
   store i64 %4, i64* %err, align 8
   br label %end_block
 
-after_check:                                      ; preds = %testblock
+after_check3:                                     ; preds = %testblock
   store i64 0, i64* %err, align 8
   br label %end_block
 
-end_block:                                        ; preds = %after_check, %error2
+end_block:                                        ; preds = %after_check3, %assign_optional2
   %5 = load i64, i64* %err, align 8
   %neq = icmp ne i64 %5, 0
   br i1 %neq, label %if.then, label %if.exit

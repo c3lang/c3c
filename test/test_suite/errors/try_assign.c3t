@@ -25,7 +25,8 @@ fn void main()
     }
 }
 
-// #expect: try_assign.ll
+/* #expect: try_assign.ll
+
 
 define void @try_assign_main() #0 {
 entry:
@@ -126,9 +127,9 @@ if.exit15:                                        ; preds = %if.then14, %phi_try
 testblock:                                        ; preds = %if.exit15
   %12 = load i64, i64* %z.f, align 8
   %not_err16 = icmp eq i64 %12, 0
-  br i1 %not_err16, label %after_check17, label %error
+  br i1 %not_err16, label %after_check17, label %assign_optional
 
-error:                                            ; preds = %testblock
+assign_optional:                                  ; preds = %testblock
   store i64 %12, i64* %e, align 8
   br label %end_block
 
@@ -136,7 +137,7 @@ after_check17:                                    ; preds = %testblock
   store i64 0, i64* %e, align 8
   br label %end_block
 
-end_block:                                        ; preds = %after_check17, %error
+end_block:                                        ; preds = %after_check17, %assign_optional
   %13 = load i64, i64* %e, align 8
   %neq = icmp ne i64 %13, 0
   br i1 %neq, label %if.then18, label %if.exit19

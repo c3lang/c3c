@@ -81,12 +81,12 @@ entry:
   %hi3 = load i64, i64* %12, align 8
   %13 = call i64 @std_io_printf(i64* %retparam, i8* %lo, i64 %hi, i8* %lo2, i64 %hi3)
   %not_err = icmp eq i64 %13, 0
-  br i1 %not_err, label %after.errcheck, label %voiderr
+  br i1 %not_err, label %after_check, label %voiderr
 
-after.errcheck:                                   ; preds = %entry
+after_check:                                      ; preds = %entry
   br label %voiderr
 
-voiderr:                                          ; preds = %after.errcheck, %entry
+voiderr:                                          ; preds = %after_check, %entry
   call void @"std_enumset$$test_Abc_EnumSet_add"(i32* %set, i32 0)
   store %"char[]" { i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str.1, i32 0, i32 0), i64 14 }, %"char[]"* %taddr5, align 8
   %14 = bitcast %"char[]"* %taddr5 to { i8*, i64 }*
@@ -112,12 +112,12 @@ voiderr:                                          ; preds = %after.errcheck, %en
   %hi12 = load i64, i64* %26, align 8
   %27 = call i64 @std_io_printf(i64* %retparam4, i8* %lo6, i64 %hi7, i8* %lo11, i64 %hi12)
   %not_err13 = icmp eq i64 %27, 0
-  br i1 %not_err13, label %after.errcheck14, label %voiderr15
+  br i1 %not_err13, label %after_check14, label %voiderr15
 
-after.errcheck14:                                 ; preds = %voiderr
+after_check14:                                    ; preds = %voiderr
   br label %voiderr15
 
-voiderr15:                                        ; preds = %after.errcheck14, %voiderr
+voiderr15:                                        ; preds = %after_check14, %voiderr
   call void @"std_enumset$$test_Abc_EnumSet_add"(i32* %set, i32 1)
   store %"char[]" { i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str.2, i32 0, i32 0), i64 14 }, %"char[]"* %taddr17, align 8
   %28 = bitcast %"char[]"* %taddr17 to { i8*, i64 }*
@@ -143,12 +143,12 @@ voiderr15:                                        ; preds = %after.errcheck14, %
   %hi24 = load i64, i64* %40, align 8
   %41 = call i64 @std_io_printf(i64* %retparam16, i8* %lo18, i64 %hi19, i8* %lo23, i64 %hi24)
   %not_err25 = icmp eq i64 %41, 0
-  br i1 %not_err25, label %after.errcheck26, label %voiderr27
+  br i1 %not_err25, label %after_check26, label %voiderr27
 
-after.errcheck26:                                 ; preds = %voiderr15
+after_check26:                                    ; preds = %voiderr15
   br label %voiderr27
 
-voiderr27:                                        ; preds = %after.errcheck26, %voiderr15
+voiderr27:                                        ; preds = %after_check26, %voiderr15
   store i32 0, i32* %set2, align 4
   %42 = load i32, i32* %set, align 4
   call void @"std_enumset$$test_Abc_EnumSet_add_all"(i32* %set2, i32 %42)
@@ -176,12 +176,12 @@ voiderr27:                                        ; preds = %after.errcheck26, %
   %hi36 = load i64, i64* %55, align 8
   %56 = call i64 @std_io_printf(i64* %retparam28, i8* %lo30, i64 %hi31, i8* %lo35, i64 %hi36)
   %not_err37 = icmp eq i64 %56, 0
-  br i1 %not_err37, label %after.errcheck38, label %voiderr39
+  br i1 %not_err37, label %after_check38, label %voiderr39
 
-after.errcheck38:                                 ; preds = %voiderr27
+after_check38:                                    ; preds = %voiderr27
   br label %voiderr39
 
-voiderr39:                                        ; preds = %after.errcheck38, %voiderr27
+voiderr39:                                        ; preds = %after_check38, %voiderr27
   %57 = load i32, i32* %set2, align 4
   call void @"std_enumset$$test_Abc_EnumSet_remove_all"(i32* %set, i32 %57)
   store %"char[]" { i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str.4, i32 0, i32 0), i64 14 }, %"char[]"* %taddr41, align 8
@@ -208,11 +208,11 @@ voiderr39:                                        ; preds = %after.errcheck38, %
   %hi48 = load i64, i64* %70, align 8
   %71 = call i64 @std_io_printf(i64* %retparam40, i8* %lo42, i64 %hi43, i8* %lo47, i64 %hi48)
   %not_err49 = icmp eq i64 %71, 0
-  br i1 %not_err49, label %after.errcheck50, label %voiderr51
+  br i1 %not_err49, label %after_check50, label %voiderr51
 
-after.errcheck50:                                 ; preds = %voiderr39
+after_check50:                                    ; preds = %voiderr39
   br label %voiderr51
 
-voiderr51:                                        ; preds = %after.errcheck50, %voiderr39
+voiderr51:                                        ; preds = %after_check50, %voiderr39
   ret void
 }

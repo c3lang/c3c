@@ -43,16 +43,16 @@ entry:
   store i64 ptrtoint (%.fault* @"test_Foo$MY_VAL1" to i64), i64* %x.f, align 8
   %0 = load i64, i64* %x.f, align 8
   %not_err = icmp eq i64 %0, 0
-  br i1 %not_err, label %after_check, label %error
+  br i1 %not_err, label %after_check, label %assign_optional
 
-error:                                            ; preds = %entry
+assign_optional:                                  ; preds = %entry
   store i64 %0, i64* %error_var, align 8
   br label %guard_block
 
 after_check:                                      ; preds = %entry
   br label %noerr_block
 
-guard_block:                                      ; preds = %error
+guard_block:                                      ; preds = %assign_optional
   %1 = load i64, i64* %error_var, align 8
   ret i64 %1
 
@@ -76,16 +76,16 @@ entry:
   store i64 0, i64* %x.f, align 8
   %1 = load i64, i64* %x.f, align 8
   %not_err = icmp eq i64 %1, 0
-  br i1 %not_err, label %after_check, label %error
+  br i1 %not_err, label %after_check, label %assign_optional
 
-error:                                            ; preds = %entry
+assign_optional:                                  ; preds = %entry
   store i64 %1, i64* %error_var, align 8
   br label %guard_block
 
 after_check:                                      ; preds = %entry
   br label %noerr_block
 
-guard_block:                                      ; preds = %error
+guard_block:                                      ; preds = %assign_optional
   %2 = load i64, i64* %error_var, align 8
   ret i64 %2
 
@@ -101,19 +101,19 @@ define void @test_main() #0 {
 entry:
   %0 = call i64 @test_test1()
   %not_err = icmp eq i64 %0, 0
-  br i1 %not_err, label %after.errcheck, label %voiderr
+  br i1 %not_err, label %after_check, label %voiderr
 
-after.errcheck:                                   ; preds = %entry
+after_check:                                      ; preds = %entry
   br label %voiderr
 
-voiderr:                                          ; preds = %after.errcheck, %entry
+voiderr:                                          ; preds = %after_check, %entry
   %1 = call i64 @test_test2()
   %not_err1 = icmp eq i64 %1, 0
-  br i1 %not_err1, label %after.errcheck2, label %voiderr3
+  br i1 %not_err1, label %after_check2, label %voiderr3
 
-after.errcheck2:                                  ; preds = %voiderr
+after_check2:                                     ; preds = %voiderr
   br label %voiderr3
 
-voiderr3:                                         ; preds = %after.errcheck2, %voiderr
+voiderr3:                                         ; preds = %after_check2, %voiderr
   ret void
 }
