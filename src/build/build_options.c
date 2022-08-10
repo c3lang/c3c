@@ -75,6 +75,7 @@ static void usage(void)
 	OUTPUT("Options:");
 	OUTPUT("  --tinybackend         - Use the TinyBackend for compilation.");
 	OUTPUT("  --stdlib <dir>        - Use this directory as the C3 standard library path.");
+	OUTPUT("  --nostdlib            - Do not include the standard library.");
 	OUTPUT("  --libdir <dir>        - Add this directory to the C3 library search paths.");
 	OUTPUT("  --lib <name>          - Add this library to the compilation.");
 	OUTPUT("  --path <dir>          - Use this as the base directory for the current command.");
