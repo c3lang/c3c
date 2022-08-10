@@ -178,6 +178,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	}
 	target->no_stdlib = options->no_stdlib;
 	target->emit_llvm = options->emit_llvm;
+	target->emit_asm = options->emit_asm;
 	target->force_linker = options->force_linker;
 	target->panicfn = options->panicfn;
 	if (options->macos.sdk) target->macos.sdk = options->macos.sdk;
@@ -192,12 +193,14 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 		target->build_dir = options->build_dir ? options->build_dir : NULL;
 		target->object_file_dir = options->obj_out ? options->obj_out : target->build_dir;
 		target->llvm_file_dir = options->llvm_out ? options->llvm_out : target->build_dir;
+		target->asm_file_dir = options->asm_out ? options->asm_out : target->build_dir;
 	}
 	else
 	{
 		target->build_dir = options->build_dir ? options->build_dir : "build";
 		target->object_file_dir = options->obj_out ? options->obj_out : file_append_path(target->build_dir, "tmp");
 		target->llvm_file_dir = options->llvm_out ? options->llvm_out : file_append_path(target->build_dir, "llvm_ir");
+		target->asm_file_dir = options->asm_out ? options->asm_out : file_append_path(target->build_dir, "asm");
 	}
 	switch (options->compile_option)
 	{
@@ -227,6 +230,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	{
 		target->test_output = true;
 		target->emit_llvm = false;
+		target->emit_asm = false;
 		target->emit_object_files = false;
 	}
 	for (int i = 0; i < options->lib_dir_count; i++)

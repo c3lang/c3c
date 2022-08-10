@@ -44,6 +44,11 @@ void gencontext_begin_module(GenContext *c)
 	c->ir_filename = str_printf("%s.ll", result);
 	if (active_target.llvm_file_dir) c->ir_filename = file_append_path(active_target.llvm_file_dir, c->ir_filename);
 	c->object_filename = str_printf("%s%s", result, get_object_extension());
+	if (active_target.emit_asm)
+	{
+		c->asm_filename = str_printf("%s.s", result);
+		if (active_target.asm_file_dir) c->asm_filename = file_append_path(active_target.asm_file_dir, c->asm_filename);
+	}
 	if (active_target.object_file_dir) c->object_filename = file_append_path(active_target.object_file_dir, c->object_filename);
 	c->panicfn = global_context.panic_fn;
 	c->module = LLVMModuleCreateWithNameInContext(c->code_module->name->module, c->context);

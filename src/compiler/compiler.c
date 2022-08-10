@@ -237,7 +237,7 @@ void compiler_compile(void)
 	void **gen_contexts = VECNEW(void*, module_count);
 	void (*task)(void *);
 
-	if (active_target.llvm_file_dir || active_target.emit_object_files)
+	if (active_target.asm_file_dir || active_target.llvm_file_dir || active_target.emit_object_files)
 	{
 		if (active_target.build_dir && !file_exists(active_target.build_dir) && !dir_make(active_target.build_dir))
 		{
@@ -249,6 +249,13 @@ void compiler_compile(void)
 		if (!file_exists(active_target.llvm_file_dir) && !dir_make(active_target.llvm_file_dir))
 		{
 			error_exit("Failed to create output directory '%s'.", active_target.llvm_file_dir);
+		}
+	}
+	if (active_target.asm_file_dir && active_target.emit_asm)
+	{
+		if (!file_exists(active_target.asm_file_dir) && !dir_make(active_target.asm_file_dir))
+		{
+			error_exit("Failed to create output directory '%s'.", active_target.asm_file_dir);
 		}
 	}
 	if (active_target.object_file_dir && active_target.emit_object_files)

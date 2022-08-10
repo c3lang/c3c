@@ -95,6 +95,8 @@ static void usage(void)
 	OUTPUT("  --obj-out <dir>       - Override object file output directory.");
 	OUTPUT("  --llvm-out <dir>      - Override llvm output directory for '--emit-llvm'.");
 	OUTPUT("  --emit-llvm           - Emit LLVM IR as a .ll file per module.");
+	OUTPUT("  --asm-out <dir>       - Override llvm output directory for '--emit-asm'.");
+	OUTPUT("  --emit-asm            - Emit asm as a .s file per module.");
 	OUTPUT("  --target <target>     - Compile for a particular architecture + OS target.");
 	OUTPUT("  --threads <number>    - Set the number of threads to use for compilation.");
 	OUTPUT("  --safe                - Set mode to 'safe', generating runtime traps on overflows and contract violations.");
@@ -575,6 +577,11 @@ static void parse_option(BuildOptions *options)
 				options->emit_llvm = true;
 				return;
 			}
+			if (match_longopt("emit-asm"))
+			{
+				options->emit_asm = true;
+				return;
+			}
 			if (match_longopt("cc"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --cc needs a compiler name.");
@@ -631,6 +638,12 @@ static void parse_option(BuildOptions *options)
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --llvm-out needs a directory.");
 				options->llvm_out = next_arg();
+				return;
+			}
+			if (match_longopt("asm-out"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --asm-out needs a directory.");
+				options->asm_out = next_arg();
 				return;
 			}
 			if (match_longopt("lib"))

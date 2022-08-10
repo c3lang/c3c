@@ -81,6 +81,7 @@ typedef struct
 	LLVMBasicBlockRef catch_block;
 	const char *ir_filename;
 	const char *object_filename;
+	const char *asm_filename;
 	// The recipient of the error value in a catch(err = ...) expression.
 	LLVMValueRef error_var;
 	LLVMTypeRef bool_type;

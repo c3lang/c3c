@@ -250,6 +250,7 @@ typedef struct BuildOptions_
 	ArchOsTarget arch_os_target_override;
 	int safe_mode;
 	bool emit_llvm;
+	bool emit_asm;
 	bool emit_bitcode;
 	bool test_mode;
 	bool no_stdlib;
@@ -258,6 +259,7 @@ typedef struct BuildOptions_
 	const char *cc;
 	const char *build_dir;
 	const char *llvm_out;
+	const char *asm_out;
 	const char *obj_out;
 	RelocModel reloc_model;
 	X86VectorCapability x86_vector_capability;
@@ -315,6 +317,7 @@ typedef struct
 	const char *build_dir;
 	const char *object_file_dir;
 	const char *llvm_file_dir;
+	const char *asm_file_dir;
 	bool run_after_compile : 1;
 	bool test_output : 1;
 	bool output_headers : 1;
@@ -323,6 +326,7 @@ typedef struct
 	bool parse_only : 1;
 	bool check_only : 1;
 	bool emit_llvm : 1;
+	bool emit_asm : 1;
 	bool no_stdlib : 1;
 	bool emit_object_files : 1;
 	bool no_link : 1;

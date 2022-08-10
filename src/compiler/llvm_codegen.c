@@ -445,7 +445,33 @@ static void gencontext_verify_ir(GenContext *context)
 }
 
 
-void gencontext_emit_object_file(GenContext *context)
+static void gencontext_emit_object_file(GenContext *context)
+{
+	char *err = "";
+	DEBUG_LOG("Target: %s", platform_target.target_triple);
+	LLVMSetTarget(context->module, platform_target.target_triple);
+	char *layout = LLVMCopyStringRepOfTargetData(context->target_data);
+	LLVMSetDataLayout(context->module, layout);
+	LLVMDisposeMessage(layout);
+
+	if (context->asm_filename)
+	{
+		// Generate .o or .obj file
+		if (LLVMTargetMachineEmitToFile(context->machine, context->module, (char *)context->asm_filename, LLVMAssemblyFile, &err))
+		{
+			error_exit("Could not emit asm file: %s", err);
+		}
+	}
+
+	// Generate .o or .obj file
+	if (LLVMTargetMachineEmitToFile(context->machine, context->module, (char *)context->object_filename, LLVMObjectFile, &err))
+	{
+		error_exit("Could not emit object file: %s", err);
+	}
+
+}
+
+static void llvm_emit_asm_file(GenContext *context)
 {
 	char *err = "";
 	DEBUG_LOG("Target: %s", platform_target.target_triple);
@@ -455,9 +481,9 @@ void gencontext_emit_object_file(GenContext *context)
 	LLVMDisposeMessage(layout);
 
 	// Generate .o or .obj file
-	if (LLVMTargetMachineEmitToFile(context->machine, context->module, (char *)context->object_filename, LLVMObjectFile, &err))
+	if (LLVMTargetMachineEmitToFile(context->machine, context->module, (char *)context->asm_filename, LLVMAssemblyFile, &err))
 	{
-		error_exit("Could not emit object file: %s", err);
+		error_exit("Could not emit asm file: %s", err);
 	}
 }
 
@@ -822,6 +848,11 @@ const char *llvm_codegen(void *context)
 	{
 		gencontext_emit_object_file(c);
 		object_name = c->object_filename;
+	}
+
+	if (active_target.emit_asm)
+	{
+		llvm_emit_asm_file(context);
 	}
 
 	gencontext_end_module(c);
