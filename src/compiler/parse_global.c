@@ -703,7 +703,7 @@ TypeInfo *parse_type(ParseContext *c)
 	return parse_type_with_base(c, base);
 }
 
-TypeInfo *parse_failable_type(ParseContext *c)
+TypeInfo *parse_optional_type(ParseContext *c)
 {
 	ASSIGN_TYPE_OR_RET(TypeInfo *info, parse_base_type(c), poisoned_type_info);
 	ASSIGN_TYPE_OR_RET(info, parse_type_with_base(c, info), poisoned_type_info);
@@ -771,7 +771,7 @@ Decl *parse_decl(ParseContext *c)
 	bool is_threadlocal = try_consume(c, TOKEN_TLOCAL);
 	bool is_static = !is_threadlocal && try_consume(c, TOKEN_STATIC);
 
-	ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_failable_type(c), poisoned_decl);
+	ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_optional_type(c), poisoned_decl);
 
 	ASSIGN_DECL_OR_RET(Decl * decl, parse_decl_after_type(c, type), poisoned_decl);
 	if (type->failable && decl->var.unwrap)
@@ -959,7 +959,7 @@ static inline Decl *parse_global_declaration(ParseContext *c, Visibility visibil
 {
 	bool threadlocal = try_consume(c, TOKEN_TLOCAL);
 
-	ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_failable_type(c), poisoned_decl);
+	ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_optional_type(c), poisoned_decl);
 
 	Decl *decl = DECL_VAR_NEW(type, VARDECL_GLOBAL, visibility);
 
@@ -999,7 +999,12 @@ static inline Decl *parse_global_declaration(ParseContext *c, Visibility visibil
  */
 static inline bool parse_param_decl(ParseContext *c, Visibility parent_visibility, Decl*** parameters, bool require_name)
 {
-	ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_type(c), false);
+	ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_optional_type(c), false);
+	if (type->failable)
+	{
+		SEMA_ERROR(type, "Parameters may not be failable.");
+		return false;
+	}
 	bool vararg = try_consume(c, TOKEN_ELLIPSIS);
 	Decl *param = DECL_VAR_NEW(type, VARDECL_PARAM, parent_visibility);
 	param->var.vararg = vararg;
@@ -1069,7 +1074,7 @@ bool parse_parameters(ParseContext *c, Visibility visibility, Decl ***params_ref
 
 		if (!ellipsis && parse_next_is_typed_parameter(c))
 		{
-			ASSIGN_TYPE_OR_RET(type, parse_type(c), false);
+			ASSIGN_TYPE_OR_RET(type, parse_optional_type(c), false);
 			ellipsis = try_consume(c, TOKEN_ELLIPSIS);
 		}
 
@@ -1159,7 +1164,7 @@ bool parse_parameters(ParseContext *c, Visibility visibility, Decl ***params_ref
 			default:
 				if (!type && parse_next_may_be_type(c))
 				{
-					ASSIGN_TYPE_OR_RET(type, parse_type(c), false);
+					ASSIGN_TYPE_OR_RET(type, parse_optional_type(c), false);
 					param_kind = VARDECL_PARAM;
 					no_name = true;
 					span = type->span;
@@ -1167,6 +1172,11 @@ bool parse_parameters(ParseContext *c, Visibility visibility, Decl ***params_ref
 				}
 				SEMA_ERROR_HERE("Expected a parameter.");
 				return false;
+		}
+		if (type && type->failable)
+		{
+			SEMA_ERROR(type, "Parameters may not be failable.");
+			return false;
 		}
 		Decl *param = decl_new_var(name, span, type, param_kind, visibility);
 		param->var.type_info = type;
@@ -1523,7 +1533,7 @@ static inline Decl *parse_define_type(ParseContext *c, Visibility visibility)
 		Decl *decl = decl_new_with_type(alias_name, name_loc, DECL_TYPEDEF, visibility);
 		decl->typedef_decl.is_func = true;
 		decl->typedef_decl.is_distinct = distinct;
-		ASSIGN_TYPE_OR_RET(TypeInfo *type_info, parse_failable_type(c), poisoned_decl);
+		ASSIGN_TYPE_OR_RET(TypeInfo *type_info, parse_optional_type(c), poisoned_decl);
 		decl->typedef_decl.function_signature.returntype = type_infoid(type_info);
 		if (!parse_parameter_list(c, decl->visibility, &(decl->typedef_decl.function_signature), true))
 		{
@@ -1726,7 +1736,7 @@ static inline bool parse_func_macro_header(ParseContext *c, bool is_macro,
 	}
 
 	// 2. Now we must have a type - either that is the return type or the method type.
-	ASSIGN_TYPE_OR_RET(rtype, parse_failable_type(c), false);
+	ASSIGN_TYPE_OR_RET(rtype, parse_optional_type(c), false);
 
 	// 4. We might have a type here, if so then we read it.
 	if (!tok_is(c, TOKEN_DOT) && !parse_is_macro_name(c))

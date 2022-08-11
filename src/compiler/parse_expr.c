@@ -1594,7 +1594,7 @@ Expr *parse_type_expression_with_path(ParseContext *c, Path *path)
 	}
 	else
 	{
-		ASSIGN_TYPE_OR_RET(type, parse_failable_type(c), poisoned_expr);
+		ASSIGN_TYPE_OR_RET(type, parse_optional_type(c), poisoned_expr);
 	}
 	if (tok_is(c, TOKEN_LBRACE))
 	{

@@ -1416,12 +1416,27 @@ FAIL_MISSING:
 		if (params && params[i]->var.vararg) continue;
 
 		// 17d. Argument missing, that's bad.
-		if (is_func_ptr)
+		if (!uses_named_parameters || is_func_ptr || !params[i]->name)
 		{
-			SEMA_ERROR(call, "The call is missing parameter(s), please check the definition.");
+			if (entries_needed == 1)
+			{
+				SEMA_ERROR(call, "A parameter was expected for the call.");
+				return false;
+			}
+			if (num_args)
+			{
+				unsigned needed = entries_needed - num_args;
+				SEMA_ERROR(args[num_args - 1],
+						   "Expected %d more %s after this one, did you forget %s?",
+						   needed, needed > 1 ? "arguments" : "argument", needed > 1 ? "them" : "it");
+			}
+			else
+			{
+				SEMA_ERROR(call, "The call needs %d parameters, please provide them.", entries_needed);
+			}
 			return false;
 		}
-		SEMA_ERROR(call, "The mandatory parameter '%s' was not set, please add it.", params[i]->name);
+		SEMA_ERROR(call, "The parameter '%s' must be set, did you forget it?", params[i]->name);
 		return false;
 	}
 	call->call_expr.arguments = actual_args;

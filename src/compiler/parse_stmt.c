@@ -375,7 +375,7 @@ static inline bool parse_foreach_var(ParseContext *c, Ast *foreach)
 	// If we don't get foreach (foo ... or foreach (*foo ... then a type is expected.
 	if (!tok_is(c, TOKEN_IDENT) && !tok_is(c, TOKEN_AMP))
 	{
-		ASSIGN_TYPE_OR_RET(type, parse_failable_type(c), false);
+		ASSIGN_TYPE_OR_RET(type, parse_optional_type(c), false);
 
 		// Add the failable to the type for nicer error reporting.
 		RANGE_EXTEND_PREV(type);

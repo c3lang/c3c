@@ -39,7 +39,7 @@ struct St {
 
 extern fn St func_returning_struct();
 
-fn void loop(void) {
+fn void loop() {
   func_returning_struct();
 }
 

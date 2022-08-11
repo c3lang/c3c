@@ -24,7 +24,7 @@ Expr *parse_type_expression_with_path(ParseContext *c, Path *path);
 Expr *parse_expr(ParseContext *c);
 bool consume_ident(ParseContext *c, const char* name);
 TypeInfo *parse_type(ParseContext *c);
-TypeInfo *parse_failable_type(ParseContext *c);
+TypeInfo *parse_optional_type(ParseContext *c);
 TypeInfo *parse_type_with_base(ParseContext *c, TypeInfo *type_info);
 Expr* parse_constant_expr(ParseContext *c);
 void parse_imports(ParseContext *c);

@@ -49,8 +49,20 @@ static bool sema_check_section(SemaContext *context, Attr *attr)
 	return true;
 }
 
-static inline bool sema_check_no_duplicate_parameter(Decl **decls, Decl *current, unsigned current_index, unsigned count)
+static inline bool sema_check_param_uniqueness_and_type(Decl **decls, Decl *current, unsigned current_index, unsigned count)
 {
+	if (current->type && current->type == type_void)
+	{
+		if (count == 1 && !current->name && current->var.kind == VARDECL_PARAM)
+		{
+			SEMA_ERROR(current, "C-style 'foo(void)' style argument declarations are not valid, please remove 'void'.");
+		}
+		else
+		{
+			SEMA_ERROR(current, "Parameters may not be of type 'void'.");
+		}
+		return false;
+	}
 	const char *name = current->name;
 	if (!name) return true;
 	for (int i = 0; i < current_index; i++)
@@ -637,7 +649,7 @@ static inline Type *sema_analyse_function_signature(SemaContext *context, CallAB
 			all_ok = false;
 			continue;
 		}
-		if (!sema_check_no_duplicate_parameter(params, param, i, param_count))
+		if (!sema_check_param_uniqueness_and_type(params, param, i, param_count))
 		{
 			all_ok = false;
 			continue;
@@ -1980,7 +1992,7 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl)
 			case VARDECL_ERASE:
 				UNREACHABLE
 		}
-		if (!sema_check_no_duplicate_parameter(parameters, param, i, param_count)) return decl_poison(decl);
+		if (!sema_check_param_uniqueness_and_type(parameters, param, i, param_count)) return decl_poison(decl);
 		param->resolve_status = RESOLVE_DONE;
 	}
 	DeclId body_param = decl->macro_decl.body_param;
@@ -2021,7 +2033,7 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl)
 			case VARDECL_ERASE:
 				UNREACHABLE
 		}
-		if (!sema_check_no_duplicate_parameter(body_parameters, param, i, body_param_count)) return decl_poison(decl);
+		if (!sema_check_param_uniqueness_and_type(body_parameters, param, i, body_param_count)) return decl_poison(decl);
 		param->resolve_status = RESOLVE_DONE;
 	}
 	bool pure = false;
