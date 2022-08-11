@@ -320,21 +320,13 @@ RETRY:
 }
 
 
-bool type_is_float_or_float_vector(Type *type)
+bool type_flat_is_floatlike(Type *type)
 {
 	type = type_flatten(type);
 	if (type->type_kind == TYPE_VECTOR) type = type->array.base;
 	TypeKind kind = type->type_kind;
 	return kind >= TYPE_FLOAT_FIRST && kind <= TYPE_FLOAT_LAST;
 }
-
-bool type_is_union_struct(Type *type)
-{
-	TypeKind kind = type->canonical->type_kind;
-	return kind == TYPE_STRUCT || kind == TYPE_UNION;
-}
-
-
 
 
 bool type_is_int128(Type *type)
@@ -741,13 +733,13 @@ Type *type_get_ptr_recurse(Type *ptr_type)
 }
 Type *type_get_ptr(Type *ptr_type)
 {
-	assert(!type_is_failable(ptr_type));
+	assert(!type_is_optional(ptr_type));
 	return type_generate_ptr(ptr_type, false);
 }
 
 Type *type_get_failable(Type *failable_type)
 {
-	assert(!type_is_failable(failable_type));
+	assert(!type_is_optional(failable_type));
 	return type_generate_failable(failable_type, false);
 }
 
@@ -779,7 +771,7 @@ static inline bool array_structurally_equivalent_to_struct(Type *array, Type *ty
 
 	assert(type->type_kind != TYPE_UNION && "Does not work on unions");
 
-	if (!type_is_structlike(type)) return false;
+	if (!type_is_union_or_strukt(type)) return false;
 
 	Decl **members = type->decl->strukt.members;
 
@@ -828,7 +820,7 @@ bool type_is_structurally_equivalent(Type *type1, Type *type2)
 		return array_structurally_equivalent_to_struct(type2, type1);
 	}
 
-	if (!type_is_structlike(type1)) return false;
+	if (!type_is_union_or_strukt(type1)) return false;
 
 	Decl **members = type1->decl->strukt.members;
 	if (type1->type_kind == TYPE_UNION)
@@ -843,7 +835,7 @@ bool type_is_structurally_equivalent(Type *type1, Type *type2)
 	}
 
 	// The only thing we have left is to check against another structlike.
-	if (!type_is_structlike(type2)) return false;
+	if (!type_is_union_or_strukt(type2)) return false;
 
 	Decl **other_members = type2->decl->strukt.members;
 
@@ -1089,7 +1081,7 @@ static inline Type *func_create_new_func_proto(FunctionSignature *sig, CallABI a
 	proto->variadic = sig->variadic;
 	Type *rtype = type_infoptr(sig->returntype)->type;
 	proto->rtype = rtype;
-	if (type_is_failable(rtype))
+	if (type_is_optional(rtype))
 	{
 		proto->is_failable = true;
 		Type *real_return_type = rtype->failable;
@@ -1391,8 +1383,8 @@ Type *type_from_token(TokenType type)
 
 bool type_may_have_sub_elements(Type *type)
 {
-	// An alias is not ok.
-	switch (type->canonical->type_kind)
+	DECL_TYPE_KIND_REAL(kind, type)
+	switch (kind)
 	{
 		case TYPE_DISTINCT:
 		case TYPE_UNION:
@@ -1523,7 +1515,7 @@ Type *type_find_max_type(Type *type, Type *other)
 	type = type->canonical;
 	other = other->canonical;
 
-	assert(!type_is_failable(type) && !type_is_failable(other));
+	assert(!type_is_optional(type) && !type_is_optional(other));
 
 	if (type == other) return type;
 

@@ -30,7 +30,7 @@ void llvm_emit_compound_stmt(GenContext *c, Ast *ast)
 void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 {
 	// 1. Get the declaration and the LLVM type.
-	Type *var_type = type_lowering(type_no_fail(decl->type));
+	Type *var_type = type_lowering(type_no_optional(decl->type));
 	LLVMTypeRef alloc_type = llvm_get_type(c, var_type);
 
 	// 2. In the case we have a static variable,
@@ -46,7 +46,7 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 		void *builder = c->builder;
 		c->builder = NULL;
 		decl->backend_ref = llvm_add_global_var(c, "tempglobal", var_type, decl->alignment);
-		if (IS_FAILABLE(decl))
+		if (IS_OPTIONAL(decl))
 		{
 			scratch_buffer_clear();
 			scratch_buffer_append(decl->extname);
@@ -61,7 +61,7 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 	assert(!decl->backend_ref);
 	llvm_emit_local_var_alloca(c, decl);
 	Expr *init = decl->var.init_expr;
-	bool is_failable = IS_FAILABLE(decl);
+	bool is_failable = IS_OPTIONAL(decl);
 	if (is_failable)
 	{
 		scratch_buffer_clear();
@@ -180,7 +180,7 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 
 	LLVMBasicBlockRef error_return_block = NULL;
 	LLVMValueRef error_out = NULL;
-	if (type_is_failable(c->cur_func_decl->type->func.prototype->rtype))
+	if (type_is_optional(c->cur_func_decl->type->func.prototype->rtype))
 	{
 		error_return_block = llvm_basic_block_new(c, "err_retblock");
 		error_out = llvm_emit_alloca_aligned(c, type_anyerr, "reterr");
@@ -241,7 +241,7 @@ static inline void llvm_emit_block_exit_return(GenContext *c, Ast *ast)
 	BEValue return_value = { 0 };
 	if (ret_expr)
 	{
-		if (ast->return_stmt.cleanup && IS_FAILABLE(ret_expr))
+		if (ast->return_stmt.cleanup && IS_OPTIONAL(ret_expr))
 		{
 			assert(c->catch_block);
 			err_cleanup_block = llvm_basic_block_new(c, "opt_block_cleanup");
@@ -1049,7 +1049,7 @@ static inline void llvm_emit_asm_stmt(GenContext *c, Ast *ast)
 void gencontext_emit_expr_stmt(GenContext *c, Ast *ast)
 {
 	BEValue value;
-	if (IS_FAILABLE(ast->expr_stmt))
+	if (IS_OPTIONAL(ast->expr_stmt))
 	{
 		PUSH_ERROR();
 		LLVMBasicBlockRef discard_fail = llvm_basic_block_new(c, "voiderr");

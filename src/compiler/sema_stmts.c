@@ -111,7 +111,7 @@ static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *state
 	{
 		if (block_type)
 		{
-			if (!sema_analyse_expr_rhs(context, block_type, statement->return_stmt.expr, type_is_failable(block_type))) return false;
+			if (!sema_analyse_expr_rhs(context, block_type, statement->return_stmt.expr, type_is_optional(block_type))) return false;
 		}
 		else
 		{
@@ -167,11 +167,11 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 
 	if (return_expr)
 	{
-		if (!sema_analyse_expr_rhs(context, expected_rtype, return_expr, type_is_failable(expected_rtype))) return false;
+		if (!sema_analyse_expr_rhs(context, expected_rtype, return_expr, type_is_optional(expected_rtype))) return false;
 	}
 	else
 	{
-		if (type_no_fail(expected_rtype)->canonical != type_void)
+		if (type_no_optional(expected_rtype)->canonical != type_void)
 		{
 			SEMA_ERROR(statement, "Expected to return a result of type %s.", type_to_error_string(expected_rtype));
 			return false;
@@ -211,7 +211,7 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 
 	statement->return_stmt.cleanup = cleanup;
 
-	assert(type_no_fail(statement->return_stmt.expr->type)->canonical == type_no_fail(expected_rtype)->canonical);
+	assert(type_no_optional(statement->return_stmt.expr->type)->canonical == type_no_optional(expected_rtype)->canonical);
 
 	return true;
 }
@@ -238,7 +238,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 			SEMA_ERROR(ident, "Expected this to be the name of a failable variable, but it isn't. Did you mistype?");
 			return false;
 		}
-		if (!IS_FAILABLE(decl))
+		if (!IS_OPTIONAL(decl))
 		{
 			if (decl->var.kind == VARDECL_UNWRAPPED)
 			{
@@ -269,7 +269,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 	if (var_type)
 	{
 		if (!sema_resolve_type_info(context, var_type)) return false;
-		if (IS_FAILABLE(var_type))
+		if (IS_OPTIONAL(var_type))
 		{
 			SEMA_ERROR(var_type, "Only non-failable types may be used as types for 'try', please remove the '!'.");
 			return false;
@@ -286,7 +286,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 		if (!sema_expr_check_assign(context, ident)) return false;
 
 		// 3c. It can't be failable either.
-		if (IS_FAILABLE(ident))
+		if (IS_OPTIONAL(ident))
 		{
 			if (ident->expr_kind == EXPR_IDENTIFIER)
 			{
@@ -302,7 +302,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 		// 3d. We can now analyse the expression using the variable type.
 		if (!sema_analyse_expr(context, failable)) return false;
 
-		if (!IS_FAILABLE(failable))
+		if (!IS_OPTIONAL(failable))
 		{
 			SEMA_ERROR(failable, "Expected a failable expression to 'try' here. If it isn't a failable, remove 'try'.");
 			return false;
@@ -339,7 +339,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 		// 4b. Evaluate the expression
 		if (!sema_analyse_expr(context, failable)) return false;
 
-		if (!IS_FAILABLE(failable))
+		if (!IS_OPTIONAL(failable))
 		{
 			SEMA_ERROR(failable, "Expected a failable expression to 'try' here. If it isn't a failable, remove 'try'.");
 			return false;
@@ -473,7 +473,7 @@ RESOLVE_EXPRS:;
 	{
 		Expr *fail = exprs[i];
 		if (!sema_analyse_expr(context, fail)) return false;
-		if (!type_is_failable(fail->type))
+		if (!type_is_optional(fail->type))
 		{
 			SEMA_ERROR(fail, "This expression is not failable, did you add it by mistake?");
 			return false;
@@ -662,7 +662,7 @@ static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType 
 			return false;
 		}
 		// 3e. Expect that it isn't a failable
-		if (IS_FAILABLE(init) && !decl->var.unwrap)
+		if (IS_OPTIONAL(init) && !decl->var.unwrap)
 		{
 			return sema_error_failed_cast(last, last->type, cast_to_bool ? type_bool : init->type);
 			return false;
@@ -676,14 +676,14 @@ static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType 
 		return true;
 	}
 	// 3a. Check for failables in case of an expression.
-	if (IS_FAILABLE(last))
+	if (IS_OPTIONAL(last))
 	{
-		if (!cast_to_bool || cast_may_implicit(type_no_fail(last->type), type_bool, false, false))
+		if (!cast_to_bool || cast_may_implicit(type_no_optional(last->type), type_bool, false, false))
 		{
 			SEMA_ERROR(last, "The expression may not be a failable, but was %s.", type_quoted_error_string(last->type));
 			return false;
 		}
-		sema_error_failed_cast(last, type_no_fail(last->type), type_bool);
+		sema_error_failed_cast(last, type_no_optional(last->type), type_bool);
 		return false;
 	}
 	// 3b. Cast to bool if that is needed
@@ -995,7 +995,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		// And pop the cond scope.
 	SCOPE_END;
 
-	if (IS_FAILABLE(enumerator))
+	if (IS_OPTIONAL(enumerator))
 	{
 		SEMA_ERROR(enumerator, "The expression may not be failable.");
 		return false;
@@ -1062,7 +1062,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	}
 	if (!sema_resolve_type_info(context, var->var.type_info)) return false;
 
-	if (type_is_failable(var->var.type_info->type))
+	if (type_is_optional(var->var.type_info->type))
 	{
 		SEMA_ERROR(var->var.type_info, "The variable may not be a failable.");
 		return false;
@@ -1075,7 +1075,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		if (!index->var.type_info) index->var.type_info = type_info_new_base(index_type, enumerator->span);
 		if (!sema_resolve_type_info(context, index->var.type_info)) return false;
 		index_var_type = index->var.type_info->type;
-		if (type_is_failable(index_var_type))
+		if (type_is_optional(index_var_type))
 		{
 			SEMA_ERROR(index->var.type_info, "The index may not be a failable.");
 			return false;
@@ -2567,7 +2567,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 		else
 		{
 			sema_append_contract_asserts(assert_first, body);
-			Type *canonical_rtype = type_no_fail(prototype->rtype)->canonical;
+			Type *canonical_rtype = type_no_optional(prototype->rtype)->canonical;
 			// Insert an implicit return
 			if (canonical_rtype == type_void)
 			{

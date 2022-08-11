@@ -1335,6 +1335,7 @@ bool parse_struct_body(ParseContext *c, Decl *parent)
 }
 
 
+
 /**
  * struct_declaration
  * 		: struct_or_union TYPE_IDENT opt_attributes struct_body
@@ -1347,7 +1348,7 @@ static inline Decl *parse_struct_declaration(ParseContext *c, Visibility visibil
 	TokenType type = c->tok;
 
 	advance(c);
-	const char* type_name = struct_union_name_from_token(type);
+	const char* type_name = type == TOKEN_STRUCT ? "struct" : "union";
 
 	Decl *decl = decl_new_with_type(symstr(c), c->span, decl_from_token(type), visibility);
 

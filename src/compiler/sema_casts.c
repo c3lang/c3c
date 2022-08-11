@@ -354,7 +354,7 @@ static Type *enum_to_int_cast(Expr* expr, Type *from)
 		expr_const_set_int(&expr->const_expr, expr->const_expr.enum_val->enum_constant.ordinal, type_flatten(original)->type_kind);
 		return original;
 	}
-	insert_cast(expr, CAST_ENUMLOW, type_get_opt_fail(original, IS_FAILABLE(expr)));
+	insert_cast(expr, CAST_ENUMLOW, type_add_optional(original, IS_OPTIONAL(expr)));
 	return original;
 }
 
@@ -430,7 +430,7 @@ bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability, 
 {
 	// 1. failable -> non-failable can't be cast unless we ignore failability.
 	// *or* we're converting a void! to an error code
-	if (type_is_failable(from_type) && !type_is_failable(to_type))
+	if (type_is_optional(from_type) && !type_is_optional(to_type))
 	{
 		if (from_type->failable == type_void || !from_type->failable)
 		{
@@ -441,12 +441,12 @@ bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability, 
 	}
 
 	// 2. Remove failability and flatten distinct
-	from_type = type_no_fail(from_type);
-	to_type = type_no_fail(to_type);
+	from_type = type_no_optional(from_type);
+	to_type = type_no_optional(to_type);
 
 	// 3. We flatten the distinct types, since they should be freely convertible
-	from_type = type_flatten_distinct_failable(from_type);
-	to_type = type_flatten_distinct_failable(to_type);
+	from_type = type_flatten_distinct_optional(from_type);
+	to_type = type_flatten_distinct_optional(to_type);
 
 	// 2. Same underlying type, always ok
 	if (from_type == to_type) return true;
@@ -542,8 +542,8 @@ bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability, 
 
 bool type_may_convert_to_anyerr(Type *type)
 {
-	if (type_is_failable_any(type)) return true;
-	if (!type_is_failable_type(type)) return false;
+	if (type_is_optional_any(type)) return true;
+	if (!type_is_optional_type(type)) return false;
 	return type->failable->canonical == type_void;
 }
 /**
@@ -557,10 +557,10 @@ bool cast_may_implicit(Type *from_type, Type *to_type, bool is_simple_expr, bool
 	if (to == type_anyerr && type_may_convert_to_anyerr(from_type)) return true;
 
 	// 2. any! => may implicitly to convert to any.
-	if (type_is_failable_any(from_type)) return failable_allowed;
+	if (type_is_optional_any(from_type)) return failable_allowed;
 
 	Type *from = from_type->canonical;
-	if (type_is_failable_type(from_type))
+	if (type_is_optional_type(from_type))
 	{
 		if (!failable_allowed) return false;
 		from = from_type->failable->canonical;
@@ -689,7 +689,7 @@ bool cast_may_implicit(Type *from_type, Type *to_type, bool is_simple_expr, bool
 
 bool may_convert_float_const_implicit(Expr *expr, Type *to_type)
 {
-	if (!float_const_fits_type(&expr->const_expr, type_flatten(to_type)->type_kind))
+	if (!expr_const_float_fits_type(&expr->const_expr, type_flatten(to_type)->type_kind))
 	{
 		SEMA_ERROR(expr, "The value '%g' is out of range for %s, so you need an explicit cast to truncate the value.", expr->const_expr.fxx.f, type_quoted_error_string(to_type));
 		return false;
@@ -820,7 +820,7 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 				return type_size(expr->type) > type_size(type) ? expr : NULL;
 			}
 			assert(expr->const_expr.const_kind == CONST_FLOAT);
-			if (!float_const_fits_type(&expr->const_expr, type_flatten(type)->type_kind))
+			if (!expr_const_float_fits_type(&expr->const_expr, type_flatten(type)->type_kind))
 			{
 				return expr;
 			}
@@ -1080,7 +1080,7 @@ static inline bool cast_maybe_string_lit_to_char_array(Expr *expr, Type *expr_ca
 }
 bool cast_implicit(Expr *expr, Type *to_type)
 {
-	assert(!type_is_failable(to_type));
+	assert(!type_is_optional(to_type));
 	Type *expr_type = expr->type;
 	Type *expr_canonical = expr_type->canonical;
 	Type *to_canonical = to_type->canonical;
@@ -1169,7 +1169,7 @@ bool cast_implicit(Expr *expr, Type *to_type)
 			goto OK;
 		}
 		SEMA_ERROR(expr, "Implicitly casting %s to %s is not permitted, but you can do an explicit cast using '(<type>)(value)'.", type_quoted_error_string(
-				type_no_fail(expr->type)), type_quoted_error_string(type_no_fail(to_type)));
+				type_no_optional(expr->type)), type_quoted_error_string(type_no_optional(to_type)));
 		return false;
 	}
 
@@ -1385,7 +1385,7 @@ static bool bitstruct_cast(Expr *expr, Type *from_type, Type *to, Type *to_type)
 
 bool cast(Expr *expr, Type *to_type)
 {
-	assert(!type_is_failable(to_type));
+	assert(!type_is_optional(to_type));
 	Type *from_type = expr->type;
 	bool from_is_failable = false;
 	Type *to = type_flatten_distinct(to_type);
@@ -1393,16 +1393,16 @@ bool cast(Expr *expr, Type *to_type)
 	// Special case *! => error
 	if (to == type_anyerr || to->type_kind == TYPE_FAULTTYPE)
 	{
-		if (type_is_failable(from_type)) return voidfail_to_error(expr, to_type);
+		if (type_is_optional(from_type)) return voidfail_to_error(expr, to_type);
 	}
 
-	if (type_is_failable_any(from_type))
+	if (type_is_optional_any(from_type))
 	{
 		expr->type = type_get_failable(to_type);
 		return true;
 	}
 
-	if (type_is_failable_type(from_type))
+	if (type_is_optional_type(from_type))
 	{
 		from_type = from_type->failable;
 		from_is_failable = true;
@@ -1415,7 +1415,7 @@ bool cast(Expr *expr, Type *to_type)
 	}
 	if (from_type == to)
 	{
-		expr->type = type_get_opt_fail(to_type, from_is_failable);
+		expr->type = type_add_optional(to_type, from_is_failable);
 		if (expr->expr_kind == EXPR_CONST)
 		{
 			expr->const_expr.narrowable = false;
@@ -1427,7 +1427,7 @@ bool cast(Expr *expr, Type *to_type)
 	if (!cast_inner(expr, from_type, to, to_type)) return false;
 
 	Type *result_type = expr->type;
-	if (from_is_failable && !type_is_failable(result_type))
+	if (from_is_failable && !type_is_optional(result_type))
 	{
 		expr->type = type_get_failable(result_type);
 	}

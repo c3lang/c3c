@@ -792,3 +792,10 @@ typedef enum
 	PARAM_OUT,
 	PARAM_INOUT,
 } InOutModifier;
+
+typedef enum
+{
+	CONSTANT_EVAL_ANY,
+	CONSTANT_EVAL_FOLDABLE,
+	CONSTANT_EVAL_NO_LINKTIME,
+} ConstantEvalKind;

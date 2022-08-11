@@ -18,7 +18,7 @@ static inline bool type_is_simd_vector(Type *type)
 
 static bool type_is_union_struct_with_simd_vector(Type *type)
 {
-	if (!type_is_union_struct(type)) return false;
+	if (!type_is_union_or_strukt(type)) return false;
 
 	Decl **members = type->decl->strukt.members;
 	VECEACH(members, i)
@@ -201,7 +201,7 @@ ABIArgInfo *x86_classify_return(CallABI call, Regs *regs, Type *type)
 	if (type_is_abi_aggregate(type))
 	{
 		// Structs with variable arrays are always indirect.
-		if (type_is_structlike(type) && type->decl->has_variable_array)
+		if (type_is_union_or_strukt(type) && type->decl->has_variable_array)
 		{
 			return create_indirect_return_x86(type, regs);
 		}
@@ -288,7 +288,7 @@ static inline bool x86_can_expand_indirect_aggregate_arg(Type *type)
 	// arguments. If so, we prefer to do the latter to avoid inhibiting
 	// optimizations.
 
-	if (!type_is_union_struct(type)) return false;
+	if (!type_is_union_or_strukt(type)) return false;
 
 	ByteSize size = 0;
 	Decl **members = type->decl->strukt.members;
@@ -468,7 +468,7 @@ static inline ABIArgInfo *x86_classify_aggregate(CallABI call, Regs *regs, Type 
 	// Only called for aggregates.
 	assert(type_is_abi_aggregate(type));
 
-	if (type_is_structlike(type) && type->decl->has_variable_array)
+	if (type_is_union_or_strukt(type) && type->decl->has_variable_array)
 	{
 		// TODO, check why this should not be by_val
 		return x86_create_indirect_result(regs, type, BY_VAL);

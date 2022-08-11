@@ -5,7 +5,7 @@
  */
 Type *type_abi_find_single_struct_element(Type *type)
 {
-	if (!type_is_structlike(type)) return NULL;
+	if (!type_is_union_or_strukt(type)) return NULL;
 
 	// Elements with a variable array? If so no.
 	if (type->decl->has_variable_array) return NULL;
@@ -26,7 +26,7 @@ Type *type_abi_find_single_struct_element(Type *type)
 			field_type = field_type->array.base;
 		}
 
-		if (type_is_structlike(field_type))
+		if (type_is_union_or_strukt(field_type))
 		{
 			field_type = type_abi_find_single_struct_element(field_type);
 			if (!field_type) return NULL;

@@ -165,7 +165,7 @@ bool expr_const_in_range(const ExprConst *left, const ExprConst *right, const Ex
 	return expr_const_compare(left, right, BINARYOP_GE) && expr_const_compare(left, right_to, BINARYOP_LE);
 }
 
-bool float_const_fits_type(const ExprConst *expr_const, TypeKind kind)
+bool expr_const_float_fits_type(const ExprConst *expr_const, TypeKind kind)
 {
 	Real hi_limit;
 	Real lo_limit;
@@ -202,7 +202,7 @@ bool expr_const_will_overflow(const ExprConst *expr, TypeKind kind)
 		case TYPE_F32:
 		case TYPE_F64:
 		case TYPE_F128:
-			return !float_const_fits_type(expr, kind);
+			return !expr_const_float_fits_type(expr, kind);
 		case TYPE_BOOL:
 			return false;
 		default:

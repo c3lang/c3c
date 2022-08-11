@@ -617,6 +617,13 @@ void global_context_add_generic_decl(Decl *decl)
 	decltable_set(&global_context.generic_symbols, decl);
 }
 
+void global_context_clear_errors(void)
+{
+	global_context.in_panic_mode = false;
+	global_context.errors_found = 0;
+	global_context.warnings_found = 0;
+}
+
 void global_context_add_type(Type *type)
 {
 	DEBUG_LOG("Created type %s.", type->name);

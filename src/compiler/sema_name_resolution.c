@@ -736,7 +736,7 @@ void sema_erase_var(SemaContext *context, Decl *decl)
 
 void sema_erase_unwrapped(SemaContext *context, Decl *decl)
 {
-	assert(IS_FAILABLE(decl));
+	assert(IS_OPTIONAL(decl));
 	Decl *rewrapped = decl_copy(decl);
 	rewrapped->var.kind = VARDECL_REWRAPPED;
 	rewrapped->var.alias = decl;

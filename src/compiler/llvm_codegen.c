@@ -382,7 +382,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 		llvm_set_alignment(failable_ref, type_alloca_alignment(type_anyerr));
 		LLVMSetUnnamedAddress(failable_ref, LLVMGlobalUnnamedAddr);
 	}
-	if (init_expr && IS_FAILABLE(init_expr) && init_expr->expr_kind == EXPR_FAILABLE)
+	if (init_expr && IS_OPTIONAL(init_expr) && init_expr->expr_kind == EXPR_FAILABLE)
 	{
 		UNREACHABLE
 	}
@@ -872,7 +872,7 @@ void llvm_add_global(GenContext *c, Decl *decl)
 	decl->backend_ref = llvm_add_global_var(c, name, decl->type, decl->alignment);
 	llvm_set_alignment(decl->backend_ref, decl->alignment);
 
-	if (IS_FAILABLE(decl))
+	if (IS_OPTIONAL(decl))
 	{
 		scratch_buffer_clear();
 		scratch_buffer_append(decl_get_extname(decl));

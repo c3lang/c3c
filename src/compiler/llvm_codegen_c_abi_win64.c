@@ -12,7 +12,7 @@ ABIArgInfo *win64_classify(Regs *regs, Type *type, bool is_return, bool is_vecto
 	type = type_lowering(type);
 
 	// Variable array has to be passed indirectly.
-	if (type_is_structlike(type) && type->decl->has_variable_array)
+	if (type_is_union_or_strukt(type) && type->decl->has_variable_array)
 	{
 		return abi_arg_new_indirect_not_by_val(type);
 	}

@@ -387,12 +387,12 @@ DIRECT_RETURN:
 void llvm_emit_return_implicit(GenContext *c)
 {
 	Type *rtype_real = c->cur_func_decl->type->func.prototype->rtype;
-	if (type_lowering(type_no_fail(rtype_real)) != type_void)
+	if (type_lowering(type_no_optional(rtype_real)) != type_void)
 	{
 		LLVMBuildUnreachable(c->builder);
 		return;
 	}
-	if (type_is_failable(rtype_real))
+	if (type_is_optional(rtype_real))
 	{
 		llvm_emit_return_abi(c, NULL, NULL);
 		return;

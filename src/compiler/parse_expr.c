@@ -173,7 +173,7 @@ static inline Expr *parse_try_unwrap_chain(ParseContext *c)
 		ASSIGN_EXPR_OR_RET(Expr * next_unwrap, parse_for_try_expr(c), poisoned_expr);
 		vec_add(unwraps, next_unwrap);
 	}
-	Expr *try_unwrap_chain = EXPR_NEW_EXPR(EXPR_TRY_UNWRAP_CHAIN, first_unwrap);
+	Expr *try_unwrap_chain = expr_new_expr(EXPR_TRY_UNWRAP_CHAIN, first_unwrap);
 	try_unwrap_chain->try_unwrap_chain_expr = unwraps;
 	RANGE_EXTEND_PREV(try_unwrap_chain);
 	return try_unwrap_chain;
@@ -474,7 +474,7 @@ static Expr *parse_unary_expr(ParseContext *c, Expr *left)
 static Expr *parse_post_unary(ParseContext *c, Expr *left)
 {
 	assert(expr_ok(left));
-	Expr *unary = EXPR_NEW_EXPR(EXPR_POST_UNARY, left);
+	Expr *unary = expr_new_expr(EXPR_POST_UNARY, left);
 	unary->unary_expr.expr = left;
 	unary->unary_expr.operator = unaryop_from_token(c->tok);
 	advance(c);
@@ -489,7 +489,7 @@ static Expr *parse_ternary_expr(ParseContext *c, Expr *left_side)
 {
 	assert(expr_ok(left_side));
 
-	Expr *expr_ternary = EXPR_NEW_EXPR(EXPR_TERNARY, left_side);
+	Expr *expr_ternary = expr_new_expr(EXPR_TERNARY, left_side);
 	expr_ternary->ternary_expr.cond = exprid(left_side);
 
 
@@ -642,7 +642,7 @@ static Expr *parse_binary(ParseContext *c, Expr *left_side)
 		ASSIGN_EXPR_OR_RET(right_side, parse_precedence(c, rules[operator_type].precedence + 1), poisoned_expr);
 	}
 
-	Expr *expr = EXPR_NEW_EXPR(EXPR_BINARY, left_side);
+	Expr *expr = expr_new_expr(EXPR_BINARY, left_side);
 	expr->binary_expr.operator = binaryop_from_token(operator_type);
 	expr->binary_expr.left = exprid(left_side);
 	expr->binary_expr.right = exprid(right_side);
@@ -681,7 +681,7 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left)
 	}
 	advance(c);
 
-	Expr *call = EXPR_NEW_EXPR(EXPR_CALL, left);
+	Expr *call = expr_new_expr(EXPR_CALL, left);
 	call->call_expr.function = exprid(left);
 	call->call_expr.arguments = params;
 	call->call_expr.unsplat_last = unsplat;
@@ -749,7 +749,7 @@ static Expr *parse_subscript_expr(ParseContext *c, Expr *left)
 	assert(left && expr_ok(left));
 	advance_and_verify(c, TOKEN_LBRACKET);
 
-	Expr *subs_expr = EXPR_NEW_EXPR(EXPR_SUBSCRIPT, left);
+	Expr *subs_expr = expr_new_expr(EXPR_SUBSCRIPT, left);
 	Expr *index = NULL;
 	bool is_range = false;
 	bool from_back = false;
@@ -807,7 +807,7 @@ static Expr *parse_access_expr(ParseContext *c, Expr *left)
 {
 	assert(left && expr_ok(left));
 	advance_and_verify(c, TOKEN_DOT);
-	Expr *access_expr = EXPR_NEW_EXPR(EXPR_ACCESS, left);
+	Expr *access_expr = expr_new_expr(EXPR_ACCESS, left);
 	access_expr->access_expr.parent = left;
 	ASSIGN_EXPR_OR_RET(access_expr->access_expr.child, parse_precedence(c, PREC_CALL + 1), poisoned_expr);
 	RANGE_EXTEND_PREV(access_expr);
@@ -1001,7 +1001,7 @@ static Expr *parse_try_expr(ParseContext *c, Expr *left)
 
 static Expr *parse_force_unwrap_expr(ParseContext *c, Expr *left)
 {
-	Expr *force_unwrap_expr = EXPR_NEW_EXPR(EXPR_FORCE_UNWRAP, left);
+	Expr *force_unwrap_expr = expr_new_expr(EXPR_FORCE_UNWRAP, left);
 	advance(c);
 	force_unwrap_expr->inner_expr = left;
 	RANGE_EXTEND_PREV(force_unwrap_expr);

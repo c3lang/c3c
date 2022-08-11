@@ -81,7 +81,7 @@ static bool riscv_detect_fpcc_struct_internal(Type *type, unsigned current_offse
 		return true;
 	}
 
-	if (type_is_structlike(type))
+	if (type_is_union_or_strukt(type))
 	{
 		// Unions aren't eligible unless they're empty (which is caught above).
 		if (type->type_kind == TYPE_UNION) return false;

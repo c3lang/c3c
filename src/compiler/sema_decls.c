@@ -765,7 +765,7 @@ static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param, bo
 		Expr *expr = param->var.init_expr;
 
 		if (!sema_analyse_expr_rhs(context, param->type, expr, true)) return false;
-		if (IS_FAILABLE(expr))
+		if (IS_OPTIONAL(expr))
 		{
 			SEMA_ERROR(expr, "Default arguments may not be failable.");
 			return false;
@@ -1675,7 +1675,7 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	bool is_int_return = true;
 	bool is_err_return = false;
 	if (rtype->type_kind == TYPE_FAILABLE_ANY) is_err_return = true;
-	if (!is_err_return && type_is_failable(rtype))
+	if (!is_err_return && type_is_optional(rtype))
 	{
 		if (rtype->failable->type_kind != TYPE_VOID)
 		{
@@ -1830,7 +1830,7 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl)
 	}
 	if (decl->func_decl.attr_maydiscard)
 	{
-		if (!type_is_failable(rtype))
+		if (!type_is_optional(rtype))
 		{
 			SEMA_ERROR(rtype_info, "@maydiscard can only be used on functions returning optional values.");
 			return decl_poison(decl);
@@ -1924,7 +1924,7 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl)
 		}
 		if (decl->macro_decl.attr_maydiscard)
 		{
-			if (!type_is_failable(rtype))
+			if (!type_is_optional(rtype))
 			{
 				SEMA_ERROR(rtype_info, "@maydiscard can only be used on macros returning optional values.");
 				return decl_poison(decl);
@@ -2067,8 +2067,8 @@ bool sema_analyse_decl_type(SemaContext *context, Type *type, SourceSpan span)
 		return false;
 	}
 
-	if (!type_is_failable(type)) return true;
-	if (type_is_failable_any(type) || type_flatten_distinct(type->failable) == type_void)
+	if (!type_is_optional(type)) return true;
+	if (type_is_optional_any(type) || type_flatten_distinct(type->failable) == type_void)
 	{
 		sema_error_at(span, "The use of 'void!' as a variable type is not permitted, use %s instead.",
 		                 type_quoted_error_string(type_anyerr));
@@ -2267,7 +2267,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 		}
 		else
 		{
-			if (decl->var.unwrap && IS_FAILABLE(init))
+			if (decl->var.unwrap && IS_OPTIONAL(init))
 			{
 				SEMA_ERROR(decl->var.init_expr, "A failable expression was expected here.");
 				return decl_poison(decl);

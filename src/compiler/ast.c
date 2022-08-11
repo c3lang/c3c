@@ -4,6 +4,18 @@
 
 #include "compiler_internal.h"
 
+static Type poison_type = { .type_kind = TYPE_POISONED };
+static TypeInfo poison_type_info = { .kind = TYPE_INFO_POISON };
+static Decl poison_decl = { .decl_kind = DECL_POISONED, .resolve_status = RESOLVE_DONE };
+static Expr poison_expr = { .expr_kind = EXPR_POISONED, .resolve_status = RESOLVE_DONE };
+static Ast poison_ast = { .ast_kind = AST_POISONED };
+
+Type *poisoned_type = &poison_type;
+TypeInfo *poisoned_type_info = &poison_type_info;
+Decl *poisoned_decl = &poison_decl;
+Expr *poisoned_expr = &poison_expr;
+Ast *poisoned_ast = &poison_ast;
+
 
 Decl *decl_new_ct(DeclKind kind, SourceSpan span)
 {
@@ -23,11 +35,66 @@ Decl *decl_new(DeclKind decl_kind, const char *name, SourceSpan span, Visibility
 	return decl;
 }
 
-
-static Type poison_type = { .type_kind = TYPE_POISONED };
-static TypeInfo poison_type_info = { .kind = TYPE_INFO_POISON };
-Type *poisoned_type = &poison_type;
-TypeInfo *poisoned_type_info = &poison_type_info;
+Decl *decl_new_with_type(const char *name, SourceSpan loc, DeclKind decl_type, Visibility visibility)
+{
+	Decl *decl = decl_calloc();
+	decl->decl_kind = decl_type;
+	decl->name = name;
+	decl->span = loc;
+	decl->visibility = visibility;
+	TypeKind kind = TYPE_POISONED;
+	switch (decl_type)
+	{
+		case DECL_FUNC:
+			kind = TYPE_FUNC;
+			break;
+		case DECL_UNION:
+			kind = TYPE_UNION;
+			break;
+		case DECL_STRUCT:
+			kind = TYPE_STRUCT;
+			break;
+		case DECL_FAULT:
+			kind = TYPE_FAULTTYPE;
+			break;
+		case DECL_ENUM:
+			kind = TYPE_ENUM;
+			break;
+		case DECL_DISTINCT:
+			kind = TYPE_DISTINCT;
+			break;
+		case DECL_TYPEDEF:
+			kind = TYPE_TYPEDEF;
+			break;
+		case DECL_BITSTRUCT:
+			kind = TYPE_BITSTRUCT;
+			break;
+		case DECL_POISONED:
+		case DECL_VAR:
+		case DECL_ENUM_CONSTANT:
+		case DECL_FAULTVALUE:
+		case DECL_IMPORT:
+		case DECL_MACRO:
+		case DECL_GENERIC:
+		case DECL_CT_IF:
+		case DECL_CT_ELSE:
+		case DECL_CT_ELIF:
+		case DECL_ATTRIBUTE:
+		case DECL_LABEL:
+		case DECL_CT_SWITCH:
+		case DECL_CT_CASE:
+		case DECL_DEFINE:
+		case DECL_CT_ASSERT:
+		case DECL_DECLARRAY:
+		case DECL_BODYPARAM:
+			UNREACHABLE
+	}
+	Type *type = type_new(kind, name ? name : "anon");
+	type->canonical = type;
+	type->decl = decl;
+	decl->type = type;
+	return decl;
+}
 
 const char *decl_to_name(Decl *decl)
 {
@@ -119,106 +186,50 @@ const char *decl_to_name(Decl *decl)
 	UNREACHABLE
 }
 
-void module_append_name_to_scratch(Module *module)
+
+// Set the external name of a declaration
+void decl_set_external_name(Decl *decl)
 {
-	const char *name = module->name->module;
+	// Already has the extname set using an attribute?
+	// if so we're done.
+	if (decl->has_extname) return;
+
+	const char *name = decl->name;
+	if (!name) name = "anon";
+
+	// "extern" or the module has no prefix?
+	if (decl->visibility == VISIBLE_EXTERN || decl->unit->module->no_extprefix)
+	{
+		assert(decl->name || decl->unit->module->no_extprefix);
+		decl->extname = name;
+		return;
+	}
+
+	// Otherwise, first put the module name into the scratch buffer
+	scratch_buffer_clear();
+	Module *module = decl->unit->module;
+	const char *module_name = module->extname ? module->extname : module->name->module;
 	char c;
-	while ((c = *(name++)) != 0)
+	while ((c = *(module_name++)) != 0)
 	{
 		switch (c)
 		{
-			case '_':
-				scratch_buffer_append("_");
-				break;
 			case ':':
 				scratch_buffer_append_char('_');
-				name++;
+				module_name++;
 				break;
 			default:
 				scratch_buffer_append_char(c);
 				break;
 		}
 	}
-}
-void decl_set_external_name(Decl *decl)
-{
-	if (decl->has_extname) return;
-	if (decl->visibility == VISIBLE_EXTERN)
-	{
-		assert(decl->name);
-		decl->extname = decl->name;
-		return;
-	}
-	scratch_buffer_clear();
-	module_append_name_to_scratch(decl->unit->module);
+	// Concat with the name
 	scratch_buffer_append("_");
-	scratch_buffer_append(decl->name ? decl->name : "anon");
+	scratch_buffer_append(name);
+
+	// Copy it to extname
 	decl->extname = scratch_buffer_copy();
 }
-
-Decl *decl_new_with_type(const char *name, SourceSpan loc, DeclKind decl_type, Visibility visibility)
-{
-	Decl *decl = decl_calloc();
-	decl->decl_kind = decl_type;
-	decl->name = name;
-	decl->span = loc;
-	decl->visibility = visibility;
-	TypeKind kind = TYPE_POISONED;
-	switch (decl_type)
-	{
-		case DECL_FUNC:
-			kind = TYPE_FUNC;
-			break;
-		case DECL_UNION:
-			kind = TYPE_UNION;
-			break;
-		case DECL_STRUCT:
-			kind = TYPE_STRUCT;
-			break;
-		case DECL_FAULT:
-			kind = TYPE_FAULTTYPE;
-			break;
-		case DECL_ENUM:
-			kind = TYPE_ENUM;
-			break;
-		case DECL_DISTINCT:
-			kind = TYPE_DISTINCT;
-			break;
-		case DECL_TYPEDEF:
-			kind = TYPE_TYPEDEF;
-			break;
-		case DECL_BITSTRUCT:
-			kind = TYPE_BITSTRUCT;
-			break;
-		case DECL_POISONED:
-		case DECL_VAR:
-		case DECL_ENUM_CONSTANT:
-		case DECL_FAULTVALUE:
-		case DECL_IMPORT:
-		case DECL_MACRO:
-		case DECL_GENERIC:
-		case DECL_CT_IF:
-		case DECL_CT_ELSE:
-		case DECL_CT_ELIF:
-		case DECL_ATTRIBUTE:
-		case DECL_LABEL:
-		case DECL_CT_SWITCH:
-		case DECL_CT_CASE:
-		case DECL_DEFINE:
-		case DECL_CT_ASSERT:
-		case DECL_DECLARRAY:
-		case DECL_BODYPARAM:
-			UNREACHABLE
-	}
-	Type *type = type_new(kind, name ? name : "anon");
-	type->canonical = type;
-	type->decl = decl;
-	decl->type = type;
-	return decl;
-}
-
-static Decl poison_decl = { .decl_kind = DECL_POISONED, .resolve_status = RESOLVE_DONE };
-Decl *poisoned_decl = &poison_decl;
 
 Decl *decl_new_var(const char *name, SourceSpan loc, TypeInfo *type, VarDeclKind kind, Visibility visibility)
 {
@@ -243,7 +254,8 @@ Decl *decl_new_generated_var(Type *type, VarDeclKind kind, SourceSpan span)
 	return decl;
 }
 
-
+// Determine if the expression has side effects
+// Note! This is not the same as it being const.
 bool expr_is_pure(Expr *expr)
 {
 	if (!expr) return true;
@@ -262,6 +274,11 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_STRINGIFY:
 		case EXPR_RETVAL:
 		case EXPR_CT_CONV:
+		case EXPR_TYPEINFO:
+		case EXPR_CT_EVAL:
+		case EXPR_CT_IDENT:
+		case EXPR_CT_CALL:
+		case EXPR_TYPEID:
 			return true;
 		case EXPR_ARGV_TO_SUBARRAY:
 		case EXPR_BITASSIGN:
@@ -269,6 +286,7 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_VARIANTSWITCH:
 			return false;
 		case EXPR_BINARY:
+			// Anything with assignment is impure, otherwise true if sub expr are pure.
 			if (expr->binary_expr.operator >= BINARYOP_ASSIGN) return false;
 			return exprid_is_pure(expr->binary_expr.right) && exprid_is_pure(expr->binary_expr.left);
 		case EXPR_UNARY:
@@ -277,17 +295,22 @@ bool expr_is_pure(Expr *expr)
 				case UNARYOP_INC:
 				case UNARYOP_DEC:
 				case UNARYOP_TADDR:
+					// ++ -- &&1
 					return false;
-				default:
+				case UNARYOP_ERROR:
+				case UNARYOP_DEREF:
+				case UNARYOP_ADDR:
+				case UNARYOP_NEG:
+				case UNARYOP_BITNEG:
+				case UNARYOP_NOT:
 					return expr_is_pure(expr->unary_expr.expr);
 			}
+			UNREACHABLE
 		case EXPR_BITACCESS:
 		case EXPR_ACCESS:
+			// All access is pure if the parent is pure.
 			return expr_is_pure(expr->access_expr.parent);
 		case EXPR_POISONED:
-		case EXPR_CT_IDENT:
-		case EXPR_TYPEID:
-		case EXPR_CT_CALL:
 			UNREACHABLE
 		case EXPR_MACRO_BODY_EXPANSION:
 		case EXPR_CALL:
@@ -308,7 +331,6 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_SLICE_ASSIGN:
 		case EXPR_TRY_UNWRAP:
 		case EXPR_TRY_UNWRAP_CHAIN:
-		case EXPR_TYPEINFO:
 		case EXPR_FORCE_UNWRAP:
 			return false;
 		case EXPR_CAST:
@@ -321,8 +343,6 @@ bool expr_is_pure(Expr *expr)
 			return true;
 		case EXPR_TYPEID_INFO:
 			return exprid_is_pure(expr->typeid_info_expr.parent);
-		case EXPR_CT_EVAL:
-			return expr_is_pure(expr->inner_expr);
 		case EXPR_SLICE:
 			return exprid_is_pure(expr->slice_expr.expr)
 			       && exprid_is_pure(expr->slice_expr.start)
@@ -409,8 +429,6 @@ Expr *expr_new(ExprKind kind, SourceSpan start)
 	return expr;
 }
 
-static Expr poison_expr = { .expr_kind = EXPR_POISONED, .resolve_status = RESOLVE_DONE };
-Expr *poisoned_expr = &poison_expr;
 
 BinaryOp binary_op[TOKEN_LAST + 1] = {
 		[TOKEN_STAR] = BINARYOP_MULT,
@@ -475,10 +493,6 @@ UnaryOp unary_op[TOKEN_LAST + 1] = {
 		[TOKEN_MINUSMINUS] = UNARYOP_DEC,
 };
 
-
-
-
-
 BinaryOp binaryop_from_token(TokenType type)
 {
 	return binary_op[type];
@@ -497,10 +511,6 @@ UnaryOp unaryop_from_token(TokenType type)
 {
 	return unary_op[type];
 }
-
-static Ast poison_ast = { .ast_kind = AST_POISONED };
-Ast *poisoned_ast = &poison_ast;
-
 
 bool ast_is_not_empty(Ast *ast)
 {

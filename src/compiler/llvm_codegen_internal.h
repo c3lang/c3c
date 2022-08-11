@@ -505,7 +505,7 @@ static inline LLVMValueRef llvm_const_int(GenContext *c, Type *type, uint64_t va
 
 static inline LLVMValueRef llvm_add_global_var(GenContext *c, const char *name, Type *type, AlignSize alignment)
 {
-	type = type_lowering(type_no_fail(type));
+	type = type_lowering(type_no_optional(type));
 	LLVMValueRef ref = LLVMAddGlobal(c->module, llvm_get_type(c, type), name);
 	LLVMSetAlignment(ref, (unsigned)alignment ? alignment : type_alloca_alignment(type));
 	return ref;
