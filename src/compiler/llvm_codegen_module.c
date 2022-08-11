@@ -148,6 +148,8 @@ void gencontext_begin_module(GenContext *c)
 			c->debug.enable_stacktrace = true;
 		}
 	}
+	c->global_builder = LLVMCreateBuilder();
+	c->builder = c->global_builder;
 }
 
 void gencontext_init_file_emit(GenContext *c, CompilationUnit *unit)

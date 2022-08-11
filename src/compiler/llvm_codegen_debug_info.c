@@ -135,6 +135,7 @@ void llvm_emit_debug_function(GenContext *c, Decl *decl)
 
 void llvm_emit_debug_local_var(GenContext *c, Decl *decl)
 {
+	assert(llvm_is_local_eval(c));
 	EMIT_LOC(c, decl);
 	uint32_t row = decl->span.row;
 	uint32_t col = decl->span.col;
@@ -172,6 +173,7 @@ void llvm_emit_debug_local_var(GenContext *c, Decl *decl)
  */
 void llvm_emit_debug_parameter(GenContext *c, Decl *parameter, unsigned index)
 {
+	assert(!llvm_is_global_eval(c));
 	const char *name = parameter->name ? parameter->name : "anon";
 	bool always_preserve = false;
 
@@ -206,8 +208,8 @@ void llvm_emit_debug_parameter(GenContext *c, Decl *parameter, unsigned index)
 
 void llvm_emit_debug_location(GenContext *context, SourceSpan location)
 {
+	if (llvm_is_global_eval(context)) return;
 	// Avoid re-emitting the same location.
-	if (!context->builder) return;
 	LLVMMetadataRef oldloc = LLVMGetCurrentDebugLocation2(context->builder);
 	if (oldloc && context->last_emitted_loc.a == location.a) return;
 	LLVMMetadataRef scope = llvm_debug_current_scope(context);

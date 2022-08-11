@@ -83,7 +83,7 @@ LLVMValueRef llvm_store_value(GenContext *c, BEValue *destination, BEValue *valu
 LLVMValueRef llvm_load(GenContext *c, LLVMTypeRef type, LLVMValueRef pointer, AlignSize alignment, const char *name)
 {
 	assert(alignment > 0);
-	assert(c->builder);
+	assert(!llvm_is_global_eval(c));
 	assert(LLVMGetTypeContext(type) == c->context);
 	LLVMValueRef value = LLVMBuildLoad2(c->builder, type, pointer, name);
 	llvm_set_alignment(value, alignment ? alignment : llvm_abi_alignment(c, type));
@@ -116,7 +116,7 @@ LLVMValueRef llvm_load_value_store(GenContext *c, BEValue *value)
 {
 	LLVMValueRef val = llvm_load_value(c, value);
 	if (value->kind != BE_BOOLEAN) return val;
-	return LLVMIsConstant(val) ? LLVMConstZExt(val, c->byte_type) : LLVMBuildZExt(c->builder, val, c->byte_type, "");
+	return LLVMBuildZExt(c->builder, val, c->byte_type, "");
 }
 
 

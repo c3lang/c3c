@@ -44,7 +44,7 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 			return;
 		}
 		void *builder = c->builder;
-		c->builder = NULL;
+		c->builder = c->global_builder;
 		decl->backend_ref = llvm_add_global_var(c, "tempglobal", var_type, decl->alignment);
 		if (IS_OPTIONAL(decl))
 		{
@@ -840,9 +840,9 @@ static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *swi
 				LLVMValueRef to = to_value.value;
 				assert(LLVMIsAConstant(to));
 				LLVMValueRef one = llvm_const_int(c, to_value.type, 1);
-				while (LLVMConstIntGetZExtValue(LLVMConstICmp(LLVMIntEQ, to, case_value)) != 1)
+				while (LLVMConstIntGetZExtValue(LLVMBuildICmp(c->builder, LLVMIntEQ, to, case_value, "")) != 1)
 				{
-					case_value = LLVMConstAdd(case_value, one);
+					case_value = LLVMBuildAdd(c->builder, case_value, one, "");
 					LLVMAddCase(switch_stmt, case_value, block);
 				}
 			}

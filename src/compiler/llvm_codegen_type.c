@@ -501,7 +501,7 @@ static inline LLVMValueRef llvm_generate_temp_introspection_global(GenContext *c
 {
 	assert(!type->backend_typeid);
 	LLVMValueRef temp = LLVMAddGlobal(c->module, c->introspect_type, "tempid");
-	type->backend_typeid = LLVMConstPointerCast(temp, llvm_get_type(c, type_typeid));
+	type->backend_typeid = LLVMBuildPointerCast(c->builder, temp, llvm_get_type(c, type_typeid), "");
 	return temp;
 }
 
@@ -552,7 +552,7 @@ static inline LLVMValueRef llvm_generate_introspection_global(GenContext *c, LLV
 	}
 	else
 	{
-		type->backend_typeid = LLVMConstPointerCast(global_name, llvm_get_type(c, type_typeid));
+		type->backend_typeid = LLVMBuildPointerCast(c->builder, global_name, llvm_get_type(c, type_typeid), "");
 	}
 	return type->backend_typeid;
 }
@@ -616,7 +616,7 @@ static LLVMValueRef llvm_get_introspection_for_enum(GenContext *c, Type *type)
 			BEValue value;
 			llvm_emit_expr(c, &value, enum_vals[i]->enum_constant.args[ai]);
 			assert(!llvm_value_is_addr(&value));
-			LLVMValueRef llvm_value = llvm_value_is_bool(&value) ? LLVMConstZExt(value.value, c->byte_type)
+			LLVMValueRef llvm_value = llvm_value_is_bool(&value) ? LLVMBuildZExt(c->builder, value.value, c->byte_type, "")
 			                                                     : value.value;
 			values[i] = llvm_value;
 			if (!val_type)
@@ -643,8 +643,7 @@ static LLVMValueRef llvm_get_introspection_for_enum(GenContext *c, Type *type)
 		LLVMSetGlobalConstant(global_ref, true);
 		if (mixed)
 		{
-			LLVMTypeRef cast_type = llvm_get_ptr_type(c, type_get_array(associated_value->type, elements));
-			associated_value->backend_ref = LLVMConstBitCast(global_ref, cast_type);
+			associated_value->backend_ref = llvm_emit_bitcast(c, global_ref, type_get_ptr(type_get_array(associated_value->type, elements)));
 		}
 		else
 		{
@@ -691,19 +690,19 @@ static LLVMValueRef llvm_get_introspection_for_fault(GenContext *c, Type *type)
 		LLVMSetAlignment(global_name, LLVMPreferredAlignmentOfGlobal(c->target_data, global_name));
 		LLVMSetGlobalConstant(global_name, 1);
 
-		LLVMValueRef vals[2] = { LLVMConstPtrToInt(ref, llvm_get_type(c, type_typeid)),
+		LLVMValueRef vals[2] = { LLVMBuildPtrToInt(c->builder, ref, llvm_get_type(c, type_typeid), ""),
 								 llvm_emit_aggregate_two(c, type_chars, llvm_emit_zstring_named(c, val->name, ".fault"),
 		                                                      llvm_const_int(c, type_usize, strlen(val->name))) };
 
 		LLVMSetInitializer(global_name, LLVMConstNamedStruct(c->fault_type, vals, 2));
 		llvm_set_linkonce(c, global_name);
-		val->backend_ref = LLVMConstPointerCast(global_name, llvm_get_type(c, type_typeid));
+		val->backend_ref = LLVMBuildPointerCast(c->builder, global_name, llvm_get_type(c, type_typeid), "");
 	}
 	LLVMTypeRef element_type = llvm_get_type(c, type_typeid);
 	LLVMValueRef* values = elements ? MALLOC(sizeof(LLVMValueRef) * elements) : NULL;
 	for (unsigned i = 0; i < elements; i++)
 	{
-		values[i] = LLVMConstBitCast(fault_vals[i]->backend_ref, element_type);
+		values[i] = LLVMBuildBitCast(c->builder, fault_vals[i]->backend_ref, element_type, "");
 	}
 	return llvm_generate_introspection_global(c, ref, type, INTROSPECT_TYPE_FAULT, NULL, elements, NULL, false);
 }

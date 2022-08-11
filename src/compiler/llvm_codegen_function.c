@@ -535,7 +535,7 @@ void llvm_emit_function_body(GenContext *c, Decl *decl)
 	}
 
 	LLVMDisposeBuilder(c->builder);
-	c->builder = NULL;
+	c->builder = c->global_builder;
 
 	if (llvm_use_debug(c))
 	{

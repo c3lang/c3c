@@ -71,6 +71,7 @@ typedef struct
 typedef struct
 {
 	LLVMModuleRef module;
+	LLVMBuilderRef global_builder;
 	LLVMTargetMachineRef machine;
 	LLVMTargetDataRef target_data;
 	LLVMContextRef context;
@@ -213,6 +214,8 @@ void gencontext_init_file_emit(GenContext *c, CompilationUnit *unit);
 void gencontext_end_file_emit(GenContext *c, CompilationUnit *ast);
 void gencontext_end_module(GenContext *context);
 
+INLINE bool llvm_is_global_eval(GenContext *c);
+INLINE bool llvm_is_local_eval(GenContext *c);
 void LLVMEnableOpaquePointers(LLVMContextRef ctx);
 LLVMValueRef LLVMConstBswap(LLVMValueRef ConstantVal);
 #ifndef LLVMCreateTypeAttribute
@@ -257,7 +260,7 @@ LLVMValueRef llvm_emit_alloca(GenContext *c, LLVMTypeRef type, unsigned alignmen
 LLVMValueRef llvm_emit_alloca_aligned(GenContext *c, Type *type, const char *name);
 void llvm_emit_and_set_decl_alloca(GenContext *c, Decl *decl);
 BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValueRef failable);
-static inline LLVMValueRef llvm_emit_bitcast(GenContext *context, LLVMValueRef value, Type *type);
+static inline LLVMValueRef llvm_emit_bitcast(GenContext *c, LLVMValueRef value, Type *type);
 void llvm_emit_block(GenContext *c, LLVMBasicBlockRef next_block);
 void llvm_emit_br(GenContext *c, LLVMBasicBlockRef next_block);
 void llvm_emit_jump_to_optional_exit(GenContext *c, LLVMValueRef err_value);
@@ -410,17 +413,12 @@ static inline LLVMValueRef llvm_emit_store(GenContext *c, Decl *decl, LLVMValueR
 	return LLVMBuildStore(c->builder, value, llvm_get_ref(c, decl));
 }
 
-static inline LLVMValueRef llvm_emit_bitcast(GenContext *context, LLVMValueRef value, Type *type)
+static inline LLVMValueRef llvm_emit_bitcast(GenContext *c, LLVMValueRef value, Type *type)
 {
 	assert(type->type_kind == TYPE_POINTER);
-	LLVMTypeRef result_type = llvm_get_type(context, type);
+	LLVMTypeRef result_type = llvm_get_type(c, type);
 	if (result_type == LLVMTypeOf(value)) return value;
-	if (LLVMIsConstant(value))
-	{
-		return LLVMConstBitCast(value, result_type);
-	}
-	assert(context->builder);
-	return LLVMBuildBitCast(context->builder, value, result_type, "");
+	return LLVMBuildBitCast(c->builder, value, result_type, "");
 }
 
 static inline bool llvm_use_debug(GenContext *context) { return context->debug.builder != NULL; }
@@ -483,6 +481,16 @@ static inline LLVMCallConv llvm_call_convention_from_call(CallABI abi)
 			return LLVMCCallConv;
 	}
 
+}
+
+INLINE bool llvm_is_global_eval(GenContext *c)
+{
+	return c->builder == c->global_builder;
+}
+
+INLINE bool llvm_is_local_eval(GenContext *c)
+{
+	return c->builder != c->global_builder;
 }
 
 

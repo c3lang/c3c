@@ -47,6 +47,8 @@ static void gencontext_init(GenContext *context, Module *module)
 
 static void gencontext_destroy(GenContext *context)
 {
+	assert(llvm_is_global_eval(context));
+	LLVMDisposeBuilder(context->global_builder);
 	LLVMContextDispose(context->context);
 	LLVMDisposeTargetData(context->target_data);
 	LLVMDisposeTargetMachine(context->machine);
@@ -422,7 +424,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 
 	if (init_value && LLVMTypeOf(init_value) != llvm_get_type(c, var_type))
 	{
-		decl->backend_ref = global_ref = LLVMConstBitCast(global_ref, llvm_get_ptr_type(c, var_type));
+		decl->backend_ref = global_ref = llvm_emit_bitcast(c, global_ref, type_get_ptr(var_type));
 	}
 	LLVMReplaceAllUsesWith(old, global_ref);
 	LLVMDeleteGlobal(old);
@@ -502,7 +504,7 @@ void gencontext_print_llvm_ir(GenContext *context)
 
 LLVMValueRef llvm_emit_alloca(GenContext *c, LLVMTypeRef type, unsigned alignment, const char *name)
 {
-	assert(c->builder);
+	assert(!llvm_is_global_eval(c));
 	assert(alignment > 0);
 	LLVMBasicBlockRef current_block = LLVMGetInsertBlock(c->builder);
 	LLVMPositionBuilderBefore(c->builder, c->alloca_point);

@@ -821,7 +821,7 @@ void llvm_value_addr(GenContext *c, BEValue *value)
 {
 	llvm_value_fold_failable(c, value);
 	if (value->kind == BE_ADDRESS) return;
-	if (!c->builder)
+	if (llvm_is_global_builder(c))
 	{
 		LLVMValueRef val = llvm_load_value_store(c, value);
 		LLVMValueRef ref = LLVMAddGlobal(c->module, LLVMTypeOf(val), ".taddr");

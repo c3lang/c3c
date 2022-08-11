@@ -139,7 +139,7 @@ class Issues:
             self.line += 1
 
         self.current_file.close()
-        print("- " + self.sourcefile.filepath + ":", end="")
+        print("- " + str(self.conf.numtests) + " " + self.sourcefile.filepath + ":", end="")
         self.compile("--test compile " + self.current_file.filepath)
         if not self.has_errors:
             self.conf.numsuccess += 1
@@ -209,7 +209,7 @@ class Issues:
             self.current_file.close()
             self.current_file = None
 
-        print("- " + self.sourcefile.filepath + ":", end="")
+        print("- " + str(self.conf.numtests) + " " + self.sourcefile.filepath + ":", end="")
         files_to_compile = ""
         for file in self.files:
             if file.is_target:
@@ -262,7 +262,7 @@ class Issues:
         if len(self.sourcefile.content) == 0: self.exit_error("File was empty")
         is_skip = self.sourcefile.content[0].startswith("// #skip")
         if is_skip != self.skip:
-            print("- " + self.sourcefile.filepath + ": *SKIPPED*")
+            print("- " + str(self.conf.numtests) + " " + self.sourcefile.filepath + ": *SKIPPED*")
             self.conf.numskipped += 1
             return
         if is_skip: self.line += 1
