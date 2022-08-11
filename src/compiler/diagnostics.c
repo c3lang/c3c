@@ -10,7 +10,7 @@
 typedef enum
 {
 	PRINT_TYPE_ERROR,
-	PRINT_TYPE_PREV,
+	PRINT_TYPE_NOTE,
 	PRINT_TYPE_WARN
 } PrintType;
 
@@ -27,8 +27,8 @@ static void print_error(SourceSpan location, const char *message, PrintType prin
 			case PRINT_TYPE_ERROR:
 				eprintf("Error|%s|%d|%s\n", file->name, location.row, message);
 				return;
-			case PRINT_TYPE_PREV:
-				eprintf("Note|%s|%d|%s\n", file->name, location.row, message);
+			case PRINT_TYPE_NOTE:
+				// Note should not be passed on.
 				return;
 			case PRINT_TYPE_WARN:
 				eprintf("Warning|%s|%d|%s\n", file->name, location.row, message);
@@ -116,7 +116,7 @@ static void print_error(SourceSpan location, const char *message, PrintType prin
 			case PRINT_TYPE_ERROR:
 				eprintf("(%s:%d:%d) Error: %s\n\n", file->full_path, location.row, col_location, message);
 				break;
-			case PRINT_TYPE_PREV:
+			case PRINT_TYPE_NOTE:
 				eprintf("(%s:%d:%d) Note: %s\n\n", file->full_path, location.row, col_location, message);
 				break;
 			case PRINT_TYPE_WARN:
@@ -133,7 +133,7 @@ static void print_error(SourceSpan location, const char *message, PrintType prin
 			case PRINT_TYPE_ERROR:
 				eprintf("(%s:%d) Error: %s\n\n", file->full_path, location.row, message);
 				break;
-			case PRINT_TYPE_PREV:
+			case PRINT_TYPE_NOTE:
 				eprintf("(%s:%d) Note: %s\n\n", file->full_path, location.row, message);
 				break;
 			case PRINT_TYPE_WARN:
@@ -186,13 +186,10 @@ void sema_error_prev_at(SourceSpan loc, const char *message, ...)
 #define MAX_ERROR_LEN 4096
 	char buffer[MAX_ERROR_LEN];
 	size_t written = vsnprintf(buffer, MAX_ERROR_LEN - 1, message, args);
-	if (written > MAX_ERROR_LEN - 2)
+	// Ignore errors
+	if (written <= MAX_ERROR_LEN - 2)
 	{
-		print_error(loc, "<Error message was too long>", PRINT_TYPE_PREV);
-	}
-	else
-	{
-		print_error(loc, buffer, PRINT_TYPE_PREV);
+		print_error(loc, buffer, PRINT_TYPE_NOTE);
 	}
 	va_end(args);
 	return;

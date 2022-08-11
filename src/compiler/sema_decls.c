@@ -58,7 +58,7 @@ static inline bool sema_check_no_duplicate_parameter(Decl **decls, Decl *current
 		if (name == decls[i]->name)
 		{
 			SEMA_ERROR(current, "Duplicate parameter name %s.", name);
-			SEMA_PREV(decls[i], "Previous use of the name was here.");
+			SEMA_NOTE(decls[i], "Previous use of the name was here.");
 			decl_poison(decls[i]);
 			decl_poison(current);
 			return false;
@@ -79,7 +79,7 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 		if (other)
 		{
 			SEMA_ERROR(decl, "Duplicate member name '%s'.", other->name);
-			SEMA_PREV(other, "Previous declaration was here.");
+			SEMA_NOTE(other, "Previous declaration was here.");
 			return false;
 		}
 		if (decl->name) sema_add_member(context, decl);
@@ -519,7 +519,7 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *dec
 		if (member->name == other_member->name)
 		{
 			SEMA_ERROR(member, "Duplicate members with the name '%s'.", member->name);
-			SEMA_PREV(other_member, "The other member was declared here.");
+			SEMA_NOTE(other_member, "The other member was declared here.");
 			return false;
 		}
 		// And possibly overlap.
@@ -530,7 +530,7 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *dec
 			&& start_bit <= other_member->var.end_bit)
 		{
 			SEMA_ERROR(member, "Overlapping members, please use '@overlap' if this is intended.");
-			SEMA_PREV(other_member, "The other member was declared here.");
+			SEMA_NOTE(other_member, "The other member was declared here.");
 			return false;
 		}
 	}
@@ -1110,7 +1110,7 @@ static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type
 	if (method)
 	{
 		SEMA_ERROR(method_like, "This %s is already defined in this module.", name_by_decl(method_like));
-		SEMA_PREV(method, "The previous definition was here.");
+		SEMA_NOTE(method, "The previous definition was here.");
 		return false;
 	}
 	Decl *ambiguous = NULL;
@@ -1119,7 +1119,7 @@ static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type
 	if (method)
 	{
 		SEMA_ERROR(method_like, "This %s is already defined for '%s'.", name_by_decl(method_like), parent_type->name);
-		SEMA_PREV(method, "The previous definition was here.");
+		SEMA_NOTE(method, "The previous definition was here.");
 		return false;
 	}
 	if (method_like->operator && !sema_check_operator_method_validity(method_like)) return false;
@@ -1799,7 +1799,7 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	if (global_context.main)
 	{
 		SEMA_ERROR(function, "Duplicate main functions found.");
-		SEMA_PREV(global_context.main, "The first one was found here.");
+		SEMA_NOTE(global_context.main, "The first one was found here.");
 	}
 	else
 	{

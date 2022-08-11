@@ -1967,7 +1967,7 @@ Path *path_create_from_string(const char *string, uint32_t len, SourceSpan span)
 #define SEMA_ERROR_HERE(...) sema_error_at(c->span, __VA_ARGS__)
 #define SEMA_ERROR_LAST(...) sema_error_at(c->prev_span, __VA_ARGS__)
 #define SEMA_ERROR(_node, ...) sema_error_at((_node)->span, __VA_ARGS__)
-#define SEMA_PREV(_node, ...) sema_error_prev_at((_node)->span, __VA_ARGS__)
+#define SEMA_NOTE(_node, ...) sema_error_prev_at((_node)->span, __VA_ARGS__)
 #define EXPAND_EXPR_STRING(str_) (str_)->const_expr.string.len, (str_)->const_expr.string.chars
 #define TABLE_MAX_LOAD 0.5
 

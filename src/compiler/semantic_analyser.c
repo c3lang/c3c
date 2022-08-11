@@ -8,7 +8,7 @@
 void sema_shadow_error(Decl *decl, Decl *old)
 {
 	SEMA_ERROR(decl, "'%s' would shadow a previous declaration.", decl->name);
-	SEMA_PREV(old, "The previous use of '%s' was here.", decl->name);
+	SEMA_NOTE(old, "The previous use of '%s' was here.", decl->name);
 }
 
 bool sema_resolve_type_info_maybe_inferred(SemaContext *context, TypeInfo *type_info, bool allow_inferred_type)

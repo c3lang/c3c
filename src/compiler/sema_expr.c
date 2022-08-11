@@ -1748,7 +1748,7 @@ static inline Type *unify_returns(SemaContext *context)
 		{
 			SEMA_ERROR(return_stmt, "Cannot find a common parent type of %s and %s",
 			           rtype, common_type);
-			SEMA_PREV(context->returns[i - 1], "The previous return was here.");
+			SEMA_NOTE(context->returns[i - 1], "The previous return was here.");
 			return NULL;
 		}
 
@@ -6097,7 +6097,7 @@ static inline bool sema_take_addr_of_var(Expr *expr, Decl *decl)
 			if (!decl->var.type_info)
 			{
 				SEMA_ERROR(expr, "The constant is not typed, either type it or use && to take the reference to a temporary.");
-				SEMA_PREV(decl, "The constant was defined here.");
+				SEMA_NOTE(decl, "The constant was defined here.");
 				return false;
 			}
 			assert(decl->type != type_void);

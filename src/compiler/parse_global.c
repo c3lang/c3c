@@ -1838,7 +1838,7 @@ static inline Decl *parse_fault_declaration(ParseContext *c, Visibility visibili
 			if (other_constant->name == name)
 			{
 				SEMA_ERROR(fault_const, "This fault value was declared twice.");
-				SEMA_PREV(other_constant, "The previous declaration was here.");
+				SEMA_NOTE(other_constant, "The previous declaration was here.");
 				decl_poison(fault_const);
 				break;
 			}
@@ -1937,7 +1937,7 @@ static inline Decl *parse_enum_declaration(ParseContext *c, Visibility visibilit
 			if (other_constant->name == name)
 			{
 				SEMA_ERROR(enum_const, "This enum constant is declared twice.");
-				SEMA_PREV(other_constant, "The previous declaration was here.");
+				SEMA_NOTE(other_constant, "The previous declaration was here.");
 				decl_poison(enum_const);
 				break;
 			}

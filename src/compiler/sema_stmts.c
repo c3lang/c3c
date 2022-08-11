@@ -1486,7 +1486,7 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 		if (cond->type->canonical != type_typeid)
 		{
 			SEMA_ERROR(statement, "Unexpected 'type' in as an 'nextcase' destination.");
-			SEMA_PREV(statement, "The 'switch' here uses expected a type '%s'.", type_to_error_string(cond->type));
+			SEMA_NOTE(statement, "The 'switch' here uses expected a type '%s'.", type_to_error_string(cond->type));
 			return false;
 		}
 		cases = parent->switch_stmt.cases;
@@ -1695,7 +1695,7 @@ static inline bool sema_check_type_case(SemaContext *context, Type *switch_type,
 			if (other_expr->expr_kind == EXPR_CONST && other_expr->const_expr.typeid == my_type)
 			{
 				SEMA_ERROR(case_stmt, "The same type appears more than once.");
-				SEMA_PREV(other, "Here is the case with that type.");
+				SEMA_NOTE(other, "Here is the case with that type.");
 				return false;
 			}
 		}
@@ -1762,7 +1762,7 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 		if (expr_const_in_range(const_expr, other_const, other_to_const))
 		{
 			SEMA_ERROR(case_stmt, "The same case value appears more than once.");
-			SEMA_PREV(other, "Here is the previous use of that value.");
+			SEMA_NOTE(other, "Here is the previous use of that value.");
 			return false;
 		}
 	}
@@ -1819,7 +1819,7 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 				if (default_case)
 				{
 					SEMA_ERROR(stmt, "'default' may only appear once in a single 'switch', please remove one.");
-					SEMA_PREV(default_case, "Here is the previous use.");
+					SEMA_NOTE(default_case, "Here is the previous use.");
 					success = false;
 				}
 				default_case = stmt;
@@ -1946,7 +1946,7 @@ static bool sema_analyse_ct_switch_body(SemaContext *context, Ast *statement)
 					if (expr_const_in_range(const_expr, other_const, other_const_to))
 					{
 						SEMA_ERROR(stmt, "'%s' appears more than once.", expr_const_to_error_string(const_expr));
-						SEMA_PREV(cases[j]->case_stmt.expr, "The previous $case was here.");
+						SEMA_NOTE(cases[j]->case_stmt.expr, "The previous $case was here.");
 						return false;
 					}
 				}
@@ -1960,7 +1960,7 @@ static bool sema_analyse_ct_switch_body(SemaContext *context, Ast *statement)
 				if (default_case < case_count)
 				{
 					SEMA_ERROR(stmt, "More than one $default is not allowed.");
-					SEMA_PREV(cases[default_case], "The previous $default was here.");
+					SEMA_NOTE(cases[default_case], "The previous $default was here.");
 					return false;
 				}
 				default_case = (int)i;

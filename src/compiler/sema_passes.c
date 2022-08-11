@@ -245,7 +245,7 @@ static inline bool sema_analyse_top_level_switch(SemaContext *context, Decl *ct_
 				if (expr_const_in_range(const_expr, other_const, other_const_to))
 				{
 					SEMA_ERROR(kase, "'%s' appears more than once.", expr_const_to_error_string(const_expr));
-					SEMA_PREV(cases[j]->ct_case_decl.expr, "The previous $case was here.");
+					SEMA_NOTE(cases[j]->ct_case_decl.expr, "The previous $case was here.");
 					return false;
 				}
 			}
@@ -259,7 +259,7 @@ static inline bool sema_analyse_top_level_switch(SemaContext *context, Decl *ct_
 			if (default_case < case_count)
 			{
 				SEMA_ERROR(kase, "More than one $default is not allowed.");
-				SEMA_PREV(cases[default_case], "The previous $default was here.");
+				SEMA_NOTE(cases[default_case], "The previous $default was here.");
 				return false;
 			}
 			default_case = (int)i;
