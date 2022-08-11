@@ -129,6 +129,11 @@ void gencontext_begin_module(GenContext *c)
 
 	if (active_target.debug_info != DEBUG_INFO_NONE)
 	{
+		if (active_target.arch_os_target == WINDOWS_X64 || active_target.arch_os_target == WINDOWS_X86)
+		{
+			setting = LLVMValueAsMetadata(LLVMConstInt(options_type, (unsigned)1 /* pic */, false));
+			LLVMAddModuleFlag(c->module, LLVMModuleFlagBehaviorError, "CodeView", strlen("CodeView"), setting);
+		}
 		c->debug.runtime_version = 1;
 		c->debug.builder = LLVMCreateDIBuilder(c->module);
 		if (active_target.debug_info == DEBUG_INFO_FULL && active_target.feature.safe_mode)

@@ -413,7 +413,7 @@ static LLVMMetadataRef llvm_debug_array_type(GenContext *c, Type *type)
 {
 	LLVMMetadataRef *ranges = NULL;
 	Type *current_type = type;
-	while (current_type->canonical->type_kind == TYPE_ARRAY)
+	while (current_type->canonical->type_kind == TYPE_ARRAY || current_type->canonical->type_kind == TYPE_FLEXIBLE_ARRAY)
 	{
 		vec_add(ranges, LLVMDIBuilderGetOrCreateSubrange(c->debug.builder, 0, current_type->canonical->array.len));
 		current_type = current_type->canonical->array.base;
@@ -571,8 +571,8 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 		case TYPE_DISTINCT:
 		case TYPE_TYPEDEF:
 			return type->backend_debug_type = llvm_debug_typedef_type(c, type);
-		case TYPE_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_ARRAY:
 			return type->backend_debug_type = llvm_debug_array_type(c, type);
 		case TYPE_SUBARRAY:
 			return type->backend_debug_type = llvm_debug_subarray_type(c, type);
