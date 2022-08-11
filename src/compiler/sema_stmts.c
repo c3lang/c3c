@@ -1100,18 +1100,15 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	assert(enumerator->resolve_status == RESOLVE_DONE);
 	bool is_addr = false;
 	bool is_variable = false;
-	if (expr_is_ltype(enumerator))
+	if (enumerator->expr_kind == EXPR_IDENTIFIER)
 	{
-		if (enumerator->expr_kind == EXPR_IDENTIFIER)
-		{
-			enumerator->identifier_expr.decl->var.is_written = true;
-			is_variable = true;
-		}
-		else
-		{
-			is_addr = true;
-			expr_insert_addr(enumerator);
-		}
+		enumerator->identifier_expr.decl->var.is_written = true;
+		is_variable = true;
+	}
+	else if (expr_may_addr(enumerator))
+	{
+		is_addr = true;
+		expr_insert_addr(enumerator);
 	}
 
 	Decl *temp = NULL;

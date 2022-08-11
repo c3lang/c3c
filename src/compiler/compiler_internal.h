@@ -1928,6 +1928,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind);
 Expr *expr_generate_decl(Decl *decl, Expr *assign);
 void expr_insert_addr(Expr *original);
 void expr_insert_deref(Expr *expr);
+bool expr_may_addr(Expr *expr);
 Expr *expr_variable(Decl *decl);
 void expr_rewrite_to_builtin_access(SemaContext *context, Expr *expr, Expr *parent, BuiltinAccessKind kind, Type *type);
 INLINE Expr *expr_new_expr(ExprKind kind, Expr *expr);
@@ -1939,6 +1940,7 @@ INLINE void expr_replace(Expr *expr, Expr *replacement);
 INLINE bool expr_poison(Expr *expr);
 INLINE bool exprid_is_constant_eval(ExprId expr, ConstantEvalKind eval_kind);
 INLINE bool expr_is_init_list(Expr *expr);
+INLINE bool expr_is_deref(Expr *expr);
 
 void expr_const_set_int(ExprConst *expr, uint64_t v, TypeKind kind);
 void expr_const_set_float(ExprConst *expr, Real d, TypeKind kind);
@@ -2532,6 +2534,12 @@ static inline DeclKind decl_from_token(TokenType type)
 	if (type == TOKEN_BITSTRUCT) return DECL_BITSTRUCT;
 	UNREACHABLE
 }
+
+INLINE bool expr_is_deref(Expr *expr)
+{
+	return expr->expr_kind == EXPR_UNARY && expr->unary_expr.operator == UNARYOP_DEREF;
+}
+
 
 INLINE bool expr_is_init_list(Expr *expr)
 {

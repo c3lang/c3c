@@ -808,8 +808,7 @@ entry:
   %URLS = alloca %"char[][]", align 8
   %literal = alloca [5 x %"char[]"], align 16
   %anon = alloca i64, align 8
-  %anon1 = alloca %"char[][]", align 8
-  %anon2 = alloca i64, align 8
+  %anon1 = alloca i64, align 8
   %url = alloca %"char[]", align 8
   %summary = alloca %Summary, align 8
   %result = alloca %Summary, align 8
@@ -832,126 +831,123 @@ entry:
   %7 = insertvalue %"char[][]" %6, i64 5, 1
   store %"char[][]" %7, %"char[][]"* %URLS, align 8
   store i64 0, i64* %anon, align 8
-  %8 = bitcast %"char[][]"* %anon1 to i8*
-  %9 = bitcast %"char[][]"* %URLS to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %8, i8* align 8 %9, i32 16, i1 false)
-  %10 = getelementptr inbounds %"char[][]", %"char[][]"* %anon1, i32 0, i32 1
-  %11 = load i64, i64* %10, align 8
-  store i64 %11, i64* %anon2, align 8
+  %8 = getelementptr inbounds %"char[][]", %"char[][]"* %URLS, i32 0, i32 1
+  %9 = load i64, i64* %8, align 8
+  store i64 %9, i64* %anon1, align 8
   br label %loop.cond
 
-loop.cond:                                        ; preds = %phi_block12, %entry
-  %12 = load i64, i64* %anon, align 8
-  %13 = load i64, i64* %anon2, align 8
-  %lt = icmp ult i64 %12, %13
+loop.cond:                                        ; preds = %phi_block11, %entry
+  %10 = load i64, i64* %anon, align 8
+  %11 = load i64, i64* %anon1, align 8
+  %lt = icmp ult i64 %10, %11
   br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
-  %14 = getelementptr inbounds %"char[][]", %"char[][]"* %anon1, i32 0, i32 0
-  %15 = load %"char[]"*, %"char[]"** %14, align 8
-  %16 = load i64, i64* %anon, align 8
-  %ptroffset = getelementptr inbounds %"char[]", %"char[]"* %15, i64 %16
-  %17 = bitcast %"char[]"* %url to i8*
-  %18 = bitcast %"char[]"* %ptroffset to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %17, i8* align 8 %18, i32 16, i1 false)
-  %19 = getelementptr inbounds %"char[]", %"char[]"* %url, i32 0, i32 1
-  %20 = load i64, i64* %19, align 8
-  %uisitrunc = trunc i64 %20 to i32
-  %21 = getelementptr inbounds %"char[]", %"char[]"* %url, i32 0, i32 0
-  %22 = load i8*, i8** %21, align 8
-  %23 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([27 x i8], [27 x i8]* @.str.20, i32 0, i32 0), i32 %uisitrunc, i8* %22)
-  %24 = bitcast %"char[]"* %url to { i8*, i64 }*
-  %25 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %24, i32 0, i32 0
-  %lo = load i8*, i8** %25, align 8
-  %26 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %24, i32 0, i32 1
-  %hi = load i64, i64* %26, align 8
-  %27 = call { %"char[]"*, i8 } @test_readAndBuildSummary(i8* %lo, i64 %hi)
-  %28 = bitcast %Summary* %result to { %"char[]"*, i8 }*
-  store { %"char[]"*, i8 } %27, { %"char[]"*, i8 }* %28, align 8
-  %29 = bitcast %Summary* %summary to i8*
-  %30 = bitcast %Summary* %result to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %29, i8* align 8 %30, i32 16, i1 false)
-  %31 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @.str.21, i32 0, i32 0))
-  %32 = load i8*, i8** @__stdoutp, align 8
-  call void @test_Summary_print(%Summary* %summary, i8* %32)
-  %33 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @.str.22, i32 0, i32 0))
-  %34 = getelementptr inbounds %Summary, %Summary* %summary, i32 0, i32 0
-  %35 = load %"char[]"*, %"char[]"** %34, align 8
-  %ptrbool = icmp ne %"char[]"* %35, null
+  %12 = getelementptr inbounds %"char[][]", %"char[][]"* %URLS, i32 0, i32 0
+  %13 = load %"char[]"*, %"char[]"** %12, align 8
+  %14 = load i64, i64* %anon, align 8
+  %ptroffset = getelementptr inbounds %"char[]", %"char[]"* %13, i64 %14
+  %15 = bitcast %"char[]"* %url to i8*
+  %16 = bitcast %"char[]"* %ptroffset to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %15, i8* align 8 %16, i32 16, i1 false)
+  %17 = getelementptr inbounds %"char[]", %"char[]"* %url, i32 0, i32 1
+  %18 = load i64, i64* %17, align 8
+  %uisitrunc = trunc i64 %18 to i32
+  %19 = getelementptr inbounds %"char[]", %"char[]"* %url, i32 0, i32 0
+  %20 = load i8*, i8** %19, align 8
+  %21 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([27 x i8], [27 x i8]* @.str.20, i32 0, i32 0), i32 %uisitrunc, i8* %20)
+  %22 = bitcast %"char[]"* %url to { i8*, i64 }*
+  %23 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %22, i32 0, i32 0
+  %lo = load i8*, i8** %23, align 8
+  %24 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %22, i32 0, i32 1
+  %hi = load i64, i64* %24, align 8
+  %25 = call { %"char[]"*, i8 } @test_readAndBuildSummary(i8* %lo, i64 %hi)
+  %26 = bitcast %Summary* %result to { %"char[]"*, i8 }*
+  store { %"char[]"*, i8 } %25, { %"char[]"*, i8 }* %26, align 8
+  %27 = bitcast %Summary* %summary to i8*
+  %28 = bitcast %Summary* %result to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %27, i8* align 8 %28, i32 16, i1 false)
+  %29 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @.str.21, i32 0, i32 0))
+  %30 = load i8*, i8** @__stdoutp, align 8
+  call void @test_Summary_print(%Summary* %summary, i8* %30)
+  %31 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @.str.22, i32 0, i32 0))
+  %32 = getelementptr inbounds %Summary, %Summary* %summary, i32 0, i32 0
+  %33 = load %"char[]"*, %"char[]"** %32, align 8
+  %ptrbool = icmp ne %"char[]"* %33, null
   br i1 %ptrbool, label %cond.lhs, label %cond.rhs
 
 cond.lhs:                                         ; preds = %loop.body
-  %36 = getelementptr inbounds %Summary, %Summary* %summary, i32 0, i32 0
-  %37 = load %"char[]"*, %"char[]"** %36, align 8
-  %38 = load %"char[]", %"char[]"* %37, align 8
+  %34 = getelementptr inbounds %Summary, %Summary* %summary, i32 0, i32 0
+  %35 = load %"char[]"*, %"char[]"** %34, align 8
+  %36 = load %"char[]", %"char[]"* %35, align 8
   br label %cond.phi
 
 cond.rhs:                                         ; preds = %loop.body
   br label %cond.phi
 
 cond.phi:                                         ; preds = %cond.rhs, %cond.lhs
-  %val = phi %"char[]" [ %38, %cond.lhs ], [ zeroinitializer, %cond.rhs ]
+  %val = phi %"char[]" [ %36, %cond.lhs ], [ zeroinitializer, %cond.rhs ]
   store %"char[]" %val, %"char[]"* %title_sure, align 8
-  %39 = getelementptr inbounds %"char[]", %"char[]"* %title_sure, i32 0, i32 1
-  %40 = load i64, i64* %39, align 8
-  %uisitrunc3 = trunc i64 %40 to i32
-  %41 = getelementptr inbounds %"char[]", %"char[]"* %title_sure, i32 0, i32 0
-  %42 = load i8*, i8** %41, align 8
-  %43 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str.24, i32 0, i32 0), i32 %uisitrunc3, i8* %42)
-  %44 = bitcast %"char[]"* %url to { i8*, i64 }*
-  %45 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %44, i32 0, i32 0
-  %lo4 = load i8*, i8** %45, align 8
-  %46 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %44, i32 0, i32 1
-  %hi5 = load i64, i64* %46, align 8
-  %47 = call i64 @test_readWhetherTitleNonEmpty(i8* %retparam, i8* %lo4, i64 %hi5)
-  %not_err = icmp eq i64 %47, 0
+  %37 = getelementptr inbounds %"char[]", %"char[]"* %title_sure, i32 0, i32 1
+  %38 = load i64, i64* %37, align 8
+  %uisitrunc2 = trunc i64 %38 to i32
+  %39 = getelementptr inbounds %"char[]", %"char[]"* %title_sure, i32 0, i32 0
+  %40 = load i8*, i8** %39, align 8
+  %41 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str.24, i32 0, i32 0), i32 %uisitrunc2, i8* %40)
+  %42 = bitcast %"char[]"* %url to { i8*, i64 }*
+  %43 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %42, i32 0, i32 0
+  %lo3 = load i8*, i8** %43, align 8
+  %44 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %42, i32 0, i32 1
+  %hi4 = load i64, i64* %44, align 8
+  %45 = call i64 @test_readWhetherTitleNonEmpty(i8* %retparam, i8* %lo3, i64 %hi4)
+  %not_err = icmp eq i64 %45, 0
   br i1 %not_err, label %after_check, label %assign_optional
 
 assign_optional:                                  ; preds = %cond.phi
-  store i64 %47, i64* %has_title.f, align 8
+  store i64 %45, i64* %has_title.f, align 8
   br label %after_assign
 
 after_check:                                      ; preds = %cond.phi
-  %48 = load i8, i8* %retparam, align 1
-  store i8 %48, i8* %has_title, align 1
+  %46 = load i8, i8* %retparam, align 1
+  store i8 %46, i8* %has_title, align 1
   store i64 0, i64* %has_title.f, align 8
   br label %after_assign
 
 after_assign:                                     ; preds = %after_check, %assign_optional
-  %49 = load i64, i64* %has_title.f, align 8
-  %not_err6 = icmp eq i64 %49, 0
-  br i1 %not_err6, label %after_check7, label %else_block
+  %47 = load i64, i64* %has_title.f, align 8
+  %not_err5 = icmp eq i64 %47, 0
+  br i1 %not_err5, label %after_check6, label %else_block
 
-after_check7:                                     ; preds = %after_assign
-  %50 = load i8, i8* %has_title, align 1
-  %51 = call i8* @test_bool_to_string(i8 %50)
+after_check6:                                     ; preds = %after_assign
+  %48 = load i8, i8* %has_title, align 1
+  %49 = call i8* @test_bool_to_string(i8 %48)
   br label %phi_block
 
 else_block:                                       ; preds = %after_assign
-  %52 = load i64, i64* %has_title.f, align 8
-  %53 = call i8* @test_nameFromError(i64 %52)
+  %50 = load i64, i64* %has_title.f, align 8
+  %51 = call i8* @test_nameFromError(i64 %50)
   br label %phi_block
 
-phi_block:                                        ; preds = %else_block, %after_check7
-  %val8 = phi i8* [ %51, %after_check7 ], [ %53, %else_block ]
-  %54 = load i64, i64* %has_title.f, align 8
-  %not_err9 = icmp eq i64 %54, 0
-  br i1 %not_err9, label %after_check10, label %else_block11
+phi_block:                                        ; preds = %else_block, %after_check6
+  %val7 = phi i8* [ %49, %after_check6 ], [ %51, %else_block ]
+  %52 = load i64, i64* %has_title.f, align 8
+  %not_err8 = icmp eq i64 %52, 0
+  br i1 %not_err8, label %after_check9, label %else_block10
 
-after_check10:                                    ; preds = %phi_block
-  %55 = load i8, i8* %has_title, align 1
-  %56 = trunc i8 %55 to i1
-  br label %phi_block12
+after_check9:                                     ; preds = %phi_block
+  %53 = load i8, i8* %has_title, align 1
+  %54 = trunc i8 %53 to i1
+  br label %phi_block11
 
-else_block11:                                     ; preds = %phi_block
-  br label %phi_block12
+else_block10:                                     ; preds = %phi_block
+  br label %phi_block11
 
-phi_block12:                                      ; preds = %else_block11, %after_check10
-  %val13 = phi i1 [ %56, %after_check10 ], [ false, %else_block11 ]
-  %ternary = select i1 %val13, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str.26, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str.27, i32 0, i32 0)
-  %57 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([23 x i8], [23 x i8]* @.str.25, i32 0, i32 0), i8* %val8, i8* %ternary)
-  %58 = load i64, i64* %anon, align 8
-  %add = add i64 %58, 1
+phi_block11:                                      ; preds = %else_block10, %after_check9
+  %val12 = phi i1 [ %54, %after_check9 ], [ false, %else_block10 ]
+  %ternary = select i1 %val12, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str.26, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str.27, i32 0, i32 0)
+  %55 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([23 x i8], [23 x i8]* @.str.25, i32 0, i32 0), i8* %val7, i8* %ternary)
+  %56 = load i64, i64* %anon, align 8
+  %add = add i64 %56, 1
   store i64 %add, i64* %anon, align 8
   br label %loop.cond
 

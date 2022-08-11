@@ -558,7 +558,7 @@ int sema_check_comp_time_bool(SemaContext *context, Expr *expr)
 }
 
 
-bool expr_is_ltype(Expr *expr)
+bool expr_is_lvalue(Expr *expr)
 {
 	switch (expr->expr_kind)
 	{
@@ -596,9 +596,9 @@ bool expr_is_ltype(Expr *expr)
 			return expr->unary_expr.operator == UNARYOP_DEREF;
 		case EXPR_BITACCESS:
 		case EXPR_ACCESS:
-			return expr_is_ltype(expr->access_expr.parent);
+			return expr_is_lvalue(expr->access_expr.parent);
 		case EXPR_GROUP:
-			return expr_is_ltype(expr->inner_expr);
+			return expr_is_lvalue(expr->inner_expr);
 		case EXPR_SUBSCRIPT:
 		case EXPR_SLICE:
 			return true;
@@ -607,9 +607,103 @@ bool expr_is_ltype(Expr *expr)
 	}
 }
 
+
+bool expr_may_addr(Expr *expr)
+{
+	if (IS_OPTIONAL(expr)) return false;
+	switch (expr->expr_kind)
+	{
+		case EXPR_IDENTIFIER:
+		{
+			Decl *decl = expr->identifier_expr.decl;
+			if (decl->decl_kind != DECL_VAR) return false;
+			decl = decl_raw(decl);
+			switch (decl->var.kind)
+			{
+				case VARDECL_LOCAL_CT:
+				case VARDECL_LOCAL_CT_TYPE:
+				case VARDECL_LOCAL:
+				case VARDECL_GLOBAL:
+				case VARDECL_PARAM:
+				case VARDECL_PARAM_REF:
+				case VARDECL_CONST:
+					return true;
+				case VARDECL_MEMBER:
+				case VARDECL_BITMEMBER:
+				case VARDECL_PARAM_CT:
+				case VARDECL_PARAM_CT_TYPE:
+				case VARDECL_PARAM_EXPR:
+					return false;
+				case VARDECL_UNWRAPPED:
+				case VARDECL_ERASE:
+				case VARDECL_REWRAPPED:
+					UNREACHABLE
+			}
+		}
+		case EXPR_UNARY:
+			return expr->unary_expr.operator == UNARYOP_DEREF;
+		case EXPR_BITACCESS:
+		case EXPR_ACCESS:
+			return expr_may_addr(expr->access_expr.parent);
+		case EXPR_GROUP:
+			return expr_may_addr(expr->inner_expr);
+		case EXPR_SUBSCRIPT:
+		case EXPR_SLICE:
+			return true;
+		case EXPR_SUBSCRIPT_ADDR:
+		case EXPR_POISONED:
+		case EXPR_BITASSIGN:
+		case EXPR_BINARY:
+		case EXPR_BUILTIN:
+		case EXPR_COMPILER_CONST:
+		case EXPR_MACRO_BODY_EXPANSION:
+		case EXPR_CALL:
+		case EXPR_CAST:
+		case EXPR_CATCH:
+		case EXPR_CATCH_UNWRAP:
+		case EXPR_COMPOUND_LITERAL:
+		case EXPR_CONST:
+		case EXPR_CT_CALL:
+		case EXPR_CT_CONV:
+		case EXPR_CT_IDENT:
+		case EXPR_CT_EVAL:
+		case EXPR_COND:
+		case EXPR_DECL:
+		case EXPR_DESIGNATOR:
+		case EXPR_EXPR_BLOCK:
+		case EXPR_EXPRESSION_LIST:
+		case EXPR_FAILABLE:
+		case EXPR_RETHROW:
+		case EXPR_FORCE_UNWRAP:
+		case EXPR_HASH_IDENT:
+		case EXPR_MACRO_BLOCK:
+		case EXPR_RETVAL:
+		case EXPR_FLATPATH:
+		case EXPR_INITIALIZER_LIST:
+		case EXPR_DESIGNATED_INITIALIZER_LIST:
+		case EXPR_POST_UNARY:
+		case EXPR_SLICE_ASSIGN:
+		case EXPR_STRINGIFY:
+		case EXPR_ARGV_TO_SUBARRAY:
+		case EXPR_TERNARY:
+		case EXPR_TRY:
+		case EXPR_TRY_UNWRAP:
+		case EXPR_TRY_UNWRAP_CHAIN:
+		case EXPR_TYPEID:
+		case EXPR_TYPEINFO:
+		case EXPR_VARIANTSWITCH:
+		case EXPR_NOP:
+		case EXPR_TYPEID_INFO:
+		case EXPR_VARIANT:
+		case EXPR_BUILTIN_ACCESS:
+			return false;
+	}
+	UNREACHABLE
+}
+
 bool sema_expr_check_assign(SemaContext *c, Expr *expr)
 {
-	if (!expr_is_ltype(expr))
+	if (!expr_is_lvalue(expr))
 	{
 		SEMA_ERROR(expr, "An assignable expression, like a variable, was expected here.");
 		return false;

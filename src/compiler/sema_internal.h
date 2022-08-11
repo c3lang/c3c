@@ -56,7 +56,7 @@ bool splitpathref(const char *string, ArraySize len, Path **path_ref, const char
 
 #define IS_CONST(_x) ((_x)->expr_kind == EXPR_CONST)
 
-bool expr_is_ltype(Expr *expr);
+bool expr_is_lvalue(Expr *expr);
 bool sema_expr_check_assign(SemaContext *c, Expr *expr);
 bool sema_analyse_contracts(SemaContext *context, AstId doc, AstId **asserts);
 void sema_append_contract_asserts(AstId assert_first, Ast* compound_stmt);
