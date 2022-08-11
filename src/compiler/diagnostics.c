@@ -28,6 +28,7 @@ static void print_error(SourceSpan location, const char *message, PrintType prin
 				eprintf("Error|%s|%d|%s\n", file->name, location.row, message);
 				return;
 			case PRINT_TYPE_PREV:
+				eprintf("Note|%s|%d|%s\n", file->name, location.row, message);
 				return;
 			case PRINT_TYPE_WARN:
 				eprintf("Warning|%s|%d|%s\n", file->name, location.row, message);
@@ -116,10 +117,10 @@ static void print_error(SourceSpan location, const char *message, PrintType prin
 				eprintf("(%s:%d:%d) Error: %s\n\n", file->full_path, location.row, col_location, message);
 				break;
 			case PRINT_TYPE_PREV:
-				eprintf("(%s:%d:%d) %s\n\n", file->name, location.row, col_location, message);
+				eprintf("(%s:%d:%d) Note: %s\n\n", file->full_path, location.row, col_location, message);
 				break;
 			case PRINT_TYPE_WARN:
-				eprintf("(%s:%d:%d) Warning: %s\n\n", file->name, location.row, col_location, message);
+				eprintf("(%s:%d:%d) Warning: %s\n\n", file->full_path, location.row, col_location, message);
 				break;
 			default:
 				UNREACHABLE
@@ -133,10 +134,10 @@ static void print_error(SourceSpan location, const char *message, PrintType prin
 				eprintf("(%s:%d) Error: %s\n\n", file->full_path, location.row, message);
 				break;
 			case PRINT_TYPE_PREV:
-				eprintf("(%s:%d) %s\n\n", file->name, location.row, message);
+				eprintf("(%s:%d) Note: %s\n\n", file->full_path, location.row, message);
 				break;
 			case PRINT_TYPE_WARN:
-				eprintf("(%s:%d) Warning: %s\n\n", file->name, location.row, message);
+				eprintf("(%s:%d) Warning: %s\n\n", file->full_path, location.row, message);
 				break;
 			default:
 				UNREACHABLE
