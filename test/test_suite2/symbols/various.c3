@@ -62,7 +62,7 @@ fn void test9()
 {
     const char A = 1;
     char b = A;
-    A = b;              // #error: An assignable expression
+    A = b;              // #error: You cannot assign to a constant
 }
 
 fn void test10()
@@ -184,6 +184,3 @@ fn void test24()
 {
     int a = b123;  // #error: 'int[2][3]' into 'int'
 }
-
-
-

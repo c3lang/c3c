@@ -9,7 +9,7 @@ fn void test2()
     int! a;
     int b;
     if (try b = a) {}
-    if (try test2 = a) {} // #error: An assignable expression
+    if (try test2 = a) {} // #error: You cannot assign a value to a function
 }
 
 const int BAZ = 1;
@@ -19,7 +19,7 @@ fn void test3()
 
     int! a;
     int b;
-    if (try BAZ = a) {} // #error: An assignable expression
+    if (try BAZ = a) {} // #error: You cannot assign to a constant
 }
 
 
@@ -45,7 +45,7 @@ fn void test6()
     int! a;
     int b;
     int*! x;
-    if (try *x = a) {} // #error: This is a failable expression, it can't go on the left hand side of a 'try'.
+    if (try *x = a) {} // #error: You cannot assign to a dereferenced optional.
 }
 
 

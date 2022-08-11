@@ -98,57 +98,64 @@ Decl *decl_new_with_type(const char *name, SourceSpan loc, DeclKind decl_type, V
 
 const char *decl_to_name(Decl *decl)
 {
+	const char *name = decl_to_a_name(decl);
+	if (name[1] == 'n') return &name[3];
+	return &name[2];
+}
+
+const char *decl_to_a_name(Decl *decl)
+{
 	switch (decl->decl_kind)
 	{
 		case DECL_BODYPARAM:
-			return "bodyparam";
+			return "a bodyparam";
 		case DECL_DECLARRAY:
-			return "declarray";
+			return "a declarray";
 		case DECL_BITSTRUCT:
-			return "bitstruct";
+			return "a bitstruct";
 		case DECL_POISONED:
-			return "poisoned decl";
+			return "a poisoned decl";
 		case DECL_CT_ASSERT:
-			return "compile time assert";
+			return "a compile time assert";
 		case DECL_CT_CASE:
-			return "compile time case";
+			return "a compile time case";
 		case DECL_CT_ELIF:
-			return "compile time else if";
+			return "a compile time else if";
 		case DECL_CT_ELSE:
-			return "compile time else";
+			return "a compile time else";
 		case DECL_CT_IF:
-			return "compile time if";
+			return "a compile time if";
 		case DECL_CT_SWITCH:
-			return "compile time switch";
+			return "a compile time switch";
 		case DECL_IMPORT:
-			return "import";
+			return "an import";
 		case DECL_LABEL:
-			return "label";
+			return "a label";
 		case DECL_ATTRIBUTE:
-			return "attribute";
+			return "an attribute";
 		case DECL_DEFINE:
 		case DECL_TYPEDEF:
-			return "define";
+			return "a define";
 		case DECL_DISTINCT:
-			return "distinct type";
+			return "a distinct type";
 		case DECL_ENUM:
-			return "enum";
+			return "an enum";
 		case DECL_ENUM_CONSTANT:
-			return "enum value";
+			return "an enum value";
 		case DECL_FAULTVALUE:
-			return "err value";
+			return "a fault value";
 		case DECL_FAULT:
-			return "fault";
+			return "a fault";
 		case DECL_FUNC:
-			return "function";
+			return "a function";
 		case DECL_GENERIC:
-			return "generic";
+			return "a generic";
 		case DECL_MACRO:
-			return "macro";
+			return "a macro";
 		case DECL_STRUCT:
-			return "struct";
+			return "a struct";
 		case DECL_UNION:
-			return "union";
+			return "a union";
 		case DECL_VAR:
 			switch (decl->var.kind)
 			{
@@ -156,30 +163,30 @@ const char *decl_to_name(Decl *decl)
 				case VARDECL_REWRAPPED:
 					UNREACHABLE
 				case VARDECL_CONST:
-					return "constant";
+					return "a constant";
 				case VARDECL_GLOBAL:
-					return "global variable";
+					return "a global variable";
 				case VARDECL_LOCAL:
-					return "variable";
+					return "a variable";
 				case VARDECL_PARAM:
-					return "parameter";
+					return "a parameter";
 				case VARDECL_MEMBER:
 				case VARDECL_BITMEMBER:
-					return "member";
+					return "a member";
 				case VARDECL_PARAM_CT:
-					return "compile time parameter";
+					return "a compile time parameter";
 				case VARDECL_PARAM_CT_TYPE:
-					return "compile time type parameter";
+					return "a compile time type parameter";
 				case VARDECL_PARAM_REF:
-					return "ref parameter";
+					return "a ref parameter";
 				case VARDECL_PARAM_EXPR:
-					return "expression parameter";
+					return "a expression parameter";
 				case VARDECL_LOCAL_CT:
-					return "compile time variable";
+					return "a compile time variable";
 				case VARDECL_LOCAL_CT_TYPE:
-					return "compile time type variable";
+					return "a compile time type variable";
 				case VARDECL_UNWRAPPED:
-					return "unwrapped";
+					return "an unwrapped variable";
 			}
 			UNREACHABLE
 	}

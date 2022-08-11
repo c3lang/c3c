@@ -558,7 +558,7 @@ int sema_check_comp_time_bool(SemaContext *context, Expr *expr)
 }
 
 
-bool expr_is_lvalue(Expr *expr)
+static bool sema_check_expr_lvalue(Expr *top_expr, Expr *expr)
 {
 	switch (expr->expr_kind)
 	{
@@ -566,9 +566,17 @@ bool expr_is_lvalue(Expr *expr)
 			return true;
 		case EXPR_IDENTIFIER:
 		{
-			if (expr->identifier_expr.is_const) return false;
+			if (expr->identifier_expr.is_const)
+			{
+				SEMA_ERROR(top_expr, "You cannot assign to a constant.");
+				return false;
+			}
 			Decl *decl = expr->identifier_expr.decl;
-			if (decl->decl_kind != DECL_VAR) return false;
+			if (decl->decl_kind != DECL_VAR)
+			{
+				SEMA_ERROR(top_expr, "You cannot assign a value to %s.", decl_to_a_name(decl));
+				return false;
+			}
 			decl = decl_raw(decl);
 			switch (decl->var.kind)
 			{
@@ -578,33 +586,96 @@ bool expr_is_lvalue(Expr *expr)
 				case VARDECL_GLOBAL:
 				case VARDECL_PARAM:
 				case VARDECL_PARAM_REF:
-					return true;
-				case VARDECL_CONST:
-				case VARDECL_MEMBER:
-				case VARDECL_BITMEMBER:
 				case VARDECL_PARAM_CT:
 				case VARDECL_PARAM_CT_TYPE:
+					return true;
+				case VARDECL_CONST:
 				case VARDECL_PARAM_EXPR:
-					return false;
+					UNREACHABLE
+				case VARDECL_MEMBER:
+				case VARDECL_BITMEMBER:
+					goto ERR;
 				case VARDECL_UNWRAPPED:
 				case VARDECL_ERASE:
 				case VARDECL_REWRAPPED:
 					UNREACHABLE
 			}
+			UNREACHABLE
 		}
 		case EXPR_UNARY:
-			return expr->unary_expr.operator == UNARYOP_DEREF;
+			if (expr->unary_expr.operator != UNARYOP_DEREF) goto ERR;
+			if (IS_OPTIONAL(expr))
+			{
+				SEMA_ERROR(top_expr, "You cannot assign to a dereferenced optional.");
+				return false;
+			}
+			return true;
 		case EXPR_BITACCESS:
 		case EXPR_ACCESS:
-			return expr_is_lvalue(expr->access_expr.parent);
+			return sema_check_expr_lvalue(top_expr, expr->access_expr.parent);
 		case EXPR_GROUP:
-			return expr_is_lvalue(expr->inner_expr);
+			return sema_check_expr_lvalue(top_expr, expr->inner_expr);
 		case EXPR_SUBSCRIPT:
 		case EXPR_SLICE:
+		case EXPR_SUBSCRIPT_ADDR:
+			if (IS_OPTIONAL(expr))
+			{
+				SEMA_ERROR(top_expr, "You cannot assign to an optional value.");
+				return false;
+			}
 			return true;
-		default:
+		case EXPR_HASH_IDENT:
+			SEMA_ERROR(top_expr, "You cannot assign to an unevaluated expression.");
 			return false;
+		case EXPR_POISONED:
+		case EXPR_BITASSIGN:
+		case EXPR_BINARY:
+		case EXPR_BUILTIN:
+		case EXPR_COMPILER_CONST:
+		case EXPR_MACRO_BODY_EXPANSION:
+		case EXPR_CALL:
+		case EXPR_CAST:
+		case EXPR_CATCH:
+		case EXPR_CATCH_UNWRAP:
+		case EXPR_COMPOUND_LITERAL:
+		case EXPR_CONST:
+		case EXPR_CT_CALL:
+		case EXPR_CT_CONV:
+		case EXPR_CT_EVAL:
+		case EXPR_COND:
+		case EXPR_DECL:
+		case EXPR_DESIGNATOR:
+		case EXPR_EXPR_BLOCK:
+		case EXPR_EXPRESSION_LIST:
+		case EXPR_FAILABLE:
+		case EXPR_RETHROW:
+		case EXPR_FORCE_UNWRAP:
+		case EXPR_MACRO_BLOCK:
+		case EXPR_RETVAL:
+		case EXPR_FLATPATH:
+		case EXPR_INITIALIZER_LIST:
+		case EXPR_DESIGNATED_INITIALIZER_LIST:
+		case EXPR_POST_UNARY:
+		case EXPR_SLICE_ASSIGN:
+		case EXPR_STRINGIFY:
+		case EXPR_ARGV_TO_SUBARRAY:
+		case EXPR_TERNARY:
+		case EXPR_TRY:
+		case EXPR_TRY_UNWRAP:
+		case EXPR_TRY_UNWRAP_CHAIN:
+		case EXPR_TYPEID:
+		case EXPR_TYPEINFO:
+		case EXPR_VARIANTSWITCH:
+		case EXPR_NOP:
+		case EXPR_TYPEID_INFO:
+		case EXPR_VARIANT:
+		case EXPR_BUILTIN_ACCESS:
+			goto ERR;
 	}
+	UNREACHABLE
+ERR:
+	SEMA_ERROR(top_expr, "An assignable expression, like a variable, was expected here.");
+	return false;
 }
 
 
@@ -703,11 +774,7 @@ bool expr_may_addr(Expr *expr)
 
 bool sema_expr_check_assign(SemaContext *c, Expr *expr)
 {
-	if (!expr_is_lvalue(expr))
-	{
-		SEMA_ERROR(expr, "An assignable expression, like a variable, was expected here.");
-		return false;
-	}
+	if (!sema_check_expr_lvalue(expr, expr)) return false;
 	if (expr->expr_kind == EXPR_BITACCESS || expr->expr_kind == EXPR_ACCESS) expr = expr->access_expr.parent;
 	if (expr->expr_kind == EXPR_IDENTIFIER)
 	{

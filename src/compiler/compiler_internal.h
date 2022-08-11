@@ -1907,6 +1907,7 @@ Decl *decl_new_var(const char *name, SourceSpan span, TypeInfo *type, VarDeclKin
 Decl *decl_new_generated_var(Type *type, VarDeclKind kind, SourceSpan span);
 void decl_set_external_name(Decl *decl);
 const char *decl_to_name(Decl *decl);
+const char *decl_to_a_name(Decl *decl);
 
 INLINE bool decl_ok(Decl *decl);
 INLINE bool decl_poison(Decl *decl);
