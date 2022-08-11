@@ -1866,6 +1866,11 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	{
 		Decl *param = params[i];
 		param->var.init_expr = args[i];
+		VarDeclKind kind = param->var.kind;
+		if (kind == VARDECL_PARAM_CT_TYPE || kind == VARDECL_PARAM_CT)
+		{
+			param->var.scope_depth = context->active_scope.depth + 1;
+		}
 	}
 
 	Decl **body_params = call_expr->call_expr.body_arguments;

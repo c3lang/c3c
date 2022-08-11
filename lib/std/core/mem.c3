@@ -57,10 +57,9 @@ macro void clear(void* dst, usize len, usize $dst_align = 0, bool $is_volatile =
  * @require $typeof(a).kind != TypeKind.POINTER || len > -1
  * @checked (a = b), (b = a)
  **/
-macro bool equals(a, b, isize len = -1, usize $alignment = 0)
+macro bool equals(a, b, isize len = -1, usize $align = 0)
 {
-	var $align = $alignment;
-	$if (!$alignment):
+	$if (!$align):
 		$align = $alignof($typeof(a[0]));
 	$endif;
 	void* x = void;
