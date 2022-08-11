@@ -135,7 +135,7 @@ jobs:
         run: |
           sudo apt-get install zlib1g zlib1g-dev python3 ninja-build
 
-      - name: Install Clang ${{ matrix.llvm_version }}
+      - name: Install Clang ${{matrix.llvm_version}}
         run: |
           wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
           if [[ "${{matrix.llvm_version}}" < 16 ]]; then
@@ -152,7 +152,16 @@ jobs:
 
       - name: CMake
         run: |
-          cmake -B build -G Ninja -DCMAKE_C_COMPILER=clang-${{matrix.llvm_version}} -DCMAKE_CXX_COMPILER=clang++-${{matrix.llvm_version}} -DC3_LLVM_VERSION=${{matrix.llvm_version}} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          cmake -B build \
+                -G Ninja \
+                -DCMAKE_BUILD_TYPE=${{matrix.build_type}} \
+                -DCMAKE_C_COMPILER=clang-${{matrix.llvm_version}} \
+                -DCMAKE_CXX_COMPILER=clang++-${{matrix.llvm_version}} \
+                -DCMAKE_LINKER=lld-link-${{matrix.llvm_version}} \
+                -DCMAKE_OBJCOPY=llvm-objcopy-${{matrix.llvm_version}} \
+                -DCMAKE_STRIP=llvm-strip-${{matrix.llvm_version}} \
+                -DCMAKE_DLLTOOL=llvm-dlltool-${{matrix.llvm_version}} \
+                -DC3_LLVM_VERSION=${{matrix.llvm_version}}
           cmake --build build
 
       - name: Build testproject
