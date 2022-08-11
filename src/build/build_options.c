@@ -96,7 +96,7 @@ static void usage(void)
 	OUTPUT("  --obj-out <dir>       - Override object file output directory.");
 	OUTPUT("  --llvm-out <dir>      - Override llvm output directory for '--emit-llvm'.");
 	OUTPUT("  --emit-llvm           - Emit LLVM IR as a .ll file per module.");
-	OUTPUT("  --asm-out <dir>       - Override llvm output directory for '--emit-asm'.");
+	OUTPUT("  --asm-out <dir>       - Override asm output directory for '--emit-asm'.");
 	OUTPUT("  --emit-asm            - Emit asm as a .s file per module.");
 	OUTPUT("  --target <target>     - Compile for a particular architecture + OS target.");
 	OUTPUT("  --threads <number>    - Set the number of threads to use for compilation.");
