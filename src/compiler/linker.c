@@ -65,6 +65,7 @@ static void linker_setup_windows(const char ***args_ref, LinkerType linker_type)
 {
 	if (linker_type == LINKER_CC) return;
 	//add_arg("/MACHINE:X64");
+	bool is_debug = false;
 	switch (active_target.debug_info)
 	{
 		case DEBUG_INFO_NOT_SET:
@@ -75,6 +76,7 @@ static void linker_setup_windows(const char ***args_ref, LinkerType linker_type)
 		case DEBUG_INFO_LINE_TABLES:
 		case DEBUG_INFO_FULL:
 			add_arg("/DEBUG:FULL");
+			is_debug = true;
 			break;
 		default:
 			UNREACHABLE
@@ -103,17 +105,37 @@ static void linker_setup_windows(const char ***args_ref, LinkerType linker_type)
 
 	if (active_target.win.crt_linking == WIN_CRT_STATIC)
 	{
-		add_arg("libucrt.lib");
-		add_arg("libvcruntimed.lib");
-		add_arg("libcmt.lib");
-		add_arg("libcpmt.lib");
+		if (is_debug)
+		{
+			add_arg("libucrtd.lib");
+			add_arg("libvcruntimed.lib");
+			add_arg("libcmtd.lib");
+			add_arg("libcpmtd.lib");
+		}
+		else
+		{
+			add_arg("libucrt.lib");
+			add_arg("libvcruntime.lib");
+			add_arg("libcmt.lib");
+			add_arg("libcpmt.lib");
+		}
 	}
 	else
 	{
-		add_arg("ucrt.lib");
-		add_arg("vcruntime.lib");
-		add_arg("msvcrt.lib");
-		add_arg("msvcprt.lib");
+		if (is_debug)
+		{
+			add_arg("ucrtd.lib");
+			add_arg("vcruntimed.lib");
+			add_arg("msvcrtd.lib");
+			add_arg("msvcprtd.lib");
+		}
+		else
+		{
+			add_arg("ucrt.lib");
+			add_arg("vcruntime.lib");
+			add_arg("msvcrt.lib");
+			add_arg("msvcprt.lib");
+		}
 	}
 	add_arg("/NOLOGO");
 }
