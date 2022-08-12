@@ -45,13 +45,13 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 		}
 		void *builder = c->builder;
 		c->builder = c->global_builder;
-		decl->backend_ref = llvm_add_global_var(c, "tempglobal", var_type, decl->alignment);
+		decl->backend_ref = llvm_add_global(c, "tempglobal", var_type, decl->alignment);
 		if (IS_OPTIONAL(decl))
 		{
 			scratch_buffer_clear();
 			scratch_buffer_append(decl->extname);
 			scratch_buffer_append("$f");
-			decl->var.failable_ref = llvm_add_global_var(c, scratch_buffer_to_string(), type_anyerr, 0);
+			decl->var.failable_ref = llvm_add_global(c, scratch_buffer_to_string(), type_anyerr, 0);
 		}
 		llvm_emit_global_variable_init(c, decl);
 		c->builder = builder;
@@ -167,7 +167,7 @@ void llvm_emit_jmp(GenContext *context, LLVMBasicBlockRef block)
 static inline void llvm_emit_return(GenContext *c, Ast *ast)
 {
 
-	PUSH_ERROR();
+	PUSH_OPT();
 
 	Expr *expr = ast->return_stmt.expr;
 	if (expr && expr->expr_kind == EXPR_FAILABLE)
@@ -185,7 +185,7 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 	{
 		error_return_block = llvm_basic_block_new(c, "err_retblock");
 		error_out = llvm_emit_alloca_aligned(c, type_anyerr, "reterr");
-		c->error_var = error_out;
+		c->opt_var = error_out;
 		c->catch_block = error_return_block;
 	}
 
@@ -198,7 +198,7 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 		c->retval = return_value;
 	}
 
-	POP_ERROR();
+	POP_OPT();
 
 
 	llvm_emit_statement_chain(c, ast->return_stmt.cleanup);
@@ -228,12 +228,12 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 static inline void llvm_emit_block_exit_return(GenContext *c, Ast *ast)
 {
 
-	PUSH_ERROR();
+	PUSH_OPT();
 
 	LLVMBasicBlockRef error_return_block = NULL;
 	LLVMValueRef error_out = NULL;
 	BlockExit *exit = *ast->return_stmt.block_exit_ref;
-	c->error_var = exit->block_error_var;
+	c->opt_var = exit->block_error_var;
 	c->catch_block = exit->block_failable_exit;
 
 	LLVMBasicBlockRef err_cleanup_block = NULL;
@@ -252,7 +252,7 @@ static inline void llvm_emit_block_exit_return(GenContext *c, Ast *ast)
 		llvm_value_fold_optional(c, &return_value);
 	}
 
-	POP_ERROR();
+	POP_OPT();
 
 	llvm_emit_statement_chain(c, ast->return_stmt.cleanup);
 	if (exit->block_return_out && return_value.value)
@@ -633,14 +633,14 @@ static void llvm_emit_switch_body_if_chain(GenContext *c,
 			llvm_emit_expr(c, &to_value, to_expr);
 			llvm_value_rvalue(c, &to_value);
 			BEValue le;
-			llvm_emit_comparison(c, &le, &be_value, switch_value, BINARYOP_LE);
+			llvm_emit_comp(c, &le, &be_value, switch_value, BINARYOP_LE);
 			BEValue ge;
-			llvm_emit_comparison(c, &ge, &to_value, switch_value, BINARYOP_GE);
-			llvm_value_set_bool(&equals, llvm_and(c, &le, &ge));
+			llvm_emit_comp(c, &ge, &to_value, switch_value, BINARYOP_GE);
+			llvm_value_set_bool(&equals, llvm_emit_and(c, &le, &ge));
 		}
 		else
 		{
-			llvm_emit_comparison(c, &equals, &be_value, switch_value, BINARYOP_EQ);
+			llvm_emit_comp(c, &equals, &be_value, switch_value, BINARYOP_EQ);
 		}
 		next = llvm_basic_block_new(c, "next_if");
 		llvm_emit_cond_br(c, &equals, block, next);
@@ -1052,16 +1052,16 @@ void gencontext_emit_expr_stmt(GenContext *c, Ast *ast)
 	BEValue value;
 	if (IS_OPTIONAL(ast->expr_stmt))
 	{
-		PUSH_ERROR();
+		PUSH_OPT();
 		LLVMBasicBlockRef discard_fail = llvm_basic_block_new(c, "voiderr");
 		c->catch_block = discard_fail;
-		c->error_var = NULL;
+		c->opt_var = NULL;
 		llvm_emit_expr(c, &value, ast->expr_stmt);
 		llvm_value_fold_optional(c, &value);
 		EMIT_LOC(c, ast);
 		llvm_emit_br(c, discard_fail);
 		llvm_emit_block(c, discard_fail);
-		POP_ERROR();
+		POP_OPT();
 		return;
 	}
 	llvm_emit_expr(c, &value, ast->expr_stmt);
@@ -1077,7 +1077,7 @@ LLVMValueRef llvm_emit_zstring_named(GenContext *c, const char *str, const char 
 	LLVMTypeRef char_type = llvm_get_type(c, type_char);
 	unsigned len = (unsigned)strlen(str);
 	LLVMTypeRef char_array_type = LLVMArrayType(char_type, len + 1);
-	LLVMValueRef global_string = llvm_add_global_type(c, extname, char_array_type, 0);
+	LLVMValueRef global_string = llvm_add_global_raw(c, extname, char_array_type, 0);
 	llvm_set_internal_linkage(global_string);
 	LLVMSetGlobalConstant(global_string, 1);
 	LLVMSetInitializer(global_string, LLVMConstStringInContext(c->context, str, len, 0));

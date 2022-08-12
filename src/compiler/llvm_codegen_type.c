@@ -4,6 +4,11 @@
 
 #include "llvm_codegen_internal.h"
 
+static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl);
+static inline LLVMTypeRef llvm_type_from_ptr(GenContext *context, Type *type);
+static inline LLVMTypeRef llvm_type_from_array(GenContext *context, Type *type);
+static void param_expand(GenContext *context, LLVMTypeRef** params_ref, Type *type);
+static inline void add_func_type_param(GenContext *context, Type *param_type, ABIArgInfo *arg_info, LLVMTypeRef **params);
 
 static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 {
@@ -571,7 +576,6 @@ static LLVMValueRef llvm_get_introspection_for_enum(GenContext *c, Type *type)
 	Decl **enum_vals = decl->enums.values;
 	unsigned elements = vec_size(enum_vals);
 	Decl **associated_values = decl->enums.parameters;
-	unsigned associated_value_count = vec_size(associated_values);
 	if (is_external && is_dynamic)
 	{
 		elements = 0;
@@ -634,10 +638,10 @@ static LLVMValueRef llvm_get_introspection_for_enum(GenContext *c, Type *type)
 		scratch_buffer_append(decl->extname);
 		scratch_buffer_append("$");
 		scratch_buffer_append(associated_value->name);
-		LLVMValueRef global_ref = llvm_add_global_type(c,
-		                                               scratch_buffer_to_string(),
-		                                               LLVMTypeOf(associated_value_arr),
-		                                               0);
+		LLVMValueRef global_ref = llvm_add_global_raw(c,
+		                                              scratch_buffer_to_string(),
+		                                              LLVMTypeOf(associated_value_arr),
+		                                              0);
 		llvm_set_linkonce(c, global_ref);
 		LLVMSetInitializer(global_ref, associated_value_arr);
 		LLVMSetGlobalConstant(global_ref, true);

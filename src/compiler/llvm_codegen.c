@@ -55,7 +55,7 @@ static void gencontext_destroy(GenContext *context)
 	free(context);
 }
 
-LLVMValueRef llvm_emit_is_no_error(GenContext *c, LLVMValueRef error_value)
+LLVMValueRef llvm_emit_is_no_opt(GenContext *c, LLVMValueRef error_value)
 {
 	return LLVMBuildICmp(c->builder, LLVMIntEQ, error_value, llvm_get_zero(c, type_anyerr), "not_err");
 }
@@ -76,9 +76,9 @@ LLVMValueRef llvm_emit_memclear_size_align(GenContext *c, LLVMValueRef ptr, uint
  */
 static LLVMValueRef llvm_emit_const_array_padding(LLVMTypeRef element_type, IndexDiff diff, bool *modified)
 {
-	if (diff == 1) return LLVMConstNull(element_type);
+	if (diff == 1) return llvm_get_zero_raw(element_type);
 	*modified = true;
-	return LLVMConstNull(LLVMArrayType(element_type, (unsigned)diff));
+	return llvm_get_zero_raw(LLVMArrayType(element_type, (unsigned)diff));
 }
 
 LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_init)
@@ -86,7 +86,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 	switch (const_init->kind)
 	{
 		case CONST_INIT_ZERO:
-			return LLVMConstNull(llvm_get_type(c, const_init->type));
+			return llvm_get_zero(c, const_init->type);
 		case CONST_INIT_ARRAY_VALUE:
 			UNREACHABLE
 		case CONST_INIT_ARRAY_FULL:
@@ -355,13 +355,16 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	}
 	else
 	{
-		init_value = LLVMConstNull(llvm_get_type(c, var_type));
+		init_value = llvm_get_zero(c, var_type);
 	}
 
 
 	// TODO fix name
 	LLVMValueRef old = decl->backend_ref;
-	LLVMValueRef global_ref = decl->backend_ref = llvm_add_global_type(c, decl->extname, LLVMTypeOf(init_value), decl->alignment);
+	LLVMValueRef global_ref = decl->backend_ref = llvm_add_global_raw(c,
+	                                                                  decl->extname,
+	                                                                  LLVMTypeOf(init_value),
+	                                                                  decl->alignment);
 	if (decl->var.is_addr)
 	{
 		LLVMSetUnnamedAddress(global_ref, LLVMNoUnnamedAddr);
@@ -393,7 +396,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 		LLVMSetInitializer(decl->backend_ref, init_value);
 		if (failable_ref)
 		{
-			LLVMSetInitializer(failable_ref, LLVMConstNull(llvm_get_type(c, type_anyerr)));
+			LLVMSetInitializer(failable_ref, llvm_get_zero(c, type_anyerr));
 		}
 	}
 
@@ -866,12 +869,12 @@ const char *llvm_codegen(void *context)
 	return object_name;
 }
 
-void llvm_add_global(GenContext *c, Decl *decl)
+void llvm_add_global_decl(GenContext *c, Decl *decl)
 {
 	assert(decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST);
 
 	const char *name = decl->unit->module == c->code_module ? "tempglobal" : decl_get_extname(decl);
-	decl->backend_ref = llvm_add_global_var(c, name, decl->type, decl->alignment);
+	decl->backend_ref = llvm_add_global(c, name, decl->type, decl->alignment);
 	llvm_set_alignment(decl->backend_ref, decl->alignment);
 
 	if (IS_OPTIONAL(decl))
@@ -879,12 +882,12 @@ void llvm_add_global(GenContext *c, Decl *decl)
 		scratch_buffer_clear();
 		scratch_buffer_append(decl_get_extname(decl));
 		scratch_buffer_append(".f");
-		decl->var.failable_ref = llvm_add_global_var(c, scratch_buffer_to_string(), type_anyerr, 0);
+		decl->var.failable_ref = llvm_add_global(c, scratch_buffer_to_string(), type_anyerr, 0);
 	}
 	llvm_set_global_tls(decl);
 }
 
-LLVMValueRef llvm_get_fault_ref(GenContext *c, Decl *decl)
+LLVMValueRef llvm_get_opt_ref(GenContext *c, Decl *decl)
 {
 	llvm_get_ref(c, decl);
 	decl = decl_flatten(decl);
@@ -907,7 +910,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 				return decl->backend_ref = llvm_get_ref(c, decl->var.alias);
 			}
 			assert(decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST);
-			llvm_add_global(c, decl);
+			llvm_add_global_decl(c, decl);
 			return decl->backend_ref;
 		case DECL_FUNC:
 			backend_ref = decl->backend_ref = LLVMAddFunction(c->module, decl_get_extname(decl), llvm_get_type(c, decl->type));
@@ -1117,14 +1120,14 @@ TypeSize llvm_store_size(GenContext *c, LLVMTypeRef type)
 	return (TypeSize)LLVMStoreSizeOfType(c->target_data, type);
 }
 
-void llvm_set_error_exit(GenContext *c, LLVMBasicBlockRef block)
+void llvm_set_catch_exit(GenContext *c, LLVMBasicBlockRef block)
 {
 	c->catch_block = block;
-	c->error_var = NULL;
+	c->opt_var = NULL;
 }
 
-void llvm_set_error_exit_and_value(GenContext *c, LLVMBasicBlockRef block, LLVMValueRef ref)
+void llvm_set_catch_exit_and_var(GenContext *c, LLVMBasicBlockRef block, LLVMValueRef catch_var)
 {
 	c->catch_block = block;
-	c->error_var = ref;
+	c->opt_var = catch_var;
 }

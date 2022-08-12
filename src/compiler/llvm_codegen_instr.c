@@ -29,7 +29,7 @@ LLVMValueRef llvm_emit_lshr_fixed(GenContext *c, LLVMValueRef data, int shift)
 	if (shift == 0) return data;
 	LLVMTypeRef type = LLVMTypeOf(data);
 	BitSize bit_width = llvm_bitsize(c, type);
-	if (shift >= bit_width) return LLVMConstNull(type);
+	if (shift >= bit_width) return llvm_get_zero_raw(type);
 	return llvm_emit_lshr(c, data, LLVMConstInt(type, (unsigned)shift, false));
 }
 
@@ -49,6 +49,6 @@ LLVMValueRef llvm_emit_shl_fixed(GenContext *c, LLVMValueRef data, int shift)
 	if (shift == 0) return data;
 	LLVMTypeRef type = LLVMTypeOf(data);
 	BitSize bit_width = llvm_bitsize(c, type);
-	if (shift >= bit_width) return LLVMConstNull(type);
+	if (shift >= bit_width) return llvm_get_zero_raw(type);
 	return llvm_emit_shl(c, data, LLVMConstInt(type, (unsigned)shift, false));
 }

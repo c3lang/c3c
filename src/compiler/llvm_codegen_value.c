@@ -31,7 +31,7 @@ void llvm_value_addr(GenContext *c, BEValue *value)
 	if (llvm_is_global_eval(c))
 	{
 		LLVMValueRef val = llvm_load_value_store(c, value);
-		LLVMValueRef ref = llvm_add_global_type(c, ".taddr", LLVMTypeOf(val), 0);
+		LLVMValueRef ref = llvm_add_global_raw(c, ".taddr", LLVMTypeOf(val), 0);
 		llvm_set_private_linkage(ref);
 		LLVMSetInitializer(ref, val);
 		llvm_value_set_address_abi_aligned(value, llvm_emit_bitcast_ptr(c, ref, value->type), value->type);
@@ -80,7 +80,7 @@ void llvm_emit_jump_to_optional_exit(GenContext *c, LLVMValueRef err_value)
 
 	LLVMBasicBlockRef after_block = llvm_basic_block_new(c, "after_check");
 	// No error variable
-	if (!c->error_var)
+	if (!c->opt_var)
 	{
 		// No error var and a constant error means jumping to the "catch" block
 		if (is_constant_err)
@@ -89,7 +89,7 @@ void llvm_emit_jump_to_optional_exit(GenContext *c, LLVMValueRef err_value)
 		}
 		else
 		{
-			llvm_emit_cond_br_raw(c, llvm_emit_is_no_error(c, err_value), after_block, c->catch_block);
+			llvm_emit_cond_br_raw(c, llvm_emit_is_no_opt(c, err_value), after_block, c->catch_block);
 		}
 		llvm_emit_block(c, after_block);
 		return;
@@ -98,13 +98,13 @@ void llvm_emit_jump_to_optional_exit(GenContext *c, LLVMValueRef err_value)
 	// If it's not a constant, then jump conditionally
 	if (!is_constant_err)
 	{
-		LLVMValueRef was_ok = llvm_emit_is_no_error(c, err_value);
+		LLVMValueRef was_ok = llvm_emit_is_no_opt(c, err_value);
 		LLVMBasicBlockRef error_block = llvm_basic_block_new(c, "assign_optional");
 		llvm_emit_cond_br_raw(c, was_ok, after_block, error_block);
 		llvm_emit_block(c, error_block);
 	}
 
-	llvm_store_to_ptr_raw(c, c->error_var, err_value, type_anyerr);
+	llvm_store_to_ptr_raw(c, c->opt_var, err_value, type_anyerr);
 	llvm_emit_br(c, c->catch_block);
 	llvm_emit_block(c, after_block);
 }
@@ -123,7 +123,7 @@ void llvm_value_set_decl_address(GenContext *c, BEValue *value, Decl *decl)
 	LLVMValueRef backend_ref = llvm_get_ref(c, decl);
 	llvm_value_set_address(value, backend_ref, decl->type, decl->alignment);
 
-	if ((value->failable = llvm_get_fault_ref(c, decl)))
+	if ((value->failable = llvm_get_opt_ref(c, decl)))
 	{
 		value->kind = BE_ADDRESS_FAILABLE;
 	}

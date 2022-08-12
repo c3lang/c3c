@@ -9,6 +9,7 @@ static void llvm_emit_param_attributes(GenContext *c, LLVMValueRef function, ABI
 static inline void llvm_emit_return_value(GenContext *context, LLVMValueRef value);
 static void llvm_expand_from_args(GenContext *c, Type *type, LLVMValueRef ref, unsigned *index, AlignSize alignment);
 static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIArgInfo *info, unsigned *index);
+static inline void llvm_emit_parameter(GenContext *context, Decl *decl, ABIArgInfo *abi_info, unsigned *index, unsigned real_index);
 
 bool llvm_emit_check_block_branch(GenContext *context)
 {
@@ -188,11 +189,9 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIAr
 			return;
 		case ABI_ARG_DIRECT_SPLIT_STRUCT:
 		{
+			// In this case we've been flattening the parameter into multiple registers.
 			LLVMTypeRef coerce_type = llvm_get_coerce_type(c, info);
 			llvm_emit_and_set_decl_alloca(c, decl);
-
-			// In this case we've been flattening the parameter into multiple registers.
-			LLVMTypeRef element_type = llvm_get_type(c, info->direct_struct_expand.type);
 
 			// Cast to the coerce type.
 			LLVMValueRef cast = LLVMBuildBitCast(c->builder, decl->backend_ref, LLVMPointerType(coerce_type, 0), "coerce");
@@ -296,15 +295,17 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failabl
 		return_out = c->failable_out;
 		if (!failable)
 		{
-			llvm_value_set(&no_fail, LLVMConstNull(llvm_get_type(c, type_anyerr)), type_anyerr);
+			llvm_value_set(&no_fail, llvm_get_zero(c, type_anyerr), type_anyerr);
 			failable = &no_fail;
 		}
 		return_value = failable;
 	}
+	assert(return_value || info->kind == ABI_ARG_IGNORE);
 
 	switch (info->kind)
 	{
 		case ABI_ARG_INDIRECT:
+			assert(return_value);
 			llvm_store_to_ptr_aligned(c, return_out, return_value, info->indirect.alignment);
 			llvm_emit_return_value(c, NULL);
 			return;
@@ -346,7 +347,7 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failabl
 			LLVMValueRef hi_val = llvm_load(c, hi_type, hi, alignment, "");
 
 			LLVMTypeRef unpadded_type = llvm_get_twostruct(c, lo_type, hi_type);
-			LLVMValueRef composite = LLVMGetUndef(unpadded_type);
+			LLVMValueRef composite = llvm_get_undef_raw(unpadded_type);
 
 			composite = llvm_emit_insert_value(c, composite, lo_val, 0);
 			composite = llvm_emit_insert_value(c, composite, hi_val, 1);
@@ -412,7 +413,7 @@ void llvm_emit_function_body(GenContext *c, Decl *decl)
 	LLVMBuilderRef prev_builder = c->builder;
 
 
-	c->error_var = NULL;
+	c->opt_var = NULL;
 	c->catch_block = NULL;
 
 	c->function = decl->backend_ref;
@@ -457,9 +458,9 @@ void llvm_emit_function_body(GenContext *c, Decl *decl)
 			if (!c->debug.last_ptr)
 			{
 				const char *name = ".$last_stack";
-				LLVMValueRef last_stack = c->debug.last_ptr = llvm_add_global_type(c, name, ptr_to_slot_type, 0);
+				LLVMValueRef last_stack = c->debug.last_ptr = llvm_add_global_raw(c, name, ptr_to_slot_type, 0);
 				LLVMSetThreadLocal(last_stack, true);
-				LLVMSetInitializer(last_stack, LLVMConstNull(ptr_to_slot_type));
+				LLVMSetInitializer(last_stack, llvm_get_zero_raw(ptr_to_slot_type));
 				llvm_set_weak(c, last_stack);
 			}
 			AlignSize alignment = llvm_abi_alignment(c, slot_type);
