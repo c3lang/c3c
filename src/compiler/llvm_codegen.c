@@ -112,9 +112,9 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 			}
 			if (was_modified)
 			{
-				return LLVMConstStructInContext(c->context, parts, vec_size(parts), true);
+				return llvm_get_unnamed_struct(c, parts, true);
 			}
-			return LLVMConstArray(element_type_llvm, parts, vec_size(parts));
+			return llvm_get_array(element_type_llvm, parts, vec_size(parts));
 		}
 
 		case CONST_INIT_ARRAY:
@@ -160,9 +160,9 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 			}
 			if (was_modified)
 			{
-				return LLVMConstStructInContext(c->context, parts, vec_size(parts), pack);
+				return llvm_get_unnamed_struct(c, parts, pack);
 			}
-			return LLVMConstArray(element_type_llvm, parts, vec_size(parts));
+			return llvm_get_array(element_type_llvm, parts, vec_size(parts));
 		}
 		case CONST_INIT_UNION:
 		{
@@ -197,10 +197,10 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 			if (first_type != result_type)
 			{
 				// Yes, so the type needs to be modified.
-				return LLVMConstStructInContext(c->context, values, value_count, false);
+				return llvm_get_struct(c, values, value_count);
 			}
 
-			return LLVMConstNamedStruct(union_type_llvm, values, value_count);
+			return llvm_get_struct_named(union_type_llvm, values, value_count);
 		}
 		case CONST_INIT_STRUCT:
 		{
@@ -241,10 +241,9 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 			}
 			if (was_modified)
 			{
-				LLVMValueRef value = LLVMConstStructInContext(c->context, entries, vec_size(entries), decl->is_packed);
-				return value;
+				return llvm_get_unnamed_struct(c, entries, decl->is_packed);
 			}
-			return LLVMConstNamedStruct(llvm_get_type(c, const_init->type), entries, vec_size(entries));
+			return llvm_get_struct_of_type(c, const_init->type, entries, vec_size(entries));
 		}
 		case CONST_INIT_VALUE:
 		{
@@ -341,10 +340,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 			BEValue value;
 			if (init_expr->expr_kind == EXPR_CONST && init_expr->const_expr.const_kind == CONST_BYTES)
 			{
-				init_value = LLVMConstStringInContext(c->context,
-													  init_expr->const_expr.bytes.ptr,
-													  init_expr->const_expr.bytes.len,
-													  1);
+				init_value = llvm_get_bytes(c, init_expr->const_expr.bytes.ptr, init_expr->const_expr.bytes.len);
 			}
 			else
 			{

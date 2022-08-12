@@ -197,6 +197,65 @@ INLINE LLVMValueRef llvm_get_undef_raw(LLVMTypeRef type)
 	return LLVMGetUndef(type);
 }
 
+INLINE LLVMValueRef llvm_get_ones_raw(LLVMTypeRef type)
+{
+	return LLVMConstAllOnes(type);
+}
+
+INLINE bool llvm_is_const_null(LLVMValueRef value)
+{
+	return LLVMIsNull(value);
+}
+
+INLINE bool llvm_is_const(LLVMValueRef value)
+{
+	return LLVMIsConstant(value);
+}
+
+INLINE LLVMValueRef llvm_get_zstring(GenContext *c, const char *str, size_t len)
+{
+	assert(len == (unsigned)len);
+	return LLVMConstStringInContext(c->context, str, (unsigned)len, 0);
+}
+
+INLINE LLVMValueRef llvm_get_bytes(GenContext *c, const char *str, size_t len)
+{
+	assert(len == (unsigned)len);
+	return LLVMConstStringInContext(c->context, str, (unsigned)len, 1);
+}
+
+INLINE LLVMValueRef llvm_get_struct(GenContext *c, LLVMValueRef *vals, size_t len)
+{
+	assert(len == (unsigned)len);
+	return LLVMConstStructInContext(c->context, vals, (unsigned)len, false);
+}
+
+INLINE LLVMValueRef llvm_get_packed_struct(GenContext *c, LLVMValueRef *vals, size_t len)
+{
+	assert(len == (unsigned)len);
+	return LLVMConstStructInContext(c->context, vals, (unsigned)len, true);
+}
+
+INLINE LLVMValueRef llvm_get_unnamed_struct(GenContext *c, LLVMValueRef *vals, bool is_packed)
+{
+	return LLVMConstStructInContext(c->context, vals, vec_size(vals), is_packed);
+}
+
+INLINE LLVMValueRef llvm_get_array(LLVMTypeRef type, LLVMValueRef *vals, unsigned count)
+{
+	return LLVMConstArray(type, vals, count);
+}
+
+INLINE LLVMValueRef llvm_get_struct_named(LLVMTypeRef type, LLVMValueRef *vals, unsigned count)
+{
+	return LLVMConstNamedStruct(type, vals, count);
+}
+
+INLINE LLVMValueRef llvm_get_struct_of_type(GenContext *c, Type *type, LLVMValueRef *vals, unsigned count)
+{
+	return LLVMConstNamedStruct(llvm_get_type(c, type), vals, count);
+}
+
 INLINE LLVMValueRef llvm_const_int(GenContext *c, Type *type, uint64_t val)
 {
 	type = type_lowering(type);

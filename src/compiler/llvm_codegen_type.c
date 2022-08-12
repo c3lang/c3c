@@ -522,7 +522,7 @@ static inline LLVMValueRef llvm_generate_introspection_global(GenContext *c, LLV
 			[INTROSPECT_INDEX_SIZEOF] = llvm_const_int(c, type_usize, type_size(type)),
 			[INTROSPECT_INDEX_INNER] = inner ? llvm_get_typeid(c, inner) : llvm_get_zero(c, type_typeid),
 			[INTROSPECT_INDEX_LEN] = llvm_const_int(c, type_usize, len),
-			[INTROSPECT_INDEX_ADDITIONAL] = additional ? additional : LLVMConstArray(llvm_get_type(c, type_typeid), NULL, 0)
+			[INTROSPECT_INDEX_ADDITIONAL] = additional ? additional : llvm_get_array(llvm_get_type(c, type_typeid), NULL, 0)
 	};
 	LLVMValueRef global_name;
 	scratch_buffer_clear();
@@ -530,13 +530,13 @@ static inline LLVMValueRef llvm_generate_introspection_global(GenContext *c, LLV
 	type_mangle_introspect_name_to_buffer(type);
 	if (additional)
 	{
-		LLVMValueRef constant = LLVMConstStructInContext(c->context, values, INTROSPECT_INDEX_TOTAL, false);
+		LLVMValueRef constant = llvm_get_struct(c, values, INTROSPECT_INDEX_TOTAL);
 		global_name = LLVMAddGlobal(c->module, LLVMTypeOf(constant), scratch_buffer_to_string());
 		LLVMSetInitializer(global_name, constant);
 	}
 	else
 	{
-		LLVMValueRef strukt = LLVMConstNamedStruct(c->introspect_type, values, INTROSPECT_INDEX_TOTAL);
+		LLVMValueRef strukt = llvm_get_struct_named(c->introspect_type, values, INTROSPECT_INDEX_TOTAL);
 		global_name = LLVMAddGlobal(c->module, c->introspect_type, scratch_buffer_to_string());
 		LLVMSetInitializer(global_name, strukt);
 	}
@@ -603,9 +603,9 @@ static LLVMValueRef llvm_get_introspection_for_enum(GenContext *c, Type *type)
 		}
 		LLVMValueRef name_ref = llvm_emit_zstring_named(c, name, scratch_buffer_to_string());
 		LLVMValueRef data[2] = { name_ref, llvm_const_int(c, type_usize, len) };
-		values[i] = LLVMConstNamedStruct(subarray, data, 2);
+		values[i] = llvm_get_struct_named(subarray, data, 2);
 	}
-	LLVMValueRef names = LLVMConstArray(subarray, values, elements);
+	LLVMValueRef names = llvm_get_array(subarray, values, elements);
 
 	LLVMValueRef val = llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_ENUM, type_flatten(type), elements, names, is_external);
 	LLVMTypeRef val_type;
@@ -631,9 +631,8 @@ static LLVMValueRef llvm_get_introspection_for_enum(GenContext *c, Type *type)
 			if (val_type != LLVMTypeOf(llvm_value)) mixed = true;
 		}
 		Decl *associated_value = associated_values[ai];
-		LLVMValueRef associated_value_arr = mixed ? LLVMConstStruct(values, elements, true) : LLVMConstArray(val_type,
-		                                                                                                     values,
-		                                                                                                     elements);
+		LLVMValueRef associated_value_arr = mixed ? llvm_get_packed_struct(c, values, elements)
+				: llvm_get_array(val_type, values, elements);
 		scratch_buffer_clear();
 		scratch_buffer_append(decl->extname);
 		scratch_buffer_append("$");
@@ -698,7 +697,7 @@ static LLVMValueRef llvm_get_introspection_for_fault(GenContext *c, Type *type)
 								 llvm_emit_aggregate_two(c, type_chars, llvm_emit_zstring_named(c, val->name, ".fault"),
 		                                                      llvm_const_int(c, type_usize, strlen(val->name))) };
 
-		LLVMSetInitializer(global_name, LLVMConstNamedStruct(c->fault_type, vals, 2));
+		LLVMSetInitializer(global_name, llvm_get_struct_named(c->fault_type, vals, 2));
 		llvm_set_linkonce(c, global_name);
 		val->backend_ref = LLVMBuildPointerCast(c->builder, global_name, llvm_get_type(c, type_typeid), "");
 	}

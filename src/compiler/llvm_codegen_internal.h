@@ -312,12 +312,21 @@ INLINE LLVMValueRef llvm_get_zero(GenContext *c, Type *type);
 INLINE LLVMValueRef llvm_get_zero_raw(LLVMTypeRef type);
 INLINE LLVMValueRef llvm_get_undef(GenContext *c, Type *type);
 INLINE LLVMValueRef llvm_get_undef_raw(LLVMTypeRef type);
+INLINE LLVMValueRef llvm_get_ones_raw(LLVMTypeRef type);
+INLINE LLVMValueRef llvm_get_zstring(GenContext *c, const char *str, size_t len);
+INLINE LLVMValueRef llvm_get_bytes(GenContext *c, const char *str, size_t len);
+INLINE LLVMValueRef llvm_get_struct(GenContext *c, LLVMValueRef *vals, size_t len);
+INLINE LLVMValueRef llvm_get_packed_struct(GenContext *c, LLVMValueRef *vals, size_t len);
+INLINE LLVMValueRef llvm_get_unnamed_struct(GenContext *c, LLVMValueRef *vals, bool is_packed);
+INLINE LLVMValueRef llvm_get_array(LLVMTypeRef type, LLVMValueRef *vals, unsigned count);
+INLINE LLVMValueRef llvm_get_struct_named(LLVMTypeRef type, LLVMValueRef *vals, unsigned count);
+INLINE LLVMValueRef llvm_get_struct_of_type(GenContext *c, Type *type, LLVMValueRef *vals, unsigned count);
 
 // -- Jumps --
 void llvm_emit_cond_br(GenContext *context, BEValue *value, LLVMBasicBlockRef then_block, LLVMBasicBlockRef else_block);
 void llvm_emit_cond_br_raw(GenContext *context, LLVMValueRef b, LLVMBasicBlockRef then_block, LLVMBasicBlockRef else_block);
 void llvm_emit_br(GenContext *c, LLVMBasicBlockRef next_block);
-void llvm_emit_jump_to_optional_exit(GenContext *c, LLVMValueRef err_value);
+void llvm_emit_jump_to_optional_exit(GenContext *c, LLVMValueRef opt_value);
 void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failable);
 void llvm_emit_return_implicit(GenContext *c);
 
@@ -333,6 +342,8 @@ void llvm_emit_comp(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, 
 void llvm_emit_int_comp(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, BinaryOp binary_op);
 void llvm_emit_int_comp_zero(GenContext *c, BEValue *result, BEValue *lhs, BinaryOp binary_op);
 void llvm_emit_int_comp_raw(GenContext *c, BEValue *result, Type *lhs_type, Type *rhs_type, LLVMValueRef lhs_value, LLVMValueRef rhs_value, BinaryOp binary_op);
+INLINE bool llvm_is_const_null(LLVMValueRef value);
+INLINE bool llvm_is_const(LLVMValueRef value);
 
 // -- Load ---
 LLVMValueRef llvm_load(GenContext *c, LLVMTypeRef type, LLVMValueRef pointer, AlignSize alignment, const char *name);

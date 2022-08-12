@@ -170,11 +170,11 @@ LLVMValueRef llvm_emit_coerce_alignment(GenContext *c, BEValue *be_value, LLVMTy
 
 LLVMValueRef llvm_emit_aggregate_two(GenContext *c, Type *type, LLVMValueRef value1, LLVMValueRef value2)
 {
-	bool is_constant = LLVMIsConstant(value1) && LLVMIsConstant(value2);
+	bool is_constant = llvm_is_const(value1) && llvm_is_const(value2);
 	if (is_constant)
 	{
 		LLVMValueRef two[2] = { value1, value2 };
-		return LLVMConstNamedStruct(llvm_get_type(c, type), two, 2);
+		return llvm_get_struct_of_type(c, type, two, 2);
 	}
 	LLVMValueRef result = llvm_get_undef(c, type);
 	result = llvm_emit_insert_value(c, result, value1, 0);
@@ -189,15 +189,15 @@ void llvm_value_aggregate_two(GenContext *c, BEValue *value, Type *type, LLVMVal
 static inline LLVMValueRef llvm_const_low_bitmask(GenContext *c, LLVMTypeRef type, int type_bits, int low_bits)
 {
 	if (low_bits < 1) return llvm_get_zero_raw(type);
-	if (type_bits <= low_bits) return LLVMConstAllOnes(type);
-	return llvm_emit_lshr_fixed(c, LLVMConstAllOnes(type), (type_bits - low_bits));
+	if (type_bits <= low_bits) return llvm_get_ones_raw(type);
+	return llvm_emit_lshr_fixed(c, llvm_get_ones_raw(type), (type_bits - low_bits));
 }
 
 static inline LLVMValueRef llvm_const_high_bitmask(GenContext *c, LLVMTypeRef type, int type_bits, int high_bits)
 {
 	if (high_bits < 1) return llvm_get_zero_raw(type);
-	if (type_bits <= high_bits) return LLVMConstAllOnes(type);
-	return LLVMBuildNot(c->builder, llvm_emit_lshr_fixed(c, LLVMConstAllOnes(type), high_bits), "");
+	if (type_bits <= high_bits) return llvm_get_ones_raw(type);
+	return LLVMBuildNot(c->builder, llvm_emit_lshr_fixed(c, llvm_get_ones_raw(type), high_bits), "");
 }
 
 LLVMValueRef llvm_mask_low_bits(GenContext *c, LLVMValueRef value, unsigned low_bits)
@@ -206,7 +206,7 @@ LLVMValueRef llvm_mask_low_bits(GenContext *c, LLVMValueRef value, unsigned low_
 	if (low_bits < 1) return llvm_get_zero_raw(type);
 	BitSize type_bits = llvm_bitsize(c, type);
 	if (type_bits <= low_bits) return value;
-	LLVMValueRef mask = llvm_emit_lshr_fixed(c, LLVMConstAllOnes(type), type_bits - low_bits);
+	LLVMValueRef mask = llvm_emit_lshr_fixed(c, llvm_get_ones_raw(type), type_bits - low_bits);
 	return LLVMBuildAnd(c->builder, mask, value, "");
 }
 
@@ -693,7 +693,7 @@ static void llvm_emit_bitstruct_member(GenContext *c, BEValue *value, Decl *pare
 
 static LLVMValueRef llvm_emit_bswap(GenContext *c, LLVMValueRef value)
 {
-	if (LLVMIsConstant(value))
+	if (llvm_is_const(value))
 	{
 		return LLVMConstBswap(value);
 	}
@@ -780,7 +780,7 @@ static inline void llvm_extract_bitvalue_from_array(GenContext *c, BEValue *be_v
 			continue;
 		}
 
-		if (!LLVMIsNull(element)) res = LLVMBuildOr(c->builder, element, res, "");
+		if (!llvm_is_const_null(element)) res = LLVMBuildOr(c->builder, element, res, "");
 	}
 	if (big_endian)
 	{
@@ -883,7 +883,7 @@ static inline void llvm_emit_bitassign_array(GenContext *c, BEValue *result, BEV
 		LLVMValueRef current = llvm_load(c, c->byte_type, byte_ptr, alignment, "");
 		LLVMValueRef bit = llvm_emit_shl_fixed(c, LLVMConstInt(c->byte_type, 1, 0), start_bit % 8);
 		current = LLVMBuildAnd(c->builder, current, LLVMBuildNot(c->builder, bit, ""), "");
-		if (!LLVMIsNull(value)) current = LLVMBuildOr(c->builder, current, value, "");
+		if (!llvm_is_const_null(value)) current = LLVMBuildOr(c->builder, current, value, "");
 		llvm_store_to_ptr_raw_aligned(c, byte_ptr, current, alignment);
 		return;
 	}
@@ -932,7 +932,7 @@ static inline void llvm_emit_bitassign_array(GenContext *c, BEValue *result, BEV
 			// Empty the top bits.
 			current = LLVMBuildAnd(c->builder, current, mask, "");
 			// Use *or* with the top bits from "res":
-			if (!LLVMIsNull(res)) current = LLVMBuildOr(c->builder, current, res, "");
+			if (!llvm_is_const_null(res)) current = LLVMBuildOr(c->builder, current, res, "");
 			// And store it back.
 			llvm_store_to_ptr_raw_aligned(c, byte_ptr, current, alignment);
 			// We now shift the value by the number of bits we used.
@@ -952,7 +952,7 @@ static inline void llvm_emit_bitassign_array(GenContext *c, BEValue *result, BEV
 			// Clear the lower bits.
 			current = LLVMBuildAnd(c->builder, current, LLVMBuildNot(c->builder, mask, ""), "");
 			// Use *or* with the bottom bits from "value":
-			if (!LLVMIsNull(value)) current = LLVMBuildOr(c->builder, current, value, "");
+			if (!llvm_is_const_null(value)) current = LLVMBuildOr(c->builder, current, value, "");
 			// And store it back.
 			llvm_store_to_ptr_raw_aligned(c, byte_ptr, current, alignment);
 			continue;
@@ -1002,7 +1002,7 @@ static inline void llvm_emit_bitassign_expr(GenContext *c, BEValue *be_value, Ex
 	LLVMTypeRef struct_type = LLVMTypeOf(current_value);
 
 	// We now need to create a mask, a very naive algorithm:
-	LLVMValueRef mask = LLVMConstAllOnes(struct_type);
+	LLVMValueRef mask = llvm_get_ones_raw(struct_type);
 	TypeSize bits = type_size(parent.type) * 8;
 	int start_bit = (int)member->var.start_bit;
 	int end_bit = (int)member->var.end_bit;
@@ -1024,7 +1024,7 @@ static inline void llvm_emit_bitassign_expr(GenContext *c, BEValue *be_value, Ex
 	value = LLVMBuildAnd(c->builder, value, mask, "");
 	current_value = LLVMBuildAnd(c->builder, current_value, LLVMBuildNot(c->builder, mask, ""), "");
 	// Skip this op for LLVM14 if zero.
-	if (!LLVMIsNull(value)) current_value = LLVMBuildOr(c->builder, current_value, value, "");
+	if (!llvm_is_const_null(value)) current_value = LLVMBuildOr(c->builder, current_value, value, "");
 	llvm_store_raw(c, &parent, current_value);
 }
 static inline void llvm_emit_bitaccess(GenContext *c, BEValue *be_value, Expr *expr)
@@ -1095,7 +1095,6 @@ void llvm_emit_vector_to_array_cast(GenContext *c, BEValue *value, Type *to_type
 {
 	llvm_value_rvalue(c, value);
 	LLVMValueRef array = llvm_get_undef(c, to_type);
-	bool is_const = LLVMIsConstant(value->value);
 	for (unsigned i = 0; i < to_type->array.len; i++)
 	{
 		LLVMValueRef element = llvm_emit_extract_value(c, value->value, i);
@@ -1769,7 +1768,7 @@ LLVMValueRef llvm_emit_const_bitstruct_array(GenContext *c, ConstInitializer *in
 			slots[(unsigned)j] = LLVMBuildOr(c->builder, to_or, current_value, "");
 		}
 	}
-	return LLVMConstArray(c->byte_type, slots, elements);
+	return llvm_get_array(c->byte_type, slots, elements);
 }
 
 LLVMValueRef llvm_emit_const_bitstruct(GenContext *c, ConstInitializer *initializer)
@@ -1811,7 +1810,7 @@ LLVMValueRef llvm_emit_const_bitstruct(GenContext *c, ConstInitializer *initiali
 		value = llvm_zext_trunc(c, value, llvm_base_type);
 		if (bit_size < base_type_bitsize)
 		{
-			LLVMValueRef mask = llvm_emit_lshr_fixed(c, LLVMConstAllOnes(llvm_base_type), base_type_bitsize - bit_size);
+			LLVMValueRef mask = llvm_emit_lshr_fixed(c, llvm_get_ones_raw(llvm_base_type), base_type_bitsize - bit_size);
 			value = LLVMBuildAnd(c->builder, mask, value, "");
 		}
 		if (start_bit > 0)
@@ -2459,7 +2458,7 @@ static void llvm_emit_slice_assign(GenContext *c, BEValue *be_value, Expr *expr)
 	llvm_value_rvalue(c, &start);
 	llvm_value_rvalue(c, &end);
 
-	if (LLVMIsConstant(start.value) && LLVMIsConstant(end.value))
+	if (llvm_is_const(start.value) && llvm_is_const(end.value))
 	{
 		assert(type_is_integer(start.type) && type_is_integer(end.type));
 		bool signed_start = type_is_signed(start.type);
@@ -2656,7 +2655,7 @@ void llvm_emit_int_comp_raw(GenContext *c, BEValue *result, Type *lhs_type, Type
 			}
 		}
 	}
-	if (lhs_signed && !rhs_signed && !vector_type && LLVMIsConstant(lhs_value) && type_size(lhs_type) <= 64)
+	if (lhs_signed && !rhs_signed && !vector_type && llvm_is_const(lhs_value) && type_size(lhs_type) <= 64)
 	{
 		long long val = LLVMConstIntGetSExtValue(lhs_value);
 		if (val < 0)
@@ -3780,10 +3779,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 				llvm_set_private_linkage(global_name);
 				LLVMSetGlobalConstant(global_name, 1);
 
-				LLVMSetInitializer(global_name, LLVMConstStringInContext(c->context,
-																		 expr->const_expr.bytes.ptr,
-																		 expr->const_expr.bytes.len,
-																		 1));
+				LLVMSetInitializer(global_name, llvm_get_bytes(c, expr->const_expr.bytes.ptr, expr->const_expr.bytes.len));
 				global_name = llvm_emit_bitcast_ptr(c, global_name, type_char);
 				llvm_value_set_address_abi_aligned(be_value, global_name, type);
 				return;
@@ -3843,15 +3839,12 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 				llvm_set_private_linkage(global_name);
 				LLVMSetUnnamedAddress(global_name, LLVMGlobalUnnamedAddr);
 				LLVMSetGlobalConstant(global_name, 1);
-				LLVMValueRef string = LLVMConstStringInContext(c->context,
-															   expr->const_expr.string.chars,
-															   expr->const_expr.string.len,
-															   0);
+				LLVMValueRef string = llvm_get_zstring(c, expr->const_expr.string.chars, expr->const_expr.string.len);
 				if (size > strlen + 1)
 				{
 					LLVMValueRef trailing_zeros = llvm_get_zero_raw(LLVMArrayType(c->byte_type, size - strlen - 1));
 					LLVMValueRef values[2] = { string, trailing_zeros };
-					string = LLVMConstStructInContext(c->context, values, 2, true);
+					string = llvm_get_packed_struct(c, values, 2);
 				}
 				LLVMSetInitializer(global_name, string);
 				if (is_array)
@@ -3872,17 +3865,20 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 			LLVMValueRef string;
 			if (array_len <= size)
 			{
-				string = LLVMConstStringInContext(c->context,
-				                                  expr->const_expr.string.chars,
-				                                  array_len, array_len < size);
+				if (zero_terminate)
+				{
+					string = llvm_get_zstring(c, expr->const_expr.string.chars, expr->const_expr.string.len);
+				}
+				else
+				{
+					string = llvm_get_bytes(c, expr->const_expr.string.chars, array_len);
+				}
 			}
 			else
 			{
 				char *buffer = ccalloc(1, array_len);
 				memcpy(buffer, expr->const_expr.string.chars, expr->const_expr.string.len);
-				string = LLVMConstStringInContext(c->context,
-												  buffer,
-												  array_len, true);
+				string = llvm_get_bytes(c, buffer, array_len);
 			}
 			llvm_value_set(be_value, string, type);
 			return;
@@ -4008,7 +4004,7 @@ LLVMValueRef llvm_emit_struct_gep_raw(GenContext *context, LLVMValueRef ptr, LLV
                                       unsigned struct_alignment, AlignSize *alignment)
 {
 	*alignment = type_min_alignment((AlignSize)LLVMOffsetOfElement(context->target_data, struct_type, index), struct_alignment);
-	if (LLVMIsConstant(ptr))
+	if (llvm_is_const(ptr))
 	{
 		LLVMValueRef idx[2] = { llvm_get_zero(context, type_int), llvm_const_int(context, type_int, index) };
 		return LLVMBuildInBoundsGEP2(context->builder, struct_type, ptr, idx, 2, "");
