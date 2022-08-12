@@ -94,12 +94,12 @@ static void llvm_expand_from_args(GenContext *c, Type *type, LLVMValueRef ref, u
 		case TYPE_UNION:
 		{
 			Type *largest_type = type_find_largest_union_element(type);
-			LLVMValueRef cast_addr = llvm_emit_bitcast(c, ref, type_get_ptr(largest_type));
+			LLVMValueRef cast_addr = llvm_emit_bitcast_ptr(c, ref, largest_type);
 			llvm_expand_from_args(c, largest_type, cast_addr, index, alignment);
 			return;
 		}
 		default:
-			llvm_store(c, ref, llvm_get_next_param(c, index), alignment);
+			llvm_store_to_ptr_raw_aligned(c, ref, llvm_get_next_param(c, index), alignment);
 			return;
 	}
 }
@@ -134,11 +134,11 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIAr
 			AlignSize alignment = decl->alignment;
 			AlignSize element_align;
 			LLVMValueRef gep_first = llvm_emit_struct_gep_raw(c, temp, coerce_type, info->coerce_expand.lo_index, alignment, &element_align);
-			llvm_store(c, gep_first, llvm_get_next_param(c, index), element_align);
+			llvm_store_to_ptr_raw_aligned(c, gep_first, llvm_get_next_param(c, index), element_align);
 			if (abi_type_is_valid(info->coerce_expand.hi))
 			{
 				LLVMValueRef gep_second = llvm_emit_struct_gep_raw(c, temp, coerce_type, info->coerce_expand.hi_index, alignment, &element_align);
-				llvm_store(c, gep_second, llvm_get_next_param(c, index), element_align);
+				llvm_store_to_ptr_raw_aligned(c, gep_second, llvm_get_next_param(c, index), element_align);
 			}
 			break;
 		}
@@ -168,11 +168,11 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIAr
 			AlignSize element_align;
 			LLVMValueRef lo_ptr = llvm_emit_struct_gep_raw(c, coerce, struct_type, 0, decl_alignment, &element_align);
 			// Store it in the struct.
-			llvm_store(c, lo_ptr, llvm_get_next_param(c, index), element_align);
+			llvm_store_to_ptr_raw_aligned(c, lo_ptr, llvm_get_next_param(c, index), element_align);
 			// Point to the hi value.
 			LLVMValueRef hi_ptr = llvm_emit_struct_gep_raw(c, coerce, struct_type, 1, decl_alignment, &element_align);
 			// Store it in the struct.
-			llvm_store(c, hi_ptr, llvm_get_next_param(c, index), element_align);
+			llvm_store_to_ptr_raw_aligned(c, hi_ptr, llvm_get_next_param(c, index), element_align);
 			return;
 		}
 		case ABI_ARG_DIRECT:
@@ -204,7 +204,7 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIAr
 				AlignSize align;
 				LLVMValueRef element_ptr = llvm_emit_struct_gep_raw(c, cast, coerce_type, idx, decl_alignment, &align);
 				LLVMValueRef value = llvm_get_next_param(c, index);
-				llvm_store(c, element_ptr, value, align);
+				llvm_store_to_ptr_raw_aligned(c, element_ptr, value, align);
 			}
 			return;
 		}
@@ -291,7 +291,7 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failabl
 	{
 		if (return_value && return_value->value)
 		{
-			llvm_store_value_aligned(c, c->return_out, return_value, type_alloca_alignment(return_value->type));
+			llvm_store_to_ptr_aligned(c, c->return_out, return_value, type_alloca_alignment(return_value->type));
 		}
 		return_out = c->failable_out;
 		if (!failable)
@@ -305,7 +305,7 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failabl
 	switch (info->kind)
 	{
 		case ABI_ARG_INDIRECT:
-			llvm_store_value_aligned(c, return_out, return_value, info->indirect.alignment);
+			llvm_store_to_ptr_aligned(c, return_out, return_value, info->indirect.alignment);
 			llvm_emit_return_value(c, NULL);
 			return;
 		case ABI_ARG_IGNORE:
@@ -466,13 +466,19 @@ void llvm_emit_function_body(GenContext *c, Decl *decl)
 			c->debug.stack_slot = llvm_emit_alloca(c, slot_type, alignment, ".$stackslot");
 			AlignSize align_to_use;
 			LLVMValueRef prev_ptr = llvm_emit_struct_gep_raw(c, c->debug.stack_slot, slot_type, 0, alignment, &align_to_use);
-			llvm_store(c, prev_ptr, LLVMBuildLoad2(c->builder, ptr_to_slot_type, c->debug.last_ptr, ""), align_to_use);
+			llvm_store_to_ptr_raw_aligned(c,
+			                              prev_ptr,
+			                              LLVMBuildLoad2(c->builder, ptr_to_slot_type, c->debug.last_ptr, ""),
+			                              align_to_use);
 			LLVMValueRef func_name = llvm_emit_struct_gep_raw(c, c->debug.stack_slot, slot_type, 1, alignment, &align_to_use);
-			llvm_store(c, func_name, c->debug.func_name, align_to_use);
+			llvm_store_to_ptr_raw_aligned(c, func_name, c->debug.func_name, align_to_use);
 			LLVMValueRef file_name = llvm_emit_struct_gep_raw(c, c->debug.stack_slot, slot_type, 2, alignment, &align_to_use);
-			llvm_store(c, file_name, c->debug.file_name, align_to_use);
+			llvm_store_to_ptr_raw_aligned(c, file_name, c->debug.file_name, align_to_use);
 			c->debug.stack_slot_row = llvm_emit_struct_gep_raw(c, c->debug.stack_slot, slot_type, 3, alignment, &align_to_use);
-			llvm_store(c, c->debug.last_ptr, c->debug.stack_slot, type_alloca_alignment(type_voidptr));
+			llvm_store_to_ptr_raw_aligned(c,
+			                              c->debug.last_ptr,
+			                              c->debug.stack_slot,
+			                              type_alloca_alignment(type_voidptr));
 		}
 	}
 

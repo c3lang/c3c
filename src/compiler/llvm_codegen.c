@@ -424,7 +424,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 
 	if (init_value && LLVMTypeOf(init_value) != llvm_get_type(c, var_type))
 	{
-		decl->backend_ref = global_ref = llvm_emit_bitcast(c, global_ref, type_get_ptr(var_type));
+		decl->backend_ref = global_ref = llvm_emit_bitcast_ptr(c, global_ref, var_type);
 	}
 	LLVMReplaceAllUsesWith(old, global_ref);
 	LLVMDeleteGlobal(old);

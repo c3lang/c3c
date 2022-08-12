@@ -102,35 +102,34 @@ entry:
   store i16 0, ptr %5, align 2
   %6 = getelementptr inbounds %Foo, ptr %z, i32 0, i32 0
   store i16 %0, ptr %6, align 2
-  %7 = load %Foo, ptr %z, align 2
-  store %Foo %7, ptr %expr, align 2
+  call void @llvm.memcpy.p0.p0.i32(ptr align 2 %expr, ptr align 2 %z, i32 8, i1 false)
   store ptr %expr, ptr %b, align 8
   store ptr %x, ptr %to, align 8
   store i64 0, ptr %i, align 8
   br label %loop.cond
 
 loop.cond:                                        ; preds = %loop.body, %entry
-  %8 = load i64, ptr %i, align 8
-  %lt = icmp ult i64 %8, 8
+  %7 = load i64, ptr %i, align 8
+  %lt = icmp ult i64 %7, 8
   br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
-  %9 = load ptr, ptr %to, align 8
-  %10 = load i64, ptr %i, align 8
-  %ptroffset = getelementptr inbounds i16, ptr %9, i64 %10
-  %11 = load ptr, ptr %b, align 8
-  %12 = load i64, ptr %i, align 8
-  %ptroffset1 = getelementptr inbounds i16, ptr %11, i64 %12
-  %13 = load i16, ptr %ptroffset1, align 2
-  store i16 %13, ptr %ptroffset, align 2
-  %14 = load i64, ptr %i, align 8
-  %add = add i64 %14, 2
+  %8 = load ptr, ptr %to, align 8
+  %9 = load i64, ptr %i, align 8
+  %ptroffset = getelementptr inbounds i16, ptr %8, i64 %9
+  %10 = load ptr, ptr %b, align 8
+  %11 = load i64, ptr %i, align 8
+  %ptroffset1 = getelementptr inbounds i16, ptr %10, i64 %11
+  %12 = load i16, ptr %ptroffset1, align 2
+  store i16 %12, ptr %ptroffset, align 2
+  %13 = load i64, ptr %i, align 8
+  %add = add i64 %13, 2
   store i64 %add, ptr %i, align 8
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
-  %15 = load i64, ptr %x, align 8
-  ret i64 %15
+  %14 = load i64, ptr %x, align 8
+  ret i64 %14
 }
 
 define i32 @userland_bitcast_test(float %0) #0 {

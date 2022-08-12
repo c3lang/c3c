@@ -20,8 +20,8 @@ define double @array_literal_test(i32 %0) #0 {
 entry:
   %student_t = alloca [30 x double], align 16
   call void @llvm.memcpy.p0.p0.i32(ptr align 16 %student_t, ptr align 16 @.__const, i32 240, i1 false)
-  %uiuiext = zext i32 %0 to i64
-  %1 = getelementptr inbounds [30 x double], ptr %student_t, i64 0, i64 %uiuiext
+  %zext = zext i32 %0 to i64
+  %1 = getelementptr inbounds [30 x double], ptr %student_t, i64 0, i64 %zext
   %2 = load double, ptr %1, align 8
   ret double %2
 }

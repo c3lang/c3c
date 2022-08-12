@@ -86,12 +86,12 @@ entry:
   br label %testblock
 
 testblock:                                        ; preds = %entry
-  %0 = load i64, ptr %x.f, align 8
-  %not_err = icmp eq i64 %0, 0
+  %optval = load i64, ptr %x.f, align 8
+  %not_err = icmp eq i64 %optval, 0
   br i1 %not_err, label %after_check, label %assign_optional
 
 assign_optional:                                  ; preds = %testblock
-  store i64 %0, ptr %err, align 8
+  store i64 %optval, ptr %err, align 8
   br label %end_block
 
 after_check:                                      ; preds = %testblock
@@ -99,17 +99,17 @@ after_check:                                      ; preds = %testblock
   br label %end_block
 
 end_block:                                        ; preds = %after_check, %assign_optional
-  %1 = load i64, ptr %err, align 8
-  %neq = icmp ne i64 %1, 0
+  %0 = load i64, ptr %err, align 8
+  %neq = icmp ne i64 %0, 0
   br i1 %neq, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %end_block
-  store i64 %1, ptr %switch, align 8
+  store i64 %0, ptr %switch, align 8
   br label %switch.entry
 
 switch.entry:                                     ; preds = %if.then
-  %2 = load i64, ptr %switch, align 8
-  %eq = icmp eq i64 ptrtoint (ptr @"mymodule_HelloErr$FOO" to i64), %2
+  %1 = load i64, ptr %switch, align 8
+  %eq = icmp eq i64 ptrtoint (ptr @"mymodule_HelloErr$FOO" to i64), %1
   br i1 %eq, label %switch.case, label %next_if
 
 switch.case:                                      ; preds = %switch.entry
@@ -117,7 +117,7 @@ switch.case:                                      ; preds = %switch.entry
   br label %switch.exit
 
 next_if:                                          ; preds = %switch.entry
-  %eq1 = icmp eq i64 ptrtoint (ptr @"mymodule_ByeErr$BAR" to i64), %2
+  %eq1 = icmp eq i64 ptrtoint (ptr @"mymodule_ByeErr$BAR" to i64), %1
   br i1 %eq1, label %switch.case2, label %next_if3
 
 switch.case2:                                     ; preds = %next_if
@@ -135,13 +135,13 @@ switch.exit:                                      ; preds = %switch.default, %sw
   br label %if.exit
 
 if.exit:                                          ; preds = %switch.exit, %end_block
-  %3 = load i64, ptr %z, align 8
-  store i64 %3, ptr %switch4, align 8
+  %2 = load i64, ptr %z, align 8
+  store i64 %2, ptr %switch4, align 8
   br label %switch.entry5
 
 switch.entry5:                                    ; preds = %if.exit
-  %4 = load i64, ptr %switch4, align 8
-  %eq6 = icmp eq i64 ptrtoint (ptr @"ct$int" to i64), %4
+  %3 = load i64, ptr %switch4, align 8
+  %eq6 = icmp eq i64 ptrtoint (ptr @"ct$int" to i64), %3
   br i1 %eq6, label %switch.case7, label %next_if8
 
 switch.case7:                                     ; preds = %switch.entry5
@@ -149,14 +149,14 @@ switch.case7:                                     ; preds = %switch.entry5
   br label %switch.exit16
 
 next_if8:                                         ; preds = %switch.entry5
-  %eq9 = icmp eq i64 ptrtoint (ptr @"ct$bool" to i64), %4
+  %eq9 = icmp eq i64 ptrtoint (ptr @"ct$bool" to i64), %3
   br i1 %eq9, label %switch.case10, label %next_if11
 
 switch.case10:                                    ; preds = %next_if8
   br label %switch.case13
 
 next_if11:                                        ; preds = %next_if8
-  %eq12 = icmp eq i64 ptrtoint (ptr @"ct$double" to i64), %4
+  %eq12 = icmp eq i64 ptrtoint (ptr @"ct$double" to i64), %3
   br i1 %eq12, label %switch.case13, label %next_if14
 
 switch.case13:                                    ; preds = %next_if11, %switch.case10
@@ -172,18 +172,18 @@ switch.default15:                                 ; preds = %next_if14, %switch.
 switch.exit16:                                    ; preds = %switch.default15, %switch.case7
   store i32 1, ptr %a, align 4
   store i32 2, ptr %b, align 4
-  %5 = load i32, ptr %b, align 4
-  %6 = load i32, ptr %a, align 4
-  %add = add i32 %5, %6
+  %4 = load i32, ptr %b, align 4
+  %5 = load i32, ptr %a, align 4
+  %add = add i32 %4, %5
   store i32 %add, ptr %zy, align 4
-  %7 = load i32, ptr %zy, align 4
-  store i32 %7, ptr %switch17, align 4
+  %6 = load i32, ptr %zy, align 4
+  store i32 %6, ptr %switch17, align 4
   br label %switch.entry18
 
 switch.entry18:                                   ; preds = %switch.exit16
-  %8 = load i32, ptr %switch17, align 4
-  %9 = load i32, ptr %a, align 4
-  %eq19 = icmp eq i32 %9, %8
+  %7 = load i32, ptr %switch17, align 4
+  %8 = load i32, ptr %a, align 4
+  %eq19 = icmp eq i32 %8, %7
   br i1 %eq19, label %switch.case20, label %next_if21
 
 switch.case20:                                    ; preds = %switch.entry18
@@ -191,8 +191,8 @@ switch.case20:                                    ; preds = %switch.entry18
   br label %switch.exit26
 
 next_if21:                                        ; preds = %switch.entry18
-  %10 = load i32, ptr %b, align 4
-  %eq22 = icmp eq i32 %10, %8
+  %9 = load i32, ptr %b, align 4
+  %eq22 = icmp eq i32 %9, %7
   br i1 %eq22, label %switch.case23, label %next_if24
 
 switch.case23:                                    ; preds = %next_if21
@@ -211,11 +211,11 @@ switch.exit26:                                    ; preds = %switch.default25, %
   br label %switch.entry28
 
 switch.entry28:                                   ; preds = %switch.exit26
-  %11 = load i8, ptr %switch27, align 1
-  %12 = trunc i8 %11 to i1
-  %13 = load i32, ptr %a, align 4
-  %lt = icmp slt i32 %13, 0
-  %eq29 = icmp eq i1 %lt, %12
+  %10 = load i8, ptr %switch27, align 1
+  %11 = trunc i8 %10 to i1
+  %12 = load i32, ptr %a, align 4
+  %lt = icmp slt i32 %12, 0
+  %eq29 = icmp eq i1 %lt, %11
   br i1 %eq29, label %switch.case30, label %next_if31
 
 switch.case30:                                    ; preds = %switch.entry28
@@ -223,9 +223,9 @@ switch.case30:                                    ; preds = %switch.entry28
   br label %switch.exit37
 
 next_if31:                                        ; preds = %switch.entry28
-  %14 = load i32, ptr %a, align 4
-  %eq32 = icmp eq i32 %14, 1
-  %eq33 = icmp eq i1 %eq32, %12
+  %13 = load i32, ptr %a, align 4
+  %eq32 = icmp eq i32 %13, 1
+  %eq33 = icmp eq i1 %eq32, %11
   br i1 %eq33, label %switch.case34, label %next_if35
 
 switch.case34:                                    ; preds = %next_if31

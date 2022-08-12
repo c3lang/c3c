@@ -65,13 +65,13 @@ expr_block.exit:                                  ; preds = %if.then
   br label %after_assign
 
 after_assign:                                     ; preds = %expr_block.exit, %if.exit
-  %3 = load i64, ptr %a.f, align 8
-  %not_err = icmp eq i64 %3, 0
+  %optval = load i64, ptr %a.f, align 8
+  %not_err = icmp eq i64 %optval, 0
   br i1 %not_err, label %after_check, label %else_block
 
 after_check:                                      ; preds = %after_assign
-  %4 = load i32, ptr %a, align 4
-  %add = add i32 %4, 3
+  %3 = load i32, ptr %a, align 4
+  %add = add i32 %3, 3
   br label %phi_block
 
 else_block:                                       ; preds = %after_assign
@@ -80,13 +80,13 @@ else_block:                                       ; preds = %after_assign
 phi_block:                                        ; preds = %else_block, %after_check
   %val = phi i32 [ %add, %after_check ], [ 2, %else_block ]
   store i32 %val, ptr %x1, align 4
-  %5 = load i32, ptr %x1, align 4
-  %intbool3 = icmp ne i32 %5, 0
+  %4 = load i32, ptr %x1, align 4
+  %intbool3 = icmp ne i32 %4, 0
   br i1 %intbool3, label %if.then4, label %if.exit5
 
 if.then4:                                         ; preds = %phi_block
-  %6 = load i32, ptr %x1, align 4
-  store i32 %6, ptr %blockret2, align 4
+  %5 = load i32, ptr %x1, align 4
+  store i32 %5, ptr %blockret2, align 4
   br label %expr_block.exit6
 
 if.exit5:                                         ; preds = %phi_block
@@ -94,20 +94,20 @@ if.exit5:                                         ; preds = %phi_block
   br label %after_assign7
 
 expr_block.exit6:                                 ; preds = %if.then4
-  %7 = load i32, ptr %blockret2, align 4
-  store i32 %7, ptr %b, align 4
+  %6 = load i32, ptr %blockret2, align 4
+  store i32 %6, ptr %b, align 4
   store i64 0, ptr %b.f, align 8
   br label %after_assign7
 
 after_assign7:                                    ; preds = %expr_block.exit6, %if.exit5
   store i32 0, ptr %x8, align 4
-  %8 = load i32, ptr %x8, align 4
-  %intbool10 = icmp ne i32 %8, 0
+  %7 = load i32, ptr %x8, align 4
+  %intbool10 = icmp ne i32 %7, 0
   br i1 %intbool10, label %if.then11, label %if.exit12
 
 if.then11:                                        ; preds = %after_assign7
-  %9 = load i32, ptr %x8, align 4
-  store i32 %9, ptr %blockret9, align 4
+  %8 = load i32, ptr %x8, align 4
+  store i32 %8, ptr %blockret9, align 4
   br label %expr_block.exit13
 
 if.exit12:                                        ; preds = %after_assign7
@@ -115,62 +115,62 @@ if.exit12:                                        ; preds = %after_assign7
   br label %after_assign14
 
 expr_block.exit13:                                ; preds = %if.then11
-  %10 = load i32, ptr %blockret9, align 4
-  store i32 %10, ptr %c, align 4
+  %9 = load i32, ptr %blockret9, align 4
+  store i32 %9, ptr %c, align 4
   store i64 0, ptr %c.f, align 8
   br label %after_assign14
 
 after_assign14:                                   ; preds = %expr_block.exit13, %if.exit12
-  %11 = load i64, ptr %a.f, align 8
-  %not_err15 = icmp eq i64 %11, 0
-  br i1 %not_err15, label %after_check16, label %voiderr
+  %optval15 = load i64, ptr %a.f, align 8
+  %not_err16 = icmp eq i64 %optval15, 0
+  br i1 %not_err16, label %after_check17, label %voiderr
 
-after_check16:                                    ; preds = %after_assign14
-  %12 = load i32, ptr %a, align 4
-  call void (ptr, ...) @printf(ptr @.str, i32 %12)
+after_check17:                                    ; preds = %after_assign14
+  %10 = load i32, ptr %a, align 4
+  call void (ptr, ...) @printf(ptr @.str, i32 %10)
   br label %voiderr
 
-voiderr:                                          ; preds = %after_check16, %after_assign14
-  %13 = load i64, ptr %b.f, align 8
-  %not_err17 = icmp eq i64 %13, 0
-  br i1 %not_err17, label %after_check18, label %voiderr19
+voiderr:                                          ; preds = %after_check17, %after_assign14
+  %optval18 = load i64, ptr %b.f, align 8
+  %not_err19 = icmp eq i64 %optval18, 0
+  br i1 %not_err19, label %after_check20, label %voiderr21
 
-after_check18:                                    ; preds = %voiderr
-  %14 = load i32, ptr %b, align 4
-  call void (ptr, ...) @printf(ptr @.str.1, i32 %14)
-  br label %voiderr19
+after_check20:                                    ; preds = %voiderr
+  %11 = load i32, ptr %b, align 4
+  call void (ptr, ...) @printf(ptr @.str.1, i32 %11)
+  br label %voiderr21
 
-voiderr19:                                        ; preds = %after_check18, %voiderr
-  %15 = load i64, ptr %c.f, align 8
-  %not_err20 = icmp eq i64 %15, 0
-  br i1 %not_err20, label %after_check21, label %voiderr22
+voiderr21:                                        ; preds = %after_check20, %voiderr
+  %optval22 = load i64, ptr %c.f, align 8
+  %not_err23 = icmp eq i64 %optval22, 0
+  br i1 %not_err23, label %after_check24, label %voiderr25
 
-after_check21:                                    ; preds = %voiderr19
-  %16 = load i32, ptr %c, align 4
-  call void (ptr, ...) @printf(ptr @.str.2, i32 %16)
-  br label %voiderr22
+after_check24:                                    ; preds = %voiderr21
+  %12 = load i32, ptr %c, align 4
+  call void (ptr, ...) @printf(ptr @.str.2, i32 %12)
+  br label %voiderr25
 
-voiderr22:                                        ; preds = %after_check21, %voiderr19
-  %17 = load i64, ptr %c.f, align 8
-  %neq = icmp ne i64 %17, 0
-  br i1 %neq, label %if.then23, label %if.exit24
+voiderr25:                                        ; preds = %after_check24, %voiderr21
+  %13 = load i64, ptr %c.f, align 8
+  %neq = icmp ne i64 %13, 0
+  br i1 %neq, label %if.then26, label %if.exit27
 
-if.then23:                                        ; preds = %voiderr22
+if.then26:                                        ; preds = %voiderr25
   call void (ptr, ...) @printf(ptr @.str.3)
-  br label %if.exit24
+  br label %if.exit27
 
-if.exit24:                                        ; preds = %if.then23, %voiderr22
+if.exit27:                                        ; preds = %if.then26, %voiderr25
   store i32 3, ptr %c, align 4
   store i64 0, ptr %c.f, align 8
-  %18 = load i64, ptr %c.f, align 8
-  %not_err25 = icmp eq i64 %18, 0
-  br i1 %not_err25, label %after_check26, label %voiderr27
+  %optval28 = load i64, ptr %c.f, align 8
+  %not_err29 = icmp eq i64 %optval28, 0
+  br i1 %not_err29, label %after_check30, label %voiderr31
 
-after_check26:                                    ; preds = %if.exit24
-  %19 = load i32, ptr %c, align 4
-  call void (ptr, ...) @printf(ptr @.str.4, i32 %19)
-  br label %voiderr27
+after_check30:                                    ; preds = %if.exit27
+  %14 = load i32, ptr %c, align 4
+  call void (ptr, ...) @printf(ptr @.str.4, i32 %14)
+  br label %voiderr31
 
-voiderr27:                                        ; preds = %after_check26, %if.exit24
+voiderr31:                                        ; preds = %after_check30, %if.exit27
   ret i32 0
 }

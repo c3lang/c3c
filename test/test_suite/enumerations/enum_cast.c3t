@@ -47,6 +47,7 @@ entry:
   ret void
 }
 
+; Function Attrs: nounwind
 define void @test_test() #0 {
 entry:
   %b = alloca i8, align 1
@@ -76,17 +77,17 @@ entry:
   %uifp = uitofp i8 %2 to float
   store float %uifp, float* %e, align 4
   store i64 0, i64* %e.f, align 8
-  %3 = load i64, i64* %xf.f, align 8
-  %not_err = icmp eq i64 %3, 0
+  %optval = load i64, i64* %xf.f, align 8
+  %not_err = icmp eq i64 %optval, 0
   br i1 %not_err, label %after_check, label %assign_optional
 
 assign_optional:                                  ; preds = %entry
-  store i64 %3, i64* %e.f, align 8
+  store i64 %optval, i64* %e.f, align 8
   br label %after_assign
 
 after_check:                                      ; preds = %entry
-  %4 = load i8, i8* %xf, align 1
-  %uifp1 = uitofp i8 %4 to float
+  %3 = load i8, i8* %xf, align 1
+  %uifp1 = uitofp i8 %3 to float
   store float %uifp1, float* %e, align 4
   store i64 0, i64* %e.f, align 8
   br label %after_assign

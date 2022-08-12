@@ -102,8 +102,9 @@ entry:
   store i16 0, i16* %5, align 2
   %6 = getelementptr inbounds %Foo, %Foo* %z, i32 0, i32 0
   store i16 %0, i16* %6, align 2
-  %7 = load %Foo, %Foo* %z, align 2
-  store %Foo %7, %Foo* %expr, align 2
+  %7 = bitcast %Foo* %expr to i8*
+  %8 = bitcast %Foo* %z to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 2 %7, i8* align 2 %8, i32 8, i1 false)
   %ptrptr = bitcast %Foo* %expr to i16*
   store i16* %ptrptr, i16** %b, align 8
   %ptrptr1 = bitcast i64* %x to i16*
@@ -112,27 +113,27 @@ entry:
   br label %loop.cond
 
 loop.cond:                                        ; preds = %loop.body, %entry
-  %8 = load i64, i64* %i, align 8
-  %lt = icmp ult i64 %8, 8
+  %9 = load i64, i64* %i, align 8
+  %lt = icmp ult i64 %9, 8
   br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
-  %9 = load i16*, i16** %to, align 8
-  %10 = load i64, i64* %i, align 8
-  %ptroffset = getelementptr inbounds i16, i16* %9, i64 %10
-  %11 = load i16*, i16** %b, align 8
-  %12 = load i64, i64* %i, align 8
-  %ptroffset2 = getelementptr inbounds i16, i16* %11, i64 %12
-  %13 = load i16, i16* %ptroffset2, align 2
-  store i16 %13, i16* %ptroffset, align 2
-  %14 = load i64, i64* %i, align 8
-  %add = add i64 %14, 2
+  %10 = load i16*, i16** %to, align 8
+  %11 = load i64, i64* %i, align 8
+  %ptroffset = getelementptr inbounds i16, i16* %10, i64 %11
+  %12 = load i16*, i16** %b, align 8
+  %13 = load i64, i64* %i, align 8
+  %ptroffset2 = getelementptr inbounds i16, i16* %12, i64 %13
+  %14 = load i16, i16* %ptroffset2, align 2
+  store i16 %14, i16* %ptroffset, align 2
+  %15 = load i64, i64* %i, align 8
+  %add = add i64 %15, 2
   store i64 %add, i64* %i, align 8
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
-  %15 = load i64, i64* %x, align 8
-  ret i64 %15
+  %16 = load i64, i64* %x, align 8
+  ret i64 %16
 }
 
 ; Function Attrs: nounwind

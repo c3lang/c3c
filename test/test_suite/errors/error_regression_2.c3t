@@ -366,13 +366,14 @@ if.then15:                                        ; preds = %if.exit9
   %32 = getelementptr inbounds %Doc, %Doc* %literal17, i32 0, i32 0
   %33 = getelementptr inbounds %Head, %Head* %literal18, i32 0, i32 0
   store %"char[]"* null, %"char[]"** %33, align 8
-  %34 = load %Head, %Head* %literal18, align 8
-  store %Head %34, %Head* %value, align 8
-  %35 = call i8* @std_core_mem_malloc(i64 8) #2
-  %ptrptr = bitcast i8* %35 to %Head*
+  %34 = bitcast %Head* %value to i8*
+  %35 = bitcast %Head* %literal18 to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %34, i8* align 8 %35, i32 8, i1 false)
+  %36 = call i8* @std_core_mem_malloc(i64 8) #2
+  %ptrptr = bitcast i8* %36 to %Head*
   store %Head* %ptrptr, %Head** %temp, align 8
-  %36 = load %Head*, %Head** %temp, align 8
-  %not = icmp eq %Head* %36, null
+  %37 = load %Head*, %Head** %temp, align 8
+  %not = icmp eq %Head* %37, null
   br i1 %not, label %if.then19, label %if.exit20
 
 if.then19:                                        ; preds = %if.then15
@@ -380,51 +381,51 @@ if.then19:                                        ; preds = %if.then15
   br label %guard_block
 
 if.exit20:                                        ; preds = %if.then15
-  %37 = load %Head*, %Head** %temp, align 8
-  %38 = bitcast %Head* %37 to i8*
-  %39 = bitcast %Head* %value to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %38, i8* align 8 %39, i32 8, i1 false)
+  %38 = load %Head*, %Head** %temp, align 8
+  %39 = bitcast %Head* %38 to i8*
+  %40 = bitcast %Head* %value to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %39, i8* align 8 %40, i32 8, i1 false)
   br label %noerr_block
 
 guard_block:                                      ; preds = %if.then19
-  %40 = load i64, i64* %error_var, align 8
-  ret i64 %40
+  %41 = load i64, i64* %error_var, align 8
+  ret i64 %41
 
 noerr_block:                                      ; preds = %if.exit20
-  %41 = load %Head*, %Head** %temp, align 8
-  store %Head* %41, %Head** %32, align 8
-  %42 = bitcast %Doc* %0 to i8*
-  %43 = bitcast %Doc* %literal17 to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %42, i8* align 8 %43, i32 8, i1 false)
+  %42 = load %Head*, %Head** %temp, align 8
+  store %Head* %42, %Head** %32, align 8
+  %43 = bitcast %Doc* %0 to i8*
+  %44 = bitcast %Doc* %literal17 to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %43, i8* align 8 %44, i32 8, i1 false)
   ret i64 0
 
 if.exit21:                                        ; preds = %if.exit9
-  %44 = bitcast %"char[]"* %url to { i8*, i64 }*
-  %45 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %44, i32 0, i32 0
-  %lo22 = load i8*, i8** %45, align 8
-  %46 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %44, i32 0, i32 1
-  %hi23 = load i64, i64* %46, align 8
+  %45 = bitcast %"char[]"* %url to { i8*, i64 }*
+  %46 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %45, i32 0, i32 0
+  %lo22 = load i8*, i8** %46, align 8
+  %47 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %45, i32 0, i32 1
+  %hi23 = load i64, i64* %47, align 8
   store %"char[]" { i8* getelementptr inbounds ([12 x i8], [12 x i8]* @.str.5, i32 0, i32 0), i64 11 }, %"char[]"* %taddr24, align 8
-  %47 = bitcast %"char[]"* %taddr24 to { i8*, i64 }*
-  %48 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %47, i32 0, i32 0
-  %lo25 = load i8*, i8** %48, align 8
-  %49 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %47, i32 0, i32 1
-  %hi26 = load i64, i64* %49, align 8
-  %50 = call i8 @test_contains(i8* %lo22, i64 %hi23, i8* %lo25, i64 %hi26)
-  %51 = trunc i8 %50 to i1
-  br i1 %51, label %if.then27, label %if.exit49
+  %48 = bitcast %"char[]"* %taddr24 to { i8*, i64 }*
+  %49 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %48, i32 0, i32 0
+  %lo25 = load i8*, i8** %49, align 8
+  %50 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %48, i32 0, i32 1
+  %hi26 = load i64, i64* %50, align 8
+  %51 = call i8 @test_contains(i8* %lo22, i64 %hi23, i8* %lo25, i64 %hi26)
+  %52 = trunc i8 %51 to i1
+  br i1 %52, label %if.then27, label %if.exit49
 
 if.then27:                                        ; preds = %if.exit21
-  %52 = getelementptr inbounds %Doc, %Doc* %literal29, i32 0, i32 0
-  %53 = bitcast %Head* %literal32 to %"char[]"**
-  store %"char[]"* null, %"char[]"** %53, align 8
-  %54 = getelementptr inbounds %Head, %Head* %literal32, i32 0, i32 0
+  %53 = getelementptr inbounds %Doc, %Doc* %literal29, i32 0, i32 0
+  %54 = bitcast %Head* %literal32 to %"char[]"**
+  store %"char[]"* null, %"char[]"** %54, align 8
+  %55 = getelementptr inbounds %Head, %Head* %literal32, i32 0, i32 0
   store %"char[]" zeroinitializer, %"char[]"* %value34, align 8
-  %55 = call i8* @std_core_mem_malloc(i64 16) #2
-  %ptrptr36 = bitcast i8* %55 to %"char[]"*
+  %56 = call i8* @std_core_mem_malloc(i64 16) #2
+  %ptrptr36 = bitcast i8* %56 to %"char[]"*
   store %"char[]"* %ptrptr36, %"char[]"** %temp35, align 8
-  %56 = load %"char[]"*, %"char[]"** %temp35, align 8
-  %not37 = icmp eq %"char[]"* %56, null
+  %57 = load %"char[]"*, %"char[]"** %temp35, align 8
+  %not37 = icmp eq %"char[]"* %57, null
   br i1 %not37, label %if.then38, label %if.exit39
 
 if.then38:                                        ; preds = %if.then27
@@ -432,26 +433,27 @@ if.then38:                                        ; preds = %if.then27
   br label %guard_block40
 
 if.exit39:                                        ; preds = %if.then27
-  %57 = load %"char[]"*, %"char[]"** %temp35, align 8
-  %58 = bitcast %"char[]"* %57 to i8*
-  %59 = bitcast %"char[]"* %value34 to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %58, i8* align 8 %59, i32 16, i1 false)
+  %58 = load %"char[]"*, %"char[]"** %temp35, align 8
+  %59 = bitcast %"char[]"* %58 to i8*
+  %60 = bitcast %"char[]"* %value34 to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %59, i8* align 8 %60, i32 16, i1 false)
   br label %noerr_block41
 
 guard_block40:                                    ; preds = %if.then38
-  %60 = load i64, i64* %error_var33, align 8
-  ret i64 %60
+  %61 = load i64, i64* %error_var33, align 8
+  ret i64 %61
 
 noerr_block41:                                    ; preds = %if.exit39
-  %61 = load %"char[]"*, %"char[]"** %temp35, align 8
-  store %"char[]"* %61, %"char[]"** %54, align 8
-  %62 = load %Head, %Head* %literal32, align 8
-  store %Head %62, %Head* %value31, align 8
-  %63 = call i8* @std_core_mem_malloc(i64 8) #2
-  %ptrptr43 = bitcast i8* %63 to %Head*
+  %62 = load %"char[]"*, %"char[]"** %temp35, align 8
+  store %"char[]"* %62, %"char[]"** %55, align 8
+  %63 = bitcast %Head* %value31 to i8*
+  %64 = bitcast %Head* %literal32 to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %63, i8* align 8 %64, i32 8, i1 false)
+  %65 = call i8* @std_core_mem_malloc(i64 8) #2
+  %ptrptr43 = bitcast i8* %65 to %Head*
   store %Head* %ptrptr43, %Head** %temp42, align 8
-  %64 = load %Head*, %Head** %temp42, align 8
-  %not44 = icmp eq %Head* %64, null
+  %66 = load %Head*, %Head** %temp42, align 8
+  %not44 = icmp eq %Head* %66, null
   br i1 %not44, label %if.then45, label %if.exit46
 
 if.then45:                                        ; preds = %noerr_block41
@@ -459,74 +461,74 @@ if.then45:                                        ; preds = %noerr_block41
   br label %guard_block47
 
 if.exit46:                                        ; preds = %noerr_block41
-  %65 = load %Head*, %Head** %temp42, align 8
-  %66 = bitcast %Head* %65 to i8*
-  %67 = bitcast %Head* %value31 to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %66, i8* align 8 %67, i32 8, i1 false)
+  %67 = load %Head*, %Head** %temp42, align 8
+  %68 = bitcast %Head* %67 to i8*
+  %69 = bitcast %Head* %value31 to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %68, i8* align 8 %69, i32 8, i1 false)
   br label %noerr_block48
 
 guard_block47:                                    ; preds = %if.then45
-  %68 = load i64, i64* %error_var30, align 8
-  ret i64 %68
+  %70 = load i64, i64* %error_var30, align 8
+  ret i64 %70
 
 noerr_block48:                                    ; preds = %if.exit46
-  %69 = load %Head*, %Head** %temp42, align 8
-  store %Head* %69, %Head** %52, align 8
-  %70 = bitcast %Doc* %0 to i8*
-  %71 = bitcast %Doc* %literal29 to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %70, i8* align 8 %71, i32 8, i1 false)
+  %71 = load %Head*, %Head** %temp42, align 8
+  store %Head* %71, %Head** %53, align 8
+  %72 = bitcast %Doc* %0 to i8*
+  %73 = bitcast %Doc* %literal29 to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %72, i8* align 8 %73, i32 8, i1 false)
   ret i64 0
 
 if.exit49:                                        ; preds = %if.exit21
-  %72 = getelementptr inbounds %"char[]", %"char[]"* %url, i32 0, i32 1
-  %73 = load i64, i64* %72, align 8
-  %uisitrunc = trunc i64 %73 to i32
-  %74 = getelementptr inbounds %"char[]", %"char[]"* %url, i32 0, i32 0
-  %75 = load i8*, i8** %74, align 8
-  %76 = call i32 (i8*, i64, i8*, ...) @snprintf(i8* null, i64 0, i8* getelementptr inbounds ([14 x i8], [14 x i8]* @.str.7, i32 0, i32 0), i32 %uisitrunc, i8* %75)
-  store i32 %76, i32* %len, align 4
-  %77 = load i32, i32* %len, align 4
-  %siuiext = sext i32 %77 to i64
+  %74 = getelementptr inbounds %"char[]", %"char[]"* %url, i32 0, i32 1
+  %75 = load i64, i64* %74, align 8
+  %uisitrunc = trunc i64 %75 to i32
+  %76 = getelementptr inbounds %"char[]", %"char[]"* %url, i32 0, i32 0
+  %77 = load i8*, i8** %76, align 8
+  %78 = call i32 (i8*, i64, i8*, ...) @snprintf(i8* null, i64 0, i8* getelementptr inbounds ([14 x i8], [14 x i8]* @.str.7, i32 0, i32 0), i32 %uisitrunc, i8* %77)
+  store i32 %78, i32* %len, align 4
+  %79 = load i32, i32* %len, align 4
+  %siuiext = sext i32 %79 to i64
   %add = add i64 %siuiext, 1
-  %78 = call i8* @std_core_mem_malloc(i64 %add) #2
-  store i8* %78, i8** %str, align 8
-  %79 = load i8*, i8** %str, align 8
-  %not50 = icmp eq i8* %79, null
+  %80 = call i8* @std_core_mem_malloc(i64 %add) #2
+  store i8* %80, i8** %str, align 8
+  %81 = load i8*, i8** %str, align 8
+  %not50 = icmp eq i8* %81, null
   br i1 %not50, label %if.then51, label %if.exit52
 
 if.then51:                                        ; preds = %if.exit49
   ret i64 ptrtoint (%.fault* @"test_ReadError$OUT_OF_MEMORY" to i64)
 
 if.exit52:                                        ; preds = %if.exit49
-  %80 = load i8*, i8** %str, align 8
-  %81 = load i32, i32* %len, align 4
-  %siuiext53 = sext i32 %81 to i64
+  %82 = load i8*, i8** %str, align 8
+  %83 = load i32, i32* %len, align 4
+  %siuiext53 = sext i32 %83 to i64
   %add54 = add i64 %siuiext53, 1
-  %82 = getelementptr inbounds %"char[]", %"char[]"* %url, i32 0, i32 1
-  %83 = load i64, i64* %82, align 8
-  %uisitrunc55 = trunc i64 %83 to i32
-  %84 = getelementptr inbounds %"char[]", %"char[]"* %url, i32 0, i32 0
-  %85 = load i8*, i8** %84, align 8
-  %86 = call i32 (i8*, i64, i8*, ...) @snprintf(i8* %80, i64 %add54, i8* getelementptr inbounds ([14 x i8], [14 x i8]* @.str.8, i32 0, i32 0), i32 %uisitrunc55, i8* %85)
-  %87 = getelementptr inbounds %Doc, %Doc* %literal57, i32 0, i32 0
-  %88 = bitcast %Head* %literal60 to %"char[]"**
-  store %"char[]"* null, %"char[]"** %88, align 8
-  %89 = getelementptr inbounds %Head, %Head* %literal60, i32 0, i32 0
-  %90 = load i8*, i8** %str, align 8
-  %91 = load i32, i32* %len, align 4
-  %sub = sub i32 %91, 1
+  %84 = getelementptr inbounds %"char[]", %"char[]"* %url, i32 0, i32 1
+  %85 = load i64, i64* %84, align 8
+  %uisitrunc55 = trunc i64 %85 to i32
+  %86 = getelementptr inbounds %"char[]", %"char[]"* %url, i32 0, i32 0
+  %87 = load i8*, i8** %86, align 8
+  %88 = call i32 (i8*, i64, i8*, ...) @snprintf(i8* %82, i64 %add54, i8* getelementptr inbounds ([14 x i8], [14 x i8]* @.str.8, i32 0, i32 0), i32 %uisitrunc55, i8* %87)
+  %89 = getelementptr inbounds %Doc, %Doc* %literal57, i32 0, i32 0
+  %90 = bitcast %Head* %literal60 to %"char[]"**
+  store %"char[]"* null, %"char[]"** %90, align 8
+  %91 = getelementptr inbounds %Head, %Head* %literal60, i32 0, i32 0
+  %92 = load i8*, i8** %str, align 8
+  %93 = load i32, i32* %len, align 4
+  %sub = sub i32 %93, 1
   %sisiext = sext i32 %sub to i64
-  %92 = add i64 %sisiext, 1
-  %size = sub i64 %92, 0
-  %ptroffset = getelementptr inbounds i8, i8* %90, i64 0
-  %93 = insertvalue %"char[]" undef, i8* %ptroffset, 0
-  %94 = insertvalue %"char[]" %93, i64 %size, 1
-  store %"char[]" %94, %"char[]"* %value62, align 8
-  %95 = call i8* @std_core_mem_malloc(i64 16) #2
-  %ptrptr64 = bitcast i8* %95 to %"char[]"*
+  %94 = add i64 %sisiext, 1
+  %size = sub i64 %94, 0
+  %ptroffset = getelementptr inbounds i8, i8* %92, i64 0
+  %95 = insertvalue %"char[]" undef, i8* %ptroffset, 0
+  %96 = insertvalue %"char[]" %95, i64 %size, 1
+  store %"char[]" %96, %"char[]"* %value62, align 8
+  %97 = call i8* @std_core_mem_malloc(i64 16) #2
+  %ptrptr64 = bitcast i8* %97 to %"char[]"*
   store %"char[]"* %ptrptr64, %"char[]"** %temp63, align 8
-  %96 = load %"char[]"*, %"char[]"** %temp63, align 8
-  %not65 = icmp eq %"char[]"* %96, null
+  %98 = load %"char[]"*, %"char[]"** %temp63, align 8
+  %not65 = icmp eq %"char[]"* %98, null
   br i1 %not65, label %if.then66, label %if.exit67
 
 if.then66:                                        ; preds = %if.exit52
@@ -534,26 +536,27 @@ if.then66:                                        ; preds = %if.exit52
   br label %guard_block68
 
 if.exit67:                                        ; preds = %if.exit52
-  %97 = load %"char[]"*, %"char[]"** %temp63, align 8
-  %98 = bitcast %"char[]"* %97 to i8*
-  %99 = bitcast %"char[]"* %value62 to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %98, i8* align 8 %99, i32 16, i1 false)
+  %99 = load %"char[]"*, %"char[]"** %temp63, align 8
+  %100 = bitcast %"char[]"* %99 to i8*
+  %101 = bitcast %"char[]"* %value62 to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %100, i8* align 8 %101, i32 16, i1 false)
   br label %noerr_block69
 
 guard_block68:                                    ; preds = %if.then66
-  %100 = load i64, i64* %error_var61, align 8
-  ret i64 %100
+  %102 = load i64, i64* %error_var61, align 8
+  ret i64 %102
 
 noerr_block69:                                    ; preds = %if.exit67
-  %101 = load %"char[]"*, %"char[]"** %temp63, align 8
-  store %"char[]"* %101, %"char[]"** %89, align 8
-  %102 = load %Head, %Head* %literal60, align 8
-  store %Head %102, %Head* %value59, align 8
-  %103 = call i8* @std_core_mem_malloc(i64 8) #2
-  %ptrptr71 = bitcast i8* %103 to %Head*
+  %103 = load %"char[]"*, %"char[]"** %temp63, align 8
+  store %"char[]"* %103, %"char[]"** %91, align 8
+  %104 = bitcast %Head* %value59 to i8*
+  %105 = bitcast %Head* %literal60 to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %104, i8* align 8 %105, i32 8, i1 false)
+  %106 = call i8* @std_core_mem_malloc(i64 8) #2
+  %ptrptr71 = bitcast i8* %106 to %Head*
   store %Head* %ptrptr71, %Head** %temp70, align 8
-  %104 = load %Head*, %Head** %temp70, align 8
-  %not72 = icmp eq %Head* %104, null
+  %107 = load %Head*, %Head** %temp70, align 8
+  %not72 = icmp eq %Head* %107, null
   br i1 %not72, label %if.then73, label %if.exit74
 
 if.then73:                                        ; preds = %noerr_block69
@@ -561,22 +564,22 @@ if.then73:                                        ; preds = %noerr_block69
   br label %guard_block75
 
 if.exit74:                                        ; preds = %noerr_block69
-  %105 = load %Head*, %Head** %temp70, align 8
-  %106 = bitcast %Head* %105 to i8*
-  %107 = bitcast %Head* %value59 to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %106, i8* align 8 %107, i32 8, i1 false)
+  %108 = load %Head*, %Head** %temp70, align 8
+  %109 = bitcast %Head* %108 to i8*
+  %110 = bitcast %Head* %value59 to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %109, i8* align 8 %110, i32 8, i1 false)
   br label %noerr_block76
 
 guard_block75:                                    ; preds = %if.then73
-  %108 = load i64, i64* %error_var58, align 8
-  ret i64 %108
+  %111 = load i64, i64* %error_var58, align 8
+  ret i64 %111
 
 noerr_block76:                                    ; preds = %if.exit74
-  %109 = load %Head*, %Head** %temp70, align 8
-  store %Head* %109, %Head** %87, align 8
-  %110 = bitcast %Doc* %0 to i8*
-  %111 = bitcast %Doc* %literal57 to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %110, i8* align 8 %111, i32 8, i1 false)
+  %112 = load %Head*, %Head** %temp70, align 8
+  store %Head* %112, %Head** %89, align 8
+  %113 = bitcast %Doc* %0 to i8*
+  %114 = bitcast %Doc* %literal57 to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %113, i8* align 8 %114, i32 8, i1 false)
   ret i64 0
 }
 
@@ -836,7 +839,7 @@ entry:
   store i64 %9, i64* %anon1, align 8
   br label %loop.cond
 
-loop.cond:                                        ; preds = %phi_block11, %entry
+loop.cond:                                        ; preds = %phi_block12, %entry
   %10 = load i64, i64* %anon, align 8
   %11 = load i64, i64* %anon1, align 8
   %lt = icmp ult i64 %10, %11
@@ -914,40 +917,40 @@ after_check:                                      ; preds = %cond.phi
   br label %after_assign
 
 after_assign:                                     ; preds = %after_check, %assign_optional
-  %47 = load i64, i64* %has_title.f, align 8
-  %not_err5 = icmp eq i64 %47, 0
+  %optval = load i64, i64* %has_title.f, align 8
+  %not_err5 = icmp eq i64 %optval, 0
   br i1 %not_err5, label %after_check6, label %else_block
 
 after_check6:                                     ; preds = %after_assign
-  %48 = load i8, i8* %has_title, align 1
-  %49 = call i8* @test_bool_to_string(i8 %48)
+  %47 = load i8, i8* %has_title, align 1
+  %48 = call i8* @test_bool_to_string(i8 %47)
   br label %phi_block
 
 else_block:                                       ; preds = %after_assign
-  %50 = load i64, i64* %has_title.f, align 8
-  %51 = call i8* @test_nameFromError(i64 %50)
+  %49 = load i64, i64* %has_title.f, align 8
+  %50 = call i8* @test_nameFromError(i64 %49)
   br label %phi_block
 
 phi_block:                                        ; preds = %else_block, %after_check6
-  %val7 = phi i8* [ %49, %after_check6 ], [ %51, %else_block ]
-  %52 = load i64, i64* %has_title.f, align 8
-  %not_err8 = icmp eq i64 %52, 0
-  br i1 %not_err8, label %after_check9, label %else_block10
+  %val7 = phi i8* [ %48, %after_check6 ], [ %50, %else_block ]
+  %optval8 = load i64, i64* %has_title.f, align 8
+  %not_err9 = icmp eq i64 %optval8, 0
+  br i1 %not_err9, label %after_check10, label %else_block11
 
-after_check9:                                     ; preds = %phi_block
-  %53 = load i8, i8* %has_title, align 1
-  %54 = trunc i8 %53 to i1
-  br label %phi_block11
+after_check10:                                    ; preds = %phi_block
+  %51 = load i8, i8* %has_title, align 1
+  %52 = trunc i8 %51 to i1
+  br label %phi_block12
 
-else_block10:                                     ; preds = %phi_block
-  br label %phi_block11
+else_block11:                                     ; preds = %phi_block
+  br label %phi_block12
 
-phi_block11:                                      ; preds = %else_block10, %after_check9
-  %val12 = phi i1 [ %54, %after_check9 ], [ false, %else_block10 ]
-  %ternary = select i1 %val12, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str.26, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str.27, i32 0, i32 0)
-  %55 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([23 x i8], [23 x i8]* @.str.25, i32 0, i32 0), i8* %val7, i8* %ternary)
-  %56 = load i64, i64* %anon, align 8
-  %add = add i64 %56, 1
+phi_block12:                                      ; preds = %else_block11, %after_check10
+  %val13 = phi i1 [ %52, %after_check10 ], [ false, %else_block11 ]
+  %ternary = select i1 %val13, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str.26, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str.27, i32 0, i32 0)
+  %53 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([23 x i8], [23 x i8]* @.str.25, i32 0, i32 0), i8* %val7, i8* %ternary)
+  %54 = load i64, i64* %anon, align 8
+  %add = add i64 %54, 1
   store i64 %add, i64* %anon, align 8
   br label %loop.cond
 

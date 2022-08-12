@@ -4,7 +4,7 @@
 
 #include "llvm_codegen_internal.h"
 
-LLVMValueRef llvm_store(GenContext *context, LLVMValueRef pointer, LLVMValueRef value, AlignSize alignment)
+LLVMValueRef llvm_store_to_ptr_raw_aligned(GenContext *context, LLVMValueRef pointer, LLVMValueRef value, AlignSize alignment)
 {
 	assert(alignment > 0);
 	LLVMValueRef ref = LLVMBuildStore(context->builder, value, pointer);
@@ -12,33 +12,17 @@ LLVMValueRef llvm_store(GenContext *context, LLVMValueRef pointer, LLVMValueRef 
 	return ref;
 }
 
-void llvm_store_raw_abi_alignment(GenContext *context, LLVMValueRef pointer, LLVMValueRef value, Type *type)
+
+void llvm_store_to_ptr_zero(GenContext *context, LLVMValueRef pointer, Type *type)
 {
-	llvm_store(context, pointer, value, type_abi_alignment(type));
+	llvm_store_to_ptr_raw_aligned(context, pointer, llvm_get_zero(context, type), type_abi_alignment(type));
 }
 
-void llvm_store_value_raw(GenContext *c, BEValue *destination, LLVMValueRef raw_value)
-{
-	assert(llvm_value_is_addr(destination));
-	llvm_store(c, destination->value, raw_value, destination->alignment);
-}
-
-void llvm_store_decl_raw(GenContext *context, Decl *decl, LLVMValueRef value)
-{
-	assert(!decl->is_value);
-	llvm_store(context, decl->backend_ref, value, decl->alignment);
-}
-
-void llvm_store_value_dest_aligned(GenContext *c, LLVMValueRef destination, BEValue *value)
-{
-	llvm_store_value_aligned(c, destination, value, LLVMGetAlignment(destination));
-}
-
-LLVMValueRef llvm_store_value_aligned(GenContext *c, LLVMValueRef destination, BEValue *value, AlignSize alignment)
+LLVMValueRef llvm_store_to_ptr_aligned(GenContext *c, LLVMValueRef destination, BEValue *value, AlignSize alignment)
 {
 	// If we have an address but not an aggregate, do a load.
 	assert(alignment);
-	llvm_value_fold_failable(c, value);
+	llvm_value_fold_optional(c, value);
 	if (value->kind == BE_ADDRESS && !type_is_abi_aggregate(value->type))
 	{
 		value->value = llvm_load_value_store(c, value);
@@ -51,7 +35,7 @@ LLVMValueRef llvm_store_value_aligned(GenContext *c, LLVMValueRef destination, B
 			value->kind = BE_VALUE;
 			FALLTHROUGH;
 		case BE_VALUE:
-			return llvm_store(c, destination, value->value, alignment);
+			return llvm_store_to_ptr_raw_aligned(c, destination, value->value, alignment);
 		case BE_ADDRESS_FAILABLE:
 			UNREACHABLE
 		case BE_ADDRESS:
@@ -73,11 +57,11 @@ LLVMValueRef llvm_store_value_aligned(GenContext *c, LLVMValueRef destination, B
 	UNREACHABLE
 }
 
-LLVMValueRef llvm_store_value(GenContext *c, BEValue *destination, BEValue *value)
+LLVMValueRef llvm_store(GenContext *c, BEValue *destination, BEValue *value)
 {
 	if (value->type == type_void) return NULL;
 	assert(llvm_value_is_addr(destination));
-	return llvm_store_value_aligned(c, destination->value, value, destination->alignment);
+	return llvm_store_to_ptr_aligned(c, destination->value, value, destination->alignment);
 }
 
 LLVMValueRef llvm_load(GenContext *c, LLVMTypeRef type, LLVMValueRef pointer, AlignSize alignment, const char *name)
@@ -98,7 +82,7 @@ LLVMValueRef llvm_load_natural_alignment(GenContext *c, Type *type, LLVMValueRef
 
 LLVMValueRef llvm_load_value(GenContext *c, BEValue *value)
 {
-	llvm_value_fold_failable(c, value);
+	llvm_value_fold_optional(c, value);
 	switch (value->kind)
 	{
 		case BE_BOOLEAN:
@@ -120,26 +104,21 @@ LLVMValueRef llvm_load_value_store(GenContext *c, BEValue *value)
 }
 
 
-void llvm_store_zero(GenContext *c, BEValue *ref)
+LLVMValueRef llvm_store_zero(GenContext *c, BEValue *ref)
 {
 	llvm_value_addr(c, ref);
 	Type *type = ref->type;
 	if (!type_is_abi_aggregate(type))
 	{
-		llvm_store_value_raw(c, ref, llvm_get_zero(c, type));
-		return;
+		return llvm_store_raw(c, ref, llvm_get_zero(c, type));
 	}
 	Type *single_type = type_abi_find_single_struct_element(type);
 
 	if (single_type && !type_is_abi_aggregate(single_type))
 	{
-		BEValue element;
-		llvm_value_set_address(&element,
-							   llvm_emit_bitcast(c, ref->value, type_get_ptr(single_type)),
-							   single_type,
-							   (unsigned)ref->alignment);
-		llvm_store_zero(c, &element);
-		return;
+		BEValue element = *ref;
+		llvm_value_bitcast(c, &element, single_type);
+		return llvm_store_zero(c, &element);
 	}
 	if (type_size(type) <= 16)
 	{
@@ -154,7 +133,7 @@ void llvm_store_zero(GenContext *c, BEValue *ref)
 				llvm_emit_struct_member_ref(c, ref, &member_ref, i);
 				llvm_store_zero(c, &member_ref);
 			}
-			return;
+			return NULL;
 		}
 		if (type->type_kind == TYPE_ARRAY)
 		{
@@ -167,8 +146,8 @@ void llvm_store_zero(GenContext *c, BEValue *ref)
 				llvm_value_set_address(&be_value, element_ptr, type->array.base, align);
 				llvm_store_zero(c, &be_value);
 			}
-			return;
+			return NULL;
 		}
 	}
-	llvm_emit_memclear_size_align(c, ref->value, type_size(ref->type), ref->alignment);
+	return llvm_emit_memclear_size_align(c, ref->value, type_size(ref->type), ref->alignment);
 }

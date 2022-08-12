@@ -76,17 +76,17 @@ entry:
   %uifp = uitofp i8 %2 to float
   store float %uifp, ptr %e, align 4
   store i64 0, ptr %e.f, align 8
-  %3 = load i64, ptr %xf.f, align 8
-  %not_err = icmp eq i64 %3, 0
+  %optval = load i64, ptr %xf.f, align 8
+  %not_err = icmp eq i64 %optval, 0
   br i1 %not_err, label %after_check, label %assign_optional
 
 assign_optional:                                  ; preds = %entry
-  store i64 %3, ptr %e.f, align 8
+  store i64 %optval, ptr %e.f, align 8
   br label %after_assign
 
 after_check:                                      ; preds = %entry
-  %4 = load i8, ptr %xf, align 1
-  %uifp1 = uitofp i8 %4 to float
+  %3 = load i8, ptr %xf, align 1
+  %uifp1 = uitofp i8 %3 to float
   store float %uifp1, ptr %e, align 4
   store i64 0, ptr %e.f, align 8
   br label %after_assign

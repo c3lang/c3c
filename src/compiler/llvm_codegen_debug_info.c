@@ -10,7 +10,17 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 static inline LLVMMetadataRef llvm_get_debug_member(GenContext *c, Type *type, const char *name, unsigned offset, SourceSpan *loc, LLVMMetadataRef scope, LLVMDIFlags flags);
 static inline LLVMMetadataRef llvm_get_debug_struct(GenContext *c, Type *type, const char *external_name, LLVMMetadataRef *elements, unsigned element_count, SourceSpan *loc, LLVMMetadataRef scope, LLVMDIFlags flags);
 static LLVMMetadataRef llvm_debug_forward_comp(GenContext *c, Type *type, const char *external_name, SourceSpan *loc, LLVMMetadataRef scope, LLVMDIFlags flags);
-
+static LLVMMetadataRef llvm_debug_simple_type(GenContext *context, Type *type, int dwarf_code);
+static LLVMMetadataRef llvm_debug_func_type(GenContext *c, Type *type);
+static LLVMMetadataRef llvm_debug_structlike_type(GenContext *c, Type *type, LLVMMetadataRef scope);
+static LLVMMetadataRef llvm_debug_pointer_type(GenContext *c, Type *type);
+static LLVMMetadataRef llvm_debug_vector_type(GenContext *c, Type *type);
+static LLVMMetadataRef llvm_debug_typedef_type(GenContext *c, Type *type);
+static LLVMMetadataRef llvm_debug_array_type(GenContext *c, Type *type);
+static LLVMMetadataRef llvm_debug_errunion_type(GenContext *c, Type *type);
+static LLVMMetadataRef llvm_debug_subarray_type(GenContext *c, Type *type);
+static LLVMMetadataRef llvm_debug_any_type(GenContext *c, Type *type);
+static LLVMMetadataRef llvm_debug_enum_type(GenContext *c, Type *type, LLVMMetadataRef scope);
 
 static inline LLVMMetadataRef llvm_get_debug_struct(GenContext *c, Type *type, const char *external_name, LLVMMetadataRef *elements, unsigned element_count, SourceSpan *loc, LLVMMetadataRef scope, LLVMDIFlags flags)
 {
@@ -206,22 +216,22 @@ void llvm_emit_debug_parameter(GenContext *c, Decl *parameter, unsigned index)
 
 }
 
-void llvm_emit_debug_location(GenContext *context, SourceSpan location)
+void llvm_emit_debug_location(GenContext *c, SourceSpan location)
 {
-	if (llvm_is_global_eval(context)) return;
+	if (llvm_is_global_eval(c)) return;
 	// Avoid re-emitting the same location.
-	LLVMMetadataRef oldloc = LLVMGetCurrentDebugLocation2(context->builder);
-	if (oldloc && context->last_emitted_loc.a == location.a) return;
-	LLVMMetadataRef scope = llvm_debug_current_scope(context);
+	LLVMMetadataRef oldloc = LLVMGetCurrentDebugLocation2(c->builder);
+	if (oldloc && c->last_emitted_loc.a == location.a) return;
+	LLVMMetadataRef scope = llvm_debug_current_scope(c);
 	unsigned row = location.row;
 	unsigned col = location.col;
-	context->last_emitted_loc.a = location.a;
-	LLVMMetadataRef loc = LLVMDIBuilderCreateDebugLocation(context->context,
+	c->last_emitted_loc.a = location.a;
+	LLVMMetadataRef loc = LLVMDIBuilderCreateDebugLocation(c->context,
 	                                                       row ? row : 1,
 	                                                       col ? col : 1,
 	                                                       scope, /* inlined at */ 0);
 
-	LLVMSetCurrentDebugLocation2(context->builder, loc);
+	LLVMSetCurrentDebugLocation2(c->builder, loc);
 }
 
 static LLVMMetadataRef llvm_debug_forward_comp(GenContext *c, Type *type, const char *external_name, SourceSpan *loc, LLVMMetadataRef scope, LLVMDIFlags flags)
@@ -273,7 +283,8 @@ static LLVMMetadataRef llvm_debug_simple_type(GenContext *context, Type *type, i
 	                                                               type->name,
 	                                                               strlen(type->name),
 	                                                               type->builtin.bitsize,
-	                                                               (LLVMDWARFTypeEncoding)dwarf_code, 0);
+	                                                               (LLVMDWARFTypeEncoding)dwarf_code,
+	                                                               LLVMDIFlagZero);
 
 }
 

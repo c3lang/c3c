@@ -48,7 +48,7 @@ fn void denormalize(InternalFPF* ptr)
 }
 
 
-// #expect: test.ll
+/* #expect: test.ll
 
 define i32 @test_foo1() #0 {
 entry:
@@ -57,8 +57,8 @@ entry:
   %0 = load i32, i32* %w_cnt, align 4
   %1 = load i8*, i8** %pp, align 8
   %2 = load i8, i8* %1, align 8
-  %uiuiext = zext i8 %2 to i32
-  %add = add i32 %0, %uiuiext
+  %zext = zext i8 %2 to i32
+  %add = add i32 %0, %zext
   store i32 %add, i32* %w_cnt, align 4
   %3 = load i32, i32* %w_cnt, align 4
   ret i32 %3

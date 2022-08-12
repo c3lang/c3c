@@ -26,7 +26,7 @@ void llvm_value_set_address_abi_aligned(BEValue *value, LLVMValueRef llvm_value,
 
 void llvm_value_addr(GenContext *c, BEValue *value)
 {
-	llvm_value_fold_failable(c, value);
+	llvm_value_fold_optional(c, value);
 	if (value->kind == BE_ADDRESS) return;
 	if (llvm_is_global_eval(c))
 	{
@@ -34,13 +34,12 @@ void llvm_value_addr(GenContext *c, BEValue *value)
 		LLVMValueRef ref = llvm_add_global_type(c, ".taddr", LLVMTypeOf(val), 0);
 		llvm_set_private_linkage(ref);
 		LLVMSetInitializer(ref, val);
-		llvm_emit_bitcast(c, ref, type_get_ptr(value->type));
-		llvm_value_set_address_abi_aligned(value, ref, value->type);
+		llvm_value_set_address_abi_aligned(value, llvm_emit_bitcast_ptr(c, ref, value->type), value->type);
 	}
 	else
 	{
 		LLVMValueRef temp = llvm_emit_alloca_aligned(c, value->type, "taddr");
-		llvm_store_value_dest_aligned(c, temp, value);
+		llvm_store_to_ptr(c, temp, value);
 		llvm_value_set_address_abi_aligned(value, temp, value->type);
 	}
 }
@@ -56,7 +55,7 @@ void llvm_value_rvalue(GenContext *c, BEValue *value)
 		}
 		return;
 	}
-	llvm_value_fold_failable(c, value);
+	llvm_value_fold_optional(c, value);
 	value->value = llvm_load(c,
 	                         llvm_get_type(c, value->type),
 	                         value->value,
@@ -64,7 +63,7 @@ void llvm_value_rvalue(GenContext *c, BEValue *value)
 	                         "");
 	if (value->type->type_kind == TYPE_BOOL)
 	{
-		value->value = LLVMBuildTrunc(c->builder, value->value, c->bool_type, "");
+		value->value = llvm_emit_trunc_bool(c, value->value);
 		value->kind = BE_BOOLEAN;
 		return;
 	}
@@ -105,16 +104,16 @@ void llvm_emit_jump_to_optional_exit(GenContext *c, LLVMValueRef err_value)
 		llvm_emit_block(c, error_block);
 	}
 
-	llvm_store_raw_abi_alignment(c, c->error_var, err_value, type_anyerr);
+	llvm_store_to_ptr_raw(c, c->error_var, err_value, type_anyerr);
 	llvm_emit_br(c, c->catch_block);
 	llvm_emit_block(c, after_block);
 }
 
-void llvm_value_fold_failable(GenContext *c, BEValue *value)
+void llvm_value_fold_optional(GenContext *c, BEValue *value)
 {
 	if (value->kind == BE_ADDRESS_FAILABLE)
 	{
-		llvm_emit_jump_to_optional_exit(c, llvm_load_natural_alignment(c, type_anyerr, value->failable, ""));
+		llvm_emit_jump_to_optional_exit(c, llvm_load_natural_alignment(c, type_anyerr, value->failable, "optval"));
 		value->kind = BE_ADDRESS;
 	}
 }

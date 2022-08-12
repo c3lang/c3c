@@ -64,12 +64,12 @@ entry:
   store ptr %b, ptr %c, align 8
   %2 = load ptr, ptr %c, align 8
   %3 = load i32, ptr %2, align 8
-  %4 = shl i32 %3, 28
-  %5 = ashr i32 %4, 29
-  %6 = load ptr, ptr %c, align 8
-  store ptr %6, ptr %x2, align 8
-  %7 = load ptr, ptr %c, align 8
-  store ptr %7, ptr %y2, align 8
+  %shl = shl i32 %3, 28
+  %ashr = ashr i32 %shl, 29
+  %4 = load ptr, ptr %c, align 8
+  store ptr %4, ptr %x2, align 8
+  %5 = load ptr, ptr %c, align 8
+  store ptr %5, ptr %y2, align 8
   ret void
 }
 
@@ -90,14 +90,14 @@ entry:
   %1 = load ptr, ptr %c, align 8
   %2 = getelementptr inbounds [4 x i8], ptr %1, i64 0, i64 0
   %3 = load i8, ptr %2, align 1
-  %4 = zext i8 %3 to i32
-  %5 = lshr i32 %4, 1
-  %6 = shl i32 %5, 29
-  %7 = ashr i32 %6, 29
-  call void (ptr, ...) @printf(ptr @.str, i32 %7)
-  %8 = load ptr, ptr %c, align 8
-  store ptr %8, ptr %x2, align 8
-  %9 = load ptr, ptr %c, align 8
-  store ptr %9, ptr %y2, align 8
+  %zext = zext i8 %3 to i32
+  %lshrl = lshr i32 %zext, 1
+  %shl = shl i32 %lshrl, 29
+  %ashr = ashr i32 %shl, 29
+  call void (ptr, ...) @printf(ptr @.str, i32 %ashr)
+  %4 = load ptr, ptr %c, align 8
+  store ptr %4, ptr %x2, align 8
+  %5 = load ptr, ptr %c, align 8
+  store ptr %5, ptr %y2, align 8
   ret void
 }

@@ -83,22 +83,23 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 		llvm_value_set(value, LLVMGetUndef(alloc_type), decl->type);
 		if (decl->var.failable_ref)
 		{
-			LLVMBuildStore(c->builder, LLVMGetUndef(llvm_get_type(c, type_anyerr)), decl->var.failable_ref);
+			llvm_store_to_ptr_raw(c, decl->var.failable_ref, llvm_get_undef(c, type_anyerr), type_anyerr);
 		}
 	}
 	else
 	{
 		if (decl->var.failable_ref)
 		{
-			LLVMBuildStore(c->builder, LLVMConstNull(llvm_get_type(c, type_anyerr)), decl->var.failable_ref);
+			llvm_store_to_ptr_zero(c, decl->var.failable_ref, type_anyerr);
 		}
 
 		Type *type = type_lowering(decl->type);
 		// Normal case, zero init.
 		if (type_is_builtin(type->type_kind) || type->type_kind == TYPE_POINTER)
 		{
-			llvm_emit_store(c, decl, LLVMConstNull(alloc_type));
-			llvm_value_set(value, LLVMConstNull(alloc_type), type);
+			LLVMValueRef zero = llvm_get_zero(c, var_type);
+			llvm_value_set(value, zero, type);
+			llvm_store_decl(c, decl, value);
 		}
 		else
 		{
@@ -193,7 +194,7 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 	if (has_return_value)
 	{
 		llvm_emit_expr(c, &return_value, ast->return_stmt.expr);
-		llvm_value_fold_failable(c, &return_value);
+		llvm_value_fold_optional(c, &return_value);
 		c->retval = return_value;
 	}
 
@@ -248,7 +249,7 @@ static inline void llvm_emit_block_exit_return(GenContext *c, Ast *ast)
 			c->catch_block = err_cleanup_block;
 		}
 		llvm_emit_expr(c, &return_value, ast->return_stmt.expr);
-		llvm_value_fold_failable(c, &return_value);
+		llvm_value_fold_optional(c, &return_value);
 	}
 
 	POP_ERROR();
@@ -256,7 +257,7 @@ static inline void llvm_emit_block_exit_return(GenContext *c, Ast *ast)
 	llvm_emit_statement_chain(c, ast->return_stmt.cleanup);
 	if (exit->block_return_out && return_value.value)
 	{
-		llvm_store_value_aligned(c, exit->block_return_out, &return_value, type_alloca_alignment(return_value.type));
+		llvm_store_to_ptr_aligned(c, exit->block_return_out, &return_value, type_alloca_alignment(return_value.type));
 	}
 
 	if (err_cleanup_block)
@@ -635,7 +636,7 @@ static void llvm_emit_switch_body_if_chain(GenContext *c,
 			llvm_emit_comparison(c, &le, &be_value, switch_value, BINARYOP_LE);
 			BEValue ge;
 			llvm_emit_comparison(c, &ge, &to_value, switch_value, BINARYOP_GE);
-			llvm_value_set_bool(&equals, LLVMBuildAnd(c->builder, le.value, ge.value, ""));
+			llvm_value_set_bool(&equals, llvm_and(c, &le, &ge));
 		}
 		else
 		{
@@ -801,7 +802,7 @@ static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *swi
 	BEValue switch_var;
 	llvm_value_set_address_abi_aligned(&switch_var, llvm_emit_alloca_aligned(c, switch_type, "switch"), switch_type);
 	switch_ast->switch_stmt.codegen.retry_var = &switch_var;
-	llvm_store_value(c, &switch_var, switch_value);
+	llvm_store(c, &switch_var, switch_value);
 
 	llvm_emit_br(c, switch_block);
 	llvm_emit_block(c, switch_block);
@@ -925,7 +926,7 @@ void gencontext_emit_next_stmt(GenContext *context, Ast *ast)
 	}
 	BEValue be_value;
 	llvm_emit_expr(context, &be_value, ast->nextcase_stmt.switch_expr);
-	llvm_store_value(context, jump_target->switch_stmt.codegen.retry_var, &be_value);
+	llvm_store(context, jump_target->switch_stmt.codegen.retry_var, &be_value);
 	llvm_emit_statement_chain(context, ast->nextcase_stmt.defer_id);
 	llvm_emit_jmp(context, jump_target->switch_stmt.codegen.retry_block);
 }
@@ -1056,7 +1057,7 @@ void gencontext_emit_expr_stmt(GenContext *c, Ast *ast)
 		c->catch_block = discard_fail;
 		c->error_var = NULL;
 		llvm_emit_expr(c, &value, ast->expr_stmt);
-		llvm_value_fold_failable(c, &value);
+		llvm_value_fold_optional(c, &value);
 		EMIT_LOC(c, ast);
 		llvm_emit_br(c, discard_fail);
 		llvm_emit_block(c, discard_fail);
@@ -1084,7 +1085,7 @@ LLVMValueRef llvm_emit_zstring_named(GenContext *c, const char *str, const char 
 	// TODO alignment
 	LLVMValueRef string = llvm_emit_array_gep_raw(c, global_string, char_array_type, 0,
 	                                              1, &alignment);
-	return LLVMBuildBitCast(c->builder, string, LLVMPointerType(char_type, 0), "");
+	return llvm_emit_bitcast_ptr(c, string, type_char);
 }
 
 
@@ -1092,7 +1093,10 @@ void llvm_emit_panic(GenContext *c, const char *message, const char *file, const
 {
 	if (c->debug.stack_slot_row)
 	{
-		llvm_store(c, c->debug.stack_slot_row, llvm_const_int(c, type_uint, line), type_abi_alignment(type_uint));
+		llvm_store_to_ptr_raw_aligned(c,
+		                              c->debug.stack_slot_row,
+		                              llvm_const_int(c, type_uint, line),
+		                              type_abi_alignment(type_uint));
 	}
 
 	Decl *panicfn = c->panicfn;
@@ -1101,11 +1105,10 @@ void llvm_emit_panic(GenContext *c, const char *message, const char *file, const
 		llvm_emit_call_intrinsic(c, intrinsic_id.trap, NULL, 0, NULL, 0);
 		return;
 	}
-	LLVMTypeRef char_ptr_type = llvm_get_ptr_type(c, type_char);
 	LLVMValueRef args[4] = {
 			llvm_emit_zstring(c, message),
 			llvm_emit_zstring(c, file),
-			func ? llvm_emit_zstring(c, func) : LLVMConstNull(char_ptr_type),
+			func ? llvm_emit_zstring(c, func) : llvm_get_zero(c, type_get_ptr(type_char)),
 			llvm_const_int(c, type_uint, line)
 	};
 

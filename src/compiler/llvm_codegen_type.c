@@ -643,7 +643,7 @@ static LLVMValueRef llvm_get_introspection_for_enum(GenContext *c, Type *type)
 		LLVMSetGlobalConstant(global_ref, true);
 		if (mixed)
 		{
-			associated_value->backend_ref = llvm_emit_bitcast(c, global_ref, type_get_ptr(type_get_array(associated_value->type, elements)));
+			associated_value->backend_ref = llvm_emit_bitcast_ptr(c, global_ref, type_get_array(associated_value->type, elements));
 		}
 		else
 		{

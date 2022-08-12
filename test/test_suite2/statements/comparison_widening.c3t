@@ -8,7 +8,7 @@ fn void test1()
     int d = b ?: 1;
 }
 
-// #expect: comparison_widening.ll
+/* #expect: comparison_widening.ll
 
 define void @comparison_widening_test1() #0 {
 entry:
@@ -20,9 +20,9 @@ entry:
   store i32 2, ptr %b, align 4
   %0 = load i32, ptr %b, align 4
   %1 = load i8, ptr %a, align 1
-  %uiuiext = zext i8 %1 to i32
-  %gt = icmp sgt i32 %0, %uiuiext
-  %check = icmp sge i32 %uiuiext, 0
+  %zext = zext i8 %1 to i32
+  %gt = icmp sgt i32 %0, %zext
+  %check = icmp sge i32 %zext, 0
   %siui-gt = and i1 %check, %gt
   %ternary = select i1 %siui-gt, i8 1, i8 0
   store i8 %ternary, ptr %c, align 1

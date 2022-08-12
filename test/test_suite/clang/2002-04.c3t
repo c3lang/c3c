@@ -116,8 +116,8 @@ entry:
   %student_t = alloca [30 x double], align 16
   %1 = bitcast [30 x double]* %student_t to i8*
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 16 %1, i8* align 16 bitcast ([30 x double]* @.__const to i8*), i32 240, i1 false)
-  %uiuiext = zext i32 %0 to i64
-  %2 = getelementptr inbounds [30 x double], [30 x double]* %student_t, i64 0, i64 %uiuiext
+  %zext = zext i32 %0 to i64
+  %2 = getelementptr inbounds [30 x double], [30 x double]* %student_t, i64 0, i64 %zext
   %3 = load double, double* %2, align 8
   ret double %3
 }

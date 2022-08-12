@@ -212,8 +212,8 @@ loop.cond26:                                      ; preds = %loop.body28, %loop.
 
 loop.body28:                                      ; preds = %loop.cond26
   %29 = load i64, ptr %anon25, align 8
-  %uiuitrunc = trunc i64 %29 to i8
-  store i8 %uiuitrunc, ptr %i29, align 1
+  %ztrunc = trunc i64 %29 to i8
+  store i8 %ztrunc, ptr %i29, align 1
   %30 = load i64, ptr %anon25, align 8
   %31 = getelementptr inbounds [3 x float], ptr %foo, i64 0, i64 %30
   %32 = load float, ptr %31, align 4
@@ -314,8 +314,8 @@ loop.cond62:                                      ; preds = %loop.body64, %loop.
 
 loop.body64:                                      ; preds = %loop.cond62
   %60 = load i64, ptr %anon60, align 8
-  %uiuitrunc66 = trunc i64 %60 to i8
-  store i8 %uiuitrunc66, ptr %i65, align 1
+  %ztrunc66 = trunc i64 %60 to i8
+  store i8 %ztrunc66, ptr %i65, align 1
   %61 = load <3 x float>, ptr %foo2, align 16
   %62 = load i64, ptr %anon60, align 8
   %63 = extractelement <3 x float> %61, i64 %62
