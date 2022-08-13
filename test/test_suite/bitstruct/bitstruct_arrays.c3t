@@ -350,7 +350,7 @@ entry:
   %1 = load i8, i8* %0, align 1
   %2 = and i8 %1, -8
   %3 = or i8 %2, 3
-  store i8 %3, i8* %0, align 1
+  store i8 %2, i8* %0, align 1
   %4 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
   %5 = load i8, i8* %4, align 1
   %zext = zext i8 %5 to i32
@@ -380,7 +380,7 @@ entry:
   %15 = load i8, i8* %13, align 1
   %16 = and i8 %15, -8
   %17 = or i8 %16, %14
-  store i8 %17, i8* %13, align 1
+  store i8 %16, i8* %13, align 1
   %18 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
   %19 = load i8, i8* %18, align 1
   %zext9 = zext i8 %19 to i32
@@ -424,7 +424,7 @@ entry:
   %36 = load i8, i8* %34, align 1
   %37 = and i8 %36, -2
   %38 = or i8 %37, %35
-  store i8 %38, i8* %34, align 1
+  store i8 %37, i8* %34, align 1
   %39 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
   %40 = load i8, i8* %39, align 1
   %zext28 = zext i8 %40 to i32
@@ -468,7 +468,7 @@ entry:
   %57 = load i8, i8* %55, align 1
   %58 = and i8 %57, -2
   %59 = or i8 %58, %56
-  store i8 %59, i8* %55, align 1
+  store i8 %58, i8* %55, align 1
   %60 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
   %61 = load i8, i8* %60, align 1
   %zext47 = zext i8 %61 to i32
@@ -512,7 +512,7 @@ entry:
   %78 = load i8, i8* %76, align 1
   %79 = and i8 %78, -2
   %80 = or i8 %79, %77
-  store i8 %80, i8* %76, align 1
+  store i8 %79, i8* %76, align 1
   %81 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
   %82 = load i8, i8* %81, align 1
   %zext66 = zext i8 %82 to i32
@@ -557,7 +557,7 @@ entry:
   %100 = load i8, i8* %98, align 1
   %101 = and i8 %100, -2
   %102 = or i8 %101, %99
-  store i8 %102, i8* %98, align 1
+  store i8 %101, i8* %98, align 1
   %103 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
   %104 = load i8, i8* %103, align 1
   %zext86 = zext i8 %104 to i32
@@ -602,7 +602,7 @@ entry:
   %122 = load i8, i8* %120, align 1
   %123 = and i8 %122, -2
   %124 = or i8 %123, %121
-  store i8 %124, i8* %120, align 1
+  store i8 %123, i8* %120, align 1
   %125 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
   %126 = load i8, i8* %125, align 1
   %zext106 = zext i8 %126 to i32
@@ -646,7 +646,7 @@ entry:
   %143 = load i8, i8* %141, align 1
   %144 = and i8 %143, -2
   %145 = or i8 %144, %142
-  store i8 %145, i8* %141, align 1
+  store i8 %144, i8* %141, align 1
   %146 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
   %147 = load i8, i8* %146, align 1
   %zext125 = zext i8 %147 to i32
@@ -690,7 +690,7 @@ entry:
   %164 = load i8, i8* %162, align 1
   %165 = and i8 %164, -2
   %166 = or i8 %165, %163
-  store i8 %166, i8* %162, align 1
+  store i8 %165, i8* %162, align 1
   %167 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
   %168 = load i8, i8* %167, align 1
   %zext144 = zext i8 %168 to i32
@@ -826,7 +826,7 @@ entry:
   %36 = load i8, i8* %34, align 1
   %37 = and i8 %36, -4
   %38 = or i8 %37, %35
-  store i8 %38, i8* %34, align 1
+  store i8 %37, i8* %34, align 1
   %39 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
   %40 = load i8, i8* %39, align 1
   %zext33 = zext i8 %40 to i32
@@ -871,7 +871,7 @@ entry:
   %57 = load i8, i8* %55, align 1
   %58 = and i8 %57, -4
   %59 = or i8 %58, %56
-  store i8 %59, i8* %55, align 1
+  store i8 %58, i8* %55, align 1
   %60 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
   %61 = load i8, i8* %60, align 1
   %zext53 = zext i8 %61 to i32
@@ -916,7 +916,7 @@ entry:
   %78 = load i8, i8* %76, align 1
   %79 = and i8 %78, -4
   %80 = or i8 %79, %77
-  store i8 %80, i8* %76, align 1
+  store i8 %79, i8* %76, align 1
   %81 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
   %82 = load i8, i8* %81, align 1
   %zext73 = zext i8 %82 to i32
@@ -962,7 +962,7 @@ entry:
   %100 = load i8, i8* %98, align 1
   %101 = and i8 %100, -4
   %102 = or i8 %101, %99
-  store i8 %102, i8* %98, align 1
+  store i8 %101, i8* %98, align 1
   %103 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
   %104 = load i8, i8* %103, align 1
   %zext94 = zext i8 %104 to i32
@@ -1008,7 +1008,7 @@ entry:
   %122 = load i8, i8* %120, align 1
   %123 = and i8 %122, -4
   %124 = or i8 %123, %121
-  store i8 %124, i8* %120, align 1
+  store i8 %123, i8* %120, align 1
   %125 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
   %126 = load i8, i8* %125, align 1
   %zext115 = zext i8 %126 to i32
@@ -1053,7 +1053,7 @@ entry:
   %143 = load i8, i8* %141, align 1
   %144 = and i8 %143, -4
   %145 = or i8 %144, %142
-  store i8 %145, i8* %141, align 1
+  store i8 %144, i8* %141, align 1
   %146 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
   %147 = load i8, i8* %146, align 1
   %zext135 = zext i8 %147 to i32
@@ -1098,7 +1098,7 @@ entry:
   %164 = load i8, i8* %162, align 1
   %165 = and i8 %164, -4
   %166 = or i8 %165, %163
-  store i8 %166, i8* %162, align 1
+  store i8 %165, i8* %162, align 1
   %167 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
   %168 = load i8, i8* %167, align 1
   %zext155 = zext i8 %168 to i32

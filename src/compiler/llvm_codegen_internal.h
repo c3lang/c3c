@@ -386,6 +386,8 @@ INLINE LLVMValueRef llvm_emit_lshr(GenContext *c, LLVMValueRef value, LLVMValueR
 INLINE LLVMValueRef llvm_emit_trunc(GenContext *c, LLVMValueRef value, Type *type);
 INLINE LLVMValueRef llvm_emit_trunc_bool(GenContext *c, LLVMValueRef value);
 INLINE LLVMValueRef llvm_emit_and(GenContext *c, BEValue *lhs, BEValue *rhs);
+INLINE LLVMValueRef llvm_emit_and_raw(GenContext *c, LLVMValueRef lhs, LLVMValueRef rhs);
+INLINE LLVMValueRef llvm_emit_or_raw(GenContext *c, LLVMValueRef lhs, LLVMValueRef rhs);
 
 // -- Mem ops --
 LLVMValueRef llvm_emit_memclear_size_align(GenContext *c, LLVMValueRef ptr, uint64_t size, AlignSize align);

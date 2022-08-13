@@ -172,9 +172,23 @@ INLINE LLVMTypeRef llvm_get_ptr_type(GenContext *c, Type *type)
 	return llvm_get_type(c, type_get_ptr(type));
 }
 
+INLINE LLVMValueRef llvm_emit_and_raw(GenContext *c, LLVMValueRef lhs, LLVMValueRef rhs)
+{
+	if (llvm_is_const_null(lhs)) return lhs;
+	if (llvm_is_const_null(rhs)) return rhs;
+	return LLVMBuildAnd(c->builder, lhs, rhs, "");
+}
+
+INLINE LLVMValueRef llvm_emit_or_raw(GenContext *c, LLVMValueRef lhs, LLVMValueRef rhs)
+{
+	if (llvm_is_const_null(lhs)) return rhs;
+	if (llvm_is_const_null(rhs)) return lhs;
+	return LLVMBuildOr(c->builder, lhs, rhs, "");
+}
+
 INLINE LLVMValueRef llvm_emit_and(GenContext *c, BEValue *lhs, BEValue *rhs)
 {
-	return LLVMBuildAnd(c->builder, lhs->value, rhs->value, "");
+	return llvm_emit_and_raw(c, lhs->value, rhs->value);
 }
 
 INLINE LLVMValueRef llvm_get_zero(GenContext *c, Type *type)

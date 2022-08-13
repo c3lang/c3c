@@ -95,7 +95,7 @@ entry:
   %26 = load i8, i8* %25, align 1
   %27 = and i8 %26, -16
   %28 = or i8 %27, 11
-  store i8 %28, i8* %25, align 1
+  store i8 %27, i8* %25, align 1
   %29 = getelementptr inbounds [4 x i8], [4 x i8]* %xy, i64 0, i64 0
   %30 = load i8, i8* %29, align 1
   %zext12 = zext i8 %30 to i32
@@ -123,7 +123,7 @@ entry:
   %44 = load i8, i8* %43, align 1
   %45 = and i8 %44, -16
   %46 = or i8 %45, 14
-  store i8 %46, i8* %43, align 1
+  store i8 %45, i8* %43, align 1
   %47 = getelementptr inbounds [4 x i8], [4 x i8]* %xx, i64 0, i64 0
   %48 = load i8, i8* %47, align 1
   %zext18 = zext i8 %48 to i32
