@@ -494,7 +494,7 @@ void llvm_emit_and_set_decl_alloca(GenContext *c, Decl *decl)
 {
 	Type *type = type_lowering(decl->type);
 	if (type == type_void) return;
-	decl->backend_ref = llvm_emit_alloca(c, llvm_get_type(c, type), decl->alignment, decl->name ? decl->name : "anon");
+	decl->backend_ref = llvm_emit_alloca(c, llvm_get_type(c, type), decl->alignment, decl->name ? decl->name : ".anon");
 }
 
 void llvm_emit_local_var_alloca(GenContext *c, Decl *decl)
@@ -688,7 +688,7 @@ void llvm_emit_introspection_type_from_decl(GenContext *c, Decl *decl)
 			decl->enums.values[i]->backend_ref = llvm_emit_array_gep_raw(c, enum_elements, elements_type, i, alignment, &store_align);
 		}
 	}
-	LLVMValueRef global_name = LLVMAddGlobal(c->module, llvm_get_type(c, type_char), decl->name ? decl->name : "anon");
+	LLVMValueRef global_name = LLVMAddGlobal(c->module, llvm_get_type(c, type_char), decl->name ? decl->name : ".anon");
 	LLVMSetGlobalConstant(global_name, 1);
 	LLVMSetInitializer(global_name, LLVMConstInt(llvm_get_type(c, type_char), 1, false));
 	decl->type->backend_typeid = LLVMConstPointerCast(global_name, llvm_get_type(c, type_typeid));

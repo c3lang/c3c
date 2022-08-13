@@ -933,7 +933,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	AstId first_stmt = 0;
 	AstId *succ = &first_stmt;
 	Expr **expressions = NULL;
-
+	bool is_reverse = statement->foreach_stmt.is_reverse;
 	bool value_by_ref = statement->foreach_stmt.value_by_ref;
 	bool success = true;
 
@@ -1089,11 +1089,6 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		}
 	}
 
-	// IndexType __idx$ = 0
-	Decl *idx_decl = decl_new_generated_var(index_type, VARDECL_LOCAL, index ? index->span : enumerator->span);
-	Expr *idx_init = expr_new(EXPR_CONST, idx_decl->span);
-	expr_rewrite_to_int_const(idx_init, index_type, 0, true);
-	vec_add(expressions, expr_generate_decl(idx_decl, idx_init));
 
 	// We either have "foreach (x : some_var)" or "foreach (x : some_call())"
 	// So we grab the former by address (implicit &) and the latter as the value.
@@ -1150,42 +1145,84 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 			len_call->type = type_isize;
 		}
 	}
+	Decl *idx_decl = decl_new_generated_var(index_type, VARDECL_LOCAL, index ? index->span : enumerator->span);
 
 	// IndexType __len$ = (IndexType)(@__enum$.len())
 	Decl *len_decl = NULL;
-	if (len_call)
-	{
-		len_decl = decl_new_generated_var(idx_init->type, VARDECL_LOCAL, enumerator->span);
-		if (!cast_implicit(len_call, idx_init->type)) return false;
-		vec_add(expressions, expr_generate_decl(len_decl, len_call));
-	}
 
+	if (is_reverse)
+	{
+		if (!len_call)
+		{
+			// Create const len if missing.
+			len_call = expr_new(EXPR_CONST, enumerator->span);
+			expr_rewrite_to_int_const(len_call, type_isize, array_len, true);
+		}
+		if (!cast_implicit(len_call, index_type)) return false;
+		// __idx$ = (IndexType)(@__enum$.len()) (or const)
+		vec_add(expressions, expr_generate_decl(idx_decl, len_call));
+	}
+	else
+	{
+		if (len_call)
+		{
+			len_decl = decl_new_generated_var(index_type, VARDECL_LOCAL, enumerator->span);
+			if (!cast_implicit(len_call, index_type)) return false;
+			vec_add(expressions, expr_generate_decl(len_decl, len_call));
+		}
+		Expr *idx_init = expr_new(EXPR_CONST, idx_decl->span);
+		expr_rewrite_to_int_const(idx_init, index_type, 0, true);
+		vec_add(expressions, expr_generate_decl(idx_decl, idx_init));
+	}
 
 	// Add all declarations to the init
 	Expr *init_expr = expr_new(EXPR_EXPRESSION_LIST, var->span);
 	init_expr->expression_list = expressions;
 
-	// Create __idx$ < __len$
-	Expr *binary = expr_new(EXPR_BINARY, idx_decl->span);
-	binary->binary_expr.operator = BINARYOP_LT;
-	binary->binary_expr.left = exprid(expr_variable(idx_decl));
-	if (len_decl)
+	Expr *update = NULL;
+	Expr *cond;
+	if (is_reverse)
 	{
-		binary->binary_expr.right = exprid(expr_variable(len_decl));
+		// Create __idx$ > 0
+		cond = expr_new(EXPR_BINARY, idx_decl->span);
+		cond->binary_expr.operator = BINARYOP_GT;
+		cond->binary_expr.left = exprid(expr_variable(idx_decl));
+		Expr *rhs = expr_new(EXPR_CONST, enumerator->span);
+		expr_rewrite_to_int_const(rhs, index_type, 0, true);
+		cond->binary_expr.right = exprid(rhs);
+
+		// Create --__idx$
+		Expr *dec = expr_new(EXPR_UNARY, idx_decl->span);
+		dec->unary_expr.expr = expr_variable(idx_decl);
+		dec->unary_expr.operator = UNARYOP_DEC;
+		Ast *update_stmt = new_ast(AST_EXPR_STMT, idx_decl->span);
+		update_stmt->expr_stmt = dec;
+		ast_append(&succ, update_stmt);
 	}
 	else
 	{
-		Expr *rhs = expr_new(EXPR_CONST, enumerator->span);
-		expr_rewrite_to_int_const(rhs, type_isize, array_len, true);
-		binary->binary_expr.right = exprid(rhs);
+		// Create __idx$ < __len$
+		cond = expr_new(EXPR_BINARY, idx_decl->span);
+		cond->binary_expr.operator = BINARYOP_LT;
+		cond->binary_expr.left = exprid(expr_variable(idx_decl));
+		if (len_decl)
+		{
+			cond->binary_expr.right = exprid(expr_variable(len_decl));
+		}
+		else
+		{
+			Expr *rhs = expr_new(EXPR_CONST, enumerator->span);
+			expr_rewrite_to_int_const(rhs, type_isize, array_len, true);
+			cond->binary_expr.right = exprid(rhs);
+		}
+
+		// Create ++__idx$
+		update = expr_new(EXPR_UNARY, idx_decl->span);
+		update->unary_expr.expr = expr_variable(idx_decl);
+		update->unary_expr.operator = UNARYOP_INC;
 	}
 
-	// Create __idx$++
-	Expr *inc = expr_new(EXPR_UNARY, idx_decl->span);
-	inc->unary_expr.expr = expr_variable(idx_decl);
-	inc->unary_expr.operator = UNARYOP_INC;
-
-	// Create IndexType index = __idx$++
+	// Create IndexType index = __idx$
 	if (index)
 	{
 		Ast *declare_ast = new_ast(AST_DECLARE_STMT, var->span);
@@ -1220,8 +1257,8 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	compound_stmt->compound_stmt.first_stmt = first_stmt;
 	FlowCommon flow = statement->foreach_stmt.flow;
 	statement->for_stmt = (AstForStmt){ .init = exprid(init_expr),
-										.cond = exprid(binary),
-										.incr = exprid(inc),
+										.cond = exprid(cond),
+										.incr = update ? exprid(update) : 0,
 										.flow = flow,
 										.body = astid(compound_stmt)
 	};

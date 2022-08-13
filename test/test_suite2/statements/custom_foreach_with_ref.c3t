@@ -132,44 +132,44 @@ entry:
   %a = alloca i32, align 4
   %a1 = alloca i32, align 4
   %a3 = alloca i32, align 4
-  %anon = alloca i32, align 4
-  %anon5 = alloca ptr, align 8
-  %anon6 = alloca i32, align 4
+  %.anon = alloca ptr, align 8
+  %.anon5 = alloca i32, align 4
+  %.anon6 = alloca i32, align 4
   %i = alloca i32, align 4
   %y = alloca i32, align 4
   %a7 = alloca i32, align 4
-  %anon9 = alloca i32, align 4
-  %anon10 = alloca i32, align 4
+  %.anon9 = alloca i32, align 4
+  %.anon10 = alloca i32, align 4
   %i14 = alloca i32, align 4
   %y15 = alloca ptr, align 8
   %a16 = alloca i32, align 4
-  %anon21 = alloca i32, align 4
-  %anon22 = alloca i32, align 4
+  %.anon21 = alloca i32, align 4
+  %.anon22 = alloca i32, align 4
   %i26 = alloca i32, align 4
   %y27 = alloca i32, align 4
   %a28 = alloca i32, align 4
-  %anon32 = alloca i32, align 4
-  %anon33 = alloca i32, align 4
+  %.anon32 = alloca i32, align 4
+  %.anon33 = alloca i32, align 4
   %i37 = alloca i32, align 4
   %y38 = alloca i32, align 4
   %a39 = alloca i32, align 4
-  %anon43 = alloca i32, align 4
-  %anon44 = alloca i32, align 4
+  %.anon43 = alloca i32, align 4
+  %.anon44 = alloca i32, align 4
   %i48 = alloca i32, align 4
   %y49 = alloca i32, align 4
   %a50 = alloca i32, align 4
-  %anon55 = alloca i64, align 8
-  %anon56 = alloca [5 x i32], align 16
+  %.anon55 = alloca [5 x i32], align 16
+  %.anon56 = alloca i64, align 8
   %i59 = alloca i64, align 8
   %y60 = alloca i32, align 4
-  %anon64 = alloca i64, align 8
-  %anon65 = alloca [5 x i32], align 16
+  %.anon64 = alloca [5 x i32], align 16
   %sretparam = alloca [5 x i32], align 4
+  %.anon65 = alloca i64, align 8
   %i69 = alloca i64, align 8
   %y70 = alloca i32, align 4
-  %anon73 = alloca i64, align 8
-  %anon74 = alloca ptr, align 8
-  %sretparam75 = alloca [5 x i32], align 4
+  %.anon73 = alloca ptr, align 8
+  %sretparam74 = alloca [5 x i32], align 4
+  %.anon75 = alloca i64, align 8
   %i79 = alloca i64, align 8
   %y80 = alloca i32, align 4
   %a83 = alloca i32, align 4
@@ -198,23 +198,23 @@ entry:
   %10 = getelementptr inbounds [3 x i32], ptr %8, i64 0, i64 %sisiext4
   %11 = load i32, ptr %10, align 4
   call void (ptr, ...) @printf(ptr @.str.2, i32 %3, i32 %7, i32 %11)
-  store i32 0, ptr %anon, align 4
   %12 = call ptr @foo_call(ptr %x)
-  store ptr %12, ptr %anon5, align 8
-  store i32 3, ptr %anon6, align 4
+  store ptr %12, ptr %.anon, align 8
+  store i32 3, ptr %.anon5, align 4
+  store i32 0, ptr %.anon6, align 4
   br label %loop.cond
 
 loop.cond:                                        ; preds = %loop.body, %entry
-  %13 = load i32, ptr %anon, align 4
-  %14 = load i32, ptr %anon6, align 4
+  %13 = load i32, ptr %.anon6, align 4
+  %14 = load i32, ptr %.anon5, align 4
   %lt = icmp slt i32 %13, %14
   br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
-  %15 = load i32, ptr %anon, align 4
+  %15 = load i32, ptr %.anon6, align 4
   store i32 %15, ptr %i, align 4
-  %16 = load ptr, ptr %anon5, align 8
-  %17 = load i32, ptr %anon, align 4
+  %16 = load ptr, ptr %.anon, align 8
+  %17 = load i32, ptr %.anon6, align 4
   store i32 %17, ptr %a7, align 4
   %18 = getelementptr inbounds %Foo, ptr %16, i32 0, i32 0
   %19 = load i32, ptr %a7, align 4
@@ -225,26 +225,26 @@ loop.body:                                        ; preds = %loop.cond
   %22 = load i32, ptr %i, align 4
   %23 = load i32, ptr %y, align 4
   call void (ptr, ...) @printf(ptr @.str.3, i32 %22, i32 %23)
-  %24 = load i32, ptr %anon, align 4
+  %24 = load i32, ptr %.anon6, align 4
   %add = add i32 %24, 1
-  store i32 %add, ptr %anon, align 4
+  store i32 %add, ptr %.anon6, align 4
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
-  store i32 0, ptr %anon9, align 4
-  store i32 3, ptr %anon10, align 4
+  store i32 3, ptr %.anon9, align 4
+  store i32 0, ptr %.anon10, align 4
   br label %loop.cond11
 
 loop.cond11:                                      ; preds = %loop.body13, %loop.exit
-  %25 = load i32, ptr %anon9, align 4
-  %26 = load i32, ptr %anon10, align 4
+  %25 = load i32, ptr %.anon10, align 4
+  %26 = load i32, ptr %.anon9, align 4
   %lt12 = icmp slt i32 %25, %26
   br i1 %lt12, label %loop.body13, label %loop.exit20
 
 loop.body13:                                      ; preds = %loop.cond11
-  %27 = load i32, ptr %anon9, align 4
+  %27 = load i32, ptr %.anon10, align 4
   store i32 %27, ptr %i14, align 4
-  %28 = load i32, ptr %anon9, align 4
+  %28 = load i32, ptr %.anon10, align 4
   store i32 %28, ptr %a16, align 4
   %29 = getelementptr inbounds %Foo, ptr %x, i32 0, i32 0
   %30 = load i32, ptr %a16, align 4
@@ -259,26 +259,26 @@ loop.body13:                                      ; preds = %loop.cond11
   %35 = load ptr, ptr %y15, align 8
   %36 = load i32, ptr %35, align 8
   call void (ptr, ...) @printf(ptr @.str.4, i32 %34, i32 %36)
-  %37 = load i32, ptr %anon9, align 4
+  %37 = load i32, ptr %.anon10, align 4
   %add19 = add i32 %37, 1
-  store i32 %add19, ptr %anon9, align 4
+  store i32 %add19, ptr %.anon10, align 4
   br label %loop.cond11
 
 loop.exit20:                                      ; preds = %loop.cond11
-  store i32 0, ptr %anon21, align 4
-  store i32 3, ptr %anon22, align 4
+  store i32 3, ptr %.anon21, align 4
+  store i32 0, ptr %.anon22, align 4
   br label %loop.cond23
 
 loop.cond23:                                      ; preds = %loop.body25, %loop.exit20
-  %38 = load i32, ptr %anon21, align 4
-  %39 = load i32, ptr %anon22, align 4
+  %38 = load i32, ptr %.anon22, align 4
+  %39 = load i32, ptr %.anon21, align 4
   %lt24 = icmp slt i32 %38, %39
   br i1 %lt24, label %loop.body25, label %loop.exit31
 
 loop.body25:                                      ; preds = %loop.cond23
-  %40 = load i32, ptr %anon21, align 4
+  %40 = load i32, ptr %.anon22, align 4
   store i32 %40, ptr %i26, align 4
-  %41 = load i32, ptr %anon21, align 4
+  %41 = load i32, ptr %.anon22, align 4
   store i32 %41, ptr %a28, align 4
   %42 = getelementptr inbounds %Foo, ptr %x, i32 0, i32 0
   %43 = load i32, ptr %a28, align 4
@@ -289,26 +289,26 @@ loop.body25:                                      ; preds = %loop.cond23
   %46 = load i32, ptr %i26, align 4
   %47 = load i32, ptr %y27, align 4
   call void (ptr, ...) @printf(ptr @.str.5, i32 %46, i32 %47)
-  %48 = load i32, ptr %anon21, align 4
+  %48 = load i32, ptr %.anon22, align 4
   %add30 = add i32 %48, 1
-  store i32 %add30, ptr %anon21, align 4
+  store i32 %add30, ptr %.anon22, align 4
   br label %loop.cond23
 
 loop.exit31:                                      ; preds = %loop.cond23
-  store i32 0, ptr %anon32, align 4
-  store i32 3, ptr %anon33, align 4
+  store i32 3, ptr %.anon32, align 4
+  store i32 0, ptr %.anon33, align 4
   br label %loop.cond34
 
 loop.cond34:                                      ; preds = %loop.body36, %loop.exit31
-  %49 = load i32, ptr %anon32, align 4
-  %50 = load i32, ptr %anon33, align 4
+  %49 = load i32, ptr %.anon33, align 4
+  %50 = load i32, ptr %.anon32, align 4
   %lt35 = icmp slt i32 %49, %50
   br i1 %lt35, label %loop.body36, label %loop.exit42
 
 loop.body36:                                      ; preds = %loop.cond34
-  %51 = load i32, ptr %anon32, align 4
+  %51 = load i32, ptr %.anon33, align 4
   store i32 %51, ptr %i37, align 4
-  %52 = load i32, ptr %anon32, align 4
+  %52 = load i32, ptr %.anon33, align 4
   store i32 %52, ptr %a39, align 4
   %53 = getelementptr inbounds %Foo, ptr %x, i32 0, i32 0
   %54 = load i32, ptr %a39, align 4
@@ -319,26 +319,26 @@ loop.body36:                                      ; preds = %loop.cond34
   %57 = load i32, ptr %i37, align 4
   %58 = load i32, ptr %y38, align 4
   call void (ptr, ...) @printf(ptr @.str.6, i32 %57, i32 %58)
-  %59 = load i32, ptr %anon32, align 4
+  %59 = load i32, ptr %.anon33, align 4
   %add41 = add i32 %59, 1
-  store i32 %add41, ptr %anon32, align 4
+  store i32 %add41, ptr %.anon33, align 4
   br label %loop.cond34
 
 loop.exit42:                                      ; preds = %loop.cond34
-  store i32 0, ptr %anon43, align 4
-  store i32 3, ptr %anon44, align 4
+  store i32 3, ptr %.anon43, align 4
+  store i32 0, ptr %.anon44, align 4
   br label %loop.cond45
 
 loop.cond45:                                      ; preds = %loop.body47, %loop.exit42
-  %60 = load i32, ptr %anon43, align 4
-  %61 = load i32, ptr %anon44, align 4
+  %60 = load i32, ptr %.anon44, align 4
+  %61 = load i32, ptr %.anon43, align 4
   %lt46 = icmp slt i32 %60, %61
   br i1 %lt46, label %loop.body47, label %loop.exit54
 
 loop.body47:                                      ; preds = %loop.cond45
-  %62 = load i32, ptr %anon43, align 4
+  %62 = load i32, ptr %.anon44, align 4
   store i32 %62, ptr %i48, align 4
-  %63 = load i32, ptr %anon43, align 4
+  %63 = load i32, ptr %.anon44, align 4
   store i32 %63, ptr %a50, align 4
   %64 = getelementptr inbounds %Foo, ptr %x, i32 0, i32 0
   %65 = load i32, ptr %a50, align 4
@@ -352,26 +352,26 @@ loop.body47:                                      ; preds = %loop.cond45
   %70 = load i32, ptr %i48, align 4
   %add52 = add i32 %70, 1
   store i32 %add52, ptr %i48, align 4
-  %71 = load i32, ptr %anon43, align 4
+  %71 = load i32, ptr %.anon44, align 4
   %add53 = add i32 %71, 1
-  store i32 %add53, ptr %anon43, align 4
+  store i32 %add53, ptr %.anon44, align 4
   br label %loop.cond45
 
 loop.exit54:                                      ; preds = %loop.cond45
-  store i64 0, ptr %anon55, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %anon56, ptr align 16 @.__const.8, i32 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %.anon55, ptr align 16 @.__const.8, i32 20, i1 false)
+  store i64 0, ptr %.anon56, align 8
   br label %loop.cond57
 
 loop.cond57:                                      ; preds = %loop.body58, %loop.exit54
-  %72 = load i64, ptr %anon55, align 8
+  %72 = load i64, ptr %.anon56, align 8
   %gt = icmp ugt i64 5, %72
   br i1 %gt, label %loop.body58, label %loop.exit63
 
 loop.body58:                                      ; preds = %loop.cond57
-  %73 = load i64, ptr %anon55, align 8
+  %73 = load i64, ptr %.anon56, align 8
   store i64 %73, ptr %i59, align 8
-  %74 = load i64, ptr %anon55, align 8
-  %75 = getelementptr inbounds [5 x i32], ptr %anon56, i64 0, i64 %74
+  %74 = load i64, ptr %.anon56, align 8
+  %75 = getelementptr inbounds [5 x i32], ptr %.anon55, i64 0, i64 %74
   %76 = load i32, ptr %75, align 4
   store i32 %76, ptr %y60, align 4
   %77 = load i64, ptr %i59, align 8
@@ -380,62 +380,62 @@ loop.body58:                                      ; preds = %loop.cond57
   %79 = load i64, ptr %i59, align 8
   %add61 = add i64 %79, 1
   store i64 %add61, ptr %i59, align 8
-  %80 = load i64, ptr %anon55, align 8
+  %80 = load i64, ptr %.anon56, align 8
   %add62 = add i64 %80, 1
-  store i64 %add62, ptr %anon55, align 8
+  store i64 %add62, ptr %.anon56, align 8
   br label %loop.cond57
 
 loop.exit63:                                      ; preds = %loop.cond57
-  store i64 0, ptr %anon64, align 8
   call void @foo_getFields(ptr sret([5 x i32]) align 4 %sretparam)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %anon65, ptr align 4 %sretparam, i32 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %.anon64, ptr align 4 %sretparam, i32 20, i1 false)
+  store i64 0, ptr %.anon65, align 8
   br label %loop.cond66
 
 loop.cond66:                                      ; preds = %loop.body68, %loop.exit63
-  %81 = load i64, ptr %anon64, align 8
+  %81 = load i64, ptr %.anon65, align 8
   %gt67 = icmp ugt i64 5, %81
   br i1 %gt67, label %loop.body68, label %loop.exit72
 
 loop.body68:                                      ; preds = %loop.cond66
-  %82 = load i64, ptr %anon64, align 8
+  %82 = load i64, ptr %.anon65, align 8
   store i64 %82, ptr %i69, align 8
-  %83 = load i64, ptr %anon64, align 8
-  %84 = getelementptr inbounds [5 x i32], ptr %anon65, i64 0, i64 %83
+  %83 = load i64, ptr %.anon65, align 8
+  %84 = getelementptr inbounds [5 x i32], ptr %.anon64, i64 0, i64 %83
   %85 = load i32, ptr %84, align 4
   store i32 %85, ptr %y70, align 4
   %86 = load i64, ptr %i69, align 8
   %87 = load i32, ptr %y70, align 4
   call void (ptr, ...) @printf(ptr @.str.10, i64 %86, i32 %87)
-  %88 = load i64, ptr %anon64, align 8
+  %88 = load i64, ptr %.anon65, align 8
   %add71 = add i64 %88, 1
-  store i64 %add71, ptr %anon64, align 8
+  store i64 %add71, ptr %.anon65, align 8
   br label %loop.cond66
 
 loop.exit72:                                      ; preds = %loop.cond66
-  store i64 0, ptr %anon73, align 8
-  call void @foo_getFields(ptr sret([5 x i32]) align 4 %sretparam75)
-  store ptr %sretparam75, ptr %anon74, align 8
+  call void @foo_getFields(ptr sret([5 x i32]) align 4 %sretparam74)
+  store ptr %sretparam74, ptr %.anon73, align 8
+  store i64 0, ptr %.anon75, align 8
   br label %loop.cond76
 
 loop.cond76:                                      ; preds = %loop.body78, %loop.exit72
-  %89 = load i64, ptr %anon73, align 8
+  %89 = load i64, ptr %.anon75, align 8
   %gt77 = icmp ugt i64 5, %89
   br i1 %gt77, label %loop.body78, label %loop.exit82
 
 loop.body78:                                      ; preds = %loop.cond76
-  %90 = load i64, ptr %anon73, align 8
+  %90 = load i64, ptr %.anon75, align 8
   store i64 %90, ptr %i79, align 8
-  %91 = load ptr, ptr %anon74, align 8
-  %92 = load i64, ptr %anon73, align 8
+  %91 = load ptr, ptr %.anon73, align 8
+  %92 = load i64, ptr %.anon75, align 8
   %93 = getelementptr inbounds [5 x i32], ptr %91, i64 0, i64 %92
   %94 = load i32, ptr %93, align 4
   store i32 %94, ptr %y80, align 4
   %95 = load i64, ptr %i79, align 8
   %96 = load i32, ptr %y80, align 4
   call void (ptr, ...) @printf(ptr @.str.11, i64 %95, i32 %96)
-  %97 = load i64, ptr %anon73, align 8
+  %97 = load i64, ptr %.anon75, align 8
   %add81 = add i64 %97, 1
-  store i64 %add81, ptr %anon73, align 8
+  store i64 %add81, ptr %.anon75, align 8
   br label %loop.cond76
 
 loop.exit82:                                      ; preds = %loop.cond76

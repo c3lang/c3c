@@ -32,7 +32,7 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 		case DECL_STRUCT:
 		{
 			LLVMTypeRef *types = NULL;
-			LLVMTypeRef type = LLVMStructCreateNamed(c->context, decl->name ? decl->name : "anon");
+			LLVMTypeRef type = LLVMStructCreateNamed(c->context, decl->name ? decl->name : ".anon");
 			// Avoid recursive issues.
 			decl->type->backend_type = type;
 			Decl **members = decl->strukt.members;
@@ -54,7 +54,7 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 		}
 		case DECL_UNION:
 		{
-			LLVMTypeRef type = LLVMStructCreateNamed(c->context, decl->name ? decl->name : "anon");
+			LLVMTypeRef type = LLVMStructCreateNamed(c->context, decl->name ? decl->name : ".anon");
 			// Avoid recursive issues.
 			decl->type->backend_type = type;
 			Decl **members = decl->strukt.members;

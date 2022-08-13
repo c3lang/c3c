@@ -406,7 +406,12 @@ static inline bool parse_foreach_var(ParseContext *c, Ast *foreach)
 static inline Ast* parse_foreach_stmt(ParseContext *c)
 {
 	Ast *ast = new_ast(AST_FOREACH_STMT, c->span);
-	advance_and_verify(c, TOKEN_FOREACH);
+
+	if (!(ast->foreach_stmt.is_reverse = try_consume(c, TOKEN_FOREACH_R)))
+	{
+		advance_and_verify(c, TOKEN_FOREACH);
+	}
+
 	ASSIGN_DECL_OR_RET(ast->foreach_stmt.flow.label, parse_optional_label(c, ast), poisoned_ast);
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_ast);
 
@@ -889,6 +894,7 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_FOR:
 			return parse_for_stmt(c);
 		case TOKEN_FOREACH:
+		case TOKEN_FOREACH_R:
 			return parse_foreach_stmt(c);
 		case TOKEN_CONTINUE:
 		{

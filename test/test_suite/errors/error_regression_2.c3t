@@ -810,8 +810,8 @@ define void @test_main() #0 {
 entry:
   %URLS = alloca %"char[][]", align 8
   %literal = alloca [5 x %"char[]"], align 16
-  %anon = alloca i64, align 8
-  %anon1 = alloca i64, align 8
+  %.anon = alloca i64, align 8
+  %.anon1 = alloca i64, align 8
   %url = alloca %"char[]", align 8
   %summary = alloca %Summary, align 8
   %result = alloca %Summary, align 8
@@ -833,22 +833,22 @@ entry:
   %6 = insertvalue %"char[][]" undef, %"char[]"* %5, 0
   %7 = insertvalue %"char[][]" %6, i64 5, 1
   store %"char[][]" %7, %"char[][]"* %URLS, align 8
-  store i64 0, i64* %anon, align 8
   %8 = getelementptr inbounds %"char[][]", %"char[][]"* %URLS, i32 0, i32 1
   %9 = load i64, i64* %8, align 8
-  store i64 %9, i64* %anon1, align 8
+  store i64 %9, i64* %.anon, align 8
+  store i64 0, i64* %.anon1, align 8
   br label %loop.cond
 
 loop.cond:                                        ; preds = %phi_block12, %entry
-  %10 = load i64, i64* %anon, align 8
-  %11 = load i64, i64* %anon1, align 8
+  %10 = load i64, i64* %.anon1, align 8
+  %11 = load i64, i64* %.anon, align 8
   %lt = icmp ult i64 %10, %11
   br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
   %12 = getelementptr inbounds %"char[][]", %"char[][]"* %URLS, i32 0, i32 0
   %13 = load %"char[]"*, %"char[]"** %12, align 8
-  %14 = load i64, i64* %anon, align 8
+  %14 = load i64, i64* %.anon1, align 8
   %ptroffset = getelementptr inbounds %"char[]", %"char[]"* %13, i64 %14
   %15 = bitcast %"char[]"* %url to i8*
   %16 = bitcast %"char[]"* %ptroffset to i8*
@@ -949,9 +949,9 @@ phi_block12:                                      ; preds = %else_block11, %afte
   %val13 = phi i1 [ %52, %after_check10 ], [ false, %else_block11 ]
   %ternary = select i1 %val13, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str.26, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str.27, i32 0, i32 0)
   %53 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([23 x i8], [23 x i8]* @.str.25, i32 0, i32 0), i8* %val7, i8* %ternary)
-  %54 = load i64, i64* %anon, align 8
+  %54 = load i64, i64* %.anon1, align 8
   %add = add i64 %54, 1
-  store i64 %add, i64* %anon, align 8
+  store i64 %add, i64* %.anon1, align 8
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond

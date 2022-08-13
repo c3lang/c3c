@@ -32,20 +32,20 @@ fn void main()
 }
 /* #expect: foo.ll
 
-%Matrix2x2 = type { %anon }
-%anon = type { %anon.0 }
-%anon.0 = type { float, float, float, float }
-%Matrix2x2_b = type { %anon.1 }
-%anon.1 = type { [4 x float] }
+%Matrix2x2 = type { %.anon }
+%.anon = type { %.anon.0 }
+%.anon.0 = type { float, float, float, float }
+%Matrix2x2_b = type { %.anon.1 }
+%.anon.1 = type { [4 x float] }
 
-@"ct$foo_anon" = linkonce constant %.introspect { i8 10, i64 16, i64 0, i64 4, [0 x i64] zeroinitializer }, align 8
-@"ct$foo_anon.3" = linkonce constant %.introspect { i8 11, i64 16, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"ct$foo_$anon" = linkonce constant %.introspect { i8 10, i64 16, i64 0, i64 4, [0 x i64] zeroinitializer }, align 8
+@"ct$foo_$anon.3" = linkonce constant %.introspect { i8 11, i64 16, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @"ct$foo_Matrix2x2" = linkonce constant %.introspect { i8 10, i64 16, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
-@"ct$foo_anon.6" = linkonce constant %.introspect { i8 10, i64 16, i64 0, i64 4, [0 x i64] zeroinitializer }, align 8
-@"ct$foo_anon.7" = linkonce constant %.introspect { i8 11, i64 16, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"ct$foo_$anon.6" = linkonce constant %.introspect { i8 10, i64 16, i64 0, i64 4, [0 x i64] zeroinitializer }, align 8
+@"ct$foo_$anon.7" = linkonce constant %.introspect { i8 11, i64 16, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @"ct$foo_Matrix2x2_b" = linkonce constant %.introspect { i8 10, i64 16, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
-@.__const = private unnamed_addr constant %Matrix2x2 { %anon { %anon.0 { float 1.000000e+00, float 2.000000e+00, float 3.000000e+00, float 4.000000e+00 } } }, align 4
-@.__const.8 = private unnamed_addr constant %Matrix2x2_b { %anon.1 { [4 x float] [float 1.000000e+00, float 2.000000e+00, float 3.000000e+00, float 4.000000e+00] } }, align 4
+@.__const = private unnamed_addr constant %Matrix2x2 { %.anon { %.anon.0 { float 1.000000e+00, float 2.000000e+00, float 3.000000e+00, float 4.000000e+00 } } }, align 4
+@.__const.8 = private unnamed_addr constant %Matrix2x2_b { %.anon.1 { [4 x float] [float 1.000000e+00, float 2.000000e+00, float 3.000000e+00, float 4.000000e+00] } }, align 4
 @.str = private unnamed_addr constant [13 x i8] c"%f %f %f %f\0A\00", align 1
 
 ; Function Attrs: nounwind
@@ -58,22 +58,22 @@ entry:
   %1 = bitcast %Matrix2x2_b* %m2 to i8*
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %1, i8* align 4 bitcast (%Matrix2x2_b* @.__const.8 to i8*), i32 16, i1 false)
   %2 = getelementptr inbounds %Matrix2x2, %Matrix2x2* %m, i32 0, i32 0
-  %3 = bitcast %anon* %2 to %anon.0*
-  %4 = getelementptr inbounds %anon.0, %anon.0* %3, i32 0, i32 0
+  %3 = bitcast %.anon* %2 to %.anon.0*
+  %4 = getelementptr inbounds %.anon.0, %.anon.0* %3, i32 0, i32 0
   %5 = load float, float* %4, align 4
   %fpfpext = fpext float %5 to double
   %6 = getelementptr inbounds %Matrix2x2, %Matrix2x2* %m, i32 0, i32 0
-  %7 = bitcast %anon* %6 to [4 x float]*
+  %7 = bitcast %.anon* %6 to [4 x float]*
   %8 = getelementptr inbounds [4 x float], [4 x float]* %7, i64 0, i64 1
   %9 = load float, float* %8, align 4
   %fpfpext1 = fpext float %9 to double
   %10 = getelementptr inbounds %Matrix2x2, %Matrix2x2* %m, i32 0, i32 0
-  %11 = bitcast %anon* %10 to %anon.0*
-  %12 = getelementptr inbounds %anon.0, %anon.0* %11, i32 0, i32 2
+  %11 = bitcast %.anon* %10 to %.anon.0*
+  %12 = getelementptr inbounds %.anon.0, %.anon.0* %11, i32 0, i32 2
   %13 = load float, float* %12, align 4
   %fpfpext2 = fpext float %13 to double
   %14 = getelementptr inbounds %Matrix2x2, %Matrix2x2* %m, i32 0, i32 0
-  %15 = bitcast %anon* %14 to [4 x float]*
+  %15 = bitcast %.anon* %14 to [4 x float]*
   %16 = getelementptr inbounds [4 x float], [4 x float]* %15, i64 0, i64 3
   %17 = load float, float* %16, align 4
   %fpfpext3 = fpext float %17 to double

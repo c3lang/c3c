@@ -381,7 +381,7 @@ static bool sema_analyse_struct_union(SemaContext *context, Decl *decl)
 
 	if (!sema_analyse_attributes(context, decl, decl->attributes, domain)) return decl_poison(decl);
 
-	DEBUG_LOG("Beginning analysis of %s.", decl->name ? decl->name : "anon");
+	DEBUG_LOG("Beginning analysis of %s.", decl->name ? decl->name : ".anon");
 	bool success;
 	Decl **members = decl->strukt.members;
 	if (!vec_size(members))
@@ -554,7 +554,7 @@ static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl)
 {
 	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_BITSTRUCT)) return decl_poison(decl);
 
-	DEBUG_LOG("Beginning analysis of %s.", decl->name ? decl->name : "anon");
+	DEBUG_LOG("Beginning analysis of %s.", decl->name ? decl->name : ".anon");
 	if (!sema_resolve_type_info(context, decl->bitstruct.base_type)) return false;
 	Type *type = decl->bitstruct.base_type->type->canonical;
 	Type *base_type = type->type_kind == TYPE_ARRAY ? type->array.base : type;
@@ -2489,10 +2489,10 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 
 	SemaContext temp_context;
 	context = transform_context_for_eval(context, &temp_context, decl->unit);
-	DEBUG_LOG(">>> Analysing %s.", decl->name ? decl->name : "anon");
+	DEBUG_LOG(">>> Analysing %s.", decl->name ? decl->name : ".anon");
 	if (decl->resolve_status == RESOLVE_RUNNING)
 	{
-		SEMA_ERROR(decl, "Recursive definition of '%s'.", decl->name ? decl->name : "anon");
+		SEMA_ERROR(decl, "Recursive definition of '%s'.", decl->name ? decl->name : ".anon");
 		goto FAILED;
 	}
 	decl->resolve_status = RESOLVE_RUNNING;

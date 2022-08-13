@@ -155,7 +155,7 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIAr
 				AlignSize struct_alignment = llvm_abi_alignment(c, struct_type);
 				if (decl_alignment < struct_alignment) decl->alignment = decl_alignment = struct_alignment;
 				coerce = llvm_emit_alloca(c, struct_type, decl_alignment, "");
-				decl->backend_ref = LLVMBuildBitCast(c->builder, coerce, llvm_get_ptr_type(c, decl->type), decl->name ? decl->name : "anon");
+				decl->backend_ref = LLVMBuildBitCast(c->builder, coerce, llvm_get_ptr_type(c, decl->type), decl->name ? decl->name : ".anon");
 			}
 			else
 			{
@@ -425,7 +425,7 @@ void llvm_emit_function_body(GenContext *c, Decl *decl)
 			scratch_buffer_clear();
 			scratch_buffer_append(decl->unit->module->name->module);
 			scratch_buffer_append("::");
-			scratch_buffer_append(decl->name ? decl->name : "anon");
+			scratch_buffer_append(decl->name ? decl->name : "$anon");
 			c->debug.func_name = llvm_emit_zstring(c, scratch_buffer_to_string());
 
 			File *file = source_file_by_id(decl->span.file_id);

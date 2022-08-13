@@ -37,14 +37,14 @@ fn void testSimple()
 // TODO these may be wrong.
 /* #expect: pointer_access.ll
 
-%ExtraSimple = type { i32, i32, %c, %anon, %anon.0, i32 }
+%ExtraSimple = type { i32, i32, %c, %.anon, %.anon.0, i32 }
 %c = type { double, double, double, double, double }
-%anon = type { i32, i32 }
-%anon.0 = type { double }
+%.anon = type { i32, i32 }
+%.anon.0 = type { double }
 
 @"ct$pointer_access_c" = linkonce constant %.introspect { i8 10, i64 40, i64 0, i64 5, [0 x i64] zeroinitializer }, align 8
-@"ct$pointer_access_anon" = linkonce constant %.introspect { i8 10, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
-@"ct$pointer_access_anon.4" = linkonce constant %.introspect { i8 11, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"ct$pointer_access_$anon" = linkonce constant %.introspect { i8 10, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"ct$pointer_access_$anon.4" = linkonce constant %.introspect { i8 11, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @"ct$pointer_access_ExtraSimple" = linkonce constant %.introspect { i8 10, i64 72, i64 0, i64 6, [0 x i64] zeroinitializer }, align 8
 @.str = private unnamed_addr constant [71 x i8] c"a = %d, c.e = %f, c.f = %f, c.j = %f, g = %d, o0 = %f, r = %d, s = %d\0A\00", align 1
 
@@ -67,9 +67,9 @@ entry:
   %7 = getelementptr inbounds %c, ptr %2, i32 0, i32 4
   store double 3.300000e+00, ptr %7, align 8
   %8 = getelementptr inbounds %ExtraSimple, ptr %a, i32 0, i32 3
-  %9 = getelementptr inbounds %anon, ptr %8, i32 0, i32 0
+  %9 = getelementptr inbounds %.anon, ptr %8, i32 0, i32 0
   store i32 0, ptr %9, align 8
-  %10 = getelementptr inbounds %anon, ptr %8, i32 0, i32 1
+  %10 = getelementptr inbounds %.anon, ptr %8, i32 0, i32 1
   store i32 0, ptr %10, align 4
   %11 = getelementptr inbounds %ExtraSimple, ptr %a, i32 0, i32 4
   call void @llvm.memset.p0.i64(ptr align 8 %11, i8 0, i64 8, i1 false)
@@ -94,10 +94,10 @@ entry:
   %28 = getelementptr inbounds %ExtraSimple, ptr %a, i32 0, i32 4
   %29 = load double, ptr %28, align 8
   %30 = getelementptr inbounds %ExtraSimple, ptr %a, i32 0, i32 3
-  %31 = getelementptr inbounds %anon, ptr %30, i32 0, i32 0
+  %31 = getelementptr inbounds %.anon, ptr %30, i32 0, i32 0
   %32 = load i32, ptr %31, align 8
   %33 = getelementptr inbounds %ExtraSimple, ptr %a, i32 0, i32 3
-  %34 = getelementptr inbounds %anon, ptr %33, i32 0, i32 1
+  %34 = getelementptr inbounds %.anon, ptr %33, i32 0, i32 1
   %35 = load i32, ptr %34, align 4
   call void (ptr, ...) @printf(ptr @.str, i32 %16, double %19, double %22, double %25, i32 %27, double %29, i32 %32, i32 %35)
   ret void

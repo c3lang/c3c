@@ -53,14 +53,14 @@ fn void main()
 
 /* #expect: foob.ll
 
-%Matrix2x2 = type { %anon.1 }
-%anon.1 = type { [4 x float] }
-%Matrix2x2_b = type { %anon.2 }
-%anon.2 = type { %anon.3 }
-%anon.3 = type { float, float, float, float }
-%Matrix3x3 = type { %anon }
-%anon = type { %anon.0 }
-%anon.0 = type { float, float, float, float, float, float, float, float, float }
+%Matrix2x2 = type { %.anon.1 }
+%.anon.1 = type { [4 x float] }
+%Matrix2x2_b = type { %.anon.2 }
+%.anon.2 = type { %.anon.3 }
+%.anon.3 = type { float, float, float, float }
+%Matrix3x3 = type { %.anon }
+%.anon = type { %.anon.0 }
+%.anon.0 = type { float, float, float, float, float, float, float, float, float }
 
 define void @foob_main() #0 {
 entry:
@@ -68,46 +68,46 @@ entry:
   %m = alloca %Matrix2x2, align 4
   %m2 = alloca %Matrix2x2_b, align 4
   %0 = getelementptr inbounds %Matrix3x3, %Matrix3x3* %x, i32 0, i32 0
-  %1 = bitcast %anon* %0 to %anon.0*
-  %2 = getelementptr inbounds %anon.0, %anon.0* %1, i32 0, i32 0
+  %1 = bitcast %.anon* %0 to %.anon.0*
+  %2 = getelementptr inbounds %.anon.0, %.anon.0* %1, i32 0, i32 0
   store float 1.000000e+00, float* %2, align 4
-  %3 = getelementptr inbounds %anon.0, %anon.0* %1, i32 0, i32 1
+  %3 = getelementptr inbounds %.anon.0, %.anon.0* %1, i32 0, i32 1
   store float 2.000000e+00, float* %3, align 4
-  %4 = getelementptr inbounds %anon.0, %anon.0* %1, i32 0, i32 2
+  %4 = getelementptr inbounds %.anon.0, %.anon.0* %1, i32 0, i32 2
   store float 3.000000e+00, float* %4, align 4
-  %5 = getelementptr inbounds %anon.0, %anon.0* %1, i32 0, i32 3
+  %5 = getelementptr inbounds %.anon.0, %.anon.0* %1, i32 0, i32 3
   store float 4.000000e+00, float* %5, align 4
-  %6 = getelementptr inbounds %anon.0, %anon.0* %1, i32 0, i32 4
+  %6 = getelementptr inbounds %.anon.0, %.anon.0* %1, i32 0, i32 4
   store float 5.000000e+00, float* %6, align 4
-  %7 = getelementptr inbounds %anon.0, %anon.0* %1, i32 0, i32 5
+  %7 = getelementptr inbounds %.anon.0, %.anon.0* %1, i32 0, i32 5
   store float 6.000000e+00, float* %7, align 4
-  %8 = getelementptr inbounds %anon.0, %anon.0* %1, i32 0, i32 6
+  %8 = getelementptr inbounds %.anon.0, %.anon.0* %1, i32 0, i32 6
   store float 7.000000e+00, float* %8, align 4
-  %9 = getelementptr inbounds %anon.0, %anon.0* %1, i32 0, i32 7
+  %9 = getelementptr inbounds %.anon.0, %.anon.0* %1, i32 0, i32 7
   store float 8.000000e+00, float* %9, align 4
-  %10 = getelementptr inbounds %anon.0, %anon.0* %1, i32 0, i32 8
+  %10 = getelementptr inbounds %.anon.0, %.anon.0* %1, i32 0, i32 8
   store float 9.000000e+00, float* %10, align 4
   %11 = bitcast %Matrix2x2* %m to i8*
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %11, i8* align 4 bitcast (%Matrix2x2* @.__const to i8*), i32 16, i1 false)
   %12 = bitcast %Matrix2x2_b* %m2 to i8*
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %12, i8* align 4 bitcast (%Matrix2x2_b* @.__const.16 to i8*), i32 16, i1 false)
   %13 = getelementptr inbounds %Matrix3x3, %Matrix3x3* %x, i32 0, i32 0
-  %14 = bitcast %anon* %13 to %anon.0*
-  %15 = getelementptr inbounds %anon.0, %anon.0* %14, i32 0, i32 0
+  %14 = bitcast %.anon* %13 to %.anon.0*
+  %15 = getelementptr inbounds %.anon.0, %.anon.0* %14, i32 0, i32 0
   %16 = load float, float* %15, align 4
   %fpfpext = fpext float %16 to double
   %17 = getelementptr inbounds %Matrix3x3, %Matrix3x3* %x, i32 0, i32 0
-  %18 = bitcast %anon* %17 to [9 x float]*
+  %18 = bitcast %.anon* %17 to [9 x float]*
   %19 = getelementptr inbounds [9 x float], [9 x float]* %18, i64 0, i64 1
   %20 = load float, float* %19, align 4
   %fpfpext1 = fpext float %20 to double
   %21 = getelementptr inbounds %Matrix3x3, %Matrix3x3* %x, i32 0, i32 0
-  %22 = bitcast %anon* %21 to %anon.0*
-  %23 = getelementptr inbounds %anon.0, %anon.0* %22, i32 0, i32 3
+  %22 = bitcast %.anon* %21 to %.anon.0*
+  %23 = getelementptr inbounds %.anon.0, %.anon.0* %22, i32 0, i32 3
   %24 = load float, float* %23, align 4
   %fpfpext2 = fpext float %24 to double
   %25 = getelementptr inbounds %Matrix3x3, %Matrix3x3* %x, i32 0, i32 0
-  %26 = bitcast %anon* %25 to [9 x float]*
+  %26 = bitcast %.anon* %25 to [9 x float]*
   %27 = getelementptr inbounds [9 x float], [9 x float]* %26, i64 0, i64 3
   %28 = load float, float* %27, align 4
   %fpfpext3 = fpext float %28 to double

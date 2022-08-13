@@ -19,8 +19,8 @@ fn void test(Bar b)
 
 /* #expect: foo.ll
 
-%Bar = type { %anon, i32, [0 x i32] }
-%anon = type { i32 }
+%Bar = type { %.anon, i32, [0 x i32] }
+%.anon = type { i32 }
 
 define void @foo_test(ptr byval(%Bar) align 8 %0) #0 {
 entry:

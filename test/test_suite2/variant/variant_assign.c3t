@@ -118,7 +118,7 @@ switch.exit:                                      ; preds = %switch.default, %sw
 define void @foo_test2(i64 %0, ptr %1) #0 {
 entry:
   %y = alloca %variant, align 8
-  %anon = alloca %variant, align 8
+  %.anon = alloca %variant, align 8
   %switch = alloca i64, align 8
   %z = alloca ptr, align 8
   %taddr = alloca i32, align 4
@@ -127,7 +127,7 @@ entry:
   store i64 %0, ptr %2, align 8
   %3 = getelementptr inbounds { i64, ptr }, ptr %y, i32 0, i32 1
   store ptr %1, ptr %3, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %anon, ptr align 8 %y, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %.anon, ptr align 8 %y, i32 16, i1 false)
   %4 = getelementptr inbounds %variant, ptr %y, i32 0, i32 1
   %5 = load i64, ptr %4, align 8
   store i64 %5, ptr %switch, align 8
@@ -139,7 +139,7 @@ switch.entry:                                     ; preds = %entry
   br i1 %eq, label %switch.case, label %next_if
 
 switch.case:                                      ; preds = %switch.entry
-  %7 = getelementptr inbounds %variant, ptr %anon, i32 0, i32 0
+  %7 = getelementptr inbounds %variant, ptr %.anon, i32 0, i32 0
   %8 = load ptr, ptr %7, align 8
   store ptr %8, ptr %z, align 8
   store i32 12, ptr %taddr, align 4
@@ -156,7 +156,7 @@ next_if:                                          ; preds = %switch.entry
   br i1 %eq1, label %switch.case2, label %next_if4
 
 switch.case2:                                     ; preds = %next_if
-  %13 = getelementptr inbounds %variant, ptr %anon, i32 0, i32 0
+  %13 = getelementptr inbounds %variant, ptr %.anon, i32 0, i32 0
   %14 = load ptr, ptr %13, align 8
   store ptr %14, ptr %z3, align 8
   %15 = load ptr, ptr %z3, align 8
@@ -178,7 +178,7 @@ switch.exit:                                      ; preds = %switch.default, %sw
 define void @foo_test3(i64 %0, ptr %1) #0 {
 entry:
   %y = alloca %variant, align 8
-  %anon = alloca %variant, align 8
+  %.anon = alloca %variant, align 8
   %switch = alloca i64, align 8
   %z = alloca i32, align 4
   %z3 = alloca double, align 8
@@ -186,7 +186,7 @@ entry:
   store i64 %0, ptr %2, align 8
   %3 = getelementptr inbounds { i64, ptr }, ptr %y, i32 0, i32 1
   store ptr %1, ptr %3, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %anon, ptr align 8 %y, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %.anon, ptr align 8 %y, i32 16, i1 false)
   %4 = getelementptr inbounds %variant, ptr %y, i32 0, i32 1
   %5 = load i64, ptr %4, align 8
   store i64 %5, ptr %switch, align 8
@@ -198,7 +198,7 @@ switch.entry:                                     ; preds = %entry
   br i1 %eq, label %switch.case, label %next_if
 
 switch.case:                                      ; preds = %switch.entry
-  %7 = getelementptr inbounds %variant, ptr %anon, i32 0, i32 0
+  %7 = getelementptr inbounds %variant, ptr %.anon, i32 0, i32 0
   %8 = load ptr, ptr %7, align 8
   %9 = load i32, ptr %8, align 8
   store i32 %9, ptr %z, align 4
@@ -211,7 +211,7 @@ next_if:                                          ; preds = %switch.entry
   br i1 %eq1, label %switch.case2, label %next_if4
 
 switch.case2:                                     ; preds = %next_if
-  %11 = getelementptr inbounds %variant, ptr %anon, i32 0, i32 0
+  %11 = getelementptr inbounds %variant, ptr %.anon, i32 0, i32 0
   %12 = load ptr, ptr %11, align 8
   %13 = load double, ptr %12, align 8
   store double %13, ptr %z3, align 8

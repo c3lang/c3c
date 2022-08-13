@@ -89,7 +89,7 @@ Decl *decl_new_with_type(const char *name, SourceSpan loc, DeclKind decl_type, V
 		case DECL_BODYPARAM:
 			UNREACHABLE
 	}
-	Type *type = type_new(kind, name ? name : "anon");
+	Type *type = type_new(kind, name ? name : "$anon");
 	type->canonical = type;
 	type->decl = decl;
 	decl->type = type;
@@ -202,7 +202,7 @@ void decl_set_external_name(Decl *decl)
 	if (decl->has_extname) return;
 
 	const char *name = decl->name;
-	if (!name) name = "anon";
+	if (!name) name = "$anon";
 
 	// "extern" or the module has no prefix?
 	if (decl->visibility == VISIBLE_EXTERN || decl->unit->module->no_extprefix)

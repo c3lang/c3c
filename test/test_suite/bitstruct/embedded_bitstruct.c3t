@@ -53,8 +53,8 @@ entry:
   %0 = bitcast %Bar* %b to i8*
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %0, i8* align 4 bitcast (%Bar* @.__const to i8*), i32 12, i1 false)
   %1 = getelementptr inbounds %Bar, %Bar* %b, i32 0, i32 1
-  %2 = getelementptr inbounds %anon, %anon* %1, i32 0, i32 0
-  %3 = getelementptr inbounds %anon.0, %anon.0* %2, i32 0, i32 0
+  %2 = getelementptr inbounds %.anon, %.anon* %1, i32 0, i32 0
+  %3 = getelementptr inbounds %.anon.0, %.anon.0* %2, i32 0, i32 0
   %4 = load i32, i32* %3, align 4
   %5 = getelementptr inbounds %Bar, %Bar* %b, i32 0, i32 2
   %6 = load i32, i32* %5, align 4
@@ -64,15 +64,15 @@ entry:
   %7 = bitcast %Foo* %f to i8*
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %7, i8* align 4 bitcast (%Foo* @.__const.10 to i8*), i32 16, i1 false)
   %8 = getelementptr inbounds %Foo, %Foo* %f, i32 0, i32 0
-  %9 = getelementptr inbounds %anon.1, %anon.1* %8, i32 0, i32 0
-  %10 = getelementptr inbounds %anon.2, %anon.2* %9, i32 0, i32 0
+  %9 = getelementptr inbounds %.anon.1, %.anon.1* %8, i32 0, i32 0
+  %10 = getelementptr inbounds %.anon.2, %.anon.2* %9, i32 0, i32 0
   %11 = load i32, i32* %10, align 4
   %12 = getelementptr inbounds %Foo, %Foo* %f, i32 0, i32 0
-  %13 = getelementptr inbounds %anon.1, %anon.1* %12, i32 0, i32 1
-  %14 = getelementptr inbounds %anon.3, %anon.3* %13, i32 0, i32 0
+  %13 = getelementptr inbounds %.anon.1, %.anon.1* %12, i32 0, i32 1
+  %14 = getelementptr inbounds %.anon.3, %.anon.3* %13, i32 0, i32 0
   %15 = load i32, i32* %14, align 4
   %16 = getelementptr inbounds %Foo, %Foo* %f, i32 0, i32 0
-  %17 = getelementptr inbounds %anon.1, %anon.1* %16, i32 0, i32 2
+  %17 = getelementptr inbounds %.anon.1, %.anon.1* %16, i32 0, i32 2
   %18 = load i32, i32* %17, align 4
   %19 = getelementptr inbounds %Foo, %Foo* %f, i32 0, i32 1
   %20 = load i32, i32* %19, align 4

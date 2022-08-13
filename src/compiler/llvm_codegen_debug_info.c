@@ -152,7 +152,7 @@ void llvm_emit_debug_local_var(GenContext *c, Decl *decl)
 	if (!row) row = 1;
 	if (!col) col = 1;
 	const char *name = decl->name;
-	if (!name) name = "anon";
+	if (!name) name = ".temp";
 	LLVMMetadataRef var = LLVMDIBuilderCreateAutoVariable(
 			c->debug.builder,
 			c->debug.function,
@@ -184,7 +184,7 @@ void llvm_emit_debug_local_var(GenContext *c, Decl *decl)
 void llvm_emit_debug_parameter(GenContext *c, Decl *parameter, unsigned index)
 {
 	assert(!llvm_is_global_eval(c));
-	const char *name = parameter->name ? parameter->name : "anon";
+	const char *name = parameter->name ? parameter->name : ".anon";
 	bool always_preserve = false;
 
 	unsigned row = parameter->span.row;

@@ -26,7 +26,7 @@ declare void @printf(ptr, ...) #0
 define void @test_main() #0 {
 entry:
   %x = alloca [8 x i32], align 16
-  %anon = alloca i64, align 8
+  %.anon = alloca i64, align 8
   %i = alloca i32, align 4
   call void @llvm.memset.p0.i64(ptr align 16 %x, i8 0, i64 32, i1 false)
   %0 = getelementptr inbounds [8 x i32], ptr %x, i64 0, i64 0
@@ -43,24 +43,24 @@ entry:
   store i32 52, ptr %5, align 4
   %6 = getelementptr inbounds [8 x i32], ptr %x, i64 0, i64 7
   store i32 52, ptr %6, align 4
-  store i64 0, ptr %anon, align 8
+  store i64 0, ptr %.anon, align 8
   br label %loop.cond
 
 loop.cond:                                        ; preds = %loop.body, %entry
-  %7 = load i64, ptr %anon, align 8
+  %7 = load i64, ptr %.anon, align 8
   %gt = icmp ugt i64 8, %7
   br i1 %gt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
-  %8 = load i64, ptr %anon, align 8
+  %8 = load i64, ptr %.anon, align 8
   %9 = getelementptr inbounds [8 x i32], ptr %x, i64 0, i64 %8
   %10 = load i32, ptr %9, align 4
   store i32 %10, ptr %i, align 4
   %11 = load i32, ptr %i, align 4
   call void (ptr, ...) @printf(ptr @.str, i32 %11)
-  %12 = load i64, ptr %anon, align 8
+  %12 = load i64, ptr %.anon, align 8
   %add = add i64 %12, 1
-  store i64 %add, ptr %anon, align 8
+  store i64 %add, ptr %.anon, align 8
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond

@@ -523,7 +523,7 @@ void llvm_emit_and_set_decl_alloca(GenContext *c, Decl *decl)
 {
 	Type *type = type_lowering(decl->type);
 	if (type == type_void) return;
-	decl->backend_ref = llvm_emit_alloca(c, llvm_get_type(c, type), decl->alignment, decl->name ? decl->name : "anon");
+	decl->backend_ref = llvm_emit_alloca(c, llvm_get_type(c, type), decl->alignment, decl->name ? decl->name : ".anon");
 }
 
 void llvm_emit_local_var_alloca(GenContext *c, Decl *decl)

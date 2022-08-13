@@ -53,14 +53,14 @@ fn void main()
 
 /* #expect: foob.ll
 
-%Matrix2x2 = type { %anon.1 }
-%anon.1 = type { [4 x float] }
-%Matrix2x2_b = type { %anon.2 }
-%anon.2 = type { %anon.3 }
-%anon.3 = type { float, float, float, float }
-%Matrix3x3 = type { %anon }
-%anon = type { %anon.0 }
-%anon.0 = type { float, float, float, float, float, float, float, float, float }
+%Matrix2x2 = type { %.anon.1 }
+%.anon.1 = type { [4 x float] }
+%Matrix2x2_b = type { %.anon.2 }
+%.anon.2 = type { %.anon.3 }
+%.anon.3 = type { float, float, float, float }
+%Matrix3x3 = type { %.anon }
+%.anon = type { %.anon.0 }
+%.anon.0 = type { float, float, float, float, float, float, float, float, float }
 
 define void @foob_main() #0 {
 entry:
@@ -68,28 +68,28 @@ entry:
   %m = alloca %Matrix2x2, align 4
   %m2 = alloca %Matrix2x2_b, align 4
   %0 = getelementptr inbounds %Matrix3x3, ptr %x, i32 0, i32 0
-  %1 = getelementptr inbounds %anon.0, ptr %0, i32 0, i32 0
+  %1 = getelementptr inbounds %.anon.0, ptr %0, i32 0, i32 0
   store float 1.000000e+00, ptr %1, align 4
-  %2 = getelementptr inbounds %anon.0, ptr %0, i32 0, i32 1
+  %2 = getelementptr inbounds %.anon.0, ptr %0, i32 0, i32 1
   store float 2.000000e+00, ptr %2, align 4
-  %3 = getelementptr inbounds %anon.0, ptr %0, i32 0, i32 2
+  %3 = getelementptr inbounds %.anon.0, ptr %0, i32 0, i32 2
   store float 3.000000e+00, ptr %3, align 4
-  %4 = getelementptr inbounds %anon.0, ptr %0, i32 0, i32 3
+  %4 = getelementptr inbounds %.anon.0, ptr %0, i32 0, i32 3
   store float 4.000000e+00, ptr %4, align 4
-  %5 = getelementptr inbounds %anon.0, ptr %0, i32 0, i32 4
+  %5 = getelementptr inbounds %.anon.0, ptr %0, i32 0, i32 4
   store float 5.000000e+00, ptr %5, align 4
-  %6 = getelementptr inbounds %anon.0, ptr %0, i32 0, i32 5
+  %6 = getelementptr inbounds %.anon.0, ptr %0, i32 0, i32 5
   store float 6.000000e+00, ptr %6, align 4
-  %7 = getelementptr inbounds %anon.0, ptr %0, i32 0, i32 6
+  %7 = getelementptr inbounds %.anon.0, ptr %0, i32 0, i32 6
   store float 7.000000e+00, ptr %7, align 4
-  %8 = getelementptr inbounds %anon.0, ptr %0, i32 0, i32 7
+  %8 = getelementptr inbounds %.anon.0, ptr %0, i32 0, i32 7
   store float 8.000000e+00, ptr %8, align 4
-  %9 = getelementptr inbounds %anon.0, ptr %0, i32 0, i32 8
+  %9 = getelementptr inbounds %.anon.0, ptr %0, i32 0, i32 8
   store float 9.000000e+00, ptr %9, align 4
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %m, ptr align 4 @.__const, i32 16, i1 false)
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %m2, ptr align 4 @.__const.16, i32 16, i1 false)
   %10 = getelementptr inbounds %Matrix3x3, ptr %x, i32 0, i32 0
-  %11 = getelementptr inbounds %anon.0, ptr %10, i32 0, i32 0
+  %11 = getelementptr inbounds %.anon.0, ptr %10, i32 0, i32 0
   %12 = load float, ptr %11, align 4
   %fpfpext = fpext float %12 to double
   %13 = getelementptr inbounds %Matrix3x3, ptr %x, i32 0, i32 0
@@ -97,7 +97,7 @@ entry:
   %15 = load float, ptr %14, align 4
   %fpfpext1 = fpext float %15 to double
   %16 = getelementptr inbounds %Matrix3x3, ptr %x, i32 0, i32 0
-  %17 = getelementptr inbounds %anon.0, ptr %16, i32 0, i32 3
+  %17 = getelementptr inbounds %.anon.0, ptr %16, i32 0, i32 3
   %18 = load float, ptr %17, align 4
   %fpfpext2 = fpext float %18 to double
   %19 = getelementptr inbounds %Matrix3x3, ptr %x, i32 0, i32 0

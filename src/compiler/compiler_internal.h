@@ -1114,6 +1114,7 @@ typedef struct
 	bool index_by_ref : 1;
 	bool value_by_ref : 1;
 	bool iterator : 1;
+	bool is_reverse : 1;
 	CastKind cast : 8;
 	ExprId enumeration;
 	AstId body;
