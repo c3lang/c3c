@@ -980,9 +980,13 @@ void *llvm_gen(Module *module)
 		}
 		VECEACH(unit->functions, i)
 		{
-			llvm_emit_function_decl(gen_context, unit->functions[i]);
+			Decl *func = unit->functions[i];
+			llvm_emit_function_decl(gen_context, func);
 		}
-		if (unit->main_function) llvm_emit_function_decl(gen_context, unit->main_function);
+		if (unit->main_function && unit->main_function->is_synthetic)
+		{
+			llvm_emit_function_decl(gen_context, unit->main_function);
+		}
 	}
 
 	VECEACH(module->units, j)
@@ -1004,7 +1008,10 @@ void *llvm_gen(Module *module)
 			Decl *decl = unit->functions[i];
 			if (decl->func_decl.body) llvm_emit_function_body(gen_context, decl);
 		}
-		if (unit->main_function) llvm_emit_function_body(gen_context, unit->main_function);
+		if (unit->main_function && unit->main_function->is_synthetic)
+		{
+			llvm_emit_function_body(gen_context, unit->main_function);
+		}
 
 		VECEACH(unit->methods, i)
 		{

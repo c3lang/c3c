@@ -1,6 +1,9 @@
 #include "compiler_internal.h"
 
 #include <llvm/Config/llvm-config.h>  // for LLVM_VERSION_STRING
+#if PLATFORM_POSIX
+#include <glob.h>
+#endif
 
 extern bool llvm_link_elf(const char **args, int arg_count, const char **error_string);
 extern bool llvm_link_macho(const char **args, int arg_count, const char **error_string);
@@ -253,14 +256,6 @@ static void linker_setup_macos(const char ***args_ref, LinkerType linker_type)
 	add_arg(str_printf("%d.%d", mac_sdk->macos_deploy_target.major, mac_sdk->macos_deploy_target.minor));
 }
 
-static const char *find_linux_crt(void)
-{
-	if (file_exists("/usr/lib/x86_64-linux-gnu/crt1.o"))
-	{
-		return "/usr/lib/x86_64-linux-gnu/";
-	}
-	return NULL;
-}
 
 static const char *find_freebsd_crt(void)
 {
@@ -271,12 +266,47 @@ static const char *find_freebsd_crt(void)
 	return NULL;
 }
 
+static const char *find_linux_crt(void)
+{
+#if PLATFORM_POSIX
+	glob_t globbuf;
+	if (!glob("/usr/lib/*/crt1.o", 0, NULL, &globbuf) && globbuf.gl_pathc)
+	{
+		const char *path = globbuf.gl_pathv[0];
+		DEBUG_LOG("Found crt at %s", path);
+		size_t len = strlen(path);
+		assert(len > 6);
+		const char *res = str_copy(path, len - 6);
+		globfree(&globbuf);
+		return res;
+	}
+	else
+	{
+		DEBUG_LOG("No crt in /usr/lib/*/");
+	}
+#endif
+	return NULL;
+}
+
 static const char *find_linux_crt_begin(void)
 {
-	if (file_exists("/usr/lib/gcc/x86_64-linux-gnu/10/crtbegin.o"))
+#if PLATFORM_POSIX
+	glob_t globbuf;
+	if (!glob("/usr/lib/gcc/*/*/crtbegin.o", 0, NULL, &globbuf) && globbuf.gl_pathc)
 	{
-		return "/usr/lib/gcc/x86_64-linux-gnu/10/";
+		const char *path = globbuf.gl_pathv[0];
+		DEBUG_LOG("Found crtbegin at %s", path);
+		size_t len = strlen(path);
+		assert(len > 10);
+		const char *res = str_copy(path, len - 10);
+		globfree(&globbuf);
+		return res;
 	}
+	else
+	{
+		DEBUG_LOG("No crtbegin in /usr/lib/gcc/*/*/");
+	}
+#endif
 	return NULL;
 }
 

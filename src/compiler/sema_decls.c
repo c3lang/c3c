@@ -1674,7 +1674,7 @@ ADDED:;
 
 static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 {
-	if (decl == context->unit->main_function) return true;
+	assert(decl != context->unit->main_function);
 
 	if (decl->visibility == VISIBLE_LOCAL)
 	{
@@ -1739,13 +1739,15 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 			SEMA_ERROR(params[0], "Expected zero, 1 or 2 parameters for main.");
 			return false;
 	}
+	Decl *function;
 	if (!subarray_param && is_int_return)
 	{
 		// Int return is pass-through at the moment.
 		decl->visibility = VISIBLE_EXTERN;
-		return true;
+		function = decl;
+		goto REGISTER_MAIN;
 	}
-	Decl *function = decl_new(DECL_FUNC, NULL, decl->span, VISIBLE_EXTERN);
+	function = decl_new(DECL_FUNC, NULL, decl->span, VISIBLE_EXTERN);
 	function->name = kw_mainstub;
 	function->unit = decl->unit;
 	function->extname = kw_main;
@@ -1807,11 +1809,14 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	ast_append(&next, ret_stmt);
 	assert(body);
 	function->func_decl.body = astid(body);
+	function->is_synthetic = true;
+REGISTER_MAIN:
 	context->unit->main_function = function;
 	if (global_context.main)
 	{
 		SEMA_ERROR(function, "Duplicate main functions found.");
 		SEMA_NOTE(global_context.main, "The first one was found here.");
+		return false;
 	}
 	else
 	{

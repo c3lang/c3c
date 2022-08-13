@@ -586,6 +586,7 @@ typedef struct Decl_
 	bool will_reflect : 1;
 	bool obfuscate : 1;
 	bool is_dynamic : 1;
+	bool is_synthetic : 1;
 	OperatorOverload operator : 4;
 	union
 	{

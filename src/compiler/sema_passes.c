@@ -396,7 +396,7 @@ void sema_analysis_pass_decls(Module *module)
 		{
 			sema_analyse_decl(&context, unit->functions[i]);
 		}
-		if (unit->main_function)
+		if (unit->main_function && unit->main_function->is_synthetic)
 		{
 			sema_analyse_decl(&context, unit->main_function);
 		}
@@ -426,7 +426,7 @@ void sema_analysis_pass_functions(Module *module)
 		{
 			analyse_func_body(&context, unit->functions[i]);
 		}
-		if (unit->main_function) analyse_func_body(&context, unit->main_function);
+		if (unit->main_function && unit->main_function->is_synthetic) analyse_func_body(&context, unit->main_function);
 		sema_context_destroy(&context);
 
 	}
