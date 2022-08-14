@@ -4185,7 +4185,7 @@ static Type *sema_find_type_of_element(SemaContext *context, Type *type, Designa
 		}
 		if (index >= (MemberIndex)len)
 		{
-			SEMA_ERROR(element->index_expr, "The index may must be less than the array length (which was %llu).", (unsigned long long)len);
+			SEMA_ERROR(element->index_expr, "The index (%llu) must be less than the array length (%llu).", (unsigned long long)index, (unsigned long long)len);
 			*did_report_error = true;
 			return NULL;
 		}
@@ -4202,14 +4202,14 @@ static Type *sema_find_type_of_element(SemaContext *context, Type *type, Designa
 			}
 			if (index > end_index)
 			{
-				SEMA_ERROR(element->index_end_expr, "End index must be greater than start index.");
+				SEMA_ERROR(element->index_end_expr, "End index (%llu) must be greater than start index (%llu).", (unsigned long long)end_index, (unsigned long long)index);
 				*did_report_error = true;
 				return NULL;
 			}
 			if (end_index > (MemberIndex)len)
 			{
 				*did_report_error = true;
-				SEMA_ERROR(element->index_expr, "The index may must be less than the array length (which was %llu).", (unsigned long long)len);
+				SEMA_ERROR(element->index_expr, "The index (%llu) must be less than the array length (%llu).", (unsigned long long)end_idx, (unsigned long long)len);
 				return NULL;
 			}
 			element->index_end = end_index;
