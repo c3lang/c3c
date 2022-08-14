@@ -158,7 +158,7 @@ The compiler is currently verified to compile on Linux, Windows and MacOS.
 ### Installing
 
 #### Installing on Windows with precompiled binaries
-1. Make sure you have Visual Studio 17 2022 installed.
+1. Make sure you have Visual Studio 17 2022 installed or alternatively install the "Buildtools for Visual Studio" (https://aka.ms/vs/17/release/vs_BuildTools.exe) and then select "Desktop development with C++" (there is also `c3c/resources/install_win_reqs.bat` to automate this)
 2. Download the zip file: [https://github.com/c3lang/c3c/releases/download/latest/c3-windows.zip](https://github.com/c3lang/c3c/releases/download/latest/c3-windows.zip) 
 (debug version [here](https://github.com/c3lang/c3c/releases/download/latest/c3-windows-debug.zip))
 3. Unzip exe and standard lib.
@@ -242,7 +242,7 @@ called `hello_world` or `hello_world.exe`depending on platform.
 
 #### Compiling on Windows
 
-1. Make sure you have Visual Studio 17 2022 installed.
+1. Make sure you have Visual Studio 17 2022 installed or alternatively install the "Buildtools for Visual Studio" (https://aka.ms/vs/17/release/vs_BuildTools.exe) and then select "Desktop development with C++" (there is also `c3c/resources/install_win_reqs.bat` to automate this)
 2. Install CMake
 3. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
 4. Enter the C3C directory `cd c3c`.
