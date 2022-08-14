@@ -38,3 +38,8 @@ WindowsSDK *windows_get_sdk(void)
 }
 
 #endif
+
+const char *windows_cross_compile_library(void)
+{
+	return find_rel_exe_dir("msvc_sdk");
+}

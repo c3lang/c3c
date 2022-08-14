@@ -188,6 +188,7 @@ jobs:
         run: |
           mkdir linux
           cp -r lib/ linux
+          cp msvc_build_libraries.py linux
           cp build/c3c linux
           tar czf c3-linux-${{matrix.build_type}}.tar.gz linux
 
@@ -241,6 +242,7 @@ jobs:
         run: |
           mkdir macos
           cp -r lib/ macos
+          cp msvc_build_libraries.py linux
           cp build/c3c macos
           zip -r c3-macos-${{matrix.build_type}}.zip macos
 
@@ -284,6 +286,10 @@ jobs:
       - uses: actions/download-artifact@v3
       - run: cp -r lib/ c3-windows-Release
       - run: cp -r lib/ c3-windows-Debug
+      - run: cp msvc_build_libraries.py c3-windows-Release
+      - run: cp msvc_build_libraries.py c3-windows-Debug
+      - run: cp install_win_reqs.bat c3-windows-Release
+      - run: cp install_win_reqs.bat c3-windows-Debug
       - run: zip -r c3-windows-Release.zip c3-windows-Release
       - run: zip -r c3-windows-Debug.zip c3-windows-Debug
 

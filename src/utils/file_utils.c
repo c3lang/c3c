@@ -255,6 +255,35 @@ static inline const char *lib_find(const char *exe_path, const char *rel_path)
 	return lib_path;
 }
 
+const char *find_rel_exe_dir(const char *dir)
+{
+	char *path = find_executable_path();
+	DEBUG_LOG("Detected executable path at %s", path);
+	size_t strlen_path = strlen(path);
+	// Remove any last path slash
+	if (strlen_path > 1 && (path[strlen_path - 1] == '/' || path[strlen_path - 1] == '\\'))
+	{
+		path[strlen_path - 1] = '\0';
+	}
+	struct stat info;
+	const char *attempts[5] = { "/../", "/lib/", "/../lib/", "/", "/../../lib/" };
+
+	for (size_t i = 0; i < 5; i++)
+	{
+		scratch_buffer_clear();
+		scratch_buffer_printf("%s%s%s", path, attempts[i], dir);
+		DEBUG_LOG("Checking %s", scratch_buffer_to_string());
+		int err = stat(scratch_buffer_to_string(), &info);
+
+		// Not a dir or had error?
+		if (err || !S_ISDIR(info.st_mode)) continue;
+		return scratch_buffer_to_string();
+	}
+	return NULL;
+
+
+}
+
 const char *find_lib_dir(void)
 {
 

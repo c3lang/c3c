@@ -65,6 +65,7 @@ bool dir_change(const char *path);
 bool file_namesplit(const char *path, char** filename_ptr, char** directory_ptr);
 const char* file_expand_path(const char* path);
 const char* find_lib_dir(void);
+const char *find_rel_exe_dir(const char *dir);
 bool file_delete_all_files_in_dir_with_suffix(const char *dir, const char *suffix);
 bool file_is_dir(const char *file);
 bool file_exists(const char *path);

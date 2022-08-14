@@ -84,6 +84,34 @@ static void linker_setup_windows(const char ***args_ref, LinkerType linker_type)
 		default:
 			UNREACHABLE
 	}
+	if (!active_target.win.sdk)
+	{
+		const char *path = windows_cross_compile_library();
+		if (path)
+		{
+			switch (platform_target.arch)
+			{
+				case ARCH_TYPE_ARM:
+					scratch_buffer_append("/arm");
+					break;
+				case ARCH_TYPE_AARCH64:
+					scratch_buffer_append("/arm64");
+					break;
+				case ARCH_TYPE_X86_64:
+					scratch_buffer_append("/x64");
+					break;
+				case ARCH_TYPE_X86:
+					scratch_buffer_append("/x86");
+					break;
+				default:
+					UNREACHABLE
+			}
+			if (file_exists(scratch_buffer_to_string()))
+			{
+				active_target.win.sdk = scratch_buffer_copy();
+			}
+		}
+	}
 	if (active_target.win.sdk)
 	{
 		add_arg(str_printf("/LIBPATH:%s", active_target.win.sdk));

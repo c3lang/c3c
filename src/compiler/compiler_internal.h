@@ -2057,6 +2057,7 @@ bool os_is_apple(OsType os_type);
 const char *macos_sysroot(void);
 MacSDK *macos_sysroot_sdk_information(const char *sdk_path);
 WindowsSDK *windows_get_sdk(void);
+const char *windows_cross_compile_library(void);
 INLINE bool visible_external(Visibility  visibility);
 
 void c_abi_func_create(FunctionPrototype *proto);
