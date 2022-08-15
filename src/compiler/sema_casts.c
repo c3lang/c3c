@@ -739,7 +739,7 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 				case BINARYOP_ADD:
 				case BINARYOP_DIV:
 				case BINARYOP_MOD:
-				case BINARYOP_OR_ERR:
+				case BINARYOP_ELSE:
 				{
 					Expr *res = recursive_may_narrow_float(exprptr(expr->binary_expr.left), type);
 					if (res) return res;
@@ -898,7 +898,7 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 				case BINARYOP_BIT_OR:
 				case BINARYOP_BIT_XOR:
 				case BINARYOP_BIT_AND:
-				case BINARYOP_OR_ERR:
+				case BINARYOP_ELSE:
 				{
 					Expr *res = recursive_may_narrow_int(exprptr(expr->binary_expr.left), type);
 					if (res) return res;

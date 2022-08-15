@@ -6657,10 +6657,15 @@ static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr)
 
 	type = type_is_optional_any(type) ? else_type : type->failable;
 
-	if (else_type->type_kind == TYPE_FAILABLE)
+	if (type_is_optional(else_type))
 	{
-		SEMA_ERROR(rhs, "The default value may not be a failable.");
+		SEMA_ERROR(rhs, "The default value may not be an optional.");
 		return false;
+	}
+	if (lhs->expr_kind == EXPR_FAILABLE)
+	{
+		expr_replace(expr, rhs);
+		return true;
 	}
 	Type *common = type_find_max_type(type, else_type);
 	if (!common)
@@ -6671,18 +6676,13 @@ static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr)
 	}
 	if (!cast_implicit(lhs, common)) return false;
 	if (!cast_implicit(rhs, common)) return false;
-	if (IS_OPTIONAL(rhs))
-	{
-		SEMA_ERROR(rhs, "The expression must be a non-failable.");
-		return false;
-	}
 	expr->type = common;
 	return true;
 }
 
 static inline bool sema_expr_analyse_binary(SemaContext *context, Expr *expr)
 {
-	if (expr->binary_expr.operator == BINARYOP_OR_ERR) return sema_expr_analyse_or_error(context, expr);
+	if (expr->binary_expr.operator == BINARYOP_ELSE) return sema_expr_analyse_or_error(context, expr);
 	assert(expr->resolve_status == RESOLVE_RUNNING);
 	Expr *left = exprptr(expr->binary_expr.left);
 	Expr *right = exprptr(expr->binary_expr.right);
@@ -6694,7 +6694,7 @@ static inline bool sema_expr_analyse_binary(SemaContext *context, Expr *expr)
 	}
 	switch (expr->binary_expr.operator)
 	{
-		case BINARYOP_OR_ERR:
+		case BINARYOP_ELSE:
 			UNREACHABLE // Handled previously
 		case BINARYOP_ASSIGN:
 			return sema_expr_analyse_assign(context, expr, left, right);
@@ -8069,7 +8069,7 @@ void insert_widening_type(Expr *expr, Type *infer_type)
 				case BINARYOP_BIT_OR:
 				case BINARYOP_BIT_XOR:
 				case BINARYOP_BIT_AND:
-				case BINARYOP_OR_ERR:
+				case BINARYOP_ELSE:
 					if (!expr_is_simple(exprptr(expr->binary_expr.left)) || !expr_is_simple(exprptr(expr->binary_expr.right))) return;
 					expr->type = infer_type;
 					expr->binary_expr.widen = true;

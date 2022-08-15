@@ -1,4 +1,4 @@
-static inline LLVMValueRef llvm_emit_insert_value(GenContext *c, LLVMValueRef agg, LLVMValueRef new_value, ArraySize index)
+INLINE LLVMValueRef llvm_emit_insert_value(GenContext *c, LLVMValueRef agg, LLVMValueRef new_value, ArraySize index)
 {
 	if (LLVMGetTypeKind(LLVMTypeOf(agg)) == LLVMVectorTypeKind)
 	{
@@ -7,6 +7,22 @@ static inline LLVMValueRef llvm_emit_insert_value(GenContext *c, LLVMValueRef ag
 	}
 	return LLVMBuildInsertValue(c->builder, agg, new_value, index, "");
 }
+
+
+INLINE LLVMValueRef llvm_zext_trunc(GenContext *c, LLVMValueRef data, LLVMTypeRef type)
+{
+	LLVMTypeRef current_type = LLVMTypeOf(data);
+	if (current_type == type) return data;
+	assert(LLVMGetTypeKind(type) == LLVMIntegerTypeKind);
+	assert(LLVMGetTypeKind(current_type) == LLVMIntegerTypeKind);
+	if (llvm_bitsize(c, current_type) < llvm_bitsize(c, type))
+	{
+		return LLVMBuildZExt(c->builder, data, type, "zext");
+	}
+	assert(llvm_bitsize(c, current_type) > llvm_bitsize(c, type));
+	return LLVMBuildTrunc(c->builder, data, type, "ztrunc");
+}
+
 
 INLINE LLVMValueRef llvm_store_decl(GenContext *c, Decl *decl, BEValue *value)
 {
@@ -92,6 +108,15 @@ INLINE LLVMValueRef llvm_emit_trunc_bool(GenContext *c, LLVMValueRef value)
 INLINE LLVMValueRef llvm_emit_trunc(GenContext *c, LLVMValueRef value, Type *type)
 {
 	return LLVMBuildTrunc(c->builder, value, llvm_get_type(c, type), "");
+}
+
+INLINE LLVMValueRef llvm_emit_extract_value(GenContext *c, LLVMValueRef agg, unsigned index)
+{
+	if (LLVMGetTypeKind(LLVMTypeOf(agg)) == LLVMVectorTypeKind)
+	{
+		return LLVMBuildExtractElement(c->builder, agg, llvm_const_int(c, type_usize, index), "");
+	}
+	return LLVMBuildExtractValue(c->builder, agg, index, "");
 }
 
 INLINE bool llvm_use_debug(GenContext *context) { return context->debug.builder != NULL; }

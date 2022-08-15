@@ -19,7 +19,7 @@ typedef enum
 	BINARYOP_BIT_AND,
 	BINARYOP_AND,
 	BINARYOP_OR,
-	BINARYOP_OR_ERR,
+	BINARYOP_ELSE,
 	// Don't change the ordering for GT to EQ or things will break
 	BINARYOP_GT,
 	BINARYOP_GE,

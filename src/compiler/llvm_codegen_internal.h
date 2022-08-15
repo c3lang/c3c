@@ -300,6 +300,7 @@ INLINE AlignSize llvm_type_or_alloca_align(GenContext *c, LLVMValueRef dest, Typ
 // -- Bitcast --
 static inline LLVMValueRef llvm_emit_bitcast(GenContext *c, LLVMValueRef value, Type *type);
 INLINE LLVMValueRef llvm_emit_bitcast_ptr(GenContext *c, LLVMValueRef value, Type *type);
+INLINE LLVMValueRef llvm_zext_trunc(GenContext *c, LLVMValueRef data, LLVMTypeRef type);
 
 // -- Constants --
 void llvm_emit_typeid(GenContext *c, BEValue *be_value, Type *type);
@@ -365,7 +366,7 @@ void llvm_store_to_ptr_zero(GenContext *context, LLVMValueRef pointer, Type *typ
 TypeSize llvm_store_size(GenContext *c, LLVMTypeRef type);
 
 /// -- Aggregates --
-static inline LLVMValueRef llvm_emit_insert_value(GenContext *c, LLVMValueRef agg, LLVMValueRef new_value, ArraySize index);
+INLINE LLVMValueRef llvm_emit_insert_value(GenContext *c, LLVMValueRef agg, LLVMValueRef new_value, ArraySize index);
 LLVMValueRef llvm_emit_aggregate_two(GenContext *c, Type *type, LLVMValueRef value1, LLVMValueRef value2);
 LLVMValueRef llvm_emit_struct_gep_raw(GenContext *context, LLVMValueRef ptr, LLVMTypeRef struct_type, unsigned index,
                                       unsigned struct_alignment, AlignSize *alignment);
@@ -375,6 +376,8 @@ LLVMValueRef llvm_emit_pointer_gep_raw(GenContext *c, LLVMTypeRef pointee_type, 
 LLVMValueRef llvm_emit_pointer_inbounds_gep_raw(GenContext *c, LLVMTypeRef pointee_type, LLVMValueRef ptr, LLVMValueRef offset);
 void llvm_emit_ptr_from_array(GenContext *c, BEValue *value);
 void llvm_emit_struct_member_ref(GenContext *c, BEValue *struct_ref, BEValue *member_ref, unsigned member_id);
+INLINE LLVMValueRef llvm_emit_extract_value(GenContext *c, LLVMValueRef agg, unsigned index);
+
 
 // -- Int operations ---
 LLVMValueRef llvm_emit_shl_fixed(GenContext *c, LLVMValueRef data, int shift);
