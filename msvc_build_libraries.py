@@ -213,8 +213,8 @@ with tempfile.TemporaryDirectory() as d:
 
 ### versions
 
-ucrt = list((OUTPUT / "Program Files/Windows Kits/").glob("*/Lib/*/ucrt"))[0]
-um = list((OUTPUT / "Program Files/Windows Kits/").glob("*/Lib/*/um"))[0]
+ucrt = list((OUTPUT / "Windows Kits/").glob("*/Lib/*/ucrt"))[0]
+um = list((OUTPUT / "Windows Kits/").glob("*/Lib/*/um"))[0]
 lib = list((OUTPUT / "VC/Tools/MSVC/").glob("*/lib"))[0]
 
 SDK_OUTPUT.mkdir(exist_ok=True)
