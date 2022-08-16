@@ -2,6 +2,7 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::math;
+import std::math::complex;
 
 // TODO Define these using quad precision.
 const E = 2.718281828459045235360287471352662497757247093699959574966967627724076630353547594571382178525166427427466;
@@ -67,6 +68,9 @@ const QUAD_MIN_EXP = -16481;
 const QUAD_EPSILON = 1.92592994438723585305597794258492732e-34;
 */
 
+define Complex32 = Complex<float>;
+define Complex64 = Complex<double>;
+
 macro max(x, y) @builtin
 {
     return x > y ? x : y;
@@ -97,7 +101,17 @@ fn double cos(double x) @inline
     return $$cos(x);
 }
 
+fn float cosf(float x) @inline
+{
+    return $$cos(x);
+}
+
 fn double sin(double x) @inline
+{
+    return $$sin(x);
+}
+
+fn float sinf(float x) @inline
 {
     return $$sin(x);
 }
