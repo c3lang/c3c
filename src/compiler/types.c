@@ -328,6 +328,14 @@ bool type_flat_is_floatlike(Type *type)
 	return kind >= TYPE_FLOAT_FIRST && kind <= TYPE_FLOAT_LAST;
 }
 
+bool type_flat_is_intlike(Type *type)
+{
+	type = type_flatten(type);
+	if (type->type_kind == TYPE_VECTOR) type = type->array.base;
+	TypeKind kind = type->type_kind;
+	return kind >= TYPE_INTEGER_FIRST && kind <= TYPE_INTEGER_LAST;
+}
+
 
 bool type_is_int128(Type *type)
 {

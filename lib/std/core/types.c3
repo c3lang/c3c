@@ -121,6 +121,19 @@ macro bool is_subarray_convertable($Type)
 	$endswitch;
 }
 
+macro bool is_intlike($Type)
+{
+	$switch ($Type.kind):
+		$case SIGNED_INT:
+		$case UNSIGNED_INT:
+			return true;
+		$case VECTOR:
+			return is_intlike($Type.inner);
+		$default:
+			return false;
+	$endswitch;
+}
+
 macro bool is_equatable_value(value)
 {
 	$if ($defined(value.less) || $defined(value.compare_to) || $defined(value.equals)):

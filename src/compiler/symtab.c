@@ -180,6 +180,11 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_SYSCLOCK] = KW_DEF("sysclock");
 	builtin_list[BUILTIN_UNREACHABLE] = KW_DEF("unreachable");
 	builtin_list[BUILTIN_STACKTRACE] = KW_DEF("stacktrace");
+	builtin_list[BUILTIN_BSWAP] = KW_DEF("bswap");
+	builtin_list[BUILTIN_BITREVERSE] = KW_DEF("bitreverse");
+	builtin_list[BUILTIN_CTLZ] = KW_DEF("clz");
+	builtin_list[BUILTIN_CTTZ] = KW_DEF("ctz");
+	builtin_list[BUILTIN_CTPOP] = KW_DEF("popcount");
 	builtin_list[BUILTIN_CEIL] = KW_DEF("ceil");
 	builtin_list[BUILTIN_TRUNC] = KW_DEF("trunc");
 	builtin_list[BUILTIN_SIN] = KW_DEF("sin");

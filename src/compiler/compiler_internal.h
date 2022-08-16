@@ -2101,6 +2101,7 @@ Type *type_from_token(TokenType type);
 bool type_is_user_defined(Type *type);
 bool type_is_structurally_equivalent(Type *type1, Type *type);
 bool type_flat_is_floatlike(Type *type);
+bool type_flat_is_intlike(Type *type);
 bool type_may_have_sub_elements(Type *type);
 const char *type_to_error_string(Type *type);
 const char *type_quoted_error_string(Type *type);

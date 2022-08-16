@@ -2486,6 +2486,11 @@ static inline unsigned builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_LOG10:
 		case BUILTIN_FABS:
 		case BUILTIN_VOLATILE_LOAD:
+		case BUILTIN_CTPOP:
+		case BUILTIN_CTTZ:
+		case BUILTIN_CTLZ:
+		case BUILTIN_BSWAP:
+		case BUILTIN_BITREVERSE:
 			return 1;
 		case BUILTIN_POW:
 		case BUILTIN_MAX:
@@ -2511,6 +2516,7 @@ typedef enum
 	BA_BOOL,
 	BA_CHAR,
 	BA_FLOATLIKE,
+	BA_INTLIKE,
 } BuiltinArg;
 
 static bool sema_check_builtin_args_match(Expr **args, size_t arg_len)
@@ -2577,7 +2583,14 @@ static bool sema_check_builtin_args(Expr **args, BuiltinArg *arg_type, size_t ar
 			case BA_FLOATLIKE:
 				if (!type_flat_is_floatlike(type))
 				{
-					SEMA_ERROR(args[i], "Expected a floating point or floating point array.");
+					SEMA_ERROR(args[i], "Expected a floating point or floating point vector.");
+					return false;
+				}
+				break;
+			case BA_INTLIKE:
+				if (!type_flat_is_intlike(type))
+				{
+					SEMA_ERROR(args[i], "Expected an int or int vector.");
 					return false;
 				}
 				break;
@@ -2676,6 +2689,16 @@ static inline bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *ex
 		case BUILTIN_STACKTRACE:
 			rtype = type_voidptr;
 			break;
+		case BUILTIN_CTPOP:
+		case BUILTIN_CTTZ:
+		case BUILTIN_CTLZ:
+		case BUILTIN_BITREVERSE:
+		case BUILTIN_BSWAP:
+			if (!sema_check_builtin_args(args,
+			                             (BuiltinArg[]) { BA_INTLIKE },
+			                             arg_count)) return false;
+			rtype = args[0]->type;
+			break;
 		case BUILTIN_CEIL:
 		case BUILTIN_TRUNC:
 		case BUILTIN_SQRT:
@@ -2691,6 +2714,7 @@ static inline bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *ex
 										 arg_count)) return false;
 			rtype = args[0]->type;
 			break;
+
 		case BUILTIN_POW:
 		case BUILTIN_MAX:
 		case BUILTIN_MIN:

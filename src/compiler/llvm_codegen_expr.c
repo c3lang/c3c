@@ -4099,6 +4099,11 @@ static void llvm_emit_intrinsic_expr(GenContext *c, unsigned intrinsic, BEValue 
 		llvm_value_rvalue(c, be_value);
 		arg_results[i] = be_value->value;
 	}
+	if (intrinsic == intrinsic_id.ctlz || intrinsic == intrinsic_id.cttz)
+	{
+		arg_results[1] = llvm_get_zero_raw(c->bool_type);
+		arguments++;
+	}
 	LLVMTypeRef call_type[3];
 	int call_args = 0;
 	if (expr->type != type_void)
@@ -4321,6 +4326,16 @@ unsigned llvm_get_intrinsic(BuiltinFunction func)
 			return intrinsic_id.fabs;
 		case BUILTIN_FMA:
 			return intrinsic_id.fma;
+		case BUILTIN_BITREVERSE:
+			return intrinsic_id.bitreverse;
+		case BUILTIN_BSWAP:
+			return intrinsic_id.bswap;
+		case BUILTIN_CTLZ:
+			return intrinsic_id.ctlz;
+		case BUILTIN_CTTZ:
+			return intrinsic_id.cttz;
+		case BUILTIN_CTPOP:
+			return intrinsic_id.ctpop;
 		case BUILTIN_LOG2:
 			return intrinsic_id.log2;
 		case BUILTIN_POW:
