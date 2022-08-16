@@ -35,6 +35,11 @@ jobs:
           cd resources/testproject
           ..\..\build\${{ matrix.build_type }}\c3c.exe --debug-log run hello_world_win32
 
+      - name: Build testproject lib
+        run: |
+          cd resources/testproject
+          ..\..\build\${{ matrix.build_type }}\c3c.exe --debug-log build hello_world_win32_lib
+
       - name: run compiler tests
         run: |
           cd test
@@ -79,6 +84,11 @@ jobs:
           cd resources/testproject
           ../../build/c3c run --debug-log
 
+      - name: Build testproject lib
+        run: |
+          cd resources/testproject
+          ../../build/c3c build hello_world_lib --debug-log
+
       - name: run compiler tests
         run: |
           cd test
@@ -110,10 +120,16 @@ jobs:
         run: |
           cmake -B build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
           cmake --build build
+
       - name: Build testproject
         run: |
           cd resources/testproject
           ../../build/c3c run --debug-log
+
+      - name: Build testproject lib
+        run: |
+          cd resources/testproject
+          ../../build/c3c build hello_world_lib --debug-log
 
       - name: run compiler tests
         run: |
@@ -231,6 +247,11 @@ jobs:
         run: |
           cd resources/testproject
           ../../build/c3c run --debug-log --forcelinker
+
+      - name: Build testproject lib
+        run: |
+          cd resources/testproject
+          ../../build/c3c build hello_world_lib --debug-log
 
       - name: run compiler tests
         run: |

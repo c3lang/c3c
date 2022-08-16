@@ -27,6 +27,8 @@ typedef enum
 	COMMAND_INIT,
 	COMMAND_BUILD,
 	COMMAND_COMPILE_RUN,
+	COMMAND_STATIC_LIB,
+	COMMAND_DYNAMIC_LIB,
 	COMMAND_RUN,
 	COMMAND_CLEAN_RUN,
 	COMMAND_CLEAN,
@@ -279,7 +281,8 @@ typedef enum
 	TARGET_TYPE_EXECUTABLE,
 	TARGET_TYPE_STATIC_LIB,
 	TARGET_TYPE_DYNAMIC_LIB,
-	TARGET_TYPE_TEST
+	TARGET_TYPE_OBJECT_FILES,
+	TARGET_TYPE_TEST,
 } TargetType;
 
 typedef struct
@@ -329,7 +332,6 @@ typedef struct
 	bool emit_asm : 1;
 	bool no_stdlib : 1;
 	bool emit_object_files : 1;
-	bool no_link : 1;
 	bool force_linker : 1;
 	OptimizationLevel optimization_level;
 	SizeOptimizationLevel size_optimization_level;
@@ -366,3 +368,4 @@ typedef struct
 
 BuildOptions parse_arguments(int argc, const char *argv[]);
 ArchOsTarget arch_os_target_from_string(const char *target);
+bool command_is_projectless(CompilerCommand command);

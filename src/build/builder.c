@@ -61,13 +61,15 @@ ArchOsTarget default_target = ELF_RISCV64;
 ArchOsTarget default_target = ARCH_OS_TARGET_DEFAULT;
 #endif
 
-static bool command_is_compile(CompilerCommand command)
+bool command_is_projectless(CompilerCommand command)
 {
 	switch (command)
 	{
 		case COMMAND_COMPILE:
 		case COMMAND_COMPILE_ONLY:
 		case COMMAND_COMPILE_RUN:
+		case COMMAND_DYNAMIC_LIB:
+		case COMMAND_STATIC_LIB:
 			return true;
 		case COMMAND_MISSING:
 		case COMMAND_GENERATE_HEADERS:
@@ -95,8 +97,14 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 			target->run_after_compile = true;
 			break;
 		case COMMAND_COMPILE_ONLY:
-			target->no_link = true;
+			target->type = TARGET_TYPE_OBJECT_FILES;
 			target->emit_object_files = true;
+			break;
+		case COMMAND_DYNAMIC_LIB:
+			target->type = TARGET_TYPE_DYNAMIC_LIB;
+			break;
+		case COMMAND_STATIC_LIB:
+			target->type = TARGET_TYPE_STATIC_LIB;
 			break;
 		default:
 			target->run_after_compile = false;
@@ -196,7 +204,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	{
 		target->feature.x86_vector_capability = options->x86_vector_capability;
 	}
-	if (command_is_compile(options->command))
+	if (command_is_projectless(options->command))
 	{
 		target->build_dir = options->build_dir ? options->build_dir : NULL;
 		target->object_file_dir = options->obj_out ? options->obj_out : target->build_dir;

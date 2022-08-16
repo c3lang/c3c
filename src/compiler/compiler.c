@@ -156,6 +156,41 @@ static const char *exe_name(void)
 	}
 }
 
+static const char *dynamic_lib_name(void) { return NULL; }
+
+static const char *static_lib_name(void)
+{
+	const char *name;
+	if (active_target.name)
+	{
+		name = active_target.name;
+	}
+	else
+	{
+		assert(vec_size(global_context.module_list));
+		Path *path = global_context.module_list[0]->name;
+		size_t first = 0;
+		for (size_t i = path->len; i > 0; i--)
+		{
+			if (path->module[i - 1] == ':')
+			{
+				first = i;
+				break;
+			}
+		}
+		name = &path->module[first];
+	}
+	switch (active_target.arch_os_target)
+	{
+		case WINDOWS_X86:
+		case WINDOWS_X64:
+		case MINGW_X64:
+			return str_cat(name, ".lib");
+		default:
+			return str_cat(name, ".a");
+	}
+}
+
 static void free_arenas(void)
 {
 	if (debug_stats)
@@ -223,9 +258,9 @@ void compiler_compile(void)
 	{
 		for (unsigned i = 0; i < module_count; i++)
 		{
-			header_gen(modules[i]);
+			REMINDER("Header gen is needed");
+			// header_gen(modules[i]);
 		}
-		return;
 	}
 
 	if (active_target.check_only)
@@ -291,15 +326,33 @@ void compiler_compile(void)
 	compiler_ir_gen_time = bench_mark();
 
 	const char *output_exe = NULL;
-	if (!active_target.no_link && !active_target.test_output && (active_target.type == TARGET_TYPE_EXECUTABLE || active_target.type == TARGET_TYPE_TEST))
+	const char *output_static = NULL;
+	const char *output_dynamic = NULL;
+	if (!active_target.test_output)
 	{
-		if (!global_context.main)
+		switch (active_target.type)
 		{
-			puts("No main function was found, compilation only object files are generated.");
-		}
-		else
-		{
-			output_exe = exe_name();
+			case TARGET_TYPE_EXECUTABLE:
+			case TARGET_TYPE_TEST:
+				if (!global_context.main)
+				{
+					puts("No main function was found, compilation only object files are generated.");
+				}
+				else
+				{
+					output_exe = exe_name();
+				}
+				break;
+			case TARGET_TYPE_STATIC_LIB:
+				output_static = static_lib_name();
+				break;
+			case TARGET_TYPE_DYNAMIC_LIB:
+				output_dynamic = dynamic_lib_name();
+				break;
+			case TARGET_TYPE_OBJECT_FILES:
+				break;
+			default:
+				UNREACHABLE
 		}
 	}
 
@@ -389,7 +442,22 @@ void compiler_compile(void)
 			printf("Program finished with exit code %d.", ret);
 		}
 	}
-
+	if (output_static)
+	{
+		if (!static_lib_linker(output_static, obj_files, output_file_count))
+		{
+			error_exit("Failed to produce static library '%s'.", output_static);
+		}
+		printf("Static library '%s' created.", output_static);
+	}
+	if (output_dynamic)
+	{
+		if (!dynamic_lib_linker(output_dynamic, obj_files, output_file_count))
+		{
+			error_exit("Failed to produce static library '%s'.", output_dynamic);
+		}
+		printf("Dynamic library '%s' created.", output_dynamic);
+	}
 	free(obj_files);
 }
 

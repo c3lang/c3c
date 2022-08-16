@@ -61,6 +61,8 @@ int main_real(int argc, const char *argv[])
 		case COMMAND_COMPILE:
 		case COMMAND_COMPILE_ONLY:
 		case COMMAND_COMPILE_RUN:
+		case COMMAND_DYNAMIC_LIB:
+		case COMMAND_STATIC_LIB:
 			compile_target(&build_options);
 			break;
 		case COMMAND_CLEAN:

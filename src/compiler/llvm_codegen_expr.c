@@ -356,7 +356,7 @@ LLVMValueRef llvm_emit_coerce(GenContext *c, LLVMTypeRef coerced, BEValue *value
 	}
 
 	// Otherwise, do it through memory.
-	AlignSize max_align = MAX(value->alignment, llvm_abi_alignment(c, coerced));
+	AlignSize max_align = type_max_alignment(value->alignment, llvm_abi_alignment(c, coerced));
 
 	LLVMValueRef temp = llvm_emit_alloca(c, coerced, max_align, "tempcoerce");
 	llvm_emit_memcpy(c, temp, max_align, addr, value->alignment, source_size);
@@ -3067,16 +3067,21 @@ static void llvm_emit_else(GenContext *c, BEValue *be_value, Expr *expr)
 
 void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs_loaded, BinaryOp binary_op)
 {
+	// foo ?? bar
 	if (binary_op == BINARYOP_ELSE)
 	{
 		llvm_emit_else(c, be_value, expr);
 		return;
 	}
+
+	// foo || bar and foo && bar
 	if (binary_op == BINARYOP_AND || binary_op == BINARYOP_OR)
 	{
 		llvm_emit_logical_and_or(c, be_value, expr, binary_op);
 		return;
 	}
+
+	// Load if needed, otherwise use the already loaded.
 	BEValue lhs;
 	if (lhs_loaded)
 	{
@@ -3086,13 +3091,16 @@ void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValu
 	{
 		llvm_emit_expr(c, &lhs, exprptr(expr->binary_expr.left));
 	}
+	// We need the rvalue.
 	llvm_value_rvalue(c, &lhs);
 
+	// Evaluate rhs
 	BEValue rhs;
 	llvm_emit_expr(c, &rhs, exprptr(expr->binary_expr.right));
 	llvm_value_rvalue(c, &rhs);
 
 	EMIT_LOC(c, expr);
+	// Comparison <=>
 	if (binary_op >= BINARYOP_GT && binary_op <= BINARYOP_EQ)
 	{
 		llvm_emit_comp(c, be_value, &lhs, &rhs, binary_op);
@@ -3109,7 +3117,6 @@ void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValu
 	switch (binary_op)
 	{
 		case BINARYOP_ERROR:
-		case BINARYOP_ELSE:
 			UNREACHABLE
 		case BINARYOP_MULT:
 			if (is_float)
@@ -3200,13 +3207,13 @@ void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValu
 		case BINARYOP_BIT_XOR:
 			val = LLVMBuildXor(c->builder, lhs_value, rhs_value, "xor");
 			break;
+		case BINARYOP_ELSE:
 		case BINARYOP_EQ:
 		case BINARYOP_NE:
 		case BINARYOP_GE:
 		case BINARYOP_GT:
 		case BINARYOP_LE:
 		case BINARYOP_LT:
-			UNREACHABLE
 		case BINARYOP_AND:
 		case BINARYOP_OR:
 		case BINARYOP_ASSIGN:
@@ -3220,6 +3227,7 @@ void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValu
 		case BINARYOP_BIT_XOR_ASSIGN:
 		case BINARYOP_SHR_ASSIGN:
 		case BINARYOP_SHL_ASSIGN:
+			// Handled elsewhere.
 			UNREACHABLE
 	}
 	assert(val);
@@ -4408,7 +4416,7 @@ static inline void llvm_emit_syscall(GenContext *c, BEValue *be_value, Expr *exp
 			scratch_buffer_append("={eax}");
 			assert(arguments < 8);
 			static char const *regs[] = { "eax", "ebx", "ecx", "edx", "esi", "edi" };
-			llvm_syscall_write_regs_to_scratch(regs, MIN(arguments, 6));
+			llvm_syscall_write_regs_to_scratch(regs, arguments < 6 ? arguments : 6);
 			if (arguments == 7)
 			{
 				scratch_buffer_append(",rm");

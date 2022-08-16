@@ -70,6 +70,8 @@ static void usage(void)
 	OUTPUT("  bench [<target>]                   Benchmark a target.");
 	OUTPUT("  clean-run [<target>]               Clean, then run the target.");
 	OUTPUT("  compile-run <file1> [<file2> ...]  Compile files then immediately run the result.");
+	OUTPUT("  static-lib <file1> [<file2> ...]   Compile files without a project into a static library.");
+	OUTPUT("  dynamic-lib <file1> [<file2> ...]  Compile files without a project into a dynamic library.");
 	OUTPUT("  headers <file1> [<file2> ...]      Analyse files and generate C headers for public methods.");
 	OUTPUT("");
 	OUTPUT("Options:");
@@ -111,7 +113,7 @@ static void usage(void)
 	OUTPUT("  -l <library>          - Link with the library provided.");
 	OUTPUT("  -L <library dir>      - Append the directory to the linker search paths.");
 	OUTPUT("  -z <argument>         - Send the <argument> as a parameter to the linker.");
-	OUTPUT("  --forcelinker         - Force linker usage over using when doing non-cross linking.");
+	OUTPUT("  --forcelinker         - Force built in linker usage when doing non-cross linking.");
 	OUTPUT("");
 	OUTPUT("  --reloc=<option>      - Relocation model: none, pic, PIC, pie, PIE");
 	OUTPUT("  --x86vec=<option>     - Set max level of vector instructions: none, mmx, sse, avx, avx512.");
@@ -239,6 +241,16 @@ static void parse_command(BuildOptions *options)
 	if (arg_match("headers"))
 	{
 		options->command = COMMAND_GENERATE_HEADERS;
+		return;
+	}
+	if (arg_match("static-lib"))
+	{
+		options->command = COMMAND_STATIC_LIB;
+		return;
+	}
+	if (arg_match("dynamic-lib"))
+	{
+		options->command = COMMAND_DYNAMIC_LIB;
 		return;
 	}
 	if (arg_match("build"))
@@ -742,10 +754,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 			parse_command(&build_options);
 			continue;
 		}
-		if (build_options.command == COMMAND_COMPILE_RUN
-			|| build_options.command == COMMAND_COMPILE
-			|| build_options.command == COMMAND_COMPILE_ONLY
-			|| build_options.command == COMMAND_GENERATE_HEADERS)
+		if (command_is_projectless(build_options.command) || build_options.command == COMMAND_GENERATE_HEADERS)
 		{
 			append_file(&build_options);
 			continue;

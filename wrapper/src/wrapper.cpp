@@ -1,6 +1,10 @@
 
 // For hacking the C API
 #include "llvm/IR/IRBuilder.h"
+#include "llvm/Object/Archive.h"
+#include "llvm/Object/ArchiveWriter.h"
+#include "llvm/Object/IRObjectFile.h"
+#include "llvm/Object/SymbolicFile.h"
 
 #if LLVM_VERSION_MAJOR > 13
 #define LINK_SIG \
@@ -48,6 +52,16 @@ typedef enum
 	COFF,
 	MINGW
 } ObjFormat;
+
+typedef enum
+{
+	AR_GNU,
+	AR_DARWIN,
+	AR_DARWIN64,
+	AR_BSD,
+	AR_GNU64,
+	AR_COFF,
+} ArFormat;
 
 
 
@@ -107,6 +121,49 @@ static bool llvm_link(ObjFormat format, const char **args, int arg_count, const 
 
 
 extern "C" {
+
+	bool llvm_ar(const char *out_name, const char **args, size_t count, int ArFormat)
+	{
+		llvm::object::Archive::Kind kind;
+		switch (ArFormat)
+		{
+			case AR_BSD:
+				kind = llvm::object::Archive::K_BSD;
+				break;
+			case AR_DARWIN:
+				kind = llvm::object::Archive::K_DARWIN;
+				break;
+			case AR_DARWIN64:
+				kind = llvm::object::Archive::K_DARWIN64;
+				break;
+			case AR_GNU:
+				kind = llvm::object::Archive::K_GNU;
+				break;
+			case AR_GNU64:
+				kind = llvm::object::Archive::K_GNU64;
+				break;
+			case AR_COFF:
+				kind = llvm::object::Archive::K_GNU;
+				break;
+			default:
+				assert(false);
+		}
+		bool is_win = ArFormat == AR_COFF;
+		std::vector<llvm::NewArchiveMember> new_members {};
+		for (size_t i = 0; i < count; i++)
+		{
+			auto member = llvm::NewArchiveMember::getFile(std::string(args[i]), false);
+			if (!member) return false;
+			if (is_win)
+			{
+				// Needs relative paths.
+				const char *rel_name = strrchr(args[i], '/');
+				if (rel_name) member->MemberName = rel_name + 1;
+			}
+			new_members.push_back(std::move(*member));
+		}
+		return !llvm::writeArchive(std::string(out_name), std::move(new_members), true, kind, true, false, nullptr);
+	}
 
 int llvm_version_major = LLVM_VERSION_MAJOR;
 #if LLVM_VERSION_MAJOR < 13

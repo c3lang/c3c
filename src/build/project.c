@@ -180,13 +180,14 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	target->no_stdlib = get_valid_bool(json, "nostdlib", type, false);
 
 }
-static void project_add_target(Project *project, BuildTarget *default_target,  JSONObject *json, const char *name, const char *type)
+static void project_add_target(Project *project, BuildTarget *default_target,  JSONObject *json, const char *name, const char *type, TargetType target_type)
 {
 	assert(json->type == J_OBJECT);
 	BuildTarget *target = CALLOCS(BuildTarget);
 	*target = *default_target;
 	vec_add(project->targets, target);
 	target->name = name;
+	target->type = target_type;
 	VECEACH(project->targets, i)
 	{
 		BuildTarget *other_target = project->targets[i];
@@ -203,15 +204,17 @@ static void project_add_target(Project *project, BuildTarget *default_target,  J
 static void project_add_targets(Project *project, JSONObject *project_data)
 {
 	assert(project_data->type == J_OBJECT);
-	static const char* targets[4] = { [TARGET_TYPE_EXECUTABLE] = "executable",
+	static const char* targets[5] = { [TARGET_TYPE_EXECUTABLE] = "executable",
 									  [TARGET_TYPE_STATIC_LIB] = "static-lib",
 									  [TARGET_TYPE_DYNAMIC_LIB] = "dynamic-lib",
-									  [TARGET_TYPE_TEST] = "test" };
-	static const char *target_desc[4] = {
+									  [TARGET_TYPE_TEST] = "test",
+									  [TARGET_TYPE_OBJECT_FILES] = "object-files"};
+	static const char *target_desc[5] = {
 			[TARGET_TYPE_EXECUTABLE] = "Executable",
 			[TARGET_TYPE_STATIC_LIB] = "Static library",
 			[TARGET_TYPE_DYNAMIC_LIB] = "Dynamic library",
-			[TARGET_TYPE_TEST] = "test suite" };
+			[TARGET_TYPE_TEST] = "test suite",
+			[TARGET_TYPE_OBJECT_FILES] = "object files"};
 
 	BuildTarget default_target = {
 			.optimization_level = OPTIMIZATION_DEFAULT,
@@ -248,9 +251,9 @@ static void project_add_targets(Project *project, JSONObject *project_data)
 		{
 			error_exit("Invalid data in target '%s'", key);
 		}
-		int type = get_valid_string_setting(object, "type", "Target type", targets, 0, 4, "a target type like 'executable' or 'static-lib'");
+		int type = get_valid_string_setting(object, "type", "Target type", targets, 0, 5, "a target type like 'executable' or 'static-lib'");
 		if (type < 0) error_exit("Target %s did not contain 'type' key.", key);
-		project_add_target(project, &default_target, object, key, target_desc[type]);
+		project_add_target(project, &default_target, object, key, target_desc[type], type);
 	}
 }
 

@@ -5,12 +5,23 @@
 #include <glob.h>
 #endif
 
+// Copied from wrapper.cpp
+typedef enum
+{
+	AR_GNU,
+	AR_DARWIN,
+	AR_DARWIN64,
+	AR_BSD,
+	AR_GNU64,
+	AR_COFF,
+} ArFormat;
+
 extern bool llvm_link_elf(const char **args, int arg_count, const char **error_string);
 extern bool llvm_link_macho(const char **args, int arg_count, const char **error_string);
 extern bool llvm_link_coff(const char **args, int arg_count, const char **error_string);
 extern bool llvm_link_wasm(const char **args, int arg_count, const char **error_string);
 extern bool llvm_link_mingw(const char **args, int arg_count, const char **error_string);
-
+extern bool llvm_ar(const char *out_name, const char **args, size_t count, int ArFormat);
 
 
 typedef enum
@@ -711,6 +722,35 @@ void platform_compiler(const char **files, unsigned file_count, const char *flag
 	{
 		error_exit("Failed to compile c sources using command '%s'.\n", output);
 	}
+}
+
+bool dynamic_lib_linker(const char *output_file, const char **files, unsigned file_count)
+{
+	error_exit("Apologies, dynamic libs are still not supported.");
+}
+
+bool static_lib_linker(const char *output_file, const char **files, unsigned file_count)
+{
+	ArFormat format;
+	switch (platform_target.os)
+	{
+		case OS_DARWIN_TYPES:
+			format = AR_DARWIN;
+			break;
+		case OS_TYPE_WIN32:
+			format = AR_COFF;
+			break;
+		case OS_TYPE_FREE_BSD:
+		case OS_TYPE_NETBSD:
+		case OS_TYPE_OPENBSD:
+			format = AR_BSD;
+			break;
+		case OS_TYPE_LINUX:
+		default:
+			format = AR_GNU;
+			break;
+	}
+	return llvm_ar(output_file, files, file_count, format);
 }
 
 bool linker(const char *output_file, const char **files, unsigned file_count)

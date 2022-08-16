@@ -2135,6 +2135,7 @@ INLINE bool type_is_unsigned(Type *type);
 INLINE bool type_is_union_or_strukt(Type *type);
 INLINE bool type_flat_is_vector(Type *type);
 INLINE AlignSize type_min_alignment(AlignSize a, AlignSize b);
+INLINE AlignSize type_max_alignment(AlignSize a, AlignSize b);
 INLINE BitSize type_bit_size(Type *type);
 INLINE Type *type_vector_type(Type *type);
 
@@ -2607,12 +2608,22 @@ INLINE AlignSize type_min_alignment(AlignSize a, AlignSize b)
 	return (a | b) & (1 + ~(a | b));
 }
 
+/**
+ * Max highest required alignment
+ */
+INLINE AlignSize type_max_alignment(AlignSize a, AlignSize b)
+{
+	return a < b ? b : a;
+}
+
 INLINE BitSize type_bit_size(Type *type)
 {
 	return type_size(type) * 8;
 }
 
 bool obj_format_linking_supported(ObjectFormatType format_type);
+bool static_lib_linker(const char *output_file, const char **files, unsigned file_count);
+bool dynamic_lib_linker(const char *output_file, const char **files, unsigned file_count);
 bool linker(const char *output_file, const char **files, unsigned file_count);
 void platform_linker(const char *output_file, const char **files, unsigned file_count);
 void platform_compiler(const char **files, unsigned file_count, const char* flags);
