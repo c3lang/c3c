@@ -259,7 +259,7 @@ You can try it out by running some sample code: `c3c.exe compile ../resources/ex
 
 1. Make sure you have a C compiler that handles C11 and a C++ compiler, such as GCC or Clang. Git also needs to be installed.
 2. Install CMake: `sudo apt install cmake`
-3. Install LLVM 12 (or greater: C3C supports LLVM 12-15): `sudo apt-get install clang-12 zlib1g zlib1g-dev libllvm12 llvm-12 llvm-12-dev llvm-12-runtime liblld-12-dev liblld-12`
+3. Install LLVM 12 (or greater: C3C supports LLVM 12-16): `sudo apt-get install clang-12 zlib1g zlib1g-dev libllvm12 llvm-12 llvm-12-dev llvm-12-runtime liblld-12-dev liblld-12`
 4. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
 5. Enter the C3C directory `cd c3c`.
 6. Create a build directory `mkdir build`
