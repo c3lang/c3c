@@ -1141,7 +1141,7 @@ static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type
 		scratch_buffer_clear();
 		if (method_like->visibility <= VISIBLE_MODULE)
 		{
-			scratch_buffer_append(parent->name);
+			scratch_buffer_append(parent->extname);
 			scratch_buffer_append_char('$');
 			scratch_buffer_append(method_like->name);
 		}
