@@ -2109,7 +2109,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 			}
 			if ((init = decl->var.init_expr))
 			{
-				if (!sema_analyse_expr_lvalue(context, init)) return false;
+				if (!sema_analyse_expr_lvalue_fold_const(context, init)) return false;
 				if (init->expr_kind != EXPR_TYPEINFO)
 				{
 					SEMA_ERROR(decl->var.init_expr, "Expected a type assigned to %s.", decl->name);

@@ -74,6 +74,7 @@ void sema_analysis_pass_functions(Module *module);
 void sema_analyze_stage(Module *module, AnalysisStage stage);
 Decl *sema_find_operator(SemaContext *context, Expr *expr, OperatorOverload operator_overload);
 bool sema_analyse_expr_lvalue(SemaContext *context, Expr *expr);
+bool sema_analyse_expr_lvalue_fold_const(SemaContext *context, Expr *expr);
 bool sema_analyse_ct_expr(SemaContext *context, Expr *expr);
 bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *struct_var, Decl *decl, bool failable);
 void expr_rewrite_to_int_const(Expr *expr_to_rewrite, Type *type, uint64_t value, bool narrowable);
@@ -92,5 +93,10 @@ static inline bool expr_is_const(Expr *expr)
 static inline bool expr_is_const_string(Expr *expr)
 {
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_STRING;
+}
+
+INLINE bool expr_is_const_list(Expr *expr)
+{
+	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_LIST;
 }
 
