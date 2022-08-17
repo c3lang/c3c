@@ -1801,10 +1801,7 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 		stmt->expr_stmt = call;
 		ast_append(&next, stmt);
 		Expr *c = expr_new(EXPR_CONST, decl->span);
-		c->type = type_cint;
-		expr_const_set_int(&c->const_expr, 0, c->type->type_kind);
-		c->resolve_status = RESOLVE_DONE;
-		ret_stmt->expr_stmt = c;
+		ret_stmt->expr_stmt = expr_new_const_int(decl->span, type_cint, 0, true);
 	}
 	ast_append(&next, ret_stmt);
 	assert(body);

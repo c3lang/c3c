@@ -765,10 +765,7 @@ static Expr *parse_subscript_expr(ParseContext *c, Expr *left)
 	}
 	else
 	{
-		index = EXPR_NEW_TOKEN(EXPR_CONST);
-		index->type = type_uint;
-		index->resolve_status = RESOLVE_DONE;
-		expr_const_set_int(&index->const_expr, 0, type_uint->type_kind);
+		index = expr_new_const_int(c->span, type_uint, 0, true);
 	}
 	bool is_len_range = try_consume(c, TOKEN_COLON);
 	if (is_len_range || try_consume(c, TOKEN_DOTDOT))

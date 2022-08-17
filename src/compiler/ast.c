@@ -436,6 +436,39 @@ Expr *expr_new(ExprKind kind, SourceSpan start)
 	return expr;
 }
 
+Expr *expr_new_const_int(SourceSpan span, Type *type, uint64_t v, bool narrowable)
+{
+	Expr *expr = expr_calloc();
+	expr->expr_kind = EXPR_CONST;
+	expr->span = span;
+	expr->type = type;
+	TypeKind kind = type_flatten(type)->type_kind;
+	expr->const_expr.ixx.i.high = 0;
+	if (type_kind_is_signed(kind))
+	{
+		if (v > (uint64_t)INT64_MAX) expr->const_expr.ixx.i.high = UINT64_MAX;
+	}
+	expr->const_expr.ixx.i.low = v;
+	expr->const_expr.ixx.type = kind;
+	expr->const_expr.const_kind = CONST_INTEGER;
+	expr->const_expr.narrowable = narrowable;
+	expr->resolve_status = RESOLVE_DONE;
+	return expr;
+}
+
+Expr *expr_new_const_bool(SourceSpan span, Type *type, bool value)
+{
+	Expr *expr = expr_calloc();
+	expr->expr_kind = EXPR_CONST;
+	expr->span = span;
+	expr->type = type;
+	assert(type_flatten(type)->type_kind == TYPE_BOOL);
+	expr->const_expr.b = value;
+	expr->const_expr.const_kind = CONST_BOOL;
+	expr->resolve_status = RESOLVE_DONE;
+	return expr;
+}
+
 
 BinaryOp binary_op[TOKEN_LAST + 1] = {
 		[TOKEN_STAR] = BINARYOP_MULT,

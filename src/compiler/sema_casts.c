@@ -43,10 +43,7 @@ bool pointer_to_integer(Expr *expr, Type *type)
 	if (insert_runtime_cast_unless_const(expr, CAST_PTRXI, type)) return true;
 
 	// Revisit this to support pointers > 64 bits.
-	expr_const_set_int(&expr->const_expr, expr->const_expr.ixx.i.low, TYPE_POINTER);
-	expr->type = type;
-	expr->const_expr.narrowable = false;
-	expr->const_expr.is_hex = false;
+	expr_rewrite_const_int(expr, type, expr->const_expr.ptr, false);
 	return true;
 }
 
@@ -107,10 +104,7 @@ static void const_int_to_fp_cast(Expr *expr, Type *canonical, Type *type)
 bool bool_to_int(Expr *expr, Type *canonical, Type *type)
 {
 	if (insert_runtime_cast_unless_const(expr, CAST_BOOLINT, type)) return true;
-	expr_const_set_int(&expr->const_expr, expr->const_expr.b ? 1 : 0, canonical->type_kind);
-	expr->type = type;
-	expr->const_expr.narrowable = false;
-	expr->const_expr.is_hex = false;
+	expr_rewrite_const_int(expr, type, expr->const_expr.b ? 1 : 0, false);
 	return true;
 }
 
@@ -123,10 +117,7 @@ bool bool_to_float(Expr *expr, Type *canonical, Type *type)
 	if (insert_runtime_cast_unless_const(expr, CAST_BOOLFP, type)) return true;
 
 	assert(expr->const_expr.const_kind == CONST_BOOL);
-	expr_const_set_float(&expr->const_expr, expr->const_expr.b ? 1.0 : 0.0, canonical->type_kind);
-	expr->type = type;
-	expr->const_expr.narrowable = false;
-	expr->const_expr.is_hex = false;
+	expr_rewrite_const_float(expr, type, expr->const_expr.b ? 1.0 : 0.0);
 	return true;
 }
 
@@ -150,10 +141,7 @@ bool integer_to_bool(Expr *expr, Type *type)
 {
 	if (insert_runtime_cast_unless_const(expr, CAST_INTBOOL, type)) return true;
 
-	expr_const_set_bool(&expr->const_expr, !int_is_zero(expr->const_expr.ixx));
-	expr->type = type;
-	expr->const_expr.narrowable = false;
-	expr->const_expr.is_hex = false;
+	expr_rewrite_const_bool(expr, type, !int_is_zero(expr->const_expr.ixx));
 	return true;
 }
 
@@ -164,10 +152,7 @@ bool float_to_bool(Expr *expr, Type *type)
 {
 	if (insert_runtime_cast_unless_const(expr, CAST_FPBOOL, type)) return true;
 
-	expr_const_set_bool(&expr->const_expr, expr->const_expr.fxx.f != 0.0);
-	expr->type = type;
-	expr->const_expr.narrowable = false;
-	expr->const_expr.is_hex = false;
+	expr_rewrite_const_bool(expr, type, expr->const_expr.fxx.f != 0.0);
 	return true;
 }
 
@@ -178,11 +163,7 @@ bool float_to_bool(Expr *expr, Type *type)
 static bool float_to_float(Expr* expr, Type *canonical, Type *type)
 {
 	if (insert_runtime_cast_unless_const(expr, CAST_FPFP, type)) return true;
-
-	expr_const_set_float(&expr->const_expr, expr->const_expr.fxx.f, canonical->type_kind);
-	expr->type = type;
-	expr->const_expr.is_hex = false;
-	expr->const_expr.narrowable = false;
+	expr_rewrite_const_float(expr, type, expr->const_expr.fxx.f);
 	return true;
 }
 
@@ -299,10 +280,7 @@ static bool int_to_float(Expr *expr, CastKind kind, Type *canonical, Type *type)
 static bool int_literal_to_bool(Expr *expr, Type *type)
 {
 	assert(expr->expr_kind == EXPR_CONST);
-	expr_const_set_bool(&expr->const_expr, !int_is_zero(expr->const_expr.ixx));
-	expr->const_expr.narrowable = false;
-	expr->const_expr.is_hex = false;
-	expr->type = type;
+	expr_rewrite_const_bool(expr, type, !int_is_zero(expr->const_expr.ixx));
 	return true;
 }
 
@@ -351,7 +329,7 @@ static Type *enum_to_int_cast(Expr* expr, Type *from)
 	expr->type = original;
 	if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_ENUM)
 	{
-		expr_const_set_int(&expr->const_expr, expr->const_expr.enum_val->enum_constant.ordinal, type_flatten(original)->type_kind);
+		expr_rewrite_const_int(expr, original, expr->const_expr.enum_val->enum_constant.ordinal, false);
 		return original;
 	}
 	insert_cast(expr, CAST_ENUMLOW, type_add_optional(original, IS_OPTIONAL(expr)));
@@ -1232,7 +1210,7 @@ static bool err_to_bool(Expr *expr, Type *to_type)
 			case CONST_INTEGER:
 				return int_literal_to_bool(expr, to_type);
 			case CONST_ERR:
-				expr_const_set_bool(&expr->const_expr, expr->const_expr.err_val != NULL);
+				expr_rewrite_const_bool(expr, type_bool, expr->const_expr.err_val != NULL);
 				return true;
 			default:
 				UNREACHABLE
@@ -1249,13 +1227,13 @@ static inline bool subarray_to_bool(Expr *expr)
 		switch (list->kind)
 		{
 			case CONST_INIT_ZERO:
-				expr_const_set_bool(&expr->const_expr, false);
+				expr_rewrite_const_bool(expr, type_bool, false);
 				return true;
 			case CONST_INIT_ARRAY:
-				expr_const_set_bool(&expr->const_expr, vec_size(list->init_array.elements) > 0);
+				expr_rewrite_const_bool(expr, type_bool, vec_size(list->init_array.elements) > 0);
 				return true;
 			case CONST_INIT_ARRAY_FULL:
-				expr_const_set_bool(&expr->const_expr, vec_size(list->init_array_full) > 0);
+				expr_rewrite_const_bool(expr, type_bool, vec_size(list->init_array_full) > 0);
 				return true;
 			case CONST_INIT_STRUCT:
 			case CONST_INIT_UNION:

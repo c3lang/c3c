@@ -77,7 +77,6 @@ bool sema_analyse_expr_lvalue(SemaContext *context, Expr *expr);
 bool sema_analyse_expr_lvalue_fold_const(SemaContext *context, Expr *expr);
 bool sema_analyse_ct_expr(SemaContext *context, Expr *expr);
 bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *struct_var, Decl *decl, bool failable);
-void expr_rewrite_to_int_const(Expr *expr_to_rewrite, Type *type, uint64_t value, bool narrowable);
 void expr_rewrite_to_string(Expr *expr_to_rewrite, const char *string);
 const char *ct_eval_expr(SemaContext *c, const char *expr_type, Expr *inner, TokenType *type, Path **path_ref, bool report_missing);
 extern const char *ct_eval_error;

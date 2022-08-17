@@ -81,10 +81,7 @@ static inline Ast* parse_do_stmt(ParseContext *c)
 
 	if (try_consume(c, TOKEN_EOS))
 	{
-		Expr *exit = expr_new(EXPR_CONST, c->prev_span);
-		expr_const_set_bool(&exit->const_expr, false);
-		exit->type = type_bool;
-		do_ast->for_stmt.cond = exprid(exit);
+		do_ast->for_stmt.cond = exprid(expr_new_const_bool(c->prev_span, type_bool, false));
 	}
 	else
 	{
@@ -303,11 +300,7 @@ static inline Ast* parse_switch_stmt(ParseContext *c)
 	if (!try_consume(c, TOKEN_LPAREN))
 	{
 		Expr *cond = expr_new(EXPR_COND, switch_ast->span);
-		Expr *expr = expr_new(EXPR_CONST, switch_ast->span);
-		expr_const_set_bool(&expr->const_expr, true);
-		expr->resolve_status = RESOLVE_DONE;
-		expr->type = type_bool;
-		vec_add(cond->cond_expr, expr);
+		vec_add(cond->cond_expr, expr_new_const_bool(switch_ast->span, type_bool, true));
 		switch_ast->switch_stmt.cond = exprid(cond);
 	}
 	else

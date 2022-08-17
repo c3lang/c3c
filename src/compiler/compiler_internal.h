@@ -1925,6 +1925,8 @@ static inline DeclKind decl_from_token(TokenType type);
 
 #define EXPR_NEW_TOKEN(kind_) expr_new(kind_, c->span)
 Expr *expr_new(ExprKind kind, SourceSpan start);
+Expr *expr_new_const_int(SourceSpan span, Type *type, uint64_t v, bool narrowable);
+Expr *expr_new_const_bool(SourceSpan span, Type *type, bool value);
 bool expr_is_simple(Expr *expr);
 bool expr_is_pure(Expr *expr);
 bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind);
@@ -1945,10 +1947,11 @@ INLINE bool exprid_is_constant_eval(ExprId expr, ConstantEvalKind eval_kind);
 INLINE bool expr_is_init_list(Expr *expr);
 INLINE bool expr_is_deref(Expr *expr);
 
-void expr_const_set_int(ExprConst *expr, uint64_t v, TypeKind kind);
-void expr_const_set_float(ExprConst *expr, Real d, TypeKind kind);
-void expr_const_set_bool(ExprConst *expr, bool b);
-void expr_const_set_null(ExprConst *expr);
+INLINE void expr_rewrite_const_null(Expr *expr, Type *type);
+INLINE void expr_rewrite_const_bool(Expr *expr, Type *type, bool b);
+INLINE void expr_rewrite_const_float(Expr *expr, Type *type, Real d);
+INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v, bool narrowable);
+INLINE void expr_rewrite_const_list(Expr *expr, Type *type, ConstInitializer *list);
 
 bool expr_const_in_range(const ExprConst *left, const ExprConst *right, const ExprConst *right_to);
 bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp op);
@@ -2694,4 +2697,66 @@ INLINE Ast *ast_next(AstId *current_ptr)
 INLINE const char *decl_get_extname(Decl *decl)
 {
 	return decl->extname;
+}
+
+
+INLINE void expr_rewrite_const_bool(Expr *expr, Type *type, bool b)
+{
+	expr->expr_kind = EXPR_CONST;
+	expr->type = type;
+	expr->const_expr = (ExprConst) { .b = b, .const_kind = CONST_BOOL };
+	expr->resolve_status = RESOLVE_DONE;
+}
+
+INLINE void expr_rewrite_const_null(Expr *expr, Type *type)
+{
+	expr->expr_kind = EXPR_CONST;
+	expr->type = type;
+	expr->const_expr = (ExprConst) { .ptr = 0, .const_kind = CONST_POINTER };
+	expr->resolve_status = RESOLVE_DONE;
+}
+
+INLINE void expr_rewrite_const_list(Expr *expr, Type *type, ConstInitializer *list)
+{
+	expr->expr_kind = EXPR_CONST;
+	expr->type = type;
+	expr->const_expr = (ExprConst) { .list = list, .const_kind = CONST_LIST };
+	expr->resolve_status = RESOLVE_DONE;
+}
+
+INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v, bool narrowable)
+{
+	expr->expr_kind = EXPR_CONST;
+	expr->type = type;
+	TypeKind kind = type_flatten(type)->type_kind;
+	(&expr->const_expr)->ixx.i.high = 0;
+	if (type_kind_is_signed(kind))
+	{
+		if (v > (uint64_t)INT64_MAX) (&expr->const_expr)->ixx.i.high = UINT64_MAX;
+	}
+	(&expr->const_expr)->ixx.i.low = v;
+	(&expr->const_expr)->ixx.type = kind;
+	(&expr->const_expr)->const_kind = CONST_INTEGER;
+	expr->const_expr.narrowable = narrowable;
+}
+
+INLINE void expr_rewrite_const_float(Expr *expr, Type *type, Real d)
+{
+	expr->expr_kind = EXPR_CONST;
+	expr->type = type;
+	TypeKind kind = type_flatten(type)->type_kind;
+	switch (kind)
+	{
+		case TYPE_F32:
+			expr->const_expr.fxx = (Float){ (float)d, TYPE_F32 };
+			break;
+		case TYPE_F64:
+			expr->const_expr.fxx = (Float){ (double)d, TYPE_F64 };
+			break;
+		default:
+			expr->const_expr.fxx = (Float){ d, kind };
+			break;
+	}
+	expr->const_expr.const_kind = CONST_FLOAT;
+	expr->resolve_status = RESOLVE_DONE;
 }

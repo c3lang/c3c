@@ -8,29 +8,6 @@
 #define FLOAT64_LIMIT 179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368.0000000000000000
 #define FLOAT16_LIMIT 65504
 
-void expr_const_set_int(ExprConst *expr, uint64_t v, TypeKind kind)
-{
-	expr->ixx.i.high = 0;
-	if (type_kind_is_signed(kind))
-	{
-		if (v > (uint64_t)INT64_MAX) expr->ixx.i.high = UINT64_MAX;
-	}
-	expr->ixx.i.low = v;
-	expr->ixx.type = kind;
-	expr->const_kind = CONST_INTEGER;
-}
-
-void expr_const_set_bool(ExprConst *expr, bool b)
-{
-	expr->b = b;
-	expr->const_kind = CONST_BOOL;
-}
-
-void expr_const_set_null(ExprConst *expr)
-{
-	expr->ptr = 0;
-	expr->const_kind = CONST_POINTER;
-}
 
 static inline bool compare_bool(bool left, bool right, BinaryOp op)
 {
@@ -241,22 +218,6 @@ const char *expr_const_to_error_string(const ExprConst *expr)
 }
 
 
-void expr_const_set_float(ExprConst *expr, Real d, TypeKind kind)
-{
-	switch (kind)
-	{
-		case TYPE_F32:
-			expr->fxx = (Float) { (float)d, TYPE_F32 };
-			break;
-		case TYPE_F64:
-			expr->fxx = (Float) { (double)d, TYPE_F64 };
-			break;
-		default:
-			expr->fxx = (Float) { d, kind };
-			break;
-	}
-	expr->const_kind = CONST_FLOAT;
-}
 
 
 

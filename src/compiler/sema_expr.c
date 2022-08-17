@@ -16,25 +16,16 @@ static bool sema_take_addr_of(Expr *inner);
 static inline bool sema_expr_analyse_binary(SemaContext *context, Expr *expr);
 static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr);
 static Expr *expr_access_inline_member(Expr *parent, Decl *parent_decl);
-static inline void expr_set_as_const_list(Expr *expr, ConstInitializer *list);
 static inline bool sema_expr_analyse_builtin(SemaContext *context, Expr *expr, bool throw_error);
 static bool sema_check_stmt_compile_time(SemaContext *context, Ast *ast);
 static bool binary_arithmetic_promotion(SemaContext *context, Expr *left, Expr *right, Type *left_type, Type *right_type, Expr *parent, const char *error_message);
 static inline bool expr_both_const(Expr *left, Expr *right);
-static inline void expr_set_as_const_list(Expr *expr, ConstInitializer *list)
-{
-	expr->expr_kind = EXPR_CONST;
-	expr->const_expr.const_kind = CONST_LIST;
-	expr->const_expr.list = list;
-}
+
 
 static bool sema_decay_array_pointers(Expr *expr)
 {
-
 	CanonicalType *pointer_type = type_pointer_type(type_no_optional(expr->type));
-
 	if (!pointer_type || !type_is_arraylike(pointer_type)) return true;
-
 	return cast_implicit(expr, type_add_optional(type_get_ptr(pointer_type->array.base), IS_OPTIONAL(expr)));
 }
 
@@ -3022,28 +3013,27 @@ static inline void sema_expr_from_zero_const(Expr *expr, Type *type)
 {
 	expr->expr_kind = EXPR_CONST;
 	expr->const_expr.narrowable = true;
-	type = type->canonical;
-	switch (type->type_kind)
+	switch (type->canonical->type_kind)
 	{
 		case TYPE_POISONED:
 		case TYPE_VOID:
 			UNREACHABLE
 		case ALL_INTS:
-			expr_const_set_int(&expr->const_expr, 0, type->type_kind);
-			break;
+			expr_rewrite_const_int(expr, type, 0, true);
+			return;
 		case ALL_FLOATS:
-			expr_const_set_float(&expr->const_expr, 0, type->type_kind);
+			expr_rewrite_const_float(expr, type, 0);
 			break;
 		case TYPE_BOOL:
-			expr_const_set_bool(&expr->const_expr, false);
-			break;
+			expr_rewrite_const_bool(expr, type, false);
+			return;
 		case TYPE_POINTER:
 		case TYPE_FAULTTYPE:
 		case TYPE_ANY:
 		case TYPE_ANYERR:
 		case TYPE_TYPEID:
-			expr_const_set_null(&expr->const_expr);
-			break;
+			expr_rewrite_const_null(expr, type);
+			return;
 		case TYPE_ENUM:
 			expr->const_expr.const_kind = CONST_ENUM;
 			expr->const_expr.enum_val = type->decl->enums.values[0];
@@ -3067,8 +3057,8 @@ static inline void sema_expr_from_zero_const(Expr *expr, Type *type)
 			ConstInitializer *init = CALLOCS(ConstInitializer);
 			init->kind = CONST_INIT_ZERO;
 			init->type = type;
-			expr_set_as_const_list(expr, init);
-			break;
+			expr_rewrite_const_list(expr, type, init);
+			return;
 		}
 		case TYPE_DISTINCT:
 			sema_expr_from_zero_const(expr, type->decl->distinct_decl.base_type);
@@ -3369,17 +3359,6 @@ static inline bool sema_expr_analyse_group(SemaContext *context, Expr *expr)
 }
 
 
-void expr_rewrite_to_int_const(Expr *expr_to_rewrite, Type *type, uint64_t value, bool narrowable)
-{
-	expr_to_rewrite->expr_kind = EXPR_CONST;
-	expr_const_set_int(&expr_to_rewrite->const_expr, value, type->canonical->type_kind);
-	expr_to_rewrite->type = type;
-	expr_to_rewrite->const_expr.narrowable = narrowable;
-	expr_to_rewrite->const_expr.is_hex = false;
-	expr_to_rewrite->resolve_status = RESOLVE_DONE;
-}
-
-
 void expr_rewrite_to_string(Expr *expr_to_rewrite, const char *string)
 {
 	expr_to_rewrite->expr_kind = EXPR_CONST;
@@ -3549,7 +3528,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 
 	if (name == kw_sizeof)
 	{
-		expr_rewrite_to_int_const(expr, type_usize, type_size(canonical), true);
+		expr_rewrite_const_int(expr, type_usize, type_size(canonical), true);
 		return true;
 	}
 
@@ -3580,7 +3559,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 			}
 			if (name == kw_elements)
 			{
-				expr_rewrite_to_int_const(expr, type_isize, vec_size(decl->enums.values), true);
+				expr_rewrite_const_int(expr, type_isize, vec_size(decl->enums.values), true);
 				return true;
 			}
 			if (name == kw_names)
@@ -3607,7 +3586,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 			}
 			if (name == kw_elements)
 			{
-				expr_rewrite_to_int_const(expr, type_isize, vec_size(decl->enums.values), true);
+				expr_rewrite_const_int(expr, type_isize, vec_size(decl->enums.values), true);
 				return true;
 			}
 			break;
@@ -3676,7 +3655,7 @@ static inline bool sema_create_const_kind(SemaContext *context, Expr *expr, Type
 	Type *type_for_kind = type_kind ? type_kind->type : type_char;
 	unsigned val = type_get_introspection_kind(type->type_kind);
 	assert(type_for_kind->type_kind == TYPE_ENUM);
-	expr_rewrite_to_int_const(expr, type_flatten(type_for_kind), val, false);
+	expr_rewrite_const_int(expr, type_flatten(type_for_kind), val, false);
 	return cast(expr, type_for_kind);
 }
 
@@ -3700,7 +3679,7 @@ static inline bool sema_create_const_len(SemaContext *context, Expr *expr, Type 
 		default:
 			return false;
 	}
-	expr_rewrite_to_int_const(expr, type_usize, len, true);
+	expr_rewrite_const_int(expr, type_usize, len, true);
 	return true;
 }
 
@@ -3960,7 +3939,7 @@ static bool sema_expr_apply_type_property(SemaContext *context, Expr *expr, Type
 	assert(type == type->canonical);
 	if (kw == kw_sizeof)
 	{
-		expr_rewrite_to_int_const(expr, type_usize, type_size(type), true);
+		expr_rewrite_const_int(expr, type_usize, type_size(type), true);
 		return true;
 	}
 	if (kw == kw_kind) return sema_create_const_kind(context, expr, type);
@@ -4080,7 +4059,7 @@ CHECK_DEEPER:
 		}
 		if (flat_type->type_kind == TYPE_ARRAY || flat_type->type_kind == TYPE_VECTOR)
 		{
-			expr_rewrite_to_int_const(expr, type_isize, flat_type->array.len, true);
+			expr_rewrite_const_int(expr, type_isize, flat_type->array.len, true);
 			return true;
 		}
 	}
@@ -4722,8 +4701,7 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 	{
 		ConstInitializer *const_init = MALLOCS(ConstInitializer);
 		sema_create_const_initializer(const_init, initializer);
-		expr_set_as_const_list(initializer, const_init);
-		return true;
+		expr_rewrite_const_list(initializer, initializer->type, const_init);
 	}
 	return true;
 }
@@ -4824,11 +4802,11 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 				{
 					initializer->initializer_list[j] = initializer->initializer_list[j - 1];
 				}
-				Expr *new_initializer = expr_new(EXPR_INITIALIZER_LIST, initializer->span);
+				Expr *new_initializer = expr_new(EXPR_CONST, initializer->span);
 				ConstInitializer *empty = CALLOCS(ConstInitializer);
 				empty->kind = CONST_INIT_ZERO;
-				empty->type = member->type;
-				expr_set_as_const_list(new_initializer, empty);
+				empty->type = type_flatten(member->type);
+				expr_rewrite_const_list(new_initializer, member->type, empty);
 				initializer->initializer_list[i] = new_initializer;
 				size += 1;
 				continue;
@@ -4847,7 +4825,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 			int reduce_by = max_index_to_copy - i - 1;
 			size -= reduce_by;
 			elements_needed -= reduce_by;
-			max_loop = MAX(size, elements_needed);
+			max_loop = size > elements_needed ? size : elements_needed;
 			assert(size <= vec_size(initializer->initializer_list));
 			vec_resize(initializer->initializer_list, (unsigned)size);
 			elements = initializer->initializer_list;
@@ -4894,7 +4872,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 				sema_create_const_initializer_value(element_init, expr);
 				const_init->init_union.element = element_init;
 			}
-			expr_set_as_const_list(initializer, const_init);
+			expr_rewrite_const_list(initializer, initializer->type, const_init);
 			return true;
 		}
 		ConstInitializer **inits = MALLOC(sizeof(ConstInitializer *) * vec_size(elements));
@@ -4911,7 +4889,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 			inits[i] = element_init;
 		}
 		const_init->init_struct = inits;
-		expr_set_as_const_list(initializer, const_init);
+		expr_rewrite_const_list(initializer, initializer->type, const_init);
 	}
 
 	// 7. Done!
@@ -4985,7 +4963,7 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 			vec_add(inits, element_init);
 		}
 		const_init->init_array_full = inits;
-		expr_set_as_const_list(initializer, const_init);
+		expr_rewrite_const_list(initializer, initializer->type, const_init);
 	}
 
 	// 7. Done!
@@ -5063,7 +5041,7 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ext
 		ConstInitializer *initializer = CALLOCS(ConstInitializer);
 		initializer->kind = CONST_INIT_ZERO;
 		initializer->type = type_flatten(expr->type);
-		expr_set_as_const_list(expr, initializer);
+		expr_rewrite_const_list(expr, expr->type, initializer);
 		return true;
 	}
 
@@ -5655,7 +5633,7 @@ static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, 
 
 			if (expr_both_const(left, right))
 			{
-				expr_rewrite_to_int_const(expr, type_iptrdiff, (left->const_expr.ptr - right->const_expr.ptr) /
+				expr_rewrite_const_int(expr, type_iptrdiff, (left->const_expr.ptr - right->const_expr.ptr) /
 						type_size(left_type->pointer), false);
 				return true;
 			}
@@ -5688,7 +5666,6 @@ static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, 
 		if (expr_both_const(left, right))
 		{
 			left->const_expr.ptr -= right->const_expr.ixx.i.low * type_size(left_type->pointer);
-
 			expr_replace(expr, left);
 		}
 
@@ -7162,18 +7139,18 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 	}
 	if (string == kw_LINEREAL)
 	{
-		expr_rewrite_to_int_const(expr, type_isize, expr->span.row, true);
+		expr_rewrite_const_int(expr, type_isize, expr->span.row, true);
 		return true;
 	}
 	if (string == kw_LINE)
 	{
 		if (context->original_inline_line)
 		{
-			expr_rewrite_to_int_const(expr, type_isize, context->original_inline_line, true);
+			expr_rewrite_const_int(expr, type_isize, context->original_inline_line, true);
 		}
 		else
 		{
-			expr_rewrite_to_int_const(expr, type_isize, expr->span.row, true);
+			expr_rewrite_const_int(expr, type_isize, expr->span.row, true);
 		}
 		return true;
 	}
@@ -7370,7 +7347,7 @@ static inline bool sema_expr_analyse_ct_alignof(SemaContext *context, Expr *expr
 		type = result_type;
 	}
 
-	expr_rewrite_to_int_const(expr, type_isize, align, true);
+	expr_rewrite_const_int(expr, type_isize, align, true);
 
 	return true;
 }
@@ -7395,7 +7372,7 @@ static inline bool sema_expr_analyse_ct_sizeof(SemaContext *context, Expr *expr)
 		type = result_type;
 	}
 
-	expr_rewrite_to_int_const(expr, type_isize, type_size(type), true);
+	expr_rewrite_const_int(expr, type_isize, type_size(type), true);
 	return true;
 }
 
@@ -7638,17 +7615,11 @@ RETRY:
 		type = ret_type;
 	}
 
-	expr->type = type_bool;
-	expr->expr_kind = EXPR_CONST;
-	expr_const_set_bool(&expr->const_expr, true);
+	expr_rewrite_const_bool(expr, type_bool, true);
 	return true;
 
 NOT_DEFINED:
-	{
-		expr->type = type_bool;
-	}
-	expr->expr_kind = EXPR_CONST;
-	expr_const_set_bool(&expr->const_expr, false);
+	expr_rewrite_const_bool(expr, type_bool, false);
 	return true;
 }
 
@@ -7745,7 +7716,7 @@ static inline bool sema_expr_analyse_ct_offsetof(SemaContext *context, Expr *exp
 		type = result_type;
 	}
 
-	expr_rewrite_to_int_const(expr, type_iptrdiff, offset, true);
+	expr_rewrite_const_int(expr, type_iptrdiff, offset, true);
 
 	return true;
 }
@@ -7801,9 +7772,7 @@ static inline bool sema_expr_analyse_ct_conv(SemaContext *c, Expr *expr)
 		default:
 			UNREACHABLE
 	}
-	expr_const_set_bool(&expr->const_expr, result);
-	expr->type = type_bool;
-	expr->expr_kind = EXPR_CONST;
+	expr_rewrite_const_bool(expr, type_bool, result);
 	return true;
 }
 
@@ -8178,7 +8147,7 @@ MemberIndex sema_get_initializer_const_array_size(SemaContext *context, Expr *in
 					*is_const_size = false;
 					return -1;
 				}
-				size = MAX(size, index + 1);
+				if (index + 1 > size) size = index + 1;
 				break;
 			}
 			case DESIGNATOR_RANGE:
@@ -8189,7 +8158,7 @@ MemberIndex sema_get_initializer_const_array_size(SemaContext *context, Expr *in
 					*is_const_size = false;
 					return -1;
 				}
-				size = MAX(size, index + 1);
+				if (index + 1 > size) size = index + 1;
 				break;
 			}
 			default:

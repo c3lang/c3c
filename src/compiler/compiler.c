@@ -522,17 +522,12 @@ static void setup_int_define(const char *id, uint64_t i, Type *type)
 {
 	TokenType token_type = TOKEN_CONST_IDENT;
 	id = symtab_add(id, (uint32_t) strlen(id), fnv1a(id, (uint32_t) strlen(id)), &token_type);
-	Expr *expr = expr_new(EXPR_CONST, INVALID_SPAN);
 	assert(type_is_integer(type));
-	expr_const_set_int(&expr->const_expr, i, type->type_kind);
+	Expr *expr = expr_new_const_int(INVALID_SPAN, type, i, true);
 	if (expr_const_will_overflow(&expr->const_expr, type->type_kind))
 	{
 		error_exit("Integer define %s overflow.", id);
 	}
-	expr->type = type;
-	expr->const_expr.narrowable = true;
-	expr->span = INVALID_SPAN;
-	expr->resolve_status = RESOLVE_NOT_DONE;
 	void *previous = htable_set(&global_context.compiler_defines, id, expr);
 	if (previous)
 	{
@@ -544,11 +539,7 @@ static void setup_bool_define(const char *id, bool value)
 {
 	TokenType token_type = TOKEN_CONST_IDENT;
 	id = symtab_add(id, (uint32_t) strlen(id), fnv1a(id, (uint32_t) strlen(id)), &token_type);
-	Expr *expr = expr_new(EXPR_CONST, INVALID_SPAN);
-	expr_const_set_bool(&expr->const_expr, value);
-	expr->type = type_bool;
-	expr->span = INVALID_SPAN;
-	expr->resolve_status = RESOLVE_NOT_DONE;
+	Expr *expr = expr_new_const_bool(INVALID_SPAN, type_bool, value);
 	void *previous = htable_set(&global_context.compiler_defines, id, expr);
 	if (previous)
 	{
