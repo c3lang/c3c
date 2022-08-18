@@ -397,7 +397,7 @@ static LLVMMetadataRef llvm_debug_subarray_type(GenContext *c, Type *type)
 
 	LLVMMetadataRef elements[2] = {
 			llvm_get_debug_member(c, type_get_ptr(type->array.base), "ptr", 0, NULL, forward, LLVMDIFlagZero),
-			llvm_get_debug_member(c, type_usize, "len", 0, NULL, forward, LLVMDIFlagZero)
+			llvm_get_debug_member(c, type_usize, "len", type_size(type_voidptr), NULL, forward, LLVMDIFlagZero)
 	};
 	return llvm_get_debug_struct(c, type, type->name, elements, 2, NULL, NULL, LLVMDIFlagZero);
 }
@@ -408,8 +408,8 @@ static LLVMMetadataRef llvm_debug_any_type(GenContext *c, Type *type)
 	type->backend_debug_type = forward;
 
 	LLVMMetadataRef elements[2] = {
-			llvm_get_debug_member(c, type_void, "ptr", 0, NULL, forward, LLVMDIFlagZero),
-			llvm_get_debug_member(c, type_typeid, "type", 0, NULL, forward, LLVMDIFlagZero)
+			llvm_get_debug_member(c, type_voidptr, "ptr", 0, NULL, forward, LLVMDIFlagZero),
+			llvm_get_debug_member(c, type_typeid, "type", type_size(type_voidptr), NULL, forward, LLVMDIFlagZero)
 	};
 	return llvm_get_debug_struct(c, type, type->name, elements, 2, NULL, NULL, LLVMDIFlagZero);
 }
