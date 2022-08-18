@@ -1729,6 +1729,7 @@ INLINE Ast *new_ast(AstKind kind, SourceSpan range);
 INLINE Ast *ast_next(AstId *current_ptr);
 
 const char *span_to_string(SourceSpan span);
+void span_to_scratch(SourceSpan span);
 
 static inline SourceSpan extend_span_with_token(SourceSpan loc, SourceSpan after)
 {

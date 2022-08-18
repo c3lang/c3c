@@ -291,8 +291,8 @@ static Decl *sema_resolve_path_symbol(SemaContext *context, NameResolve *name_re
 	// 1. Do we match our own path?
 	if (matches_subpath(unit->module->name, path))
 	{
-		// 2. If so just get the symbol.
-		return module_find_symbol(unit->module, symbol);
+		// 2. If so try to locally get the symbol.
+		if ((decl = module_find_symbol(unit->module, symbol))) return decl;
 	}
 
 	// 3. Loop over imports.

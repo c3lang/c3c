@@ -211,6 +211,46 @@ void sema_error(ParseContext *context, const char *message, ...)
 
 // This function is fairly slow, which is a reflection on how
 // often it is supposed to be used.
+void span_to_scratch(SourceSpan span)
+{
+	File *file = source_file_by_id(span.file_id);
+	const char *current = file->contents;
+	uint32_t row = 1;
+	uint32_t row_to_find = span.row;
+	uint32_t length = span.length;
+	uint32_t col = span.col;
+	if (!row_to_find || !length || !col) return;
+	while (row < row_to_find)
+	{
+		switch (current++[0])
+		{
+			case '\0':
+				return;
+			case '\n':
+				row++;
+			default:
+				break;
+		}
+	}
+	assert(row == row_to_find);
+	const char *start = current + col - 1;
+	bool last_was_whitespace = false;
+	for (uint32_t i = 0; i < length; i++)
+	{
+		char c = start[i];
+		if (char_is_whitespace(c))
+		{
+			if (!last_was_whitespace) scratch_buffer_append_char(' ');
+			last_was_whitespace = true;
+			continue;
+		}
+		last_was_whitespace = false;
+		scratch_buffer_append_char(c);
+	}
+}
+
+// This function is fairly slow, which is a reflection on how
+// often it is supposed to be used.
 const char *span_to_string(SourceSpan span)
 {
 	File *file = source_file_by_id(span.file_id);

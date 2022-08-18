@@ -1,6 +1,5 @@
 module foo;
 import bar;
-import bar::abc;
 
 fn void a()
 {
