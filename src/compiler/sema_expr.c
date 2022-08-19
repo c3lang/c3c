@@ -51,6 +51,17 @@ int BINOP_PREC_REQ[BINARYOP_LAST + 1] =
 
 const char *ct_eval_error = "EVAL_ERROR";
 
+Expr *expr_negate_expr(Expr *expr)
+{
+	if (expr->expr_kind == EXPR_UNARY && expr->unary_expr.operator == UNARYOP_NEG)
+	{
+		return expr->inner_expr;
+	}
+	Expr *neg = expr_new_expr(EXPR_UNARY, expr);
+	neg->unary_expr = (ExprUnary) { .operator = UNARYOP_NEG, .expr = expr };
+	return neg;
+}
+
 void expr_rewrite_to_builtin_access(SemaContext *context, Expr *expr, Expr *parent, BuiltinAccessKind kind, Type *type)
 {
 	expr->expr_kind = EXPR_BUILTIN_ACCESS;
@@ -162,25 +173,33 @@ Expr *expr_variable(Decl *decl)
 
 static inline bool expr_unary_addr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 {
-	if (eval_kind != CONSTANT_EVAL_ANY) return false;
+	// An address is never a constant value.
+	if (eval_kind == CONSTANT_EVAL_CONSTANT_VALUE) return false;
 	Expr *inner = expr->unary_expr.expr;
 	switch (inner->expr_kind)
 	{
 		case EXPR_CONST:
 		case EXPR_INITIALIZER_LIST:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
+			// We can't create temporaries as const locally or making them into compile time constants.
+			if (eval_kind == CONSTANT_EVAL_LOCAL_INIT) return false;
 			return expr_is_constant_eval(inner, eval_kind);
 		case EXPR_IDENTIFIER:
 		{
+			// The address of an identifier is side effect free.
+			if (eval_kind == CONSTANT_EVAL_NO_SIDE_EFFECTS) return true;
 			Decl *decl = inner->identifier_expr.decl;
 			if (decl->decl_kind == DECL_FUNC) return true;
 			if (decl->decl_kind != DECL_VAR) return false;
+			assert(eval_kind == CONSTANT_EVAL_LOCAL_INIT || eval_kind == CONSTANT_EVAL_GLOBAL_INIT);
 			switch (decl->var.kind)
 			{
 				case VARDECL_CONST:
 				case VARDECL_GLOBAL:
+					// Fine for both local and global init.
 					return true;
 				case VARDECL_LOCAL:
+					// Getting the address of a local can never be constant init unless it is static.
 					return decl->var.is_static;
 				case VARDECL_PARAM:
 				case VARDECL_MEMBER:
@@ -194,6 +213,7 @@ static inline bool expr_unary_addr_is_constant_eval(Expr *expr, ConstantEvalKind
 				case VARDECL_UNWRAPPED:
 				case VARDECL_ERASE:
 				case VARDECL_REWRAPPED:
+					// None of these are constant.
 					return false;
 			}
 		}
@@ -207,16 +227,16 @@ bool expr_cast_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 	switch (expr->cast_expr.kind)
 	{
 		case CAST_ERROR:
+			UNREACHABLE
 		case CAST_BSINT:
 		case CAST_BSARRY:
-			return false;
+			return true;
 		case CAST_ANYPTR:
 		case CAST_ERBOOL:
 		case CAST_EUBOOL:
 		case CAST_EUER:
 		case CAST_EREU:
 		case CAST_XIERR:
-		case CAST_PTRPTR:
 		case CAST_STRPTR:
 		case CAST_PTRBOOL:
 		case CAST_BOOLINT:
@@ -230,24 +250,28 @@ bool expr_cast_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case CAST_SISI:
 		case CAST_SIUI:
 		case CAST_SIFP:
-		case CAST_XIPTR:
 		case CAST_UISI:
 		case CAST_UIUI:
 		case CAST_UIFP:
-		case CAST_APTSA:
-		case CAST_SAPTR:
 		case CAST_SABOOL:
 		case CAST_STST:
-		case CAST_PTRANY:
-		case CAST_ENUMLOW:
 		case CAST_VECARR:
 		case CAST_ARRVEC:
-			if (eval_kind == CONSTANT_EVAL_FOLDABLE) return false;
+			if (eval_kind != CONSTANT_EVAL_NO_SIDE_EFFECTS) return false;
+			return exprid_is_constant_eval(expr->cast_expr.expr, eval_kind);
+		case CAST_XIPTR:
+		case CAST_PTRPTR:
+		case CAST_APTSA:
+		case CAST_SAPTR:
+		case CAST_ENUMLOW:
+			return exprid_is_constant_eval(expr->cast_expr.expr, eval_kind);
+		case CAST_PTRANY:
+			if (eval_kind == CONSTANT_EVAL_LOCAL_INIT || eval_kind == CONSTANT_EVAL_CONSTANT_VALUE) return false;
 			return exprid_is_constant_eval(expr->cast_expr.expr, eval_kind);
 		case CAST_EUINT:
 		case CAST_ERINT:
 		case CAST_PTRXI:
-			if (eval_kind != CONSTANT_EVAL_ANY) return false;
+			if (eval_kind == CONSTANT_EVAL_CONSTANT_VALUE) return false;
 			return exprid_is_constant_eval(expr->cast_expr.expr, eval_kind);
 	}
 	UNREACHABLE
@@ -255,29 +279,10 @@ bool expr_cast_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 static bool expr_binary_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 {
 	if (expr->binary_expr.operator >= BINARYOP_ASSIGN) return false;
-	if (eval_kind == CONSTANT_EVAL_FOLDABLE) return false;
+	// Pointer add is already handled.
+	if (eval_kind == CONSTANT_EVAL_GLOBAL_INIT) return false;
 	Expr *left = exprptr(expr->binary_expr.left);
 	Expr *right = exprptr(expr->binary_expr.right);
-	int pointers = type_flatten(left->type)->type_kind == TYPE_POINTER ? 1 : 0;
-	pointers += type_flatten(right->type)->type_kind == TYPE_POINTER ? 1 : 0;
-	switch (expr->binary_expr.operator)
-	{
-		case BINARYOP_ERROR:
-			UNREACHABLE
-		case BINARYOP_SUB:
-			// Pointer diffs are not compile time resolved.
-			if (pointers == 2) return false;
-			if (pointers == 0) eval_kind = CONSTANT_EVAL_NO_LINKTIME;
-			break;
-		case BINARYOP_ADD:
-			assert(pointers != 2);
-			if (pointers == 0) eval_kind = CONSTANT_EVAL_NO_LINKTIME;
-			break;
-		default:
-			// For the default operations we don't accept linktime resolution
-			eval_kind = CONSTANT_EVAL_NO_LINKTIME;
-			break;
-	}
 	if (!expr_is_constant_eval(left, eval_kind)) return false;
 	if (!expr_is_constant_eval(right, eval_kind)) return false;
 	return true;
@@ -313,9 +318,12 @@ static bool sema_bit_assignment_check(Expr *right, Decl *member)
 
 bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 {
+	assert(expr->resolve_status == RESOLVE_DONE);
 	RETRY:
 	switch (expr->expr_kind)
 	{
+		case EXPR_POINTER_OFFSET:
+			return exprid_is_constant_eval(expr->pointer_offset_expr.ptr, eval_kind) && exprid_is_constant_eval(expr->pointer_offset_expr.offset, eval_kind);
 		case EXPR_CT_CONV:
 			return true;
 		case EXPR_RETVAL:
@@ -340,7 +348,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 				case ACCESS_PTR:
 					break;
 				case ACCESS_TYPEOFANY:
-					if (eval_kind != CONSTANT_EVAL_ANY) return false;
+					if (eval_kind != CONSTANT_EVAL_NO_SIDE_EFFECTS) return false;
 					break;
 			}
 			return exprid_is_constant_eval(expr->builtin_access_expr.inner, eval_kind);
@@ -402,9 +410,11 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 			return expr_list_is_constant_eval(expr->designated_init_list, eval_kind);
 		case EXPR_SLICE:
-			if (expr->slice_expr.start && !exprid_is_constant_eval(expr->slice_expr.start, CONSTANT_EVAL_FOLDABLE)) return false;
+			return false;
+			/*
+			if (expr->slice_expr.start && !exprid_is_constant_eval(expr->slice_expr.start, eval_kind)) return false;
 			if (expr->slice_expr.end && !exprid_is_constant_eval(expr->slice_expr.end, CONSTANT_EVAL_FOLDABLE)) return false;
-			return exprid_is_constant_eval(expr->slice_expr.expr, eval_kind);
+			return exprid_is_constant_eval(expr->slice_expr.expr, eval_kind);*/
 		case EXPR_SUBSCRIPT:
 			if (!exprid_is_constant_eval(expr->subscript_expr.index, eval_kind)) return false;
 			expr = exprptr(expr->subscript_expr.expr);
@@ -427,11 +437,10 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 						default:
 							return false;
 					}
-					return eval_kind != CONSTANT_EVAL_FOLDABLE;
+					return true;
 				}
 			}
 			goto RETRY;
-
 		case EXPR_TERNARY:
 			assert(!exprid_is_constant_eval(expr->ternary_expr.cond, eval_kind));
 			return false;
@@ -441,7 +450,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 			expr = expr->inner_expr;
 			goto RETRY;
 		case EXPR_TYPEID:
-			return eval_kind == CONSTANT_EVAL_ANY;
+			return eval_kind != CONSTANT_EVAL_CONSTANT_VALUE;
 		case EXPR_UNARY:
 			switch (expr->unary_expr.operator)
 			{
@@ -450,10 +459,13 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 					return false;
 				case UNARYOP_ADDR:
 					return expr_unary_addr_is_constant_eval(expr, eval_kind);
+				case UNARYOP_TADDR:
+					if (eval_kind == CONSTANT_EVAL_CONSTANT_VALUE || eval_kind == CONSTANT_EVAL_LOCAL_INIT) return false;
+					expr = expr->unary_expr.expr;
+					goto RETRY;
 				case UNARYOP_NEG:
 				case UNARYOP_BITNEG:
 				case UNARYOP_NOT:
-				case UNARYOP_TADDR:
 					expr = expr->unary_expr.expr;
 					goto RETRY;
 				case UNARYOP_INC:
@@ -661,6 +673,7 @@ static bool sema_check_expr_lvalue(Expr *top_expr, Expr *expr)
 		case EXPR_TYPEID_INFO:
 		case EXPR_VARIANT:
 		case EXPR_BUILTIN_ACCESS:
+		case EXPR_POINTER_OFFSET:
 			goto ERR;
 	}
 	UNREACHABLE
@@ -758,6 +771,7 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_TYPEID_INFO:
 		case EXPR_VARIANT:
 		case EXPR_BUILTIN_ACCESS:
+		case EXPR_POINTER_OFFSET:
 			return false;
 	}
 	UNREACHABLE
@@ -861,7 +875,7 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 	switch (decl->var.kind)
 	{
 		case VARDECL_CONST:
-			if (!expr_is_constant_eval(decl->var.init_expr, CONSTANT_EVAL_ANY))
+			if (!expr_is_constant_eval(decl->var.init_expr, CONSTANT_EVAL_NO_SIDE_EFFECTS))
 			{
 				UNREACHABLE
 			}
@@ -1777,7 +1791,7 @@ static inline bool sema_expr_analyse_call_invocation(SemaContext *context, Expr 
 				// $foo
 				assert(callee.macro);
 				if (!sema_analyse_expr_rhs(context, type, arg, true)) return false;
-				if (!expr_is_constant_eval(arg, CONSTANT_EVAL_ANY))
+				if (!expr_is_constant_eval(arg, CONSTANT_EVAL_CONSTANT_VALUE))
 				{
 					SEMA_ERROR(arg, "A compile time parameter must always be a constant, did you mistake it for a normal paramter?");
 					return false;
@@ -1996,7 +2010,7 @@ static bool sema_check_stmt_compile_time(SemaContext *context, Ast *ast)
 		case AST_RETURN_STMT:
 		case AST_BLOCK_EXIT_STMT:
 			if (!ast->return_stmt.expr) return true;
-			return expr_is_constant_eval(ast->return_stmt.expr, CONSTANT_EVAL_ANY);
+			return expr_is_constant_eval(ast->return_stmt.expr, CONSTANT_EVAL_CONSTANT_VALUE);
 		case AST_EXPR_STMT:
 			return sema_check_expr_compile_time(context, ast->expr_stmt);
 		case AST_COMPOUND_STMT:
@@ -2218,7 +2232,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	{
 		Ast *ret = macro_context.returns[0];
 		Expr *result = ret ? ret->return_stmt.expr : NULL;
-		if (result && expr_is_constant_eval(result, CONSTANT_EVAL_ANY))
+		if (result && expr_is_constant_eval(result, CONSTANT_EVAL_CONSTANT_VALUE))
 		{
 			if (sema_check_stmt_compile_time(&macro_context, body))
 			{
@@ -3116,6 +3130,50 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	Type *current_type = underlying_type;
 	Expr *current_expr = subscripted;
 
+	int64_t index_value = -1;
+	if (expr_is_const_int(index) && (current_type->type_kind == TYPE_ARRAY || current_type == type_complist))
+	{
+		// 4c. And that it's in range.
+		if (int_is_neg(index->const_expr.ixx))
+		{
+			SEMA_ERROR(index, "The index may not be negative.");
+			return false;
+		}
+		int64_t size = current_type == type_complist ? vec_size(current_expr->initializer_list) : current_type->array.len;
+		assert(size >= 0 && "Unexpected overflow");
+		if (!int_fits(index->const_expr.ixx, TYPE_I64))
+		{
+			SEMA_ERROR(index, "The index is out of range.", size);
+			return false;
+		}
+		index_value = int_to_i64(index->const_expr.ixx);
+		if (expr->subscript_expr.from_back)
+		{
+			index_value = size - index_value;
+		}
+		if (index_value < 0 || index_value >= size)
+		{
+			if (expr->subscript_expr.from_back)
+			{
+				SEMA_ERROR(index,
+				           size > 1
+				           ? "An index of '%lld' from the end is out of range, a value between 1 and %lld was expected."
+				           : "An index of '%lld' from the end is out of range, a value of %lld was expected.",
+				           (long long)(size - index_value),
+				           (long long)size);
+			}
+			else
+			{
+				SEMA_ERROR(index,
+				           size > 1
+				           ? "An index of '%lld' is out of range, a value between 0 and %lld was expected."
+				           : "An index of '%lld' is out of range, a value of %lld was expected.",
+				           (long long)index_value,
+				           (long long)size - 1);
+			}
+			return false;
+		}
+	}
 	// 4. If we are indexing into a complist
 	if (current_type == type_complist)
 	{
@@ -3130,52 +3188,12 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 		assert(current_expr->expr_kind == EXPR_INITIALIZER_LIST);
 
 		// 4b. Now we need to check that we actually have a valid type.
-		if (index->expr_kind != EXPR_CONST || index->const_expr.const_kind != CONST_INTEGER)
+		if (index_value < 0)
 		{
 			SEMA_ERROR(index, "To subscript a compile time list a compile time integer index is needed.");
 			return false;
 		}
-		// 4c. And that it's in range.
-		if (int_is_neg(index->const_expr.ixx))
-		{
-			SEMA_ERROR(index, "The index may not be negative.");
-			return false;
-		}
-		int64_t size = vec_size(current_expr->initializer_list);
-		assert(size >= 0 && "Unexpected overflow");
-		if (!int_fits(index->const_expr.ixx, TYPE_I64))
-		{
-			SEMA_ERROR(index, "The index is out of range.", size);
-			return false;
-		}
-		int64_t i = int_to_i64(index->const_expr.ixx);
-		if (expr->subscript_expr.from_back)
-		{
-			i = size - i;
-		}
-		if (i < 0 || i >= size)
-		{
-			if (expr->subscript_expr.from_back)
-			{
-				SEMA_ERROR(index,
-				           size > 1
-				           ? "An index of '%lld' from the end is out of range, a value between 1 and %lld was expected."
-				           : "An index of '%lld' from the end is out of range, a value of %lld was expected.",
-				           (long long)(size - i),
-				           (long long)size);
-			}
-			else
-			{
-				SEMA_ERROR(index,
-						   size > 1
-						   ? "An index of '%lld' is out of range, a value between 0 and %lld was expected."
-						   : "An index of '%lld' is out of range, a value of %lld was expected.",
-						   (long long)i,
-						   (long long)size - 1);
-			}
-			return false;
-		}
-		Expr *indexed_expr = current_expr->initializer_list[i];
+		Expr *indexed_expr = current_expr->initializer_list[index_value];
 		if (!sema_cast_rvalue(context, indexed_expr)) return false;
 		expr_replace(expr, indexed_expr);
 		return true;
@@ -3235,6 +3253,37 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	}
 	expr->subscript_expr.expr = exprid(current_expr);
 	expr->type = type_add_optional(inner_type, failable);
+	return true;
+}
+
+static inline bool sema_expr_analyse_pointer_offset(SemaContext *context, Expr *expr)
+{
+	assert(expr->expr_kind == EXPR_POINTER_OFFSET);
+
+	// 1. Evaluate the pointer
+	Expr *pointer = exprptr(expr->pointer_offset_expr.ptr);
+	if (!sema_analyse_expr(context, pointer)) return false;
+
+	// 2. Evaluate the offset.
+	Expr *offset = exprptr(expr->pointer_offset_expr.offset);
+	if (!sema_analyse_expr(context, offset)) return false;
+	if (!cast_implicit(offset, type_iptrdiff)) return false;
+
+	// 3. Store optionality
+	bool is_optional = IS_OPTIONAL(pointer) || IS_OPTIONAL(offset);
+
+	// 4. Possibly constant fold
+	if (expr_is_const(pointer) && expr_is_const(offset))
+	{
+		assert(!is_optional);
+		Int mul = { .i.low = type_size(type_flatten(pointer->type)->pointer), .type = offset->const_expr.ixx.type };
+		Int offset_val = int_mul(mul, offset->const_expr.ixx);
+		Int res = int_add64(offset_val, pointer->const_expr.ptr);
+		pointer->const_expr.ptr = res.i.low;
+		expr_replace(expr, pointer);
+		return true;
+	}
+	expr->type = type_add_optional(pointer->type, is_optional);
 	return true;
 }
 
@@ -4696,8 +4745,8 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 	{
 		initializer->type = sema_type_lower_by_size(initializer->type, (ArraySize)(max_index + 1));
 	}
-
-	if (expr_is_constant_eval(initializer, CONSTANT_EVAL_ANY))
+	initializer->resolve_status = RESOLVE_DONE;
+	if (expr_is_constant_eval(initializer, context->current_function ? CONSTANT_EVAL_LOCAL_INIT : CONSTANT_EVAL_GLOBAL_INIT))
 	{
 		ConstInitializer *const_init = MALLOCS(ConstInitializer);
 		sema_create_const_initializer(const_init, initializer);
@@ -4850,8 +4899,8 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 
 	// 6. There's the case of too few values as well. Mark the last field as wrong.
 	assert(elements_needed <= size);
-
-	if (expr_is_constant_eval(initializer, CONSTANT_EVAL_ANY))
+	initializer->resolve_status = RESOLVE_DONE;
+	if (expr_is_constant_eval(initializer, context->current_function ? CONSTANT_EVAL_LOCAL_INIT : CONSTANT_EVAL_GLOBAL_INIT))
 	{
 		bool is_union = type_flatten_distinct(initializer->type)->type_kind == TYPE_UNION;
 		assert(!is_union || vec_size(elements) == 1);
@@ -4944,7 +4993,8 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 		return false;
 	}
 
-	if (expr_is_constant_eval(initializer, CONSTANT_EVAL_ANY))
+	initializer->resolve_status = RESOLVE_DONE;
+	if (expr_is_constant_eval(initializer, context->current_function ? CONSTANT_EVAL_LOCAL_INIT : CONSTANT_EVAL_GLOBAL_INIT))
 	{
 		ConstInitializer *const_init = CALLOCS(ConstInitializer);
 		const_init->kind = CONST_INIT_ARRAY_FULL;
@@ -5662,21 +5712,38 @@ static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, 
 		// 6. Convert to iptrdiff
 		if (!cast_implicit(right, type_iptrdiff)) return true;
 
-		// Constant fold.
-		if (expr_both_const(left, right))
+		if (left->expr_kind == EXPR_POINTER_OFFSET)
 		{
-			left->const_expr.ptr -= right->const_expr.ixx.i.low * type_size(left_type->pointer);
-			expr_replace(expr, left);
+			SourceSpan old_span = expr->span;
+			*expr = *left;
+			left->span = old_span;
+			left->expr_kind = EXPR_BINARY;
+			left->binary_expr = (ExprBinary){
+					.operator = BINARYOP_SUB,
+					.left = expr->pointer_offset_expr.offset,
+					.right = exprid(right)
+			};
+			left->resolve_status = RESOLVE_NOT_DONE;
+			if (!sema_analyse_expr(context, left)) return false;
+			expr->pointer_offset_expr.offset = exprid(left);
+		}
+		else
+		{
+			expr->expr_kind = EXPR_POINTER_OFFSET;
+			expr->pointer_offset_expr.ptr = exprid(left);
+			expr->pointer_offset_expr.offset = exprid(expr_negate_expr(right));
+			expr->pointer_offset_expr.raw_offset = false;
 		}
 
-		// Assign the type of the left side.
-		expr->type = left->type;
+		expr->resolve_status = RESOLVE_NOT_DONE;
+		if (!sema_analyse_expr(context, expr)) return false;
 
 		if (cast_to_iptr)
 		{
 			expr->resolve_status = RESOLVE_DONE;
 			return cast(expr, cast_to_iptr);
 		}
+
 		return true;
 	}
 
@@ -5767,19 +5834,34 @@ static bool sema_expr_analyse_add(SemaContext *context, Expr *expr, Expr *left, 
 		assert(success && "This should always work");
 		(void)success;
 
-		if (expr_both_const(left, right))
+		// Folding offset.
+		if (left->expr_kind == EXPR_POINTER_OFFSET)
 		{
-			assert(left->const_expr.const_kind == CONST_POINTER);
-			assert(right->const_expr.const_kind == CONST_INTEGER);
-			uint64_t low_bits = right->const_expr.ixx.i.low;
-			left->const_expr.ptr += low_bits * type_size(left_type->pointer);
-			expr_replace(expr, left);
+			SourceSpan old_span = expr->span;
+			*expr = *left;
+			left->span = old_span;
+			left->expr_kind = EXPR_BINARY;
+			left->binary_expr = (ExprBinary){
+					.operator = BINARYOP_ADD,
+					.left = expr->pointer_offset_expr.offset,
+					.right = exprid(right)
+			};
+			left->resolve_status = RESOLVE_NOT_DONE;
+			if (!sema_analyse_expr(context, left)) return false;
+			expr->pointer_offset_expr.offset = exprid(left);
 		}
 		else
 		{
 			// Set the type and other properties.
 			expr->type = left->type;
+			expr->pointer_offset_expr.raw_offset = false;
+			expr->pointer_offset_expr.ptr = exprid(left);
+			expr->pointer_offset_expr.offset = exprid(right);
+			expr->expr_kind = EXPR_POINTER_OFFSET;
 		}
+
+		expr->resolve_status = RESOLVE_NOT_DONE;
+		if (!sema_analyse_expr(context, expr)) return false;
 
 		if (cast_to_iptr)
 		{
@@ -7866,6 +7948,8 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 			return sema_expr_analyse_failable(context, expr);
 		case EXPR_COMPILER_CONST:
 			return sema_expr_analyse_compiler_const(context, expr);
+		case EXPR_POINTER_OFFSET:
+			return sema_expr_analyse_pointer_offset(context, expr);
 		case EXPR_POISONED:
 			return false;
 		case EXPR_SLICE_ASSIGN:

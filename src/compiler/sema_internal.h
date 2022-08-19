@@ -94,6 +94,11 @@ static inline bool expr_is_const_string(Expr *expr)
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_STRING;
 }
 
+static inline bool expr_is_const_int(Expr *expr)
+{
+	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INTEGER;
+}
+
 INLINE bool expr_is_const_list(Expr *expr)
 {
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_LIST;

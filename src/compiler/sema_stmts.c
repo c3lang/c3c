@@ -2037,7 +2037,7 @@ static bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *statement)
 		SEMA_ERROR(collection, "Expected a list to iterate over");
 		return false;
 	}
-	if (!expr_is_constant_eval(collection, CONSTANT_EVAL_ANY))
+	if (!expr_is_constant_eval(collection, CONSTANT_EVAL_CONSTANT_VALUE))
 	{
 		SEMA_ERROR(collection, "A compile time $foreach must be over a constant value.");
 		return false;
@@ -2268,7 +2268,7 @@ static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement
 				continue;
 			}
 			if (!sema_analyse_expr(context, expr)) goto EXIT_ERROR;
-			if (!expr_is_constant_eval(expr, CONSTANT_EVAL_FOLDABLE))
+			if (!expr_is_constant_eval(expr, CONSTANT_EVAL_CONSTANT_VALUE))
 			{
 				SEMA_ERROR(expr, "Only constant expressions are allowed.");
 				goto EXIT_ERROR;

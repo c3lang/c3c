@@ -184,6 +184,10 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_BUILTIN:
 		case EXPR_RETVAL:
 			return expr;
+		case EXPR_POINTER_OFFSET:
+			MACRO_COPY_EXPRID(expr->pointer_offset_expr.offset);
+			MACRO_COPY_EXPRID(expr->pointer_offset_expr.ptr);
+			return expr;
 		case EXPR_BUILTIN_ACCESS:
 			MACRO_COPY_EXPRID(expr->builtin_access_expr.inner);
 			return expr;

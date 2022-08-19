@@ -782,7 +782,7 @@ static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param, bo
 			SEMA_ERROR(expr, "Default arguments may not be failable.");
 			return false;
 		}
-		if (!expr_is_constant_eval(expr, CONSTANT_EVAL_ANY))
+		if (!expr_is_constant_eval(expr, CONSTANT_EVAL_GLOBAL_INIT))
 		{
 			SEMA_ERROR(expr, "Only constant expressions may be used as default values.");
 			return false;
@@ -903,7 +903,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl)
 			Expr *arg = args[j];
 
 			if (!sema_analyse_expr_rhs(context, associated_values[j]->type, arg, false)) return false;
-			if (!expr_is_constant_eval(arg, CONSTANT_EVAL_ANY))
+			if (!expr_is_constant_eval(arg, CONSTANT_EVAL_GLOBAL_INIT))
 			{
 				SEMA_ERROR(arg, "Expected a constant expression as parameter.");
 				return false;
@@ -2127,7 +2127,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 				if ((init = decl->var.init_expr))
 				{
 					if (!sema_analyse_expr_rhs(context, decl->type, init, false)) return false;
-					if (!expr_is_constant_eval(init, CONSTANT_EVAL_ANY))
+					if (!expr_is_constant_eval(init, CONSTANT_EVAL_CONSTANT_VALUE))
 					{
 						SEMA_ERROR(init, "Expected a constant expression assigned to %s.", decl->name);
 						return false;
@@ -2144,7 +2144,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 				if ((init = decl->var.init_expr))
 				{
 					if (!sema_analyse_expr(context, init)) return false;
-					if (!expr_is_constant_eval(init, CONSTANT_EVAL_ANY))
+					if (!expr_is_constant_eval(init, CONSTANT_EVAL_CONSTANT_VALUE))
 					{
 						SEMA_ERROR(init, "Expected a constant expression assigned to %s.", decl->name);
 						return false;
@@ -2214,7 +2214,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 		if (!decl->var.type_info)
 		{
 			if (!sema_analyse_expr(context, init_expr)) return false;
-			if (is_global && !expr_is_constant_eval(init_expr, CONSTANT_EVAL_ANY))
+			if (is_global && !expr_is_constant_eval(init_expr, CONSTANT_EVAL_GLOBAL_INIT))
 			{
 				SEMA_ERROR(init_expr, "This expression cannot be evaluated at compile time.");
 				return false;
@@ -2263,7 +2263,14 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 			if (!decl->alignment) decl->alignment = type_alloca_alignment(decl->type);
 		}
 
-		if (!sema_expr_analyse_assign_right_side(context, NULL, decl->type, init, false)) return decl_poison(decl);
+		Decl *function = context->current_function;
+		if (is_static) context->current_function = NULL;
+		if (!sema_expr_analyse_assign_right_side(context, NULL, decl->type, init, false))
+		{
+			context->current_function = function;
+			return decl_poison(decl);
+		}
+		context->current_function = function;
 
 		if (type_is_inferred)
 		{
@@ -2275,7 +2282,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 		Expr *init_expr = decl->var.init_expr;
 
 		// 2. Check const-ness
-		if ((is_global || decl->var.is_static) && !expr_is_constant_eval(init_expr, CONSTANT_EVAL_ANY))
+		if ((is_global || decl->var.is_static) && !expr_is_constant_eval(init_expr, CONSTANT_EVAL_GLOBAL_INIT))
 		{
 			SEMA_ERROR(init_expr, "The expression must be a constant value.");
 		}

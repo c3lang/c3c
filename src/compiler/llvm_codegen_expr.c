@@ -575,7 +575,7 @@ static inline void gencontext_emit_subscript(GenContext *c, BEValue *value, Expr
 		assert(needs_len);
 		index.value = LLVMBuildNUWSub(c->builder, llvm_zext_trunc(c, len.value, llvm_get_type(c, index.type)), index.value, "");
 	}
-	if (needs_len && active_target.feature.safe_mode)
+	if (needs_len && active_target.feature.safe_mode && !llvm_is_global_eval(c))
 	{
 		llvm_emit_array_bounds_check(c, &index, len.value, index_expr->span);
 	}
@@ -586,6 +586,33 @@ static inline void gencontext_emit_subscript(GenContext *c, BEValue *value, Expr
 		llvm_value_fold_optional(c, value);
 		value->kind = BE_VALUE;
 		value->type = type_get_ptr(value->type);
+	}
+}
+
+static inline void llvm_emit_pointer_offset(GenContext *c, BEValue *value, Expr *expr)
+{
+	Expr *pointer = exprptr(expr->pointer_offset_expr.ptr);
+	Expr *offset_expr = exprptr(expr->pointer_offset_expr.offset);
+	LLVMTypeRef pointee_type = llvm_get_pointee_type(c, pointer->type);
+
+	// Emit the pointer
+	llvm_emit_expr(c, value, pointer);
+	llvm_value_rvalue(c, value);
+
+	// Now calculate the offset:
+	BEValue offset;
+	llvm_emit_expr(c, &offset, offset_expr);
+	llvm_value_rvalue(c, &offset);
+
+	if (expr->pointer_offset_expr.raw_offset)
+	{
+		LLVMValueRef raw_pointer = llvm_emit_bitcast_ptr(c, value->value, type_char);
+		LLVMValueRef pointer_offset = llvm_emit_pointer_gep_raw(c, c->byte_type, raw_pointer, offset.value);
+		value->value = LLVMBuildBitCast(c->builder, pointer_offset, pointee_type, "");
+	}
+	else
+	{
+		value->value = llvm_emit_pointer_gep_raw(c, pointee_type, value->value, offset.value);
 	}
 }
 
@@ -3596,7 +3623,7 @@ void gencontext_emit_elvis_expr(GenContext *c, BEValue *value, Expr *expr)
 	}
 
 	Expr *else_expr = exprptr(expr->ternary_expr.else_expr);
-	if (expr_is_constant_eval(else_expr, CONSTANT_EVAL_ANY))
+	if (expr_is_constant_eval(else_expr, CONSTANT_EVAL_NO_SIDE_EFFECTS))
 	{
 		BEValue right;
 		llvm_emit_expr(c, &right, else_expr);
@@ -3661,7 +3688,7 @@ void gencontext_emit_ternary_expr(GenContext *c, BEValue *value, Expr *expr)
 
 	Expr *else_expr = exprptr(expr->ternary_expr.else_expr);
 	Expr *then_expr = exprptr(expr->ternary_expr.then_expr);
-	if (!IS_OPTIONAL(expr) && expr_is_constant_eval(else_expr, CONSTANT_EVAL_ANY) && expr_is_constant_eval(then_expr, CONSTANT_EVAL_ANY))
+	if (!IS_OPTIONAL(expr) && expr_is_constant_eval(else_expr, CONSTANT_EVAL_NO_SIDE_EFFECTS) && expr_is_constant_eval(then_expr, CONSTANT_EVAL_NO_SIDE_EFFECTS))
 	{
 		BEValue left;
 		llvm_emit_expr(c, &left, then_expr);
@@ -5557,6 +5584,7 @@ static inline void llvm_emit_variant(GenContext *c, BEValue *value, Expr *expr)
 	LLVMValueRef var = llvm_get_undef(c, type_any);
 	var = llvm_emit_insert_value(c, var, ptr.value, 0);
 	var = llvm_emit_insert_value(c, var, typeid.value, 1);
+	assert(!LLVMIsConstant(ptr.value) || !LLVMIsConstant(typeid.value) || LLVMIsConstant(var));
 	llvm_value_set(value, var, type_any);
 }
 
@@ -5773,6 +5801,9 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			return;
 		case EXPR_SLICE:
 			gencontext_emit_slice(c, value, expr);
+			return;
+		case EXPR_POINTER_OFFSET:
+			llvm_emit_pointer_offset(c, value, expr);
 			return;
 		case EXPR_FAILABLE:
 			llvm_emit_failable(c, value, expr);

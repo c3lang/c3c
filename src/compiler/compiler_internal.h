@@ -731,6 +731,13 @@ typedef struct
 	ExprId type_id;
 } ExprVariant;
 
+typedef struct
+{
+	bool raw_offset : 1;
+	ExprId ptr;
+	ExprId offset;
+} ExprPointerOffset;
+
 typedef enum
 {
 	ACCESS_LEN,
@@ -976,6 +983,7 @@ struct Expr_
 		ExprVariantSwitch variant_switch;           // 32
 		ExprCast cast_expr;                         // 12
 		ExprVariant variant_expr;
+		ExprPointerOffset pointer_offset_expr;
 		TypeInfo *type_expr;                        // 8
 		ExprConst const_expr;                       // 32
 		ExprArgv argv_expr;                         // 16
@@ -1936,6 +1944,7 @@ void expr_insert_addr(Expr *original);
 void expr_insert_deref(Expr *expr);
 bool expr_may_addr(Expr *expr);
 Expr *expr_variable(Decl *decl);
+Expr *expr_negate_expr(Expr *expr);
 void expr_rewrite_to_builtin_access(SemaContext *context, Expr *expr, Expr *parent, BuiltinAccessKind kind, Type *type);
 INLINE Expr *expr_new_expr(ExprKind kind, Expr *expr);
 INLINE bool expr_ok(Expr *expr);
@@ -2262,7 +2271,7 @@ INLINE CanonicalType *type_pointer_type(Type *type)
 {
 	CanonicalType *res = type->canonical;
 	if (res->type_kind != TYPE_POINTER) return NULL;
-	return res->pointer;
+	return res->pointer ;
 }
 
 INLINE bool type_is_pointer(Type *type)

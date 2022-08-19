@@ -1115,6 +1115,11 @@ void llvm_emit_panic(GenContext *c, const char *message, const char *file, const
 
 void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_name, SourceSpan loc)
 {
+	if (llvm_is_const(value->value))
+	{
+		assert(!LLVMConstIntGetZExtValue(value->value) && "Unexpected bounds check failed.");
+		return;
+	}
 	LLVMBasicBlockRef panic_block = llvm_basic_block_new(c, "panic");
 	LLVMBasicBlockRef ok_block = llvm_basic_block_new(c, "checkok");
 	assert(llvm_value_is_bool(value));

@@ -518,11 +518,11 @@ static inline LLVMValueRef llvm_generate_introspection_global(GenContext *c, LLV
 		assert(type->backend_typeid);
 	}
 	LLVMValueRef values[INTROSPECT_INDEX_TOTAL] = {
-			[INTROSPECT_INDEX_KIND] = llvm_const_int(c, type_char, introspect_type),
-			[INTROSPECT_INDEX_SIZEOF] = llvm_const_int(c, type_usize, type_size(type)),
+			[INTROSPECT_INDEX_KIND] = LLVMConstInt(c->byte_type, introspect_type, false),
+			[INTROSPECT_INDEX_SIZEOF] = LLVMConstInt(c->size_type, type_size(type), false),
 			[INTROSPECT_INDEX_INNER] = inner ? llvm_get_typeid(c, inner) : llvm_get_zero(c, type_typeid),
-			[INTROSPECT_INDEX_LEN] = llvm_const_int(c, type_usize, len),
-			[INTROSPECT_INDEX_ADDITIONAL] = additional ? additional : llvm_get_array(llvm_get_type(c, type_typeid), NULL, 0)
+			[INTROSPECT_INDEX_LEN] = LLVMConstInt(c->size_type,len, false),
+			[INTROSPECT_INDEX_ADDITIONAL] = additional ? additional : LLVMConstArray(c->size_type, NULL, 0)
 	};
 	LLVMValueRef global_name;
 	scratch_buffer_clear();

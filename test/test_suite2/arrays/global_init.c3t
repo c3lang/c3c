@@ -1,0 +1,62 @@
+// #target: macos-x64
+module test;
+
+int* foo = &&3;
+
+int a;
+int c;
+int d;
+int[3] abc;
+int *b = (&((&a + 1)[2]) + 1 - 2) + 5;
+int *bf = &abc[2] + 2;
+int *bf2 = &abc[2];
+int *bf3 = &abc[2] + 2;
+
+fn void main() {
+	int *bf34 = (&abc[2] + 2) + 3;
+	static variant[3] x = { &&42, &&'c', &&"for" };
+	variant[3] y = { &&42, &&'c', &&"for" };
+}
+
+/* #expect: test.ll
+
+@.taddr = private global i32 3, align 4
+@test_foo = local_unnamed_addr global ptr @.taddr, align 8
+@test_a = global i32 0, align 4
+@test_c = local_unnamed_addr global i32 0, align 4
+@test_d = local_unnamed_addr global i32 0, align 4
+@test_abc = local_unnamed_addr global [3 x i32] zeroinitializer, align 4
+@test_b = local_unnamed_addr global ptr getelementptr (i32, ptr @test_a, i64 7), align 8
+@test_bf = local_unnamed_addr global ptr getelementptr ([3 x i32], ptr @test_abc, i64 1, i64 1), align 8
+@test_bf2 = local_unnamed_addr global ptr getelementptr inbounds ([3 x i32], ptr @test_abc, i64 0, i64 2), align 8
+@test_bf3 = local_unnamed_addr global ptr getelementptr ([3 x i32], ptr @test_abc, i64 1, i64 1), align 8
+@.taddr.9 = private global i32 42, align 4
+@.taddr.10 = private global i8 99, align 1
+@.taddr.11 = private global ptr @.str, align 8
+@"main$x" = internal unnamed_addr global [3 x %variant] [%variant { ptr @.taddr.9, i64 ptrtoint (ptr @"ct$int" to i64) }, %variant { ptr @.taddr.10, i64 ptrtoint (ptr @"ct$char" to i64) }, %variant { ptr @.taddr.11, i64 ptrtoint (ptr @"ct$p$a3$char" to i64) }], align 16
+
+define void @test_main() #0 {
+entry:
+  %bf34 = alloca ptr, align 8
+  %y = alloca [3 x %variant], align 16
+  %taddr = alloca i32, align 4
+  %taddr1 = alloca i8, align 1
+  %taddr2 = alloca ptr, align 8
+  store ptr getelementptr ([3 x i32], ptr @test_abc, i64 2, i64 1), ptr %bf34, align 8
+  %0 = getelementptr inbounds [3 x %variant], ptr %y, i64 0, i64 0
+  store i32 42, ptr %taddr, align 4
+  %1 = insertvalue %variant undef, ptr %taddr, 0
+  %2 = insertvalue %variant %1, i64 ptrtoint (ptr @"ct$int" to i64), 1
+  store %variant %2, ptr %0, align 16
+  %3 = getelementptr inbounds [3 x %variant], ptr %y, i64 0, i64 1
+  store i8 99, ptr %taddr1, align 1
+  %4 = insertvalue %variant undef, ptr %taddr1, 0
+  %5 = insertvalue %variant %4, i64 ptrtoint (ptr @"ct$char" to i64), 1
+  store %variant %5, ptr %3, align 16
+  %6 = getelementptr inbounds [3 x %variant], ptr %y, i64 0, i64 2
+  store ptr @.str.12, ptr %taddr2, align 8
+  %7 = insertvalue %variant undef, ptr %taddr2, 0
+  %8 = insertvalue %variant %7, i64 ptrtoint (ptr @"ct$p$a3$char" to i64), 1
+  store %variant %8, ptr %6, align 16
+  ret void
+}
