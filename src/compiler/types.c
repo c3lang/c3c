@@ -1087,6 +1087,7 @@ static inline Type *func_create_new_func_proto(FunctionSignature *sig, CallABI a
 	unsigned param_count = vec_size(sig->params);
 	FunctionPrototype *proto = CALLOCS(FunctionPrototype);
 	proto->variadic = sig->variadic;
+	proto->vararg_index = sig->vararg_index;
 	Type *rtype = type_infoptr(sig->returntype)->type;
 	proto->rtype = rtype;
 	if (type_is_optional(rtype))

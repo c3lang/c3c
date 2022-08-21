@@ -361,11 +361,11 @@ void tilde_emit_call_expr(TbContext *c, TBEValue *result_value, Expr *expr)
 			// llvm_emit_subarray_len(c, &subarray, &len_addr);
 			// llvm_store_value_raw(c, &len_addr, llvm_get_zero(c, type_usize));
 		}
-		else if (arguments == non_variadic_params + 1 && expr->call_expr.unsplat_last)
+		else if (arguments == non_variadic_params + 1 && expr->call_expr.splat_last)
 		{
-			// 9b. We unpack the last type which is either a slice, an array or a dynamic array.
+			// 9b. We splat the last type which is either a slice, an array or a dynamic array.
 			TODO
-			// llvm_emit_unpacked_variadic_arg(c, expr->call_expr.arguments[non_variadic_params], &subarray);
+			// llvm_emit_splatted_variadic_arg(c, expr->call_expr.arguments[non_variadic_params], &subarray);
 		}
 		else
 		{

@@ -336,7 +336,6 @@ typedef struct VarDecl_
 	bool unwrap : 1;
 	bool shadow : 1;
 	bool vararg : 1;
-	bool vararg_implicit : 1;
 	bool is_static : 1;
 	bool is_read : 1;
 	bool not_null : 1;
@@ -438,6 +437,7 @@ typedef enum
 typedef struct FunctionSignature_
 {
 	Variadic variadic : 3;
+	unsigned vararg_index : 10;
 	bool has_default : 1;
 	bool use_win64 : 1;
 	bool is_pure : 1;
@@ -497,6 +497,8 @@ typedef struct
 {
 	struct
 	{
+		unsigned vararg_index : 10;
+		Variadic variadic : 3;
 		bool attr_noreturn : 1;
 		bool attr_nodiscard : 1;
 		bool attr_maydiscard : 1;
@@ -679,13 +681,11 @@ typedef struct
 
 
 
-
-
 typedef struct
 {
 	bool is_type_method : 1;
 	bool is_pointer_call : 1;
-	bool unsplat_last : 1;
+	bool splat_vararg : 1;
 	bool attr_force_inline : 1;
 	bool attr_force_noinline : 1;
 	bool is_builtin : 1;
@@ -699,6 +699,11 @@ typedef struct
 		DeclId func_ref;
 	};
 	Expr **arguments;
+	union
+	{
+		Expr **varargs;
+		Expr *splat;
+	};
 	Decl **body_arguments;
 } ExprCall;
 
@@ -830,6 +835,12 @@ typedef struct
 		};
 	};
 } ExprCtCall;
+
+typedef struct
+{
+	TokenType type : 8;
+	ExprId arg;
+} ExprCtArg;
 
 typedef struct
 {
@@ -1006,6 +1017,7 @@ struct Expr_
 		ExprIdentifier identifier_expr;             // 24
 		ExprIdentifierRaw ct_ident_expr;            // 24
 		ExprCtCall ct_call_expr;                    // 24
+		ExprCtArg ct_arg_expr;
 		ExprIdentifierRaw ct_macro_ident_expr;      // 24
 		ExprIdentifierRaw hash_ident_expr;          // 24
 		TypeInfo *typeid_expr;                      // 8
@@ -1474,6 +1486,7 @@ typedef struct SemaContext_
 		Ast **returns;
 		// Reusable returns cache.
 		Ast **returns_cache;
+		Expr **macro_varargs;
 	};
 	Type *rtype;
 	struct SemaContext_ *yield_context;
@@ -1591,6 +1604,7 @@ typedef struct FunctionPrototype_
 	bool use_win64 : 1;
 	bool is_failable : 1;
 	bool ret_by_ref : 1;
+	unsigned short vararg_index;
 	Type *rtype;
 	Type **params;
 	Type **varargs;

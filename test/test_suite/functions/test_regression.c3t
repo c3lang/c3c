@@ -156,12 +156,12 @@ fn void main()
     Foo ddx;
     int fro = 3;
     int[4] x = { 1, 2, 3, 3 };
-    fro += printf("1Vararg4unsplatA: %d\n", sum_us(...x));
+    fro += printf("1Vararg4splatA: %d\n", sum_us(...x));
     printf("%d\n", fro);
     int[] z = &x;
     int[3] de = { 1, 2, 3 };
-    printf("Vararg4unsplatB: %d\n", sum_us(...&x));
-    printf("Vararg4unsplatC: %d\n", sum_us(...z));
+    printf("Vararg4splatB: %d\n", sum_us(...&x));
+    printf("Vararg4splatC: %d\n", sum_us(...z));
     printf("Vararg4: %d\n", sum_us(1, 2, 4, 5));
     printf("Vararg1: %d\n", sum_us(1));
     printf("Vararg0: %d\n", sum_us());
@@ -561,7 +561,7 @@ loop.exit8:                                       ; preds = %loop.cond2
   %46 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %44, i32 0, i32 1
   %hi = load i64, i64* %46, align 8
   %47 = call i32 @test_sum_us(i8* %lo, i64 %hi)
-  %48 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([22 x i8], [22 x i8]* @.str.13, i32 0, i32 0), i32 %47)
+  %48 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([20 x i8], [20 x i8]* @.str.13, i32 0, i32 0), i32 %47)
   %add9 = add i32 %40, %48
   store i32 %add9, i32* %fro, align 4
   %49 = load i32, i32* %fro, align 4
@@ -583,7 +583,7 @@ loop.exit8:                                       ; preds = %loop.cond2
   %60 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %58, i32 0, i32 1
   %hi12 = load i64, i64* %60, align 8
   %61 = call i32 @test_sum_us(i8* %lo11, i64 %hi12)
-  %62 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([21 x i8], [21 x i8]* @.str.16, i32 0, i32 0), i32 %61)
+  %62 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @.str.16, i32 0, i32 0), i32 %61)
   %63 = getelementptr inbounds %"int[]", %"int[]"* %vararg13, i32 0, i32 1
   %64 = getelementptr inbounds %"int[]", %"int[]"* %vararg13, i32 0, i32 0
   %65 = bitcast %"int[]"* %z to { i8*, i64 }*
@@ -592,7 +592,7 @@ loop.exit8:                                       ; preds = %loop.cond2
   %67 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %65, i32 0, i32 1
   %hi15 = load i64, i64* %67, align 8
   %68 = call i32 @test_sum_us(i8* %lo14, i64 %hi15)
-  %69 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([21 x i8], [21 x i8]* @.str.17, i32 0, i32 0), i32 %68)
+  %69 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @.str.17, i32 0, i32 0), i32 %68)
   %70 = getelementptr inbounds [4 x i32], [4 x i32]* %varargslots, i64 0, i64 0
   store i32 1, i32* %70, align 4
   %71 = getelementptr inbounds [4 x i32], [4 x i32]* %varargslots, i64 0, i64 1

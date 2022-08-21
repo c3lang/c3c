@@ -156,12 +156,12 @@ fn void main()
     Foo ddx;
     int fro = 3;
     int[4] x = { 1, 2, 3, 3 };
-    fro += printf("1Vararg4unsplatA: %d\n", sum_us(...x));
+    fro += printf("1Vararg4splatA: %d\n", sum_us(...x));
     printf("%d\n", fro);
     int[] z = &x;
     int[3] de = { 1, 2, 3 };
-    printf("Vararg4unsplatB: %d\n", sum_us(...&x));
-    printf("Vararg4unsplatC: %d\n", sum_us(...z));
+    printf("Vararg4splatB: %d\n", sum_us(...&x));
+    printf("Vararg4splatC: %d\n", sum_us(...z));
     printf("Vararg4: %d\n", sum_us(1, 2, 4, 5));
     printf("Vararg1: %d\n", sum_us(1));
     printf("Vararg0: %d\n", sum_us());

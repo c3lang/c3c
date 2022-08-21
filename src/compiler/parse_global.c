@@ -1055,84 +1055,153 @@ bool parse_next_is_typed_parameter(ParseContext *c)
 	}
 }
 
+INLINE bool is_end_of_param_list(ParseContext *c)
+{
+	return tok_is(c, TOKEN_EOS) || tok_is(c, TOKEN_RPAREN);
+}
 /**
  * parameters ::= (parameter (',' parameter)*)?
  * non_type_ident = IDENT | HASH_IDENT | CT_IDENT
  * parameter ::= type ELLIPSIS? (non_type_ident ('=' expr))?
  *             | ELLIPSIS (CT_TYPE_IDENT | non_type_ident ('=' expr)?)?
  */
-bool parse_parameters(ParseContext *c, Visibility visibility, Decl ***params_ref)
+bool parse_parameters(ParseContext *c, Visibility visibility, Decl ***params_ref, Decl **body_params,
+					  Variadic *variadic, unsigned *vararg_index_ref)
 {
 	Decl** params = NULL;
 	bool var_arg_found = false;
 
-	while (!tok_is(c, TOKEN_EOS) && !tok_is(c, TOKEN_RPAREN))
+	while (!is_end_of_param_list(c))
 	{
-		TypeInfo *type = NULL;
-
 		bool ellipsis = try_consume(c, TOKEN_ELLIPSIS);
 
-		if (!ellipsis && parse_next_is_typed_parameter(c))
+		// Check for "raw" variadic arguments. This is allowed on C functions and macros.
+		if (ellipsis)
 		{
+			// In the future maybe this
+			if (!is_end_of_param_list(c) && !tok_is(c, TOKEN_COMMA))
+			{
+				SEMA_ERROR_HERE("Expected ')' here.");
+				return false;
+			}
+			// Variadics might not be allowed
+			if (!variadic)
+			{
+				SEMA_ERROR_LAST("Variadic parameters are not allowed.");
+				return false;
+			}
+			// Check that we only have one variadic parameter.
+			if (var_arg_found)
+			{
+				SEMA_ERROR_LAST("Only a single variadic parameter is allowed.");
+				return false;
+			}
+			// Set the variadic type and insert a dummy argument.
+			*variadic = VARIADIC_RAW;
+			*vararg_index_ref = vec_size(params);
+			var_arg_found = true;
+			vec_add(params, NULL);
+			if (!try_consume(c, TOKEN_COMMA)) break;
+			continue;
+		}
+
+		// Now we have the following possibilities: "foo", "Foo foo", "Foo... foo", "foo...", "Foo"
+		TypeInfo *type = NULL;
+		if (parse_next_is_typed_parameter(c))
+		{
+			// Parse the type,
 			ASSIGN_TYPE_OR_RET(type, parse_optional_type(c), false);
 			ellipsis = try_consume(c, TOKEN_ELLIPSIS);
+			// We might have Foo...
+			if (ellipsis)
+			{
+				if (!variadic)
+				{
+					SEMA_ERROR_HERE("Variadic arguments are not allowed.");
+					return false;
+				}
+				if (var_arg_found)
+				{
+					sema_error_at(extend_span_with_token(type->span, c->prev_span), "Only a single variadic parameter is allowed.");
+					return false;
+				}
+				*variadic = VARIADIC_TYPED;
+			}
 		}
 
-		if (ellipsis && var_arg_found)
-		{
-			SEMA_ERROR_LAST("Only a single vararg parameter is allowed.");
-			return false;
-		}
-
+		// We have parsed the optional type, next get the optional variable name
 		VarDeclKind param_kind;
 		const char *name = NULL;
 		SourceSpan span = c->span;
 		bool no_name = false;
-		bool vararg_implicit = false;
 		switch (c->tok)
 		{
 			case TOKEN_CONST_IDENT:
 			case TOKEN_CT_CONST_IDENT:
+				// We reserve upper case constants for globals.
 				SEMA_ERROR_HERE("Parameter names may not be all uppercase.");
 				return false;
 			case TOKEN_IDENT:
-				// normal foo
+				// normal "foo"
 				name = symstr(c);
 				param_kind = VARDECL_PARAM;
+				advance_and_verify(c, TOKEN_IDENT);
 				// Check for "foo..." which defines an implicit "any" vararg
-				if (peek(c) == TOKEN_ELLIPSIS)
+				if (try_consume(c, TOKEN_ELLIPSIS))
 				{
+					// Did we get Foo... foo...
 					if (ellipsis)
 					{
-						SEMA_ERROR_HERE("Unexpected '...' here.");
+						SEMA_ERROR_HERE("Unexpected '...' following a vararg declaration.");
 						return false;
 					}
-					advance(c);
+					ellipsis = true;
+					if (!variadic)
+					{
+						sema_error_at(extend_span_with_token(span, c->span), "Variadic parameters are not allowed.");
+						return false;
+					}
+					// Did we get Foo foo..., then that's an error.
 					if (type)
 					{
-						SEMA_ERROR_HERE("The '...' should appear after the type.");
+						SEMA_ERROR_HERE("For typed varargs '...', needs to appear after the type.");
 						return false;
 					}
+					// This is "foo..."
+					*variadic = VARIADIC_ANY;
+					// We generate the type as type_any
 					type = type_info_new_base(type_any, c->span);
-					ellipsis = true;
-					vararg_implicit = true;
 				}
 				break;
 			case TOKEN_CT_IDENT:
 				// ct_var $foo
 				name = symstr(c);
+				advance_and_verify(c, TOKEN_CT_IDENT);
+				// This will catch Type... $foo and $foo..., neither is allowed.
+				if (ellipsis || peek(c) == TOKEN_ELLIPSIS)
+				{
+					SEMA_ERROR_HERE("Compile time parameters may not be varargs, use untyped macro varargs '...' instead.");
+					return false;
+				}
 				param_kind = VARDECL_PARAM_CT;
 				break;
 			case TOKEN_AMP:
 				// reference &foo
-				advance(c);
+				advance_and_verify(c, TOKEN_AMP);
 				name = symstr(c);
-				span = extend_span_with_token(span, c->span);
-				if (!tok_is(c, TOKEN_IDENT))
+				if (!try_consume(c, TOKEN_IDENT))
 				{
-					SEMA_ERROR_HERE("Only normal variables may be passed by reference.");
+					SEMA_ERROR_HERE("A regular variable name, e.g. 'foo' was expected after the '&'.");
 					return false;
 				}
+				// This will catch Type... &foo and &foo..., neighter is allowed.
+				if (ellipsis || try_consume(c, TOKEN_ELLIPSIS))
+				{
+					SEMA_ERROR_HERE("Reference parameters may not be varargs, use untyped macro varargs '...' instead.");
+					return false;
+				}
+				// Span includes the "&"
+				span = extend_span_with_token(span, c->span);
 				param_kind = VARDECL_PARAM_REF;
 				break;
 			case TOKEN_HASH_TYPE_IDENT:
@@ -1142,19 +1211,32 @@ bool parse_parameters(ParseContext *c, Visibility visibility, Decl ***params_ref
 			case TOKEN_HASH_IDENT:
 				// expression #foo
 				name = symstr(c);
+				advance_and_verify(c, TOKEN_HASH_IDENT);
+				if (ellipsis || try_consume(c, TOKEN_ELLIPSIS))
+				{
+					SEMA_ERROR_HERE("Expression parameters may not be varargs, use untyped macro varargs '...' instead.");
+					return false;
+				}
 				param_kind = VARDECL_PARAM_EXPR;
 				break;
 				// Compile time type $Type
 			case TOKEN_CT_TYPE_IDENT:
 				name = symstr(c);
+				advance_and_verify(c, TOKEN_CT_TYPE_IDENT);
+				if (ellipsis || try_consume(c, TOKEN_ELLIPSIS))
+				{
+					SEMA_ERROR_HERE("Expression parameters may not be varargs, use untyped macro varargs '...' instead.");
+					return false;
+				}
 				param_kind = VARDECL_PARAM_CT_TYPE;
 				break;
 			case TOKEN_COMMA:
 			case TOKEN_EOS:
 			case TOKEN_RPAREN:
+				// Handle "Type..." and "Type"
 				if (!type && !ellipsis)
 				{
-					SEMA_ERROR_HERE("Expected a parameter.");
+					sema_error_at_after(c->prev_span, "Expected a parameter.");
 					return false;
 				}
 				no_name = true;
@@ -1162,14 +1244,6 @@ bool parse_parameters(ParseContext *c, Visibility visibility, Decl ***params_ref
 				param_kind = VARDECL_PARAM;
 				break;
 			default:
-				if (!type && parse_next_may_be_type(c))
-				{
-					ASSIGN_TYPE_OR_RET(type, parse_optional_type(c), false);
-					param_kind = VARDECL_PARAM;
-					no_name = true;
-					span = type->span;
-					break;
-				}
 				SEMA_ERROR_HERE("Expected a parameter.");
 				return false;
 		}
@@ -1182,16 +1256,18 @@ bool parse_parameters(ParseContext *c, Visibility visibility, Decl ***params_ref
 		param->var.type_info = type;
 		if (!no_name)
 		{
-			advance(c);
 			if (try_consume(c, TOKEN_EQ))
 			{
 				if (!parse_decl_initializer(c, param, false)) return poisoned_decl;
 			}
 		}
 		if (!parse_attributes(c, &param->attributes)) return false;
-		var_arg_found |= ellipsis;
-		param->var.vararg = ellipsis;
-		param->var.vararg_implicit = vararg_implicit;
+		if (ellipsis)
+		{
+			var_arg_found = true;
+			param->var.vararg = ellipsis;
+			*vararg_index_ref = vec_size(params);
+		}
 		vec_add(params, param);
 		if (!try_consume(c, TOKEN_COMMA)) break;
 	}
@@ -1204,31 +1280,19 @@ bool parse_parameters(ParseContext *c, Visibility visibility, Decl ***params_ref
  *
  * parameter_type_list ::= '(' parameters ')'
  */
-static inline bool parse_parameter_list(ParseContext *c, Visibility parent_visibility, FunctionSignature *signature, bool is_interface)
+static inline bool parse_fn_parameter_list(ParseContext *c, Visibility parent_visibility, FunctionSignature *signature, bool is_interface)
 {
 	Decl **decls = NULL;
 	CONSUME_OR_RET(TOKEN_LPAREN, false);
-	if (!parse_parameters(c, parent_visibility, &decls)) return false;
+	Variadic variadic = VARIADIC_NONE;
+	unsigned vararg_index = 0;
+	if (!parse_parameters(c, parent_visibility, &decls, NULL, &variadic, &vararg_index)) return false;
 	CONSUME_OR_RET(TOKEN_RPAREN, false);
 
+	signature->vararg_index = vararg_index;
 	signature->params = decls;
-	Decl *last = VECLAST(decls);
+	signature->variadic = variadic;
 
-	// The last parameter may hold a vararg
-	if (last && last->var.vararg)
-	{
-		// Is it "(foo...)" (any) or "(int... foo)" (typed)?
-		if (last->var.type_info)
-		{
-			signature->variadic = last->var.vararg_implicit ? VARIADIC_ANY : VARIADIC_TYPED;
-		}
-		else
-		{
-			// Remove the last element if it's a raw variant, i.e. "(...)"
-			vec_pop(decls);
-			signature->variadic = VARIADIC_RAW;
-		}
-	}
 	return true;
 }
 
@@ -1459,14 +1523,18 @@ static inline Decl *parse_top_level_const_declaration(ParseContext *c, Visibilit
  *
  * trailing_block_parameter ::= '@' IDENT ( '(' parameters ')' )?
  */
-static bool parse_macro_arguments(ParseContext *c, Visibility visibility, Decl ***params_ref, DeclId *body_param_ref)
+static bool parse_macro_arguments(ParseContext *c, Visibility visibility, Decl *macro)
 {
 	CONSUME_OR_RET(TOKEN_LPAREN, false);
-	*params_ref = NULL;
-	*body_param_ref = 0;
 
 	// Parse the regular parameters.
-	if (!parse_parameters(c, visibility, params_ref)) return false;
+	Variadic variadic = VARIADIC_NONE;
+	unsigned vararg_index = 0;
+	Decl **params = NULL;
+	if (!parse_parameters(c, visibility, &params, NULL, &variadic, &vararg_index)) return false;
+	macro->macro_decl.parameters = params;
+	macro->macro_decl.vararg_index = vararg_index;
+	macro->macro_decl.variadic = variadic;
 
 	// Do we have trailing block parameters?
 	if (try_consume(c, TOKEN_EOS))
@@ -1476,10 +1544,14 @@ static bool parse_macro_arguments(ParseContext *c, Visibility visibility, Decl *
 		TRY_CONSUME_OR_RET(TOKEN_AT_IDENT, "Expected an ending ')' or a block parameter on the format '@block(...).", false);
 		if (try_consume(c, TOKEN_LPAREN))
 		{
-			if (!parse_parameters(c, visibility, &body_param->body_params)) return false;
+			if (!parse_parameters(c, visibility, &body_param->body_params, NULL, NULL, NULL)) return false;
 			CONSUME_OR_RET(TOKEN_RPAREN, false);
 		}
-		*body_param_ref = declid(body_param);
+		macro->macro_decl.body_param = declid(body_param);
+	}
+	else
+	{
+		macro->macro_decl.body_param = 0;
 	}
 	CONSUME_OR_RET(TOKEN_RPAREN, false);
 	return true;
@@ -1535,7 +1607,7 @@ static inline Decl *parse_define_type(ParseContext *c, Visibility visibility)
 		decl->typedef_decl.is_distinct = distinct;
 		ASSIGN_TYPE_OR_RET(TypeInfo *type_info, parse_optional_type(c), poisoned_decl);
 		decl->typedef_decl.function_signature.returntype = type_infoid(type_info);
-		if (!parse_parameter_list(c, decl->visibility, &(decl->typedef_decl.function_signature), true))
+		if (!parse_fn_parameter_list(c, decl->visibility, &(decl->typedef_decl.function_signature), true))
 		{
 			return poisoned_decl;
 		}
@@ -1676,7 +1748,7 @@ static inline Decl *parse_define_attribute(ParseContext *c, Visibility visibilit
 
 	if (try_consume(c, TOKEN_LPAREN))
 	{
-		if (!parse_parameters(c, visibility, &decl->attr_decl.params)) return poisoned_decl;
+		if (!parse_parameters(c, visibility, &decl->attr_decl.params, NULL, NULL, NULL)) return poisoned_decl;
 		CONSUME_OR_RET(TOKEN_RPAREN, poisoned_decl);
 	}
 
@@ -1802,7 +1874,7 @@ static inline Decl *parse_macro_declaration(ParseContext *c, Visibility visibili
 	TypeInfoId *method_type_ref = &decl->macro_decl.type_parent;
 	if (!parse_func_macro_header(c, true, rtype_ref, method_type_ref, &decl->name, &decl->span)) return poisoned_decl;
 	const char *block_parameter = NULL;
-	if (!parse_macro_arguments(c, visibility, &decl->macro_decl.parameters, &decl->macro_decl.body_param)) return poisoned_decl;
+	if (!parse_macro_arguments(c, visibility, decl)) return poisoned_decl;
 
 	if (!parse_attributes(c, &decl->attributes)) return poisoned_decl;
 	ASSIGN_ASTID_OR_RET(decl->macro_decl.body, parse_stmt(c), poisoned_decl);
@@ -1988,7 +2060,7 @@ static inline Decl *parse_enum_declaration(ParseContext *c, Visibility visibilit
  *  	;
  *
  * func_declaration
- *  	: FUNC failable_type func_name '(' opt_parameter_type_list ')' opt_attributes
+ *  	: FN failable_type func_name '(' opt_parameter_type_list ')' opt_attributes
  *		;
  *
  * @param visibility
@@ -2009,7 +2081,7 @@ static inline Decl *parse_func_definition(ParseContext *c, Visibility visibility
 		SEMA_ERROR(func, "Function names may not use '@'.");
 		return false;
 	}
-	if (!parse_parameter_list(c, visibility, &(func->func_decl.function_signature), is_interface)) return poisoned_decl;
+	if (!parse_fn_parameter_list(c, visibility, &(func->func_decl.function_signature), is_interface)) return poisoned_decl;
 	if (!parse_attributes(c, &func->attributes)) return poisoned_decl;
 
 	// TODO remove

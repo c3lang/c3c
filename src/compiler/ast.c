@@ -288,6 +288,7 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_CT_IDENT:
 		case EXPR_CT_CALL:
 		case EXPR_TYPEID:
+		case EXPR_CT_ARG:
 			return true;
 		case EXPR_ARGV_TO_SUBARRAY:
 		case EXPR_BITASSIGN:

@@ -298,10 +298,10 @@ static bool parse_param_path(ParseContext *c, DesignatorElement ***path)
  *
  * parameter ::= (param_path '=')? expr
  */
-bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *unsplat)
+bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *splat)
 {
 	*result = NULL;
-	if (unsplat) *unsplat = false;
+	if (splat) *splat = false;
 	while (1)
 	{
 		Expr *expr = NULL;
@@ -324,9 +324,9 @@ bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *
 		}
 		else
 		{
-			if (unsplat)
+			if (splat)
 			{
-				*unsplat = try_consume(c, TOKEN_ELLIPSIS);
+				*splat = try_consume(c, TOKEN_ELLIPSIS);
 			}
 			ASSIGN_EXPR_OR_RET(expr, parse_expr_or_initializer_list(c), false);
 		}
@@ -336,7 +336,7 @@ bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *
 			return true;
 		}
 		if (tok_is(c, param_end)) return true;
-		if (unsplat && *unsplat)
+		if (splat && *splat)
 		{
 			SEMA_ERROR_HERE("'...' is only allowed on the last argument in a call.");
 			return false;
@@ -657,13 +657,13 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left)
 
 	Expr **params = NULL;
 	advance_and_verify(c, TOKEN_LPAREN);
-	bool unsplat = false;
+	bool splat = false;
 	Decl **body_args = NULL;
 	if (!tok_is(c, TOKEN_RPAREN))
 	{
 		// Pick a modest guess.
 		params = VECNEW(Expr*, 4);
-		if (!parse_arg_list(c, &params, TOKEN_RPAREN, &unsplat)) return poisoned_expr;
+		if (!parse_arg_list(c, &params, TOKEN_RPAREN, &splat)) return poisoned_expr;
 	}
 	if (try_consume(c, TOKEN_EOS) && !tok_is(c, TOKEN_RPAREN))
 	{
@@ -672,7 +672,7 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left)
 			SEMA_ERROR_LAST("Expected an ending ')'. Did you forget a ')' before this ';'?");
 			return poisoned_expr;
 		}
-		if (!parse_parameters(c, VISIBLE_LOCAL, &body_args)) return poisoned_expr;
+		if (!parse_parameters(c, VISIBLE_LOCAL, &body_args, NULL, NULL, NULL)) return poisoned_expr;
 	}
 	if (!tok_is(c, TOKEN_RPAREN))
 	{
@@ -684,7 +684,7 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left)
 	Expr *call = expr_new_expr(EXPR_CALL, left);
 	call->call_expr.function = exprid(left);
 	call->call_expr.arguments = params;
-	call->call_expr.unsplat_last = unsplat;
+	call->call_expr.splat_vararg = splat;
 	call->call_expr.body_arguments = body_args;
 	RANGE_EXTEND_PREV(call);
 	if (body_args && !tok_is(c, TOKEN_LBRACE))
@@ -907,6 +907,22 @@ static Expr *parse_ct_call(ParseContext *c, Expr *left)
 	}
 	expr->ct_call_expr.main_var = internal;
 	expr->ct_call_expr.flat_path = flat_path;
+	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
+	RANGE_EXTEND_PREV(expr);
+	return expr;
+}
+
+static Expr *parse_ct_arg(ParseContext *c, Expr *left)
+{
+	assert(!left && "Unexpected left hand side");
+	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_ARG);
+	TokenType type = expr->ct_arg_expr.type = c->tok;
+	advance(c);
+	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
+	if (type != TOKEN_CT_VAARG_COUNT)
+	{
+		ASSIGN_EXPRID_OR_RET(expr->ct_arg_expr.arg, parse_expr(c), poisoned_expr);
+	}
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 	RANGE_EXTEND_PREV(expr);
 	return expr;
@@ -1737,4 +1753,5 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_CT_CONVERTIBLE] = { parse_ct_conv, NULL, PREC_NONE },
 		[TOKEN_CT_CASTABLE] = { parse_ct_conv, NULL, PREC_NONE },
 		[TOKEN_LBRACE] = { parse_initializer_list, NULL, PREC_NONE },
+		[TOKEN_CT_VAARG_COUNT] = { parse_ct_arg, NULL, PREC_NONE }
 };

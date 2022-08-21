@@ -213,6 +213,7 @@ typedef enum
 	EXPR_CT_CONV,
 	EXPR_CT_IDENT,
 	EXPR_CT_EVAL,
+	EXPR_CT_ARG,
 	EXPR_COND,
 	EXPR_DECL,
 	EXPR_DESIGNATOR,
@@ -503,33 +504,38 @@ typedef enum
 	TOKEN_VAR,
 	TOKEN_WHILE,
 
-	TOKEN_CT_ALIGNOF,       // $alignof
-	TOKEN_CT_ASSERT,        // $assert
-	TOKEN_CT_CASE,          // $case
-	TOKEN_CT_DEFAULT,       // $default
-	TOKEN_CT_DEFINED,       // $defined
-	TOKEN_CT_FOR,           // $for
-	TOKEN_CT_FOREACH,       // $foreach
-	TOKEN_CT_ELIF,          // $elif
-	TOKEN_CT_ELSE,          // $else
-	TOKEN_CT_EVAL,          // $eval
-	TOKEN_CT_EVALTYPE,      // $evaltype
-	TOKEN_CT_ENDIF,         // $endif
-	TOKEN_CT_ENDSWITCH,     // $endswitch
-	TOKEN_CT_ENDFOR,        // $endfor
-	TOKEN_CT_ENDFOREACH,    // $endforeach
-	TOKEN_CT_EXTNAMEOF,     // $extnameof
-	TOKEN_CT_IF,            // $if
-	TOKEN_CT_NAMEOF,        // $nameof
-	TOKEN_CT_OFFSETOF,      // $offsetof
-	TOKEN_CT_QNAMEOF,       // $qnameof
-	TOKEN_CT_SIZEOF,        // $sizeof
-	TOKEN_CT_STRINGIFY,     // $stringify
-	TOKEN_CT_SWITCH,        // $switch
-	TOKEN_CT_TYPEOF,        // $typeof
-	TOKEN_CT_CONVERTIBLE,   // $convertible
-	TOKEN_CT_CASTABLE,      // $castable
-
+	TOKEN_CT_ALIGNOF,           // $alignof
+	TOKEN_CT_ASSERT,            // $assert
+	TOKEN_CT_CASE,              // $case
+	TOKEN_CT_DEFAULT,           // $default
+	TOKEN_CT_DEFINED,           // $defined
+	TOKEN_CT_FOR,               // $for
+	TOKEN_CT_FOREACH,           // $foreach
+	TOKEN_CT_ELIF,              // $elif
+	TOKEN_CT_ELSE,              // $else
+	TOKEN_CT_EVAL,              // $eval
+	TOKEN_CT_EVALTYPE,          // $evaltype
+	TOKEN_CT_ENDIF,             // $endif
+	TOKEN_CT_ENDSWITCH,         // $endswitch
+	TOKEN_CT_ENDFOR,            // $endfor
+	TOKEN_CT_ENDFOREACH,        // $endforeach
+	TOKEN_CT_EXTNAMEOF,         // $extnameof
+	TOKEN_CT_IF,                // $if
+	TOKEN_CT_NAMEOF,            // $nameof
+	TOKEN_CT_OFFSETOF,          // $offsetof
+	TOKEN_CT_QNAMEOF,           // $qnameof
+	TOKEN_CT_SIZEOF,            // $sizeof
+	TOKEN_CT_STRINGIFY,         // $stringify
+	TOKEN_CT_SWITCH,            // $switch
+	TOKEN_CT_TYPEOF,            // $typeof
+	TOKEN_CT_CONVERTIBLE,       // $convertible
+	TOKEN_CT_CASTABLE,          // $castable
+	TOKEN_CT_VAARG_COUNT,       // $vaarg_count
+	TOKEN_CT_VAARG_GET_TYPE,    // $vaarg_get_type
+	TOKEN_CT_VAARG_GET_CONST,   // $vaarg_get_const,
+	TOKEN_CT_VAARG_GET_REF,     // $vaarg_get_ref,
+	TOKEN_CT_VAARG_GET_ARG,     // $vaarg_get_arg,
+	TOKEN_CT_VAARG_GET_EXPR,    // $vaarg_get_expr,
 	TOKEN_DOCS_START,       // /**
 	TOKEN_DOCS_END,         // */ (may start with an arbitrary number of `*`
 	TOKEN_DOC_DIRECTIVE,    // Any doc directive

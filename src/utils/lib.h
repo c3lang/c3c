@@ -270,9 +270,10 @@ static inline void* expand_(void *vec, size_t element_size)
 #define CONCAT(a, b) CONCAT_INNER(a, b)
 #define VECEACH(_vec, _index) \
 	for (unsigned (_index) = 0, CONCAT(__vecsize_, __LINE__) = vec_size(_vec); (_index) < CONCAT(__vecsize_, __LINE__); (_index)++)
-#define foreach(_vec, _index) \
-	for (unsigned (_index) = 0, CONCAT(__vecsize_, __LINE__) = vec_size(_vec); (_index) < CONCAT(__vecsize_, __LINE__); (_index)++)
-
+#define foreach(type__, vec__) \
+	type__* foreach_vec__ = vec__; unsigned foreach_len__ = vec_size(foreach_vec__); \
+    type__ val; if (foreach_vec__) val = foreach_vec__[0]; \
+	for (unsigned foreach_index = 0; foreach_index < foreach_len__; val = foreach_vec__[++foreach_index])
 
 #define VECNEW(_type, _capacity) ((_type *)(vec_new_(sizeof(_type), _capacity) + 1))
 #define vec_add(vec_, value_) do { \

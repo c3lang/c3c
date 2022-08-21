@@ -629,36 +629,79 @@ static inline Type *sema_analyse_function_signature(SemaContext *context, CallAB
 {
 	bool all_ok = true;
 	all_ok = sema_resolve_type_info(context, type_infoptr(signature->returntype)) && all_ok;
+
+	// We don't support more than MAX_PARAMS number of params. This makes everything sane.
 	if (vec_size(signature->params) > MAX_PARAMS)
 	{
 		SEMA_ERROR(signature->params[MAX_PARAMS], "Number of params exceeds %d which is unsupported.", MAX_PARAMS);
 		return NULL;
 	}
+
+	// Get param count and variadic type
+	Variadic variadic_type = signature->variadic;
 	unsigned param_count = vec_size(signature->params);
 	Decl **params = signature->params;
 	Type **types = NULL;
+	bool reached_vararg = false;
+
 	for (unsigned i = 0; i < param_count; i++)
 	{
 		Decl *param = params[i];
-		assert(param->resolve_status == RESOLVE_NOT_DONE);
+		// We might run into a raw vararg
+		if (!param)
+		{
+			// Just skip, we'll remove this parameter later.
+			assert(variadic_type == VARIADIC_RAW);
+			reached_vararg = true;
+			continue;
+		}
+		assert(param->resolve_status == RESOLVE_NOT_DONE && "The param shouldn't have been resolved yet.");
 		param->resolve_status = RESOLVE_RUNNING;
 		bool has_default;
+		// Analyse the param
 		if (!sema_analyse_function_param(context, param, is_real_function, &has_default))
 		{
 			decl_poison(param);
 			all_ok = false;
 			continue;
 		}
+		if (reached_vararg)
+		{
+			// If we already reached a vararg (as a previous argument) and we have a
+			// parameter without a name.
+			if (!param->name)
+			{
+				SEMA_ERROR(param, "A parameter name was expected, as parameters after varargs must be named.");
+				decl_poison(param);
+				return NULL;
+			}
+			if (variadic_type == VARIADIC_RAW)
+			{
+				SEMA_ERROR(param, "C-style varargs cannot be followed by regular parameters.");
+				return NULL;
+			}
+		}
+		// Disallow "void" args and repeating the same parameter name.
+		// This must be done after checking raw varargs
 		if (!sema_check_param_uniqueness_and_type(params, param, i, param_count))
 		{
 			all_ok = false;
 			continue;
 		}
+		// Update whether this was a vararg, and update "default" for the signature.
+		reached_vararg |= param->var.vararg;
 		signature->has_default = signature->has_default || has_default;
+		// Resolution is done.
 		param->resolve_status = RESOLVE_DONE;
+		// Add it to the type for the type signature.
 		vec_add(types, param->type);
 	}
-
+	// Remove the last empty value.
+	if (variadic_type == VARIADIC_RAW)
+	{
+		assert(VECLAST(params) == NULL && "The last parameter must have been a raw variadic.");
+		vec_pop(signature->params);
+	}
 	if (!all_ok) return NULL;
 
 	return type_get_func(signature, abi);

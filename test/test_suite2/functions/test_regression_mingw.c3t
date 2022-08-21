@@ -158,12 +158,12 @@ fn void main()
     Foo ddx;
     int fro = 3;
     int[4] x = { 1, 2, 3, 3 };
-    fro += printf("1Vararg4unsplatA: %d\n", sum_us(...x));
+    fro += printf("1Vararg4splatA: %d\n", sum_us(...x));
     printf("%d\n", fro);
     int[] z = &x;
     int[3] de = { 1, 2, 3 };
-    printf("Vararg4unsplatB: %d\n", sum_us(...&x));
-    printf("Vararg4unsplatC: %d\n", sum_us(...z));
+    printf("Vararg4splatB: %d\n", sum_us(...&x));
+    printf("Vararg4splatC: %d\n", sum_us(...z));
     printf("Vararg4: %d\n", sum_us(1, 2, 4, 5));
     printf("Vararg1: %d\n", sum_us(1));
     printf("Vararg0: %d\n", sum_us());
@@ -281,11 +281,11 @@ $"ct$test_MyEnum" = comdat any
 @.str.10 = private unnamed_addr constant [17 x i8] c"Mult int was %d\0A\00", align 1
 @.str.11 = private unnamed_addr constant [20 x i8] c"Mult double was %f\0A\00", align 1
 @.__const.12 = private unnamed_addr constant [4 x i32] [i32 1, i32 2, i32 3, i32 3], align 16
-@.str.13 = private unnamed_addr constant [22 x i8] c"1Vararg4unsplatA: %d\0A\00", align 1
+@.str.13 = private unnamed_addr constant [20 x i8] c"1Vararg4splatA: %d\0A\00", align 1
 @.str.14 = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
 @.__const.15 = private unnamed_addr constant [3 x i32] [i32 1, i32 2, i32 3], align 4
-@.str.16 = private unnamed_addr constant [21 x i8] c"Vararg4unsplatB: %d\0A\00", align 1
-@.str.17 = private unnamed_addr constant [21 x i8] c"Vararg4unsplatC: %d\0A\00", align 1
+@.str.16 = private unnamed_addr constant [19 x i8] c"Vararg4splatB: %d\0A\00", align 1
+@.str.17 = private unnamed_addr constant [19 x i8] c"Vararg4splatC: %d\0A\00", align 1
 @.str.18 = private unnamed_addr constant [13 x i8] c"Vararg4: %d\0A\00", align 1
 @.str.19 = private unnamed_addr constant [13 x i8] c"Vararg1: %d\0A\00", align 1
 @.str.20 = private unnamed_addr constant [13 x i8] c"Vararg0: %d\0A\00", align 1
@@ -404,7 +404,7 @@ if.exit:                                          ; preds = %entry
   %13 = getelementptr inbounds %"int[]", ptr %vararg, i32 0, i32 1
   %14 = getelementptr inbounds %"int[]", ptr %vararg, i32 0, i32 0
   store %"int[]" %12, ptr %indirectarg, align 8
-  %15 = call i32 @test_sum_us(ptr %indirectarg)
+  %15 = call i32 @test_sum_us(ptr align 8 %indirectarg)
   %add = add i32 %6, %15
   %add2 = add i32 %3, %add
   store i32 %add2, ptr %sum, align 4
@@ -576,7 +576,7 @@ loop.exit8:                                       ; preds = %loop.cond2
   store i64 4, ptr %34, align 8
   store ptr %x, ptr %35, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %indirectarg, ptr align 8 %vararg, i32 16, i1 false)
-  %36 = call i32 @test_sum_us(ptr %indirectarg)
+  %36 = call i32 @test_sum_us(ptr align 8 %indirectarg)
   %37 = call i32 (ptr, ...) @printf(ptr @.str.13, i32 %36)
   %add9 = add i32 %33, %37
   store i32 %add9, ptr %fro, align 4
@@ -591,12 +591,12 @@ loop.exit8:                                       ; preds = %loop.cond2
   store i64 4, ptr %42, align 8
   store ptr %x, ptr %43, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %indirectarg11, ptr align 8 %vararg10, i32 16, i1 false)
-  %44 = call i32 @test_sum_us(ptr %indirectarg11)
+  %44 = call i32 @test_sum_us(ptr align 8 %indirectarg11)
   %45 = call i32 (ptr, ...) @printf(ptr @.str.16, i32 %44)
   %46 = getelementptr inbounds %"int[]", ptr %vararg12, i32 0, i32 1
   %47 = getelementptr inbounds %"int[]", ptr %vararg12, i32 0, i32 0
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %indirectarg13, ptr align 8 %z, i32 16, i1 false)
-  %48 = call i32 @test_sum_us(ptr %indirectarg13)
+  %48 = call i32 @test_sum_us(ptr align 8 %indirectarg13)
   %49 = call i32 (ptr, ...) @printf(ptr @.str.17, i32 %48)
   %50 = getelementptr inbounds [4 x i32], ptr %varargslots, i64 0, i64 0
   store i32 1, ptr %50, align 4
@@ -611,7 +611,7 @@ loop.exit8:                                       ; preds = %loop.cond2
   %55 = getelementptr inbounds %"int[]", ptr %vararg14, i32 0, i32 0
   store ptr %varargslots, ptr %55, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %indirectarg15, ptr align 8 %vararg14, i32 16, i1 false)
-  %56 = call i32 @test_sum_us(ptr %indirectarg15)
+  %56 = call i32 @test_sum_us(ptr align 8 %indirectarg15)
   %57 = call i32 (ptr, ...) @printf(ptr @.str.18, i32 %56)
   %58 = getelementptr inbounds [1 x i32], ptr %varargslots17, i64 0, i64 0
   store i32 1, ptr %58, align 4
@@ -620,12 +620,12 @@ loop.exit8:                                       ; preds = %loop.cond2
   %60 = getelementptr inbounds %"int[]", ptr %vararg16, i32 0, i32 0
   store ptr %varargslots17, ptr %60, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %indirectarg18, ptr align 8 %vararg16, i32 16, i1 false)
-  %61 = call i32 @test_sum_us(ptr %indirectarg18)
+  %61 = call i32 @test_sum_us(ptr align 8 %indirectarg18)
   %62 = call i32 (ptr, ...) @printf(ptr @.str.19, i32 %61)
   %63 = getelementptr inbounds %"int[]", ptr %vararg19, i32 0, i32 1
   store i64 0, ptr %63, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %indirectarg20, ptr align 8 %vararg19, i32 16, i1 false)
-  %64 = call i32 @test_sum_us(ptr %indirectarg20)
+  %64 = call i32 @test_sum_us(ptr align 8 %indirectarg20)
   %65 = call i32 (ptr, ...) @printf(ptr @.str.20, i32 %64)
   store ptr null, ptr %a1, align 8
   store ptr null, ptr %b2, align 8

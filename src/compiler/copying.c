@@ -184,6 +184,9 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_BUILTIN:
 		case EXPR_RETVAL:
 			return expr;
+		case EXPR_CT_ARG:
+			MACRO_COPY_EXPRID(expr->ct_arg_expr.arg);
+			return expr;
 		case EXPR_POINTER_OFFSET:
 			MACRO_COPY_EXPRID(expr->pointer_offset_expr.offset);
 			MACRO_COPY_EXPRID(expr->pointer_offset_expr.ptr);
@@ -305,6 +308,17 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			MACRO_COPY_ASTID(expr->call_expr.body);
 			MACRO_COPY_DECL_LIST(expr->call_expr.body_arguments);
 			MACRO_COPY_EXPR_LIST(expr->call_expr.arguments);
+			if (expr->call_expr.varargs)
+			{
+				if (expr->call_expr.splat_vararg)
+				{
+					MACRO_COPY_EXPR(expr->call_expr.splat);
+				}
+				else
+				{
+					MACRO_COPY_EXPR_LIST(expr->call_expr.varargs);
+				}
+			}
 			return expr;
 		case EXPR_SUBSCRIPT:
 		case EXPR_SUBSCRIPT_ADDR:

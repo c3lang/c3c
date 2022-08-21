@@ -39,7 +39,7 @@ entry:
   %4 = getelementptr inbounds %"int[]", ptr %vararg, i32 0, i32 0
   store ptr %varargslots, ptr %4, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %indirectarg, ptr align 8 %vararg, i32 16, i1 false)
-  %5 = call i32 @sum_us(ptr %indirectarg)
+  %5 = call i32 @sum_us(ptr align 8 %indirectarg)
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 4 @.__const, i32 12, i1 false)
   %6 = insertvalue %"int[]" undef, ptr %x, 0
   %7 = insertvalue %"int[]" %6, i64 3, 1
@@ -49,13 +49,13 @@ entry:
   store i64 3, ptr %8, align 8
   store ptr %x, ptr %9, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %indirectarg2, ptr align 8 %vararg1, i32 16, i1 false)
-  %10 = call i32 @sum_us(ptr %indirectarg2)
+  %10 = call i32 @sum_us(ptr align 8 %indirectarg2)
   %11 = getelementptr inbounds %"int[]", ptr %vararg3, i32 0, i32 1
   %12 = getelementptr inbounds %"int[]", ptr %vararg3, i32 0, i32 0
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %indirectarg4, ptr align 8 %z, i32 16, i1 false)
-  %13 = call i32 @sum_us(ptr %indirectarg4)
+  %13 = call i32 @sum_us(ptr align 8 %indirectarg4)
   %14 = getelementptr inbounds %"int[]", ptr %vararg5, i32 0, i32 1
   store i64 0, ptr %14, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %indirectarg6, ptr align 8 %vararg5, i32 16, i1 false)
-  %15 = call i32 @sum_us(ptr %indirectarg6)
+  %15 = call i32 @sum_us(ptr align 8 %indirectarg6)
   ret void

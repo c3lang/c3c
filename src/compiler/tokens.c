@@ -362,6 +362,18 @@ const char *token_type_to_string(TokenType type)
 			return "$extnameof";
 		case TOKEN_CT_IF:
 			return "$if";
+		case TOKEN_CT_VAARG_COUNT:
+			return "$vaarg_count";
+		case TOKEN_CT_VAARG_GET_TYPE:
+			return "$vaarg_get_type";
+		case TOKEN_CT_VAARG_GET_CONST:
+			return "$vaarg_get_const";
+		case TOKEN_CT_VAARG_GET_ARG:
+			return "$vaarg_get_arg";
+		case TOKEN_CT_VAARG_GET_REF:
+			return "$vaarg_get_ref";
+		case TOKEN_CT_VAARG_GET_EXPR:
+			return "$vaarg_get_expr";
 		case TOKEN_CT_NAMEOF:
 			return "$nameof";
 		case TOKEN_CT_OFFSETOF:

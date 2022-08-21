@@ -482,6 +482,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_COMPILER_CONST:
 		case EXPR_POISONED:
 		case EXPR_ARGV_TO_SUBARRAY:
+		case EXPR_CT_ARG:
 			UNREACHABLE
 		case EXPR_NOP:
 			return true;
@@ -674,6 +675,7 @@ static bool sema_check_expr_lvalue(Expr *top_expr, Expr *expr)
 		case EXPR_VARIANT:
 		case EXPR_BUILTIN_ACCESS:
 		case EXPR_POINTER_OFFSET:
+		case EXPR_CT_ARG:
 			goto ERR;
 	}
 	UNREACHABLE
@@ -772,6 +774,7 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_VARIANT:
 		case EXPR_BUILTIN_ACCESS:
 		case EXPR_POINTER_OFFSET:
+		case EXPR_CT_ARG:
 			return false;
 	}
 	UNREACHABLE
@@ -1352,7 +1355,7 @@ static inline bool sema_expr_analyse_intrinsic_fp_invocation(SemaContext *contex
 }
 
 
-static inline bool expr_may_unpack_as_vararg(Expr *expr, Type *variadic_base_type)
+static inline bool expr_may_splat_as_vararg(Expr *expr, Type *variadic_base_type)
 {
 	Type *base_type = variadic_base_type->canonical;
 	Type *canonical = expr->type->canonical;
@@ -1373,12 +1376,14 @@ typedef struct
 {
 	bool macro;
 	bool func_pointer;
+	const char *name;
 	const char *block_parameter;
 	Decl **params;
 	Type **param_types;
 	Expr *struct_var;
 	unsigned param_count;
 	Variadic variadic;
+	unsigned vararg_index;
 } CalledDecl;
 
 static inline bool expr_promote_vararg(SemaContext *context, Expr *arg)
@@ -1450,20 +1455,21 @@ static inline bool sema_check_invalid_body_arguments(SemaContext *context, Expr 
 }
 
 
-static inline bool sema_expand_call_arguments(SemaContext *context, CalledDecl *callee, Expr *call, Expr **args, unsigned func_param_count, Variadic variadic, bool *failable)
+INLINE bool sema_expand_call_arguments(SemaContext *context, CalledDecl *callee, Expr *call, Expr **args, 
+									   unsigned func_param_count, Variadic variadic, unsigned vararg_index, 
+									   bool *failable,
+									   Expr ***varargs_ref,
+									   Expr **vararg_splat_ref)
 {
 	unsigned num_args = vec_size(args);
 	Decl **params = callee->params;
 	bool is_func_ptr = callee->func_pointer;
 
-	// 1. We need at least as many function locations as we have parameters.
-	unsigned entries_needed = func_param_count > num_args ? func_param_count : num_args;
-	Expr **actual_args = VECNEW(Expr*, entries_needed);
-	for (unsigned i = 0; i < entries_needed; i++) vec_add(actual_args, NULL);
-
+	Expr **actual_args = VECNEW(Expr*, func_param_count);
+	for (unsigned i = 0; i < func_param_count; i++) vec_add(actual_args, NULL);
 
 	// 2. Loop through the parameters.
-	bool uses_named_parameters = false;
+	bool has_named = false;
 	for (unsigned i = 0; i < num_args; i++)
 	{
 		Expr *arg = args[i];
@@ -1476,14 +1482,15 @@ static inline bool sema_expand_call_arguments(SemaContext *context, CalledDecl *
 				SEMA_ERROR(arg, "Named parameters are not allowed with function pointer calls.");
 				return false;
 			}
-			// 8a. We have named parameters, that will add some restrictions.
-			uses_named_parameters = true;
 
-			// 8b. Find the location of the parameter.
+			// Find the location of the parameter.
 			int index = find_index_of_named_parameter(params, arg);
 
-			// 8c. If it's not found then this is an error.
+			// If it's not found then this is an error.
 			if (index < 0) return false;
+
+			// We have named parameters, that will add some restrictions.
+			has_named = true;
 
 			// 8d. We might actually be finding the typed vararg at the end,
 			//     this is an error.
@@ -1506,52 +1513,55 @@ static inline bool sema_expand_call_arguments(SemaContext *context, CalledDecl *
 			continue;
 		}
 
-		// 9. Check for previous use of named parameters, this is not allowed
-		//     like foo(.a = 1, 3) => error.
-		if (uses_named_parameters)
+		if (has_named)
 		{
-			SEMA_ERROR(arg, "A regular parameter cannot follow a named parameter.");
+			SEMA_ERROR(args[i - 1], "Named arguments must be placed after positional arguments.");
+			return false;
+		}
+
+		// 11. We might have a typed variadic argument.
+		if (variadic == VARIADIC_NONE && i >= func_param_count)
+		{
+			// 15. We have too many parameters...
+			SEMA_ERROR(arg, "This argument would exceed the number of parameters, did you add too many arguments?");
 			return false;
 		}
 
 		// 10. If we exceed the function parameter count (remember we reduced this by one
 		//     in the case of typed vararg) we're now in a variadic list.
-		if (i >= func_param_count)
+		if (variadic != VARIADIC_NONE && i >= vararg_index)
 		{
-			// 11. We might have a typed variadic argument.
-			if (variadic == VARIADIC_NONE)
-			{
-				// 15. We have too many parameters...
-				SEMA_ERROR(arg, "This argument would exceed the number of parameters, did you add too many arguments?");
-				return false;
-			}
 
-			// 11a. Look if we did an unsplat
-			if (call->call_expr.unsplat_last)
+			// 11a. Look if we did a splat
+			if (call->call_expr.splat_vararg)
 			{
-				// 11b. Is this the last argument, or did we get some before the unpack?
+				// 11b. Is this the last argument, or did we get some before the splat?
 				if (i < num_args - 1)
 				{
 					SEMA_ERROR(arg,
-					           "This looks like a variable argument before an unpacked variable which isn't allowed. Did you add too many arguments?");
+					           "This looks like a variable argument before an splatted variable which isn't allowed. Did you add too many arguments?");
 					return false;
 				}
+				*vararg_splat_ref = arg;
+				continue;
 			}
 			else if (variadic == VARIADIC_ANY)
 			{
 				if (!sema_analyse_expr(context, arg)) return false;
 				expr_insert_addr(arg);
 			}
+			vec_add(*varargs_ref, arg);
+			continue;
 		}
 		actual_args[i] = arg;
 	}
 
 	// 17. Set default values.
-	for (unsigned i = 0; i < entries_needed; i++)
+	for (unsigned i = 0; i < func_param_count; i++)
 	{
 		// 17a. Assigned a value - skip
 		if (actual_args[i]) continue;
-
+		if (i == vararg_index && variadic != VARIADIC_NONE) continue;
 		if (is_func_ptr) goto FAIL_MISSING;
 		// 17b. Set the init expression.
 		Decl *param = params[i];
@@ -1579,26 +1589,31 @@ static inline bool sema_expand_call_arguments(SemaContext *context, CalledDecl *
 FAIL_MISSING:
 
 		// 17c. Vararg not set? That's fine.
-		if (params && params[i]->var.vararg) continue;
+		if (param && params[i]->var.vararg) continue;
 
 		// 17d. Argument missing, that's bad.
-		if (!uses_named_parameters || is_func_ptr || !params[i]->name)
+		if (!has_named || is_func_ptr || !params[i]->name)
 		{
-			if (entries_needed == 1)
+			if (func_param_count == 1)
 			{
-				SEMA_ERROR(call, "A parameter was expected for the call.");
+				SEMA_ERROR(call, "This call expected a parameter of type %s, did you forget it?", type_quoted_error_string(params[i]->type));
+				return false;
+			}
+			if (variadic != VARIADIC_NONE && i > vararg_index)
+			{
+				sema_error_at_after(args[num_args - 1]->span, "Expected '.%s = ...' after this argument.", params[i]->name);
 				return false;
 			}
 			if (num_args)
 			{
-				unsigned needed = entries_needed - num_args;
+				unsigned needed = func_param_count - num_args;
 				SEMA_ERROR(args[num_args - 1],
 						   "Expected %d more %s after this one, did you forget %s?",
-						   needed, needed > 1 ? "arguments" : "argument", needed > 1 ? "them" : "it");
+						   needed, needed == 1 ? "argument" : "arguments", needed == 1 ? "it" : "them");
 			}
 			else
 			{
-				SEMA_ERROR(call, "The call needs %d parameters, please provide them.", entries_needed);
+				SEMA_ERROR(call, "'%s' expects %d parameters, but none was provided.", callee->name, func_param_count);
 			}
 			return false;
 		}
@@ -1638,16 +1653,15 @@ static inline bool sema_expr_analyse_call_invocation(SemaContext *context, Expr 
 		assert(!call->call_expr.is_pointer_call);
 	}
 
-	// 4. Check for unsplat of the last argument.
-	bool unsplat = call->call_expr.unsplat_last;
-	if (unsplat)
+	// 4. Check for splat of the variadic argument.
+	bool splat = call->call_expr.splat_vararg;
+	if (splat)
 	{
 		// 4a. Is this *not* a variadic function/macro? - Then that's an error.
 		if (callee.variadic == VARIADIC_NONE)
 		{
 			SEMA_ERROR(call->call_expr.arguments[num_args - 1],
-			           "Unpacking is only allowed for %s with variable parameters.",
-					   callee.macro ? "macros" : "functions");
+			           "Using the splat operator is only allowed on vararg parameters.");
 			return false;
 		}
 	}
@@ -1661,71 +1675,84 @@ static inline bool sema_expr_analyse_call_invocation(SemaContext *context, Expr 
 	if (callee.variadic == VARIADIC_TYPED || callee.variadic == VARIADIC_ANY)
 	{
 		// 7a. The parameter type is <type>[], so we get the <type>
-		Type *last_type = callee.macro ? callee.params[func_param_count - 1]->type : callee.param_types[func_param_count - 1];
-		assert(last_type->type_kind == TYPE_SUBARRAY);
-		variadic_type = last_type->array.base;
-		// 7b. The last function parameter is implicit so we will pretend it's not there.
-		func_param_count--;
+		Type *vararg_slot_type = callee.macro ? callee.params[callee.vararg_index]->type : callee.param_types[callee.vararg_index];
+		assert(vararg_slot_type->type_kind == TYPE_SUBARRAY);
+		variadic_type = vararg_slot_type->array.base;
 	}
 
-	if (!sema_expand_call_arguments(context, &callee, call, args, func_param_count, callee.variadic, failable)) return false;
+	Expr **varargs = NULL;
+	Expr *vararg_splat = NULL;
+	if (!sema_expand_call_arguments(context,
+	                                &callee,
+	                                call,
+	                                args,
+	                                func_param_count,
+	                                callee.variadic,
+	                                callee.vararg_index,
+	                                failable, &varargs, &vararg_splat)) return false;
 
 	args = call->call_expr.arguments;
 	num_args = vec_size(args);
 
-	// 7. Loop through the parameters.
-	for (unsigned i = 0; i < num_args; i++)
+	call->call_expr.varargs = NULL;
+	if (varargs)
 	{
-		Expr *arg = args[i];
-
-		// 10. If we exceed the function parameter count (remember we reduced this by one
-		//     in the case of typed vararg) we're now in a variadic list.
-		if (i >= func_param_count)
+		if (callee.variadic == VARIADIC_RAW)
 		{
-			// 11. We might have a typed variadic argument.
-			if (variadic_type)
-			{
-				// 11a. Look if we did an unsplat
-				if (call->call_expr.unsplat_last)
-				{
-					// 11c. Analyse the expression. We don't use any type inference here since
-					//      foo(...{ 1, 2, 3 }) is a fairly worthless thing.
-					if (!sema_analyse_expr(context, arg)) return false;
-
-					// 11d. If it is allowed.
-					if (!expr_may_unpack_as_vararg(arg, variadic_type))
-					{
-						SEMA_ERROR(arg, "It's not possible to unpack %s as vararg of type %s",
-						           type_quoted_error_string(arg->type),
-						           type_quoted_error_string(variadic_type));
-						return false;
-					}
-				}
-				else
-				{
-					// 11e. A simple variadic value:
-					if (!sema_analyse_expr_rhs(context, variadic_type, arg, true)) return false;
-				}
-				// Set the argument at the location.
-				*failable |= IS_OPTIONAL(arg);
-				continue;
-			}
-			// 12. We might have a naked variadic argument
-			if (callee.variadic == VARIADIC_RAW)
+			foreach(Expr*, varargs)
 			{
 				// 12a. Analyse the expression.
-				if (!sema_analyse_expr(context, arg)) return false;
+				if (!sema_analyse_expr(context, val)) return false;
 
 				// 12b. In the case of a compile time variable non macros we cast to c_int / double.
 				if (!callee.macro)
 				{
-					if (!expr_promote_vararg(context, arg)) return false;
+					if (!expr_promote_vararg(context, val)) return false;
 				}
 				// Set the argument at the location.
-				*failable |= IS_OPTIONAL(arg);
-				continue;
+				*failable |= IS_OPTIONAL(val);
 			}
-			UNREACHABLE
+		}
+		else
+		{
+			foreach(Expr*, varargs)
+			{
+				// 11e. A simple variadic value:
+				if (!sema_analyse_expr_rhs(context, variadic_type, val, true)) return false;
+				*failable |= IS_OPTIONAL(val);
+			}
+		}
+		call->call_expr.varargs = varargs;
+	}
+	if (vararg_splat)
+	{
+		// 11c. Analyse the expression. We don't use any type inference here since
+		//      foo(...{ 1, 2, 3 }) is a fairly worthless thing.
+		if (!sema_analyse_expr(context, vararg_splat)) return false;
+
+		// 11d. If it is allowed.
+		if (!expr_may_splat_as_vararg(vararg_splat, variadic_type))
+		{
+			SEMA_ERROR(vararg_splat, "It's not possible to splat %s as vararg of type %s",
+			           type_quoted_error_string(vararg_splat->type),
+			           type_quoted_error_string(variadic_type));
+			return false;
+		}
+		*failable |= IS_OPTIONAL(vararg_splat);
+		call->call_expr.splat = vararg_splat;
+	}
+	// 7. Loop through the parameters.
+	for (unsigned i = 0; i < num_args; i++)
+	{
+
+		Expr *arg = args[i];
+
+		// 10. If we exceed the function parameter count (remember we reduced this by one
+		//     in the case of typed vararg) we're now in a variadic list.
+		if (i == callee.vararg_index && callee.variadic != VARIADIC_NONE)
+		{
+			assert(arg == NULL);
+			continue;
 		}
 
 		Decl *param;
@@ -1822,11 +1849,13 @@ static inline bool sema_expr_analyse_call_invocation(SemaContext *context, Expr 
 	}
 	return true;
 }
-static inline bool sema_expr_analyse_func_invocation(SemaContext *context, FunctionPrototype *prototype, FunctionSignature *sig, Expr *expr, Decl *decl,
-                                                     Expr *struct_var, bool failable)
+static inline bool sema_expr_analyse_func_invocation(SemaContext *context, FunctionPrototype *prototype,
+													 FunctionSignature *sig, Expr *expr, Decl *decl,
+													 Expr *struct_var, bool failable, const char *name)
 {
 	CalledDecl callee = {
 			.macro = false,
+			.name = name,
 			.func_pointer = sig ? 0 : 1,
 			.block_parameter = NULL,
 			.struct_var = struct_var,
@@ -1834,6 +1863,7 @@ static inline bool sema_expr_analyse_func_invocation(SemaContext *context, Funct
 			.param_types = prototype->params,
 			.param_count = vec_size(prototype->params),
 			.variadic = prototype->variadic,
+			.vararg_index = prototype->vararg_index
 	};
 	if (context->current_function_pure && (!sig || !sig->is_pure) && !expr->call_expr.attr_pure)
 	{
@@ -1877,7 +1907,7 @@ static inline bool sema_expr_analyse_var_call(SemaContext *context, Expr *expr, 
 	                                         func_ptr_type->pointer->func.prototype,
 	                                         NULL,
 	                                         expr,
-	                                         NULL, NULL, failable);
+	                                         NULL, NULL, failable, func_ptr_type->pointer->name);
 
 }
 
@@ -1976,7 +2006,14 @@ static inline Type *unify_returns(SemaContext *context)
 static inline bool sema_expr_analyse_func_call(SemaContext *context, Expr *expr, Decl *decl, Expr *struct_var, bool failable)
 {
 	expr->call_expr.is_pointer_call = false;
-	return sema_expr_analyse_func_invocation(context, decl->type->func.prototype, &decl->func_decl.function_signature, expr, decl, struct_var, failable);
+	return sema_expr_analyse_func_invocation(context,
+	                                         decl->type->func.prototype,
+	                                         &decl->func_decl.function_signature,
+	                                         expr,
+	                                         decl,
+	                                         struct_var,
+	                                         failable,
+	                                         decl->name);
 }
 
 
@@ -2034,8 +2071,11 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	Decl **params = decl_copy_list(decl->macro_decl.parameters);
 	CalledDecl callee = {
 			.macro = true,
+			.name = decl->name,
 			.block_parameter = decl->macro_decl.body_param ? declptr(decl->macro_decl.body_param)->name : NULL,
 			.params = params,
+			.variadic = decl->macro_decl.variadic,
+			.vararg_index = decl->macro_decl.vararg_index,
 			.param_count = vec_size(params),
 			.struct_var = struct_var
 	};
@@ -2365,7 +2405,7 @@ static bool sema_analyse_body_expansion(SemaContext *macro_context, Expr *call)
 		SEMA_ERROR(call, "Nested expansion is not possible.");
 		return false;
 	}
-	if (call_expr->unsplat_last)
+	if (call_expr->splat_vararg)
 	{
 		SEMA_ERROR(call, "Expanding parameters is not allowed for macro invocations.");
 		return false;
@@ -7725,6 +7765,23 @@ static inline bool sema_expr_analyse_variant(SemaContext *context, Expr *expr)
 	return true;
 }
 
+static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Expr *expr)
+{
+	if (!context->current_macro)
+	{
+		SEMA_ERROR(expr, "'%s' can only be used inside of a macro.", token_type_to_string(expr->ct_arg_expr.type));
+		return false;
+	}
+	switch (expr->ct_arg_expr.type)
+	{
+		case TOKEN_CT_VAARG_COUNT:
+			expr_rewrite_const_int(expr, type_usize, vec_size(context->macro_varargs), true);
+			return true;
+		default:
+			TODO;
+	}
+}
+
 static inline bool sema_expr_analyse_ct_stringify(SemaContext *context, Expr *expr)
 {
 	Expr *inner = expr->inner_expr;
@@ -7920,6 +7977,8 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 		case EXPR_VARIANTSWITCH:
 		case EXPR_TYPEID_INFO:
 			UNREACHABLE
+		case EXPR_CT_ARG:
+			return sema_expr_analyse_ct_arg(context, expr);
 		case EXPR_VARIANT:
 			return sema_expr_analyse_variant(context, expr);
 		case EXPR_STRINGIFY:

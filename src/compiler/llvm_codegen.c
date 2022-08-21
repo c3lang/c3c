@@ -901,7 +901,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 	switch (decl->decl_kind)
 	{
 		case DECL_VAR:
-			if (decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_UNWRAPPED)
+			if (decl->var.kind == VARDECL_UNWRAPPED)
 			{
 				return decl->backend_ref = llvm_get_ref(c, decl->var.alias);
 			}

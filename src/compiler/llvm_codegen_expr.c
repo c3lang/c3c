@@ -4286,7 +4286,7 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef **args, ABIArgInfo *info, B
 	}
 
 }
-static void llvm_emit_unpacked_variadic_arg(GenContext *c, Expr *expr, BEValue *subarray)
+static void llvm_emit_splatted_variadic_arg(GenContext *c, Expr *expr, BEValue *subarray)
 {
 	BEValue value;
 	llvm_emit_expr(c, &value, expr);
@@ -4563,6 +4563,55 @@ void llvm_add_abi_call_attributes(GenContext *c, LLVMValueRef call_value, int co
 	}
 
 }
+
+static inline void llvm_emit_vararg_parameter(GenContext *c, BEValue *value, Type *vararg_type, ABIArgInfo *abi_info, Expr **varargs, Expr *vararg_splat)
+{
+	REMINDER("All varargs should be called with non-alias!");
+
+	llvm_value_set_address_abi_aligned(value, llvm_emit_alloca_aligned(c, vararg_type, "vararg"), vararg_type);
+	// 9a. Special case, empty argument
+	if (!vararg_splat && !varargs)
+	{
+		// Just set the size to zero.
+		BEValue len_addr;
+		llvm_emit_subarray_len(c, value, &len_addr);
+		llvm_store_raw(c, &len_addr, llvm_get_zero(c, type_usize));
+		return;
+	}
+	if (vararg_splat)
+	{
+		// 9b. We splat the last type which is either a slice, an array or a dynamic array.
+		llvm_emit_splatted_variadic_arg(c, vararg_splat, value);
+		return;
+	}
+	BEValue temp_value;
+	// 9b. Otherwise we also need to allocate memory for the arguments:
+	Type *pointee_type = vararg_type->array.base;
+	unsigned elements = vec_size(varargs);
+	Type *array = type_get_array(pointee_type, elements);
+	LLVMTypeRef llvm_array_type = llvm_get_type(c, array);
+	AlignSize alignment = type_alloca_alignment(array);
+	LLVMValueRef array_ref = llvm_emit_alloca(c, llvm_array_type, alignment, "varargslots");
+	foreach(Expr*, varargs)
+	{
+		llvm_emit_expr(c, &temp_value, val);
+		AlignSize store_alignment;
+		LLVMValueRef slot = llvm_emit_array_gep_raw(c,
+		                                            array_ref,
+		                                            llvm_array_type,
+		                                            foreach_index,
+		                                            alignment,
+		                                            &store_alignment);
+		llvm_store_to_ptr_aligned(c, slot, &temp_value, store_alignment);
+	}
+	BEValue len_addr;
+	llvm_emit_subarray_len(c, value, &len_addr);
+	llvm_store_raw(c, &len_addr, llvm_const_int(c, type_usize, elements));
+	BEValue pointer_addr;
+	llvm_emit_subarray_pointer(c, value, &pointer_addr);
+	llvm_store_raw(c, &pointer_addr, llvm_emit_bitcast_ptr(c, array_ref, pointee_type));
+}
+
 void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 {
 
@@ -4626,21 +4675,33 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 	Type **params = prototype->params;
 	ABIArgInfo **abi_args = prototype->abi_args;
 	unsigned param_count = vec_size(params);
-	unsigned non_variadic_params = param_count;
 	Expr **args = expr->call_expr.arguments;
 	unsigned arguments = vec_size(args);
-
-	if (prototype->variadic == VARIADIC_TYPED || prototype->variadic == VARIADIC_ANY) non_variadic_params--;
+	Expr **varargs = NULL;
+	Expr *vararg_splat = NULL;
+	if (prototype->variadic != VARIADIC_NONE)
+	{
+		if (expr->call_expr.splat_vararg)
+		{
+			vararg_splat = expr->call_expr.splat;
+		}
+		else
+		{
+			varargs = expr->call_expr.varargs;
+		}
+	}
 	FunctionPrototype copy;
 	if (prototype->variadic == VARIADIC_RAW)
 	{
-		if (arguments > non_variadic_params)
+		if (varargs || vararg_splat)
 		{
+			assert(!vararg_splat);
 			copy = *prototype;
 			copy.varargs = NULL;
-			for (unsigned i = non_variadic_params; i < arguments; i++)
+
+			foreach(Expr*, varargs)
 			{
-				vec_add(copy.varargs, type_flatten(args[i]->type));
+				vec_add(copy.varargs, type_flatten(val->type));
 			}
 			copy.ret_abi_info = NULL;
 			copy.ret_by_ref_abi_info = NULL;
@@ -4709,79 +4770,39 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 
 
 	// 8. Add all other arguments.
-	assert(arguments >= non_variadic_params);
-	for (unsigned i = 0; i < non_variadic_params; i++)
+	for (unsigned i = 0; i < param_count; i++)
 	{
 		// 8a. Evaluate the expression.
 		Expr *arg_expr = args[i];
-		llvm_emit_expr(c, &temp_value, arg_expr);
-
-		// 8b. Emit the parameter according to ABI rules.
 		Type *param = params[i];
 		ABIArgInfo *info = abi_args[i];
+
+		if (arg_expr)
+		{
+			llvm_emit_expr(c, &temp_value, arg_expr);
+		}
+		else
+		{
+			assert(prototype->variadic == VARIADIC_TYPED || prototype->variadic == VARIADIC_ANY);
+			llvm_emit_vararg_parameter(c, &temp_value, param, info, varargs, vararg_splat);
+		}
+
+		// 8b. Emit the parameter according to ABI rules.
 		llvm_emit_parameter(c, &values, info, &temp_value, param);
 	}
 
 	// 9. Typed varargs
-	if (prototype->variadic == VARIADIC_TYPED || prototype->variadic == VARIADIC_ANY)
-	{
-		REMINDER("All varargs should be called with non-alias!");
-		Type *vararg_param = params[non_variadic_params];
-		ABIArgInfo *vararg_info = abi_args[non_variadic_params];
 
-		BEValue subarray;
-
-		llvm_value_set_address_abi_aligned(&subarray, llvm_emit_alloca_aligned(c, vararg_param, "vararg"), vararg_param);
-
-		// 9a. Special case, empty argument
-		if (arguments == non_variadic_params)
-		{
-			// Just set the size to zero.
-			BEValue len_addr;
-			llvm_emit_subarray_len(c, &subarray, &len_addr);
-			llvm_store_raw(c, &len_addr, llvm_get_zero(c, type_usize));
-		}
-		else if (arguments == non_variadic_params + 1 && expr->call_expr.unsplat_last)
-		{
-			// 9b. We unpack the last type which is either a slice, an array or a dynamic array.
-			llvm_emit_unpacked_variadic_arg(c, expr->call_expr.arguments[non_variadic_params], &subarray);
-		}
-		else
-		{
-			// 9b. Otherwise we also need to allocate memory for the arguments:
-			Type *pointee_type = vararg_param->array.base;
-			Type *array = type_get_array(pointee_type, arguments - non_variadic_params);
-			LLVMTypeRef llvm_array_type = llvm_get_type(c, array);
-			AlignSize alignment = type_alloca_alignment(array);
-			LLVMValueRef array_ref = llvm_emit_alloca(c, llvm_array_type, alignment, "varargslots");
-			for (unsigned i = non_variadic_params; i < arguments; i++)
-			{
-				Expr *arg_expr = expr->call_expr.arguments[i];
-				llvm_emit_expr(c, &temp_value, arg_expr);
-				AlignSize store_alignment;
-				LLVMValueRef slot = llvm_emit_array_gep_raw(c, array_ref, llvm_array_type, i - non_variadic_params, alignment, &store_alignment);
-				llvm_store_to_ptr_aligned(c, slot, &temp_value, store_alignment);
-			}
-			BEValue len_addr;
-			llvm_emit_subarray_len(c, &subarray, &len_addr);
-			llvm_store_raw(c, &len_addr, llvm_const_int(c, type_usize, arguments - non_variadic_params));
-			BEValue pointer_addr;
-			llvm_emit_subarray_pointer(c, &subarray, &pointer_addr);
-			llvm_store_raw(c, &pointer_addr, llvm_emit_bitcast_ptr(c, array_ref, pointee_type));
-		}
-		llvm_emit_parameter(c, &values, vararg_info, &subarray, vararg_param);
-	}
-	else
+	if (prototype->variadic == VARIADIC_RAW)
 	{
 		if (prototype->abi_varargs)
 		{
 			// 9. Emit varargs.
 			unsigned index = 0;
 			ABIArgInfo **abi_varargs = prototype->abi_varargs;
-			for (unsigned i = param_count; i < arguments; i++)
+			foreach(Expr*, varargs)
 			{
-				Expr *arg_expr = args[i];
-				llvm_emit_expr(c, &temp_value, arg_expr);
+				llvm_emit_expr(c, &temp_value, val);
 				ABIArgInfo *info = abi_varargs[index];
 				llvm_emit_parameter(c, &values, info, &temp_value, prototype->varargs[index]);
 				index++;
@@ -4790,10 +4811,9 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 		else
 		{
 			// 9. Emit varargs.
-			for (unsigned i = param_count; i < arguments; i++)
+			foreach(Expr*, varargs)
 			{
-				Expr *arg_expr = args[i];
-				llvm_emit_expr(c, &temp_value, arg_expr);
+				llvm_emit_expr(c, &temp_value, val);
 				REMINDER("Varargs should be expanded correctly");
 				vec_add(values, llvm_load_value_store(c, &temp_value));
 			}
@@ -4821,7 +4841,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 	}
 
 	assert(!prototype->ret_by_ref || prototype->ret_by_ref_abi_info->kind != ABI_ARG_INDIRECT);
-	llvm_add_abi_call_attributes(c, call_value, non_variadic_params, abi_args);
+	llvm_add_abi_call_attributes(c, call_value, param_count, abi_args);
 	if (prototype->abi_varargs)
 	{
 		llvm_add_abi_call_attributes(c,
@@ -5300,14 +5320,15 @@ static void llvm_emit_macro_body_expansion(GenContext *c, BEValue *value, Expr *
 {
 	Decl **declarations = body_expr->body_expansion_expr.declarations;
 	Expr **values = body_expr->body_expansion_expr.values;
+
 	// Create backend refs on demand.
-	foreach(declarations, i)
+	VECEACH(declarations, i)
 	{
 		Decl *decl = declarations[i];
 		if (!decl->backend_ref) llvm_emit_local_var_alloca(c, decl);
 	}
 	// Set the values
-	foreach(values, i)
+	VECEACH(values, i)
 	{
 		Expr *expr = values[i];
 		llvm_emit_expr(c, value, expr);
@@ -5766,6 +5787,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case NON_RUNTIME_EXPR:
 		case EXPR_COND:
 		case EXPR_CT_CONV:
+		case EXPR_CT_ARG:
 			UNREACHABLE
 		case EXPR_BUILTIN_ACCESS:
 			llvm_emit_builtin_access(c, value, expr);

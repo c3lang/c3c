@@ -43,8 +43,11 @@ Expr *parse_ct_expression_list(ParseContext *c, bool allow_decl);
 Expr *parse_expression_list(ParseContext *c, bool allow_decls);
 Decl *parse_decl_after_type(ParseContext *c, TypeInfo *type);
 Decl *parse_var_decl(ParseContext *c);
-bool parse_parameters(ParseContext *c, Visibility visibility, Decl ***params_ref);
-bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *unsplat);
+
+bool
+parse_parameters(ParseContext *c, Visibility visibility, Decl ***params_ref, Decl **body_params, Variadic *variadic,
+                 unsigned *vararg_index_ref);
+bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *splat);
 Expr *parse_type_compound_literal_expr_after_type(ParseContext *c, TypeInfo *type_info);
 
 bool parse_module(ParseContext *c);

@@ -909,7 +909,7 @@ static Expr *sema_insert_method_macro_call(SemaContext *context, SourceSpan span
 	len_call->call_expr.arguments = arguments;
 	len_call->call_expr.body = 0;
 	len_call->call_expr.is_func_ref = true;
-	len_call->call_expr.unsplat_last = false;
+	len_call->call_expr.splat_vararg = false;
 	len_call->call_expr.is_type_method = true;
 	bool is_macro = method_decl->decl_kind == DECL_MACRO;
 	if (!is_macro)
