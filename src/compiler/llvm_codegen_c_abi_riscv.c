@@ -297,6 +297,6 @@ void c_abi_func_create_riscv(FunctionPrototype *prototype)
 		                                                              true, &arg_gprs_left, &arg_fprs_left);
 	}
 
-	prototype->abi_args = riscv_create_params(prototype->params, true, &arg_gprs_left, &arg_fprs_left);
+	prototype->abi_args = riscv_create_params(prototype->param_types, true, &arg_gprs_left, &arg_fprs_left);
 	prototype->abi_varargs = riscv_create_params(prototype->varargs, false, &arg_gprs_left, &arg_fprs_left);
 }

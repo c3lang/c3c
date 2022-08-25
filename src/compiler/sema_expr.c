@@ -1477,12 +1477,6 @@ INLINE bool sema_expand_call_arguments(SemaContext *context, CalledDecl *callee,
 		// 3. Handle named parameters
 		if (arg->expr_kind == EXPR_DESIGNATOR)
 		{
-			if (is_func_ptr)
-			{
-				SEMA_ERROR(arg, "Named parameters are not allowed with function pointer calls.");
-				return false;
-			}
-
 			// Find the location of the parameter.
 			int index = find_index_of_named_parameter(params, arg);
 
@@ -1562,7 +1556,7 @@ INLINE bool sema_expand_call_arguments(SemaContext *context, CalledDecl *callee,
 		// 17a. Assigned a value - skip
 		if (actual_args[i]) continue;
 		if (i == vararg_index && variadic != VARIADIC_NONE) continue;
-		if (is_func_ptr) goto FAIL_MISSING;
+
 		// 17b. Set the init expression.
 		Decl *param = params[i];
 		Expr *init_expr = param->var.init_expr;
@@ -1586,13 +1580,11 @@ INLINE bool sema_expand_call_arguments(SemaContext *context, CalledDecl *callee,
 			continue;
 		}
 
-FAIL_MISSING:
-
 		// 17c. Vararg not set? That's fine.
-		if (param && params[i]->var.vararg) continue;
+		if (params[i]->var.vararg) continue;
 
 		// 17d. Argument missing, that's bad.
-		if (!has_named || is_func_ptr || !params[i]->name)
+		if (!has_named || !params[i]->name)
 		{
 			if (func_param_count == 1)
 			{
@@ -1601,6 +1593,11 @@ FAIL_MISSING:
 			}
 			if (variadic != VARIADIC_NONE && i > vararg_index)
 			{
+				if (!param[i].name)
+				{
+					sema_error_at_after(args[num_args - 1]->span, "Argument #%d is not set.", i);
+					return false;
+				}
 				sema_error_at_after(args[num_args - 1]->span, "Expected '.%s = ...' after this argument.", params[i]->name);
 				return false;
 			}
@@ -1849,7 +1846,7 @@ static inline bool sema_expr_analyse_call_invocation(SemaContext *context, Expr 
 	}
 	return true;
 }
-static inline bool sema_expr_analyse_func_invocation(SemaContext *context, FunctionPrototype *prototype,
+static inline bool sema_expr_analyse_func_invocation(SemaContext *context, Type *type,
 													 FunctionSignature *sig, Expr *expr, Decl *decl,
 													 Expr *struct_var, bool failable, const char *name)
 {
@@ -1859,11 +1856,11 @@ static inline bool sema_expr_analyse_func_invocation(SemaContext *context, Funct
 			.func_pointer = sig ? 0 : 1,
 			.block_parameter = NULL,
 			.struct_var = struct_var,
-			.params = sig ? sig->params : NULL,
-			.param_types = prototype->params,
-			.param_count = vec_size(prototype->params),
-			.variadic = prototype->variadic,
-			.vararg_index = prototype->vararg_index
+			.params = type->function.params,
+			.param_types = type->function.prototype->param_types,
+			.param_count = vec_size(type->function.prototype->param_types),
+			.variadic = type->function.prototype->variadic,
+			.vararg_index = type->function.prototype->vararg_index
 	};
 	if (context->current_function_pure && (!sig || !sig->is_pure) && !expr->call_expr.attr_pure)
 	{
@@ -1874,16 +1871,16 @@ static inline bool sema_expr_analyse_func_invocation(SemaContext *context, Funct
 	bool is_unused = expr->call_expr.result_unused;
 	if (!sema_expr_analyse_call_invocation(context, expr, callee, &failable)) return false;
 
-	Type *rtype = prototype->rtype;
+	Type *rtype = type->function.prototype->rtype;
 
 	if (is_unused && rtype != type_void && decl && decl->decl_kind == DECL_FUNC)
 	{
-		if (decl->func_decl.attr_nodiscard)
+		if (decl->func_decl.function_signature.attrs.nodiscard)
 		{
 			SEMA_ERROR(expr, "The result of the function must be used.");
 			return false;
 		}
-		if (type_is_optional(rtype) && !decl->func_decl.attr_maydiscard)
+		if (type_is_optional(rtype) && !decl->func_decl.function_signature.attrs.maydiscard)
 		{
 			SEMA_ERROR(expr, "The optional result of the macro must be used.");
 			return false;
@@ -1897,18 +1894,21 @@ static inline bool sema_expr_analyse_func_invocation(SemaContext *context, Funct
 
 static inline bool sema_expr_analyse_var_call(SemaContext *context, Expr *expr, Type *func_ptr_type, bool failable)
 {
-	if (func_ptr_type->type_kind != TYPE_POINTER || func_ptr_type->pointer->type_kind != TYPE_FUNC)
-	{
-		SEMA_ERROR(expr, "Only macros, functions and function pointers maybe invoked, this is of type '%s'.", type_to_error_string(func_ptr_type));
-		return false;
-	}
+	Decl *decl = NULL;
+	if (func_ptr_type->type_kind != TYPE_POINTER || func_ptr_type->pointer->type_kind != TYPE_FUNC) goto ERR;
+	Type *pointee = func_ptr_type->pointer;
 	expr->call_expr.is_pointer_call = true;
 	return sema_expr_analyse_func_invocation(context,
-	                                         func_ptr_type->pointer->func.prototype,
+											 pointee,
 	                                         NULL,
 	                                         expr,
-	                                         NULL, NULL, failable, func_ptr_type->pointer->name);
-
+	                                         decl,
+											 NULL,
+											 failable,
+											 func_ptr_type->pointer->name);
+ERR:
+	SEMA_ERROR(expr, "Only macros, functions and function pointers maybe invoked, this is of type '%s'.", type_to_error_string(func_ptr_type));
+	return false;
 }
 
 // Unify returns in a macro or expression block.
@@ -2007,9 +2007,9 @@ static inline bool sema_expr_analyse_func_call(SemaContext *context, Expr *expr,
 {
 	expr->call_expr.is_pointer_call = false;
 	return sema_expr_analyse_func_invocation(context,
-	                                         decl->type->func.prototype,
+	                                         decl->type,
 	                                         &decl->func_decl.function_signature,
-	                                         expr,
+											 expr,
 	                                         decl,
 	                                         struct_var,
 	                                         failable,
@@ -2850,7 +2850,7 @@ static inline bool sema_expr_analyse_call(SemaContext *context, Expr *expr)
 		default:
 		{
 			Type *type = type_flatten_distinct(func_expr->type);
-			if (type->type_kind == TYPE_POINTER && type->pointer->type_kind == TYPE_FUNC)
+			if (type->type_kind == TYPE_POINTER)
 			{
 				decl = NULL;
 				break;
@@ -7552,15 +7552,19 @@ static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr)
 		return true;
 	}
 
-	// TODO type_is_builtin is wrong also this does not cover virtual.
 	if (name_type == TOKEN_CT_NAMEOF || type_is_builtin(type->type_kind))
 	{
 		expr_rewrite_to_string(expr, type->name);
 		return true;
 	}
 	scratch_buffer_clear();
-	scratch_buffer_append(type->decl->unit->module->name->module);
-	scratch_buffer_append("::");
+
+	Module *module = type_base_module(type);
+	if (module)
+	{
+		scratch_buffer_append(module->name->module);
+		scratch_buffer_append("::");
+	}
 	scratch_buffer_append(type->name);
 	expr_rewrite_to_string(expr, scratch_buffer_copy());
 	return true;

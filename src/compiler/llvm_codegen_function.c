@@ -275,7 +275,7 @@ static inline void llvm_emit_return_value(GenContext *context, LLVMValueRef valu
 
 void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failable)
 {
-	FunctionPrototype *prototype = c->cur_func_decl->type->func.prototype;
+	FunctionPrototype *prototype = c->cur_func_decl->type->function.prototype;
 	ABIArgInfo *info = prototype->ret_abi_info;
 
 	// If we have a failable it's always the return argument, so we need to copy
@@ -387,7 +387,7 @@ DIRECT_RETURN:
 
 void llvm_emit_return_implicit(GenContext *c)
 {
-	Type *rtype_real = c->cur_func_decl->type->func.prototype->rtype;
+	Type *rtype_real = c->cur_func_decl->type->function.prototype->rtype;
 	if (type_lowering(type_no_optional(rtype_real)) != type_void)
 	{
 		LLVMBuildUnreachable(c->builder);
@@ -445,7 +445,7 @@ void llvm_emit_function_body(GenContext *c, Decl *decl)
 	LLVMValueRef alloca_point = LLVMBuildAlloca(c->builder, LLVMInt32TypeInContext(c->context), "alloca_point");
 	c->alloca_point = alloca_point;
 
-	FunctionPrototype *prototype = decl->type->func.prototype;
+	FunctionPrototype *prototype = decl->type->function.prototype;
 	unsigned arg = 0;
 
 	if (emit_debug)
@@ -612,12 +612,12 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 
 	LLVMValueRef function = llvm_get_ref(c, decl);
 	decl->backend_ref = function;
-	FunctionPrototype *prototype = decl->type->func.prototype;
+	FunctionPrototype *prototype = decl->type->function.prototype;
 
 
 	ABIArgInfo *ret_abi_info = prototype->ret_abi_info;
 	llvm_emit_param_attributes(c, function, ret_abi_info, true, 0, 0);
-	unsigned params = vec_size(prototype->params);
+	unsigned params = vec_size(prototype->param_types);
 	if (prototype->ret_by_ref)
 	{
 		ABIArgInfo *info = prototype->ret_by_ref_abi_info;

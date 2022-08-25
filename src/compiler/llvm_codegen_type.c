@@ -286,9 +286,9 @@ LLVMTypeRef llvm_update_prototype_abi(GenContext *context, FunctionPrototype *pr
 	}
 
 	// Add in all of the required arguments.
-	VECEACH(prototype->params, i)
+	VECEACH(prototype->param_types, i)
 	{
-		add_func_type_param(context, prototype->params[i], prototype->abi_args[i], params);
+		add_func_type_param(context, prototype->param_types[i], prototype->abi_args[i], params);
 	}
 
 	VECEACH(prototype->varargs, i)
@@ -302,7 +302,7 @@ LLVMTypeRef llvm_func_type(GenContext *context, FunctionPrototype *prototype)
 {
 	LLVMTypeRef *params = NULL;
 	LLVMTypeRef ret = llvm_update_prototype_abi(context, prototype, &params);
-	return LLVMFunctionType(ret, params, vec_size(params), prototype->variadic == VARIADIC_RAW);
+	return prototype->llvm_prototype = LLVMFunctionType(ret, params, vec_size(params), prototype->variadic == VARIADIC_RAW);
 }
 
 
@@ -344,7 +344,7 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 		case TYPE_BITSTRUCT:
 			return any_type->backend_type = llvm_type_from_decl(c, any_type->decl);
 		case TYPE_FUNC:
-			return any_type->backend_type = llvm_func_type(c, any_type->func.prototype);
+			return any_type->backend_type = llvm_func_type(c, any_type->function.prototype);
 		case TYPE_VOID:
 			return any_type->backend_type = LLVMVoidTypeInContext(c->context);
 		case TYPE_F64:
@@ -456,51 +456,6 @@ LLVMTypeRef llvm_abi_type(GenContext *c, AbiType type)
 	return LLVMIntTypeInContext(c->context, type.int_bits_plus_1 - 1);
 }
 
-static inline Module *type_base_module(Type *type)
-{
-	RETRY:
-	switch (type->type_kind)
-	{
-		case TYPE_POISONED:
-		case TYPE_VOID:
-		case ALL_INTS:
-		case ALL_FLOATS:
-		case TYPE_BOOL:
-		case TYPE_ANY:
-		case TYPE_ANYERR:
-		case TYPE_TYPEID:
-			return NULL;
-		case TYPE_POINTER:
-			type = type->pointer;
-			goto RETRY;
-		case TYPE_ENUM:
-		case TYPE_FUNC:
-		case TYPE_STRUCT:
-		case TYPE_UNION:
-		case TYPE_BITSTRUCT:
-		case TYPE_FAULTTYPE:
-		case TYPE_DISTINCT:
-			return type->decl->unit->module;
-		case TYPE_TYPEDEF:
-			type = type->canonical;
-			goto RETRY;
-		case TYPE_ARRAY:
-		case TYPE_SUBARRAY:
-		case TYPE_INFERRED_ARRAY:
-		case TYPE_FLEXIBLE_ARRAY:
-		case TYPE_VECTOR:
-			type = type->array.base;
-			goto RETRY;
-		case TYPE_FAILABLE:
-			type = type->failable;
-			goto RETRY;
-		case TYPE_UNTYPED_LIST:
-		case TYPE_FAILABLE_ANY:
-		case TYPE_TYPEINFO:
-			UNREACHABLE
-	}
-	UNREACHABLE
-}
 
 static inline LLVMValueRef llvm_generate_temp_introspection_global(GenContext *c, Type *type)
 {
@@ -739,10 +694,12 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 		case TYPE_UNION:
 			return llvm_get_introspection_for_struct_union(c, type);
 		case TYPE_FUNC:
-		{
-			LLVMValueRef ref = llvm_generate_temp_introspection_global(c, type);
-			return llvm_generate_introspection_global(c, ref, type, INTROSPECT_TYPE_FUNC, NULL, 0, NULL, false);
-		}
+			if (type->function.prototype->raw_type == type)
+			{
+				LLVMValueRef ref = llvm_generate_temp_introspection_global(c, type);
+				return llvm_generate_introspection_global(c, ref, type, INTROSPECT_TYPE_FUNC, NULL, 0, NULL, false);
+			}
+			return llvm_get_typeid(c, type->function.prototype->raw_type);
 		case TYPE_BITSTRUCT:
 		{
 			LLVMValueRef ref = llvm_generate_temp_introspection_global(c, type);

@@ -162,8 +162,8 @@ void c_abi_func_create_aarch64(FunctionPrototype *prototype)
 		prototype->ret_by_ref_abi_info = aarch64_classify_argument_type(type_get_ptr(type_flatten(prototype->ret_by_ref_type)));
 	}
 
-	Type **params = prototype->params;
-	unsigned param_count = vec_size(prototype->params);
+	Type **params = prototype->param_types;
+	unsigned param_count = vec_size(prototype->param_types);
 	if (param_count)
 	{
 		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);

@@ -107,8 +107,8 @@ void win64_vector_call_args(Regs *regs, FunctionPrototype *prototype, bool is_ve
 {
 	static const unsigned max_param_vector_calls_as_reg = 6;
 	unsigned count = 0;
-	Type **params = prototype->params;
-	unsigned param_count = vec_size(prototype->params);
+	Type **params = prototype->param_types;
+	unsigned param_count = vec_size(prototype->param_types);
 	if (param_count)
 	{
 		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);
@@ -199,6 +199,6 @@ void c_abi_func_create_win64(FunctionPrototype *prototype)
 		return;
 	}
 
-	prototype->abi_args = win64_create_params(prototype->params, &regs, is_vector_call, is_reg_call);
+	prototype->abi_args = win64_create_params(prototype->param_types, &regs, is_vector_call, is_reg_call);
 	prototype->abi_varargs = win64_create_params(prototype->varargs, &regs, is_vector_call, is_reg_call);
 }

@@ -169,7 +169,7 @@ static void type_append_name_to_scratch(Type *type)
 			UNREACHABLE
 			break;
 		case TYPE_FUNC:
-			type_append_func_to_scratch(type->func.prototype);
+			type_append_func_to_scratch(type->function.prototype);
 			break;
 		case TYPE_ARRAY:
 			type_append_name_to_scratch(type->array.base);
@@ -184,14 +184,14 @@ static void type_append_func_to_scratch(FunctionPrototype *prototype)
 {
 	type_append_name_to_scratch(prototype->rtype);
 	scratch_buffer_append_char('(');
-	unsigned elements = vec_size(prototype->params);
+	unsigned elements = vec_size(prototype->param_types);
 	for (unsigned i = 0; i < elements; i++)
 	{
 		if (i > 0)
 		{
 			scratch_buffer_append_char(',');
 		}
-		type_append_name_to_scratch(prototype->params[i]);
+		type_append_name_to_scratch(prototype->param_types[i]);
 	}
 	if (prototype->variadic == VARIADIC_RAW && elements > 0)
 	{
@@ -227,7 +227,7 @@ const char *type_to_error_string(Type *type)
 			return type->name;
 		case TYPE_FUNC:
 			scratch_buffer_clear();
-			type_append_func_to_scratch(type->func.prototype);
+			type_append_func_to_scratch(type->function.prototype);
 			return str_printf("fn %s", scratch_buffer_to_string());
 		case TYPE_VECTOR:
 			return str_printf("%s[<%llu>]", type_to_error_string(type->array.base), (unsigned long long)type->array.len);
@@ -510,8 +510,37 @@ void type_mangle_introspect_name_to_buffer(Type *type)
 			scratch_buffer_append_char('$');
 			type_mangle_introspect_name_to_buffer(type->array.base);
 			return;
-		case TYPE_ENUM:
 		case TYPE_FUNC:
+			if (type->function.module)
+			{
+				scratch_buffer_append(type->function.module->extname);
+				scratch_buffer_append_char('$');
+				scratch_buffer_append(type->name);
+			}
+			else
+			{
+				size_t len = strlen(type->name);
+				for (size_t i = 0; i < len; i++)
+				{
+					char c = type->name[i];
+					if (char_is_alphanum_(c))
+					{
+						scratch_buffer_append_char(c);
+						continue;
+					}
+					if (c == '$')
+					{
+						scratch_buffer_append("$$");
+						continue;
+					}
+					else
+					{
+						scratch_buffer_append_char('$');
+					}
+				}
+			}
+			return;
+		case TYPE_ENUM:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
@@ -1068,7 +1097,7 @@ static int compare_function(FunctionSignature *sig, FunctionPrototype *proto)
 {
 	if (sig->variadic != proto->variadic) return -1;
 	Decl **params = sig->params;
-	Type **other_params = proto->params;
+	Type **other_params = proto->param_types;
 	unsigned param_count = vec_size(params);
 	if (param_count != vec_size(other_params)) return -1;
 	if (type_infoptr(sig->returntype)->type->canonical != proto->rtype->canonical) return -1;
@@ -1103,19 +1132,41 @@ static inline Type *func_create_new_func_proto(FunctionSignature *sig, CallABI a
 		proto->ret_by_ref_type = proto->abi_ret_type = rtype;
 	}
 	proto->call_abi = abi;
+
 	if (param_count)
 	{
-		Type **params = VECNEW(Type*, param_count);
+		Type **param_types = VECNEW(Type*, param_count);
+		Decl **param_copy = VECNEW(Decl*, param_count);
 		for (unsigned i = 0; i < param_count; i++)
 		{
-			vec_add(params, sig->params[i]->type);
+			Decl *decl = decl_copy(sig->params[i]);
+			decl->type = decl->type->canonical;
+			decl->var.type_info = NULL;
+			decl->var.init_expr = NULL;
+			decl->name = NULL;
+			vec_add(param_types, decl->type);
+			vec_add(param_copy, decl);
 		}
-		proto->params = params;
+		proto->param_types = param_types;
+		proto->param_copy = param_copy;
 	}
 	c_abi_func_create(proto);
 
-	Type *type = type_new(TYPE_FUNC, "#Function");
-	type->func.prototype = proto;
+	scratch_buffer_clear();
+	scratch_buffer_append("fn ");
+	type_append_name_to_scratch(proto->rtype);
+	scratch_buffer_append_char('(');
+	foreach(Type*, proto->param_types)
+	{
+		if (foreach_index != 0) scratch_buffer_append(", ");
+		type_append_name_to_scratch(val);
+	}
+	scratch_buffer_append_char(')');
+	Type *type = type_new(TYPE_FUNC, scratch_buffer_interned());
+	proto->raw_type = type;
+	type->function.prototype = proto;
+	type->function.module = NULL;
+	type->function.params = proto->param_copy;
 	type->canonical = type;
 	entry->key = hash;
 	entry->value = type;
@@ -1165,7 +1216,7 @@ Type *type_get_func(FunctionSignature *signature, CallABI abi)
 		{
 			return func_create_new_func_proto(signature, abi, hash, entry);
 		}
-		if (entry->key == hash && compare_function(signature, entry->value->func.prototype) == 0)
+		if (entry->key == hash && compare_function(signature, entry->value->function.prototype) == 0)
 		{
 			return entry->value;
 		}
@@ -1320,7 +1371,7 @@ bool type_is_subtype(Type *type, Type *possible_subtype)
 	{
 		if (type == possible_subtype) return true;
 		if (type->type_kind != possible_subtype->type_kind) return false;
-		if (type->decl->decl_kind != DECL_STRUCT) return false;
+		if (type->type_kind != TYPE_STRUCT) return false;
 
 		if (!possible_subtype->decl->strukt.members) return false;
 
@@ -1599,6 +1650,10 @@ Type *type_find_max_type(Type *type, Type *other)
 		case TYPE_ANYERR:
 			return type_anyerr;
 		case TYPE_FUNC:
+			if (other->type_kind != TYPE_FUNC) return NULL;
+			other = other->function.prototype->raw_type;
+			type = other->function.prototype->raw_type;
+			return other == type ? type : NULL;
 		case TYPE_UNION:
 		case TYPE_TYPEID:
 		case TYPE_STRUCT:
@@ -1728,6 +1783,53 @@ unsigned type_get_introspection_kind(TypeKind kind)
 		case TYPE_FAILABLE:
 			UNREACHABLE
 			return 0;
+	}
+	UNREACHABLE
+}
+
+Module *type_base_module(Type *type)
+{
+	RETRY:
+	switch (type->type_kind)
+	{
+		case TYPE_POISONED:
+		case TYPE_VOID:
+		case ALL_INTS:
+		case ALL_FLOATS:
+		case TYPE_BOOL:
+		case TYPE_ANY:
+		case TYPE_ANYERR:
+		case TYPE_TYPEID:
+			return NULL;
+		case TYPE_POINTER:
+			type = type->pointer;
+			goto RETRY;
+		case TYPE_FUNC:
+			return type->function.module;
+		case TYPE_ENUM:
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		case TYPE_BITSTRUCT:
+		case TYPE_FAULTTYPE:
+		case TYPE_DISTINCT:
+			return type->decl->unit->module;
+		case TYPE_TYPEDEF:
+			type = type->canonical;
+			goto RETRY;
+		case TYPE_ARRAY:
+		case TYPE_SUBARRAY:
+		case TYPE_INFERRED_ARRAY:
+		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_VECTOR:
+			type = type->array.base;
+			goto RETRY;
+		case TYPE_FAILABLE:
+			type = type->failable;
+			goto RETRY;
+		case TYPE_UNTYPED_LIST:
+		case TYPE_FAILABLE_ANY:
+		case TYPE_TYPEINFO:
+			UNREACHABLE
 	}
 	UNREACHABLE
 }

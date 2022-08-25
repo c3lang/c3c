@@ -485,6 +485,7 @@ bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability, 
 			if ((type_is_integer(to_type) && type_size(to_type) >= type_size(type_iptr)) || to_type == type_bool || to_kind == TYPE_POINTER) return true;
 			// Special subarray conversion: someType[N]* -> someType[]
 			if (to_kind == TYPE_SUBARRAY && from_type->pointer->type_kind == TYPE_ARRAY && from_type->pointer->array.base == to_type->array.base) return true;
+			// Special function pointer conversion
 			return false;
 		case TYPE_ANY:
 			return to_kind == TYPE_POINTER;
@@ -605,17 +606,23 @@ bool cast_may_implicit(Type *from_type, Type *to_type, bool is_simple_expr, bool
 			// For void* on either side, no checks.
 			if (to == type_voidptr || from == type_voidptr) return true;
 
-			// Special handling of int* = int[4]*
-			if (from->pointer->type_kind == TYPE_ARRAY || from->pointer->type_kind == TYPE_FLEXIBLE_ARRAY)
+			Type *from_pointee = from->pointer;
+
+			if (from_pointee->type_kind == TYPE_FUNC && to->type_kind == TYPE_POINTER && to->pointer->type_kind == TYPE_FUNC)
 			{
-				if (type_is_subtype(to->pointer, from->pointer->array.base))
+				return to->pointer->function.prototype->raw_type == from_pointee->function.prototype->raw_type;
+			}
+			// Special handling of int* = int[4]*
+			if (from_pointee->type_kind == TYPE_ARRAY || from_pointee->type_kind == TYPE_FLEXIBLE_ARRAY)
+			{
+				if (type_is_subtype(to->pointer, from_pointee->array.base))
 				{
 					return true;
 				}
 			}
 
 			// Use subtype matching
-			return type_is_subtype(to->pointer, from->pointer);
+			return type_is_subtype(to->pointer, from_pointee);
 		}
 
 		return false;

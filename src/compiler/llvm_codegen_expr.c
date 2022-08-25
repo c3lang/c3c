@@ -4645,7 +4645,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 		Type *type = function->type->canonical->pointer;
 
 		// 1b. Find the type signature using the underlying pointer.
-		prototype = type->func.prototype;
+		prototype = type->function.prototype;
 
 		// 1c. Evaluate the pointer expression.
 		BEValue func_value;
@@ -4665,14 +4665,14 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 		always_inline = function_decl->func_decl.attr_inline;
 
 		// 2b. Set signature, function and function type
-		prototype = function_decl->type->func.prototype;
+		prototype = function_decl->type->function.prototype;
 		func = llvm_get_ref(c, function_decl);
 		assert(func);
 		func_type = llvm_get_type(c, function_decl->type);
 	}
 
 	LLVMValueRef *values = NULL;
-	Type **params = prototype->params;
+	Type **params = prototype->param_types;
 	ABIArgInfo **abi_args = prototype->abi_args;
 	unsigned param_count = vec_size(params);
 	Expr **args = expr->call_expr.arguments;

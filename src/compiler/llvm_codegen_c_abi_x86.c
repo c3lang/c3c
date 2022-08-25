@@ -682,8 +682,8 @@ void c_abi_func_create_x86(FunctionPrototype *prototype)
 	{
 		FATAL_ERROR("X86 vector call not supported");
 	}
-	prototype->abi_args = x86_create_params(prototype->call_abi, prototype->params, &regs);
-	prototype->abi_varargs = x86_create_params(prototype->call_abi, prototype->params, &regs);
+	prototype->abi_args = x86_create_params(prototype->call_abi, prototype->param_types, &regs);
+	prototype->abi_varargs = x86_create_params(prototype->call_abi, prototype->param_types, &regs);
 }
 
 

@@ -2545,7 +2545,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 {
 	if (!decl_ok(func)) return false;
 	FunctionSignature *signature = &func->func_decl.function_signature;
-	FunctionPrototype *prototype = func->type->func.prototype;
+	FunctionPrototype *prototype = func->type->function.prototype;
 	context->current_function = func;
 	context->current_function_pure = func->func_decl.function_signature.is_pure;
 	context->rtype = prototype->rtype;

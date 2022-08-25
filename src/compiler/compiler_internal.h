@@ -33,7 +33,7 @@ typedef uint64_t BitSize;
 #define INITIAL_SYMBOL_MAP 0x10000
 #define INITIAL_GENERIC_SYMBOL_MAP 0x1000
 #define MAX_MACRO_ITERATIONS 0xFFFFFF
-#define MAX_PARAMS 512
+#define MAX_PARAMS 127
 #define MAX_BITSTRUCT 0x1000
 #define MAX_MEMBERS ((MemberIndex)(((uint64_t)2) << 28))
 #define MAX_ALIGNMENT ((MemberIndex)(((uint64_t)2) << 28))
@@ -222,11 +222,19 @@ typedef struct
 	ArraySize len;
 } TypeArray;
 
+typedef struct
+{
+	bool nodiscard : 1;
+	bool maydiscard: 1;
+} FunctionAttributes;
 
 typedef struct
 {
+	FunctionAttributes attrs;
+	Module *module;
+	Decl** params;
 	struct FunctionPrototype_ *prototype;
-} TypeFunc;
+} TypeFunction;
 
 struct Type_
 {
@@ -245,8 +253,8 @@ struct Type_
 		TypeBuiltin builtin;
 		// Type[], Type[*], Type[123], Type[<123>] or Type<[123]>
 		TypeArray array;
-		// fn Type1(Type2, Type3, ...) throws Err1, Err2, ...
-		TypeFunc func;
+		// fn TypeR Type1(Type2, Type3, ...)
+		TypeFunction function;
 		// Type*
 		Type *pointer;
 		// Failable
@@ -434,11 +442,12 @@ typedef enum
 } Variadic;
 
 
+
 typedef struct FunctionSignature_
 {
+	FunctionAttributes attrs;
 	Variadic variadic : 3;
 	unsigned vararg_index : 10;
-	bool has_default : 1;
 	bool use_win64 : 1;
 	bool is_pure : 1;
 	CallABI abi : 8;
@@ -457,8 +466,6 @@ typedef struct
 		bool attr_noinline : 1;
 		bool attr_extname : 1;
 		bool attr_naked : 1;
-		bool attr_nodiscard : 1;
-		bool attr_maydiscard: 1;
 	};
 	TypeInfoId type_parent;
 	FunctionSignature function_signature;
@@ -1606,7 +1613,8 @@ typedef struct FunctionPrototype_
 	bool ret_by_ref : 1;
 	unsigned short vararg_index;
 	Type *rtype;
-	Type **params;
+	Type **param_types;
+	Decl **param_copy;
 	Type **varargs;
 	Type *ret_by_ref_type;
 	Type *abi_ret_type;
@@ -1614,7 +1622,12 @@ typedef struct FunctionPrototype_
 	ABIArgInfo *ret_by_ref_abi_info;
 	ABIArgInfo **abi_args;
 	ABIArgInfo **abi_varargs;
-	void *tb_prototype;
+	union
+	{
+		void *tb_prototype;
+		void *llvm_prototype;
+	};
+	Type *raw_type;
 } FunctionPrototype;
 
 typedef struct
@@ -2104,6 +2117,7 @@ Type *type_find_largest_union_element(Type *type);
 Type *type_find_max_type(Type *type, Type *other);
 Type *type_find_max_type_may_fail(Type *type, Type *other);
 Type *type_abi_find_single_struct_element(Type *type);
+Module *type_base_module(Type *type);
 bool type_is_valid_for_vector(Type *type);
 Type *type_get_array(Type *arr_type, ArraySize len);
 Type *type_get_indexed_type(Type *type);
