@@ -175,7 +175,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			break;
 		case DECL_GENERIC:
 			assert(decl->name);
-			if (decl->macro_decl.type_parent)
+			if (decl->func_decl.type_parent)
 			{
 				vec_add(unit->generic_methods, decl);
 				return;
@@ -189,7 +189,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			break;
 		case DECL_MACRO:
 			assert(decl->name);
-			if (decl->macro_decl.type_parent)
+			if (decl->func_decl.type_parent)
 			{
 				vec_add(unit->macro_methods, decl);
 				return;

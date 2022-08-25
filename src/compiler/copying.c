@@ -545,6 +545,7 @@ TypeInfo *copy_type_info(CopyStruct *c, TypeInfo *source)
 			return copy;
 		case TYPE_INFO_EVALTYPE:
 		case TYPE_INFO_EXPRESSION:
+		case TYPE_INFO_VAARG_TYPE:
 			assert(source->resolve_status == RESOLVE_NOT_DONE);
 			copy->unresolved_type_expr = copy_expr(c, source->unresolved_type_expr);
 			return copy;
@@ -566,10 +567,10 @@ TypeInfo *copy_type_info(CopyStruct *c, TypeInfo *source)
 	UNREACHABLE
 }
 
-static void copy_function_signature_deep(CopyStruct *c, FunctionSignature *signature)
+static void copy_signature_deep(CopyStruct *c, Signature *signature)
 {
 	MACRO_COPY_DECL_LIST(signature->params);
-	MACRO_COPY_TYPEID(signature->returntype);
+	MACRO_COPY_TYPEID(signature->rtype);
 }
 void copy_decl_type(Decl *decl)
 {
@@ -647,7 +648,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			copy_decl_type(copy);
 			MACRO_COPY_TYPEID(copy->func_decl.type_parent);
 			MACRO_COPY_ASTID(copy->func_decl.docs);
-			copy_function_signature_deep(c, &copy->func_decl.function_signature);
+			copy_signature_deep(c, &copy->func_decl.signature);
 			MACRO_COPY_ASTID(copy->func_decl.body);
 			break;
 		case DECL_VAR:
@@ -673,7 +674,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			copy_decl_type(copy);
 			if (copy->typedef_decl.is_func)
 			{
-				copy_function_signature_deep(c, &copy->typedef_decl.function_signature);
+				copy_signature_deep(c, &copy->typedef_decl.function_signature);
 				break;
 			}
 			MACRO_COPY_TYPE(copy->typedef_decl.type_info);
@@ -683,7 +684,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			MACRO_COPY_DECL_LIST(copy->methods);
 			if (copy->distinct_decl.typedef_decl.is_func)
 			{
-				copy_function_signature_deep(c, &copy->distinct_decl.typedef_decl.function_signature);
+				copy_signature_deep(c, &copy->distinct_decl.typedef_decl.function_signature);
 				break;
 			}
 			MACRO_COPY_TYPE(copy->distinct_decl.typedef_decl.type_info);
@@ -708,12 +709,11 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			break;
 		case DECL_GENERIC:
 		case DECL_MACRO:
-			MACRO_COPY_ASTID(copy->macro_decl.docs);
-			MACRO_COPY_TYPEID(decl->macro_decl.type_parent);
-			MACRO_COPY_DECL_LIST(decl->macro_decl.parameters);
-			MACRO_COPY_ASTID(decl->macro_decl.body);
-			MACRO_COPY_TYPEID(decl->macro_decl.rtype);
-			MACRO_COPY_DECLID(decl->macro_decl.body_param);
+			MACRO_COPY_ASTID(copy->func_decl.docs);
+			MACRO_COPY_TYPEID(decl->func_decl.type_parent);
+			copy_signature_deep(c, &copy->func_decl.signature);
+			MACRO_COPY_ASTID(decl->func_decl.body);
+			MACRO_COPY_DECLID(decl->func_decl.body_param);
 			break;
 		case DECL_CT_SWITCH:
 			MACRO_COPY_DECL_LIST(decl->ct_switch_decl.cases);

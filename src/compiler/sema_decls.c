@@ -69,7 +69,7 @@ static inline bool sema_check_param_uniqueness_and_type(Decl **decls, Decl *curr
 	{
 		if (name == decls[i]->name)
 		{
-			SEMA_ERROR(current, "Duplicate parameter name %s.", name);
+			SEMA_ERROR(current, "Duplicate parameter name '%s'.", name);
 			SEMA_NOTE(decls[i], "Previous use of the name was here.");
 			decl_poison(decls[i]);
 			decl_poison(current);
@@ -581,51 +581,40 @@ static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl)
 }
 
 
-static inline bool sema_analyse_function_param(SemaContext *context, Decl *param)
+static inline bool sema_analyse_signature(SemaContext *context, Signature *sig)
 {
-	param->unit = context->unit;
-	assert(param->decl_kind == DECL_VAR);
-	// We need to check that the parameters are not typeless nor are of any macro parameter kind.
-	if (param->var.kind != VARDECL_PARAM)
-	{
-		SEMA_ERROR(param, "Only regular parameters are allowed for functions.");
-		return false;
-	}
+	Variadic variadic_type = sig->variadic;
+	Decl **params = sig->params;
+	unsigned param_count = vec_size(params);
+	unsigned vararg_index = sig->vararg_index;
+	bool is_fn = !sig->is_macro;
+	bool is_macro_at_name = sig->is_at_macro;
 
-	if (!sema_analyse_attributes_for_var(context, param)) return false;
-	if (!param->var.type_info)
+	// Check return type
+	assert(sig->rtype || sig->is_macro);
+	Type *rtype = NULL;
+	if (sig->rtype)
 	{
-		SEMA_ERROR(param, "Only typed parameters are allowed for functions.");
-		return false;
-	}
-	if (!sema_resolve_type_info(context, param->var.type_info)) return false;
-
-	if (param->var.vararg)
-	{
-		param->var.type_info->type = type_get_subarray(param->var.type_info->type);
-	}
-	param->type = param->var.type_info->type;
-	if (param->var.init_expr)
-	{
-		Expr *expr = param->var.init_expr;
-
-		if (expr->expr_kind == EXPR_CONST)
+		TypeInfo *rtype_info = type_infoptr(sig->rtype);
+		if (!sema_resolve_type_info(context, type_infoptr(sig->rtype))) return false;
+		rtype = rtype_info->type;
+		if (sig->attrs.nodiscard)
 		{
-			if (!sema_analyse_expr_rhs(context, param->type, expr, true)) return false;
+			if (rtype == type_void)
+			{
+				SEMA_ERROR(rtype_info, "@nodiscard cannot be used on %s returning 'void'.", is_fn ? "functions" : "macros");
+				return false;
+			}
+		}
+		if (sig->attrs.maydiscard)
+		{
+			if (!type_is_optional(rtype))
+			{
+				SEMA_ERROR(rtype_info, "@maydiscard can only be used on %s returning optional values.", is_fn ? "functions" : "macros");
+				return false;
+			}
 		}
 	}
-	param->alignment = type_abi_alignment(param->type);
-	return true;
-}
-
-static inline Type *sema_analyse_function_signature(SemaContext *context, Decl *parent, CallABI abi, FunctionSignature *signature, bool is_real_function)
-{
-	// Get param count and variadic type
-	Variadic variadic_type = signature->variadic;
-	Decl **params = signature->params;
-	unsigned param_count = vec_size(params);
-
-	bool all_ok = sema_resolve_type_info(context, type_infoptr(signature->returntype));
 
 	// We don't support more than MAX_PARAMS number of params. This makes everything sane.
 	if (param_count > MAX_PARAMS)
@@ -633,39 +622,28 @@ static inline Type *sema_analyse_function_signature(SemaContext *context, Decl *
 		if (variadic_type != VARIADIC_NONE)
 		{
 			SEMA_ERROR(params[MAX_PARAMS], "The number of params exceeded the max of %d.", MAX_PARAMS);
-			return NULL;
+			return false;
 		}
 		SEMA_ERROR(params[MAX_PARAMS], "The number of params exceeded the max of %d. To accept more arguments, consider using varargs.", MAX_PARAMS);
-		return NULL;
+		return false;
 	}
 
-	Type **types = NULL;
-	int vararg_index = -1;
+	// Check parameters
 	for (unsigned i = 0; i < param_count; i++)
 	{
 		Decl *param = params[i];
-		// We might run into a raw vararg
 		if (!param)
 		{
 			assert(variadic_type == VARIADIC_RAW);
-			vararg_index = i;
+			assert(i == vararg_index);
 			continue;
 		}
-		assert(param->resolve_status == RESOLVE_NOT_DONE && "The param shouldn't have been resolved yet.");
-		param->resolve_status = RESOLVE_RUNNING;
-		// Analyse the param
-		if (!sema_analyse_function_param(context, param))
+		if (vararg_index < i)
 		{
-			decl_poison(param);
-			all_ok = false;
-			continue;
-		}
-		if (vararg_index > -1)
-		{
-			if (variadic_type == VARIADIC_RAW)
+			if (is_fn && variadic_type == VARIADIC_RAW)
 			{
 				SEMA_ERROR(param, "C-style varargs cannot be followed by regular parameters.");
-				return NULL;
+				return decl_poison(param);
 			}
 
 			// If we already reached a vararg (as a previous argument) and we have a
@@ -673,48 +651,149 @@ static inline Type *sema_analyse_function_signature(SemaContext *context, Decl *
 			if (!param->name)
 			{
 				SEMA_ERROR(param, "A parameter name was expected, as parameters after varargs must always be named.");
-				decl_poison(param);
-				all_ok = false;
-				continue;
+				return decl_poison(param);
 			}
 		}
-		// Disallow "void" args and repeating the same parameter name.
-		// This must be done after checking raw varargs
-		if (!sema_check_param_uniqueness_and_type(params, param, i, param_count))
+
+		assert(param->resolve_status == RESOLVE_NOT_DONE && "The param shouldn't have been resolved yet.");
+		param->resolve_status = RESOLVE_RUNNING;
+		param->unit = context->unit;
+		assert(param->decl_kind == DECL_VAR);
+		VarDeclKind var_kind = param->var.kind;
+		switch (var_kind)
 		{
-			all_ok = false;
+			case VARDECL_PARAM_EXPR:
+			case VARDECL_PARAM_REF:
+				if (is_fn)
+				{
+					SEMA_ERROR(param, "Only regular parameters are allowed for functions.");
+					return decl_poison(param);
+				}
+				if (!is_macro_at_name)
+				{
+					SEMA_ERROR(param, "Ref and expression parameters are not allowed in function-like macros. Prefix the macro name with '@'.");
+					return decl_poison(param);
+				}
+				FALLTHROUGH;
+			case VARDECL_PARAM_CT:
+				if (is_fn)
+				{
+					SEMA_ERROR(param, "Only regular parameters are allowed for functions.");
+					return decl_poison(param);
+				}
+				FALLTHROUGH;
+			case VARDECL_PARAM:
+				if (param->var.type_info)
+				{
+					if (!sema_resolve_type_info(context, param->var.type_info)) return decl_poison(param);
+					param->type = param->var.type_info->type;
+				}
+				else if (is_fn)
+				{
+					SEMA_ERROR(param, "Only typed parameters are allowed for functions.");
+					return false;
+				}
+				if (!sema_analyse_attributes_for_var(context, param)) return false;
+				break;
+			case VARDECL_PARAM_CT_TYPE:
+				if (is_fn)
+				{
+					SEMA_ERROR(param, "Only regular parameters are allowed for functions.");
+					return decl_poison(param);
+				}
+				if (param->var.type_info)
+				{
+					SEMA_ERROR(param->var.type_info, "A compile time type parameter cannot have a type itself.");
+					return decl_poison(param);
+				}
+				break;
+			case VARDECL_CONST:
+			case VARDECL_GLOBAL:
+			case VARDECL_LOCAL:
+			case VARDECL_MEMBER:
+			case VARDECL_BITMEMBER:
+			case VARDECL_LOCAL_CT:
+			case VARDECL_LOCAL_CT_TYPE:
+			case VARDECL_UNWRAPPED:
+			case VARDECL_REWRAPPED:
+			case VARDECL_ERASE:
+				UNREACHABLE
 		}
-		// Update whether this was a vararg, and update "default" for the signature.
 		if (param->var.vararg)
 		{
-			if (vararg_index > -1)
+			if (var_kind != VARDECL_PARAM)
 			{
-				SEMA_ERROR(param, "A function may not have more than one vararg.");
-				all_ok = false;
+				SEMA_ERROR(param, "Only regular parameters may be vararg.");
+				return decl_poison(param);
 			}
-			vararg_index = i;
+			if (!param->var.type_info)
+			{
+				SEMA_ERROR(param, "Only typed parameters may be vararg.");
+				return decl_poison(param);
+			}
+			// Update whether this was a vararg, and update "default" for the signature.
+			if (param->var.vararg)
+			{
+				if (vararg_index != i)
+				{
+					SEMA_ERROR(param, "A %s may not have more than one vararg.", is_fn ? "function" : "macro");
+					return decl_poison(param);
+				}
+			}
+			param->var.type_info->type = type_get_subarray(param->var.type_info->type);
 		}
-		// Resolution is done.
+
+		if (param->var.type_info)
+		{
+			param->type = param->var.type_info->type;
+			param->alignment = type_abi_alignment(param->type);
+		}
+		if (param->var.init_expr)
+		{
+			Expr *expr = param->var.init_expr;
+			if (expr->expr_kind == EXPR_CONST)
+			{
+				if (!sema_analyse_expr_rhs(context, param->type, expr, true)) return decl_poison(param);
+			}
+		}
+		if (!sema_check_param_uniqueness_and_type(params, param, i, param_count)) return decl_poison(param);
 		param->resolve_status = RESOLVE_DONE;
-		// Add it to the type for the type signature.
-		vec_add(types, param->type);
 	}
+	return true;
+}
+
+
+static inline Type *sema_analyse_function_signature(SemaContext *context, Decl *parent, CallABI abi, Signature *signature, bool is_real_function)
+{
+	// Get param count and variadic type
+	Decl **params = signature->params;
+
+	if (!sema_analyse_signature(context, signature)) return NULL;
+
+	Variadic variadic_type = signature->variadic;
 	// Remove the last empty value.
 	if (variadic_type == VARIADIC_RAW)
 	{
-		assert(vararg_index >= 0);
-		assert(!params[vararg_index] && "The last parameter must have been a raw variadic.");
-		assert(vararg_index == param_count - 1);
+		assert(!params[signature->vararg_index] && "The last parameter must have been a raw variadic.");
+		assert(signature->vararg_index == vec_size(params) - 1);
 		vec_pop(params);
+	}
+
+	Type **types = NULL;
+	bool all_ok = true;
+	unsigned param_count = vec_size(params);
+
+	for (unsigned i = 0; i < param_count; i++)
+	{
+		vec_add(types, params[i]->type);
 	}
 
 	if (!all_ok) return NULL;
 	Type *raw_type = type_get_func(signature, abi);
 	Type *type = type_new(TYPE_FUNC, parent->name);
 	type->canonical = type;
-	type->function.attrs = signature->attrs;
+	type->function.signature = signature;
 	type->function.module = parent->unit->module;
-	type->function.params = signature->params;
 	type->function.prototype = raw_type->function.prototype;
 	return type;
 }
@@ -1007,33 +1086,11 @@ static inline const char *name_by_decl(Decl *method_like)
 }
 
 
-static inline void find_operator_parameters(Decl *method, TypeInfoId *rtype_ptr, Decl ***params_ptr)
-{
-	switch (method->decl_kind)
-	{
-		case DECL_GENERIC:
-			*params_ptr = method->generic_decl.parameters;
-			*rtype_ptr = method->generic_decl.rtype;
-			break;
-		case DECL_MACRO:
-			*params_ptr = method->macro_decl.parameters;
-			*rtype_ptr = method->macro_decl.rtype;
-			break;
-		case DECL_FUNC:
-			*params_ptr = method->func_decl.function_signature.params;
-			*rtype_ptr = method->func_decl.function_signature.returntype;
-			break;
-		default:
-			UNREACHABLE
-	}
-
-}
 
 static bool sema_analyse_operator_common(Decl *method, TypeInfo **rtype_ptr, Decl ***params_ptr, uint32_t parameters)
 {
-	TypeInfoId rtype_id;
-	find_operator_parameters(method, &rtype_id, params_ptr);
-	Decl **params = *params_ptr;
+	Signature *signature = &method->func_decl.signature;
+	Decl **params = *params_ptr = signature->params;
 	uint32_t param_count = vec_size(params);
 	if (param_count > parameters)
 	{
@@ -1046,7 +1103,7 @@ static bool sema_analyse_operator_common(Decl *method, TypeInfo **rtype_ptr, Dec
 		return false;
 	}
 
-	if (!rtype_id)
+	if (!signature->rtype)
 	{
 		SEMA_ERROR(method, "The return value must be explicitly typed for '%s'.", method->name);
 		return false;
@@ -1060,7 +1117,7 @@ static bool sema_analyse_operator_common(Decl *method, TypeInfo **rtype_ptr, Dec
 			return false;
 		}
 	}
-	*rtype_ptr = type_infoptr(rtype_id);
+	*rtype_ptr = type_infoptr(signature->rtype);
 	return true;
 }
 
@@ -1233,7 +1290,7 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 		           type_to_error_string(parent_type->type));
 		return false;
 	}
-	Decl **params = decl->func_decl.function_signature.params;
+	Decl **params = decl->func_decl.signature.params;
 	if (!vec_size(params))
 	{
 		SEMA_ERROR(decl, "A method must start with a parameter of type %s or %s.",
@@ -1330,21 +1387,21 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 	switch (type)
 	{
 		case ATTRIBUTE_CDECL:
-			decl->func_decl.function_signature.abi = CALL_C;
+			decl->func_decl.signature.abi = CALL_C;
 			break;
 		case ATTRIBUTE_VECCALL:
 			switch (platform_target.arch)
 			{
 				case ARCH_TYPE_X86_64:
 				case ARCH_TYPE_X86:
-					decl->func_decl.function_signature.abi = CALL_X86_VECTOR;
+					decl->func_decl.signature.abi = CALL_X86_VECTOR;
 					break;
 				case ARCH_TYPE_ARM:
 				case ARCH_TYPE_ARMB:
 				case ARCH_TYPE_AARCH64:
 				case ARCH_TYPE_AARCH64_32:
 				case ARCH_TYPE_AARCH64_BE:
-					decl->func_decl.function_signature.abi = CALL_AAPCS_VFP;
+					decl->func_decl.signature.abi = CALL_AAPCS_VFP;
 					break;
 				default:
 					break;
@@ -1354,25 +1411,25 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			assert(decl->decl_kind == DECL_FUNC);
 			if (platform_target.arch == ARCH_TYPE_X86 || platform_target.arch == ARCH_TYPE_X86_64)
 			{
-				decl->func_decl.function_signature.abi = CALL_X86_STD;
+				decl->func_decl.signature.abi = CALL_X86_STD;
 			}
 			else if (platform_target.arch == ARCH_TYPE_ARM || platform_target.arch == ARCH_TYPE_ARMB)
 			{
-				decl->func_decl.function_signature.abi = CALL_AAPCS;
+				decl->func_decl.signature.abi = CALL_AAPCS;
 			}
 			break; // Check args
 		case ATTRIBUTE_FASTCALL:
 			if (platform_target.arch == ARCH_TYPE_X86 ||
 			    (platform_target.arch == ARCH_TYPE_X86_64 && platform_target.os == OS_TYPE_WIN32))
 			{
-				decl->func_decl.function_signature.abi = CALL_X86_FAST;
+				decl->func_decl.signature.abi = CALL_X86_FAST;
 			}
 			break;
 		case ATTRIBUTE_REGCALL:
 			if (platform_target.arch == ARCH_TYPE_X86 ||
 			    (platform_target.arch == ARCH_TYPE_X86_64 && platform_target.os == OS_TYPE_WIN32))
 			{
-				decl->func_decl.function_signature.abi = CALL_X86_REG;
+				decl->func_decl.signature.abi = CALL_X86_REG;
 			}
 			break;
 		case ATTRIBUTE_OPERATOR:
@@ -1476,33 +1533,17 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			decl->func_decl.attr_inline = false;
 			break;
 		case ATTRIBUTE_NODISCARD:
-			if (domain == ATTR_MACRO)
-			{
-				decl->macro_decl.attr_nodiscard = true;
-				break;
-			}
-			decl->func_decl.function_signature.attrs.nodiscard = true;
+			decl->func_decl.signature.attrs.nodiscard = true;
 			break;
 		case ATTRIBUTE_MAYDISCARD:
-			if (domain == ATTR_MACRO)
-			{
-				decl->macro_decl.attr_maydiscard = true;
-				break;
-			}
-			decl->func_decl.function_signature.attrs.maydiscard = true;
+			decl->func_decl.signature.attrs.maydiscard = true;
 			break;
 		case ATTRIBUTE_INLINE:
 			decl->func_decl.attr_inline = true;
 			decl->func_decl.attr_noinline = false;
 			break;
 		case ATTRIBUTE_NORETURN:
-			if (domain == ATTR_MACRO)
-			{
-				decl->macro_decl.attr_noreturn = true;
-				break;
-			}
-			assert(domain == ATTR_FUNC);
-			decl->func_decl.attr_noreturn = true;
+			decl->func_decl.signature.attrs.noreturn = true;
 			break;
 		case ATTRIBUTE_WEAK:
 			decl->is_weak = true;
@@ -1736,8 +1777,8 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 		SEMA_ERROR(decl, "A main function may not have local visibility.");
 		return false;
 	}
-	FunctionSignature *signature = &decl->func_decl.function_signature;
-	TypeInfo *rtype_info = type_infoptr(signature->returntype);
+	Signature *signature = &decl->func_decl.signature;
+	TypeInfo *rtype_info = type_infoptr(signature->rtype);
 	Type *rtype = type_flatten_distinct(rtype_info->type);
 	bool is_int_return = true;
 	bool is_err_return = false;
@@ -1807,13 +1848,14 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	function->unit = decl->unit;
 	function->extname = kw_main;
 	function->has_extname = true;
-	function->func_decl.function_signature.returntype = type_infoid(type_info_new_base(type_cint, decl->span));
+	function->func_decl.signature.rtype = type_infoid(type_info_new_base(type_cint, decl->span));
+	function->func_decl.signature.vararg_index = 2;
 	Decl *param1 = decl_new_generated_var(type_cint, VARDECL_PARAM, decl->span);
 	Decl *param2 = decl_new_generated_var(type_get_ptr(type_get_ptr(type_char)), VARDECL_PARAM, decl->span);
 	Decl **main_params = NULL;
 	vec_add(main_params, param1);
 	vec_add(main_params, param2);
-	function->func_decl.function_signature.params = main_params;
+	function->func_decl.signature.params = main_params;
 	Ast *body = new_ast(AST_COMPOUND_STMT, decl->span);
 	AstId *next = &body->compound_stmt.first_stmt;
 	Ast *ret_stmt = new_ast(AST_RETURN_STMT, decl->span);
@@ -1877,19 +1919,24 @@ REGISTER_MAIN:
 	return true;
 }
 
+static inline bool sema_analyse_func_macro(SemaContext *context, Decl *decl, bool is_func)
+{
+	if (!sema_analyse_attributes(context, decl, decl->attributes, is_func ? ATTR_FUNC : ATTR_MACRO)) return decl_poison(decl);
+	return true;
+}
 static inline bool sema_analyse_func(SemaContext *context, Decl *decl)
 {
 	DEBUG_LOG("----Analysing function %s", decl->name);
 
-	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_FUNC)) return decl_poison(decl);
+	if (!sema_analyse_func_macro(context, decl, true)) return false;
 
-	Type *func_type = sema_analyse_function_signature(context, decl, decl->func_decl.function_signature.abi, &decl->func_decl.function_signature, true);
+	Type *func_type = sema_analyse_function_signature(context, decl, decl->func_decl.signature.abi, &decl->func_decl.signature, true);
 	decl->type = func_type;
 	if (!func_type) return decl_poison(decl);
-	TypeInfo *rtype_info = type_infoptr(decl->func_decl.function_signature.returntype);
+	TypeInfo *rtype_info = type_infoptr(decl->func_decl.signature.rtype);
 	assert(rtype_info);
 	Type *rtype = rtype_info->type->canonical;
-	if (decl->func_decl.function_signature.attrs.nodiscard)
+	if (decl->func_decl.signature.attrs.nodiscard)
 	{
 		if (rtype == type_void)
 		{
@@ -1897,7 +1944,7 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl)
 			return decl_poison(decl);
 		}
 	}
-	if (decl->func_decl.function_signature.attrs.maydiscard)
+	if (decl->func_decl.signature.attrs.maydiscard)
 	{
 		if (!type_is_optional(rtype))
 		{
@@ -1918,8 +1965,8 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl)
 		decl_set_external_name(decl);
 	}
 	bool pure = false;
-	if (!sema_analyse_doc_header(decl->func_decl.docs, decl->func_decl.function_signature.params, NULL, &pure)) return decl_poison(decl);
-	decl->func_decl.function_signature.is_pure = pure;
+	if (!sema_analyse_doc_header(decl->func_decl.docs, decl->func_decl.signature.params, NULL, &pure)) return decl_poison(decl);
+	decl->func_decl.signature.attrs.is_pure = pure;
 	decl->alignment = type_alloca_alignment(decl->type);
 	DEBUG_LOG("Function analysis done.");
 	return true;
@@ -1945,7 +1992,7 @@ ERROR:
 
 static bool sema_analyse_macro_method(SemaContext *context, Decl *decl)
 {
-	TypeInfo *parent_type_info = type_infoptr(decl->macro_decl.type_parent);
+	TypeInfo *parent_type_info = type_infoptr(decl->func_decl.type_parent);
 	if (!sema_resolve_type_info(context, parent_type_info)) return false;
 	Type *parent_type = parent_type_info->type;
 	if (!type_may_have_sub_elements(parent_type))
@@ -1955,12 +2002,12 @@ static bool sema_analyse_macro_method(SemaContext *context, Decl *decl)
 		           type_to_error_string(parent_type));
 		return false;
 	}
-	if (!vec_size(decl->macro_decl.parameters))
+	if (!vec_size(decl->func_decl.signature.params))
 	{
 		SEMA_ERROR(decl, "Expected at least one parameter - of type %s.", type_to_error_string(parent_type));
 		return false;
 	}
-	Decl *first_param = decl->macro_decl.parameters[0];
+	Decl *first_param = decl->func_decl.signature.params[0];
 
 	if (!sema_is_valid_method_param(context, first_param, parent_type->canonical)) return false;
 
@@ -1975,90 +2022,20 @@ static bool sema_analyse_macro_method(SemaContext *context, Decl *decl)
 static inline bool sema_analyse_macro(SemaContext *context, Decl *decl)
 {
 	bool is_generic = decl->decl_kind == DECL_GENERIC;
+	decl->func_decl.unit = context->unit;
 
-	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_MACRO)) return decl_poison(decl);
+	if (!sema_analyse_func_macro(context, decl, false)) return false;
+	if (!sema_analyse_signature(context, &decl->func_decl.signature)) return decl_poison(decl);
 
-	if (decl->macro_decl.rtype)
+	if (!decl->func_decl.signature.is_at_macro && decl->func_decl.body_param)
 	{
-		TypeInfo *rtype_info = type_infoptr(decl->macro_decl.rtype);
-		if (!sema_resolve_type_info(context, rtype_info)) return decl_poison(decl);
-		Type *rtype = rtype_info->type;
-		if (decl->macro_decl.attr_nodiscard)
-		{
-			if (rtype == type_void)
-			{
-				SEMA_ERROR(rtype_info, "@nodiscard cannot be used on macros returning 'void'.");
-				return decl_poison(decl);
-			}
-		}
-		if (decl->macro_decl.attr_maydiscard)
-		{
-			if (!type_is_optional(rtype))
-			{
-				SEMA_ERROR(rtype_info, "@maydiscard can only be used on macros returning optional values.");
-				return decl_poison(decl);
-			}
-		}
-	}
-	decl->macro_decl.unit = context->unit;
-	Decl **parameters = decl->macro_decl.parameters;
-	unsigned param_count = vec_size(parameters);
-	bool is_function_like = true;
-	for (unsigned i = 0; i < param_count; i++)
-	{
-		Decl *param = parameters[i];
-		param->unit = context->unit;
-		param->resolve_status = RESOLVE_RUNNING;
-		assert(param->decl_kind == DECL_VAR);
-		switch (param->var.kind)
-		{
-			case VARDECL_PARAM_EXPR:
-			case VARDECL_PARAM_REF:
-				is_function_like = false;
-				FALLTHROUGH;
-			case VARDECL_PARAM_CT:
-				if (is_generic)
-				{
-					SEMA_ERROR(param, "Only regular parameters and type parameters are allowed for generic functions.");
-					return decl_poison(decl);
-				}
-				FALLTHROUGH;
-			case VARDECL_PARAM:
-				if (param->var.type_info)
-				{
-					if (!sema_resolve_type_info(context, param->var.type_info)) return decl_poison(decl);
-					param->type = param->var.type_info->type;
-				}
-				break;
-			case VARDECL_PARAM_CT_TYPE:
-				if (param->var.type_info)
-				{
-					SEMA_ERROR(param->var.type_info, "A compile time type parameter cannot have a type itself.");
-					return decl_poison(decl);
-				}
-				break;
-			case VARDECL_CONST:
-			case VARDECL_GLOBAL:
-			case VARDECL_LOCAL:
-			case VARDECL_MEMBER:
-			case VARDECL_BITMEMBER:
-			case VARDECL_LOCAL_CT:
-			case VARDECL_LOCAL_CT_TYPE:
-			case VARDECL_UNWRAPPED:
-			case VARDECL_REWRAPPED:
-			case VARDECL_ERASE:
-				UNREACHABLE
-		}
-		if (!sema_check_param_uniqueness_and_type(parameters, param, i, param_count)) return decl_poison(decl);
-		param->resolve_status = RESOLVE_DONE;
-	}
-	DeclId body_param = decl->macro_decl.body_param;
-	if (body_param) is_function_like = false;
-	if (is_generic && body_param)
-	{
-		SEMA_ERROR(declptr(body_param), "Trailing block syntax is not allowed for generic functions.");
+		SEMA_ERROR(decl, "Names of macros with a trailing body must start with '@'.");
 		return decl_poison(decl);
 	}
+
+	Decl **parameters = decl->func_decl.signature.params;
+	unsigned param_count = vec_size(parameters);
+	DeclId body_param = decl->func_decl.body_param;
 
 	Decl **body_parameters = body_param ? declptr(body_param)->body_params : NULL;
 	unsigned body_param_count = vec_size(body_parameters);
@@ -2094,13 +2071,9 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl)
 		param->resolve_status = RESOLVE_DONE;
 	}
 	bool pure = false;
-	if (!sema_analyse_doc_header(decl->macro_decl.docs, decl->macro_decl.parameters, body_parameters, &pure)) return decl_poison(decl);
-	if (decl->name[0] != '@' && !is_function_like)
-	{
-		SEMA_ERROR(decl, "Names of non-function like macros (i.e. a macro with a trailing body, ref or expression parameters, must start with '@'.");
-		return false;
-	}
-	if (decl->macro_decl.type_parent)
+	if (!sema_analyse_doc_header(decl->func_decl.docs, decl->func_decl.signature.params, body_parameters, &pure)) return decl_poison(decl);
+
+	if (decl->func_decl.type_parent)
 	{
 		if (!sema_analyse_macro_method(context, decl)) return decl_poison(decl);
 	}
@@ -2520,7 +2493,7 @@ static inline bool sema_analyse_attribute_decl(SemaContext *c, Decl *decl)
 		{
 			if (param[j].name == param->name)
 			{
-				SEMA_ERROR(param, "Duplicate parameter name.");
+				SEMA_ERROR(param, "Duplicate parameter name '%s'.", param->name);
 				return false;
 			}
 		}

@@ -1080,10 +1080,10 @@ void type_func_prototype_init(uint32_t capacity)
 	map.max_load = (uint32_t)(TABLE_MAX_LOAD * capacity);
 }
 
-static uint32_t hash_function(FunctionSignature *sig)
+static uint32_t hash_function(Signature *sig)
 {
 	uintptr_t hash = (unsigned)sig->variadic;
-	hash = hash * 31 + (uintptr_t)type_infoptr(sig->returntype)->type->canonical;
+	hash = hash * 31 + (uintptr_t)type_infoptr(sig->rtype)->type->canonical;
 	Decl **params = sig->params;
 	VECEACH(params, i)
 	{
@@ -1093,14 +1093,14 @@ static uint32_t hash_function(FunctionSignature *sig)
 	return (uint32_t)((hash >> 16) ^ hash);
 }
 
-static int compare_function(FunctionSignature *sig, FunctionPrototype *proto)
+static int compare_function(Signature *sig, FunctionPrototype *proto)
 {
 	if (sig->variadic != proto->variadic) return -1;
 	Decl **params = sig->params;
 	Type **other_params = proto->param_types;
 	unsigned param_count = vec_size(params);
 	if (param_count != vec_size(other_params)) return -1;
-	if (type_infoptr(sig->returntype)->type->canonical != proto->rtype->canonical) return -1;
+	if (type_infoptr(sig->rtype)->type->canonical != proto->rtype->canonical) return -1;
 	VECEACH(params, i)
 	{
 		Decl *param = params[i];
@@ -1111,13 +1111,13 @@ static int compare_function(FunctionSignature *sig, FunctionPrototype *proto)
 }
 
 
-static inline Type *func_create_new_func_proto(FunctionSignature *sig, CallABI abi, uint32_t hash, FuncTypeEntry *entry)
+static inline Type *func_create_new_func_proto(Signature *sig, CallABI abi, uint32_t hash, FuncTypeEntry *entry)
 {
 	unsigned param_count = vec_size(sig->params);
 	FunctionPrototype *proto = CALLOCS(FunctionPrototype);
 	proto->variadic = sig->variadic;
 	proto->vararg_index = sig->vararg_index;
-	Type *rtype = type_infoptr(sig->returntype)->type;
+	Type *rtype = type_infoptr(sig->rtype)->type;
 	proto->rtype = rtype;
 	if (type_is_optional(rtype))
 	{
@@ -1163,10 +1163,14 @@ static inline Type *func_create_new_func_proto(FunctionSignature *sig, CallABI a
 	}
 	scratch_buffer_append_char(')');
 	Type *type = type_new(TYPE_FUNC, scratch_buffer_interned());
+	Signature *copy_sig = CALLOCS(Signature);
+	*copy_sig = *sig;
+	copy_sig->attrs = (CalleeAttributes) { .nodiscard = false };
+	copy_sig->params = proto->param_copy;
 	proto->raw_type = type;
 	type->function.prototype = proto;
 	type->function.module = NULL;
-	type->function.params = proto->param_copy;
+	type->function.signature = copy_sig;
 	type->canonical = type;
 	entry->key = hash;
 	entry->value = type;
@@ -1202,7 +1206,7 @@ static inline Type *func_create_new_func_proto(FunctionSignature *sig, CallABI a
 	return type;
 }
 
-Type *type_get_func(FunctionSignature *signature, CallABI abi)
+Type *type_get_func(Signature *signature, CallABI abi)
 {
 	uint32_t hash = hash_function(signature);
 	uint32_t mask = map.capacity - 1;

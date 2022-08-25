@@ -491,6 +491,15 @@ static inline TypeInfo *parse_base_type(ParseContext *c)
 		RANGE_EXTEND_PREV(type_info);
 		return type_info;
 	}
+	if (try_consume(c, TOKEN_CT_VAARG_GET_TYPE))
+	{
+		TypeInfo *type_info = type_info_new(TYPE_INFO_VAARG_TYPE, c->prev_span);
+		CONSUME_OR_RET(TOKEN_LPAREN, poisoned_type_info);
+		ASSIGN_EXPR_OR_RET(type_info->unresolved_type_expr, parse_expr(c), poisoned_type_info);
+		CONSUME_OR_RET(TOKEN_RPAREN, poisoned_type_info);
+		RANGE_EXTEND_PREV(type_info);
+		return type_info;
+	}
 	if (try_consume(c, TOKEN_CT_EVALTYPE))
 	{
 		TypeInfo *type_info = type_info_new(TYPE_INFO_EVALTYPE, c->prev_span);
@@ -1066,11 +1075,10 @@ INLINE bool is_end_of_param_list(ParseContext *c)
  *             | ELLIPSIS (CT_TYPE_IDENT | non_type_ident ('=' expr)?)?
  */
 bool parse_parameters(ParseContext *c, Visibility visibility, Decl ***params_ref, Decl **body_params,
-					  Variadic *variadic, unsigned *vararg_index_ref)
+                      Variadic *variadic, int *vararg_index_ref)
 {
 	Decl** params = NULL;
 	bool var_arg_found = false;
-
 	while (!is_end_of_param_list(c))
 	{
 		bool ellipsis = try_consume(c, TOKEN_ELLIPSIS);
@@ -1280,16 +1288,15 @@ bool parse_parameters(ParseContext *c, Visibility visibility, Decl ***params_ref
  *
  * parameter_type_list ::= '(' parameters ')'
  */
-static inline bool parse_fn_parameter_list(ParseContext *c, Visibility parent_visibility, FunctionSignature *signature, bool is_interface)
+static inline bool parse_fn_parameter_list(ParseContext *c, Visibility parent_visibility, Signature *signature, bool is_interface)
 {
 	Decl **decls = NULL;
 	CONSUME_OR_RET(TOKEN_LPAREN, false);
 	Variadic variadic = VARIADIC_NONE;
-	unsigned vararg_index = 0;
+	int vararg_index = -1;
 	if (!parse_parameters(c, parent_visibility, &decls, NULL, &variadic, &vararg_index)) return false;
 	CONSUME_OR_RET(TOKEN_RPAREN, false);
-
-	signature->vararg_index = vararg_index;
+	signature->vararg_index = vararg_index < 0 ? vec_size(decls) : vararg_index;
 	signature->params = decls;
 	signature->variadic = variadic;
 
@@ -1529,12 +1536,12 @@ static bool parse_macro_arguments(ParseContext *c, Visibility visibility, Decl *
 
 	// Parse the regular parameters.
 	Variadic variadic = VARIADIC_NONE;
-	unsigned vararg_index = 0;
+	int vararg_index = -1;
 	Decl **params = NULL;
 	if (!parse_parameters(c, visibility, &params, NULL, &variadic, &vararg_index)) return false;
-	macro->macro_decl.parameters = params;
-	macro->macro_decl.vararg_index = vararg_index;
-	macro->macro_decl.variadic = variadic;
+	macro->func_decl.signature.params = params;
+	macro->func_decl.signature.vararg_index = vararg_index < 0 ? vec_size(params) : vararg_index;
+	macro->func_decl.signature.variadic = variadic;
 
 	// Do we have trailing block parameters?
 	if (try_consume(c, TOKEN_EOS))
@@ -1547,11 +1554,11 @@ static bool parse_macro_arguments(ParseContext *c, Visibility visibility, Decl *
 			if (!parse_parameters(c, visibility, &body_param->body_params, NULL, NULL, NULL)) return false;
 			CONSUME_OR_RET(TOKEN_RPAREN, false);
 		}
-		macro->macro_decl.body_param = declid(body_param);
+		macro->func_decl.body_param = declid(body_param);
 	}
 	else
 	{
-		macro->macro_decl.body_param = 0;
+		macro->func_decl.body_param = 0;
 	}
 	CONSUME_OR_RET(TOKEN_RPAREN, false);
 	return true;
@@ -1606,7 +1613,7 @@ static inline Decl *parse_define_type(ParseContext *c, Visibility visibility)
 		decl->typedef_decl.is_func = true;
 		decl->typedef_decl.is_distinct = distinct;
 		ASSIGN_TYPE_OR_RET(TypeInfo *type_info, parse_optional_type(c), poisoned_decl);
-		decl->typedef_decl.function_signature.returntype = type_infoid(type_info);
+		decl->typedef_decl.function_signature.rtype = type_infoid(type_info);
 		if (!parse_fn_parameter_list(c, decl->visibility, &(decl->typedef_decl.function_signature), true))
 		{
 			return poisoned_decl;
@@ -1794,12 +1801,12 @@ static inline bool parse_is_macro_name(ParseContext *c)
  * func_header ::= type '!'? (type '.')? (IDENT | MACRO_IDENT)
  * macro_header ::= (type '!'?)? (type '.')? (IDENT | MACRO_IDENT)
  */
-static inline bool parse_func_macro_header(ParseContext *c, bool is_macro,
-                                           TypeInfoId *rtype_ref, TypeInfoId *method_type_ref,
-                                           const char **name_ref, SourceSpan *name_span)
+static inline bool parse_func_macro_header(ParseContext *c, Decl *decl)
 {
 	TypeInfo *rtype = NULL;
 	TypeInfo *method_type = NULL;
+
+	bool is_macro = decl->decl_kind == DECL_MACRO;
 
 	// 1. If we have a macro and see the name, we're done.
 	if (is_macro && parse_is_macro_name(c))
@@ -1839,8 +1846,8 @@ static inline bool parse_func_macro_header(ParseContext *c, bool is_macro,
 		return false;
 	}
 	RESULT:
-	*name_ref = symstr(c);
-	*name_span = c->span;
+	decl->name = symstr(c);
+	decl->span = c->span;
 	if (is_macro && c->tok != TOKEN_IDENT && c->tok != TOKEN_AT_IDENT)
 	{
 		sema_error_at(c->span, "Expected a macro name here, e.g. '@someName' or 'someName'.");
@@ -1852,8 +1859,10 @@ static inline bool parse_func_macro_header(ParseContext *c, bool is_macro,
 		return false;
 	}
 	advance(c);
-	*rtype_ref = rtype ? type_infoid(rtype) : 0;
-	*method_type_ref = method_type ? type_infoid(method_type) : 0;
+	decl->func_decl.signature.rtype = rtype ? type_infoid(rtype) : 0;
+	decl->func_decl.signature.is_macro = is_macro;
+	decl->func_decl.signature.is_at_macro = decl->name[0] == '@';
+	decl->func_decl.type_parent = method_type ? type_infoid(method_type) : 0;
 	return true;
 }
 
@@ -1869,15 +1878,13 @@ static inline Decl *parse_macro_declaration(ParseContext *c, Visibility visibili
 	Decl *decl = decl_calloc();
 	decl->decl_kind = kind;
 	decl->visibility = visibility;
-	decl->macro_decl.docs = docs;
-	TypeInfoId *rtype_ref = &decl->macro_decl.rtype;
-	TypeInfoId *method_type_ref = &decl->macro_decl.type_parent;
-	if (!parse_func_macro_header(c, true, rtype_ref, method_type_ref, &decl->name, &decl->span)) return poisoned_decl;
+	decl->func_decl.docs = docs;
+	if (!parse_func_macro_header(c, decl)) return poisoned_decl;
 	const char *block_parameter = NULL;
 	if (!parse_macro_arguments(c, visibility, decl)) return poisoned_decl;
 
 	if (!parse_attributes(c, &decl->attributes)) return poisoned_decl;
-	ASSIGN_ASTID_OR_RET(decl->macro_decl.body, parse_stmt(c), poisoned_decl);
+	ASSIGN_ASTID_OR_RET(decl->func_decl.body, parse_stmt(c), poisoned_decl);
 	return decl;
 }
 
@@ -2073,15 +2080,13 @@ static inline Decl *parse_func_definition(ParseContext *c, Visibility visibility
 	func->decl_kind = DECL_FUNC;
 	func->visibility = visibility;
 	func->func_decl.docs = docs;
-	TypeInfoId *rtype_id_ref = &func->func_decl.function_signature.returntype;
-	TypeInfoId *method_type_ref = &func->func_decl.type_parent;
-	if (!parse_func_macro_header(c, false, rtype_id_ref, method_type_ref, &func->name, &func->span)) return poisoned_decl;
+	if (!parse_func_macro_header(c, func)) return poisoned_decl;
 	if (func->name[0] == '@')
 	{
 		SEMA_ERROR(func, "Function names may not use '@'.");
 		return false;
 	}
-	if (!parse_fn_parameter_list(c, visibility, &(func->func_decl.function_signature), is_interface)) return poisoned_decl;
+	if (!parse_fn_parameter_list(c, visibility, &(func->func_decl.signature), is_interface)) return poisoned_decl;
 	if (!parse_attributes(c, &func->attributes)) return poisoned_decl;
 
 	// TODO remove

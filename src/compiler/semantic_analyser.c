@@ -321,12 +321,12 @@ void sema_analysis_run(void)
 		{
 			error_exit("'%s::%s' is not a function.", path->module, ident);
 		}
-		Decl **params = decl->func_decl.function_signature.params;
+		Decl **params = decl->func_decl.signature.params;
 		if (vec_size(params) != 4 || params[0]->type != type_get_ptr(type_char)
 			|| params[1]->type != type_get_ptr(type_char)
 			|| params[2]->type != type_get_ptr(type_char)
 			|| params[3]->type != type_uint
-			|| typeinfotype(decl->func_decl.function_signature.returntype) != type_void)
+			|| typeinfotype(decl->func_decl.signature.rtype) != type_void)
 		{
 			error_exit("Expected panic function to have the signature fn void(char*, char*, uint, uint).");
 		}
