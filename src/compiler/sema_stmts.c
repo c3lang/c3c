@@ -324,6 +324,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 			return false;
 		}
 
+		assert(ident->resolve_status != RESOLVE_DONE);
 		if (ident->identifier_expr.path)
 		{
 			SEMA_ERROR(ident->identifier_expr.path, "The variable may not have a path.");
@@ -445,6 +446,7 @@ static inline bool sema_analyse_catch_unwrap(SemaContext *context, Expr *expr)
 			return false;
 		}
 
+		assert(ident->resolve_status != RESOLVE_DONE);
 		if (ident->identifier_expr.path)
 		{
 			SEMA_ERROR(ident->identifier_expr.path, "The variable may not have a path.");
@@ -1048,8 +1050,8 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 			return false;
 		}
 		index_macro = value_by_ref ? by_ref : by_val;
-		index_type = index_macro->macro_decl.parameters[1]->type;
-		TypeInfoId rtype = index_macro->macro_decl.rtype;
+		index_type = index_macro->func_decl.signature.params[1]->type;
+		TypeInfoId rtype = index_macro->func_decl.signature.rtype;
 		value_type = rtype ? type_infoptr(rtype)->type : NULL;
 	}
 
@@ -2244,8 +2246,6 @@ static bool sema_analyse_compound_stmt(SemaContext *context, Ast *statement)
 static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement)
 {
 	bool success = false;
-	// Enter for scope
-	SCOPE_OUTER_START
 
 	ExprId init;
 	if ((init = statement->for_stmt.init))
@@ -2262,16 +2262,16 @@ static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement
 				if (decl->decl_kind != DECL_VAR || (decl->var.kind != VARDECL_LOCAL_CT && decl->var.kind != VARDECL_LOCAL_CT_TYPE))
 				{
 					SEMA_ERROR(expr, "Only 'var $foo' and 'var $Type' declarations are allowed in a '$for'");
-					goto EXIT_ERROR;
+					return false;
 				}
-				if (!sema_analyse_var_decl_ct(context, decl)) goto EXIT_ERROR;
+				if (!sema_analyse_var_decl_ct(context, decl)) return false;
 				continue;
 			}
-			if (!sema_analyse_expr(context, expr)) goto EXIT_ERROR;
+			if (!sema_analyse_expr(context, expr)) return false;
 			if (!expr_is_constant_eval(expr, CONSTANT_EVAL_CONSTANT_VALUE))
 			{
 				SEMA_ERROR(expr, "Only constant expressions are allowed.");
-				goto EXIT_ERROR;
+				return false;
 			}
 		}
 	}
@@ -2284,16 +2284,16 @@ static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement
 	for (int i = 0; i < MAX_MACRO_ITERATIONS; i++)
 	{
 		Expr *copy = expr_macro_copy(exprptr(condition));
-		if (!sema_analyse_cond_expr(context, copy)) goto EXIT_ERROR;
+		if (!sema_analyse_cond_expr(context, copy)) return false;
 		if (copy->expr_kind != EXPR_CONST)
 		{
 			SEMA_ERROR(copy, "Expected a value that can be evaluated at compile time.");
-			goto EXIT_ERROR;
+			return false;
 		}
 		if (!copy->const_expr.b) break;
 
 		Ast *compound_stmt = ast_macro_copy(body);
-		if (!sema_analyse_compound_stmt(context, compound_stmt)) goto EXIT_ERROR;
+		if (!sema_analyse_compound_statement_no_scope(context, compound_stmt)) return false;
 		*current = astid(compound_stmt);
 		current = &compound_stmt->next;
 
@@ -2303,21 +2303,18 @@ static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement
 			VECEACH(exprs, j)
 			{
 				copy = expr_macro_copy(exprs[j]);
-				if (!sema_analyse_expr(context, copy)) goto EXIT_ERROR;
+				if (!sema_analyse_expr(context, copy)) return false;
 				if (copy->expr_kind != EXPR_CONST)
 				{
 					SEMA_ERROR(copy, "Expected a value that can be evaluated at compile time.");
-					goto EXIT_ERROR;
+					return false;
 				}
 			}
 		}
 	}
 	statement->ast_kind = AST_COMPOUND_STMT;
 	statement->compound_stmt.first_stmt = start;
-	success = true;
-	EXIT_ERROR:
-	SCOPE_OUTER_END;
-	return success;
+	return true;
 }
 
 
@@ -2544,10 +2541,10 @@ bool sema_analyse_contracts(SemaContext *context, AstId doc, AstId **asserts)
 bool sema_analyse_function_body(SemaContext *context, Decl *func)
 {
 	if (!decl_ok(func)) return false;
-	FunctionSignature *signature = &func->func_decl.function_signature;
+	Signature *signature = &func->func_decl.signature;
 	FunctionPrototype *prototype = func->type->function.prototype;
 	context->current_function = func;
-	context->current_function_pure = func->func_decl.function_signature.is_pure;
+	context->current_function_pure = func->func_decl.signature.attrs.is_pure;
 	context->rtype = prototype->rtype;
 	context->active_scope = (DynamicScope) {
 			.scope_id = 0,

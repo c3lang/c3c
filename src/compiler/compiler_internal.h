@@ -46,7 +46,9 @@ typedef struct Expr_ Expr;
 typedef struct Module_ Module;
 typedef struct Type_ Type;
 typedef Type CanonicalType;
-
+typedef struct Signature_ Signature;
+typedef struct ConstInitializer_ ConstInitializer;
+typedef struct CompilationUnit_ CompilationUnit;
 typedef unsigned AstId;
 typedef unsigned ExprId;
 typedef unsigned DeclId;
@@ -88,32 +90,32 @@ typedef enum
 
 
 
-typedef struct ConstInitializer_
+struct ConstInitializer_
 {
 	ConstInitType kind;
 	// Type initialized
 	Type *type;
 	union
 	{
-		struct ConstInitializer_ **init_struct;
+		ConstInitializer **init_struct;
 		Expr *init_value;
 		struct
 		{
-			struct ConstInitializer_ *element;
+			ConstInitializer *element;
 			MemberIndex index;
 		} init_union;
 		struct
 		{
-			struct ConstInitializer_ **elements;
+			ConstInitializer **elements;
 		} init_array;
-		struct ConstInitializer_ **init_array_full;
+		ConstInitializer **init_array_full;
 		struct
 		{
-			struct ConstInitializer_ *element;
+			ConstInitializer *element;
 			MemberIndex index;
 		} init_array_value;
 	};
-} ConstInitializer;
+};
 
 typedef struct
 {
@@ -169,8 +171,6 @@ typedef union
 
 static_assert(sizeof(SourceSpan) == 8, "Expected 8 bytes");
 
-
-
 typedef struct
 {
 	const char *key;
@@ -225,14 +225,15 @@ typedef struct
 typedef struct
 {
 	bool nodiscard : 1;
-	bool maydiscard: 1;
-} FunctionAttributes;
+	bool maydiscard : 1;
+	bool is_pure : 1;
+	bool noreturn : 1;
+} CalleeAttributes;
 
 typedef struct
 {
-	FunctionAttributes attrs;
 	Module *module;
-	Decl** params;
+	Signature *signature;
 	struct FunctionPrototype_ *prototype;
 } TypeFunction;
 
@@ -443,35 +444,52 @@ typedef enum
 
 
 
-typedef struct FunctionSignature_
+struct Signature_
 {
-	FunctionAttributes attrs;
+	CalleeAttributes attrs;
+	bool is_macro : 1;
+	bool is_at_macro : 1;
 	Variadic variadic : 3;
-	unsigned vararg_index : 10;
-	bool use_win64 : 1;
-	bool is_pure : 1;
 	CallABI abi : 8;
-	TypeInfoId returntype;
+	unsigned vararg_index;
+	TypeInfoId rtype;
 	Decl** params;
-} FunctionSignature;
+};
 
 
 
 typedef struct
 {
-	struct
-	{
-		bool attr_noreturn : 1;
-		bool attr_inline : 1;
-		bool attr_noinline : 1;
-		bool attr_extname : 1;
-		bool attr_naked : 1;
-	};
 	TypeInfoId type_parent;
-	FunctionSignature function_signature;
+	Signature signature;
 	AstId body;
 	AstId docs;
+	union
+	{
+		struct
+		{
+			bool attr_inline : 1;
+			bool attr_noinline : 1;
+			bool attr_extname : 1;
+			bool attr_naked : 1;
+		};
+		struct
+		{
+			DeclId body_param;
+			CompilationUnit *unit;
+		};
+	};
 } FuncDecl;
+
+typedef struct
+{
+	TypeInfoId type_parent; // May be 0
+	Signature signature;
+	AstId body;
+	DeclId body_param;
+	CompilationUnit *unit;
+	AstId docs;
+} MacroDecl;
 
 typedef struct
 {
@@ -485,7 +503,7 @@ typedef struct
 	bool is_distinct : 1;
 	union
 	{
-		FunctionSignature function_signature;
+		Signature function_signature;
 		TypeInfo *type_info;
 	};
 } TypedefDecl;
@@ -500,33 +518,7 @@ typedef struct
 	};
 } DistinctDecl;
 
-typedef struct
-{
-	struct
-	{
-		unsigned vararg_index : 10;
-		Variadic variadic : 3;
-		bool attr_noreturn : 1;
-		bool attr_nodiscard : 1;
-		bool attr_maydiscard : 1;
-	};
-	TypeInfoId type_parent; // May be 0
-	TypeInfoId rtype; // May be 0
-	AstId body;
-	DeclId body_param;
-	Decl **parameters;
-	struct CompilationUnit_ *unit;
-	AstId docs;
-} MacroDecl;
 
-typedef struct
-{
-	struct Ast_ **cases;
-	Decl **parameters;
-	Decl **body_parameters;
-	TypeInfoId rtype; // May be 0!
-	Path *path; // For redefinition
-} GenericDecl;
 
 typedef enum
 {
@@ -645,8 +637,6 @@ typedef struct Decl_
 		FuncDecl func_decl;
 		AttrDecl attr_decl;
 		TypedefDecl typedef_decl;
-		MacroDecl macro_decl;
-		GenericDecl generic_decl;
 		DefineDecl define_decl;
 		CtIfDecl ct_if_decl;
 		CtIfDecl ct_elif_decl;
@@ -845,7 +835,7 @@ typedef struct
 
 typedef struct
 {
-	TokenType type : 8;
+	TokenType type : 16;
 	ExprId arg;
 } ExprCtArg;
 
@@ -883,7 +873,6 @@ typedef struct
 typedef struct
 {
 	AstId first_stmt;
-	Expr **args;
 	Decl **params;
 	BlockExit **block_exit;
 } ExprMacroBlock;
@@ -1418,7 +1407,7 @@ typedef struct
 	DeclId *entries;
 } DeclTable;
 
-typedef struct CompilationUnit_
+struct CompilationUnit_
 {
 	Module *module;
 	File* file;
@@ -1449,7 +1438,7 @@ typedef struct CompilationUnit_
 		void *debug_file;
 		void *debug_compile_unit;
 	} llvm;
-} CompilationUnit;
+};
 
 typedef struct ParseContext_
 {
@@ -1494,6 +1483,7 @@ typedef struct SemaContext_
 		// Reusable returns cache.
 		Ast **returns_cache;
 		Expr **macro_varargs;
+		Decl **macro_params;
 	};
 	Type *rtype;
 	struct SemaContext_ *yield_context;
@@ -2137,7 +2127,7 @@ void type_func_prototype_init(uint32_t capacity);
 bool type_is_subtype(Type *type, Type *possible_subtype);
 bool type_is_abi_aggregate(Type *type);
 bool type_is_int128(Type *type);
-Type *type_get_func(FunctionSignature *signature, CallABI abi);
+Type *type_get_func(Signature *signature, CallABI abi);
 Type *type_from_token(TokenType type);
 bool type_is_user_defined(Type *type);
 bool type_is_structurally_equivalent(Type *type1, Type *type);

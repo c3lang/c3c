@@ -506,9 +506,9 @@ void llvm_emit_function_body(GenContext *c, Decl *decl)
 	if (!decl->func_decl.attr_naked)
 	{
 		// Generate LLVMValueRef's for all parameters, so we can use them as local vars in code
-		VECEACH(decl->func_decl.function_signature.params, i)
+		VECEACH(decl->func_decl.signature.params, i)
 		{
-			llvm_emit_parameter(c, decl->func_decl.function_signature.params[i], prototype->abi_args[i], &arg, i);
+			llvm_emit_parameter(c, decl->func_decl.signature.params[i], prototype->abi_args[i], &arg, i);
 		}
 	}
 
@@ -633,7 +633,7 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 	{
 		llvm_attribute_add(c, function, attribute_id.noinline, -1);
 	}
-	if (decl->func_decl.attr_noreturn)
+	if (decl->func_decl.signature.attrs.noreturn)
 	{
 		llvm_attribute_add(c, function, attribute_id.noreturn, -1);
 	}

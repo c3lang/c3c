@@ -124,7 +124,7 @@ void llvm_emit_debug_function(GenContext *c, Decl *decl)
 			UNREACHABLE
 	}
 	flags |= LLVMDIFlagPrototyped;
-	if (decl->func_decl.attr_noreturn) flags |= LLVMDIFlagNoReturn;
+	if (decl->func_decl.signature.attrs.noreturn) flags |= LLVMDIFlagNoReturn;
 
 	uint32_t row = decl->span.row;
 	if (!row) row = 1;

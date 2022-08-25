@@ -254,6 +254,21 @@ RETRY:
 	{
 		case TYPE_INFO_POISON:
 			UNREACHABLE
+		case TYPE_INFO_VAARG_TYPE:
+			if (context->current_macro)
+			{
+				ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, type_info->unresolved_type_expr), false);
+				if (arg_expr->expr_kind != EXPR_TYPEINFO)
+				{
+					SEMA_ERROR(arg_expr, "The argument was not a type.");
+					return false;
+				}
+				*type_info = *arg_expr->type_expr;
+				assert(type_info->resolve_status == RESOLVE_DONE);
+				return true;
+			}
+			SEMA_ERROR(type_info, "'%s' can only be used inside of a macro.", token_type_to_string(TOKEN_CT_VAARG_GET_TYPE));
+			return false;
 		case TYPE_INFO_CT_IDENTIFIER:
 		case TYPE_INFO_IDENTIFIER:
 			if (!sema_resolve_type_identifier(context, type_info)) return false;

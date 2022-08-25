@@ -5163,11 +5163,12 @@ static inline void llvm_emit_expr_block(GenContext *context, BEValue *be_value, 
 
 static inline void llvm_emit_macro_block(GenContext *context, BEValue *be_value, Expr *expr)
 {
-	VECEACH(expr->macro_block.params, i)
+	foreach(Decl *, expr->macro_block.params)
 	{
+		// Skip vararg
+		if (!val) continue;
 		// In case we have a constant, we never do an emit. The value is already folded.
-		Decl *decl = expr->macro_block.params[i];
-		switch (decl->var.kind)
+		switch (val->var.kind)
 		{
 			case VARDECL_CONST:
 			case VARDECL_GLOBAL:
@@ -5183,8 +5184,8 @@ static inline void llvm_emit_macro_block(GenContext *context, BEValue *be_value,
 			case VARDECL_PARAM_REF:
 			{
 				BEValue addr;
-				llvm_emit_expr(context, &addr, decl->var.init_expr);
-				decl->backend_ref = addr.value;
+				llvm_emit_expr(context, &addr, val->var.init_expr);
+				val->backend_ref = addr.value;
 				continue;
 			}
 			case VARDECL_PARAM_CT:
@@ -5194,11 +5195,11 @@ static inline void llvm_emit_macro_block(GenContext *context, BEValue *be_value,
 			case VARDECL_PARAM:
 				break;
 		}
-		llvm_emit_and_set_decl_alloca(context, decl);
+		llvm_emit_and_set_decl_alloca(context, val);
 		BEValue value;
 
-		llvm_emit_expr(context, &value, expr->macro_block.args[i]);
-		llvm_store_decl(context, decl, &value);
+		llvm_emit_expr(context, &value, val->var.init_expr);
+		llvm_store_decl(context, val, &value);
 	}
 
 	llvm_emit_return_block(context, be_value, expr->type, expr->macro_block.first_stmt, expr->macro_block.block_exit);

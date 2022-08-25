@@ -71,6 +71,37 @@ void expr_rewrite_to_builtin_access(SemaContext *context, Expr *expr, Expr *pare
 	expr->resolve_status = RESOLVE_DONE;
 }
 
+Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, Expr *index_expr)
+{
+	unsigned args = vec_size(context->macro_varargs);
+	uint64_t index;
+	Decl *param = NULL;
+	if (!sema_analyse_expr(context, index_expr)) return poisoned_expr;
+	if (!type_is_integer(index_expr->type))
+	{
+		SEMA_ERROR(index_expr, "Expected the argument index here, but found a value of type %s.", type_quoted_error_string(index_expr->type));
+		return poisoned_expr;
+	}
+	if (!expr_is_const(index_expr))
+	{
+		SEMA_ERROR(index_expr, "Vararg functions need a constant argument, but this is a runtime value.");
+		return poisoned_expr;
+	}
+	Int index_val = index_expr->const_expr.ixx;
+	if (int_is_neg(index_val))
+	{
+		SEMA_ERROR(index_expr, "The index cannot be negative.");
+		return poisoned_expr;
+	}
+	Int int_max = { .i = { .low = args }, .type = TYPE_U32 };
+	if (int_comp(index_val, int_max, BINARYOP_GE))
+	{
+		SEMA_ERROR(index_expr, "Only %u vararg%s exist.", args, args == 1 ? "" : "s");
+		return poisoned_expr;
+	}
+	return context->macro_varargs[(size_t)index_val.i.low];
+}
+
 const char *ct_eval_expr(SemaContext *c, const char *expr_type, Expr *inner, TokenType *type, Path **path_ref, bool report_missing)
 {
 	if (!sema_analyse_expr(c, inner)) return false;
@@ -149,7 +180,7 @@ void expr_insert_addr(Expr *original)
 	original->expr_kind = EXPR_UNARY;
 	Type *inner_type = inner->type;
 	bool failable = type_is_optional(inner->type);
-	original->type = type_add_optional(type_get_ptr(type_no_optional(inner->type)), failable);
+	original->type = type_add_optional(type_get_ptr(type_no_optional(inner_type)), failable);
 	original->unary_expr.operator = UNARYOP_ADDR;
 	original->unary_expr.expr = inner;
 }
@@ -380,7 +411,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 			return false;
 		case EXPR_IDENTIFIER:
 			if (expr->identifier_expr.decl->decl_kind != DECL_VAR) return true;
-			if (expr->identifier_expr.is_const)
+			if (expr->identifier_expr.decl->var.kind == VARDECL_CONST)
 			{
 				expr = expr->identifier_expr.decl->var.init_expr;
 				goto RETRY;
@@ -570,15 +601,15 @@ static bool sema_check_expr_lvalue(Expr *top_expr, Expr *expr)
 			return true;
 		case EXPR_IDENTIFIER:
 		{
-			if (expr->identifier_expr.is_const)
-			{
-				SEMA_ERROR(top_expr, "You cannot assign to a constant.");
-				return false;
-			}
 			Decl *decl = expr->identifier_expr.decl;
 			if (decl->decl_kind != DECL_VAR)
 			{
 				SEMA_ERROR(top_expr, "You cannot assign a value to %s.", decl_to_a_name(decl));
+				return false;
+			}
+			if (decl->var.kind == VARDECL_CONST)
+			{
+				SEMA_ERROR(top_expr, "You cannot assign to a constant.");
 				return false;
 			}
 			decl = decl_raw(decl);
@@ -1100,8 +1131,9 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 	assert(expr && expr->identifier_expr.ident);
 	DEBUG_LOG("Resolving identifier '%s'", expr->identifier_expr.ident);
 
+	assert(expr->resolve_status != RESOLVE_DONE);
 	DeclId body_param;
-	if (!expr->identifier_expr.path && context->current_macro && (body_param = context->current_macro->macro_decl.body_param))
+	if (!expr->identifier_expr.path && context->current_macro && (body_param = context->current_macro->func_decl.body_param))
 	{
 		if (expr->identifier_expr.ident == declptr(body_param)->name)
 		{
@@ -1375,15 +1407,11 @@ static inline bool expr_may_splat_as_vararg(Expr *expr, Type *variadic_base_type
 typedef struct
 {
 	bool macro;
-	bool func_pointer;
 	const char *name;
 	const char *block_parameter;
 	Decl **params;
-	Type **param_types;
 	Expr *struct_var;
-	unsigned param_count;
-	Variadic variadic;
-	unsigned vararg_index;
+	Signature *signature;
 } CalledDecl;
 
 static inline bool expr_promote_vararg(SemaContext *context, Expr *arg)
@@ -1463,7 +1491,6 @@ INLINE bool sema_expand_call_arguments(SemaContext *context, CalledDecl *callee,
 {
 	unsigned num_args = vec_size(args);
 	Decl **params = callee->params;
-	bool is_func_ptr = callee->func_pointer;
 
 	Expr **actual_args = VECNEW(Expr*, func_param_count);
 	for (unsigned i = 0; i < func_param_count; i++) vec_add(actual_args, NULL);
@@ -1628,8 +1655,10 @@ static inline bool sema_expr_analyse_call_invocation(SemaContext *context, Expr 
 
 	// 2. Pick out all the arguments and parameters.
 	Expr **args = call->call_expr.arguments;
+	Signature *sig = callee.signature;
+	unsigned vararg_index = sig->vararg_index;
+	Variadic variadic = sig->variadic;
 	Decl **decl_params = callee.params;
-	Type **param_types = callee.param_types;
 	unsigned num_args = vec_size(args);
 
 	// 3. If this is a type call, then we have an implicit first argument.
@@ -1655,7 +1684,7 @@ static inline bool sema_expr_analyse_call_invocation(SemaContext *context, Expr 
 	if (splat)
 	{
 		// 4a. Is this *not* a variadic function/macro? - Then that's an error.
-		if (callee.variadic == VARIADIC_NONE)
+		if (variadic == VARIADIC_NONE)
 		{
 			SEMA_ERROR(call->call_expr.arguments[num_args - 1],
 			           "Using the splat operator is only allowed on vararg parameters.");
@@ -1664,15 +1693,15 @@ static inline bool sema_expr_analyse_call_invocation(SemaContext *context, Expr 
 	}
 
 	// 5. Zero out all argument slots.
-	unsigned func_param_count = callee.param_count;
+	unsigned param_count = vec_size(decl_params);
 
 	// 6. We might have a typed variadic call e.g. foo(int, double...)
 	//    get that type.
 	Type *variadic_type = NULL;
-	if (callee.variadic == VARIADIC_TYPED || callee.variadic == VARIADIC_ANY)
+	if (variadic == VARIADIC_TYPED || variadic == VARIADIC_ANY)
 	{
 		// 7a. The parameter type is <type>[], so we get the <type>
-		Type *vararg_slot_type = callee.macro ? callee.params[callee.vararg_index]->type : callee.param_types[callee.vararg_index];
+		Type *vararg_slot_type = decl_params[vararg_index]->type;
 		assert(vararg_slot_type->type_kind == TYPE_SUBARRAY);
 		variadic_type = vararg_slot_type->array.base;
 	}
@@ -1683,9 +1712,9 @@ static inline bool sema_expr_analyse_call_invocation(SemaContext *context, Expr 
 	                                &callee,
 	                                call,
 	                                args,
-	                                func_param_count,
-	                                callee.variadic,
-	                                callee.vararg_index,
+	                                param_count,
+	                                variadic,
+	                                vararg_index,
 	                                failable, &varargs, &vararg_splat)) return false;
 
 	args = call->call_expr.arguments;
@@ -1694,18 +1723,22 @@ static inline bool sema_expr_analyse_call_invocation(SemaContext *context, Expr 
 	call->call_expr.varargs = NULL;
 	if (varargs)
 	{
-		if (callee.variadic == VARIADIC_RAW)
+		if (variadic == VARIADIC_RAW)
 		{
 			foreach(Expr*, varargs)
 			{
 				// 12a. Analyse the expression.
-				if (!sema_analyse_expr(context, val)) return false;
-
-				// 12b. In the case of a compile time variable non macros we cast to c_int / double.
-				if (!callee.macro)
+				if (callee.macro)
 				{
+					// Just keep as lvalues
+					if (!sema_analyse_expr_lvalue_fold_const(context, val)) return false;
+				}
+				else
+				{
+					if (!sema_analyse_expr(context, val)) return false;
 					if (!expr_promote_vararg(context, val)) return false;
 				}
+
 				// Set the argument at the location.
 				*failable |= IS_OPTIONAL(val);
 			}
@@ -1746,27 +1779,15 @@ static inline bool sema_expr_analyse_call_invocation(SemaContext *context, Expr 
 
 		// 10. If we exceed the function parameter count (remember we reduced this by one
 		//     in the case of typed vararg) we're now in a variadic list.
-		if (i == callee.vararg_index && callee.variadic != VARIADIC_NONE)
+		if (i == vararg_index && variadic != VARIADIC_NONE)
 		{
 			assert(arg == NULL);
 			continue;
 		}
 
-		Decl *param;
-		VarDeclKind kind;
-		Type *type;
-		if (decl_params)
-		{
-			param = decl_params[i];
-			kind = param->var.kind;
-			type = param->type;
-		}
-		else
-		{
-			param = NULL;
-			kind = VARDECL_PARAM;
-			type = param_types[i];
-		}
+		Decl *param = decl_params[i];
+		VarDeclKind kind = param->var.kind;
+		Type *type = param->type;
 
 		// 16. Analyse a regular argument.
 		switch (kind)
@@ -1801,8 +1822,9 @@ static inline bool sema_expr_analyse_call_invocation(SemaContext *context, Expr 
 					SEMA_ERROR(arg, "An untyped list can only be passed as a compile time parameter.");
 					return false;
 				}
-				if (param && !param->alignment)
+				if (!param->alignment)
 				{
+					assert(callee.macro && "Only in the macro case should we need to insert the alignment.");
 					param->alignment = type_alloca_alignment(arg->type);
 				}
 				break;
@@ -1846,23 +1868,19 @@ static inline bool sema_expr_analyse_call_invocation(SemaContext *context, Expr 
 	}
 	return true;
 }
-static inline bool sema_expr_analyse_func_invocation(SemaContext *context, Type *type,
-													 FunctionSignature *sig, Expr *expr, Decl *decl,
-													 Expr *struct_var, bool failable, const char *name)
+static inline bool sema_expr_analyse_func_invocation(SemaContext *context, Type *type, Expr *expr, Expr *struct_var,
+								  bool failable, const char *name)
 {
+	Signature *sig = type->function.signature;
 	CalledDecl callee = {
 			.macro = false,
 			.name = name,
-			.func_pointer = sig ? 0 : 1,
 			.block_parameter = NULL,
 			.struct_var = struct_var,
-			.params = type->function.params,
-			.param_types = type->function.prototype->param_types,
-			.param_count = vec_size(type->function.prototype->param_types),
-			.variadic = type->function.prototype->variadic,
-			.vararg_index = type->function.prototype->vararg_index
+			.params = sig->params,
+			.signature = sig,
 	};
-	if (context->current_function_pure && (!sig || !sig->is_pure) && !expr->call_expr.attr_pure)
+	if (context->current_function_pure && !sig->attrs.is_pure && !expr->call_expr.attr_pure)
 	{
 		SEMA_ERROR(expr, "Only '@pure' functions may be called, you can override this with an attribute.");
 		return false;
@@ -1873,16 +1891,16 @@ static inline bool sema_expr_analyse_func_invocation(SemaContext *context, Type 
 
 	Type *rtype = type->function.prototype->rtype;
 
-	if (is_unused && rtype != type_void && decl && decl->decl_kind == DECL_FUNC)
+	if (is_unused && rtype != type_void)
 	{
-		if (decl->func_decl.function_signature.attrs.nodiscard)
+		if (sig->attrs.nodiscard)
 		{
 			SEMA_ERROR(expr, "The result of the function must be used.");
 			return false;
 		}
-		if (type_is_optional(rtype) && !decl->func_decl.function_signature.attrs.maydiscard)
+		if (type_is_optional(rtype) && !sig->attrs.maydiscard)
 		{
-			SEMA_ERROR(expr, "The optional result of the macro must be used.");
+			SEMA_ERROR(expr, "The optional result of the function must be used.");
 			return false;
 		}
 	}
@@ -1895,20 +1913,14 @@ static inline bool sema_expr_analyse_func_invocation(SemaContext *context, Type 
 static inline bool sema_expr_analyse_var_call(SemaContext *context, Expr *expr, Type *func_ptr_type, bool failable)
 {
 	Decl *decl = NULL;
-	if (func_ptr_type->type_kind != TYPE_POINTER || func_ptr_type->pointer->type_kind != TYPE_FUNC) goto ERR;
+	if (func_ptr_type->type_kind != TYPE_POINTER || func_ptr_type->pointer->type_kind != TYPE_FUNC)
+	{
+		SEMA_ERROR(expr, "Only macros, functions and function pointers maybe invoked, this is of type '%s'.", type_to_error_string(func_ptr_type));
+		return false;
+	}
 	Type *pointee = func_ptr_type->pointer;
 	expr->call_expr.is_pointer_call = true;
-	return sema_expr_analyse_func_invocation(context,
-											 pointee,
-	                                         NULL,
-	                                         expr,
-	                                         decl,
-											 NULL,
-											 failable,
-											 func_ptr_type->pointer->name);
-ERR:
-	SEMA_ERROR(expr, "Only macros, functions and function pointers maybe invoked, this is of type '%s'.", type_to_error_string(func_ptr_type));
-	return false;
+	return sema_expr_analyse_func_invocation(context, pointee, expr, NULL, failable, func_ptr_type->pointer->name);
 }
 
 // Unify returns in a macro or expression block.
@@ -2008,9 +2020,7 @@ static inline bool sema_expr_analyse_func_call(SemaContext *context, Expr *expr,
 	expr->call_expr.is_pointer_call = false;
 	return sema_expr_analyse_func_invocation(context,
 	                                         decl->type,
-	                                         &decl->func_decl.function_signature,
-											 expr,
-	                                         decl,
+	                                         expr,
 	                                         struct_var,
 	                                         failable,
 	                                         decl->name);
@@ -2068,24 +2078,43 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 {
 	assert(decl->decl_kind == DECL_MACRO);
 
-	Decl **params = decl_copy_list(decl->macro_decl.parameters);
+	Decl **params = decl_copy_list(decl->func_decl.signature.params);
 	CalledDecl callee = {
 			.macro = true,
 			.name = decl->name,
-			.block_parameter = decl->macro_decl.body_param ? declptr(decl->macro_decl.body_param)->name : NULL,
 			.params = params,
-			.variadic = decl->macro_decl.variadic,
-			.vararg_index = decl->macro_decl.vararg_index,
-			.param_count = vec_size(params),
+			.block_parameter = decl->func_decl.body_param ? declptr(decl->func_decl.body_param)->name : NULL,
+			.signature = &decl->func_decl.signature,
 			.struct_var = struct_var
 	};
 
 	if (!sema_expr_analyse_call_invocation(context, call_expr, callee, &failable)) return false;
 
+	unsigned vararg_index = decl->func_decl.signature.vararg_index;
 	Expr **args = call_expr->call_expr.arguments;
 	VECEACH(params, i)
 	{
 		Decl *param = params[i];
+		if (i == vararg_index)
+		{
+			if (!param) continue;
+			// Splat? That's the simple case.
+			if (call_expr->call_expr.splat_vararg)
+			{
+
+				if (!sema_analyse_expr(context, args[i] = call_expr->call_expr.splat)) return false;
+			}
+			else
+			{
+				Expr **exprs = call_expr->call_expr.varargs;
+				Expr *literal = expr_new(EXPR_COMPOUND_LITERAL, exprs ? exprs[0]->span : param->span);
+				Expr *initializer_list = expr_new_expr(EXPR_INITIALIZER_LIST, literal);
+				initializer_list->initializer_list = exprs;
+				literal->expr_compound_literal.type_info = param->var.type_info;
+				literal->expr_compound_literal.initializer = initializer_list;
+				if (!sema_analyse_expr(context, args[i] = literal)) return false;
+			}
+		}
 		param->var.init_expr = args[i];
 		VarDeclKind kind = param->var.kind;
 		if (kind == VARDECL_PARAM_CT_TYPE || kind == VARDECL_PARAM_CT)
@@ -2096,7 +2125,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 
 	Decl **body_params = call_expr->call_expr.body_arguments;
 	unsigned body_params_count = vec_size(body_params);
-	Decl **macro_body_params = decl->macro_decl.body_param ? declptr(decl->macro_decl.body_param)->body_params : NULL;
+	Decl **macro_body_params = decl->func_decl.body_param ? declptr(decl->func_decl.body_param)->body_params : NULL;
 	unsigned expected_body_params = vec_size(macro_body_params);
 	if (expected_body_params > body_params_count)
 	{
@@ -2134,7 +2163,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		if (!body_arg->alignment) body_arg->alignment = type_alloca_alignment(body_arg->type);
 	}
 
-	Ast *body = ast_macro_copy(astptr(decl->macro_decl.body));
+	Ast *body = ast_macro_copy(astptr(decl->func_decl.body));
 
 	DynamicScope old_scope = context->active_scope;
 	context_change_scope_with_flags(context, SCOPE_NONE);
@@ -2142,10 +2171,10 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	SemaContext macro_context;
 
 	Type *rtype = NULL;
-	sema_context_init(&macro_context, decl->macro_decl.unit);
+	sema_context_init(&macro_context, decl->unit);
 	macro_context.compilation_unit = context->unit;
 	macro_context.current_function = context->current_function;
-	rtype = decl->macro_decl.rtype ? type_infoptr(decl->macro_decl.rtype)->type : NULL;
+	rtype = decl->func_decl.signature.rtype ? type_infoptr(decl->func_decl.signature.rtype)->type : NULL;
 	macro_context.expected_block_type = rtype;
 	bool may_failable = true;
 	if (rtype)
@@ -2170,26 +2199,30 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	macro_context.yield_body = body_id ? astptr(body_id) : NULL;
 	macro_context.yield_params = body_params;
 	macro_context.yield_context = context;
+	macro_context.macro_varargs = call_expr->call_expr.varargs;
 	macro_context.original_inline_line = context->original_inline_line ? context->original_inline_line : call_expr->span.row;
-
+	macro_context.macro_params = params;
 	BlockExit** block_exit_ref = MALLOCS(BlockExit*);
 	macro_context.block_exit_ref = block_exit_ref;
 
 	VECEACH(params, i)
 	{
 		Decl *param = params[i];
+		// Skip raw vararg
+		if (!param) continue;
 		if (!sema_add_local(&macro_context, param)) goto EXIT_FAIL;
 	}
 
 	AstId assert_first = 0;
 	AstId* next = &assert_first;
 
-	if (!sema_analyse_contracts(&macro_context, decl->macro_decl.docs, &next)) return false;
+	if (!sema_analyse_contracts(&macro_context, decl->func_decl.docs, &next)) return false;
 	sema_append_contract_asserts(assert_first, body);
 
 	if (!sema_analyse_statement(&macro_context, body)) goto EXIT_FAIL;
 
-	bool is_no_return = decl->macro_decl.attr_noreturn;
+	params = macro_context.macro_params;
+	bool is_no_return = decl->func_decl.signature.attrs.noreturn;
 
 	if (!vec_size(macro_context.returns))
 	{
@@ -2249,12 +2282,12 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		Type *type = call_expr->type;
 		if (type != type_void)
 		{
-			if (decl->macro_decl.attr_nodiscard)
+			if (decl->func_decl.signature.attrs.nodiscard)
 			{
 				SEMA_ERROR(call_expr, "The result of the macro must be used.");
 				return SCOPE_POP_ERROR();
 			}
-			if (type_is_optional(type) && !decl->macro_decl.attr_maydiscard)
+			if (type_is_optional(type) && !decl->func_decl.signature.attrs.maydiscard)
 			{
 				SEMA_ERROR(call_expr, "The optional result of the macro must be used.");
 				return SCOPE_POP_ERROR();
@@ -2285,7 +2318,6 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	call_expr->expr_kind = EXPR_MACRO_BLOCK;
 	call_expr->macro_block.first_stmt = body->compound_stmt.first_stmt;
 	call_expr->macro_block.params = params;
-	call_expr->macro_block.args = args;
 	call_expr->macro_block.block_exit = block_exit_ref;
 EXIT:
 	assert(context->active_scope.defer_last == context->active_scope.defer_start);
@@ -2301,102 +2333,11 @@ static inline Decl *sema_generate_generic_function(SemaContext *context, Expr *c
 	return NULL;
 }
 
-static inline bool sema_expr_analyse_generic_call(SemaContext *context, Expr *call_expr, Expr *struct_var, Decl *decl, bool failable)
-{
-	assert(decl->decl_kind == DECL_GENERIC);
-
-	Expr **args = call_expr->call_expr.arguments;
-	Decl **func_params = decl->macro_decl.parameters;
-
-	unsigned explicit_args = vec_size(args);
-	unsigned total_args = explicit_args;
-
-	scratch_buffer_clear();
-	scratch_buffer_append(decl->extname);
-
-	// TODO revisit name mangling
-	if (struct_var)
-	{
-		total_args++;
-		scratch_buffer_append_char('@');
-		scratch_buffer_append(struct_var->type->canonical->name);
-	}
-
-	if (total_args != vec_size(func_params))
-	{
-		// TODO HANDLE VARARGS
-		SEMA_ERROR(call_expr, "Mismatch on number of arguments.");
-		return false;
-	}
-
-	unsigned offset = total_args - explicit_args;
-	for (unsigned i = 0; i < explicit_args; i++)
-	{
-		Expr *arg = args[i];
-		Decl *param = func_params[i + offset];
-		if (param->var.kind == VARDECL_PARAM_CT_TYPE)
-		{
-			if (!sema_analyse_expr_lvalue_fold_const(context, arg)) return false;
-			if (arg->expr_kind != EXPR_TYPEINFO)
-			{
-				SEMA_ERROR(arg, "A type, like 'int' or 'double' was expected for the parameter '%s'.", param->name);
-				return false;
-			}
-			scratch_buffer_append_char(',');
-			scratch_buffer_append(arg->type_expr->type->canonical->name);
-			continue;
-		}
-		if (param->var.type_info)
-		{
-			if (!sema_analyse_expr_rhs(context, param->var.type_info->type, arg, true)) return false;
-		}
-		else
-		{
-			if (!sema_analyse_expr(context, arg)) return false;
-		}
-		scratch_buffer_append_char(',');
-		scratch_buffer_append(arg->type->canonical->name);
-	}
-	const char *mangled_name = scratch_buffer_interned();
-	Decl **generic_cache = decl->unit->module->generic_cache;
-	Decl *found = NULL;
-	VECEACH(generic_cache, i)
-	{
-		TODO
-		if (generic_cache[i]->extname == mangled_name)
-		{
-			found = generic_cache[i];
-			break;
-		}
-	}
-	if (!found)
-	{
-		found = sema_generate_generic_function(context, call_expr, struct_var, decl, mangled_name);
-	}
-	// Remove type parameters from call.
-	for (unsigned i = 0; i < explicit_args; i++)
-	{
-		Decl *param = func_params[i + offset];
-		if (param->var.kind == VARDECL_PARAM_CT_TYPE)
-		{
-			for (unsigned j = i + 1; j < explicit_args; j++)
-			{
-				args[j - 1] = args[j];
-			}
-			explicit_args--;
-			i--;
-		}
-	}
-	vec_resize(args, explicit_args);
-	// Perform the normal func call on the found declaration.
-	return sema_expr_analyse_func_call(context, call_expr, found, struct_var, failable);
-}
-
 static bool sema_analyse_body_expansion(SemaContext *macro_context, Expr *call)
 {
 	Decl *macro = macro_context->current_macro;
 	assert(macro);
-	DeclId body_param = macro->macro_decl.body_param;
+	DeclId body_param = macro->func_decl.body_param;
 	assert(body_param);
 
 	ExprCall *call_expr = &call->call_expr;
@@ -2431,7 +2372,6 @@ static bool sema_analyse_body_expansion(SemaContext *macro_context, Expr *call)
 	Ast *first_defer = NULL;
 	SemaContext *context = macro_context->yield_context;
 	Decl **params = macro_context->yield_params;
-
 	Expr *func_expr = exprptr(call_expr->function);
 	assert(func_expr->expr_kind == EXPR_MACRO_BODY_EXPANSION);
 	expr_replace(call, func_expr);
@@ -2499,7 +2439,7 @@ bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl
 		case DECL_GENERIC:
 			expr->call_expr.func_ref = declid(decl);
 			expr->call_expr.is_func_ref = true;
-			return sema_expr_analyse_generic_call(context, expr, struct_var, decl, failable);
+			TODO // Maybe generics won't happen
 		case DECL_POISONED:
 			return false;
 		default:
@@ -2820,14 +2760,8 @@ static inline bool sema_expr_analyse_call(SemaContext *context, Expr *expr)
 			switch (decl->decl_kind)
 			{
 				case DECL_MACRO:
-					if (decl->macro_decl.parameters[0]->type->type_kind == TYPE_POINTER)
-					{
-						expr_insert_addr(func_expr->access_expr.parent);
-					}
-					struct_var = func_expr->access_expr.parent;
-					break;
 				case DECL_FUNC:
-					if (decl->func_decl.function_signature.params[0]->type->type_kind == TYPE_POINTER)
+					if (decl->func_decl.signature.params[0]->type->type_kind == TYPE_POINTER)
 					{
 						expr_insert_addr(func_expr->access_expr.parent);
 					}
@@ -3512,6 +3446,7 @@ static void add_members_to_context(SemaContext *context, Decl *decl)
 static Expr *sema_expr_resolve_access_child(SemaContext *context, Expr *child, bool *missing)
 {
 RETRY:
+	assert(child->resolve_status != RESOLVE_DONE);
 	switch (child->expr_kind)
 	{
 		case EXPR_IDENTIFIER:
@@ -4272,15 +4207,18 @@ CHECK_DEEPER:
 		return false;
 	}
 
-	// Transform bitstruct access to expr_bitaccess.
-	if (member->var.kind == VARDECL_BITMEMBER)
+	if (member->decl_kind == DECL_VAR)
 	{
-		expr->expr_kind = EXPR_BITACCESS;
-	}
-	if (member->var.kind == VARDECL_MEMBER && expr_is_const_list(current_parent))
-	{
-		sema_expr_fold_to_member(expr, current_parent, member);
-		return true;
+		if (member->var.kind == VARDECL_BITMEMBER)
+		{
+			// Transform bitstruct access to expr_bitaccess.
+			expr->expr_kind = EXPR_BITACCESS;
+		}
+		else if (member->var.kind == VARDECL_MEMBER && expr_is_const_list(current_parent))
+		{
+			sema_expr_fold_to_member(expr, current_parent, member);
+			return true;
+		}
 	}
 	// 13. Copy properties.
 	expr->access_expr.parent = current_parent;
@@ -7615,6 +7553,9 @@ RETRY:
 			if (!decl_ok(decl)) return poisoned_type;
 			return decl->type->canonical;
 		}
+		case TYPE_INFO_VAARG_TYPE:
+			if (!sema_resolve_type_info(context, type_info)) return poisoned_type;
+			return type_info->type->canonical;
 		case TYPE_INFO_EXPRESSION:
 			if (!sema_resolve_type_info(context, type_info)) return poisoned_type;
 			return type_info->type;
@@ -7771,18 +7712,104 @@ static inline bool sema_expr_analyse_variant(SemaContext *context, Expr *expr)
 
 static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Expr *expr)
 {
+	assert(expr->resolve_status == RESOLVE_RUNNING);
+	TokenType type = expr->ct_arg_expr.type;
 	if (!context->current_macro)
 	{
-		SEMA_ERROR(expr, "'%s' can only be used inside of a macro.", token_type_to_string(expr->ct_arg_expr.type));
+		SEMA_ERROR(expr, "'%s' can only be used inside of a macro.", token_type_to_string(type));
 		return false;
 	}
-	switch (expr->ct_arg_expr.type)
+	switch (type)
 	{
 		case TOKEN_CT_VAARG_COUNT:
 			expr_rewrite_const_int(expr, type_usize, vec_size(context->macro_varargs), true);
 			return true;
+		case TOKEN_CT_VAARG_GET_ARG:
+		{
+			// A normal argument, this means we only evaluate it once.
+			ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, exprptr(expr->ct_arg_expr.arg)), false);
+
+			Decl *decl = NULL;
+			// Try to find the original param.
+			foreach(Decl*, context->macro_params)
+			{
+				if (!val) continue;
+				if (val->var.init_expr == arg_expr)
+				{
+					decl = val;
+					break;
+				}
+			}
+			// Not found, so generate a new.
+			if (!decl)
+			{
+				decl = decl_new_generated_var(arg_expr->type, VARDECL_PARAM, arg_expr->span);
+				decl->var.init_expr = arg_expr;
+				vec_add(context->macro_params, decl);
+			}
+			// Replace with the identifier.
+			expr->expr_kind = EXPR_IDENTIFIER;
+			expr->identifier_expr = (ExprIdentifier) { .decl = decl };
+			expr->resolve_status = RESOLVE_DONE;
+			expr->type = decl->type;
+			return true;
+		}
+		case TOKEN_CT_VAARG_GET_EXPR:
+		{
+			// An expr argument, this means we copy and evaluate.
+			ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, exprptr(expr->ct_arg_expr.arg)), false);
+			expr_replace(expr, expr_macro_copy(arg_expr));
+			return true;
+		}
+		case TOKEN_CT_VAARG_GET_CONST:
+		{
+			// An expr argument, this means we copy and evaluate.
+			ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, exprptr(expr->ct_arg_expr.arg)), false);
+			arg_expr = expr_macro_copy(arg_expr);
+			if (!expr_is_constant_eval(arg_expr, CONSTANT_EVAL_CONSTANT_VALUE))
+			{
+				SEMA_ERROR(arg_expr, "This argument needs to be a compile time constant.");
+				return false;
+			}
+			expr_replace(expr, arg_expr);
+			return true;
+		}
+		case TOKEN_CT_VAARG_GET_REF:
+		{
+			// A normal argument, this means we only evaluate it once.
+			ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, exprptr(expr->ct_arg_expr.arg)), false);
+
+			if (!sema_check_expr_lvalue(arg_expr, arg_expr)) return false;
+
+			Decl *decl = NULL;
+			// Try to find the original param.
+			foreach(Decl*, context->macro_params)
+			{
+				if (!val) continue;
+				if (val->var.init_expr == arg_expr)
+				{
+					decl = val;
+					decl->var.kind = VARDECL_PARAM_REF;
+					break;
+				}
+			}
+			// Not found, so generate a new.
+			if (!decl)
+			{
+				decl = decl_new_generated_var(arg_expr->type, VARDECL_PARAM_REF, arg_expr->span);
+				decl->var.init_expr = arg_expr;
+				vec_add(context->macro_params, decl);
+			}
+			// Replace with the identifier.
+			expr->expr_kind = EXPR_IDENTIFIER;
+			expr->identifier_expr = (ExprIdentifier) { .decl = decl };
+			expr->resolve_status = RESOLVE_DONE;
+			expr->type = decl->type;
+			return true;
+		}
+		case TOKEN_CT_VAARG_GET_TYPE:
 		default:
-			TODO;
+			UNREACHABLE;
 	}
 }
 
@@ -8133,7 +8160,7 @@ static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr)
 		case EXPR_MACRO_BODY_EXPANSION:
 			if (!expr->body_expansion_expr.ast)
 			{
-				SEMA_ERROR(expr, "'@%s' must be followed by ().", declptr(context->current_macro->macro_decl.body_param)->name);
+				SEMA_ERROR(expr, "'@%s' must be followed by ().", declptr(context->current_macro->func_decl.body_param)->name);
 				return false;
 			}
 			break;
