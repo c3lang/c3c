@@ -1272,6 +1272,7 @@ void *llvm_target_machine_create(void)
 	                                       (LLVMCodeGenOptLevel)platform_target.llvm_opt_level,
 	                                       reloc_mode, LLVMCodeModelDefault);
 	if (!result) error_exit("Failed to create target machine.");
+	LLVMSetTargetMachineAsmVerbosity(result, 1);
 	return result;
 }
 
