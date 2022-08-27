@@ -46,17 +46,19 @@ void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags)
 		previous_defer = 0;
 		parent_defer = 0;
 	}
+	bool new_label_scope = (flags & (SCOPE_EXPR_BLOCK | SCOPE_MACRO)) != 0;
 	if (!(flags & SCOPE_EXPR_BLOCK))
 	{
 		flags = context->active_scope.flags | flags;
 	}
+	unsigned label_start = new_label_scope ? last_local : context->active_scope.label_start;
 	context->active_scope = (DynamicScope) {
 			.scope_id = ++context->scope_id,
 			.allow_dead_code = false,
 			.jump_end = false,
 			.depth = depth,
 			.current_local = last_local,
-			.local_decl_start = last_local,
+			.label_start = label_start,
 			.in_defer = previous_defer,
 			.defer_last = parent_defer,
 			.defer_start = parent_defer,
@@ -137,6 +139,7 @@ void sema_analyze_stage(Module *module, AnalysisStage stage)
 {
 	while (module->stage < stage)
 	{
+		global_context.decl_stack_bottom = global_context.decl_stack_top = global_context.decl_stack;
 		module->stage++;
 		switch (module->stage)
 		{

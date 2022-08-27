@@ -29,10 +29,93 @@ static inline bool matches_subpath(Path *path_to_check, Path *path_to_find)
 	return 0 == memcmp(path_to_check->module + compare_start, path_to_find->module, path_to_find->len);
 }
 
+Decl *sema_decl_stack_resolve_symbol(const char *symbol)
+{
+	Decl **members = global_context.decl_stack;
+	Decl **current = global_context.decl_stack_top;
+	Decl **end = global_context.decl_stack_bottom;
+	while (current > end)
+	{
+		Decl *decl = *(--current);
+		if (decl->name == symbol) return decl;
+	}
+	return NULL;
+}
+
+Decl **sema_decl_stack_store(void)
+{
+	Decl **current_bottom = global_context.decl_stack_bottom;
+	global_context.decl_stack_bottom = global_context.decl_stack_top;
+	return current_bottom;
+}
+
+void sema_decl_stack_restore(Decl **state)
+{
+	global_context.decl_stack_top = global_context.decl_stack_bottom;
+	global_context.decl_stack_bottom = state;
+}
+
+void sema_decl_stack_push(Decl *decl)
+{
+	Decl **current = global_context.decl_stack_top;
+	if (current == &global_context.decl_stack[MAX_GLOBAL_DECL_STACK])
+	{
+		error_exit("Declaration stack exhausted.");
+	}
+	*(current++) = decl;
+	global_context.decl_stack_top = current;
+}
+
+static void add_members_to_decl_stack(Decl *decl)
+{
+	VECEACH(decl->methods, i)
+	{
+		Decl *func = decl->methods[i];
+		sema_decl_stack_push(func);
+	}
+	while (decl->decl_kind == DECL_DISTINCT)
+	{
+		Type *type = decl->distinct_decl.base_type->canonical;
+		if (!type_is_user_defined(type)) break;
+		decl = type->decl;
+	}
+	if (decl_is_enum_kind(decl))
+	{
+		Decl **members = decl->enums.parameters;
+		VECEACH(members, i)
+		{
+			sema_decl_stack_push(members[i]);
+		}
+	}
+	if (decl_is_struct_type(decl) || decl->decl_kind == DECL_BITSTRUCT)
+	{
+		Decl **members = decl->strukt.members;
+		VECEACH(members, i)
+		{
+			Decl *member = members[i];
+			if (member->name == NULL)
+			{
+				add_members_to_decl_stack(member);
+				continue;
+			}
+			sema_decl_stack_push(member);
+		}
+	}
+}
+
+Decl *sema_decl_stack_find_decl_member(Decl *decl_owner, const char *symbol)
+{
+	Decl **state = sema_decl_stack_store();
+	add_members_to_decl_stack(decl_owner);
+	Decl *member = sema_decl_stack_resolve_symbol(symbol);
+	sema_decl_stack_restore(state);
+	return member;
+}
+
 Decl *sema_resolve_symbol_in_current_dynamic_scope(SemaContext *context, const char *symbol)
 {
 	Decl **locals = context->locals;
-	size_t first = context->active_scope.local_decl_start;
+	size_t first = context->active_scope.label_start;
 	for (size_t i = context->active_scope.current_local; i > first; i--)
 	{
 		Decl *decl = locals[i - 1];
@@ -612,6 +695,34 @@ Decl *sema_find_symbol(SemaContext *context, const char *symbol)
 	return sema_resolve_symbol_common(context, &resolve);
 }
 
+Decl *sema_find_label_symbol(SemaContext *context, const char *symbol)
+{
+	Decl **locals = context->locals;
+	if (!locals || !context->active_scope.current_local) return NULL;
+	int64_t first = context->active_scope.label_start;
+	int64_t current = context->active_scope.current_local - 1;
+	while (current >= first)
+	{
+		Decl *cur = locals[current--];
+		if (cur->name == symbol) return cur;
+	}
+	return NULL;
+}
+
+Decl *sema_find_label_symbol_anywhere(SemaContext *context, const char *symbol)
+{
+	Decl **locals = context->locals;
+	if (!locals || !context->active_scope.current_local) return NULL;
+	int64_t first = 0;
+	int64_t current = context->active_scope.current_local - 1;
+	while (current >= first)
+	{
+		Decl *cur = locals[current--];
+		if (cur->name == symbol) return cur;
+	}
+	return NULL;
+}
+
 bool sema_symbol_is_defined_in_scope(SemaContext *c, const char *symbol)
 {
 	NameResolve resolve = {
@@ -668,11 +779,6 @@ static inline void sema_append_local(SemaContext *context, Decl *decl)
 		(*locals)[current_local] = decl;
 	}
 	context->active_scope.current_local++;
-}
-
-void sema_add_member(SemaContext *context, Decl *decl)
-{
-	sema_append_local(context, decl);
 }
 
 bool sema_add_local(SemaContext *context, Decl *decl)
