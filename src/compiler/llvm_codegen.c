@@ -461,7 +461,7 @@ static void gencontext_emit_object_file(GenContext *context)
 
 	if (context->asm_filename)
 	{
-		// Generate .o or .obj file
+		// Generate .s file
 		if (LLVMTargetMachineEmitToFile(context->machine, context->module, (char *)context->asm_filename, LLVMAssemblyFile, &err))
 		{
 			error_exit("Could not emit asm file: %s", err);
@@ -485,7 +485,7 @@ static void llvm_emit_asm_file(GenContext *context)
 	LLVMSetDataLayout(context->module, layout);
 	LLVMDisposeMessage(layout);
 
-	// Generate .o or .obj file
+	// Generate .s file
 	if (LLVMTargetMachineEmitToFile(context->machine, context->module, (char *)context->asm_filename, LLVMAssemblyFile, &err))
 	{
 		error_exit("Could not emit asm file: %s", err);
