@@ -8082,6 +8082,15 @@ bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allo
 		assert(allow_failable);
 	}
 	if (!sema_analyse_inferred_expr(context, to, expr)) return false;
+	if (to && allow_failable && to->canonical != expr->type->canonical && expr->type->canonical->type_kind == TYPE_FAULTTYPE)
+	{
+		Type *canonical = type_flatten_distinct(to);
+		if (canonical != type_anyerr && canonical->type_kind != TYPE_FAULTTYPE && expr->expr_kind == EXPR_CONST)
+		{
+			sema_error_at_after(expr->span, "You need to add a trailing '!' here to make this an optional.");
+			return false;
+		}
+	}
 	if (to && !cast_implicit(expr, to)) return false;
 	if (!allow_failable && IS_OPTIONAL(expr))
 	{
