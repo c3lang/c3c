@@ -116,7 +116,7 @@ static void usage(void)
 	OUTPUT("  --forcelinker         - Force built in linker usage when doing non-cross linking.");
 	OUTPUT("");
 	OUTPUT("  --reloc=<option>      - Relocation model: none, pic, PIC, pie, PIE");
-	OUTPUT("  --x86vec=<option>     - Set max level of vector instructions: none, mmx, sse, avx, avx512.");
+	OUTPUT("  --x86vec=<option>     - Set max level of vector instructions: none, native, mmx, sse, avx, avx512.");
 	OUTPUT("");
 	OUTPUT("  --debug-stats         - Print debug statistics.");
 	OUTPUT("  --list-targets        - List all architectures the compiler supports.");
@@ -482,7 +482,7 @@ static void parse_option(BuildOptions *options)
 			}
 			if ((argopt = match_argopt("x86vec")))
 			{
-				options->x86_vector_capability = (X86VectorCapability)parse_multi_option(argopt, 5, vector_capability);
+				options->x86_vector_capability = (X86VectorCapability)parse_multi_option(argopt, 6, vector_capability);
 				return;
 			}
 			if ((argopt = match_argopt("reloc")))

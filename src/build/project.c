@@ -132,8 +132,8 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	long symtab_size = get_valid_integer(json, "symtab", type, false);
 	const char *cpu = get_valid_string(json, "cpu", type, false);
 	int reloc = get_valid_string_setting(json, "reloc", type, reloc_models, 0, 5, "'none', 'pic', 'PIC', 'pie' or 'PIE'.");
-	int wincrt = get_valid_string_setting(json, "wincrt", type, wincrt_linking, 0, 5, "'none', 'static' or 'dynamic'.");
-	int x86vec = get_valid_string_setting(json, "x86vec", type, vector_capability, 0, 5, "none, mmx, sse, avx or avx512");
+	int wincrt = get_valid_string_setting(json, "wincrt", type, wincrt_linking, 0, 3, "'none', 'static' or 'dynamic'.");
+	int x86vec = get_valid_string_setting(json, "x86vec", type, vector_capability, 0, 6, "none, native, mmx, sse, avx or avx512");
 	const char *panicfn = get_valid_string(json, "panicfn", type, false);
 	target->win.sdk = get_valid_string(json, "winsdk", type, false);
 	target->macos.sdk = get_valid_string(json, "macossdk", type, false);

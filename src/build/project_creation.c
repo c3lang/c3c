@@ -50,7 +50,7 @@ const char* JSON =
 		"  \"trap-on-wrap\": false,\n"
 		"  // Use / don't use soft float, value is otherwise target default\n"
 		"  \"soft-float\": false,\n"
-		"  // Vector settings on x86: none/mmx/sse/avx/avx512\n"
+		"  // Vector settings on x86: none/native/mmx/sse/avx/avx512\n"
 		"  \"x86vec\": \"sse\",\n"
 		"  // CPU name, used for optimizations in the LLVM backend\n"
 		"  \"cpu\": \"generic\",\n"
