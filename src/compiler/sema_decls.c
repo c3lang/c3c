@@ -87,14 +87,14 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 	decl->unit = parent->unit;
 	if (decl->name)
 	{
-		Decl *other = sema_resolve_symbol_in_current_dynamic_scope(context, decl->name);
+		Decl *other = sema_decl_stack_resolve_symbol(decl->name);
 		if (other)
 		{
 			SEMA_ERROR(decl, "Duplicate member name '%s'.", other->name);
 			SEMA_NOTE(other, "Previous declaration was here.");
 			return false;
 		}
-		if (decl->name) sema_add_member(context, decl);
+		if (decl->name) sema_decl_stack_push(decl);
 	}
 
 	switch (decl->decl_kind)
@@ -391,7 +391,7 @@ static bool sema_analyse_struct_union(SemaContext *context, Decl *decl)
 	}
 	if (decl->name)
 	{
-		SCOPE_START
+		Decl** state = sema_decl_stack_store();
 			if (decl->decl_kind == DECL_UNION)
 			{
 				success = sema_analyse_union_members(context, decl, decl->strukt.members);
@@ -400,7 +400,7 @@ static bool sema_analyse_struct_union(SemaContext *context, Decl *decl)
 			{
 				success = sema_analyse_struct_members(context, decl, decl->strukt.members);
 			}
-		SCOPE_END;
+		sema_decl_stack_restore(state);
 	}
 	else
 	{
@@ -899,13 +899,13 @@ static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param, bo
 		SEMA_ERROR(param, "'nameof' is not a valid parameter name for enums.");
 		return false;
 	}
-	Decl *other = sema_resolve_symbol_in_current_dynamic_scope(context, param->name);
+	Decl *other = sema_decl_stack_resolve_symbol(param->name);
 	if (other)
 	{
 		SEMA_ERROR(param, "Duplicate parameter name '%s'.", param->name);
 		return false;
 	}
-	sema_add_member(context, param);
+	sema_decl_stack_push(param);
 	if (param->var.init_expr)
 	{
 		Expr *expr = param->var.init_expr;
@@ -950,7 +950,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl)
 	unsigned associated_value_count = vec_size(associated_values);
 	unsigned mandatory_count = 0;
 	bool default_values_used = false;
-	SCOPE_START
+	Decl** state = sema_decl_stack_store();
 	for (unsigned i = 0; i < associated_value_count; i++)
 	{
 		Decl *value = associated_values[i];
@@ -960,26 +960,26 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl)
 				continue;
 			case RESOLVE_RUNNING:
 				SEMA_ERROR(value, "Recursive definition found.");
-				return SCOPE_POP_ERROR();
+				goto ERR;
 			case RESOLVE_NOT_DONE:
 				value->resolve_status = RESOLVE_RUNNING;
 				break;
 		}
 		bool has_default = false;
-		if (!sema_analyse_enum_param(context, value, &has_default)) return SCOPE_POP_ERROR();
+		if (!sema_analyse_enum_param(context, value, &has_default)) goto ERR;
 		if (!has_default)
 		{
 			mandatory_count++;
 			if (default_values_used && !value->var.vararg)
 			{
 				SEMA_ERROR(value, "Non-default parameters cannot appear after default parameters.");
-				return SCOPE_POP_ERROR();
+				goto ERR;
 			}
 		}
 		default_values_used |= has_default;
 		value->resolve_status = RESOLVE_DONE;
 	}
-	SCOPE_END;
+	sema_decl_stack_restore(state);
 
 	bool success = true;
 	unsigned enums = vec_size(decl->enums.values);
@@ -1047,6 +1047,9 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl)
 		enum_value->resolve_status = RESOLVE_DONE;
 	}
 	return success;
+ERR:
+	sema_decl_stack_restore(state);
+	return false;
 }
 
 static inline bool sema_analyse_error(SemaContext *context, Decl *decl)

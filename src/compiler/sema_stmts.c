@@ -1381,10 +1381,27 @@ static bool sema_analyse_asm_stmt(SemaContext *context, Ast *stmt)
 
 static inline Decl *sema_analyse_label(SemaContext *context, Ast *stmt)
 {
-	Decl *target = sema_find_symbol(context, stmt->contbreak_stmt.label.name);
+	const char *name = stmt->contbreak_stmt.label.name;
+	Decl *target = sema_find_label_symbol(context, name);
 	if (!target)
 	{
-		SEMA_ERROR(stmt, "Cannot find a labelled statement with the name '%s'.", stmt->contbreak_stmt.label.name);
+		target = sema_find_label_symbol_anywhere(context, name);
+		if (target && target->decl_kind == DECL_LABEL)
+		{
+			if (context->active_scope.flags & SCOPE_EXPR_BLOCK)
+			{
+				SEMA_ERROR(stmt, stmt->ast_kind == AST_BREAK_STMT ? "You cannot break out of an expression block." : "You cannot use continue out of an expression block.");
+				return poisoned_decl;
+			}
+			else if (target->label.scope_defer != astid(context->active_scope.in_defer))
+			{
+				SEMA_ERROR(stmt, stmt->ast_kind == AST_BREAK_STMT ? "You cannot break out of a defer." : "You cannot use continue out of a defer.");
+				return poisoned_decl;
+			}
+			SEMA_ERROR(stmt, "'%s' cannot be reached from the current scope.", name);
+			return poisoned_decl;
+		}
+		SEMA_ERROR(stmt, "A labelled statement with the name '%s' can't be found in the current scope.", name);
 		return poisoned_decl;
 	}
 	if (target->decl_kind != DECL_LABEL)
@@ -2549,7 +2566,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 	context->active_scope = (DynamicScope) {
 			.scope_id = 0,
 			.depth = 0,
-			.local_decl_start = 0,
+			.label_start = 0,
 			.current_local = 0
 	};
 

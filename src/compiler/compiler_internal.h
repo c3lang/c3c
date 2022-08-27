@@ -38,6 +38,7 @@ typedef uint64_t BitSize;
 #define MAX_MEMBERS ((MemberIndex)(((uint64_t)2) << 28))
 #define MAX_ALIGNMENT ((MemberIndex)(((uint64_t)2) << 28))
 #define MAX_TYPE_SIZE UINT32_MAX
+#define MAX_GLOBAL_DECL_STACK (65536)
 
 typedef struct Ast_ Ast;
 typedef struct Decl_ Decl;
@@ -1345,7 +1346,7 @@ typedef struct DynamicScope_
 	bool allow_dead_code : 1;
 	bool jump_end : 1;
 	ScopeFlags flags;
-	unsigned local_decl_start;
+	unsigned label_start;
 	unsigned current_local;
 	AstId defer_last;
 	AstId defer_start;
@@ -1515,6 +1516,9 @@ typedef struct
 	Path std_module_path;
 	Decl *panic_fn;
 	Decl *main;
+	Decl *decl_stack[MAX_GLOBAL_DECL_STACK];
+	Decl** decl_stack_bottom;
+	Decl** decl_stack_top;
 } GlobalContext;
 
 
@@ -2007,9 +2011,12 @@ Path *path_create_from_string(const char *string, uint32_t len, SourceSpan span)
 #define TABLE_MAX_LOAD 0.5
 
 void sema_analysis_run(void);
-
+Decl **sema_decl_stack_store(void);
+Decl *sema_decl_stack_find_decl_member(Decl *decl_owner, const char *symbol);
+Decl *sema_decl_stack_resolve_symbol(const char *symbol);
+void sema_decl_stack_restore(Decl **state);
+void sema_decl_stack_push(Decl *decl);
 bool sema_error_failed_cast(Expr *expr, Type *from, Type *to);
-void sema_add_member(SemaContext *context, Decl *decl);
 bool sema_add_local(SemaContext *context, Decl *decl);
 void sema_unwrap_var(SemaContext *context, Decl *decl);
 void sema_rewrap_var(SemaContext *context, Decl *decl);
@@ -2030,6 +2037,7 @@ bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type 
 
 bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl, Expr *struct_var, bool failable);
 Decl *sema_resolve_symbol_in_current_dynamic_scope(SemaContext *context, const char *symbol);
+Decl *sema_decl_stack_resolve_symbol(const char *symbol);
 Decl *sema_find_decl_in_modules(Module **module_list, Path *path, const char *interned_name);
 Decl *unit_resolve_parameterized_symbol(CompilationUnit *unit, NameResolve *name_resolve);
 Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref);
@@ -2037,6 +2045,8 @@ Decl *sema_find_extension_method_in_module(Module *module, Type *type, const cha
 
 Decl *sema_find_symbol(SemaContext *context, const char *symbol);
 Decl *sema_find_path_symbol(SemaContext *context, const char *symbol, Path *path);
+Decl *sema_find_label_symbol(SemaContext *context, const char *symbol);
+Decl *sema_find_label_symbol_anywhere(SemaContext *context, const char *symbol);
 Decl *sema_resolve_symbol(SemaContext *context, const char *symbol, Path *path, SourceSpan span);
 bool sema_symbol_is_defined_in_scope(SemaContext *c, const char *symbol);
 

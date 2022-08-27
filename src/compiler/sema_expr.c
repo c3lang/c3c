@@ -3396,45 +3396,6 @@ void expr_rewrite_to_string(Expr *expr_to_rewrite, const char *string)
 
 
 
-
-static void add_members_to_context(SemaContext *context, Decl *decl)
-{
-	VECEACH(decl->methods, i)
-	{
-		Decl *func = decl->methods[i];
-		sema_add_member(context, func);
-	}
-	while (decl->decl_kind == DECL_DISTINCT)
-	{
-		Type *type = decl->distinct_decl.base_type->canonical;
-		if (!type_is_user_defined(type)) break;
-		decl = type->decl;
-	}
-	if (decl_is_enum_kind(decl))
-	{
-		Decl **members = decl->enums.parameters;
-		VECEACH(members, i)
-		{
-			sema_add_member(context, members[i]);
-		}
-	}
-	if (decl_is_struct_type(decl) || decl->decl_kind == DECL_BITSTRUCT)
-	{
-		Decl **members = decl->strukt.members;
-		VECEACH(members, i)
-		{
-			Decl *member = members[i];
-			if (member->name == NULL)
-			{
-				add_members_to_context(context, member);
-				continue;
-			}
-			sema_add_member(context, member);
-		}
-	}
-}
-
-
 /**
  * 1. .A -> It is an enum constant.
  * 2. .foo -> It is a function.
@@ -3623,11 +3584,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 			UNREACHABLE
 	}
 
-	Decl *member = NULL;
-	SCOPE_START
-		add_members_to_context(context, decl);
-		member = sema_resolve_symbol_in_current_dynamic_scope(context, name);
-	SCOPE_END;
+	Decl *member = sema_decl_stack_find_decl_member(decl, name);
 	if (!member)
 	{
 		SEMA_ERROR(expr, "No method or inner struct/union '%s.%s' found.", type_to_error_string(decl->type), name);
@@ -4154,11 +4111,7 @@ CHECK_DEEPER:
 
 	// 10. Dump all members and methods into the scope.
 	Decl *decl = type->decl;
-	Decl *member = NULL;
-	SCOPE_START
-		add_members_to_context(context, decl);
-		member = sema_resolve_symbol_in_current_dynamic_scope(context, kw);
-	SCOPE_END;
+	Decl *member = sema_decl_stack_find_decl_member(decl, kw);
 
 	if (member && decl_is_enum_kind(decl) && member->decl_kind == DECL_VAR && parent->expr_kind == EXPR_CONST)
 	{
@@ -7358,11 +7311,7 @@ static inline bool sema_expr_analyse_flat_element(SemaContext *context, ExprFlat
 		}
 		return false;
 	}
-	Decl *member;
-	SCOPE_START
-		add_members_to_context(context, actual_type->decl);
-		member = sema_resolve_symbol_in_current_dynamic_scope(context, element->inner->identifier_expr.ident);
-	SCOPE_END;
+	Decl *member = sema_decl_stack_find_decl_member(actual_type->decl, element->inner->identifier_expr.ident);
 	if (!member)
 	{
 		if (is_missing)
