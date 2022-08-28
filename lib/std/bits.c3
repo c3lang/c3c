@@ -59,3 +59,20 @@ macro fshr(hi, lo, shift) @builtin
 {
 	return $$fshr(hi, lo, ($typeof(hi))shift);
 }
+
+/**
+ * @require types::is_intlike($typeof(i)) && types::is_intlike($typeof(amount)) `The input must be an integer or integer vector`
+ **/
+macro rotate_left(i, amount) @builtin
+{
+	return $$fshl(i, i, ($typeof(i))amount);
+}
+
+/**
+ * @require types::is_intlike($typeof(i)) && types::is_intlike($typeof(amount)) `The input must be an integer or integer vector`
+ **/
+macro rotate_right(i, amount) @builtin
+{
+	return $$fshr(i, i, ($typeof(i))amount);
+}
+
