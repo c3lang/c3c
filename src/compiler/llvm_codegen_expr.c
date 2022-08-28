@@ -4540,7 +4540,50 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 		llvm_emit_syscall(c, result_value, expr);
 		return;
 	}
-	llvm_emit_intrinsic_expr(c, llvm_get_intrinsic(func), result_value, expr);
+	unsigned intrinsic;
+	if (func == BUILTIN_MAX)
+	{
+		Type *type = type_flatten(expr->call_expr.arguments[0]->type);
+		switch (type->type_kind)
+		{
+			case ALL_SIGNED_INTS:
+				intrinsic = intrinsic_id.smax;
+				break;
+			case TYPE_BOOL:
+			case ALL_UNSIGNED_INTS:
+				intrinsic = intrinsic_id.umax;
+				break;
+			case ALL_FLOATS:
+				intrinsic = intrinsic_id.maxnum;
+				break;
+			default:
+				UNREACHABLE
+		}
+	}
+	else if (func == BUILTIN_MIN)
+	{
+		Type *type = type_flatten(expr->call_expr.arguments[0]->type);
+		switch (type->type_kind)
+		{
+			case ALL_SIGNED_INTS:
+				intrinsic = intrinsic_id.smin;
+				break;
+			case TYPE_BOOL:
+			case ALL_UNSIGNED_INTS:
+				intrinsic = intrinsic_id.umin;
+				break;
+			case ALL_FLOATS:
+				intrinsic = intrinsic_id.minnum;
+				break;
+			default:
+				UNREACHABLE
+		}
+	}
+	else
+	{
+		intrinsic = llvm_get_intrinsic(func);
+	}
+	llvm_emit_intrinsic_expr(c, intrinsic, result_value, expr);
 }
 
 void llvm_add_abi_call_attributes(GenContext *c, LLVMValueRef call_value, int count, ABIArgInfo **infos)

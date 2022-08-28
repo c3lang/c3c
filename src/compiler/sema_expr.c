@@ -2703,11 +2703,22 @@ static inline bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *ex
 			break;
 
 		case BUILTIN_POW:
-		case BUILTIN_MAX:
-		case BUILTIN_MIN:
 			if (!sema_check_builtin_args(args,
 										 (BuiltinArg[]) { BA_FLOATLIKE, BA_FLOATLIKE },
 										 arg_count)) return false;
+			if (!sema_check_builtin_args_match(args, arg_count)) return false;
+			rtype = args[0]->type;
+			break;
+		case BUILTIN_MAX:
+		case BUILTIN_MIN:
+			if (type_is_integer(args[0]->type))
+			{
+				if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_INTLIKE, BA_INTLIKE }, arg_count)) return false;
+			}
+			else
+			{
+				if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_FLOATLIKE, BA_FLOATLIKE }, arg_count)) return false;
+			}
 			if (!sema_check_builtin_args_match(args, arg_count)) return false;
 			rtype = args[0]->type;
 			break;
