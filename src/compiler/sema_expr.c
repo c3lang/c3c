@@ -3213,12 +3213,9 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 		}
 		if (decl)
 		{
-			expr->expr_kind = EXPR_CALL;
 			Expr **args = NULL;
 			vec_add(args, index);
-			expr->call_expr = (ExprCall){ .func_ref = declid(decl), .is_func_ref = true, .arguments = args };
-			expr->call_expr.is_type_method = true;
-			return sema_expr_analyse_macro_call(context, expr, current_expr, decl, failable);
+			return sema_insert_method_call(context, expr, decl, current_expr, args);
 		}
 	}
 	if (!inner_type)
@@ -8468,5 +8465,32 @@ bool splitpathref(const char *string, ArraySize len, Path **path_ref, const char
 		*ident_ref = scratch_buffer_to_string();
 		*type_ref = TOKEN_INVALID_TOKEN;
 	}
+	return true;
+}
+
+bool sema_insert_method_call(SemaContext *context, Expr *method_call, Decl *method_decl, Expr *parent, Expr **arguments)
+{
+	*method_call = (Expr) { .expr_kind = EXPR_CALL,
+			.resolve_status = RESOLVE_RUNNING,
+			.call_expr.func_ref = declid(method_decl),
+			.call_expr.arguments = arguments,
+			.call_expr.is_func_ref = true,
+			.call_expr.is_type_method = true };
+	Type *type = parent->type->canonical;
+	Type *first = method_decl->func_decl.signature.params[0]->type;
+	if (type != first)
+	{
+		if (first->type_kind == TYPE_POINTER && first->pointer == type)
+		{
+			expr_insert_addr(parent);
+		}
+		else if (type->type_kind == TYPE_POINTER && type->pointer == first)
+		{
+			expr_insert_deref(parent);
+		}
+	}
+	assert(first == parent->type->canonical);
+	if (!sema_expr_analyse_general_call(context, method_call, method_decl, parent, false)) return expr_poison(method_call);
+	method_call->resolve_status = RESOLVE_DONE;
 	return true;
 }

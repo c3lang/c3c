@@ -901,28 +901,6 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 	return success;
 }
 
-
-
-static Expr *sema_insert_method_macro_call(SemaContext *context, SourceSpan span, Decl *method_decl, Expr *parent, Expr **arguments)
-{
-	Expr *len_call = expr_new(EXPR_CALL, span);
-	len_call->resolve_status = RESOLVE_RUNNING;
-	len_call->call_expr.func_ref = declid(method_decl);
-	len_call->call_expr.arguments = arguments;
-	len_call->call_expr.body = 0;
-	len_call->call_expr.is_func_ref = true;
-	len_call->call_expr.splat_vararg = false;
-	len_call->call_expr.is_type_method = true;
-	bool is_macro = method_decl->decl_kind == DECL_MACRO;
-	if (!is_macro)
-	{
-		if (parent->type->type_kind != TYPE_POINTER) expr_insert_addr(parent);
-	}
-	if (!sema_expr_analyse_general_call(context, len_call, method_decl, parent, false)) return poisoned_expr;
-	len_call->resolve_status = RESOLVE_DONE;
-	return len_call;
-}
-
 static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statement)
 {
 	// Pull out the relevant data.
@@ -1128,7 +1106,8 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	ArraySize array_len = 0;
 	if (len)
 	{
-		ASSIGN_EXPR_OR_RET(len_call, sema_insert_method_macro_call(context, enumerator->span, len, enum_val, NULL), false);
+		len_call = expr_new(EXPR_CALL, enumerator->span);
+		if (!sema_insert_method_call(context, len_call, len, enum_val, NULL)) return false;
 	}
 	else
 	{
