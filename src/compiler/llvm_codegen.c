@@ -2,7 +2,16 @@
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
 
+#include <llvm-c/Error.h>
 #include "llvm_codegen_internal.h"
+typedef struct LLVMOpaquePassBuilderOptions *LLVMPassBuilderOptionsRef;
+LLVMErrorRef LLVMRunPasses(LLVMModuleRef M, const char *Passes,
+                           LLVMTargetMachineRef TM,
+                           LLVMPassBuilderOptionsRef Options);
+LLVMPassBuilderOptionsRef LLVMCreatePassBuilderOptions(void);
+void LLVMPassBuilderOptionsSetVerifyEach(LLVMPassBuilderOptionsRef Options, LLVMBool VerifyEach);
+void LLVMPassBuilderOptionsSetDebugLogging(LLVMPassBuilderOptionsRef Options, LLVMBool DebugLogging);
+void LLVMDisposePassBuilderOptions(LLVMPassBuilderOptionsRef Options);
 
 const char* llvm_version = LLVM_VERSION_STRING;
 const char* llvm_target = LLVM_DEFAULT_TARGET_TRIPLE;
@@ -800,11 +809,8 @@ static void llvm_emit_type_decls(GenContext *context, Decl *decl)
 	}
 }
 
-const char *llvm_codegen(void *context)
+static inline void llvm_opt_old(GenContext *c)
 {
-	GenContext *c = context;
-	LLVMModuleRef module = c->module;
-	// Starting from here we could potentially thread this:
 	LLVMPassManagerBuilderRef pass_manager_builder = LLVMPassManagerBuilderCreate();
 	LLVMPassManagerBuilderSetOptLevel(pass_manager_builder, (unsigned)active_target.optimization_level);
 	LLVMPassManagerBuilderSetSizeLevel(pass_manager_builder, (unsigned)active_target.size_optimization_level);
@@ -814,7 +820,7 @@ const char *llvm_codegen(void *context)
 		LLVMPassManagerBuilderUseInlinerWithThreshold(pass_manager_builder, (unsigned)get_inlining_threshold());
 	}
 	LLVMPassManagerRef pass_manager = LLVMCreatePassManager();
-	LLVMPassManagerRef function_pass_manager = LLVMCreateFunctionPassManagerForModule(module);
+	LLVMPassManagerRef function_pass_manager = LLVMCreateFunctionPassManagerForModule(c->module);
 	LLVMAddAnalysisPasses(c->machine, function_pass_manager);
 	LLVMAddAnalysisPasses(c->machine, pass_manager);
 	LLVMPassManagerBuilderPopulateModulePassManager(pass_manager_builder, pass_manager);
@@ -828,7 +834,7 @@ const char *llvm_codegen(void *context)
 
 	// Run function passes
 	LLVMInitializeFunctionPassManager(function_pass_manager);
-	LLVMValueRef current_function = LLVMGetFirstFunction(module);
+	LLVMValueRef current_function = LLVMGetFirstFunction(c->module);
 	while (current_function)
 	{
 		LLVMRunFunctionPassManager(function_pass_manager, current_function);
@@ -838,8 +844,60 @@ const char *llvm_codegen(void *context)
 	LLVMDisposePassManager(function_pass_manager);
 
 	// Run module pass
-	LLVMRunPassManager(pass_manager, module);
+	LLVMRunPassManager(pass_manager, c->module);
 	LLVMDisposePassManager(pass_manager);
+}
+
+static inline void llvm_opt_new(GenContext *c)
+{
+	LLVMPassBuilderOptionsRef options = LLVMCreatePassBuilderOptions();
+	LLVMPassBuilderOptionsSetVerifyEach(options, active_target.emit_llvm);
+	const char *passes = NULL;
+	switch (active_target.size_optimization_level)
+	{
+		case SIZE_OPTIMIZATION_SMALL:
+			passes = "default<Os>";
+			break;
+		case SIZE_OPTIMIZATION_TINY:
+			passes = "default<Oz>";
+			break;
+		default:
+			break;
+	}
+	switch (active_target.optimization_level)
+	{
+		case OPTIMIZATION_NONE:
+			passes = "default<O0>";
+			break;
+		case OPTIMIZATION_NOT_SET:
+		case OPTIMIZATION_DEFAULT:
+			if (!passes) passes = "default<O2>";
+			break;
+		case OPTIMIZATION_LESS:
+			if (!passes) passes = "default<O1>";
+			break;
+		case OPTIMIZATION_AGGRESSIVE:
+			if (!passes) passes = "default<O3>";
+			break;
+	}
+	LLVMErrorRef err = LLVMRunPasses(c->module, passes, c->machine, options);
+	if (err)
+	{
+		error_exit("An error occurred: %s.", LLVMGetErrorMessage(err));
+	}
+	LLVMDisposePassBuilderOptions(options);
+}
+const char *llvm_codegen(void *context)
+{
+	GenContext *c = context;
+	if (active_target.use_new_optimizer)
+	{
+		llvm_opt_new(c);
+	}
+	else
+	{
+		llvm_opt_old(c);
+	}
 
 	// Serialize the LLVM IR, if requested, also verify the IR in this case
 	if (active_target.emit_llvm)

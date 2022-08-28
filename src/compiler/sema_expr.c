@@ -2483,6 +2483,8 @@ static inline unsigned builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_VOLATILE_STORE:
 			return 2;
 		case BUILTIN_FMA:
+		case BUILTIN_FSHR:
+		case BUILTIN_FSHL:
 			return 3;
 		case BUILTIN_MEMSET:
 			return 5;
@@ -2713,6 +2715,14 @@ static inline bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *ex
 			if (!sema_check_builtin_args(args,
 										 (BuiltinArg[]) { BA_FLOATLIKE, BA_FLOATLIKE, BA_FLOATLIKE },
 										 arg_count)) return false;
+			if (!sema_check_builtin_args_match(args, arg_count)) return false;
+			rtype = args[0]->type;
+			break;
+		case BUILTIN_FSHL:
+		case BUILTIN_FSHR:
+			if (!sema_check_builtin_args(args,
+			                             (BuiltinArg[]) { BA_INTLIKE, BA_INTLIKE, BA_INTLIKE },
+			                             arg_count)) return false;
 			if (!sema_check_builtin_args_match(args, arg_count)) return false;
 			rtype = args[0]->type;
 			break;
@@ -3694,6 +3704,7 @@ static inline bool sema_create_const_inner(SemaContext *context, Expr *expr, Typ
 	expr->expr_kind = EXPR_CONST;
 	expr->const_expr.const_kind = CONST_TYPEID;
 	expr->const_expr.typeid = inner->canonical;
+	expr->type = type_typeid;
 	return true;
 }
 

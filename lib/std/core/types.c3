@@ -128,7 +128,7 @@ macro bool is_intlike($Type)
 		$case UNSIGNED_INT:
 			return true;
 		$case VECTOR:
-			return is_intlike($Type.inner);
+			return $Type.inner.kind == TypeKind.SIGNED_INT || $Type.inner.kind == TypeKind.UNSIGNED_INT;
 		$default:
 			return false;
 	$endswitch;

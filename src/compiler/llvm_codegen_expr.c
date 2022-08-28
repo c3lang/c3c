@@ -4353,6 +4353,10 @@ unsigned llvm_get_intrinsic(BuiltinFunction func)
 			return intrinsic_id.fabs;
 		case BUILTIN_FMA:
 			return intrinsic_id.fma;
+		case BUILTIN_FSHL:
+			return intrinsic_id.fshl;
+		case BUILTIN_FSHR:
+			return intrinsic_id.fshr;
 		case BUILTIN_BITREVERSE:
 			return intrinsic_id.bitreverse;
 		case BUILTIN_BSWAP:
