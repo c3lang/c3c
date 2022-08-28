@@ -134,6 +134,16 @@ macro bool is_intlike($Type)
 	$endswitch;
 }
 
+macro bool is_same($TypeA, $TypeB)
+{
+	return $TypeA.typeid == $TypeB.typeid;
+}
+
+macro bool is_same_type(a, b)
+{
+	return $typeof(a).typeid == $typeof(b).typeid;
+}
+
 macro bool is_equatable_value(value)
 {
 	$if ($defined(value.less) || $defined(value.compare_to) || $defined(value.equals)):

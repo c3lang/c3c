@@ -42,8 +42,8 @@ macro clz(i) @builtin
 
 /**
  * @require types::is_intlike($typeof(hi)) && types::is_intlike($typeof(lo)) && types::is_intlike($typeof(shift)) `The input must be an integer or integer vector`
- * @require $typeof(hi).typeid == $typeof(lo).typeid `Hi and low arguments must have the same type`
- * @require $typeof(hi).typeid == $typeof(shift).typeid `The shift value must have the same type`
+ * @require types::is_same_type(hi, lo) `Hi and low arguments must have the same type`
+ * @require types::is_same_type(hi, shift) `The shift value must have the same type as shifted types`
  **/
 macro fshl(hi, lo, shift) @builtin
 {
@@ -52,8 +52,8 @@ macro fshl(hi, lo, shift) @builtin
 
 /**
  * @require types::is_intlike($typeof(hi)) && types::is_intlike($typeof(lo)) && types::is_intlike($typeof(shift)) `The input must be an integer or integer vector`
- * @require $typeof(hi).typeid == $typeof(lo).typeid `Hi and low arguments must have the same type`
- * @require $typeof(hi).typeid == $typeof(shift).typeid `The shift value must have the same type`
+ * @require types::is_same_type(hi, lo) `Hi and low arguments must have the same type`
+ * @require types::is_same_type(hi, shift) `The shift value must have the same type as shifted types`
  **/
 macro fshr(hi, lo, shift) @builtin
 {
@@ -61,18 +61,20 @@ macro fshr(hi, lo, shift) @builtin
 }
 
 /**
- * @require types::is_intlike($typeof(i)) && types::is_intlike($typeof(amount)) `The input must be an integer or integer vector`
+ * @require types::is_intlike($typeof(i)) && types::is_intlike($typeof(shift)) `The input must be an integer or integer vector`
+ * @require types::is_same_type(i, shift) `The shift value must have the same type as shifted types`
  **/
-macro rotate_left(i, amount) @builtin
+macro rotl(i, shift) @builtin
 {
-	return $$fshl(i, i, ($typeof(i))amount);
+	return $$fshl(i, i, shift);
 }
 
 /**
- * @require types::is_intlike($typeof(i)) && types::is_intlike($typeof(amount)) `The input must be an integer or integer vector`
+ * @require types::is_intlike($typeof(i)) && types::is_intlike($typeof(shift)) `The input must be an integer or integer vector`
+ * @require types::is_same_type(i, shift) `The shift value must have the same type as shifted types`
  **/
-macro rotate_right(i, amount) @builtin
+macro rotr(i, shift) @builtin
 {
-	return $$fshr(i, i, ($typeof(i))amount);
+	return $$fshr(i, i, shift);
 }
 

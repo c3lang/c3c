@@ -1126,6 +1126,7 @@ static Expr *parse_integer(ParseContext *c, Expr *left)
 			}
 			break;
 		case 'b':
+			is_unsigned = true;
 			max = UINT64_MAX >> 1;
 			for (size_t loc = 2; loc < len; loc++)
 			{
