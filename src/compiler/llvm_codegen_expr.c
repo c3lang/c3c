@@ -4376,6 +4376,28 @@ unsigned llvm_get_intrinsic(BuiltinFunction func)
 			return intrinsic_id.memcpy;
 		case BUILTIN_MEMSET:
 			return intrinsic_id.memset;
+		case BUILTIN_COPYSIGN:
+			return intrinsic_id.copysign;
+		case BUILTIN_EXP2:
+			return intrinsic_id.exp2;
+		case BUILTIN_FLOOR:
+			return intrinsic_id.floor;
+		case BUILTIN_LLRINT:
+			return intrinsic_id.llrint;
+		case BUILTIN_LLROUND:
+			return intrinsic_id.llround;
+		case BUILTIN_LRINT:
+			return intrinsic_id.lrint;
+		case BUILTIN_LROUND:
+			return intrinsic_id.lround;
+		case BUILTIN_NEARBYINT:
+			return intrinsic_id.nearbyint;
+		case BUILTIN_RINT:
+			return intrinsic_id.rint;
+		case BUILTIN_ROUND:
+			return intrinsic_id.round;
+		case BUILTIN_ROUNDEVEN:
+			return intrinsic_id.roundeven;
 		case BUILTIN_VOLATILE_STORE:
 		case BUILTIN_VOLATILE_LOAD:
 		case BUILTIN_SYSCALL:

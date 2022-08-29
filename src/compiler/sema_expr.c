@@ -2454,37 +2454,48 @@ static inline unsigned builtin_expected_args(BuiltinFunction func)
 {
 	switch (func)
 	{
-		case BUILTIN_UNREACHABLE:
-		case BUILTIN_TRAP:
 		case BUILTIN_STACKTRACE:
 		case BUILTIN_SYSCLOCK:
+		case BUILTIN_TRAP:
+		case BUILTIN_UNREACHABLE:
 			return 0;
-		case BUILTIN_SYSCALL:
+		case BUILTIN_ABS:
+		case BUILTIN_BITREVERSE:
+		case BUILTIN_BSWAP:
 		case BUILTIN_CEIL:
-		case BUILTIN_TRUNC:
-		case BUILTIN_SQRT:
 		case BUILTIN_COS:
-		case BUILTIN_SIN:
+		case BUILTIN_CTLZ:
+		case BUILTIN_CTPOP:
+		case BUILTIN_CTTZ:
 		case BUILTIN_EXP:
+		case BUILTIN_EXP2:
+		case BUILTIN_FLOOR:
+		case BUILTIN_LLRINT:
+		case BUILTIN_LLROUND:
 		case BUILTIN_LOG:
 		case BUILTIN_LOG2:
 		case BUILTIN_LOG10:
-		case BUILTIN_ABS:
+		case BUILTIN_LRINT:
+		case BUILTIN_LROUND:
+		case BUILTIN_NEARBYINT:
+		case BUILTIN_RINT:
+		case BUILTIN_ROUND:
+		case BUILTIN_ROUNDEVEN:
+		case BUILTIN_SIN:
+		case BUILTIN_SQRT:
+		case BUILTIN_SYSCALL:
+		case BUILTIN_TRUNC:
 		case BUILTIN_VOLATILE_LOAD:
-		case BUILTIN_CTPOP:
-		case BUILTIN_CTTZ:
-		case BUILTIN_CTLZ:
-		case BUILTIN_BSWAP:
-		case BUILTIN_BITREVERSE:
 			return 1;
-		case BUILTIN_POW:
+		case BUILTIN_COPYSIGN:
 		case BUILTIN_MAX:
 		case BUILTIN_MIN:
+		case BUILTIN_POW:
 		case BUILTIN_VOLATILE_STORE:
 			return 2;
 		case BUILTIN_FMA:
-		case BUILTIN_FSHR:
 		case BUILTIN_FSHL:
+		case BUILTIN_FSHR:
 			return 3;
 		case BUILTIN_MEMSET:
 			return 5;
@@ -2638,8 +2649,8 @@ static inline bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *ex
 	switch (func)
 	{
 
-		case BUILTIN_UNREACHABLE:
 		case BUILTIN_TRAP:
+		case BUILTIN_UNREACHABLE:
 			rtype = type_void;
 			break;
 		case BUILTIN_SYSCLOCK:
@@ -2684,25 +2695,36 @@ static inline bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *ex
 		case BUILTIN_STACKTRACE:
 			rtype = type_voidptr;
 			break;
-		case BUILTIN_CTPOP:
-		case BUILTIN_CTTZ:
-		case BUILTIN_CTLZ:
 		case BUILTIN_BITREVERSE:
 		case BUILTIN_BSWAP:
+		case BUILTIN_CTLZ:
+		case BUILTIN_CTPOP:
+		case BUILTIN_CTTZ:
 			if (!sema_check_builtin_args(args,
 			                             (BuiltinArg[]) { BA_INTLIKE },
 			                             arg_count)) return false;
 			rtype = args[0]->type;
 			break;
 		case BUILTIN_CEIL:
-		case BUILTIN_TRUNC:
-		case BUILTIN_SQRT:
+		case BUILTIN_COPYSIGN:
 		case BUILTIN_COS:
-		case BUILTIN_SIN:
 		case BUILTIN_EXP:
+		case BUILTIN_EXP2:
+		case BUILTIN_FLOOR:
+		case BUILTIN_LLRINT:
+		case BUILTIN_LLROUND:
 		case BUILTIN_LOG:
 		case BUILTIN_LOG2:
 		case BUILTIN_LOG10:
+		case BUILTIN_LRINT:
+		case BUILTIN_LROUND:
+		case BUILTIN_NEARBYINT:
+		case BUILTIN_RINT:
+		case BUILTIN_ROUND:
+		case BUILTIN_ROUNDEVEN:
+		case BUILTIN_SIN:
+		case BUILTIN_SQRT:
+		case BUILTIN_TRUNC:
 			if (!sema_check_builtin_args(args,
 										 (BuiltinArg[]) { BA_FLOATLIKE },
 										 arg_count)) return false;
