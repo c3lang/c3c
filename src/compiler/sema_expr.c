@@ -2504,6 +2504,7 @@ typedef enum
 	BA_CHAR,
 	BA_FLOATLIKE,
 	BA_INTLIKE,
+	BA_NUMLIKE,
 } BuiltinArg;
 
 static bool sema_check_builtin_args_match(Expr **args, size_t arg_len)
@@ -2564,6 +2565,13 @@ static bool sema_check_builtin_args(Expr **args, BuiltinArg *arg_type, size_t ar
 				if (type != type_bool)
 				{
 					SEMA_ERROR(args[i], "Expected a bool.");
+					return false;
+				}
+				break;
+			case BA_NUMLIKE:
+				if (!type_flat_is_numlike(type))
+				{
+					SEMA_ERROR(args[i], "Expected a number or vector.");
 					return false;
 				}
 				break;
@@ -2711,14 +2719,7 @@ static inline bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *ex
 			break;
 		case BUILTIN_MAX:
 		case BUILTIN_MIN:
-			if (type_is_integer(args[0]->type))
-			{
-				if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_INTLIKE, BA_INTLIKE }, arg_count)) return false;
-			}
-			else
-			{
-				if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_FLOATLIKE, BA_FLOATLIKE }, arg_count)) return false;
-			}
+			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_NUMLIKE, BA_NUMLIKE }, arg_count)) return false;
 			if (!sema_check_builtin_args_match(args, arg_count)) return false;
 			rtype = args[0]->type;
 			break;

@@ -4544,6 +4544,7 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 	if (func == BUILTIN_MAX)
 	{
 		Type *type = type_flatten(expr->call_expr.arguments[0]->type);
+		RETRY:
 		switch (type->type_kind)
 		{
 			case ALL_SIGNED_INTS:
@@ -4556,6 +4557,9 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 			case ALL_FLOATS:
 				intrinsic = intrinsic_id.maxnum;
 				break;
+			case TYPE_VECTOR:
+				type = type->array.base;
+				goto RETRY;
 			default:
 				UNREACHABLE
 		}
@@ -4563,6 +4567,7 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 	else if (func == BUILTIN_MIN)
 	{
 		Type *type = type_flatten(expr->call_expr.arguments[0]->type);
+		RETRY2:
 		switch (type->type_kind)
 		{
 			case ALL_SIGNED_INTS:
@@ -4575,6 +4580,9 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 			case ALL_FLOATS:
 				intrinsic = intrinsic_id.minnum;
 				break;
+			case TYPE_VECTOR:
+				type = type->array.base;
+				goto RETRY2;
 			default:
 				UNREACHABLE
 		}

@@ -320,6 +320,14 @@ RETRY:
 }
 
 
+bool type_flat_is_numlike(Type *type)
+{
+	type = type_flatten(type);
+	if (type->type_kind == TYPE_VECTOR) type = type->array.base;
+	TypeKind kind = type->type_kind;
+	return kind >= TYPE_NUM_FIRST && kind <= TYPE_NUM_LAST;
+}
+
 bool type_flat_is_floatlike(Type *type)
 {
 	type = type_flatten(type);
