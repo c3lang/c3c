@@ -298,7 +298,7 @@ jobs:
         run: |
           mkdir macos
           cp -r lib macos
-          cp msvc_build_libraries.py linux
+          cp msvc_build_libraries.py macos
           cp build/c3c macos
           zip -r c3-macos-${{matrix.build_type}}.zip macos
 
