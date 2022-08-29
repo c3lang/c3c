@@ -198,7 +198,7 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_MAX] = KW_DEF("max");
 	builtin_list[BUILTIN_MIN] = KW_DEF("min");
 	builtin_list[BUILTIN_FMA] = KW_DEF("fma");
-	builtin_list[BUILTIN_FABS] = KW_DEF("fabs");
+	builtin_list[BUILTIN_ABS] = KW_DEF("abs");
 	builtin_list[BUILTIN_FSHL] = KW_DEF("fshl");
 	builtin_list[BUILTIN_FSHR] = KW_DEF("fshr");
 	builtin_list[BUILTIN_VOLATILE_STORE] = KW_DEF("volatile_store");

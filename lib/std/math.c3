@@ -81,6 +81,11 @@ macro min(x, y) @builtin
     return x < y ? x : y;
 }
 
+macro abs(x) @builtin
+{
+    return $$abs(x);
+}
+
 fn double log10(double x) @inline
 {
     return $$log10(x);
@@ -124,11 +129,6 @@ fn double exp(double x) @inline
 fn double pow(double x, double y) @inline
 {
     return $$pow(x, y);
-}
-
-fn double fabs(double x) @inline
-{
-    return $$fabs(x);
 }
 
 fn double trunc(double x) @inline

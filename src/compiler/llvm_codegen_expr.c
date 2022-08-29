@@ -4126,7 +4126,7 @@ static void llvm_emit_intrinsic_expr(GenContext *c, unsigned intrinsic, BEValue 
 		llvm_value_rvalue(c, be_value);
 		arg_results[i] = be_value->value;
 	}
-	if (intrinsic == intrinsic_id.ctlz || intrinsic == intrinsic_id.cttz)
+	if (intrinsic == intrinsic_id.ctlz || intrinsic == intrinsic_id.cttz || intrinsic == intrinsic_id.abs)
 	{
 		arg_results[1] = llvm_get_zero_raw(c->bool_type);
 		arguments++;
@@ -4326,6 +4326,7 @@ unsigned llvm_get_intrinsic(BuiltinFunction func)
 		case BUILTIN_NONE:
 		case BUILTIN_UNREACHABLE:
 		case BUILTIN_STACKTRACE:
+		case BUILTIN_ABS:
 			UNREACHABLE
 		case BUILTIN_SYSCLOCK:
 			return intrinsic_id.readcyclecounter;
@@ -4349,8 +4350,6 @@ unsigned llvm_get_intrinsic(BuiltinFunction func)
 			return intrinsic_id.maxnum;
 		case BUILTIN_MIN:
 			return intrinsic_id.minnum;
-		case BUILTIN_FABS:
-			return intrinsic_id.fabs;
 		case BUILTIN_FMA:
 			return intrinsic_id.fma;
 		case BUILTIN_FSHL:
@@ -4583,6 +4582,26 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 			case TYPE_VECTOR:
 				type = type->array.base;
 				goto RETRY2;
+			default:
+				UNREACHABLE
+		}
+	}
+	else if (func == BUILTIN_ABS)
+	{
+		Type *type = type_flatten(expr->call_expr.arguments[0]->type);
+		RETRY3:
+		switch (type->type_kind)
+		{
+			case TYPE_BOOL:
+			case ALL_INTS:
+				intrinsic = intrinsic_id.abs;
+				break;
+			case ALL_FLOATS:
+				intrinsic = intrinsic_id.fabs;
+				break;
+			case TYPE_VECTOR:
+				type = type->array.base;
+				goto RETRY3;
 			default:
 				UNREACHABLE
 		}

@@ -654,7 +654,7 @@ void llvm_codegen_setup()
 	intrinsic_id.lrint = lookup_intrinsic("llvm.lrint");
 	intrinsic_id.llrint = lookup_intrinsic("llvm.llrint");
 
-	//intrinsic_id.abs = lookup_intrinsic("llvm.abs");
+	intrinsic_id.abs = lookup_intrinsic("llvm.abs");
 	intrinsic_id.smax = lookup_intrinsic("llvm.smax");
 	intrinsic_id.smin = lookup_intrinsic("llvm.smin");
 	intrinsic_id.umax = lookup_intrinsic("llvm.umax");
