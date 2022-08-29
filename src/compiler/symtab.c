@@ -191,13 +191,9 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_FMA] = KW_DEF("fma");
 	builtin_list[BUILTIN_FSHL] = KW_DEF("fshl");
 	builtin_list[BUILTIN_FSHR] = KW_DEF("fshr");
-	builtin_list[BUILTIN_LLRINT] = KW_DEF("llrint");
-	builtin_list[BUILTIN_LLROUND] = KW_DEF("llround");
 	builtin_list[BUILTIN_LOG] = KW_DEF("log");
 	builtin_list[BUILTIN_LOG2] = KW_DEF("log2");
 	builtin_list[BUILTIN_LOG10] = KW_DEF("log10");
-	builtin_list[BUILTIN_LRINT] = KW_DEF("lrint");
-	builtin_list[BUILTIN_LROUND] = KW_DEF("lround");
 	builtin_list[BUILTIN_MAX] = KW_DEF("max");
 	builtin_list[BUILTIN_MEMCOPY] = KW_DEF("memcpy");
 	builtin_list[BUILTIN_MEMSET] = KW_DEF("memset");
@@ -217,6 +213,13 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_UNREACHABLE] = KW_DEF("unreachable");
 	builtin_list[BUILTIN_VOLATILE_LOAD] = KW_DEF("volatile_load");
 	builtin_list[BUILTIN_VOLATILE_STORE] = KW_DEF("volatile_store");
+
+// Disabled for now!
+
+//	builtin_list[BUILTIN_LLRINT] = KW_DEF("llrint");
+//	builtin_list[BUILTIN_LLROUND] = KW_DEF("llround");
+//	builtin_list[BUILTIN_LRINT] = KW_DEF("lrint");
+//	builtin_list[BUILTIN_LROUND] = KW_DEF("lround");
 
 	for (unsigned i = 0; i < NUMBER_OF_BUILTINS; i++)
 	{
