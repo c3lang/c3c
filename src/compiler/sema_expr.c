@@ -2469,7 +2469,7 @@ static inline unsigned builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_LOG:
 		case BUILTIN_LOG2:
 		case BUILTIN_LOG10:
-		case BUILTIN_FABS:
+		case BUILTIN_ABS:
 		case BUILTIN_VOLATILE_LOAD:
 		case BUILTIN_CTPOP:
 		case BUILTIN_CTTZ:
@@ -2700,7 +2700,6 @@ static inline bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *ex
 		case BUILTIN_COS:
 		case BUILTIN_SIN:
 		case BUILTIN_EXP:
-		case BUILTIN_FABS:
 		case BUILTIN_LOG:
 		case BUILTIN_LOG2:
 		case BUILTIN_LOG10:
@@ -2714,6 +2713,11 @@ static inline bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *ex
 			if (!sema_check_builtin_args(args,
 										 (BuiltinArg[]) { BA_FLOATLIKE, BA_FLOATLIKE },
 										 arg_count)) return false;
+			if (!sema_check_builtin_args_match(args, arg_count)) return false;
+			rtype = args[0]->type;
+			break;
+		case BUILTIN_ABS:
+			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_NUMLIKE }, arg_count)) return false;
 			if (!sema_check_builtin_args_match(args, arg_count)) return false;
 			rtype = args[0]->type;
 			break;
