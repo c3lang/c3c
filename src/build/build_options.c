@@ -24,30 +24,30 @@ extern const char* llvm_version;
 extern const char* llvm_target;
 
 char *arch_os_target[ARCH_OS_TARGET_LAST + 1] = {
-		[WINDOWS_X86] = "windows-x86",
-		[WINDOWS_X64] = "windows-x64",
-		[MINGW_X64] = "mingw-x64",
-		[MACOS_X64] = "macos-x64",
-		[MACOS_AARCH64] = "macos-aarch64",
-		[LINUX_X86] = "linux-x86",
-		[LINUX_X64] = "linux-x64",
-		[LINUX_AARCH64] = "linux-aarch64",
-		[LINUX_RISCV32] = "linux-riscv32",
-		[LINUX_RISCV64] = "linux-riscv64",
-		[WASM32] = "wasm32",
-		[WASM64] = "wasm64",
-		[ELF_X86] = "elf-x86",
-		[ELF_X64] = "elf-x64",
 		[ELF_AARCH64] = "elf-aarch64",
 		[ELF_RISCV32] = "elf-riscv32",
 		[ELF_RISCV64] = "elf-riscv64",
+		[ELF_X86] = "elf-x86",
+		[ELF_X64] = "elf-x64",
 		[FREEBSD_X86] = "freebsd-x86",
 		[FREEBSD_X64] = "freebsd-x64",
-		[OPENBSD_X86] = "openbsd-x86",
-		[OPENBSD_X64] = "openbsd-x64",
+		[LINUX_AARCH64] = "linux-aarch64",
+		[LINUX_RISCV32] = "linux-riscv32",
+		[LINUX_RISCV64] = "linux-riscv64",
+		[LINUX_X86] = "linux-x86",
+		[LINUX_X64] = "linux-x64",
+		[MACOS_AARCH64] = "macos-aarch64",
+		[MACOS_X64] = "macos-x64",
+		[MCU_X86] = "mcu-x86",
+		[MINGW_X64] = "mingw-x64",
 		[NETBSD_X86] = "netbsd-x86",
 		[NETBSD_X64] = "netbsd-x64",
-		[MCU_X86] = "mcu-x86",
+		[OPENBSD_X86] = "openbsd-x86",
+		[OPENBSD_X64] = "openbsd-x64",
+		[WASM32] = "wasm32",
+		[WASM64] = "wasm64",
+		[WINDOWS_X86] = "windows-x86",
+		[WINDOWS_X64] = "windows-x64",
 };
 
 #define EOUTPUT(string, ...) fprintf(stderr, string "\n", ##__VA_ARGS__)
@@ -120,21 +120,22 @@ static void usage(void)
 	OUTPUT("  --x86vec=<option>     - Set max level of vector instructions: none, mmx, sse, avx, avx512.");
 	OUTPUT("");
 	OUTPUT("  --debug-stats         - Print debug statistics.");
-	OUTPUT("  --list-targets        - List all architectures the compiler supports.");
-	OUTPUT("  --list-keywords       - List all keywords.");
-	OUTPUT("  --list-operators      - List all operators.");
+#ifndef NDEBUG
+	OUTPUT("  --debug-log           - Print debug logging to stdout.");
+#endif
+	OUTPUT("");
 	OUTPUT("  --list-attributes     - List all attributes.");
 	OUTPUT("  --list-builtins       - List all builtins.");
+	OUTPUT("  --list-keywords       - List all keywords.");
+	OUTPUT("  --list-operators      - List all operators.");
 	OUTPUT("  --list-precedence     - List operator precedence order.");
+	OUTPUT("  --list-targets        - List all architectures the compiler supports.");
 	OUTPUT("");
 	OUTPUT("  --winsdk <dir>        - Set the directory for Windows system library files for cross compilation.");
 	OUTPUT("  --wincrt=<option>     - Windows CRT linking: none, static, dynamic (default).");
 	OUTPUT("");
 	OUTPUT("  --macossdk <dir>      - Set the directory for the MacOS SDK for cross compilation.");
 
-#ifndef NDEBUG
-	OUTPUT("  --debug-log           - Print debug logging to stdout.");
-#endif
 }
 
 
