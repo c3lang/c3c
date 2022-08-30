@@ -164,12 +164,6 @@ const char *token_type_to_string(TokenType type)
 		case TOKEN_AT_CONST_IDENT:
 			return "MACRO_CONST_IDENT";
 
-		// Asm
-		case TOKEN_ASM_STRING:
-			return "ASM_STRING";
-		case TOKEN_ASM_CONSTRAINT:
-			return "ASM_CONSTRAINT";
-
 		// Values
 		case TOKEN_STRING:
 			return "STRING";

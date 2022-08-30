@@ -435,10 +435,6 @@ typedef enum
 	TOKEN_CONST_IDENT,      // Any purely uppercase ident,
 	TOKEN_TYPE_IDENT,       // Any ident on the format FooBar or __FooBar
 
-	// Asm
-	TOKEN_ASM_STRING,
-	TOKEN_ASM_CONSTRAINT,
-
 	// We want to parse $foo separately.
 	// Otherwise we allow things like "# foo" which would be pretty bad.
 	TOKEN_CT_IDENT,         // $foobar

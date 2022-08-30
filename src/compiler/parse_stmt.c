@@ -845,9 +845,6 @@ Ast *parse_stmt(ParseContext *c)
 {
 	switch (c->tok)
 	{
-		case TOKEN_ASM_STRING:
-		case TOKEN_ASM_CONSTRAINT:
-			UNREACHABLE
 		case TOKEN_LBRACE:
 			return parse_compound_stmt(c);
 		case TYPELIKE_TOKENS:
