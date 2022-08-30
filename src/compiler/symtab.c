@@ -175,26 +175,34 @@ void symtab_init(uint32_t capacity)
 	kw_type = KW_DEF("type");
 	kw_values = KW_DEF("values");
 
+
 	builtin_list[BUILTIN_ABS] = KW_DEF("abs");
 	builtin_list[BUILTIN_BITREVERSE] = KW_DEF("bitreverse");
 	builtin_list[BUILTIN_BSWAP] = KW_DEF("bswap");
 	builtin_list[BUILTIN_CEIL] = KW_DEF("ceil");
+	builtin_list[BUILTIN_COPYSIGN] = KW_DEF("copysign");
 	builtin_list[BUILTIN_COS] = KW_DEF("cos");
 	builtin_list[BUILTIN_CTLZ] = KW_DEF("clz");
 	builtin_list[BUILTIN_CTPOP] = KW_DEF("popcount");
 	builtin_list[BUILTIN_CTTZ] = KW_DEF("ctz");
 	builtin_list[BUILTIN_EXP] = KW_DEF("exp");
+	builtin_list[BUILTIN_EXP2] = KW_DEF("exp2");
+	builtin_list[BUILTIN_FLOOR] = KW_DEF("floor");
 	builtin_list[BUILTIN_FMA] = KW_DEF("fma");
 	builtin_list[BUILTIN_FSHL] = KW_DEF("fshl");
 	builtin_list[BUILTIN_FSHR] = KW_DEF("fshr");
+	builtin_list[BUILTIN_LOG] = KW_DEF("log");
 	builtin_list[BUILTIN_LOG2] = KW_DEF("log2");
 	builtin_list[BUILTIN_LOG10] = KW_DEF("log10");
-	builtin_list[BUILTIN_LOG] = KW_DEF("log");
 	builtin_list[BUILTIN_MAX] = KW_DEF("max");
 	builtin_list[BUILTIN_MEMCOPY] = KW_DEF("memcpy");
 	builtin_list[BUILTIN_MEMSET] = KW_DEF("memset");
 	builtin_list[BUILTIN_MIN] = KW_DEF("min");
+	builtin_list[BUILTIN_NEARBYINT] = KW_DEF("nearbyint");
 	builtin_list[BUILTIN_POW] = KW_DEF("pow");
+	builtin_list[BUILTIN_RINT] = KW_DEF("rint");
+	builtin_list[BUILTIN_ROUND] = KW_DEF("round");
+	builtin_list[BUILTIN_ROUNDEVEN] = KW_DEF("roundeven");
 	builtin_list[BUILTIN_SIN] = KW_DEF("sin");
 	builtin_list[BUILTIN_SQRT] = KW_DEF("sqrt");
 	builtin_list[BUILTIN_STACKTRACE] = KW_DEF("stacktrace");
@@ -205,6 +213,13 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_UNREACHABLE] = KW_DEF("unreachable");
 	builtin_list[BUILTIN_VOLATILE_LOAD] = KW_DEF("volatile_load");
 	builtin_list[BUILTIN_VOLATILE_STORE] = KW_DEF("volatile_store");
+
+// Disabled for now!
+
+//	builtin_list[BUILTIN_LLRINT] = KW_DEF("llrint");
+//	builtin_list[BUILTIN_LLROUND] = KW_DEF("llround");
+//	builtin_list[BUILTIN_LRINT] = KW_DEF("lrint");
+//	builtin_list[BUILTIN_LROUND] = KW_DEF("lround");
 
 	for (unsigned i = 0; i < NUMBER_OF_BUILTINS; i++)
 	{

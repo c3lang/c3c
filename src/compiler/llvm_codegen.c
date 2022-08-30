@@ -605,8 +605,8 @@ void llvm_codegen_setup()
 	intrinsic_id.ctlz = lookup_intrinsic("llvm.ctlz");
 	intrinsic_id.ctpop = lookup_intrinsic("llvm.ctpop");
 	intrinsic_id.cttz = lookup_intrinsic("llvm.cttz");
-	intrinsic_id.exp2 = lookup_intrinsic("llvm.exp2");
 	intrinsic_id.exp = lookup_intrinsic("llvm.exp");
+	intrinsic_id.exp2 = lookup_intrinsic("llvm.exp2");
 	intrinsic_id.fabs = lookup_intrinsic("llvm.fabs");
 	intrinsic_id.floor = lookup_intrinsic("llvm.floor");
 	intrinsic_id.fma = lookup_intrinsic("llvm.fma");
@@ -616,9 +616,9 @@ void llvm_codegen_setup()
 	intrinsic_id.lifetime_start = lookup_intrinsic("llvm.lifetime.start");
 	intrinsic_id.llrint = lookup_intrinsic("llvm.llrint");
 	intrinsic_id.llround = lookup_intrinsic("llvm.llround");
+	intrinsic_id.log = lookup_intrinsic("llvm.log");
 	intrinsic_id.log2 = lookup_intrinsic("llvm.log2");
 	intrinsic_id.log10 = lookup_intrinsic("llvm.log10");
-	intrinsic_id.log = lookup_intrinsic("llvm.log");
 	intrinsic_id.lrint = lookup_intrinsic("llvm.lrint");
 	intrinsic_id.lround = lookup_intrinsic("llvm.lround");
 	intrinsic_id.maximum = lookup_intrinsic("llvm.maximum");
@@ -628,10 +628,11 @@ void llvm_codegen_setup()
 	intrinsic_id.minimum = lookup_intrinsic("llvm.minimum");
 	intrinsic_id.minnum = lookup_intrinsic("llvm.minnum");
 	intrinsic_id.nearbyint = lookup_intrinsic("llvm.nearbyint");
-	intrinsic_id.powi = lookup_intrinsic("llvm.powi");
 	intrinsic_id.pow = lookup_intrinsic("llvm.pow");
+	intrinsic_id.powi = lookup_intrinsic("llvm.powi");
 	intrinsic_id.readcyclecounter = lookup_intrinsic("llvm.readcyclecounter");
 	intrinsic_id.rint = lookup_intrinsic("llvm.rint");
+	intrinsic_id.round = lookup_intrinsic("llvm.round");
 	intrinsic_id.roundeven = lookup_intrinsic("llvm.roundeven");
 	intrinsic_id.sadd_overflow = lookup_intrinsic("llvm.sadd.with.overflow");
 	intrinsic_id.sadd_sat = lookup_intrinsic("llvm.sadd.sat");
