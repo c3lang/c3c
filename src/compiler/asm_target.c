@@ -6,6 +6,8 @@
 
 #define ASM_PTR_HASH(name__) (uint32_t)(((uintptr_t)name__ >> 9) ^ ((uintptr_t)name__ >> 1))
 
+const Clobbers NO_CLOBBER = {};
+
 INLINE AsmInstruction *insert_instruction_named(const char *name)
 {
 	TokenType token_type = TOKEN_IDENT;
@@ -26,7 +28,7 @@ INLINE AsmInstruction *insert_instruction_named(const char *name)
 
 }
 
-INLINE void reg_instr_clob(const char *name, Clobbers mask, ...)
+static inline void reg_instr_clob(const char *name, Clobbers mask, ...)
 {
 	AsmInstruction *instr = insert_instruction_named(name);
 	instr->mask = mask;
@@ -44,10 +46,10 @@ INLINE void reg_instr_clob(const char *name, Clobbers mask, ...)
 	instr->param_count = param_count;
 }
 
-INLINE void reg_instr(const char *name, ...)
+static inline void reg_instr(const char *name, ...)
 {
 	AsmInstruction *instr = insert_instruction_named(name);
-	instr->mask = (Clobbers) { .mask[0] = 0 };
+	instr->mask = NO_CLOBBER;
 	va_list list;
 	va_start(list, name);
 	int param_count = 0;
