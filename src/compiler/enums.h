@@ -46,6 +46,7 @@ typedef enum
 {
 	AST_POISONED,
 	AST_ASM_STMT,
+	AST_ASM_BLOCK_STMT,
 	AST_ASSERT_STMT,
 	AST_BREAK_STMT,
 	AST_CASE_STMT,
@@ -250,7 +251,57 @@ typedef enum
 	EXPR_TYPEID_INFO,
 	EXPR_VARIANT,
 	EXPR_BUILTIN_ACCESS,
+	EXPR_ASM,
 } ExprKind;
+
+typedef enum
+{
+	ASM_ARG_REG,
+	ASM_ARG_ADDR,
+	ASM_ARG_REGVAR,
+	ASM_ARG_ADDROF,
+	ASM_ARG_MEMVAR,
+	ASM_ARG_VALUE,
+	ASM_ARG_INT,
+} AsmArgKind;
+
+typedef enum
+{
+	AARG_W =        1 << 1,
+	AARG_R =        1 << 2,
+	AARG_RW =       AARG_W | AARG_R,
+	AARG_CLOB =     1 << 3,
+	AARG_M8 =       1 << 4,
+	AARG_M16 =      1 << 5,
+	AARG_M32 =      1 << 6,
+	AARG_M64 =      1 << 7,
+	AARG_MINT =     AARG_M8 | AARG_M16 | AARG_M32 | AARG_M64,
+	AARG_R8 =       1 << 8,
+	AARG_R16 =      1 << 9,
+	AARG_R32 =      1 << 10,
+	AARG_R64 =      1 << 11,
+	AARG_R128 =     1 << 12,
+	AARG_IREG =     AARG_R8 | AARG_R16 | AARG_R32 | AARG_R64 | AARG_R128,
+	AARG_XMM =      1 << 13,
+	AARG_X87 =      1 << 14,
+	AARG_IMMI8 =    1 << 15,
+	AARG_IMMU8 =    1 << 16,
+	AARG_IMM8 =     AARG_IMMI8 | AARG_IMMU8,
+	AARG_IMM16 =    1 << 17,
+	AARG_IMMU32 =   1 << 18,
+	AARG_IMMI32 =   1 << 19,
+	AARG_IMM32 =    AARG_IMMU32 | AARG_IMMI32,
+	AARG_IMM64 =    1 << 20,
+	AARG_IMM =      AARG_IMM8 | AARG_IMM16 | AARG_IMMU32 | AARG_IMMI32,
+	AARG_SEG =      1 << 21,
+	AARG_MXMM =     1 << 22,
+	AARG_RM8 =      AARG_M8 | AARG_R8,
+	AARG_RM16 =     AARG_M16 | AARG_R16,
+	AARG_RM32 =     AARG_M32 | AARG_R32,
+	AARG_RM64 =     AARG_M64 | AARG_R64,
+	AARG_ANY_INT =  AARG_IMM | AARG_IREG | AARG_MINT,
+
+} AsmArgGroup;
 
 typedef enum
 {

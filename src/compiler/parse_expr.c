@@ -1061,7 +1061,7 @@ static int read_num_type(const char *string, size_t loc, size_t len)
 	return i;
 }
 
-static Expr *parse_integer(ParseContext *c, Expr *left)
+Expr *parse_integer(ParseContext *c, Expr *left)
 {
 	assert(!left && "Had left hand side");
 	Expr *expr_int = EXPR_NEW_TOKEN(EXPR_CONST);

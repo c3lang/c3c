@@ -39,6 +39,9 @@ typedef uint64_t BitSize;
 #define MAX_ALIGNMENT ((MemberIndex)(((uint64_t)2) << 28))
 #define MAX_TYPE_SIZE UINT32_MAX
 #define MAX_GLOBAL_DECL_STACK (65536)
+#define MAX_ASM_INSTRUCTION_PARAMS 6
+#define CLOBBER_FLAG_ELEMENTS 4
+#define MAX_CLOBBER_FLAGS (64 * CLOBBER_FLAG_ELEMENTS)
 
 typedef struct Ast_ Ast;
 typedef struct Decl_ Decl;
@@ -117,6 +120,46 @@ struct ConstInitializer_
 		} init_array_value;
 	};
 };
+
+typedef struct
+{
+	char string[1024];
+	unsigned constraint_len;
+} ClobberList;
+
+typedef struct
+{
+	const char *name;
+	AsmArgGroup type;
+	int clobber_index;
+} AsmRegister;
+
+typedef struct
+{
+	uint64_t mask[CLOBBER_FLAG_ELEMENTS];
+} Clobbers;
+
+typedef struct
+{
+	const char *name;
+	AsmArgGroup param[MAX_ASM_INSTRUCTION_PARAMS];
+	unsigned param_count;
+	Clobbers mask;
+} AsmInstruction;
+
+#define ASM_INSTRUCTION_MAX 0x1000
+#define ASM_INSTRUCTION_MASK (ASM_INSTRUCTION_MAX - 1)
+#define ASM_REGISTER_MAX 1024
+#define ASM_REGISTER_MASK (ASM_REGISTER_MAX - 1)
+
+typedef struct
+{
+	bool initialized;
+	const char **clobber_name_list;
+	const char *extra_clobbers;
+	AsmRegister registers[ASM_REGISTER_MAX];
+	AsmInstruction instructions[ASM_INSTRUCTION_MAX];
+} AsmTarget;
 
 typedef struct
 {
@@ -834,6 +877,53 @@ typedef struct
 	};
 } ExprCtCall;
 
+
+typedef enum
+{
+	ASM_SCALE_1,
+	ASM_SCALE_2,
+	ASM_SCALE_4,
+	ASM_SCALE_8,
+	ASM_SCALE_SHR,
+	ASM_SCALE_SHL,
+	ASM_SCALE_ASHL,
+	ASM_SCALE_ROR,
+	ASM_SCALE_RRX,
+} AsmOffsetType;
+typedef struct
+{
+	AsmArgKind kind : 8;
+	unsigned short index : 16;
+	AsmOffsetType offset_type : 6;
+	bool neg_offset : 1;
+	union
+	{
+		struct {
+			union
+			{
+				const char *name;
+				Decl *ident_decl;
+			};
+			bool copy_output : 1;
+			bool early_clobber : 1;
+			bool is_input : 1;
+		} ident;
+		ExprId expr_id;
+		struct {
+			ExprId base;
+			ExprId idx;
+			uint64_t offset;
+		};
+		uint64_t value;
+		union
+		{
+			const char *name;
+			AsmRegister *ref;
+		} reg;
+	};
+} ExprAsmArg;
+
+
 typedef struct
 {
 	TokenType type : 16;
@@ -992,6 +1082,7 @@ struct Expr_
 		ExprCast cast_expr;                         // 12
 		ExprVariant variant_expr;
 		ExprPointerOffset pointer_offset_expr;
+		ExprAsmArg expr_asm_arg;
 		TypeInfo *type_expr;                        // 8
 		ExprConst const_expr;                       // 32
 		ExprArgv argv_expr;                         // 16
@@ -1204,29 +1295,35 @@ typedef struct
 	};
 } AstNextcaseStmt;
 
+typedef struct
+{
+	const char *instruction;
+	const char *variant;
+	Expr **args;
+} AstAsmStmt;
 
 typedef struct
 {
-	Expr *expr;
-	const char *alias;
-	const char *constraints;
-} AsmOperand;
-
-typedef struct
-{
-	AsmOperand *inputs;
-	AsmOperand *outputs;
-/*	TokenId **clobbers;
-	TokenId **labels;*/
-} AsmParams;
+	Clobbers clobbers;
+	const char *asm_block;
+	AstId asm_stmt;
+	ExprAsmArg **output_vars;
+	ExprAsmArg **input;
+} AsmInlineBlock;
 
 typedef struct
 {
 	bool is_volatile : 1;
 	bool is_inline : 1;
 	bool is_goto : 1;
-	Expr *body;
-} AstAsmStmt;
+	bool string : 1;
+	union
+	{
+		AsmInlineBlock *block;
+		ExprId asm_string;
+	};
+
+} AstAsmBlock;
 
 typedef struct
 {
@@ -1286,7 +1383,8 @@ typedef struct Ast_
 	union
 	{
 		FlowCommon flow;                    // Shared struct
-		AstAsmStmt asm_stmt;                // 16
+		AstAsmBlock asm_block_stmt;
+		AstAsmStmt asm_stmt;
 		AstCompoundStmt compound_stmt;      // 12
 		Decl *declare_stmt;                 // 8
 		Expr *expr_stmt;                    // 8
@@ -1651,6 +1749,7 @@ typedef struct CopyStruct_
 
 
 extern GlobalContext global_context;
+extern AsmTarget asm_target;
 extern BuildTarget active_target;
 extern Ast *poisoned_ast;
 extern Decl *poisoned_decl;
@@ -1893,6 +1992,13 @@ Decl **copy_decl_list(CopyStruct *c, Decl **decl_list);
 TypeInfo *copy_type_info(CopyStruct *c, TypeInfo *source);
 
 
+void init_asm(void);
+AsmRegister *asm_reg_by_name(const char *name);
+AsmInstruction *asm_instr_by_name(const char *name);
+INLINE const char *asm_clobber_by_index(unsigned index);
+INLINE AsmRegister *asm_reg_by_index(unsigned index);
+
+AsmRegister *asm_reg_by_index(unsigned index);
 
 bool cast_implicit(Expr *expr, Type *to_type);
 bool cast(Expr *expr, Type *to_type);
@@ -2798,4 +2904,64 @@ INLINE void expr_rewrite_const_float(Expr *expr, Type *type, Real d)
 	}
 	expr->const_expr.const_kind = CONST_FLOAT;
 	expr->resolve_status = RESOLVE_DONE;
+}
+
+INLINE const char *asm_clobber_by_index(unsigned index)
+{
+	return asm_target.clobber_name_list[index];
+}
+
+INLINE AsmRegister *asm_reg_by_index(unsigned index)
+{
+	return &asm_target.registers[index];
+}
+
+INLINE void clobbers_add(Clobbers *clobbers, unsigned index)
+{
+	assert(index < MAX_CLOBBER_FLAGS);
+	unsigned bit = index % 64;
+	unsigned element = index / 64;
+	clobbers->mask[element] |= (1ull << bit);
+}
+
+INLINE Clobbers clobbers_make_from(Clobbers clobbers, ...)
+{
+	va_list list;
+	va_start(list, clobbers);
+	int i;
+	while ((i = va_arg(list, int)) > -1)
+	{
+		assert(i < MAX_CLOBBER_FLAGS);
+		unsigned bit = i % 64;
+		unsigned element = i / 64;
+		clobbers.mask[element] |= (1ull << bit);
+	}
+	va_end(list);
+	return clobbers;
+}
+
+INLINE Clobbers clobbers_make(unsigned index, ...)
+{
+	Clobbers clobbers = { .mask[0] = 0 };
+	assert(index < MAX_CLOBBER_FLAGS);
+	unsigned bit = index % 64;
+	unsigned element = index / 64;
+	clobbers.mask[element] |= (1ull << bit);
+	va_list list;
+	va_start(list, index);
+	int i;
+	while ((i = va_arg(list, int)) > -1)
+	{
+		assert(i < MAX_CLOBBER_FLAGS);
+		bit = i % 64;
+		element = i / 64;
+		clobbers.mask[element] |= (1ull << bit);
+	}
+	va_end(list);
+	return clobbers;
+}
+
+static inline bool expr_is_const_int(Expr *expr)
+{
+	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INTEGER;
 }

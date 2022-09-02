@@ -365,6 +365,8 @@ bool expr_is_pure(Expr *expr)
 			return exprid_is_pure(expr->ternary_expr.cond)
 			       && exprid_is_pure(expr->ternary_expr.else_expr)
 			       && exprid_is_pure(expr->ternary_expr.then_expr);
+		case EXPR_ASM:
+			return false;
 		case EXPR_TRY:
 		case EXPR_GROUP:
 		case EXPR_CATCH:

@@ -29,6 +29,7 @@ TypeInfo *parse_type_with_base(ParseContext *c, TypeInfo *type_info);
 Expr* parse_constant_expr(ParseContext *c);
 void parse_imports(ParseContext *c);
 Decl *parse_decl(ParseContext *c);
+Expr *parse_integer(ParseContext *c, Expr *left);
 Expr *parse_decl_or_expr(ParseContext *c, Decl **decl_ref);
 void recover_top_level(ParseContext *c);
 Expr *parse_cond(ParseContext *c);

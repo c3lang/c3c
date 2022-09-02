@@ -514,6 +514,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_POISONED:
 		case EXPR_ARGV_TO_SUBARRAY:
 		case EXPR_CT_ARG:
+		case EXPR_ASM:
 			UNREACHABLE
 		case EXPR_NOP:
 			return true;
@@ -707,6 +708,7 @@ static bool sema_check_expr_lvalue(Expr *top_expr, Expr *expr)
 		case EXPR_BUILTIN_ACCESS:
 		case EXPR_POINTER_OFFSET:
 		case EXPR_CT_ARG:
+		case EXPR_ASM:
 			goto ERR;
 	}
 	UNREACHABLE
@@ -806,6 +808,7 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_BUILTIN_ACCESS:
 		case EXPR_POINTER_OFFSET:
 		case EXPR_CT_ARG:
+		case EXPR_ASM:
 			return false;
 	}
 	UNREACHABLE
@@ -8002,6 +8005,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 		case EXPR_CATCH_UNWRAP:
 		case EXPR_VARIANTSWITCH:
 		case EXPR_TYPEID_INFO:
+		case EXPR_ASM:
 			UNREACHABLE
 		case EXPR_CT_ARG:
 			return sema_expr_analyse_ct_arg(context, expr);
@@ -8521,3 +8525,9 @@ bool sema_insert_method_call(SemaContext *context, Expr *method_call, Decl *meth
 	method_call->resolve_status = RESOLVE_DONE;
 	return true;
 }
+
+bool sema_expr_rvalue(SemaContext *context, Expr *expr)
+{
+	return sema_cast_rvalue(context, expr);
+}
+

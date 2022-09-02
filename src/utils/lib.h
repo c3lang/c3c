@@ -275,6 +275,12 @@ static inline void* expand_(void *vec, size_t element_size)
     type__ val; if (foreach_vec__) val = foreach_vec__[0]; \
 	for (unsigned foreach_index = 0; foreach_index < foreach_len__; val = foreach_vec__[++foreach_index])
 
+#define FOREACH_BEGIN_IDX(idx__, decl__, vec__) \
+void* CONCAT(foreach_vec_, __LINE__) = (vec__); unsigned CONCAT(foreach_len_, __LINE__) = vec_size(CONCAT(foreach_vec_, __LINE__)); \
+    for (unsigned idx__ = 0; idx__ < CONCAT(foreach_len_, __LINE__); idx__++) { decl__ = ((void**)CONCAT(foreach_vec_, __LINE__))[idx__];
+#define FOREACH_END() } do {} while (0)
+#define FOREACH_BEGIN(decl__, vec__) FOREACH_BEGIN_IDX(CONCAT(idx__, __LINE__), decl__, vec__)
+
 #define VECNEW(_type, _capacity) ((_type *)(vec_new_(sizeof(_type), _capacity) + 1))
 #define vec_add(vec_, value_) do { \
 	void *__temp = expand_((vec_), sizeof(*(vec_))); \

@@ -12,6 +12,7 @@
 #define MAX_MODULES 100000
 GlobalContext global_context;
 BuildTarget active_target;
+AsmTarget asm_target;
 
 Vmem ast_arena;
 Vmem expr_arena;
@@ -628,6 +629,7 @@ void compile()
 	}
 	global_context.sources = active_target.sources;
 	global_context.main = NULL;
+	asm_target.initialized = false;
 	target_setup(&active_target);
 	resolve_libraries();
 

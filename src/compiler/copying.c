@@ -247,6 +247,21 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			MACRO_COPY_EXPRID(expr->slice_expr.start);
 			MACRO_COPY_EXPRID(expr->slice_expr.end);
 			return expr;
+		case EXPR_ASM:
+			switch (expr->expr_asm_arg.kind)
+			{
+				case ASM_ARG_REG:
+				case ASM_ARG_ADDROF:
+				case ASM_ARG_REGVAR:
+				case ASM_ARG_INT:
+				case ASM_ARG_MEMVAR:
+					return expr;
+				case ASM_ARG_VALUE:
+				case ASM_ARG_ADDR:
+					MACRO_COPY_EXPRID(expr->expr_asm_arg.expr_id);
+					return expr;
+			}
+			UNREACHABLE
 		case EXPR_FORCE_UNWRAP:
 		case EXPR_TRY:
 		case EXPR_CATCH:
@@ -390,8 +405,21 @@ RETRY:
 		case AST_DOC_STMT:
 			doc_ast_copy(c, &source->doc_stmt);
 			break;
+		case AST_ASM_BLOCK_STMT:
+			if (ast->asm_block_stmt.string)
+			{
+				MACRO_COPY_EXPRID(ast->asm_block_stmt.asm_string);
+			}
+			else
+			{
+				AsmInlineBlock *block = MALLOCS(AsmInlineBlock);
+				*block = *ast->asm_block_stmt.block;
+				ast->asm_block_stmt.block = block;
+				MACRO_COPY_ASTID(block->asm_stmt);
+			}
+			break;
 		case AST_ASM_STMT:
-			MACRO_COPY_EXPR(ast->asm_stmt.body);
+			MACRO_COPY_EXPR_LIST(ast->asm_stmt.args);
 			break;
 		case AST_ASSERT_STMT:
 		case AST_CT_ASSERT:

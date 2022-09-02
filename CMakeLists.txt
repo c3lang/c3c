@@ -223,6 +223,7 @@ add_executable(c3c
         src/compiler/source_file.c
         src/compiler/symtab.c
         src/compiler/target.c
+        src/compiler/sema_asm.c
         src/compiler/tb_codegen.c
         src/compiler/tilde_codegen.c
         src/compiler/tilde_codegen_instr.c
@@ -251,7 +252,9 @@ add_executable(c3c
         src/compiler/tilde_codegen_expr.c
         src/compiler/tilde_codegen_stmt.c
         src/compiler/tilde_codegen_type.c
-        src/compiler/windows_support.c)
+        src/compiler/windows_support.c
+        src/compiler/codegen_asm.c
+        src/compiler/asm_target.c)
 
 
 target_include_directories(c3c PRIVATE

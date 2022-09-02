@@ -833,6 +833,7 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 		case EXPR_CT_CONV:
 		case EXPR_POINTER_OFFSET:
 		case EXPR_CT_ARG:
+		case EXPR_ASM:
 			UNREACHABLE
 		case EXPR_BUILTIN_ACCESS:
 
@@ -1001,6 +1002,7 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 		case EXPR_CT_CONV:
 		case EXPR_POINTER_OFFSET:
 		case EXPR_CT_ARG:
+		case EXPR_ASM:
 			UNREACHABLE
 		case EXPR_POST_UNARY:
 			return recursive_may_narrow_int(expr->unary_expr.expr, type);

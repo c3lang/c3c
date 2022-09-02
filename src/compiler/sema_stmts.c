@@ -1346,14 +1346,29 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 	return success;
 }
 
+static bool sema_analyse_asm_string_stmt(SemaContext *context, Ast *stmt)
+{
+	Expr *body = exprptr(stmt->asm_block_stmt.string);
+	if (!sema_analyse_expr(context, body)) return false;
+	if (!expr_is_const_string(body))
+	{
+		SEMA_ERROR(body, "The asm statement expects a constant string.");
+		return false;
+	}
+	return true;
+}
+
 static bool sema_analyse_asm_stmt(SemaContext *context, Ast *stmt)
 {
-	if (!sema_analyse_expr(context, stmt->asm_stmt.body)) return false;
-	if (stmt->asm_stmt.body->expr_kind != EXPR_CONST
-		|| stmt->asm_stmt.body->const_expr.const_kind != CONST_STRING)
+	if (stmt->asm_block_stmt.string) return sema_analyse_asm_string_stmt(context, stmt);
+	AsmInlineBlock *block = stmt->asm_block_stmt.block;
+	AstId ast_id = block->asm_stmt;
+	scratch_buffer_clear();
+	while (ast_id)
 	{
-		SEMA_ERROR(stmt->asm_stmt.body, "The asm statement requires a constant string here.");
-		return false;
+		Ast *ast = astptr(ast_id);
+		ast_id = ast->next;
+		if (!sema_check_asm(context, block, ast)) return false;
 	}
 	return true;
 }
@@ -2336,8 +2351,9 @@ static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *state
 		case AST_POISONED:
 		case AST_IF_CATCH_SWITCH_STMT:
 		case AST_DOC_STMT:
-			UNREACHABLE
 		case AST_ASM_STMT:
+			UNREACHABLE
+		case AST_ASM_BLOCK_STMT:
 			return sema_analyse_asm_stmt(context, statement);
 		case AST_ASSERT_STMT:
 			return sema_analyse_assert_stmt(context, statement);
