@@ -27,6 +27,8 @@ double compiler_link_time;
 
 const char* c3_suffix_list[3] = { ".c3", ".c3t", ".c3i" };
 
+extern int llvm_version_major;
+
 void compiler_init(const char *std_lib_dir)
 {
 	compiler_init_time = -1;
@@ -644,6 +646,7 @@ void compile()
 	setup_int_define("OS_TYPE", (uint64_t)platform_target.os, type_int);
 	setup_int_define("COMPILER_SIZE_OPT_LEVEL", (uint64_t)active_target.size_optimization_level, type_int);
 	setup_bool_define("COMPILER_SAFE_MODE", active_target.feature.safe_mode);
+	setup_int_define("LLVM_VERSION", llvm_version_major, type_int);
 
 	type_init_cint();
 
