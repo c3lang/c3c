@@ -187,23 +187,24 @@ extern LLVMIntrinsics intrinsic_id;
 
 typedef struct
 {
-	unsigned noinline; // No function inlining
-	unsigned optnone; // No optimization
-	unsigned alwaysinline; // Force inlining
-	unsigned inlinehint; // "Inline possibly"
-	unsigned noreturn; // No function return
-	unsigned nounwind; // No exceptions
-	unsigned writeonly; // No writes on pointer
-	unsigned readonly; // No reads on pointer
-	unsigned sret; // struct return pointer
 	unsigned align; // align
-	unsigned noalias; // noalias (pointer)
-	unsigned zext; // zero extend
-	unsigned sext; // sign extend
+	unsigned alwaysinline; // Force inlining
 	unsigned byval; // ByVal (param)
+	unsigned elementtype; // elementtype (type)
+	unsigned inlinehint; // "Inline possibly"
 	unsigned inreg; // inreg (param)
 	unsigned naked; // naked function
-	
+	unsigned noalias; // noalias (pointer)
+	unsigned noinline; // No function inlining
+	unsigned noreturn; // No function return
+	unsigned nounwind; // No exceptions
+	unsigned optnone; // No optimization
+	unsigned readonly; // No reads on pointer
+	unsigned sext; // sign extend
+	unsigned sret; // struct return pointer
+	unsigned writeonly; // No writes on pointer
+	unsigned zext; // zero extend
+
 } LLVMAttributes;
 
 extern LLVMAttributes attribute_id;

@@ -154,14 +154,14 @@ static void init_asm_x86(void)
 	{
 		reg_instr_clob("syscall", clobbers_make_from(cc_flag_mask, X86_R11, X86_RCX, -1), 0);
 	}
-	reg_instr_clob("adcb", cc_flag_mask, AARG_RM8 | AARG_W, AARG_RM8 | AARG_IMM8, 0);
-	reg_instr_clob("adcw", cc_flag_mask, AARG_RM16 | AARG_W, AARG_RM16 | AARG_IMM16 | AARG_IMMI8, 0);
-	reg_instr_clob("adcl", cc_flag_mask, AARG_RM32 | AARG_W, AARG_RM32 | AARG_IMM32 | AARG_IMMI8, 0);
-	reg_instr_clob("adcq", cc_flag_mask, AARG_RM64 | AARG_W, AARG_RM64 | AARG_IMMI32 | AARG_IMMI8, 0);
-	reg_instr_clob("addb", cc_flag_mask, AARG_RM8 | AARG_W, AARG_RM8 | AARG_IMM8, 0);
-	reg_instr_clob("addw", cc_flag_mask, AARG_RM16 | AARG_W, AARG_RM16 | AARG_IMM16 | AARG_IMMI8, 0);
-	reg_instr_clob("addl", cc_flag_mask, AARG_RM32 | AARG_W, AARG_RM32 | AARG_IMM32 | AARG_IMMI8, 0);
-	reg_instr_clob("addq", cc_flag_mask, AARG_RM64 | AARG_W, AARG_RM64 | AARG_IMMI32 | AARG_IMMI8, 0);
+	reg_instr_clob("adcb", cc_flag_mask, AARG_RM8 | AARG_RW, AARG_RM8 | AARG_IMM8, 0);
+	reg_instr_clob("adcw", cc_flag_mask, AARG_RM16 | AARG_RW, AARG_RM16 | AARG_IMM16 | AARG_IMMI8, 0);
+	reg_instr_clob("adcl", cc_flag_mask, AARG_RM32 | AARG_RW, AARG_RM32 | AARG_IMM32 | AARG_IMMI8, 0);
+	reg_instr_clob("adcq", cc_flag_mask, AARG_RM64 | AARG_RW, AARG_RM64 | AARG_IMMI32 | AARG_IMMI8, 0);
+	reg_instr_clob("addb", cc_flag_mask, AARG_RM8 | AARG_RW, AARG_RM8 | AARG_IMM8, 0);
+	reg_instr_clob("addw", cc_flag_mask, AARG_RM16 | AARG_RW, AARG_RM16 | AARG_IMM16 | AARG_IMMI8, 0);
+	reg_instr_clob("addl", cc_flag_mask, AARG_RM32 | AARG_RW, AARG_RM32 | AARG_IMM32 | AARG_IMMI8, 0);
+	reg_instr_clob("addq", cc_flag_mask, AARG_RM64 | AARG_RW, AARG_RM64 | AARG_IMMI32 | AARG_IMMI8, 0);
 
 	reg_instr_clob("cbtw", rax_mask, 0);
 	reg_instr_clob("cwtl", rax_mask, 0);

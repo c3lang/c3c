@@ -662,6 +662,7 @@ void llvm_codegen_setup()
 	attribute_id.align = lookup_attribute("align");
 	attribute_id.alwaysinline = lookup_attribute("alwaysinline");
 	attribute_id.byval = lookup_attribute("byval");
+	attribute_id.elementtype = lookup_attribute("elementtype");
 	attribute_id.inlinehint = lookup_attribute("inlinehint");
 	attribute_id.inreg = lookup_attribute("inreg");
 	attribute_id.naked = lookup_attribute("naked");
