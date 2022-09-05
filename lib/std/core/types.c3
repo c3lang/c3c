@@ -134,6 +134,11 @@ macro bool is_intlike($Type)
 	$endswitch;
 }
 
+macro bool is_vector($Type)
+{
+	return $Type.kind == TypeKind.VECTOR;
+}
+
 macro bool is_same($TypeA, $TypeB)
 {
 	return $TypeA.typeid == $TypeB.typeid;
