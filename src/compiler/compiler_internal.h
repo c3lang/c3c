@@ -2924,7 +2924,7 @@ INLINE void clobbers_add(Clobbers *clobbers, unsigned index)
 	clobbers->mask[element] |= (1ull << bit);
 }
 
-INLINE Clobbers clobbers_make_from(Clobbers clobbers, ...)
+static inline Clobbers clobbers_make_from(Clobbers clobbers, ...)
 {
 	va_list list;
 	va_start(list, clobbers);
@@ -2940,7 +2940,7 @@ INLINE Clobbers clobbers_make_from(Clobbers clobbers, ...)
 	return clobbers;
 }
 
-INLINE Clobbers clobbers_make(unsigned index, ...)
+static inline Clobbers clobbers_make(unsigned index, ...)
 {
 	Clobbers clobbers = { .mask[0] = 0 };
 	assert(index < MAX_CLOBBER_FLAGS);

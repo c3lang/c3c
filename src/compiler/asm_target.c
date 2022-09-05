@@ -6,7 +6,7 @@
 
 #define ASM_PTR_HASH(name__) (uint32_t)(((uintptr_t)name__ >> 9) ^ ((uintptr_t)name__ >> 1))
 
-const Clobbers NO_CLOBBER = {};
+const Clobbers NO_CLOBBER = { .mask[0] = 0 };
 
 INLINE AsmInstruction *insert_instruction_named(const char *name)
 {
