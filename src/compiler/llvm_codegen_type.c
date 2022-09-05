@@ -414,7 +414,7 @@ LLVMTypeRef llvm_get_coerce_type(GenContext *c, ABIArgInfo *arg_info)
 			{
 				elements[element_index++] = llvm_abi_type(c, arg_info->coerce_expand.hi);
 			}
-			return LLVMStructType(elements, element_index, arg_info->coerce_expand.packed);
+			return LLVMStructTypeInContext(c->context, elements, element_index, arg_info->coerce_expand.packed);
 		}
 		case ABI_ARG_DIRECT_SPLIT_STRUCT:
 		{
