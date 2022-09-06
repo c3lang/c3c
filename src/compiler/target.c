@@ -496,9 +496,9 @@ const char *arch_to_linker_arch(ArchType arch)
 		case ARCH_TYPE_ARMB:
 			return "armeb";
 		case ARCH_TYPE_AARCH64:
-			return "aarch64";
+			return "arm64";
 		case ARCH_TYPE_AARCH64_BE:
-			return "aarch64_be";
+			return "arm64e";
 		case ARCH_TYPE_PPC:
 			return "ppc";
 		case ARCH_TYPE_PPC64:

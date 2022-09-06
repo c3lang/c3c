@@ -267,41 +267,23 @@ typedef enum
 
 typedef enum
 {
-	AARG_W =        1 << 1,
-	AARG_R =        1 << 2,
-	AARG_RW =       AARG_W | AARG_R,
-	AARG_CLOB =     1 << 3,
-	AARG_M8 =       1 << 4,
-	AARG_M16 =      1 << 5,
-	AARG_M32 =      1 << 6,
-	AARG_M64 =      1 << 7,
-	AARG_MINT =     AARG_M8 | AARG_M16 | AARG_M32 | AARG_M64,
-	AARG_R8 =       1 << 8,
-	AARG_R16 =      1 << 9,
-	AARG_R32 =      1 << 10,
-	AARG_R64 =      1 << 11,
-	AARG_R128 =     1 << 12,
-	AARG_IREG =     AARG_R8 | AARG_R16 | AARG_R32 | AARG_R64 | AARG_R128,
-	AARG_XMM =      1 << 13,
-	AARG_X87 =      1 << 14,
-	AARG_IMMI8 =    1 << 15,
-	AARG_IMMU8 =    1 << 16,
-	AARG_IMM8 =     AARG_IMMI8 | AARG_IMMU8,
-	AARG_IMM16 =    1 << 17,
-	AARG_IMMU32 =   1 << 18,
-	AARG_IMMI32 =   1 << 19,
-	AARG_IMM32 =    AARG_IMMU32 | AARG_IMMI32,
-	AARG_IMM64 =    1 << 20,
-	AARG_IMM =      AARG_IMM8 | AARG_IMM16 | AARG_IMMU32 | AARG_IMMI32,
-	AARG_SEG =      1 << 21,
-	AARG_MXMM =     1 << 22,
-	AARG_RM8 =      AARG_M8 | AARG_R8,
-	AARG_RM16 =     AARG_M16 | AARG_R16,
-	AARG_RM32 =     AARG_M32 | AARG_R32,
-	AARG_RM64 =     AARG_M64 | AARG_R64,
-	AARG_ANY_INT =  AARG_IMM | AARG_IREG | AARG_MINT,
+	ASM_REG_INT,
+	ASM_REG_FLOAT,
+	ASM_REG_IVEC,
+	ASM_REF_FVEC,
+	ASM_REF_SSE,
+	ASM_REF_MMX,
+} AsmRegisterType;
 
-} AsmArgGroup;
+typedef enum
+{
+	ARG_BITS_8 = 1 << 0,
+	ARG_BITS_16 = 1 << 1,
+	ARG_BITS_32 = 1 << 2,
+	ARG_BITS_64 = 1 << 3,
+	ARG_BITS_128 = 1 << 4,
+	ARG_BITS_80 = 1 << 5,
+} AsmArgBits;
 
 typedef enum
 {

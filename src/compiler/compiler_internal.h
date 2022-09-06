@@ -127,10 +127,23 @@ typedef struct
 	unsigned constraint_len;
 } ClobberList;
 
+
+typedef struct
+{
+	bool is_write : 1;
+	bool is_readwrite : 1;
+	bool is_address : 1;
+	AsmArgBits imm_arg_ubits : 8;
+	AsmArgBits imm_arg_ibits : 8;
+	AsmArgBits ireg_bits : 8;
+	AsmArgBits float_bits : 8;
+} AsmArgType;
+
 typedef struct
 {
 	const char *name;
-	AsmArgGroup type;
+	AsmRegisterType type;
+	AsmArgBits bits;
 	int clobber_index;
 } AsmRegister;
 
@@ -142,7 +155,7 @@ typedef struct
 typedef struct
 {
 	const char *name;
-	AsmArgGroup param[MAX_ASM_INSTRUCTION_PARAMS];
+	AsmArgType param[MAX_ASM_INSTRUCTION_PARAMS];
 	unsigned param_count;
 	Clobbers mask;
 } AsmInstruction;
@@ -2964,4 +2977,16 @@ static inline Clobbers clobbers_make(unsigned index, ...)
 static inline bool expr_is_const_int(Expr *expr)
 {
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INTEGER;
+}
+
+INLINE unsigned arg_bits_max(AsmArgBits bits, unsigned limit)
+{
+	if (limit == 0) limit = ~(0u);
+	if (limit >= 128 && (bits & ARG_BITS_128)) return 128;
+	if (limit >= 80 && (bits & ARG_BITS_80)) return 80;
+	if (limit >= 64 && (bits & ARG_BITS_64)) return 64;
+	if (limit >= 32 && (bits & ARG_BITS_32)) return 32;
+	if (limit >= 16 && (bits & ARG_BITS_16)) return 16;
+	if (limit >= 8 && (bits & ARG_BITS_8)) return 8;
+	return 0;
 }
