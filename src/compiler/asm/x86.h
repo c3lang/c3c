@@ -217,6 +217,8 @@ static const char *x86_low_byte_regs[] = { "$al", "$bl", "$cl", "$dl",
                                            "$r10b", "$r11b", "$r12b", "$r13b", "$r14b", "$r15b" };
 static const char *x86_high_byte_regs[] = { "$ah", "$bh", "$ch", "$dh" };
 
+static const char *x86_float_regs[] = { "$st0", "$st1", "$st2", "$st3", "$st4", "$st5", "$st6", "$st7" };
+
 static const char *x86_xmm_regs[] = { "$xmm0", "$xmm1", "$xmm2", "$xmm3", "$xmm4", "$xmm5", "$xmm6", "$xmm7",
                                       "$xmm8", "$xmm9", "$xmm10", "$xmm11", "$xmm12", "$xmm13", "$xmm14", "$xmm15" };
 
