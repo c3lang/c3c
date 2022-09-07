@@ -491,9 +491,9 @@ static inline TypeInfo *parse_base_type(ParseContext *c)
 		RANGE_EXTEND_PREV(type_info);
 		return type_info;
 	}
-	if (try_consume(c, TOKEN_CT_VAARG_GET_TYPE))
+	if (try_consume(c, TOKEN_CT_VATYPE))
 	{
-		TypeInfo *type_info = type_info_new(TYPE_INFO_VAARG_TYPE, c->prev_span);
+		TypeInfo *type_info = type_info_new(TYPE_INFO_VATYPE, c->prev_span);
 		CONSUME_OR_RET(TOKEN_LPAREN, poisoned_type_info);
 		ASSIGN_EXPR_OR_RET(type_info->unresolved_type_expr, parse_expr(c), poisoned_type_info);
 		CONSUME_OR_RET(TOKEN_RPAREN, poisoned_type_info);

@@ -7551,7 +7551,7 @@ RETRY:
 			if (!decl_ok(decl)) return poisoned_type;
 			return decl->type->canonical;
 		}
-		case TYPE_INFO_VAARG_TYPE:
+		case TYPE_INFO_VATYPE:
 			if (!sema_resolve_type_info(context, type_info)) return poisoned_type;
 			return type_info->type->canonical;
 		case TYPE_INFO_EXPRESSION:
@@ -7719,10 +7719,10 @@ static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Expr *expr)
 	}
 	switch (type)
 	{
-		case TOKEN_CT_VAARG_COUNT:
+		case TOKEN_CT_VACOUNT:
 			expr_rewrite_const_int(expr, type_usize, vec_size(context->macro_varargs), true);
 			return true;
-		case TOKEN_CT_VAARG_GET_ARG:
+		case TOKEN_CT_VAARG:
 		{
 			// A normal argument, this means we only evaluate it once.
 			ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, exprptr(expr->ct_arg_expr.arg)), false);
@@ -7752,14 +7752,14 @@ static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Expr *expr)
 			expr->type = decl->type;
 			return true;
 		}
-		case TOKEN_CT_VAARG_GET_EXPR:
+		case TOKEN_CT_VAEXPR:
 		{
 			// An expr argument, this means we copy and evaluate.
 			ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, exprptr(expr->ct_arg_expr.arg)), false);
 			expr_replace(expr, expr_macro_copy(arg_expr));
 			return true;
 		}
-		case TOKEN_CT_VAARG_GET_CONST:
+		case TOKEN_CT_VACONST:
 		{
 			// An expr argument, this means we copy and evaluate.
 			ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, exprptr(expr->ct_arg_expr.arg)), false);
@@ -7772,7 +7772,7 @@ static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Expr *expr)
 			expr_replace(expr, arg_expr);
 			return true;
 		}
-		case TOKEN_CT_VAARG_GET_REF:
+		case TOKEN_CT_VAREF:
 		{
 			// A normal argument, this means we only evaluate it once.
 			ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, exprptr(expr->ct_arg_expr.arg)), false);
@@ -7805,7 +7805,7 @@ static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Expr *expr)
 			expr->type = decl->type;
 			return true;
 		}
-		case TOKEN_CT_VAARG_GET_TYPE:
+		case TOKEN_CT_VATYPE:
 		default:
 			UNREACHABLE;
 	}

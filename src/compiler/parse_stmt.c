@@ -1210,11 +1210,11 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_CATCH:
 		case TOKEN_BYTES:
 		case TOKEN_BUILTIN:
-		case TOKEN_CT_VAARG_COUNT:
-		case TOKEN_CT_VAARG_GET_ARG:
-		case TOKEN_CT_VAARG_GET_EXPR:
-		case TOKEN_CT_VAARG_GET_CONST:
-		case TOKEN_CT_VAARG_GET_REF:
+		case TOKEN_CT_VACOUNT:
+		case TOKEN_CT_VAARG:
+		case TOKEN_CT_VAEXPR:
+		case TOKEN_CT_VACONST:
+		case TOKEN_CT_VAREF:
 			return parse_expr_stmt(c);
 		case TOKEN_ASSERT:
 			return parse_assert_stmt(c);
