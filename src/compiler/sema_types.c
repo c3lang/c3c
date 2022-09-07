@@ -254,7 +254,7 @@ RETRY:
 	{
 		case TYPE_INFO_POISON:
 			UNREACHABLE
-		case TYPE_INFO_VAARG_TYPE:
+		case TYPE_INFO_VATYPE:
 			if (context->current_macro)
 			{
 				ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, type_info->unresolved_type_expr), false);
@@ -267,7 +267,7 @@ RETRY:
 				assert(type_info->resolve_status == RESOLVE_DONE);
 				return true;
 			}
-			SEMA_ERROR(type_info, "'%s' can only be used inside of a macro.", token_type_to_string(TOKEN_CT_VAARG_GET_TYPE));
+			SEMA_ERROR(type_info, "'%s' can only be used inside of a macro.", token_type_to_string(TOKEN_CT_VATYPE));
 			return false;
 		case TYPE_INFO_CT_IDENTIFIER:
 		case TYPE_INFO_IDENTIFIER:

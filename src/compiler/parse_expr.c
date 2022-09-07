@@ -918,10 +918,10 @@ static Expr *parse_ct_arg(ParseContext *c, Expr *left)
 	assert(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_ARG);
 	TokenType type = expr->ct_arg_expr.type = c->tok;
-	assert(type != TOKEN_CT_VAARG_GET_TYPE);
+	assert(type != TOKEN_CT_VATYPE);
 	advance(c);
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
-	if (type != TOKEN_CT_VAARG_COUNT)
+	if (type != TOKEN_CT_VACOUNT)
 	{
 		ASSIGN_EXPRID_OR_RET(expr->ct_arg_expr.arg, parse_expr(c), poisoned_expr);
 	}
@@ -1756,10 +1756,10 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_CT_CONVERTIBLE] = { parse_ct_conv, NULL, PREC_NONE },
 		[TOKEN_CT_CASTABLE] = { parse_ct_conv, NULL, PREC_NONE },
 		[TOKEN_LBRACE] = { parse_initializer_list, NULL, PREC_NONE },
-		[TOKEN_CT_VAARG_COUNT] = { parse_ct_arg, NULL, PREC_NONE },
-		[TOKEN_CT_VAARG_GET_ARG] = { parse_ct_arg, NULL, PREC_NONE },
-		[TOKEN_CT_VAARG_GET_REF] = { parse_ct_arg, NULL, PREC_NONE },
-		[TOKEN_CT_VAARG_GET_TYPE] = { parse_type_expr, NULL, PREC_NONE },
-		[TOKEN_CT_VAARG_GET_EXPR] = { parse_ct_arg, NULL, PREC_NONE },
-		[TOKEN_CT_VAARG_GET_CONST] = { parse_ct_arg, NULL, PREC_NONE },
+		[TOKEN_CT_VACOUNT] = { parse_ct_arg, NULL, PREC_NONE },
+		[TOKEN_CT_VAARG] = { parse_ct_arg, NULL, PREC_NONE },
+		[TOKEN_CT_VAREF] = { parse_ct_arg, NULL, PREC_NONE },
+		[TOKEN_CT_VATYPE] = { parse_type_expr, NULL, PREC_NONE },
+		[TOKEN_CT_VAEXPR] = { parse_ct_arg, NULL, PREC_NONE },
+		[TOKEN_CT_VACONST] = { parse_ct_arg, NULL, PREC_NONE },
 };

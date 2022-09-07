@@ -357,7 +357,7 @@ typedef enum
 	TYPE_INFO_IDENTIFIER,
 	TYPE_INFO_CT_IDENTIFIER,
 	TYPE_INFO_EXPRESSION,
-	TYPE_INFO_VAARG_TYPE,
+	TYPE_INFO_VATYPE,
 	TYPE_INFO_EVALTYPE,
 	TYPE_INFO_ARRAY,
 	TYPE_INFO_VECTOR,
@@ -560,12 +560,12 @@ typedef enum
 	TOKEN_CT_TYPEOF,            // $typeof
 	TOKEN_CT_CONVERTIBLE,       // $convertible
 	TOKEN_CT_CASTABLE,          // $castable
-	TOKEN_CT_VAARG_COUNT,       // $vaarg_count
-	TOKEN_CT_VAARG_GET_TYPE,    // $vaarg_get_type
-	TOKEN_CT_VAARG_GET_CONST,   // $vaarg_get_const,
-	TOKEN_CT_VAARG_GET_REF,     // $vaarg_get_ref,
-	TOKEN_CT_VAARG_GET_ARG,     // $vaarg_get_arg,
-	TOKEN_CT_VAARG_GET_EXPR,    // $vaarg_get_expr,
+	TOKEN_CT_VACOUNT,           // $vacount
+	TOKEN_CT_VATYPE,            // $vatype
+	TOKEN_CT_VACONST,           // $vaconst,
+	TOKEN_CT_VAREF,             // $varef,
+	TOKEN_CT_VAARG,             // $vaarg,
+	TOKEN_CT_VAEXPR,            // $vaexpr,
 	TOKEN_DOCS_START,       // /**
 	TOKEN_DOCS_END,         // */ (may start with an arbitrary number of `*`
 	TOKEN_DOC_DIRECTIVE,    // Any doc directive
@@ -585,7 +585,7 @@ typedef enum
 #define TYPE_TOKENS NON_VOID_TYPE_TOKENS: case TOKEN_VOID
 #define TYPELIKE_TOKENS TYPE_TOKENS: case TOKEN_TYPE_IDENT: \
 	case TOKEN_CT_TYPE_IDENT: case TOKEN_CT_TYPEOF: case TOKEN_CT_EVALTYPE: \
-	case TOKEN_CT_VAARG_GET_TYPE
+	case TOKEN_CT_VATYPE
 
 // Note that ordering matters here. If ordering is changed,
 // So must type_find_max_type and friends.

@@ -356,18 +356,18 @@ const char *token_type_to_string(TokenType type)
 			return "$extnameof";
 		case TOKEN_CT_IF:
 			return "$if";
-		case TOKEN_CT_VAARG_COUNT:
-			return "$vaarg_count";
-		case TOKEN_CT_VAARG_GET_TYPE:
-			return "$vaarg_get_type";
-		case TOKEN_CT_VAARG_GET_CONST:
-			return "$vaarg_get_const";
-		case TOKEN_CT_VAARG_GET_ARG:
-			return "$vaarg_get_arg";
-		case TOKEN_CT_VAARG_GET_REF:
-			return "$vaarg_get_ref";
-		case TOKEN_CT_VAARG_GET_EXPR:
-			return "$vaarg_get_expr";
+		case TOKEN_CT_VACOUNT:
+			return "$vacount";
+		case TOKEN_CT_VATYPE:
+			return "$vatype";
+		case TOKEN_CT_VACONST:
+			return "$vaconst";
+		case TOKEN_CT_VAARG:
+			return "$vaarg";
+		case TOKEN_CT_VAREF:
+			return "$varef";
+		case TOKEN_CT_VAEXPR:
+			return "$vaexpr";
 		case TOKEN_CT_NAMEOF:
 			return "$nameof";
 		case TOKEN_CT_OFFSETOF:
@@ -395,6 +395,6 @@ const char *token_type_to_string(TokenType type)
 
 bool token_is_any_type(TokenType type)
 {
-	return (type >= TOKEN_VOID && type <= TOKEN_TYPEID) || type == TOKEN_CT_TYPE_IDENT || type == TOKEN_TYPE_IDENT || type == TOKEN_CT_VAARG_GET_TYPE;
+	return (type >= TOKEN_VOID && type <= TOKEN_TYPEID) || type == TOKEN_CT_TYPE_IDENT || type == TOKEN_TYPE_IDENT || type == TOKEN_CT_VATYPE;
 }
 

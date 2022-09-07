@@ -6,37 +6,37 @@ import std::io;
 
 macro @foo(...)
 {
-	int i = $vaarg_get_arg(1) + $vaarg_get_arg(1);
-	int j = $vaarg_get_expr(2) + $vaarg_get_expr(2);
-	$for (var $i = 0; $i < $vaarg_count(); $i++):
-		io::printfln("%d", $vaarg_get_arg($i));
+	int i = $vaarg(1) + $vaarg(1);
+	int j = $vaexpr(2) + $vaexpr(2);
+	$for (var $i = 0; $i < $vacount(); $i++):
+		io::printfln("%d", $vaarg($i));
 	$endfor;
 }
 
 macro foo2(...)
 {
-	$for (var $i = 0; $i < $vaarg_count(); $i++):
+	$for (var $i = 0; $i < $vacount(); $i++):
 		{
-			$vaarg_get_type($i) x;
+			$vatype($i) x;
 		}
-		io::printfln("%s", $nameof($vaarg_get_type($i)));
+		io::printfln("%s", $nameof($vatype($i)));
 	$endfor;
 }
 
 macro foo3(...)
 {
 	var $x = 0;
-	$for (var $i = 0; $i < $vaarg_count(); $i++):
-		$x += $vaarg_get_const($i);
+	$for (var $i = 0; $i < $vacount(); $i++):
+		$x += $vaconst($i);
 	$endfor;
 	return $x;
 }
 
 macro @foo4(...)
 {
-	$typeof($vaarg_get_ref(0)) a = $vaarg_get_ref(0);
-	$vaarg_get_ref(0) = $vaarg_get_ref(1);
-	$vaarg_get_ref(1) = a;
+	$typeof($varef(0)) a = $varef(0);
+	$varef(0) = $varef(1);
+	$varef(1) = a;
 }
 fn int ping(int val)
 {
