@@ -19,6 +19,41 @@ typedef struct
 extern ParseRule rules[TOKEN_EOF + 1];
 
 
+bool parse_range(ParseContext *c, Range *range)
+{
+	// Not range with missing entry
+	if (tok_is(c, TOKEN_DOTDOT) || tok_is(c, TOKEN_COLON))
+	{
+		// ..123 and :123
+		range->start_from_end = false;
+		range->start = exprid(expr_new_const_int(c->span, type_uint, 0, true));
+	}
+	else
+	{
+		// Might be ^ prefix
+		range->start_from_end = try_consume(c, TOKEN_BIT_XOR);
+		ASSIGN_EXPRID_OR_RET(range->start, parse_expr(c), false);
+	}
+	bool is_len_range = range->is_len = try_consume(c, TOKEN_COLON);
+	if (!is_len_range && !try_consume(c, TOKEN_DOTDOT))
+	{
+		range->is_range = false;
+		return true;
+	}
+	range->is_range = true;
+	// ] ) are the possible ways to end a range.
+	if (tok_is(c, TOKEN_RBRACKET) || tok_is(c, TOKEN_RPAREN))
+	{
+		// So here we have [1..] or [3:]
+		range->end_from_end = false;
+		range->end = 0;
+		return true;
+	}
+	range->end_from_end = try_consume(c, TOKEN_BIT_XOR);
+	ASSIGN_EXPRID_OR_RET(range->end, parse_expr(c), false);
+	return true;
+}
+
 inline Expr *parse_precedence_with_left_side(ParseContext *c, Expr *left_side, Precedence precedence)
 {
 	while (1)
@@ -236,6 +271,7 @@ Expr *parse_cond(ParseContext *c)
 	return decl_expr;
 }
 
+
 // These used to be explicitly inlined, but that seems to lead to confusing MSVC linker errors.
 // They are probably still inlined by the compiler, though I haven't checked.
 Expr* parse_expr(ParseContext *c)
@@ -293,12 +329,26 @@ static bool parse_param_path(ParseContext *c, DesignatorElement ***path)
 		return true;
 	}
 }
+
+Expr *parse_vasplat(ParseContext *c)
+{
+	Expr *expr = EXPR_NEW_TOKEN(EXPR_VASPLAT);
+	advance_and_verify(c, TOKEN_CT_VASPLAT);
+	TRY_CONSUME_OR_RET(TOKEN_LPAREN, "'$vasplat' must be followed by '()'.", poisoned_expr);
+	if (!try_consume(c, TOKEN_RPAREN))
+	{
+		if (!parse_range(c, &expr->vasplat_expr)) return poisoned_expr;
+		CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
+	}
+	RANGE_EXTEND_PREV(expr);
+	return expr;
+}
 /**
  * param_list ::= ('...' parameter | parameter (',' parameter)*)?
  *
  * parameter ::= (param_path '=')? expr
  */
-bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *splat)
+bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *splat, bool vasplat)
 {
 	*result = NULL;
 	if (splat) *splat = false;
@@ -321,6 +371,10 @@ bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *
 			ASSIGN_EXPR_OR_RET(expr->designator_expr.value, parse_expr_or_initializer_list(c), false);
 
 			RANGE_EXTEND_PREV(expr);
+		}
+		else if (vasplat && tok_is(c, TOKEN_CT_VASPLAT))
+		{
+			ASSIGN_EXPR_OR_RET(expr, parse_vasplat(c), false);
 		}
 		else
 		{
@@ -573,7 +627,7 @@ Expr *parse_initializer_list(ParseContext *c, Expr *left)
 	if (!try_consume(c, TOKEN_RBRACE))
 	{
 		Expr **exprs = NULL;
-		if (!parse_arg_list(c, &exprs, TOKEN_RBRACE, NULL)) return poisoned_expr;
+		if (!parse_arg_list(c, &exprs, TOKEN_RBRACE, NULL, true)) return poisoned_expr;
 		int designated = -1;
 		VECEACH(exprs, i)
 		{
@@ -663,7 +717,7 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left)
 	{
 		// Pick a modest guess.
 		params = VECNEW(Expr*, 4);
-		if (!parse_arg_list(c, &params, TOKEN_RPAREN, &splat)) return poisoned_expr;
+		if (!parse_arg_list(c, &params, TOKEN_RPAREN, &splat, true)) return poisoned_expr;
 	}
 	if (try_consume(c, TOKEN_EOS) && !tok_is(c, TOKEN_RPAREN))
 	{
@@ -750,52 +804,14 @@ static Expr *parse_subscript_expr(ParseContext *c, Expr *left)
 	advance_and_verify(c, TOKEN_LBRACKET);
 
 	Expr *subs_expr = expr_new_expr(EXPR_SUBSCRIPT, left);
-	Expr *index = NULL;
-	bool is_range = false;
-	bool from_back = false;
-	bool end_from_back = false;
-	Expr *end = NULL;
-
-	// Not range with missing entry
-	if (!tok_is(c, TOKEN_DOTDOT) && !tok_is(c, TOKEN_COLON))
-	{
-		// Might be ^ prefix
-		from_back = try_consume(c, TOKEN_BIT_XOR);
-		ASSIGN_EXPR_OR_RET(index, parse_expr(c), poisoned_expr);
-	}
-	else
-	{
-		index = expr_new_const_int(c->span, type_uint, 0, true);
-	}
-	bool is_len_range = try_consume(c, TOKEN_COLON);
-	if (is_len_range || try_consume(c, TOKEN_DOTDOT))
-	{
-		is_range = true;
-		if (!tok_is(c, TOKEN_RBRACKET))
-		{
-			end_from_back = try_consume(c, TOKEN_BIT_XOR);
-			ASSIGN_EXPR_OR_RET(end, parse_expr(c), poisoned_expr);
-		}
-	}
+	subs_expr->subscript_expr.expr = exprid(left);
+	if (!parse_range(c, &subs_expr->subscript_expr.range)) return poisoned_expr;
 	CONSUME_OR_RET(TOKEN_RBRACKET, poisoned_expr);
-	RANGE_EXTEND_PREV(subs_expr);
-
-	if (is_range)
+	if (subs_expr->subscript_expr.range.is_range)
 	{
 		subs_expr->expr_kind = EXPR_SLICE;
-		subs_expr->slice_expr.expr = exprid(left);
-		subs_expr->slice_expr.start = exprid(index);
-		subs_expr->slice_expr.start_from_back = from_back;
-		subs_expr->slice_expr.end = end ? exprid(end) : 0;
-		subs_expr->slice_expr.end_from_back = end_from_back;
-		subs_expr->slice_expr.is_lenrange = is_len_range;
 	}
-	else
-	{
-		subs_expr->subscript_expr.expr = exprid(left);
-		subs_expr->subscript_expr.index = exprid(index);
-		subs_expr->subscript_expr.from_back = from_back;
-	}
+	RANGE_EXTEND_PREV(subs_expr);
 	return subs_expr;
 }
 
@@ -920,12 +936,12 @@ static Expr *parse_ct_arg(ParseContext *c, Expr *left)
 	TokenType type = expr->ct_arg_expr.type = c->tok;
 	assert(type != TOKEN_CT_VATYPE);
 	advance(c);
-	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
 	if (type != TOKEN_CT_VACOUNT)
 	{
+		CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
 		ASSIGN_EXPRID_OR_RET(expr->ct_arg_expr.arg, parse_expr(c), poisoned_expr);
+		CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 	}
-	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 	RANGE_EXTEND_PREV(expr);
 	return expr;
 }

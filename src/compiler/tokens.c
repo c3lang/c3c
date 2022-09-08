@@ -368,6 +368,8 @@ const char *token_type_to_string(TokenType type)
 			return "$varef";
 		case TOKEN_CT_VAEXPR:
 			return "$vaexpr";
+		case TOKEN_CT_VASPLAT:
+			return "$vasplat";
 		case TOKEN_CT_NAMEOF:
 			return "$nameof";
 		case TOKEN_CT_OFFSETOF:
