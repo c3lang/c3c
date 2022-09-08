@@ -512,10 +512,10 @@ static inline void llvm_emit_vector_subscript(GenContext *c, BEValue *value, Exp
 	assert(vec->type_kind == TYPE_VECTOR);
 	Type *element = vec->array.base;
 	LLVMValueRef vector = value->value;
-	llvm_emit_exprid(c, value, expr->subscript_expr.index);
+	llvm_emit_exprid(c, value, expr->subscript_expr.range.start);
 	llvm_value_rvalue(c, value);
 	LLVMValueRef index = value->value;
-	if (expr->subscript_expr.from_back)
+	if (expr->subscript_expr.range.start_from_end)
 	{
 		index = LLVMBuildNUWSub(c->builder, llvm_const_int(c, value->type, vec->array.len), index, "");
 	}
@@ -531,7 +531,7 @@ static inline void gencontext_emit_subscript(GenContext *c, BEValue *value, Expr
 {
 	bool is_value = expr->expr_kind == EXPR_SUBSCRIPT;
 	Expr *parent_expr = exprptr(expr->subscript_expr.expr);
-	Expr *index_expr = exprptr(expr->subscript_expr.index);
+	Expr *index_expr = exprptr(expr->subscript_expr.range.start);
 	Type *parent_type = type_lowering(parent_expr->type);
 	if (is_value && parent_type->type_kind == TYPE_VECTOR)
 	{
@@ -548,13 +548,13 @@ static inline void gencontext_emit_subscript(GenContext *c, BEValue *value, Expr
 	bool needs_len = false;
 	if (parent_type_kind == TYPE_SUBARRAY)
 	{
-		needs_len = active_target.feature.safe_mode || expr->subscript_expr.from_back;
+		needs_len = active_target.feature.safe_mode || expr->subscript_expr.range.start_from_end;
 	}
 	else if (parent_type_kind == TYPE_ARRAY)
 	{
 		// From back should always be folded.
-		assert(expr->expr_kind != EXPR_CONST || !expr->subscript_expr.from_back);
-		needs_len = (active_target.feature.safe_mode && expr->expr_kind != EXPR_CONST) || expr->subscript_expr.from_back;
+		assert(expr->expr_kind != EXPR_CONST || !expr->subscript_expr.range.start_from_end);
+		needs_len = (active_target.feature.safe_mode && expr->expr_kind != EXPR_CONST) || expr->subscript_expr.range.start_from_end;
 	}
 	if (needs_len)
 	{
@@ -570,7 +570,7 @@ static inline void gencontext_emit_subscript(GenContext *c, BEValue *value, Expr
 	// It needs to be an rvalue.
 	llvm_value_rvalue(c, &index);
 
-	if (expr->subscript_expr.from_back)
+	if (expr->subscript_expr.range.start_from_end)
 	{
 		assert(needs_len);
 		index.value = LLVMBuildNUWSub(c->builder, llvm_zext_trunc(c, len.value, llvm_get_type(c, index.type)), index.value, "");
@@ -2250,9 +2250,9 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 {
 	assert(slice->expr_kind == EXPR_SLICE);
 
-	Expr *parent_expr = exprptr(slice->slice_expr.expr);
-	Expr *start = exprptr(slice->slice_expr.start);
-	Expr *end = exprptrzero(slice->slice_expr.end);
+	Expr *parent_expr = exprptr(slice->subscript_expr.expr);
+	Expr *start = exprptr(slice->subscript_expr.range.start);
+	Expr *end = exprptrzero(slice->subscript_expr.range.end);
 
 	Type *parent_type = type_flatten_distinct(parent_expr->type);
 	BEValue parent_addr_x;
@@ -2288,7 +2288,9 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 
 	BEValue len = { .value = NULL };
 	bool check_end = true;
-	if (!end || slice->slice_expr.start_from_back || slice->slice_expr.end_from_back || active_target.feature.safe_mode)
+	bool start_from_end = slice->subscript_expr.range.start_from_end;
+	bool end_from_end = slice->subscript_expr.range.end_from_end;
+	if (!end || start_from_end || end_from_end || active_target.feature.safe_mode)
 	{
 		switch (parent_type->type_kind)
 		{
@@ -2310,7 +2312,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 	}
 
 	// Walk from end if it is slice from the back.
-	if (slice->slice_expr.start_from_back)
+	if (start_from_end)
 	{
 		start_index.value = llvm_emit_sub_int(c, start_type, len.value, start_index.value, slice->span);
 	}
@@ -2332,7 +2334,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 
 	Type *end_type;
 	BEValue end_index;
-	bool is_len_range = *is_exclusive = slice->slice_expr.is_lenrange;
+	bool is_len_range = *is_exclusive = slice->subscript_expr.range.is_len;
 	if (end)
 	{
 		// Get the index.
@@ -2341,7 +2343,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 		end_type = end->type->canonical;
 
 		// Reverse if it is "from back"
-		if (slice->slice_expr.end_from_back)
+		if (end_from_end)
 		{
 			end_index.value = llvm_emit_sub_int(c, end_type, len.value, end_index.value, slice->span);
 			llvm_value_rvalue(c, &end_index);
@@ -3541,7 +3543,7 @@ static void llvm_emit_vector_assign_expr(GenContext *c, BEValue *be_value, Expr 
 	LLVMValueRef vector_value = llvm_load_value_store(c, &addr);
 
 	// Emit the index
-	llvm_emit_exprid(c, &index, left->subscript_expr.index);
+	llvm_emit_exprid(c, &index, left->subscript_expr.range.start);
 	LLVMValueRef index_val = llvm_load_value_store(c, &index);
 
 	if (binary_op > BINARYOP_ASSIGN)
@@ -5431,7 +5433,8 @@ static void llvm_emit_macro_body_expansion(GenContext *c, BEValue *value, Expr *
 		llvm_emit_expr(c, value, expr);
 		llvm_store_to_ptr_aligned(c, declarations[i]->backend_ref, value, declarations[i]->alignment);
 	}
-	llvm_emit_stmt(c, body_expr->body_expansion_expr.ast);
+	AstId body = body_expr->body_expansion_expr.first_stmt;
+	if (body) llvm_emit_stmt(c, astptr(body));
 }
 
 void llvm_emit_try_unwrap(GenContext *c, BEValue *value, Expr *expr)
@@ -5886,6 +5889,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_CT_CONV:
 		case EXPR_CT_ARG:
 		case EXPR_ASM:
+		case EXPR_VASPLAT:
 			UNREACHABLE
 		case EXPR_BUILTIN_ACCESS:
 			llvm_emit_builtin_access(c, value, expr);

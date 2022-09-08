@@ -2034,7 +2034,7 @@ static inline Decl *parse_enum_declaration(ParseContext *c, Visibility visibilit
 		if (try_consume(c, TOKEN_LPAREN))
 		{
 			Expr **result = NULL;
-			if (!parse_arg_list(c, &result, TOKEN_RPAREN, NULL)) return poisoned_decl;
+			if (!parse_arg_list(c, &result, TOKEN_RPAREN, NULL, false)) return poisoned_decl;
 			enum_const->enum_constant.args = result;
 			CONSUME_OR_RET(TOKEN_RPAREN, poisoned_decl);
 		}

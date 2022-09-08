@@ -290,6 +290,8 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_TYPEID:
 		case EXPR_CT_ARG:
 			return true;
+		case EXPR_VASPLAT:
+			return true;
 		case EXPR_ARGV_TO_SUBARRAY:
 		case EXPR_BITASSIGN:
 			return false;
@@ -354,13 +356,13 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_TYPEID_INFO:
 			return exprid_is_pure(expr->typeid_info_expr.parent);
 		case EXPR_SLICE:
-			return exprid_is_pure(expr->slice_expr.expr)
-			       && exprid_is_pure(expr->slice_expr.start)
-			       && exprid_is_pure(expr->slice_expr.end);
+			return exprid_is_pure(expr->subscript_expr.expr)
+			       && exprid_is_pure(expr->subscript_expr.range.start)
+			       && exprid_is_pure(expr->subscript_expr.range.end);
 		case EXPR_SUBSCRIPT:
 		case EXPR_SUBSCRIPT_ADDR:
 			return exprid_is_pure(expr->subscript_expr.expr)
-			       && exprid_is_pure(expr->subscript_expr.index);
+			       && exprid_is_pure(expr->subscript_expr.range.start);
 		case EXPR_TERNARY:
 			return exprid_is_pure(expr->ternary_expr.cond)
 			       && exprid_is_pure(expr->ternary_expr.else_expr)

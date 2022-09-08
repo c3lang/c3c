@@ -708,7 +708,15 @@ typedef struct Decl_
 
 
 
-
+typedef struct
+{
+	bool start_from_end : 1;
+	bool end_from_end : 1;
+	bool is_len : 1;
+	bool is_range : 1;
+	ExprId start;
+	ExprId end;
+} Range;
 
 typedef struct
 {
@@ -763,20 +771,9 @@ typedef struct
 
 typedef struct
 {
-	bool from_back : 1;
 	ExprId expr;
-	ExprId index;
+	Range range;
 } ExprSubscript;
-
-typedef struct
-{
-	bool start_from_back : 1;
-	bool end_from_back : 1;
-	bool is_lenrange : 1;
-	ExprId expr;
-	ExprId start;
-	ExprId end;
-} ExprSlice;
 
 typedef struct
 {
@@ -955,7 +952,7 @@ typedef struct
 {
 	Expr **values;
 	Decl **declarations;
-	Ast *ast;
+	AstId first_stmt;
 } ExprBodyExpansion;
 
 
@@ -1090,6 +1087,7 @@ struct Expr_
 	ExprKind expr_kind : 8;
 	ResolveStatus resolve_status : 4;
 	union {
+		Range vasplat_expr;
 		ExprTypeidInfo typeid_info_expr;
 		ExprVariantSwitch variant_switch;           // 32
 		ExprCast cast_expr;                         // 12
@@ -1108,7 +1106,6 @@ struct Expr_
 		Expr** try_unwrap_chain_expr;               // 8
 		ExprTryUnwrap try_unwrap_expr;              // 24
 		ExprCall call_expr;                         // 32
-		ExprSlice slice_expr;                       // 16
 		Expr *inner_expr;                           // 8
 		ExprBuiltinAccess builtin_access_expr;
 		ExprCatchUnwrap catch_unwrap_expr;          // 24

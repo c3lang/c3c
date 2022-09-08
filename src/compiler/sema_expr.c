@@ -21,6 +21,7 @@ static bool sema_check_stmt_compile_time(SemaContext *context, Ast *ast);
 static bool binary_arithmetic_promotion(SemaContext *context, Expr *left, Expr *right, Type *left_type, Type *right_type, Expr *parent, const char *error_message);
 static inline bool expr_both_const(Expr *left, Expr *right);
 static inline bool sema_expr_index_const_list(Expr *const_list, Expr *index, Expr *result);
+static Expr **sema_expand_vasplat_exprs(SemaContext *c, Expr **exprs);
 
 static bool sema_decay_array_pointers(Expr *expr)
 {
@@ -361,6 +362,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 			return false;
 		case EXPR_BUILTIN:
 		case EXPR_CT_EVAL:
+		case EXPR_VASPLAT:
 			return false;
 		case EXPR_BITACCESS:
 		case EXPR_ACCESS:
@@ -447,11 +449,11 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 			if (expr->slice_expr.end && !exprid_is_constant_eval(expr->slice_expr.end, CONSTANT_EVAL_FOLDABLE)) return false;
 			return exprid_is_constant_eval(expr->slice_expr.expr, eval_kind);*/
 		case EXPR_SUBSCRIPT:
-			if (!exprid_is_constant_eval(expr->subscript_expr.index, eval_kind)) return false;
+			if (!exprid_is_constant_eval(expr->subscript_expr.range.start, eval_kind)) return false;
 			expr = exprptr(expr->subscript_expr.expr);
 			goto RETRY;
 		case EXPR_SUBSCRIPT_ADDR:
-			if (!exprid_is_constant_eval(expr->subscript_expr.index, eval_kind)) return false;
+			if (!exprid_is_constant_eval(expr->subscript_expr.range.start, eval_kind)) return false;
 			expr = exprptr(expr->subscript_expr.expr);
 			if (expr->expr_kind == EXPR_IDENTIFIER)
 			{
@@ -709,6 +711,7 @@ static bool sema_check_expr_lvalue(Expr *top_expr, Expr *expr)
 		case EXPR_POINTER_OFFSET:
 		case EXPR_CT_ARG:
 		case EXPR_ASM:
+		case EXPR_VASPLAT:
 			goto ERR;
 	}
 	UNREACHABLE
@@ -809,6 +812,7 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_POINTER_OFFSET:
 		case EXPR_CT_ARG:
 		case EXPR_ASM:
+		case EXPR_VASPLAT:
 			return false;
 	}
 	UNREACHABLE
@@ -1141,7 +1145,7 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 		if (expr->identifier_expr.ident == declptr(body_param)->name)
 		{
 			expr->expr_kind = EXPR_MACRO_BODY_EXPANSION;
-			expr->body_expansion_expr.ast = NULL;
+			expr->body_expansion_expr.first_stmt = 0;
 			expr->body_expansion_expr.declarations = NULL;
 			expr->resolve_status = RESOLVE_NOT_DONE;
 			expr->type = type_void;
@@ -1611,24 +1615,31 @@ INLINE bool sema_expand_call_arguments(SemaContext *context, CalledDecl *callee,
 		}
 
 		// 17c. Vararg not set? That's fine.
-		if (params[i]->var.vararg) continue;
+		if (param->var.vararg) continue;
 
 		// 17d. Argument missing, that's bad.
-		if (!has_named || !params[i]->name)
+		if (!has_named || !param->name)
 		{
 			if (func_param_count == 1)
 			{
-				SEMA_ERROR(call, "This call expected a parameter of type %s, did you forget it?", type_quoted_error_string(params[i]->type));
+				if (param->type)
+				{
+					SEMA_ERROR(call, "This call expected a parameter of type %s, did you forget it?", type_quoted_error_string(param->type));
+				}
+				else
+				{
+					SEMA_ERROR(call, "This call expected a parameter, did you forget it?");
+				}
 				return false;
 			}
 			if (variadic != VARIADIC_NONE && i > vararg_index)
 			{
-				if (!param[i].name)
+				if (!param)
 				{
 					sema_error_at_after(args[num_args - 1]->span, "Argument #%d is not set.", i);
 					return false;
 				}
-				sema_error_at_after(args[num_args - 1]->span, "Expected '.%s = ...' after this argument.", params[i]->name);
+				sema_error_at_after(args[num_args - 1]->span, "Expected '.%s = ...' after this argument.", param->name);
 				return false;
 			}
 			if (num_args)
@@ -1644,7 +1655,7 @@ INLINE bool sema_expand_call_arguments(SemaContext *context, CalledDecl *callee,
 			}
 			return false;
 		}
-		SEMA_ERROR(call, "The parameter '%s' must be set, did you forget it?", params[i]->name);
+		SEMA_ERROR(call, "The parameter '%s' must be set, did you forget it?", param->name);
 		return false;
 	}
 	call->call_expr.arguments = actual_args;
@@ -1662,6 +1673,9 @@ static inline bool sema_expr_analyse_call_invocation(SemaContext *context, Expr 
 	unsigned vararg_index = sig->vararg_index;
 	Variadic variadic = sig->variadic;
 	Decl **decl_params = callee.params;
+
+	if (args) args = call->call_expr.arguments = sema_expand_vasplat_exprs(context, args);
+
 	unsigned num_args = vec_size(args);
 
 	// 3. If this is a type call, then we have an implicit first argument.
@@ -2401,7 +2415,8 @@ static bool sema_analyse_body_expansion(SemaContext *macro_context, Expr *call)
 			Decl *param = params[i];
 			if (!sema_add_local(context, param)) return SCOPE_POP_ERROR();
 		}
-		Ast *ast = call->body_expansion_expr.ast = ast_macro_copy(macro_context->yield_body);
+		Ast *ast = ast_macro_copy(macro_context->yield_body);
+		call->body_expansion_expr.first_stmt = astid(ast);
 		if (!sema_analyse_statement(context, ast)) return SCOPE_POP_ERROR();
 		assert(ast->ast_kind == AST_COMPOUND_STMT);
 		if (context->active_scope.jump_end)
@@ -3041,7 +3056,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	sema_deref_array_pointers(subscripted);
 
 	// 2. Evaluate the index.
-	Expr *index = exprptr(expr->subscript_expr.index);
+	Expr *index = exprptr(expr->subscript_expr.range.start);
 	if (!sema_analyse_expr(context, index)) return false;
 
 	// 3. Check failability due to value.
@@ -3053,6 +3068,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	Expr *current_expr = subscripted;
 
 	int64_t index_value = -1;
+	bool start_from_end = expr->subscript_expr.range.start_from_end;
 	if (expr_is_const_int(index) && (current_type->type_kind == TYPE_ARRAY || current_type == type_complist))
 	{
 		// 4c. And that it's in range.
@@ -3069,13 +3085,13 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 			return false;
 		}
 		index_value = int_to_i64(index->const_expr.ixx);
-		if (expr->subscript_expr.from_back)
+		if (start_from_end)
 		{
 			index_value = size - index_value;
 		}
 		if (index_value < 0 || index_value >= size)
 		{
-			if (expr->subscript_expr.from_back)
+			if (start_from_end)
 			{
 				SEMA_ERROR(index,
 				           size > 1
@@ -3156,8 +3172,11 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 
 	// Check range
 	bool remove_from_back = false;
-	if (!expr_check_index_in_range(context, current_type, index, false, expr->subscript_expr.from_back, &remove_from_back)) return false;
-	if (remove_from_back) expr->subscript_expr.from_back = false;
+	if (!expr_check_index_in_range(context, current_type, index, false, start_from_end, &remove_from_back)) return false;
+	if (remove_from_back)
+	{
+		start_from_end = expr->subscript_expr.range.start_from_end = false;
+	}
 
 	if (is_addr)
 	{
@@ -3209,13 +3228,13 @@ static inline bool sema_expr_analyse_pointer_offset(SemaContext *context, Expr *
 static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr)
 {
 	assert(expr->expr_kind == EXPR_SLICE);
-	Expr *subscripted = exprptr(expr->slice_expr.expr);
+	Expr *subscripted = exprptr(expr->subscript_expr.expr);
 	if (!sema_analyse_expr(context, subscripted)) return false;
 	bool failable = IS_OPTIONAL(subscripted);
 	Type *type = type_flatten(subscripted->type);
 	Type *original_type = type_no_optional(subscripted->type);
-	Expr *start = exprptr(expr->slice_expr.start);
-	Expr *end = exprptrzero(expr->slice_expr.end);
+	Expr *start = exprptr(expr->subscript_expr.range.start);
+	Expr *end = exprptrzero(expr->subscript_expr.range.end);
 
 	Expr *current_expr = subscripted;
 
@@ -3225,7 +3244,7 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr)
 		SEMA_ERROR(subscripted, "Cannot index '%s'.", type_to_error_string(subscripted->type));
 		return false;
 	}
-	expr->slice_expr.expr = exprid(current_expr);
+	expr->subscript_expr.expr = exprid(current_expr);
 
 	if (!sema_analyse_expr(context, start)) return false;
 	if (end && !sema_analyse_expr(context, end)) return false;
@@ -3239,10 +3258,13 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr)
 		if (!common || !cast_implicit(start, common) || !cast_implicit(end, common)) return false;
 	}
 
+	bool start_from_end = expr->subscript_expr.range.start_from_end;
+	bool end_from_end = expr->subscript_expr.range.end_from_end;
+
 	// Check range
 	if (type->type_kind == TYPE_POINTER)
 	{
-		if (expr->slice_expr.start_from_back)
+		if (start_from_end)
 		{
 			SEMA_ERROR(start, "Indexing from the end is not allowed for pointers.");
 			return false;
@@ -3252,33 +3274,39 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr)
 			SEMA_ERROR(expr, "Omitting end index is not allowed for pointers.");
 			return false;
 		}
-		if (end && expr->slice_expr.end_from_back)
+		if (end && end_from_end)
 		{
 			SEMA_ERROR(end, "Indexing from the end is not allowed for pointers.");
 			return false;
 		}
 	}
-	bool is_lenrange = expr->slice_expr.is_lenrange;
+	bool is_lenrange = expr->subscript_expr.range.is_len;
 	bool remove_from_end = false;
-	if (!expr_check_index_in_range(context, type, start, false, expr->slice_expr.start_from_back, &remove_from_end)) return false;
-	if (remove_from_end) expr->slice_expr.start_from_back = false;
+	if (!expr_check_index_in_range(context, type, start, false, start_from_end, &remove_from_end)) return false;
+	if (remove_from_end)
+	{
+		start_from_end = expr->subscript_expr.range.start_from_end = false;
+	}
 	remove_from_end = false;
 	if (end)
 	{
 		if (is_lenrange)
 		{
-			if (!expr_check_len_in_range(context, type, end, expr->slice_expr.end_from_back, &remove_from_end)) return false;
+			if (!expr_check_len_in_range(context, type, end, end_from_end, &remove_from_end)) return false;
 		}
 		else
 		{
-			if (!expr_check_index_in_range(context, type, end, true, expr->slice_expr.end_from_back, &remove_from_end)) return false;
+			if (!expr_check_index_in_range(context, type, end, true, end_from_end, &remove_from_end)) return false;
 		}
 	}
-	if (remove_from_end) expr->slice_expr.end_from_back = false;
+	if (remove_from_end)
+	{
+		end_from_end = expr->subscript_expr.range.end_from_end = false;
+	}
 
 	if (start && end && start->expr_kind == EXPR_CONST && end->expr_kind == EXPR_CONST)
 	{
-		if (!is_lenrange && expr->slice_expr.start_from_back && expr->slice_expr.end_from_back)
+		if (!is_lenrange && start_from_end && end_from_end)
 		{
 			if (expr_const_compare(&start->const_expr, &end->const_expr, BINARYOP_LT))
 			{
@@ -3286,7 +3314,7 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr)
 				return false;
 			}
 		}
-		else if (!is_lenrange && !expr->slice_expr.start_from_back && !expr->slice_expr.end_from_back)
+		else if (!is_lenrange && !start_from_end && !end_from_end)
 		{
 			if (expr_const_compare(&start->const_expr, &end->const_expr, BINARYOP_GT))
 			{
@@ -3297,12 +3325,12 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr)
 		// If both are
 		if (type->type_kind == TYPE_ARRAY || type->type_kind == TYPE_VECTOR)
 		{
-			assert(!expr->slice_expr.start_from_back);
-			assert(!expr->slice_expr.end_from_back);
+			assert(!start_from_end);
+			assert(!end_from_end);
 			if (!is_lenrange)
 			{
 				end->const_expr.ixx = int_sub(int_add64(end->const_expr.ixx, 1), start->const_expr.ixx);
-				is_lenrange = expr->slice_expr.is_lenrange = true;
+				is_lenrange = expr->subscript_expr.range.is_len = true;
 			}
 		}
 	}
@@ -4936,6 +4964,175 @@ static inline bool sema_expr_analyse_untyped_initializer(SemaContext *context, E
 	return true;
 }
 
+static Expr **vasplat_append(SemaContext *c, Expr **init_expressions, Expr *expr)
+{
+	Expr **args = c->macro_varargs;
+	unsigned param_count = vec_size(args);
+	Range *range = &expr->vasplat_expr;
+	Expr *start = exprptrzero(range->start);
+	unsigned start_idx = 0;
+	if (start)
+	{
+		if (!range->is_range)
+		{
+			SEMA_ERROR(expr, "$vasplat() expected a range.");
+			return NULL;
+		}
+		if (!sema_analyse_expr(c, start)) return NULL;
+		if (!expr_is_const_int(start))
+		{
+			SEMA_ERROR(expr, "Expected a constant integer.");
+			return NULL;
+		}
+		Int start_index = start->const_expr.ixx;
+		if (int_is_neg(start_index))
+		{
+			SEMA_ERROR(expr, "Expected a positive integer.");
+			return NULL;
+		}
+		if (int_bits_needed(start_index) > 31)
+		{
+			SEMA_ERROR(expr, "Start index is too big.");
+			return NULL;
+		}
+		start_idx = start_index.i.low;
+		if (range->start_from_end)
+		{
+			start_idx = param_count - start_idx;
+		}
+		if (param_count < start_idx)
+		{
+			SEMA_ERROR(expr, "Start index exceeds the number of parameters (%d).", start_idx);
+			return NULL;
+		}
+	}
+	Expr *end = exprptrzero(range->end);
+	unsigned end_idx = param_count;
+	if (end)
+	{
+		if (!sema_analyse_expr(c, end)) return NULL;
+		if (!expr_is_const_int(end))
+		{
+			SEMA_ERROR(expr, "Expected a constant integer.");
+			return NULL;
+		}
+		Int end_index = end->const_expr.ixx;
+		if (int_is_neg(end_index))
+		{
+			SEMA_ERROR(expr, "Expected a positive integer.");
+			return NULL;
+		}
+		if (int_bits_needed(end_index) > 31)
+		{
+			if (range->is_len)
+			{
+				SEMA_ERROR(expr, "End index is too large.");
+			}
+			else
+			{
+				SEMA_ERROR(expr, "Length is too large.");
+			}
+			return NULL;
+		}
+		end_idx = end_index.i.low;
+		if (range->end_from_end)
+		{
+			if (end_idx > param_count)
+			{
+				end_idx = 0;
+			}
+			else
+			{
+				end_idx = param_count - end_idx;
+			}
+		}
+		if (range->is_len)
+		{
+			end_idx = start_idx + end_idx;
+		}
+		else
+		{
+			end_idx++;
+		}
+		if (param_count <= end_idx)
+		{
+			SEMA_ERROR(expr, "End index would exceed the number of parameters.");
+			return NULL;
+		}
+	}
+	for (unsigned i = start_idx; i < end_idx; i++)
+	{
+		vec_add(init_expressions, args[i]);
+	}
+	return init_expressions;
+}
+
+
+INLINE Expr **sema_expand_vasplat(SemaContext *c, Expr **list, unsigned index)
+{
+	unsigned size = vec_size(list);
+
+	// If it was the last element then just append.
+	if (index == size - 1)
+	{
+		vec_pop(list);
+		return vasplat_append(c, list, list[index]);
+	}
+	// Otherwise append to the end.
+	list = vasplat_append(c, list, list[index]);
+	if (!list) return NULL;
+	unsigned new_size = vec_size(list);
+	unsigned added_elements = new_size - size;
+
+	if (added_elements == 0)
+	{
+		for (unsigned i = index + 1; i < size; i++)
+		{
+			list[i - 1] = list[i];
+		}
+		vec_pop(list);
+		return list;
+	}
+
+	// Copy those elements
+	for (unsigned i = 0; i < added_elements; i++)
+	{
+		unsigned dest = index + i;
+		unsigned source = size + i;
+		// Copy the next element to the index position.
+		list[dest] = list[source];
+		// Copy the following into the place of the index.
+		list[source] = list[dest + 1];
+	}
+	vec_pop(list);
+	return list;
+}
+
+static Expr **sema_expand_vasplat_exprs(SemaContext *c, Expr **exprs)
+{
+	if (!c->current_macro) return exprs;
+
+	unsigned count = vec_size(exprs);
+	bool expand;
+	do
+	{
+		expand = false;
+		for (unsigned i = 0; i < count; i++)
+		{
+			if (exprs[i]->expr_kind == EXPR_VASPLAT)
+			{
+				exprs = sema_expand_vasplat(c, exprs, i);
+				// If we have null back it failed.
+				if (!exprs) return NULL;
+				count = vec_size(exprs);
+				expand = true;
+				break;
+			}
+		}
+	} while (expand);
+	return exprs;
+}
+
 static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *external_type, Type *assigned, Expr *expr)
 {
 	// Note at this point this we either have
@@ -4953,6 +5150,11 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ext
 
 	// 2. Grab the expressions inside.
 	Expr **init_expressions = expr->initializer_list;
+
+	if (init_expressions)
+	{
+		expr->initializer_list = init_expressions = sema_expand_vasplat_exprs(context, init_expressions);
+	}
 	unsigned init_expression_count = vec_size(init_expressions);
 
 	// 3. Zero size init will initialize to empty.
@@ -4971,6 +5173,7 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ext
 		expr_rewrite_const_list(expr, expr->type, initializer);
 		return true;
 	}
+
 
 	// 4. If we have an inferred array, we need to set the size.
 	external_type = sema_type_lower_by_size(external_type, init_expression_count);
@@ -7904,6 +8107,9 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 		case EXPR_TYPEID_INFO:
 		case EXPR_ASM:
 			UNREACHABLE
+		case EXPR_VASPLAT:
+			SEMA_ERROR(expr, "'$vasplat' can only be used inside of macros.");
+			return false;
 		case EXPR_CT_ARG:
 			return sema_expr_analyse_ct_arg(context, expr);
 		case EXPR_VARIANT:
@@ -8063,7 +8269,7 @@ static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr)
 	switch (expr->expr_kind)
 	{
 		case EXPR_MACRO_BODY_EXPANSION:
-			if (!expr->body_expansion_expr.ast)
+			if (!expr->body_expansion_expr.first_stmt)
 			{
 				SEMA_ERROR(expr, "'@%s' must be followed by ().", declptr(context->current_macro->func_decl.body_param)->name);
 				return false;

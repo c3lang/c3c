@@ -1218,7 +1218,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	enum_val = expr_variable(temp);
 	if (is_addr) expr_insert_deref(enum_val);
 	subscript->subscript_expr.expr = exprid(enum_val);
-	subscript->subscript_expr.index = exprid(expr_variable(idx_decl));
+	subscript->subscript_expr.range.start = exprid(expr_variable(idx_decl));
 	if (value_by_ref)
 	{
 		Expr *addr = expr_new(EXPR_UNARY, subscript->span);

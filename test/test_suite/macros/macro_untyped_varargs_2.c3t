@@ -8,14 +8,14 @@ macro @foo(...)
 {
 	int i = $vaarg(1) + $vaarg(1);
 	int j = $vaexpr(2) + $vaexpr(2);
-	$for (var $i = 0; $i < $vacount(); $i++):
+	$for (var $i = 0; $i < $vacount; $i++):
 		io::printfln("%d", $vaarg($i));
 	$endfor;
 }
 
 macro foo2(...)
 {
-	$for (var $i = 0; $i < $vacount(); $i++):
+	$for (var $i = 0; $i < $vacount; $i++):
 		{
 			$vatype($i) x;
 		}
@@ -26,7 +26,7 @@ macro foo2(...)
 macro foo3(...)
 {
 	var $x = 0;
-	$for (var $i = 0; $i < $vacount(); $i++):
+	$for (var $i = 0; $i < $vacount; $i++):
 		$x += $vaconst($i);
 	$endfor;
 	return $x;

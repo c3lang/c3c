@@ -169,20 +169,33 @@ Expr *expr_macro_copy(Expr *source_expr)
 	return copy_expr(&copy_struct, source_expr);
 }
 
+void copy_range(CopyStruct *c, Range *range)
+{
+	MACRO_COPY_EXPRID(range->start);
+	MACRO_COPY_EXPRID(range->end);
+}
+
 Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 {
 	if (!source_expr) return NULL;
 	Expr *expr = expr_copy(source_expr);
 	switch (source_expr->expr_kind)
 	{
-		case EXPR_MACRO_BODY_EXPANSION:
 		case EXPR_VARIANTSWITCH:
 		case EXPR_ARGV_TO_SUBARRAY:
 			UNREACHABLE
+		case EXPR_MACRO_BODY_EXPANSION:
+			MACRO_COPY_EXPR_LIST(expr->body_expansion_expr.values);
+			MACRO_COPY_DECL_LIST(expr->body_expansion_expr.declarations);
+			MACRO_COPY_ASTID(expr->body_expansion_expr.first_stmt);
+			return expr;
 		case EXPR_FLATPATH:
 		case EXPR_NOP:
 		case EXPR_BUILTIN:
 		case EXPR_RETVAL:
+			return expr;
+		case EXPR_VASPLAT:
+			copy_range(c, &expr->vasplat_expr);
 			return expr;
 		case EXPR_CT_ARG:
 			MACRO_COPY_EXPRID(expr->ct_arg_expr.arg);
@@ -243,9 +256,10 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			MACRO_COPY_EXPRID(expr->slice_assign_expr.right);
 			return expr;
 		case EXPR_SLICE:
-			MACRO_COPY_EXPRID(expr->slice_expr.expr);
-			MACRO_COPY_EXPRID(expr->slice_expr.start);
-			MACRO_COPY_EXPRID(expr->slice_expr.end);
+		case EXPR_SUBSCRIPT:
+		case EXPR_SUBSCRIPT_ADDR:
+			MACRO_COPY_EXPRID(expr->subscript_expr.expr);
+			copy_range(c, &expr->subscript_expr.range);
 			return expr;
 		case EXPR_ASM:
 			switch (expr->expr_asm_arg.kind)
@@ -278,7 +292,9 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			MACRO_COPY_EXPR_LIST(expr->cond_expr);
 			return expr;
 		case EXPR_MACRO_BLOCK:
-			UNREACHABLE
+			MACRO_COPY_DECL_LIST(expr->macro_block.params);
+			MACRO_COPY_ASTID(expr->macro_block.first_stmt);
+			return expr;
 		case EXPR_COMPOUND_LITERAL:
 			MACRO_COPY_EXPR(expr->expr_compound_literal.initializer);
 			MACRO_COPY_TYPE(expr->expr_compound_literal.type_info);
@@ -334,11 +350,6 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 					MACRO_COPY_EXPR_LIST(expr->call_expr.varargs);
 				}
 			}
-			return expr;
-		case EXPR_SUBSCRIPT:
-		case EXPR_SUBSCRIPT_ADDR:
-			MACRO_COPY_EXPRID(expr->subscript_expr.expr);
-			MACRO_COPY_EXPRID(expr->subscript_expr.index);
 			return expr;
 		case EXPR_BITACCESS:
 		case EXPR_ACCESS:

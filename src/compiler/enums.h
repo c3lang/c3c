@@ -247,6 +247,7 @@ typedef enum
 	EXPR_TYPEINFO,
 	EXPR_UNARY,
 	EXPR_VARIANTSWITCH,
+	EXPR_VASPLAT,
 	EXPR_NOP,
 	EXPR_TYPEID_INFO,
 	EXPR_VARIANT,
@@ -566,6 +567,7 @@ typedef enum
 	TOKEN_CT_VAREF,             // $varef,
 	TOKEN_CT_VAARG,             // $vaarg,
 	TOKEN_CT_VAEXPR,            // $vaexpr,
+	TOKEN_CT_VASPLAT,           // $vasplat,
 	TOKEN_DOCS_START,       // /**
 	TOKEN_DOCS_END,         // */ (may start with an arbitrary number of `*`
 	TOKEN_DOC_DIRECTIVE,    // Any doc directive
