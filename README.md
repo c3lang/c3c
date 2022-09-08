@@ -254,6 +254,8 @@ You should now have a `c3c` executable.
 
 You can try it out by running some sample code: `c3c.exe compile ../resources/examples/hash.c3`
 
+*Note that if you run into linking issues when building, make sure that you are using the latest version of VS17.*
+
 
 #### Compiling on Ubuntu 20.10
 
