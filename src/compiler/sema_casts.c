@@ -214,11 +214,9 @@ bool integer_to_enum(Expr *expr, Type *canonical, Type *type)
 	Decl *enum_decl = canonical->decl;
 	if (expr->expr_kind != EXPR_CONST)
 	{
-		REMINDER("Add check for runtime enum conversions");
 		Type *underlying_type = enum_decl->enums.type_info->type->canonical;
 		if (!cast(expr, underlying_type)) return false;
-		expr->type = type;
-		return true;
+		return insert_cast(expr, CAST_INTENUM, type);
 	}
 	unsigned max_enums = vec_size(enum_decl->enums.values);
 	Int to_convert = expr->const_expr.ixx;

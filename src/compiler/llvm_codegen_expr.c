@@ -1106,8 +1106,9 @@ void llvm_emit_array_to_vector_cast(GenContext *c, BEValue *value, Type *to_type
 	llvm_value_set(value, vector, to_type);
 }
 
-void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_type, Type *from_type)
+void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *value, Type *to_type, Type *from_type)
 {
+	Type *to_type_original = to_type;
 	to_type = type_flatten(to_type);
 	from_type = type_flatten(from_type);
 
@@ -1288,6 +1289,27 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_
 			value->value = LLVMBuildBitCast(c->builder, value->value, llvm_get_ptr_type(c, to_type), "");
 			value->type = to_type;
 			return;
+		case CAST_INTENUM:
+			if (active_target.feature.safe_mode && c->builder != c->global_builder)
+			{
+				llvm_value_rvalue(c, value);
+				BEValue check;
+				Decl *decl = to_type_original->canonical->decl;
+				unsigned max = vec_size(decl->enums.values);
+				if (type_is_signed(value->type))
+				{
+					scratch_buffer_clear();
+					scratch_buffer_printf("Conversion to enum '%s' failed - tried to convert a negative value.", decl->name);
+					llvm_emit_int_comp_zero(c, &check, value, BINARYOP_LT);
+					llvm_emit_panic_on_true(c, check.value, scratch_buffer_to_string(), expr->span);
+				}
+				scratch_buffer_clear();
+				scratch_buffer_printf("Conversion to enum '%s' failed - the value was greater than %u.", decl->name, max - 1);
+				LLVMValueRef val = llvm_const_int(c, value->type, max);
+				llvm_emit_int_comp_raw(c, &check, value->type, value->type, value->value, val, BINARYOP_GE);
+				llvm_emit_panic_on_true(c, check.value,scratch_buffer_to_string(), expr->span);
+			}
+			return;
 		case CAST_SABOOL:
 			llvm_value_fold_optional(c, value);
 			if (llvm_value_is_addr(value))
@@ -1316,6 +1338,7 @@ static inline void gencontext_emit_cast_expr(GenContext *context, BEValue *be_va
 	llvm_emit_exprid(context, be_value, expr->cast_expr.expr);
 	llvm_emit_cast(context,
 	               expr->cast_expr.kind,
+	               expr,
 	               be_value,
 	               expr->type,
 	               exprtype(expr->cast_expr.expr));
@@ -3620,7 +3643,7 @@ void gencontext_emit_elvis_expr(GenContext *c, BEValue *value, Expr *expr)
 	if (value->kind != BE_BOOLEAN)
 	{
 		CastKind cast = cast_to_bool_kind(cond_type);
-		llvm_emit_cast(c, cast, value, type_bool, cond_type);
+		llvm_emit_cast(c, cast, cond, value, type_bool, cond_type);
 		assert(value->kind == BE_BOOLEAN);
 	}
 

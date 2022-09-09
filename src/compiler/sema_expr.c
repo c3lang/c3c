@@ -263,6 +263,7 @@ bool expr_cast_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case CAST_BSINT:
 		case CAST_BSARRY:
 			return true;
+		case CAST_INTENUM:
 		case CAST_ANYPTR:
 		case CAST_ERBOOL:
 		case CAST_EUBOOL:

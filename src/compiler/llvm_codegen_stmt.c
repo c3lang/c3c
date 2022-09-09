@@ -152,7 +152,7 @@ void llvm_emit_decl_expr_list(GenContext *context, BEValue *be_value, Expr *expr
 		if (type->type_kind != TYPE_BOOL)
 		{
 			CastKind cast = cast_to_bool_kind(type);
-			llvm_emit_cast(context, cast, be_value, type, type_bool);
+			llvm_emit_cast(context, cast, last, be_value, type, type_bool);
 		}
 	}
 }
