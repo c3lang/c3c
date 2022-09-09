@@ -308,7 +308,7 @@ static inline bool sema_check_asm_var(SemaContext *context, AsmInlineBlock *bloc
 	if (is_read)
 	{
 		decl->var.is_read = true;
-		if (decl->var.may_not_read)
+		if (decl->var.out_param)
 		{
 			SEMA_ERROR(expr, "An 'out' variable may not be read from.");
 			return false;
@@ -318,7 +318,7 @@ static inline bool sema_check_asm_var(SemaContext *context, AsmInlineBlock *bloc
 	if (is_write)
 	{
 		decl->var.is_written = true;
-		if (decl->var.may_not_write)
+		if (decl->var.in_param)
 		{
 			SEMA_ERROR(expr, "An 'in' variable may not be written to.");
 			return false;
@@ -401,7 +401,7 @@ static inline bool sema_check_asm_memvar(SemaContext *context, AsmInlineBlock *b
 	if (is_read)
 	{
 		decl->var.is_read = true;
-		if (decl->var.may_not_read)
+		if (decl->var.out_param)
 		{
 			SEMA_ERROR(expr, "An 'out' variable may not be read from.");
 			return false;
@@ -411,7 +411,7 @@ static inline bool sema_check_asm_memvar(SemaContext *context, AsmInlineBlock *b
 	if (is_write)
 	{
 		decl->var.is_written = true;
-		if (decl->var.may_not_write)
+		if (decl->var.in_param)
 		{
 			SEMA_ERROR(expr, "An 'in' variable may not be written to.");
 			return false;

@@ -1753,10 +1753,10 @@ static inline bool sema_analyse_doc_header(AstId doc, Decl **params, Decl **extr
 			case PARAM_ANY:
 				goto ADDED;
 			case PARAM_IN:
-				param->var.may_not_write = true;
+				param->var.in_param = true;
 				break;
 			case PARAM_OUT:
-				param->var.may_not_read = true;
+				param->var.out_param = true;
 				break;
 			case PARAM_INOUT:
 				break;

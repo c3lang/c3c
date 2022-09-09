@@ -405,8 +405,8 @@ typedef struct VarDecl_
 	bool is_static : 1;
 	bool is_read : 1;
 	bool not_null : 1;
-	bool may_not_read : 1;
-	bool may_not_write : 1;
+	bool out_param : 1;
+	bool in_param : 1;
 	bool is_written : 1;
 	bool is_addr : 1;
 	bool is_threadlocal : 1;

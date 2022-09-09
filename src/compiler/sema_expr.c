@@ -832,7 +832,7 @@ bool sema_expr_check_assign(SemaContext *c, Expr *expr)
 	if (inner->expr_kind != EXPR_IDENTIFIER) return true;
 	Decl *decl = inner->identifier_expr.decl;
 	if (decl->decl_kind != DECL_VAR) return true;
-	if (!decl->var.may_not_write) return true;
+	if (!decl->var.in_param) return true;
 	SEMA_ERROR(inner, "'in' parameters may not be assigned to.");
 	return false;
 }
@@ -1663,6 +1663,23 @@ INLINE bool sema_expand_call_arguments(SemaContext *context, CalledDecl *callee,
 	return true;
 }
 
+static inline bool sema_check_inout_param_match(SemaContext *context, Decl *param, Expr *expr)
+{
+	if (expr->expr_kind != EXPR_IDENTIFIER) return true;
+	Decl *ident = expr->identifier_expr.decl;
+	if (ident->decl_kind != DECL_VAR) return true;
+	if (ident->var.out_param && param->var.in_param)
+	{
+		SEMA_ERROR(expr, "It's not allowed to pass an 'out' parameter into a function or macro as an 'in' argument.");
+		return false;
+	}
+	if (ident->var.in_param && param->var.out_param)
+	{
+		SEMA_ERROR(expr, "It's not allowed to pass an 'in' parameter into a function or macro as an 'out' argument.");
+		return false;
+	}
+	return true;
+}
 static inline bool sema_expr_analyse_call_invocation(SemaContext *context, Expr *call, CalledDecl callee, bool *failable)
 {
 	// 1. Check body arguments (for macro calls, or possibly broken )
@@ -1814,6 +1831,7 @@ static inline bool sema_expr_analyse_call_invocation(SemaContext *context, Expr 
 				// &foo
 				if (!sema_analyse_expr_lvalue(context, arg)) return false;
 				if (!sema_expr_check_assign(context, arg)) return false;
+				if (!sema_check_inout_param_match(context, param, arg)) return false;
 				if (type && type->canonical != arg->type->canonical)
 				{
 					SEMA_ERROR(arg, "'%s' cannot be implicitly cast to '%s'.", type_to_error_string(arg->type), type_to_error_string(type));
@@ -1845,6 +1863,7 @@ static inline bool sema_expr_analyse_call_invocation(SemaContext *context, Expr 
 					assert(callee.macro && "Only in the macro case should we need to insert the alignment.");
 					param->alignment = type_alloca_alignment(arg->type);
 				}
+				if (!sema_check_inout_param_match(context, param, arg)) return false;
 				break;
 			case VARDECL_PARAM_EXPR:
 				// #foo
@@ -8307,7 +8326,7 @@ static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr)
 			if (inner->expr_kind != EXPR_IDENTIFIER) break;
 			Decl *decl = inner->identifier_expr.decl;
 			if (decl->decl_kind != DECL_VAR) break;
-			if (!decl->var.may_not_read) break;
+			if (!decl->var.out_param) break;
 			SEMA_ERROR(expr, "'out' parameters may not be read.");
 			return false;
 		}
