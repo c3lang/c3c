@@ -20,7 +20,7 @@ static inline bool sema_expr_analyse_builtin(SemaContext *context, Expr *expr, b
 static bool sema_check_stmt_compile_time(SemaContext *context, Ast *ast);
 static bool binary_arithmetic_promotion(SemaContext *context, Expr *left, Expr *right, Type *left_type, Type *right_type, Expr *parent, const char *error_message);
 static inline bool expr_both_const(Expr *left, Expr *right);
-
+static inline bool sema_expr_index_const_list(Expr *const_list, Expr *index, Expr *result);
 
 static bool sema_decay_array_pointers(Expr *expr)
 {
@@ -3020,92 +3020,6 @@ static Type *sema_expr_find_indexable_type_recursively(Type **type, Expr **paren
 	}
 }
 
-static inline ConstInitializer *initializer_for_index(ConstInitializer *initializer, uint32_t index)
-{
-	switch (initializer->kind)
-	{
-		case CONST_INIT_ZERO:
-		case CONST_INIT_STRUCT:
-		case CONST_INIT_UNION:
-		case CONST_INIT_VALUE:
-			return initializer;
-		case CONST_INIT_ARRAY_FULL:
-			return initializer->init_array_full[index];
-		case CONST_INIT_ARRAY:
-		{
-			ConstInitializer **sub_values = initializer->init_array.elements;
-			VECEACH(sub_values, i)
-			{
-				ConstInitializer *init = sub_values[i];
-				assert(init->kind == CONST_INIT_ARRAY_VALUE);
-				if (init->init_array_value.index == index) return init->init_array_value.element;
-			}
-			return NULL;
-		}
-		case CONST_INIT_ARRAY_VALUE:
-			UNREACHABLE
-	}
-	UNREACHABLE
-}
-
-static inline void sema_expr_from_zero_const(Expr *expr, Type *type)
-{
-	expr->expr_kind = EXPR_CONST;
-	expr->const_expr.narrowable = true;
-	switch (type->canonical->type_kind)
-	{
-		case TYPE_POISONED:
-		case TYPE_VOID:
-			UNREACHABLE
-		case ALL_INTS:
-			expr_rewrite_const_int(expr, type, 0, true);
-			return;
-		case ALL_FLOATS:
-			expr_rewrite_const_float(expr, type, 0);
-			break;
-		case TYPE_BOOL:
-			expr_rewrite_const_bool(expr, type, false);
-			return;
-		case TYPE_POINTER:
-		case TYPE_FAULTTYPE:
-		case TYPE_ANY:
-		case TYPE_ANYERR:
-		case TYPE_TYPEID:
-			expr_rewrite_const_null(expr, type);
-			return;
-		case TYPE_ENUM:
-			expr->const_expr.const_kind = CONST_ENUM;
-			expr->const_expr.enum_val = type->decl->enums.values[0];
-			break;
-		case TYPE_FUNC:
-		case TYPE_TYPEDEF:
-		case TYPE_FAILABLE_ANY:
-		case TYPE_FAILABLE:
-		case TYPE_TYPEINFO:
-			UNREACHABLE
-		case TYPE_STRUCT:
-		case TYPE_UNION:
-		case TYPE_BITSTRUCT:
-		case TYPE_ARRAY:
-		case TYPE_SUBARRAY:
-		case TYPE_INFERRED_ARRAY:
-		case TYPE_FLEXIBLE_ARRAY:
-		case TYPE_UNTYPED_LIST:
-		case TYPE_VECTOR:
-		{
-			ConstInitializer *init = CALLOCS(ConstInitializer);
-			init->kind = CONST_INIT_ZERO;
-			init->type = type;
-			expr_rewrite_const_list(expr, type, init);
-			return;
-		}
-		case TYPE_DISTINCT:
-			sema_expr_from_zero_const(expr, type->decl->distinct_decl.base_type);
-			break;
-	}
-	expr->type = type;
-}
-
 static inline bool sema_expr_index_const_list(Expr *const_list, Expr *index, Expr *result)
 {
 	assert(index->expr_kind == EXPR_CONST && index->const_expr.const_kind == CONST_INTEGER);
@@ -3114,24 +3028,7 @@ static inline bool sema_expr_index_const_list(Expr *const_list, Expr *index, Exp
 	uint32_t idx = index->const_expr.ixx.i.low;
 	assert(const_list->const_expr.const_kind == CONST_LIST);
 
-	ConstInitializer *initializer = initializer_for_index(const_list->const_expr.list, idx);
-	ConstInitType kind = initializer ? initializer->kind : CONST_INIT_ZERO;
-	switch (kind)
-	{
-		case CONST_INIT_ZERO:
-			sema_expr_from_zero_const(result, type_get_indexed_type(const_list->type));
-			return true;
-		case CONST_INIT_STRUCT:
-		case CONST_INIT_UNION:
-		case CONST_INIT_ARRAY:
-		case CONST_INIT_ARRAY_FULL:
-		case CONST_INIT_ARRAY_VALUE:
-			return false;
-		case CONST_INIT_VALUE:
-			expr_replace(result, initializer->init_value);
-			return true;
-	}
-	UNREACHABLE
+	return expr_rewrite_to_const_initializer_index(const_list->type, const_list->const_expr.list, result, idx);
 }
 
 static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr, bool is_addr)
@@ -3945,7 +3842,7 @@ EVAL:
 	switch (result->kind)
 	{
 		case CONST_INIT_ZERO:
-			sema_expr_from_zero_const(expr, result->type);
+			expr_rewrite_to_const_zero(expr, result->type);
 			break;
 		case CONST_INIT_STRUCT:
 		case CONST_INIT_UNION:

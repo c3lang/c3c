@@ -2041,11 +2041,12 @@ static bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statement)
 	return sema_analyse_ct_switch_body(context, statement);
 }
 
+
 static bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *statement)
 {
 	Expr *collection = exprptr(statement->ct_foreach_stmt.expr);
 	if (!sema_analyse_ct_expr(context, collection)) return false;
-	if (collection->expr_kind != EXPR_INITIALIZER_LIST)
+	if (collection->expr_kind != EXPR_INITIALIZER_LIST && !expr_is_const_list(collection))
 	{
 		SEMA_ERROR(collection, "Expected a list to iterate over");
 		return false;
@@ -2055,13 +2056,41 @@ static bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *statement)
 		SEMA_ERROR(collection, "A compile time $foreach must be over a constant value.");
 		return false;
 	}
-	Expr **expression = collection->initializer_list;
+	unsigned count;
+	ConstInitializer *initializer = NULL;
+	Expr **expressions = NULL;
+	Type *const_list_type = NULL;
+	if (expr_is_const_list(collection))
+	{
+		initializer = collection->const_expr.list;
+		ConstInitType init_type = initializer->kind;
+		const_list_type = type_flatten(collection->type);
+		if (const_list_type->type_kind == TYPE_ARRAY)
+		{
+			count = const_list_type->array.len;
+		}
+		else
+		{
+			// Empty list
+			if (init_type == CONST_INIT_ZERO) return true;
+			if (init_type != CONST_INIT_ARRAY_FULL)
+			{
+				SEMA_ERROR(collection, "Only regular arrays are allowed here.");
+				return false;
+			}
+			count = vec_size(initializer->init_array_full);
+		}
+	}
+	else
+	{
+		expressions = collection->initializer_list;
+		count = vec_size(collection->initializer_list);
+	}
 	Decl *index = NULL;
 	const char *index_name = statement->ct_foreach_stmt.index_name;
 
 	AstId start = 0;
 	SCOPE_START;
-
 		if (index_name)
 		{
 			index = decl_new_var(index_name, statement->ct_foreach_stmt.index_span, NULL, VARDECL_LOCAL_CT, VISIBLE_LOCAL);
@@ -2073,10 +2102,23 @@ static bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *statement)
 		// Get the body
 		Ast *body = astptr(statement->ct_foreach_stmt.body);
 		AstId *current = &start;
-		VECEACH(expression, i)
+		for (unsigned i = 0; i < count; i++)
 		{
 			Ast *compound_stmt = ast_macro_copy(body);
-			value->var.init_expr = expression[i];
+			if (expressions)
+			{
+				value->var.init_expr = expressions[i];
+			}
+			else
+			{
+				Expr *expr = expr_new(EXPR_CONST, collection->span);
+				if (!expr_rewrite_to_const_initializer_index(const_list_type, initializer, expr, i))
+				{
+					SEMA_ERROR(collection, "Complex expressions are not allowed.");
+					return false;
+				}
+				value->var.init_expr = expr;
+			}
 			if (index)
 			{
 				index->var.init_expr = expr_new_const_int(index->span, type_int, i, true);

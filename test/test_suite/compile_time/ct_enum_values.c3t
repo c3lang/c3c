@@ -1,0 +1,30 @@
+// #target: macos-x64
+module test;
+enum Vehicles
+{
+    CAR,
+    PLANE
+}
+
+macro elements($Type)
+{
+	int x;
+    $foreach ($x : $Type.values):
+        x = (int)$x;
+    $endforeach;
+}
+
+fn void main()
+{
+    elements(Vehicles);
+}
+
+/* #expect: test.ll
+
+entry:
+  %x = alloca i32, align 4
+  store i32 0, i32* %x, align 4
+  store i32 0, i32* %x, align 4
+  store i32 1, i32* %x, align 4
+  ret void
+}

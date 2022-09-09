@@ -580,3 +580,110 @@ AttributeType attribute_by_name(const char *name)
 	return ATTRIBUTE_NONE;
 }
 
+static inline ConstInitializer *initializer_for_index(ConstInitializer *initializer, uint32_t index)
+{
+	switch (initializer->kind)
+	{
+		case CONST_INIT_ZERO:
+		case CONST_INIT_STRUCT:
+		case CONST_INIT_UNION:
+		case CONST_INIT_VALUE:
+			return initializer;
+		case CONST_INIT_ARRAY_FULL:
+			return initializer->init_array_full[index];
+		case CONST_INIT_ARRAY:
+		{
+			ConstInitializer **sub_values = initializer->init_array.elements;
+			VECEACH(sub_values, i)
+			{
+				ConstInitializer *init = sub_values[i];
+				assert(init->kind == CONST_INIT_ARRAY_VALUE);
+				if (init->init_array_value.index == index) return init->init_array_value.element;
+			}
+			return NULL;
+		}
+		case CONST_INIT_ARRAY_VALUE:
+			UNREACHABLE
+	}
+	UNREACHABLE
+}
+
+void expr_rewrite_to_const_zero(Expr *expr, Type *type)
+{
+	expr->expr_kind = EXPR_CONST;
+	expr->const_expr.narrowable = true;
+	switch (type->canonical->type_kind)
+	{
+		case TYPE_POISONED:
+		case TYPE_VOID:
+			UNREACHABLE
+		case ALL_INTS:
+			expr_rewrite_const_int(expr, type, 0, true);
+			return;
+		case ALL_FLOATS:
+			expr_rewrite_const_float(expr, type, 0);
+			break;
+		case TYPE_BOOL:
+			expr_rewrite_const_bool(expr, type, false);
+			return;
+		case TYPE_POINTER:
+		case TYPE_FAULTTYPE:
+		case TYPE_ANY:
+		case TYPE_ANYERR:
+		case TYPE_TYPEID:
+			expr_rewrite_const_null(expr, type);
+			return;
+		case TYPE_ENUM:
+			expr->const_expr.const_kind = CONST_ENUM;
+			expr->const_expr.enum_val = type->decl->enums.values[0];
+			break;
+		case TYPE_FUNC:
+		case TYPE_TYPEDEF:
+		case TYPE_FAILABLE_ANY:
+		case TYPE_FAILABLE:
+		case TYPE_TYPEINFO:
+			UNREACHABLE
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		case TYPE_BITSTRUCT:
+		case TYPE_ARRAY:
+		case TYPE_SUBARRAY:
+		case TYPE_INFERRED_ARRAY:
+		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_UNTYPED_LIST:
+		case TYPE_VECTOR:
+		{
+			ConstInitializer *init = CALLOCS(ConstInitializer);
+			init->kind = CONST_INIT_ZERO;
+			init->type = type;
+			expr_rewrite_const_list(expr, type, init);
+			return;
+		}
+		case TYPE_DISTINCT:
+			expr_rewrite_to_const_zero(expr, type->decl->distinct_decl.base_type);
+			break;
+	}
+	expr->type = type;
+}
+
+bool expr_rewrite_to_const_initializer_index(Type *list_type, ConstInitializer *list, Expr *result, unsigned index)
+{
+	ConstInitializer *initializer = initializer_for_index(list, index);
+	ConstInitType kind = initializer ? initializer->kind : CONST_INIT_ZERO;
+	switch (kind)
+	{
+		case CONST_INIT_ZERO:
+			expr_rewrite_to_const_zero(result, type_get_indexed_type(list_type));
+			return true;
+		case CONST_INIT_STRUCT:
+		case CONST_INIT_UNION:
+		case CONST_INIT_ARRAY:
+		case CONST_INIT_ARRAY_FULL:
+		case CONST_INIT_ARRAY_VALUE:
+			return false;
+		case CONST_INIT_VALUE:
+			expr_replace(result, initializer->init_value);
+			return true;
+	}
+	UNREACHABLE
+}

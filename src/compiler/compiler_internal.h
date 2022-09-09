@@ -2085,7 +2085,6 @@ void expr_insert_deref(Expr *expr);
 bool expr_may_addr(Expr *expr);
 Expr *expr_variable(Decl *decl);
 Expr *expr_negate_expr(Expr *expr);
-void expr_rewrite_to_builtin_access(SemaContext *context, Expr *expr, Expr *parent, BuiltinAccessKind kind, Type *type);
 INLINE Expr *expr_new_expr(ExprKind kind, Expr *expr);
 INLINE bool expr_ok(Expr *expr);
 INLINE bool exprid_is_simple(ExprId expr_id);
@@ -2097,11 +2096,16 @@ INLINE bool exprid_is_constant_eval(ExprId expr, ConstantEvalKind eval_kind);
 INLINE bool expr_is_init_list(Expr *expr);
 INLINE bool expr_is_deref(Expr *expr);
 
+
 INLINE void expr_rewrite_const_null(Expr *expr, Type *type);
 INLINE void expr_rewrite_const_bool(Expr *expr, Type *type, bool b);
 INLINE void expr_rewrite_const_float(Expr *expr, Type *type, Real d);
 INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v, bool narrowable);
 INLINE void expr_rewrite_const_list(Expr *expr, Type *type, ConstInitializer *list);
+
+void expr_rewrite_to_builtin_access(SemaContext *context, Expr *expr, Expr *parent, BuiltinAccessKind kind, Type *type);
+void expr_rewrite_to_const_zero(Expr *expr, Type *type);
+bool expr_rewrite_to_const_initializer_index(Type *list_type, ConstInitializer *list, Expr *result, unsigned index);
 
 bool expr_const_in_range(const ExprConst *left, const ExprConst *right, const ExprConst *right_to);
 bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp op);
