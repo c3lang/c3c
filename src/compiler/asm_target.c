@@ -283,6 +283,7 @@ static void init_asm_x86(void)
 	{
 		reg_instr_clob("aaa", rax_mask, 0);
 		reg_instr("int", "imm8");
+		reg_instr_clob("into", cc_flag_mask, NULL);
 	}
 	if (is_x64)
 	{
@@ -344,6 +345,14 @@ static void init_asm_x86(void)
 	reg_instr_clob("xorw", cc_flag_mask, "rw:r16/mem, r16/mem/imm16");
 	reg_instr_clob("xorl", cc_flag_mask, "rw:r32/mem, r32/mem/imm32");
 	reg_instr_clob("xorq", cc_flag_mask, "rw:r64/mem, r64/mem/immi32/imm64");
+	reg_instr_clob("mulb", cc_flag_mask, "r8/mem");
+	reg_instr_clob("mulw", cc_flag_mask, "r16/mem");
+	reg_instr_clob("mull", cc_flag_mask, "r32/mem");
+	reg_instr_clob("mulq", cc_flag_mask, "r64/mem");
+	reg_instr_clob("subb", cc_flag_mask, "rw:r8/mem, r8/mem/imm8");
+	reg_instr_clob("subw", cc_flag_mask, "rw:r16/mem, r16/mem/imm16");
+	reg_instr_clob("subl", cc_flag_mask, "rw:r32/mem, r32/mem/imm32");
+	reg_instr_clob("subq", cc_flag_mask, "rw:r64/mem, r64/mem/imm64");
 
 	asm_target.clobber_name_list = X86ClobberNames;
 	asm_target.extra_clobbers = "~{flags},~{dirflag},~{fspr}";
