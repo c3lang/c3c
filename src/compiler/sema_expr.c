@@ -7146,7 +7146,7 @@ static inline bool decl_is_local(Decl *decl)
 static bool sema_expr_analyse_type_var_path(SemaContext *context, Expr *expr, ExprFlatElement **elements, Type **type_ref,
                                             Decl **decl_ref)
 {
-	if (!sema_analyse_expr_lvalue(context, expr)) return false;
+	if (!sema_analyse_expr_lvalue_fold_const(context, expr)) return false;
 	Expr *current = expr;
 	Decl *decl = NULL;
 	Type *type = NULL;
