@@ -5527,11 +5527,11 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 			{
 				BEValue check;
 				LLVMBasicBlockRef exit = llvm_basic_block_new(c, "check_type_ok");
-				IntrospectType checks[7] = { INTROSPECT_TYPE_ARRAY, INTROSPECT_TYPE_POINTER,
-											 INTROSPECT_TYPE_VECTOR,
+				IntrospectType checks[8] = { INTROSPECT_TYPE_ARRAY, INTROSPECT_TYPE_POINTER,
+											 INTROSPECT_TYPE_VECTOR, INTROSPECT_TYPE_ENUM,
 											 INTROSPECT_TYPE_SUBARRAY, INTROSPECT_TYPE_DISTINCT,
 											 INTROSPECT_TYPE_FAILABLE, INTROSPECT_TYPE_SUBARRAY };
-				for (int i = 0; i < 7; i++)
+				for (int i = 0; i < 8; i++)
 				{
 					llvm_emit_int_comp_raw(c,
 					                       &check,
