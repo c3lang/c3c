@@ -185,7 +185,7 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl, Decl **
 	if (decl->is_packed && !decl->alignment) decl->alignment = 1;
 
 	// 2. Otherwise pick the highest of the natural alignment and the given alignment.
-	if (!decl->is_packed) decl->alignment = MAX(decl->alignment, max_alignment);
+	if (!decl->is_packed && decl->alignment < max_alignment) decl->alignment = max_alignment;
 
 	// We're only packed if the max alignment is > 1
 	decl->is_packed = decl->is_packed && max_alignment > 1;
@@ -333,7 +333,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl, Decl *
 	if (decl->is_packed && !decl->alignment) decl->alignment = 1;
 
 	// 2. Otherwise pick the highest of the natural alignment and the given alignment.
-	if (!decl->is_packed) decl->alignment = MAX(decl->alignment, natural_alignment);
+	if (!decl->is_packed && decl->alignment < natural_alignment) decl->alignment = natural_alignment;
 
 	// We must now possibly add the end padding.
 	// First we calculate the actual size
@@ -1172,6 +1172,68 @@ Decl *sema_find_operator(SemaContext *context, Expr *expr, OperatorOverload oper
 	return NULL;
 }
 
+INLINE Decl *sema_find_vec_operator_in_module(Module *module, const char *kw, bool is_int, bool allow_private, Decl *prev, Decl **private, SourceSpan span)
+{
+	Decl **funcs = is_int ? module->intvec_extensions : module->floatvec_extensions;
+	Decl *found = NULL;
+	FOREACH_BEGIN(Decl *func, funcs)
+		if (func->name == kw)
+		{
+			if (func->visibility != VISIBLE_PUBLIC && !allow_private)
+			{
+				if (!prev) *private = func;
+				continue;
+			}
+			found = func;
+			// Assume only one per module.
+			break;
+		}
+	FOREACH_END();
+	if (!found) return prev;
+	*private = NULL;
+	if (prev)
+	{
+		sema_error_at(span, "Ambiguous name '%s', try to import fewer modules.", kw);
+		return poisoned_decl;
+	}
+	return found;
+}
+
+INLINE Decl *sema_find_vec_operator_in_module_recursively(Module *module, const char *kw, bool is_int, bool allow_private, Decl *prev, Decl **private_ref, SourceSpan span)
+{
+	Decl *decl = sema_find_vec_operator_in_module(module, kw, is_int, allow_private, prev, private_ref, span);
+	if (decl) return decl;
+	FOREACH_BEGIN(Module *sub_module, module->sub_modules)
+		decl = sema_find_vec_operator_in_module(sub_module, kw, is_int, false, decl, private_ref, span);
+		if (!decl) continue;
+		if (!decl_ok(decl)) return decl;
+	FOREACH_END();
+	return decl;
+}
+
+Decl *sema_find_vec_operator(SemaContext *context, const char *kw, Type *base_type, SourceSpan span)
+{
+	bool is_int = type_is_integer(base_type);
+	Decl *private = NULL;
+	Decl *decl = sema_find_vec_operator_in_module(context->compilation_unit->module, kw, is_int, true, NULL, &private, span);
+	if (decl) return decl;
+
+	Decl **imports = context->unit->imports;
+	FOREACH_BEGIN(Decl *import, context->unit->imports)
+		Module *imported_module = import->import.module;
+		bool is_private = import->import.private;
+		decl = sema_find_vec_operator_in_module_recursively(imported_module, kw, is_int, is_private, decl, &private, span);
+		if (!decl) continue;
+		if (!decl_ok(decl)) return decl;
+	FOREACH_END();
+	if (!decl && private)
+	{
+		sema_error_at(span, "The vector operator '%s' could not be found except the private implementation in '%s'.", private->unit->module->name->module);
+		return poisoned_decl;
+	}
+	return decl;
+}
+
 
 static inline bool sema_analyse_operator_element_at(Decl *method)
 {
@@ -1223,9 +1285,8 @@ static bool sema_check_operator_method_validity(Decl *method)
 			return sema_analyse_operator_element_at(method);
 		case OVERLOAD_LEN:
 			return sema_analyse_operator_len(method);
-		default:
-			UNREACHABLE
 	}
+	UNREACHABLE
 }
 
 static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type, Decl *method_like)
@@ -1443,19 +1504,67 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			const char *kw = expr->identifier_expr.ident;
 			if (kw == kw_elementat)
 			{
+				if (!decl->func_decl.type_parent)
+				{
+					SEMA_ERROR(expr, "@operator(elementat) can only be used with methods.");
+					return false;
+				}
 				decl->operator = OVERLOAD_ELEMENT_AT;
 			}
 			else if (kw == kw_elementref)
 			{
+				if (!decl->func_decl.type_parent)
+				{
+					SEMA_ERROR(expr, "@operator(elementref) can only be used with methods.");
+					return false;
+				}
 				decl->operator = OVERLOAD_ELEMENT_REF;
 			}
 			else if (kw == kw_elementset)
 			{
+				if (!decl->func_decl.type_parent)
+				{
+					SEMA_ERROR(expr, "@operator(elementset) can only be used with methods.");
+					return false;
+				}
 				decl->operator = OVERLOAD_ELEMENT_SET;
 			}
 			else if (kw == kw_len)
 			{
+				if (!decl->func_decl.type_parent)
+				{
+					SEMA_ERROR(expr, "@operator(len) can only be used with methods.");
+					return false;
+				}
 				decl->operator = OVERLOAD_LEN;
+			}
+			else if (kw == kw_floatvec)
+			{
+				if (decl->decl_kind != DECL_MACRO)
+				{
+					SEMA_ERROR(expr, "@operator(floatvec) can only be used with macros.");
+					return false;
+				}
+				if (decl->func_decl.type_parent)
+				{
+					SEMA_ERROR(expr, "@operator(floatvec) cannot be used with methods.");
+					return false;
+				}
+				decl->func_decl.attr_floatvec = true;
+			}
+			else if (kw == kw_intvec)
+			{
+				if (decl->decl_kind != DECL_MACRO)
+				{
+					SEMA_ERROR(expr, "@operator(intvec) can only be used with macros.");
+					return false;
+				}
+				if (decl->func_decl.type_parent)
+				{
+					SEMA_ERROR(expr, "@operator(intvec) cannot be used with methods.");
+					return false;
+				}
+				decl->func_decl.attr_intvec = true;
 			}
 			else
 			{
@@ -2037,7 +2146,6 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl)
 	}
 
 	Decl **parameters = decl->func_decl.signature.params;
-	unsigned param_count = vec_size(parameters);
 	DeclId body_param = decl->func_decl.body_param;
 
 	Decl **body_parameters = body_param ? declptr(body_param)->body_params : NULL;
@@ -2079,6 +2187,17 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl)
 	if (decl->func_decl.type_parent)
 	{
 		if (!sema_analyse_macro_method(context, decl)) return decl_poison(decl);
+	}
+	else
+	{
+		if (decl->func_decl.attr_floatvec)
+		{
+			vec_add(context->unit->module->floatvec_extensions, decl);
+		}
+		if (decl->func_decl.attr_intvec)
+		{
+			vec_add(context->unit->module->intvec_extensions, decl);
+		}
 	}
 	decl->type = type_void;
 	return true;

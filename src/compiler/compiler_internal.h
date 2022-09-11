@@ -532,6 +532,8 @@ typedef struct
 		};
 		struct
 		{
+			bool attr_intvec : 1;
+			bool attr_floatvec : 1;
 			DeclId body_param;
 			CompilationUnit *unit;
 		};
@@ -1438,6 +1440,8 @@ typedef struct Module_
 	Ast **files; // Asts
 
 	Decl** method_extensions;
+	Decl** intvec_extensions;
+	Decl** floatvec_extensions;
 	Decl** generic_cache;
 	HTable symbols;
 	struct CompilationUnit_ **units;
@@ -1804,6 +1808,8 @@ extern const char *kw_out;
 extern const char *kw_inout;
 extern const char *kw_deprecated;
 extern const char *kw_distinct;
+extern const char *kw_intvec;
+extern const char *kw_floatvec;
 extern const char *kw_inline;
 extern const char *kw_inf;
 extern const char *kw_kind;

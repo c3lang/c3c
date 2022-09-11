@@ -4,6 +4,7 @@
 
 #include "sema_internal.h"
 #include <math.h>
+
 /*
  * TODOs
  * - Disallow jumping in and out of an expression block.
@@ -2846,12 +2847,18 @@ static inline bool sema_expr_analyse_call(SemaContext *context, Expr *expr)
 			switch (decl->decl_kind)
 			{
 				case DECL_MACRO:
+					if (decl->func_decl.attr_intvec || decl->func_decl.attr_floatvec)
+					{
+						struct_var = func_expr->access_expr.parent;
+						break;
+					}
+					FALLTHROUGH;
 				case DECL_FUNC:
+					struct_var = func_expr->access_expr.parent;
 					if (decl->func_decl.signature.params[0]->type->type_kind == TYPE_POINTER)
 					{
-						expr_insert_addr(func_expr->access_expr.parent);
+						expr_insert_addr(struct_var);
 					}
-					struct_var = func_expr->access_expr.parent;
 					break;
 				default:
 					break;
@@ -4096,6 +4103,19 @@ CHECK_DEEPER:
 		}
 	}
 
+	if (type_flat_is_vector(type))
+	{
+		Type *vec = type_flatten(type);
+		assert(vec->type_kind == TYPE_VECTOR);
+		Type *base = vec->array.base;
+		Decl *func = sema_find_vec_operator(context, kw, base, expr->span);
+		if (!decl_ok(func)) return false;
+		if (func)
+		{
+			expr->access_expr.ref = func;
+			return true;
+		}
+	}
 	// 9. At this point we may only have distinct, struct, union, error, enum
 	if (!type_may_have_sub_elements(type))
 	{
