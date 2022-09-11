@@ -200,6 +200,9 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_MIN] = KW_DEF("min");
 	builtin_list[BUILTIN_NEARBYINT] = KW_DEF("nearbyint");
 	builtin_list[BUILTIN_POW] = KW_DEF("pow");
+#if LLVM_VERSION_MAJOR > 12
+	builtin_list[BUILTIN_REVERSE] = KW_DEF("reverse");
+#endif
 	builtin_list[BUILTIN_RINT] = KW_DEF("rint");
 	builtin_list[BUILTIN_ROUND] = KW_DEF("round");
 	builtin_list[BUILTIN_ROUNDEVEN] = KW_DEF("roundeven");

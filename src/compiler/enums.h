@@ -808,6 +808,9 @@ typedef enum
 	BUILTIN_NEARBYINT,
 	BUILTIN_CTPOP, // should be here for keeping sorting order
 	BUILTIN_POW,
+#if LLVM_VERSION_MAJOR > 12
+	BUILTIN_REVERSE,
+#endif
 	BUILTIN_RINT,
 	BUILTIN_ROUND,
 	BUILTIN_ROUNDEVEN,

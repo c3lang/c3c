@@ -181,6 +181,9 @@ typedef struct
 	unsigned vector_reduce_smin;
 	unsigned vector_reduce_umax;
 	unsigned vector_reduce_umin;
+#if LLVM_VERSION_MAJOR > 12
+	unsigned vector_reverse;
+#endif
 } LLVMIntrinsics;
 
 extern LLVMIntrinsics intrinsic_id;

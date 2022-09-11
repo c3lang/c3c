@@ -2516,6 +2516,9 @@ static inline unsigned builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_LRINT:
 		case BUILTIN_LROUND:
 		case BUILTIN_NEARBYINT:
+#if LLVM_VERSION_MAJOR > 12
+		case BUILTIN_REVERSE:
+#endif
 		case BUILTIN_RINT:
 		case BUILTIN_ROUND:
 		case BUILTIN_ROUNDEVEN:
@@ -2768,7 +2771,6 @@ static inline bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *ex
 										 arg_count)) return false;
 			rtype = args[0]->type;
 			break;
-
 		case BUILTIN_POW:
 			if (!sema_check_builtin_args(args,
 										 (BuiltinArg[]) { BA_FLOATLIKE, BA_FLOATLIKE },
@@ -2776,6 +2778,16 @@ static inline bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *ex
 			if (!sema_check_builtin_args_match(args, arg_count)) return false;
 			rtype = args[0]->type;
 			break;
+#if LLVM_VERSION_MAJOR > 12
+		case BUILTIN_REVERSE:
+			if (!type_flat_is_vector(args[0]->type))
+			{
+					SEMA_ERROR(args[0], "Expected a vector.");
+					return false;
+			}
+			rtype = args[0]->type;
+			break;
+#endif
 		case BUILTIN_ABS:
 			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_NUMLIKE }, arg_count)) return false;
 			if (!sema_check_builtin_args_match(args, arg_count)) return false;

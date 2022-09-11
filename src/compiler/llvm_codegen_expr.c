@@ -4417,6 +4417,11 @@ unsigned llvm_get_intrinsic(BuiltinFunction func)
 			return intrinsic_id.lround;
 		case BUILTIN_NEARBYINT:
 			return intrinsic_id.nearbyint;
+#if LLVM_VERSION_MAJOR > 12
+		case BUILTIN_REVERSE:
+			return intrinsic_id.vector_reverse;
+			break;
+#endif
 		case BUILTIN_RINT:
 			return intrinsic_id.rint;
 		case BUILTIN_ROUND:
@@ -4657,6 +4662,7 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 	{
 		intrinsic = llvm_get_intrinsic(func);
 	}
+
 	llvm_emit_intrinsic_expr(c, intrinsic, result_value, expr);
 }
 

@@ -652,12 +652,9 @@ void llvm_codegen_setup()
 	intrinsic_id.umul_overflow = lookup_intrinsic("llvm.umul.with.overflow");
 	intrinsic_id.usub_overflow = lookup_intrinsic("llvm.usub.with.overflow");
 	intrinsic_id.usub_sat = lookup_intrinsic("llvm.usub.sat");
-	intrinsic_id.vector_reduce_fmax = lookup_intrinsic("llvm.vector.reduce.fmax");
-	intrinsic_id.vector_reduce_fmin = lookup_intrinsic("llvm.vector.reduce.fmin");
-	intrinsic_id.vector_reduce_smax = lookup_intrinsic("llvm.vector.reduce.smax");
-	intrinsic_id.vector_reduce_smin = lookup_intrinsic("llvm.vector.reduce.smin");
-	intrinsic_id.vector_reduce_umax = lookup_intrinsic("llvm.vector.reduce.umax");
-	intrinsic_id.vector_reduce_umin = lookup_intrinsic("llvm.vector.reduce.umin");
+#if LLVM_VERSION_MAJOR > 12
+	intrinsic_id.vector_reverse = lookup_intrinsic("llvm.experimental.vector.reverse");
+#endif
 
 	attribute_id.align = lookup_attribute("align");
 	attribute_id.alwaysinline = lookup_attribute("alwaysinline");

@@ -102,6 +102,24 @@ macro bitcast(expr, $Type) @builtin
 }
 
 /**
+ * @require types::is_vector($typeof(v)) `Only vectors may be used`
+ **/
+macro reverse(v) @builtin
+{
+    $if ($$LLVM_VERSION > 12):
+        return $$reverse(v);
+    $else:
+	$typeof(v) x = {};
+	uint j = v.len - 1;
+	foreach (i, val : v)
+	{
+		x[j--] = val;
+	}
+	return x;
+    $endif;
+}
+
+/**
  * @require $Type.kind == TypeKind.ENUM `Only enums may be used`
  **/
 macro enum_by_name($Type, char[] enum_name) @builtin
