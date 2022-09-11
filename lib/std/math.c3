@@ -96,47 +96,60 @@ fn double log2(double x) @inline
     return $$log2(x);
 }
 
-fn double log(double x) @inline
+/**
+ * @require types::is_floatlike($typeof(f)) `The input must be a floating point value or float vector`
+ **/
+macro log(f)
 {
-    return $$log(x);
+    return $$log(f);
 }
 
-fn double cos(double x) @inline
+/**
+ * @require types::is_floatlike($typeof(f)) `The input must be a floating point value or float vector`
+ **/
+macro cos(f)
 {
-    return $$cos(x);
+    return $$cos(f);
 }
 
-fn float cosf(float x) @inline
+
+/**
+ * @require types::is_floatlike($typeof(f)) `The input must be a floating point value or float vector`
+ **/
+macro sin(f)
 {
-    return $$cos(x);
+    return $$sin(f);
 }
 
-fn double sin(double x) @inline
+/**
+ * @require types::is_floatlike($typeof(f)) `The input must be a floating point value or float vector`
+ **/
+macro exp(f)
 {
-    return $$sin(x);
+    return $$exp(f);
 }
 
-fn float sinf(float x) @inline
+/**
+ * @require types::is_floatlike($typeof(f)) `The input must be a floating point value or float vector`
+ * @require types::@has_same(f, exp) `Parameters must have the same type`
+ **/
+macro pow(f, exp) @operator(floatvec)
 {
-    return $$sin(x);
+    return $$pow(f, exp);
 }
 
-fn double exp(double x) @inline
-{
-    return $$exp(x);
-}
-
-fn double pow(double x, double y) @inline
-{
-    return $$pow(x, y);
-}
-
-fn double trunc(double x) @inline
+/**
+ * @require types::is_floatlike($typeof(f)) `The input must be a floating point value or float vector`
+ **/
+macro trunc(x) @operator(floatvec)
 {
     return $$trunc(x);
 }
 
-fn double ceil(double x) @inline
+/**
+ * @require types::is_floatlike($typeof(f)) `The input must be a floating point value or float vector`
+ **/
+macro ceil(x) @operator(floatvec)
 {
     return $$ceil(x);
 }

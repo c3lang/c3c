@@ -134,6 +134,18 @@ macro bool is_intlike($Type)
 	$endswitch;
 }
 
+macro bool is_floatlike($Type)
+{
+	$switch ($Type.kind):
+		$case FLOAT:
+			return true;
+		$case VECTOR:
+			return $Type.inner.kind == TypeKind.FLOAT;
+		$default:
+			return false;
+	$endswitch;
+}
+
 macro bool is_vector($Type)
 {
 	return $Type.kind == TypeKind.VECTOR;
@@ -144,9 +156,18 @@ macro bool is_same($TypeA, $TypeB)
 	return $TypeA.typeid == $TypeB.typeid;
 }
 
-macro bool is_same_type(a, b)
+macro bool @has_same(#a, #b, ...)
 {
-	return $typeof(a).typeid == $typeof(b).typeid;
+	var $type_a = $typeof(#a).typeid;
+	$if ($type_a != $typeof(#b).typeid):
+	    return false;
+	$endif;
+	$for (var $i = 0; $i < $vacount; $i++):
+		$if ($typeof($vaexpr($i)).typeid != $type_a):
+			return false;
+		$endif;
+	$endfor;
+	return true;
 }
 
 macro bool is_equatable_value(value)

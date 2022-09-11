@@ -341,8 +341,8 @@ fn Matrix4x4 Matrix4x4.translate(Matrix4x4* m, float[<3>] v)
 fn Matrix3x3 Matrix3x3.rotate(Matrix3x3* m, float r)
 {
 	return m.mul(Matrix3x3 {
-		math::cosf(r), -math::sinf(r), 0,
-		math::sinf(r), math::cosf(r), 0,
+		math::cos(r), -math::sin(r), 0,
+		math::sin(r), math::cos(r), 0,
 		0, 0, 1,
 	});
 }
@@ -351,8 +351,8 @@ fn Matrix3x3 Matrix3x3.rotate(Matrix3x3* m, float r)
 fn Matrix4x4 Matrix4x4.rotate_z(Matrix4x4* m, float r)
 {
 	return m.mul(Matrix4x4 {
-		math::cosf(r), -math::sinf(r), 0, 0,
-		math::sinf(r), math::cosf(r), 0, 0,
+		math::cos(r), -math::sin(r), 0, 0,
+		math::sin(r), math::cos(r), 0, 0,
 		0, 0, 1, 0,
 		0, 0, 0, 1,
 	});
@@ -362,9 +362,9 @@ fn Matrix4x4 Matrix4x4.rotate_z(Matrix4x4* m, float r)
 fn Matrix4x4 Matrix4x4.rotate_y(Matrix4x4* m, float r)
 {
 	return m.mul(Matrix4x4 {
-		math::cosf(r), 0, -math::sinf(r), 0,
+		math::cos(r), 0, -math::sin(r), 0,
 		0, 1, 0, 0,
-		math::sinf(r), 0, math::cosf(r), 0,
+		math::sin(r), 0, math::cos(r), 0,
 		0, 0, 0, 1,
 	});
 }
@@ -374,8 +374,8 @@ fn Matrix4x4 Matrix4x4.rotate_x(Matrix4x4* m, float r)
 {
 	return m.mul(Matrix4x4 {
 		1, 0, 0, 0,
-		0, math::cosf(r), -math::sinf(r), 0,
-		0, math::sinf(r), math::cosf(r), 0,
+		0, math::cos(r), -math::sin(r), 0,
+		0, math::sin(r), math::cos(r), 0,
 		0, 0, 0, 1,
 	});
 }
