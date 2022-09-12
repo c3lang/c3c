@@ -1357,3 +1357,31 @@ Ast* parse_compound_stmt(ParseContext *c)
 	}
 	return ast;
 }
+
+Ast* parse_short_stmt(ParseContext *c, TypeInfoId return_type)
+{
+	CONSUME_OR_RET(TOKEN_EQ, poisoned_ast);
+	// directly using AST_RETURN_STMT doesn't work
+	// embedding it in compound is fine
+	Ast *ast = ast_new_curr(c, AST_COMPOUND_STMT);
+	AstId *next = &ast->compound_stmt.first_stmt;
+
+	if (type_infoptr(return_type)->type->type_kind != TYPE_VOID)
+	{
+		Ast *ret = ast_new_curr(c, AST_RETURN_STMT);
+		ast_append(&next, ret);
+		ASSIGN_EXPR_OR_RET(ret->return_stmt.expr, parse_expr(c), poisoned_ast);
+		RETURN_AFTER_EOS(ast);
+	}
+	else
+	{
+		// you can actually do
+		// fn void func() = 6 * 5;
+		// it will compile and works, even if it's not really useful
+		ASSIGN_AST_OR_RET(Ast *stmt, parse_stmt(c), poisoned_ast);
+		ast_append(&next, stmt);
+		return ast;
+	}
+
+	UNREACHABLE
+}

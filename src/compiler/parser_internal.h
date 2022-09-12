@@ -35,6 +35,7 @@ void recover_top_level(ParseContext *c);
 Expr *parse_cond(ParseContext *c);
 Expr *parse_assert_expr(ParseContext *c);
 Ast* parse_compound_stmt(ParseContext *c);
+Ast* parse_short_stmt(ParseContext *c, TypeInfoId return_type);
 Ast *parse_jump_stmt_no_eos(ParseContext *c);
 bool parse_attribute(ParseContext *c, Attr **attribute_ref);
 bool parse_attributes(ParseContext *c, Attr ***attributes_ref);
