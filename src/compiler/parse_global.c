@@ -2104,9 +2104,18 @@ static inline Decl *parse_func_definition(ParseContext *c, Visibility visibility
 		return func;
 	}
 
-	TRY_EXPECT_OR_RET(TOKEN_LBRACE, "Expected the beginning of a block with '{'", poisoned_decl);
-
-	ASSIGN_ASTID_OR_RET(func->func_decl.body, parse_compound_stmt(c), poisoned_decl);
+	if (tok_is(c, TOKEN_EQ))
+	{
+		ASSIGN_ASTID_OR_RET(func->func_decl.body, parse_short_stmt(c, func->func_decl.signature.rtype), poisoned_decl);
+	}
+	else if (tok_is(c, TOKEN_LBRACE))
+	{
+		ASSIGN_ASTID_OR_RET(func->func_decl.body, parse_compound_stmt(c), poisoned_decl);
+	}
+	else
+	{
+		SEMA_ERROR_HERE("Expected the beginning of a block or a short statement.");
+	}
 
 	DEBUG_LOG("Finished parsing function %s", func->name);
 	return func;
