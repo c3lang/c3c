@@ -254,13 +254,13 @@ static inline Expr *parse_asm_expr(ParseContext *c)
 static inline Ast *parse_asm_stmt(ParseContext *c)
 {
 	Ast *asm_stmt = ast_new_curr(c, AST_ASM_STMT);
-	if (!tok_is(c, TOKEN_IDENT))
+	if (!tok_is(c, TOKEN_IDENT) && !tok_is(c, TOKEN_INT))
 	{
 		SEMA_ERROR_HERE("Expected an asm instruction here.");
 		return poisoned_ast;
 	}
 	asm_stmt->asm_stmt.instruction = symstr(c);
-	advance_and_verify(c, TOKEN_IDENT);
+	advance(c);
 	if (try_consume(c, TOKEN_DOT))
 	{
 		if (!tok_is(c, TOKEN_IDENT))
