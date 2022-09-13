@@ -5,7 +5,7 @@
 #include "compiler/asm/x86.h"
 #include "compiler/asm/aarch64.h"
 
-#define ASM_PTR_HASH(name__) (uint32_t)(((uintptr_t)name__ >> 9) ^ ((uintptr_t)name__ >> 1))
+#define ASM_PTR_HASH(name__) (uint32_t)(((uintptr_t)name__  * 31) ^ ((uintptr_t)name__ >> 15))
 
 const Clobbers NO_CLOBBER = { .mask[0] = 0 };
 
@@ -178,6 +178,7 @@ INLINE void reg_register(const char *name, AsmRegisterType reg_type, AsmArgBits 
 		if (!reg->name)
 		{
 			*reg = (AsmRegister) { .name = interned, .type = reg_type, .bits = bits, .clobber_index = clobber_id };
+			asm_target.register_count++;
 			return;
 		}
 		slot = (slot + 1) & ASM_REGISTER_MASK;
@@ -284,7 +285,6 @@ static void init_asm_x86(void)
 	if (!is_x64)
 	{
 		reg_instr_clob("aaa", rax_mask, 0);
-		reg_instr("int", "imm8");
 		reg_instr_clob("into", cc_flag_mask, NULL);
 	}
 	if (is_x64)
@@ -356,6 +356,27 @@ static void init_asm_x86(void)
 	reg_instr_clob("subl", rax_cc_mask, "rw:r32/mem, r32/mem/imm32");
 	reg_instr_clob("subq", rax_cc_mask, "rw:r64/mem, r64/mem/immi32/imm64");
 	reg_instr("hlt", NULL);
+	reg_instr("in", "w:r8/r16/r32, r16/imm8"); // Actually ensure reg_al_ax and dx
+	reg_instr_clob("incb", cc_flag_mask, "rw:r8/mem");
+	reg_instr_clob("incw", cc_flag_mask, "rw:r16/mem");
+	reg_instr_clob("incl", cc_flag_mask, "rw:r32/mem");
+	reg_instr_clob("incq", cc_flag_mask, "rw:r64/mem");
+	reg_instr("insb", NULL);
+	reg_instr("insw", NULL);
+	reg_instr("insl", NULL);
+	reg_instr_clob("int", cc_flag_mask, "imm8");
+	reg_instr_clob("int3", cc_flag_mask, NULL);
+	reg_instr_clob("int1", cc_flag_mask, NULL);
+	reg_instr("invd", NULL);
+	reg_instr("invpcid", "r32/r64, mem");
+	reg_instr("invlpg", "w:mem");
+	reg_instr("invlpga", "r32, r64"); // c, a check this one!
+	reg_instr("iret", NULL);
+	reg_instr("iretl", NULL);
+	reg_instr("iretw", NULL);
+	reg_instr("iretq", NULL);
+	reg_instr("ret", NULL);
+
 	asm_target.clobber_name_list = X86ClobberNames;
 	asm_target.extra_clobbers = "~{flags},~{dirflag},~{fspr}";
 	if (platform_target.arch == ARCH_TYPE_X86)

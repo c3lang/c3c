@@ -162,7 +162,7 @@ typedef struct
 
 #define ASM_INSTRUCTION_MAX 0x1000
 #define ASM_INSTRUCTION_MASK (ASM_INSTRUCTION_MAX - 1)
-#define ASM_REGISTER_MAX 1024
+#define ASM_REGISTER_MAX 4096
 #define ASM_REGISTER_MASK (ASM_REGISTER_MAX - 1)
 
 typedef struct
@@ -172,6 +172,7 @@ typedef struct
 	const char *extra_clobbers;
 	AsmRegister registers[ASM_REGISTER_MAX];
 	AsmInstruction instructions[ASM_INSTRUCTION_MAX];
+	unsigned register_count;
 } AsmTarget;
 
 typedef struct
