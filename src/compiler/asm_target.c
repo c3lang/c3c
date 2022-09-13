@@ -355,7 +355,7 @@ static void init_asm_x86(void)
 	reg_instr_clob("subw", rax_cc_mask, "rw:r16/mem, r16/mem/imm16");
 	reg_instr_clob("subl", rax_cc_mask, "rw:r32/mem, r32/mem/imm32");
 	reg_instr_clob("subq", rax_cc_mask, "rw:r64/mem, r64/mem/immi32/imm64");
-
+	reg_instr("hlt", NULL);
 	asm_target.clobber_name_list = X86ClobberNames;
 	asm_target.extra_clobbers = "~{flags},~{dirflag},~{fspr}";
 	if (platform_target.arch == ARCH_TYPE_X86)
