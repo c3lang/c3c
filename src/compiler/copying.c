@@ -417,7 +417,7 @@ RETRY:
 			doc_ast_copy(c, &source->doc_stmt);
 			break;
 		case AST_ASM_BLOCK_STMT:
-			if (ast->asm_block_stmt.string)
+			if (ast->asm_block_stmt.is_string)
 			{
 				MACRO_COPY_EXPRID(ast->asm_block_stmt.asm_string);
 			}

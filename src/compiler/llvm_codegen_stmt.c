@@ -1060,7 +1060,7 @@ static inline void llvm_emit_asm_block_stmt(GenContext *c, Ast *ast)
 	unsigned result_count = 0;
 	unsigned param_count = 0;
 	AsmInlineBlock *block = ast->asm_block_stmt.block;
-	if (ast->asm_block_stmt.string)
+	if (ast->asm_block_stmt.is_string)
 	{
 		data = exprptr(ast->asm_block_stmt.asm_string)->const_expr.string.chars;
 	}
@@ -1187,7 +1187,7 @@ static inline void llvm_emit_asm_block_stmt(GenContext *c, Ast *ast)
 										   strlen(clobbers),
 	                                       ast->asm_block_stmt.is_volatile,
 	                                       true,
-	                                       ast->asm_block_stmt.string ? LLVMInlineAsmDialectIntel : LLVMInlineAsmDialectATT
+	                                       ast->asm_block_stmt.is_string ? LLVMInlineAsmDialectIntel : LLVMInlineAsmDialectATT
 #if LLVM_VERSION_MAJOR > 12
 											, /* can throw */ false
 #endif

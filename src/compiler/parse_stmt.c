@@ -308,10 +308,10 @@ static inline Ast* parse_asm_block_stmt(ParseContext *c)
 		ast->asm_block_stmt.block = block;
 		return ast;
 	}
-	ast->asm_block_stmt.string = true;
+	ast->asm_block_stmt.is_string = true;
 	// TODO use attributes, like volatile
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_ast);
-	ASSIGN_EXPRID_OR_RET(ast->asm_block_stmt.string, parse_expr(c), poisoned_ast);
+	ASSIGN_EXPRID_OR_RET(ast->asm_block_stmt.asm_string, parse_expr(c), poisoned_ast);
 	ast->asm_block_stmt.is_volatile = true;
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_ast);
 	RANGE_EXTEND_PREV(ast);

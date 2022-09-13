@@ -1328,7 +1328,7 @@ typedef struct
 	bool is_volatile : 1;
 	bool is_inline : 1;
 	bool is_goto : 1;
-	bool string : 1;
+	bool is_string : 1;
 	union
 	{
 		AsmInlineBlock *block;

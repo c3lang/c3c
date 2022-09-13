@@ -1348,7 +1348,7 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 
 static bool sema_analyse_asm_string_stmt(SemaContext *context, Ast *stmt)
 {
-	Expr *body = exprptr(stmt->asm_block_stmt.string);
+	Expr *body = exprptr(stmt->asm_block_stmt.asm_string);
 	if (!sema_analyse_expr(context, body)) return false;
 	if (!expr_is_const_string(body))
 	{
@@ -1360,7 +1360,7 @@ static bool sema_analyse_asm_string_stmt(SemaContext *context, Ast *stmt)
 
 static bool sema_analyse_asm_stmt(SemaContext *context, Ast *stmt)
 {
-	if (stmt->asm_block_stmt.string) return sema_analyse_asm_string_stmt(context, stmt);
+	if (stmt->asm_block_stmt.is_string) return sema_analyse_asm_string_stmt(context, stmt);
 	AsmInlineBlock *block = stmt->asm_block_stmt.block;
 	AstId ast_id = block->asm_stmt;
 	scratch_buffer_clear();
