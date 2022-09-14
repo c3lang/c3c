@@ -37,6 +37,11 @@ fn void main()
     {
         printf("Value: %f\n", a);
     }
+    foreach (float* &a : foo2)
+    {
+        *a *= 2;
+        printf("Value: %f\n", *a);
+    }
     foreach (i, a : foo2)
     {
         printf("Value[%d]: %f\n", i, a);
@@ -53,23 +58,6 @@ fn void main()
 
 /* #expect: test.ll
 
-@.__const = private unnamed_addr constant [3 x float] [float 2.000000e+00, float 4.500000e+00, float 8.000000e+00], align 4
-@.str = private unnamed_addr constant [11 x i8] c"Value: %f\0A\00", align 1
-@.str.1 = private unnamed_addr constant [11 x i8] c"Value: %f\0A\00", align 1
-@.str.2 = private unnamed_addr constant [11 x i8] c"Value: %f\0A\00", align 1
-@.str.3 = private unnamed_addr constant [15 x i8] c"Value[%d]: %f\0A\00", align 1
-@.str.4 = private unnamed_addr constant [16 x i8] c"Value2[%d]: %f\0A\00", align 1
-@.str.5 = private unnamed_addr constant [12 x i8] c"Value3: %f\0A\00", align 1
-@.str.6 = private unnamed_addr constant [11 x i8] c"Value: %f\0A\00", align 1
-@.str.7 = private unnamed_addr constant [15 x i8] c"Value[%d]: %f\0A\00", align 1
-@.str.8 = private unnamed_addr constant [16 x i8] c"Value2[%d]: %f\0A\00", align 1
-@.str.9 = private unnamed_addr constant [12 x i8] c"Value3: %f\0A\00", align 1
-
-; Function Attrs: nounwind
-declare void @printf(ptr, ...) #0
-
-; Function Attrs: nounwind
-define void @test_main() #0 {
 entry:
   %foo = alloca [3 x float], align 4
   %foo2 = alloca <3 x float>, align 16
@@ -92,15 +80,18 @@ entry:
   %a46 = alloca float, align 4
   %.anon50 = alloca i64, align 8
   %.anon51 = alloca i64, align 8
-  %i55 = alloca i64, align 8
-  %a56 = alloca float, align 4
+  %a55 = alloca ptr, align 8
   %.anon60 = alloca i64, align 8
   %.anon61 = alloca i64, align 8
-  %i65 = alloca i8, align 1
-  %a67 = alloca double, align 8
-  %.anon72 = alloca i64, align 8
-  %.anon73 = alloca i64, align 8
+  %i65 = alloca i64, align 8
+  %a66 = alloca float, align 4
+  %.anon70 = alloca i64, align 8
+  %.anon71 = alloca i64, align 8
+  %i75 = alloca i8, align 1
   %a77 = alloca double, align 8
+  %.anon82 = alloca i64, align 8
+  %.anon83 = alloca i64, align 8
+  %a87 = alloca double, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %foo, ptr align 4 @.__const, i32 12, i1 false)
   store <3 x float> <float 2.000000e+00, float 4.500000e+00, float 8.000000e+00>, ptr %foo2, align 16
   store i64 0, ptr %.anon, align 8
@@ -283,15 +274,16 @@ loop.cond52:                                      ; preds = %loop.body54, %loop.
 
 loop.body54:                                      ; preds = %loop.cond52
   %51 = load i64, ptr %.anon51, align 8
-  store i64 %51, ptr %i55, align 8
-  %52 = load <3 x float>, ptr %foo2, align 16
-  %53 = load i64, ptr %.anon51, align 8
-  %54 = extractelement <3 x float> %52, i64 %53
-  store float %54, ptr %a56, align 4
-  %55 = load i64, ptr %i55, align 8
-  %56 = load float, ptr %a56, align 4
+  %52 = getelementptr inbounds <3 x float>, ptr %foo2, i64 0, i64 %51
+  store ptr %52, ptr %a55, align 8
+  %53 = load ptr, ptr %a55, align 8
+  %54 = load float, ptr %53, align 8
+  %fmul56 = fmul float %54, 2.000000e+00
+  store float %fmul56, ptr %53, align 8
+  %55 = load ptr, ptr %a55, align 8
+  %56 = load float, ptr %55, align 8
   %fpfpext57 = fpext float %56 to double
-  call void (ptr, ...) @printf(ptr @.str.7, i64 %55, double %fpfpext57)
+  call void (ptr, ...) @printf(ptr @.str.7, double %fpfpext57)
   %57 = load i64, ptr %.anon51, align 8
   %add58 = add i64 %57, 1
   store i64 %add58, ptr %.anon51, align 8
@@ -306,57 +298,77 @@ loop.cond62:                                      ; preds = %loop.body64, %loop.
   %58 = load i64, ptr %.anon61, align 8
   %59 = load i64, ptr %.anon60, align 8
   %lt63 = icmp ult i64 %58, %59
-  br i1 %lt63, label %loop.body64, label %loop.exit71
+  br i1 %lt63, label %loop.body64, label %loop.exit69
 
 loop.body64:                                      ; preds = %loop.cond62
   %60 = load i64, ptr %.anon61, align 8
-  %ztrunc66 = trunc i64 %60 to i8
-  store i8 %ztrunc66, ptr %i65, align 1
+  store i64 %60, ptr %i65, align 8
   %61 = load <3 x float>, ptr %foo2, align 16
   %62 = load i64, ptr %.anon61, align 8
   %63 = extractelement <3 x float> %61, i64 %62
-  %fpfpext68 = fpext float %63 to double
-  store double %fpfpext68, ptr %a67, align 8
-  %64 = load i8, ptr %i65, align 1
-  %uisiext69 = zext i8 %64 to i32
-  %65 = load double, ptr %a67, align 8
-  call void (ptr, ...) @printf(ptr @.str.8, i32 %uisiext69, double %65)
+  store float %63, ptr %a66, align 4
+  %64 = load i64, ptr %i65, align 8
+  %65 = load float, ptr %a66, align 4
+  %fpfpext67 = fpext float %65 to double
+  call void (ptr, ...) @printf(ptr @.str.8, i64 %64, double %fpfpext67)
   %66 = load i64, ptr %.anon61, align 8
-  %add70 = add i64 %66, 1
-  store i64 %add70, ptr %.anon61, align 8
+  %add68 = add i64 %66, 1
+  store i64 %add68, ptr %.anon61, align 8
   br label %loop.cond62
 
-loop.exit71:                                      ; preds = %loop.cond62
-  store i64 3, ptr %.anon72, align 8
-  store i64 0, ptr %.anon73, align 8
-  br label %loop.cond74
+loop.exit69:                                      ; preds = %loop.cond62
+  store i64 3, ptr %.anon70, align 8
+  store i64 0, ptr %.anon71, align 8
+  br label %loop.cond72
 
-loop.cond74:                                      ; preds = %loop.body76, %loop.exit71
-  %67 = load i64, ptr %.anon73, align 8
-  %68 = load i64, ptr %.anon72, align 8
-  %lt75 = icmp ult i64 %67, %68
-  br i1 %lt75, label %loop.body76, label %loop.exit80
+loop.cond72:                                      ; preds = %loop.body74, %loop.exit69
+  %67 = load i64, ptr %.anon71, align 8
+  %68 = load i64, ptr %.anon70, align 8
+  %lt73 = icmp ult i64 %67, %68
+  br i1 %lt73, label %loop.body74, label %loop.exit81
 
-loop.body76:                                      ; preds = %loop.cond74
-  %69 = load <3 x float>, ptr %foo2, align 16
-  %70 = load i64, ptr %.anon73, align 8
-  %71 = extractelement <3 x float> %69, i64 %70
-  %fpfpext78 = fpext float %71 to double
+loop.body74:                                      ; preds = %loop.cond72
+  %69 = load i64, ptr %.anon71, align 8
+  %ztrunc76 = trunc i64 %69 to i8
+  store i8 %ztrunc76, ptr %i75, align 1
+  %70 = load <3 x float>, ptr %foo2, align 16
+  %71 = load i64, ptr %.anon71, align 8
+  %72 = extractelement <3 x float> %70, i64 %71
+  %fpfpext78 = fpext float %72 to double
   store double %fpfpext78, ptr %a77, align 8
-  %72 = load double, ptr %a77, align 8
-  call void (ptr, ...) @printf(ptr @.str.9, double %72)
-  %73 = load i64, ptr %.anon73, align 8
-  %add79 = add i64 %73, 1
-  store i64 %add79, ptr %.anon73, align 8
-  br label %loop.cond74
+  %73 = load i8, ptr %i75, align 1
+  %uisiext79 = zext i8 %73 to i32
+  %74 = load double, ptr %a77, align 8
+  call void (ptr, ...) @printf(ptr @.str.9, i32 %uisiext79, double %74)
+  %75 = load i64, ptr %.anon71, align 8
+  %add80 = add i64 %75, 1
+  store i64 %add80, ptr %.anon71, align 8
+  br label %loop.cond72
 
-loop.exit80:                                      ; preds = %loop.cond74
+loop.exit81:                                      ; preds = %loop.cond72
+  store i64 3, ptr %.anon82, align 8
+  store i64 0, ptr %.anon83, align 8
+  br label %loop.cond84
+
+loop.cond84:                                      ; preds = %loop.body86, %loop.exit81
+  %76 = load i64, ptr %.anon83, align 8
+  %77 = load i64, ptr %.anon82, align 8
+  %lt85 = icmp ult i64 %76, %77
+  br i1 %lt85, label %loop.body86, label %loop.exit90
+
+loop.body86:                                      ; preds = %loop.cond84
+  %78 = load <3 x float>, ptr %foo2, align 16
+  %79 = load i64, ptr %.anon83, align 8
+  %80 = extractelement <3 x float> %78, i64 %79
+  %fpfpext88 = fpext float %80 to double
+  store double %fpfpext88, ptr %a87, align 8
+  %81 = load double, ptr %a87, align 8
+  call void (ptr, ...) @printf(ptr @.str.10, double %81)
+  %82 = load i64, ptr %.anon83, align 8
+  %add89 = add i64 %82, 1
+  store i64 %add89, ptr %.anon83, align 8
+  br label %loop.cond84
+
+loop.exit90:                                      ; preds = %loop.cond84
   ret void
-}
-
-; Function Attrs: nounwind
-define i32 @main(i32 %0, ptr %1) #0 {
-entry:
-  call void @test_main()
-  ret i32 0
 }
