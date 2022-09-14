@@ -1,0 +1,75 @@
+// #target: macos-x64
+
+module test;
+import std::io;
+
+macro print_type_info(...)
+{
+    $for (var $i = 0; $i < $vacount; $i++):
+        io::printfln("type: %s", $nameof($vatype($i)));
+        io::printfln("%s.sizeof = %d", $nameof($vatype($i)), $vatype($i).sizeof);
+        io::printfln("%s.min = %s", $nameof($vatype($i)), $vatype($i).min);
+        io::printfln("%s.max = %s\n", $nameof($vatype($i)), $vatype($i).max);
+    $endfor;
+}
+
+fn void main()
+{
+    io::printfln("Unsigned integers:");
+    print_type_info(char, ushort, uint, ulong, uptr, uptrdiff, usize);
+    io::printfln("Signed integers:");
+    print_type_info(ichar, short, int, long, iptr, iptrdiff, isize);
+    io::printfln("Floats:");
+    print_type_info(float, double);
+}
+
+/* #expect: test.ll
+
+  store i64 1
+  store i8 0
+  store i8 -1
+  store i16 0
+  store i16 -1
+  store i64 4
+  store i64 2
+  store i32 0
+  store i32 -1
+  store i64 8
+  store i64 0
+  store i64 -1
+  store i64 8
+  store i64 0
+  store i64 -1
+  store i64 8
+  store i64 0
+  store i64 -1
+  store i64 8
+  store i64 0
+  store i64 -1
+  store i64 1
+  store i8 -128
+  store i8 127
+  store i64 2
+  store i16 -32768
+  store i16 32767
+  store i64 4
+  store i32 -2147483648
+  store i32 2147483647
+  store i64 8
+  store i64 -9223372036854775808
+  store i64 9223372036854775807
+  store i64 8
+  store i64 -9223372036854775808
+  store i64 9223372036854775807
+  store i64 8
+  store i64 -9223372036854775808
+  store i64 9223372036854775807
+  store i64 8
+  store i64 -9223372036854775808
+  store i64 9223372036854775807
+  store i64 4
+  store float 0x3810000000000000
+  store float 0x47EFFFFFE0000000
+  store i64 8
+  store double 0x10000000000000
+  store double 0x7FEFFFFFFFFFFFFF

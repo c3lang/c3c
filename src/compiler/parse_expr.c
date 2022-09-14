@@ -1442,7 +1442,7 @@ static Expr *parse_double(ParseContext *c, Expr *left)
 			number->type = type_float;
 			break;
 		case TYPE_F16:
-			number->type = type_half;
+			number->type = type_float16;
 			break;
 		default:
 			UNREACHABLE

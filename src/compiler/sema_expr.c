@@ -3709,6 +3709,9 @@ static inline bool sema_create_const_min(SemaContext *context, Expr *expr, Type 
 		expr->const_expr.fxx.type = flat->type_kind;
 		switch (flat->type_kind)
 		{
+			case TYPE_F16:
+				expr->const_expr.fxx.f =  5.9604645e-8;
+				break;
 			case TYPE_F32:
 				expr->const_expr.fxx.f = FLT_MIN;
 				break;
@@ -3734,19 +3737,19 @@ static inline bool sema_create_const_min(SemaContext *context, Expr *expr, Type 
 		switch (flat->type_kind)
 		{
 			case TYPE_I8:
-				expr->const_expr.ixx.i = (Int128){ 0, 0xFF };
+				expr->const_expr.ixx.i = (Int128){ 0, 0x80 };
 				break;
 			case TYPE_I16:
-				expr->const_expr.ixx.i = (Int128){ 0, 0xFFFF };
+				expr->const_expr.ixx.i = (Int128){ 0, 0x8000 };
 				break;
 			case TYPE_I32:
-				expr->const_expr.ixx.i = (Int128){ 0, 0xFFFFFFFFLL };
+				expr->const_expr.ixx.i = (Int128){ 0, 1ULL << 31 };
 				break;
 			case TYPE_I64:
-				expr->const_expr.ixx.i = (Int128){ 0, ~((uint64_t)0) };
+				expr->const_expr.ixx.i = (Int128){ 0, 1ULL << 63 };
 				break;
 			case TYPE_I128:
-				expr->const_expr.ixx.i = (Int128){ ~((uint64_t)0), ~((uint64_t)0) };
+				expr->const_expr.ixx.i = (Int128){ 1ULL << 63, 0 };
 				break;
 			default:
 				expr->const_expr.ixx.i = (Int128){ 0, 0 };
@@ -3812,6 +3815,9 @@ static inline bool sema_create_const_max(SemaContext *context, Expr *expr, Type 
 		expr->const_expr.fxx.type = flat->type_kind;
 		switch (flat->type_kind)
 		{
+			case TYPE_F16:
+				expr->const_expr.fxx.f = 65504.0;
+				break;
 			case TYPE_F32:
 				expr->const_expr.fxx.f = FLT_MAX;
 				break;

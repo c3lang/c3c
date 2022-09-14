@@ -642,6 +642,8 @@ void compile()
 	setup_bool_define("C_CHAR_IS_SIGNED", platform_target.signed_c_char);
 	setup_bool_define("PLATFORM_BIG_ENDIAN", platform_target.big_endian);
 	setup_bool_define("PLATFORM_I128_SUPPORTED", platform_target.int128);
+	setup_bool_define("PLATFORM_F128_SUPPORTED", platform_target.float128);
+	setup_bool_define("PLATFORM_F16_SUPPORTED", platform_target.float16);
 	setup_int_define("COMPILER_OPT_LEVEL", (uint64_t)active_target.optimization_level, type_int);
 	setup_int_define("OS_TYPE", (uint64_t)platform_target.os, type_int);
 	setup_int_define("COMPILER_SIZE_OPT_LEVEL", (uint64_t)active_target.size_optimization_level, type_int);

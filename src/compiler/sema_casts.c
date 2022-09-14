@@ -845,8 +845,9 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 		{
 			switch (expr->unary_expr.operator)
 			{
-				case UNARYOP_ERROR:
 				case UNARYOP_DEREF:
+					return false;
+				case UNARYOP_ERROR:
 				case UNARYOP_ADDR:
 				case UNARYOP_NOT:
 				case UNARYOP_TADDR:
