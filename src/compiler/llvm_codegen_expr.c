@@ -475,18 +475,10 @@ static inline void llvm_emit_subscript_addr_with_base(GenContext *c, BEValue *re
 					parent->value,
 					index->value), type->pointer);
 			return;
-		case TYPE_FLEXIBLE_ARRAY:
-		{
-			AlignSize alignment;
-			LLVMValueRef ptr = llvm_emit_array_gep_raw_index(c, parent->value, llvm_get_type(c, type), index->value, parent->alignment, &alignment);
-			llvm_value_set_address(result, ptr, type->array.base, alignment);
-			return;
-		}
-		case TYPE_VECTOR:
-			UNREACHABLE
 		case TYPE_ARRAY:
+		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_VECTOR:
 		{
-			// TODO vector
 			AlignSize alignment;
 			LLVMValueRef ptr = llvm_emit_array_gep_raw_index(c, parent->value, llvm_get_type(c, type), index->value, parent->alignment, &alignment);
 			llvm_value_set_address(result, ptr, type->array.base, alignment);
