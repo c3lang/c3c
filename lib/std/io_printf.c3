@@ -624,6 +624,12 @@ private fn FloatType float_from_variant(variant arg)
 				return *arg;
 		}
 	$endif;
+	$if (env::F128_SUPPORT):
+		if (arg.type == float128.typeid) return *((float128*)arg.ptr);
+	$endif;
+	$if (env::F16_SUPPORT):
+		if (arg.type == float16.typeid) return *((float16*)arg.ptr);
+	$endif;
 
 	if (arg.type.kind == TypeKind.POINTER)
 	{
@@ -666,7 +672,7 @@ private fn NtoaType int_from_variant(variant arg, bool *is_neg)
 		{
 			case int128:
 				int128 val = *arg;
-				return (*is_neg = val < 0) ? -val : val;
+				return (*is_neg = val < 0) ? (~(NtoaType)val) + 1 : val;
 			case uint128:
 				return *arg;
 		}
@@ -682,16 +688,16 @@ private fn NtoaType int_from_variant(variant arg, bool *is_neg)
 			return (NtoaType)*arg;
 		case ichar:
 			int val = *arg;
-			return (NtoaType)((*is_neg = val < 0) ? -val : val);
+			return (*is_neg = val < 0) ? (~(NtoaType)val) + 1 : (NtoaType)val;
 		case short:
 			int val = *arg;
-			return (NtoaType)((*is_neg = val < 0) ? -val : val);
+			return (*is_neg = val < 0) ? (~(NtoaType)val) + 1 : (NtoaType)val;
 		case int:
 			int val = *arg;
-			return (NtoaType)((*is_neg = val < 0) ? -val : val);
+			return (*is_neg = val < 0) ? (~(NtoaType)val) + 1 : (NtoaType)val;
 		case long:
 			long val = *arg;
-			return (NtoaType)((*is_neg = val < 0) ? -val : val);
+			return (*is_neg = val < 0) ? (~(NtoaType)val) + 1 : (NtoaType)val;
 		case char:
 			return *arg;
 		case ushort:

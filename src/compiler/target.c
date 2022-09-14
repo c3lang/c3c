@@ -831,7 +831,7 @@ static unsigned os_target_supports_float128(OsType os, ArchType arch)
 	switch (arch)
 	{
 		case ARCH_TYPE_AARCH64:
-			return true;
+			return false;
 		case ARCH_TYPE_PPC64:
 			if (os == OS_TYPE_MACOSX) return true;
 			return false;

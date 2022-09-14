@@ -17,7 +17,7 @@ static struct
 Type *type_bool = &t.u1;
 Type *type_void = &t.u0;
 Type *type_voidptr = &t.voidstar;
-Type *type_half = &t.f16;
+Type *type_float16 = &t.f16;
 Type *type_float = &t.f32;
 Type *type_double = &t.f64;
 Type *type_f128 = &t.f128;
@@ -1410,6 +1410,8 @@ Type *type_from_token(TokenType type)
 			return type_bool;
 		case TOKEN_CHAR:
 			return type_char;
+		case TOKEN_FLOAT16:
+			return type_float16;
 		case TOKEN_DOUBLE:
 			return type_double;
 		case TOKEN_FLOAT:
