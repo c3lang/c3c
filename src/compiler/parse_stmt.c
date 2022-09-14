@@ -1291,6 +1291,7 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_CT_CASTABLE:
 		case TOKEN_CT_CONVERTIBLE:
 		case TOKEN_CT_VASPLAT:
+		case TOKEN_IMPLIES:
 			SEMA_ERROR_HERE("Unexpected '%s' found when expecting a statement.",
 			                token_type_to_string(c->tok));
 			advance(c);
@@ -1360,11 +1361,11 @@ Ast* parse_compound_stmt(ParseContext *c)
 
 Ast* parse_short_stmt(ParseContext *c, TypeInfoId return_type)
 {
-	CONSUME_OR_RET(TOKEN_EQ, poisoned_ast);
+	advance(c);
 	Ast *ast = ast_new_curr(c, AST_COMPOUND_STMT);
 	AstId *next = &ast->compound_stmt.first_stmt;
 
-	if (type_infoptr(return_type)->type->type_kind != TYPE_VOID)
+	if (!return_type || type_infoptr(return_type)->type->type_kind != TYPE_VOID)
 	{
 		Ast *ret = ast_new_curr(c, AST_RETURN_STMT);
 		ast_append(&next, ret);
@@ -1373,10 +1374,9 @@ Ast* parse_short_stmt(ParseContext *c, TypeInfoId return_type)
 	}
 	else
 	{
-		ASSIGN_AST_OR_RET(Ast *stmt, parse_stmt(c), poisoned_ast);
+		ASSIGN_AST_OR_RET(Ast *stmt, parse_expr_stmt(c), poisoned_ast);
 		ast_append(&next, stmt);
 		return ast;
 	}
-
 	UNREACHABLE
 }

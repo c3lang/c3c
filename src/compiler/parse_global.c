@@ -1884,6 +1884,11 @@ static inline Decl *parse_macro_declaration(ParseContext *c, Visibility visibili
 	if (!parse_macro_arguments(c, visibility, decl)) return poisoned_decl;
 
 	if (!parse_attributes(c, &decl->attributes)) return poisoned_decl;
+	if (tok_is(c, TOKEN_EQ) || tok_is(c, TOKEN_IMPLIES))
+	{
+		ASSIGN_ASTID_OR_RET(decl->func_decl.body, parse_short_stmt(c, decl->func_decl.signature.rtype), poisoned_decl);
+		return decl;
+	}
 	ASSIGN_ASTID_OR_RET(decl->func_decl.body, parse_stmt(c), poisoned_decl);
 	return decl;
 }
@@ -2104,7 +2109,7 @@ static inline Decl *parse_func_definition(ParseContext *c, Visibility visibility
 		return func;
 	}
 
-	if (tok_is(c, TOKEN_EQ))
+	if (tok_is(c, TOKEN_EQ) || tok_is(c, TOKEN_IMPLIES))
 	{
 		ASSIGN_ASTID_OR_RET(func->func_decl.body, parse_short_stmt(c, func->func_decl.signature.rtype), poisoned_decl);
 	}

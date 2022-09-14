@@ -92,6 +92,8 @@ const char *token_type_to_string(TokenType type)
 			return "==";
 		case TOKEN_GREATER_EQ:
 			return ">=";
+		case TOKEN_IMPLIES:
+			return "=>";
 		case TOKEN_LESS_EQ:
 			return "<=";
 		case TOKEN_LBRAPIPE:

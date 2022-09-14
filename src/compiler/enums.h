@@ -415,6 +415,7 @@ typedef enum
 	TOKEN_ELVIS,            // ?:
 	TOKEN_EQEQ,             // ==
 	TOKEN_GREATER_EQ,       // >=
+	TOKEN_IMPLIES,          // =>
 	TOKEN_LESS_EQ,          // <=
 	TOKEN_LBRAPIPE,         // {|
 	TOKEN_LVEC,             // [<
