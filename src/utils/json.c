@@ -464,6 +464,11 @@ void json_free(JSONObject** ptr)
 
 void json_to_str_(JSONObject* obj)
 {
+	if (!obj)
+	{
+		return;
+	}
+
 	switch(obj->type)
 	{
 		case J_OBJECT:
@@ -508,6 +513,8 @@ void json_to_str_(JSONObject* obj)
 		case J_NUMBER:
 			scratch_buffer_append_double(obj->f);
 			break;
+		case J_BOOL:
+			scratch_buffer_append(obj->b == true ? "true" : "false");
 		default:
 			break;
 	}
