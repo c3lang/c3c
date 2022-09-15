@@ -126,14 +126,10 @@ static inline char *codegen_create_x86_att_asm(AsmInlineBlock *block)
 		Expr** args = ast->asm_stmt.args;
 		unsigned arg_count = vec_size(args);
 		scratch_buffer_append_char(' ');
-		if (arg_count > 1)
+		for (unsigned i = arg_count; i > 0; i--)
 		{
-			codegen_create_x86att_arg(block, input_arg_offset, args[1]);
-			scratch_buffer_append(", ");
-		}
-		if (arg_count)
-		{
-			codegen_create_x86att_arg(block, input_arg_offset, args[0]);
+			if (i != arg_count) scratch_buffer_append(", ");
+			codegen_create_x86att_arg(block, input_arg_offset, args[i - 1]);
 		}
 		scratch_buffer_append_char('\n');
 	}

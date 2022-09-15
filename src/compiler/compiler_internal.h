@@ -133,10 +133,11 @@ typedef struct
 	bool is_write : 1;
 	bool is_readwrite : 1;
 	bool is_address : 1;
-	AsmArgBits imm_arg_ubits : 8;
-	AsmArgBits imm_arg_ibits : 8;
-	AsmArgBits ireg_bits : 8;
-	AsmArgBits float_bits : 8;
+	AsmArgBits imm_arg_ubits : 16;
+	AsmArgBits imm_arg_ibits : 16;
+	AsmArgBits ireg_bits : 16;
+	AsmArgBits float_bits : 16;
+	AsmArgBits vec_bits : 16;
 } AsmArgType;
 
 typedef struct
