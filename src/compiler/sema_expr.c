@@ -838,6 +838,31 @@ bool sema_expr_check_assign(SemaContext *c, Expr *expr)
 	return false;
 }
 
+static Decl *sema_type_get_overload_method(Type *a, OperatorOverload overload)
+{
+	if (!overload) return NULL;
+	assert(a->canonical == a);
+	if (!type_may_have_sub_elements(a))
+	{
+		return NULL;
+	}
+	FOREACH_BEGIN(Decl *method, a->decl->methods)
+		if (method->operator == overload) return method;
+	FOREACH_END();
+	return NULL;
+}
+
+INLINE bool sema_rewrite_analyze_overload(SemaContext *context, Expr *expr, Decl *decl, Expr *left, Expr *right)
+{
+	expr->expr_kind = EXPR_CALL;
+	Expr **args = VECNEW(Expr*, 2);
+	vec_add(args, right);
+	expr->call_expr = (ExprCall){ .arguments = args, .func_ref = declid(decl) };
+	return sema_expr_analyse_general_call(context, expr, decl, left, false);
+}
+
+
+
 static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 {
 	Decl *decl = expr->identifier_expr.decl;
@@ -1325,7 +1350,7 @@ static inline bool sema_expr_analyse_binary_subexpr(SemaContext *context, Expr *
 	return (int)sema_analyse_expr(context, left) & (int)sema_analyse_expr(context, right);
 }
 
-static inline bool sema_expr_analyse_binary_arithmetic_subexpr(SemaContext *context, Expr *expr, const char *error, bool bool_is_allowed)
+static inline bool sema_expr_analyse_binary_arithmetic_subexpr(SemaContext *context, Expr *expr, const char *error, bool bool_is_allowed, OperatorOverload *overload)
 {
 	Expr *left = exprptr(expr->binary_expr.left);
 	Expr *right = exprptr(expr->binary_expr.right);
@@ -1337,6 +1362,14 @@ static inline bool sema_expr_analyse_binary_arithmetic_subexpr(SemaContext *cont
 
 	Type *left_type = type_no_optional(left->type)->canonical;
 	Type *right_type = type_no_optional(right->type)->canonical;
+
+	Decl *possible_overload = sema_type_get_overload_method(left_type, *overload);
+	if (possible_overload)
+	{
+		if (!sema_rewrite_analyze_overload(context, expr, possible_overload, left, right)) return false;
+		return true;
+	}
+	*overload = 0;
 
 	if (bool_is_allowed && left_type == type_bool && right_type == type_bool) return true;
 	// 2. Perform promotion to a common type.
@@ -5879,6 +5912,12 @@ static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, 
 	left_type = type_no_optional(left->type)->canonical;
 	right_type = type_no_optional(right->type)->canonical;
 
+	Decl *possible_overload = sema_type_get_overload_method(left_type, OVERLOAD_SUB);
+	if (possible_overload)
+	{
+		return sema_rewrite_analyze_overload(context, expr, possible_overload, left, right);
+	}
+
 	// 7. Attempt arithmetic promotion, to promote both to a common type.
 	if (!binary_arithmetic_promotion(context, left, right, left_type, right_type, expr, "The subtraction %s - %s is not possible."))
 	{
@@ -5909,6 +5948,7 @@ static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, 
 	return true;
 
 }
+
 
 /**
  * Analyse a + b
@@ -6003,6 +6043,12 @@ static bool sema_expr_analyse_add(SemaContext *context, Expr *expr, Expr *left, 
 	left_type = type_no_optional(left->type)->canonical;
 	right_type = type_no_optional(right->type)->canonical;
 
+	Decl *possible_overload = sema_type_get_overload_method(left_type, OVERLOAD_ADD);
+	if (possible_overload)
+	{
+		return sema_rewrite_analyze_overload(context, expr, possible_overload, left, right);
+	}
+
 	assert(!cast_to_iptr);
 	// 4. Do a binary arithmetic promotion
 	if (!binary_arithmetic_promotion(context, left, right, left_type, right_type, expr, "Cannot do the addition %s + %s."))
@@ -6046,8 +6092,9 @@ static bool sema_expr_analyse_mult(SemaContext *context, Expr *expr, Expr *left,
 {
 
 	// 1. Analyse the sub expressions and promote to a common type
-	if (!sema_expr_analyse_binary_arithmetic_subexpr(context, expr, "It is not possible to multiply %s by %s.", false)) return false;
-
+	OperatorOverload overload = OVERLOAD_MULT;
+	if (!sema_expr_analyse_binary_arithmetic_subexpr(context, expr, "It is not possible to multiply %s by %s.", false, &overload)) return false;
+	if (overload) return true;
 
 	// 2. Handle constant folding.
 	if (expr_both_const(left, right))
@@ -6079,7 +6126,9 @@ static bool sema_expr_analyse_mult(SemaContext *context, Expr *expr, Expr *left,
 static bool sema_expr_analyse_div(SemaContext *context, Expr *expr, Expr *left, Expr *right)
 {
 	// 1. Analyse sub expressions and promote to a common type
-	if (!sema_expr_analyse_binary_arithmetic_subexpr(context, expr, "Cannot divide %s by %s.", false)) return false;
+	OperatorOverload overload = OVERLOAD_DIV;
+	if (!sema_expr_analyse_binary_arithmetic_subexpr(context, expr, "Cannot divide %s by %s.", false, &overload)) return false;
+	if (overload) return true;
 
 	// 2. Check for a constant 0 on the rhs.
 	if (IS_CONST(right))
@@ -6131,7 +6180,9 @@ static bool sema_expr_analyse_div(SemaContext *context, Expr *expr, Expr *left, 
 static bool sema_expr_analyse_mod(SemaContext *context, Expr *expr, Expr *left, Expr *right)
 {
 	// 1. Analyse both sides and promote to a common type
-	if (!sema_expr_analyse_binary_arithmetic_subexpr(context, expr, NULL, false)) return false;
+	OperatorOverload overload = OVERLOAD_REM;
+	if (!sema_expr_analyse_binary_arithmetic_subexpr(context, expr, NULL, false, &overload)) return false;
+	if (overload) return true;
 
 	// 3. a % 0 is not valid, so detect it.
 	if (IS_CONST(right) && int_is_zero(right->const_expr.ixx))
@@ -6160,7 +6211,8 @@ static bool sema_expr_analyse_bit(SemaContext *context, Expr *expr, Expr *left, 
 {
 
 	// 1. Convert to common type if possible.
-	if (!sema_expr_analyse_binary_arithmetic_subexpr(context, expr, NULL, true)) return false;
+	OperatorOverload overload = 0;
+	if (!sema_expr_analyse_binary_arithmetic_subexpr(context, expr, NULL, true, &overload)) return false;
 
 	// 2. Check that both are integers or bools.
 	bool is_bool = left->type->canonical == type_bool;
@@ -6730,6 +6782,13 @@ static bool sema_expr_analyse_neg(SemaContext *context, Expr *expr)
 	Type *no_fail = type_no_optional(inner->type);
 	if (!type_may_negate(no_fail))
 	{
+		Decl *decl = sema_type_get_overload_method(no_fail->canonical, OVERLOAD_NEG);
+		if (decl)
+		{
+			expr->expr_kind = EXPR_CALL;
+			expr->call_expr = (ExprCall){ .func_ref = declid(decl) };
+			return sema_expr_analyse_general_call(context, expr, decl, inner, false);
+		}
 		SEMA_ERROR(expr, "Cannot negate an expression of type %s.", type_quoted_error_string(no_fail));
 		return false;
 	}

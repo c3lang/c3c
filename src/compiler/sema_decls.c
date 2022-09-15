@@ -1274,6 +1274,34 @@ static inline bool sema_analyse_operator_len(Decl *method)
 	return true;
 }
 
+static inline bool sema_analyse_operator_binary_arithmetics(Decl *method)
+{
+	TypeInfo *rtype;
+	Signature *signature = &method->func_decl.signature;
+	Decl **params = signature->params;
+	uint32_t param_count = vec_size(params);
+	if (param_count != 2)
+	{
+		SEMA_ERROR(method, "Expected two elements for this operation.");
+		return false;
+	}
+	return true;
+}
+
+static inline bool sema_analyse_operator_unary_arithmetics(Decl *method)
+{
+	TypeInfo *rtype;
+	Signature *signature = &method->func_decl.signature;
+	Decl **params = signature->params;
+	uint32_t param_count = vec_size(params);
+	if (param_count != 1)
+	{
+		SEMA_ERROR(method, "Too many parameters for this operation.");
+		return false;
+	}
+	return true;
+}
+
 static bool sema_check_operator_method_validity(Decl *method)
 {
 	switch (method->operator)
@@ -1285,6 +1313,14 @@ static bool sema_check_operator_method_validity(Decl *method)
 			return sema_analyse_operator_element_at(method);
 		case OVERLOAD_LEN:
 			return sema_analyse_operator_len(method);
+		case OVERLOAD_ADD:
+		case OVERLOAD_DIV:
+		case OVERLOAD_MULT:
+		case OVERLOAD_REM:
+		case OVERLOAD_SUB:
+			return sema_analyse_operator_binary_arithmetics(method);
+		case OVERLOAD_NEG:
+			return sema_analyse_operator_unary_arithmetics(method);
 	}
 	UNREACHABLE
 }
@@ -1400,6 +1436,21 @@ static const char *attribute_domain_to_string(AttributeDomain domain)
 			return "call";
 	}
 	UNREACHABLE
+}
+
+INLINE bool check_operator_overload(Expr *expr, Decl *decl, const char *kw)
+{
+	if (decl->decl_kind != DECL_MACRO)
+	{
+		SEMA_ERROR(expr, "@operator(%s) can only be used with macros.", kw);
+		return false;
+	}
+	if (!decl->func_decl.type_parent)
+	{
+		SEMA_ERROR(expr, "@operator(%s) can only be used with method-like macros.", kw);
+		return false;
+	}
+	return true;
 }
 
 static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr, AttributeDomain domain)
@@ -1537,6 +1588,36 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 					return false;
 				}
 				decl->operator = OVERLOAD_LEN;
+			}
+			else if (kw == kw_add)
+			{
+				if (!check_operator_overload(expr, decl, kw)) return false;
+				decl->operator = OVERLOAD_ADD;
+			}
+			else if (kw == kw_sub)
+			{
+				if (!check_operator_overload(expr, decl, kw)) return false;
+				decl->operator = OVERLOAD_SUB;
+			}
+			else if (kw == kw_mult)
+			{
+				if (!check_operator_overload(expr, decl, kw)) return false;
+				decl->operator = OVERLOAD_MULT;
+			}
+			else if (kw == kw_div)
+			{
+				if (!check_operator_overload(expr, decl, kw)) return false;
+				decl->operator = OVERLOAD_DIV;
+			}
+			else if (kw == kw_rem)
+			{
+				if (!check_operator_overload(expr, decl, kw)) return false;
+				decl->operator = OVERLOAD_REM;
+			}
+			else if (kw == kw_neg)
+			{
+				if (!check_operator_overload(expr, decl, kw)) return false;
+				decl->operator = OVERLOAD_NEG;
 			}
 			else if (kw == kw_floatvec)
 			{
