@@ -478,7 +478,7 @@ void json_to_str_(JSONObject* obj)
 				scratch_buffer_append((char*)obj->keys[i]);
 				scratch_buffer_append("\"");
 				scratch_buffer_append(":");
-				json_to_str_(obj->elements[i]);
+				json_to_str_(obj->members[i]);
 				if (i + 1 < obj->member_len)
 				{
 					scratch_buffer_append(",");
@@ -491,10 +491,10 @@ void json_to_str_(JSONObject* obj)
 		{
 			scratch_buffer_append("[");
 			size_t i = 0;
-			while (i < obj->member_len)
+			while (i < obj->array_len)
 			{
 				json_to_str_(obj->elements[i]);
-				if (i + 1 < obj->member_len)
+				if (i + 1 < obj->array_len)
 				{
 					scratch_buffer_append(",");
 				}
