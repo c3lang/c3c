@@ -72,4 +72,6 @@ JSONObject *json_number(JsonAllocator *allocator, double d);
 JSONObject *json_bool(JsonAllocator *allocator, bool b);
 JSONObject *json_object(JsonAllocator *allocator, size_t members_size);
 JSONObject *json_array(JsonAllocator *allocator, size_t array_size);
+void json_member_set(JSONObject *obj, size_t index, JSONObject *member, const char *key);
+void json_array_set(JSONObject *obj, size_t index, JSONObject *member);
 void json_free(JSONObject **ptr);

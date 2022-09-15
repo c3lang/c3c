@@ -565,3 +565,16 @@ JSONObject* json_array(JsonAllocator* allocator, size_t array_size)
 	obj->elements = allocator(sizeof(JSONObject*) * array_size);
 	return obj;
 }
+
+void json_member_set(JSONObject* obj, size_t index, JSONObject* member, const char* key)
+{
+	assert(index < obj->member_len);
+	obj->members[index] = member;
+	obj->keys[index] = strdup(key);
+}
+
+void json_array_set(JSONObject* obj, size_t index, JSONObject* member)
+{
+	assert(index < obj->array_len);
+	obj->elements[index] = member;
+}
