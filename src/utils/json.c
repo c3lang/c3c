@@ -425,7 +425,7 @@ void json_init_string(JsonParser *parser, const char *str, JsonAllocator *alloca
 	json_lexer_advance(parser);
 }
 
-void json_free(JSONObject** ptr)
+void json_free(JSONObject **ptr)
 {
 	JSONObject *obj = *ptr;
 	switch(obj->type)
@@ -462,7 +462,7 @@ void json_free(JSONObject** ptr)
 	*ptr = NULL;
 }
 
-void json_to_str_(JSONObject* obj)
+void json_to_str_(JSONObject *obj)
 {
 	assert(obj != NULL);
 
@@ -517,7 +517,7 @@ void json_to_str_(JSONObject* obj)
 	}
 }
 
-char *json_to_str(JSONObject* obj)
+char *json_to_str(JSONObject *obj)
 {
 	scratch_buffer_clear();
 	json_to_str_(obj);
