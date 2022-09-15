@@ -514,6 +514,7 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 		// Emit the block
 		llvm_emit_block(c, cond_block);
 		BEValue be_value;
+		assert(cond);
 		if (cond->expr_kind == EXPR_COND)
 		{
 			llvm_emit_decl_expr_list(c, &be_value, cond, true);
@@ -1066,7 +1067,7 @@ static inline void llvm_emit_asm_block_stmt(GenContext *c, Ast *ast)
 	}
 	else
 	{
-		data = codegen_create_asm(ast, &clobber_list);
+		data = codegen_create_asm(ast);
 		clobbers = clobber_list.string;
 		FOREACH_BEGIN(ExprAsmArg * var, block->output_vars)
 			codegen_new_constraint(&clobber_list);

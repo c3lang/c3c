@@ -2009,7 +2009,6 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 		Ast *stmt = new_ast(AST_EXPR_STMT, decl->span);
 		stmt->expr_stmt = call;
 		ast_append(&next, stmt);
-		Expr *c = expr_new(EXPR_CONST, decl->span);
 		ret_stmt->expr_stmt = expr_new_const_int(decl->span, type_cint, 0, true);
 	}
 	ast_append(&next, ret_stmt);
@@ -2145,7 +2144,6 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl)
 		return decl_poison(decl);
 	}
 
-	Decl **parameters = decl->func_decl.signature.params;
 	DeclId body_param = decl->func_decl.body_param;
 
 	Decl **body_parameters = body_param ? declptr(body_param)->body_params : NULL;
@@ -2590,7 +2588,6 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 static inline bool sema_analyse_attribute_decl(SemaContext *c, Decl *decl)
 {
 	Decl **params = decl->attr_decl.params;
-	Attr **attrs = decl->attr_decl.attrs;
 	unsigned param_count = vec_size(params);
 	for (unsigned i = 0; i < param_count; i++)
 	{

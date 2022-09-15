@@ -189,7 +189,6 @@ bool expr_const_will_overflow(const ExprConst *expr, TypeKind kind)
 
 const char *expr_const_to_error_string(const ExprConst *expr)
 {
-	char *buff = NULL;
 	switch (expr->const_kind)
 	{
 		case CONST_POINTER:

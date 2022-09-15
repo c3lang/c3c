@@ -421,7 +421,7 @@ static inline bool sema_analyse_catch_unwrap(SemaContext *context, Expr *expr)
 		if (ident->type->canonical != type_anyerr)
 		{
 			SEMA_ERROR(ident, "Expected the variable to have the type %s, not %s.", type_quoted_error_string(type_anyerr),
-			           type_quoted_error_string(type->type));
+			           type_quoted_error_string(ident->type));
 			return false;
 		}
 
@@ -709,20 +709,6 @@ static inline bool sema_analyse_declare_stmt(SemaContext *context, Ast *statemen
 	return sema_analyse_var_decl(context, statement->declare_stmt, true);
 }
 
-static inline bool expr_is_assign(Expr *expr)
-{
-	switch (expr->expr_kind)
-	{
-		case EXPR_DECL:
-		case EXPR_BITASSIGN:
-		case EXPR_SLICE_ASSIGN:
-			return true;
-		case EXPR_BINARY:
-			return expr->binary_expr.operator >= BINARYOP_ASSIGN;
-		default:
-			return false;
-	}
-}
 static inline bool sema_analyse_expr_stmt(SemaContext *context, Ast *statement)
 {
 	Expr *expr = statement->expr_stmt;
@@ -983,6 +969,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 
 	if (statement->foreach_stmt.index_by_ref)
 	{
+		assert(index);
 		SEMA_ERROR(index, "The index cannot be held by reference, did you accidentally add a '&'?");
 		return false;
 	}

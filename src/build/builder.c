@@ -5,7 +5,6 @@
 #include "build_options.h"
 
 void load_library_files(void) {}
-void load_files(void) {}
 
 #if defined(_M_X64) || defined(_M_AMD64)
 ArchOsTarget default_target = WINDOWS_X64;

@@ -324,6 +324,7 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failabl
 			// Get the coerce type.
 			LLVMTypeRef coerce_type = llvm_get_coerce_type(c, info);
 			// Create the new pointer
+			assert(return_value);
 			LLVMValueRef coerce = LLVMBuildBitCast(c->builder, return_value->value, coerce_type, "");
 			// We might have only one value, in that case, build a GEP to that one.
 			LLVMValueRef lo_val;

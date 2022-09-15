@@ -5,7 +5,6 @@ typedef enum
 	X86_CC,
 	X86_DF,
 	X86_RAX,
-	X86_FIRST_RI_CLOBBER = X86_RAX,
 	X86_RBX,
 	X86_RCX,
 	X86_RDX,
@@ -225,4 +224,3 @@ static const char *x86_xmm_regs[] = { "$xmm0", "$xmm1", "$xmm2", "$xmm3", "$xmm4
 static const char *x86_ymm_regs[] = { "$ymm0", "$ymm1", "$ymm2", "$ymm3", "$ymm4", "$ymm5", "$ymm6", "$ymm7",
                                       "$ymm8", "$ymm9", "$ymm10", "$ymm11", "$ymm12", "$ymm13", "$ymm14", "$ymm15" };
 
-static char x86_int_width_suffix[] = { 'b', 'w', 'l', 'q' };

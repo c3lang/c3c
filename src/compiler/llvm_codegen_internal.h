@@ -297,7 +297,7 @@ LLVMValueRef llvm_emit_alloca(GenContext *c, LLVMTypeRef type, unsigned alignmen
 LLVMValueRef llvm_emit_alloca_aligned(GenContext *c, Type *type, const char *name);
 void llvm_emit_and_set_decl_alloca(GenContext *c, Decl *decl);
 INLINE void llvm_set_alignment(LLVMValueRef alloca, AlignSize alignment);
-INLINE AlignSize llvm_type_or_alloca_align(GenContext *c, LLVMValueRef dest, Type *type);
+INLINE AlignSize llvm_type_or_alloca_align(LLVMValueRef dest, Type *type);
 
 // -- Bitcast --
 static inline LLVMValueRef llvm_emit_bitcast(GenContext *c, LLVMValueRef value, Type *type);

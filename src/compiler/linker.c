@@ -47,7 +47,7 @@ static inline bool is_pie(RelocModel reloc)
 
 static const char *ld_target(ArchType arch_type)
 {
-	switch (platform_target.arch)
+	switch (arch_type)
 	{
 		case ARCH_TYPE_X86_64:
 			return "elf_x86_64";

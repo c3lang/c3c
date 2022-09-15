@@ -221,7 +221,6 @@ AsmRegister *asm_reg_by_name(const char *name)
 static void init_asm_aarch64(void)
 {
 //	Clobbers cc_flag_mask = clobbers_make(AARCH64_CC, -1);
-	bool is_x64 = platform_target.arch == ARCH_TYPE_X86_64;
 	asm_target.clobber_name_list = Aarch64ClobberNames;
 	asm_target.extra_clobbers = NULL;
 	reg_instr("ldr", "w:r32/r64, mem"); // Could be separated
@@ -424,7 +423,7 @@ void init_asm(void)
 			return;
 		case ARCH_TYPE_UNKNOWN:
 			error_exit("Unknown arch does not support asm.");
-			break;
+			UNREACHABLE
 		case ARCH_TYPE_PPC:
 		case ARCH_TYPE_PPC64:
 		case ARCH_TYPE_PPC64LE:

@@ -1722,6 +1722,7 @@ static inline bool sema_expr_analyse_call_invocation(SemaContext *context, Expr 
 		// 4a. Is this *not* a variadic function/macro? - Then that's an error.
 		if (variadic == VARIADIC_NONE)
 		{
+			assert(call->call_expr.arguments);
 			SEMA_ERROR(call->call_expr.arguments[num_args - 1],
 			           "Using the splat operator is only allowed on vararg parameters.");
 			return false;
@@ -2009,6 +2010,7 @@ static inline Type *unify_returns(SemaContext *context)
 		{
 			SEMA_ERROR(return_stmt, "Cannot find a common parent type of %s and %s",
 			           rtype, common_type);
+			assert(context->returns);
 			SEMA_NOTE(context->returns[i - 1], "The previous return was here.");
 			return NULL;
 		}
@@ -3488,7 +3490,6 @@ static inline void expr_replace_with_enum_name_array(Expr *enum_array_expr, Decl
 	Expr *initializer = expr_new(EXPR_INITIALIZER_LIST, span);
 	ArraySize elements = vec_size(values);
 	Expr **element_values = elements > 0 ? VECNEW(Expr*, elements) : NULL;
-	Type *kind = enum_decl->type;
 	for (ArraySize i = 0; i < elements; i++)
 	{
 		Decl *decl = values[i];
@@ -8388,6 +8389,7 @@ bool sema_analyse_expr_lvalue_fold_const(SemaContext *context, Expr *expr)
 
 bool sema_analyse_expr_lvalue(SemaContext *context, Expr *expr)
 {
+	assert(expr);
 	switch (expr->resolve_status)
 	{
 		case RESOLVE_NOT_DONE:
@@ -8430,6 +8432,7 @@ MemberIndex sema_get_initializer_const_array_size(SemaContext *context, Expr *in
 				return 0;
 			case CONST_INIT_ARRAY:
 				*may_be_array = true;
+				assert(init->init_array.elements);
 				return VECLAST(init->init_array.elements)->init_array_value.index + 1;
 			case CONST_INIT_ARRAY_FULL:
 				*may_be_array = true;
@@ -8669,14 +8672,9 @@ bool sema_insert_method_call(SemaContext *context, Expr *method_call, Decl *meth
 			expr_insert_deref(parent);
 		}
 	}
-	assert(first == parent->type->canonical);
+	assert(parent && first == parent->type->canonical);
 	if (!sema_expr_analyse_general_call(context, method_call, method_decl, parent, false)) return expr_poison(method_call);
 	method_call->resolve_status = RESOLVE_DONE;
 	return true;
-}
-
-bool sema_expr_rvalue(SemaContext *context, Expr *expr)
-{
-	return sema_cast_rvalue(context, expr);
 }
 

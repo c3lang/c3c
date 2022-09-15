@@ -85,7 +85,7 @@ const char *ct_eval_expr(SemaContext *c, const char *expr_type, Expr *inner, Tok
 extern const char *ct_eval_error;
 SemaContext *transform_context_for_eval(SemaContext *context, SemaContext *temp_context, CompilationUnit *eval_unit);
 bool sema_check_asm(SemaContext *context, AsmInlineBlock *block, Ast *asm_stmt);
-bool sema_expr_rvalue(SemaContext *context, Expr *expr);
+
 static inline bool expr_is_const(Expr *expr);
 
 static inline bool expr_is_const(Expr *expr)

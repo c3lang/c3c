@@ -56,4 +56,4 @@ static inline bool abi_type_is_promotable_integer_or_bool(AbiType type)
 	return false;
 }
 
-const char *codegen_create_asm(Ast *ast, ClobberList *clobber_list);
+const char *codegen_create_asm(Ast *ast);

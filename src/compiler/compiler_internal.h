@@ -541,15 +541,6 @@ typedef struct
 	};
 } FuncDecl;
 
-typedef struct
-{
-	TypeInfoId type_parent; // May be 0
-	Signature signature;
-	AstId body;
-	DeclId body_param;
-	CompilationUnit *unit;
-	AstId docs;
-} MacroDecl;
 
 typedef struct
 {
@@ -621,10 +612,7 @@ typedef struct
 } LabelDecl;
 
 
-typedef struct
-{
-	Decl **params;
-} BodyParamDecl;
+
 
 typedef struct Decl_
 {
@@ -1043,11 +1031,6 @@ typedef struct
 	};
 } ExprTryUnwrap;
 
-typedef struct
-{
-	Expr *inner;
-} ExprLen;
-
 
 typedef struct
 {
@@ -1119,7 +1102,6 @@ struct Expr_
 		ExprIdentifierRaw ct_ident_expr;            // 24
 		ExprCtCall ct_call_expr;                    // 24
 		ExprCtArg ct_arg_expr;
-		ExprIdentifierRaw ct_macro_ident_expr;      // 24
 		ExprIdentifierRaw hash_ident_expr;          // 24
 		TypeInfo *typeid_expr;                      // 8
 		ExprBodyExpansion body_expansion_expr;      // 24
@@ -1443,7 +1425,6 @@ typedef struct Module_
 	Decl** method_extensions;
 	Decl** intvec_extensions;
 	Decl** floatvec_extensions;
-	Decl** generic_cache;
 	HTable symbols;
 	struct CompilationUnit_ **units;
 	Module *parent_module;

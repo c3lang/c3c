@@ -86,12 +86,8 @@ static inline void codegen_create_aarch64_arg(AsmInlineBlock *block, unsigned in
 			scratch_buffer_append_unsigned_int(arg->value);
 			return;
 		case ASM_ARG_REG:
-		{
-
-			AsmRegister *reg = arg->reg.ref;
-			scratch_buffer_append(&reg->name[1]);
+			scratch_buffer_append(&arg->reg.ref->name[1]);
 			return;
-		}
 		case ASM_ARG_VALUE:
 			scratch_buffer_append_char('$');
 			scratch_buffer_append_unsigned_int(arg->index + input_offset);
@@ -110,7 +106,6 @@ static inline void codegen_create_aarch64_arg(AsmInlineBlock *block, unsigned in
 			return;
 		case ASM_ARG_ADDR:
 			TODO
-			return;
 		case ASM_ARG_ADDROF:
 			TODO
 	}
@@ -170,7 +165,7 @@ static inline char *codegen_create_aarch64_asm(AsmInlineBlock *block)
 	return scratch_buffer_to_string();
 }
 
-const char *codegen_create_asm(Ast *ast, ClobberList *clobber_list)
+const char *codegen_create_asm(Ast *ast)
 {
 	assert(ast->ast_kind == AST_ASM_BLOCK_STMT);
 	scratch_buffer_clear();

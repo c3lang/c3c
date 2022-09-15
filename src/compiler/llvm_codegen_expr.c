@@ -1062,7 +1062,6 @@ static void llvm_emit_arr_to_subarray_cast(GenContext *c, BEValue *value, Type *
 	if (size)
 	{
 		llvm_value_rvalue(c, value);
-		LLVMTypeRef subarray_type = llvm_get_type(c, to_type);
 		pointer = llvm_emit_bitcast_ptr(c, value->value, array_type);
 	}
 	else
@@ -1112,7 +1111,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 		case CAST_PTRANY:
 		{
 			llvm_value_rvalue(c, value);
-			LLVMTypeRef any = llvm_get_type(c, to_type);
 			LLVMValueRef pointer = llvm_emit_bitcast(c, value->value, type_voidptr);
 			BEValue typeid;
 			llvm_emit_typeid(c, &typeid, from_type->pointer);
@@ -4789,7 +4787,6 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 	ABIArgInfo **abi_args = prototype->abi_args;
 	unsigned param_count = vec_size(params);
 	Expr **args = expr->call_expr.arguments;
-	unsigned arguments = vec_size(args);
 	Expr **varargs = NULL;
 	Expr *vararg_splat = NULL;
 	if (prototype->variadic != VARIADIC_NONE)
@@ -5276,8 +5273,7 @@ static inline void llvm_emit_expr_block(GenContext *context, BEValue *be_value, 
 
 static inline void llvm_emit_macro_block(GenContext *context, BEValue *be_value, Expr *expr)
 {
-	foreach(Decl *, expr->macro_block.params)
-	{
+	FOREACH_BEGIN(Decl *val, expr->macro_block.params)
 		// Skip vararg
 		if (!val) continue;
 		// In case we have a constant, we never do an emit. The value is already folded.
@@ -5313,7 +5309,7 @@ static inline void llvm_emit_macro_block(GenContext *context, BEValue *be_value,
 
 		llvm_emit_expr(context, &value, val->var.init_expr);
 		llvm_store_decl(context, val, &value);
-	}
+	FOREACH_END();
 
 	llvm_emit_return_block(context, be_value, expr->type, expr->macro_block.first_stmt, expr->macro_block.block_exit);
 }
@@ -5603,7 +5599,6 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 				llvm_emit_block(c, exit);
 			}
 			{
-				LLVMTypeRef typeid = llvm_get_type(c, type_typeid);
 				LLVMValueRef len = llvm_emit_struct_gep_raw(c, ref, c->introspect_type, INTROSPECT_INDEX_LEN, align, &alignment);
 				len = llvm_load(c, c->size_type, len, alignment, "namelen");
 				LLVMValueRef val = llvm_emit_struct_gep_raw(c, ref, c->introspect_type, INTROSPECT_INDEX_ADDITIONAL, align, &alignment);
@@ -5742,7 +5737,6 @@ static inline void llvm_emit_argv_to_subarray(GenContext *c, BEValue *value, Exp
 	LLVMSetAlignment(arg_array, alignment);
 
 	// Store the addresses.
-	LLVMTypeRef temp_type = llvm_get_type(c, expr->type);
 	LLVMTypeRef loop_type = llvm_get_type(c, type_usize);
 	LLVMTypeRef char_ptr_type = llvm_get_ptr_type(c, type_char);
 	LLVMValueRef size = llvm_zext_trunc(c, count, loop_type);
@@ -5846,7 +5840,6 @@ static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Ex
 			llvm_emit_block(c, ok_block);
 			LLVMValueRef fault_data = LLVMBuildIntToPtr(c->builder, be_value->value,
 														LLVMPointerType(c->fault_type, 0), "");
-			LLVMTypeRef subarray = llvm_get_type(c, type_chars);
 			LLVMValueRef ptr = LLVMBuildStructGEP2(c->builder, c->fault_type, fault_data, 1, "");
 			llvm_emit_br(c, exit_block);
 			llvm_emit_block(c, exit_block);
@@ -5864,7 +5857,6 @@ static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Ex
 			llvm_value_rvalue(c, be_value);
 			LLVMTypeRef subarray = llvm_get_type(c, type_chars);
 
-			LLVMTypeRef backend = LLVMTypeOf(inner_type->backend_typeid);
 			LLVMValueRef to_introspect = LLVMBuildIntToPtr(c->builder, inner_type->backend_typeid,
 			                                              LLVMPointerType(c->introspect_type, 0), "");
 			LLVMValueRef ptr = LLVMBuildStructGEP2(c->builder, c->introspect_type, to_introspect, INTROSPECT_INDEX_ADDITIONAL, "");
