@@ -511,7 +511,7 @@ void json_to_str_(JSONObject* obj)
 			scratch_buffer_append_double(obj->f);
 			break;
 		case J_BOOL:
-			scratch_buffer_append(obj->b == true ? "true" : "false");
+			scratch_buffer_append(obj->b ? "true" : "false");
 		default:
 			break;
 	}
