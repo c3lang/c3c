@@ -232,6 +232,27 @@ void scratch_buffer_append_signed_int(int64_t i)
 	scratch_buffer.len += len_needed;
 }
 
+void scratch_buffer_append_double(double d)
+{
+	uint32_t len_needed = (uint32_t)sprintf(&scratch_buffer.str[scratch_buffer.len], "%f", d);
+	if (scratch_buffer.len + len_needed > MAX_STRING_BUFFER - 1)
+	{
+		error_exit("Scratch buffer size (%d chars) exceeded", MAX_STRING_BUFFER - 1);
+	}
+	scratch_buffer.len += len_needed;
+
+	//removing unused zeroes and dot
+	size_t i = scratch_buffer.len;
+	while (scratch_buffer.len > 0)
+	{
+		if (scratch_buffer.str[scratch_buffer.len - 1] != '0' && scratch_buffer.str[scratch_buffer.len - 1] != '.')
+		{
+			return;
+		}
+		scratch_buffer.len--;
+	}
+}
+
 void scratch_buffer_append_unsigned_int(uint64_t i)
 {
 	uint32_t len_needed = (uint32_t)sprintf(&scratch_buffer.str[scratch_buffer.len], "%llu", (unsigned long long)i);
