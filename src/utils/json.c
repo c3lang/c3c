@@ -464,10 +464,7 @@ void json_free(JSONObject** ptr)
 
 void json_to_str_(JSONObject* obj)
 {
-	if (!obj)
-	{
-		return;
-	}
+	assert(obj != NULL);
 
 	switch(obj->type)
 	{
