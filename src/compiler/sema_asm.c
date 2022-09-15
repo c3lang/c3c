@@ -64,11 +64,9 @@ INLINE bool sema_reg_is_valid_in_slot(AsmRegister *reg, AsmArgType arg_type)
 			return (arg_type.ireg_bits & reg->bits) != 0;
 		case ASM_REG_FLOAT:
 			return (arg_type.float_bits & reg->bits) != 0;
-		case ASM_REG_IVEC:
 		case ASM_REF_FVEC:
-		case ASM_REF_SSE:
-		case ASM_REF_MMX:
-			TODO
+		case ASM_REG_IVEC:
+			return (arg_type.vec_bits & reg->bits) != 0;
 	}
 	UNREACHABLE
 }
@@ -190,7 +188,7 @@ static inline bool sema_check_asm_arg_reg(SemaContext *context, AsmInlineBlock *
 		SEMA_ERROR(expr, "Expected a valid register name.");
 		return false;
 	}
-	if (sema_reg_is_valid_in_slot(reg, arg_type))
+	if (!sema_reg_is_valid_in_slot(reg, arg_type))
 	{
 		SEMA_ERROR(expr, "'%s' is not valid in this slot.", reg->name);
 		return false;

@@ -273,8 +273,6 @@ typedef enum
 	ASM_REG_FLOAT,
 	ASM_REG_IVEC,
 	ASM_REF_FVEC,
-	ASM_REF_SSE,
-	ASM_REF_MMX,
 } AsmRegisterType;
 
 typedef enum
@@ -284,7 +282,9 @@ typedef enum
 	ARG_BITS_32 = 1 << 2,
 	ARG_BITS_64 = 1 << 3,
 	ARG_BITS_128 = 1 << 4,
-	ARG_BITS_80 = 1 << 5,
+	ARG_BITS_256 = 1 << 5,
+	ARG_BITS_512 = 1 << 6,
+	ARG_BITS_80 = 1 << 7,
 } AsmArgBits;
 
 typedef enum

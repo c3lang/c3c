@@ -58,8 +58,18 @@ INLINE AsmArgBits parse_bits(const char **desc)
 	}
 	if (memcmp("128", *desc, 3) == 0)
 	{
-		*desc += 2;
+		*desc += 3;
 		return ARG_BITS_128;
+	}
+	if (memcmp("256", *desc, 3) == 0)
+	{
+		*desc += 3;
+		return ARG_BITS_256;
+	}
+	if (memcmp("512", *desc, 3) == 0)
+	{
+		*desc += 3;
+		return ARG_BITS_512;
 	}
 	error_exit("Invalid bits: %s.", *desc);
 }
@@ -95,7 +105,10 @@ INLINE AsmArgType decode_arg_type(const char **desc)
 					*desc += 2;
 					goto NEXT;
 				}
-				error_exit("Unexpected string %s", &desc[-1]);
+				error_exit("Unexpected string %s", &(*desc)[-1]);
+			case 'v':
+				arg_type.vec_bits |= parse_bits(desc);
+				goto NEXT;
 			case 'i':
 				if (memcmp("mm", *desc, 2) == 0)
 				{
@@ -119,7 +132,7 @@ INLINE AsmArgType decode_arg_type(const char **desc)
 					goto NEXT;
 				}
 			default:
-				error_exit("Unexpected string '%s'.", &desc[-1]);
+				error_exit("Unexpected string '%s'.", &(*desc)[-1]);
 		}
 NEXT:
 		switch (**desc)
@@ -236,22 +249,22 @@ static void init_asm_aarch64(void)
 	reg_instr("strh", "r32/r64, w:mem");
 	reg_instr("stp", "r32/r64, r32/r64, w:mem");
 	reg_instr("mov", "w:r32/r64, mem");
-	reg_register_list(aarch64_quad_regs, 32, ASM_REG_INT, 64, AARCH64_R0);
-	reg_register_list(aarch64_long_regs, 32, ASM_REG_INT, 32, AARCH64_R0);
-	reg_register_list(aarch64_f128_regs, 32, ASM_REG_FLOAT, 128, AARCH64_Q0);
-	reg_register_list(aarch64_double_regs, 32, ASM_REG_FLOAT, 64, AARCH64_Q0);
-	reg_register_list(aarch64_float_regs, 32, ASM_REG_FLOAT, 32, AARCH64_Q0);
-	reg_register_list(aarch64_f16_regs, 32, ASM_REG_FLOAT, 16, AARCH64_Q0);
-	reg_register_list(aarch64_f8_regs, 32, ASM_REG_FLOAT, 8, AARCH64_Q0);
-	reg_register_list(aarch64_v8b_regs, 32, ASM_REG_IVEC, 64, AARCH64_FIRST_RV_CLOBBER);
-	reg_register_list(aarch64_v16b_regs, 32, ASM_REG_IVEC, 128,AARCH64_FIRST_RV_CLOBBER);
-	reg_register_list(aarch64_v4h_regs, 32, ASM_REG_IVEC, 64, AARCH64_FIRST_RV_CLOBBER);
-	reg_register_list(aarch64_v8h_regs, 32, ASM_REG_IVEC, 128, AARCH64_FIRST_RV_CLOBBER);
-	reg_register_list(aarch64_v2s_regs, 32, ASM_REG_IVEC, 64, AARCH64_FIRST_RV_CLOBBER);
-	reg_register_list(aarch64_v4s_regs, 32, ASM_REG_IVEC, 128, AARCH64_FIRST_RV_CLOBBER);
-	reg_register_list(aarch64_v1d_regs, 32, ASM_REG_IVEC, 64, AARCH64_FIRST_RV_CLOBBER);
-	reg_register_list(aarch64_v2d_regs, 32, ASM_REG_IVEC, 128, AARCH64_FIRST_RV_CLOBBER);
-	reg_register("$sp", ASM_REG_INT, 64, AARCH64_R31);
+	reg_register_list(aarch64_quad_regs, 32, ASM_REG_INT, ARG_BITS_64, AARCH64_R0);
+	reg_register_list(aarch64_long_regs, 32, ASM_REG_INT, ARG_BITS_32, AARCH64_R0);
+	reg_register_list(aarch64_f128_regs, 32, ASM_REG_FLOAT, ARG_BITS_128, AARCH64_Q0);
+	reg_register_list(aarch64_double_regs, 32, ASM_REG_FLOAT, ARG_BITS_64, AARCH64_Q0);
+	reg_register_list(aarch64_float_regs, 32, ASM_REG_FLOAT, ARG_BITS_32, AARCH64_Q0);
+	reg_register_list(aarch64_f16_regs, 32, ASM_REG_FLOAT, ARG_BITS_16, AARCH64_Q0);
+	reg_register_list(aarch64_f8_regs, 32, ASM_REG_FLOAT, ARG_BITS_8, AARCH64_Q0);
+	reg_register_list(aarch64_v8b_regs, 32, ASM_REG_IVEC, ARG_BITS_64, AARCH64_FIRST_RV_CLOBBER);
+	reg_register_list(aarch64_v16b_regs, 32, ASM_REG_IVEC, ARG_BITS_128, AARCH64_FIRST_RV_CLOBBER);
+	reg_register_list(aarch64_v4h_regs, 32, ASM_REG_IVEC, ARG_BITS_64, AARCH64_FIRST_RV_CLOBBER);
+	reg_register_list(aarch64_v8h_regs, 32, ASM_REG_IVEC, ARG_BITS_128, AARCH64_FIRST_RV_CLOBBER);
+	reg_register_list(aarch64_v2s_regs, 32, ASM_REG_IVEC, ARG_BITS_64, AARCH64_FIRST_RV_CLOBBER);
+	reg_register_list(aarch64_v4s_regs, 32, ASM_REG_IVEC, ARG_BITS_128, AARCH64_FIRST_RV_CLOBBER);
+	reg_register_list(aarch64_v1d_regs, 32, ASM_REG_IVEC, ARG_BITS_64, AARCH64_FIRST_RV_CLOBBER);
+	reg_register_list(aarch64_v2d_regs, 32, ASM_REG_IVEC, ARG_BITS_128, AARCH64_FIRST_RV_CLOBBER);
+	reg_register("$sp", ASM_REG_INT, ARG_BITS_64, AARCH64_R31);
 }
 
 static void init_asm_wasm(void)
@@ -294,10 +307,23 @@ static void init_asm_x86(void)
 	reg_instr_clob("adcw", cc_flag_mask, "rw:r16/mem, r16/mem/imm16/immi8");
 	reg_instr_clob("adcl", cc_flag_mask, "rw:r32/mem, r32/mem/imm32/immi8");
 	reg_instr_clob("adcq", cc_flag_mask, "rw:r64/mem, r64/mem/immi32/immi8");
+
+	reg_instr_clob("adcxl", cc_flag_mask, "r32, rw:r32/mem");
+	reg_instr_clob("adcxq", cc_flag_mask, "r64, rw:r64/mem");
+
 	reg_instr_clob("addb", cc_flag_mask, "rw:r8/mem, r8/mem/imm8");
 	reg_instr_clob("addw", cc_flag_mask, "rw:r16/mem, r16/mem/imm16/immi8");
 	reg_instr_clob("addl", cc_flag_mask, "rw:r32/mem, r32/mem/imm32/immi8");
 	reg_instr_clob("addq", cc_flag_mask, "rw:r64/mem, r64/mem/immi32/immi8");
+
+	reg_instr("addpd", "rw:v128, v128/mem");
+	reg_instr("addps", "rw:v128, v128/mem");
+	reg_instr("addsd", "rw:v128, v128/mem");
+	reg_instr("addss", "rw:v128, v128/mem");
+	reg_instr("vaddpd", "w:v128/v256/v512, v128/v256/v512, v128/v256/v512/mem");
+	reg_instr("vaddps", "w:v128/v256/v512, v128/v256/v512, v128/v256/v512/mem");
+	reg_instr("vaddsd", "w:v128, v128, v128/mem");
+	reg_instr("vaddss", "w:v128, v128, v128/mem");
 
 	reg_instr_clob("cbtw", rax_mask, NULL);
 	reg_instr_clob("cwtl", rax_mask, NULL);
@@ -380,21 +406,22 @@ static void init_asm_x86(void)
 	asm_target.extra_clobbers = "~{flags},~{dirflag},~{fspr}";
 	if (platform_target.arch == ARCH_TYPE_X86)
 	{
-		reg_register_list(x86_long_regs, 8, ASM_REG_INT, 32, X86_RAX);
-		reg_register_list(x86_word_regs, 8, ASM_REG_INT, 16, X86_RAX);
-		reg_register_list(x86_low_byte_regs, 8, ASM_REG_INT, 8, X86_RAX);
-		reg_register_list(x86_float_regs, 8, ASM_REG_FLOAT, 80, X86_ST0);
-		reg_register_list(x86_xmm_regs, 8, ASM_REF_MMX, 128, X86_MM0);
+		reg_register_list(x86_long_regs, 8, ASM_REG_INT, ARG_BITS_32, X86_RAX);
+		reg_register_list(x86_word_regs, 8, ASM_REG_INT, ARG_BITS_16, X86_RAX);
+		reg_register_list(x86_low_byte_regs, 8, ASM_REG_INT, ARG_BITS_8, X86_RAX);
+		reg_register_list(x86_float_regs, 8, ASM_REG_FLOAT, ARG_BITS_80, X86_ST0);
+		reg_register_list(x86_xmm_regs, 8, ASM_REF_FVEC, ARG_BITS_128, X86_MM0);
 	}
 	else
 	{
-		reg_register_list(x64_quad_regs, 15, ASM_REG_INT, 64, X86_RAX);
-		reg_register_list(x86_long_regs, 15, ASM_REG_INT, 32, X86_RAX);
-		reg_register_list(x86_word_regs, 15, ASM_REG_INT, 16, X86_RAX);
-		reg_register_list(x86_low_byte_regs, 15, ASM_REG_INT, 8, X86_RAX);
-		reg_register_list(x86_high_byte_regs, 4, ASM_REG_INT, 8, X86_RAX);
-		reg_register_list(x86_xmm_regs, 16, ASM_REF_MMX, 128, X86_XMM0);
-		reg_register_list(x86_ymm_regs, 16, ASM_REF_MMX, 128, X86_YMM0);
+		reg_register_list(x64_quad_regs, 15, ASM_REG_INT, ARG_BITS_64, X86_RAX);
+		reg_register_list(x86_long_regs, 15, ASM_REG_INT, ARG_BITS_32, X86_RAX);
+		reg_register_list(x86_word_regs, 15, ASM_REG_INT, ARG_BITS_16, X86_RAX);
+		reg_register_list(x86_low_byte_regs, 15, ASM_REG_INT, ARG_BITS_8, X86_RAX);
+		reg_register_list(x86_high_byte_regs, 4, ASM_REG_INT, ARG_BITS_8, X86_RAX);
+		reg_register_list(x86_xmm_regs, 16, ASM_REF_FVEC, ARG_BITS_128, X86_XMM0);
+		reg_register_list(x86_ymm_regs, 16, ASM_REF_FVEC, ARG_BITS_256, X86_XMM0);
+		reg_register_list(x86_zmm_regs, 16, ASM_REF_FVEC, ARG_BITS_512, X86_XMM0);
 	}
 }
 void init_asm(void)
