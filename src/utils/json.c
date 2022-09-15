@@ -523,3 +523,45 @@ char *json_to_str(JSONObject *obj)
 	json_to_str_(obj);
 	return scratch_buffer_to_string();
 }
+
+JSONObject* json_string(JsonAllocator* allocator, const char* str)
+{
+	JSONObject *obj = allocator(sizeof(JSONObject));
+	obj->type = J_STRING;
+	obj->str = strdup(str);
+	return obj;
+}
+
+JSONObject* json_number(JsonAllocator* allocator, double d)
+{
+	JSONObject *obj = allocator(sizeof(JSONObject));
+	obj->type = J_NUMBER;
+	obj->f = d;
+	return obj;
+}
+
+JSONObject* json_bool(JsonAllocator* allocator, bool b)
+{
+	JSONObject *obj = allocator(sizeof(JSONObject));
+	obj->type = J_BOOL;
+	obj->b = b;
+	return obj;
+}
+
+JSONObject* json_object(JsonAllocator* allocator, size_t members_size)
+{
+	JSONObject *obj = allocator(sizeof(JSONObject));
+	obj->type = J_OBJECT;
+	obj->member_len = members_size;
+	obj->members = allocator(sizeof(JSONObject*) * members_size);
+	return obj;
+}
+
+JSONObject* json_array(JsonAllocator* allocator, size_t array_size)
+{
+	JSONObject *obj = allocator(sizeof(JSONObject));
+	obj->type = J_ARRAY;
+	obj->array_len = array_size;
+	obj->elements = allocator(sizeof(JSONObject*) * array_size);
+	return obj;
+}
