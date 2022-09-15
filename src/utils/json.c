@@ -65,9 +65,9 @@ static bool json_match(JsonParser *parser, const char *str)
 	return true;
 }
 
-static inline JSONObject *json_new_object(JsonParser *parser, JSONType type)
+inline JSONObject *json_new_object(JsonAllocator *allocator, JSONType type)
 {
-	JSONObject *obj = parser->allocator(sizeof(JSONObject));
+	JSONObject *obj = allocator(sizeof(JSONObject));
 	obj->type = type;
 	return obj;
 }
@@ -283,7 +283,7 @@ JSONObject *json_parse_array(JsonParser *parser)
 		return &empty_array_val;
 	}
 	size_t capacity = 16;
-	JSONObject *array = json_new_object(parser, J_ARRAY);
+	JSONObject *array = json_new_object(parser->allocator, J_ARRAY);
 	JSONObject** elements = parser->allocator(sizeof(JSONObject*) * capacity);
 	size_t index = 0;
 	while (1)
@@ -317,7 +317,7 @@ JSONObject *json_parse_object(JsonParser *parser)
 		return &empty_obj_val;
 	}
 	size_t capacity = 16;
-	JSONObject *obj = json_new_object(parser, J_OBJECT);
+	JSONObject *obj = json_new_object(parser->allocator, J_OBJECT);
 	JSONObject** elements = parser->allocator(sizeof(JSONObject*) * capacity);
 	const char** keys = parser->allocator(sizeof(JSONObject*) * capacity);
 	size_t index = 0;
@@ -388,7 +388,7 @@ JSONObject *json_parse(JsonParser *parser)
 			return NULL;
 		case T_STRING:
 		{
-			JSONObject *obj = json_new_object(parser, J_STRING);
+			JSONObject *obj = json_new_object(parser->allocator, J_STRING);
 			obj->type = J_STRING;
 			obj->str = parser->last_string;
 			json_lexer_advance(parser);
@@ -397,7 +397,7 @@ JSONObject *json_parse(JsonParser *parser)
 		case T_NUMBER:
 		{
 			if (parser->last_number == 0) return &zero_val;
-			JSONObject *obj = json_new_object(parser, J_NUMBER);
+			JSONObject *obj = json_new_object(parser->allocator, J_NUMBER);
 			obj->type = J_NUMBER;
 			obj->f = parser->last_number;
 			json_lexer_advance(parser);
@@ -423,4 +423,99 @@ void json_init_string(JsonParser *parser, const char *str, JsonAllocator *alloca
 	parser->error_message = NULL;
 	parser->line = 1;
 	json_lexer_advance(parser);
+}
+
+void json_free(JSONObject** ptr)
+{
+	JSONObject *obj = *ptr;
+	switch(obj->type)
+	{
+		case J_OBJECT:
+		{
+			size_t i = 0;
+			while (i < obj->member_len)
+			{
+				json_free(&obj->members[i]);
+				free((char*)obj->keys[i]);
+				i++;
+			}
+			free(obj->keys);
+			free(obj->members);
+		}break;
+		case J_ARRAY:
+		{
+			size_t i = 0;
+			while (i < obj->array_len)
+			{
+				json_free(&obj->elements[i]);
+				i++;
+			}
+			free(obj->elements);
+		}break;
+		case J_STRING:
+			free((char*)obj->str);
+			break;
+		default:
+			break;
+	}
+	free(*ptr);
+	*ptr = NULL;
+}
+
+void json_to_str_(JSONObject* obj)
+{
+	switch(obj->type)
+	{
+		case J_OBJECT:
+		{
+			scratch_buffer_append("{");
+			size_t i = 0;
+			while (i < obj->member_len)
+			{
+				scratch_buffer_append("\"");
+				scratch_buffer_append((char*)obj->keys[i]);
+				scratch_buffer_append("\"");
+				scratch_buffer_append(":");
+				json_to_str_(obj->elements[i]);
+				if (i + 1 < obj->member_len)
+				{
+					scratch_buffer_append(",");
+				}
+				i++;
+			}
+			scratch_buffer_append("}");
+		}break;
+		case J_ARRAY:
+		{
+			scratch_buffer_append("[");
+			size_t i = 0;
+			while (i < obj->member_len)
+			{
+				json_to_str_(obj->elements[i]);
+				if (i + 1 < obj->member_len)
+				{
+					scratch_buffer_append(",");
+				}
+				i++;
+			}
+			scratch_buffer_append("]");
+		}break;
+		case J_STRING:
+			scratch_buffer_append("\"");
+			scratch_buffer_append(obj->str);
+			scratch_buffer_append("\"");
+			break;
+		case J_NUMBER:
+			scratch_buffer_append_double(obj->f);
+			break;
+		default:
+			break;
+	}
+}
+
+char *json_to_str(JSONObject* obj)
+{
+	scratch_buffer_clear();
+	json_to_str_(obj);
+	return scratch_buffer_to_string();
 }

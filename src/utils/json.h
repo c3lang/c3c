@@ -47,7 +47,7 @@ typedef enum JSONTokenType_
 	T_FALSE,
 	T_NULL,
 	T_EOF,
-	} JSONTokenType;
+} JSONTokenType;
 
 typedef void*(JsonAllocator)(size_t);
 
@@ -64,4 +64,7 @@ typedef struct
 
 void json_init_string(JsonParser *parser, const char *str, JsonAllocator *allocator);
 JSONObject *json_parse(JsonParser *parser);
+char *json_to_str(JSONObject *obj);
 JSONObject *json_obj_get(JSONObject *obj, const char *key);
+JSONObject *json_new_object(JsonAllocator *allocator, JSONType type);
+void json_free(JSONObject **ptr);
