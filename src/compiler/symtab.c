@@ -187,7 +187,6 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_COPYSIGN] = KW_DEF("copysign");
 	builtin_list[BUILTIN_COS] = KW_DEF("cos");
 	builtin_list[BUILTIN_CTLZ] = KW_DEF("clz");
-	builtin_list[BUILTIN_CTPOP] = KW_DEF("popcount");
 	builtin_list[BUILTIN_CTTZ] = KW_DEF("ctz");
 	builtin_list[BUILTIN_EXP] = KW_DEF("exp");
 	builtin_list[BUILTIN_EXP2] = KW_DEF("exp2");
@@ -203,7 +202,9 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_MEMSET] = KW_DEF("memset");
 	builtin_list[BUILTIN_MIN] = KW_DEF("min");
 	builtin_list[BUILTIN_NEARBYINT] = KW_DEF("nearbyint");
+	builtin_list[BUILTIN_POPCOUNT] = KW_DEF("popcount");
 	builtin_list[BUILTIN_POW] = KW_DEF("pow");
+	builtin_list[BUILTIN_REVERSE] = KW_DEF("reverse");
 	builtin_list[BUILTIN_RINT] = KW_DEF("rint");
 	builtin_list[BUILTIN_ROUND] = KW_DEF("round");
 	builtin_list[BUILTIN_ROUNDEVEN] = KW_DEF("roundeven");
