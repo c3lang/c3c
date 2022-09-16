@@ -380,6 +380,7 @@ static void init_asm_x86(void)
 	reg_instr_clob("subw", rax_cc_mask, "rw:r16/mem, r16/mem/imm16");
 	reg_instr_clob("subl", rax_cc_mask, "rw:r32/mem, r32/mem/imm32");
 	reg_instr_clob("subq", rax_cc_mask, "rw:r64/mem, r64/mem/immi32/imm64");
+	reg_instr("cpuid", NULL);
 	reg_instr("hlt", NULL);
 	reg_instr("in", "w:r8/r16/r32, r16/imm8"); // Actually ensure reg_al_ax and dx
 	reg_instr_clob("incb", cc_flag_mask, "rw:r8/mem");
@@ -400,6 +401,8 @@ static void init_asm_x86(void)
 	reg_instr("iretl", NULL);
 	reg_instr("iretw", NULL);
 	reg_instr("iretq", NULL);
+	reg_instr("rdtsc", NULL);
+	reg_instr("rdtscp", NULL);
 	reg_instr("ret", NULL);
 
 	asm_target.clobber_name_list = X86ClobberNames;
