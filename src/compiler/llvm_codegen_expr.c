@@ -1540,6 +1540,8 @@ static inline void llvm_emit_initialize_reference_list(GenContext *c, BEValue *r
 		assert(vec_size(elements) == 1);
 		real_type = type_lowering(real_type->decl->strukt.members[0]->type);
 		value = LLVMBuildBitCast(c->builder, ref->value, llvm_get_ptr_type(c, real_type), "");
+		ref->value = value;
+		ref->type = real_type;
 	}
 
 	LLVMTypeRef llvm_type = llvm_get_type(c, real_type);
@@ -4342,6 +4344,7 @@ unsigned llvm_get_intrinsic(BuiltinFunction func)
 		case BUILTIN_UNREACHABLE:
 		case BUILTIN_STACKTRACE:
 		case BUILTIN_ABS:
+		case BUILTIN_SHUFFLEVECTOR:
 			UNREACHABLE
 		case BUILTIN_SYSCLOCK:
 			return intrinsic_id.readcyclecounter;
@@ -4527,6 +4530,37 @@ static inline void llvm_emit_syscall(GenContext *c, BEValue *be_value, Expr *exp
 	LLVMValueRef result = LLVMBuildCall2(c->builder, func_type, inline_asm, arg_results, arguments, "syscall");
 	llvm_value_set(be_value, result, type_uptr);
 }
+
+INLINE void llvm_emit_shufflevector(GenContext *c, BEValue *result_value, Expr *expr)
+{
+	Expr **args = expr->call_expr.arguments;
+	unsigned count = vec_size(args);
+	LLVMValueRef arg1;
+	LLVMValueRef arg2;
+	LLVMValueRef mask;
+	llvm_emit_expr(c, result_value, args[0]);
+	llvm_value_rvalue(c, result_value);
+	Type *rtype = result_value->type;
+	arg1 = result_value->value;
+	llvm_emit_expr(c, result_value, args[count - 1]);
+	llvm_value_rvalue(c, result_value);
+	mask = result_value->value;
+	assert(LLVMIsConstant(mask));
+	if (count == 2)
+	{
+		arg2 = LLVMGetPoison(LLVMTypeOf(arg1));
+	}
+	else
+	{
+		llvm_emit_expr(c, result_value, args[1]);
+		llvm_value_rvalue(c, result_value);
+		arg2 = result_value->value;
+	}
+	LLVMValueRef val = LLVMBuildShuffleVector(c->builder, arg1, arg2, mask, "shuffle");
+	llvm_value_set(result_value, val, rtype);
+	return;
+}
+
 void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 {
 	BuiltinFunction func = exprptr(expr->call_expr.function)->builtin_expr.builtin;
@@ -4537,6 +4571,11 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 		c->current_block_is_target = false;
 		LLVMBasicBlockRef after_unreachable = llvm_basic_block_new(c, "after.unreachable");
 		llvm_emit_block(c, after_unreachable);
+		return;
+	}
+	if (func == BUILTIN_SHUFFLEVECTOR)
+	{
+		llvm_emit_shufflevector(c, result_value, expr);
 		return;
 	}
 	if (func == BUILTIN_STACKTRACE)
