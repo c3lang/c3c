@@ -429,9 +429,29 @@ void json_init_string(JsonParser *parser, const char *str, JsonAllocator *alloca
 	json_lexer_advance(parser);
 }
 
+bool is_freable(JSONObject *obj)
+{
+	return (
+			obj != &error && obj != &true_val &&
+			obj != &false_val && obj != &zero_val &&
+			obj != &empty_array_val && obj != &empty_obj_val
+	);
+
+}
+
+//JSONObject error = { .type = J_ERROR };
+//JSONObject true_val = { .type = J_BOOL, .b = true };
+//JSONObject false_val = { .type = J_BOOL, .b = false };
+//JSONObject zero_val = { .type = J_NUMBER, .f = 0.0 };
+//JSONObject empty_array_val = { .type = J_ARRAY, .array_len = 0 };
+//JSONObject empty_obj_val = { .type = J_OBJECT, .member_len = 0 };
 void json_free(JSONObject **ptr)
 {
 	JSONObject *obj = *ptr;
+
+	if (!is_freable(obj))
+		return;
+
 	switch(obj->type)
 	{
 		case J_OBJECT:
