@@ -30,6 +30,16 @@ bitstruct ULongBE : ulong @bigendian
 	ulong val : 0..63;
 }
 
+bitstruct Int128BE : int128 @bigendian
+{
+	int128 val : 0..127;
+}
+
+bitstruct UInt128BE : uint128 @bigendian
+{
+	uint128 val : 0..127;
+}
+
 bitstruct ShortLE : short @littleendian
 {
 	short val : 0..15;
@@ -59,3 +69,14 @@ bitstruct ULongLE : ulong @littleendian
 {
 	ulong val : 0..63;
 }
+
+bitstruct Int128LE : int128 @littleendian
+{
+	int128 val : 0..127;
+}
+
+bitstruct UInt128LE : uint128 @littleendian
+{
+	uint128 val : 0..127;
+}
+
