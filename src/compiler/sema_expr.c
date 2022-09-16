@@ -2506,7 +2506,7 @@ static inline unsigned builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_CEIL:
 		case BUILTIN_COS:
 		case BUILTIN_CTLZ:
-		case BUILTIN_CTPOP:
+		case BUILTIN_POPCOUNT:
 		case BUILTIN_CTTZ:
 		case BUILTIN_EXP:
 		case BUILTIN_EXP2:
@@ -2527,6 +2527,7 @@ static inline unsigned builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_SYSCALL:
 		case BUILTIN_TRUNC:
 		case BUILTIN_VOLATILE_LOAD:
+		case BUILTIN_REVERSE:
 			return 1;
 		case BUILTIN_COPYSIGN:
 		case BUILTIN_MAX:
@@ -2846,11 +2847,15 @@ static inline bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *ex
 		case BUILTIN_BITREVERSE:
 		case BUILTIN_BSWAP:
 		case BUILTIN_CTLZ:
-		case BUILTIN_CTPOP:
+		case BUILTIN_POPCOUNT:
 		case BUILTIN_CTTZ:
 			if (!sema_check_builtin_args(args,
 			                             (BuiltinArg[]) { BA_INTLIKE },
 			                             arg_count)) return false;
+			rtype = args[0]->type;
+			break;
+		case BUILTIN_REVERSE:
+			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_VEC }, arg_count)) return false;
 			rtype = args[0]->type;
 			break;
 		case BUILTIN_CEIL:

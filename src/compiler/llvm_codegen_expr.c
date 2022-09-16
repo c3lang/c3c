@@ -4345,6 +4345,7 @@ unsigned llvm_get_intrinsic(BuiltinFunction func)
 		case BUILTIN_STACKTRACE:
 		case BUILTIN_ABS:
 		case BUILTIN_SHUFFLEVECTOR:
+		case BUILTIN_REVERSE:
 			UNREACHABLE
 		case BUILTIN_SYSCLOCK:
 			return intrinsic_id.readcyclecounter;
@@ -4382,7 +4383,7 @@ unsigned llvm_get_intrinsic(BuiltinFunction func)
 			return intrinsic_id.ctlz;
 		case BUILTIN_CTTZ:
 			return intrinsic_id.cttz;
-		case BUILTIN_CTPOP:
+		case BUILTIN_POPCOUNT:
 			return intrinsic_id.ctpop;
 		case BUILTIN_LOG2:
 			return intrinsic_id.log2;
@@ -4561,6 +4562,26 @@ INLINE void llvm_emit_shufflevector(GenContext *c, BEValue *result_value, Expr *
 	return;
 }
 
+INLINE void llvm_emit_reverse(GenContext *c, BEValue *result_value, Expr *expr)
+{
+	Expr **args = expr->call_expr.arguments;
+	llvm_emit_expr(c, result_value, args[0]);
+	llvm_value_rvalue(c, result_value);
+	Type *rtype = result_value->type;
+	LLVMValueRef arg1 = result_value->value;
+	LLVMValueRef arg2 = LLVMGetPoison(LLVMTypeOf(arg1));
+	LLVMValueRef buff[128];
+	unsigned elements = rtype->array.len;
+	LLVMValueRef *mask_element = elements > 128 ? MALLOC(sizeof(LLVMValueRef)) : buff;
+	LLVMTypeRef mask_element_type = llvm_get_type(c, type_int);
+	for (unsigned i = 0; i < elements; i++)
+	{
+		mask_element[i] = LLVMConstInt(mask_element_type, elements - i - 1, false);
+	}
+	LLVMValueRef mask = LLVMConstVector(mask_element, elements);
+	llvm_value_set(result_value, LLVMBuildShuffleVector(c->builder, arg1, arg2, mask, "reverse"), rtype);
+}
+
 void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 {
 	BuiltinFunction func = exprptr(expr->call_expr.function)->builtin_expr.builtin;
@@ -4576,6 +4597,11 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 	if (func == BUILTIN_SHUFFLEVECTOR)
 	{
 		llvm_emit_shufflevector(c, result_value, expr);
+		return;
+	}
+	if (func == BUILTIN_REVERSE)
+	{
+		llvm_emit_reverse(c, result_value, expr);
 		return;
 	}
 	if (func == BUILTIN_STACKTRACE)
