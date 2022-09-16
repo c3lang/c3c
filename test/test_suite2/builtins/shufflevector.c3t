@@ -1,0 +1,98 @@
+// #target: macos-x64
+
+module test;
+import std::io;
+
+struct Matrix2x2
+{
+	union
+	{
+		struct
+		{
+			float m00, m01;
+			float m10, m11;
+		}
+		struct
+		{
+			float[<2>] m0;
+			float[<2>] m1;
+		}
+		float[<4>] m;
+	}
+}
+
+fn float[<2>] apply1(Matrix2x2* mat, float[<2>] vec)
+{
+	return float[<2>] {
+		mat.m00 * vec[0] + mat.m01 * vec[1],
+		mat.m10 * vec[0] + mat.m11 * vec[1],
+	};
+}
+
+fn float[<2>] apply2(Matrix2x2* mat, float[<2>] vec)
+{
+	return float[<2>] {
+		mat.m0[0] * vec[0] + mat.m0[1] * vec[1],
+		mat.m1[0] * vec[0] + mat.m1[1] * vec[1],
+	};
+}
+
+fn float[<2>] apply3(Matrix2x2* mat, float[<2>] vec)
+{
+	float[<2>] a = $$shufflevector(mat.m0, mat.m1, { 0, 3 });
+	float[<2>] b = $$shufflevector(mat.m0, mat.m1, { 1, 2 });
+	float[<2>] flip = $$shufflevector(vec, { 1, 0 });
+	return a * vec + b * flip;
+}
+
+
+fn void main()
+{
+	Matrix2x2 a = { 1, -3, 5, -7 };
+	io::printfln("1: %s", apply1(&a, float[<2>] { 11, 13 }));
+	io::printfln("2: %s", apply2(&a, float[<2>] { 11, 13 }));
+	io::printfln("3: %s", apply3(&a, float[<2>] { 11, 13 }));
+}
+
+/* #expect: test.ll
+
+define double @test_apply3(ptr %0, double %1) #0 {
+entry:
+  %vec = alloca <2 x float>, align 8
+  %a = alloca <2 x float>, align 8
+  %b = alloca <2 x float>, align 8
+  %flip = alloca <2 x float>, align 8
+  %taddr = alloca <2 x float>, align 8
+  %tempcoerce = alloca double, align 8
+  store double %1, ptr %vec, align 8
+  %2 = getelementptr inbounds %Matrix2x2, ptr %0, i32 0, i32 0
+  %3 = getelementptr inbounds %.anon.1, ptr %2, i32 0, i32 0
+  %4 = load <2 x float>, ptr %3, align 8
+  %5 = getelementptr inbounds %Matrix2x2, ptr %0, i32 0, i32 0
+  %6 = getelementptr inbounds %.anon.1, ptr %5, i32 0, i32 1
+  %7 = load <2 x float>, ptr %6, align 8
+  %shuffle = shufflevector <2 x float> %4, <2 x float> %7, <2 x i32> <i32 0, i32 3>
+  store <2 x float> %shuffle, ptr %a, align 8
+  %8 = getelementptr inbounds %Matrix2x2, ptr %0, i32 0, i32 0
+  %9 = getelementptr inbounds %.anon.1, ptr %8, i32 0, i32 0
+  %10 = load <2 x float>, ptr %9, align 8
+  %11 = getelementptr inbounds %Matrix2x2, ptr %0, i32 0, i32 0
+  %12 = getelementptr inbounds %.anon.1, ptr %11, i32 0, i32 1
+  %13 = load <2 x float>, ptr %12, align 8
+  %shuffle1 = shufflevector <2 x float> %10, <2 x float> %13, <2 x i32> <i32 1, i32 2>
+  store <2 x float> %shuffle1, ptr %b, align 8
+  %14 = load <2 x float>, ptr %vec, align 8
+  %shuffle2 = shufflevector <2 x float> %14, <2 x float> poison, <2 x i32> <i32 1, i32 0>
+  store <2 x float> %shuffle2, ptr %flip, align 8
+  %15 = load <2 x float>, ptr %a, align 8
+  %16 = load <2 x float>, ptr %vec, align 8
+  %fmul = fmul <2 x float> %15, %16
+  %17 = load <2 x float>, ptr %b, align 8
+  %18 = load <2 x float>, ptr %flip, align 8
+  %fmul3 = fmul <2 x float> %17, %18
+  %fadd = fadd <2 x float> %fmul, %fmul3
+  store <2 x float> %fadd, ptr %taddr, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %tempcoerce, ptr align 8 %taddr, i32 8, i1 false)
+  %19 = load double, ptr %tempcoerce, align 8
+  ret double %19
+}
