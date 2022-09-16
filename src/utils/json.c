@@ -439,12 +439,6 @@ bool is_freable(JSONObject *obj)
 
 }
 
-//JSONObject error = { .type = J_ERROR };
-//JSONObject true_val = { .type = J_BOOL, .b = true };
-//JSONObject false_val = { .type = J_BOOL, .b = false };
-//JSONObject zero_val = { .type = J_NUMBER, .f = 0.0 };
-//JSONObject empty_array_val = { .type = J_ARRAY, .array_len = 0 };
-//JSONObject empty_obj_val = { .type = J_OBJECT, .member_len = 0 };
 void json_free(JSONObject **ptr)
 {
 	JSONObject *obj = *ptr;
