@@ -918,7 +918,33 @@ bool parse_attribute(ParseContext *c, Attr **attribute_ref)
 	{
 		while (1)
 		{
-			ASSIGN_EXPR_OR_RET(Expr *expr, parse_constant_expr(c), false);
+			Expr *expr;
+			switch (c->tok)
+			{
+				case TOKEN_AMP:
+					// &[]
+					expr = EXPR_NEW_TOKEN(EXPR_OPERATOR_CHARS);
+					expr->resolve_status = RESOLVE_DONE;
+					advance(c);
+					CONSUME_OR_RET(TOKEN_LBRACKET, false);
+					CONSUME_OR_RET(TOKEN_RBRACKET, false);
+					expr->expr_operator_chars = OVERLOAD_ELEMENT_REF;
+					RANGE_EXTEND_PREV(expr);
+					break;
+				case TOKEN_LBRACKET:
+					// []
+					expr = EXPR_NEW_TOKEN(EXPR_OPERATOR_CHARS);
+					expr->resolve_status = RESOLVE_DONE;
+					advance(c);
+					CONSUME_OR_RET(TOKEN_RBRACKET, false);
+					expr->expr_operator_chars = try_consume(c, TOKEN_EQ) ? OVERLOAD_ELEMENT_SET : OVERLOAD_ELEMENT_AT;
+					RANGE_EXTEND_PREV(expr);
+					break;
+				default:
+					expr = parse_constant_expr(c);
+					if (!expr_ok(expr)) return false;
+					break;
+			}
 			vec_add(list, expr);
 			if (try_consume(c, TOKEN_RPAREN)) break;
 			CONSUME_OR_RET(TOKEN_COMMA, false);

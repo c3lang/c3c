@@ -1473,56 +1473,28 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 		case ATTRIBUTE_OPERATOR:
 		{
 			assert(decl->decl_kind == DECL_FUNC || decl->decl_kind == DECL_MACRO);
-			if (!expr || expr->expr_kind != EXPR_IDENTIFIER) goto FAILED_OP_TYPE;
-			if (expr->identifier_expr.path) goto FAILED_OP_TYPE;
-			const char *kw = expr->identifier_expr.ident;
-			if (kw == kw_elementat)
+			if (!expr) goto FAILED_OP_TYPE;
+			switch (expr->expr_kind)
 			{
-				if (!decl->func_decl.type_parent)
-				{
-					SEMA_ERROR(expr, "@operator(elementat) can only be used with methods.");
-					return false;
-				}
-				decl->operator = OVERLOAD_ELEMENT_AT;
+				case EXPR_IDENTIFIER:
+					if (expr->identifier_expr.path) goto FAILED_OP_TYPE;
+					if (expr->identifier_expr.ident != kw_len) goto FAILED_OP_TYPE;
+					decl->operator = OVERLOAD_LEN;
+					break;
+				case EXPR_OPERATOR_CHARS:
+					decl->operator = expr->expr_operator_chars;
+					break;
+				default:
+					goto FAILED_OP_TYPE;
 			}
-			else if (kw == kw_elementref)
+			if (!decl->func_decl.type_parent)
 			{
-				if (!decl->func_decl.type_parent)
-				{
-					SEMA_ERROR(expr, "@operator(elementref) can only be used with methods.");
-					return false;
-				}
-				decl->operator = OVERLOAD_ELEMENT_REF;
-			}
-			else if (kw == kw_elementset)
-			{
-				if (!decl->func_decl.type_parent)
-				{
-					SEMA_ERROR(expr, "@operator(elementset) can only be used with methods.");
-					return false;
-				}
-				decl->operator = OVERLOAD_ELEMENT_SET;
-			}
-			else if (kw == kw_len)
-			{
-				if (!decl->func_decl.type_parent)
-				{
-					SEMA_ERROR(expr, "@operator(len) can only be used with methods.");
-					return false;
-				}
-				decl->operator = OVERLOAD_LEN;
-			}
-			else
-			{
-				goto FAILED_OP_TYPE;
+				SEMA_ERROR(expr, "@operator(...) can only be used with methods.");
+				return false;
 			}
 			return true;
 			FAILED_OP_TYPE:
-			SEMA_ERROR(attr,
-			           "'operator' requires an operator type argument: '%s', '%s' or '%s'.",
-			           kw_elementat,
-			           kw_elementref,
-			           kw_len);
+			SEMA_ERROR(attr, "'operator' requires an operator type argument: '[]', '[]=', '&[]' or 'len'.");
 			return false;
 		}
 		case ATTRIBUTE_ALIGN:

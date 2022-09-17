@@ -394,6 +394,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_CAST:
 			return expr_cast_is_constant_eval(expr, eval_kind);
 		case EXPR_CONST:
+		case EXPR_OPERATOR_CHARS:
 		case EXPR_STRINGIFY:
 			return true;
 		case EXPR_COND:
@@ -714,6 +715,7 @@ static bool sema_check_expr_lvalue(Expr *top_expr, Expr *expr)
 		case EXPR_CT_ARG:
 		case EXPR_ASM:
 		case EXPR_VASPLAT:
+		case EXPR_OPERATOR_CHARS:
 			goto ERR;
 	}
 	UNREACHABLE
@@ -815,6 +817,7 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_CT_ARG:
 		case EXPR_ASM:
 		case EXPR_VASPLAT:
+		case EXPR_OPERATOR_CHARS:
 			return false;
 	}
 	UNREACHABLE
@@ -3313,8 +3316,8 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 			decl = sema_find_operator(context, current_expr, OVERLOAD_ELEMENT_AT);
 			if (decl && is_addr)
 			{
-				SEMA_ERROR(expr, "A function or macro with '@operator(%s)' is not defined for %s, so you need && to take the address of the temporary.",
-				           kw_elementref, type_quoted_error_string(current_expr->type));
+				SEMA_ERROR(expr, "A function or macro with '@operator([])' is not defined for %s, so you need && to take the address of the temporary.",
+				           type_quoted_error_string(current_expr->type));
 				return false;
 			}
 		}
@@ -8321,6 +8324,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 		case EXPR_VARIANTSWITCH:
 		case EXPR_TYPEID_INFO:
 		case EXPR_ASM:
+		case EXPR_OPERATOR_CHARS:
 			UNREACHABLE
 		case EXPR_VASPLAT:
 			SEMA_ERROR(expr, "'$vasplat' can only be used inside of macros.");

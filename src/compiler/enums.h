@@ -254,6 +254,7 @@ typedef enum
 	EXPR_VARIANT,
 	EXPR_BUILTIN_ACCESS,
 	EXPR_ASM,
+	EXPR_OPERATOR_CHARS,
 } ExprKind;
 
 typedef enum

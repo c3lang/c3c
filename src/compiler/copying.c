@@ -193,6 +193,7 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_NOP:
 		case EXPR_BUILTIN:
 		case EXPR_RETVAL:
+		case EXPR_OPERATOR_CHARS:
 			return expr;
 		case EXPR_VASPLAT:
 			copy_range(c, &expr->vasplat_expr);

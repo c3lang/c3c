@@ -289,6 +289,7 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_CT_CALL:
 		case EXPR_TYPEID:
 		case EXPR_CT_ARG:
+		case EXPR_OPERATOR_CHARS:
 			return true;
 		case EXPR_VASPLAT:
 			return true;

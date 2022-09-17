@@ -1065,6 +1065,7 @@ typedef struct
 	Decl *argv;
 } ExprArgv;
 
+
 struct Expr_
 {
 	Type *type;
@@ -1079,6 +1080,7 @@ struct Expr_
 		ExprVariant variant_expr;
 		ExprPointerOffset pointer_offset_expr;
 		ExprAsmArg expr_asm_arg;
+		OperatorOverload expr_operator_chars;
 		TypeInfo *type_expr;                        // 8
 		ExprConst const_expr;                       // 32
 		ExprArgv argv_expr;                         // 16
@@ -1791,9 +1793,6 @@ extern const char *kw_inline;
 extern const char *kw_inf;
 extern const char *kw_kind;
 extern const char *kw_inner;
-extern const char *kw_elementat;
-extern const char *kw_elementref;
-extern const char *kw_elementset;
 extern const char *kw_len;
 extern const char *kw_nan;
 extern const char *kw_noinline;

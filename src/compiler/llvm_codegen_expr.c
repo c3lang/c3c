@@ -5995,6 +5995,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			llvm_emit_macro_block(c, value, expr);
 			return;
 		case EXPR_COMPOUND_LITERAL:
+		case EXPR_OPERATOR_CHARS:
 			UNREACHABLE
 		case EXPR_INITIALIZER_LIST:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
