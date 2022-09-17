@@ -65,12 +65,6 @@ static bool json_match(JsonParser *parser, const char *str)
 	return true;
 }
 
-INLINE JSONObject *json_new_object(JsonAllocator *allocator, JSONType type)
-{
-	JSONObject *obj = allocator(sizeof(JSONObject));
-	obj->type = type;
-	return obj;
-}
 
 void json_error(JsonParser *parser, const char *error_message)
 {

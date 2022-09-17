@@ -66,5 +66,13 @@ typedef struct
 void json_init_string(JsonParser *parser, const char *str, JsonAllocator *allocator);
 JSONObject *json_parse(JsonParser *parser);
 JSONObject *json_obj_get(JSONObject *obj, const char *key);
-JSONObject *json_new_object(JsonAllocator *allocator, JSONType type);
+INLINE JSONObject *json_new_object(JsonAllocator *allocator, JSONType type);
 void json_free(JsonDeallocator *deallocator, JSONObject **ptr);
+
+
+INLINE JSONObject *json_new_object(JsonAllocator *allocator, JSONType type)
+{
+	JSONObject *obj = allocator(sizeof(JSONObject));
+	obj->type = type;
+	return obj;
+}
