@@ -257,7 +257,6 @@ typedef struct BuildOptions_
 	bool test_mode;
 	bool no_stdlib;
 	bool force_linker;
-	bool use_new_optimizer;
 	const char *panicfn;
 	const char *cc;
 	const char *build_dir;
@@ -334,7 +333,6 @@ typedef struct
 	bool no_stdlib;
 	bool emit_object_files;
 	bool force_linker;
-	bool use_new_optimizer;
 	OptimizationLevel optimization_level;
 	SizeOptimizationLevel size_optimization_level;
 	DebugInfo debug_info;

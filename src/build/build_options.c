@@ -114,7 +114,6 @@ static void usage(void)
 	OUTPUT("  -L <library dir>      - Append the directory to the linker search paths.");
 	OUTPUT("  -z <argument>         - Send the <argument> as a parameter to the linker.");
 	OUTPUT("  --forcelinker         - Force built in linker usage when doing non-cross linking.");
-	OUTPUT("  --newoptimizer        - Use new optimizer pipeline.");
 	OUTPUT("");
 	OUTPUT("  --reloc=<option>      - Relocation model: none, pic, PIC, pie, PIE");
 	OUTPUT("  --x86vec=<option>     - Set max level of vector instructions: none, mmx, sse, avx, avx512.");
@@ -465,21 +464,9 @@ static void parse_option(BuildOptions *options)
 				options->symtab_size = next_highest_power_of_2(symtab);
 				return;
 			}
-			if (match_longopt("newoptimizer"))
-			{
-				options->use_new_optimizer = true;
-				return;
-			}
 			if (match_longopt("forcelinker"))
 			{
-				if (llvm_version_major > 12)
-				{
-					options->force_linker = true;
-				}
-				else
-				{
-					printf("Force linking ignored on LLVM 12 and earlier.\n");
-				}
+				options->force_linker = true;
 				return;
 			}
 			if (match_longopt("version"))

@@ -12,13 +12,6 @@
 #include <llvm-c/Analysis.h>
 #include <llvm-c/BitWriter.h>
 #include <llvm-c/DebugInfo.h>
-#include <llvm-c/Transforms/PassManagerBuilder.h>
-#include <llvm-c/Transforms/InstCombine.h>
-#include <llvm-c/Transforms/Vectorize.h>
-#include <llvm-c/Transforms/Scalar.h>
-#include <llvm-c/Transforms/IPO.h>
-#include <llvm-c/Transforms/Utils.h>
-#include <llvm-c/Comdat.h>
 #include "dwarf.h"
 
 #define SLICE_MAX_UNROLL 4
