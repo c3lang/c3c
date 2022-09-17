@@ -81,10 +81,6 @@ macro min(x, y) @builtin
     return x < y ? x : y;
 }
 
-macro abs(x) @builtin
-{
-    return $$abs(x);
-}
 
 fn double log10(double x) @inline
 {
@@ -96,63 +92,43 @@ fn double log2(double x) @inline
     return $$log2(x);
 }
 
-/**
- * @require types::is_floatlike($typeof(f)) `The input must be a floating point value or float vector`
- **/
-macro log(f)
-{
-    return $$log(f);
-}
+macro abs(x) @builtin = $$abs(x);
 
 /**
  * @require types::is_floatlike($typeof(f)) `The input must be a floating point value or float vector`
  **/
-macro cos(f)
-{
-    return $$cos(f);
-}
-
+macro log(f) = $$log(f);
 
 /**
  * @require types::is_floatlike($typeof(f)) `The input must be a floating point value or float vector`
  **/
-macro sin(f)
-{
-    return $$sin(f);
-}
+macro cos(f) = $$cos(f);
 
 /**
  * @require types::is_floatlike($typeof(f)) `The input must be a floating point value or float vector`
  **/
-macro exp(f)
-{
-    return $$exp(f);
-}
-
-/**
- * @require types::is_floatlike($typeof(f)) `The input must be a floating point value or float vector`
- * @require types::@has_same(f, exp) `Parameters must have the same type`
- **/
-macro pow(f, exp) @operator(floatvec)
-{
-    return $$pow(f, exp);
-}
+macro sin(f) = $$sin(f);
 
 /**
  * @require types::is_floatlike($typeof(f)) `The input must be a floating point value or float vector`
  **/
-macro trunc(x) @operator(floatvec)
-{
-    return $$trunc(x);
-}
+macro exp(f) = $$exp(f);
 
-/**
- * @require types::is_floatlike($typeof(f)) `The input must be a floating point value or float vector`
- **/
-macro ceil(x) @operator(floatvec)
-{
-    return $$ceil(x);
-}
+macro float float.ceil(float x) = $$ceil(x);
+macro float float.trunc(float x) = $$trunc(x);
+macro float float.pow(float f, float exp) = $$pow(f, exp);
+
+macro float[<*>] float[<*>].ceil(float[<*>] x) = $$ceil(x);
+macro float[<*>] float[<*>].trunc(float[<*>] x) = $$trunc(x);
+macro float[<*>] float[<*>].pow(float[<*>] f, float[<*>] exp) = $$pow(f, exp);
+
+macro double double.ceil(double x) = $$ceil(x);
+macro double double.trunc(double x) = $$trunc(x);
+macro double double.pow(double f, double exp) = $$pow(f, exp);
+
+macro double[<*>] double[<*>].ceil(double[<*>] x) = $$ceil(x);
+macro double[<*>] double[<*>].trunc(double[<*>] x) = $$trunc(x);
+macro double[<*>] double[<*>].pow(double[<*>] f, double[<*>] exp) = $$pow(f, exp);
 
 /**
  * @checked x & 1

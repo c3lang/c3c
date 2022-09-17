@@ -1811,7 +1811,6 @@ static inline bool sema_expr_analyse_call_invocation(SemaContext *context, Expr 
 	// 7. Loop through the parameters.
 	for (unsigned i = 0; i < num_args; i++)
 	{
-
 		Expr *arg = args[i];
 
 		// 10. If we exceed the function parameter count (remember we reduced this by one
@@ -1903,7 +1902,10 @@ static inline bool sema_expr_analyse_call_invocation(SemaContext *context, Expr 
 			case VARDECL_ERASE:
 				UNREACHABLE
 		}
-		if (param && !type) param->type = type_no_optional(arg->type);
+		if (param && type_len_is_inferred(type))
+		{
+			param->type = type_no_optional(arg->type);
+		}
 	}
 	return true;
 }
@@ -2282,6 +2284,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 
 	if (rtype)
 	{
+		bool inferred_len = type_len_is_inferred(rtype);
 		VECEACH(macro_context.returns, i)
 		{
 			Ast *return_stmt = macro_context.returns[i];
@@ -2298,7 +2301,21 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 				return SCOPE_POP_ERROR();
 			}
 			Type *type = ret_expr->type;
-			if (!cast_may_implicit(type, rtype, true, may_failable))
+			if (inferred_len)
+			{
+				Type *flattened = type_flatten(type);
+				if (flattened->type_kind == TYPE_ARRAY && rtype->type_kind == TYPE_INFERRED_ARRAY)
+				{
+					rtype = type_get_array(rtype->array.base, flattened->array.len);
+					inferred_len = false;
+				}
+				else if (flattened->type_kind == TYPE_VECTOR && rtype->type_kind == TYPE_INFERRED_VECTOR)
+				{
+					rtype = type_get_vector(rtype->array.base, flattened->array.len);
+					inferred_len = false;
+				}
+			}
+			if (!cast_may_implicit(type, rtype, true, may_failable) || inferred_len)
 			{
 				SEMA_ERROR(ret_expr, "Expected %s, not %s.", type_quoted_error_string(rtype),
 						   type_quoted_error_string(type));
@@ -2973,12 +2990,6 @@ static inline bool sema_expr_analyse_call(SemaContext *context, Expr *expr)
 			switch (decl->decl_kind)
 			{
 				case DECL_MACRO:
-					if (decl->func_decl.attr_intvec || decl->func_decl.attr_floatvec)
-					{
-						struct_var = func_expr->access_expr.parent;
-						break;
-					}
-					FALLTHROUGH;
 				case DECL_FUNC:
 					struct_var = func_expr->access_expr.parent;
 					if (decl->func_decl.signature.params[0]->type->type_kind == TYPE_POINTER)
@@ -3779,6 +3790,7 @@ static inline bool sema_create_const_len(SemaContext *context, Expr *expr, Type 
 		case TYPE_FAULTTYPE:
 			len = vec_size(type->decl->enums.values);
 			break;
+		case TYPE_SCALED_VECTOR:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_SUBARRAY:
@@ -3810,6 +3822,8 @@ static inline bool sema_create_const_inner(SemaContext *context, Expr *expr, Typ
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_SUBARRAY:
 		case TYPE_INFERRED_ARRAY:
+		case TYPE_INFERRED_VECTOR:
+		case TYPE_SCALED_VECTOR:
 		case TYPE_VECTOR:
 			inner = type->array.base;
 			break;
@@ -4234,24 +4248,33 @@ CHECK_DEEPER:
 		}
 	}
 
-	if (type_flat_is_vector(type))
-	{
-		Type *vec = type_flatten(type);
-		assert(vec->type_kind == TYPE_VECTOR);
-		Type *base = vec->array.base;
-		Decl *func = sema_find_vec_operator(context, kw, base, expr->span);
-		if (!decl_ok(func)) return false;
-		if (func)
-		{
-			expr->access_expr.ref = func;
-			return true;
-		}
-	}
 	// 9. At this point we may only have distinct, struct, union, error, enum
 	if (!type_may_have_sub_elements(type))
 	{
-		SEMA_ERROR(expr, "There is no member or method '%s' on '%s'", kw, type_to_error_string(type));
-		return false;
+		Decl *ambiguous = NULL;
+		Decl *private = NULL;
+		Decl *method = sema_resolve_type_method(context->unit, type, kw, &ambiguous, &private);
+		if (private)
+		{
+			SEMA_ERROR(expr, "The method '%s' has private visibility.", kw);
+			return false;
+		}
+		if (ambiguous)
+		{
+			SEMA_ERROR(expr, "'%s' is an ambiguous name and so cannot be resolved, it may refer to method defined in '%s' or one in '%s'",
+			           kw, method->unit->module->name->module, ambiguous->unit->module->name->module);
+			return false;
+		}
+		if (!method)
+		{
+			SEMA_ERROR(expr, "There is no member or method '%s' on '%s'", kw, type_to_error_string(type));
+			return false;
+		}
+		expr->access_expr.parent = current_parent;
+		expr->type = method->type ? type_add_optional(method->type, failable) : NULL;
+		expr->access_expr.ref = method;
+		if (method->decl_kind == DECL_FUNC) unit_register_external_symbol(context->compilation_unit, method);
+		return true;
 	}
 
 	// 10. Dump all members and methods into the scope.
@@ -4413,6 +4436,7 @@ static Type *sema_find_type_of_element(SemaContext *context, Type *type, Designa
 		switch (type_flattened->type_kind)
 		{
 			case TYPE_INFERRED_ARRAY:
+			case TYPE_INFERRED_VECTOR:
 				len = MAX_ARRAYINDEX;
 				base = type_flattened->array.base;
 				break;
@@ -5331,9 +5355,9 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ext
 	// 3. Zero size init will initialize to empty.
 	if (init_expression_count == 0)
 	{
-		if (external_type->type_kind == TYPE_INFERRED_ARRAY)
+		if (type_len_is_inferred(external_type))
 		{
-			SEMA_ERROR(expr, "Zero length arrays are not permitted.");
+			SEMA_ERROR(expr, "Zero length arrays / vectors are not permitted.");
 			return false;
 		}
 		external_type = sema_type_lower_by_size(external_type, 0);
@@ -5362,6 +5386,7 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ext
 	if (assigned->type_kind == TYPE_UNTYPED_LIST ||
 		assigned->type_kind == TYPE_ARRAY ||
 		assigned->type_kind == TYPE_INFERRED_ARRAY ||
+		assigned->type_kind == TYPE_INFERRED_VECTOR ||
 		assigned->type_kind == TYPE_SUBARRAY ||
 		assigned->type_kind == TYPE_VECTOR)
 	{
@@ -5384,6 +5409,7 @@ static inline bool sema_expr_analyse_initializer_list(SemaContext *context, Type
 		case TYPE_ARRAY:
 		case TYPE_BITSTRUCT:
 		case TYPE_INFERRED_ARRAY:
+		case TYPE_INFERRED_VECTOR:
 		case TYPE_VECTOR:
 			return sema_expr_analyse_initializer(context, to, assigned, expr);
 		case TYPE_SUBARRAY:
@@ -5404,6 +5430,9 @@ static inline bool sema_expr_analyse_initializer_list(SemaContext *context, Type
 			if (!sema_analyse_expr(context, expr)) return false;
 			return cast(expr, to);
 		}
+		case TYPE_SCALED_VECTOR:
+			SEMA_ERROR(expr, "Scaled vectors cannot be initialized using an initializer list, since the length is not known at compile time.");
+			return false;
 		case TYPE_POINTER:
 			SEMA_ERROR(expr, "Pointers cannot be initialized using an initializer list, instead you need to take the address of an array.");
 			return false;
@@ -7866,6 +7895,21 @@ RETRY:
 			if (!type) return NULL;
 			if (!type_ok(type)) return type;
 			return type_get_inferred_array(type);
+		}
+		case TYPE_INFO_INFERRED_VECTOR:
+		{
+			// If it's a vector, make sure we can resolve the length
+			Type *type = sema_expr_check_type_exists(context, type_info->array.base);
+			if (!type) return NULL;
+			if (!type_ok(type)) return type;
+			return type_get_inferred_vector(type);
+		}
+		case TYPE_INFO_SCALED_VECTOR:
+		{
+			Type *type = sema_expr_check_type_exists(context, type_info->array.base);
+			if (!type) return NULL;
+			if (!type_ok(type)) return type;
+			return type_get_scaled_vector(type);
 		}
 		case TYPE_INFO_POINTER:
 		{

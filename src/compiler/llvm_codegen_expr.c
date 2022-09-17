@@ -3985,6 +3985,7 @@ static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVM
 		case CT_TYPES:
 		case TYPE_FAILABLE_ANY:
 		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_SCALED_VECTOR:
 			UNREACHABLE
 			break;
 		case TYPE_BOOL:

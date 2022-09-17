@@ -618,6 +618,7 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 	{
 		case TYPE_POISONED:
 		case TYPE_VOID:
+		case TYPE_INFERRED_VECTOR:
 			UNREACHABLE
 		case ALL_INTS:
 			expr_rewrite_const_int(expr, type, 0, true);
@@ -653,6 +654,7 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_UNTYPED_LIST:
+		case TYPE_SCALED_VECTOR:
 		case TYPE_VECTOR:
 		{
 			ConstInitializer *init = CALLOCS(ConstInitializer);

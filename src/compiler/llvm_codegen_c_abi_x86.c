@@ -125,6 +125,8 @@ static bool x86_should_return_type_in_reg(Type *type)
 		case TYPE_FAILABLE_ANY:
 		case TYPE_FLEXIBLE_ARRAY:
 			UNREACHABLE
+		case TYPE_SCALED_VECTOR:
+			return false;
 		case ALL_INTS:
 		case ALL_FLOATS:
 		case TYPE_BOOL:
@@ -604,6 +606,8 @@ static ABIArgInfo *x86_classify_argument(CallABI call, Regs *regs, Type *type)
 		case TYPE_ANY:
 		case TYPE_ARRAY:
 			return x86_classify_aggregate(call, regs, type);
+		case TYPE_SCALED_VECTOR:
+			TODO
 	}
 	UNREACHABLE
 }

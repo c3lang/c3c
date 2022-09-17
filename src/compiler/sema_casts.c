@@ -397,6 +397,8 @@ CastKind cast_to_bool_kind(Type *type)
 		case TYPE_ANY:
 		case TYPE_FAILABLE_ANY:
 		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_SCALED_VECTOR:
+		case TYPE_INFERRED_VECTOR:
 			return CAST_ERROR;
 	}
 	UNREACHABLE
@@ -432,6 +434,11 @@ bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability, 
 		if (from_type->type_kind == TYPE_ARRAY && type_flatten_distinct(from_type->array.base) == type_flatten_distinct(to_type->array.base)) return true;
 		return false;
 	}
+	if (to_type->type_kind == TYPE_INFERRED_VECTOR)
+	{
+		if (from_type->type_kind == TYPE_VECTOR && type_flatten_distinct(from_type->array.base) == type_flatten_distinct(to_type->array.base)) return true;
+		return false;
+	}
 
 	TypeKind to_kind = to_type->type_kind;
 	switch (from_type->type_kind)
@@ -447,6 +454,9 @@ bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability, 
 		case TYPE_VOID:
 		case TYPE_TYPEINFO:
 		case TYPE_FUNC:
+		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_INFERRED_VECTOR:
+		case TYPE_SCALED_VECTOR:
 			return false;
 		case TYPE_TYPEID:
 			// May convert to anything pointer sized or larger, no enums
@@ -490,8 +500,6 @@ bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability, 
 		case TYPE_FAULTTYPE:
 			// Allow MyError.A -> error, to an integer or to bool
 			return to_type->type_kind == TYPE_ANYERR || type_is_integer(to_type) || to_type == type_bool;
-		case TYPE_FLEXIBLE_ARRAY:
-			return false;
 		case TYPE_ARRAY:
 			if (to_kind == TYPE_VECTOR)
 			{
@@ -629,6 +637,11 @@ bool cast_may_implicit(Type *from_type, Type *to_type, bool is_simple_expr, bool
 	if (to_type->type_kind == TYPE_INFERRED_ARRAY)
 	{
 		if (from->type_kind == TYPE_ARRAY && type_flatten_distinct(from->array.base) == type_flatten_distinct(to_type->array.base)) return true;
+		return false;
+	}
+	if (to_type->type_kind == TYPE_INFERRED_VECTOR)
+	{
+		if (from->type_kind == TYPE_VECTOR && type_flatten_distinct(from->array.base) == type_flatten_distinct(to_type->array.base)) return true;
 		return false;
 	}
 
@@ -1330,6 +1343,7 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 			if (type_is_integer(to)) return insert_cast(expr, CAST_ERINT, to_type);
 			break;
 		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_SCALED_VECTOR:
 			return false;
 		case TYPE_ARRAY:
 			if (to->type_kind == TYPE_VECTOR) return arr_to_vec(expr, to_type);
@@ -1401,7 +1415,7 @@ bool cast(Expr *expr, Type *to_type)
 		from_is_failable = true;
 	}
 	from_type = type_flatten_distinct(from_type);
-	if (to_type->type_kind == TYPE_INFERRED_ARRAY)
+	if (type_len_is_inferred(to_type))
 	{
 		to_type = from_type;
 		to = type_flatten(from_type);

@@ -616,10 +616,15 @@ Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_
 		if (method_name == func->name) return func;
 	}
 
-	Type *actual_type = type->type;
+	return sema_resolve_type_method(unit, type->type, method_name, ambiguous_ref, private_ref);
+}
+
+Decl *sema_resolve_type_method(CompilationUnit *unit, Type *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref)
+{
+	assert(type == type->canonical);
 	Decl *private = NULL;
 	Decl *ambiguous = NULL;
-	Decl *found = sema_resolve_method_in_module(unit->module, actual_type, method_name, &private, &ambiguous, METHOD_SEARCH_CURRENT);
+	Decl *found = sema_resolve_method_in_module(unit->module, type, method_name, &private, &ambiguous, METHOD_SEARCH_CURRENT);
 	if (ambiguous)
 	{
 		*ambiguous_ref = ambiguous;
@@ -633,7 +638,7 @@ Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_
 		Decl *import = unit->imports[i];
 		if (import->import.module->is_generic) continue;
 
-		Decl *new_found = sema_resolve_method_in_module(import->import.module, actual_type, method_name,
+		Decl *new_found = sema_resolve_method_in_module(import->import.module, type, method_name,
 		                                                &private, &ambiguous,
 		                                                import->import.private
 		                                                ? METHOD_SEARCH_PRIVATE_IMPORTED
@@ -652,6 +657,21 @@ Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_
 		}
 	}
 	if (private) *private_ref = private;
+	if (!found)
+	{
+		if (type->type_kind == TYPE_ARRAY)
+		{
+			Type *inferred_array = type_get_inferred_array(type->array.base);
+			found = sema_resolve_type_method(unit, inferred_array, method_name, ambiguous_ref, private_ref);
+			if (found) *private_ref = NULL;
+		}
+		else if (type->type_kind == TYPE_VECTOR)
+		{
+			Type *inferred_vector = type_get_inferred_vector(type->array.base);
+			found = sema_resolve_type_method(unit, inferred_vector, method_name, ambiguous_ref, private_ref);
+			if (found) *private_ref = NULL;
+		}
+	}
 	return found;
 }
 

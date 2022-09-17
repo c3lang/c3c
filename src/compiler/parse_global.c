@@ -630,8 +630,20 @@ static inline TypeInfo *parse_vector_type_index(ParseContext *c, TypeInfo *type)
 	advance_and_verify(c, TOKEN_LVEC);
 	TypeInfo *vector = type_info_new(TYPE_INFO_VECTOR, type->span);
 	vector->array.base = type;
-	ASSIGN_EXPR_OR_RET(vector->array.len, parse_expr(c), poisoned_type_info);
-	CONSUME_OR_RET(TOKEN_RVEC, poisoned_type_info);
+	if (try_consume(c, TOKEN_RVEC))
+	{
+		vector->kind = TYPE_INFO_SCALED_VECTOR;
+	}
+	else if (try_consume(c, TOKEN_STAR))
+	{
+		CONSUME_OR_RET(TOKEN_RVEC, poisoned_type_info);
+		vector->kind = TYPE_INFO_INFERRED_VECTOR;
+	}
+	else
+	{
+		ASSIGN_EXPR_OR_RET(vector->array.len, parse_expr(c), poisoned_type_info);
+		CONSUME_OR_RET(TOKEN_RVEC, poisoned_type_info);
+	}
 	RANGE_EXTEND_PREV(vector);
 	return vector;
 }

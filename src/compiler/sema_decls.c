@@ -154,6 +154,11 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl, Decl **
 			SEMA_ERROR(member, "Flexible array members not allowed in unions.");
 			return false;
 		}
+		if (member->type->type_kind == TYPE_SCALED_VECTOR)
+		{
+			SEMA_ERROR(member, "Scaled vector members not allowed in unions / structs.");
+			return false;
+		}
 		AlignSize member_alignment = type_abi_alignment(member->type);
 		ByteSize member_size = type_size(member->type);
 		assert(member_size <= MAX_TYPE_SIZE);
@@ -257,6 +262,11 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl, Decl *
 				return false;
 			}
 			decl->has_variable_array = true;
+		}
+		if (member_type->type_kind == TYPE_SCALED_VECTOR)
+		{
+			SEMA_ERROR(member, "Scaled vectors may not be used in structs and unions.");
+			return false;
 		}
 		if (member_type->type_kind == TYPE_INFERRED_ARRAY)
 		{
@@ -587,7 +597,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig)
 	Decl **params = sig->params;
 	unsigned param_count = vec_size(params);
 	unsigned vararg_index = sig->vararg_index;
-	bool is_fn = !sig->is_macro;
+	bool is_macro = sig->is_macro;
 	bool is_macro_at_name = sig->is_at_macro;
 
 	// Check return type
@@ -596,13 +606,13 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig)
 	if (sig->rtype)
 	{
 		TypeInfo *rtype_info = type_infoptr(sig->rtype);
-		if (!sema_resolve_type_info(context, type_infoptr(sig->rtype))) return false;
+		if (!sema_resolve_type_info_maybe_inferred(context, type_infoptr(sig->rtype), is_macro)) return false;
 		rtype = rtype_info->type;
 		if (sig->attrs.nodiscard)
 		{
 			if (rtype == type_void)
 			{
-				SEMA_ERROR(rtype_info, "@nodiscard cannot be used on %s returning 'void'.", is_fn ? "functions" : "macros");
+				SEMA_ERROR(rtype_info, "@nodiscard cannot be used on %s returning 'void'.", is_macro ? "macros" : "functions");
 				return false;
 			}
 		}
@@ -610,7 +620,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig)
 		{
 			if (!type_is_optional(rtype))
 			{
-				SEMA_ERROR(rtype_info, "@maydiscard can only be used on %s returning optional values.", is_fn ? "functions" : "macros");
+				SEMA_ERROR(rtype_info, "@maydiscard can only be used on %s returning optional values.", is_macro ? "macros" : "functions");
 				return false;
 			}
 		}
@@ -640,7 +650,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig)
 		}
 		if (vararg_index < i)
 		{
-			if (is_fn && variadic_type == VARIADIC_RAW)
+			if (!is_macro && variadic_type == VARIADIC_RAW)
 			{
 				SEMA_ERROR(param, "C-style varargs cannot be followed by regular parameters.");
 				return decl_poison(param);
@@ -664,7 +674,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig)
 		{
 			case VARDECL_PARAM_EXPR:
 			case VARDECL_PARAM_REF:
-				if (is_fn)
+				if (!is_macro)
 				{
 					SEMA_ERROR(param, "Only regular parameters are allowed for functions.");
 					return decl_poison(param);
@@ -676,7 +686,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig)
 				}
 				FALLTHROUGH;
 			case VARDECL_PARAM_CT:
-				if (is_fn)
+				if (!is_macro)
 				{
 					SEMA_ERROR(param, "Only regular parameters are allowed for functions.");
 					return decl_poison(param);
@@ -685,10 +695,10 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig)
 			case VARDECL_PARAM:
 				if (param->var.type_info)
 				{
-					if (!sema_resolve_type_info(context, param->var.type_info)) return decl_poison(param);
+					if (!sema_resolve_type_info_maybe_inferred(context, param->var.type_info, is_macro)) return decl_poison(param);
 					param->type = param->var.type_info->type;
 				}
-				else if (is_fn)
+				else if (!is_macro)
 				{
 					SEMA_ERROR(param, "Only typed parameters are allowed for functions.");
 					return false;
@@ -696,7 +706,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig)
 				if (!sema_analyse_attributes_for_var(context, param)) return false;
 				break;
 			case VARDECL_PARAM_CT_TYPE:
-				if (is_fn)
+				if (!is_macro)
 				{
 					SEMA_ERROR(param, "Only regular parameters are allowed for functions.");
 					return decl_poison(param);
@@ -736,7 +746,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig)
 			{
 				if (vararg_index != i)
 				{
-					SEMA_ERROR(param, "A %s may not have more than one vararg.", is_fn ? "function" : "macro");
+					SEMA_ERROR(param, "A %s may not have more than one vararg.", is_macro ? "macro" : "function");
 					return decl_poison(param);
 				}
 			}
@@ -866,6 +876,7 @@ static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl)
 		case TYPE_ARRAY:
 		case TYPE_SUBARRAY:
 		case TYPE_VECTOR:
+		case TYPE_SCALED_VECTOR:
 			break;
 	}
 	// Do we need anything else?
@@ -1172,68 +1183,6 @@ Decl *sema_find_operator(SemaContext *context, Expr *expr, OperatorOverload oper
 	return NULL;
 }
 
-INLINE Decl *sema_find_vec_operator_in_module(Module *module, const char *kw, bool is_int, bool allow_private, Decl *prev, Decl **private, SourceSpan span)
-{
-	Decl **funcs = is_int ? module->intvec_extensions : module->floatvec_extensions;
-	Decl *found = NULL;
-	FOREACH_BEGIN(Decl *func, funcs)
-		if (func->name == kw)
-		{
-			if (func->visibility != VISIBLE_PUBLIC && !allow_private)
-			{
-				if (!prev) *private = func;
-				continue;
-			}
-			found = func;
-			// Assume only one per module.
-			break;
-		}
-	FOREACH_END();
-	if (!found) return prev;
-	*private = NULL;
-	if (prev)
-	{
-		sema_error_at(span, "Ambiguous name '%s', try to import fewer modules.", kw);
-		return poisoned_decl;
-	}
-	return found;
-}
-
-INLINE Decl *sema_find_vec_operator_in_module_recursively(Module *module, const char *kw, bool is_int, bool allow_private, Decl *prev, Decl **private_ref, SourceSpan span)
-{
-	Decl *decl = sema_find_vec_operator_in_module(module, kw, is_int, allow_private, prev, private_ref, span);
-	if (decl) return decl;
-	FOREACH_BEGIN(Module *sub_module, module->sub_modules)
-		decl = sema_find_vec_operator_in_module(sub_module, kw, is_int, false, decl, private_ref, span);
-		if (!decl) continue;
-		if (!decl_ok(decl)) return decl;
-	FOREACH_END();
-	return decl;
-}
-
-Decl *sema_find_vec_operator(SemaContext *context, const char *kw, Type *base_type, SourceSpan span)
-{
-	bool is_int = type_is_integer(base_type);
-	Decl *private = NULL;
-	Decl *decl = sema_find_vec_operator_in_module(context->compilation_unit->module, kw, is_int, true, NULL, &private, span);
-	if (decl) return decl;
-
-	Decl **imports = context->unit->imports;
-	FOREACH_BEGIN(Decl *import, context->unit->imports)
-		Module *imported_module = import->import.module;
-		bool is_private = import->import.private;
-		decl = sema_find_vec_operator_in_module_recursively(imported_module, kw, is_int, is_private, decl, &private, span);
-		if (!decl) continue;
-		if (!decl_ok(decl)) return decl;
-	FOREACH_END();
-	if (!decl && private)
-	{
-		sema_error_at(span, "The vector operator '%s' could not be found except the private implementation in '%s'.", private->unit->module->name->module);
-		return poisoned_decl;
-	}
-	return decl;
-}
-
 
 static inline bool sema_analyse_operator_element_at(Decl *method)
 {
@@ -1289,10 +1238,33 @@ static bool sema_check_operator_method_validity(Decl *method)
 	UNREACHABLE
 }
 
+static inline bool unit_add_base_extension_method(CompilationUnit *unit, Type *parent_type, Decl *method_like)
+{
+	if (!method_like->has_extname)
+	{
+		scratch_buffer_clear();
+		if (method_like->visibility <= VISIBLE_MODULE)
+		{
+			scratch_buffer_append(parent_type->name);
+			scratch_buffer_append_char('$');
+			scratch_buffer_append(method_like->name);
+		}
+		else
+		{
+			scratch_buffer_append(parent_type->name);
+			scratch_buffer_append("_");
+			scratch_buffer_append(method_like->name);
+		}
+		method_like->extname = scratch_buffer_copy();
+	}
+	DEBUG_LOG("Method-like '%s.%s' analysed.", parent_type->name, method_like->name);
+	vec_add(unit->module->method_extensions, method_like);
+	return true;
+}
+
 static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type, Decl *method_like)
 {
 	assert(parent_type->canonical == parent_type);
-	Decl *parent = parent_type->decl;
 	const char *name = method_like->name;
 	Decl *method = sema_find_extension_method_in_module(unit->module, parent_type, name);
 	if (method)
@@ -1301,6 +1273,8 @@ static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type
 		SEMA_NOTE(method, "The previous definition was here.");
 		return false;
 	}
+	if (!type_is_user_defined(parent_type)) return unit_add_base_extension_method(unit, parent_type, method_like);
+	Decl *parent = parent_type->decl;
 	Decl *ambiguous = NULL;
 	Decl *private = NULL;
 	method = sema_resolve_method(unit, parent, name, &ambiguous, &private);
@@ -1347,7 +1321,7 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 	TypeInfo *parent_type = type_infoptr(decl->func_decl.type_parent);
 	if (!sema_resolve_type_info(context, parent_type)) return false;
 	Type *type = parent_type->type->canonical;
-	if (!type_may_have_sub_elements(type))
+	if (!type_may_have_sub_elements(type) && !type_underlying_is_numeric(type) && !type_is_arraylike(type))
 	{
 		SEMA_ERROR(decl,
 		           "Methods can not be associated with '%s'",
@@ -1537,34 +1511,6 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 					return false;
 				}
 				decl->operator = OVERLOAD_LEN;
-			}
-			else if (kw == kw_floatvec)
-			{
-				if (decl->decl_kind != DECL_MACRO)
-				{
-					SEMA_ERROR(expr, "@operator(floatvec) can only be used with macros.");
-					return false;
-				}
-				if (decl->func_decl.type_parent)
-				{
-					SEMA_ERROR(expr, "@operator(floatvec) cannot be used with methods.");
-					return false;
-				}
-				decl->func_decl.attr_floatvec = true;
-			}
-			else if (kw == kw_intvec)
-			{
-				if (decl->decl_kind != DECL_MACRO)
-				{
-					SEMA_ERROR(expr, "@operator(intvec) can only be used with macros.");
-					return false;
-				}
-				if (decl->func_decl.type_parent)
-				{
-					SEMA_ERROR(expr, "@operator(intvec) cannot be used with methods.");
-					return false;
-				}
-				decl->func_decl.attr_intvec = true;
 			}
 			else
 			{
@@ -2094,7 +2040,6 @@ static inline bool sema_is_valid_method_param(SemaContext *context, Decl *param,
 	if (param_type == parent_type) return true;
 	// 2. A pointer is ok!
 	if (param_type->type_kind == TYPE_POINTER && param_type->pointer == parent_type) return true;
-
 ERROR:
 	SEMA_ERROR(param, "The first parameter must be of type %s or %s.", type_quoted_error_string(parent_type),
 	           type_quoted_error_string(type_get_ptr(parent_type)));
@@ -2104,9 +2049,9 @@ ERROR:
 static bool sema_analyse_macro_method(SemaContext *context, Decl *decl)
 {
 	TypeInfo *parent_type_info = type_infoptr(decl->func_decl.type_parent);
-	if (!sema_resolve_type_info(context, parent_type_info)) return false;
+	if (!sema_resolve_type_info_maybe_inferred(context, parent_type_info, true)) return false;
 	Type *parent_type = parent_type_info->type;
-	if (!type_may_have_sub_elements(parent_type))
+	if (!type_may_have_method(parent_type))
 	{
 		SEMA_ERROR(parent_type_info,
 		           "Methods can not be associated with '%s'",
@@ -2185,17 +2130,6 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl)
 	if (decl->func_decl.type_parent)
 	{
 		if (!sema_analyse_macro_method(context, decl)) return decl_poison(decl);
-	}
-	else
-	{
-		if (decl->func_decl.attr_floatvec)
-		{
-			vec_add(context->unit->module->floatvec_extensions, decl);
-		}
-		if (decl->func_decl.attr_intvec)
-		{
-			vec_add(context->unit->module->intvec_extensions, decl);
-		}
 	}
 	decl->type = type_void;
 	return true;
@@ -2394,17 +2328,17 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 		decl->extname = scratch_buffer_copy();
 	}
 
-	bool type_is_inferred = decl->type->type_kind == TYPE_INFERRED_ARRAY;
-	if (!decl->var.init_expr && type_is_inferred)
+	bool infer_len = type_len_is_inferred(decl->type);
+	if (!decl->var.init_expr && infer_len)
 	{
-		SEMA_ERROR(decl->var.type_info, "Size of the array cannot be inferred without an initializer.");
+		SEMA_ERROR(decl->var.type_info, "The length cannot be inferred without an initializer.");
 		return false;
 	}
 	if (decl->var.init_expr)
 	{
 		Expr *init = decl->var.init_expr;
 
-		if (!type_is_inferred)
+		if (!infer_len)
 		{
 			// Pre resolve to avoid problem with recursive definitions.
 			decl->resolve_status = RESOLVE_DONE;
@@ -2420,11 +2354,17 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 		}
 		context->current_function = function;
 
-		if (type_is_inferred)
+		if (infer_len)
 		{
 			Type *right_side_type = init->type->canonical;
-			assert(right_side_type->type_kind == TYPE_ARRAY);
-			decl->type = type_get_array(decl->type->array.base, right_side_type->array.len);
+			if (right_side_type->type_kind == TYPE_ARRAY)
+			{
+				decl->type = type_get_array(decl->type->array.base, right_side_type->array.len);
+			}
+			else
+			{
+				decl->type = type_get_vector(decl->type->array.base, right_side_type->array.len);
+			}
 		}
 
 		Expr *init_expr = decl->var.init_expr;

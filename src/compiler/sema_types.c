@@ -95,6 +95,12 @@ static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type,
 		case TYPE_INFO_INFERRED_ARRAY:
 			type->type = type_get_inferred_array(type->array.base->type);
 			break;
+		case TYPE_INFO_INFERRED_VECTOR:
+			type->type = type_get_inferred_vector(type->array.base->type);
+			break;
+		case TYPE_INFO_SCALED_VECTOR:
+			type->type = type_get_scaled_vector(type->array.base->type);
+			break;
 		case TYPE_INFO_VECTOR:
 		{
 			ArraySize width;
@@ -113,7 +119,6 @@ static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type,
 			UNREACHABLE
 	}
 	assert(!type->array.len || type->array.len->expr_kind == EXPR_CONST);
-	if (type->array.base)
 	type->resolve_status = RESOLVE_DONE;
 	return true;
 }
@@ -222,6 +227,8 @@ bool sema_resolve_type(SemaContext *context, Type *type)
 		case TYPE_SUBARRAY:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_INFERRED_VECTOR:
+		case TYPE_SCALED_VECTOR:
 			return sema_resolve_type(context, type->array.base);
 		case TYPE_FAILABLE:
 			return sema_resolve_type(context, type->failable);
@@ -314,12 +321,15 @@ RETRY:
 			goto APPEND_QUALIFIERS;
 		}
 		case TYPE_INFO_INFERRED_ARRAY:
+		case TYPE_INFO_INFERRED_VECTOR:
 			if (!allow_inferred_type)
 			{
-				SEMA_ERROR(type_info, "Inferred array types can only be used in declarations with initializers.");
+				SEMA_ERROR(type_info, "Inferred %s types can only be used in declarations with initializers and as macro parameters.",
+				           type_info->kind == TYPE_INFO_INFERRED_VECTOR ? "vector" : "array");
 				return type_info_poison(type_info);
 			}
 			FALLTHROUGH;
+		case TYPE_INFO_SCALED_VECTOR:
 		case TYPE_INFO_SUBARRAY:
 		case TYPE_INFO_ARRAY:
 		case TYPE_INFO_VECTOR:
@@ -363,7 +373,13 @@ APPEND_QUALIFIERS:
 
 Type *sema_type_lower_by_size(Type *type, ArraySize element_size)
 {
-	if (type->type_kind != TYPE_INFERRED_ARRAY) return type;
-
-	return type_get_array(type->array.base, element_size);
+	switch (type->type_kind)
+	{
+		case TYPE_INFERRED_ARRAY:
+			return type_get_array(type->array.base, element_size);
+		case TYPE_INFERRED_VECTOR:
+			return type_get_vector(type->array.base, element_size);
+		default:
+			return type;
+	}
 }

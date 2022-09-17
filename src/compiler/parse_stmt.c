@@ -1365,7 +1365,8 @@ Ast* parse_short_stmt(ParseContext *c, TypeInfoId return_type)
 	Ast *ast = ast_new_curr(c, AST_COMPOUND_STMT);
 	AstId *next = &ast->compound_stmt.first_stmt;
 
-	if (!return_type || type_infoptr(return_type)->type->type_kind != TYPE_VOID)
+	TypeInfo *rtype = return_type ? type_infoptr(return_type) : NULL;
+	if (!rtype || (rtype->resolve_status != RESOLVE_DONE || rtype->type->type_kind != TYPE_VOID))
 	{
 		Ast *ret = ast_new_curr(c, AST_RETURN_STMT);
 		ast_append(&next, ret);

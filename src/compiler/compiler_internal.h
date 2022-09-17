@@ -534,8 +534,6 @@ typedef struct
 		};
 		struct
 		{
-			bool attr_intvec : 1;
-			bool attr_floatvec : 1;
 			DeclId body_param;
 			CompilationUnit *unit;
 		};
@@ -1424,8 +1422,6 @@ typedef struct Module_
 	Ast **files; // Asts
 
 	Decl** method_extensions;
-	Decl** intvec_extensions;
-	Decl** floatvec_extensions;
 	HTable symbols;
 	struct CompilationUnit_ **units;
 	Module *parent_module;
@@ -1791,8 +1787,6 @@ extern const char *kw_out;
 extern const char *kw_inout;
 extern const char *kw_deprecated;
 extern const char *kw_distinct;
-extern const char *kw_intvec;
-extern const char *kw_floatvec;
 extern const char *kw_inline;
 extern const char *kw_inf;
 extern const char *kw_kind;
@@ -2149,6 +2143,7 @@ Decl *sema_resolve_symbol_in_current_dynamic_scope(SemaContext *context, const c
 Decl *sema_decl_stack_resolve_symbol(const char *symbol);
 Decl *sema_find_decl_in_modules(Module **module_list, Path *path, const char *interned_name);
 Decl *unit_resolve_parameterized_symbol(CompilationUnit *unit, NameResolve *name_resolve);
+Decl *sema_resolve_type_method(CompilationUnit *unit, Type *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref);
 Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref);
 Decl *sema_find_extension_method_in_module(Module *module, Type *type, const char *method_name);
 
@@ -2234,7 +2229,9 @@ Type *type_get_ptr(Type *ptr_type);
 Type *type_get_ptr_recurse(Type *ptr_type);
 Type *type_get_subarray(Type *arr_type);
 Type *type_get_inferred_array(Type *arr_type);
+Type *type_get_inferred_vector(Type *arr_type);
 Type *type_get_flexible_array(Type *arr_type);
+Type *type_get_scaled_vector(Type *arr_type);
 Type *type_get_failable(Type *failable_type);
 Type *type_get_vector(Type *vector_type, unsigned len);
 Type *type_get_vector_bool(Type *original_type);
@@ -2254,6 +2251,7 @@ bool type_flat_is_floatlike(Type *type);
 bool type_flat_is_intlike(Type *type);
 bool type_flat_is_numlike(Type *type);
 bool type_may_have_sub_elements(Type *type);
+bool type_may_have_method(Type *type);
 const char *type_to_error_string(Type *type);
 const char *type_quoted_error_string(Type *type);
 INLINE bool type_may_negate(Type *type);
@@ -2345,6 +2343,13 @@ INLINE Type *type_add_optional(Type *type, bool make_optional)
 {
 	if (!make_optional || type->type_kind == TYPE_FAILABLE || type->type_kind == TYPE_FAILABLE_ANY) return type;
 	return type_get_failable(type);
+}
+
+INLINE bool type_len_is_inferred(Type *type)
+{
+	if (!type) return true;
+	DECL_TYPE_KIND_REAL(kind, type);
+	return kind == TYPE_INFERRED_VECTOR || kind == TYPE_INFERRED_ARRAY;
 }
 
 INLINE bool type_is_optional(Type *type)
