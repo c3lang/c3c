@@ -505,6 +505,7 @@ static Expr *parse_ct_stringify(ParseContext *c, Expr *left)
 	expr->const_expr.const_kind = CONST_STRING;
 	expr->const_expr.string.chars = content;
 	expr->const_expr.string.len = len;
+	expr->type = type_get_ptr(type_get_array(type_char, len));
 	return expr;
 }
 
