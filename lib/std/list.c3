@@ -122,12 +122,12 @@ fn void List.swap(List *list, usize i, usize j)
 	@swap(list.entries[i], list.entries[j]);
 }
 
-macro Type List.@item_at(List &list, usize index) @operator(elementat)
+macro Type List.@item_at(List &list, usize index) @operator([])
 {
     return list.entries[index];
 }
 
-macro Type* List.@item_ref(List &list, usize index) @operator(elementref)
+macro Type* List.@item_ref(List &list, usize index) @operator(&[])
 {
     return &list.entries[index];
 }

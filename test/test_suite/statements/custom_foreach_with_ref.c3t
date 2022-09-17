@@ -8,7 +8,7 @@ struct Foo
 
 extern fn void printf(char*, ...);
 
-macro int* Foo.@operator_element_at_ref(Foo &f, int a) @operator(elementref)
+macro int* Foo.@operator_element_at_ref(Foo &f, int a) @operator(&[])
 {
     return &f.a[a];
 }
@@ -18,7 +18,7 @@ macro int Foo.@operator_len(Foo &f) @operator(len)
     return 3;
 }
 
-macro int Foo.@operator_element_at(Foo &f, int a) @operator(elementat)
+macro int Foo.@operator_element_at(Foo &f, int a) @operator([])
 {
     return f.a[a];
 }

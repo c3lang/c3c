@@ -8,12 +8,12 @@ struct Vector
     int* elements;
 }
 
-macro int Vector.get(Vector* vector, usize element) @operator(elementat)
+macro int Vector.get(Vector* vector, usize element) @operator([])
 {
     return vector.elements[element];
 }
 
-macro int* Vector.get_ref(Vector* vector, usize element) @operator(elementref)
+macro int* Vector.get_ref(Vector* vector, usize element) @operator(&[])
 {
     return &vector.elements[element];
 }
