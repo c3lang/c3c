@@ -439,7 +439,7 @@ bool is_freable(JSONObject *obj)
 
 }
 
-void json_free(JSONObject **ptr)
+void json_free(JsonDeallocator *deallocator, JSONObject **ptr)
 {
 	JSONObject *obj = *ptr;
 
@@ -453,29 +453,29 @@ void json_free(JSONObject **ptr)
 			size_t i = 0;
 			while (i < obj->member_len)
 			{
-				json_free(&obj->members[i]);
-				free((char*)obj->keys[i]);
+				json_free(deallocator, &obj->members[i]);
+				deallocator((char*)obj->keys[i]);
 				i++;
 			}
-			free(obj->keys);
-			free(obj->members);
+			deallocator(obj->keys);
+			deallocator(obj->members);
 		}break;
 		case J_ARRAY:
 		{
 			size_t i = 0;
 			while (i < obj->array_len)
 			{
-				json_free(&obj->elements[i]);
+				json_free(deallocator, &obj->elements[i]);
 				i++;
 			}
-			free(obj->elements);
+			deallocator(obj->elements);
 		}break;
 		case J_STRING:
-			free((char*)obj->str);
+			deallocator((char*)obj->str);
 			break;
 		default:
 			break;
 	}
-	free(*ptr);
+	deallocator(*ptr);
 	*ptr = NULL;
 }
