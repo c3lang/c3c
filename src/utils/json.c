@@ -65,9 +65,9 @@ static bool json_match(JsonParser *parser, const char *str)
 	return true;
 }
 
-static inline JSONObject *json_new_object(JsonParser *parser, JSONType type)
+INLINE JSONObject *json_new_object(JsonAllocator *allocator, JSONType type)
 {
-	JSONObject *obj = parser->allocator(sizeof(JSONObject));
+	JSONObject *obj = allocator(sizeof(JSONObject));
 	obj->type = type;
 	return obj;
 }
@@ -247,7 +247,7 @@ static inline void json_lexer_advance(JsonParser *parser)
 				json_error(parser, "Unexpected symbol, I expected maybe 'false' here.");
 				return;
 			}
-			parser->current += 4;
+			parser->current += 5;
 			parser->current_token_type = T_FALSE;
 			return;
 		case 'n':
@@ -283,7 +283,7 @@ JSONObject *json_parse_array(JsonParser *parser)
 		return &empty_array_val;
 	}
 	size_t capacity = 16;
-	JSONObject *array = json_new_object(parser, J_ARRAY);
+	JSONObject *array = json_new_object(parser->allocator, J_ARRAY);
 	JSONObject** elements = parser->allocator(sizeof(JSONObject*) * capacity);
 	size_t index = 0;
 	while (1)
@@ -317,7 +317,7 @@ JSONObject *json_parse_object(JsonParser *parser)
 		return &empty_obj_val;
 	}
 	size_t capacity = 16;
-	JSONObject *obj = json_new_object(parser, J_OBJECT);
+	JSONObject *obj = json_new_object(parser->allocator, J_OBJECT);
 	JSONObject** elements = parser->allocator(sizeof(JSONObject*) * capacity);
 	const char** keys = parser->allocator(sizeof(JSONObject*) * capacity);
 	size_t index = 0;
@@ -388,7 +388,7 @@ JSONObject *json_parse(JsonParser *parser)
 			return NULL;
 		case T_STRING:
 		{
-			JSONObject *obj = json_new_object(parser, J_STRING);
+			JSONObject *obj = json_new_object(parser->allocator, J_STRING);
 			obj->type = J_STRING;
 			obj->str = parser->last_string;
 			json_lexer_advance(parser);
@@ -396,8 +396,13 @@ JSONObject *json_parse(JsonParser *parser)
 		}
 		case T_NUMBER:
 		{
-			if (parser->last_number == 0) return &zero_val;
-			JSONObject *obj = json_new_object(parser, J_NUMBER);
+			JSONObject *obj = NULL;
+			if (parser->last_number == 0) 
+			{
+				json_lexer_advance(parser);
+				return &zero_val;
+			}
+			obj = json_new_object(parser->allocator, J_NUMBER);
 			obj->type = J_NUMBER;
 			obj->f = parser->last_number;
 			json_lexer_advance(parser);
@@ -423,4 +428,49 @@ void json_init_string(JsonParser *parser, const char *str, JsonAllocator *alloca
 	parser->error_message = NULL;
 	parser->line = 1;
 	json_lexer_advance(parser);
+}
+
+bool is_freable(JSONObject *obj)
+{
+	if (obj == &error) return false;
+	if (obj == &true_val) return false;
+	if (obj == &false_val) return false;
+	if (obj == &zero_val) return false;
+	if (obj == &empty_array_val) return false;
+	if (obj == &empty_obj_val) return false;
+	return true;
+}
+
+void json_free(JsonDeallocator *deallocator, JSONObject **ptr)
+{
+	JSONObject *obj = *ptr;
+
+	if (!is_freable(obj)) return;
+
+	switch(obj->type)
+	{
+		case J_OBJECT:
+			for (size_t i = 0; i < obj->member_len; i++)
+			{
+				json_free(deallocator, &obj->members[i]);
+				deallocator((char*)obj->keys[i]);
+			}
+			deallocator(obj->keys);
+			deallocator(obj->members);
+			break;
+		case J_ARRAY:
+			for (size_t i = 0; i < obj->array_len; i++)
+			{
+				json_free(deallocator, &obj->elements[i]);
+			}
+			deallocator(obj->elements);
+			break;
+		case J_STRING:
+			deallocator((char*)obj->str);
+			break;
+		default:
+			break;
+	}
+	deallocator(*ptr);
+	*ptr = NULL;
 }
