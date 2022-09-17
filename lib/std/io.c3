@@ -185,6 +185,13 @@ fn String File.getline(File* file, Allocator* allocator = mem::current_allocator
 	return s;
 }
 
+fn char! File.getc(File* file)
+{
+	int c = libc::fgetc(file.file);
+	if (c == -1) return IoError.FILE_EOF!;
+	return (char)c;
+}
+
 /**
  * @param [&in] file
  * @require file.file `File must be initialized`
