@@ -397,13 +397,14 @@ JSONObject *json_parse(JsonParser *parser)
 		case T_NUMBER:
 		{
 			JSONObject *obj = NULL;
-			if (parser->last_number == 0) obj = &zero_val;
-			else
+			if (parser->last_number == 0) 
 			{
-				obj = json_new_object(parser->allocator, J_NUMBER);
-				obj->type = J_NUMBER;
-				obj->f = parser->last_number;
+				json_lexer_advance(parser);
+				return &zero_val;
 			}
+			obj = json_new_object(parser->allocator, J_NUMBER);
+			obj->type = J_NUMBER;
+			obj->f = parser->last_number;
 			json_lexer_advance(parser);
 			return obj;
 		}
@@ -431,45 +432,39 @@ void json_init_string(JsonParser *parser, const char *str, JsonAllocator *alloca
 
 bool is_freable(JSONObject *obj)
 {
-	return (
-			obj != &error && obj != &true_val &&
-			obj != &false_val && obj != &zero_val &&
-			obj != &empty_array_val && obj != &empty_obj_val
-	);
-
+	if (obj == &error) return false;
+	if (obj == &true_val) return false;
+	if (obj == &false_val) return false;
+	if (obj == &zero_val) return false;
+	if (obj == &empty_array_val) return false;
+	if (obj == &empty_obj_val) return false;
+	return true;
 }
 
 void json_free(JsonDeallocator *deallocator, JSONObject **ptr)
 {
 	JSONObject *obj = *ptr;
 
-	if (!is_freable(obj))
-		return;
+	if (!is_freable(obj)) return;
 
 	switch(obj->type)
 	{
 		case J_OBJECT:
-		{
-			size_t i = 0;
-			while (i < obj->member_len)
+			for (size_t i = 0; i < obj->member_len; i++)
 			{
 				json_free(deallocator, &obj->members[i]);
 				deallocator((char*)obj->keys[i]);
-				i++;
 			}
 			deallocator(obj->keys);
 			deallocator(obj->members);
-		}break;
+			break;
 		case J_ARRAY:
-		{
-			size_t i = 0;
-			while (i < obj->array_len)
+			for (size_t i = 0; i < obj->array_len; i++)
 			{
 				json_free(deallocator, &obj->elements[i]);
-				i++;
 			}
 			deallocator(obj->elements);
-		}break;
+			break;
 		case J_STRING:
 			deallocator((char*)obj->str);
 			break;
