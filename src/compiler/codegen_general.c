@@ -234,6 +234,7 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 			}
 			goto TYPECHECK;
 		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_SCALED_VECTOR:
 			return false;
 		case TYPE_ARRAY:
 			// Empty arrays? Not homogenous.

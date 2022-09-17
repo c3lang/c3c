@@ -10,7 +10,7 @@ fn void main()
 	int d = $$max(a, b);
 	io::printfln("%d %d", c, d);
 	char z = 0b1101_1101;
-	io::printfln("%b %b %b", z, rotr(z, (char)1), rotl(z, (char)1));
+	io::printfln("%b %b %b", z, z.rotr(1), z.rotl(1));
 }
 
 /* #expect: test.ll

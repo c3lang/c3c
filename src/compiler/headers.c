@@ -97,6 +97,7 @@ static void header_print_type(FILE *file, Type *type)
 		case TYPE_FAULTTYPE:
 			OUTPUT("enum %s__", type->decl->extname);
 			return;
+		case TYPE_SCALED_VECTOR:
 		case TYPE_FLEXIBLE_ARRAY:
 			TODO
 		case TYPE_FUNC:
