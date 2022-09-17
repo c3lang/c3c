@@ -4,7 +4,6 @@
 
 #include "llvm_codegen_internal.h"
 
-#if LLVM_VERSION_MAJOR > 12
 #include <llvm-c/Error.h>
 typedef struct LLVMOpaquePassBuilderOptions *LLVMPassBuilderOptionsRef;
 LLVMErrorRef LLVMRunPasses(LLVMModuleRef M, const char *Passes,
@@ -14,7 +13,6 @@ LLVMPassBuilderOptionsRef LLVMCreatePassBuilderOptions(void);
 void LLVMPassBuilderOptionsSetVerifyEach(LLVMPassBuilderOptionsRef Options, LLVMBool VerifyEach);
 void LLVMPassBuilderOptionsSetDebugLogging(LLVMPassBuilderOptionsRef Options, LLVMBool DebugLogging);
 void LLVMDisposePassBuilderOptions(LLVMPassBuilderOptionsRef Options);
-#endif
 
 const char* llvm_version = LLVM_VERSION_STRING;
 const char* llvm_target = LLVM_DEFAULT_TARGET_TRIPLE;
@@ -844,7 +842,7 @@ static inline void llvm_opt_old(GenContext *c)
 	LLVMRunPassManager(pass_manager, c->module);
 	LLVMDisposePassManager(pass_manager);
 }
-#if LLVM_VERSION_MAJOR > 12
+
 static inline void llvm_opt_new(GenContext *c)
 {
 	LLVMPassBuilderOptionsRef options = LLVMCreatePassBuilderOptions();
@@ -884,17 +882,15 @@ static inline void llvm_opt_new(GenContext *c)
 	}
 	LLVMDisposePassBuilderOptions(options);
 }
-#endif
+
 const char *llvm_codegen(void *context)
 {
 	GenContext *c = context;
-#if LLVM_VERSION_MAJOR > 12
 	if (active_target.use_new_optimizer)
 	{
 		llvm_opt_new(c);
 	}
 	else
-#endif
 	{
 		llvm_opt_old(c);
 	}

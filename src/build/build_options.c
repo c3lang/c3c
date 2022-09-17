@@ -472,14 +472,7 @@ static void parse_option(BuildOptions *options)
 			}
 			if (match_longopt("forcelinker"))
 			{
-				if (llvm_version_major > 12)
-				{
-					options->force_linker = true;
-				}
-				else
-				{
-					printf("Force linking ignored on LLVM 12 and earlier.\n");
-				}
+				options->force_linker = true;
 				return;
 			}
 			if (match_longopt("version"))

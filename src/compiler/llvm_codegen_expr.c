@@ -4454,11 +4454,8 @@ static inline LLVMValueRef llvm_syscall_asm(GenContext *c, LLVMTypeRef func_type
 {
 	return LLVMGetInlineAsm(func_type, call, strlen(call),
 							scratch_buffer_to_string(), scratch_buffer.len,
-							true, true, LLVMInlineAsmDialectATT
-#if LLVM_VERSION_MAJOR > 12
-			, /* can throw */ false
-#endif
-							);
+							true, true, LLVMInlineAsmDialectATT,
+							/* can throw */ false);
 }
 
 static inline void llvm_emit_syscall(GenContext *c, BEValue *be_value, Expr *expr)

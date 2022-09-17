@@ -1188,11 +1188,8 @@ static inline void llvm_emit_asm_block_stmt(GenContext *c, Ast *ast)
 										   strlen(clobbers),
 	                                       ast->asm_block_stmt.is_volatile,
 	                                       true,
-	                                       ast->asm_block_stmt.is_string ? LLVMInlineAsmDialectIntel : LLVMInlineAsmDialectATT
-#if LLVM_VERSION_MAJOR > 12
-											, /* can throw */ false
-#endif
-	                                       );
+	                                       ast->asm_block_stmt.is_string ? LLVMInlineAsmDialectIntel : LLVMInlineAsmDialectATT,
+						/* can throw */ false);
 	LLVMValueRef res = LLVMBuildCall2(c->builder, asm_fn_type, asm_fn, args, param_count, "");
 #if LLVM_VERSION_MAJOR > 13
 	for (unsigned i = 0; i < param_count; i++)
