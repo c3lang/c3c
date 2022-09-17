@@ -4,8 +4,9 @@
 
 #include "llvm_codegen_internal.h"
 
-#if LLVM_VERSION_MAJOR > 12
 #include <llvm-c/Error.h>
+#include <llvm-c/Comdat.h>
+
 typedef struct LLVMOpaquePassBuilderOptions *LLVMPassBuilderOptionsRef;
 LLVMErrorRef LLVMRunPasses(LLVMModuleRef M, const char *Passes,
                            LLVMTargetMachineRef TM,
@@ -14,7 +15,6 @@ LLVMPassBuilderOptionsRef LLVMCreatePassBuilderOptions(void);
 void LLVMPassBuilderOptionsSetVerifyEach(LLVMPassBuilderOptionsRef Options, LLVMBool VerifyEach);
 void LLVMPassBuilderOptionsSetDebugLogging(LLVMPassBuilderOptionsRef Options, LLVMBool DebugLogging);
 void LLVMDisposePassBuilderOptions(LLVMPassBuilderOptionsRef Options);
-#endif
 
 const char* llvm_version = LLVM_VERSION_STRING;
 const char* llvm_target = LLVM_DEFAULT_TARGET_TRIPLE;
@@ -637,6 +637,7 @@ void llvm_codegen_setup()
 	intrinsic_id.sadd_overflow = lookup_intrinsic("llvm.sadd.with.overflow");
 	intrinsic_id.sadd_sat = lookup_intrinsic("llvm.sadd.sat");
 	intrinsic_id.sin = lookup_intrinsic("llvm.sin");
+	intrinsic_id.sshl_sat = lookup_intrinsic("llvm.sshl.sat");
 	intrinsic_id.smax = lookup_intrinsic("llvm.smax");
 	intrinsic_id.smin = lookup_intrinsic("llvm.smin");
 	intrinsic_id.smul_overflow = lookup_intrinsic("llvm.smul.with.overflow");
@@ -651,6 +652,7 @@ void llvm_codegen_setup()
 	intrinsic_id.umin = lookup_intrinsic("llvm.umin");
 	intrinsic_id.umul_overflow = lookup_intrinsic("llvm.umul.with.overflow");
 	intrinsic_id.usub_overflow = lookup_intrinsic("llvm.usub.with.overflow");
+	intrinsic_id.ushl_sat = lookup_intrinsic("llvm.ushl.sat");
 	intrinsic_id.usub_sat = lookup_intrinsic("llvm.usub.sat");
 	intrinsic_id.vector_reduce_fmax = lookup_intrinsic("llvm.vector.reduce.fmax");
 	intrinsic_id.vector_reduce_fmin = lookup_intrinsic("llvm.vector.reduce.fmin");
@@ -806,46 +808,8 @@ static void llvm_emit_type_decls(GenContext *context, Decl *decl)
 	}
 }
 
-static inline void llvm_opt_old(GenContext *c)
-{
-	LLVMPassManagerBuilderRef pass_manager_builder = LLVMPassManagerBuilderCreate();
-	LLVMPassManagerBuilderSetOptLevel(pass_manager_builder, (unsigned)active_target.optimization_level);
-	LLVMPassManagerBuilderSetSizeLevel(pass_manager_builder, (unsigned)active_target.size_optimization_level);
-	LLVMPassManagerBuilderSetDisableUnrollLoops(pass_manager_builder, active_target.optimization_level == OPTIMIZATION_NONE);
-	if (active_target.optimization_level != OPTIMIZATION_NONE)
-	{
-		LLVMPassManagerBuilderUseInlinerWithThreshold(pass_manager_builder, (unsigned)get_inlining_threshold());
-	}
-	LLVMPassManagerRef pass_manager = LLVMCreatePassManager();
-	LLVMPassManagerRef function_pass_manager = LLVMCreateFunctionPassManagerForModule(c->module);
-	LLVMAddAnalysisPasses(c->machine, function_pass_manager);
-	LLVMAddAnalysisPasses(c->machine, pass_manager);
-	LLVMPassManagerBuilderPopulateModulePassManager(pass_manager_builder, pass_manager);
-	LLVMPassManagerBuilderPopulateFunctionPassManager(pass_manager_builder, function_pass_manager);
 
-	// IMPROVE
-	// In LLVM Opt, LoopVectorize and SLPVectorize settings are part of the PassManagerBuilder
-	// Anything else we need to manually add?
-
-	LLVMPassManagerBuilderDispose(pass_manager_builder);
-
-	// Run function passes
-	LLVMInitializeFunctionPassManager(function_pass_manager);
-	LLVMValueRef current_function = LLVMGetFirstFunction(c->module);
-	while (current_function)
-	{
-		LLVMRunFunctionPassManager(function_pass_manager, current_function);
-		current_function = LLVMGetNextFunction(current_function);
-	}
-	LLVMFinalizeFunctionPassManager(function_pass_manager);
-	LLVMDisposePassManager(function_pass_manager);
-
-	// Run module pass
-	LLVMRunPassManager(pass_manager, c->module);
-	LLVMDisposePassManager(pass_manager);
-}
-#if LLVM_VERSION_MAJOR > 12
-static inline void llvm_opt_new(GenContext *c)
+static inline void llvm_optimize(GenContext *c)
 {
 	LLVMPassBuilderOptionsRef options = LLVMCreatePassBuilderOptions();
 	LLVMPassBuilderOptionsSetVerifyEach(options, active_target.emit_llvm);
@@ -884,20 +848,11 @@ static inline void llvm_opt_new(GenContext *c)
 	}
 	LLVMDisposePassBuilderOptions(options);
 }
-#endif
+
 const char *llvm_codegen(void *context)
 {
 	GenContext *c = context;
-#if LLVM_VERSION_MAJOR > 12
-	if (active_target.use_new_optimizer)
-	{
-		llvm_opt_new(c);
-	}
-	else
-#endif
-	{
-		llvm_opt_old(c);
-	}
+	llvm_optimize(c);
 
 	// Serialize the LLVM IR, if requested, also verify the IR in this case
 	if (active_target.emit_llvm)

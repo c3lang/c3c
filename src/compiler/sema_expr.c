@@ -2534,6 +2534,9 @@ static inline unsigned builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_MIN:
 		case BUILTIN_POW:
 		case BUILTIN_VOLATILE_STORE:
+		case BUILTIN_SAT_ADD:
+		case BUILTIN_SAT_SUB:
+		case BUILTIN_SAT_SHL:
 			return 2;
 		case BUILTIN_FMA:
 		case BUILTIN_FSHL:
@@ -2852,6 +2855,15 @@ static inline bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *ex
 			if (!sema_check_builtin_args(args,
 			                             (BuiltinArg[]) { BA_INTLIKE },
 			                             arg_count)) return false;
+			rtype = args[0]->type;
+			break;
+		case BUILTIN_SAT_SHL:
+		case BUILTIN_SAT_SUB:
+		case BUILTIN_SAT_ADD:
+			if (!sema_check_builtin_args(args,
+			                             (BuiltinArg[]) { BA_INTLIKE, BA_INTLIKE },
+			                             arg_count)) return false;
+			if (!sema_check_builtin_args_match(args, 2)) return false;
 			rtype = args[0]->type;
 			break;
 		case BUILTIN_REVERSE:

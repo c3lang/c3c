@@ -4346,6 +4346,9 @@ unsigned llvm_get_intrinsic(BuiltinFunction func)
 		case BUILTIN_ABS:
 		case BUILTIN_SHUFFLEVECTOR:
 		case BUILTIN_REVERSE:
+		case BUILTIN_SAT_ADD:
+		case BUILTIN_SAT_SHL:
+		case BUILTIN_SAT_SUB:
 			UNREACHABLE
 		case BUILTIN_SYSCLOCK:
 			return intrinsic_id.readcyclecounter;
@@ -4454,11 +4457,7 @@ static inline LLVMValueRef llvm_syscall_asm(GenContext *c, LLVMTypeRef func_type
 {
 	return LLVMGetInlineAsm(func_type, call, strlen(call),
 							scratch_buffer_to_string(), scratch_buffer.len,
-							true, true, LLVMInlineAsmDialectATT
-#if LLVM_VERSION_MAJOR > 12
-			, /* can throw */ false
-#endif
-							);
+							true, true, LLVMInlineAsmDialectATT, /* can throw */ false);
 }
 
 static inline void llvm_emit_syscall(GenContext *c, BEValue *be_value, Expr *expr)
@@ -4582,135 +4581,113 @@ INLINE void llvm_emit_reverse(GenContext *c, BEValue *result_value, Expr *expr)
 	llvm_value_set(result_value, LLVMBuildShuffleVector(c->builder, arg1, arg2, mask, "reverse"), rtype);
 }
 
+INLINE unsigned llvm_intrinsic_by_type(Type *type, unsigned int_intrinsic, unsigned uint_intrinsic, unsigned float_intrinsic)
+{
+	type = type_flatten(type);
+	RETRY:
+	switch (type->type_kind)
+	{
+		case ALL_SIGNED_INTS:
+			return int_intrinsic;
+		case TYPE_BOOL:
+		case ALL_UNSIGNED_INTS:
+			return uint_intrinsic;
+		case ALL_FLOATS:
+			return float_intrinsic;
+		case TYPE_VECTOR:
+			type = type->array.base;
+			goto RETRY;
+		default:
+			UNREACHABLE
+	}
+}
 void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 {
 	BuiltinFunction func = exprptr(expr->call_expr.function)->builtin_expr.builtin;
-	if (func == BUILTIN_UNREACHABLE)
+	unsigned intrinsic;
+	switch (func)
 	{
-		llvm_value_set(result_value, LLVMBuildUnreachable(c->builder), type_void);
-		c->current_block = NULL;
-		c->current_block_is_target = false;
-		LLVMBasicBlockRef after_unreachable = llvm_basic_block_new(c, "after.unreachable");
-		llvm_emit_block(c, after_unreachable);
-		return;
-	}
-	if (func == BUILTIN_SHUFFLEVECTOR)
-	{
-		llvm_emit_shufflevector(c, result_value, expr);
-		return;
-	}
-	if (func == BUILTIN_REVERSE)
-	{
-		llvm_emit_reverse(c, result_value, expr);
-		return;
-	}
-	if (func == BUILTIN_STACKTRACE)
-	{
-		if (!c->debug.enable_stacktrace)
+		case BUILTIN_UNREACHABLE:
+			llvm_value_set(result_value, LLVMBuildUnreachable(c->builder), type_void);
+			c->current_block = NULL;
+			c->current_block_is_target = false;
+			LLVMBasicBlockRef after_unreachable = llvm_basic_block_new(c, "after.unreachable");
+			llvm_emit_block(c, after_unreachable);
+			return;
+		case BUILTIN_SHUFFLEVECTOR:
+			llvm_emit_shufflevector(c, result_value, expr);
+			return;
+		case BUILTIN_REVERSE:
+			llvm_emit_reverse(c, result_value, expr);
+			return;
+		case BUILTIN_STACKTRACE:
+			if (!c->debug.enable_stacktrace)
+			{
+				llvm_value_set(result_value, llvm_get_zero(c, type_voidptr), type_voidptr);
+				return;
+			}
+			llvm_value_set(result_value, llvm_emit_bitcast(c, c->debug.stack_slot, type_voidptr), type_voidptr);
+		case BUILTIN_VOLATILE_STORE:
 		{
-			llvm_value_set(result_value, llvm_get_zero(c, type_voidptr), type_voidptr);
+			BEValue value;
+			llvm_emit_expr(c, &value, expr->call_expr.arguments[0]);
+			llvm_emit_expr(c, result_value, expr->call_expr.arguments[1]);
+			llvm_value_rvalue(c, &value);
+			value.kind = BE_ADDRESS;
+			BEValue store_value = *result_value;
+			LLVMValueRef store = llvm_store(c, &value, &store_value);
+			if (store) LLVMSetVolatile(store, true);
 			return;
 		}
-		llvm_value_set(result_value, llvm_emit_bitcast(c, c->debug.stack_slot, type_voidptr), type_voidptr);
-		return;
-	}
-	if (func == BUILTIN_VOLATILE_STORE)
-	{
-		BEValue value;
-		llvm_emit_expr(c, &value, expr->call_expr.arguments[0]);
-		llvm_emit_expr(c, result_value, expr->call_expr.arguments[1]);
-		llvm_value_rvalue(c, &value);
-		value.kind = BE_ADDRESS;
-		BEValue store_value = *result_value;
-		LLVMValueRef store = llvm_store(c, &value, &store_value);
-		if (store) LLVMSetVolatile(store, true);
-		return;
-	}
-	if (func == BUILTIN_VOLATILE_LOAD)
-	{
-		llvm_emit_expr(c, result_value, expr->call_expr.arguments[0]);
-		llvm_value_rvalue(c, result_value);
-		result_value->kind = BE_ADDRESS;
-		result_value->type = type_lowering(result_value->type->pointer);
-		llvm_value_rvalue(c, result_value);
-		LLVMSetVolatile(result_value->value, true);
-		return;
-	}
-	if (func == BUILTIN_SYSCALL)
-	{
-		llvm_emit_syscall(c, result_value, expr);
-		return;
-	}
-	unsigned intrinsic;
-	if (func == BUILTIN_MAX)
-	{
-		Type *type = type_flatten(expr->call_expr.arguments[0]->type);
-		RETRY:
-		switch (type->type_kind)
+		case BUILTIN_VOLATILE_LOAD:
 		{
-			case ALL_SIGNED_INTS:
-				intrinsic = intrinsic_id.smax;
-				break;
-			case TYPE_BOOL:
-			case ALL_UNSIGNED_INTS:
-				intrinsic = intrinsic_id.umax;
-				break;
-			case ALL_FLOATS:
-				intrinsic = intrinsic_id.maxnum;
-				break;
-			case TYPE_VECTOR:
-				type = type->array.base;
-				goto RETRY;
-			default:
-				UNREACHABLE
+			llvm_emit_expr(c, result_value, expr->call_expr.arguments[0]);
+			llvm_value_rvalue(c, result_value);
+			result_value->kind = BE_ADDRESS;
+			result_value->type = type_lowering(result_value->type->pointer);
+			llvm_value_rvalue(c, result_value);
+			LLVMSetVolatile(result_value->value, true);
+			return;
 		}
-	}
-	else if (func == BUILTIN_MIN)
-	{
-		Type *type = type_flatten(expr->call_expr.arguments[0]->type);
-		RETRY2:
-		switch (type->type_kind)
-		{
-			case ALL_SIGNED_INTS:
-				intrinsic = intrinsic_id.smin;
-				break;
-			case TYPE_BOOL:
-			case ALL_UNSIGNED_INTS:
-				intrinsic = intrinsic_id.umin;
-				break;
-			case ALL_FLOATS:
-				intrinsic = intrinsic_id.minnum;
-				break;
-			case TYPE_VECTOR:
-				type = type->array.base;
-				goto RETRY2;
-			default:
-				UNREACHABLE
-		}
-	}
-	else if (func == BUILTIN_ABS)
-	{
-		Type *type = type_flatten(expr->call_expr.arguments[0]->type);
-		RETRY3:
-		switch (type->type_kind)
-		{
-			case TYPE_BOOL:
-			case ALL_INTS:
-				intrinsic = intrinsic_id.abs;
-				break;
-			case ALL_FLOATS:
-				intrinsic = intrinsic_id.fabs;
-				break;
-			case TYPE_VECTOR:
-				type = type->array.base;
-				goto RETRY3;
-			default:
-				UNREACHABLE
-		}
-	}
-	else
-	{
-		intrinsic = llvm_get_intrinsic(func);
+		case BUILTIN_SYSCALL:
+			llvm_emit_syscall(c, result_value, expr);
+			return;
+		case BUILTIN_MAX:
+			intrinsic = llvm_intrinsic_by_type(expr->call_expr.arguments[0]->type,
+			                                   intrinsic_id.smax,
+			                                   intrinsic_id.umax,
+			                                   intrinsic_id.maxnum);
+			break;
+		case BUILTIN_MIN:
+			intrinsic = llvm_intrinsic_by_type(expr->call_expr.arguments[0]->type,
+			                                   intrinsic_id.smin,
+			                                   intrinsic_id.umin,
+			                                   intrinsic_id.minnum);
+			break;
+		case BUILTIN_ABS:
+			intrinsic = llvm_intrinsic_by_type(expr->call_expr.arguments[0]->type,
+			                                   intrinsic_id.abs,
+			                                   intrinsic_id.abs,
+			                                   intrinsic_id.fabs);
+			break;
+		case BUILTIN_SAT_SHL:
+			intrinsic = llvm_intrinsic_by_type(expr->call_expr.arguments[0]->type,
+			                                   intrinsic_id.sshl_sat,
+			                                   intrinsic_id.ushl_sat, 0);
+			break;
+		case BUILTIN_SAT_ADD:
+			intrinsic = llvm_intrinsic_by_type(expr->call_expr.arguments[0]->type,
+			                                   intrinsic_id.sadd_sat,
+			                                   intrinsic_id.uadd_sat, 0);
+			break;
+		case BUILTIN_SAT_SUB:
+			intrinsic = llvm_intrinsic_by_type(expr->call_expr.arguments[0]->type,
+			                                   intrinsic_id.ssub_sat,
+			                                   intrinsic_id.usub_sat, 0);
+			break;
+		default:
+			intrinsic = llvm_get_intrinsic(func);
+			break;
 	}
 	llvm_emit_intrinsic_expr(c, intrinsic, result_value, expr);
 }

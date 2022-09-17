@@ -195,7 +195,6 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	target->emit_llvm = options->emit_llvm;
 	target->emit_asm = options->emit_asm;
 	target->force_linker = options->force_linker;
-	target->use_new_optimizer = options->use_new_optimizer;
 	target->panicfn = options->panicfn;
 	if (options->macos.sdk) target->macos.sdk = options->macos.sdk;
 	if (options->win.sdk) target->win.sdk = options->win.sdk;

@@ -165,21 +165,8 @@ extern "C" {
 		return !llvm::writeArchive(std::string(out_name), std::move(new_members), true, kind, true, false, nullptr);
 	}
 
-int llvm_version_major = LLVM_VERSION_MAJOR;
-#if LLVM_VERSION_MAJOR < 13
-#if _MSC_VER
-	__declspec(selectany)
-#else
-	__attribute__((weak))
-#endif
-	LLVMAttributeRef LLVMCreateTypeAttribute(LLVMContextRef C, unsigned KindID,
-											 LLVMTypeRef type_ref)
-	{
-		auto &Ctx = *llvm::unwrap(C);
-		auto AttrKind = (llvm::Attribute::AttrKind)KindID;
-		return wrap(llvm::Attribute::get(Ctx, AttrKind, llvm::unwrap(type_ref)));
-	}
-#endif
+	int llvm_version_major = LLVM_VERSION_MAJOR;
+
 	LLVMValueRef LLVMConstBswap(LLVMValueRef ConstantVal)
 	{
 		llvm::Constant *Val = llvm::unwrap<llvm::Constant>(ConstantVal);
