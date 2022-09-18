@@ -486,11 +486,11 @@ static Expr *parse_ct_stringify(ParseContext *c, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
 	SourceSpan start_span = c->span;
+	const char *start = c->lexer.current;
 	advance(c);
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
-	const char *start = c->lexer.current;
 	ASSIGN_EXPR_OR_RET(Expr *inner, parse_expr(c), poisoned_expr);
-	const char *end = c->lexer.current;
+	const char *end = c->lexer.lexing_start - 1;
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 	if (inner->expr_kind == EXPR_HASH_IDENT)
 	{
