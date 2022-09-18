@@ -7857,7 +7857,8 @@ RETRY:
 		case TYPE_INFO_VATYPE:
 			if (!sema_resolve_type_info(context, type_info)) return poisoned_type;
 			return type_info->type->canonical;
-		case TYPE_INFO_EXPRESSION:
+		case TYPE_INFO_TYPEFROM:
+		case TYPE_INFO_TYPEOF:
 			if (!sema_resolve_type_info(context, type_info)) return poisoned_type;
 			return type_info->type;
 		case TYPE_INFO_EVALTYPE:

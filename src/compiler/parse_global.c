@@ -482,9 +482,18 @@ Path *parse_path_prefix(ParseContext *c, bool *had_error)
  */
 static inline TypeInfo *parse_base_type(ParseContext *c)
 {
+	if (try_consume(c, TOKEN_CT_TYPEFROM))
+	{
+		TypeInfo *type_info = type_info_new(TYPE_INFO_TYPEFROM, c->prev_span);
+		CONSUME_OR_RET(TOKEN_LPAREN, poisoned_type_info);
+		ASSIGN_EXPR_OR_RET(type_info->unresolved_type_expr, parse_expr(c), poisoned_type_info);
+		CONSUME_OR_RET(TOKEN_RPAREN, poisoned_type_info);
+		RANGE_EXTEND_PREV(type_info);
+		return type_info;
+	}
 	if (try_consume(c, TOKEN_CT_TYPEOF))
 	{
-		TypeInfo *type_info = type_info_new(TYPE_INFO_EXPRESSION, c->prev_span);
+		TypeInfo *type_info = type_info_new(TYPE_INFO_TYPEOF, c->prev_span);
 		CONSUME_OR_RET(TOKEN_LPAREN, poisoned_type_info);
 		ASSIGN_EXPR_OR_RET(type_info->unresolved_type_expr, parse_expr(c), poisoned_type_info);
 		CONSUME_OR_RET(TOKEN_RPAREN, poisoned_type_info);

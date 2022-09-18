@@ -875,7 +875,7 @@ static Expr *parse_ct_sizeof(ParseContext *c, Expr *left)
 	ASSIGN_EXPR_OR_RET(Expr *inner, parse_expr(c), poisoned_expr);
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 	Expr *typeof_expr = expr_new(EXPR_TYPEINFO, inner->span);
-	TypeInfo *type_info = type_info_new(TYPE_INFO_EXPRESSION, inner->span);
+	TypeInfo *type_info = type_info_new(TYPE_INFO_TYPEOF, inner->span);
 	type_info->unresolved_type_expr = inner;
 	typeof_expr->type_expr = type_info;
 	access->access_expr.parent = typeof_expr;
@@ -1767,6 +1767,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_CT_OFFSETOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_NAMEOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_QNAMEOF] = { parse_ct_call, NULL, PREC_NONE },
+		[TOKEN_CT_TYPEFROM] = { parse_type_expr, NULL, PREC_NONE },
 		[TOKEN_CT_TYPEOF] = { parse_type_expr, NULL, PREC_NONE },
 		[TOKEN_CT_STRINGIFY] = { parse_ct_stringify, NULL, PREC_NONE },
 		[TOKEN_CT_EVALTYPE] = { parse_type_expr, NULL, PREC_NONE },

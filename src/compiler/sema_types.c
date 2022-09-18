@@ -308,7 +308,7 @@ RETRY:
 					return type_info_poison(type_info);
 			}
 		}
-		case TYPE_INFO_EXPRESSION:
+		case TYPE_INFO_TYPEOF:
 		{
 			Expr *expr = type_info->unresolved_type_expr;
 			if (!sema_analyse_expr(context, expr))
@@ -316,6 +316,23 @@ RETRY:
 				return type_info_poison(type_info);
 			}
 			type_info->type = expr->type;
+			type_info->resolve_status = RESOLVE_DONE;
+			assert(!type_info->failable);
+			goto APPEND_QUALIFIERS;
+		}
+		case TYPE_INFO_TYPEFROM:
+		{
+			Expr *expr = type_info->unresolved_type_expr;
+			if (!sema_analyse_expr(context, expr))
+			{
+				return type_info_poison(type_info);
+			}
+			if (!expr_is_const(expr) || expr->const_expr.const_kind != CONST_TYPEID)
+			{
+				SEMA_ERROR(expr, "Expected a constant typeid value.");
+				return type_info_poison(type_info);
+			}
+			type_info->type = expr->const_expr.typeid;
 			type_info->resolve_status = RESOLVE_DONE;
 			assert(!type_info->failable);
 			goto APPEND_QUALIFIERS;

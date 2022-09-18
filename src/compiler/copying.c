@@ -583,8 +583,9 @@ TypeInfo *copy_type_info(CopyStruct *c, TypeInfo *source)
 		case TYPE_INFO_CT_IDENTIFIER:
 		case TYPE_INFO_IDENTIFIER:
 			return copy;
+		case TYPE_INFO_TYPEFROM:
 		case TYPE_INFO_EVALTYPE:
-		case TYPE_INFO_EXPRESSION:
+		case TYPE_INFO_TYPEOF:
 		case TYPE_INFO_VATYPE:
 			assert(source->resolve_status == RESOLVE_NOT_DONE);
 			copy->unresolved_type_expr = copy_expr(c, source->unresolved_type_expr);
