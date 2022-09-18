@@ -87,6 +87,7 @@ bool sema_check_asm(SemaContext *context, AsmInlineBlock *block, Ast *asm_stmt);
 
 static inline bool expr_is_const(Expr *expr);
 
+
 static inline bool expr_is_const(Expr *expr)
 {
 	return expr->expr_kind == EXPR_CONST;

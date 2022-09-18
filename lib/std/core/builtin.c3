@@ -113,3 +113,24 @@ macro enum_by_name($Type, char[] enum_name) @builtin
 	}
 	return SearchResult.MISSING!;
 }
+
+enum PrefetchLocality
+{
+	NO_LOCALITY,
+	FAR,
+	NEAR,
+	VERY_NEAR,
+}
+
+/**
+ * Prefetch a pointer.
+
+ * @param [in] ptr `Pointer to prefetch`
+ * @param $locality `Locality ranging from none to extremely local`
+ * @param $write `Prefetch for write, otherwise prefetch for read.`
+ **/
+macro prefetch(void* ptr, PrefetchLocality $locality = VERY_NEAR, bool $write = false) @builtin
+{
+	$$prefetch(ptr, $write ? 1 : 0, $locality.ordinal);
+}
+

@@ -23,7 +23,7 @@ static bool binary_arithmetic_promotion(SemaContext *context, Expr *left, Expr *
 static inline bool expr_both_const(Expr *left, Expr *right);
 static inline bool sema_expr_index_const_list(Expr *const_list, Expr *index, Expr *result);
 static Expr **sema_expand_vasplat_exprs(SemaContext *c, Expr **exprs);
-
+static bool expr_in_int_range(Expr *expr, int64_t low, int64_t high);
 static bool sema_decay_array_pointers(Expr *expr)
 {
 	CanonicalType *pointer_type = type_pointer_type(type_no_optional(expr->type));
@@ -129,6 +129,15 @@ const char *ct_eval_expr(SemaContext *c, const char *expr_type, Expr *inner, Tok
 		return NULL;
 	}
 	return interned_version;
+}
+
+static bool expr_in_int_range(Expr *expr, int64_t low, int64_t high)
+{
+	assert(expr_is_const(expr) && expr->const_expr.const_kind == CONST_INTEGER);
+	Int val = expr->const_expr.ixx;
+	if (!int_fits(val, TYPE_I64)) return false;
+	int64_t value = int_to_i64(val);
+	return value >= low && value <= high;
 }
 
 static Expr *expr_access_inline_member(Expr *parent, Decl *parent_decl)
@@ -2539,6 +2548,7 @@ static inline unsigned builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_LRINT:
 		case BUILTIN_LROUND:
 		case BUILTIN_NEARBYINT:
+		case BUILTIN_REVERSE:
 		case BUILTIN_RINT:
 		case BUILTIN_ROUND:
 		case BUILTIN_ROUNDEVEN:
@@ -2547,7 +2557,6 @@ static inline unsigned builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_SYSCALL:
 		case BUILTIN_TRUNC:
 		case BUILTIN_VOLATILE_LOAD:
-		case BUILTIN_REVERSE:
 			return 1;
 		case BUILTIN_COPYSIGN:
 		case BUILTIN_MAX:
@@ -2561,6 +2570,7 @@ static inline unsigned builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_FMA:
 		case BUILTIN_FSHL:
 		case BUILTIN_FSHR:
+		case BUILTIN_PREFETCH:
 			return 3;
 		case BUILTIN_MEMSET:
 			return 5;
@@ -2580,6 +2590,7 @@ typedef enum
 	BA_BOOL,
 	BA_CHAR,
 	BA_FLOATLIKE,
+	BA_INTEGER,
 	BA_INTLIKE,
 	BA_NUMLIKE,
 	BA_INTVEC,
@@ -2686,7 +2697,14 @@ static bool sema_check_builtin_args(Expr **args, BuiltinArg *arg_type, size_t ar
 			case BA_INTLIKE:
 				if (!type_flat_is_intlike(type))
 				{
-					SEMA_ERROR(args[i], "Expected an int or int vector.");
+					SEMA_ERROR(args[i], "Expected an integer or integer vector.");
+					return false;
+				}
+				break;
+			case BA_INTEGER:
+				if (!type_is_integer(type))
+				{
+					SEMA_ERROR(args[i], "Expected an integer.");
 					return false;
 				}
 				break;
@@ -2915,7 +2933,30 @@ static inline bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *ex
 										 arg_count)) return false;
 			rtype = args[0]->type;
 			break;
-
+		case BUILTIN_PREFETCH:
+			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_POINTER, BA_INTEGER, BA_INTEGER }, arg_count)) return false;
+			for (unsigned i = 1; i < 3; i++)
+			{
+				if (!expr_is_const(args[i]))
+				{
+					SEMA_ERROR(args[i], "A constant value is required.");
+					return false;
+				}
+				if (!cast_implicit(args[i], type_int)) return false;
+			}
+			if (!expr_in_int_range(args[1], 0, 1))
+			{
+				SEMA_ERROR(args[2], "Expected a value between 0 and 3.");
+				return false;
+			}
+			if (!expr_in_int_range(args[2], 0, 3))
+			{
+				SEMA_ERROR(args[2], "Expected a value between 0 and 3.");
+				return false;
+			}
+			if (!cast_implicit(args[0], type_voidptr)) return false;
+			rtype = type_void;
+			break;
 		case BUILTIN_POW:
 			if (!sema_check_builtin_args(args,
 										 (BuiltinArg[]) { BA_FLOATLIKE, BA_FLOATLIKE },

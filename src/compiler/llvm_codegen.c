@@ -630,6 +630,7 @@ void llvm_codegen_setup()
 	intrinsic_id.nearbyint = lookup_intrinsic("llvm.nearbyint");
 	intrinsic_id.pow = lookup_intrinsic("llvm.pow");
 	intrinsic_id.powi = lookup_intrinsic("llvm.powi");
+	intrinsic_id.prefetch = lookup_intrinsic("llvm.prefetch");
 	intrinsic_id.readcyclecounter = lookup_intrinsic("llvm.readcyclecounter");
 	intrinsic_id.rint = lookup_intrinsic("llvm.rint");
 	intrinsic_id.round = lookup_intrinsic("llvm.round");
