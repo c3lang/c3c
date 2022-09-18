@@ -4138,6 +4138,8 @@ static void llvm_emit_intrinsic_expr(GenContext *c, unsigned intrinsic, BEValue 
 	if (intrinsic == intrinsic_id.memset) arguments--;
 
 	Expr **args = expr->call_expr.arguments;
+	LLVMTypeRef call_type[3];
+	int call_args = 0;
 	for (unsigned i = 0; i < arguments; i++)
 	{
 		llvm_emit_expr(c, be_value, args[i]);
@@ -4149,8 +4151,12 @@ static void llvm_emit_intrinsic_expr(GenContext *c, unsigned intrinsic, BEValue 
 		arg_results[1] = llvm_get_zero_raw(c->bool_type);
 		arguments++;
 	}
-	LLVMTypeRef call_type[3];
-	int call_args = 0;
+	else if (intrinsic == intrinsic_id.prefetch)
+	{
+		arg_results[arguments++] = llvm_const_int(c, type_int, 1);
+		call_args = 1;
+		call_type[0] = llvm_get_type(c, type_voidptr);
+	}
 	if (expr->type != type_void)
 	{
 		call_args = 1;
@@ -4393,6 +4399,8 @@ unsigned llvm_get_intrinsic(BuiltinFunction func)
 			return intrinsic_id.log2;
 		case BUILTIN_POW:
 			return intrinsic_id.pow;
+		case BUILTIN_PREFETCH:
+			return intrinsic_id.prefetch;
 		case BUILTIN_EXP:
 			return intrinsic_id.exp;
 		case BUILTIN_MEMCOPY:

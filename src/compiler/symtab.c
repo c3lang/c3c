@@ -194,6 +194,7 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_NEARBYINT] = KW_DEF("nearbyint");
 	builtin_list[BUILTIN_POPCOUNT] = KW_DEF("popcount");
 	builtin_list[BUILTIN_POW] = KW_DEF("pow");
+	builtin_list[BUILTIN_PREFETCH] = KW_DEF("prefetch");
 	builtin_list[BUILTIN_REVERSE] = KW_DEF("reverse");
 	builtin_list[BUILTIN_RINT] = KW_DEF("rint");
 	builtin_list[BUILTIN_ROUND] = KW_DEF("round");

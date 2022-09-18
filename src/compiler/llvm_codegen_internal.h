@@ -144,6 +144,7 @@ typedef struct
 	unsigned nearbyint;
 	unsigned pow;
 	unsigned powi;
+	unsigned prefetch;
 	unsigned readcyclecounter;
 	unsigned rint;
 	unsigned round;
