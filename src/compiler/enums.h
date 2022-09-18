@@ -359,9 +359,10 @@ typedef enum
 	TYPE_INFO_POISON,
 	TYPE_INFO_IDENTIFIER,
 	TYPE_INFO_CT_IDENTIFIER,
-	TYPE_INFO_EXPRESSION,
+	TYPE_INFO_TYPEOF,
 	TYPE_INFO_VATYPE,
 	TYPE_INFO_EVALTYPE,
+	TYPE_INFO_TYPEFROM,
 	TYPE_INFO_ARRAY,
 	TYPE_INFO_VECTOR,
 	TYPE_INFO_INFERRED_ARRAY,
@@ -563,6 +564,7 @@ typedef enum
 	TOKEN_CT_SIZEOF,            // $sizeof
 	TOKEN_CT_STRINGIFY,         // $stringify
 	TOKEN_CT_SWITCH,            // $switch
+	TOKEN_CT_TYPEFROM,          // $typefrom
 	TOKEN_CT_TYPEOF,            // $typeof
 	TOKEN_CT_CONVERTIBLE,       // $convertible
 	TOKEN_CT_CASTABLE,          // $castable
@@ -592,7 +594,7 @@ typedef enum
 #define TYPE_TOKENS NON_VOID_TYPE_TOKENS: case TOKEN_VOID
 #define TYPELIKE_TOKENS TYPE_TOKENS: case TOKEN_TYPE_IDENT: \
 	case TOKEN_CT_TYPE_IDENT: case TOKEN_CT_TYPEOF: case TOKEN_CT_EVALTYPE: \
-	case TOKEN_CT_VATYPE
+	case TOKEN_CT_VATYPE: case TOKEN_CT_TYPEFROM
 
 // Note that ordering matters here. If ordering is changed,
 // So must type_find_max_type and friends.
