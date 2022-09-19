@@ -661,6 +661,13 @@ void llvm_codegen_setup()
 	intrinsic_id.vector_reduce_smin = lookup_intrinsic("llvm.vector.reduce.smin");
 	intrinsic_id.vector_reduce_umax = lookup_intrinsic("llvm.vector.reduce.umax");
 	intrinsic_id.vector_reduce_umin = lookup_intrinsic("llvm.vector.reduce.umin");
+	intrinsic_id.vector_reduce_add = lookup_intrinsic("llvm.vector.reduce.add");
+	intrinsic_id.vector_reduce_fadd = lookup_intrinsic("llvm.vector.reduce.fadd");
+	intrinsic_id.vector_reduce_mul = lookup_intrinsic("llvm.vector.reduce.mul");
+	intrinsic_id.vector_reduce_fmul = lookup_intrinsic("llvm.vector.reduce.fmul");
+	intrinsic_id.vector_reduce_and = lookup_intrinsic("llvm.vector.reduce.and");
+	intrinsic_id.vector_reduce_or = lookup_intrinsic("llvm.vector.reduce.or");
+	intrinsic_id.vector_reduce_xor = lookup_intrinsic("llvm.vector.reduce.xor");
 
 	attribute_id.align = lookup_attribute("align");
 	attribute_id.alwaysinline = lookup_attribute("alwaysinline");
