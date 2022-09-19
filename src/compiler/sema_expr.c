@@ -2557,15 +2557,25 @@ static inline unsigned builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_SYSCALL:
 		case BUILTIN_TRUNC:
 		case BUILTIN_VOLATILE_LOAD:
+		case BUILTIN_REDUCE_MUL:
+		case BUILTIN_REDUCE_AND:
+		case BUILTIN_REDUCE_ADD:
+		case BUILTIN_REDUCE_OR:
+		case BUILTIN_REDUCE_XOR:
+		case BUILTIN_REDUCE_MAX:
+		case BUILTIN_REDUCE_MIN:
 			return 1;
 		case BUILTIN_COPYSIGN:
 		case BUILTIN_MAX:
 		case BUILTIN_MIN:
 		case BUILTIN_POW:
+		case BUILTIN_POW_INT:
 		case BUILTIN_VOLATILE_STORE:
 		case BUILTIN_SAT_ADD:
 		case BUILTIN_SAT_SUB:
 		case BUILTIN_SAT_SHL:
+		case BUILTIN_REDUCE_FMUL:
+		case BUILTIN_REDUCE_FADD:
 			return 2;
 		case BUILTIN_FMA:
 		case BUILTIN_FSHL:
@@ -2591,6 +2601,7 @@ typedef enum
 	BA_CHAR,
 	BA_FLOATLIKE,
 	BA_INTEGER,
+	BA_FLOAT,
 	BA_INTLIKE,
 	BA_NUMLIKE,
 	BA_INTVEC,
@@ -2705,6 +2716,13 @@ static bool sema_check_builtin_args(Expr **args, BuiltinArg *arg_type, size_t ar
 				if (!type_is_integer(type))
 				{
 					SEMA_ERROR(args[i], "Expected an integer.");
+					return false;
+				}
+				break;
+			case BA_FLOAT:
+				if (!type_is_float(type))
+				{
+					SEMA_ERROR(args[i], "Expected a float or double.");
 					return false;
 				}
 				break;
@@ -2963,6 +2981,43 @@ static inline bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *ex
 										 arg_count)) return false;
 			if (!sema_check_builtin_args_match(args, arg_count)) return false;
 			rtype = args[0]->type;
+			break;
+		case BUILTIN_POW_INT:
+			if (!sema_check_builtin_args(args,
+			                             (BuiltinArg[]) { BA_FLOATLIKE, BA_INTLIKE },
+			                             arg_count)) return false;
+			if (!cast_implicit(args[1], type_cint)) return false;
+			rtype = args[0]->type;
+			break;
+		case BUILTIN_REDUCE_FMUL:
+		case BUILTIN_REDUCE_FADD:
+			if (!sema_check_builtin_args(args,
+			                             (BuiltinArg[]) { BA_FLOATVEC, BA_FLOAT },
+			                             arg_count)) return false;
+			if (!cast_implicit(args[1], args[0]->type->canonical->array.base)) return false;
+			{
+				Expr *arg = args[0];
+				args[0] = args[1];
+				args[1] = arg;
+			}
+			rtype = args[0]->type;
+			break;
+		case BUILTIN_REDUCE_MAX:
+		case BUILTIN_REDUCE_MIN:
+			if (!sema_check_builtin_args(args,
+			                             (BuiltinArg[]) { BA_VEC },
+			                             arg_count)) return false;
+			rtype = args[0]->type->canonical->array.base;
+			break;
+		case BUILTIN_REDUCE_ADD:
+		case BUILTIN_REDUCE_AND:
+		case BUILTIN_REDUCE_OR:
+		case BUILTIN_REDUCE_XOR:
+		case BUILTIN_REDUCE_MUL:
+			if (!sema_check_builtin_args(args,
+			                             (BuiltinArg[]) { BA_INTVEC },
+			                             arg_count)) return false;
+			rtype = args[0]->type->canonical->array.base;
 			break;
 		case BUILTIN_ABS:
 			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_NUMLIKE }, arg_count)) return false;
@@ -8022,7 +8077,7 @@ RETRY:
 		}
 		default:
 			SEMA_ERROR(main_var, "Expected an identifier here.");
-			break;
+			return false;
 	}
 
 	VECEACH(flat_path, i)

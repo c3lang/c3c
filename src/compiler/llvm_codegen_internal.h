@@ -175,6 +175,13 @@ typedef struct
 	unsigned vector_reduce_smin;
 	unsigned vector_reduce_umax;
 	unsigned vector_reduce_umin;
+	unsigned vector_reduce_add;
+	unsigned vector_reduce_fadd;
+	unsigned vector_reduce_mul;
+	unsigned vector_reduce_fmul;
+	unsigned vector_reduce_and;
+	unsigned vector_reduce_or;
+	unsigned vector_reduce_xor;
 } LLVMIntrinsics;
 
 extern LLVMIntrinsics intrinsic_id;
@@ -423,6 +430,7 @@ LLVMValueRef llvm_emit_call_intrinsic(GenContext *c, unsigned intrinsic, LLVMTyp
 void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *value, Type *to_type, Type *from_type);
 void llvm_emit_local_var_alloca(GenContext *c, Decl *decl);
 void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value);
+void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr);
 
 // -- Optional --
 LLVMValueRef llvm_emit_is_no_opt(GenContext *c, LLVMValueRef error_value);

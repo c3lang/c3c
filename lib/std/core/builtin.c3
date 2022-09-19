@@ -114,6 +114,10 @@ macro enum_by_name($Type, char[] enum_name) @builtin
 	return SearchResult.MISSING!;
 }
 
+/**
+ * Locality for prefetch, levels 0 - 3, corresponding
+ * to "extremely local" to "no locality"
+ **/
 enum PrefetchLocality
 {
 	NO_LOCALITY,
