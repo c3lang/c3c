@@ -2515,11 +2515,10 @@ static bool sema_analyse_checked(SemaContext *context, Ast *directive, AstId **a
 	bool success = true;
 	bool suppress_error = global_context.suppress_errors;
 	global_context.suppress_errors = true;
-	SCOPE_START
+	SCOPE_START_WITH_FLAGS(SCOPE_CHECKS)
 		VECEACH(declexpr->cond_expr, j)
 		{
 			Expr *expr = declexpr->cond_expr[j];
-
 			const char *comment = directive->doc_stmt.contract.comment;
 			global_context.suppress_errors = comment != NULL;
 			if (!sema_analyse_cond_expr(context, expr))

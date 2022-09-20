@@ -405,6 +405,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_CONST:
 		case EXPR_OPERATOR_CHARS:
 		case EXPR_STRINGIFY:
+		case EXPR_CT_CHECKS:
 			return true;
 		case EXPR_COND:
 			return expr_list_is_constant_eval(expr->cond_expr, eval_kind);
@@ -725,6 +726,7 @@ static bool sema_check_expr_lvalue(Expr *top_expr, Expr *expr)
 		case EXPR_ASM:
 		case EXPR_VASPLAT:
 		case EXPR_OPERATOR_CHARS:
+		case EXPR_CT_CHECKS:
 			goto ERR;
 	}
 	UNREACHABLE
@@ -827,6 +829,7 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_ASM:
 		case EXPR_VASPLAT:
 		case EXPR_OPERATOR_CHARS:
+		case EXPR_CT_CHECKS:
 			return false;
 	}
 	UNREACHABLE
@@ -7115,6 +7118,12 @@ static inline bool sema_expr_analyse_ct_incdec(SemaContext *context, Expr *expr,
 			return false;
 	}
 
+	if (var->var.scope_depth < context->active_scope.depth)
+	{
+		SEMA_ERROR(expr, "Cannot modify '%s' inside of a runtime scope.", var->name);
+		return false;
+	}
+
 	Expr *end_value = expr_copy(start_value);
 
 	// Make the change.
@@ -8022,6 +8031,33 @@ RETRY:
 	}
 	UNREACHABLE
 }
+
+static inline Expr *sema_check_exprlist(SemaContext *context, Expr *exprlist)
+{
+	assert(exprlist->expr_kind == EXPR_EXPRESSION_LIST);
+	Expr *failed = NULL;
+	bool suppress_error = global_context.suppress_errors;
+	global_context.suppress_errors = true;
+	SCOPE_START_WITH_FLAGS(SCOPE_CHECKS);
+		FOREACH_BEGIN(Expr *expr, exprlist->expression_list)
+			if (!sema_analyse_cond_expr(context, expr))
+			{
+				failed = expr;
+				break;
+			}
+		FOREACH_END();
+	SCOPE_END;
+	global_context.suppress_errors = suppress_error;
+	return failed;
+}
+
+static inline bool sema_expr_analyse_ct_checks(SemaContext *context, Expr *expr)
+{
+	Expr *err = sema_check_exprlist(context, expr->inner_expr);
+	expr_rewrite_const_bool(expr, type_bool, err == NULL);
+	return true;
+}
+
 static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr)
 {
 	if (expr->resolve_status == RESOLVE_DONE) return expr_ok(expr);
@@ -8426,6 +8462,8 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 		case EXPR_VASPLAT:
 			SEMA_ERROR(expr, "'$vasplat' can only be used inside of macros.");
 			return false;
+		case EXPR_CT_CHECKS:
+			return sema_expr_analyse_ct_checks(context, expr);
 		case EXPR_CT_ARG:
 			return sema_expr_analyse_ct_arg(context, expr);
 		case EXPR_VARIANT:

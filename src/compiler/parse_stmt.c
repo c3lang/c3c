@@ -1204,6 +1204,7 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_CT_QNAMEOF:
 		case TOKEN_CT_NAMEOF:
 		case TOKEN_CT_DEFINED:
+		case TOKEN_CT_CHECKS:
 		case TOKEN_CT_STRINGIFY:
 		case TOKEN_CT_EVAL:
 		case TOKEN_TRY:
