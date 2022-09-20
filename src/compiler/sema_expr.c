@@ -8040,7 +8040,7 @@ static inline Expr *sema_check_exprlist(SemaContext *context, Expr *exprlist)
 	global_context.suppress_errors = true;
 	SCOPE_START_WITH_FLAGS(SCOPE_CHECKS);
 		FOREACH_BEGIN(Expr *expr, exprlist->expression_list)
-			if (!sema_analyse_cond_expr(context, expr))
+			if (!sema_analyse_expr(context, expr))
 			{
 				failed = expr;
 				break;
