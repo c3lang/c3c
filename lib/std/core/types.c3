@@ -97,6 +97,11 @@ fn bool TypeKind.is_int(TypeKind kind) @inline
 	return kind == TypeKind.SIGNED_INT || kind == TypeKind.UNSIGNED_INT;
 }
 
+macro bool is_indexable($Type)
+{
+	return $checks($Type t, int i, t[i]);
+}
+
 macro bool is_comparable($Type)
 {
 	var $kind = $Type.kind;
