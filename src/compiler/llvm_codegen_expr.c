@@ -5545,6 +5545,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_CT_ARG:
 		case EXPR_ASM:
 		case EXPR_VASPLAT:
+		case EXPR_CT_CHECKS:
 			UNREACHABLE
 		case EXPR_BUILTIN_ACCESS:
 			llvm_emit_builtin_access(c, value, expr);

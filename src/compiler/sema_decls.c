@@ -575,19 +575,14 @@ static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl)
 		return false;
 	}
 	Decl **members = decl->bitstruct.members;
-	bool success = true;
-	SCOPE_START
-		VECEACH(members, i)
+	VECEACH(members, i)
+	{
+		if (!sema_analyse_bitstruct_member(context, decl, i, decl->bitstruct.overlap))
 		{
-			if (!sema_analyse_bitstruct_member(context, decl, i, decl->bitstruct.overlap))
-			{
-				success = false;
-				break;
-			}
+			return decl_poison(decl);
 		}
-	SCOPE_END;
-	if (!success) return decl_poison(decl);
-	return decl_ok(decl);
+	}
+	return true;
 }
 
 

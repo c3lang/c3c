@@ -886,6 +886,18 @@ static Expr *parse_ct_sizeof(ParseContext *c, Expr *left)
 	return access;
 }
 
+static Expr *parse_ct_checks(ParseContext *c, Expr *left)
+{
+	assert(!left && "Unexpected left hand side");
+	Expr *checks = expr_new(EXPR_CT_CHECKS, c->span);
+	advance_and_verify(c, TOKEN_CT_CHECKS);
+	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
+	ASSIGN_EXPR_OR_RET(checks->inner_expr, parse_expression_list(c, true), poisoned_expr);
+	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
+	RANGE_EXTEND_PREV(checks);
+	return checks;
+}
+
 static Expr *parse_ct_call(ParseContext *c, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
@@ -1762,6 +1774,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_CT_SIZEOF] = { parse_ct_sizeof, NULL, PREC_NONE },
 		[TOKEN_CT_ALIGNOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_DEFINED] = { parse_ct_call, NULL, PREC_NONE },
+		[TOKEN_CT_CHECKS] = { parse_ct_checks, NULL, PREC_NONE },
 		[TOKEN_CT_EVAL] = { parse_ct_eval, NULL, PREC_NONE },
 		[TOKEN_CT_EXTNAMEOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_OFFSETOF] = { parse_ct_call, NULL, PREC_NONE },

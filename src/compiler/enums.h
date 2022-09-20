@@ -211,6 +211,7 @@ typedef enum
 	EXPR_CATCH_UNWRAP,
 	EXPR_COMPOUND_LITERAL,
 	EXPR_CONST,
+	EXPR_CT_CHECKS,
 	EXPR_CT_CALL,
 	EXPR_CT_CONV,
 	EXPR_CT_IDENT,
@@ -343,6 +344,7 @@ typedef enum
 typedef enum
 {
 	SCOPE_NONE = 0,
+	SCOPE_CHECKS = 1 << 0,
 	SCOPE_EXPR_BLOCK = 1 << 5,
 	SCOPE_MACRO = 1 << 6,
 } ScopeFlags;
@@ -544,6 +546,7 @@ typedef enum
 	TOKEN_CT_ALIGNOF,           // $alignof
 	TOKEN_CT_ASSERT,            // $assert
 	TOKEN_CT_CASE,              // $case
+	TOKEN_CT_CHECKS,            // $checks
 	TOKEN_CT_DEFAULT,           // $default
 	TOKEN_CT_DEFINED,           // $defined
 	TOKEN_CT_FOR,               // $for

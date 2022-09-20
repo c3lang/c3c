@@ -330,6 +330,8 @@ const char *token_type_to_string(TokenType type)
 			return "$assert";
 		case TOKEN_CT_CASE:
 			return "$case";
+		case TOKEN_CT_CHECKS:
+			return "$checks";
 		case TOKEN_CT_DEFAULT:
 			return "$default";
 		case TOKEN_CT_DEFINED:
