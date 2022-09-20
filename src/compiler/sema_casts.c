@@ -841,7 +841,6 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 		case EXPR_STRINGIFY:
 		case EXPR_CT_EVAL:
 		case EXPR_VARIANT:
-		case EXPR_CT_CONV:
 		case EXPR_POINTER_OFFSET:
 		case EXPR_CT_ARG:
 		case EXPR_ASM:
@@ -1014,7 +1013,6 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 		case EXPR_STRINGIFY:
 		case EXPR_CT_EVAL:
 		case EXPR_VARIANT:
-		case EXPR_CT_CONV:
 		case EXPR_POINTER_OFFSET:
 		case EXPR_CT_ARG:
 		case EXPR_ASM:

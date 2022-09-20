@@ -367,8 +367,6 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 	{
 		case EXPR_POINTER_OFFSET:
 			return exprid_is_constant_eval(expr->pointer_offset_expr.ptr, eval_kind) && exprid_is_constant_eval(expr->pointer_offset_expr.offset, eval_kind);
-		case EXPR_CT_CONV:
-			return true;
 		case EXPR_RETVAL:
 			return false;
 		case EXPR_BUILTIN:
@@ -691,7 +689,6 @@ static bool sema_check_expr_lvalue(Expr *top_expr, Expr *expr)
 		case EXPR_COMPOUND_LITERAL:
 		case EXPR_CONST:
 		case EXPR_CT_CALL:
-		case EXPR_CT_CONV:
 		case EXPR_CT_EVAL:
 		case EXPR_COND:
 		case EXPR_DECL:
@@ -792,7 +789,6 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_COMPOUND_LITERAL:
 		case EXPR_CONST:
 		case EXPR_CT_CALL:
-		case EXPR_CT_CONV:
 		case EXPR_CT_IDENT:
 		case EXPR_CT_EVAL:
 		case EXPR_COND:
@@ -8361,40 +8357,6 @@ static inline bool sema_expr_analyse_ct_call(SemaContext *context, Expr *expr)
 	}
 }
 
-static inline bool sema_expr_analyse_ct_conv(SemaContext *c, Expr *expr)
-{
-	TypeInfo *from = type_infoptr(expr->ct_call_expr.type_from);
-	TypeInfo *to = type_infoptr(expr->ct_call_expr.type_to);
-	if (!sema_resolve_type_info(c, from)) return false;
-	if (!sema_resolve_type_info(c, to)) return false;
-	Type *from_type = from->type;
-	Type *to_type = to->type;
-	if (IS_OPTIONAL(from))
-	{
-		SEMA_ERROR(from, "Only non-optional types can be checked.");
-		return false;
-	}
-	if (IS_OPTIONAL(to))
-	{
-		SEMA_ERROR(to, "Only non-optional types can be checked.");
-		return false;
-	}
-	bool result;
-	switch (expr->ct_call_expr.token_type)
-	{
-		case TOKEN_CT_CONVERTIBLE:
-			result = cast_may_implicit(from_type, to_type, true, false);
-			break;
-		case TOKEN_CT_CASTABLE:
-			result = cast_may_explicit(from_type, to_type, true, false);
-			break;
-		default:
-			UNREACHABLE
-	}
-	expr_rewrite_const_bool(expr, type_bool, result);
-	return true;
-}
-
 
 static inline BuiltinFunction builtin_by_name(const char *name)
 {
@@ -8482,8 +8444,6 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 			return sema_expr_analyse_retval(context, expr);
 		case EXPR_BUILTIN:
 			return sema_expr_analyse_builtin(context, expr, true);
-		case EXPR_CT_CONV:
-			return sema_expr_analyse_ct_conv(context, expr);
 		case EXPR_CT_CALL:
 			return sema_expr_analyse_ct_call(context, expr);
 		case EXPR_HASH_IDENT:

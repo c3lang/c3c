@@ -959,21 +959,6 @@ static Expr *parse_ct_arg(ParseContext *c, Expr *left)
 	return expr;
 }
 
-static Expr *parse_ct_conv(ParseContext *c, Expr *left)
-{
-	assert(!left && "Unexpected left hand side");
-	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_CONV);
-	expr->ct_call_expr.token_type = c->tok;
-	advance(c);
-	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
-	ASSIGN_TYPEID_OR_RET(expr->ct_call_expr.type_from, parse_type(c), poisoned_expr);
-	TRY_CONSUME_AFTER(TOKEN_COMMA, "Expected ',' here.", poisoned_expr);
-	ASSIGN_TYPEID_OR_RET(expr->ct_call_expr.type_to, parse_type(c), poisoned_expr);
-	TRY_CONSUME_AFTER(TOKEN_RPAREN, "Expected ')' here.", poisoned_expr);
-	RANGE_EXTEND_PREV(expr);
-	return expr;
-}
-
 static Expr *parse_identifier(ParseContext *c, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
@@ -1784,8 +1769,6 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_CT_TYPEOF] = { parse_type_expr, NULL, PREC_NONE },
 		[TOKEN_CT_STRINGIFY] = { parse_ct_stringify, NULL, PREC_NONE },
 		[TOKEN_CT_EVALTYPE] = { parse_type_expr, NULL, PREC_NONE },
-		[TOKEN_CT_CONVERTIBLE] = { parse_ct_conv, NULL, PREC_NONE },
-		[TOKEN_CT_CASTABLE] = { parse_ct_conv, NULL, PREC_NONE },
 		[TOKEN_LBRACE] = { parse_initializer_list, NULL, PREC_NONE },
 		[TOKEN_CT_VACOUNT] = { parse_ct_arg, NULL, PREC_NONE },
 		[TOKEN_CT_VAARG] = { parse_ct_arg, NULL, PREC_NONE },

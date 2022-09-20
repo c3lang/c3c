@@ -1289,8 +1289,6 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_RVEC:
 		case TOKEN_CT_ENDFOR:
 		case TOKEN_CT_ENDFOREACH:
-		case TOKEN_CT_CASTABLE:
-		case TOKEN_CT_CONVERTIBLE:
 		case TOKEN_CT_VASPLAT:
 		case TOKEN_IMPLIES:
 			SEMA_ERROR_HERE("Unexpected '%s' found when expecting a statement.",

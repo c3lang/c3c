@@ -138,3 +138,12 @@ macro prefetch(void* ptr, PrefetchLocality $locality = VERY_NEAR, bool $write = 
 	$$prefetch(ptr, $write ? 1 : 0, $locality.ordinal);
 }
 
+macro bool @castable(#expr, $To) @builtin
+{
+	return $checks(($To)#expr);
+}
+
+macro bool @convertible(#expr, $To) @builtin
+{
+	return $checks($To x = #expr);
+}

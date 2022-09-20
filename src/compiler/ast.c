@@ -282,7 +282,6 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_NOP:
 		case EXPR_STRINGIFY:
 		case EXPR_RETVAL:
-		case EXPR_CT_CONV:
 		case EXPR_TYPEINFO:
 		case EXPR_CT_EVAL:
 		case EXPR_CT_IDENT:

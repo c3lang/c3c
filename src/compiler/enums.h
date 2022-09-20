@@ -213,7 +213,6 @@ typedef enum
 	EXPR_CONST,
 	EXPR_CT_CHECKS,
 	EXPR_CT_CALL,
-	EXPR_CT_CONV,
 	EXPR_CT_IDENT,
 	EXPR_CT_EVAL,
 	EXPR_CT_ARG,
@@ -569,8 +568,6 @@ typedef enum
 	TOKEN_CT_SWITCH,            // $switch
 	TOKEN_CT_TYPEFROM,          // $typefrom
 	TOKEN_CT_TYPEOF,            // $typeof
-	TOKEN_CT_CONVERTIBLE,       // $convertible
-	TOKEN_CT_CASTABLE,          // $castable
 	TOKEN_CT_VACOUNT,           // $vacount
 	TOKEN_CT_VATYPE,            // $vatype
 	TOKEN_CT_VACONST,           // $vaconst,
