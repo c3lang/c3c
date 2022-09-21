@@ -503,7 +503,7 @@ static const char **target_expand_source_names(const char** dirs, const char **s
 void compile_target(BuildOptions *options)
 {
 	init_default_build_target(&active_target, options);
-	compile();
+	compile(options);
 }
 
 void compile_clean(BuildOptions *options)
@@ -518,7 +518,7 @@ void compile_file_list(BuildOptions *options)
 	{
 		file_delete_all_files_in_dir_with_suffix(active_target.build_dir, get_object_extension());
 	}
-	compile();
+	compile(options);
 }
 
 static void setup_int_define(const char *id, uint64_t i, Type *type)
@@ -620,7 +620,7 @@ void print_syntax(BuildOptions *options)
 
 void resolve_libraries(void);
 
-void compile()
+void compile(BuildOptions *options)
 {
 	symtab_init(active_target.symtab_size);
 	active_target.sources = target_expand_source_names(active_target.source_dirs, c3_suffix_list, 3, true);
@@ -649,6 +649,8 @@ void compile()
 	setup_int_define("COMPILER_SIZE_OPT_LEVEL", (uint64_t)active_target.size_optimization_level, type_int);
 	setup_bool_define("COMPILER_SAFE_MODE", active_target.feature.safe_mode);
 	setup_int_define("LLVM_VERSION", llvm_version_major, type_int);
+	setup_bool_define("BENCHMARKING", options->benchmarking);
+	setup_bool_define("TESTING", options->testing);
 
 	type_init_cint();
 

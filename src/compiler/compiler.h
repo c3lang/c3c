@@ -7,7 +7,7 @@
 // a copy of which can be found in the LICENSE file.
 
 void compiler_init(const char *std_lib_dir);
-void compile();
+void compile(BuildOptions *options);
 void compile_target(BuildOptions *options);
 void compile_file_list(BuildOptions *options);
 void compile_clean(BuildOptions *options);

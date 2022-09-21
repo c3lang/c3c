@@ -271,6 +271,8 @@ typedef struct BuildOptions_
 	bool print_operators;
 	bool print_precedence;
 	bool print_build_settings;
+	bool benchmarking;
+	bool testing;
 } BuildOptions;
 
 
