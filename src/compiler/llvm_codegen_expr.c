@@ -1176,6 +1176,17 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 			break;
 		case CAST_SAPTR:
 			llvm_emit_subarray_pointer(c, value, value);
+			if (value->type != to_type)
+			{
+				if (llvm_value_is_addr(value))
+				{
+					value->value = LLVMBuildPointerCast(c->builder, value->value, llvm_get_ptr_type(c, to_type), "saptr");
+				}
+				else
+				{
+					value->value = LLVMBuildPointerCast(c->builder, value->value, llvm_get_ptr_type(c, to_type), "saptr");
+				}
+			}
 			break;
 		case CAST_EREU:
 			// This is a no op.
@@ -2446,6 +2457,42 @@ static void gencontext_emit_slice(GenContext *c, BEValue *be_value, Expr *expr)
 	// Create a new subarray type
 	llvm_value_aggregate_two(c, be_value, type_lowering(expr->type), start_pointer, size);
 }
+
+static void llvm_emit_slice_copy(GenContext *c, BEValue *be_value, Expr *expr)
+{
+	llvm_emit_exprid(c, be_value, expr->slice_assign_expr.right);
+	llvm_value_rvalue(c, be_value);
+
+	BEValue assigned_to;
+	llvm_emit_exprid(c, &assigned_to, expr->slice_assign_expr.left);
+	llvm_value_rvalue(c, &assigned_to);
+
+	BEValue to_pointer;
+	llvm_emit_subarray_pointer(c, &assigned_to, &to_pointer);
+	llvm_value_rvalue(c, &to_pointer);
+
+	BEValue from_pointer;
+	BEValue from_len;
+	llvm_emit_subarray_pointer(c, be_value, &from_pointer);
+	llvm_value_rvalue(c, &from_pointer);
+	llvm_emit_subarray_len(c, be_value, &from_len);
+	llvm_value_rvalue(c, &from_len);
+
+	if (active_target.feature.safe_mode)
+	{
+		BEValue to_len;
+		llvm_emit_subarray_len(c, &assigned_to, &to_len);
+		BEValue comp;
+		llvm_emit_int_comp(c, &comp, &to_len, &from_len, BINARYOP_NE);
+		llvm_emit_panic_if_true(c, &comp, "Subarray copy length mismatch.", expr->span);
+	}
+
+	Type *pointer_type = to_pointer.type->pointer;
+	unsigned alignment = type_abi_alignment(pointer_type);
+	LLVMValueRef bytes = LLVMBuildMul(c->builder, from_len.value, llvm_const_int(c, from_len.type, type_size(pointer_type)), "");
+	LLVMBuildMemCpy(c->builder, to_pointer.value, alignment, from_pointer.value, alignment, bytes);
+}
+
 
 static void llvm_emit_slice_assign(GenContext *c, BEValue *be_value, Expr *expr)
 {
@@ -5574,6 +5621,9 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			UNREACHABLE;
 		case EXPR_DECL:
 			llvm_emit_local_decl(c, expr->decl_expr, value);
+			return;
+		case EXPR_SLICE_COPY:
+			llvm_emit_slice_copy(c, value, expr);
 			return;
 		case EXPR_SLICE_ASSIGN:
 			llvm_emit_slice_assign(c, value, expr);

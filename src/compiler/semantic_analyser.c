@@ -294,6 +294,10 @@ void sema_analysis_run(void)
 		error_exit("No modules to compile.");
 	}
 
+	// Create the core module if needed.
+	Path core_path = { .module = kw_std__core, .span = INVALID_SPAN, .len = strlen(kw_std__core) };
+	global_context.core_module = compiler_find_or_create_module(&core_path, NULL, false);
+
 	// We parse the generic modules, just by storing the decls.
 	VECEACH(global_context.generic_module_list, i)
 	{

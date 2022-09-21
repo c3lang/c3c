@@ -138,5 +138,11 @@ macro bool is_power_of_2(x)
 	return x != 0 && (x & (x - 1)) == 0;
 }
 
+macro next_power_of_2(x)
+{
+	$typeof(x) y = 1;
+	while (y < x) y += y;
+	return y;
+}
 
 

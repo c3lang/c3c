@@ -247,7 +247,6 @@ void compiler_compile(void)
 
 	Module **modules = global_context.module_list;
 	unsigned module_count = vec_size(modules);
-
 	if (module_count > MAX_MODULES)
 	{
 		error_exit("Too many modules.");

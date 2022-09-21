@@ -784,6 +784,7 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 		case EXPR_MACRO_BLOCK:
 		case EXPR_IDENTIFIER:
 		case EXPR_SLICE_ASSIGN:
+		case EXPR_SLICE_COPY:
 		case EXPR_SLICE:
 		case EXPR_SUBSCRIPT:
 		case EXPR_RETVAL:
@@ -947,6 +948,7 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 		case EXPR_MACRO_BLOCK:
 		case EXPR_IDENTIFIER:
 		case EXPR_SLICE_ASSIGN:
+		case EXPR_SLICE_COPY:
 		case EXPR_SLICE:
 		case EXPR_SUBSCRIPT:
 		case EXPR_RETVAL:

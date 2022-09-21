@@ -26,7 +26,7 @@ macro talloc($Type, usize elements)
  **/
 macro make($Type, usize elements)
 {
-    $Type* ptr = calloc($sizeof($Type) * elements);
+    $Type* ptr = calloc($Type.sizeof * elements);
     return ptr[:elements];
 }
 
@@ -35,6 +35,6 @@ macro make($Type, usize elements)
  **/
 macro tmake($Type, usize elements)
 {
-    $Type* ptr = tcalloc($sizeof($Type) * elements, $alignof($Type[1]));
+    $Type* ptr = tcalloc($Type.sizeof * elements, $alignof($Type[1]));
     return ptr[:elements];
 }
