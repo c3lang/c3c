@@ -342,6 +342,7 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 		case EXPR_POST_UNARY:
 		case EXPR_SLICE_ASSIGN:
+		case EXPR_SLICE_COPY:
 		case EXPR_TRY_UNWRAP:
 		case EXPR_TRY_UNWRAP_CHAIN:
 		case EXPR_FORCE_UNWRAP:

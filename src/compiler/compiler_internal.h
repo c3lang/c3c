@@ -1546,6 +1546,7 @@ typedef struct ParseContext_
 
 typedef struct SemaContext_
 {
+	Module *core_module;
 	// Evaluated in this.
 	CompilationUnit *unit;
 	// Compiled in this unit.
@@ -1590,6 +1591,7 @@ typedef struct SemaContext_
 typedef struct
 {
 	HTable modules;
+	Module *core_module;
 	Module **module_list;
 	Module **generic_module_list;
 	Type **type;
@@ -2406,7 +2408,7 @@ INLINE bool type_info_poison(TypeInfo *type)
 INLINE bool type_is_arraylike(Type *type)
 {
 	DECL_TYPE_KIND_REAL(kind, type);
-	return kind == TYPE_ARRAY || kind == TYPE_VECTOR || kind == TYPE_FLEXIBLE_ARRAY;
+	return kind == TYPE_ARRAY || kind == TYPE_VECTOR || kind == TYPE_FLEXIBLE_ARRAY || kind == TYPE_SCALED_VECTOR;
 }
 
 INLINE CanonicalType *type_pointer_type(Type *type)

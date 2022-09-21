@@ -419,6 +419,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_TRY_UNWRAP_CHAIN:
 		case EXPR_POST_UNARY:
 		case EXPR_SLICE_ASSIGN:
+		case EXPR_SLICE_COPY:
 		case EXPR_MACRO_BLOCK:
 		case EXPR_RETHROW:
 			return false;
@@ -705,6 +706,7 @@ static bool sema_check_expr_lvalue(Expr *top_expr, Expr *expr)
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 		case EXPR_POST_UNARY:
 		case EXPR_SLICE_ASSIGN:
+		case EXPR_SLICE_COPY:
 		case EXPR_STRINGIFY:
 		case EXPR_ARGV_TO_SUBARRAY:
 		case EXPR_TERNARY:
@@ -807,6 +809,7 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 		case EXPR_POST_UNARY:
 		case EXPR_SLICE_ASSIGN:
+		case EXPR_SLICE_COPY:
 		case EXPR_STRINGIFY:
 		case EXPR_ARGV_TO_SUBARRAY:
 		case EXPR_TERNARY:
@@ -3047,14 +3050,24 @@ static inline bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *ex
 		case BUILTIN_VOLATILE_LOAD:
 		{
 			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_POINTER }, 1)) return false;
-			rtype = args[0]->type->canonical->pointer;
+			Type *original = type_flatten(args[0]->type);
+			if (original == type_voidptr)
+			{
+				SEMA_ERROR(args[0], "Expected a typed pointer.");
+				return false;
+			}
+			rtype = original->pointer;
 			break;
 		}
 		case BUILTIN_VOLATILE_STORE:
 		{
 			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_POINTER }, 1)) return false;
-			rtype = args[0]->type->canonical->pointer;
-			if (!cast_implicit(args[1], rtype)) return false;
+			Type *original = type_flatten(args[0]->type);
+			if (original != type_voidptr)
+			{
+				if (!cast_implicit(args[1], original->pointer)) return false;
+			}
+			rtype = args[1]->type;
 			break;
 		}
 		case BUILTIN_NONE:
@@ -5589,17 +5602,52 @@ static inline bool sema_expr_analyse_cast(SemaContext *context, Expr *expr)
 	return true;
 }
 
+static inline IndexDiff range_const_len(Range *range)
+{
+	Expr *start = exprptr(range->start);
+	Expr *end = exprptrzero(range->end);
+	if (!expr_is_const_int(start)) return -1;
+	if (!end || !expr_is_const_int(end)) return -1;
+	if (!int_fits(end->const_expr.ixx, TYPE_I32)) return -1;
+	if (!int_fits(start->const_expr.ixx, TYPE_I32)) return -1;
+	IndexDiff end_val = (IndexDiff)int_to_i64(end->const_expr.ixx);
+	if (range->is_len) return end_val;
+	IndexDiff start_val = (IndexDiff)int_to_i64(start->const_expr.ixx);
+	if (range->start_from_end && range->end_from_end) return start_val - end_val + 1;
+	if (range->start_from_end != range->end_from_end) return -1;
+	return end_val - start_val + 1;
+}
+
 static inline bool sema_expr_analyse_slice_assign(SemaContext *context, Expr *expr, Type *left_type, Expr *right, bool is_unwrapped)
 {
-	// 1. Evaluate right side to required type.
-	if (!sema_analyse_expr_rhs(context, left_type->array.base, right, false)) return false;
-
 	Expr *left = exprptr(expr->binary_expr.left);
+	Type *base = left_type->array.base;
+	if (right->expr_kind == EXPR_SLICE)
+	{
+		Range *left_range = &left->subscript_expr.range;
+		Range *right_range = &right->subscript_expr.range;
+		if (!sema_analyse_expr(context, right)) return false;
+		if (cast_may_implicit(right->type, base, true, false)) goto ASSIGN;
+		if (!cast_implicit(right, left_type)) return false;
+		IndexDiff left_len = range_const_len(left_range);
+		IndexDiff right_len = range_const_len(right_range);
+		if (left_len >= 0 && right_len >= 0 && left_len != right_len)
+		{
+			SEMA_ERROR(expr, "Length mismatch between subarrays.");
+			return false;
+		}
+		expr->expr_kind = EXPR_SLICE_COPY;
+	}
+	else
+	{
+ASSIGN:
+		if (!sema_analyse_expr_rhs(context, base, right, false)) return false;
+		expr->expr_kind = EXPR_SLICE_ASSIGN;
+	}
+
 	expr->type = right->type;
-	expr->expr_kind = EXPR_SLICE_ASSIGN;
 	expr->slice_assign_expr.left = exprid(left);
 	expr->slice_assign_expr.right = exprid(right);
-
 	return true;
 }
 
@@ -7690,14 +7738,14 @@ static inline bool sema_expr_analyse_flat_element(SemaContext *context, ExprFlat
 	Type *actual_type = type_flatten_distinct(type);
 	if (element->array)
 	{
-		if (!type_is_arraylike(actual_type))
+		if (!type_is_arraylike(actual_type) && actual_type->type_kind)
 		{
 			if (is_missing)
 			{
 				*is_missing = true;
 				return false;
 			}
-			SEMA_ERROR(inner, "It's not possible to index into something that is not an array nor vector.");
+			SEMA_ERROR(inner, "It's not possible to constant index into something that is not an array nor vector.");
 			return false;
 		}
 		if (!sema_analyse_expr(context, inner)) return false;
@@ -7730,6 +7778,7 @@ static inline bool sema_expr_analyse_flat_element(SemaContext *context, ExprFlat
 			if (is_missing)
 			{
 				*is_missing = true;
+				*index_ref = 0;
 				return false;
 			}
 			SEMA_ERROR(element->inner, "Index exceeds array bounds.");
@@ -7746,6 +7795,32 @@ static inline bool sema_expr_analyse_flat_element(SemaContext *context, ExprFlat
 	{
 		SEMA_ERROR(inner, "Expected an identifier here.");
 		return false;
+	}
+	const char *kw = inner->identifier_expr.ident;
+	if (kw == kw_ptr)
+	{
+		switch (actual_type->type_kind)
+		{
+			case TYPE_SUBARRAY:
+				*member_ref = NULL;
+				*return_type = actual_type->array.base;
+				return true;
+			case TYPE_ANY:
+				*member_ref = NULL;
+				*return_type = type_voidptr;
+				return true;
+			default:
+				break;
+		}
+	}
+	if (kw == kw_len)
+	{
+		if (type_is_arraylike(actual_type) || actual_type->type_kind == TYPE_SUBARRAY)
+		{
+			*member_ref = NULL;
+			*return_type = type_usize;
+			return true;
+		}
 	}
 	if (!type_is_union_or_strukt(actual_type))
 	{
@@ -7794,7 +7869,7 @@ static inline bool sema_expr_analyse_ct_alignof(SemaContext *context, Expr *expr
 	{
 		ExprFlatElement *element = &path[i];
 		Decl *member;
-		ArraySize index;
+		ArraySize index = 0;
 		Type *result_type;
 		if (!sema_expr_analyse_flat_element(context, element, type, &member, &index, &result_type, i, i == 0 ? main_var->span : expr->span, NULL)) return false;
 		if (member)
@@ -8317,7 +8392,7 @@ static inline bool sema_expr_analyse_ct_offsetof(SemaContext *context, Expr *exp
 	{
 		ExprFlatElement *element = &path[i];
 		Decl *member;
-		ArraySize index;
+		ArraySize index = 0;
 		Type *result_type;
 		if (!sema_expr_analyse_flat_element(context, element, type, &member, &index, &result_type, i, i == 0 ? main_var->span : expr->span, NULL)) return false;
 		if (member)
@@ -8460,6 +8535,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 			return false;
 		case EXPR_SLICE_ASSIGN:
 		case EXPR_BUILTIN_ACCESS:
+		case EXPR_SLICE_COPY:
 			// Created during semantic analysis
 			UNREACHABLE
 		case EXPR_MACRO_BLOCK:

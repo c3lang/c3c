@@ -147,3 +147,13 @@ macro bool @convertible(#expr, $To) @builtin
 {
 	return $checks($To x = #expr);
 }
+
+macro uint int.hash(int i) = i;
+macro uint uint.hash(uint i) = i;
+macro uint short.hash(short s) = s;
+macro uint ushort.hash(ushort s) = s;
+macro uint char.hash(char c) = c;
+macro uint ichar.hash(ichar c) = c;
+macro uint long.hash(long i) = (uint)((i >> 32) ^ i);
+macro uint ulong.hash(ulong i) = (uint)((i >> 32) ^ i);
+macro uint bool.hash(bool b) = (uint)b;

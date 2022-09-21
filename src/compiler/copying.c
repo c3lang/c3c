@@ -249,6 +249,7 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			MACRO_COPY_TYPE(expr->type_expr);
 			return expr;
 		case EXPR_SLICE_ASSIGN:
+		case EXPR_SLICE_COPY:
 			MACRO_COPY_EXPRID(expr->slice_assign_expr.left);
 			MACRO_COPY_EXPRID(expr->slice_assign_expr.right);
 			return expr;
