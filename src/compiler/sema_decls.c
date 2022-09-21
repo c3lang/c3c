@@ -5,10 +5,59 @@
 #include "sema_internal.h"
 
 
+static inline bool sema_analyse_func_macro(SemaContext *context, Decl *decl, bool is_func);
+static inline bool sema_analyse_func(SemaContext *context, Decl *decl);
+static inline bool sema_analyse_macro(SemaContext *context, Decl *decl);
+static inline bool sema_analyse_signature(SemaContext *context, Signature *sig);
+static inline Type *sema_analyse_function_signature(SemaContext *context, Decl *parent, CallABI abi, Signature *signature, bool is_real_function);
+static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl);
+static inline bool sema_check_param_uniqueness_and_type(Decl **decls, Decl *current, unsigned current_index, unsigned count);
+
+static inline bool sema_analyse_method(SemaContext *context, Decl *decl);
 static inline bool sema_is_valid_method_param(SemaContext *context, Decl *param, Type *parent_type);
+static inline bool sema_analyse_macro_method(SemaContext *context, Decl *decl);
+static inline bool unit_add_base_extension_method(CompilationUnit *unit, Type *parent_type, Decl *method_like);
+static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type, Decl *method_like);
+
+static bool sema_analyse_operator_common(Decl *method, TypeInfo **rtype_ptr, Decl ***params_ptr, uint32_t parameters);
+static inline Decl *operator_in_module(SemaContext *c, Module *module, OperatorOverload operator_overload);
+static inline bool sema_analyse_operator_element_at(Decl *method);
+static inline bool sema_analyse_operator_element_set(Decl *method);
+static inline bool sema_analyse_operator_len(Decl *method);
+static bool sema_check_operator_method_validity(Decl *method);
+static inline const char *method_name_by_decl(Decl *method_like);
+
 static bool sema_analyse_struct_union(SemaContext *context, Decl *decl);
+static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl);
+static bool sema_analyse_union_members(SemaContext *context, Decl *decl, Decl **members);
+static bool sema_analyse_struct_members(SemaContext *context, Decl *decl, Decl **members);
+static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent, Decl *decl);
+static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *decl, unsigned index, bool allow_overlap);
+
+static inline bool sema_analyse_doc_header(AstId doc, Decl **params, Decl **extra_params, bool *pure_ref);
+
+static const char *attribute_domain_to_string(AttributeDomain domain);
+static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr, AttributeDomain domain);
+static bool sema_analyse_attributes_inner(SemaContext *context, Decl *decl, Attr** attrs, AttributeDomain domain, Decl *top, int counter);
 static bool sema_analyse_attributes(SemaContext *context, Decl *decl, Attr** attrs, AttributeDomain domain);
 static bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl);
+static bool sema_check_section(SemaContext *context, Attr *attr);
+static inline bool sema_analyse_attribute_decl(SemaContext *c, Decl *decl);
+
+static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl);
+bool sema_analyse_decl_type(SemaContext *context, Type *type, SourceSpan span);
+static inline bool sema_analyse_define(SemaContext *c, Decl *decl);
+static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl);
+
+static CompilationUnit *unit_copy(Module *module, CompilationUnit *unit);
+static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl);
+static Module *module_instantiate_generic(Module *module, Path *path, TypeInfo **parms);
+
+static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param, bool *has_default);
+static inline bool sema_analyse_enum(SemaContext *context, Decl *decl);
+static inline bool sema_analyse_error(SemaContext *context, Decl *decl);
+
+
 static bool sema_check_section(SemaContext *context, Attr *attr)
 {
 	const char *section_string = attr->exprs[0]->const_expr.string.chars;
@@ -23,6 +72,8 @@ static bool sema_check_section(SemaContext *context, Attr *attr)
 	StringSlice section = slice_next_token(&slice, ',');
 	StringSlice attrs = slice_next_token(&slice, ',');
 	StringSlice stub_size_str = slice_next_token(&slice, ',');
+	(void)attrs;
+	(void)stub_size_str;
 
 	if (slice.len)
 	{
@@ -78,8 +129,6 @@ static inline bool sema_check_param_uniqueness_and_type(Decl **decls, Decl *curr
 	}
 	return true;
 }
-
-
 
 static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent, Decl *decl)
 {
@@ -205,6 +254,7 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl, Decl **
 
 	if (!max_size)
 	{
+		REMINDER("Check if this should really be allowed.");
 		decl->strukt.size = 0;
 		decl->alignment = 1;
 		return true;
@@ -1079,7 +1129,7 @@ static inline bool sema_analyse_error(SemaContext *context, Decl *decl)
 	return success;
 }
 
-static inline const char *name_by_decl(Decl *method_like)
+static inline const char *method_name_by_decl(Decl *method_like)
 {
 	switch (method_like->decl_kind)
 	{
@@ -1149,6 +1199,7 @@ static inline Decl *operator_in_module(SemaContext *c, Module *module, OperatorO
 	}
 	return NULL;
 }
+
 Decl *sema_find_operator(SemaContext *context, Expr *expr, OperatorOverload operator_overload)
 {
 	Decl *ambiguous = NULL;
@@ -1264,7 +1315,7 @@ static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type
 	Decl *method = sema_find_extension_method_in_module(unit->module, parent_type, name);
 	if (method)
 	{
-		SEMA_ERROR(method_like, "This %s is already defined in this module.", name_by_decl(method_like));
+		SEMA_ERROR(method_like, "This %s is already defined in this module.", method_name_by_decl(method_like));
 		SEMA_NOTE(method, "The previous definition was here.");
 		return false;
 	}
@@ -1275,7 +1326,8 @@ static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type
 	method = sema_resolve_method(unit, parent, name, &ambiguous, &private);
 	if (method)
 	{
-		SEMA_ERROR(method_like, "This %s is already defined for '%s'.", name_by_decl(method_like), parent_type->name);
+		SEMA_ERROR(method_like, "This %s is already defined for '%s'.",
+		           method_name_by_decl(method_like), parent_type->name);
 		SEMA_NOTE(method, "The previous definition was here.");
 		return false;
 	}
@@ -1948,6 +2000,7 @@ static inline bool sema_analyse_func_macro(SemaContext *context, Decl *decl, boo
 	if (!sema_analyse_attributes(context, decl, decl->attributes, is_func ? ATTR_FUNC : ATTR_MACRO)) return decl_poison(decl);
 	return true;
 }
+
 static inline bool sema_analyse_func(SemaContext *context, Decl *decl)
 {
 	DEBUG_LOG("----Analysing function %s", decl->name);
@@ -2442,8 +2495,9 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 	assert(parameter_count > 0);
 	if (parameter_count != vec_size(params))
 	{
-		sema_error_at(extend_span_with_token(params[0]->span, VECLAST(params)->span),
-		              "The generic module expected %d arguments, but you only supplied %d, did you make a mistake?",
+		assert(vec_size(params));
+		sema_error_at(extend_span_with_token(params[0]->span, vectail(params)->span),
+		              "The generic module expected %d arguments, but you supplied %d, did you make a mistake?",
 		              parameter_count,
 		              vec_size(decl->define_decl.generic_params));
 		return decl_poison(decl);
@@ -2451,13 +2505,11 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 	scratch_buffer_clear();
 	scratch_buffer_append_len(module->name->module, module->name->len);
 	scratch_buffer_append("$$");
-	VECEACH(decl->define_decl.generic_params, i)
-	{
-		TypeInfo *type_info = decl->define_decl.generic_params[i];
+	FOREACH_BEGIN_IDX(i, TypeInfo *type_info, decl->define_decl.generic_params)
 		if (!sema_resolve_type_info(c, type_info)) return decl_poison(decl);
 		if (i != 0) scratch_buffer_append_char('.');
 		type_mangle_introspect_name_to_buffer(type_info->type->canonical);
-	}
+	FOREACH_END();
 	TokenType ident_type = TOKEN_IDENT;
 	const char *path_string = scratch_buffer_interned();
 	Module *instantiated_module = global_context_find_module(path_string);
@@ -2542,9 +2594,6 @@ static inline bool sema_analyse_define(SemaContext *c, Decl *decl)
 	// 2. Handle type generics.
 	return sema_analyse_parameterized_define(c, decl);
 }
-
-
-
 
 bool sema_analyse_decl(SemaContext *context, Decl *decl)
 {

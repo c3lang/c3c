@@ -302,6 +302,7 @@ void* CONCAT(foreach_vec_, __LINE__) = (vec__); unsigned CONCAT(foreach_len_, __
 #else
 #define VECLAST(_vec) (vec_size(_vec) ? (_vec)[vec_size(_vec) - 1] : NULL)
 #endif
+#define vectail(_vec) (_vec)[vec_size(_vec) - 1]
 
 #if IS_GCC || IS_CLANG
 

@@ -254,7 +254,9 @@ add_executable(c3c
         src/compiler/tilde_codegen_type.c
         src/compiler/windows_support.c
         src/compiler/codegen_asm.c
-        src/compiler/asm_target.c src/compiler/llvm_codegen_builtins.c)
+        src/compiler/asm_target.c
+        src/compiler/llvm_codegen_builtins.c
+        src/compiler/sema_errors.c)
 
 
 target_include_directories(c3c PRIVATE

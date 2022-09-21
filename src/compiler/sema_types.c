@@ -15,6 +15,21 @@ static inline bool sema_resolve_ptr_type(SemaContext *context, TypeInfo *type_in
 	return true;
 }
 
+bool sema_resolve_type_info(SemaContext *context, TypeInfo *type_info)
+{
+	return sema_resolve_type_info_maybe_inferred(context, type_info, false);
+}
+
+bool sema_resolve_type_info_maybe_inferred(SemaContext *context, TypeInfo *type_info, bool allow_inferred_type)
+{
+	if (!sema_resolve_type_shallow(context, type_info, allow_inferred_type, false)) return false;
+	Type *type = type_no_optional(type_info->type);
+	// usize and similar typedefs will not have a decl.
+	if (type->type_kind == TYPE_TYPEDEF && type->decl == NULL) return true;
+	if (!type_is_user_defined(type)) return true;
+	return sema_analyse_decl(context, type->decl);
+}
+
 bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, ArraySize *len_ref)
 {
 	Expr *len_expr = type_info->array.len;
