@@ -1559,12 +1559,12 @@ typedef struct SemaContext_
 	};
 	Decl *current_macro;
 	ScopeId scope_id;
-	AstId break_target;
+	Ast *break_target;
 	AstId break_defer;
-	AstId continue_target;
+	Ast *continue_target;
 	AstId continue_defer;
 	AstId block_return_defer;
-	AstId next_target;
+	Ast *next_target;
 	Ast *next_switch;
 	AstId next_defer;
 	struct
@@ -1842,6 +1842,8 @@ INLINE Type *typeinfotype(TypeInfoId id_)
 }
 
 bool ast_is_not_empty(Ast *ast);
+bool ast_is_compile_time(Ast *ast);
+bool ast_supports_continue(Ast *stmt);
 INLINE void ast_append(AstId **succ, Ast *next);
 INLINE void ast_prepend(AstId *first, Ast *ast);
 INLINE bool ast_ok(Ast *ast);
@@ -1996,11 +1998,9 @@ AsmRegister *asm_reg_by_index(unsigned index);
 
 bool cast_implicit(Expr *expr, Type *to_type);
 bool cast(Expr *expr, Type *to_type);
-
 bool cast_may_implicit(Type *from_type, Type *to_type, bool is_simple_expr, bool failable_allowed);
-
 bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability, bool is_const);
-
+bool cast_to_index(Expr *index);
 CastKind cast_to_bool_kind(Type *type);
 
 const char *llvm_codegen(void *context);
@@ -2040,6 +2040,7 @@ Decl *decl_new_generated_var(Type *type, VarDeclKind kind, SourceSpan span);
 void decl_set_external_name(Decl *decl);
 const char *decl_to_name(Decl *decl);
 const char *decl_to_a_name(Decl *decl);
+int decl_count_elements(Decl *structlike);
 
 INLINE bool decl_ok(Decl *decl);
 INLINE bool decl_poison(Decl *decl);
@@ -2049,7 +2050,8 @@ INLINE Decl *decl_flatten(Decl *decl);
 INLINE const char *decl_get_extname(Decl *decl);
 static inline Decl *decl_raw(Decl *decl);
 static inline DeclKind decl_from_token(TokenType type);
-
+static inline bool decl_is_local(Decl *decl);
+Decl *decl_find_enum_constant(Decl *decl, const char *name);
 
 // --- Expression functions
 
@@ -2060,12 +2062,17 @@ Expr *expr_new_const_bool(SourceSpan span, Type *type, bool value);
 bool expr_is_simple(Expr *expr);
 bool expr_is_pure(Expr *expr);
 bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind);
+bool expr_is_compile_time(Expr *ast);
 Expr *expr_generate_decl(Decl *decl, Expr *assign);
 void expr_insert_addr(Expr *original);
-void expr_insert_deref(Expr *expr);
-bool expr_may_addr(Expr *expr);
+void expr_rewrite_insert_deref(Expr *original);
+Expr *expr_generate_decl(Decl *decl, Expr *assign);
 Expr *expr_variable(Decl *decl);
 Expr *expr_negate_expr(Expr *expr);
+bool expr_may_addr(Expr *expr);
+bool expr_in_int_range(Expr *expr, int64_t low, int64_t high);
+bool expr_is_unwrapped_ident(Expr *expr);
+bool expr_may_splat_as_vararg(Expr *expr, Type *variadic_base_type);
 INLINE Expr *expr_new_expr(ExprKind kind, Expr *expr);
 INLINE bool expr_ok(Expr *expr);
 INLINE bool exprid_is_simple(ExprId expr_id);
@@ -2076,7 +2083,7 @@ INLINE bool expr_poison(Expr *expr);
 INLINE bool exprid_is_constant_eval(ExprId expr, ConstantEvalKind eval_kind);
 INLINE bool expr_is_init_list(Expr *expr);
 INLINE bool expr_is_deref(Expr *expr);
-
+INLINE bool expr_is_const(Expr *expr);
 
 INLINE void expr_rewrite_const_null(Expr *expr, Type *type);
 INLINE void expr_rewrite_const_bool(Expr *expr, Type *type, bool b);
@@ -2084,7 +2091,7 @@ INLINE void expr_rewrite_const_float(Expr *expr, Type *type, Real d);
 INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v, bool narrowable);
 INLINE void expr_rewrite_const_list(Expr *expr, Type *type, ConstInitializer *list);
 
-void expr_rewrite_to_builtin_access(SemaContext *context, Expr *expr, Expr *parent, BuiltinAccessKind kind, Type *type);
+void expr_rewrite_to_builtin_access(Expr *expr, Expr *parent, BuiltinAccessKind kind, Type *type);
 void expr_rewrite_to_const_zero(Expr *expr, Type *type);
 bool expr_rewrite_to_const_initializer_index(Type *list_type, ConstInitializer *list, Expr *result, unsigned index);
 
@@ -2138,7 +2145,8 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local);
 bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement);
 bool sema_analyse_statement(SemaContext *context, Ast *statement);
 bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type *left_type, Expr *right, bool is_unwrapped_var);
-
+bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *expr);
+Expr **sema_expand_vasplat_exprs(SemaContext *c, Expr **exprs);
 bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl, Expr *struct_var, bool failable);
 Decl *sema_resolve_symbol_in_current_dynamic_scope(SemaContext *context, const char *symbol);
 Decl *sema_decl_stack_resolve_symbol(const char *symbol);
@@ -2169,6 +2177,7 @@ void sema_verror_range(SourceSpan location, const char *message, va_list args);
 void sema_error(ParseContext *context, const char *message, ...);
 
 void sema_shadow_error(Decl *decl, Decl *old);
+bool sema_type_error_on_binop(Expr *expr);
 
 File *source_file_by_id(FileId file);
 File *source_file_load(const char *filename, bool *already_loaded);
@@ -2985,4 +2994,25 @@ INLINE unsigned arg_bits_max(AsmArgBits bits, unsigned limit)
 	if (limit >= 16 && (bits & ARG_BITS_16)) return 16;
 	if (limit >= 8 && (bits & ARG_BITS_8)) return 8;
 	return 0;
+}
+
+INLINE bool expr_is_const(Expr *expr)
+{
+	return expr->expr_kind == EXPR_CONST;
+}
+
+static inline bool decl_is_local(Decl *decl)
+{
+	if (decl->decl_kind != DECL_VAR) return false;
+	VarDeclKind kind = decl->var.kind;
+	return kind == VARDECL_PARAM_CT_TYPE
+	       || kind == VARDECL_PARAM
+	       || kind == VARDECL_PARAM_CT
+	       || kind == VARDECL_LOCAL
+	       || kind == VARDECL_LOCAL_CT_TYPE
+	       || kind == VARDECL_LOCAL_CT
+	       || kind == VARDECL_PARAM_REF
+	       || kind == VARDECL_PARAM_EXPR
+	       || kind == VARDECL_BITMEMBER
+	       || kind == VARDECL_MEMBER;
 }

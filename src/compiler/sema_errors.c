@@ -9,3 +9,12 @@ void sema_shadow_error(Decl *decl, Decl *old)
 	SEMA_ERROR(decl, "'%s' would shadow a previous declaration.", decl->name);
 	SEMA_NOTE(old, "The previous use of '%s' was here.", decl->name);
 }
+
+bool sema_type_error_on_binop(Expr *expr)
+{
+	const char *c = token_type_to_string(binaryop_to_token(expr->binary_expr.operator));
+	SEMA_ERROR(expr, "%s is not defined in the expression %s %s %s.",
+	           c, type_quoted_error_string(exprptr(expr->binary_expr.left)->type),
+	           c, type_quoted_error_string(exprptr(expr->binary_expr.right)->type));
+	return false;
+}

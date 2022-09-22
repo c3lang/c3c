@@ -300,7 +300,7 @@ RETRY:
 			Expr *expr = type_info->unresolved_type_expr;
 			TokenType type;
 			Path *path = NULL;
-			const char *ident = ct_eval_expr(context, "$eval", expr, &type, &path, true);
+			const char *ident = sema_ct_eval_expr(context, "$eval", expr, &type, &path, true);
 			if (ident == ct_eval_error) return type_info_poison(type_info);
 			switch (type)
 			{

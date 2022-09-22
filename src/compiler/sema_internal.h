@@ -40,10 +40,9 @@ void context_pop_defers(SemaContext *context, AstId *next);
 void context_pop_defers_and_replace_ast(SemaContext *context, Ast *ast);
 void context_change_scope_for_label(SemaContext *context, Decl *label);
 void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags);
-bool sema_analyse_defer_stmt_body(SemaContext *context, Ast *statement, Ast *body);
 bool splitpathref(const char *string, ArraySize len, Path **path_ref, const char **ident_ref, TokenType *type_ref);
 
-#define PUSH_X(ast, X) AstId _old_##X##_defer = context->X##_defer; AstId _old_##X = context->X##_target; context->X##_target = ast ? astid(ast) : 0; context->X##_defer = context->active_scope.defer_last
+#define PUSH_X(ast, X) AstId _old_##X##_defer = context->X##_defer; Ast *_old_##X = context->X##_target; context->X##_target = ast; context->X##_defer = context->active_scope.defer_last
 #define POP_X(X) context->X##_target = _old_##X; context->X##_defer = _old_##X##_defer
 #define PUSH_CONTINUE(ast) PUSH_X(ast, continue)
 #define POP_CONTINUE() POP_X(continue)
@@ -77,27 +76,38 @@ bool sema_insert_method_call(SemaContext *context, Expr *method_call, Decl *meth
 bool sema_analyse_expr_lvalue(SemaContext *context, Expr *expr);
 bool sema_analyse_expr_lvalue_fold_const(SemaContext *context, Expr *expr);
 bool sema_analyse_ct_expr(SemaContext *context, Expr *expr);
+bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr);
 bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *struct_var, Decl *decl, bool failable);
 Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, Expr *index_expr);
 void expr_rewrite_to_string(Expr *expr_to_rewrite, const char *string);
-const char *ct_eval_expr(SemaContext *c, const char *expr_type, Expr *inner, TokenType *type, Path **path_ref, bool report_missing);
+const char *sema_ct_eval_expr(SemaContext *c, const char *expr_type, Expr *inner, TokenType *type, Path **path_ref, bool report_missing);
 extern const char *ct_eval_error;
 SemaContext *transform_context_for_eval(SemaContext *context, SemaContext *temp_context, CompilationUnit *eval_unit);
 bool sema_check_asm(SemaContext *context, AsmInlineBlock *block, Ast *asm_stmt);
+bool sema_bit_assignment_check(Expr *right, Decl *member);
+static Expr *sema_expr_resolve_access_child(SemaContext *context, Expr *child, bool *missing);
+static inline void expr_replace_with_enum_array(Expr *enum_array_expr, Decl *enum_decl);
+static inline void expr_replace_with_enum_name_array(Expr *enum_array_expr, Decl *enum_decl);
+static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *expr, TypeInfo *parent, bool was_group, Expr *identifier);
+static inline void sema_rewrite_typeid_kind(Expr *expr, Expr *parent);
+static inline bool sema_create_const_kind(Expr *expr, Type *type);
+static inline bool sema_create_const_len(SemaContext *context, Expr *expr, Type *type);
+static inline bool sema_create_const_inner(SemaContext *context, Expr *expr, Type *type);
+static inline bool sema_create_const_min(SemaContext *context, Expr *expr, Type *type, Type *flat);
+static inline bool sema_create_const_max(SemaContext *context, Expr *expr, Type *type, Type *flat);
+static bool sema_expr_rewrite_typeid_call(Expr *expr, Expr *typeid, TypeIdInfoKind kind, Type *result_type);
+static inline bool sema_expr_fold_to_member(Expr *expr, Expr *parent, Decl *member);
 
-static inline bool expr_is_const(Expr *expr);
-
-
-static inline bool expr_is_const(Expr *expr)
-{
-	return expr->expr_kind == EXPR_CONST;
-}
+bool cast_widen_top_down(Expr *expr, Type *type);
+bool cast_promote_vararg(Expr *arg);
+Type *cast_numeric_arithmetic_promotion(Type *type);
+void cast_to_max_bit_size(SemaContext *context, Expr *left, Expr *right, Type *left_type, Type *right_type);
+bool cast_decay_array_pointers(Expr *expr);
 
 static inline bool expr_is_const_string(Expr *expr)
 {
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_STRING;
 }
-
 
 INLINE bool expr_is_const_list(Expr *expr)
 {
