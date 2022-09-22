@@ -261,222 +261,6 @@ Decl *decl_new_generated_var(Type *type, VarDeclKind kind, SourceSpan span)
 	return decl;
 }
 
-// Determine if the expression has side effects
-// Note! This is not the same as it being const.
-bool expr_is_pure(Expr *expr)
-{
-	if (!expr) return true;
-	switch (expr->expr_kind)
-	{
-		case EXPR_BUILTIN:
-			return false;
-		case EXPR_BUILTIN_ACCESS:
-			return exprid_is_pure(expr->builtin_access_expr.inner);
-		case EXPR_VARIANT:
-			return exprid_is_pure(expr->variant_expr.type_id) && exprid_is_pure(expr->variant_expr.ptr);
-		case EXPR_POINTER_OFFSET:
-			return exprid_is_pure(expr->pointer_offset_expr.ptr) && exprid_is_pure(expr->pointer_offset_expr.offset);
-		case EXPR_COMPILER_CONST:
-		case EXPR_CONST:
-		case EXPR_IDENTIFIER:
-		case EXPR_NOP:
-		case EXPR_STRINGIFY:
-		case EXPR_RETVAL:
-		case EXPR_TYPEINFO:
-		case EXPR_CT_EVAL:
-		case EXPR_CT_IDENT:
-		case EXPR_CT_CALL:
-		case EXPR_TYPEID:
-		case EXPR_CT_ARG:
-		case EXPR_OPERATOR_CHARS:
-		case EXPR_CT_CHECKS:
-			return true;
-		case EXPR_VASPLAT:
-			return true;
-		case EXPR_ARGV_TO_SUBARRAY:
-		case EXPR_BITASSIGN:
-			return false;
-		case EXPR_VARIANTSWITCH:
-			return false;
-		case EXPR_BINARY:
-			// Anything with assignment is impure, otherwise true if sub expr are pure.
-			if (expr->binary_expr.operator >= BINARYOP_ASSIGN) return false;
-			return exprid_is_pure(expr->binary_expr.right) && exprid_is_pure(expr->binary_expr.left);
-		case EXPR_UNARY:
-			switch (expr->unary_expr.operator)
-			{
-				case UNARYOP_INC:
-				case UNARYOP_DEC:
-				case UNARYOP_TADDR:
-					// ++ -- &&1
-					return false;
-				case UNARYOP_ERROR:
-				case UNARYOP_DEREF:
-				case UNARYOP_ADDR:
-				case UNARYOP_NEG:
-				case UNARYOP_BITNEG:
-				case UNARYOP_NOT:
-					return expr_is_pure(expr->unary_expr.expr);
-			}
-			UNREACHABLE
-		case EXPR_BITACCESS:
-		case EXPR_ACCESS:
-			// All access is pure if the parent is pure.
-			return expr_is_pure(expr->access_expr.parent);
-		case EXPR_POISONED:
-			UNREACHABLE
-		case EXPR_MACRO_BODY_EXPANSION:
-		case EXPR_CALL:
-		case EXPR_CATCH_UNWRAP:
-		case EXPR_COMPOUND_LITERAL:
-		case EXPR_COND:
-		case EXPR_DESIGNATOR:
-		case EXPR_DECL:
-		case EXPR_EXPR_BLOCK:
-		case EXPR_FAILABLE:
-		case EXPR_RETHROW:
-		case EXPR_HASH_IDENT:
-		case EXPR_MACRO_BLOCK:
-		case EXPR_FLATPATH:
-		case EXPR_INITIALIZER_LIST:
-		case EXPR_DESIGNATED_INITIALIZER_LIST:
-		case EXPR_POST_UNARY:
-		case EXPR_SLICE_ASSIGN:
-		case EXPR_SLICE_COPY:
-		case EXPR_TRY_UNWRAP:
-		case EXPR_TRY_UNWRAP_CHAIN:
-		case EXPR_FORCE_UNWRAP:
-			return false;
-		case EXPR_CAST:
-			return exprid_is_pure(expr->cast_expr.expr);
-		case EXPR_EXPRESSION_LIST:
-			VECEACH(expr->expression_list, i)
-			{
-				if (!expr_is_pure(expr->expression_list[i])) return false;
-			}
-			return true;
-		case EXPR_TYPEID_INFO:
-			return exprid_is_pure(expr->typeid_info_expr.parent);
-		case EXPR_SLICE:
-			return exprid_is_pure(expr->subscript_expr.expr)
-			       && exprid_is_pure(expr->subscript_expr.range.start)
-			       && exprid_is_pure(expr->subscript_expr.range.end);
-		case EXPR_SUBSCRIPT:
-		case EXPR_SUBSCRIPT_ADDR:
-			return exprid_is_pure(expr->subscript_expr.expr)
-			       && exprid_is_pure(expr->subscript_expr.range.start);
-		case EXPR_TERNARY:
-			return exprid_is_pure(expr->ternary_expr.cond)
-			       && exprid_is_pure(expr->ternary_expr.else_expr)
-			       && exprid_is_pure(expr->ternary_expr.then_expr);
-		case EXPR_ASM:
-			return false;
-		case EXPR_TRY:
-		case EXPR_GROUP:
-		case EXPR_CATCH:
-			return expr_is_pure(expr->inner_expr);
-	}
-	UNREACHABLE
-}
-
-
-bool expr_is_simple(Expr *expr)
-{
-	RETRY:
-	switch (expr->expr_kind)
-	{
-		case EXPR_GROUP:
-			expr = expr->inner_expr;
-			goto RETRY;
-		case EXPR_TERNARY:
-			return expr_is_simple(exprptr(expr->ternary_expr.else_expr)) && expr_is_simple(exprptr(expr->ternary_expr.then_expr));
-		case EXPR_RETHROW:
-			expr = expr->rethrow_expr.inner;
-			goto RETRY;
-		default:
-			return true;
-		case EXPR_BINARY:
-			switch (expr->binary_expr.operator)
-			{
-				case BINARYOP_AND:
-				case BINARYOP_OR:
-				case BINARYOP_GT:
-				case BINARYOP_GE:
-				case BINARYOP_LT:
-				case BINARYOP_LE:
-				case BINARYOP_NE:
-				case BINARYOP_EQ:
-				case BINARYOP_ASSIGN:
-				case BINARYOP_ADD_ASSIGN:
-				case BINARYOP_BIT_AND_ASSIGN:
-				case BINARYOP_BIT_OR_ASSIGN:
-				case BINARYOP_BIT_XOR_ASSIGN:
-				case BINARYOP_DIV_ASSIGN:
-				case BINARYOP_MOD_ASSIGN:
-				case BINARYOP_MULT_ASSIGN:
-				case BINARYOP_SHR_ASSIGN:
-				case BINARYOP_SHL_ASSIGN:
-				case BINARYOP_SUB_ASSIGN:
-					return true;
-				default:
-					return false;
-			}
-			UNREACHABLE
-		case EXPR_UNARY:
-			switch (expr->unary_expr.operator)
-			{
-				case UNARYOP_NEG:
-				case UNARYOP_BITNEG:
-					return false;
-				default:
-					return true;
-			}
-			UNREACHABLE
-	}
-	UNREACHABLE
-}
-
-
-Expr *expr_new(ExprKind kind, SourceSpan start)
-{
-	Expr *expr = expr_calloc();
-	expr->expr_kind = kind;
-	expr->span = start;
-	return expr;
-}
-
-Expr *expr_new_const_int(SourceSpan span, Type *type, uint64_t v, bool narrowable)
-{
-	Expr *expr = expr_calloc();
-	expr->expr_kind = EXPR_CONST;
-	expr->span = span;
-	expr->type = type;
-	TypeKind kind = type_flatten(type)->type_kind;
-	expr->const_expr.ixx.i.high = 0;
-	if (type_kind_is_signed(kind))
-	{
-		if (v > (uint64_t)INT64_MAX) expr->const_expr.ixx.i.high = UINT64_MAX;
-	}
-	expr->const_expr.ixx.i.low = v;
-	expr->const_expr.ixx.type = kind;
-	expr->const_expr.const_kind = CONST_INTEGER;
-	expr->const_expr.narrowable = narrowable;
-	expr->resolve_status = RESOLVE_DONE;
-	return expr;
-}
-
-Expr *expr_new_const_bool(SourceSpan span, Type *type, bool value)
-{
-	Expr *expr = expr_calloc();
-	expr->expr_kind = EXPR_CONST;
-	expr->span = span;
-	expr->type = type;
-	assert(type_flatten(type)->type_kind == TYPE_BOOL);
-	expr->const_expr.b = value;
-	expr->const_expr.const_kind = CONST_BOOL;
-	expr->resolve_status = RESOLVE_DONE;
-	return expr;
-}
 
 
 BinaryOp binary_op[TOKEN_LAST + 1] = {
@@ -584,112 +368,69 @@ AttributeType attribute_by_name(const char *name)
 	return ATTRIBUTE_NONE;
 }
 
-static inline ConstInitializer *initializer_for_index(ConstInitializer *initializer, uint32_t index)
+
+
+int decl_count_elements(Decl *structlike)
 {
-	switch (initializer->kind)
+	int elements = 0;
+	Decl **members = structlike->strukt.members;
+	unsigned member_size = vec_size(members);
+	if (member_size == 0) return 0;
+	if (structlike->decl_kind == DECL_UNION) member_size = 1;
+	for (unsigned i = 0; i < member_size; i++)
 	{
-		case CONST_INIT_ZERO:
-		case CONST_INIT_STRUCT:
-		case CONST_INIT_UNION:
-		case CONST_INIT_VALUE:
-			return initializer;
-		case CONST_INIT_ARRAY_FULL:
-			return initializer->init_array_full[index];
-		case CONST_INIT_ARRAY:
+		Decl *member = members[i];
+		if (member->decl_kind != DECL_VAR && !member->name)
 		{
-			ConstInitializer **sub_values = initializer->init_array.elements;
-			VECEACH(sub_values, i)
+			elements += decl_count_elements(member);
+			continue;
+		}
+		elements++;
+	}
+	return elements;
+}
+
+bool ast_is_compile_time(Ast *ast)
+{
+	switch (ast->ast_kind)
+	{
+		case AST_NOP_STMT:
+			return true;
+		case AST_RETURN_STMT:
+		case AST_BLOCK_EXIT_STMT:
+			if (!ast->return_stmt.expr) return true;
+			return expr_is_constant_eval(ast->return_stmt.expr, CONSTANT_EVAL_CONSTANT_VALUE);
+		case AST_EXPR_STMT:
+			return expr_is_compile_time(ast->expr_stmt);
+		case AST_COMPOUND_STMT:
+		{
+			AstId current = ast->compound_stmt.first_stmt;
+			while (current)
 			{
-				ConstInitializer *init = sub_values[i];
-				assert(init->kind == CONST_INIT_ARRAY_VALUE);
-				if (init->init_array_value.index == index) return init->init_array_value.element;
+				if (!ast_is_compile_time(ast_next(&current))) return false;
 			}
-			return NULL;
-		}
-		case CONST_INIT_ARRAY_VALUE:
-			UNREACHABLE
-	}
-	UNREACHABLE
-}
-
-void expr_rewrite_to_const_zero(Expr *expr, Type *type)
-{
-	expr->expr_kind = EXPR_CONST;
-	expr->const_expr.narrowable = true;
-	switch (type->canonical->type_kind)
-	{
-		case TYPE_POISONED:
-		case TYPE_VOID:
-		case TYPE_INFERRED_VECTOR:
-			UNREACHABLE
-		case ALL_INTS:
-			expr_rewrite_const_int(expr, type, 0, true);
-			return;
-		case ALL_FLOATS:
-			expr_rewrite_const_float(expr, type, 0);
-			break;
-		case TYPE_BOOL:
-			expr_rewrite_const_bool(expr, type, false);
-			return;
-		case TYPE_POINTER:
-		case TYPE_FAULTTYPE:
-		case TYPE_ANY:
-		case TYPE_ANYERR:
-		case TYPE_TYPEID:
-			expr_rewrite_const_null(expr, type);
-			return;
-		case TYPE_ENUM:
-			expr->const_expr.const_kind = CONST_ENUM;
-			expr->const_expr.enum_val = type->decl->enums.values[0];
-			break;
-		case TYPE_FUNC:
-		case TYPE_TYPEDEF:
-		case TYPE_FAILABLE_ANY:
-		case TYPE_FAILABLE:
-		case TYPE_TYPEINFO:
-			UNREACHABLE
-		case TYPE_STRUCT:
-		case TYPE_UNION:
-		case TYPE_BITSTRUCT:
-		case TYPE_ARRAY:
-		case TYPE_SUBARRAY:
-		case TYPE_INFERRED_ARRAY:
-		case TYPE_FLEXIBLE_ARRAY:
-		case TYPE_UNTYPED_LIST:
-		case TYPE_SCALED_VECTOR:
-		case TYPE_VECTOR:
-		{
-			ConstInitializer *init = CALLOCS(ConstInitializer);
-			init->kind = CONST_INIT_ZERO;
-			init->type = type;
-			expr_rewrite_const_list(expr, type, init);
-			return;
-		}
-		case TYPE_DISTINCT:
-			expr_rewrite_to_const_zero(expr, type->decl->distinct_decl.base_type);
-			break;
-	}
-	expr->type = type;
-}
-
-bool expr_rewrite_to_const_initializer_index(Type *list_type, ConstInitializer *list, Expr *result, unsigned index)
-{
-	ConstInitializer *initializer = initializer_for_index(list, index);
-	ConstInitType kind = initializer ? initializer->kind : CONST_INIT_ZERO;
-	switch (kind)
-	{
-		case CONST_INIT_ZERO:
-			expr_rewrite_to_const_zero(result, type_get_indexed_type(list_type));
 			return true;
-		case CONST_INIT_STRUCT:
-		case CONST_INIT_UNION:
-		case CONST_INIT_ARRAY:
-		case CONST_INIT_ARRAY_FULL:
-		case CONST_INIT_ARRAY_VALUE:
+		}
+		default:
 			return false;
-		case CONST_INIT_VALUE:
-			expr_replace(result, initializer->init_value);
-			return true;
 	}
-	UNREACHABLE
+}
+
+Decl *decl_find_enum_constant(Decl *decl, const char *name)
+{
+	VECEACH(decl->enums.values, i)
+	{
+		Decl *enum_constant = decl->enums.values[i];
+		if (enum_constant->name == name)
+		{
+			return enum_constant;
+		}
+	}
+	return NULL;
+}
+
+bool ast_supports_continue(Ast *stmt)
+{
+	if (stmt->ast_kind != AST_FOR_STMT) return false;
+	return stmt->for_stmt.cond || !stmt->flow.skip_first;
 }

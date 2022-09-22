@@ -1445,4 +1445,124 @@ bool cast(Expr *expr, Type *to_type)
 	return true;
 }
 
+bool cast_to_index(Expr *index)
+{
+	Type *type = index->type->canonical;
+	RETRY:
+	switch (type->type_kind)
+	{
+		case TYPE_I8:
+		case TYPE_I16:
+		case TYPE_I32:
+		case TYPE_I64:
+			return cast(index, type_iptrdiff);
+		case TYPE_U8:
+		case TYPE_U16:
+		case TYPE_U32:
+		case TYPE_U64:
+			return cast(index, type_uptrdiff);
+		case TYPE_U128:
+			SEMA_ERROR(index, "You need to explicitly cast this to a uint or ulong.");
+			return false;
+		case TYPE_I128:
+			SEMA_ERROR(index, "index->type->canonical this to an int or long.");
+			return false;
+		case TYPE_ENUM:
+			type = type->decl->enums.type_info->type->canonical;
+			goto RETRY;
+		default:
+			SEMA_ERROR(index, "Cannot implicitly convert '%s' to an index.", type_to_error_string(index->type));
+			return false;
+	}
+}
+
+bool cast_widen_top_down(Expr *expr, Type *type)
+{
+	Type *to = type;
+	Type *from = expr->type;
+	RETRY:
+	if (type_is_integer(from) && type_is_integer(to)) goto CONVERT_IF_BIGGER;
+	if (type_is_float(from) && type_is_float(to)) goto CONVERT_IF_BIGGER;
+	if (type_is_integer(from) && type_is_float(to)) goto CONVERT;
+	if (type_flat_is_vector(from) && type_flat_is_vector(to))
+	{
+		to = type_vector_type(to);
+		from = type_vector_type(from);
+		goto RETRY;
+	}
+	return true;
+	CONVERT_IF_BIGGER:
+	if (type_size(to) <= type_size(from)) return true;
+	CONVERT:
+	return cast_implicit(expr, type);
+}
+
+bool cast_promote_vararg(Expr *arg)
+{
+	Type *arg_type = arg->type->canonical;
+
+	// 2. Promote any integer or bool to at least CInt
+	if (type_is_promotable_integer(arg_type) || arg_type == type_bool)
+	{
+		return cast(arg, type_cint);
+	}
+	// 3. Promote any float to at least double
+	if (type_is_promotable_float(arg->type))
+	{
+		return cast(arg, type_double);
+	}
+	return true;
+}
+
+Type *cast_numeric_arithmetic_promotion(Type *type)
+{
+	if (!type) return NULL;
+	switch (type->type_kind)
+	{
+		case ALL_SIGNED_INTS:
+			if (type->builtin.bitsize < platform_target.width_c_int) return type_cint;
+			return type;
+		case ALL_UNSIGNED_INTS:
+			if (type->builtin.bitsize < platform_target.width_c_int) return type_cuint;
+			return type;
+		case TYPE_F16:
+			// Promote F16 to a real type.
+			return type_float;
+		case TYPE_FAILABLE:
+			UNREACHABLE
+		default:
+			return type;
+	}
+}
+
+bool cast_decay_array_pointers(Expr *expr)
+{
+	CanonicalType *pointer_type = type_pointer_type(type_no_optional(expr->type));
+	if (!pointer_type || !type_is_arraylike(pointer_type)) return true;
+	return cast_implicit(expr, type_add_optional(type_get_ptr(pointer_type->array.base), IS_OPTIONAL(expr)));
+}
+
+void cast_to_max_bit_size(SemaContext *context, Expr *left, Expr *right, Type *left_type, Type *right_type)
+{
+	unsigned bit_size_left = left_type->builtin.bitsize;
+	unsigned bit_size_right = right_type->builtin.bitsize;
+	assert(bit_size_left && bit_size_right);
+	if (bit_size_left == bit_size_right) return;
+	if (bit_size_left < bit_size_right)
+	{
+		Type *to = left->type->type_kind < TYPE_U8
+		           ? type_int_signed_by_bitsize(bit_size_right)
+		           : type_int_unsigned_by_bitsize(bit_size_right);
+		bool success = cast_implicit(left, to);
+		assert(success);
+		return;
+	}
+	Type *to = right->type->type_kind < TYPE_U8
+	           ? type_int_signed_by_bitsize(bit_size_left)
+	           : type_int_unsigned_by_bitsize(bit_size_left);
+	bool success = cast_implicit(right, to);
+	assert(success);
+}
+
+
 #pragma clang diagnostic pop

@@ -4,17 +4,239 @@
 
 #include "sema_internal.h"
 
-// --- Helper functions
+static inline bool sema_analyse_asm_stmt(SemaContext *context, Ast *stmt);
+static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement);
+static inline bool sema_analyse_break_stmt(SemaContext *context, Ast *statement);
+static inline bool sema_analyse_compound_stmt(SemaContext *context, Ast *statement);
+static inline bool sema_analyse_continue_stmt(SemaContext *context, Ast *statement);
+static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement);
+static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *statement);
+static inline bool sema_analyse_ct_if_stmt(SemaContext *context, Ast *statement);
+static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statement);
+static inline bool sema_analyse_declare_stmt(SemaContext *context, Ast *statement);
+static inline bool sema_analyse_defer_stmt(SemaContext *context, Ast *statement);
+static inline bool sema_analyse_expr_stmt(SemaContext *context, Ast *statement);
+static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement);
+static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statement);
+static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement);
+static inline bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement);
+static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement);
+static inline bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement);
 
+static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *statement);
+static inline bool sema_analyse_defer_stmt_body(SemaContext *context, Ast *statement, Ast *body);
+static inline bool sema_analyse_for_cond(SemaContext *context, ExprId *cond_ref, bool *infinite);
+static inline bool assert_create_from_contract(SemaContext *context, Ast *directive, AstId **asserts, SourceSpan evaluation_location);
+static bool sema_analyse_asm_string_stmt(SemaContext *context, Ast *stmt);
+static void sema_unwrappable_from_catch_in_else(SemaContext *c, Expr *cond);
+static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr);
+static inline bool sema_analyse_try_unwrap_chain(SemaContext *context, Expr *expr, CondType cond_type);
+static void sema_remove_unwraps_from_try(SemaContext *c, Expr *cond);
+static inline bool sema_analyse_last_cond(SemaContext *context, Expr *expr, CondType cond_type);
+static inline bool sema_analyse_cond_list(SemaContext *context, Expr *expr, CondType cond_type);
+static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType cond_type);
+static inline Decl *sema_analyse_label(SemaContext *context, Ast *stmt);
+static bool context_labels_exist_in_scope(SemaContext *context);
+static inline bool sema_analyse_then_overwrite(SemaContext *context, Ast *statement, AstId replacement);
+static inline bool sema_analyse_catch_unwrap(SemaContext *context, Expr *expr);
+static inline bool sema_analyse_compound_statement_no_scope(SemaContext *context, Ast *compound_statement);
+static inline bool sema_check_type_case(SemaContext *context, Type *switch_type, Ast *case_stmt, Ast **cases, unsigned index);
+static inline bool sema_check_value_case(SemaContext *context, Type *switch_type, Ast *case_stmt, Ast **cases, unsigned index, bool *if_chained, bool *max_ranged);
+static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, SourceSpan expr_span, Type *switch_type, Ast **cases, ExprVariantSwitch *variant, Decl *var_holder);
+static bool sema_analyse_ct_switch_body(SemaContext *context, Ast *statement);
 
-static bool sema_analyse_compound_stmt(SemaContext *context, Ast *statement);
+static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *statement);
+static bool sema_analyse_require(SemaContext *context, Ast *directive, AstId **asserts);
+static bool sema_analyse_ensure(SemaContext *context, Ast *directive);
+static bool sema_analyse_errors(SemaContext *context, Ast *directive);
+static bool sema_analyse_checked(SemaContext *context, Ast *directive, AstId **asserts);
 
-typedef enum
+static inline bool sema_analyse_asm_stmt(SemaContext *context, Ast *stmt)
 {
-	COND_TYPE_UNWRAP_BOOL,
-	COND_TYPE_UNWRAP,
-	COND_TYPE_EVALTYPE_VALUE,
-} CondType;
+	if (stmt->asm_block_stmt.is_string) return sema_analyse_asm_string_stmt(context, stmt);
+	AsmInlineBlock *block = stmt->asm_block_stmt.block;
+	AstId ast_id = block->asm_stmt;
+	scratch_buffer_clear();
+	while (ast_id)
+	{
+		Ast *ast = astptr(ast_id);
+		ast_id = ast->next;
+		if (!sema_check_asm(context, block, ast)) return false;
+	}
+	return true;
+}
+
+/**
+ * assert(foo), assert(foo, message), assert(try foo), assert(try foo, message)
+ *
+ * - Using the try construct we implicitly unpack the variable if present.
+ * - assert(false) will implicitly make the rest of the code marked as unreachable.
+ * - assert might also be used for 'ensure' and in this case violating it is a compile time error.
+ */
+static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement)
+{
+	Expr *expr = exprptr(statement->assert_stmt.expr);
+
+	// Verify that the message is a string if it exists.
+	Expr *message_expr = exprptrzero(statement->assert_stmt.message);
+	if (message_expr)
+	{
+		if (!sema_analyse_expr(context, message_expr)) return false;
+		if (!expr_is_const_string(message_expr))
+		{
+			SEMA_ERROR(message_expr, "Expected a string as the error message.");
+			return false;
+		}
+	}
+
+
+	// Handle force unwrapping using assert, e.g. assert(try x)
+	if (expr->expr_kind == EXPR_TRY_UNWRAP_CHAIN)
+	{
+		return sema_analyse_try_unwrap_chain(context, expr, COND_TYPE_UNWRAP_BOOL);
+	}
+
+	// Check the conditional inside
+	if (!sema_analyse_cond_expr(context, expr)) return false;
+
+	// If it's constant, we process it differently.
+	if (expr_is_const(expr))
+	{
+		// It's true, then replace the statement with a nop.
+		if (expr->const_expr.b)
+		{
+			statement->ast_kind = AST_NOP_STMT;
+			return true;
+		}
+		// If it's ensure (and an error) we print an error.
+		if (statement->assert_stmt.is_ensure)
+		{
+			if (message_expr)
+			{
+				SEMA_ERROR(expr, "%.*s", EXPAND_EXPR_STRING(message_expr));
+			}
+			else
+			{
+				SEMA_ERROR(expr, "Contract violated.");
+			}
+			return false;
+		}
+		// assert(false) means this can't be reached.
+		context->active_scope.jump_end = true;
+	}
+	return true;
+}
+
+
+/**
+ * break and break LABEL;
+ */
+static inline bool sema_analyse_break_stmt(SemaContext *context, Ast *statement)
+{
+	// If there is no break target and there is no label,
+	// we skip.
+	if (!context->break_target && !statement->contbreak_stmt.is_label)
+	{
+		if (context_labels_exist_in_scope(context))
+		{
+			SEMA_ERROR(statement, "Unlabelled 'break' is not allowed here.");
+		}
+		else
+		{
+			SEMA_ERROR(statement, "There is no valid target for 'break', did you make a mistake?");
+		}
+		return false;
+	}
+
+	// Is jump, and set it as resolved.
+	context->active_scope.jump_end = true;
+	statement->contbreak_stmt.is_resolved = true;
+
+	AstId defer_begin;
+	Ast *parent;
+
+	if (statement->contbreak_stmt.label.name)
+	{
+		// If we have a label, pick it and set the parent astid to that target.
+		ASSIGN_DECL_OR_RET(Decl *target, sema_analyse_label(context, statement), false);
+		// We don't need to do any checking since all(!) label constructs support break.
+		parent = astptr(target->label.parent);
+		defer_begin = target->label.defer;
+	}
+	else
+	{
+		// Jump to the default break target.
+		parent = context->break_target;
+		defer_begin = context->break_defer;
+	}
+
+	assert(parent);
+	parent->flow.has_break = true;
+	statement->contbreak_stmt.ast = astid(parent);
+
+	// Append the defers.
+	statement->contbreak_stmt.defers = context_get_defers(context, context->active_scope.defer_last, defer_begin);
+	return true;
+}
+
+/**
+ * The regular { }
+ */
+static inline bool sema_analyse_compound_stmt(SemaContext *context, Ast *statement)
+{
+	bool success;
+	bool ends_with_jump;
+	SCOPE_START
+		success = sema_analyse_compound_statement_no_scope(context, statement);
+		ends_with_jump = context->active_scope.jump_end;
+	SCOPE_END;
+	// If this ends with a jump, then we know we don't need to certain analysis.
+	context->active_scope.jump_end = ends_with_jump;
+	return success;
+}
+
+/**
+ * continue and continue FOO;
+ */
+static inline bool sema_analyse_continue_stmt(SemaContext *context, Ast *statement)
+{
+	// If we have a plain continue and no continue label, we just failed.
+	if (!context->continue_target && !statement->contbreak_stmt.label.name)
+	{
+		SEMA_ERROR(statement, "'continue' is not allowed here.");
+		return false;
+	}
+
+	AstId defer_id;
+	Ast *parent;
+	if (statement->contbreak_stmt.label.name)
+	{
+		// If we have a label grab it.
+		ASSIGN_DECL_OR_RET(Decl *target, sema_analyse_label(context, statement), false);
+		defer_id = target->label.defer;
+		parent = astptr(target->label.parent);
+		// Continue can only be used with "for" statements, skipping the "do {  };" statement
+		if (!ast_supports_continue(parent))
+		{
+			SEMA_ERROR(statement, "'continue' may only be used with 'for', 'while' and 'do-while' statements.");
+			return false;
+		}
+	}
+	else
+	{
+		// Use default defer and ast.
+		defer_id = context->continue_defer;
+		parent = context->continue_target;
+	}
+
+	// This makes the active scope jump.
+	context->active_scope.jump_end = true;
+
+	// Link the parent and add the defers.
+	statement->contbreak_stmt.ast = astid(parent);
+	statement->contbreak_stmt.defers = context_get_defers(context, context->active_scope.defer_last, defer_id);
+	return true;
+}
 
 static void sema_unwrappable_from_catch_in_else(SemaContext *c, Expr *cond)
 {
@@ -984,7 +1206,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 			SEMA_ERROR(enumerator, "It is not possible to enumerate an expression of type %s.", type_quoted_error_string(enumerator->type));
 			return false;
 		}
-		expr_insert_deref(enumerator);
+		expr_rewrite_insert_deref(enumerator);
 	}
 
 	// At this point we should have dereferenced any pointer or bailed.
@@ -1087,7 +1309,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 
 	// Create @__enum$.len() or @(*__enum$).len()
 	Expr *enum_val = expr_variable(temp);
-	if (is_addr) expr_insert_deref(enum_val);
+	if (is_addr) expr_rewrite_insert_deref(enum_val);
 	Type *enumerator_type = type_flatten(enum_val->type);
 	Expr *len_call;
 	ArraySize array_len = 0;
@@ -1203,7 +1425,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 
 	Expr *subscript = expr_new(EXPR_SUBSCRIPT, var->span);
 	enum_val = expr_variable(temp);
-	if (is_addr) expr_insert_deref(enum_val);
+	if (is_addr) expr_rewrite_insert_deref(enum_val);
 	subscript->subscript_expr.expr = exprid(enum_val);
 	subscript->subscript_expr.range.start = exprid(expr_variable(idx_decl));
 	if (value_by_ref)
@@ -1230,9 +1452,6 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	return sema_analyse_for_stmt(context, statement);
 
 }
-
-
-static bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement);
 
 static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 {
@@ -1345,24 +1564,17 @@ static bool sema_analyse_asm_string_stmt(SemaContext *context, Ast *stmt)
 	return true;
 }
 
-static bool sema_analyse_asm_stmt(SemaContext *context, Ast *stmt)
-{
-	if (stmt->asm_block_stmt.is_string) return sema_analyse_asm_string_stmt(context, stmt);
-	AsmInlineBlock *block = stmt->asm_block_stmt.block;
-	AstId ast_id = block->asm_stmt;
-	scratch_buffer_clear();
-	while (ast_id)
-	{
-		Ast *ast = astptr(ast_id);
-		ast_id = ast->next;
-		if (!sema_check_asm(context, block, ast)) return false;
-	}
-	return true;
-}
 
+/**
+ * When jumping to a label
+ * @param context
+ * @param stmt
+ * @return
+ */
 static inline Decl *sema_analyse_label(SemaContext *context, Ast *stmt)
 {
-	const char *name = stmt->contbreak_stmt.label.name;
+	Label *label = stmt->ast_kind == AST_NEXT_STMT ? &stmt->nextcase_stmt.label : &stmt->contbreak_stmt.label;
+	const char *name = label->name;
 	Decl *target = sema_find_label_symbol(context, name);
 	if (!target)
 	{
@@ -1371,13 +1583,37 @@ static inline Decl *sema_analyse_label(SemaContext *context, Ast *stmt)
 		{
 			if (context->active_scope.flags & SCOPE_EXPR_BLOCK)
 			{
-				SEMA_ERROR(stmt, stmt->ast_kind == AST_BREAK_STMT ? "You cannot break out of an expression block." : "You cannot use continue out of an expression block.");
-				return poisoned_decl;
+				switch (stmt->ast_kind)
+				{
+					case AST_BREAK_STMT:
+						SEMA_ERROR(stmt, "You cannot break out of an expression block.");
+						return poisoned_decl;
+					case AST_CONTINUE_STMT:
+						SEMA_ERROR(stmt, "You cannot use continue out of an expression block.");
+						return poisoned_decl;
+					case AST_NEXT_STMT:
+						SEMA_ERROR(stmt, "You cannot use nextcase to exit an expression block.");
+						return poisoned_decl;
+					default:
+						UNREACHABLE
+				}
 			}
-			else if (target->label.scope_defer != astid(context->active_scope.in_defer))
+			if (target->label.scope_defer != astid(context->active_scope.in_defer))
 			{
-				SEMA_ERROR(stmt, stmt->ast_kind == AST_BREAK_STMT ? "You cannot break out of a defer." : "You cannot use continue out of a defer.");
-				return poisoned_decl;
+				switch (stmt->ast_kind)
+				{
+					case AST_BREAK_STMT:
+						SEMA_ERROR(stmt, "You cannot break out of a defer.");
+						return poisoned_decl;
+					case AST_CONTINUE_STMT:
+						SEMA_ERROR(stmt, "You cannot use continue out of a defer.");
+						return poisoned_decl;
+					case AST_NEXT_STMT:
+						SEMA_ERROR(stmt, "You cannot use nextcase out of a defer.");
+						return poisoned_decl;
+					default:
+						UNREACHABLE
+				}
 			}
 			SEMA_ERROR(stmt, "'%s' cannot be reached from the current scope.", name);
 			return poisoned_decl;
@@ -1387,15 +1623,27 @@ static inline Decl *sema_analyse_label(SemaContext *context, Ast *stmt)
 	}
 	if (target->decl_kind != DECL_LABEL)
 	{
-		SEMA_ERROR(&stmt->contbreak_stmt.label, "Expected the name to match a label, not a constant.");
+		SEMA_ERROR(label, "Expected the name to match a label, not a constant.");
 		return poisoned_decl;
 	}
 	if (context->active_scope.in_defer)
 	{
 		if (target->label.scope_defer != astid(context->active_scope.in_defer))
 		{
-			SEMA_ERROR(stmt, stmt->ast_kind == AST_BREAK_STMT ? "You cannot break out of a defer." : "You cannot use continue out of a defer.");
-			return poisoned_decl;
+			switch (stmt->ast_kind)
+			{
+				case AST_BREAK_STMT:
+					SEMA_ERROR(stmt, "You cannot break out of a defer.");
+					return poisoned_decl;
+				case AST_CONTINUE_STMT:
+					SEMA_ERROR(stmt, "You cannot use continue out of a defer.");
+					return poisoned_decl;
+				case AST_NEXT_STMT:
+					SEMA_ERROR(stmt, "You cannot use nextcase out of a defer.");
+					return poisoned_decl;
+				default:
+					UNREACHABLE
+			}
 		}
 	}
 	return target;
@@ -1411,47 +1659,10 @@ static bool context_labels_exist_in_scope(SemaContext *context)
 	return false;
 }
 
-static bool sema_analyse_break_stmt(SemaContext *context, Ast *statement)
-{
-	context->active_scope.jump_end = true;
-	if (!context->break_target && !statement->contbreak_stmt.is_label)
-	{
-		if (context_labels_exist_in_scope(context))
-		{
-			SEMA_ERROR(statement, "Unlabelled 'break' is not allowed here.");
-		}
-		else
-		{
-			SEMA_ERROR(statement, "There is no valid target for 'break', did you make a mistake?");
-		}
-		return false;
-	}
-
-	AstId defer_begin;
-	statement->contbreak_stmt.is_resolved = true;
-	if (statement->contbreak_stmt.label.name)
-	{
-		Decl *target = sema_analyse_label(context, statement);
-		if (!decl_ok(target)) return false;
-
-		astptr(target->label.parent)->flow.has_break = true;
-		statement->contbreak_stmt.ast = target->label.parent;
-		defer_begin = target->label.defer;
-	}
-	else
-	{
-		defer_begin = context->break_defer;
-		statement->contbreak_stmt.ast = context->break_target;
-		astptr(context->break_target)->flow.has_break = true;
-	}
-	statement->contbreak_stmt.defers = context_get_defers(context, context->active_scope.defer_last, defer_begin);
-	return true;
-}
 
 static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 {
 	context->active_scope.jump_end = true;
-
 	if (!context->next_target && !statement->nextcase_stmt.label.name && !statement->nextcase_stmt.expr)
 	{
 		if (context->next_switch)
@@ -1465,20 +1676,12 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 		return false;
 	}
 
+	// TODO test that nextcase out of a switch using label correctly creates defers.
 	Ast *parent = context->next_switch;
 	if (statement->nextcase_stmt.label.name)
 	{
-		Decl *target = sema_find_symbol(context, statement->nextcase_stmt.label.name);
-		if (!target)
-		{
-			SEMA_ERROR(statement, "Cannot find a switch statement with the name '%s'.", statement->nextcase_stmt.label.name);
-			return false;
-		}
-		if (target->decl_kind != DECL_LABEL)
-		{
-			SEMA_ERROR(&statement->nextcase_stmt.label, "Expected the name to match a label, not a constant.");
-			return false;
-		}
+		Decl *target = sema_analyse_label(context, statement);
+		if (!decl_ok(target)) return false;
 		parent = astptr(target->label.parent);
 		AstKind kind = parent->ast_kind;
 		if (kind != AST_SWITCH_STMT && kind != AST_IF_CATCH_SWITCH_STMT)
@@ -1486,23 +1689,19 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 			SEMA_ERROR(&statement->nextcase_stmt.label, "Expected the label to match a 'switch' or 'if-catch' statement.");
 			return false;
 		}
-		bool defer_mismatch = false;
-		defer_mismatch = context->active_scope.in_defer != parent->switch_stmt.scope_defer;
-		if (defer_mismatch)
-		{
-			SEMA_ERROR(statement, "This 'nextcase' would jump out of a defer which is not allowed.");
-			return false;
-		}
-		assert(statement->nextcase_stmt.expr);
 	}
-
+	if (!parent)
+	{
+		SEMA_ERROR(statement, "No matching switch could be found.");
+		return false;
+	}
 
 	// Plain next.
 	if (!statement->nextcase_stmt.expr)
 	{
 		assert(context->next_target);
 		statement->nextcase_stmt.defer_id = context_get_defers(context, context->active_scope.defer_last, parent->switch_stmt.defer);
-		statement->nextcase_stmt.case_switch_stmt = context->next_target;
+		statement->nextcase_stmt.case_switch_stmt = astid(context->next_target);
 		return true;
 	}
 
@@ -1588,43 +1787,6 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 	return true;
 }
 
-static bool sema_analyse_continue_stmt(SemaContext *context, Ast *statement)
-{
-	context->active_scope.jump_end = true;
-
-	if (!context->continue_target && !statement->contbreak_stmt.label.name)
-	{
-		SEMA_ERROR(statement, "'continue' is not allowed here.");
-		return false;
-	}
-
-	AstId defer_bottom;
-	if (statement->contbreak_stmt.label.name)
-	{
-		Decl *target = sema_analyse_label(context, statement);
-		if (!decl_ok(target)) return false;
-		Ast *parent = astptr(target->label.parent);
-		switch (parent->ast_kind)
-		{
-			case AST_FOR_STMT:
-				// Break on anything but plain "do"
-				if (parent->for_stmt.cond || !parent->flow.skip_first) break;
-				FALLTHROUGH;
-			default:
-				SEMA_ERROR(statement, "'continue' may only be used with 'for', 'while' and 'do-while' statements.");
-				return false;
-		}
-		statement->contbreak_stmt.ast = target->label.parent;
-		defer_bottom = target->label.defer;
-	}
-	else
-	{
-		defer_bottom = context->continue_defer;
-		statement->contbreak_stmt.ast = context->continue_target;
-	}
-	statement->contbreak_stmt.defers = context_get_defers(context, context->active_scope.defer_last, defer_bottom);
-	return true;
-}
 
 
 static inline bool sema_analyse_then_overwrite(SemaContext *context, Ast *statement, AstId replacement)
@@ -1654,7 +1816,7 @@ static inline bool sema_analyse_then_overwrite(SemaContext *context, Ast *statem
 }
 
 
-static bool sema_analyse_ct_if_stmt(SemaContext *context, Ast *statement)
+static inline bool sema_analyse_ct_if_stmt(SemaContext *context, Ast *statement)
 {
 	int res = sema_check_comp_time_bool(context, statement->ct_if_stmt.expr);
 	if (res == -1) return false;
@@ -1688,7 +1850,6 @@ static bool sema_analyse_ct_if_stmt(SemaContext *context, Ast *statement)
 		elif = elif->ct_if_stmt.elif;
 	}
 }
-
 
 static inline bool sema_analyse_compound_statement_no_scope(SemaContext *context, Ast *compound_statement)
 {
@@ -1882,7 +2043,7 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 					if (!cast(var_result, real_type)) return false;
 					if (variant->is_deref)
 					{
-						expr_insert_deref(var_result);
+						expr_rewrite_insert_deref(var_result);
 					}
 					new_var->var.init_expr = var_result;
 					Ast *decl_ast = new_ast(AST_DECLARE_STMT, new_var->span);
@@ -2016,7 +2177,7 @@ static bool sema_analyse_ct_switch_body(SemaContext *context, Ast *statement)
 	return sema_analyse_then_overwrite(context, statement, body->compound_stmt.first_stmt);
 }
 
-static bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statement)
+static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statement)
 {
 	Expr *cond = statement->ct_switch_stmt.cond;
 	if (!sema_analyse_ct_expr(context, cond)) return false;
@@ -2029,7 +2190,7 @@ static bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statement)
 }
 
 
-static bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *statement)
+static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *statement)
 {
 	Expr *collection = exprptr(statement->ct_foreach_stmt.expr);
 	if (!sema_analyse_ct_expr(context, collection)) return false;
@@ -2121,7 +2282,7 @@ static bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *statement)
 	return true;
 }
 
-static bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement)
+static inline bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement)
 {
 	statement->switch_stmt.scope_defer = context->active_scope.in_defer;
 
@@ -2159,7 +2320,7 @@ static bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement)
 					inner->type = type_any;
 					inner->resolve_status = RESOLVE_DONE;
 				}
-				expr_rewrite_to_builtin_access(context, last, inner, ACCESS_TYPEOFANY, type_typeid);
+				expr_rewrite_to_builtin_access(last, inner, ACCESS_TYPEOFANY, type_typeid);
 				switch_type = type_typeid;
 				cond->type = type_typeid;
 			}
@@ -2223,137 +2384,90 @@ bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement)
 	return true;
 }
 
-
-bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement)
-{
-	Expr *expr = exprptr(statement->assert_stmt.expr);
-	ExprId message = statement->assert_stmt.message;
-	const char *msg = NULL;
-	Expr *message_expr = message ? exprptr(message) : NULL;
-	if (message_expr)
-	{
-		if (!sema_analyse_expr(context, message_expr)) return false;
-		if (message_expr->expr_kind != EXPR_CONST || message_expr->const_expr.const_kind != CONST_STRING)
-		{
-			SEMA_ERROR(message_expr, "Expected a string as the error message.");
-			return false;
-		}
-	}
-	if (expr->expr_kind == EXPR_TRY_UNWRAP_CHAIN)
-	{
-		if (!sema_analyse_try_unwrap_chain(context, expr, COND_TYPE_UNWRAP_BOOL)) return false;
-	}
-	else
-	{
-		if (!sema_analyse_cond_expr(context, expr)) return false;
-		if (expr_is_const(expr))
-		{
-			if (expr->const_expr.b)
-			{
-				statement->ast_kind = AST_NOP_STMT;
-				return true;
-			}
-			if (statement->assert_stmt.is_ensure)
-			{
-				if (message_expr)
-				{
-					SEMA_ERROR(expr, "%.*s", EXPAND_EXPR_STRING(message_expr));
-				}
-				else
-				{
-					SEMA_ERROR(expr, "Contract violated.");
-				}
-				return false;
-			}
-			context->active_scope.jump_end = true;
-		}
-	}
-	return true;
-}
-
-static bool sema_analyse_compound_stmt(SemaContext *context, Ast *statement)
-{
-	bool success;
-	bool ends_with_jump;
-	SCOPE_START
-		success = sema_analyse_compound_statement_no_scope(context, statement);
-		ends_with_jump = context->active_scope.jump_end;
-	SCOPE_END;
-	context->active_scope.jump_end = ends_with_jump;
-	return success;
-}
-
+/**
+ * $for(<list of ct decl/expr>, <cond>, <incr>):
+ */
 static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement)
 {
 	bool success = false;
-
 	ExprId init;
 	if ((init = statement->for_stmt.init))
 	{
 		Expr *init_expr = exprptr(init);
 		assert(init_expr->expr_kind == EXPR_EXPRESSION_LIST);
-		Expr **expressions = init_expr->expression_list;
-		VECEACH (expressions, i)
-		{
-			Expr *expr = expressions[i];
+
+		// Check the list of expressions.
+		FOREACH_BEGIN(Expr *expr, init_expr->expression_list)
+			// Only a subset of declarations are allowed. We check this here.
 			if (expr->expr_kind == EXPR_DECL)
 			{
 				Decl *decl = expr->decl_expr;
 				if (decl->decl_kind != DECL_VAR || (decl->var.kind != VARDECL_LOCAL_CT && decl->var.kind != VARDECL_LOCAL_CT_TYPE))
 				{
-					SEMA_ERROR(expr, "Only 'var $foo' and 'var $Type' declarations are allowed in a '$for'");
+					SEMA_ERROR(expr, "Only 'var $foo' and 'var $Type' declarations are allowed in '$for'");
 					return false;
 				}
 				if (!sema_analyse_var_decl_ct(context, decl)) return false;
 				continue;
 			}
+			// If expression evaluate it and make sure it is constant.
 			if (!sema_analyse_expr(context, expr)) return false;
 			if (!expr_is_constant_eval(expr, CONSTANT_EVAL_CONSTANT_VALUE))
 			{
 				SEMA_ERROR(expr, "Only constant expressions are allowed.");
 				return false;
 			}
-		}
+		FOREACH_END();
 	}
 	ExprId condition = statement->for_stmt.cond;
 	ExprId incr = statement->for_stmt.incr;
 	Ast *body = astptr(statement->for_stmt.body);
 	AstId start = 0;
 	AstId *current = &start;
+	Expr **incr_list = incr ? exprptr(incr)->expression_list : NULL;
 	assert(condition);
+	// We set a maximum of macro iterations.
+	// we might consider reducing this.
 	for (int i = 0; i < MAX_MACRO_ITERATIONS; i++)
 	{
+		// First evaluate the cond, which we note that we *must* have.
+		// we need to make a cop
 		Expr *copy = expr_macro_copy(exprptr(condition));
 		if (!sema_analyse_cond_expr(context, copy)) return false;
-		if (copy->expr_kind != EXPR_CONST)
+		if (!expr_is_const(copy))
 		{
 			SEMA_ERROR(copy, "Expected a value that can be evaluated at compile time.");
 			return false;
 		}
+		// This is simple, since we know we have a boolean, just break if we reached "false"
 		if (!copy->const_expr.b) break;
 
+		// Otherwise we copy the body.
 		Ast *compound_stmt = ast_macro_copy(body);
+
+		// Analyse the body
 		if (!sema_analyse_compound_statement_no_scope(context, compound_stmt)) return false;
+
+		// Append it.
 		*current = astid(compound_stmt);
 		current = &compound_stmt->next;
 
-		if (incr)
+		// Copy and evaluate all the expressions in "incr"
+		VECEACH(incr_list, j)
 		{
-			Expr **exprs = exprptr(incr)->expression_list;
-			VECEACH(exprs, j)
+			assert(incr_list);
+			copy = expr_macro_copy(incr_list[j]);
+			if (!sema_analyse_expr(context, copy)) return false;
+			if (!expr_is_const(copy))
 			{
-				copy = expr_macro_copy(exprs[j]);
-				if (!sema_analyse_expr(context, copy)) return false;
-				if (copy->expr_kind != EXPR_CONST)
-				{
-					SEMA_ERROR(copy, "Expected a value that can be evaluated at compile time.");
-					return false;
-				}
+				SEMA_ERROR(copy, "Expected a value that can be evaluated at compile time.");
+				return false;
 			}
 		}
 	}
+	// Analysis is done turn the generated statements into a compound statement for lowering.
 	statement->ast_kind = AST_COMPOUND_STMT;
-	statement->compound_stmt.first_stmt = start;
+	statement->compound_stmt = (AstCompoundStmt) { .first_stmt = start };
 	return true;
 }
 
@@ -2596,7 +2710,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 	// Clear returns
 	vec_resize(context->returns, 0);
 	context->scope_id = 0;
-	context->continue_target = 0;
+	context->continue_target = NULL;
 	context->next_target = 0;
 	context->next_switch = 0;
 	context->break_target = 0;
