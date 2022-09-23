@@ -10,7 +10,7 @@ static struct
 	Type u8, u16, u32, u64, u128;
 	Type f16, f32, f64, f128, fxx;
 	Type usz, isz, uptr, iptr, uptrdiff, iptrdiff;
-	Type voidstar, typeid, anyerr, typeinfo, ctlist;
+	Type voidstar, typeid, anyerr, typeinfo, untyped_list;
 	Type any, anyfail;
 } t;
 
@@ -41,7 +41,7 @@ Type *type_uptr = &t.uptr;
 Type *type_uptrdiff = &t.uptrdiff;
 Type *type_usize = &t.usz;
 Type *type_anyerr = &t.anyerr;
-Type *type_complist = &t.ctlist;
+Type *type_untypedlist = &t.untyped_list;
 Type *type_anyfail = &t.anyfail;
 Type *type_chars = NULL;
 
@@ -1351,7 +1351,7 @@ void type_setup(PlatformTarget *target)
 	type_init_int("void", &t.u0, TYPE_VOID, BITS8);
 
 	type_create("typeinfo", &t.typeinfo, TYPE_TYPEINFO, 1, 1, 1);
-	type_create("complist", &t.ctlist, TYPE_UNTYPED_LIST, 1, 1, 1);
+	type_create("untyped_list", &t.untyped_list, TYPE_UNTYPED_LIST, 1, 1, 1);
 	type_create("void!", &t.anyfail, TYPE_FAILABLE_ANY, 1, 1, 1);
 	type_init("typeid", &t.typeid, TYPE_TYPEID, target->width_pointer, target->align_pointer);
 	type_init("void*", &t.voidstar, TYPE_POINTER, target->width_pointer, target->align_pointer);

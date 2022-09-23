@@ -11,7 +11,7 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 static inline void sema_not_enough_elements_error(Expr *initializer, int element);
 static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *external_type, Type *assigned, Expr *expr);
 static void sema_create_const_initializer_value(ConstInitializer *const_init, Expr *value);
-static void sema_create_const_initializer(ConstInitializer *const_init, Expr *initializer);
+static void sema_create_const_initializer_from_designated_init(ConstInitializer *const_init, Expr *initializer);
 static Decl *sema_resolve_element_for_name(Decl** decls, DesignatorElement **elements, unsigned *index);
 static Type *sema_expr_analyse_designator(SemaContext *context, Type *current, Expr *expr, MemberIndex *max_index, Decl **member_ptr);
 INLINE bool sema_initializer_list_is_empty(Expr *value);
@@ -282,40 +282,30 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 
 static inline bool sema_expr_analyse_untyped_initializer(SemaContext *context, Expr *initializer)
 {
-	Expr **elements = initializer->initializer_list;
-
-	Type *element_type = NULL;
-	bool no_common_elements = false;
-	unsigned element_count = vec_size(elements);
-	bool is_const = true;
-	Expr *failable_expr = NULL;
-	for (unsigned i = 0; i < element_count; i++)
-	{
-		Expr *element = elements[i];
+	ConstInitializer **inits = NULL;
+	FOREACH_BEGIN(Expr *element, initializer->initializer_list)
 		if (!sema_analyse_expr(context, element)) return false;
-		if (is_const && element->expr_kind != EXPR_CONST) is_const = false;
-		if (!failable_expr && IS_OPTIONAL(element)) failable_expr = element;
-		if (no_common_elements) continue;
-		Type *current_element_type = type_no_optional(element->type);
-		if (element_type == NULL)
+		if (!expr_is_const(element))
 		{
-			element_type = element->type;
-			continue;
+			SEMA_ERROR(element, "An untyped list can only have constant elements, you can try to type the list by prefixing the type, e.g. 'int[2] { a, b }'.");
+			return false;
 		}
-		element_type = type_find_max_type(element->type, current_element_type);
-		if (!element_type) no_common_elements = true;
-	}
-	if (no_common_elements && failable_expr)
+		ConstInitializer *init = CALLOCS(ConstInitializer);
+		sema_create_const_initializer_value(init, element);
+		vec_add(inits, init);
+	FOREACH_END();
+	ConstInitializer *untyped_list = CALLOCS(ConstInitializer);
+	initializer->expr_kind = EXPR_CONST;
+	initializer->const_expr = (ExprConst) { .const_kind = CONST_LIST, .list = untyped_list };
+	untyped_list->type = type_untypedlist;
+	initializer->type = type_untypedlist;
+	if (!inits)
 	{
-		SEMA_ERROR(failable_expr, "An untyped initializer can't have failable values.");
-		return false;
-	}
-	if (no_common_elements || is_const)
-	{
-		initializer->type = type_complist;
+		untyped_list->kind = CONST_INIT_ZERO;
 		return true;
 	}
-	initializer->type = type_add_optional(type_get_array(element_type, element_count), failable_expr != NULL);
+	untyped_list->kind = CONST_INIT_ARRAY_FULL;
+	untyped_list->init_array_full = inits;
 	return true;
 }
 
@@ -351,7 +341,7 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 	if (expr_is_constant_eval(initializer, context->current_function ? CONSTANT_EVAL_LOCAL_INIT : CONSTANT_EVAL_GLOBAL_INIT))
 	{
 		ConstInitializer *const_init = MALLOCS(ConstInitializer);
-		sema_create_const_initializer(const_init, initializer);
+		sema_create_const_initializer_from_designated_init(const_init, initializer);
 		expr_rewrite_const_list(initializer, initializer->type, const_init);
 	}
 	return true;
@@ -408,7 +398,7 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ext
 	expr->type = external_type;
 
 	// 6. We might have a complist, because were analyzing $foo = { ... } or similar.
-	if (external_type == type_complist)
+	if (external_type == type_untypedlist)
 	{
 		return sema_expr_analyse_untyped_initializer(context, expr);
 	}
@@ -429,7 +419,7 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ext
 /**
  * Create a const initializer.
  */
-static void sema_create_const_initializer(ConstInitializer *const_init, Expr *initializer)
+static void sema_create_const_initializer_from_designated_init(ConstInitializer *const_init, Expr *initializer)
 {
 	const_init->kind = CONST_INIT_ZERO;
 	// Flatten the type since the external type might be typedef or a distinct type.
@@ -448,7 +438,7 @@ static void sema_create_const_initializer(ConstInitializer *const_init, Expr *in
 
 bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *expr)
 {
-	if (!to) to = type_complist;
+	if (!to) to = type_untypedlist;
 	assert(to);
 	Type *assigned = type_flatten(to);
 	switch (assigned->type_kind)
