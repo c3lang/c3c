@@ -1763,7 +1763,7 @@ extern Type *type_iptr, *type_uptr, *type_iptrdiff, *type_uptrdiff;
 extern Type *type_u128, *type_i128;
 extern Type *type_typeid, *type_anyerr, *type_typeinfo;
 extern Type *type_any;
-extern Type *type_complist;
+extern Type *type_untypedlist;
 extern Type *type_anyfail;
 extern Type *type_cint;
 extern Type *type_cuint;

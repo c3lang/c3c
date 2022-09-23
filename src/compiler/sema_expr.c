@@ -1021,6 +1021,11 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
 			else if (variadic == VARIADIC_ANY)
 			{
 				if (!sema_analyse_expr(context, arg)) return false;
+				if (arg->type == type_untypedlist)
+				{
+					SEMA_ERROR(arg, "An untyped list cannot be passed as a variadic argument.");
+					return false;
+				}
 				expr_insert_addr(arg);
 			}
 			vec_add(*varargs_ref, arg);
@@ -1276,6 +1281,11 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 				if (!sema_analyse_expr_lvalue(context, arg)) return false;
 				if (!sema_expr_check_assign(context, arg)) return false;
 				if (!sema_call_check_inout_param_match(context, param, arg)) return false;
+				if (arg->type == type_untypedlist)
+				{
+					SEMA_ERROR(arg, "An untyped list cannot be passed by reference.");
+					return false;
+				}
 				if (type && type->canonical != arg->type->canonical)
 				{
 					SEMA_ERROR(arg, "'%s' cannot be implicitly cast to '%s'.", type_to_error_string(arg->type), type_to_error_string(type));
@@ -1297,7 +1307,7 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 				// foo
 				if (!sema_analyse_expr_rhs(context, type, arg, true)) return false;
 				if (IS_OPTIONAL(arg)) *failable = true;
-				if (arg->type == type_complist)
+				if (arg->type == type_untypedlist)
 				{
 					SEMA_ERROR(arg, "An untyped list can only be passed as a compile time parameter.");
 					return false;
@@ -2171,7 +2181,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 
 	int64_t index_value = -1;
 	bool start_from_end = expr->subscript_expr.range.start_from_end;
-	if (expr_is_const_int(index) && (current_type->type_kind == TYPE_ARRAY || current_type == type_complist))
+	if (expr_is_const_int(index) && (current_type->type_kind == TYPE_ARRAY || current_type == type_untypedlist))
 	{
 		// 4c. And that it's in range.
 		if (int_is_neg(index->const_expr.ixx))
@@ -2179,9 +2189,9 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 			SEMA_ERROR(index, "The index may not be negative.");
 			return false;
 		}
-		int64_t size = current_type == type_complist ? vec_size(current_expr->initializer_list) : current_type->array.len;
+		int64_t size = current_type == type_untypedlist ? vec_size(current_expr->const_expr.list->init_array_full) : current_type->array.len;
 		assert(size >= 0 && "Unexpected overflow");
-		if (!int_fits(index->const_expr.ixx, TYPE_I64))
+		if (!int_fits(index->const_expr.ixx, TYPE_I64) || size == 0)
 		{
 			SEMA_ERROR(index, "The index is out of range.", size);
 			return false;
@@ -2215,7 +2225,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 		}
 	}
 	// 4. If we are indexing into a complist
-	if (current_type == type_complist)
+	if (current_type == type_untypedlist)
 	{
 		if (is_addr)
 		{
@@ -2225,7 +2235,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 		// 4a. This may either be an initializer list or a CT value
 		while (current_expr->expr_kind == EXPR_CT_IDENT) current_expr = current_expr->ct_ident_expr.decl->var.init_expr;
 
-		assert(current_expr->expr_kind == EXPR_INITIALIZER_LIST);
+		assert(expr_is_const_list(current_expr));
 
 		// 4b. Now we need to check that we actually have a valid type.
 		if (index_value < 0)
@@ -2233,10 +2243,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 			SEMA_ERROR(index, "To subscript a compile time list a compile time integer index is needed.");
 			return false;
 		}
-		Expr *indexed_expr = current_expr->initializer_list[index_value];
-		if (!sema_cast_rvalue(context, indexed_expr)) return false;
-		expr_replace(expr, indexed_expr);
-		return true;
+		return expr_rewrite_to_const_initializer_index(type_untypedlist, current_expr->const_expr.list, expr, index_value);
 	}
 
 	if (!sema_cast_rvalue(context, current_expr)) return false;
@@ -3487,7 +3494,7 @@ static inline bool sema_expr_analyse_cast(SemaContext *context, Expr *expr)
 		SEMA_ERROR(type_info, "Casting to a failable type is not allowed.");
 		return false;
 	}
-	if (inner->type == type_complist)
+	if (inner->type == type_untypedlist)
 	{
 		// We don't support: (Foo)(x > 0 ? { 1, 2 } : { 3, 4 })
 		// just write this: x > 0 ? Foo { 1, 2 } : Foo { 3, 4 }
@@ -5110,6 +5117,11 @@ static inline bool sema_expr_analyse_taddr(SemaContext *context, Expr *expr)
 	Expr *inner = expr->unary_expr.expr;
 	if (!sema_analyse_expr(context, inner)) return false;
 
+	if (inner->type == type_untypedlist)
+	{
+		SEMA_ERROR(expr, "It is not possible to take the address of an untyped list.");
+		return false;
+	}
 	// 2. The type is the resulting type of the expression.
 	expr->type = type_get_ptr_recurse(inner->type);
 	return true;
@@ -6448,7 +6460,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 			return sema_expr_analyse_access(context, expr);
 		case EXPR_INITIALIZER_LIST:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
-			return sema_expr_analyse_initializer_list(context, type_complist, expr);
+			return sema_expr_analyse_initializer_list(context, type_untypedlist, expr);
 		case EXPR_CAST:
 			return sema_expr_analyse_cast(context, expr);
 		case EXPR_EXPRESSION_LIST:

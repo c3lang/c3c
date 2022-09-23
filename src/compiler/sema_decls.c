@@ -2092,7 +2092,7 @@ static bool sema_analyse_macro_method(SemaContext *context, Decl *decl)
 		SEMA_ERROR(first_param, "The first parameter must be a regular or ref (&) type.");
 		return false;
 	}
-	return unit_add_method_like(context->unit, parent_type, decl);
+	return unit_add_method_like(context->unit, parent_type->canonical, decl);
 }
 
 static inline bool sema_analyse_macro(SemaContext *context, Decl *decl)
