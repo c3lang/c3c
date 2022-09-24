@@ -887,3 +887,14 @@ void expr_rewrite_insert_deref(Expr *original)
 		original->type = type_add_optional(pointee, IS_OPTIONAL(inner));
 	}
 }
+
+void expr_rewrite_to_string(Expr *expr_to_rewrite, const char *string)
+{
+	expr_to_rewrite->expr_kind = EXPR_CONST;
+	expr_to_rewrite->const_expr.const_kind = CONST_STRING;
+	expr_to_rewrite->const_expr.string.chars = (char *)string;
+	ArraySize len = (ArraySize)strlen(string);
+	expr_to_rewrite->const_expr.string.len = len;
+	expr_to_rewrite->resolve_status = RESOLVE_DONE;
+	expr_to_rewrite->type = type_get_ptr(type_get_array(type_char, len));
+}

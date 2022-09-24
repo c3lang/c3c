@@ -169,7 +169,6 @@ void symtab_init(uint32_t capacity)
 	kw_type = KW_DEF("type");
 	kw_values = KW_DEF("values");
 
-
 	builtin_list[BUILTIN_ABS] = KW_DEF("abs");
 	builtin_list[BUILTIN_BITREVERSE] = KW_DEF("bitreverse");
 	builtin_list[BUILTIN_BSWAP] = KW_DEF("bswap");

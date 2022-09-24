@@ -10,7 +10,7 @@
 static bool bitstruct_cast(Expr *expr, Type *from_type, Type *to, Type *to_type);
 static void sema_error_const_int_out_of_range(Expr *expr, Expr *problem, Type *to_type);
 static Expr *recursive_may_narrow_float(Expr *expr, Type *type);
-Expr *recursive_may_narrow_int(Expr *expr, Type *type);
+static Expr *recursive_may_narrow_int(Expr *expr, Type *type);
 static void recursively_rewrite_untyped_list(Expr *expr, Expr **list);
 
 static inline bool insert_cast(Expr *expr, CastKind kind, Type *type)

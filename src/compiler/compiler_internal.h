@@ -2088,6 +2088,9 @@ INLINE bool exprid_is_constant_eval(ExprId expr, ConstantEvalKind eval_kind);
 INLINE bool expr_is_init_list(Expr *expr);
 INLINE bool expr_is_deref(Expr *expr);
 INLINE bool expr_is_const(Expr *expr);
+INLINE bool expr_is_const_string(Expr *expr);
+INLINE bool expr_is_const_initializer(Expr *expr);
+INLINE bool expr_is_const_untyped_list(Expr *expr);
 
 INLINE void expr_rewrite_const_null(Expr *expr, Type *type);
 INLINE void expr_rewrite_const_bool(Expr *expr, Type *type, bool b);
@@ -2096,6 +2099,7 @@ INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v, bool narr
 INLINE void expr_rewrite_const_initializer(Expr *expr, Type *type, ConstInitializer *initializer);
 
 void expr_rewrite_to_builtin_access(Expr *expr, Expr *parent, BuiltinAccessKind kind, Type *type);
+void expr_rewrite_to_string(Expr *expr_to_rewrite, const char *string);
 void expr_rewrite_to_const_zero(Expr *expr, Type *type);
 bool expr_rewrite_to_const_initializer_index(Type *list_type, ConstInitializer *list, Expr *result, unsigned index);
 
@@ -3019,4 +3023,19 @@ static inline bool decl_is_local(Decl *decl)
 	       || kind == VARDECL_PARAM_EXPR
 	       || kind == VARDECL_BITMEMBER
 	       || kind == VARDECL_MEMBER;
+}
+
+INLINE bool expr_is_const_string(Expr *expr)
+{
+	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_STRING;
+}
+
+INLINE bool expr_is_const_initializer(Expr *expr)
+{
+	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER;
+}
+
+INLINE bool expr_is_const_untyped_list(Expr *expr)
+{
+	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_UNTYPED_LIST;
 }

@@ -352,7 +352,7 @@ void generic_context_release_locals_list(Decl **list)
 	vec_add(global_context.locals_list, list);
 }
 
-SemaContext *transform_context_for_eval(SemaContext *context, SemaContext *temp_context, CompilationUnit *eval_unit)
+SemaContext *context_transform_for_eval(SemaContext *context, SemaContext *temp_context, CompilationUnit *eval_unit)
 {
 	if (eval_unit == context->unit)
 	{

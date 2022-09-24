@@ -133,7 +133,6 @@ static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *c
 static bool sema_slice_len_is_in_range(SemaContext *context, Type *type, Expr *len_expr, bool from_end, bool *remove_from_end);
 static bool sema_slice_index_is_in_range(SemaContext *context, Type *type, Expr *index_expr, bool end_index, bool from_end, bool *remove_from_end);
 
-
 static Expr **sema_vasplat_append(SemaContext *c, Expr **init_expressions, Expr *expr);
 INLINE Expr **sema_expand_vasplat(SemaContext *c, Expr **list, unsigned index);
 static inline IndexDiff range_const_len(Range *range);
@@ -144,6 +143,7 @@ static bool sema_expr_analyse_type_var_path(SemaContext *context, Expr *expr, Ex
                                             Decl **decl_ref);
 static inline bool sema_expr_analyse_flat_element(SemaContext *context, ExprFlatElement *element, Type *type, Decl **member_ref, ArraySize *index_ref, Type **return_type, unsigned i, SourceSpan loc,
                                                   bool *is_missing);
+static Expr *sema_expr_resolve_access_child(SemaContext *context, Expr *child, bool *missing);
 
 static Type *sema_expr_check_type_exists(SemaContext *context, TypeInfo *type_info);
 static inline Expr *sema_ct_checks_exprlist_compiles(SemaContext *context, Expr *exprlist);
@@ -151,6 +151,16 @@ static inline BuiltinFunction builtin_by_name(const char *name);
 static inline bool sema_cast_ct_ident_rvalue(SemaContext *context, Expr *expr);
 static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *expr, Expr *typeid, const char *kw);
 static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr, Type *type, const char *kw);
+static bool sema_expr_rewrite_typeid_call(Expr *expr, Expr *typeid, TypeIdInfoKind kind, Type *result_type);
+static inline void sema_expr_rewrite_typeid_kind(Expr *expr, Expr *parent);
+static inline void sema_expr_replace_with_enum_array(Expr *enum_array_expr, Decl *enum_decl);
+static inline void sema_expr_replace_with_enum_name_array(Expr *enum_array_expr, Decl *enum_decl);
+
+static inline bool sema_create_const_kind(Expr *expr, Type *type);
+static inline bool sema_create_const_len(SemaContext *context, Expr *expr, Type *type);
+static inline bool sema_create_const_inner(SemaContext *context, Expr *expr, Type *type);
+static inline bool sema_create_const_min(SemaContext *context, Expr *expr, Type *type, Type *flat);
+static inline bool sema_create_const_max(SemaContext *context, Expr *expr, Type *type, Type *flat);
 
 void expr_insert_widening_type(Expr *expr, Type *infer_type);
 static Expr *expr_access_inline_member(Expr *parent, Decl *parent_decl);
@@ -162,6 +172,8 @@ static inline bool sema_expr_analyse_enum_constant(Expr *expr, const char *name,
 static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr);
 static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr);
 
+static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *expr, TypeInfo *parent, bool was_group, Expr *identifier);
+static inline bool sema_expr_fold_to_member(Expr *expr, Expr *parent, Decl *member);
 
 // -- implementations
 
@@ -1052,7 +1064,7 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
 
 				SemaContext default_context;
 				Type *rtype = NULL;
-				SemaContext *new_context = transform_context_for_eval(context, &default_context, param->unit);
+				SemaContext *new_context = context_transform_for_eval(context, &default_context, param->unit);
 				bool success;
 				SCOPE_START
 					new_context->original_inline_line = context->original_inline_line ? context->original_inline_line : init_expr->span.row;
@@ -2464,21 +2476,6 @@ static inline bool sema_expr_analyse_group(SemaContext *context, Expr *expr)
 	return true;
 }
 
-
-void expr_rewrite_to_string(Expr *expr_to_rewrite, const char *string)
-{
-	expr_to_rewrite->expr_kind = EXPR_CONST;
-	expr_to_rewrite->const_expr.const_kind = CONST_STRING;
-	expr_to_rewrite->const_expr.string.chars = (char *)string;
-	ArraySize len = (ArraySize)strlen(string);
-	expr_to_rewrite->const_expr.string.len = len;
-	expr_to_rewrite->resolve_status = RESOLVE_DONE;
-	expr_to_rewrite->type = type_get_ptr(type_get_array(type_char, len));
-}
-
-
-
-
 /**
  * 1. .A -> It is an enum constant.
  * 2. .foo -> It is a function.
@@ -2538,7 +2535,7 @@ RETRY:
 	return NULL;
 }
 
-static inline void expr_replace_with_enum_array(Expr *enum_array_expr, Decl *enum_decl)
+static inline void sema_expr_replace_with_enum_array(Expr *enum_array_expr, Decl *enum_decl)
 {
 	Decl **values = enum_decl->enums.values;
 	SourceSpan span = enum_array_expr->span;
@@ -2564,7 +2561,7 @@ static inline void expr_replace_with_enum_array(Expr *enum_array_expr, Decl *enu
 	enum_array_expr->resolve_status = RESOLVE_NOT_DONE;
 }
 
-static inline void expr_replace_with_enum_name_array(Expr *enum_array_expr, Decl *enum_decl)
+static inline void sema_expr_replace_with_enum_name_array(Expr *enum_array_expr, Decl *enum_decl)
 {
 	Decl **values = enum_decl->enums.values;
 	SourceSpan span = enum_array_expr->span;
@@ -2631,12 +2628,12 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 			}
 			if (name == kw_names)
 			{
-				expr_replace_with_enum_name_array(expr, decl);
+				sema_expr_replace_with_enum_name_array(expr, decl);
 				return sema_analyse_expr(context, expr);
 			}
 			if (name == kw_values)
 			{
-				expr_replace_with_enum_array(expr, decl);
+				sema_expr_replace_with_enum_array(expr, decl);
 				return sema_analyse_expr(context, expr);
 			}
 			break;
@@ -2699,7 +2696,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 	return true;
 }
 
-static inline void sema_rewrite_typeid_kind(Expr *expr, Expr *parent)
+static inline void sema_expr_rewrite_typeid_kind(Expr *expr, Expr *parent)
 {
 	Module *module = global_context_find_module(kw_std__core__types);
 	Decl *type_kind = module ? module_find_symbol(module, kw_typekind) : NULL;
@@ -2941,7 +2938,7 @@ static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *exp
 	}
 	if (kw == kw_kind)
 	{
-		sema_rewrite_typeid_kind(expr, typeid);
+		sema_expr_rewrite_typeid_kind(expr, typeid);
 		return true;
 	}
 	if (kw == kw_inner) return sema_expr_rewrite_typeid_call(expr, typeid, TYPEID_INFO_INNER, type_typeid);

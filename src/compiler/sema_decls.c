@@ -2600,7 +2600,7 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 	if (decl->resolve_status == RESOLVE_DONE) return decl_ok(decl);
 
 	SemaContext temp_context;
-	context = transform_context_for_eval(context, &temp_context, decl->unit);
+	context = context_transform_for_eval(context, &temp_context, decl->unit);
 	DEBUG_LOG(">>> Analysing %s.", decl->name ? decl->name : ".anon");
 	if (decl->resolve_status == RESOLVE_RUNNING)
 	{

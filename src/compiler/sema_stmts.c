@@ -61,7 +61,7 @@ static inline bool sema_analyse_asm_stmt(SemaContext *context, Ast *stmt)
 	{
 		Ast *ast = astptr(ast_id);
 		ast_id = ast->next;
-		if (!sema_check_asm(context, block, ast)) return false;
+		if (!sema_analyse_asm(context, block, ast)) return false;
 	}
 	return true;
 }
@@ -938,7 +938,13 @@ static inline bool sema_analyse_expr_stmt(SemaContext *context, Ast *statement)
 	{
 		expr->call_expr.result_unused = true;
 	}
-	return sema_analyse_expr(context, expr);
+	if (!sema_analyse_expr(context, expr)) return false;
+	// Remove all const statements.
+	if (expr_is_const(expr))
+	{
+		statement->ast_kind = AST_NOP_STMT;
+	}
+	return true;
 }
 
 bool sema_analyse_defer_stmt_body(SemaContext *context, Ast *statement, Ast *body)
