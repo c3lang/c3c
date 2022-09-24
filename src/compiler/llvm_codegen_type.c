@@ -325,7 +325,7 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 	{
 		case CT_TYPES:
 			UNREACHABLE
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 		case TYPE_FAILABLE_ANY:
 			// If this is reachable, then we're not doing the proper lowering.
 			UNREACHABLE
@@ -674,7 +674,7 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 
 	switch (type->type_kind)
 	{
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_FAILABLE, type->failable, 0, NULL, false);
 		case TYPE_FLEXIBLE_ARRAY:
 			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_ARRAY, type->array.base, 0, NULL, false);

@@ -569,7 +569,7 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 		case TYPE_FUNC:
 		case TYPE_TYPEDEF:
 		case TYPE_FAILABLE_ANY:
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 		case TYPE_TYPEINFO:
 			UNREACHABLE
 		case TYPE_STRUCT:
@@ -586,7 +586,7 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 			ConstInitializer *init = CALLOCS(ConstInitializer);
 			init->kind = CONST_INIT_ZERO;
 			init->type = type;
-			expr_rewrite_const_list(expr, type, init);
+			expr_rewrite_const_initializer(expr, type, init);
 			return;
 		}
 		case TYPE_DISTINCT:

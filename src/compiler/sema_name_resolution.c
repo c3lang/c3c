@@ -846,7 +846,7 @@ void sema_unwrap_var(SemaContext *context, Decl *decl)
 
 void sema_rewrap_var(SemaContext *context, Decl *decl)
 {
-	assert(decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_UNWRAPPED && decl->var.alias->type->type_kind == TYPE_FAILABLE);
+	assert(decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_UNWRAPPED && decl->var.alias->type->type_kind == TYPE_OPTIONAL);
 	sema_append_local(context, decl->var.alias);
 }
 

@@ -245,7 +245,7 @@ bool sema_resolve_type(SemaContext *context, Type *type)
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_SCALED_VECTOR:
 			return sema_resolve_type(context, type->array.base);
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 			return sema_resolve_type(context, type->failable);
 	}
 	return sema_analyse_decl(context, type->decl);

@@ -897,7 +897,7 @@ static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl)
 			UNREACHABLE
 			return false;
 		case TYPE_FAILABLE_ANY:
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 			SEMA_ERROR(decl, "You cannot create a distinct type from a failable.");
 			return false;
 		case TYPE_FAULTTYPE:

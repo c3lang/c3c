@@ -227,7 +227,7 @@ static inline LLVMValueRef decl_optional_ref(Decl *decl)
 {
 	assert(decl->decl_kind == DECL_VAR);
 	if (decl->var.kind == VARDECL_UNWRAPPED) return decl_optional_ref(decl->var.alias);
-	if (decl->type->type_kind != TYPE_FAILABLE) return NULL;
+	if (decl->type->type_kind != TYPE_OPTIONAL) return NULL;
 	return decl->var.failable_ref;
 }
 

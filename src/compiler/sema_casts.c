@@ -2,7 +2,7 @@
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
 
-#include "compiler_internal.h"
+#include "sema_internal.h"
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "ConstantFunctionResult"
@@ -11,6 +11,7 @@ static bool bitstruct_cast(Expr *expr, Type *from_type, Type *to, Type *to_type)
 static void sema_error_const_int_out_of_range(Expr *expr, Expr *problem, Type *to_type);
 static Expr *recursive_may_narrow_float(Expr *expr, Type *type);
 Expr *recursive_may_narrow_int(Expr *expr, Type *type);
+static void recursively_rewrite_untyped_list(Expr *expr, Expr **list);
 
 static inline bool insert_cast(Expr *expr, CastKind kind, Type *type)
 {
@@ -393,7 +394,7 @@ CastKind cast_to_bool_kind(Type *type)
 		case TYPE_VECTOR:
 		case TYPE_BITSTRUCT:
 		case TYPE_UNTYPED_LIST:
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 		case TYPE_ANY:
 		case TYPE_FAILABLE_ANY:
 		case TYPE_FLEXIBLE_ARRAY:
@@ -447,7 +448,7 @@ bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability, 
 			return true;
 		case TYPE_DISTINCT:
 		case TYPE_TYPEDEF:
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 			UNREACHABLE
 		case TYPE_POISONED:
 		case TYPE_INFERRED_ARRAY:
@@ -1088,7 +1089,29 @@ static inline bool cast_maybe_string_lit_to_char_array(Expr *expr, Type *expr_ca
 	expr->type = to_canonical;
 	return true;
 }
-bool cast_implicit(Expr *expr, Type *to_type)
+
+bool cast_untyped_to_type(SemaContext *context, Expr *expr, Type *to_type)
+{
+	recursively_rewrite_untyped_list(expr, expr->const_expr.untyped_list);
+	if (!sema_expr_analyse_initializer_list(context, type_flatten(to_type), expr)) return false;
+	expr->type = to_type;
+	return true;
+}
+
+static void recursively_rewrite_untyped_list(Expr *expr, Expr **list)
+{
+	expr->expr_kind = EXPR_INITIALIZER_LIST;
+	expr->initializer_list = list;
+	expr->resolve_status = RESOLVE_NOT_DONE;
+	FOREACH_BEGIN(Expr *inner, list)
+		if (expr_is_const_untyped_list(inner))
+		{
+			recursively_rewrite_untyped_list(inner, inner->const_expr.untyped_list);
+		}
+	FOREACH_END();
+}
+
+bool cast_implicit(SemaContext *context, Expr *expr, Type *to_type)
 {
 	assert(!type_is_optional(to_type));
 	Type *expr_type = expr->type;
@@ -1104,14 +1127,19 @@ bool cast_implicit(Expr *expr, Type *to_type)
 		return true;
 	}
 	if (expr_canonical == to_canonical) return true;
+	if (expr_type == type_untypedlist)
+	{
+		return cast_untyped_to_type(context, expr, to_type);
+	}
+
 	bool is_simple = expr_is_simple(expr);
 	if (!cast_may_implicit(expr_canonical, to_canonical, is_simple, true))
 	{
 		if (!cast_may_explicit(expr_canonical, to_canonical, false, expr->expr_kind == EXPR_CONST))
 		{
-			if (expr_canonical->type_kind == TYPE_FAILABLE && to_canonical->type_kind != TYPE_FAILABLE)
+			if (expr_canonical->type_kind == TYPE_OPTIONAL && to_canonical->type_kind != TYPE_OPTIONAL)
 			{
-				SEMA_ERROR(expr, "A failable %s cannot be converted to %s.", type_quoted_error_string(expr->type), type_quoted_error_string(to_type));
+				SEMA_ERROR(expr, "An optional %s cannot be converted to %s.", type_quoted_error_string(expr->type), type_quoted_error_string(to_type));
 				return false;
 			}
 			if (to_canonical->type_kind == TYPE_ANY)
@@ -1209,8 +1237,8 @@ static bool arr_to_vec(Expr *expr, Type *to_type)
 {
 	if (insert_runtime_cast_unless_const(expr, CAST_ARRVEC, to_type)) return true;
 
-	assert(expr->const_expr.const_kind == CONST_LIST);
-	ConstInitializer *list = expr->const_expr.list;
+	assert(expr->const_expr.const_kind == CONST_INITIALIZER);
+	ConstInitializer *list = expr->const_expr.initializer;
 	list->type = to_type;
 	expr->type = to_type;
 	return true;
@@ -1220,8 +1248,8 @@ static bool vec_to_arr(Expr *expr, Type *to_type)
 {
 	if (insert_runtime_cast_unless_const(expr, CAST_VECARR, to_type)) return true;
 
-	assert(expr->const_expr.const_kind == CONST_LIST);
-	ConstInitializer *list = expr->const_expr.list;
+	assert(expr->const_expr.const_kind == CONST_INITIALIZER);
+	ConstInitializer *list = expr->const_expr.initializer;
 	list->type = to_type;
 	expr->type = to_type;
 	return true;
@@ -1253,9 +1281,9 @@ static bool err_to_bool(Expr *expr, Type *to_type)
 
 static inline bool subarray_to_bool(Expr *expr)
 {
-	if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_LIST)
+	if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER)
 	{
-		ConstInitializer *list = expr->const_expr.list;
+		ConstInitializer *list = expr->const_expr.initializer;
 		switch (list->kind)
 		{
 			case CONST_INIT_ZERO:
@@ -1282,7 +1310,7 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 	switch (from_type->type_kind)
 	{
 		case TYPE_FAILABLE_ANY:
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 			UNREACHABLE
 		case TYPE_VOID:
 			UNREACHABLE
@@ -1476,7 +1504,7 @@ bool cast_to_index(Expr *index)
 	}
 }
 
-bool cast_widen_top_down(Expr *expr, Type *type)
+bool cast_widen_top_down(SemaContext *context, Expr *expr, Type *type)
 {
 	Type *to = type;
 	Type *from = expr->type;
@@ -1494,7 +1522,7 @@ bool cast_widen_top_down(Expr *expr, Type *type)
 	CONVERT_IF_BIGGER:
 	if (type_size(to) <= type_size(from)) return true;
 	CONVERT:
-	return cast_implicit(expr, type);
+	return cast_implicit(context, expr, type);
 }
 
 bool cast_promote_vararg(Expr *arg)
@@ -1528,18 +1556,18 @@ Type *cast_numeric_arithmetic_promotion(Type *type)
 		case TYPE_F16:
 			// Promote F16 to a real type.
 			return type_float;
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 			UNREACHABLE
 		default:
 			return type;
 	}
 }
 
-bool cast_decay_array_pointers(Expr *expr)
+bool cast_decay_array_pointers(SemaContext *context, Expr *expr)
 {
 	CanonicalType *pointer_type = type_pointer_type(type_no_optional(expr->type));
 	if (!pointer_type || !type_is_arraylike(pointer_type)) return true;
-	return cast_implicit(expr, type_add_optional(type_get_ptr(pointer_type->array.base), IS_OPTIONAL(expr)));
+	return cast_implicit(context, expr, type_add_optional(type_get_ptr(pointer_type->array.base), IS_OPTIONAL(expr)));
 }
 
 void cast_to_max_bit_size(SemaContext *context, Expr *left, Expr *right, Type *left_type, Type *right_type)
@@ -1553,14 +1581,14 @@ void cast_to_max_bit_size(SemaContext *context, Expr *left, Expr *right, Type *l
 		Type *to = left->type->type_kind < TYPE_U8
 		           ? type_int_signed_by_bitsize(bit_size_right)
 		           : type_int_unsigned_by_bitsize(bit_size_right);
-		bool success = cast_implicit(left, to);
+		bool success = cast_implicit(context, left, to);
 		assert(success);
 		return;
 	}
 	Type *to = right->type->type_kind < TYPE_U8
 	           ? type_int_signed_by_bitsize(bit_size_left)
 	           : type_int_unsigned_by_bitsize(bit_size_left);
-	bool success = cast_implicit(right, to);
+	bool success = cast_implicit(context, right, to);
 	assert(success);
 }
 
