@@ -117,7 +117,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 				ConstInitializer *empty = CALLOCS(ConstInitializer);
 				empty->kind = CONST_INIT_ZERO;
 				empty->type = type_flatten(member->type);
-				expr_rewrite_const_list(new_initializer, member->type, empty);
+				expr_rewrite_const_initializer(new_initializer, member->type, empty);
 				initializer->initializer_list[i] = new_initializer;
 				size += 1;
 				continue;
@@ -173,9 +173,9 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 		{
 			Expr *expr = elements[0];
 			const_init->init_union.index = 0;
-			if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_LIST)
+			if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER)
 			{
-				const_init->init_union.element = expr->const_expr.list;
+				const_init->init_union.element = expr->const_expr.initializer;
 			}
 			else
 			{
@@ -183,16 +183,16 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 				sema_create_const_initializer_value(element_init, expr);
 				const_init->init_union.element = element_init;
 			}
-			expr_rewrite_const_list(initializer, initializer->type, const_init);
+			expr_rewrite_const_initializer(initializer, initializer->type, const_init);
 			return true;
 		}
 		ConstInitializer **inits = MALLOC(sizeof(ConstInitializer *) * vec_size(elements));
 		VECEACH(elements, i)
 		{
 			Expr *expr = elements[i];
-			if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_LIST)
+			if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER)
 			{
-				inits[i] = expr->const_expr.list;
+				inits[i] = expr->const_expr.initializer;
 				continue;
 			}
 			ConstInitializer *element_init = MALLOCS(ConstInitializer);
@@ -200,7 +200,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 			inits[i] = element_init;
 		}
 		const_init->init_struct = inits;
-		expr_rewrite_const_list(initializer, initializer->type, const_init);
+		expr_rewrite_const_initializer(initializer, initializer->type, const_init);
 	}
 
 	// 7. Done!
@@ -263,9 +263,9 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 		VECEACH(elements, i)
 		{
 			Expr *expr = elements[i];
-			if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_LIST)
+			if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER)
 			{
-				vec_add(inits, expr->const_expr.list);
+				vec_add(inits, expr->const_expr.initializer);
 				continue;
 			}
 			ConstInitializer *element_init = MALLOCS(ConstInitializer);
@@ -273,7 +273,7 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 			vec_add(inits, element_init);
 		}
 		const_init->init_array_full = inits;
-		expr_rewrite_const_list(initializer, initializer->type, const_init);
+		expr_rewrite_const_initializer(initializer, initializer->type, const_init);
 	}
 
 	// 7. Done!
@@ -282,30 +282,18 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 
 static inline bool sema_expr_analyse_untyped_initializer(SemaContext *context, Expr *initializer)
 {
-	ConstInitializer **inits = NULL;
-	FOREACH_BEGIN(Expr *element, initializer->initializer_list)
+	Expr **init_list = initializer->initializer_list;
+	FOREACH_BEGIN(Expr *element, init_list)
 		if (!sema_analyse_expr(context, element)) return false;
 		if (!expr_is_const(element))
 		{
 			SEMA_ERROR(element, "An untyped list can only have constant elements, you can try to type the list by prefixing the type, e.g. 'int[2] { a, b }'.");
 			return false;
 		}
-		ConstInitializer *init = CALLOCS(ConstInitializer);
-		sema_create_const_initializer_value(init, element);
-		vec_add(inits, init);
 	FOREACH_END();
-	ConstInitializer *untyped_list = CALLOCS(ConstInitializer);
 	initializer->expr_kind = EXPR_CONST;
-	initializer->const_expr = (ExprConst) { .const_kind = CONST_LIST, .list = untyped_list };
-	untyped_list->type = type_untypedlist;
+	initializer->const_expr = (ExprConst) { .const_kind = CONST_UNTYPED_LIST, .untyped_list = init_list };
 	initializer->type = type_untypedlist;
-	if (!inits)
-	{
-		untyped_list->kind = CONST_INIT_ZERO;
-		return true;
-	}
-	untyped_list->kind = CONST_INIT_ARRAY_FULL;
-	untyped_list->init_array_full = inits;
 	return true;
 }
 
@@ -342,7 +330,7 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 	{
 		ConstInitializer *const_init = MALLOCS(ConstInitializer);
 		sema_create_const_initializer_from_designated_init(const_init, initializer);
-		expr_rewrite_const_list(initializer, initializer->type, const_init);
+		expr_rewrite_const_initializer(initializer, initializer->type, const_init);
 	}
 	return true;
 }
@@ -385,7 +373,7 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ext
 		ConstInitializer *initializer = CALLOCS(ConstInitializer);
 		initializer->kind = CONST_INIT_ZERO;
 		initializer->type = type_flatten(expr->type);
-		expr_rewrite_const_list(expr, expr->type, initializer);
+		expr_rewrite_const_initializer(expr, expr->type, initializer);
 		return true;
 	}
 
@@ -489,10 +477,10 @@ static void sema_create_const_initializer_value(ConstInitializer *const_init, Ex
 {
 	// Possibly this is already a const initializers, in that case
 	// overwrite what is inside, eg [1] = { .a = 1 }
-	if (value->expr_kind == EXPR_CONST && value->const_expr.const_kind == CONST_LIST)
+	if (value->expr_kind == EXPR_CONST && value->const_expr.const_kind == CONST_INITIALIZER)
 	{
-		*const_init = *value->const_expr.list;
-		value->const_expr.list = const_init;
+		*const_init = *value->const_expr.initializer;
+		value->const_expr.initializer = const_init;
 		return;
 	}
 	const_init->init_value = value;
@@ -768,8 +756,8 @@ static Type *sema_expr_analyse_designator(SemaContext *context, Type *current, E
 
 INLINE bool sema_initializer_list_is_empty(Expr *value)
 {
-	return value->expr_kind == EXPR_CONST && value->const_expr.const_kind == CONST_LIST
-	       && value->const_expr.list->kind == CONST_INIT_ZERO;
+	return value->expr_kind == EXPR_CONST && value->const_expr.const_kind == CONST_INITIALIZER
+	       && value->const_expr.initializer->kind == CONST_INIT_ZERO;
 }
 
 static Type *sema_find_type_of_element(SemaContext *context, Type *type, DesignatorElement **elements, unsigned *curr_index, bool *is_constant, bool *did_report_error, MemberIndex *max_index, Decl **member_ptr)
@@ -851,8 +839,8 @@ MemberIndex sema_get_initializer_const_array_size(SemaContext *context, Expr *in
 {
 	if (initializer->expr_kind == EXPR_CONST)
 	{
-		assert(initializer->const_expr.const_kind == CONST_LIST);
-		ConstInitializer *init = initializer->const_expr.list;
+		assert(initializer->const_expr.const_kind == CONST_INITIALIZER);
+		ConstInitializer *init = initializer->const_expr.initializer;
 		Type *type = type_flatten(initializer->type);
 		*is_const_size = true;
 		switch (init->kind)

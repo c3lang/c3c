@@ -98,19 +98,24 @@ static inline bool sema_create_const_max(SemaContext *context, Expr *expr, Type 
 static bool sema_expr_rewrite_typeid_call(Expr *expr, Expr *typeid, TypeIdInfoKind kind, Type *result_type);
 static inline bool sema_expr_fold_to_member(Expr *expr, Expr *parent, Decl *member);
 
-bool cast_widen_top_down(Expr *expr, Type *type);
+bool cast_widen_top_down(SemaContext *context, Expr *expr, Type *type);
 bool cast_promote_vararg(Expr *arg);
 Type *cast_numeric_arithmetic_promotion(Type *type);
 void cast_to_max_bit_size(SemaContext *context, Expr *left, Expr *right, Type *left_type, Type *right_type);
-bool cast_decay_array_pointers(Expr *expr);
+
+bool cast_decay_array_pointers(SemaContext *context, Expr *expr);
 
 static inline bool expr_is_const_string(Expr *expr)
 {
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_STRING;
 }
 
-INLINE bool expr_is_const_list(Expr *expr)
+INLINE bool expr_is_const_initializer(Expr *expr)
 {
-	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_LIST;
+	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER;
 }
 
+INLINE bool expr_is_const_untyped_list(Expr *expr)
+{
+	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_UNTYPED_LIST;
+}

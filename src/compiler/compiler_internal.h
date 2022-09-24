@@ -201,7 +201,8 @@ typedef struct
 			TypeSize len;
 		} bytes;
 		Type *typeid;
-		ConstInitializer *list;
+		ConstInitializer *initializer;
+		Expr **untyped_list;
 	};
 } ExprConst;
 
@@ -1996,11 +1997,14 @@ INLINE AsmRegister *asm_reg_by_index(unsigned index);
 
 AsmRegister *asm_reg_by_index(unsigned index);
 
-bool cast_implicit(Expr *expr, Type *to_type);
+bool cast_implicit(SemaContext *context, Expr *expr, Type *to_type);
 bool cast(Expr *expr, Type *to_type);
 bool cast_may_implicit(Type *from_type, Type *to_type, bool is_simple_expr, bool failable_allowed);
 bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability, bool is_const);
 bool cast_to_index(Expr *index);
+
+bool cast_untyped_to_type(SemaContext *context, Expr *expr, Type *to_type);
+
 CastKind cast_to_bool_kind(Type *type);
 
 const char *llvm_codegen(void *context);
@@ -2089,7 +2093,7 @@ INLINE void expr_rewrite_const_null(Expr *expr, Type *type);
 INLINE void expr_rewrite_const_bool(Expr *expr, Type *type, bool b);
 INLINE void expr_rewrite_const_float(Expr *expr, Type *type, Real d);
 INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v, bool narrowable);
-INLINE void expr_rewrite_const_list(Expr *expr, Type *type, ConstInitializer *list);
+INLINE void expr_rewrite_const_initializer(Expr *expr, Type *type, ConstInitializer *initializer);
 
 void expr_rewrite_to_builtin_access(Expr *expr, Expr *parent, BuiltinAccessKind kind, Type *type);
 void expr_rewrite_to_const_zero(Expr *expr, Type *type);
@@ -2329,7 +2333,7 @@ TokenType binaryop_to_token(BinaryOp type);
 INLINE Type *type_no_optional(Type *type)
 {
 	if (!type) return NULL;
-	if (type->type_kind == TYPE_FAILABLE) return type->failable;
+	if (type->type_kind == TYPE_OPTIONAL) return type->failable;
 	if (type->type_kind == TYPE_FAILABLE_ANY) return type_void;
 	return type;
 }
@@ -2351,7 +2355,7 @@ INLINE bool type_is_pointer_sized(Type *type)
 
 INLINE Type *type_add_optional(Type *type, bool make_optional)
 {
-	if (!make_optional || type->type_kind == TYPE_FAILABLE || type->type_kind == TYPE_FAILABLE_ANY) return type;
+	if (!make_optional || type->type_kind == TYPE_OPTIONAL || type->type_kind == TYPE_FAILABLE_ANY) return type;
 	return type_get_failable(type);
 }
 
@@ -2365,13 +2369,13 @@ INLINE bool type_len_is_inferred(Type *type)
 INLINE bool type_is_optional(Type *type)
 {
 	DECL_TYPE_KIND_REAL(kind, type);
-	return kind == TYPE_FAILABLE || kind == TYPE_FAILABLE_ANY;
+	return kind == TYPE_OPTIONAL || kind == TYPE_FAILABLE_ANY;
 }
 
 INLINE bool type_is_optional_type(Type *type)
 {
 	DECL_TYPE_KIND_REAL(kind, type);
-	return kind == TYPE_FAILABLE;
+	return kind == TYPE_OPTIONAL;
 }
 
 INLINE bool type_is_optional_any(Type *type)
@@ -2461,7 +2465,7 @@ INLINE bool type_may_negate(Type *type)
 		case TYPE_TYPEDEF:
 			type = type->canonical;
 			goto RETRY;
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 			type = type->failable;
 			goto RETRY;
 		default:
@@ -2548,7 +2552,7 @@ static inline Type *type_flatten_distinct_optional(Type *type)
 			case TYPE_TYPEDEF:
 				type = type->canonical;
 				continue;
-			case TYPE_FAILABLE:
+			case TYPE_OPTIONAL:
 				type = type->failable;
 				continue;
 			case TYPE_DISTINCT:
@@ -2582,7 +2586,7 @@ static inline Type *type_flatten(Type *type)
 			case TYPE_ENUM:
 				type = type->decl->enums.type_info->type;
 				break;
-			case TYPE_FAILABLE:
+			case TYPE_OPTIONAL:
 				type = type->failable;
 				break;
 			case TYPE_FAILABLE_ANY:
@@ -2879,11 +2883,11 @@ INLINE void expr_rewrite_const_null(Expr *expr, Type *type)
 	expr->resolve_status = RESOLVE_DONE;
 }
 
-INLINE void expr_rewrite_const_list(Expr *expr, Type *type, ConstInitializer *list)
+INLINE void expr_rewrite_const_initializer(Expr *expr, Type *type, ConstInitializer *initializer)
 {
 	expr->expr_kind = EXPR_CONST;
 	expr->type = type;
-	expr->const_expr = (ExprConst) { .list = list, .const_kind = CONST_LIST };
+	expr->const_expr = (ExprConst) { .initializer = initializer, .const_kind = CONST_INITIALIZER };
 	expr->resolve_status = RESOLVE_DONE;
 }
 

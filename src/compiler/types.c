@@ -126,7 +126,7 @@ static void type_append_name_to_scratch(Type *type)
 		case TYPE_FAILABLE_ANY:
 			scratch_buffer_append("void!");
 			break;
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 			if (type->failable)
 			{
 				type_append_name_to_scratch(type->failable);
@@ -241,7 +241,7 @@ const char *type_to_error_string(Type *type)
 				return type_to_error_string(type->pointer);
 			}
 			return str_printf("%s*", type_to_error_string(type->pointer));
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 			if (!type->failable) return "void!";
 			return str_printf("%s!", type_to_error_string(type->failable));
 		case TYPE_ARRAY:
@@ -282,7 +282,7 @@ RETRY:
 		case TYPE_SCALED_VECTOR:
 		case TYPE_FLEXIBLE_ARRAY:
 			return 0;
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 			type = type->failable;
 			goto RETRY;
 		case TYPE_TYPEDEF:
@@ -360,7 +360,7 @@ bool type_is_abi_aggregate(Type *type)
 	{
 		case TYPE_POISONED:
 			return false;
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 			type = type->failable;
 			goto RETRY;
 		case TYPE_DISTINCT:
@@ -504,7 +504,7 @@ void type_mangle_introspect_name_to_buffer(Type *type)
 			scratch_buffer_append("a0$");
 			type_mangle_introspect_name_to_buffer(type->array.base);
 			return;
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 			scratch_buffer_append("f$");
 			type_mangle_introspect_name_to_buffer(type->failable);
 			return;
@@ -598,7 +598,7 @@ AlignSize type_abi_alignment(Type *type)
 		case TYPE_VOID:
 		case TYPE_FAILABLE_ANY:
 			return 1;
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 			type = type->failable;
 			goto RETRY;
 		case TYPE_DISTINCT:
@@ -681,7 +681,7 @@ static Type *type_generate_failable(Type *failable_type, bool canonical)
 	Type *failable = failable_type->type_cache[FAILABLE_OFFSET];
 	if (failable == NULL)
 	{
-		failable = type_new(TYPE_FAILABLE, str_printf("%s!", failable_type->name));
+		failable = type_new(TYPE_OPTIONAL, str_printf("%s!", failable_type->name));
 		failable->pointer = failable_type;
 		failable_type->type_cache[FAILABLE_OFFSET] = failable;
 		if (failable_type == failable_type->canonical)
@@ -832,7 +832,7 @@ static Type *type_generate_scaled_vector(Type *arr_type, bool canonical)
 Type *type_get_ptr_recurse(Type *ptr_type)
 {
 	assert(ptr_type->type_kind != TYPE_FAILABLE_ANY);
-	if (ptr_type->type_kind == TYPE_FAILABLE)
+	if (ptr_type->type_kind == TYPE_OPTIONAL)
 	{
 		ptr_type = ptr_type->failable;
 		return type_get_failable(type_get_ptr(ptr_type));
@@ -1436,7 +1436,7 @@ bool type_is_scalar(Type *type)
 		case TYPE_DISTINCT:
 			type = type->decl->distinct_decl.base_type;
 			goto RETRY;
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 			type = type->failable;
 			if (!type) return false;
 			goto RETRY;
@@ -1564,7 +1564,7 @@ bool type_may_have_method(Type *type)
 		case TYPE_POINTER:
 		case TYPE_FUNC:
 		case TYPE_UNTYPED_LIST:
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 		case TYPE_FAILABLE_ANY:
 		case TYPE_TYPEINFO:
 			return false;
@@ -1723,7 +1723,7 @@ Type *type_find_max_type(Type *type, Type *other)
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_POISONED:
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 		case TYPE_FAILABLE_ANY:
 			UNREACHABLE
 		case TYPE_VOID:
@@ -1915,7 +1915,7 @@ unsigned type_get_introspection_kind(TypeKind kind)
 		case TYPE_UNTYPED_LIST:
 		case TYPE_FAILABLE_ANY:
 		case TYPE_TYPEINFO:
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 			UNREACHABLE
 			return 0;
 	}
@@ -1960,7 +1960,7 @@ Module *type_base_module(Type *type)
 		case TYPE_INFERRED_VECTOR:
 			type = type->array.base;
 			goto RETRY;
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 			type = type->failable;
 			goto RETRY;
 		case TYPE_UNTYPED_LIST:

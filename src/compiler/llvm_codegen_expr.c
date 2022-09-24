@@ -82,7 +82,7 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 		llvm_emit_expr(c, &value, expr);
 		llvm_store(c, ref, &value);
 	}
-	else if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_LIST)
+	else if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER)
 	{
 		llvm_emit_const_initialize_reference(c, ref, expr);
 		value = *ref;
@@ -1404,8 +1404,8 @@ void llvm_emit_initialize_reference_temporary_const(GenContext *c, BEValue *ref,
 
 	Type *canonical = expr->type->canonical;
 
-	assert(expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_LIST);
-	LLVMValueRef value = llvm_emit_const_initializer(c, expr->const_expr.list);
+	assert(expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER);
+	LLVMValueRef value = llvm_emit_const_initializer(c, expr->const_expr.initializer);
 
 	LLVMTypeRef expected_type = llvm_get_type(c, canonical);
 	// Create a global const.
@@ -1525,12 +1525,11 @@ static void llvm_emit_inititialize_reference_const(GenContext *c, BEValue *ref, 
 }
 static inline void llvm_emit_initialize_reference_const(GenContext *c, BEValue *ref, Expr *expr)
 {
-	assert(expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_LIST);
-	ConstInitializer *initializer = expr->const_expr.list;
+	assert(expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER);
+	ConstInitializer *initializer = expr->const_expr.initializer;
 
 	// Make sure we have an address.
 	llvm_value_addr(c, ref);
-
 	llvm_emit_inititialize_reference_const(c, ref, initializer);
 
 }
@@ -1579,7 +1578,7 @@ static inline void llvm_emit_initialize_reference_list(GenContext *c, BEValue *r
 			llvm_value_set_address(&pointer, value, element->type, ref->alignment);
 		}
 		// If this is an initializer, we want to actually run the initialization recursively.
-		if (element->expr_kind == EXPR_CONST && element->const_expr.const_kind == CONST_LIST)
+		if (element->expr_kind == EXPR_CONST && element->const_expr.const_kind == CONST_INITIALIZER)
 		{
 			llvm_emit_const_initialize_reference(c, &pointer, element);
 			continue;
@@ -1630,7 +1629,7 @@ static void llvm_emit_initialize_designated(GenContext *c, BEValue *ref, AlignSi
 			llvm_store(c, ref, emitted_value);
 			return;
 		}
-		if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_LIST)
+		if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER)
 		{
 			llvm_emit_const_initialize_reference(c, ref, expr);
 			return;
@@ -1864,8 +1863,8 @@ static inline void llvm_emit_const_initialize_bitstruct_ref(GenContext *c, BEVal
  */
 static inline void llvm_emit_const_initialize_reference(GenContext *c, BEValue *ref, Expr *expr)
 {
-	assert(expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_LIST);
-	ConstInitializer *initializer = expr->const_expr.list;
+	assert(expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER);
+	ConstInitializer *initializer = expr->const_expr.initializer;
 	assert(!type_flat_is_vector(initializer->type) && "Vectors should be handled elsewhere.");
 	if (initializer->type->type_kind == TYPE_BITSTRUCT)
 	{
@@ -3829,7 +3828,7 @@ static inline void llvm_emit_const_initializer_list_expr(GenContext *c, BEValue 
 {
 	if (llvm_is_global_eval(c) || type_flat_is_vector(expr->type) || type_flatten_distinct(expr->type)->type_kind == TYPE_BITSTRUCT)
 	{
-		llvm_value_set(value, llvm_emit_const_initializer(c, expr->const_expr.list), expr->type);
+		llvm_value_set(value, llvm_emit_const_initializer(c, expr->const_expr.initializer), expr->type);
 		return;
 	}
 	llvm_value_set_address_abi_aligned(value, llvm_emit_alloca_aligned(c, expr->type, "literal"), expr->type);
@@ -3877,7 +3876,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 			llvm_value_set(be_value, value, type);
 			return;
 		}
-		case CONST_LIST:
+		case CONST_INITIALIZER:
 			llvm_emit_const_initializer_list_expr(c, be_value, expr);
 			return;
 		case CONST_FLOAT:
@@ -4028,7 +4027,7 @@ static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVM
 		case TYPE_FAULTTYPE:
 		case TYPE_ANYERR:
 		case TYPE_BITSTRUCT:
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 		case CT_TYPES:
 		case TYPE_FAILABLE_ANY:
 		case TYPE_FLEXIBLE_ARRAY:

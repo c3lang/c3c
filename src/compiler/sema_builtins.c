@@ -160,9 +160,9 @@ static inline bool sema_expr_analyse_shufflevector(SemaContext *context, Expr *e
 	bool failable = false;
 	Expr *mask = args[arg_count - 1];
 	unsigned len = 0;
-	if (expr_is_const_list(mask))
+	if (expr_is_const_initializer(mask))
 	{
-		ConstInitializer *init = mask->const_expr.list;
+		ConstInitializer *init = mask->const_expr.initializer;
 		len = init->kind == CONST_INIT_ARRAY_FULL ? vec_size(init->init_array_full) : 0;
 	}
 	else if (mask->expr_kind == EXPR_INITIALIZER_LIST)
@@ -205,7 +205,7 @@ static inline bool sema_expr_analyse_shufflevector(SemaContext *context, Expr *e
 		SEMA_ERROR(mask, "The mask must be a compile time constant.");
 		return false;
 	}
-	ConstInitializer *init = mask->const_expr.list;
+	ConstInitializer *init = mask->const_expr.initializer;
 	if (init->kind != CONST_INIT_ARRAY_FULL)
 	{
 		SEMA_ERROR(mask, "The mask must be a fully specified list.");
@@ -289,7 +289,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			rtype = type_uptr;
 			for (unsigned i = 0; i < arg_count; i++)
 			{
-				if (!cast_implicit(args[i], type_uptr)) return false;
+				if (!cast_implicit(context, args[i], type_uptr)) return false;
 			}
 			switch (platform_target.arch)
 			{
@@ -377,7 +377,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 					SEMA_ERROR(args[i], "A constant value is required.");
 					return false;
 				}
-				if (!cast_implicit(args[i], type_int)) return false;
+				if (!cast_implicit(context, args[i], type_int)) return false;
 			}
 			if (!expr_in_int_range(args[1], 0, 1))
 			{
@@ -389,7 +389,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 				SEMA_ERROR(args[2], "Expected a value between 0 and 3.");
 				return false;
 			}
-			if (!cast_implicit(args[0], type_voidptr)) return false;
+			if (!cast_implicit(context, args[0], type_voidptr)) return false;
 			rtype = type_void;
 			break;
 		case BUILTIN_POW:
@@ -403,7 +403,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_check_builtin_args(args,
 			                             (BuiltinArg[]) { BA_FLOATLIKE, BA_INTLIKE },
 			                             arg_count)) return false;
-			if (!cast_implicit(args[1], type_cint)) return false;
+			if (!cast_implicit(context, args[1], type_cint)) return false;
 			rtype = args[0]->type;
 			break;
 		case BUILTIN_REDUCE_FMUL:
@@ -411,7 +411,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_check_builtin_args(args,
 			                             (BuiltinArg[]) { BA_FLOATVEC, BA_FLOAT },
 			                             arg_count)) return false;
-			if (!cast_implicit(args[1], args[0]->type->canonical->array.base)) return false;
+			if (!cast_implicit(context, args[1], args[0]->type->canonical->array.base)) return false;
 			{
 				Expr *arg = args[0];
 				args[0] = args[1];
@@ -480,7 +480,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			Type *original = type_flatten(args[0]->type);
 			if (original != type_voidptr)
 			{
-				if (!cast_implicit(args[1], original->pointer)) return false;
+				if (!cast_implicit(context, args[1], original->pointer)) return false;
 			}
 			rtype = args[1]->type;
 			break;

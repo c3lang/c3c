@@ -388,7 +388,7 @@ static void x64_classify(Type *type, ByteSize offset_base, X64Class *lo_class, X
 		case TYPE_ANYERR:
 		case TYPE_FAULTTYPE:
 		case TYPE_BITSTRUCT:
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 		case TYPE_FAILABLE_ANY:
 		case CT_TYPES:
 			UNREACHABLE
@@ -583,7 +583,7 @@ AbiType x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_typ
 		case TYPE_ANYERR:
 		case TYPE_FAULTTYPE:
 		case TYPE_BITSTRUCT:
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 		case TYPE_FAILABLE_ANY:
 		case CT_TYPES:
 			UNREACHABLE

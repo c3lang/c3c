@@ -1058,7 +1058,7 @@ static inline bool parse_param_decl(ParseContext *c, Visibility parent_visibilit
 	ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_optional_type(c), false);
 	if (type->failable)
 	{
-		SEMA_ERROR(type, "Parameters may not be failable.");
+		SEMA_ERROR(type, "Parameters may not be optional.");
 		return false;
 	}
 	bool vararg = try_consume(c, TOKEN_ELLIPSIS);
@@ -1304,7 +1304,7 @@ bool parse_parameters(ParseContext *c, Visibility visibility, Decl ***params_ref
 		}
 		if (type && type->failable)
 		{
-			SEMA_ERROR(type, "Parameters may not be failable.");
+			SEMA_ERROR(type, "Parameters may not be optional.");
 			return false;
 		}
 		Decl *param = decl_new_var(name, span, type, param_kind, visibility);

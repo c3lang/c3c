@@ -343,9 +343,9 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	}
 	if (init_expr)
 	{
-		if (init_expr->expr_kind == EXPR_CONST && init_expr->const_expr.const_kind == CONST_LIST)
+		if (init_expr->expr_kind == EXPR_CONST && init_expr->const_expr.const_kind == CONST_INITIALIZER)
 		{
-			ConstInitializer *list = init_expr->const_expr.list;
+			ConstInitializer *list = init_expr->const_expr.initializer;
 			init_value = llvm_emit_const_initializer(c, list);
 		}
 		else

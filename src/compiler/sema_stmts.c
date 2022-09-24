@@ -257,7 +257,7 @@ static void sema_unwrappable_from_catch_in_else(SemaContext *c, Expr *cond)
 		if (expr->expr_kind != EXPR_IDENTIFIER) continue;
 		Decl *decl = expr->identifier_expr.decl;
 		if (decl->decl_kind != DECL_VAR) continue;
-		assert(decl->type->type_kind == TYPE_FAILABLE && "The variable should always be failable at this point.");
+		assert(decl->type->type_kind == TYPE_OPTIONAL && "The variable should always be failable at this point.");
 
 		// 5. Locals and globals may be unwrapped
 		switch (decl->var.kind)
@@ -530,7 +530,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 			return false;
 		}
 
-		if (!cast_implicit(failable, ident->type)) return false;
+		if (!cast_implicit(context, failable, ident->type)) return false;
 
 		expr->try_unwrap_expr.assign_existing = true;
 		expr->try_unwrap_expr.lhs = ident;
@@ -570,7 +570,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 
 		if (var_type)
 		{
-			if (!cast_implicit(failable, var_type->type)) return false;
+			if (!cast_implicit(context, failable, var_type->type)) return false;
 		}
 
 		// 4c. Create a type_info if needed.
@@ -913,7 +913,7 @@ static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType 
 	// 3b. Cast to bool if that is needed
 	if (cast_to_bool)
 	{
-		if (!cast_implicit(last, type_bool)) return false;
+		if (!cast_implicit(context, last, type_bool)) return false;
 	}
 	return true;
 }
@@ -1137,7 +1137,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		Type *inferred_type = NULL;
 
 		// We may have an initializer list, in this case we rely on an inferred type.
-		if (expr_is_init_list(enumerator) || (enumerator->expr_kind == EXPR_CONST && enumerator->const_expr.const_kind == CONST_LIST))
+		if (expr_is_init_list(enumerator) || (enumerator->expr_kind == EXPR_CONST && enumerator->const_expr.const_kind == CONST_INITIALIZER))
 		{
 			bool may_be_array;
 			bool is_const_size;
@@ -1347,7 +1347,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 			// Create const len if missing.
 			len_call = expr_new_const_int(enumerator->span, type_isize, array_len, true);
 		}
-		if (!cast_implicit(len_call, index_type)) return false;
+		if (!cast_implicit(context, len_call, index_type)) return false;
 		// __idx$ = (IndexType)(@__enum$.len()) (or const)
 		vec_add(expressions, expr_generate_decl(idx_decl, len_call));
 	}
@@ -1356,7 +1356,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		if (len_call)
 		{
 			len_decl = decl_new_generated_var(index_type, VARDECL_LOCAL, enumerator->span);
-			if (!cast_implicit(len_call, index_type)) return false;
+			if (!cast_implicit(context, len_call, index_type)) return false;
 			vec_add(expressions, expr_generate_decl(len_decl, len_call));
 		}
 		Expr *idx_init = expr_new_const_int(idx_decl->span, index_type, 0, true);
@@ -2194,23 +2194,18 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 {
 	Expr *collection = exprptr(statement->ct_foreach_stmt.expr);
 	if (!sema_analyse_ct_expr(context, collection)) return false;
-	if (collection->expr_kind != EXPR_INITIALIZER_LIST && !expr_is_const_list(collection))
+	if (!expr_is_const_untyped_list(collection) && !expr_is_const_initializer(collection))
 	{
 		SEMA_ERROR(collection, "Expected a list to iterate over");
-		return false;
-	}
-	if (!expr_is_constant_eval(collection, CONSTANT_EVAL_CONSTANT_VALUE))
-	{
-		SEMA_ERROR(collection, "A compile time $foreach must be over a constant value.");
 		return false;
 	}
 	unsigned count;
 	ConstInitializer *initializer = NULL;
 	Expr **expressions = NULL;
 	Type *const_list_type = NULL;
-	if (expr_is_const_list(collection))
+	if (expr_is_const_initializer(collection))
 	{
-		initializer = collection->const_expr.list;
+		initializer = collection->const_expr.initializer;
 		ConstInitType init_type = initializer->kind;
 		const_list_type = type_flatten(collection->type);
 		if (const_list_type->type_kind == TYPE_ARRAY)
@@ -2231,8 +2226,8 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 	}
 	else
 	{
-		expressions = collection->initializer_list;
-		count = vec_size(collection->initializer_list);
+		expressions = collection->const_expr.untyped_list;
+		count = vec_size(expressions);
 	}
 	Decl *index = NULL;
 	const char *index_name = statement->ct_foreach_stmt.index_name;
