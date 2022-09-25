@@ -1239,14 +1239,14 @@ typedef struct
 typedef struct AstCtIfStmt_
 {
 	Expr *expr;
-	Ast *elif;
+	AstId elif;
 	AstId then;
 } AstCtIfStmt;
 
 
 typedef struct
 {
-	Expr *cond;
+	ExprId cond;
 	Ast **body;
 } AstCtSwitchStmt;
 
@@ -1832,10 +1832,6 @@ ARENA_DEF(expr, Expr)
 ARENA_DEF(decl, Decl)
 ARENA_DEF(type_info, TypeInfo)
 
-INLINE Expr *exprptrzero(ExprId id)
-{
-	return id ? exprptr(id) : NULL;
-}
 
 INLINE Type *typeinfotype(TypeInfoId id_)
 {

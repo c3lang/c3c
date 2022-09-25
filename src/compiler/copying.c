@@ -546,7 +546,7 @@ RETRY:
 			break;
 		case AST_CT_IF_STMT:
 			MACRO_COPY_EXPR(ast->ct_if_stmt.expr);
-			MACRO_COPY_AST(ast->ct_if_stmt.elif);
+			MACRO_COPY_ASTID(ast->ct_if_stmt.elif);
 			MACRO_COPY_ASTID(ast->ct_if_stmt.then);
 			break;
 		case AST_CT_ELSE_STMT:
@@ -557,7 +557,7 @@ RETRY:
 			MACRO_COPY_EXPRID(ast->ct_foreach_stmt.expr);
 			break;
 		case AST_CT_SWITCH_STMT:
-			MACRO_COPY_EXPR(ast->ct_switch_stmt.cond);
+			MACRO_COPY_EXPRID(ast->ct_switch_stmt.cond);
 			MACRO_COPY_AST_LIST(ast->ct_switch_stmt.body);
 			break;
 		case AST_DECLARE_STMT:

@@ -43,7 +43,6 @@ static inline bool sema_analyse_compound_statement_no_scope(SemaContext *context
 static inline bool sema_check_type_case(SemaContext *context, Type *switch_type, Ast *case_stmt, Ast **cases, unsigned index);
 static inline bool sema_check_value_case(SemaContext *context, Type *switch_type, Ast *case_stmt, Ast **cases, unsigned index, bool *if_chained, bool *max_ranged);
 static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, SourceSpan expr_span, Type *switch_type, Ast **cases, ExprVariantSwitch *variant, Decl *var_holder);
-static bool sema_analyse_ct_switch_body(SemaContext *context, Ast *statement);
 
 static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *statement);
 static bool sema_analyse_require(SemaContext *context, Ast *directive, AstId **asserts);
@@ -1826,12 +1825,8 @@ static inline bool sema_analyse_ct_if_stmt(SemaContext *context, Ast *statement)
 {
 	int res = sema_check_comp_time_bool(context, statement->ct_if_stmt.expr);
 	if (res == -1) return false;
-	if (res)
-	{
-		return sema_analyse_then_overwrite(context, statement, statement->ct_if_stmt.then);
-	}
-
-	Ast *elif = statement->ct_if_stmt.elif;
+	if (res) return sema_analyse_then_overwrite(context, statement, statement->ct_if_stmt.then);
+	Ast *elif = astptrzero(statement->ct_if_stmt.elif);
 	while (1)
 	{
 		if (!elif)
@@ -1849,11 +1844,8 @@ static inline bool sema_analyse_ct_if_stmt(SemaContext *context, Ast *statement)
 
 		res = sema_check_comp_time_bool(context, elif->ct_if_stmt.expr);
 		if (res == -1) return false;
-		if (res)
-		{
-			return sema_analyse_then_overwrite(context, statement, elif->ct_if_stmt.then);
-		}
-		elif = elif->ct_if_stmt.elif;
+		if (res) return sema_analyse_then_overwrite(context, statement, elif->ct_if_stmt.then);
+		elif = astptrzero(elif->ct_if_stmt.elif);
 	}
 }
 
@@ -2083,16 +2075,42 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 	return success;
 }
 
-static bool sema_analyse_ct_switch_body(SemaContext *context, Ast *statement)
+static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statement)
 {
-	Expr *cond = statement->ct_switch_stmt.cond;
+	// Evaluate the switch statement
+	Expr *cond = exprptr(statement->ct_switch_stmt.cond);
+	if (!sema_analyse_ct_expr(context, cond)) return false;
+
+	// If we have a type, then we do different evaluation
+	// compared to when it is a value.
 	Type *type = cond->type;
-	bool is_type = type == type_typeid;
+	bool is_type = false;
+	switch (type_flatten(type)->type_kind)
+	{
+		case TYPE_TYPEID:
+			is_type = true;
+			FALLTHROUGH;
+		case ALL_INTS:
+		case ALL_FLOATS:
+		case TYPE_BOOL:
+			break;
+		case TYPE_POINTER:
+			if (expr_is_const_string(cond)) break;
+			FALLTHROUGH;
+		default:
+			SEMA_ERROR(cond, "Only types, strings, integers, floats and booleans may be used with '$switch'.");
+			return false;
+	}
+
 	ExprConst *switch_expr_const = &cond->const_expr;
 	Ast **cases = statement->ct_switch_stmt.body;
+
 	unsigned case_count = vec_size(cases);
+	assert(case_count <= INT32_MAX);
 	int matched_case = (int)case_count;
 	int default_case = (int)case_count;
+
+	// Go through each case
 	for (unsigned i = 0; i < case_count; i++)
 	{
 		Ast *stmt = cases[i];
@@ -2100,11 +2118,20 @@ static bool sema_analyse_ct_switch_body(SemaContext *context, Ast *statement)
 		{
 			case AST_CASE_STMT:
 			{
+
 				Expr *expr = stmt->case_stmt.expr;
 				Expr *to_expr = stmt->case_stmt.to_expr;
+				if (to_expr)
+				{
+					if (!type_is_integer(type) && !type_is_float(type))
+					{
+						SEMA_ERROR(to_expr, "$case ranges are only allowed for floats and integers.");
+						return false;
+					}
+				}
 				if (is_type)
 				{
-					if (!sema_analyse_expr(context, expr)) return false;
+					if (!sema_analyse_ct_expr(context, expr)) return false;
 					if (expr->type != type_typeid)
 					{
 						SEMA_ERROR(expr, "A type was expected here not %s.", type_quoted_error_string(expr->type));
@@ -2116,12 +2143,12 @@ static bool sema_analyse_ct_switch_body(SemaContext *context, Ast *statement)
 					if (!sema_analyse_expr_rhs(context, type, expr, false)) return false;
 					if (to_expr && !sema_analyse_expr_rhs(context, type, to_expr, false)) return false;
 				}
-				if (expr->expr_kind != EXPR_CONST)
+				if (!expr_is_const(expr))
 				{
 					SEMA_ERROR(expr, "The $case must have a constant expression.");
 					return false;
 				}
-				if (to_expr && to_expr->expr_kind != EXPR_CONST)
+				if (to_expr && !expr_is_const(to_expr))
 				{
 					SEMA_ERROR(to_expr, "The $case must have a constant expression.");
 					return false;
@@ -2181,18 +2208,6 @@ static bool sema_analyse_ct_switch_body(SemaContext *context, Ast *statement)
 		return true;
 	}
 	return sema_analyse_then_overwrite(context, statement, body->compound_stmt.first_stmt);
-}
-
-static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statement)
-{
-	Expr *cond = statement->ct_switch_stmt.cond;
-	if (!sema_analyse_ct_expr(context, cond)) return false;
-	if (cond->expr_kind != EXPR_CONST)
-	{
-		SEMA_ERROR(cond, "A compile time $switch must be over a constant value.");
-		return false;
-	}
-	return sema_analyse_ct_switch_body(context, statement);
 }
 
 
@@ -2412,12 +2427,7 @@ static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement
 				continue;
 			}
 			// If expression evaluate it and make sure it is constant.
-			if (!sema_analyse_expr(context, expr)) return false;
-			if (!expr_is_constant_eval(expr, CONSTANT_EVAL_CONSTANT_VALUE))
-			{
-				SEMA_ERROR(expr, "Only constant expressions are allowed.");
-				return false;
-			}
+			if (!sema_analyse_ct_expr(context, expr)) return false;
 		FOREACH_END();
 	}
 	ExprId condition = statement->for_stmt.cond;
@@ -2454,17 +2464,9 @@ static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement
 		current = &compound_stmt->next;
 
 		// Copy and evaluate all the expressions in "incr"
-		VECEACH(incr_list, j)
-		{
-			assert(incr_list);
-			copy = expr_macro_copy(incr_list[j]);
-			if (!sema_analyse_expr(context, copy)) return false;
-			if (!expr_is_const(copy))
-			{
-				SEMA_ERROR(copy, "Expected a value that can be evaluated at compile time.");
-				return false;
-			}
-		}
+		FOREACH_BEGIN(Expr *expr, incr_list)
+			if (!sema_analyse_ct_expr(context, expr_macro_copy(expr))) return false;
+		FOREACH_END();
 	}
 	// Analysis is done turn the generated statements into a compound statement for lowering.
 	statement->ast_kind = AST_COMPOUND_STMT;

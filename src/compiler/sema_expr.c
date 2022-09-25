@@ -295,7 +295,7 @@ static inline Ast **context_push_returns(SemaContext *context)
 int sema_check_comp_time_bool(SemaContext *context, Expr *expr)
 {
 	if (!sema_analyse_cond_expr(context, expr)) return -1;
-	if (expr->expr_kind != EXPR_CONST)
+	if (!expr_is_const(expr))
 	{
 		SEMA_ERROR(expr, "Compile time evaluation requires a compile time constant value.");
 		return -1;
@@ -6585,7 +6585,13 @@ bool sema_analyse_ct_expr(SemaContext *context, Expr *expr)
 		expr->const_expr.typeid = cond_val->canonical;
 		expr->type = type_typeid;
 	}
-	return sema_cast_rvalue(context, expr);
+	if (!sema_cast_rvalue(context, expr)) return false;
+	if (!expr_is_const(expr))
+	{
+		SEMA_ERROR(expr, "Expected a compile time expression.");
+		return false;
+	}
+	return true;
 }
 
 bool sema_analyse_expr_lvalue_fold_const(SemaContext *context, Expr *expr)
@@ -6622,6 +6628,17 @@ bool sema_analyse_expr_lvalue(SemaContext *context, Expr *expr)
 bool sema_analyse_expr(SemaContext *context, Expr *expr)
 {
 	return sema_analyse_expr_lvalue(context, expr) && sema_cast_rvalue(context, expr);
+}
+
+bool sema_analyse_expr_require_const(SemaContext *context, Expr *expr)
+{
+	if (!sema_analyse_expr(context, expr)) return false;
+	if (!expr_is_const(expr))
+	{
+		SEMA_ERROR(expr, "Expected a constant expression.");
+		return false;
+	}
+	return true;
 }
 
 void expr_insert_widening_type(Expr *expr, Type *infer_type)

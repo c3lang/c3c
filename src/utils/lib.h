@@ -158,7 +158,7 @@ static inline char char_nibble_to_hex(int c);
 
 static inline uint32_t fnv1a(const char *key, uint32_t len);
 
-static inline uint32_t vec_size(const void *vec);
+INLINE uint32_t vec_size(const void *vec);
 static inline void vec_resize(void *vec, uint32_t new_size);
 static inline void vec_pop(void *vec);
 
@@ -343,7 +343,7 @@ static inline StringSlice slice_from_string(const char *data)
 	return (StringSlice) { data, strlen(data) };
 }
 
-static inline uint32_t vec_size(const void *vec)
+INLINE uint32_t vec_size(const void *vec)
 {
 	if (!vec) return 0;
 	const VHeader_ *header = vec;
