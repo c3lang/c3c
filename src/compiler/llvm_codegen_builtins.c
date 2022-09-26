@@ -285,7 +285,7 @@ void llvm_emit_int_with_bool_builtin(GenContext *c, unsigned intrinsic, BEValue 
 	LLVMValueRef arg_slots[2];
 	llvm_emit_intrinsic_args(c, args, arg_slots, 1);
 	arg_slots[1] = llvm_get_zero_raw(c->bool_type);
-	LLVMTypeRef call_type[1] = { LLVMTypeOf(arg_slots[1]) };
+	LLVMTypeRef call_type[1] = { LLVMTypeOf(arg_slots[0]) };
 	LLVMValueRef result = llvm_emit_call_intrinsic(c, intrinsic, call_type, 1, arg_slots, 2);
 	llvm_value_set(be_value, result, expr->type);
 }
