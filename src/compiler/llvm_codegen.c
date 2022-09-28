@@ -15,6 +15,7 @@ LLVMPassBuilderOptionsRef LLVMCreatePassBuilderOptions(void);
 void LLVMPassBuilderOptionsSetVerifyEach(LLVMPassBuilderOptionsRef Options, LLVMBool VerifyEach);
 void LLVMPassBuilderOptionsSetDebugLogging(LLVMPassBuilderOptionsRef Options, LLVMBool DebugLogging);
 void LLVMDisposePassBuilderOptions(LLVMPassBuilderOptionsRef Options);
+static void llvm_emit_constructors_and_destructors(GenContext *c);
 
 const char* llvm_version = LLVM_VERSION_STRING;
 const char* llvm_target = LLVM_DEFAULT_TARGET_TRIPLE;
@@ -78,6 +79,22 @@ LLVMValueRef llvm_emit_memclear_size_align(GenContext *c, LLVMValueRef ptr, uint
 	ptr = LLVMBuildBitCast(c->builder, ptr, llvm_get_type(c, type_get_ptr(type_char)), "");
 #endif
 	return LLVMBuildMemSet(c->builder, ptr, llvm_get_zero(c, type_char), llvm_const_int(c, type_usize, size), align);
+}
+
+INLINE void llvm_emit_xtor(GenContext *c, LLVMValueRef *list, const char *name)
+{
+	if (!list) return;
+	unsigned len = vec_size(list);
+	LLVMTypeRef type = LLVMTypeOf(list[0]);
+	LLVMValueRef array = LLVMConstArray(type, list, len);
+	LLVMValueRef global = LLVMAddGlobal(c->module, LLVMTypeOf(array), name);
+	LLVMSetLinkage(global, LLVMAppendingLinkage);
+	LLVMSetInitializer(global, array);
+}
+void llvm_emit_constructors_and_destructors(GenContext *c)
+{
+	llvm_emit_xtor(c, c->constructors, "llvm.global_ctors");
+	llvm_emit_xtor(c, c->destructors, "llvm.global_dtors");
 }
 
 /**
@@ -968,6 +985,8 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 		case DECL_TYPEDEF:
 		case DECL_UNION:
 		case DECL_DECLARRAY:
+		case DECL_INITIALIZE:
+		case DECL_FINALIZE:
 		case DECL_BODYPARAM:
 			UNREACHABLE;
 	}
@@ -988,6 +1007,9 @@ void *llvm_gen(Module *module)
 		gen_context->debug.compile_unit = unit->llvm.debug_compile_unit;
 		gen_context->debug.file = unit->llvm.debug_file;
 
+		FOREACH_BEGIN(Decl *initializer, unit->xxlizers)
+			llvm_emit_xxlizer(gen_context, initializer);
+		FOREACH_END();
 		VECEACH(unit->methods, i)
 		{
 			llvm_emit_function_decl(gen_context, unit->methods[i]);
@@ -1043,6 +1065,9 @@ void *llvm_gen(Module *module)
 
 		gencontext_end_file_emit(gen_context, unit);
 	}
+
+	llvm_emit_constructors_and_destructors(gen_context);
+
 	// EmitDeferred()
 
 	if (llvm_use_debug(gen_context))

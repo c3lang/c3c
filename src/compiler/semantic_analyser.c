@@ -167,6 +167,8 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 			case DECL_LABEL:
 			case DECL_CT_ASSERT:
 			case DECL_DECLARRAY:
+			case DECL_INITIALIZE:
+			case DECL_FINALIZE:
 				continue;
 			case DECL_ATTRIBUTE:
 				break;

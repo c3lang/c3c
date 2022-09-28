@@ -3575,7 +3575,7 @@ static inline void llvm_emit_force_unwrap_expr(GenContext *c, BEValue *be_value,
 		// TODO, we should add info about the error.
 		SourceSpan loc = expr->span;
 		File *file = source_file_by_id(loc.file_id);
-		llvm_emit_panic(c, "Runtime error force unwrap!", file->name, c->cur_func_decl->extname, loc.row ? loc.row : 1);
+		llvm_emit_panic(c, "Runtime error force unwrap!", file->name, c->cur_func.name, loc.row ? loc.row : 1);
 		LLVMBuildUnreachable(c->builder);
 		c->current_block = NULL;
 		c->current_block_is_target = false;
@@ -5254,7 +5254,7 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 					llvm_emit_block(c, next);
 				}
 				File  *file = source_file_by_id(expr->span.file_id);
-				llvm_emit_panic(c, "Attempted to access 'inner' on non composite type", file->name, c->cur_func_decl->name, expr->span.row);
+				llvm_emit_panic(c, "Attempted to access 'inner' on non composite type", file->name, c->cur_func.name, expr->span.row);
 				c->current_block = NULL;
 				c->current_block_is_target = false;
 				LLVMBuildUnreachable(c->builder);
@@ -5287,7 +5287,7 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 					llvm_emit_block(c, next);
 				}
 				File  *file = source_file_by_id(expr->span.file_id);
-				llvm_emit_panic(c, "Attempted to access 'names' on non enum/fault type.", file->name, c->cur_func_decl->name, expr->span.row);
+				llvm_emit_panic(c, "Attempted to access 'names' on non enum/fault type.", file->name, c->cur_func.name, expr->span.row);
 				c->current_block = NULL;
 				c->current_block_is_target = false;
 				LLVMBuildUnreachable(c->builder);
@@ -5324,7 +5324,7 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 					llvm_emit_block(c, next);
 				}
 				File  *file = source_file_by_id(expr->span.file_id);
-				llvm_emit_panic(c, "Attempted to access 'len' on non array type", file->name, c->cur_func_decl->name, expr->span.row);
+				llvm_emit_panic(c, "Attempted to access 'len' on non array type", file->name, c->cur_func.name, expr->span.row);
 				c->current_block = NULL;
 				c->current_block_is_target = false;
 				LLVMBuildUnreachable(c->builder);

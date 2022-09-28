@@ -1,1 +1,1 @@
-static int ifej; // #error: Expected a top level declaration here
+static int ifej; // #error: 'static' can only used with local variables
