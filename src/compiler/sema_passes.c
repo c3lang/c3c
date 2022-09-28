@@ -404,6 +404,10 @@ void sema_analysis_pass_decls(Module *module)
 		{
 			sema_analyse_decl(&context, unit->generic_defines[i]);
 		}
+		VECEACH(unit->xxlizers, i)
+		{
+			sema_analyse_decl(&context, unit->xxlizers[i]);
+		}
 		sema_context_destroy(&context);
 	}
 	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);

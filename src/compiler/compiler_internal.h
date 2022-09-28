@@ -37,6 +37,7 @@ typedef uint64_t BitSize;
 #define MAX_BITSTRUCT 0x1000
 #define MAX_MEMBERS ((MemberIndex)(((uint64_t)2) << 28))
 #define MAX_ALIGNMENT ((MemberIndex)(((uint64_t)2) << 28))
+#define MAX_PRIORITY 0xFFFF
 #define MAX_TYPE_SIZE UINT32_MAX
 #define MAX_GLOBAL_DECL_STACK (65536)
 #define MAX_ASM_INSTRUCTION_PARAMS 6
@@ -611,6 +612,11 @@ typedef struct
 	AstId parent;
 } LabelDecl;
 
+typedef struct
+{
+	unsigned priority;
+	AstId init;
+} InitializerDecl;
 
 
 
@@ -663,6 +669,7 @@ typedef struct Decl_
 	Type *type;
 	union
 	{
+		InitializerDecl xxlizer;
 		Decl** decl_list;
 		struct
 		{
@@ -1521,6 +1528,7 @@ struct CompilationUnit_
 	};
 	Decl **ct_ifs;
 	Decl **ct_asserts;
+	Decl **xxlizers;
 	Decl **vars;
 	Decl **macros;
 	Decl **methods;
@@ -1782,12 +1790,13 @@ extern const char *kw_std;
 extern const char *kw_max;
 extern const char *kw_min;
 extern const char *kw_elements;
+extern const char *kw_finalize;
 extern const char *kw_align;
-
 extern const char *kw_nameof;
 extern const char *kw_names;
 extern const char *kw_sizeof;
 extern const char *kw_in;
+extern const char *kw_initialize;
 extern const char *kw_out;
 extern const char *kw_inout;
 extern const char *kw_deprecated;

@@ -132,6 +132,8 @@ void decl_register(Decl *decl)
 	if (decl->visibility != VISIBLE_PUBLIC && decl->visibility != VISIBLE_EXTERN) return;
 	switch (decl->decl_kind)
 	{
+		case DECL_INITIALIZE:
+		case DECL_FINALIZE:
 		case DECL_POISONED:
 		case DECL_CT_CASE:
 		case DECL_CT_ELIF:
@@ -263,6 +265,10 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			return;
 		case DECL_CT_ASSERT:
 			vec_add(unit->ct_asserts, decl);
+			return;
+		case DECL_INITIALIZE:
+		case DECL_FINALIZE:
+			vec_add(unit->xxlizers, decl);
 			return;
 	}
 	DEBUG_LOG("Registering symbol '%s' in %s.", decl->name, unit->module->name->module);

@@ -5,6 +5,7 @@
 static Decl *parse_const_declaration(ParseContext *c, Visibility visibility);
 static inline Decl *parse_func_definition(ParseContext *c, Visibility visibility, AstId docs, bool is_interface);
 static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl);
+static inline Decl *parse_static_top_level(ParseContext *c);
 
 #define DECL_VAR_NEW(type__, var__, visible__) decl_new_var(symstr(c), c->span, type__, var__, visible__);
 
@@ -53,6 +54,7 @@ void recover_top_level(ParseContext *c)
 			case TOKEN_STRUCT:
 			case TOKEN_UNION:
 			case TOKEN_BITSTRUCT:
+			case TOKEN_STATIC:
 			case TYPELIKE_TOKENS:
 				// Only recover if this is in the first col.
 				if (c->span.col == 1) return;
@@ -2173,6 +2175,37 @@ static inline Decl *parse_func_definition(ParseContext *c, Visibility visibility
 	return func;
 }
 
+static inline Decl *parse_static_top_level(ParseContext *c)
+{
+	advance_and_verify(c, TOKEN_STATIC);
+	Decl *init = decl_calloc();
+	if (!tok_is(c, TOKEN_IDENT))
+	{
+		if (token_is_any_type(c->tok))
+		{
+			SEMA_ERROR_HERE("'static' can only used with local variables, to hide global variables and functions, use 'private'.");
+			return poisoned_decl;
+		}
+		SEMA_ERROR_HERE("Expected 'static initialize' or 'static finalize'.");
+		return poisoned_decl;
+	}
+	init->decl_kind = DECL_INITIALIZE;
+	if (c->data.string == kw_finalize)
+	{
+		init->decl_kind = DECL_FINALIZE;
+	}
+	else if (c->data.string != kw_initialize)
+	{
+		SEMA_ERROR_HERE("Expected 'static initialize' or 'static finalize'.");
+		return poisoned_decl;
+	}
+	advance(c);
+	Attr *attr = NULL;
+	if (!parse_attributes(c, &init->attributes)) return poisoned_decl;
+	ASSIGN_ASTID_OR_RET(init->xxlizer.init, parse_compound_stmt(c), poisoned_decl);
+	RANGE_EXTEND_PREV(init);
+	return init;
+}
 
 static inline bool check_no_visibility_before(ParseContext *c, Visibility visibility)
 {
@@ -2520,6 +2553,17 @@ Decl *parse_top_level_statement(ParseContext *c)
 		case TOKEN_FN:
 		{
 			ASSIGN_DECL_OR_RET(decl, parse_func_definition(c, visibility, docs, false), poisoned_decl);
+			break;
+		}
+		case TOKEN_STATIC:
+		{
+			if (!check_no_visibility_before(c, visibility)) return poisoned_decl;
+			ASSIGN_DECL_OR_RET(decl, parse_static_top_level(c), poisoned_decl);
+			if (docs)
+			{
+				SEMA_ERROR(astptr(docs), "Unexpected doc comment before 'static', did you mean to use a regular comment?");
+				return poisoned_decl;
+			}
 			break;
 		}
 		case TOKEN_CT_ASSERT:

@@ -477,6 +477,8 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 		case DECL_TYPEDEF:
 		case DECL_DECLARRAY:
 		case DECL_BODYPARAM:
+		case DECL_INITIALIZE:
+		case DECL_FINALIZE:
 			UNREACHABLE
 		case DECL_POISONED:
 			return expr_poison(expr);

@@ -181,7 +181,7 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 
 	LLVMBasicBlockRef error_return_block = NULL;
 	LLVMValueRef error_out = NULL;
-	if (type_is_optional(c->cur_func_decl->type->function.prototype->rtype))
+	if (c->cur_func.prototype && type_is_optional(c->cur_func.prototype->rtype))
 	{
 		error_return_block = llvm_basic_block_new(c, "err_retblock");
 		error_out = llvm_emit_alloca_aligned(c, type_anyerr, "reterr");
@@ -467,7 +467,7 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 			SourceSpan loc = ast->span;
 			File  *file = source_file_by_id(loc.file_id);
 
-			llvm_emit_panic(c, "Infinite loop found", file->name, c->cur_func_decl->extname, loc.row ? loc.row : 1);
+			llvm_emit_panic(c, "Infinite loop found", file->name, c->cur_func.name, loc.row ? loc.row : 1);
 			LLVMBuildUnreachable(c->builder);
 			LLVMBasicBlockRef block = llvm_basic_block_new(c, "unreachable_block");
 			c->current_block = NULL;
@@ -1001,7 +1001,7 @@ static inline void llvm_emit_assert_stmt(GenContext *c, Ast *ast)
 			error = "Assert violation";
 		}
 		File  *file = source_file_by_id(loc.file_id);
-		llvm_emit_panic(c, error, file->name, c->cur_func_decl->name, loc.row ? loc.row : 1);
+		llvm_emit_panic(c, error, file->name, c->cur_func.name, loc.row ? loc.row : 1);
 		llvm_emit_br(c, on_ok);
 		llvm_emit_block(c, on_ok);
 	}
@@ -1298,7 +1298,7 @@ void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_na
 	llvm_emit_cond_br(c, value, panic_block, ok_block);
 	llvm_emit_block(c, panic_block);
 	File  *file = source_file_by_id(loc.file_id);
-	llvm_emit_panic(c, panic_name, file->name, c->cur_func_decl->name, loc.row);
+	llvm_emit_panic(c, panic_name, file->name, c->cur_func.name, loc.row);
 	llvm_emit_br(c, ok_block);
 	llvm_emit_block(c, ok_block);
 }
@@ -1312,7 +1312,7 @@ void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *pani
 	llvm_value_set_bool(&be_value, value);
 	llvm_emit_cond_br(c, &be_value, panic_block, ok_block);
 	llvm_emit_block(c, panic_block);
-	llvm_emit_panic(c, panic_name, file->name, c->cur_func_decl->name, loc.row ? loc.row : 1);
+	llvm_emit_panic(c, panic_name, file->name, c->cur_func.name, loc.row ? loc.row : 1);
 	llvm_emit_br(c, ok_block);
 	llvm_emit_block(c, ok_block);
 }

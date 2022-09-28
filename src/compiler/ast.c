@@ -87,6 +87,8 @@ Decl *decl_new_with_type(const char *name, SourceSpan loc, DeclKind decl_type, V
 		case DECL_CT_ASSERT:
 		case DECL_DECLARRAY:
 		case DECL_BODYPARAM:
+		case DECL_INITIALIZE:
+		case DECL_FINALIZE:
 			UNREACHABLE
 	}
 	Type *type = type_new(kind, name ? name : "$anon");
@@ -156,6 +158,10 @@ const char *decl_to_a_name(Decl *decl)
 			return "a struct";
 		case DECL_UNION:
 			return "a union";
+		case DECL_INITIALIZE:
+			return "a static initializer";
+		case DECL_FINALIZE:
+			return "a static finalizer";
 		case DECL_VAR:
 			switch (decl->var.kind)
 			{

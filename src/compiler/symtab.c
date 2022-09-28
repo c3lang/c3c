@@ -57,16 +57,18 @@ const char *kw_check_assign;
 const char *kw_deprecated;
 const char *kw_distinct;
 const char *kw_elements;
+const char *kw_finalize;
 const char *kw_in;
 const char *kw_incr;
 const char *kw_inf;
+const char *kw_initialize;
 const char *kw_inline;
 const char *kw_inner;
 const char *kw_inout;
 const char *kw_kind;
 const char *kw_len;
-const char *kw_mainstub;
 const char *kw_main;
+const char *kw_mainstub;
 const char *kw_max;
 const char *kw_min;
 const char *kw_nameof;
@@ -82,8 +84,8 @@ const char *kw_sizeof;
 const char *kw_std;
 const char *kw_std__core;
 const char *kw_std__core__types;
-const char *kw_typekind;
 const char *kw_type;
+const char *kw_typekind;
 const char *kw_values;
 
 void symtab_destroy()
@@ -142,7 +144,9 @@ void symtab_init(uint32_t capacity)
 	kw_deprecated = KW_DEF("deprecated");
 	kw_distinct = KW_DEF("distinct");
 	kw_elements = KW_DEF("elements");
+	kw_finalize = KW_DEF("finalize");
 	kw_in = KW_DEF("in");
+	kw_initialize = KW_DEF("initialize");
 	kw_incr = KW_DEF("incr");
 	kw_inf = KW_DEF("inf");
 	kw_inline = KW_DEF("inline");
@@ -262,6 +266,7 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_OPERATOR] = KW_DEF("@operator");
 	attribute_list[ATTRIBUTE_OVERLAP] = KW_DEF("@overlap");
 	attribute_list[ATTRIBUTE_PACKED] = KW_DEF("@packed");
+	attribute_list[ATTRIBUTE_PRIORITY] = KW_DEF("@priority");
 	attribute_list[ATTRIBUTE_PURE] = kw_at_pure;
 	attribute_list[ATTRIBUTE_REFLECT] = KW_DEF("@reflect");
 	attribute_list[ATTRIBUTE_REGCALL] = KW_DEF("@regcall");

@@ -5,6 +5,8 @@
 #include "llvm/Object/ArchiveWriter.h"
 #include "llvm/Object/IRObjectFile.h"
 #include "llvm/Object/SymbolicFile.h"
+#include "llvm-c/TargetMachine.h"
+#include "llvm/Target/TargetMachine.h"
 
 #if LLVM_VERSION_MAJOR > 13
 #define LINK_SIG \
@@ -166,6 +168,12 @@ extern "C" {
 	}
 
 	int llvm_version_major = LLVM_VERSION_MAJOR;
+
+	void LLVMSetTargetMachineUseInitArray(LLVMTargetMachineRef ref, bool use_init_array)
+	{
+		auto machine = reinterpret_cast<llvm::TargetMachine *>(ref);
+		machine->Options.UseInitArray = use_init_array;
+	}
 
 	LLVMValueRef LLVMConstBswap(LLVMValueRef ConstantVal)
 	{
