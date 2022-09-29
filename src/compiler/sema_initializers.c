@@ -39,8 +39,14 @@ static inline void sema_update_const_initializer_with_designator(
 		DesignatorElement **curr,
 		DesignatorElement **end,
 		Expr *value);
+static inline ConstantEvalKind env_eval_type(SemaContext *context);
 
 
+
+static inline ConstantEvalKind env_eval_type(SemaContext *context)
+{
+	return context->call_env.kind == CALL_ENV_GLOBAL_INIT ? CONSTANT_EVAL_GLOBAL_INIT : CONSTANT_EVAL_LOCAL_INIT;
+}
 
 static inline void sema_not_enough_elements_error(Expr *initializer, int element)
 {
@@ -162,7 +168,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 	// 6. There's the case of too few values as well. Mark the last field as wrong.
 	assert(elements_needed <= size);
 	initializer->resolve_status = RESOLVE_DONE;
-	if (expr_is_constant_eval(initializer, context->current_function ? CONSTANT_EVAL_LOCAL_INIT : CONSTANT_EVAL_GLOBAL_INIT))
+	if (expr_is_constant_eval(initializer, env_eval_type(context)))
 	{
 		bool is_union = type_flatten_distinct(initializer->type)->type_kind == TYPE_UNION;
 		assert(!is_union || vec_size(elements) == 1);
@@ -254,7 +260,7 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 	}
 
 	initializer->resolve_status = RESOLVE_DONE;
-	if (expr_is_constant_eval(initializer, context->current_function ? CONSTANT_EVAL_LOCAL_INIT : CONSTANT_EVAL_GLOBAL_INIT))
+	if (expr_is_constant_eval(initializer, env_eval_type(context)))
 	{
 		ConstInitializer *const_init = CALLOCS(ConstInitializer);
 		const_init->kind = CONST_INIT_ARRAY_FULL;
@@ -326,7 +332,7 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 		initializer->type = sema_type_lower_by_size(initializer->type, (ArraySize)(max_index + 1));
 	}
 	initializer->resolve_status = RESOLVE_DONE;
-	if (expr_is_constant_eval(initializer, context->current_function ? CONSTANT_EVAL_LOCAL_INIT : CONSTANT_EVAL_GLOBAL_INIT))
+	if (expr_is_constant_eval(initializer, env_eval_type(context)))
 	{
 		ConstInitializer *const_init = MALLOCS(ConstInitializer);
 		sema_create_const_initializer_from_designated_init(const_init, initializer);

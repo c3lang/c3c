@@ -1314,7 +1314,6 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 			UNREACHABLE
 		case TYPE_VOID:
 			UNREACHABLE
-		case TYPE_TYPEID:
 		case TYPE_DISTINCT:
 		case TYPE_FUNC:
 		case TYPE_TYPEDEF:
@@ -1353,6 +1352,7 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 			if (to == type_bool) return float_to_bool(expr, to_type);
 			if (type_is_float(to)) return float_to_float(expr, to, to_type);
 			break;
+		case TYPE_TYPEID:
 		case TYPE_POINTER:
 			if (type_is_integer(to)) return pointer_to_integer(expr, to_type);
 			if (to->type_kind == TYPE_BOOL) return pointer_to_bool(expr, to_type);

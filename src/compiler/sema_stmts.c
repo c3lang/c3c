@@ -403,12 +403,12 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 
 	// Process any ensures.
 	AstId cleanup = context_get_defers(context, context->active_scope.defer_last, 0);
-	if (context->ensures)
+	if (context->call_env.ensures)
 	{
 		AstId first = 0;
 		AstId *append_id = &first;
 		// Creating an assign statement
-		AstId doc_directive = context->current_function->func_decl.docs;
+		AstId doc_directive = context->call_env.current_function->func_decl.docs;
 		context->return_expr = return_expr;
 		while (doc_directive)
 		{
@@ -2268,7 +2268,7 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 		AstId *current = &start;
 		for (unsigned i = 0; i < count; i++)
 		{
-			Ast *compound_stmt = ast_macro_copy(body);
+			Ast *compound_stmt = copy_ast_single(body);
 			if (expressions)
 			{
 				value->var.init_expr = expressions[i];
@@ -2442,8 +2442,8 @@ static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement
 	for (int i = 0; i < MAX_MACRO_ITERATIONS; i++)
 	{
 		// First evaluate the cond, which we note that we *must* have.
-		// we need to make a cop
-		Expr *copy = expr_macro_copy(exprptr(condition));
+		// we need to make a copy
+		Expr *copy = copy_expr_single(exprptr(condition));
 		if (!sema_analyse_cond_expr(context, copy)) return false;
 		if (!expr_is_const(copy))
 		{
@@ -2454,7 +2454,7 @@ static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement
 		if (!copy->const_expr.b) break;
 
 		// Otherwise we copy the body.
-		Ast *compound_stmt = ast_macro_copy(body);
+		Ast *compound_stmt = copy_ast_single(body);
 
 		// Analyse the body
 		if (!sema_analyse_compound_statement_no_scope(context, compound_stmt)) return false;
@@ -2465,7 +2465,7 @@ static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement
 
 		// Copy and evaluate all the expressions in "incr"
 		FOREACH_BEGIN(Expr *expr, incr_list)
-			if (!sema_analyse_ct_expr(context, expr_macro_copy(expr))) return false;
+			if (!sema_analyse_ct_expr(context, copy_expr_single(expr))) return false;
 		FOREACH_END();
 	}
 	// Analysis is done turn the generated statements into a compound statement for lowering.
@@ -2687,7 +2687,7 @@ bool sema_analyse_contracts(SemaContext *context, AstId doc, AstId **asserts)
 				break;
 			case DOC_DIRECTIVE_ENSURE:
 				if (!sema_analyse_ensure(context, directive)) return false;
-				context->ensures = true;
+				context->call_env.ensures = true;
 				break;
 		}
 		doc = directive->next;
@@ -2700,8 +2700,11 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 	if (!decl_ok(func)) return false;
 	Signature *signature = &func->func_decl.signature;
 	FunctionPrototype *prototype = func->type->function.prototype;
-	context->current_function = func;
-	context->current_function_pure = func->func_decl.signature.attrs.is_pure;
+	context->call_env = (CallEnv) {
+		.current_function = func,
+		.kind = CALL_ENV_FUNCTION,
+		.pure = func->func_decl.signature.attrs.is_pure
+	};
 	context->rtype = prototype->rtype;
 	context->active_scope = (DynamicScope) {
 			.scope_id = 0,
@@ -2717,7 +2720,6 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 	context->next_target = 0;
 	context->next_switch = 0;
 	context->break_target = 0;
-	context->ensures = false;
 	assert(func->func_decl.body);
 	Ast *body = astptr(func->func_decl.body);
 	SCOPE_START

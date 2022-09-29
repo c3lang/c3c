@@ -114,6 +114,11 @@ macro bool is_comparable($Type)
 	$endif;
 }
 
+macro bool is_equatable($Type)
+{
+	return $checks($Type a, a == a);
+}
+
 macro bool is_subarray_convertable($Type)
 {
 	$switch ($Type.kind):
@@ -180,7 +185,7 @@ macro bool is_equatable_value(value)
 	$if ($defined(value.less) || $defined(value.compare_to) || $defined(value.equals)):
 		return true;
 	$else:
-		return is_comparable($typeof(value));
+		return is_equatable($typeof(value));
 	$endif;
 }
 

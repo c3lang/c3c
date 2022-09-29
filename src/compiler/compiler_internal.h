@@ -1553,6 +1553,28 @@ typedef struct ParseContext_
 	Lexer lexer;
 } ParseContext;
 
+typedef enum
+{
+	CALL_ENV_GLOBAL_INIT,
+	CALL_ENV_FUNCTION,
+	CALL_ENV_INITIALIZER,
+	CALL_ENV_FINALIZER,
+	CALL_ENV_CHECKS,
+	CALL_ENV_ATTR,
+} CallEnvKind;
+
+typedef struct
+{
+	CallEnvKind kind : 8;
+	bool ensures : 1;
+	bool pure : 1;
+	union
+	{
+		Decl *attr_declaration;
+		Decl *current_function;
+	};
+} CallEnv;
+
 typedef struct SemaContext_
 {
 	Module *core_module;
@@ -1560,12 +1582,7 @@ typedef struct SemaContext_
 	CompilationUnit *unit;
 	// Compiled in this unit.
 	CompilationUnit *compilation_unit;
-	Decl *current_function;
-	struct
-	{
-		bool current_function_pure : 1;
-		bool ensures : 1;
-	};
+	CallEnv call_env;
 	Decl *current_macro;
 	ScopeId scope_id;
 	Ast *break_target;
@@ -1751,6 +1768,7 @@ typedef struct CopyStruct_
 	CopyFixup fixups[MAX_FIXUPS];
 	CopyFixup *current_fixup;
 	bool single_static;
+	bool copy_in_use;
 } CopyStruct;
 
 
@@ -1979,20 +1997,14 @@ UNUSED bool i128_get_bit(const Int128 *op, int bit);
 #define MACRO_COPY_ASTID(x) x = astid_copy_deep(c, x)
 
 
-Expr *expr_macro_copy(Expr *source_expr);
-Decl **decl_copy_list(Decl **decl_list);
-Ast *ast_macro_copy(Ast *source_ast);
-Ast *ast_defer_copy(Ast *source_ast);
-Decl *decl_macro_copy(Decl *source_decl);
-
-Expr **copy_expr_list(CopyStruct *c, Expr **expr_list);
-Expr *copy_expr(CopyStruct *c, Expr *source_expr);
-Ast *ast_copy_deep(CopyStruct *c, Ast *source);
-Ast **copy_ast_list(CopyStruct *c, Ast **to_copy);
-Decl *copy_decl(CopyStruct *c, Decl *decl);
-Decl **copy_decl_list(CopyStruct *c, Decl **decl_list);
-TypeInfo *copy_type_info(CopyStruct *c, TypeInfo *source);
-
+void copy_begin(void);
+void copy_end(void);
+Expr *copy_expr_single(Expr *source_expr);
+Decl **copy_decl_list_single(Decl **decl_list);
+Ast *copy_ast_single(Ast *source_ast);
+Decl **copy_decl_list_macro(Decl **decl_list);
+Ast *copy_ast_macro(Ast *source_ast);
+Ast *copy_ast_defer(Ast *source_ast);
 
 void init_asm(void);
 AsmRegister *asm_reg_by_name(const char *name);
