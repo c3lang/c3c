@@ -535,7 +535,7 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 				UNREACHABLE
 			}
 			if (type_is_abi_aggregate(decl->type)) return true;
-			expr_replace(expr, expr_macro_copy(decl->var.init_expr));
+			expr_replace(expr, copy_expr_single(decl->var.init_expr));
 			return sema_analyse_expr(context, expr);
 		case VARDECL_PARAM_EXPR:
 			UNREACHABLE
@@ -548,7 +548,7 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 			// Impossible to reach this, they are already unfolded
 			UNREACHABLE
 		case VARDECL_PARAM_REF:
-			expr_replace(expr, expr_macro_copy(decl->var.init_expr));
+			expr_replace(expr, copy_expr_single(decl->var.init_expr));
 			return sema_cast_rvalue(context, expr);
 		case VARDECL_PARAM:
 		case VARDECL_GLOBAL:
@@ -590,7 +590,7 @@ static inline bool sema_expr_analyse_ternary(SemaContext *context, Expr *expr)
 		}
 		if (expr_is_constant_eval(cond, true))
 		{
-			Expr *copy = expr_macro_copy(cond);
+			Expr *copy = copy_expr_single(cond);
 			cast(copy, type_bool);
 			assert(cond->expr_kind == EXPR_CONST);
 			path = cond->const_expr.b ? 1 : 0;
@@ -760,7 +760,7 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 			case VARDECL_CONST:
 				if (!decl->type)
 				{
-					Expr *copy = expr_macro_copy(decl->var.init_expr);
+					Expr *copy = copy_expr_single(decl->var.init_expr);
 					if (!sema_analyse_expr(context, copy)) return false;
 					if (!expr_is_constant_eval(copy, false))
 					{
@@ -777,7 +777,7 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 				}
 				break;
 			case VARDECL_GLOBAL:
-				if (context->current_function_pure)
+				if (context->call_env.pure)
 				{
 					SEMA_ERROR(expr, "'@pure' functions may not access globals.");
 					return false;
@@ -828,7 +828,7 @@ static inline bool sema_expr_analyse_hash_identifier(SemaContext *context, Expr 
 
 	assert(decl->decl_kind == DECL_VAR);
 
-	expr_replace(expr, expr_macro_copy(decl->var.init_expr));
+	expr_replace(expr, copy_expr_single(decl->var.init_expr));
 	REMINDER("Remove analysis for hash");
 	if (!sema_analyse_expr_lvalue_fold_const(decl->var.hash_var.context, expr))
 	{
@@ -994,9 +994,8 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
 				return false;
 			}
 
-			// 8g. Set the parameter and update failability.
+			// 8g. Set the parameter
 			actual_args[index] = arg->designator_expr.value;
-			*failable |= IS_OPTIONAL(arg->designator_expr.value);
 			continue;
 		}
 
@@ -1060,7 +1059,7 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
 		Expr *init_expr = param->var.init_expr;
 		if (init_expr)
 		{
-			Expr *arg = actual_args[i] = expr_macro_copy(init_expr);
+			Expr *arg = actual_args[i] = copy_expr_single(init_expr);
 			if (arg->resolve_status != RESOLVE_DONE)
 			{
 
@@ -1294,6 +1293,7 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 				// &foo
 				if (!sema_analyse_expr_lvalue(context, arg)) return false;
 				if (!sema_expr_check_assign(context, arg)) return false;
+				*failable |= IS_OPTIONAL(arg);
 				if (!sema_call_check_inout_param_match(context, param, arg)) return false;
 				if (arg->type == type_untypedlist)
 				{
@@ -1388,7 +1388,7 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Type 
 			.params = sig->params,
 			.signature = sig,
 	};
-	if (context->current_function_pure && !sig->attrs.is_pure && !expr->call_expr.attr_pure)
+	if (context->call_env.pure && !sig->attrs.is_pure && !expr->call_expr.attr_pure)
 	{
 		SEMA_ERROR(expr, "Only '@pure' functions may be called, you can override this with an attribute.");
 		return false;
@@ -1543,7 +1543,12 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 {
 	assert(decl->decl_kind == DECL_MACRO);
 
-	Decl **params = decl_copy_list(decl->func_decl.signature.params);
+	copy_begin();
+	Decl **params = copy_decl_list_macro(decl->func_decl.signature.params);
+	Ast *body = copy_ast_macro(astptr(decl->func_decl.body));
+	AstId docs = decl->func_decl.docs;
+	if (docs) docs = astid(copy_ast_macro(astptr(docs)));
+	copy_end();
 	CalledDecl callee = {
 			.macro = true,
 			.name = decl->name,
@@ -1628,7 +1633,6 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		if (!body_arg->alignment) body_arg->alignment = type_alloca_alignment(body_arg->type);
 	}
 
-	Ast *body = ast_macro_copy(astptr(decl->func_decl.body));
 
 	DynamicScope old_scope = context->active_scope;
 	context_change_scope_with_flags(context, SCOPE_NONE);
@@ -1638,7 +1642,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	Type *rtype = NULL;
 	sema_context_init(&macro_context, decl->unit);
 	macro_context.compilation_unit = context->unit;
-	macro_context.current_function = context->current_function;
+	macro_context.call_env = context->call_env;
 	rtype = decl->func_decl.signature.rtype ? type_infoptr(decl->func_decl.signature.rtype)->type : NULL;
 	macro_context.expected_block_type = rtype;
 	bool may_failable = true;
@@ -1681,7 +1685,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	AstId assert_first = 0;
 	AstId* next = &assert_first;
 
-	if (!sema_analyse_contracts(&macro_context, decl->func_decl.docs, &next)) return false;
+	if (!sema_analyse_contracts(&macro_context, docs, &next)) return false;
 	sema_append_contract_asserts(assert_first, body);
 
 	if (!sema_analyse_statement(&macro_context, body)) goto EXIT_FAIL;
@@ -1873,7 +1877,7 @@ static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *c
 			Decl *param = params[i];
 			if (!sema_add_local(context, param)) return SCOPE_POP_ERROR();
 		}
-		Ast *ast = ast_macro_copy(macro_context->yield_body);
+		Ast *ast = copy_ast_single(macro_context->yield_body);
 		call->body_expansion_expr.first_stmt = astid(ast);
 		if (!sema_analyse_statement(context, ast)) return SCOPE_POP_ERROR();
 		assert(ast->ast_kind == AST_COMPOUND_STMT);
@@ -3138,8 +3142,6 @@ CHECK_DEEPER:
 	if (flat_type->type_kind == TYPE_TYPEID)
 	{
 		if (sema_expr_rewrite_to_typeid_property(context, expr, parent, kw)) return true;
-		SEMA_ERROR(identifier, "'%s' is not a valid property for typeid.", kw);
-		return false;
 	}
 
 	// Hard coded ptr on subarrays and variant
@@ -3229,7 +3231,7 @@ CHECK_DEEPER:
 	if (member && decl_is_enum_kind(decl) && member->decl_kind == DECL_VAR && parent->expr_kind == EXPR_CONST)
 	{
 		assert(parent->const_expr.const_kind == CONST_ENUM);
-		Expr *copy_init = expr_macro_copy(current_parent->const_expr.enum_val->enum_constant.args[member->var.index]);
+		Expr *copy_init = copy_expr_single(current_parent->const_expr.enum_val->enum_constant.args[member->var.index]);
 		expr_replace(expr, copy_init);
 		return true;
 	}
@@ -5343,7 +5345,7 @@ static inline bool sema_expr_analyse_catch(SemaContext *context, Expr *expr)
 
 static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr)
 {
-	if (!context->current_function)
+	if (context->call_env.kind != CALL_ENV_FUNCTION && context->call_env.kind != CALL_ENV_CHECKS)
 	{
 		SEMA_ERROR(expr, "Rethrow cannot be used outside of a function.");
 		return false;
@@ -5521,13 +5523,28 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 	}
 	if (string == kw_FUNC)
 	{
-		if (!context->current_function)
+		switch (context->call_env.kind)
 		{
-			expr_rewrite_to_string(expr, "<GLOBAL>");
-			return true;
+			case CALL_ENV_GLOBAL_INIT:
+				expr_rewrite_to_string(expr, "<GLOBAL>");
+				return true;
+			case CALL_ENV_CHECKS:
+				expr_rewrite_to_string(expr, "<CHECKS>");
+				return true;
+			case CALL_ENV_FUNCTION:
+				expr_rewrite_to_string(expr, context->call_env.current_function->name);
+				return true;
+			case CALL_ENV_INITIALIZER:
+				expr_rewrite_to_string(expr, "<static initializer>");
+				return true;
+			case CALL_ENV_FINALIZER:
+				expr_rewrite_to_string(expr, "<static finalizer>");
+				return true;
+			case CALL_ENV_ATTR:
+				expr_rewrite_to_string(expr, "<attribute>");
+				return true;
 		}
-		expr_rewrite_to_string(expr, context->current_function->name);
-		return true;
+		UNREACHABLE
 	}
 	if (string == kw_LINEREAL)
 	{
@@ -5969,6 +5986,8 @@ static inline Expr *sema_ct_checks_exprlist_compiles(SemaContext *context, Expr 
 	Expr *failed = NULL;
 	bool suppress_error = global_context.suppress_errors;
 	global_context.suppress_errors = true;
+	CallEnvKind eval_kind = context->call_env.kind;
+	context->call_env.kind = CALL_ENV_CHECKS;
 	SCOPE_START_WITH_FLAGS(SCOPE_CHECKS);
 		FOREACH_BEGIN(Expr *expr, exprlist->expression_list)
 			if (!sema_analyse_expr(context, expr))
@@ -5978,6 +5997,7 @@ static inline Expr *sema_ct_checks_exprlist_compiles(SemaContext *context, Expr 
 			}
 		FOREACH_END();
 	SCOPE_END;
+	context->call_env.kind = eval_kind;
 	global_context.suppress_errors = suppress_error;
 	return failed;
 }
@@ -6137,14 +6157,14 @@ static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Expr *expr)
 		{
 			// An expr argument, this means we copy and evaluate.
 			ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, exprptr(expr->ct_arg_expr.arg)), false);
-			expr_replace(expr, expr_macro_copy(arg_expr));
+			expr_replace(expr, copy_expr_single(arg_expr));
 			return true;
 		}
 		case TOKEN_CT_VACONST:
 		{
 			// An expr argument, this means we copy and evaluate.
 			ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, exprptr(expr->ct_arg_expr.arg)), false);
-			arg_expr = expr_macro_copy(arg_expr);
+			arg_expr = copy_expr_single(arg_expr);
 			if (!expr_is_constant_eval(arg_expr, CONSTANT_EVAL_CONSTANT_VALUE))
 			{
 				SEMA_ERROR(arg_expr, "This argument needs to be a compile time constant.");
@@ -6517,7 +6537,7 @@ bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allo
 static inline bool sema_cast_ct_ident_rvalue(SemaContext *context, Expr *expr)
 {
 	Decl *decl = expr->ct_ident_expr.decl;
-	Expr *copy = expr_macro_copy(decl->var.init_expr);
+	Expr *copy = copy_expr_single(decl->var.init_expr);
 	if (!sema_analyse_expr(context, copy)) return false;
 	expr_replace(expr, copy);
 	return true;

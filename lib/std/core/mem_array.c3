@@ -24,9 +24,9 @@ macro talloc($Type, usize elements)
 /**
  * @require (usize.max / elements > $Type.sizeof)
  **/
-macro make($Type, usize elements)
+macro make($Type, usize elements, Allocator* allocator = mem::current_allocator())
 {
-    $Type* ptr = calloc($Type.sizeof * elements);
+    $Type* ptr = allocator.calloc($Type.sizeof * elements)!!;
     return ptr[:elements];
 }
 

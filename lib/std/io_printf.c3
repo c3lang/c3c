@@ -1,4 +1,5 @@
 module std::io;
+import std::map;
 import libc;
 
 const int PRINTF_NTOA_BUFFER_SIZE = 256;
@@ -13,6 +14,7 @@ fault PrintFault
 	INVALID_FORMAT_STRING,
 	MISSING_ARG,
 }
+
 bitstruct PrintFlags : uint
 {
 	bool zeropad : 0;
@@ -36,15 +38,43 @@ struct PrintParam
 }
 
 define OutputFn = fn void!(char c, void* buffer, usize buffer_idx);
+define PrintFunction = fn char[](void* value, Allocator *allocator);
+
+private define PrintFunctionMap = std::map::HashMap<typeid, PrintFunction>;
+private PrintFunctionMap print_functions;
+
+/**
+ * @require $checks($Type {}.to_string()) "Expected a type with 'to_string' defined"
+ * @require $checks($Type a, Allocator b, a.to_string(&b)) "Expected 'to_string' to take an allocator as argument."
+ **/
+macro void printf_register_to_string($Type)
+{
+	printf_register($Type.typeid, (PrintFunction)&$Type.to_string);
+}
+
+fn void printf_register(typeid type, PrintFunction function)
+{
+	if (!print_functions.table.len)
+	{
+		print_functions.init(512);
+	}
+	print_functions.set(type, function);
+}
 
 fn void! PrintParam.out(PrintParam* param, char c)
 {
-
 	param.outfn(c, param.buffer, param.idx++)?;
 }
 
 private fn void! out_str(PrintParam* param, variant arg)
 {
+	@pool()
+	{
+		if (try print_func = print_functions.get(arg.type))
+		{
+			return out_substr(param, print_func(arg.ptr, mem::temp_allocator()));
+        }
+	};
 	switch (arg.type.kind)
 	{
 		case TYPEID:

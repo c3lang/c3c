@@ -67,7 +67,7 @@ AstId context_get_defers(SemaContext *context, AstId defer_top, AstId defer_bott
 	while (defer_bottom != defer_top)
 	{
 		Ast *defer = astptr(defer_top);
-		Ast *defer_body = ast_defer_copy(astptr(defer->defer_stmt.body));
+		Ast *defer_body = copy_ast_defer(astptr(defer->defer_stmt.body));
 		*next = astid(defer_body);
 		next = &defer_body->next;
 		defer_top = defer->defer_stmt.prev_defer;
@@ -84,7 +84,7 @@ void context_pop_defers(SemaContext *context, AstId *next)
 		while (defer_current != defer_start)
 		{
 			Ast *defer = astptr(defer_current);
-			Ast *defer_body = ast_defer_copy(astptr(defer->defer_stmt.body));
+			Ast *defer_body = copy_ast_defer(astptr(defer->defer_stmt.body));
 			*next = astid(defer_body);
 			next = &defer_body->next;
 			defer_current = defer->defer_stmt.prev_defer;
@@ -169,24 +169,16 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 			case DECL_DECLARRAY:
 			case DECL_INITIALIZE:
 			case DECL_FINALIZE:
+			case DECL_CT_IF:
+			case DECL_CT_SWITCH:
 				continue;
 			case DECL_ATTRIBUTE:
 				break;
 			case DECL_CT_CASE:
-//				register_generic_decls(module, decl->ct_case_decl.body);
-				continue;
 			case DECL_CT_ELIF:
-//				register_generic_decls(module, decl->ct_elif_decl.then);
-				continue;
 			case DECL_CT_ELSE:
-//				register_generic_decls(module, decl->ct_else_decl);
-				continue;
-			case DECL_CT_IF:
-//				register_generic_decls(module, decl->ct_if_decl.then);
-				continue;
-			case DECL_CT_SWITCH:
-//				register_generic_decls(module, decl->ct_switch_decl.cases);
-				continue;
+			case DECL_BODYPARAM:
+				UNREACHABLE
 			case DECL_MACRO:
 			case DECL_DEFINE:
 			case DECL_DISTINCT:
@@ -199,13 +191,11 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 			case DECL_UNION:
 			case DECL_VAR:
 			case DECL_BITSTRUCT:
-			case DECL_BODYPARAM:
 				break;
 		}
 		htable_set(&unit->module->symbols, decl->name, decl);
 		if (decl->visibility == VISIBLE_PUBLIC) global_context_add_generic_decl(decl);
 	}
-
 }
 
 
@@ -364,7 +354,7 @@ SemaContext *context_transform_for_eval(SemaContext *context, SemaContext *temp_
 	DEBUG_LOG("Changing compilation unit to %s", eval_unit->file->name);
 	sema_context_init(temp_context, eval_unit);
 	temp_context->compilation_unit = context->compilation_unit;
-	temp_context->current_function = context->current_function;
+	temp_context->call_env = context->call_env;
 	temp_context->current_macro = context->current_macro;
 	return temp_context;
 }

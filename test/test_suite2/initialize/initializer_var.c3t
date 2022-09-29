@@ -1,0 +1,7 @@
+module test;
+
+static initialize
+{
+	int a;
+	a = 1;
+}

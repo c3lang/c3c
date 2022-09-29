@@ -157,3 +157,4 @@ macro uint ichar.hash(ichar c) = c;
 macro uint long.hash(long i) = (uint)((i >> 32) ^ i);
 macro uint ulong.hash(ulong i) = (uint)((i >> 32) ^ i);
 macro uint bool.hash(bool b) = (uint)b;
+macro uint typeid.hash(typeid t) = (uint)(((uptr)t >> 32) ^ (uptr)t);

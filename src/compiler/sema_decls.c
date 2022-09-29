@@ -1739,7 +1739,7 @@ static bool sema_analyse_attributes_inner(SemaContext *context, Decl *decl, Attr
 		}
 
 		// Handle the case where the current function is the declaration itself.
-		if (context->current_function == attr_decl)
+		if (context->call_env.kind == CALL_ENV_ATTR && context->call_env.attr_declaration == attr_decl)
 		{
 			SEMA_ERROR(attr_decl, "Recursive declaration of attribute '%s' – it contains itself.", attr_decl->name);
 			return false;
@@ -1764,7 +1764,7 @@ static bool sema_analyse_attributes_inner(SemaContext *context, Decl *decl, Attr
 		// context.
 		SemaContext eval_context;
 		sema_context_init(&eval_context, attr_decl->unit);
-
+		eval_context.call_env = (CallEnv) { .kind = CALL_ENV_ATTR, .attr_declaration = decl };
 		// We copy the compilation unit.
 		eval_context.compilation_unit = context->unit;
 
@@ -2025,8 +2025,7 @@ static inline bool sema_analyse_xxlizer(SemaContext *context, Decl *decl)
 {
 	if (!sema_analyse_attributes(context, decl, decl->attributes, decl->decl_kind == DECL_INITIALIZE ? ATTR_INITIALIZER : ATTR_FINALIZER)) return decl_poison(decl);
 	if (decl->xxlizer.priority == 0) decl->xxlizer.priority = MAX_PRIORITY;
-	context->current_function = NULL;
-	context->current_function_pure = false;
+	context->call_env = (CallEnv) { .kind = decl->decl_kind == DECL_INITIALIZE ? CALL_ENV_INITIALIZER : CALL_ENV_FINALIZER };
 	context->rtype = type_void;
 	context->active_scope = (DynamicScope) {
 			.scope_id = 0,
@@ -2042,7 +2041,6 @@ static inline bool sema_analyse_xxlizer(SemaContext *context, Decl *decl)
 	context->next_target = 0;
 	context->next_switch = 0;
 	context->break_target = 0;
-	context->ensures = false;
 	Ast *body = astptr(decl->xxlizer.init);
 
 	// Insert an implicit return
@@ -2353,7 +2351,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 	}
 	else
 	{
-		if (!context->current_function)
+		if (context->call_env.kind == CALL_ENV_GLOBAL_INIT)
 		{
 			if (context->current_macro)
 			{
@@ -2399,7 +2397,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 	decl->type = decl->var.type_info->type;
 	if (!sema_analyse_decl_type(context, decl->type, decl->var.type_info->span)) return false;
 	bool is_static = decl->var.is_static;
-	if (is_static && context->current_function_pure)
+	if (is_static && context->call_env.pure)
 	{
 		SEMA_ERROR(decl, "'@pure' functions may not have static variables.");
 		return false;
@@ -2407,7 +2405,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 	if (is_static && !decl->has_extname)
 	{
 		scratch_buffer_clear();
-		scratch_buffer_append(context->current_function->name);
+		scratch_buffer_append(context->call_env.kind == CALL_ENV_FUNCTION ? context->call_env.current_function->name : ".global");
 		scratch_buffer_append_char('$');
 		scratch_buffer_append(decl->name);
 		decl->extname = scratch_buffer_copy();
@@ -2430,14 +2428,14 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 			if (!decl->alignment) decl->alignment = type_alloca_alignment(decl->type);
 		}
 
-		Decl *function = context->current_function;
-		if (is_static) context->current_function = NULL;
+		CallEnvKind env_kind = context->call_env.kind;
+		if (is_static) context->call_env.kind = CALL_ENV_GLOBAL_INIT;
 		if (!sema_expr_analyse_assign_right_side(context, NULL, decl->type, init, false))
 		{
-			context->current_function = function;
+			context->call_env.kind = env_kind;
 			return decl_poison(decl);
 		}
-		context->current_function = function;
+		context->call_env.kind = env_kind;
 
 		if (infer_len)
 		{
@@ -2483,8 +2481,8 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 static CompilationUnit *unit_copy(Module *module, CompilationUnit *unit)
 {
 	CompilationUnit *copy = unit_create(unit->file);
-	copy->imports = decl_copy_list(unit->imports);
-	copy->global_decls = decl_copy_list(unit->global_decls);
+	copy->imports = copy_decl_list_single(unit->imports);
+	copy->global_decls = copy_decl_list_single(unit->global_decls);
 	copy->module = module;
 	assert(!unit->functions && !unit->macro_methods && !unit->methods && !unit->enums && !unit->ct_ifs && !unit->types);
 	return copy;

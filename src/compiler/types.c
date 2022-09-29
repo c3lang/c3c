@@ -140,12 +140,15 @@ static void type_append_name_to_scratch(Type *type)
 		case TYPE_SUBARRAY:
 			type_append_name_to_scratch(type->array.base);
 			scratch_buffer_append("[]");
+			break;
 		case TYPE_FLEXIBLE_ARRAY:
 			type_append_name_to_scratch(type->array.base);
 			scratch_buffer_append("[*]");
+			break;
 		case TYPE_SCALED_VECTOR:
 			type_append_name_to_scratch(type->array.base);
 			scratch_buffer_append("[<>]");
+			break;
 		case TYPE_VOID:
 		case TYPE_BOOL:
 		case ALL_INTS:
@@ -527,7 +530,8 @@ void type_mangle_introspect_name_to_buffer(Type *type)
 		case TYPE_FUNC:
 			if (type->function.module)
 			{
-				scratch_buffer_append(type->function.module->extname);
+				Module *module = type->function.module;
+				scratch_buffer_append(module->extname ? module->extname : module->name->module);
 				scratch_buffer_append_char('$');
 				scratch_buffer_append(type->name);
 			}
