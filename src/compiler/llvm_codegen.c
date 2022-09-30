@@ -992,6 +992,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 	}
 	UNREACHABLE
 }
+
 void *llvm_gen(Module *module)
 {
 	if (!vec_size(module->units)) return NULL;
@@ -1000,9 +1001,8 @@ void *llvm_gen(Module *module)
 	gencontext_init(gen_context, module);
 	gencontext_begin_module(gen_context);
 
-	VECEACH(module->units, j)
-	{
-		CompilationUnit *unit = module->units[j];
+	FOREACH_BEGIN(CompilationUnit *unit, module->units)
+
 		gencontext_init_file_emit(gen_context, unit);
 		gen_context->debug.compile_unit = unit->llvm.debug_compile_unit;
 		gen_context->debug.file = unit->llvm.debug_file;
@@ -1010,61 +1010,59 @@ void *llvm_gen(Module *module)
 		FOREACH_BEGIN(Decl *initializer, unit->xxlizers)
 			llvm_emit_xxlizer(gen_context, initializer);
 		FOREACH_END();
-		VECEACH(unit->methods, i)
-		{
-			llvm_emit_function_decl(gen_context, unit->methods[i]);
-		}
-		VECEACH(unit->types, i)
-		{
-			llvm_emit_type_decls(gen_context, unit->types[i]);
-		}
-		VECEACH(unit->enums, i)
-		{
-			llvm_emit_type_decls(gen_context, unit->enums[i]);
-		}
-		VECEACH(unit->functions, i)
-		{
-			Decl *func = unit->functions[i];
+
+		FOREACH_BEGIN(Decl *method, unit->methods)
+			llvm_emit_function_decl(gen_context, method);
+		FOREACH_END();
+
+		FOREACH_BEGIN(Decl *type_decl, unit->types)
+			llvm_emit_type_decls(gen_context, type_decl);
+		FOREACH_END();
+
+		FOREACH_BEGIN(Decl *enum_decl, unit->enums)
+			llvm_emit_type_decls(gen_context, enum_decl);
+		FOREACH_END();
+
+		FOREACH_BEGIN(Decl *func, unit->functions)
 			llvm_emit_function_decl(gen_context, func);
-		}
+		FOREACH_END();
+
 		if (unit->main_function && unit->main_function->is_synthetic)
 		{
 			llvm_emit_function_decl(gen_context, unit->main_function);
 		}
-	}
 
-	VECEACH(module->units, j)
-	{
-		CompilationUnit *unit = module->units[j];
+	FOREACH_END();
+
+	FOREACH_BEGIN(CompilationUnit *unit, module->units)
+
 		gen_context->debug.compile_unit = unit->llvm.debug_compile_unit;
 		gen_context->debug.file = unit->llvm.debug_file;
 
-		VECEACH(unit->vars, i)
-		{
-			llvm_get_ref(gen_context, unit->vars[i]);
-		}
-		VECEACH(unit->vars, i)
-		{
-			llvm_emit_global_variable_init(gen_context, unit->vars[i]);
-		}
-		VECEACH(unit->functions, i)
-		{
-			Decl *decl = unit->functions[i];
+		FOREACH_BEGIN(Decl *var, unit->vars)
+			llvm_get_ref(gen_context, var);
+		FOREACH_END();
+
+		FOREACH_BEGIN(Decl *var, unit->vars)
+			llvm_emit_global_variable_init(gen_context, var);
+		FOREACH_END();
+
+		FOREACH_BEGIN(Decl *decl, unit->functions)
 			if (decl->func_decl.body) llvm_emit_function_body(gen_context, decl);
-		}
+		FOREACH_END();
+
 		if (unit->main_function && unit->main_function->is_synthetic)
 		{
 			llvm_emit_function_body(gen_context, unit->main_function);
 		}
 
-		VECEACH(unit->methods, i)
-		{
-			Decl *decl = unit->methods[i];
+		FOREACH_BEGIN(Decl *decl, unit->methods)
 			if (decl->func_decl.body) llvm_emit_function_body(gen_context, decl);
-		}
+		FOREACH_END();
 
 		gencontext_end_file_emit(gen_context, unit);
-	}
+
+	FOREACH_END();
 
 	llvm_emit_constructors_and_destructors(gen_context);
 

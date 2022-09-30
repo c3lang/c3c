@@ -2659,10 +2659,12 @@ Decl *parse_top_level_statement(ParseContext *c)
 			ASSIGN_DECL_OR_RET(decl, parse_global_declaration(c, visibility), poisoned_decl);
 			break;
 		}
-		default:
-			SEMA_ERROR_HERE("Expected a top level declaration here.");
+		case TOKEN_EOS:
+			SEMA_ERROR_HERE("';' wasn't expected here, try removing it.");
 			return poisoned_decl;
-			break;
+		default:
+			SEMA_ERROR_HERE("Expected the start of a global declaration here.");
+			return poisoned_decl;
 	}
 	assert(decl);
 	return decl;

@@ -12,7 +12,7 @@ $endif;
 
 $if (1):
 $else:
-$else: // #error: Expected a top level declaration here.
+$else: // #error: Expected the start of a global declaration here
 $endif;
 
 
