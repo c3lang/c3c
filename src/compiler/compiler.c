@@ -305,12 +305,7 @@ void compiler_compile(void)
 	switch (active_target.backend)
 	{
 		case BACKEND_LLVM:
-			llvm_codegen_setup();
-			for (unsigned i = 0; i < module_count; i++)
-			{
-				void *result = llvm_gen(modules[i]);
-				if (result) vec_add(gen_contexts, result);
-			}
+			gen_contexts = llvm_gen(modules, module_count);
 			task = &thread_compile_task_llvm;
 			break;
 		case BACKEND_TB:

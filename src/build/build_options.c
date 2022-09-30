@@ -66,7 +66,7 @@ static void usage(void)
 	OUTPUT("  clean                              Clean all build files.");
 	OUTPUT("  run [<target>]                     Run (and build if needed) the target in the current project.");
 	OUTPUT("  dist [<target>]                    Clean and build a target for distribution.");
-	OUTPUT("  directives [<target>]                    Generate documentation for the target.");
+	OUTPUT("  directives [<target>]              Generate documentation for the target.");
 	OUTPUT("  bench [<target>]                   Benchmark a target.");
 	OUTPUT("  clean-run [<target>]               Clean, then run the target.");
 	OUTPUT("  compile-run <file1> [<file2> ...]  Compile files then immediately run the result.");
@@ -93,8 +93,13 @@ static void usage(void)
 	OUTPUT("  -O0                   - Optimizations off.");
 	OUTPUT("  -O1                   - Simple optimizations only.");
 	OUTPUT("  -O2                   - Default optimization level.");
-	OUTPUT("  -Os                   - Optimize for size.");
 	OUTPUT("  -O3                   - Aggressive optimization.");
+	OUTPUT("  -Os                   - Optimize for size.");
+	OUTPUT("  -Oz                   - Optimize for tiny size.");
+	OUTPUT("  -O2+                  - Default optimization level, single module");
+	OUTPUT("  -O3+                  - Aggressive optimization, single module.");
+	OUTPUT("  -Os+                  - Optimize for size, single module.");
+	OUTPUT("  -Oz+                  - Optimize for tiny size, single module.");
 	OUTPUT("  --build-dir <dir>     - Override build output directory.");
 	OUTPUT("  --obj-out <dir>       - Override object file output directory.");
 	OUTPUT("  --llvm-out <dir>      - Override llvm output directory for '--emit-llvm'.");
@@ -396,17 +401,33 @@ static void parse_option(BuildOptions *options)
 			{
 				options->optimization_setting_override = OPT_SETTING_O1;
 			}
+			else if (match_shortopt("O2+"))
+			{
+				options->optimization_setting_override = OPT_SETTING_O2_PLUS;
+			}
 			else if (match_shortopt("O2"))
 			{
 				options->optimization_setting_override = OPT_SETTING_O2;
+			}
+			else if (match_shortopt("O3+"))
+			{
+				options->optimization_setting_override = OPT_SETTING_O3_PLUS;
 			}
 			else if (match_shortopt("O3"))
 			{
 				options->optimization_setting_override = OPT_SETTING_O3;
 			}
+			else if (match_shortopt("Os+"))
+			{
+				options->optimization_setting_override = OPT_SETTING_OSMALL_PLUS;
+			}
 			else if (match_shortopt("Os"))
 			{
 				options->optimization_setting_override = OPT_SETTING_OSMALL;
+			}
+			else if (match_shortopt("Oz+"))
+			{
+				options->optimization_setting_override = OPT_SETTING_OTINY_PLUS;
 			}
 			else if (match_shortopt("Oz"))
 			{

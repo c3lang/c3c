@@ -2025,8 +2025,7 @@ bool cast_untyped_to_type(SemaContext *context, Expr *expr, Type *to_type);
 CastKind cast_to_bool_kind(Type *type);
 
 const char *llvm_codegen(void *context);
-void *llvm_gen(Module *module);
-void llvm_codegen_setup();
+void **llvm_gen(Module** modules, unsigned module_count);
 
 const char *tinybackend_codegen(void *context);
 void *tinybackend_gen(Module *module);
