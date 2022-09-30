@@ -662,8 +662,10 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 
 	LLVMValueRef function = llvm_get_ref(c, decl);
 	decl->backend_ref = function;
+	printf("-%p-%s\n", function, decl->name);
+	printf("%s", LLVMPrintValueToString(function));
+	printf("---\n");
 	FunctionPrototype *prototype = decl->type->function.prototype;
-
 
 	ABIArgInfo *ret_abi_info = prototype->ret_abi_info;
 	llvm_emit_param_attributes(c, function, ret_abi_info, true, 0, 0);

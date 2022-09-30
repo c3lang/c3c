@@ -60,8 +60,9 @@ typedef struct
 } DebugContext;
 
 
-typedef struct
+typedef struct GenContext_
 {
+	bool shared_context;
 	LLVMModuleRef module;
 	LLVMBuilderRef global_builder;
 	LLVMTargetMachineRef machine;

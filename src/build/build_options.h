@@ -89,11 +89,15 @@ typedef enum
 {
 	OPT_SETTING_NOT_SET = -1,
 	OPT_SETTING_O0 = 0,
-	OPT_SETTING_O1 = 1,
-	OPT_SETTING_O2 = 2,
-	OPT_SETTING_O3 = 3,
-	OPT_SETTING_OSMALL = 4,
-	OPT_SETTING_OTINY = 5,
+	OPT_SETTING_O1,
+	OPT_SETTING_O2,
+	OPT_SETTING_O2_PLUS,
+	OPT_SETTING_O3,
+	OPT_SETTING_O3_PLUS,
+	OPT_SETTING_OSMALL,
+	OPT_SETTING_OSMALL_PLUS,
+	OPT_SETTING_OTINY,
+	OPT_SETTING_OTINY_PLUS
 } OptimizationSetting;
 
 typedef enum
@@ -335,6 +339,7 @@ typedef struct
 	bool force_linker;
 	OptimizationLevel optimization_level;
 	SizeOptimizationLevel size_optimization_level;
+	bool single_module;
 	DebugInfo debug_info;
 	RelocModel reloc_model;
 	ArchOsTarget arch_os_target;

@@ -6,6 +6,7 @@
 
 #include <llvm-c/Error.h>
 #include <llvm-c/Comdat.h>
+#include <llvm-c/Linker.h>
 
 typedef struct LLVMOpaquePassBuilderOptions *LLVMPassBuilderOptionsRef;
 LLVMErrorRef LLVMRunPasses(LLVMModuleRef M, const char *Passes,
@@ -15,7 +16,10 @@ LLVMPassBuilderOptionsRef LLVMCreatePassBuilderOptions(void);
 void LLVMPassBuilderOptionsSetVerifyEach(LLVMPassBuilderOptionsRef Options, LLVMBool VerifyEach);
 void LLVMPassBuilderOptionsSetDebugLogging(LLVMPassBuilderOptionsRef Options, LLVMBool DebugLogging);
 void LLVMDisposePassBuilderOptions(LLVMPassBuilderOptionsRef Options);
+
 static void llvm_emit_constructors_and_destructors(GenContext *c);
+static void llvm_codegen_setup();
+static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context);
 
 const char* llvm_version = LLVM_VERSION_STRING;
 const char* llvm_target = LLVM_DEFAULT_TARGET_TRIPLE;
@@ -50,10 +54,18 @@ static void diagnostics_handler(LLVMDiagnosticInfoRef ref, void *context)
 	LLVMDisposeMessage(message);
 }
 
-static void gencontext_init(GenContext *context, Module *module)
+static void gencontext_init(GenContext *context, Module *module, LLVMContextRef shared_context)
 {
 	memset(context, 0, sizeof(GenContext));
-	context->context = LLVMContextCreate();
+	if (shared_context)
+	{
+		context->shared_context = true;
+		context->context = shared_context;
+	}
+	else
+	{
+		context->context = LLVMContextCreate();
+	}
 	LLVMContextSetDiagnosticHandler(context->context, &diagnostics_handler, context);
 	context->code_module = module;
 }
@@ -62,7 +74,7 @@ static void gencontext_destroy(GenContext *context)
 {
 	assert(llvm_is_global_eval(context));
 	LLVMDisposeBuilder(context->global_builder);
-	LLVMContextDispose(context->context);
+	if (!context->shared_context) LLVMContextDispose(context->context);
 	LLVMDisposeTargetData(context->target_data);
 	LLVMDisposeTargetMachine(context->machine);
 	free(context);
@@ -602,12 +614,9 @@ static bool intrinsics_setup = false;
 LLVMAttributes attribute_id;
 LLVMIntrinsics intrinsic_id;
 
-void llvm_codegen_setup()
+static void llvm_codegen_setup()
 {
 	if (intrinsics_setup) return;
-
-	//intrinsic_id.sshl_sat = lookup_intrinsic("llvm.sshl.sat");
-	//intrinsic_id.ushl_sat = lookup_intrinsic("llvm.ushl.sat");
 
 	intrinsic_id.abs = lookup_intrinsic("llvm.abs");
 	intrinsic_id.assume = lookup_intrinsic("llvm.assume");
@@ -993,12 +1002,49 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 	UNREACHABLE
 }
 
-void *llvm_gen(Module *module)
+void **llvm_gen(Module** modules, unsigned module_count)
+{
+	if (!module_count) return NULL;
+	GenContext ** gen_contexts = NULL;
+	llvm_codegen_setup();
+	if (active_target.single_module)
+	{
+		GenContext *first_context;
+		unsigned first_element;
+		LLVMContextRef context = LLVMGetGlobalContext();
+		for (int i = 0; i < module_count; i++)
+		{
+			GenContext *result = llvm_gen_module(modules[i], context);
+			if (!result) continue;
+			vec_add(gen_contexts, result);
+		}
+		if (!gen_contexts) return NULL;
+		GenContext *first = gen_contexts[0];
+		unsigned count = vec_size(gen_contexts);
+		for (unsigned i = 1; i < count; i++)
+		{
+			GenContext *other = gen_contexts[i];
+			LLVMLinkModules2(first->module, other->module);
+			gencontext_destroy(other);
+		}
+		vec_resize(gen_contexts, 1);
+		return (void**)gen_contexts;
+	}
+	for (unsigned i = 0; i < module_count; i++)
+	{
+		GenContext *result = llvm_gen_module(modules[i], NULL);
+		if (!result) continue;
+		vec_add(gen_contexts, result);
+	}
+	return (void**)gen_contexts;
+}
+
+static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context)
 {
 	if (!vec_size(module->units)) return NULL;
 	assert(intrinsics_setup);
 	GenContext *gen_context = cmalloc(sizeof(GenContext));
-	gencontext_init(gen_context, module);
+	gencontext_init(gen_context, module, shared_context);
 	gencontext_begin_module(gen_context);
 
 	FOREACH_BEGIN(CompilationUnit *unit, module->units)

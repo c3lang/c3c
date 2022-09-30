@@ -54,6 +54,7 @@ void gencontext_begin_module(GenContext *c)
 	c->module = LLVMModuleCreateWithNameInContext(c->code_module->name->module, c->context);
 	c->machine = llvm_target_machine_create();
 	c->target_data = LLVMCreateTargetDataLayout(c->machine);
+
 	LLVMSetModuleDataLayout(c->module, c->target_data);
 	LLVMSetSourceFileName(c->module, c->code_module->name->module, strlen(c->code_module->name->module));
 	LLVMTypeRef options_type = LLVMInt8TypeInContext(c->context);
