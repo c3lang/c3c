@@ -642,6 +642,26 @@ void llvm_emit_xxlizer(GenContext *c, Decl *decl)
 	scratch_buffer_clear();
 	scratch_buffer_printf(is_finalizer ? ".static_finalize.%u" : ".static_initialize.%u", vec_size(*array_ref));
 	LLVMValueRef function = LLVMAddFunction(c->module, scratch_buffer_to_string(), initializer_type);
+	if (llvm_use_debug(c))
+	{
+		uint32_t row = decl->span.row;
+		if (!row) row = 1;
+		LLVMMetadataRef type = LLVMDIBuilderCreateSubroutineType(c->debug.builder, c->debug.file, NULL, 0, 0);
+
+		c->debug.function = LLVMDIBuilderCreateFunction(c->debug.builder,
+		                                                c->debug.file,
+		                                                scratch_buffer.str, scratch_buffer.len,
+		                                                scratch_buffer.str, scratch_buffer.len,
+		                                                c->debug.file,
+														row,
+		                                                type,
+		                                                true,
+														true,
+		                                                row,
+		                                                LLVMDIFlagPrivate,
+		                                                active_target.optimization_level != OPTIMIZATION_NONE);
+		LLVMSetSubprogram(function, c->debug.function);
+	}
 	llvm_emit_body(c,
 	               function,
 	               decl->unit->module->name->module,
