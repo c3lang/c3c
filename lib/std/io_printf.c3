@@ -52,6 +52,14 @@ macro void printf_register_to_string($Type)
 	printf_register($Type.typeid, (PrintFunction)&$Type.to_string);
 }
 
+static initialize @priority(101)
+{
+	if (!print_functions.table.len)
+	{
+		print_functions.init(512);
+	}
+}
+
 fn void printf_register(typeid type, PrintFunction function)
 {
 	if (!print_functions.table.len)

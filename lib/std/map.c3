@@ -50,6 +50,7 @@ fn bool HashMap.is_empty(HashMap* map) @inline
 
 fn Value*! HashMap.get_ref(HashMap* map, Key key)
 {
+	if (!map.count) return SearchResult.MISSING!;
 	uint hash = rehash(key.hash());
 	for (Entry *e = map.table[index_for(hash, map.table.len)]; e != null; e = e.next)
 	{

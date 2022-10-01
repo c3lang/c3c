@@ -360,7 +360,11 @@ static inline bool scan_ident(Lexer *lexer, TokenType normal, TokenType const_to
 	if (!type)
 	{
 		if (!prefix && len == 1) return return_token(lexer, TOKEN_UNDERSCORE, "_");
-		add_error_token(lexer, "An identifier may not consist of only '_' characters.");
+		if (prefix && len == 1)
+		{
+			return add_error_token(lexer, "An identifier was expected after the '%c'.", prefix);
+		}
+		return add_error_token(lexer, "An identifier may not consist of only '_' characters.");
 	}
 	const char* interned_string = symtab_add(lexer->lexing_start, len, hash, &type);
 	if (type == TOKEN_RETURN && lexer->mode == LEX_DOCS) type = TOKEN_IDENT;
