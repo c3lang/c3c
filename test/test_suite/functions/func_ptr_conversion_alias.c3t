@@ -1,0 +1,20 @@
+module test;
+
+define Callback = fn void();
+define Callback2 = fn void();
+
+define GetCallback = fn Callback2**[][123]*();
+
+fn Callback**[][123]* tester()
+{
+	return null;
+}
+
+GetCallback x = &tester;
+
+
+define GetCallbackOpt = fn Callback2!();
+
+fn Callback2! tester2() = null;
+
+GetCallbackOpt y = &tester2;

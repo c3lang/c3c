@@ -4,6 +4,8 @@
 
 #include "compiler_internal.h"
 
+static Type *flatten_raw_function_type(Type *type);
+
 static struct
 {
 	Type u0, u1, i8, i16, i32, i64, i128, ixx;
@@ -839,7 +841,7 @@ Type *type_get_ptr_recurse(Type *ptr_type)
 	if (ptr_type->type_kind == TYPE_OPTIONAL)
 	{
 		ptr_type = ptr_type->failable;
-		return type_get_failable(type_get_ptr(ptr_type));
+		return type_get_optional(type_get_ptr(ptr_type));
 	}
 	return type_get_ptr(ptr_type);
 
@@ -850,7 +852,7 @@ Type *type_get_ptr(Type *ptr_type)
 	return type_generate_ptr(ptr_type, false);
 }
 
-Type *type_get_failable(Type *failable_type)
+Type *type_get_optional(Type *failable_type)
 {
 	assert(!type_is_optional(failable_type));
 	return type_generate_failable(failable_type, false);
@@ -1171,14 +1173,40 @@ void type_func_prototype_init(uint32_t capacity)
 static uint32_t hash_function(Signature *sig)
 {
 	uintptr_t hash = (unsigned)sig->variadic;
-	hash = hash * 31 + (uintptr_t)type_infoptr(sig->rtype)->type->canonical;
+	hash = hash * 31 + (uintptr_t)flatten_raw_function_type(type_infoptr(sig->rtype)->type);
 	Decl **params = sig->params;
 	VECEACH(params, i)
 	{
 		Decl *param = params[i];
-		hash = hash * 31 + (uintptr_t)param->type->canonical;
+		hash = hash * 31 + (uintptr_t)flatten_raw_function_type(param->type->canonical);
 	}
 	return (uint32_t)((hash >> 16) ^ hash);
+}
+
+static bool compare_func_param(Type *one, Type *other)
+{
+	if (one == other) return true;
+	one = one->canonical;
+	other = other->canonical;
+	if (one == other) return true;
+	if (one->type_kind != other->type_kind) return false;
+	switch (one->type_kind)
+	{
+		case TYPE_POINTER:
+			return compare_func_param(one->pointer, other->pointer);
+		case TYPE_ARRAY:
+			if (one->array.len != other->array.len) return false;
+			FALLTHROUGH;
+		case TYPE_SUBARRAY:
+		case TYPE_FLEXIBLE_ARRAY:
+			return compare_func_param(one->array.base, other->array.base);
+		case TYPE_FUNC:
+			return one->function.prototype->raw_type == other->function.prototype->raw_type;
+		case TYPE_OPTIONAL:
+			return compare_func_param(one->failable, other->failable);
+		default:
+			return false;
+	}
 }
 
 static int compare_function(Signature *sig, FunctionPrototype *proto)
@@ -1188,17 +1216,54 @@ static int compare_function(Signature *sig, FunctionPrototype *proto)
 	Type **other_params = proto->param_types;
 	unsigned param_count = vec_size(params);
 	if (param_count != vec_size(other_params)) return -1;
-	if (type_infoptr(sig->rtype)->type->canonical != proto->rtype->canonical) return -1;
+	if (!compare_func_param(type_infoptr(sig->rtype)->type, proto->rtype)) return -1;
 	VECEACH(params, i)
 	{
 		Decl *param = params[i];
 		Type *other_param = other_params[i];
-		if (param->type->canonical != other_param->canonical) return -1;
+		if (!compare_func_param(param->type, other_param->canonical)) return -1;
 	}
 	return 0;
 }
 
-
+static Type *flatten_raw_function_type(Type *type)
+{
+	Type *other;
+	Type *current;
+	switch (type->type_kind)
+	{
+		case TYPE_TYPEDEF:
+			return flatten_raw_function_type(type->canonical);
+		case TYPE_FUNC:
+			return type->function.prototype->raw_type;
+		case TYPE_OPTIONAL:
+			current = type->failable;
+			other = flatten_raw_function_type(current);
+			return other == current ? type : type_get_optional(other);
+		case TYPE_POINTER:
+			current = type->pointer;
+			other = flatten_raw_function_type(current);
+			return other == current ? type : type_get_ptr(other);
+		case TYPE_ARRAY:
+			current = type->array.base;
+			other = flatten_raw_function_type(current);
+			return other == current ? type : type_get_array(other, type->array.len);
+		case TYPE_SUBARRAY:
+			current = type->array.base;
+			other = flatten_raw_function_type(current);
+			return other == current ? type : type_get_subarray(other);
+		case TYPE_FLEXIBLE_ARRAY:
+			current = type->array.base;
+			other = flatten_raw_function_type(current);
+			return other == current ? type : type_get_flexible_array(other);
+		case TYPE_INFERRED_ARRAY:
+			current = type->array.base;
+			other = flatten_raw_function_type(current);
+			return other == current ? type : type_get_inferred_array(other);
+		default:
+			return type;
+	}
+}
 static inline Type *func_create_new_func_proto(Signature *sig, CallABI abi, uint32_t hash, FuncTypeEntry *entry)
 {
 	unsigned param_count = vec_size(sig->params);

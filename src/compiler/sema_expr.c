@@ -1498,7 +1498,7 @@ static inline Type *context_unify_returns(SemaContext *context)
 		if (failable)
 		{
 			// If there are only implicit returns, then we assume void!, otherwise it's an "anyfail"
-			return no_return ? type_get_failable(type_void) : type_anyfail;
+			return no_return ? type_get_optional(type_void) : type_anyfail;
 		}
 		// No failable => void.
 		return type_void;

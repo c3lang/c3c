@@ -745,7 +745,7 @@ TypeInfo *parse_optional_type(ParseContext *c)
 		info->failable = true;
 		if (info->resolve_status == RESOLVE_DONE)
 		{
-			info->type = type_get_failable(info->type);
+			info->type = type_get_optional(info->type);
 		}
 		RANGE_EXTEND_PREV(info);
 	}

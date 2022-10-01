@@ -163,7 +163,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 		failable = failable || IS_OPTIONAL(element);
 	}
 	assert(initializer->type);
-	if (failable) initializer->type = type_get_failable(initializer->type);
+	if (failable) initializer->type = type_get_optional(initializer->type);
 
 	// 6. There's the case of too few values as well. Mark the last field as wrong.
 	assert(elements_needed <= size);
@@ -251,7 +251,7 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 		failable = failable || IS_OPTIONAL(element);
 	}
 	assert(initializer->type);
-	if (failable) initializer->type = type_get_failable(initializer->type);
+	if (failable) initializer->type = type_get_optional(initializer->type);
 
 	if (expected_members > size)
 	{

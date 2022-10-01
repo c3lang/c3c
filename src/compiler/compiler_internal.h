@@ -2266,7 +2266,7 @@ Type *type_get_inferred_array(Type *arr_type);
 Type *type_get_inferred_vector(Type *arr_type);
 Type *type_get_flexible_array(Type *arr_type);
 Type *type_get_scaled_vector(Type *arr_type);
-Type *type_get_failable(Type *failable_type);
+Type *type_get_optional(Type *failable_type);
 Type *type_get_vector(Type *vector_type, unsigned len);
 Type *type_get_vector_bool(Type *original_type);
 Type *type_int_signed_by_bitsize(BitSize bitsize);
@@ -2376,7 +2376,7 @@ INLINE bool type_is_pointer_sized(Type *type)
 INLINE Type *type_add_optional(Type *type, bool make_optional)
 {
 	if (!make_optional || type->type_kind == TYPE_OPTIONAL || type->type_kind == TYPE_FAILABLE_ANY) return type;
-	return type_get_failable(type);
+	return type_get_optional(type);
 }
 
 INLINE bool type_len_is_inferred(Type *type)

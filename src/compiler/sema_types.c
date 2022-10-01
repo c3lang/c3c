@@ -400,7 +400,7 @@ APPEND_QUALIFIERS:
 	if (type_info->failable)
 	{
 		Type *type = type_info->type;
-		if (!type_is_optional(type)) type_info->type = type_get_failable(type);
+		if (!type_is_optional(type)) type_info->type = type_get_optional(type);
 	}
 	return true;
 }

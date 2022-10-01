@@ -1437,7 +1437,7 @@ bool cast(Expr *expr, Type *to_type)
 
 	if (type_is_optional_any(from_type))
 	{
-		expr->type = type_get_failable(to_type);
+		expr->type = type_get_optional(to_type);
 		return true;
 	}
 
@@ -1468,7 +1468,7 @@ bool cast(Expr *expr, Type *to_type)
 	Type *result_type = expr->type;
 	if (from_is_failable && !type_is_optional(result_type))
 	{
-		expr->type = type_get_failable(result_type);
+		expr->type = type_get_optional(result_type);
 	}
 	return true;
 }
