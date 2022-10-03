@@ -248,12 +248,12 @@ jobs:
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
-        llvm_version: [13, 14]
+        llvm_version: [13, 14, 15]
     steps:
       - uses: actions/checkout@v3
       - name: Download LLVM
         run: |
-          brew install llvm@${{ matrix.llvm_version }} botan ninja
+          brew update && brew install llvm@${{ matrix.llvm_version }} botan ninja
           echo "/usr/local/opt/llvm@${{ matrix.llvm_version }}/bin" >> $GITHUB_PATH
           TMP_PATH=$(xcrun --show-sdk-path)/user/include
           echo "CPATH=$TMP_PATH" >> $GITHUB_ENV
@@ -288,7 +288,11 @@ jobs:
       - name: run compiler tests
         run: |
           cd test
-          python3 src/tester.py ../build/c3c test_suite/
+          if [[ "${{matrix.llvm_version}}" < 15 ]]; then
+            python3 src/tester.py ../build/c3c test_suite/
+          else
+            python3 src/tester.py ../build/c3c test_suite2/
+          fi
 
       - name: bundle_output
         if: matrix.llvm_version == env.LLVM_RELEASE_VERSION
