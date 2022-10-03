@@ -56,14 +56,14 @@ fn void Formatter.init(Formatter* this, OutputFn out_fn, void* data = null)
 	*this = { .data = data, .out_fn = out_fn};
 }
 
-/*
- * @require $checks($Type {}.to_string()) || $checks($Type {}.to_format(&&Formatter{}))  "Expected a type with 'to_string' or 'to_format' defined"
- * @require !$checks($Type {}.to_string()) || $checks($Type a, Allocator b, a.to_string(&b)) "Expected 'to_string' to take an allocator as argument."
- * @require !$checks($Type {}.to_format()) || $checks($Type a, Formatter b, a.to_format(&b)) "Expected 'to_format' to take a Formatter as argument."
+/**
+ * @require $checks($Type a, a.to_string()) || $checks($Type a, a.to_format(&&Formatter{}))  "Expected a type with 'to_string' or 'to_format' defined"
+ * @require !$checks($Type a, a.to_string()) || $checks($Type a, a.to_string(&&Allocator{})) "Expected 'to_string' to take an allocator as argument."
+ * @require !$checks($Type a, a.to_format(&&Formatter{})) || $checks($Type a, Formatter b, a.to_format(&b)) "Expected 'to_format' to take a Formatter as argument."
  */
 macro void formatter_register_type($Type)
 {
-	$if ($checks($Type {}.to_format(&&Formatter {}))):
+	$if ($checks($Type a, a.to_format(&&Formatter {}))):
 		if (!toformat_functions.table.len)
 		{
 			toformat_functions.init(512);
