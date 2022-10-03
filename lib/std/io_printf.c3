@@ -96,7 +96,7 @@ private fn void! Formatter.out(Formatter* this, char c)
 	this.out_fn(c, this.data)?;
 }
 
-macro void! Formatter.print_with_function(Formatter* this, variant arg, char[] default_name)
+macro bool! Formatter.print_with_function(Formatter* this, variant arg)
 {
 	if (try to_format = toformat_functions.get(arg.type))
 	{
@@ -109,7 +109,8 @@ macro void! Formatter.print_with_function(Formatter* this, variant arg, char[] d
 			this.width = old_width;
 			this.prec = old_prec;
 		}
-		return to_format(arg.ptr, this);
+		to_format(arg.ptr, this)?;
+		return true;
     }
     if (try to_string = tostring_functions.get(arg.type))
     {
@@ -124,10 +125,11 @@ macro void! Formatter.print_with_function(Formatter* this, variant arg, char[] d
 		}
 		@pool()
 		{
-			return this.out_substr(to_string(arg.ptr, mem::temp_allocator()));
+			this.out_substr(to_string(arg.ptr, mem::temp_allocator()))?;
+			return true;
 		};
     }
-    return this.out_substr(default_name);
+    return false;
 }
 private fn void! Formatter.out_str(Formatter* this, variant arg)
 {
@@ -143,24 +145,31 @@ private fn void! Formatter.out_str(Formatter* this, variant arg)
 		case VARIANT:
         	return this.out_substr("<variant>");
 		case ENUM:
+			if (this.print_with_function(arg)?) return;
         	return this.out_substr(arg.type.names[types::variant_to_int(arg, usize)!!]);
 		case STRUCT:
-			return this.print_with_function(arg, "<struct>");
+			if (this.print_with_function(arg)?) return;
+			return this.out_substr("<struct>");
 		case UNION:
-			return this.print_with_function(arg, "<union>");
+			if (this.print_with_function(arg)?) return;
+			return this.out_substr("<union>");
 		case BITSTRUCT:
-			return this.print_with_function(arg, "<bitstruct>");
+			if (this.print_with_function(arg)?) return;
+			return this.out_substr("<bitstruct>");
 		case FUNC:
-			return this.print_with_function(arg, "<func>");
+			if (this.print_with_function(arg)?) return;
+			return this.out_substr("<function>");
 		case FAILABLE:
 			unreachable();
 		case DISTINCT:
+			if (this.print_with_function(arg)?) return;
 			if (arg.type == String.typeid)
 			{
 				return this.out_substr(((String*)arg).str());
 			}
         	return this.out_str(variant { arg.ptr, arg.type.inner });
 		case POINTER:
+			if (this.print_with_function(arg)?) return;
 			typeid inner = arg.type.inner;
 			if (inner.kind == TypeKind.ARRAY && inner.inner == char.typeid)
 			{
@@ -174,6 +183,7 @@ private fn void! Formatter.out_str(Formatter* this, variant arg)
 		case FLOAT:
 			return this.ftoa(float_from_variant(arg));
 		case ARRAY:
+			if (this.print_with_function(arg)?) return;
 			// this is SomeType[*] so grab the "SomeType"
 			typeid inner = arg.type.inner;
 			usize size = inner.sizeof;
@@ -189,6 +199,7 @@ private fn void! Formatter.out_str(Formatter* this, variant arg)
 			}
 			return this.out(']');
 		case VECTOR:
+			if (this.print_with_function(arg)?) return;
 			// this is SomeType[*] so grab the "SomeType"
 			typeid inner = arg.type.inner;
 			usize size = inner.sizeof;
@@ -204,6 +215,7 @@ private fn void! Formatter.out_str(Formatter* this, variant arg)
 			}
 			return this.out_substr(">]");
 		case SUBARRAY:
+			if (this.print_with_function(arg)?) return;
 			// this is SomeType[] so grab the "SomeType"
 			typeid inner = arg.type.inner;
 			if (inner == char.typeid)
@@ -233,6 +245,7 @@ private fn void! Formatter.out_str(Formatter* this, variant arg)
 				return this.out_substr("false");
 			}
 		default:
+			if (this.print_with_function(arg)?) return;
 			return this.out_substr("Invalid type");
 	}
 }
