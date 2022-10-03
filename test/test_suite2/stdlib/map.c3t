@@ -18,7 +18,7 @@ fn char[] Foo.to_string(Foo* foo, Allocator* allocator = mem::current_allocator(
 
 static initialize
 {
-	io::printf_register_to_string(Foo);
+	io::formatter_register_type(Foo);
 }
 
 fn void main()
@@ -54,13 +54,21 @@ fn void main()
 }
 
 /* #expect: test.ll
-
-
 @llvm.global_ctors = appending global [1 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 65535, ptr @.static_initialize.0, ptr null }]
 
-define void @.static_initialize.0() {
+define internal void @.static_initialize.0() {
 entry:
-  call void @std_io_printf_register(i64 ptrtoint (ptr @"ct$test_Foo" to i64), ptr @test_Foo_to_string)
+  %0 = load i64, ptr getelementptr inbounds (%"Entry*[]", ptr @std_io_tostring_functions, i32 0, i32 1), align 8
+  %not = icmp eq i64 %0, 0
+  br i1 %not, label %if.then, label %if.exit
+
+if.then:                                          ; preds = %entry
+  %1 = load ptr, ptr @std_core_mem_thread_allocator, align 8
+  call void @"std_map$$typeid.p$std_io$ToStringFunction_HashMap_init"(ptr @std_io_tostring_functions, i32 512, float 7.500000e-01, ptr %1)
+  br label %if.exit
+
+if.exit:                                          ; preds = %if.then, %entry
+  %2 = call i8 @"std_map$$typeid.p$std_io$ToStringFunction_HashMap_set"(ptr @std_io_tostring_functions, i64 ptrtoint (ptr @"ct$test_Foo" to i64), ptr @test_Foo_to_string)
   ret void
 }
 
@@ -117,7 +125,7 @@ voiderr:                                          ; preds = %after_check, %entry
 ; Function Attrs: nounwind
 define void @test_main() #0 {
 entry:
-  %map = alloca %HashMap, align 8
+  %map = alloca %HashMap.0, align 8
   %retparam = alloca i64, align 8
   %taddr = alloca %"char[]", align 8
   %vararg = alloca %"variant[]", align 8
@@ -153,7 +161,7 @@ entry:
   %vararg75 = alloca %"variant[]", align 8
   %varargslots76 = alloca [1 x %variant], align 16
   %result = alloca %"Foo[]", align 8
-  %map2 = alloca %HashMap.0, align 8
+  %map2 = alloca %HashMap.3, align 8
   %retparam82 = alloca i64, align 8
   %taddr83 = alloca %"char[]", align 8
   %vararg86 = alloca %"variant[]", align 8
@@ -178,7 +186,7 @@ entry:
   %error_var = alloca i64, align 8
   %retparam130 = alloca ptr, align 8
   %mark = alloca i64, align 8
-  %map3 = alloca %HashMap.0, align 8
+  %map3 = alloca %HashMap.3, align 8
   %error_var135 = alloca i64, align 8
   %retparam136 = alloca ptr, align 8
   %retparam143 = alloca i64, align 8
@@ -194,7 +202,7 @@ entry:
   %lo = load ptr, ptr %1, align 8
   %2 = getelementptr inbounds { ptr, i64 }, ptr %taddr, i32 0, i32 1
   %hi = load i64, ptr %2, align 8
-  %3 = getelementptr inbounds %HashMap, ptr %map, i32 0, i32 2
+  %3 = getelementptr inbounds %HashMap.0, ptr %map, i32 0, i32 2
   %4 = insertvalue %variant undef, ptr %3, 0
   %5 = insertvalue %variant %4, i64 ptrtoint (ptr @"ct$uint" to i64), 1
   %6 = getelementptr inbounds [1 x %variant], ptr %varargslots, i64 0, i64 0
@@ -229,7 +237,7 @@ voiderr:                                          ; preds = %after_check, %entry
   %lo7 = load ptr, ptr %17, align 8
   %18 = getelementptr inbounds { ptr, i64 }, ptr %taddr6, i32 0, i32 1
   %hi8 = load i64, ptr %18, align 8
-  %19 = getelementptr inbounds %HashMap, ptr %map, i32 0, i32 2
+  %19 = getelementptr inbounds %HashMap.0, ptr %map, i32 0, i32 2
   %20 = insertvalue %variant undef, ptr %19, 0
   %21 = insertvalue %variant %20, i64 ptrtoint (ptr @"ct$uint" to i64), 1
   %22 = getelementptr inbounds [1 x %variant], ptr %varargslots10, i64 0, i64 0
@@ -264,7 +272,7 @@ voiderr15:                                        ; preds = %after_check14, %voi
   %lo21 = load ptr, ptr %33, align 8
   %34 = getelementptr inbounds { ptr, i64 }, ptr %taddr20, i32 0, i32 1
   %hi22 = load i64, ptr %34, align 8
-  %35 = getelementptr inbounds %HashMap, ptr %map, i32 0, i32 2
+  %35 = getelementptr inbounds %HashMap.0, ptr %map, i32 0, i32 2
   %36 = insertvalue %variant undef, ptr %35, 0
   %37 = insertvalue %variant %36, i64 ptrtoint (ptr @"ct$uint" to i64), 1
   %38 = getelementptr inbounds [1 x %variant], ptr %varargslots24, i64 0, i64 0

@@ -1761,6 +1761,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		call_expr->type = type_add_optional(sum_returns, failable);
 	}
 
+	assert(call_expr->type);
 	if (call_expr->call_expr.result_unused)
 	{
 		Type *type = call_expr->type;
@@ -3275,6 +3276,7 @@ CHECK_DEEPER:
 		return false;
 	}
 
+	assert(member->type);
 	if (member->decl_kind == DECL_VAR)
 	{
 		if (member->var.kind == VARDECL_BITMEMBER)
