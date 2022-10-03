@@ -642,6 +642,7 @@ void llvm_emit_xxlizer(GenContext *c, Decl *decl)
 	scratch_buffer_clear();
 	scratch_buffer_printf(is_finalizer ? ".static_finalize.%u" : ".static_initialize.%u", vec_size(*array_ref));
 	LLVMValueRef function = LLVMAddFunction(c->module, scratch_buffer_to_string(), initializer_type);
+	LLVMSetLinkage(function, LLVMInternalLinkage);
 	if (llvm_use_debug(c))
 	{
 		uint32_t row = decl->span.row;

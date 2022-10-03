@@ -18,7 +18,7 @@ fn char[] Foo.to_string(Foo* foo, Allocator* allocator = mem::current_allocator(
 
 static initialize
 {
-	io::printf_register_to_string(Foo);
+	io::formatter_register_type(Foo);
 }
 
 fn void main()
@@ -58,9 +58,19 @@ fn void main()
 
 @llvm.global_ctors = appending global [1 x { i32, void ()*, i8* }] [{ i32, void ()*, i8* } { i32 65535, void ()* @.static_initialize.0, i8* null }]
 
-define void @.static_initialize.0() {
+define internal void @.static_initialize.0() {
 entry:
-  call void @std_io_printf_register(i64 ptrtoint (%.introspect* @"ct$test_Foo" to i64), { i8*, i64 } (i8*, %Allocator*)* bitcast ({ i8*, i64 } (%Foo*, %Allocator*)* @test_Foo_to_string to { i8*, i64 } (i8*, %Allocator*)*))
+  %0 = load i64, i64* getelementptr inbounds (%HashMap, %HashMap* @std_io_tostring_functions, i32 0, i32 0, i32 1), align 8
+  %not = icmp eq i64 %0, 0
+  br i1 %not, label %if.then, label %if.exit
+
+if.then:                                          ; preds = %entry
+  %1 = load %Allocator*, %Allocator** @std_core_mem_thread_allocator, align 8
+  call void @"std_map$$typeid.p$std_io$ToStringFunction_HashMap_init"(%HashMap* @std_io_tostring_functions, i32 512, float 7.500000e-01, %Allocator* %1)
+  br label %if.exit
+
+if.exit:                                          ; preds = %if.then, %entry
+  %2 = call i8 @"std_map$$typeid.p$std_io$ToStringFunction_HashMap_set"(%HashMap* @std_io_tostring_functions, i64 ptrtoint (%.introspect* @"ct$test_Foo" to i64), { i8*, i64 } (i8*, %Allocator*)* bitcast ({ i8*, i64 } (%Foo*, %Allocator*)* @test_Foo_to_string to { i8*, i64 } (i8*, %Allocator*)*))
   ret void
 }
 
@@ -125,7 +135,7 @@ voiderr:                                          ; preds = %after_check, %entry
 ; Function Attrs: nounwind
 define void @test_main() #0 {
 entry:
-  %map = alloca %HashMap, align 8
+  %map = alloca %HashMap.0, align 8
   %retparam = alloca i64, align 8
   %taddr = alloca %"char[]", align 8
   %vararg = alloca %"variant[]", align 8
@@ -161,7 +171,7 @@ entry:
   %vararg75 = alloca %"variant[]", align 8
   %varargslots76 = alloca [1 x %variant], align 16
   %result = alloca %"Foo[]", align 8
-  %map2 = alloca %HashMap.0, align 8
+  %map2 = alloca %HashMap.3, align 8
   %retparam82 = alloca i64, align 8
   %taddr83 = alloca %"char[]", align 8
   %vararg86 = alloca %"variant[]", align 8
@@ -186,7 +196,7 @@ entry:
   %error_var = alloca i64, align 8
   %retparam130 = alloca %TempAllocator*, align 8
   %mark = alloca i64, align 8
-  %map3 = alloca %HashMap.0, align 8
+  %map3 = alloca %HashMap.3, align 8
   %error_var135 = alloca i64, align 8
   %retparam136 = alloca %TempAllocator*, align 8
   %retparam143 = alloca i64, align 8
@@ -194,17 +204,17 @@ entry:
   %vararg147 = alloca %"variant[]", align 8
   %varargslots148 = alloca [1 x %variant], align 16
   %result149 = alloca %"int[]", align 8
-  %0 = bitcast %HashMap* %map to i8*
+  %0 = bitcast %HashMap.0* %map to i8*
   call void @llvm.memset.p0i8.i64(i8* align 8 %0, i8 0, i64 40, i1 false)
   %1 = load %Allocator*, %Allocator** @std_core_mem_thread_allocator, align 8
-  call void @"std_map$$int.test_Foo_HashMap_init"(%HashMap* %map, i32 16, float 7.500000e-01, %Allocator* %1)
+  call void @"std_map$$int.test_Foo_HashMap_init"(%HashMap.0* %map, i32 16, float 7.500000e-01, %Allocator* %1)
   store %"char[]" { i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str, i32 0, i32 0), i64 12 }, %"char[]"* %taddr, align 8
   %2 = bitcast %"char[]"* %taddr to { i8*, i64 }*
   %3 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %2, i32 0, i32 0
   %lo = load i8*, i8** %3, align 8
   %4 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %2, i32 0, i32 1
   %hi = load i64, i64* %4, align 8
-  %5 = getelementptr inbounds %HashMap, %HashMap* %map, i32 0, i32 2
+  %5 = getelementptr inbounds %HashMap.0, %HashMap.0* %map, i32 0, i32 2
   %6 = bitcast i32* %5 to i8*
   %7 = insertvalue %variant undef, i8* %6, 0
   %8 = insertvalue %variant %7, i64 ptrtoint (%.introspect* @"ct$uint" to i64), 1
@@ -237,14 +247,14 @@ voiderr:                                          ; preds = %after_check, %entry
   %lo3 = load i64, i64* %20, align 8
   %21 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %19, i32 0, i32 1
   %hi4 = load i8*, i8** %21, align 8
-  %22 = call i8 @"std_map$$int.test_Foo_HashMap_set"(%HashMap* %map, i32 1, i64 %lo3, i8* %hi4)
+  %22 = call i8 @"std_map$$int.test_Foo_HashMap_set"(%HashMap.0* %map, i32 1, i64 %lo3, i8* %hi4)
   store %"char[]" { i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.1, i32 0, i32 0), i64 12 }, %"char[]"* %taddr6, align 8
   %23 = bitcast %"char[]"* %taddr6 to { i8*, i64 }*
   %24 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %23, i32 0, i32 0
   %lo7 = load i8*, i8** %24, align 8
   %25 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %23, i32 0, i32 1
   %hi8 = load i64, i64* %25, align 8
-  %26 = getelementptr inbounds %HashMap, %HashMap* %map, i32 0, i32 2
+  %26 = getelementptr inbounds %HashMap.0, %HashMap.0* %map, i32 0, i32 2
   %27 = bitcast i32* %26 to i8*
   %28 = insertvalue %variant undef, i8* %27, 0
   %29 = insertvalue %variant %28, i64 ptrtoint (%.introspect* @"ct$uint" to i64), 1
@@ -277,14 +287,14 @@ voiderr15:                                        ; preds = %after_check14, %voi
   %lo17 = load i64, i64* %41, align 8
   %42 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %40, i32 0, i32 1
   %hi18 = load i8*, i8** %42, align 8
-  %43 = call i8 @"std_map$$int.test_Foo_HashMap_set"(%HashMap* %map, i32 1, i64 %lo17, i8* %hi18)
+  %43 = call i8 @"std_map$$int.test_Foo_HashMap_set"(%HashMap.0* %map, i32 1, i64 %lo17, i8* %hi18)
   store %"char[]" { i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.2, i32 0, i32 0), i64 12 }, %"char[]"* %taddr20, align 8
   %44 = bitcast %"char[]"* %taddr20 to { i8*, i64 }*
   %45 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %44, i32 0, i32 0
   %lo21 = load i8*, i8** %45, align 8
   %46 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %44, i32 0, i32 1
   %hi22 = load i64, i64* %46, align 8
-  %47 = getelementptr inbounds %HashMap, %HashMap* %map, i32 0, i32 2
+  %47 = getelementptr inbounds %HashMap.0, %HashMap.0* %map, i32 0, i32 2
   %48 = bitcast i32* %47 to i8*
   %49 = insertvalue %variant undef, i8* %48, 0
   %50 = insertvalue %variant %49, i64 ptrtoint (%.introspect* @"ct$uint" to i64), 1
@@ -314,7 +324,7 @@ voiderr29:                                        ; preds = %after_check28, %voi
   %lo32 = load i8*, i8** %60, align 8
   %61 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %59, i32 0, i32 1
   %hi33 = load i64, i64* %61, align 8
-  %62 = call i64 @"std_map$$int.test_Foo_HashMap_get"(%Foo* %retparam36, %HashMap* %map, i32 1)
+  %62 = call i64 @"std_map$$int.test_Foo_HashMap_get"(%Foo* %retparam36, %HashMap.0* %map, i32 1)
   %not_err37 = icmp eq i64 %62, 0
   br i1 %not_err37, label %after_check38, label %voiderr43
 
@@ -349,7 +359,7 @@ voiderr43:                                        ; preds = %after_check42, %aft
   %lo46 = load i8*, i8** %76, align 8
   %77 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %75, i32 0, i32 1
   %hi47 = load i64, i64* %77, align 8
-  %78 = call i8 @"std_map$$int.test_Foo_HashMap_has_key"(%HashMap* %map, i32 1)
+  %78 = call i8 @"std_map$$int.test_Foo_HashMap_has_key"(%HashMap.0* %map, i32 1)
   store i8 %78, i8* %taddr50, align 1
   %79 = insertvalue %variant undef, i8* %taddr50, 0
   %80 = insertvalue %variant %79, i64 ptrtoint (%.introspect* @"ct$bool" to i64), 1
@@ -379,7 +389,7 @@ voiderr55:                                        ; preds = %after_check54, %voi
   %lo58 = load i8*, i8** %90, align 8
   %91 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %89, i32 0, i32 1
   %hi59 = load i64, i64* %91, align 8
-  %92 = call i8 @"std_map$$int.test_Foo_HashMap_has_key"(%HashMap* %map, i32 2)
+  %92 = call i8 @"std_map$$int.test_Foo_HashMap_has_key"(%HashMap.0* %map, i32 2)
   store i8 %92, i8* %taddr62, align 1
   %93 = insertvalue %variant undef, i8* %taddr62, 0
   %94 = insertvalue %variant %93, i64 ptrtoint (%.introspect* @"ct$bool" to i64), 1
@@ -412,14 +422,14 @@ voiderr67:                                        ; preds = %after_check66, %voi
   %lo69 = load i64, i64* %106, align 8
   %107 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %105, i32 0, i32 1
   %hi70 = load i8*, i8** %107, align 8
-  %108 = call i8 @"std_map$$int.test_Foo_HashMap_set"(%HashMap* %map, i32 7, i64 %lo69, i8* %hi70)
+  %108 = call i8 @"std_map$$int.test_Foo_HashMap_set"(%HashMap.0* %map, i32 7, i64 %lo69, i8* %hi70)
   store %"char[]" { i8* getelementptr inbounds ([11 x i8], [11 x i8]* @.str.6, i32 0, i32 0), i64 10 }, %"char[]"* %taddr72, align 8
   %109 = bitcast %"char[]"* %taddr72 to { i8*, i64 }*
   %110 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %109, i32 0, i32 0
   %lo73 = load i8*, i8** %110, align 8
   %111 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %109, i32 0, i32 1
   %hi74 = load i64, i64* %111, align 8
-  %112 = call { i8*, i64 } @"std_map$$int.test_Foo_HashMap_value_list"(%HashMap* %map, %Allocator* null)
+  %112 = call { i8*, i64 } @"std_map$$int.test_Foo_HashMap_value_list"(%HashMap.0* %map, %Allocator* null)
   %113 = bitcast %"Foo[]"* %result to { i8*, i64 }*
   store { i8*, i64 } %112, { i8*, i64 }* %113, align 8
   %114 = bitcast %"Foo[]"* %result to i8*
@@ -445,18 +455,18 @@ after_check80:                                    ; preds = %voiderr67
   br label %voiderr81
 
 voiderr81:                                        ; preds = %after_check80, %voiderr67
-  %125 = bitcast %HashMap.0* %map2 to i8*
+  %125 = bitcast %HashMap.3* %map2 to i8*
   call void @llvm.memset.p0i8.i64(i8* align 8 %125, i8 0, i64 40, i1 false)
   %126 = load %Allocator*, %Allocator** @std_core_mem_thread_allocator, align 8
-  call void @"std_map$$int.double_HashMap_init"(%HashMap.0* %map2, i32 16, float 7.500000e-01, %Allocator* %126)
-  %127 = call i8 @"std_map$$int.double_HashMap_set"(%HashMap.0* %map2, i32 4, double 1.300000e+00)
+  call void @"std_map$$int.double_HashMap_init"(%HashMap.3* %map2, i32 16, float 7.500000e-01, %Allocator* %126)
+  %127 = call i8 @"std_map$$int.double_HashMap_set"(%HashMap.3* %map2, i32 4, double 1.300000e+00)
   store %"char[]" { i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.7, i32 0, i32 0), i64 12 }, %"char[]"* %taddr83, align 8
   %128 = bitcast %"char[]"* %taddr83 to { i8*, i64 }*
   %129 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %128, i32 0, i32 0
   %lo84 = load i8*, i8** %129, align 8
   %130 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %128, i32 0, i32 1
   %hi85 = load i64, i64* %130, align 8
-  %131 = call i8 @"std_map$$int.double_HashMap_has_value"(%HashMap.0* %map2, double 1.300000e+00)
+  %131 = call i8 @"std_map$$int.double_HashMap_has_value"(%HashMap.3* %map2, double 1.300000e+00)
   store i8 %131, i8* %taddr88, align 1
   %132 = insertvalue %variant undef, i8* %taddr88, 0
   %133 = insertvalue %variant %132, i64 ptrtoint (%.introspect* @"ct$bool" to i64), 1
@@ -486,7 +496,7 @@ voiderr93:                                        ; preds = %after_check92, %voi
   %lo96 = load i8*, i8** %143, align 8
   %144 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %142, i32 0, i32 1
   %hi97 = load i64, i64* %144, align 8
-  %145 = call i8 @"std_map$$int.double_HashMap_has_value"(%HashMap.0* %map2, double 1.200000e+00)
+  %145 = call i8 @"std_map$$int.double_HashMap_has_value"(%HashMap.3* %map2, double 1.200000e+00)
   store i8 %145, i8* %taddr100, align 1
   %146 = insertvalue %variant undef, i8* %taddr100, 0
   %147 = insertvalue %variant %146, i64 ptrtoint (%.introspect* @"ct$bool" to i64), 1
@@ -510,14 +520,14 @@ after_check104:                                   ; preds = %voiderr93
   br label %voiderr105
 
 voiderr105:                                       ; preds = %after_check104, %voiderr93
-  %156 = call i8 @"std_map$$int.double_HashMap_set"(%HashMap.0* %map2, i32 100, double 3.400000e+00)
+  %156 = call i8 @"std_map$$int.double_HashMap_set"(%HashMap.3* %map2, i32 100, double 3.400000e+00)
   store %"char[]" { i8* getelementptr inbounds ([3 x i8], [3 x i8]* @.str.9, i32 0, i32 0), i64 2 }, %"char[]"* %taddr107, align 8
   %157 = bitcast %"char[]"* %taddr107 to { i8*, i64 }*
   %158 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %157, i32 0, i32 0
   %lo108 = load i8*, i8** %158, align 8
   %159 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %157, i32 0, i32 1
   %hi109 = load i64, i64* %159, align 8
-  %160 = call { i8*, i64 } @"std_map$$int.double_HashMap_key_list"(%HashMap.0* %map2, %Allocator* null)
+  %160 = call { i8*, i64 } @"std_map$$int.double_HashMap_key_list"(%HashMap.3* %map2, %Allocator* null)
   %161 = bitcast %"int[]"* %result112 to { i8*, i64 }*
   store { i8*, i64 } %160, { i8*, i64 }* %161, align 8
   %162 = bitcast %"int[]"* %result112 to i8*
@@ -549,7 +559,7 @@ voiderr117:                                       ; preds = %after_check116, %vo
   %lo120 = load i8*, i8** %174, align 8
   %175 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %173, i32 0, i32 1
   %hi121 = load i64, i64* %175, align 8
-  %176 = call { i8*, i64 } @"std_map$$int.double_HashMap_value_list"(%HashMap.0* %map2, %Allocator* null)
+  %176 = call { i8*, i64 } @"std_map$$int.double_HashMap_value_list"(%HashMap.3* %map2, %Allocator* null)
   %177 = bitcast %"double[]"* %result124 to { i8*, i64 }*
   store { i8*, i64 } %176, { i8*, i64 }* %177, align 8
   %178 = bitcast %"double[]"* %result124 to i8*
@@ -607,7 +617,7 @@ if.exit:                                          ; preds = %noerr_block, %voide
   %194 = getelementptr inbounds %TempAllocator, %TempAllocator* %193, i32 0, i32 3
   %195 = load i64, i64* %194, align 8
   store i64 %195, i64* %mark, align 8
-  %196 = bitcast %HashMap.0* %map3 to i8*
+  %196 = bitcast %HashMap.3* %map3 to i8*
   call void @llvm.memset.p0i8.i64(i8* align 8 %196, i8 0, i64 40, i1 false)
   %197 = load %TempAllocator*, %TempAllocator** @std_core_mem_thread_temp_allocator, align 8
   %not133 = icmp eq %TempAllocator* %197, null
@@ -637,16 +647,16 @@ noerr_block141:                                   ; preds = %after_check139
 if.exit142:                                       ; preds = %noerr_block141, %if.exit
   %200 = load %TempAllocator*, %TempAllocator** @std_core_mem_thread_temp_allocator, align 8
   %ptrptr = bitcast %TempAllocator* %200 to %Allocator*
-  call void @"std_map$$int.double_HashMap_init"(%HashMap.0* %map3, i32 16, float 7.500000e-01, %Allocator* %ptrptr)
-  %201 = call i8 @"std_map$$int.double_HashMap_set"(%HashMap.0* %map3, i32 5, double 3.200000e+00)
-  %202 = call i8 @"std_map$$int.double_HashMap_set"(%HashMap.0* %map3, i32 7, double 5.200000e+00)
+  call void @"std_map$$int.double_HashMap_init"(%HashMap.3* %map3, i32 16, float 7.500000e-01, %Allocator* %ptrptr)
+  %201 = call i8 @"std_map$$int.double_HashMap_set"(%HashMap.3* %map3, i32 5, double 3.200000e+00)
+  %202 = call i8 @"std_map$$int.double_HashMap_set"(%HashMap.3* %map3, i32 7, double 5.200000e+00)
   store %"char[]" { i8* getelementptr inbounds ([3 x i8], [3 x i8]* @.str.16, i32 0, i32 0), i64 2 }, %"char[]"* %taddr144, align 8
   %203 = bitcast %"char[]"* %taddr144 to { i8*, i64 }*
   %204 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %203, i32 0, i32 0
   %lo145 = load i8*, i8** %204, align 8
   %205 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %203, i32 0, i32 1
   %hi146 = load i64, i64* %205, align 8
-  %206 = call { i8*, i64 } @"std_map$$int.double_HashMap_key_tlist"(%HashMap.0* %map3)
+  %206 = call { i8*, i64 } @"std_map$$int.double_HashMap_key_tlist"(%HashMap.3* %map3)
   %207 = bitcast %"int[]"* %result149 to { i8*, i64 }*
   store { i8*, i64 } %206, { i8*, i64 }* %207, align 8
   %208 = bitcast %"int[]"* %result149 to i8*

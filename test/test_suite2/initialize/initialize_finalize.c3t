@@ -34,7 +34,7 @@ static finalize
 @llvm.global_ctors = appending global [3 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 300, ptr @.static_initialize.0, ptr null }, { i32, ptr, ptr } { i32 65535, ptr @.static_initialize.1, ptr null }, { i32, ptr, ptr } { i32 200, ptr @.static_initialize.2, ptr null }]
 @llvm.global_dtors = appending global [1 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 65535, ptr @.static_finalize.0, ptr null }]
 
-define void @.static_initialize.0() {
+define internal void @.static_initialize.0() {
 entry:
   call void @puts(ptr @.str)
   ret void
@@ -43,19 +43,19 @@ entry:
 ; Function Attrs: nounwind
 declare void @puts(ptr) #0
 
-define void @.static_initialize.1() {
+define internal void @.static_initialize.1() {
 entry:
   call void @puts(ptr @.str.1)
   ret void
 }
 
-define void @.static_initialize.2() {
+define internal void @.static_initialize.2() {
 entry:
   call void @puts(ptr @.str.2)
   ret void
 }
 
-define void @.static_finalize.0() {
+define internal void @.static_finalize.0() {
 entry:
   call void @puts(ptr @.str.3)
   ret void
