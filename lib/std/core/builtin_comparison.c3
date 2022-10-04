@@ -74,3 +74,36 @@ macro bool equals(a, b) @builtin
 		return a == b;
 	$endif;
 }
+
+macro min(x, ...) @builtin
+{
+    $if ($vacount == 1):
+        return less(x, $vaarg(0)) ? x : $vaarg(0);
+    $else:
+        $typeof(x) result = x;
+        $for (var $i = 0; $i < $vacount; $i++):
+            if (less($vaarg($i), result))
+            {
+                 result = $vaarg($i);
+            }
+        $endfor;
+        return result;
+    $endif;
+}
+
+macro max(x, ...) @builtin
+{
+    $if ($vacount == 1):
+        return greater(x, $vaarg(0)) ? x : $vaarg(0);
+    $else:
+        $typeof(x) result = x;
+        $for (var $i = 0; $i < $vacount; $i++):
+            if (greater($vaarg($i), result))
+            {
+                 result = $vaarg($i);
+            }
+        $endfor;
+        return result;
+    $endif;
+}
+
