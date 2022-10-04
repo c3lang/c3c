@@ -6242,11 +6242,10 @@ static inline bool sema_expr_analyse_ct_eval(SemaContext *context, Expr *expr)
 		case TOKEN_IDENT:
 		case TOKEN_CONST_IDENT:
 			expr->expr_kind = EXPR_IDENTIFIER;
-			expr->resolve_status = RESOLVE_NOT_DONE;
 			expr->identifier_expr.ident = ident;
 			expr->identifier_expr.path = path;
 			expr->identifier_expr.is_const = type == TOKEN_CONST_IDENT;
-			return sema_analyse_expr(context, expr);
+			return sema_analyse_expr_dispatch(context, expr);
 		default:
 			SEMA_ERROR(inner, "Only function, variable and constant names may be resolved with $eval.");
 			return false;
