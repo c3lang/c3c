@@ -1,0 +1,29 @@
+// #target: macos-x64
+module test;
+import std::io;
+
+fn int test()
+{
+	io::println($$FUNC);
+	return 1;
+}
+
+struct Foo
+{ int x; }
+
+fn void Foo.tester(Foo* f)
+{
+	io::println($$FUNC);
+}
+
+fn void main()
+{
+	Foo f;
+	f.tester();
+	test();
+}
+
+/* #expect: test.ll
+
+@.str = private unnamed_addr constant [5 x i8] c"test\00", align 1
+@.str.1 = private unnamed_addr constant [11 x i8] c"Foo.tester\00", align 1
