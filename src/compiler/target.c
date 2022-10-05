@@ -1255,7 +1255,7 @@ void *llvm_target_machine_create(void)
 			case X86VECTOR_NONE:
 				scratch_buffer_append("-sse,-avx,-mmx,");
 				break;
-			case X86VECTOR_NATIVE:
+			case X86VECTOR_HOST:
 				{
 					char* host_cpu_features = LLVMGetHostCPUFeatures();
 					scratch_buffer_append(host_cpu_features);

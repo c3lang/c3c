@@ -122,7 +122,7 @@ static void usage(void)
 	OUTPUT("  --forcelinker         - Force built in linker usage when doing non-cross linking.");
 	OUTPUT("");
 	OUTPUT("  --reloc=<option>      - Relocation model: none, pic, PIC, pie, PIE");
-	OUTPUT("  --x86vec=<option>     - Set max level of vector instructions: none, native, mmx, sse, avx, avx512.");
+	OUTPUT("  --x86vec=<option>     - Set max level of vector instructions: none, host, mmx, sse, avx, avx512.");
 	OUTPUT("");
 	OUTPUT("  --debug-stats         - Print debug statistics.");
 #ifndef NDEBUG

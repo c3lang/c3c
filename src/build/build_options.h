@@ -135,7 +135,7 @@ typedef enum
 {
 	X86VECTOR_DEFAULT = -1,
 	X86VECTOR_NONE = 0,
-	X86VECTOR_NATIVE = 1,
+	X86VECTOR_HOST = 1,
 	X86VECTOR_MMX = 2,
 	X86VECTOR_SSE = 3,
 	X86VECTOR_AVX = 4,
@@ -144,7 +144,7 @@ typedef enum
 
 static const char *vector_capability[6] = {
 		[X86VECTOR_NONE] = "none",
-		[X86VECTOR_NATIVE] = "native",
+		[X86VECTOR_HOST] = "host",
 		[X86VECTOR_MMX] = "mmx",
 		[X86VECTOR_SSE] = "sse",
 		[X86VECTOR_AVX] = "avx",
