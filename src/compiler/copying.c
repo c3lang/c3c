@@ -356,6 +356,8 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			MACRO_COPY_EXPRID(expr->slice_assign_expr.left);
 			MACRO_COPY_EXPRID(expr->slice_assign_expr.right);
 			return expr;
+		case EXPR_SUBSCRIPT_ASSIGN:
+			UNREACHABLE
 		case EXPR_SLICE:
 		case EXPR_SUBSCRIPT:
 		case EXPR_SUBSCRIPT_ADDR:

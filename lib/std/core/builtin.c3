@@ -3,6 +3,7 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::builtin;
 import libc;
+import std::hash;
 
 fault IteratorResult
 {
@@ -158,3 +159,4 @@ macro uint long.hash(long i) = (uint)((i >> 32) ^ i);
 macro uint ulong.hash(ulong i) = (uint)((i >> 32) ^ i);
 macro uint bool.hash(bool b) = (uint)b;
 macro uint typeid.hash(typeid t) = (uint)(((uptr)t >> 32) ^ (uptr)t);
+macro uint char[].hash(char[] c) = (uint)fnv32a::encode(c);

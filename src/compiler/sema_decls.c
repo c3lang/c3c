@@ -1247,13 +1247,7 @@ static inline bool sema_analyse_operator_element_set(Decl *method)
 {
 	TypeInfo *rtype;
 	Decl **params;
-	if (!sema_analyse_operator_common(method, &rtype, &params, 3)) return false;
-	if (rtype->type->canonical != type_void)
-	{
-		SEMA_ERROR(rtype, "The return type should be 'void'.");
-		return false;
-	}
-	return true;
+	return sema_analyse_operator_common(method, &rtype, &params, 3);
 }
 
 static inline bool sema_analyse_operator_len(Decl *method)

@@ -27,6 +27,17 @@
 #define POP_BREAKCONT() POP_CONTINUE(); POP_BREAK()
 #define IS_CONST(_x) ((_x)->expr_kind == EXPR_CONST)
 
+typedef enum
+{
+	SPLIT_PATH_IDENT,
+	SPLIT_PATH_CONST_IDENT,
+	SPLIT_PATH_TYPE_IDENT,
+	SPLIT_PATH_BUILTIN_TYPE_IDENT,
+	SPLIT_PATH_UNKNOWN_IDENTIFIER,
+	SPLIT_PATH_NOT_SINGLE_IDENTIFIER,
+	SPLIT_PATH_NOT_AN_IDENTIFIER,
+} SplitPathResult;
+
 extern const char *ct_eval_error;
 
 Decl **global_context_acquire_locals_list(void);
@@ -38,7 +49,8 @@ void context_pop_defers_and_replace_ast(SemaContext *context, Ast *ast);
 void context_change_scope_for_label(SemaContext *context, Decl *label);
 void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags);
 SemaContext *context_transform_for_eval(SemaContext *context, SemaContext *temp_context, CompilationUnit *eval_unit);
-bool splitpathref(const char *string, ArraySize len, Path **path_ref, const char **ident_ref, TokenType *type_ref);
+
+TokenType sema_splitpathref(const char *string, ArraySize len, Path **path_ref, const char **ident_ref);
 
 void sema_context_init(SemaContext *context, CompilationUnit *unit);
 void sema_context_destroy(SemaContext *context);
@@ -65,7 +77,7 @@ bool sema_insert_method_call(SemaContext *context, Expr *method_call, Decl *meth
 bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr);
 bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *struct_var, Decl *decl, bool failable);
 Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, Expr *index_expr);
-const char *sema_ct_eval_expr(SemaContext *c, const char *expr_type, Expr *inner, TokenType *type, Path **path_ref, bool report_missing);
+Expr *sema_ct_eval_expr(SemaContext *c, bool is_type, Expr *inner, bool report_missing);
 bool sema_analyse_asm(SemaContext *context, AsmInlineBlock *block, Ast *asm_stmt);
 bool sema_bit_assignment_check(Expr *right, Decl *member);
 int sema_check_comp_time_bool(SemaContext *context, Expr *expr);

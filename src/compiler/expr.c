@@ -132,6 +132,7 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_VASPLAT:
 		case EXPR_OPERATOR_CHARS:
 		case EXPR_CT_CHECKS:
+		case EXPR_SUBSCRIPT_ASSIGN:
 			return false;
 	}
 	UNREACHABLE
@@ -319,6 +320,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_ARGV_TO_SUBARRAY:
 		case EXPR_CT_ARG:
 		case EXPR_ASM:
+		case EXPR_SUBSCRIPT_ASSIGN:
 			UNREACHABLE
 		case EXPR_NOP:
 			return true;
@@ -703,6 +705,7 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_TRY_UNWRAP:
 		case EXPR_TRY_UNWRAP_CHAIN:
 		case EXPR_FORCE_UNWRAP:
+		case EXPR_SUBSCRIPT_ASSIGN:
 			return false;
 		case EXPR_CAST:
 			return exprid_is_pure(expr->cast_expr.expr);
