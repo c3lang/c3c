@@ -45,7 +45,7 @@ INLINE LLVMValueRef llvm_store_decl_raw(GenContext *context, Decl *decl, LLVMVal
 	return llvm_store_to_ptr_raw_aligned(context, decl->backend_ref, value, decl->alignment);
 }
 
-INLINE AlignSize llvm_type_or_alloca_align(GenContext *c, LLVMValueRef dest, Type *type)
+INLINE AlignSize llvm_type_or_alloca_align(LLVMValueRef dest, Type *type)
 {
 	if (LLVMIsAAllocaInst(dest) || LLVMIsAGlobalVariable(dest))
 	{
@@ -56,12 +56,12 @@ INLINE AlignSize llvm_type_or_alloca_align(GenContext *c, LLVMValueRef dest, Typ
 
 INLINE LLVMValueRef llvm_store_to_ptr(GenContext *c, LLVMValueRef destination, BEValue *value)
 {
-	return llvm_store_to_ptr_aligned(c, destination, value, llvm_type_or_alloca_align(c, destination, value->type));
+	return llvm_store_to_ptr_aligned(c, destination, value, llvm_type_or_alloca_align(destination, value->type));
 }
 
 INLINE LLVMValueRef llvm_store_to_ptr_raw(GenContext *c, LLVMValueRef pointer, LLVMValueRef value, Type *type)
 {
-	return llvm_store_to_ptr_raw_aligned(c, pointer, value, llvm_type_or_alloca_align(c, pointer, type));
+	return llvm_store_to_ptr_raw_aligned(c, pointer, value, llvm_type_or_alloca_align(pointer, type));
 }
 
 static inline LLVMValueRef llvm_emit_bitcast(GenContext *c, LLVMValueRef value, Type *type)

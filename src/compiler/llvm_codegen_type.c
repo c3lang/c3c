@@ -321,24 +321,26 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 		assert(LLVMGetTypeContext(any_type->backend_type) == c->context && "Should have been purged");
 		return any_type->backend_type;
 	}
+	Type *type = type_flatten(any_type);
+	if (type != any_type)
+	{
+		return any_type->backend_type = llvm_get_type(c, type);
+	}
 	switch (any_type->type_kind)
 	{
 		case CT_TYPES:
 			UNREACHABLE
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 		case TYPE_FAILABLE_ANY:
+		case TYPE_TYPEDEF:
+		case TYPE_DISTINCT:
+		case TYPE_ENUM:
 			// If this is reachable, then we're not doing the proper lowering.
 			UNREACHABLE
 		case TYPE_TYPEID:
 		case TYPE_ANYERR:
 		case TYPE_FAULTTYPE:
 			return any_type->backend_type = llvm_get_type(c, type_iptr->canonical);
-		case TYPE_TYPEDEF:
-			return any_type->backend_type = llvm_get_type(c, any_type->canonical);
-		case TYPE_DISTINCT:
-			return any_type->backend_type = llvm_get_type(c, any_type->decl->distinct_decl.base_type);
-		case TYPE_ENUM:
-			return any_type->backend_type = llvm_get_type(c, any_type->decl->enums.type_info->type->canonical);
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
@@ -383,6 +385,8 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 			LLVMStructSetBody(virtual_type, types, 2, false);
 			return any_type->backend_type = virtual_type;
 		}
+		case TYPE_SCALED_VECTOR:
+			TODO
 		case TYPE_VECTOR:
 			return any_type->backend_type = LLVMVectorType(llvm_get_type(c, any_type->array.base), any_type->array.len);
 	}
@@ -414,7 +418,7 @@ LLVMTypeRef llvm_get_coerce_type(GenContext *c, ABIArgInfo *arg_info)
 			{
 				elements[element_index++] = llvm_abi_type(c, arg_info->coerce_expand.hi);
 			}
-			return LLVMStructType(elements, element_index, arg_info->coerce_expand.packed);
+			return LLVMStructTypeInContext(c->context, elements, element_index, arg_info->coerce_expand.packed);
 		}
 		case ABI_ARG_DIRECT_SPLIT_STRUCT:
 		{
@@ -672,7 +676,7 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 
 	switch (type->type_kind)
 	{
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_FAILABLE, type->failable, 0, NULL, false);
 		case TYPE_FLEXIBLE_ARRAY:
 			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_ARRAY, type->array.base, 0, NULL, false);
@@ -708,6 +712,7 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 		case TYPE_TYPEDEF:
 			return llvm_get_typeid(c, type->canonical);
 		case TYPE_INFERRED_ARRAY:
+		case TYPE_INFERRED_VECTOR:
 		case TYPE_UNTYPED_LIST:
 		case TYPE_FAILABLE_ANY:
 		case TYPE_TYPEINFO:
@@ -737,6 +742,8 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 			return llvm_get_introspection_for_builtin_type(c, type, INTROSPECT_TYPE_TYPEID, 0);
 		case TYPE_POISONED:
 			UNREACHABLE
+		case TYPE_SCALED_VECTOR:
+			TODO
 	}
 	UNREACHABLE
 }

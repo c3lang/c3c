@@ -29,11 +29,13 @@ TypeInfo *parse_type_with_base(ParseContext *c, TypeInfo *type_info);
 Expr* parse_constant_expr(ParseContext *c);
 void parse_imports(ParseContext *c);
 Decl *parse_decl(ParseContext *c);
+Expr *parse_integer(ParseContext *c, Expr *left);
 Expr *parse_decl_or_expr(ParseContext *c, Decl **decl_ref);
 void recover_top_level(ParseContext *c);
 Expr *parse_cond(ParseContext *c);
 Expr *parse_assert_expr(ParseContext *c);
 Ast* parse_compound_stmt(ParseContext *c);
+Ast* parse_short_stmt(ParseContext *c, TypeInfoId return_type);
 Ast *parse_jump_stmt_no_eos(ParseContext *c);
 bool parse_attribute(ParseContext *c, Attr **attribute_ref);
 bool parse_attributes(ParseContext *c, Attr ***attributes_ref);
@@ -47,7 +49,8 @@ Decl *parse_var_decl(ParseContext *c);
 bool
 parse_parameters(ParseContext *c, Visibility visibility, Decl ***params_ref, Decl **body_params, Variadic *variadic,
                  int *vararg_index_ref);
-bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *splat);
+
+bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *splat, bool vasplat);
 Expr *parse_type_compound_literal_expr_after_type(ParseContext *c, TypeInfo *type_info);
 
 bool parse_module(ParseContext *c);

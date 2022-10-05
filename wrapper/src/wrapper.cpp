@@ -5,6 +5,8 @@
 #include "llvm/Object/ArchiveWriter.h"
 #include "llvm/Object/IRObjectFile.h"
 #include "llvm/Object/SymbolicFile.h"
+#include "llvm-c/TargetMachine.h"
+#include "llvm/Target/TargetMachine.h"
 
 #if LLVM_VERSION_MAJOR > 13
 #define LINK_SIG \
@@ -165,21 +167,14 @@ extern "C" {
 		return !llvm::writeArchive(std::string(out_name), std::move(new_members), true, kind, true, false, nullptr);
 	}
 
-int llvm_version_major = LLVM_VERSION_MAJOR;
-#if LLVM_VERSION_MAJOR < 13
-#if _MSC_VER
-	__declspec(selectany)
-#else
-	__attribute__((weak))
-#endif
-	LLVMAttributeRef LLVMCreateTypeAttribute(LLVMContextRef C, unsigned KindID,
-											 LLVMTypeRef type_ref)
+	int llvm_version_major = LLVM_VERSION_MAJOR;
+
+	void LLVMSetTargetMachineUseInitArray(LLVMTargetMachineRef ref, bool use_init_array)
 	{
-		auto &Ctx = *llvm::unwrap(C);
-		auto AttrKind = (llvm::Attribute::AttrKind)KindID;
-		return wrap(llvm::Attribute::get(Ctx, AttrKind, llvm::unwrap(type_ref)));
+		auto machine = reinterpret_cast<llvm::TargetMachine *>(ref);
+		machine->Options.UseInitArray = use_init_array;
 	}
-#endif
+
 	LLVMValueRef LLVMConstBswap(LLVMValueRef ConstantVal)
 	{
 		llvm::Constant *Val = llvm::unwrap<llvm::Constant>(ConstantVal);

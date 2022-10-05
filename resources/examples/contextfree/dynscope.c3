@@ -3,26 +3,30 @@ import std::io;
 
 tlocal char[] context_user = "safe";
 
-macro long perform(task)
+macro long reallyPerform(task)
 {
-  io::printf("%s: %s\n", context_user, task);
-  return task.len;
+	io::printfln("%s: %s", context_user, task);
+	return task.len;
 }
 
-macro @with_mode(char[] user, #action, arg)
+macro long perform(task)
 {
-  @scope(context_user)
-  {
-    context_user = user;
-    return #action(arg);
-  };
+	return reallyPerform(task);
+}
+
+macro @with_mode(char[] user, #action, ...)
+{
+	@scope(context_user)
+	{
+		context_user = user;
+		return #action($vasplat());
+	};
 }
 
 fn void main()
 {
-  long result = perform("something!");
-  result += @with_mode("faster", perform, "reliable");
-  result += perform(char[][] {"again", "more"});
-  result += perform(int[<2>] { 56, 99 });
-  io::printf("Result: %d\n", result);
+	long val1 = perform("something");
+	long val2 = @with_mode("faster", perform, "reliable");
+	long val3 = perform(char[][] {"something"});
+	io::printfln("%d %d %d", val1, val2, val3);
 }

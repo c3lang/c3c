@@ -3,4 +3,4 @@ int BAR = 4; // #error: This looks like a constant variable, did you forget 'con
 
 const BAZ = "ofke";
 
-FOOBAR; // #error: Expected a top level declaration here.
+FOOBAR; // #error: Expected the start of a global declaration here

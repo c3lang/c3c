@@ -1,0 +1,137 @@
+// #target: macos-x64
+module test;
+import std::io;
+import std::bits;
+fn void main()
+{
+	int a = 123;
+	int b = -23;
+	int c = $$min(a, b);
+	int d = $$max(a, b);
+	io::printfln("%d %d", c, d);
+	char z = 0b1101_1101;
+	io::printfln("%b %b %b", z, z.rotr(1), z.rotl(1));
+}
+
+/* #expect: test.ll
+
+define void @test_main() #0 {
+entry:
+  %a = alloca i32, align 4
+  %b = alloca i32, align 4
+  %c = alloca i32, align 4
+  %d = alloca i32, align 4
+  %retparam = alloca i64, align 8
+  %taddr = alloca %"char[]", align 8
+  %vararg = alloca %"variant[]", align 8
+  %varargslots = alloca [2 x %variant], align 16
+  %z = alloca i8, align 1
+  %retparam3 = alloca i64, align 8
+  %taddr4 = alloca %"char[]", align 8
+  %vararg7 = alloca %"variant[]", align 8
+  %varargslots8 = alloca [3 x %variant], align 16
+  %i = alloca i8, align 1
+  %shift = alloca i8, align 1
+  %taddr9 = alloca i8, align 1
+  %i10 = alloca i8, align 1
+  %shift11 = alloca i8, align 1
+  %taddr12 = alloca i8, align 1
+  store i32 123, i32* %a, align 4
+  store i32 -23, i32* %b, align 4
+  %0 = load i32, i32* %a, align 4
+  %1 = load i32, i32* %b, align 4
+  %2 = call i32 @llvm.smin.i32(i32 %0, i32 %1)
+  store i32 %2, i32* %c, align 4
+  %3 = load i32, i32* %a, align 4
+  %4 = load i32, i32* %b, align 4
+  %5 = call i32 @llvm.smax.i32(i32 %3, i32 %4)
+  store i32 %5, i32* %d, align 4
+  store %"char[]" { i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str, i32 0, i32 0), i64 5 }, %"char[]"* %taddr, align 8
+  %6 = bitcast %"char[]"* %taddr to { i8*, i64 }*
+  %7 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %6, i32 0, i32 0
+  %lo = load i8*, i8** %7, align 8
+  %8 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %6, i32 0, i32 1
+  %hi = load i64, i64* %8, align 8
+  %9 = bitcast i32* %c to i8*
+  %10 = insertvalue %variant undef, i8* %9, 0
+  %11 = insertvalue %variant %10, i64 ptrtoint (%.introspect* @"ct$int" to i64), 1
+  %12 = getelementptr inbounds [2 x %variant], [2 x %variant]* %varargslots, i64 0, i64 0
+  store %variant %11, %variant* %12, align 16
+  %13 = bitcast i32* %d to i8*
+  %14 = insertvalue %variant undef, i8* %13, 0
+  %15 = insertvalue %variant %14, i64 ptrtoint (%.introspect* @"ct$int" to i64), 1
+  %16 = getelementptr inbounds [2 x %variant], [2 x %variant]* %varargslots, i64 0, i64 1
+  store %variant %15, %variant* %16, align 16
+  %17 = getelementptr inbounds %"variant[]", %"variant[]"* %vararg, i32 0, i32 1
+  store i64 2, i64* %17, align 8
+  %18 = getelementptr inbounds %"variant[]", %"variant[]"* %vararg, i32 0, i32 0
+  %19 = bitcast [2 x %variant]* %varargslots to %variant*
+  store %variant* %19, %variant** %18, align 8
+  %20 = bitcast %"variant[]"* %vararg to { i8*, i64 }*
+  %21 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %20, i32 0, i32 0
+  %lo1 = load i8*, i8** %21, align 8
+  %22 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %20, i32 0, i32 1
+  %hi2 = load i64, i64* %22, align 8
+  %23 = call i64 @std_io_printfln(i64* %retparam, i8* %lo, i64 %hi, i8* %lo1, i64 %hi2)
+  %not_err = icmp eq i64 %23, 0
+  br i1 %not_err, label %after_check, label %voiderr
+
+after_check:                                      ; preds = %entry
+  br label %voiderr
+
+voiderr:                                          ; preds = %after_check, %entry
+  store i8 -35, i8* %z, align 1
+  store %"char[]" { i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str.1, i32 0, i32 0), i64 8 }, %"char[]"* %taddr4, align 8
+  %24 = bitcast %"char[]"* %taddr4 to { i8*, i64 }*
+  %25 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %24, i32 0, i32 0
+  %lo5 = load i8*, i8** %25, align 8
+  %26 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %24, i32 0, i32 1
+  %hi6 = load i64, i64* %26, align 8
+  %27 = insertvalue %variant undef, i8* %z, 0
+  %28 = insertvalue %variant %27, i64 ptrtoint (%.introspect* @"ct$char" to i64), 1
+  %29 = getelementptr inbounds [3 x %variant], [3 x %variant]* %varargslots8, i64 0, i64 0
+  store %variant %28, %variant* %29, align 16
+  %30 = load i8, i8* %z, align 1
+  store i8 %30, i8* %i, align 1
+  store i8 1, i8* %shift, align 1
+  %31 = load i8, i8* %i, align 1
+  %32 = load i8, i8* %i, align 1
+  %33 = load i8, i8* %shift, align 1
+  %34 = call i8 @llvm.fshr.i8(i8 %31, i8 %32, i8 %33)
+  store i8 %34, i8* %taddr9, align 1
+  %35 = insertvalue %variant undef, i8* %taddr9, 0
+  %36 = insertvalue %variant %35, i64 ptrtoint (%.introspect* @"ct$char" to i64), 1
+  %37 = getelementptr inbounds [3 x %variant], [3 x %variant]* %varargslots8, i64 0, i64 1
+  store %variant %36, %variant* %37, align 16
+  %38 = load i8, i8* %z, align 1
+  store i8 %38, i8* %i10, align 1
+  store i8 1, i8* %shift11, align 1
+  %39 = load i8, i8* %i10, align 1
+  %40 = load i8, i8* %i10, align 1
+  %41 = load i8, i8* %shift11, align 1
+  %42 = call i8 @llvm.fshl.i8(i8 %39, i8 %40, i8 %41)
+  store i8 %42, i8* %taddr12, align 1
+  %43 = insertvalue %variant undef, i8* %taddr12, 0
+  %44 = insertvalue %variant %43, i64 ptrtoint (%.introspect* @"ct$char" to i64), 1
+  %45 = getelementptr inbounds [3 x %variant], [3 x %variant]* %varargslots8, i64 0, i64 2
+  store %variant %44, %variant* %45, align 16
+  %46 = getelementptr inbounds %"variant[]", %"variant[]"* %vararg7, i32 0, i32 1
+  store i64 3, i64* %46, align 8
+  %47 = getelementptr inbounds %"variant[]", %"variant[]"* %vararg7, i32 0, i32 0
+  %48 = bitcast [3 x %variant]* %varargslots8 to %variant*
+  store %variant* %48, %variant** %47, align 8
+  %49 = bitcast %"variant[]"* %vararg7 to { i8*, i64 }*
+  %50 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %49, i32 0, i32 0
+  %lo13 = load i8*, i8** %50, align 8
+  %51 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %49, i32 0, i32 1
+  %hi14 = load i64, i64* %51, align 8
+  %52 = call i64 @std_io_printfln(i64* %retparam3, i8* %lo5, i64 %hi6, i8* %lo13, i64 %hi14)
+  %not_err15 = icmp eq i64 %52, 0
+  br i1 %not_err15, label %after_check16, label %voiderr17
+
+after_check16:                                    ; preds = %voiderr
+  br label %voiderr17
+
+voiderr17:                                        ; preds = %after_check16, %voiderr
+  ret void
+}

@@ -3,6 +3,7 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::builtin;
 import libc;
+import std::hash;
 
 fault IteratorResult
 {
@@ -113,3 +114,49 @@ macro enum_by_name($Type, char[] enum_name) @builtin
 	}
 	return SearchResult.MISSING!;
 }
+
+/**
+ * Locality for prefetch, levels 0 - 3, corresponding
+ * to "extremely local" to "no locality"
+ **/
+enum PrefetchLocality
+{
+	NO_LOCALITY,
+	FAR,
+	NEAR,
+	VERY_NEAR,
+}
+
+/**
+ * Prefetch a pointer.
+
+ * @param [in] ptr `Pointer to prefetch`
+ * @param $locality `Locality ranging from none to extremely local`
+ * @param $write `Prefetch for write, otherwise prefetch for read.`
+ **/
+macro prefetch(void* ptr, PrefetchLocality $locality = VERY_NEAR, bool $write = false) @builtin
+{
+	$$prefetch(ptr, $write ? 1 : 0, $locality.ordinal);
+}
+
+macro bool @castable(#expr, $To) @builtin
+{
+	return $checks(($To)#expr);
+}
+
+macro bool @convertible(#expr, $To) @builtin
+{
+	return $checks($To x = #expr);
+}
+
+macro uint int.hash(int i) = i;
+macro uint uint.hash(uint i) = i;
+macro uint short.hash(short s) = s;
+macro uint ushort.hash(ushort s) = s;
+macro uint char.hash(char c) = c;
+macro uint ichar.hash(ichar c) = c;
+macro uint long.hash(long i) = (uint)((i >> 32) ^ i);
+macro uint ulong.hash(ulong i) = (uint)((i >> 32) ^ i);
+macro uint bool.hash(bool b) = (uint)b;
+macro uint typeid.hash(typeid t) = (uint)(((uptr)t >> 32) ^ (uptr)t);
+macro uint char[].hash(char[] c) = (uint)fnv32a::encode(c);

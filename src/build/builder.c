@@ -5,7 +5,6 @@
 #include "build_options.h"
 
 void load_library_files(void) {}
-void load_files(void) {}
 
 #if defined(_M_X64) || defined(_M_AMD64)
 ArchOsTarget default_target = WINDOWS_X64;
@@ -125,6 +124,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	}
 
 	target->backend = options->backend;
+	target->single_module = false;
 
 	// Copy optimization levels.
 	switch (options->optimization_setting_override)
@@ -139,21 +139,33 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 			target->size_optimization_level = SIZE_OPTIMIZATION_NONE;
 			target->feature.safe_mode = false;
 			break;
+		case OPT_SETTING_O2_PLUS:
+			target->single_module = true;
+			FALLTHROUGH;
 		case OPT_SETTING_O2:
 			target->optimization_level = OPTIMIZATION_DEFAULT;
 			target->size_optimization_level = SIZE_OPTIMIZATION_NONE;
 			target->feature.safe_mode = false;
 			break;
+		case OPT_SETTING_O3_PLUS:
+			target->single_module = true;
+			FALLTHROUGH;
 		case OPT_SETTING_O3:
 			target->optimization_level = OPTIMIZATION_AGGRESSIVE;
 			target->size_optimization_level = SIZE_OPTIMIZATION_NONE;
 			target->feature.safe_mode = false;
 			break;
+		case OPT_SETTING_OSMALL_PLUS:
+			target->single_module = true;
+			FALLTHROUGH;
 		case OPT_SETTING_OSMALL:
 			target->optimization_level = OPTIMIZATION_DEFAULT;
 			target->size_optimization_level = SIZE_OPTIMIZATION_SMALL;
 			target->feature.safe_mode = false;
 			break;
+		case OPT_SETTING_OTINY_PLUS:
+			target->single_module = true;
+			FALLTHROUGH;
 		case OPT_SETTING_OTINY:
 			target->optimization_level = OPTIMIZATION_DEFAULT;
 			target->size_optimization_level = SIZE_OPTIMIZATION_TINY;

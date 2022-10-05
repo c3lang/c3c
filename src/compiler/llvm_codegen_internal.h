@@ -12,13 +12,6 @@
 #include <llvm-c/Analysis.h>
 #include <llvm-c/BitWriter.h>
 #include <llvm-c/DebugInfo.h>
-#include <llvm-c/Transforms/PassManagerBuilder.h>
-#include <llvm-c/Transforms/InstCombine.h>
-#include <llvm-c/Transforms/Vectorize.h>
-#include <llvm-c/Transforms/Scalar.h>
-#include <llvm-c/Transforms/IPO.h>
-#include <llvm-c/Transforms/Utils.h>
-#include <llvm-c/Comdat.h>
 #include "dwarf.h"
 
 #define SLICE_MAX_UNROLL 4
@@ -67,8 +60,9 @@ typedef struct
 } DebugContext;
 
 
-typedef struct
+typedef struct GenContext_
 {
+	bool shared_context;
 	LLVMModuleRef module;
 	LLVMBuilderRef global_builder;
 	LLVMTargetMachineRef machine;
@@ -79,6 +73,8 @@ typedef struct
 	LLVMBuilderRef builder;
 	LLVMBasicBlockRef current_block;
 	LLVMBasicBlockRef catch_block;
+	LLVMValueRef *constructors;
+	LLVMValueRef *destructors;
 	const char *ir_filename;
 	const char *object_filename;
 	const char *asm_filename;
@@ -90,8 +86,12 @@ typedef struct
 	LLVMTypeRef fault_type;
 	LLVMTypeRef size_type;
 	Decl *panicfn;
-	Decl *cur_code_decl;
-	Decl *cur_func_decl;
+	struct
+	{
+		const char *name;
+		FunctionPrototype *prototype;
+		Type *rtype;
+	} cur_func;
 	TypeInfo *current_return_type;
 	int block_global_unique_count;
 	int ast_alloca_addr_space;
@@ -114,95 +114,105 @@ typedef struct
 
 typedef struct
 {
+	unsigned abs;
+	unsigned assume;
+	unsigned bitreverse;
+	unsigned bswap;
+	unsigned ceil;
+	unsigned convert_from_fp16;
+	unsigned convert_to_fp16;
+	unsigned copysign;
+	unsigned cos;
+	unsigned ctlz;
+	unsigned ctpop;
+	unsigned cttz;
+	unsigned exp;
+	unsigned exp2;
+	unsigned fabs;
+	unsigned floor;
+	unsigned fma;
+	unsigned fshl;
+	unsigned fshr;
+	unsigned lifetime_end;
+	unsigned lifetime_start;
+	unsigned llrint;
+	unsigned llround;
+	unsigned log;
+	unsigned log2;
+	unsigned log10;
+	unsigned lrint;
+	unsigned lround;
+	unsigned maximum;
+	unsigned maxnum;
+	unsigned memcpy;
+	unsigned memset;
+	unsigned minimum;
+	unsigned minnum;
+	unsigned nearbyint;
+	unsigned pow;
+	unsigned powi;
+	unsigned prefetch;
+	unsigned readcyclecounter;
+	unsigned rint;
+	unsigned round;
+	unsigned roundeven;
 	unsigned sadd_overflow;
 	unsigned sadd_sat;
-	unsigned uadd_overflow;
-	unsigned uadd_sat;
+	unsigned sin;
+	unsigned smax;
+	unsigned smin;
+	unsigned smul_overflow;
+	unsigned sqrt;
+	unsigned sshl_sat;
 	unsigned ssub_overflow;
 	unsigned ssub_sat;
+	unsigned trap;
+	unsigned trunc;
+	unsigned uadd_overflow;
+	unsigned uadd_sat;
+	unsigned umax;
+	unsigned umin;
+	unsigned umul_overflow;
+	unsigned ushl_sat;
 	unsigned usub_overflow;
 	unsigned usub_sat;
-	unsigned sshl_sat;
-	unsigned ushl_sat;
-	unsigned smul_overflow;
-	unsigned umul_overflow;
+	unsigned vector_reduce_fmax;
+	unsigned vector_reduce_fmin;
 	unsigned vector_reduce_smax;
 	unsigned vector_reduce_smin;
 	unsigned vector_reduce_umax;
 	unsigned vector_reduce_umin;
-	unsigned vector_reduce_fmax;
-	unsigned vector_reduce_fmin;
-	unsigned trap;
-	unsigned bswap;
-	unsigned assume;
-	unsigned rint;
-	unsigned trunc;
-	unsigned ceil;
-	unsigned sqrt;
-	unsigned nearbyint;
-	unsigned roundeven;
-	unsigned lround;
-	unsigned llround;
-	unsigned lrint;
-	unsigned llrint;
-	unsigned floor;
-	unsigned powi;
-	unsigned pow;
-	unsigned sin;
-	unsigned cos;
-	unsigned exp;
-	unsigned exp2;
-	unsigned log;
-	unsigned log2;
-	unsigned log10;
-	unsigned fabs;
-	unsigned fma;
-	unsigned copysign;
-	unsigned minnum;
-	unsigned maxnum;
-	unsigned minimum;
-	unsigned maximum;
-	unsigned smax;
-	unsigned smin;
-	unsigned umax;
-	unsigned umin;
-	unsigned abs;
-	unsigned fshl;
-	unsigned fshr;
-	unsigned bitreverse;
-	unsigned ctpop;
-	unsigned ctlz;
-	unsigned cttz;
-	unsigned convert_from_fp16;
-	unsigned convert_to_fp16;
-	unsigned lifetime_start;
-	unsigned lifetime_end;
-	unsigned memcpy;
-	unsigned memset;
-	unsigned readcyclecounter;
+	unsigned vector_reduce_add;
+	unsigned vector_reduce_fadd;
+	unsigned vector_reduce_mul;
+	unsigned vector_reduce_fmul;
+	unsigned vector_reduce_and;
+	unsigned vector_reduce_or;
+	unsigned vector_reduce_xor;
 } LLVMIntrinsics;
 
 extern LLVMIntrinsics intrinsic_id;
 
 typedef struct
 {
-	unsigned noinline; // No function inlining
-	unsigned optnone; // No optimization
-	unsigned alwaysinline; // Force inlining
-	unsigned inlinehint; // "Inline possibly"
-	unsigned noreturn; // No function return
-	unsigned nounwind; // No exceptions
-	unsigned writeonly; // No writes on pointer
-	unsigned readonly; // No reads on pointer
-	unsigned sret; // struct return pointer
 	unsigned align; // align
-	unsigned noalias; // noalias (pointer)
-	unsigned zext; // zero extend
-	unsigned sext; // sign extend
+	unsigned alwaysinline; // Force inlining
 	unsigned byval; // ByVal (param)
+	unsigned elementtype; // elementtype (type)
+	unsigned inlinehint; // "Inline possibly"
 	unsigned inreg; // inreg (param)
 	unsigned naked; // naked function
-	
+	unsigned noalias; // noalias (pointer)
+	unsigned noinline; // No function inlining
+	unsigned noreturn; // No function return
+	unsigned nounwind; // No exceptions
+	unsigned optnone; // No optimization
+	unsigned readonly; // No reads on pointer
+	unsigned sext; // sign extend
+	unsigned sret; // struct return pointer
+	unsigned writeonly; // No writes on pointer
+	unsigned zext; // zero extend
+
 } LLVMAttributes;
 
 extern LLVMAttributes attribute_id;
@@ -224,7 +234,7 @@ static inline LLVMValueRef decl_optional_ref(Decl *decl)
 {
 	assert(decl->decl_kind == DECL_VAR);
 	if (decl->var.kind == VARDECL_UNWRAPPED) return decl_optional_ref(decl->var.alias);
-	if (decl->type->type_kind != TYPE_FAILABLE) return NULL;
+	if (decl->type->type_kind != TYPE_OPTIONAL) return NULL;
 	return decl->var.failable_ref;
 }
 
@@ -264,6 +274,7 @@ LLVMMetadataRef llvm_get_debug_type(GenContext *c, Type *type);
 LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type);
 LLVMTypeRef llvm_get_pointee_type(GenContext *c, Type *any_type);
 void llvm_emit_function_decl(GenContext *c, Decl *decl);
+void llvm_emit_xxlizer(GenContext *c, Decl *decl);
 INLINE LLVMTypeRef llvm_get_ptr_type(GenContext *c, Type *type);
 
 // -- Attributes ---
@@ -295,7 +306,7 @@ LLVMValueRef llvm_emit_alloca(GenContext *c, LLVMTypeRef type, unsigned alignmen
 LLVMValueRef llvm_emit_alloca_aligned(GenContext *c, Type *type, const char *name);
 void llvm_emit_and_set_decl_alloca(GenContext *c, Decl *decl);
 INLINE void llvm_set_alignment(LLVMValueRef alloca, AlignSize alignment);
-INLINE AlignSize llvm_type_or_alloca_align(GenContext *c, LLVMValueRef dest, Type *type);
+INLINE AlignSize llvm_type_or_alloca_align(LLVMValueRef dest, Type *type);
 
 // -- Bitcast --
 static inline LLVMValueRef llvm_emit_bitcast(GenContext *c, LLVMValueRef value, Type *type);
@@ -424,9 +435,10 @@ void llvm_emit_initialize_reference_temporary_const(GenContext *c, BEValue *ref,
 void llvm_emit_len_for_expr(GenContext *c, BEValue *be_value, BEValue *expr_to_len);
 LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl);
 LLVMValueRef llvm_emit_call_intrinsic(GenContext *c, unsigned intrinsic, LLVMTypeRef *types, unsigned type_count, LLVMValueRef *values, unsigned arg_count);
-void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_type, Type *from_type);
+void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *value, Type *to_type, Type *from_type);
 void llvm_emit_local_var_alloca(GenContext *c, Decl *decl);
 void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value);
+void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr);
 
 // -- Optional --
 LLVMValueRef llvm_emit_is_no_opt(GenContext *c, LLVMValueRef error_value);

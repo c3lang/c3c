@@ -128,7 +128,7 @@ fn void test()
 
 ### Current status
 
-The current version of the compiler is alpha release 0.2.
+The current version of the compiler is alpha release 0.3.
 
 It's possible to try out the current C3 compiler in the browser: https://ide.judge0.com/ – this is courtesy of the
 developer of Judge0. 
@@ -254,12 +254,14 @@ You should now have a `c3c` executable.
 
 You can try it out by running some sample code: `c3c.exe compile ../resources/examples/hash.c3`
 
+*Note that if you run into linking issues when building, make sure that you are using the latest version of VS17.*
+
 
 #### Compiling on Ubuntu 20.10
 
 1. Make sure you have a C compiler that handles C11 and a C++ compiler, such as GCC or Clang. Git also needs to be installed.
 2. Install CMake: `sudo apt install cmake`
-3. Install LLVM 12 (or greater: C3C supports LLVM 12-16): `sudo apt-get install clang-12 zlib1g zlib1g-dev libllvm12 llvm-12 llvm-12-dev llvm-12-runtime liblld-12-dev liblld-12`
+3. Install LLVM 13 (or greater: C3C supports LLVM 13-16): `sudo apt-get install clang-13 zlib1g zlib1g-dev libllvm13 llvm-13 llvm-13-dev llvm-13-runtime liblld-13-dev liblld-13`
 4. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
 5. Enter the C3C directory `cd c3c`.
 6. Create a build directory `mkdir build`
@@ -275,7 +277,7 @@ You can try it out by running some sample code: `./c3c compile ../resources/exam
 #### Compiling on other Linux / Unix variants
 
 1. Install CMake.
-2. Install or compile LLVM and LLD *libraries* (version 12+ or higher)
+2. Install or compile LLVM and LLD *libraries* (version 13+ or higher)
 3. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
 4. Enter the C3C directory `cd c3c`.
 5. Create a build directory `mkdir build`

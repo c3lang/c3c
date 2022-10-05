@@ -109,7 +109,7 @@ loop.body:                                        ; preds = %loop.cond
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
-  call void @std_core_builtin_panic(i8* getelementptr inbounds ([20 x i8], [20 x i8]* @.zstr, i64 0, i64 0), i8* getelementptr inbounds ([22 x i8], [22 x i8]* @.zstr.1, i64 0, i64 0), i8* getelementptr inbounds ([21 x i8], [21 x i8]* @.zstr.2, i64 0, i64 0), i32 14)
+  call void @std_core_builtin_panic(i8* getelementptr inbounds ([20 x i8], [20 x i8]* @.zstr, i64 0, i64 0), i8* getelementptr inbounds ([22 x i8], [22 x i8]* @.zstr.1, i64 0, i64 0), i8* getelementptr inbounds ([12 x i8], [12 x i8]* @.zstr.2, i64 0, i64 0), i32 14)
   unreachable
 
 unreachable_block:                                ; No predecessors!

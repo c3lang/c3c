@@ -539,7 +539,7 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 		case TYPE_TYPEID:
 		case CT_TYPES:
 			UNREACHABLE
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 		case TYPE_FAILABLE_ANY:
 			// If this is reachable then we're not doing the proper lowering.
 			UNREACHABLE
@@ -593,6 +593,8 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 			return type->backend_debug_type = llvm_debug_errunion_type(c, type);
 		case TYPE_ANY:
 			return type->backend_debug_type = llvm_debug_any_type(c, type);
+		case TYPE_SCALED_VECTOR:
+			TODO
 	}
 	UNREACHABLE
 }

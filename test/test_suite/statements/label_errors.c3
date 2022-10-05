@@ -18,7 +18,7 @@ fn void test1()
     {
         while (1)
         {
-            break BAR; // #error: Cannot find a labelled statement with the name 'BAR'
+            break BAR; // #error: A labelled statement with the name 'BAR' can't be found in the current scope
         }
     };
 }

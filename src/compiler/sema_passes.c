@@ -357,7 +357,7 @@ void sema_analysis_pass_decls(Module *module)
 				{
 					.depth = 0,
 					.scope_id = 0,
-					.local_decl_start = 0,
+					.label_start = 0,
 					.current_local = 0,
 				};
 		VECEACH(unit->attributes, i)
@@ -413,11 +413,16 @@ void sema_analysis_pass_functions(Module *module)
 {
 	DEBUG_LOG("Pass: Function analysis %s", module->name->module);
 
+
 	VECEACH(module->units, index)
 	{
 		CompilationUnit *unit = module->units[index];
 		SemaContext context;
 		sema_context_init(&context, unit);
+		VECEACH(unit->xxlizers, i)
+		{
+			sema_analyse_decl(&context, unit->xxlizers[i]);
+		}
 		VECEACH(unit->methods, i)
 		{
 			analyse_func_body(&context, unit->methods[i]);

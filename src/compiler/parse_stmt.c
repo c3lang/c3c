@@ -8,6 +8,7 @@
 
 // --- Internal functions
 
+static inline Expr *parse_asm_expr(ParseContext *c);
 
 /**
  * declaration_stmt
@@ -45,19 +46,273 @@ static inline void parse_optional_label_target(ParseContext *c, Label *label)
 	}
 }
 
+static inline bool parse_asm_offset(ParseContext *c, ExprAsmArg *asm_arg)
+{
+	if (!tok_is(c, TOKEN_INTEGER))
+	{
+		SEMA_ERROR_HERE("Expected an integer value.");
+		return false;
+	}
+	Expr *offset = parse_integer(c, NULL);
+	assert(expr_is_const_int(offset));
+	Int i = offset->const_expr.ixx;
+	if (i.i.high)
+	{
+		SEMA_ERROR_HERE("The value is too high for an offset.");
+		return false;
+	}
+	asm_arg->offset = i.i.low;
+	return true;
+}
+
+static inline bool parse_asm_scale(ParseContext *c, ExprAsmArg *asm_arg)
+{
+	if (!tok_is(c, TOKEN_INTEGER))
+	{
+		SEMA_ERROR_HERE("Expected an integer value.");
+		return false;
+	}
+	Expr *value = parse_integer(c, NULL);
+	assert(expr_is_const_int(value));
+	Int i = value->const_expr.ixx;
+	if (i.i.high)
+	{
+		SEMA_ERROR_HERE("The value is too high for a scale: %s", int_to_str(i, 10));
+		return false;
+	}
+	switch (i.i.low)
+	{
+		case 1:
+			asm_arg->offset_type = ASM_SCALE_1;
+			break;
+		case 2:
+			asm_arg->offset_type = ASM_SCALE_2;
+			break;
+		case 4:
+			asm_arg->offset_type = ASM_SCALE_4;
+			break;
+		case 8:
+			asm_arg->offset_type = ASM_SCALE_8;
+			break;
+		default:
+			SEMA_ERROR_HERE("Expected 1, 2, 4 or 8.");
+			return false;
+	}
+	return true;
+}
+
+static inline bool parse_asm_addr(ParseContext *c, ExprAsmArg *asm_arg)
+{
+	asm_arg->kind = ASM_ARG_ADDR;
+	asm_arg->offset_type = ASM_SCALE_1;
+	ASSIGN_EXPR_OR_RET(Expr *base, parse_asm_expr(c), false);
+
+	// Simple case [foo]
+	if (try_consume(c, TOKEN_RBRACKET))
+	{
+		if (base->expr_asm_arg.kind == ASM_ARG_ADDROF)
+		{
+			*asm_arg = base->expr_asm_arg;
+			asm_arg->kind = ASM_ARG_MEMVAR;
+			return true;
+		}
+		asm_arg->base = exprid(base);
+		return true;
+	}
+
+	asm_arg->base = exprid(base);
+
+	// [foo + ... or [foo - ...]
+	TokenType type = c->tok;
+	switch (type)
+	{
+		case TOKEN_PLUS:
+		case TOKEN_MINUS:
+			advance(c);
+			break;
+		default:
+			SEMA_ERROR_HERE("Expected + or - here.");
+			return false;
+	}
+	if (type == TOKEN_MINUS) asm_arg->neg_offset = true;
+
+	// If it's an integer, then it's [foo + 123] or [foo - 213]
+	if (tok_is(c, TOKEN_INTEGER)) return parse_asm_offset(c, asm_arg);
+
+	// Otherwise we expect the index.
+	ASSIGN_EXPRID_OR_RET(asm_arg->idx, parse_asm_expr(c), false);
+
+	// We got [foo + bar] or [foo - bar]
+	if (try_consume(c, TOKEN_RBRACKET)) return true;
+
+	switch (c->tok)
+	{
+		case TOKEN_STAR:
+			// [foo + bar * ...]
+			advance(c);
+			if (!parse_asm_scale(c, asm_arg)) return false;
+			break;
+		case TOKEN_SHR:
+			advance(c);
+			asm_arg->offset_type = ASM_SCALE_SHR;
+			if (!parse_asm_offset(c, asm_arg)) return false;
+			CONSUME_OR_RET(TOKEN_RBRACKET, false);
+			return true;
+		case TOKEN_SHL:
+			asm_arg->offset_type = ASM_SCALE_SHL;
+			if (!parse_asm_offset(c, asm_arg)) return false;
+			CONSUME_OR_RET(TOKEN_RBRACKET, false);
+			return true;
+		default:
+			break;
+	}
+	// [foo + bar * 4]
+	if (try_consume(c, TOKEN_RBRACKET)) return true;
+
+	if (asm_arg->neg_offset)
+	{
+		SEMA_ERROR_HERE("Addressing cannot both have a negated index and an offset.");
+		return false;
+	}
+
+	switch (c->tok)
+	{
+		case TOKEN_MINUS:
+			asm_arg->neg_offset = true;
+			break;
+		case TOKEN_PLUS:
+			break;
+		default:
+			SEMA_ERROR_HERE("Expected + or - here.");
+			return false;
+	}
+	advance(c);
+
+	if (!parse_asm_offset(c, asm_arg)) return false;
+
+	CONSUME_OR_RET(TOKEN_RBRACKET, false);
+	return true;
+}
+/**
+ *
+ * @param c
+ * @return
+ */
+static inline Expr *parse_asm_expr(ParseContext *c)
+{
+	Expr *expr = EXPR_NEW_TOKEN(EXPR_ASM);
+	switch (c->tok)
+	{
+		case TOKEN_LBRACKET:
+			advance(c);
+			if (!parse_asm_addr(c, &expr->expr_asm_arg)) return poisoned_expr;
+			RANGE_EXTEND_PREV(expr);
+			return expr;
+		case TOKEN_CT_IDENT:
+		case TOKEN_CT_CONST_IDENT:
+			expr->expr_asm_arg.kind = ASM_ARG_REG;
+			expr->expr_asm_arg.reg.name = c->data.string;
+			advance(c);
+			return expr;
+		case TOKEN_HASH_IDENT:
+			SEMA_ERROR_HERE("Compile time variables need to be wrapped in () inside an asm block.");
+			return poisoned_expr;
+		case TOKEN_IDENT:
+			expr->expr_asm_arg.kind = ASM_ARG_REGVAR;
+			expr->expr_asm_arg.ident.name = c->data.string;
+			advance(c);
+			return expr;
+		case TOKEN_AMP:
+			expr->expr_asm_arg.kind = ASM_ARG_ADDROF;
+			advance(c);
+			expr->expr_asm_arg.ident.name = c->data.string;
+			if (!try_consume(c, TOKEN_IDENT))
+			{
+				SEMA_ERROR_HERE("Expected a variable name after '&', like '&foo'.");
+				return poisoned_expr;
+			}
+			return expr;
+		case TOKEN_INTEGER:
+		case TOKEN_CONST_IDENT:
+		case TOKEN_REAL:
+			expr->expr_asm_arg.kind = ASM_ARG_VALUE;
+			ASSIGN_EXPRID_OR_RET(expr->expr_asm_arg.expr_id, parse_expr(c), poisoned_expr);
+			return expr;
+		case TOKEN_LPAREN:
+			advance(c);
+			expr->expr_asm_arg.kind = ASM_ARG_VALUE;
+			ASSIGN_EXPRID_OR_RET(expr->expr_asm_arg.expr_id, parse_expr(c), poisoned_expr);
+			TRY_CONSUME_OR_RET(TOKEN_RPAREN, "Expected the ')' here.", poisoned_expr);
+			RANGE_EXTEND_PREV(expr);
+			return expr;
+		default:
+			SEMA_ERROR_HERE("This doesn't look like an asm argument.");
+			return poisoned_expr;
+	}
+}
+
+static inline Ast *parse_asm_stmt(ParseContext *c)
+{
+	Ast *asm_stmt = ast_new_curr(c, AST_ASM_STMT);
+	if (!tok_is(c, TOKEN_IDENT) && !tok_is(c, TOKEN_INT))
+	{
+		SEMA_ERROR_HERE("Expected an asm instruction here.");
+		return poisoned_ast;
+	}
+	asm_stmt->asm_stmt.instruction = symstr(c);
+	advance(c);
+	if (try_consume(c, TOKEN_DOT))
+	{
+		if (!tok_is(c, TOKEN_IDENT))
+		{
+			SEMA_ERROR_HERE("Expected asm instruction variant.");
+			return poisoned_ast;
+		}
+		asm_stmt->asm_stmt.variant = symstr(c);
+		advance_and_verify(c, TOKEN_IDENT);
+	}
+	Expr **list = NULL;
+	while (!try_consume(c, TOKEN_EOS))
+	{
+		ASSIGN_EXPR_OR_RET(Expr *expr, parse_asm_expr(c), poisoned_ast);
+		vec_add(list, expr);
+		if (!try_consume(c, TOKEN_COMMA))
+		{
+			if (!expect(c, TOKEN_EOS)) return poisoned_ast;
+			continue;
+		}
+	}
+	asm_stmt->asm_stmt.args = list;
+	return asm_stmt;
+}
+
 /**
  * asm ::= 'asm' '(' string ')'
  * @param c
  * @return
  */
-static inline Ast* parse_asm_stmt(ParseContext *c)
+static inline Ast* parse_asm_block_stmt(ParseContext *c)
 {
-	Ast *ast = new_ast(AST_ASM_STMT, c->span);
+	Ast *ast = new_ast(AST_ASM_BLOCK_STMT, c->span);
 	advance_and_verify(c, TOKEN_ASM);
+	if (try_consume(c, TOKEN_LBRACE))
+	{
+		AsmInlineBlock *block = CALLOCS(AsmInlineBlock);
+		AstId *prev = &block->asm_stmt;
+		while (!try_consume(c, TOKEN_RBRACE))
+		{
+			ASSIGN_AST_OR_RET(Ast *block_stmt, parse_asm_stmt(c), poisoned_ast);
+			*prev = astid(block_stmt);
+			prev = &block_stmt->next;
+		}
+		ast->asm_block_stmt.block = block;
+		return ast;
+	}
+	ast->asm_block_stmt.is_string = true;
 	// TODO use attributes, like volatile
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_ast);
-	ASSIGN_EXPR_OR_RET(ast->asm_stmt.body, parse_expr(c), poisoned_ast);
-	ast->asm_stmt.is_volatile = true;
+	ASSIGN_EXPRID_OR_RET(ast->asm_block_stmt.asm_string, parse_expr(c), poisoned_ast);
+	ast->asm_block_stmt.is_volatile = true;
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_ast);
 	RANGE_EXTEND_PREV(ast);
 	CONSUME_EOS_OR_RET(poisoned_ast);
@@ -612,11 +867,11 @@ static inline Ast* parse_ct_if_stmt(ParseContext *c, bool is_elif)
 
 	if (tok_is(c, TOKEN_CT_ELIF))
 	{
-		ASSIGN_AST_OR_RET(ast->ct_if_stmt.elif, parse_ct_if_stmt(c, true), poisoned_ast);
+		ASSIGN_ASTID_OR_RET(ast->ct_if_stmt.elif, parse_ct_if_stmt(c, true), poisoned_ast);
 	}
 	else if (tok_is(c, TOKEN_CT_ELSE))
 	{
-		ASSIGN_AST_OR_RET(ast->ct_if_stmt.elif, parse_ct_else_stmt(c), poisoned_ast);
+		ASSIGN_ASTID_OR_RET(ast->ct_if_stmt.elif, parse_ct_else_stmt(c), poisoned_ast);
 	}
 	if (is_elif) return ast;
 	advance_and_verify(c, TOKEN_CT_ENDIF);
@@ -748,7 +1003,7 @@ static inline Ast* parse_ct_switch_stmt(ParseContext *c)
 {
 	Ast *ast = ast_new_curr(c, AST_CT_SWITCH_STMT);
 	advance_and_verify(c, TOKEN_CT_SWITCH);
-	ASSIGN_EXPR_OR_RET(ast->ct_switch_stmt.cond, parse_const_paren_expr(c), poisoned_ast);
+	ASSIGN_EXPRID_OR_RET(ast->ct_switch_stmt.cond, parse_const_paren_expr(c), poisoned_ast);
 	TRY_CONSUME(TOKEN_COLON, "Expected ':' after $switch expression, did you forget it?");
 	Ast **cases = NULL;
 	while (!try_consume(c, TOKEN_CT_ENDSWITCH))
@@ -845,9 +1100,6 @@ Ast *parse_stmt(ParseContext *c)
 {
 	switch (c->tok)
 	{
-		case TOKEN_ASM_STRING:
-		case TOKEN_ASM_CONSTRAINT:
-			UNREACHABLE
 		case TOKEN_LBRACE:
 			return parse_compound_stmt(c);
 		case TYPELIKE_TOKENS:
@@ -908,7 +1160,7 @@ Ast *parse_stmt(ParseContext *c)
 			RETURN_AFTER_EOS(ast);
 		}
 		case TOKEN_ASM:
-			return parse_asm_stmt(c);
+			return parse_asm_block_stmt(c);
 		case TOKEN_DEFAULT:
 			SEMA_ERROR_HERE("'default' was found outside of 'switch', did you mismatch a '{ }' pair?");
 			advance(c);
@@ -952,17 +1204,18 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_CT_QNAMEOF:
 		case TOKEN_CT_NAMEOF:
 		case TOKEN_CT_DEFINED:
+		case TOKEN_CT_CHECKS:
 		case TOKEN_CT_STRINGIFY:
 		case TOKEN_CT_EVAL:
 		case TOKEN_TRY:
 		case TOKEN_CATCH:
 		case TOKEN_BYTES:
 		case TOKEN_BUILTIN:
-		case TOKEN_CT_VAARG_COUNT:
-		case TOKEN_CT_VAARG_GET_ARG:
-		case TOKEN_CT_VAARG_GET_EXPR:
-		case TOKEN_CT_VAARG_GET_CONST:
-		case TOKEN_CT_VAARG_GET_REF:
+		case TOKEN_CT_VACOUNT:
+		case TOKEN_CT_VAARG:
+		case TOKEN_CT_VAEXPR:
+		case TOKEN_CT_VACONST:
+		case TOKEN_CT_VAREF:
 			return parse_expr_stmt(c);
 		case TOKEN_ASSERT:
 			return parse_assert_stmt(c);
@@ -1036,8 +1289,8 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_RVEC:
 		case TOKEN_CT_ENDFOR:
 		case TOKEN_CT_ENDFOREACH:
-		case TOKEN_CT_CASTABLE:
-		case TOKEN_CT_CONVERTIBLE:
+		case TOKEN_CT_VASPLAT:
+		case TOKEN_IMPLIES:
 			SEMA_ERROR_HERE("Unexpected '%s' found when expecting a statement.",
 			                token_type_to_string(c->tok));
 			advance(c);
@@ -1103,4 +1356,27 @@ Ast* parse_compound_stmt(ParseContext *c)
 		ast_append(&next, stmt);
 	}
 	return ast;
+}
+
+Ast* parse_short_stmt(ParseContext *c, TypeInfoId return_type)
+{
+	advance(c);
+	Ast *ast = ast_new_curr(c, AST_COMPOUND_STMT);
+	AstId *next = &ast->compound_stmt.first_stmt;
+
+	TypeInfo *rtype = return_type ? type_infoptr(return_type) : NULL;
+	if (!rtype || (rtype->resolve_status != RESOLVE_DONE || rtype->type->type_kind != TYPE_VOID))
+	{
+		Ast *ret = ast_new_curr(c, AST_RETURN_STMT);
+		ast_append(&next, ret);
+		ASSIGN_EXPR_OR_RET(ret->return_stmt.expr, parse_expr(c), poisoned_ast);
+		RETURN_AFTER_EOS(ast);
+	}
+	else
+	{
+		ASSIGN_AST_OR_RET(Ast *stmt, parse_expr_stmt(c), poisoned_ast);
+		ast_append(&next, stmt);
+		return ast;
+	}
+	UNREACHABLE
 }

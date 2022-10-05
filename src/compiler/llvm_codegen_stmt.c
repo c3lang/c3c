@@ -152,7 +152,7 @@ void llvm_emit_decl_expr_list(GenContext *context, BEValue *be_value, Expr *expr
 		if (type->type_kind != TYPE_BOOL)
 		{
 			CastKind cast = cast_to_bool_kind(type);
-			llvm_emit_cast(context, cast, be_value, type, type_bool);
+			llvm_emit_cast(context, cast, last, be_value, type, type_bool);
 		}
 	}
 }
@@ -181,7 +181,7 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 
 	LLVMBasicBlockRef error_return_block = NULL;
 	LLVMValueRef error_out = NULL;
-	if (type_is_optional(c->cur_func_decl->type->function.prototype->rtype))
+	if (c->cur_func.prototype && type_is_optional(c->cur_func.prototype->rtype))
 	{
 		error_return_block = llvm_basic_block_new(c, "err_retblock");
 		error_out = llvm_emit_alloca_aligned(c, type_anyerr, "reterr");
@@ -467,7 +467,7 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 			SourceSpan loc = ast->span;
 			File  *file = source_file_by_id(loc.file_id);
 
-			llvm_emit_panic(c, "Infinite loop found", file->name, c->cur_func_decl->extname, loc.row ? loc.row : 1);
+			llvm_emit_panic(c, "Infinite loop found", file->name, c->cur_func.name, loc.row ? loc.row : 1);
 			LLVMBuildUnreachable(c->builder);
 			LLVMBasicBlockRef block = llvm_basic_block_new(c, "unreachable_block");
 			c->current_block = NULL;
@@ -514,6 +514,7 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 		// Emit the block
 		llvm_emit_block(c, cond_block);
 		BEValue be_value;
+		assert(cond);
 		if (cond->expr_kind == EXPR_COND)
 		{
 			llvm_emit_decl_expr_list(c, &be_value, cond, true);
@@ -1000,7 +1001,7 @@ static inline void llvm_emit_assert_stmt(GenContext *c, Ast *ast)
 			error = "Assert violation";
 		}
 		File  *file = source_file_by_id(loc.file_id);
-		llvm_emit_panic(c, error, file->name, c->cur_func_decl->name, loc.row ? loc.row : 1);
+		llvm_emit_panic(c, error, file->name, c->cur_func.name, loc.row ? loc.row : 1);
 		llvm_emit_br(c, on_ok);
 		llvm_emit_block(c, on_ok);
 	}
@@ -1027,23 +1028,194 @@ static inline void add_target_clobbers_to_buffer(GenContext *c)
 			break;
 	}
 }
-static inline void llvm_emit_asm_stmt(GenContext *c, Ast *ast)
+
+static void codegen_append_constraints(ClobberList *clobber_list, const char *str)
 {
-	LLVMTypeRef asm_fn_type = LLVMFunctionType(llvm_get_type(c, type_void), NULL, 0, 0);
+	char *string = clobber_list->string;
+	unsigned len = clobber_list->constraint_len;
+	while (*str)
+	{
+		if (len > 1022) error_exit("Constraint list exceeded max length.");
+		string[len++] = *(str++);
+	}
+	clobber_list->constraint_len = len;
+}
+
+static void codegen_new_constraint(ClobberList *clobber_list)
+{
+	if (clobber_list->constraint_len) codegen_append_constraints(clobber_list, ",");
+}
+
+static inline void llvm_emit_asm_block_stmt(GenContext *c, Ast *ast)
+{
+	const char *data;
 	scratch_buffer_clear();
 	add_target_clobbers_to_buffer(c);
+	char *clobbers = scratch_buffer_copy();
+	ClobberList clobber_list = { .constraint_len = 0 };
+	LLVMTypeRef param_types[512];
+	LLVMTypeRef pointer_type[512];
+	LLVMValueRef args[512];
+	LLVMTypeRef result_types[512];
+	Decl *result_decls[512];
+	unsigned result_count = 0;
+	unsigned param_count = 0;
+	AsmInlineBlock *block = ast->asm_block_stmt.block;
+	if (ast->asm_block_stmt.is_string)
+	{
+		data = exprptr(ast->asm_block_stmt.asm_string)->const_expr.string.chars;
+	}
+	else
+	{
+		data = codegen_create_asm(ast);
+		clobbers = clobber_list.string;
+		FOREACH_BEGIN(ExprAsmArg * var, block->output_vars)
+			codegen_new_constraint(&clobber_list);
+			if (var->kind == ASM_ARG_MEMVAR)
+			{
+				if (var->ident.early_clobber)
+				{
+					codegen_append_constraints(&clobber_list, "=*&m");
+				}
+				else
+				{
+					codegen_append_constraints(&clobber_list, "=*m");
+				}
+				BEValue value;
+				llvm_value_set_decl(c, &value, var->ident.ident_decl);
+				llvm_value_addr(c, &value);
+				value.kind = BE_VALUE;
+				pointer_type[param_count] = llvm_get_type(c, value.type);
+				value.type = type_get_ptr(value.type);
+				llvm_value_rvalue(c, &value);
+				param_types[param_count] = LLVMTypeOf(value.value);
+				args[param_count++] = value.value;
+				continue;
+			}
+			assert(var->kind == ASM_ARG_REGVAR);
+			if (var->ident.early_clobber)
+			{
+				codegen_append_constraints(&clobber_list, "=&r");
+			}
+			else
+			{
+				codegen_append_constraints(&clobber_list, "=r");
+			}
+			Decl *decl = result_decls[result_count] = var->ident.ident_decl;
+			result_types[result_count++] = llvm_get_type(c, decl->type);
+		FOREACH_END();
+
+		FOREACH_BEGIN(ExprAsmArg * val, block->input)
+			BEValue value;
+			codegen_new_constraint(&clobber_list);
+			pointer_type[param_count] = NULL;
+			switch (val->kind)
+			{
+				case ASM_ARG_MEMVAR:
+					llvm_value_set_decl(c, &value, val->ident.ident_decl);
+					llvm_value_addr(c, &value);
+					value.kind = BE_VALUE;
+					pointer_type[param_count] = llvm_get_type(c, value.type);
+					value.type = type_get_ptr(value.type);
+					assert(!val->ident.copy_output);
+					codegen_append_constraints(&clobber_list, "*m");
+					break;
+				case ASM_ARG_REGVAR:
+					llvm_value_set_decl(c, &value, val->ident.ident_decl);
+					if (val->ident.copy_output)
+					{
+						char buf[10];
+						sprintf(buf, "%d", val->index);
+						codegen_append_constraints(&clobber_list, buf);
+					}
+					else
+					{
+						codegen_append_constraints(&clobber_list, "r");
+					}
+					break;
+				case ASM_ARG_VALUE:
+					llvm_emit_exprid(c, &value, val->expr_id);
+					codegen_append_constraints(&clobber_list, "r");
+					break;
+				default:
+					TODO
+			}
+			llvm_value_rvalue(c, &value);
+			param_types[param_count] = LLVMTypeOf(value.value);
+			args[param_count++] = value.value;
+		FOREACH_END();
+
+
+		for (int i = 0; i < CLOBBER_FLAG_ELEMENTS; i++)
+		{
+			uint64_t clobber_mask = block->clobbers.mask[i];
+			if (!clobber_mask) continue;
+			uint64_t mask = 1;
+			for (int j = 0; j < 64; j++)
+			{
+				if (mask & clobber_mask)
+				{
+					unsigned clobber_index = i * 64 + j;
+					codegen_new_constraint(&clobber_list);
+					codegen_append_constraints(&clobber_list, "~{");
+					codegen_append_constraints(&clobber_list, asm_clobber_by_index(clobber_index));
+					codegen_append_constraints(&clobber_list, "}");
+				}
+				mask <<= 1;
+			}
+		}
+		if (asm_target.extra_clobbers)
+		{
+			codegen_new_constraint(&clobber_list);
+			codegen_append_constraints(&clobber_list, asm_target.extra_clobbers);
+		}
+	}
+	DEBUG_LOG("Asm: %s (%s)", data, clobbers);
+	LLVMTypeRef result_type;
+	if (result_count)
+	{
+		result_type = result_count == 1 ? result_types[0] : LLVMStructTypeInContext(c->context, result_types, result_count, false);
+	}
+	else
+	{
+		result_type = llvm_get_type(c, type_void);
+	}
+	LLVMTypeRef asm_fn_type = LLVMFunctionType(result_type, param_types, param_count, 0);
 	LLVMValueRef asm_fn = LLVMGetInlineAsm(asm_fn_type,
-	                                       (char *)ast->asm_stmt.body->const_expr.string.chars,
-	                                       ast->asm_stmt.body->const_expr.string.len,
-	                                       scratch_buffer_to_string(), scratch_buffer.len,
-	                                       ast->asm_stmt.is_volatile,
+	                                       (char*)data,
+	                                       strlen(data),
+										   clobbers,
+										   strlen(clobbers),
+	                                       ast->asm_block_stmt.is_volatile,
 	                                       true,
-	                                       LLVMInlineAsmDialectIntel
-#if LLVM_VERSION_MAJOR > 12
-											, /* can throw */ false
-#endif
+	                                       ast->asm_block_stmt.is_string ? LLVMInlineAsmDialectIntel : LLVMInlineAsmDialectATT,
+										   /* can throw */ false
 	                                       );
-	LLVMBuildCall2(c->builder, asm_fn_type, asm_fn, NULL, 0, "");
+	LLVMValueRef res = LLVMBuildCall2(c->builder, asm_fn_type, asm_fn, args, param_count, "");
+#if LLVM_VERSION_MAJOR > 13
+	for (unsigned i = 0; i < param_count; i++)
+	{
+		if (pointer_type[i])
+		{
+			llvm_attribute_add_call_type(c, res, attribute_id.elementtype, i + 1, pointer_type[i]);
+		}
+	}
+#else
+	(void)pointer_type;
+#endif
+	if (!result_count) return;
+	if (result_count == 1)
+	{
+		Decl *decl = block->output_vars[0]->ident.ident_decl;
+		llvm_store_decl_raw(c, decl, res);
+		return;
+	}
+	for (unsigned i = 0; i < result_count; i++)
+	{
+		Decl *decl = result_decls[i];
+		LLVMValueRef res_val = LLVMBuildExtractValue(c->builder, res, i, "");
+		llvm_store_decl_raw(c, decl, res_val);
+	}
 }
 
 
@@ -1126,7 +1298,7 @@ void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_na
 	llvm_emit_cond_br(c, value, panic_block, ok_block);
 	llvm_emit_block(c, panic_block);
 	File  *file = source_file_by_id(loc.file_id);
-	llvm_emit_panic(c, panic_name, file->name, c->cur_func_decl->name, loc.row);
+	llvm_emit_panic(c, panic_name, file->name, c->cur_func.name, loc.row);
 	llvm_emit_br(c, ok_block);
 	llvm_emit_block(c, ok_block);
 }
@@ -1140,7 +1312,7 @@ void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *pani
 	llvm_value_set_bool(&be_value, value);
 	llvm_emit_cond_br(c, &be_value, panic_block, ok_block);
 	llvm_emit_block(c, panic_block);
-	llvm_emit_panic(c, panic_name, file->name, c->cur_func_decl->name, loc.row ? loc.row : 1);
+	llvm_emit_panic(c, panic_name, file->name, c->cur_func.name, loc.row ? loc.row : 1);
 	llvm_emit_br(c, ok_block);
 	llvm_emit_block(c, ok_block);
 }
@@ -1156,6 +1328,7 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 		case AST_IF_CATCH_SWITCH_STMT:
 		case AST_FOREACH_STMT:
 		case AST_DOC_STMT:
+		case AST_ASM_STMT:
 			UNREACHABLE
 		case AST_EXPR_STMT:
 			gencontext_emit_expr_stmt(c, ast);
@@ -1193,8 +1366,8 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 		case AST_DEFER_STMT:
 		case AST_NOP_STMT:
 			break;
-		case AST_ASM_STMT:
-			llvm_emit_asm_stmt(c, ast);
+		case AST_ASM_BLOCK_STMT:
+			llvm_emit_asm_block_stmt(c, ast);
 			break;
 		case AST_ASSERT_STMT:
 			llvm_emit_assert_stmt(c, ast);

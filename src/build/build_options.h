@@ -89,11 +89,15 @@ typedef enum
 {
 	OPT_SETTING_NOT_SET = -1,
 	OPT_SETTING_O0 = 0,
-	OPT_SETTING_O1 = 1,
-	OPT_SETTING_O2 = 2,
-	OPT_SETTING_O3 = 3,
-	OPT_SETTING_OSMALL = 4,
-	OPT_SETTING_OTINY = 5,
+	OPT_SETTING_O1,
+	OPT_SETTING_O2,
+	OPT_SETTING_O2_PLUS,
+	OPT_SETTING_O3,
+	OPT_SETTING_O3_PLUS,
+	OPT_SETTING_OSMALL,
+	OPT_SETTING_OSMALL_PLUS,
+	OPT_SETTING_OTINY,
+	OPT_SETTING_OTINY_PLUS
 } OptimizationSetting;
 
 typedef enum
@@ -190,31 +194,31 @@ typedef enum
 typedef enum
 {
 	ARCH_OS_TARGET_DEFAULT = 0,
-	LINUX_X86,
-	LINUX_X64,
-	WINDOWS_X86,
-	WINDOWS_X64,
-	MINGW_X64,
-	MACOS_X64,
-	MACOS_AARCH64,
-	LINUX_AARCH64,
-	LINUX_RISCV32,
-	LINUX_RISCV64,
-	WASM32,
-	WASM64,
-	ELF_X86,
-	ELF_X64,
 	ELF_AARCH64,
 	ELF_RISCV32,
 	ELF_RISCV64,
+	ELF_X86,
+	ELF_X64,
 	FREEBSD_X86,
 	FREEBSD_X64,
-	OPENBSD_X86,
-	OPENBSD_X64,
+	LINUX_AARCH64,
+	LINUX_RISCV32,
+	LINUX_RISCV64,
+	LINUX_X86,
+	LINUX_X64,
+	MACOS_AARCH64,
+	MACOS_X64,
+	MCU_X86,
+	MINGW_X64,
 	NETBSD_X86,
 	NETBSD_X64,
-	MCU_X86,
-	ARCH_OS_TARGET_LAST = MCU_X86
+	OPENBSD_X86,
+	OPENBSD_X64,
+	WASM32,
+	WASM64,
+	WINDOWS_X86,
+	WINDOWS_X64,
+	ARCH_OS_TARGET_LAST = WINDOWS_X64
 } ArchOsTarget;
 
 typedef struct BuildOptions_
@@ -323,20 +327,21 @@ typedef struct
 	const char *object_file_dir;
 	const char *llvm_file_dir;
 	const char *asm_file_dir;
-	bool run_after_compile : 1;
-	bool test_output : 1;
-	bool output_headers : 1;
-	bool output_ast : 1;
-	bool lex_only : 1;
-	bool parse_only : 1;
-	bool check_only : 1;
-	bool emit_llvm : 1;
-	bool emit_asm : 1;
-	bool no_stdlib : 1;
-	bool emit_object_files : 1;
-	bool force_linker : 1;
+	bool run_after_compile;
+	bool test_output;
+	bool output_headers;
+	bool output_ast;
+	bool lex_only;
+	bool parse_only;
+	bool check_only;
+	bool emit_llvm;
+	bool emit_asm;
+	bool no_stdlib;
+	bool emit_object_files;
+	bool force_linker;
 	OptimizationLevel optimization_level;
 	SizeOptimizationLevel size_optimization_level;
+	bool single_module;
 	DebugInfo debug_info;
 	RelocModel reloc_model;
 	ArchOsTarget arch_os_target;

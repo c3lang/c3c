@@ -19,6 +19,41 @@ typedef struct
 extern ParseRule rules[TOKEN_EOF + 1];
 
 
+bool parse_range(ParseContext *c, Range *range)
+{
+	// Not range with missing entry
+	if (tok_is(c, TOKEN_DOTDOT) || tok_is(c, TOKEN_COLON))
+	{
+		// ..123 and :123
+		range->start_from_end = false;
+		range->start = exprid(expr_new_const_int(c->span, type_uint, 0, true));
+	}
+	else
+	{
+		// Might be ^ prefix
+		range->start_from_end = try_consume(c, TOKEN_BIT_XOR);
+		ASSIGN_EXPRID_OR_RET(range->start, parse_expr(c), false);
+	}
+	bool is_len_range = range->is_len = try_consume(c, TOKEN_COLON);
+	if (!is_len_range && !try_consume(c, TOKEN_DOTDOT))
+	{
+		range->is_range = false;
+		return true;
+	}
+	range->is_range = true;
+	// ] ) are the possible ways to end a range.
+	if (tok_is(c, TOKEN_RBRACKET) || tok_is(c, TOKEN_RPAREN))
+	{
+		// So here we have [1..] or [3:]
+		range->end_from_end = false;
+		range->end = 0;
+		return true;
+	}
+	range->end_from_end = try_consume(c, TOKEN_BIT_XOR);
+	ASSIGN_EXPRID_OR_RET(range->end, parse_expr(c), false);
+	return true;
+}
+
 inline Expr *parse_precedence_with_left_side(ParseContext *c, Expr *left_side, Precedence precedence)
 {
 	while (1)
@@ -236,6 +271,7 @@ Expr *parse_cond(ParseContext *c)
 	return decl_expr;
 }
 
+
 // These used to be explicitly inlined, but that seems to lead to confusing MSVC linker errors.
 // They are probably still inlined by the compiler, though I haven't checked.
 Expr* parse_expr(ParseContext *c)
@@ -293,12 +329,26 @@ static bool parse_param_path(ParseContext *c, DesignatorElement ***path)
 		return true;
 	}
 }
+
+Expr *parse_vasplat(ParseContext *c)
+{
+	Expr *expr = EXPR_NEW_TOKEN(EXPR_VASPLAT);
+	advance_and_verify(c, TOKEN_CT_VASPLAT);
+	TRY_CONSUME_OR_RET(TOKEN_LPAREN, "'$vasplat' must be followed by '()'.", poisoned_expr);
+	if (!try_consume(c, TOKEN_RPAREN))
+	{
+		if (!parse_range(c, &expr->vasplat_expr)) return poisoned_expr;
+		CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
+	}
+	RANGE_EXTEND_PREV(expr);
+	return expr;
+}
 /**
  * param_list ::= ('...' parameter | parameter (',' parameter)*)?
  *
  * parameter ::= (param_path '=')? expr
  */
-bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *splat)
+bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *splat, bool vasplat)
 {
 	*result = NULL;
 	if (splat) *splat = false;
@@ -321,6 +371,10 @@ bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *
 			ASSIGN_EXPR_OR_RET(expr->designator_expr.value, parse_expr_or_initializer_list(c), false);
 
 			RANGE_EXTEND_PREV(expr);
+		}
+		else if (vasplat && tok_is(c, TOKEN_CT_VASPLAT))
+		{
+			ASSIGN_EXPR_OR_RET(expr, parse_vasplat(c), false);
 		}
 		else
 		{
@@ -432,11 +486,11 @@ static Expr *parse_ct_stringify(ParseContext *c, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
 	SourceSpan start_span = c->span;
+	const char *start = c->lexer.current;
 	advance(c);
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
-	const char *start = c->lexer.current;
 	ASSIGN_EXPR_OR_RET(Expr *inner, parse_expr(c), poisoned_expr);
-	const char *end = c->lexer.current;
+	const char *end = c->lexer.lexing_start - 1;
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 	if (inner->expr_kind == EXPR_HASH_IDENT)
 	{
@@ -451,6 +505,7 @@ static Expr *parse_ct_stringify(ParseContext *c, Expr *left)
 	expr->const_expr.const_kind = CONST_STRING;
 	expr->const_expr.string.chars = content;
 	expr->const_expr.string.len = len;
+	expr->type = type_get_ptr(type_get_array(type_char, len));
 	return expr;
 }
 
@@ -573,7 +628,7 @@ Expr *parse_initializer_list(ParseContext *c, Expr *left)
 	if (!try_consume(c, TOKEN_RBRACE))
 	{
 		Expr **exprs = NULL;
-		if (!parse_arg_list(c, &exprs, TOKEN_RBRACE, NULL)) return poisoned_expr;
+		if (!parse_arg_list(c, &exprs, TOKEN_RBRACE, NULL, true)) return poisoned_expr;
 		int designated = -1;
 		VECEACH(exprs, i)
 		{
@@ -663,7 +718,7 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left)
 	{
 		// Pick a modest guess.
 		params = VECNEW(Expr*, 4);
-		if (!parse_arg_list(c, &params, TOKEN_RPAREN, &splat)) return poisoned_expr;
+		if (!parse_arg_list(c, &params, TOKEN_RPAREN, &splat, true)) return poisoned_expr;
 	}
 	if (try_consume(c, TOKEN_EOS) && !tok_is(c, TOKEN_RPAREN))
 	{
@@ -750,52 +805,14 @@ static Expr *parse_subscript_expr(ParseContext *c, Expr *left)
 	advance_and_verify(c, TOKEN_LBRACKET);
 
 	Expr *subs_expr = expr_new_expr(EXPR_SUBSCRIPT, left);
-	Expr *index = NULL;
-	bool is_range = false;
-	bool from_back = false;
-	bool end_from_back = false;
-	Expr *end = NULL;
-
-	// Not range with missing entry
-	if (!tok_is(c, TOKEN_DOTDOT) && !tok_is(c, TOKEN_COLON))
-	{
-		// Might be ^ prefix
-		from_back = try_consume(c, TOKEN_BIT_XOR);
-		ASSIGN_EXPR_OR_RET(index, parse_expr(c), poisoned_expr);
-	}
-	else
-	{
-		index = expr_new_const_int(c->span, type_uint, 0, true);
-	}
-	bool is_len_range = try_consume(c, TOKEN_COLON);
-	if (is_len_range || try_consume(c, TOKEN_DOTDOT))
-	{
-		is_range = true;
-		if (!tok_is(c, TOKEN_RBRACKET))
-		{
-			end_from_back = try_consume(c, TOKEN_BIT_XOR);
-			ASSIGN_EXPR_OR_RET(end, parse_expr(c), poisoned_expr);
-		}
-	}
+	subs_expr->subscript_expr.expr = exprid(left);
+	if (!parse_range(c, &subs_expr->subscript_expr.range)) return poisoned_expr;
 	CONSUME_OR_RET(TOKEN_RBRACKET, poisoned_expr);
-	RANGE_EXTEND_PREV(subs_expr);
-
-	if (is_range)
+	if (subs_expr->subscript_expr.range.is_range)
 	{
 		subs_expr->expr_kind = EXPR_SLICE;
-		subs_expr->slice_expr.expr = exprid(left);
-		subs_expr->slice_expr.start = exprid(index);
-		subs_expr->slice_expr.start_from_back = from_back;
-		subs_expr->slice_expr.end = end ? exprid(end) : 0;
-		subs_expr->slice_expr.end_from_back = end_from_back;
-		subs_expr->slice_expr.is_lenrange = is_len_range;
 	}
-	else
-	{
-		subs_expr->subscript_expr.expr = exprid(left);
-		subs_expr->subscript_expr.index = exprid(index);
-		subs_expr->subscript_expr.from_back = from_back;
-	}
+	RANGE_EXTEND_PREV(subs_expr);
 	return subs_expr;
 }
 
@@ -858,7 +875,7 @@ static Expr *parse_ct_sizeof(ParseContext *c, Expr *left)
 	ASSIGN_EXPR_OR_RET(Expr *inner, parse_expr(c), poisoned_expr);
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 	Expr *typeof_expr = expr_new(EXPR_TYPEINFO, inner->span);
-	TypeInfo *type_info = type_info_new(TYPE_INFO_EXPRESSION, inner->span);
+	TypeInfo *type_info = type_info_new(TYPE_INFO_TYPEOF, inner->span);
 	type_info->unresolved_type_expr = inner;
 	typeof_expr->type_expr = type_info;
 	access->access_expr.parent = typeof_expr;
@@ -867,6 +884,18 @@ static Expr *parse_ct_sizeof(ParseContext *c, Expr *left)
 	access->access_expr.child = ident;
 	RANGE_EXTEND_PREV(access);
 	return access;
+}
+
+static Expr *parse_ct_checks(ParseContext *c, Expr *left)
+{
+	assert(!left && "Unexpected left hand side");
+	Expr *checks = expr_new(EXPR_CT_CHECKS, c->span);
+	advance_and_verify(c, TOKEN_CT_CHECKS);
+	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
+	ASSIGN_EXPR_OR_RET(checks->inner_expr, parse_expression_list(c, true), poisoned_expr);
+	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
+	RANGE_EXTEND_PREV(checks);
+	return checks;
 }
 
 static Expr *parse_ct_call(ParseContext *c, Expr *left)
@@ -918,29 +947,14 @@ static Expr *parse_ct_arg(ParseContext *c, Expr *left)
 	assert(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_ARG);
 	TokenType type = expr->ct_arg_expr.type = c->tok;
-	assert(type != TOKEN_CT_VAARG_GET_TYPE);
+	assert(type != TOKEN_CT_VATYPE);
 	advance(c);
-	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
-	if (type != TOKEN_CT_VAARG_COUNT)
+	if (type != TOKEN_CT_VACOUNT)
 	{
+		CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
 		ASSIGN_EXPRID_OR_RET(expr->ct_arg_expr.arg, parse_expr(c), poisoned_expr);
+		CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 	}
-	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
-	RANGE_EXTEND_PREV(expr);
-	return expr;
-}
-
-static Expr *parse_ct_conv(ParseContext *c, Expr *left)
-{
-	assert(!left && "Unexpected left hand side");
-	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_CONV);
-	expr->ct_call_expr.token_type = c->tok;
-	advance(c);
-	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
-	ASSIGN_TYPEID_OR_RET(expr->ct_call_expr.type_from, parse_type(c), poisoned_expr);
-	TRY_CONSUME_AFTER(TOKEN_COMMA, "Expected ',' here.", poisoned_expr);
-	ASSIGN_TYPEID_OR_RET(expr->ct_call_expr.type_to, parse_type(c), poisoned_expr);
-	TRY_CONSUME_AFTER(TOKEN_RPAREN, "Expected ')' here.", poisoned_expr);
 	RANGE_EXTEND_PREV(expr);
 	return expr;
 }
@@ -1061,7 +1075,7 @@ static int read_num_type(const char *string, size_t loc, size_t len)
 	return i;
 }
 
-static Expr *parse_integer(ParseContext *c, Expr *left)
+Expr *parse_integer(ParseContext *c, Expr *left)
 {
 	assert(!left && "Had left hand side");
 	Expr *expr_int = EXPR_NEW_TOKEN(EXPR_CONST);
@@ -1126,6 +1140,7 @@ static Expr *parse_integer(ParseContext *c, Expr *left)
 			}
 			break;
 		case 'b':
+			is_unsigned = true;
 			max = UINT64_MAX >> 1;
 			for (size_t loc = 2; loc < len; loc++)
 			{
@@ -1425,7 +1440,7 @@ static Expr *parse_double(ParseContext *c, Expr *left)
 			number->type = type_float;
 			break;
 		case TYPE_F16:
-			number->type = type_half;
+			number->type = type_float16;
 			break;
 		default:
 			UNREACHABLE
@@ -1744,21 +1759,21 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_CT_SIZEOF] = { parse_ct_sizeof, NULL, PREC_NONE },
 		[TOKEN_CT_ALIGNOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_DEFINED] = { parse_ct_call, NULL, PREC_NONE },
+		[TOKEN_CT_CHECKS] = { parse_ct_checks, NULL, PREC_NONE },
 		[TOKEN_CT_EVAL] = { parse_ct_eval, NULL, PREC_NONE },
 		[TOKEN_CT_EXTNAMEOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_OFFSETOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_NAMEOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_QNAMEOF] = { parse_ct_call, NULL, PREC_NONE },
+		[TOKEN_CT_TYPEFROM] = { parse_type_expr, NULL, PREC_NONE },
 		[TOKEN_CT_TYPEOF] = { parse_type_expr, NULL, PREC_NONE },
 		[TOKEN_CT_STRINGIFY] = { parse_ct_stringify, NULL, PREC_NONE },
 		[TOKEN_CT_EVALTYPE] = { parse_type_expr, NULL, PREC_NONE },
-		[TOKEN_CT_CONVERTIBLE] = { parse_ct_conv, NULL, PREC_NONE },
-		[TOKEN_CT_CASTABLE] = { parse_ct_conv, NULL, PREC_NONE },
 		[TOKEN_LBRACE] = { parse_initializer_list, NULL, PREC_NONE },
-		[TOKEN_CT_VAARG_COUNT] = { parse_ct_arg, NULL, PREC_NONE },
-		[TOKEN_CT_VAARG_GET_ARG] = { parse_ct_arg, NULL, PREC_NONE },
-		[TOKEN_CT_VAARG_GET_REF] = { parse_ct_arg, NULL, PREC_NONE },
-		[TOKEN_CT_VAARG_GET_TYPE] = { parse_type_expr, NULL, PREC_NONE },
-		[TOKEN_CT_VAARG_GET_EXPR] = { parse_ct_arg, NULL, PREC_NONE },
-		[TOKEN_CT_VAARG_GET_CONST] = { parse_ct_arg, NULL, PREC_NONE },
+		[TOKEN_CT_VACOUNT] = { parse_ct_arg, NULL, PREC_NONE },
+		[TOKEN_CT_VAARG] = { parse_ct_arg, NULL, PREC_NONE },
+		[TOKEN_CT_VAREF] = { parse_ct_arg, NULL, PREC_NONE },
+		[TOKEN_CT_VATYPE] = { parse_type_expr, NULL, PREC_NONE },
+		[TOKEN_CT_VAEXPR] = { parse_ct_arg, NULL, PREC_NONE },
+		[TOKEN_CT_VACONST] = { parse_ct_arg, NULL, PREC_NONE },
 };

@@ -1,24 +1,23 @@
 // #target: macos-x64
 module foo;
-import std::math;
+import libc;
 fn void main()
 {
-	void* foekf = &math::log;
-	double* xok = &math::DIV_1_SQRT2;
+	void* foekf = &libc::printf;
+	int* xok = &libc::EXIT_SUCCESS;
 }
 
 /* #expect: foo.ll
 
-
-@std_math_DIV_1_SQRT2 = external global double
+@libc_EXIT_SUCCESS = external global i32, align 4
 
 define void @foo_main() #0 {
 entry:
   %foekf = alloca i8*, align 8
-  %xok = alloca double*, align 8
-  store i8* bitcast (double (double)* @std_math_log to i8*), i8** %foekf, align 8
-  store double* @std_math_DIV_1_SQRT2, double** %xok, align 8
+  %xok = alloca i32*, align 8
+  store i8* bitcast (i32 (i8*, ...)* @printf to i8*), i8** %foekf, align 8
+  store i32* @libc_EXIT_SUCCESS, i32** %xok, align 8
   ret void
 }
 
-declare double @std_math_log(double)
+declare i32 @printf(i8*, ...)

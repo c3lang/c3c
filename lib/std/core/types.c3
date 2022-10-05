@@ -97,6 +97,11 @@ fn bool TypeKind.is_int(TypeKind kind) @inline
 	return kind == TypeKind.SIGNED_INT || kind == TypeKind.UNSIGNED_INT;
 }
 
+macro bool is_indexable($Type)
+{
+	return $checks($Type t, int i, t[i]);
+}
+
 macro bool is_comparable($Type)
 {
 	var $kind = $Type.kind;
@@ -107,6 +112,11 @@ macro bool is_comparable($Type)
 			|| $kind == TypeKind.VECTOR || $kind == TypeKind.BOOL || $kind == TypeKind.POINTER
 			|| $kind == TypeKind.ENUM;
 	$endif;
+}
+
+macro bool is_equatable($Type)
+{
+	return $checks($Type a, a == a);
 }
 
 macro bool is_subarray_convertable($Type)
@@ -128,10 +138,46 @@ macro bool is_intlike($Type)
 		$case UNSIGNED_INT:
 			return true;
 		$case VECTOR:
-			return is_intlike($Type.inner);
+			return $Type.inner.kind == TypeKind.SIGNED_INT || $Type.inner.kind == TypeKind.UNSIGNED_INT;
 		$default:
 			return false;
 	$endswitch;
+}
+
+macro bool is_floatlike($Type)
+{
+	$switch ($Type.kind):
+		$case FLOAT:
+			return true;
+		$case VECTOR:
+			return $Type.inner.kind == TypeKind.FLOAT;
+		$default:
+			return false;
+	$endswitch;
+}
+
+macro bool is_vector($Type)
+{
+	return $Type.kind == TypeKind.VECTOR;
+}
+
+macro bool is_same($TypeA, $TypeB)
+{
+	return $TypeA.typeid == $TypeB.typeid;
+}
+
+macro bool @has_same(#a, #b, ...)
+{
+	var $type_a = $typeof(#a).typeid;
+	$if ($type_a != $typeof(#b).typeid):
+	    return false;
+	$endif;
+	$for (var $i = 0; $i < $vacount; $i++):
+		$if ($typeof($vaexpr($i)).typeid != $type_a):
+			return false;
+		$endif;
+	$endfor;
+	return true;
 }
 
 macro bool is_equatable_value(value)
@@ -139,7 +185,7 @@ macro bool is_equatable_value(value)
 	$if ($defined(value.less) || $defined(value.compare_to) || $defined(value.equals)):
 		return true;
 	$else:
-		return is_comparable($typeof(value));
+		return is_equatable($typeof(value));
 	$endif;
 }
 

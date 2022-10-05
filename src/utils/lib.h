@@ -125,6 +125,7 @@ void scratch_buffer_append(const char *string);
 void scratch_buffer_append_len(const char *string, size_t len);
 void scratch_buffer_append_char(char c);
 void scratch_buffer_append_signed_int(int64_t i);
+void scratch_buffer_append_double(double d);
 UNUSED void scratch_buffer_append_unsigned_int(uint64_t i);
 void scratch_buffer_printf(const char *format, ...);
 char *scratch_buffer_to_string(void);
@@ -157,7 +158,7 @@ static inline char char_nibble_to_hex(int c);
 
 static inline uint32_t fnv1a(const char *key, uint32_t len);
 
-static inline uint32_t vec_size(const void *vec);
+INLINE uint32_t vec_size(const void *vec);
 static inline void vec_resize(void *vec, uint32_t new_size);
 static inline void vec_pop(void *vec);
 
@@ -275,6 +276,12 @@ static inline void* expand_(void *vec, size_t element_size)
     type__ val; if (foreach_vec__) val = foreach_vec__[0]; \
 	for (unsigned foreach_index = 0; foreach_index < foreach_len__; val = foreach_vec__[++foreach_index])
 
+#define FOREACH_BEGIN_IDX(idx__, decl__, vec__) \
+void* CONCAT(foreach_vec_, __LINE__) = (vec__); unsigned CONCAT(foreach_len_, __LINE__) = vec_size(CONCAT(foreach_vec_, __LINE__)); \
+    for (unsigned idx__ = 0; idx__ < CONCAT(foreach_len_, __LINE__); idx__++) { decl__ = ((void**)CONCAT(foreach_vec_, __LINE__))[idx__];
+#define FOREACH_END() } do {} while (0)
+#define FOREACH_BEGIN(decl__, vec__) FOREACH_BEGIN_IDX(CONCAT(idx__, __LINE__), decl__, vec__)
+
 #define VECNEW(_type, _capacity) ((_type *)(vec_new_(sizeof(_type), _capacity) + 1))
 #define vec_add(vec_, value_) do { \
 	void *__temp = expand_((vec_), sizeof(*(vec_))); \
@@ -295,6 +302,7 @@ static inline void* expand_(void *vec, size_t element_size)
 #else
 #define VECLAST(_vec) (vec_size(_vec) ? (_vec)[vec_size(_vec) - 1] : NULL)
 #endif
+#define vectail(_vec) (_vec)[vec_size(_vec) - 1]
 
 #if IS_GCC || IS_CLANG
 
@@ -335,7 +343,7 @@ static inline StringSlice slice_from_string(const char *data)
 	return (StringSlice) { data, strlen(data) };
 }
 
-static inline uint32_t vec_size(const void *vec)
+INLINE uint32_t vec_size(const void *vec)
 {
 	if (!vec) return 0;
 	const VHeader_ *header = vec;

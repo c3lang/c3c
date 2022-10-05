@@ -82,7 +82,7 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 		llvm_emit_expr(c, &value, expr);
 		llvm_store(c, ref, &value);
 	}
-	else if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_LIST)
+	else if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER)
 	{
 		llvm_emit_const_initialize_reference(c, ref, expr);
 		value = *ref;
@@ -475,18 +475,10 @@ static inline void llvm_emit_subscript_addr_with_base(GenContext *c, BEValue *re
 					parent->value,
 					index->value), type->pointer);
 			return;
-		case TYPE_FLEXIBLE_ARRAY:
-		{
-			AlignSize alignment;
-			LLVMValueRef ptr = llvm_emit_array_gep_raw_index(c, parent->value, llvm_get_type(c, type), index->value, parent->alignment, &alignment);
-			llvm_value_set_address(result, ptr, type->array.base, alignment);
-			return;
-		}
-		case TYPE_VECTOR:
-			UNREACHABLE
 		case TYPE_ARRAY:
+		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_VECTOR:
 		{
-			// TODO vector
 			AlignSize alignment;
 			LLVMValueRef ptr = llvm_emit_array_gep_raw_index(c, parent->value, llvm_get_type(c, type), index->value, parent->alignment, &alignment);
 			llvm_value_set_address(result, ptr, type->array.base, alignment);
@@ -512,10 +504,10 @@ static inline void llvm_emit_vector_subscript(GenContext *c, BEValue *value, Exp
 	assert(vec->type_kind == TYPE_VECTOR);
 	Type *element = vec->array.base;
 	LLVMValueRef vector = value->value;
-	llvm_emit_exprid(c, value, expr->subscript_expr.index);
+	llvm_emit_exprid(c, value, expr->subscript_expr.range.start);
 	llvm_value_rvalue(c, value);
 	LLVMValueRef index = value->value;
-	if (expr->subscript_expr.from_back)
+	if (expr->subscript_expr.range.start_from_end)
 	{
 		index = LLVMBuildNUWSub(c->builder, llvm_const_int(c, value->type, vec->array.len), index, "");
 	}
@@ -531,7 +523,7 @@ static inline void gencontext_emit_subscript(GenContext *c, BEValue *value, Expr
 {
 	bool is_value = expr->expr_kind == EXPR_SUBSCRIPT;
 	Expr *parent_expr = exprptr(expr->subscript_expr.expr);
-	Expr *index_expr = exprptr(expr->subscript_expr.index);
+	Expr *index_expr = exprptr(expr->subscript_expr.range.start);
 	Type *parent_type = type_lowering(parent_expr->type);
 	if (is_value && parent_type->type_kind == TYPE_VECTOR)
 	{
@@ -548,13 +540,13 @@ static inline void gencontext_emit_subscript(GenContext *c, BEValue *value, Expr
 	bool needs_len = false;
 	if (parent_type_kind == TYPE_SUBARRAY)
 	{
-		needs_len = active_target.feature.safe_mode || expr->subscript_expr.from_back;
+		needs_len = active_target.feature.safe_mode || expr->subscript_expr.range.start_from_end;
 	}
 	else if (parent_type_kind == TYPE_ARRAY)
 	{
 		// From back should always be folded.
-		assert(expr->expr_kind != EXPR_CONST || !expr->subscript_expr.from_back);
-		needs_len = (active_target.feature.safe_mode && expr->expr_kind != EXPR_CONST) || expr->subscript_expr.from_back;
+		assert(expr->expr_kind != EXPR_CONST || !expr->subscript_expr.range.start_from_end);
+		needs_len = (active_target.feature.safe_mode && expr->expr_kind != EXPR_CONST) || expr->subscript_expr.range.start_from_end;
 	}
 	if (needs_len)
 	{
@@ -570,7 +562,7 @@ static inline void gencontext_emit_subscript(GenContext *c, BEValue *value, Expr
 	// It needs to be an rvalue.
 	llvm_value_rvalue(c, &index);
 
-	if (expr->subscript_expr.from_back)
+	if (expr->subscript_expr.range.start_from_end)
 	{
 		assert(needs_len);
 		index.value = LLVMBuildNUWSub(c->builder, llvm_zext_trunc(c, len.value, llvm_get_type(c, index.type)), index.value, "");
@@ -1070,7 +1062,6 @@ static void llvm_emit_arr_to_subarray_cast(GenContext *c, BEValue *value, Type *
 	if (size)
 	{
 		llvm_value_rvalue(c, value);
-		LLVMTypeRef subarray_type = llvm_get_type(c, to_type);
 		pointer = llvm_emit_bitcast_ptr(c, value->value, array_type);
 	}
 	else
@@ -1106,8 +1097,9 @@ void llvm_emit_array_to_vector_cast(GenContext *c, BEValue *value, Type *to_type
 	llvm_value_set(value, vector, to_type);
 }
 
-void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_type, Type *from_type)
+void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *value, Type *to_type, Type *from_type)
 {
+	Type *to_type_original = to_type;
 	to_type = type_flatten(to_type);
 	from_type = type_flatten(from_type);
 
@@ -1119,7 +1111,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_
 		case CAST_PTRANY:
 		{
 			llvm_value_rvalue(c, value);
-			LLVMTypeRef any = llvm_get_type(c, to_type);
 			LLVMValueRef pointer = llvm_emit_bitcast(c, value->value, type_voidptr);
 			BEValue typeid;
 			llvm_emit_typeid(c, &typeid, from_type->pointer);
@@ -1185,6 +1176,17 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_
 			break;
 		case CAST_SAPTR:
 			llvm_emit_subarray_pointer(c, value, value);
+			if (value->type != to_type)
+			{
+				if (llvm_value_is_addr(value))
+				{
+					value->value = LLVMBuildPointerCast(c->builder, value->value, llvm_get_ptr_type(c, to_type), "saptr");
+				}
+				else
+				{
+					value->value = LLVMBuildPointerCast(c->builder, value->value, llvm_get_ptr_type(c, to_type), "saptr");
+				}
+			}
 			break;
 		case CAST_EREU:
 			// This is a no op.
@@ -1288,6 +1290,27 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_
 			value->value = LLVMBuildBitCast(c->builder, value->value, llvm_get_ptr_type(c, to_type), "");
 			value->type = to_type;
 			return;
+		case CAST_INTENUM:
+			if (active_target.feature.safe_mode && c->builder != c->global_builder)
+			{
+				llvm_value_rvalue(c, value);
+				BEValue check;
+				Decl *decl = to_type_original->canonical->decl;
+				unsigned max = vec_size(decl->enums.values);
+				if (type_is_signed(value->type))
+				{
+					scratch_buffer_clear();
+					scratch_buffer_printf("Conversion to enum '%s' failed - tried to convert a negative value.", decl->name);
+					llvm_emit_int_comp_zero(c, &check, value, BINARYOP_LT);
+					llvm_emit_panic_on_true(c, check.value, scratch_buffer_to_string(), expr->span);
+				}
+				scratch_buffer_clear();
+				scratch_buffer_printf("Conversion to enum '%s' failed - the value was greater than %u.", decl->name, max - 1);
+				LLVMValueRef val = llvm_const_int(c, value->type, max);
+				llvm_emit_int_comp_raw(c, &check, value->type, value->type, value->value, val, BINARYOP_GE);
+				llvm_emit_panic_on_true(c, check.value,scratch_buffer_to_string(), expr->span);
+			}
+			return;
 		case CAST_SABOOL:
 			llvm_value_fold_optional(c, value);
 			if (llvm_value_is_addr(value))
@@ -1316,6 +1339,7 @@ static inline void gencontext_emit_cast_expr(GenContext *context, BEValue *be_va
 	llvm_emit_exprid(context, be_value, expr->cast_expr.expr);
 	llvm_emit_cast(context,
 	               expr->cast_expr.kind,
+	               expr,
 	               be_value,
 	               expr->type,
 	               exprtype(expr->cast_expr.expr));
@@ -1380,8 +1404,8 @@ void llvm_emit_initialize_reference_temporary_const(GenContext *c, BEValue *ref,
 
 	Type *canonical = expr->type->canonical;
 
-	assert(expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_LIST);
-	LLVMValueRef value = llvm_emit_const_initializer(c, expr->const_expr.list);
+	assert(expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER);
+	LLVMValueRef value = llvm_emit_const_initializer(c, expr->const_expr.initializer);
 
 	LLVMTypeRef expected_type = llvm_get_type(c, canonical);
 	// Create a global const.
@@ -1501,12 +1525,11 @@ static void llvm_emit_inititialize_reference_const(GenContext *c, BEValue *ref, 
 }
 static inline void llvm_emit_initialize_reference_const(GenContext *c, BEValue *ref, Expr *expr)
 {
-	assert(expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_LIST);
-	ConstInitializer *initializer = expr->const_expr.list;
+	assert(expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER);
+	ConstInitializer *initializer = expr->const_expr.initializer;
 
 	// Make sure we have an address.
 	llvm_value_addr(c, ref);
-
 	llvm_emit_inititialize_reference_const(c, ref, initializer);
 
 }
@@ -1527,6 +1550,8 @@ static inline void llvm_emit_initialize_reference_list(GenContext *c, BEValue *r
 		assert(vec_size(elements) == 1);
 		real_type = type_lowering(real_type->decl->strukt.members[0]->type);
 		value = LLVMBuildBitCast(c->builder, ref->value, llvm_get_ptr_type(c, real_type), "");
+		ref->value = value;
+		ref->type = real_type;
 	}
 
 	LLVMTypeRef llvm_type = llvm_get_type(c, real_type);
@@ -1553,7 +1578,7 @@ static inline void llvm_emit_initialize_reference_list(GenContext *c, BEValue *r
 			llvm_value_set_address(&pointer, value, element->type, ref->alignment);
 		}
 		// If this is an initializer, we want to actually run the initialization recursively.
-		if (element->expr_kind == EXPR_CONST && element->const_expr.const_kind == CONST_LIST)
+		if (element->expr_kind == EXPR_CONST && element->const_expr.const_kind == CONST_INITIALIZER)
 		{
 			llvm_emit_const_initialize_reference(c, &pointer, element);
 			continue;
@@ -1604,7 +1629,7 @@ static void llvm_emit_initialize_designated(GenContext *c, BEValue *ref, AlignSi
 			llvm_store(c, ref, emitted_value);
 			return;
 		}
-		if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_LIST)
+		if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER)
 		{
 			llvm_emit_const_initialize_reference(c, ref, expr);
 			return;
@@ -1838,8 +1863,8 @@ static inline void llvm_emit_const_initialize_bitstruct_ref(GenContext *c, BEVal
  */
 static inline void llvm_emit_const_initialize_reference(GenContext *c, BEValue *ref, Expr *expr)
 {
-	assert(expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_LIST);
-	ConstInitializer *initializer = expr->const_expr.list;
+	assert(expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER);
+	ConstInitializer *initializer = expr->const_expr.initializer;
 	assert(!type_flat_is_vector(initializer->type) && "Vectors should be handled elsewhere.");
 	if (initializer->type->type_kind == TYPE_BITSTRUCT)
 	{
@@ -2250,9 +2275,9 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 {
 	assert(slice->expr_kind == EXPR_SLICE);
 
-	Expr *parent_expr = exprptr(slice->slice_expr.expr);
-	Expr *start = exprptr(slice->slice_expr.start);
-	Expr *end = exprptrzero(slice->slice_expr.end);
+	Expr *parent_expr = exprptr(slice->subscript_expr.expr);
+	Expr *start = exprptr(slice->subscript_expr.range.start);
+	Expr *end = exprptrzero(slice->subscript_expr.range.end);
 
 	Type *parent_type = type_flatten_distinct(parent_expr->type);
 	BEValue parent_addr_x;
@@ -2288,7 +2313,9 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 
 	BEValue len = { .value = NULL };
 	bool check_end = true;
-	if (!end || slice->slice_expr.start_from_back || slice->slice_expr.end_from_back || active_target.feature.safe_mode)
+	bool start_from_end = slice->subscript_expr.range.start_from_end;
+	bool end_from_end = slice->subscript_expr.range.end_from_end;
+	if (!end || start_from_end || end_from_end || active_target.feature.safe_mode)
 	{
 		switch (parent_type->type_kind)
 		{
@@ -2310,7 +2337,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 	}
 
 	// Walk from end if it is slice from the back.
-	if (slice->slice_expr.start_from_back)
+	if (start_from_end)
 	{
 		start_index.value = llvm_emit_sub_int(c, start_type, len.value, start_index.value, slice->span);
 	}
@@ -2332,7 +2359,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 
 	Type *end_type;
 	BEValue end_index;
-	bool is_len_range = *is_exclusive = slice->slice_expr.is_lenrange;
+	bool is_len_range = *is_exclusive = slice->subscript_expr.range.is_len;
 	if (end)
 	{
 		// Get the index.
@@ -2341,7 +2368,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 		end_type = end->type->canonical;
 
 		// Reverse if it is "from back"
-		if (slice->slice_expr.end_from_back)
+		if (end_from_end)
 		{
 			end_index.value = llvm_emit_sub_int(c, end_type, len.value, end_index.value, slice->span);
 			llvm_value_rvalue(c, &end_index);
@@ -2429,6 +2456,42 @@ static void gencontext_emit_slice(GenContext *c, BEValue *be_value, Expr *expr)
 	// Create a new subarray type
 	llvm_value_aggregate_two(c, be_value, type_lowering(expr->type), start_pointer, size);
 }
+
+static void llvm_emit_slice_copy(GenContext *c, BEValue *be_value, Expr *expr)
+{
+	llvm_emit_exprid(c, be_value, expr->slice_assign_expr.right);
+	llvm_value_rvalue(c, be_value);
+
+	BEValue assigned_to;
+	llvm_emit_exprid(c, &assigned_to, expr->slice_assign_expr.left);
+	llvm_value_rvalue(c, &assigned_to);
+
+	BEValue to_pointer;
+	llvm_emit_subarray_pointer(c, &assigned_to, &to_pointer);
+	llvm_value_rvalue(c, &to_pointer);
+
+	BEValue from_pointer;
+	BEValue from_len;
+	llvm_emit_subarray_pointer(c, be_value, &from_pointer);
+	llvm_value_rvalue(c, &from_pointer);
+	llvm_emit_subarray_len(c, be_value, &from_len);
+	llvm_value_rvalue(c, &from_len);
+
+	if (active_target.feature.safe_mode)
+	{
+		BEValue to_len;
+		llvm_emit_subarray_len(c, &assigned_to, &to_len);
+		BEValue comp;
+		llvm_emit_int_comp(c, &comp, &to_len, &from_len, BINARYOP_NE);
+		llvm_emit_panic_if_true(c, &comp, "Subarray copy length mismatch.", expr->span);
+	}
+
+	Type *pointer_type = to_pointer.type->pointer;
+	unsigned alignment = type_abi_alignment(pointer_type);
+	LLVMValueRef bytes = LLVMBuildMul(c->builder, from_len.value, llvm_const_int(c, from_len.type, type_size(pointer_type)), "");
+	LLVMBuildMemCpy(c->builder, to_pointer.value, alignment, from_pointer.value, alignment, bytes);
+}
+
 
 static void llvm_emit_slice_assign(GenContext *c, BEValue *be_value, Expr *expr)
 {
@@ -3512,7 +3575,7 @@ static inline void llvm_emit_force_unwrap_expr(GenContext *c, BEValue *be_value,
 		// TODO, we should add info about the error.
 		SourceSpan loc = expr->span;
 		File *file = source_file_by_id(loc.file_id);
-		llvm_emit_panic(c, "Runtime error force unwrap!", file->name, c->cur_func_decl->extname, loc.row ? loc.row : 1);
+		llvm_emit_panic(c, "Runtime error force unwrap!", file->name, c->cur_func.name, loc.row ? loc.row : 1);
 		LLVMBuildUnreachable(c->builder);
 		c->current_block = NULL;
 		c->current_block_is_target = false;
@@ -3541,7 +3604,7 @@ static void llvm_emit_vector_assign_expr(GenContext *c, BEValue *be_value, Expr 
 	LLVMValueRef vector_value = llvm_load_value_store(c, &addr);
 
 	// Emit the index
-	llvm_emit_exprid(c, &index, left->subscript_expr.index);
+	llvm_emit_exprid(c, &index, left->subscript_expr.range.start);
 	LLVMValueRef index_val = llvm_load_value_store(c, &index);
 
 	if (binary_op > BINARYOP_ASSIGN)
@@ -3618,7 +3681,7 @@ void gencontext_emit_elvis_expr(GenContext *c, BEValue *value, Expr *expr)
 	if (value->kind != BE_BOOLEAN)
 	{
 		CastKind cast = cast_to_bool_kind(cond_type);
-		llvm_emit_cast(c, cast, value, type_bool, cond_type);
+		llvm_emit_cast(c, cast, cond, value, type_bool, cond_type);
 		assert(value->kind == BE_BOOLEAN);
 	}
 
@@ -3765,7 +3828,7 @@ static inline void llvm_emit_const_initializer_list_expr(GenContext *c, BEValue 
 {
 	if (llvm_is_global_eval(c) || type_flat_is_vector(expr->type) || type_flatten_distinct(expr->type)->type_kind == TYPE_BITSTRUCT)
 	{
-		llvm_value_set(value, llvm_emit_const_initializer(c, expr->const_expr.list), expr->type);
+		llvm_value_set(value, llvm_emit_const_initializer(c, expr->const_expr.initializer), expr->type);
 		return;
 	}
 	llvm_value_set_address_abi_aligned(value, llvm_emit_alloca_aligned(c, expr->type, "literal"), expr->type);
@@ -3813,7 +3876,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 			llvm_value_set(be_value, value, type);
 			return;
 		}
-		case CONST_LIST:
+		case CONST_INITIALIZER:
 			llvm_emit_const_initializer_list_expr(c, be_value, expr);
 			return;
 		case CONST_FLOAT:
@@ -3914,9 +3977,10 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		case CONST_ENUM:
 			llvm_value_set(be_value, llvm_const_int(c, type, expr->const_expr.enum_val->enum_constant.ordinal), type);
 			return;
-		default:
+		case CONST_UNTYPED_LIST:
 			UNREACHABLE
 	}
+	UNREACHABLE
 }
 
 static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVMValueRef expand_ptr, LLVMValueRef **values, AlignSize alignment);
@@ -3964,10 +4028,11 @@ static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVM
 		case TYPE_FAULTTYPE:
 		case TYPE_ANYERR:
 		case TYPE_BITSTRUCT:
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 		case CT_TYPES:
 		case TYPE_FAILABLE_ANY:
 		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_SCALED_VECTOR:
 			UNREACHABLE
 			break;
 		case TYPE_BOOL:
@@ -4109,65 +4174,6 @@ void llvm_value_struct_gep(GenContext *c, BEValue *element, BEValue *struct_poin
 	                                            &alignment);
 	llvm_value_set_address_abi_aligned(element, ref, member->type);
 	element->alignment = alignment;
-}
-
-static void llvm_emit_intrinsic_expr(GenContext *c, unsigned intrinsic, BEValue *be_value, Expr *expr)
-{
-	unsigned arguments = vec_size(expr->call_expr.arguments);
-	assert(arguments < 10 && "Only has room for 10");
-	LLVMValueRef arg_results[10];
-	if (intrinsic == intrinsic_id.memcpy) arguments -= 2;
-	if (intrinsic == intrinsic_id.memset) arguments--;
-
-	Expr **args = expr->call_expr.arguments;
-	for (unsigned i = 0; i < arguments; i++)
-	{
-		llvm_emit_expr(c, be_value, args[i]);
-		llvm_value_rvalue(c, be_value);
-		arg_results[i] = be_value->value;
-	}
-	if (intrinsic == intrinsic_id.ctlz || intrinsic == intrinsic_id.cttz)
-	{
-		arg_results[1] = llvm_get_zero_raw(c->bool_type);
-		arguments++;
-	}
-	LLVMTypeRef call_type[3];
-	int call_args = 0;
-	if (expr->type != type_void)
-	{
-		call_args = 1;
-		call_type[0] = llvm_get_type(c, expr->type);
-		if (intrinsic == intrinsic_id.readcyclecounter) call_args = 0;
-	}
-	else if (intrinsic == intrinsic_id.memcpy)
-	{
-		call_type[0] = call_type[1] = llvm_get_type(c, type_voidptr);
-		call_type[2] = llvm_get_type(c, type_usize);
-		call_args = 3;
-	}
-	else if (intrinsic == intrinsic_id.memset)
-	{
-		call_type[0] = llvm_get_type(c, type_voidptr);
-		call_type[1] = llvm_get_type(c, type_usize);
-		call_args = 2;
-	}
-	LLVMValueRef result = llvm_emit_call_intrinsic(c, intrinsic, call_type, call_args, arg_results, arguments);
-	llvm_value_set(be_value, result, expr->type);
-	if (intrinsic == intrinsic_id.memcpy)
-	{
-		assert(args[4]->const_expr.const_kind == CONST_INTEGER);
-		assert(args[5]->const_expr.const_kind == CONST_INTEGER);
-		uint64_t dst_align = int_to_u64(args[4]->const_expr.ixx);
-		uint64_t src_align = int_to_u64(args[5]->const_expr.ixx);
-		if (dst_align > 0) llvm_attribute_add_call(c, result, attribute_id.align, 1, dst_align);
-		if (src_align > 0) llvm_attribute_add_call(c, result, attribute_id.align, 2, src_align);
-	}
-	else if (intrinsic == intrinsic_id.memset)
-	{
-		assert(args[4]->const_expr.const_kind == CONST_INTEGER);
-		uint64_t dst_align = int_to_u64(args[4]->const_expr.ixx);
-		if (dst_align > 0) llvm_attribute_add_call(c, result, attribute_id.align, 1, dst_align);
-	}
 }
 
 
@@ -4319,67 +4325,6 @@ static void llvm_emit_splatted_variadic_arg(GenContext *c, Expr *expr, BEValue *
 	}
 }
 
-unsigned llvm_get_intrinsic(BuiltinFunction func)
-{
-	switch (func)
-	{
-		case BUILTIN_NONE:
-		case BUILTIN_UNREACHABLE:
-		case BUILTIN_STACKTRACE:
-			UNREACHABLE
-		case BUILTIN_SYSCLOCK:
-			return intrinsic_id.readcyclecounter;
-		case BUILTIN_TRAP:
-			return intrinsic_id.trap;
-		case BUILTIN_CEIL:
-			return intrinsic_id.ceil;
-		case BUILTIN_TRUNC:
-			return intrinsic_id.trunc;
-		case BUILTIN_SQRT:
-			return intrinsic_id.sqrt;
-		case BUILTIN_COS:
-			return intrinsic_id.cos;
-		case BUILTIN_SIN:
-			return intrinsic_id.sin;
-		case BUILTIN_LOG:
-			return intrinsic_id.log;
-		case BUILTIN_LOG10:
-			return intrinsic_id.log10;
-		case BUILTIN_MAX:
-			return intrinsic_id.maxnum;
-		case BUILTIN_MIN:
-			return intrinsic_id.minnum;
-		case BUILTIN_FABS:
-			return intrinsic_id.fabs;
-		case BUILTIN_FMA:
-			return intrinsic_id.fma;
-		case BUILTIN_BITREVERSE:
-			return intrinsic_id.bitreverse;
-		case BUILTIN_BSWAP:
-			return intrinsic_id.bswap;
-		case BUILTIN_CTLZ:
-			return intrinsic_id.ctlz;
-		case BUILTIN_CTTZ:
-			return intrinsic_id.cttz;
-		case BUILTIN_CTPOP:
-			return intrinsic_id.ctpop;
-		case BUILTIN_LOG2:
-			return intrinsic_id.log2;
-		case BUILTIN_POW:
-			return intrinsic_id.pow;
-		case BUILTIN_EXP:
-			return intrinsic_id.exp;
-		case BUILTIN_MEMCOPY:
-			return intrinsic_id.memcpy;
-		case BUILTIN_MEMSET:
-			return intrinsic_id.memset;
-		case BUILTIN_VOLATILE_STORE:
-		case BUILTIN_VOLATILE_LOAD:
-		case BUILTIN_SYSCALL:
-			UNREACHABLE
-	}
-	UNREACHABLE
-}
 
 LLVMAtomicOrdering llvm_atomic_ordering(Atomicity atomicity)
 {
@@ -4396,148 +4341,8 @@ LLVMAtomicOrdering llvm_atomic_ordering(Atomicity atomicity)
 	UNREACHABLE
 }
 
-static inline void llvm_syscall_write_regs_to_scratch(const char** registers, unsigned args)
-{
-	for (unsigned i = 0; i < args; i++)
-	{
-		scratch_buffer_append(",{");
-		scratch_buffer_append(registers[i]);
-		scratch_buffer_append("}");
-	}
-}
 
-static inline LLVMValueRef llvm_syscall_asm(GenContext *c, LLVMTypeRef func_type, char *call)
-{
-	return LLVMGetInlineAsm(func_type, call, strlen(call),
-							scratch_buffer_to_string(), scratch_buffer.len,
-							true, true, LLVMInlineAsmDialectATT
-#if LLVM_VERSION_MAJOR > 12
-			, /* can throw */ false
-#endif
-							);
-}
 
-static inline void llvm_emit_syscall(GenContext *c, BEValue *be_value, Expr *expr)
-{
-	unsigned arguments = vec_size(expr->call_expr.arguments);
-	assert(arguments < 10 && "Only has room for 10");
-	LLVMValueRef arg_results[10];
-	LLVMTypeRef arg_types[10];
-	Expr **args = expr->call_expr.arguments;
-	LLVMTypeRef type = llvm_get_type(c, type_uptr);
-	for (unsigned i = 0; i < arguments; i++)
-	{
-		llvm_emit_expr(c, be_value, args[i]);
-		llvm_value_rvalue(c, be_value);
-		arg_results[i] = be_value->value;
-		arg_types[i] = type;
-	}
-	LLVMTypeRef func_type = LLVMFunctionType(type, arg_types, arguments, false);
-	scratch_buffer_clear();
-	LLVMValueRef inline_asm;
-	switch (platform_target.arch)
-	{
-		case ARCH_TYPE_AARCH64:
-		case ARCH_TYPE_AARCH64_BE:
-			scratch_buffer_append("={x0}");
-			assert(arguments < 8);
-			if (os_is_apple(platform_target.os))
-			{
-				static char const *regs[] = { "x16", "x0", "x1", "x2", "x3", "x4", "x5" };
-				llvm_syscall_write_regs_to_scratch(regs, arguments);
-			}
-			else
-			{
-				static char const *regs[] = { "x8", "x0", "x1", "x2", "x3", "x4", "x5" };
-				llvm_syscall_write_regs_to_scratch(regs, arguments);
-			}
-			inline_asm = llvm_syscall_asm(c, func_type, "svc #0x80");
-			break;
-		case ARCH_TYPE_X86:
-		{
-			scratch_buffer_append("={eax}");
-			assert(arguments < 8);
-			static char const *regs[] = { "eax", "ebx", "ecx", "edx", "esi", "edi" };
-			llvm_syscall_write_regs_to_scratch(regs, arguments < 6 ? arguments : 6);
-			if (arguments == 7)
-			{
-				scratch_buffer_append(",rm");
-				char *asm_str = "push %[arg6]\npush %%ebp\nmov 4(%%esp), %%ebp\nint $0x80\npop %%ebp\nadd $4, %%esp";
-				inline_asm = llvm_syscall_asm(c, func_type, asm_str);
-				break;
-			}
-			inline_asm = llvm_syscall_asm(c, func_type, "int $0x80");
-			break;
-		}
-		case ARCH_TYPE_X86_64:
-			scratch_buffer_append("={rax}");
-			assert(arguments < 8);
-			{
-				static char const *regs[] = { "rax", "rdi", "rsi", "rdx", "r10", "r8", "r9" };
-				llvm_syscall_write_regs_to_scratch(regs, arguments);
-			}
-			// Check clobbers on different OSes
-			scratch_buffer_append(",~{rcx},~{r11},~{memory}");
-			inline_asm = llvm_syscall_asm(c, func_type, "syscall");
-			break;
-		case ARCH_UNSUPPORTED:
-		default:
-			UNREACHABLE
-	}
-	LLVMValueRef result = LLVMBuildCall2(c->builder, func_type, inline_asm, arg_results, arguments, "syscall");
-	llvm_value_set(be_value, result, type_uptr);
-}
-void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
-{
-	BuiltinFunction func = exprptr(expr->call_expr.function)->builtin_expr.builtin;
-	if (func == BUILTIN_UNREACHABLE)
-	{
-		llvm_value_set(result_value, LLVMBuildUnreachable(c->builder), type_void);
-		c->current_block = NULL;
-		c->current_block_is_target = false;
-		LLVMBasicBlockRef after_unreachable = llvm_basic_block_new(c, "after.unreachable");
-		llvm_emit_block(c, after_unreachable);
-		return;
-	}
-	if (func == BUILTIN_STACKTRACE)
-	{
-		if (!c->debug.enable_stacktrace)
-		{
-			llvm_value_set(result_value, llvm_get_zero(c, type_voidptr), type_voidptr);
-			return;
-		}
-		llvm_value_set(result_value, llvm_emit_bitcast(c, c->debug.stack_slot, type_voidptr), type_voidptr);
-		return;
-	}
-	if (func == BUILTIN_VOLATILE_STORE)
-	{
-		BEValue value;
-		llvm_emit_expr(c, &value, expr->call_expr.arguments[0]);
-		llvm_emit_expr(c, result_value, expr->call_expr.arguments[1]);
-		llvm_value_rvalue(c, &value);
-		value.kind = BE_ADDRESS;
-		BEValue store_value = *result_value;
-		LLVMValueRef store = llvm_store(c, &value, &store_value);
-		if (store) LLVMSetVolatile(store, true);
-		return;
-	}
-	if (func == BUILTIN_VOLATILE_LOAD)
-	{
-		llvm_emit_expr(c, result_value, expr->call_expr.arguments[0]);
-		llvm_value_rvalue(c, result_value);
-		result_value->kind = BE_ADDRESS;
-		result_value->type = type_lowering(result_value->type->pointer);
-		llvm_value_rvalue(c, result_value);
-		LLVMSetVolatile(result_value->value, true);
-		return;
-	}
-	if (func == BUILTIN_SYSCALL)
-	{
-		llvm_emit_syscall(c, result_value, expr);
-		return;
-	}
-	llvm_emit_intrinsic_expr(c, llvm_get_intrinsic(func), result_value, expr);
-}
 
 void llvm_add_abi_call_attributes(GenContext *c, LLVMValueRef call_value, int count, ABIArgInfo **infos)
 {
@@ -4612,6 +4417,7 @@ static inline void llvm_emit_vararg_parameter(GenContext *c, BEValue *value, Typ
 	llvm_store_raw(c, &pointer_addr, llvm_emit_bitcast_ptr(c, array_ref, pointee_type));
 }
 
+
 void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 {
 
@@ -4676,7 +4482,6 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 	ABIArgInfo **abi_args = prototype->abi_args;
 	unsigned param_count = vec_size(params);
 	Expr **args = expr->call_expr.arguments;
-	unsigned arguments = vec_size(args);
 	Expr **varargs = NULL;
 	Expr *vararg_splat = NULL;
 	if (prototype->variadic != VARIADIC_NONE)
@@ -5163,8 +4968,7 @@ static inline void llvm_emit_expr_block(GenContext *context, BEValue *be_value, 
 
 static inline void llvm_emit_macro_block(GenContext *context, BEValue *be_value, Expr *expr)
 {
-	foreach(Decl *, expr->macro_block.params)
-	{
+	FOREACH_BEGIN(Decl *val, expr->macro_block.params)
 		// Skip vararg
 		if (!val) continue;
 		// In case we have a constant, we never do an emit. The value is already folded.
@@ -5200,7 +5004,7 @@ static inline void llvm_emit_macro_block(GenContext *context, BEValue *be_value,
 
 		llvm_emit_expr(context, &value, val->var.init_expr);
 		llvm_store_decl(context, val, &value);
-	}
+	FOREACH_END();
 
 	llvm_emit_return_block(context, be_value, expr->type, expr->macro_block.first_stmt, expr->macro_block.block_exit);
 }
@@ -5209,7 +5013,7 @@ LLVMValueRef llvm_emit_call_intrinsic(GenContext *context, unsigned intrinsic, L
                                       LLVMValueRef *values, unsigned arg_count)
 {
 	LLVMValueRef decl = LLVMGetIntrinsicDeclaration(context->module, intrinsic, types, type_count);
-	LLVMTypeRef type = LLVMIntrinsicGetType(context->context, intrinsic, types, arg_count);
+	LLVMTypeRef type = LLVMIntrinsicGetType(context->context, intrinsic, types, type_count);
 	return LLVMBuildCall2(context->builder, type, decl, values, arg_count, "");
 }
 
@@ -5335,7 +5139,8 @@ static void llvm_emit_macro_body_expansion(GenContext *c, BEValue *value, Expr *
 		llvm_emit_expr(c, value, expr);
 		llvm_store_to_ptr_aligned(c, declarations[i]->backend_ref, value, declarations[i]->alignment);
 	}
-	llvm_emit_stmt(c, body_expr->body_expansion_expr.ast);
+	AstId body = body_expr->body_expansion_expr.first_stmt;
+	if (body) llvm_emit_stmt(c, astptr(body));
 }
 
 void llvm_emit_try_unwrap(GenContext *c, BEValue *value, Expr *expr)
@@ -5431,11 +5236,11 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 			{
 				BEValue check;
 				LLVMBasicBlockRef exit = llvm_basic_block_new(c, "check_type_ok");
-				IntrospectType checks[7] = { INTROSPECT_TYPE_ARRAY, INTROSPECT_TYPE_POINTER,
-											 INTROSPECT_TYPE_VECTOR,
+				IntrospectType checks[8] = { INTROSPECT_TYPE_ARRAY, INTROSPECT_TYPE_POINTER,
+											 INTROSPECT_TYPE_VECTOR, INTROSPECT_TYPE_ENUM,
 											 INTROSPECT_TYPE_SUBARRAY, INTROSPECT_TYPE_DISTINCT,
 											 INTROSPECT_TYPE_FAILABLE, INTROSPECT_TYPE_SUBARRAY };
-				for (int i = 0; i < 7; i++)
+				for (int i = 0; i < 8; i++)
 				{
 					llvm_emit_int_comp_raw(c,
 					                       &check,
@@ -5449,7 +5254,7 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 					llvm_emit_block(c, next);
 				}
 				File  *file = source_file_by_id(expr->span.file_id);
-				llvm_emit_panic(c, "Attempted to access 'inner' on non composite type", file->name, c->cur_func_decl->name, expr->span.row);
+				llvm_emit_panic(c, "Attempted to access 'inner' on non composite type", file->name, c->cur_func.name, expr->span.row);
 				c->current_block = NULL;
 				c->current_block_is_target = false;
 				LLVMBuildUnreachable(c->builder);
@@ -5482,14 +5287,13 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 					llvm_emit_block(c, next);
 				}
 				File  *file = source_file_by_id(expr->span.file_id);
-				llvm_emit_panic(c, "Attempted to access 'names' on non enum/fault type.", file->name, c->cur_func_decl->name, expr->span.row);
+				llvm_emit_panic(c, "Attempted to access 'names' on non enum/fault type.", file->name, c->cur_func.name, expr->span.row);
 				c->current_block = NULL;
 				c->current_block_is_target = false;
 				LLVMBuildUnreachable(c->builder);
 				llvm_emit_block(c, exit);
 			}
 			{
-				LLVMTypeRef typeid = llvm_get_type(c, type_typeid);
 				LLVMValueRef len = llvm_emit_struct_gep_raw(c, ref, c->introspect_type, INTROSPECT_INDEX_LEN, align, &alignment);
 				len = llvm_load(c, c->size_type, len, alignment, "namelen");
 				LLVMValueRef val = llvm_emit_struct_gep_raw(c, ref, c->introspect_type, INTROSPECT_INDEX_ADDITIONAL, align, &alignment);
@@ -5520,7 +5324,7 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 					llvm_emit_block(c, next);
 				}
 				File  *file = source_file_by_id(expr->span.file_id);
-				llvm_emit_panic(c, "Attempted to access 'len' on non array type", file->name, c->cur_func_decl->name, expr->span.row);
+				llvm_emit_panic(c, "Attempted to access 'len' on non array type", file->name, c->cur_func.name, expr->span.row);
 				c->current_block = NULL;
 				c->current_block_is_target = false;
 				LLVMBuildUnreachable(c->builder);
@@ -5628,7 +5432,6 @@ static inline void llvm_emit_argv_to_subarray(GenContext *c, BEValue *value, Exp
 	LLVMSetAlignment(arg_array, alignment);
 
 	// Store the addresses.
-	LLVMTypeRef temp_type = llvm_get_type(c, expr->type);
 	LLVMTypeRef loop_type = llvm_get_type(c, type_usize);
 	LLVMTypeRef char_ptr_type = llvm_get_ptr_type(c, type_char);
 	LLVMValueRef size = llvm_zext_trunc(c, count, loop_type);
@@ -5732,7 +5535,6 @@ static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Ex
 			llvm_emit_block(c, ok_block);
 			LLVMValueRef fault_data = LLVMBuildIntToPtr(c->builder, be_value->value,
 														LLVMPointerType(c->fault_type, 0), "");
-			LLVMTypeRef subarray = llvm_get_type(c, type_chars);
 			LLVMValueRef ptr = LLVMBuildStructGEP2(c->builder, c->fault_type, fault_data, 1, "");
 			llvm_emit_br(c, exit_block);
 			llvm_emit_block(c, exit_block);
@@ -5750,7 +5552,6 @@ static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Ex
 			llvm_value_rvalue(c, be_value);
 			LLVMTypeRef subarray = llvm_get_type(c, type_chars);
 
-			LLVMTypeRef backend = LLVMTypeOf(inner_type->backend_typeid);
 			LLVMValueRef to_introspect = LLVMBuildIntToPtr(c->builder, inner_type->backend_typeid,
 			                                              LLVMPointerType(c->introspect_type, 0), "");
 			LLVMValueRef ptr = LLVMBuildStructGEP2(c->builder, c->introspect_type, to_introspect, INTROSPECT_INDEX_ADDITIONAL, "");
@@ -5787,8 +5588,10 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 	{
 		case NON_RUNTIME_EXPR:
 		case EXPR_COND:
-		case EXPR_CT_CONV:
 		case EXPR_CT_ARG:
+		case EXPR_ASM:
+		case EXPR_VASPLAT:
+		case EXPR_CT_CHECKS:
 			UNREACHABLE
 		case EXPR_BUILTIN_ACCESS:
 			llvm_emit_builtin_access(c, value, expr);
@@ -5819,6 +5622,9 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_DECL:
 			llvm_emit_local_decl(c, expr->decl_expr, value);
 			return;
+		case EXPR_SLICE_COPY:
+			llvm_emit_slice_copy(c, value, expr);
+			return;
 		case EXPR_SLICE_ASSIGN:
 			llvm_emit_slice_assign(c, value, expr);
 			return;
@@ -5844,6 +5650,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			llvm_emit_macro_block(c, value, expr);
 			return;
 		case EXPR_COMPOUND_LITERAL:
+		case EXPR_OPERATOR_CHARS:
 			UNREACHABLE
 		case EXPR_INITIALIZER_LIST:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
@@ -5881,6 +5688,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			return;
 		case EXPR_TYPEID:
 		case EXPR_GROUP:
+		case EXPR_SUBSCRIPT_ASSIGN:
 			// These are folded in the semantic analysis step.
 			UNREACHABLE
 		case EXPR_IDENTIFIER:

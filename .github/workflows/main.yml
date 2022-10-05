@@ -30,6 +30,13 @@ jobs:
           cmake -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
           cmake --build build --config ${{ matrix.build_type }}
 
+      - name: Compile and run some examples
+        run: |
+          cd resources
+          ..\build\${{ matrix.build_type }}\c3c.exe compile-run examples\hello_world_many.c3
+          ..\build\${{ matrix.build_type }}\c3c.exe compile-run examples\fannkuch-redux.c3
+          ..\build\${{ matrix.build_type }}\c3c.exe compile-run examples\contextfree\boolerr.c3
+
       - name: Build testproject
         run: |
           cd resources/testproject
@@ -79,6 +86,13 @@ jobs:
           cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
           cmake --build build
 
+      - name: Compile and run some examples
+        run: |
+          cd resources
+          ../build/c3c compile-run examples/hello_world_many.c3
+          ../build/c3c compile-run examples/fannkuch-redux.c3
+          ../build/c3c compile-run examples/contextfree/boolerr.c3
+
       - name: Build testproject
         run: |
           cd resources/testproject
@@ -121,6 +135,13 @@ jobs:
           cmake -B build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
           cmake --build build
 
+      - name: Compile and run some examples
+        run: |
+          cd resources
+          ../build/c3c compile-run examples/hello_world_many.c3
+          ../build/c3c compile-run examples/fannkuch-redux.c3
+          ../build/c3c compile-run examples/contextfree/boolerr.c3
+
       - name: Build testproject
         run: |
           cd resources/testproject
@@ -143,7 +164,7 @@ jobs:
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
-        llvm_version: [12, 13, 14, 15, 16]
+        llvm_version: [13, 14, 15, 16]
 
     steps:
       - uses: actions/checkout@v3
@@ -161,10 +182,7 @@ jobs:
           fi
           sudo apt-get update
           sudo apt-get install -y clang-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}}-dev lld-${{matrix.llvm_version}} liblld-${{matrix.llvm_version}}-dev
-
-          if [[ "${{matrix.llvm_version}}" > 12 ]]; then
-            sudo apt-get install -y libmlir-${{matrix.llvm_version}} libmlir-${{matrix.llvm_version}}-dev mlir-${{matrix.llvm_version}}-tools
-          fi
+          sudo apt-get install -y libmlir-${{matrix.llvm_version}} libmlir-${{matrix.llvm_version}}-dev mlir-${{matrix.llvm_version}}-tools 
 
       - name: CMake
         run: |
@@ -179,6 +197,13 @@ jobs:
                 -DCMAKE_DLLTOOL=llvm-dlltool-${{matrix.llvm_version}} \
                 -DC3_LLVM_VERSION=${{matrix.llvm_version}}
           cmake --build build
+
+      - name: Compile and run some examples
+        run: |
+          cd resources
+          ../build/c3c compile-run examples/hello_world_many.c3
+          ../build/c3c compile-run examples/fannkuch-redux.c3
+          ../build/c3c compile-run examples/contextfree/boolerr.c3
 
       - name: Build testproject
         run: |
@@ -203,7 +228,7 @@ jobs:
         if: matrix.llvm_version == env.LLVM_RELEASE_VERSION
         run: |
           mkdir linux
-          cp -r lib/ linux
+          cp -r lib linux
           cp msvc_build_libraries.py linux
           cp build/c3c linux
           tar czf c3-linux-${{matrix.build_type}}.tar.gz linux
@@ -223,12 +248,12 @@ jobs:
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
-        llvm_version: [12, 13, 14]
+        llvm_version: [13, 14, 15]
     steps:
       - uses: actions/checkout@v3
       - name: Download LLVM
         run: |
-          brew install llvm@${{ matrix.llvm_version }} botan ninja
+          brew update && brew install llvm@${{ matrix.llvm_version }} botan ninja
           echo "/usr/local/opt/llvm@${{ matrix.llvm_version }}/bin" >> $GITHUB_PATH
           TMP_PATH=$(xcrun --show-sdk-path)/user/include
           echo "CPATH=$TMP_PATH" >> $GITHUB_ENV
@@ -237,6 +262,13 @@ jobs:
         run: |
           cmake -B build -G Ninja -DC3_LLVM_VERSION=${{matrix.llvm_version}} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
           cmake --build build
+
+      - name: Compile and run some examples
+        run: |
+          cd resources
+          ../build/c3c compile-run examples/hello_world_many.c3
+          ../build/c3c compile-run examples/fannkuch-redux.c3
+          ../build/c3c compile-run examples/contextfree/boolerr.c3
 
       - name: Build testproject
         run: |
@@ -256,14 +288,18 @@ jobs:
       - name: run compiler tests
         run: |
           cd test
-          python3 src/tester.py ../build/c3c test_suite/
+          if [[ "${{matrix.llvm_version}}" < 15 ]]; then
+            python3 src/tester.py ../build/c3c test_suite/
+          else
+            python3 src/tester.py ../build/c3c test_suite2/
+          fi
 
       - name: bundle_output
         if: matrix.llvm_version == env.LLVM_RELEASE_VERSION
         run: |
           mkdir macos
-          cp -r lib/ macos
-          cp msvc_build_libraries.py linux
+          cp -r lib macos
+          cp msvc_build_libraries.py macos
           cp build/c3c macos
           zip -r c3-macos-${{matrix.build_type}}.zip macos
 
@@ -305,8 +341,8 @@ jobs:
             })
 
       - uses: actions/download-artifact@v3
-      - run: cp -r lib/ c3-windows-Release
-      - run: cp -r lib/ c3-windows-Debug
+      - run: cp -r lib c3-windows-Release
+      - run: cp -r lib c3-windows-Debug
       - run: cp msvc_build_libraries.py c3-windows-Release
       - run: cp msvc_build_libraries.py c3-windows-Debug
       - run: cp install_win_reqs.bat c3-windows-Release

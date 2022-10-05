@@ -29,17 +29,14 @@ else
 fi
 
 TAG="$1"
-if [ "$1" = 20 ]; then
-	UBUNTU_VERSION="20.04"
-	LLVM_VERSION="12"
-elif [ "$1" = 21 ]; then
+if [ "$1" = 21 ]; then
 	UBUNTU_VERSION="21.10"
 	LLVM_VERSION="13"
 elif [ "$1" = 22 ]; then
 	UBUNTU_VERSION="22.04"
 	LLVM_VERSION="14"
 else
-	echo "ERROR: expected 20, 21 or 22 as Ubuntu version argument" 1>&2
+	echo "ERROR: expected 21 or 22 as Ubuntu version argument" 1>&2
 	exit 2
 fi
 IMAGE="$IMAGE:$TAG"

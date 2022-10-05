@@ -189,7 +189,6 @@ bool expr_const_will_overflow(const ExprConst *expr, TypeKind kind)
 
 const char *expr_const_to_error_string(const ExprConst *expr)
 {
-	char *buff = NULL;
 	switch (expr->const_kind)
 	{
 		case CONST_POINTER:
@@ -211,8 +210,10 @@ const char *expr_const_to_error_string(const ExprConst *expr)
 			return expr->err_val->name;
 		case CONST_TYPEID:
 			return type_to_error_string(expr->typeid);
-		case CONST_LIST:
+		case CONST_INITIALIZER:
 			return "constant list";
+		case CONST_UNTYPED_LIST:
+			return "untyped list";
 	}
 	UNREACHABLE
 }

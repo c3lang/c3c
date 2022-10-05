@@ -3,6 +3,8 @@
 #include <llvm-c/Core.h>
 #include "compiler_internal.h"
 
+extern void LLVMSetTargetMachineUseInitArray(LLVMTargetMachineRef ref, bool use_init_array);
+
 static unsigned arch_pointer_bit_width(OsType os, ArchType arch);
 static ArchType arch_from_llvm_string(StringSlice string);
 static EnvironmentType environment_type_from_llvm_string(StringSlice string);
@@ -496,9 +498,9 @@ const char *arch_to_linker_arch(ArchType arch)
 		case ARCH_TYPE_ARMB:
 			return "armeb";
 		case ARCH_TYPE_AARCH64:
-			return "aarch64";
+			return "arm64";
 		case ARCH_TYPE_AARCH64_BE:
-			return "aarch64_be";
+			return "arm64e";
 		case ARCH_TYPE_PPC:
 			return "ppc";
 		case ARCH_TYPE_PPC64:
@@ -831,7 +833,7 @@ static unsigned os_target_supports_float128(OsType os, ArchType arch)
 	switch (arch)
 	{
 		case ARCH_TYPE_AARCH64:
-			return true;
+			return false;
 		case ARCH_TYPE_PPC64:
 			if (os == OS_TYPE_MACOSX) return true;
 			return false;
@@ -1216,6 +1218,7 @@ static AlignSize os_target_pref_alignment_of_float(OsType os, ArchType arch, uin
 }
 
 
+
 void *llvm_target_machine_create(void)
 {
 	char *err = NULL;
@@ -1279,7 +1282,9 @@ void *llvm_target_machine_create(void)
 										   platform_target.cpu ? platform_target.cpu : "", features,
 	                                       (LLVMCodeGenOptLevel)platform_target.llvm_opt_level,
 	                                       reloc_mode, LLVMCodeModelDefault);
+	LLVMSetTargetMachineUseInitArray(result, true);
 	if (!result) error_exit("Failed to create target machine.");
+	LLVMSetTargetMachineAsmVerbosity(result, 1);
 	return result;
 }
 

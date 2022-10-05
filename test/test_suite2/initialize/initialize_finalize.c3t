@@ -1,0 +1,62 @@
+// #target: linux-x64
+module test;
+import std::io;
+
+fn void main()
+{
+	io::println("Hello, world!");
+}
+extern fn void puts(char*);
+
+static initialize @priority(300)
+{
+	puts("Hello startup2");
+}
+static initialize
+{
+	puts("Let's start main...");
+}
+static initialize @priority(200)
+{
+	puts("Hello startup");
+}
+
+static initialize
+{}
+
+static finalize
+{
+	puts("Bye bye");
+}
+
+/* #expect: test.ll
+
+@llvm.global_ctors = appending global [3 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 300, ptr @.static_initialize.0, ptr null }, { i32, ptr, ptr } { i32 65535, ptr @.static_initialize.1, ptr null }, { i32, ptr, ptr } { i32 200, ptr @.static_initialize.2, ptr null }]
+@llvm.global_dtors = appending global [1 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 65535, ptr @.static_finalize.0, ptr null }]
+
+define internal void @.static_initialize.0() {
+entry:
+  call void @puts(ptr @.str)
+  ret void
+}
+
+; Function Attrs: nounwind
+declare void @puts(ptr) #0
+
+define internal void @.static_initialize.1() {
+entry:
+  call void @puts(ptr @.str.1)
+  ret void
+}
+
+define internal void @.static_initialize.2() {
+entry:
+  call void @puts(ptr @.str.2)
+  ret void
+}
+
+define internal void @.static_finalize.0() {
+entry:
+  call void @puts(ptr @.str.3)
+  ret void
+}

@@ -24,30 +24,30 @@ extern const char* llvm_version;
 extern const char* llvm_target;
 
 char *arch_os_target[ARCH_OS_TARGET_LAST + 1] = {
-		[WINDOWS_X86] = "windows-x86",
-		[WINDOWS_X64] = "windows-x64",
-		[MINGW_X64] = "mingw-x64",
-		[MACOS_X64] = "macos-x64",
-		[MACOS_AARCH64] = "macos-aarch64",
-		[LINUX_X86] = "linux-x86",
-		[LINUX_X64] = "linux-x64",
-		[LINUX_AARCH64] = "linux-aarch64",
-		[LINUX_RISCV32] = "linux-riscv32",
-		[LINUX_RISCV64] = "linux-riscv64",
-		[WASM32] = "wasm32",
-		[WASM64] = "wasm64",
-		[ELF_X86] = "elf-x86",
-		[ELF_X64] = "elf-x64",
 		[ELF_AARCH64] = "elf-aarch64",
 		[ELF_RISCV32] = "elf-riscv32",
 		[ELF_RISCV64] = "elf-riscv64",
+		[ELF_X86] = "elf-x86",
+		[ELF_X64] = "elf-x64",
 		[FREEBSD_X86] = "freebsd-x86",
 		[FREEBSD_X64] = "freebsd-x64",
-		[OPENBSD_X86] = "openbsd-x86",
-		[OPENBSD_X64] = "openbsd-x64",
+		[LINUX_AARCH64] = "linux-aarch64",
+		[LINUX_RISCV32] = "linux-riscv32",
+		[LINUX_RISCV64] = "linux-riscv64",
+		[LINUX_X86] = "linux-x86",
+		[LINUX_X64] = "linux-x64",
+		[MACOS_AARCH64] = "macos-aarch64",
+		[MACOS_X64] = "macos-x64",
+		[MCU_X86] = "mcu-x86",
+		[MINGW_X64] = "mingw-x64",
 		[NETBSD_X86] = "netbsd-x86",
 		[NETBSD_X64] = "netbsd-x64",
-		[MCU_X86] = "mcu-x86",
+		[OPENBSD_X86] = "openbsd-x86",
+		[OPENBSD_X64] = "openbsd-x64",
+		[WASM32] = "wasm32",
+		[WASM64] = "wasm64",
+		[WINDOWS_X86] = "windows-x86",
+		[WINDOWS_X64] = "windows-x64",
 };
 
 #define EOUTPUT(string, ...) fprintf(stderr, string "\n", ##__VA_ARGS__)
@@ -66,10 +66,11 @@ static void usage(void)
 	OUTPUT("  clean                              Clean all build files.");
 	OUTPUT("  run [<target>]                     Run (and build if needed) the target in the current project.");
 	OUTPUT("  dist [<target>]                    Clean and build a target for distribution.");
-	OUTPUT("  directives [<target>]                    Generate documentation for the target.");
+	OUTPUT("  directives [<target>]              Generate documentation for the target.");
 	OUTPUT("  bench [<target>]                   Benchmark a target.");
 	OUTPUT("  clean-run [<target>]               Clean, then run the target.");
 	OUTPUT("  compile-run <file1> [<file2> ...]  Compile files then immediately run the result.");
+	OUTPUT("  compile-only <file1> [<file2> ...] Compile files but do not perform linking.");
 	OUTPUT("  static-lib <file1> [<file2> ...]   Compile files without a project into a static library.");
 	OUTPUT("  dynamic-lib <file1> [<file2> ...]  Compile files without a project into a dynamic library.");
 	OUTPUT("  headers <file1> [<file2> ...]      Analyse files and generate C headers for public methods.");
@@ -92,8 +93,13 @@ static void usage(void)
 	OUTPUT("  -O0                   - Optimizations off.");
 	OUTPUT("  -O1                   - Simple optimizations only.");
 	OUTPUT("  -O2                   - Default optimization level.");
-	OUTPUT("  -Os                   - Optimize for size.");
 	OUTPUT("  -O3                   - Aggressive optimization.");
+	OUTPUT("  -Os                   - Optimize for size.");
+	OUTPUT("  -Oz                   - Optimize for tiny size.");
+	OUTPUT("  -O2+                  - Default optimization level, single module");
+	OUTPUT("  -O3+                  - Aggressive optimization, single module.");
+	OUTPUT("  -Os+                  - Optimize for size, single module.");
+	OUTPUT("  -Oz+                  - Optimize for tiny size, single module.");
 	OUTPUT("  --build-dir <dir>     - Override build output directory.");
 	OUTPUT("  --obj-out <dir>       - Override object file output directory.");
 	OUTPUT("  --llvm-out <dir>      - Override llvm output directory for '--emit-llvm'.");
@@ -119,21 +125,22 @@ static void usage(void)
 	OUTPUT("  --x86vec=<option>     - Set max level of vector instructions: none, native, mmx, sse, avx, avx512.");
 	OUTPUT("");
 	OUTPUT("  --debug-stats         - Print debug statistics.");
-	OUTPUT("  --list-targets        - List all architectures the compiler supports.");
-	OUTPUT("  --list-keywords       - List all keywords.");
-	OUTPUT("  --list-operators      - List all operators.");
+#ifndef NDEBUG
+	OUTPUT("  --debug-log           - Print debug logging to stdout.");
+#endif
+	OUTPUT("");
 	OUTPUT("  --list-attributes     - List all attributes.");
 	OUTPUT("  --list-builtins       - List all builtins.");
+	OUTPUT("  --list-keywords       - List all keywords.");
+	OUTPUT("  --list-operators      - List all operators.");
 	OUTPUT("  --list-precedence     - List operator precedence order.");
+	OUTPUT("  --list-targets        - List all architectures the compiler supports.");
 	OUTPUT("");
 	OUTPUT("  --winsdk <dir>        - Set the directory for Windows system library files for cross compilation.");
 	OUTPUT("  --wincrt=<option>     - Windows CRT linking: none, static, dynamic (default).");
 	OUTPUT("");
 	OUTPUT("  --macossdk <dir>      - Set the directory for the MacOS SDK for cross compilation.");
 
-#ifndef NDEBUG
-	OUTPUT("  --debug-log           - Print debug logging to stdout.");
-#endif
 }
 
 
@@ -394,17 +401,33 @@ static void parse_option(BuildOptions *options)
 			{
 				options->optimization_setting_override = OPT_SETTING_O1;
 			}
+			else if (match_shortopt("O2+"))
+			{
+				options->optimization_setting_override = OPT_SETTING_O2_PLUS;
+			}
 			else if (match_shortopt("O2"))
 			{
 				options->optimization_setting_override = OPT_SETTING_O2;
+			}
+			else if (match_shortopt("O3+"))
+			{
+				options->optimization_setting_override = OPT_SETTING_O3_PLUS;
 			}
 			else if (match_shortopt("O3"))
 			{
 				options->optimization_setting_override = OPT_SETTING_O3;
 			}
+			else if (match_shortopt("Os+"))
+			{
+				options->optimization_setting_override = OPT_SETTING_OSMALL_PLUS;
+			}
 			else if (match_shortopt("Os"))
 			{
 				options->optimization_setting_override = OPT_SETTING_OSMALL;
+			}
+			else if (match_shortopt("Oz+"))
+			{
+				options->optimization_setting_override = OPT_SETTING_OTINY_PLUS;
 			}
 			else if (match_shortopt("Oz"))
 			{
@@ -465,14 +488,7 @@ static void parse_option(BuildOptions *options)
 			}
 			if (match_longopt("forcelinker"))
 			{
-				if (llvm_version_major > 12)
-				{
-					options->force_linker = true;
-				}
-				else
-				{
-					printf("Force linking ignored on LLVM 12 and earlier.\n");
-				}
+				options->force_linker = true;
 				return;
 			}
 			if (match_longopt("version"))

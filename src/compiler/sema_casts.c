@@ -2,7 +2,7 @@
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
 
-#include "compiler_internal.h"
+#include "sema_internal.h"
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "ConstantFunctionResult"
@@ -10,7 +10,8 @@
 static bool bitstruct_cast(Expr *expr, Type *from_type, Type *to, Type *to_type);
 static void sema_error_const_int_out_of_range(Expr *expr, Expr *problem, Type *to_type);
 static Expr *recursive_may_narrow_float(Expr *expr, Type *type);
-Expr *recursive_may_narrow_int(Expr *expr, Type *type);
+static Expr *recursive_may_narrow_int(Expr *expr, Type *type);
+static void recursively_rewrite_untyped_list(Expr *expr, Expr **list);
 
 static inline bool insert_cast(Expr *expr, CastKind kind, Type *type)
 {
@@ -214,11 +215,9 @@ bool integer_to_enum(Expr *expr, Type *canonical, Type *type)
 	Decl *enum_decl = canonical->decl;
 	if (expr->expr_kind != EXPR_CONST)
 	{
-		REMINDER("Add check for runtime enum conversions");
 		Type *underlying_type = enum_decl->enums.type_info->type->canonical;
 		if (!cast(expr, underlying_type)) return false;
-		expr->type = type;
-		return true;
+		return insert_cast(expr, CAST_INTENUM, type);
 	}
 	unsigned max_enums = vec_size(enum_decl->enums.values);
 	Int to_convert = expr->const_expr.ixx;
@@ -395,10 +394,12 @@ CastKind cast_to_bool_kind(Type *type)
 		case TYPE_VECTOR:
 		case TYPE_BITSTRUCT:
 		case TYPE_UNTYPED_LIST:
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 		case TYPE_ANY:
 		case TYPE_FAILABLE_ANY:
 		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_SCALED_VECTOR:
+		case TYPE_INFERRED_VECTOR:
 			return CAST_ERROR;
 	}
 	UNREACHABLE
@@ -434,6 +435,11 @@ bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability, 
 		if (from_type->type_kind == TYPE_ARRAY && type_flatten_distinct(from_type->array.base) == type_flatten_distinct(to_type->array.base)) return true;
 		return false;
 	}
+	if (to_type->type_kind == TYPE_INFERRED_VECTOR)
+	{
+		if (from_type->type_kind == TYPE_VECTOR && type_flatten_distinct(from_type->array.base) == type_flatten_distinct(to_type->array.base)) return true;
+		return false;
+	}
 
 	TypeKind to_kind = to_type->type_kind;
 	switch (from_type->type_kind)
@@ -442,13 +448,16 @@ bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability, 
 			return true;
 		case TYPE_DISTINCT:
 		case TYPE_TYPEDEF:
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 			UNREACHABLE
 		case TYPE_POISONED:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_VOID:
 		case TYPE_TYPEINFO:
 		case TYPE_FUNC:
+		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_INFERRED_VECTOR:
+		case TYPE_SCALED_VECTOR:
 			return false;
 		case TYPE_TYPEID:
 			// May convert to anything pointer sized or larger, no enums
@@ -492,8 +501,6 @@ bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability, 
 		case TYPE_FAULTTYPE:
 			// Allow MyError.A -> error, to an integer or to bool
 			return to_type->type_kind == TYPE_ANYERR || type_is_integer(to_type) || to_type == type_bool;
-		case TYPE_FLEXIBLE_ARRAY:
-			return false;
 		case TYPE_ARRAY:
 			if (to_kind == TYPE_VECTOR)
 			{
@@ -631,6 +638,11 @@ bool cast_may_implicit(Type *from_type, Type *to_type, bool is_simple_expr, bool
 	if (to_type->type_kind == TYPE_INFERRED_ARRAY)
 	{
 		if (from->type_kind == TYPE_ARRAY && type_flatten_distinct(from->array.base) == type_flatten_distinct(to_type->array.base)) return true;
+		return false;
+	}
+	if (to_type->type_kind == TYPE_INFERRED_VECTOR)
+	{
+		if (from->type_kind == TYPE_VECTOR && type_flatten_distinct(from->array.base) == type_flatten_distinct(to_type->array.base)) return true;
 		return false;
 	}
 
@@ -773,6 +785,7 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 		case EXPR_MACRO_BLOCK:
 		case EXPR_IDENTIFIER:
 		case EXPR_SLICE_ASSIGN:
+		case EXPR_SLICE_COPY:
 		case EXPR_SLICE:
 		case EXPR_SUBSCRIPT:
 		case EXPR_RETVAL:
@@ -830,9 +843,13 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 		case EXPR_STRINGIFY:
 		case EXPR_CT_EVAL:
 		case EXPR_VARIANT:
-		case EXPR_CT_CONV:
 		case EXPR_POINTER_OFFSET:
 		case EXPR_CT_ARG:
+		case EXPR_ASM:
+		case EXPR_VASPLAT:
+		case EXPR_OPERATOR_CHARS:
+		case EXPR_CT_CHECKS:
+		case EXPR_SUBSCRIPT_ASSIGN:
 			UNREACHABLE
 		case EXPR_BUILTIN_ACCESS:
 
@@ -845,8 +862,9 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 		{
 			switch (expr->unary_expr.operator)
 			{
-				case UNARYOP_ERROR:
 				case UNARYOP_DEREF:
+					return false;
+				case UNARYOP_ERROR:
 				case UNARYOP_ADDR:
 				case UNARYOP_NOT:
 				case UNARYOP_TADDR:
@@ -932,9 +950,11 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 		case EXPR_MACRO_BLOCK:
 		case EXPR_IDENTIFIER:
 		case EXPR_SLICE_ASSIGN:
+		case EXPR_SLICE_COPY:
 		case EXPR_SLICE:
 		case EXPR_SUBSCRIPT:
 		case EXPR_RETVAL:
+		case EXPR_SUBSCRIPT_ASSIGN:
 		case EXPR_TYPEID_INFO:
 			if (type_size(expr->type) > type_size(type)) return expr;
 			return NULL;
@@ -998,9 +1018,12 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 		case EXPR_STRINGIFY:
 		case EXPR_CT_EVAL:
 		case EXPR_VARIANT:
-		case EXPR_CT_CONV:
 		case EXPR_POINTER_OFFSET:
 		case EXPR_CT_ARG:
+		case EXPR_ASM:
+		case EXPR_VASPLAT:
+		case EXPR_OPERATOR_CHARS:
+		case EXPR_CT_CHECKS:
 			UNREACHABLE
 		case EXPR_POST_UNARY:
 			return recursive_may_narrow_int(expr->unary_expr.expr, type);
@@ -1068,7 +1091,29 @@ static inline bool cast_maybe_string_lit_to_char_array(Expr *expr, Type *expr_ca
 	expr->type = to_canonical;
 	return true;
 }
-bool cast_implicit(Expr *expr, Type *to_type)
+
+bool cast_untyped_to_type(SemaContext *context, Expr *expr, Type *to_type)
+{
+	recursively_rewrite_untyped_list(expr, expr->const_expr.untyped_list);
+	if (!sema_expr_analyse_initializer_list(context, type_flatten(to_type), expr)) return false;
+	expr->type = to_type;
+	return true;
+}
+
+static void recursively_rewrite_untyped_list(Expr *expr, Expr **list)
+{
+	expr->expr_kind = EXPR_INITIALIZER_LIST;
+	expr->initializer_list = list;
+	expr->resolve_status = RESOLVE_NOT_DONE;
+	FOREACH_BEGIN(Expr *inner, list)
+		if (expr_is_const_untyped_list(inner))
+		{
+			recursively_rewrite_untyped_list(inner, inner->const_expr.untyped_list);
+		}
+	FOREACH_END();
+}
+
+bool cast_implicit(SemaContext *context, Expr *expr, Type *to_type)
 {
 	assert(!type_is_optional(to_type));
 	Type *expr_type = expr->type;
@@ -1084,14 +1129,19 @@ bool cast_implicit(Expr *expr, Type *to_type)
 		return true;
 	}
 	if (expr_canonical == to_canonical) return true;
+	if (expr_type == type_untypedlist)
+	{
+		return cast_untyped_to_type(context, expr, to_type);
+	}
+
 	bool is_simple = expr_is_simple(expr);
 	if (!cast_may_implicit(expr_canonical, to_canonical, is_simple, true))
 	{
 		if (!cast_may_explicit(expr_canonical, to_canonical, false, expr->expr_kind == EXPR_CONST))
 		{
-			if (expr_canonical->type_kind == TYPE_FAILABLE && to_canonical->type_kind != TYPE_FAILABLE)
+			if (expr_canonical->type_kind == TYPE_OPTIONAL && to_canonical->type_kind != TYPE_OPTIONAL)
 			{
-				SEMA_ERROR(expr, "A failable %s cannot be converted to %s.", type_quoted_error_string(expr->type), type_quoted_error_string(to_type));
+				SEMA_ERROR(expr, "An optional %s cannot be converted to %s.", type_quoted_error_string(expr->type), type_quoted_error_string(to_type));
 				return false;
 			}
 			if (to_canonical->type_kind == TYPE_ANY)
@@ -1189,8 +1239,8 @@ static bool arr_to_vec(Expr *expr, Type *to_type)
 {
 	if (insert_runtime_cast_unless_const(expr, CAST_ARRVEC, to_type)) return true;
 
-	assert(expr->const_expr.const_kind == CONST_LIST);
-	ConstInitializer *list = expr->const_expr.list;
+	assert(expr->const_expr.const_kind == CONST_INITIALIZER);
+	ConstInitializer *list = expr->const_expr.initializer;
 	list->type = to_type;
 	expr->type = to_type;
 	return true;
@@ -1200,8 +1250,8 @@ static bool vec_to_arr(Expr *expr, Type *to_type)
 {
 	if (insert_runtime_cast_unless_const(expr, CAST_VECARR, to_type)) return true;
 
-	assert(expr->const_expr.const_kind == CONST_LIST);
-	ConstInitializer *list = expr->const_expr.list;
+	assert(expr->const_expr.const_kind == CONST_INITIALIZER);
+	ConstInitializer *list = expr->const_expr.initializer;
 	list->type = to_type;
 	expr->type = to_type;
 	return true;
@@ -1233,9 +1283,9 @@ static bool err_to_bool(Expr *expr, Type *to_type)
 
 static inline bool subarray_to_bool(Expr *expr)
 {
-	if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_LIST)
+	if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER)
 	{
-		ConstInitializer *list = expr->const_expr.list;
+		ConstInitializer *list = expr->const_expr.initializer;
 		switch (list->kind)
 		{
 			case CONST_INIT_ZERO:
@@ -1262,11 +1312,10 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 	switch (from_type->type_kind)
 	{
 		case TYPE_FAILABLE_ANY:
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 			UNREACHABLE
 		case TYPE_VOID:
 			UNREACHABLE
-		case TYPE_TYPEID:
 		case TYPE_DISTINCT:
 		case TYPE_FUNC:
 		case TYPE_TYPEDEF:
@@ -1305,6 +1354,7 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 			if (to == type_bool) return float_to_bool(expr, to_type);
 			if (type_is_float(to)) return float_to_float(expr, to, to_type);
 			break;
+		case TYPE_TYPEID:
 		case TYPE_POINTER:
 			if (type_is_integer(to)) return pointer_to_integer(expr, to_type);
 			if (to->type_kind == TYPE_BOOL) return pointer_to_bool(expr, to_type);
@@ -1327,6 +1377,7 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 			if (type_is_integer(to)) return insert_cast(expr, CAST_ERINT, to_type);
 			break;
 		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_SCALED_VECTOR:
 			return false;
 		case TYPE_ARRAY:
 			if (to->type_kind == TYPE_VECTOR) return arr_to_vec(expr, to_type);
@@ -1388,7 +1439,7 @@ bool cast(Expr *expr, Type *to_type)
 
 	if (type_is_optional_any(from_type))
 	{
-		expr->type = type_get_failable(to_type);
+		expr->type = type_get_optional(to_type);
 		return true;
 	}
 
@@ -1398,7 +1449,7 @@ bool cast(Expr *expr, Type *to_type)
 		from_is_failable = true;
 	}
 	from_type = type_flatten_distinct(from_type);
-	if (to_type->type_kind == TYPE_INFERRED_ARRAY)
+	if (type_len_is_inferred(to_type))
 	{
 		to_type = from_type;
 		to = type_flatten(from_type);
@@ -1419,9 +1470,129 @@ bool cast(Expr *expr, Type *to_type)
 	Type *result_type = expr->type;
 	if (from_is_failable && !type_is_optional(result_type))
 	{
-		expr->type = type_get_failable(result_type);
+		expr->type = type_get_optional(result_type);
 	}
 	return true;
 }
+
+bool cast_to_index(Expr *index)
+{
+	Type *type = index->type->canonical;
+	RETRY:
+	switch (type->type_kind)
+	{
+		case TYPE_I8:
+		case TYPE_I16:
+		case TYPE_I32:
+		case TYPE_I64:
+			return cast(index, type_iptrdiff);
+		case TYPE_U8:
+		case TYPE_U16:
+		case TYPE_U32:
+		case TYPE_U64:
+			return cast(index, type_uptrdiff);
+		case TYPE_U128:
+			SEMA_ERROR(index, "You need to explicitly cast this to a uint or ulong.");
+			return false;
+		case TYPE_I128:
+			SEMA_ERROR(index, "index->type->canonical this to an int or long.");
+			return false;
+		case TYPE_ENUM:
+			type = type->decl->enums.type_info->type->canonical;
+			goto RETRY;
+		default:
+			SEMA_ERROR(index, "Cannot implicitly convert '%s' to an index.", type_to_error_string(index->type));
+			return false;
+	}
+}
+
+bool cast_widen_top_down(SemaContext *context, Expr *expr, Type *type)
+{
+	Type *to = type;
+	Type *from = expr->type;
+	RETRY:
+	if (type_is_integer(from) && type_is_integer(to)) goto CONVERT_IF_BIGGER;
+	if (type_is_float(from) && type_is_float(to)) goto CONVERT_IF_BIGGER;
+	if (type_is_integer(from) && type_is_float(to)) goto CONVERT;
+	if (type_flat_is_vector(from) && type_flat_is_vector(to))
+	{
+		to = type_vector_type(to);
+		from = type_vector_type(from);
+		goto RETRY;
+	}
+	return true;
+	CONVERT_IF_BIGGER:
+	if (type_size(to) <= type_size(from)) return true;
+	CONVERT:
+	return cast_implicit(context, expr, type);
+}
+
+bool cast_promote_vararg(Expr *arg)
+{
+	Type *arg_type = arg->type->canonical;
+
+	// 2. Promote any integer or bool to at least CInt
+	if (type_is_promotable_integer(arg_type) || arg_type == type_bool)
+	{
+		return cast(arg, type_cint);
+	}
+	// 3. Promote any float to at least double
+	if (type_is_promotable_float(arg->type))
+	{
+		return cast(arg, type_double);
+	}
+	return true;
+}
+
+Type *cast_numeric_arithmetic_promotion(Type *type)
+{
+	if (!type) return NULL;
+	switch (type->type_kind)
+	{
+		case ALL_SIGNED_INTS:
+			if (type->builtin.bitsize < platform_target.width_c_int) return type_cint;
+			return type;
+		case ALL_UNSIGNED_INTS:
+			if (type->builtin.bitsize < platform_target.width_c_int) return type_cuint;
+			return type;
+		case TYPE_F16:
+			// Promote F16 to a real type.
+			return type_float;
+		case TYPE_OPTIONAL:
+			UNREACHABLE
+		default:
+			return type;
+	}
+}
+
+bool cast_decay_array_pointers(SemaContext *context, Expr *expr)
+{
+	CanonicalType *pointer_type = type_pointer_type(type_no_optional(expr->type));
+	if (!pointer_type || !type_is_arraylike(pointer_type)) return true;
+	return cast_implicit(context, expr, type_add_optional(type_get_ptr(pointer_type->array.base), IS_OPTIONAL(expr)));
+}
+
+void cast_to_max_bit_size(SemaContext *context, Expr *left, Expr *right, Type *left_type, Type *right_type)
+{
+	unsigned bit_size_left = left_type->builtin.bitsize;
+	unsigned bit_size_right = right_type->builtin.bitsize;
+	assert(bit_size_left && bit_size_right);
+	if (bit_size_left == bit_size_right) return;
+	if (bit_size_left < bit_size_right)
+	{
+		Type *to = left->type->type_kind < TYPE_U8
+		           ? type_int_signed_by_bitsize(bit_size_right)
+		           : type_int_unsigned_by_bitsize(bit_size_right);
+		bool success = cast_implicit(context, left, to);
+		assert(success);
+		return;
+	}
+	Type *to = right->type->type_kind < TYPE_U8
+	           ? type_int_signed_by_bitsize(bit_size_left)
+	           : type_int_unsigned_by_bitsize(bit_size_left);
+	bool success = cast_implicit(context, right, to);
+	assert(success);
+}
+
 
 #pragma clang diagnostic pop

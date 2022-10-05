@@ -92,6 +92,8 @@ const char *token_type_to_string(TokenType type)
 			return "==";
 		case TOKEN_GREATER_EQ:
 			return ">=";
+		case TOKEN_IMPLIES:
+			return "=>";
 		case TOKEN_LESS_EQ:
 			return "<=";
 		case TOKEN_LBRAPIPE:
@@ -163,12 +165,6 @@ const char *token_type_to_string(TokenType type)
 			return "MACRO_TYPE_IDENT";
 		case TOKEN_AT_CONST_IDENT:
 			return "MACRO_CONST_IDENT";
-
-		// Asm
-		case TOKEN_ASM_STRING:
-			return "ASM_STRING";
-		case TOKEN_ASM_CONSTRAINT:
-			return "ASM_CONSTRAINT";
 
 		// Values
 		case TOKEN_STRING:
@@ -334,6 +330,8 @@ const char *token_type_to_string(TokenType type)
 			return "$assert";
 		case TOKEN_CT_CASE:
 			return "$case";
+		case TOKEN_CT_CHECKS:
+			return "$checks";
 		case TOKEN_CT_DEFAULT:
 			return "$default";
 		case TOKEN_CT_DEFINED:
@@ -362,18 +360,20 @@ const char *token_type_to_string(TokenType type)
 			return "$extnameof";
 		case TOKEN_CT_IF:
 			return "$if";
-		case TOKEN_CT_VAARG_COUNT:
-			return "$vaarg_count";
-		case TOKEN_CT_VAARG_GET_TYPE:
-			return "$vaarg_get_type";
-		case TOKEN_CT_VAARG_GET_CONST:
-			return "$vaarg_get_const";
-		case TOKEN_CT_VAARG_GET_ARG:
-			return "$vaarg_get_arg";
-		case TOKEN_CT_VAARG_GET_REF:
-			return "$vaarg_get_ref";
-		case TOKEN_CT_VAARG_GET_EXPR:
-			return "$vaarg_get_expr";
+		case TOKEN_CT_VACOUNT:
+			return "$vacount";
+		case TOKEN_CT_VATYPE:
+			return "$vatype";
+		case TOKEN_CT_VACONST:
+			return "$vaconst";
+		case TOKEN_CT_VAARG:
+			return "$vaarg";
+		case TOKEN_CT_VAREF:
+			return "$varef";
+		case TOKEN_CT_VAEXPR:
+			return "$vaexpr";
+		case TOKEN_CT_VASPLAT:
+			return "$vasplat";
 		case TOKEN_CT_NAMEOF:
 			return "$nameof";
 		case TOKEN_CT_OFFSETOF:
@@ -384,12 +384,10 @@ const char *token_type_to_string(TokenType type)
 			return "$sizeof";
 		case TOKEN_CT_SWITCH:
 			return "$switch";
+		case TOKEN_CT_TYPEFROM:
+			return "$typefrom";
 		case TOKEN_CT_TYPEOF:
 			return "$typeof";
-		case TOKEN_CT_CONVERTIBLE:
-			return "$convertible";
-		case TOKEN_CT_CASTABLE:
-			return "$castable";
 		case TOKEN_CT_STRINGIFY:
 			return "$stringify";
 		case TOKEN_EOF:
@@ -401,6 +399,6 @@ const char *token_type_to_string(TokenType type)
 
 bool token_is_any_type(TokenType type)
 {
-	return (type >= TOKEN_VOID && type <= TOKEN_TYPEID) || type == TOKEN_CT_TYPE_IDENT || type == TOKEN_TYPE_IDENT || type == TOKEN_CT_VAARG_GET_TYPE;
+	return (type >= TOKEN_VOID && type <= TOKEN_TYPEID) || type == TOKEN_CT_TYPE_IDENT || type == TOKEN_TYPE_IDENT || type == TOKEN_CT_VATYPE;
 }
 

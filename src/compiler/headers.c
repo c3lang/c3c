@@ -34,7 +34,7 @@ static void header_print_type(FILE *file, Type *type)
 			UNREACHABLE
 		case TYPE_BITSTRUCT:
 			TODO
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 		case TYPE_FAILABLE_ANY:
 			// If this is reachable then we are not doing the proper lowering.
 			UNREACHABLE
@@ -97,6 +97,7 @@ static void header_print_type(FILE *file, Type *type)
 		case TYPE_FAULTTYPE:
 			OUTPUT("enum %s__", type->decl->extname);
 			return;
+		case TYPE_SCALED_VECTOR:
 		case TYPE_FLEXIBLE_ARRAY:
 			TODO
 		case TYPE_FUNC:

@@ -4,6 +4,23 @@
 
 #include "llvm_codegen_internal.h"
 
+#include <llvm-c/Error.h>
+#include <llvm-c/Comdat.h>
+#include <llvm-c/Linker.h>
+
+typedef struct LLVMOpaquePassBuilderOptions *LLVMPassBuilderOptionsRef;
+LLVMErrorRef LLVMRunPasses(LLVMModuleRef M, const char *Passes,
+                           LLVMTargetMachineRef TM,
+                           LLVMPassBuilderOptionsRef Options);
+LLVMPassBuilderOptionsRef LLVMCreatePassBuilderOptions(void);
+void LLVMPassBuilderOptionsSetVerifyEach(LLVMPassBuilderOptionsRef Options, LLVMBool VerifyEach);
+void LLVMPassBuilderOptionsSetDebugLogging(LLVMPassBuilderOptionsRef Options, LLVMBool DebugLogging);
+void LLVMDisposePassBuilderOptions(LLVMPassBuilderOptionsRef Options);
+
+static void llvm_emit_constructors_and_destructors(GenContext *c);
+static void llvm_codegen_setup();
+static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context);
+
 const char* llvm_version = LLVM_VERSION_STRING;
 const char* llvm_target = LLVM_DEFAULT_TARGET_TRIPLE;
 
@@ -37,10 +54,18 @@ static void diagnostics_handler(LLVMDiagnosticInfoRef ref, void *context)
 	LLVMDisposeMessage(message);
 }
 
-static void gencontext_init(GenContext *context, Module *module)
+static void gencontext_init(GenContext *context, Module *module, LLVMContextRef shared_context)
 {
 	memset(context, 0, sizeof(GenContext));
-	context->context = LLVMContextCreate();
+	if (shared_context)
+	{
+		context->shared_context = true;
+		context->context = shared_context;
+	}
+	else
+	{
+		context->context = LLVMContextCreate();
+	}
 	LLVMContextSetDiagnosticHandler(context->context, &diagnostics_handler, context);
 	context->code_module = module;
 }
@@ -49,7 +74,7 @@ static void gencontext_destroy(GenContext *context)
 {
 	assert(llvm_is_global_eval(context));
 	LLVMDisposeBuilder(context->global_builder);
-	LLVMContextDispose(context->context);
+	if (!context->shared_context) LLVMContextDispose(context->context);
 	LLVMDisposeTargetData(context->target_data);
 	LLVMDisposeTargetMachine(context->machine);
 	free(context);
@@ -66,6 +91,22 @@ LLVMValueRef llvm_emit_memclear_size_align(GenContext *c, LLVMValueRef ptr, uint
 	ptr = LLVMBuildBitCast(c->builder, ptr, llvm_get_type(c, type_get_ptr(type_char)), "");
 #endif
 	return LLVMBuildMemSet(c->builder, ptr, llvm_get_zero(c, type_char), llvm_const_int(c, type_usize, size), align);
+}
+
+INLINE void llvm_emit_xtor(GenContext *c, LLVMValueRef *list, const char *name)
+{
+	if (!list) return;
+	unsigned len = vec_size(list);
+	LLVMTypeRef type = LLVMTypeOf(list[0]);
+	LLVMValueRef array = LLVMConstArray(type, list, len);
+	LLVMValueRef global = LLVMAddGlobal(c->module, LLVMTypeOf(array), name);
+	LLVMSetLinkage(global, LLVMAppendingLinkage);
+	LLVMSetInitializer(global, array);
+}
+void llvm_emit_constructors_and_destructors(GenContext *c)
+{
+	llvm_emit_xtor(c, c->constructors, "llvm.global_ctors");
+	llvm_emit_xtor(c, c->destructors, "llvm.global_dtors");
 }
 
 /**
@@ -331,9 +372,9 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	}
 	if (init_expr)
 	{
-		if (init_expr->expr_kind == EXPR_CONST && init_expr->const_expr.const_kind == CONST_LIST)
+		if (init_expr->expr_kind == EXPR_CONST && init_expr->const_expr.const_kind == CONST_INITIALIZER)
 		{
-			ConstInitializer *list = init_expr->const_expr.list;
+			ConstInitializer *list = init_expr->const_expr.initializer;
 			init_value = llvm_emit_const_initializer(c, list);
 		}
 		else
@@ -461,7 +502,7 @@ static void gencontext_emit_object_file(GenContext *context)
 
 	if (context->asm_filename)
 	{
-		// Generate .o or .obj file
+		// Generate .s file
 		if (LLVMTargetMachineEmitToFile(context->machine, context->module, (char *)context->asm_filename, LLVMAssemblyFile, &err))
 		{
 			error_exit("Could not emit asm file: %s", err);
@@ -485,7 +526,7 @@ static void llvm_emit_asm_file(GenContext *context)
 	LLVMSetDataLayout(context->module, layout);
 	LLVMDisposeMessage(layout);
 
-	// Generate .o or .obj file
+	// Generate .s file
 	if (LLVMTargetMachineEmitToFile(context->machine, context->module, (char *)context->asm_filename, LLVMAssemblyFile, &err))
 	{
 		error_exit("Could not emit asm file: %s", err);
@@ -573,103 +614,104 @@ static bool intrinsics_setup = false;
 LLVMAttributes attribute_id;
 LLVMIntrinsics intrinsic_id;
 
-void llvm_codegen_setup()
+static void llvm_codegen_setup()
 {
 	if (intrinsics_setup) return;
 
-	intrinsic_id.vector_reduce_fmax = lookup_intrinsic("llvm.vector.reduce.fmax");
-	intrinsic_id.vector_reduce_smax = lookup_intrinsic("llvm.vector.reduce.smax");
-	intrinsic_id.vector_reduce_umax = lookup_intrinsic("llvm.vector.reduce.umax");
-	intrinsic_id.vector_reduce_fmin = lookup_intrinsic("llvm.vector.reduce.fmin");
-	intrinsic_id.vector_reduce_smin = lookup_intrinsic("llvm.vector.reduce.smin");
-	intrinsic_id.vector_reduce_umin = lookup_intrinsic("llvm.vector.reduce.umin");
-
-	intrinsic_id.trap = lookup_intrinsic("llvm.trap");
+	intrinsic_id.abs = lookup_intrinsic("llvm.abs");
 	intrinsic_id.assume = lookup_intrinsic("llvm.assume");
-
-	intrinsic_id.bswap = lookup_intrinsic("llvm.bswap");
-
-	intrinsic_id.lifetime_start = lookup_intrinsic("llvm.lifetime.start");
-	intrinsic_id.lifetime_end = lookup_intrinsic("llvm.lifetime.end");
-
-	intrinsic_id.ssub_overflow = lookup_intrinsic("llvm.ssub.with.overflow");
-	intrinsic_id.ssub_sat = lookup_intrinsic("llvm.ssub.sat");
-	intrinsic_id.usub_overflow = lookup_intrinsic("llvm.usub.with.overflow");
-	intrinsic_id.usub_sat = lookup_intrinsic("llvm.usub.sat");
-	intrinsic_id.sadd_overflow = lookup_intrinsic("llvm.sadd.with.overflow");
-	intrinsic_id.sadd_sat = lookup_intrinsic("llvm.sadd.sat");
-	intrinsic_id.uadd_overflow = lookup_intrinsic("llvm.uadd.with.overflow");
-	intrinsic_id.uadd_sat = lookup_intrinsic("llvm.uadd.sat");
-	intrinsic_id.smul_overflow = lookup_intrinsic("llvm.smul.with.overflow");
-	intrinsic_id.umul_overflow = lookup_intrinsic("llvm.umul.with.overflow");
-	//intrinsic_id.sshl_sat = lookup_intrinsic("llvm.sshl.sat");
-	//intrinsic_id.ushl_sat = lookup_intrinsic("llvm.ushl.sat");
-	intrinsic_id.fshl = lookup_intrinsic("llvm.fshl");
-	intrinsic_id.fshr = lookup_intrinsic("llvm.fshr");
 	intrinsic_id.bitreverse = lookup_intrinsic("llvm.bitreverse");
 	intrinsic_id.bswap = lookup_intrinsic("llvm.bswap");
+	intrinsic_id.bswap = lookup_intrinsic("llvm.bswap");
+	intrinsic_id.ceil = lookup_intrinsic("llvm.ceil");
+	intrinsic_id.convert_from_fp16 = lookup_intrinsic("llvm.convert.from.fp16");
+	intrinsic_id.convert_to_fp16 = lookup_intrinsic("llvm.convert.to.fp16");
+	intrinsic_id.copysign = lookup_intrinsic("llvm.copysign");
+	intrinsic_id.cos = lookup_intrinsic("llvm.cos");
+	intrinsic_id.ctlz = lookup_intrinsic("llvm.ctlz");
 	intrinsic_id.ctpop = lookup_intrinsic("llvm.ctpop");
 	intrinsic_id.cttz = lookup_intrinsic("llvm.cttz");
-	intrinsic_id.ctlz = lookup_intrinsic("llvm.ctlz");
-
-	intrinsic_id.rint = lookup_intrinsic("llvm.rint");
-	intrinsic_id.trunc = lookup_intrinsic("llvm.trunc");
-	intrinsic_id.ceil = lookup_intrinsic("llvm.ceil");
-	intrinsic_id.floor = lookup_intrinsic("llvm.floor");
-	intrinsic_id.sqrt = lookup_intrinsic("llvm.sqrt");
-	intrinsic_id.powi = lookup_intrinsic("llvm.powi");
-	intrinsic_id.pow = lookup_intrinsic("llvm.pow");
-	intrinsic_id.sin = lookup_intrinsic("llvm.sin");
-	intrinsic_id.cos = lookup_intrinsic("llvm.cos");
 	intrinsic_id.exp = lookup_intrinsic("llvm.exp");
 	intrinsic_id.exp2 = lookup_intrinsic("llvm.exp2");
+	intrinsic_id.fabs = lookup_intrinsic("llvm.fabs");
+	intrinsic_id.floor = lookup_intrinsic("llvm.floor");
+	intrinsic_id.fma = lookup_intrinsic("llvm.fma");
+	intrinsic_id.fshl = lookup_intrinsic("llvm.fshl");
+	intrinsic_id.fshr = lookup_intrinsic("llvm.fshr");
+	intrinsic_id.lifetime_end = lookup_intrinsic("llvm.lifetime.end");
+	intrinsic_id.lifetime_start = lookup_intrinsic("llvm.lifetime.start");
+	intrinsic_id.llrint = lookup_intrinsic("llvm.llrint");
+	intrinsic_id.llround = lookup_intrinsic("llvm.llround");
 	intrinsic_id.log = lookup_intrinsic("llvm.log");
 	intrinsic_id.log2 = lookup_intrinsic("llvm.log2");
 	intrinsic_id.log10 = lookup_intrinsic("llvm.log10");
-	intrinsic_id.fabs = lookup_intrinsic("llvm.fabs");
-	intrinsic_id.fma = lookup_intrinsic("llvm.fma");
-	intrinsic_id.copysign = lookup_intrinsic("llvm.copysign");
-	intrinsic_id.minnum = lookup_intrinsic("llvm.minnum");
-	intrinsic_id.maxnum = lookup_intrinsic("llvm.maxnum");
-	intrinsic_id.minimum = lookup_intrinsic("llvm.minimum");
-	intrinsic_id.maximum = lookup_intrinsic("llvm.maximum");
-	intrinsic_id.convert_to_fp16 = lookup_intrinsic("llvm.convert.to.fp16");
-	intrinsic_id.convert_from_fp16 = lookup_intrinsic("llvm.convert.from.fp16");
-	intrinsic_id.nearbyint = lookup_intrinsic("llvm.nearbyint");
-	intrinsic_id.roundeven = lookup_intrinsic("llvm.roundeven");
-	intrinsic_id.lround = lookup_intrinsic("llvm.lround");
-	intrinsic_id.llround = lookup_intrinsic("llvm.llround");
 	intrinsic_id.lrint = lookup_intrinsic("llvm.lrint");
-	intrinsic_id.llrint = lookup_intrinsic("llvm.llrint");
-
-	//intrinsic_id.abs = lookup_intrinsic("llvm.abs");
+	intrinsic_id.lround = lookup_intrinsic("llvm.lround");
+	intrinsic_id.maximum = lookup_intrinsic("llvm.maximum");
+	intrinsic_id.maxnum = lookup_intrinsic("llvm.maxnum");
+	intrinsic_id.memcpy = lookup_intrinsic("llvm.memcpy");
+	intrinsic_id.memset = lookup_intrinsic("llvm.memset");
+	intrinsic_id.minimum = lookup_intrinsic("llvm.minimum");
+	intrinsic_id.minnum = lookup_intrinsic("llvm.minnum");
+	intrinsic_id.nearbyint = lookup_intrinsic("llvm.nearbyint");
+	intrinsic_id.pow = lookup_intrinsic("llvm.pow");
+	intrinsic_id.powi = lookup_intrinsic("llvm.powi");
+	intrinsic_id.prefetch = lookup_intrinsic("llvm.prefetch");
+	intrinsic_id.readcyclecounter = lookup_intrinsic("llvm.readcyclecounter");
+	intrinsic_id.rint = lookup_intrinsic("llvm.rint");
+	intrinsic_id.round = lookup_intrinsic("llvm.round");
+	intrinsic_id.roundeven = lookup_intrinsic("llvm.roundeven");
+	intrinsic_id.sadd_overflow = lookup_intrinsic("llvm.sadd.with.overflow");
+	intrinsic_id.sadd_sat = lookup_intrinsic("llvm.sadd.sat");
+	intrinsic_id.sin = lookup_intrinsic("llvm.sin");
+	intrinsic_id.sshl_sat = lookup_intrinsic("llvm.sshl.sat");
 	intrinsic_id.smax = lookup_intrinsic("llvm.smax");
 	intrinsic_id.smin = lookup_intrinsic("llvm.smin");
+	intrinsic_id.smul_overflow = lookup_intrinsic("llvm.smul.with.overflow");
+	intrinsic_id.sqrt = lookup_intrinsic("llvm.sqrt");
+	intrinsic_id.ssub_overflow = lookup_intrinsic("llvm.ssub.with.overflow");
+	intrinsic_id.ssub_sat = lookup_intrinsic("llvm.ssub.sat");
+	intrinsic_id.trap = lookup_intrinsic("llvm.trap");
+	intrinsic_id.trunc = lookup_intrinsic("llvm.trunc");
+	intrinsic_id.uadd_overflow = lookup_intrinsic("llvm.uadd.with.overflow");
+	intrinsic_id.uadd_sat = lookup_intrinsic("llvm.uadd.sat");
 	intrinsic_id.umax = lookup_intrinsic("llvm.umax");
 	intrinsic_id.umin = lookup_intrinsic("llvm.umin");
+	intrinsic_id.umul_overflow = lookup_intrinsic("llvm.umul.with.overflow");
+	intrinsic_id.usub_overflow = lookup_intrinsic("llvm.usub.with.overflow");
+	intrinsic_id.ushl_sat = lookup_intrinsic("llvm.ushl.sat");
+	intrinsic_id.usub_sat = lookup_intrinsic("llvm.usub.sat");
+	intrinsic_id.vector_reduce_fmax = lookup_intrinsic("llvm.vector.reduce.fmax");
+	intrinsic_id.vector_reduce_fmin = lookup_intrinsic("llvm.vector.reduce.fmin");
+	intrinsic_id.vector_reduce_smax = lookup_intrinsic("llvm.vector.reduce.smax");
+	intrinsic_id.vector_reduce_smin = lookup_intrinsic("llvm.vector.reduce.smin");
+	intrinsic_id.vector_reduce_umax = lookup_intrinsic("llvm.vector.reduce.umax");
+	intrinsic_id.vector_reduce_umin = lookup_intrinsic("llvm.vector.reduce.umin");
+	intrinsic_id.vector_reduce_add = lookup_intrinsic("llvm.vector.reduce.add");
+	intrinsic_id.vector_reduce_fadd = lookup_intrinsic("llvm.vector.reduce.fadd");
+	intrinsic_id.vector_reduce_mul = lookup_intrinsic("llvm.vector.reduce.mul");
+	intrinsic_id.vector_reduce_fmul = lookup_intrinsic("llvm.vector.reduce.fmul");
+	intrinsic_id.vector_reduce_and = lookup_intrinsic("llvm.vector.reduce.and");
+	intrinsic_id.vector_reduce_or = lookup_intrinsic("llvm.vector.reduce.or");
+	intrinsic_id.vector_reduce_xor = lookup_intrinsic("llvm.vector.reduce.xor");
 
-	intrinsic_id.readcyclecounter = lookup_intrinsic("llvm.readcyclecounter");
-
-	intrinsic_id.memset = lookup_intrinsic("llvm.memset");
-	intrinsic_id.memcpy = lookup_intrinsic("llvm.memcpy");
-
-	attribute_id.noinline = lookup_attribute("noinline");
-	attribute_id.optnone = lookup_attribute("optnone");
-	attribute_id.alwaysinline = lookup_attribute("alwaysinline");
-	attribute_id.inlinehint = lookup_attribute("inlinehint");
-	attribute_id.noreturn = lookup_attribute("noreturn");
-	attribute_id.nounwind = lookup_attribute("nounwind");
-	attribute_id.writeonly = lookup_attribute("writeonly");
-	attribute_id.readonly = lookup_attribute("readonly");
-	attribute_id.optnone = lookup_attribute("optnone");
-	attribute_id.sret = lookup_attribute("sret");
-	attribute_id.noalias = lookup_attribute("noalias");
-	attribute_id.zext = lookup_attribute("zeroext");
-	attribute_id.sext = lookup_attribute("signext");
 	attribute_id.align = lookup_attribute("align");
+	attribute_id.alwaysinline = lookup_attribute("alwaysinline");
 	attribute_id.byval = lookup_attribute("byval");
+	attribute_id.elementtype = lookup_attribute("elementtype");
+	attribute_id.inlinehint = lookup_attribute("inlinehint");
 	attribute_id.inreg = lookup_attribute("inreg");
 	attribute_id.naked = lookup_attribute("naked");
+	attribute_id.noalias = lookup_attribute("noalias");
+	attribute_id.noinline = lookup_attribute("noinline");
+	attribute_id.noreturn = lookup_attribute("noreturn");
+	attribute_id.nounwind = lookup_attribute("nounwind");
+	attribute_id.optnone = lookup_attribute("optnone");
+	attribute_id.readonly = lookup_attribute("readonly");
+	attribute_id.sext = lookup_attribute("signext");
+	attribute_id.sret = lookup_attribute("sret");
+	attribute_id.writeonly = lookup_attribute("writeonly");
+	attribute_id.zext = lookup_attribute("zeroext");
 	intrinsics_setup = true;
 }
 
@@ -800,46 +842,51 @@ static void llvm_emit_type_decls(GenContext *context, Decl *decl)
 	}
 }
 
+
+static inline void llvm_optimize(GenContext *c)
+{
+	LLVMPassBuilderOptionsRef options = LLVMCreatePassBuilderOptions();
+	LLVMPassBuilderOptionsSetVerifyEach(options, active_target.emit_llvm);
+	const char *passes = NULL;
+	switch (active_target.size_optimization_level)
+	{
+		case SIZE_OPTIMIZATION_SMALL:
+			passes = "default<Os>";
+			break;
+		case SIZE_OPTIMIZATION_TINY:
+			passes = "default<Oz>";
+			break;
+		default:
+			break;
+	}
+	switch (active_target.optimization_level)
+	{
+		case OPTIMIZATION_NONE:
+			passes = "default<O0>";
+			break;
+		case OPTIMIZATION_NOT_SET:
+		case OPTIMIZATION_DEFAULT:
+			if (!passes) passes = "default<O2>";
+			break;
+		case OPTIMIZATION_LESS:
+			if (!passes) passes = "default<O1>";
+			break;
+		case OPTIMIZATION_AGGRESSIVE:
+			if (!passes) passes = "default<O3>";
+			break;
+	}
+	LLVMErrorRef err = LLVMRunPasses(c->module, passes, c->machine, options);
+	if (err)
+	{
+		error_exit("An error occurred: %s.", LLVMGetErrorMessage(err));
+	}
+	LLVMDisposePassBuilderOptions(options);
+}
+
 const char *llvm_codegen(void *context)
 {
 	GenContext *c = context;
-	LLVMModuleRef module = c->module;
-	// Starting from here we could potentially thread this:
-	LLVMPassManagerBuilderRef pass_manager_builder = LLVMPassManagerBuilderCreate();
-	LLVMPassManagerBuilderSetOptLevel(pass_manager_builder, (unsigned)active_target.optimization_level);
-	LLVMPassManagerBuilderSetSizeLevel(pass_manager_builder, (unsigned)active_target.size_optimization_level);
-	LLVMPassManagerBuilderSetDisableUnrollLoops(pass_manager_builder, active_target.optimization_level == OPTIMIZATION_NONE);
-	if (active_target.optimization_level != OPTIMIZATION_NONE)
-	{
-		LLVMPassManagerBuilderUseInlinerWithThreshold(pass_manager_builder, (unsigned)get_inlining_threshold());
-	}
-	LLVMPassManagerRef pass_manager = LLVMCreatePassManager();
-	LLVMPassManagerRef function_pass_manager = LLVMCreateFunctionPassManagerForModule(module);
-	LLVMAddAnalysisPasses(c->machine, function_pass_manager);
-	LLVMAddAnalysisPasses(c->machine, pass_manager);
-	LLVMPassManagerBuilderPopulateModulePassManager(pass_manager_builder, pass_manager);
-	LLVMPassManagerBuilderPopulateFunctionPassManager(pass_manager_builder, function_pass_manager);
-
-	// IMPROVE
-	// In LLVM Opt, LoopVectorize and SLPVectorize settings are part of the PassManagerBuilder
-	// Anything else we need to manually add?
-
-	LLVMPassManagerBuilderDispose(pass_manager_builder);
-
-	// Run function passes
-	LLVMInitializeFunctionPassManager(function_pass_manager);
-	LLVMValueRef current_function = LLVMGetFirstFunction(module);
-	while (current_function)
-	{
-		LLVMRunFunctionPassManager(function_pass_manager, current_function);
-		current_function = LLVMGetNextFunction(current_function);
-	}
-	LLVMFinalizeFunctionPassManager(function_pass_manager);
-	LLVMDisposePassManager(function_pass_manager);
-
-	// Run module pass
-	LLVMRunPassManager(pass_manager, module);
-	LLVMDisposePassManager(pass_manager);
+	llvm_optimize(c);
 
 	// Serialize the LLVM IR, if requested, also verify the IR in this case
 	if (active_target.emit_llvm)
@@ -947,81 +994,124 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 		case DECL_TYPEDEF:
 		case DECL_UNION:
 		case DECL_DECLARRAY:
+		case DECL_INITIALIZE:
+		case DECL_FINALIZE:
 		case DECL_BODYPARAM:
 			UNREACHABLE;
 	}
 	UNREACHABLE
 }
-void *llvm_gen(Module *module)
+
+void **llvm_gen(Module** modules, unsigned module_count)
+{
+	if (!module_count) return NULL;
+	GenContext ** gen_contexts = NULL;
+	llvm_codegen_setup();
+	if (active_target.single_module)
+	{
+		GenContext *first_context;
+		unsigned first_element;
+		LLVMContextRef context = LLVMGetGlobalContext();
+		for (int i = 0; i < module_count; i++)
+		{
+			GenContext *result = llvm_gen_module(modules[i], context);
+			if (!result) continue;
+			vec_add(gen_contexts, result);
+		}
+		if (!gen_contexts) return NULL;
+		GenContext *first = gen_contexts[0];
+		unsigned count = vec_size(gen_contexts);
+		for (unsigned i = 1; i < count; i++)
+		{
+			GenContext *other = gen_contexts[i];
+			LLVMLinkModules2(first->module, other->module);
+			gencontext_destroy(other);
+		}
+		vec_resize(gen_contexts, 1);
+		return (void**)gen_contexts;
+	}
+	for (unsigned i = 0; i < module_count; i++)
+	{
+		GenContext *result = llvm_gen_module(modules[i], NULL);
+		if (!result) continue;
+		vec_add(gen_contexts, result);
+	}
+	return (void**)gen_contexts;
+}
+
+static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context)
 {
 	if (!vec_size(module->units)) return NULL;
 	assert(intrinsics_setup);
 	GenContext *gen_context = cmalloc(sizeof(GenContext));
-	gencontext_init(gen_context, module);
+	gencontext_init(gen_context, module, shared_context);
 	gencontext_begin_module(gen_context);
 
-	VECEACH(module->units, j)
-	{
-		CompilationUnit *unit = module->units[j];
+	FOREACH_BEGIN(CompilationUnit *unit, module->units)
+
 		gencontext_init_file_emit(gen_context, unit);
 		gen_context->debug.compile_unit = unit->llvm.debug_compile_unit;
 		gen_context->debug.file = unit->llvm.debug_file;
 
-		VECEACH(unit->methods, i)
-		{
-			llvm_emit_function_decl(gen_context, unit->methods[i]);
-		}
-		VECEACH(unit->types, i)
-		{
-			llvm_emit_type_decls(gen_context, unit->types[i]);
-		}
-		VECEACH(unit->enums, i)
-		{
-			llvm_emit_type_decls(gen_context, unit->enums[i]);
-		}
-		VECEACH(unit->functions, i)
-		{
-			Decl *func = unit->functions[i];
+		FOREACH_BEGIN(Decl *initializer, unit->xxlizers)
+			llvm_emit_xxlizer(gen_context, initializer);
+		FOREACH_END();
+
+		FOREACH_BEGIN(Decl *method, unit->methods)
+			llvm_emit_function_decl(gen_context, method);
+		FOREACH_END();
+
+		FOREACH_BEGIN(Decl *type_decl, unit->types)
+			llvm_emit_type_decls(gen_context, type_decl);
+		FOREACH_END();
+
+		FOREACH_BEGIN(Decl *enum_decl, unit->enums)
+			llvm_emit_type_decls(gen_context, enum_decl);
+		FOREACH_END();
+
+		FOREACH_BEGIN(Decl *func, unit->functions)
 			llvm_emit_function_decl(gen_context, func);
-		}
+		FOREACH_END();
+
 		if (unit->main_function && unit->main_function->is_synthetic)
 		{
 			llvm_emit_function_decl(gen_context, unit->main_function);
 		}
-	}
 
-	VECEACH(module->units, j)
-	{
-		CompilationUnit *unit = module->units[j];
+	FOREACH_END();
+
+	FOREACH_BEGIN(CompilationUnit *unit, module->units)
+
 		gen_context->debug.compile_unit = unit->llvm.debug_compile_unit;
 		gen_context->debug.file = unit->llvm.debug_file;
 
-		VECEACH(unit->vars, i)
-		{
-			llvm_get_ref(gen_context, unit->vars[i]);
-		}
-		VECEACH(unit->vars, i)
-		{
-			llvm_emit_global_variable_init(gen_context, unit->vars[i]);
-		}
-		VECEACH(unit->functions, i)
-		{
-			Decl *decl = unit->functions[i];
+		FOREACH_BEGIN(Decl *var, unit->vars)
+			llvm_get_ref(gen_context, var);
+		FOREACH_END();
+
+		FOREACH_BEGIN(Decl *var, unit->vars)
+			llvm_emit_global_variable_init(gen_context, var);
+		FOREACH_END();
+
+		FOREACH_BEGIN(Decl *decl, unit->functions)
 			if (decl->func_decl.body) llvm_emit_function_body(gen_context, decl);
-		}
+		FOREACH_END();
+
 		if (unit->main_function && unit->main_function->is_synthetic)
 		{
 			llvm_emit_function_body(gen_context, unit->main_function);
 		}
 
-		VECEACH(unit->methods, i)
-		{
-			Decl *decl = unit->methods[i];
+		FOREACH_BEGIN(Decl *decl, unit->methods)
 			if (decl->func_decl.body) llvm_emit_function_body(gen_context, decl);
-		}
+		FOREACH_END();
 
 		gencontext_end_file_emit(gen_context, unit);
-	}
+
+	FOREACH_END();
+
+	llvm_emit_constructors_and_destructors(gen_context);
+
 	// EmitDeferred()
 
 	if (llvm_use_debug(gen_context))

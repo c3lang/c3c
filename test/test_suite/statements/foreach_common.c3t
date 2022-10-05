@@ -37,6 +37,11 @@ fn void main()
     {
         printf("Value: %f\n", a);
     }
+    foreach (float* &a : foo2)
+    {
+        *a *= 2;
+        printf("Value: %f\n", *a);
+    }
     foreach (i, a : foo2)
     {
         printf("Value[%d]: %f\n", i, a);
@@ -75,15 +80,18 @@ entry:
   %a47 = alloca float, align 4
   %.anon51 = alloca i64, align 8
   %.anon52 = alloca i64, align 8
-  %i56 = alloca i64, align 8
-  %a57 = alloca float, align 4
+  %a56 = alloca float*, align 8
   %.anon61 = alloca i64, align 8
   %.anon62 = alloca i64, align 8
-  %i66 = alloca i8, align 1
-  %a68 = alloca double, align 8
-  %.anon73 = alloca i64, align 8
-  %.anon74 = alloca i64, align 8
+  %i66 = alloca i64, align 8
+  %a67 = alloca float, align 4
+  %.anon71 = alloca i64, align 8
+  %.anon72 = alloca i64, align 8
+  %i76 = alloca i8, align 1
   %a78 = alloca double, align 8
+  %.anon83 = alloca i64, align 8
+  %.anon84 = alloca i64, align 8
+  %a88 = alloca double, align 8
   %0 = bitcast [3 x float]* %foo to i8*
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %0, i8* align 4 bitcast ([3 x float]* @.__const to i8*), i32 12, i1 false)
   store <3 x float> <float 2.000000e+00, float 4.500000e+00, float 8.000000e+00>, <3 x float>* %foo2, align 16
@@ -269,15 +277,16 @@ loop.cond53:                                      ; preds = %loop.body55, %loop.
 
 loop.body55:                                      ; preds = %loop.cond53
   %52 = load i64, i64* %.anon52, align 8
-  store i64 %52, i64* %i56, align 8
-  %53 = load <3 x float>, <3 x float>* %foo2, align 16
-  %54 = load i64, i64* %.anon52, align 8
-  %55 = extractelement <3 x float> %53, i64 %54
-  store float %55, float* %a57, align 4
-  %56 = load i64, i64* %i56, align 8
-  %57 = load float, float* %a57, align 4
+  %53 = getelementptr inbounds <3 x float>, <3 x float>* %foo2, i64 0, i64 %52
+  store float* %53, float** %a56, align 8
+  %54 = load float*, float** %a56, align 8
+  %55 = load float, float* %54, align 8
+  %fmul57 = fmul float %55, 2.000000e+00
+  store float %fmul57, float* %54, align 8
+  %56 = load float*, float** %a56, align 8
+  %57 = load float, float* %56, align 8
   %fpfpext58 = fpext float %57 to double
-  call void (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str.7, i32 0, i32 0), i64 %56, double %fpfpext58)
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @.str.7, i32 0, i32 0), double %fpfpext58)
   %58 = load i64, i64* %.anon52, align 8
   %add59 = add i64 %58, 1
   store i64 %add59, i64* %.anon52, align 8
@@ -292,50 +301,77 @@ loop.cond63:                                      ; preds = %loop.body65, %loop.
   %59 = load i64, i64* %.anon62, align 8
   %60 = load i64, i64* %.anon61, align 8
   %lt64 = icmp ult i64 %59, %60
-  br i1 %lt64, label %loop.body65, label %loop.exit72
+  br i1 %lt64, label %loop.body65, label %loop.exit70
 
 loop.body65:                                      ; preds = %loop.cond63
   %61 = load i64, i64* %.anon62, align 8
-  %ztrunc67 = trunc i64 %61 to i8
-  store i8 %ztrunc67, i8* %i66, align 1
+  store i64 %61, i64* %i66, align 8
   %62 = load <3 x float>, <3 x float>* %foo2, align 16
   %63 = load i64, i64* %.anon62, align 8
   %64 = extractelement <3 x float> %62, i64 %63
-  %fpfpext69 = fpext float %64 to double
-  store double %fpfpext69, double* %a68, align 8
-  %65 = load i8, i8* %i66, align 1
-  %uisiext70 = zext i8 %65 to i32
-  %66 = load double, double* %a68, align 8
-  call void (i8*, ...) @printf(i8* getelementptr inbounds ([16 x i8], [16 x i8]* @.str.8, i32 0, i32 0), i32 %uisiext70, double %66)
+  store float %64, float* %a67, align 4
+  %65 = load i64, i64* %i66, align 8
+  %66 = load float, float* %a67, align 4
+  %fpfpext68 = fpext float %66 to double
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str.8, i32 0, i32 0), i64 %65, double %fpfpext68)
   %67 = load i64, i64* %.anon62, align 8
-  %add71 = add i64 %67, 1
-  store i64 %add71, i64* %.anon62, align 8
+  %add69 = add i64 %67, 1
+  store i64 %add69, i64* %.anon62, align 8
   br label %loop.cond63
 
-loop.exit72:                                      ; preds = %loop.cond63
-  store i64 3, i64* %.anon73, align 8
-  store i64 0, i64* %.anon74, align 8
-  br label %loop.cond75
+loop.exit70:                                      ; preds = %loop.cond63
+  store i64 3, i64* %.anon71, align 8
+  store i64 0, i64* %.anon72, align 8
+  br label %loop.cond73
 
-loop.cond75:                                      ; preds = %loop.body77, %loop.exit72
-  %68 = load i64, i64* %.anon74, align 8
-  %69 = load i64, i64* %.anon73, align 8
-  %lt76 = icmp ult i64 %68, %69
-  br i1 %lt76, label %loop.body77, label %loop.exit81
+loop.cond73:                                      ; preds = %loop.body75, %loop.exit70
+  %68 = load i64, i64* %.anon72, align 8
+  %69 = load i64, i64* %.anon71, align 8
+  %lt74 = icmp ult i64 %68, %69
+  br i1 %lt74, label %loop.body75, label %loop.exit82
 
-loop.body77:                                      ; preds = %loop.cond75
-  %70 = load <3 x float>, <3 x float>* %foo2, align 16
-  %71 = load i64, i64* %.anon74, align 8
-  %72 = extractelement <3 x float> %70, i64 %71
-  %fpfpext79 = fpext float %72 to double
+loop.body75:                                      ; preds = %loop.cond73
+  %70 = load i64, i64* %.anon72, align 8
+  %ztrunc77 = trunc i64 %70 to i8
+  store i8 %ztrunc77, i8* %i76, align 1
+  %71 = load <3 x float>, <3 x float>* %foo2, align 16
+  %72 = load i64, i64* %.anon72, align 8
+  %73 = extractelement <3 x float> %71, i64 %72
+  %fpfpext79 = fpext float %73 to double
   store double %fpfpext79, double* %a78, align 8
-  %73 = load double, double* %a78, align 8
-  call void (i8*, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @.str.9, i32 0, i32 0), double %73)
-  %74 = load i64, i64* %.anon74, align 8
-  %add80 = add i64 %74, 1
-  store i64 %add80, i64* %.anon74, align 8
-  br label %loop.cond75
+  %74 = load i8, i8* %i76, align 1
+  %uisiext80 = zext i8 %74 to i32
+  %75 = load double, double* %a78, align 8
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([16 x i8], [16 x i8]* @.str.9, i32 0, i32 0), i32 %uisiext80, double %75)
+  %76 = load i64, i64* %.anon72, align 8
+  %add81 = add i64 %76, 1
+  store i64 %add81, i64* %.anon72, align 8
+  br label %loop.cond73
 
-loop.exit81:                                      ; preds = %loop.cond75
+loop.exit82:                                      ; preds = %loop.cond73
+  store i64 3, i64* %.anon83, align 8
+  store i64 0, i64* %.anon84, align 8
+  br label %loop.cond85
+
+loop.cond85:                                      ; preds = %loop.body87, %loop.exit82
+  %77 = load i64, i64* %.anon84, align 8
+  %78 = load i64, i64* %.anon83, align 8
+  %lt86 = icmp ult i64 %77, %78
+  br i1 %lt86, label %loop.body87, label %loop.exit91
+
+loop.body87:                                      ; preds = %loop.cond85
+  %79 = load <3 x float>, <3 x float>* %foo2, align 16
+  %80 = load i64, i64* %.anon84, align 8
+  %81 = extractelement <3 x float> %79, i64 %80
+  %fpfpext89 = fpext float %81 to double
+  store double %fpfpext89, double* %a88, align 8
+  %82 = load double, double* %a88, align 8
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @.str.10, i32 0, i32 0), double %82)
+  %83 = load i64, i64* %.anon84, align 8
+  %add90 = add i64 %83, 1
+  store i64 %add90, i64* %.anon84, align 8
+  br label %loop.cond85
+
+loop.exit91:                                      ; preds = %loop.cond85
   ret void
 }

@@ -61,7 +61,7 @@ private fn void*! temp_allocator_function(Allocator* data, usize size, usize ali
 		case ALIGNED_CALLOC:
 			assert(!old_pointer, "Unexpected old pointer for alloc.");
 			if (!size) return null;
-			return arena._alloc(size, alignment, offset, true);
+			return arena._alloc(size, alignment_for_allocation(alignment), offset, true);
 		case ALLOC:
 		case ALIGNED_ALLOC:
 			assert(!old_pointer, "Unexpected old pointer for alloc.");

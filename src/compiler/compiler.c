@@ -12,6 +12,7 @@
 #define MAX_MODULES 100000
 GlobalContext global_context;
 BuildTarget active_target;
+AsmTarget asm_target;
 
 Vmem ast_arena;
 Vmem expr_arena;
@@ -25,6 +26,8 @@ double compiler_codegen_time;
 double compiler_link_time;
 
 const char* c3_suffix_list[3] = { ".c3", ".c3t", ".c3i" };
+
+extern int llvm_version_major;
 
 void compiler_init(const char *std_lib_dir)
 {
@@ -244,7 +247,6 @@ void compiler_compile(void)
 
 	Module **modules = global_context.module_list;
 	unsigned module_count = vec_size(modules);
-
 	if (module_count > MAX_MODULES)
 	{
 		error_exit("Too many modules.");
@@ -303,12 +305,7 @@ void compiler_compile(void)
 	switch (active_target.backend)
 	{
 		case BACKEND_LLVM:
-			llvm_codegen_setup();
-			for (unsigned i = 0; i < module_count; i++)
-			{
-				void *result = llvm_gen(modules[i]);
-				if (result) vec_add(gen_contexts, result);
-			}
+			gen_contexts = llvm_gen(modules, module_count);
 			task = &thread_compile_task_llvm;
 			break;
 		case BACKEND_TB:
@@ -628,6 +625,7 @@ void compile()
 	}
 	global_context.sources = active_target.sources;
 	global_context.main = NULL;
+	asm_target.initialized = false;
 	target_setup(&active_target);
 	resolve_libraries();
 
@@ -638,10 +636,13 @@ void compile()
 	setup_bool_define("C_CHAR_IS_SIGNED", platform_target.signed_c_char);
 	setup_bool_define("PLATFORM_BIG_ENDIAN", platform_target.big_endian);
 	setup_bool_define("PLATFORM_I128_SUPPORTED", platform_target.int128);
+	setup_bool_define("PLATFORM_F128_SUPPORTED", platform_target.float128);
+	setup_bool_define("PLATFORM_F16_SUPPORTED", platform_target.float16);
 	setup_int_define("COMPILER_OPT_LEVEL", (uint64_t)active_target.optimization_level, type_int);
 	setup_int_define("OS_TYPE", (uint64_t)platform_target.os, type_int);
 	setup_int_define("COMPILER_SIZE_OPT_LEVEL", (uint64_t)active_target.size_optimization_level, type_int);
 	setup_bool_define("COMPILER_SAFE_MODE", active_target.feature.safe_mode);
+	setup_int_define("LLVM_VERSION", llvm_version_major, type_int);
 
 	type_init_cint();
 

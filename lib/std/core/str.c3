@@ -183,3 +183,4 @@ fn usize ZString.len(ZString *str)
 	}
 	return len;
 }
+

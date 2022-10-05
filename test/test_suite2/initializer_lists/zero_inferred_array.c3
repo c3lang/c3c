@@ -1,4 +1,4 @@
 fn void test()
 {
-    int[*] a = {}; // #error: Zero length arrays are not permitted.
+    int[*] a = {}; // #error: Zero length
 }

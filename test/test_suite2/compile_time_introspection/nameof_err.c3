@@ -16,5 +16,5 @@ fn void main3()
 
 fn void main4()
 {
-    $extnameof($evaltype("foo::int")); // #error: Built in types cannot have a path prefix.
+    $extnameof($evaltype("foo::int")); // #error: Only valid types may be resolved with $evaltype.
 }

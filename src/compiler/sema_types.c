@@ -15,6 +15,21 @@ static inline bool sema_resolve_ptr_type(SemaContext *context, TypeInfo *type_in
 	return true;
 }
 
+bool sema_resolve_type_info(SemaContext *context, TypeInfo *type_info)
+{
+	return sema_resolve_type_info_maybe_inferred(context, type_info, false);
+}
+
+bool sema_resolve_type_info_maybe_inferred(SemaContext *context, TypeInfo *type_info, bool allow_inferred_type)
+{
+	if (!sema_resolve_type_shallow(context, type_info, allow_inferred_type, false)) return false;
+	Type *type = type_no_optional(type_info->type);
+	// usize and similar typedefs will not have a decl.
+	if (type->type_kind == TYPE_TYPEDEF && type->decl == NULL) return true;
+	if (!type_is_user_defined(type)) return true;
+	return sema_analyse_decl(context, type->decl);
+}
+
 bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, ArraySize *len_ref)
 {
 	Expr *len_expr = type_info->array.len;
@@ -95,6 +110,12 @@ static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type,
 		case TYPE_INFO_INFERRED_ARRAY:
 			type->type = type_get_inferred_array(type->array.base->type);
 			break;
+		case TYPE_INFO_INFERRED_VECTOR:
+			type->type = type_get_inferred_vector(type->array.base->type);
+			break;
+		case TYPE_INFO_SCALED_VECTOR:
+			type->type = type_get_scaled_vector(type->array.base->type);
+			break;
 		case TYPE_INFO_VECTOR:
 		{
 			ArraySize width;
@@ -113,7 +134,6 @@ static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type,
 			UNREACHABLE
 	}
 	assert(!type->array.len || type->array.len->expr_kind == EXPR_CONST);
-	if (type->array.base)
 	type->resolve_status = RESOLVE_DONE;
 	return true;
 }
@@ -174,6 +194,8 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 		case DECL_ATTRIBUTE:
 			SEMA_ERROR(type_info, "This is not a type.");
 			return type_info_poison(type_info);
+		case DECL_INITIALIZE:
+		case DECL_FINALIZE:
 		case DECL_CT_ELSE:
 		case DECL_CT_IF:
 		case DECL_CT_ELIF:
@@ -222,8 +244,10 @@ bool sema_resolve_type(SemaContext *context, Type *type)
 		case TYPE_SUBARRAY:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_INFERRED_VECTOR:
+		case TYPE_SCALED_VECTOR:
 			return sema_resolve_type(context, type->array.base);
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 			return sema_resolve_type(context, type->failable);
 	}
 	return sema_analyse_decl(context, type->decl);
@@ -249,12 +273,11 @@ bool sema_resolve_type_shallow(SemaContext *context, TypeInfo *type_info, bool a
 		allow_inferred_type = false;
 		in_shallow = true;
 	}
-RETRY:
 	switch (type_info->kind)
 	{
 		case TYPE_INFO_POISON:
 			UNREACHABLE
-		case TYPE_INFO_VAARG_TYPE:
+		case TYPE_INFO_VATYPE:
 			if (context->current_macro)
 			{
 				ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, type_info->unresolved_type_expr), false);
@@ -267,7 +290,7 @@ RETRY:
 				assert(type_info->resolve_status == RESOLVE_DONE);
 				return true;
 			}
-			SEMA_ERROR(type_info, "'%s' can only be used inside of a macro.", token_type_to_string(TOKEN_CT_VAARG_GET_TYPE));
+			SEMA_ERROR(type_info, "'%s' can only be used inside of a macro.", token_type_to_string(TOKEN_CT_VATYPE));
 			return false;
 		case TYPE_INFO_CT_IDENTIFIER:
 		case TYPE_INFO_IDENTIFIER:
@@ -277,31 +300,20 @@ RETRY:
 		{
 			Expr *expr = type_info->unresolved_type_expr;
 			TokenType type;
-			Path *path = NULL;
-			const char *ident = ct_eval_expr(context, "$eval", expr, &type, &path, true);
-			if (ident == ct_eval_error) return type_info_poison(type_info);
-			switch (type)
+			Expr *inner = sema_ct_eval_expr(context, "$evaltype", expr, true);
+			if (!inner) return false;
+			if (inner->expr_kind != EXPR_TYPEINFO)
 			{
-				case TOKEN_TYPE_IDENT:
-					type_info->unresolved.name = ident;
-					type_info->span = expr->span;
-					type_info->unresolved.path = path;
-					type_info->kind = TYPE_INFO_IDENTIFIER;
-					goto RETRY;
-				case TYPE_TOKENS:
-					if (path)
-					{
-						SEMA_ERROR(path, "Built in types cannot have a path prefix.");
-						return false;
-					}
-					type_info->type = type_from_token(type);
-					goto APPEND_QUALIFIERS;
-				default:
-					SEMA_ERROR(expr, "Only type names may be resolved with $evaltype.");
-					return type_info_poison(type_info);
+				SEMA_ERROR(expr, "Only type names may be resolved with $evaltype.");
+				return type_info_poison(type_info);
 			}
+			TypeInfo *inner_type = inner->type_expr;
+			if (!sema_resolve_type_info(context, inner_type)) return false;
+			type_info->type = inner_type->type;
+			type_info->resolve_status = RESOLVE_DONE;
+			goto APPEND_QUALIFIERS;
 		}
-		case TYPE_INFO_EXPRESSION:
+		case TYPE_INFO_TYPEOF:
 		{
 			Expr *expr = type_info->unresolved_type_expr;
 			if (!sema_analyse_expr(context, expr))
@@ -313,13 +325,33 @@ RETRY:
 			assert(!type_info->failable);
 			goto APPEND_QUALIFIERS;
 		}
+		case TYPE_INFO_TYPEFROM:
+		{
+			Expr *expr = type_info->unresolved_type_expr;
+			if (!sema_analyse_expr(context, expr))
+			{
+				return type_info_poison(type_info);
+			}
+			if (!expr_is_const(expr) || expr->const_expr.const_kind != CONST_TYPEID)
+			{
+				SEMA_ERROR(expr, "Expected a constant typeid value.");
+				return type_info_poison(type_info);
+			}
+			type_info->type = expr->const_expr.typeid;
+			type_info->resolve_status = RESOLVE_DONE;
+			assert(!type_info->failable);
+			goto APPEND_QUALIFIERS;
+		}
 		case TYPE_INFO_INFERRED_ARRAY:
+		case TYPE_INFO_INFERRED_VECTOR:
 			if (!allow_inferred_type)
 			{
-				SEMA_ERROR(type_info, "Inferred array types can only be used in declarations with initializers.");
+				SEMA_ERROR(type_info, "Inferred %s types can only be used in declarations with initializers and as macro parameters.",
+				           type_info->kind == TYPE_INFO_INFERRED_VECTOR ? "vector" : "array");
 				return type_info_poison(type_info);
 			}
 			FALLTHROUGH;
+		case TYPE_INFO_SCALED_VECTOR:
 		case TYPE_INFO_SUBARRAY:
 		case TYPE_INFO_ARRAY:
 		case TYPE_INFO_VECTOR:
@@ -356,14 +388,20 @@ APPEND_QUALIFIERS:
 	if (type_info->failable)
 	{
 		Type *type = type_info->type;
-		if (!type_is_optional(type)) type_info->type = type_get_failable(type);
+		if (!type_is_optional(type)) type_info->type = type_get_optional(type);
 	}
 	return true;
 }
 
 Type *sema_type_lower_by_size(Type *type, ArraySize element_size)
 {
-	if (type->type_kind != TYPE_INFERRED_ARRAY) return type;
-
-	return type_get_array(type->array.base, element_size);
+	switch (type->type_kind)
+	{
+		case TYPE_INFERRED_ARRAY:
+			return type_get_array(type->array.base, element_size);
+		case TYPE_INFERRED_VECTOR:
+			return type_get_vector(type->array.base, element_size);
+		default:
+			return type;
+	}
 }

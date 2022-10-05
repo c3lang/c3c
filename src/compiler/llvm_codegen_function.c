@@ -10,6 +10,9 @@ static inline void llvm_emit_return_value(GenContext *context, LLVMValueRef valu
 static void llvm_expand_from_args(GenContext *c, Type *type, LLVMValueRef ref, unsigned *index, AlignSize alignment);
 static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIArgInfo *info, unsigned *index);
 static inline void llvm_emit_parameter(GenContext *context, Decl *decl, ABIArgInfo *abi_info, unsigned *index, unsigned real_index);
+static inline void llvm_emit_body(GenContext *c, LLVMValueRef function, const char *module_name,
+                                  const char *function_name,
+                                  FileId file_id, FunctionPrototype *prototype, Signature *signature, Ast *body);
 
 bool llvm_emit_check_block_branch(GenContext *context)
 {
@@ -275,7 +278,15 @@ static inline void llvm_emit_return_value(GenContext *context, LLVMValueRef valu
 
 void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failable)
 {
-	FunctionPrototype *prototype = c->cur_func_decl->type->function.prototype;
+	FunctionPrototype *prototype = c->cur_func.prototype;
+
+	// If there is no prototype, this is a static initializer, so bail.
+	if (!prototype)
+	{
+		llvm_emit_return_value(c, NULL);
+		return;
+	}
+
 	ABIArgInfo *info = prototype->ret_abi_info;
 
 	// If we have a failable it's always the return argument, so we need to copy
@@ -324,6 +335,7 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failabl
 			// Get the coerce type.
 			LLVMTypeRef coerce_type = llvm_get_coerce_type(c, info);
 			// Create the new pointer
+			assert(return_value);
 			LLVMValueRef coerce = LLVMBuildBitCast(c->builder, return_value->value, coerce_type, "");
 			// We might have only one value, in that case, build a GEP to that one.
 			LLVMValueRef lo_val;
@@ -387,7 +399,7 @@ DIRECT_RETURN:
 
 void llvm_emit_return_implicit(GenContext *c)
 {
-	Type *rtype_real = c->cur_func_decl->type->function.prototype->rtype;
+	Type *rtype_real = c->cur_func.prototype ? c->cur_func.prototype->rtype : type_void;
 	if (type_lowering(type_no_optional(rtype_real)) != type_void)
 	{
 		LLVMBuildUnreachable(c->builder);
@@ -407,34 +419,47 @@ void llvm_emit_function_body(GenContext *c, Decl *decl)
 {
 	DEBUG_LOG("Generating function %s.", decl->extname);
 	assert(decl->backend_ref);
+	llvm_emit_body(c,
+	               decl->backend_ref,
+	               decl->unit->module->name->module,
+	               decl->name,
+	               decl->span.file_id,
+	               decl->type->function.prototype,
+	               decl->func_decl.attr_naked ? NULL : &decl->func_decl.signature,
+	               astptr(decl->func_decl.body));
+}
+
+void llvm_emit_body(GenContext *c, LLVMValueRef function, const char *module_name, const char *function_name,
+                    FileId file_id, FunctionPrototype *prototype, Signature *signature, Ast *body)
+{
 
 	bool emit_debug = llvm_use_debug(c);
 	LLVMValueRef prev_function = c->function;
 	LLVMBuilderRef prev_builder = c->builder;
 
-
 	c->opt_var = NULL;
 	c->catch_block = NULL;
 
-	c->function = decl->backend_ref;
+	c->function = function;
+	if (!function_name) function_name = "anonymous function";
 	if (emit_debug)
 	{
-		c->debug.function = LLVMGetSubprogram(c->function);
+		c->debug.function = LLVMGetSubprogram(function);
 		if (c->debug.enable_stacktrace)
 		{
 			scratch_buffer_clear();
-			scratch_buffer_append(decl->unit->module->name->module);
+			scratch_buffer_append(module_name);
 			scratch_buffer_append("::");
-			scratch_buffer_append(decl->name ? decl->name : "$anon");
+			scratch_buffer_append(function_name);
 			c->debug.func_name = llvm_emit_zstring(c, scratch_buffer_to_string());
 
-			File *file = source_file_by_id(decl->span.file_id);
+			File *file = source_file_by_id(file_id);
 			c->debug.file_name = llvm_emit_zstring(c, file->name);
 		}
 	}
 
-	c->cur_func_decl = decl;
-
+	c->cur_func.name = function_name;
+	c->cur_func.prototype = prototype;
 	LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(c->context, c->function, "entry");
 	c->current_block = entry;
 	c->current_block_is_target = true;
@@ -445,7 +470,6 @@ void llvm_emit_function_body(GenContext *c, Decl *decl)
 	LLVMValueRef alloca_point = LLVMBuildAlloca(c->builder, LLVMInt32TypeInContext(c->context), "alloca_point");
 	c->alloca_point = alloca_point;
 
-	FunctionPrototype *prototype = decl->type->function.prototype;
 	unsigned arg = 0;
 
 	if (emit_debug)
@@ -485,7 +509,7 @@ void llvm_emit_function_body(GenContext *c, Decl *decl)
 
 	c->failable_out = NULL;
 	c->return_out = NULL;
-	if (prototype->ret_abi_info->kind == ABI_ARG_INDIRECT)
+	if (prototype && prototype->ret_abi_info->kind == ABI_ARG_INDIRECT)
 	{
 		if (prototype->is_failable)
 		{
@@ -496,26 +520,24 @@ void llvm_emit_function_body(GenContext *c, Decl *decl)
 			c->return_out = LLVMGetParam(c->function, arg++);
 		}
 	}
-	if (prototype->ret_by_ref_abi_info)
+	if (prototype && prototype->ret_by_ref_abi_info)
 	{
 		assert(!c->return_out);
 		c->return_out = LLVMGetParam(c->function, arg++);
 	}
 
 
-	if (!decl->func_decl.attr_naked)
+	if (signature)
 	{
 		// Generate LLVMValueRef's for all parameters, so we can use them as local vars in code
-		VECEACH(decl->func_decl.signature.params, i)
-		{
-			llvm_emit_parameter(c, decl->func_decl.signature.params[i], prototype->abi_args[i], &arg, i);
-		}
+		FOREACH_BEGIN_IDX(i, Decl *param, signature->params)
+			llvm_emit_parameter(c, param, prototype->abi_args[i], &arg, i);
+		FOREACH_END();
 	}
 
 	LLVMSetCurrentDebugLocation2(c->builder, NULL);
 
-	assert(decl->func_decl.body);
-	AstId current = astptr(decl->func_decl.body)->compound_stmt.first_stmt;
+	AstId current = body->compound_stmt.first_stmt;
 	while (current)
 	{
 		llvm_emit_stmt(c, ast_next(&current));
@@ -605,6 +627,55 @@ static void llvm_emit_param_attributes(GenContext *c, LLVMValueRef function, ABI
 	}
 
 }
+
+void llvm_emit_xxlizer(GenContext *c, Decl *decl)
+{
+	Ast *body = astptrzero(decl->xxlizer.init);
+	if (!body)
+	{
+		// Skip if it doesn't have a body.
+		return;
+	}
+	LLVMTypeRef initializer_type = LLVMFunctionType(LLVMVoidTypeInContext(c->context), NULL, 0, false);
+	bool is_finalizer = decl->decl_kind == DECL_FINALIZE;
+	LLVMValueRef **array_ref = is_finalizer ? &c->destructors : &c->constructors;
+	scratch_buffer_clear();
+	scratch_buffer_printf(is_finalizer ? ".static_finalize.%u" : ".static_initialize.%u", vec_size(*array_ref));
+	LLVMValueRef function = LLVMAddFunction(c->module, scratch_buffer_to_string(), initializer_type);
+	LLVMSetLinkage(function, LLVMInternalLinkage);
+	if (llvm_use_debug(c))
+	{
+		uint32_t row = decl->span.row;
+		if (!row) row = 1;
+		LLVMMetadataRef type = LLVMDIBuilderCreateSubroutineType(c->debug.builder, c->debug.file, NULL, 0, 0);
+
+		c->debug.function = LLVMDIBuilderCreateFunction(c->debug.builder,
+		                                                c->debug.file,
+		                                                scratch_buffer.str, scratch_buffer.len,
+		                                                scratch_buffer.str, scratch_buffer.len,
+		                                                c->debug.file,
+														row,
+		                                                type,
+		                                                true,
+														true,
+		                                                row,
+		                                                LLVMDIFlagPrivate,
+		                                                active_target.optimization_level != OPTIMIZATION_NONE);
+		LLVMSetSubprogram(function, c->debug.function);
+	}
+	llvm_emit_body(c,
+	               function,
+	               decl->unit->module->name->module,
+	               is_finalizer ? "[static finalizer]" : "[static initializer]",
+	               decl->span.file_id,
+	               NULL,
+	               NULL,
+	               body);
+	unsigned priority = decl->xxlizer.priority;
+	LLVMValueRef vals[3] = { llvm_const_int(c, type_int, priority), function, llvm_get_zero(c, type_voidptr) };
+	vec_add(*array_ref, LLVMConstStructInContext(c->context, vals, 3, false));
+}
+
 void llvm_emit_function_decl(GenContext *c, Decl *decl)
 {
 	assert(decl->decl_kind == DECL_FUNC);
@@ -613,7 +684,6 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 	LLVMValueRef function = llvm_get_ref(c, decl);
 	decl->backend_ref = function;
 	FunctionPrototype *prototype = decl->type->function.prototype;
-
 
 	ABIArgInfo *ret_abi_info = prototype->ret_abi_info;
 	llvm_emit_param_attributes(c, function, ret_abi_info, true, 0, 0);

@@ -1,20 +1,20 @@
 macro foo(...)
 {
-	$vaarg_get_arg("hello"); // #error: Expected the argument index here
+	$vaarg("hello"); // #error: Expected the argument index here
 	int x;
-	$vaarg_get_arg(x); // #error: Vararg functions need a constant argument
-	$vaarg_get_arg(-1); // #error: negative
-	$vaarg_get_arg(100); // #error: varargs exist
+	$vaarg(x); // #error: Vararg functions need a constant argument
+	$vaarg(-1); // #error: negative
+	$vaarg(100); // #error: varargs exist
 }
 
 macro foo2(...)
 {
-	$vaarg_get_const(0);
+	$vaconst(0);
 }
 
 macro foo3(...)
 {
-	$vaarg_get_type(0) a;
+	$vatype(0) a;
 }
 fn void main()
 {

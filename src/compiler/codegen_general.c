@@ -166,7 +166,7 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 	RETRY:
 	switch (type->type_kind)
 	{
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 			type = type->failable;
 			goto RETRY;
 		case TYPE_DISTINCT:
@@ -234,6 +234,7 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 			}
 			goto TYPECHECK;
 		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_SCALED_VECTOR:
 			return false;
 		case TYPE_ARRAY:
 			// Empty arrays? Not homogenous.

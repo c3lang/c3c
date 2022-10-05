@@ -5,7 +5,7 @@ struct Foo
     int[] x;
 }
 
-macro int Foo.@operator_element_at(Foo &foo, usize index) @operator(elementat)
+macro int Foo.@operator_element_at(Foo &foo, usize index) @operator([])
 {
     return foo.x[index];
 }

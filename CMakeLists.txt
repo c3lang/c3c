@@ -8,9 +8,16 @@ set(CMAKE_FIND_PACKAGE_SORT_DIRECTION DEC)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 
+if(MSVC)
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2")
+    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /O2")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Od /Zi")
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /Od /Zi")
+else()
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -gdwarf-3 -O3")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -gdwarf-3")
+endif()
 #set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O1 -fsanitize=undefined")
 #set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O1 -fsanitize=undefined")
 #set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -gdwarf-3 -O3 -fsanitize=undefined")
@@ -37,7 +44,7 @@ if(C3_USE_MIMALLOC)
 endif()
 
 if (NOT C3_LLVM_VERSION STREQUAL "auto")
-    if (${C3_LLVM_VERSION} VERSION_LESS 12 OR ${C3_LLVM_VERSION} VERSION_GREATER 16)
+    if (${C3_LLVM_VERSION} VERSION_LESS 13 OR ${C3_LLVM_VERSION} VERSION_GREATER 16)
         message(FATAL_ERROR "LLVM ${C3_LLVM_VERSION} is not supported!")
     endif()
 endif()
@@ -48,11 +55,11 @@ if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
     endif()
     FetchContent_Declare(
             LLVM_Windows
-            URL https://github.com/c3lang/win-llvm/releases/download/llvm-vs22/llvm-14.0.1-windows-amd64-msvc17-libcmt.7z
+            URL https://github.com/c3lang/win-llvm/releases/download/llvm1406/llvm-14.0.6-windows-amd64-msvc17-libcmt.7z
     )
     FetchContent_Declare(
             LLVM_Windows_debug
-            URL https://github.com/c3lang/win-llvm/releases/download/llvm-vs22/llvm-14.0.1-windows-amd64-msvc17-libcmt-dbg.7z
+            URL https://github.com/c3lang/win-llvm/releases/download/llvm1406/llvm-14.0.6-windows-amd64-msvc17-libcmt-dbg.7z
     )
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         message("Loading Windows LLVM debug libraries, this may take a while...")
@@ -209,6 +216,9 @@ add_executable(c3c
         src/compiler/sema_expr.c
         src/compiler/sema_internal.h
         src/compiler/sema_name_resolution.c
+        src/compiler/sema_errors.c
+        src/compiler/sema_builtins.c
+        src/compiler/sema_initializers.c
         src/compiler/semantic_analyser.c
         src/compiler/sema_passes.c
         src/compiler/sema_stmts.c
@@ -216,6 +226,7 @@ add_executable(c3c
         src/compiler/source_file.c
         src/compiler/symtab.c
         src/compiler/target.c
+        src/compiler/sema_asm.c
         src/compiler/tb_codegen.c
         src/compiler/tilde_codegen.c
         src/compiler/tilde_codegen_instr.c
@@ -244,13 +255,12 @@ add_executable(c3c
         src/compiler/tilde_codegen_expr.c
         src/compiler/tilde_codegen_stmt.c
         src/compiler/tilde_codegen_type.c
-        src/compiler/windows_support.c)
+        src/compiler/windows_support.c
+        src/compiler/codegen_asm.c
+        src/compiler/asm_target.c
+        src/compiler/llvm_codegen_builtins.c
+        src/compiler/expr.c)
 
-if(NOT CMAKE_C_COMPILER_ID STREQUAL "MSVC")
-    message(STATUS "using gcc/clang warning switches")
-    target_compile_options(c3c PRIVATE -Wall -Werror -Wno-unknown-pragmas -Wno-unused-result
-             -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter)
-endif()
 
 target_include_directories(c3c PRIVATE
         "${CMAKE_SOURCE_DIR}/src/")
@@ -276,10 +286,11 @@ if(C3_USE_MIMALLOC)
     target_link_libraries(c3c mimalloc-static)
 endif()
 
-if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+if(MSVC)
     message("Adding MSVC options")
     target_compile_options(c3c PRIVATE /wd4068 /wd4090 /WX /Wv:18)
     target_compile_options(c3c_wrappers PUBLIC /wd4624 /wd4267 /wd4244 /WX /Wv:18)
+    target_link_options(c3c_wrappers PUBLIC /ignore:4099)
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         target_compile_options(c3c PUBLIC /MTd)
         target_compile_options(c3c_wrappers PUBLIC /MTd)
@@ -287,16 +298,16 @@ if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
         target_compile_options(c3c PUBLIC /MT)
         target_compile_options(c3c_wrappers PUBLIC /MT)
     endif()
-
-endif()
-
-if (WIN32)
-    if (CMAKE_C_COMPILER_ID STREQUAL "Clang" OR CMAKE_C_COMPILE_ID STREQUAL "GNU")
+else()
+    message(STATUS "using gcc/clang warning switches")
+    target_compile_options(c3c PRIVATE -Wall -Werror -Wno-unknown-pragmas -Wno-unused-result
+            -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter)
+    if (WIN32)
         target_link_options(c3c PRIVATE -pthread)
         target_compile_definitions(c3c PRIVATE USE_PTHREAD=1)
-        target_compile_options(c3c PRIVATE -mlong-double-64)
     endif()
 endif()
+
 
 install(TARGETS c3c DESTINATION bin)
 

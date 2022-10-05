@@ -29,10 +29,93 @@ static inline bool matches_subpath(Path *path_to_check, Path *path_to_find)
 	return 0 == memcmp(path_to_check->module + compare_start, path_to_find->module, path_to_find->len);
 }
 
+Decl *sema_decl_stack_resolve_symbol(const char *symbol)
+{
+	Decl **members = global_context.decl_stack;
+	Decl **current = global_context.decl_stack_top;
+	Decl **end = global_context.decl_stack_bottom;
+	while (current > end)
+	{
+		Decl *decl = *(--current);
+		if (decl->name == symbol) return decl;
+	}
+	return NULL;
+}
+
+Decl **sema_decl_stack_store(void)
+{
+	Decl **current_bottom = global_context.decl_stack_bottom;
+	global_context.decl_stack_bottom = global_context.decl_stack_top;
+	return current_bottom;
+}
+
+void sema_decl_stack_restore(Decl **state)
+{
+	global_context.decl_stack_top = global_context.decl_stack_bottom;
+	global_context.decl_stack_bottom = state;
+}
+
+void sema_decl_stack_push(Decl *decl)
+{
+	Decl **current = global_context.decl_stack_top;
+	if (current == &global_context.decl_stack[MAX_GLOBAL_DECL_STACK])
+	{
+		error_exit("Declaration stack exhausted.");
+	}
+	*(current++) = decl;
+	global_context.decl_stack_top = current;
+}
+
+static void add_members_to_decl_stack(Decl *decl)
+{
+	VECEACH(decl->methods, i)
+	{
+		Decl *func = decl->methods[i];
+		sema_decl_stack_push(func);
+	}
+	while (decl->decl_kind == DECL_DISTINCT)
+	{
+		Type *type = decl->distinct_decl.base_type->canonical;
+		if (!type_is_user_defined(type)) break;
+		decl = type->decl;
+	}
+	if (decl_is_enum_kind(decl))
+	{
+		Decl **members = decl->enums.parameters;
+		VECEACH(members, i)
+		{
+			sema_decl_stack_push(members[i]);
+		}
+	}
+	if (decl_is_struct_type(decl) || decl->decl_kind == DECL_BITSTRUCT)
+	{
+		Decl **members = decl->strukt.members;
+		VECEACH(members, i)
+		{
+			Decl *member = members[i];
+			if (member->name == NULL)
+			{
+				add_members_to_decl_stack(member);
+				continue;
+			}
+			sema_decl_stack_push(member);
+		}
+	}
+}
+
+Decl *sema_decl_stack_find_decl_member(Decl *decl_owner, const char *symbol)
+{
+	Decl **state = sema_decl_stack_store();
+	add_members_to_decl_stack(decl_owner);
+	Decl *member = sema_decl_stack_resolve_symbol(symbol);
+	sema_decl_stack_restore(state);
+	return member;
+}
+
 Decl *sema_resolve_symbol_in_current_dynamic_scope(SemaContext *context, const char *symbol)
 {
 	Decl **locals = context->locals;
-	size_t first = context->active_scope.local_decl_start;
+	size_t first = context->active_scope.label_start;
 	for (size_t i = context->active_scope.current_local; i > first; i--)
 	{
 		Decl *decl = locals[i - 1];
@@ -510,16 +593,16 @@ Decl *sema_resolve_method_in_module(Module *module, Type *actual_type, const cha
 	if (found && search_type == METHOD_SEARCH_CURRENT) return found;
 	// We are now searching submodules, so hide the private ones.
 	if (search_type == METHOD_SEARCH_CURRENT) search_type = METHOD_SEARCH_SUBMODULE_CURRENT;
-	VECEACH(module->sub_modules, i)
-	{
-		Decl *new_found = sema_resolve_method_in_module(module->sub_modules[i], actual_type, method_name, private_found, ambiguous, search_type);
-		if (new_found)
+	FOREACH_BEGIN(Module *mod, module->sub_modules)
+		Decl *new_found = sema_resolve_method_in_module(mod, actual_type, method_name, private_found, ambiguous, search_type);
+		if (!new_found) continue;
+		if (found)
 		{
 			*ambiguous = new_found;
 			return found;
 		}
 		found = new_found;
-	}
+	FOREACH_END();
 	// We might have it ambiguous due to searching sub modules.
 	return found;
 }
@@ -533,10 +616,15 @@ Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_
 		if (method_name == func->name) return func;
 	}
 
-	Type *actual_type = type->type;
+	return sema_resolve_type_method(unit, type->type, method_name, ambiguous_ref, private_ref);
+}
+
+Decl *sema_resolve_type_method(CompilationUnit *unit, Type *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref)
+{
+	assert(type == type->canonical);
 	Decl *private = NULL;
 	Decl *ambiguous = NULL;
-	Decl *found = sema_resolve_method_in_module(unit->module, actual_type, method_name, &private, &ambiguous, METHOD_SEARCH_CURRENT);
+	Decl *found = sema_resolve_method_in_module(unit->module, type, method_name, &private, &ambiguous, METHOD_SEARCH_CURRENT);
 	if (ambiguous)
 	{
 		*ambiguous_ref = ambiguous;
@@ -550,7 +638,7 @@ Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_
 		Decl *import = unit->imports[i];
 		if (import->import.module->is_generic) continue;
 
-		Decl *new_found = sema_resolve_method_in_module(import->import.module, actual_type, method_name,
+		Decl *new_found = sema_resolve_method_in_module(import->import.module, type, method_name,
 		                                                &private, &ambiguous,
 		                                                import->import.private
 		                                                ? METHOD_SEARCH_PRIVATE_IMPORTED
@@ -568,7 +656,32 @@ Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_
 			return found;
 		}
 	}
+	if (!found)
+	{
+		found = sema_resolve_method_in_module(global_context.core_module, type, method_name,
+											  &private, &ambiguous, METHOD_SEARCH_IMPORTED);
+	}
+	if (found && ambiguous)
+	{
+		*ambiguous_ref = ambiguous;
+		return found;
+	}
 	if (private) *private_ref = private;
+	if (!found)
+	{
+		if (type->type_kind == TYPE_ARRAY)
+		{
+			Type *inferred_array = type_get_inferred_array(type->array.base);
+			found = sema_resolve_type_method(unit, inferred_array, method_name, ambiguous_ref, private_ref);
+			if (found) *private_ref = NULL;
+		}
+		else if (type->type_kind == TYPE_VECTOR)
+		{
+			Type *inferred_vector = type_get_inferred_vector(type->array.base);
+			found = sema_resolve_type_method(unit, inferred_vector, method_name, ambiguous_ref, private_ref);
+			if (found) *private_ref = NULL;
+		}
+	}
 	return found;
 }
 
@@ -610,6 +723,34 @@ Decl *sema_find_symbol(SemaContext *context, const char *symbol)
 			.symbol = symbol,
 	};
 	return sema_resolve_symbol_common(context, &resolve);
+}
+
+Decl *sema_find_label_symbol(SemaContext *context, const char *symbol)
+{
+	Decl **locals = context->locals;
+	if (!locals || !context->active_scope.current_local) return NULL;
+	int64_t first = context->active_scope.label_start;
+	int64_t current = context->active_scope.current_local - 1;
+	while (current >= first)
+	{
+		Decl *cur = locals[current--];
+		if (cur->name == symbol) return cur;
+	}
+	return NULL;
+}
+
+Decl *sema_find_label_symbol_anywhere(SemaContext *context, const char *symbol)
+{
+	Decl **locals = context->locals;
+	if (!locals || !context->active_scope.current_local) return NULL;
+	int64_t first = 0;
+	int64_t current = context->active_scope.current_local - 1;
+	while (current >= first)
+	{
+		Decl *cur = locals[current--];
+		if (cur->name == symbol) return cur;
+	}
+	return NULL;
 }
 
 bool sema_symbol_is_defined_in_scope(SemaContext *c, const char *symbol)
@@ -670,11 +811,6 @@ static inline void sema_append_local(SemaContext *context, Decl *decl)
 	context->active_scope.current_local++;
 }
 
-void sema_add_member(SemaContext *context, Decl *decl)
-{
-	sema_append_local(context, decl);
-}
-
 bool sema_add_local(SemaContext *context, Decl *decl)
 {
 	CompilationUnit *current_unit = decl->unit = context->unit;
@@ -710,7 +846,7 @@ void sema_unwrap_var(SemaContext *context, Decl *decl)
 
 void sema_rewrap_var(SemaContext *context, Decl *decl)
 {
-	assert(decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_UNWRAPPED && decl->var.alias->type->type_kind == TYPE_FAILABLE);
+	assert(decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_UNWRAPPED && decl->var.alias->type->type_kind == TYPE_OPTIONAL);
 	sema_append_local(context, decl->var.alias);
 }
 

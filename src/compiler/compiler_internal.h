@@ -37,7 +37,12 @@ typedef uint64_t BitSize;
 #define MAX_BITSTRUCT 0x1000
 #define MAX_MEMBERS ((MemberIndex)(((uint64_t)2) << 28))
 #define MAX_ALIGNMENT ((MemberIndex)(((uint64_t)2) << 28))
+#define MAX_PRIORITY 0xFFFF
 #define MAX_TYPE_SIZE UINT32_MAX
+#define MAX_GLOBAL_DECL_STACK (65536)
+#define MAX_ASM_INSTRUCTION_PARAMS 6
+#define CLOBBER_FLAG_ELEMENTS 4
+#define MAX_CLOBBER_FLAGS (64 * CLOBBER_FLAG_ELEMENTS)
 
 typedef struct Ast_ Ast;
 typedef struct Decl_ Decl;
@@ -119,6 +124,61 @@ struct ConstInitializer_
 
 typedef struct
 {
+	char string[1024];
+	unsigned constraint_len;
+} ClobberList;
+
+
+typedef struct
+{
+	bool is_write : 1;
+	bool is_readwrite : 1;
+	bool is_address : 1;
+	AsmArgBits imm_arg_ubits : 16;
+	AsmArgBits imm_arg_ibits : 16;
+	AsmArgBits ireg_bits : 16;
+	AsmArgBits float_bits : 16;
+	AsmArgBits vec_bits : 16;
+} AsmArgType;
+
+typedef struct
+{
+	const char *name;
+	AsmRegisterType type;
+	AsmArgBits bits;
+	int clobber_index;
+} AsmRegister;
+
+typedef struct
+{
+	uint64_t mask[CLOBBER_FLAG_ELEMENTS];
+} Clobbers;
+
+typedef struct
+{
+	const char *name;
+	AsmArgType param[MAX_ASM_INSTRUCTION_PARAMS];
+	unsigned param_count;
+	Clobbers mask;
+} AsmInstruction;
+
+#define ASM_INSTRUCTION_MAX 0x1000
+#define ASM_INSTRUCTION_MASK (ASM_INSTRUCTION_MAX - 1)
+#define ASM_REGISTER_MAX 4096
+#define ASM_REGISTER_MASK (ASM_REGISTER_MAX - 1)
+
+typedef struct
+{
+	bool initialized;
+	const char **clobber_name_list;
+	const char *extra_clobbers;
+	AsmRegister registers[ASM_REGISTER_MAX];
+	AsmInstruction instructions[ASM_INSTRUCTION_MAX];
+	unsigned register_count;
+} AsmTarget;
+
+typedef struct
+{
 	ConstKind const_kind : 8;
 	bool narrowable : 1;
 	bool is_character : 1;
@@ -142,7 +202,8 @@ typedef struct
 			TypeSize len;
 		} bytes;
 		Type *typeid;
-		ConstInitializer *list;
+		ConstInitializer *initializer;
+		Expr **untyped_list;
 	};
 } ExprConst;
 
@@ -284,7 +345,6 @@ struct TypeInfo_
 	TypeInfoCompressedKind subtype : 4;
 	Type *type;
 	SourceSpan span;
-
 	union
 	{
 		struct
@@ -348,8 +408,8 @@ typedef struct VarDecl_
 	bool is_static : 1;
 	bool is_read : 1;
 	bool not_null : 1;
-	bool may_not_read : 1;
-	bool may_not_write : 1;
+	bool out_param : 1;
+	bool in_param : 1;
 	bool is_written : 1;
 	bool is_addr : 1;
 	bool is_threadlocal : 1;
@@ -481,15 +541,6 @@ typedef struct
 	};
 } FuncDecl;
 
-typedef struct
-{
-	TypeInfoId type_parent; // May be 0
-	Signature signature;
-	AstId body;
-	DeclId body_param;
-	CompilationUnit *unit;
-	AstId docs;
-} MacroDecl;
 
 typedef struct
 {
@@ -560,11 +611,13 @@ typedef struct
 	AstId parent;
 } LabelDecl;
 
-
 typedef struct
 {
-	Decl **params;
-} BodyParamDecl;
+	unsigned priority;
+	AstId init;
+} InitializerDecl;
+
+
 
 typedef struct Decl_
 {
@@ -615,6 +668,7 @@ typedef struct Decl_
 	Type *type;
 	union
 	{
+		InitializerDecl xxlizer;
 		Decl** decl_list;
 		struct
 		{
@@ -651,7 +705,15 @@ typedef struct Decl_
 
 
 
-
+typedef struct
+{
+	bool start_from_end : 1;
+	bool end_from_end : 1;
+	bool is_len : 1;
+	bool is_range : 1;
+	ExprId start;
+	ExprId end;
+} Range;
 
 typedef struct
 {
@@ -706,20 +768,16 @@ typedef struct
 
 typedef struct
 {
-	bool from_back : 1;
 	ExprId expr;
-	ExprId index;
+	Range range;
 } ExprSubscript;
 
 typedef struct
 {
-	bool start_from_back : 1;
-	bool end_from_back : 1;
-	bool is_lenrange : 1;
 	ExprId expr;
-	ExprId start;
-	ExprId end;
-} ExprSlice;
+	DeclId method;
+	ExprId index;
+} ExprSubscriptAssign;
 
 typedef struct
 {
@@ -833,6 +891,53 @@ typedef struct
 	};
 } ExprCtCall;
 
+
+typedef enum
+{
+	ASM_SCALE_1,
+	ASM_SCALE_2,
+	ASM_SCALE_4,
+	ASM_SCALE_8,
+	ASM_SCALE_SHR,
+	ASM_SCALE_SHL,
+	ASM_SCALE_ASHL,
+	ASM_SCALE_ROR,
+	ASM_SCALE_RRX,
+} AsmOffsetType;
+typedef struct
+{
+	AsmArgKind kind : 8;
+	unsigned short index : 16;
+	AsmOffsetType offset_type : 6;
+	bool neg_offset : 1;
+	union
+	{
+		struct {
+			union
+			{
+				const char *name;
+				Decl *ident_decl;
+			};
+			bool copy_output : 1;
+			bool early_clobber : 1;
+			bool is_input : 1;
+		} ident;
+		ExprId expr_id;
+		struct {
+			ExprId base;
+			ExprId idx;
+			uint64_t offset;
+		};
+		uint64_t value;
+		union
+		{
+			const char *name;
+			AsmRegister *ref;
+		} reg;
+	};
+} ExprAsmArg;
+
+
 typedef struct
 {
 	TokenType type : 16;
@@ -851,7 +956,7 @@ typedef struct
 {
 	Expr **values;
 	Decl **declarations;
-	Ast *ast;
+	AstId first_stmt;
 } ExprBodyExpansion;
 
 
@@ -939,11 +1044,6 @@ typedef struct
 	};
 } ExprTryUnwrap;
 
-typedef struct
-{
-	Expr *inner;
-} ExprLen;
-
 
 typedef struct
 {
@@ -979,6 +1079,7 @@ typedef struct
 	Decl *argv;
 } ExprArgv;
 
+
 struct Expr_
 {
 	Type *type;
@@ -986,11 +1087,14 @@ struct Expr_
 	ExprKind expr_kind : 8;
 	ResolveStatus resolve_status : 4;
 	union {
+		Range vasplat_expr;
 		ExprTypeidInfo typeid_info_expr;
 		ExprVariantSwitch variant_switch;           // 32
 		ExprCast cast_expr;                         // 12
 		ExprVariant variant_expr;
 		ExprPointerOffset pointer_offset_expr;
+		ExprAsmArg expr_asm_arg;
+		OperatorOverload expr_operator_chars;
 		TypeInfo *type_expr;                        // 8
 		ExprConst const_expr;                       // 32
 		ExprArgv argv_expr;                         // 16
@@ -1003,18 +1107,17 @@ struct Expr_
 		Expr** try_unwrap_chain_expr;               // 8
 		ExprTryUnwrap try_unwrap_expr;              // 24
 		ExprCall call_expr;                         // 32
-		ExprSlice slice_expr;                       // 16
 		Expr *inner_expr;                           // 8
 		ExprBuiltinAccess builtin_access_expr;
 		ExprCatchUnwrap catch_unwrap_expr;          // 24
 		ExprSubscript subscript_expr;               // 12
+		ExprSubscriptAssign subscript_assign_expr;
 		ExprAccess access_expr;                     // 16
 		ExprDesignator designator_expr;             // 16
 		ExprIdentifier identifier_expr;             // 24
 		ExprIdentifierRaw ct_ident_expr;            // 24
 		ExprCtCall ct_call_expr;                    // 24
 		ExprCtArg ct_arg_expr;
-		ExprIdentifierRaw ct_macro_ident_expr;      // 24
 		ExprIdentifierRaw hash_ident_expr;          // 24
 		TypeInfo *typeid_expr;                      // 8
 		ExprBodyExpansion body_expansion_expr;      // 24
@@ -1150,14 +1253,14 @@ typedef struct
 typedef struct AstCtIfStmt_
 {
 	Expr *expr;
-	Ast *elif;
+	AstId elif;
 	AstId then;
 } AstCtIfStmt;
 
 
 typedef struct
 {
-	Expr *cond;
+	ExprId cond;
 	Ast **body;
 } AstCtSwitchStmt;
 
@@ -1203,29 +1306,35 @@ typedef struct
 	};
 } AstNextcaseStmt;
 
+typedef struct
+{
+	const char *instruction;
+	const char *variant;
+	Expr **args;
+} AstAsmStmt;
 
 typedef struct
 {
-	Expr *expr;
-	const char *alias;
-	const char *constraints;
-} AsmOperand;
-
-typedef struct
-{
-	AsmOperand *inputs;
-	AsmOperand *outputs;
-/*	TokenId **clobbers;
-	TokenId **labels;*/
-} AsmParams;
+	Clobbers clobbers;
+	const char *asm_block;
+	AstId asm_stmt;
+	ExprAsmArg **output_vars;
+	ExprAsmArg **input;
+} AsmInlineBlock;
 
 typedef struct
 {
 	bool is_volatile : 1;
 	bool is_inline : 1;
 	bool is_goto : 1;
-	Expr *body;
-} AstAsmStmt;
+	bool is_string : 1;
+	union
+	{
+		AsmInlineBlock *block;
+		ExprId asm_string;
+	};
+
+} AstAsmBlock;
 
 typedef struct
 {
@@ -1285,7 +1394,8 @@ typedef struct Ast_
 	union
 	{
 		FlowCommon flow;                    // Shared struct
-		AstAsmStmt asm_stmt;                // 16
+		AstAsmBlock asm_block_stmt;
+		AstAsmStmt asm_stmt;
 		AstCompoundStmt compound_stmt;      // 12
 		Decl *declare_stmt;                 // 8
 		Expr *expr_stmt;                    // 8
@@ -1329,7 +1439,6 @@ typedef struct Module_
 	Ast **files; // Asts
 
 	Decl** method_extensions;
-	Decl** generic_cache;
 	HTable symbols;
 	struct CompilationUnit_ **units;
 	Module *parent_module;
@@ -1345,7 +1454,7 @@ typedef struct DynamicScope_
 	bool allow_dead_code : 1;
 	bool jump_end : 1;
 	ScopeFlags flags;
-	unsigned local_decl_start;
+	unsigned label_start;
 	unsigned current_local;
 	AstId defer_last;
 	AstId defer_start;
@@ -1426,6 +1535,7 @@ struct CompilationUnit_
 	};
 	Decl **ct_ifs;
 	Decl **ct_asserts;
+	Decl **xxlizers;
 	Decl **vars;
 	Decl **macros;
 	Decl **methods;
@@ -1450,26 +1560,44 @@ typedef struct ParseContext_
 	Lexer lexer;
 } ParseContext;
 
+typedef enum
+{
+	CALL_ENV_GLOBAL_INIT,
+	CALL_ENV_FUNCTION,
+	CALL_ENV_INITIALIZER,
+	CALL_ENV_FINALIZER,
+	CALL_ENV_CHECKS,
+	CALL_ENV_ATTR,
+} CallEnvKind;
+
+typedef struct
+{
+	CallEnvKind kind : 8;
+	bool ensures : 1;
+	bool pure : 1;
+	union
+	{
+		Decl *attr_declaration;
+		Decl *current_function;
+	};
+} CallEnv;
+
 typedef struct SemaContext_
 {
+	Module *core_module;
 	// Evaluated in this.
 	CompilationUnit *unit;
 	// Compiled in this unit.
 	CompilationUnit *compilation_unit;
-	Decl *current_function;
-	struct
-	{
-		bool current_function_pure : 1;
-		bool ensures : 1;
-	};
+	CallEnv call_env;
 	Decl *current_macro;
 	ScopeId scope_id;
-	AstId break_target;
+	Ast *break_target;
 	AstId break_defer;
-	AstId continue_target;
+	Ast *continue_target;
 	AstId continue_defer;
 	AstId block_return_defer;
-	AstId next_target;
+	Ast *next_target;
 	Ast *next_switch;
 	AstId next_defer;
 	struct
@@ -1496,6 +1624,7 @@ typedef struct SemaContext_
 typedef struct
 {
 	HTable modules;
+	Module *core_module;
 	Module **module_list;
 	Module **generic_module_list;
 	Type **type;
@@ -1515,6 +1644,9 @@ typedef struct
 	Path std_module_path;
 	Decl *panic_fn;
 	Decl *main;
+	Decl *decl_stack[MAX_GLOBAL_DECL_STACK];
+	Decl** decl_stack_bottom;
+	Decl** decl_stack_top;
 } GlobalContext;
 
 
@@ -1643,10 +1775,12 @@ typedef struct CopyStruct_
 	CopyFixup fixups[MAX_FIXUPS];
 	CopyFixup *current_fixup;
 	bool single_static;
+	bool copy_in_use;
 } CopyStruct;
 
 
 extern GlobalContext global_context;
+extern AsmTarget asm_target;
 extern BuildTarget active_target;
 extern Ast *poisoned_ast;
 extern Decl *poisoned_decl;
@@ -1656,14 +1790,14 @@ extern TypeInfo *poisoned_type_info;
 
 
 extern Type *type_bool, *type_void, *type_voidptr;
-extern Type *type_half, *type_float, *type_double, *type_f128;
+extern Type *type_float16, *type_float, *type_double, *type_f128;
 extern Type *type_ichar, *type_short, *type_int, *type_long, *type_isize;
 extern Type *type_char, *type_ushort, *type_uint, *type_ulong, *type_usize;
 extern Type *type_iptr, *type_uptr, *type_iptrdiff, *type_uptrdiff;
 extern Type *type_u128, *type_i128;
 extern Type *type_typeid, *type_anyerr, *type_typeinfo;
 extern Type *type_any;
-extern Type *type_complist;
+extern Type *type_untypedlist;
 extern Type *type_anyfail;
 extern Type *type_cint;
 extern Type *type_cuint;
@@ -1681,12 +1815,13 @@ extern const char *kw_std;
 extern const char *kw_max;
 extern const char *kw_min;
 extern const char *kw_elements;
+extern const char *kw_finalize;
 extern const char *kw_align;
-
 extern const char *kw_nameof;
 extern const char *kw_names;
 extern const char *kw_sizeof;
 extern const char *kw_in;
+extern const char *kw_initialize;
 extern const char *kw_out;
 extern const char *kw_inout;
 extern const char *kw_deprecated;
@@ -1695,9 +1830,6 @@ extern const char *kw_inline;
 extern const char *kw_inf;
 extern const char *kw_kind;
 extern const char *kw_inner;
-extern const char *kw_elementat;
-extern const char *kw_elementref;
-extern const char *kw_elementset;
 extern const char *kw_len;
 extern const char *kw_nan;
 extern const char *kw_noinline;
@@ -1712,6 +1844,7 @@ extern const char *kw_return;
 extern const char *kw_type;
 extern const char *kw_FILE;
 extern const char *kw_FUNC;
+extern const char *kw_FUNCPTR;
 extern const char *kw_LINE;
 extern const char *kw_LINEREAL;
 extern const char *kw_incr;
@@ -1734,10 +1867,6 @@ ARENA_DEF(expr, Expr)
 ARENA_DEF(decl, Decl)
 ARENA_DEF(type_info, TypeInfo)
 
-INLINE Expr *exprptrzero(ExprId id)
-{
-	return id ? exprptr(id) : NULL;
-}
 
 INLINE Type *typeinfotype(TypeInfoId id_)
 {
@@ -1745,6 +1874,8 @@ INLINE Type *typeinfotype(TypeInfoId id_)
 }
 
 bool ast_is_not_empty(Ast *ast);
+bool ast_is_compile_time(Ast *ast);
+bool ast_supports_continue(Ast *stmt);
 INLINE void ast_append(AstId **succ, Ast *next);
 INLINE void ast_prepend(AstId *first, Ast *ast);
 INLINE bool ast_ok(Ast *ast);
@@ -1874,34 +2005,35 @@ UNUSED bool i128_get_bit(const Int128 *op, int bit);
 #define MACRO_COPY_ASTID(x) x = astid_copy_deep(c, x)
 
 
-Expr *expr_macro_copy(Expr *source_expr);
-Decl **decl_copy_list(Decl **decl_list);
-Ast *ast_macro_copy(Ast *source_ast);
-Ast *ast_defer_copy(Ast *source_ast);
-Decl *decl_macro_copy(Decl *source_decl);
+void copy_begin(void);
+void copy_end(void);
+Expr *copy_expr_single(Expr *source_expr);
+Decl **copy_decl_list_single(Decl **decl_list);
+Ast *copy_ast_single(Ast *source_ast);
+Decl **copy_decl_list_macro(Decl **decl_list);
+Ast *copy_ast_macro(Ast *source_ast);
+Ast *copy_ast_defer(Ast *source_ast);
 
-Expr **copy_expr_list(CopyStruct *c, Expr **expr_list);
-Expr *copy_expr(CopyStruct *c, Expr *source_expr);
-Ast *ast_copy_deep(CopyStruct *c, Ast *source);
-Ast **copy_ast_list(CopyStruct *c, Ast **to_copy);
-Decl *copy_decl(CopyStruct *c, Decl *decl);
-Decl **copy_decl_list(CopyStruct *c, Decl **decl_list);
-TypeInfo *copy_type_info(CopyStruct *c, TypeInfo *source);
+void init_asm(void);
+AsmRegister *asm_reg_by_name(const char *name);
+AsmInstruction *asm_instr_by_name(const char *name);
+INLINE const char *asm_clobber_by_index(unsigned index);
+INLINE AsmRegister *asm_reg_by_index(unsigned index);
 
+AsmRegister *asm_reg_by_index(unsigned index);
 
-
-bool cast_implicit(Expr *expr, Type *to_type);
+bool cast_implicit(SemaContext *context, Expr *expr, Type *to_type);
 bool cast(Expr *expr, Type *to_type);
-
 bool cast_may_implicit(Type *from_type, Type *to_type, bool is_simple_expr, bool failable_allowed);
-
 bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability, bool is_const);
+bool cast_to_index(Expr *index);
+
+bool cast_untyped_to_type(SemaContext *context, Expr *expr, Type *to_type);
 
 CastKind cast_to_bool_kind(Type *type);
 
 const char *llvm_codegen(void *context);
-void *llvm_gen(Module *module);
-void llvm_codegen_setup();
+void **llvm_gen(Module** modules, unsigned module_count);
 
 const char *tinybackend_codegen(void *context);
 void *tinybackend_gen(Module *module);
@@ -1936,6 +2068,7 @@ Decl *decl_new_generated_var(Type *type, VarDeclKind kind, SourceSpan span);
 void decl_set_external_name(Decl *decl);
 const char *decl_to_name(Decl *decl);
 const char *decl_to_a_name(Decl *decl);
+int decl_count_elements(Decl *structlike);
 
 INLINE bool decl_ok(Decl *decl);
 INLINE bool decl_poison(Decl *decl);
@@ -1945,7 +2078,8 @@ INLINE Decl *decl_flatten(Decl *decl);
 INLINE const char *decl_get_extname(Decl *decl);
 static inline Decl *decl_raw(Decl *decl);
 static inline DeclKind decl_from_token(TokenType type);
-
+static inline bool decl_is_local(Decl *decl);
+Decl *decl_find_enum_constant(Decl *decl, const char *name);
 
 // --- Expression functions
 
@@ -1956,13 +2090,17 @@ Expr *expr_new_const_bool(SourceSpan span, Type *type, bool value);
 bool expr_is_simple(Expr *expr);
 bool expr_is_pure(Expr *expr);
 bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind);
+bool expr_is_compile_time(Expr *ast);
 Expr *expr_generate_decl(Decl *decl, Expr *assign);
 void expr_insert_addr(Expr *original);
-void expr_insert_deref(Expr *expr);
-bool expr_may_addr(Expr *expr);
+void expr_rewrite_insert_deref(Expr *original);
+Expr *expr_generate_decl(Decl *decl, Expr *assign);
 Expr *expr_variable(Decl *decl);
 Expr *expr_negate_expr(Expr *expr);
-void expr_rewrite_to_builtin_access(SemaContext *context, Expr *expr, Expr *parent, BuiltinAccessKind kind, Type *type);
+bool expr_may_addr(Expr *expr);
+bool expr_in_int_range(Expr *expr, int64_t low, int64_t high);
+bool expr_is_unwrapped_ident(Expr *expr);
+bool expr_may_splat_as_vararg(Expr *expr, Type *variadic_base_type);
 INLINE Expr *expr_new_expr(ExprKind kind, Expr *expr);
 INLINE bool expr_ok(Expr *expr);
 INLINE bool exprid_is_simple(ExprId expr_id);
@@ -1973,12 +2111,21 @@ INLINE bool expr_poison(Expr *expr);
 INLINE bool exprid_is_constant_eval(ExprId expr, ConstantEvalKind eval_kind);
 INLINE bool expr_is_init_list(Expr *expr);
 INLINE bool expr_is_deref(Expr *expr);
+INLINE bool expr_is_const(Expr *expr);
+INLINE bool expr_is_const_string(Expr *expr);
+INLINE bool expr_is_const_initializer(Expr *expr);
+INLINE bool expr_is_const_untyped_list(Expr *expr);
 
 INLINE void expr_rewrite_const_null(Expr *expr, Type *type);
 INLINE void expr_rewrite_const_bool(Expr *expr, Type *type, bool b);
 INLINE void expr_rewrite_const_float(Expr *expr, Type *type, Real d);
 INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v, bool narrowable);
-INLINE void expr_rewrite_const_list(Expr *expr, Type *type, ConstInitializer *list);
+INLINE void expr_rewrite_const_initializer(Expr *expr, Type *type, ConstInitializer *initializer);
+
+void expr_rewrite_to_builtin_access(Expr *expr, Expr *parent, BuiltinAccessKind kind, Type *type);
+void expr_rewrite_to_string(Expr *expr_to_rewrite, const char *string);
+void expr_rewrite_to_const_zero(Expr *expr, Type *type);
+bool expr_rewrite_to_const_initializer_index(Type *list_type, ConstInitializer *list, Expr *result, unsigned index);
 
 bool expr_const_in_range(const ExprConst *left, const ExprConst *right, const ExprConst *right_to);
 bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp op);
@@ -2007,9 +2154,12 @@ Path *path_create_from_string(const char *string, uint32_t len, SourceSpan span)
 #define TABLE_MAX_LOAD 0.5
 
 void sema_analysis_run(void);
-
+Decl **sema_decl_stack_store(void);
+Decl *sema_decl_stack_find_decl_member(Decl *decl_owner, const char *symbol);
+Decl *sema_decl_stack_resolve_symbol(const char *symbol);
+void sema_decl_stack_restore(Decl **state);
+void sema_decl_stack_push(Decl *decl);
 bool sema_error_failed_cast(Expr *expr, Type *from, Type *to);
-void sema_add_member(SemaContext *context, Decl *decl);
 bool sema_add_local(SemaContext *context, Decl *decl);
 void sema_unwrap_var(SemaContext *context, Decl *decl);
 void sema_rewrap_var(SemaContext *context, Decl *decl);
@@ -2027,16 +2177,21 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local);
 bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement);
 bool sema_analyse_statement(SemaContext *context, Ast *statement);
 bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type *left_type, Expr *right, bool is_unwrapped_var);
-
+bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *expr);
+Expr **sema_expand_vasplat_exprs(SemaContext *c, Expr **exprs);
 bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl, Expr *struct_var, bool failable);
 Decl *sema_resolve_symbol_in_current_dynamic_scope(SemaContext *context, const char *symbol);
+Decl *sema_decl_stack_resolve_symbol(const char *symbol);
 Decl *sema_find_decl_in_modules(Module **module_list, Path *path, const char *interned_name);
 Decl *unit_resolve_parameterized_symbol(CompilationUnit *unit, NameResolve *name_resolve);
+Decl *sema_resolve_type_method(CompilationUnit *unit, Type *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref);
 Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref);
 Decl *sema_find_extension_method_in_module(Module *module, Type *type, const char *method_name);
 
 Decl *sema_find_symbol(SemaContext *context, const char *symbol);
 Decl *sema_find_path_symbol(SemaContext *context, const char *symbol, Path *path);
+Decl *sema_find_label_symbol(SemaContext *context, const char *symbol);
+Decl *sema_find_label_symbol_anywhere(SemaContext *context, const char *symbol);
 Decl *sema_resolve_symbol(SemaContext *context, const char *symbol, Path *path, SourceSpan span);
 bool sema_symbol_is_defined_in_scope(SemaContext *c, const char *symbol);
 
@@ -2054,6 +2209,7 @@ void sema_verror_range(SourceSpan location, const char *message, va_list args);
 void sema_error(ParseContext *context, const char *message, ...);
 
 void sema_shadow_error(Decl *decl, Decl *old);
+bool sema_type_error_on_binop(Expr *expr);
 
 File *source_file_by_id(FileId file);
 File *source_file_load(const char *filename, bool *already_loaded);
@@ -2115,8 +2271,10 @@ Type *type_get_ptr(Type *ptr_type);
 Type *type_get_ptr_recurse(Type *ptr_type);
 Type *type_get_subarray(Type *arr_type);
 Type *type_get_inferred_array(Type *arr_type);
+Type *type_get_inferred_vector(Type *arr_type);
 Type *type_get_flexible_array(Type *arr_type);
-Type *type_get_failable(Type *failable_type);
+Type *type_get_scaled_vector(Type *arr_type);
+Type *type_get_optional(Type *failable_type);
 Type *type_get_vector(Type *vector_type, unsigned len);
 Type *type_get_vector_bool(Type *original_type);
 Type *type_int_signed_by_bitsize(BitSize bitsize);
@@ -2133,7 +2291,9 @@ bool type_is_user_defined(Type *type);
 bool type_is_structurally_equivalent(Type *type1, Type *type);
 bool type_flat_is_floatlike(Type *type);
 bool type_flat_is_intlike(Type *type);
+bool type_flat_is_numlike(Type *type);
 bool type_may_have_sub_elements(Type *type);
+bool type_may_have_method(Type *type);
 const char *type_to_error_string(Type *type);
 const char *type_quoted_error_string(Type *type);
 INLINE bool type_may_negate(Type *type);
@@ -2201,7 +2361,7 @@ TokenType binaryop_to_token(BinaryOp type);
 INLINE Type *type_no_optional(Type *type)
 {
 	if (!type) return NULL;
-	if (type->type_kind == TYPE_FAILABLE) return type->failable;
+	if (type->type_kind == TYPE_OPTIONAL) return type->failable;
 	if (type->type_kind == TYPE_FAILABLE_ANY) return type_void;
 	return type;
 }
@@ -2223,20 +2383,27 @@ INLINE bool type_is_pointer_sized(Type *type)
 
 INLINE Type *type_add_optional(Type *type, bool make_optional)
 {
-	if (!make_optional || type->type_kind == TYPE_FAILABLE || type->type_kind == TYPE_FAILABLE_ANY) return type;
-	return type_get_failable(type);
+	if (!make_optional || type->type_kind == TYPE_OPTIONAL || type->type_kind == TYPE_FAILABLE_ANY) return type;
+	return type_get_optional(type);
+}
+
+INLINE bool type_len_is_inferred(Type *type)
+{
+	if (!type) return true;
+	DECL_TYPE_KIND_REAL(kind, type);
+	return kind == TYPE_INFERRED_VECTOR || kind == TYPE_INFERRED_ARRAY;
 }
 
 INLINE bool type_is_optional(Type *type)
 {
 	DECL_TYPE_KIND_REAL(kind, type);
-	return kind == TYPE_FAILABLE || kind == TYPE_FAILABLE_ANY;
+	return kind == TYPE_OPTIONAL || kind == TYPE_FAILABLE_ANY;
 }
 
 INLINE bool type_is_optional_type(Type *type)
 {
 	DECL_TYPE_KIND_REAL(kind, type);
-	return kind == TYPE_FAILABLE;
+	return kind == TYPE_OPTIONAL;
 }
 
 INLINE bool type_is_optional_any(Type *type)
@@ -2282,7 +2449,7 @@ INLINE bool type_info_poison(TypeInfo *type)
 INLINE bool type_is_arraylike(Type *type)
 {
 	DECL_TYPE_KIND_REAL(kind, type);
-	return kind == TYPE_ARRAY || kind == TYPE_VECTOR || kind == TYPE_FLEXIBLE_ARRAY;
+	return kind == TYPE_ARRAY || kind == TYPE_VECTOR || kind == TYPE_FLEXIBLE_ARRAY || kind == TYPE_SCALED_VECTOR;
 }
 
 INLINE CanonicalType *type_pointer_type(Type *type)
@@ -2326,7 +2493,7 @@ INLINE bool type_may_negate(Type *type)
 		case TYPE_TYPEDEF:
 			type = type->canonical;
 			goto RETRY;
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 			type = type->failable;
 			goto RETRY;
 		default:
@@ -2413,7 +2580,7 @@ static inline Type *type_flatten_distinct_optional(Type *type)
 			case TYPE_TYPEDEF:
 				type = type->canonical;
 				continue;
-			case TYPE_FAILABLE:
+			case TYPE_OPTIONAL:
 				type = type->failable;
 				continue;
 			case TYPE_DISTINCT:
@@ -2447,7 +2614,7 @@ static inline Type *type_flatten(Type *type)
 			case TYPE_ENUM:
 				type = type->decl->enums.type_info->type;
 				break;
-			case TYPE_FAILABLE:
+			case TYPE_OPTIONAL:
 				type = type->failable;
 				break;
 			case TYPE_FAILABLE_ANY:
@@ -2744,11 +2911,11 @@ INLINE void expr_rewrite_const_null(Expr *expr, Type *type)
 	expr->resolve_status = RESOLVE_DONE;
 }
 
-INLINE void expr_rewrite_const_list(Expr *expr, Type *type, ConstInitializer *list)
+INLINE void expr_rewrite_const_initializer(Expr *expr, Type *type, ConstInitializer *initializer)
 {
 	expr->expr_kind = EXPR_CONST;
 	expr->type = type;
-	expr->const_expr = (ExprConst) { .list = list, .const_kind = CONST_LIST };
+	expr->const_expr = (ExprConst) { .initializer = initializer, .const_kind = CONST_INITIALIZER };
 	expr->resolve_status = RESOLVE_DONE;
 }
 
@@ -2787,4 +2954,112 @@ INLINE void expr_rewrite_const_float(Expr *expr, Type *type, Real d)
 	}
 	expr->const_expr.const_kind = CONST_FLOAT;
 	expr->resolve_status = RESOLVE_DONE;
+}
+
+INLINE const char *asm_clobber_by_index(unsigned index)
+{
+	return asm_target.clobber_name_list[index];
+}
+
+INLINE AsmRegister *asm_reg_by_index(unsigned index)
+{
+	return &asm_target.registers[index];
+}
+
+INLINE void clobbers_add(Clobbers *clobbers, unsigned index)
+{
+	assert(index < MAX_CLOBBER_FLAGS);
+	unsigned bit = index % 64;
+	unsigned element = index / 64;
+	clobbers->mask[element] |= (1ull << bit);
+}
+
+static inline Clobbers clobbers_make_from(Clobbers clobbers, ...)
+{
+	va_list list;
+	va_start(list, clobbers);
+	int i;
+	while ((i = va_arg(list, int)) > -1)
+	{
+		assert(i < MAX_CLOBBER_FLAGS);
+		unsigned bit = i % 64;
+		unsigned element = i / 64;
+		clobbers.mask[element] |= (1ull << bit);
+	}
+	va_end(list);
+	return clobbers;
+}
+
+static inline Clobbers clobbers_make(unsigned index, ...)
+{
+	Clobbers clobbers = { .mask[0] = 0 };
+	assert(index < MAX_CLOBBER_FLAGS);
+	unsigned bit = index % 64;
+	unsigned element = index / 64;
+	clobbers.mask[element] |= (1ull << bit);
+	va_list list;
+	va_start(list, index);
+	int i;
+	while ((i = va_arg(list, int)) > -1)
+	{
+		assert(i < MAX_CLOBBER_FLAGS);
+		bit = i % 64;
+		element = i / 64;
+		clobbers.mask[element] |= (1ull << bit);
+	}
+	va_end(list);
+	return clobbers;
+}
+
+static inline bool expr_is_const_int(Expr *expr)
+{
+	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INTEGER;
+}
+
+INLINE unsigned arg_bits_max(AsmArgBits bits, unsigned limit)
+{
+	if (limit == 0) limit = ~(0u);
+	if (limit >= 128 && (bits & ARG_BITS_128)) return 128;
+	if (limit >= 80 && (bits & ARG_BITS_80)) return 80;
+	if (limit >= 64 && (bits & ARG_BITS_64)) return 64;
+	if (limit >= 32 && (bits & ARG_BITS_32)) return 32;
+	if (limit >= 16 && (bits & ARG_BITS_16)) return 16;
+	if (limit >= 8 && (bits & ARG_BITS_8)) return 8;
+	return 0;
+}
+
+INLINE bool expr_is_const(Expr *expr)
+{
+	return expr->expr_kind == EXPR_CONST;
+}
+
+static inline bool decl_is_local(Decl *decl)
+{
+	if (decl->decl_kind != DECL_VAR) return false;
+	VarDeclKind kind = decl->var.kind;
+	return kind == VARDECL_PARAM_CT_TYPE
+	       || kind == VARDECL_PARAM
+	       || kind == VARDECL_PARAM_CT
+	       || kind == VARDECL_LOCAL
+	       || kind == VARDECL_LOCAL_CT_TYPE
+	       || kind == VARDECL_LOCAL_CT
+	       || kind == VARDECL_PARAM_REF
+	       || kind == VARDECL_PARAM_EXPR
+	       || kind == VARDECL_BITMEMBER
+	       || kind == VARDECL_MEMBER;
+}
+
+INLINE bool expr_is_const_string(Expr *expr)
+{
+	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_STRING;
+}
+
+INLINE bool expr_is_const_initializer(Expr *expr)
+{
+	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER;
+}
+
+INLINE bool expr_is_const_untyped_list(Expr *expr)
+{
+	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_UNTYPED_LIST;
 }
