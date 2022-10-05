@@ -7,6 +7,13 @@
 
 const char *ct_eval_error = "EVAL_ERROR";
 
+typedef enum
+{
+	SUBSCRIPT_EVAL_VALUE,
+	SUBSCRIPT_EVAL_REF,
+	SUBSCRIPT_EVAL_ASSIGN
+} SubscriptEval;
+
 typedef struct
 {
 	bool macro;
@@ -17,7 +24,7 @@ typedef struct
 	Signature *signature;
 } CalledDecl;
 
-static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr, bool is_addr);
+static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr, SubscriptEval eval_type);
 static inline bool sema_expr_analyse_pointer_offset(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_group(SemaContext *context, Expr *expr);
@@ -208,31 +215,68 @@ Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, Expr *index_expr)
 	return context->macro_varargs[(size_t)index_val.i.low];
 }
 
-const char *sema_ct_eval_expr(SemaContext *c, const char *expr_type, Expr *inner, TokenType *type, Path **path_ref, bool report_missing)
+Expr *sema_ct_eval_expr(SemaContext *c, bool is_type_eval, Expr *inner, bool report_missing)
 {
+	Path *path = NULL;
 	if (!sema_analyse_expr(c, inner)) return false;
 	if (!expr_is_const_string(inner))
 	{
-		SEMA_ERROR(inner, "'%s' expects a constant string as the argument.", expr_type);
-		return ct_eval_error;
-	}
-	const char *interned_version = NULL;
-	if (!splitpathref(inner->const_expr.string.chars, inner->const_expr.string.len, path_ref, &interned_version, type))
-	{
-		SEMA_ERROR(inner, "A valid name was expected here.");
-		return ct_eval_error;
-	}
-	if (*path_ref) (*path_ref)->span = inner->span;
-	if (*type == TOKEN_INVALID_TOKEN)
-	{
-		if (report_missing)
-		{
-			SEMA_ERROR(inner, "'%s' could not be found, did you spell it right?", interned_version);
-			return ct_eval_error;
-		}
+		SEMA_ERROR(inner, "'%s' expects a constant string as the argument.", is_type_eval ? "$evaltype" : "$eval");
 		return NULL;
 	}
-	return interned_version;
+	const char *interned_version = NULL;
+	TokenType token = sema_splitpathref(inner->const_expr.string.chars, inner->const_expr.string.len, &path, &interned_version);
+	switch (token)
+	{
+		case TOKEN_CONST_IDENT:
+			inner->identifier_expr.is_const = true;
+			break;
+		case TOKEN_IDENT:
+			if (!interned_version)
+			{
+				if (report_missing)
+				{
+					SEMA_ERROR(inner, "'%.*s' could not be found, did you spell it right?", (int)inner->const_expr.string.len, inner->const_expr.string.chars);
+				}
+				return NULL;
+			}
+			inner->identifier_expr.is_const = false;
+			break;
+		case TYPE_TOKENS:
+		{
+			TypeInfo *info = type_info_new_base(type_from_token(token), inner->span);
+			inner->expr_kind = EXPR_TYPEINFO;
+			inner->resolve_status = RESOLVE_NOT_DONE;
+			inner->type_expr = info;
+			return inner;
+		}
+		case TOKEN_TYPE_IDENT:
+		{
+			TypeInfo *info = type_info_new(TYPE_INFO_IDENTIFIER, inner->span);
+			info->unresolved.name = interned_version;
+			info->unresolved.path = path;
+			info->resolve_status = RESOLVE_NOT_DONE;
+			inner->expr_kind = EXPR_TYPEINFO;
+			inner->resolve_status = RESOLVE_NOT_DONE;
+			inner->type_expr = info;
+			return inner;
+		}
+		default:
+			if (is_type_eval)
+			{
+				SEMA_ERROR(inner, "Only valid types may be resolved with $evaltype.");
+			}
+			else
+			{
+				SEMA_ERROR(inner, "Only plain function, variable and constant names may be resolved with $eval.");
+			}
+			return NULL;
+	}
+	inner->expr_kind = EXPR_IDENTIFIER;
+	inner->resolve_status = RESOLVE_NOT_DONE;
+	inner->identifier_expr.ident = interned_version;
+	inner->identifier_expr.path = path;
+	return inner;
 }
 
 static Expr *expr_access_inline_member(Expr *parent, Decl *parent_decl)
@@ -308,6 +352,7 @@ static bool sema_binary_is_expr_lvalue(Expr *top_expr, Expr *expr)
 {
 	switch (expr->expr_kind)
 	{
+		case EXPR_SUBSCRIPT_ASSIGN:
 		case EXPR_CT_IDENT:
 			return true;
 		case EXPR_IDENTIFIER:
@@ -433,6 +478,7 @@ ERR:
 bool sema_expr_check_assign(SemaContext *c, Expr *expr)
 {
 	if (!sema_binary_is_expr_lvalue(expr, expr)) return false;
+	if (expr->expr_kind == EXPR_SUBSCRIPT_ASSIGN) return true;
 	if (expr->expr_kind == EXPR_BITACCESS || expr->expr_kind == EXPR_ACCESS) expr = expr->access_expr.parent;
 	if (expr->expr_kind == EXPR_IDENTIFIER)
 	{
@@ -2177,7 +2223,56 @@ static bool sema_subscript_rewrite_index_const_list(Expr *const_list, Expr *inde
 	return expr_rewrite_to_const_initializer_index(const_list->type, const_list->const_expr.initializer, result, idx);
 }
 
-static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr, bool is_addr)
+/**
+ * Find index type or overload for subscript.
+ */
+static Expr *sema_expr_find_index_type_or_overload_for_subscript(SemaContext *context, Expr *current_expr, SubscriptEval eval_type, Type **index_type_ptr, Decl **overload_ptr)
+{
+	Decl *overload = NULL;
+	switch (eval_type)
+	{
+		case SUBSCRIPT_EVAL_REF:
+			overload = sema_find_operator(context, current_expr, OVERLOAD_ELEMENT_REF);
+			break;
+		case SUBSCRIPT_EVAL_VALUE:
+			overload = sema_find_operator(context, current_expr, OVERLOAD_ELEMENT_AT);
+			break;
+		case SUBSCRIPT_EVAL_ASSIGN:
+			overload = sema_find_operator(context, current_expr, OVERLOAD_ELEMENT_SET);
+			if (overload)
+			{
+				*overload_ptr = overload;
+				assert(vec_size(overload->func_decl.signature.params) == 3);
+				*index_type_ptr = overload->func_decl.signature.params[2]->type;
+				return current_expr;
+			}
+			break;
+	}
+	// Overload found for [] and &[]
+	if (overload)
+	{
+		*overload_ptr = overload;
+		assert(overload->func_decl.signature.rtype);
+		*index_type_ptr = type_infoptr(overload->func_decl.signature.rtype)->type;
+		return current_expr;
+	}
+	// Otherwise, see if we have an indexed type.
+	Type *inner_type = type_get_indexed_type(current_expr->type);
+	if (inner_type)
+	{
+		*index_type_ptr  = inner_type;
+		*overload_ptr = NULL;
+		return current_expr;
+	}
+	if (type_is_substruct(current_expr->type))
+	{
+		Expr *embedded_struct = expr_access_inline_member(current_expr, current_expr->type->decl);
+		return sema_expr_find_index_type_or_overload_for_subscript(context, embedded_struct, eval_type, index_type_ptr, overload_ptr);
+	}
+	return NULL;
+}
+
+static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr, SubscriptEval eval_type)
 {
 	assert(expr->expr_kind == EXPR_SUBSCRIPT || expr->expr_kind == EXPR_SUBSCRIPT_ADDR);
 
@@ -2196,7 +2291,6 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	Type *underlying_type = type_flatten(subscripted->type);
 
 	Type *current_type = underlying_type;
-	Expr *current_expr = subscripted;
 
 	int64_t index_value = -1;
 	bool start_from_end = expr->subscript_expr.range.start_from_end;
@@ -2208,7 +2302,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 			SEMA_ERROR(index, "The index may not be negative.");
 			return false;
 		}
-		int64_t size = current_type == type_untypedlist ? vec_size(current_expr->const_expr.untyped_list) : current_type->array.len;
+		int64_t size = current_type == type_untypedlist ? vec_size(subscripted->const_expr.untyped_list) : current_type->array.len;
 		assert(size >= 0 && "Unexpected overflow");
 		if (!int_fits(index->const_expr.ixx, TYPE_I64) || size == 0)
 		{
@@ -2246,13 +2340,14 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	// 4. If we are indexing into a complist
 	if (underlying_type == type_untypedlist)
 	{
-		if (is_addr)
+		if (eval_type == SUBSCRIPT_EVAL_REF)
 		{
 			SEMA_ERROR(subscripted, "You need to use && to take the address of a temporary.");
 			return false;
 		}
 		// 4a. This may either be an initializer list or a CT value
-		while (current_expr->expr_kind == EXPR_CT_IDENT) current_expr = current_expr->ct_ident_expr.decl->var.init_expr;
+		Expr *current_expr = subscripted;
+		while (subscripted->expr_kind == EXPR_CT_IDENT) current_expr = current_expr->ct_ident_expr.decl->var.init_expr;
 
 		// 4b. Now we need to check that we actually have a valid type.
 		if (index_value < 0)
@@ -2260,38 +2355,49 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 			SEMA_ERROR(index, "To subscript an untyped list a compile time integer index is needed.");
 			return false;
 		}
-		expr_replace(expr, subscripted->const_expr.untyped_list[index_value]);
+		if (eval_type == SUBSCRIPT_EVAL_ASSIGN) TODO;
+		expr_replace(expr, current_expr->const_expr.untyped_list[index_value]);
 		return true;
 	}
 
-	if (!sema_cast_rvalue(context, current_expr)) return false;
+	if (!sema_cast_rvalue(context, subscripted)) return false;
 
-	Type *inner_type = sema_subscript_find_indexable_type_recursively(&current_type, &current_expr);
-	if (!inner_type)
+	Decl *overload = NULL;
+	Type *index_type = NULL;
+	Expr *current_expr = sema_expr_find_index_type_or_overload_for_subscript(context, subscripted, eval_type, &index_type, &overload);
+	if (!index_type)
 	{
-		Decl *decl = NULL;
-		if (is_addr) decl = sema_find_operator(context, current_expr, OVERLOAD_ELEMENT_REF);
-		if (!decl)
+		if (!overload && eval_type == SUBSCRIPT_EVAL_REF)
 		{
-			decl = sema_find_operator(context, current_expr, OVERLOAD_ELEMENT_AT);
-			if (decl && is_addr)
+			// Maybe there is a [] overload?
+			if (sema_expr_find_index_type_or_overload_for_subscript(context,
+			                                                        subscripted,
+			                                                        SUBSCRIPT_EVAL_VALUE,
+			                                                        &index_type,
+			                                                        &overload))
 			{
-				SEMA_ERROR(expr, "A function or macro with '@operator([])' is not defined for %s, so you need && to take the address of the temporary.",
+				SEMA_ERROR(expr,
+				           "A function or macro with '@operator(&[])' is not defined for %s, so you need && to take the address of the temporary.",
 				           type_quoted_error_string(current_expr->type));
 				return false;
 			}
 		}
-		if (decl)
-		{
-			Expr **args = NULL;
-			vec_add(args, index);
-			return sema_insert_method_call(context, expr, decl, current_expr, args);
-		}
-	}
-	if (!inner_type)
-	{
 		SEMA_ERROR(subscripted, "Cannot index '%s'.", type_to_error_string(subscripted->type));
 		return false;
+	}
+	if (overload)
+	{
+		if (eval_type == SUBSCRIPT_EVAL_ASSIGN)
+		{
+			expr->expr_kind = EXPR_SUBSCRIPT_ASSIGN;
+			expr->subscript_assign_expr.expr = exprid(current_expr);
+			expr->subscript_assign_expr.index = exprid(index);
+			expr->subscript_assign_expr.method = declid(overload);
+			return true;
+		}
+		Expr **args = NULL;
+		vec_add(args, index);
+		return sema_insert_method_call(context, expr, overload, current_expr, args);
 	}
 
 	// Cast to an appropriate type for index.
@@ -2306,9 +2412,9 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 		(void)start_from_end;
 	}
 
-	if (is_addr)
+	if (eval_type == SUBSCRIPT_EVAL_REF)
 	{
-		inner_type = type_get_ptr(inner_type);
+		index_type = type_get_ptr(index_type);
 	}
 	else
 	{
@@ -2318,7 +2424,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 		}
 	}
 	expr->subscript_expr.expr = exprid(current_expr);
-	expr->type = type_add_optional(inner_type, failable);
+	expr->type = type_add_optional(index_type, failable);
 	return true;
 }
 
@@ -2509,30 +2615,17 @@ RETRY:
 		}
 		case EXPR_CT_EVAL:
 		{
-			Expr *inner = child->inner_expr;
 			TokenType type;
 			// Only report missing if missing var is NULL
 			Path *path = NULL;
-			const char *ident = sema_ct_eval_expr(context, "$eval", inner, &type, &path, missing == NULL);
-			if (!ident && missing)
+			Expr *result = sema_ct_eval_expr(context, false, child->inner_expr, missing == NULL);
+			if (!result)
 			{
-				*missing = true;
+				if (missing) *missing = true;
 				return NULL;
 			}
-			if (ident == ct_eval_error) return NULL;
-			switch (type)
-			{
-				case TOKEN_IDENT:
-				case TOKEN_CONST_IDENT:
-					child->expr_kind = EXPR_IDENTIFIER;
-					child->identifier_expr.ident = ident;
-					child->identifier_expr.path = path;
-					child->identifier_expr.is_const = type == TOKEN_CONST_IDENT;
-					goto RETRY;
-				default:
-					SEMA_ERROR(inner, "Only function, variable and constant names may be resolved with $eval.");
-					return NULL;
-			}
+			expr_replace(child, result);
+			goto RETRY;
 		}
 		default:
 			break;
@@ -3693,9 +3786,16 @@ static bool sema_expr_analyse_assign(SemaContext *context, Expr *expr, Expr *lef
 	{
 		return sema_expr_analyse_ct_type_identifier_assign(context, expr, left, right);
 	}
+	if (left->expr_kind == EXPR_SUBSCRIPT)
+	{
+		if (!sema_expr_analyse_subscript(context, left, SUBSCRIPT_EVAL_ASSIGN)) return false;
+	}
+	else
+	{
+		if (!sema_analyse_expr_lvalue(context, left)) return false;
+	}
 
-	if (!sema_analyse_expr_lvalue(context, left)) return false;
-
+	bool is_subscript_assign = left->expr_kind == EXPR_SUBSCRIPT_ASSIGN;
 
 	// 2. Check assignability
 	if (!sema_expr_check_assign(context, left)) return false;
@@ -3709,6 +3809,13 @@ static bool sema_expr_analyse_assign(SemaContext *context, Expr *expr, Expr *lef
 	{
 		sema_rewrap_var(context, left->identifier_expr.decl);
 		return true;
+	}
+	if (left->expr_kind == EXPR_SUBSCRIPT_ASSIGN)
+	{
+		Expr **args = NULL;
+		vec_add(args, exprptr(left->subscript_assign_expr.index));
+		vec_add(args, right);
+		return sema_insert_method_call(context, expr, declptr(left->subscript_assign_expr.method), exprptr(left->subscript_assign_expr.expr), args);
 	}
 	if (left->expr_kind == EXPR_BITACCESS)
 	{
@@ -5523,6 +5630,28 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 		expr_rewrite_to_string(expr, context->compilation_unit->file->name);
 		return true;
 	}
+	if (string == kw_FUNCPTR)
+	{
+
+		switch (context->call_env.kind)
+		{
+			case CALL_ENV_GLOBAL_INIT:
+			case CALL_ENV_CHECKS:
+			case CALL_ENV_INITIALIZER:
+			case CALL_ENV_FINALIZER:
+			case CALL_ENV_ATTR:
+				expr_rewrite_to_const_zero(expr, type_voidptr);
+				return true;
+			case CALL_ENV_FUNCTION:
+				expr->expr_kind = EXPR_IDENTIFIER;
+				expr->resolve_status = RESOLVE_DONE;
+				expr->identifier_expr.decl = context->call_env.current_function;
+				expr->type = expr->identifier_expr.decl->type;
+				expr_insert_addr(expr);
+				return true;
+		}
+		UNREACHABLE
+	}
 	if (string == kw_FUNC)
 	{
 		switch (context->call_env.kind)
@@ -5932,25 +6061,15 @@ RETRY:
 		case TYPE_INFO_EVALTYPE:
 		{
 			Expr *expr = type_info->unresolved_type_expr;
-			TokenType type;
-			Path *path = NULL;
-			const char *ident = sema_ct_eval_expr(context, "$eval", expr, &type, &path, false);
-			if (!ident) return NULL;
-			if (ident == ct_eval_error) return poisoned_type;
-			switch (type)
+			expr = sema_ct_eval_expr(context, "$evaltype", expr, false);
+			if (!expr) return NULL;
+			if (expr->expr_kind != EXPR_TYPEINFO)
 			{
-				case TOKEN_TYPE_IDENT:
-					type_info->unresolved.name = ident;
-					type_info->span = expr->span;
-					type_info->unresolved.path = path;
-					type_info->kind = TYPE_INFO_IDENTIFIER;
-					goto RETRY;
-				case TYPE_TOKENS:
-					return type_info->type = type_from_token(type);
-				default:
-					SEMA_ERROR(expr, "Only type names may be resolved with $evaltype.");
-					return poisoned_type;
+				SEMA_ERROR(expr, "Only type names may be resolved with $evaltype.");
+				return poisoned_type;
 			}
+			type_info = expr->type_expr;
+			goto RETRY;
 		}
 		case TYPE_INFO_SUBARRAY:
 		{
@@ -6055,28 +6174,9 @@ RETRY:
 			if (!sema_expr_analyse_builtin(context, main_var, false)) goto NOT_DEFINED;
 			break;
 		case EXPR_CT_EVAL:
-		{
-			Expr *inner = main_var->inner_expr;
-			TokenType token_type;
-			Path *path = NULL;
-			const char *ident = sema_ct_eval_expr(context, "$eval", inner, &token_type, &path, false);
-			if (ident == ct_eval_error) return false;
-			if (!ident) goto NOT_DEFINED;
-			switch (token_type)
-			{
-				case TOKEN_IDENT:
-				case TOKEN_CONST_IDENT:
-					main_var->expr_kind = EXPR_IDENTIFIER;
-					main_var->resolve_status = RESOLVE_NOT_DONE;
-					main_var->identifier_expr.ident = ident;
-					main_var->identifier_expr.path = path;
-					main_var->identifier_expr.is_const = token_type == TOKEN_CONST_IDENT;
-					goto RETRY;
-				default:
-					SEMA_ERROR(inner, "Only function, variable and constant names may be resolved with $eval.");
-					return false;
-			}
-		}
+			main_var = sema_ct_eval_expr(context, "$eval", main_var->inner_expr, false);
+			if (!main_var) goto NOT_DEFINED;
+			goto RETRY;
 		default:
 			SEMA_ERROR(main_var, "Expected an identifier here.");
 			return false;
@@ -6245,24 +6345,17 @@ static inline bool sema_expr_analyse_ct_stringify(SemaContext *context, Expr *ex
 
 static inline bool sema_expr_analyse_ct_eval(SemaContext *context, Expr *expr)
 {
-	Expr *inner = expr->inner_expr;
 	TokenType type;
 	Path *path = NULL;
-	const char *ident = sema_ct_eval_expr(context, "$eval", inner, &type, &path, true);
-	if (ident == ct_eval_error) return false;
-	switch (type)
+	Expr *result = sema_ct_eval_expr(context, "$eval", expr->inner_expr, true);
+	if (!result) return false;
+	if (result->expr_kind == EXPR_TYPEINFO)
 	{
-		case TOKEN_IDENT:
-		case TOKEN_CONST_IDENT:
-			expr->expr_kind = EXPR_IDENTIFIER;
-			expr->identifier_expr.ident = ident;
-			expr->identifier_expr.path = path;
-			expr->identifier_expr.is_const = type == TOKEN_CONST_IDENT;
-			return sema_analyse_expr_dispatch(context, expr);
-		default:
-			SEMA_ERROR(inner, "Only function, variable and constant names may be resolved with $eval.");
-			return false;
+		SEMA_ERROR(result, "Evaluation to a type requires the use of '$evaltype' rather than '$eval'.");
+		return false;
 	}
+	expr_replace(expr, result);
+	return sema_analyse_expr_dispatch(context, expr);
 }
 
 
@@ -6481,12 +6574,13 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 		case EXPR_CALL:
 			return sema_expr_analyse_call(context, expr);
 		case EXPR_SUBSCRIPT:
-			return sema_expr_analyse_subscript(context, expr, false);
+			return sema_expr_analyse_subscript(context, expr, SUBSCRIPT_EVAL_VALUE);
 		case EXPR_SUBSCRIPT_ADDR:
-			return sema_expr_analyse_subscript(context, expr, true);
+			return sema_expr_analyse_subscript(context, expr, SUBSCRIPT_EVAL_REF);
 		case EXPR_GROUP:
 			return sema_expr_analyse_group(context, expr);
 		case EXPR_BITACCESS:
+		case EXPR_SUBSCRIPT_ASSIGN:
 			UNREACHABLE
 		case EXPR_ACCESS:
 			return sema_expr_analyse_access(context, expr);
@@ -6769,10 +6863,11 @@ bool sema_analyse_inferred_expr(SemaContext *context, Type *infer_type, Expr *ex
 	return true;
 }
 
-bool splitpathref(const char *string, ArraySize len, Path **path_ref, const char **ident_ref, TokenType *type_ref)
+TokenType sema_splitpathref(const char *string, ArraySize len, Path **path_ref, const char **ident_ref)
 {
 	ArraySize path_end = 0;
 	*path_ref = NULL;
+	*ident_ref = NULL;
 	for (ArraySize i = 0; i < len; i++)
 	{
 		char ch = string[i];
@@ -6785,7 +6880,7 @@ bool splitpathref(const char *string, ArraySize len, Path **path_ref, const char
 			}
 			else
 			{
-				return false;
+				return TOKEN_INVALID_TOKEN;
 			}
 		}
 	}
@@ -6802,23 +6897,30 @@ bool splitpathref(const char *string, ArraySize len, Path **path_ref, const char
 		len--;
 		string++;
 	}
-	if (len == 0) return false;
+	if (len == 0) return TOKEN_INVALID_TOKEN;
 	uint32_t hash = FNV1_SEED;
 	for (size_t i = 0; i < len; i++)
 	{
 		char c = string[i];
-		if (!char_is_alphanum_(c)) return false;
+		if (!char_is_alphanum_(c)) return TOKEN_INVALID_TOKEN;
 		hash = FNV1a(c, hash);
 	}
-	*ident_ref = symtab_find(string, len, hash, type_ref);
-	if (!*ident_ref)
+	TokenType type;
+	*ident_ref = symtab_find(string, len, hash, &type);
+	if (!*ident_ref) return TOKEN_IDENT;
+	switch (type)
 	{
-		scratch_buffer_clear();
-		scratch_buffer_append_len(string, len);
-		*ident_ref = scratch_buffer_to_string();
-		*type_ref = TOKEN_INVALID_TOKEN;
+		case TOKEN_TYPE_IDENT:
+		case TOKEN_IDENT:
+		case TOKEN_CONST_IDENT:
+			return type;
+		case TYPE_TOKENS:
+			if (!*path_ref) return type;
+			FALLTHROUGH;
+		default:
+			*ident_ref = NULL;
+			return TOKEN_INVALID_TOKEN;
 	}
-	return true;
 }
 
 bool sema_insert_method_call(SemaContext *context, Expr *method_call, Decl *method_decl, Expr *parent, Expr **arguments)

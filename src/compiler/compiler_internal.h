@@ -345,7 +345,6 @@ struct TypeInfo_
 	TypeInfoCompressedKind subtype : 4;
 	Type *type;
 	SourceSpan span;
-
 	union
 	{
 		struct
@@ -775,6 +774,13 @@ typedef struct
 
 typedef struct
 {
+	ExprId expr;
+	DeclId method;
+	ExprId index;
+} ExprSubscriptAssign;
+
+typedef struct
+{
 	ExprId left;
 	ExprId right;
 } ExprSliceAssign;
@@ -1105,6 +1111,7 @@ struct Expr_
 		ExprBuiltinAccess builtin_access_expr;
 		ExprCatchUnwrap catch_unwrap_expr;          // 24
 		ExprSubscript subscript_expr;               // 12
+		ExprSubscriptAssign subscript_assign_expr;
 		ExprAccess access_expr;                     // 16
 		ExprDesignator designator_expr;             // 16
 		ExprIdentifier identifier_expr;             // 24
@@ -1837,6 +1844,7 @@ extern const char *kw_return;
 extern const char *kw_type;
 extern const char *kw_FILE;
 extern const char *kw_FUNC;
+extern const char *kw_FUNCPTR;
 extern const char *kw_LINE;
 extern const char *kw_LINEREAL;
 extern const char *kw_incr;

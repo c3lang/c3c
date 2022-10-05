@@ -22,13 +22,13 @@ struct HashMap
 }
 
 /**
- * @require capacity > 0
- * @require load_factor > 0.0 && load_factor < 1.0
- * @require map.table.len == 0
- * @require capacity < MAXIMUM_CAPACITY
- * @require allocator != null
+ * @require capacity > 0 "The capacity must be 1 or higher"
+ * @require load_factor > 0.0 "The load factor must be higher than 0"
+ * @require !map.allocator "Map was already initialized"
+ * @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
+ * @require allocator != null "The allocator must be non-null"
  **/
-fn void HashMap.init(HashMap* map, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator* allocator = mem::current_allocator())
+fn void HashMap.init(HashMap* map, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator* allocator = mem::temp_allocator())
 {
 	capacity = math::next_power_of_2(capacity);
 	map.allocator = allocator;
@@ -37,7 +37,7 @@ fn void HashMap.init(HashMap* map, uint capacity = DEFAULT_INITIAL_CAPACITY, flo
 	map.table = array::make(Entry*, capacity, allocator);
 }
 
-fn void HashMap.init_from_map(HashMap* map, HashMap* other_map, Allocator* allocator = mem::current_allocator())
+fn void HashMap.init_from_map(HashMap* map, HashMap* other_map, Allocator* allocator = mem::temp_allocator())
 {
 	map.init(other_map.table.len, other_map.load_factor, allocator);
 	map.put_all_for_create(other_map);
@@ -59,7 +59,7 @@ fn Value*! HashMap.get_ref(HashMap* map, Key key)
 	return SearchResult.MISSING!;
 }
 
-fn Value! HashMap.get(HashMap* map, Key key)
+fn Value! HashMap.get(HashMap* map, Key key) @operator([])
 {
 	return *map.get_ref(key) @inline;
 }
@@ -70,8 +70,13 @@ fn bool HashMap.has_key(HashMap* map, Key key)
 	return try(map.get_ref(key));
 }
 
-fn bool HashMap.set(HashMap* map, Key key, Value value)
+fn bool HashMap.set(HashMap* map, Key key, Value value) @operator([]=)
 {
+	// If the map isn't initialized, use the defaults to initialize it.
+	if (!map.allocator)
+	{
+		map.init();
+	}
 	uint hash = rehash(key.hash());
 	uint index = index_for(hash, map.table.len);
 	for (Entry *e = map.table[index]; e != null; e = e.next)
@@ -106,20 +111,17 @@ fn void HashMap.clear(HashMap* map)
 
 fn void HashMap.destroy(HashMap* map)
 {
+	if (!map.allocator) return;
 	map.clear();
 	map.free(map.table.ptr);
 	map.table = Entry*[] {};
 }
-fn Key[] HashMap.key_tlist(HashMap* map)
-{
-	return map.key_list(mem::temp_allocator());
-}
 
-fn Key[] HashMap.key_list(HashMap* map, Allocator* allocator = null)
+fn Key[] HashMap.key_list(HashMap* map, Allocator* allocator = mem::temp_allocator())
 {
 	if (!map.count) return Key[] {};
 
-	Key[] list = array::make(Key, map.count, allocator ?: map.allocator);
+	Key[] list = array::make(Key, map.count, allocator);
 	usize index = 0;
 	foreach (Entry* entry : map.table)
 	{
@@ -132,15 +134,10 @@ fn Key[] HashMap.key_list(HashMap* map, Allocator* allocator = null)
 	return list;
 }
 
-fn Value[] HashMap.value_tlist(HashMap* map)
-{
-	return map.value_list(mem::temp_allocator());
-}
-
-fn Value[] HashMap.value_list(HashMap* map, Allocator* allocator = null)
+fn Value[] HashMap.value_list(HashMap* map, Allocator* allocator = mem::temp_allocator())
 {
 	if (!map.count) return Value[] {};
-	Value[] list = array::make(Value, map.count, allocator ?: map.allocator);
+	Value[] list = array::make(Value, map.count, allocator);
 	usize index = 0;
 	foreach (Entry* entry : map.table)
 	{

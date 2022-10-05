@@ -24,7 +24,7 @@ fn void f()
 
 fn void g()
 {
-    int x = $evaltype("bar::").sizeof; // #error: A valid name was expected here.
+    int x = $evaltype("bar::").sizeof; // #error: Only valid types may be resolved with $evaltype
 }
 
 fn void k()

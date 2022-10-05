@@ -46,10 +46,10 @@ fn void main()
 	@pool()
 	{
 		IntDoubleMap map3;
-		map3.init(.allocator = mem::temp_allocator());
+		map3.init();
 		map3.set(5, 3.2);
 		map3.set(7, 5.2);
-		io::printfln("%s", map3.key_tlist());
+		io::printfln("%s", map3.key_list());
 	};
 }
 
@@ -58,17 +58,45 @@ fn void main()
 
 define internal void @.static_initialize.0() {
 entry:
+  %error_var = alloca i64, align 8
+  %retparam = alloca ptr, align 8
   %0 = load i64, ptr getelementptr inbounds (%"Entry*[]", ptr @std_io_tostring_functions, i32 0, i32 1), align 8
   %not = icmp eq i64 %0, 0
-  br i1 %not, label %if.then, label %if.exit
+  br i1 %not, label %if.then, label %if.exit3
 
 if.then:                                          ; preds = %entry
-  %1 = load ptr, ptr @std_core_mem_thread_allocator, align 8
-  call void @"std_map$$typeid.p$std_io$ToStringFunction_HashMap_init"(ptr @std_io_tostring_functions, i32 512, float 7.500000e-01, ptr %1)
+  %1 = load ptr, ptr @std_core_mem_thread_temp_allocator, align 8
+  %not1 = icmp eq ptr %1, null
+  br i1 %not1, label %if.then2, label %if.exit
+
+if.then2:                                         ; preds = %if.then
+  %2 = call i64 @std_core_mem_allocator_new_temp(ptr %retparam, i64 131072, ptr @std_core_mem_allocator__SYSTEM_ALLOCATOR)
+  %not_err = icmp eq i64 %2, 0
+  br i1 %not_err, label %after_check, label %assign_optional
+
+assign_optional:                                  ; preds = %if.then2
+  store i64 %2, ptr %error_var, align 8
+  br label %panic_block
+
+after_check:                                      ; preds = %if.then2
+  %3 = load ptr, ptr %retparam, align 8
+  br label %noerr_block
+
+panic_block:                                      ; preds = %assign_optional
+  call void @std_core_builtin_panic(ptr @.zstr, ptr @.zstr.1, ptr @.zstr.2, i32 250)
+  unreachable
+
+noerr_block:                                      ; preds = %after_check
+  store ptr %3, ptr @std_core_mem_thread_temp_allocator, align 8
   br label %if.exit
 
-if.exit:                                          ; preds = %if.then, %entry
-  %2 = call i8 @"std_map$$typeid.p$std_io$ToStringFunction_HashMap_set"(ptr @std_io_tostring_functions, i64 ptrtoint (ptr @"ct$test_Foo" to i64), ptr @test_Foo_to_string)
+if.exit:                                          ; preds = %noerr_block, %if.then
+  %4 = load ptr, ptr @std_core_mem_thread_temp_allocator, align 8
+  call void @"std_map$$typeid.p$std_io$ToStringFunction_HashMap_init"(ptr @std_io_tostring_functions, i32 512, float 7.500000e-01, ptr %4)
+  br label %if.exit3
+
+if.exit3:                                         ; preds = %if.exit, %entry
+  %5 = call i8 @"std_map$$typeid.p$std_io$ToStringFunction_HashMap_set"(ptr @std_io_tostring_functions, i64 ptrtoint (ptr @"ct$test_Foo" to i64), ptr @test_Foo_to_string)
   ret void
 }
 
@@ -83,7 +111,7 @@ entry:
   %tempcoerce = alloca { ptr, i64 }, align 8
   %2 = call ptr @std_core_string_new_with_capacity(i64 128, ptr %1)
   store ptr %2, ptr %s, align 8
-  store %"char[]" { ptr @.str.17, i64 8 }, ptr %taddr, align 8
+  store %"char[]" { ptr @.str.38, i64 8 }, ptr %taddr, align 8
   %3 = getelementptr inbounds { ptr, i64 }, ptr %taddr, i32 0, i32 0
   %lo = load ptr, ptr %3, align 8
   %4 = getelementptr inbounds { ptr, i64 }, ptr %taddr, i32 0, i32 1
@@ -126,500 +154,672 @@ voiderr:                                          ; preds = %after_check, %entry
 define void @test_main() #0 {
 entry:
   %map = alloca %HashMap.0, align 8
-  %retparam = alloca i64, align 8
+  %error_var = alloca i64, align 8
+  %retparam = alloca ptr, align 8
+  %retparam1 = alloca i64, align 8
   %taddr = alloca %"char[]", align 8
   %vararg = alloca %"variant[]", align 8
   %varargslots = alloca [1 x %variant], align 16
   %literal = alloca %Foo, align 8
-  %retparam5 = alloca i64, align 8
-  %taddr6 = alloca %"char[]", align 8
-  %vararg9 = alloca %"variant[]", align 8
-  %varargslots10 = alloca [1 x %variant], align 16
-  %literal16 = alloca %Foo, align 8
-  %retparam19 = alloca i64, align 8
-  %taddr20 = alloca %"char[]", align 8
-  %vararg23 = alloca %"variant[]", align 8
-  %varargslots24 = alloca [1 x %variant], align 16
-  %retparam30 = alloca i64, align 8
-  %taddr31 = alloca %"char[]", align 8
-  %vararg34 = alloca %"variant[]", align 8
-  %varargslots35 = alloca [1 x %variant], align 16
-  %retparam36 = alloca %Foo, align 8
-  %retparam44 = alloca i64, align 8
-  %taddr45 = alloca %"char[]", align 8
-  %vararg48 = alloca %"variant[]", align 8
-  %varargslots49 = alloca [1 x %variant], align 16
-  %taddr50 = alloca i8, align 1
-  %retparam56 = alloca i64, align 8
-  %taddr57 = alloca %"char[]", align 8
-  %vararg60 = alloca %"variant[]", align 8
-  %varargslots61 = alloca [1 x %variant], align 16
-  %taddr62 = alloca i8, align 1
-  %literal68 = alloca %Foo, align 8
-  %retparam71 = alloca i64, align 8
-  %taddr72 = alloca %"char[]", align 8
-  %vararg75 = alloca %"variant[]", align 8
-  %varargslots76 = alloca [1 x %variant], align 16
+  %retparam8 = alloca i64, align 8
+  %taddr9 = alloca %"char[]", align 8
+  %vararg12 = alloca %"variant[]", align 8
+  %varargslots13 = alloca [1 x %variant], align 16
+  %literal19 = alloca %Foo, align 8
+  %retparam22 = alloca i64, align 8
+  %taddr23 = alloca %"char[]", align 8
+  %vararg26 = alloca %"variant[]", align 8
+  %varargslots27 = alloca [1 x %variant], align 16
+  %retparam33 = alloca i64, align 8
+  %taddr34 = alloca %"char[]", align 8
+  %vararg37 = alloca %"variant[]", align 8
+  %varargslots38 = alloca [1 x %variant], align 16
+  %retparam39 = alloca %Foo, align 8
+  %retparam47 = alloca i64, align 8
+  %taddr48 = alloca %"char[]", align 8
+  %vararg51 = alloca %"variant[]", align 8
+  %varargslots52 = alloca [1 x %variant], align 16
+  %taddr53 = alloca i8, align 1
+  %retparam59 = alloca i64, align 8
+  %taddr60 = alloca %"char[]", align 8
+  %vararg63 = alloca %"variant[]", align 8
+  %varargslots64 = alloca [1 x %variant], align 16
+  %taddr65 = alloca i8, align 1
+  %literal71 = alloca %Foo, align 8
+  %retparam74 = alloca i64, align 8
+  %taddr75 = alloca %"char[]", align 8
+  %vararg78 = alloca %"variant[]", align 8
+  %varargslots79 = alloca [1 x %variant], align 16
+  %error_var82 = alloca i64, align 8
+  %retparam83 = alloca ptr, align 8
   %result = alloca %"Foo[]", align 8
   %map2 = alloca %HashMap.3, align 8
-  %retparam82 = alloca i64, align 8
-  %taddr83 = alloca %"char[]", align 8
-  %vararg86 = alloca %"variant[]", align 8
-  %varargslots87 = alloca [1 x %variant], align 16
-  %taddr88 = alloca i8, align 1
-  %retparam94 = alloca i64, align 8
-  %taddr95 = alloca %"char[]", align 8
-  %vararg98 = alloca %"variant[]", align 8
-  %varargslots99 = alloca [1 x %variant], align 16
-  %taddr100 = alloca i8, align 1
-  %retparam106 = alloca i64, align 8
-  %taddr107 = alloca %"char[]", align 8
-  %vararg110 = alloca %"variant[]", align 8
-  %varargslots111 = alloca [1 x %variant], align 16
-  %result112 = alloca %"int[]", align 8
-  %retparam118 = alloca i64, align 8
-  %taddr119 = alloca %"char[]", align 8
-  %vararg122 = alloca %"variant[]", align 8
-  %varargslots123 = alloca [1 x %variant], align 16
-  %result124 = alloca %"double[]", align 8
+  %error_var97 = alloca i64, align 8
+  %retparam98 = alloca ptr, align 8
+  %retparam105 = alloca i64, align 8
+  %taddr106 = alloca %"char[]", align 8
+  %vararg109 = alloca %"variant[]", align 8
+  %varargslots110 = alloca [1 x %variant], align 16
+  %taddr111 = alloca i8, align 1
+  %retparam117 = alloca i64, align 8
+  %taddr118 = alloca %"char[]", align 8
+  %vararg121 = alloca %"variant[]", align 8
+  %varargslots122 = alloca [1 x %variant], align 16
+  %taddr123 = alloca i8, align 1
+  %retparam129 = alloca i64, align 8
+  %taddr130 = alloca %"char[]", align 8
+  %vararg133 = alloca %"variant[]", align 8
+  %varargslots134 = alloca [1 x %variant], align 16
+  %error_var137 = alloca i64, align 8
+  %retparam138 = alloca ptr, align 8
+  %result145 = alloca %"int[]", align 8
+  %retparam151 = alloca i64, align 8
+  %taddr152 = alloca %"char[]", align 8
+  %vararg155 = alloca %"variant[]", align 8
+  %varargslots156 = alloca [1 x %variant], align 16
+  %error_var159 = alloca i64, align 8
+  %retparam160 = alloca ptr, align 8
+  %result167 = alloca %"double[]", align 8
   %temp = alloca ptr, align 8
-  %error_var = alloca i64, align 8
-  %retparam130 = alloca ptr, align 8
+  %error_var175 = alloca i64, align 8
+  %retparam176 = alloca ptr, align 8
   %mark = alloca i64, align 8
   %map3 = alloca %HashMap.3, align 8
-  %error_var135 = alloca i64, align 8
-  %retparam136 = alloca ptr, align 8
-  %retparam143 = alloca i64, align 8
-  %taddr144 = alloca %"char[]", align 8
-  %vararg147 = alloca %"variant[]", align 8
-  %varargslots148 = alloca [1 x %variant], align 16
-  %result149 = alloca %"int[]", align 8
+  %error_var185 = alloca i64, align 8
+  %retparam186 = alloca ptr, align 8
+  %retparam193 = alloca i64, align 8
+  %taddr194 = alloca %"char[]", align 8
+  %vararg197 = alloca %"variant[]", align 8
+  %varargslots198 = alloca [1 x %variant], align 16
+  %error_var201 = alloca i64, align 8
+  %retparam202 = alloca ptr, align 8
+  %result209 = alloca %"int[]", align 8
   call void @llvm.memset.p0.i64(ptr align 8 %map, i8 0, i64 40, i1 false)
-  %0 = load ptr, ptr @std_core_mem_thread_allocator, align 8
-  call void @"std_map$$int.test_Foo_HashMap_init"(ptr %map, i32 16, float 7.500000e-01, ptr %0)
-  store %"char[]" { ptr @.str, i64 12 }, ptr %taddr, align 8
-  %1 = getelementptr inbounds { ptr, i64 }, ptr %taddr, i32 0, i32 0
-  %lo = load ptr, ptr %1, align 8
-  %2 = getelementptr inbounds { ptr, i64 }, ptr %taddr, i32 0, i32 1
-  %hi = load i64, ptr %2, align 8
-  %3 = getelementptr inbounds %HashMap.0, ptr %map, i32 0, i32 2
-  %4 = insertvalue %variant undef, ptr %3, 0
-  %5 = insertvalue %variant %4, i64 ptrtoint (ptr @"ct$uint" to i64), 1
-  %6 = getelementptr inbounds [1 x %variant], ptr %varargslots, i64 0, i64 0
-  store %variant %5, ptr %6, align 16
-  %7 = getelementptr inbounds %"variant[]", ptr %vararg, i32 0, i32 1
-  store i64 1, ptr %7, align 8
-  %8 = getelementptr inbounds %"variant[]", ptr %vararg, i32 0, i32 0
-  store ptr %varargslots, ptr %8, align 8
-  %9 = getelementptr inbounds { ptr, i64 }, ptr %vararg, i32 0, i32 0
-  %lo1 = load ptr, ptr %9, align 8
-  %10 = getelementptr inbounds { ptr, i64 }, ptr %vararg, i32 0, i32 1
-  %hi2 = load i64, ptr %10, align 8
-  %11 = call i64 @std_io_printfln(ptr %retparam, ptr %lo, i64 %hi, ptr %lo1, i64 %hi2)
-  %not_err = icmp eq i64 %11, 0
-  br i1 %not_err, label %after_check, label %voiderr
-
-after_check:                                      ; preds = %entry
-  br label %voiderr
-
-voiderr:                                          ; preds = %after_check, %entry
-  %12 = getelementptr inbounds %Foo, ptr %literal, i32 0, i32 0
-  store i32 1, ptr %12, align 8
-  %13 = getelementptr inbounds %Foo, ptr %literal, i32 0, i32 1
-  store ptr null, ptr %13, align 8
-  %14 = getelementptr inbounds { i64, ptr }, ptr %literal, i32 0, i32 0
-  %lo3 = load i64, ptr %14, align 8
-  %15 = getelementptr inbounds { i64, ptr }, ptr %literal, i32 0, i32 1
-  %hi4 = load ptr, ptr %15, align 8
-  %16 = call i8 @"std_map$$int.test_Foo_HashMap_set"(ptr %map, i32 1, i64 %lo3, ptr %hi4)
-  store %"char[]" { ptr @.str.1, i64 12 }, ptr %taddr6, align 8
-  %17 = getelementptr inbounds { ptr, i64 }, ptr %taddr6, i32 0, i32 0
-  %lo7 = load ptr, ptr %17, align 8
-  %18 = getelementptr inbounds { ptr, i64 }, ptr %taddr6, i32 0, i32 1
-  %hi8 = load i64, ptr %18, align 8
-  %19 = getelementptr inbounds %HashMap.0, ptr %map, i32 0, i32 2
-  %20 = insertvalue %variant undef, ptr %19, 0
-  %21 = insertvalue %variant %20, i64 ptrtoint (ptr @"ct$uint" to i64), 1
-  %22 = getelementptr inbounds [1 x %variant], ptr %varargslots10, i64 0, i64 0
-  store %variant %21, ptr %22, align 16
-  %23 = getelementptr inbounds %"variant[]", ptr %vararg9, i32 0, i32 1
-  store i64 1, ptr %23, align 8
-  %24 = getelementptr inbounds %"variant[]", ptr %vararg9, i32 0, i32 0
-  store ptr %varargslots10, ptr %24, align 8
-  %25 = getelementptr inbounds { ptr, i64 }, ptr %vararg9, i32 0, i32 0
-  %lo11 = load ptr, ptr %25, align 8
-  %26 = getelementptr inbounds { ptr, i64 }, ptr %vararg9, i32 0, i32 1
-  %hi12 = load i64, ptr %26, align 8
-  %27 = call i64 @std_io_printfln(ptr %retparam5, ptr %lo7, i64 %hi8, ptr %lo11, i64 %hi12)
-  %not_err13 = icmp eq i64 %27, 0
-  br i1 %not_err13, label %after_check14, label %voiderr15
-
-after_check14:                                    ; preds = %voiderr
-  br label %voiderr15
-
-voiderr15:                                        ; preds = %after_check14, %voiderr
-  %28 = getelementptr inbounds %Foo, ptr %literal16, i32 0, i32 0
-  store i32 2, ptr %28, align 8
-  %29 = getelementptr inbounds %Foo, ptr %literal16, i32 0, i32 1
-  store ptr null, ptr %29, align 8
-  %30 = getelementptr inbounds { i64, ptr }, ptr %literal16, i32 0, i32 0
-  %lo17 = load i64, ptr %30, align 8
-  %31 = getelementptr inbounds { i64, ptr }, ptr %literal16, i32 0, i32 1
-  %hi18 = load ptr, ptr %31, align 8
-  %32 = call i8 @"std_map$$int.test_Foo_HashMap_set"(ptr %map, i32 1, i64 %lo17, ptr %hi18)
-  store %"char[]" { ptr @.str.2, i64 12 }, ptr %taddr20, align 8
-  %33 = getelementptr inbounds { ptr, i64 }, ptr %taddr20, i32 0, i32 0
-  %lo21 = load ptr, ptr %33, align 8
-  %34 = getelementptr inbounds { ptr, i64 }, ptr %taddr20, i32 0, i32 1
-  %hi22 = load i64, ptr %34, align 8
-  %35 = getelementptr inbounds %HashMap.0, ptr %map, i32 0, i32 2
-  %36 = insertvalue %variant undef, ptr %35, 0
-  %37 = insertvalue %variant %36, i64 ptrtoint (ptr @"ct$uint" to i64), 1
-  %38 = getelementptr inbounds [1 x %variant], ptr %varargslots24, i64 0, i64 0
-  store %variant %37, ptr %38, align 16
-  %39 = getelementptr inbounds %"variant[]", ptr %vararg23, i32 0, i32 1
-  store i64 1, ptr %39, align 8
-  %40 = getelementptr inbounds %"variant[]", ptr %vararg23, i32 0, i32 0
-  store ptr %varargslots24, ptr %40, align 8
-  %41 = getelementptr inbounds { ptr, i64 }, ptr %vararg23, i32 0, i32 0
-  %lo25 = load ptr, ptr %41, align 8
-  %42 = getelementptr inbounds { ptr, i64 }, ptr %vararg23, i32 0, i32 1
-  %hi26 = load i64, ptr %42, align 8
-  %43 = call i64 @std_io_printfln(ptr %retparam19, ptr %lo21, i64 %hi22, ptr %lo25, i64 %hi26)
-  %not_err27 = icmp eq i64 %43, 0
-  br i1 %not_err27, label %after_check28, label %voiderr29
-
-after_check28:                                    ; preds = %voiderr15
-  br label %voiderr29
-
-voiderr29:                                        ; preds = %after_check28, %voiderr15
-  store %"char[]" { ptr @.str.3, i64 7 }, ptr %taddr31, align 8
-  %44 = getelementptr inbounds { ptr, i64 }, ptr %taddr31, i32 0, i32 0
-  %lo32 = load ptr, ptr %44, align 8
-  %45 = getelementptr inbounds { ptr, i64 }, ptr %taddr31, i32 0, i32 1
-  %hi33 = load i64, ptr %45, align 8
-  %46 = call i64 @"std_map$$int.test_Foo_HashMap_get"(ptr %retparam36, ptr %map, i32 1)
-  %not_err37 = icmp eq i64 %46, 0
-  br i1 %not_err37, label %after_check38, label %voiderr43
-
-after_check38:                                    ; preds = %voiderr29
-  %47 = getelementptr inbounds %Foo, ptr %retparam36, i32 0, i32 0
-  %48 = insertvalue %variant undef, ptr %47, 0
-  %49 = insertvalue %variant %48, i64 ptrtoint (ptr @"ct$int" to i64), 1
-  %50 = getelementptr inbounds [1 x %variant], ptr %varargslots35, i64 0, i64 0
-  store %variant %49, ptr %50, align 16
-  %51 = getelementptr inbounds %"variant[]", ptr %vararg34, i32 0, i32 1
-  store i64 1, ptr %51, align 8
-  %52 = getelementptr inbounds %"variant[]", ptr %vararg34, i32 0, i32 0
-  store ptr %varargslots35, ptr %52, align 8
-  %53 = getelementptr inbounds { ptr, i64 }, ptr %vararg34, i32 0, i32 0
-  %lo39 = load ptr, ptr %53, align 8
-  %54 = getelementptr inbounds { ptr, i64 }, ptr %vararg34, i32 0, i32 1
-  %hi40 = load i64, ptr %54, align 8
-  %55 = call i64 @std_io_printfln(ptr %retparam30, ptr %lo32, i64 %hi33, ptr %lo39, i64 %hi40)
-  %not_err41 = icmp eq i64 %55, 0
-  br i1 %not_err41, label %after_check42, label %voiderr43
-
-after_check42:                                    ; preds = %after_check38
-  br label %voiderr43
-
-voiderr43:                                        ; preds = %after_check42, %after_check38, %voiderr29
-  store %"char[]" { ptr @.str.4, i64 9 }, ptr %taddr45, align 8
-  %56 = getelementptr inbounds { ptr, i64 }, ptr %taddr45, i32 0, i32 0
-  %lo46 = load ptr, ptr %56, align 8
-  %57 = getelementptr inbounds { ptr, i64 }, ptr %taddr45, i32 0, i32 1
-  %hi47 = load i64, ptr %57, align 8
-  %58 = call i8 @"std_map$$int.test_Foo_HashMap_has_key"(ptr %map, i32 1)
-  store i8 %58, ptr %taddr50, align 1
-  %59 = insertvalue %variant undef, ptr %taddr50, 0
-  %60 = insertvalue %variant %59, i64 ptrtoint (ptr @"ct$bool" to i64), 1
-  %61 = getelementptr inbounds [1 x %variant], ptr %varargslots49, i64 0, i64 0
-  store %variant %60, ptr %61, align 16
-  %62 = getelementptr inbounds %"variant[]", ptr %vararg48, i32 0, i32 1
-  store i64 1, ptr %62, align 8
-  %63 = getelementptr inbounds %"variant[]", ptr %vararg48, i32 0, i32 0
-  store ptr %varargslots49, ptr %63, align 8
-  %64 = getelementptr inbounds { ptr, i64 }, ptr %vararg48, i32 0, i32 0
-  %lo51 = load ptr, ptr %64, align 8
-  %65 = getelementptr inbounds { ptr, i64 }, ptr %vararg48, i32 0, i32 1
-  %hi52 = load i64, ptr %65, align 8
-  %66 = call i64 @std_io_printfln(ptr %retparam44, ptr %lo46, i64 %hi47, ptr %lo51, i64 %hi52)
-  %not_err53 = icmp eq i64 %66, 0
-  br i1 %not_err53, label %after_check54, label %voiderr55
-
-after_check54:                                    ; preds = %voiderr43
-  br label %voiderr55
-
-voiderr55:                                        ; preds = %after_check54, %voiderr43
-  store %"char[]" { ptr @.str.5, i64 9 }, ptr %taddr57, align 8
-  %67 = getelementptr inbounds { ptr, i64 }, ptr %taddr57, i32 0, i32 0
-  %lo58 = load ptr, ptr %67, align 8
-  %68 = getelementptr inbounds { ptr, i64 }, ptr %taddr57, i32 0, i32 1
-  %hi59 = load i64, ptr %68, align 8
-  %69 = call i8 @"std_map$$int.test_Foo_HashMap_has_key"(ptr %map, i32 2)
-  store i8 %69, ptr %taddr62, align 1
-  %70 = insertvalue %variant undef, ptr %taddr62, 0
-  %71 = insertvalue %variant %70, i64 ptrtoint (ptr @"ct$bool" to i64), 1
-  %72 = getelementptr inbounds [1 x %variant], ptr %varargslots61, i64 0, i64 0
-  store %variant %71, ptr %72, align 16
-  %73 = getelementptr inbounds %"variant[]", ptr %vararg60, i32 0, i32 1
-  store i64 1, ptr %73, align 8
-  %74 = getelementptr inbounds %"variant[]", ptr %vararg60, i32 0, i32 0
-  store ptr %varargslots61, ptr %74, align 8
-  %75 = getelementptr inbounds { ptr, i64 }, ptr %vararg60, i32 0, i32 0
-  %lo63 = load ptr, ptr %75, align 8
-  %76 = getelementptr inbounds { ptr, i64 }, ptr %vararg60, i32 0, i32 1
-  %hi64 = load i64, ptr %76, align 8
-  %77 = call i64 @std_io_printfln(ptr %retparam56, ptr %lo58, i64 %hi59, ptr %lo63, i64 %hi64)
-  %not_err65 = icmp eq i64 %77, 0
-  br i1 %not_err65, label %after_check66, label %voiderr67
-
-after_check66:                                    ; preds = %voiderr55
-  br label %voiderr67
-
-voiderr67:                                        ; preds = %after_check66, %voiderr55
-  %78 = getelementptr inbounds %Foo, ptr %literal68, i32 0, i32 0
-  store i32 4, ptr %78, align 8
-  %79 = getelementptr inbounds %Foo, ptr %literal68, i32 0, i32 1
-  store ptr null, ptr %79, align 8
-  %80 = getelementptr inbounds { i64, ptr }, ptr %literal68, i32 0, i32 0
-  %lo69 = load i64, ptr %80, align 8
-  %81 = getelementptr inbounds { i64, ptr }, ptr %literal68, i32 0, i32 1
-  %hi70 = load ptr, ptr %81, align 8
-  %82 = call i8 @"std_map$$int.test_Foo_HashMap_set"(ptr %map, i32 7, i64 %lo69, ptr %hi70)
-  store %"char[]" { ptr @.str.6, i64 10 }, ptr %taddr72, align 8
-  %83 = getelementptr inbounds { ptr, i64 }, ptr %taddr72, i32 0, i32 0
-  %lo73 = load ptr, ptr %83, align 8
-  %84 = getelementptr inbounds { ptr, i64 }, ptr %taddr72, i32 0, i32 1
-  %hi74 = load i64, ptr %84, align 8
-  %85 = call { ptr, i64 } @"std_map$$int.test_Foo_HashMap_value_list"(ptr %map, ptr null)
-  store { ptr, i64 } %85, ptr %result, align 8
-  %86 = insertvalue %variant undef, ptr %result, 0
-  %87 = insertvalue %variant %86, i64 ptrtoint (ptr @"ct$sa$test_Foo" to i64), 1
-  %88 = getelementptr inbounds [1 x %variant], ptr %varargslots76, i64 0, i64 0
-  store %variant %87, ptr %88, align 16
-  %89 = getelementptr inbounds %"variant[]", ptr %vararg75, i32 0, i32 1
-  store i64 1, ptr %89, align 8
-  %90 = getelementptr inbounds %"variant[]", ptr %vararg75, i32 0, i32 0
-  store ptr %varargslots76, ptr %90, align 8
-  %91 = getelementptr inbounds { ptr, i64 }, ptr %vararg75, i32 0, i32 0
-  %lo77 = load ptr, ptr %91, align 8
-  %92 = getelementptr inbounds { ptr, i64 }, ptr %vararg75, i32 0, i32 1
-  %hi78 = load i64, ptr %92, align 8
-  %93 = call i64 @std_io_printfln(ptr %retparam71, ptr %lo73, i64 %hi74, ptr %lo77, i64 %hi78)
-  %not_err79 = icmp eq i64 %93, 0
-  br i1 %not_err79, label %after_check80, label %voiderr81
-
-after_check80:                                    ; preds = %voiderr67
-  br label %voiderr81
-
-voiderr81:                                        ; preds = %after_check80, %voiderr67
-  call void @llvm.memset.p0.i64(ptr align 8 %map2, i8 0, i64 40, i1 false)
-  %94 = load ptr, ptr @std_core_mem_thread_allocator, align 8
-  call void @"std_map$$int.double_HashMap_init"(ptr %map2, i32 16, float 7.500000e-01, ptr %94)
-  %95 = call i8 @"std_map$$int.double_HashMap_set"(ptr %map2, i32 4, double 1.300000e+00)
-  store %"char[]" { ptr @.str.7, i64 12 }, ptr %taddr83, align 8
-  %96 = getelementptr inbounds { ptr, i64 }, ptr %taddr83, i32 0, i32 0
-  %lo84 = load ptr, ptr %96, align 8
-  %97 = getelementptr inbounds { ptr, i64 }, ptr %taddr83, i32 0, i32 1
-  %hi85 = load i64, ptr %97, align 8
-  %98 = call i8 @"std_map$$int.double_HashMap_has_value"(ptr %map2, double 1.300000e+00)
-  store i8 %98, ptr %taddr88, align 1
-  %99 = insertvalue %variant undef, ptr %taddr88, 0
-  %100 = insertvalue %variant %99, i64 ptrtoint (ptr @"ct$bool" to i64), 1
-  %101 = getelementptr inbounds [1 x %variant], ptr %varargslots87, i64 0, i64 0
-  store %variant %100, ptr %101, align 16
-  %102 = getelementptr inbounds %"variant[]", ptr %vararg86, i32 0, i32 1
-  store i64 1, ptr %102, align 8
-  %103 = getelementptr inbounds %"variant[]", ptr %vararg86, i32 0, i32 0
-  store ptr %varargslots87, ptr %103, align 8
-  %104 = getelementptr inbounds { ptr, i64 }, ptr %vararg86, i32 0, i32 0
-  %lo89 = load ptr, ptr %104, align 8
-  %105 = getelementptr inbounds { ptr, i64 }, ptr %vararg86, i32 0, i32 1
-  %hi90 = load i64, ptr %105, align 8
-  %106 = call i64 @std_io_printfln(ptr %retparam82, ptr %lo84, i64 %hi85, ptr %lo89, i64 %hi90)
-  %not_err91 = icmp eq i64 %106, 0
-  br i1 %not_err91, label %after_check92, label %voiderr93
-
-after_check92:                                    ; preds = %voiderr81
-  br label %voiderr93
-
-voiderr93:                                        ; preds = %after_check92, %voiderr81
-  store %"char[]" { ptr @.str.8, i64 12 }, ptr %taddr95, align 8
-  %107 = getelementptr inbounds { ptr, i64 }, ptr %taddr95, i32 0, i32 0
-  %lo96 = load ptr, ptr %107, align 8
-  %108 = getelementptr inbounds { ptr, i64 }, ptr %taddr95, i32 0, i32 1
-  %hi97 = load i64, ptr %108, align 8
-  %109 = call i8 @"std_map$$int.double_HashMap_has_value"(ptr %map2, double 1.200000e+00)
-  store i8 %109, ptr %taddr100, align 1
-  %110 = insertvalue %variant undef, ptr %taddr100, 0
-  %111 = insertvalue %variant %110, i64 ptrtoint (ptr @"ct$bool" to i64), 1
-  %112 = getelementptr inbounds [1 x %variant], ptr %varargslots99, i64 0, i64 0
-  store %variant %111, ptr %112, align 16
-  %113 = getelementptr inbounds %"variant[]", ptr %vararg98, i32 0, i32 1
-  store i64 1, ptr %113, align 8
-  %114 = getelementptr inbounds %"variant[]", ptr %vararg98, i32 0, i32 0
-  store ptr %varargslots99, ptr %114, align 8
-  %115 = getelementptr inbounds { ptr, i64 }, ptr %vararg98, i32 0, i32 0
-  %lo101 = load ptr, ptr %115, align 8
-  %116 = getelementptr inbounds { ptr, i64 }, ptr %vararg98, i32 0, i32 1
-  %hi102 = load i64, ptr %116, align 8
-  %117 = call i64 @std_io_printfln(ptr %retparam94, ptr %lo96, i64 %hi97, ptr %lo101, i64 %hi102)
-  %not_err103 = icmp eq i64 %117, 0
-  br i1 %not_err103, label %after_check104, label %voiderr105
-
-after_check104:                                   ; preds = %voiderr93
-  br label %voiderr105
-
-voiderr105:                                       ; preds = %after_check104, %voiderr93
-  %118 = call i8 @"std_map$$int.double_HashMap_set"(ptr %map2, i32 100, double 3.400000e+00)
-  store %"char[]" { ptr @.str.9, i64 2 }, ptr %taddr107, align 8
-  %119 = getelementptr inbounds { ptr, i64 }, ptr %taddr107, i32 0, i32 0
-  %lo108 = load ptr, ptr %119, align 8
-  %120 = getelementptr inbounds { ptr, i64 }, ptr %taddr107, i32 0, i32 1
-  %hi109 = load i64, ptr %120, align 8
-  %121 = call { ptr, i64 } @"std_map$$int.double_HashMap_key_list"(ptr %map2, ptr null)
-  store { ptr, i64 } %121, ptr %result112, align 8
-  %122 = insertvalue %variant undef, ptr %result112, 0
-  %123 = insertvalue %variant %122, i64 ptrtoint (ptr @"ct$sa$int" to i64), 1
-  %124 = getelementptr inbounds [1 x %variant], ptr %varargslots111, i64 0, i64 0
-  store %variant %123, ptr %124, align 16
-  %125 = getelementptr inbounds %"variant[]", ptr %vararg110, i32 0, i32 1
-  store i64 1, ptr %125, align 8
-  %126 = getelementptr inbounds %"variant[]", ptr %vararg110, i32 0, i32 0
-  store ptr %varargslots111, ptr %126, align 8
-  %127 = getelementptr inbounds { ptr, i64 }, ptr %vararg110, i32 0, i32 0
-  %lo113 = load ptr, ptr %127, align 8
-  %128 = getelementptr inbounds { ptr, i64 }, ptr %vararg110, i32 0, i32 1
-  %hi114 = load i64, ptr %128, align 8
-  %129 = call i64 @std_io_printfln(ptr %retparam106, ptr %lo108, i64 %hi109, ptr %lo113, i64 %hi114)
-  %not_err115 = icmp eq i64 %129, 0
-  br i1 %not_err115, label %after_check116, label %voiderr117
-
-after_check116:                                   ; preds = %voiderr105
-  br label %voiderr117
-
-voiderr117:                                       ; preds = %after_check116, %voiderr105
-  store %"char[]" { ptr @.str.10, i64 2 }, ptr %taddr119, align 8
-  %130 = getelementptr inbounds { ptr, i64 }, ptr %taddr119, i32 0, i32 0
-  %lo120 = load ptr, ptr %130, align 8
-  %131 = getelementptr inbounds { ptr, i64 }, ptr %taddr119, i32 0, i32 1
-  %hi121 = load i64, ptr %131, align 8
-  %132 = call { ptr, i64 } @"std_map$$int.double_HashMap_value_list"(ptr %map2, ptr null)
-  store { ptr, i64 } %132, ptr %result124, align 8
-  %133 = insertvalue %variant undef, ptr %result124, 0
-  %134 = insertvalue %variant %133, i64 ptrtoint (ptr @"ct$sa$double" to i64), 1
-  %135 = getelementptr inbounds [1 x %variant], ptr %varargslots123, i64 0, i64 0
-  store %variant %134, ptr %135, align 16
-  %136 = getelementptr inbounds %"variant[]", ptr %vararg122, i32 0, i32 1
-  store i64 1, ptr %136, align 8
-  %137 = getelementptr inbounds %"variant[]", ptr %vararg122, i32 0, i32 0
-  store ptr %varargslots123, ptr %137, align 8
-  %138 = getelementptr inbounds { ptr, i64 }, ptr %vararg122, i32 0, i32 0
-  %lo125 = load ptr, ptr %138, align 8
-  %139 = getelementptr inbounds { ptr, i64 }, ptr %vararg122, i32 0, i32 1
-  %hi126 = load i64, ptr %139, align 8
-  %140 = call i64 @std_io_printfln(ptr %retparam118, ptr %lo120, i64 %hi121, ptr %lo125, i64 %hi126)
-  %not_err127 = icmp eq i64 %140, 0
-  br i1 %not_err127, label %after_check128, label %voiderr129
-
-after_check128:                                   ; preds = %voiderr117
-  br label %voiderr129
-
-voiderr129:                                       ; preds = %after_check128, %voiderr117
-  %141 = load ptr, ptr @std_core_mem_thread_temp_allocator, align 8
-  %not = icmp eq ptr %141, null
+  %0 = load ptr, ptr @std_core_mem_thread_temp_allocator, align 8
+  %not = icmp eq ptr %0, null
   br i1 %not, label %if.then, label %if.exit
 
-if.then:                                          ; preds = %voiderr129
-  %142 = call i64 @std_core_mem_allocator_new_temp(ptr %retparam130, i64 131072, ptr @std_core_mem_allocator__SYSTEM_ALLOCATOR)
-  %not_err131 = icmp eq i64 %142, 0
-  br i1 %not_err131, label %after_check132, label %assign_optional
+if.then:                                          ; preds = %entry
+  %1 = call i64 @std_core_mem_allocator_new_temp(ptr %retparam, i64 131072, ptr @std_core_mem_allocator__SYSTEM_ALLOCATOR)
+  %not_err = icmp eq i64 %1, 0
+  br i1 %not_err, label %after_check, label %assign_optional
 
 assign_optional:                                  ; preds = %if.then
-  store i64 %142, ptr %error_var, align 8
+  store i64 %1, ptr %error_var, align 8
   br label %panic_block
 
-after_check132:                                   ; preds = %if.then
-  %143 = load ptr, ptr %retparam130, align 8
+after_check:                                      ; preds = %if.then
+  %2 = load ptr, ptr %retparam, align 8
   br label %noerr_block
 
 panic_block:                                      ; preds = %assign_optional
-  call void @std_core_builtin_panic(ptr @.zstr, ptr @.zstr.11, ptr @.zstr.12, i32 250)
+  call void @std_core_builtin_panic(ptr @.zstr.3, ptr @.zstr.4, ptr @.zstr.5, i32 250)
   unreachable
 
-noerr_block:                                      ; preds = %after_check132
-  store ptr %143, ptr @std_core_mem_thread_temp_allocator, align 8
+noerr_block:                                      ; preds = %after_check
+  store ptr %2, ptr @std_core_mem_thread_temp_allocator, align 8
   br label %if.exit
 
-if.exit:                                          ; preds = %noerr_block, %voiderr129
-  %144 = load ptr, ptr @std_core_mem_thread_temp_allocator, align 8
-  store ptr %144, ptr %temp, align 8
-  %145 = load ptr, ptr %temp, align 8
-  %146 = getelementptr inbounds %TempAllocator, ptr %145, i32 0, i32 3
-  %147 = load i64, ptr %146, align 8
-  store i64 %147, ptr %mark, align 8
-  call void @llvm.memset.p0.i64(ptr align 8 %map3, i8 0, i64 40, i1 false)
-  %148 = load ptr, ptr @std_core_mem_thread_temp_allocator, align 8
-  %not133 = icmp eq ptr %148, null
-  br i1 %not133, label %if.then134, label %if.exit142
+if.exit:                                          ; preds = %noerr_block, %entry
+  %3 = load ptr, ptr @std_core_mem_thread_temp_allocator, align 8
+  call void @"std_map$$int.test_Foo_HashMap_init"(ptr %map, i32 16, float 7.500000e-01, ptr %3)
+  store %"char[]" { ptr @.str, i64 12 }, ptr %taddr, align 8
+  %4 = getelementptr inbounds { ptr, i64 }, ptr %taddr, i32 0, i32 0
+  %lo = load ptr, ptr %4, align 8
+  %5 = getelementptr inbounds { ptr, i64 }, ptr %taddr, i32 0, i32 1
+  %hi = load i64, ptr %5, align 8
+  %6 = getelementptr inbounds %HashMap.0, ptr %map, i32 0, i32 2
+  %7 = insertvalue %variant undef, ptr %6, 0
+  %8 = insertvalue %variant %7, i64 ptrtoint (ptr @"ct$uint" to i64), 1
+  %9 = getelementptr inbounds [1 x %variant], ptr %varargslots, i64 0, i64 0
+  store %variant %8, ptr %9, align 16
+  %10 = getelementptr inbounds %"variant[]", ptr %vararg, i32 0, i32 1
+  store i64 1, ptr %10, align 8
+  %11 = getelementptr inbounds %"variant[]", ptr %vararg, i32 0, i32 0
+  store ptr %varargslots, ptr %11, align 8
+  %12 = getelementptr inbounds { ptr, i64 }, ptr %vararg, i32 0, i32 0
+  %lo2 = load ptr, ptr %12, align 8
+  %13 = getelementptr inbounds { ptr, i64 }, ptr %vararg, i32 0, i32 1
+  %hi3 = load i64, ptr %13, align 8
+  %14 = call i64 @std_io_printfln(ptr %retparam1, ptr %lo, i64 %hi, ptr %lo2, i64 %hi3)
+  %not_err4 = icmp eq i64 %14, 0
+  br i1 %not_err4, label %after_check5, label %voiderr
 
-if.then134:                                       ; preds = %if.exit
-  %149 = call i64 @std_core_mem_allocator_new_temp(ptr %retparam136, i64 131072, ptr @std_core_mem_allocator__SYSTEM_ALLOCATOR)
-  %not_err137 = icmp eq i64 %149, 0
-  br i1 %not_err137, label %after_check139, label %assign_optional138
+after_check5:                                     ; preds = %if.exit
+  br label %voiderr
 
-assign_optional138:                               ; preds = %if.then134
-  store i64 %149, ptr %error_var135, align 8
-  br label %panic_block140
+voiderr:                                          ; preds = %after_check5, %if.exit
+  %15 = getelementptr inbounds %Foo, ptr %literal, i32 0, i32 0
+  store i32 1, ptr %15, align 8
+  %16 = getelementptr inbounds %Foo, ptr %literal, i32 0, i32 1
+  store ptr null, ptr %16, align 8
+  %17 = getelementptr inbounds { i64, ptr }, ptr %literal, i32 0, i32 0
+  %lo6 = load i64, ptr %17, align 8
+  %18 = getelementptr inbounds { i64, ptr }, ptr %literal, i32 0, i32 1
+  %hi7 = load ptr, ptr %18, align 8
+  %19 = call i8 @"std_map$$int.test_Foo_HashMap_set"(ptr %map, i32 1, i64 %lo6, ptr %hi7)
+  store %"char[]" { ptr @.str.6, i64 12 }, ptr %taddr9, align 8
+  %20 = getelementptr inbounds { ptr, i64 }, ptr %taddr9, i32 0, i32 0
+  %lo10 = load ptr, ptr %20, align 8
+  %21 = getelementptr inbounds { ptr, i64 }, ptr %taddr9, i32 0, i32 1
+  %hi11 = load i64, ptr %21, align 8
+  %22 = getelementptr inbounds %HashMap.0, ptr %map, i32 0, i32 2
+  %23 = insertvalue %variant undef, ptr %22, 0
+  %24 = insertvalue %variant %23, i64 ptrtoint (ptr @"ct$uint" to i64), 1
+  %25 = getelementptr inbounds [1 x %variant], ptr %varargslots13, i64 0, i64 0
+  store %variant %24, ptr %25, align 16
+  %26 = getelementptr inbounds %"variant[]", ptr %vararg12, i32 0, i32 1
+  store i64 1, ptr %26, align 8
+  %27 = getelementptr inbounds %"variant[]", ptr %vararg12, i32 0, i32 0
+  store ptr %varargslots13, ptr %27, align 8
+  %28 = getelementptr inbounds { ptr, i64 }, ptr %vararg12, i32 0, i32 0
+  %lo14 = load ptr, ptr %28, align 8
+  %29 = getelementptr inbounds { ptr, i64 }, ptr %vararg12, i32 0, i32 1
+  %hi15 = load i64, ptr %29, align 8
+  %30 = call i64 @std_io_printfln(ptr %retparam8, ptr %lo10, i64 %hi11, ptr %lo14, i64 %hi15)
+  %not_err16 = icmp eq i64 %30, 0
+  br i1 %not_err16, label %after_check17, label %voiderr18
 
-after_check139:                                   ; preds = %if.then134
-  %150 = load ptr, ptr %retparam136, align 8
-  br label %noerr_block141
+after_check17:                                    ; preds = %voiderr
+  br label %voiderr18
 
-panic_block140:                                   ; preds = %assign_optional138
-  call void @std_core_builtin_panic(ptr @.zstr.13, ptr @.zstr.14, ptr @.zstr.15, i32 250)
+voiderr18:                                        ; preds = %after_check17, %voiderr
+  %31 = getelementptr inbounds %Foo, ptr %literal19, i32 0, i32 0
+  store i32 2, ptr %31, align 8
+  %32 = getelementptr inbounds %Foo, ptr %literal19, i32 0, i32 1
+  store ptr null, ptr %32, align 8
+  %33 = getelementptr inbounds { i64, ptr }, ptr %literal19, i32 0, i32 0
+  %lo20 = load i64, ptr %33, align 8
+  %34 = getelementptr inbounds { i64, ptr }, ptr %literal19, i32 0, i32 1
+  %hi21 = load ptr, ptr %34, align 8
+  %35 = call i8 @"std_map$$int.test_Foo_HashMap_set"(ptr %map, i32 1, i64 %lo20, ptr %hi21)
+  store %"char[]" { ptr @.str.7, i64 12 }, ptr %taddr23, align 8
+  %36 = getelementptr inbounds { ptr, i64 }, ptr %taddr23, i32 0, i32 0
+  %lo24 = load ptr, ptr %36, align 8
+  %37 = getelementptr inbounds { ptr, i64 }, ptr %taddr23, i32 0, i32 1
+  %hi25 = load i64, ptr %37, align 8
+  %38 = getelementptr inbounds %HashMap.0, ptr %map, i32 0, i32 2
+  %39 = insertvalue %variant undef, ptr %38, 0
+  %40 = insertvalue %variant %39, i64 ptrtoint (ptr @"ct$uint" to i64), 1
+  %41 = getelementptr inbounds [1 x %variant], ptr %varargslots27, i64 0, i64 0
+  store %variant %40, ptr %41, align 16
+  %42 = getelementptr inbounds %"variant[]", ptr %vararg26, i32 0, i32 1
+  store i64 1, ptr %42, align 8
+  %43 = getelementptr inbounds %"variant[]", ptr %vararg26, i32 0, i32 0
+  store ptr %varargslots27, ptr %43, align 8
+  %44 = getelementptr inbounds { ptr, i64 }, ptr %vararg26, i32 0, i32 0
+  %lo28 = load ptr, ptr %44, align 8
+  %45 = getelementptr inbounds { ptr, i64 }, ptr %vararg26, i32 0, i32 1
+  %hi29 = load i64, ptr %45, align 8
+  %46 = call i64 @std_io_printfln(ptr %retparam22, ptr %lo24, i64 %hi25, ptr %lo28, i64 %hi29)
+  %not_err30 = icmp eq i64 %46, 0
+  br i1 %not_err30, label %after_check31, label %voiderr32
+
+after_check31:                                    ; preds = %voiderr18
+  br label %voiderr32
+
+voiderr32:                                        ; preds = %after_check31, %voiderr18
+  store %"char[]" { ptr @.str.8, i64 7 }, ptr %taddr34, align 8
+  %47 = getelementptr inbounds { ptr, i64 }, ptr %taddr34, i32 0, i32 0
+  %lo35 = load ptr, ptr %47, align 8
+  %48 = getelementptr inbounds { ptr, i64 }, ptr %taddr34, i32 0, i32 1
+  %hi36 = load i64, ptr %48, align 8
+  %49 = call i64 @"std_map$$int.test_Foo_HashMap_get"(ptr %retparam39, ptr %map, i32 1)
+  %not_err40 = icmp eq i64 %49, 0
+  br i1 %not_err40, label %after_check41, label %voiderr46
+
+after_check41:                                    ; preds = %voiderr32
+  %50 = getelementptr inbounds %Foo, ptr %retparam39, i32 0, i32 0
+  %51 = insertvalue %variant undef, ptr %50, 0
+  %52 = insertvalue %variant %51, i64 ptrtoint (ptr @"ct$int" to i64), 1
+  %53 = getelementptr inbounds [1 x %variant], ptr %varargslots38, i64 0, i64 0
+  store %variant %52, ptr %53, align 16
+  %54 = getelementptr inbounds %"variant[]", ptr %vararg37, i32 0, i32 1
+  store i64 1, ptr %54, align 8
+  %55 = getelementptr inbounds %"variant[]", ptr %vararg37, i32 0, i32 0
+  store ptr %varargslots38, ptr %55, align 8
+  %56 = getelementptr inbounds { ptr, i64 }, ptr %vararg37, i32 0, i32 0
+  %lo42 = load ptr, ptr %56, align 8
+  %57 = getelementptr inbounds { ptr, i64 }, ptr %vararg37, i32 0, i32 1
+  %hi43 = load i64, ptr %57, align 8
+  %58 = call i64 @std_io_printfln(ptr %retparam33, ptr %lo35, i64 %hi36, ptr %lo42, i64 %hi43)
+  %not_err44 = icmp eq i64 %58, 0
+  br i1 %not_err44, label %after_check45, label %voiderr46
+
+after_check45:                                    ; preds = %after_check41
+  br label %voiderr46
+
+voiderr46:                                        ; preds = %after_check45, %after_check41, %voiderr32
+  store %"char[]" { ptr @.str.9, i64 9 }, ptr %taddr48, align 8
+  %59 = getelementptr inbounds { ptr, i64 }, ptr %taddr48, i32 0, i32 0
+  %lo49 = load ptr, ptr %59, align 8
+  %60 = getelementptr inbounds { ptr, i64 }, ptr %taddr48, i32 0, i32 1
+  %hi50 = load i64, ptr %60, align 8
+  %61 = call i8 @"std_map$$int.test_Foo_HashMap_has_key"(ptr %map, i32 1)
+  store i8 %61, ptr %taddr53, align 1
+  %62 = insertvalue %variant undef, ptr %taddr53, 0
+  %63 = insertvalue %variant %62, i64 ptrtoint (ptr @"ct$bool" to i64), 1
+  %64 = getelementptr inbounds [1 x %variant], ptr %varargslots52, i64 0, i64 0
+  store %variant %63, ptr %64, align 16
+  %65 = getelementptr inbounds %"variant[]", ptr %vararg51, i32 0, i32 1
+  store i64 1, ptr %65, align 8
+  %66 = getelementptr inbounds %"variant[]", ptr %vararg51, i32 0, i32 0
+  store ptr %varargslots52, ptr %66, align 8
+  %67 = getelementptr inbounds { ptr, i64 }, ptr %vararg51, i32 0, i32 0
+  %lo54 = load ptr, ptr %67, align 8
+  %68 = getelementptr inbounds { ptr, i64 }, ptr %vararg51, i32 0, i32 1
+  %hi55 = load i64, ptr %68, align 8
+  %69 = call i64 @std_io_printfln(ptr %retparam47, ptr %lo49, i64 %hi50, ptr %lo54, i64 %hi55)
+  %not_err56 = icmp eq i64 %69, 0
+  br i1 %not_err56, label %after_check57, label %voiderr58
+
+after_check57:                                    ; preds = %voiderr46
+  br label %voiderr58
+
+voiderr58:                                        ; preds = %after_check57, %voiderr46
+  store %"char[]" { ptr @.str.10, i64 9 }, ptr %taddr60, align 8
+  %70 = getelementptr inbounds { ptr, i64 }, ptr %taddr60, i32 0, i32 0
+  %lo61 = load ptr, ptr %70, align 8
+  %71 = getelementptr inbounds { ptr, i64 }, ptr %taddr60, i32 0, i32 1
+  %hi62 = load i64, ptr %71, align 8
+  %72 = call i8 @"std_map$$int.test_Foo_HashMap_has_key"(ptr %map, i32 2)
+  store i8 %72, ptr %taddr65, align 1
+  %73 = insertvalue %variant undef, ptr %taddr65, 0
+  %74 = insertvalue %variant %73, i64 ptrtoint (ptr @"ct$bool" to i64), 1
+  %75 = getelementptr inbounds [1 x %variant], ptr %varargslots64, i64 0, i64 0
+  store %variant %74, ptr %75, align 16
+  %76 = getelementptr inbounds %"variant[]", ptr %vararg63, i32 0, i32 1
+  store i64 1, ptr %76, align 8
+  %77 = getelementptr inbounds %"variant[]", ptr %vararg63, i32 0, i32 0
+  store ptr %varargslots64, ptr %77, align 8
+  %78 = getelementptr inbounds { ptr, i64 }, ptr %vararg63, i32 0, i32 0
+  %lo66 = load ptr, ptr %78, align 8
+  %79 = getelementptr inbounds { ptr, i64 }, ptr %vararg63, i32 0, i32 1
+  %hi67 = load i64, ptr %79, align 8
+  %80 = call i64 @std_io_printfln(ptr %retparam59, ptr %lo61, i64 %hi62, ptr %lo66, i64 %hi67)
+  %not_err68 = icmp eq i64 %80, 0
+  br i1 %not_err68, label %after_check69, label %voiderr70
+
+after_check69:                                    ; preds = %voiderr58
+  br label %voiderr70
+
+voiderr70:                                        ; preds = %after_check69, %voiderr58
+  %81 = getelementptr inbounds %Foo, ptr %literal71, i32 0, i32 0
+  store i32 4, ptr %81, align 8
+  %82 = getelementptr inbounds %Foo, ptr %literal71, i32 0, i32 1
+  store ptr null, ptr %82, align 8
+  %83 = getelementptr inbounds { i64, ptr }, ptr %literal71, i32 0, i32 0
+  %lo72 = load i64, ptr %83, align 8
+  %84 = getelementptr inbounds { i64, ptr }, ptr %literal71, i32 0, i32 1
+  %hi73 = load ptr, ptr %84, align 8
+  %85 = call i8 @"std_map$$int.test_Foo_HashMap_set"(ptr %map, i32 7, i64 %lo72, ptr %hi73)
+  store %"char[]" { ptr @.str.11, i64 10 }, ptr %taddr75, align 8
+  %86 = getelementptr inbounds { ptr, i64 }, ptr %taddr75, i32 0, i32 0
+  %lo76 = load ptr, ptr %86, align 8
+  %87 = getelementptr inbounds { ptr, i64 }, ptr %taddr75, i32 0, i32 1
+  %hi77 = load i64, ptr %87, align 8
+  %88 = load ptr, ptr @std_core_mem_thread_temp_allocator, align 8
+  %not80 = icmp eq ptr %88, null
+  br i1 %not80, label %if.then81, label %if.exit89
+
+if.then81:                                        ; preds = %voiderr70
+  %89 = call i64 @std_core_mem_allocator_new_temp(ptr %retparam83, i64 131072, ptr @std_core_mem_allocator__SYSTEM_ALLOCATOR)
+  %not_err84 = icmp eq i64 %89, 0
+  br i1 %not_err84, label %after_check86, label %assign_optional85
+
+assign_optional85:                                ; preds = %if.then81
+  store i64 %89, ptr %error_var82, align 8
+  br label %panic_block87
+
+after_check86:                                    ; preds = %if.then81
+  %90 = load ptr, ptr %retparam83, align 8
+  br label %noerr_block88
+
+panic_block87:                                    ; preds = %assign_optional85
+  call void @std_core_builtin_panic(ptr @.zstr.12, ptr @.zstr.13, ptr @.zstr.14, i32 250)
   unreachable
 
-noerr_block141:                                   ; preds = %after_check139
-  store ptr %150, ptr @std_core_mem_thread_temp_allocator, align 8
-  br label %if.exit142
+noerr_block88:                                    ; preds = %after_check86
+  store ptr %90, ptr @std_core_mem_thread_temp_allocator, align 8
+  br label %if.exit89
 
-if.exit142:                                       ; preds = %noerr_block141, %if.exit
-  %151 = load ptr, ptr @std_core_mem_thread_temp_allocator, align 8
-  call void @"std_map$$int.double_HashMap_init"(ptr %map3, i32 16, float 7.500000e-01, ptr %151)
-  %152 = call i8 @"std_map$$int.double_HashMap_set"(ptr %map3, i32 5, double 3.200000e+00)
-  %153 = call i8 @"std_map$$int.double_HashMap_set"(ptr %map3, i32 7, double 5.200000e+00)
-  store %"char[]" { ptr @.str.16, i64 2 }, ptr %taddr144, align 8
-  %154 = getelementptr inbounds { ptr, i64 }, ptr %taddr144, i32 0, i32 0
-  %lo145 = load ptr, ptr %154, align 8
-  %155 = getelementptr inbounds { ptr, i64 }, ptr %taddr144, i32 0, i32 1
-  %hi146 = load i64, ptr %155, align 8
-  %156 = call { ptr, i64 } @"std_map$$int.double_HashMap_key_tlist"(ptr %map3)
-  store { ptr, i64 } %156, ptr %result149, align 8
-  %157 = insertvalue %variant undef, ptr %result149, 0
-  %158 = insertvalue %variant %157, i64 ptrtoint (ptr @"ct$sa$int" to i64), 1
-  %159 = getelementptr inbounds [1 x %variant], ptr %varargslots148, i64 0, i64 0
-  store %variant %158, ptr %159, align 16
-  %160 = getelementptr inbounds %"variant[]", ptr %vararg147, i32 0, i32 1
-  store i64 1, ptr %160, align 8
-  %161 = getelementptr inbounds %"variant[]", ptr %vararg147, i32 0, i32 0
-  store ptr %varargslots148, ptr %161, align 8
-  %162 = getelementptr inbounds { ptr, i64 }, ptr %vararg147, i32 0, i32 0
-  %lo150 = load ptr, ptr %162, align 8
-  %163 = getelementptr inbounds { ptr, i64 }, ptr %vararg147, i32 0, i32 1
-  %hi151 = load i64, ptr %163, align 8
-  %164 = call i64 @std_io_printfln(ptr %retparam143, ptr %lo145, i64 %hi146, ptr %lo150, i64 %hi151)
-  %not_err152 = icmp eq i64 %164, 0
-  br i1 %not_err152, label %after_check153, label %voiderr154
+if.exit89:                                        ; preds = %noerr_block88, %voiderr70
+  %91 = load ptr, ptr @std_core_mem_thread_temp_allocator, align 8
+  %92 = call { ptr, i64 } @"std_map$$int.test_Foo_HashMap_value_list"(ptr %map, ptr %91)
+  store { ptr, i64 } %92, ptr %result, align 8
+  %93 = insertvalue %variant undef, ptr %result, 0
+  %94 = insertvalue %variant %93, i64 ptrtoint (ptr @"ct$sa$test_Foo" to i64), 1
+  %95 = getelementptr inbounds [1 x %variant], ptr %varargslots79, i64 0, i64 0
+  store %variant %94, ptr %95, align 16
+  %96 = getelementptr inbounds %"variant[]", ptr %vararg78, i32 0, i32 1
+  store i64 1, ptr %96, align 8
+  %97 = getelementptr inbounds %"variant[]", ptr %vararg78, i32 0, i32 0
+  store ptr %varargslots79, ptr %97, align 8
+  %98 = getelementptr inbounds { ptr, i64 }, ptr %vararg78, i32 0, i32 0
+  %lo90 = load ptr, ptr %98, align 8
+  %99 = getelementptr inbounds { ptr, i64 }, ptr %vararg78, i32 0, i32 1
+  %hi91 = load i64, ptr %99, align 8
+  %100 = call i64 @std_io_printfln(ptr %retparam74, ptr %lo76, i64 %hi77, ptr %lo90, i64 %hi91)
+  %not_err92 = icmp eq i64 %100, 0
+  br i1 %not_err92, label %after_check93, label %voiderr94
 
-after_check153:                                   ; preds = %if.exit142
-  br label %voiderr154
+after_check93:                                    ; preds = %if.exit89
+  br label %voiderr94
 
-voiderr154:                                       ; preds = %after_check153, %if.exit142
-  %165 = load ptr, ptr %temp, align 8
-  %166 = getelementptr inbounds %TempAllocator, ptr %165, i32 0, i32 0
-  %167 = load i64, ptr %mark, align 8
-  call void @std_core_mem_allocator_Allocator_reset(ptr %166, i64 %167)
+voiderr94:                                        ; preds = %after_check93, %if.exit89
+  call void @llvm.memset.p0.i64(ptr align 8 %map2, i8 0, i64 40, i1 false)
+  %101 = load ptr, ptr @std_core_mem_thread_temp_allocator, align 8
+  %not95 = icmp eq ptr %101, null
+  br i1 %not95, label %if.then96, label %if.exit104
+
+if.then96:                                        ; preds = %voiderr94
+  %102 = call i64 @std_core_mem_allocator_new_temp(ptr %retparam98, i64 131072, ptr @std_core_mem_allocator__SYSTEM_ALLOCATOR)
+  %not_err99 = icmp eq i64 %102, 0
+  br i1 %not_err99, label %after_check101, label %assign_optional100
+
+assign_optional100:                               ; preds = %if.then96
+  store i64 %102, ptr %error_var97, align 8
+  br label %panic_block102
+
+after_check101:                                   ; preds = %if.then96
+  %103 = load ptr, ptr %retparam98, align 8
+  br label %noerr_block103
+
+panic_block102:                                   ; preds = %assign_optional100
+  call void @std_core_builtin_panic(ptr @.zstr.15, ptr @.zstr.16, ptr @.zstr.17, i32 250)
+  unreachable
+
+noerr_block103:                                   ; preds = %after_check101
+  store ptr %103, ptr @std_core_mem_thread_temp_allocator, align 8
+  br label %if.exit104
+
+if.exit104:                                       ; preds = %noerr_block103, %voiderr94
+  %104 = load ptr, ptr @std_core_mem_thread_temp_allocator, align 8
+  call void @"std_map$$int.double_HashMap_init"(ptr %map2, i32 16, float 7.500000e-01, ptr %104)
+  %105 = call i8 @"std_map$$int.double_HashMap_set"(ptr %map2, i32 4, double 1.300000e+00)
+  store %"char[]" { ptr @.str.18, i64 12 }, ptr %taddr106, align 8
+  %106 = getelementptr inbounds { ptr, i64 }, ptr %taddr106, i32 0, i32 0
+  %lo107 = load ptr, ptr %106, align 8
+  %107 = getelementptr inbounds { ptr, i64 }, ptr %taddr106, i32 0, i32 1
+  %hi108 = load i64, ptr %107, align 8
+  %108 = call i8 @"std_map$$int.double_HashMap_has_value"(ptr %map2, double 1.300000e+00)
+  store i8 %108, ptr %taddr111, align 1
+  %109 = insertvalue %variant undef, ptr %taddr111, 0
+  %110 = insertvalue %variant %109, i64 ptrtoint (ptr @"ct$bool" to i64), 1
+  %111 = getelementptr inbounds [1 x %variant], ptr %varargslots110, i64 0, i64 0
+  store %variant %110, ptr %111, align 16
+  %112 = getelementptr inbounds %"variant[]", ptr %vararg109, i32 0, i32 1
+  store i64 1, ptr %112, align 8
+  %113 = getelementptr inbounds %"variant[]", ptr %vararg109, i32 0, i32 0
+  store ptr %varargslots110, ptr %113, align 8
+  %114 = getelementptr inbounds { ptr, i64 }, ptr %vararg109, i32 0, i32 0
+  %lo112 = load ptr, ptr %114, align 8
+  %115 = getelementptr inbounds { ptr, i64 }, ptr %vararg109, i32 0, i32 1
+  %hi113 = load i64, ptr %115, align 8
+  %116 = call i64 @std_io_printfln(ptr %retparam105, ptr %lo107, i64 %hi108, ptr %lo112, i64 %hi113)
+  %not_err114 = icmp eq i64 %116, 0
+  br i1 %not_err114, label %after_check115, label %voiderr116
+
+after_check115:                                   ; preds = %if.exit104
+  br label %voiderr116
+
+voiderr116:                                       ; preds = %after_check115, %if.exit104
+  store %"char[]" { ptr @.str.19, i64 12 }, ptr %taddr118, align 8
+  %117 = getelementptr inbounds { ptr, i64 }, ptr %taddr118, i32 0, i32 0
+  %lo119 = load ptr, ptr %117, align 8
+  %118 = getelementptr inbounds { ptr, i64 }, ptr %taddr118, i32 0, i32 1
+  %hi120 = load i64, ptr %118, align 8
+  %119 = call i8 @"std_map$$int.double_HashMap_has_value"(ptr %map2, double 1.200000e+00)
+  store i8 %119, ptr %taddr123, align 1
+  %120 = insertvalue %variant undef, ptr %taddr123, 0
+  %121 = insertvalue %variant %120, i64 ptrtoint (ptr @"ct$bool" to i64), 1
+  %122 = getelementptr inbounds [1 x %variant], ptr %varargslots122, i64 0, i64 0
+  store %variant %121, ptr %122, align 16
+  %123 = getelementptr inbounds %"variant[]", ptr %vararg121, i32 0, i32 1
+  store i64 1, ptr %123, align 8
+  %124 = getelementptr inbounds %"variant[]", ptr %vararg121, i32 0, i32 0
+  store ptr %varargslots122, ptr %124, align 8
+  %125 = getelementptr inbounds { ptr, i64 }, ptr %vararg121, i32 0, i32 0
+  %lo124 = load ptr, ptr %125, align 8
+  %126 = getelementptr inbounds { ptr, i64 }, ptr %vararg121, i32 0, i32 1
+  %hi125 = load i64, ptr %126, align 8
+  %127 = call i64 @std_io_printfln(ptr %retparam117, ptr %lo119, i64 %hi120, ptr %lo124, i64 %hi125)
+  %not_err126 = icmp eq i64 %127, 0
+  br i1 %not_err126, label %after_check127, label %voiderr128
+
+after_check127:                                   ; preds = %voiderr116
+  br label %voiderr128
+
+voiderr128:                                       ; preds = %after_check127, %voiderr116
+  %128 = call i8 @"std_map$$int.double_HashMap_set"(ptr %map2, i32 100, double 3.400000e+00)
+  store %"char[]" { ptr @.str.20, i64 2 }, ptr %taddr130, align 8
+  %129 = getelementptr inbounds { ptr, i64 }, ptr %taddr130, i32 0, i32 0
+  %lo131 = load ptr, ptr %129, align 8
+  %130 = getelementptr inbounds { ptr, i64 }, ptr %taddr130, i32 0, i32 1
+  %hi132 = load i64, ptr %130, align 8
+  %131 = load ptr, ptr @std_core_mem_thread_temp_allocator, align 8
+  %not135 = icmp eq ptr %131, null
+  br i1 %not135, label %if.then136, label %if.exit144
+
+if.then136:                                       ; preds = %voiderr128
+  %132 = call i64 @std_core_mem_allocator_new_temp(ptr %retparam138, i64 131072, ptr @std_core_mem_allocator__SYSTEM_ALLOCATOR)
+  %not_err139 = icmp eq i64 %132, 0
+  br i1 %not_err139, label %after_check141, label %assign_optional140
+
+assign_optional140:                               ; preds = %if.then136
+  store i64 %132, ptr %error_var137, align 8
+  br label %panic_block142
+
+after_check141:                                   ; preds = %if.then136
+  %133 = load ptr, ptr %retparam138, align 8
+  br label %noerr_block143
+
+panic_block142:                                   ; preds = %assign_optional140
+  call void @std_core_builtin_panic(ptr @.zstr.21, ptr @.zstr.22, ptr @.zstr.23, i32 250)
+  unreachable
+
+noerr_block143:                                   ; preds = %after_check141
+  store ptr %133, ptr @std_core_mem_thread_temp_allocator, align 8
+  br label %if.exit144
+
+if.exit144:                                       ; preds = %noerr_block143, %voiderr128
+  %134 = load ptr, ptr @std_core_mem_thread_temp_allocator, align 8
+  %135 = call { ptr, i64 } @"std_map$$int.double_HashMap_key_list"(ptr %map2, ptr %134)
+  store { ptr, i64 } %135, ptr %result145, align 8
+  %136 = insertvalue %variant undef, ptr %result145, 0
+  %137 = insertvalue %variant %136, i64 ptrtoint (ptr @"ct$sa$int" to i64), 1
+  %138 = getelementptr inbounds [1 x %variant], ptr %varargslots134, i64 0, i64 0
+  store %variant %137, ptr %138, align 16
+  %139 = getelementptr inbounds %"variant[]", ptr %vararg133, i32 0, i32 1
+  store i64 1, ptr %139, align 8
+  %140 = getelementptr inbounds %"variant[]", ptr %vararg133, i32 0, i32 0
+  store ptr %varargslots134, ptr %140, align 8
+  %141 = getelementptr inbounds { ptr, i64 }, ptr %vararg133, i32 0, i32 0
+  %lo146 = load ptr, ptr %141, align 8
+  %142 = getelementptr inbounds { ptr, i64 }, ptr %vararg133, i32 0, i32 1
+  %hi147 = load i64, ptr %142, align 8
+  %143 = call i64 @std_io_printfln(ptr %retparam129, ptr %lo131, i64 %hi132, ptr %lo146, i64 %hi147)
+  %not_err148 = icmp eq i64 %143, 0
+  br i1 %not_err148, label %after_check149, label %voiderr150
+
+after_check149:                                   ; preds = %if.exit144
+  br label %voiderr150
+
+voiderr150:                                       ; preds = %after_check149, %if.exit144
+  store %"char[]" { ptr @.str.24, i64 2 }, ptr %taddr152, align 8
+  %144 = getelementptr inbounds { ptr, i64 }, ptr %taddr152, i32 0, i32 0
+  %lo153 = load ptr, ptr %144, align 8
+  %145 = getelementptr inbounds { ptr, i64 }, ptr %taddr152, i32 0, i32 1
+  %hi154 = load i64, ptr %145, align 8
+  %146 = load ptr, ptr @std_core_mem_thread_temp_allocator, align 8
+  %not157 = icmp eq ptr %146, null
+  br i1 %not157, label %if.then158, label %if.exit166
+
+if.then158:                                       ; preds = %voiderr150
+  %147 = call i64 @std_core_mem_allocator_new_temp(ptr %retparam160, i64 131072, ptr @std_core_mem_allocator__SYSTEM_ALLOCATOR)
+  %not_err161 = icmp eq i64 %147, 0
+  br i1 %not_err161, label %after_check163, label %assign_optional162
+
+assign_optional162:                               ; preds = %if.then158
+  store i64 %147, ptr %error_var159, align 8
+  br label %panic_block164
+
+after_check163:                                   ; preds = %if.then158
+  %148 = load ptr, ptr %retparam160, align 8
+  br label %noerr_block165
+
+panic_block164:                                   ; preds = %assign_optional162
+  call void @std_core_builtin_panic(ptr @.zstr.25, ptr @.zstr.26, ptr @.zstr.27, i32 250)
+  unreachable
+
+noerr_block165:                                   ; preds = %after_check163
+  store ptr %148, ptr @std_core_mem_thread_temp_allocator, align 8
+  br label %if.exit166
+
+if.exit166:                                       ; preds = %noerr_block165, %voiderr150
+  %149 = load ptr, ptr @std_core_mem_thread_temp_allocator, align 8
+  %150 = call { ptr, i64 } @"std_map$$int.double_HashMap_value_list"(ptr %map2, ptr %149)
+  store { ptr, i64 } %150, ptr %result167, align 8
+  %151 = insertvalue %variant undef, ptr %result167, 0
+  %152 = insertvalue %variant %151, i64 ptrtoint (ptr @"ct$sa$double" to i64), 1
+  %153 = getelementptr inbounds [1 x %variant], ptr %varargslots156, i64 0, i64 0
+  store %variant %152, ptr %153, align 16
+  %154 = getelementptr inbounds %"variant[]", ptr %vararg155, i32 0, i32 1
+  store i64 1, ptr %154, align 8
+  %155 = getelementptr inbounds %"variant[]", ptr %vararg155, i32 0, i32 0
+  store ptr %varargslots156, ptr %155, align 8
+  %156 = getelementptr inbounds { ptr, i64 }, ptr %vararg155, i32 0, i32 0
+  %lo168 = load ptr, ptr %156, align 8
+  %157 = getelementptr inbounds { ptr, i64 }, ptr %vararg155, i32 0, i32 1
+  %hi169 = load i64, ptr %157, align 8
+  %158 = call i64 @std_io_printfln(ptr %retparam151, ptr %lo153, i64 %hi154, ptr %lo168, i64 %hi169)
+  %not_err170 = icmp eq i64 %158, 0
+  br i1 %not_err170, label %after_check171, label %voiderr172
+
+after_check171:                                   ; preds = %if.exit166
+  br label %voiderr172
+
+voiderr172:                                       ; preds = %after_check171, %if.exit166
+  %159 = load ptr, ptr @std_core_mem_thread_temp_allocator, align 8
+  %not173 = icmp eq ptr %159, null
+  br i1 %not173, label %if.then174, label %if.exit182
+
+if.then174:                                       ; preds = %voiderr172
+  %160 = call i64 @std_core_mem_allocator_new_temp(ptr %retparam176, i64 131072, ptr @std_core_mem_allocator__SYSTEM_ALLOCATOR)
+  %not_err177 = icmp eq i64 %160, 0
+  br i1 %not_err177, label %after_check179, label %assign_optional178
+
+assign_optional178:                               ; preds = %if.then174
+  store i64 %160, ptr %error_var175, align 8
+  br label %panic_block180
+
+after_check179:                                   ; preds = %if.then174
+  %161 = load ptr, ptr %retparam176, align 8
+  br label %noerr_block181
+
+panic_block180:                                   ; preds = %assign_optional178
+  call void @std_core_builtin_panic(ptr @.zstr.28, ptr @.zstr.29, ptr @.zstr.30, i32 250)
+  unreachable
+
+noerr_block181:                                   ; preds = %after_check179
+  store ptr %161, ptr @std_core_mem_thread_temp_allocator, align 8
+  br label %if.exit182
+
+if.exit182:                                       ; preds = %noerr_block181, %voiderr172
+  %162 = load ptr, ptr @std_core_mem_thread_temp_allocator, align 8
+  store ptr %162, ptr %temp, align 8
+  %163 = load ptr, ptr %temp, align 8
+  %164 = getelementptr inbounds %TempAllocator, ptr %163, i32 0, i32 3
+  %165 = load i64, ptr %164, align 8
+  store i64 %165, ptr %mark, align 8
+  call void @llvm.memset.p0.i64(ptr align 8 %map3, i8 0, i64 40, i1 false)
+  %166 = load ptr, ptr @std_core_mem_thread_temp_allocator, align 8
+  %not183 = icmp eq ptr %166, null
+  br i1 %not183, label %if.then184, label %if.exit192
+
+if.then184:                                       ; preds = %if.exit182
+  %167 = call i64 @std_core_mem_allocator_new_temp(ptr %retparam186, i64 131072, ptr @std_core_mem_allocator__SYSTEM_ALLOCATOR)
+  %not_err187 = icmp eq i64 %167, 0
+  br i1 %not_err187, label %after_check189, label %assign_optional188
+
+assign_optional188:                               ; preds = %if.then184
+  store i64 %167, ptr %error_var185, align 8
+  br label %panic_block190
+
+after_check189:                                   ; preds = %if.then184
+  %168 = load ptr, ptr %retparam186, align 8
+  br label %noerr_block191
+
+panic_block190:                                   ; preds = %assign_optional188
+  call void @std_core_builtin_panic(ptr @.zstr.31, ptr @.zstr.32, ptr @.zstr.33, i32 250)
+  unreachable
+
+noerr_block191:                                   ; preds = %after_check189
+  store ptr %168, ptr @std_core_mem_thread_temp_allocator, align 8
+  br label %if.exit192
+
+if.exit192:                                       ; preds = %noerr_block191, %if.exit182
+  %169 = load ptr, ptr @std_core_mem_thread_temp_allocator, align 8
+  call void @"std_map$$int.double_HashMap_init"(ptr %map3, i32 16, float 7.500000e-01, ptr %169)
+  %170 = call i8 @"std_map$$int.double_HashMap_set"(ptr %map3, i32 5, double 3.200000e+00)
+  %171 = call i8 @"std_map$$int.double_HashMap_set"(ptr %map3, i32 7, double 5.200000e+00)
+  store %"char[]" { ptr @.str.34, i64 2 }, ptr %taddr194, align 8
+  %172 = getelementptr inbounds { ptr, i64 }, ptr %taddr194, i32 0, i32 0
+  %lo195 = load ptr, ptr %172, align 8
+  %173 = getelementptr inbounds { ptr, i64 }, ptr %taddr194, i32 0, i32 1
+  %hi196 = load i64, ptr %173, align 8
+  %174 = load ptr, ptr @std_core_mem_thread_temp_allocator, align 8
+  %not199 = icmp eq ptr %174, null
+  br i1 %not199, label %if.then200, label %if.exit208
+
+if.then200:                                       ; preds = %if.exit192
+  %175 = call i64 @std_core_mem_allocator_new_temp(ptr %retparam202, i64 131072, ptr @std_core_mem_allocator__SYSTEM_ALLOCATOR)
+  %not_err203 = icmp eq i64 %175, 0
+  br i1 %not_err203, label %after_check205, label %assign_optional204
+
+assign_optional204:                               ; preds = %if.then200
+  store i64 %175, ptr %error_var201, align 8
+  br label %panic_block206
+
+after_check205:                                   ; preds = %if.then200
+  %176 = load ptr, ptr %retparam202, align 8
+  br label %noerr_block207
+
+panic_block206:                                   ; preds = %assign_optional204
+  call void @std_core_builtin_panic(ptr @.zstr.35, ptr @.zstr.36, ptr @.zstr.37, i32 250)
+  unreachable
+
+noerr_block207:                                   ; preds = %after_check205
+  store ptr %176, ptr @std_core_mem_thread_temp_allocator, align 8
+  br label %if.exit208
+
+if.exit208:                                       ; preds = %noerr_block207, %if.exit192
+  %177 = load ptr, ptr @std_core_mem_thread_temp_allocator, align 8
+  %178 = call { ptr, i64 } @"std_map$$int.double_HashMap_key_list"(ptr %map3, ptr %177)
+  store { ptr, i64 } %178, ptr %result209, align 8
+  %179 = insertvalue %variant undef, ptr %result209, 0
+  %180 = insertvalue %variant %179, i64 ptrtoint (ptr @"ct$sa$int" to i64), 1
+  %181 = getelementptr inbounds [1 x %variant], ptr %varargslots198, i64 0, i64 0
+  store %variant %180, ptr %181, align 16
+  %182 = getelementptr inbounds %"variant[]", ptr %vararg197, i32 0, i32 1
+  store i64 1, ptr %182, align 8
+  %183 = getelementptr inbounds %"variant[]", ptr %vararg197, i32 0, i32 0
+  store ptr %varargslots198, ptr %183, align 8
+  %184 = getelementptr inbounds { ptr, i64 }, ptr %vararg197, i32 0, i32 0
+  %lo210 = load ptr, ptr %184, align 8
+  %185 = getelementptr inbounds { ptr, i64 }, ptr %vararg197, i32 0, i32 1
+  %hi211 = load i64, ptr %185, align 8
+  %186 = call i64 @std_io_printfln(ptr %retparam193, ptr %lo195, i64 %hi196, ptr %lo210, i64 %hi211)
+  %not_err212 = icmp eq i64 %186, 0
+  br i1 %not_err212, label %after_check213, label %voiderr214
+
+after_check213:                                   ; preds = %if.exit208
+  br label %voiderr214
+
+voiderr214:                                       ; preds = %after_check213, %if.exit208
+  %187 = load ptr, ptr %temp, align 8
+  %188 = getelementptr inbounds %TempAllocator, ptr %187, i32 0, i32 0
+  %189 = load i64, ptr %mark, align 8
+  call void @std_core_mem_allocator_Allocator_reset(ptr %188, i64 %189)
   ret void
 }

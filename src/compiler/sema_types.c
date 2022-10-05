@@ -273,7 +273,6 @@ bool sema_resolve_type_shallow(SemaContext *context, TypeInfo *type_info, bool a
 		allow_inferred_type = false;
 		in_shallow = true;
 	}
-RETRY:
 	switch (type_info->kind)
 	{
 		case TYPE_INFO_POISON:
@@ -301,29 +300,18 @@ RETRY:
 		{
 			Expr *expr = type_info->unresolved_type_expr;
 			TokenType type;
-			Path *path = NULL;
-			const char *ident = sema_ct_eval_expr(context, "$eval", expr, &type, &path, true);
-			if (ident == ct_eval_error) return type_info_poison(type_info);
-			switch (type)
+			Expr *inner = sema_ct_eval_expr(context, "$evaltype", expr, true);
+			if (!inner) return false;
+			if (inner->expr_kind != EXPR_TYPEINFO)
 			{
-				case TOKEN_TYPE_IDENT:
-					type_info->unresolved.name = ident;
-					type_info->span = expr->span;
-					type_info->unresolved.path = path;
-					type_info->kind = TYPE_INFO_IDENTIFIER;
-					goto RETRY;
-				case TYPE_TOKENS:
-					if (path)
-					{
-						SEMA_ERROR(path, "Built in types cannot have a path prefix.");
-						return false;
-					}
-					type_info->type = type_from_token(type);
-					goto APPEND_QUALIFIERS;
-				default:
-					SEMA_ERROR(expr, "Only type names may be resolved with $evaltype.");
-					return type_info_poison(type_info);
+				SEMA_ERROR(expr, "Only type names may be resolved with $evaltype.");
+				return type_info_poison(type_info);
 			}
+			TypeInfo *inner_type = inner->type_expr;
+			if (!sema_resolve_type_info(context, inner_type)) return false;
+			type_info->type = inner_type->type;
+			type_info->resolve_status = RESOLVE_DONE;
+			goto APPEND_QUALIFIERS;
 		}
 		case TYPE_INFO_TYPEOF:
 		{

@@ -41,6 +41,7 @@ const char *builtin_list[NUMBER_OF_BUILTINS];
 
 const char *kw_FILE;
 const char *kw_FUNC;
+const char *kw_FUNCPTR;
 const char *kw_LINEREAL;
 const char *kw_LINE;
 const char *kw_align;
@@ -131,6 +132,7 @@ void symtab_init(uint32_t capacity)
 	kw_LINEREAL = KW_DEF("LINEREAL");
 	kw_FILE = KW_DEF("FILE");
 	kw_FUNC = KW_DEF("FUNC");
+	kw_FUNCPTR = KW_DEF("FUNCPTR");
 
 	type = TOKEN_TYPE_IDENT;
 	kw_typekind = KW_DEF("TypeKind");

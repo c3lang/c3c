@@ -849,6 +849,7 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 		case EXPR_VASPLAT:
 		case EXPR_OPERATOR_CHARS:
 		case EXPR_CT_CHECKS:
+		case EXPR_SUBSCRIPT_ASSIGN:
 			UNREACHABLE
 		case EXPR_BUILTIN_ACCESS:
 
@@ -953,6 +954,7 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 		case EXPR_SLICE:
 		case EXPR_SUBSCRIPT:
 		case EXPR_RETVAL:
+		case EXPR_SUBSCRIPT_ASSIGN:
 		case EXPR_TYPEID_INFO:
 			if (type_size(expr->type) > type_size(type)) return expr;
 			return NULL;

@@ -285,7 +285,7 @@ void sema_analysis_run(void)
 		Path *path;
 		const char *ident;
 		TokenType type;
-		if (!splitpathref(panicfn, strlen(panicfn), &path, &ident, &type) || path == NULL)
+		if (sema_splitpathref(panicfn, strlen(panicfn), &path, &ident) != TOKEN_IDENT || path == NULL || !ident)
 		{
 			error_exit("'%s' is not a valid panic function.", panicfn);
 		}
