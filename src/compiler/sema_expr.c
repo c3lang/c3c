@@ -5534,8 +5534,21 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 				expr_rewrite_to_string(expr, "<CHECKS>");
 				return true;
 			case CALL_ENV_FUNCTION:
-				expr_rewrite_to_string(expr, context->call_env.current_function->name);
+			{
+				Decl *current_func = context->call_env.current_function;
+				TypeInfo *func_type = type_infoptrzero(current_func->func_decl.type_parent);
+				if (func_type)
+				{
+					scratch_buffer_clear();
+					scratch_buffer_append(func_type->type->name);
+					scratch_buffer_append_char('.');
+					scratch_buffer_append(current_func->name);
+					expr_rewrite_to_string(expr, scratch_buffer_copy());
+					return true;
+				}
+				expr_rewrite_to_string(expr, current_func->name);
 				return true;
+			}
 			case CALL_ENV_INITIALIZER:
 				expr_rewrite_to_string(expr, "<static initializer>");
 				return true;
