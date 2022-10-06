@@ -582,7 +582,7 @@ void print_syntax(BuildOptions *options)
 	{
 		for (int i = 0; i < NUMBER_OF_ATTRIBUTES; i++)
 		{
-			printf("%2d @%s\n", i + 1, attribute_list[i]);
+			printf("%2d %s\n", i + 1, attribute_list[i]);
 		}
 	}
 	if (options->print_builtins)
