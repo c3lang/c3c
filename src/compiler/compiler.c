@@ -591,6 +591,11 @@ void print_syntax(BuildOptions *options)
 		{
 			printf("%2d $$%s\n", i + 1, builtin_list[i]);
 		}
+		puts("---");
+		for (int i = 0; i < NUMBER_OF_BUILTIN_DEFINES; i++)
+		{
+			printf("%2d $$%s\n", i + 1, builtin_defines[i]);
+		}
 	}
 	if (options->print_precedence)
 	{

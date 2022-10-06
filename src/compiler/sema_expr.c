@@ -48,7 +48,7 @@ static inline bool sema_expr_analyse_typeid(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_call(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_expr_block(SemaContext *context, Type *infer_type, Expr *expr);
 static inline bool sema_expr_analyse_failable(SemaContext *context, Expr *expr);
-static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *expr);
+static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *expr, bool report_missing);
 static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_ct_stringify(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_ct_offsetof(SemaContext *context, Expr *expr);
@@ -5622,99 +5622,118 @@ static inline bool sema_expr_analyse_failable(SemaContext *context, Expr *expr)
 	return true;
 }
 
-static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *expr)
+static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *expr, bool report_missing)
 {
 	const char *string = expr->builtin_expr.ident;
-	if (string == kw_FILE)
+	BuiltinDefine def = BUILTIN_DEF_NONE;
+	for (unsigned i = 0; i < NUMBER_OF_BUILTIN_DEFINES; i++)
 	{
-		expr_rewrite_to_string(expr, context->compilation_unit->file->name);
-		return true;
-	}
-	if (string == kw_FUNCPTR)
-	{
-
-		switch (context->call_env.kind)
+		if (string == builtin_defines[i])
 		{
-			case CALL_ENV_GLOBAL_INIT:
-			case CALL_ENV_CHECKS:
-			case CALL_ENV_INITIALIZER:
-			case CALL_ENV_FINALIZER:
-			case CALL_ENV_ATTR:
-				expr_rewrite_to_const_zero(expr, type_voidptr);
-				return true;
-			case CALL_ENV_FUNCTION:
-				expr->expr_kind = EXPR_IDENTIFIER;
-				expr->resolve_status = RESOLVE_DONE;
-				expr->identifier_expr.decl = context->call_env.current_function;
-				expr->type = expr->identifier_expr.decl->type;
-				expr_insert_addr(expr);
-				return true;
+			def = (BuiltinDefine)i;
+			break;
 		}
-		UNREACHABLE
 	}
-	if (string == kw_FUNC)
+	switch (def)
 	{
-		switch (context->call_env.kind)
-		{
-			case CALL_ENV_GLOBAL_INIT:
-				expr_rewrite_to_string(expr, "<GLOBAL>");
-				return true;
-			case CALL_ENV_CHECKS:
-				expr_rewrite_to_string(expr, "<CHECKS>");
-				return true;
-			case CALL_ENV_FUNCTION:
+		case BUILTIN_DEF_TIME:
+			expr_rewrite_to_string(expr, time_get());
+			return true;
+		case BUILTIN_DEF_DATE:
+			expr_rewrite_to_string(expr, date_get());
+			return true;
+		case BUILTIN_DEF_FILE:
+			expr_rewrite_to_string(expr, context->compilation_unit->file->name);
+			return true;
+		case BUILTIN_DEF_MODULE:
+			expr_rewrite_to_string(expr, context->compilation_unit->module->name->module);
+			return true;
+		case BUILTIN_DEF_LINE:
+			if (context->original_inline_line)
 			{
-				Decl *current_func = context->call_env.current_function;
-				TypeInfo *func_type = type_infoptrzero(current_func->func_decl.type_parent);
-				if (func_type)
+				expr_rewrite_const_int(expr, type_isize, context->original_inline_line, true);
+			}
+			else
+			{
+				expr_rewrite_const_int(expr, type_isize, expr->span.row, true);
+			}
+			return true;
+		case BUILTIN_DEF_LINE_RAW:
+			expr_rewrite_const_int(expr, type_isize, expr->span.row, true);
+			return true;
+		case BUILTIN_DEF_FUNCTION:
+			switch (context->call_env.kind)
+			{
+				case CALL_ENV_GLOBAL_INIT:
+				case CALL_ENV_CHECKS:
+				case CALL_ENV_INITIALIZER:
+				case CALL_ENV_FINALIZER:
+				case CALL_ENV_ATTR:
+					if (report_missing)
+					{
+						SEMA_ERROR(expr, "$$FUNCEXPR is not defined outside of a function.");
+					}
+					return false;
+				case CALL_ENV_FUNCTION:
+					expr->expr_kind = EXPR_IDENTIFIER;
+					expr->resolve_status = RESOLVE_DONE;
+					expr->identifier_expr.decl = context->call_env.current_function;
+					expr->type = expr->identifier_expr.decl->type;
+					return true;
+			}
+			UNREACHABLE
+		case BUILTIN_DEF_FUNC:
+			switch (context->call_env.kind)
+			{
+				case CALL_ENV_GLOBAL_INIT:
+					expr_rewrite_to_string(expr, "<GLOBAL>");
+					return true;
+				case CALL_ENV_CHECKS:
+					expr_rewrite_to_string(expr, "<CHECKS>");
+					return true;
+				case CALL_ENV_FUNCTION:
 				{
-					scratch_buffer_clear();
-					scratch_buffer_append(func_type->type->name);
-					scratch_buffer_append_char('.');
-					scratch_buffer_append(current_func->name);
-					expr_rewrite_to_string(expr, scratch_buffer_copy());
+					Decl *current_func = context->call_env.current_function;
+					TypeInfo *func_type = type_infoptrzero(current_func->func_decl.type_parent);
+					if (func_type)
+					{
+						scratch_buffer_clear();
+						scratch_buffer_append(func_type->type->name);
+						scratch_buffer_append_char('.');
+						scratch_buffer_append(current_func->name);
+						expr_rewrite_to_string(expr, scratch_buffer_copy());
+						return true;
+					}
+					expr_rewrite_to_string(expr, current_func->name);
 					return true;
 				}
-				expr_rewrite_to_string(expr, current_func->name);
-				return true;
+				case CALL_ENV_INITIALIZER:
+					expr_rewrite_to_string(expr, "<static initializer>");
+					return true;
+				case CALL_ENV_FINALIZER:
+					expr_rewrite_to_string(expr, "<static finalizer>");
+					return true;
+				case CALL_ENV_ATTR:
+					expr_rewrite_to_string(expr, "<attribute>");
+					return true;
 			}
-			case CALL_ENV_INITIALIZER:
-				expr_rewrite_to_string(expr, "<static initializer>");
-				return true;
-			case CALL_ENV_FINALIZER:
-				expr_rewrite_to_string(expr, "<static finalizer>");
-				return true;
-			case CALL_ENV_ATTR:
-				expr_rewrite_to_string(expr, "<attribute>");
-				return true;
-		}
-		UNREACHABLE
-	}
-	if (string == kw_LINEREAL)
-	{
-		expr_rewrite_const_int(expr, type_isize, expr->span.row, true);
-		return true;
-	}
-	if (string == kw_LINE)
-	{
-		if (context->original_inline_line)
+			UNREACHABLE
+		case BUILTIN_DEF_NONE:
 		{
-			expr_rewrite_const_int(expr, type_isize, context->original_inline_line, true);
+			Expr *value = htable_get(&global_context.compiler_defines, string);
+			if (!value)
+			{
+				if (report_missing)
+				{
+					SEMA_ERROR(expr, "The compiler constant '%s' was not defined, did you mistype or forget to add it?", string);
+				}
+				return false;
+			}
+			expr_replace(expr, value);
+			return true;
 		}
-		else
-		{
-			expr_rewrite_const_int(expr, type_isize, expr->span.row, true);
-		}
-		return true;
 	}
-	Expr *value = htable_get(&global_context.compiler_defines, string);
-	if (!value)
-	{
-		SEMA_ERROR(expr, "The compiler constant '%s' was not defined, did you mistype or forget to add it?", string);
-		return false;
-	}
-	expr_replace(expr, value);
-	return true;
+	UNREACHABLE
 }
 
 
@@ -6163,6 +6182,9 @@ RETRY:
 			if (!decl) goto NOT_DEFINED;
 			type = decl->type;
 			break;
+		case EXPR_COMPILER_CONST:
+			if (!sema_expr_analyse_compiler_const(context, main_var, false)) goto NOT_DEFINED;
+			break;
 		case EXPR_TYPEINFO:
 		{
 			type = sema_expr_check_type_exists(context, main_var->type_expr);
@@ -6526,7 +6548,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 		case EXPR_FAILABLE:
 			return sema_expr_analyse_failable(context, expr);
 		case EXPR_COMPILER_CONST:
-			return sema_expr_analyse_compiler_const(context, expr);
+			return sema_expr_analyse_compiler_const(context, expr, true);
 		case EXPR_POINTER_OFFSET:
 			return sema_expr_analyse_pointer_offset(context, expr);
 		case EXPR_POISONED:

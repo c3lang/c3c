@@ -1806,6 +1806,7 @@ extern Type *type_chars;
 
 extern const char *attribute_list[NUMBER_OF_ATTRIBUTES];
 extern const char *builtin_list[NUMBER_OF_BUILTINS];
+extern const char *builtin_defines[NUMBER_OF_BUILTIN_DEFINES];
 
 extern const char *kw_std__core;
 extern const char *kw_std__core__types;
@@ -1842,11 +1843,6 @@ extern const char *kw_ptr;
 extern const char *kw_values;
 extern const char *kw_return;
 extern const char *kw_type;
-extern const char *kw_FILE;
-extern const char *kw_FUNC;
-extern const char *kw_FUNCPTR;
-extern const char *kw_LINE;
-extern const char *kw_LINEREAL;
 extern const char *kw_incr;
 extern const char *kw_check_assign;
 extern const char *kw_argc;

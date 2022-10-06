@@ -38,7 +38,7 @@ static SymTab symtab;
 
 const char *attribute_list[NUMBER_OF_ATTRIBUTES];
 const char *builtin_list[NUMBER_OF_BUILTINS];
-
+const char *builtin_defines[NUMBER_OF_BUILTIN_DEFINES];
 const char *kw_FILE;
 const char *kw_FUNC;
 const char *kw_FUNCPTR;
@@ -128,12 +128,14 @@ void symtab_init(uint32_t capacity)
 	// Init some constant idents
 #define KW_DEF(x) symtab_add(x, sizeof(x) - 1, fnv1a(x, sizeof(x) - 1), &type)
 	TokenType type = TOKEN_CONST_IDENT;
-	kw_LINE = KW_DEF("LINE");
-	kw_LINEREAL = KW_DEF("LINEREAL");
-	kw_FILE = KW_DEF("FILE");
-	kw_FUNC = KW_DEF("FUNC");
-	kw_FUNCPTR = KW_DEF("FUNCPTR");
-
+	builtin_defines[BUILTIN_DEF_DATE] = KW_DEF("DATE");
+	builtin_defines[BUILTIN_DEF_FILE] = KW_DEF("FILE");
+	builtin_defines[BUILTIN_DEF_FUNCTION] = KW_DEF("FUNCTION");
+	builtin_defines[BUILTIN_DEF_FUNC] = KW_DEF("FUNC");
+	builtin_defines[BUILTIN_DEF_LINE] = KW_DEF("LINE");
+	builtin_defines[BUILTIN_DEF_LINE_RAW] = KW_DEF("LINE_RAW");
+	builtin_defines[BUILTIN_DEF_MODULE] = KW_DEF("MODULE");
+	builtin_defines[BUILTIN_DEF_TIME] = KW_DEF("TIME");
 	type = TOKEN_TYPE_IDENT;
 	kw_typekind = KW_DEF("TypeKind");
 
@@ -229,16 +231,14 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_VOLATILE_LOAD] = KW_DEF("volatile_load");
 	builtin_list[BUILTIN_VOLATILE_STORE] = KW_DEF("volatile_store");
 
-// Disabled for now!
-
-//	builtin_list[BUILTIN_LLRINT] = KW_DEF("llrint");
-//	builtin_list[BUILTIN_LLROUND] = KW_DEF("llround");
-//	builtin_list[BUILTIN_LRINT] = KW_DEF("lrint");
-//	builtin_list[BUILTIN_LROUND] = KW_DEF("lround");
-
 	for (unsigned i = 0; i < NUMBER_OF_BUILTINS; i++)
 	{
 		assert(builtin_list[i] && "Missing builtin");
+	}
+
+	for (unsigned i = 0; i < NUMBER_OF_BUILTIN_DEFINES; i++)
+	{
+		assert(builtin_defines[i] && "Missing builtin define");
 	}
 
 	type = TOKEN_AT_IDENT;

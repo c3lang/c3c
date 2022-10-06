@@ -98,6 +98,8 @@ void taskqueue_add(TaskQueueRef queue, Task *task);
 void taskqueue_destroy(TaskQueueRef queue);
 void taskqueue_wait_for_completion(TaskQueueRef queue);
 
+const char *date_get(void);
+const char *time_get(void);
 
 const char *str_remove_suffix(const char *name, const char *suffix);
 bool str_has_suffix(const char *name, const char *suffix);
