@@ -10,13 +10,13 @@ fn void main()
     int help;
     printf("printf: %s\n", $nameof(printf));
     printf("printfq: %s\n", $qnameof(printf));
-    printf("Blobq: %s\n", $qnameof(Blob));
-    printf("Blob: %s\n", $nameof(Blob));
+    printf("Blobq: %s\n", Blob.qnameof);
+    printf("Blob: %s\n", Blob.nameof);
     printf("xq: %s\n", $qnameof(x));
     printf("x: %s\n", $nameof(x));
     printf("helpq: %s\n", $qnameof(help));
     printf("mainq: %s\n", $qnameof(main));
-    printf("Blob**[3]: %s\n", $nameof(Blob**[3]));
+    printf("Blob**[3]: %s\n", Blob**[3].nameof);
 }
 
 // #expect: qnametest.ll

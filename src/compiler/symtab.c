@@ -162,14 +162,17 @@ void symtab_init(uint32_t capacity)
 
 	type_property_list[TYPE_PROPERTY_LEN] = kw_len = KW_DEF("len");
 
-	type_property_list[TYPE_PROPERTY_NAN] = KW_DEF("nan");
 	type_property_list[TYPE_PROPERTY_ELEMENTS] = KW_DEF("elements");
-	type_property_list[TYPE_PROPERTY_NAMES] = KW_DEF("names");
+	type_property_list[TYPE_PROPERTY_EXTNAMEOF] = KW_DEF("extnameof");
+	type_property_list[TYPE_PROPERTY_INF] = KW_DEF("inf");
 	type_property_list[TYPE_PROPERTY_INNER] = KW_DEF("inner");
 	type_property_list[TYPE_PROPERTY_KIND] = KW_DEF("kind");
 	type_property_list[TYPE_PROPERTY_MEMBERSOF] = KW_DEF("membersof");
-	type_property_list[TYPE_PROPERTY_INF] = KW_DEF("inf");
+	type_property_list[TYPE_PROPERTY_NAMEOF] = KW_DEF("nameof");
+	type_property_list[TYPE_PROPERTY_NAMES] = KW_DEF("names");
+	type_property_list[TYPE_PROPERTY_NAN] = KW_DEF("nan");
 	type_property_list[TYPE_PROPERTY_PARAMS] = KW_DEF("params");
+	type_property_list[TYPE_PROPERTY_QNAMEOF] = KW_DEF("qnameof");
 	type_property_list[TYPE_PROPERTY_RETURNS] = KW_DEF("returns");
 	type_property_list[TYPE_PROPERTY_SIZEOF] = KW_DEF("sizeof");
 	type_property_list[TYPE_PROPERTY_VALUES] = KW_DEF("values");

@@ -165,6 +165,7 @@ static bool sema_expr_rewrite_typeid_call(Expr *expr, Expr *typeid, TypeIdInfoKi
 static inline void sema_expr_rewrite_typeid_kind(Expr *expr, Expr *parent);
 static inline void sema_expr_replace_with_enum_array(Expr *enum_array_expr, Decl *enum_decl);
 static inline void sema_expr_replace_with_enum_name_array(Expr *enum_array_expr, Decl *enum_decl);
+static inline void sema_expr_rewrite_to_type_nameof(Expr *expr, Type *type, TokenType name_type);
 
 static inline bool sema_create_const_kind(Expr *expr, Type *type);
 static inline bool sema_create_const_len(SemaContext *context, Expr *expr, Type *type);
@@ -3078,6 +3079,9 @@ static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *exp
 		case TYPE_PROPERTY_RETURNS:
 		case TYPE_PROPERTY_PARAMS:
 		case TYPE_PROPERTY_MEMBERSOF:
+		case TYPE_PROPERTY_EXTNAMEOF:
+		case TYPE_PROPERTY_NAMEOF:
+		case TYPE_PROPERTY_QNAMEOF:
 			// Not supported by dynamic typeid
 		case TYPE_PROPERTY_NONE:
 			return false;
@@ -3199,6 +3203,20 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			return true;
 		case TYPE_PROPERTY_SIZEOF:
 			expr_rewrite_const_int(expr, type_usize, type_size(type), true);
+			return true;
+		case TYPE_PROPERTY_NAMEOF:
+			sema_expr_rewrite_to_type_nameof(expr, type, TOKEN_CT_NAMEOF);
+			return true;
+		case TYPE_PROPERTY_QNAMEOF:
+			sema_expr_rewrite_to_type_nameof(expr, type, TOKEN_CT_QNAMEOF);
+			return true;
+		case TYPE_PROPERTY_EXTNAMEOF:
+			if (type_is_builtin(type->type_kind))
+			{
+				SEMA_ERROR(expr, "'extnameof' cannot be used on builtin types.");
+				return false;
+			}
+			sema_expr_rewrite_to_type_nameof(expr, type, TOKEN_CT_EXTNAMEOF);
 			return true;
 		case TYPE_PROPERTY_NONE:
 			return false;
@@ -6019,9 +6037,33 @@ static inline bool sema_expr_analyse_ct_sizeof(SemaContext *context, Expr *expr)
 	return true;
 }
 
+static inline void sema_expr_rewrite_to_type_nameof(Expr *expr, Type *type, TokenType name_type)
+{
+	if (name_type == TOKEN_CT_EXTNAMEOF)
+	{
+		expr_rewrite_to_string(expr, type->decl->extname);
+		return;
+	}
+
+	if (name_type == TOKEN_CT_NAMEOF || type_is_builtin(type->type_kind))
+	{
+		expr_rewrite_to_string(expr, type->name);
+		return;
+	}
+	scratch_buffer_clear();
+
+	Module *module = type_base_module(type);
+	if (module)
+	{
+		scratch_buffer_append(module->name->module);
+		scratch_buffer_append("::");
+	}
+	scratch_buffer_append(type->name);
+	expr_rewrite_to_string(expr, scratch_buffer_copy());
+}
+
 static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr)
 {
-
 	Expr *main_var = expr->ct_call_expr.main_var;
 	Type *type = NULL;
 	Decl *decl = NULL;
@@ -6062,32 +6104,13 @@ static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr)
 	}
 
 	assert(type);
-	if (name_type == TOKEN_CT_EXTNAMEOF)
+	if (name_type == TOKEN_CT_EXTNAMEOF && !type_is_user_defined(type))
 	{
-		if (!type_is_user_defined(type))
-		{
-			SEMA_ERROR(main_var, "Only user defined types have an external name.");
-			return false;
-		}
-		expr_rewrite_to_string(expr, type->decl->extname);
-		return true;
+		SEMA_ERROR(main_var, "Only user defined types have an external name.");
+		return false;
 	}
 
-	if (name_type == TOKEN_CT_NAMEOF || type_is_builtin(type->type_kind))
-	{
-		expr_rewrite_to_string(expr, type->name);
-		return true;
-	}
-	scratch_buffer_clear();
-
-	Module *module = type_base_module(type);
-	if (module)
-	{
-		scratch_buffer_append(module->name->module);
-		scratch_buffer_append("::");
-	}
-	scratch_buffer_append(type->name);
-	expr_rewrite_to_string(expr, scratch_buffer_copy());
+	sema_expr_rewrite_to_type_nameof(expr, type, name_type);
 	return true;
 }
 
