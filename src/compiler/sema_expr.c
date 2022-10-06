@@ -24,6 +24,10 @@ typedef struct
 	Signature *signature;
 } CalledDecl;
 
+// Properties
+static inline BuiltinFunction builtin_by_name(const char *name);
+static inline TypeProperty type_property_by_name(const char *name);
+
 static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr, SubscriptEval eval_type);
 static inline bool sema_expr_analyse_pointer_offset(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr);
@@ -154,10 +158,9 @@ static Expr *sema_expr_resolve_access_child(SemaContext *context, Expr *child, b
 
 static Type *sema_expr_check_type_exists(SemaContext *context, TypeInfo *type_info);
 static inline Expr *sema_ct_checks_exprlist_compiles(SemaContext *context, Expr *exprlist);
-static inline BuiltinFunction builtin_by_name(const char *name);
 static inline bool sema_cast_ct_ident_rvalue(SemaContext *context, Expr *expr);
 static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *expr, Expr *typeid, const char *kw);
-static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr, Type *type, const char *kw);
+static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr, Type *type, TypeProperty property);
 static bool sema_expr_rewrite_typeid_call(Expr *expr, Expr *typeid, TypeIdInfoKind kind, Type *result_type);
 static inline void sema_expr_rewrite_typeid_kind(Expr *expr, Expr *parent);
 static inline void sema_expr_replace_with_enum_array(Expr *enum_array_expr, Decl *enum_decl);
@@ -2690,15 +2693,9 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 	const char *name = identifier->identifier_expr.ident;
 	bool is_const = identifier->identifier_expr.is_const;
 
-	if (name == kw_sizeof)
-	{
-		expr_rewrite_const_int(expr, type_usize, type_size(canonical), true);
-		return true;
-	}
-
 	if (!is_const)
 	{
-		if (sema_expr_rewrite_to_type_property(context, expr, canonical, name)) return true;
+		if (sema_expr_rewrite_to_type_property(context, expr, canonical, type_property_by_name(name))) return true;
 	}
 
 	if (!type_may_have_sub_elements(canonical))
@@ -2721,21 +2718,6 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 				}
 				return true;
 			}
-			if (name == kw_elements)
-			{
-				expr_rewrite_const_int(expr, type_isize, vec_size(decl->enums.values), true);
-				return true;
-			}
-			if (name == kw_names)
-			{
-				sema_expr_replace_with_enum_name_array(expr, decl);
-				return sema_analyse_expr(context, expr);
-			}
-			if (name == kw_values)
-			{
-				sema_expr_replace_with_enum_array(expr, decl);
-				return sema_analyse_expr(context, expr);
-			}
 			break;
 		case DECL_FAULT:
 			unit_register_external_symbol(context->compilation_unit, decl);
@@ -2746,11 +2728,6 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 					SEMA_ERROR(expr, "'%s' has no error value '%s'.", decl->name, name);
 					return false;
 				}
-				return true;
-			}
-			if (name == kw_elements)
-			{
-				expr_rewrite_const_int(expr, type_isize, vec_size(decl->enums.values), true);
 				return true;
 			}
 			break;
@@ -3028,23 +3005,35 @@ static bool sema_expr_rewrite_typeid_call(Expr *expr, Expr *typeid, TypeIdInfoKi
 }
 static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *expr, Expr *typeid, const char *kw)
 {
+	TypeProperty property = type_property_by_name(kw);
 	if (typeid->expr_kind == EXPR_CONST)
 	{
-		if (kw_min == kw) return false;
-		if (kw_min == kw) return false;
-		if (kw_inf == kw) return false;
-		if (kw_nan == kw) return false;
-		return sema_expr_rewrite_to_type_property(context, expr, typeid->const_expr.typeid, kw);
+		return sema_expr_rewrite_to_type_property(context, expr, typeid->const_expr.typeid, property);
 	}
-	if (kw == kw_kind)
+	switch (property)
 	{
-		sema_expr_rewrite_typeid_kind(expr, typeid);
-		return true;
+		case TYPE_PROPERTY_SIZEOF:
+			return sema_expr_rewrite_typeid_call(expr, typeid, TYPEID_INFO_SIZEOF, type_usize);
+		case TYPE_PROPERTY_LEN:
+			return sema_expr_rewrite_typeid_call(expr, typeid, TYPEID_INFO_LEN, type_usize);
+		case TYPE_PROPERTY_INNER:
+			return sema_expr_rewrite_typeid_call(expr, typeid, TYPEID_INFO_INNER, type_typeid);
+		case TYPE_PROPERTY_KIND:
+			sema_expr_rewrite_typeid_kind(expr, typeid);
+			return true;
+		case TYPE_PROPERTY_NAMES:
+			return sema_expr_rewrite_typeid_call(expr, typeid, TYPEID_INFO_NAMES, type_get_subarray(type_chars));
+		case TYPE_PROPERTY_INF:
+		case TYPE_PROPERTY_MIN:
+		case TYPE_PROPERTY_MAX:
+		case TYPE_PROPERTY_NAN:
+		case TYPE_PROPERTY_ELEMENTS:
+		case TYPE_PROPERTY_VALUES:
+			// Not supported by dynamic typeid
+		case TYPE_PROPERTY_NONE:
+			return false;
 	}
-	if (kw == kw_inner) return sema_expr_rewrite_typeid_call(expr, typeid, TYPEID_INFO_INNER, type_typeid);
-	if (kw == kw_len) return sema_expr_rewrite_typeid_call(expr, typeid, TYPEID_INFO_LEN, type_usize);
-	if (kw == kw_sizeof) return sema_expr_rewrite_typeid_call(expr, typeid, TYPEID_INFO_SIZEOF, type_usize);
-	if (kw == kw_names) return sema_expr_rewrite_typeid_call(expr, typeid, TYPEID_INFO_NAMES, type_get_subarray(type_chars));
+	UNREACHABLE
 	return false;
 }
 
@@ -3104,40 +3093,59 @@ EVAL:
 	return true;
 }
 
-static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr, Type *type, const char *kw)
+static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr, Type *type, TypeProperty property)
 {
 	assert(type == type->canonical);
-	if (kw == kw_sizeof)
-	{
-		expr_rewrite_const_int(expr, type_usize, type_size(type), true);
-		return true;
-	}
-	if (kw == kw_kind) return sema_create_const_kind(expr, type);
-	if (kw == kw_inner) return sema_create_const_inner(context, expr, type);
+	if (property == TYPE_PROPERTY_NONE) return false;
 
 	Type *flat = type_flatten_distinct(type);
-	if (kw == kw_len) return sema_create_const_len(context, expr, type);
-	if (kw == kw_min) return sema_create_const_min(context, expr, type, flat);
-	if (kw == kw_max) return sema_create_const_max(context, expr, type, flat);
-	if (kw == kw_nan && type_is_float(flat))
+	switch (property)
 	{
-		expr->expr_kind = EXPR_CONST;
-		expr->const_expr.const_kind = CONST_FLOAT;
-		expr->const_expr.fxx = (Float) { nan(""), flat->type_kind };
-		expr->type = type;
-		expr->resolve_status = RESOLVE_DONE;
-		return true;
+		case TYPE_PROPERTY_INF:
+			if (!type_is_float(flat)) return false;
+			expr->expr_kind = EXPR_CONST;
+			expr->const_expr.const_kind = CONST_FLOAT;
+			expr->const_expr.fxx = (Float) { INFINITY, flat->type_kind };
+			expr->type = type;
+			expr->resolve_status = RESOLVE_DONE;
+			return true;
+		case TYPE_PROPERTY_INNER:
+			return sema_create_const_inner(context, expr, type);
+		case TYPE_PROPERTY_KIND:
+			return sema_create_const_kind(expr, type);
+		case TYPE_PROPERTY_LEN:
+			return sema_create_const_len(context, expr, flat);
+		case TYPE_PROPERTY_MIN:
+			return sema_create_const_min(context, expr, type, flat);
+		case TYPE_PROPERTY_MAX:
+			return sema_create_const_max(context, expr, type, flat);
+		case TYPE_PROPERTY_NAMES:
+			if (flat->type_kind != TYPE_ENUM) return false;
+			sema_expr_replace_with_enum_name_array(expr, flat->decl);
+			return sema_analyse_expr(context, expr);
+		case TYPE_PROPERTY_ELEMENTS:
+			if (flat->type_kind != TYPE_ENUM) return false;
+			expr_rewrite_const_int(expr, type_isize, vec_size(flat->decl->enums.values), true);
+			return true;
+		case TYPE_PROPERTY_VALUES:
+			if (flat->type_kind != TYPE_ENUM) return false;
+			sema_expr_replace_with_enum_array(expr, flat->decl);
+			return sema_analyse_expr(context, expr);
+		case TYPE_PROPERTY_NAN:
+			if (!type_is_float(flat)) return false;
+			expr->expr_kind = EXPR_CONST;
+			expr->const_expr.const_kind = CONST_FLOAT;
+			expr->const_expr.fxx = (Float) { nan(""), flat->type_kind };
+			expr->type = type;
+			expr->resolve_status = RESOLVE_DONE;
+			return true;
+		case TYPE_PROPERTY_SIZEOF:
+			expr_rewrite_const_int(expr, type_usize, type_size(type), true);
+			return true;
+		case TYPE_PROPERTY_NONE:
+			return false;
 	}
-	if (kw == kw_inf && type_is_float(flat))
-	{
-		expr->expr_kind = EXPR_CONST;
-		expr->const_expr.const_kind = CONST_FLOAT;
-		expr->const_expr.fxx = (Float) { INFINITY, flat->type_kind };
-		expr->type = type;
-		expr->resolve_status = RESOLVE_DONE;
-		return true;
-	}
-	return false;
+	UNREACHABLE
 }
 
 /**
@@ -6447,6 +6455,15 @@ static inline BuiltinFunction builtin_by_name(const char *name)
 		if (builtin_list[i] == name) return (BuiltinFunction)i;
 	}
 	return BUILTIN_NONE;
+}
+
+static inline TypeProperty type_property_by_name(const char *name)
+{
+	for (unsigned i = 0; i < NUMBER_OF_TYPE_PROPERTIES; i++)
+	{
+		if (type_property_list[i] == name) return (TypeProperty)i;
+	}
+	return TYPE_PROPERTY_NONE;
 }
 
 static inline bool sema_expr_analyse_retval(SemaContext *c, Expr *expr)

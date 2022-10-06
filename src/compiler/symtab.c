@@ -39,6 +39,7 @@ static SymTab symtab;
 const char *attribute_list[NUMBER_OF_ATTRIBUTES];
 const char *builtin_list[NUMBER_OF_BUILTINS];
 const char *builtin_defines[NUMBER_OF_BUILTIN_DEFINES];
+const char *type_property_list[NUMBER_OF_TYPE_PROPERTIES];
 const char *kw_FILE;
 const char *kw_FUNC;
 const char *kw_FUNCPTR;
@@ -57,37 +58,28 @@ const char *kw_at_return;
 const char *kw_check_assign;
 const char *kw_deprecated;
 const char *kw_distinct;
-const char *kw_elements;
 const char *kw_finalize;
 const char *kw_in;
 const char *kw_incr;
-const char *kw_inf;
 const char *kw_initialize;
 const char *kw_inline;
-const char *kw_inner;
 const char *kw_inout;
 const char *kw_kind;
 const char *kw_len;
 const char *kw_main;
 const char *kw_mainstub;
-const char *kw_max;
-const char *kw_min;
 const char *kw_nameof;
-const char *kw_names;
-const char *kw_nan;
 const char *kw_noinline;
 const char *kw_ordinal;
 const char *kw_out;
 const char *kw_ptr;
 const char *kw_pure;
 const char *kw_return;
-const char *kw_sizeof;
 const char *kw_std;
 const char *kw_std__core;
 const char *kw_std__core__types;
 const char *kw_type;
 const char *kw_typekind;
-const char *kw_values;
 
 void symtab_destroy()
 {
@@ -140,42 +132,44 @@ void symtab_init(uint32_t capacity)
 	kw_typekind = KW_DEF("TypeKind");
 
 	type = TOKEN_IDENT;
-
 	kw_align = KW_DEF("align");
 	kw_argc = KW_DEF("_$argc");
 	kw_argv = KW_DEF("_$argv");
 	kw_check_assign = KW_DEF("check_assign");
 	kw_deprecated = KW_DEF("deprecated");
 	kw_distinct = KW_DEF("distinct");
-	kw_elements = KW_DEF("elements");
 	kw_finalize = KW_DEF("finalize");
 	kw_in = KW_DEF("in");
 	kw_initialize = KW_DEF("initialize");
 	kw_incr = KW_DEF("incr");
-	kw_inf = KW_DEF("inf");
 	kw_inline = KW_DEF("inline");
-	kw_inner = KW_DEF("inner");
 	kw_inout = KW_DEF("inout");
-	kw_kind = KW_DEF("kind");
-	kw_len = KW_DEF("len");
 	kw_mainstub = KW_DEF("_$mainstub");
 	kw_main = KW_DEF("main");
-	kw_max = KW_DEF("max");
-	kw_min = KW_DEF("min");
 	kw_nameof = KW_DEF("nameof");
-	kw_names = KW_DEF("names");
-	kw_nan = KW_DEF("nan");
 	kw_noinline = KW_DEF("noinline");
 	kw_ordinal = KW_DEF("ordinal");
 	kw_out = KW_DEF("out");
 	kw_ptr = KW_DEF("ptr");
 	kw_pure = KW_DEF("pure");
-	kw_sizeof = KW_DEF("sizeof");
 	kw_std = KW_DEF("std");
 	kw_std__core = KW_DEF("std::core");
 	kw_std__core__types = KW_DEF("std::core::types");
 	kw_type = KW_DEF("type");
-	kw_values = KW_DEF("values");
+
+	type_property_list[TYPE_PROPERTY_MAX] = builtin_list[BUILTIN_MAX] = KW_DEF("max");
+	type_property_list[TYPE_PROPERTY_MIN] = builtin_list[BUILTIN_MIN] = KW_DEF("min");
+
+	type_property_list[TYPE_PROPERTY_LEN] = kw_len = KW_DEF("len");
+
+	type_property_list[TYPE_PROPERTY_NAN] = KW_DEF("nan");
+	type_property_list[TYPE_PROPERTY_ELEMENTS] = KW_DEF("elements");
+	type_property_list[TYPE_PROPERTY_NAMES] = KW_DEF("names");
+	type_property_list[TYPE_PROPERTY_INNER] = KW_DEF("inner");
+	type_property_list[TYPE_PROPERTY_KIND] = KW_DEF("kind");
+	type_property_list[TYPE_PROPERTY_INF] = KW_DEF("inf");
+	type_property_list[TYPE_PROPERTY_SIZEOF] = KW_DEF("sizeof");
+	type_property_list[TYPE_PROPERTY_VALUES] = KW_DEF("values");
 
 	builtin_list[BUILTIN_ABS] = KW_DEF("abs");
 	builtin_list[BUILTIN_BITREVERSE] = KW_DEF("bitreverse");
@@ -194,10 +188,8 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_LOG] = KW_DEF("log");
 	builtin_list[BUILTIN_LOG2] = KW_DEF("log2");
 	builtin_list[BUILTIN_LOG10] = KW_DEF("log10");
-	builtin_list[BUILTIN_MAX] = KW_DEF("max");
 	builtin_list[BUILTIN_MEMCOPY] = KW_DEF("memcpy");
 	builtin_list[BUILTIN_MEMSET] = KW_DEF("memset");
-	builtin_list[BUILTIN_MIN] = KW_DEF("min");
 	builtin_list[BUILTIN_NEARBYINT] = KW_DEF("nearbyint");
 	builtin_list[BUILTIN_POPCOUNT] = KW_DEF("popcount");
 	builtin_list[BUILTIN_POW] = KW_DEF("pow");
@@ -234,6 +226,11 @@ void symtab_init(uint32_t capacity)
 	for (unsigned i = 0; i < NUMBER_OF_BUILTINS; i++)
 	{
 		assert(builtin_list[i] && "Missing builtin");
+	}
+
+	for (unsigned i = 0; i < NUMBER_OF_TYPE_PROPERTIES; i++)
+	{
+		assert(type_property_list[i] && "Missing type property");
 	}
 
 	for (unsigned i = 0; i < NUMBER_OF_BUILTIN_DEFINES; i++)

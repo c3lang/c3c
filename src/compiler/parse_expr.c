@@ -880,7 +880,7 @@ static Expr *parse_ct_sizeof(ParseContext *c, Expr *left)
 	typeof_expr->type_expr = type_info;
 	access->access_expr.parent = typeof_expr;
 	Expr *ident = expr_new(EXPR_IDENTIFIER, c->span);
-	ident->identifier_expr.ident = kw_sizeof;
+	ident->identifier_expr.ident = type_property_list[TYPE_PROPERTY_SIZEOF];
 	access->access_expr.child = ident;
 	RANGE_EXTEND_PREV(access);
 	return access;

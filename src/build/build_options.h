@@ -273,6 +273,7 @@ typedef struct BuildOptions_
 	bool print_attributes;
 	bool print_builtins;
 	bool print_operators;
+	bool print_type_properties;
 	bool print_precedence;
 	bool print_build_settings;
 } BuildOptions;
