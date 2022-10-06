@@ -2838,6 +2838,9 @@ static inline bool sema_create_const_inner(SemaContext *context, Expr *expr, Typ
 		case TYPE_ENUM:
 			inner = type->decl->enums.type_info->type->canonical;
 			break;
+		case TYPE_BITSTRUCT:
+			inner = type->decl->bitstruct.base_type->type->canonical;
+			break;
 		case TYPE_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_SUBARRAY:
