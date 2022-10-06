@@ -171,6 +171,8 @@ static inline bool sema_create_const_len(SemaContext *context, Expr *expr, Type 
 static inline bool sema_create_const_inner(SemaContext *context, Expr *expr, Type *type);
 static inline bool sema_create_const_min(SemaContext *context, Expr *expr, Type *type, Type *flat);
 static inline bool sema_create_const_max(SemaContext *context, Expr *expr, Type *type, Type *flat);
+static inline bool sema_create_const_params(SemaContext *context, Expr *expr, Type *type);
+static inline bool sema_create_const_membersof(SemaContext *context, Expr *expr, Type *type);
 
 void expr_insert_widening_type(Expr *expr, Type *infer_type);
 static Expr *expr_access_inline_member(Expr *parent, Decl *parent_decl);
@@ -2853,10 +2855,7 @@ static inline bool sema_create_const_inner(SemaContext *context, Expr *expr, Typ
 		default:
 			return false;
 	}
-	expr->expr_kind = EXPR_CONST;
-	expr->const_expr.const_kind = CONST_TYPEID;
-	expr->const_expr.typeid = inner->canonical;
-	expr->type = type_typeid;
+	expr_rewrite_const_typeid(expr, inner);
 	return true;
 }
 
@@ -2920,6 +2919,50 @@ static inline bool sema_create_const_min(SemaContext *context, Expr *expr, Type 
 		return true;
 	}
 	return false;
+}
+
+static inline bool sema_create_const_params(SemaContext *context, Expr *expr, Type *type)
+{
+	if (type->type_kind != TYPE_POINTER || type->pointer->type_kind != TYPE_FUNC) return false;
+	type = type->pointer;
+	Signature *sig = type->function.signature;
+	unsigned params = vec_size(sig->params);
+	Expr **param_exprs = params ? VECNEW(Expr*, params) : NULL;
+	for (unsigned i = 0; i < params; i++)
+	{
+		Decl *decl = sig->params[i];
+		Expr *expr_element = expr_new_const_typeid(expr->span, decl->type->canonical);
+		vec_add(param_exprs, expr_element);
+	}
+	expr_rewrite_const_untyped_list(expr, param_exprs);
+	return true;
+}
+
+static inline bool sema_create_const_membersof(SemaContext *context, Expr *expr, Type *type)
+{
+	Decl **members = NULL;
+	if (type_is_union_or_strukt(type))
+	{
+		members = type->decl->strukt.members;
+	}
+	else if (type->type_kind == TYPE_BITSTRUCT)
+	{
+		members = type->decl->bitstruct.members;
+	}
+	else
+	{
+		return false;
+	}
+	unsigned count = vec_size(members);
+	Expr **member_exprs = count ? VECNEW(Expr*, count) : NULL;
+	for (unsigned i = 0; i < count; i++)
+	{
+		Decl *decl = members[i];
+		Expr *expr_element = expr_new_const_typeid(expr->span, decl->type->canonical);
+		vec_add(member_exprs, expr_element);
+	}
+	expr_rewrite_const_untyped_list(expr, member_exprs);
+	return true;
 }
 
 static inline bool sema_create_const_max(SemaContext *context, Expr *expr, Type *type, Type *flat)
@@ -3032,6 +3075,9 @@ static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *exp
 		case TYPE_PROPERTY_NAN:
 		case TYPE_PROPERTY_ELEMENTS:
 		case TYPE_PROPERTY_VALUES:
+		case TYPE_PROPERTY_RETURNS:
+		case TYPE_PROPERTY_PARAMS:
+		case TYPE_PROPERTY_MEMBERSOF:
 			// Not supported by dynamic typeid
 		case TYPE_PROPERTY_NONE:
 			return false;
@@ -3141,6 +3187,15 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			expr->const_expr.fxx = (Float) { nan(""), flat->type_kind };
 			expr->type = type;
 			expr->resolve_status = RESOLVE_DONE;
+			return true;
+		case TYPE_PROPERTY_MEMBERSOF:
+			return sema_create_const_membersof(context, expr, flat);
+		case TYPE_PROPERTY_PARAMS:
+			return sema_create_const_params(context, expr, flat);
+		case TYPE_PROPERTY_RETURNS:
+			if (flat->type_kind != TYPE_POINTER || flat->pointer->type_kind != TYPE_FUNC) return false;
+			flat = flat->pointer;
+			expr_rewrite_const_typeid(expr, type_infoptr(flat->function.signature->rtype)->type);
 			return true;
 		case TYPE_PROPERTY_SIZEOF:
 			expr_rewrite_const_int(expr, type_usize, type_size(type), true);

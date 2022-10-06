@@ -2072,6 +2072,7 @@ Decl *decl_find_enum_constant(Decl *decl, const char *name);
 Expr *expr_new(ExprKind kind, SourceSpan start);
 Expr *expr_new_const_int(SourceSpan span, Type *type, uint64_t v, bool narrowable);
 Expr *expr_new_const_bool(SourceSpan span, Type *type, bool value);
+Expr *expr_new_const_typeid(SourceSpan span, Type *type);
 bool expr_is_simple(Expr *expr);
 bool expr_is_pure(Expr *expr);
 bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind);
@@ -2105,7 +2106,9 @@ INLINE void expr_rewrite_const_null(Expr *expr, Type *type);
 INLINE void expr_rewrite_const_bool(Expr *expr, Type *type, bool b);
 INLINE void expr_rewrite_const_float(Expr *expr, Type *type, Real d);
 INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v, bool narrowable);
+INLINE void expr_rewrite_const_typeid(Expr *expr, Type *type);
 INLINE void expr_rewrite_const_initializer(Expr *expr, Type *type, ConstInitializer *initializer);
+INLINE void expr_rewrite_const_untyped_list(Expr *expr, Expr **elements);
 
 void expr_rewrite_to_builtin_access(Expr *expr, Expr *parent, BuiltinAccessKind kind, Type *type);
 void expr_rewrite_to_string(Expr *expr_to_rewrite, const char *string);
@@ -2896,6 +2899,14 @@ INLINE void expr_rewrite_const_null(Expr *expr, Type *type)
 	expr->resolve_status = RESOLVE_DONE;
 }
 
+INLINE void expr_rewrite_const_untyped_list(Expr *expr, Expr **elements)
+{
+	expr->expr_kind = EXPR_CONST;
+	expr->type = type_untypedlist;
+	expr->const_expr = (ExprConst) { .untyped_list = elements, .const_kind = CONST_UNTYPED_LIST };
+	expr->resolve_status = RESOLVE_DONE;
+}
+
 INLINE void expr_rewrite_const_initializer(Expr *expr, Type *type, ConstInitializer *initializer)
 {
 	expr->expr_kind = EXPR_CONST;
@@ -2903,6 +2914,16 @@ INLINE void expr_rewrite_const_initializer(Expr *expr, Type *type, ConstInitiali
 	expr->const_expr = (ExprConst) { .initializer = initializer, .const_kind = CONST_INITIALIZER };
 	expr->resolve_status = RESOLVE_DONE;
 }
+
+INLINE void expr_rewrite_const_typeid(Expr *expr, Type *type)
+{
+	expr->expr_kind = EXPR_CONST;
+	expr->const_expr.const_kind = CONST_TYPEID;
+	expr->const_expr.typeid = type->canonical;
+	expr->type = type_typeid;
+	expr->resolve_status = RESOLVE_DONE;
+}
+
 
 INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v, bool narrowable)
 {

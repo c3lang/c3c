@@ -825,6 +825,18 @@ Expr *expr_new_const_int(SourceSpan span, Type *type, uint64_t v, bool narrowabl
 	return expr;
 }
 
+Expr *expr_new_const_typeid(SourceSpan span, Type *type)
+{
+	Expr *expr = expr_calloc();
+	expr->expr_kind = EXPR_CONST;
+	expr->span = span;
+	expr->type = type_typeid;
+	expr->const_expr.const_kind = CONST_TYPEID;
+	expr->const_expr.typeid = type;
+	expr->resolve_status = RESOLVE_DONE;
+	return expr;
+}
+
 Expr *expr_new_const_bool(SourceSpan span, Type *type, bool value)
 {
 	Expr *expr = expr_calloc();
