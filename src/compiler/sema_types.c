@@ -227,6 +227,7 @@ bool sema_resolve_type(SemaContext *context, Type *type)
 		case TYPE_ANYERR:
 		case TYPE_VECTOR:
 		case TYPE_TYPEINFO:
+		case TYPE_MEMBER:
 		case TYPE_UNTYPED_LIST:
 		case TYPE_FAILABLE_ANY:
 			return true;

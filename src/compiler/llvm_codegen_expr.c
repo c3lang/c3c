@@ -3977,6 +3977,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		case CONST_ENUM:
 			llvm_value_set(be_value, llvm_const_int(c, type, expr->const_expr.enum_val->enum_constant.ordinal), type);
 			return;
+		case CONST_MEMBER:
 		case CONST_UNTYPED_LIST:
 			UNREACHABLE
 	}

@@ -103,7 +103,7 @@ macro bitcast(expr, $Type) @builtin
 }
 
 /**
- * @require $Type.kind == TypeKind.ENUM `Only enums may be used`
+ * @require $Type.kindof == TypeKind.ENUM `Only enums may be used`
  **/
 macro enum_by_name($Type, char[] enum_name) @builtin
 {

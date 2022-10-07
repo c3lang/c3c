@@ -435,6 +435,41 @@ Decl *decl_find_enum_constant(Decl *decl, const char *name)
 	return NULL;
 }
 
+AlignSize decl_find_member_offset(Decl *decl, Decl *member)
+{
+	static const AlignSize NO_MATCH = ~(AlignSize)0;
+	while (decl->decl_kind == DECL_DISTINCT) decl = decl->distinct_decl.base_type->decl;
+	Decl **members = NULL;
+	switch (decl->decl_kind)
+	{
+		case DECL_BITSTRUCT:
+			members = decl->bitstruct.members;
+			break;
+		case DECL_STRUCT:
+		case DECL_UNION:
+			members = decl->strukt.members;
+			break;
+		default:
+			return NO_MATCH;
+	}
+	assert(members);
+	unsigned list = vec_size(members);
+	for (unsigned i = 0; i < list; i++)
+	{
+		Decl *m = members[i];
+		if (m == member)
+		{
+			return member->offset;
+		}
+		if (m->decl_kind != DECL_VAR)
+		{
+			AlignSize possible_offset = decl_find_member_offset(m, member);
+			if (possible_offset != NO_MATCH) return possible_offset + m->offset;
+		}
+	}
+	return NO_MATCH;
+}
+
 bool ast_supports_continue(Ast *stmt)
 {
 	if (stmt->ast_kind != AST_FOR_STMT) return false;

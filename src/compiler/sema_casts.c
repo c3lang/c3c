@@ -400,6 +400,7 @@ CastKind cast_to_bool_kind(Type *type)
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_SCALED_VECTOR:
 		case TYPE_INFERRED_VECTOR:
+		case TYPE_MEMBER:
 			return CAST_ERROR;
 	}
 	UNREACHABLE
@@ -458,6 +459,7 @@ bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability, 
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_SCALED_VECTOR:
+		case TYPE_MEMBER:
 			return false;
 		case TYPE_TYPEID:
 			// May convert to anything pointer sized or larger, no enums
@@ -852,7 +854,6 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 		case EXPR_SUBSCRIPT_ASSIGN:
 			UNREACHABLE
 		case EXPR_BUILTIN_ACCESS:
-
 			return false;
 		case EXPR_POST_UNARY:
 			return recursive_may_narrow_float(expr->unary_expr.expr, type);

@@ -70,6 +70,7 @@ const char *kw_main;
 const char *kw_mainstub;
 const char *kw_nameof;
 const char *kw_noinline;
+const char *kw_offsetof;
 const char *kw_ordinal;
 const char *kw_out;
 const char *kw_ptr;
@@ -148,6 +149,7 @@ void symtab_init(uint32_t capacity)
 	kw_main = KW_DEF("main");
 	kw_nameof = KW_DEF("nameof");
 	kw_noinline = KW_DEF("noinline");
+	kw_offsetof = KW_DEF("offsetof");
 	kw_ordinal = KW_DEF("ordinal");
 	kw_out = KW_DEF("out");
 	kw_ptr = KW_DEF("ptr");
@@ -162,11 +164,12 @@ void symtab_init(uint32_t capacity)
 
 	type_property_list[TYPE_PROPERTY_LEN] = kw_len = KW_DEF("len");
 
+	type_property_list[TYPE_PROPERTY_ALIGNOF] = KW_DEF("alignof");
 	type_property_list[TYPE_PROPERTY_ELEMENTS] = KW_DEF("elements");
 	type_property_list[TYPE_PROPERTY_EXTNAMEOF] = KW_DEF("extnameof");
 	type_property_list[TYPE_PROPERTY_INF] = KW_DEF("inf");
 	type_property_list[TYPE_PROPERTY_INNER] = KW_DEF("inner");
-	type_property_list[TYPE_PROPERTY_KIND] = KW_DEF("kind");
+	type_property_list[TYPE_PROPERTY_KINDOF] = KW_DEF("kindof");
 	type_property_list[TYPE_PROPERTY_MEMBERSOF] = KW_DEF("membersof");
 	type_property_list[TYPE_PROPERTY_NAMEOF] = KW_DEF("nameof");
 	type_property_list[TYPE_PROPERTY_NAMES] = KW_DEF("names");

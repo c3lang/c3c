@@ -51,10 +51,10 @@ macro void clear(void* dst, usize len, usize $dst_align = 0, bool $is_volatile =
 }
 
 /**
- * @require $typeof(a).kind == TypeKind.SUBARRAY || $typeof(a).kind == TypeKind.POINTER
- * @require $typeof(b).kind == TypeKind.SUBARRAY || $typeof(b).kind == TypeKind.POINTER
- * @require $typeof(a).kind != TypeKind.SUBARRAY || len == -1
- * @require $typeof(a).kind != TypeKind.POINTER || len > -1
+ * @require $typeof(a).kindof == TypeKind.SUBARRAY || $typeof(a).kindof == TypeKind.POINTER
+ * @require $typeof(b).kindof == TypeKind.SUBARRAY || $typeof(b).kindof == TypeKind.POINTER
+ * @require $typeof(a).kindof != TypeKind.SUBARRAY || len == -1
+ * @require $typeof(a).kindof != TypeKind.POINTER || len > -1
  * @checked (a = b), (b = a)
  **/
 macro bool equals(a, b, isize len = -1, usize $align = 0)
@@ -64,7 +64,7 @@ macro bool equals(a, b, isize len = -1, usize $align = 0)
 	$endif;
 	void* x = void;
 	void* y = void;
-	$if ($typeof(a).kind == TypeKind.SUBARRAY):
+	$if ($typeof(a).kindof == TypeKind.SUBARRAY):
 		len = a.len;
 		if (len != b.len) return false;
 		x = a.ptr;

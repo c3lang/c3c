@@ -275,6 +275,9 @@ INLINE Expr *copy_const_expr(CopyStruct *c, Expr *expr)
 		case CONST_UNTYPED_LIST:
 			expr->const_expr.untyped_list = copy_expr_list(c, expr->const_expr.untyped_list);
 			break;
+		case CONST_MEMBER:
+			fixup_decl(c, &expr->const_expr.member.decl);
+			break;
 	}
 	return expr;
 }

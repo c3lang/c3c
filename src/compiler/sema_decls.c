@@ -2234,12 +2234,20 @@ static bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl)
 
 bool sema_analyse_decl_type(SemaContext *context, Type *type, SourceSpan span)
 {
-	if (type == type_void)
+	switch (type->type_kind)
 	{
-		sema_error_at(span, "The use of 'void' as a variable type is not permitted.");
-		return false;
+		case TYPE_VOID:
+			sema_error_at(span, "The use of 'void' as a variable type is not permitted.");
+			return false;
+		case TYPE_UNTYPED_LIST:
+		case TYPE_MEMBER:
+		case TYPE_TYPEINFO:
+			sema_error_at(span, "The variable cannot have an compile time %s type.",
+			              type_quoted_error_string(type));
+			return false;
+		default:
+			break;
 	}
-
 	if (!type_is_optional(type)) return true;
 	if (type_is_optional_any(type) || type_flatten_distinct(type->failable) == type_void)
 	{

@@ -12,7 +12,7 @@ static struct
 	Type u8, u16, u32, u64, u128;
 	Type f16, f32, f64, f128, fxx;
 	Type usz, isz, uptr, iptr, uptrdiff, iptrdiff;
-	Type voidstar, typeid, anyerr, typeinfo, untyped_list;
+	Type voidstar, typeid, anyerr, member, typeinfo, untyped_list;
 	Type any, anyfail;
 } t;
 
@@ -45,6 +45,7 @@ Type *type_usize = &t.usz;
 Type *type_anyerr = &t.anyerr;
 Type *type_untypedlist = &t.untyped_list;
 Type *type_anyfail = &t.anyfail;
+Type *type_member = &t.member;
 Type *type_chars = NULL;
 
 static unsigned size_subarray;
@@ -165,6 +166,7 @@ static void type_append_name_to_scratch(Type *type)
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_TYPEINFO:
+		case TYPE_MEMBER:
 			UNREACHABLE
 			break;
 		case TYPE_FUNC:
@@ -223,6 +225,7 @@ const char *type_to_error_string(Type *type)
 		case TYPE_ANYERR:
 		case TYPE_UNTYPED_LIST:
 		case TYPE_ANY:
+		case TYPE_MEMBER:
 			return type->name;
 		case TYPE_FUNC:
 			scratch_buffer_clear();
@@ -400,6 +403,7 @@ bool type_is_abi_aggregate(Type *type)
 		case TYPE_UNTYPED_LIST:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_SCALED_VECTOR:
+		case TYPE_MEMBER:
 			UNREACHABLE
 	}
 	UNREACHABLE
@@ -487,6 +491,7 @@ void type_mangle_introspect_name_to_buffer(Type *type)
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_UNTYPED_LIST:
 		case TYPE_FAILABLE_ANY:
+		case TYPE_MEMBER:
 			UNREACHABLE
 		case TYPE_VOID:
 		case TYPE_BOOL:
@@ -583,6 +588,7 @@ AlignSize type_abi_alignment(Type *type)
 		case TYPE_POISONED:
 		case TYPE_TYPEINFO:
 		case TYPE_UNTYPED_LIST:
+		case TYPE_MEMBER:
 			UNREACHABLE;
 		case TYPE_BITSTRUCT:
 			type = type->decl->bitstruct.base_type->type;
@@ -1420,6 +1426,7 @@ void type_setup(PlatformTarget *target)
 	type_init_int("void", &t.u0, TYPE_VOID, BITS8);
 
 	type_create("typeinfo", &t.typeinfo, TYPE_TYPEINFO, 1, 1, 1);
+	type_create("member_ref", &t.member, TYPE_MEMBER, 1, 1, 1);
 	type_create("untyped_list", &t.untyped_list, TYPE_UNTYPED_LIST, 1, 1, 1);
 	type_create("void!", &t.anyfail, TYPE_FAILABLE_ANY, 1, 1, 1);
 	type_init("typeid", &t.typeid, TYPE_TYPEID, target->width_pointer, target->align_pointer);
@@ -1636,6 +1643,7 @@ bool type_may_have_method(Type *type)
 		case TYPE_OPTIONAL:
 		case TYPE_FAILABLE_ANY:
 		case TYPE_TYPEINFO:
+		case TYPE_MEMBER:
 			return false;
 	}
 	UNREACHABLE
@@ -1857,10 +1865,12 @@ Type *type_find_max_type(Type *type, Type *other)
 			type = other->function.prototype->raw_type;
 			return other == type ? type : NULL;
 		case TYPE_UNION:
-		case TYPE_TYPEID:
 		case TYPE_STRUCT:
 		case TYPE_UNTYPED_LIST:
 			TODO
+		case TYPE_TYPEID:
+		case TYPE_MEMBER:
+			return NULL;
 		case TYPE_TYPEDEF:
 			UNREACHABLE
 		case TYPE_DISTINCT:
@@ -1985,6 +1995,7 @@ unsigned type_get_introspection_kind(TypeKind kind)
 		case TYPE_FAILABLE_ANY:
 		case TYPE_TYPEINFO:
 		case TYPE_OPTIONAL:
+		case TYPE_MEMBER:
 			UNREACHABLE
 			return 0;
 	}
@@ -2035,6 +2046,7 @@ Module *type_base_module(Type *type)
 		case TYPE_UNTYPED_LIST:
 		case TYPE_FAILABLE_ANY:
 		case TYPE_TYPEINFO:
+		case TYPE_MEMBER:
 			UNREACHABLE
 	}
 	UNREACHABLE

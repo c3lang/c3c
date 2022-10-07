@@ -204,6 +204,12 @@ typedef struct
 		Type *typeid;
 		ConstInitializer *initializer;
 		Expr **untyped_list;
+		struct
+		{
+			AlignSize offset;
+			AlignSize align;
+			Decl *decl;
+		} member;
 	};
 } ExprConst;
 
@@ -1795,7 +1801,7 @@ extern Type *type_ichar, *type_short, *type_int, *type_long, *type_isize;
 extern Type *type_char, *type_ushort, *type_uint, *type_ulong, *type_usize;
 extern Type *type_iptr, *type_uptr, *type_iptrdiff, *type_uptrdiff;
 extern Type *type_u128, *type_i128;
-extern Type *type_typeid, *type_anyerr, *type_typeinfo;
+extern Type *type_typeid, *type_anyerr, *type_typeinfo, *type_member;
 extern Type *type_any;
 extern Type *type_untypedlist;
 extern Type *type_anyfail;
@@ -1812,38 +1818,39 @@ extern const char *kw_std__core;
 extern const char *kw_std__core__types;
 extern const char *kw_typekind;
 
-extern const char *kw_std;
-extern const char *kw_finalize;
 extern const char *kw_align;
-extern const char *kw_nameof;
-extern const char *kw_in;
-extern const char *kw_initialize;
-extern const char *kw_out;
-extern const char *kw_inout;
-extern const char *kw_deprecated;
-extern const char *kw_distinct;
-extern const char *kw_inline;
-extern const char *kw_kind;
-extern const char *kw_len;
-extern const char *kw_noinline;
-extern const char *kw_main;
-extern const char *kw_ordinal;
-extern const char *kw_pure;
-extern const char *kw_ptr;
-extern const char *kw_return;
-extern const char *kw_type;
-extern const char *kw_incr;
-extern const char *kw_check_assign;
 extern const char *kw_argc;
 extern const char *kw_argv;
-extern const char *kw_mainstub;
+extern const char *kw_at_checked;
 extern const char *kw_at_ensure;
-extern const char *kw_at_require;
-extern const char *kw_at_pure;
 extern const char *kw_at_optreturn;
 extern const char *kw_at_param;
+extern const char *kw_at_pure;
+extern const char *kw_at_require;
 extern const char *kw_at_return;
-extern const char *kw_at_checked;
+extern const char *kw_check_assign;
+extern const char *kw_deprecated;
+extern const char *kw_distinct;
+extern const char *kw_finalize;
+extern const char *kw_in;
+extern const char *kw_incr;
+extern const char *kw_initialize;
+extern const char *kw_inline;
+extern const char *kw_inout;
+extern const char *kw_kind;
+extern const char *kw_len;
+extern const char *kw_main;
+extern const char *kw_mainstub;
+extern const char *kw_nameof;
+extern const char *kw_noinline;
+extern const char *kw_offsetof;
+extern const char *kw_ordinal;
+extern const char *kw_out;
+extern const char *kw_ptr;
+extern const char *kw_pure;
+extern const char *kw_return;
+extern const char *kw_std;
+extern const char *kw_type;
 extern ArchOsTarget default_target;
 
 ARENA_DEF(chars, char)
@@ -2065,6 +2072,7 @@ static inline Decl *decl_raw(Decl *decl);
 static inline DeclKind decl_from_token(TokenType type);
 static inline bool decl_is_local(Decl *decl);
 Decl *decl_find_enum_constant(Decl *decl, const char *name);
+AlignSize decl_find_member_offset(Decl *decl, Decl *member);
 
 // --- Expression functions
 
@@ -2098,9 +2106,11 @@ INLINE bool exprid_is_constant_eval(ExprId expr, ConstantEvalKind eval_kind);
 INLINE bool expr_is_init_list(Expr *expr);
 INLINE bool expr_is_deref(Expr *expr);
 INLINE bool expr_is_const(Expr *expr);
+INLINE bool expr_is_const_int(Expr *expr);
 INLINE bool expr_is_const_string(Expr *expr);
 INLINE bool expr_is_const_initializer(Expr *expr);
 INLINE bool expr_is_const_untyped_list(Expr *expr);
+INLINE bool expr_is_const_member(Expr *expr);
 
 INLINE void expr_rewrite_const_null(Expr *expr, Type *type);
 INLINE void expr_rewrite_const_bool(Expr *expr, Type *type, bool b);
@@ -3017,10 +3027,6 @@ static inline Clobbers clobbers_make(unsigned index, ...)
 	return clobbers;
 }
 
-static inline bool expr_is_const_int(Expr *expr)
-{
-	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INTEGER;
-}
 
 INLINE unsigned arg_bits_max(AsmArgBits bits, unsigned limit)
 {
@@ -3068,4 +3074,14 @@ INLINE bool expr_is_const_initializer(Expr *expr)
 INLINE bool expr_is_const_untyped_list(Expr *expr)
 {
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_UNTYPED_LIST;
+}
+
+INLINE bool expr_is_const_int(Expr *expr)
+{
+	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INTEGER;
+}
+
+INLINE bool expr_is_const_member(Expr *expr)
+{
+	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_MEMBER;
 }
