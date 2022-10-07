@@ -308,6 +308,11 @@ bool sema_resolve_type_shallow(SemaContext *context, TypeInfo *type_info, bool a
 				SEMA_ERROR(expr, "Only type names may be resolved with $evaltype.");
 				return type_info_poison(type_info);
 			}
+			if (type_is_invalid_for_typeof(expr->type))
+			{
+				SEMA_ERROR(expr, "Compile-time expressions may not be used with $evaltype.");
+				return type_info_poison(type_info);
+			}
 			TypeInfo *inner_type = inner->type_expr;
 			if (!sema_resolve_type_info(context, inner_type)) return false;
 			type_info->type = inner_type->type;
@@ -320,6 +325,11 @@ bool sema_resolve_type_shallow(SemaContext *context, TypeInfo *type_info, bool a
 			if (!sema_analyse_expr(context, expr))
 			{
 				return type_info_poison(type_info);
+			}
+			if (type_is_invalid_for_typeof(expr->type))
+			{
+				SEMA_ERROR(expr, "Compile-time expressions are not allowed here.");
+				return false;
 			}
 			type_info->type = expr->type;
 			type_info->resolve_status = RESOLVE_DONE;

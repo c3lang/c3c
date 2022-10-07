@@ -2506,6 +2506,18 @@ INLINE bool type_is_float(Type *type)
 	return kind >= TYPE_FLOAT_FIRST && kind <= TYPE_FLOAT_LAST;
 }
 
+INLINE bool type_is_invalid_for_typeof(Type *type)
+{
+	switch (type->type_kind)
+	{
+		case TYPE_MEMBER:
+		case TYPE_UNTYPED_LIST:
+			return true;
+		default:
+			return false;
+	}
+}
+
 INLINE TypeInfo *type_info_new(TypeInfoKind kind, SourceSpan span)
 {
 	TypeInfo *type_info = type_info_calloc();
