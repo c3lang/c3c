@@ -133,7 +133,7 @@ macro bool! Formatter.print_with_function(Formatter* this, variant arg)
 }
 private fn void! Formatter.out_str(Formatter* this, variant arg)
 {
-	switch (arg.type.kind)
+	switch (arg.type.kindof)
 	{
 		case TYPEID:
 			return this.out_substr("<typeid>");
@@ -171,7 +171,7 @@ private fn void! Formatter.out_str(Formatter* this, variant arg)
 		case POINTER:
 			if (this.print_with_function(arg)?) return;
 			typeid inner = arg.type.inner;
-			if (inner.kind == TypeKind.ARRAY && inner.inner == char.typeid)
+			if (inner.kindof == TypeKind.ARRAY && inner.inner == char.typeid)
 			{
 				char *ptr = *(char**)arg.ptr;
 				return this.out_substr(ptr[:inner.len]);

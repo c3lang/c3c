@@ -27,7 +27,7 @@ private fn NtoaType int_from_variant(variant arg, bool *is_neg)
 		}
 	$endif;
 
-	if (arg.type.kind == TypeKind.POINTER)
+	if (arg.type.kindof == TypeKind.POINTER)
 	{
 		return (NtoaType)(uptr)*(void**)arg.ptr;
 	}
@@ -84,7 +84,7 @@ private fn FloatType float_from_variant(variant arg)
 		if (arg.type == float16.typeid) return *((float16*)arg.ptr);
 	$endif;
 
-	if (arg.type.kind == TypeKind.POINTER)
+	if (arg.type.kindof == TypeKind.POINTER)
 	{
 		return (FloatType)(uptr)(void*)arg.ptr;
 	}
@@ -565,7 +565,7 @@ private fn int! printf_parse_format_field(variant* args_ptr, usize args_len, usi
 	if (c != '*') return 0;
 	printf_advance_format(format_len, index_ptr)?;
 	variant val = next_variant(args_ptr, args_len, args_index_ptr)?;
-    if (!val.type.kind.is_int()) return FormattingFault.INVALID_WIDTH_ARG!;
+    if (!val.type.kindof.is_int()) return FormattingFault.INVALID_WIDTH_ARG!;
     uint! intval = types::variant_to_int(val, int);
 	if (catch intval) return FormattingFault.INVALID_WIDTH_ARG!;
 	return intval;

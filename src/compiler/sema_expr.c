@@ -160,7 +160,8 @@ static Type *sema_expr_check_type_exists(SemaContext *context, TypeInfo *type_in
 static inline Expr *sema_ct_checks_exprlist_compiles(SemaContext *context, Expr *exprlist);
 static inline bool sema_cast_ct_ident_rvalue(SemaContext *context, Expr *expr);
 static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *expr, Expr *typeid, const char *kw);
-static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr, Type *type, TypeProperty property);
+static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr, Type *type, TypeProperty property,
+                                               AlignSize alignment, AlignSize offset);
 static bool sema_expr_rewrite_typeid_call(Expr *expr, Expr *typeid, TypeIdInfoKind kind, Type *result_type);
 static inline void sema_expr_rewrite_typeid_kind(Expr *expr, Expr *parent);
 static inline void sema_expr_replace_with_enum_array(Expr *enum_array_expr, Decl *enum_decl);
@@ -173,7 +174,8 @@ static inline bool sema_create_const_inner(SemaContext *context, Expr *expr, Typ
 static inline bool sema_create_const_min(SemaContext *context, Expr *expr, Type *type, Type *flat);
 static inline bool sema_create_const_max(SemaContext *context, Expr *expr, Type *type, Type *flat);
 static inline bool sema_create_const_params(SemaContext *context, Expr *expr, Type *type);
-static inline bool sema_create_const_membersof(SemaContext *context, Expr *expr, Type *type);
+static inline void sema_create_const_membersof(SemaContext *context, Expr *expr, Type *type, AlignSize alignment,
+                                               AlignSize offset);
 
 void expr_insert_widening_type(Expr *expr, Type *infer_type);
 static Expr *expr_access_inline_member(Expr *parent, Decl *parent_decl);
@@ -186,6 +188,7 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr);
 static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr);
 
 static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *expr, TypeInfo *parent, bool was_group, Expr *identifier);
+static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *expr, Expr *parent, bool was_group, Expr *identifier);
 static inline bool sema_expr_fold_to_member(Expr *expr, Expr *parent, Decl *member);
 
 // -- implementations
@@ -425,54 +428,54 @@ static bool sema_binary_is_expr_lvalue(Expr *top_expr, Expr *expr)
 			SEMA_ERROR(top_expr, "You cannot assign to an unevaluated expression.");
 			return false;
 		case EXPR_POISONED:
-		case EXPR_BITASSIGN:
+		case EXPR_ARGV_TO_SUBARRAY:
+		case EXPR_ASM:
 		case EXPR_BINARY:
+		case EXPR_BITASSIGN:
 		case EXPR_BUILTIN:
-		case EXPR_COMPILER_CONST:
-		case EXPR_MACRO_BODY_EXPANSION:
+		case EXPR_BUILTIN_ACCESS:
 		case EXPR_CALL:
 		case EXPR_CAST:
 		case EXPR_CATCH:
 		case EXPR_CATCH_UNWRAP:
+		case EXPR_COMPILER_CONST:
 		case EXPR_COMPOUND_LITERAL:
-		case EXPR_CONST:
-		case EXPR_CT_CALL:
-		case EXPR_CT_EVAL:
 		case EXPR_COND:
+		case EXPR_CONST:
+		case EXPR_CT_ARG:
+		case EXPR_CT_CALL:
+		case EXPR_CT_CHECKS:
+		case EXPR_CT_EVAL:
 		case EXPR_DECL:
-		case EXPR_DESIGNATOR:
-		case EXPR_EXPR_BLOCK:
-		case EXPR_EXPRESSION_LIST:
-		case EXPR_FAILABLE:
-		case EXPR_RETHROW:
-		case EXPR_FORCE_UNWRAP:
-		case EXPR_MACRO_BLOCK:
-		case EXPR_RETVAL:
-		case EXPR_FLATPATH:
-		case EXPR_INITIALIZER_LIST:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
+		case EXPR_DESIGNATOR:
+		case EXPR_EXPRESSION_LIST:
+		case EXPR_EXPR_BLOCK:
+		case EXPR_FAILABLE:
+		case EXPR_FLATPATH:
+		case EXPR_FORCE_UNWRAP:
+		case EXPR_INITIALIZER_LIST:
+		case EXPR_MACRO_BLOCK:
+		case EXPR_MACRO_BODY_EXPANSION:
+		case EXPR_NOP:
+		case EXPR_OPERATOR_CHARS:
+		case EXPR_POINTER_OFFSET:
 		case EXPR_POST_UNARY:
+		case EXPR_RETHROW:
+		case EXPR_RETVAL:
 		case EXPR_SLICE_ASSIGN:
 		case EXPR_SLICE_COPY:
 		case EXPR_STRINGIFY:
-		case EXPR_ARGV_TO_SUBARRAY:
 		case EXPR_TERNARY:
 		case EXPR_TRY:
 		case EXPR_TRY_UNWRAP:
 		case EXPR_TRY_UNWRAP_CHAIN:
 		case EXPR_TYPEID:
-		case EXPR_TYPEINFO:
-		case EXPR_VARIANTSWITCH:
-		case EXPR_NOP:
 		case EXPR_TYPEID_INFO:
+		case EXPR_TYPEINFO:
 		case EXPR_VARIANT:
-		case EXPR_BUILTIN_ACCESS:
-		case EXPR_POINTER_OFFSET:
-		case EXPR_CT_ARG:
-		case EXPR_ASM:
+		case EXPR_VARIANTSWITCH:
 		case EXPR_VASPLAT:
-		case EXPR_OPERATOR_CHARS:
-		case EXPR_CT_CHECKS:
 			goto ERR;
 	}
 	UNREACHABLE
@@ -2698,7 +2701,8 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 
 	if (!is_const)
 	{
-		if (sema_expr_rewrite_to_type_property(context, expr, canonical, type_property_by_name(name))) return true;
+		if (sema_expr_rewrite_to_type_property(context, expr, canonical, type_property_by_name(name),
+		                                       type_abi_alignment(parent->type), 0)) return true;
 	}
 
 	if (!type_may_have_sub_elements(canonical))
@@ -2750,29 +2754,108 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 		return false;
 	}
 
-	if (member->decl_kind == DECL_VAR)
+	if (member->decl_kind == DECL_VAR || member->decl_kind == DECL_UNION || member->decl_kind == DECL_STRUCT || member->decl_kind == DECL_BITSTRUCT)
 	{
-		expr->expr_kind = EXPR_TYPEINFO;
-		expr->type_expr->type = member->type;
-		expr->type_expr->resolve_status = RESOLVE_DONE;
-		expr->type = type_typeinfo;
+		expr->expr_kind = EXPR_CONST;
+		expr->const_expr = (ExprConst) {
+			.member.decl = member,
+			.member.align = type_abi_alignment(decl->type),
+			.member.offset = decl_find_member_offset(decl, member),
+			.const_kind = CONST_MEMBER
+		};
+		expr->type = type_member;
 		return true;
 	}
-
-	if (member->decl_kind == DECL_UNION || member->decl_kind == DECL_STRUCT || member->decl_kind == DECL_BITSTRUCT)
-	{
-		expr->expr_kind = EXPR_TYPEINFO;
-		expr->type_expr->type = member->type;
-		expr->type_expr->resolve_status = RESOLVE_DONE;
-		expr->type = type_typeinfo;
-		return true;
-	}
-
 
 	expr->identifier_expr.ident = name;
 	expr->expr_kind = EXPR_IDENTIFIER;
 	expr->identifier_expr.decl = member;
 	expr->type = member->type;
+	return true;
+}
+
+static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *expr, Expr *parent, bool was_group, Expr *identifier)
+{
+	assert(identifier->expr_kind == EXPR_IDENTIFIER);
+
+	Decl *decl = parent->const_expr.member.decl;
+	const char *name = identifier->identifier_expr.ident;
+	bool is_const = identifier->identifier_expr.is_const;
+
+	if (is_const)
+	{
+		SEMA_ERROR(expr, "There is no member '%s' for %s.", name, type_to_error_string(decl->type));
+		return false;
+	}
+
+	if (name == kw_offsetof)
+	{
+		expr_rewrite_const_int(expr, type_usize, parent->const_expr.member.offset, true);
+		return true;
+	}
+	TypeProperty type_property = type_property_by_name(name);
+	switch (type_property)
+	{
+		case TYPE_PROPERTY_NONE:
+			break;
+		case TYPE_PROPERTY_QNAMEOF:
+			break;
+		case TYPE_PROPERTY_NAMEOF:
+			expr_rewrite_to_string(expr, decl->name ? decl->name : "");
+			return true;
+		case TYPE_PROPERTY_ALIGNOF:
+			expr_rewrite_const_int(expr, type_usize,
+								   type_min_alignment(parent->const_expr.member.offset, parent->const_expr.member.align),
+								   true);
+			return true;
+		case TYPE_PROPERTY_MEMBERSOF:
+			sema_create_const_membersof(context, expr, decl->type->canonical, parent->const_expr.member.align, parent->const_expr.member.offset);
+			return true;
+		case TYPE_PROPERTY_KINDOF:
+		case TYPE_PROPERTY_SIZEOF:
+			if (sema_expr_rewrite_to_type_property(context, expr, decl->type, type_property,
+												   parent->const_expr.member.align,
+												   parent->const_expr.member.offset)) return true;
+			return true;
+		case TYPE_PROPERTY_ELEMENTS:
+		case TYPE_PROPERTY_EXTNAMEOF:
+		case TYPE_PROPERTY_PARAMS:
+		case TYPE_PROPERTY_RETURNS:
+		case TYPE_PROPERTY_INF:
+		case TYPE_PROPERTY_LEN:
+		case TYPE_PROPERTY_MAX:
+		case TYPE_PROPERTY_MIN:
+		case TYPE_PROPERTY_NAN:
+		case TYPE_PROPERTY_INNER:
+		case TYPE_PROPERTY_NAMES:
+		case TYPE_PROPERTY_VALUES:
+			break;
+	}
+
+	Type *underlying_type = type_flatten_distinct(decl->type);
+
+	if (!type_is_union_or_strukt(underlying_type) && underlying_type->type_kind != TYPE_BITSTRUCT)
+	{
+		SEMA_ERROR(parent, "No member or property '%s' was found.", name);
+		return false;
+	}
+
+	Decl *underlying_type_decl = underlying_type->decl;
+	Decl *member = sema_decl_stack_find_decl_member(underlying_type_decl, name);
+	if (!member || !(decl_is_struct_type(member) || member->decl_kind == DECL_VAR || member->decl_kind == DECL_BITSTRUCT))
+	{
+		SEMA_ERROR(expr, "No member '%s' found.", name);
+		return false;
+	}
+
+	expr->expr_kind = EXPR_CONST;
+	expr->const_expr = (ExprConst) {
+		.member.decl = member,
+		.member.align = parent->const_expr.member.align,
+		.member.offset = parent->const_expr.member.offset + decl_find_member_offset(decl, member),
+		.const_kind = CONST_MEMBER
+	};
+	expr->type = type_member;
 	return true;
 }
 
@@ -2939,7 +3022,8 @@ static inline bool sema_create_const_params(SemaContext *context, Expr *expr, Ty
 	return true;
 }
 
-static inline bool sema_create_const_membersof(SemaContext *context, Expr *expr, Type *type)
+static inline void sema_create_const_membersof(SemaContext *context, Expr *expr, Type *type, AlignSize alignment,
+                                               AlignSize offset)
 {
 	Decl **members = NULL;
 	if (type_is_union_or_strukt(type))
@@ -2952,18 +3036,25 @@ static inline bool sema_create_const_membersof(SemaContext *context, Expr *expr,
 	}
 	else
 	{
-		return false;
+		expr_rewrite_const_untyped_list(expr, NULL);
+		return;
 	}
 	unsigned count = vec_size(members);
 	Expr **member_exprs = count ? VECNEW(Expr*, count) : NULL;
 	for (unsigned i = 0; i < count; i++)
 	{
 		Decl *decl = members[i];
-		Expr *expr_element = expr_new_const_typeid(expr->span, decl->type->canonical);
+		Expr *expr_element = expr_new(EXPR_CONST, expr->span);
+		expr_element->type = type_member;
+		expr_element->const_expr = (ExprConst) {
+			.const_kind = CONST_MEMBER,
+			.member.decl = decl,
+			.member.offset = offset + decl->offset,
+			.member.align = alignment
+		};
 		vec_add(member_exprs, expr_element);
 	}
 	expr_rewrite_const_untyped_list(expr, member_exprs);
-	return true;
 }
 
 static inline bool sema_create_const_max(SemaContext *context, Expr *expr, Type *type, Type *flat)
@@ -3055,7 +3146,8 @@ static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *exp
 	TypeProperty property = type_property_by_name(kw);
 	if (typeid->expr_kind == EXPR_CONST)
 	{
-		return sema_expr_rewrite_to_type_property(context, expr, typeid->const_expr.typeid, property);
+		Type *type = typeid->const_expr.typeid;
+		return sema_expr_rewrite_to_type_property(context, expr, type, property, type_abi_alignment(type), 0);
 	}
 	switch (property)
 	{
@@ -3065,11 +3157,12 @@ static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *exp
 			return sema_expr_rewrite_typeid_call(expr, typeid, TYPEID_INFO_LEN, type_usize);
 		case TYPE_PROPERTY_INNER:
 			return sema_expr_rewrite_typeid_call(expr, typeid, TYPEID_INFO_INNER, type_typeid);
-		case TYPE_PROPERTY_KIND:
+		case TYPE_PROPERTY_KINDOF:
 			sema_expr_rewrite_typeid_kind(expr, typeid);
 			return true;
 		case TYPE_PROPERTY_NAMES:
 			return sema_expr_rewrite_typeid_call(expr, typeid, TYPEID_INFO_NAMES, type_get_subarray(type_chars));
+		case TYPE_PROPERTY_ALIGNOF:
 		case TYPE_PROPERTY_INF:
 		case TYPE_PROPERTY_MIN:
 		case TYPE_PROPERTY_MAX:
@@ -3146,7 +3239,8 @@ EVAL:
 	return true;
 }
 
-static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr, Type *type, TypeProperty property)
+static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr, Type *type, TypeProperty property,
+                                               AlignSize alignment, AlignSize offset)
 {
 	assert(type == type->canonical);
 	if (property == TYPE_PROPERTY_NONE) return false;
@@ -3164,7 +3258,7 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			return true;
 		case TYPE_PROPERTY_INNER:
 			return sema_create_const_inner(context, expr, type);
-		case TYPE_PROPERTY_KIND:
+		case TYPE_PROPERTY_KINDOF:
 			return sema_create_const_kind(expr, type);
 		case TYPE_PROPERTY_LEN:
 			return sema_create_const_len(context, expr, flat);
@@ -3193,7 +3287,8 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			expr->resolve_status = RESOLVE_DONE;
 			return true;
 		case TYPE_PROPERTY_MEMBERSOF:
-			return sema_create_const_membersof(context, expr, flat);
+			sema_create_const_membersof(context, expr, flat, alignment, offset);
+			return true;
 		case TYPE_PROPERTY_PARAMS:
 			return sema_create_const_params(context, expr, flat);
 		case TYPE_PROPERTY_RETURNS:
@@ -3209,6 +3304,9 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			return true;
 		case TYPE_PROPERTY_QNAMEOF:
 			sema_expr_rewrite_to_type_nameof(expr, type, TOKEN_CT_QNAMEOF);
+			return true;
+		case TYPE_PROPERTY_ALIGNOF:
+			expr_rewrite_const_int(expr, type_usize, type_abi_alignment(type), true);
 			return true;
 		case TYPE_PROPERTY_EXTNAMEOF:
 			if (type_is_builtin(type->type_kind))
@@ -3247,19 +3345,26 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr)
 			return false;
 		}
 
-		if (parent->expr_kind != EXPR_TYPEINFO)
+		if (parent->expr_kind == EXPR_TYPEINFO)
 		{
-			SEMA_ERROR(expr, "'typeid' can only be used with types, not values");
-			return false;
+			expr->type = type_typeid;
+			expr->expr_kind = EXPR_CONST;
+			expr->const_expr.const_kind = CONST_TYPEID;
+			expr->const_expr.typeid = parent->type_expr->type->canonical;
+			expr->resolve_status = RESOLVE_DONE;
+			return true;
 		}
-
-		expr->type = type_typeid;
-		expr->expr_kind = EXPR_CONST;
-		expr->const_expr.const_kind = CONST_TYPEID;
-		expr->const_expr.typeid = parent->type_expr->type->canonical;
-		expr->resolve_status = RESOLVE_DONE;
-		return true;
-
+		if (expr_is_const_member(parent))
+		{
+			expr->type = type_typeid;
+			expr->expr_kind = EXPR_CONST;
+			expr->const_expr.const_kind = CONST_TYPEID;
+			expr->const_expr.typeid = parent->const_expr.member.decl->type->canonical;
+			expr->resolve_status = RESOLVE_DONE;
+			return true;
+		}
+		SEMA_ERROR(expr, "'typeid' can only be used with types, not values");
+		return false;
 	}
 
 	// 3. Find the actual token.
@@ -3271,6 +3376,10 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr)
 	if (parent->expr_kind == EXPR_TYPEINFO)
 	{
 		return sema_expr_analyse_type_access(context, expr, parent->type_expr, was_group, identifier);
+	}
+	if (expr_is_const_member(parent))
+	{
+		return sema_expr_analyse_member_access(context, expr, parent, was_group, identifier);
 	}
 
 	// 6. Copy failability
@@ -3314,6 +3423,11 @@ CHECK_DEEPER:
 		if (flat_type->type_kind == TYPE_ARRAY || flat_type->type_kind == TYPE_VECTOR)
 		{
 			expr_rewrite_const_int(expr, type_isize, flat_type->array.len, true);
+			return true;
+		}
+		if (flat_type->type_kind == TYPE_UNTYPED_LIST)
+		{
+			expr_rewrite_const_int(expr, type_isize, vec_size(current_parent->const_expr.untyped_list), true);
 			return true;
 		}
 	}
