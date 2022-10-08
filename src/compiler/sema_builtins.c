@@ -304,6 +304,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			}
 			break;
 		case BUILTIN_MEMCOPY:
+		case BUILTIN_MEMMOVE:
 			if (!sema_check_builtin_args(args,
 										 (BuiltinArg[]) { BA_POINTER, BA_POINTER, BA_SIZE, BA_BOOL, BA_SIZE, BA_SIZE },
 										 arg_count)) return false;
@@ -557,6 +558,7 @@ static inline unsigned builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_MEMSET:
 			return 5;
 		case BUILTIN_MEMCOPY:
+		case BUILTIN_MEMMOVE:
 			return 6;
 		case BUILTIN_SHUFFLEVECTOR:
 		case BUILTIN_NONE:

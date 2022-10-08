@@ -45,6 +45,11 @@ macro void set(void* dst, char val, usize len, usize $dst_align = 0, bool $is_vo
 	$$memset(dst, val, len, $is_volatile, $dst_align);
 }
 
+macro void move(void* dst, void* src, usize len, usize $dst_align = 0, usize $src_align = 0, bool $is_volatile = false)
+{
+	$$memmove(dst, src, len, $is_volatile, $dst_align, $src_align);
+}
+
 macro void clear(void* dst, usize len, usize $dst_align = 0, bool $is_volatile = false)
 {
 	$$memset(dst, (char)0, len, $is_volatile, $dst_align);

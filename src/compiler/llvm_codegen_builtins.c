@@ -248,6 +248,25 @@ INLINE void llvm_emit_memset_builtin(GenContext *c, BEValue *be_value, Expr *exp
 	llvm_value_set(be_value, result, type_void);
 }
 
+INLINE void llvm_emit_memmove_builtin(GenContext *c, BEValue *be_value, Expr *expr)
+{
+	Expr **args = expr->call_expr.arguments;
+	LLVMValueRef arg_slots[4];
+	llvm_emit_intrinsic_args(c, args, arg_slots, 4);
+	arg_slots[0] = llvm_emit_bitcast(c, arg_slots[0], type_voidptr);
+	arg_slots[1] = llvm_emit_bitcast(c, arg_slots[1], type_voidptr);
+	LLVMTypeRef call_type[3];
+	call_type[0] = call_type[1] = llvm_get_type(c, type_voidptr);
+	call_type[2] = llvm_get_type(c, type_usize);
+	LLVMValueRef result = llvm_emit_call_intrinsic(c, intrinsic_id.memmove, call_type, 3, arg_slots, 4);
+	assert(args[4]->const_expr.const_kind == CONST_INTEGER);
+	assert(args[5]->const_expr.const_kind == CONST_INTEGER);
+	uint64_t dst_align = int_to_u64(args[4]->const_expr.ixx);
+	uint64_t src_align = int_to_u64(args[5]->const_expr.ixx);
+	if (dst_align > 0) llvm_attribute_add_call(c, result, attribute_id.align, 1, dst_align);
+	if (src_align > 0) llvm_attribute_add_call(c, result, attribute_id.align, 2, src_align);
+	llvm_value_set(be_value, result, type_void);
+}
 INLINE void llvm_emit_prefetch(GenContext *c, BEValue *be_value, Expr *expr)
 {
 	Expr **args = expr->call_expr.arguments;
@@ -378,6 +397,9 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 			return;
 		case BUILTIN_MEMSET:
 			llvm_emit_memset_builtin(c, result_value, expr);
+			return;
+		case BUILTIN_MEMMOVE:
+			llvm_emit_memmove_builtin(c, result_value, expr);
 			return;
 		case BUILTIN_SYSCLOCK:
 			llvm_value_set(result_value, llvm_emit_call_intrinsic(c, intrinsic_id.readcyclecounter, NULL, 0, NULL, 0), expr->type);
