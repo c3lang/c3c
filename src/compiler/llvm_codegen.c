@@ -651,6 +651,7 @@ static void llvm_codegen_setup()
 	intrinsic_id.maxnum = lookup_intrinsic("llvm.maxnum");
 	intrinsic_id.memcpy = lookup_intrinsic("llvm.memcpy");
 	intrinsic_id.memset = lookup_intrinsic("llvm.memset");
+	intrinsic_id.memmove = lookup_intrinsic("llvm.memmove");
 	intrinsic_id.minimum = lookup_intrinsic("llvm.minimum");
 	intrinsic_id.minnum = lookup_intrinsic("llvm.minnum");
 	intrinsic_id.nearbyint = lookup_intrinsic("llvm.nearbyint");

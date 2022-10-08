@@ -146,6 +146,7 @@ typedef struct
 	unsigned maxnum;
 	unsigned memcpy;
 	unsigned memset;
+	unsigned memmove;
 	unsigned minimum;
 	unsigned minnum;
 	unsigned nearbyint;

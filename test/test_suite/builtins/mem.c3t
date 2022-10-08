@@ -1,0 +1,18 @@
+// #target: macos-x64
+module test;
+
+fn void main()
+{
+    ushort src = 1;
+    ushort dst = 2;
+
+    $$memcpy(&dst, &src, ushort.sizeof, false, $alignof(dst), $alignof(src));
+    $$memmove(&dst, &src, ushort.sizeof, false, $alignof(dst), $alignof(src));
+    $$memset(&dst, 0u8, ushort.sizeof, false, $alignof(dst));
+}
+
+/* #expect: test.ll
+
+  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 2 %0, i8* align 2 %1, i64 2, i1 false)
+  call void @llvm.memmove.p0i8.p0i8.i64(i8* align 2 %2, i8* align 2 %3, i64 2, i1 false)
+  call void @llvm.memset.p0i8.i64(i8* align 2 %4, i8 0, i64 2, i1 false)

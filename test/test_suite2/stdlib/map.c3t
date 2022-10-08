@@ -83,7 +83,7 @@ after_check:                                      ; preds = %if.then2
   br label %noerr_block
 
 panic_block:                                      ; preds = %assign_optional
-  call void @std_core_builtin_panic(ptr @.zstr, ptr @.zstr.1, ptr @.zstr.2, i32 250)
+  call void @std_core_builtin_panic(ptr @.zstr, ptr @.zstr.1, ptr @.zstr.2, i32 255)
   unreachable
 
 noerr_block:                                      ; preds = %after_check
@@ -253,7 +253,7 @@ after_check:                                      ; preds = %if.then
   br label %noerr_block
 
 panic_block:                                      ; preds = %assign_optional
-  call void @std_core_builtin_panic(ptr @.zstr.3, ptr @.zstr.4, ptr @.zstr.5, i32 250)
+  call void @std_core_builtin_panic(ptr @.zstr.3, ptr @.zstr.4, ptr @.zstr.5, i32 255)
   unreachable
 
 noerr_block:                                      ; preds = %after_check
@@ -476,7 +476,7 @@ after_check86:                                    ; preds = %if.then81
   br label %noerr_block88
 
 panic_block87:                                    ; preds = %assign_optional85
-  call void @std_core_builtin_panic(ptr @.zstr.12, ptr @.zstr.13, ptr @.zstr.14, i32 250)
+  call void @std_core_builtin_panic(ptr @.zstr.12, ptr @.zstr.13, ptr @.zstr.14, i32 255)
   unreachable
 
 noerr_block88:                                    ; preds = %after_check86
@@ -526,7 +526,7 @@ after_check101:                                   ; preds = %if.then96
   br label %noerr_block103
 
 panic_block102:                                   ; preds = %assign_optional100
-  call void @std_core_builtin_panic(ptr @.zstr.15, ptr @.zstr.16, ptr @.zstr.17, i32 250)
+  call void @std_core_builtin_panic(ptr @.zstr.15, ptr @.zstr.16, ptr @.zstr.17, i32 255)
   unreachable
 
 noerr_block103:                                   ; preds = %after_check101
@@ -615,7 +615,7 @@ after_check141:                                   ; preds = %if.then136
   br label %noerr_block143
 
 panic_block142:                                   ; preds = %assign_optional140
-  call void @std_core_builtin_panic(ptr @.zstr.21, ptr @.zstr.22, ptr @.zstr.23, i32 250)
+  call void @std_core_builtin_panic(ptr @.zstr.21, ptr @.zstr.22, ptr @.zstr.23, i32 255)
   unreachable
 
 noerr_block143:                                   ; preds = %after_check141
@@ -669,7 +669,7 @@ after_check163:                                   ; preds = %if.then158
   br label %noerr_block165
 
 panic_block164:                                   ; preds = %assign_optional162
-  call void @std_core_builtin_panic(ptr @.zstr.25, ptr @.zstr.26, ptr @.zstr.27, i32 250)
+  call void @std_core_builtin_panic(ptr @.zstr.25, ptr @.zstr.26, ptr @.zstr.27, i32 255)
   unreachable
 
 noerr_block165:                                   ; preds = %after_check163
@@ -718,7 +718,7 @@ after_check179:                                   ; preds = %if.then174
   br label %noerr_block181
 
 panic_block180:                                   ; preds = %assign_optional178
-  call void @std_core_builtin_panic(ptr @.zstr.28, ptr @.zstr.29, ptr @.zstr.30, i32 250)
+  call void @std_core_builtin_panic(ptr @.zstr.28, ptr @.zstr.29, ptr @.zstr.30, i32 255)
   unreachable
 
 noerr_block181:                                   ; preds = %after_check179
@@ -751,7 +751,7 @@ after_check189:                                   ; preds = %if.then184
   br label %noerr_block191
 
 panic_block190:                                   ; preds = %assign_optional188
-  call void @std_core_builtin_panic(ptr @.zstr.31, ptr @.zstr.32, ptr @.zstr.33, i32 250)
+  call void @std_core_builtin_panic(ptr @.zstr.31, ptr @.zstr.32, ptr @.zstr.33, i32 255)
   unreachable
 
 noerr_block191:                                   ; preds = %after_check189
@@ -786,7 +786,7 @@ after_check205:                                   ; preds = %if.then200
   br label %noerr_block207
 
 panic_block206:                                   ; preds = %assign_optional204
-  call void @std_core_builtin_panic(ptr @.zstr.35, ptr @.zstr.36, ptr @.zstr.37, i32 250)
+  call void @std_core_builtin_panic(ptr @.zstr.35, ptr @.zstr.36, ptr @.zstr.37, i32 255)
   unreachable
 
 noerr_block207:                                   ; preds = %after_check205
