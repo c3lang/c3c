@@ -1533,6 +1533,19 @@ static inline void llvm_emit_initialize_reference_const(GenContext *c, BEValue *
 	llvm_emit_inititialize_reference_const(c, ref, initializer);
 
 }
+static inline void llvm_emit_initialize_reference_vector(GenContext *c, BEValue *ref, Type *real_type, Expr **elements)
+{
+	llvm_value_addr(c, ref);
+	LLVMTypeRef llvm_type = llvm_get_type(c, real_type);
+	LLVMValueRef vector_val = LLVMGetUndef(llvm_type);
+	BEValue element_val;
+	FOREACH_BEGIN_IDX(i, Expr *element, elements)
+		llvm_emit_expr(c, &element_val, element);
+		llvm_value_rvalue(c, &element_val);
+		vector_val = LLVMBuildInsertElement(c->builder, vector_val, element_val.value, llvm_const_int(c, type_usize, i), "");
+	FOREACH_END();
+	llvm_store_raw(c, ref, vector_val);
+}
 
 static inline void llvm_emit_initialize_reference_list(GenContext *c, BEValue *ref, Expr *expr)
 {
@@ -1540,9 +1553,16 @@ static inline void llvm_emit_initialize_reference_list(GenContext *c, BEValue *r
 	Type *real_type = type_lowering(ref->type);
 	Expr **elements = expr->initializer_list;
 
+	if (real_type->type_kind == TYPE_VECTOR)
+	{
+		llvm_emit_initialize_reference_vector(c, ref, real_type, elements);
+		return;
+	}
+
 	// Make sure we have an address.
 	llvm_value_addr(c, ref);
 	LLVMValueRef value = ref->value;
+
 
 	// If this is a union, we assume it's initializing the first element.
 	if (real_type->type_kind == TYPE_UNION)
@@ -1557,6 +1577,8 @@ static inline void llvm_emit_initialize_reference_list(GenContext *c, BEValue *r
 	LLVMTypeRef llvm_type = llvm_get_type(c, real_type);
 	bool is_struct = type_is_union_or_strukt(real_type);
 	bool is_array = real_type->type_kind == TYPE_ARRAY;
+
+	bool is_vector = real_type->type_kind == TYPE_VECTOR;
 	// Now walk through the elements.
 	VECEACH(elements, i)
 	{
@@ -1865,7 +1887,12 @@ static inline void llvm_emit_const_initialize_reference(GenContext *c, BEValue *
 {
 	assert(expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER);
 	ConstInitializer *initializer = expr->const_expr.initializer;
-	assert(!type_flat_is_vector(initializer->type) && "Vectors should be handled elsewhere.");
+	if (initializer->type->type_kind == TYPE_VECTOR)
+	{
+		LLVMValueRef val = llvm_emit_const_initializer(c, initializer);
+		llvm_store_raw(c, ref, val);
+		return;
+	}
 	if (initializer->type->type_kind == TYPE_BITSTRUCT)
 	{
 		llvm_emit_const_initialize_bitstruct_ref(c, ref, initializer);
