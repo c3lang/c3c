@@ -7,11 +7,11 @@ macro foo($Foo)
 fn void test1()
 {
     var $Bar;
-    foo($Bar); // #error: '$Bar' is not defined yet
+    foo($Bar); // #error: You need to assign a type to
 }
 
 fn void test2()
 {
     var $Bar;
-    $Bar z; // #error: '$Bar' is not defined yet
+    $Bar z; // #error: You need to assign a type to
 }
