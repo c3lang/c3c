@@ -2387,6 +2387,11 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 				return false;
 			}
 			decl->type = init_expr->type;
+			if (type_is_invalid_storage_type(init_expr->type))
+			{
+				SEMA_ERROR(init_expr, "A value of type '%s' cannot be used as a constant.", type_quoted_error_string(init_expr->type));
+				return false;
+			}
 			if (!decl->alignment) decl->alignment = type_alloca_alignment(decl->type);
 			if (!sema_analyse_decl_type(context, decl->type, init_expr->span)) return false;
 			// Skip further evaluation.

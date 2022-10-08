@@ -46,8 +46,8 @@ fn void test(int x)
 	print_args($typeof(&test));
 	print_args($typeof(&hell));
 	print_args($typeof(&hello));
-	io::println($nameof($typefrom($typeof(&test).returns)));
-	io::println($nameof($typefrom($typeof(&hell).returns)));
+	io::println($typeof(&test).returns.nameof);
+	io::println($typeof(&hell).returns.nameof);
 	print_fields(Foo);
 	print_fields(Bar);
 	print_fields(Bark);

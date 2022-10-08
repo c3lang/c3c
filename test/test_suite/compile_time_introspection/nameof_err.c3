@@ -11,10 +11,10 @@ fn void main2()
 
 fn void main3()
 {
-    $extnameof($evaltype("int")); // #error: Only user defined types have an external name.
+    $evaltype("int").extnameof; // #error: 'int' does not have a property 'extnameof'
 }
 
 fn void main4()
 {
-    $extnameof($evaltype("foo::int")); // #error: Only valid types may be resolved with $evaltype.
+    $evaltype("foo::int").extnameof; // #error: Only valid types may be resolved with $evaltype.
 }

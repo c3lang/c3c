@@ -1,9 +1,9 @@
 module std::core::mem::allocator;
 
 const MAX_MEMORY_ALIGNMENT = 0x1000_0000;
-const DEFAULT_MEM_ALIGNMENT = $alignof(void*) * 2;
+const DEFAULT_MEM_ALIGNMENT = (void*.alignof) * 2;
 const DEFAULT_SIZE_PREFIX = usize.sizeof;
-const DEFAULT_SIZE_PREFIX_ALIGNMENT = $alignof(usize);
+const DEFAULT_SIZE_PREFIX_ALIGNMENT = usize.alignof;
 
 const Allocator* NULL_ALLOCATOR = &_NULL_ALLOCATOR;
 const Allocator* LIBC_ALLOCATOR = &_SYSTEM_ALLOCATOR;

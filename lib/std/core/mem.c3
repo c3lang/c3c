@@ -60,7 +60,7 @@ macro void clear(void* dst, usize len, usize $dst_align = 0, bool $is_volatile =
 macro bool equals(a, b, isize len = -1, usize $align = 0)
 {
 	$if (!$align):
-		$align = $alignof($typeof(a[0]));
+		$align = $typeof(a[0]).alignof;
 	$endif;
 	void* x = void;
 	void* y = void;
@@ -214,7 +214,7 @@ macro void @tscoped(;@body())
 
 macro talloc($Type) @builtin
 {
-	return temp_allocator().alloc_aligned($Type.sizeof, $alignof($Type))!!;
+	return temp_allocator().alloc_aligned($Type.sizeof, $Type.alignof)!!;
 }
 
 fn void* tmalloc(usize size, usize alignment = allocator::DEFAULT_MEM_ALIGNMENT) @builtin @inline

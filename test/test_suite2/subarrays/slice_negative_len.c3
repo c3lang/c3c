@@ -16,7 +16,7 @@ fn void test2()
 fn void test3()
 {
     int[3] x = { 1, 2, 3 };
-    int[] z = x[..4]; // #error: Array end index out of bounds, was 4, exceeding array length 3.
+    int[] z = x[..4]; // #error: End index out of bounds, was 4, exceeding 3.
 }
 
 fn void test4()
@@ -29,31 +29,31 @@ fn void test4()
 fn void test5()
 {
     int[3] x = { 1, 2, 3 };
-    int[] z = x[..^4]; // #error: Array index out of bounds, using a negative array index is only allowed with pointers.
+    int[] z = x[..^4]; // #error: Index out of bounds, using a negative index is only allowed for pointers.
 }
 
 fn void test6()
 {
     int[3] x = { 1, 2, 3 };
-    int[] z = x[3..]; // #error: Array index out of bounds, was 3, exceeding max array index 2.
+    int[] z = x[3..]; // #error: Index out of bounds, was 3, exceeding maximum (2).
 }
 
 fn void test7()
 {
     int[3] x = { 1, 2, 3 };
-    int[] z = x[-1..]; // #error: Array index out of bounds, using a negative array index is only allowed with pointers.
+    int[] z = x[-1..]; // #error: Index out of bounds, using a negative index is only allowed for pointers.
 }
 
 fn void test8()
 {
     int[3] x = { 1, 2, 3 };
-    int[] z = x[^4..]; // #error: Array index out of bounds, using a negative array index is only allowed with pointers.
+    int[] z = x[^4..]; // #error: Index out of bounds, using a negative index is only allowed for pointers.
 }
 
 fn void test9()
 {
     int[3] x = { 1, 2, 3 };
-    int[] z = x[^0..]; // #error: Array index out of bounds, was 3, exceeding max array index 2.
+    int[] z = x[^0..]; // #error: Index out of bounds, was 3, exceeding maximum (2)
 }
 
 fn void test10()
@@ -68,5 +68,5 @@ fn void test10()
 fn void test11()
 {
     int[3] x = { 1, 2, 3 };
-    int[] z = x[..^0]; // #error: Array end index out of bounds, was 3, exceeding array length 3
+    int[] z = x[..^0]; // #error: End index out of bounds, was 3, exceeding 3.
 }
