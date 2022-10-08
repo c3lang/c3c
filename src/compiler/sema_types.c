@@ -175,7 +175,7 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 			{
 				if (!decl->var.init_expr)
 				{
-					SEMA_ERROR(type_info, "The variable '%s' is not defined yet.", decl->name);
+					SEMA_ERROR(type_info, "You need to assign a type to '%s' before using it.", decl->name);
 					return false;
 				}
 				assert(decl->var.init_expr->expr_kind == EXPR_TYPEINFO);

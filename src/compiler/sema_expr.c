@@ -6820,6 +6820,11 @@ static inline bool sema_cast_ct_ident_rvalue(SemaContext *context, Expr *expr)
 {
 	Decl *decl = expr->ct_ident_expr.decl;
 	Expr *copy = copy_expr_single(decl->var.init_expr);
+	if (!copy)
+	{
+		SEMA_ERROR(expr, "'%s' was not yet initialized to any value, assign a value to it before use.", decl->name);
+		return false;
+	}
 	if (!sema_analyse_expr(context, copy)) return false;
 	expr_replace(expr, copy);
 	return true;
