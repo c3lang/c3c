@@ -2506,12 +2506,14 @@ INLINE bool type_is_float(Type *type)
 	return kind >= TYPE_FLOAT_FIRST && kind <= TYPE_FLOAT_LAST;
 }
 
-INLINE bool type_is_invalid_for_typeof(Type *type)
+INLINE bool type_is_invalid_storage_type(Type *type)
 {
+	if (!type) return false;
 	switch (type->type_kind)
 	{
 		case TYPE_MEMBER:
 		case TYPE_UNTYPED_LIST:
+		case TYPE_TYPEINFO:
 			return true;
 		default:
 			return false;
