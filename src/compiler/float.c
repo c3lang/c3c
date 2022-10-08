@@ -150,6 +150,7 @@ Float float_from_string(const char *string, char **error)
 		}
 		switch (i)
 		{
+			case 0:
 			case 32:
 				kind = TYPE_F32;
 				break;
@@ -157,7 +158,6 @@ Float float_from_string(const char *string, char **error)
 				kind = TYPE_F16;
 				break;
 			case 64:
-			case 0:
 				kind = TYPE_F64;
 				break;
 			case 128:
