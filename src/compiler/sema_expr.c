@@ -92,7 +92,7 @@ static inline bool sema_expr_analyse_taddr(SemaContext *context, Expr *expr);
 
 // -- ct_call
 static inline bool sema_expr_analyse_ct_alignof(SemaContext *context, Expr *expr);
-static inline bool sema_expr_analyse_ct_sizeof(SemaContext *context, Expr *expr);
+
 static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr);
 
@@ -150,8 +150,7 @@ static inline IndexDiff range_const_len(Range *range);
 static inline bool sema_expr_begin_analyse(Expr *expr);
 static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr);
 
-static bool sema_expr_analyse_type_var_path(SemaContext *context, Expr *expr, ExprFlatElement **elements, Type **type_ref,
-                                            Decl **decl_ref);
+static Decl *sema_expr_analyse_var_path(SemaContext *context, Expr *expr, ExprFlatElement **elements);
 static inline bool sema_expr_analyse_flat_element(SemaContext *context, ExprFlatElement *element, Type *type, Decl **member_ref, ArraySize *index_ref, Type **return_type, unsigned i, SourceSpan loc,
                                                   bool *is_missing);
 static Expr *sema_expr_resolve_access_child(SemaContext *context, Expr *child, bool *missing);
@@ -176,9 +175,9 @@ static inline bool sema_create_const_max(SemaContext *context, Expr *expr, Type 
 static inline bool sema_create_const_params(SemaContext *context, Expr *expr, Type *type);
 static inline void sema_create_const_membersof(SemaContext *context, Expr *expr, Type *type, AlignSize alignment,
                                                AlignSize offset);
-
 void expr_insert_widening_type(Expr *expr, Type *infer_type);
 static Expr *expr_access_inline_member(Expr *parent, Decl *parent_decl);
+static inline int64_t expr_get_index_max(Expr *expr);
 static inline bool expr_both_any_integer_or_integer_vector(Expr *left, Expr *right);
 static inline bool expr_both_const(Expr *left, Expr *right);
 static inline bool sema_identifier_find_possible_inferred(Type *to, Expr *expr);
@@ -1350,9 +1349,9 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 				if (!sema_expr_check_assign(context, arg)) return false;
 				*failable |= IS_OPTIONAL(arg);
 				if (!sema_call_check_inout_param_match(context, param, arg)) return false;
-				if (arg->type == type_untypedlist)
+				if (type_is_invalid_storage_type(type))
 				{
-					SEMA_ERROR(arg, "An untyped list cannot be passed by reference.");
+					SEMA_ERROR(arg, "A value of type %s cannot be passed by reference.", type_quoted_error_string(type));
 					return false;
 				}
 				if (type && type->canonical != arg->type->canonical)
@@ -1376,9 +1375,9 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 				// foo
 				if (!sema_analyse_expr_rhs(context, type, arg, true)) return false;
 				if (IS_OPTIONAL(arg)) *failable = true;
-				if (arg->type == type_untypedlist)
+				if (type_is_invalid_storage_type(arg->type))
 				{
-					SEMA_ERROR(arg, "An untyped list can only be passed as a compile time parameter.");
+					SEMA_ERROR(arg, "A value of type %s can only be passed as a compile time parameter.", type_quoted_error_string(arg->type));
 					return false;
 				}
 				if (!param->alignment)
@@ -2148,11 +2147,11 @@ static bool sema_slice_index_is_in_range(SemaContext *context, Type *type, Expr 
 		case TYPE_FLEXIBLE_ARRAY:
 			assert(!from_end);
 			return true;
+		case TYPE_UNTYPED_LIST:
 		case TYPE_ARRAY:
 		case TYPE_VECTOR:
 		{
 			MemberIndex len = (MemberIndex)type->array.len;
-			bool is_vector = type->type_kind == TYPE_VECTOR;
 			if (from_end)
 			{
 				idx = len - idx;
@@ -2162,22 +2161,17 @@ static bool sema_slice_index_is_in_range(SemaContext *context, Type *type, Expr 
 			// Checking end can only be done for arrays.
 			if (end_index && idx >= len)
 			{
-				SEMA_ERROR(index_expr,
-						   is_vector ? "End index out of bounds, was %lld, exceeding vector width %lld."
-						   : "Array end index out of bounds, was %lld, exceeding array length %lld.",
-						   (long long)idx, (long long)len);
+				SEMA_ERROR(index_expr, "End index out of bounds, was %lld, exceeding %lld.", (long long)idx, (long long)len);
 				return false;
 			}
 			if (!end_index && idx >= len)
 			{
 				if (len == 0)
 				{
-					SEMA_ERROR(index_expr, "Cannot index into a zero size array.");
+					SEMA_ERROR(index_expr, "Cannot index into a zero size list.");
 					return false;
 				}
-				SEMA_ERROR(index_expr,
-						   is_vector ? "Index out of bounds, was %lld, exceeding max vector width %lld."
-						   : "Array index out of bounds, was %lld, exceeding max array index %lld.", (long long)idx, (long long)len - 1);
+				SEMA_ERROR(index_expr, "Index out of bounds, was %lld, exceeding maximum (%lld).", (long long)idx, (long long)len - 1);
 				return false;
 			}
 			break;
@@ -2199,7 +2193,7 @@ static bool sema_slice_index_is_in_range(SemaContext *context, Type *type, Expr 
 	}
 	if (idx < 0)
 	{
-		SEMA_ERROR(index_expr, "Array index out of bounds, using a negative array index is only allowed with pointers.");
+		SEMA_ERROR(index_expr, "Index out of bounds, using a negative index is only allowed for pointers.");
 		return false;
 	}
 	return true;
@@ -2303,7 +2297,8 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 
 	int64_t index_value = -1;
 	bool start_from_end = expr->subscript_expr.range.start_from_end;
-	if (expr_is_const_int(index) && (current_type->type_kind == TYPE_ARRAY || current_type == type_untypedlist))
+	int64_t size;
+	if (expr_is_const_int(index) && (size = expr_get_index_max(subscripted)) >= 0)
 	{
 		// 4c. And that it's in range.
 		if (int_is_neg(index->const_expr.ixx))
@@ -2311,8 +2306,6 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 			SEMA_ERROR(index, "The index may not be negative.");
 			return false;
 		}
-		int64_t size = current_type == type_untypedlist ? vec_size(subscripted->const_expr.untyped_list) : current_type->array.len;
-		assert(size >= 0 && "Unexpected overflow");
 		if (!int_fits(index->const_expr.ixx, TYPE_I64) || size == 0)
 		{
 			SEMA_ERROR(index, "The index is out of range.", size);
@@ -2368,7 +2361,6 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 		expr_replace(expr, current_expr->const_expr.untyped_list[index_value]);
 		return true;
 	}
-
 	if (!sema_cast_rvalue(context, subscripted)) return false;
 
 	Decl *overload = NULL;
@@ -3309,11 +3301,7 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			expr_rewrite_const_int(expr, type_usize, type_abi_alignment(type), true);
 			return true;
 		case TYPE_PROPERTY_EXTNAMEOF:
-			if (type_is_builtin(type->type_kind))
-			{
-				SEMA_ERROR(expr, "'extnameof' cannot be used on builtin types.");
-				return false;
-			}
+			if (type_is_builtin(type->type_kind)) return false;
 			sema_expr_rewrite_to_type_nameof(expr, type, TOKEN_CT_EXTNAMEOF);
 			return true;
 		case TYPE_PROPERTY_NONE:
@@ -5936,13 +5924,11 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 
 
 
-static bool sema_expr_analyse_type_var_path(SemaContext *context, Expr *expr, ExprFlatElement **elements, Type **type_ref,
-                                            Decl **decl_ref)
+static Decl *sema_expr_analyse_var_path(SemaContext *context, Expr *expr, ExprFlatElement **elements)
 {
-	if (!sema_analyse_expr_lvalue_fold_const(context, expr)) return false;
+	if (!sema_analyse_expr_lvalue_fold_const(context, expr)) return NULL;
 	Expr *current = expr;
 	Decl *decl = NULL;
-	Type *type = NULL;
 RETRY:
 	switch (current->expr_kind)
 	{
@@ -5952,21 +5938,12 @@ RETRY:
 		case EXPR_IDENTIFIER:
 			decl = current->identifier_expr.decl;
 			break;
-		case EXPR_TYPEINFO:
-			type = current->type_expr->type;
-			break;
 		default:
-			SEMA_ERROR(expr, "A type or a variable was expected here.");
-			return false;
+			SEMA_ERROR(expr, "A variable was expected here.");
+			return NULL;
 	}
-	if (decl)
-	{
-		if (!sema_analyse_decl(context, decl)) return false;
-		type = decl->type;
-	}
-	*decl_ref = decl;
-	*type_ref = type;
-	return true;
+	if (!sema_analyse_decl(context, decl)) return NULL;
+	return decl;
 }
 
 static inline bool sema_expr_analyse_flat_element(SemaContext *context, ExprFlatElement *element, Type *type, Decl **member_ref, ArraySize *index_ref, Type **return_type, unsigned i, SourceSpan loc,
@@ -6096,12 +6073,15 @@ static inline bool sema_expr_analyse_flat_element(SemaContext *context, ExprFlat
 static inline bool sema_expr_analyse_ct_alignof(SemaContext *context, Expr *expr)
 {
 	Expr *main_var = expr->ct_call_expr.main_var;
-	Type *type = NULL;
-	Decl *decl = NULL;
 	ExprFlatElement *path = expr->ct_call_expr.flat_path;
-
-	if (!sema_expr_analyse_type_var_path(context, main_var, &path, &type, &decl)) return false;
-
+	Decl *decl = sema_expr_analyse_var_path(context, main_var, &path);
+	if (!decl) return false;
+	Type *type = decl->type;
+	if (type_is_invalid_storage_type(type))
+	{
+		SEMA_ERROR(main_var, "Cannot use '$alignof' on type %s.", type_quoted_error_string(type));
+		return false;
+	}
 	AlignSize align = decl && !decl_is_user_defined_type(decl) ? decl->alignment : type_abi_alignment(type);
 	VECEACH(path, i)
 	{
@@ -6123,31 +6103,6 @@ static inline bool sema_expr_analyse_ct_alignof(SemaContext *context, Expr *expr
 	}
 
 	expr_rewrite_const_int(expr, type_isize, align, true);
-
-	return true;
-}
-
-static inline bool sema_expr_analyse_ct_sizeof(SemaContext *context, Expr *expr)
-{
-	Expr *main_var = expr->ct_call_expr.main_var;
-	Type *type = NULL;
-	Decl *decl = NULL;
-	ExprFlatElement *path = expr->ct_call_expr.flat_path;
-	if (!sema_expr_analyse_type_var_path(context, main_var, &path, &type, &decl)) return false;
-
-	if (!type) return false;
-
-	VECEACH(path, i)
-	{
-		ExprFlatElement *element = &path[i];
-		Decl *member;
-		ArraySize index;
-		Type *result_type;
-		if (!sema_expr_analyse_flat_element(context, element, type, &member, &index, &result_type, i, i == 0 ? main_var->span : expr->span, NULL)) return false;
-		type = result_type;
-	}
-
-	expr_rewrite_const_int(expr, type_isize, type_size(type), true);
 	return true;
 }
 
@@ -6179,10 +6134,10 @@ static inline void sema_expr_rewrite_to_type_nameof(Expr *expr, Type *type, Toke
 static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr)
 {
 	Expr *main_var = expr->ct_call_expr.main_var;
-	Type *type = NULL;
-	Decl *decl = NULL;
 	ExprFlatElement *path = expr->ct_call_expr.flat_path;
-	if (!sema_expr_analyse_type_var_path(context, main_var, &path, &type, &decl)) return false;
+	Decl *decl = sema_expr_analyse_var_path(context, main_var, &path);
+	if (!decl) return false;
+	Type *type = decl->type;
 
 	TokenType name_type = expr->ct_call_expr.token_type;
 
@@ -6192,39 +6147,26 @@ static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr)
 		return false;
 	}
 
-	if (decl)
+	if (name_type == TOKEN_CT_EXTNAMEOF)
 	{
-		if (name_type == TOKEN_CT_EXTNAMEOF)
+		if (!decl->extname)
 		{
-			if (!decl->extname)
-			{
-				SEMA_ERROR(main_var, "'%s' does not have an external name.", decl->name);
-				return false;
-			}
-			expr_rewrite_to_string(expr, decl->extname);
-			return true;
+			SEMA_ERROR(main_var, "'%s' does not have an external name.", decl->name);
+			return false;
 		}
-		if (!decl->unit || name_type == TOKEN_CT_NAMEOF || decl_is_local(decl))
-		{
-			expr_rewrite_to_string(expr, decl->name);
-			return true;
-		}
-		scratch_buffer_clear();
-		scratch_buffer_append(decl->unit->module->name->module);
-		scratch_buffer_append("::");
-		scratch_buffer_append(decl->name);
-		expr_rewrite_to_string(expr, scratch_buffer_copy());
+		expr_rewrite_to_string(expr, decl->extname);
 		return true;
 	}
-
-	assert(type);
-	if (name_type == TOKEN_CT_EXTNAMEOF && !type_is_user_defined(type))
+	if (!decl->unit || name_type == TOKEN_CT_NAMEOF || decl_is_local(decl))
 	{
-		SEMA_ERROR(main_var, "Only user defined types have an external name.");
-		return false;
+		expr_rewrite_to_string(expr, decl->name);
+		return true;
 	}
-
-	sema_expr_rewrite_to_type_nameof(expr, type, name_type);
+	scratch_buffer_clear();
+	scratch_buffer_append(decl->unit->module->name->module);
+	scratch_buffer_append("::");
+	scratch_buffer_append(decl->name);
+	expr_rewrite_to_string(expr, scratch_buffer_copy());
 	return true;
 }
 
@@ -6587,10 +6529,9 @@ static inline bool sema_expr_analyse_ct_eval(SemaContext *context, Expr *expr)
 static inline bool sema_expr_analyse_ct_offsetof(SemaContext *context, Expr *expr)
 {
 	Expr *main_var = expr->ct_call_expr.main_var;
-	Type *type = NULL;
-	Decl *decl = NULL;
 	ExprFlatElement *path = expr->ct_call_expr.flat_path;
-	if (!sema_expr_analyse_type_var_path(context, main_var, &path, &type, &decl)) return false;
+	Decl *decl = sema_expr_analyse_var_path(context, main_var, &path);
+	if (!decl) return false;
 	if (!vec_size(path))
 	{
 		SEMA_ERROR(expr, "Expected a path to get the offset of.");
@@ -6598,6 +6539,7 @@ static inline bool sema_expr_analyse_ct_offsetof(SemaContext *context, Expr *exp
 	}
 
 	ByteSize offset = 0;
+	Type *type = decl->type;
 	VECEACH(path, i)
 	{
 		ExprFlatElement *element = &path[i];
@@ -6627,8 +6569,6 @@ static inline bool sema_expr_analyse_ct_call(SemaContext *context, Expr *expr)
 	{
 		case TOKEN_CT_DEFINED:
 			return sema_expr_analyse_ct_defined(context, expr);
-		case TOKEN_CT_SIZEOF:
-			return sema_expr_analyse_ct_sizeof(context, expr);
 		case TOKEN_CT_ALIGNOF:
 			return sema_expr_analyse_ct_alignof(context, expr);
 		case TOKEN_CT_OFFSETOF:
@@ -7003,6 +6943,36 @@ bool sema_analyse_expr_require_const(SemaContext *context, Expr *expr)
 		return false;
 	}
 	return true;
+}
+
+static inline int64_t expr_get_index_max(Expr *expr)
+{
+	if (expr_is_const_untyped_list(expr))
+	{
+		return vec_size(expr->const_expr.untyped_list);
+	}
+	Type *type = expr->type;
+RETRY:
+	switch (type->type_kind)
+	{
+		case TYPE_TYPEDEF:
+			type = type->canonical;
+			goto RETRY;
+		case TYPE_DISTINCT:
+			type = type->decl->distinct_decl.base_type;
+			goto RETRY;
+		case TYPE_UNTYPED_LIST:
+			UNREACHABLE
+		case TYPE_ARRAY:
+		case TYPE_VECTOR:
+			return type->array.len;
+		case TYPE_OPTIONAL:
+			type = type->failable;
+			goto RETRY;
+		default:
+			return -1;
+	}
+	UNREACHABLE
 }
 
 void expr_insert_widening_type(Expr *expr, Type *infer_type)

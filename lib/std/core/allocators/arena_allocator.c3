@@ -60,7 +60,7 @@ private fn void*! arena_allocator_function(Allocator* data, usize size, usize al
  * @require alignment <= MAX_MEMORY_ALIGNMENT `alignment too big`
  * @require offset <= MAX_MEMORY_ALIGNMENT `offset too big`
  * @require offset <= size && offset >= 0
- * @require mem::aligned_offset(offset, $alignof(ArenaAllocatorHeader)) == offset
+ * @require mem::aligned_offset(offset, ArenaAllocatorHeader.alignof) == offset
  * @require this != null
  **/
 private fn void*! ArenaAllocator._alloc(ArenaAllocator* this, usize size, usize alignment, usize offset)
@@ -86,7 +86,7 @@ private fn void*! ArenaAllocator._alloc(ArenaAllocator* this, usize size, usize 
  * @require alignment <= MAX_MEMORY_ALIGNMENT `alignment too big`
  * @require offset <= MAX_MEMORY_ALIGNMENT `offset too big`
  * @require offset <= size && offset >= 0
- * @require mem::aligned_offset(offset, $alignof(ArenaAllocatorHeader)) == offset
+ * @require mem::aligned_offset(offset, ArenaAllocatorHeader.alignof) == offset
  * @require this != null
  **/
 private fn void*! ArenaAllocator._realloc(ArenaAllocator* this, void *old_pointer, usize size, usize alignment, usize offset)

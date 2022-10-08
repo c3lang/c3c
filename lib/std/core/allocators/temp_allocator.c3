@@ -176,9 +176,9 @@ private fn void*! TempAllocator._alloc(TempAllocator* this, usize size, usize al
 {
 	void* start_mem = &this.data;
 	void* starting_ptr = start_mem + this.used;
-	void* aligned_header_start = mem::aligned_pointer(starting_ptr, $alignof(TempAllocatorChunk));
+	void* aligned_header_start = mem::aligned_pointer(starting_ptr, TempAllocatorChunk.alignof);
 	void* mem = aligned_header_start + TempAllocatorChunk.sizeof;
-	if (alignment > $alignof(TempAllocatorChunk))
+	if (alignment > TempAllocatorChunk.alignof)
 	{
 		mem = mem::aligned_pointer(mem + offset, alignment) - offset;
 	}
@@ -222,7 +222,7 @@ private fn void*! TempAllocator._alloc(TempAllocator* this, usize size, usize al
 
 		// Find the page.
 		page = alloc + padded_header_size - TempAllocatorPage.sizeof;
-		assert(mem::ptr_is_aligned(page, $alignof(TempAllocator)));
+		assert(mem::ptr_is_aligned(page, TempAllocator.alignof));
 		assert(mem::ptr_is_aligned(&page.data[0], DEFAULT_MEM_ALIGNMENT));
 		page.start = alloc;
 		page.size = size;

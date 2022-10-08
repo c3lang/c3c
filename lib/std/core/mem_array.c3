@@ -17,7 +17,7 @@ macro alloc($Type, usize elements)
  **/
 macro talloc($Type, usize elements)
 {
-    $Type* ptr = tmalloc($Type.sizeof * elements, $alignof($Type[1]));
+    $Type* ptr = tmalloc($Type.sizeof * elements, $Type[1].alignof);
     return ptr[:elements];
 }
 
@@ -35,6 +35,6 @@ macro make($Type, usize elements, Allocator* allocator = mem::current_allocator(
  **/
 macro tmake($Type, usize elements)
 {
-    $Type* ptr = tcalloc($Type.sizeof * elements, $alignof($Type[1]));
+    $Type* ptr = tcalloc($Type.sizeof * elements, $Type[1].alignof);
     return ptr[:elements];
 }

@@ -36,55 +36,30 @@ union Foob
 }
 Ar izzy;
 
-
 long x = $alignof(zfe);
-short y = $alignof(Bob.y);
-int z = $alignof(Bob.y);
-int w = $alignof(Bob.y);
+short y = Bob.y.alignof;
+int z = Bob.w.z.alignof;
 int v = $alignof(v);
-int x1 = $alignof(Ex.c);
-int x2 = $alignof(Ex.y);
-int x3 = $alignof(char[8]);
-int x4 = $alignof(Ar.br[1]);
-int x5 = $alignof(Ar.br[1]);
-int x6 = $alignof(Ar.br[1]);
-int x7 = $alignof(Ar.br[1]);
-int x8 = $alignof(Ar.br[2]);
+int x1 = Ex.c.alignof;
+int x2 = Ex.y.alignof;
+int x3 = char[8].alignof;
 int x9 = $alignof(izzy.br[1]);
 int x10 = $alignof(izzy.br[1]);
 int x11 = $alignof(izzy.br[1]);
-int z0 = $alignof(Foob.c);
-int z00 = $alignof(Foob.c[0]);
-int z01 = $alignof(Foob.c[1]);
-int z02 = $alignof(Foob.c[2]);
-int z03 = $alignof(Foob.c[3]);
-int z04 = $alignof(Foob.c[4]);
-int z05 = $alignof(Foob.c[5]);
+int z0 = Foob.c.alignof;
 
 
 
-// #expect: foo.ll
+/* #expect: foo.ll
 
 @foo_x = local_unnamed_addr global i64 16, align 8
 @foo_y = local_unnamed_addr global i16 8, align 2
-@foo_z = local_unnamed_addr global i32 8, align 4
-@foo_w = local_unnamed_addr global i32 8, align 4
+@foo_z = local_unnamed_addr global i32 4, align 4
 @foo_v = local_unnamed_addr global i32 4, align 4
 @foo_x1 = local_unnamed_addr global i32 8, align 4
 @foo_x2 = local_unnamed_addr global i32 8, align 4
 @foo_x3 = local_unnamed_addr global i32 1, align 4
-@foo_x4 = local_unnamed_addr global i32 4, align 4
-@foo_x5 = local_unnamed_addr global i32 4, align 4
-@foo_x6 = local_unnamed_addr global i32 4, align 4
-@foo_x7 = local_unnamed_addr global i32 4, align 4
-@foo_x8 = local_unnamed_addr global i32 8, align 4
 @foo_x9 = local_unnamed_addr global i32 4, align 4
 @foo_x10 = local_unnamed_addr global i32 4, align 4
 @foo_x11 = local_unnamed_addr global i32 4, align 4
 @foo_z0 = local_unnamed_addr global i32 8, align 4
-@foo_z00 = local_unnamed_addr global i32 8, align 4
-@foo_z01 = local_unnamed_addr global i32 1, align 4
-@foo_z02 = local_unnamed_addr global i32 2, align 4
-@foo_z03 = local_unnamed_addr global i32 1, align 4
-@foo_z04 = local_unnamed_addr global i32 4, align 4
-@foo_z05 = local_unnamed_addr global i32 1, align 4
