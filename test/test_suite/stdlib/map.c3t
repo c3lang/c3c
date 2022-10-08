@@ -85,7 +85,7 @@ after_check:                                      ; preds = %if.then2
   br label %noerr_block
 
 panic_block:                                      ; preds = %assign_optional
-  call void @std_core_builtin_panic(i8* getelementptr inbounds ([28 x i8], [28 x i8]* @.zstr, i64 0, i64 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.zstr.1, i64 0, i64 0), i8* getelementptr inbounds ([21 x i8], [21 x i8]* @.zstr.2, i64 0, i64 0), i32 250)
+  call void @std_core_builtin_panic(i8* getelementptr inbounds ([28 x i8], [28 x i8]* @.zstr, i64 0, i64 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.zstr.1, i64 0, i64 0), i8* getelementptr inbounds ([21 x i8], [21 x i8]* @.zstr.2, i64 0, i64 0), i32 255)
   unreachable
 
 noerr_block:                                      ; preds = %after_check
@@ -265,7 +265,7 @@ after_check:                                      ; preds = %if.then
   br label %noerr_block
 
 panic_block:                                      ; preds = %assign_optional
-  call void @std_core_builtin_panic(i8* getelementptr inbounds ([28 x i8], [28 x i8]* @.zstr.3, i64 0, i64 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.zstr.4, i64 0, i64 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.zstr.5, i64 0, i64 0), i32 250)
+  call void @std_core_builtin_panic(i8* getelementptr inbounds ([28 x i8], [28 x i8]* @.zstr.3, i64 0, i64 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.zstr.4, i64 0, i64 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.zstr.5, i64 0, i64 0), i32 255)
   unreachable
 
 noerr_block:                                      ; preds = %after_check
@@ -515,7 +515,7 @@ after_check86:                                    ; preds = %if.then81
   br label %noerr_block88
 
 panic_block87:                                    ; preds = %assign_optional85
-  call void @std_core_builtin_panic(i8* getelementptr inbounds ([28 x i8], [28 x i8]* @.zstr.12, i64 0, i64 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.zstr.13, i64 0, i64 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.zstr.14, i64 0, i64 0), i32 250)
+  call void @std_core_builtin_panic(i8* getelementptr inbounds ([28 x i8], [28 x i8]* @.zstr.12, i64 0, i64 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.zstr.13, i64 0, i64 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.zstr.14, i64 0, i64 0), i32 255)
   unreachable
 
 noerr_block88:                                    ; preds = %after_check86
@@ -571,7 +571,7 @@ after_check102:                                   ; preds = %if.then97
   br label %noerr_block104
 
 panic_block103:                                   ; preds = %assign_optional101
-  call void @std_core_builtin_panic(i8* getelementptr inbounds ([28 x i8], [28 x i8]* @.zstr.15, i64 0, i64 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.zstr.16, i64 0, i64 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.zstr.17, i64 0, i64 0), i32 250)
+  call void @std_core_builtin_panic(i8* getelementptr inbounds ([28 x i8], [28 x i8]* @.zstr.15, i64 0, i64 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.zstr.16, i64 0, i64 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.zstr.17, i64 0, i64 0), i32 255)
   unreachable
 
 noerr_block104:                                   ; preds = %after_check102
@@ -668,7 +668,7 @@ after_check143:                                   ; preds = %if.then138
   br label %noerr_block145
 
 panic_block144:                                   ; preds = %assign_optional142
-  call void @std_core_builtin_panic(i8* getelementptr inbounds ([28 x i8], [28 x i8]* @.zstr.21, i64 0, i64 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.zstr.22, i64 0, i64 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.zstr.23, i64 0, i64 0), i32 250)
+  call void @std_core_builtin_panic(i8* getelementptr inbounds ([28 x i8], [28 x i8]* @.zstr.21, i64 0, i64 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.zstr.22, i64 0, i64 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.zstr.23, i64 0, i64 0), i32 255)
   unreachable
 
 noerr_block145:                                   ; preds = %after_check143
@@ -728,7 +728,7 @@ after_check166:                                   ; preds = %if.then161
   br label %noerr_block168
 
 panic_block167:                                   ; preds = %assign_optional165
-  call void @std_core_builtin_panic(i8* getelementptr inbounds ([28 x i8], [28 x i8]* @.zstr.25, i64 0, i64 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.zstr.26, i64 0, i64 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.zstr.27, i64 0, i64 0), i32 250)
+  call void @std_core_builtin_panic(i8* getelementptr inbounds ([28 x i8], [28 x i8]* @.zstr.25, i64 0, i64 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.zstr.26, i64 0, i64 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.zstr.27, i64 0, i64 0), i32 255)
   unreachable
 
 noerr_block168:                                   ; preds = %after_check166
@@ -782,7 +782,7 @@ after_check183:                                   ; preds = %if.then178
   br label %noerr_block185
 
 panic_block184:                                   ; preds = %assign_optional182
-  call void @std_core_builtin_panic(i8* getelementptr inbounds ([28 x i8], [28 x i8]* @.zstr.28, i64 0, i64 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.zstr.29, i64 0, i64 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.zstr.30, i64 0, i64 0), i32 250)
+  call void @std_core_builtin_panic(i8* getelementptr inbounds ([28 x i8], [28 x i8]* @.zstr.28, i64 0, i64 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.zstr.29, i64 0, i64 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.zstr.30, i64 0, i64 0), i32 255)
   unreachable
 
 noerr_block185:                                   ; preds = %after_check183
@@ -816,7 +816,7 @@ after_check193:                                   ; preds = %if.then188
   br label %noerr_block195
 
 panic_block194:                                   ; preds = %assign_optional192
-  call void @std_core_builtin_panic(i8* getelementptr inbounds ([28 x i8], [28 x i8]* @.zstr.31, i64 0, i64 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.zstr.32, i64 0, i64 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.zstr.33, i64 0, i64 0), i32 250)
+  call void @std_core_builtin_panic(i8* getelementptr inbounds ([28 x i8], [28 x i8]* @.zstr.31, i64 0, i64 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.zstr.32, i64 0, i64 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.zstr.33, i64 0, i64 0), i32 255)
   unreachable
 
 noerr_block195:                                   ; preds = %after_check193
@@ -853,7 +853,7 @@ after_check210:                                   ; preds = %if.then205
   br label %noerr_block212
 
 panic_block211:                                   ; preds = %assign_optional209
-  call void @std_core_builtin_panic(i8* getelementptr inbounds ([28 x i8], [28 x i8]* @.zstr.35, i64 0, i64 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.zstr.36, i64 0, i64 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.zstr.37, i64 0, i64 0), i32 250)
+  call void @std_core_builtin_panic(i8* getelementptr inbounds ([28 x i8], [28 x i8]* @.zstr.35, i64 0, i64 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.zstr.36, i64 0, i64 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.zstr.37, i64 0, i64 0), i32 255)
   unreachable
 
 noerr_block212:                                   ; preds = %after_check210
@@ -895,3 +895,46 @@ voiderr220:                                       ; preds = %after_check219, %if
   call void @std_core_mem_allocator_Allocator_reset(%Allocator* %242, i64 %243)
   ret void
 }
+
+; Function Attrs: nounwind
+define i32 @main(i32 %0, i8** %1) #0 {
+entry:
+  call void @test_main()
+  ret i32 0
+}
+
+; Function Attrs: argmemonly nofree nounwind willreturn writeonly
+declare void @llvm.memset.p0i8.i64(i8* nocapture writeonly, i8, i64, i1 immarg) #1
+
+declare void @"std_map$$int.test_Foo_HashMap_init"(%HashMap.0*, i32, float, %Allocator*)
+
+declare i64 @std_io_printfln(i64*, i8*, i64, i8*, i64)
+
+declare i8 @"std_map$$int.test_Foo_HashMap_set"(%HashMap.0*, i32, i64, i8*)
+
+declare i64 @"std_map$$int.test_Foo_HashMap_get"(%Foo*, %HashMap.0*, i32)
+
+declare i8 @"std_map$$int.test_Foo_HashMap_has_key"(%HashMap.0*, i32)
+
+declare { i8*, i64 } @"std_map$$int.test_Foo_HashMap_value_list"(%HashMap.0*, %Allocator*)
+
+declare void @"std_map$$int.double_HashMap_init"(%HashMap.3*, i32, float, %Allocator*)
+
+declare i8 @"std_map$$int.double_HashMap_set"(%HashMap.3*, i32, double)
+
+declare i8 @"std_map$$int.double_HashMap_has_value"(%HashMap.3*, double)
+
+declare { i8*, i64 } @"std_map$$int.double_HashMap_key_list"(%HashMap.3*, %Allocator*)
+
+declare { i8*, i64 } @"std_map$$int.double_HashMap_value_list"(%HashMap.3*, %Allocator*)
+
+declare void @std_core_mem_allocator_Allocator_reset(%Allocator*, i64)
+
+declare i8* @std_core_string_new_with_capacity(i64, %Allocator*)
+
+declare i64 @std_core_string_String_printf(i64*, i8**, i8*, i64, i8*, i64)
+
+declare { i8*, i64 } @std_core_string_String_str(i8*)
+
+; Function Attrs: argmemonly nofree nounwind willreturn
+declare void @llvm.memcpy.p0i8.p0i8.i32(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i32, i1 immarg) #2
