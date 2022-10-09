@@ -12,7 +12,7 @@ private struct Node
 
 struct LinkedList
 {
-    usize size;
+    usz size;
     Node *first;
     Node *last;
 }
@@ -69,12 +69,12 @@ fn void LinkedList.free(LinkedList *list)
     list.size = 0;
 }
 
-fn usize LinkedList.len(LinkedList* list) @inline
+fn usz LinkedList.len(LinkedList* list) @inline
 {
     return list.size;
 }
 
-fn Type LinkedList.get(LinkedList* list, usize index)
+fn Type LinkedList.get(LinkedList* list, usz index)
 {
     Node* node = list.first;
     while (index--)

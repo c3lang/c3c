@@ -95,7 +95,7 @@ macro void unreachable($string = "Unreachable statement reached.") @builtin @nor
 
 macro bitcast(expr, $Type) @builtin
 {
-    var $size = (usize)($sizeof(expr));
+    var $size = (usz)($sizeof(expr));
     $assert($size == $Type.sizeof, "Cannot bitcast between types of different size.");
     $Type x = void;
     mem::copy(&x, &expr, $size, $Type.alignof, $alignof(expr));

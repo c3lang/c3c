@@ -1,15 +1,15 @@
 module std::io;
 
-private fn void! Formatter.left_adjust(Formatter* this, usize len)
+private fn void! Formatter.left_adjust(Formatter* this, usz len)
 {
 	if (!this.flags.left) return;
-	for (usize l = len; l < this.width; l++) this.out(' ')?;
+	for (usz l = len; l < this.width; l++) this.out(' ')?;
 }
 
-private fn void! Formatter.right_adjust(Formatter* this, usize len)
+private fn void! Formatter.right_adjust(Formatter* this, usz len)
 {
 	if (this.flags.left) return;
-	for (usize l = len; l < this.width; l++) this.out(' ')?;
+	for (usz l = len; l < this.width; l++) this.out(' ')?;
 }
 
 
@@ -126,10 +126,10 @@ private fn FloatType float_from_variant(variant arg)
  * @param maxlen "the maximum len that can be read."
  * @return "The result of the atoi."
  **/
-private fn uint simple_atoi(char* buf, usize maxlen, usize* len_ptr) @inline
+private fn uint simple_atoi(char* buf, usz maxlen, usz* len_ptr) @inline
 {
 	uint i = 0;
-	usize len = *len_ptr;
+	usz len = *len_ptr;
 	while (len < maxlen)
     {
         char c = buf[len];
@@ -144,12 +144,12 @@ private fn uint simple_atoi(char* buf, usize maxlen, usize* len_ptr) @inline
 
 private fn void! Formatter.out_substr(Formatter *this, char[] str)
 {
-	usize l = conv::utf8_codepoints(str);
+	usz l = conv::utf8_codepoints(str);
 	uint prec = this.prec;
 	if (this.flags.precision && l < prec) l = prec;
 	this.right_adjust(' ')?;
-	usize index = 0;
-	usize chars = str.len;
+	usz index = 0;
+	usz chars = str.len;
 	char* ptr = str.ptr;
 	while (index < chars)
 	{
@@ -242,7 +242,7 @@ private fn void! Formatter.etoa(Formatter* this, FloatType value)
 	if (expval) value /= conv.f;
 
 	// output the floating part
-	usize start_idx = this.idx;
+	usz start_idx = this.idx;
 	PrintFlags old = this.flags;
 	this.flags.adapt_exp = false;
 	this.width = fwidth;
@@ -269,7 +269,7 @@ private fn void! Formatter.etoa(Formatter* this, FloatType value)
 private fn void! Formatter.ftoa(Formatter* this, FloatType value)
 {
 	char[PRINTF_FTOA_BUFFER_SIZE] buf = void;
-	usize len = 0;
+	usz len = 0;
 	const FloatType[] POW10 = { 1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000 };
 	FloatType diff = 0.0;
 
@@ -405,7 +405,7 @@ private fn void! Formatter.ftoa(Formatter* this, FloatType value)
 private fn void! Formatter.ntoa(Formatter* this, NtoaType value, bool negative, uint base)
 {
 	char[PRINTF_NTOA_BUFFER_SIZE] buf = void;
-	usize len = 0;
+	usz len = 0;
 
 	// no hash for 0 values
 	if (!value) this.flags.hash = false;
@@ -426,7 +426,7 @@ private fn void! Formatter.ntoa(Formatter* this, NtoaType value, bool negative, 
 	return this.ntoa_format(buf[:PRINTF_NTOA_BUFFER_SIZE], len, negative, base);
 }
 
-private fn void! Formatter.ntoa_format(Formatter* this, char[] buf, usize len, bool negative, uint base)
+private fn void! Formatter.ntoa_format(Formatter* this, char[] buf, usz len, bool negative, uint base)
 {
 	// pad leading zeros
 	if (!this.flags.left)
@@ -529,12 +529,12 @@ private fn void! Formatter.out_char(Formatter* this, variant arg)
 
 private fn void! Formatter.out_reverse(Formatter* this, char[] buf)
 {
-	usize buffer_start_idx = this.idx;
-	usize len = buf.len;
+	usz buffer_start_idx = this.idx;
+	usz len = buf.len;
     // pad spaces up to given width
     if (!this.flags.left && !this.flags.zeropad)
     {
-        for (usize i = len; i < this.width; i++)
+        for (usz i = len; i < this.width; i++)
         {
             this.out(' ')?;
         }
@@ -546,19 +546,19 @@ private fn void! Formatter.out_reverse(Formatter* this, char[] buf)
 	return this.left_adjust(this.idx - buffer_start_idx);
 }
 
-private fn void! printf_advance_format(usize format_len, usize *index_ptr) @inline
+private fn void! printf_advance_format(usz format_len, usz *index_ptr) @inline
 {
-	usize val = ++(*index_ptr);
+	usz val = ++(*index_ptr);
 	if (val >= format_len) return FormattingFault.UNTERMINATED_FORMAT!;
 }
 
-private fn variant! next_variant(variant* args_ptr, usize args_len, usize* arg_index_ptr) @inline
+private fn variant! next_variant(variant* args_ptr, usz args_len, usz* arg_index_ptr) @inline
 {
 	if (*arg_index_ptr >= args_len) return FormattingFault.MISSING_ARG!;
 	return args_ptr[(*arg_index_ptr)++];
 }
 
-private fn int! printf_parse_format_field(variant* args_ptr, usize args_len, usize* args_index_ptr, char* format_ptr, usize format_len, usize* index_ptr) @inline
+private fn int! printf_parse_format_field(variant* args_ptr, usz args_len, usz* args_index_ptr, char* format_ptr, usz format_len, usz* index_ptr) @inline
 {
 	char c = format_ptr[*index_ptr];
 	if (c >= '0' && c <= '9') return simple_atoi(format_ptr, format_len, index_ptr);

@@ -139,7 +139,7 @@ fn bool File.eof(File* file) @inline
 /**
  * @require file && file.file
  */
-fn usize File.read(File* file, void* buffer, usize items, usize element_size = 1)
+fn usz File.read(File* file, void* buffer, usz items, usz element_size = 1)
 {
     return libc::fread(buffer, element_size, items, file.file);
 }
@@ -152,7 +152,7 @@ fn usize File.read(File* file, void* buffer, usize items, usize element_size = 1
  * @require file.file `File must be initialized`
  * @require element_size > 1
  */
-fn usize File.write(File* file, void* buffer, usize items, usize element_size = 1)
+fn usz File.write(File* file, void* buffer, usz items, usz element_size = 1)
 {
     return libc::fwrite(buffer, element_size, items, file.file);
 }
@@ -161,9 +161,9 @@ fn usize File.write(File* file, void* buffer, usize items, usize element_size = 
  * @param [&in] file
  * @require file.file `File must be initialized`
  */
-fn usize! File.println(File* file, char[] string)
+fn usz! File.println(File* file, char[] string)
 {
-    usize len = string.len;
+    usz len = string.len;
     if (len != libc::fwrite(string.ptr, 1, len, file.file)) return IoError.UNKNOWN_ERROR!;
     if (!libc::putc('\n', file.file)) return IoError.UNKNOWN_ERROR!;
     return len + 1;

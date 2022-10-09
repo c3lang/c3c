@@ -35,7 +35,7 @@ struct Formatter
 		PrintFlags flags;
     	uint width;
     	uint prec;
-    	usize idx;
+    	usz idx;
 	}
 }
 
@@ -146,7 +146,7 @@ private fn void! Formatter.out_str(Formatter* this, variant arg)
         	return this.out_substr("<variant>");
 		case ENUM:
 			if (this.print_with_function(arg)?) return;
-        	return this.out_substr(arg.type.names[types::variant_to_int(arg, usize)!!]);
+        	return this.out_substr(arg.type.names[types::variant_to_int(arg, usz)!!]);
 		case STRUCT:
 			if (this.print_with_function(arg)?) return;
 			return this.out_substr("<struct>");
@@ -186,12 +186,12 @@ private fn void! Formatter.out_str(Formatter* this, variant arg)
 			if (this.print_with_function(arg)?) return;
 			// this is SomeType[*] so grab the "SomeType"
 			typeid inner = arg.type.inner;
-			usize size = inner.sizeof;
-			usize len = arg.type.len;
+			usz size = inner.sizeof;
+			usz len = arg.type.len;
 			// Pretend this is a char[]
 			void* ptr = (void*)arg.ptr;
 			this.out('[')?;
-			for (usize i = 0; i < len; i++)
+			for (usz i = 0; i < len; i++)
 			{
 				if (i != 0) this.out_substr(", ")?;
 				this.out_str(variant { ptr, inner })?;
@@ -202,12 +202,12 @@ private fn void! Formatter.out_str(Formatter* this, variant arg)
 			if (this.print_with_function(arg)?) return;
 			// this is SomeType[*] so grab the "SomeType"
 			typeid inner = arg.type.inner;
-			usize size = inner.sizeof;
-			usize len = arg.type.len;
+			usz size = inner.sizeof;
+			usz len = arg.type.len;
 			// Pretend this is a char[]
 			void* ptr = (void*)arg.ptr;
 			this.out_substr("[<")?;
-			for (usize i = 0; i < len; i++)
+			for (usz i = 0; i < len; i++)
 			{
 				if (i != 0) this.out_substr(", ")?;
 				this.out_str(variant { ptr, inner })?;
@@ -222,13 +222,13 @@ private fn void! Formatter.out_str(Formatter* this, variant arg)
 			{
 				return this.out_substr(*(char[]*)arg);
 			}
-			usize size = inner.sizeof;
+			usz size = inner.sizeof;
             // Pretend this is a char[]
 			char[]* temp = (void*)arg.ptr;
 			void* ptr = (void*)temp.ptr;
-			usize len = temp.len;
+			usz len = temp.len;
 			this.out('[')?;
-			for (usize i = 0; i < len; i++)
+			for (usz i = 0; i < len; i++)
 			{
 				if (i != 0) this.out_substr(", ")?;
 				this.out_str(variant { ptr, inner })?;
@@ -287,34 +287,34 @@ private fn void! out_string_append_fn(char c, void* data)
 	s.append_char(c);
 }
 
-fn usize! printf(char[] format, args...) @maydiscard
+fn usz! printf(char[] format, args...) @maydiscard
 {
 	Formatter formatter;
 	formatter.init(&out_putchar_fn);
     return formatter.vprintf(format, args);
 }
 
-fn usize! printfln(char[] format, args...) @maydiscard
+fn usz! printfln(char[] format, args...) @maydiscard
 {
 	Formatter formatter;
 	formatter.init(&out_putchar_fn);
-    usize len = formatter.vprintf(format, args)?;
+    usz len = formatter.vprintf(format, args)?;
 	putchar('\n');
 	return len + 1;
 }
 
-fn usize! String.printf(String* str, char[] format, args...) @maydiscard
+fn usz! String.printf(String* str, char[] format, args...) @maydiscard
 {
 	Formatter formatter;
 	formatter.init(&out_string_append_fn, str);
 	return formatter.vprintf(format, args);
 }
 
-fn usize! String.printfln(String* str, char[] format, args...) @maydiscard
+fn usz! String.printfln(String* str, char[] format, args...) @maydiscard
 {
 	Formatter formatter;
 	formatter.init(&out_string_append_fn, str);
-	usize len = formatter.vprintf(format, args)?;
+	usz len = formatter.vprintf(format, args)?;
 	str.append('\n');
 	return len + 1;
 }
@@ -322,7 +322,7 @@ fn usize! String.printfln(String* str, char[] format, args...) @maydiscard
 private struct BufferData
 {
 	char[] buffer;
-	usize written;
+	usz written;
 }
 
 fn char[]! bprintf(char[] buffer, char[] format, args...) @maydiscard
@@ -330,42 +330,42 @@ fn char[]! bprintf(char[] buffer, char[] format, args...) @maydiscard
 	Formatter formatter;
 	BufferData data = { .buffer = buffer };
     formatter.init(&out_buffer_fn, &data);
-    usize size = formatter.vprintf(format, args)?;
+    usz size = formatter.vprintf(format, args)?;
 	return buffer[:size];
 }
 
-fn usize! File.printf(File file, char[] format, args...) @maydiscard
+fn usz! File.printf(File file, char[] format, args...) @maydiscard
 {
 	Formatter formatter;
     formatter.init(&out_putchar_fn, &file);
     return formatter.vprintf(format, args)?;
 }
 
-fn usize! File.printfln(File file, char[] format, args...) @maydiscard
+fn usz! File.printfln(File file, char[] format, args...) @maydiscard
 {
 	Formatter formatter;
     formatter.init(&out_putchar_fn, &file);
-    usize len = formatter.vprintf(format, args)?;
+    usz len = formatter.vprintf(format, args)?;
 	file.putc('\n')?;
 	file.flush();
 	return len + 1;
 }
 
-fn usize! Formatter.printf(Formatter* this, char[] format, args...)
+fn usz! Formatter.printf(Formatter* this, char[] format, args...)
 {
 	return this.vprintf(format, args) @inline;
 }
 
-fn usize! Formatter.vprintf(Formatter* this, char[] format, variant[] variants)
+fn usz! Formatter.vprintf(Formatter* this, char[] format, variant[] variants)
 {
 	if (!this.out_fn)
 	{
 		// use null output function
 		this.out_fn = &out_null_fn;
 	}
-	usize format_len = format.len;
-	usize variant_index = 0;
-	for (usize i = 0; i < format_len; i++)
+	usz format_len = format.len;
+	usz variant_index = 0;
+	for (usz i = 0; i < format_len; i++)
 	{
 		// format specifier?  %[flags][width][.precision][length]
 		char c = format[i];

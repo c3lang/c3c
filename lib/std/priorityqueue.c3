@@ -34,10 +34,10 @@ struct PriorityQueue
 fn void PriorityQueue.push(PriorityQueue* pq, Type element)
 {
 	pq.heap.push(element);
-	usize i = pq.heap.len() - 1;
+	usz i = pq.heap.len() - 1;
 	while (i > 0)
 	{
-		usize parent = (i - 1) / 2;
+		usz parent = (i - 1) / 2;
 		if ((pq.max && greater(pq.heap.get(i), pq.heap.get(parent))) || (!pq.max && less(pq.heap.get(i), pq.heap.get(parent))))
 		{
 			pq.heap.swap(i, parent);
@@ -53,14 +53,14 @@ fn void PriorityQueue.push(PriorityQueue* pq, Type element)
 */
 fn Type! PriorityQueue.pop(PriorityQueue* pq)
 {
-	usize i = 0;
-	usize len = pq.heap.len() @inline;
+	usz i = 0;
+	usz len = pq.heap.len() @inline;
 	if (!len) return IteratorResult.NO_MORE_ELEMENT!;
-	usize newCount = len - 1;
+	usz newCount = len - 1;
 	pq.heap.swap(0, newCount);
 	while ((2 * i + 1) < newCount)
 	{
-		usize j = 2 * i + 1;
+		usz j = 2 * i + 1;
 		if (((j + 1) < newCount) &&
 			((pq.max && greater(pq.heap.get(j + 1), pq.heap[j]))
 				|| (!pq.max && less(pq.heap.get(j + 1), pq.heap.get(j)))))
@@ -99,7 +99,7 @@ fn void PriorityQueue.free(PriorityQueue* pq)
 /**
  * @require pq != null
  */
-fn usize PriorityQueue.len(PriorityQueue* pq) @operator(len)
+fn usz PriorityQueue.len(PriorityQueue* pq) @operator(len)
 {
 	return pq.heap.len();
 }

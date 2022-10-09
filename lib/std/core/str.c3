@@ -14,7 +14,7 @@ private const uint SURROGATE_HIGH_VALUE = 0xD800;
 fn String join(char[][] s, char[] joiner)
 {
 	if (!s.len) return (String)null;
-	usize total_size = joiner.len * s.len;
+	usz total_size = joiner.len * s.len;
 	foreach (char[]* &str : s)
 	{
 		total_size += str.len;
@@ -29,14 +29,14 @@ fn String join(char[][] s, char[] joiner)
 	return res;
 }
 
-fn usize! str_index_of(char[] s, char[] needle)
+fn usz! str_index_of(char[] s, char[] needle)
 {
-	usize match = 0;
-	usize needed = needle.len;
+	usz match = 0;
+	usz needed = needle.len;
 	if (!needed) return SearchResult.MISSING!;
-	usize index_start = 0;
+	usz index_start = 0;
 	char search = needle[0];
-	foreach (usize i, char c : s)
+	foreach (usz i, char c : s)
 	{
 		if (c == search)
 		{
@@ -57,7 +57,7 @@ fn usize! str_index_of(char[] s, char[] needle)
 
 fn ZString copy_zstring(char[] s)
 {
-    usize len = s.len;
+    usz len = s.len;
     char* str = malloc(len + 1);
     mem::copy(str, s.ptr, len);
     str[len] = 0;
@@ -66,7 +66,7 @@ fn ZString copy_zstring(char[] s)
 
 fn ZString tcopy_zstring(char[] s)
 {
-    usize len = s.len;
+    usz len = s.len;
     char* str = tmalloc(len + 1);
     mem::copy(str, s.ptr, len);
     str[len] = 0;
@@ -91,9 +91,9 @@ fault UnicodeResult
 
 
 
-fn usize utf8_codepoints(char[] utf8)
+fn usz utf8_codepoints(char[] utf8)
 {
-	usize len = 0;
+	usz len = 0;
 	foreach (char c : utf8)
 	{
 		if (c & 0xC0 != 0x80) len++;
@@ -103,7 +103,7 @@ fn usize utf8_codepoints(char[] utf8)
 
 fn Char32[]! utf8to32(char[] utf8, Allocator* allocator = mem::current_allocator)
 {
-	usize codepoints = conv::utf8_codepoints(utf8);
+	usz codepoints = conv::utf8_codepoints(utf8);
 	Char32* data = allocator.alloc(Char32.sizeof * (codepoints + 1))?;
 	conv::utf8to32_unsafe(utf8, data)?;
 	data[codepoints] = 0;
@@ -112,7 +112,7 @@ fn Char32[]! utf8to32(char[] utf8, Allocator* allocator = mem::current_allocator
 
 fn char[] utf32to8(Char32[] utf32, Allocator* allocator = mem::current_allocator)
 {
-	usize len = conv::utf8len_for_utf32(utf32);
+	usz len = conv::utf8len_for_utf32(utf32);
 	char* data = allocator.alloc(len + 1)!!;
 	conv::utf32to8_unsafe(utf32, data);
 	data[len] = 0;
@@ -121,7 +121,7 @@ fn char[] utf32to8(Char32[] utf32, Allocator* allocator = mem::current_allocator
 
 fn Char16[]! utf8to16(char[] utf8, Allocator* allocator = mem::current_allocator)
 {
-	usize len16 = conv::utf16len_for_utf8(utf8);
+	usz len16 = conv::utf16len_for_utf8(utf8);
 	Char16* data = allocator.alloc((len16 + 1) * Char16.sizeof)?;
 	conv::utf8to16_unsafe(utf8, data)?;
 	data[len16] = 0;
@@ -131,7 +131,7 @@ fn Char16[]! utf8to16(char[] utf8, Allocator* allocator = mem::current_allocator
 
 fn char[]! utf16to8(Char16[] utf16, Allocator* allocator = mem::current_allocator())
 {
-	usize len = conv::utf8len_for_utf16(utf16);
+	usz len = conv::utf8len_for_utf16(utf16);
 	char* data = allocator.alloc(len + 1)?;
 	conv::utf16to8_unsafe(utf16, data)?;
 	return data[0 .. len - 1];
@@ -139,23 +139,23 @@ fn char[]! utf16to8(Char16[] utf16, Allocator* allocator = mem::current_allocato
 
 fn char[] copy(char[] s)
 {
-    usize len = s.len;
+    usz len = s.len;
     ZString str_copy = copy_zstring(s) @inline;
     return str_copy[..len];
 }
 
 fn char[] tcopy(char[] s)
 {
-    usize len = s.len;
+    usz len = s.len;
     ZString str_copy = tcopy_zstring(s) @inline;
     return str_copy[..len];
 }
 
 fn char[] tconcat(char[] s1, char[] s2)
 {
-    usize full_len = s1.len + s2.len;
+    usz full_len = s1.len + s2.len;
     char* str = tmalloc(full_len + 1);
-    usize s1_len = s1.len;
+    usz s1_len = s1.len;
     mem::copy(str, s1.ptr, s1_len);
     mem::copy(str + s1_len, s2.ptr, s2.len);
     str[full_len] = 0;
@@ -164,18 +164,18 @@ fn char[] tconcat(char[] s1, char[] s2)
 
 fn char[] concat(char[] s1, char[] s2)
 {
-    usize full_len = s1.len + s2.len;
+    usz full_len = s1.len + s2.len;
     char* str = malloc(full_len + 1);
-    usize s1_len = s1.len;
+    usz s1_len = s1.len;
     mem::copy(str, s1.ptr, s1_len);
     mem::copy(str + s1_len, s2.ptr, s2.len);
     str[full_len] = 0;
     return str[..full_len];
 }
 
-fn usize ZString.len(ZString *str)
+fn usz ZString.len(ZString *str)
 {
-	usize len = 0;
+	usz len = 0;
 	char* ptr = (char*)*str;
 	while (char c = ptr++[0])
 	{

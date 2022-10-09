@@ -4,7 +4,7 @@ import libc;
 private const Allocator _NULL_ALLOCATOR = { &null_allocator_fn };
 private const Allocator _SYSTEM_ALLOCATOR = { &libc_allocator_fn };
 
-private fn void*! null_allocator_fn(Allocator* this, usize bytes, usize alignment, usize offset, void* old_pointer, AllocationKind kind)
+private fn void*! null_allocator_fn(Allocator* this, usz bytes, usz alignment, usz offset, void* old_pointer, AllocationKind kind)
 {
 	switch (kind)
 	{
@@ -22,7 +22,7 @@ private fn void*! null_allocator_fn(Allocator* this, usize bytes, usize alignmen
 
 private struct AlignedBlock
 {
-	usize len;
+	usz len;
 	void* start;
 }
 
@@ -31,9 +31,9 @@ private struct AlignedBlock
  * @require bytes > 0
  * @require alignment > 0
  **/
-private fn void* _libc_aligned_alloc(usize bytes, usize alignment, usize offset) @inline
+private fn void* _libc_aligned_alloc(usz bytes, usz alignment, usz offset) @inline
 {
-	usize header = mem::aligned_offset(AlignedBlock.sizeof + offset, alignment) - offset;
+	usz header = mem::aligned_offset(AlignedBlock.sizeof + offset, alignment) - offset;
 	void* data = libc::malloc(header + bytes);
     void* mem = mem::aligned_pointer(data + offset, alignment) - offset;
 	assert(mem > data);
@@ -46,9 +46,9 @@ private fn void* _libc_aligned_alloc(usize bytes, usize alignment, usize offset)
  * @require bytes > 0
  * @require alignment > 0
  **/
-private fn void* _libc_aligned_calloc(usize bytes, usize alignment, usize offset) @inline
+private fn void* _libc_aligned_calloc(usz bytes, usz alignment, usz offset) @inline
 {
-	usize header = mem::aligned_offset(AlignedBlock.sizeof + offset, alignment) - offset;
+	usz header = mem::aligned_offset(AlignedBlock.sizeof + offset, alignment) - offset;
 	void* data = libc::calloc(header + bytes, 1);
 	void* mem = mem::aligned_pointer(data + offset, alignment) - offset;
 	AlignedBlock* desc = (AlignedBlock*)mem - 1;
@@ -61,7 +61,7 @@ private fn void* _libc_aligned_calloc(usize bytes, usize alignment, usize offset
  * @require bytes > 0
  * @require alignment > 0
  **/
-private fn void* _libc_aligned_realloc(void* old_pointer, usize bytes, usize alignment, usize offset) @inline
+private fn void* _libc_aligned_realloc(void* old_pointer, usz bytes, usz alignment, usz offset) @inline
 {
 	AlignedBlock* desc = (AlignedBlock*)old_pointer - 1;
     void* data_start = desc.start;
@@ -77,7 +77,7 @@ private fn void _libc_aligned_free(void* old_pointer) @inline
 	libc::free(desc.start);
 }
 
-fn void*! libc_allocator_fn(Allocator* unused, usize bytes, usize alignment, usize offset, void* old_pointer, AllocationKind kind) @inline
+fn void*! libc_allocator_fn(Allocator* unused, usz bytes, usz alignment, usz offset, void* old_pointer, AllocationKind kind) @inline
 {
 	if (!alignment) alignment = DEFAULT_MEM_ALIGNMENT;
 	assert(math::is_power_of_2(alignment), "Alignment was not a power of 2");

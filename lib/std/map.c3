@@ -122,7 +122,7 @@ fn Key[] HashMap.key_list(HashMap* map, Allocator* allocator = mem::temp_allocat
 	if (!map.count) return Key[] {};
 
 	Key[] list = array::make(Key, map.count, allocator);
-	usize index = 0;
+	usz index = 0;
 	foreach (Entry* entry : map.table)
 	{
 		while (entry)
@@ -138,7 +138,7 @@ fn Value[] HashMap.value_list(HashMap* map, Allocator* allocator = mem::temp_all
 {
 	if (!map.count) return Value[] {};
 	Value[] list = array::make(Value, map.count, allocator);
-	usize index = 0;
+	usz index = 0;
 	foreach (Entry* entry : map.table)
 	{
 		while (entry)

@@ -4,36 +4,36 @@
 module std::core::mem::array;
 
 /**
- * @require usize.max / elements > $Type.sizeof
+ * @require usz.max / elements > $Type.sizeof
  **/
-macro alloc($Type, usize elements)
+macro alloc($Type, usz elements)
 {
     $Type* ptr = malloc($Type.sizeof * elements);
     return ptr[:elements];
 }
 
 /**
- * @require usize.max / elements > $Type.sizeof
+ * @require usz.max / elements > $Type.sizeof
  **/
-macro talloc($Type, usize elements)
+macro talloc($Type, usz elements)
 {
     $Type* ptr = tmalloc($Type.sizeof * elements, $Type[1].alignof);
     return ptr[:elements];
 }
 
 /**
- * @require (usize.max / elements > $Type.sizeof)
+ * @require (usz.max / elements > $Type.sizeof)
  **/
-macro make($Type, usize elements, Allocator* allocator = mem::current_allocator())
+macro make($Type, usz elements, Allocator* allocator = mem::current_allocator())
 {
     $Type* ptr = allocator.calloc($Type.sizeof * elements)!!;
     return ptr[:elements];
 }
 
 /**
- * @require (usize.max / elements > $Type.sizeof)
+ * @require (usz.max / elements > $Type.sizeof)
  **/
-macro tmake($Type, usize elements)
+macro tmake($Type, usz elements)
 {
     $Type* ptr = tcalloc($Type.sizeof * elements, $Type[1].alignof);
     return ptr[:elements];

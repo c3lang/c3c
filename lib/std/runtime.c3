@@ -18,13 +18,13 @@ struct VirtualContainer
 struct SubArrayContainer
 {
     void* ptr;
-    usize len;
+    usz len;
 }
 
 struct VarArrayHeader
 {
-    usize size;
-    usize capacity;
+    usz size;
+    usz capacity;
     void *allocator;
 }
 
