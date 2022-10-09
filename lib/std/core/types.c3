@@ -226,5 +226,5 @@ enum TypeKind : char
 struct TypeEnum
 {
 	TypeKind type;
-	usize elements;
+	usz elements;
 }

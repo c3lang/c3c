@@ -2,14 +2,14 @@ module std::core::mem::allocator;
 
 struct ArenaAllocatorHeader
 {
-	usize size;
+	usz size;
 	char[*] data;
 }
 /**
  * @require !alignment || math::is_power_of_2(alignment)
  * @require data `unexpectedly missing the allocator`
  */
-private fn void*! arena_allocator_function(Allocator* data, usize size, usize alignment, usize offset, void* old_pointer, AllocationKind kind)
+private fn void*! arena_allocator_function(Allocator* data, usz size, usz alignment, usz offset, void* old_pointer, AllocationKind kind)
 {
 	ArenaAllocator* arena = (ArenaAllocator*)data;
 	bool clear = false;
@@ -63,14 +63,14 @@ private fn void*! arena_allocator_function(Allocator* data, usize size, usize al
  * @require mem::aligned_offset(offset, ArenaAllocatorHeader.alignof) == offset
  * @require this != null
  **/
-private fn void*! ArenaAllocator._alloc(ArenaAllocator* this, usize size, usize alignment, usize offset)
+private fn void*! ArenaAllocator._alloc(ArenaAllocator* this, usz size, usz alignment, usz offset)
 {
-	usize total_len = this.data.len;
+	usz total_len = this.data.len;
 	if (size > total_len) return AllocationFailure.CHUNK_TOO_LARGE!;
     void* start_mem = this.data.ptr;
 	void* unaligned_pointer_to_offset = start_mem + this.used + ArenaAllocatorHeader.sizeof + offset;
 	void* aligned_pointer_to_offset = mem::aligned_pointer(unaligned_pointer_to_offset, alignment);
-	usize end = (usize)(aligned_pointer_to_offset - this.data.ptr) + size - offset;
+	usz end = (usz)(aligned_pointer_to_offset - this.data.ptr) + size - offset;
 	if (end > total_len) return AllocationFailure.OUT_OF_MEMORY!;
 	this.used = end;
 	void *mem = aligned_pointer_to_offset - offset;
@@ -89,13 +89,13 @@ private fn void*! ArenaAllocator._alloc(ArenaAllocator* this, usize size, usize 
  * @require mem::aligned_offset(offset, ArenaAllocatorHeader.alignof) == offset
  * @require this != null
  **/
-private fn void*! ArenaAllocator._realloc(ArenaAllocator* this, void *old_pointer, usize size, usize alignment, usize offset)
+private fn void*! ArenaAllocator._realloc(ArenaAllocator* this, void *old_pointer, usz size, usz alignment, usz offset)
 {
 	assert(old_pointer >= this.data.ptr, "Pointer originates from a different allocator.");
-	usize total_len = this.data.len;
+	usz total_len = this.data.len;
 	if (size > total_len) return AllocationFailure.CHUNK_TOO_LARGE!;
 	ArenaAllocatorHeader* header = old_pointer - ArenaAllocatorHeader.sizeof;
-	usize old_size = header.size;
+	usz old_size = header.size;
 	// Do last allocation and alignment match?
 	if (&this.data[this.used] == old_pointer + old_size && mem::ptr_is_aligned(old_pointer + offset, alignment))
 	{
@@ -105,7 +105,7 @@ private fn void*! ArenaAllocator._realloc(ArenaAllocator* this, void *old_pointe
         }
         else
         {
-	        usize new_used = this.used + size - old_size;
+	        usz new_used = this.used + size - old_size;
             if (new_used > total_len) return AllocationFailure.OUT_OF_MEMORY!;
             this.used = new_used;
         }

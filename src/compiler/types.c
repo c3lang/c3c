@@ -11,7 +11,7 @@ static struct
 	Type u0, u1, i8, i16, i32, i64, i128, ixx;
 	Type u8, u16, u32, u64, u128;
 	Type f16, f32, f64, f128, fxx;
-	Type usz, isz, uptr, iptr, uptrdiff, iptrdiff;
+	Type usz, isz, usize, isize, uptr, iptr, uptrdiff, iptrdiff;
 	Type voidstar, typeid, anyerr, member, typeinfo, untyped_list;
 	Type any, anyfail;
 } t;
@@ -33,7 +33,8 @@ Type *type_long = &t.i64;
 Type *type_i128 = &t.i128;
 Type *type_iptr = &t.iptr;
 Type *type_iptrdiff = &t.iptrdiff;
-Type *type_isize = &t.isz;
+Type *type_isize = &t.isize;
+Type *type_isz = &t.isz;
 Type *type_char = &t.u8;
 Type *type_ushort = &t.u16;
 Type *type_uint = &t.u32;
@@ -41,7 +42,8 @@ Type *type_ulong = &t.u64;
 Type *type_u128 = &t.u128;
 Type *type_uptr = &t.uptr;
 Type *type_uptrdiff = &t.uptrdiff;
-Type *type_usize = &t.usz;
+Type *type_usize = &t.usize;
+Type *type_usz = &t.usz;
 Type *type_anyerr = &t.anyerr;
 Type *type_untypedlist = &t.untyped_list;
 Type *type_anyfail = &t.anyfail;
@@ -1436,8 +1438,10 @@ void type_setup(PlatformTarget *target)
 	t.voidstar.pointer = type_void;
 	type_init("variant", &t.any, TYPE_ANY, target->width_pointer * 2, target->align_pointer);
 
-	type_create_alias("usize", &t.usz, type_int_unsigned_by_bitsize(target->width_pointer));
-	type_create_alias("isize", &t.isz, type_int_signed_by_bitsize(target->width_pointer));
+	type_create_alias("usize", &t.usize, type_int_unsigned_by_bitsize(target->width_pointer));
+	type_create_alias("isize", &t.isize, type_int_signed_by_bitsize(target->width_pointer));
+	type_create_alias("usz", &t.usz, type_int_unsigned_by_bitsize(target->width_pointer));
+	type_create_alias("isz", &t.isz, type_int_signed_by_bitsize(target->width_pointer));
 	type_create_alias("uptr", &t.uptr, type_int_unsigned_by_bitsize(target->width_pointer));
 	type_create_alias("iptr", &t.iptr, type_int_signed_by_bitsize(target->width_pointer));
 
@@ -1583,6 +1587,8 @@ Type *type_from_token(TokenType type)
 			return type_iptrdiff;
 		case TOKEN_ISIZE:
 			return type_isize;
+		case TOKEN_ISZ:
+			return type_isz;
 		case TOKEN_LONG:
 			return type_long;
 		case TOKEN_SHORT:
@@ -1601,6 +1607,8 @@ Type *type_from_token(TokenType type)
 			return type_ushort;
 		case TOKEN_USIZE:
 			return type_usize;
+		case TOKEN_USZ:
+			return type_usz;
 		case TOKEN_TYPEID:
 			return type_typeid;
 		default:

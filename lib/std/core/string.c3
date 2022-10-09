@@ -6,14 +6,14 @@ define String = distinct void*;
 private struct StringData
 {
 	Allocator* allocator;
-	usize len;
-	usize capacity;
+	usz len;
+	usz capacity;
 	char[*] chars;
 }
 
-const usize MIN_CAPACITY = 16;
+const usz MIN_CAPACITY = 16;
 
-fn String new_with_capacity(usize capacity, Allocator* allocator = mem::current_allocator())
+fn String new_with_capacity(usz capacity, Allocator* allocator = mem::current_allocator())
 {
 	if (capacity < MIN_CAPACITY) capacity = MIN_CAPACITY;
 	StringData* data = allocator.alloc(StringData.sizeof + capacity)!!;
@@ -25,7 +25,7 @@ fn String new_with_capacity(usize capacity, Allocator* allocator = mem::current_
 
 fn String new(char[] c)
 {
-	usize len = c.len;
+	usz len = c.len;
 	String str = new_with_capacity(len);
 	StringData* data = str.data();
 	if (len)
@@ -52,7 +52,7 @@ fn ZString String.zstr(String str)
 	return (ZString)&data.chars[0];
 }
 
-fn usize String.len(String this)
+fn usz String.len(String this)
 {
 	if (!this) return 0;
 	return this.data().len;
@@ -61,7 +61,7 @@ fn usize String.len(String this)
 /**
  * @require new_size <= this.len()
  */
-fn void String.chop(String this, usize new_size)
+fn void String.chop(String this, usz new_size)
 {
 	if (!this) return;
 	this.data().len = new_size;
@@ -86,17 +86,17 @@ fn void String.append_utf32(String* str, Char32[] chars)
 /**
  * @require index < str.len()
  **/
-fn void String.set(String str, usize index, char c)
+fn void String.set(String str, usz index, char c)
 {
 	str.data().chars[index] = c;
 }
 
-fn void String.append_repeat(String* str, char c, usize times)
+fn void String.append_repeat(String* str, char c, usz times)
 {
 	if (times == 0) return;
 	str.reserve(times);
 	StringData* data = str.data();
-	for (usize i = 0; i < times; i++)
+	for (usz i = 0; i < times; i++)
 	{
         data.chars[data.len++] = c;
 	}
@@ -155,7 +155,7 @@ fn String String.copy(String* str, Allocator* allocator = null)
 
 fn ZString String.copy_zstr(String* str, Allocator* allocator = mem::current_allocator())
 {
-	usize str_len = str.len();
+	usz str_len = str.len();
 	if (!str_len)
 	{
 		return (ZString)allocator.calloc(1)!!;
@@ -179,7 +179,7 @@ fn bool String.equals(String str, String other_string)
 	if (str1 == str2) return true;
 	if (!str1) return str2.len == 0;
 	if (!str2) return str1.len == 0;
-	usize str1_len = str1.len;
+	usz str1_len = str1.len;
 	if (str1_len != str2.len) return false;
 	for (int i = 0; i < str1_len; i++)
 	{
@@ -204,8 +204,8 @@ fn bool String.less(String str, String other_string)
 	if (str1 == str2) return false;
 	if (!str1) return str2.len != 0;
 	if (!str2) return str1.len == 0;
-	usize str1_len = str1.len;
-	usize str2_len = str2.len;
+	usz str1_len = str1.len;
+	usz str2_len = str2.len;
 	if (str1_len != str2_len) return str1_len < str2_len;
 	for (int i = 0; i < str1_len; i++)
 	{
@@ -216,7 +216,7 @@ fn bool String.less(String str, String other_string)
 
 fn void String.append_chars(String* this, char[] str)
 {
-	usize other_len = str.len;
+	usz other_len = str.len;
 	if (!other_len) return;
 	if (!*this)
 	{
@@ -283,7 +283,7 @@ private fn StringData* String.data(String str) @inline
 	return (StringData*)str;
 }
 
-private fn void String.reserve(String* str, usize addition)
+private fn void String.reserve(String* str, usz addition)
 {
 	StringData* data = str.data();
 	if (!data)
@@ -291,9 +291,9 @@ private fn void String.reserve(String* str, usize addition)
 		*str = string::new_with_capacity(addition);
 		return;
 	}
-	usize len = data.len + addition;
+	usz len = data.len + addition;
 	if (data.capacity >= len) return;
-	usize new_capacity = data.capacity * 2;
+	usz new_capacity = data.capacity * 2;
 	if (new_capacity < MIN_CAPACITY) new_capacity = MIN_CAPACITY;
 	*str = (String)data.allocator.realloc(data, StringData.sizeof + new_capacity)!!;
 }

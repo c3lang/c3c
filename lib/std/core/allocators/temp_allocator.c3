@@ -3,7 +3,7 @@ import std::io;
 
 private struct TempAllocatorChunk
 {
-	usize size;
+	usz size;
 	char[*] data;
 }
 
@@ -12,32 +12,32 @@ struct TempAllocator
 	inline Allocator allocator;
 	Allocator* backing_allocator;
 	TempAllocatorPage* last_page;
-	usize used;
-	usize capacity;
+	usz used;
+	usz capacity;
 	char[*] data;
 }
 
 
-private const usize PAGE_IS_ALIGNED = (usize)isize.max + 1;
+private const usz PAGE_IS_ALIGNED = (usz)isz.max + 1;
 
 
 struct TempAllocatorPage
 {
 	TempAllocatorPage* prev_page;
 	void* start;
-	usize mark;
-	usize size;
-	usize ident;
+	usz mark;
+	usz size;
+	usz ident;
 	char[*] data;
 }
 
-macro usize TempAllocatorPage.pagesize(TempAllocatorPage* page) { return page.size & ~PAGE_IS_ALIGNED; }
+macro usz TempAllocatorPage.pagesize(TempAllocatorPage* page) { return page.size & ~PAGE_IS_ALIGNED; }
 macro bool TempAllocatorPage.is_aligned(TempAllocatorPage* page) { return page.size & PAGE_IS_ALIGNED == PAGE_IS_ALIGNED; }
 
 /**
  * @require size >= 16
  **/
-fn TempAllocator*! new_temp(usize size, Allocator* backing_allocator)
+fn TempAllocator*! new_temp(usz size, Allocator* backing_allocator)
 {
 	TempAllocator* allocator = backing_allocator.alloc(size + TempAllocator.sizeof)?;
 	allocator.last_page = null;
@@ -52,7 +52,7 @@ fn TempAllocator*! new_temp(usize size, Allocator* backing_allocator)
  * @require !alignment || math::is_power_of_2(alignment)
  * @require data `unexpectedly missing the allocator`
  */
-private fn void*! temp_allocator_function(Allocator* data, usize size, usize alignment, usize offset, void* old_pointer, AllocationKind kind)
+private fn void*! temp_allocator_function(Allocator* data, usz size, usz alignment, usz offset, void* old_pointer, AllocationKind kind)
 {
 	TempAllocator* arena = (TempAllocator*)data;
 	switch (kind)
@@ -92,13 +92,13 @@ private fn void! TempAllocator._free(TempAllocator* this, void* old_pointer)
 
 	// TODO fix free
 	assert((uptr)old_pointer >= (uptr)&this.data, "Pointer originates from a different allocator.");
-	usize old_size = *(usize*)(old_pointer - DEFAULT_SIZE_PREFIX);
+	usz old_size = *(usz*)(old_pointer - DEFAULT_SIZE_PREFIX);
 	if (old_pointer + old_size == &this.data[this.used])
     {
         this.used -= old_size;
     }
 }
-private fn void! TempAllocator._reset(TempAllocator* this, usize mark)
+private fn void! TempAllocator._reset(TempAllocator* this, usz mark)
 {
 	TempAllocatorPage *last_page = this.last_page;
 	while (last_page && last_page.mark > mark)
@@ -118,7 +118,7 @@ private fn void! TempAllocator._free_page(TempAllocator* this, TempAllocatorPage
 	return this.backing_allocator.free(mem);
 }
 
-private fn void*! TempAllocator._realloc_page(TempAllocator* this, TempAllocatorPage* page, usize size, usize alignment, usize offset) @inline
+private fn void*! TempAllocator._realloc_page(TempAllocator* this, TempAllocatorPage* page, usz size, usz alignment, usz offset) @inline
 {
 	// Then the actual start pointer:
 	void* real_pointer = page.start;
@@ -131,7 +131,7 @@ private fn void*! TempAllocator._realloc_page(TempAllocator* this, TempAllocator
 		pointer_to_prev = &((*pointer_to_prev).prev_page);
 	}
 	*pointer_to_prev = page.prev_page;
-	usize page_size = page.pagesize();
+	usz page_size = page.pagesize();
 	// Clear on size > original size.
 	void* data = this._alloc(size, alignment, offset, false)?;
 	mem::copy(data, &page.data[0], page_size, DEFAULT_MEM_ALIGNMENT, DEFAULT_MEM_ALIGNMENT);
@@ -146,10 +146,10 @@ private fn void*! TempAllocator._realloc_page(TempAllocator* this, TempAllocator
 	return data;
 }
 
-private fn void*! TempAllocator._realloc(TempAllocator* this, void* pointer, usize size, usize alignment, usize offset) @inline
+private fn void*! TempAllocator._realloc(TempAllocator* this, void* pointer, usz size, usz alignment, usz offset) @inline
 {
 	TempAllocatorChunk *chunk = pointer - TempAllocatorChunk.sizeof;
-	if (chunk.size == (usize)-1)
+	if (chunk.size == (usz)-1)
 	{
 		assert(this.last_page, "Realloc of non temp pointer");
 		// First grab the page
@@ -172,7 +172,7 @@ private fn void*! TempAllocator._realloc(TempAllocator* this, void* pointer, usi
  * @require alignment <= MAX_MEMORY_ALIGNMENT `alignment too big`
  * @require this != null
  **/
-private fn void*! TempAllocator._alloc(TempAllocator* this, usize size, usize alignment, usize offset, bool clear)
+private fn void*! TempAllocator._alloc(TempAllocator* this, usz size, usz alignment, usz offset, bool clear)
 {
 	void* start_mem = &this.data;
 	void* starting_ptr = start_mem + this.used;
@@ -182,7 +182,7 @@ private fn void*! TempAllocator._alloc(TempAllocator* this, usize size, usize al
 	{
 		mem = mem::aligned_pointer(mem + offset, alignment) - offset;
 	}
-	usize new_usage = (usize)(mem - start_mem) + size;
+	usz new_usage = (usz)(mem - start_mem) + size;
 
 	// Arena alignment, simple!
 	if (new_usage <= this.capacity)
@@ -201,7 +201,7 @@ private fn void*! TempAllocator._alloc(TempAllocator* this, usize size, usize al
 	if (alignment > DEFAULT_MEM_ALIGNMENT || offset)
 	{
 		// This is actually simpler, since it will create the offset for us.
-		usize total_alloc_size = TempAllocatorPage.sizeof + size;
+		usz total_alloc_size = TempAllocatorPage.sizeof + size;
     	if (clear)
 		{
 			page = this.backing_allocator.calloc_aligned(total_alloc_size, alignment, TempAllocatorPage.sizeof + offset)?;
@@ -216,8 +216,8 @@ private fn void*! TempAllocator._alloc(TempAllocator* this, usize size, usize al
 	else
 	{
 		// Here we might need to pad
-		usize padded_header_size = mem::aligned_offset(TempAllocatorPage.sizeof, DEFAULT_MEM_ALIGNMENT);
-		usize total_alloc_size = padded_header_size + size;
+		usz padded_header_size = mem::aligned_offset(TempAllocatorPage.sizeof, DEFAULT_MEM_ALIGNMENT);
+		usz total_alloc_size = padded_header_size + size;
 		void* alloc = (clear ? this.backing_allocator.calloc(total_alloc_size) : this.backing_allocator.alloc(total_alloc_size))?;
 
 		// Find the page.
@@ -229,7 +229,7 @@ private fn void*! TempAllocator._alloc(TempAllocator* this, usize size, usize al
 	}
 
 	// Mark it as a page
-	page.ident = ~(usize)0;
+	page.ident = ~(usz)0;
 	// Store when it was created
 	page.mark = ++this.used;
 	// Hook up the page.
