@@ -654,6 +654,7 @@ static void llvm_codegen_setup()
 	intrinsic_id.memmove = lookup_intrinsic("llvm.memmove");
 	intrinsic_id.minimum = lookup_intrinsic("llvm.minimum");
 	intrinsic_id.minnum = lookup_intrinsic("llvm.minnum");
+	intrinsic_id.muladd = lookup_intrinsic("llvm.fmuladd");
 	intrinsic_id.nearbyint = lookup_intrinsic("llvm.nearbyint");
 	intrinsic_id.pow = lookup_intrinsic("llvm.pow");
 	intrinsic_id.powi = lookup_intrinsic("llvm.powi");
