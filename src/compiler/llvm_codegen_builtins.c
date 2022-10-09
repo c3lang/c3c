@@ -507,6 +507,9 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 		case BUILTIN_LOG10:
 			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.log10);
 			return;
+		case BUILTIN_MULADD:
+			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.muladd);
+			return;
 		case BUILTIN_POW:
 			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.pow);
 			return;

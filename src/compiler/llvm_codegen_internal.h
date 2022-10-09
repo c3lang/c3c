@@ -149,6 +149,7 @@ typedef struct
 	unsigned memmove;
 	unsigned minimum;
 	unsigned minnum;
+	unsigned muladd;
 	unsigned nearbyint;
 	unsigned pow;
 	unsigned powi;
