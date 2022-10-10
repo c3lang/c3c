@@ -2104,6 +2104,8 @@ INLINE void expr_replace(Expr *expr, Expr *replacement);
 INLINE bool expr_poison(Expr *expr);
 INLINE bool exprid_is_constant_eval(ExprId expr, ConstantEvalKind eval_kind);
 INLINE bool expr_is_init_list(Expr *expr);
+INLINE bool expr_is_neg(Expr *expr);
+INLINE bool expr_is_mult(Expr *expr);
 INLINE bool expr_is_deref(Expr *expr);
 INLINE bool expr_is_const(Expr *expr);
 INLINE bool expr_is_const_int(Expr *expr);
@@ -2756,6 +2758,15 @@ INLINE bool expr_is_deref(Expr *expr)
 	return expr->expr_kind == EXPR_UNARY && expr->unary_expr.operator == UNARYOP_DEREF;
 }
 
+INLINE bool expr_is_mult(Expr *expr)
+{
+	return expr->expr_kind == EXPR_BINARY && expr->binary_expr.operator == BINARYOP_MULT;
+}
+
+INLINE bool expr_is_neg(Expr *expr)
+{
+	return expr->expr_kind == EXPR_UNARY && expr->unary_expr.operator == UNARYOP_NEG;
+}
 
 INLINE bool expr_is_init_list(Expr *expr)
 {
