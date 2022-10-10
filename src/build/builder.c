@@ -129,11 +129,17 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	// Copy optimization levels.
 	switch (options->optimization_setting_override)
 	{
+		case OPT_SETTING_O0_PLUS:
+			target->single_module = true;
+			FALLTHROUGH;
 		case OPT_SETTING_O0:
 			target->optimization_level = OPTIMIZATION_NONE;
 			target->size_optimization_level = SIZE_OPTIMIZATION_NONE;
 			target->feature.safe_mode = true;
 			break;
+		case OPT_SETTING_O1_PLUS:
+			target->single_module = true;
+			FALLTHROUGH;
 		case OPT_SETTING_O1:
 			target->optimization_level = OPTIMIZATION_LESS;
 			target->size_optimization_level = SIZE_OPTIMIZATION_NONE;

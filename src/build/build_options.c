@@ -97,6 +97,8 @@ static void usage(void)
 	OUTPUT("  -O3                    - Aggressive optimization.");
 	OUTPUT("  -Os                    - Optimize for size.");
 	OUTPUT("  -Oz                    - Optimize for tiny size.");
+	OUTPUT("  -O0+                   - No optimization, single module");
+	OUTPUT("  -O1+                   - Simple optimizations, single module.");
 	OUTPUT("  -O2+                   - Default optimization level, single module");
 	OUTPUT("  -O3+                   - Aggressive optimization, single module.");
 	OUTPUT("  -Os+                   - Optimize for size, single module.");
@@ -395,9 +397,17 @@ static void parse_option(BuildOptions *options)
 			{
 				FAIL_WITH_ERR("Multiple optimization levels were set.");
 			}
-			if (match_shortopt("O0"))
+			if (match_shortopt("O0+"))
+			{
+				options->optimization_setting_override = OPT_SETTING_O0_PLUS;
+			}
+			else if (match_shortopt("O0"))
 			{
 				options->optimization_setting_override = OPT_SETTING_O0;
+			}
+			else if (match_shortopt("O1+"))
+			{
+				options->optimization_setting_override = OPT_SETTING_O1_PLUS;
 			}
 			else if (match_shortopt("O1"))
 			{
@@ -615,6 +625,7 @@ static void parse_option(BuildOptions *options)
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --stdlib needs a directory.");
 				options->std_lib_dir = check_dir(next_arg());
+				options->no_stdlib = false;
 				return;
 			}
 			if (match_longopt("nostdlib"))
