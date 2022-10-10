@@ -260,6 +260,7 @@ typedef struct BuildOptions_
 	bool emit_bitcode;
 	bool test_mode;
 	bool no_stdlib;
+	bool no_libc;
 	bool force_linker;
 	const char *panicfn;
 	const char *cc;
@@ -336,6 +337,7 @@ typedef struct
 	bool emit_llvm;
 	bool emit_asm;
 	bool no_stdlib;
+	bool no_libc;
 	bool emit_object_files;
 	bool force_linker;
 	OptimizationLevel optimization_level;

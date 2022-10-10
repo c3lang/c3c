@@ -95,6 +95,7 @@ static void linker_setup_windows(const char ***args_ref, LinkerType linker_type)
 		default:
 			UNREACHABLE
 	}
+	if (active_target.no_libc) return;
 	if (!active_target.win.sdk)
 	{
 		const char *path = windows_cross_compile_library();
@@ -274,6 +275,12 @@ static void linker_setup_windows_gnu(const char ***args_ref, LinkerType linker_t
 static void linker_setup_macos(const char ***args_ref, LinkerType linker_type)
 {
 	if (linker_type == LINKER_CC) return;
+	add_arg("-arch");
+	add_arg(arch_to_linker_arch(platform_target.arch));
+
+	// Skip if no libc.
+	if (active_target.no_libc) return;
+
 	const char *sysroot = active_target.macos.sdk ? active_target.macos.sdk : macos_sysroot();
 	if (!sysroot)
 	{
@@ -281,8 +288,6 @@ static void linker_setup_macos(const char ***args_ref, LinkerType linker_type)
 	}
 	DEBUG_LOG("Macos SDK: %s", sysroot);
 	MacSDK *mac_sdk = macos_sysroot_sdk_information(sysroot);
-	add_arg("-arch");
-	add_arg(arch_to_linker_arch(platform_target.arch));
 	add_arg("-lSystem");
 	add_arg("-lm");
 	add_arg("-syslibroot");
@@ -393,6 +398,9 @@ static void linker_setup_freebsd(const char ***args_ref, LinkerType linker_type)
 	if (is_no_pie(platform_target.reloc_model)) add_arg("-no-pie");
 	if (is_pie(platform_target.reloc_model)) add_arg("-pie");
 	if (platform_target.arch == ARCH_TYPE_X86_64) add_arg("--eh-frame-hdr");
+
+	if (active_target.no_libc) return;
+
 	const char *crt_dir = find_freebsd_crt();
 	if (!crt_dir)
 	{
@@ -464,9 +472,17 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 			linker_setup_linux(args_ref, linker_type);
 			break;
 		case OS_TYPE_UNKNOWN:
-			error_exit("Linking is not supported for unknown OS.");
+			if (!active_target.no_libc)
+			{
+				error_exit("Linking is not supported for unknown OS.");
+			}
+			break;
 		case OS_TYPE_NONE:
-			error_exit("Linking is not supported for freestanding.");
+			if (!active_target.no_libc)
+			{
+				error_exit("Linking is not supported for freestanding.");
+			}
+			break;
 	}
 	for (unsigned i = 0; i < file_count; i++)
 	{
@@ -687,7 +703,10 @@ void platform_linker(const char *output_file, const char **files, unsigned file_
 	vec_add(parts, active_target.cc ? active_target.cc : "cc");
 	append_fpie_pic_options(platform_target.reloc_model, &parts);
 	linker_setup(&parts, files, file_count, output_file, LINKER_CC);
-	vec_add(parts, "-lm");
+	if (!active_target.no_libc)
+	{
+		vec_add(parts, "-lm");
+	}
 	const char *output = concat_string_parts(parts);
 	if (system(output) != 0)
 	{

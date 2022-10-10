@@ -79,6 +79,7 @@ static void usage(void)
 	OUTPUT("  --tinybackend          - Use the TinyBackend for compilation.");
 	OUTPUT("  --stdlib <dir>         - Use this directory as the C3 standard library path.");
 	OUTPUT("  --nostdlib             - Do not include the standard library.");
+	OUTPUT("  --nolibc               - Do not implicitly link libc nor any associated files.");
 	OUTPUT("  --libdir <dir>         - Add this directory to the C3 library search paths.");
 	OUTPUT("  --lib <name>           - Add this library to the compilation.");
 	OUTPUT("  --path <dir>           - Use this as the base directory for the current command.");
@@ -619,6 +620,11 @@ static void parse_option(BuildOptions *options)
 			if (match_longopt("nostdlib"))
 			{
 				options->no_stdlib = true;
+				return;
+			}
+			if (match_longopt("nolibc"))
+			{
+				options->no_libc = true;
 				return;
 			}
 			if (match_longopt("panicfn"))
