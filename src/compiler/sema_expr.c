@@ -5413,9 +5413,10 @@ static inline bool sema_expr_analyse_taddr(SemaContext *context, Expr *expr)
 	Expr *inner = expr->unary_expr.expr;
 	if (!sema_analyse_expr(context, inner)) return false;
 
-	if (inner->type == type_untypedlist)
+	if (type_is_invalid_storage_type(inner->type))
 	{
-		SEMA_ERROR(expr, "It is not possible to take the address of an untyped list.");
+		SEMA_ERROR(expr, "It is not possible to take the address from a value of the type %s.",
+		           type_quoted_error_string(inner->type));
 		return false;
 	}
 	// 2. The type is the resulting type of the expression.
