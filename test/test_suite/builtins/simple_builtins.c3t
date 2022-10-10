@@ -6,7 +6,7 @@ fn int foo(double b)
     double d = $$ceil(b);
     double e = $$max(1.0, d);
     double f = $$fma(d, 2.0, 3.0);
-    double m = $$muladd(d, 2.0, 3.0);
+    double m = $$fmuladd(d, 2.0, 3.0);
     int xeb = 13;
 
     int[3] abcd;

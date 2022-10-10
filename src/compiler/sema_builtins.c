@@ -463,7 +463,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_check_builtin_args_match(args, arg_count)) return false;
 			rtype = args[0]->type;
 			break;
-		case BUILTIN_MULADD:
+		case BUILTIN_FMULADD:
 			if (!sema_check_builtin_args(args,
 										 (BuiltinArg[]) { BA_FLOAT, BA_FLOAT, BA_FLOAT },
 										 arg_count)) return false;
@@ -560,7 +560,7 @@ static inline unsigned builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_FMA:
 		case BUILTIN_FSHL:
 		case BUILTIN_FSHR:
-		case BUILTIN_MULADD:
+		case BUILTIN_FMULADD:
 		case BUILTIN_PREFETCH:
 			return 3;
 		case BUILTIN_MEMSET:

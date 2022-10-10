@@ -5,7 +5,7 @@
 #include "llvm_codegen_internal.h"
 #include <math.h>
 
-static void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs_loaded, BinaryOp binary_op);
+static void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs_loaded, BinaryOp binary_op);
 static void llvm_emit_any_pointer(GenContext *c, BEValue *any, BEValue *pointer);
 static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr);
 static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr);
@@ -17,8 +17,27 @@ static inline void llvm_emit_subscript_addr_with_base(GenContext *c, BEValue *re
 static void llvm_emit_initialize_designated(GenContext *c, BEValue *ref, AlignSize offset, DesignatorElement** current, DesignatorElement **last, Expr *expr, BEValue *emitted_value);
 static inline void llvm_emit_const_initialize_reference(GenContext *c, BEValue *ref, Expr *expr);
 static inline void llvm_emit_initialize_reference(GenContext *c, BEValue *ref, Expr *expr);
+static inline LLVMValueRef llvm_emit_expr_to_rvalue(GenContext *c, Expr *expr);
+static inline LLVMValueRef llvm_emit_exprid_to_rvalue(GenContext *c, ExprId expr_id);
 static void llvm_convert_vector_comparison(GenContext *c, BEValue *be_value, LLVMValueRef val, Type *vector_type);
 static bool bitstruct_requires_bitswap(Decl *decl);
+
+
+static inline LLVMValueRef llvm_emit_expr_to_rvalue(GenContext *c, Expr *expr)
+{
+	BEValue value;
+	llvm_emit_expr(c, &value, expr);
+	llvm_value_rvalue(c, &value);
+	return value.value;
+}
+
+static inline LLVMValueRef llvm_emit_exprid_to_rvalue(GenContext *c, ExprId expr_id)
+{
+	BEValue value;
+	llvm_emit_exprid(c, &value, expr_id);
+	llvm_value_rvalue(c, &value);
+	return value.value;
+}
 
 BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValueRef failable)
 {
@@ -961,7 +980,7 @@ static inline void llvm_emit_bitassign_expr(GenContext *c, BEValue *be_value, Ex
 		BEValue value = parent;
 		llvm_extract_bitvalue(c, &value, parent_expr, member);
 		// Perform the operation and place it in be_value
-		gencontext_emit_binary(c, be_value, expr, &value, binaryop_assign_base_op(expr->binary_expr.operator));
+		llvm_emit_binary(c, be_value, expr, &value, binaryop_assign_base_op(expr->binary_expr.operator));
 	}
 	else
 	{
@@ -3182,7 +3201,100 @@ static void llvm_emit_else(GenContext *c, BEValue *be_value, Expr *expr)
 	llvm_value_set(be_value, phi, expr->type);
 }
 
-void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs_loaded, BinaryOp binary_op)
+typedef enum {
+	FMUL_NONE,
+	FMUL_LHS_MULT,
+	FMUL_LHS_NEG_MULT,
+	FMUL_RHS_MULT,
+	FMUL_RHS_NEG_MULT
+} FmulTransformation;
+
+INLINE FmulTransformation llvm_get_fmul_transformation(Expr *lhs, Expr *rhs)
+{
+	if (expr_is_mult(lhs)) return FMUL_LHS_MULT;
+	if (expr_is_neg(lhs) && expr_is_mult(lhs->unary_expr.expr)) return FMUL_LHS_NEG_MULT;
+	if (expr_is_mult(rhs)) return FMUL_RHS_MULT;
+	if (expr_is_neg(rhs) && expr_is_mult(rhs->unary_expr.expr)) return FMUL_RHS_NEG_MULT;
+	return FMUL_NONE;
+}
+INLINE bool llvm_emit_fmuladd_maybe(GenContext *c, BEValue *be_value, Expr *expr, BinaryOp op)
+{
+	Expr *lhs = exprptr(expr->binary_expr.left);
+	Expr *rhs = exprptr(expr->binary_expr.right);
+	FmulTransformation transformation = llvm_get_fmul_transformation(lhs, rhs);
+	bool negate_rhs = op == BINARYOP_SUB;
+	bool negate_result = false;
+	if (negate_rhs && transformation == FMUL_RHS_NEG_MULT)
+	{
+		negate_rhs = false;
+		rhs = rhs->unary_expr.expr;
+		transformation = FMUL_RHS_MULT;
+	}
+	LLVMValueRef args[3];
+	switch (transformation)
+	{
+		case FMUL_NONE:
+			return false;
+		case FMUL_LHS_MULT:
+			args[0] = llvm_emit_exprid_to_rvalue(c, lhs->binary_expr.left);
+			args[1] = llvm_emit_exprid_to_rvalue(c, lhs->binary_expr.right);
+			args[2] = llvm_emit_expr_to_rvalue(c, rhs);
+			if (negate_rhs) args[2] = LLVMBuildFNeg(c->builder, args[2], "");
+			break;
+		case FMUL_LHS_NEG_MULT:
+			lhs = lhs->unary_expr.expr;
+			args[0] = llvm_emit_exprid_to_rvalue(c, lhs->binary_expr.left);
+			args[1] = llvm_emit_exprid_to_rvalue(c, lhs->binary_expr.right);
+			if (expr_is_neg(rhs))
+			{
+				args[2] = llvm_emit_expr_to_rvalue(c, negate_rhs ? rhs : rhs->unary_expr.expr);
+			}
+			else
+			{
+				args[2] = llvm_emit_expr_to_rvalue(c, rhs);
+				if (!negate_rhs) args[2] = LLVMBuildNeg(c->builder, args[2], "");
+			}
+			negate_result = true;
+			break;
+		case FMUL_RHS_MULT:
+			args[2] = llvm_emit_expr_to_rvalue(c, lhs);
+			if (negate_rhs)
+			{
+				args[2] = LLVMBuildFNeg(c->builder, args[2], "");
+				negate_result = true;
+			}
+			args[0] = llvm_emit_exprid_to_rvalue(c, rhs->binary_expr.left);
+			args[1] = llvm_emit_exprid_to_rvalue(c, rhs->binary_expr.right);
+			break;
+		case FMUL_RHS_NEG_MULT:
+			rhs = rhs->unary_expr.expr;
+			assert(!negate_rhs);
+			if (expr_is_neg(lhs))
+			{
+				args[2] = llvm_emit_expr_to_rvalue(c, lhs->unary_expr.expr);
+			}
+			else
+			{
+				args[2] = LLVMBuildFNeg(c->builder, llvm_emit_expr_to_rvalue(c, lhs), "");
+			}
+			args[0] = llvm_emit_exprid_to_rvalue(c, rhs->binary_expr.left);
+			args[1] = llvm_emit_exprid_to_rvalue(c, rhs->binary_expr.right);
+			negate_result = true;
+			break;
+		default:
+			UNREACHABLE
+	}
+	LLVMTypeRef call_type[1] = { LLVMTypeOf(args[0]) };
+	LLVMValueRef result = llvm_emit_call_intrinsic(c, intrinsic_id.fmuladd, call_type, 1, args, 3);
+	if (negate_result)
+	{
+		result = LLVMBuildFNeg(c->builder, result, "");
+	}
+	llvm_value_set(be_value, result, expr->type);
+	return true;
+}
+
+void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs_loaded, BinaryOp binary_op)
 {
 	// foo ?? bar
 	if (binary_op == BINARYOP_ELSE)
@@ -3206,6 +3318,10 @@ void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValu
 	}
 	else
 	{
+		if (type_is_float(type_flatten(expr->type)) && (binary_op == BINARYOP_ADD || binary_op == BINARYOP_SUB))
+		{
+			if (llvm_emit_fmuladd_maybe(c, be_value, expr, binary_op)) return;
+		}
 		llvm_emit_expr(c, &lhs, exprptr(expr->binary_expr.left));
 	}
 	// We need the rvalue.
@@ -3640,7 +3756,7 @@ static void llvm_emit_vector_assign_expr(GenContext *c, BEValue *be_value, Expr 
 		assert(base_op != BINARYOP_ERROR);
 		BEValue lhs;
 		llvm_value_set(&lhs, LLVMBuildExtractElement(c->builder, vector_value, index_val, "elem"), expr->type);
-		gencontext_emit_binary(c, be_value, expr, &lhs, base_op);
+		llvm_emit_binary(c, be_value, expr, &lhs, base_op);
 	}
 	else
 	{
@@ -3666,7 +3782,7 @@ static void llvm_emit_binary_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		BEValue addr;
 		llvm_emit_expr(c, &addr, exprptr(expr->binary_expr.left));
 		llvm_value_addr(c, &addr);
-		gencontext_emit_binary(c, be_value, expr, &addr, base_op);
+		llvm_emit_binary(c, be_value, expr, &addr, base_op);
 		llvm_store(c, &addr, be_value);
 		return;
 	}
@@ -3685,7 +3801,7 @@ static void llvm_emit_binary_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		return;
 	}
 
-	gencontext_emit_binary(c, be_value, expr, NULL, binary_op);
+	llvm_emit_binary(c, be_value, expr, NULL, binary_op);
 }
 
 void gencontext_emit_elvis_expr(GenContext *c, BEValue *value, Expr *expr)
@@ -5609,6 +5725,7 @@ static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Ex
 	}
 	UNREACHABLE
 }
+
 void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 {
 	EMIT_LOC(c, expr);

@@ -192,6 +192,7 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_EXP2] = KW_DEF("exp2");
 	builtin_list[BUILTIN_FLOOR] = KW_DEF("floor");
 	builtin_list[BUILTIN_FMA] = KW_DEF("fma");
+	builtin_list[BUILTIN_FMULADD] = KW_DEF("fmuladd");
 	builtin_list[BUILTIN_FSHL] = KW_DEF("fshl");
 	builtin_list[BUILTIN_FSHR] = KW_DEF("fshr");
 	builtin_list[BUILTIN_LOG] = KW_DEF("log");
@@ -200,7 +201,6 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_MEMCOPY] = KW_DEF("memcpy");
 	builtin_list[BUILTIN_MEMSET] = KW_DEF("memset");
 	builtin_list[BUILTIN_MEMMOVE] = KW_DEF("memmove");
-	builtin_list[BUILTIN_MULADD] = KW_DEF("muladd");
 	builtin_list[BUILTIN_NEARBYINT] = KW_DEF("nearbyint");
 	builtin_list[BUILTIN_POPCOUNT] = KW_DEF("popcount");
 	builtin_list[BUILTIN_POW] = KW_DEF("pow");
