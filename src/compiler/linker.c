@@ -360,6 +360,7 @@ static void linker_setup_linux(const char ***args_ref, LinkerType linker_type)
 	if (is_no_pie(platform_target.reloc_model)) add_arg("-no-pie");
 	if (is_pie(platform_target.reloc_model)) add_arg("-pie");
 	if (platform_target.arch == ARCH_TYPE_X86_64) add_arg("--eh-frame-hdr");
+	if (active_target.no_libc) return;
 	const char *crt_begin_dir = find_linux_crt_begin();
 	const char *crt_dir = find_linux_crt();
 	if (!crt_begin_dir || !crt_dir)
