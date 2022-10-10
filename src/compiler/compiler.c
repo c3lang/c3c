@@ -414,7 +414,7 @@ void compiler_compile(void)
 
 	if (output_exe)
 	{
-		if (platform_target.os != OS_TYPE_WIN32 && active_target.arch_os_target == default_target && !active_target.force_linker)
+		if (!active_target.no_libc && platform_target.os != OS_TYPE_WIN32 && active_target.arch_os_target == default_target && !active_target.force_linker)
 		{
 			platform_linker(output_exe, obj_files, output_file_count);
 			compiler_link_time = bench_mark();
@@ -650,6 +650,7 @@ void compile()
 	setup_bool_define("PLATFORM_I128_SUPPORTED", platform_target.int128);
 	setup_bool_define("PLATFORM_F128_SUPPORTED", platform_target.float128);
 	setup_bool_define("PLATFORM_F16_SUPPORTED", platform_target.float16);
+	setup_bool_define("COMPILER_LIBC_AVAILABLE", !active_target.no_libc);
 	setup_int_define("COMPILER_OPT_LEVEL", (uint64_t)active_target.optimization_level, type_int);
 	setup_int_define("OS_TYPE", (uint64_t)platform_target.os, type_int);
 	setup_int_define("COMPILER_SIZE_OPT_LEVEL", (uint64_t)active_target.size_optimization_level, type_int);

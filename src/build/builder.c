@@ -204,7 +204,8 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	{
 		vec_add(target->linker_libs, options->linker_libs[i]);
 	}
-	target->no_stdlib = options->no_stdlib;
+	if (options->no_stdlib) target->no_stdlib = true;
+	if (options->no_libc) target->no_libc = true;
 	target->emit_llvm = options->emit_llvm;
 	target->emit_asm = options->emit_asm;
 	target->force_linker = options->force_linker;

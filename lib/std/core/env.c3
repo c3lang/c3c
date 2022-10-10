@@ -52,6 +52,7 @@ enum OsType
 }
 
 const OsType OS_TYPE = (OsType)($$OS_TYPE);
+const bool COMPILER_LIBC_AVAILABLE = $$COMPILER_LIBC_AVAILABLE;
 const CompilerOptLevel COMPILER_OPT_LEVEL = (CompilerOptLevel)($$COMPILER_OPT_LEVEL);
 const bool BIG_ENDIAN = $$PLATFORM_BIG_ENDIAN;
 const bool I128_SUPPORT = $$PLATFORM_I128_SUPPORTED;
