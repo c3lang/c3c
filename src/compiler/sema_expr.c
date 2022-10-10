@@ -1088,9 +1088,10 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
 			else if (variadic == VARIADIC_ANY)
 			{
 				if (!sema_analyse_expr(context, arg)) return false;
-				if (arg->type == type_untypedlist)
+				if (type_is_invalid_storage_type(arg->type))
 				{
-					SEMA_ERROR(arg, "An untyped list cannot be passed as a variadic argument.");
+					SEMA_ERROR(arg, "A value of type %s cannot be passed as a variadic argument.",
+					           type_quoted_error_string(arg->type));
 					return false;
 				}
 				expr_insert_addr(arg);
