@@ -593,16 +593,16 @@ Decl *sema_resolve_method_in_module(Module *module, Type *actual_type, const cha
 	if (found && search_type == METHOD_SEARCH_CURRENT) return found;
 	// We are now searching submodules, so hide the private ones.
 	if (search_type == METHOD_SEARCH_CURRENT) search_type = METHOD_SEARCH_SUBMODULE_CURRENT;
-	VECEACH(module->sub_modules, i)
-	{
-		Decl *new_found = sema_resolve_method_in_module(module->sub_modules[i], actual_type, method_name, private_found, ambiguous, search_type);
-		if (new_found)
+	FOREACH_BEGIN(Module *mod, module->sub_modules)
+		Decl *new_found = sema_resolve_method_in_module(mod, actual_type, method_name, private_found, ambiguous, search_type);
+		if (!new_found) continue;
+		if (found)
 		{
 			*ambiguous = new_found;
 			return found;
 		}
 		found = new_found;
-	}
+	FOREACH_END();
 	// We might have it ambiguous due to searching sub modules.
 	return found;
 }
@@ -655,6 +655,16 @@ Decl *sema_resolve_type_method(CompilationUnit *unit, Type *type, const char *me
 			*ambiguous_ref = ambiguous;
 			return found;
 		}
+	}
+	if (!found)
+	{
+		found = sema_resolve_method_in_module(global_context.core_module, type, method_name,
+											  &private, &ambiguous, METHOD_SEARCH_IMPORTED);
+	}
+	if (found && ambiguous)
+	{
+		*ambiguous_ref = ambiguous;
+		return found;
 	}
 	if (private) *private_ref = private;
 	if (!found)
@@ -836,7 +846,7 @@ void sema_unwrap_var(SemaContext *context, Decl *decl)
 
 void sema_rewrap_var(SemaContext *context, Decl *decl)
 {
-	assert(decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_UNWRAPPED && decl->var.alias->type->type_kind == TYPE_FAILABLE);
+	assert(decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_UNWRAPPED && decl->var.alias->type->type_kind == TYPE_OPTIONAL);
 	sema_append_local(context, decl->var.alias);
 }
 

@@ -867,11 +867,11 @@ static inline Ast* parse_ct_if_stmt(ParseContext *c, bool is_elif)
 
 	if (tok_is(c, TOKEN_CT_ELIF))
 	{
-		ASSIGN_AST_OR_RET(ast->ct_if_stmt.elif, parse_ct_if_stmt(c, true), poisoned_ast);
+		ASSIGN_ASTID_OR_RET(ast->ct_if_stmt.elif, parse_ct_if_stmt(c, true), poisoned_ast);
 	}
 	else if (tok_is(c, TOKEN_CT_ELSE))
 	{
-		ASSIGN_AST_OR_RET(ast->ct_if_stmt.elif, parse_ct_else_stmt(c), poisoned_ast);
+		ASSIGN_ASTID_OR_RET(ast->ct_if_stmt.elif, parse_ct_else_stmt(c), poisoned_ast);
 	}
 	if (is_elif) return ast;
 	advance_and_verify(c, TOKEN_CT_ENDIF);
@@ -1003,7 +1003,7 @@ static inline Ast* parse_ct_switch_stmt(ParseContext *c)
 {
 	Ast *ast = ast_new_curr(c, AST_CT_SWITCH_STMT);
 	advance_and_verify(c, TOKEN_CT_SWITCH);
-	ASSIGN_EXPR_OR_RET(ast->ct_switch_stmt.cond, parse_const_paren_expr(c), poisoned_ast);
+	ASSIGN_EXPRID_OR_RET(ast->ct_switch_stmt.cond, parse_const_paren_expr(c), poisoned_ast);
 	TRY_CONSUME(TOKEN_COLON, "Expected ':' after $switch expression, did you forget it?");
 	Ast **cases = NULL;
 	while (!try_consume(c, TOKEN_CT_ENDSWITCH))

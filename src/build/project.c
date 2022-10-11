@@ -138,6 +138,8 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	target->win.sdk = get_valid_string(json, "winsdk", type, false);
 	target->macos.sdk = get_valid_string(json, "macossdk", type, false);
 	target->panicfn = panicfn;
+	target->no_libc = get_valid_bool(json, "nolibc", type, false);
+	target->no_stdlib = get_valid_bool(json, "nostdlib", type, false);
 	if (cc) target->cc = cc;
 	if (cflags) target->cflags = cflags;
 	if (csource_dirs) target->csource_dirs = csource_dirs;

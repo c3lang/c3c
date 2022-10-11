@@ -89,11 +89,17 @@ typedef enum
 {
 	OPT_SETTING_NOT_SET = -1,
 	OPT_SETTING_O0 = 0,
-	OPT_SETTING_O1 = 1,
-	OPT_SETTING_O2 = 2,
-	OPT_SETTING_O3 = 3,
-	OPT_SETTING_OSMALL = 4,
-	OPT_SETTING_OTINY = 5,
+	OPT_SETTING_O0_PLUS,
+	OPT_SETTING_O1,
+	OPT_SETTING_O1_PLUS,
+	OPT_SETTING_O2,
+	OPT_SETTING_O2_PLUS,
+	OPT_SETTING_O3,
+	OPT_SETTING_O3_PLUS,
+	OPT_SETTING_OSMALL,
+	OPT_SETTING_OSMALL_PLUS,
+	OPT_SETTING_OTINY,
+	OPT_SETTING_OTINY_PLUS
 } OptimizationSetting;
 
 typedef enum
@@ -256,6 +262,7 @@ typedef struct BuildOptions_
 	bool emit_bitcode;
 	bool test_mode;
 	bool no_stdlib;
+	bool no_libc;
 	bool force_linker;
 	const char *panicfn;
 	const char *cc;
@@ -269,6 +276,7 @@ typedef struct BuildOptions_
 	bool print_attributes;
 	bool print_builtins;
 	bool print_operators;
+	bool print_type_properties;
 	bool print_precedence;
 	bool print_build_settings;
 	bool benchmarking;
@@ -333,10 +341,12 @@ typedef struct
 	bool emit_llvm;
 	bool emit_asm;
 	bool no_stdlib;
+	bool no_libc;
 	bool emit_object_files;
 	bool force_linker;
 	OptimizationLevel optimization_level;
 	SizeOptimizationLevel size_optimization_level;
+	bool single_module;
 	DebugInfo debug_info;
 	RelocModel reloc_model;
 	ArchOsTarget arch_os_target;

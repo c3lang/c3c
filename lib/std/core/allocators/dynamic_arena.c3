@@ -4,14 +4,14 @@ private struct DynamicArenaPage
 {
 	void* memory;
 	void* prev_arena;
-	usize total;
-	usize used;
+	usz total;
+	usz used;
 	void* last_ptr;
 }
 
 private struct DynamicArenaChunk
 {
-	usize size;
+	usz size;
 }
 
 /**
@@ -23,7 +23,7 @@ private fn void DynamicArenaAllocator.free(DynamicArenaAllocator* this, void* pt
 	DynamicArenaPage* current_page = this.page;
 	if (ptr == current_page.last_ptr)
 	{
-		current_page.used = (usize)((ptr - DEFAULT_SIZE_PREFIX) - current_page.memory);
+		current_page.used = (usz)((ptr - DEFAULT_SIZE_PREFIX) - current_page.memory);
 	}
 	current_page.last_ptr = null;
 }
@@ -32,26 +32,26 @@ private fn void DynamicArenaAllocator.free(DynamicArenaAllocator* this, void* pt
  * @require old_pointer && size > 0
  * @require this.page `tried to realloc pointer on invalid allocator`
  */
-private fn void*! DynamicArenaAllocator._realloc(DynamicArenaAllocator* this, void* old_pointer, usize size, usize alignment, usize offset)
+private fn void*! DynamicArenaAllocator._realloc(DynamicArenaAllocator* this, void* old_pointer, usz size, usz alignment, usz offset)
 {
 	DynamicArenaPage* current_page = this.page;
 	alignment = alignment_for_allocation(alignment);
-	usize* old_size_ptr = old_pointer - DEFAULT_SIZE_PREFIX;
-	usize old_size = *old_size_ptr;
+	usz* old_size_ptr = old_pointer - DEFAULT_SIZE_PREFIX;
+	usz old_size = *old_size_ptr;
 	// We have the old pointer and it's correctly aligned.
 	if (old_size >= size && mem::ptr_is_aligned(old_pointer, alignment))
 	{
 		*old_size_ptr = size;
 		if (current_page.last_ptr == old_pointer)
 		{
-			current_page.used = (usize)((old_pointer - DEFAULT_SIZE_PREFIX) - current_page.memory);
+			current_page.used = (usz)((old_pointer - DEFAULT_SIZE_PREFIX) - current_page.memory);
 		}
 		return old_pointer;
 	}
 	if REUSE: (current_page.last_ptr == old_pointer && mem::ptr_is_aligned(old_pointer, alignment))
 	{
 		assert(size > old_size);
-		usize add_size = size - old_size;
+		usz add_size = size - old_size;
 		if (add_size + current_page.used > current_page.total) break REUSE;
 		*old_size_ptr = size;
 		current_page.used += add_size;
@@ -82,10 +82,10 @@ private fn void DynamicArenaAllocator.reset(DynamicArenaAllocator* this)
  * @require math::is_power_of_2(alignment)
  * @require size > 0
  */
-private fn void*! DynamicArenaAllocator._alloc_new(DynamicArenaAllocator* this, usize size, usize alignment, usize offset)
+private fn void*! DynamicArenaAllocator._alloc_new(DynamicArenaAllocator* this, usz size, usz alignment, usz offset)
 {
 	// First, make sure that we can align it, extending the page size if needed.
-	usize page_size = max(this.page_size, mem::aligned_offset(size + DynamicArenaChunk.sizeof + offset, alignment) - offset);
+	usz page_size = max(this.page_size, mem::aligned_offset(size + DynamicArenaChunk.sizeof + offset, alignment) - offset);
 
 	// Grab the page without alignment (we do it ourselves)
 	void* mem = this.backing_allocator.alloc(page_size)?;
@@ -113,7 +113,7 @@ private fn void*! DynamicArenaAllocator._alloc_new(DynamicArenaAllocator* this, 
  * @require size > 0
  * @require this
  */
-private fn void*! DynamicArenaAllocator._alloc(DynamicArenaAllocator* this, usize size, usize alignment, usize offset)
+private fn void*! DynamicArenaAllocator._alloc(DynamicArenaAllocator* this, usz size, usz alignment, usz offset)
 {
 	alignment = alignment_for_allocation(alignment);
 	DynamicArenaPage* page = this.page;
@@ -125,7 +125,7 @@ private fn void*! DynamicArenaAllocator._alloc(DynamicArenaAllocator* this, usiz
 	}
     if (!page) return this._alloc_new(size, alignment, offset);
     void* start = mem::aligned_pointer(page.memory + page.used + DynamicArenaChunk.sizeof + offset, alignment) - offset;
-    usize new_used = start - page.memory + size;
+    usz new_used = start - page.memory + size;
     if ALLOCATE_NEW: (new_used > page.total)
     {
         if ((page = this.unused_page))
@@ -155,7 +155,7 @@ private fn void*! DynamicArenaAllocator._alloc(DynamicArenaAllocator* this, usiz
  * @require !alignment || math::is_power_of_2(alignment)
  * @require data `unexpectedly missing the allocator`
  */
-private fn void*! dynamic_arena_allocator_function(Allocator* data, usize size, usize alignment, usize offset, void* old_pointer, AllocationKind kind)
+private fn void*! dynamic_arena_allocator_function(Allocator* data, usz size, usz alignment, usz offset, void* old_pointer, AllocationKind kind)
 {
 	DynamicArenaAllocator* allocator = (DynamicArenaAllocator*)data;
 	switch (kind)

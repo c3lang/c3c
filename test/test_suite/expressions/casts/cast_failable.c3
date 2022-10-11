@@ -5,6 +5,6 @@ fault MyErr
 
 fn void test()
 {
-    int! x = (int!)(MyErr.FOO!); // #error: Casting to a failable type is not allowed
+    int! x = (int!)(MyErr.FOO!); // #error: Casting to an optional type is not
     int! y = MyErr.FOO!;
 }

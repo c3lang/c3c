@@ -6,6 +6,7 @@
 
 #include <llvm-c/Error.h>
 #include <llvm-c/Comdat.h>
+#include <llvm-c/Linker.h>
 
 typedef struct LLVMOpaquePassBuilderOptions *LLVMPassBuilderOptionsRef;
 LLVMErrorRef LLVMRunPasses(LLVMModuleRef M, const char *Passes,
@@ -15,6 +16,10 @@ LLVMPassBuilderOptionsRef LLVMCreatePassBuilderOptions(void);
 void LLVMPassBuilderOptionsSetVerifyEach(LLVMPassBuilderOptionsRef Options, LLVMBool VerifyEach);
 void LLVMPassBuilderOptionsSetDebugLogging(LLVMPassBuilderOptionsRef Options, LLVMBool DebugLogging);
 void LLVMDisposePassBuilderOptions(LLVMPassBuilderOptionsRef Options);
+
+static void llvm_emit_constructors_and_destructors(GenContext *c);
+static void llvm_codegen_setup();
+static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context);
 
 const char* llvm_version = LLVM_VERSION_STRING;
 const char* llvm_target = LLVM_DEFAULT_TARGET_TRIPLE;
@@ -49,10 +54,18 @@ static void diagnostics_handler(LLVMDiagnosticInfoRef ref, void *context)
 	LLVMDisposeMessage(message);
 }
 
-static void gencontext_init(GenContext *context, Module *module)
+static void gencontext_init(GenContext *context, Module *module, LLVMContextRef shared_context)
 {
 	memset(context, 0, sizeof(GenContext));
-	context->context = LLVMContextCreate();
+	if (shared_context)
+	{
+		context->shared_context = true;
+		context->context = shared_context;
+	}
+	else
+	{
+		context->context = LLVMContextCreate();
+	}
 	LLVMContextSetDiagnosticHandler(context->context, &diagnostics_handler, context);
 	context->code_module = module;
 }
@@ -61,7 +74,7 @@ static void gencontext_destroy(GenContext *context)
 {
 	assert(llvm_is_global_eval(context));
 	LLVMDisposeBuilder(context->global_builder);
-	LLVMContextDispose(context->context);
+	if (!context->shared_context) LLVMContextDispose(context->context);
 	LLVMDisposeTargetData(context->target_data);
 	LLVMDisposeTargetMachine(context->machine);
 	free(context);
@@ -78,6 +91,22 @@ LLVMValueRef llvm_emit_memclear_size_align(GenContext *c, LLVMValueRef ptr, uint
 	ptr = LLVMBuildBitCast(c->builder, ptr, llvm_get_type(c, type_get_ptr(type_char)), "");
 #endif
 	return LLVMBuildMemSet(c->builder, ptr, llvm_get_zero(c, type_char), llvm_const_int(c, type_usize, size), align);
+}
+
+INLINE void llvm_emit_xtor(GenContext *c, LLVMValueRef *list, const char *name)
+{
+	if (!list) return;
+	unsigned len = vec_size(list);
+	LLVMTypeRef type = LLVMTypeOf(list[0]);
+	LLVMValueRef array = LLVMConstArray(type, list, len);
+	LLVMValueRef global = LLVMAddGlobal(c->module, LLVMTypeOf(array), name);
+	LLVMSetLinkage(global, LLVMAppendingLinkage);
+	LLVMSetInitializer(global, array);
+}
+void llvm_emit_constructors_and_destructors(GenContext *c)
+{
+	llvm_emit_xtor(c, c->constructors, "llvm.global_ctors");
+	llvm_emit_xtor(c, c->destructors, "llvm.global_dtors");
 }
 
 /**
@@ -343,9 +372,9 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	}
 	if (init_expr)
 	{
-		if (init_expr->expr_kind == EXPR_CONST && init_expr->const_expr.const_kind == CONST_LIST)
+		if (init_expr->expr_kind == EXPR_CONST && init_expr->const_expr.const_kind == CONST_INITIALIZER)
 		{
-			ConstInitializer *list = init_expr->const_expr.list;
+			ConstInitializer *list = init_expr->const_expr.initializer;
 			init_value = llvm_emit_const_initializer(c, list);
 		}
 		else
@@ -585,12 +614,9 @@ static bool intrinsics_setup = false;
 LLVMAttributes attribute_id;
 LLVMIntrinsics intrinsic_id;
 
-void llvm_codegen_setup()
+static void llvm_codegen_setup()
 {
 	if (intrinsics_setup) return;
-
-	//intrinsic_id.sshl_sat = lookup_intrinsic("llvm.sshl.sat");
-	//intrinsic_id.ushl_sat = lookup_intrinsic("llvm.ushl.sat");
 
 	intrinsic_id.abs = lookup_intrinsic("llvm.abs");
 	intrinsic_id.assume = lookup_intrinsic("llvm.assume");
@@ -625,8 +651,10 @@ void llvm_codegen_setup()
 	intrinsic_id.maxnum = lookup_intrinsic("llvm.maxnum");
 	intrinsic_id.memcpy = lookup_intrinsic("llvm.memcpy");
 	intrinsic_id.memset = lookup_intrinsic("llvm.memset");
+	intrinsic_id.memmove = lookup_intrinsic("llvm.memmove");
 	intrinsic_id.minimum = lookup_intrinsic("llvm.minimum");
 	intrinsic_id.minnum = lookup_intrinsic("llvm.minnum");
+	intrinsic_id.fmuladd = lookup_intrinsic("llvm.fmuladd");
 	intrinsic_id.nearbyint = lookup_intrinsic("llvm.nearbyint");
 	intrinsic_id.pow = lookup_intrinsic("llvm.pow");
 	intrinsic_id.powi = lookup_intrinsic("llvm.powi");
@@ -968,81 +996,124 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 		case DECL_TYPEDEF:
 		case DECL_UNION:
 		case DECL_DECLARRAY:
+		case DECL_INITIALIZE:
+		case DECL_FINALIZE:
 		case DECL_BODYPARAM:
 			UNREACHABLE;
 	}
 	UNREACHABLE
 }
-void *llvm_gen(Module *module)
+
+void **llvm_gen(Module** modules, unsigned module_count)
+{
+	if (!module_count) return NULL;
+	GenContext ** gen_contexts = NULL;
+	llvm_codegen_setup();
+	if (active_target.single_module)
+	{
+		GenContext *first_context;
+		unsigned first_element;
+		LLVMContextRef context = LLVMGetGlobalContext();
+		for (int i = 0; i < module_count; i++)
+		{
+			GenContext *result = llvm_gen_module(modules[i], context);
+			if (!result) continue;
+			vec_add(gen_contexts, result);
+		}
+		if (!gen_contexts) return NULL;
+		GenContext *first = gen_contexts[0];
+		unsigned count = vec_size(gen_contexts);
+		for (unsigned i = 1; i < count; i++)
+		{
+			GenContext *other = gen_contexts[i];
+			LLVMLinkModules2(first->module, other->module);
+			gencontext_destroy(other);
+		}
+		vec_resize(gen_contexts, 1);
+		return (void**)gen_contexts;
+	}
+	for (unsigned i = 0; i < module_count; i++)
+	{
+		GenContext *result = llvm_gen_module(modules[i], NULL);
+		if (!result) continue;
+		vec_add(gen_contexts, result);
+	}
+	return (void**)gen_contexts;
+}
+
+static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context)
 {
 	if (!vec_size(module->units)) return NULL;
 	assert(intrinsics_setup);
 	GenContext *gen_context = cmalloc(sizeof(GenContext));
-	gencontext_init(gen_context, module);
+	gencontext_init(gen_context, module, shared_context);
 	gencontext_begin_module(gen_context);
 
-	VECEACH(module->units, j)
-	{
-		CompilationUnit *unit = module->units[j];
+	FOREACH_BEGIN(CompilationUnit *unit, module->units)
+
 		gencontext_init_file_emit(gen_context, unit);
 		gen_context->debug.compile_unit = unit->llvm.debug_compile_unit;
 		gen_context->debug.file = unit->llvm.debug_file;
 
-		VECEACH(unit->methods, i)
-		{
-			llvm_emit_function_decl(gen_context, unit->methods[i]);
-		}
-		VECEACH(unit->types, i)
-		{
-			llvm_emit_type_decls(gen_context, unit->types[i]);
-		}
-		VECEACH(unit->enums, i)
-		{
-			llvm_emit_type_decls(gen_context, unit->enums[i]);
-		}
-		VECEACH(unit->functions, i)
-		{
-			Decl *func = unit->functions[i];
+		FOREACH_BEGIN(Decl *initializer, unit->xxlizers)
+			llvm_emit_xxlizer(gen_context, initializer);
+		FOREACH_END();
+
+		FOREACH_BEGIN(Decl *method, unit->methods)
+			llvm_emit_function_decl(gen_context, method);
+		FOREACH_END();
+
+		FOREACH_BEGIN(Decl *type_decl, unit->types)
+			llvm_emit_type_decls(gen_context, type_decl);
+		FOREACH_END();
+
+		FOREACH_BEGIN(Decl *enum_decl, unit->enums)
+			llvm_emit_type_decls(gen_context, enum_decl);
+		FOREACH_END();
+
+		FOREACH_BEGIN(Decl *func, unit->functions)
 			llvm_emit_function_decl(gen_context, func);
-		}
+		FOREACH_END();
+
 		if (unit->main_function && unit->main_function->is_synthetic)
 		{
 			llvm_emit_function_decl(gen_context, unit->main_function);
 		}
-	}
 
-	VECEACH(module->units, j)
-	{
-		CompilationUnit *unit = module->units[j];
+	FOREACH_END();
+
+	FOREACH_BEGIN(CompilationUnit *unit, module->units)
+
 		gen_context->debug.compile_unit = unit->llvm.debug_compile_unit;
 		gen_context->debug.file = unit->llvm.debug_file;
 
-		VECEACH(unit->vars, i)
-		{
-			llvm_get_ref(gen_context, unit->vars[i]);
-		}
-		VECEACH(unit->vars, i)
-		{
-			llvm_emit_global_variable_init(gen_context, unit->vars[i]);
-		}
-		VECEACH(unit->functions, i)
-		{
-			Decl *decl = unit->functions[i];
+		FOREACH_BEGIN(Decl *var, unit->vars)
+			llvm_get_ref(gen_context, var);
+		FOREACH_END();
+
+		FOREACH_BEGIN(Decl *var, unit->vars)
+			llvm_emit_global_variable_init(gen_context, var);
+		FOREACH_END();
+
+		FOREACH_BEGIN(Decl *decl, unit->functions)
 			if (decl->func_decl.body) llvm_emit_function_body(gen_context, decl);
-		}
+		FOREACH_END();
+
 		if (unit->main_function && unit->main_function->is_synthetic)
 		{
 			llvm_emit_function_body(gen_context, unit->main_function);
 		}
 
-		VECEACH(unit->methods, i)
-		{
-			Decl *decl = unit->methods[i];
+		FOREACH_BEGIN(Decl *decl, unit->methods)
 			if (decl->func_decl.body) llvm_emit_function_body(gen_context, decl);
-		}
+		FOREACH_END();
 
 		gencontext_end_file_emit(gen_context, unit);
-	}
+
+	FOREACH_END();
+
+	llvm_emit_constructors_and_destructors(gen_context);
+
 	// EmitDeferred()
 
 	if (llvm_use_debug(gen_context))

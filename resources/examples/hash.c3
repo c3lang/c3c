@@ -1,4 +1,4 @@
-module hash;
+module std::hash;
 import libc;
 
 // Code adapted from Odin's hash.odin

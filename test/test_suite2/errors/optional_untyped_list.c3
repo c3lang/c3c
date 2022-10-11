@@ -11,10 +11,16 @@ fault MyErr
 
 extern fn int printf(char *c, ...);
 
-fn void main()
+fn void foo()
+{
+    int z = 2;
+    Foo*! w = &&{ z, 0 }; // #error: An untyped list can only have constant elements
+}
+
+fn void foo2()
 {
     int! z = 2;
-    Foo*! w = &&{ z, 0 }; // #error: A failable 'int[2]*!' cannot be converted to 'Foo*'
+    Foo*! w = &&{ z, 0 }; // #error: An untyped list can only have constant elements
 }
 
 fn void test()

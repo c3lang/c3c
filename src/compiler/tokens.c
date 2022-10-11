@@ -307,6 +307,10 @@ const char *token_type_to_string(TokenType type)
 			return "isize";
 		case TOKEN_USIZE:
 			return "usize";
+		case TOKEN_ISZ:
+			return "isz";
+		case TOKEN_USZ:
+			return "usz";
 		case TOKEN_IPTR:
 			return "iptr";
 		case TOKEN_UPTR:

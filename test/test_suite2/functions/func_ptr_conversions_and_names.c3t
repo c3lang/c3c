@@ -19,16 +19,15 @@ fn void main()
 	io::printfln("%d", (&test2)());
 	FuncSame z = &test2;
 	io::printfln("%d", z());
-	io::printfln("%s", $qnameof($typeof(b ? &test2 : &test)));
-	io::printfln("%s", $nameof($typeof(b ? &test2 : &test)));
-	io::printfln("%s", $qnameof($typeof(&test2)));
-	io::printfln("%s", $nameof($typeof(&test2)));
-	io::printfln("%s", $nameof($typeof(b ? &test4 : &test3)));
+	io::printfln("%s", $typeof(b ? &test2 : &test).qnameof);
+	io::printfln("%s", $typeof(b ? &test2 : &test).nameof);
+	io::printfln("%s", $typeof(&test2).qnameof);
+	io::printfln("%s", $typeof(&test2).nameof);
+	io::printfln("%s", $typeof(b ? &test4 : &test3).nameof);
 
 	$typeof(b ? &test2 : &test) y = &test2;
 	typeid zfoke = $typeof(y).typeid;
 }
-
 
 /* #expect: test.ll
 

@@ -66,61 +66,70 @@ static void usage(void)
 	OUTPUT("  clean                              Clean all build files.");
 	OUTPUT("  run [<target>]                     Run (and build if needed) the target in the current project.");
 	OUTPUT("  dist [<target>]                    Clean and build a target for distribution.");
-	OUTPUT("  directives [<target>]                    Generate documentation for the target.");
+	OUTPUT("  directives [<target>]              Generate documentation for the target.");
 	OUTPUT("  bench [<target>]                   Benchmark a target.");
 	OUTPUT("  clean-run [<target>]               Clean, then run the target.");
 	OUTPUT("  compile-run <file1> [<file2> ...]  Compile files then immediately run the result.");
+	OUTPUT("  compile-only <file1> [<file2> ...] Compile files but do not perform linking.");
 	OUTPUT("  static-lib <file1> [<file2> ...]   Compile files without a project into a static library.");
 	OUTPUT("  dynamic-lib <file1> [<file2> ...]  Compile files without a project into a dynamic library.");
 	OUTPUT("  headers <file1> [<file2> ...]      Analyse files and generate C headers for public methods.");
 	OUTPUT("");
 	OUTPUT("Options:");
-	OUTPUT("  --tinybackend         - Use the TinyBackend for compilation.");
-	OUTPUT("  --stdlib <dir>        - Use this directory as the C3 standard library path.");
-	OUTPUT("  --nostdlib            - Do not include the standard library.");
-	OUTPUT("  --libdir <dir>        - Add this directory to the C3 library search paths.");
-	OUTPUT("  --lib <name>          - Add this library to the compilation.");
-	OUTPUT("  --path <dir>          - Use this as the base directory for the current command.");
-	OUTPUT("  --template <template> - Use a different template: \"lib\", \"static-lib\" or a path.");
-	OUTPUT("  --about               - Prints a short description of C3.");
-	OUTPUT("  --symtab <value>      - Sets the preferred symtab size.");
-	OUTPUT("  -V --version          - Print version information.");
-	OUTPUT("  -E                    - Lex only.");
-	OUTPUT("  -P                    - Only parse and output the AST as S-expressions.");
-	OUTPUT("  -C                    - Only lex, parse and check.");
-	OUTPUT("  -o <file>             - Write output to <file>.");
-	OUTPUT("  -O0                   - Optimizations off.");
-	OUTPUT("  -O1                   - Simple optimizations only.");
-	OUTPUT("  -O2                   - Default optimization level.");
-	OUTPUT("  -Os                   - Optimize for size.");
-	OUTPUT("  -O3                   - Aggressive optimization.");
-	OUTPUT("  --build-dir <dir>     - Override build output directory.");
-	OUTPUT("  --obj-out <dir>       - Override object file output directory.");
-	OUTPUT("  --llvm-out <dir>      - Override llvm output directory for '--emit-llvm'.");
-	OUTPUT("  --emit-llvm           - Emit LLVM IR as a .ll file per module.");
-	OUTPUT("  --asm-out <dir>       - Override asm output directory for '--emit-asm'.");
-	OUTPUT("  --emit-asm            - Emit asm as a .s file per module.");
-	OUTPUT("  --target <target>     - Compile for a particular architecture + OS target.");
-	OUTPUT("  --threads <number>    - Set the number of threads to use for compilation.");
-	OUTPUT("  --safe                - Set mode to 'safe', generating runtime traps on overflows and contract violations.");
-	OUTPUT("  --fast                - Set mode to 'fast', removes runtime traps.");
+	OUTPUT("  --tinybackend          - Use the TinyBackend for compilation.");
+	OUTPUT("  --stdlib <dir>         - Use this directory as the C3 standard library path.");
+	OUTPUT("  --nostdlib             - Do not include the standard library.");
+	OUTPUT("  --nolibc               - Do not implicitly link libc nor any associated files.");
+	OUTPUT("  --libdir <dir>         - Add this directory to the C3 library search paths.");
+	OUTPUT("  --lib <name>           - Add this library to the compilation.");
+	OUTPUT("  --path <dir>           - Use this as the base directory for the current command.");
+	OUTPUT("  --template <template>  - Use a different template: \"lib\", \"static-lib\" or a path.");
+	OUTPUT("  --about                - Prints a short description of C3.");
+	OUTPUT("  --symtab <value>       - Sets the preferred symtab size.");
+	OUTPUT("  -V --version           - Print version information.");
+	OUTPUT("  -E                     - Lex only.");
+	OUTPUT("  -P                     - Only parse and output the AST as S-expressions.");
+	OUTPUT("  -C                     - Only lex, parse and check.");
+	OUTPUT("  -o <file>              - Write output to <file>.");
+	OUTPUT("  -O0                    - Optimizations off.");
+	OUTPUT("  -O1                    - Simple optimizations only.");
+	OUTPUT("  -O2                    - Default optimization level.");
+	OUTPUT("  -O3                    - Aggressive optimization.");
+	OUTPUT("  -Os                    - Optimize for size.");
+	OUTPUT("  -Oz                    - Optimize for tiny size.");
+	OUTPUT("  -O0+                   - No optimization, single module");
+	OUTPUT("  -O1+                   - Simple optimizations, single module.");
+	OUTPUT("  -O2+                   - Default optimization level, single module");
+	OUTPUT("  -O3+                   - Aggressive optimization, single module.");
+	OUTPUT("  -Os+                   - Optimize for size, single module.");
+	OUTPUT("  -Oz+                   - Optimize for tiny size, single module.");
+	OUTPUT("  --build-dir <dir>      - Override build output directory.");
+	OUTPUT("  --obj-out <dir>        - Override object file output directory.");
+	OUTPUT("  --llvm-out <dir>       - Override llvm output directory for '--emit-llvm'.");
+	OUTPUT("  --emit-llvm            - Emit LLVM IR as a .ll file per module.");
+	OUTPUT("  --asm-out <dir>        - Override asm output directory for '--emit-asm'.");
+	OUTPUT("  --emit-asm             - Emit asm as a .s file per module.");
+	OUTPUT("  --target <target>      - Compile for a particular architecture + OS target.");
+	OUTPUT("  --threads <number>     - Set the number of threads to use for compilation.");
+	OUTPUT("  --safe                 - Set mode to 'safe', generating runtime traps on overflows and contract violations.");
+	OUTPUT("  --fast                 - Set mode to 'fast', removes runtime traps.");
 	OUTPUT("");
-	OUTPUT("  -g                    - Emit full debug info.");
-	OUTPUT("  -g0                   - Emit no debug info.");
-	OUTPUT("  -gline-tables-only    - Only emit line tables for debugging.");
+	OUTPUT("  -g                     - Emit full debug info.");
+	OUTPUT("  -g0                    - Emit no debug info.");
+	OUTPUT("  -gline-tables-only     - Only emit line tables for debugging.");
 	OUTPUT("");
 	OUTPUT("");
-	OUTPUT("  -l <library>          - Link with the library provided.");
-	OUTPUT("  -L <library dir>      - Append the directory to the linker search paths.");
-	OUTPUT("  -z <argument>         - Send the <argument> as a parameter to the linker.");
-	OUTPUT("  --forcelinker         - Force built in linker usage when doing non-cross linking.");
+	OUTPUT("  -l <library>           - Link with the library provided.");
+	OUTPUT("  -L <library dir>       - Append the directory to the linker search paths.");
+	OUTPUT("  -z <argument>          - Send the <argument> as a parameter to the linker.");
+	OUTPUT("  --forcelinker          - Force built in linker usage when doing non-cross linking.");
 	OUTPUT("");
-	OUTPUT("  --reloc=<option>      - Relocation model: none, pic, PIC, pie, PIE");
-	OUTPUT("  --x86vec=<option>     - Set max level of vector instructions: none, mmx, sse, avx, avx512.");
+	OUTPUT("  --reloc=<option>       - Relocation model: none, pic, PIC, pie, PIE");
+	OUTPUT("  --x86vec=<option>      - Set max level of vector instructions: none, mmx, sse, avx, avx512.");
 	OUTPUT("");
-	OUTPUT("  --debug-stats         - Print debug statistics.");
+	OUTPUT("  --debug-stats          - Print debug statistics.");
 #ifndef NDEBUG
-	OUTPUT("  --debug-log           - Print debug logging to stdout.");
+	OUTPUT("  --debug-log            - Print debug logging to stdout.");
 #endif
 	OUTPUT("");
 	OUTPUT("  --benchmarking        - Run builtin benchmarks.");
@@ -132,11 +141,18 @@ static void usage(void)
 	OUTPUT("  --list-operators      - List all operators.");
 	OUTPUT("  --list-precedence     - List operator precedence order.");
 	OUTPUT("  --list-targets        - List all architectures the compiler supports.");
+	OUTPUT("  --list-attributes      - List all attributes.");
+	OUTPUT("  --list-builtins        - List all builtins.");
+	OUTPUT("  --list-keywords        - List all keywords.");
+	OUTPUT("  --list-operators       - List all operators.");
+	OUTPUT("  --list-precedence      - List operator precedence order.");
+	OUTPUT("  --list-type-properties - List all type properties.");
+	OUTPUT("  --list-targets         - List all architectures the compiler supports.");
 	OUTPUT("");
-	OUTPUT("  --winsdk <dir>        - Set the directory for Windows system library files for cross compilation.");
-	OUTPUT("  --wincrt=<option>     - Windows CRT linking: none, static, dynamic (default).");
+	OUTPUT("  --winsdk <dir>         - Set the directory for Windows system library files for cross compilation.");
+	OUTPUT("  --wincrt=<option>      - Windows CRT linking: none, static, dynamic (default).");
 	OUTPUT("");
-	OUTPUT("  --macossdk <dir>      - Set the directory for the MacOS SDK for cross compilation.");
+	OUTPUT("  --macossdk <dir>       - Set the directory for the MacOS SDK for cross compilation.");
 
 }
 
@@ -390,25 +406,49 @@ static void parse_option(BuildOptions *options)
 			{
 				FAIL_WITH_ERR("Multiple optimization levels were set.");
 			}
-			if (match_shortopt("O0"))
+			if (match_shortopt("O0+"))
+			{
+				options->optimization_setting_override = OPT_SETTING_O0_PLUS;
+			}
+			else if (match_shortopt("O0"))
 			{
 				options->optimization_setting_override = OPT_SETTING_O0;
+			}
+			else if (match_shortopt("O1+"))
+			{
+				options->optimization_setting_override = OPT_SETTING_O1_PLUS;
 			}
 			else if (match_shortopt("O1"))
 			{
 				options->optimization_setting_override = OPT_SETTING_O1;
 			}
+			else if (match_shortopt("O2+"))
+			{
+				options->optimization_setting_override = OPT_SETTING_O2_PLUS;
+			}
 			else if (match_shortopt("O2"))
 			{
 				options->optimization_setting_override = OPT_SETTING_O2;
+			}
+			else if (match_shortopt("O3+"))
+			{
+				options->optimization_setting_override = OPT_SETTING_O3_PLUS;
 			}
 			else if (match_shortopt("O3"))
 			{
 				options->optimization_setting_override = OPT_SETTING_O3;
 			}
+			else if (match_shortopt("Os+"))
+			{
+				options->optimization_setting_override = OPT_SETTING_OSMALL_PLUS;
+			}
 			else if (match_shortopt("Os"))
 			{
 				options->optimization_setting_override = OPT_SETTING_OSMALL;
+			}
+			else if (match_shortopt("Oz+"))
+			{
+				options->optimization_setting_override = OPT_SETTING_OTINY_PLUS;
 			}
 			else if (match_shortopt("Oz"))
 			{
@@ -522,6 +562,12 @@ static void parse_option(BuildOptions *options)
 				options->command = COMMAND_PRINT_SYNTAX;
 				return;
 			}
+			if (match_longopt("list-type-properties"))
+			{
+				options->print_type_properties = true;
+				options->command = COMMAND_PRINT_SYNTAX;
+				return;
+			}
 			if (match_longopt("list-operators"))
 			{
 				options->print_operators = true;
@@ -588,11 +634,17 @@ static void parse_option(BuildOptions *options)
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --stdlib needs a directory.");
 				options->std_lib_dir = check_dir(next_arg());
+				options->no_stdlib = false;
 				return;
 			}
 			if (match_longopt("nostdlib"))
 			{
 				options->no_stdlib = true;
+				return;
+			}
+			if (match_longopt("nolibc"))
+			{
+				options->no_libc = true;
 				return;
 			}
 			if (match_longopt("panicfn"))

@@ -124,35 +124,54 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	}
 
 	target->backend = options->backend;
+	target->single_module = false;
 
 	// Copy optimization levels.
 	switch (options->optimization_setting_override)
 	{
+		case OPT_SETTING_O0_PLUS:
+			target->single_module = true;
+			FALLTHROUGH;
 		case OPT_SETTING_O0:
 			target->optimization_level = OPTIMIZATION_NONE;
 			target->size_optimization_level = SIZE_OPTIMIZATION_NONE;
 			target->feature.safe_mode = true;
 			break;
+		case OPT_SETTING_O1_PLUS:
+			target->single_module = true;
+			FALLTHROUGH;
 		case OPT_SETTING_O1:
 			target->optimization_level = OPTIMIZATION_LESS;
 			target->size_optimization_level = SIZE_OPTIMIZATION_NONE;
 			target->feature.safe_mode = false;
 			break;
+		case OPT_SETTING_O2_PLUS:
+			target->single_module = true;
+			FALLTHROUGH;
 		case OPT_SETTING_O2:
 			target->optimization_level = OPTIMIZATION_DEFAULT;
 			target->size_optimization_level = SIZE_OPTIMIZATION_NONE;
 			target->feature.safe_mode = false;
 			break;
+		case OPT_SETTING_O3_PLUS:
+			target->single_module = true;
+			FALLTHROUGH;
 		case OPT_SETTING_O3:
 			target->optimization_level = OPTIMIZATION_AGGRESSIVE;
 			target->size_optimization_level = SIZE_OPTIMIZATION_NONE;
 			target->feature.safe_mode = false;
 			break;
+		case OPT_SETTING_OSMALL_PLUS:
+			target->single_module = true;
+			FALLTHROUGH;
 		case OPT_SETTING_OSMALL:
 			target->optimization_level = OPTIMIZATION_DEFAULT;
 			target->size_optimization_level = SIZE_OPTIMIZATION_SMALL;
 			target->feature.safe_mode = false;
 			break;
+		case OPT_SETTING_OTINY_PLUS:
+			target->single_module = true;
+			FALLTHROUGH;
 		case OPT_SETTING_OTINY:
 			target->optimization_level = OPTIMIZATION_DEFAULT;
 			target->size_optimization_level = SIZE_OPTIMIZATION_TINY;
@@ -191,7 +210,8 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	{
 		vec_add(target->linker_libs, options->linker_libs[i]);
 	}
-	target->no_stdlib = options->no_stdlib;
+	if (options->no_stdlib) target->no_stdlib = true;
+	if (options->no_libc) target->no_libc = true;
 	target->emit_llvm = options->emit_llvm;
 	target->emit_asm = options->emit_asm;
 	target->force_linker = options->force_linker;

@@ -210,8 +210,12 @@ const char *expr_const_to_error_string(const ExprConst *expr)
 			return expr->err_val->name;
 		case CONST_TYPEID:
 			return type_to_error_string(expr->typeid);
-		case CONST_LIST:
+		case CONST_MEMBER:
+			return "member";
+		case CONST_INITIALIZER:
 			return "constant list";
+		case CONST_UNTYPED_LIST:
+			return "untyped list";
 	}
 	UNREACHABLE
 }

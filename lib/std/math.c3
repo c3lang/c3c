@@ -71,17 +71,6 @@ const QUAD_EPSILON = 1.92592994438723585305597794258492732e-34;
 define Complex32 = Complex<float>;
 define Complex64 = Complex<double>;
 
-macro max(x, y) @builtin
-{
-    return x > y ? x : y;
-}
-
-macro min(x, y) @builtin
-{
-    return x < y ? x : y;
-}
-
-
 fn double log10(double x) @inline
 {
     return $$log10(x);
@@ -138,5 +127,11 @@ macro bool is_power_of_2(x)
 	return x != 0 && (x & (x - 1)) == 0;
 }
 
+macro next_power_of_2(x)
+{
+	$typeof(x) y = 1;
+	while (y < x) y += y;
+	return y;
+}
 
 

@@ -2,6 +2,8 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module libc;
+
+
 // stdlib
 
 
@@ -51,8 +53,8 @@ extern fn void atexit(TerminateFunction f);
 extern fn void exit(int status);
 extern fn char* getenv(char* name);
 extern fn int system(char* str);
-extern fn void bsearch(void* key, void *base, usize items, usize size, CompareFunction compare);
-extern fn void qsort(void* base, usize items, usize size, CompareFunction compare);
+extern fn void bsearch(void* key, void *base, usz items, usz size, CompareFunction compare);
+extern fn void qsort(void* base, usz items, usz size, CompareFunction compare);
 extern fn int abs(int x);
 extern fn DivResult div(int numer, int denom);
 extern fn long labs(long x);
@@ -63,33 +65,33 @@ extern fn void srand(uint seed);
 // MB functions omitted
 
 // string
-extern fn void* memchr(void* str, int c, usize n);
-extern fn int memcmp(void* str1, void* str2, usize n);
-extern fn void* memcpy(void* dest, void* src, usize n);
-extern fn void* memmove(void* dest, void* src, usize n);
-extern fn void* memset(void* dest, usize n);
+extern fn void* memchr(void* str, int c, usz n);
+extern fn int memcmp(void* str1, void* str2, usz n);
+extern fn void* memcpy(void* dest, void* src, usz n);
+extern fn void* memmove(void* dest, void* src, usz n);
+extern fn void* memset(void* dest, usz n);
 extern fn char* strcat(char* dest, char* src);
-extern fn char* strncat(char* dest, char* src, usize n);
+extern fn char* strncat(char* dest, char* src, usz n);
 extern fn char* strchr(char* str, int c);
 extern fn int strcmp(char* str1, char* str2);
-extern fn int strncmp(char* str1, char* str2, usize n);
+extern fn int strncmp(char* str1, char* str2, usz n);
 extern fn int strcoll(char* str1, char* str2);
 extern fn char* strcpy(char* dst, char* src);
-extern fn char* strncpy(char* dst, char* src, usize n);
-extern fn usize strcspn(char* str1, char* str2);
+extern fn char* strncpy(char* dst, char* src, usz n);
+extern fn usz strcspn(char* str1, char* str2);
 extern fn char* strerror(int errn);
-extern fn usize strlen(char* str);
+extern fn usz strlen(char* str);
 extern fn char* strpbrk(char* str1, char* str2);
-extern fn usize strspn(char* str1, char* str2);
+extern fn usz strspn(char* str1, char* str2);
 extern fn char* strstr(char* haystack, char* needle);
 extern fn char* strtok(char* str, char* delim);
-extern fn usize strxfrm(char* dest, char* src, usize n);
+extern fn usz strxfrm(char* dest, char* src, usz n);
 
 // malloc
-extern fn void* malloc(usize size);
-extern fn void* calloc(usize count, usize size);
+extern fn void* malloc(usz size);
+extern fn void* calloc(usz count, usz size);
 extern fn void* free(void*);
-extern fn void* realloc(void* ptr, usize size);
+extern fn void* realloc(void* ptr, usz size);
 
 // stdio
 
@@ -101,9 +103,9 @@ $case OsType.LINUX:
     extern CFile __stdin @extname("stdin");
     extern CFile __stdout @extname("stdout");
     extern CFile __stderr @extname("stderr");
-    extern fn usize malloc_usable_size(void* ptr);
-    macro usize malloc_size(void* ptr) { return malloc_usable_size(ptr); }
-	extern fn void* aligned_alloc(usize align, usize size);
+    extern fn usz malloc_usable_size(void* ptr);
+    macro usz malloc_size(void* ptr) { return malloc_usable_size(ptr); }
+	extern fn void* aligned_alloc(usz align, usz size);
     macro CFile stdin() { return __stdin; }
     macro CFile stdout() { return __stdout; }
     macro CFile stderr() { return __stderr; }
@@ -111,15 +113,15 @@ $case OsType.MACOSX:
     extern CFile __stdinp;
     extern CFile __stdoutp;
     extern CFile __stderrp;
-    extern fn usize malloc_size(void* ptr);
-    extern fn void* aligned_alloc(usize align, usize size);
+    extern fn usz malloc_size(void* ptr);
+    extern fn void* aligned_alloc(usz align, usz size);
 	macro CFile stdin() { return __stdinp; }
     macro CFile stdout() { return __stdoutp; }
     macro CFile stderr() { return __stderrp; }
 $case OsType.WIN32:
     extern fn CFile __acrt_iob_func(CInt c);
-    extern fn usize _msize(void* ptr);
-    macro usize malloc_size(void* ptr) { return _msize(ptr); }
+    extern fn usz _msize(void* ptr);
+    macro usz malloc_size(void* ptr) { return _msize(ptr); }
     macro CFile stdin() { return __acrt_iob_func(0); }
     macro CFile stdout() { return __acrt_iob_func(1); }
     macro CFile stderr() { return __acrt_iob_func(2); }
@@ -157,22 +159,22 @@ extern fn int ferror(CFile stream);
 extern fn int fflush(CFile stream);
 extern fn int fgetpos(CFile stream, Fpos* pos);
 extern fn CFile fopen(char* filename, char* mode);
-extern fn usize fread(void* ptr, usize size, usize nmemb, CFile stream);
+extern fn usz fread(void* ptr, usz size, usz nmemb, CFile stream);
 extern fn CFile freopen(char* filename, char* mode, CFile stream);
 extern fn int fseek(CFile stream, SeekIndex offset, int whence);
 extern fn int fsetpos(CFile stream, Fpos* pos);
 extern fn SeekIndex ftell(CFile stream);
-extern fn usize fwrite(void* ptr, usize size, usize nmemb, CFile stream);
+extern fn usz fwrite(void* ptr, usz size, usz nmemb, CFile stream);
 extern fn int remove(char* filename);
 extern fn int rename(char* old_name, char* new_name);
 extern fn void rewind(CFile stream);
 extern fn void setbuf(CFile stream, char* buffer);
-extern fn void setvbuf(CFile stream, char* buffer, int mode, usize size);
+extern fn void setvbuf(CFile stream, char* buffer, int mode, usz size);
 extern fn CFile tmpnam(char* str);
 extern fn int fprintf(CFile stream, char* format, ...);
 extern fn int printf(char* format, ...);
 extern fn int sprintf(char* str, char* format, ...);
-extern fn int snprintf(char* str, usize size, char* format, ...);
+extern fn int snprintf(char* str, usz size, char* format, ...);
 extern fn int fscanf(CFile stream, char* format, ...);
 extern fn int scanf(char* format, ...);
 extern fn int sscanf(char* str, char* format, ...);
@@ -186,7 +188,7 @@ extern fn int putchar(int c);
 extern fn int puts(char* str);
 extern fn int ungetc(int c, CFile stream);
 extern fn void perror(char* str);
-extern fn isize getline(char** linep, usize* linecapp, CFile stream);
+extern fn isz getline(char** linep, usz* linecapp, CFile stream);
 
 // vsprintf vprintf not supported
 
@@ -223,7 +225,7 @@ extern fn double difftime(Time time1, Time time2);
 extern fn Tm* gmtime(Time *timer);
 extern fn Tm* localtime(Time *timer);
 extern fn Time mktime(Tm *timeptr);
-extern fn usize strftime(char* str, usize maxsize, char* format, Tm *timeptr);
+extern fn usz strftime(char* str, usz maxsize, char* format, Tm *timeptr);
 extern fn Time time(Time *timer);
 
 // signal

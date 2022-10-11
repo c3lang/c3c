@@ -3,6 +3,22 @@
 #define SCOPE_FIXUP_START do { CopyFixup *current = c->current_fixup;
 #define SCOPE_FIXUP_END c->current_fixup = current; } while (0)
 
+static inline void copy_const_initializer(CopyStruct *c, ConstInitializer **initializer_ref);
+static inline void copy_reg_ref(CopyStruct *c, void *original, void *result);
+static inline void *fixup(CopyStruct *c, void *original);
+INLINE void fixup_decl(CopyStruct *c, Decl **decl_ref);
+INLINE void fixup_declid(CopyStruct *c, DeclId *declid_ref);
+INLINE ConstInitializer **copy_const_initializer_list(CopyStruct *c, ConstInitializer **initializer_list);
+INLINE ConstInitializer **copy_const_initializer_array(CopyStruct *c, ConstInitializer **initializer_list, unsigned len);
+
+static Expr **copy_expr_list(CopyStruct *c, Expr **expr_list);
+static Expr *copy_expr(CopyStruct *c, Expr *source_expr);
+static Ast *ast_copy_deep(CopyStruct *c, Ast *source);
+static Ast **copy_ast_list(CopyStruct *c, Ast **to_copy);
+static Decl *copy_decl(CopyStruct *c, Decl *decl);
+static Decl **copy_decl_list(CopyStruct *c, Decl **decl_list);
+static TypeInfo *copy_type_info(CopyStruct *c, TypeInfo *source);
+
 static inline void copy_reg_ref(CopyStruct *c, void *original, void *result)
 {
 	c->current_fixup->new_ptr = result;
@@ -141,32 +157,35 @@ static DesignatorElement **macro_copy_designator_list(CopyStruct *c, DesignatorE
 
 static CopyStruct copy_struct;
 
-Ast *ast_macro_copy(Ast *source_ast)
+Ast *copy_ast_single(Ast *source_ast)
 {
-	copy_struct.current_fixup = copy_struct.fixups;
-	copy_struct.single_static = false;
+	copy_begin();
+	Ast *ast = ast_copy_deep(&copy_struct, source_ast);
+	copy_end();
+	return ast;
+}
+
+Ast *copy_ast_macro(Ast *source_ast)
+{
+	assert(copy_struct.copy_in_use);
 	return ast_copy_deep(&copy_struct, source_ast);
 }
 
-Decl *decl_macro_copy(Decl *source_decl)
+Ast *copy_ast_defer(Ast *source_ast)
 {
-	copy_struct.current_fixup = copy_struct.fixups;
-	copy_struct.single_static = false;
-	return copy_decl(&copy_struct, source_decl);
-}
-
-Ast *ast_defer_copy(Ast *source_ast)
-{
-	copy_struct.current_fixup = copy_struct.fixups;
+	copy_begin();
 	copy_struct.single_static = true;
-	return ast_copy_deep(&copy_struct, source_ast);
+	Ast *ast = copy_ast_macro(source_ast);
+	copy_end();
+	return ast;
 }
 
-Expr *expr_macro_copy(Expr *source_expr)
+Expr *copy_expr_single(Expr *source_expr)
 {
-	copy_struct.current_fixup = copy_struct.fixups;
-	copy_struct.single_static = false;
-	return copy_expr(&copy_struct, source_expr);
+	copy_begin();
+	Expr *expr = copy_expr(&copy_struct, source_expr);
+	copy_end();
+	return expr;
 }
 
 void copy_range(CopyStruct *c, Range *range)
@@ -175,6 +194,93 @@ void copy_range(CopyStruct *c, Range *range)
 	MACRO_COPY_EXPRID(range->end);
 }
 
+INLINE ConstInitializer **copy_const_initializer_list(CopyStruct *c, ConstInitializer **initializer_list)
+{
+	ConstInitializer **initializer = NULL;
+	FOREACH_BEGIN(ConstInitializer *element, initializer_list)
+		copy_const_initializer(c, &element);
+		vec_add(initializer, element);
+	FOREACH_END();
+	return initializer;
+}
+
+INLINE ConstInitializer **copy_const_initializer_array(CopyStruct *c, ConstInitializer **initializer_list, unsigned len)
+{
+	ConstInitializer **initializer = MALLOC(sizeof(ConstInitializer*) * len);
+	for (unsigned i = 0; i < len; i++)
+	{
+		ConstInitializer *element = initializer_list[i];
+		copy_const_initializer(c, &element);
+		initializer[i] = element;
+	}
+	return initializer;
+}
+
+static inline void copy_const_initializer(CopyStruct *c, ConstInitializer **initializer_ref)
+{
+	ConstInitializer *copy = MALLOCS(ConstInitializer);
+	*copy = **initializer_ref;
+	*initializer_ref = copy;
+
+	switch (copy->kind)
+	{
+		case CONST_INIT_ZERO:
+			return;
+		case CONST_INIT_STRUCT:
+			copy->init_struct = copy_const_initializer_array(c, copy->init_struct, vec_size(type_flatten(copy->type)->decl->strukt.members));
+			return;
+		case CONST_INIT_UNION:
+			copy_const_initializer(c, &copy->init_union.element);
+			return;
+		case CONST_INIT_VALUE:
+			copy->init_value = copy_expr(c, copy->init_value);
+			return;
+		case CONST_INIT_ARRAY:
+			copy->init_array.elements = copy_const_initializer_list(c, copy->init_array.elements);
+			return;
+		case CONST_INIT_ARRAY_FULL:
+			copy->init_array_full = copy_const_initializer_list(c, copy->init_array_full);
+			return;
+		case CONST_INIT_ARRAY_VALUE:
+			copy_const_initializer(c, &copy->init_array_value.element);
+			return;
+	}
+	UNREACHABLE
+}
+
+INLINE Expr *copy_const_expr(CopyStruct *c, Expr *expr)
+{
+	switch (expr->const_expr.const_kind)
+	{
+		case CONST_FLOAT:
+		case CONST_INTEGER:
+		case CONST_BOOL:
+			break;
+		case CONST_ENUM:
+			fixup_decl(c, &expr->const_expr.enum_val);
+			break;
+		case CONST_ERR:
+			fixup_decl(c, &expr->const_expr.err_val);
+			break;
+		case CONST_BYTES:
+		case CONST_STRING:
+			// Assume this is never modified.
+			break;
+		case CONST_POINTER:
+		case CONST_TYPEID:
+			break;
+		case CONST_INITIALIZER:
+			copy_const_initializer(c, &expr->const_expr.initializer);
+			break;
+		case CONST_UNTYPED_LIST:
+			expr->const_expr.untyped_list = copy_expr_list(c, expr->const_expr.untyped_list);
+			break;
+		case CONST_MEMBER:
+			fixup_decl(c, &expr->const_expr.member.decl);
+			break;
+	}
+	return expr;
+}
 Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 {
 	if (!source_expr) return NULL;
@@ -249,9 +355,12 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			MACRO_COPY_TYPE(expr->type_expr);
 			return expr;
 		case EXPR_SLICE_ASSIGN:
+		case EXPR_SLICE_COPY:
 			MACRO_COPY_EXPRID(expr->slice_assign_expr.left);
 			MACRO_COPY_EXPRID(expr->slice_assign_expr.right);
 			return expr;
+		case EXPR_SUBSCRIPT_ASSIGN:
+			UNREACHABLE
 		case EXPR_SLICE:
 		case EXPR_SUBSCRIPT:
 		case EXPR_SUBSCRIPT_ADDR:
@@ -306,7 +415,7 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			MACRO_COPY_EXPR(expr->rethrow_expr.inner);
 			return expr;
 		case EXPR_CONST:
-			return expr;
+			return copy_const_expr(c, expr);
 		case EXPR_BINARY:
 		case EXPR_BITASSIGN:
 			MACRO_COPY_EXPRID(expr->binary_expr.left);
@@ -453,7 +562,7 @@ RETRY:
 			break;
 		case AST_CT_IF_STMT:
 			MACRO_COPY_EXPR(ast->ct_if_stmt.expr);
-			MACRO_COPY_AST(ast->ct_if_stmt.elif);
+			MACRO_COPY_ASTID(ast->ct_if_stmt.elif);
 			MACRO_COPY_ASTID(ast->ct_if_stmt.then);
 			break;
 		case AST_CT_ELSE_STMT:
@@ -464,7 +573,7 @@ RETRY:
 			MACRO_COPY_EXPRID(ast->ct_foreach_stmt.expr);
 			break;
 		case AST_CT_SWITCH_STMT:
-			MACRO_COPY_EXPR(ast->ct_switch_stmt.cond);
+			MACRO_COPY_EXPRID(ast->ct_switch_stmt.cond);
 			MACRO_COPY_AST_LIST(ast->ct_switch_stmt.body);
 			break;
 		case AST_DECLARE_STMT:
@@ -547,14 +656,31 @@ Ast **copy_ast_list(CopyStruct *c, Ast **to_copy)
 	return result;
 }
 
-Decl **decl_copy_list(Decl **decl_list)
+void copy_begin(void)
 {
 	copy_struct.current_fixup = copy_struct.fixups;
-	Decl **result = NULL;
-	VECEACH(decl_list, i)
-	{
-		vec_add(result, copy_decl(&copy_struct, decl_list[i]));
-	}
+	assert(!copy_struct.copy_in_use);
+	copy_struct.copy_in_use = true;
+	copy_struct.single_static = false;
+}
+
+void copy_end(void)
+{
+	assert(copy_struct.copy_in_use);
+	copy_struct.copy_in_use = false;
+}
+
+Decl **copy_decl_list_macro(Decl **decl_list)
+{
+	assert(copy_struct.copy_in_use);
+	return copy_decl_list(&copy_struct, decl_list);
+}
+
+Decl **copy_decl_list_single(Decl **decl_list)
+{
+	copy_begin();
+	Decl **result = copy_decl_list_macro(decl_list);
+	copy_end();
 	return result;
 }
 
@@ -657,6 +783,10 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 	switch (decl->decl_kind)
 	{
 		case DECL_POISONED:
+			break;
+		case DECL_INITIALIZE:
+		case DECL_FINALIZE:
+			MACRO_COPY_ASTID(copy->xxlizer.init);
 			break;
 		case DECL_BODYPARAM:
 			MACRO_COPY_DECL_LIST(copy->body_params);

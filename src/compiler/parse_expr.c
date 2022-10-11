@@ -880,7 +880,7 @@ static Expr *parse_ct_sizeof(ParseContext *c, Expr *left)
 	typeof_expr->type_expr = type_info;
 	access->access_expr.parent = typeof_expr;
 	Expr *ident = expr_new(EXPR_IDENTIFIER, c->span);
-	ident->identifier_expr.ident = kw_sizeof;
+	ident->identifier_expr.ident = type_property_list[TYPE_PROPERTY_SIZEOF];
 	access->access_expr.child = ident;
 	RANGE_EXTEND_PREV(access);
 	return access;
@@ -1680,6 +1680,8 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_UINT128] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_ISIZE] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_USIZE] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_ISZ] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_USZ] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_IPTR] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_UPTR] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_IPTRDIFF] = { parse_type_identifier, NULL, PREC_NONE },

@@ -3,6 +3,8 @@
 #include <llvm-c/Core.h>
 #include "compiler_internal.h"
 
+extern void LLVMSetTargetMachineUseInitArray(LLVMTargetMachineRef ref, bool use_init_array);
+
 static unsigned arch_pointer_bit_width(OsType os, ArchType arch);
 static ArchType arch_from_llvm_string(StringSlice string);
 static EnvironmentType environment_type_from_llvm_string(StringSlice string);
@@ -1216,6 +1218,7 @@ static AlignSize os_target_pref_alignment_of_float(OsType os, ArchType arch, uin
 }
 
 
+
 void *llvm_target_machine_create(void)
 {
 	char *err = NULL;
@@ -1271,6 +1274,7 @@ void *llvm_target_machine_create(void)
 										   platform_target.cpu ? platform_target.cpu : "", features,
 	                                       (LLVMCodeGenOptLevel)platform_target.llvm_opt_level,
 	                                       reloc_mode, LLVMCodeModelDefault);
+	LLVMSetTargetMachineUseInitArray(result, true);
 	if (!result) error_exit("Failed to create target machine.");
 	LLVMSetTargetMachineAsmVerbosity(result, 1);
 	return result;

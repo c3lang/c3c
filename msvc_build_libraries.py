@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+
+# Script based on https://gist.github.com/mmozeiko/7f3162ec2988e81e56d5c4e22cde9977
+# by Mārtiņš Možeiko.
+# Changes and additions to the gist are licensed under the CC0 License.
+
 import platform
 import io
 import os

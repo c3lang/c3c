@@ -247,7 +247,6 @@ void compiler_compile(void)
 
 	Module **modules = global_context.module_list;
 	unsigned module_count = vec_size(modules);
-
 	if (module_count > MAX_MODULES)
 	{
 		error_exit("Too many modules.");
@@ -306,12 +305,7 @@ void compiler_compile(void)
 	switch (active_target.backend)
 	{
 		case BACKEND_LLVM:
-			llvm_codegen_setup();
-			for (unsigned i = 0; i < module_count; i++)
-			{
-				void *result = llvm_gen(modules[i]);
-				if (result) vec_add(gen_contexts, result);
-			}
+			gen_contexts = llvm_gen(modules, module_count);
 			task = &thread_compile_task_llvm;
 			break;
 		case BACKEND_TB:
@@ -420,7 +414,7 @@ void compiler_compile(void)
 
 	if (output_exe)
 	{
-		if (platform_target.os != OS_TYPE_WIN32 && active_target.arch_os_target == default_target && !active_target.force_linker)
+		if (!active_target.no_libc && platform_target.os != OS_TYPE_WIN32 && active_target.arch_os_target == default_target && !active_target.force_linker)
 		{
 			platform_linker(output_exe, obj_files, output_file_count);
 			compiler_link_time = bench_mark();
@@ -588,7 +582,7 @@ void print_syntax(BuildOptions *options)
 	{
 		for (int i = 0; i < NUMBER_OF_ATTRIBUTES; i++)
 		{
-			printf("%2d @%s\n", i + 1, attribute_list[i]);
+			printf("%2d %s\n", i + 1, attribute_list[i]);
 		}
 	}
 	if (options->print_builtins)
@@ -596,6 +590,18 @@ void print_syntax(BuildOptions *options)
 		for (int i = 0; i < NUMBER_OF_BUILTINS; i++)
 		{
 			printf("%2d $$%s\n", i + 1, builtin_list[i]);
+		}
+		puts("---");
+		for (int i = 0; i < NUMBER_OF_BUILTIN_DEFINES; i++)
+		{
+			printf("%2d $$%s\n", i + 1, builtin_defines[i]);
+		}
+	}
+	if (options->print_type_properties)
+	{
+		for (int i = 0; i < NUMBER_OF_TYPE_PROPERTIES; i++)
+		{
+			printf("%2d .%s\n", i + 1, type_property_list[i]);
 		}
 	}
 	if (options->print_precedence)
@@ -644,6 +650,7 @@ void compile(BuildOptions *options)
 	setup_bool_define("PLATFORM_I128_SUPPORTED", platform_target.int128);
 	setup_bool_define("PLATFORM_F128_SUPPORTED", platform_target.float128);
 	setup_bool_define("PLATFORM_F16_SUPPORTED", platform_target.float16);
+	setup_bool_define("COMPILER_LIBC_AVAILABLE", !active_target.no_libc);
 	setup_int_define("COMPILER_OPT_LEVEL", (uint64_t)active_target.optimization_level, type_int);
 	setup_int_define("OS_TYPE", (uint64_t)platform_target.os, type_int);
 	setup_int_define("COMPILER_SIZE_OPT_LEVEL", (uint64_t)active_target.size_optimization_level, type_int);

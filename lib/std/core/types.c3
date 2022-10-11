@@ -8,18 +8,18 @@ fault ConversionResult
 	VALUE_OUT_OF_UNSIGNED_RANGE,
 }
 /**
- * @require $Type.kind.is_int() || $Type.kind == TypeKind.ENUM "Argument was not an integer"
+ * @require $Type.kindof.is_int() || $Type.kindof == TypeKind.ENUM "Argument was not an integer"
  **/
 macro variant_to_int(variant v, $Type)
 {
 	typeid variant_type = v.type;
-	TypeKind kind = variant_type.kind;
+	TypeKind kind = variant_type.kindof;
 	if (kind == TypeKind.ENUM)
 	{
 		variant_type = variant_type.inner;
-		kind = variant_type.kind;
+		kind = variant_type.kindof;
 	}
-	bool is_mixed_signed = $Type.kind != variant_type.kind;
+	bool is_mixed_signed = $Type.kindof != variant_type.kindof;
 	$Type max = $Type.max;
 	$Type min = $Type.min;
 	switch (variant_type)
@@ -83,7 +83,7 @@ macro variant_to_int(variant v, $Type)
 
 macro bool is_numerical($Type)
 {
-	var $kind = $Type.kind;
+	var $kind = $Type.kindof;
 	$if ($kind == TypeKind.DISTINCT):
 		return is_numerical($Type.inner);
 	$else:
@@ -104,7 +104,7 @@ macro bool is_indexable($Type)
 
 macro bool is_comparable($Type)
 {
-	var $kind = $Type.kind;
+	var $kind = $Type.kindof;
 	$if ($kind == TypeKind.DISTINCT):
 		return is_comparable($Type.inner);
 	$else:
@@ -114,13 +114,18 @@ macro bool is_comparable($Type)
 	$endif;
 }
 
+macro bool is_equatable($Type)
+{
+	return $checks($Type a, a == a);
+}
+
 macro bool is_subarray_convertable($Type)
 {
-	$switch ($Type.kind):
+	$switch ($Type.kindof):
 		$case SUBARRAY:
 			return true;
 		$case POINTER:
-			return $Type.inner.kind == TypeKind.ARRAY;
+			return $Type.inner.kindof == TypeKind.ARRAY;
 		$default:
 			return false;
 	$endswitch;
@@ -128,12 +133,12 @@ macro bool is_subarray_convertable($Type)
 
 macro bool is_intlike($Type)
 {
-	$switch ($Type.kind):
+	$switch ($Type.kindof):
 		$case SIGNED_INT:
 		$case UNSIGNED_INT:
 			return true;
 		$case VECTOR:
-			return $Type.inner.kind == TypeKind.SIGNED_INT || $Type.inner.kind == TypeKind.UNSIGNED_INT;
+			return $Type.inner.kindof == TypeKind.SIGNED_INT || $Type.inner.kindof == TypeKind.UNSIGNED_INT;
 		$default:
 			return false;
 	$endswitch;
@@ -141,11 +146,11 @@ macro bool is_intlike($Type)
 
 macro bool is_floatlike($Type)
 {
-	$switch ($Type.kind):
+	$switch ($Type.kindof):
 		$case FLOAT:
 			return true;
 		$case VECTOR:
-			return $Type.inner.kind == TypeKind.FLOAT;
+			return $Type.inner.kindof == TypeKind.FLOAT;
 		$default:
 			return false;
 	$endswitch;
@@ -153,7 +158,7 @@ macro bool is_floatlike($Type)
 
 macro bool is_vector($Type)
 {
-	return $Type.kind == TypeKind.VECTOR;
+	return $Type.kindof == TypeKind.VECTOR;
 }
 
 macro bool is_same($TypeA, $TypeB)
@@ -180,7 +185,7 @@ macro bool is_equatable_value(value)
 	$if ($defined(value.less) || $defined(value.compare_to) || $defined(value.equals)):
 		return true;
 	$else:
-		return is_comparable($typeof(value));
+		return is_equatable($typeof(value));
 	$endif;
 }
 
@@ -221,5 +226,5 @@ enum TypeKind : char
 struct TypeEnum
 {
 	TypeKind type;
-	usize elements;
+	usz elements;
 }

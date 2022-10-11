@@ -15,6 +15,21 @@ static inline bool sema_resolve_ptr_type(SemaContext *context, TypeInfo *type_in
 	return true;
 }
 
+bool sema_resolve_type_info(SemaContext *context, TypeInfo *type_info)
+{
+	return sema_resolve_type_info_maybe_inferred(context, type_info, false);
+}
+
+bool sema_resolve_type_info_maybe_inferred(SemaContext *context, TypeInfo *type_info, bool allow_inferred_type)
+{
+	if (!sema_resolve_type_shallow(context, type_info, allow_inferred_type, false)) return false;
+	Type *type = type_no_optional(type_info->type);
+	// usize and similar typedefs will not have a decl.
+	if (type->type_kind == TYPE_TYPEDEF && type->decl == NULL) return true;
+	if (!type_is_user_defined(type)) return true;
+	return sema_analyse_decl(context, type->decl);
+}
+
 bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, ArraySize *len_ref)
 {
 	Expr *len_expr = type_info->array.len;
@@ -160,7 +175,7 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 			{
 				if (!decl->var.init_expr)
 				{
-					SEMA_ERROR(type_info, "The variable '%s' is not defined yet.", decl->name);
+					SEMA_ERROR(type_info, "You need to assign a type to '%s' before using it.", decl->name);
 					return false;
 				}
 				assert(decl->var.init_expr->expr_kind == EXPR_TYPEINFO);
@@ -179,6 +194,8 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 		case DECL_ATTRIBUTE:
 			SEMA_ERROR(type_info, "This is not a type.");
 			return type_info_poison(type_info);
+		case DECL_INITIALIZE:
+		case DECL_FINALIZE:
 		case DECL_CT_ELSE:
 		case DECL_CT_IF:
 		case DECL_CT_ELIF:
@@ -210,6 +227,7 @@ bool sema_resolve_type(SemaContext *context, Type *type)
 		case TYPE_ANYERR:
 		case TYPE_VECTOR:
 		case TYPE_TYPEINFO:
+		case TYPE_MEMBER:
 		case TYPE_UNTYPED_LIST:
 		case TYPE_FAILABLE_ANY:
 			return true;
@@ -230,7 +248,7 @@ bool sema_resolve_type(SemaContext *context, Type *type)
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_SCALED_VECTOR:
 			return sema_resolve_type(context, type->array.base);
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 			return sema_resolve_type(context, type->failable);
 	}
 	return sema_analyse_decl(context, type->decl);
@@ -256,7 +274,6 @@ bool sema_resolve_type_shallow(SemaContext *context, TypeInfo *type_info, bool a
 		allow_inferred_type = false;
 		in_shallow = true;
 	}
-RETRY:
 	switch (type_info->kind)
 	{
 		case TYPE_INFO_POISON:
@@ -284,29 +301,23 @@ RETRY:
 		{
 			Expr *expr = type_info->unresolved_type_expr;
 			TokenType type;
-			Path *path = NULL;
-			const char *ident = ct_eval_expr(context, "$eval", expr, &type, &path, true);
-			if (ident == ct_eval_error) return type_info_poison(type_info);
-			switch (type)
+			Expr *inner = sema_ct_eval_expr(context, "$evaltype", expr, true);
+			if (!inner) return false;
+			if (inner->expr_kind != EXPR_TYPEINFO)
 			{
-				case TOKEN_TYPE_IDENT:
-					type_info->unresolved.name = ident;
-					type_info->span = expr->span;
-					type_info->unresolved.path = path;
-					type_info->kind = TYPE_INFO_IDENTIFIER;
-					goto RETRY;
-				case TYPE_TOKENS:
-					if (path)
-					{
-						SEMA_ERROR(path, "Built in types cannot have a path prefix.");
-						return false;
-					}
-					type_info->type = type_from_token(type);
-					goto APPEND_QUALIFIERS;
-				default:
-					SEMA_ERROR(expr, "Only type names may be resolved with $evaltype.");
-					return type_info_poison(type_info);
+				SEMA_ERROR(expr, "Only type names may be resolved with $evaltype.");
+				return type_info_poison(type_info);
 			}
+			if (type_is_invalid_storage_type(expr->type))
+			{
+				SEMA_ERROR(expr, "Compile-time types may not be used with $evaltype.");
+				return type_info_poison(type_info);
+			}
+			TypeInfo *inner_type = inner->type_expr;
+			if (!sema_resolve_type_info(context, inner_type)) return false;
+			type_info->type = inner_type->type;
+			type_info->resolve_status = RESOLVE_DONE;
+			goto APPEND_QUALIFIERS;
 		}
 		case TYPE_INFO_TYPEOF:
 		{
@@ -314,6 +325,11 @@ RETRY:
 			if (!sema_analyse_expr(context, expr))
 			{
 				return type_info_poison(type_info);
+			}
+			if (type_is_invalid_storage_type(expr->type))
+			{
+				SEMA_ERROR(expr, "Expected a regular runtime expression here.");
+				return false;
 			}
 			type_info->type = expr->type;
 			type_info->resolve_status = RESOLVE_DONE;
@@ -383,7 +399,7 @@ APPEND_QUALIFIERS:
 	if (type_info->failable)
 	{
 		Type *type = type_info->type;
-		if (!type_is_optional(type)) type_info->type = type_get_failable(type);
+		if (!type_is_optional(type)) type_info->type = type_get_optional(type);
 	}
 	return true;
 }

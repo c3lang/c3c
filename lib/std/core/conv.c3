@@ -14,7 +14,7 @@ private const uint UTF16_SURROGATE_HIGH_VALUE = 0xD800;
  * @param [out] output `the resulting buffer`
  * @param available `the size available`
  **/
-fn usize! char32_to_utf8(Char32 c, char* output, usize available)
+fn usz! char32_to_utf8(Char32 c, char* output, usz available)
 {
 	if (!available) return UnicodeResult.CONVERSION_FAILED!;
 	switch (true)
@@ -71,7 +71,7 @@ fn void char32_to_utf16_unsafe(Char32 c, Char16** output)
  * @param [inout] available `amount of UTF16 data available.`
  * @param [inout] output `the resulting utf8 buffer to write to.`
  **/
-fn void! char16_to_utf8_unsafe(Char16 *ptr, usize *available, char** output)
+fn void! char16_to_utf8_unsafe(Char16 *ptr, usz *available, char** output)
 {
 	Char16 high = *ptr;
 	if (high & UTF16_SURROGATE_GENERIC_MASK != UTF16_SURROGATE_GENERIC_VALUE)
@@ -128,9 +128,9 @@ fn void char32_to_utf8_unsafe(Char32 c, char** output)
  * @param [inout] size `Set to max characters to read, set to characters read`
  * @return `the parsed 32 bit codepoint`
  **/
-fn Char32! utf8_to_char32(char* ptr, usize* size)
+fn Char32! utf8_to_char32(char* ptr, usz* size)
 {
-	usize max_size = *size;
+	usz max_size = *size;
 	if (max_size < 1) return UnicodeResult.INVALID_UTF8!;
 	char c = (ptr++)[0];
 
@@ -178,9 +178,9 @@ fn Char32! utf8_to_char32(char* ptr, usize* size)
  * @param utf8 `An UTF-8 encoded slice of bytes`
  * @return `the number of encoded code points`
  **/
-fn usize utf8_codepoints(char[] utf8)
+fn usz utf8_codepoints(char[] utf8)
 {
-	usize len = 0;
+	usz len = 0;
 	foreach (char c : utf8)
 	{
 		if (c & 0xC0 != 0x80) len++;
@@ -193,9 +193,9 @@ fn usize utf8_codepoints(char[] utf8)
  * @param [in] utf32 `the utf32 data to calculate from`
  * @return `the length of the resulting UTF8 array`
  **/
-fn usize utf8len_for_utf32(Char32[] utf32)
+fn usz utf8len_for_utf32(Char32[] utf32)
 {
-	usize len = 0;
+	usz len = 0;
 	foreach (Char32 uc : utf32)
 	{
 		switch (true)
@@ -218,11 +218,11 @@ fn usize utf8len_for_utf32(Char32[] utf32)
  * @param [in] utf16 `the utf16 data to calculate from`
  * @return `the length of the resulting UTF8 array`
  **/
-fn usize utf8len_for_utf16(Char16[] utf16)
+fn usz utf8len_for_utf16(Char16[] utf16)
 {
-	usize len = 0;
-	usize len16 = utf16.len;
-	for (usize i = 0; i < len16; i++)
+	usz len = 0;
+	usz len16 = utf16.len;
+	for (usz i = 0; i < len16; i++)
 	{
 		Char16 c = utf16[i];
 		if (c & UTF16_SURROGATE_GENERIC_MASK != UTF16_SURROGATE_GENERIC_VALUE)
@@ -250,11 +250,11 @@ fn usize utf8len_for_utf16(Char16[] utf16)
  * @param utf8 `the utf8 data to calculate from`
  * @return `the length of the resulting UTF16 array`
  **/
-fn usize utf16len_for_utf8(char[] utf8)
+fn usz utf16len_for_utf8(char[] utf8)
 {
-	usize len = utf8.len;
-	usize len16 = 0;
-	for (usize i = 0; i < len; i++)
+	usz len = utf8.len;
+	usz len16 = 0;
+	for (usz i = 0; i < len; i++)
 	{
 		len16++;
 		char c = utf8[i];
@@ -273,9 +273,9 @@ fn usize utf16len_for_utf8(char[] utf8)
  * @param [in] utf32 `the UTF32 array to check the length for`
  * @return `the required length of an UTF16 array to hold the UTF32 data.`
  **/
-fn usize utf16len_for_utf32(Char32[] utf32)
+fn usz utf16len_for_utf32(Char32[] utf32)
 {
-	usize len = utf32.len;
+	usz len = utf32.len;
 	foreach (Char32 uc : utf32)
 	{
 		if (uc >= UTF16_SURROGATE_OFFSET) len++;
@@ -290,13 +290,13 @@ fn usize utf16len_for_utf32(Char32[] utf32)
  * @param [out] utf8_buffer
  * @return `the number of bytes written.`
  **/
-fn usize! utf32to8(Char32[] utf32, char[] utf8_buffer)
+fn usz! utf32to8(Char32[] utf32, char[] utf8_buffer)
 {
-	usize len = utf8_buffer.len;
+	usz len = utf8_buffer.len;
 	char* ptr = utf8_buffer.ptr;
 	foreach (Char32 uc : utf32)
 	{
-		usize used = char32_to_utf8(uc, ptr, len) @inline?;
+		usz used = char32_to_utf8(uc, ptr, len) @inline?;
 		len -= used;
 		ptr += used;
 	}
@@ -310,16 +310,16 @@ fn usize! utf32to8(Char32[] utf32, char[] utf8_buffer)
  * @param [out] utf32_buffer
  * @return `the number of Char32s written.`
  **/
-fn usize! utf8to32(char[] utf8, Char32[] utf32_buffer)
+fn usz! utf8to32(char[] utf8, Char32[] utf32_buffer)
 {
-	usize len = utf8.len;
+	usz len = utf8.len;
 	Char32* ptr = utf32_buffer.ptr;
-    usize len32 = 0;
-    usize buf_len = utf32_buffer.len;
-    for (usize i = 0; i < len;)
+    usz len32 = 0;
+    usz buf_len = utf32_buffer.len;
+    for (usz i = 0; i < len;)
     {
         if (len32 == buf_len) return UnicodeResult.CONVERSION_FAILED!;
-        usize width = len - i;
+        usz width = len - i;
     	Char32 uc = utf8_to_char32(&utf8[i], &width) @inline?;
     	i += width;
     	ptr[len32++] = uc;
@@ -337,10 +337,10 @@ fn usize! utf8to32(char[] utf8, Char32[] utf32_buffer)
  **/
 fn void! utf16to8_unsafe(Char16[] utf16, char* utf8_buffer)
 {
-	usize len16 = utf16.len;
-	for (usize i = 0; i < len16;)
+	usz len16 = utf16.len;
+	for (usz i = 0; i < len16;)
 	{
-		usize available = len16 - i;
+		usz available = len16 - i;
 		char16_to_utf8_unsafe(&utf16[i], &available, &utf8_buffer) @inline?;
 		i += available;
 	}
@@ -356,10 +356,10 @@ fn void! utf16to8_unsafe(Char16[] utf16, char* utf8_buffer)
  **/
 fn void! utf8to32_unsafe(char[] utf8, Char32* utf32_buffer)
 {
-	usize len = utf8.len;
-	for (usize i = 0; i < len;)
+	usz len = utf8.len;
+	for (usz i = 0; i < len;)
     {
-        usize width = len - i;
+        usz width = len - i;
     	Char32 uc = utf8_to_char32(&utf8[i], &width) @inline?;
     	i += width;
     	(utf32_buffer++)[0] = uc;
@@ -376,10 +376,10 @@ fn void! utf8to32_unsafe(char[] utf8, Char32* utf32_buffer)
  **/
 fn void! utf8to16_unsafe(char[] utf8, Char16* utf16_buffer)
 {
-	usize len = utf8.len;
-    for (usize i = 0; i < len;)
+	usz len = utf8.len;
+    for (usz i = 0; i < len;)
     {
-        usize width = len - i;
+        usz width = len - i;
     	Char32 uc = utf8_to_char32(&utf8[i], &width) @inline?;
         char32_to_utf16_unsafe(uc, &utf16_buffer) @inline;
         i += width;

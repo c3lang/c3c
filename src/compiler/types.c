@@ -4,13 +4,15 @@
 
 #include "compiler_internal.h"
 
+static Type *flatten_raw_function_type(Type *type);
+
 static struct
 {
 	Type u0, u1, i8, i16, i32, i64, i128, ixx;
 	Type u8, u16, u32, u64, u128;
 	Type f16, f32, f64, f128, fxx;
-	Type usz, isz, uptr, iptr, uptrdiff, iptrdiff;
-	Type voidstar, typeid, anyerr, typeinfo, ctlist;
+	Type usz, isz, usize, isize, uptr, iptr, uptrdiff, iptrdiff;
+	Type voidstar, typeid, anyerr, member, typeinfo, untyped_list;
 	Type any, anyfail;
 } t;
 
@@ -31,7 +33,8 @@ Type *type_long = &t.i64;
 Type *type_i128 = &t.i128;
 Type *type_iptr = &t.iptr;
 Type *type_iptrdiff = &t.iptrdiff;
-Type *type_isize = &t.isz;
+Type *type_isize = &t.isize;
+Type *type_isz = &t.isz;
 Type *type_char = &t.u8;
 Type *type_ushort = &t.u16;
 Type *type_uint = &t.u32;
@@ -39,10 +42,12 @@ Type *type_ulong = &t.u64;
 Type *type_u128 = &t.u128;
 Type *type_uptr = &t.uptr;
 Type *type_uptrdiff = &t.uptrdiff;
-Type *type_usize = &t.usz;
+Type *type_usize = &t.usize;
+Type *type_usz = &t.usz;
 Type *type_anyerr = &t.anyerr;
-Type *type_complist = &t.ctlist;
+Type *type_untypedlist = &t.untyped_list;
 Type *type_anyfail = &t.anyfail;
+Type *type_member = &t.member;
 Type *type_chars = NULL;
 
 static unsigned size_subarray;
@@ -126,7 +131,7 @@ static void type_append_name_to_scratch(Type *type)
 		case TYPE_FAILABLE_ANY:
 			scratch_buffer_append("void!");
 			break;
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 			if (type->failable)
 			{
 				type_append_name_to_scratch(type->failable);
@@ -140,12 +145,15 @@ static void type_append_name_to_scratch(Type *type)
 		case TYPE_SUBARRAY:
 			type_append_name_to_scratch(type->array.base);
 			scratch_buffer_append("[]");
+			break;
 		case TYPE_FLEXIBLE_ARRAY:
 			type_append_name_to_scratch(type->array.base);
 			scratch_buffer_append("[*]");
+			break;
 		case TYPE_SCALED_VECTOR:
 			type_append_name_to_scratch(type->array.base);
 			scratch_buffer_append("[<>]");
+			break;
 		case TYPE_VOID:
 		case TYPE_BOOL:
 		case ALL_INTS:
@@ -160,6 +168,7 @@ static void type_append_name_to_scratch(Type *type)
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_TYPEINFO:
+		case TYPE_MEMBER:
 			UNREACHABLE
 			break;
 		case TYPE_FUNC:
@@ -218,6 +227,7 @@ const char *type_to_error_string(Type *type)
 		case TYPE_ANYERR:
 		case TYPE_UNTYPED_LIST:
 		case TYPE_ANY:
+		case TYPE_MEMBER:
 			return type->name;
 		case TYPE_FUNC:
 			scratch_buffer_clear();
@@ -241,7 +251,7 @@ const char *type_to_error_string(Type *type)
 				return type_to_error_string(type->pointer);
 			}
 			return str_printf("%s*", type_to_error_string(type->pointer));
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 			if (!type->failable) return "void!";
 			return str_printf("%s!", type_to_error_string(type->failable));
 		case TYPE_ARRAY:
@@ -282,7 +292,7 @@ RETRY:
 		case TYPE_SCALED_VECTOR:
 		case TYPE_FLEXIBLE_ARRAY:
 			return 0;
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 			type = type->failable;
 			goto RETRY;
 		case TYPE_TYPEDEF:
@@ -360,7 +370,7 @@ bool type_is_abi_aggregate(Type *type)
 	{
 		case TYPE_POISONED:
 			return false;
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 			type = type->failable;
 			goto RETRY;
 		case TYPE_DISTINCT:
@@ -395,6 +405,7 @@ bool type_is_abi_aggregate(Type *type)
 		case TYPE_UNTYPED_LIST:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_SCALED_VECTOR:
+		case TYPE_MEMBER:
 			UNREACHABLE
 	}
 	UNREACHABLE
@@ -482,6 +493,7 @@ void type_mangle_introspect_name_to_buffer(Type *type)
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_UNTYPED_LIST:
 		case TYPE_FAILABLE_ANY:
+		case TYPE_MEMBER:
 			UNREACHABLE
 		case TYPE_VOID:
 		case TYPE_BOOL:
@@ -504,7 +516,7 @@ void type_mangle_introspect_name_to_buffer(Type *type)
 			scratch_buffer_append("a0$");
 			type_mangle_introspect_name_to_buffer(type->array.base);
 			return;
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 			scratch_buffer_append("f$");
 			type_mangle_introspect_name_to_buffer(type->failable);
 			return;
@@ -527,7 +539,8 @@ void type_mangle_introspect_name_to_buffer(Type *type)
 		case TYPE_FUNC:
 			if (type->function.module)
 			{
-				scratch_buffer_append(type->function.module->extname);
+				Module *module = type->function.module;
+				scratch_buffer_append(module->extname ? module->extname : module->name->module);
 				scratch_buffer_append_char('$');
 				scratch_buffer_append(type->name);
 			}
@@ -577,6 +590,7 @@ AlignSize type_abi_alignment(Type *type)
 		case TYPE_POISONED:
 		case TYPE_TYPEINFO:
 		case TYPE_UNTYPED_LIST:
+		case TYPE_MEMBER:
 			UNREACHABLE;
 		case TYPE_BITSTRUCT:
 			type = type->decl->bitstruct.base_type->type;
@@ -598,7 +612,7 @@ AlignSize type_abi_alignment(Type *type)
 		case TYPE_VOID:
 		case TYPE_FAILABLE_ANY:
 			return 1;
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 			type = type->failable;
 			goto RETRY;
 		case TYPE_DISTINCT:
@@ -681,7 +695,7 @@ static Type *type_generate_failable(Type *failable_type, bool canonical)
 	Type *failable = failable_type->type_cache[FAILABLE_OFFSET];
 	if (failable == NULL)
 	{
-		failable = type_new(TYPE_FAILABLE, str_printf("%s!", failable_type->name));
+		failable = type_new(TYPE_OPTIONAL, str_printf("%s!", failable_type->name));
 		failable->pointer = failable_type;
 		failable_type->type_cache[FAILABLE_OFFSET] = failable;
 		if (failable_type == failable_type->canonical)
@@ -832,10 +846,10 @@ static Type *type_generate_scaled_vector(Type *arr_type, bool canonical)
 Type *type_get_ptr_recurse(Type *ptr_type)
 {
 	assert(ptr_type->type_kind != TYPE_FAILABLE_ANY);
-	if (ptr_type->type_kind == TYPE_FAILABLE)
+	if (ptr_type->type_kind == TYPE_OPTIONAL)
 	{
 		ptr_type = ptr_type->failable;
-		return type_get_failable(type_get_ptr(ptr_type));
+		return type_get_optional(type_get_ptr(ptr_type));
 	}
 	return type_get_ptr(ptr_type);
 
@@ -846,7 +860,7 @@ Type *type_get_ptr(Type *ptr_type)
 	return type_generate_ptr(ptr_type, false);
 }
 
-Type *type_get_failable(Type *failable_type)
+Type *type_get_optional(Type *failable_type)
 {
 	assert(!type_is_optional(failable_type));
 	return type_generate_failable(failable_type, false);
@@ -1167,14 +1181,40 @@ void type_func_prototype_init(uint32_t capacity)
 static uint32_t hash_function(Signature *sig)
 {
 	uintptr_t hash = (unsigned)sig->variadic;
-	hash = hash * 31 + (uintptr_t)type_infoptr(sig->rtype)->type->canonical;
+	hash = hash * 31 + (uintptr_t)flatten_raw_function_type(type_infoptr(sig->rtype)->type);
 	Decl **params = sig->params;
 	VECEACH(params, i)
 	{
 		Decl *param = params[i];
-		hash = hash * 31 + (uintptr_t)param->type->canonical;
+		hash = hash * 31 + (uintptr_t)flatten_raw_function_type(param->type->canonical);
 	}
 	return (uint32_t)((hash >> 16) ^ hash);
+}
+
+static bool compare_func_param(Type *one, Type *other)
+{
+	if (one == other) return true;
+	one = one->canonical;
+	other = other->canonical;
+	if (one == other) return true;
+	if (one->type_kind != other->type_kind) return false;
+	switch (one->type_kind)
+	{
+		case TYPE_POINTER:
+			return compare_func_param(one->pointer, other->pointer);
+		case TYPE_ARRAY:
+			if (one->array.len != other->array.len) return false;
+			FALLTHROUGH;
+		case TYPE_SUBARRAY:
+		case TYPE_FLEXIBLE_ARRAY:
+			return compare_func_param(one->array.base, other->array.base);
+		case TYPE_FUNC:
+			return one->function.prototype->raw_type == other->function.prototype->raw_type;
+		case TYPE_OPTIONAL:
+			return compare_func_param(one->failable, other->failable);
+		default:
+			return false;
+	}
 }
 
 static int compare_function(Signature *sig, FunctionPrototype *proto)
@@ -1184,17 +1224,54 @@ static int compare_function(Signature *sig, FunctionPrototype *proto)
 	Type **other_params = proto->param_types;
 	unsigned param_count = vec_size(params);
 	if (param_count != vec_size(other_params)) return -1;
-	if (type_infoptr(sig->rtype)->type->canonical != proto->rtype->canonical) return -1;
+	if (!compare_func_param(type_infoptr(sig->rtype)->type, proto->rtype)) return -1;
 	VECEACH(params, i)
 	{
 		Decl *param = params[i];
 		Type *other_param = other_params[i];
-		if (param->type->canonical != other_param->canonical) return -1;
+		if (!compare_func_param(param->type, other_param->canonical)) return -1;
 	}
 	return 0;
 }
 
-
+static Type *flatten_raw_function_type(Type *type)
+{
+	Type *other;
+	Type *current;
+	switch (type->type_kind)
+	{
+		case TYPE_TYPEDEF:
+			return flatten_raw_function_type(type->canonical);
+		case TYPE_FUNC:
+			return type->function.prototype->raw_type;
+		case TYPE_OPTIONAL:
+			current = type->failable;
+			other = flatten_raw_function_type(current);
+			return other == current ? type : type_get_optional(other);
+		case TYPE_POINTER:
+			current = type->pointer;
+			other = flatten_raw_function_type(current);
+			return other == current ? type : type_get_ptr(other);
+		case TYPE_ARRAY:
+			current = type->array.base;
+			other = flatten_raw_function_type(current);
+			return other == current ? type : type_get_array(other, type->array.len);
+		case TYPE_SUBARRAY:
+			current = type->array.base;
+			other = flatten_raw_function_type(current);
+			return other == current ? type : type_get_subarray(other);
+		case TYPE_FLEXIBLE_ARRAY:
+			current = type->array.base;
+			other = flatten_raw_function_type(current);
+			return other == current ? type : type_get_flexible_array(other);
+		case TYPE_INFERRED_ARRAY:
+			current = type->array.base;
+			other = flatten_raw_function_type(current);
+			return other == current ? type : type_get_inferred_array(other);
+		default:
+			return type;
+	}
+}
 static inline Type *func_create_new_func_proto(Signature *sig, CallABI abi, uint32_t hash, FuncTypeEntry *entry)
 {
 	unsigned param_count = vec_size(sig->params);
@@ -1351,7 +1428,8 @@ void type_setup(PlatformTarget *target)
 	type_init_int("void", &t.u0, TYPE_VOID, BITS8);
 
 	type_create("typeinfo", &t.typeinfo, TYPE_TYPEINFO, 1, 1, 1);
-	type_create("complist", &t.ctlist, TYPE_UNTYPED_LIST, 1, 1, 1);
+	type_create("member_ref", &t.member, TYPE_MEMBER, 1, 1, 1);
+	type_create("untyped_list", &t.untyped_list, TYPE_UNTYPED_LIST, 1, 1, 1);
 	type_create("void!", &t.anyfail, TYPE_FAILABLE_ANY, 1, 1, 1);
 	type_init("typeid", &t.typeid, TYPE_TYPEID, target->width_pointer, target->align_pointer);
 	type_init("void*", &t.voidstar, TYPE_POINTER, target->width_pointer, target->align_pointer);
@@ -1360,8 +1438,10 @@ void type_setup(PlatformTarget *target)
 	t.voidstar.pointer = type_void;
 	type_init("variant", &t.any, TYPE_ANY, target->width_pointer * 2, target->align_pointer);
 
-	type_create_alias("usize", &t.usz, type_int_unsigned_by_bitsize(target->width_pointer));
-	type_create_alias("isize", &t.isz, type_int_signed_by_bitsize(target->width_pointer));
+	type_create_alias("usize", &t.usize, type_int_unsigned_by_bitsize(target->width_pointer));
+	type_create_alias("isize", &t.isize, type_int_signed_by_bitsize(target->width_pointer));
+	type_create_alias("usz", &t.usz, type_int_unsigned_by_bitsize(target->width_pointer));
+	type_create_alias("isz", &t.isz, type_int_signed_by_bitsize(target->width_pointer));
 	type_create_alias("uptr", &t.uptr, type_int_unsigned_by_bitsize(target->width_pointer));
 	type_create_alias("iptr", &t.iptr, type_int_signed_by_bitsize(target->width_pointer));
 
@@ -1436,7 +1516,7 @@ bool type_is_scalar(Type *type)
 		case TYPE_DISTINCT:
 			type = type->decl->distinct_decl.base_type;
 			goto RETRY;
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 			type = type->failable;
 			if (!type) return false;
 			goto RETRY;
@@ -1507,6 +1587,8 @@ Type *type_from_token(TokenType type)
 			return type_iptrdiff;
 		case TOKEN_ISIZE:
 			return type_isize;
+		case TOKEN_ISZ:
+			return type_isz;
 		case TOKEN_LONG:
 			return type_long;
 		case TOKEN_SHORT:
@@ -1525,6 +1607,8 @@ Type *type_from_token(TokenType type)
 			return type_ushort;
 		case TOKEN_USIZE:
 			return type_usize;
+		case TOKEN_USZ:
+			return type_usz;
 		case TOKEN_TYPEID:
 			return type_typeid;
 		default:
@@ -1564,9 +1648,10 @@ bool type_may_have_method(Type *type)
 		case TYPE_POINTER:
 		case TYPE_FUNC:
 		case TYPE_UNTYPED_LIST:
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 		case TYPE_FAILABLE_ANY:
 		case TYPE_TYPEINFO:
+		case TYPE_MEMBER:
 			return false;
 	}
 	UNREACHABLE
@@ -1723,7 +1808,7 @@ Type *type_find_max_type(Type *type, Type *other)
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_POISONED:
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 		case TYPE_FAILABLE_ANY:
 			UNREACHABLE
 		case TYPE_VOID:
@@ -1788,10 +1873,12 @@ Type *type_find_max_type(Type *type, Type *other)
 			type = other->function.prototype->raw_type;
 			return other == type ? type : NULL;
 		case TYPE_UNION:
-		case TYPE_TYPEID:
 		case TYPE_STRUCT:
 		case TYPE_UNTYPED_LIST:
 			TODO
+		case TYPE_TYPEID:
+		case TYPE_MEMBER:
+			return NULL;
 		case TYPE_TYPEDEF:
 			UNREACHABLE
 		case TYPE_DISTINCT:
@@ -1915,7 +2002,8 @@ unsigned type_get_introspection_kind(TypeKind kind)
 		case TYPE_UNTYPED_LIST:
 		case TYPE_FAILABLE_ANY:
 		case TYPE_TYPEINFO:
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
+		case TYPE_MEMBER:
 			UNREACHABLE
 			return 0;
 	}
@@ -1960,12 +2048,13 @@ Module *type_base_module(Type *type)
 		case TYPE_INFERRED_VECTOR:
 			type = type->array.base;
 			goto RETRY;
-		case TYPE_FAILABLE:
+		case TYPE_OPTIONAL:
 			type = type->failable;
 			goto RETRY;
 		case TYPE_UNTYPED_LIST:
 		case TYPE_FAILABLE_ANY:
 		case TYPE_TYPEINFO:
+		case TYPE_MEMBER:
 			UNREACHABLE
 	}
 	UNREACHABLE

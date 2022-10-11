@@ -413,11 +413,16 @@ void sema_analysis_pass_functions(Module *module)
 {
 	DEBUG_LOG("Pass: Function analysis %s", module->name->module);
 
+
 	VECEACH(module->units, index)
 	{
 		CompilationUnit *unit = module->units[index];
 		SemaContext context;
 		sema_context_init(&context, unit);
+		VECEACH(unit->xxlizers, i)
+		{
+			sema_analyse_decl(&context, unit->xxlizers[i]);
+		}
 		VECEACH(unit->methods, i)
 		{
 			analyse_func_body(&context, unit->methods[i]);

@@ -2,7 +2,7 @@ fn void test()
 {
     char* c = { 1, 3, "hello"}[2];
     int x;
-    int z = { 1, 3 }[x]; // #error: To subscript a compile time list a compile time integer index is needed
+    int z = { 1, 3 }[x]; // #error: To subscript an untyped list a compile time integer index is needed
 }
 
 fn void test2()

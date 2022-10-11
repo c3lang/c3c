@@ -216,6 +216,9 @@ add_executable(c3c
         src/compiler/sema_expr.c
         src/compiler/sema_internal.h
         src/compiler/sema_name_resolution.c
+        src/compiler/sema_errors.c
+        src/compiler/sema_builtins.c
+        src/compiler/sema_initializers.c
         src/compiler/semantic_analyser.c
         src/compiler/sema_passes.c
         src/compiler/sema_stmts.c
@@ -254,7 +257,9 @@ add_executable(c3c
         src/compiler/tilde_codegen_type.c
         src/compiler/windows_support.c
         src/compiler/codegen_asm.c
-        src/compiler/asm_target.c src/compiler/llvm_codegen_builtins.c)
+        src/compiler/asm_target.c
+        src/compiler/llvm_codegen_builtins.c
+        src/compiler/expr.c src/utils/time.c)
 
 
 target_include_directories(c3c PRIVATE

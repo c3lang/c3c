@@ -6,7 +6,7 @@ fault MyErr
 fn void test()
 {
     int! x;
-    int! d = ($typeof(MyErr.FOO!))(x); // #error: Casting to a failable type is not allowed
+    int! d = ($typeof(MyErr.FOO!))(x); // #error: Casting to an optional type is not allowed
 }
 
 

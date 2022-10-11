@@ -60,8 +60,9 @@ typedef struct
 } DebugContext;
 
 
-typedef struct
+typedef struct GenContext_
 {
+	bool shared_context;
 	LLVMModuleRef module;
 	LLVMBuilderRef global_builder;
 	LLVMTargetMachineRef machine;
@@ -72,6 +73,8 @@ typedef struct
 	LLVMBuilderRef builder;
 	LLVMBasicBlockRef current_block;
 	LLVMBasicBlockRef catch_block;
+	LLVMValueRef *constructors;
+	LLVMValueRef *destructors;
 	const char *ir_filename;
 	const char *object_filename;
 	const char *asm_filename;
@@ -83,8 +86,12 @@ typedef struct
 	LLVMTypeRef fault_type;
 	LLVMTypeRef size_type;
 	Decl *panicfn;
-	Decl *cur_code_decl;
-	Decl *cur_func_decl;
+	struct
+	{
+		const char *name;
+		FunctionPrototype *prototype;
+		Type *rtype;
+	} cur_func;
 	TypeInfo *current_return_type;
 	int block_global_unique_count;
 	int ast_alloca_addr_space;
@@ -139,8 +146,10 @@ typedef struct
 	unsigned maxnum;
 	unsigned memcpy;
 	unsigned memset;
+	unsigned memmove;
 	unsigned minimum;
 	unsigned minnum;
+	unsigned fmuladd;
 	unsigned nearbyint;
 	unsigned pow;
 	unsigned powi;
@@ -227,7 +236,7 @@ static inline LLVMValueRef decl_optional_ref(Decl *decl)
 {
 	assert(decl->decl_kind == DECL_VAR);
 	if (decl->var.kind == VARDECL_UNWRAPPED) return decl_optional_ref(decl->var.alias);
-	if (decl->type->type_kind != TYPE_FAILABLE) return NULL;
+	if (decl->type->type_kind != TYPE_OPTIONAL) return NULL;
 	return decl->var.failable_ref;
 }
 
@@ -267,6 +276,7 @@ LLVMMetadataRef llvm_get_debug_type(GenContext *c, Type *type);
 LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type);
 LLVMTypeRef llvm_get_pointee_type(GenContext *c, Type *any_type);
 void llvm_emit_function_decl(GenContext *c, Decl *decl);
+void llvm_emit_xxlizer(GenContext *c, Decl *decl);
 INLINE LLVMTypeRef llvm_get_ptr_type(GenContext *c, Type *type);
 
 // -- Attributes ---

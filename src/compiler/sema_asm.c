@@ -481,7 +481,7 @@ static inline bool sema_check_asm_arg(SemaContext *context, AsmInlineBlock *bloc
 	}
 	UNREACHABLE
 }
-bool sema_check_asm(SemaContext *context, AsmInlineBlock *block, Ast *asm_stmt)
+bool sema_analyse_asm(SemaContext *context, AsmInlineBlock *block, Ast *asm_stmt)
 {
 	if (platform_target.arch != ARCH_TYPE_X86_64 && platform_target.arch != ARCH_TYPE_AARCH64)
 	{

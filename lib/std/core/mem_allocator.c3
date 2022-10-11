@@ -1,14 +1,14 @@
 module std::core::mem::allocator;
 
 const MAX_MEMORY_ALIGNMENT = 0x1000_0000;
-const DEFAULT_MEM_ALIGNMENT = $alignof(void*) * 2;
-const DEFAULT_SIZE_PREFIX = usize.sizeof;
-const DEFAULT_SIZE_PREFIX_ALIGNMENT = $alignof(usize);
+const DEFAULT_MEM_ALIGNMENT = (void*.alignof) * 2;
+const DEFAULT_SIZE_PREFIX = usz.sizeof;
+const DEFAULT_SIZE_PREFIX_ALIGNMENT = usz.alignof;
 
 const Allocator* NULL_ALLOCATOR = &_NULL_ALLOCATOR;
 const Allocator* LIBC_ALLOCATOR = &_SYSTEM_ALLOCATOR;
 
-define AllocatorFunction = fn void*!(Allocator* allocator, usize new_size, usize alignment, usize offset, void* old_pointer, AllocationKind kind);
+define AllocatorFunction = fn void*!(Allocator* allocator, usz new_size, usz alignment, usz offset, void* old_pointer, AllocationKind kind);
 
 struct Allocator
 {
@@ -38,7 +38,7 @@ fault AllocationFailure
 
 
 
-fn void*! Allocator.alloc(Allocator* allocator, usize size) @inline
+fn void*! Allocator.alloc(Allocator* allocator, usz size) @inline
 {
 	return allocator.function(allocator, size, 0, 0, null, ALLOC);
 }
@@ -46,12 +46,12 @@ fn void*! Allocator.alloc(Allocator* allocator, usize size) @inline
 /**
  * @require alignment && math::is_power_of_2(alignment)
  */
-fn void*! Allocator.alloc_aligned(Allocator* allocator, usize size, usize alignment, usize offset = 0) @inline
+fn void*! Allocator.alloc_aligned(Allocator* allocator, usz size, usz alignment, usz offset = 0) @inline
 {
 	return allocator.function(allocator, size, alignment, offset, null, ALIGNED_ALLOC);
 }
 
-fn void*! Allocator.realloc(Allocator* allocator, void* old_pointer, usize size) @inline
+fn void*! Allocator.realloc(Allocator* allocator, void* old_pointer, usz size) @inline
 {
 	return allocator.function(allocator, size, 0, 0, old_pointer, REALLOC);
 }
@@ -59,18 +59,18 @@ fn void*! Allocator.realloc(Allocator* allocator, void* old_pointer, usize size)
 /**
  * @require alignment && math::is_power_of_2(alignment)
  */
-fn void*! Allocator.realloc_aligned(Allocator* allocator, void* old_pointer, usize size, usize alignment, usize offset = 0) @inline
+fn void*! Allocator.realloc_aligned(Allocator* allocator, void* old_pointer, usz size, usz alignment, usz offset = 0) @inline
 {
 	return allocator.function(allocator, size, alignment, offset, old_pointer, ALIGNED_REALLOC);
 }
 
-fn usize! Allocator.mark(Allocator* allocator) @inline
+fn usz! Allocator.mark(Allocator* allocator) @inline
 {
-	return (usize)(uptr)allocator.function(allocator, 0, 0, 0, null, MARK);
+	return (usz)(uptr)allocator.function(allocator, 0, 0, 0, null, MARK);
 }
 
 
-fn void*! Allocator.calloc(Allocator* allocator, usize size) @inline
+fn void*! Allocator.calloc(Allocator* allocator, usz size) @inline
 {
 	return allocator.function(allocator, size, 0, 0, null, CALLOC);
 }
@@ -78,7 +78,7 @@ fn void*! Allocator.calloc(Allocator* allocator, usize size) @inline
 /**
  * @require alignment && math::is_power_of_2(alignment)
  */
-fn void*! Allocator.calloc_aligned(Allocator* allocator, usize size, usize alignment, usize offset = 0) @inline
+fn void*! Allocator.calloc_aligned(Allocator* allocator, usz size, usz alignment, usz offset = 0) @inline
 {
 	return allocator.function(allocator, size, alignment, offset, null, ALIGNED_CALLOC);
 }
@@ -93,12 +93,12 @@ fn void! Allocator.free_aligned(Allocator* allocator, void* old_pointer) @inline
 	allocator.function(allocator, 0, 0, 0, old_pointer, ALIGNED_FREE)?;
 }
 
-fn void Allocator.reset(Allocator* allocator, usize mark = 0)
+fn void Allocator.reset(Allocator* allocator, usz mark = 0)
 {
 	allocator.function(allocator, mark, 0, 0, null, RESET)!!;
 }
 
-private fn usize alignment_for_allocation(usize alignment) @inline
+private fn usz alignment_for_allocation(usz alignment) @inline
 {
 	if (alignment < DEFAULT_MEM_ALIGNMENT)
 	{
@@ -113,14 +113,14 @@ struct DynamicArenaAllocator
 	Allocator* backing_allocator;
 	DynamicArenaPage* page;
 	DynamicArenaPage* unused_page;
-	usize page_size;
+	usz page_size;
 }
 
 /**
  * @require page_size >= 128
  * @require this != null
  **/
-fn void DynamicArenaAllocator.init(DynamicArenaAllocator* this, usize page_size, Allocator* backing_allocator = mem::current_allocator())
+fn void DynamicArenaAllocator.init(DynamicArenaAllocator* this, usz page_size, Allocator* backing_allocator = mem::current_allocator())
 {
 	this.function = &dynamic_arena_allocator_function;
 	this.page = null;
@@ -157,7 +157,7 @@ struct ArenaAllocator
 {
 	inline Allocator allocator;
 	char[] data;
-	usize used;
+	usz used;
 }
 
 /**

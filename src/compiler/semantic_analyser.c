@@ -5,28 +5,6 @@
 #include <compiler_tests/benchmark.h>
 #include "sema_internal.h"
 
-void sema_shadow_error(Decl *decl, Decl *old)
-{
-	SEMA_ERROR(decl, "'%s' would shadow a previous declaration.", decl->name);
-	SEMA_NOTE(old, "The previous use of '%s' was here.", decl->name);
-}
-
-bool sema_resolve_type_info_maybe_inferred(SemaContext *context, TypeInfo *type_info, bool allow_inferred_type)
-{
-	if (!sema_resolve_type_shallow(context, type_info, allow_inferred_type, false)) return false;
-	Type *type = type_no_optional(type_info->type);
-	// usize and similar typedefs will not have a decl.
-	if (type->type_kind == TYPE_TYPEDEF && type->decl == NULL) return true;
-	if (!type_is_user_defined(type)) return true;
-	return sema_analyse_decl(context, type->decl);
-}
-
-bool sema_resolve_type_info(SemaContext *context, TypeInfo *type_info)
-{
-	return sema_resolve_type_info_maybe_inferred(context, type_info, false);
-}
-
-
 void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags)
 {
 	unsigned depth = context->active_scope.depth + 1;
@@ -89,7 +67,7 @@ AstId context_get_defers(SemaContext *context, AstId defer_top, AstId defer_bott
 	while (defer_bottom != defer_top)
 	{
 		Ast *defer = astptr(defer_top);
-		Ast *defer_body = ast_defer_copy(astptr(defer->defer_stmt.body));
+		Ast *defer_body = copy_ast_defer(astptr(defer->defer_stmt.body));
 		*next = astid(defer_body);
 		next = &defer_body->next;
 		defer_top = defer->defer_stmt.prev_defer;
@@ -106,7 +84,7 @@ void context_pop_defers(SemaContext *context, AstId *next)
 		while (defer_current != defer_start)
 		{
 			Ast *defer = astptr(defer_current);
-			Ast *defer_body = ast_defer_copy(astptr(defer->defer_stmt.body));
+			Ast *defer_body = copy_ast_defer(astptr(defer->defer_stmt.body));
 			*next = astid(defer_body);
 			next = &defer_body->next;
 			defer_current = defer->defer_stmt.prev_defer;
@@ -189,24 +167,18 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 			case DECL_LABEL:
 			case DECL_CT_ASSERT:
 			case DECL_DECLARRAY:
+			case DECL_INITIALIZE:
+			case DECL_FINALIZE:
+			case DECL_CT_IF:
+			case DECL_CT_SWITCH:
 				continue;
 			case DECL_ATTRIBUTE:
 				break;
 			case DECL_CT_CASE:
-//				register_generic_decls(module, decl->ct_case_decl.body);
-				continue;
 			case DECL_CT_ELIF:
-//				register_generic_decls(module, decl->ct_elif_decl.then);
-				continue;
 			case DECL_CT_ELSE:
-//				register_generic_decls(module, decl->ct_else_decl);
-				continue;
-			case DECL_CT_IF:
-//				register_generic_decls(module, decl->ct_if_decl.then);
-				continue;
-			case DECL_CT_SWITCH:
-//				register_generic_decls(module, decl->ct_switch_decl.cases);
-				continue;
+			case DECL_BODYPARAM:
+				UNREACHABLE
 			case DECL_MACRO:
 			case DECL_DEFINE:
 			case DECL_DISTINCT:
@@ -219,13 +191,11 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 			case DECL_UNION:
 			case DECL_VAR:
 			case DECL_BITSTRUCT:
-			case DECL_BODYPARAM:
 				break;
 		}
 		htable_set(&unit->module->symbols, decl->name, decl);
 		if (decl->visibility == VISIBLE_PUBLIC) global_context_add_generic_decl(decl);
 	}
-
 }
 
 
@@ -294,6 +264,10 @@ void sema_analysis_run(void)
 		error_exit("No modules to compile.");
 	}
 
+	// Create the core module if needed.
+	Path core_path = { .module = kw_std__core, .span = INVALID_SPAN, .len = strlen(kw_std__core) };
+	global_context.core_module = compiler_find_or_create_module(&core_path, NULL, false);
+
 	// We parse the generic modules, just by storing the decls.
 	VECEACH(global_context.generic_module_list, i)
 	{
@@ -311,7 +285,7 @@ void sema_analysis_run(void)
 		Path *path;
 		const char *ident;
 		TokenType type;
-		if (!splitpathref(panicfn, strlen(panicfn), &path, &ident, &type) || path == NULL)
+		if (sema_splitpathref(panicfn, strlen(panicfn), &path, &ident) != TOKEN_IDENT || path == NULL || !ident)
 		{
 			error_exit("'%s' is not a valid panic function.", panicfn);
 		}
@@ -370,7 +344,7 @@ void generic_context_release_locals_list(Decl **list)
 	vec_add(global_context.locals_list, list);
 }
 
-SemaContext *transform_context_for_eval(SemaContext *context, SemaContext *temp_context, CompilationUnit *eval_unit)
+SemaContext *context_transform_for_eval(SemaContext *context, SemaContext *temp_context, CompilationUnit *eval_unit)
 {
 	if (eval_unit == context->unit)
 	{
@@ -380,7 +354,7 @@ SemaContext *transform_context_for_eval(SemaContext *context, SemaContext *temp_
 	DEBUG_LOG("Changing compilation unit to %s", eval_unit->file->name);
 	sema_context_init(temp_context, eval_unit);
 	temp_context->compilation_unit = context->compilation_unit;
-	temp_context->current_function = context->current_function;
+	temp_context->call_env = context->call_env;
 	temp_context->current_macro = context->current_macro;
 	return temp_context;
 }

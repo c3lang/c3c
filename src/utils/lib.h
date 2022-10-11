@@ -98,6 +98,8 @@ void taskqueue_add(TaskQueueRef queue, Task *task);
 void taskqueue_destroy(TaskQueueRef queue);
 void taskqueue_wait_for_completion(TaskQueueRef queue);
 
+const char *date_get(void);
+const char *time_get(void);
 
 const char *str_remove_suffix(const char *name, const char *suffix);
 bool str_has_suffix(const char *name, const char *suffix);
@@ -158,7 +160,7 @@ static inline char char_nibble_to_hex(int c);
 
 static inline uint32_t fnv1a(const char *key, uint32_t len);
 
-static inline uint32_t vec_size(const void *vec);
+INLINE uint32_t vec_size(const void *vec);
 static inline void vec_resize(void *vec, uint32_t new_size);
 static inline void vec_pop(void *vec);
 
@@ -302,6 +304,7 @@ void* CONCAT(foreach_vec_, __LINE__) = (vec__); unsigned CONCAT(foreach_len_, __
 #else
 #define VECLAST(_vec) (vec_size(_vec) ? (_vec)[vec_size(_vec) - 1] : NULL)
 #endif
+#define vectail(_vec) (_vec)[vec_size(_vec) - 1]
 
 #if IS_GCC || IS_CLANG
 
@@ -342,7 +345,7 @@ static inline StringSlice slice_from_string(const char *data)
 	return (StringSlice) { data, strlen(data) };
 }
 
-static inline uint32_t vec_size(const void *vec)
+INLINE uint32_t vec_size(const void *vec)
 {
 	if (!vec) return 0;
 	const VHeader_ *header = vec;

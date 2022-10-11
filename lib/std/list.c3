@@ -5,8 +5,8 @@ module std::array::list<Type>;
 
 struct List
 {
-    usize size;
-    usize capacity;
+    usz size;
+    usz capacity;
     Type *entries;
 }
 
@@ -49,9 +49,9 @@ fn Type List.pop_first(List *list)
     return value;
 }
 
-fn void List.remove_at(List *list, usize index)
+fn void List.remove_at(List *list, usz index)
 {
-    for (usize i = index + 1; i < list.size; i++)
+    for (usz i = index + 1; i < list.size; i++)
     {
         list.entries[i - 1] = list.entries[i];
     }
@@ -63,10 +63,10 @@ fn void List.push_front(List *list, Type type) @inline
     list.insert_at(0, type);
 }
 
-fn void List.insert_at(List* list, usize index, Type type)
+fn void List.insert_at(List* list, usz index, Type type)
 {
     list.ensure_capacity();
-    for (usize i = list.size; i > index; i--)
+    for (usz i = list.size; i > index; i--)
     {
         list.entries[i] = list.entries[i - 1];
     }
@@ -99,12 +99,12 @@ fn bool List.is_empty(List *list)
     return !list.size;
 }
 
-fn usize List.len(List *list) @operator(len)
+fn usz List.len(List *list) @operator(len)
 {
     return list.size;
 }
 
-fn Type List.get(List *list, usize index)
+fn Type List.get(List *list, usz index)
 {
     return list.entries[index];
 }
@@ -117,17 +117,17 @@ fn void List.free(List *list)
     list.entries = null;
 }
 
-fn void List.swap(List *list, usize i, usize j)
+fn void List.swap(List *list, usz i, usz j)
 {
 	@swap(list.entries[i], list.entries[j]);
 }
 
-macro Type List.@item_at(List &list, usize index) @operator([])
+macro Type List.@item_at(List &list, usz index) @operator([])
 {
     return list.entries[index];
 }
 
-macro Type* List.@item_ref(List &list, usize index) @operator(&[])
+macro Type* List.@item_ref(List &list, usz index) @operator(&[])
 {
     return &list.entries[index];
 }

@@ -52,6 +52,7 @@ enum OsType
 }
 
 const OsType OS_TYPE = (OsType)($$OS_TYPE);
+const bool COMPILER_LIBC_AVAILABLE = $$COMPILER_LIBC_AVAILABLE;
 const CompilerOptLevel COMPILER_OPT_LEVEL = (CompilerOptLevel)($$COMPILER_OPT_LEVEL);
 const bool BIG_ENDIAN = $$PLATFORM_BIG_ENDIAN;
 const bool I128_SUPPORT = $$PLATFORM_I128_SUPPORTED;
@@ -62,3 +63,4 @@ const usize TEMP_ALLOCATOR_SIZE = 128 * 1024;
 const usize LLVM_VERSION = $$LLVM_VERSION;
 const bool BENCHMARKING = $$BENCHMARKING;
 const bool TESTING = $$TESTING;
+const usz TEMP_ALLOCATOR_SIZE = 128 * 1024;
