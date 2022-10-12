@@ -1797,7 +1797,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 					inferred_len = false;
 				}
 			}
-			if (!cast_may_implicit(type, rtype, true, may_failable) || inferred_len)
+			if (!cast_may_implicit(type, rtype, CAST_OPTION_SIMPLE_EXPR | (may_failable ? CAST_OPTION_ALLOW_OPTIONAL : 0)) || inferred_len)
 			{
 				SEMA_ERROR(ret_expr, "Expected %s, not %s.", type_quoted_error_string(rtype),
 						   type_quoted_error_string(type));
@@ -3820,7 +3820,7 @@ static bool sema_expr_analyse_slice_assign(SemaContext *context, Expr *expr, Typ
 		Range *left_range = &left->subscript_expr.range;
 		Range *right_range = &right->subscript_expr.range;
 		if (!sema_analyse_expr(context, right)) return false;
-		if (cast_may_implicit(right->type, base, true, false)) goto ASSIGN;
+		if (cast_may_implicit(right->type, base, CAST_OPTION_SIMPLE_EXPR)) goto ASSIGN;
 		if (!cast_implicit(context, right, left_type)) return false;
 		IndexDiff left_len = range_const_len(left_range);
 		IndexDiff right_len = range_const_len(right_range);
@@ -4248,7 +4248,7 @@ static Type *defer_iptr_cast(Expr *maybe_pointer, Expr *maybe_diff)
 	if (maybe_pointer->expr_kind == EXPR_CAST
 		&& maybe_pointer->cast_expr.kind == CAST_PTRXI
 		&& type_flatten(maybe_pointer->type) == type_flatten(type_iptr)
-		&& cast_may_implicit(maybe_diff->type, maybe_diff->type, true, true))
+		&& cast_may_implicit(maybe_diff->type, maybe_diff->type, CAST_OPTION_SIMPLE_EXPR | CAST_OPTION_ALLOW_OPTIONAL))
 	{
 		Type *cast_to_iptr = maybe_pointer->type;
 		maybe_pointer->cast_expr.kind = CAST_PTRPTR;
@@ -5301,7 +5301,7 @@ static inline bool sema_expr_analyse_not(SemaContext *context, Expr *expr)
 	}
 
 	// 4. Let's see if it's possible to cast it implicitly
-	if (!cast_may_implicit(type, type_bool, true, true))
+	if (!cast_may_implicit(type, type_bool, CAST_OPTION_SIMPLE_EXPR | CAST_OPTION_ALLOW_OPTIONAL))
 	{
 		SEMA_ERROR(expr, "The use of '!' on %s is not allowed as it can't be converted to a boolean value.", type_quoted_error_string(inner->type));
 		return false;

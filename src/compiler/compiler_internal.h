@@ -2016,8 +2016,9 @@ AsmRegister *asm_reg_by_index(unsigned index);
 
 bool cast_implicit(SemaContext *context, Expr *expr, Type *to_type);
 bool cast(Expr *expr, Type *to_type);
-bool cast_may_implicit(Type *from_type, Type *to_type, bool is_simple_expr, bool failable_allowed);
+bool cast_may_implicit(Type *from_type, Type *to_type, CastOption option);
 bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability, bool is_const);
+Type *cast_infer_len(Type *to_infer, Type *actual_type);
 bool cast_to_index(Expr *index);
 
 bool cast_untyped_to_type(SemaContext *context, Expr *expr, Type *to_type);
@@ -2304,6 +2305,8 @@ INLINE Type *type_new(TypeKind kind, const char *name);
 INLINE bool type_is_pointer_sized(Type *type);
 INLINE bool type_is_pointer_sized_or_more(Type *type);
 INLINE Type *type_add_optional(Type *type, bool make_optional);
+INLINE Type *type_from_inferred(Type *flattened, Type *element_type, unsigned count);
+INLINE bool type_len_is_inferred(Type *type);
 INLINE bool type_is_substruct(Type *type);
 INLINE Type *type_flatten_for_bitstruct(Type *type);
 INLINE bool type_is_float(Type *type);
@@ -2316,9 +2319,11 @@ INLINE bool type_is_integer_unsigned(Type *type);
 INLINE bool type_is_integer_signed(Type *type);
 INLINE bool type_is_integer_or_bool_kind(Type *type);
 INLINE bool type_is_numeric(Type *type);
+INLINE bool type_is_len_inferred(Type *type);
 INLINE bool type_underlying_is_numeric(Type *type);
 INLINE bool type_is_pointer(Type *type);
 INLINE bool type_is_arraylike(Type *type);
+INLINE bool type_is_any_arraylike(Type *type);
 INLINE bool type_is_promotable_float(Type *type);
 INLINE bool type_is_promotable_integer(Type *type);
 INLINE bool type_is_signed(Type *type);
@@ -2387,11 +2392,49 @@ INLINE Type *type_add_optional(Type *type, bool make_optional)
 	return type_get_optional(type);
 }
 
+INLINE Type *type_from_inferred(Type *flattened, Type *element_type, unsigned count)
+{
+	switch (flattened->type_kind)
+	{
+		case TYPE_INFERRED_VECTOR:
+			return type_get_vector(element_type, count);
+			break;
+		case TYPE_INFERRED_ARRAY:
+			return type_get_array(element_type, count);
+			break;
+		default:
+			UNREACHABLE
+	}
+}
 INLINE bool type_len_is_inferred(Type *type)
 {
 	if (!type) return true;
 	DECL_TYPE_KIND_REAL(kind, type);
-	return kind == TYPE_INFERRED_VECTOR || kind == TYPE_INFERRED_ARRAY;
+	while (1)
+	{
+		switch (type->type_kind)
+		{
+			case TYPE_TYPEDEF:
+				type = type->canonical;
+				continue;
+			case TYPE_ARRAY:
+			case TYPE_SUBARRAY:
+			case TYPE_FLEXIBLE_ARRAY:
+			case TYPE_VECTOR:
+			case TYPE_SCALED_VECTOR:
+				type = type->array.base;
+				continue;
+			case TYPE_INFERRED_ARRAY:
+			case TYPE_INFERRED_VECTOR:
+				return true;
+			case TYPE_POINTER:
+				type = type->pointer;
+				continue;
+			default:
+				return false;
+		}
+		UNREACHABLE;
+	}
 }
 
 INLINE bool type_is_optional(Type *type)
@@ -2450,6 +2493,14 @@ INLINE bool type_is_arraylike(Type *type)
 {
 	DECL_TYPE_KIND_REAL(kind, type);
 	return kind == TYPE_ARRAY || kind == TYPE_VECTOR || kind == TYPE_FLEXIBLE_ARRAY || kind == TYPE_SCALED_VECTOR;
+}
+
+INLINE bool type_is_any_arraylike(Type *type)
+{
+	DECL_TYPE_KIND_REAL(kind, type);
+	return kind == TYPE_ARRAY || kind == TYPE_VECTOR
+		|| kind == TYPE_FLEXIBLE_ARRAY || kind == TYPE_SCALED_VECTOR
+		|| kind == TYPE_INFERRED_VECTOR || kind == TYPE_INFERRED_ARRAY;
 }
 
 INLINE CanonicalType *type_pointer_type(Type *type)
@@ -2671,6 +2722,12 @@ INLINE bool type_info_ok(TypeInfo *type_info) { return !type_info || type_info->
 bool type_is_scalar(Type *type);
 
 INLINE bool type_is_signed(Type *type) { return type->type_kind >= TYPE_I8 && type->type_kind < TYPE_U8; }
+
+INLINE bool type_is_len_inferred(Type *type)
+{
+	TypeKind kind = type->type_kind;
+	return kind == TYPE_INFERRED_VECTOR || kind == TYPE_INFERRED_ARRAY;
+}
 
 INLINE bool type_is_numeric(Type *type)
 {

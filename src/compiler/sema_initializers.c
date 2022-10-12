@@ -5,11 +5,13 @@
 #include "sema_internal.h"
 
 static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *context, Decl *assigned, Expr *initializer);
-static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *context, Type *assigned, Expr *initializer);
+static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *context, Type *assigned, Type *flattened,
+                                                             Expr *initializer);
 static inline bool sema_expr_analyse_untyped_initializer(SemaContext *context, Expr *initializer);
-static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type *assigned, Expr *initializer);
+static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type *assigned, Type *flattened,
+                                                     Expr *initializer);
 static inline void sema_not_enough_elements_error(Expr *initializer, int element);
-static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *external_type, Type *assigned, Expr *expr);
+static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *assigned_type, Type *flattened, Expr *expr);
 static void sema_create_const_initializer_value(ConstInitializer *const_init, Expr *value);
 static void sema_create_const_initializer_from_designated_init(ConstInitializer *const_init, Expr *initializer);
 static Decl *sema_resolve_element_for_name(Decl** decls, DesignatorElement **elements, unsigned *index);
@@ -218,16 +220,27 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
  * Perform analysis for a plain initializer, that is one initializing all fields.
  * @return true if analysis succeeds.
  */
-static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *context, Type *assigned, Expr *initializer)
+static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *context, Type *assigned, Type *flattened,
+                                                             Expr *initializer)
 {
 	Expr **elements = initializer->initializer_list;
+	bool inferred_len = type_len_is_inferred(flattened);
 
+	// We have the case where "Foo = int[*]"
+	if (inferred_len && !type_len_is_inferred(assigned))
+	{
+		assert(assigned->type_kind == TYPE_TYPEDEF);
+		assert(assigned->decl->decl_kind == DECL_TYPEDEF);
+		while (assigned->type_kind == TYPE_TYPEDEF) assigned = assigned->decl->type;
+		assert(type_len_is_inferred(assigned));
+	}
+	// Prefer the typedef index: define Bar = int; Bar[1] => Bar and not int
 	Type *inner_type = type_get_indexed_type(assigned);
 	assert(inner_type);
 
 	unsigned size = vec_size(elements);
-	unsigned expected_members = assigned->array.len;
-	if (assigned->type_kind != TYPE_ARRAY && assigned->type_kind != TYPE_VECTOR) expected_members = size;
+	unsigned expected_members = flattened->array.len;
+	if (type_is_len_inferred(flattened)) expected_members = size;
 
 	assert(size > 0 && "We should already have handled the size == 0 case.");
 	if (expected_members == 0)
@@ -238,7 +251,8 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 	}
 
 	bool failable = false;
-	VECEACH(elements, i)
+	unsigned count = vec_size(elements);
+	for (unsigned i = 0; i < count; i++)
 	{
 		Expr *element = elements[i];
 		if (i >= expected_members)
@@ -246,10 +260,19 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 			SEMA_ERROR(element, "Too many elements in initializer, expected only %d.", expected_members);
 			return false;
 		}
-
 		if (!sema_analyse_expr_rhs(context, inner_type, element, true)) return false;
+		Type *element_type = type_no_optional(element->type);
 		failable = failable || IS_OPTIONAL(element);
 	}
+	if (inferred_len)
+	{
+		initializer->type = type_from_inferred(flattened, inner_type, count);
+	}
+	else
+	{
+		initializer->type = assigned;
+	}
+
 	assert(initializer->type);
 	if (failable) initializer->type = type_get_optional(initializer->type);
 
@@ -303,14 +326,17 @@ static inline bool sema_expr_analyse_untyped_initializer(SemaContext *context, E
 	return true;
 }
 
-static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type *assigned, Expr *initializer)
+static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type *assigned, Type *flattened,
+                                                     Expr *initializer)
 {
 	Expr **init_expressions = initializer->designated_init_list;
-	Type *original = assigned->canonical;
+	Type *original = flattened->canonical;
 	bool is_bitstruct = original->type_kind == TYPE_BITSTRUCT;
 	bool is_structlike = type_is_union_or_strukt(original) || is_bitstruct;
 	MemberIndex max_index = -1;
 	bool failable = false;
+	Type *inner_type = NULL;
+	bool is_inferred = type_is_len_inferred(flattened);
 	VECEACH(init_expressions, i)
 	{
 		Expr *expr = init_expressions[i];
@@ -325,11 +351,19 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 		}
 		failable = failable || IS_OPTIONAL(value);
 		expr->resolve_status = RESOLVE_DONE;
+		if (!inner_type)
+		{
+			inner_type = type_no_optional(value->type);
+			continue;
+		}
 	}
-
-	if (!is_structlike && initializer->type->type_kind == TYPE_INFERRED_ARRAY)
+	if (!is_structlike && is_inferred)
 	{
-		initializer->type = sema_type_lower_by_size(initializer->type, (ArraySize)(max_index + 1));
+		initializer->type = type_from_inferred(flattened, type_get_indexed_type(assigned), (ArraySize)(max_index + 1));
+	}
+	else
+	{
+		initializer->type = assigned;
 	}
 	initializer->resolve_status = RESOLVE_DONE;
 	if (expr_is_constant_eval(initializer, env_eval_type(context)))
@@ -342,17 +376,21 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 }
 
 
-static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *external_type, Type *assigned, Expr *expr)
+static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *assigned_type, Type *flattened, Expr *expr)
 {
 	// Note at this point this we either have
 	// EXPR_DESIGNATED_INITIALIZER_LIST
 	// or EXPR_INITIALIZER_LIST
 
+	if (type_len_is_inferred(flattened) && type_len_is_inferred(type_get_indexed_type(flattened)))
+	{
+		SEMA_ERROR(expr, "Initializers cannot be used with inferred length element types (e.g. %s).", type_quoted_error_string(type_get_indexed_type(flattened)));
+		return false;
+	}
 	// 1. Designated initializer is separately evaluated.
 	if (expr->expr_kind == EXPR_DESIGNATED_INITIALIZER_LIST)
 	{
-		expr->type = external_type;
-		return sema_expr_analyse_designated_initializer(context, assigned, expr);
+		return sema_expr_analyse_designated_initializer(context, assigned_type, flattened, expr);
 	}
 
 	assert(expr->expr_kind == EXPR_INITIALIZER_LIST);
@@ -369,45 +407,37 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ext
 	// 3. Zero size init will initialize to empty.
 	if (init_expression_count == 0)
 	{
-		if (type_len_is_inferred(external_type))
+		if (type_len_is_inferred(assigned_type))
 		{
 			SEMA_ERROR(expr, "Zero length arrays / vectors are not permitted.");
 			return false;
 		}
-		external_type = sema_type_lower_by_size(external_type, 0);
-		expr->type = external_type;
 		ConstInitializer *initializer = CALLOCS(ConstInitializer);
 		initializer->kind = CONST_INIT_ZERO;
-		initializer->type = type_flatten(expr->type);
-		expr_rewrite_const_initializer(expr, expr->type, initializer);
+		initializer->type = flattened;
+		expr_rewrite_const_initializer(expr, assigned_type, initializer);
 		return true;
 	}
 
-
-	// 4. If we have an inferred array, we need to set the size.
-	external_type = sema_type_lower_by_size(external_type, init_expression_count);
-	assigned = sema_type_lower_by_size(assigned, init_expression_count);
-
-	// 5. Set the type.
-	expr->type = external_type;
-
-	// 6. We might have a complist, because were analyzing $foo = { ... } or similar.
-	if (external_type == type_untypedlist)
+	// 4. We might have a complist, because were analyzing $foo = { ... } or similar.
+	if (assigned_type == type_untypedlist)
 	{
 		return sema_expr_analyse_untyped_initializer(context, expr);
 	}
-	// 7. If not, then we see if we have an array.
-	if (assigned->type_kind == TYPE_UNTYPED_LIST ||
-	    assigned->type_kind == TYPE_ARRAY ||
-	    assigned->type_kind == TYPE_INFERRED_ARRAY ||
-	    assigned->type_kind == TYPE_INFERRED_VECTOR ||
-	    assigned->type_kind == TYPE_SUBARRAY ||
-	    assigned->type_kind == TYPE_VECTOR)
+
+	// 5. If not, then we see if we have an array.
+	if (flattened->type_kind == TYPE_UNTYPED_LIST ||
+	    flattened->type_kind == TYPE_ARRAY ||
+	    flattened->type_kind == TYPE_INFERRED_ARRAY ||
+	    flattened->type_kind == TYPE_INFERRED_VECTOR ||
+	    flattened->type_kind == TYPE_SUBARRAY ||
+	    flattened->type_kind == TYPE_VECTOR)
 	{
-		return sema_expr_analyse_array_plain_initializer(context, assigned, expr);
+		return sema_expr_analyse_array_plain_initializer(context, assigned_type, flattened, expr);
 	}
 
-	return sema_expr_analyse_struct_plain_initializer(context, assigned->decl, expr);
+	expr->type = assigned_type;
+	return sema_expr_analyse_struct_plain_initializer(context, flattened->decl, expr);
 }
 
 /**
@@ -434,8 +464,8 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 {
 	if (!to) to = type_untypedlist;
 	assert(to);
-	Type *assigned = type_flatten(to);
-	switch (assigned->type_kind)
+	Type *flattened = type_flatten(to);
+	switch (flattened->type_kind)
 	{
 		case TYPE_UNTYPED_LIST:
 		case TYPE_STRUCT:
@@ -445,7 +475,7 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_VECTOR:
-			return sema_expr_analyse_initializer(context, to, assigned, expr);
+			return sema_expr_analyse_initializer(context, to, flattened, expr);
 		case TYPE_SUBARRAY:
 		{
 			if (expr->expr_kind == EXPR_INITIALIZER_LIST && !vec_size(expr->initializer_list))
@@ -453,11 +483,11 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 				expr->expr_kind = EXPR_CONST;
 				expr->const_expr.const_kind = CONST_POINTER;
 				expr->const_expr.ptr = 0;
-				expr->type = assigned;
+				expr->type = flattened;
 				return true;
 			}
 			// Resolve this as an inferred array.
-			Type *type = type_get_inferred_array(assigned->array.base);
+			Type *type = type_get_inferred_array(flattened->array.base);
 			if (!sema_expr_analyse_initializer(context, type, type, expr)) return false;
 			expr->resolve_status = RESOLVE_DONE;
 			expr_insert_addr(expr);

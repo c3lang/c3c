@@ -4,9 +4,9 @@
 
 #include "sema_internal.h"
 
-static inline bool sema_resolve_ptr_type(SemaContext *context, TypeInfo *type_info)
+static inline bool sema_resolve_ptr_type(SemaContext *context, TypeInfo *type_info, bool allow_inferred)
 {
-	if (!sema_resolve_type_shallow(context, type_info->pointer, false, true))
+	if (!sema_resolve_type_shallow(context, type_info->pointer, allow_inferred, true))
 	{
 		return type_info_poison(type_info);
 	}
@@ -77,18 +77,18 @@ bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, Arra
 }
 
 // TODO cleanup.
-static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type, bool shallow)
+static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type, bool allow_inferred, bool shallow)
 {
 	if (type->kind == TYPE_INFO_SUBARRAY || shallow)
 	{
-		if (!sema_resolve_type_shallow(context, type->array.base, false, true))
+		if (!sema_resolve_type_shallow(context, type->array.base, allow_inferred, true))
 		{
 			return type_info_poison(type);
 		}
 	}
 	else
 	{
-		if (!sema_resolve_type_info(context, type->array.base))
+		if (!sema_resolve_type_info_maybe_inferred(context, type->array.base, allow_inferred))
 		{
 			return type_info_poison(type);
 		}
@@ -271,7 +271,6 @@ bool sema_resolve_type_shallow(SemaContext *context, TypeInfo *type_info, bool a
 	TypeInfoCompressedKind kind = type_info->subtype;
 	if (kind != TYPE_COMPRESSED_NONE)
 	{
-		allow_inferred_type = false;
 		in_shallow = true;
 	}
 	switch (type_info->kind)
@@ -366,10 +365,10 @@ bool sema_resolve_type_shallow(SemaContext *context, TypeInfo *type_info, bool a
 		case TYPE_INFO_SUBARRAY:
 		case TYPE_INFO_ARRAY:
 		case TYPE_INFO_VECTOR:
-			if (!sema_resolve_array_type(context, type_info, in_shallow)) return false;
+			if (!sema_resolve_array_type(context, type_info, allow_inferred_type, in_shallow)) return false;
 			break;
 		case TYPE_INFO_POINTER:
-			if (!sema_resolve_ptr_type(context, type_info)) return false;
+			if (!sema_resolve_ptr_type(context, type_info, allow_inferred_type)) return false;
 			break;
 	}
 APPEND_QUALIFIERS:

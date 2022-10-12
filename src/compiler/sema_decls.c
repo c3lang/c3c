@@ -2446,15 +2446,12 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 
 		if (infer_len)
 		{
-			Type *right_side_type = init->type->canonical;
-			if (right_side_type->type_kind == TYPE_ARRAY)
+			if (type_is_len_inferred(init->type))
 			{
-				decl->type = type_get_array(decl->type->array.base, right_side_type->array.len);
+				SEMA_ERROR(decl->var.type_info, "You cannot use [*] and [<*>] underlying types with initializers.");
+				return false;
 			}
-			else
-			{
-				decl->type = type_get_vector(decl->type->array.base, right_side_type->array.len);
-			}
+			decl->type = cast_infer_len(decl->type,  init->type);
 		}
 
 		Expr *init_expr = decl->var.init_expr;
