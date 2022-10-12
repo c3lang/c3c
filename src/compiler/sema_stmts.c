@@ -901,7 +901,7 @@ static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType 
 	// 3a. Check for failables in case of an expression.
 	if (IS_OPTIONAL(last))
 	{
-		if (!cast_to_bool || cast_may_implicit(type_no_optional(last->type), type_bool, false, false))
+		if (!cast_to_bool || cast_may_implicit(type_no_optional(last->type), type_bool, CAST_OPTION_NONE))
 		{
 			SEMA_ERROR(last, "The expression may not be a failable, but was %s.", type_quoted_error_string(last->type));
 			return false;
