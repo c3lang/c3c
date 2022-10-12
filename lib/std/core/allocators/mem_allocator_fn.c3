@@ -35,7 +35,7 @@ private fn void* _libc_aligned_alloc(usz bytes, usz alignment, usz offset) @inli
 {
 	usz header = mem::aligned_offset(AlignedBlock.sizeof + offset, alignment) - offset;
 	void* data = libc::malloc(header + bytes);
-    void* mem = mem::aligned_pointer(data + offset, alignment) - offset;
+    void* mem = mem::aligned_pointer(data + header + offset, alignment) - offset;
 	assert(mem > data);
 	AlignedBlock* desc = (AlignedBlock*)mem - 1;
 	*desc = { bytes, data };
@@ -50,7 +50,7 @@ private fn void* _libc_aligned_calloc(usz bytes, usz alignment, usz offset) @inl
 {
 	usz header = mem::aligned_offset(AlignedBlock.sizeof + offset, alignment) - offset;
 	void* data = libc::calloc(header + bytes, 1);
-	void* mem = mem::aligned_pointer(data + offset, alignment) - offset;
+	void* mem = mem::aligned_pointer(data + header + offset, alignment) - offset;
 	AlignedBlock* desc = (AlignedBlock*)mem - 1;
 	assert(mem > data);
 	*desc = { bytes, data };
@@ -64,7 +64,7 @@ private fn void* _libc_aligned_calloc(usz bytes, usz alignment, usz offset) @inl
 private fn void* _libc_aligned_realloc(void* old_pointer, usz bytes, usz alignment, usz offset) @inline
 {
 	AlignedBlock* desc = (AlignedBlock*)old_pointer - 1;
-    void* data_start = desc.start;
+	void* data_start = desc.start;
     void* new_data = _libc_aligned_calloc(bytes, alignment, offset);
 	mem::copy(new_data, old_pointer, desc.len > bytes ? desc.len : bytes, DEFAULT_MEM_ALIGNMENT, DEFAULT_MEM_ALIGNMENT);
 	libc::free(data_start);
@@ -86,12 +86,10 @@ fn void*! libc_allocator_fn(Allocator* unused, usz bytes, usz alignment, usz off
     switch (kind)
     {
         case ALIGNED_ALLOC:
-            if (alignment <= DEFAULT_MEM_ALIGNMENT) nextcase ALLOC;
             data = _libc_aligned_alloc(bytes, alignment, offset);
         case ALLOC:
             data = libc::malloc(bytes);
         case ALIGNED_CALLOC:
-            if (alignment <= DEFAULT_MEM_ALIGNMENT) nextcase CALLOC;
             data = _libc_aligned_calloc(bytes, alignment, offset);
 		case CALLOC:
             data = libc::calloc(bytes, 1);
