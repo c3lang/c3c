@@ -208,6 +208,6 @@ macro bool is_power_of_2(x)
 macro next_power_of_2(x)
 {
 	$typeof(x) y = 1;
-        while (y < x) y += y;
+	while (y < x) y += y;
 	return y;
 }
