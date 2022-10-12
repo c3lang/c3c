@@ -59,6 +59,28 @@ fn Value*! HashMap.get_ref(HashMap* map, Key key)
 	return SearchResult.MISSING!;
 }
 
+/**
+ * Get the value or update and
+ **/
+macro Value HashMap.@get_or_set(HashMap* map, Key key, Value #expr)
+{
+	if (!map.count)
+	{
+		Value val = #expr;
+		map.set(key, val);
+		return val;
+	}
+	uint hash = rehash(key.hash());
+	uint index = index_for(hash, map.table.len);
+	for (Entry *e = map.table[index]; e != null; e = e.next)
+	{
+		if (e.hash == hash && equals(key, e.key)) return e.value;
+	}
+	Value val = #expr;
+	map.add_entry(hash, key, val, index);
+	return val;
+}
+
 fn Value! HashMap.get(HashMap* map, Key key) @operator([])
 {
 	return *map.get_ref(key) @inline;
@@ -66,7 +88,6 @@ fn Value! HashMap.get(HashMap* map, Key key) @operator([])
 
 fn bool HashMap.has_key(HashMap* map, Key key)
 {
-
 	return try(map.get_ref(key));
 }
 
