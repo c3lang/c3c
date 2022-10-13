@@ -28,16 +28,16 @@ fault VarCastResult
  **/
 macro void @scope(&variable; @body) @builtin
 {
-	$typeof(variable) temp = variable;
+	var temp = variable;
 	defer variable = temp;
 	@body();
 }
 
 macro void @swap(&a, &b) @builtin
 {
-	$typeof(a) temp = a;
-    a = b;
-    b = temp;
+	var temp = a;
+	a = b;
+	b = temp;
 }
 
 /**
@@ -95,11 +95,11 @@ macro void unreachable($string = "Unreachable statement reached.") @builtin @nor
 
 macro bitcast(expr, $Type) @builtin
 {
-    var $size = (usz)($sizeof(expr));
-    $assert($size == $Type.sizeof, "Cannot bitcast between types of different size.");
-    $Type x = void;
-    mem::copy(&x, &expr, $size, $Type.alignof, $alignof(expr));
-    return x;
+	var $size = (usz)($sizeof(expr));
+	$assert($size == $Type.sizeof, "Cannot bitcast between types of different size.");
+	$Type x = void;
+	mem::copy(&x, &expr, $size, $Type.alignof, $alignof(expr));
+	return x;
 }
 
 /**
