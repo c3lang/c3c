@@ -2309,6 +2309,7 @@ INLINE Type *type_from_inferred(Type *flattened, Type *element_type, unsigned co
 INLINE bool type_len_is_inferred(Type *type);
 INLINE bool type_is_substruct(Type *type);
 INLINE Type *type_flatten_for_bitstruct(Type *type);
+INLINE const char *type_invalid_storage_type_name(Type *type);
 INLINE bool type_is_float(Type *type);
 INLINE bool type_is_optional(Type *type);
 INLINE bool type_is_optional_type(Type *type);
@@ -2557,6 +2558,21 @@ INLINE bool type_is_float(Type *type)
 {
 	DECL_TYPE_KIND_REAL(kind, type);
 	return kind >= TYPE_FLOAT_FIRST && kind <= TYPE_FLOAT_LAST;
+}
+
+INLINE const char *type_invalid_storage_type_name(Type *type)
+{
+	switch (type->type_kind)
+	{
+		case TYPE_MEMBER:
+			return "a member reference";
+		case TYPE_UNTYPED_LIST:
+			return "an untyped list";
+		case TYPE_TYPEINFO:
+			return "a type";
+		default:
+			UNREACHABLE;
+	}
 }
 
 INLINE bool type_is_invalid_storage_type(Type *type)
