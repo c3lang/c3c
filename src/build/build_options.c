@@ -710,6 +710,12 @@ static void parse_option(BuildOptions *options)
 				options->test_mode = true;
 				return;
 			}
+			if (match_longopt("template"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --template needs an argument.");
+				options->template = next_arg();
+				return;
+			}
 			if (match_longopt("path"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --path needs a directory.");

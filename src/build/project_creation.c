@@ -11,12 +11,14 @@
 #include "build_options.h"
 #include "../utils/lib.h"
 
-const char* JSON =
+const char* JSON_EXE =
 		"{\n"
 		"  // language version of C3\n"
 		"  \"langrev\": \"1\",\n"
 		"  // warnings used for all targets\n"
 		"  \"warnings\": [ \"no-unused\" ],\n"
+		"  // directories where C3 library files may be found\n"
+		"  \"lib-dir\": [ \"lib\" ],\n"
 		"  // libraries to use for all targets\n"
 		"  \"libs\": [ ],\n"
 		"  // authors, optionally with email\n"
@@ -67,8 +69,142 @@ const char* JSON =
 		"  */\n"
 		"}";
 
+const char* JSON_STATIC =
+		"{\n"
+		"  // language version of C3\n"
+		"  \"langrev\": \"1\",\n"
+		"  // warnings used for all targets\n"
+		"  \"warnings\": [ \"no-unused\" ],\n"
+		"  // directories where C3 library files may be found\n"
+		"  \"lib-dir\": [ \"lib\" ],\n"
+		"  // libraries to use for all targets\n"
+		"  \"libs\": [ ],\n"
+		"  // authors, optionally with email\n"
+		"  \"authors\": [ \"John Doe <john.doe@example.com>\" ],\n"
+		"  // Version using semantic versioning\n"
+		"  \"version\": \"0.1.0\",\n"
+		"  // sources compiled for all targets\n"
+		"  \"sources\": [ \"src/**\" ],\n"
+		"  // Targets\n"
+		"  \"targets\": {\n"
+		"    \"%s\": {\n"
+		"      // executable or library\n"
+		"      \"type\": \"static-lib\"\n"
+		"      // additional libraries, sources\n"
+		"      // and overrides of global settings here\n"
+		"    },\n"
+		"  }\n"
+		"  /*\n"
+		"  // Debug information, may be 'none', 'full' and 'line-tables'\n"
+		"  \"debug-info\": \"full\",\n"
+		"  // Architecture and OS target:\n"
+		"  \"target\": \"windows-x64\",\n"
+		"  // The size of the symtab, which limits the amount\n"
+		"  // of symbols that can be used. Should usually not\n"
+		"  // be changed.\n"
+		"  \"symtab\": 4194304,\n"
+		"  // \"none\", \"pic\", \"PIC\", \"pie\", \"PIE\"\n"
+		"  \"reloc\": \"none\",\n"
+		"  // Trap on signed and unsigned integer wrapping\n"
+		"  // for testing\n"
+		"  \"trap-on-wrap\": false,\n"
+		"  // Use / don't use soft float, value is otherwise target default\n"
+		"  \"soft-float\": false,\n"
+		"  // Vector settings on x86: none/mmx/sse/avx/avx512\n"
+		"  \"x86vec\": \"sse\",\n"
+		"  // CPU name, used for optimizations in the LLVM backend\n"
+		"  \"cpu\": \"generic\",\n"
+		"  // Output location, relative to project file\n"
+		"  \"output\": \"../build\",\n"
+		"  // C compiler if the project also compiles c sources\n"
+		"  // defaults to 'cc'\n"
+		"  \"cc\": \"cc\",\n"
+		"  // c sources if the project also compiles c sources\n"
+		"  // relative to the project file\n"
+		"  \"csources\": [\n"
+		"    \"csource/**\"\n"
+		"  ]\n"
+		"  */\n"
+		"}";
+
+const char* JSON_DYNAMIC =
+		"{\n"
+		"  // language version of C3\n"
+		"  \"langrev\": \"1\",\n"
+		"  // warnings used for all targets\n"
+		"  \"warnings\": [ \"no-unused\" ],\n"
+		"  // directories where C3 library files may be found\n"
+		"  \"lib-dir\": [ \"lib\" ],\n"
+		"  // libraries to use for all targets\n"
+		"  \"libs\": [ ],\n"
+		"  // authors, optionally with email\n"
+		"  \"authors\": [ \"John Doe <john.doe@example.com>\" ],\n"
+		"  // Version using semantic versioning\n"
+		"  \"version\": \"0.1.0\",\n"
+		"  // sources compiled for all targets\n"
+		"  \"sources\": [ \"src/**\" ],\n"
+		"  // Targets\n"
+		"  \"targets\": {\n"
+		"    \"%s\": {\n"
+		"      // executable or library\n"
+		"      \"type\": \"dynamic-lib\"\n"
+		"      // additional libraries, sources\n"
+		"      // and overrides of global settings here\n"
+		"    },\n"
+		"  }\n"
+		"  /*\n"
+		"  // Debug information, may be 'none', 'full' and 'line-tables'\n"
+		"  \"debug-info\": \"full\",\n"
+		"  // Architecture and OS target:\n"
+		"  \"target\": \"windows-x64\",\n"
+		"  // The size of the symtab, which limits the amount\n"
+		"  // of symbols that can be used. Should usually not\n"
+		"  // be changed.\n"
+		"  \"symtab\": 4194304,\n"
+		"  // \"none\", \"pic\", \"PIC\", \"pie\", \"PIE\"\n"
+		"  \"reloc\": \"none\",\n"
+		"  // Trap on signed and unsigned integer wrapping\n"
+		"  // for testing\n"
+		"  \"trap-on-wrap\": false,\n"
+		"  // Use / don't use soft float, value is otherwise target default\n"
+		"  \"soft-float\": false,\n"
+		"  // Vector settings on x86: none/mmx/sse/avx/avx512\n"
+		"  \"x86vec\": \"sse\",\n"
+		"  // CPU name, used for optimizations in the LLVM backend\n"
+		"  \"cpu\": \"generic\",\n"
+		"  // Output location, relative to project file\n"
+		"  \"output\": \"../build\",\n"
+		"  // C compiler if the project also compiles c sources\n"
+		"  // defaults to 'cc'\n"
+		"  \"cc\": \"cc\",\n"
+		"  // c sources if the project also compiles c sources\n"
+		"  // relative to the project file\n"
+		"  \"csources\": [\n"
+		"    \"csource/**\"\n"
+		"  ]\n"
+		"  */\n"
+		"}";
+
 void create_project(BuildOptions *build_options)
 {
+	const char *template;
+	if (!build_options->template || strcmp(build_options->template, "exe") == 0)
+	{
+		template = JSON_EXE;
+	}
+	else if (strcmp(build_options->template, "static-lib") == 0)
+	{
+		template = JSON_STATIC;
+	}
+	else if (strcmp(build_options->template, "dynamic-lib") == 0)
+	{
+		template = JSON_DYNAMIC;
+	}
+	else
+	{
+		size_t len;
+		template = file_read_all(build_options->template, &len);
+	}
 	for (int i = 0; ; i++)
 	{
 		char c = build_options->project_name[i];
@@ -98,9 +234,10 @@ void create_project(BuildOptions *build_options)
 
 	if (!file_touch("README.md")) goto ERROR;
 
+
 	FILE *file = fopen("project.c3p", "a");
 	if (!file) goto ERROR;
-	(void) fprintf(file, JSON, build_options->project_name);
+	(void) fprintf(file, template, build_options->project_name);
 	if (fclose(file)) goto ERROR;
 
 	if (!dir_make("lib")) goto ERROR;
