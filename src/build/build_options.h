@@ -344,6 +344,8 @@ typedef struct
 	bool no_libc;
 	bool emit_object_files;
 	bool force_linker;
+	bool benchmarking;
+	bool testing;
 	OptimizationLevel optimization_level;
 	SizeOptimizationLevel size_optimization_level;
 	bool single_module;
