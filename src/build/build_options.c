@@ -132,6 +132,15 @@ static void usage(void)
 	OUTPUT("  --debug-log            - Print debug logging to stdout.");
 #endif
 	OUTPUT("");
+	OUTPUT("  --benchmarking        - Run builtin benchmarks.");
+	OUTPUT("  --testing             - Run built-in tests.");
+	OUTPUT("");
+	OUTPUT("  --list-attributes     - List all attributes.");
+	OUTPUT("  --list-builtins       - List all builtins.");
+	OUTPUT("  --list-keywords       - List all keywords.");
+	OUTPUT("  --list-operators      - List all operators.");
+	OUTPUT("  --list-precedence     - List operator precedence order.");
+	OUTPUT("  --list-targets        - List all architectures the compiler supports.");
 	OUTPUT("  --list-attributes      - List all attributes.");
 	OUTPUT("  --list-builtins        - List all builtins.");
 	OUTPUT("  --list-keywords        - List all keywords.");
@@ -730,6 +739,16 @@ static void parse_option(BuildOptions *options)
 			if (match_longopt("fast"))
 			{
 				options->safe_mode = 0;
+				return;
+			}
+			if (match_longopt("benchmarking"))
+			{
+				options->benchmarking = true;
+				return;
+			}
+			if (match_longopt("testing"))
+			{
+				options->testing = true;
 				return;
 			}
 			if (match_longopt("help"))

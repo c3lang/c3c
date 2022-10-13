@@ -280,6 +280,8 @@ typedef struct BuildOptions_
 	bool print_type_properties;
 	bool print_precedence;
 	bool print_build_settings;
+	bool benchmarking;
+	bool testing;
 } BuildOptions;
 
 
@@ -343,6 +345,8 @@ typedef struct
 	bool no_libc;
 	bool emit_object_files;
 	bool force_linker;
+	bool benchmarking;
+	bool testing;
 	OptimizationLevel optimization_level;
 	SizeOptimizationLevel size_optimization_level;
 	bool single_module;

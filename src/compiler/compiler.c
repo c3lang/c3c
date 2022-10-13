@@ -656,6 +656,8 @@ void compile()
 	setup_int_define("COMPILER_SIZE_OPT_LEVEL", (uint64_t)active_target.size_optimization_level, type_int);
 	setup_bool_define("COMPILER_SAFE_MODE", active_target.feature.safe_mode);
 	setup_int_define("LLVM_VERSION", llvm_version_major, type_int);
+	setup_bool_define("BENCHMARKING", active_target.benchmarking);
+	setup_bool_define("TESTING", active_target.testing);
 
 	type_init_cint();
 

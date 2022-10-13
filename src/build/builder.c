@@ -216,6 +216,8 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	target->emit_asm = options->emit_asm;
 	target->force_linker = options->force_linker;
 	target->panicfn = options->panicfn;
+	target->benchmarking = options->benchmarking;
+	target->testing = options->testing;
 	if (options->macos.sdk) target->macos.sdk = options->macos.sdk;
 	if (options->win.sdk) target->win.sdk = options->win.sdk;
 	if (options->win.crt_linking != WIN_CRT_DEFAULT) target->win.crt_linking = options->win.crt_linking;
