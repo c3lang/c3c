@@ -1748,7 +1748,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	params = macro_context.macro_params;
 	bool is_no_return = decl->func_decl.signature.attrs.noreturn;
 
-	if (!vec_size(macro_context.returns))
+	if (!vec_size(macro_context.returns) || !macro_context.active_scope.jump_end)
 	{
 		if (rtype && rtype != type_void)
 		{
