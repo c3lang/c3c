@@ -247,6 +247,7 @@ typedef struct BuildOptions_
 	const char* project_name;
 	const char* target_select;
 	const char* path;
+	const char *template;
 	uint32_t symtab_size;
 	unsigned version;
 	CompilerBackend backend;

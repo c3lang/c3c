@@ -75,7 +75,6 @@ private fn void*! temp_allocator_function(Allocator* data, usz size, usz alignme
 		case FREE:
 		case ALIGNED_FREE:
 			if (!old_pointer) return null;
-			io::println("Freeing stuff\n");
 			arena._free(old_pointer)?;
         	return null;
         case MARK:

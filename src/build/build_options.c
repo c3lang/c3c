@@ -83,7 +83,7 @@ static void usage(void)
 	OUTPUT("  --libdir <dir>         - Add this directory to the C3 library search paths.");
 	OUTPUT("  --lib <name>           - Add this library to the compilation.");
 	OUTPUT("  --path <dir>           - Use this as the base directory for the current command.");
-	OUTPUT("  --template <template>  - Use a different template: \"lib\", \"static-lib\" or a path.");
+	OUTPUT("  --template <template>  - Select template for 'init': \"exe\", \"static-lib\", \"dynamic-lib\" or a path.");
 	OUTPUT("  --about                - Prints a short description of C3.");
 	OUTPUT("  --symtab <value>       - Sets the preferred symtab size.");
 	OUTPUT("  -V --version           - Print version information.");
@@ -717,6 +717,12 @@ static void parse_option(BuildOptions *options)
 			if (match_longopt("test"))
 			{
 				options->test_mode = true;
+				return;
+			}
+			if (match_longopt("template"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --template needs an argument.");
+				options->template = next_arg();
 				return;
 			}
 			if (match_longopt("path"))

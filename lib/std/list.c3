@@ -2,21 +2,33 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::array::list<Type>;
+import std::math;
 
 struct List
 {
     usz size;
     usz capacity;
+    Allocator *allocator;
     Type *entries;
 }
 
-private fn void List.ensure_capacity(List *list) @inline
+/**
+ * @require allocator != null "A valid allocator must be provided"
+ **/
+fn void List.init(List* list, usz initial_capacity = 16, Allocator* allocator = mem::temp_allocator())
 {
-    if (list.capacity == list.size)
-    {
-        list.capacity = list.capacity ? 2 * list.capacity : 16;
-        list.entries = realloc(list.entries, Type.sizeof * list.capacity);
-    }
+	list.allocator = allocator;
+	list.size = 0;
+	if (initial_capacity > 0)
+	{
+		initial_capacity = math::next_power_of_2(initial_capacity);
+		list.entries = allocator.alloc_aligned(Type.sizeof * initial_capacity, Type[1].alignof)!!;
+	}
+	else
+	{
+		list.entries = null;
+	}
+	list.capacity = initial_capacity;
 }
 
 
@@ -111,7 +123,8 @@ fn Type List.get(List *list, usz index)
 
 fn void List.free(List *list)
 {
-    free(list.entries);
+	if (!list.allocator) return;
+    list.allocator.free_aligned(list.entries)!!;
     list.capacity = 0;
     list.size = 0;
     list.entries = null;
@@ -122,6 +135,19 @@ fn void List.swap(List *list, usz i, usz j)
 	@swap(list.entries[i], list.entries[j]);
 }
 
+/**
+ * Reserve at least min_capacity
+ **/
+fn void List.reserve(List *list, usz min_capacity)
+{
+	if (!min_capacity) return;
+	if (list.capacity >= min_capacity) return;
+	if (!list.allocator) list.allocator = mem::temp_allocator();
+	min_capacity = math::next_power_of_2(min_capacity);
+    list.entries = list.allocator.realloc_aligned(list.entries, Type.sizeof * min_capacity, Type[1].alignof) ?? null;
+	list.capacity = min_capacity;
+}
+
 macro Type List.@item_at(List &list, usz index) @operator([])
 {
     return list.entries[index];
@@ -130,4 +156,13 @@ macro Type List.@item_at(List &list, usz index) @operator([])
 macro Type* List.@item_ref(List &list, usz index) @operator(&[])
 {
     return &list.entries[index];
+}
+
+
+private fn void List.ensure_capacity(List *list) @inline
+{
+    if (list.capacity == list.size)
+    {
+        list.reserve(list.capacity ? 2 * list.capacity : 16);
+    }
 }

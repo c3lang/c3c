@@ -12,6 +12,8 @@ static void sema_error_const_int_out_of_range(Expr *expr, Expr *problem, Type *t
 static Expr *recursive_may_narrow_float(Expr *expr, Type *type);
 static Expr *recursive_may_narrow_int(Expr *expr, Type *type);
 static void recursively_rewrite_untyped_list(Expr *expr, Expr **list);
+static inline bool cast_may_implicit_ptr(Type *from_pointee, Type *to_pointee);
+static inline bool cast_may_array(Type *from, Type *to, bool is_explicit);
 
 static inline bool insert_cast(Expr *expr, CastKind kind, Type *type)
 {
@@ -30,6 +32,38 @@ bool sema_error_failed_cast(Expr *expr, Type *from, Type *to)
 {
 	SEMA_ERROR(expr, "The cast %s to %s is not allowed.", type_quoted_error_string(from), type_quoted_error_string(to));
 	return false;
+}
+
+Type *cast_infer_len(Type *to_infer, Type *actual_type)
+{
+	Type *may_infer = to_infer->canonical;
+	Type *actual = actual_type->canonical;
+	if (may_infer == actual) return to_infer;
+	bool canonical_same_kind = may_infer->type_kind == to_infer->type_kind;
+	if (may_infer->type_kind == TYPE_INFERRED_ARRAY)
+	{
+		assert(actual_type->type_kind == TYPE_ARRAY);
+		Type *base_type = cast_infer_len(canonical_same_kind ? to_infer->array.base :
+		                                 may_infer->array.base, actual->array.base);
+		return type_get_array(base_type, actual->array.len);
+	}
+	if (may_infer->type_kind == TYPE_INFERRED_VECTOR)
+	{
+		assert(actual_type->type_kind == TYPE_VECTOR || actual->type_kind == TYPE_SCALED_VECTOR);
+		Type *base_type = cast_infer_len(canonical_same_kind ? to_infer->array.base : may_infer->array.base, actual->array.base);
+		if (actual_type->type_kind == TYPE_SCALED_VECTOR)
+		{
+			return type_get_scaled_vector(base_type);
+		}
+		return type_get_vector(base_type, actual->array.len);
+	}
+	if (may_infer->type_kind == TYPE_POINTER)
+	{
+		assert(actual->type_kind == TYPE_POINTER);
+		Type *base_type = cast_infer_len(canonical_same_kind ? to_infer->array.base : may_infer->pointer, actual->pointer);
+		return type_get_ptr(base_type);
+	}
+	UNREACHABLE
 }
 
 static inline bool insert_runtime_cast_unless_const(Expr *expr, CastKind kind, Type *type)
@@ -406,6 +440,7 @@ CastKind cast_to_bool_kind(Type *type)
 	UNREACHABLE
 }
 
+
 bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability, bool is_const)
 {
 	// 1. failable -> non-failable can't be cast unless we ignore failability.
@@ -431,15 +466,9 @@ bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability, 
 	// 2. Same underlying type, always ok
 	if (from_type == to_type) return true;
 
-	if (to_type->type_kind == TYPE_INFERRED_ARRAY)
+	if (type_is_any_arraylike(to_type) && type_is_any_arraylike(from_type))
 	{
-		if (from_type->type_kind == TYPE_ARRAY && type_flatten_distinct(from_type->array.base) == type_flatten_distinct(to_type->array.base)) return true;
-		return false;
-	}
-	if (to_type->type_kind == TYPE_INFERRED_VECTOR)
-	{
-		if (from_type->type_kind == TYPE_VECTOR && type_flatten_distinct(from_type->array.base) == type_flatten_distinct(to_type->array.base)) return true;
-		return false;
+		return cast_may_array(from_type, to_type, true);
 	}
 
 	TypeKind to_kind = to_type->type_kind;
@@ -534,30 +563,183 @@ bool type_may_convert_to_anyerr(Type *type)
 	if (!type_is_optional_type(type)) return false;
 	return type->failable->canonical == type_void;
 }
+
+
+static inline bool cast_may_array(Type *from, Type *to, bool is_explicit)
+{
+	RETRY:;
+	assert(!type_is_optional(from) && !type_is_optional(to) && "Optional should already been handled");
+
+	bool compare_len = true;
+	if (from->type_kind != to->type_kind)
+	{
+		switch (to->type_kind)
+		{
+			case TYPE_INFERRED_ARRAY:
+				switch (from->type_kind)
+				{
+					case TYPE_INFERRED_VECTOR:
+					case TYPE_VECTOR:
+						if (!is_explicit) return false;
+						FALLTHROUGH;
+					case TYPE_ARRAY:
+						compare_len = false;
+						break;
+					default:
+						return false;
+				}
+				break;
+			case TYPE_ARRAY:
+				switch (from->type_kind)
+				{
+					case TYPE_INFERRED_VECTOR:
+						compare_len = false;
+						FALLTHROUGH;
+					case TYPE_VECTOR:
+						if (!is_explicit) return false;
+						break;
+					case TYPE_INFERRED_ARRAY:
+						compare_len = false;
+						break;
+					default:
+						return false;
+				}
+				break;
+			case TYPE_INFERRED_VECTOR:
+				switch (from->type_kind)
+				{
+					case TYPE_INFERRED_ARRAY:
+					case TYPE_ARRAY:
+						if (!is_explicit) return false;
+						FALLTHROUGH;
+					case TYPE_VECTOR:
+					case TYPE_SCALED_VECTOR:
+						compare_len = false;
+						break;
+					default:
+						return false;
+				}
+				break;
+			case TYPE_VECTOR:
+				switch (from->type_kind)
+				{
+					case TYPE_INFERRED_ARRAY:
+						compare_len = false;
+						FALLTHROUGH;
+					case TYPE_ARRAY:
+						if (!is_explicit) return false;
+						break;
+					case TYPE_INFERRED_VECTOR:
+						compare_len = false;
+						break;
+					default:
+						return false;
+				}
+				break;
+			case TYPE_SCALED_VECTOR:
+				if (from->type_kind != TYPE_INFERRED_VECTOR) return false;
+				compare_len = false;
+				break;
+			default:
+				return false;
+		}
+	}
+	if (compare_len && to->array.len != from->array.len) return false;
+
+	Type *from_base = from->array.base;
+	Type *to_base = to->array.base;
+	if (is_explicit)
+	{
+		from_base = type_flatten(from_base);
+		to_base = type_flatten(to_base);
+	}
+
+	if (from_base == to_base) return true;
+
+	switch (to_base->type_kind)
+	{
+		case TYPE_POINTER:
+			if (from_base->type_kind == TYPE_POINTER)
+			{
+				if (is_explicit) return true;
+				return cast_may_implicit_ptr(to_base->pointer, from_base->pointer);
+			}
+			return false;
+		case TYPE_ARRAY:
+		case TYPE_INFERRED_ARRAY:
+		case TYPE_VECTOR:
+		case TYPE_INFERRED_VECTOR:
+			to = to_base;
+			from = from_base;
+			goto RETRY;
+		default:
+			return is_explicit && type_is_structurally_equivalent(to_base, from_base);
+	}
+}
+
+static inline bool cast_may_implicit_ptr(Type *from_pointee, Type *to_pointee)
+{
+	assert(!type_is_optional(from_pointee) && !type_is_optional(to_pointee) && "Optional should already been handled");
+	if (from_pointee == to_pointee) return true;
+
+	// For void* on either side, no checks.
+	if (to_pointee == type_voidptr || from_pointee == type_voidptr) return true;
+
+	// Step through all *:
+	while (from_pointee->type_kind == TYPE_POINTER && to_pointee->type_kind == TYPE_POINTER)
+	{
+		if (from_pointee == type_voidptr || to_pointee == type_voidptr) return true;
+		from_pointee = from_pointee->pointer;
+		to_pointee = to_pointee->pointer;
+	}
+
+	assert(to_pointee != from_pointee);
+
+	// Functions compare raw types.
+	if (from_pointee->type_kind == TYPE_FUNC && to_pointee->type_kind == TYPE_FUNC)
+	{
+		return to_pointee->function.prototype->raw_type == from_pointee->function.prototype->raw_type;
+	}
+
+	// Special handling of int* = int[4]* (so we have int[4] -> int)
+	if (type_is_arraylike(from_pointee))
+	{
+		if (cast_may_implicit_ptr(to_pointee, from_pointee->array.base)) return true;
+	}
+
+	if (type_is_any_arraylike(to_pointee) || type_is_any_arraylike(from_pointee))
+	{
+		return cast_may_array(from_pointee, to_pointee, false);
+	}
+	// Use subtype matching
+	return type_is_subtype(to_pointee, from_pointee);
+}
+
 /**
  * Can the conversion occur implicitly?
  */
-bool cast_may_implicit(Type *from_type, Type *to_type, bool is_simple_expr, bool failable_allowed)
+bool cast_may_implicit(Type *from_type, Type *to_type, CastOption option)
 {
 	Type *to = to_type->canonical;
 
-	// 1. First handle void! => any error
+	// First handle void! => any error
 	if (to == type_anyerr && type_may_convert_to_anyerr(from_type)) return true;
 
-	// 2. any! => may implicitly to convert to any.
-	if (type_is_optional_any(from_type)) return failable_allowed;
+	// any! => may implicitly to convert to any.
+	if (type_is_optional_any(from_type)) return (CAST_OPTION_ALLOW_OPTIONAL & option) != 0;
 
+	// Check if optional was allowed
 	Type *from = from_type->canonical;
 	if (type_is_optional_type(from_type))
 	{
-		if (!failable_allowed) return false;
+		if (!(CAST_OPTION_ALLOW_OPTIONAL & option)) return false;
 		from = from_type->failable->canonical;
 	}
 
-	// 4. Same canonical type - we're fine.
+	// Same canonical type - we're fine.
 	if (from == to) return true;
 
-	// 2. Handle floats
+	// Handle floats
 	if (type_is_float(to))
 	{
 		// 2a. Any integer may convert to a float.
@@ -569,14 +751,12 @@ bool cast_may_implicit(Type *from_type, Type *to_type, bool is_simple_expr, bool
 			ByteSize to_size = type_size(to);
 			ByteSize from_size = type_size(from);
 			if (to_size == from_size) return true;
-			return to_size > from_size && is_simple_expr;
+			return to_size > from_size && (option & CAST_OPTION_SIMPLE_EXPR);
 		}
 		return false;
 	}
 
-	if (to == type_anyerr && from->type_kind == TYPE_FAULTTYPE) return true;
-
-	// 3. Handle ints
+	// Handle ints
 	if (type_is_integer(to))
 	{
 		// For an enum, lower to the underlying enum type.
@@ -591,61 +771,41 @@ bool cast_may_implicit(Type *from_type, Type *to_type, bool is_simple_expr, bool
 			ByteSize to_size = type_size(to);
 			ByteSize from_size = type_size(from);
 			if (to_size == from_size) return true;
-			return to_size > from_size && is_simple_expr;
+			return to_size > from_size && (option & CAST_OPTION_SIMPLE_EXPR);
 		}
 		return false;
 	}
 
-	// 4. Handle pointers
+	// Convert any fault to anyerr
+	if (to == type_anyerr && from->type_kind == TYPE_FAULTTYPE) return true;
+
+	// Handle pointers
 	if (type_is_pointer(to))
 	{
-		// 4a. Assigning a subarray to a pointer of the same base type is fine
+		// Assigning a subarray to a pointer
 		if (from->type_kind == TYPE_SUBARRAY)
 		{
-			// void* conversion always work.
+			// Casting to a void* always works.
 			if (to == type_voidptr) return true;
 
-			// Use subtype matching
-			return type_is_subtype(to->pointer->canonical, from->array.base->canonical);
+			// Compare as if it was a pointer.
+			return cast_may_implicit_ptr(from->array.base, to_type->pointer);
 		}
 
-		// 4b. Assigning a pointer
+		// Assigning a pointer to a pointer
 		if (from->type_kind == TYPE_POINTER)
 		{
-			// For void* on either side, no checks.
+			// Casting to or from a void* always works.
 			if (to == type_voidptr || from == type_voidptr) return true;
 
-			Type *from_pointee = from->pointer;
-
-			if (from_pointee->type_kind == TYPE_FUNC && to->type_kind == TYPE_POINTER && to->pointer->type_kind == TYPE_FUNC)
-			{
-				return to->pointer->function.prototype->raw_type == from_pointee->function.prototype->raw_type;
-			}
-			// Special handling of int* = int[4]*
-			if (from_pointee->type_kind == TYPE_ARRAY || from_pointee->type_kind == TYPE_FLEXIBLE_ARRAY)
-			{
-				if (type_is_subtype(to->pointer, from_pointee->array.base))
-				{
-					return true;
-				}
-			}
-
-			// Use subtype matching
-			return type_is_subtype(to->pointer, from_pointee);
+			return cast_may_implicit_ptr(from->pointer, to->pointer);
 		}
-
 		return false;
 	}
 
-	if (to_type->type_kind == TYPE_INFERRED_ARRAY)
+	if (type_is_any_arraylike(to) && type_is_any_arraylike(from))
 	{
-		if (from->type_kind == TYPE_ARRAY && type_flatten_distinct(from->array.base) == type_flatten_distinct(to_type->array.base)) return true;
-		return false;
-	}
-	if (to_type->type_kind == TYPE_INFERRED_VECTOR)
-	{
-		if (from->type_kind == TYPE_VECTOR && type_flatten_distinct(from->array.base) == type_flatten_distinct(to_type->array.base)) return true;
-		return false;
+		return cast_may_array(from, to, false);
 	}
 
 	// 5. Handle sub arrays
@@ -680,7 +840,7 @@ bool cast_may_implicit(Type *from_type, Type *to_type, bool is_simple_expr, bool
 	// 11. Substruct cast, if the first member is inline, see if we can cast to this member.
 	if (type_is_substruct(from))
 	{
-		return cast_may_implicit(from->decl->strukt.members[0]->type, to, is_simple_expr, failable_allowed);
+		return cast_may_implicit(from->decl->strukt.members[0]->type, to, option);
 	}
 
 	return false;
@@ -1135,8 +1295,10 @@ bool cast_implicit(SemaContext *context, Expr *expr, Type *to_type)
 		return cast_untyped_to_type(context, expr, to_type);
 	}
 
-	bool is_simple = expr_is_simple(expr);
-	if (!cast_may_implicit(expr_canonical, to_canonical, is_simple, true))
+	CastOption option = CAST_OPTION_ALLOW_OPTIONAL;
+	if (expr_is_simple(expr)) option |= CAST_OPTION_SIMPLE_EXPR;
+
+	if (!cast_may_implicit(expr_canonical, to_canonical, option))
 	{
 		if (!cast_may_explicit(expr_canonical, to_canonical, false, expr->expr_kind == EXPR_CONST))
 		{
@@ -1209,8 +1371,9 @@ bool cast_implicit(SemaContext *context, Expr *expr, Type *to_type)
 			}
 			goto OK;
 		}
-		SEMA_ERROR(expr, "Implicitly casting %s to %s is not permitted, but you can do an explicit cast using '(<type>)(value)'.", type_quoted_error_string(
-				type_no_optional(expr->type)), type_quoted_error_string(type_no_optional(to_type)));
+		SEMA_ERROR(expr, "Implicitly casting %s to %s is not permitted, but you can do an explicit cast by placing '(%s)' before the expression.", type_quoted_error_string(
+				type_no_optional(expr->type)), type_quoted_error_string(type_no_optional(to_type)),
+		           type_to_error_string(to_type));
 		return false;
 	}
 

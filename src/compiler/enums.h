@@ -118,6 +118,13 @@ typedef enum
 	CAST_VECARR,
 } CastKind;
 
+typedef enum
+{
+	CAST_OPTION_NONE = 0x00,
+	CAST_OPTION_SIMPLE_EXPR = 0x01,
+	CAST_OPTION_ALLOW_OPTIONAL = 0x02,
+} CastOption;
+
 
 typedef enum
 {

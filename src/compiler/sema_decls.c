@@ -2341,11 +2341,11 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 
 	// We expect a constant to actually be parsed correctly so that it has a value, so
 	// this should always be true.
-	assert(decl->var.type_info || decl->var.kind == VARDECL_CONST);
+	assert(decl->var.type_info || decl->var.init_expr);
 
 	bool is_global = decl->var.kind == VARDECL_GLOBAL || !local;
 
-	if (!sema_analyse_attributes_for_var(context, decl)) return false;
+	if (!sema_analyse_attributes_for_var(context, decl)) return decl_poison(decl);
 
 	if (is_global)
 	{
@@ -2358,42 +2358,59 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 			if (context->current_macro)
 			{
 				SEMA_ERROR(decl, "Macros with declarations may not be used outside of functions.");
-				return false;
+				return decl_poison(decl);
 			}
 			SEMA_ERROR(decl, "Variable declarations may not be used outside of functions.");
-			return false;
+			return decl_poison(decl);
 		}
 		// Add a local to the current context, will throw error on shadowing.
 		if (!sema_add_local(context, decl)) return decl_poison(decl);
 	}
 
 	// 1. Local or global constants: const int FOO = 123.
-	if (decl->var.kind == VARDECL_CONST)
+	if (!decl->var.type_info)
 	{
 		Expr *init_expr = decl->var.init_expr;
 		// 1a. We require an init expression.
 		if (!init_expr)
 		{
+			assert(decl->var.kind == VARDECL_CONST);
 			SEMA_ERROR(decl, "Constants need to have an initial value.");
-			return false;
+			return decl_poison(decl);
+		}
+		if (decl->var.kind == VARDECL_LOCAL && !context->current_macro)
+		{
+			SEMA_ERROR(decl, "Defining a variable using 'var %s = ...' is only allowed inside a macro.", decl->name);
+			return decl_poison(decl);
 		}
 		assert(!decl->var.no_init);
 		if (!decl->var.type_info)
 		{
-			if (!sema_analyse_expr(context, init_expr)) return false;
+			if (!sema_analyse_expr(context, init_expr)) return decl_poison(decl);
 			if (is_global && !expr_is_constant_eval(init_expr, CONSTANT_EVAL_GLOBAL_INIT))
 			{
 				SEMA_ERROR(init_expr, "This expression cannot be evaluated at compile time.");
-				return false;
+				return decl_poison(decl);
 			}
 			decl->type = init_expr->type;
 			if (type_is_invalid_storage_type(init_expr->type))
 			{
-				SEMA_ERROR(init_expr, "A value of type '%s' cannot be used as a constant.", type_quoted_error_string(init_expr->type));
-				return false;
+				if (init_expr->type == type_untypedlist)
+				{
+					SEMA_ERROR(init_expr, "The type of an untyped list cannot be inferred, you can try adding an explicit type to solve this.");
+				}
+				else if (decl->var.kind == VARDECL_CONST)
+				{
+					SEMA_ERROR(init_expr, "You cannot initialize a constant to %s, but you can assign the expression to a compile time variable.", type_invalid_storage_type_name(init_expr->type));
+				}
+				else
+				{
+					SEMA_ERROR(init_expr, "You can't store a compile time type in a variable.");
+				}
+				return decl_poison(decl);
 			}
 			if (!decl->alignment) decl->alignment = type_alloca_alignment(decl->type);
-			if (!sema_analyse_decl_type(context, decl->type, init_expr->span)) return false;
+			if (!sema_analyse_decl_type(context, decl->type, init_expr->span)) return decl_poison(decl);
 			// Skip further evaluation.
 			goto EXIT_OK;
 		}
@@ -2402,12 +2419,12 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 	if (!sema_resolve_type_info_maybe_inferred(context, decl->var.type_info, decl->var.init_expr != NULL)) return decl_poison(decl);
 
 	decl->type = decl->var.type_info->type;
-	if (!sema_analyse_decl_type(context, decl->type, decl->var.type_info->span)) return false;
+	if (!sema_analyse_decl_type(context, decl->type, decl->var.type_info->span)) return decl_poison(decl);
 	bool is_static = decl->var.is_static;
 	if (is_static && context->call_env.pure)
 	{
 		SEMA_ERROR(decl, "'@pure' functions may not have static variables.");
-		return false;
+		return decl_poison(decl);
 	}
 	if (is_static && !decl->has_extname)
 	{
@@ -2422,7 +2439,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 	if (!decl->var.init_expr && infer_len)
 	{
 		SEMA_ERROR(decl->var.type_info, "The length cannot be inferred without an initializer.");
-		return false;
+		return decl_poison(decl);
 	}
 	if (decl->var.init_expr)
 	{
@@ -2446,15 +2463,12 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 
 		if (infer_len)
 		{
-			Type *right_side_type = init->type->canonical;
-			if (right_side_type->type_kind == TYPE_ARRAY)
+			if (type_is_len_inferred(init->type))
 			{
-				decl->type = type_get_array(decl->type->array.base, right_side_type->array.len);
+				SEMA_ERROR(decl->var.type_info, "You cannot use [*] and [<*>] underlying types with initializers.");
+				return decl_poison(decl);
 			}
-			else
-			{
-				decl->type = type_get_vector(decl->type->array.base, right_side_type->array.len);
-			}
+			decl->type = cast_infer_len(decl->type,  init->type);
 		}
 
 		Expr *init_expr = decl->var.init_expr;
@@ -2463,6 +2477,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 		if ((is_global || decl->var.is_static) && !expr_is_constant_eval(init_expr, CONSTANT_EVAL_GLOBAL_INIT))
 		{
 			SEMA_ERROR(init_expr, "The expression must be a constant value.");
+			return decl_poison(decl);
 		}
 		else
 		{

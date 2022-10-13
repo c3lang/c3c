@@ -860,6 +860,20 @@ Decl *parse_var_decl(ParseContext *c)
 	Decl *decl;
 	switch (c->tok)
 	{
+		case TOKEN_CONST_IDENT:
+			SEMA_ERROR_HERE("Constants must be declared using 'const' not 'var'.");
+			return poisoned_decl;
+		case TOKEN_IDENT:
+			decl = DECL_VAR_NEW(NULL, VARDECL_LOCAL, VISIBLE_LOCAL);
+			advance(c);
+			if (!tok_is(c, TOKEN_EQ))
+			{
+				SEMA_ERROR_HERE("'var' must always have an initial value, or the type cannot be inferred.");
+				return false;
+			}
+			advance_and_verify(c, TOKEN_EQ);
+			ASSIGN_EXPR_OR_RET(decl->var.init_expr, parse_expr(c), poisoned_decl);
+			break;
 		case TOKEN_CT_IDENT:
 			decl = DECL_VAR_NEW(NULL, VARDECL_LOCAL_CT, VISIBLE_LOCAL);
 			advance(c);

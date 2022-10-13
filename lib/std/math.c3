@@ -71,53 +71,131 @@ const QUAD_EPSILON = 1.92592994438723585305597794258492732e-34;
 define Complex32 = Complex<float>;
 define Complex64 = Complex<double>;
 
-fn double log10(double x) @inline
-{
-    return $$log10(x);
-}
-
-fn double log2(double x) @inline
-{
-    return $$log2(x);
-}
-
-macro abs(x) @builtin = $$abs(x);
+/**
+ * @require types::is_numerical($typeof(x)) `The input must be a numerical value or numerical vector`
+ **/
+macro abs(x) = $$abs(x);
 
 /**
- * @require types::is_floatlike($typeof(f)) `The input must be a floating point value or float vector`
+ * @require types::is_numerical($typeof(x)) `The input must be a numerical value or numerical vector`
+ * @require types::@has_same(x, lower, upper) `The input types must be equal`
  **/
-macro log(f) = $$log(f);
+macro clamp(x, lower, upper) = $$max(lower, $$min(x, upper));
 
 /**
- * @require types::is_floatlike($typeof(f)) `The input must be a floating point value or float vector`
+ * @require types::is_floatlike($typeof(mag)) `The input must be a floating point value or float vector`
+ * @require types::is_same($typeof(mag), $typeof(sgn)) `The input types must be equal`
  **/
-macro cos(f) = $$cos(f);
+macro copysign(mag, sgn) = $$copysign(mag, sgn);
 
 /**
- * @require types::is_floatlike($typeof(f)) `The input must be a floating point value or float vector`
+ * @require types::is_floatlike($typeof(x)) `The input must be a floating point value or float vector`
  **/
-macro sin(f) = $$sin(f);
+macro cos(x) = $$cos(x);
 
 /**
- * @require types::is_floatlike($typeof(f)) `The input must be a floating point value or float vector`
+ * @require types::is_floatlike($typeof(x)) `The input must be a floating point value or float vector`
  **/
-macro exp(f) = $$exp(f);
+macro exp(x) = $$exp(x);
+
+/**
+ * @require types::is_floatlike($typeof(x)) `The input must be a floating point value or float vector`
+ **/
+macro exp2(x) = $$exp2(x);
+
+/**
+ * @require types::is_floatlike($typeof(a)) `The input must be a floating point value or float vector`
+ * @require types::@has_same(a, b, c) `The input types must be equal`
+ **/
+macro fma(a, b, c) = $$fma(a, b, c);
+
+/**
+ * @require types::is_floatlike($typeof(x)) `The input must be a floating point value or float vector`
+ **/
+macro log(x) = $$log(x);
+
+/**
+ * @require types::is_floatlike($typeof(x)) `The input must be a floating point value or float vector`
+ **/
+macro log2(x) = $$log2(x);
+
+/**
+ * @require types::is_floatlike($typeof(x)) `The input must be a floating point value or float vector`
+ **/
+macro log10(x) = $$log10(x);
+
+/**
+ * @require types::is_numerical($typeof(x)) `The input must be a floating point value or float vector`
+ * @require types::is_same($typeof(x), $typeof(y)) `The input types must be equal`
+ **/
+macro max(x, y) = $$max(x, y);
+
+/**
+ * @require types::is_numerical($typeof(x)) `The input must be a numerical value or numerical vector`
+ * @require types::is_same($typeof(x), $typeof(y)) `The input types must be equal`
+ **/
+macro min(x, y) = $$min(x, y);
+
+/**
+ * @require types::is_float($typeof(a)) `The input must be a floating point value`
+ * @require types::@has_same(a, b, c) `The input types must be equal`
+ **/
+macro muladd(a, b, c) = $$fmuladd(a, b, c);
+
+/**
+ * @require types::is_floatlike($typeof(x)) `The input must be a floating point value or float vector`
+ **/
+macro sin(x) = $$sin(x);
 
 macro float float.ceil(float x) = $$ceil(x);
+macro float float.clamp(float x, float lower, float upper) = $$max(lower, $$min(x, upper));
+macro float float.copysign(float mag, float sgn) = $$copysign(mag, sgn);
+macro float float.floor(float x) = $$floor(x);
+macro float float.fma(float a, float b, float c) = $$fma(a, b, c);
+macro float float.muladd(float a, float b, float c) = $$fmuladd(a, b, c);
+macro float float.nearbyint(float x) = $$nearbyint(x);
+macro float float.pow(float x, float exp) = $$pow(x, exp);
+macro float float.rint(float x) = $$rint(x);
+macro float float.round(float x) = $$round(x);
+macro float float.roundeven(float x) = $$roundeven(x);
 macro float float.trunc(float x) = $$trunc(x);
-macro float float.pow(float f, float exp) = $$pow(f, exp);
 
 macro float[<*>] float[<*>].ceil(float[<*>] x) = $$ceil(x);
+macro float[<*>] float[<*>].clamp(float[<*>] x, float[<*>] lower, float[<*>] upper) = $$max(lower, $$min(x, upper));
+macro float[<*>] float[<*>].copysign(float[<*>] mag, float[<*>] sgn) = $$copysign(mag, sgn);
+macro float[<*>] float[<*>].fma(float[<*>] a, float[<*>] b, float[<*>] c) = $$fma(a, b, c);
+macro float[<*>] float[<*>].floor(float[<*>] x) = $$floor(x);
+macro float[<*>] float[<*>].nearbyint(float[<*>] x) = $$nearbyint(x);
+macro float[<*>] float[<*>].pow(float[<*>] x, float[<*>] exp) = $$pow(x, exp);
+macro float[<*>] float[<*>].rint(float[<*>] x) = $$rint(x);
+macro float[<*>] float[<*>].round(float[<*>] x) = $$round(x);
+macro float[<*>] float[<*>].roundeven(float[<*>] x) = $$roundeven(x);
 macro float[<*>] float[<*>].trunc(float[<*>] x) = $$trunc(x);
-macro float[<*>] float[<*>].pow(float[<*>] f, float[<*>] exp) = $$pow(f, exp);
 
 macro double double.ceil(double x) = $$ceil(x);
+macro double double.clamp(double x, double lower, double upper) = $$max(lower, $$min(x, upper));
+macro double double.copysign(double mag, double sgn) = $$copysign(mag, sgn);
+macro double double.floor(double x) = $$floor(x);
+macro double double.fma(double a, double b, double c) = $$fma(a, b, c);
+macro double double.muladd(double a, double b, double c) = $$fmuladd(a, b, c);
+macro double double.nearbyint(double x) = $$nearbyint(x);
+macro double double.pow(double x, double exp) = $$pow(x, exp);
+macro double double.rint(double x) = $$rint(x);
+macro double double.round(double x) = $$round(x);
+macro double double.roundeven(double x) = $$roundeven(x);
 macro double double.trunc(double x) = $$trunc(x);
-macro double double.pow(double f, double exp) = $$pow(f, exp);
 
 macro double[<*>] double[<*>].ceil(double[<*>] x) = $$ceil(x);
+macro double[<*>] double[<*>].clamp(double[<*>] x, double[<*>] lower, double[<*>] upper) = $$max(lower, $$min(x, upper));
+macro double[<*>] double[<*>].copysign(double[<*>] mag, double[<*>] sgn) = $$copysign(mag, sgn);
+macro double[<*>] double[<*>].floor(double[<*>] x) = $$floor(x);
+macro double[<*>] double[<*>].fma(double[<*>] a, double[<*>] b, double[<*>] c) = $$fma(a, b, c);
+macro double[<*>] double[<*>].nearbyint(double[<*>] x) = $$nearbyint(x);
+macro double[<*>] double[<*>].pow(double[<*>] x, double[<*>] exp) = $$pow(x, exp);
+macro double[<*>] double[<*>].rint(double[<*>] x) = $$rint(x);
+macro double[<*>] double[<*>].round(double[<*>] x) = $$round(x);
+macro double[<*>] double[<*>].roundeven(double[<*>] x) = $$roundeven(x);
 macro double[<*>] double[<*>].trunc(double[<*>] x) = $$trunc(x);
-macro double[<*>] double[<*>].pow(double[<*>] f, double[<*>] exp) = $$pow(f, exp);
 
 /**
  * @checked x & 1
@@ -133,5 +211,3 @@ macro next_power_of_2(x)
 	while (y < x) y += y;
 	return y;
 }
-
-

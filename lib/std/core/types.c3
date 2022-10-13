@@ -144,6 +144,9 @@ macro bool is_intlike($Type)
 	$endswitch;
 }
 
+
+macro bool is_float($Type) = $Type.kindof == TypeKind.FLOAT;
+
 macro bool is_floatlike($Type)
 {
 	$switch ($Type.kindof):
