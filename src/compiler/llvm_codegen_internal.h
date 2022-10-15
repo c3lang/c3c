@@ -377,6 +377,7 @@ LLVMValueRef llvm_store_to_ptr_aligned(GenContext *c, LLVMValueRef destination, 
 LLVMValueRef llvm_store_to_ptr_raw_aligned(GenContext *context, LLVMValueRef pointer, LLVMValueRef value, AlignSize alignment);
 void llvm_store_to_ptr_zero(GenContext *context, LLVMValueRef pointer, Type *type);
 TypeSize llvm_store_size(GenContext *c, LLVMTypeRef type);
+TypeSize llvm_alloc_size(GenContext *c, LLVMTypeRef type);
 
 /// -- Aggregates --
 INLINE LLVMValueRef llvm_emit_insert_value(GenContext *c, LLVMValueRef agg, LLVMValueRef new_value, ArraySize index);

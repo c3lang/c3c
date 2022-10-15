@@ -144,7 +144,6 @@ entry:
   %b = alloca i8*, align 8
   %to = alloca i8*, align 8
   %i = alloca i64, align 8
-  %tempcoerce = alloca i32, align 4
   store float %0, float* %expr, align 4
   %ptrptr = bitcast float* %expr to i8*
   store i8* %ptrptr, i8** %b, align 8
@@ -173,11 +172,9 @@ loop.body:                                        ; preds = %loop.cond
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
-  %8 = bitcast i32* %tempcoerce to i8*
-  %9 = bitcast [4 x i8]* %x to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %8, i8* align 1 %9, i32 4, i1 false)
-  %10 = load i32, i32* %tempcoerce, align 4
-  ret i32 %10
+  %8 = bitcast [4 x i8]* %x to i32*
+  %9 = load i32, i32* %8, align 1
+  ret i32 %9
 }
 
 ; Function Attrs: nounwind

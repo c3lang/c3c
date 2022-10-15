@@ -1216,6 +1216,11 @@ TypeSize llvm_store_size(GenContext *c, LLVMTypeRef type)
 	return (TypeSize)LLVMStoreSizeOfType(c->target_data, type);
 }
 
+TypeSize llvm_alloc_size(GenContext *c, LLVMTypeRef type)
+{
+	return (TypeSize)aligned_offset((AlignSize)LLVMStoreSizeOfType(c->target_data, type), llvm_abi_alignment(c, type));
+}
+
 void llvm_set_catch_exit(GenContext *c, LLVMBasicBlockRef block)
 {
 	c->catch_block = block;

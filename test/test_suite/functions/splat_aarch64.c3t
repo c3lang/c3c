@@ -13,7 +13,7 @@ fn void test()
     sum_us();
 }
 
-// #expect: splat.ll
+/* #expect: splat.ll
 
 %"int[]" = type { i32*, i64 }
 
@@ -23,15 +23,11 @@ define void @splat_test() #0 {
 entry:
   %vararg = alloca %"int[]", align 8
   %varargslots = alloca [3 x i32], align 4
-  %tempcoerce = alloca [2 x i64], align 8
   %x = alloca [3 x i32], align 4
   %z = alloca %"int[]", align 8
   %vararg1 = alloca %"int[]", align 8
-  %tempcoerce2 = alloca [2 x i64], align 8
+  %vararg2 = alloca %"int[]", align 8
   %vararg3 = alloca %"int[]", align 8
-  %tempcoerce4 = alloca [2 x i64], align 8
-  %vararg5 = alloca %"int[]", align 8
-  %tempcoerce6 = alloca [2 x i64], align 8
   %0 = getelementptr inbounds [3 x i32], [3 x i32]* %varargslots, i64 0, i64 0
   store i32 1, i32* %0, align 4
   %1 = getelementptr inbounds [3 x i32], [3 x i32]* %varargslots, i64 0, i64 1
@@ -43,40 +39,32 @@ entry:
   %4 = getelementptr inbounds %"int[]", %"int[]"* %vararg, i32 0, i32 0
   %5 = bitcast [3 x i32]* %varargslots to i32*
   store i32* %5, i32** %4, align 8
-  %6 = bitcast [2 x i64]* %tempcoerce to i8*
-  %7 = bitcast %"int[]"* %vararg to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %6, i8* align 8 %7, i32 16, i1 false)
-  %8 = load [2 x i64], [2 x i64]* %tempcoerce, align 8
-  %9 = call i32 @sum_us([2 x i64] %8)
-  %10 = bitcast [3 x i32]* %x to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %10, i8* align 4 bitcast ([3 x i32]* @.__const to i8*), i32 12, i1 false)
-  %11 = bitcast [3 x i32]* %x to i32*
-  %12 = insertvalue %"int[]" undef, i32* %11, 0
-  %13 = insertvalue %"int[]" %12, i64 3, 1
-  store %"int[]" %13, %"int[]"* %z, align 8
-  %14 = getelementptr inbounds %"int[]", %"int[]"* %vararg1, i32 0, i32 1
-  %15 = getelementptr inbounds %"int[]", %"int[]"* %vararg1, i32 0, i32 0
-  store i64 3, i64* %14, align 8
-  %16 = bitcast [3 x i32]* %x to i32*
-  store i32* %16, i32** %15, align 8
-  %17 = bitcast [2 x i64]* %tempcoerce2 to i8*
-  %18 = bitcast %"int[]"* %vararg1 to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %17, i8* align 8 %18, i32 16, i1 false)
-  %19 = load [2 x i64], [2 x i64]* %tempcoerce2, align 8
-  %20 = call i32 @sum_us([2 x i64] %19)
-  %21 = getelementptr inbounds %"int[]", %"int[]"* %vararg3, i32 0, i32 1
-  %22 = getelementptr inbounds %"int[]", %"int[]"* %vararg3, i32 0, i32 0
-  %23 = bitcast [2 x i64]* %tempcoerce4 to i8*
-  %24 = bitcast %"int[]"* %z to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %23, i8* align 8 %24, i32 16, i1 false)
-  %25 = load [2 x i64], [2 x i64]* %tempcoerce4, align 8
-  %26 = call i32 @sum_us([2 x i64] %25)
-  %27 = getelementptr inbounds %"int[]", %"int[]"* %vararg5, i32 0, i32 1
-  store i64 0, i64* %27, align 8
-  %28 = bitcast [2 x i64]* %tempcoerce6 to i8*
-  %29 = bitcast %"int[]"* %vararg5 to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %28, i8* align 8 %29, i32 16, i1 false)
-  %30 = load [2 x i64], [2 x i64]* %tempcoerce6, align 8
-  %31 = call i32 @sum_us([2 x i64] %30)
+  %6 = bitcast %"int[]"* %vararg to [2 x i64]*
+  %7 = load [2 x i64], [2 x i64]* %6, align 8
+  %8 = call i32 @sum_us([2 x i64] %7)
+  %9 = bitcast [3 x i32]* %x to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %9, i8* align 4 bitcast ([3 x i32]* @.__const to i8*), i32 12, i1 false)
+  %10 = bitcast [3 x i32]* %x to i32*
+  %11 = insertvalue %"int[]" undef, i32* %10, 0
+  %12 = insertvalue %"int[]" %11, i64 3, 1
+  store %"int[]" %12, %"int[]"* %z, align 8
+  %13 = getelementptr inbounds %"int[]", %"int[]"* %vararg1, i32 0, i32 1
+  %14 = getelementptr inbounds %"int[]", %"int[]"* %vararg1, i32 0, i32 0
+  store i64 3, i64* %13, align 8
+  %15 = bitcast [3 x i32]* %x to i32*
+  store i32* %15, i32** %14, align 8
+  %16 = bitcast %"int[]"* %vararg1 to [2 x i64]*
+  %17 = load [2 x i64], [2 x i64]* %16, align 8
+  %18 = call i32 @sum_us([2 x i64] %17)
+  %19 = getelementptr inbounds %"int[]", %"int[]"* %vararg2, i32 0, i32 1
+  %20 = getelementptr inbounds %"int[]", %"int[]"* %vararg2, i32 0, i32 0
+  %21 = bitcast %"int[]"* %z to [2 x i64]*
+  %22 = load [2 x i64], [2 x i64]* %21, align 8
+  %23 = call i32 @sum_us([2 x i64] %22)
+  %24 = getelementptr inbounds %"int[]", %"int[]"* %vararg3, i32 0, i32 1
+  store i64 0, i64* %24, align 8
+  %25 = bitcast %"int[]"* %vararg3 to [2 x i64]*
+  %26 = load [2 x i64], [2 x i64]* %25, align 8
+  %27 = call i32 @sum_us([2 x i64] %26)
   ret void
 }

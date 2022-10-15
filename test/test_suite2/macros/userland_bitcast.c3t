@@ -139,7 +139,6 @@ entry:
   %b = alloca ptr, align 8
   %to = alloca ptr, align 8
   %i = alloca i64, align 8
-  %tempcoerce = alloca i32, align 4
   store float %0, ptr %expr, align 4
   store ptr %expr, ptr %b, align 8
   store ptr %x, ptr %to, align 8
@@ -166,8 +165,7 @@ loop.body:                                        ; preds = %loop.cond
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %tempcoerce, ptr align 1 %x, i32 4, i1 false)
-  %8 = load i32, ptr %tempcoerce, align 4
+  %8 = load i32, ptr %x, align 1
   ret i32 %8
 }
 

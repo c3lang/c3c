@@ -108,7 +108,6 @@ entry:
   %vararg = alloca %"variant[]", align 8
   %varargslots = alloca [2 x %variant], align 16
   %result = alloca %"char[]", align 8
-  %tempcoerce = alloca { ptr, i64 }, align 8
   %2 = call ptr @std_core_string_new_with_capacity(i64 128, ptr %1)
   store ptr %2, ptr %s, align 8
   store %"char[]" { ptr @.str.38, i64 8 }, ptr %taddr, align 8
@@ -145,8 +144,7 @@ voiderr:                                          ; preds = %after_check, %entry
   %18 = load ptr, ptr %s, align 8
   %19 = call { ptr, i64 } @std_core_string_String_str(ptr %18)
   store { ptr, i64 } %19, ptr %result, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %tempcoerce, ptr align 8 %result, i32 16, i1 false)
-  %20 = load { ptr, i64 }, ptr %tempcoerce, align 8
+  %20 = load { ptr, i64 }, ptr %result, align 8
   ret { ptr, i64 } %20
 }
 

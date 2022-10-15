@@ -430,7 +430,6 @@ entry:
   %i1 = alloca i32, align 4
   %a = alloca %Blob, align 4
   %b = alloca %Blob.0, align 8
-  %tempcoerce = alloca double, align 8
   %ddx = alloca %Foo, align 4
   %fro = alloca i32, align 4
   %x = alloca [4 x i32], align 16
@@ -516,8 +515,7 @@ loop.exit8:                                       ; preds = %loop.cond2
   %21 = call i32 @"test2$$int_getValue"(i32 %20)
   %22 = call i32 (ptr, ...) @printf(ptr @.str.8, i32 %21)
   %23 = getelementptr inbounds %Blob.0, ptr %b, i32 0, i32 0
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %tempcoerce, ptr align 8 %23, i32 8, i1 false)
-  %24 = load double, ptr %tempcoerce, align 8
+  %24 = load double, ptr %23, align 8
   %25 = call double @"test2$$double_getValue"(double %24)
   %26 = call i32 (ptr, ...) @printf(ptr @.str.9, double %25)
   %27 = call i32 @"test2$$int_getMult"(i32 25)

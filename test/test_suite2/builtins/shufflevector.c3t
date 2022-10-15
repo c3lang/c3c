@@ -63,7 +63,6 @@ entry:
   %b = alloca <2 x float>, align 8
   %flip = alloca <2 x float>, align 8
   %taddr = alloca <2 x float>, align 8
-  %tempcoerce = alloca double, align 8
   store double %1, ptr %vec, align 8
   %2 = getelementptr inbounds %Matrix2x2, ptr %0, i32 0, i32 0
   %3 = getelementptr inbounds %.anon.1, ptr %2, i32 0, i32 0
@@ -92,7 +91,6 @@ entry:
   %fmul3 = fmul <2 x float> %17, %18
   %fadd = fadd <2 x float> %fmul, %fmul3
   store <2 x float> %fadd, ptr %taddr, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %tempcoerce, ptr align 8 %taddr, i32 8, i1 false)
-  %19 = load double, ptr %tempcoerce, align 8
+  %19 = load double, ptr %taddr, align 8
   ret double %19
 }
