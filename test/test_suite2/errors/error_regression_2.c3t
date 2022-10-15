@@ -546,7 +546,6 @@ define { ptr, i8 } @test_buildSummary(ptr %0) #0 {
 entry:
   %doc = alloca %Doc, align 8
   %literal = alloca %Summary, align 8
-  %tempcoerce = alloca { ptr, i8 }, align 8
   %1 = getelementptr inbounds %Doc, ptr %doc, i32 0, i32 0
   store ptr %0, ptr %1, align 8
   %2 = getelementptr inbounds %Summary, ptr %literal, i32 0, i32 0
@@ -574,8 +573,7 @@ cond.phi:                                         ; preds = %cond.rhs, %cond.lhs
   store ptr %val, ptr %4, align 8
   %11 = getelementptr inbounds %Summary, ptr %literal, i32 0, i32 1
   store i8 1, ptr %11, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %tempcoerce, ptr align 8 %literal, i32 16, i1 false)
-  %12 = load { ptr, i8 }, ptr %tempcoerce, align 8
+  %12 = load { ptr, i8 }, ptr %literal, align 8
   ret { ptr, i8 } %12
 }
 
@@ -587,7 +585,6 @@ entry:
   %result = alloca %Summary, align 8
   %literal = alloca %Summary, align 8
   %taddr = alloca %Summary, align 8
-  %tempcoerce = alloca { ptr, i8 }, align 8
   %2 = getelementptr inbounds { ptr, i64 }, ptr %url, i32 0, i32 0
   store ptr %0, ptr %2, align 8
   %3 = getelementptr inbounds { ptr, i64 }, ptr %url, i32 0, i32 1
@@ -619,8 +616,7 @@ else_block:                                       ; preds = %entry
 phi_block:                                        ; preds = %else_block, %after_check
   %val = phi %Summary [ %10, %after_check ], [ %13, %else_block ]
   store %Summary %val, ptr %taddr, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %tempcoerce, ptr align 8 %taddr, i32 16, i1 false)
-  %14 = load { ptr, i8 }, ptr %tempcoerce, align 8
+  %14 = load { ptr, i8 }, ptr %taddr, align 8
   ret { ptr, i8 } %14
 }
 

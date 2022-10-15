@@ -353,7 +353,7 @@ LLVMValueRef llvm_emit_coerce(GenContext *c, LLVMTypeRef coerced, BEValue *value
 	llvm_value_addr(c, value);
 	LLVMValueRef addr = value->value;
 
-	ByteSize target_size = llvm_store_size(c, coerced);
+	ByteSize target_size = llvm_alloc_size(c, coerced);
 
 	// 3. If this is a struct, we index into it.
 	if (LLVMGetTypeKind(llvm_source_type) == LLVMStructTypeKind)
@@ -362,7 +362,7 @@ LLVMValueRef llvm_emit_coerce(GenContext *c, LLVMTypeRef coerced, BEValue *value
 	}
 	// --> from now on we only use LLVM types.
 
-	ByteSize source_size = llvm_store_size(c, llvm_source_type);
+	ByteSize source_size = llvm_alloc_size(c, llvm_source_type);
 
 	LLVMTypeKind source_type_kind = LLVMGetTypeKind(llvm_source_type);
 	LLVMTypeKind coerced_type_kind = LLVMGetTypeKind(coerced);
@@ -375,15 +375,19 @@ LLVMValueRef llvm_emit_coerce(GenContext *c, LLVMTypeRef coerced, BEValue *value
 	}
 
 	// TODO for scalable vectors this is not true.
-	if (source_size > target_size)
+	if (source_size >= target_size && source_type_kind != LLVMScalableVectorTypeKind && coerced_type_kind != LLVMScalableVectorTypeKind)
 	{
 		LLVMValueRef val = LLVMBuildBitCast(c->builder, addr, LLVMPointerType(coerced, 0), "");
 		return llvm_load(c, coerced, val, value->alignment, "");
 	}
 
+	if (coerced_type_kind == LLVMScalableVectorTypeKind)
+	{
+		TODO
+	}
+
 	// Otherwise, do it through memory.
 	AlignSize max_align = type_max_alignment(value->alignment, llvm_abi_alignment(c, coerced));
-
 	LLVMValueRef temp = llvm_emit_alloca(c, coerced, max_align, "tempcoerce");
 	llvm_emit_memcpy(c, temp, max_align, addr, value->alignment, source_size);
 	return llvm_load(c, coerced, temp, max_align, "");
@@ -400,7 +404,7 @@ void llvm_emit_coerce_store(GenContext *c, LLVMValueRef addr, AlignSize alignmen
 		return;
 	}
 
-	ByteSize src_size = llvm_store_size(c, coerced);
+	ByteSize src_size = llvm_alloc_size(c, coerced);
 
 	// 3. Enter into a struct in case the result is a struct.
 	if (LLVMGetTypeKind(target_type) == LLVMStructTypeKind)
@@ -420,8 +424,8 @@ void llvm_emit_coerce_store(GenContext *c, LLVMValueRef addr, AlignSize alignmen
 	}
 
 	// TODO for scalable vectors this is not true.
-	ByteSize target_size = llvm_store_size(c, target_type);
-	if (src_size <= target_size)
+	ByteSize target_size = llvm_alloc_size(c, target_type);
+	if (src_size <= target_size && coerced_type_kind != LLVMScalableVectorTypeKind && source_type_kind != LLVMScalableVectorTypeKind)
 	{
 		LLVMValueRef val = LLVMBuildBitCast(c->builder, addr, LLVMPointerType(coerced, 0), "");
 		llvm_store_to_ptr_raw_aligned(c, val, value, alignment);

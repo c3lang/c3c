@@ -588,7 +588,6 @@ define { %"char[]"*, i8 } @test_buildSummary(%Head* %0) #0 {
 entry:
   %doc = alloca %Doc, align 8
   %literal = alloca %Summary, align 8
-  %tempcoerce = alloca { %"char[]"*, i8 }, align 8
   %1 = getelementptr inbounds %Doc, %Doc* %doc, i32 0, i32 0
   store %Head* %0, %Head** %1, align 8
   %2 = getelementptr inbounds %Summary, %Summary* %literal, i32 0, i32 0
@@ -618,11 +617,9 @@ cond.phi:                                         ; preds = %cond.rhs, %cond.lhs
   store %"char[]"* %ptrptr1, %"char[]"** %4, align 8
   %11 = getelementptr inbounds %Summary, %Summary* %literal, i32 0, i32 1
   store i8 1, i8* %11, align 8
-  %12 = bitcast { %"char[]"*, i8 }* %tempcoerce to i8*
-  %13 = bitcast %Summary* %literal to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %12, i8* align 8 %13, i32 16, i1 false)
-  %14 = load { %"char[]"*, i8 }, { %"char[]"*, i8 }* %tempcoerce, align 8
-  ret { %"char[]"*, i8 } %14
+  %12 = bitcast %Summary* %literal to { %"char[]"*, i8 }*
+  %13 = load { %"char[]"*, i8 }, { %"char[]"*, i8 }* %12, align 8
+  ret { %"char[]"*, i8 } %13
 }
 
 ; Function Attrs: nounwind
@@ -633,7 +630,6 @@ entry:
   %result = alloca %Summary, align 8
   %literal = alloca %Summary, align 8
   %taddr = alloca %Summary, align 8
-  %tempcoerce = alloca { %"char[]"*, i8 }, align 8
   %pair = bitcast %"char[]"* %url to { i8*, i64 }*
   %2 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %pair, i32 0, i32 0
   store i8* %0, i8** %2, align 8
@@ -668,11 +664,9 @@ else_block:                                       ; preds = %entry
 phi_block:                                        ; preds = %else_block, %after_check
   %val = phi %Summary [ %12, %after_check ], [ %15, %else_block ]
   store %Summary %val, %Summary* %taddr, align 8
-  %16 = bitcast { %"char[]"*, i8 }* %tempcoerce to i8*
-  %17 = bitcast %Summary* %taddr to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %16, i8* align 8 %17, i32 16, i1 false)
-  %18 = load { %"char[]"*, i8 }, { %"char[]"*, i8 }* %tempcoerce, align 8
-  ret { %"char[]"*, i8 } %18
+  %16 = bitcast %Summary* %taddr to { %"char[]"*, i8 }*
+  %17 = load { %"char[]"*, i8 }, { %"char[]"*, i8 }* %16, align 8
+  ret { %"char[]"*, i8 } %17
 }
 
 ; Function Attrs: nounwind

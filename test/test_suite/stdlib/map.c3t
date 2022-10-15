@@ -111,7 +111,6 @@ entry:
   %vararg = alloca %"variant[]", align 8
   %varargslots = alloca [2 x %variant], align 16
   %result = alloca %"char[]", align 8
-  %tempcoerce = alloca { i8*, i64 }, align 8
   %2 = call i8* @std_core_string_new_with_capacity(i64 128, %Allocator* %1)
   store i8* %2, i8** %s, align 8
   store %"char[]" { i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str.38, i32 0, i32 0), i64 8 }, %"char[]"* %taddr, align 8
@@ -154,11 +153,9 @@ voiderr:                                          ; preds = %after_check, %entry
   %24 = call { i8*, i64 } @std_core_string_String_str(i8* %23)
   %25 = bitcast %"char[]"* %result to { i8*, i64 }*
   store { i8*, i64 } %24, { i8*, i64 }* %25, align 8
-  %26 = bitcast { i8*, i64 }* %tempcoerce to i8*
-  %27 = bitcast %"char[]"* %result to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %26, i8* align 8 %27, i32 16, i1 false)
-  %28 = load { i8*, i64 }, { i8*, i64 }* %tempcoerce, align 8
-  ret { i8*, i64 } %28
+  %26 = bitcast %"char[]"* %result to { i8*, i64 }*
+  %27 = load { i8*, i64 }, { i8*, i64 }* %26, align 8
+  ret { i8*, i64 } %27
 }
 
 ; Function Attrs: nounwind
@@ -936,5 +933,5 @@ declare i64 @std_core_string_String_printf(i64*, i8**, i8*, i64, i8*, i64)
 
 declare { i8*, i64 } @std_core_string_String_str(i8*)
 
-; Function Attrs: argmemonly nofree nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i32(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i32, i1 immarg) #2
+attributes #0 = { nounwind }
+attributes #1 = { argmemonly nofree nounwind willreturn writeonly }
