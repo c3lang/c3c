@@ -2196,12 +2196,9 @@ Decl *sema_find_label_symbol_anywhere(SemaContext *context, const char *symbol);
 Decl *sema_resolve_symbol(SemaContext *context, const char *symbol, Path *path, SourceSpan span);
 bool sema_symbol_is_defined_in_scope(SemaContext *c, const char *symbol);
 
-bool sema_resolve_type(SemaContext *context, Type *type);
 bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, ArraySize *len_ref);
 bool sema_resolve_type_info(SemaContext *context, TypeInfo *type_info);
 bool sema_resolve_type_info_maybe_inferred(SemaContext *context, TypeInfo *type_info, bool allow_inferred_type);
-bool sema_resolve_type_shallow(SemaContext *context, TypeInfo *type_info, bool allow_inferred_type, bool in_shallow);
-Type *sema_type_lower_by_size(Type *type, ArraySize element_size);
 
 void sema_error_at(SourceSpan loc, const char *message, ...);
 void sema_error_at_after(SourceSpan loc, const char *message, ...);

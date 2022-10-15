@@ -296,13 +296,11 @@ entry:
 ; Function Attrs: nounwind
 define i32 @test_helo(double %0, ptr byval(%Bobo) align 8 %1) #0 {
 entry:
-  %b = alloca %Bobo, align 4
   %de = alloca [3 x i32], align 4
   %c = alloca %Bobo, align 4
   %indirectarg = alloca %Bobo, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %b, ptr align 8 %1, i32 20, i1 false)
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %de, ptr align 4 @.__const, i32 12, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %c, ptr align 4 %b, i32 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %c, ptr align 4 %1, i32 20, i1 false)
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %indirectarg, ptr align 4 %c, i32 20, i1 false)
   %2 = call i32 @test_helo(double 1.000000e+00, ptr byval(%Bobo) align 8 %indirectarg)
   ret i32 1

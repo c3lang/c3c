@@ -4,12 +4,22 @@
 
 #include "sema_internal.h"
 
+static inline bool sema_resolve_ptr_type(SemaContext *context, TypeInfo *type_info, bool allow_inferred);
+static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type, bool allow_inferred, bool shallow);
+static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, bool allow_inferred_type, bool is_pointee);
+INLINE bool sema_resolve_vatype(SemaContext *context, TypeInfo *type_info);
+INLINE bool sema_resolve_evaltype(SemaContext *context, TypeInfo *type_info, bool is_pointee);
+INLINE bool sema_resolve_typefrom(SemaContext *context, TypeInfo *type_info);
+INLINE bool sema_resolve_typeof(SemaContext *context, TypeInfo *type_info);
+
 static inline bool sema_resolve_ptr_type(SemaContext *context, TypeInfo *type_info, bool allow_inferred)
 {
-	if (!sema_resolve_type_shallow(context, type_info->pointer, allow_inferred, true))
+	// Try to resolve this type shallowly.
+	if (!sema_resolve_type(context, type_info->pointer, allow_inferred, true))
 	{
 		return type_info_poison(type_info);
 	}
+	// Construct the type after resolving the underlying type.
 	type_info->type = type_get_ptr(type_info->pointer->type);
 	type_info->resolve_status = RESOLVE_DONE;
 	return true;
@@ -22,44 +32,68 @@ bool sema_resolve_type_info(SemaContext *context, TypeInfo *type_info)
 
 bool sema_resolve_type_info_maybe_inferred(SemaContext *context, TypeInfo *type_info, bool allow_inferred_type)
 {
-	if (!sema_resolve_type_shallow(context, type_info, allow_inferred_type, false)) return false;
+	// Resolve the type non-shallow
+	if (!sema_resolve_type(context, type_info, allow_inferred_type, false)) return false;
+
+	// What is the underlying non-optional type.
 	Type *type = type_no_optional(type_info->type);
-	// usize and similar typedefs will not have a decl.
+
+	// usz and similar typedefs will not have a decl.
 	if (type->type_kind == TYPE_TYPEDEF && type->decl == NULL) return true;
+
+	// If it is a basic type, then we're done.
 	if (!type_is_user_defined(type)) return true;
+
+	// Otherwise analyse the underlying declaration.
 	return sema_analyse_decl(context, type->decl);
 }
 
 bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, ArraySize *len_ref)
 {
+	// Get the expression describing the length.
 	Expr *len_expr = type_info->array.len;
+
+	// Analyse it.
 	if (!sema_analyse_expr(context, len_expr)) return type_info_poison(type_info);
 
+	// A constant expression is assumed.
 	if (len_expr->expr_kind != EXPR_CONST)
 	{
-		SEMA_ERROR(len_expr, "Expected a constant value as size.");
+		SEMA_ERROR(len_expr, "Expected a constant value as length.");
 		return type_info_poison(type_info);
 	}
+
+	// The constant must be an integer (and not just a distinct integer)
 	if (!type_is_integer(len_expr->type->canonical))
 	{
-		SEMA_ERROR(len_expr, "Expected an integer size.");
+		SEMA_ERROR(len_expr, "Expected an integer value.");
 		return type_info_poison(type_info);
 	}
 
 	bool is_vector = type_info->kind == TYPE_INFO_VECTOR;
+
+	// Check the length:
 	Int len = len_expr->const_expr.ixx;
+
+	// Is it negative?
 	if (int_is_neg(len))
 	{
 		SEMA_ERROR(len_expr,
 				   is_vector ? "A vector may not have a negative width." :
-				   "An array may not have a negative size.");
+				   "An array may not have a negative length.");
 		return type_info_poison(type_info);
 	}
-	if (is_vector && int_is_zero(len))
+
+	// Is it zero?
+	if (int_is_zero(len))
 	{
-		SEMA_ERROR(len_expr, "A vector may not have a zero width.");
+		SEMA_ERROR(len_expr,
+				   is_vector ? "A vector may not have a zero width."
+				   : "An array may not have zero length.");
 		return type_info_poison(type_info);
 	}
+
+	// Check max values.
 	if (int_icomp(len, is_vector ? MAX_VECTOR_WIDTH : MAX_ARRAY_SIZE, BINARYOP_GT))
 	{
 		if (is_vector)
@@ -68,10 +102,11 @@ bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, Arra
 		}
 		else
 		{
-			SEMA_ERROR(len_expr, "The array size may not exceed %lld.", MAX_ARRAY_SIZE);
+			SEMA_ERROR(len_expr, "The array length may not exceed %lld.", MAX_ARRAY_SIZE);
 		}
 		return type_info_poison(type_info);
 	}
+	// We're done, return the size and mark it as a success.
 	*len_ref = (ArraySize)len.i.low;
 	return true;
 }
@@ -79,9 +114,12 @@ bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, Arra
 // TODO cleanup.
 static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type, bool allow_inferred, bool shallow)
 {
-	if (type->kind == TYPE_INFO_SUBARRAY || shallow)
+	TypeInfoKind kind = type->kind;
+	// We can resolve the base type in a shallow way if we don't use it to determine
+	// length and alignment
+	if (kind == TYPE_INFO_SUBARRAY || shallow)
 	{
-		if (!sema_resolve_type_shallow(context, type->array.base, allow_inferred, true))
+		if (!sema_resolve_type(context, type->array.base, allow_inferred, true))
 		{
 			return type_info_poison(type);
 		}
@@ -210,57 +248,87 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 
 }
 
-
-bool sema_resolve_type(SemaContext *context, Type *type)
+// $evaltype("Foo")
+INLINE bool sema_resolve_evaltype(SemaContext *context, TypeInfo *type_info, bool is_pointee)
 {
-	switch (type->type_kind)
+	Expr *expr = type_info->unresolved_type_expr;
+	TokenType type;
+	Expr *inner = sema_ct_eval_expr(context, "$evaltype", expr, true);
+	if (!inner) return type_info_poison(type_info);
+	if (inner->expr_kind != EXPR_TYPEINFO)
 	{
-		case TYPE_TYPEDEF:
-			return sema_resolve_type(context, type->canonical);
-		case TYPE_POISONED:
-		case ALL_INTS:
-		case ALL_FLOATS:
-		case TYPE_VOID:
-		case TYPE_BOOL:
-		case TYPE_TYPEID:
-		case TYPE_ANY:
-		case TYPE_ANYERR:
-		case TYPE_VECTOR:
-		case TYPE_TYPEINFO:
-		case TYPE_MEMBER:
-		case TYPE_UNTYPED_LIST:
-		case TYPE_FAILABLE_ANY:
-			return true;
-		case TYPE_POINTER:
-			return sema_resolve_type(context, type->pointer);
-		case TYPE_BITSTRUCT:
-		case TYPE_DISTINCT:
-		case TYPE_ENUM:
-		case TYPE_FAULTTYPE:
-		case TYPE_FUNC:
-		case TYPE_STRUCT:
-		case TYPE_UNION:
-			break;
-		case TYPE_ARRAY:
-		case TYPE_SUBARRAY:
-		case TYPE_INFERRED_ARRAY:
-		case TYPE_FLEXIBLE_ARRAY:
-		case TYPE_INFERRED_VECTOR:
-		case TYPE_SCALED_VECTOR:
-			return sema_resolve_type(context, type->array.base);
-		case TYPE_OPTIONAL:
-			return sema_resolve_type(context, type->failable);
+		SEMA_ERROR(expr, "Only type names may be resolved with $evaltype.");
+		return false;
 	}
-	return sema_analyse_decl(context, type->decl);
+	TypeInfo *inner_type = inner->type_expr;
+	if (!sema_resolve_type(context, inner_type, false, is_pointee)) return false;
+	if (type_is_invalid_storage_type(inner_type->type))
+	{
+		SEMA_ERROR(expr, "Compile-time types may not be used with $evaltype.");
+		return false;
+	}
+	type_info->type = inner_type->type;
+	return true;
 }
 
-bool sema_resolve_type_shallow(SemaContext *context, TypeInfo *type_info, bool allow_inferred_type, bool in_shallow)
+// $typeof(...)
+INLINE bool sema_resolve_typeof(SemaContext *context, TypeInfo *type_info)
 {
+	Expr *expr = type_info->unresolved_type_expr;
+	if (!sema_analyse_expr(context, expr))
+	{
+		return false;
+	}
+	if (type_is_invalid_storage_type(expr->type))
+	{
+		SEMA_ERROR(expr, "Expected a regular runtime expression here.");
+		return false;
+	}
+	type_info->type = expr->type;
+	return true;
+}
+
+INLINE bool sema_resolve_typefrom(SemaContext *context, TypeInfo *type_info)
+{
+	Expr *expr = type_info->unresolved_type_expr;
+	if (!sema_analyse_expr(context, expr)) return false;
+	if (!expr_is_const(expr) || expr->const_expr.const_kind != CONST_TYPEID)
+	{
+		SEMA_ERROR(expr, "Expected a constant typeid value.");
+		return false;
+	}
+	type_info->type = expr->const_expr.typeid;
+	return true;
+}
+
+// $vatype(...)
+INLINE bool sema_resolve_vatype(SemaContext *context, TypeInfo *type_info)
+{
+	if (!context->current_macro)
+	{
+		SEMA_ERROR(type_info, "'%s' can only be used inside of a macro.", token_type_to_string(TOKEN_CT_VATYPE));
+		return false;
+	}
+	ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, type_info->unresolved_type_expr),
+	                   false);
+	if (arg_expr->expr_kind != EXPR_TYPEINFO)
+	{
+		SEMA_ERROR(arg_expr, "The argument was not a type.");
+		return false;
+	}
+	assert(arg_expr->resolve_status == RESOLVE_DONE);
+	type_info->type = arg_expr->type_expr->type;
+	return true;
+}
+
+static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, bool allow_inferred_type, bool is_pointee)
+{
+	// Ok, already resolved.
 	if (type_info->resolve_status == RESOLVE_DONE) return type_info_ok(type_info);
 
+	// We might have the resolve already running, if so then that's bad.
 	if (type_info->resolve_status == RESOLVE_RUNNING)
 	{
-		// TODO this is incorrect for unresolved expressions
 		SEMA_ERROR(type_info,
 		           "Circular dependency resolving type '%s'.",
 		           type_info->unresolved.name);
@@ -268,90 +336,35 @@ bool sema_resolve_type_shallow(SemaContext *context, TypeInfo *type_info, bool a
 	}
 
 	type_info->resolve_status = RESOLVE_RUNNING;
+
+	// Type compression means we don't need that many nested type infos.
 	TypeInfoCompressedKind kind = type_info->subtype;
 	if (kind != TYPE_COMPRESSED_NONE)
 	{
-		in_shallow = true;
+		is_pointee = true;
 	}
+
 	switch (type_info->kind)
 	{
 		case TYPE_INFO_POISON:
 			UNREACHABLE
 		case TYPE_INFO_VATYPE:
-			if (context->current_macro)
-			{
-				ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, type_info->unresolved_type_expr), false);
-				if (arg_expr->expr_kind != EXPR_TYPEINFO)
-				{
-					SEMA_ERROR(arg_expr, "The argument was not a type.");
-					return false;
-				}
-				*type_info = *arg_expr->type_expr;
-				assert(type_info->resolve_status == RESOLVE_DONE);
-				return true;
-			}
-			SEMA_ERROR(type_info, "'%s' can only be used inside of a macro.", token_type_to_string(TOKEN_CT_VATYPE));
-			return false;
+			if (!sema_resolve_vatype(context, type_info)) return type_info_poison(type_info);
+			goto APPEND_QUALIFIERS;
 		case TYPE_INFO_CT_IDENTIFIER:
 		case TYPE_INFO_IDENTIFIER:
-			if (!sema_resolve_type_identifier(context, type_info)) return false;
-			break;
+			// $Type or Foo
+			if (!sema_resolve_type_identifier(context, type_info)) return type_info_poison(type_info);
+			goto APPEND_QUALIFIERS;
 		case TYPE_INFO_EVALTYPE:
-		{
-			Expr *expr = type_info->unresolved_type_expr;
-			TokenType type;
-			Expr *inner = sema_ct_eval_expr(context, "$evaltype", expr, true);
-			if (!inner) return false;
-			if (inner->expr_kind != EXPR_TYPEINFO)
-			{
-				SEMA_ERROR(expr, "Only type names may be resolved with $evaltype.");
-				return type_info_poison(type_info);
-			}
-			if (type_is_invalid_storage_type(expr->type))
-			{
-				SEMA_ERROR(expr, "Compile-time types may not be used with $evaltype.");
-				return type_info_poison(type_info);
-			}
-			TypeInfo *inner_type = inner->type_expr;
-			if (!sema_resolve_type_info(context, inner_type)) return false;
-			type_info->type = inner_type->type;
-			type_info->resolve_status = RESOLVE_DONE;
+			if (!sema_resolve_evaltype(context, type_info, is_pointee)) return type_info_poison(type_info);
 			goto APPEND_QUALIFIERS;
-		}
 		case TYPE_INFO_TYPEOF:
-		{
-			Expr *expr = type_info->unresolved_type_expr;
-			if (!sema_analyse_expr(context, expr))
-			{
-				return type_info_poison(type_info);
-			}
-			if (type_is_invalid_storage_type(expr->type))
-			{
-				SEMA_ERROR(expr, "Expected a regular runtime expression here.");
-				return false;
-			}
-			type_info->type = expr->type;
-			type_info->resolve_status = RESOLVE_DONE;
-			assert(!type_info->failable);
+			if (!sema_resolve_typeof(context, type_info)) return type_info_poison(type_info);
 			goto APPEND_QUALIFIERS;
-		}
 		case TYPE_INFO_TYPEFROM:
-		{
-			Expr *expr = type_info->unresolved_type_expr;
-			if (!sema_analyse_expr(context, expr))
-			{
-				return type_info_poison(type_info);
-			}
-			if (!expr_is_const(expr) || expr->const_expr.const_kind != CONST_TYPEID)
-			{
-				SEMA_ERROR(expr, "Expected a constant typeid value.");
-				return type_info_poison(type_info);
-			}
-			type_info->type = expr->const_expr.typeid;
-			type_info->resolve_status = RESOLVE_DONE;
-			assert(!type_info->failable);
+			if (!sema_resolve_typefrom(context, type_info)) return type_info_poison(type_info);
 			goto APPEND_QUALIFIERS;
-		}
 		case TYPE_INFO_INFERRED_ARRAY:
 		case TYPE_INFO_INFERRED_VECTOR:
 			if (!allow_inferred_type)
@@ -365,10 +378,13 @@ bool sema_resolve_type_shallow(SemaContext *context, TypeInfo *type_info, bool a
 		case TYPE_INFO_SUBARRAY:
 		case TYPE_INFO_ARRAY:
 		case TYPE_INFO_VECTOR:
-			if (!sema_resolve_array_type(context, type_info, allow_inferred_type, in_shallow)) return false;
+			if (!sema_resolve_array_type(context, type_info, allow_inferred_type, is_pointee))
+			{
+				return type_info_poison(type_info);
+			}
 			break;
 		case TYPE_INFO_POINTER:
-			if (!sema_resolve_ptr_type(context, type_info, allow_inferred_type)) return false;
+			if (!sema_resolve_ptr_type(context, type_info, allow_inferred_type)) return type_info_poison(type_info);
 			break;
 	}
 APPEND_QUALIFIERS:
@@ -400,18 +416,7 @@ APPEND_QUALIFIERS:
 		Type *type = type_info->type;
 		if (!type_is_optional(type)) type_info->type = type_get_optional(type);
 	}
+	type_info->resolve_status = RESOLVE_DONE;
 	return true;
 }
 
-Type *sema_type_lower_by_size(Type *type, ArraySize element_size)
-{
-	switch (type->type_kind)
-	{
-		case TYPE_INFERRED_ARRAY:
-			return type_get_array(type->array.base, element_size);
-		case TYPE_INFERRED_VECTOR:
-			return type_get_vector(type->array.base, element_size);
-		default:
-			return type;
-	}
-}

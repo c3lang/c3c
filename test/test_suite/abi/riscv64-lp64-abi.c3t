@@ -21,10 +21,6 @@ fn Large f_scalar_stack_2(double a, int128 b, float128 c, V32i8 d,
 
 define signext i32 @test_f_scalar_stack_1(i32 signext %0, i128 %1, float %2, fp128 %3, <32 x i8>* align 32 %4, i8 zeroext %5, i8 %6, i8 %7) #0 {
 entry:
-  %e = alloca <32 x i8>, align 32
-  %8 = bitcast <32 x i8>* %e to i8*
-  %9 = bitcast <32 x i8>* %4 to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 32 %8, i8* align 32 %9, i32 32, i1 false)
   %uisiext = zext i8 %6 to i32
   %uisiext1 = zext i8 %7 to i32
   %add = add i32 %uisiext, %uisiext1
@@ -32,25 +28,21 @@ entry:
 }
 define void @test_f_scalar_stack_2(%Large* noalias sret(%Large) align 8 %0, double %1, i128 %2, fp128 %3, <32 x i8>* align 32 %4, i8 zeroext %5, i8 %6, i8 %7) #0 {
 entry:
-  %d = alloca <32 x i8>, align 32
   %literal = alloca %Large, align 8
-  %8 = bitcast <32 x i8>* %d to i8*
-  %9 = bitcast <32 x i8>* %4 to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 32 %8, i8* align 32 %9, i32 32, i1 false)
-  %10 = getelementptr inbounds %Large, %Large* %literal, i32 0, i32 0
+  %8 = getelementptr inbounds %Large, %Large* %literal, i32 0, i32 0
   %fpsi = fptosi double %1 to i64
-  store i64 %fpsi, i64* %10, align 8
-  %11 = getelementptr inbounds %Large, %Large* %literal, i32 0, i32 1
+  store i64 %fpsi, i64* %8, align 8
+  %9 = getelementptr inbounds %Large, %Large* %literal, i32 0, i32 1
   %uisiext = zext i8 %5 to i64
-  store i64 %uisiext, i64* %11, align 8
-  %12 = getelementptr inbounds %Large, %Large* %literal, i32 0, i32 2
+  store i64 %uisiext, i64* %9, align 8
+  %10 = getelementptr inbounds %Large, %Large* %literal, i32 0, i32 2
   %sisiext = sext i8 %6 to i64
-  store i64 %sisiext, i64* %12, align 8
-  %13 = getelementptr inbounds %Large, %Large* %literal, i32 0, i32 3
+  store i64 %sisiext, i64* %10, align 8
+  %11 = getelementptr inbounds %Large, %Large* %literal, i32 0, i32 3
   %uisiext1 = zext i8 %7 to i64
-  store i64 %uisiext1, i64* %13, align 8
-  %14 = bitcast %Large* %0 to i8*
-  %15 = bitcast %Large* %literal to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %14, i8* align 8 %15, i32 32, i1 false)
+  store i64 %uisiext1, i64* %11, align 8
+  %12 = bitcast %Large* %0 to i8*
+  %13 = bitcast %Large* %literal to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %12, i8* align 8 %13, i32 32, i1 false)
   ret void
 }

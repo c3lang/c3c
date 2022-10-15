@@ -471,7 +471,7 @@ static Expr *parse_type_expr(ParseContext *c, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_TYPEINFO);
-	ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_type(c), poisoned_expr);
+	ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_optional_type(c), poisoned_expr);
 	expr->span = type->span;
 	expr->type_expr = type;
 	if (tok_is(c, TOKEN_SCOPE))
@@ -876,6 +876,7 @@ static Expr *parse_ct_sizeof(ParseContext *c, Expr *left)
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 	Expr *typeof_expr = expr_new(EXPR_TYPEINFO, inner->span);
 	TypeInfo *type_info = type_info_new(TYPE_INFO_TYPEOF, inner->span);
+	type_info->failable = try_consume(c, TOKEN_BANG);
 	type_info->unresolved_type_expr = inner;
 	typeof_expr->type_expr = type_info;
 	access->access_expr.parent = typeof_expr;

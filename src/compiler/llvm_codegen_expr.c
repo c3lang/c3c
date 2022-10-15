@@ -21,7 +21,7 @@ static inline LLVMValueRef llvm_emit_expr_to_rvalue(GenContext *c, Expr *expr);
 static inline LLVMValueRef llvm_emit_exprid_to_rvalue(GenContext *c, ExprId expr_id);
 static void llvm_convert_vector_comparison(GenContext *c, BEValue *be_value, LLVMValueRef val, Type *vector_type);
 static bool bitstruct_requires_bitswap(Decl *decl);
-
+static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr, BEValue *target);
 
 static inline LLVMValueRef llvm_emit_expr_to_rvalue(GenContext *c, Expr *expr)
 {
@@ -113,8 +113,15 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 	}
 	else
 	{
-		llvm_emit_expr(c, &value, expr);
-		llvm_store(c, ref, &value);
+		if (expr->expr_kind == EXPR_CALL)
+		{
+			llvm_emit_call_expr(c, &value, expr, ref);
+		}
+		else
+		{
+			llvm_emit_expr(c, &value, expr);
+		}
+		if (value.type != type_void) llvm_store(c, ref, &value);
 	}
 
 	if (failable)
@@ -4334,6 +4341,12 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef **args, ABIArgInfo *info, B
 		{
 			// If we want we could optimize for structs by doing it by reference here.
 			assert(info->indirect.alignment == type_abi_alignment(type) || info->attributes.realign);
+			if (info->attributes.by_val && llvm_value_is_addr(be_value) && info->indirect.alignment <= be_value->alignment)
+			{
+				llvm_value_fold_optional(c, be_value);
+				vec_add(*args, be_value->value);
+				return;
+			}
 			LLVMValueRef indirect = llvm_emit_alloca(c, llvm_get_type(c, type), info->indirect.alignment, "indirectarg");
 			llvm_store_to_ptr_aligned(c, indirect, be_value, info->indirect.alignment);
 			vec_add(*args, indirect);
@@ -4562,9 +4575,8 @@ static inline void llvm_emit_vararg_parameter(GenContext *c, BEValue *value, Typ
 }
 
 
-void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
+static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr, BEValue *target)
 {
-
 	if (expr->call_expr.is_builtin)
 	{
 		llvm_emit_builtin_call(c, result_value, expr);
@@ -4669,6 +4681,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 
 	*result_value = (BEValue){ .kind = BE_VALUE, .value = NULL };
 	// 6. Generate data for the return value.
+	bool sret_return = false;
 	switch (ret_info->kind)
 	{
 		case ABI_ARG_INDIRECT:
@@ -4682,6 +4695,14 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 			// 6b. Return true is indirect, in this case we allocate a local, using the desired alignment on the caller side.
 			assert(ret_info->attributes.realign || ret_info->indirect.alignment == type_abi_alignment(call_return_type));
 			AlignSize alignment = ret_info->indirect.alignment;
+			// If we have a target, then use it.
+			if (target && alignment <= target->alignment)
+			{
+				assert(target->kind == BE_ADDRESS);
+				vec_add(values, target->value);
+				sret_return = true;
+				break;
+			}
 			llvm_value_set_address(result_value,
 			                       llvm_emit_alloca(c, llvm_get_type(c, call_return_type), alignment, "sretparam"),
 			                       call_return_type,
@@ -4817,7 +4838,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 			// 13. Indirect, that is passing the result through an out parameter.
 
 			// 13a. In the case of an already present error_var, we don't need to do a load here.
-			if (error_var) break;
+			if (error_var || sret_return) break;
 
 			// 13b. Otherwise it will be contained in a be_value that is an address
 			//      so we don't need to do anything more.
@@ -4927,6 +4948,11 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 	}
 
 	// 17. Handle failables.
+	if (sret_return)
+	{
+		*result_value = (BEValue) { .type = type_void, .kind = BE_VALUE };
+		return;
+	}
 	if (prototype->is_failable)
 	{
 		BEValue no_err;
@@ -5847,7 +5873,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			gencontext_emit_access_addr(c, value, expr);
 			return;
 		case EXPR_CALL:
-			llvm_emit_call_expr(c, value, expr);
+			llvm_emit_call_expr(c, value, expr, NULL);
 			return;
 		case EXPR_EXPRESSION_LIST:
 			gencontext_emit_expression_list_expr(c, value, expr);

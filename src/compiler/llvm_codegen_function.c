@@ -121,13 +121,9 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIAr
 		case ABI_ARG_IGNORE:
 			return;
 		case ABI_ARG_INDIRECT:
-		{
-			// A simple memcopy, with alignment respected.
-			LLVMValueRef pointer = llvm_get_next_param(c, index);
-			llvm_emit_and_set_decl_alloca(c, decl);
-			llvm_emit_memcpy_to_decl(c, decl, pointer, info->indirect.alignment);
+			// Indirect is caller copied.
+			decl->backend_ref = llvm_get_next_param(c, index);
 			return;
-		}
 		case ABI_ARG_EXPAND_COERCE:
 		{
 			// Create the expand type:

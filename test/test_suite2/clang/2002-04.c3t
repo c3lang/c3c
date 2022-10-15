@@ -141,26 +141,24 @@ entry:
 
 define void @test_test2(ptr byval(%FooSt) align 8 %0) #0 {
 entry:
-  %y = alloca %FooSt, align 4
   %indirectarg = alloca %FooSt, align 8
   %indirectarg1 = alloca %FooSt, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %y, ptr align 8 %0, i32 20, i1 false)
-  %1 = getelementptr inbounds %FooSt, ptr %y, i32 0, i32 0
+  %1 = getelementptr inbounds %FooSt, ptr %0, i32 0, i32 0
   %2 = load i8, ptr %1, align 4
-  %3 = getelementptr inbounds %FooSt, ptr %y, i32 0, i32 1
+  %3 = getelementptr inbounds %FooSt, ptr %0, i32 0, i32 1
   %4 = load i16, ptr %3, align 2
-  %5 = getelementptr inbounds %FooSt, ptr %y, i32 0, i32 2
+  %5 = getelementptr inbounds %FooSt, ptr %0, i32 0, i32 2
   %6 = load i8, ptr %5, align 4
-  %7 = getelementptr inbounds %FooSt, ptr %y, i32 0, i32 3
+  %7 = getelementptr inbounds %FooSt, ptr %0, i32 0, i32 3
   %8 = load i32, ptr %7, align 4
-  %9 = getelementptr inbounds %FooSt, ptr %y, i32 0, i32 4
+  %9 = getelementptr inbounds %FooSt, ptr %0, i32 0, i32 4
   %10 = load i16, ptr %9, align 4
   %sisiext = sext i16 %10 to i32
   %11 = call i32 @testE(i8 %2, i16 %4, i8 %6, i32 %8, i32 %sisiext, float 0x3FB99999A0000000)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %indirectarg, ptr align 4 %y, i32 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %indirectarg, ptr align 4 %0, i32 20, i1 false)
   %12 = call i32 @testF(ptr byval(%FooSt) align 8 %indirectarg, float 0x3FB99999A0000000)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %indirectarg1, ptr align 4 %y, i32 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %indirectarg1, ptr align 4 %0, i32 20, i1 false)
   call void @test_test2(ptr byval(%FooSt) align 8 %indirectarg1)
-  call void @test_test3(ptr %y)
+  call void @test_test3(ptr %0)
   ret void
 }

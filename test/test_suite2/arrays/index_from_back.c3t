@@ -17,8 +17,6 @@ fn void test(int[10] x, int[<10>] y)
 
 define void @test_test(ptr byval([10 x i32]) align 8 %0, ptr byval(<10 x i32>) align 64 %1) #0 {
 entry:
-  %x = alloca [10 x i32], align 4
-  %y = alloca <10 x i32>, align 64
   %a = alloca i32, align 4
   %b = alloca i32, align 4
   %c = alloca i32, align 4
@@ -26,22 +24,20 @@ entry:
   %j = alloca i32, align 4
   %e = alloca i32, align 4
   %f = alloca i32, align 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 8 %0, i32 40, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 64 %y, ptr align 64 %1, i32 64, i1 false)
-  %2 = getelementptr inbounds [10 x i32], ptr %x, i64 0, i64 4
+  %2 = getelementptr inbounds [10 x i32], ptr %0, i64 0, i64 4
   %3 = load i32, ptr %2, align 4
   store i32 %3, ptr %a, align 4
-  %4 = getelementptr inbounds [10 x i32], ptr %x, i64 0, i64 8
+  %4 = getelementptr inbounds [10 x i32], ptr %0, i64 0, i64 8
   %5 = load i32, ptr %4, align 4
   store i32 %5, ptr %b, align 4
-  %6 = load <10 x i32>, ptr %y, align 64
+  %6 = load <10 x i32>, ptr %1, align 64
   %7 = extractelement <10 x i32> %6, i64 4
   store i32 %7, ptr %c, align 4
-  %8 = load <10 x i32>, ptr %y, align 64
+  %8 = load <10 x i32>, ptr %1, align 64
   %9 = extractelement <10 x i32> %8, i64 8
   store i32 %9, ptr %d, align 4
   store i32 3, ptr %j, align 4
-  %10 = load <10 x i32>, ptr %y, align 64
+  %10 = load <10 x i32>, ptr %1, align 64
   %11 = load i32, ptr %j, align 4
   %sisiext = sext i32 %11 to i64
   %12 = sub nuw i64 10, %sisiext
@@ -50,7 +46,7 @@ entry:
   %14 = load i32, ptr %j, align 4
   %sisiext1 = sext i32 %14 to i64
   %15 = sub nuw i64 10, %sisiext1
-  %16 = getelementptr inbounds [10 x i32], ptr %x, i64 0, i64 %15
+  %16 = getelementptr inbounds [10 x i32], ptr %0, i64 0, i64 %15
   %17 = load i32, ptr %16, align 4
   store i32 %17, ptr %f, align 4
   ret void

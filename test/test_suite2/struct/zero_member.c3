@@ -1,7 +1,7 @@
-define Foo = int[0];
+define Foo = int[0]; // #error: An array may not have zero
 
 struct Bar
 {
-    Foo x; // #error: Zero length arrays are not valid members.
+    Foo x;
     int b;
 }

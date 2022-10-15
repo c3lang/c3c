@@ -627,6 +627,7 @@ AlignSize type_abi_alignment(Type *type)
 			return t.iptr.canonical->builtin.abi_alignment;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
+			assert(type->decl->resolve_status == RESOLVE_DONE);
 			return type->decl->alignment;
 		case TYPE_BOOL:
 		case ALL_INTS:

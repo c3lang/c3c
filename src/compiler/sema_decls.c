@@ -441,6 +441,7 @@ static bool sema_analyse_struct_union(SemaContext *context, Decl *decl)
 
 	if (!sema_analyse_attributes(context, decl, decl->attributes, domain)) return decl_poison(decl);
 
+
 	DEBUG_LOG("Beginning analysis of %s.", decl->name ? decl->name : ".anon");
 	bool success;
 	Decl **members = decl->strukt.members;
