@@ -772,7 +772,6 @@ static inline Ast *parse_decl_or_expr_stmt(ParseContext *c)
 	if (expr->expr_kind == EXPR_FAILABLE && expr->inner_expr->expr_kind == EXPR_TYPEINFO)
 	{
 		UNREACHABLE
-		expr_replace(expr, expr->inner_expr);
 	}
 	if (expr->expr_kind == EXPR_TYPEINFO)
 	{

@@ -16,8 +16,6 @@ fn void bar() {
   Abc dummy2 = foo2();
 }
 
-// Cleanup for this result, since it's creating an unnecessary sret.
-
 /* #expect: test_sret.ll
 
 declare void @foo1(ptr noalias sret(%Abc) align 8) #0
@@ -27,12 +25,8 @@ declare void @foo2(ptr noalias sret(%Abc) align 8) #0
 define void @test_sret_bar() #0 {
 entry:
   %dummy1 = alloca %Abc, align 8
-  %sretparam = alloca %Abc, align 8
   %dummy2 = alloca %Abc, align 8
-  %sretparam1 = alloca %Abc, align 8
-  call void @foo1(ptr sret(%Abc) align 8 %sretparam)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %dummy1, ptr align 8 %sretparam, i32 40, i1 false)
-  call void @foo2(ptr sret(%Abc) align 8 %sretparam1)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %dummy2, ptr align 8 %sretparam1, i32 40, i1 false)
+  call void @foo1(ptr sret(%Abc) align 8 %dummy1)
+  call void @foo2(ptr sret(%Abc) align 8 %dummy2)
   ret void
 }

@@ -297,22 +297,18 @@ entry:
 ; Function Attrs: nounwind
 define i32 @test_helo(double %0, %Bobo* byval(%Bobo) align 8 %1) #0 {
 entry:
-  %b = alloca %Bobo, align 4
   %de = alloca [3 x i32], align 4
   %c = alloca %Bobo, align 4
   %indirectarg = alloca %Bobo, align 8
-  %2 = bitcast %Bobo* %b to i8*
-  %3 = bitcast %Bobo* %1 to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %2, i8* align 8 %3, i32 20, i1 false)
-  %4 = bitcast [3 x i32]* %de to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %4, i8* align 4 bitcast ([3 x i32]* @.__const to i8*), i32 12, i1 false)
-  %5 = bitcast %Bobo* %c to i8*
-  %6 = bitcast %Bobo* %b to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %5, i8* align 4 %6, i32 20, i1 false)
-  %7 = bitcast %Bobo* %indirectarg to i8*
-  %8 = bitcast %Bobo* %c to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %7, i8* align 4 %8, i32 20, i1 false)
-  %9 = call i32 @test_helo(double 1.000000e+00, %Bobo* byval(%Bobo) align 8 %indirectarg)
+  %2 = bitcast [3 x i32]* %de to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %2, i8* align 4 bitcast ([3 x i32]* @.__const to i8*), i32 12, i1 false)
+  %3 = bitcast %Bobo* %c to i8*
+  %4 = bitcast %Bobo* %1 to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %3, i8* align 4 %4, i32 20, i1 false)
+  %5 = bitcast %Bobo* %indirectarg to i8*
+  %6 = bitcast %Bobo* %c to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %5, i8* align 4 %6, i32 20, i1 false)
+  %7 = call i32 @test_helo(double 1.000000e+00, %Bobo* byval(%Bobo) align 8 %indirectarg)
   ret i32 1
 }
 

@@ -36,6 +36,6 @@ declare void @take_stringref(ptr, i64) #0
 
 define void @foo_use_vectors() #0 {
   %0 = call <8 x float> @get_m256()
-  call void @take_m256(ptr byval(<8 x float>) align 32 %indirectarg)
-  %2 = call <16 x float> @get_m512()
-  call void @take_m512(ptr byval(<16 x float>) align 64 %indirectarg1)
+  call void @take_m256(ptr byval(<8 x float>) align 32 %v1)
+  %1 = call <16 x float> @get_m512()
+  call void @take_m512(ptr byval(<16 x float>) align 64 %v2)

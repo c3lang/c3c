@@ -71,4 +71,4 @@ define void @test_f62() #0 {
   call void (i32, ...) @test_f62_helper(i32 0, <16 x float> %0, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double %lo, double %hi)
 define void @test_f64() #0 {
   call void (<16 x float>, ...) @test_f64_helper(<16 x float> %0, <16 x float> %1, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double %lo, double %hi)
-  call void (<16 x float>, ...) @test_f64_helper(<16 x float> %6, <16 x float> %7, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, ptr byval(%Complex) align 8 %indirectarg)
+  call void (<16 x float>, ...) @test_f64_helper(<16 x float> %6, <16 x float> %7, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, ptr byval(%Complex) align 8 %literal1)

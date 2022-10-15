@@ -14,12 +14,8 @@ fn SimdDouble4x4 ident(SimdDouble4x4 x) {
 
 define void @foo_ident(%SimdDouble4x4* noalias sret(%SimdDouble4x4) align 32 %0, %SimdDouble4x4* byval(%SimdDouble4x4) align 32 %1) #0 {
 entry:
-  %x = alloca %SimdDouble4x4, align 32
-  %2 = bitcast %SimdDouble4x4* %x to i8*
+  %2 = bitcast %SimdDouble4x4* %0 to i8*
   %3 = bitcast %SimdDouble4x4* %1 to i8*
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 32 %2, i8* align 32 %3, i32 128, i1 false)
-  %4 = bitcast %SimdDouble4x4* %0 to i8*
-  %5 = bitcast %SimdDouble4x4* %x to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 32 %4, i8* align 32 %5, i32 128, i1 false)
   ret void
 }

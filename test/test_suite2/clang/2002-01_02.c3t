@@ -328,9 +328,7 @@ entry:
 
 define void @test_test7(ptr noalias sret(%STest2) align 8 %0, ptr byval(%STest2) align 8 %1) #0 {
 entry:
-  %x = alloca %STest2, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %x, ptr align 8 %1, i32 24, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %0, ptr align 8 %x, i32 24, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %0, ptr align 8 %1, i32 24, i1 false)
   ret void
 }
 
