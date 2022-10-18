@@ -274,7 +274,8 @@ static void linker_setup_windows_gnu(const char ***args_ref, LinkerType linker_t
 
 static void linker_setup_macos(const char ***args_ref, LinkerType linker_type)
 {
-	add_arg("-framework CoreFoundation");
+	add_arg("-framework");
+	add_arg("CoreFoundation");
 	if (linker_type == LINKER_CC)
 	{
 		return;

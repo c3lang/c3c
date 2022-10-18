@@ -3263,7 +3263,7 @@ INLINE bool llvm_emit_fmuladd_maybe(GenContext *c, BEValue *be_value, Expr *expr
 			else
 			{
 				args[2] = llvm_emit_expr_to_rvalue(c, rhs);
-				if (!negate_rhs) args[2] = LLVMBuildNeg(c->builder, args[2], "");
+				if (!negate_rhs) args[2] = LLVMBuildFNeg(c->builder, args[2], "");
 			}
 			negate_result = true;
 			break;
