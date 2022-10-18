@@ -274,7 +274,11 @@ static void linker_setup_windows_gnu(const char ***args_ref, LinkerType linker_t
 
 static void linker_setup_macos(const char ***args_ref, LinkerType linker_type)
 {
-	if (linker_type == LINKER_CC) return;
+	add_arg("-framework CoreFoundation");
+	if (linker_type == LINKER_CC)
+	{
+		return;
+	}
 	add_arg("-arch");
 	add_arg(arch_to_linker_arch(platform_target.arch));
 
