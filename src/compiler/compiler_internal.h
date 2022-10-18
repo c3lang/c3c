@@ -236,6 +236,9 @@ typedef union
 	uint64_t a;
 } SourceSpan;
 
+extern File stdin_file;
+#define stdin_file_id 0xFFFF
+
 static_assert(sizeof(SourceSpan) == 8, "Expected 8 bytes");
 
 typedef struct
@@ -2145,6 +2148,7 @@ Decl *module_find_symbol(Module *module, const char *symbol);
 const char *module_create_object_file_name(Module *module);
 
 bool parse_file(File *file);
+bool parse_stdin(void);
 Path *path_create_from_string(const char *string, uint32_t len, SourceSpan span);
 
 #define SEMA_ERROR_HERE(...) sema_error_at(c->span, __VA_ARGS__)

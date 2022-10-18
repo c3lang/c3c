@@ -283,6 +283,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 void init_default_build_target(BuildTarget *target, BuildOptions *options)
 {
 	*target = (BuildTarget) {
+		.read_stdin = options->read_stdin,
 		.type = TARGET_TYPE_EXECUTABLE,
 		.source_dirs = options->files,
 		.name = options->output_name,
