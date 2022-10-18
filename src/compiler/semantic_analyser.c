@@ -242,6 +242,11 @@ void sema_analysis_run(void)
 		if (loaded) continue;
 		if (!parse_file(file)) has_error = true;
 	}
+	if (active_target.read_stdin)
+	{
+		if (!parse_stdin()) has_error = true;
+	}
+
 	if (has_error) exit_compiler(EXIT_FAILURE);
 	compiler_parsing_time = bench_mark();
 

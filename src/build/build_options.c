@@ -90,6 +90,7 @@ static void usage(void)
 	OUTPUT("  -E                     - Lex only.");
 	OUTPUT("  -P                     - Only parse and output the AST as S-expressions.");
 	OUTPUT("  -C                     - Only lex, parse and check.");
+	OUTPUT("  -                      - Read code from standard in.");
 	OUTPUT("  -o <file>              - Write output to <file>.");
 	OUTPUT("  -O0                    - Optimizations off.");
 	OUTPUT("  -O1                    - Simple optimizations only.");
@@ -360,6 +361,9 @@ static void parse_option(BuildOptions *options)
 	const char *argopt;
 	switch (current_arg[1])
 	{
+		case '\0':
+			options->read_stdin = true;
+			return;
 		case '?':
 			if (match_shortopt("?"))
 			{

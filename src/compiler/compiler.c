@@ -102,6 +102,11 @@ void compiler_parse(void)
 		global_context_clear_errors();
 		parse_file(file);
 	}
+	if (active_target.read_stdin)
+	{
+		global_context_clear_errors();
+		parse_stdin();
+	}
 	exit_compiler(COMPILER_SUCCESS_EXIT);
 }
 
@@ -663,7 +668,7 @@ void compile()
 
 	compiler_init_time = bench_mark();
 
-	if (!vec_size(active_target.sources)) error_exit("No files to compile.");
+	if (!vec_size(active_target.sources) && !active_target.read_stdin) error_exit("No files to compile.");
 	if (active_target.lex_only)
 	{
 		compiler_lex();

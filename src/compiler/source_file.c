@@ -17,6 +17,7 @@ static const size_t LEXER_FILES_START_CAPACITY = 128;
 
 File *source_file_by_id(FileId file)
 {
+	if (file == stdin_file_id) return &stdin_file;
 	assert(file < vec_size(global_context.loaded_sources));
 	return global_context.loaded_sources[file];
 }

@@ -108,6 +108,57 @@ bool parse_file(File *file)
 	return !global_context.errors_found;
 }
 
+File stdin_file;
+
+/**
+ * Parse stdin
+ *
+ * @return true if parsing succeeds.
+ */
+bool parse_stdin(void)
+{
+	stdin_file = (File){
+			.name = "stdin",
+			.file_id = stdin_file_id,
+			.full_path = "<stdin>",
+	};
+#define BUF_SIZE 65536
+	char buffer[BUF_SIZE];
+	size_t capacity = BUF_SIZE;
+	size_t len = 0;
+	char *data = buffer;
+	while (true)
+	{
+		int c = getchar();
+		if (c == -1) break;
+		if (len >= capacity - 1)
+		{
+			capacity *= 2;
+			if (buffer == data)
+			{
+				data = malloc(capacity);
+				memcpy(data, buffer, len);
+			}
+			else
+			{
+				data = realloc(data, capacity);
+			}
+		}
+		data[len++] = c;
+	}
+	buffer[len] = 0;
+	char *stdin_data = MALLOC(len + 1);
+	memcpy(stdin_data, data, len + 1);
+	if (data != buffer) free(data);
+	stdin_file.contents = stdin_data;
+	CompilationUnit *unit = unit_create(&stdin_file);
+	ParseContext parse_context = { .unit = unit };
+	parse_context.lexer = (Lexer) { .file = &stdin_file, .context =  &parse_context };
+	lexer_init(&parse_context.lexer);
+	if (global_context.errors_found) return false;
+	parse_translation_unit(&parse_context);
+	return !global_context.errors_found;
+}
 
 
 
