@@ -90,7 +90,8 @@ static inline bool parse_top_level_block(ParseContext *c, Decl ***decls, TokenTy
 	CONSUME_OR_RET(TOKEN_COLON, false);
 	while (!tok_is(c, end1) && !tok_is(c, end2) && !tok_is(c, end3) && !tok_is(c, TOKEN_EOF))
 	{
-		Decl *decl = parse_top_level_statement(c);
+		Decl *decl = parse_top_level_statement(c, false);
+		if (!decl) continue;
 		assert(decl);
 		if (decl_ok(decl))
 		{
@@ -172,7 +173,7 @@ static inline Decl *parse_ct_case(ParseContext *c)
 	{
 		TokenType type = c->tok;
 		if (type == TOKEN_CT_DEFAULT || type == TOKEN_CT_CASE || type == TOKEN_CT_ENDSWITCH) break;
-		ASSIGN_DECL_OR_RET(Decl * stmt, parse_top_level_statement(c), poisoned_decl);
+		ASSIGN_DECL_OR_RET(Decl * stmt, parse_top_level_statement(c, false), poisoned_decl);
 		vec_add(decl->ct_case_decl.body, stmt);
 	}
 	return decl;
@@ -2280,17 +2281,6 @@ static inline bool parse_import(ParseContext *c)
 }
 
 
-/**
- * imports ::= import*
- */
-void parse_imports(ParseContext *c)
-{
-	while (tok_is(c, TOKEN_IMPORT))
-	{
-		if (!parse_import(c)) recover_top_level(c);
-	}
-}
-
 
 
 static inline bool parse_doc_contract(ParseContext *c, AstId **docs_ref, DocDirectiveKind kind)
@@ -2529,7 +2519,7 @@ static bool parse_docs(ParseContext *c, AstId *docs_ref)
  * @param visibility
  * @return Decl* or a poison value if parsing failed
  */
-Decl *parse_top_level_statement(ParseContext *c)
+Decl *parse_top_level_statement(ParseContext *c, bool allow_import)
 {
 	AstId docs = 0;
 	if (!parse_docs(c, &docs)) return poisoned_decl;
@@ -2604,6 +2594,20 @@ Decl *parse_top_level_statement(ParseContext *c)
 			}
 			break;
 		}
+		case TOKEN_IMPORT:
+			if (!check_no_visibility_before(c, visibility)) return poisoned_decl;
+			if (!allow_import)
+			{
+				SEMA_ERROR_HERE("'import' may not appear inside a compile time statement.");
+				return poisoned_decl;
+			}
+			if (!parse_import(c)) return poisoned_decl;
+			if (docs)
+			{
+				SEMA_ERROR(astptr(docs), "Unexpected doc comment before import, did you mean to use a regular comment?");
+				return poisoned_decl;
+			}
+			return NULL;
 		case TOKEN_CT_SWITCH:
 		{
 			if (!check_no_visibility_before(c, visibility)) return poisoned_decl;
@@ -2663,9 +2667,6 @@ Decl *parse_top_level_statement(ParseContext *c)
 				SEMA_ERROR_HERE("Compile time constant unexpectedly found.");
 			}
 		}
-			return poisoned_decl;
-		case TOKEN_IMPORT:
-			SEMA_ERROR_HERE("Imports are only allowed directly after the module declaration.");
 			return poisoned_decl;
 		case TOKEN_TLOCAL:
 		case TYPELIKE_TOKENS:

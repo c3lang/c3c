@@ -16,7 +16,7 @@
 #define TRY_CONSUME_AFTER(_tok, _message, _type) do { if (!try_consume(c, _tok)) { sema_error_at_after(c->prev_span, _message); return _type; } } while(0)
 #define CHECK_EXPR_OR_RET(_expr) do { if (!expr_ok(_expr)) return _expr; } while(0)
 
-Decl *parse_top_level_statement(ParseContext *c);
+Decl *parse_top_level_statement(ParseContext *c, bool allow_import);
 Ast *parse_ct_assert_stmt(ParseContext *c);
 Ast *parse_stmt(ParseContext *c);
 Path *parse_path_prefix(ParseContext *c, bool *had_error);
@@ -27,7 +27,6 @@ TypeInfo *parse_type(ParseContext *c);
 TypeInfo *parse_optional_type(ParseContext *c);
 TypeInfo *parse_type_with_base(ParseContext *c, TypeInfo *type_info);
 Expr* parse_constant_expr(ParseContext *c);
-void parse_imports(ParseContext *c);
 Decl *parse_decl(ParseContext *c);
 Expr *parse_integer(ParseContext *c, Expr *left);
 Expr *parse_decl_or_expr(ParseContext *c, Decl **decl_ref);
