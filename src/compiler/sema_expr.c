@@ -2947,17 +2947,17 @@ static inline bool sema_create_const_min(SemaContext *context, Expr *expr, Type 
 		switch (flat->type_kind)
 		{
 			case TYPE_F16:
-				expr->const_expr.fxx.f =  5.9604645e-8;
+				expr->const_expr.fxx.f = -65504.0;
 				break;
 			case TYPE_F32:
-				expr->const_expr.fxx.f = FLT_MIN;
+				expr->const_expr.fxx.f = -FLT_MAX;
 				break;
 			case TYPE_F64:
-				expr->const_expr.fxx.f = DBL_MIN;
+				expr->const_expr.fxx.f = -DBL_MAX;
 				break;
 			case TYPE_F128:
 				REMINDER("Float 128 not complete");
-				expr->const_expr.fxx.f = DBL_MIN;
+				expr->const_expr.fxx.f = -DBL_MAX;
 				break;
 			default:
 				UNREACHABLE;

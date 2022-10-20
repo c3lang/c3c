@@ -1821,7 +1821,6 @@ extern const char *kw_std__core;
 extern const char *kw_std__core__types;
 extern const char *kw_typekind;
 
-extern const char *kw_align;
 extern const char *kw_argc;
 extern const char *kw_argv;
 extern const char *kw_at_checked;

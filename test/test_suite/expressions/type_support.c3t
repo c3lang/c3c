@@ -25,6 +25,8 @@ fn void main()
 
 /* #expect: test.ll
 
+
+  store i64 0
   store i64 1
   store i8 0
   store i8 -1
@@ -68,8 +70,8 @@ fn void main()
   store i64 -9223372036854775808
   store i64 9223372036854775807
   store i64 4
-  store float 0x3810000000000000
+  store float 0xC7EFFFFFE0000000
   store float 0x47EFFFFFE0000000
   store i64 8
-  store double 0x10000000000000
+  store double 0xFFEFFFFFFFFFFFFF
   store double 0x7FEFFFFFFFFFFFFF

@@ -133,7 +133,6 @@ void symtab_init(uint32_t capacity)
 	kw_typekind = KW_DEF("TypeKind");
 
 	type = TOKEN_IDENT;
-	kw_align = KW_DEF("align");
 	kw_argc = KW_DEF("_$argc");
 	kw_argv = KW_DEF("_$argv");
 	kw_check_assign = KW_DEF("check_assign");
