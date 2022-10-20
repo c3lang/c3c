@@ -70,125 +70,62 @@ fn int128 __modti3(int128 a, int128 b) @extname("__modti3") @weak
 	return __umodti3(unsigned_a, unsigned_b) ^ sign + (-sign);
 }
 
-private union DoubleBits
+fn float __floattisf(int128 a) @extname("__floattisf") @weak = float_from_i128(float, a);
+fn double __floattidf(int128 a) @extname("__floattidf") @weak = float_from_i128(double, a);
+fn float __floatuntisf(uint128 a) @extname("__floatuntisf") @weak = float_from_u128(float, a);
+fn double __floatuntidf(uint128 a) @extname("__floatuntidf") @weak = float_from_u128(double, a);
+fn uint128 __fixunsdfti(double a) @weak @extname("__fixunsdfti") = fixuint(a);
+fn uint128 __fixunssfti(float a) @weak @extname("__fixunssfti") = fixuint(a);
+fn int128 __fixdfti(double a) @weak @extname("__fixdfti") = fixint(a);
+fn int128 __fixsfti(float a) @weak @extname("__fixsfti") = fixint(a);
+
+
+private macro float_from_i128($Type, a)
 {
-	ulong l;
-	double d;
-}
-
-private union FloatBits
-{
-	uint i;
-	float f;
-}
-
-
-
-fn double __floattidf(int128 a) @extname("__floattidf") @weak
-{
-	if (a == 0) return 0.0;
+	$switch ($Type):
+		$case double:
+			var $Rep = ulong;
+			const MANT_DIG = DOUBLE_MANT_DIG;
+			const SIGNIFICANT_BITS = 52;
+			const EXP_BIAS = 1023;
+			const MANTISSA_MASK = 0xFFFFF_FFFF_FFFFu64;
+			const SIGN_BIT = 1u64 << 63;
+		$case float:
+			var $Rep = uint;
+			const MANT_DIG = FLOAT_MANT_DIG;
+			const EXP_BIAS = 127;
+			const SIGNIFICANT_BITS = 23;
+			const MANTISSA_MASK = 0x7F_FFFFu32;
+			const SIGN_BIT = 1u32 << 31;
+		$case float16:
+			var $Rep = ushort;
+			const MANT_DIG = HALF_MANT_DIG;
+		$case float128:
+			var $Rep = uint128;
+			const MANT_DIG = QUAD_MANT_DIG;
+	$endswitch;
+	if (a == 0) return ($Type)0;
 	// Grab and remove sign.
     int128 sign = a >> 127;
     a = (a ^ sign) - sign;
-    int sd = 128 - (int)$$clz(a);
-    int e = sd - 1;
-    if (sd > DOUBLE_MANT_DIG)
-    {
-        switch (sd)
-        {
-            case DOUBLE_MANT_DIG + 1:
-                a <<= 1;
-            case DOUBLE_MANT_DIG + 2:
-                break;
-		    default:
-                a = ((uint128)a >> (sd - (DOUBLE_MANT_DIG + 2))) |
-                     (int128)((a & ((uint128)(-1) >> ((128 + DOUBLE_MANT_DIG + 2) - sd))) != 0);
-        }
-        a |= (int128)((a & 4) != 0);
-        a++;
-        a >>= 2;
-        if (a & (1i128 << DOUBLE_MANT_DIG))
-        {
-            a >>= 1;
-            e++;
-        }
-    }
-    else
-    {
-        a <<= DOUBLE_MANT_DIG - sd;
-    }
-    DoubleBits bits = {
-        .l = ((ulong)(
-            (((uint)sign & 0x80000000)
-            | ((e + 1023) << 20))
-            | ((uint)(a >> 32) & 0x000FFFFF)) << 32)
-            | (uint)a
-	};
-    return bits.d;
-}
-
-fn double __floattisf(int128 a) @extname("__floattisf") @weak
-{
-	if (a == 0) return 0.0;
-	// Grab and remove sign.
-    int128 sign = a >> 127;
-    a = (a ^ sign) - sign;
-    int sd = 128 - (int)$$clz(a);
-    int e = sd - 1;
-    if (sd > FLOAT_MANT_DIG)
-    {
-        switch (sd)
-        {
-            case FLOAT_MANT_DIG + 1:
-                a <<= 1;
-            case FLOAT_MANT_DIG + 2:
-                break;
-		    default:
-                a = ((uint128)a >> (sd - (FLOAT_MANT_DIG + 2))) |
-                     (int128)((a & ((uint128)(-1) >> ((128 + FLOAT_MANT_DIG + 2) - sd))) != 0);
-        }
-        a |= (int128)((a & 4) != 0);
-        a++;
-        a >>= 2;
-        if (a & (1i128 << FLOAT_MANT_DIG))
-        {
-            a >>= 1;
-            e++;
-        }
-    }
-    else
-    {
-        a <<= FLOAT_MANT_DIG - sd;
-    }
-    FloatBits bits = {
-        .i = (((uint)sign & 0x80000000)
-             | ((e + 127) << 23))
-             | ((uint)a & 0x007FFFFF)
-	};
-    return bits.f;
-}
-
-fn double __floatuntisf(uint128 a) @extname("__floatuntisf") @weak
-{
-	if (a == 0) return 0.0;
 	int sd = 128 - (int)$$clz(a); // digits
 	int e = sd - 1; // exponent
-	if (sd > FLOAT_MANT_DIG)
+	if (sd > MANT_DIG)
 	{
 	    switch (sd)
 	    {
-            case FLOAT_MANT_DIG + 1:
+            case MANT_DIG + 1:
                 a <<= 1;
-            case FLOAT_MANT_DIG + 2:
+            case MANT_DIG + 2:
                 break;
             default:
-                a = (a >> (sd - (FLOAT_MANT_DIG + 2)))
-                    | (uint128)((a & ((uint128)(-1) >> ((128 + FLOAT_MANT_DIG + 2) - sd))) != 0);
+                a = (a >> (sd - (MANT_DIG + 2)))
+                    | (uint128)((a & ((uint128)(-1) >> ((128 + MANT_DIG + 2) - sd))) != 0);
         }
 		a |= (uint128)((a & 4) != 0);
         a++;
         a >>= 2;
-        if (a & (1i128 << FLOAT_MANT_DIG))
+        if (a & (1i128 << MANT_DIG))
         {
             a >>= 1;
             e++;
@@ -196,35 +133,52 @@ fn double __floatuntisf(uint128 a) @extname("__floatuntisf") @weak
     }
     else
     {
-        a <<= (FLOAT_MANT_DIG - sd);
+        a <<= (MANT_DIG - sd);
     }
-    FloatBits bits = {
-        .i = ((e + 127) << 23) | ((uint)a & 0x007FFFFF)
-    };
-    return bits.f;
+    return bitcast(((($Rep)sign & SIGN_BIT) | ((($Rep)e + ($Rep)EXP_BIAS) << SIGNIFICANT_BITS)) | (($Rep)a & ($Rep)MANTISSA_MASK), $Type);
 }
 
-fn double __floatuntidf(uint128 a) @extname("__floatuntidf") @weak
+private macro float_from_u128($Type, a)
 {
-	if (a == 0) return 0.0;
+	$switch ($Type):
+		$case double:
+			var $Rep = ulong;
+			const MANT_DIG = DOUBLE_MANT_DIG;
+			const SIGNIFICANT_BITS = 52;
+			const EXP_BIAS = 1023;
+			const MANTISSA_MASK = 0xFFFFF_FFFF_FFFFu64;
+		$case float:
+			var $Rep = uint;
+			const MANT_DIG = FLOAT_MANT_DIG;
+			const EXP_BIAS = 127;
+			const SIGNIFICANT_BITS = 23;
+			const MANTISSA_MASK = 0x7F_FFFFu32;
+		$case float16:
+			var $Rep = ushort;
+			const MANT_DIG = HALF_MANT_DIG;
+		$case float128:
+			var $Rep = uint128;
+			const MANT_DIG = QUAD_MANT_DIG;
+	$endswitch;
+	if (a == 0) return ($Type)0;
 	int sd = 128 - (int)$$clz(a); // digits
 	int e = sd - 1; // exponent
-	if (sd > DOUBLE_MANT_DIG)
+	if (sd > MANT_DIG)
 	{
 	    switch (sd)
 	    {
-            case DOUBLE_MANT_DIG + 1:
+            case MANT_DIG + 1:
                 a <<= 1;
-            case DOUBLE_MANT_DIG + 2:
+            case MANT_DIG + 2:
                 break;
             default:
-                a = (a >> (sd - (DOUBLE_MANT_DIG + 2)))
-                    | (uint128)((a & ((uint128)(-1) >> ((128 + DOUBLE_MANT_DIG + 2) - sd))) != 0);
+                a = (a >> (sd - (MANT_DIG + 2)))
+                    | (uint128)((a & ((uint128)(-1) >> ((128 + MANT_DIG + 2) - sd))) != 0);
         }
 		a |= (uint128)((a & 4) != 0);
         a++;
         a >>= 2;
-        if (a & (1i128 << DOUBLE_MANT_DIG))
+        if (a & (1i128 << MANT_DIG))
         {
             a >>= 1;
             e++;
@@ -232,18 +186,11 @@ fn double __floatuntidf(uint128 a) @extname("__floatuntidf") @weak
     }
     else
     {
-        a <<= (DOUBLE_MANT_DIG - sd);
+        a <<= (MANT_DIG - sd);
     }
-    DoubleBits bits = {
-        .l = (ulong)(((e + 1023) << 20) | ((uint)(a >> 32) & 0x000FFFFF)) << 32 + (uint)a
-    };
-    return bits.d;
+    return bitcast(((($Rep)e + ($Rep)EXP_BIAS) << SIGNIFICANT_BITS) | (($Rep)a & ($Rep)MANTISSA_MASK), $Type);
 }
 
-fn uint128 __fixunsdfti(double a) @extname("__fixunsdfti") = fixuint(a);
-fn uint128 __fixunssfti(float a) @extname("__fixunssfti") = fixuint(a);
-fn int128 __fixdfti(double a) @extname("__fixdfti") = fixint(a);
-fn int128 __fixsfti(float a) @extname("__fixsfti") = fixint(a);
 
 private macro fixuint(a)
 {
