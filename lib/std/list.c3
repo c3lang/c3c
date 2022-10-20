@@ -15,7 +15,7 @@ struct List
 /**
  * @require allocator != null "A valid allocator must be provided"
  **/
-fn void List.init(List* list, usz initial_capacity = 16, Allocator* allocator = mem::temp_allocator())
+fn void List.init(List* list, usz initial_capacity = 16, Allocator* allocator = mem::current_allocator())
 {
 	list.allocator = allocator;
 	list.size = 0;
@@ -31,6 +31,10 @@ fn void List.init(List* list, usz initial_capacity = 16, Allocator* allocator = 
 	list.capacity = initial_capacity;
 }
 
+fn void List.tinit(List* list, usz initial_capacity = 16)
+{
+	list.init(initial_capacity, mem::temp_allocator()) @inline;
+}
 
 fn void List.push(List *list, Type element) @inline
 {
