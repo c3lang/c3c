@@ -332,7 +332,7 @@ LLVMValueRef llvm_coerce_int_ptr(GenContext *c, LLVMValueRef value, LLVMTypeRef 
 
 LLVMValueRef llvm_emit_coerce(GenContext *c, LLVMTypeRef coerced, BEValue *value, Type *original_type)
 {
-	assert(original_type->canonical == value->type->canonical);
+	assert(type_flatten_distinct(original_type) == type_flatten_distinct(value->type));
 	LLVMTypeRef llvm_source_type = llvm_get_type(c, value->type);
 
 	// 1. If the types match then we're done, just load.

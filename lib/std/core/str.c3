@@ -29,7 +29,17 @@ fn String join(char[][] s, char[] joiner)
 	return res;
 }
 
-fn usz! str_index_of(char[] s, char[] needle)
+fn bool starts_with(char[] s, char[] needle)
+{
+	if (needle.len > s.len) return false;
+	foreach (i, c : needle)
+	{
+		if (c != s[i]) return false;
+	}
+	return true;
+}
+
+fn usz! index_of(char[] s, char[] needle)
 {
 	usz match = 0;
 	usz needed = needle.len;
@@ -55,10 +65,10 @@ fn usz! str_index_of(char[] s, char[] needle)
 	return SearchResult.MISSING!;
 }
 
-fn ZString copy_zstring(char[] s)
+fn ZString copy_zstring(char[] s, Allocator* allocator = mem::current_allocator())
 {
     usz len = s.len;
-    char* str = malloc(len + 1);
+    char* str = allocator.alloc(len + 1)!!;
     mem::copy(str, s.ptr, len);
     str[len] = 0;
     return (ZString)str;
@@ -66,11 +76,7 @@ fn ZString copy_zstring(char[] s)
 
 fn ZString tcopy_zstring(char[] s)
 {
-    usz len = s.len;
-    char* str = tmalloc(len + 1);
-    mem::copy(str, s.ptr, len);
-    str[len] = 0;
-    return (ZString)str;
+	return copy_zstring(s, mem::temp_allocator());
 }
 
 fn bool compare(char[] a, char[] b)
@@ -89,8 +95,6 @@ fault UnicodeResult
 	CONVERSION_FAILED,
 }
 
-
-
 fn usz utf8_codepoints(char[] utf8)
 {
 	usz len = 0;
@@ -107,7 +111,7 @@ fn Char32[]! utf8to32(char[] utf8, Allocator* allocator = mem::current_allocator
 	Char32* data = allocator.alloc(Char32.sizeof * (codepoints + 1))?;
 	conv::utf8to32_unsafe(utf8, data)?;
 	data[codepoints] = 0;
-	return data[0..codepoints - 1];
+	return data[:codepoints];
 }
 
 fn char[] utf32to8(Char32[] utf32, Allocator* allocator = mem::current_allocator)
@@ -116,7 +120,7 @@ fn char[] utf32to8(Char32[] utf32, Allocator* allocator = mem::current_allocator
 	char* data = allocator.alloc(len + 1)!!;
 	conv::utf32to8_unsafe(utf32, data);
 	data[len] = 0;
-	return data[0..len - 1];
+	return data[:len];
 }
 
 fn Char16[]! utf8to16(char[] utf8, Allocator* allocator = mem::current_allocator)
@@ -125,7 +129,7 @@ fn Char16[]! utf8to16(char[] utf8, Allocator* allocator = mem::current_allocator
 	Char16* data = allocator.alloc((len16 + 1) * Char16.sizeof)?;
 	conv::utf8to16_unsafe(utf8, data)?;
 	data[len16] = 0;
-	return data[0..len16 - 1];
+	return data[:len16];
 }
 
 
@@ -134,21 +138,21 @@ fn char[]! utf16to8(Char16[] utf16, Allocator* allocator = mem::current_allocato
 	usz len = conv::utf8len_for_utf16(utf16);
 	char* data = allocator.alloc(len + 1)?;
 	conv::utf16to8_unsafe(utf16, data)?;
-	return data[0 .. len - 1];
+	return data[:len];
 }
 
-fn char[] copy(char[] s)
+fn char[] copy(char[] s, Allocator* allocator = mem::current_allocator())
 {
     usz len = s.len;
-    ZString str_copy = copy_zstring(s) @inline;
-    return str_copy[..len];
+    ZString str_copy = copy_zstring(s, allocator) @inline;
+    return str_copy[:len];
 }
 
 fn char[] tcopy(char[] s)
 {
     usz len = s.len;
     ZString str_copy = tcopy_zstring(s) @inline;
-    return str_copy[..len];
+    return str_copy[:len];
 }
 
 fn char[] tconcat(char[] s1, char[] s2)

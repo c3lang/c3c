@@ -206,16 +206,6 @@ macro void @scoped(Allocator* allocator; @body())
 	@body();
 }
 
-macro void @tscoped(;@body())
-{
-	Allocator* old_allocator = thread_allocator;
-	TempAllocator* temp = temp_allocator();
-	usz mark = temp.mark()!!;
-	thread_allocator = temp;
-	defer temp.reset(mark);
-	defer thread_allocator = old_allocator;
-	@body();
-}
 
 macro talloc($Type) @builtin
 {

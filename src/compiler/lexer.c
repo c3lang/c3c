@@ -931,9 +931,10 @@ static inline bool scan_string(Lexer *lexer)
 			current++;
 			break;
 		}
-		if (c == '\\' && *current == '"')
+		if (c == '\\')
 		{
-			current++;
+			c = *current;
+			if (c != '\n' && c != '\0') current++;
 			continue;
 		}
 	}

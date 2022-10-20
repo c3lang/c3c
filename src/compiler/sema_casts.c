@@ -86,11 +86,13 @@ bool pointer_to_bool(Expr *expr, Type *type)
 {
 	if (insert_runtime_cast_unless_const(expr, CAST_PTRBOOL, type)) return true;
 
-	// Must have been a null
-	expr->const_expr.b = false;
-	expr->type = type;
-	expr->const_expr.narrowable = false;
-	expr->const_expr.is_hex = false;
+	if (expr->const_expr.const_kind == CONST_POINTER)
+	{
+		expr_rewrite_const_bool(expr, type, expr->const_expr.ptr != 0);
+		return true;
+	}
+	assert(expr->const_expr.const_kind == CONST_STRING);
+	expr_rewrite_const_bool(expr, type, true);
 	return true;
 }
 

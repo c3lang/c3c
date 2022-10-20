@@ -1796,9 +1796,9 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 
 static inline bool sema_analyse_then_overwrite(SemaContext *context, Ast *statement, AstId replacement)
 {
+	statement->ast_kind = AST_NOP_STMT;
 	if (!replacement)
 	{
-		statement->ast_kind = AST_NOP_STMT;
 		return true;
 	}
 	AstId current = replacement;
@@ -1814,9 +1814,9 @@ static inline bool sema_analyse_then_overwrite(SemaContext *context, Ast *statem
 			break;
 		}
 	}
-	// Overwrite but store link.
+	// NOP and insert after.
 	last->next = statement->next;
-	*statement = *astptr(replacement);
+	statement->next = replacement;
 	return true;
 }
 

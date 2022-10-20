@@ -88,7 +88,6 @@ private fn void*! temp_allocator_function(Allocator* data, usz size, usz alignme
 
 private fn void! TempAllocator._free(TempAllocator* this, void* old_pointer)
 {
-
 	// TODO fix free
 	assert((uptr)old_pointer >= (uptr)&this.data, "Pointer originates from a different allocator.");
 	usz old_size = *(usz*)(old_pointer - DEFAULT_SIZE_PREFIX);
