@@ -147,7 +147,7 @@ static bool x86_should_return_type_in_reg(Type *type)
 	Decl** members = type->decl->strukt.members;
 	VECEACH (members, i)
 	{
-		Type *member_type = members[i]->type;
+		Type *member_type = members[i]->type->canonical;
 		if (!x86_should_return_type_in_reg(member_type)) return false;
 	}
 	return true;
@@ -687,7 +687,7 @@ void c_abi_func_create_x86(FunctionPrototype *prototype)
 		FATAL_ERROR("X86 vector call not supported");
 	}
 	prototype->abi_args = x86_create_params(prototype->call_abi, prototype->param_types, &regs);
-	prototype->abi_varargs = x86_create_params(prototype->call_abi, prototype->param_types, &regs);
+	prototype->abi_varargs = x86_create_params(prototype->call_abi, prototype->varargs, &regs);
 }
 
 

@@ -484,12 +484,12 @@ fn usz! Formatter.vprintf(Formatter* this, char[] format, variant[] variants)
 		if (this.flags.precision) this.flags.zeropad = false;
 
 		bool is_neg;
-		NtoaType v = int_from_variant(current, &is_neg);
+		uint128 v = int_from_variant(current, &is_neg);
 
 		this.ntoa(v, is_neg, base)?;
 	}
 	// termination
-//	out((char)0, buffer, idx < maxlen ? idx : maxlen - 1U, maxlen);
+	//	out((char)0, buffer, idx < maxlen ? idx : maxlen - 1U, maxlen);
 
 	// return written chars without terminating \0
 	return this.idx;

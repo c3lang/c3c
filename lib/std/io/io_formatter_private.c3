@@ -13,40 +13,32 @@ private fn void! Formatter.right_adjust(Formatter* this, usz len)
 }
 
 
-private fn NtoaType int_from_variant(variant arg, bool *is_neg)
+private fn uint128 int_from_variant(variant arg, bool *is_neg)
 {
 	*is_neg = false;
-	$if (NtoaType.typeid == uint128.typeid):
-		switch (arg)
-		{
-			case int128:
-				int128 val = *arg;
-				return (*is_neg = val < 0) ? (~(NtoaType)val) + 1 : val;
-			case uint128:
-				return *arg;
-		}
-	$endif;
-
 	if (arg.type.kindof == TypeKind.POINTER)
 	{
-		return (NtoaType)(uptr)*(void**)arg.ptr;
+		return (uint128)(uptr)*(void**)arg.ptr;
 	}
 	switch (arg)
 	{
 		case bool:
-			return (NtoaType)*arg;
+			return (uint128)*arg;
 		case ichar:
 			int val = *arg;
-			return (*is_neg = val < 0) ? (~(NtoaType)val) + 1 : (NtoaType)val;
+			return (*is_neg = val < 0) ? (~(uint128)val) + 1 : (uint128)val;
 		case short:
 			int val = *arg;
-			return (*is_neg = val < 0) ? (~(NtoaType)val) + 1 : (NtoaType)val;
+			return (*is_neg = val < 0) ? (~(uint128)val) + 1 : (uint128)val;
 		case int:
 			int val = *arg;
-			return (*is_neg = val < 0) ? (~(NtoaType)val) + 1 : (NtoaType)val;
+			return (*is_neg = val < 0) ? (~(uint128)val) + 1 : (uint128)val;
 		case long:
 			long val = *arg;
-			return (*is_neg = val < 0) ? (~(NtoaType)val) + 1 : (NtoaType)val;
+			return (*is_neg = val < 0) ? (~(uint128)val) + 1 : (uint128)val;
+		case int128:
+            int128 val = *arg;
+            return (*is_neg = val < 0) ? (~(uint128)val) + 1 : (uint128)val;
 		case char:
 			return *arg;
 		case ushort:
@@ -55,12 +47,14 @@ private fn NtoaType int_from_variant(variant arg, bool *is_neg)
 			return *arg;
 		case ulong:
 			return *arg;
+		case uint128:
+			return *arg;
 		case float:
 			float f = *arg;
-			return (NtoaType)((*is_neg = f < 0) ? -f : f);
+			return (uint128)((*is_neg = f < 0) ? -f : f);
 		case double:
 			double d = *arg;
-			return (NtoaType)((*is_neg = d < 0) ? -d : d);
+			return (uint128)((*is_neg = d < 0) ? -d : d);
 		default:
 			return 0;
 	}
@@ -68,15 +62,6 @@ private fn NtoaType int_from_variant(variant arg, bool *is_neg)
 
 private fn FloatType float_from_variant(variant arg)
 {
-	$if (env::I128_SUPPORT):
-		switch (arg)
-		{
-			case int128:
-				return *arg;
-			case uint128:
-				return *arg;
-		}
-	$endif;
 	$if (env::F128_SUPPORT):
 		if (arg.type == float128.typeid) return *((float128*)arg.ptr);
 	$endif;
@@ -100,6 +85,8 @@ private fn FloatType float_from_variant(variant arg)
 			return *arg;
 		case long:
 			return *arg;
+		case int128:
+    	    return *arg;
 		case char:
 			return *arg;
 		case ushort:
@@ -108,6 +95,8 @@ private fn FloatType float_from_variant(variant arg)
 			return *arg;
 		case ulong:
 			return *arg;
+		case uint128:
+            return *arg;
 		case float:
 			return (FloatType)*arg;
 		case double:
@@ -172,7 +161,7 @@ union ConvUnion
 private fn void! Formatter.etoa(Formatter* this, FloatType value)
 {
 	// check for NaN and special values
-	if (value != value || value < FloatType.min || value > FloatType.max)
+	if (value != value || value < -FloatType.max || value > FloatType.max)
 	{
 		return this.ftoa(value);
 	}
@@ -258,7 +247,7 @@ private fn void! Formatter.etoa(Formatter* this, FloatType value)
 		this.flags = { .zeropad = true, .plus = true };
 		this.width = minwidth - 1;
 		this.prec = 0;
-		this.ntoa((NtoaType)(expval < 0 ? -expval : expval), expval < 0, 10)?;
+		this.ntoa((uint128)(expval < 0 ? -expval : expval), expval < 0, 10)?;
 		this.flags = old;
 		// might need to right-pad spaces
 		this.left_adjust(this.idx - start_idx)?;
@@ -402,7 +391,7 @@ private fn void! Formatter.ftoa(Formatter* this, FloatType value)
 	return this.out_reverse(buf[:len]);
 }
 
-private fn void! Formatter.ntoa(Formatter* this, NtoaType value, bool negative, uint base)
+private fn void! Formatter.ntoa(Formatter* this, uint128 value, bool negative, uint base)
 {
 	char[PRINTF_NTOA_BUFFER_SIZE] buf = void;
 	usz len = 0;
@@ -486,16 +475,11 @@ private fn void! Formatter.ntoa_format(Formatter* this, char[] buf, usz len, boo
 	return this.out_reverse(buf[:len]);
 }
 
-$if (env::I128_SUPPORT):
-define NtoaType = uint128;
-$else:
-define NtoaType = ulong;
-$endif;
 
 private fn void! Formatter.ntoa_variant(Formatter* this, variant arg, uint base)
 {
 	bool is_neg;
-	NtoaType val = int_from_variant(arg, &is_neg);
+	uint128 val = int_from_variant(arg, &is_neg);
 	return this.ntoa(val, is_neg, base) @inline;
 }
 

@@ -44,14 +44,10 @@ macro variant_to_int(variant v, $Type)
 			if (l > max || l < min) return ConversionResult.VALUE_OUT_OF_RANGE!;
 			return ($Type)l;
 		case int128:
-			$if (env::I128_SUPPORT):
-				int128 i = *(int128*)v.ptr;
-				if (is_mixed_signed && i < 0) return ConversionResult.VALUE_OUT_OF_UNSIGNED_RANGE!;
-				if (i > max || i < min) return ConversionResult.VALUE_OUT_OF_RANGE!;
-				return ($Type)i;
-			$else:
-				unreachable();
-			$endif;
+			int128 i = *(int128*)v.ptr;
+			if (is_mixed_signed && i < 0) return ConversionResult.VALUE_OUT_OF_UNSIGNED_RANGE!;
+			if (i > max || i < min) return ConversionResult.VALUE_OUT_OF_RANGE!;
+			return ($Type)i;
 		case char:
 			char c = *(char*)v.ptr;
 			if (c > max) return ConversionResult.VALUE_OUT_OF_RANGE!;
@@ -69,13 +65,9 @@ macro variant_to_int(variant v, $Type)
 			if (l > max || l < min) return ConversionResult.VALUE_OUT_OF_RANGE!;
 			return ($Type)l;
 		case uint128:
-			$if (env::I128_SUPPORT):
-				uint128 i = *(uint128*)v.ptr;
-				if (i > max || i < min) return ConversionResult.VALUE_OUT_OF_RANGE!;
-				return ($Type)i;
-			$else:
-				unreachable();
-			$endif;
+			uint128 i = *(uint128*)v.ptr;
+			if (i > max || i < min) return ConversionResult.VALUE_OUT_OF_RANGE!;
+			return ($Type)i;
 		default:
 			unreachable();
 	}
