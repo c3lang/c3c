@@ -1,0 +1,413 @@
+// #target: macos-x64
+module test;
+import std::io;
+
+fault Foo { ABC, DEF }
+
+fn void main()
+{
+	io::printfln("1:%d", get_a(1) ?? get_b(4) ?? -1);
+	io::printfln("2:%d", get_a(2) ?? get_b(4) ?? -1);
+	io::printfln("3:%d", get_a(1) ?? get_b(5) ?? -1);
+	io::printfln("4:%s", catch(Foo.ABC! ?? Foo.DEF!));
+	io::printfln("5:%s", Foo.ABC! ?? 3);
+	io::printfln("6:%s", catch((3 > 2 ? Foo.ABC! : 4) ?? Foo.DEF!));
+	io::printfln("7:%s", catch((3 < 2 ? Foo.ABC! : 4) ?? Foo.DEF!));
+	long x = Foo.DEF! ?? 3;
+	io::printfln("8:%s", x);
+	int! xy = Foo.ABC! ?? Foo.DEF!;
+}
+
+fn int! get_a(int x)
+{
+	if (x % 2) return Foo.ABC!;
+	return x * 2;
+}
+
+fn int! get_b(int x)
+{
+	if (x % 2 == 0) return Foo.ABC!;
+	return x * 2;
+}
+
+/* #expect: test.ll
+
+define void @test_main() #0 {
+entry:
+  %retparam = alloca i64, align 8
+  %taddr = alloca %"char[]", align 8
+  %vararg = alloca %"variant[]", align 8
+  %varargslots = alloca [1 x %variant], align 16
+  %retparam1 = alloca i32, align 4
+  %retparam2 = alloca i32, align 4
+  %taddr8 = alloca i32, align 4
+  %retparam13 = alloca i64, align 8
+  %taddr14 = alloca %"char[]", align 8
+  %vararg17 = alloca %"variant[]", align 8
+  %varargslots18 = alloca [1 x %variant], align 16
+  %retparam19 = alloca i32, align 4
+  %retparam23 = alloca i32, align 4
+  %taddr31 = alloca i32, align 4
+  %retparam37 = alloca i64, align 8
+  %taddr38 = alloca %"char[]", align 8
+  %vararg41 = alloca %"variant[]", align 8
+  %varargslots42 = alloca [1 x %variant], align 16
+  %retparam43 = alloca i32, align 4
+  %retparam47 = alloca i32, align 4
+  %taddr55 = alloca i32, align 4
+  %retparam61 = alloca i64, align 8
+  %taddr62 = alloca %"char[]", align 8
+  %vararg65 = alloca %"variant[]", align 8
+  %varargslots66 = alloca [1 x %variant], align 16
+  %taddr67 = alloca i64, align 8
+  %retparam73 = alloca i64, align 8
+  %taddr74 = alloca %"char[]", align 8
+  %vararg77 = alloca %"variant[]", align 8
+  %varargslots78 = alloca [1 x %variant], align 16
+  %taddr79 = alloca i32, align 4
+  %retparam85 = alloca i64, align 8
+  %taddr86 = alloca %"char[]", align 8
+  %vararg89 = alloca %"variant[]", align 8
+  %varargslots90 = alloca [1 x %variant], align 16
+  %taddr91 = alloca i64, align 8
+  %retparam97 = alloca i64, align 8
+  %taddr98 = alloca %"char[]", align 8
+  %vararg101 = alloca %"variant[]", align 8
+  %varargslots102 = alloca [1 x %variant], align 16
+  %error_var = alloca i64, align 8
+  %x = alloca i64, align 8
+  %retparam110 = alloca i64, align 8
+  %taddr111 = alloca %"char[]", align 8
+  %vararg114 = alloca %"variant[]", align 8
+  %varargslots115 = alloca [1 x %variant], align 16
+  %xy = alloca i32, align 4
+  %xy.f = alloca i64, align 8
+  store %"char[]" { ptr @.str, i64 4 }, ptr %taddr, align 8
+  %0 = getelementptr inbounds { ptr, i64 }, ptr %taddr, i32 0, i32 0
+  %lo = load ptr, ptr %0, align 8
+  %1 = getelementptr inbounds { ptr, i64 }, ptr %taddr, i32 0, i32 1
+  %hi = load i64, ptr %1, align 8
+  %2 = call i64 @test_get_a(ptr %retparam1, i32 1)
+  %not_err = icmp eq i64 %2, 0
+  br i1 %not_err, label %after_check, label %else_block
+
+after_check:                                      ; preds = %entry
+  %3 = load i32, ptr %retparam1, align 4
+  br label %phi_block
+
+else_block:                                       ; preds = %entry
+  %4 = call i64 @test_get_b(ptr %retparam2, i32 4)
+  %not_err3 = icmp eq i64 %4, 0
+  br i1 %not_err3, label %after_check4, label %else_block5
+
+after_check4:                                     ; preds = %else_block
+  %5 = load i32, ptr %retparam2, align 4
+  br label %phi_block
+
+phi_block:                                        ; preds = %after_check4, %after_check
+  %val = phi i32 [ %3, %after_check ], [ %5, %after_check4 ]
+  br label %phi_block6
+
+else_block5:                                      ; preds = %else_block
+  br label %phi_block6
+
+phi_block6:                                       ; preds = %else_block5, %phi_block
+  %val7 = phi i32 [ %val, %phi_block ], [ -1, %else_block5 ]
+  store i32 %val7, ptr %taddr8, align 4
+  %6 = insertvalue %variant undef, ptr %taddr8, 0
+  %7 = insertvalue %variant %6, i64 ptrtoint (ptr @"ct$int" to i64), 1
+  %8 = getelementptr inbounds [1 x %variant], ptr %varargslots, i64 0, i64 0
+  store %variant %7, ptr %8, align 16
+  %9 = getelementptr inbounds %"variant[]", ptr %vararg, i32 0, i32 1
+  store i64 1, ptr %9, align 8
+  %10 = getelementptr inbounds %"variant[]", ptr %vararg, i32 0, i32 0
+  store ptr %varargslots, ptr %10, align 8
+  %11 = getelementptr inbounds { ptr, i64 }, ptr %vararg, i32 0, i32 0
+  %lo9 = load ptr, ptr %11, align 8
+  %12 = getelementptr inbounds { ptr, i64 }, ptr %vararg, i32 0, i32 1
+  %hi10 = load i64, ptr %12, align 8
+  %13 = call i64 @std_io_printfln(ptr %retparam, ptr %lo, i64 %hi, ptr %lo9, i64 %hi10)
+  %not_err11 = icmp eq i64 %13, 0
+  br i1 %not_err11, label %after_check12, label %voiderr
+
+after_check12:                                    ; preds = %phi_block6
+  br label %voiderr
+
+voiderr:                                          ; preds = %after_check12, %phi_block6
+  store %"char[]" { ptr @.str.2, i64 4 }, ptr %taddr14, align 8
+  %14 = getelementptr inbounds { ptr, i64 }, ptr %taddr14, i32 0, i32 0
+  %lo15 = load ptr, ptr %14, align 8
+  %15 = getelementptr inbounds { ptr, i64 }, ptr %taddr14, i32 0, i32 1
+  %hi16 = load i64, ptr %15, align 8
+  %16 = call i64 @test_get_a(ptr %retparam19, i32 2)
+  %not_err20 = icmp eq i64 %16, 0
+  br i1 %not_err20, label %after_check21, label %else_block22
+
+after_check21:                                    ; preds = %voiderr
+  %17 = load i32, ptr %retparam19, align 4
+  br label %phi_block26
+
+else_block22:                                     ; preds = %voiderr
+  %18 = call i64 @test_get_b(ptr %retparam23, i32 4)
+  %not_err24 = icmp eq i64 %18, 0
+  br i1 %not_err24, label %after_check25, label %else_block28
+
+after_check25:                                    ; preds = %else_block22
+  %19 = load i32, ptr %retparam23, align 4
+  br label %phi_block26
+
+phi_block26:                                      ; preds = %after_check25, %after_check21
+  %val27 = phi i32 [ %17, %after_check21 ], [ %19, %after_check25 ]
+  br label %phi_block29
+
+else_block28:                                     ; preds = %else_block22
+  br label %phi_block29
+
+phi_block29:                                      ; preds = %else_block28, %phi_block26
+  %val30 = phi i32 [ %val27, %phi_block26 ], [ -1, %else_block28 ]
+  store i32 %val30, ptr %taddr31, align 4
+  %20 = insertvalue %variant undef, ptr %taddr31, 0
+  %21 = insertvalue %variant %20, i64 ptrtoint (ptr @"ct$int" to i64), 1
+  %22 = getelementptr inbounds [1 x %variant], ptr %varargslots18, i64 0, i64 0
+  store %variant %21, ptr %22, align 16
+  %23 = getelementptr inbounds %"variant[]", ptr %vararg17, i32 0, i32 1
+  store i64 1, ptr %23, align 8
+  %24 = getelementptr inbounds %"variant[]", ptr %vararg17, i32 0, i32 0
+  store ptr %varargslots18, ptr %24, align 8
+  %25 = getelementptr inbounds { ptr, i64 }, ptr %vararg17, i32 0, i32 0
+  %lo32 = load ptr, ptr %25, align 8
+  %26 = getelementptr inbounds { ptr, i64 }, ptr %vararg17, i32 0, i32 1
+  %hi33 = load i64, ptr %26, align 8
+  %27 = call i64 @std_io_printfln(ptr %retparam13, ptr %lo15, i64 %hi16, ptr %lo32, i64 %hi33)
+  %not_err34 = icmp eq i64 %27, 0
+  br i1 %not_err34, label %after_check35, label %voiderr36
+
+after_check35:                                    ; preds = %phi_block29
+  br label %voiderr36
+
+voiderr36:                                        ; preds = %after_check35, %phi_block29
+  store %"char[]" { ptr @.str.3, i64 4 }, ptr %taddr38, align 8
+  %28 = getelementptr inbounds { ptr, i64 }, ptr %taddr38, i32 0, i32 0
+  %lo39 = load ptr, ptr %28, align 8
+  %29 = getelementptr inbounds { ptr, i64 }, ptr %taddr38, i32 0, i32 1
+  %hi40 = load i64, ptr %29, align 8
+  %30 = call i64 @test_get_a(ptr %retparam43, i32 1)
+  %not_err44 = icmp eq i64 %30, 0
+  br i1 %not_err44, label %after_check45, label %else_block46
+
+after_check45:                                    ; preds = %voiderr36
+  %31 = load i32, ptr %retparam43, align 4
+  br label %phi_block50
+
+else_block46:                                     ; preds = %voiderr36
+  %32 = call i64 @test_get_b(ptr %retparam47, i32 5)
+  %not_err48 = icmp eq i64 %32, 0
+  br i1 %not_err48, label %after_check49, label %else_block52
+
+after_check49:                                    ; preds = %else_block46
+  %33 = load i32, ptr %retparam47, align 4
+  br label %phi_block50
+
+phi_block50:                                      ; preds = %after_check49, %after_check45
+  %val51 = phi i32 [ %31, %after_check45 ], [ %33, %after_check49 ]
+  br label %phi_block53
+
+else_block52:                                     ; preds = %else_block46
+  br label %phi_block53
+
+phi_block53:                                      ; preds = %else_block52, %phi_block50
+  %val54 = phi i32 [ %val51, %phi_block50 ], [ -1, %else_block52 ]
+  store i32 %val54, ptr %taddr55, align 4
+  %34 = insertvalue %variant undef, ptr %taddr55, 0
+  %35 = insertvalue %variant %34, i64 ptrtoint (ptr @"ct$int" to i64), 1
+  %36 = getelementptr inbounds [1 x %variant], ptr %varargslots42, i64 0, i64 0
+  store %variant %35, ptr %36, align 16
+  %37 = getelementptr inbounds %"variant[]", ptr %vararg41, i32 0, i32 1
+  store i64 1, ptr %37, align 8
+  %38 = getelementptr inbounds %"variant[]", ptr %vararg41, i32 0, i32 0
+  store ptr %varargslots42, ptr %38, align 8
+  %39 = getelementptr inbounds { ptr, i64 }, ptr %vararg41, i32 0, i32 0
+  %lo56 = load ptr, ptr %39, align 8
+  %40 = getelementptr inbounds { ptr, i64 }, ptr %vararg41, i32 0, i32 1
+  %hi57 = load i64, ptr %40, align 8
+  %41 = call i64 @std_io_printfln(ptr %retparam37, ptr %lo39, i64 %hi40, ptr %lo56, i64 %hi57)
+  %not_err58 = icmp eq i64 %41, 0
+  br i1 %not_err58, label %after_check59, label %voiderr60
+
+after_check59:                                    ; preds = %phi_block53
+  br label %voiderr60
+
+voiderr60:                                        ; preds = %after_check59, %phi_block53
+  store %"char[]" { ptr @.str.4, i64 4 }, ptr %taddr62, align 8
+  %42 = getelementptr inbounds { ptr, i64 }, ptr %taddr62, i32 0, i32 0
+  %lo63 = load ptr, ptr %42, align 8
+  %43 = getelementptr inbounds { ptr, i64 }, ptr %taddr62, i32 0, i32 1
+  %hi64 = load i64, ptr %43, align 8
+  store i64 ptrtoint (ptr @"test_Foo$DEF" to i64), ptr %taddr67, align 8
+  %44 = insertvalue %variant undef, ptr %taddr67, 0
+  %45 = insertvalue %variant %44, i64 ptrtoint (ptr @"ct$anyerr" to i64), 1
+  %46 = getelementptr inbounds [1 x %variant], ptr %varargslots66, i64 0, i64 0
+  store %variant %45, ptr %46, align 16
+  %47 = getelementptr inbounds %"variant[]", ptr %vararg65, i32 0, i32 1
+  store i64 1, ptr %47, align 8
+  %48 = getelementptr inbounds %"variant[]", ptr %vararg65, i32 0, i32 0
+  store ptr %varargslots66, ptr %48, align 8
+  %49 = getelementptr inbounds { ptr, i64 }, ptr %vararg65, i32 0, i32 0
+  %lo68 = load ptr, ptr %49, align 8
+  %50 = getelementptr inbounds { ptr, i64 }, ptr %vararg65, i32 0, i32 1
+  %hi69 = load i64, ptr %50, align 8
+  %51 = call i64 @std_io_printfln(ptr %retparam61, ptr %lo63, i64 %hi64, ptr %lo68, i64 %hi69)
+  %not_err70 = icmp eq i64 %51, 0
+  br i1 %not_err70, label %after_check71, label %voiderr72
+
+after_check71:                                    ; preds = %voiderr60
+  br label %voiderr72
+
+voiderr72:                                        ; preds = %after_check71, %voiderr60
+  store %"char[]" { ptr @.str.5, i64 4 }, ptr %taddr74, align 8
+  %52 = getelementptr inbounds { ptr, i64 }, ptr %taddr74, i32 0, i32 0
+  %lo75 = load ptr, ptr %52, align 8
+  %53 = getelementptr inbounds { ptr, i64 }, ptr %taddr74, i32 0, i32 1
+  %hi76 = load i64, ptr %53, align 8
+  store i32 3, ptr %taddr79, align 4
+  %54 = insertvalue %variant undef, ptr %taddr79, 0
+  %55 = insertvalue %variant %54, i64 ptrtoint (ptr @"ct$int" to i64), 1
+  %56 = getelementptr inbounds [1 x %variant], ptr %varargslots78, i64 0, i64 0
+  store %variant %55, ptr %56, align 16
+  %57 = getelementptr inbounds %"variant[]", ptr %vararg77, i32 0, i32 1
+  store i64 1, ptr %57, align 8
+  %58 = getelementptr inbounds %"variant[]", ptr %vararg77, i32 0, i32 0
+  store ptr %varargslots78, ptr %58, align 8
+  %59 = getelementptr inbounds { ptr, i64 }, ptr %vararg77, i32 0, i32 0
+  %lo80 = load ptr, ptr %59, align 8
+  %60 = getelementptr inbounds { ptr, i64 }, ptr %vararg77, i32 0, i32 1
+  %hi81 = load i64, ptr %60, align 8
+  %61 = call i64 @std_io_printfln(ptr %retparam73, ptr %lo75, i64 %hi76, ptr %lo80, i64 %hi81)
+  %not_err82 = icmp eq i64 %61, 0
+  br i1 %not_err82, label %after_check83, label %voiderr84
+
+after_check83:                                    ; preds = %voiderr72
+  br label %voiderr84
+
+voiderr84:                                        ; preds = %after_check83, %voiderr72
+  store %"char[]" { ptr @.str.6, i64 4 }, ptr %taddr86, align 8
+  %62 = getelementptr inbounds { ptr, i64 }, ptr %taddr86, i32 0, i32 0
+  %lo87 = load ptr, ptr %62, align 8
+  %63 = getelementptr inbounds { ptr, i64 }, ptr %taddr86, i32 0, i32 1
+  %hi88 = load i64, ptr %63, align 8
+  store i64 ptrtoint (ptr @"test_Foo$DEF" to i64), ptr %taddr91, align 8
+  %64 = insertvalue %variant undef, ptr %taddr91, 0
+  %65 = insertvalue %variant %64, i64 ptrtoint (ptr @"ct$anyerr" to i64), 1
+  %66 = getelementptr inbounds [1 x %variant], ptr %varargslots90, i64 0, i64 0
+  store %variant %65, ptr %66, align 16
+  %67 = getelementptr inbounds %"variant[]", ptr %vararg89, i32 0, i32 1
+  store i64 1, ptr %67, align 8
+  %68 = getelementptr inbounds %"variant[]", ptr %vararg89, i32 0, i32 0
+  store ptr %varargslots90, ptr %68, align 8
+  %69 = getelementptr inbounds { ptr, i64 }, ptr %vararg89, i32 0, i32 0
+  %lo92 = load ptr, ptr %69, align 8
+  %70 = getelementptr inbounds { ptr, i64 }, ptr %vararg89, i32 0, i32 1
+  %hi93 = load i64, ptr %70, align 8
+  %71 = call i64 @std_io_printfln(ptr %retparam85, ptr %lo87, i64 %hi88, ptr %lo92, i64 %hi93)
+  %not_err94 = icmp eq i64 %71, 0
+  br i1 %not_err94, label %after_check95, label %voiderr96
+
+after_check95:                                    ; preds = %voiderr84
+  br label %voiderr96
+
+voiderr96:                                        ; preds = %after_check95, %voiderr84
+  store %"char[]" { ptr @.str.7, i64 4 }, ptr %taddr98, align 8
+  %72 = getelementptr inbounds { ptr, i64 }, ptr %taddr98, i32 0, i32 0
+  %lo99 = load ptr, ptr %72, align 8
+  %73 = getelementptr inbounds { ptr, i64 }, ptr %taddr98, i32 0, i32 1
+  %hi100 = load i64, ptr %73, align 8
+  store i64 0, ptr %error_var, align 8
+  br label %phi_block104
+
+phi_block104:                                     ; preds = %voiderr96
+  br label %noerr_block
+
+noerr_block:                                      ; preds = %phi_block104
+  %74 = insertvalue %variant undef, ptr %error_var, 0
+  %75 = insertvalue %variant %74, i64 ptrtoint (ptr @"ct$anyerr" to i64), 1
+  %76 = getelementptr inbounds [1 x %variant], ptr %varargslots102, i64 0, i64 0
+  store %variant %75, ptr %76, align 16
+  %77 = getelementptr inbounds %"variant[]", ptr %vararg101, i32 0, i32 1
+  store i64 1, ptr %77, align 8
+  %78 = getelementptr inbounds %"variant[]", ptr %vararg101, i32 0, i32 0
+  store ptr %varargslots102, ptr %78, align 8
+  %79 = getelementptr inbounds { ptr, i64 }, ptr %vararg101, i32 0, i32 0
+  %lo105 = load ptr, ptr %79, align 8
+  %80 = getelementptr inbounds { ptr, i64 }, ptr %vararg101, i32 0, i32 1
+  %hi106 = load i64, ptr %80, align 8
+  %81 = call i64 @std_io_printfln(ptr %retparam97, ptr %lo99, i64 %hi100, ptr %lo105, i64 %hi106)
+  %not_err107 = icmp eq i64 %81, 0
+  br i1 %not_err107, label %after_check108, label %voiderr109
+
+after_check108:                                   ; preds = %noerr_block
+  br label %voiderr109
+
+voiderr109:                                       ; preds = %after_check108, %noerr_block
+  store i64 3, ptr %x, align 8
+  store %"char[]" { ptr @.str.8, i64 4 }, ptr %taddr111, align 8
+  %82 = getelementptr inbounds { ptr, i64 }, ptr %taddr111, i32 0, i32 0
+  %lo112 = load ptr, ptr %82, align 8
+  %83 = getelementptr inbounds { ptr, i64 }, ptr %taddr111, i32 0, i32 1
+  %hi113 = load i64, ptr %83, align 8
+  %84 = insertvalue %variant undef, ptr %x, 0
+  %85 = insertvalue %variant %84, i64 ptrtoint (ptr @"ct$long" to i64), 1
+  %86 = getelementptr inbounds [1 x %variant], ptr %varargslots115, i64 0, i64 0
+  store %variant %85, ptr %86, align 16
+  %87 = getelementptr inbounds %"variant[]", ptr %vararg114, i32 0, i32 1
+  store i64 1, ptr %87, align 8
+  %88 = getelementptr inbounds %"variant[]", ptr %vararg114, i32 0, i32 0
+  store ptr %varargslots115, ptr %88, align 8
+  %89 = getelementptr inbounds { ptr, i64 }, ptr %vararg114, i32 0, i32 0
+  %lo116 = load ptr, ptr %89, align 8
+  %90 = getelementptr inbounds { ptr, i64 }, ptr %vararg114, i32 0, i32 1
+  %hi117 = load i64, ptr %90, align 8
+  %91 = call i64 @std_io_printfln(ptr %retparam110, ptr %lo112, i64 %hi113, ptr %lo116, i64 %hi117)
+  %not_err118 = icmp eq i64 %91, 0
+  br i1 %not_err118, label %after_check119, label %voiderr120
+
+after_check119:                                   ; preds = %voiderr109
+  br label %voiderr120
+
+voiderr120:                                       ; preds = %after_check119, %voiderr109
+  store i64 ptrtoint (ptr @"test_Foo$DEF" to i64), ptr %xy.f, align 8
+  ret void
+}
+
+; Function Attrs: nounwind
+define i64 @test_get_a(ptr %0, i32 %1) #0 {
+entry:
+  %reterr = alloca i64, align 8
+  %smod = srem i32 %1, 2
+  %intbool = icmp ne i32 %smod, 0
+  br i1 %intbool, label %if.then, label %if.exit
+
+if.then:                                          ; preds = %entry
+  ret i64 ptrtoint (ptr @"test_Foo$ABC" to i64)
+
+if.exit:                                          ; preds = %entry
+  %mul = mul i32 %1, 2
+  store i32 %mul, ptr %0, align 4
+  ret i64 0
+}
+
+; Function Attrs: nounwind
+define i64 @test_get_b(ptr %0, i32 %1) #0 {
+entry:
+  %reterr = alloca i64, align 8
+  %smod = srem i32 %1, 2
+  %eq = icmp eq i32 %smod, 0
+  br i1 %eq, label %if.then, label %if.exit
+
+if.then:                                          ; preds = %entry
+  ret i64 ptrtoint (ptr @"test_Foo$ABC" to i64)
+
+if.exit:                                          ; preds = %entry
+  %mul = mul i32 %1, 2
+  store i32 %mul, ptr %0, align 4
+  ret i64 0
+}

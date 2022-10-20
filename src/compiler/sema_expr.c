@@ -5483,22 +5483,36 @@ static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr)
 	if (!sema_analyse_expr(context, rhs)) return false;
 	if (expr->binary_expr.widen && !cast_widen_top_down(context, rhs, expr->type)) return false;
 
-
-	// Here we might need to insert casts.
-	Type *else_type = rhs->type;
-
-	type = type_is_optional_any(type) ? else_type : type->failable;
-
-	if (type_is_optional(else_type))
-	{
-		SEMA_ERROR(rhs, "The default value may not be an optional.");
-		return false;
-	}
 	if (lhs->expr_kind == EXPR_FAILABLE)
 	{
 		expr_replace(expr, rhs);
 		return true;
 	}
+
+	// Here we might need to insert casts.
+	Type *else_type = rhs->type;
+
+	if (type_is_optional_any(type))
+	{
+		// One possibility is that both sides have the "optional any" type
+		// if so then we're done.
+		if (else_type == type)
+		{
+			expr->type = type;
+			return true;
+		}
+		// Otherwise assign the type of "else":
+		type = else_type;
+	}
+	else if (type_is_optional_any(else_type))
+	{
+		expr->type = type;
+		return true;
+	}
+	// Remove any possible optional of the else type.
+	bool add_optional = type_is_optional(else_type);
+	type = type_no_optional(type);
+	else_type = type_no_optional(else_type);
 	Type *common = type_find_max_type(type, else_type);
 	if (!common)
 	{
@@ -5508,7 +5522,7 @@ static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr)
 	}
 	if (!cast_implicit(context, lhs, common)) return false;
 	if (!cast_implicit(context, rhs, common)) return false;
-	expr->type = common;
+	expr->type = type_add_optional(common, add_optional);
 	return true;
 }
 
