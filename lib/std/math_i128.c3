@@ -239,3 +239,95 @@ fn double __floatuntidf(uint128 a) @extname("__floatuntidf") @weak
     };
     return bits.d;
 }
+
+fn uint128 __fixunsdfti(double a) @extname("__fixunsdfti") = fixuint(a);
+fn uint128 __fixunssfti(float a) @extname("__fixunssfti") = fixuint(a);
+fn int128 __fixdfti(double a) @extname("__fixdfti") = fixint(a);
+fn int128 __fixsfti(float a) @extname("__fixsfti") = fixint(a);
+
+private macro fixuint(a)
+{
+	$switch ($typeof(a)):
+		$case double:
+			var $Rep = ulong;
+			const EXPONENT_BITS = 11;
+			const SIGNIFICANT_BITS = 52;
+		$case float:
+			var $Rep = uint;
+			const EXPONENT_BITS = 8;
+			const SIGNIFICANT_BITS = 23;
+		$case float16:
+			var $Rep = ushort;
+			const EXPONENT_BITS = 5;
+			const SIGNIFICANT_BITS = 10;
+		$case float128:
+			var $Rep = uint128;
+			const EXPONENT_BITS = 15;
+			const SIGNIFICANT_BITS = 112;
+	$endswitch;
+	const MAX_EXPONENT = 1 << EXPONENT_BITS - 1;
+	const EXPONENT_BIAS = MAX_EXPONENT >> 1;
+	const ONE_REP = (ulong)EXPONENT_BIAS << SIGNIFICANT_BITS;
+	const SIGN_BIT = ($Rep)1 << (EXPONENT_BITS + SIGNIFICANT_BITS);
+	const ABS_MASK = SIGN_BIT - 1;
+	const IMPLICIT_BIT = ($Rep)1 << SIGNIFICANT_BITS;
+	const SIGNIFICANT_MASK = IMPLICIT_BIT - 1;
+	const EXPONENT_MASK = ABS_MASK ^ SIGNIFICANT_MASK;
+	const QUIET_BIT = IMPLICIT_BIT >> 1;
+	const QNAN_REP = EXPONENT_MASK | QUIET_BIT;
+	const INF_REP = EXPONENT_MASK;
+
+	$Rep rep = bitcast(a, $Rep);
+	$Rep abs = rep & ABS_MASK;
+	int sign = rep & SIGN_BIT ? -1 : 1;
+	int exponent = (int)((abs >> SIGNIFICANT_BITS) - EXPONENT_BIAS);
+	$Rep significand = (abs & SIGNIFICANT_MASK) | IMPLICIT_BIT;
+	if (sign == -1 || exponent < 0) return 0u128;
+	if ((uint)exponent >= uint128.sizeof * 8) return ~0u128;
+	if (exponent < SIGNIFICANT_BITS) return (uint128)significand >> (SIGNIFICANT_BITS - exponent);
+    return (uint128)significand << (exponent - SIGNIFICANT_BITS);
+}
+
+private macro fixint(a)
+{
+	$switch ($typeof(a)):
+		$case double:
+			var $Rep = ulong;
+			const EXPONENT_BITS = 11;
+			const SIGNIFICANT_BITS = 52;
+		$case float:
+			var $Rep = uint;
+			const EXPONENT_BITS = 8;
+			const SIGNIFICANT_BITS = 23;
+		$case float16:
+			var $Rep = ushort;
+			const EXPONENT_BITS = 5;
+			const SIGNIFICANT_BITS = 10;
+		$case float128:
+			var $Rep = uint128;
+			const EXPONENT_BITS = 15;
+			const SIGNIFICANT_BITS = 112;
+	$endswitch;
+	const MAX_EXPONENT = 1 << EXPONENT_BITS - 1;
+	const EXPONENT_BIAS = MAX_EXPONENT >> 1;
+	const ONE_REP = (ulong)EXPONENT_BIAS << SIGNIFICANT_BITS;
+	const SIGN_BIT = ($Rep)1 << (EXPONENT_BITS + SIGNIFICANT_BITS);
+	const ABS_MASK = SIGN_BIT - 1;
+	const IMPLICIT_BIT = ($Rep)1 << SIGNIFICANT_BITS;
+	const SIGNIFICANT_MASK = IMPLICIT_BIT - 1;
+	const EXPONENT_MASK = ABS_MASK ^ SIGNIFICANT_MASK;
+	const QUIET_BIT = IMPLICIT_BIT >> 1;
+	const QNAN_REP = EXPONENT_MASK | QUIET_BIT;
+	const INF_REP = EXPONENT_MASK;
+
+	$Rep rep = bitcast(a, $Rep);
+	$Rep abs = rep & ABS_MASK;
+	int sign = rep & SIGN_BIT ? -1 : 1;
+	int exponent = (int)((abs >> SIGNIFICANT_BITS) - EXPONENT_BIAS);
+	$Rep significand = (abs & SIGNIFICANT_MASK) | IMPLICIT_BIT;
+	if (exponent < 0) return 0;
+	if ((uint)exponent >= uint128.sizeof * 8) return sign == 1 ? int128.max : int128.min;
+
+	if (exponent < SIGNIFICANT_BITS) return sign * ((int128)significand >> (SIGNIFICANT_BITS - exponent));
+    return sign * ((int128)significand << (exponent - SIGNIFICANT_BITS));
+}

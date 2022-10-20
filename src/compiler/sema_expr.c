@@ -1571,7 +1571,6 @@ static inline Type *context_unify_returns(SemaContext *context)
 			// 8. All casts should work.
 			if (!cast_implicit(context, ret_expr, common_type))
 			{
-				assert(false);
 				return NULL;
 			}
 		}
