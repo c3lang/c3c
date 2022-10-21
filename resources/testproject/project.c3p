@@ -19,19 +19,19 @@
   "targets": {
     "hello_world": {
       "type": "executable",
-      "csources": [
+      "csources-override": [
         "./csource/**"
       ]
     },
     "hello_world_win32": {
       "type": "executable",
-      "csources": [
+      "csources-override": [
         "./csource/**"
       ]
     },
     "hello_world_lib": {
       "type": "static-lib",
-      "csources": [
+      "csources-override": [
         "./csource/**"
       ]
     },
