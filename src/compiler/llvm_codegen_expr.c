@@ -5,23 +5,54 @@
 #include "llvm_codegen_internal.h"
 #include <math.h>
 
-static void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs_loaded, BinaryOp binary_op);
-static void llvm_emit_any_pointer(GenContext *c, BEValue *any, BEValue *pointer);
-static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr);
-static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr);
-static inline void llvm_emit_post_inc_dec(GenContext *c, BEValue *value, Expr *expr, int diff, bool use_mod);
-static inline void llvm_emit_pre_inc_dec(GenContext *c, BEValue *value, Expr *expr, int diff, bool use_mod);
-static inline void llvm_emit_inc_dec_change(GenContext *c, bool use_mod, BEValue *addr, BEValue *after, BEValue *before, Expr *expr, int diff);
-static void llvm_emit_post_unary_expr(GenContext *context, BEValue *be_value, Expr *expr);
-static inline void llvm_emit_subscript_addr_with_base(GenContext *c, BEValue *result, BEValue *parent, BEValue *index, SourceSpan loc);
-static void llvm_emit_initialize_designated(GenContext *c, BEValue *ref, AlignSize offset, DesignatorElement** current, DesignatorElement **last, Expr *expr, BEValue *emitted_value);
-static inline void llvm_emit_const_initialize_reference(GenContext *c, BEValue *ref, Expr *expr);
-static inline void llvm_emit_initialize_reference(GenContext *c, BEValue *ref, Expr *expr);
+static LLVMAtomicOrdering llvm_atomic_ordering(Atomicity atomicity);
+static LLVMValueRef llvm_emit_coerce_alignment(GenContext *c, BEValue *be_value, LLVMTypeRef coerce_type, AlignSize target_alignment, AlignSize *resulting_alignment);
+static bool bitstruct_requires_bitswap(Decl *decl);
+static inline LLVMValueRef llvm_const_high_bitmask(GenContext *c, LLVMTypeRef type, int type_bits, int high_bits);
+static inline LLVMValueRef llvm_const_low_bitmask(GenContext *c, LLVMTypeRef type, int type_bits, int low_bits);
 static inline LLVMValueRef llvm_emit_expr_to_rvalue(GenContext *c, Expr *expr);
 static inline LLVMValueRef llvm_emit_exprid_to_rvalue(GenContext *c, ExprId expr_id);
+static inline LLVMValueRef llvm_update_vector(GenContext *c, LLVMValueRef vector, LLVMValueRef value, MemberIndex index);
+static inline void gencontext_emit_expression_list_expr(GenContext *context, BEValue *be_value, Expr *expr);
+static inline void llvm_emit_argv_to_subarray(GenContext *c, BEValue *value, Expr *expr);
+static inline void llvm_emit_bitassign_array(GenContext *c, BEValue *result, BEValue parent, Decl *parent_decl, Decl *member);
+static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Expr *expr);
+static inline void llvm_emit_const_initialize_reference(GenContext *c, BEValue *ref, Expr *expr);
+static inline void llvm_emit_elvis_expr(GenContext *c, BEValue *value, Expr *expr);
+static inline void llvm_emit_expr_block(GenContext *context, BEValue *be_value, Expr *expr);
+static inline void llvm_emit_failable(GenContext *c, BEValue *be_value, Expr *expr);
+static inline void llvm_emit_inc_dec_change(GenContext *c, bool use_mod, BEValue *addr, BEValue *after, BEValue *before, Expr *expr, int diff);
+static inline void llvm_emit_initialize_reference(GenContext *c, BEValue *ref, Expr *expr);
+static inline void llvm_emit_initialize_reference_bitstruct(GenContext *c, BEValue *ref, Decl *bitstruct, Expr** elements);
+static inline void llvm_emit_initialize_reference_list(GenContext *c, BEValue *ref, Expr *expr);
+static inline void llvm_emit_initialize_reference_vector(GenContext *c, BEValue *ref, Type *real_type, Expr **elements);
+static inline void llvm_emit_initializer_list_expr(GenContext *c, BEValue *value, Expr *expr);
+static inline void llvm_emit_macro_block(GenContext *context, BEValue *be_value, Expr *expr);
+static inline void llvm_emit_post_inc_dec(GenContext *c, BEValue *value, Expr *expr, int diff, bool use_mod);
+static inline void llvm_emit_pre_inc_dec(GenContext *c, BEValue *value, Expr *expr, int diff, bool use_mod);
+static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type *type, AstId current, BlockExit **block_exit);
+static inline void llvm_emit_subscript_addr_with_base(GenContext *c, BEValue *result, BEValue *parent, BEValue *index, SourceSpan loc);
+static inline void llvm_emit_try_unwrap(GenContext *c, BEValue *value, Expr *expr);
+static inline void llvm_emit_vararg_parameter(GenContext *c, BEValue *value, Type *vararg_type, ABIArgInfo *abi_info, Expr **varargs, Expr *vararg_splat);
+static inline void llvm_emit_variant(GenContext *c, BEValue *value, Expr *expr);
+static inline void llvm_emit_vector_initializer_list(GenContext *c, BEValue *value, Expr *expr);
+static inline void llvm_extract_bitvalue_from_array(GenContext *c, BEValue *be_value, Decl *member, Decl *parent_decl);
 static void llvm_convert_vector_comparison(GenContext *c, BEValue *be_value, LLVMValueRef val, Type *vector_type);
-static bool bitstruct_requires_bitswap(Decl *decl);
+static void llvm_emit_any_pointer(GenContext *c, BEValue *any, BEValue *pointer);
+static void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs_loaded, BinaryOp binary_op);
 static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr, BEValue *target);
+static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr);
+static void llvm_emit_initialize_designated(GenContext *c, BEValue *ref, AlignSize offset, DesignatorElement** current, DesignatorElement **last, Expr *expr, BEValue *emitted_value);
+static void llvm_emit_macro_body_expansion(GenContext *c, BEValue *value, Expr *body_expr);
+static void llvm_emit_post_unary_expr(GenContext *context, BEValue *be_value, Expr *expr);
+static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr);
+static void llvm_enter_struct_for_coerce(GenContext *c, LLVMValueRef *struct_ptr, LLVMTypeRef *type, ByteSize dest_size);
+static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVMValueRef expand_ptr, LLVMValueRef **values, AlignSize alignment);
+
+INLINE LLVMValueRef llvm_emit_bitstruct_value_update(GenContext *c, LLVMValueRef current_val, TypeSize bits, LLVMTypeRef bitstruct_type, Decl *member, LLVMValueRef val);
+INLINE void llvm_emit_initialize_reference_bitstruct_array(GenContext *c, BEValue *ref, Decl *bitstruct, Expr** elements);
+
+#define MAX_AGG 16
 
 static inline LLVMValueRef llvm_emit_expr_to_rvalue(GenContext *c, Expr *expr)
 {
@@ -157,7 +188,7 @@ static void llvm_convert_vector_comparison(GenContext *c, BEValue *be_value, LLV
 	llvm_value_set(be_value, val, result_type);
 }
 
-LLVMValueRef llvm_emit_coerce_alignment(GenContext *c, BEValue *be_value, LLVMTypeRef coerce_type, AlignSize target_alignment, AlignSize *resulting_alignment)
+static LLVMValueRef llvm_emit_coerce_alignment(GenContext *c, BEValue *be_value, LLVMTypeRef coerce_type, AlignSize target_alignment, AlignSize *resulting_alignment)
 {
 	// If we are loading something with greater alignment than what we have, we cannot directly memcpy.
 	if (!llvm_value_is_addr(be_value) || be_value->alignment < target_alignment)
@@ -251,7 +282,7 @@ static inline LLVMValueRef llvm_emit_add_int(GenContext *c, Type *type, LLVMValu
 	return LLVMBuildAdd(c->builder, left, right, "add");
 }
 
-void llvm_enter_struct_for_coerce(GenContext *c, LLVMValueRef *struct_ptr, LLVMTypeRef *type, ByteSize dest_size)
+static void llvm_enter_struct_for_coerce(GenContext *c, LLVMValueRef *struct_ptr, LLVMTypeRef *type, ByteSize dest_size)
 {
 	while (1)
 	{
@@ -374,7 +405,6 @@ LLVMValueRef llvm_emit_coerce(GenContext *c, LLVMTypeRef coerced, BEValue *value
 		return llvm_coerce_int_ptr(c, val, llvm_source_type, coerced);
 	}
 
-	// TODO for scalable vectors this is not true.
 	if (source_size >= target_size && source_type_kind != LLVMScalableVectorTypeKind && coerced_type_kind != LLVMScalableVectorTypeKind)
 	{
 		LLVMValueRef val = LLVMBuildBitCast(c->builder, addr, LLVMPointerType(coerced, 0), "");
@@ -656,10 +686,9 @@ static MemberIndex find_member_index(Decl *parent, Decl *member)
 	return -1;
 }
 
-static void gencontext_emit_member_addr(GenContext *c, BEValue *value, Decl *parent, Decl *member)
+static void llvm_emit_member_addr(GenContext *c, BEValue *value, Decl *parent, Decl *member)
 {
 	assert(member->resolve_status == RESOLVE_DONE);
-
 	Decl *found = NULL;
 	do
 	{
@@ -872,26 +901,24 @@ static inline void llvm_extract_bitvalue(GenContext *c, BEValue *be_value, Expr 
 	llvm_value_set(be_value, value, member_type);
 }
 
-static inline void llvm_emit_bitassign_array(GenContext *c, BEValue *result, BEValue parent, Decl *parent_decl, Decl *member)
+static inline void llvm_emit_update_bitstruct_array(GenContext *c,
+                                                    LLVMValueRef array_ptr,
+                                                    AlignSize array_alignment,
+                                                    LLVMTypeRef array_type,
+                                                    bool need_bitswap,
+                                                    Decl *member,
+                                                    LLVMValueRef value)
 {
-	// We could possibly do this on a value as well. However, this
-	// is unlikely to be the common case, so use addr.
-	llvm_value_addr(c, &parent);
-	LLVMValueRef array_ptr = parent.value;
-	assert(parent.type->type_kind == TYPE_ARRAY);
-	LLVMTypeRef array_type = llvm_get_type(c, parent.type);
-
 	unsigned start_bit = member->var.start_bit;
 	unsigned end_bit = member->var.end_bit;
 
 	Type *member_type = type_flatten(member->type);
-	LLVMValueRef value = llvm_load_value_store(c, result);
 	if (member_type == type_bool)
 	{
 		assert(start_bit == end_bit);
 		value = llvm_emit_shl_fixed(c, value, start_bit % 8);
 		AlignSize alignment;
-		LLVMValueRef byte_ptr = llvm_emit_array_gep_raw(c, array_ptr, array_type, start_bit / 8, parent.alignment, &alignment);
+		LLVMValueRef byte_ptr = llvm_emit_array_gep_raw(c, array_ptr, array_type, start_bit / 8, array_alignment, &alignment);
 		LLVMValueRef current = llvm_load(c, c->byte_type, byte_ptr, alignment, "");
 		LLVMValueRef bit = llvm_emit_shl_fixed(c, LLVMConstInt(c->byte_type, 1, 0), start_bit % 8);
 		current = llvm_emit_and_raw(c, current, LLVMBuildNot(c->builder, bit, ""));
@@ -899,8 +926,6 @@ static inline void llvm_emit_bitassign_array(GenContext *c, BEValue *result, BEV
 		llvm_store_to_ptr_raw_aligned(c, byte_ptr, current, alignment);
 		return;
 	}
-
-	bool need_bitswap = bitstruct_requires_bitswap(parent_decl);
 
 	unsigned bit_size = end_bit - start_bit + 1;
 	if (need_bitswap)
@@ -917,7 +942,7 @@ static inline void llvm_emit_bitassign_array(GenContext *c, BEValue *result, BEV
 	{
 		AlignSize alignment;
 		LLVMValueRef byte_ptr = llvm_emit_array_gep_raw(c, array_ptr, array_type,
-		                                                (unsigned)i, parent.alignment, &alignment);
+		                                                (unsigned)i, array_alignment, &alignment);
 		if (i == start_byte && start_mod != 0)
 		{
 			int skipped_bits = start_mod;
@@ -973,6 +998,39 @@ static inline void llvm_emit_bitassign_array(GenContext *c, BEValue *result, BEV
 		value = llvm_emit_lshr_fixed(c, value, 8);
 	}
 }
+
+static inline void llvm_emit_bitassign_array(GenContext *c, BEValue *result, BEValue parent, Decl *parent_decl, Decl *member)
+{
+	llvm_value_addr(c, &parent);
+	llvm_emit_update_bitstruct_array(c, parent.value, parent.alignment, llvm_get_type(c, parent.type),
+	                                 bitstruct_requires_bitswap(parent_decl), member, llvm_load_value_store(c, result));
+}
+
+INLINE LLVMValueRef llvm_emit_bitstruct_value_update(GenContext *c, LLVMValueRef current_val, TypeSize bits, LLVMTypeRef bitstruct_type, Decl *member, LLVMValueRef val)
+{
+	// We now need to create a mask, a very naive algorithm:
+	LLVMValueRef mask = llvm_get_ones_raw(bitstruct_type);
+	int start_bit = (int)member->var.start_bit;
+	int end_bit = (int)member->var.end_bit;
+	// Let's say we want to create 00111000 => start: 3 end: 5
+	int left_shift = (int)bits - end_bit - 1;
+	mask = llvm_emit_shl_fixed(c, mask, left_shift);
+	// => shift 2: 11111100
+	mask = llvm_emit_lshr_fixed(c, mask, left_shift + start_bit);
+	// => shift 5: 00000111
+	mask = llvm_emit_shl_fixed(c, mask, start_bit);
+	// => shift 3: 00111000
+
+	val = llvm_zext_trunc(c, val, bitstruct_type);
+	// Shift to the correct location.
+	val = llvm_emit_shl_fixed(c, val, start_bit);
+	// And combine using ((current_value & ~mask) | (value & mask))
+	val = llvm_emit_and_raw(c, val, mask);
+	current_val = llvm_emit_and_raw(c, current_val, LLVMBuildNot(c->builder, mask, ""));
+	// Skip this op for LLVM14 if zero.
+	current_val = llvm_emit_or_raw(c, current_val, val);
+	return current_val;
+}
 static inline void llvm_emit_bitassign_expr(GenContext *c, BEValue *be_value, Expr *expr)
 {
 	Expr *lhs = exprptr(expr->binary_expr.left);
@@ -1010,33 +1068,8 @@ static inline void llvm_emit_bitassign_expr(GenContext *c, BEValue *be_value, Ex
 	LLVMValueRef current_value = llvm_load_value_store(c, &parent);
 	bool bswap = bitstruct_requires_bitswap(parent_type->decl);
 	if (bswap) current_value = llvm_emit_bswap(c, current_value);
-	// Get the type.
-	LLVMTypeRef struct_type = LLVMTypeOf(current_value);
-
-	// We now need to create a mask, a very naive algorithm:
-	LLVMValueRef mask = llvm_get_ones_raw(struct_type);
-	TypeSize bits = type_size(parent.type) * 8;
-	int start_bit = (int)member->var.start_bit;
-	int end_bit = (int)member->var.end_bit;
-	// Let's say we want to create 00111000 => start: 3 end: 5
-	int left_shift = (int)bits - end_bit - 1;
-	mask = llvm_emit_shl_fixed(c, mask, left_shift);
-	// => shift 2: 11111100
-	mask = llvm_emit_lshr_fixed(c, mask, left_shift + start_bit);
-	// => shift 5: 00000111
-	mask = llvm_emit_shl_fixed(c, mask, start_bit);
-	// => shift 3: 00111000
-
-	// Now we might need to truncate or widen the value to insert:
 	LLVMValueRef value = llvm_load_value_store(c, be_value);
-	value = llvm_zext_trunc(c, value, struct_type);
-	// Shift to the correct location.
-	value = llvm_emit_shl_fixed(c, value, start_bit);
-	// And combine using ((current_value & ~mask) | (value & mask))
-	value = llvm_emit_and_raw(c, value, mask);
-	current_value = llvm_emit_and_raw(c, current_value, LLVMBuildNot(c->builder, mask, ""));
-	// Skip this op for LLVM14 if zero.
-	current_value = llvm_emit_or_raw(c, current_value, value);
+	current_value = llvm_emit_bitstruct_value_update(c, current_value, type_size(parent.type) * 8, LLVMTypeOf(current_value), member, value);
 	if (bswap) current_value = llvm_emit_bswap(c, current_value);
 	llvm_store_raw(c, &parent, current_value);
 }
@@ -1052,7 +1085,7 @@ static inline void llvm_emit_bitaccess(GenContext *c, BEValue *be_value, Expr *e
 	llvm_extract_bitvalue(c, be_value, parent, expr->access_expr.ref);
 }
 
-static inline void gencontext_emit_access_addr(GenContext *context, BEValue *be_value, Expr *expr)
+static inline void llvm_emit_access_addr(GenContext *context, BEValue *be_value, Expr *expr)
 {
 	Expr *parent = expr->access_expr.parent;
 	llvm_emit_expr(context, be_value, parent);
@@ -1069,7 +1102,7 @@ static inline void gencontext_emit_access_addr(GenContext *context, BEValue *be_
 		llvm_value_set_address(be_value, ptr, member->type, alignment);
 		return;
 	}
-	gencontext_emit_member_addr(context, be_value, type_lowering(parent->type)->decl, member);
+	llvm_emit_member_addr(context, be_value, type_lowering(parent->type)->decl, member);
 }
 
 
@@ -1577,11 +1610,61 @@ static inline void llvm_emit_initialize_reference_vector(GenContext *c, BEValue 
 	llvm_store_raw(c, ref, vector_val);
 }
 
+INLINE void llvm_emit_initialize_reference_bitstruct_array(GenContext *c, BEValue *ref, Decl *bitstruct, Expr** elements)
+{
+	LLVMTypeRef type = llvm_get_type(c, ref->type);
+	bool is_bitswap = bitstruct_requires_bitswap(bitstruct);
+	llvm_value_addr(c, ref);
+	llvm_store_zero(c, ref);
+	AlignSize alignment = ref->alignment;
+	LLVMValueRef array_ptr = ref->value;
+	// Now walk through the elements.
+	FOREACH_BEGIN_IDX(i, Expr *init, elements)
+		Decl *member = bitstruct->bitstruct.members[i];
+		BEValue val;
+		llvm_emit_expr(c, &val, init);
+		llvm_emit_update_bitstruct_array(c, array_ptr, alignment, type, is_bitswap, member, llvm_load_value_store(c, &val));
+	FOREACH_END();
+}
+
+static inline void llvm_emit_initialize_reference_bitstruct(GenContext *c, BEValue *ref, Decl *bitstruct, Expr** elements)
+{
+	Type *underlying_type = type_lowering(ref->type);
+	if (underlying_type->type_kind == TYPE_ARRAY)
+	{
+		llvm_emit_initialize_reference_bitstruct_array(c, ref, bitstruct, elements);
+		return;
+	}
+	LLVMTypeRef type = llvm_get_type(c, underlying_type);
+	LLVMValueRef data = LLVMConstNull(type);
+	TypeSize bits = type_bit_size(underlying_type);
+
+	// Now walk through the elements.
+	FOREACH_BEGIN_IDX(i, Expr *init, elements)
+		Decl *member = bitstruct->bitstruct.members[i];
+		BEValue val;
+		llvm_emit_expr(c, &val, init);
+		data = llvm_emit_bitstruct_value_update(c, data, bits, type, member, llvm_load_value_store(c, &val));
+	FOREACH_END();
+	if (bitstruct_requires_bitswap(bitstruct))
+	{
+		data = llvm_emit_bswap(c, data);
+	}
+	llvm_store_raw(c, ref, data);
+}
+
 static inline void llvm_emit_initialize_reference_list(GenContext *c, BEValue *ref, Expr *expr)
 {
+	Type *type = type_flatten(expr->type);
+	Expr **elements = expr->initializer_list;
+
+	if (type->type_kind == TYPE_BITSTRUCT)
+	{
+		llvm_emit_initialize_reference_bitstruct(c, ref, type->decl, elements);
+		return;
+	}
 	// Getting ready to initialize, get the real type.
 	Type *real_type = type_lowering(ref->type);
-	Expr **elements = expr->initializer_list;
 
 	if (real_type->type_kind == TYPE_VECTOR)
 	{
@@ -1737,12 +1820,72 @@ static void llvm_emit_initialize_designated(GenContext *c, BEValue *ref, AlignSi
 	}
 }
 
+static inline void llvm_emit_initialize_reference_designated_bitstruct_array(GenContext *c, BEValue *ref, Decl *bitstruct, Expr **elements)
+{
+	LLVMTypeRef type = llvm_get_type(c, ref->type);
+	bool is_bitswap = bitstruct_requires_bitswap(bitstruct);
+	llvm_value_addr(c, ref);
+	llvm_store_zero(c, ref);
+	AlignSize alignment = ref->alignment;
+	LLVMValueRef array_ptr = ref->value;
+	// Now walk through the elements.
+	VECEACH(elements, i)
+	{
+		Expr *designator = elements[i];
+		assert(vec_size(designator->designator_expr.path) == 1);
+		DesignatorElement *element = designator->designator_expr.path[0];
+		assert(element->kind == DESIGNATOR_FIELD);
+		Decl *member = bitstruct->bitstruct.members[element->index];
+		BEValue val;
+		llvm_emit_expr(c, &val, designator->designator_expr.value);
+		llvm_emit_update_bitstruct_array(c, array_ptr, alignment, type, is_bitswap, member, llvm_load_value_store(c, &val));
+	}
+}
+
+static inline void llvm_emit_initialize_reference_designated_bitstruct(GenContext *c, BEValue *ref, Decl *bitstruct, Expr **elements)
+{
+	Type *underlying_type = type_lowering(ref->type);
+	if (underlying_type->type_kind == TYPE_ARRAY)
+	{
+		llvm_emit_initialize_reference_designated_bitstruct_array(c, ref, bitstruct, elements);
+		return;
+	}
+	LLVMTypeRef type = llvm_get_type(c, underlying_type);
+	LLVMValueRef data = LLVMConstNull(type);
+	TypeSize bits = type_bit_size(underlying_type);
+
+	// Now walk through the elements.
+	VECEACH(elements, i)
+	{
+		Expr *designator = elements[i];
+		assert(vec_size(designator->designator_expr.path) == 1);
+		DesignatorElement *element = designator->designator_expr.path[0];
+		assert(element->kind == DESIGNATOR_FIELD);
+		Decl *member = bitstruct->bitstruct.members[element->index];
+		BEValue val;
+		llvm_emit_expr(c, &val, designator->designator_expr.value);
+		data = llvm_emit_bitstruct_value_update(c, data, bits, type, member, llvm_load_value_store(c, &val));
+	}
+	if (bitstruct_requires_bitswap(bitstruct))
+	{
+		data = llvm_emit_bswap(c, data);
+	}
+	llvm_store_raw(c, ref, data);
+}
+
 static inline void llvm_emit_initialize_reference_designated(GenContext *c, BEValue *ref, Expr *expr)
 {
-	// Getting ready to initialize, get the real type.
-	Type *real_type = type_lowering(ref->type);
 	Expr **elements = expr->designated_init_list;
 	assert(vec_size(elements));
+
+	Type *type = type_flatten(expr->type);
+	if (type->type_kind == TYPE_BITSTRUCT)
+	{
+		llvm_emit_initialize_reference_designated_bitstruct(c, ref, type->decl, elements);
+		return;
+	}
+	// Getting ready to initialize, get the real type.
+	Type *real_type = type_lowering(ref->type);
 
 	// Make sure we have an address.
 	llvm_value_addr(c, ref);
@@ -1759,7 +1902,6 @@ static inline void llvm_emit_initialize_reference_designated(GenContext *c, BEVa
 	}
 }
 
-#define MAX_AGG 16
 
 static bool bitstruct_requires_bitswap(Decl *decl)
 {
@@ -3815,7 +3957,7 @@ static void llvm_emit_binary_expr(GenContext *c, BEValue *be_value, Expr *expr)
 	llvm_emit_binary(c, be_value, expr, NULL, binary_op);
 }
 
-void gencontext_emit_elvis_expr(GenContext *c, BEValue *value, Expr *expr)
+static inline void llvm_emit_elvis_expr(GenContext *c, BEValue *value, Expr *expr)
 {
 	LLVMBasicBlockRef phi_block = llvm_basic_block_new(c, "cond.phi");
 	LLVMBasicBlockRef rhs_block = llvm_basic_block_new(c, "cond.rhs");
@@ -4206,7 +4348,6 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 	UNREACHABLE
 }
 
-static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVMValueRef expand_ptr, LLVMValueRef **values, AlignSize alignment);
 
 
 
@@ -4555,7 +4696,7 @@ static void llvm_emit_splatted_variadic_arg(GenContext *c, Expr *expr, BEValue *
 }
 
 
-LLVMAtomicOrdering llvm_atomic_ordering(Atomicity atomicity)
+static LLVMAtomicOrdering llvm_atomic_ordering(Atomicity atomicity)
 {
 	switch (atomicity)
 	{
@@ -5290,12 +5431,11 @@ static inline LLVMValueRef llvm_update_vector(GenContext *c, LLVMValueRef vector
 {
 	LLVMValueRef index_value = llvm_const_int(c, type_usize, (uint64_t)index);
 	return LLVMBuildInsertElement(c->builder, vector, value, index_value, "");
-
 }
+
 static inline void llvm_emit_vector_initializer_list(GenContext *c, BEValue *value, Expr *expr)
 {
 	Type *type = type_lowering(expr->type);
-	Type *element_type = type->array.base;
 
 	LLVMTypeRef llvm_type = llvm_get_type(c, type);
 
@@ -5385,7 +5525,7 @@ static void llvm_emit_macro_body_expansion(GenContext *c, BEValue *value, Expr *
 	if (body) llvm_emit_stmt(c, astptr(body));
 }
 
-void llvm_emit_try_unwrap(GenContext *c, BEValue *value, Expr *expr)
+static inline void llvm_emit_try_unwrap(GenContext *c, BEValue *value, Expr *expr)
 {
 	if (!expr->try_unwrap_expr.failable)
 	{
@@ -5942,7 +6082,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			gencontext_emit_subscript(c, value, expr);
 			return;
 		case EXPR_ACCESS:
-			gencontext_emit_access_addr(c, value, expr);
+			llvm_emit_access_addr(c, value, expr);
 			return;
 		case EXPR_CALL:
 			llvm_emit_call_expr(c, value, expr, NULL);
