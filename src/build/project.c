@@ -100,68 +100,228 @@ static const char **get_valid_array(JSONObject *table, const char *key, const ch
 	return values;
 }
 
-static void load_into_build_target(JSONObject *json, const char *type, BuildTarget *target)
+static void check_json_keys(const char** valid_keys, size_t key_count, JSONObject *json, const char *type)
 {
-	const char *cc = get_valid_string(json, "cc", type, false);
-	const char *cflags = get_valid_string(json, "cflags", type, false);
-	const char **csource_dirs = get_valid_array(json, "csources", type, false);
-	const char *version = get_valid_string(json, "version", type, false);
-	const char *langrev = get_valid_string(json, "langrev", type, false);
-	const char **source_dirs = get_valid_array(json, "sources", type, target->source_dirs == NULL);
-	const char **libraries = get_valid_array(json, "libs", type, false);
-	const char **linker_libs = get_valid_array(json, "linker-libs", type, false);
-	VECEACH(libraries, i)
+	for (size_t i = 0; i < json->member_len; i++)
 	{
-		if (!str_is_valid_lowercase_name(libraries[i]))
+		const char *key = json->keys[i];
+		for (size_t j = 0; j < key_count; j++)
 		{
-			char *name = strdup(libraries[i]);
-			str_ellide_in_place(name, 32);
-			error_exit("Error reading %s: invalid library target '%s'.", PROJECT_JSON, name);
+			if (strcmp(key, valid_keys[j]) == 0) goto OK;
+		}
+		eprintf("WARNING: Unknown parameter '%s' in '%s'.\n", key, type);
+	OK:;
+	}
+}
+
+INLINE void append_strings_to_strings(const char*** list_of_strings_ptr, const char **strings_to_append)
+{
+	FOREACH_BEGIN(const char *string, strings_to_append)
+		vec_add(*list_of_strings_ptr, string);
+	FOREACH_END();
+}
+
+static void load_into_build_target(JSONObject *json, const char *type, BuildTarget *target, bool is_default)
+{
+	static const char *default_keys[] = {
+			"authors",
+			"cc",
+			"cflags",
+			"cpu",
+			"csources",
+			"debug-info",
+			"langrev",
+			"lib-dir",
+			"libs",
+			"linker-libs"
+			"macossdk",
+			"nolibc",
+			"nostdlib",
+			"panicfn",
+			"reloc",
+			"soft-float",
+			"sources",
+			"symtab",
+			"target",
+			"targets",
+			"trap-on-wrap",
+			"version",
+			"warnings",
+			"wincrt",
+			"winsdk",
+			"x86-stack-struct-return",
+			"x86vec",
+			"output",
+	};
+	static const char* target_keys[] = {
+			"output"
+			"cc",
+			"cflags-add",
+			"cflags-override",
+			"cpu",
+			"csources-add",
+			"csources-override",
+			"debug-info",
+			"langrev",
+			"lib-dir-add",
+			"lib-dir-override",
+			"libs-add",
+			"libs-override",
+			"linker-libs",
+			"macossdk",
+			"nolibc",
+			"nostdlib",
+			"panicfn",
+			"reloc",
+			"soft-float",
+			"sources-add",
+			"sources-override",
+			"symtab",
+			"target",
+			"trap-on-wrap",
+			"type",
+			"version",
+			"warnings",
+			"wincrt",
+			"winsdk",
+			"x86-stack-struct-return",
+			"x86vec",
+	};
+	if (is_default)
+	{
+		check_json_keys(default_keys, sizeof(default_keys) / sizeof(char*), json, type);
+	}
+	else
+	{
+		check_json_keys(target_keys, sizeof(target_keys) / sizeof(char*), json, type);
+	}
+	const char *cc = get_valid_string(json, "cc", type, false);
+	if (cc) target->cc = cc;
+
+	// CFlags
+	const char *cflags = get_valid_string(json, is_default ? "cflags" : "cflags-override" , type, false);
+	const char *cflags_add = is_default ? NULL : get_valid_string(json, "cflags-add" , type, false);
+	if (cflags && cflags_add)
+	{
+		error_exit("'%s' is combining both 'cflags-add' and 'cflags-override', only one may be used.", type);
+	}
+	if (cflags) target->cflags = cflags;
+	if (cflags_add)
+	{
+		if (target->cflags)
+		{
+			target->cflags = str_printf("%s %s", target->cflags, cflags_add);
+		}
+		else
+		{
+			target->cflags = cflags_add;
 		}
 	}
-	const char **libdirs = get_valid_array(json, "libdir", type, false);
-	const char **linker_libdirs = get_valid_array(json, "linker-libdir", type, false);
 
+	// C source dirs.
+	const char **csource_dirs = get_valid_array(json, is_default ? "csources" : "csources-override", type, false);
+	const char **csource_add = is_default ? NULL : get_valid_array(json, "csources-add", type, false);
+	if (csource_dirs && csource_add)
+	{
+		error_exit("'%s' is combining both 'csource-add' and 'csource-override', only one may be used.", type);
+	}
+	if (csource_dirs) target->csource_dirs = csource_dirs;
+	if (csource_add)
+	{
+		append_strings_to_strings(&csource_add, target->csource_dirs);
+		target->csource_dirs = csource_add;
+	}
+
+
+	const char **add_source_dirs = is_default ? NULL : get_valid_array(json, "sources-add", type, false);
+	bool require_sources = !is_default && !target->source_dirs && !add_source_dirs;
+	const char **source_dirs = get_valid_array(json, is_default ? "sources" : "sources-override", type, require_sources);
+	if (add_source_dirs && source_dirs)
+	{
+		error_exit("'%s' is combining both 'sources-add' and 'sources-override', only one may be used.", type);
+	}
+	if (source_dirs) target->source_dirs = source_dirs;
+	if (add_source_dirs)
+	{
+		append_strings_to_strings(&add_source_dirs, target->source_dirs);
+		target->source_dirs = add_source_dirs;
+	}
+
+	// Libs
+	const char **libraries = get_valid_array(json, is_default ? "libs" : "libs-overrid", type, false);
+	const char **libraries_add = get_valid_array(json, "libs-add", type, false);
+	if (libraries && libraries_add)
+	{
+		error_exit("'%s' is combining both 'libs-add' and 'libs-override', only one may be used.", type);
+	}
+	if (libraries) target->libs = libraries;
+	if (libraries_add)
+	{
+		append_strings_to_strings(&libraries_add, target->libs);
+		target->libs = libraries_add;
+	}
+	FOREACH_BEGIN(const char *name, target->libs)
+		if (!str_is_valid_lowercase_name(name))
+		{
+			char *name_copy = strdup(name);
+			str_ellide_in_place(name_copy, 32);
+			error_exit("Error reading %s: invalid library target '%s'.", PROJECT_JSON, name_copy);
+		}
+	FOREACH_END();
+
+	// Lib-dir - path to search for libraries
+	const char **lib_dir = get_valid_array(json, is_default ? "lib-dir" : "lib-dir-override", type, false);
+	const char **lib_dir_add = is_default ? NULL : get_valid_array(json, "lib-dir-add", type, false);
+	if (lib_dir && lib_dir_add)
+	{
+		error_exit("'%s' is combining both 'lib-dir-add' and 'lib-dir-override', only one may be used.", type);
+	}
+	if (lib_dir) target->libdirs = lib_dir;
+	if (lib_dir_add)
+	{
+		append_strings_to_strings(&lib_dir_add, target->libdirs);
+		target->libdirs = lib_dir_add;
+	}
+
+	// Linker libs - libraries to add at link time
+	const char **linker_libs = get_valid_array(json, is_default ? "linker-libs" : "linker-libs-override", type, false);
+	const char **linker_libs_add = is_default ? NULL : get_valid_array(json, "linker-libs-add", type, false);
+	if (linker_libs && linker_libs_add)
+	{
+		error_exit("'%s' is combining both 'linker-libs-add' and 'linker-libs-override', only one may be used.", type);
+	}
+	if (linker_libs) target->linker_libs = linker_libs;
+	if (linker_libs_add)
+	{
+		append_strings_to_strings(&linker_libs_add, target->linker_libs);
+		target->linker_libs = linker_libs_add;
+	}
+
+	// Linker libs dir - libraries to add at link time
+	const char **linker_libdir = get_valid_array(json, is_default ? "linker-libdir" : "linker-libdir-override", type, false);
+	const char **linker_libdir_add = is_default ? NULL : get_valid_array(json, "linker-libdir-add", type, false);
+	if (linker_libdir && linker_libdir_add)
+	{
+		error_exit("'%s' is combining both 'linker-libdir-add' and 'linker-libdir-override', only one may be used.", type);
+	}
+	if (linker_libdir) target->linker_libs = linker_libdir;
+	if (linker_libdir_add)
+	{
+		append_strings_to_strings(&linker_libdir_add, target->linker_libs);
+		target->linker_libdirs = linker_libdir_add;
+	}
+
+	// debug-info
 	static const char *debug_infos[3] = {
 			[DEBUG_INFO_FULL] = "full",
 			[DEBUG_INFO_NONE] = "none",
 			[DEBUG_INFO_LINE_TABLES] = "line-tables"
 	};
 	DebugInfo info = get_valid_string_setting(json, "debug-info", type, debug_infos, 0, 3, "one of 'full' 'line-table' or 'none'.");
-	const char *arch_os_string = get_valid_string(json, "target", type, false);
-	long symtab_size = get_valid_integer(json, "symtab", type, false);
-	const char *cpu = get_valid_string(json, "cpu", type, false);
-	int reloc = get_valid_string_setting(json, "reloc", type, reloc_models, 0, 5, "'none', 'pic', 'PIC', 'pie' or 'PIE'.");
-	int wincrt = get_valid_string_setting(json, "wincrt", type, wincrt_linking, 0, 5, "'none', 'static' or 'dynamic'.");
-	int x86vec = get_valid_string_setting(json, "x86vec", type, vector_capability, 0, 5, "none, mmx, sse, avx or avx512");
-	const char *panicfn = get_valid_string(json, "panicfn", type, false);
-	target->win.sdk = get_valid_string(json, "winsdk", type, false);
-	target->macos.sdk = get_valid_string(json, "macossdk", type, false);
-	target->panicfn = panicfn;
-	target->no_libc = get_valid_bool(json, "nolibc", type, false);
-	target->no_stdlib = get_valid_bool(json, "nostdlib", type, false);
-	if (cc) target->cc = cc;
-	if (cflags) target->cflags = cflags;
-	if (csource_dirs) target->csource_dirs = csource_dirs;
-	if (version) target->version = version;
-	if (langrev) target->langrev = langrev;
-	if (source_dirs) target->source_dirs = source_dirs;
-	if (libdirs) target->libdirs = libdirs;
-	if (linker_libdirs) target->linker_libdirs = linker_libdirs;
-	if (linker_libs) target->linker_libs = linker_libs;
-	if (libraries) target->libs = libraries;
 	if (info > -1) target->debug_info = info;
-	if (cpu) target->cpu = cpu;
-	if (wincrt > -1) target->win.crt_linking = (WinCrtLinking)wincrt;
-	if (reloc > -1) target->reloc_model = (RelocModel)reloc;
-	if (x86vec > -1) target->feature.x86_vector_capability = x86vec;
 
-	if (arch_os_string)
-	{
-		ArchOsTarget arch_os = arch_os_target_from_string(arch_os_string);
-		if (arch_os == ARCH_OS_TARGET_DEFAULT) error_exit("Error reading %s: %s target was not valid.", PROJECT_JSON, type);
-		target->arch_os_target = arch_os;
-	}
+	// Symtab
+	long symtab_size = get_valid_integer(json, "symtab", type, false);
 	if (symtab_size > 0)
 	{
 		if (symtab_size < 1024)
@@ -175,11 +335,61 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 		target->symtab_size = (uint32_t)symtab_size;
 	}
 
+	// Target
+	const char *arch_os_string = get_valid_string(json, "target", type, false);
+	if (arch_os_string)
+	{
+		ArchOsTarget arch_os = arch_os_target_from_string(arch_os_string);
+		if (arch_os == ARCH_OS_TARGET_DEFAULT) error_exit("Error reading %s: %s target was not valid.", PROJECT_JSON, type);
+		target->arch_os_target = arch_os;
+	}
+
+	// Reloc
+	int reloc = get_valid_string_setting(json, "reloc", type, reloc_models, 0, 5, "'none', 'pic', 'PIC', 'pie' or 'PIE'.");
+	if (reloc > -1) target->reloc_model = (RelocModel)reloc;
+
+	// Cpu
+	const char *cpu = get_valid_string(json, "cpu", type, false);
+	if (cpu) target->cpu = cpu;
+
+	// WinCRT
+	int wincrt = get_valid_string_setting(json, "wincrt", type, wincrt_linking, 0, 5, "'none', 'static' or 'dynamic'.");
+	if (wincrt > -1) target->win.crt_linking = (WinCrtLinking)wincrt;
+
+	// x86vec
+	int x86vec = get_valid_string_setting(json, "x86vec", type, vector_capability, 0, 5, "none, mmx, sse, avx or avx512");
+	if (x86vec > -1) target->feature.x86_vector_capability = x86vec;
+
+	// winsdk
+	target->win.sdk = get_valid_string(json, "winsdk", type, false);
+
+	// macossdk
+	target->macos.sdk = get_valid_string(json, "macossdk", type, false);
+
+	// version
+	const char *version = get_valid_string(json, "version", type, false);
+	if (version) target->version = version;
+
+	// langrev
+	const char *langrev = get_valid_string(json, "langrev", type, false);
+	if (langrev) target->langrev = langrev;
+
+	// panicfn
+	const char *panicfn = get_valid_string(json, "panicfn", type, false);
+	target->panicfn = panicfn;
+
+	// nolibc
+	target->no_libc = get_valid_bool(json, "nolibc", type, target->no_libc);
+
+	// nostdlib
+	target->no_stdlib = get_valid_bool(json, "nostdlib", type, target->no_stdlib);
+
+	// Trap on wrap
 	target->feature.trap_on_wrap = get_valid_bool(json, "trap-on-wrap", type, target->feature.trap_on_wrap);
+
 	// Use the fact that they correspond to 0, 1, -1
 	target->feature.x86_struct_return = get_valid_bool(json, "x86-stack-struct-return", type, target->feature.x86_struct_return);
 	target->feature.soft_float = get_valid_bool(json, "soft-float", type, target->feature.soft_float);
-	target->no_stdlib = get_valid_bool(json, "nostdlib", type, false);
 
 }
 static void project_add_target(Project *project, BuildTarget *default_target,  JSONObject *json, const char *name, const char *type, TargetType target_type)
@@ -200,7 +410,7 @@ static void project_add_target(Project *project, BuildTarget *default_target,  J
 		}
 	}
 	type = str_printf("%s %s", type, target->name);
-	load_into_build_target(json, type, target);
+	load_into_build_target(json, type, target, false);
 }
 
 static void project_add_targets(Project *project, JSONObject *project_data)
@@ -235,7 +445,7 @@ static void project_add_targets(Project *project, JSONObject *project_data)
 			.feature.safe_mode = true,
 			.win.crt_linking = WIN_CRT_DEFAULT,
 	};
-	load_into_build_target(project_data, "default target", &default_target);
+	load_into_build_target(project_data, "default target", &default_target, true);
 	JSONObject *targets_json = json_obj_get(project_data, "targets");
 	if (!targets_json)
 	{
