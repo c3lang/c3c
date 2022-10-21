@@ -12,26 +12,27 @@
     "./**"
   ],
   // libraries to use
-  "libs": [],
+  "dependencies": [],
+
   // c compiler
   "cc": "cc",
   // c sources
   "targets": {
     "hello_world": {
       "type": "executable",
-      "csources-override": [
+      "c-sources-override": [
         "./csource/**"
       ]
     },
     "hello_world_win32": {
       "type": "executable",
-      "csources-override": [
+      "c-sources-override": [
         "./csource/**"
       ]
     },
     "hello_world_lib": {
       "type": "static-lib",
-      "csources-override": [
+      "c-sources-override": [
         "./csource/**"
       ]
     },

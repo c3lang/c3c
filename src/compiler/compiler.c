@@ -609,6 +609,23 @@ void print_syntax(BuildOptions *options)
 			printf("%2d .%s\n", i + 1, type_property_list[i]);
 		}
 	}
+	if (options->print_project_properties)
+	{
+		puts("Project properties");
+		puts("------------------");
+		for (int i = 0; i < project_default_keys_count; i++)
+		{
+			printf("%2d %s\n", i + 1, project_default_keys[i]);
+		}
+		puts("");
+		puts("Target properties");
+		puts("-----------------");
+		for (int i = 0; i < project_target_keys_count; i++)
+		{
+			printf("%2d %s\n", i + 1, project_target_keys[i]);
+		}
+		puts("");
+	}
 	if (options->print_precedence)
 	{
 		puts("precedence     | operators");

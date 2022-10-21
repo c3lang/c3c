@@ -7,6 +7,75 @@
 #define MAX_SYMTAB_SIZE (1024 * 1024)
 
 
+const char *project_default_keys[] = {
+		"authors",
+		"cc",
+		"cflags",
+		"cpu",
+		"c-sources",
+		"debug-info",
+		"langrev",
+		"dependency-search-paths",
+		"dependencies",
+		"linked-libraries",
+		"macossdk",
+		"nolibc",
+		"nostdlib",
+		"panicfn",
+		"reloc",
+		"soft-float",
+		"sources",
+		"symtab",
+		"target",
+		"targets",
+		"trap-on-wrap",
+		"version",
+		"warnings",
+		"wincrt",
+		"winsdk",
+		"x86-stack-struct-return",
+		"x86vec",
+		"output",
+};
+
+const int project_default_keys_count = sizeof(project_default_keys) / sizeof(char*);
+
+const char* project_target_keys[] = {
+		"output"
+		"cc",
+		"cflags-add",
+		"cflags-override",
+		"cpu",
+		"c-sources-add",
+		"c-sources-override",
+		"debug-info",
+		"langrev",
+		"dependency-search-paths-add",
+		"dependency-search-paths-override",
+		"dependencies-add",
+		"dependencies-override",
+		"linked-libraries",
+		"macossdk",
+		"nolibc",
+		"nostdlib",
+		"panicfn",
+		"reloc",
+		"soft-float",
+		"sources-add",
+		"sources-override",
+		"symtab",
+		"target",
+		"trap-on-wrap",
+		"type",
+		"version",
+		"warnings",
+		"wincrt",
+		"winsdk",
+		"x86-stack-struct-return",
+		"x86vec",
+};
+
+const int project_target_keys_count = sizeof(project_target_keys) / sizeof(char*);
 
 const char *get_valid_string(JSONObject *table, const char *key, const char *category, bool mandatory)
 {
@@ -102,6 +171,8 @@ static const char **get_valid_array(JSONObject *table, const char *key, const ch
 
 static void check_json_keys(const char** valid_keys, size_t key_count, JSONObject *json, const char *type)
 {
+	static bool failed_shown = false;
+	bool failed = false;
 	for (size_t i = 0; i < json->member_len; i++)
 	{
 		const char *key = json->keys[i];
@@ -110,7 +181,13 @@ static void check_json_keys(const char** valid_keys, size_t key_count, JSONObjec
 			if (strcmp(key, valid_keys[j]) == 0) goto OK;
 		}
 		eprintf("WARNING: Unknown parameter '%s' in '%s'.\n", key, type);
+		failed = true;
 	OK:;
+	}
+	if (failed && !failed_shown)
+	{
+		eprintf("You can use '--list-project-properties' to list all valid properties.\n");
+		failed_shown = true;
 	}
 }
 
@@ -121,79 +198,30 @@ INLINE void append_strings_to_strings(const char*** list_of_strings_ptr, const c
 	FOREACH_END();
 }
 
+static void target_append_strings(JSONObject *json, const char *type, const char ***list_ptr, const char *base, const char *override, const char *add, bool is_default)
+{
+	const char **value = get_valid_array(json, is_default ? base : override, type, false);
+	const char **add_value = is_default ? NULL : get_valid_array(json, add, type, false);
+	if (value && add_value)
+	{
+		error_exit("'%s' is combining both '%s' and '%s', only one may be used.", type, override, add);
+	}
+	if (value) *list_ptr = value;
+	if (add_value)
+	{
+		append_strings_to_strings(&add_value, *list_ptr);
+		*list_ptr = add_value;
+	}
+}
 static void load_into_build_target(JSONObject *json, const char *type, BuildTarget *target, bool is_default)
 {
-	static const char *default_keys[] = {
-			"authors",
-			"cc",
-			"cflags",
-			"cpu",
-			"csources",
-			"debug-info",
-			"langrev",
-			"lib-dir",
-			"libs",
-			"linker-libs"
-			"macossdk",
-			"nolibc",
-			"nostdlib",
-			"panicfn",
-			"reloc",
-			"soft-float",
-			"sources",
-			"symtab",
-			"target",
-			"targets",
-			"trap-on-wrap",
-			"version",
-			"warnings",
-			"wincrt",
-			"winsdk",
-			"x86-stack-struct-return",
-			"x86vec",
-			"output",
-	};
-	static const char* target_keys[] = {
-			"output"
-			"cc",
-			"cflags-add",
-			"cflags-override",
-			"cpu",
-			"csources-add",
-			"csources-override",
-			"debug-info",
-			"langrev",
-			"lib-dir-add",
-			"lib-dir-override",
-			"libs-add",
-			"libs-override",
-			"linker-libs",
-			"macossdk",
-			"nolibc",
-			"nostdlib",
-			"panicfn",
-			"reloc",
-			"soft-float",
-			"sources-add",
-			"sources-override",
-			"symtab",
-			"target",
-			"trap-on-wrap",
-			"type",
-			"version",
-			"warnings",
-			"wincrt",
-			"winsdk",
-			"x86-stack-struct-return",
-			"x86vec",
-	};
 	if (is_default)
 	{
-		check_json_keys(default_keys, sizeof(default_keys) / sizeof(char*), json, type);
+		check_json_keys(project_default_keys, sizeof(project_default_keys) / sizeof(char*), json, type);
 	}
 	else
 	{
-		check_json_keys(target_keys, sizeof(target_keys) / sizeof(char*), json, type);
+		check_json_keys(project_target_keys, sizeof(project_target_keys) / sizeof(char*), json, type);
 	}
 	const char *cc = get_valid_string(json, "cc", type, false);
 	if (cc) target->cc = cc;
@@ -219,47 +247,22 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	}
 
 	// C source dirs.
-	const char **csource_dirs = get_valid_array(json, is_default ? "csources" : "csources-override", type, false);
-	const char **csource_add = is_default ? NULL : get_valid_array(json, "csources-add", type, false);
-	if (csource_dirs && csource_add)
-	{
-		error_exit("'%s' is combining both 'csource-add' and 'csource-override', only one may be used.", type);
-	}
-	if (csource_dirs) target->csource_dirs = csource_dirs;
-	if (csource_add)
-	{
-		append_strings_to_strings(&csource_add, target->csource_dirs);
-		target->csource_dirs = csource_add;
-	}
+	target_append_strings(json, type, &target->csource_dirs, "c-sources", "c-sources-override", "c-sources-add", is_default);
 
+	// Sources
+	target_append_strings(json, type, &target->source_dirs, "sources", "sources-override", "sources-add", is_default);
 
-	const char **add_source_dirs = is_default ? NULL : get_valid_array(json, "sources-add", type, false);
-	bool require_sources = !is_default && !target->source_dirs && !add_source_dirs;
-	const char **source_dirs = get_valid_array(json, is_default ? "sources" : "sources-override", type, require_sources);
-	if (add_source_dirs && source_dirs)
-	{
-		error_exit("'%s' is combining both 'sources-add' and 'sources-override', only one may be used.", type);
-	}
-	if (source_dirs) target->source_dirs = source_dirs;
-	if (add_source_dirs)
-	{
-		append_strings_to_strings(&add_source_dirs, target->source_dirs);
-		target->source_dirs = add_source_dirs;
-	}
+	// Linked-libraries - libraries to add at link time
+	target_append_strings(json, type, &target->linker_libs, "linked-libraries", "linked-libraries-override", "linked-libraries-add", is_default);
 
-	// Libs
-	const char **libraries = get_valid_array(json, is_default ? "libs" : "libs-overrid", type, false);
-	const char **libraries_add = get_valid_array(json, "libs-add", type, false);
-	if (libraries && libraries_add)
-	{
-		error_exit("'%s' is combining both 'libs-add' and 'libs-override', only one may be used.", type);
-	}
-	if (libraries) target->libs = libraries;
-	if (libraries_add)
-	{
-		append_strings_to_strings(&libraries_add, target->libs);
-		target->libs = libraries_add;
-	}
+	// linker-search-paths libs dir - libraries to add at link time
+	target_append_strings(json, type, &target->linker_libdirs, "linker-search-paths", "linker-search-paths-override", "linker-search-paths-add", is_default);
+
+	// dependency-search-paths - path to search for libraries
+	target_append_strings(json, type, &target->libdirs, "dependency-search-paths", "dependency-search-paths-override", "dependency-search-paths-add", is_default);
+
+	// Dependencies
+	target_append_strings(json, type, &target->libs, "dependencies", "dependencies-override", "dependencies-add", is_default);
 	FOREACH_BEGIN(const char *name, target->libs)
 		if (!str_is_valid_lowercase_name(name))
 		{
@@ -268,48 +271,6 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 			error_exit("Error reading %s: invalid library target '%s'.", PROJECT_JSON, name_copy);
 		}
 	FOREACH_END();
-
-	// Lib-dir - path to search for libraries
-	const char **lib_dir = get_valid_array(json, is_default ? "lib-dir" : "lib-dir-override", type, false);
-	const char **lib_dir_add = is_default ? NULL : get_valid_array(json, "lib-dir-add", type, false);
-	if (lib_dir && lib_dir_add)
-	{
-		error_exit("'%s' is combining both 'lib-dir-add' and 'lib-dir-override', only one may be used.", type);
-	}
-	if (lib_dir) target->libdirs = lib_dir;
-	if (lib_dir_add)
-	{
-		append_strings_to_strings(&lib_dir_add, target->libdirs);
-		target->libdirs = lib_dir_add;
-	}
-
-	// Linker libs - libraries to add at link time
-	const char **linker_libs = get_valid_array(json, is_default ? "linker-libs" : "linker-libs-override", type, false);
-	const char **linker_libs_add = is_default ? NULL : get_valid_array(json, "linker-libs-add", type, false);
-	if (linker_libs && linker_libs_add)
-	{
-		error_exit("'%s' is combining both 'linker-libs-add' and 'linker-libs-override', only one may be used.", type);
-	}
-	if (linker_libs) target->linker_libs = linker_libs;
-	if (linker_libs_add)
-	{
-		append_strings_to_strings(&linker_libs_add, target->linker_libs);
-		target->linker_libs = linker_libs_add;
-	}
-
-	// Linker libs dir - libraries to add at link time
-	const char **linker_libdir = get_valid_array(json, is_default ? "linker-libdir" : "linker-libdir-override", type, false);
-	const char **linker_libdir_add = is_default ? NULL : get_valid_array(json, "linker-libdir-add", type, false);
-	if (linker_libdir && linker_libdir_add)
-	{
-		error_exit("'%s' is combining both 'linker-libdir-add' and 'linker-libdir-override', only one may be used.", type);
-	}
-	if (linker_libdir) target->linker_libs = linker_libdir;
-	if (linker_libdir_add)
-	{
-		append_strings_to_strings(&linker_libdir_add, target->linker_libs);
-		target->linker_libdirs = linker_libdir_add;
-	}
 
 	// debug-info
 	static const char *debug_infos[3] = {

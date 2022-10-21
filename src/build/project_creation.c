@@ -18,9 +18,9 @@ const char* JSON_EXE =
 		"  // warnings used for all targets\n"
 		"  \"warnings\": [ \"no-unused\" ],\n"
 		"  // directories where C3 library files may be found\n"
-		"  \"lib-dir\": [ \"lib\" ],\n"
+		"  \"dependency-search-paths\": [ \"lib\" ],\n"
 		"  // libraries to use for all targets\n"
-		"  \"libs\": [ ],\n"
+		"  \"dependencies\": [ ],\n"
 		"  // authors, optionally with email\n"
 		"  \"authors\": [ \"John Doe <john.doe@example.com>\" ],\n"
 		"  // Version using semantic versioning\n"
@@ -76,9 +76,9 @@ const char* JSON_STATIC =
 		"  // warnings used for all targets\n"
 		"  \"warnings\": [ \"no-unused\" ],\n"
 		"  // directories where C3 library files may be found\n"
-		"  \"lib-dir\": [ \"lib\" ],\n"
+		"  \"dependency-search-paths\": [ \"lib\" ],\n"
 		"  // libraries to use for all targets\n"
-		"  \"libs\": [ ],\n"
+		"  \"dependencies\": [ ],\n"
 		"  // authors, optionally with email\n"
 		"  \"authors\": [ \"John Doe <john.doe@example.com>\" ],\n"
 		"  // Version using semantic versioning\n"
@@ -134,9 +134,9 @@ const char* JSON_DYNAMIC =
 		"  // warnings used for all targets\n"
 		"  \"warnings\": [ \"no-unused\" ],\n"
 		"  // directories where C3 library files may be found\n"
-		"  \"lib-dir\": [ \"lib\" ],\n"
+		"  \"dependency-search-paths\": [ \"lib\" ],\n"
 		"  // libraries to use for all targets\n"
-		"  \"libs\": [ ],\n"
+		"  \"dependencies\": [ ],\n"
 		"  // authors, optionally with email\n"
 		"  \"authors\": [ \"John Doe <john.doe@example.com>\" ],\n"
 		"  // Version using semantic versioning\n"
@@ -235,7 +235,7 @@ void create_project(BuildOptions *build_options)
 	if (!file_touch("README.md")) goto ERROR;
 
 
-	FILE *file = fopen("project.c3p", "a");
+	FILE *file = fopen("project.json", "a");
 	if (!file) goto ERROR;
 	(void) fprintf(file, template, build_options->project_name);
 	if (fclose(file)) goto ERROR;
