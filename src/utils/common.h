@@ -19,7 +19,7 @@
 #define MAX_ARRAY_SIZE INT64_MAX
 #define MAX_IDENTIFIER_LENGTH 31
 #define MAX_SOURCE_LOCATION_LEN 255
-#define PROJECT_JSON "project.c3p"
+#define PROJECT_JSON "project.json"
 
 
 #if defined( _WIN32 ) || defined( __WIN32__ ) || defined( _WIN64 )

@@ -44,6 +44,11 @@ typedef uint64_t BitSize;
 #define CLOBBER_FLAG_ELEMENTS 4
 #define MAX_CLOBBER_FLAGS (64 * CLOBBER_FLAG_ELEMENTS)
 
+extern const char *project_default_keys[];
+extern const int project_default_keys_count;
+extern const char* project_target_keys[];
+extern const int project_target_keys_count;
+
 typedef struct Ast_ Ast;
 typedef struct Decl_ Decl;
 typedef struct TypeInfo_ TypeInfo;

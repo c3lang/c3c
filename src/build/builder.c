@@ -303,7 +303,7 @@ void init_default_build_target(BuildTarget *target, BuildOptions *options)
 void init_build_target(BuildTarget *target, BuildOptions *options)
 {
 	*target = (BuildTarget) { 0 };
-	// Locate the project.c3p
+	// Locate the project.json
 	file_find_top_dir();
 	// Parse it
 	Project *project = project_load();
