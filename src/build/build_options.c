@@ -141,15 +141,9 @@ static void usage(void)
 	OUTPUT("  --list-keywords           - List all keywords.");
 	OUTPUT("  --list-operators          - List all operators.");
 	OUTPUT("  --list-precedence         - List operator precedence order.");
-	OUTPUT("  --list-targets            - List all architectures the compiler supports.");
-	OUTPUT("  --list-attributes         - List all attributes.");
-	OUTPUT("  --list-builtins           - List all builtins.");
-	OUTPUT("  --list-keywords           - List all keywords.");
-	OUTPUT("  --list-operators          - List all operators.");
-	OUTPUT("  --list-precedence         - List operator precedence order.");
 	OUTPUT("  --list-project-properties - List all available keys used in project.json files.");
-	OUTPUT("  --list-type-properties    - List all type properties.");
 	OUTPUT("  --list-targets            - List all architectures the compiler supports.");
+	OUTPUT("  --list-type-properties    - List all type properties.");
 	OUTPUT("");
 	OUTPUT("  --winsdk <dir>            - Set the directory for Windows system library files for cross compilation.");
 	OUTPUT("  --wincrt=<option>         - Windows CRT linking: none, static, dynamic (default).");
