@@ -89,6 +89,11 @@ static Expr *parse_precedence(ParseContext *c, Precedence precedence)
 	return parse_precedence_with_left_side(c, left_side, precedence);
 }
 
+Expr *parse_generic_parameter(ParseContext *c)
+{
+	return parse_precedence(c, PREC_ADDITIVE);
+}
+
 Expr *parse_expr_or_initializer_list(ParseContext *c)
 {
 	return parse_expr(c);

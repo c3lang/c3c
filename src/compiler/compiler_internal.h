@@ -609,7 +609,7 @@ typedef struct
 					SourceSpan span;
 				};
 			};
-			TypeInfo **generic_params;
+			Expr **generic_params;
 		};
 		Decl *alias;
 	};
@@ -1451,7 +1451,7 @@ typedef struct Module_
 	AnalysisStage stage : 6;
 
 	Ast **files; // Asts
-
+	AstId docs;
 	Decl** method_extensions;
 	HTable symbols;
 	struct CompilationUnit_ **units;

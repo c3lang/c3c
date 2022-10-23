@@ -16,7 +16,7 @@
 #define TRY_CONSUME_AFTER(_tok, _message, _type) do { if (!try_consume(c, _tok)) { sema_error_at_after(c->prev_span, _message); return _type; } } while(0)
 #define CHECK_EXPR_OR_RET(_expr) do { if (!expr_ok(_expr)) return _expr; } while(0)
 
-Decl *parse_top_level_statement(ParseContext *c, bool allow_import);
+Decl *parse_top_level_statement(ParseContext *c, ParseContext **new_context);
 Ast *parse_ct_assert_stmt(ParseContext *c);
 Ast *parse_stmt(ParseContext *c);
 Path *parse_path_prefix(ParseContext *c, bool *had_error);
@@ -52,8 +52,8 @@ parse_parameters(ParseContext *c, Visibility visibility, Decl ***params_ref, Dec
 bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *splat, bool vasplat);
 Expr *parse_type_compound_literal_expr_after_type(ParseContext *c, TypeInfo *type_info);
 
-bool parse_module(ParseContext *c);
-
+bool parse_module(ParseContext *c, AstId docs);
+Expr *parse_generic_parameter(ParseContext *c);
 bool try_consume(ParseContext *c, TokenType type);
 bool consume(ParseContext *c, TokenType type, const char *message, ...);
 bool consume_const_name(ParseContext *c, const char* type);

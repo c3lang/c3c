@@ -90,7 +90,7 @@ static inline bool parse_top_level_block(ParseContext *c, Decl ***decls, TokenTy
 	CONSUME_OR_RET(TOKEN_COLON, false);
 	while (!tok_is(c, end1) && !tok_is(c, end2) && !tok_is(c, end3) && !tok_is(c, TOKEN_EOF))
 	{
-		Decl *decl = parse_top_level_statement(c, false);
+		Decl *decl = parse_top_level_statement(c, NULL);
 		if (!decl) continue;
 		assert(decl);
 		if (decl_ok(decl))
@@ -173,7 +173,7 @@ static inline Decl *parse_ct_case(ParseContext *c)
 	{
 		TokenType type = c->tok;
 		if (type == TOKEN_CT_DEFAULT || type == TOKEN_CT_CASE || type == TOKEN_CT_ENDSWITCH) break;
-		ASSIGN_DECL_OR_RET(Decl * stmt, parse_top_level_statement(c, false), poisoned_decl);
+		ASSIGN_DECL_OR_RET(Decl *stmt, parse_top_level_statement(c, NULL), poisoned_decl);
 		vec_add(decl->ct_case_decl.body, stmt);
 	}
 	return decl;
@@ -282,12 +282,13 @@ static inline bool parse_optional_module_params(ParseContext *c, const char ***t
 		switch (c->tok)
 		{
 			case TOKEN_TYPE_IDENT:
+			case TOKEN_CONST_IDENT:
 				break;
 			case TOKEN_COMMA:
 				SEMA_ERROR_HERE("Unexpected ','");
 				return false;
 			case TOKEN_IDENT:
-				SEMA_ERROR_HERE("The module parameter must be a type.");
+				SEMA_ERROR_HERE("The module parameter must be a type or a constant.");
 				return false;
 			case TOKEN_CT_IDENT:
 			case TOKEN_CT_TYPE_IDENT:
@@ -309,13 +310,8 @@ static inline bool parse_optional_module_params(ParseContext *c, const char ***t
 /**
  * module ::= MODULE module_path ('<' module_params '>')? EOS
  */
-bool parse_module(ParseContext *c)
+bool parse_module(ParseContext *c, AstId docs)
 {
-	if (!try_consume(c, TOKEN_MODULE))
-	{
-		return context_set_module_from_filename(c);
-	}
-
 	bool is_private = try_consume(c, TOKEN_PRIVATE);
 
 	if (tok_is(c, TOKEN_STRING))
@@ -359,11 +355,30 @@ bool parse_module(ParseContext *c)
 	const char **generic_parameters = NULL;
 	if (!parse_optional_module_params(c, &generic_parameters))
 	{
-		context_set_module(c, path, NULL, is_private);
+		if (!context_set_module(c, path, NULL, is_private)) return false;
 		recover_top_level(c);
+		if (docs)
+		{
+			SEMA_ERROR(astptr(docs), "Contracts cannot be use with non-generic modules.");
+			return false;
+		}
 		return true;
 	}
-	context_set_module(c, path, generic_parameters, is_private);
+	if (!context_set_module(c, path, generic_parameters, is_private)) return false;
+	if (docs)
+	{
+		AstId old_docs = c->unit->module->docs;
+		if (old_docs)
+		{
+			Ast *last = ast_last(astptr(old_docs));
+			last->next = docs;
+		}
+		else
+		{
+			c->unit->module->docs = docs;
+		}
+	}
+
 	CONSUME_EOS_OR_RET(false);
 	return true;
 }
@@ -1629,24 +1644,24 @@ static bool parse_macro_arguments(ParseContext *c, Visibility visibility, Decl *
 }
 
 /**
- * define_parameters ::= type (',' type)* '>'
+ * define_parameters ::= expr (',' expr)* '>'
  *
  * @return NULL if parsing failed, otherwise a list of Type*
  */
-static inline TypeInfo **parse_generic_parameters(ParseContext *c)
+static inline Expr **parse_generic_parameters(ParseContext *c)
 {
-	TypeInfo **types = NULL;
+	Expr **params = NULL;
 	while (!try_consume(c, TOKEN_GREATER))
 	{
-		ASSIGN_TYPE_OR_RET(TypeInfo *type_info, parse_type(c), NULL);
-		vec_add(types, type_info);
+		ASSIGN_EXPR_OR_RET(Expr *arg, parse_generic_parameter(c), NULL);
+		vec_add(params, arg);
 		TokenType tok = c->tok;
 		if (tok != TOKEN_RPAREN && tok != TOKEN_GREATER)
 		{
 			TRY_CONSUME_OR_RET(TOKEN_COMMA, "Expected ',' after argument.", NULL);
 		}
 	}
-	return types;
+	return params;
 }
 
 /**
@@ -1693,7 +1708,7 @@ static inline Decl *parse_define_type(ParseContext *c, Visibility visibility)
 	// 3. Do we have '<' if so it's a parameterized type e.g. foo::bar::Type<int, double>.
 	if (try_consume(c, TOKEN_LESS))
 	{
-		TypeInfo **params = parse_generic_parameters(c);
+		Expr **params = parse_generic_parameters(c);
 		if (!params) return poisoned_decl;
 		Decl *decl = decl_new(DECL_DEFINE, alias_name, name_loc, visibility);
 		decl->define_decl.define_kind = DEFINE_TYPE_GENERIC;
@@ -1796,7 +1811,7 @@ static inline Decl *parse_define_ident(ParseContext *c, Visibility visibility)
 	if (try_consume(c, TOKEN_LESS))
 	{
 		decl->define_decl.define_kind = DEFINE_IDENT_GENERIC;
-		TypeInfo **params = parse_generic_parameters(c);
+		Expr **params = parse_generic_parameters(c);
 		if (!params) return poisoned_decl;
 		decl->define_decl.generic_params = params;
 	}
@@ -2519,7 +2534,7 @@ static bool parse_docs(ParseContext *c, AstId *docs_ref)
  * @param visibility
  * @return Decl* or a poison value if parsing failed
  */
-Decl *parse_top_level_statement(ParseContext *c, bool allow_import)
+Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 {
 	AstId docs = 0;
 	if (!parse_docs(c, &docs)) return poisoned_decl;
@@ -2539,8 +2554,35 @@ Decl *parse_top_level_statement(ParseContext *c, bool allow_import)
 
 	Decl *decl;
 	TokenType tok = c->tok;
+	if (tok != TOKEN_MODULE && !c->unit->module)
+	{
+		if (!context_set_module_from_filename(c)) return poisoned_decl;
+		// Pass the docs to the next thing.
+	}
+
 	switch (tok)
 	{
+		case TOKEN_MODULE:
+			if (visibility != VISIBLE_PUBLIC)
+			{
+				SEMA_ERROR_HERE("Did not expect visibility before 'module'.");
+				return poisoned_decl;
+			}
+			if (!c_ref)
+			{
+				SEMA_ERROR_HERE("'module' cannot appear inside of conditional compilation.");
+				return poisoned_decl;
+			}
+			advance(c);
+			if (c->unit->module)
+			{
+				ParseContext *new_context = CALLOCS(ParseContext);
+				*new_context = *c;
+				new_context->unit = unit_create(c->unit->file);
+				*c_ref = c = new_context;
+			}
+			if (!parse_module(c, docs)) return poisoned_decl;
+			return NULL;
 		case TOKEN_DOCS_START:
 			if (visibility != VISIBLE_PUBLIC)
 			{
@@ -2596,7 +2638,7 @@ Decl *parse_top_level_statement(ParseContext *c, bool allow_import)
 		}
 		case TOKEN_IMPORT:
 			if (!check_no_visibility_before(c, visibility)) return poisoned_decl;
-			if (!allow_import)
+			if (!c_ref)
 			{
 				SEMA_ERROR_HERE("'import' may not appear inside a compile time statement.");
 				return poisoned_decl;

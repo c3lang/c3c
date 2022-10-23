@@ -64,19 +64,9 @@ static inline void parse_translation_unit(ParseContext *c)
 	// Prime everything
 	advance(c);
 	advance(c);
-	NEXT_CONTEXT:
-	if (!parse_module(c)) return;
 	while (!tok_is(c, TOKEN_EOF))
 	{
-		if (tok_is(c, TOKEN_MODULE))
-		{
-			ParseContext *new_context = CALLOCS(ParseContext);
-			*new_context = *c;
-			new_context->unit = unit_create(c->unit->file);
-			c = new_context;
-			goto NEXT_CONTEXT;
-		}
-		Decl *decl = parse_top_level_statement(c, true);
+		Decl *decl = parse_top_level_statement(c, &c);
 		if (!decl) continue;
 		if (decl_ok(decl))
 		{

@@ -901,7 +901,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			{
 				case DEFINE_TYPE_GENERIC:
 				case DEFINE_IDENT_GENERIC:
-					MACRO_COPY_TYPE_LIST(decl->define_decl.generic_params);
+					MACRO_COPY_EXPR_LIST(decl->define_decl.generic_params);
 					break;
 				case DEFINE_IDENT_ALIAS:
 					break;

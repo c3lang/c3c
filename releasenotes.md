@@ -1,0 +1,42 @@
+Release Notes
+
+0.4.0 Change List
+
+- Compatibility with LLVM 16.
+- Dropped LLVM 12 support.
+- Updated memory allocators. Added @scoped and @pool macros.
+- Various bug fixes.
+- Constant pointers may be compile time evaluated.
+- Added many new builtins.
+- Emit asm using --emit-asm.
+- Added --nostdlib and --nolibc.
+- Fixes to adding libraries at link time.
+- Various improved error messages.
+- Windows debug info fixes.
+- Add of `foreach_r`.
+- Script downloading the MSVC SDK to cross compile to windows.
+- Many standard library additions.
+- Extension methods may be added for built-in types.
+- Macros may take vector and array arguments generic over length.
+- Macro varargs with $vaarg, $vacount etc.
+- Many vector builtins added as dot methods.
+- in / out / inout doc parameters checked.
+- Initial inline asm support for aarch64 and x64.
+- Single line short function declaration.
+- Added `$checks` builtin.
+- Optional single module compilation.
+- Static initialization / finalization to have code running at start/end.
+- C3 custom printf function in the stdlib.
+- `[]=` overload now works correctly.
+- More compile time reflection added and general cleanup done.
+- usize/isize/iptrdiff/uptrdiff replaced by usz/isz.
+- Add `var` to allow type inference on regular variables.
+- LLVM codegen optimizations.
+- `??` now allows chaining another optional.
+- int128 support on all platforms.
+- `import` is now allowed anywhere at the top level.
+- `project.c3p` renamed `project.json`
+- Update to project properties, e.g. "libs" -> "dependencies" etc.
+- $$TIME, $$DATE and $$FUNCTION builtin defines added.
+- Improvements to untyped lists.
+- Various builtins added: $$prefetch, $$reverse, $$shufflevector etc.

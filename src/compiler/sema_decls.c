@@ -51,7 +51,7 @@ static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl);
 
 static CompilationUnit *unit_copy(Module *module, CompilationUnit *unit);
 static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl);
-static Module *module_instantiate_generic(Module *module, Path *path, TypeInfo **parms);
+static Module *module_instantiate_generic(Module *module, Path *path, Expr **params);
 
 static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param, bool *has_default);
 static inline bool sema_analyse_enum(SemaContext *context, Decl *decl);
@@ -2500,7 +2500,6 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 }
 
 
-
 static CompilationUnit *unit_copy(Module *module, CompilationUnit *unit)
 {
 	CompilationUnit *copy = unit_create(unit->file);
@@ -2511,7 +2510,7 @@ static CompilationUnit *unit_copy(Module *module, CompilationUnit *unit)
 	return copy;
 }
 
-static Module *module_instantiate_generic(Module *module, Path *path, TypeInfo **parms)
+static Module *module_instantiate_generic(Module *module, Path *path, Expr **params)
 {
 	Module *new_module = compiler_find_or_create_module(path, NULL, module->is_private);
 	new_module->is_generic = true;
@@ -2523,10 +2522,20 @@ static Module *module_instantiate_generic(Module *module, Path *path, TypeInfo *
 	CompilationUnit *first_context = new_module->units[0];
 	VECEACH(module->parameters, i)
 	{
-		const char *param = module->parameters[i];
-		Decl *decl = decl_new_with_type(param, parms[i]->span, DECL_TYPEDEF, VISIBLE_PUBLIC);
+		const char *param_name = module->parameters[i];
+		Expr *param = params[i];
+		if (param->expr_kind != EXPR_TYPEINFO)
+		{
+			Decl *decl = decl_new_var(param_name, param->span, NULL, VARDECL_CONST, VISIBLE_PUBLIC);
+			decl->var.init_expr = param;
+			decl->type = param->type;
+			decl->resolve_status = RESOLVE_NOT_DONE;
+			vec_add(first_context->global_decls, decl);
+			continue;
+		}
+		Decl *decl = decl_new_with_type(param_name, params[i]->span, DECL_TYPEDEF, VISIBLE_PUBLIC);
 		decl->resolve_status = RESOLVE_DONE;
-		TypeInfo *type_info = parms[i];
+		TypeInfo *type_info = param->type_expr;
 		assert(type_info->resolve_status == RESOLVE_DONE);
 		decl->typedef_decl.type_info = type_info;
 		decl->type->name = decl->name;
@@ -2576,7 +2585,7 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 	}
 
 	Module *module = alias->unit->module;
-	TypeInfo **params = decl->define_decl.generic_params;
+	Expr **params = decl->define_decl.generic_params;
 	unsigned parameter_count = vec_size(module->parameters);
 	assert(parameter_count > 0);
 	if (parameter_count != vec_size(params))
@@ -2591,10 +2600,62 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 	scratch_buffer_clear();
 	scratch_buffer_append_len(module->name->module, module->name->len);
 	scratch_buffer_append("$$");
-	FOREACH_BEGIN_IDX(i, TypeInfo *type_info, decl->define_decl.generic_params)
-		if (!sema_resolve_type_info(c, type_info)) return decl_poison(decl);
+	FOREACH_BEGIN_IDX(i, Expr *param, decl->define_decl.generic_params)
 		if (i != 0) scratch_buffer_append_char('.');
-		type_mangle_introspect_name_to_buffer(type_info->type->canonical);
+		if (param->expr_kind == EXPR_TYPEINFO)
+		{
+			TypeInfo *type = param->type_expr;
+			if (!sema_resolve_type_info(c, type)) return decl_poison(decl);
+			if (type->kind == TYPE_OPTIONAL)
+			{
+				SEMA_ERROR(type, "Expected a non-optional type.");
+				return poisoned_decl;
+			}
+			if (type_is_invalid_storage_type(type->type))
+			{
+				SEMA_ERROR(type, "Expected a runtime type.");
+				return poisoned_decl;
+			}
+			type_mangle_introspect_name_to_buffer(type->type->canonical);
+		}
+		else
+		{
+			if (!sema_analyse_ct_expr(c, param)) return decl_poison(decl);
+			Type *type = param->type->canonical;
+			if (!type_is_integer_or_bool_kind(type))
+			{
+				SEMA_ERROR(param, "Only integer and boolean types may be generic arguments.");
+				return poisoned_decl;
+			}
+			assert(expr_is_const(param));
+			if (type == type_bool)
+			{
+				scratch_buffer_append_char(param->const_expr.b ? 't' : 'f');
+			}
+			else
+			{
+				char *maybe_neg = &scratch_buffer.str[scratch_buffer.len];
+				if (type->type_kind == TYPE_I128 || type->type_kind == TYPE_U128)
+				{
+					char *str = int_to_str(param->const_expr.ixx, 10);
+
+					scratch_buffer_append(str);
+				}
+				else
+				{
+					if (type_is_signed(type))
+					{
+						scratch_buffer_append_signed_int(param->const_expr.ixx.i.low);
+					}
+					else
+					{
+						scratch_buffer_append_unsigned_int(param->const_expr.ixx.i.high);
+					}
+				}
+				// Replace - with _
+				if (maybe_neg[0] == '-') maybe_neg[0] = '_';
+			}
+		}
 	FOREACH_END();
 	TokenType ident_type = TOKEN_IDENT;
 	const char *path_string = scratch_buffer_interned();
