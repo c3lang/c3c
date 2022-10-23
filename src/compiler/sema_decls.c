@@ -2606,7 +2606,7 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 		{
 			TypeInfo *type = param->type_expr;
 			if (!sema_resolve_type_info(c, type)) return decl_poison(decl);
-			if (type->kind == TYPE_OPTIONAL)
+			if (type->type->type_kind == TYPE_OPTIONAL)
 			{
 				SEMA_ERROR(type, "Expected a non-optional type.");
 				return poisoned_decl;
