@@ -183,9 +183,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y clang-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}}-dev lld-${{matrix.llvm_version}} liblld-${{matrix.llvm_version}}-dev
           sudo apt-get install -y libmlir-${{matrix.llvm_version}} libmlir-${{matrix.llvm_version}}-dev mlir-${{matrix.llvm_version}}-tools 
-          if [[ "${{matrix.llvm_version}}" > 15 ]]; then
-            sudo apt-get install -y bolt-${{matrix.llvm_version}} 
-          fi
 
       - name: CMake
         run: |
