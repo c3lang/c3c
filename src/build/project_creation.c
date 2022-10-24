@@ -254,12 +254,6 @@ void create_project(BuildOptions *build_options)
 
 	if (!dir_change("..")) goto ERROR;
 
-	if (!dir_make("directives")) goto ERROR;
-
-	if (!dir_change("directives")) goto ERROR;
-
-	if (!file_touch("about.md")) goto ERROR;
-
 	if (!dir_make("src")) goto ERROR;
 
 	if (!dir_change("src")) goto ERROR;
