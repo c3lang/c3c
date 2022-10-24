@@ -441,7 +441,7 @@ void compiler_compile(void)
 			DEBUG_LOG("Will run");
 			printf("Launching %s...\n", output_exe);
 			int ret = system(platform_target.os == OS_TYPE_WIN32 ? output_exe : str_printf("./%s", output_exe));
-			printf("Program finished with exit code %d.", ret);
+			printf("Program finished with exit code %d.\n", ret);
 		}
 	}
 	if (output_static)
