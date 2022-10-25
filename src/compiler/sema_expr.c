@@ -4780,7 +4780,10 @@ static bool sema_expr_analyse_shift(SemaContext *context, Expr *expr, Expr *left
  */
 static bool sema_expr_analyse_shift_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right)
 {
-
+	if (left->expr_kind == EXPR_CT_IDENT)
+	{
+		return sema_binary_analyse_ct_common_assign(context, expr, left);
+	}
 	// 1. Analyze the two sub lhs & rhs *without coercion*
 	if (!sema_binary_analyse_subexpr(context, expr, left, right)) return false;
 
