@@ -30,6 +30,7 @@ struct Formatter
 {
 	void *data;
 	OutputFn out_fn;
+	char[] format;
 	struct
 	{
 		PrintFlags flags;
@@ -365,6 +366,7 @@ fn usz! Formatter.vprintf(Formatter* this, char[] format, variant[] variants)
 	}
 	usz format_len = format.len;
 	usz variant_index = 0;
+	this.format = format;
 	for (usz i = 0; i < format_len; i++)
 	{
 		// format specifier?  %[flags][width][.precision][length]
