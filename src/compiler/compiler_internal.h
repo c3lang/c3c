@@ -1450,7 +1450,6 @@ typedef struct Module_
 	bool no_extprefix : 1;
 	AnalysisStage stage : 6;
 
-	Ast **files; // Asts
 	AstId docs;
 	Decl** method_extensions;
 	HTable symbols;
