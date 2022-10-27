@@ -303,6 +303,38 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 					return false;
 			}
 			break;
+		case BUILTIN_OVERFLOW_ADD:
+		case BUILTIN_OVERFLOW_MUL:
+		case BUILTIN_OVERFLOW_SUB:
+		{
+			if (!sema_check_builtin_args(args,
+			                             (BuiltinArg[]) { BA_INTEGER, BA_INTEGER, BA_POINTER },
+			                             arg_count)) return false;
+			if (!sema_check_builtin_args_match(args, 2)) return false;
+			if (args[0]->type->canonical != args[2]->type->canonical->pointer)
+			{
+				SEMA_ERROR(args[2], "Expected %s, not %s.", type_to_error_string(type_get_ptr(args[0]->type)),
+				           type_to_error_string(args[2]->type));
+				return false;
+			}
+			rtype = type_bool;
+			break;
+		}
+		case BUILTIN_EXACT_ADD:
+		case BUILTIN_EXACT_DIV:
+		case BUILTIN_EXACT_MUL:
+		case BUILTIN_EXACT_SUB:
+		case BUILTIN_EXACT_MOD:
+			if (!sema_check_builtin_args(args,
+			                             (BuiltinArg[]) { BA_INTEGER, BA_INTEGER },
+			                             arg_count)) return false;
+			if (!sema_check_builtin_args_match(args, arg_count)) return false;
+			rtype = type_no_optional(args[0]->type->canonical);
+			break;
+		case BUILTIN_EXACT_NEG:
+			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_INTLIKE }, arg_count)) return false;
+			rtype = type_no_optional(args[0]->type->canonical);
+			break;
 		case BUILTIN_MEMCOPY:
 		case BUILTIN_MEMMOVE:
 			if (!sema_check_builtin_args(args,
@@ -517,6 +549,7 @@ static inline unsigned builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_CTLZ:
 		case BUILTIN_POPCOUNT:
 		case BUILTIN_CTTZ:
+		case BUILTIN_EXACT_NEG:
 		case BUILTIN_EXP:
 		case BUILTIN_EXP2:
 		case BUILTIN_FLOOR:
@@ -546,21 +579,29 @@ static inline unsigned builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_REDUCE_MIN:
 			return 1;
 		case BUILTIN_COPYSIGN:
+		case BUILTIN_EXACT_ADD:
+		case BUILTIN_EXACT_DIV:
+		case BUILTIN_EXACT_MOD:
+		case BUILTIN_EXACT_MUL:
+		case BUILTIN_EXACT_SUB:
 		case BUILTIN_MAX:
 		case BUILTIN_MIN:
 		case BUILTIN_POW:
 		case BUILTIN_POW_INT:
-		case BUILTIN_VOLATILE_STORE:
-		case BUILTIN_SAT_ADD:
-		case BUILTIN_SAT_SUB:
-		case BUILTIN_SAT_SHL:
-		case BUILTIN_REDUCE_FMUL:
 		case BUILTIN_REDUCE_FADD:
+		case BUILTIN_REDUCE_FMUL:
+		case BUILTIN_SAT_ADD:
+		case BUILTIN_SAT_SHL:
+		case BUILTIN_SAT_SUB:
+		case BUILTIN_VOLATILE_STORE:
 			return 2;
 		case BUILTIN_FMA:
 		case BUILTIN_FSHL:
 		case BUILTIN_FSHR:
 		case BUILTIN_FMULADD:
+		case BUILTIN_OVERFLOW_ADD:
+		case BUILTIN_OVERFLOW_MUL:
+		case BUILTIN_OVERFLOW_SUB:
 		case BUILTIN_PREFETCH:
 			return 3;
 		case BUILTIN_MEMSET:

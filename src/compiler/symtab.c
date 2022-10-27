@@ -187,6 +187,12 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_COS] = KW_DEF("cos");
 	builtin_list[BUILTIN_CTLZ] = KW_DEF("clz");
 	builtin_list[BUILTIN_CTTZ] = KW_DEF("ctz");
+	builtin_list[BUILTIN_EXACT_ADD] = KW_DEF("add");
+	builtin_list[BUILTIN_EXACT_DIV] = KW_DEF("div");
+	builtin_list[BUILTIN_EXACT_MOD] = KW_DEF("mod");
+	builtin_list[BUILTIN_EXACT_MUL] = KW_DEF("mul");
+	builtin_list[BUILTIN_EXACT_NEG] = KW_DEF("neg");
+	builtin_list[BUILTIN_EXACT_SUB] = KW_DEF("sub");
 	builtin_list[BUILTIN_EXP] = KW_DEF("exp");
 	builtin_list[BUILTIN_EXP2] = KW_DEF("exp2");
 	builtin_list[BUILTIN_FLOOR] = KW_DEF("floor");
@@ -201,6 +207,9 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_MEMSET] = KW_DEF("memset");
 	builtin_list[BUILTIN_MEMMOVE] = KW_DEF("memmove");
 	builtin_list[BUILTIN_NEARBYINT] = KW_DEF("nearbyint");
+	builtin_list[BUILTIN_OVERFLOW_ADD] = KW_DEF("overflow_add");
+	builtin_list[BUILTIN_OVERFLOW_SUB] = KW_DEF("overflow_sub");
+	builtin_list[BUILTIN_OVERFLOW_MUL] = KW_DEF("overflow_mul");
 	builtin_list[BUILTIN_POPCOUNT] = KW_DEF("popcount");
 	builtin_list[BUILTIN_POW] = KW_DEF("pow");
 	builtin_list[BUILTIN_POW_INT] = KW_DEF("pow_int");

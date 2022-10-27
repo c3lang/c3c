@@ -358,11 +358,82 @@ void llvm_emit_simple_builtin(GenContext *c, BEValue *be_value, Expr *expr, unsi
 	Expr **args = expr->call_expr.arguments;
 	unsigned count = vec_size(args);
 	assert(count <= 3);
+	assert(count > 0);
 	LLVMValueRef arg_slots[3];
 	llvm_emit_intrinsic_args(c, args, arg_slots, count);
-	LLVMTypeRef call_type[1] = { LLVMTypeOf(arg_slots[0]) };
-	LLVMValueRef result = llvm_emit_call_intrinsic(c, intrinsic, call_type, 1, arg_slots, count);
+	LLVMTypeRef call_type = LLVMTypeOf(arg_slots[0]);
+	LLVMValueRef result = llvm_emit_call_intrinsic(c, intrinsic, &call_type, 1, arg_slots, count);
 	llvm_value_set(be_value, result, expr->type);
+}
+
+static void llvm_emit_overflow_builtin(GenContext *c, BEValue *be_value, Expr *expr, unsigned intrinsic_signed, unsigned intrinsic_unsigned)
+{
+	Expr **args = expr->call_expr.arguments;
+	LLVMValueRef arg_slots[2];
+	llvm_emit_intrinsic_args(c, args, arg_slots, 2);
+	BEValue ref;
+	Expr *ret_addr = args[2];
+	llvm_emit_expr(c, &ref, ret_addr);
+	llvm_value_rvalue(c, &ref);
+	// Note that we can make additional improvements here!
+	llvm_value_set_address(&ref, ref.value, ref.type->pointer, type_abi_alignment(ref.type->pointer));
+	LLVMTypeRef call_type[1] = { LLVMTypeOf(arg_slots[0]) };
+	unsigned intrinsic = type_is_signed(type_lowering(args[0]->type)) ? intrinsic_signed : intrinsic_unsigned;
+	LLVMValueRef result = llvm_emit_call_intrinsic(c, intrinsic, call_type, 1, arg_slots, 2);
+	LLVMValueRef failed = llvm_emit_extract_value(c, result, 1);
+	LLVMValueRef value = llvm_emit_extract_value(c, result, 0);
+	llvm_store_raw(c, &ref, value);
+	llvm_value_set_bool(be_value, failed);
+}
+
+static void llvm_emit_wrap_builtin(GenContext *c, BEValue *result_value, Expr *expr, BuiltinFunction func)
+{
+	Expr **args = expr->call_expr.arguments;
+	LLVMValueRef arg_slots[2];
+	llvm_emit_intrinsic_args(c, args, arg_slots, func == BUILTIN_EXACT_NEG ? 1 : 2);
+	Type *base_type = type_lowering(args[0]->type);
+	if (base_type->type_kind == TYPE_VECTOR) base_type = base_type->array.base;
+	assert(type_is_integer(base_type));
+	bool is_signed = type_is_signed(base_type);
+	LLVMValueRef res;
+	switch (func)
+	{
+		case BUILTIN_EXACT_NEG:
+			res = LLVMBuildNeg(c->builder, arg_slots[0], "eneg");
+			break;
+		case BUILTIN_EXACT_SUB:
+			res = LLVMBuildSub(c->builder, arg_slots[0], arg_slots[1], "esub");
+			break;
+		case BUILTIN_EXACT_ADD:
+			res = LLVMBuildAdd(c->builder, arg_slots[0], arg_slots[1], "eadd");
+			break;
+		case BUILTIN_EXACT_MUL:
+			res = LLVMBuildMul(c->builder, arg_slots[0], arg_slots[1], "emul");
+			break;
+		case BUILTIN_EXACT_DIV:
+			if (type_is_signed(base_type))
+			{
+				res = LLVMBuildSDiv(c->builder, arg_slots[0], arg_slots[1], "esdiv");
+			}
+			else
+			{
+				res = LLVMBuildUDiv(c->builder, arg_slots[0], arg_slots[1], "eudiv");
+			}
+			break;
+		case BUILTIN_EXACT_MOD:
+			if (type_is_signed(base_type))
+			{
+				res = LLVMBuildSRem(c->builder, arg_slots[0], arg_slots[1], "eumod");
+			}
+			else
+			{
+				res = LLVMBuildSDiv(c->builder, arg_slots[0], arg_slots[1], "esmod");
+			}
+			break;
+		default:
+			UNREACHABLE
+	}
+	llvm_value_set(result_value, res, expr->type);
 }
 
 void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
@@ -437,6 +508,23 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 			return;
 		case BUILTIN_REDUCE_FMUL:
 			llvm_emit_reduce_float_builtin(c, intrinsic_id.vector_reduce_fmul, result_value, expr);
+			return;
+		case BUILTIN_EXACT_DIV:
+		case BUILTIN_EXACT_ADD:
+		case BUILTIN_EXACT_MUL:
+		case BUILTIN_EXACT_SUB:
+		case BUILTIN_EXACT_MOD:
+		case BUILTIN_EXACT_NEG:
+			llvm_emit_wrap_builtin(c, result_value, expr, func);
+			return;
+		case BUILTIN_OVERFLOW_ADD:
+			llvm_emit_overflow_builtin(c, result_value, expr, intrinsic_id.sadd_overflow, intrinsic_id.uadd_overflow);
+			return;
+		case BUILTIN_OVERFLOW_SUB:
+			llvm_emit_overflow_builtin(c, result_value, expr, intrinsic_id.ssub_overflow, intrinsic_id.usub_overflow);
+			return;
+		case BUILTIN_OVERFLOW_MUL:
+			llvm_emit_overflow_builtin(c, result_value, expr, intrinsic_id.smul_overflow, intrinsic_id.umul_overflow);
 			return;
 		case BUILTIN_CTTZ:
 			llvm_emit_int_with_bool_builtin(c, intrinsic_id.cttz, result_value, expr, false);
