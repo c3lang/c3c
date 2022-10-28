@@ -95,6 +95,19 @@ macro copysign(mag, sgn) = $$copysign(mag, sgn);
  **/
 macro cos(x) = $$cos(x);
 
+macro cosec(x) = 1 / sin(x);
+
+macro cosech(x) = 2 / (exp(x) - exp(-x));
+
+/**
+ * @require types::is_floatlike($typeof(x)) `The input must be a floating point value or float vector`
+ **/
+macro cosh(x) = (exp(x) + exp(-x)) / 2.0;
+
+macro cotan(x) = cos(x) / sin(x);
+
+macro cotanh(x) = (exp(2.0 * x) + 1.0) / (exp(2.0 * x) - 1.0);
+
 /**
  * @require types::is_floatlike($typeof(x)) `The input must be a floating point value or float vector`
  **/
@@ -110,6 +123,12 @@ macro exp2(x) = $$exp2(x);
  * @require types::@has_same(a, b, c) `The input types must be equal`
  **/
 macro fma(a, b, c) = $$fma(a, b, c);
+
+/**
+ * @require types::is_floatlike($typeof(x)) `The input must be a floating point value or float vector`
+ * @require types::is_floatlike($typeof(y)) `The input must be a floating point value or float vector`
+ **/
+macro hypot(x, y) = sqrt(sqr(x) + sqr(y));
 
 /**
  * @require types::is_floatlike($typeof(x)) `The input must be a floating point value or float vector`
@@ -144,10 +163,36 @@ macro min(x, y) = $$min(x, y);
  **/
 macro muladd(a, b, c) = $$fmuladd(a, b, c);
 
+macro sec(x) = 1 / cos(x);
+
+macro sech(x) = 2 / (exp(x) + exp(-x));
+
 /**
  * @require types::is_floatlike($typeof(x)) `The input must be a floating point value or float vector`
  **/
 macro sin(x) = $$sin(x);
+
+/**
+ * @require types::is_floatlike($typeof(x)) `The input must be a floating point value or float vector`
+ **/
+macro sinh(x) = (exp(x) - exp(-x)) / 2.0;
+
+/**
+ * @require types::is_floatlike($typeof(x)) `The input must be a floating point value or float vector`
+ **/
+macro sqr(x) = x * x;
+
+/**
+ * @require types::is_floatlike($typeof(x)) `The input must be a floating point value or float vector`
+ **/
+macro sqrt(x) = $$sqrt(x);
+
+macro tan(x) = sin(x) / cos(x);
+
+/**
+ * @require types::is_floatlike($typeof(x)) `The input must be a floating point value or float vector`
+ **/
+macro tanh(x) = (exp(2.0 * x) - 1.0) / (exp(2.0 * x) + 1.0);
 
 macro float float.ceil(float x) = $$ceil(x);
 macro float float.clamp(float x, float lower, float upper) = $$max(lower, $$min(x, upper));
