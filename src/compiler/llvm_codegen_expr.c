@@ -2498,6 +2498,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 			break;
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_ARRAY:
+		case TYPE_VECTOR:
 			parent_base = parent_addr;
 			break;
 		default:
@@ -2528,6 +2529,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 				llvm_value_set(&len, llvm_emit_extract_value(c, parent_load_value, 1), type_usize);
 				break;
 			case TYPE_ARRAY:
+			case TYPE_VECTOR:
 				llvm_value_set_int(c, &len, type_usize, parent_type->array.len);
 				break;
 			default:
@@ -2631,8 +2633,9 @@ static void gencontext_emit_slice(GenContext *c, BEValue *be_value, Expr *expr)
 	Type *type = type_lowering(parent.type);
 	switch (type->type_kind)
 	{
-		case TYPE_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_ARRAY:
+		case TYPE_VECTOR:
 		{
 			// Move pointer
 			AlignSize alignment;
@@ -2646,7 +2649,6 @@ static void gencontext_emit_slice(GenContext *c, BEValue *be_value, Expr *expr)
 		case TYPE_POINTER:
 			start_pointer = llvm_emit_pointer_inbounds_gep_raw(c, llvm_get_pointee_type(c, parent.type), parent.value, start.value);
 			break;
-		case TYPE_VECTOR:
 			TODO
 		default:
 			UNREACHABLE
