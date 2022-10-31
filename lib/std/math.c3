@@ -85,13 +85,13 @@ macro abs(x) = $$abs(x);
 macro clamp(x, lower, upper) = $$max(lower, $$min(x, upper));
 
 /**
- * @require types::is_floatlike($typeof(mag)) `The input must be a floating point value or float vector`
+ * @require values::@is_floatlike(mag) `The input must be a floating point value or float vector`
  * @require types::is_same($typeof(mag), $typeof(sgn)) `The input types must be equal`
  **/
 macro copysign(mag, sgn) = $$copysign(mag, sgn);
 
 /**
- * @require types::is_floatlike($typeof(x)) `The input must be a floating point value or float vector`
+ * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
  **/
 macro cos(x) = $$cos(x);
 
@@ -100,7 +100,7 @@ macro cosec(x) = 1 / sin(x);
 macro cosech(x) = 2 / (exp(x) - exp(-x));
 
 /**
- * @require types::is_floatlike($typeof(x)) `The input must be a floating point value or float vector`
+ * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
  **/
 macro cosh(x) = (exp(x) + exp(-x)) / 2.0;
 
@@ -109,39 +109,39 @@ macro cotan(x) = cos(x) / sin(x);
 macro cotanh(x) = (exp(2.0 * x) + 1.0) / (exp(2.0 * x) - 1.0);
 
 /**
- * @require types::is_floatlike($typeof(x)) `The input must be a floating point value or float vector`
+ * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
  **/
 macro exp(x) = $$exp(x);
 
 /**
- * @require types::is_floatlike($typeof(x)) `The input must be a floating point value or float vector`
+ * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
  **/
 macro exp2(x) = $$exp2(x);
 
 /**
- * @require types::is_floatlike($typeof(a)) `The input must be a floating point value or float vector`
+ * @require values::@is_floatlike(a) `The input must be a floating point value or float vector`
  * @require types::@has_same(a, b, c) `The input types must be equal`
  **/
 macro fma(a, b, c) = $$fma(a, b, c);
 
 /**
- * @require types::is_floatlike($typeof(x)) `The input must be a floating point value or float vector`
- * @require types::is_floatlike($typeof(y)) `The input must be a floating point value or float vector`
+ * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
+ * @require values::@is_floatlike(y) `The input must be a floating point value or float vector`
  **/
 macro hypot(x, y) = sqrt(sqr(x) + sqr(y));
 
 /**
- * @require types::is_floatlike($typeof(x)) `The input must be a floating point value or float vector`
+ * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
  **/
 macro log(x) = $$log(x);
 
 /**
- * @require types::is_floatlike($typeof(x)) `The input must be a floating point value or float vector`
+ * @require values::is_floatlike(x) `The input must be a floating point value or float vector`
  **/
 macro log2(x) = $$log2(x);
 
 /**
- * @require types::is_floatlike($typeof(x)) `The input must be a floating point value or float vector`
+ * @require values::is_floatlike(x) `The input must be a floating point value or float vector`
  **/
 macro log10(x) = $$log10(x);
 
@@ -158,21 +158,21 @@ macro max(x, y) = $$max(x, y);
 macro min(x, y) = $$min(x, y);
 
 /**
- * @require types::is_float($typeof(a)) `The input must be a floating point value`
+ * @require types::@is_float(a) `The input must be a floating point value`
  * @require types::@has_same(a, b, c) `The input types must be equal`
  **/
 macro muladd(a, b, c) = $$fmuladd(a, b, c);
 
 /**
- * @require types::is_floatlike($typeof(x)) `The input must be a floating point value or float vector`
- * @require types::is_floatlike($typeof(exp)) || types::is_int($typeof(exp)) `The input must be an integer, a floating point value or float vector`
+ * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
+ * @require values::@convertable_to(exp, x) || values::@is_int(exp) `The input must be an integer, castable to the type of x`
  **/
 macro pow(x, exp)
 {
     $if (types::is_floatlike($typeof(exp))):
-	return $$pow(x, exp);
+		return $$pow(x, ($typeof(x))exp);
     $else:
-	return $$pow_int(x, exp);
+		return $$pow_int(x, exp);
     $endif;
 }
 
@@ -181,29 +181,29 @@ macro sec(x) = 1 / cos(x);
 macro sech(x) = 2 / (exp(x) + exp(-x));
 
 /**
- * @require types::is_floatlike($typeof(x)) `The input must be a floating point value or float vector`
+ * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
  **/
 macro sin(x) = $$sin(x);
 
 /**
- * @require types::is_floatlike($typeof(x)) `The input must be a floating point value or float vector`
+ * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
  **/
 macro sinh(x) = (exp(x) - exp(-x)) / 2.0;
 
 /**
- * @require types::is_floatlike($typeof(x)) `The input must be a floating point value or float vector`
+ * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
  **/
 macro sqr(x) = x * x;
 
 /**
- * @require types::is_floatlike($typeof(x)) `The input must be a floating point value or float vector`
+ * @require values::is_floatlike(x) `The input must be a floating point value or float vector`
  **/
 macro sqrt(x) = $$sqrt(x);
 
 macro tan(x) = sin(x) / cos(x);
 
 /**
- * @require types::is_floatlike($typeof(x)) `The input must be a floating point value or float vector`
+ * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
  **/
 macro tanh(x) = (exp(2.0 * x) - 1.0) / (exp(2.0 * x) + 1.0);
 

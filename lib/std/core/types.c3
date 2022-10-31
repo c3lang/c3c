@@ -158,6 +158,11 @@ macro bool is_vector($Type)
 	return $Type.kindof == TypeKind.VECTOR;
 }
 
+macro bool @convertable(#a, $TypeB)
+{
+	return $checks($TypeB x = #a);
+}
+
 macro bool is_same($TypeA, $TypeB)
 {
 	return $TypeA.typeid == $TypeB.typeid;
@@ -225,3 +230,4 @@ struct TypeEnum
 	TypeKind type;
 	usz elements;
 }
+
