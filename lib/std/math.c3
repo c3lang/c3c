@@ -163,6 +163,19 @@ macro min(x, y) = $$min(x, y);
  **/
 macro muladd(a, b, c) = $$fmuladd(a, b, c);
 
+/**
+ * @require types::is_floatlike($typeof(x)) `The input must be a floating point value or float vector`
+ * @require types::is_floatlike($typeof(exp)) || types::is_int($typeof(exp)) `The input must be an integer, a floating point value or float vector`
+ **/
+macro pow(x, exp)
+{
+    $if (types::is_floatlike($typeof(exp))):
+	return $$pow(x, exp);
+    $else:
+	return $$pow_int(x, exp);
+    $endif;
+}
+
 macro sec(x) = 1 / cos(x);
 
 macro sech(x) = 2 / (exp(x) + exp(-x));
@@ -201,7 +214,7 @@ macro float float.floor(float x) = $$floor(x);
 macro float float.fma(float a, float b, float c) = $$fma(a, b, c);
 macro float float.muladd(float a, float b, float c) = $$fmuladd(a, b, c);
 macro float float.nearbyint(float x) = $$nearbyint(x);
-macro float float.pow(float x, float exp) = $$pow(x, exp);
+macro float float.pow(float x, exp) = pow(x, exp);
 macro float float.rint(float x) = $$rint(x);
 macro float float.round(float x) = $$round(x);
 macro float float.roundeven(float x) = $$roundeven(x);
@@ -213,7 +226,7 @@ macro float[<*>] float[<*>].copysign(float[<*>] mag, float[<*>] sgn) = $$copysig
 macro float[<*>] float[<*>].fma(float[<*>] a, float[<*>] b, float[<*>] c) = $$fma(a, b, c);
 macro float[<*>] float[<*>].floor(float[<*>] x) = $$floor(x);
 macro float[<*>] float[<*>].nearbyint(float[<*>] x) = $$nearbyint(x);
-macro float[<*>] float[<*>].pow(float[<*>] x, float[<*>] exp) = $$pow(x, exp);
+macro float[<*>] float[<*>].pow(float[<*>] x, exp) = pow(x, exp);
 macro float[<*>] float[<*>].rint(float[<*>] x) = $$rint(x);
 macro float[<*>] float[<*>].round(float[<*>] x) = $$round(x);
 macro float[<*>] float[<*>].roundeven(float[<*>] x) = $$roundeven(x);
@@ -226,7 +239,7 @@ macro double double.floor(double x) = $$floor(x);
 macro double double.fma(double a, double b, double c) = $$fma(a, b, c);
 macro double double.muladd(double a, double b, double c) = $$fmuladd(a, b, c);
 macro double double.nearbyint(double x) = $$nearbyint(x);
-macro double double.pow(double x, double exp) = $$pow(x, exp);
+macro double double.pow(double x, exp) = pow(x, exp);
 macro double double.rint(double x) = $$rint(x);
 macro double double.round(double x) = $$round(x);
 macro double double.roundeven(double x) = $$roundeven(x);
@@ -238,7 +251,7 @@ macro double[<*>] double[<*>].copysign(double[<*>] mag, double[<*>] sgn) = $$cop
 macro double[<*>] double[<*>].floor(double[<*>] x) = $$floor(x);
 macro double[<*>] double[<*>].fma(double[<*>] a, double[<*>] b, double[<*>] c) = $$fma(a, b, c);
 macro double[<*>] double[<*>].nearbyint(double[<*>] x) = $$nearbyint(x);
-macro double[<*>] double[<*>].pow(double[<*>] x, double[<*>] exp) = $$pow(x, exp);
+macro double[<*>] double[<*>].pow(double[<*>] x, exp) = pow(x, exp);
 macro double[<*>] double[<*>].rint(double[<*>] x) = $$rint(x);
 macro double[<*>] double[<*>].round(double[<*>] x) = $$round(x);
 macro double[<*>] double[<*>].roundeven(double[<*>] x) = $$roundeven(x);
