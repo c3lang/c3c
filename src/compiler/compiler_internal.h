@@ -546,6 +546,7 @@ typedef struct
 			bool attr_noinline : 1;
 			bool attr_extname : 1;
 			bool attr_naked : 1;
+			bool attr_test : 1;
 		};
 		struct
 		{
@@ -1143,6 +1144,7 @@ struct Expr_
 		ExprMacroBlock macro_block;                 // 24
 		Expr** cond_expr;                           // 8
 		ExprBuiltin builtin_expr;                   // 16
+		BuiltinDefine test_hook_expr;
 	};
 };
 //static_assert(sizeof(ExprConst) == 32, "Not expected size");
@@ -1457,6 +1459,7 @@ typedef struct Module_
 	Module *parent_module;
 	Module *top_module;
 	Module **sub_modules;
+	Decl **tests;
 } Module;
 
 
@@ -1655,7 +1658,7 @@ typedef struct
 	DeclTable symbols;
 	DeclTable generic_symbols;
 	Path std_module_path;
-	Decl *panic_fn;
+	Decl *panic_var;
 	Decl *main;
 	Decl *decl_stack[MAX_GLOBAL_DECL_STACK];
 	Decl** decl_stack_bottom;
@@ -2262,6 +2265,7 @@ bool type_is_ordered(Type *type);
 unsigned type_get_introspection_kind(TypeKind kind);
 void type_mangle_introspect_name_to_buffer(Type *type);
 AlignSize type_abi_alignment(Type *type);
+bool type_func_match(Type *fn_type, Type *rtype, unsigned arg_count, ...);
 AlignSize type_alloca_alignment(Type *type);
 Type *type_find_common_ancestor(Type *left, Type *right);
 Type *type_find_largest_union_element(Type *type);
@@ -2742,6 +2746,13 @@ INLINE bool type_info_ok(TypeInfo *type_info) { return !type_info || type_info->
 bool type_is_scalar(Type *type);
 
 INLINE bool type_is_signed(Type *type) { return type->type_kind >= TYPE_I8 && type->type_kind < TYPE_U8; }
+
+INLINE bool type_is_func_ptr(Type *fn_type)
+{
+	fn_type = fn_type->canonical;
+	if (fn_type->type_kind != TYPE_POINTER) return false;
+	return fn_type->pointer->type_kind == TYPE_FUNC;
+}
 
 INLINE bool type_is_len_inferred(Type *type)
 {

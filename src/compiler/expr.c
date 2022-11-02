@@ -80,6 +80,8 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_SUBSCRIPT:
 		case EXPR_SLICE:
 			return true;
+		case EXPR_TEST_HOOK:
+			return false;
 		case EXPR_ARGV_TO_SUBARRAY:
 		case EXPR_ASM:
 		case EXPR_BINARY:
@@ -163,6 +165,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_BUILTIN:
 		case EXPR_CT_EVAL:
 		case EXPR_VASPLAT:
+		case EXPR_TEST_HOOK:
 			return false;
 		case EXPR_BITACCESS:
 		case EXPR_ACCESS:
@@ -309,13 +312,15 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 					return false;
 			}
 			UNREACHABLE
+		case EXPR_COMPILER_CONST:
+			// Not foldable
+			return false;
 		case EXPR_CT_CALL:
 		case EXPR_TYPEINFO:
 		case EXPR_HASH_IDENT:
 		case EXPR_CT_IDENT:
 		case EXPR_FLATPATH:
 		case EXPR_COMPOUND_LITERAL:
-		case EXPR_COMPILER_CONST:
 		case EXPR_POISONED:
 		case EXPR_ARGV_TO_SUBARRAY:
 		case EXPR_CT_ARG:
@@ -629,6 +634,7 @@ bool expr_is_pure(Expr *expr)
 	switch (expr->expr_kind)
 	{
 		case EXPR_BUILTIN:
+		case EXPR_TEST_HOOK:
 			return false;
 		case EXPR_BUILTIN_ACCESS:
 			return exprid_is_pure(expr->builtin_access_expr.inner);

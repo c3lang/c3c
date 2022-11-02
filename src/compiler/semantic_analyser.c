@@ -256,8 +256,9 @@ void sema_analysis_run(void)
 	global_context.std_module.stage = ANALYSIS_LAST;
 	global_context.locals_list = NULL;
 
-	// Set a maximum of symbols in the std_module
+	// Set a maximum of symbols in the std_module and test module
 	htable_init(&global_context.std_module.symbols, 0x10000);
+
 
 	// Setup the func prototype hash map
 	type_func_prototype_init(0x10000);
@@ -297,26 +298,22 @@ void sema_analysis_run(void)
 		Decl *decl = sema_find_decl_in_modules(global_context.module_list, path, ident);
 		if (!decl)
 		{
-			error_exit("Panic function '%s::%s' could not be found.", path->module, ident);
+			error_exit("Panic function pointer '%s::%s' could not be found.", path->module, ident);
 		}
-		if (decl->decl_kind != DECL_FUNC)
+		Type *panic_fn_type = decl->type->canonical;
+		if (decl->decl_kind != DECL_VAR || !type_is_func_ptr(panic_fn_type))
 		{
-			error_exit("'%s::%s' is not a function.", path->module, ident);
+			error_exit("'%s::%s' is not a function pointer.", path->module, ident);
 		}
-		Decl **params = decl->func_decl.signature.params;
-		if (vec_size(params) != 4 || params[0]->type != type_get_ptr(type_char)
-			|| params[1]->type != type_get_ptr(type_char)
-			|| params[2]->type != type_get_ptr(type_char)
-			|| params[3]->type != type_uint
-			|| typeinfotype(decl->func_decl.signature.rtype) != type_void)
+		if (!type_func_match(panic_fn_type, type_void, 4, type_chars, type_chars, type_chars, type_uint))
 		{
-			error_exit("Expected panic function to have the signature fn void(char*, char*, uint, uint).");
+			error_exit("Expected panic function to have the signature fn void(char[], char[], char[], uint).");
 		}
-		global_context.panic_fn = decl;
+		global_context.panic_var = decl;
 	}
 	else
 	{
-		global_context.panic_fn = NULL;
+		global_context.panic_var = NULL;
 	}
 	compiler_sema_time = bench_mark();
 

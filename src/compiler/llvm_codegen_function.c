@@ -9,7 +9,7 @@ static void llvm_emit_param_attributes(GenContext *c, LLVMValueRef function, ABI
 static inline void llvm_emit_return_value(GenContext *context, LLVMValueRef value);
 static void llvm_expand_from_args(GenContext *c, Type *type, LLVMValueRef ref, unsigned *index, AlignSize alignment);
 static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIArgInfo *info, unsigned *index);
-static inline void llvm_emit_parameter(GenContext *context, Decl *decl, ABIArgInfo *abi_info, unsigned *index, unsigned real_index);
+static inline void llvm_emit_func_parameter(GenContext *context, Decl *decl, ABIArgInfo *abi_info, unsigned *index, unsigned real_index);
 static inline void llvm_emit_body(GenContext *c, LLVMValueRef function, const char *module_name,
                                   const char *function_name,
                                   FileId file_id, FunctionPrototype *prototype, Signature *signature, Ast *body);
@@ -246,7 +246,7 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIAr
 		}
 	}
 }
-static inline void llvm_emit_parameter(GenContext *context, Decl *decl, ABIArgInfo *abi_info, unsigned *index, unsigned real_index)
+static inline void llvm_emit_func_parameter(GenContext *context, Decl *decl, ABIArgInfo *abi_info, unsigned *index, unsigned real_index)
 {
 	assert(decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_PARAM);
 
@@ -271,6 +271,7 @@ static inline void llvm_emit_return_value(GenContext *context, LLVMValueRef valu
 	context->current_block = NULL;
 	context->current_block_is_target = false;
 }
+
 
 void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failable)
 {
@@ -447,10 +448,10 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, const char *module_nam
 			scratch_buffer_append(module_name);
 			scratch_buffer_append("::");
 			scratch_buffer_append(function_name);
-			c->debug.func_name = llvm_emit_zstring(c, scratch_buffer_to_string());
+			c->debug.func_name = llvm_emit_string_const(c, scratch_buffer_to_string(), ".funcname");
 
 			File *file = source_file_by_id(file_id);
-			c->debug.file_name = llvm_emit_zstring(c, file->name);
+			c->debug.file_name = llvm_emit_string_const(c, file->name, ".filename");
 		}
 	}
 
@@ -527,7 +528,7 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, const char *module_nam
 	{
 		// Generate LLVMValueRef's for all parameters, so we can use them as local vars in code
 		FOREACH_BEGIN_IDX(i, Decl *param, signature->params)
-			llvm_emit_parameter(c, param, prototype->abi_args[i], &arg, i);
+			llvm_emit_func_parameter(c, param, prototype->abi_args[i], &arg, i);
 		FOREACH_END();
 	}
 

@@ -1,5 +1,8 @@
 #include "codegen_internal.h"
 
+const char *test_fns_var_name = "__$C3_TEST_FN_LIST";
+const char *test_count_var_name = "__$C3_TEST_COUNT";
+const char *test_names_var_name = "__$C3_TEST_NAMES_LIST";
 /**
  * Based on isSingleElementStruct in Clang
  */

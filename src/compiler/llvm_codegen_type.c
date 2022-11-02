@@ -314,6 +314,20 @@ LLVMTypeRef llvm_get_pointee_type(GenContext *c, Type *any_type)
 	return llvm_get_type(c, any_type->pointer);
 }
 
+bool llvm_types_are_similar(LLVMTypeRef original, LLVMTypeRef coerce)
+{
+	if (original == coerce) return true;
+	if (LLVMGetTypeKind(original) != LLVMStructTypeKind) return false;
+	if (LLVMGetTypeKind(coerce) != LLVMStructTypeKind) return false;
+	unsigned types = LLVMCountStructElementTypes(original);
+	if (types != LLVMCountStructElementTypes(coerce)) return false;
+	for (unsigned i = 0; i < types; i++)
+	{
+		if (LLVMStructGetTypeAtIndex(original, i) != LLVMStructGetTypeAtIndex(coerce, i)) return false;
+	}
+	return true;
+}
+
 LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 {
 	if (any_type->backend_type)
@@ -550,19 +564,15 @@ static LLVMValueRef llvm_get_introspection_for_enum(GenContext *c, Type *type)
 	{
 		BEValue value;
 		const char *name = enum_vals[i]->name;
-		size_t len = strlen(name);
 		scratch_buffer_clear();
 		scratch_buffer_append(".enum.");
 		scratch_buffer_append_unsigned_int(i);
 		const char *name_desc = scratch_buffer_to_string();
 		if (obfuscate)
 		{
-			len = strlen(name_desc);
 			name = name_desc;
 		}
-		LLVMValueRef name_ref = llvm_emit_zstring_named(c, name, scratch_buffer_to_string());
-		LLVMValueRef data[2] = { name_ref, llvm_const_int(c, type_usize, len) };
-		values[i] = llvm_get_struct_named(subarray, data, 2);
+		values[i] = llvm_emit_string_const(c, name, scratch_buffer_to_string());
 	}
 	LLVMValueRef names = llvm_get_array(subarray, values, elements);
 
@@ -653,8 +663,7 @@ static LLVMValueRef llvm_get_introspection_for_fault(GenContext *c, Type *type)
 		LLVMSetGlobalConstant(global_name, 1);
 
 		LLVMValueRef vals[2] = { LLVMBuildPtrToInt(c->builder, ref, llvm_get_type(c, type_typeid), ""),
-								 llvm_emit_aggregate_two(c, type_chars, llvm_emit_zstring_named(c, val->name, ".fault"),
-		                                                      llvm_const_int(c, type_usize, strlen(val->name))) };
+		                         llvm_emit_string_const(c, val->name, ".fault") };
 
 		LLVMSetInitializer(global_name, llvm_get_struct_named(c->fault_type, vals, 2));
 		llvm_set_linkonce(c, global_name);

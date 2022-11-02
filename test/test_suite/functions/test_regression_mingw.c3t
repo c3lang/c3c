@@ -377,7 +377,6 @@ if.exit:                                          ; preds = %entry
 define i32 @test_sum_us(%"int[]"* align 8 %0) #0 {
 entry:
   %sum = alloca i32, align 4
-  %vararg = alloca %"int[]", align 8
   %indirectarg = alloca %"int[]", align 8
   store i32 0, i32* %sum, align 4
   %1 = getelementptr inbounds %"int[]", %"int[]"* %0, i32 0, i32 1
@@ -403,15 +402,13 @@ if.exit:                                          ; preds = %entry
   %ptroffset1 = getelementptr inbounds i32, i32* %8, i64 1
   %11 = insertvalue %"int[]" undef, i32* %ptroffset1, 0
   %12 = insertvalue %"int[]" %11, i64 %size, 1
-  %13 = getelementptr inbounds %"int[]", %"int[]"* %vararg, i32 0, i32 1
-  %14 = getelementptr inbounds %"int[]", %"int[]"* %vararg, i32 0, i32 0
   store %"int[]" %12, %"int[]"* %indirectarg, align 8
-  %15 = call i32 @test_sum_us(%"int[]"* align 8 %indirectarg)
-  %add = add i32 %6, %15
+  %13 = call i32 @test_sum_us(%"int[]"* align 8 %indirectarg)
+  %add = add i32 %6, %13
   %add2 = add i32 %3, %add
   store i32 %add2, i32* %sum, align 4
-  %16 = load i32, i32* %sum, align 4
-  ret i32 %16
+  %14 = load i32, i32* %sum, align 4
+  ret i32 %14
 }
 
 ; Function Attrs: nounwind
@@ -466,22 +463,16 @@ entry:
   %ddx = alloca %Foo, align 4
   %fro = alloca i32, align 4
   %x = alloca [4 x i32], align 16
-  %vararg = alloca %"int[]", align 8
   %indirectarg = alloca %"int[]", align 8
   %z = alloca %"int[]", align 8
   %de = alloca [3 x i32], align 4
-  %vararg10 = alloca %"int[]", align 8
+  %indirectarg10 = alloca %"int[]", align 8
   %indirectarg11 = alloca %"int[]", align 8
-  %vararg12 = alloca %"int[]", align 8
-  %indirectarg13 = alloca %"int[]", align 8
-  %vararg14 = alloca %"int[]", align 8
   %varargslots = alloca [4 x i32], align 16
+  %indirectarg12 = alloca %"int[]", align 8
+  %varargslots13 = alloca [1 x i32], align 4
+  %indirectarg14 = alloca %"int[]", align 8
   %indirectarg15 = alloca %"int[]", align 8
-  %vararg16 = alloca %"int[]", align 8
-  %varargslots17 = alloca [1 x i32], align 4
-  %indirectarg18 = alloca %"int[]", align 8
-  %vararg19 = alloca %"int[]", align 8
-  %indirectarg20 = alloca %"int[]", align 8
   %a1 = alloca i32 (double, %Bobo*)*, align 8
   %b2 = alloca i32 (double, %Bobo*)*, align 8
   %0 = call i32 @test_test_static()
@@ -575,80 +566,58 @@ loop.exit8:                                       ; preds = %loop.cond2
   %38 = bitcast [4 x i32]* %x to i8*
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 16 %38, i8* align 16 bitcast ([4 x i32]* @.__const.12 to i8*), i32 16, i1 false)
   %39 = load i32, i32* %fro, align 4
-  %40 = getelementptr inbounds %"int[]", %"int[]"* %vararg, i32 0, i32 1
-  %41 = getelementptr inbounds %"int[]", %"int[]"* %vararg, i32 0, i32 0
-  store i64 4, i64* %40, align 8
-  %42 = bitcast [4 x i32]* %x to i32*
-  store i32* %42, i32** %41, align 8
-  %43 = bitcast %"int[]"* %indirectarg to i8*
-  %44 = bitcast %"int[]"* %vararg to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %43, i8* align 8 %44, i32 16, i1 false)
-  %45 = call i32 @test_sum_us(%"int[]"* align 8 %indirectarg)
-  %46 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([20 x i8], [20 x i8]* @.str.13, i32 0, i32 0), i32 %45)
-  %add9 = add i32 %39, %46
+  %40 = bitcast [4 x i32]* %x to i32*
+  %41 = insertvalue %"int[]" undef, i32* %40, 0
+  %42 = insertvalue %"int[]" %41, i64 4, 1
+  store %"int[]" %42, %"int[]"* %indirectarg, align 8
+  %43 = call i32 @test_sum_us(%"int[]"* align 8 %indirectarg)
+  %44 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([20 x i8], [20 x i8]* @.str.13, i32 0, i32 0), i32 %43)
+  %add9 = add i32 %39, %44
   store i32 %add9, i32* %fro, align 4
-  %47 = load i32, i32* %fro, align 4
-  %48 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.14, i32 0, i32 0), i32 %47)
-  %49 = bitcast [4 x i32]* %x to i32*
-  %50 = insertvalue %"int[]" undef, i32* %49, 0
-  %51 = insertvalue %"int[]" %50, i64 4, 1
-  store %"int[]" %51, %"int[]"* %z, align 8
-  %52 = bitcast [3 x i32]* %de to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %52, i8* align 4 bitcast ([3 x i32]* @.__const.15 to i8*), i32 12, i1 false)
-  %53 = getelementptr inbounds %"int[]", %"int[]"* %vararg10, i32 0, i32 1
-  %54 = getelementptr inbounds %"int[]", %"int[]"* %vararg10, i32 0, i32 0
-  store i64 4, i64* %53, align 8
-  %55 = bitcast [4 x i32]* %x to i32*
-  store i32* %55, i32** %54, align 8
+  %45 = load i32, i32* %fro, align 4
+  %46 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.14, i32 0, i32 0), i32 %45)
+  %47 = bitcast [4 x i32]* %x to i32*
+  %48 = insertvalue %"int[]" undef, i32* %47, 0
+  %49 = insertvalue %"int[]" %48, i64 4, 1
+  store %"int[]" %49, %"int[]"* %z, align 8
+  %50 = bitcast [3 x i32]* %de to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %50, i8* align 4 bitcast ([3 x i32]* @.__const.15 to i8*), i32 12, i1 false)
+  %51 = bitcast [4 x i32]* %x to i32*
+  %52 = insertvalue %"int[]" undef, i32* %51, 0
+  %53 = insertvalue %"int[]" %52, i64 4, 1
+  store %"int[]" %53, %"int[]"* %indirectarg10, align 8
+  %54 = call i32 @test_sum_us(%"int[]"* align 8 %indirectarg10)
+  %55 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @.str.16, i32 0, i32 0), i32 %54)
   %56 = bitcast %"int[]"* %indirectarg11 to i8*
-  %57 = bitcast %"int[]"* %vararg10 to i8*
+  %57 = bitcast %"int[]"* %z to i8*
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %56, i8* align 8 %57, i32 16, i1 false)
   %58 = call i32 @test_sum_us(%"int[]"* align 8 %indirectarg11)
-  %59 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @.str.16, i32 0, i32 0), i32 %58)
-  %60 = getelementptr inbounds %"int[]", %"int[]"* %vararg12, i32 0, i32 1
-  %61 = getelementptr inbounds %"int[]", %"int[]"* %vararg12, i32 0, i32 0
-  %62 = bitcast %"int[]"* %indirectarg13 to i8*
-  %63 = bitcast %"int[]"* %z to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %62, i8* align 8 %63, i32 16, i1 false)
-  %64 = call i32 @test_sum_us(%"int[]"* align 8 %indirectarg13)
-  %65 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @.str.17, i32 0, i32 0), i32 %64)
-  %66 = getelementptr inbounds [4 x i32], [4 x i32]* %varargslots, i64 0, i64 0
-  store i32 1, i32* %66, align 4
-  %67 = getelementptr inbounds [4 x i32], [4 x i32]* %varargslots, i64 0, i64 1
-  store i32 2, i32* %67, align 4
-  %68 = getelementptr inbounds [4 x i32], [4 x i32]* %varargslots, i64 0, i64 2
-  store i32 4, i32* %68, align 4
-  %69 = getelementptr inbounds [4 x i32], [4 x i32]* %varargslots, i64 0, i64 3
-  store i32 5, i32* %69, align 4
-  %70 = getelementptr inbounds %"int[]", %"int[]"* %vararg14, i32 0, i32 1
-  store i64 4, i64* %70, align 8
-  %71 = getelementptr inbounds %"int[]", %"int[]"* %vararg14, i32 0, i32 0
-  %72 = bitcast [4 x i32]* %varargslots to i32*
-  store i32* %72, i32** %71, align 8
-  %73 = bitcast %"int[]"* %indirectarg15 to i8*
-  %74 = bitcast %"int[]"* %vararg14 to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %73, i8* align 8 %74, i32 16, i1 false)
+  %59 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @.str.17, i32 0, i32 0), i32 %58)
+  %60 = getelementptr inbounds [4 x i32], [4 x i32]* %varargslots, i64 0, i64 0
+  store i32 1, i32* %60, align 4
+  %61 = getelementptr inbounds [4 x i32], [4 x i32]* %varargslots, i64 0, i64 1
+  store i32 2, i32* %61, align 4
+  %62 = getelementptr inbounds [4 x i32], [4 x i32]* %varargslots, i64 0, i64 2
+  store i32 4, i32* %62, align 4
+  %63 = getelementptr inbounds [4 x i32], [4 x i32]* %varargslots, i64 0, i64 3
+  store i32 5, i32* %63, align 4
+  %64 = bitcast [4 x i32]* %varargslots to i32*
+  %65 = insertvalue %"int[]" undef, i32* %64, 0
+  %66 = insertvalue %"int[]" %65, i64 4, 1
+  store %"int[]" %66, %"int[]"* %indirectarg12, align 8
+  %67 = call i32 @test_sum_us(%"int[]"* align 8 %indirectarg12)
+  %68 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.18, i32 0, i32 0), i32 %67)
+  %69 = getelementptr inbounds [1 x i32], [1 x i32]* %varargslots13, i64 0, i64 0
+  store i32 1, i32* %69, align 4
+  %70 = bitcast [1 x i32]* %varargslots13 to i32*
+  %71 = insertvalue %"int[]" undef, i32* %70, 0
+  %72 = insertvalue %"int[]" %71, i64 1, 1
+  store %"int[]" %72, %"int[]"* %indirectarg14, align 8
+  %73 = call i32 @test_sum_us(%"int[]"* align 8 %indirectarg14)
+  %74 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.19, i32 0, i32 0), i32 %73)
+  store %"int[]" zeroinitializer, %"int[]"* %indirectarg15, align 8
   %75 = call i32 @test_sum_us(%"int[]"* align 8 %indirectarg15)
-  %76 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.18, i32 0, i32 0), i32 %75)
-  %77 = getelementptr inbounds [1 x i32], [1 x i32]* %varargslots17, i64 0, i64 0
-  store i32 1, i32* %77, align 4
-  %78 = getelementptr inbounds %"int[]", %"int[]"* %vararg16, i32 0, i32 1
-  store i64 1, i64* %78, align 8
-  %79 = getelementptr inbounds %"int[]", %"int[]"* %vararg16, i32 0, i32 0
-  %80 = bitcast [1 x i32]* %varargslots17 to i32*
-  store i32* %80, i32** %79, align 8
-  %81 = bitcast %"int[]"* %indirectarg18 to i8*
-  %82 = bitcast %"int[]"* %vararg16 to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %81, i8* align 8 %82, i32 16, i1 false)
-  %83 = call i32 @test_sum_us(%"int[]"* align 8 %indirectarg18)
-  %84 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.19, i32 0, i32 0), i32 %83)
-  %85 = getelementptr inbounds %"int[]", %"int[]"* %vararg19, i32 0, i32 1
-  store i64 0, i64* %85, align 8
-  %86 = bitcast %"int[]"* %indirectarg20 to i8*
-  %87 = bitcast %"int[]"* %vararg19 to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %86, i8* align 8 %87, i32 16, i1 false)
-  %88 = call i32 @test_sum_us(%"int[]"* align 8 %indirectarg20)
-  %89 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.20, i32 0, i32 0), i32 %88)
+  %76 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.20, i32 0, i32 0), i32 %75)
   store i32 (double, %Bobo*)* null, i32 (double, %Bobo*)** %a1, align 8
   store i32 (double, %Bobo*)* null, i32 (double, %Bobo*)** %b2, align 8
   ret void

@@ -129,6 +129,10 @@ void symtab_init(uint32_t capacity)
 	builtin_defines[BUILTIN_DEF_LINE_RAW] = KW_DEF("LINE_RAW");
 	builtin_defines[BUILTIN_DEF_MODULE] = KW_DEF("MODULE");
 	builtin_defines[BUILTIN_DEF_TIME] = KW_DEF("TIME");
+	builtin_defines[BUILTIN_DEF_TEST_NAMES] = KW_DEF("TEST_NAMES");
+	builtin_defines[BUILTIN_DEF_TEST_FNS] = KW_DEF("TEST_FNS");
+	builtin_defines[BUILTIN_DEF_TEST_COUNT] = KW_DEF("TEST_COUNT");
+
 	type = TOKEN_TYPE_IDENT;
 	kw_typekind = KW_DEF("TypeKind");
 
@@ -290,6 +294,7 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_REGCALL] = KW_DEF("@regcall");
 	attribute_list[ATTRIBUTE_SECTION] = KW_DEF("@section");
 	attribute_list[ATTRIBUTE_STDCALL] = KW_DEF("@stdcall");
+	attribute_list[ATTRIBUTE_TEST] = KW_DEF("@test");
 	attribute_list[ATTRIBUTE_UNUSED] = KW_DEF("@unused");
 	attribute_list[ATTRIBUTE_USED] = KW_DEF("@used");
 	attribute_list[ATTRIBUTE_VECCALL] = KW_DEF("@veccall");

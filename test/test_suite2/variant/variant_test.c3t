@@ -189,7 +189,6 @@ entry:
   %taddr19 = alloca i8, align 1
   %taddr20 = alloca %variant, align 8
   %df = alloca ptr, align 8
-  %vararg = alloca %"variant[]", align 8
   %varargslots = alloca [5 x %variant], align 16
   %taddr23 = alloca double, align 8
   store i32 1, ptr %taddr, align 4
@@ -304,14 +303,6 @@ if.exit10:                                        ; preds = %if.then9, %if.exit7
   %43 = insertvalue %variant %42, i64 ptrtoint (ptr @"ct$p$int" to i64), 1
   %44 = getelementptr inbounds [5 x %variant], ptr %varargslots, i64 0, i64 4
   store %variant %43, ptr %44, align 16
-  %45 = getelementptr inbounds %"variant[]", ptr %vararg, i32 0, i32 1
-  store i64 5, ptr %45, align 8
-  %46 = getelementptr inbounds %"variant[]", ptr %vararg, i32 0, i32 0
-  store ptr %varargslots, ptr %46, align 8
-  %47 = getelementptr inbounds { ptr, i64 }, ptr %vararg, i32 0, i32 0
-  %lo24 = load ptr, ptr %47, align 8
-  %48 = getelementptr inbounds { ptr, i64 }, ptr %vararg, i32 0, i32 1
-  %hi25 = load i64, ptr %48, align 8
-  call void @foo_test_all(ptr %lo24, i64 %hi25)
+  call void @foo_test_all(ptr %varargslots, i64 5)
   ret void
 }

@@ -1429,34 +1429,34 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 	AttributeType type = attr->attr_kind;
 	assert(type >= 0 && type < NUMBER_OF_ATTRIBUTES);
 	static AttributeDomain attribute_domain[NUMBER_OF_ATTRIBUTES] = {
-			[ATTRIBUTE_WEAK] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
-			[ATTRIBUTE_EXTNAME] = (AttributeDomain)~(ATTR_CALL | ATTR_BITSTRUCT | ATTR_MACRO | ATTR_XXLIZER),
-			[ATTRIBUTE_SECTION] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
-			[ATTRIBUTE_PACKED] = ATTR_STRUCT | ATTR_UNION,
-			[ATTRIBUTE_NORETURN] = ATTR_FUNC | ATTR_MACRO,
-			[ATTRIBUTE_ALIGN] = ATTR_FUNC | ATTR_CONST | ATTR_LOCAL | ATTR_GLOBAL | ATTR_STRUCT | ATTR_UNION |
-			                    ATTR_MEMBER,
-			[ATTRIBUTE_INLINE] = ATTR_FUNC | ATTR_CALL,
-			[ATTRIBUTE_NOINLINE] = ATTR_FUNC | ATTR_CALL,
-			[ATTRIBUTE_NODISCARD] = ATTR_FUNC | ATTR_MACRO,
-			[ATTRIBUTE_MAYDISCARD] = ATTR_FUNC | ATTR_MACRO,
+			[ATTRIBUTE_ALIGN] = ATTR_FUNC | ATTR_CONST | ATTR_LOCAL | ATTR_GLOBAL | ATTR_STRUCT | ATTR_UNION | ATTR_MEMBER,
 			[ATTRIBUTE_BIGENDIAN] = ATTR_BITSTRUCT,
-			[ATTRIBUTE_LITTLEENDIAN] = ATTR_BITSTRUCT,
-			[ATTRIBUTE_USED] = (AttributeDomain)~(ATTR_CALL | ATTR_XXLIZER ),
-			[ATTRIBUTE_UNUSED] = (AttributeDomain)~(ATTR_CALL | ATTR_XXLIZER),
-			[ATTRIBUTE_NAKED] = ATTR_FUNC,
-			[ATTRIBUTE_CDECL] = ATTR_FUNC,
-			[ATTRIBUTE_STDCALL] = ATTR_FUNC,
-			[ATTRIBUTE_VECCALL] = ATTR_FUNC,
-			[ATTRIBUTE_REGCALL] = ATTR_FUNC,
-			[ATTRIBUTE_FASTCALL] = ATTR_FUNC,
-			[ATTRIBUTE_OVERLAP] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_BUILTIN] = ATTR_MACRO | ATTR_FUNC,
-			[ATTRIBUTE_OPERATOR] = ATTR_MACRO | ATTR_FUNC,
-			[ATTRIBUTE_REFLECT] = ATTR_ENUM,
+			[ATTRIBUTE_CDECL] = ATTR_FUNC,
+			[ATTRIBUTE_EXTNAME] = (AttributeDomain)~(ATTR_CALL | ATTR_BITSTRUCT | ATTR_MACRO | ATTR_XXLIZER),
+			[ATTRIBUTE_FASTCALL] = ATTR_FUNC,
+			[ATTRIBUTE_INLINE] = ATTR_FUNC | ATTR_CALL,
+			[ATTRIBUTE_LITTLEENDIAN] = ATTR_BITSTRUCT,
+			[ATTRIBUTE_MAYDISCARD] = ATTR_FUNC | ATTR_MACRO,
+			[ATTRIBUTE_NAKED] = ATTR_FUNC,
+			[ATTRIBUTE_NODISCARD] = ATTR_FUNC | ATTR_MACRO,
+			[ATTRIBUTE_NOINLINE] = ATTR_FUNC | ATTR_CALL,
+			[ATTRIBUTE_NORETURN] = ATTR_FUNC | ATTR_MACRO,
 			[ATTRIBUTE_OBFUSCATE] = ATTR_ENUM,
-			[ATTRIBUTE_PURE] = ATTR_CALL,
+			[ATTRIBUTE_OPERATOR] = ATTR_MACRO | ATTR_FUNC,
+			[ATTRIBUTE_OVERLAP] = ATTR_BITSTRUCT,
+			[ATTRIBUTE_PACKED] = ATTR_STRUCT | ATTR_UNION,
 			[ATTRIBUTE_PRIORITY] = ATTR_XXLIZER,
+			[ATTRIBUTE_PURE] = ATTR_CALL,
+			[ATTRIBUTE_REFLECT] = ATTR_ENUM,
+			[ATTRIBUTE_REGCALL] = ATTR_FUNC,
+			[ATTRIBUTE_SECTION] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
+			[ATTRIBUTE_STDCALL] = ATTR_FUNC,
+			[ATTRIBUTE_TEST] = ATTR_FUNC,
+			[ATTRIBUTE_UNUSED] = (AttributeDomain)~(ATTR_CALL | ATTR_XXLIZER),
+			[ATTRIBUTE_USED] = (AttributeDomain)~(ATTR_CALL | ATTR_XXLIZER ),
+			[ATTRIBUTE_VECCALL] = ATTR_FUNC,
+			[ATTRIBUTE_WEAK] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
 	};
 
 	if ((attribute_domain[type] & domain) != domain)
@@ -1493,6 +1493,9 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 				default:
 					break;
 			}
+			break;
+		case ATTRIBUTE_TEST:
+			decl->func_decl.attr_test = true;
 			break;
 		case ATTRIBUTE_STDCALL:
 			assert(decl->decl_kind == DECL_FUNC);
@@ -2065,13 +2068,14 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl)
 
 	if (!sema_analyse_func_macro(context, decl, true)) return false;
 
-	Type *func_type = sema_analyse_function_signature(context, decl, decl->func_decl.signature.abi, &decl->func_decl.signature, true);
+	Signature *sig = &decl->func_decl.signature;
+	Type *func_type = sema_analyse_function_signature(context, decl, sig->abi, sig, true);
 	decl->type = func_type;
 	if (!func_type) return decl_poison(decl);
-	TypeInfo *rtype_info = type_infoptr(decl->func_decl.signature.rtype);
+	TypeInfo *rtype_info = type_infoptr(sig->rtype);
 	assert(rtype_info);
 	Type *rtype = rtype_info->type->canonical;
-	if (decl->func_decl.signature.attrs.nodiscard)
+	if (sig->attrs.nodiscard)
 	{
 		if (rtype == type_void)
 		{
@@ -2079,7 +2083,7 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl)
 			return decl_poison(decl);
 		}
 	}
-	if (decl->func_decl.signature.attrs.maydiscard)
+	if (sig->attrs.maydiscard)
 	{
 		if (!type_is_optional(rtype))
 		{
@@ -2087,18 +2091,35 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl)
 			return decl_poison(decl);
 		}
 	}
+	bool is_test = decl->func_decl.attr_test;
 	if (decl->func_decl.type_parent)
 	{
+		if (is_test) SEMA_ERROR(decl, "Methods may not be annotated @test.");
 		if (!sema_analyse_method(context, decl)) return decl_poison(decl);
 	}
 	else
 	{
 		if (decl->name == kw_main)
 		{
+			if (is_test) SEMA_ERROR(decl, "Main functions may not be annotated @test.");
 			if (!sema_analyse_main_function(context, decl)) return decl_poison(decl);
 		}
 		decl_set_external_name(decl);
+		if (is_test)
+		{
+			if (vec_size(sig->params))
+			{
+				SEMA_ERROR(sig->params[0], "'@test' functions may not take any parameters.");
+				return false;
+			}
+			if (type_no_optional(rtype) != type_void)
+			{
+				SEMA_ERROR(rtype_info, "'@test' functions may only return 'void' or 'void!'.");
+				return false;
+			}
+		}
 	}
+
 	bool pure = false;
 	if (!sema_analyse_doc_header(decl->func_decl.docs, decl->func_decl.signature.params, NULL, &pure)) return decl_poison(decl);
 	decl->func_decl.signature.attrs.is_pure = pure;

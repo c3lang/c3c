@@ -11,4 +11,4 @@ fn void main()
 
 /* #expect: test.ll
 
-%reverse = shufflevector <4 x i32> %3, <4 x i32> poison, <4 x i32> <i32 3, i32 2, i32 1, i32 0>
+  %reverse = shufflevector <4 x i32> %0, <4 x i32> poison, <4 x i32> <i32 3, i32 2, i32 1, i32 0>
