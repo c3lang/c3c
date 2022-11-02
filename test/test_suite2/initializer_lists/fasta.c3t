@@ -343,23 +343,23 @@ if.then:                                          ; preds = %entry
 if.exit:                                          ; preds = %if.then, %entry
   %4 = call i32 (ptr, ...) @printf(ptr @.str.14)
   %lo = load ptr, ptr @fasta_alu, align 8
-  %hi = load i64, ptr getelementptr inbounds ({ ptr, i64 }, ptr @fasta_alu, i32 0, i32 1), align 8
+  %hi = load i64, ptr getelementptr inbounds (%"char[]", ptr @fasta_alu, i32 0, i32 1), align 8
   %5 = load i32, ptr %n, align 4
   %mul = mul i32 %5, 2
   call void @fasta_repeat_fasta(ptr %lo, i64 %hi, i32 %mul)
   %6 = call i32 (ptr, ...) @printf(ptr @.str.15)
   %lo1 = load ptr, ptr @fasta_iub, align 8
-  %hi2 = load i64, ptr getelementptr inbounds ({ ptr, i64 }, ptr @fasta_iub, i32 0, i32 1), align 8
+  %hi2 = load i64, ptr getelementptr inbounds (%"char[]", ptr @fasta_iub, i32 0, i32 1), align 8
   %lo3 = load ptr, ptr @fasta_iub_p, align 8
-  %hi4 = load i64, ptr getelementptr inbounds ({ ptr, i64 }, ptr @fasta_iub_p, i32 0, i32 1), align 8
+  %hi4 = load i64, ptr getelementptr inbounds (%"double[]", ptr @fasta_iub_p, i32 0, i32 1), align 8
   %7 = load i32, ptr %n, align 4
   %mul5 = mul i32 %7, 3
   call void @fasta_random_fasta(ptr %lo1, i64 %hi2, ptr %lo3, i64 %hi4, i32 %mul5)
   %8 = call i32 (ptr, ...) @printf(ptr @.str.16)
   %lo6 = load ptr, ptr @fasta_homosapiens, align 8
-  %hi7 = load i64, ptr getelementptr inbounds ({ ptr, i64 }, ptr @fasta_homosapiens, i32 0, i32 1), align 8
+  %hi7 = load i64, ptr getelementptr inbounds (%"char[]", ptr @fasta_homosapiens, i32 0, i32 1), align 8
   %lo8 = load ptr, ptr @fasta_homosapiens_p, align 8
-  %hi9 = load i64, ptr getelementptr inbounds ({ ptr, i64 }, ptr @fasta_homosapiens_p, i32 0, i32 1), align 8
+  %hi9 = load i64, ptr getelementptr inbounds (%"double[]", ptr @fasta_homosapiens_p, i32 0, i32 1), align 8
   %9 = load i32, ptr %n, align 4
   %mul10 = mul i32 %9, 5
   call void @fasta_random_fasta(ptr %lo6, i64 %hi7, ptr %lo8, i64 %hi9, i32 %mul10)

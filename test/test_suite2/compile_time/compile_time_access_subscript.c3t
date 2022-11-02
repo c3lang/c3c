@@ -44,82 +44,67 @@ fn void main()
 
 /* #expect: test.ll
 
-  %z = alloca i32, align 4
-  %z1 = alloca %Abc, align 4
-  %z2 = alloca i64, align 8
-  %z3 = alloca i32, align 4
-  %z4 = alloca ptr, align 8
-  %z5 = alloca i8, align 1
-  %z6 = alloca i64, align 8
-  %z7 = alloca <3 x i32>, align 16
-  %z8 = alloca %Abc, align 4
-  %z9 = alloca [2 x i32], align 4
-  %z10 = alloca %"int[]", align 8
-  %retparam = alloca i64, align 8
-  %taddr = alloca %"char[]", align 8
-  %vararg = alloca %"variant[]", align 8
-  %varargslots = alloca [1 x %variant], align 16
-  %literal = alloca %Abc, align 4
-  store i32 0, ptr %z, align 4
-  %0 = getelementptr inbounds %Abc, ptr %z1, i32 0, i32 0
-  store float 0.000000e+00, ptr %0, align 4
-  %1 = getelementptr inbounds %Abc, ptr %z1, i32 0, i32 1
-  store float 0.000000e+00, ptr %1, align 4
-  %2 = getelementptr inbounds %Abc, ptr %z1, i32 0, i32 2
-  store float 0.000000e+00, ptr %2, align 4
-  %3 = getelementptr inbounds %Abc, ptr %z1, i32 0, i32 3
-  store float 0.000000e+00, ptr %3, align 4
-  store i64 0, ptr %z2, align 8
-  store i32 0, ptr %z3, align 4
-  store ptr null, ptr %z4, align 8
-  store i8 0, ptr %z5, align 1
-  store i64 0, ptr %z6, align 8
-  store <3 x i32> zeroinitializer, ptr %z7, align 16
-  %4 = getelementptr inbounds %Abc, ptr %z8, i32 0, i32 0
-  store float 0.000000e+00, ptr %4, align 4
-  %5 = getelementptr inbounds %Abc, ptr %z8, i32 0, i32 1
-  store float 0.000000e+00, ptr %5, align 4
-  %6 = getelementptr inbounds %Abc, ptr %z8, i32 0, i32 2
-  store float 0.000000e+00, ptr %6, align 4
-  %7 = getelementptr inbounds %Abc, ptr %z8, i32 0, i32 3
-  store float 0.000000e+00, ptr %7, align 4
-  %8 = getelementptr inbounds [2 x i32], ptr %z9, i64 0, i64 0
-  store i32 0, ptr %8, align 4
-  %9 = getelementptr inbounds [2 x i32], ptr %z9, i64 0, i64 1
-  store i32 0, ptr %9, align 4
-  call void @llvm.memset.p0.i64(ptr align 8 %z10, i8 0, i64 16, i1 false)
-  store %"char[]" { ptr @.str, i64 2 }, ptr %taddr, align 8
-  %10 = getelementptr inbounds { ptr, i64 }, ptr %taddr, i32 0, i32 0
-  %lo = load ptr, ptr %10, align 8
-  %11 = getelementptr inbounds { ptr, i64 }, ptr %taddr, i32 0, i32 1
-  %hi = load i64, ptr %11, align 8
-  %12 = getelementptr inbounds %Abc, ptr %literal, i32 0, i32 0
-  store float 0.000000e+00, ptr %12, align 4
-  %13 = getelementptr inbounds %Abc, ptr %literal, i32 0, i32 1
-  store float 0.000000e+00, ptr %13, align 4
-  %14 = getelementptr inbounds %Abc, ptr %literal, i32 0, i32 2
-  store float 0.000000e+00, ptr %14, align 4
-  %15 = getelementptr inbounds %Abc, ptr %literal, i32 0, i32 3
-  store float 0.000000e+00, ptr %15, align 4
-  %16 = insertvalue %variant undef, ptr %literal, 0
-  %17 = insertvalue %variant %16, i64 ptrtoint (ptr @"ct$test_Abc" to i64), 1
-  %18 = getelementptr inbounds [1 x %variant], ptr %varargslots, i64 0, i64 0
-  store %variant %17, ptr %18, align 16
-  %19 = getelementptr inbounds %"variant[]", ptr %vararg, i32 0, i32 1
-  store i64 1, ptr %19, align 8
-  %20 = getelementptr inbounds %"variant[]", ptr %vararg, i32 0, i32 0
-  store ptr %varargslots, ptr %20, align 8
-  %21 = getelementptr inbounds { ptr, i64 }, ptr %vararg, i32 0, i32 0
-  %lo11 = load ptr, ptr %21, align 8
-  %22 = getelementptr inbounds { ptr, i64 }, ptr %vararg, i32 0, i32 1
-  %hi12 = load i64, ptr %22, align 8
-  %23 = call i64 @std_io_printfln(ptr %retparam, ptr %lo, i64 %hi, ptr %lo11, i64 %hi12)
-  %not_err = icmp eq i64 %23, 0
-  br i1 %not_err, label %after_check, label %voiderr
+    %z = alloca i32, align 4
+    %z1 = alloca %Abc, align 4
+    %z2 = alloca i64, align 8
+    %z3 = alloca i32, align 4
+    %z4 = alloca ptr, align 8
+    %z5 = alloca i8, align 1
+    %z6 = alloca i64, align 8
+    %z7 = alloca <3 x i32>, align 16
+    %z8 = alloca %Abc, align 4
+    %z9 = alloca [2 x i32], align 4
+    %z10 = alloca %"int[]", align 8
+    %retparam = alloca i64, align 8
+    %varargslots = alloca [1 x %variant], align 16
+    %literal = alloca %Abc, align 4
+    store i32 0, ptr %z, align 4
+    %0 = getelementptr inbounds %Abc, ptr %z1, i32 0, i32 0
+    store float 0.000000e+00, ptr %0, align 4
+    %1 = getelementptr inbounds %Abc, ptr %z1, i32 0, i32 1
+    store float 0.000000e+00, ptr %1, align 4
+    %2 = getelementptr inbounds %Abc, ptr %z1, i32 0, i32 2
+    store float 0.000000e+00, ptr %2, align 4
+    %3 = getelementptr inbounds %Abc, ptr %z1, i32 0, i32 3
+    store float 0.000000e+00, ptr %3, align 4
+    store i64 0, ptr %z2, align 8
+    store i32 0, ptr %z3, align 4
+    store ptr null, ptr %z4, align 8
+    store i8 0, ptr %z5, align 1
+    store i64 0, ptr %z6, align 8
+    store <3 x i32> zeroinitializer, ptr %z7, align 16
+    %4 = getelementptr inbounds %Abc, ptr %z8, i32 0, i32 0
+    store float 0.000000e+00, ptr %4, align 4
+    %5 = getelementptr inbounds %Abc, ptr %z8, i32 0, i32 1
+    store float 0.000000e+00, ptr %5, align 4
+    %6 = getelementptr inbounds %Abc, ptr %z8, i32 0, i32 2
+    store float 0.000000e+00, ptr %6, align 4
+    %7 = getelementptr inbounds %Abc, ptr %z8, i32 0, i32 3
+    store float 0.000000e+00, ptr %7, align 4
+    %8 = getelementptr inbounds [2 x i32], ptr %z9, i64 0, i64 0
+    store i32 0, ptr %8, align 4
+    %9 = getelementptr inbounds [2 x i32], ptr %z9, i64 0, i64 1
+    store i32 0, ptr %9, align 4
+    call void @llvm.memset.p0.i64(ptr align 8 %z10, i8 0, i64 16, i1 false)
+    %10 = getelementptr inbounds %Abc, ptr %literal, i32 0, i32 0
+    store float 0.000000e+00, ptr %10, align 4
+    %11 = getelementptr inbounds %Abc, ptr %literal, i32 0, i32 1
+    store float 0.000000e+00, ptr %11, align 4
+    %12 = getelementptr inbounds %Abc, ptr %literal, i32 0, i32 2
+    store float 0.000000e+00, ptr %12, align 4
+    %13 = getelementptr inbounds %Abc, ptr %literal, i32 0, i32 3
+    store float 0.000000e+00, ptr %13, align 4
+    %14 = insertvalue %variant undef, ptr %literal, 0
+    %15 = insertvalue %variant %14, i64 ptrtoint (ptr @"ct$test_Abc" to i64), 1
+    %16 = getelementptr inbounds [1 x %variant], ptr %varargslots, i64 0, i64 0
+    store %variant %15, ptr %16, align 16
+    %17 = call i64 @std_io_printfln(ptr %retparam, ptr @.str, i64 2, ptr %varargslots, i64 1)
+    %not_err = icmp eq i64 %17, 0
+    br i1 %not_err, label %after_check, label %voiderr
 
-after_check:                                      ; preds = %entry
-  br label %voiderr
+  after_check:                                      ; preds = %entry
+    br label %voiderr
 
-voiderr:                                          ; preds = %after_check, %entry
-  ret void
-}
+  voiderr:                                          ; preds = %after_check, %entry
+    ret void
+  }

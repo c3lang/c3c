@@ -340,6 +340,8 @@ void sema_analysis_pass_ct_assert(Module *module)
 static inline bool analyse_func_body(SemaContext *context, Decl *decl)
 {
 	if (!decl->func_decl.body) return true;
+	// Don't analyse functions that are tests.
+	if (decl->func_decl.attr_test && !active_target.testing) return true;
 	if (!sema_analyse_function_body(context, decl)) return decl_poison(decl);
 	return true;
 }

@@ -17,23 +17,9 @@ fn void main()
 define void @test_main() #0 {
 entry:
   %map = alloca %HashMap, align 8
-  %taddr = alloca %"char[]", align 8
-  %taddr1 = alloca %"char[]", align 8
   %0 = bitcast %HashMap* %map to i8*
   call void @llvm.memset.p0i8.i64(i8* align 8 %0, i8 0, i64 40, i1 false)
-  store %"char[]" { i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str, i32 0, i32 0), i64 5 }, %"char[]"* %taddr, align 8
-  %1 = bitcast %"char[]"* %taddr to { i8*, i64 }*
-  %2 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %1, i32 0, i32 0
-  %lo = load i8*, i8** %2, align 8
-  %3 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %1, i32 0, i32 1
-  %hi = load i64, i64* %3, align 8
-  %4 = call i8 @"std_map$$sa$char.int_HashMap_set"(%HashMap* %map, i8* %lo, i64 %hi, i32 4)
-  store %"char[]" { i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.1, i32 0, i32 0), i64 3 }, %"char[]"* %taddr1, align 8
-  %5 = bitcast %"char[]"* %taddr1 to { i8*, i64 }*
-  %6 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %5, i32 0, i32 0
-  %lo2 = load i8*, i8** %6, align 8
-  %7 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %5, i32 0, i32 1
-  %hi3 = load i64, i64* %7, align 8
-  %8 = call i8 @"std_map$$sa$char.int_HashMap_set"(%HashMap* %map, i8* %lo2, i64 %hi3, i32 5)
+  %1 = call i8 @"std_map$$sa$char.int_HashMap_set"(%HashMap* %map, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str, i32 0, i32 0), i64 5, i32 4)
+  %2 = call i8 @"std_map$$sa$char.int_HashMap_set"(%HashMap* %map, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.1, i32 0, i32 0), i64 3, i32 5)
   ret void
 }

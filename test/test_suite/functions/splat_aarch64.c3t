@@ -21,25 +21,23 @@ declare i32 @sum_us([2 x i64]) #0
 
 define void @splat_test() #0 {
 entry:
-  %vararg = alloca %"int[]", align 8
   %varargslots = alloca [3 x i32], align 4
+  %taddr = alloca %"int[]", align 8
   %x = alloca [3 x i32], align 4
   %z = alloca %"int[]", align 8
-  %vararg1 = alloca %"int[]", align 8
-  %vararg2 = alloca %"int[]", align 8
-  %vararg3 = alloca %"int[]", align 8
+  %taddr1 = alloca %"int[]", align 8
+  %taddr2 = alloca %"int[]", align 8
   %0 = getelementptr inbounds [3 x i32], [3 x i32]* %varargslots, i64 0, i64 0
   store i32 1, i32* %0, align 4
   %1 = getelementptr inbounds [3 x i32], [3 x i32]* %varargslots, i64 0, i64 1
   store i32 2, i32* %1, align 4
   %2 = getelementptr inbounds [3 x i32], [3 x i32]* %varargslots, i64 0, i64 2
   store i32 3, i32* %2, align 4
-  %3 = getelementptr inbounds %"int[]", %"int[]"* %vararg, i32 0, i32 1
-  store i64 3, i64* %3, align 8
-  %4 = getelementptr inbounds %"int[]", %"int[]"* %vararg, i32 0, i32 0
-  %5 = bitcast [3 x i32]* %varargslots to i32*
-  store i32* %5, i32** %4, align 8
-  %6 = bitcast %"int[]"* %vararg to [2 x i64]*
+  %3 = bitcast [3 x i32]* %varargslots to i32*
+  %4 = insertvalue %"int[]" undef, i32* %3, 0
+  %5 = insertvalue %"int[]" %4, i64 3, 1
+  store %"int[]" %5, %"int[]"* %taddr, align 8
+  %6 = bitcast %"int[]"* %taddr to [2 x i64]*
   %7 = load [2 x i64], [2 x i64]* %6, align 8
   %8 = call i32 @sum_us([2 x i64] %7)
   %9 = bitcast [3 x i32]* %x to i8*
@@ -48,23 +46,19 @@ entry:
   %11 = insertvalue %"int[]" undef, i32* %10, 0
   %12 = insertvalue %"int[]" %11, i64 3, 1
   store %"int[]" %12, %"int[]"* %z, align 8
-  %13 = getelementptr inbounds %"int[]", %"int[]"* %vararg1, i32 0, i32 1
-  %14 = getelementptr inbounds %"int[]", %"int[]"* %vararg1, i32 0, i32 0
-  store i64 3, i64* %13, align 8
-  %15 = bitcast [3 x i32]* %x to i32*
-  store i32* %15, i32** %14, align 8
-  %16 = bitcast %"int[]"* %vararg1 to [2 x i64]*
+  %13 = bitcast [3 x i32]* %x to i32*
+  %14 = insertvalue %"int[]" undef, i32* %13, 0
+  %15 = insertvalue %"int[]" %14, i64 3, 1
+  store %"int[]" %15, %"int[]"* %taddr1, align 8
+  %16 = bitcast %"int[]"* %taddr1 to [2 x i64]*
   %17 = load [2 x i64], [2 x i64]* %16, align 8
   %18 = call i32 @sum_us([2 x i64] %17)
-  %19 = getelementptr inbounds %"int[]", %"int[]"* %vararg2, i32 0, i32 1
-  %20 = getelementptr inbounds %"int[]", %"int[]"* %vararg2, i32 0, i32 0
-  %21 = bitcast %"int[]"* %z to [2 x i64]*
-  %22 = load [2 x i64], [2 x i64]* %21, align 8
-  %23 = call i32 @sum_us([2 x i64] %22)
-  %24 = getelementptr inbounds %"int[]", %"int[]"* %vararg3, i32 0, i32 1
-  store i64 0, i64* %24, align 8
-  %25 = bitcast %"int[]"* %vararg3 to [2 x i64]*
-  %26 = load [2 x i64], [2 x i64]* %25, align 8
-  %27 = call i32 @sum_us([2 x i64] %26)
+  %19 = bitcast %"int[]"* %z to [2 x i64]*
+  %20 = load [2 x i64], [2 x i64]* %19, align 8
+  %21 = call i32 @sum_us([2 x i64] %20)
+  store %"int[]" zeroinitializer, %"int[]"* %taddr2, align 8
+  %22 = bitcast %"int[]"* %taddr2 to [2 x i64]*
+  %23 = load [2 x i64], [2 x i64]* %22, align 8
+  %24 = call i32 @sum_us([2 x i64] %23)
   ret void
 }

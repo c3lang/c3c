@@ -47,7 +47,7 @@ static void llvm_emit_macro_body_expansion(GenContext *c, BEValue *value, Expr *
 static void llvm_emit_post_unary_expr(GenContext *context, BEValue *be_value, Expr *expr);
 static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr);
 static void llvm_enter_struct_for_coerce(GenContext *c, LLVMValueRef *struct_ptr, LLVMTypeRef *type, ByteSize dest_size);
-static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVMValueRef expand_ptr, LLVMValueRef **values, AlignSize alignment);
+static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVMValueRef expand_ptr, LLVMValueRef *args, unsigned *arg_count_ref, AlignSize alignment);
 
 INLINE LLVMValueRef llvm_emit_bitstruct_value_update(GenContext *c, LLVMValueRef current_val, TypeSize bits, LLVMTypeRef bitstruct_type, Decl *member, LLVMValueRef val);
 INLINE void llvm_emit_initialize_reference_bitstruct_array(GenContext *c, BEValue *ref, Decl *bitstruct, Expr** elements);
@@ -4353,18 +4353,18 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 
 
 
-static void llvm_expand_array_to_args(GenContext *c, Type *param_type, LLVMValueRef expand_ptr, LLVMValueRef **values, AlignSize alignment)
+static void llvm_expand_array_to_args(GenContext *c, Type *param_type, LLVMValueRef expand_ptr, LLVMValueRef *args, unsigned *arg_count_ref, AlignSize alignment)
 {
 	LLVMTypeRef array_type = llvm_get_type(c, param_type);
 	for (ByteSize i = 0; i < param_type->array.len; i++)
 	{
 		AlignSize load_align;
 		LLVMValueRef element_ptr = llvm_emit_array_gep_raw(c, expand_ptr, array_type, (unsigned)i, alignment, &load_align);
-		llvm_expand_type_to_args(c, param_type->array.base, element_ptr, values, load_align);
+		llvm_expand_type_to_args(c, param_type->array.base, element_ptr, args, arg_count_ref, load_align);
 	}
 }
 
-static void llvm_expand_struct_to_args(GenContext *context, Type *param_type, LLVMValueRef expand_ptr, LLVMValueRef **values, AlignSize alignment)
+static void llvm_expand_struct_to_args(GenContext *context, Type *param_type, LLVMValueRef expand_ptr, LLVMValueRef *args, unsigned *arg_count_ref, AlignSize alignment)
 {
 	Decl **members = param_type->decl->strukt.members;
 	VECEACH(members, i)
@@ -4377,11 +4377,11 @@ static void llvm_expand_struct_to_args(GenContext *context, Type *param_type, LL
 		                                                   i,
 		                                                   alignment,
 		                                                   &load_align);
-		llvm_expand_type_to_args(context, member_type, member_ptr, values, load_align);
+		llvm_expand_type_to_args(context, member_type, member_ptr, args, arg_count_ref, load_align);
 	}
 }
 
-static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVMValueRef expand_ptr, LLVMValueRef **values, AlignSize alignment)
+static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVMValueRef expand_ptr, LLVMValueRef *args, unsigned *arg_count_ref, AlignSize alignment)
 {
 	REDO:
 	switch (type_lowering(param_type)->type_kind)
@@ -4405,21 +4405,20 @@ static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVM
 		case ALL_INTS:
 		case ALL_FLOATS:
 		case TYPE_POINTER:
-			vec_add(*values,
-			        llvm_load(context,
-			                  llvm_get_type(context, param_type),
-			                  expand_ptr,
-			                  alignment,
-			                  "loadexpanded"));
+			args[(*arg_count_ref)++] = llvm_load(context,
+			                                     llvm_get_type(context, param_type),
+			                                     expand_ptr,
+			                                     alignment,
+			                                     "loadexpanded");
 			return;
 		case TYPE_TYPEDEF:
 			param_type = param_type->canonical;
 			goto REDO;
 		case TYPE_STRUCT:
-			llvm_expand_struct_to_args(context, param_type, expand_ptr, values, alignment);
+			llvm_expand_struct_to_args(context, param_type, expand_ptr, args, arg_count_ref, alignment);
 			break;
 		case TYPE_ARRAY:
-			llvm_expand_array_to_args(context, param_type, expand_ptr, values, alignment);
+			llvm_expand_array_to_args(context, param_type, expand_ptr, args, arg_count_ref, alignment);
 			break;
 		case TYPE_UNION:
 		case TYPE_SUBARRAY:
@@ -4543,7 +4542,7 @@ void llvm_value_struct_gep(GenContext *c, BEValue *element, BEValue *struct_poin
 }
 
 
-void llvm_emit_parameter(GenContext *c, LLVMValueRef **args, ABIArgInfo *info, BEValue *be_value, Type *type)
+void llvm_emit_parameter(GenContext *c, LLVMValueRef *args, unsigned *arg_count_ref, ABIArgInfo *info, BEValue *be_value, Type *type)
 {
 	type = type_lowering(type);
 	assert(be_value->type->canonical == type);
@@ -4559,16 +4558,16 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef **args, ABIArgInfo *info, B
 			if (info->attributes.by_val && llvm_value_is_addr(be_value) && info->indirect.alignment <= be_value->alignment)
 			{
 				llvm_value_fold_optional(c, be_value);
-				vec_add(*args, be_value->value);
+				args[(*arg_count_ref)++] = be_value->value;
 				return;
 			}
 			LLVMValueRef indirect = llvm_emit_alloca(c, llvm_get_type(c, type), info->indirect.alignment, "indirectarg");
 			llvm_store_to_ptr_aligned(c, indirect, be_value, info->indirect.alignment);
-			vec_add(*args, indirect);
+			args[(*arg_count_ref)++] = indirect;
 			return;
 		}
 		case ABI_ARG_DIRECT:
-			vec_add(*args, llvm_load_value_store(c, be_value));
+			args[(*arg_count_ref)++] = llvm_load_value_store(c, be_value);
 			return;
 		case ABI_ARG_DIRECT_SPLIT_STRUCT:
 		{
@@ -4583,7 +4582,7 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef **args, ABIArgInfo *info, B
 			{
 				AlignSize load_align;
 				LLVMValueRef element_ptr = llvm_emit_struct_gep_raw(c, cast, coerce_type, idx, alignment, &load_align);
-				vec_add(*args, llvm_load(c, element, element_ptr, load_align, ""));
+				args[(*arg_count_ref)++] = llvm_load(c, element, element_ptr, load_align, "");
 			}
 			return;
 		}
@@ -4592,10 +4591,10 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef **args, ABIArgInfo *info, B
 			LLVMTypeRef coerce_type = llvm_get_type(c, info->direct_coerce_type);
 			if (coerce_type == llvm_get_type(c, type))
 			{
-				vec_add(*args, llvm_load_value_store(c, be_value));
+				args[(*arg_count_ref)++] = llvm_load_value_store(c, be_value);
 				return;
 			}
-			vec_add(*args, llvm_emit_coerce(c, coerce_type, be_value, type));
+			args[(*arg_count_ref)++] = llvm_emit_coerce(c, coerce_type, be_value, type);
 			return;
 		}
 		case ABI_ARG_DIRECT_COERCE_INT:
@@ -4603,32 +4602,70 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef **args, ABIArgInfo *info, B
 			LLVMTypeRef coerce_type = LLVMIntTypeInContext(c->context, type_size(type) * 8);
 			if (coerce_type == llvm_get_type(c, type))
 			{
-				vec_add(*args, llvm_load_value_store(c, be_value));
+				args[(*arg_count_ref)++] = llvm_load_value_store(c, be_value);
 				return;
 			}
-			vec_add(*args, llvm_emit_coerce(c, coerce_type, be_value, type));
+			args[(*arg_count_ref)++] = llvm_emit_coerce(c, coerce_type, be_value, type);
 			return;
 		}
 		case ABI_ARG_DIRECT_PAIR:
 		{
+			assert(type_flatten(be_value->type) == be_value->type);
+			LLVMTypeRef original_type = llvm_get_type(c, be_value->type);
+			LLVMTypeRef struct_type = llvm_get_coerce_type(c, info);
+			AlignSize alignment;
+			if (llvm_types_are_similar(original_type, struct_type))
+			{
+				// Optimization
+				assert(LLVMGetTypeKind(original_type) == LLVMStructTypeKind && LLVMCountStructElementTypes(original_type) == 2);
+				if (llvm_value_is_addr(be_value))
+				{
+					LLVMValueRef ptr = llvm_emit_struct_gep_raw(c, be_value->value, original_type, 0, be_value->alignment, &alignment);
+					args[(*arg_count_ref)++] = llvm_load(c, LLVMStructGetTypeAtIndex(original_type, 0), ptr, alignment, "lo");
+					ptr = llvm_emit_struct_gep_raw(c, be_value->value, original_type, 1, be_value->alignment, &alignment);
+					args[(*arg_count_ref)++] = llvm_load(c, LLVMStructGetTypeAtIndex(original_type, 1), ptr, alignment, "hi");
+					return;
+				}
+				LLVMValueRef val = be_value->value;
+				// Maybe it's just created? Let's optimize codegen.
+				if (!LLVMGetFirstUse(val) && LLVMIsAInsertValueInst(val) && LLVMIsAInsertValueInst(
+						LLVMGetPreviousInstruction(val)))
+				{
+					LLVMValueRef prev = LLVMGetPreviousInstruction(val);
+					// Isn't this a second insert?
+					if (LLVMGetOperand(val, 0) != prev) goto NO_OPT;
+					// Is it used in between?
+					if (LLVMGetNextUse(LLVMGetFirstUse(prev))) goto NO_OPT;
+					// No, then we can replace the instructions with the values.
+					LLVMValueRef first_val = LLVMGetOperand(prev, 1);
+					LLVMValueRef second_val = LLVMGetOperand(val, 1);
+					LLVMInstructionEraseFromParent(val);
+					LLVMInstructionEraseFromParent(prev);
+					args[(*arg_count_ref)++] = first_val;
+					args[(*arg_count_ref)++] = second_val;
+					return;
+				}
+				NO_OPT:
+				args[(*arg_count_ref)++] = llvm_emit_extract_value(c, be_value->value, 0);
+				args[(*arg_count_ref)++] = llvm_emit_extract_value(c, be_value->value, 1);
+				return;
+			}
 			llvm_value_addr(c, be_value);
 			REMINDER("Handle invalid alignment");
 			// Here we do the following transform:
 			// struct -> { lo, hi } -> lo, hi
 			LLVMTypeRef lo = llvm_abi_type(c, info->direct_pair.lo);
 			LLVMTypeRef hi = llvm_abi_type(c, info->direct_pair.hi);
-			LLVMTypeRef struct_type = llvm_get_coerce_type(c, info);
 
 			AlignSize struct_align;
 			LLVMValueRef cast = llvm_emit_coerce_alignment(c, be_value, struct_type, llvm_abi_alignment(c, struct_type), &struct_align);
 			// Get the lo value.
 
-			AlignSize alignment;
 			LLVMValueRef lo_ptr = llvm_emit_struct_gep_raw(c, cast, struct_type, 0, struct_align, &alignment);
-			vec_add(*args, llvm_load(c, lo, lo_ptr, alignment, "lo"));
+			args[(*arg_count_ref)++] = llvm_load(c, lo, lo_ptr, alignment, "lo");
 			// Get the hi value.
 			LLVMValueRef hi_ptr = llvm_emit_struct_gep_raw(c, cast, struct_type, 1, struct_align, &alignment);
-			vec_add(*args, llvm_load(c, hi, hi_ptr, alignment, "hi"));
+			args[(*arg_count_ref)++] = llvm_load(c, hi, hi_ptr, alignment, "hi");
 			return;
 		}
 		case ABI_ARG_EXPAND_COERCE:
@@ -4641,11 +4678,11 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef **args, ABIArgInfo *info, B
 
 			AlignSize align;
 			LLVMValueRef gep_first = llvm_emit_struct_gep_raw(c, temp, coerce_type, info->coerce_expand.lo_index, alignment, &align);
-			vec_add(*args, llvm_load(c, llvm_abi_type(c, info->coerce_expand.lo), gep_first, align, ""));
+			args[(*arg_count_ref)++] = llvm_load(c, llvm_abi_type(c, info->coerce_expand.lo), gep_first, align, "");
 			if (abi_type_is_valid(info->coerce_expand.hi))
 			{
 				LLVMValueRef gep_second = llvm_emit_struct_gep_raw(c, temp, coerce_type, info->coerce_expand.hi_index, alignment, &align);
-				vec_add(*args, llvm_load(c, llvm_abi_type(c, info->coerce_expand.hi), gep_second, align, ""));
+				args[(*arg_count_ref)++] = llvm_load(c, llvm_abi_type(c, info->coerce_expand.hi), gep_second, align, "");
 			}
 			return;
 		}
@@ -4653,41 +4690,33 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef **args, ABIArgInfo *info, B
 		{
 			// Move this to an address (if needed)
 			llvm_value_addr(c, be_value);
-			llvm_expand_type_to_args(c, type, be_value->value, args, be_value->alignment);
+			llvm_expand_type_to_args(c, type, be_value->value, args, arg_count_ref, be_value->alignment);
 			// Expand the padding here.
 			if (info->expand.padding_type)
 			{
-				vec_add(*args, llvm_get_undef(c, info->expand.padding_type));
+				args[(*arg_count_ref)++] = llvm_get_undef(c, info->expand.padding_type);
 			}
 			return;
 		}
 	}
 
 }
-static void llvm_emit_splatted_variadic_arg(GenContext *c, Expr *expr, BEValue *subarray)
+static void llvm_emit_splatted_variadic_arg(GenContext *c, Expr *expr, Type *vararg_type, BEValue *subarray)
 {
 	BEValue value;
 	llvm_emit_expr(c, &value, expr);
-	BEValue len_addr;
-	BEValue pointer_addr;
-	llvm_emit_subarray_len(c, subarray, &len_addr);
-	llvm_emit_subarray_pointer(c, subarray, &pointer_addr);
 	Type *type = expr->type->canonical;
 	switch (type->type_kind)
 	{
 		case TYPE_ARRAY:
-		{
-			llvm_store_raw(c, &len_addr, llvm_const_int(c, type_usize, type->array.len));
 			llvm_value_addr(c, &value);
 			llvm_value_bitcast(c, &value, type->array.base);
-			llvm_store_raw(c, &pointer_addr, value.value);
+			llvm_value_aggregate_two(c, subarray, vararg_type, value.value, llvm_const_int(c, type_usize, type->array.len));
 			return;
-		}
 		case TYPE_POINTER:
 			// Load the pointer
 			llvm_value_rvalue(c, &value);
-			llvm_store_raw(c, &len_addr, llvm_const_int(c, type_usize, type->pointer->array.len));
-			llvm_store_raw(c, &pointer_addr, llvm_emit_bitcast_ptr(c, value.value, type->pointer->array.base));
+			llvm_value_aggregate_two(c, subarray, vararg_type, llvm_emit_bitcast_ptr(c, value.value, type->pointer->array.base), llvm_const_int(c, type_usize, type->pointer->array.len));
 			return;
 		case TYPE_SUBARRAY:
 			*subarray = value;
@@ -4745,20 +4774,17 @@ static inline void llvm_emit_vararg_parameter(GenContext *c, BEValue *value, Typ
 {
 	REMINDER("All varargs should be called with non-alias!");
 
-	llvm_value_set_address_abi_aligned(value, llvm_emit_alloca_aligned(c, vararg_type, "vararg"), vararg_type);
 	// 9a. Special case, empty argument
 	if (!vararg_splat && !varargs)
 	{
 		// Just set the size to zero.
-		BEValue len_addr;
-		llvm_emit_subarray_len(c, value, &len_addr);
-		llvm_store_raw(c, &len_addr, llvm_get_zero(c, type_usize));
+		llvm_value_set(value, llvm_get_zero(c, vararg_type), vararg_type);
 		return;
 	}
 	if (vararg_splat)
 	{
 		// 9b. We splat the last type which is either a slice, an array or a dynamic array.
-		llvm_emit_splatted_variadic_arg(c, vararg_splat, value);
+		llvm_emit_splatted_variadic_arg(c, vararg_splat, vararg_type, value);
 		return;
 	}
 	BEValue temp_value;
@@ -4781,252 +4807,35 @@ static inline void llvm_emit_vararg_parameter(GenContext *c, BEValue *value, Typ
 		                                            &store_alignment);
 		llvm_store_to_ptr_aligned(c, slot, &temp_value, store_alignment);
 	}
-	BEValue len_addr;
-	llvm_emit_subarray_len(c, value, &len_addr);
-	llvm_store_raw(c, &len_addr, llvm_const_int(c, type_usize, elements));
-	BEValue pointer_addr;
-	llvm_emit_subarray_pointer(c, value, &pointer_addr);
-	llvm_store_raw(c, &pointer_addr, llvm_emit_bitcast_ptr(c, array_ref, pointee_type));
+	llvm_value_aggregate_two(c, value, vararg_type, llvm_emit_bitcast_ptr(c, array_ref, pointee_type), llvm_const_int(c, type_usize, elements));
 }
 
 
-static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr, BEValue *target)
+void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype *prototype, LLVMTypeRef func_type, LLVMValueRef func, LLVMValueRef *args, unsigned arg_count, int inline_flag, LLVMValueRef error_var, bool sret_return, BEValue *synthetic_return_param)
 {
-	if (expr->call_expr.is_builtin)
-	{
-		llvm_emit_builtin_call(c, result_value, expr);
-		return;
-	}
-
-	if (c->debug.stack_slot_row)
-	{
-		llvm_store_to_ptr_raw_aligned(c,
-		                              c->debug.stack_slot_row,
-		                              llvm_const_int(c, type_uint, expr->span.row),
-		                              type_abi_alignment(type_uint));
-	}
-
-	LLVMTypeRef func_type;
-	LLVMValueRef func;
-	BEValue temp_value;
-
-	bool always_inline = false;
-
-	FunctionPrototype *prototype;
-	// 1. Call through a pointer.
-	if (!expr->call_expr.is_func_ref)
-	{
-		Expr *function = exprptr(expr->call_expr.function);
-
-		// 1a. Find the pointee type for the function pointer:
-		Type *type = function->type->canonical->pointer;
-
-		// 1b. Find the type signature using the underlying pointer.
-		prototype = type->function.prototype;
-
-		// 1c. Evaluate the pointer expression.
-		BEValue func_value;
-		llvm_emit_expr(c, &func_value, function);
-
-		// 1d. Load it as a value
-		func = llvm_load_value_store(c, &func_value);
-
-		// 1e. Calculate the function type
-		func_type = llvm_get_type(c, type);
-	}
-	else
-	{
-		// 2a. Get the function declaration
-
-		Decl *function_decl = declptr(expr->call_expr.func_ref);
-		always_inline = function_decl->func_decl.attr_inline;
-
-		// 2b. Set signature, function and function type
-		prototype = function_decl->type->function.prototype;
-		func = llvm_get_ref(c, function_decl);
-		assert(func);
-		func_type = llvm_get_type(c, function_decl->type);
-	}
-
-	LLVMValueRef *values = NULL;
-	Type **params = prototype->param_types;
-	ABIArgInfo **abi_args = prototype->abi_args;
-	unsigned param_count = vec_size(params);
-	Expr **args = expr->call_expr.arguments;
-	Expr **varargs = NULL;
-	Expr *vararg_splat = NULL;
-	if (prototype->variadic != VARIADIC_NONE)
-	{
-		if (expr->call_expr.splat_vararg)
-		{
-			vararg_splat = expr->call_expr.splat;
-		}
-		else
-		{
-			varargs = expr->call_expr.varargs;
-		}
-	}
-	FunctionPrototype copy;
-	if (prototype->variadic == VARIADIC_RAW)
-	{
-		if (varargs || vararg_splat)
-		{
-			assert(!vararg_splat);
-			copy = *prototype;
-			copy.varargs = NULL;
-
-			foreach(Expr*, varargs)
-			{
-				vec_add(copy.varargs, type_flatten(val->type));
-			}
-			copy.ret_abi_info = NULL;
-			copy.ret_by_ref_abi_info = NULL;
-			copy.abi_args = NULL;
-			c_abi_func_create(&copy);
-			prototype = &copy;
-			LLVMTypeRef *params_type = NULL;
-			llvm_update_prototype_abi(c, prototype, &params_type);
-		}
-	}
 	ABIArgInfo *ret_info = prototype->ret_abi_info;
 	Type *call_return_type = prototype->abi_ret_type;
 
-	// 5. In the case of a failable, the error is replacing the regular return abi.
-	LLVMValueRef error_var = NULL;
-
-	*result_value = (BEValue){ .kind = BE_VALUE, .value = NULL };
-	// 6. Generate data for the return value.
-	bool sret_return = false;
-	switch (ret_info->kind)
-	{
-		case ABI_ARG_INDIRECT:
-			// 6a. We can use the stored error var if there is no redirect.
-			if (prototype->is_failable && c->opt_var && !ret_info->attributes.realign)
-			{
-				error_var = c->opt_var;
-				vec_add(values, error_var);
-				break;
-			}
-			// 6b. Return true is indirect, in this case we allocate a local, using the desired alignment on the caller side.
-			assert(ret_info->attributes.realign || ret_info->indirect.alignment == type_abi_alignment(call_return_type));
-			AlignSize alignment = ret_info->indirect.alignment;
-			// If we have a target, then use it.
-			if (target && alignment <= target->alignment)
-			{
-				assert(target->kind == BE_ADDRESS);
-				vec_add(values, target->value);
-				sret_return = true;
-				break;
-			}
-			llvm_value_set_address(result_value,
-			                       llvm_emit_alloca(c, llvm_get_type(c, call_return_type), alignment, "sretparam"),
-			                       call_return_type,
-			                       alignment);
-
-			// 6c. Add the pointer to the list of arguments.
-			vec_add(values, result_value->value);
-			break;
-		case ABI_ARG_EXPAND:
-		case ABI_ARG_DIRECT_SPLIT_STRUCT:
-			UNREACHABLE
-		case ABI_ARG_DIRECT_PAIR:
-		case ABI_ARG_IGNORE:
-		case ABI_ARG_DIRECT_COERCE_INT:
-		case ABI_ARG_DIRECT_COERCE:
-		case ABI_ARG_DIRECT:
-		case ABI_ARG_EXPAND_COERCE:
-			break;
-	}
-
-
-	// 7. We might have a failable indirect return and a normal return.
-	//    In this case we need to add it by hand.
-	BEValue synthetic_return_param = { 0 };
-	if (prototype->ret_by_ref)
-	{
-		// 7b. Create the address to hold the return.
-		Type *actual_return_type = type_lowering(prototype->ret_by_ref_type);
-		llvm_value_set(&synthetic_return_param, llvm_emit_alloca_aligned(c, actual_return_type, "retparam"), type_get_ptr(actual_return_type));
-		// 7c. Emit it as a parameter as a pointer (will implicitly add it to the value list)
-		llvm_emit_parameter(c, &values, prototype->ret_by_ref_abi_info, &synthetic_return_param, synthetic_return_param.type);
-		// 7d. Update the be_value to actually be an address.
-		llvm_value_set_address_abi_aligned(&synthetic_return_param, synthetic_return_param.value, actual_return_type);
-	}
-
-
-	// 8. Add all other arguments.
-	for (unsigned i = 0; i < param_count; i++)
-	{
-		// 8a. Evaluate the expression.
-		Expr *arg_expr = args[i];
-		Type *param = params[i];
-		ABIArgInfo *info = abi_args[i];
-
-		if (arg_expr)
-		{
-			llvm_emit_expr(c, &temp_value, arg_expr);
-		}
-		else
-		{
-			assert(prototype->variadic == VARIADIC_TYPED || prototype->variadic == VARIADIC_ANY);
-			llvm_emit_vararg_parameter(c, &temp_value, param, info, varargs, vararg_splat);
-		}
-
-		// 8b. Emit the parameter according to ABI rules.
-		llvm_emit_parameter(c, &values, info, &temp_value, param);
-	}
-
-	// 9. Typed varargs
-
-	if (prototype->variadic == VARIADIC_RAW)
-	{
-		if (prototype->abi_varargs)
-		{
-			// 9. Emit varargs.
-			unsigned index = 0;
-			ABIArgInfo **abi_varargs = prototype->abi_varargs;
-			foreach(Expr*, varargs)
-			{
-				llvm_emit_expr(c, &temp_value, val);
-				ABIArgInfo *info = abi_varargs[index];
-				llvm_emit_parameter(c, &values, info, &temp_value, prototype->varargs[index]);
-				index++;
-			}
-		}
-		else
-		{
-			// 9. Emit varargs.
-			foreach(Expr*, varargs)
-			{
-				llvm_emit_expr(c, &temp_value, val);
-				REMINDER("Varargs should be expanded correctly");
-				vec_add(values, llvm_load_value_store(c, &temp_value));
-			}
-		}
-	}
-
-
-	// 10. Create the actual call (remember to emit a loc, because we might have shifted loc emitting the params)
-	EMIT_LOC(c, expr);
-	LLVMValueRef call_value = LLVMBuildCall2(c->builder, func_type, func, values, vec_size(values), "");
+	LLVMValueRef call_value = LLVMBuildCall2(c->builder, func_type, func, args, arg_count, "");
 	if (prototype->call_abi)
 	{
 		LLVMSetInstructionCallConv(call_value, llvm_call_convention_from_call(prototype->call_abi));
 	}
-	if (expr->call_expr.attr_force_noinline)
+	switch (inline_flag)
 	{
-		llvm_attribute_add_call(c, call_value, attribute_id.noinline, -1, 0);
-	}
-	else
-	{
-		if (expr->call_expr.attr_force_inline || always_inline)
-		{
+		case -1:
+			llvm_attribute_add_call(c, call_value, attribute_id.noinline, -1, 0);
+			break;
+		case 1:
 			llvm_attribute_add_call(c, call_value, attribute_id.alwaysinline, -1, 0);
-		}
+			break;
+		default:
+			break;
 	}
 
 	assert(!prototype->ret_by_ref || prototype->ret_by_ref_abi_info->kind != ABI_ARG_INDIRECT);
-	llvm_add_abi_call_attributes(c, call_value, param_count, abi_args);
+
+	llvm_add_abi_call_attributes(c, call_value, vec_size(prototype->param_types), prototype->abi_args);
 	if (prototype->abi_varargs)
 	{
 		llvm_add_abi_call_attributes(c,
@@ -5055,7 +4864,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 			// 13a. In the case of an already present error_var, we don't need to do a load here.
 			if (error_var || sret_return) break;
 
-			// 13b. Otherwise it will be contained in a be_value that is an address
+			// 13b. If not it will be contained in a be_value that is an address
 			//      so we don't need to do anything more.
 			assert(result_value->kind == BE_ADDRESS);
 
@@ -5094,7 +4903,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 			// 15d. Find the address to the low value
 			AlignSize alignment;
 			LLVMValueRef lo = llvm_emit_struct_gep_raw(c, coerce, coerce_type, ret_info->coerce_expand.lo_index,
-													   type_abi_alignment(call_return_type), &alignment);
+			                                           type_abi_alignment(call_return_type), &alignment);
 
 			// 15e. If there is only a single field, we simply store the value,
 			//      so { lo } set into { pad, lo, pad } -> original type.
@@ -5114,7 +4923,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 
 			// 15i. Calculate the address to the high value (like for the low in 15d.
 			LLVMValueRef hi = llvm_emit_struct_gep_raw(c, coerce, coerce_type, ret_info->coerce_expand.hi_index,
-													   type_abi_alignment(call_return_type), &alignment);
+			                                           type_abi_alignment(call_return_type), &alignment);
 
 			// 15h. Store the high value.
 			llvm_store_to_ptr_raw_aligned(c, hi, hi_value, alignment);
@@ -5209,7 +5018,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 		}
 
 		// 17h. Assign the return param to be_value.
-		*result_value = synthetic_return_param;
+		*result_value = *synthetic_return_param;
 		return;
 	}
 
@@ -5219,6 +5028,248 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 		                              c->debug.last_ptr,
 		                              c->debug.stack_slot,
 		                              type_alloca_alignment(type_voidptr));
+
+	// 17i. The simple case here is where there is a normal return.
+	//      In this case be_value already holds the result
+}
+static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr, BEValue *target)
+{
+	if (expr->call_expr.is_builtin)
+	{
+		llvm_emit_builtin_call(c, result_value, expr);
+		return;
+	}
+
+	if (c->debug.stack_slot_row)
+	{
+		llvm_store_to_ptr_raw_aligned(c,
+		                              c->debug.stack_slot_row,
+		                              llvm_const_int(c, type_uint, expr->span.row),
+		                              type_abi_alignment(type_uint));
+	}
+
+	LLVMTypeRef func_type;
+	LLVMValueRef func;
+	BEValue temp_value;
+
+	bool always_inline = false;
+
+	FunctionPrototype *prototype;
+	// 1. Call through a pointer.
+	if (!expr->call_expr.is_func_ref)
+	{
+		Expr *function = exprptr(expr->call_expr.function);
+
+		// 1a. Find the pointee type for the function pointer:
+		Type *type = function->type->canonical->pointer;
+
+		// 1b. Find the type signature using the underlying pointer.
+		prototype = type->function.prototype;
+
+		// 1c. Evaluate the pointer expression.
+		BEValue func_value;
+		llvm_emit_expr(c, &func_value, function);
+
+		// 1d. Load it as a value
+		func = llvm_load_value_store(c, &func_value);
+
+		// 1e. Calculate the function type
+		func_type = llvm_get_type(c, type);
+	}
+	else
+	{
+		// 2a. Get the function declaration
+
+		Decl *function_decl = declptr(expr->call_expr.func_ref);
+		always_inline = function_decl->func_decl.attr_inline;
+
+		// 2b. Set signature, function and function type
+		prototype = function_decl->type->function.prototype;
+		func = llvm_get_ref(c, function_decl);
+		assert(func);
+		func_type = llvm_get_type(c, function_decl->type);
+	}
+
+	LLVMValueRef arg_values[512];
+	unsigned arg_count = 0;
+	Type **params = prototype->param_types;
+	ABIArgInfo **abi_args = prototype->abi_args;
+	unsigned param_count = vec_size(params);
+	Expr **args = expr->call_expr.arguments;
+	Expr **varargs = NULL;
+	Expr *vararg_splat = NULL;
+	if (prototype->variadic != VARIADIC_NONE)
+	{
+		if (expr->call_expr.splat_vararg)
+		{
+			vararg_splat = expr->call_expr.splat;
+		}
+		else
+		{
+			varargs = expr->call_expr.varargs;
+		}
+	}
+	FunctionPrototype copy;
+	if (prototype->variadic == VARIADIC_RAW)
+	{
+		if (varargs || vararg_splat)
+		{
+			assert(!vararg_splat);
+			copy = *prototype;
+			copy.varargs = NULL;
+
+			foreach(Expr*, varargs)
+			{
+				vec_add(copy.varargs, type_flatten(val->type));
+			}
+			copy.ret_abi_info = NULL;
+			copy.ret_by_ref_abi_info = NULL;
+			copy.abi_args = NULL;
+			c_abi_func_create(&copy);
+			prototype = &copy;
+			LLVMTypeRef *params_type = NULL;
+			llvm_update_prototype_abi(c, prototype, &params_type);
+		}
+	}
+	ABIArgInfo *ret_info = prototype->ret_abi_info;
+	Type *call_return_type = prototype->abi_ret_type;
+
+	// 5. In the case of a failable, the error is replacing the regular return abi.
+	LLVMValueRef error_var = NULL;
+
+	*result_value = (BEValue){ .kind = BE_VALUE, .value = NULL };
+	// 6. Generate data for the return value.
+	bool sret_return = false;
+	switch (ret_info->kind)
+	{
+		case ABI_ARG_INDIRECT:
+			// 6a. We can use the stored error var if there is no redirect.
+			if (prototype->is_failable && c->opt_var && !ret_info->attributes.realign)
+			{
+				error_var = c->opt_var;
+				arg_values[arg_count++] = error_var;
+				break;
+			}
+			// 6b. Return true is indirect, in this case we allocate a local, using the desired alignment on the caller side.
+			assert(ret_info->attributes.realign || ret_info->indirect.alignment == type_abi_alignment(call_return_type));
+			AlignSize alignment = ret_info->indirect.alignment;
+			// If we have a target, then use it.
+			if (target && alignment <= target->alignment)
+			{
+				assert(target->kind == BE_ADDRESS);
+				arg_values[arg_count++] = target->value;
+				sret_return = true;
+				break;
+			}
+			llvm_value_set_address(result_value,
+			                       llvm_emit_alloca(c, llvm_get_type(c, call_return_type), alignment, "sretparam"),
+			                       call_return_type,
+			                       alignment);
+
+			// 6c. Add the pointer to the list of arguments.
+			arg_values[arg_count++] = result_value->value;
+			break;
+		case ABI_ARG_EXPAND:
+		case ABI_ARG_DIRECT_SPLIT_STRUCT:
+			UNREACHABLE
+		case ABI_ARG_DIRECT_PAIR:
+		case ABI_ARG_IGNORE:
+		case ABI_ARG_DIRECT_COERCE_INT:
+		case ABI_ARG_DIRECT_COERCE:
+		case ABI_ARG_DIRECT:
+		case ABI_ARG_EXPAND_COERCE:
+			break;
+	}
+
+
+	// 7. We might have a failable indirect return and a normal return.
+	//    In this case we need to add it by hand.
+	BEValue synthetic_return_param = { 0 };
+	if (prototype->ret_by_ref)
+	{
+		// 7b. Create the address to hold the return.
+		Type *actual_return_type = type_lowering(prototype->ret_by_ref_type);
+		llvm_value_set(&synthetic_return_param, llvm_emit_alloca_aligned(c, actual_return_type, "retparam"), type_get_ptr(actual_return_type));
+		// 7c. Emit it as a parameter as a pointer (will implicitly add it to the value list)
+		llvm_emit_parameter(c, arg_values, &arg_count, prototype->ret_by_ref_abi_info, &synthetic_return_param, synthetic_return_param.type);
+		// 7d. Update the be_value to actually be an address.
+		llvm_value_set_address_abi_aligned(&synthetic_return_param, synthetic_return_param.value, actual_return_type);
+	}
+
+
+	// 8. Add all other arguments.
+	for (unsigned i = 0; i < param_count; i++)
+	{
+		// 8a. Evaluate the expression.
+		Expr *arg_expr = args[i];
+		Type *param = params[i];
+		ABIArgInfo *info = abi_args[i];
+
+		if (arg_expr)
+		{
+			llvm_emit_expr(c, &temp_value, arg_expr);
+		}
+		else
+		{
+			assert(prototype->variadic == VARIADIC_TYPED || prototype->variadic == VARIADIC_ANY);
+			llvm_emit_vararg_parameter(c, &temp_value, param, info, varargs, vararg_splat);
+		}
+
+		// 8b. Emit the parameter according to ABI rules.
+		llvm_emit_parameter(c, arg_values, &arg_count, info, &temp_value, param);
+	}
+
+	// 9. Typed varargs
+
+	if (prototype->variadic == VARIADIC_RAW)
+	{
+		if (prototype->abi_varargs)
+		{
+			// 9. Emit varargs.
+			unsigned index = 0;
+			ABIArgInfo **abi_varargs = prototype->abi_varargs;
+			foreach(Expr*, varargs)
+			{
+				llvm_emit_expr(c, &temp_value, val);
+				ABIArgInfo *info = abi_varargs[index];
+				llvm_emit_parameter(c, arg_values, &arg_count, info, &temp_value, prototype->varargs[index]);
+				index++;
+			}
+		}
+		else
+		{
+			// 9. Emit varargs.
+			foreach(Expr*, varargs)
+			{
+				llvm_emit_expr(c, &temp_value, val);
+				REMINDER("Varargs should be expanded correctly");
+				arg_values[arg_count++] = llvm_load_value_store(c, &temp_value);
+			}
+		}
+	}
+
+
+	// 10. Create the actual call (remember to emit a loc, because we might have shifted loc emitting the params)
+	EMIT_LOC(c, expr);
+	int inline_flag = 0;
+	if (expr->call_expr.attr_force_noinline)
+	{
+		inline_flag = -1;
+	}
+	else
+	{
+		inline_flag = expr->call_expr.attr_force_inline || always_inline ? 1 : 0;
+	}
+	llvm_emit_raw_call(c, result_value, prototype, func_type, func, arg_values, arg_count, inline_flag, error_var, sret_return, &synthetic_return_param);
+
+	// Emit the current stack into the thread local or things will get messed up.
+	if (c->debug.last_ptr)
+	{
+		llvm_store_to_ptr_raw_aligned(c,
+		                              c->debug.last_ptr,
+		                              c->debug.stack_slot,
+		                              type_alloca_alignment(type_voidptr));
+	}
 
 	// 17i. The simple case here is where there is a normal return.
 	//      In this case be_value already holds the result
@@ -5966,6 +6017,37 @@ static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Ex
 	UNREACHABLE
 }
 
+static LLVMValueRef llvm_get_test_hook_global(GenContext *c, Expr *expr)
+{
+	const char *name;
+	switch (expr->test_hook_expr)
+	{
+		case BUILTIN_DEF_TEST_FNS:
+			name = "C3_TEST_DECL_LIST";
+			break;
+		case BUILTIN_DEF_TEST_COUNT:
+			name = "C3_TEST_COUNT";
+			break;
+		case BUILTIN_DEF_TEST_NAMES:
+			name = "C3_TEST_NAME_LIST";
+			break;
+		default:
+			UNREACHABLE
+	}
+	LLVMValueRef global = LLVMGetNamedGlobal(c->module, name);
+	if (global) return global;
+	global = LLVMAddGlobal(c->module, llvm_get_type(c, expr->type), name);
+	LLVMSetExternallyInitialized(global, true);
+	LLVMSetGlobalConstant(global, true);
+	return global;
+}
+
+static void llmv_emit_test_hook(GenContext *c, BEValue *value, Expr *expr)
+{
+	LLVMValueRef get_global = llvm_get_test_hook_global(c, expr);
+	llvm_value_set_address_abi_aligned(value, get_global, expr->type);
+}
+
 void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 {
 	EMIT_LOC(c, expr);
@@ -5978,6 +6060,9 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_VASPLAT:
 		case EXPR_CT_CHECKS:
 			UNREACHABLE
+		case EXPR_TEST_HOOK:
+			llmv_emit_test_hook(c, value, expr);
+			return;
 		case EXPR_BUILTIN_ACCESS:
 			llvm_emit_builtin_access(c, value, expr);
 			return;

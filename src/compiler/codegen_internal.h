@@ -57,3 +57,7 @@ static inline bool abi_type_is_promotable_integer_or_bool(AbiType type)
 }
 
 const char *codegen_create_asm(Ast *ast);
+
+extern const char *test_fns_var_name;
+extern const char *test_count_var_name;
+extern const char *test_names_var_name;

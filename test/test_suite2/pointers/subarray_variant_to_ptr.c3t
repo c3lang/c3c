@@ -71,7 +71,6 @@ entry:
   %y = alloca i32, align 4
   %w = alloca [2 x i32], align 4
   %taddr = alloca %variant, align 8
-  %taddr1 = alloca %"int[]", align 8
   store i32 123, ptr %x, align 4
   store i32 293483, ptr %y, align 4
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %w, ptr align 4 @.__const, i32 8, i1 false)
@@ -84,13 +83,6 @@ entry:
   %hi = load ptr, ptr %3, align 8
   call void @foo_test1(i64 %lo, ptr %hi)
   %4 = getelementptr inbounds [2 x i32], ptr %w, i64 0, i64 0
-  %5 = insertvalue %"int[]" undef, ptr %4, 0
-  %6 = insertvalue %"int[]" %5, i64 2, 1
-  store %"int[]" %6, ptr %taddr1, align 8
-  %7 = getelementptr inbounds { ptr, i64 }, ptr %taddr1, i32 0, i32 0
-  %lo2 = load ptr, ptr %7, align 8
-  %8 = getelementptr inbounds { ptr, i64 }, ptr %taddr1, i32 0, i32 1
-  %hi3 = load i64, ptr %8, align 8
-  call void @foo_test2(ptr %lo2, i64 %hi3)
+  call void @foo_test2(ptr %4, i64 2)
   ret void
 }

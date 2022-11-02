@@ -1239,6 +1239,21 @@ void gencontext_emit_expr_stmt(GenContext *c, Ast *ast)
 	llvm_emit_expr(c, &value, ast->expr_stmt);
 }
 
+LLVMValueRef llvm_emit_string_const(GenContext *c, const char *str, const char *extname)
+{
+	size_t len = str ? strlen(str) : 0;
+	if (!len) return llvm_emit_empty_string_const(c);
+	LLVMValueRef val = llvm_emit_zstring_named(c, str, extname);
+	LLVMValueRef data[2] = { val, llvm_const_int(c, type_usize, strlen(str)) };
+	return llvm_get_struct_named(llvm_get_type(c, type_chars), data, 2);
+}
+
+LLVMValueRef llvm_emit_empty_string_const(GenContext *c)
+{
+	LLVMValueRef data[2] = { LLVMConstNull(c->char_ptr_type), llvm_const_int(c, type_usize, 0) };
+	return llvm_get_struct_named(llvm_get_type(c, type_chars), data, 2);
+}
+
 LLVMValueRef llvm_emit_zstring(GenContext *c, const char *str)
 {
 	return llvm_emit_zstring_named(c, str, ".zstr");
@@ -1269,20 +1284,38 @@ void llvm_emit_panic(GenContext *c, const char *message, const char *file, const
 		                              type_abi_alignment(type_uint));
 	}
 
-	Decl *panicfn = c->panicfn;
-	if (!panicfn)
+	Decl *panic_var = c->panic_var;
+	if (!panic_var)
 	{
 		llvm_emit_call_intrinsic(c, intrinsic_id.trap, NULL, 0, NULL, 0);
 		return;
 	}
+
 	LLVMValueRef args[4] = {
-			llvm_emit_zstring(c, message),
-			llvm_emit_zstring(c, file),
-			func ? llvm_emit_zstring(c, func) : llvm_get_zero(c, type_get_ptr(type_char)),
+			llvm_emit_string_const(c, message, ".panic_msg"),
+			llvm_emit_string_const(c, file, ".file"),
+			llvm_emit_string_const(c, func, ".func"),
 			llvm_const_int(c, type_uint, line)
 	};
+	FunctionPrototype *prototype = panic_var->type->canonical->pointer->function.prototype;
+	LLVMValueRef actual_args[16];
+	unsigned count = 0;
+	ABIArgInfo **abi_args = prototype->abi_args;
+	Type **types = prototype->param_types;
+	for (unsigned i = 0; i < 4; i++)
+	{
+		Type *type = types[i]->canonical;
+		BEValue value = { .value = args[i], .type = type };
+		llvm_emit_parameter(c, actual_args, &count, abi_args[i], &value, type);
+	}
 
-	LLVMBuildCall2(c->builder, llvm_get_type(c, panicfn->type), llvm_get_ref(c, panicfn), args, 4, "");
+	BEValue val;
+	llvm_value_set_decl(c, &val, panic_var);
+	llvm_value_rvalue(c, &val);
+
+	BEValue res;
+	llvm_emit_raw_call(c, &res, prototype, llvm_func_type(c, prototype), val.value, actual_args,
+	                   count, 0, NULL, false, NULL);
 }
 
 void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_name, SourceSpan loc)

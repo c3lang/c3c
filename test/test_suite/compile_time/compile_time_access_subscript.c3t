@@ -56,10 +56,9 @@ fn void main()
   %z9 = alloca [2 x i32], align 4
   %z10 = alloca %"int[]", align 8
   %retparam = alloca i64, align 8
-  %taddr = alloca %"char[]", align 8
-  %vararg = alloca %"variant[]", align 8
   %varargslots = alloca [1 x %variant], align 16
   %literal = alloca %Abc, align 4
+  %taddr = alloca %"variant[]", align 8
   store i32 0, i32* %z, align 4
   %0 = getelementptr inbounds %Abc, %Abc* %z1, i32 0, i32 0
   store float 0.000000e+00, float* %0, align 4
@@ -89,37 +88,30 @@ fn void main()
   store i32 0, i32* %9, align 4
   %10 = bitcast %"int[]"* %z10 to i8*
   call void @llvm.memset.p0i8.i64(i8* align 8 %10, i8 0, i64 16, i1 false)
-  store %"char[]" { i8* getelementptr inbounds ([3 x i8], [3 x i8]* @.str, i32 0, i32 0), i64 2 }, %"char[]"* %taddr, align 8
-  %11 = bitcast %"char[]"* %taddr to { i8*, i64 }*
-  %12 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %11, i32 0, i32 0
-  %lo = load i8*, i8** %12, align 8
-  %13 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %11, i32 0, i32 1
-  %hi = load i64, i64* %13, align 8
-  %14 = getelementptr inbounds %Abc, %Abc* %literal, i32 0, i32 0
+  %11 = getelementptr inbounds %Abc, %Abc* %literal, i32 0, i32 0
+  store float 0.000000e+00, float* %11, align 4
+  %12 = getelementptr inbounds %Abc, %Abc* %literal, i32 0, i32 1
+  store float 0.000000e+00, float* %12, align 4
+  %13 = getelementptr inbounds %Abc, %Abc* %literal, i32 0, i32 2
+  store float 0.000000e+00, float* %13, align 4
+  %14 = getelementptr inbounds %Abc, %Abc* %literal, i32 0, i32 3
   store float 0.000000e+00, float* %14, align 4
-  %15 = getelementptr inbounds %Abc, %Abc* %literal, i32 0, i32 1
-  store float 0.000000e+00, float* %15, align 4
-  %16 = getelementptr inbounds %Abc, %Abc* %literal, i32 0, i32 2
-  store float 0.000000e+00, float* %16, align 4
-  %17 = getelementptr inbounds %Abc, %Abc* %literal, i32 0, i32 3
-  store float 0.000000e+00, float* %17, align 4
-  %18 = bitcast %Abc* %literal to i8*
-  %19 = insertvalue %variant undef, i8* %18, 0
-  %20 = insertvalue %variant %19, i64 ptrtoint (%.introspect* @"ct$test_Abc" to i64), 1
-  %21 = getelementptr inbounds [1 x %variant], [1 x %variant]* %varargslots, i64 0, i64 0
-  store %variant %20, %variant* %21, align 16
-  %22 = getelementptr inbounds %"variant[]", %"variant[]"* %vararg, i32 0, i32 1
-  store i64 1, i64* %22, align 8
-  %23 = getelementptr inbounds %"variant[]", %"variant[]"* %vararg, i32 0, i32 0
-  %24 = bitcast [1 x %variant]* %varargslots to %variant*
-  store %variant* %24, %variant** %23, align 8
-  %25 = bitcast %"variant[]"* %vararg to { i8*, i64 }*
-  %26 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %25, i32 0, i32 0
-  %lo11 = load i8*, i8** %26, align 8
-  %27 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %25, i32 0, i32 1
-  %hi12 = load i64, i64* %27, align 8
-  %28 = call i64 @std_io_printfln(i64* %retparam, i8* %lo, i64 %hi, i8* %lo11, i64 %hi12)
-  %not_err = icmp eq i64 %28, 0
+  %15 = bitcast %Abc* %literal to i8*
+  %16 = insertvalue %variant undef, i8* %15, 0
+  %17 = insertvalue %variant %16, i64 ptrtoint (%.introspect* @"ct$test_Abc" to i64), 1
+  %18 = getelementptr inbounds [1 x %variant], [1 x %variant]* %varargslots, i64 0, i64 0
+  store %variant %17, %variant* %18, align 16
+  %19 = bitcast [1 x %variant]* %varargslots to %variant*
+  %20 = insertvalue %"variant[]" undef, %variant* %19, 0
+  %21 = insertvalue %"variant[]" %20, i64 1, 1
+  store %"variant[]" %21, %"variant[]"* %taddr, align 8
+  %22 = bitcast %"variant[]"* %taddr to { i8*, i64 }*
+  %23 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %22, i32 0, i32 0
+  %lo = load i8*, i8** %23, align 8
+  %24 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %22, i32 0, i32 1
+  %hi = load i64, i64* %24, align 8
+  %25 = call i64 @std_io_printfln(i64* %retparam, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @.str, i32 0, i32 0), i64 2, i8* %lo, i64 %hi)
+  %not_err = icmp eq i64 %25, 0
   br i1 %not_err, label %after_check, label %voiderr
 
 after_check:                                      ; preds = %entry

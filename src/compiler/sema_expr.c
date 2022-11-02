@@ -475,6 +475,7 @@ static bool sema_binary_is_expr_lvalue(Expr *top_expr, Expr *expr)
 		case EXPR_VARIANT:
 		case EXPR_VARIANTSWITCH:
 		case EXPR_VASPLAT:
+		case EXPR_TEST_HOOK:
 			goto ERR;
 	}
 	UNREACHABLE
@@ -1582,6 +1583,11 @@ static inline Type *context_unify_returns(SemaContext *context)
 static inline bool sema_expr_analyse_func_call(SemaContext *context, Expr *expr, Decl *decl, Expr *struct_var, bool failable)
 {
 	expr->call_expr.is_pointer_call = false;
+	if (decl->func_decl.attr_test)
+	{
+		SEMA_ERROR(expr, "@test functions may not be directly called.");
+		return false;
+	}
 	return sema_call_analyse_func_invocation(context,
 	                                         decl->type,
 	                                         expr,
@@ -5112,6 +5118,11 @@ static inline bool sema_addr_may_take_of_ident(Expr *inner)
 	switch (decl->decl_kind)
 	{
 		case DECL_FUNC:
+			if (decl->func_decl.attr_test)
+			{
+				SEMA_ERROR(inner, "You may not take the address of a '@test' function.");
+				return false;
+			}
 			return true;
 		case DECL_VAR:
 			return sema_addr_may_take_of_var(inner, decl);
@@ -5936,6 +5947,21 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 			expr_replace(expr, value);
 			return true;
 		}
+		case BUILTIN_DEF_TEST_COUNT:
+			expr->type = type_uint;
+			expr->test_hook_expr = BUILTIN_DEF_TEST_COUNT;
+			expr->expr_kind = EXPR_TEST_HOOK;
+			return true;
+		case BUILTIN_DEF_TEST_NAMES:
+			expr->type = type_get_ptr(type_get_ptr(type_char));
+			expr->test_hook_expr = BUILTIN_DEF_TEST_NAMES;
+			expr->expr_kind = EXPR_TEST_HOOK;
+			return true;
+		case BUILTIN_DEF_TEST_FNS:
+			expr->type = type_get_ptr(type_voidptr);
+			expr->test_hook_expr = BUILTIN_DEF_TEST_FNS;
+			expr->expr_kind = EXPR_TEST_HOOK;
+			return true;
 	}
 	UNREACHABLE
 }
@@ -6685,6 +6711,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 		case EXPR_TYPEID_INFO:
 		case EXPR_ASM:
 		case EXPR_OPERATOR_CHARS:
+		case EXPR_TEST_HOOK:
 			UNREACHABLE
 		case EXPR_VASPLAT:
 			SEMA_ERROR(expr, "'$vasplat' can only be used inside of macros.");

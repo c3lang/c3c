@@ -50,7 +50,7 @@ void gencontext_begin_module(GenContext *c)
 		if (active_target.asm_file_dir) c->asm_filename = file_append_path(active_target.asm_file_dir, c->asm_filename);
 	}
 	if (active_target.object_file_dir) c->object_filename = file_append_path(active_target.object_file_dir, c->object_filename);
-	c->panicfn = global_context.panic_fn;
+	c->panic_var = global_context.panic_var;
 	c->module = LLVMModuleCreateWithNameInContext(c->code_module->name->module, c->context);
 	c->machine = llvm_target_machine_create();
 	c->target_data = LLVMCreateTargetDataLayout(c->machine);
@@ -126,7 +126,8 @@ void gencontext_begin_module(GenContext *c)
 	c->introspect_type = create_introspection_type(c);
 	c->fault_type = create_fault_type(c);
 	c->size_type = llvm_get_type(c, type_usize);
-	if (c->panicfn) c->panicfn->backend_ref = NULL;
+	c->char_ptr_type = LLVMPointerType(c->byte_type, 0);
+	if (c->panic_var) c->panic_var->backend_ref = NULL;
 
 	if (active_target.debug_info != DEBUG_INFO_NONE)
 	{

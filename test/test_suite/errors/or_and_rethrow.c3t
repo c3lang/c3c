@@ -42,39 +42,31 @@ fn void main()
 define i64 @foo_test(i32 %0) #0 {
 entry:
   %retparam = alloca i64, align 8
-  %taddr = alloca %"char[]", align 8
-  %vararg = alloca %"variant[]", align 8
   %varargslots = alloca [1 x %variant], align 16
-  %taddr1 = alloca i32, align 4
+  %taddr = alloca i32, align 4
+  %taddr1 = alloca %"variant[]", align 8
   %error_var = alloca i64, align 8
   %blockret = alloca i32, align 4
-  %error_var4 = alloca i64, align 8
-  %blockret5 = alloca i32, align 4
+  %error_var2 = alloca i64, align 8
+  %blockret3 = alloca i32, align 4
   %reterr = alloca i64, align 8
-  store %"char[]" { i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str.1, i32 0, i32 0), i64 8 }, %"char[]"* %taddr, align 8
-  %1 = bitcast %"char[]"* %taddr to { i8*, i64 }*
-  %2 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %1, i32 0, i32 0
-  %lo = load i8*, i8** %2, align 8
-  %3 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %1, i32 0, i32 1
-  %hi = load i64, i64* %3, align 8
-  store i32 %0, i32* %taddr1, align 4
-  %4 = bitcast i32* %taddr1 to i8*
-  %5 = insertvalue %variant undef, i8* %4, 0
-  %6 = insertvalue %variant %5, i64 ptrtoint (%.introspect* @"ct$int" to i64), 1
-  %7 = getelementptr inbounds [1 x %variant], [1 x %variant]* %varargslots, i64 0, i64 0
-  store %variant %6, %variant* %7, align 16
-  %8 = getelementptr inbounds %"variant[]", %"variant[]"* %vararg, i32 0, i32 1
-  store i64 1, i64* %8, align 8
-  %9 = getelementptr inbounds %"variant[]", %"variant[]"* %vararg, i32 0, i32 0
-  %10 = bitcast [1 x %variant]* %varargslots to %variant*
-  store %variant* %10, %variant** %9, align 8
-  %11 = bitcast %"variant[]"* %vararg to { i8*, i64 }*
-  %12 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %11, i32 0, i32 0
-  %lo2 = load i8*, i8** %12, align 8
-  %13 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %11, i32 0, i32 1
-  %hi3 = load i64, i64* %13, align 8
-  %14 = call i64 @std_io_printfln(i64* %retparam, i8* %lo, i64 %hi, i8* %lo2, i64 %hi3)
-  %not_err = icmp eq i64 %14, 0
+  store i32 %0, i32* %taddr, align 4
+  %1 = bitcast i32* %taddr to i8*
+  %2 = insertvalue %variant undef, i8* %1, 0
+  %3 = insertvalue %variant %2, i64 ptrtoint (%.introspect* @"ct$int" to i64), 1
+  %4 = getelementptr inbounds [1 x %variant], [1 x %variant]* %varargslots, i64 0, i64 0
+  store %variant %3, %variant* %4, align 16
+  %5 = bitcast [1 x %variant]* %varargslots to %variant*
+  %6 = insertvalue %"variant[]" undef, %variant* %5, 0
+  %7 = insertvalue %"variant[]" %6, i64 1, 1
+  store %"variant[]" %7, %"variant[]"* %taddr1, align 8
+  %8 = bitcast %"variant[]"* %taddr1 to { i8*, i64 }*
+  %9 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %8, i32 0, i32 0
+  %lo = load i8*, i8** %9, align 8
+  %10 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %8, i32 0, i32 1
+  %hi = load i64, i64* %10, align 8
+  %11 = call i64 @std_io_printfln(i64* %retparam, i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str.1, i32 0, i32 0), i64 8, i8* %lo, i64 %hi)
+  %not_err = icmp eq i64 %11, 0
   br i1 %not_err, label %after_check, label %voiderr
 
 after_check:                                      ; preds = %entry
@@ -93,70 +85,63 @@ opt_block_cleanup:                                ; preds = %or.rhs
   br label %guard_block
 
 guard_block:                                      ; preds = %opt_block_cleanup
-  %15 = load i64, i64* %error_var, align 8
-  ret i64 %15
+  %12 = load i64, i64* %error_var, align 8
+  ret i64 %12
 
 or.phi:                                           ; preds = %voiderr
   br label %if.then
 
 if.then:                                          ; preds = %or.phi
-  %16 = call i32 @std_io_println(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.2, i32 0, i32 0)) #1
+  %13 = call i32 @std_io_println(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.2, i32 0, i32 0)) #1
   br label %if.exit
 
 if.exit:                                          ; preds = %if.then
-  %17 = call i32 @std_io_println(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @.str.3, i32 0, i32 0)) #1
-  store i64 ptrtoint (%.fault* @"foo_Foo$ABC" to i64), i64* %error_var4, align 8
-  br label %opt_block_cleanup6
+  %14 = call i32 @std_io_println(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @.str.3, i32 0, i32 0)) #1
+  store i64 ptrtoint (%.fault* @"foo_Foo$ABC" to i64), i64* %error_var2, align 8
+  br label %opt_block_cleanup4
 
-opt_block_cleanup6:                               ; preds = %if.exit
+opt_block_cleanup4:                               ; preds = %if.exit
   call void @foo_blurb()
-  br label %guard_block7
+  br label %guard_block5
 
-guard_block7:                                     ; preds = %opt_block_cleanup6
-  %18 = load i64, i64* %error_var4, align 8
-  ret i64 %18
+guard_block5:                                     ; preds = %opt_block_cleanup4
+  %15 = load i64, i64* %error_var2, align 8
+  ret i64 %15
 
-if.exit9:                                         ; No predecessors!
-  %19 = call i32 @std_io_println(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.5, i32 0, i32 0)) #1
+if.exit7:                                         ; No predecessors!
+  %16 = call i32 @std_io_println(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.5, i32 0, i32 0)) #1
   ret i64 0
 }
 
+; Function Attrs: nounwind
 define i64 @foo_test2(i32 %0) #0 {
 entry:
   %retparam = alloca i64, align 8
-  %taddr = alloca %"char[]", align 8
-  %vararg = alloca %"variant[]", align 8
   %varargslots = alloca [1 x %variant], align 16
-  %taddr1 = alloca i32, align 4
+  %taddr = alloca i32, align 4
+  %taddr1 = alloca %"variant[]", align 8
   %error_var = alloca i64, align 8
   %blockret = alloca i32, align 4
-  %error_var4 = alloca i64, align 8
-  %blockret5 = alloca i32, align 4
+  %error_var2 = alloca i64, align 8
+  %blockret3 = alloca i32, align 4
   %reterr = alloca i64, align 8
-  store %"char[]" { i8* getelementptr inbounds ([10 x i8], [10 x i8]* @.str.6, i32 0, i32 0), i64 9 }, %"char[]"* %taddr, align 8
-  %1 = bitcast %"char[]"* %taddr to { i8*, i64 }*
-  %2 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %1, i32 0, i32 0
-  %lo = load i8*, i8** %2, align 8
-  %3 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %1, i32 0, i32 1
-  %hi = load i64, i64* %3, align 8
-  store i32 %0, i32* %taddr1, align 4
-  %4 = bitcast i32* %taddr1 to i8*
-  %5 = insertvalue %variant undef, i8* %4, 0
-  %6 = insertvalue %variant %5, i64 ptrtoint (%.introspect* @"ct$int" to i64), 1
-  %7 = getelementptr inbounds [1 x %variant], [1 x %variant]* %varargslots, i64 0, i64 0
-  store %variant %6, %variant* %7, align 16
-  %8 = getelementptr inbounds %"variant[]", %"variant[]"* %vararg, i32 0, i32 1
-  store i64 1, i64* %8, align 8
-  %9 = getelementptr inbounds %"variant[]", %"variant[]"* %vararg, i32 0, i32 0
-  %10 = bitcast [1 x %variant]* %varargslots to %variant*
-  store %variant* %10, %variant** %9, align 8
-  %11 = bitcast %"variant[]"* %vararg to { i8*, i64 }*
-  %12 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %11, i32 0, i32 0
-  %lo2 = load i8*, i8** %12, align 8
-  %13 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %11, i32 0, i32 1
-  %hi3 = load i64, i64* %13, align 8
-  %14 = call i64 @std_io_printfln(i64* %retparam, i8* %lo, i64 %hi, i8* %lo2, i64 %hi3)
-  %not_err = icmp eq i64 %14, 0
+  store i32 %0, i32* %taddr, align 4
+  %1 = bitcast i32* %taddr to i8*
+  %2 = insertvalue %variant undef, i8* %1, 0
+  %3 = insertvalue %variant %2, i64 ptrtoint (%.introspect* @"ct$int" to i64), 1
+  %4 = getelementptr inbounds [1 x %variant], [1 x %variant]* %varargslots, i64 0, i64 0
+  store %variant %3, %variant* %4, align 16
+  %5 = bitcast [1 x %variant]* %varargslots to %variant*
+  %6 = insertvalue %"variant[]" undef, %variant* %5, 0
+  %7 = insertvalue %"variant[]" %6, i64 1, 1
+  store %"variant[]" %7, %"variant[]"* %taddr1, align 8
+  %8 = bitcast %"variant[]"* %taddr1 to { i8*, i64 }*
+  %9 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %8, i32 0, i32 0
+  %lo = load i8*, i8** %9, align 8
+  %10 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %8, i32 0, i32 1
+  %hi = load i64, i64* %10, align 8
+  %11 = call i64 @std_io_printfln(i64* %retparam, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @.str.6, i32 0, i32 0), i64 9, i8* %lo, i64 %hi)
+  %not_err = icmp eq i64 %11, 0
   br i1 %not_err, label %after_check, label %voiderr
 
 after_check:                                      ; preds = %entry
@@ -175,26 +160,26 @@ opt_block_cleanup:                                ; preds = %and.rhs
   br label %guard_block
 
 guard_block:                                      ; preds = %opt_block_cleanup
-  %15 = load i64, i64* %error_var, align 8
-  ret i64 %15
+  %12 = load i64, i64* %error_var, align 8
+  ret i64 %12
 
 and.phi:                                          ; preds = %voiderr
   br label %if.exit
 
 if.exit:                                          ; preds = %and.phi
-  %16 = call i32 @std_io_println(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @.str.7, i32 0, i32 0)) #1
-  store i64 ptrtoint (%.fault* @"foo_Foo$ABC" to i64), i64* %error_var4, align 8
-  br label %opt_block_cleanup6
+  %13 = call i32 @std_io_println(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @.str.7, i32 0, i32 0)) #1
+  store i64 ptrtoint (%.fault* @"foo_Foo$ABC" to i64), i64* %error_var2, align 8
+  br label %opt_block_cleanup4
 
-opt_block_cleanup6:                               ; preds = %if.exit
+opt_block_cleanup4:                               ; preds = %if.exit
   call void @foo_blurb()
-  br label %guard_block7
+  br label %guard_block5
 
-guard_block7:                                     ; preds = %opt_block_cleanup6
-  %17 = load i64, i64* %error_var4, align 8
-  ret i64 %17
+guard_block5:                                     ; preds = %opt_block_cleanup4
+  %14 = load i64, i64* %error_var2, align 8
+  ret i64 %14
 
-if.exit8:                                         ; No predecessors!
-  %18 = call i32 @std_io_println(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.8, i32 0, i32 0)) #1
+if.exit6:                                         ; No predecessors!
+  %15 = call i32 @std_io_println(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.8, i32 0, i32 0)) #1
   ret i64 0
 }

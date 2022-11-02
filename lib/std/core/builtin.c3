@@ -56,12 +56,12 @@ macro varcast(variant v, $Type) @builtin
 struct CallstackElement
 {
 	CallstackElement* prev;
-	char* function;
-	char* file;
+	char[] function;
+	char[] file;
 	uint line;
 }
 
-fn void panic(char* message, char *file, char *function, uint line) @builtin
+fn void default_panic(char[] message, char[] file, char[] function, uint line)
 {
 	CallstackElement* stack = $$stacktrace();
 	$if ($defined(libc::stderr) && $defined(libc::fprintf)):
@@ -69,23 +69,28 @@ fn void panic(char* message, char *file, char *function, uint line) @builtin
 	if (stack) stack = stack.prev;
 	if (stack)
 	{
-		libc::fprintf(libc::stderr(), "\nERROR: '%s'\n", message);
+		libc::fprintf(libc::stderr(), "\nERROR: '%.*s'\n", (int)message.len, message.ptr);
 	}
 	else
 	{
-		libc::fprintf(libc::stderr(), "\nERROR: '%s', function %s (%s:%d)\n", message, function, file, line);
+		libc::fprintf(libc::stderr(), "\nERROR: '%.*s', function %.*s (%.*s:%d)\n",
+			(int)message.len, message.ptr, (int)function.len, function.ptr, (int)file.len, file.ptr, line);
 	}
 	while (stack)
 	{
-		libc::fprintf(libc::stderr(), "  at function %s (%s:%u)\n", stack.function, stack.file, stack.line);
+		libc::fprintf(libc::stderr(), "  at function %.*s (%.*s:%u)\n", (int)stack.function.len, stack.function.ptr,
+		    (int)stack.file.len, stack.file.ptr, stack.line);
 		if (stack == stack.prev) break;
 		stack = stack.prev;
 	}
 
 	$endif;
-
 	$$trap();
 }
+
+define PanicFn = fn void(char[] message, char[] file, char[] function, uint line);
+
+PanicFn panic = &default_panic;
 
 macro void unreachable($string = "Unreachable statement reached.") @builtin @noreturn
 {

@@ -582,6 +582,25 @@ void type_mangle_introspect_name_to_buffer(Type *type)
 	UNREACHABLE
 }
 
+bool type_func_match(Type *fn_type, Type *rtype, unsigned arg_count, ...)
+{
+	assert(type_is_func_ptr(fn_type));
+	Signature *sig = fn_type->pointer->function.signature;
+	if (rtype->canonical != typeinfotype(sig->rtype)->canonical) return false;
+	if (vec_size(sig->params) != arg_count) return false;
+	va_list ap;
+	va_start(ap, arg_count);
+	FOREACH_BEGIN(Decl* decl, sig->params)
+		Type *arg = va_arg(ap, Type*);
+		if (decl->type->canonical != arg->canonical)
+		{
+			va_end(ap);
+			return false;
+		}
+	FOREACH_END();
+	va_end(ap);
+	return true;
+}
 AlignSize type_abi_alignment(Type *type)
 {
 	RETRY:

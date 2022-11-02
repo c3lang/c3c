@@ -345,6 +345,7 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_HASH_IDENT:
 			assert(expr->resolve_status != RESOLVE_DONE);
 			return expr;
+		case EXPR_TEST_HOOK:
 		case EXPR_COMPILER_CONST:
 			return expr;
 		case EXPR_DESIGNATOR:

@@ -1004,6 +1004,77 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 	UNREACHABLE
 }
 
+INLINE void llvm_gen_tests(GenContext *test_owner, Module** modules, unsigned module_count)
+{
+	LLVMValueRef *names = NULL;
+	LLVMValueRef *decls = NULL;
+
+	LLVMTypeRef void_test = LLVMFunctionType(LLVMVoidTypeInContext(test_owner->context), NULL, 0, false);
+	LLVMTypeRef opt_test = LLVMFunctionType(test_owner->fault_type, NULL, 0, false);
+	for (unsigned i = 0; i < module_count; i++)
+	{
+		Module *module = modules[i];
+		bool gen_proto = test_owner->code_module != module;
+		FOREACH_BEGIN(Decl *test, module->tests)
+			LLVMValueRef ref;
+			if (gen_proto)
+			{
+				LLVMTypeRef type = test->type->function.prototype->rtype == type_void ? void_test : opt_test;
+				ref = LLVMAddFunction(test_owner->module, test->extname, type);
+			}
+			else
+			{
+				ref = test->backend_ref;
+			}
+			scratch_buffer_clear();
+			scratch_buffer_printf("%s::%s", module->name->module, test->name);
+			LLVMTypeRef char_array_type = LLVMArrayType(test_owner->byte_type, scratch_buffer.len + 1);
+			LLVMValueRef global_string = llvm_add_global_raw(test_owner, ".test", char_array_type, 0);
+			llvm_set_internal_linkage(global_string);
+			LLVMSetGlobalConstant(global_string, 1);
+			LLVMSetInitializer(global_string, llvm_get_zstring(test_owner, scratch_buffer_to_string(), scratch_buffer.len));
+			LLVMValueRef str = LLVMBuildBitCast(test_owner->builder, global_string, test_owner->char_ptr_type, "");
+			vec_add(names, str);
+			ref = LLVMBuildBitCast(test_owner->builder, ref, test_owner->char_ptr_type, "");
+			vec_add(decls, ref);
+		FOREACH_END();
+	}
+	unsigned test_count = vec_size(decls);
+	LLVMTypeRef ptr_of_chars_ptrs = LLVMPointerType(test_owner->char_ptr_type, 0);
+	LLVMValueRef name_ref;
+	LLVMValueRef decl_ref;
+	if (test_count)
+	{
+		LLVMValueRef array_of_names = LLVMConstArray(test_owner->char_ptr_type, names, test_count);
+		LLVMValueRef array_of_decls = LLVMConstArray(test_owner->char_ptr_type, decls, test_count);
+		LLVMTypeRef arr_type = LLVMTypeOf(array_of_names);
+		name_ref = llvm_add_global_raw(test_owner, ".test_names", arr_type, llvm_alloc_size(test_owner, arr_type));
+		decl_ref = llvm_add_global_raw(test_owner, ".test_decls", arr_type, llvm_alloc_size(test_owner, arr_type));
+		llvm_set_internal_linkage(name_ref);
+		llvm_set_internal_linkage(decl_ref);
+		LLVMSetGlobalConstant(name_ref, 1);
+		LLVMSetGlobalConstant(decl_ref, 1);
+		LLVMSetInitializer(name_ref, array_of_names);
+		LLVMSetInitializer(decl_ref, array_of_decls);
+		name_ref = LLVMBuildBitCast(test_owner->builder, name_ref, ptr_of_chars_ptrs, "");
+		decl_ref = LLVMBuildBitCast(test_owner->builder, decl_ref, ptr_of_chars_ptrs, "");
+	}
+	else
+	{
+		name_ref = LLVMConstNull(ptr_of_chars_ptrs);
+		decl_ref = LLVMConstNull(ptr_of_chars_ptrs);
+	}
+	LLVMValueRef name_list = llvm_add_global_raw(test_owner, "C3_TEST_NAME_LIST", ptr_of_chars_ptrs, llvm_alloc_size(test_owner, ptr_of_chars_ptrs));
+	LLVMSetGlobalConstant(name_list, 1);
+	LLVMSetInitializer(name_list, name_ref);
+	LLVMValueRef decl_list = llvm_add_global_raw(test_owner, "C3_TEST_DECL_LIST", ptr_of_chars_ptrs, llvm_alloc_size(test_owner, ptr_of_chars_ptrs));
+	LLVMSetGlobalConstant(decl_list, 1);
+	LLVMSetInitializer(decl_list, decl_ref);
+	LLVMTypeRef int_len_type = LLVMInt32TypeInContext(test_owner->context);
+	LLVMValueRef name_count = llvm_add_global_raw(test_owner, "C3_TEST_COUNT", int_len_type, llvm_alloc_size(test_owner, int_len_type));
+	LLVMSetGlobalConstant(name_count, 1);
+	LLVMSetInitializer(name_count, LLVMConstInt(int_len_type, test_count, false));
+}
 void **llvm_gen(Module** modules, unsigned module_count)
 {
 	if (!module_count) return NULL;
@@ -1022,6 +1093,7 @@ void **llvm_gen(Module** modules, unsigned module_count)
 		}
 		if (!gen_contexts) return NULL;
 		GenContext *first = gen_contexts[0];
+		llvm_gen_tests(first, modules, module_count);
 		unsigned count = vec_size(gen_contexts);
 		for (unsigned i = 1; i < count; i++)
 		{
@@ -1038,6 +1110,7 @@ void **llvm_gen(Module** modules, unsigned module_count)
 		if (!result) continue;
 		vec_add(gen_contexts, result);
 	}
+	llvm_gen_tests(gen_contexts[0], modules, module_count);
 	return (void**)gen_contexts;
 }
 
@@ -1072,10 +1145,15 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 		FOREACH_END();
 
 		FOREACH_BEGIN(Decl *func, unit->functions)
+			if (func->func_decl.attr_test)
+			{
+				if (!active_target.testing) continue;
+				vec_add(module->tests, func);
+			}
 			llvm_emit_function_decl(gen_context, func);
 		FOREACH_END();
 
-		if (unit->main_function && unit->main_function->is_synthetic)
+		if (!active_target.testing && unit->main_function && unit->main_function->is_synthetic)
 		{
 			llvm_emit_function_decl(gen_context, unit->main_function);
 		}
@@ -1096,10 +1174,11 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 		FOREACH_END();
 
 		FOREACH_BEGIN(Decl *decl, unit->functions)
+			if (decl->func_decl.attr_test && !active_target.testing) continue;
 			if (decl->func_decl.body) llvm_emit_function_body(gen_context, decl);
 		FOREACH_END();
 
-		if (unit->main_function && unit->main_function->is_synthetic)
+		if (!active_target.testing && unit->main_function && unit->main_function->is_synthetic)
 		{
 			llvm_emit_function_body(gen_context, unit->main_function);
 		}

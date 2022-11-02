@@ -85,7 +85,8 @@ typedef struct GenContext_
 	LLVMTypeRef introspect_type;
 	LLVMTypeRef fault_type;
 	LLVMTypeRef size_type;
-	Decl *panicfn;
+	LLVMTypeRef char_ptr_type;
+	Decl *panic_var;
 	struct
 	{
 		const char *name;
@@ -277,6 +278,7 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type);
 LLVMTypeRef llvm_get_pointee_type(GenContext *c, Type *any_type);
 void llvm_emit_function_decl(GenContext *c, Decl *decl);
 void llvm_emit_xxlizer(GenContext *c, Decl *decl);
+bool llvm_types_are_similar(LLVMTypeRef original, LLVMTypeRef coerce);
 INLINE LLVMTypeRef llvm_get_ptr_type(GenContext *c, Type *type);
 
 // -- Attributes ---
@@ -319,6 +321,8 @@ INLINE LLVMValueRef llvm_zext_trunc(GenContext *c, LLVMValueRef data, LLVMTypeRe
 void llvm_emit_typeid(GenContext *c, BEValue *be_value, Type *type);
 LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_init);
 LLVMValueRef llvm_emit_const_padding(GenContext *c, AlignSize size);
+LLVMValueRef llvm_emit_string_const(GenContext *c, const char *str, const char *extname);
+LLVMValueRef llvm_emit_empty_string_const(GenContext *c);
 LLVMValueRef llvm_emit_zstring(GenContext *c, const char *str);
 LLVMValueRef llvm_emit_zstring_named(GenContext *c, const char *str, const char *extname);
 INLINE LLVMValueRef llvm_const_int(GenContext *c, Type *type, uint64_t val);
@@ -419,6 +423,8 @@ void llvm_emit_coerce_store(GenContext *c, LLVMValueRef addr, AlignSize alignmen
 LLVMValueRef llvm_emit_coerce(GenContext *c, LLVMTypeRef coerced, BEValue *value, Type *original_type);
 INLINE bool call_supports_variadic(CallABI abi);
 static inline LLVMCallConv llvm_call_convention_from_call(CallABI abi);
+void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype *prototype, LLVMTypeRef func_type, LLVMValueRef func, LLVMValueRef *args, unsigned arg_count, int inline_flag, LLVMValueRef error_var, bool sret_return, BEValue *synthetic_return_param);
+void llvm_emit_parameter(GenContext *c, LLVMValueRef *args, unsigned *arg_count_ref, ABIArgInfo *info, BEValue *be_value, Type *type);
 
 // -- C3 Lowering --
 void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr);
