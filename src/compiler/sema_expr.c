@@ -5947,18 +5947,13 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 			expr_replace(expr, value);
 			return true;
 		}
-		case BUILTIN_DEF_TEST_COUNT:
-			expr->type = type_uint;
-			expr->test_hook_expr = BUILTIN_DEF_TEST_COUNT;
-			expr->expr_kind = EXPR_TEST_HOOK;
-			return true;
 		case BUILTIN_DEF_TEST_NAMES:
-			expr->type = type_get_ptr(type_get_ptr(type_char));
+			expr->type = type_get_subarray(type_chars);
 			expr->test_hook_expr = BUILTIN_DEF_TEST_NAMES;
 			expr->expr_kind = EXPR_TEST_HOOK;
 			return true;
 		case BUILTIN_DEF_TEST_FNS:
-			expr->type = type_get_ptr(type_voidptr);
+			expr->type = type_get_subarray(type_voidptr);
 			expr->test_hook_expr = BUILTIN_DEF_TEST_FNS;
 			expr->expr_kind = EXPR_TEST_HOOK;
 			return true;

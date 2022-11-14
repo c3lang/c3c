@@ -334,8 +334,11 @@ void compiler_compile(void)
 	{
 		switch (active_target.type)
 		{
-			case TARGET_TYPE_EXECUTABLE:
 			case TARGET_TYPE_TEST:
+				active_target.name = "testrun";
+				output_exe = exe_name();
+				break;
+			case TARGET_TYPE_EXECUTABLE:
 				if (!global_context.main)
 				{
 					puts("No main function was found, compilation only object files are generated.");
@@ -648,6 +651,48 @@ void print_syntax(BuildOptions *options)
 
 void resolve_libraries(void);
 
+static int jump_buffer_size()
+{
+	switch (active_target.arch_os_target)
+	{
+		case ARCH_OS_TARGET_DEFAULT:
+			return 512;
+		case ELF_RISCV32:
+		case ELF_RISCV64:
+		case LINUX_RISCV32:
+		case LINUX_RISCV64:
+			REMINDER("RISCV jmpbuf size is unknown");
+			return 512;
+		case ELF_X64:
+		case FREEBSD_X64:
+		case LINUX_X64:
+		case MACOS_X64:
+		case WINDOWS_X64:
+		case MINGW_X64:
+		case NETBSD_X64:
+		case OPENBSD_X64:
+			// Based on MacOS headers
+			return ((9 * 2) + 3 + 16);
+		case LINUX_AARCH64:
+		case ELF_AARCH64:
+		case MACOS_AARCH64:
+			// Based on MacOS headers
+			return ((14 + 8 + 2) * 2);
+		case LINUX_X86:
+		case MCU_X86:
+		case NETBSD_X86:
+		case OPENBSD_X86:
+		case WINDOWS_X86:
+		case ELF_X86:
+		case FREEBSD_X86:
+			return 18;
+		case WASM32:
+		case WASM64:
+			REMINDER("WASM setjmp size is unknown");
+			return 512;
+	}
+	UNREACHABLE
+}
 void compile()
 {
 	symtab_init(active_target.symtab_size);
@@ -679,6 +724,7 @@ void compile()
 	setup_bool_define("COMPILER_SAFE_MODE", active_target.feature.safe_mode);
 	setup_int_define("LLVM_VERSION", llvm_version_major, type_int);
 	setup_bool_define("BENCHMARKING", active_target.benchmarking);
+	setup_int_define("JMP_BUF_SIZE", jump_buffer_size(), type_int);
 	setup_bool_define("TESTING", active_target.testing);
 
 	type_init_cint();

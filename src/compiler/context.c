@@ -5,7 +5,7 @@
 #include "compiler_internal.h"
 
 
-CompilationUnit * unit_create(File *file)
+CompilationUnit *unit_create(File *file)
 {
 	CompilationUnit *unit = CALLOCS(CompilationUnit);
     unit->file = file;

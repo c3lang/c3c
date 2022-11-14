@@ -63,6 +63,7 @@ static void usage(void)
 	OUTPUT("  compile <file1> [<file2> ...]      Compile files without a project into an executable.");
 	OUTPUT("  init <project name>                Initialize a new project structure.");
 	OUTPUT("  build [<target>]                   Build the target in the current project.");
+	OUTPUT("  test                               Run the unit tests in the current project.");
 	OUTPUT("  clean                              Clean all build files.");
 	OUTPUT("  run [<target>]                     Run (and build if needed) the target in the current project.");
 	OUTPUT("  dist [<target>]                    Clean and build a target for distribution.");
@@ -244,6 +245,12 @@ static void parse_command(BuildOptions *options)
 		options->command = COMMAND_UNIT_TEST;
 		return;
 	}
+	if (arg_match("compile-test"))
+	{
+		options->command = COMMAND_COMPILE_TEST;
+		options->testing = true;
+		return;
+	}
 	if (arg_match("compile"))
 	{
 		options->command = COMMAND_COMPILE;
@@ -273,6 +280,12 @@ static void parse_command(BuildOptions *options)
 	{
 		options->command = COMMAND_BUILD;
 		parse_optional_target(options);
+		return;
+	}
+	if (arg_match("test"))
+	{
+		options->command = COMMAND_TEST;
+		options->testing = true;
 		return;
 	}
 	if (arg_match("run"))

@@ -86,6 +86,7 @@ typedef struct GenContext_
 	LLVMTypeRef fault_type;
 	LLVMTypeRef size_type;
 	LLVMTypeRef char_ptr_type;
+	LLVMTypeRef chars_type;
 	Decl *panic_var;
 	struct
 	{

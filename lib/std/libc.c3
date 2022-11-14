@@ -62,6 +62,11 @@ extern fn LongDivResult ldiv(long number, long denom);
 extern fn int rand();
 extern fn void srand(uint seed);
 
+define JmpBuf = CInt[$$JMP_BUF_SIZE];
+
+extern fn CInt setjmp(JmpBuf* buffer);
+extern fn void longjmp(JmpBuf* buffer, CInt value);
+
 // MB functions omitted
 
 // string
@@ -130,6 +135,7 @@ $default:
     macro CFile stdout() { return (CFile*)(uptr)1; }
     macro CFile stderr() { return (CFile*)(uptr)2; }
 $endswitch;
+
 
 const HAS_MALLOC_SIZE =
 	env::OS_TYPE == OsType.LINUX
@@ -232,6 +238,7 @@ extern fn Time time(Time *timer);
 define SignalFunction = fn void(int);
 extern fn SignalFunction signal(int sig, SignalFunction function);
 // Incomplete
+
 
 module libc::errno;
 
@@ -368,3 +375,5 @@ const Errno EKEYREJECTED = 129; /* Key was rejected by service */
 
 const Errno EOWNERDEAD = 130; /* Owner died */
 const Errno ENOTRECOVERABLE = 131; /* State not recoverable */
+
+

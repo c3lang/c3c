@@ -1660,6 +1660,7 @@ typedef struct
 	Path std_module_path;
 	Decl *panic_var;
 	Decl *main;
+	Decl *test_func;
 	Decl *decl_stack[MAX_GLOBAL_DECL_STACK];
 	Decl** decl_stack_bottom;
 	Decl** decl_stack_top;
@@ -1826,6 +1827,7 @@ extern const char *builtin_defines[NUMBER_OF_BUILTIN_DEFINES];
 extern const char *type_property_list[NUMBER_OF_TYPE_PROPERTIES];
 extern const char *kw_std__core;
 extern const char *kw_std__core__types;
+extern const char *kw___run_default_test_runner;
 extern const char *kw_typekind;
 
 extern const char *kw_argc;

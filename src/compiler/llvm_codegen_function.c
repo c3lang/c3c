@@ -497,8 +497,17 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, const char *module_nam
 			LLVMValueRef file_name = llvm_emit_struct_gep_raw(c, c->debug.stack_slot, slot_type, 2, alignment, &align_to_use);
 			llvm_store_to_ptr_raw_aligned(c, file_name, c->debug.file_name, align_to_use);
 			c->debug.stack_slot_row = llvm_emit_struct_gep_raw(c, c->debug.stack_slot, slot_type, 3, alignment, &align_to_use);
+			LLVMValueRef last_ptr = NULL;
+			if (function_name != kw_main && function_name != kw_mainstub)
+			{
+				last_ptr = c->debug.last_ptr;
+			}
+			else
+			{
+				last_ptr = prev_ptr;
+			}
 			llvm_store_to_ptr_raw_aligned(c,
-			                              c->debug.last_ptr,
+			                              last_ptr,
 			                              c->debug.stack_slot,
 			                              type_alloca_alignment(type_voidptr));
 		}

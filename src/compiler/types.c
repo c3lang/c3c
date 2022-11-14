@@ -1472,7 +1472,6 @@ void type_setup(PlatformTarget *target)
 	size_subarray = (unsigned)(alignment_subarray * 2);
 	type_init("anyerr", &t.anyerr, TYPE_ANYERR, target->width_pointer, target->align_pointer);
 	type_chars = type_get_subarray(type_char);
-
 }
 
 int type_kind_bitsize(TypeKind kind)

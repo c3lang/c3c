@@ -1237,6 +1237,11 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 		case CAST_APTSA:
 			llvm_emit_arr_to_subarray_cast(c, value, to_type);
 			break;
+		case CAST_SASA:
+			assert(type_is_pointer(value->type->array.base));
+			llvm_value_addr(c, value);
+			llvm_value_bitcast(c, value, to_type);
+			break;
 		case CAST_SAPTR:
 			llvm_emit_subarray_pointer(c, value, value);
 			if (value->type != to_type)
@@ -6023,13 +6028,10 @@ static LLVMValueRef llvm_get_test_hook_global(GenContext *c, Expr *expr)
 	switch (expr->test_hook_expr)
 	{
 		case BUILTIN_DEF_TEST_FNS:
-			name = "C3_TEST_DECL_LIST";
-			break;
-		case BUILTIN_DEF_TEST_COUNT:
-			name = "C3_TEST_COUNT";
+			name = test_fns_var_name;
 			break;
 		case BUILTIN_DEF_TEST_NAMES:
-			name = "C3_TEST_NAME_LIST";
+			name = test_names_var_name;
 			break;
 		default:
 			UNREACHABLE

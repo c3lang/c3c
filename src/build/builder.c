@@ -69,6 +69,8 @@ bool command_is_projectless(CompilerCommand command)
 		case COMMAND_COMPILE_RUN:
 		case COMMAND_DYNAMIC_LIB:
 		case COMMAND_STATIC_LIB:
+		case COMMAND_COMPILE_TEST:
+		case COMMAND_UNIT_TEST:
 			return true;
 		case COMMAND_MISSING:
 		case COMMAND_GENERATE_HEADERS:
@@ -80,8 +82,8 @@ bool command_is_projectless(CompilerCommand command)
 		case COMMAND_DIST:
 		case COMMAND_DOCS:
 		case COMMAND_BENCH:
-		case COMMAND_UNIT_TEST:
 		case COMMAND_PRINT_SYNTAX:
+		case COMMAND_TEST:
 			return false;
 	}
 	UNREACHABLE
@@ -90,6 +92,11 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 {
 	switch (options->command)
 	{
+		case COMMAND_COMPILE_TEST:
+		case COMMAND_TEST:
+			target->run_after_compile = true;
+			target->type = TARGET_TYPE_TEST;
+			break;
 		case COMMAND_RUN:
 		case COMMAND_COMPILE_RUN:
 		case COMMAND_CLEAN_RUN:
