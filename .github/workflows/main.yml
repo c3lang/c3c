@@ -253,7 +253,8 @@ jobs:
       - uses: actions/checkout@v3
       - name: Download LLVM
         run: |
-          brew update && brew install llvm@${{ matrix.llvm_version }} botan ninja
+          brew update && brew install --overwrite python@3.11 
+          brew install llvm@${{ matrix.llvm_version }} botan ninja
           echo "/usr/local/opt/llvm@${{ matrix.llvm_version }}/bin" >> $GITHUB_PATH
           TMP_PATH=$(xcrun --show-sdk-path)/user/include
           echo "CPATH=$TMP_PATH" >> $GITHUB_ENV
