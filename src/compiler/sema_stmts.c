@@ -1242,7 +1242,13 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 			return false;
 		}
 		index_macro = value_by_ref ? by_ref : by_val;
+		assert(index_macro);
 		index_type = index_macro->func_decl.signature.params[1]->type;
+		if (!type_is_integer(index_type))
+		{
+			SEMA_ERROR(enumerator, "Only integer indexed types may be used with foreach.");
+			return false;
+		}
 		TypeInfoId rtype = index_macro->func_decl.signature.rtype;
 		value_type = rtype ? type_infoptr(rtype)->type : NULL;
 	}
