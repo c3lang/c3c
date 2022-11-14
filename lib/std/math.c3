@@ -70,6 +70,14 @@ const QUAD_MIN_EXP = -16481;
 const QUAD_EPSILON = 1.92592994438723585305597794258492732e-34;
 */
 
+enum RoundingMode : int
+{
+	TOWARD_ZERO,
+	TO_NEAREST,
+	TOWARD_INFINITY,
+	TOWARD_NEG_INFINITY
+}
+
 define Complex32 = Complex<float>;
 define Complex64 = Complex<double>;
 
@@ -77,6 +85,11 @@ define Complex64 = Complex<double>;
  * @require types::is_numerical($typeof(x)) `The input must be a numerical value or numerical vector`
  **/
 macro abs(x) = $$abs(x);
+
+/**
+ * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
+ **/
+macro ceil(x) = $$ceil(x);
 
 /**
  * @require types::is_numerical($typeof(x)) `The input must be a numerical value or numerical vector`
@@ -117,6 +130,11 @@ macro exp(x) = $$exp(x);
  * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
  **/
 macro exp2(x) = $$exp2(x);
+
+/**
+ * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
+ **/
+macro floor(x) = $$floor(x);
 
 /**
  * @require values::@is_floatlike(a) `The input must be a floating point value or float vector`
@@ -165,6 +183,11 @@ macro muladd(a, b, c) = $$fmuladd(a, b, c);
 
 /**
  * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
+ **/
+macro nearbyint(x) = $$nearbyint(x);
+
+/**
+ * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
  * @require values::@convertable_to(exp, x) || values::@is_int(exp) `The input must be an integer, castable to the type of x`
  **/
 macro pow(x, exp)
@@ -175,6 +198,21 @@ macro pow(x, exp)
 		return $$pow_int(x, exp);
     $endif;
 }
+
+/**
+ * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
+ **/
+macro rint(x) = $$rint(x);
+
+/**
+ * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
+ **/
+macro round(x) = $$round(x);
+
+/**
+ * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
+ **/
+macro roundeven(x) = $$roundeven(x);
 
 macro sec(x) = 1 / cos(x);
 
@@ -206,6 +244,11 @@ macro tan(x) = sin(x) / cos(x);
  * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
  **/
 macro tanh(x) = (exp(2.0 * x) - 1.0) / (exp(2.0 * x) + 1.0);
+
+/**
+ * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
+ **/
+macro trunc(x) = $$trunc(x);
 
 macro float float.ceil(float x) = $$ceil(x);
 macro float float.clamp(float x, float lower, float upper) = $$max(lower, $$min(x, upper));
