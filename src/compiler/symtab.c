@@ -205,6 +205,7 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_FMULADD] = KW_DEF("fmuladd");
 	builtin_list[BUILTIN_FSHL] = KW_DEF("fshl");
 	builtin_list[BUILTIN_FSHR] = KW_DEF("fshr");
+	builtin_list[BUILTIN_GET_ROUNDING_MODE] = KW_DEF("get_rounding_mode");
 	builtin_list[BUILTIN_LOG] = KW_DEF("log");
 	builtin_list[BUILTIN_LOG2] = KW_DEF("log2");
 	builtin_list[BUILTIN_LOG10] = KW_DEF("log10");
@@ -235,6 +236,7 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_SAT_ADD] = KW_DEF("sat_add");
 	builtin_list[BUILTIN_SAT_SHL] = KW_DEF("sat_shl");
 	builtin_list[BUILTIN_SAT_SUB] = KW_DEF("sat_sub");
+	builtin_list[BUILTIN_SET_ROUNDING_MODE] = KW_DEF("set_rounding_mode");
 	builtin_list[BUILTIN_SIN] = KW_DEF("sin");
 	builtin_list[BUILTIN_SHUFFLEVECTOR] = KW_DEF("shufflevector");
 	builtin_list[BUILTIN_SQRT] = KW_DEF("sqrt");

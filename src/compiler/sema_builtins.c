@@ -281,6 +281,16 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_SYSCLOCK:
 			rtype = type_ulong;
 			break;
+		case BUILTIN_GET_ROUNDING_MODE:
+			rtype = type_int;
+			break;
+		case BUILTIN_SET_ROUNDING_MODE:
+			if (!sema_check_builtin_args(args,
+			                             (BuiltinArg[]) { BA_INTEGER },
+			                             arg_count)) return false;
+			if (!sema_check_builtin_args_match(args, 1)) return false;
+			rtype = type_void;
+			break;
 		case BUILTIN_SYSCALL:
 			if (arg_count > 7)
 			{
@@ -414,7 +424,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			}
 			if (!expr_in_int_range(args[1], 0, 1))
 			{
-				SEMA_ERROR(args[2], "Expected a value between 0 and 3.");
+				SEMA_ERROR(args[1], "Expected a value between 0 and 1.");
 				return false;
 			}
 			if (!expr_in_int_range(args[2], 0, 3))
@@ -536,6 +546,7 @@ static inline unsigned builtin_expected_args(BuiltinFunction func)
 {
 	switch (func)
 	{
+		case BUILTIN_GET_ROUNDING_MODE:
 		case BUILTIN_STACKTRACE:
 		case BUILTIN_SYSCLOCK:
 		case BUILTIN_TRAP:
@@ -577,6 +588,7 @@ static inline unsigned builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_REDUCE_XOR:
 		case BUILTIN_REDUCE_MAX:
 		case BUILTIN_REDUCE_MIN:
+		case BUILTIN_SET_ROUNDING_MODE:
 			return 1;
 		case BUILTIN_COPYSIGN:
 		case BUILTIN_EXACT_ADD:

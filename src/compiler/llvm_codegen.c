@@ -635,6 +635,7 @@ static void llvm_codegen_setup()
 	intrinsic_id.exp2 = lookup_intrinsic("llvm.exp2");
 	intrinsic_id.fabs = lookup_intrinsic("llvm.fabs");
 	intrinsic_id.floor = lookup_intrinsic("llvm.floor");
+	intrinsic_id.flt_rounds = lookup_intrinsic("llvm.flt.rounds");
 	intrinsic_id.fma = lookup_intrinsic("llvm.fma");
 	intrinsic_id.fshl = lookup_intrinsic("llvm.fshl");
 	intrinsic_id.fshr = lookup_intrinsic("llvm.fshr");
@@ -665,6 +666,7 @@ static void llvm_codegen_setup()
 	intrinsic_id.roundeven = lookup_intrinsic("llvm.roundeven");
 	intrinsic_id.sadd_overflow = lookup_intrinsic("llvm.sadd.with.overflow");
 	intrinsic_id.sadd_sat = lookup_intrinsic("llvm.sadd.sat");
+	intrinsic_id.set_rounding = lookup_intrinsic("llvm.set.rounding");
 	intrinsic_id.sin = lookup_intrinsic("llvm.sin");
 	intrinsic_id.sshl_sat = lookup_intrinsic("llvm.sshl.sat");
 	intrinsic_id.smax = lookup_intrinsic("llvm.smax");

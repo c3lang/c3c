@@ -132,6 +132,7 @@ typedef struct
 	unsigned exp2;
 	unsigned fabs;
 	unsigned floor;
+	unsigned flt_rounds;
 	unsigned fma;
 	unsigned fshl;
 	unsigned fshr;
@@ -162,6 +163,7 @@ typedef struct
 	unsigned roundeven;
 	unsigned sadd_overflow;
 	unsigned sadd_sat;
+	unsigned set_rounding;
 	unsigned sin;
 	unsigned smax;
 	unsigned smin;
