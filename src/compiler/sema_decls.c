@@ -1930,6 +1930,8 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 			SEMA_ERROR(params[0], "Expected zero, 1 or 2 parameters for main.");
 			return false;
 	}
+	if (active_target.type == TARGET_TYPE_TEST) return true;
+
 	Decl *function;
 	if (!subarray_param && is_int_return)
 	{
@@ -2068,6 +2070,15 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl)
 
 	if (!sema_analyse_func_macro(context, decl, true)) return false;
 
+	if (decl->name == kw___run_default_test_runner)
+	{
+		if (global_context.test_func)
+		{
+			SEMA_ERROR(decl, "Multiple test runners defined.");
+			return false;
+		}
+		global_context.test_func = decl;
+	}
 	Signature *sig = &decl->func_decl.signature;
 	Type *func_type = sema_analyse_function_signature(context, decl, sig->abi, sig, true);
 	decl->type = func_type;

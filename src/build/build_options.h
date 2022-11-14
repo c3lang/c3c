@@ -23,6 +23,7 @@ typedef enum
 	COMMAND_MISSING = 0,
 	COMMAND_COMPILE,
 	COMMAND_COMPILE_ONLY,
+	COMMAND_COMPILE_TEST,
 	COMMAND_GENERATE_HEADERS,
 	COMMAND_INIT,
 	COMMAND_BUILD,
@@ -35,6 +36,7 @@ typedef enum
 	COMMAND_DIST,
 	COMMAND_DOCS,
 	COMMAND_BENCH,
+	COMMAND_TEST,
 	COMMAND_UNIT_TEST,
 	COMMAND_PRINT_SYNTAX,
 } CompilerCommand;
@@ -335,6 +337,7 @@ typedef struct
 	const char *llvm_file_dir;
 	const char *asm_file_dir;
 	bool run_after_compile;
+	bool generate_test_runner;
 	bool test_output;
 	bool output_headers;
 	bool output_ast;

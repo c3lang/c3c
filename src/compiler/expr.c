@@ -375,6 +375,7 @@ static inline bool expr_cast_is_constant_eval(Expr *expr, ConstantEvalKind eval_
 		case CAST_PTRPTR:
 		case CAST_APTSA:
 		case CAST_SAPTR:
+		case CAST_SASA:
 		case CAST_ENUMLOW:
 			return exprid_is_constant_eval(expr->cast_expr.expr, eval_kind);
 		case CAST_PTRANY:

@@ -7,7 +7,7 @@
 #include <llvm-c/Error.h>
 #include <llvm-c/Comdat.h>
 #include <llvm-c/Linker.h>
-
+#include <setjmp.h>
 typedef struct LLVMOpaquePassBuilderOptions *LLVMPassBuilderOptionsRef;
 LLVMErrorRef LLVMRunPasses(LLVMModuleRef M, const char *Passes,
                            LLVMTargetMachineRef TM,
@@ -1004,76 +1004,104 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 	UNREACHABLE
 }
 
-INLINE void llvm_gen_tests(GenContext *test_owner, Module** modules, unsigned module_count)
+static void llvm_gen_test_main(GenContext *c)
 {
+	Decl *test_runner = global_context.test_func;
+	if (!test_runner)
+	{
+		error_exit("No test runner found.");
+	}
+	assert(!global_context.main && "Main should not be set if a test main is generated.");
+	global_context.main = test_runner;
+	LLVMTypeRef cint = llvm_get_type(c, type_cint);
+	LLVMTypeRef main_type = LLVMFunctionType(cint, NULL, 0, true);
+	LLVMTypeRef runner_type = LLVMFunctionType(c->byte_type, NULL, 0, true);
+	LLVMValueRef func = LLVMAddFunction(c->module, kw_main, main_type);
+	LLVMValueRef other_func = LLVMAddFunction(c->module, test_runner->extname, runner_type);
+	LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(c->context, func, "entry");
+	LLVMBuilderRef builder = LLVMCreateBuilderInContext(c->context);
+	LLVMPositionBuilderAtEnd(builder, entry);
+	LLVMValueRef val = LLVMBuildCall2(builder, runner_type, other_func, NULL, 0, "");
+	val = LLVMBuildSelect(builder, LLVMBuildTrunc(builder, val, c->bool_type, ""),
+	                      LLVMConstNull(cint), LLVMConstInt(cint, 1, false), "");
+	LLVMBuildRet(builder, val);
+	LLVMDisposeBuilder(builder);
+	gencontext_print_llvm_ir(c);
+}
+INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMContextRef shared_context)
+{
+	Path *test_path = path_create_from_string("$test", 5, INVALID_SPAN);
+	Module *test_module = compiler_find_or_create_module(test_path, NULL, false);
+
+	GenContext *c = cmalloc(sizeof(GenContext));
+	active_target.debug_info = DEBUG_INFO_NONE;
+	gencontext_init(c, test_module, shared_context);
+	gencontext_begin_module(c);
+
 	LLVMValueRef *names = NULL;
 	LLVMValueRef *decls = NULL;
 
-	LLVMTypeRef void_test = LLVMFunctionType(LLVMVoidTypeInContext(test_owner->context), NULL, 0, false);
-	LLVMTypeRef opt_test = LLVMFunctionType(test_owner->fault_type, NULL, 0, false);
+	LLVMTypeRef opt_test = LLVMFunctionType(llvm_get_type(c, type_anyerr), NULL, 0, false);
 	for (unsigned i = 0; i < module_count; i++)
 	{
 		Module *module = modules[i];
-		bool gen_proto = test_owner->code_module != module;
 		FOREACH_BEGIN(Decl *test, module->tests)
 			LLVMValueRef ref;
-			if (gen_proto)
-			{
-				LLVMTypeRef type = test->type->function.prototype->rtype == type_void ? void_test : opt_test;
-				ref = LLVMAddFunction(test_owner->module, test->extname, type);
-			}
-			else
-			{
-				ref = test->backend_ref;
-			}
+			LLVMTypeRef type = opt_test;
+			ref = LLVMAddFunction(c->module, test->extname, type);
 			scratch_buffer_clear();
 			scratch_buffer_printf("%s::%s", module->name->module, test->name);
-			LLVMTypeRef char_array_type = LLVMArrayType(test_owner->byte_type, scratch_buffer.len + 1);
-			LLVMValueRef global_string = llvm_add_global_raw(test_owner, ".test", char_array_type, 0);
-			llvm_set_internal_linkage(global_string);
-			LLVMSetGlobalConstant(global_string, 1);
-			LLVMSetInitializer(global_string, llvm_get_zstring(test_owner, scratch_buffer_to_string(), scratch_buffer.len));
-			LLVMValueRef str = LLVMBuildBitCast(test_owner->builder, global_string, test_owner->char_ptr_type, "");
-			vec_add(names, str);
-			ref = LLVMBuildBitCast(test_owner->builder, ref, test_owner->char_ptr_type, "");
+			LLVMValueRef name = llvm_emit_string_const(c, scratch_buffer_to_string(), ".test.name");
+			vec_add(names, name);
 			vec_add(decls, ref);
 		FOREACH_END();
 	}
 	unsigned test_count = vec_size(decls);
-	LLVMTypeRef ptr_of_chars_ptrs = LLVMPointerType(test_owner->char_ptr_type, 0);
 	LLVMValueRef name_ref;
 	LLVMValueRef decl_ref;
+	LLVMTypeRef chars_type = llvm_get_type(c, type_chars);
 	if (test_count)
 	{
-		LLVMValueRef array_of_names = LLVMConstArray(test_owner->char_ptr_type, names, test_count);
-		LLVMValueRef array_of_decls = LLVMConstArray(test_owner->char_ptr_type, decls, test_count);
+		LLVMValueRef array_of_names = LLVMConstArray(chars_type, names, test_count);
+		LLVMValueRef array_of_decls = LLVMConstArray(LLVMPointerType(opt_test, 0), decls, test_count);
 		LLVMTypeRef arr_type = LLVMTypeOf(array_of_names);
-		name_ref = llvm_add_global_raw(test_owner, ".test_names", arr_type, llvm_alloc_size(test_owner, arr_type));
-		decl_ref = llvm_add_global_raw(test_owner, ".test_decls", arr_type, llvm_alloc_size(test_owner, arr_type));
+		name_ref = llvm_add_global_raw(c, ".test_names", arr_type, llvm_alloc_size(c, arr_type));
+		decl_ref = llvm_add_global_raw(c, ".test_decls", LLVMTypeOf(array_of_decls), llvm_alloc_size(c, arr_type));
 		llvm_set_internal_linkage(name_ref);
 		llvm_set_internal_linkage(decl_ref);
 		LLVMSetGlobalConstant(name_ref, 1);
 		LLVMSetGlobalConstant(decl_ref, 1);
 		LLVMSetInitializer(name_ref, array_of_names);
 		LLVMSetInitializer(decl_ref, array_of_decls);
-		name_ref = LLVMBuildBitCast(test_owner->builder, name_ref, ptr_of_chars_ptrs, "");
-		decl_ref = LLVMBuildBitCast(test_owner->builder, decl_ref, ptr_of_chars_ptrs, "");
+		name_ref = LLVMBuildBitCast(c->builder, name_ref, llvm_get_ptr_type(c, type_chars), "");
+		decl_ref = LLVMBuildBitCast(c->builder, decl_ref, llvm_get_ptr_type(c, type_voidptr), "");
 	}
 	else
 	{
-		name_ref = LLVMConstNull(ptr_of_chars_ptrs);
-		decl_ref = LLVMConstNull(ptr_of_chars_ptrs);
+		name_ref = LLVMConstNull(llvm_get_ptr_type(c, type_chars));
+		decl_ref = LLVMConstNull(llvm_get_ptr_type(c, type_voidptr));
 	}
-	LLVMValueRef name_list = llvm_add_global_raw(test_owner, "C3_TEST_NAME_LIST", ptr_of_chars_ptrs, llvm_alloc_size(test_owner, ptr_of_chars_ptrs));
+	LLVMValueRef count = llvm_const_int(c, type_usize, test_count);
+	Type *chars_array = type_get_subarray(type_chars);
+	LLVMValueRef name_list = llvm_add_global(c, test_names_var_name, chars_array, type_alloca_alignment(chars_array));
 	LLVMSetGlobalConstant(name_list, 1);
-	LLVMSetInitializer(name_list, name_ref);
-	LLVMValueRef decl_list = llvm_add_global_raw(test_owner, "C3_TEST_DECL_LIST", ptr_of_chars_ptrs, llvm_alloc_size(test_owner, ptr_of_chars_ptrs));
+	LLVMSetInitializer(name_list, llvm_emit_aggregate_two(c, chars_array, name_ref, count));
+	Type *decls_array_type = type_get_subarray(type_voidptr);
+	LLVMValueRef decl_list = llvm_add_global(c, test_fns_var_name, decls_array_type, type_alloca_alignment(decls_array_type));
 	LLVMSetGlobalConstant(decl_list, 1);
-	LLVMSetInitializer(decl_list, decl_ref);
-	LLVMTypeRef int_len_type = LLVMInt32TypeInContext(test_owner->context);
-	LLVMValueRef name_count = llvm_add_global_raw(test_owner, "C3_TEST_COUNT", int_len_type, llvm_alloc_size(test_owner, int_len_type));
-	LLVMSetGlobalConstant(name_count, 1);
-	LLVMSetInitializer(name_count, LLVMConstInt(int_len_type, test_count, false));
+	LLVMSetInitializer(decl_list, llvm_emit_aggregate_two(c, decls_array_type, decl_ref, count));
+
+	if (active_target.type == TARGET_TYPE_TEST)
+	{
+		llvm_gen_test_main(c);
+	}
+
+	if (llvm_use_debug(c))
+	{
+		LLVMDIBuilderFinalize(c->debug.builder);
+		LLVMDisposeDIBuilder(c->debug.builder);
+	}
+	return c;
 }
 void **llvm_gen(Module** modules, unsigned module_count)
 {
@@ -1093,7 +1121,7 @@ void **llvm_gen(Module** modules, unsigned module_count)
 		}
 		if (!gen_contexts) return NULL;
 		GenContext *first = gen_contexts[0];
-		llvm_gen_tests(first, modules, module_count);
+		vec_add(gen_contexts, llvm_gen_tests(modules, module_count, context));
 		unsigned count = vec_size(gen_contexts);
 		for (unsigned i = 1; i < count; i++)
 		{
@@ -1110,7 +1138,7 @@ void **llvm_gen(Module** modules, unsigned module_count)
 		if (!result) continue;
 		vec_add(gen_contexts, result);
 	}
-	llvm_gen_tests(gen_contexts[0], modules, module_count);
+	vec_add(gen_contexts, llvm_gen_tests(modules, module_count, NULL));
 	return (void**)gen_contexts;
 }
 
@@ -1153,7 +1181,7 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 			llvm_emit_function_decl(gen_context, func);
 		FOREACH_END();
 
-		if (!active_target.testing && unit->main_function && unit->main_function->is_synthetic)
+		if (active_target.type != TARGET_TYPE_TEST && unit->main_function && unit->main_function->is_synthetic)
 		{
 			llvm_emit_function_decl(gen_context, unit->main_function);
 		}
@@ -1178,7 +1206,7 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 			if (decl->func_decl.body) llvm_emit_function_body(gen_context, decl);
 		FOREACH_END();
 
-		if (!active_target.testing && unit->main_function && unit->main_function->is_synthetic)
+		if (active_target.type != TARGET_TYPE_TEST && unit->main_function && unit->main_function->is_synthetic)
 		{
 			llvm_emit_function_body(gen_context, unit->main_function);
 		}

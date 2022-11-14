@@ -79,6 +79,7 @@ const char *kw_return;
 const char *kw_std;
 const char *kw_std__core;
 const char *kw_std__core__types;
+const char *kw___run_default_test_runner;
 const char *kw_type;
 const char *kw_typekind;
 
@@ -131,7 +132,6 @@ void symtab_init(uint32_t capacity)
 	builtin_defines[BUILTIN_DEF_TIME] = KW_DEF("TIME");
 	builtin_defines[BUILTIN_DEF_TEST_NAMES] = KW_DEF("TEST_NAMES");
 	builtin_defines[BUILTIN_DEF_TEST_FNS] = KW_DEF("TEST_FNS");
-	builtin_defines[BUILTIN_DEF_TEST_COUNT] = KW_DEF("TEST_COUNT");
 
 	type = TOKEN_TYPE_IDENT;
 	kw_typekind = KW_DEF("TypeKind");
@@ -148,7 +148,7 @@ void symtab_init(uint32_t capacity)
 	kw_incr = KW_DEF("incr");
 	kw_inline = KW_DEF("inline");
 	kw_inout = KW_DEF("inout");
-	kw_mainstub = KW_DEF("_$mainstub");
+	kw_mainstub = KW_DEF("_$start");
 	kw_main = KW_DEF("main");
 	kw_nameof = KW_DEF("nameof");
 	kw_noinline = KW_DEF("noinline");
@@ -160,6 +160,7 @@ void symtab_init(uint32_t capacity)
 	kw_std = KW_DEF("std");
 	kw_std__core = KW_DEF("std::core");
 	kw_std__core__types = KW_DEF("std::core::types");
+	kw___run_default_test_runner = KW_DEF("__run_default_test_runner");
 	kw_type = KW_DEF("type");
 
 	type_property_list[TYPE_PROPERTY_MAX] = builtin_list[BUILTIN_MAX] = KW_DEF("max");

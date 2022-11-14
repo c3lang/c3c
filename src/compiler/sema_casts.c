@@ -549,6 +549,8 @@ bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability, 
 		case TYPE_UNION:
 			return type_is_structurally_equivalent(from_type, to_type);
 		case TYPE_SUBARRAY:
+			if (to_kind == TYPE_SUBARRAY && type_is_pointer(to_type->array.base)
+				&& type_is_pointer(from_type->array.base)) return true;
 			return to_kind == TYPE_POINTER;
 		case TYPE_VECTOR:
 			return type_is_structurally_equivalent(type_get_array(from_type->array.base, (uint32_t)from_type->array.len), to_type);
@@ -820,6 +822,17 @@ bool cast_may_implicit(Type *from_type, Type *to_type, CastOption option)
 		if (type_is_pointer(from))
 		{
 			return from->pointer->type_kind == TYPE_ARRAY && from->pointer->array.base == base;
+		}
+
+		// Allow casting void*[] to int*[]
+		if (from->type_kind == TYPE_SUBARRAY && from->array.base == type_voidptr && type_is_pointer(to->array.base))
+		{
+			return true;
+		}
+		// Allow casting int*[] -> void*[]
+		if (from->type_kind == TYPE_SUBARRAY && to->array.base == type_voidptr && type_is_pointer(from->array.base))
+		{
+			return true;
 		}
 		return false;
 	}
@@ -1450,6 +1463,14 @@ static bool err_to_bool(Expr *expr, Type *to_type)
 	return insert_cast(expr, CAST_ERBOOL, to_type);
 }
 
+static inline bool subarray_to_subarray(Expr *expr, Type *to_type)
+{
+	if (expr_is_const(expr))
+	{
+		expr->type = to_type;
+	}
+	return insert_cast(expr, CAST_SASA, to_type);
+}
 static inline bool subarray_to_bool(Expr *expr)
 {
 	if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER)
@@ -1562,6 +1583,7 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 		case TYPE_SUBARRAY:
 			if (to->type_kind == TYPE_POINTER) return insert_cast(expr, CAST_SAPTR, to);
 			if (to->type_kind == TYPE_BOOL) return subarray_to_bool(expr);
+			if (to->type_kind == TYPE_SUBARRAY) return subarray_to_subarray(expr, to);
 			break;
 		case TYPE_VECTOR:
 			if (to->type_kind == TYPE_ARRAY) return vec_to_arr(expr, to_type);
