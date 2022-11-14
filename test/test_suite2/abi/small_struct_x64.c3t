@@ -20,10 +20,6 @@ fn Foo getFoo(Foo f)
 
 /* #expect: test.ll
 
-source_filename = "test"
-target datalayout = "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-apple-darwin"
-
 %.introspect = type { i8, i64, i64, i64, [0 x i64] }
 %Foo = type { i8, i8, i8 }
 
@@ -79,8 +75,5 @@ entry:
   ret i24 %4
 }
 
-; Function Attrs: argmemonly nocallback nofree nounwind willreturn
 declare void @llvm.memcpy.p0.p0.i32(ptr noalias nocapture writeonly, ptr noalias nocapture readonly, i32, i1 immarg) #1
 
-attributes #0 = { nounwind }
-attributes #1 = { argmemonly nocallback nofree nounwind willreturn }
