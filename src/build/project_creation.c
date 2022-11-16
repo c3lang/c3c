@@ -240,39 +240,23 @@ void create_project(BuildOptions *build_options)
 	(void) fprintf(file, template, build_options->project_name);
 	if (fclose(file)) goto ERROR;
 
-	if (!dir_make("lib")) goto ERROR;
-
 	if (!dir_make("build")) goto ERROR;
+
+	if (!dir_make("docs")) goto ERROR;
+
+	if (!dir_make("lib")) goto ERROR;
 
 	if (!dir_make("resources")) goto ERROR;
 
-	if (!dir_make("test")) goto ERROR;
-
-	if (!dir_change("test")) goto ERROR;
-
-	if (!dir_make(build_options->project_name)) goto ERROR;
-
-	if (!dir_change("..")) goto ERROR;
-
 	if (!dir_make("src")) goto ERROR;
 
 	if (!dir_change("src")) goto ERROR;
-
-	if (!file_touch("index.html")) goto ERROR;
-
-	if (!dir_change("../..")) goto ERROR;
-
-	if (!dir_make("src")) goto ERROR;
-
-	if (!dir_change("src")) goto ERROR;
-
-	if (!dir_make(build_options->project_name)) goto ERROR;
-
-	if (!dir_change(build_options->project_name)) goto ERROR;
 
 	if (!file_touch("main.c3")) goto ERROR;
 
-	if (!dir_change("../..")) goto ERROR;
+	if (!dir_change("..")) goto ERROR;
+
+	if (!dir_make("test")) goto ERROR;
 
 	(void) printf("Project '%s' created.\n", build_options->project_name);
 	exit_compiler(COMPILER_SUCCESS_EXIT);
