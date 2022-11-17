@@ -14,8 +14,8 @@ struct Summary
 private struct StringData
 {
 	Allocator allocator;
-	usize len;
-	usize capacity;
+	usz len;
+	usz capacity;
 	char[*] chars;
 }
 
@@ -27,12 +27,12 @@ fn void Summary.print(Summary *s, File out)
 
 fn bool contains(char[] haystack, char[] needle)
 {
-	usize len = haystack.len;
-	usize needle_len = needle.len;
+	usz len = haystack.len;
+	usz needle_len = needle.len;
 	if (len < needle_len) return false;
 	if (!needle_len) return true;
 	len -= needle_len - 1;
-	for (usize i = 0; i < len; i++)
+	for (usz i = 0; i < len; i++)
 	{
 		if (mem::equals(haystack[i..], needle))
 		{

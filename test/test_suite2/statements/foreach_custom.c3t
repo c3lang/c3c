@@ -6,12 +6,12 @@ struct Foo
     int[] x;
 }
 
-macro int Foo.@operator_element_at(Foo &foo, usize index) @operator([])
+macro int Foo.@operator_element_at(Foo &foo, usz index) @operator([])
 {
     return foo.x[index];
 }
 
-macro usize Foo.@operator_len(Foo &foo) @operator(len)
+macro usz Foo.@operator_len(Foo &foo) @operator(len)
 {
     return foo.x.len;
 }

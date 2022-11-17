@@ -1676,12 +1676,12 @@ bool cast_to_index(Expr *index)
 		case TYPE_I16:
 		case TYPE_I32:
 		case TYPE_I64:
-			return cast(index, type_iptrdiff);
+			return cast(index, type_isz);
 		case TYPE_U8:
 		case TYPE_U16:
 		case TYPE_U32:
 		case TYPE_U64:
-			return cast(index, type_uptrdiff);
+			return cast(index, type_usz);
 		case TYPE_U128:
 			SEMA_ERROR(index, "You need to explicitly cast this to a uint or ulong.");
 			return false;

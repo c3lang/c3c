@@ -10,7 +10,7 @@ fault InterpretError
 	INTEPRET_FAILED
 }
 
-fn void! print_error(usize pos, char[] err)
+fn void! print_error(usz pos, char[] err)
 {
 	io::printfln("Error at %s: %s", pos, err);
 	return InterpretError.INTEPRET_FAILED!;
@@ -18,8 +18,8 @@ fn void! print_error(usize pos, char[] err)
 
 fn void! brainf(char[] program)
 {
-	usize sp = 0;
-	usize mem = 0;
+	usz sp = 0;
+	usz mem = 0;
 	while (sp < program.len)
 	{
 		char c = program[sp++];
@@ -41,9 +41,9 @@ fn void! brainf(char[] program)
 			case ',':
 				memory[mem] = io::stdin().getc()!!;
 			case '[':
-				usize indent = 1;
+				usz indent = 1;
 				if (memory[mem]) continue;
-				usize start = sp - 1;
+				usz start = sp - 1;
 				while (indent)
 				{
 					if (sp == program.len) return print_error(start, "No matching ']'");
@@ -56,8 +56,8 @@ fn void! brainf(char[] program)
 				}
 			case ']':
 				if (!memory[mem]) continue;
-				usize start = sp--;
-				usize indent = 1;
+				usz start = sp--;
+				usz indent = 1;
 				while (indent)
 				{
 					if (!sp) return print_error(start, "No matching '['");

@@ -32,8 +32,8 @@ module stack <Type>;
 
 struct Stack
 {
-    usize capacity;
-    usize size;
+    usz capacity;
+    usz size;
     Type* elems;
 }
 

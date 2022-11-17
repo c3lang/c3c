@@ -56,7 +56,7 @@ const LINELEN = 60;
 // slowest character-at-a-time output
 fn void repeat_fasta(char[] seq, int n)
 {
-	usize len = seq.len;
+	usz len = seq.len;
 	int i = void;
 	for (i = 0; i < n; i++)
 	{

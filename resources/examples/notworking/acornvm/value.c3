@@ -16,14 +16,14 @@ macro assert_exp($c, $e)
 */
 
 /** A signed integer, whose size matches Value */
-typedef isize Aint;
+typedef isz Aint;
 /** An unsigned integer, whose size matches Value */
-typedef usize Auint;
+typedef usz Auint;
 
 
 /** A float, whose size matches Value (see avm_env.h) */
-$assert(usize.size == 8 || usize.size == 4)
-$if (usize.size == 8)
+$assert(usz.size == 8 || usz.size == 4)
+$if (usz.size == 8)
 {
     typedef double as Afloat;
 }

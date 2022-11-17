@@ -16,9 +16,9 @@ macro print_type_info(...)
 fn void main()
 {
     io::printfln("Unsigned integers:");
-    print_type_info(char, ushort, uint, ulong, uptr, uptrdiff, usize);
+    print_type_info(char, ushort, uint, ulong, uptr, usz, usz);
     io::printfln("Signed integers:");
-    print_type_info(ichar, short, int, long, iptr, iptrdiff, isize);
+    print_type_info(ichar, short, int, long, iptr, isz, isz);
     io::printfln("Floats:");
     print_type_info(float, double);
 }

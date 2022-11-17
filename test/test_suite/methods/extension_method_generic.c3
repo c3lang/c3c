@@ -5,7 +5,7 @@ define IntArray = List<int>;
 
 extern fn void printf(char*, ...);
 
-fn void IntArray.someFunc(IntArray *this, usize param) {
+fn void IntArray.someFunc(IntArray *this, usz param) {
 //do something
     this.push((int)param);
 }

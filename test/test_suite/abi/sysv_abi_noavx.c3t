@@ -5,7 +5,7 @@ module foo;
 struct StringRef
 {
 	char* str;
-	usize size;
+	usz size;
 }
 
 char gc;

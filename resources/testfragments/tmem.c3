@@ -5,8 +5,8 @@ import std::io;
 struct String
 {
     Allocator allocator;
-    usize len;
-    usize capacity;
+    usz len;
+    usz capacity;
     char* ptr;
 }
 

@@ -10,14 +10,14 @@ struct Entry
 {
     Key key;
     Type value;
-    usize hash;
+    usz hash;
     Entry* next;
     bool used;
 }
 
 struct Map
 {
-    usize size;
+    usz size;
     Entry* map;
     uint mod;
 }
@@ -37,7 +37,7 @@ fn Type! Map.valueForKey(Map *map, Key key)
 {
     if (!map.map) return MapResult.KEY_NOT_FOUND!;
     uint hash = key.hash();
-    usize pos = hash & map.mod;
+    usz pos = hash & map.mod;
     Entry* entry = &map.map[pos];
     if (!entry) return MapResult.KEY_NOT_FOUND!;
     while (entry)
@@ -91,7 +91,7 @@ fn Type! Map.set(Map *map, Key key, Type value) @maydiscard
     }
 }
 
-fn usize Map.size(Map* map)
+fn usz Map.size(Map* map)
 {
     return map.size;
 }

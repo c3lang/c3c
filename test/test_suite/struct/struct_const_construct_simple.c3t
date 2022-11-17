@@ -7,7 +7,7 @@ struct Foo
     long bar;
 }
 
-private usize x = Foo.sizeof;
+private usz x = Foo.sizeof;
 
 private Foo foo1 = { 1, 2 };
 private Foo foo2 = { .foo = 2 };

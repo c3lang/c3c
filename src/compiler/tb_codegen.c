@@ -574,10 +574,10 @@ void tinybackend_emit_binary(TbContext *c, TBEValue *TBE_VALUE, Expr *expr, TBEV
 				/*bool is_constant = LLVMIsConstant(lhs_value) && LLVMIsConstant(rhs_value);
 				if (lhs_type == rhs_type)
 				{
-					LLVMTypeRef int_type = llvm_get_type(c, type_iptrdiff);
+					LLVMTypeRef int_type = llvm_get_type(c, type_isz);
 					val = LLVMBuildSub(c->builder, LLVMBuildPtrToInt(c->builder, lhs_value, int_type, ""),
 									   LLVMBuildPtrToInt(c->builder, rhs_value, int_type, ""), "");
-					val = LLVMBuildExactSDiv(c->builder, val, llvm_const_int(c, type_iptrdiff, type_abi_alignment(lhs_type->pointer)), "");
+					val = LLVMBuildExactSDiv(c->builder, val, llvm_const_int(c, type_isz, type_abi_alignment(lhs_type->pointer)), "");
 					break;
 				}
 				rhs_value = LLVMConstNeg(rhs_value);

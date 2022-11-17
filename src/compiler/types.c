@@ -11,7 +11,7 @@ static struct
 	Type u0, u1, i8, i16, i32, i64, i128, ixx;
 	Type u8, u16, u32, u64, u128;
 	Type f16, f32, f64, f128, fxx;
-	Type usz, isz, usize, isize, uptr, iptr, uptrdiff, iptrdiff;
+	Type usz, isz, usize, isize, uptr, iptr;
 	Type voidstar, typeid, anyerr, member, typeinfo, untyped_list;
 	Type any, anyfail;
 } t;
@@ -32,7 +32,6 @@ Type *type_int = &t.i32;
 Type *type_long = &t.i64;
 Type *type_i128 = &t.i128;
 Type *type_iptr = &t.iptr;
-Type *type_iptrdiff = &t.iptrdiff;
 Type *type_isize = &t.isize;
 Type *type_isz = &t.isz;
 Type *type_char = &t.u8;
@@ -41,7 +40,6 @@ Type *type_uint = &t.u32;
 Type *type_ulong = &t.u64;
 Type *type_u128 = &t.u128;
 Type *type_uptr = &t.uptr;
-Type *type_uptrdiff = &t.uptrdiff;
 Type *type_usize = &t.usize;
 Type *type_usz = &t.usz;
 Type *type_anyerr = &t.anyerr;
@@ -1465,9 +1463,6 @@ void type_setup(PlatformTarget *target)
 	type_create_alias("uptr", &t.uptr, type_int_unsigned_by_bitsize(target->width_pointer));
 	type_create_alias("iptr", &t.iptr, type_int_signed_by_bitsize(target->width_pointer));
 
-	type_create_alias("uptrdiff", &t.uptrdiff, type_int_unsigned_by_bitsize(target->width_pointer));
-	type_create_alias("iptrdiff", &t.iptrdiff, type_int_signed_by_bitsize(target->width_pointer));
-
 	alignment_subarray = MAX(type_abi_alignment(&t.voidstar), type_abi_alignment(t.usz.canonical));
 	size_subarray = (unsigned)(alignment_subarray * 2);
 	type_init("anyerr", &t.anyerr, TYPE_ANYERR, target->width_pointer, target->align_pointer);
@@ -1602,8 +1597,6 @@ Type *type_from_token(TokenType type)
 			return type_int;
 		case TOKEN_IPTR:
 			return type_iptr;
-		case TOKEN_IPTRDIFF:
-			return type_iptrdiff;
 		case TOKEN_ISIZE:
 			return type_isize;
 		case TOKEN_ISZ:
@@ -1620,8 +1613,6 @@ Type *type_from_token(TokenType type)
 			return type_ulong;
 		case TOKEN_UPTR:
 			return type_uptr;
-		case TOKEN_UPTRDIFF:
-			return type_uptrdiff;
 		case TOKEN_USHORT:
 			return type_ushort;
 		case TOKEN_USIZE:

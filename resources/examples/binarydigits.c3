@@ -18,7 +18,7 @@ fn String bin(int x)
     str.append_repeat('0', bits);
     for (int i = 0; i < bits; i++)
     {
-        str.set((usize)(bits - i - 1), x & 1 ? '1' : '0');
+        str.set((usz)(bits - i - 1), x & 1 ? '1' : '0');
         x >>= 1;
     }
     return str;

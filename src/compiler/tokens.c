@@ -315,10 +315,6 @@ const char *token_type_to_string(TokenType type)
 			return "iptr";
 		case TOKEN_UPTR:
 			return "uptr";
-		case TOKEN_IPTRDIFF:
-			return "iptrdiff";
-		case TOKEN_UPTRDIFF:
-			return "uptrdiff";
 		case TOKEN_FLOAT16:
 			return "float16";
 		case TOKEN_DOCS_START:

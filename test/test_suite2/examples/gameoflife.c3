@@ -5,7 +5,7 @@ extern fn int atoi(char *val);
 extern void *__stdoutp;
 extern fn void fflush(void *std);
 extern fn int rand();
-extern fn void* malloc(usize size);
+extern fn void* malloc(usz size);
 extern fn void usleep(int time);
 
 

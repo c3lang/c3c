@@ -3,7 +3,7 @@ struct Struct
     int x;
 }
 
-enum Enum : uptr
+enum Enum : usz
 {
     A, B
 }
@@ -36,7 +36,7 @@ fn void test4(Func arg)
 
 fn void test7(Func arg)
 {
-    usize g = (usize)(arg);
+    usz g = (usz)(arg);
     FuncOther k = (FuncOther)(arg);
     FuncSame l = (FuncSame)(arg);
     FuncOther ke = arg;                         // #error: 'Func' (fn void(int)) to 'FuncOther' (fn bool(char*))

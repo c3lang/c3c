@@ -2446,7 +2446,7 @@ static inline bool sema_expr_analyse_pointer_offset(SemaContext *context, Expr *
 	// 2. Evaluate the offset.
 	Expr *offset = exprptr(expr->pointer_offset_expr.offset);
 	if (!sema_analyse_expr(context, offset)) return false;
-	if (!cast_implicit(context, offset, type_iptrdiff)) return false;
+	if (!cast_implicit(context, offset, type_isz)) return false;
 
 	// 3. Store optionality
 	bool is_optional = IS_OPTIONAL(pointer) || IS_OPTIONAL(offset);
@@ -4301,12 +4301,12 @@ static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, 
 
 			if (expr_both_const(left, right))
 			{
-				expr_rewrite_const_int(expr, type_iptrdiff, (left->const_expr.ptr - right->const_expr.ptr) /
+				expr_rewrite_const_int(expr, type_isz, (left->const_expr.ptr - right->const_expr.ptr) /
 						type_size(left_type->pointer), false);
 				return true;
 			}
 			// 3b. Set the type
-			expr->type = type_iptrdiff;
+			expr->type = type_isz;
 
 			return true;
 		}
@@ -4320,15 +4320,15 @@ static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, 
 			return false;
 		}
 
-		// 5. Make sure that the integer does not exceed iptrdiff in size.
-		if (type_size(right_type) > type_size(type_iptrdiff))
+		// 5. Make sure that the integer does not exceed isz in size.
+		if (type_size(right_type) > type_size(type_isz))
 		{
-			SEMA_ERROR(expr, "Cannot subtract a '%s' from a pointer, please first cast it to '%s'.", type_to_error_string(right_type), type_to_error_string(type_iptrdiff));
+			SEMA_ERROR(expr, "Cannot subtract a '%s' from a pointer, please first cast it to '%s'.", type_to_error_string(right_type), type_to_error_string(type_isz));
 			return false;
 		}
 
-		// 6. Convert to iptrdiff
-		if (!cast_implicit(context, right, type_iptrdiff)) return true;
+		// 6. Convert to isz
+		if (!cast_implicit(context, right, type_isz)) return true;
 
 		if (left->expr_kind == EXPR_POINTER_OFFSET)
 		{
@@ -4452,7 +4452,7 @@ static bool sema_expr_analyse_add(SemaContext *context, Expr *expr, Expr *left, 
 
 		// 3b. Cast it to usize or isize depending on underlying type.
 		//     Either is fine, but it looks a bit nicer if we actually do this and keep the sign.
-		bool success = cast_implicit(context, right, type_iptrdiff);
+		bool success = cast_implicit(context, right, type_isz);
 
 		// No need to check the cast we just ensured it was an integer.
 		assert(success && "This should always work");
@@ -6597,7 +6597,7 @@ static inline bool sema_expr_analyse_ct_offsetof(SemaContext *context, Expr *exp
 		type = result_type;
 	}
 
-	expr_rewrite_const_int(expr, type_iptrdiff, offset, true);
+	expr_rewrite_const_int(expr, type_isz, offset, true);
 
 	return true;
 }

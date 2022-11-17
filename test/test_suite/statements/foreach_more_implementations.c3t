@@ -4,21 +4,21 @@ module test;
 import std::io;
 struct Vector
 {
-    usize size;
+    usz size;
     int* elements;
 }
 
-macro int Vector.get(Vector* vector, usize element) @operator([])
+macro int Vector.get(Vector* vector, usz element) @operator([])
 {
     return vector.elements[element];
 }
 
-macro int* Vector.get_ref(Vector* vector, usize element) @operator(&[])
+macro int* Vector.get_ref(Vector* vector, usz element) @operator(&[])
 {
     return &vector.elements[element];
 }
 
-macro usize Vector.size(Vector vector) @operator(len) {
+macro usz Vector.size(Vector vector) @operator(len) {
     return vector.size;
 }
 

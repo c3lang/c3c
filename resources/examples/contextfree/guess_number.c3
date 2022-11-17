@@ -2,7 +2,7 @@ module guess_number;
 import std::io;
 import libc;
 
-extern fn isize getline(char** linep, usize* linecapp, CFile stream);
+extern fn isz getline(char** linep, usz* linecapp, CFile stream);
 
 struct Game
 {
@@ -33,7 +33,7 @@ fn int! askGuess(int high)
 fn char[]! readLine()
 {
 	char* chars = tmalloc(1024)?;
-	isize loaded = getline(&chars, &&(usize)1023, libc::stdin());
+	isz loaded = getline(&chars, &&(usz)1023, libc::stdin());
 	if (loaded < 0) return InputResult.FAILED_TO_READ!;
 	chars[loaded] = 0;
 	return chars[0..(loaded - 1)];
