@@ -185,6 +185,16 @@ const char* JSON_DYNAMIC =
 		"  */\n"
 		"}";
 
+const char* MAIN_TEMPLATE =
+		"module %s;\n"
+		"import std::io;\n"
+		"\n"
+		"fn int main(char[][] args)\n"
+		"{\n"
+		"\tio::println(\"Hello, World!\");\n"
+		"\treturn 0;\n"
+		"}\n";
+
 void create_project(BuildOptions *build_options)
 {
 	const char *template;
@@ -252,7 +262,10 @@ void create_project(BuildOptions *build_options)
 
 	if (!dir_change("src")) goto ERROR;
 
-	if (!file_touch("main.c3")) goto ERROR;
+	file = fopen("main.c3", "w");
+	if (!file) goto ERROR;
+	(void) fprintf(file, MAIN_TEMPLATE, build_options->project_name);
+	if (fclose(file)) goto ERROR;
 
 	if (!dir_change("..")) goto ERROR;
 
