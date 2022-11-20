@@ -72,6 +72,7 @@ static void usage(void)
 	OUTPUT("  clean-run [<target>]               Clean, then run the target.");
 	OUTPUT("  compile-run <file1> [<file2> ...]  Compile files then immediately run the result.");
 	OUTPUT("  compile-only <file1> [<file2> ...] Compile files but do not perform linking.");
+	OUTPUT("  compile-test <file1> [<file2> ...] Compile files into an executable and run unit tests.");
 	OUTPUT("  static-lib <file1> [<file2> ...]   Compile files without a project into a static library.");
 	OUTPUT("  dynamic-lib <file1> [<file2> ...]  Compile files without a project into a dynamic library.");
 	OUTPUT("  headers <file1> [<file2> ...]      Analyse files and generate C headers for public methods.");
