@@ -19,27 +19,30 @@ fn usz! char32_to_utf8(Char32 c, char* output, usz available)
 	if (!available) return UnicodeResult.CONVERSION_FAILED!;
 	switch (true)
 	{
-		case c < 0x7f:
+		case c <= 0x7f:
 			output[0] = (char)c;
 			return 1;
-		case c < 0x7ff:
+		case c <= 0x7ff:
 	        if (available < 2) return UnicodeResult.CONVERSION_FAILED!;
 			output[0] = (char)(0xC0 | c >> 6);
             output[1] = (char)(0x80 | (c & 0x3F));
             return 2;
-        case c < 0xffff:
+        case c <= 0xffff:
 	        if (available < 3) return UnicodeResult.CONVERSION_FAILED!;
             output[0] = (char)(0xE0 | c >> 12);
             output[1] = (char)(0x80 | (c >> 6 & 0x3F));
             output[2] = (char)(0x80 | (c & 0x3F));
             return 3;
-        default:
+        case c <= 0x10ffff:
 	        if (available < 4) return UnicodeResult.CONVERSION_FAILED!;
 		    output[0] = (char)(0xF0 | c >> 18);
             output[1] = (char)(0x80 | (c >> 12 & 0x3F));
             output[2] = (char)(0x80 | (c >> 6 & 0x3F));
             output[3] = (char)(0x80 | (c & 0x3F));
             return 4;
+        default:
+            // 0x10FFFF and above is not defined.
+            return UnicodeResult.CONVERSION_FAILED!;
 	}
 }
 
@@ -144,8 +147,9 @@ fn Char32! utf8_to_char32(char* ptr, usz* size)
 		if (max_size < 2) return UnicodeResult.INVALID_UTF8!;
         *size = 2;
         Char32 uc = (c & 0x1F) << 6;
-		c = *ptr;
-		if (c & 0xC0 != 0x80) return UnicodeResult.INVALID_UTF8!;
+        c = *ptr;
+        // Overlong sequence or invalid second.
+		if (!uc || c & 0xC0 != 0x80) return UnicodeResult.INVALID_UTF8!;
 		return uc + c & 0x3F;
     }
     if ((c & 0xF0) == 0xE0)
@@ -157,10 +161,12 @@ fn Char32! utf8_to_char32(char* ptr, usz* size)
 		if (c & 0xC0 != 0x80) return UnicodeResult.INVALID_UTF8!;
 		uc += (c & 0x3F) << 6;
 		c = ptr++[0];
-		if (c & 0xC0 != 0x80) return UnicodeResult.INVALID_UTF8!;
+		// Overlong sequence or invalid last
+		if (!uc || c & 0xC0 != 0x80) return UnicodeResult.INVALID_UTF8!;
 		return uc + c & 0x3F;
     }
     if (max_size < 4) return UnicodeResult.INVALID_UTF8!;
+    if ((c & 0xF8) != 0xF0) return UnicodeResult.INVALID_UTF8!;
     *size = 4;
     Char32 uc = (c & 0x07) << 18;
 	c = ptr++[0];
@@ -170,7 +176,8 @@ fn Char32! utf8_to_char32(char* ptr, usz* size)
 	if (c & 0xC0 != 0x80) return UnicodeResult.INVALID_UTF8!;
 	uc += (c & 0x3F) << 6;
 	c = ptr++[0];
-	if (c & 0xC0 != 0x80) return UnicodeResult.INVALID_UTF8!;
+	// Overlong sequence or invalid last
+	if (!uc || c & 0xC0 != 0x80) return UnicodeResult.INVALID_UTF8!;
 	return uc + c & 0x3F;
 }
 
