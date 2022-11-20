@@ -205,6 +205,11 @@ jobs:
           ../build/c3c compile-run examples/fannkuch-redux.c3
           ../build/c3c compile-run examples/contextfree/boolerr.c3
 
+      - name: Compile run stdlib tests
+        run: |
+          cd test
+          ../build/c3c compile-test stdlib/conv_tests.c3 -g1 --safe
+
       - name: Build testproject
         run: |
           cd resources/testproject
@@ -270,6 +275,11 @@ jobs:
           ../build/c3c compile-run examples/hello_world_many.c3
           ../build/c3c compile-run examples/fannkuch-redux.c3
           ../build/c3c compile-run examples/contextfree/boolerr.c3
+
+      - name: Compile run stdlib tests
+        run: |
+          cd test
+          ../build/c3c compile-test stdlib/conv_tests.c3 -g1 --safe
 
       - name: Build testproject
         run: |
