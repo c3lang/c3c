@@ -270,7 +270,7 @@ bool integer_to_enum(Expr *expr, Type *canonical, Type *type)
 	}
 	Decl *decl = enum_decl->enums.values[to_convert.i.low];
 	expr->const_expr = (ExprConst) {
-		.enum_val = decl,
+		.enum_err_val = decl,
 		.const_kind = CONST_ENUM
 	};
 	expr->type = type;
@@ -364,7 +364,7 @@ static Type *enum_to_int_cast(Expr* expr, Type *from)
 	expr->type = original;
 	if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_ENUM)
 	{
-		expr_rewrite_const_int(expr, original, expr->const_expr.enum_val->enum_constant.ordinal, false);
+		expr_rewrite_const_int(expr, original, expr->const_expr.enum_err_val->enum_constant.ordinal, false);
 		return original;
 	}
 	insert_cast(expr, CAST_ENUMLOW, type_add_optional(original, IS_OPTIONAL(expr)));
@@ -1454,7 +1454,7 @@ static bool err_to_bool(Expr *expr, Type *to_type)
 			case CONST_INTEGER:
 				return int_literal_to_bool(expr, to_type);
 			case CONST_ERR:
-				expr_rewrite_const_bool(expr, type_bool, expr->const_expr.err_val != NULL);
+				expr_rewrite_const_bool(expr, type_bool, expr->const_expr.enum_err_val != NULL);
 				return true;
 			default:
 				UNREACHABLE

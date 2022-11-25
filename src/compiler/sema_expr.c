@@ -701,16 +701,8 @@ static inline bool sema_expr_analyse_enum_constant(Expr *expr, const char *name,
 	assert(enum_constant->resolve_status == RESOLVE_DONE);
 	expr->type = decl->type;
 	expr->expr_kind = EXPR_CONST;
-	if (enum_constant->decl_kind == DECL_ENUM_CONSTANT)
-	{
-		expr->const_expr.const_kind = CONST_ENUM;
-		expr->const_expr.enum_val = enum_constant;
-	}
-	else
-	{
-		expr->const_expr.const_kind = CONST_ERR;
-		expr->const_expr.err_val = enum_constant;
-	}
+	expr->const_expr.const_kind = enum_constant->decl_kind == DECL_ENUM_CONSTANT ? CONST_ENUM : CONST_ERR;
+	expr->const_expr.enum_err_val = enum_constant;
 	return true;
 }
 
@@ -2650,12 +2642,13 @@ static inline void sema_expr_replace_with_enum_array(Expr *enum_array_expr, Decl
 	ArraySize elements = vec_size(values);
 	Expr **element_values = elements > 0 ? VECNEW(Expr*, elements) : NULL;
 	Type *kind = enum_decl->type;
+	ConstKind const_kind = enum_decl->decl_kind == DECL_FAULT ? CONST_ERR : CONST_ENUM;
 	for (ArraySize i = 0; i < elements; i++)
 	{
 		Decl *decl = values[i];
 		Expr *expr = expr_new(EXPR_CONST, span);
-		expr->const_expr.const_kind = CONST_ENUM;
-		expr->const_expr.enum_val = decl;
+		expr->const_expr.const_kind = const_kind;
+		expr->const_expr.enum_err_val = decl;
 		assert(decl_ok(decl));
 		expr->type = kind;
 		expr->resolve_status = RESOLVE_DONE;
@@ -3265,15 +3258,15 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 		case TYPE_PROPERTY_MAX:
 			return sema_create_const_max(context, expr, type, flat);
 		case TYPE_PROPERTY_NAMES:
-			if (flat->type_kind != TYPE_ENUM) return false;
+			if (!type_kind_is_enumlike(flat->type_kind)) return false;
 			sema_expr_replace_with_enum_name_array(expr, flat->decl);
 			return sema_analyse_expr(context, expr);
 		case TYPE_PROPERTY_ELEMENTS:
-			if (flat->type_kind != TYPE_ENUM) return false;
+			if (!type_kind_is_enumlike(flat->type_kind)) return false;
 			expr_rewrite_const_int(expr, type_isize, vec_size(flat->decl->enums.values), true);
 			return true;
 		case TYPE_PROPERTY_VALUES:
-			if (flat->type_kind != TYPE_ENUM) return false;
+			if (!type_kind_is_enumlike(flat->type_kind)) return false;
 			sema_expr_replace_with_enum_array(expr, flat->decl);
 			return sema_analyse_expr(context, expr);
 		case TYPE_PROPERTY_NAN:
@@ -3460,7 +3453,7 @@ CHECK_DEEPER:
 		{
 			if (current_parent->expr_kind == EXPR_CONST)
 			{
-				expr_rewrite_to_string(expr, current_parent->const_expr.enum_val->name);
+				expr_rewrite_to_string(expr, current_parent->const_expr.enum_err_val->name);
 				return true;
 			}
 			else
@@ -3473,7 +3466,7 @@ CHECK_DEEPER:
 		{
 			if (current_parent->expr_kind == EXPR_CONST)
 			{
-				expr_rewrite_to_string(expr, current_parent->const_expr.enum_val->name);
+				expr_rewrite_to_string(expr, current_parent->const_expr.enum_err_val->name);
 				return true;
 			}
 			expr_rewrite_to_builtin_access(expr, current_parent, ACCESS_FAULTNAME, type_chars);
@@ -3517,7 +3510,7 @@ CHECK_DEEPER:
 	if (member && decl_is_enum_kind(decl) && member->decl_kind == DECL_VAR && parent->expr_kind == EXPR_CONST)
 	{
 		assert(parent->const_expr.const_kind == CONST_ENUM);
-		Expr *copy_init = copy_expr_single(current_parent->const_expr.enum_val->enum_constant.args[member->var.index]);
+		Expr *copy_init = copy_expr_single(current_parent->const_expr.enum_err_val->enum_constant.args[member->var.index]);
 		expr_replace(expr, copy_init);
 		return true;
 	}

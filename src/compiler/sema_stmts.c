@@ -1921,7 +1921,7 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 		if (const_expr->const_kind == CONST_ENUM)
 		{
 			assert(to_const_expr->const_kind == CONST_ENUM);
-			if (to_const_expr->enum_val->enum_constant.ordinal < const_expr->enum_val->enum_constant.ordinal)
+			if (to_const_expr->enum_err_val->enum_constant.ordinal < const_expr->enum_err_val->enum_constant.ordinal)
 			{
 				sema_error_at(extend_span_with_token(expr->span, to_expr->span),
 				              "A enum range must be have the enum with a lower ordinal followed by the one with a higher ordinal. "

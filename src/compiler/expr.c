@@ -572,7 +572,7 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 			return;
 		case TYPE_ENUM:
 			expr->const_expr.const_kind = CONST_ENUM;
-			expr->const_expr.enum_val = type->decl->enums.values[0];
+			expr->const_expr.enum_err_val = type->decl->enums.values[0];
 			break;
 		case TYPE_FUNC:
 		case TYPE_TYPEDEF:

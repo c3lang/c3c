@@ -257,10 +257,8 @@ INLINE Expr *copy_const_expr(CopyStruct *c, Expr *expr)
 		case CONST_BOOL:
 			break;
 		case CONST_ENUM:
-			fixup_decl(c, &expr->const_expr.enum_val);
-			break;
 		case CONST_ERR:
-			fixup_decl(c, &expr->const_expr.err_val);
+			fixup_decl(c, &expr->const_expr.enum_err_val);
 			break;
 		case CONST_BYTES:
 		case CONST_STRING:
