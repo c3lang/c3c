@@ -4331,7 +4331,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 			return;
 		case CONST_ERR:
 		{
-			Decl *decl = expr->const_expr.err_val;
+			Decl *decl = expr->const_expr.enum_err_val;
 
 			LLVMValueRef value;
 			if (decl)
@@ -4346,7 +4346,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 			return;
 		}
 		case CONST_ENUM:
-			llvm_value_set(be_value, llvm_const_int(c, type, expr->const_expr.enum_val->enum_constant.ordinal), type);
+			llvm_value_set(be_value, llvm_const_int(c, type, expr->const_expr.enum_err_val->enum_constant.ordinal), type);
 			return;
 		case CONST_MEMBER:
 		case CONST_UNTYPED_LIST:

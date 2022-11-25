@@ -88,13 +88,13 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 		case CONST_ERR:
 		case CONST_ENUM:
 		{
-			Decl *left_decl = left->err_val;
+			Decl *left_decl = left->enum_err_val;
 			// The error case
 			assert(right->const_kind == left->const_kind);
-			Decl *right_decl = right->err_val;
+			Decl *right_decl = right->enum_err_val;
 			// Non matching cannot be compared.
 			if (right_decl->type != left_decl->type) return false;
-			int64_t right_ordinal = right->err_val->enum_constant.ordinal;
+			int64_t right_ordinal = right->enum_err_val->enum_constant.ordinal;
 			switch (op)
 			{
 				case BINARYOP_GT:
@@ -205,9 +205,8 @@ const char *expr_const_to_error_string(const ExprConst *expr)
 		case CONST_BYTES:
 			return "<binary data>";
 		case CONST_ENUM:
-			return expr->enum_val->name;
 		case CONST_ERR:
-			return expr->err_val->name;
+			return expr->enum_err_val->name;
 		case CONST_TYPEID:
 			return type_to_error_string(expr->typeid);
 		case CONST_MEMBER:
