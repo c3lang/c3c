@@ -139,6 +139,8 @@ fn void String.append_char32(String* str, Char32 c)
     data.chars[data.len++] = (char)(0x80 | (c & 0x3F));
 }
 
+fn String String.tcopy(String* str) = str.copy(mem::temp_allocator());
+
 fn String String.copy(String* str, Allocator* allocator = null)
 {
 	if (!str)
@@ -171,6 +173,8 @@ fn char[] String.copy_str(String* str, Allocator* allocator = mem::current_alloc
 {
 	return str.copy_zstr(allocator)[:str.len()];
 }
+
+fn char[] String.tcopy_str(String* str) = str.copy_str(mem::temp_allocator()) @inline;
 
 fn bool String.equals(String str, String other_string)
 {

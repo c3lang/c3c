@@ -29,6 +29,25 @@ fn String join(char[][] s, char[] joiner)
 	return res;
 }
 
+macro bool char_in_set(char c, char[] set)
+{
+	foreach (ch : set)
+	{
+		if (ch == c) return true;
+	}
+	return false;
+}
+fn char[] trim(char[] string, char[] to_trim = "\t\n\r ")
+{
+	usz start = 0;
+	usz len = string.len;
+	while (start < len && char_in_set(string[start], to_trim)) start++;
+	if (start == len) return string[:0];
+	usz end = len - 1;
+	while (end > start && char_in_set(string[end], to_trim)) end--;
+	return string[start..end];
+}
+
 fn bool starts_with(char[] s, char[] needle)
 {
 	if (needle.len > s.len) return false;
