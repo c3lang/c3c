@@ -11,6 +11,13 @@ private const uint SURROGATE_BITS = 10;
 private const uint SURROGATE_LOW_VALUE = 0xDC00;
 private const uint SURROGATE_HIGH_VALUE = 0xD800;
 
+fault NumberConversion
+{
+	EMPTY_STRING,
+	NEGATIVE_VALUE,
+	MALFORMED_INTEGER,
+	INTEGER_OVERFLOW,
+}
 fn String join(char[][] s, char[] joiner)
 {
 	if (!s.len) return (String)null;
@@ -37,6 +44,89 @@ macro bool char_in_set(char c, char[] set)
 	}
 	return false;
 }
+
+private macro char_is_space_tab(char c)
+{
+	return c == ' ' || c == '\t';
+}
+
+private macro to_signed_integer($Type, char[] string)
+{
+	usz len = string.len;
+	usz index = 0;
+	char* ptr = string.ptr;
+	while (index < len && char_is_space_tab(ptr[index])) index++;
+	if (len == index) return NumberConversion.EMPTY_STRING!;
+	bool is_negative;
+	switch (string[index])
+	{
+		case '-':
+			if ($Type.min == 0) return NumberConversion.NEGATIVE_VALUE!;
+			is_negative = true;
+			index++;
+		case '+':
+			index++;
+		default:
+			break;
+	}
+	if (len == index) return NumberConversion.MALFORMED_INTEGER!;
+	$Type base = 10;
+	if (string[index] == '0')
+	{
+		index++;
+		if (index == len) return ($Type)0;
+		switch (string[index])
+		{
+			case 'x':
+			case 'X':
+				base = 16;
+				index++;
+			case 'b':
+			case 'B':
+				base = 2;
+				index++;
+			case 'o':
+			case 'O':
+				base = 8;
+				index++;
+			default:
+				break;
+		}
+		if (len == index) return NumberConversion.MALFORMED_INTEGER!;
+	}
+	$Type value = 0;
+	while (index != len)
+	{
+		char c = {|
+			char ch = string[index++];
+			if (base != 16 || ch < 'A') return (char)(ch - '0');
+			if (ch <= 'F') return (char)(ch - 'A');
+			if (ch < 'a') return NumberConversion.MALFORMED_INTEGER!;
+			if (ch > 'f') return NumberConversion.MALFORMED_INTEGER!;
+			return (char)(ch - 'a');
+		|}?;
+		if (c >= base) return NumberConversion.MALFORMED_INTEGER!;
+		value = {|
+			if (is_negative)
+			{
+				$Type new_value = value * base - c;
+				if (new_value > value) return NumberConversion.INTEGER_OVERFLOW!;
+				return new_value;
+			}
+			$Type new_value = value * base + c;
+			if (new_value < value) return NumberConversion.INTEGER_OVERFLOW!;
+			return new_value;
+		|}?;
+	}
+	return value;
+}
+
+fn int128! to_int128(char[] string) = to_signed_integer(int128, string);
+fn long! to_long(char[] string) = to_signed_integer(long, string);
+fn int! to_int(char[] string) = to_signed_integer(int, string);
+fn short! to_short(char[] string) = to_signed_integer(short, string);
+fn ichar! to_ichar(char[] string) = to_signed_integer(ichar, string);
+
 fn char[] trim(char[] string, char[] to_trim = "\t\n\r ")
 {
 	usz start = 0;

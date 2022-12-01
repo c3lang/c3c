@@ -179,10 +179,24 @@ fn String File.getline(File* file, Allocator* allocator = mem::current_allocator
 	while (!file.eof())
 	{
 		int c = libc::fgetc(file.file);
+		if (c == -1) break;
 		if (c == '\n') break;
 		s.append_char((char)c);
 	}
 	return s;
+}
+
+/**
+ * @param [&in] file
+ * @require file.file `File must be initialized`
+ * @return "a zero terminated char[] (the pointer may be safely cast into a ZString)"
+ */
+fn char[] File.tgetline(File* file)
+{
+
+	String s = file.getline(mem::temp_allocator());
+	ZString z = s.zstr();
+	return z[:s.len()];
 }
 
 fn char! File.getc(File* file)
