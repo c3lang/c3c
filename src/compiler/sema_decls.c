@@ -2170,11 +2170,15 @@ static bool sema_analyse_macro_method(SemaContext *context, Decl *decl)
 	}
 	if (!vec_size(decl->func_decl.signature.params))
 	{
-		SEMA_ERROR(decl, "Expected at least one parameter - of type %s.", type_to_error_string(parent_type));
+		SEMA_ERROR(decl, "Expected at least one parameter - of type '%s'.", type_to_error_string(parent_type));
 		return false;
 	}
 	Decl *first_param = decl->func_decl.signature.params[0];
-
+	if (!first_param)
+	{
+		SEMA_ERROR(decl, "The first parameter to this method must be of type '%s'.", type_to_error_string(parent_type));
+		return false;
+	}
 	if (!sema_is_valid_method_param(context, first_param, parent_type->canonical)) return false;
 
 	if (first_param->var.kind != VARDECL_PARAM_REF && first_param->var.kind != VARDECL_PARAM)
