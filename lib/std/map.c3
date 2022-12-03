@@ -299,7 +299,7 @@ private fn void HashMap.put_for_create(HashMap* map, Key key, Value value)
 
 private fn void HashMap.free(HashMap* map, void* ptr)
 {
-	map.free(ptr);
+	map.allocator.free(ptr)!!;
 }
 
 private fn bool HashMap.remove_entry_for_key(HashMap* map, Key key)
