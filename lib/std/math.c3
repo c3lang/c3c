@@ -234,7 +234,7 @@ macro sinh(x) = (exp(x) - exp(-x)) / 2.0;
 macro sqr(x) = x * x;
 
 /**
- * @require values::is_floatlike(x) `The input must be a floating point value or float vector`
+ * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
  **/
 macro sqrt(x) = $$sqrt(x);
 
