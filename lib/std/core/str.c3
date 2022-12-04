@@ -148,6 +148,37 @@ fn bool starts_with(char[] s, char[] needle)
 	return true;
 }
 
+fn char[][] tsplit(char[] s, char[] needle) = split(s, needle, mem::temp_allocator()) @inline;
+
+fn char[][] split(char[] s, char[] needle, Allocator* allocator = mem::current_allocator())
+{
+	usz capacity = 16;
+	usz i = 0;
+	char[]* holder = allocator.alloc(char[].sizeof * capacity)!!;
+	while (s.len)
+	{
+		usz! index = index_of(s, needle);
+		char[] res = void;
+		if (try index)
+		{
+			res = s[:index];
+			s = s[index + 1..];
+		}
+		else
+		{
+			res = s;
+			s = s[:0];
+		}
+		if (i == capacity)
+		{
+			capacity *= 2;
+			holder = allocator.realloc(holder, capacity)!!;
+		}
+		holder[i++] = res;
+	}
+	return holder[:i];
+}
+
 fn usz! index_of(char[] s, char[] needle)
 {
 	usz match = 0;

@@ -15,6 +15,15 @@ macro tconcat(arr1, arr2)
 	return result;
 }
 
+macro index_of(array, element)
+{
+	foreach (i, &e : array)
+	{
+		if (*e == element) return i;
+	}
+	return SearchResult.MISSING!;
+}
+
 macro concat(arr1, arr2)
 {
 	var $Type = $typeof(arr1[0]);
