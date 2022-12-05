@@ -426,6 +426,9 @@ static bool sema_binary_is_expr_lvalue(Expr *top_expr, Expr *expr)
 		case EXPR_HASH_IDENT:
 			SEMA_ERROR(top_expr, "You cannot assign to an unevaluated expression.");
 			return false;
+		case EXPR_EXPRESSION_LIST:
+			if (!vec_size(expr->expression_list)) return false;
+			return sema_binary_is_expr_lvalue(top_expr, VECLAST(expr->expression_list));
 		case EXPR_POISONED:
 		case EXPR_ARGV_TO_SUBARRAY:
 		case EXPR_ASM:
@@ -448,7 +451,6 @@ static bool sema_binary_is_expr_lvalue(Expr *top_expr, Expr *expr)
 		case EXPR_DECL:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 		case EXPR_DESIGNATOR:
-		case EXPR_EXPRESSION_LIST:
 		case EXPR_EXPR_BLOCK:
 		case EXPR_FAILABLE:
 		case EXPR_FLATPATH:
@@ -2386,6 +2388,33 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	}
 	if (overload)
 	{
+		if (start_from_end)
+		{
+			Decl *len = sema_find_operator(context, current_expr, OVERLOAD_LEN);
+			if (!len)
+			{
+				SEMA_ERROR(subscripted, "Cannot index '%s' from the end, since there is no 'len' overload.", type_to_error_string(subscripted->type));
+				return false;
+			}
+			if (!sema_analyse_expr(context, current_expr)) return false;
+			Decl *temp = decl_new_generated_var(current_expr->type, VARDECL_PARAM, current_expr->span);
+			Expr *decl = expr_generate_decl(temp, expr_copy(current_expr));
+			current_expr->expr_kind = EXPR_EXPRESSION_LIST;
+			current_expr->expression_list = NULL;
+			vec_add(current_expr->expression_list, decl);
+			vec_add(current_expr->expression_list, expr_variable(temp));
+			if (!sema_analyse_expr(context, current_expr)) return false;
+			Expr *var_for_len = expr_variable(temp);
+			Expr *len_expr = expr_new(EXPR_CALL, expr->span);
+			if (!sema_insert_method_call(context, len_expr, len, var_for_len, NULL)) return false;
+			if (!sema_analyse_expr(context, len_expr)) return false;
+			Expr *index_copy = expr_copy(index);
+			if (!sema_analyse_expr(context, index_copy)) return false;
+			if (!cast(index_copy, len_expr->type)) return false;
+			expr_rewrite_to_binary(index, len_expr, index_copy, BINARYOP_SUB);
+			index->resolve_status = RESOLVE_NOT_DONE;
+			if (!sema_analyse_expr(context, index)) return false;
+		}
 		if (eval_type == SUBSCRIPT_EVAL_ASSIGN)
 		{
 			expr->expr_kind = EXPR_SUBSCRIPT_ASSIGN;

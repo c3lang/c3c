@@ -36,7 +36,7 @@ fn void List.tinit(List* list, usz initial_capacity = 16)
 	list.init(initial_capacity, mem::temp_allocator()) @inline;
 }
 
-fn void List.push(List *list, Type element) @inline
+fn void List.push(List* list, Type element) @inline
 {
     list.append(element);
 }
@@ -58,14 +58,14 @@ fn Type List.pop(List* list)
 /**
  * @require list.size > 0
  */
-fn Type List.pop_first(List *list)
+fn Type List.pop_first(List* list)
 {
     Type value = list.entries[0];
     list.remove_at(0);
     return value;
 }
 
-fn void List.remove_at(List *list, usz index)
+fn void List.remove_at(List* list, usz index)
 {
     for (usz i = index + 1; i < list.size; i++)
     {
@@ -74,7 +74,7 @@ fn void List.remove_at(List *list, usz index)
     list.size--;
 }
 
-fn void List.push_front(List *list, Type type) @inline
+fn void List.push_front(List* list, Type type) @inline
 {
     list.insert_at(0, type);
 }
@@ -95,37 +95,37 @@ fn void List.remove_last(List* list)
     list.size--;
 }
 
-fn void List.remove_first(List *list)
+fn void List.remove_first(List* list)
 {
     list.remove_at(0);
 }
 
-fn Type* List.first(List *list)
+fn Type* List.first(List* list)
 {
     return list.size ? &list.entries[0] : null;
 }
 
-fn Type* List.last(List *list)
+fn Type* List.last(List* list)
 {
     return list.size ? &list.entries[list.size - 1] : null;
 }
 
-fn bool List.is_empty(List *list)
+fn bool List.is_empty(List* list)
 {
     return !list.size;
 }
 
-fn usz List.len(List *list) @operator(len)
+fn usz List.len(List* list) @operator(len)
 {
     return list.size;
 }
 
-fn Type List.get(List *list, usz index)
+fn Type List.get(List* list, usz index)
 {
     return list.entries[index];
 }
 
-fn void List.free(List *list)
+fn void List.free(List* list)
 {
 	if (!list.allocator) return;
     list.allocator.free_aligned(list.entries)!!;
@@ -134,7 +134,7 @@ fn void List.free(List *list)
     list.entries = null;
 }
 
-fn void List.swap(List *list, usz i, usz j)
+fn void List.swap(List* list, usz i, usz j)
 {
 	@swap(list.entries[i], list.entries[j]);
 }
@@ -142,7 +142,7 @@ fn void List.swap(List *list, usz i, usz j)
 /**
  * Reserve at least min_capacity
  **/
-fn void List.reserve(List *list, usz min_capacity)
+fn void List.reserve(List* list, usz min_capacity)
 {
 	if (!min_capacity) return;
 	if (list.capacity >= min_capacity) return;
@@ -163,7 +163,7 @@ macro Type* List.@item_ref(List &list, usz index) @operator(&[])
 }
 
 
-private fn void List.ensure_capacity(List *list) @inline
+private fn void List.ensure_capacity(List* list) @inline
 {
     if (list.capacity == list.size)
     {

@@ -2137,6 +2137,8 @@ void expr_rewrite_to_builtin_access(Expr *expr, Expr *parent, BuiltinAccessKind 
 void expr_rewrite_to_string(Expr *expr_to_rewrite, const char *string);
 void expr_rewrite_to_const_zero(Expr *expr, Type *type);
 bool expr_rewrite_to_const_initializer_index(Type *list_type, ConstInitializer *list, Expr *result, unsigned index);
+void expr_rewrite_to_variable(Expr *expr, Decl *decl);
+void expr_rewrite_to_binary(Expr *expr_to_rewrite, Expr *left, Expr *right, BinaryOp op);
 
 bool expr_const_in_range(const ExprConst *left, const ExprConst *right, const ExprConst *right_to);
 bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp op);
@@ -3049,7 +3051,6 @@ INLINE void expr_rewrite_const_typeid(Expr *expr, Type *type)
 	expr->type = type_typeid;
 	expr->resolve_status = RESOLVE_DONE;
 }
-
 
 INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v, bool narrowable)
 {

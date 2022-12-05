@@ -883,6 +883,20 @@ Expr *expr_variable(Decl *decl)
 	return expr;
 }
 
+void expr_rewrite_to_variable(Expr *expr, Decl *decl)
+{
+	expr->expr_kind = EXPR_IDENTIFIER;
+	if (decl->resolve_status == RESOLVE_DONE)
+	{
+		expr->identifier_expr.decl = decl;
+		expr->resolve_status = RESOLVE_DONE;
+		expr->type = decl->type;
+		return;
+	}
+	expr->identifier_expr.ident = decl->name;
+	expr->resolve_status = RESOLVE_NOT_DONE;
+}
+
 void expr_rewrite_insert_deref(Expr *original)
 {
 	// Assume *(&x) => x
@@ -920,4 +934,10 @@ void expr_rewrite_to_string(Expr *expr_to_rewrite, const char *string)
 	expr_to_rewrite->const_expr.string.len = len;
 	expr_to_rewrite->resolve_status = RESOLVE_DONE;
 	expr_to_rewrite->type = type_get_ptr(type_get_array(type_char, len));
+}
+
+void expr_rewrite_to_binary(Expr *expr_to_rewrite, Expr *left, Expr *right, BinaryOp op)
+{
+	expr_to_rewrite->binary_expr = (ExprBinary) { .operator = op, .left = exprid(left), .right = exprid(right) };
+	expr_to_rewrite->expr_kind = EXPR_BINARY;
 }
