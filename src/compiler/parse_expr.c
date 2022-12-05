@@ -719,7 +719,7 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left)
 	advance_and_verify(c, TOKEN_LPAREN);
 	bool splat = false;
 	Decl **body_args = NULL;
-	if (!tok_is(c, TOKEN_RPAREN))
+	if (!tok_is(c, TOKEN_RPAREN) && !tok_is(c, TOKEN_EOS))
 	{
 		// Pick a modest guess.
 		params = VECNEW(Expr*, 4);

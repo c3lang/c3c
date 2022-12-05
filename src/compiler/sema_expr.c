@@ -1676,10 +1676,10 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		if (body_param->var.type_info)
 		{
 			Type *declare_type = body_param->var.type_info->type->canonical;
-			if (declare_type != body_arg->type)
+			if (declare_type != body_arg->type->canonical)
 			{
-				SEMA_ERROR(body_arg->var.type_info, "This parameter should be '%s' but was '%s'",
-				           type_to_error_string(declare_type),
+				SEMA_ERROR(body_arg->var.type_info, "This parameter should be %s but was %s",
+				           type_quoted_error_string(declare_type),
 				           type_quoted_error_string(body_arg->type));
 				return false;
 			}
