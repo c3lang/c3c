@@ -1747,7 +1747,7 @@ static inline Decl *parse_define_ident(ParseContext *c, Visibility visibility)
 	// 2. At this point we expect an ident or a const token.
 	//    since the Type is handled.
 	TokenType alias_type = c->tok;
-	if (alias_type != TOKEN_IDENT && alias_type != TOKEN_CONST_IDENT)
+	if (alias_type != TOKEN_IDENT && alias_type != TOKEN_CONST_IDENT && alias_type != TOKEN_AT_IDENT)
 	{
 		if (token_is_any_type(alias_type))
 		{
@@ -1797,6 +1797,16 @@ static inline Decl *parse_define_ident(ParseContext *c, Visibility visibility)
 		if (alias_type == TOKEN_CONST_IDENT)
 		{
 			SEMA_ERROR_HERE("Expected a constant name here.");
+			return poisoned_decl;
+		}
+		if (alias_type == TOKEN_IDENT && c->tok == TOKEN_AT_IDENT)
+		{
+			SEMA_ERROR(decl, "A name with '@' prefix cannot be aliased to a name without '@', try adding a '@' before '%s'.", decl->name);
+			return poisoned_decl;
+		}
+		if (alias_type == TOKEN_AT_IDENT && c->tok == TOKEN_IDENT)
+		{
+			SEMA_ERROR(decl, "An alias cannot use '@' if the aliased identifier doesn't, please remove the '@' symbol.");
 			return poisoned_decl;
 		}
 		SEMA_ERROR_HERE("Expected a function or variable name here.");
