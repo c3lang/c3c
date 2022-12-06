@@ -939,6 +939,7 @@ static inline Ast* parse_ct_foreach_stmt(ParseContext *c)
 		*current = astid(stmt);
 		current = &stmt->next;
 	}
+	CONSUME_EOS_OR_RET(poisoned_ast);
 	return ast;
 }
 
@@ -980,6 +981,7 @@ static inline Ast* parse_ct_for_stmt(ParseContext *c)
 		*current = astid(stmt);
 		current = &stmt->next;
 	}
+	CONSUME_EOS_OR_RET(poisoned_ast);
 	return ast;
 }
 

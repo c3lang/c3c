@@ -1528,7 +1528,7 @@ static inline Type *context_unify_returns(SemaContext *context)
 		if (!max)
 		{
 			SEMA_ERROR(return_stmt, "Cannot find a common parent type of %s and %s",
-			           rtype, common_type);
+			           type_quoted_error_string(rtype), type_quoted_error_string(common_type));
 			Ast *prev = context->returns[i - 1];
 			assert(prev);
 			SEMA_NOTE(prev, "The previous return was here.");
@@ -1840,20 +1840,19 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	{
 		is_no_return = true;
 	}
-	if (returns_found == 1)
+	if (returns_found)
 	{
 		Ast *ret = macro_context.returns[0];
 		Expr *result = ret ? ret->return_stmt.expr : NULL;
-		if (result && expr_is_constant_eval(result, CONSTANT_EVAL_CONSTANT_VALUE))
+		if (!result) goto NOT_CT;
+		if (!expr_is_constant_eval(result, CONSTANT_EVAL_CONSTANT_VALUE)) goto NOT_CT;
+		if (ast_is_compile_time(body))
 		{
-			if (ast_is_compile_time(body))
-			{
-				expr_replace(call_expr, result);
-				goto EXIT;
-			}
+			expr_replace(call_expr, result);
+			goto EXIT;
 		}
 	}
-
+NOT_CT:
 	call_expr->expr_kind = EXPR_MACRO_BLOCK;
 	call_expr->macro_block.first_stmt = body->compound_stmt.first_stmt;
 	call_expr->macro_block.params = params;
