@@ -1641,10 +1641,6 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		}
 		param->var.init_expr = args[i];
 		VarDeclKind kind = param->var.kind;
-		if (kind == VARDECL_PARAM_CT_TYPE || kind == VARDECL_PARAM_CT)
-		{
-			param->var.scope_depth = context->active_scope.depth + 1;
-		}
 	}
 
 	Decl **body_params = call_expr->call_expr.body_arguments;
@@ -3928,11 +3924,6 @@ static inline bool sema_binary_analyse_ct_identifier_lvalue(SemaContext *context
 		return expr_poison(expr);
 	}
 
-	if (decl->var.scope_depth < context->active_scope.depth)
-	{
-		SEMA_ERROR(expr, "Cannot modify '%s' inside of a runtime scope.", decl->name);
-		return false;
-	}
 	expr->ct_ident_expr.decl = decl;
 	expr->resolve_status = RESOLVE_DONE;
 	return true;
@@ -5365,12 +5356,6 @@ static inline bool sema_expr_analyse_ct_incdec(SemaContext *context, Expr *expr,
 		default:
 			SEMA_ERROR(expr, "The compile time variable '%s' does not hold an integer.", var->name);
 			return false;
-	}
-
-	if (var->var.scope_depth < context->active_scope.depth)
-	{
-		SEMA_ERROR(expr, "Cannot modify '%s' inside of a runtime scope.", var->name);
-		return false;
 	}
 
 	Expr *end_value = expr_copy(start_value);

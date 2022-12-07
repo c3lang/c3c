@@ -2365,10 +2365,8 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 			UNREACHABLE
 	}
 
-	decl->var.scope_depth = context->active_scope.depth;
 	return sema_add_local(context, decl);
 FAIL:
-	decl->var.scope_depth = context->active_scope.depth;
 	sema_add_local(context, decl);
 	return decl_poison(decl);
 }

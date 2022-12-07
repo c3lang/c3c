@@ -9,6 +9,7 @@ fn void main()
 	var $y = 23;
 	bool c = $checks(int z = 23, $y += 23, &c);
 	bool d = $checks(&c, $y, int yy = 23);
+	int z = $y;
 	io::printfln("%s %s %s", b, $y, c);
 }
 
@@ -16,5 +17,6 @@ fn void main()
 
   store i32 0
   store i8 0
-  store i8 0
   store i8 1
+  store i8 1
+  store i32 46

@@ -441,7 +441,6 @@ typedef struct VarDecl_
 			struct SemaContext_ *context;
 			SourceSpan span;
 		} hash_var;
-		unsigned scope_depth; // CT var
 		struct
 		{
 			void *backend_debug_ref;
@@ -1627,6 +1626,7 @@ typedef struct SemaContext_
 		Ast **returns_cache;
 		Expr **macro_varargs;
 		Decl **macro_params;
+		Decl** ct_locals;
 	};
 	Type *rtype;
 	struct SemaContext_ *yield_context;
@@ -2082,6 +2082,7 @@ INLINE const char *decl_get_extname(Decl *decl);
 static inline Decl *decl_raw(Decl *decl);
 static inline DeclKind decl_from_token(TokenType type);
 static inline bool decl_is_local(Decl *decl);
+bool decl_is_ct_var(Decl *decl);
 Decl *decl_find_enum_constant(Decl *decl, const char *name);
 AlignSize decl_find_member_offset(Decl *decl, Decl *member);
 
@@ -3160,6 +3161,11 @@ INLINE unsigned arg_bits_max(AsmArgBits bits, unsigned limit)
 INLINE bool expr_is_const(Expr *expr)
 {
 	return expr->expr_kind == EXPR_CONST;
+}
+
+INLINE bool decl_var_kind_is_ct(VarDeclKind kind)
+{
+	return kind >= VARDECL_FIRST_CT && kind <= VARDECL_LAST_CT;
 }
 
 static inline bool decl_is_local(Decl *decl)

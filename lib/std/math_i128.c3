@@ -82,26 +82,27 @@ fn int128 __fixsfti(float a) @weak @extname("__fixsfti") = fixint(a);
 
 private macro float_from_i128($Type, a)
 {
+	var $Rep;
 	$switch ($Type):
 		$case double:
-			var $Rep = ulong;
+			$Rep = ulong;
 			const MANT_DIG = DOUBLE_MANT_DIG;
 			const SIGNIFICANT_BITS = 52;
 			const EXP_BIAS = 1023;
 			const MANTISSA_MASK = 0xFFFFF_FFFF_FFFFu64;
 			const SIGN_BIT = 1u64 << 63;
 		$case float:
-			var $Rep = uint;
+			$Rep = uint;
 			const MANT_DIG = FLOAT_MANT_DIG;
 			const EXP_BIAS = 127;
 			const SIGNIFICANT_BITS = 23;
 			const MANTISSA_MASK = 0x7F_FFFFu32;
 			const SIGN_BIT = 1u32 << 31;
 		$case float16:
-			var $Rep = ushort;
+			$Rep = ushort;
 			const MANT_DIG = HALF_MANT_DIG;
 		$case float128:
-			var $Rep = uint128;
+			$Rep = uint128;
 			const MANT_DIG = QUAD_MANT_DIG;
 	$endswitch;
 	if (a == 0) return ($Type)0;
@@ -140,24 +141,25 @@ private macro float_from_i128($Type, a)
 
 private macro float_from_u128($Type, a)
 {
+	var $Rep;
 	$switch ($Type):
 		$case double:
-			var $Rep = ulong;
+			$Rep = ulong;
 			const MANT_DIG = DOUBLE_MANT_DIG;
 			const SIGNIFICANT_BITS = 52;
 			const EXP_BIAS = 1023;
 			const MANTISSA_MASK = 0xFFFFF_FFFF_FFFFu64;
 		$case float:
-			var $Rep = uint;
+			$Rep = uint;
 			const MANT_DIG = FLOAT_MANT_DIG;
 			const EXP_BIAS = 127;
 			const SIGNIFICANT_BITS = 23;
 			const MANTISSA_MASK = 0x7F_FFFFu32;
 		$case float16:
-			var $Rep = ushort;
+			$Rep = ushort;
 			const MANT_DIG = HALF_MANT_DIG;
 		$case float128:
-			var $Rep = uint128;
+			$Rep = uint128;
 			const MANT_DIG = QUAD_MANT_DIG;
 	$endswitch;
 	if (a == 0) return ($Type)0;
@@ -194,21 +196,22 @@ private macro float_from_u128($Type, a)
 
 private macro fixuint(a)
 {
+	var $Rep;
 	$switch ($typeof(a)):
 		$case double:
-			var $Rep = ulong;
+			$Rep = ulong;
 			const EXPONENT_BITS = 11;
 			const SIGNIFICANT_BITS = 52;
 		$case float:
-			var $Rep = uint;
+			$Rep = uint;
 			const EXPONENT_BITS = 8;
 			const SIGNIFICANT_BITS = 23;
 		$case float16:
-			var $Rep = ushort;
+			$Rep = ushort;
 			const EXPONENT_BITS = 5;
 			const SIGNIFICANT_BITS = 10;
 		$case float128:
-			var $Rep = uint128;
+			$Rep = uint128;
 			const EXPONENT_BITS = 15;
 			const SIGNIFICANT_BITS = 112;
 	$endswitch;
@@ -237,21 +240,22 @@ private macro fixuint(a)
 
 private macro fixint(a)
 {
+	var $Rep;
 	$switch ($typeof(a)):
 		$case double:
-			var $Rep = ulong;
+			$Rep = ulong;
 			const EXPONENT_BITS = 11;
 			const SIGNIFICANT_BITS = 52;
 		$case float:
-			var $Rep = uint;
+			$Rep = uint;
 			const EXPONENT_BITS = 8;
 			const SIGNIFICANT_BITS = 23;
 		$case float16:
-			var $Rep = ushort;
+			$Rep = ushort;
 			const EXPONENT_BITS = 5;
 			const SIGNIFICANT_BITS = 10;
 		$case float128:
-			var $Rep = uint128;
+			$Rep = uint128;
 			const EXPONENT_BITS = 15;
 			const SIGNIFICANT_BITS = 112;
 	$endswitch;
