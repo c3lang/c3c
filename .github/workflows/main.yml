@@ -52,6 +52,11 @@ jobs:
           cd test
           python3.exe src/tester.py ..\build\${{ matrix.build_type }}\c3c.exe test_suite/
 
+      - name: Compile run stdlib tests
+        run: |
+          cd test
+          ..\build\${{ matrix.build_type }}\c3c.exe compile-test stdlib\conv_tests.c3 -g1 --safe
+
       - name: upload artifacts
         uses: actions/upload-artifact@v3
         with:

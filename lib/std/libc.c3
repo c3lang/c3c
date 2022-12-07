@@ -64,9 +64,14 @@ extern fn void srand(uint seed);
 
 define JmpBuf = CInt[$$JMP_BUF_SIZE];
 
-extern fn CInt setjmp(JmpBuf* buffer);
 extern fn void longjmp(JmpBuf* buffer, CInt value);
-
+$if (env::OS_TYPE == OsType.WIN32):
+// TODO win32 aarch64
+extern fn CInt _setjmp(void* frameptr, JmpBuf* buffer);
+macro CInt setjmp(JmpBuf* buffer) = _setjmp($$frameaddress(), buffer);
+$else:
+extern fn CInt setjmp(JmpBuf* buffer);
+$endif;
 // MB functions omitted
 
 // string

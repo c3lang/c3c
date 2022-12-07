@@ -637,6 +637,7 @@ static void llvm_codegen_setup()
 	intrinsic_id.floor = lookup_intrinsic("llvm.floor");
 	intrinsic_id.flt_rounds = lookup_intrinsic("llvm.flt.rounds");
 	intrinsic_id.fma = lookup_intrinsic("llvm.fma");
+	intrinsic_id.frameaddress = lookup_intrinsic("llvm.frameaddress");
 	intrinsic_id.fshl = lookup_intrinsic("llvm.fshl");
 	intrinsic_id.fshr = lookup_intrinsic("llvm.fshr");
 	intrinsic_id.lifetime_end = lookup_intrinsic("llvm.lifetime.end");
