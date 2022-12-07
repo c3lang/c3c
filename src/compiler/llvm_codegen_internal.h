@@ -134,6 +134,7 @@ typedef struct
 	unsigned floor;
 	unsigned flt_rounds;
 	unsigned fma;
+	unsigned frameaddress;
 	unsigned fshl;
 	unsigned fshr;
 	unsigned lifetime_end;
