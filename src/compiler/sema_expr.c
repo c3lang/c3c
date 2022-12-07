@@ -5193,18 +5193,18 @@ static inline bool sema_expr_analyse_addr(SemaContext *context, Expr *expr)
 		case EXPR_ACCESS:
 		{
 			Expr *parent = inner->access_expr.parent;
+			if (parent->expr_kind == EXPR_TYPEINFO) break;
 			Expr *parent_copy = expr_copy(parent);
 			parent->expr_kind = EXPR_UNARY;
-			parent->unary_expr = (ExprUnary) { .expr = parent_copy, .operator = UNARYOP_ADDR };
+			parent->unary_expr = (ExprUnary){ .expr = parent_copy, .operator = UNARYOP_ADDR };
 			if (!sema_analyse_expr_lvalue_fold_const(context, parent)) return false;
 			expr_rewrite_insert_deref(parent);
-			FALLTHROUGH;
+			break;
 		}
 		default:
-		{
-			if (!sema_analyse_expr_lvalue(context, inner)) return expr_poison(expr);
-		}
+			break;
 	}
+	if (!sema_analyse_expr_lvalue(context, inner)) return expr_poison(expr);
 
 	// 2. Take the address.
 	const char *error = sema_addr_check_may_take(inner);
