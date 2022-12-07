@@ -2402,9 +2402,6 @@ static inline bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement
 	return true;
 }
 
-
-
-
 bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement)
 {
 	Expr *expr = exprptr(statement->assert_stmt.expr);
@@ -2424,7 +2421,7 @@ bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement)
 	if (res == -1) return false;
 	if (!res)
 	{
-		if (message)
+		if (message_expr)
 		{
 			SEMA_ERROR(expr, "Compile time assert - %.*s", EXPAND_EXPR_STRING(message_expr));
 		}
@@ -2433,6 +2430,51 @@ bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement)
 			SEMA_ERROR(expr, "Compile time assert failed.");
 		}
 		return false;
+	}
+	statement->ast_kind = AST_NOP_STMT;
+	return true;
+}
+
+bool sema_analyse_ct_echo_stmt(SemaContext *context, Ast *statement)
+{
+	Expr *message = statement->expr_stmt;
+	if (!sema_analyse_expr(context, message)) return false;
+	if (message->expr_kind != EXPR_CONST)
+	{
+		SEMA_ERROR(message, "Expected a constant value.");
+		return false;
+	}
+	printf("] ");
+	switch (message->const_expr.const_kind)
+	{
+		case CONST_FLOAT:
+			printf("%f\n", (double)message->const_expr.fxx.f);
+			break;
+		case CONST_INTEGER:
+			puts(int_to_str(message->const_expr.ixx, 10));
+			break;
+		case CONST_BOOL:
+			puts(message->const_expr.b ? "true" : "false");
+			break;
+		case CONST_ENUM:
+		case CONST_ERR:
+			puts(message->const_expr.enum_err_val->name);
+			break;
+		case CONST_STRING:
+			printf("%.*s\n", EXPAND_EXPR_STRING(message));
+			break;
+		case CONST_POINTER:
+			printf("%p\n", (void*)message->const_expr.ptr);
+			break;
+		case CONST_TYPEID:
+			puts(type_to_error_string(message->const_expr.typeid));
+			break;
+		case CONST_BYTES:
+		case CONST_INITIALIZER:
+		case CONST_UNTYPED_LIST:
+		case CONST_MEMBER:
+			SEMA_ERROR(message, "Unsupported type for '$echo'");
+			break;
 	}
 	statement->ast_kind = AST_NOP_STMT;
 	return true;
@@ -2560,6 +2602,8 @@ static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *state
 			return sema_analyse_ct_assert_stmt(context, statement);
 		case AST_CT_IF_STMT:
 			return sema_analyse_ct_if_stmt(context, statement);
+		case AST_CT_ECHO_STMT:
+			return sema_analyse_ct_echo_stmt(context, statement);
 		case AST_DECLARE_STMT:
 			return sema_analyse_declare_stmt(context, statement);
 		case AST_DEFAULT_STMT:

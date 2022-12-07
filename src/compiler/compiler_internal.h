@@ -710,6 +710,7 @@ typedef struct Decl_
 		CtSwitchDecl ct_switch_decl;
 		CtCaseDecl ct_case_decl;
 		Ast *ct_assert_decl;
+		Ast *ct_echo_decl;
 		Decl** ct_else_decl;
 
 	};
@@ -1549,6 +1550,7 @@ struct CompilationUnit_
 	};
 	Decl **ct_ifs;
 	Decl **ct_asserts;
+	Decl **ct_echos;
 	Decl **xxlizers;
 	Decl **vars;
 	Decl **macros;
@@ -2190,6 +2192,7 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl);
 bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl);
 bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local);
 bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement);
+bool sema_analyse_ct_echo_stmt(SemaContext *context, Ast *statement);
 bool sema_analyse_statement(SemaContext *context, Ast *statement);
 bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type *left_type, Expr *right, bool is_unwrapped_var);
 bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *expr);

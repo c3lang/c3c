@@ -1412,6 +1412,7 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 		case AST_CT_SWITCH_STMT:
 		case AST_CASE_STMT:
 		case AST_DEFAULT_STMT:
+		case AST_CT_ECHO_STMT:
 		case AST_CT_FOREACH_STMT:
 			UNREACHABLE
 		case AST_SWITCH_STMT:

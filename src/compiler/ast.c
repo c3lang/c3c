@@ -96,6 +96,7 @@ Decl *decl_new_with_type(const char *name, SourceSpan loc, DeclKind decl_type, V
 		case DECL_BODYPARAM:
 		case DECL_INITIALIZE:
 		case DECL_FINALIZE:
+		case DECL_CT_ECHO:
 			UNREACHABLE
 	}
 	Type *type = type_new(kind, name ? name : "$anon");
@@ -126,6 +127,8 @@ const char *decl_to_a_name(Decl *decl)
 			return "a poisoned decl";
 		case DECL_CT_ASSERT:
 			return "a compile time assert";
+		case DECL_CT_ECHO:
+			return "a compile time echo";
 		case DECL_CT_CASE:
 			return "a compile time case";
 		case DECL_CT_ELIF:

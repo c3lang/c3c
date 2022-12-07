@@ -566,6 +566,7 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 		case DECL_ATTRIBUTE:
 		case DECL_CT_ASSERT:
 		case DECL_DEFINE:
+		case DECL_CT_ECHO:
 			UNREACHABLE
 	}
 	switch (decl->var.kind)

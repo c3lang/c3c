@@ -2850,6 +2850,7 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 		case DECL_CT_CASE:
 		case DECL_CT_IF:
 		case DECL_CT_ASSERT:
+		case DECL_CT_ECHO:
 		case DECL_FAULTVALUE:
 		case DECL_DECLARRAY:
 		case DECL_BODYPARAM:

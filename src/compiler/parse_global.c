@@ -1470,7 +1470,11 @@ bool parse_struct_body(ParseContext *c, Decl *parent)
 
 		while (1)
 		{
-			EXPECT_OR_RET(TOKEN_IDENT, false);
+			if (!tok_is(c, TOKEN_IDENT))
+			{
+				SEMA_ERROR_HERE("A valid member name was expected here.");
+				return false;
+			}
 			Decl *member = DECL_VAR_NEW(type, VARDECL_MEMBER, parent->visibility);
 			vec_add(parent->strukt.members, member);
 			index++;
@@ -2631,6 +2635,19 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 				if (docs)
 				{
 					SEMA_ERROR(astptr(docs), "Unexpected doc comment before $assert, did you mean to use a regular comment?");
+					return poisoned_decl;
+				}
+				return decl;
+			}
+		case TOKEN_CT_ECHO:
+			if (!check_no_visibility_before(c, visibility)) return poisoned_decl;
+			{
+				ASSIGN_AST_OR_RET(Ast *ast, parse_ct_echo_stmt(c), poisoned_decl);
+				decl = decl_new_ct(DECL_CT_ECHO, ast->span);
+				decl->ct_echo_decl = ast;
+				if (docs)
+				{
+					SEMA_ERROR(astptr(docs), "Unexpected doc comment before $echo, did you mean to use a regular comment?");
 					return poisoned_decl;
 				}
 				return decl;

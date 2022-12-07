@@ -53,10 +53,11 @@ typedef enum
 	AST_COMPOUND_STMT,
 	AST_CONTINUE_STMT,
 	AST_CT_ASSERT,
-	AST_CT_IF_STMT,
+	AST_CT_ECHO_STMT,
 	AST_CT_ELSE_STMT,
-	AST_CT_FOR_STMT,
 	AST_CT_FOREACH_STMT,
+	AST_CT_FOR_STMT,
+	AST_CT_IF_STMT,
 	AST_CT_SWITCH_STMT,
 	AST_DECLARE_STMT,
 	AST_DEFAULT_STMT,
@@ -138,6 +139,7 @@ typedef enum
 	DECL_CT_IF,
 	DECL_CT_SWITCH,
 	DECL_CT_ASSERT,
+	DECL_CT_ECHO,
 	DECL_DEFINE,
 	DECL_DISTINCT,
 	DECL_ENUM,
@@ -162,7 +164,8 @@ typedef enum
 #define NON_TYPE_DECLS DECL_IMPORT: case DECL_MACRO: \
 	case DECL_DECLARRAY: case DECL_CT_IF: case DECL_CT_ELSE: case DECL_CT_ELIF: \
 	case DECL_CT_SWITCH: case DECL_CT_CASE: case DECL_ATTRIBUTE: case DECL_LABEL: \
-    case DECL_DEFINE: case DECL_CT_ASSERT: case DECL_GENERIC: case DECL_INITIALIZE: case DECL_FINALIZE
+    case DECL_DEFINE: case DECL_CT_ASSERT: case DECL_GENERIC: case DECL_INITIALIZE: \
+	case DECL_FINALIZE: case DECL_CT_ECHO
 
 #define NON_RUNTIME_EXPR EXPR_DESIGNATOR: case EXPR_POISONED: \
 		case EXPR_TYPEINFO: case EXPR_CT_IDENT: case EXPR_HASH_IDENT: \
@@ -563,17 +566,18 @@ typedef enum
 	TOKEN_CT_CHECKS,            // $checks
 	TOKEN_CT_DEFAULT,           // $default
 	TOKEN_CT_DEFINED,           // $defined
-	TOKEN_CT_FOR,               // $for
-	TOKEN_CT_FOREACH,           // $foreach
+	TOKEN_CT_ECHO,              // $echo
 	TOKEN_CT_ELIF,              // $elif
 	TOKEN_CT_ELSE,              // $else
-	TOKEN_CT_EVAL,              // $eval
-	TOKEN_CT_EVALTYPE,          // $evaltype
-	TOKEN_CT_ENDIF,             // $endif
-	TOKEN_CT_ENDSWITCH,         // $endswitch
 	TOKEN_CT_ENDFOR,            // $endfor
 	TOKEN_CT_ENDFOREACH,        // $endforeach
+	TOKEN_CT_ENDIF,             // $endif
+	TOKEN_CT_ENDSWITCH,         // $endswitch
+	TOKEN_CT_EVAL,              // $eval
+	TOKEN_CT_EVALTYPE,          // $evaltype
 	TOKEN_CT_EXTNAMEOF,         // $extnameof
+	TOKEN_CT_FOR,               // $for
+	TOKEN_CT_FOREACH,           // $foreach
 	TOKEN_CT_IF,                // $if
 	TOKEN_CT_NAMEOF,            // $nameof
 	TOKEN_CT_OFFSETOF,          // $offsetof
@@ -809,6 +813,7 @@ typedef enum
 	ANALYSIS_REGISTER_GLOBALS,
 	ANALYSIS_CONDITIONAL_COMPILATION,
 	ANALYSIS_DECLS,
+	ANALYSIS_CT_ECHO,
 	ANALYSIS_CT_ASSERT,
 	ANALYSIS_FUNCTIONS,
 	ANALYSIS_LAST = ANALYSIS_FUNCTIONS

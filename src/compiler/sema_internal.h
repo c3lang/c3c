@@ -68,6 +68,7 @@ void sema_analysis_pass_register_globals(Module *module);
 void sema_analysis_pass_conditional_compilation(Module *module);
 void sema_analysis_pass_decls(Module *module);
 void sema_analysis_pass_ct_assert(Module *module);
+void sema_analysis_pass_ct_echo(Module *module);
 void sema_analysis_pass_functions(Module *module);
 void sema_analyze_stage(Module *module, AnalysisStage stage);
 

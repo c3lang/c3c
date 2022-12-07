@@ -18,6 +18,7 @@
 
 Decl *parse_top_level_statement(ParseContext *c, ParseContext **new_context);
 Ast *parse_ct_assert_stmt(ParseContext *c);
+Ast *parse_ct_echo_stmt(ParseContext *c);
 Ast *parse_stmt(ParseContext *c);
 Path *parse_path_prefix(ParseContext *c, bool *had_error);
 Expr *parse_type_expression_with_path(ParseContext *c, Path *path);

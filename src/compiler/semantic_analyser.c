@@ -141,6 +141,9 @@ void sema_analyze_stage(Module *module, AnalysisStage stage)
 			case ANALYSIS_DECLS:
 				sema_analysis_pass_decls(module);
 				break;
+			case ANALYSIS_CT_ECHO:
+				sema_analysis_pass_ct_echo(module);
+				break;
 			case ANALYSIS_CT_ASSERT:
 				sema_analysis_pass_ct_assert(module);
 				break;
@@ -166,6 +169,7 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 			case DECL_IMPORT:
 			case DECL_LABEL:
 			case DECL_CT_ASSERT:
+			case DECL_CT_ECHO:
 			case DECL_DECLARRAY:
 			case DECL_INITIALIZE:
 			case DECL_FINALIZE:
