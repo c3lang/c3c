@@ -1,7 +1,5 @@
 module std::core::string::iterator;
 
-
-
 struct StringIterator
 {
 	char[] utf8;

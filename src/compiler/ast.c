@@ -35,6 +35,13 @@ Decl *decl_new(DeclKind decl_kind, const char *name, SourceSpan span, Visibility
 	return decl;
 }
 
+bool decl_is_ct_var(Decl *decl)
+{
+	if (decl->decl_kind != DECL_VAR) return false;
+	return decl_var_kind_is_ct(decl->var.kind);
+	UNREACHABLE;
+}
+
 Decl *decl_new_with_type(const char *name, SourceSpan loc, DeclKind decl_type, Visibility visibility)
 {
 	Decl *decl = decl_calloc();

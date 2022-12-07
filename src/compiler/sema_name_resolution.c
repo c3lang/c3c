@@ -385,8 +385,18 @@ static Decl *sema_resolve_path_symbol(SemaContext *context, NameResolve *name_re
 	return decl ? decl : sema_find_decl_in_global_new(unit, &global_context.symbols, global_context.module_list, name_resolve, false);
 }
 
+static inline Decl *sema_find_ct_local(SemaContext *context, const char *symbol)
+{
+	Decl **locals = context->ct_locals;
+	FOREACH_BEGIN(Decl *cur, locals)
+		if (cur->name == symbol) return cur;
+	FOREACH_END();
+	return NULL;
+}
+
 static inline Decl *sema_find_local(SemaContext *context, const char *symbol)
 {
+	if (symbol[0] == '$') return sema_find_ct_local(context, symbol);
 	Decl **locals = context->locals;
 	if (!locals || !context->active_scope.current_local) return NULL;
 	int64_t first = 0;
@@ -793,6 +803,7 @@ Decl *sema_resolve_symbol(SemaContext *context, const char *symbol, Path *path, 
 
 static inline void sema_append_local(SemaContext *context, Decl *decl)
 {
+	assert(!decl_is_ct_var(decl));
 	Decl ***locals = &context->locals;
 	size_t locals_size = vec_size(*locals);
 	size_t current_local = context->active_scope.current_local;
@@ -811,13 +822,32 @@ static inline void sema_append_local(SemaContext *context, Decl *decl)
 	context->active_scope.current_local++;
 }
 
+INLINE bool sema_add_ct_local(SemaContext *context, Decl *decl)
+{
+	assert(decl_is_ct_var(decl));
+
+	Decl *other = sema_find_ct_local(context, decl->name);
+	if (other)
+	{
+		sema_shadow_error(decl, other);
+		decl_poison(decl);
+		decl_poison(other);
+		return false;
+	}
+	decl->resolve_status = RESOLVE_DONE;
+	vec_add(context->ct_locals, decl);
+	return true;
+}
+
 bool sema_add_local(SemaContext *context, Decl *decl)
 {
 	CompilationUnit *current_unit = decl->unit = context->unit;
 
 	// Ignore synthetic locals.
 	if (!decl->name) return true;
-	if (decl->decl_kind == DECL_VAR && decl->var.shadow) goto ADD_VAR;
+	bool is_var = decl->decl_kind == DECL_VAR;
+	if (is_var && decl_var_kind_is_ct(decl->var.kind)) return sema_add_ct_local(context, decl);
+	if (is_var && decl->var.shadow) goto ADD_VAR;
 
 	Decl *other = sema_find_local(context, decl->name);
 	assert(!other || other->unit->module);
@@ -833,6 +863,7 @@ ADD_VAR:
 	sema_append_local(context, decl);
 	return true;
 }
+
 
 void sema_unwrap_var(SemaContext *context, Decl *decl)
 {

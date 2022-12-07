@@ -321,13 +321,26 @@ void sema_analysis_run(void)
 
 void sema_context_init(SemaContext *context, CompilationUnit *unit)
 {
-	*context = (SemaContext) { .unit = unit, .compilation_unit = unit, .locals = global_context_acquire_locals_list() };
+	*context = (SemaContext) { .unit = unit, .compilation_unit = unit,
+							   .ct_locals = global_context_acquire_locals_list(),
+							   .locals = global_context_acquire_locals_list() };
+}
+
+void sema_context_pop_ct_stack(SemaContext *context, unsigned old_state)
+{
+	vec_resize(context->ct_locals, old_state);
+}
+
+unsigned sema_context_push_ct_stack(SemaContext *context)
+{
+	return vec_size(context->ct_locals);
 }
 
 void sema_context_destroy(SemaContext *context)
 {
 	if (!context->unit) return;
 	generic_context_release_locals_list(context->locals);
+	generic_context_release_locals_list(context->ct_locals);
 }
 
 Decl **global_context_acquire_locals_list(void)
@@ -338,6 +351,7 @@ Decl **global_context_acquire_locals_list(void)
 	}
 	Decl **result = VECLAST(global_context.locals_list);
 	vec_pop(global_context.locals_list);
+	vec_resize(result, 0);
 	return result;
 }
 

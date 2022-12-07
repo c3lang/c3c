@@ -1829,9 +1829,14 @@ static inline bool sema_analyse_then_overwrite(SemaContext *context, Ast *statem
 
 static inline bool sema_analyse_ct_if_stmt(SemaContext *context, Ast *statement)
 {
+	unsigned ct_context = sema_context_push_ct_stack(context);
 	int res = sema_check_comp_time_bool(context, statement->ct_if_stmt.expr);
-	if (res == -1) return false;
-	if (res) return sema_analyse_then_overwrite(context, statement, statement->ct_if_stmt.then);
+	if (res == -1) goto FAILED;
+	if (res)
+	{
+		if (sema_analyse_then_overwrite(context, statement, statement->ct_if_stmt.then)) goto SUCCESS;
+		goto FAILED;
+	}
 	Ast *elif = astptrzero(statement->ct_if_stmt.elif);
 	while (1)
 	{
@@ -1839,20 +1844,31 @@ static inline bool sema_analyse_ct_if_stmt(SemaContext *context, Ast *statement)
 		{
 			// Turn into NOP!
 			statement->ast_kind = AST_NOP_STMT;
-			return true;
+			goto SUCCESS;
 		}
 		// We found else, then just replace with that.
 		if (elif->ast_kind == AST_CT_ELSE_STMT)
 		{
-			return sema_analyse_then_overwrite(context, statement, elif->ct_else_stmt);
+			if (sema_analyse_then_overwrite(context, statement, elif->ct_else_stmt)) goto SUCCESS;
+			goto FAILED;
 		}
 		assert(elif->ast_kind == AST_CT_IF_STMT);
 
 		res = sema_check_comp_time_bool(context, elif->ct_if_stmt.expr);
-		if (res == -1) return false;
-		if (res) return sema_analyse_then_overwrite(context, statement, elif->ct_if_stmt.then);
+		if (res == -1) goto FAILED;
+		if (res)
+		{
+			if (sema_analyse_then_overwrite(context, statement, elif->ct_if_stmt.then)) goto SUCCESS;
+			goto FAILED;
+		}
 		elif = astptrzero(elif->ct_if_stmt.elif);
 	}
+SUCCESS:
+	sema_context_pop_ct_stack(context, ct_context);
+	return true;
+FAILED:
+	sema_context_pop_ct_stack(context, ct_context);
+	return false;
 }
 
 static inline bool sema_analyse_compound_statement_no_scope(SemaContext *context, Ast *compound_statement)
@@ -2083,9 +2099,10 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 
 static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statement)
 {
+	unsigned ct_context = sema_context_push_ct_stack(context);
 	// Evaluate the switch statement
 	Expr *cond = exprptr(statement->ct_switch_stmt.cond);
-	if (!sema_analyse_ct_expr(context, cond)) return false;
+	if (!sema_analyse_ct_expr(context, cond)) goto FAILED;
 
 	// If we have a type, then we do different evaluation
 	// compared to when it is a value.
@@ -2105,7 +2122,7 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 			FALLTHROUGH;
 		default:
 			SEMA_ERROR(cond, "Only types, strings, integers, floats and booleans may be used with '$switch'.");
-			return false;
+			goto FAILED;
 	}
 
 	ExprConst *switch_expr_const = &cond->const_expr;
@@ -2132,39 +2149,39 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 					if (!type_is_integer(type) && !type_is_float(type))
 					{
 						SEMA_ERROR(to_expr, "$case ranges are only allowed for floats and integers.");
-						return false;
+						goto FAILED;
 					}
 				}
 				if (is_type)
 				{
-					if (!sema_analyse_ct_expr(context, expr)) return false;
+					if (!sema_analyse_ct_expr(context, expr)) goto FAILED;
 					if (expr->type != type_typeid)
 					{
 						SEMA_ERROR(expr, "A type was expected here not %s.", type_quoted_error_string(expr->type));
-						return false;
+						goto FAILED;
 					}
 				}
 				else
 				{
-					if (!sema_analyse_expr_rhs(context, type, expr, false)) return false;
-					if (to_expr && !sema_analyse_expr_rhs(context, type, to_expr, false)) return false;
+					if (!sema_analyse_expr_rhs(context, type, expr, false)) goto FAILED;
+					if (to_expr && !sema_analyse_expr_rhs(context, type, to_expr, false)) goto FAILED;
 				}
 				if (!expr_is_const(expr))
 				{
 					SEMA_ERROR(expr, "The $case must have a constant expression.");
-					return false;
+					goto FAILED;
 				}
 				if (to_expr && !expr_is_const(to_expr))
 				{
 					SEMA_ERROR(to_expr, "The $case must have a constant expression.");
-					return false;
+					goto FAILED;
 				}
 				ExprConst *const_expr = &expr->const_expr;
 				ExprConst *const_to_expr = to_expr ? &to_expr->const_expr : const_expr;
 				if (to_expr && expr_const_compare(const_expr, const_to_expr, BINARYOP_GT))
 				{
 					SEMA_ERROR(to_expr, "The end of a range must be less or equal to the beginning.");
-					return false;
+					goto FAILED;
 				}
 				// Check that it is unique.
 				for (unsigned j = 0; j < i; j++)
@@ -2177,7 +2194,7 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 					{
 						SEMA_ERROR(stmt, "'%s' appears more than once.", expr_const_to_error_string(const_expr));
 						SEMA_NOTE(cases[j]->case_stmt.expr, "The previous $case was here.");
-						return false;
+						goto FAILED;
 					}
 				}
 				if (expr_const_in_range(switch_expr_const, const_expr, const_to_expr))
@@ -2191,7 +2208,7 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 				{
 					SEMA_ERROR(stmt, "More than one $default is not allowed.");
 					SEMA_NOTE(cases[default_case], "The previous $default was here.");
-					return false;
+					goto FAILED;
 				}
 				default_case = (int)i;
 				continue;
@@ -2211,20 +2228,27 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 	if (!body)
 	{
 		statement->ast_kind = AST_NOP_STMT;
-		return true;
+		goto SUCCESS;
 	}
-	return sema_analyse_then_overwrite(context, statement, body->compound_stmt.first_stmt);
+	if (!sema_analyse_then_overwrite(context, statement, body->compound_stmt.first_stmt)) goto FAILED;
+SUCCESS:
+	sema_context_pop_ct_stack(context, ct_context);
+	return true;
+FAILED:
+	sema_context_pop_ct_stack(context, ct_context);
+	return false;
 }
 
 
 static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *statement)
 {
+	unsigned ct_context = sema_context_push_ct_stack(context);
 	Expr *collection = exprptr(statement->ct_foreach_stmt.expr);
 	if (!sema_analyse_ct_expr(context, collection)) return false;
 	if (!expr_is_const_untyped_list(collection) && !expr_is_const_initializer(collection))
 	{
 		SEMA_ERROR(collection, "Expected a list to iterate over");
-		return false;
+		goto FAILED;
 	}
 	unsigned count;
 	ConstInitializer *initializer = NULL;
@@ -2242,11 +2266,15 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 		else
 		{
 			// Empty list
-			if (init_type == CONST_INIT_ZERO) return true;
+			if (init_type == CONST_INIT_ZERO)
+			{
+				sema_context_pop_ct_stack(context, ct_context);
+				return true;
+			}
 			if (init_type != CONST_INIT_ARRAY_FULL)
 			{
 				SEMA_ERROR(collection, "Only regular arrays are allowed here.");
-				return false;
+				goto FAILED;
 			}
 			count = vec_size(initializer->init_array_full);
 		}
@@ -2260,48 +2288,52 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 	const char *index_name = statement->ct_foreach_stmt.index_name;
 
 	AstId start = 0;
-	SCOPE_START;
-		if (index_name)
+	if (index_name)
+	{
+		index = decl_new_var(index_name, statement->ct_foreach_stmt.index_span, NULL, VARDECL_LOCAL_CT, VISIBLE_LOCAL);
+		index->type = type_int;
+		if (!sema_add_local(context, index)) goto FAILED;
+	}
+	Decl *value = decl_new_var(statement->ct_foreach_stmt.value_name, statement->ct_foreach_stmt.value_span, NULL, VARDECL_LOCAL_CT, VISIBLE_LOCAL);
+	if (!sema_add_local(context, value)) goto FAILED;
+	// Get the body
+	Ast *body = astptr(statement->ct_foreach_stmt.body);
+	AstId *current = &start;
+	unsigned loop_context = sema_context_push_ct_stack(context);
+	for (unsigned i = 0; i < count; i++)
+	{
+		sema_context_pop_ct_stack(context, loop_context);
+		Ast *compound_stmt = copy_ast_single(body);
+		if (expressions)
 		{
-			index = decl_new_var(index_name, statement->ct_foreach_stmt.index_span, NULL, VARDECL_LOCAL_CT, VISIBLE_LOCAL);
+			value->var.init_expr = expressions[i];
+		}
+		else
+		{
+			Expr *expr = expr_new(EXPR_CONST, collection->span);
+			if (!expr_rewrite_to_const_initializer_index(const_list_type, initializer, expr, i))
+			{
+				SEMA_ERROR(collection, "Complex expressions are not allowed.");
+				goto FAILED;
+			}
+			value->var.init_expr = expr;
+		}
+		if (index)
+		{
+			index->var.init_expr = expr_new_const_int(index->span, type_int, i, true);
 			index->type = type_int;
-			if (!sema_add_local(context, index)) return SCOPE_POP_ERROR();
 		}
-		Decl *value = decl_new_var(statement->ct_foreach_stmt.value_name, statement->ct_foreach_stmt.value_span, NULL, VARDECL_LOCAL_CT, VISIBLE_LOCAL);
-		if (!sema_add_local(context, value)) return SCOPE_POP_ERROR();
-		// Get the body
-		Ast *body = astptr(statement->ct_foreach_stmt.body);
-		AstId *current = &start;
-		for (unsigned i = 0; i < count; i++)
-		{
-			Ast *compound_stmt = copy_ast_single(body);
-			if (expressions)
-			{
-				value->var.init_expr = expressions[i];
-			}
-			else
-			{
-				Expr *expr = expr_new(EXPR_CONST, collection->span);
-				if (!expr_rewrite_to_const_initializer_index(const_list_type, initializer, expr, i))
-				{
-					SEMA_ERROR(collection, "Complex expressions are not allowed.");
-					return false;
-				}
-				value->var.init_expr = expr;
-			}
-			if (index)
-			{
-				index->var.init_expr = expr_new_const_int(index->span, type_int, i, true);
-				index->type = type_int;
-			}
-			if (!sema_analyse_compound_stmt(context, compound_stmt)) return SCOPE_POP_ERROR();
-			*current = astid(compound_stmt);
-			current = &compound_stmt->next;
-		}
-	SCOPE_END;
+		if (!sema_analyse_compound_stmt(context, compound_stmt)) goto FAILED;
+		*current = astid(compound_stmt);
+		current = &compound_stmt->next;
+	}
+	sema_context_pop_ct_stack(context, ct_context);
 	statement->ast_kind = AST_COMPOUND_STMT;
 	statement->compound_stmt.first_stmt = start;
 	return true;
+FAILED:
+	sema_context_pop_ct_stack(context, ct_context);
+	return false;
 }
 
 static inline bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement)
@@ -2411,6 +2443,7 @@ bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement)
  */
 static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement)
 {
+	unsigned for_context = sema_context_push_ct_stack(context);
 	bool success = false;
 	ExprId init;
 	if ((init = statement->for_stmt.init))
@@ -2427,13 +2460,13 @@ static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement
 				if (decl->decl_kind != DECL_VAR || (decl->var.kind != VARDECL_LOCAL_CT && decl->var.kind != VARDECL_LOCAL_CT_TYPE))
 				{
 					SEMA_ERROR(expr, "Only 'var $foo' and 'var $Type' declarations are allowed in '$for'");
-					return false;
+					goto FAILED;
 				}
-				if (!sema_analyse_var_decl_ct(context, decl)) return false;
+				if (!sema_analyse_var_decl_ct(context, decl)) goto FAILED;
 				continue;
 			}
 			// If expression evaluate it and make sure it is constant.
-			if (!sema_analyse_ct_expr(context, expr)) return false;
+			if (!sema_analyse_ct_expr(context, expr)) goto FAILED;
 		FOREACH_END();
 	}
 	ExprId condition = statement->for_stmt.cond;
@@ -2445,16 +2478,18 @@ static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement
 	assert(condition);
 	// We set a maximum of macro iterations.
 	// we might consider reducing this.
+	unsigned current_ct_scope = sema_context_push_ct_stack(context);
 	for (int i = 0; i < MAX_MACRO_ITERATIONS; i++)
 	{
+		sema_context_pop_ct_stack(context, current_ct_scope);
 		// First evaluate the cond, which we note that we *must* have.
 		// we need to make a copy
 		Expr *copy = copy_expr_single(exprptr(condition));
-		if (!sema_analyse_cond_expr(context, copy)) return false;
+		if (!sema_analyse_cond_expr(context, copy)) goto FAILED;
 		if (!expr_is_const(copy))
 		{
 			SEMA_ERROR(copy, "Expected a value that can be evaluated at compile time.");
-			return false;
+			goto FAILED;
 		}
 		// This is simple, since we know we have a boolean, just break if we reached "false"
 		if (!copy->const_expr.b) break;
@@ -2463,7 +2498,7 @@ static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement
 		Ast *compound_stmt = copy_ast_single(body);
 
 		// Analyse the body
-		if (!sema_analyse_compound_statement_no_scope(context, compound_stmt)) return false;
+		if (!sema_analyse_compound_statement_no_scope(context, compound_stmt)) goto FAILED;
 
 		// Append it.
 		*current = astid(compound_stmt);
@@ -2471,13 +2506,16 @@ static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement
 
 		// Copy and evaluate all the expressions in "incr"
 		FOREACH_BEGIN(Expr *expr, incr_list)
-			if (!sema_analyse_ct_expr(context, copy_expr_single(expr))) return false;
+			if (!sema_analyse_ct_expr(context, copy_expr_single(expr))) goto FAILED;
 		FOREACH_END();
 	}
 	// Analysis is done turn the generated statements into a compound statement for lowering.
 	statement->ast_kind = AST_COMPOUND_STMT;
 	statement->compound_stmt = (AstCompoundStmt) { .first_stmt = start };
 	return true;
+FAILED:
+	sema_context_pop_ct_stack(context, for_context);
+	return false;
 }
 
 
@@ -2718,6 +2756,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 			.label_start = 0,
 			.current_local = 0
 	};
+	vec_resize(context->ct_locals, 0);
 
 	// Clear returns
 	vec_resize(context->returns, 0);
