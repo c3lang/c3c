@@ -9,12 +9,12 @@
 typedef struct TaskQueue_
 {
 	pthread_t *threads;
-	int thread_count;
+	volatile int thread_count;
 	pthread_mutex_t lock;
 	pthread_cond_t notify;
-	Task **queue;
-	bool shutdown;
-	int active_threads;
+	volatile Task **queue;
+	volatile bool shutdown;
+	volatile int active_threads;
 } TaskQueue;
 
 static void *taskqueue_thread(void *queue)
@@ -36,7 +36,7 @@ static void *taskqueue_thread(void *queue)
 		}
 		if (task_queue->shutdown) break;
 
-		Task *task = task_queue->queue[vec_size(task_queue->queue) - 1];
+		Task *task = (Task*)task_queue->queue[vec_size(task_queue->queue) - 1];
 		vec_pop(task_queue->queue);
 		task_queue->active_threads++;
 		was_active = true;
