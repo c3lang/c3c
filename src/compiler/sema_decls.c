@@ -453,14 +453,14 @@ static bool sema_analyse_struct_union(SemaContext *context, Decl *decl)
 	if (decl->name)
 	{
 		Decl** state = sema_decl_stack_store();
-			if (decl->decl_kind == DECL_UNION)
-			{
-				success = sema_analyse_union_members(context, decl, decl->strukt.members);
-			}
-			else
-			{
-				success = sema_analyse_struct_members(context, decl, decl->strukt.members);
-			}
+		if (decl->decl_kind == DECL_UNION)
+		{
+			success = sema_analyse_union_members(context, decl, decl->strukt.members);
+		}
+		else
+		{
+			success = sema_analyse_struct_members(context, decl, decl->strukt.members);
+		}
 		sema_decl_stack_restore(state);
 	}
 	else
@@ -2719,6 +2719,7 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 		{
 			Type *type = type_new(TYPE_TYPEDEF, decl->name);
 			decl->type = type;
+			type->decl = symbol;
 			decl->decl_kind = DECL_TYPEDEF;
 			type->canonical = symbol->type->canonical;
 			return true;
