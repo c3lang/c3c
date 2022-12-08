@@ -47,8 +47,8 @@ Decl *parse_decl_after_type(ParseContext *c, TypeInfo *type);
 Decl *parse_var_decl(ParseContext *c);
 
 bool
-parse_parameters(ParseContext *c, Visibility visibility, Decl ***params_ref, Decl **body_params, Variadic *variadic,
-                 int *vararg_index_ref);
+parse_parameters(ParseContext *c, Visibility visibility, Decl ***params_ref, Decl **body_params,
+                 Variadic *variadic, int *vararg_index_ref, bool is_body_params);
 
 bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *splat, bool vasplat);
 Expr *parse_type_compound_literal_expr_after_type(ParseContext *c, TypeInfo *type_info);

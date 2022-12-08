@@ -1127,7 +1127,7 @@ static inline bool parse_param_decl(ParseContext *c, Visibility parent_visibilit
 	return true;
 }
 
-bool parse_next_is_typed_parameter(ParseContext *c)
+static bool parse_next_is_typed_parameter(ParseContext *c, bool is_body_param)
 {
 	switch (c->tok)
 	{
@@ -1138,6 +1138,8 @@ bool parse_next_is_typed_parameter(ParseContext *c)
 		case TYPE_TOKENS:
 		case TOKEN_TYPE_IDENT:
 			return true;
+		case CT_TYPE_TOKENS:
+			return is_body_param;
 		default:
 			return false;
 	}
@@ -1154,7 +1156,7 @@ INLINE bool is_end_of_param_list(ParseContext *c)
  *             | ELLIPSIS (CT_TYPE_IDENT | non_type_ident ('=' expr)?)?
  */
 bool parse_parameters(ParseContext *c, Visibility visibility, Decl ***params_ref, Decl **body_params,
-                      Variadic *variadic, int *vararg_index_ref)
+                      Variadic *variadic, int *vararg_index_ref, bool is_body_params)
 {
 	Decl** params = NULL;
 	bool var_arg_found = false;
@@ -1194,7 +1196,7 @@ bool parse_parameters(ParseContext *c, Visibility visibility, Decl ***params_ref
 
 		// Now we have the following possibilities: "foo", "Foo foo", "Foo... foo", "foo...", "Foo"
 		TypeInfo *type = NULL;
-		if (parse_next_is_typed_parameter(c))
+		if (parse_next_is_typed_parameter(c, is_body_params))
 		{
 			// Parse the type,
 			ASSIGN_TYPE_OR_RET(type, parse_optional_type(c), false);
@@ -1373,7 +1375,7 @@ static inline bool parse_fn_parameter_list(ParseContext *c, Visibility parent_vi
 	CONSUME_OR_RET(TOKEN_LPAREN, false);
 	Variadic variadic = VARIADIC_NONE;
 	int vararg_index = -1;
-	if (!parse_parameters(c, parent_visibility, &decls, NULL, &variadic, &vararg_index)) return false;
+	if (!parse_parameters(c, parent_visibility, &decls, NULL, &variadic, &vararg_index, false)) return false;
 	CONSUME_OR_RET(TOKEN_RPAREN, false);
 	signature->vararg_index = vararg_index < 0 ? vec_size(decls) : vararg_index;
 	signature->params = decls;
@@ -1621,7 +1623,7 @@ static bool parse_macro_arguments(ParseContext *c, Visibility visibility, Decl *
 	Variadic variadic = VARIADIC_NONE;
 	int vararg_index = -1;
 	Decl **params = NULL;
-	if (!parse_parameters(c, visibility, &params, NULL, &variadic, &vararg_index)) return false;
+	if (!parse_parameters(c, visibility, &params, NULL, &variadic, &vararg_index, false)) return false;
 	macro->func_decl.signature.params = params;
 	macro->func_decl.signature.vararg_index = vararg_index < 0 ? vec_size(params) : vararg_index;
 	macro->func_decl.signature.variadic = variadic;
@@ -1634,7 +1636,7 @@ static bool parse_macro_arguments(ParseContext *c, Visibility visibility, Decl *
 		TRY_CONSUME_OR_RET(TOKEN_AT_IDENT, "Expected an ending ')' or a block parameter on the format '@block(...).", false);
 		if (try_consume(c, TOKEN_LPAREN))
 		{
-			if (!parse_parameters(c, visibility, &body_param->body_params, NULL, NULL, NULL)) return false;
+			if (!parse_parameters(c, visibility, &body_param->body_params, NULL, NULL, NULL, false)) return false;
 			CONSUME_OR_RET(TOKEN_RPAREN, false);
 		}
 		macro->func_decl.body_param = declid(body_param);
@@ -1848,7 +1850,7 @@ static inline Decl *parse_define_attribute(ParseContext *c, Visibility visibilit
 
 	if (try_consume(c, TOKEN_LPAREN))
 	{
-		if (!parse_parameters(c, visibility, &decl->attr_decl.params, NULL, NULL, NULL)) return poisoned_decl;
+		if (!parse_parameters(c, visibility, &decl->attr_decl.params, NULL, NULL, NULL, false)) return poisoned_decl;
 		CONSUME_OR_RET(TOKEN_RPAREN, poisoned_decl);
 	}
 

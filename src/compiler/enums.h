@@ -611,9 +611,9 @@ typedef enum
   case TOKEN_UPTR: case TOKEN_USHORT: case TOKEN_USIZE:\
   case TOKEN_USZ: case TOKEN_ISZ: case TOKEN_FLOAT128: case TOKEN_TYPEID: case TOKEN_ANYERR: case TOKEN_VARIANT
 #define TYPE_TOKENS NON_VOID_TYPE_TOKENS: case TOKEN_VOID
-#define TYPELIKE_TOKENS TYPE_TOKENS: case TOKEN_TYPE_IDENT: \
-	case TOKEN_CT_TYPE_IDENT: case TOKEN_CT_TYPEOF: case TOKEN_CT_EVALTYPE: \
+#define CT_TYPE_TOKENS TOKEN_CT_TYPE_IDENT: case TOKEN_CT_TYPEOF: case TOKEN_CT_EVALTYPE: \
 	case TOKEN_CT_VATYPE: case TOKEN_CT_TYPEFROM
+#define TYPELIKE_TOKENS TYPE_TOKENS: case TOKEN_TYPE_IDENT: case CT_TYPE_TOKENS
 
 // Note that ordering matters here. If ordering is changed,
 // So must type_find_max_type and friends.
