@@ -63,3 +63,27 @@ const usz LLVM_VERSION = $$LLVM_VERSION;
 const bool BENCHMARKING = $$BENCHMARKING;
 const bool TESTING = $$TESTING;
 const usz TEMP_ALLOCATOR_SIZE = 128 * 1024;
+
+macro bool os_is_posix()
+{
+	$switch (OS_TYPE):
+	$case IOS:
+	$case MACOSX:
+	$case NETBSD:
+	$case LINUX:
+	$case KFREEBSD:
+	$case FREEBSD:
+	$case OPENBSD:
+	$case SOLARIS:
+	$case TVOS:
+	$case WATCHOS:
+		return true;
+	$case WIN32:
+	$case WASI:
+	$case EMSCRIPTEN:
+		return false;
+	$default:
+		$echo("Assuming non-Posix environment");
+		return false;
+	$endswitch;
+}

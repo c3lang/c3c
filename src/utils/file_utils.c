@@ -246,7 +246,7 @@ static inline const char *lib_find(const char *exe_path, const char *rel_path)
 	if (err || !S_ISDIR(info.st_mode)) return NULL;
 
 	DEBUG_LOG("Potential lib found, sanity check for libc...");
-	scratch_buffer_append("/libc.c3");
+	scratch_buffer_append("/libc/libc.c3");
 	err = stat(scratch_buffer_to_string(), &info);
 	if (err || !S_ISREG(info.st_mode)) return NULL;
 
