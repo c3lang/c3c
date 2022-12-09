@@ -3,6 +3,7 @@
 // a copy of which can be found in the LICENSE file.
 
 #include "llvm_codegen_internal.h"
+#include "compiler_tests/benchmark.h"
 
 #include <llvm-c/Error.h>
 #include <llvm-c/Comdat.h>
@@ -56,6 +57,7 @@ static void diagnostics_handler(LLVMDiagnosticInfoRef ref, void *context)
 
 static void gencontext_init(GenContext *context, Module *module, LLVMContextRef shared_context)
 {
+	assert(LLVMIsMultithreaded());
 	memset(context, 0, sizeof(GenContext));
 	if (shared_context)
 	{
@@ -66,7 +68,11 @@ static void gencontext_init(GenContext *context, Module *module, LLVMContextRef 
 	{
 		context->context = LLVMContextCreate();
 	}
-	LLVMContextSetDiagnosticHandler(context->context, &diagnostics_handler, context);
+	if (debug_log)
+	{
+		LLVMContextSetDiagnosticHandler(context->context, &diagnostics_handler, context);
+	}
+	if (!active_target.emit_llvm && !active_target.test_output) LLVMContextSetDiscardValueNames(context->context, true);
 	context->code_module = module;
 }
 
@@ -1069,8 +1075,8 @@ INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMC
 		LLVMValueRef array_of_names = LLVMConstArray(chars_type, names, test_count);
 		LLVMValueRef array_of_decls = LLVMConstArray(LLVMPointerType(opt_test, 0), decls, test_count);
 		LLVMTypeRef arr_type = LLVMTypeOf(array_of_names);
-		name_ref = llvm_add_global_raw(c, ".test_names", arr_type, llvm_alloc_size(c, arr_type));
-		decl_ref = llvm_add_global_raw(c, ".test_decls", LLVMTypeOf(array_of_decls), llvm_alloc_size(c, arr_type));
+		name_ref = llvm_add_global_raw(c, ".test_names", arr_type, 0);
+		decl_ref = llvm_add_global_raw(c, ".test_decls", LLVMTypeOf(array_of_decls), 0);
 		llvm_set_internal_linkage(name_ref);
 		llvm_set_internal_linkage(decl_ref);
 		LLVMSetGlobalConstant(name_ref, 1);

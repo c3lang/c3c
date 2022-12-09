@@ -1,4 +1,5 @@
 #include "lib.h"
+#include "compiler_tests/benchmark.h"
 
 // Our task queue is only made for scheduling compilation tasks so there is
 // a single thread that adds the tasks.
@@ -17,60 +18,56 @@ typedef struct TaskQueue_
 	volatile int active_threads;
 } TaskQueue;
 
-static void *taskqueue_thread(void *queue)
+static void *taskqueue_thread(void *data)
 {
-	TaskQueue *task_queue = queue;
-	bool was_active = false;
+	TaskQueue *task_queue = data;
+	bool is_active = false;
 	while (1)
 	{
 		pthread_mutex_lock(&task_queue->lock);
-		if (was_active)
+		unsigned task_count = vec_size(task_queue->queue);
+		if (!task_count || task_queue->shutdown) goto SHUTDOWN;
+		if (!is_active)
 		{
-			was_active = false;
-			if (--task_queue->active_threads == 0) pthread_cond_broadcast(&task_queue->notify);
+			task_queue->active_threads++;
+			is_active = true;
 		}
-		// Wait for a task.
-		while (!vec_size(task_queue->queue) && !task_queue->shutdown)
-		{
-			pthread_cond_wait(&task_queue->notify, &task_queue->lock);
-		}
-		if (task_queue->shutdown) break;
-
-		Task *task = (Task*)task_queue->queue[vec_size(task_queue->queue) - 1];
+		Task *task = (Task*)task_queue->queue[task_count - 1];
 		vec_pop(task_queue->queue);
-		task_queue->active_threads++;
-		was_active = true;
 		pthread_mutex_unlock(&task_queue->lock);
 		task->task(task->arg);
+	}
+SHUTDOWN:
+	if (is_active && --task_queue->active_threads == 0)
+	{
+		pthread_cond_broadcast(&task_queue->notify);
 	}
 	pthread_mutex_unlock(&task_queue->lock);
 	pthread_exit(NULL);
 	return NULL;
 }
 
-TaskQueueRef taskqueue_create(int threads)
+TaskQueueRef taskqueue_create(int threads, Task **task_list)
 {
 	assert(threads > 0);
 	TaskQueue *queue = CALLOCS(TaskQueue);
 	queue->threads = MALLOC(sizeof(pthread_t) * (unsigned)threads);
 	queue->thread_count = threads;
+	queue->queue = (volatile Task **)task_list;
 	if (pthread_mutex_init(&queue->lock, NULL)) error_exit("Failed to set up mutex");
 	if (pthread_cond_init(&queue->notify, NULL)) error_exit("Failed to set up cond");
+	pthread_attr_t custom_sched_attr;
+	pthread_attr_init(&custom_sched_attr);
+	pthread_attr_setscope(&custom_sched_attr, PTHREAD_SCOPE_SYSTEM);
 	for (int i = 0; i < threads; i++)
 	{
-		if (pthread_create(&(queue->threads[i]), NULL, taskqueue_thread, queue)) error_exit("Fail to set up thread pool");
+		pthread_t *pthread = &queue->threads[i];
+
+		if (pthread_create(pthread, &custom_sched_attr, taskqueue_thread, queue)) error_exit("Fail to set up thread pool");
+		struct sched_param prio = { sched_get_priority_max(SCHED_OTHER) };
+		if (pthread_setschedparam(*pthread, SCHED_OTHER, &prio)) error_exit("Failed to set thread priority");
 	}
 	return queue;
-}
-
-void taskqueue_add(TaskQueueRef queue_ref, Task *task)
-{
-	TaskQueue *queue = queue_ref;
-	assert(queue);
-	if (pthread_mutex_lock(&queue->lock) != 0) error_exit("Failed to lock task queue.");
-	vec_add(queue->queue, task);
-	if (pthread_cond_signal(&queue->notify) != 0) error_exit("Failed to signal tasks.");
-	if (pthread_mutex_unlock(&queue->lock) != 0) error_exit("Failed to unlock task queue");
 }
 
 void taskqueue_wait_for_completion(TaskQueueRef queue_ref)
@@ -83,7 +80,6 @@ void taskqueue_wait_for_completion(TaskQueueRef queue_ref)
 		pthread_cond_wait(&queue->notify, &queue->lock);
 	}
 	if (pthread_mutex_unlock(&queue->lock) != 0) error_exit("Failed to unlock task queue");
-
 }
 
 void taskqueue_destroy(TaskQueueRef queue_ref)
@@ -94,7 +90,6 @@ void taskqueue_destroy(TaskQueueRef queue_ref)
 	assert(!queue->shutdown);
 	vec_resize(queue->queue, 0);
 	queue->shutdown = true;
-	if (pthread_cond_broadcast(&queue->notify)) error_exit("Failed to signal tasks.");
 	if (pthread_mutex_unlock(&queue->lock) != 0) error_exit("Failed to unlock task queue.");
 	for (int i = 0; i < queue->thread_count; i++)
 	{
@@ -111,16 +106,19 @@ void taskqueue_destroy(TaskQueueRef queue_ref)
 
 void taskqueue_add(TaskQueueRef queue_ref, Task *task)
 {
-	task->task(task->arg);
 }
 
-TaskQueueRef taskqueue_create(int threads)
+TaskQueueRef taskqueue_create(int threads, Task **tasks)
 {
-	return NULL;
+	return tasks;
 }
 
 void taskqueue_wait_for_completion(TaskQueueRef queue)
 {
+	Task **tasks = queue;
+	FOREACH_BEGIN(Task *task, tasks)
+	task->task(task->arg);
+	FOREACH_END();
 }
 
 #endif

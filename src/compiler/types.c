@@ -1882,9 +1882,14 @@ Type *type_find_max_type(Type *type, Type *other)
 			other = other->function.prototype->raw_type;
 			type = other->function.prototype->raw_type;
 			return other == type ? type : NULL;
+		case TYPE_UNTYPED_LIST:
+			if (other->type_kind == TYPE_ARRAY) return other;
+			if (other->type_kind == TYPE_VECTOR) return other;
+			if (other->type_kind == TYPE_STRUCT) return other;
+			if (other->type_kind == TYPE_SUBARRAY) return other;
+			return NULL;
 		case TYPE_UNION:
 		case TYPE_STRUCT:
-		case TYPE_UNTYPED_LIST:
 			TODO
 		case TYPE_TYPEID:
 		case TYPE_MEMBER:

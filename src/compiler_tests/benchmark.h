@@ -5,5 +5,9 @@
 // a copy of which can be found in the LICENSE file.
 
 
+#include <stdint.h>
+
 void bench_begin(void);
 double bench_mark(void);
+uint64_t benchstart(void);
+double benchmark(uint64_t start);
