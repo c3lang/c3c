@@ -93,8 +93,7 @@ char *calloc_string(size_t len);
 void free_arena(void);
 void print_arena_status(void);
 void run_arena_allocator_tests(void);
-TaskQueueRef taskqueue_create(int threads);
-void taskqueue_add(TaskQueueRef queue, Task *task);
+TaskQueueRef taskqueue_create(int threads, Task **task_list);
 void taskqueue_destroy(TaskQueueRef queue);
 void taskqueue_wait_for_completion(TaskQueueRef queue);
 

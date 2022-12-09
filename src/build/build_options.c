@@ -801,7 +801,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.optimization_setting_override = OPT_SETTING_NOT_SET,
 		.debug_info_override = DEBUG_INFO_NOT_SET,
 		.safe_mode = -1,
-		.build_threads = 16,
+		.build_threads = 1,
 		.command = COMMAND_MISSING,
 		.reloc_model = RELOC_DEFAULT,
 		.backend = BACKEND_LLVM,

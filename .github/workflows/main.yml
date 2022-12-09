@@ -52,10 +52,10 @@ jobs:
           cd test
           python3.exe src/tester.py ..\build\${{ matrix.build_type }}\c3c.exe test_suite/
 
-      - name: Compile run stdlib tests
+      - name: Compile run unit tests
         run: |
           cd test
-          ..\build\${{ matrix.build_type }}\c3c.exe compile-test stdlib\conv_tests.c3 -g1 --safe
+          ..\build\${{ matrix.build_type }}\c3c.exe compile-test unit -g1 --safe
 
       - name: upload artifacts
         uses: actions/upload-artifact@v3
@@ -210,10 +210,10 @@ jobs:
           ../build/c3c compile-run examples/fannkuch-redux.c3
           ../build/c3c compile-run examples/contextfree/boolerr.c3
 
-      - name: Compile run stdlib tests
+      - name: Compile run unit tests
         run: |
           cd test
-          ../build/c3c compile-test stdlib/conv_tests.c3 -g1 --safe
+          ../build/c3c compile-test unit -g1 --safe
 
       - name: Build testproject
         run: |
@@ -281,10 +281,10 @@ jobs:
           ../build/c3c compile-run examples/fannkuch-redux.c3
           ../build/c3c compile-run examples/contextfree/boolerr.c3
 
-      - name: Compile run stdlib tests
+      - name: Compile run unit tests
         run: |
           cd test
-          ../build/c3c compile-test stdlib/conv_tests.c3 -g1 --safe
+          ../build/c3c compile-test unit -g1 --safe
 
       - name: Build testproject
         run: |

@@ -353,6 +353,7 @@ typedef struct
 	bool benchmarking;
 	bool testing;
 	bool read_stdin;
+	int build_threads;
 	OptimizationLevel optimization_level;
 	SizeOptimizationLevel size_optimization_level;
 	bool single_module;

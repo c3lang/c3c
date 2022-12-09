@@ -14,3 +14,13 @@ double bench_mark(void)
 {
 	return (clock() - begin) / (double)CLOCKS_PER_SEC;
 }
+
+uint64_t benchstart(void)
+{
+	return clock();
+}
+
+double benchmark(uint64_t start)
+{
+	return (clock() - start) / (double)CLOCKS_PER_SEC;
+}
