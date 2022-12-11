@@ -38,7 +38,7 @@ void compiler_init(const char *std_lib_dir)
 	compiler_codegen_time = -1;
 	compiler_link_time = -1;
 
-	DEBUG_LOG("Version: %s", COMPILER_VERSION);
+	INFO_LOG("Version: %s", COMPILER_VERSION);
 
 	global_context = (GlobalContext ){ .in_panic_mode = false };
 	// Skip library detection.
@@ -400,10 +400,13 @@ void compiler_compile(void)
 		compile_data[i].task = (Task) { task, &compile_data[i] };
 		vec_add(tasks, &compile_data[i].task);
 	}
-	TaskQueueRef queue = taskqueue_create(active_target.build_threads, tasks);
 
+#if USE_PTHREAD
+	INFO_LOG("Will use %d thread(s).", active_target.build_threads);
+#endif
+
+	TaskQueueRef queue = taskqueue_create(active_target.build_threads, tasks);
 	taskqueue_wait_for_completion(queue);
-	taskqueue_destroy(queue);
 
 	for (unsigned i = 0; i < output_file_count; i++)
 	{
