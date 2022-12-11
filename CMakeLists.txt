@@ -248,6 +248,7 @@ add_executable(c3c
         src/utils/vmem.c
         src/utils/vmem.h
         src/utils/whereami.c
+        src/utils/cpus.c
         src/compiler/decltable.c
         src/compiler/mac_support.c
         src/compiler/tilde_codegen_storeload.c
@@ -300,10 +301,10 @@ if(MSVC)
     endif()
 else()
     message(STATUS "using gcc/clang warning switches")
-    target_compile_options(c3c PRIVATE -Wall -Werror -Wno-unknown-pragmas -Wno-unused-result
+    target_link_options(c3c PRIVATE -pthread)
+    target_compile_options(c3c PRIVATE -pthread -Wall -Werror -Wno-unknown-pragmas -Wno-unused-result
             -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter)
     if (WIN32)
-        target_link_options(c3c PRIVATE -pthread)
         target_compile_definitions(c3c PRIVATE USE_PTHREAD=1)
     endif()
 endif()

@@ -858,6 +858,9 @@ static inline void llvm_optimize(GenContext *c)
 {
 	LLVMPassBuilderOptionsRef options = LLVMCreatePassBuilderOptions();
 	LLVMPassBuilderOptionsSetVerifyEach(options, active_target.emit_llvm);
+#ifndef NDEBUG
+	LLVMPassBuilderOptionsSetDebugLogging(options, debug_log);
+#endif
 	const char *passes = NULL;
 	switch (active_target.size_optimization_level)
 	{
@@ -1144,9 +1147,9 @@ void **llvm_gen(Module** modules, unsigned module_count)
 	}
 	for (unsigned i = 0; i < module_count; i++)
 	{
-		GenContext *result = llvm_gen_module(modules[i], NULL);
-		if (!result) continue;
-		vec_add(gen_contexts, result);
+			GenContext *result = llvm_gen_module(modules[i], NULL);
+			if (!result) continue;
+			vec_add(gen_contexts, result);
 	}
 	vec_add(gen_contexts, llvm_gen_tests(modules, module_count, NULL));
 	return (void**)gen_contexts;

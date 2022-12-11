@@ -6,8 +6,15 @@
 
 
 #include <stdint.h>
+#include <time.h>
+
+#if USE_PTHREAD
+typedef struct timespec BenchTime;
+#else
+typedef clock_t BenchTime;
+#endif
 
 void bench_begin(void);
 double bench_mark(void);
-uint64_t benchstart(void);
-double benchmark(uint64_t start);
+BenchTime benchstart(void);
+double benchmark(BenchTime start);
