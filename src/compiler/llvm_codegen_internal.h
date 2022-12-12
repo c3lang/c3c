@@ -134,6 +134,7 @@ typedef struct
 	unsigned floor;
 	unsigned flt_rounds;
 	unsigned fma;
+	unsigned fmuladd;
 	unsigned frameaddress;
 	unsigned fshl;
 	unsigned fshr;
@@ -149,11 +150,12 @@ typedef struct
 	unsigned maximum;
 	unsigned maxnum;
 	unsigned memcpy;
-	unsigned memset;
+	unsigned memcpy_inline;
 	unsigned memmove;
+	unsigned memset;
+	unsigned memset_inline;
 	unsigned minimum;
 	unsigned minnum;
-	unsigned fmuladd;
 	unsigned nearbyint;
 	unsigned pow;
 	unsigned powi;

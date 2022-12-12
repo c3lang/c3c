@@ -9,6 +9,9 @@ fn void main()
     $$memcpy(&dst, &src, ushort.sizeof, false, $alignof(dst), $alignof(src));
     $$memmove(&dst, &src, ushort.sizeof, false, $alignof(dst), $alignof(src));
     $$memset(&dst, 0u8, ushort.sizeof, false, $alignof(dst));
+
+    $$memcpy_inline(&dst, &src, ushort.sizeof, false, $alignof(dst), $alignof(src));
+    $$memset_inline(&dst, 0u8, ushort.sizeof, false, $alignof(dst));
 }
 
 /* #expect: test.ll
@@ -16,3 +19,4 @@ fn void main()
   call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 2 %0, i8* align 2 %1, i64 2, i1 false)
   call void @llvm.memmove.p0i8.p0i8.i64(i8* align 2 %2, i8* align 2 %3, i64 2, i1 false)
   call void @llvm.memset.p0i8.i64(i8* align 2 %4, i8 0, i64 2, i1 false)
+  call void @llvm.memcpy.inline.p0i8.p0i8.i64(i8* align 2 %5, i8* align 2 %6, i64 2, i1 false)

@@ -211,8 +211,10 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_LOG2] = KW_DEF("log2");
 	builtin_list[BUILTIN_LOG10] = KW_DEF("log10");
 	builtin_list[BUILTIN_MEMCOPY] = KW_DEF("memcpy");
-	builtin_list[BUILTIN_MEMSET] = KW_DEF("memset");
+	builtin_list[BUILTIN_MEMCOPY_INLINE] = KW_DEF("memcpy_inline");
 	builtin_list[BUILTIN_MEMMOVE] = KW_DEF("memmove");
+	builtin_list[BUILTIN_MEMSET] = KW_DEF("memset");
+	builtin_list[BUILTIN_MEMSET_INLINE] = KW_DEF("memset_inline");
 	builtin_list[BUILTIN_NEARBYINT] = KW_DEF("nearbyint");
 	builtin_list[BUILTIN_OVERFLOW_ADD] = KW_DEF("overflow_add");
 	builtin_list[BUILTIN_OVERFLOW_SUB] = KW_DEF("overflow_sub");

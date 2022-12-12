@@ -26,7 +26,6 @@ macro void* aligned_pointer(void* ptr, usz alignment)
 	return (void*)(uptr)aligned_offset((uptr)ptr, alignment);
 }
 
-
 /**
  * @require math::is_power_of_2(alignment)
  **/
@@ -35,14 +34,22 @@ fn bool ptr_is_aligned(void* ptr, usz alignment) @inline
 	return (uptr)ptr & ((uptr)alignment - 1) == 0;
 }
 
-macro void copy(void* dst, void* src, usz len, usz $dst_align = 0, usz $src_align = 0, bool $is_volatile = false)
+macro void clear(void* dst, usz len, usz $dst_align = 0, bool $is_volatile = false, bool $inlined = false)
 {
-	$$memcpy(dst, src, len, $is_volatile, $dst_align, $src_align);
+	$if ($inlined):
+		$$memset_inline(dst, (char)0, len, $is_volatile, $dst_align);
+	$else:
+		$$memset(dst, (char)0, len, $is_volatile, $dst_align);
+	$endif;
 }
 
-macro void set(void* dst, char val, usz len, usz $dst_align = 0, bool $is_volatile = false)
+macro void copy(void* dst, void* src, usz len, usz $dst_align = 0, usz $src_align = 0, bool $is_volatile = false, bool $inlined = false)
 {
-	$$memset(dst, val, len, $is_volatile, $dst_align);
+	$if ($inlined):
+		$$memcpy_inline(dst, src, len, $is_volatile, $dst_align, $src_align);
+	$else:
+		$$memcpy(dst, src, len, $is_volatile, $dst_align, $src_align);
+	$endif;
 }
 
 macro void move(void* dst, void* src, usz len, usz $dst_align = 0, usz $src_align = 0, bool $is_volatile = false)
@@ -50,9 +57,13 @@ macro void move(void* dst, void* src, usz len, usz $dst_align = 0, usz $src_alig
 	$$memmove(dst, src, len, $is_volatile, $dst_align, $src_align);
 }
 
-macro void clear(void* dst, usz len, usz $dst_align = 0, bool $is_volatile = false)
+macro void set(void* dst, char val, usz len, usz $dst_align = 0, bool $is_volatile = false, bool $inlined = false)
 {
-	$$memset(dst, (char)0, len, $is_volatile, $dst_align);
+	$if ($inlined):
+		$$memset_inline(dst, val, len, $is_volatile, $dst_align);
+	$else:
+		$$memset(dst, val, len, $is_volatile, $dst_align);
+	$endif;
 }
 
 /**
