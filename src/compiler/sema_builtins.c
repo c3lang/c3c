@@ -346,6 +346,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			rtype = type_no_optional(args[0]->type->canonical);
 			break;
 		case BUILTIN_MEMCOPY:
+		case BUILTIN_MEMCOPY_INLINE:
 		case BUILTIN_MEMMOVE:
 			if (!sema_check_builtin_args(args,
 										 (BuiltinArg[]) { BA_POINTER, BA_POINTER, BA_SIZE, BA_BOOL, BA_SIZE, BA_SIZE },
@@ -354,6 +355,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			rtype = type_void;
 			break;
 		case BUILTIN_MEMSET:
+		case BUILTIN_MEMSET_INLINE:
 			if (!sema_check_builtin_args(args,
 										 (BuiltinArg[]) { BA_POINTER, BA_CHAR, BA_SIZE, BA_BOOL, BA_SIZE },
 										 arg_count)) return false;
@@ -616,11 +618,13 @@ static inline unsigned builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_OVERFLOW_SUB:
 		case BUILTIN_PREFETCH:
 			return 3;
-		case BUILTIN_MEMSET:
-			return 5;
 		case BUILTIN_MEMCOPY:
+		case BUILTIN_MEMCOPY_INLINE:
 		case BUILTIN_MEMMOVE:
 			return 6;
+		case BUILTIN_MEMSET:
+		case BUILTIN_MEMSET_INLINE:
+			return 5;
 		case BUILTIN_SHUFFLEVECTOR:
 		case BUILTIN_NONE:
 			UNREACHABLE
