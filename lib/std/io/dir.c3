@@ -1,5 +1,5 @@
 module std::io::dir;
-
+import std::io::os;
 // In progress.
 define Path = distinct char[];
 
@@ -9,6 +9,16 @@ private const USE_WIN32_FILESYSTEM = env::OS_TYPE != OsType.WIN32;
 fault PathResult
 {
 	INVALID_PATH
+}
+
+fn char[]! getcwd(Allocator* allocator = mem::default_allocator())
+{
+	return os::getcwd(allocator);
+}
+
+fn char[]! tgetcwd()
+{
+	return getcwd(mem::temp_allocator()) @inline;
 }
 
 macro bool is_separator(char c)

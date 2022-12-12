@@ -437,7 +437,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr);
 void llvm_emit_stmt(GenContext *c, Ast *ast);
 void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *panic_name, SourceSpan loc);
 void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_name, SourceSpan loc);
-void llvm_emit_panic(GenContext *c, const char *message, const char *file, const char *func, unsigned line);
+void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc);
 void llvm_emit_subarray_len(GenContext *context, BEValue *subarray, BEValue *len);
 void llvm_emit_subarray_pointer(GenContext *context, BEValue *subarray, BEValue *pointer);
 void llvm_emit_compound_stmt(GenContext *c, Ast *ast);
