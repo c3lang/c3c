@@ -472,6 +472,7 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, const char *module_nam
 	if (emit_debug)
 	{
 		llvm_debug_scope_push(c, c->debug.function);
+		EMIT_LOC(c, body);
 		if (c->debug.enable_stacktrace)
 		{
 			LLVMTypeRef slot_type = c->debug.stack_type;

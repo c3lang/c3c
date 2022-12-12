@@ -254,7 +254,9 @@ static inline void llvm_emit_block_exit_return(GenContext *c, Ast *ast)
 
 	POP_OPT();
 
-	llvm_emit_statement_chain(c, ast->return_stmt.cleanup);
+	AstId cleanup = ast->return_stmt.cleanup;
+	AstId err_cleanup = err_cleanup_block && cleanup ? astid(copy_ast_defer(astptr(cleanup))) : 0;
+	llvm_emit_statement_chain(c, cleanup);
 	if (exit->block_return_out && return_value.value)
 	{
 		llvm_store_to_ptr_aligned(c, exit->block_return_out, &return_value, type_alloca_alignment(return_value.type));
@@ -264,7 +266,7 @@ static inline void llvm_emit_block_exit_return(GenContext *c, Ast *ast)
 	{
 		llvm_emit_br(c, exit->block_return_exit);
 		llvm_emit_block(c, err_cleanup_block);
-		llvm_emit_statement_chain(c, ast->return_stmt.cleanup);
+		llvm_emit_statement_chain(c, err_cleanup);
 		llvm_emit_jmp(c, exit->block_failable_exit);
 	}
 	else
@@ -465,9 +467,8 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 		if (loop == LOOP_INFINITE)
 		{
 			SourceSpan loc = ast->span;
-			File  *file = source_file_by_id(loc.file_id);
 
-			llvm_emit_panic(c, "Infinite loop found", file->name, c->cur_func.name, loc.row ? loc.row : 1);
+			llvm_emit_panic(c, "Infinite loop found", loc);
 			LLVMBuildUnreachable(c->builder);
 			LLVMBasicBlockRef block = llvm_basic_block_new(c, "unreachable_block");
 			c->current_block = NULL;
@@ -1000,8 +1001,7 @@ static inline void llvm_emit_assert_stmt(GenContext *c, Ast *ast)
 		{
 			error = "Assert violation";
 		}
-		File  *file = source_file_by_id(loc.file_id);
-		llvm_emit_panic(c, error, file->name, c->cur_func.name, loc.row ? loc.row : 1);
+		llvm_emit_panic(c, error, loc);
 		llvm_emit_br(c, on_ok);
 		llvm_emit_block(c, on_ok);
 	}
@@ -1274,13 +1274,16 @@ LLVMValueRef llvm_emit_zstring_named(GenContext *c, const char *str, const char 
 }
 
 
-void llvm_emit_panic(GenContext *c, const char *message, const char *file, const char *func, unsigned line)
+void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc)
 {
+	File  *file = source_file_by_id(loc.file_id);
+
+	if (c->debug.builder) llvm_emit_debug_location(c, loc);
 	if (c->debug.stack_slot_row)
 	{
 		llvm_store_to_ptr_raw_aligned(c,
 		                              c->debug.stack_slot_row,
-		                              llvm_const_int(c, type_uint, line),
+		                              llvm_const_int(c, type_uint, loc.row ? loc.row : 1),
 		                              type_abi_alignment(type_uint));
 	}
 
@@ -1293,9 +1296,9 @@ void llvm_emit_panic(GenContext *c, const char *message, const char *file, const
 
 	LLVMValueRef args[4] = {
 			llvm_emit_string_const(c, message, ".panic_msg"),
-			llvm_emit_string_const(c, file, ".file"),
-			llvm_emit_string_const(c, func, ".func"),
-			llvm_const_int(c, type_uint, line)
+			llvm_emit_string_const(c, file->name, ".file"),
+			llvm_emit_string_const(c, c->cur_func.name, ".func"),
+			llvm_const_int(c, type_uint, loc.row)
 	};
 	FunctionPrototype *prototype = panic_var->type->canonical->pointer->function.prototype;
 	LLVMValueRef actual_args[16];
@@ -1314,6 +1317,7 @@ void llvm_emit_panic(GenContext *c, const char *message, const char *file, const
 	llvm_value_rvalue(c, &val);
 
 	BEValue res;
+	if (c->debug.builder) llvm_emit_debug_location(c, loc);
 	llvm_emit_raw_call(c, &res, prototype, llvm_func_type(c, prototype), val.value, actual_args,
 	                   count, 0, NULL, false, NULL);
 }
@@ -1330,22 +1334,20 @@ void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_na
 	assert(llvm_value_is_bool(value));
 	llvm_emit_cond_br(c, value, panic_block, ok_block);
 	llvm_emit_block(c, panic_block);
-	File  *file = source_file_by_id(loc.file_id);
-	llvm_emit_panic(c, panic_name, file->name, c->cur_func.name, loc.row);
+	llvm_emit_panic(c, panic_name, loc);
 	llvm_emit_br(c, ok_block);
 	llvm_emit_block(c, ok_block);
 }
 
 void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *panic_name, SourceSpan loc)
 {
-	File  *file = source_file_by_id(loc.file_id);
 	LLVMBasicBlockRef panic_block = llvm_basic_block_new(c, "panic");
 	LLVMBasicBlockRef ok_block = llvm_basic_block_new(c, "checkok");
 	BEValue be_value;
 	llvm_value_set_bool(&be_value, value);
 	llvm_emit_cond_br(c, &be_value, panic_block, ok_block);
 	llvm_emit_block(c, panic_block);
-	llvm_emit_panic(c, panic_name, file->name, c->cur_func.name, loc.row ? loc.row : 1);
+	llvm_emit_panic(c, panic_name, loc);
 	llvm_emit_br(c, ok_block);
 	llvm_emit_block(c, ok_block);
 }

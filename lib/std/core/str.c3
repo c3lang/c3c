@@ -162,7 +162,7 @@ fn char[][] split(char[] s, char[] needle, Allocator* allocator = mem::current_a
 		if (try index)
 		{
 			res = s[:index];
-			s = s[index + 1..];
+			s = s[index + needle.len..];
 		}
 		else
 		{
@@ -192,7 +192,7 @@ fn usz! index_of(char[] s, char[] needle)
 		{
 			if (!match) index_start = i;
 			match++;
-			if (match == needed) return i;
+			if (match == needed) return index_start;
 			search = needle[match];
 			continue;
 		}
@@ -212,6 +212,15 @@ fn ZString copy_zstring(char[] s, Allocator* allocator = mem::current_allocator(
     mem::copy(str, s.ptr, len);
     str[len] = 0;
     return (ZString)str;
+}
+
+fn char[] copyz(char[] s, Allocator* allocator = mem::current_allocator())
+{
+    usz len = s.len;
+    char* str = allocator.alloc(len + 1)!!;
+    mem::copy(str, s.ptr, len);
+    str[len] = 0;
+    return str[:len];
 }
 
 fn ZString tcopy_zstring(char[] s)
@@ -317,10 +326,15 @@ fn char[] concat(char[] s1, char[] s2)
     return str[..full_len];
 }
 
-fn usz ZString.len(ZString *str)
+fn char[] ZString.as_str(ZString str)
+{
+	return ((char*)str)[:str.len()];
+}
+
+fn usz ZString.len(ZString str)
 {
 	usz len = 0;
-	char* ptr = (char*)*str;
+	char* ptr = (char*)str;
 	while (char c = ptr++[0])
 	{
 		if (c & 0xC0 != 0x80) len++;
