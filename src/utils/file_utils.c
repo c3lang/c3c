@@ -246,7 +246,7 @@ static inline const char *lib_find(const char *exe_path, const char *rel_path)
 	if (err || !S_ISDIR(info.st_mode)) return NULL;
 
 	DEBUG_LOG("Potential lib found, sanity check for libc...");
-	scratch_buffer_append("/libc.c3");
+	scratch_buffer_append("/libc/libc.c3");
 	err = stat(scratch_buffer_to_string(), &info);
 	if (err || !S_ISREG(info.st_mode)) return NULL;
 
@@ -446,7 +446,7 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 	{
 		size_t namelen = strlen(ent->d_name);
 		if (namelen == 0 || ent->d_name[0] == '.') continue;
-
+		DEBUG_LOG("Searching file %s", ent->d_name);
 		if (namelen < 3 || !file_has_suffix_in_list(ent->d_name, namelen, suffix_list, suffix_count))
 		{
 			char *format = path_ends_with_slash ? "%s%s" : "%s/%s";
@@ -461,11 +461,13 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 			is_directory = S_ISDIR(st.st_mode);
 			if (is_directory && ent->d_name[0] != '.' && recursive)
 			{
+				DEBUG_LOG("Enter sub dir %s", ent->d_name);
 				file_add_wildcard_files(files, new_path, recursive, suffix_list, suffix_count);
 			}
 			continue;
 		}
 		char *format = path_ends_with_slash ? "%s%s" : "%s/%s";
+		DEBUG_LOG("Added file");
 		vec_add(*files, str_printf(format, path, ent->d_name));
 	}
 	closedir(dir);

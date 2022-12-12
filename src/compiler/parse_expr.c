@@ -725,14 +725,14 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left)
 		params = VECNEW(Expr*, 4);
 		if (!parse_arg_list(c, &params, TOKEN_RPAREN, &splat, true)) return poisoned_expr;
 	}
-	if (try_consume(c, TOKEN_EOS) && !tok_is(c, TOKEN_RPAREN))
+	if (try_consume(c, TOKEN_EOS))
 	{
 		if (!parse_next_may_be_type_or_ident(c))
 		{
 			SEMA_ERROR_LAST("Expected an ending ')'. Did you forget a ')' before this ';'?");
 			return poisoned_expr;
 		}
-		if (!parse_parameters(c, VISIBLE_LOCAL, &body_args, NULL, NULL, NULL)) return poisoned_expr;
+		if (!parse_parameters(c, VISIBLE_LOCAL, &body_args, NULL, NULL, NULL, true)) return poisoned_expr;
 	}
 	if (!tok_is(c, TOKEN_RPAREN))
 	{

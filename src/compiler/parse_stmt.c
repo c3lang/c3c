@@ -939,6 +939,7 @@ static inline Ast* parse_ct_foreach_stmt(ParseContext *c)
 		*current = astid(stmt);
 		current = &stmt->next;
 	}
+	CONSUME_EOS_OR_RET(poisoned_ast);
 	return ast;
 }
 
@@ -980,6 +981,7 @@ static inline Ast* parse_ct_for_stmt(ParseContext *c)
 		*current = astid(stmt);
 		current = &stmt->next;
 	}
+	CONSUME_EOS_OR_RET(poisoned_ast);
 	return ast;
 }
 
@@ -1095,6 +1097,27 @@ Ast *parse_ct_assert_stmt(ParseContext *c)
 	return ast;
 }
 
+Ast *parse_ct_echo_stmt(ParseContext *c)
+{
+	Ast *ast = ast_new_curr(c, AST_CT_ECHO_STMT);
+	advance_and_verify(c, TOKEN_CT_ECHO);
+	TRY_CONSUME_OR_RET(TOKEN_LPAREN, "'$echo' needs a '(' here, did you forget it?", poisoned_ast);
+	ASSIGN_EXPR_OR_RET(ast->expr_stmt, parse_constant_expr(c), poisoned_ast);
+
+	TRY_CONSUME_OR_RET(TOKEN_RPAREN, "The ending ')' was expected here.", poisoned_ast);
+	do
+	{
+		if (!tok_is(c, TOKEN_EOS))
+		{
+			sema_error_at_after(c->prev_span, "Expected ';'");
+			return poisoned_ast;
+		}
+		advance(c);
+	}
+	while (0);
+	return ast;
+}
+
 Ast *parse_stmt(ParseContext *c)
 {
 	switch (c->tok)
@@ -1164,6 +1187,8 @@ Ast *parse_stmt(ParseContext *c)
 			SEMA_ERROR_HERE("'default' was found outside of 'switch', did you mismatch a '{ }' pair?");
 			advance(c);
 			return poisoned_ast;
+		case TOKEN_CT_ECHO:
+			return parse_ct_echo_stmt(c);
 		case TOKEN_CT_ASSERT:
 			return parse_ct_assert_stmt(c);
 		case TOKEN_CT_IF:

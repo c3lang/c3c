@@ -450,6 +450,14 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 		case BUILTIN_SHUFFLEVECTOR:
 			llvm_emit_shufflevector(c, result_value, expr);
 			return;
+		case BUILTIN_FRAMEADDRESS:
+		{
+			LLVMTypeRef type[2] = { llvm_get_type(c, type_voidptr), llvm_get_type(c, type_int) };
+			LLVMValueRef value = LLVMConstNull(type[1]);
+			value = llvm_emit_call_intrinsic(c, intrinsic_id.frameaddress, type, 1, &value, 1);
+			llvm_value_set(result_value, value, expr->type);
+			return;
+		}
 		case BUILTIN_REVERSE:
 			llvm_emit_reverse(c, result_value, expr);
 			return;

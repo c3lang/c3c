@@ -9,7 +9,7 @@ macro print_args($Type)
 	var $params = $Type.params;
 	$foreach ($param : $params):
 		io::println($param.nameof);
-	$endforeach
+	$endforeach;
 }
 
 bitstruct Bark : ulong
@@ -37,7 +37,7 @@ macro print_fields($Type)
 	var $params = $Type.membersof;
 	$foreach ($param : $params):
 		io::printfln("%s: %s", $param.nameof, $param.typeid.nameof);
-	$endforeach
+	$endforeach;
 }
 
 fn void hello(int a, double b, int[4] d, args...) {}

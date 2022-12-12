@@ -453,14 +453,14 @@ static bool sema_analyse_struct_union(SemaContext *context, Decl *decl)
 	if (decl->name)
 	{
 		Decl** state = sema_decl_stack_store();
-			if (decl->decl_kind == DECL_UNION)
-			{
-				success = sema_analyse_union_members(context, decl, decl->strukt.members);
-			}
-			else
-			{
-				success = sema_analyse_struct_members(context, decl, decl->strukt.members);
-			}
+		if (decl->decl_kind == DECL_UNION)
+		{
+			success = sema_analyse_union_members(context, decl, decl->strukt.members);
+		}
+		else
+		{
+			success = sema_analyse_struct_members(context, decl, decl->strukt.members);
+		}
 		sema_decl_stack_restore(state);
 	}
 	else
@@ -2306,35 +2306,35 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 			if (decl->var.type_info)
 			{
 				SEMA_ERROR(decl->var.type_info, "Compile time type variables may not have a type.");
-				return false;
+				goto FAIL;
 			}
 			if ((init = decl->var.init_expr))
 			{
-				if (!sema_analyse_expr_lvalue_fold_const(context, init)) return false;
+				if (!sema_analyse_expr_lvalue_fold_const(context, init)) goto FAIL;
 				if (init->expr_kind != EXPR_TYPEINFO)
 				{
 					SEMA_ERROR(decl->var.init_expr, "Expected a type assigned to %s.", decl->name);
-					return false;
+					goto FAIL;
 				}
 			}
 			break;
 		case VARDECL_LOCAL_CT:
-			if (decl->var.type_info && !sema_resolve_type_info(context, decl->var.type_info)) return false;
+			if (decl->var.type_info && !sema_resolve_type_info(context, decl->var.type_info)) goto FAIL;
 			if (decl->var.type_info)
 			{
 				decl->type = decl->var.type_info->type->canonical;
 				if (!type_is_builtin(decl->type->type_kind))
 				{
 					SEMA_ERROR(decl->var.type_info, "Compile time variables may only be built-in types.");
-					return false;
+					goto FAIL;
 				}
 				if ((init = decl->var.init_expr))
 				{
-					if (!sema_analyse_expr_rhs(context, decl->type, init, false)) return false;
+					if (!sema_analyse_expr_rhs(context, decl->type, init, false)) goto FAIL;
 					if (!expr_is_constant_eval(init, CONSTANT_EVAL_CONSTANT_VALUE))
 					{
 						SEMA_ERROR(init, "Expected a constant expression assigned to %s.", decl->name);
-						return false;
+						goto FAIL;
 					}
 				}
 				else
@@ -2347,11 +2347,11 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 			{
 				if ((init = decl->var.init_expr))
 				{
-					if (!sema_analyse_expr(context, init)) return false;
+					if (!sema_analyse_expr(context, init)) goto FAIL;
 					if (!expr_is_constant_eval(init, CONSTANT_EVAL_CONSTANT_VALUE))
 					{
 						SEMA_ERROR(init, "Expected a constant expression assigned to %s.", decl->name);
-						return false;
+						goto FAIL;
 					}
 					decl->type = init->type;
 				}
@@ -2365,9 +2365,10 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 			UNREACHABLE
 	}
 
-	decl->var.scope_depth = context->active_scope.depth;
 	return sema_add_local(context, decl);
-
+FAIL:
+	sema_add_local(context, decl);
+	return decl_poison(decl);
 }
 /**
  * Analyse a regular global or local declaration, e.g. int x = 123
@@ -2381,8 +2382,6 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 	assert(decl->var.type_info || decl->var.init_expr);
 
 	bool is_global = decl->var.kind == VARDECL_GLOBAL || !local;
-
-	if (!sema_analyse_attributes_for_var(context, decl)) return decl_poison(decl);
 
 	if (is_global)
 	{
@@ -2403,6 +2402,8 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 		// Add a local to the current context, will throw error on shadowing.
 		if (!sema_add_local(context, decl)) return decl_poison(decl);
 	}
+
+	if (!sema_analyse_attributes_for_var(context, decl)) return decl_poison(decl);
 
 	// 1. Local or global constants: const int FOO = 123.
 	if (!decl->var.type_info)
@@ -2718,6 +2719,7 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 		{
 			Type *type = type_new(TYPE_TYPEDEF, decl->name);
 			decl->type = type;
+			type->decl = symbol;
 			decl->decl_kind = DECL_TYPEDEF;
 			type->canonical = symbol->type->canonical;
 			return true;
@@ -2849,6 +2851,7 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 		case DECL_CT_CASE:
 		case DECL_CT_IF:
 		case DECL_CT_ASSERT:
+		case DECL_CT_ECHO:
 		case DECL_FAULTVALUE:
 		case DECL_DECLARRAY:
 		case DECL_BODYPARAM:

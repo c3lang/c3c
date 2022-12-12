@@ -54,6 +54,8 @@ TokenType sema_splitpathref(const char *string, ArraySize len, Path **path_ref, 
 
 void sema_context_init(SemaContext *context, CompilationUnit *unit);
 void sema_context_destroy(SemaContext *context);
+unsigned sema_context_push_ct_stack(SemaContext *context);
+void sema_context_pop_ct_stack(SemaContext *context, unsigned old_state);
 
 bool sema_analyse_function_body(SemaContext *context, Decl *func);
 bool sema_analyse_contracts(SemaContext *context, AstId doc, AstId **asserts);
@@ -66,6 +68,7 @@ void sema_analysis_pass_register_globals(Module *module);
 void sema_analysis_pass_conditional_compilation(Module *module);
 void sema_analysis_pass_decls(Module *module);
 void sema_analysis_pass_ct_assert(Module *module);
+void sema_analysis_pass_ct_echo(Module *module);
 void sema_analysis_pass_functions(Module *module);
 void sema_analyze_stage(Module *module, AnalysisStage stage);
 

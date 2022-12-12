@@ -337,6 +337,29 @@ void sema_analysis_pass_ct_assert(Module *module)
 	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);
 }
 
+void sema_analysis_pass_ct_echo(Module *module)
+{
+	DEBUG_LOG("Pass: $echo checks %s", module->name->module);
+	VECEACH(module->units, index)
+	{
+		SemaContext context;
+		sema_context_init(&context, module->units[index]);
+		Decl **echos = context.unit->ct_echos;
+		bool success = true;
+		VECEACH(echos, i)
+		{
+			if (!sema_analyse_ct_echo_stmt(&context, echos[i]->ct_echo_decl))
+			{
+				success = false;
+				break;
+			}
+		}
+		sema_context_destroy(&context);
+		if (!success) break;
+	}
+	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);
+}
+
 static inline bool analyse_func_body(SemaContext *context, Decl *decl)
 {
 	if (!decl->func_decl.body) return true;

@@ -141,6 +141,9 @@ void sema_analyze_stage(Module *module, AnalysisStage stage)
 			case ANALYSIS_DECLS:
 				sema_analysis_pass_decls(module);
 				break;
+			case ANALYSIS_CT_ECHO:
+				sema_analysis_pass_ct_echo(module);
+				break;
 			case ANALYSIS_CT_ASSERT:
 				sema_analysis_pass_ct_assert(module);
 				break;
@@ -166,6 +169,7 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 			case DECL_IMPORT:
 			case DECL_LABEL:
 			case DECL_CT_ASSERT:
+			case DECL_CT_ECHO:
 			case DECL_DECLARRAY:
 			case DECL_INITIALIZE:
 			case DECL_FINALIZE:
@@ -321,13 +325,26 @@ void sema_analysis_run(void)
 
 void sema_context_init(SemaContext *context, CompilationUnit *unit)
 {
-	*context = (SemaContext) { .unit = unit, .compilation_unit = unit, .locals = global_context_acquire_locals_list() };
+	*context = (SemaContext) { .unit = unit, .compilation_unit = unit,
+							   .ct_locals = global_context_acquire_locals_list(),
+							   .locals = global_context_acquire_locals_list() };
+}
+
+void sema_context_pop_ct_stack(SemaContext *context, unsigned old_state)
+{
+	vec_resize(context->ct_locals, old_state);
+}
+
+unsigned sema_context_push_ct_stack(SemaContext *context)
+{
+	return vec_size(context->ct_locals);
 }
 
 void sema_context_destroy(SemaContext *context)
 {
 	if (!context->unit) return;
 	generic_context_release_locals_list(context->locals);
+	generic_context_release_locals_list(context->ct_locals);
 }
 
 Decl **global_context_acquire_locals_list(void)
@@ -338,6 +355,7 @@ Decl **global_context_acquire_locals_list(void)
 	}
 	Decl **result = VECLAST(global_context.locals_list);
 	vec_pop(global_context.locals_list);
+	vec_resize(result, 0);
 	return result;
 }
 

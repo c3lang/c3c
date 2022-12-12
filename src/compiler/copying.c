@@ -586,6 +586,7 @@ RETRY:
 			copy_reg_ref(c, source, ast);
 			fixup_astid(c, &ast->defer_stmt.prev_defer);
 			break;
+		case AST_CT_ECHO_STMT:
 		case AST_EXPR_STMT:
 			MACRO_COPY_EXPR(ast->expr_stmt);
 			break;
@@ -862,6 +863,9 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			MACRO_COPY_EXPR(decl->ct_if_decl.expr);
 			MACRO_COPY_DECL(decl->ct_if_decl.elif);
 			MACRO_COPY_DECL_LIST(decl->ct_if_decl.then);
+			break;
+		case DECL_CT_ECHO:
+			MACRO_COPY_AST(decl->ct_echo_decl);
 			break;
 		case DECL_CT_ASSERT:
 			MACRO_COPY_AST(decl->ct_assert_decl);

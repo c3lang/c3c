@@ -284,6 +284,9 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_GET_ROUNDING_MODE:
 			rtype = type_int;
 			break;
+		case BUILTIN_FRAMEADDRESS:
+			rtype = type_voidptr;
+			break;
 		case BUILTIN_SET_ROUNDING_MODE:
 			if (!sema_check_builtin_args(args,
 			                             (BuiltinArg[]) { BA_INTEGER },
@@ -553,6 +556,7 @@ static inline unsigned builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_SYSCLOCK:
 		case BUILTIN_TRAP:
 		case BUILTIN_UNREACHABLE:
+		case BUILTIN_FRAMEADDRESS:
 			return 0;
 		case BUILTIN_ABS:
 		case BUILTIN_BITREVERSE:

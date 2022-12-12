@@ -38,7 +38,7 @@ void compiler_init(const char *std_lib_dir)
 	compiler_codegen_time = -1;
 	compiler_link_time = -1;
 
-	DEBUG_LOG("Version: %s", COMPILER_VERSION);
+	INFO_LOG("Version: %s", COMPILER_VERSION);
 
 	global_context = (GlobalContext ){ .in_panic_mode = false };
 	// Skip library detection.
@@ -391,30 +391,28 @@ void compiler_compile(void)
 			filename[len - 1] = 'o';
 			obj_files[output_file_count + i] = filename;
 		}
-
 	}
 
-
-	TaskQueueRef queue = taskqueue_create(16);
-
-
+	Task **tasks = NULL;
 	for (unsigned i = 0; i < output_file_count; i++)
 	{
 		compile_data[i] = (CompileData) { .context = gen_contexts[i] };
 		compile_data[i].task = (Task) { task, &compile_data[i] };
-		taskqueue_add(queue, &compile_data[i].task);
+		vec_add(tasks, &compile_data[i].task);
 	}
 
+#if USE_PTHREAD
+	INFO_LOG("Will use %d thread(s).", active_target.build_threads);
+#endif
+
+	TaskQueueRef queue = taskqueue_create(active_target.build_threads, tasks);
 	taskqueue_wait_for_completion(queue);
-	taskqueue_destroy(queue);
 
 	for (unsigned i = 0; i < output_file_count; i++)
 	{
 		obj_files[i] = compile_data[i].object_name;
 		assert(obj_files[i] || !output_exe);
 	}
-
-
 
 	output_file_count += cfiles;
 	free(compile_data);
@@ -472,6 +470,7 @@ static const char **target_expand_source_names(const char** dirs, const char **s
 	VECEACH(dirs, i)
 	{
 		const char *name = dirs[i];
+		DEBUG_LOG("Searching for sources in %s", name);
 		size_t name_len = strlen(name);
 		if (name_len < 1) goto INVALID_NAME;
 		if (name[name_len - 1] == '*')
@@ -483,9 +482,11 @@ static const char **target_expand_source_names(const char** dirs, const char **s
 				continue;
 			}
 			if (name[name_len - 2] != '*') goto INVALID_NAME;
+			DEBUG_LOG("Searching for wildcard sources in %s", name);
 			if (name_len == 2 || name[name_len - 3] == '/')
 			{
 				char *path = str_copy(name, name_len - 2);
+				DEBUG_LOG("Reduced path %s", path);
 				file_add_wildcard_files(&files, path, true, suffix_list, suffix_count);
 				continue;
 			}
@@ -496,6 +497,11 @@ static const char **target_expand_source_names(const char** dirs, const char **s
 		vec_add(files, name);
 		continue;
 		INVALID_NAME:
+		if (file_is_dir(name))
+		{
+			file_add_wildcard_files(&files, name, true, suffix_list, suffix_count);
+			continue;
+		}
 		if (!error_on_mismatch) continue;
 		error_exit("File names must end with %s or they cannot be compiled: '%s' is invalid.", suffix_list[0], name);
 	}

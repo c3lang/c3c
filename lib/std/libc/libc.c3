@@ -28,17 +28,13 @@ struct LongDivResult
 
 fn Errno errno()
 {
-    $if (env::OS_TYPE == OsType.WIN32):
-        return (Errno)windows::errno();
-    $elif (env::OS_TYPE == OsType.MACOSX):
-        return (Errno)macos::errno();
-    $elif (env::OS_TYPE == OsType.LINUX):
-        return (Errno)linux::errno();
-    $else:
-        return errno::ENOTRECOVERABLE;
-    $endif;
+	return (Errno)os::errno();
 }
 
+fn void errno_set(Errno e)
+{
+	os::errno_set((int)e);
+}
 
 define TerminateFunction = fn void();
 define CompareFunction = fn int(void*, void*);
@@ -64,9 +60,14 @@ extern fn void srand(uint seed);
 
 define JmpBuf = CInt[$$JMP_BUF_SIZE];
 
-extern fn CInt setjmp(JmpBuf* buffer);
 extern fn void longjmp(JmpBuf* buffer, CInt value);
-
+$if (env::OS_TYPE == OsType.WIN32):
+// TODO win32 aarch64
+extern fn CInt _setjmp(void* frameptr, JmpBuf* buffer);
+macro CInt setjmp(JmpBuf* buffer) = _setjmp($$frameaddress(), buffer);
+$else:
+extern fn CInt setjmp(JmpBuf* buffer);
+$endif;
 // MB functions omitted
 
 // string
@@ -242,46 +243,84 @@ extern fn SignalFunction signal(int sig, SignalFunction function);
 
 module libc::errno;
 
-const Errno EPERM = 1;  /* Operation not permitted */
-const Errno ENOENT = 2;  /* No such file or directory */
-const Errno ESRCH = 3;  /* No such process */
-const Errno EINTR = 4;  /* Interrupted system call */
-const Errno EIO = 5;  /* I/O error */
-const Errno ENXIO = 6;  /* No such device or address */
-const Errno E2BIG = 7;  /* Argument list too long */
-const Errno ENOEXEC = 8;  /* Exec format error */
-const Errno EBADF = 9;  /* Bad file number */
-const Errno ECHILD = 10;  /* No child processes */
-const Errno EAGAIN = 11;  /* Try again */
-const Errno ENOMEM = 12;  /* Out of memory */
-const Errno EACCES = 13;  /* Permission denied */
-const Errno EFAULT = 14;  /* Bad address */
-const Errno ENOTBLK = 15;  /* Block device required */
-const Errno EBUSY = 16;  /* Device or resource busy */
-const Errno EEXIST = 17;  /* File exists */
-const Errno EXDEV = 18;  /* Cross-device link */
-const Errno ENODEV = 19;  /* No such device */
-const Errno ENOTDIR = 20;  /* Not a directory */
-const Errno EISDIR = 21;  /* Is a directory */
-const Errno EINVAL = 22;  /* Invalid argument */
-const Errno ENFILE = 23;  /* File table overflow */
-const Errno EMFILE = 24;  /* Too many open files */
-const Errno ENOTTY = 25;  /* Not a typewriter */
-const Errno ETXTBSY = 26;  /* Text file busy */
-const Errno EFBIG = 27;  /* File too large */
-const Errno ENOSPC = 28;  /* No space left on device */
-const Errno ESPIPE = 29;  /* Illegal seek */
-const Errno EROFS = 30;  /* Read-only file system */
-const Errno EMLINK = 31;  /* Too many links */
-const Errno EPIPE = 32;  /* Broken pipe */
-const Errno EDOM = 33;  /* Math argument out of domain of func */
-const Errno ERANGE = 34;  /* Math result not representable */
-const Errno EDEADLK = 35;  /* Resource deadlock would occur */
-const Errno ENAMETOOLONG = 36;  /* File name too long */
+const Errno EPERM = 1;      // Operation not permitted
+const Errno ENOENT = 2;     // No such file or directory
+const Errno ESRCH = 3;      // No such process
+const Errno EINTR = 4;      // Interrupted system call
+const Errno EIO = 5;        // I/O error
+const Errno ENXIO = 6;      // No such device or address
+const Errno E2BIG = 7;      // Argument list too long
+const Errno ENOEXEC = 8;    // Exec format error
+const Errno EBADF = 9;      // Bad file number
+const Errno ECHILD = 10;    // No child processes
+
+$if (env::OS_TYPE == OsType.MACOSX):
+const Errno EAGAIN = 35;    // Try again Macos
+$else:
+const Errno EAGAIN = 11;    // Try again
+$endif;
+
+const Errno ENOMEM = 12;    // Out of memory
+const Errno EACCES = 13;    // Permission denied
+const Errno EFAULT = 14;    // Bad address
+const Errno ENOTBLK = 15;   // Block device required, not on Win32
+const Errno EBUSY = 16;     // Device or resource busy
+const Errno EEXIST = 17;    // File exists
+const Errno EXDEV = 18;     // Cross-device link
+const Errno ENODEV = 19;    // No such device
+const Errno ENOTDIR = 20;   // Not a directory
+const Errno EISDIR = 21;    // Is a directory
+const Errno EINVAL = 22;    // Invalid argument
+const Errno ENFILE = 23;    // File table overflow
+const Errno EMFILE = 24;    // Too many open files
+const Errno ENOTTY = 25;    // Not a typewriter
+const Errno ETXTBSY = 26;   // Text file busy, not on Win32
+const Errno EFBIG = 27;     // File too large
+const Errno ENOSPC = 28;    // No space left on device
+const Errno ESPIPE = 29;    // Illegal seek
+const Errno EROFS = 30;     // Read-only file system
+const Errno EMLINK = 31;    // Too many links
+const Errno EPIPE = 32;     // Broken pipe
+const Errno EDOM = 33;      // Math argument out of domain of func
+const Errno ERANGE = 34;    // Math result not representable
+
+$if (env::OS_TYPE == OsType.MACOSX):
+const Errno EDEADLK = 11;       // Resource deadlock would occur MacOS
+const Errno ENAMETOOLONG = 63;  // File name too long MacOS
+const Errno ELOOP = 62;         // Too many symbolic links encountered
+const Errno EOVERFLOW = 84;     // Value too large for defined data type Macos
+const Errno ECONNRESET = 54;    // Connection reset by peer Macos
+const Errno ENETDOWN = 50;      // Network is down MacOS
+const Errno ENETUNREACH = 51;   // Network is unreachable MacOS
+const Errno ENETRESET = 52;     // Network dropped connection because of reset MacOS
+
+$elif (env::OS_TYPE == OsType.WIN32):
+const Errno EDEADLK = 36;       // Resource deadlock would occur Win32
+const Errno ENAMETOOLONG = 38;  // File name too long Win32
+const Errno ELOOP = 114;        // Too many symbolic links encountered
+const Errno EOVERFLOW = 132;    // Value too large for defined data type
+const Errno ENETDOWN = 116;     // Network is down
+const Errno ECONNRESET = 108;   // Connection reset by peer
+const Errno ENETUNREACH = 118;  // Network is unreachable
+const Errno ENETRESET = 117;    // Network dropped connection because of reset
+
+$else:
+const Errno EDEADLK = 35;       // Resource deadlock would occur Linux (others?)
+const Errno ENAMETOOLONG = 36;  // File name too long Linux (others?)
+const Errno ELOOP = 40;         // Too many symbolic links encountered
+const Errno EOVERFLOW = 75;     // Value too large for defined data type
+const Errno ENETDOWN = 100;     // Network is down
+const Errno ECONNRESET = 104;   // Connection reset by peer
+const Errno ENETUNREACH = 101;  // Network is unreachable
+const Errno ENETRESET = 102;    // Network dropped connection because of reset
+
+$endif;
+
+
+/*
 const Errno ENOLCK = 37;  /* No record locks available */
 const Errno ENOSYS = 38;  /* Function not implemented */
 const Errno ENOTEMPTY = 39;  /* Directory not empty */
-const Errno ELOOP = 40;  /* Too many symbolic links encountered */
 
 const Errno ENOMSG = 42;  /* No message of desired type */
 const Errno EIDRM = 43;  /* Identifier removed */
@@ -316,7 +355,6 @@ const Errno EPROTO = 71;  /* Protocol error */
 const Errno EMULTIHOP = 72;  /* Multihop attempted */
 const Errno EDOTDOT = 73;  /* RFS specific error */
 const Errno EBADMSG = 74;  /* Not a data message */
-const Errno EOVERFLOW = 75;  /* Value too large for defined data type */
 const Errno ENOTUNIQ = 76;  /* Name not unique on network */
 const Errno EBADFD = 77;  /* File descriptor in bad state */
 const Errno EREMCHG = 78;  /* Remote address changed */
@@ -341,11 +379,7 @@ const Errno EPFNOSUPPORT = 96;  /* Protocol family not supported */
 const Errno EAFNOSUPPORT = 97;  /* Address family not supported by protocol */
 const Errno EADDRINUSE = 98;  /* Address already in use */
 const Errno EADDRNOTAVAIL = 99;  /* Cannot assign requested address */
-const Errno ENETDOWN = 100; /* Network is down */
-const Errno ENETUNREACH = 101; /* Network is unreachable */
-const Errno ENETRESET = 102; /* Network dropped connection because of reset */
 const Errno ECONNABORTED = 103; /* Software caused connection abort */
-const Errno ECONNRESET = 104; /* Connection reset by peer */
 const Errno ENOBUFS = 105; /* No buffer space available */
 const Errno EISCONN = 106; /* Transport endpoint is already connected */
 const Errno ENOTCONN = 107; /* Transport endpoint is not connected */
@@ -355,15 +389,30 @@ const Errno ETIMEDOUT = 110; /* Connection timed out */
 const Errno ECONNREFUSED = 111; /* Connection refused */
 const Errno EHOSTDOWN = 112; /* Host is down */
 const Errno EHOSTUNREACH = 113; /* No route to host */
-const Errno EALREADY = 114; /* Operation already in progress */
-const Errno EINPROGRESS = 115; /* Operation now in progress */
+*/
+$if (env::OS_TYPE == OsType.MACOSX):
+const Errno EINPROGRESS = 36;   // Operation now in progress MacOS
+const Errno EALREADY = 37;      // Operation already in progress MacOS
+const Errno EDQUOT = 69;        // Quota exceeded, MacOS
+
+$elif (env::OS_TYPE == OsType.WIN32):
+const Errno EALREADY = 103;     // Operation already in progress
+const Errno EINPROGRESS = 112;  // Operation now in progress Win32
+const Errno EDQUOT = -122;      // Quota exceeded, not in Win32
+
+$else:
+const Errno EALREADY = 114;     // Operation already in progress
+const Errno EINPROGRESS = 115;  // Operation now in progress
+const Errno EDQUOT = 122;       // Quota exceeded
+$endif;
+
+/*
 const Errno ESTALE = 116; /* Stale NFS file handle */
 const Errno EUCLEAN = 117; /* Structure needs cleaning */
 const Errno ENOTNAM = 118; /* Not a XENIX named type file */
 const Errno ENAVAIL = 119; /* No XENIX semaphores available */
 const Errno EISNAM = 120; /* Is a named type file */
 const Errno EREMOTEIO = 121; /* Remote I/O error */
-const Errno EDQUOT = 122; /* Quota exceeded */
 
 const Errno ENOMEDIUM = 123; /* No medium found */
 const Errno EMEDIUMTYPE = 124; /* Wrong medium type */
@@ -375,5 +424,5 @@ const Errno EKEYREJECTED = 129; /* Key was rejected by service */
 
 const Errno EOWNERDEAD = 130; /* Owner died */
 const Errno ENOTRECOVERABLE = 131; /* State not recoverable */
-
+*/
 

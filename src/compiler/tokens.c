@@ -390,6 +390,8 @@ const char *token_type_to_string(TokenType type)
 			return "$typeof";
 		case TOKEN_CT_STRINGIFY:
 			return "$stringify";
+		case TOKEN_CT_ECHO:
+			return "$echo";
 		case TOKEN_EOF:
 			return "EOF";
 

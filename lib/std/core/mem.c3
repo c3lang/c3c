@@ -92,16 +92,17 @@ macro bool equals(a, b, isz len = -1, usz $align = 0)
 	$endif;
 
 	if (!len) return true;
+	var $Type;
     $switch ($align):
 		$case 1:
-			var $Type = char;
+			$Type = char;
 		$case 2:
-			var $Type = ushort;
+			$Type = ushort;
 		$case 4:
-			var $Type = uint;
+			$Type = uint;
 		$case 8:
 		$default:
-			var $Type = ulong;
+			$Type = ulong;
 	$endswitch;
 	var $step = $Type.sizeof;
 	usz end = len / $step;

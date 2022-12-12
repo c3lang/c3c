@@ -102,9 +102,9 @@ static inline Ast **context_push_returns(SemaContext *context);
 static inline Type *context_unify_returns(SemaContext *context);
 
 // -- addr helpers
-static bool sema_addr_check_may_take(Expr *inner);
-static inline bool sema_addr_may_take_of_var(Expr *expr, Decl *decl);
-static inline bool sema_addr_may_take_of_ident(Expr *inner);
+static const char *sema_addr_check_may_take(Expr *inner);
+static inline const char *sema_addr_may_take_of_var(Expr *expr, Decl *decl);
+static inline const char *sema_addr_may_take_of_ident(Expr *inner);
 
 // -- subscript helpers
 static bool sema_subscript_rewrite_index_const_list(Expr *const_list, Expr *index, Expr *result);
@@ -566,6 +566,7 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 		case DECL_ATTRIBUTE:
 		case DECL_CT_ASSERT:
 		case DECL_DEFINE:
+		case DECL_CT_ECHO:
 			UNREACHABLE
 	}
 	switch (decl->var.kind)
@@ -1528,7 +1529,7 @@ static inline Type *context_unify_returns(SemaContext *context)
 		if (!max)
 		{
 			SEMA_ERROR(return_stmt, "Cannot find a common parent type of %s and %s",
-			           rtype, common_type);
+			           type_quoted_error_string(rtype), type_quoted_error_string(common_type));
 			Ast *prev = context->returns[i - 1];
 			assert(prev);
 			SEMA_NOTE(prev, "The previous return was here.");
@@ -1641,10 +1642,6 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		}
 		param->var.init_expr = args[i];
 		VarDeclKind kind = param->var.kind;
-		if (kind == VARDECL_PARAM_CT_TYPE || kind == VARDECL_PARAM_CT)
-		{
-			param->var.scope_depth = context->active_scope.depth + 1;
-		}
 	}
 
 	Decl **body_params = call_expr->call_expr.body_arguments;
@@ -1840,20 +1837,19 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	{
 		is_no_return = true;
 	}
-	if (returns_found == 1)
+	if (returns_found)
 	{
 		Ast *ret = macro_context.returns[0];
 		Expr *result = ret ? ret->return_stmt.expr : NULL;
-		if (result && expr_is_constant_eval(result, CONSTANT_EVAL_CONSTANT_VALUE))
+		if (!result) goto NOT_CT;
+		if (!expr_is_constant_eval(result, CONSTANT_EVAL_CONSTANT_VALUE)) goto NOT_CT;
+		if (ast_is_compile_time(body))
 		{
-			if (ast_is_compile_time(body))
-			{
-				expr_replace(call_expr, result);
-				goto EXIT;
-			}
+			expr_replace(call_expr, result);
+			goto EXIT;
 		}
 	}
-
+NOT_CT:
 	call_expr->expr_kind = EXPR_MACRO_BLOCK;
 	call_expr->macro_block.first_stmt = body->compound_stmt.first_stmt;
 	call_expr->macro_block.params = params;
@@ -2379,7 +2375,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 			{
 				SEMA_ERROR(expr,
 				           "A function or macro with '@operator(&[])' is not defined for %s, so you need && to take the address of the temporary.",
-				           type_quoted_error_string(current_expr->type));
+				           type_quoted_error_string(subscripted->type));
 				return false;
 			}
 		}
@@ -3929,11 +3925,6 @@ static inline bool sema_binary_analyse_ct_identifier_lvalue(SemaContext *context
 		return expr_poison(expr);
 	}
 
-	if (decl->var.scope_depth < context->active_scope.depth)
-	{
-		SEMA_ERROR(expr, "Cannot modify '%s' inside of a runtime scope.", decl->name);
-		return false;
-	}
 	expr->ct_ident_expr.decl = decl;
 	expr->resolve_status = RESOLVE_DONE;
 	return true;
@@ -5076,47 +5067,32 @@ static inline bool sema_expr_analyse_deref(SemaContext *context, Expr *expr)
 	return true;
 }
 
-static inline bool sema_addr_may_take_of_var(Expr *expr, Decl *decl)
+static inline const char *sema_addr_may_take_of_var(Expr *expr, Decl *decl)
 {
-	if (decl->decl_kind != DECL_VAR) return false;
+	if (decl->decl_kind != DECL_VAR) return "This is not a regular variable.";
 	decl->var.is_addr = true;
 	bool is_void = type_flatten(decl->type) == type_void;
 	switch (decl->var.kind)
 	{
 		case VARDECL_GLOBAL:
-			if (is_void)
-			{
-				SEMA_ERROR(expr, "You cannot take the address of a global of type %s.", type_quoted_error_string(decl->type));
-				return false;
-			}
-			return true;
+			if (is_void) return "You cannot take the address of a global of type 'void'";
+			return NULL;
 		case VARDECL_LOCAL:
-			if (is_void)
-			{
-				SEMA_ERROR(expr, "You cannot take the address of a variable with type %s.", type_quoted_error_string(decl->type));
-				return false;
-			}
-			return true;
+			if (is_void) return "You cannot take the address of a variable of type 'void'";
+			return NULL;
 		case VARDECL_PARAM:
 		case VARDECL_PARAM_REF:
-			if (is_void)
-			{
-				SEMA_ERROR(expr, "You cannot take the address of a parameter with type %s.", type_quoted_error_string(decl->type));
-				return false;
-			}
-			return true;
+			if (is_void) return "You cannot take the address of a parameter of type 'void'";
+			return NULL;
 		case VARDECL_CONST:
 			if (!decl->var.type_info)
 			{
-				SEMA_ERROR(expr, "The constant is not typed, either type it or use && to take the reference to a temporary.");
-				SEMA_NOTE(decl, "The constant was defined here.");
-				return false;
+				return "The constant is not typed, either type it or use && to take the reference to a temporary.";
 			}
 			assert(decl->type != type_void);
-			return true;
+			return NULL;
 		case VARDECL_PARAM_EXPR:
-			SEMA_ERROR(expr, "It is not possible to take the address of a captured expression, but you can use && to take a reference to the temporary value.");
-			return false;
+			return "It is not possible to take the address of a captured expression, but you can use && to take a reference to the temporary value.";
 		case VARDECL_PARAM_CT:
 		case VARDECL_PARAM_CT_TYPE:
 		case VARDECL_LOCAL_CT_TYPE:
@@ -5134,7 +5110,7 @@ static inline bool sema_addr_may_take_of_var(Expr *expr, Decl *decl)
 
 }
 
-static inline bool sema_addr_may_take_of_ident(Expr *inner)
+static inline const char *sema_addr_may_take_of_ident(Expr *inner)
 {
 	Decl *decl = decl_raw(inner->identifier_expr.decl);
 	switch (decl->decl_kind)
@@ -5142,35 +5118,31 @@ static inline bool sema_addr_may_take_of_ident(Expr *inner)
 		case DECL_FUNC:
 			if (decl->func_decl.attr_test)
 			{
-				SEMA_ERROR(inner, "You may not take the address of a '@test' function.");
-				return false;
+				return "You may not take the address of a '@test' function.";
 			}
-			return true;
+			return NULL;
 		case DECL_VAR:
 			return sema_addr_may_take_of_var(inner, decl);
 		case DECL_MACRO:
-			SEMA_ERROR(inner, "It is not possible to take the address of a macro.");
-			return false;
+			return "It is not possible to take the address of a macro.";
 		case DECL_GENERIC:
-			SEMA_ERROR(inner, "It is not possible to take the address of a generic function.");
-			return false;
+			return "It is not possible to take the address of a generic function.";
 		default:
 			UNREACHABLE
 	}
 	UNREACHABLE
 }
 
-static bool sema_addr_check_may_take(Expr *inner)
+static const char *sema_addr_check_may_take(Expr *inner)
 {
 	switch (inner->expr_kind)
 	{
 		case EXPR_CT_IDENT:
-			SEMA_ERROR(inner, "It's not possible to take the address of a compile time value.");
-			return false;
+			return "It's not possible to take the address of a compile time value.";
 		case EXPR_IDENTIFIER:
 			return sema_addr_may_take_of_ident(inner);
 		case EXPR_UNARY:
-			if (inner->unary_expr.operator == UNARYOP_DEREF) return true;
+			if (inner->unary_expr.operator == UNARYOP_DEREF) return NULL;
 			break;
 		case EXPR_ACCESS:
 			return sema_addr_check_may_take(inner->access_expr.parent);
@@ -5179,16 +5151,13 @@ static bool sema_addr_check_may_take(Expr *inner)
 		case EXPR_SUBSCRIPT:
 			return sema_addr_check_may_take(exprptr(inner->subscript_expr.expr));
 		case EXPR_TYPEINFO:
-			SEMA_ERROR(inner, "It is not possible to take the address of a type.");
-			return false;
+			return "It is not possible to take the address of a type.";
 		case EXPR_BITACCESS:
-			SEMA_ERROR(inner, "You cannot take the address of a bitstruct member.");
-			return false;
+			return "You cannot take the address of a bitstruct member.";
 		default:
 			break;
 	}
-	SEMA_ERROR(inner, "To take the address of a temporary value, use '&&' instead of '&'.", type_to_error_string(inner->type));
-	return false;
+	return "To take the address of a temporary value, use '&&' instead of '&'.";
 }
 
 /**
@@ -5213,14 +5182,29 @@ static inline bool sema_expr_analyse_addr(SemaContext *context, Expr *expr)
 			if (!sema_analyse_expr_lvalue_fold_const(context, inner)) return false;
 			expr_replace(expr, inner);
 			return true;
-		default:
+		case EXPR_ACCESS:
 		{
-			if (!sema_analyse_expr_lvalue(context, inner)) return expr_poison(expr);
+			Expr *parent = inner->access_expr.parent;
+			if (parent->expr_kind == EXPR_TYPEINFO) break;
+			Expr *parent_copy = expr_copy(parent);
+			parent->expr_kind = EXPR_UNARY;
+			parent->unary_expr = (ExprUnary){ .expr = parent_copy, .operator = UNARYOP_ADDR };
+			if (!sema_analyse_expr_lvalue_fold_const(context, parent)) return false;
+			expr_rewrite_insert_deref(parent);
+			break;
 		}
+		default:
+			break;
 	}
+	if (!sema_analyse_expr_lvalue(context, inner)) return expr_poison(expr);
 
 	// 2. Take the address.
-	if (!sema_addr_check_may_take(inner)) return expr_poison(expr);
+	const char *error = sema_addr_check_may_take(inner);
+	if (error)
+	{
+		SEMA_ERROR(inner, error);
+		return expr_poison(expr);
+	}
 
 	// 3. Get the pointer of the underlying type.
 	expr->type = type_get_ptr_recurse(inner->type);
@@ -5373,12 +5357,6 @@ static inline bool sema_expr_analyse_ct_incdec(SemaContext *context, Expr *expr,
 		default:
 			SEMA_ERROR(expr, "The compile time variable '%s' does not hold an integer.", var->name);
 			return false;
-	}
-
-	if (var->var.scope_depth < context->active_scope.depth)
-	{
-		SEMA_ERROR(expr, "Cannot modify '%s' inside of a runtime scope.", var->name);
-		return false;
 	}
 
 	Expr *end_value = expr_copy(start_value);
@@ -7196,7 +7174,9 @@ TokenType sema_splitpathref(const char *string, ArraySize len, Path **path_ref, 
 
 bool sema_insert_method_call(SemaContext *context, Expr *method_call, Decl *method_decl, Expr *parent, Expr **arguments)
 {
+	SourceSpan original_span = method_call->span;
 	*method_call = (Expr) { .expr_kind = EXPR_CALL,
+			.span = original_span,
 			.resolve_status = RESOLVE_RUNNING,
 			.call_expr.func_ref = declid(method_decl),
 			.call_expr.arguments = arguments,

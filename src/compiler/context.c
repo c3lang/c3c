@@ -141,6 +141,7 @@ void decl_register(Decl *decl)
 		case DECL_CT_IF:
 		case DECL_CT_SWITCH:
 		case DECL_CT_ASSERT:
+		case DECL_CT_ECHO:
 		case DECL_ENUM_CONSTANT:
 		case DECL_FAULTVALUE:
 		case DECL_IMPORT:
@@ -262,6 +263,9 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 		case DECL_CT_IF:
 		case DECL_CT_SWITCH:
 			vec_add(unit->ct_ifs, decl);
+			return;
+		case DECL_CT_ECHO:
+			vec_add(unit->ct_echos, decl);
 			return;
 		case DECL_CT_ASSERT:
 			vec_add(unit->ct_asserts, decl);

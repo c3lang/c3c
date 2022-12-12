@@ -135,6 +135,7 @@ typedef struct
 	unsigned flt_rounds;
 	unsigned fma;
 	unsigned fmuladd;
+	unsigned frameaddress;
 	unsigned fshl;
 	unsigned fshr;
 	unsigned lifetime_end;

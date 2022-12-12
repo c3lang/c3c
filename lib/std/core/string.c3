@@ -297,7 +297,7 @@ private fn void String.reserve(String* str, usz addition)
 	}
 	usz len = data.len + addition;
 	if (data.capacity >= len) return;
-	usz new_capacity = data.capacity * 2;
+	usz new_capacity = data.capacity *= 2;
 	if (new_capacity < MIN_CAPACITY) new_capacity = MIN_CAPACITY;
 	*str = (String)data.allocator.realloc(data, StringData.sizeof + new_capacity)!!;
 }
