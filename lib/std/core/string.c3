@@ -301,3 +301,11 @@ private fn void String.reserve(String* str, usz addition)
 	if (new_capacity < MIN_CAPACITY) new_capacity = MIN_CAPACITY;
 	*str = (String)data.allocator.realloc(data, StringData.sizeof + new_capacity)!!;
 }
+
+fn String String.concat(String a, String b)
+{
+	char[] result = str::concat(a.str(), b.str());
+	String resultString = new(result);
+	free(result);
+	return resultString; 
+}
