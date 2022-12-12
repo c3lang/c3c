@@ -55,6 +55,11 @@ fn Type List.pop(List* list)
     return list.entries[--list.size];
 }
 
+fn void List.clear(List* list)
+{
+    list.size = 0;
+}
+
 /**
  * @require list.size > 0
  */
