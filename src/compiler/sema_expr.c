@@ -5992,7 +5992,7 @@ static inline bool sema_expr_analyse_flat_element(SemaContext *context, ExprFlat
 	Type *actual_type = type_flatten_distinct(type);
 	if (element->array)
 	{
-		if (!type_is_arraylike(actual_type) && actual_type->type_kind)
+		if (!type_is_arraylike(actual_type) && actual_type->type_kind != TYPE_POINTER)
 		{
 			if (is_missing)
 			{
@@ -6076,6 +6076,10 @@ static inline bool sema_expr_analyse_flat_element(SemaContext *context, ExprFlat
 			return true;
 		}
 	}
+	if (actual_type->type_kind == TYPE_POINTER && actual_type->pointer->type_kind != TYPE_POINTER)
+	{
+		actual_type = actual_type->pointer;
+	}
 	if (!type_is_union_or_strukt(actual_type))
 	{
 		if (is_missing)
@@ -6096,6 +6100,15 @@ static inline bool sema_expr_analyse_flat_element(SemaContext *context, ExprFlat
 	Decl *member = sema_decl_stack_find_decl_member(actual_type->decl, element->inner->identifier_expr.ident);
 	if (!member)
 	{
+		Decl *ambiguous = NULL;
+		Decl *private = NULL;
+		member = sema_resolve_method(context->unit, actual_type->decl, kw, &ambiguous, &private);
+		if (ambiguous)
+		{
+			sema_error_at(loc, "'%s' is an ambiguous name and so cannot be resolved, it may refer to method defined in '%s' or one in '%s'",
+			           kw, member->unit->module->name->module, ambiguous->unit->module->name->module);
+			return false;
+		}
 		if (is_missing)
 		{
 			*is_missing = true;

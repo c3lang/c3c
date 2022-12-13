@@ -2582,6 +2582,97 @@ static Module *module_instantiate_generic(Module *module, Path *path, Expr **par
 	return new_module;
 }
 
+static bool sema_append_generate_parameterized_name(SemaContext *c, Module *module, Decl *decl, bool mangled)
+{
+	if (mangled)
+	{
+		scratch_buffer_append_len(module->name->module, module->name->len);
+		scratch_buffer_append("$$");
+	}
+	else
+	{
+		scratch_buffer_append_char('<');
+	}
+	FOREACH_BEGIN_IDX(i, Expr *param, decl->define_decl.generic_params)
+		if (i != 0)
+		{
+			scratch_buffer_append(mangled ? "." : ", ");
+		}
+		if (param->expr_kind == EXPR_TYPEINFO)
+		{
+			TypeInfo *type = param->type_expr;
+			if (!sema_resolve_type_info(c, type)) return decl_poison(decl);
+			if (type->type->type_kind == TYPE_OPTIONAL)
+			{
+				SEMA_ERROR(type, "Expected a non-optional type.");
+				return poisoned_decl;
+			}
+			if (type_is_invalid_storage_type(type->type))
+			{
+				SEMA_ERROR(type, "Expected a runtime type.");
+				return poisoned_decl;
+			}
+			if (mangled)
+			{
+				type_mangle_introspect_name_to_buffer(type->type->canonical);
+			}
+			else
+			{
+				scratch_buffer_append(type->type->name);
+			}
+		}
+		else
+		{
+			if (!sema_analyse_ct_expr(c, param)) return decl_poison(decl);
+			Type *type = param->type->canonical;
+			if (!type_is_integer_or_bool_kind(type))
+			{
+				SEMA_ERROR(param, "Only integer and boolean types may be generic arguments.");
+				return poisoned_decl;
+			}
+			assert(expr_is_const(param));
+			if (type == type_bool)
+			{
+				if (mangled)
+				{
+					scratch_buffer_append_char(param->const_expr.b ? 't' : 'f');
+				}
+				else
+				{
+					scratch_buffer_append(param->const_expr.b ? "true" : "false");
+				}
+			}
+			else
+			{
+				char *maybe_neg = &scratch_buffer.str[scratch_buffer.len];
+				if (type->type_kind == TYPE_I128 || type->type_kind == TYPE_U128)
+				{
+					char *str = int_to_str(param->const_expr.ixx, 10);
+
+					scratch_buffer_append(str);
+				}
+				else
+				{
+					if (type_is_signed(type))
+					{
+						scratch_buffer_append_signed_int(param->const_expr.ixx.i.low);
+					}
+					else
+					{
+						scratch_buffer_append_unsigned_int(param->const_expr.ixx.i.high);
+					}
+				}
+				if (mangled)
+				{
+					// Replace - with _
+					if (maybe_neg[0] == '-') maybe_neg[0] = '_';
+				}
+			}
+		}
+	FOREACH_END();
+	if (!mangled) scratch_buffer_append_char('>');
+	return true;
+}
 static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 {
 	Path *decl_path;
@@ -2635,65 +2726,7 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 		return decl_poison(decl);
 	}
 	scratch_buffer_clear();
-	scratch_buffer_append_len(module->name->module, module->name->len);
-	scratch_buffer_append("$$");
-	FOREACH_BEGIN_IDX(i, Expr *param, decl->define_decl.generic_params)
-		if (i != 0) scratch_buffer_append_char('.');
-		if (param->expr_kind == EXPR_TYPEINFO)
-		{
-			TypeInfo *type = param->type_expr;
-			if (!sema_resolve_type_info(c, type)) return decl_poison(decl);
-			if (type->type->type_kind == TYPE_OPTIONAL)
-			{
-				SEMA_ERROR(type, "Expected a non-optional type.");
-				return poisoned_decl;
-			}
-			if (type_is_invalid_storage_type(type->type))
-			{
-				SEMA_ERROR(type, "Expected a runtime type.");
-				return poisoned_decl;
-			}
-			type_mangle_introspect_name_to_buffer(type->type->canonical);
-		}
-		else
-		{
-			if (!sema_analyse_ct_expr(c, param)) return decl_poison(decl);
-			Type *type = param->type->canonical;
-			if (!type_is_integer_or_bool_kind(type))
-			{
-				SEMA_ERROR(param, "Only integer and boolean types may be generic arguments.");
-				return poisoned_decl;
-			}
-			assert(expr_is_const(param));
-			if (type == type_bool)
-			{
-				scratch_buffer_append_char(param->const_expr.b ? 't' : 'f');
-			}
-			else
-			{
-				char *maybe_neg = &scratch_buffer.str[scratch_buffer.len];
-				if (type->type_kind == TYPE_I128 || type->type_kind == TYPE_U128)
-				{
-					char *str = int_to_str(param->const_expr.ixx, 10);
-
-					scratch_buffer_append(str);
-				}
-				else
-				{
-					if (type_is_signed(type))
-					{
-						scratch_buffer_append_signed_int(param->const_expr.ixx.i.low);
-					}
-					else
-					{
-						scratch_buffer_append_unsigned_int(param->const_expr.ixx.i.high);
-					}
-				}
-				// Replace - with _
-				if (maybe_neg[0] == '-') maybe_neg[0] = '_';
-			}
-		}
-	FOREACH_END();
+	if (!sema_append_generate_parameterized_name(c, module, decl, true)) return decl_poison(decl);
 	TokenType ident_type = TOKEN_IDENT;
 	const char *path_string = scratch_buffer_interned();
 	Module *instantiated_module = global_context_find_module(path_string);
@@ -2717,6 +2750,10 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 			return true;
 		case DEFINE_TYPE_GENERIC:
 		{
+			scratch_buffer_clear();
+			scratch_buffer_append(symbol->name);
+			sema_append_generate_parameterized_name(c, module, decl, false);
+			symbol->type->name = scratch_buffer_interned();
 			Type *type = type_new(TYPE_TYPEDEF, decl->name);
 			decl->type = type;
 			type->decl = symbol;

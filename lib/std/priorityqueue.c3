@@ -103,3 +103,11 @@ fn usz PriorityQueue.len(PriorityQueue* pq) @operator(len)
 {
 	return pq.heap.len();
 }
+
+/**
+ * @require pq != null, index < pq.len()
+ */
+fn Type PriorityQueue.peek_at(PriorityQueue* pq, usz index) @operator([])
+{
+	return pq.heap[index];
+}
