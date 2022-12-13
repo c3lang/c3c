@@ -192,7 +192,7 @@ void llvm_emit_debug_parameter(GenContext *c, Decl *parameter, unsigned index)
 	unsigned col = parameter->span.col;
 	if (col == 0) col = 1;
 
-	parameter->var.backend_debug_ref = LLVMDIBuilderCreateParameterVariable(
+			parameter->var.backend_debug_ref = LLVMDIBuilderCreateParameterVariable(
 			c->debug.builder,
 			c->debug.function,
 			name,
@@ -290,20 +290,13 @@ static LLVMMetadataRef llvm_debug_simple_type(GenContext *context, Type *type, i
 
 static LLVMMetadataRef llvm_debug_pointer_type(GenContext *c, Type *type)
 {
-	if (!type->pointer->backend_debug_type)
-	{
-		type->backend_debug_type = llvm_debug_forward_comp(c, type, type->name, NULL, NULL, LLVMDIFlagZero);
-	}
-	LLVMMetadataRef real = LLVMDIBuilderCreatePointerType(c->debug.builder,
-	                                                      llvm_get_debug_type(c, type->pointer),
-	                                                      type_size(type) * 8,
-	                                                      type_abi_alignment(type) * 8, 0,
-	                                                      type->name, strlen(type->name));
-	if (type->backend_debug_type)
-	{
-		LLVMMetadataReplaceAllUsesWith(type->backend_debug_type, real);
-	}
-	return real;
+	LLVMMetadataRef inner = llvm_get_debug_type(c, type->pointer);
+	if (type->backend_debug_type) return type->backend_debug_type;
+	return LLVMDIBuilderCreatePointerType(c->debug.builder,
+	                                      inner,
+	                                      type_size(type) * 8,
+	                                      type_abi_alignment(type) * 8, 0,
+	                                      type->name, strlen(type->name));
 }
 
 static LLVMMetadataRef llvm_debug_enum_type(GenContext *c, Type *type, LLVMMetadataRef scope)
@@ -405,6 +398,7 @@ static LLVMMetadataRef llvm_debug_subarray_type(GenContext *c, Type *type)
 static LLVMMetadataRef llvm_debug_any_type(GenContext *c, Type *type)
 {
 	LLVMMetadataRef forward = llvm_debug_forward_comp(c, type, type->name, NULL, NULL, LLVMDIFlagZero);
+
 	type->backend_debug_type = forward;
 
 	LLVMMetadataRef elements[2] = {
@@ -478,6 +472,7 @@ static LLVMMetadataRef llvm_debug_typedef_type(GenContext *c, Type *type)
 	if (type->backend_debug_type)
 	{
 		LLVMMetadataReplaceAllUsesWith(type->backend_debug_type, real);
+		type->backend_debug_type = real;
 	}
 	return real;
 }
