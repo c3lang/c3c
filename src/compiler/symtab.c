@@ -248,6 +248,12 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_SYSCLOCK] = KW_DEF("sysclock");
 	builtin_list[BUILTIN_TRAP] = KW_DEF("trap");
 	builtin_list[BUILTIN_TRUNC] = KW_DEF("trunc");
+	builtin_list[BUILTIN_VECCOMPLT] = KW_DEF("veccomplt");
+	builtin_list[BUILTIN_VECCOMPLE] = KW_DEF("veccomple");
+	builtin_list[BUILTIN_VECCOMPGT] = KW_DEF("veccompgt");
+	builtin_list[BUILTIN_VECCOMPGE] = KW_DEF("veccompge");
+	builtin_list[BUILTIN_VECCOMPEQ] = KW_DEF("veccompeq");
+	builtin_list[BUILTIN_VECCOMPNE] = KW_DEF("veccompne");
 	builtin_list[BUILTIN_UNREACHABLE] = KW_DEF("unreachable");
 	builtin_list[BUILTIN_VOLATILE_LOAD] = KW_DEF("volatile_load");
 	builtin_list[BUILTIN_VOLATILE_STORE] = KW_DEF("volatile_store");

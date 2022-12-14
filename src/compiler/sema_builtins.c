@@ -316,6 +316,18 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 					return false;
 			}
 			break;
+		case BUILTIN_VECCOMPGE:
+		case BUILTIN_VECCOMPEQ:
+		case BUILTIN_VECCOMPLE:
+		case BUILTIN_VECCOMPGT:
+		case BUILTIN_VECCOMPLT:
+		case BUILTIN_VECCOMPNE:
+			if (!sema_check_builtin_args(args,
+			                             (BuiltinArg[]) { BA_VEC, BA_VEC },
+			                             arg_count)) return false;
+			if (!sema_check_builtin_args_match(args, 2)) return false;
+			rtype = type_get_vector_bool(args[0]->type);
+			break;
 		case BUILTIN_OVERFLOW_ADD:
 		case BUILTIN_OVERFLOW_MUL:
 		case BUILTIN_OVERFLOW_SUB:
@@ -612,6 +624,12 @@ static inline unsigned builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_SAT_SHL:
 		case BUILTIN_SAT_SUB:
 		case BUILTIN_VOLATILE_STORE:
+		case BUILTIN_VECCOMPNE:
+		case BUILTIN_VECCOMPLT:
+		case BUILTIN_VECCOMPLE:
+		case BUILTIN_VECCOMPGE:
+		case BUILTIN_VECCOMPGT:
+		case BUILTIN_VECCOMPEQ:
 			return 2;
 		case BUILTIN_FMA:
 		case BUILTIN_FSHL:

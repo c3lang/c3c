@@ -4949,6 +4949,11 @@ static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left,
 
 	if (left_type->type_kind == TYPE_VECTOR && right_type->type_kind == TYPE_VECTOR)
 	{
+		if (!is_equality_type_op)
+		{
+			SEMA_ERROR(expr, "Vector types can only be tested for equality, for other comparison, use vector comparison functions.");
+			return false;
+		}
 		if (left_type->array.len == right_type->array.len)
 		{
 			Type *left_vec = type_vector_type(left_type);
@@ -5019,8 +5024,7 @@ DONE:
 
 	// 8. Set the type to bool
 
-	Type *return_type = left_type->type_kind == TYPE_VECTOR ? type_get_vector_bool(left_type) : type_bool;
-	expr->type = type_add_optional(return_type, IS_OPTIONAL(left) || IS_OPTIONAL(right));
+	expr->type = type_add_optional(type_bool, IS_OPTIONAL(left) || IS_OPTIONAL(right));
 
 	return true;
 }

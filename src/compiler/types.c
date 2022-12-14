@@ -439,7 +439,6 @@ bool type_is_ordered(Type *type)
 		case TYPE_POINTER:
 		case TYPE_BOOL:
 		case TYPE_ENUM:
-		case TYPE_VECTOR:
 			return true;
 		case TYPE_TYPEDEF:
 			type = type->canonical;
