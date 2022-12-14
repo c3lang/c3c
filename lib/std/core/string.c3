@@ -302,10 +302,10 @@ private fn void String.reserve(String* str, usz addition)
 	*str = (String)data.allocator.realloc(data, StringData.sizeof + new_capacity)!!;
 }
 
-fn String String.concat(String a, String b)
+fn String String.new_concat(String a, String b, Allocator* allocator = mem::current_allocator())
 {
-	char[] result = str::concat(a.str(), b.str());
-	String resultString = new(result);
-	free(result);
+	String resultString = new_with_capacity(a.len() + b.len(), allocator);
+	resultString.append(a);
+	resultString.append(b);
 	return resultString; 
 }
