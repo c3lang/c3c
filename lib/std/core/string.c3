@@ -304,8 +304,8 @@ private fn void String.reserve(String* str, usz addition)
 
 fn String String.new_concat(String a, String b, Allocator* allocator = mem::current_allocator())
 {
-	String resultString = new_with_capacity(a.len() + b.len(), allocator);
-	resultString.append(a);
-	resultString.append(b);
-	return resultString; 
+	String string = new_with_capacity(a.len() + b.len(), allocator);
+	string.append(a);
+	string.append(b);
+	return string; 
 }
