@@ -172,7 +172,7 @@ fn char[][] split(char[] s, char[] needle, Allocator* allocator = mem::current_a
 		if (i == capacity)
 		{
 			capacity *= 2;
-			holder = allocator.realloc(holder, capacity)!!;
+			holder = allocator.realloc(holder, char[].sizeof * capacity)!!;
 		}
 		holder[i++] = res;
 	}

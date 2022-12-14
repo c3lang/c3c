@@ -51,6 +51,7 @@ void compiler_init(const char *std_lib_dir)
 	htable_init(&global_context.compiler_defines, 16 * 1024);
 	global_context.module_list = NULL;
 	global_context.generic_module_list = NULL;
+	global_context.method_extensions = NULL;
 	vmem_init(&ast_arena, 512);
 	ast_calloc();
 	vmem_init(&expr_arena, 512);

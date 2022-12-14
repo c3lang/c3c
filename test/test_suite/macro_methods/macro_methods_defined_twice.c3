@@ -14,14 +14,15 @@ macro void foo::Bar.@test(Bar &bar)
     io::println("Inside of baz::Bar.test");
 }
 
-macro void Bar.@test(Bar &bar) // #error: This macro method is already defined in this module
+module bad;
+import foo;
+macro void Bar.@test(Bar &bar) // #error: This macro method is already defined for 'Bar'.
 {
     io::println("Inside of baz::Bar.test");
 }
 
 module abc;
 import foo;
-import baz;
 
 fn void main()
 {

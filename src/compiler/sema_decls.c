@@ -1184,7 +1184,7 @@ static bool sema_analyse_operator_common(Decl *method, TypeInfo **rtype_ptr, Dec
 static inline Decl *operator_in_module(SemaContext *c, Module *module, OperatorOverload operator_overload)
 {
 	if (module->is_generic) return NULL;
-	Decl **extensions = module->method_extensions;
+	Decl **extensions = module->private_method_extensions;
 	VECEACH(extensions, j)
 	{
 		Decl *extension = extensions[j];
@@ -1299,7 +1299,14 @@ static inline bool unit_add_base_extension_method(CompilationUnit *unit, Type *p
 		method_like->extname = scratch_buffer_copy();
 	}
 	DEBUG_LOG("Method-like '%s.%s' analysed.", parent_type->name, method_like->name);
-	vec_add(unit->module->method_extensions, method_like);
+	if (method_like->visibility == VISIBLE_LOCAL)
+	{
+		vec_add(unit->module->private_method_extensions, method_like);
+	}
+	else
+	{
+		vec_add(global_context.method_extensions, method_like);
+	}
 	return true;
 }
 
@@ -1307,13 +1314,15 @@ static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type
 {
 	assert(parent_type->canonical == parent_type);
 	const char *name = method_like->name;
-	Decl *method = sema_find_extension_method_in_module(unit->module, parent_type, name);
+	Decl *method = sema_find_extension_method_in_module(unit->module->private_method_extensions, parent_type, name);
+	if (!method) sema_find_extension_method_in_module(global_context.method_extensions, parent_type, name);
 	if (method)
 	{
-		SEMA_ERROR(method_like, "This %s is already defined in this module.", method_name_by_decl(method_like));
+		SEMA_ERROR(method_like, "This %s is already defined.", method_name_by_decl(method_like));
 		SEMA_NOTE(method, "The previous definition was here.");
 		return false;
 	}
+
 	if (!type_is_user_defined(parent_type)) return unit_add_base_extension_method(unit, parent_type, method_like);
 	Decl *parent = parent_type->decl;
 	Decl *ambiguous = NULL;
@@ -1346,13 +1355,13 @@ static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type
 		method_like->extname = scratch_buffer_copy();
 	}
 	DEBUG_LOG("Method-like '%s.%s' analysed.", parent->name, method_like->name);
-	if (parent->unit->module == unit->module)
+	if (parent->unit->module == unit->module || method_like->visibility != VISIBLE_LOCAL)
 	{
 		vec_add(parent->methods, method_like);
 	}
 	else
 	{
-		vec_add(unit->module->method_extensions, method_like);
+		vec_add(unit->module->private_method_extensions, method_like);
 	}
 	return true;
 
