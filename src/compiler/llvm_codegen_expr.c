@@ -38,7 +38,8 @@ static inline void llvm_emit_vararg_parameter(GenContext *c, BEValue *value, Typ
 static inline void llvm_emit_variant(GenContext *c, BEValue *value, Expr *expr);
 static inline void llvm_emit_vector_initializer_list(GenContext *c, BEValue *value, Expr *expr);
 static inline void llvm_extract_bitvalue_from_array(GenContext *c, BEValue *be_value, Decl *member, Decl *parent_decl);
-static void llvm_convert_vector_comparison(GenContext *c, BEValue *be_value, LLVMValueRef val, Type *vector_type);
+static void llvm_convert_vector_comparison(GenContext *c, BEValue *be_value, LLVMValueRef val, Type *vector_type,
+                                           bool is_equals);
 static void llvm_emit_any_pointer(GenContext *c, BEValue *any, BEValue *pointer);
 static void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs_loaded, BinaryOp binary_op);
 static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr, BEValue *target);
@@ -178,15 +179,17 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 	return value;
 }
 
-
-
-
-
-static void llvm_convert_vector_comparison(GenContext *c, BEValue *be_value, LLVMValueRef val, Type *vector_type)
+static void llvm_convert_vector_comparison(GenContext *c, BEValue *be_value, LLVMValueRef val, Type *vector_type,
+                                           bool is_equals)
 {
-	Type *result_type = type_get_vector_bool(vector_type);
-	val = LLVMBuildSExt(c->builder, val, llvm_get_type(c, result_type), "");
-	llvm_value_set(be_value, val, result_type);
+	unsigned bits = vector_type->array.len;
+	LLVMTypeRef llvm_type = LLVMTypeOf(val);
+	if (bits <= 64)
+	{
+	}
+	unsigned intrinsic = is_equals ? intrinsic_id.vector_reduce_and : intrinsic_id.vector_reduce_or;
+	LLVMValueRef result = llvm_emit_call_intrinsic(c, intrinsic, &llvm_type, 1, &val, 1);
+	llvm_value_set_bool(be_value, result);
 }
 
 static LLVMValueRef llvm_emit_coerce_alignment(GenContext *c, BEValue *be_value, LLVMTypeRef coerce_type, AlignSize target_alignment, AlignSize *resulting_alignment)
@@ -3042,7 +3045,7 @@ void llvm_emit_int_comp_raw(GenContext *c, BEValue *result, Type *lhs_type, Type
 		}
 		if (vector_type)
 		{
-			llvm_convert_vector_comparison(c, result, value, lhs_type);
+			llvm_convert_vector_comparison(c, result, value, lhs_type, binary_op == BINARYOP_EQ);
 			return;
 		}
 		llvm_value_set_bool(result, value);
@@ -3083,7 +3086,7 @@ void llvm_emit_int_comp_raw(GenContext *c, BEValue *result, Type *lhs_type, Type
 	{
 		if (vector_type)
 		{
-			llvm_convert_vector_comparison(c, result, comp_value, lhs_type);
+			llvm_convert_vector_comparison(c, result, comp_value, lhs_type, binary_op == BINARYOP_EQ);
 			return;
 		}
 		llvm_value_set_bool(result, comp_value);
@@ -3129,7 +3132,7 @@ void llvm_emit_int_comp_raw(GenContext *c, BEValue *result, Type *lhs_type, Type
 	}
 	if (vector_type)
 	{
-		llvm_convert_vector_comparison(c, result, comp_value, lhs_type);
+		llvm_convert_vector_comparison(c, result, comp_value, lhs_type, BINARYOP_EQ == binary_op);
 		return;
 	}
 	llvm_value_set_bool(result, comp_value);
@@ -3271,6 +3274,7 @@ static void llvm_emit_subarray_comp(GenContext *c, BEValue *be_value, BEValue *l
 
 
 }
+
 static void llvm_emit_float_comp(GenContext *c, BEValue *be_value, BEValue *lhs, BEValue *rhs, BinaryOp binary_op, Type *vector_type)
 {
 	llvm_value_rvalue(c, lhs);
@@ -3305,7 +3309,7 @@ static void llvm_emit_float_comp(GenContext *c, BEValue *be_value, BEValue *lhs,
 	}
 	if (vector_type)
 	{
-		llvm_convert_vector_comparison(c, be_value, val, vector_type);
+		llvm_convert_vector_comparison(c, be_value, val, vector_type, BINARYOP_EQ == binary_op);
 		return;
 	}
 	llvm_value_set_bool(be_value, val);
