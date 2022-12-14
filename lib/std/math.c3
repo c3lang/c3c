@@ -87,6 +87,15 @@ define Complex64 = Complex<double>;
 macro abs(x) = $$abs(x);
 
 /**
+ * @require values::@is_int(x) `The input must be an integer`
+ **/
+macro sign(x)
+{
+	if (!x) return ($typeof(x))0;
+	return ($typeof(x))(x < 0 ? -1 : 1);
+}
+
+/**
  * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
  **/
 macro ceil(x) = $$ceil(x);

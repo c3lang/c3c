@@ -1452,7 +1452,7 @@ typedef struct Module_
 	AnalysisStage stage : 6;
 
 	AstId docs;
-	Decl** method_extensions;
+	Decl** private_method_extensions;
 	HTable symbols;
 	struct CompilationUnit_ **units;
 	Module *parent_module;
@@ -1645,6 +1645,7 @@ typedef struct
 	Module **module_list;
 	Module **generic_module_list;
 	Type **type;
+	Decl** method_extensions;
 	const char *lib_dir;
 	const char **sources;
 	File **loaded_sources;
@@ -2204,7 +2205,7 @@ Decl *sema_find_decl_in_modules(Module **module_list, Path *path, const char *in
 Decl *unit_resolve_parameterized_symbol(CompilationUnit *unit, NameResolve *name_resolve);
 Decl *sema_resolve_type_method(CompilationUnit *unit, Type *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref);
 Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref);
-Decl *sema_find_extension_method_in_module(Module *module, Type *type, const char *method_name);
+Decl *sema_find_extension_method_in_module(Decl **extensions, Type *type, const char *method_name);
 
 Decl *sema_find_symbol(SemaContext *context, const char *symbol);
 Decl *sema_find_path_symbol(SemaContext *context, const char *symbol, Path *path);

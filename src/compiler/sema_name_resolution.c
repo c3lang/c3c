@@ -568,9 +568,8 @@ INLINE Decl *sema_resolve_symbol_common(SemaContext *context, NameResolve *name_
 	return decl;
 }
 
-Decl *sema_find_extension_method_in_module(Module *module, Type *type, const char *method_name)
+Decl *sema_find_extension_method_in_module(Decl **extensions, Type *type, const char *method_name)
 {
-	Decl **extensions = module->method_extensions;
 	VECEACH(extensions, i)
 	{
 		Decl *extension = extensions[i];
@@ -593,7 +592,7 @@ Decl *sema_resolve_method_in_module(Module *module, Type *actual_type, const cha
 									Decl **private_found, Decl **ambiguous, MethodSearchType search_type)
 {
 	if (module->is_generic) return NULL;
-	Decl *found = sema_find_extension_method_in_module(module, actual_type, method_name);
+	Decl *found = sema_find_extension_method_in_module(module->private_method_extensions, actual_type, method_name);
 	// The found one might not be visible
 	if (found && search_type < METHOD_SEARCH_CURRENT && found->visibility < VISIBLE_PUBLIC)
 	{
@@ -675,6 +674,11 @@ Decl *sema_resolve_type_method(CompilationUnit *unit, Type *type, const char *me
 	{
 		*ambiguous_ref = ambiguous;
 		return found;
+	}
+	if (!found)
+	{
+		found = sema_find_extension_method_in_module(global_context.method_extensions, type, method_name);
+		private = NULL;
 	}
 	if (private) *private_ref = private;
 	if (!found)

@@ -14,7 +14,7 @@ fn void foo::Bar.test(Bar *bar)
     io::println("Inside of baz::Bar.test");
 }
 
-fn void Bar.test(Bar *bar) // #error: This method is already defined in this module
+fn void Bar.test(Bar *bar) // #error: This method is already defined for
 {
     io::println("Inside of baz::Bar.test");
 }
