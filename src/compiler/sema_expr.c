@@ -2278,7 +2278,6 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	// 1. Evaluate the expression to index.
 	Expr *subscripted = exprptr(expr->subscript_expr.expr);
 	if (!sema_analyse_expr_lvalue_fold_const(context, subscripted)) return false;
-	sema_subscript_deref_array_pointers(subscripted);
 
 	// 2. Evaluate the index.
 	Expr *index = exprptr(expr->subscript_expr.range.start);

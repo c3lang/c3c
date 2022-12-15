@@ -8,14 +8,14 @@ fn void main()
     int[3]* y = &x;
     int* z = y;
     int[] sub = y;
-    int y1 = y[1];
+    int[3] y1 = y[1];
     int z1 = z[1];
     int* xx = &x + 1;
     int[3]* yy = (int[3]*)(xx);
     int* zz = yy - 1;
-    printf("%p = %p = %p, %p = %p\n", y, z, zz, &y[1], xx);
+    printf("%p = %p = %p, %p = %p\n", y, z, zz, &(*y)[1], xx);
     x[1] = 123;
-    printf("%d = %d\n", (&x)[1], y[1]);
+    printf("%d = %d\n", x[1], z[1]);
 }
 
 /* #expect: foo.ll
@@ -26,7 +26,7 @@ entry:
   %y = alloca [3 x i32]*, align 8
   %z = alloca i32*, align 8
   %sub = alloca %"int[]", align 8
-  %y1 = alloca i32, align 4
+  %y1 = alloca [3 x i32], align 4
   %z1 = alloca i32, align 4
   %xx = alloca i32*, align 8
   %yy = alloca [3 x i32]*, align 8
@@ -47,23 +47,24 @@ entry:
   %7 = insertvalue %"int[]" %6, i64 3, 1
   store %"int[]" %7, %"int[]"* %sub, align 8
   %8 = load [3 x i32]*, [3 x i32]** %y, align 8
-  %9 = getelementptr inbounds [3 x i32], [3 x i32]* %8, i64 0, i64 1
-  %10 = load i32, i32* %9, align 4
-  store i32 %10, i32* %y1, align 4
+  %ptroffset = getelementptr inbounds [3 x i32], [3 x i32]* %8, i64 1
+  %9 = bitcast [3 x i32]* %y1 to i8*
+  %10 = bitcast [3 x i32]* %ptroffset to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %9, i8* align 4 %10, i32 12, i1 false)
   %11 = load i32*, i32** %z, align 8
-  %ptroffset = getelementptr inbounds i32, i32* %11, i64 1
-  %12 = load i32, i32* %ptroffset, align 4
+  %ptroffset1 = getelementptr inbounds i32, i32* %11, i64 1
+  %12 = load i32, i32* %ptroffset1, align 4
   store i32 %12, i32* %z1, align 4
-  %ptrptr1 = bitcast [3 x i32]* %x to i32*
-  %ptroffset2 = getelementptr i32, i32* %ptrptr1, i64 1
-  store i32* %ptroffset2, i32** %xx, align 8
+  %ptrptr2 = bitcast [3 x i32]* %x to i32*
+  %ptroffset3 = getelementptr i32, i32* %ptrptr2, i64 1
+  store i32* %ptroffset3, i32** %xx, align 8
   %13 = load i32*, i32** %xx, align 8
-  %ptrptr3 = bitcast i32* %13 to [3 x i32]*
-  store [3 x i32]* %ptrptr3, [3 x i32]** %yy, align 8
+  %ptrptr4 = bitcast i32* %13 to [3 x i32]*
+  store [3 x i32]* %ptrptr4, [3 x i32]** %yy, align 8
   %14 = load [3 x i32]*, [3 x i32]** %yy, align 8
-  %ptrptr4 = bitcast [3 x i32]* %14 to i32*
-  %ptroffset5 = getelementptr i32, i32* %ptrptr4, i64 -1
-  store i32* %ptroffset5, i32** %zz, align 8
+  %ptrptr5 = bitcast [3 x i32]* %14 to i32*
+  %ptroffset6 = getelementptr i32, i32* %ptrptr5, i64 -1
+  store i32* %ptroffset6, i32** %zz, align 8
   %15 = load [3 x i32]*, [3 x i32]** %y, align 8
   %16 = load i32*, i32** %z, align 8
   %17 = load i32*, i32** %zz, align 8
@@ -75,9 +76,9 @@ entry:
   store i32 123, i32* %21, align 4
   %22 = getelementptr inbounds [3 x i32], [3 x i32]* %x, i64 0, i64 1
   %23 = load i32, i32* %22, align 4
-  %24 = load [3 x i32]*, [3 x i32]** %y, align 8
-  %25 = getelementptr inbounds [3 x i32], [3 x i32]* %24, i64 0, i64 1
-  %26 = load i32, i32* %25, align 4
-  call void (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str.1, i32 0, i32 0), i32 %23, i32 %26)
+  %24 = load i32*, i32** %z, align 8
+  %ptroffset7 = getelementptr inbounds i32, i32* %24, i64 1
+  %25 = load i32, i32* %ptroffset7, align 4
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str.1, i32 0, i32 0), i32 %23, i32 %25)
   ret void
 }
