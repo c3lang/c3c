@@ -369,6 +369,7 @@ static inline bool expr_cast_is_constant_eval(Expr *expr, ConstantEvalKind eval_
 		case CAST_STST:
 		case CAST_VECARR:
 		case CAST_ARRVEC:
+		case CAST_BOOLVECINT:
 			if (eval_kind != CONSTANT_EVAL_NO_SIDE_EFFECTS) return false;
 			return exprid_is_constant_eval(expr->cast_expr.expr, eval_kind);
 		case CAST_XIPTR:

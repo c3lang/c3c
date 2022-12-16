@@ -14,6 +14,7 @@ static Expr *recursive_may_narrow_int(Expr *expr, Type *type);
 static void recursively_rewrite_untyped_list(Expr *expr, Expr **list);
 static inline bool cast_may_implicit_ptr(Type *from_pointee, Type *to_pointee);
 static inline bool cast_may_array(Type *from, Type *to, bool is_explicit);
+static inline bool cast_may_vector(Type *from, Type *to, bool is_explicit, bool is_const, CastOption option);
 
 static inline bool insert_cast(Expr *expr, CastKind kind, Type *type)
 {
@@ -468,6 +469,10 @@ bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability, 
 	// 2. Same underlying type, always ok
 	if (from_type == to_type) return true;
 
+	if (type_kind_is_any_vector(to_type->type_kind) && type_kind_is_any_vector(from_type->type_kind))
+	{
+		return cast_may_vector(from_type, to_type, true, is_const, CAST_OPTION_NONE);
+	}
 	if (type_is_any_arraylike(to_type) && type_is_any_arraylike(from_type))
 	{
 		return cast_may_array(from_type, to_type, true);
@@ -568,6 +573,24 @@ bool type_may_convert_to_anyerr(Type *type)
 	return type->failable->canonical == type_void;
 }
 
+static inline bool cast_may_vector(Type *from, Type *to, bool is_explicit, bool is_const, CastOption option)
+{
+	if (to->array.len != from->array.len) return false;
+	Type *to_inner = to->array.base;
+	Type *from_inner = from->array.base;
+	if (is_explicit)
+	{
+		to_inner = type_flatten(to_inner);
+		from_inner = type_flatten(from_inner);
+	}
+	if (to_inner == from_inner) return true;
+	if (from_inner == type_bool && type_is_integer(to_inner)) return true;
+	if (is_explicit)
+	{
+		return cast_may_explicit(from_inner, to_inner, true, is_const);
+	}
+	return cast_may_implicit(from_inner, to_inner, option);
+}
 
 static inline bool cast_may_array(Type *from, Type *to, bool is_explicit)
 {
@@ -805,6 +828,11 @@ bool cast_may_implicit(Type *from_type, Type *to_type, CastOption option)
 			return cast_may_implicit_ptr(from->pointer, to->pointer);
 		}
 		return false;
+	}
+
+	if (type_kind_is_any_vector(to->type_kind) && to->type_kind == from->type_kind)
+	{
+		return cast_may_vector(from, to, false, false, option);
 	}
 
 	if (type_is_any_arraylike(to) && type_is_any_arraylike(from))
@@ -1439,6 +1467,101 @@ static bool vec_to_arr(Expr *expr, Type *to_type)
 	return true;
 }
 
+static void vec_const_init_to_type(ConstInitializer *initializer, Type *to_type)
+{
+	switch (initializer->kind)
+	{
+		case CONST_INIT_ARRAY:
+		{
+			Type *element_type = type_flatten(to_type)->array.base;
+			FOREACH_BEGIN(ConstInitializer *element, initializer->init_array.elements)
+				vec_const_init_to_type(element, element_type);
+			FOREACH_END();
+			break;
+		}
+		case CONST_INIT_ARRAY_FULL:
+		{
+			Type *element_type = type_flatten(to_type)->array.base;
+			FOREACH_BEGIN(ConstInitializer *element, initializer->init_array_full)
+				vec_const_init_to_type(element, element_type);
+			FOREACH_END();
+			break;
+		}
+		case CONST_INIT_VALUE:
+		{
+			Type *to_flat = type_flatten(to_type);
+			bool is_neg_conversion = to_flat && type_flatten(initializer->type) == type_bool;
+			if (is_neg_conversion)
+			{
+				bool is_true = initializer->init_value->const_expr.b;
+				initializer->init_value->const_expr.ixx = (Int)
+						{ .i = is_true ? (Int128) { UINT64_MAX, UINT64_MAX } : (Int128) { 0, 0 },
+						  .type = to_flat->type_kind };
+				initializer->init_value->type = to_type;
+			}
+			else
+			{
+				cast(initializer->init_value, to_type);
+			}
+			break;
+		}
+		case CONST_INIT_ZERO:
+			break;
+		case CONST_INIT_UNION:
+		case CONST_INIT_STRUCT:
+			UNREACHABLE
+		case CONST_INIT_ARRAY_VALUE:
+			vec_const_init_to_type(initializer->init_array_value.element, to_type);
+			break;
+	}
+	initializer->type = to_type;
+}
+static bool vec_to_vec(Expr *expr, Type *to_type)
+{
+	if (expr->expr_kind != EXPR_CONST)
+	{
+		Type *from_type = type_flatten(expr->type);
+		Type *from_element = from_type->array.base;
+		to_type = type_flatten(to_type);
+		Type *to_element = to_type->array.base;
+		if (type_is_float(from_element))
+		{
+			if (to_element == type_bool) return insert_cast(expr, CAST_FPBOOL, to_type);
+			if (type_is_unsigned(to_element)) return insert_cast(expr, CAST_FPUI, to_type);
+			if (type_is_signed(to_element)) return insert_cast(expr, CAST_FPSI, to_type);
+			if (type_is_float(to_element)) return insert_cast(expr, CAST_FPFP, to_type);
+			UNREACHABLE;
+		}
+		if (from_element == type_bool)
+		{
+			if (type_is_integer(to_element)) return insert_cast(expr, CAST_BOOLVECINT, to_type);
+			if (type_is_float(to_element)) return insert_cast(expr, CAST_FPFP, to_type);
+			UNREACHABLE;
+		}
+		if (type_is_signed(from_element))
+		{
+			if (to_element == type_bool) return insert_cast(expr, CAST_INTBOOL, to_type);
+			if (type_is_unsigned(to_element)) return insert_cast(expr, CAST_SIUI, to_type);
+			if (type_is_signed(to_element)) return insert_cast(expr, CAST_SISI, to_type);
+			if (type_is_float(to_element)) return insert_cast(expr, CAST_SIFP, to_type);
+			UNREACHABLE
+		}
+		assert(type_is_unsigned(from_element));
+		if (to_element == type_bool) return insert_cast(expr, CAST_INTBOOL, to_type);
+		if (type_is_unsigned(to_element)) return insert_cast(expr, CAST_UIUI, to_type);
+		if (type_is_signed(to_element)) return insert_cast(expr, CAST_UISI, to_type);
+		if (type_is_float(to_element)) return insert_cast(expr, CAST_UIFP, to_type);
+		UNREACHABLE
+	}
+
+	assert(expr->const_expr.const_kind == CONST_INITIALIZER);
+
+	ConstInitializer *list = expr->const_expr.initializer;
+	vec_const_init_to_type(list, to_type);
+	expr->type = to_type;
+	return true;
+}
+
 static bool err_to_anyerr(Expr *expr, Type *to_type)
 {
 	expr->type = to_type;
@@ -1587,6 +1710,7 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 			break;
 		case TYPE_VECTOR:
 			if (to->type_kind == TYPE_ARRAY) return vec_to_arr(expr, to_type);
+			if (to->type_kind == TYPE_VECTOR) return vec_to_vec(expr, to_type);
 			break;
 	}
 	UNREACHABLE

@@ -1,11 +1,30 @@
-import libc;
+import std::io;
 
-fn void! test_div() @test
+fn void! test_conv() @test
 {
     float[<4>] y = { 1, 2, 3, 4 };
     float[<4>] z = { 0, 2, 2, -100 };
-
+	int[<4>] w = { -1, 2, 3, 4 };
+	float[<4>] yy = w;
+	assert(yy == { -1.0, 2.0, 3.0, 4.0 });
+	ulong[<4>] ww = w;
+	assert(ww == { (ulong)-1, 2, 3, 4 });
+	int[<4>] g = (int[<4>])ww;
+	assert(g == w);
+	ww = (long[<4>])y;
+	assert(ww == { 1, 2, 3, 4 });
+	bool[<2>] b = { true, false };
+	int[<2>] gh = b;
+	assert(gh == { -1, 0 });
+	var $k = bool[<2>] { true, false };
+	var $gh = (int[<2>])$k;
+	$assert($gh[0] == -1);
+	var $gh2 = (char[<2>])$gh;
+	$assert($gh2[0] == 255);
+	b = (bool[<2>])gh;
+	assert(b == { true, false });
 }
+
 fn void! testf() @test
 {
     float[<4>] y = { 1, 2, 3, 4 };

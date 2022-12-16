@@ -22,6 +22,7 @@ typedef enum
 	BE_ADDRESS,
 	BE_ADDRESS_FAILABLE,
 	BE_BOOLEAN,
+	BE_BOOLVECTOR,
 } BackendValueKind;
 
 typedef struct
@@ -258,6 +259,7 @@ static inline bool llvm_value_is_bool(BEValue *value) { return value->kind == BE
 bool llvm_value_is_const(BEValue *value);
 void llvm_value_rvalue(GenContext *context, BEValue *value);
 void llvm_value_set_bool(BEValue *value, LLVMValueRef llvm_value);
+void llvm_value_set_bool_vector(BEValue *value, LLVMValueRef llvm_value, Type *type);
 void llvm_value_set(BEValue *value, LLVMValueRef llvm_value, Type *type);
 void llvm_value_set_int(GenContext *c, BEValue *value, Type *type, uint64_t i);
 void llvm_value_set_address(BEValue *value, LLVMValueRef llvm_value, Type *type, AlignSize alignment);

@@ -481,7 +481,7 @@ static void llvm_emit_veccomp(GenContext *c, BEValue *value, Expr *expr, Builtin
 	}
 	else
 	{
-		bool is_signed = type_is_signed(value->type);
+		bool is_signed = type_is_signed(args[0]->type);
 		switch (fn)
 		{
 			case BUILTIN_VECCOMPEQ:
@@ -508,9 +508,7 @@ static void llvm_emit_veccomp(GenContext *c, BEValue *value, Expr *expr, Builtin
 				UNREACHABLE
 		}
 	}
-	Type *result_type = type_get_vector_bool(value->type);
-	res = LLVMBuildSExt(c->builder, res, llvm_get_type(c, result_type), "");
-	llvm_value_set(value, res, result_type);
+	llvm_value_set_bool_vector(value, res, expr->type);
 	return;
 
 }

@@ -102,6 +102,11 @@ INLINE LLVMValueRef llvm_emit_lshr(GenContext *c, LLVMValueRef value, LLVMValueR
 
 INLINE LLVMValueRef llvm_emit_trunc_bool(GenContext *c, LLVMValueRef value)
 {
+	LLVMTypeRef type = LLVMTypeOf(value);
+	if (LLVMGetTypeKind(type) == LLVMVectorTypeKind)
+	{
+		return LLVMBuildTrunc(c->builder, value, LLVMVectorType(c->bool_type, LLVMGetVectorSize(type)), "");
+	}
 	return LLVMBuildTrunc(c->builder, value, c->bool_type, "");
 }
 
