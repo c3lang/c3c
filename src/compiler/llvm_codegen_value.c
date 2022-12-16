@@ -50,8 +50,13 @@ void llvm_value_rvalue(GenContext *c, BEValue *value)
 	{
 		if (value->type->type_kind == TYPE_BOOL && value->kind != BE_BOOLEAN)
 		{
-			value->value = LLVMBuildTrunc(c->builder, value->value, c->bool_type, "");
+			value->value = llvm_emit_trunc_bool(c, value->value);
 			value->kind = BE_BOOLEAN;
+		}
+		if (type_flat_is_bool_vector(value->type) && value->kind != BE_BOOLVECTOR)
+		{
+			value->value = llvm_emit_trunc_bool(c, value->value);
+			value->kind = BE_BOOLVECTOR;
 		}
 		return;
 	}
@@ -65,6 +70,12 @@ void llvm_value_rvalue(GenContext *c, BEValue *value)
 	{
 		value->value = llvm_emit_trunc_bool(c, value->value);
 		value->kind = BE_BOOLEAN;
+		return;
+	}
+	if (type_flat_is_bool_vector(value->type))
+	{
+		value->value = llvm_emit_trunc_bool(c, value->value);
+		value->kind = BE_BOOLVECTOR;
 		return;
 	}
 	value->kind = BE_VALUE;

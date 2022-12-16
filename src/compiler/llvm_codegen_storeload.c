@@ -30,6 +30,10 @@ LLVMValueRef llvm_store_to_ptr_aligned(GenContext *c, LLVMValueRef destination, 
 	}
 	switch (value->kind)
 	{
+		case BE_BOOLVECTOR:
+			value->value = LLVMBuildSExt(c->builder, value->value, llvm_get_type(c, value->type), "");
+			value->kind = BE_VALUE;
+			return llvm_store_to_ptr_raw_aligned(c, destination, value->value, alignment);
 		case BE_BOOLEAN:
 			value->value = LLVMBuildZExt(c->builder, value->value, c->byte_type, "");
 			value->kind = BE_VALUE;
@@ -85,6 +89,7 @@ LLVMValueRef llvm_load_value(GenContext *c, BEValue *value)
 	llvm_value_fold_optional(c, value);
 	switch (value->kind)
 	{
+		case BE_BOOLVECTOR:
 		case BE_BOOLEAN:
 		case BE_VALUE:
 			return value->value;
@@ -99,6 +104,10 @@ LLVMValueRef llvm_load_value(GenContext *c, BEValue *value)
 LLVMValueRef llvm_load_value_store(GenContext *c, BEValue *value)
 {
 	LLVMValueRef val = llvm_load_value(c, value);
+	if (value->kind == BE_BOOLVECTOR)
+	{
+		return LLVMBuildSExt(c->builder, val, llvm_get_type(c, type_get_vector_bool(value->type)), "");
+	}
 	if (value->kind != BE_BOOLEAN) return val;
 	return LLVMBuildZExt(c->builder, val, c->byte_type, "");
 }

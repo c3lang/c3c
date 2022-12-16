@@ -14,6 +14,7 @@ typedef enum
 	BA_FLOAT,
 	BA_INTLIKE,
 	BA_NUMLIKE,
+	BA_BOOLINTVEC,
 	BA_INTVEC,
 	BA_FLOATVEC,
 	BA_VEC,
@@ -109,9 +110,18 @@ static bool sema_check_builtin_args(Expr **args, BuiltinArg *arg_type, size_t ar
 				}
 				break;
 			case BA_INTVEC:
+
 				if (type->type_kind != TYPE_VECTOR || !type_flat_is_intlike(type->array.base))
 				{
 					SEMA_ERROR(args[i], "Expected an integer vector.");
+					return false;
+				}
+				break;
+			case BA_BOOLINTVEC:
+
+				if (type->type_kind != TYPE_VECTOR || !type_flat_is_boolintlike(type->array.base))
+				{
+					SEMA_ERROR(args[i], "Expected a boolean or integer vector.");
 					return false;
 				}
 				break;
@@ -326,7 +336,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			                             (BuiltinArg[]) { BA_VEC, BA_VEC },
 			                             arg_count)) return false;
 			if (!sema_check_builtin_args_match(args, 2)) return false;
-			rtype = type_get_vector_bool(args[0]->type);
+			rtype = type_get_vector(type_bool, type_flatten(args[0]->type)->array.len);
 			break;
 		case BUILTIN_OVERFLOW_ADD:
 		case BUILTIN_OVERFLOW_MUL:
@@ -492,7 +502,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_REDUCE_XOR:
 		case BUILTIN_REDUCE_MUL:
 			if (!sema_check_builtin_args(args,
-			                             (BuiltinArg[]) { BA_INTVEC },
+			                             (BuiltinArg[]) { BA_BOOLINTVEC },
 			                             arg_count)) return false;
 			rtype = args[0]->type->canonical->array.base;
 			break;

@@ -1164,6 +1164,15 @@ void llvm_emit_array_to_vector_cast(GenContext *c, BEValue *value, Type *to_type
 	llvm_value_set(value, vector, to_type);
 }
 
+void llvm_emit_bool_to_intvec_cast(GenContext *c, BEValue *value, Type *to_type, Type *from_type)
+{
+	llvm_value_rvalue(c, value);
+	LLVMTypeRef type = llvm_get_type(c, to_type);
+	LLVMValueRef res = LLVMBuildSExt(c->builder, value->value, type, "");
+	llvm_value_set(value, res, to_type);
+}
+
+
 void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *value, Type *to_type, Type *from_type)
 {
 	Type *to_type_original = to_type;
@@ -1172,6 +1181,9 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 
 	switch (cast_kind)
 	{
+		case CAST_BOOLVECINT:
+			llvm_emit_bool_to_intvec_cast(c, value, to_type, from_type);
+			return;
 		case CAST_ARRVEC:
 			llvm_emit_array_to_vector_cast(c, value, to_type, from_type);
 			return;
@@ -1304,7 +1316,7 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 		case CAST_INTBOOL:
 			llvm_value_rvalue(c, value);
 			value->value = LLVMBuildICmp(c->builder, LLVMIntNE, value->value, llvm_get_zero(c, from_type), "intbool");
-			value->kind = BE_BOOLEAN;
+			value->kind = type_kind_is_any_vector(value->type->type_kind) ? BE_BOOLVECTOR : BE_BOOLEAN;
 			break;
 		case CAST_FPFP:
 			llvm_value_rvalue(c, value);

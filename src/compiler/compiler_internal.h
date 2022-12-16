@@ -2308,6 +2308,7 @@ bool type_is_user_defined(Type *type);
 bool type_is_structurally_equivalent(Type *type1, Type *type);
 bool type_flat_is_floatlike(Type *type);
 bool type_flat_is_intlike(Type *type);
+bool type_flat_is_boolintlike(Type *type);
 bool type_flat_is_numlike(Type *type);
 bool type_may_have_sub_elements(Type *type);
 bool type_may_have_method(Type *type);
@@ -2327,6 +2328,7 @@ INLINE bool type_is_substruct(Type *type);
 INLINE Type *type_flatten_for_bitstruct(Type *type);
 INLINE const char *type_invalid_storage_type_name(Type *type);
 INLINE bool type_is_float(Type *type);
+INLINE bool type_is_floatlike(Type *type);
 INLINE bool type_is_optional(Type *type);
 INLINE bool type_is_optional_type(Type *type);
 INLINE bool type_is_optional_any(Type *type);
@@ -2577,6 +2579,14 @@ INLINE bool type_is_float(Type *type)
 	return kind >= TYPE_FLOAT_FIRST && kind <= TYPE_FLOAT_LAST;
 }
 
+INLINE bool type_is_floatlike(Type *type)
+{
+	type = type->canonical;
+	TypeKind kind = type->type_kind;
+	if (kind == TYPE_VECTOR && type_is_float(type->array.base)) return true;
+	return kind >= TYPE_FLOAT_FIRST && kind <= TYPE_FLOAT_LAST;
+}
+
 INLINE const char *type_invalid_storage_type_name(Type *type)
 {
 	switch (type->type_kind)
@@ -2638,9 +2648,9 @@ INLINE Type *type_new(TypeKind kind, const char *name)
 
 INLINE bool type_convert_will_trunc(Type *destination, Type *source)
 {
-	assert(type_is_builtin(destination->canonical->type_kind));
-	assert(type_is_builtin(source->canonical->type_kind));
-	return (unsigned)destination->canonical->builtin.bitsize < (unsigned)source->canonical->builtin.bitsize;
+	assert(type_flat_is_vector(destination) || type_is_builtin(destination->canonical->type_kind));
+	assert(type_flat_is_vector(destination) || type_is_builtin(source->canonical->type_kind));
+	return type_size(destination) < type_size(source);
 }
 
 
@@ -2784,6 +2794,17 @@ INLINE bool type_underlying_is_numeric(Type *type)
 INLINE bool type_flat_is_vector(Type *type)
 {
 	return type_flatten(type)->type_kind == TYPE_VECTOR;
+}
+
+INLINE bool type_kind_is_any_vector(TypeKind kind)
+{
+	return kind == TYPE_VECTOR || kind == TYPE_INFERRED_VECTOR || kind == TYPE_SCALED_VECTOR;
+}
+
+INLINE bool type_flat_is_bool_vector(Type *type)
+{
+	Type *flat = type_flatten(type);
+	return flat->type_kind == TYPE_VECTOR && type_flatten(flat->array.base) == type_bool;
 }
 
 INLINE bool type_is_union_or_strukt(Type *type)

@@ -272,6 +272,10 @@ macro float float.round(float x) = $$round(x);
 macro float float.roundeven(float x) = $$roundeven(x);
 macro float float.trunc(float x) = $$trunc(x);
 
+macro float float[<*>].sum(float[<*>] x, float start = 0.0) = $$reduce_fadd(x, start);
+macro float float[<*>].product(float[<*>] x, float start = 1.0) = $$reduce_fmul(x, start);
+macro float float[<*>].max(float[<*>] x) = $$reduce_max(x);
+macro float float[<*>].min(float[<*>] x) = $$reduce_min(x);
 macro float[<*>] float[<*>].ceil(float[<*>] x) = $$ceil(x);
 macro float[<*>] float[<*>].clamp(float[<*>] x, float[<*>] lower, float[<*>] upper) = $$max(lower, $$min(x, upper));
 macro float[<*>] float[<*>].copysign(float[<*>] mag, float[<*>] sgn) = $$copysign(mag, sgn);
@@ -297,6 +301,10 @@ macro double double.round(double x) = $$round(x);
 macro double double.roundeven(double x) = $$roundeven(x);
 macro double double.trunc(double x) = $$trunc(x);
 
+macro double double[<*>].sum(double[<*>] x, double start = 0.0) = $$reduce_add(x, start);
+macro double double[<*>].product(double[<*>] x, double start = 1.0) = $$reduce_mul(x, start);
+macro double double[<*>].max(double[<*>] x) = $$reduce_fmax(x);
+macro double double[<*>].min(double[<*>] x) = $$reduce_fmin(x);
 macro double[<*>] double[<*>].ceil(double[<*>] x) = $$ceil(x);
 macro double[<*>] double[<*>].clamp(double[<*>] x, double[<*>] lower, double[<*>] upper) = $$max(lower, $$min(x, upper));
 macro double[<*>] double[<*>].copysign(double[<*>] mag, double[<*>] sgn) = $$copysign(mag, sgn);
@@ -308,6 +316,102 @@ macro double[<*>] double[<*>].rint(double[<*>] x) = $$rint(x);
 macro double[<*>] double[<*>].round(double[<*>] x) = $$round(x);
 macro double[<*>] double[<*>].roundeven(double[<*>] x) = $$roundeven(x);
 macro double[<*>] double[<*>].trunc(double[<*>] x) = $$trunc(x);
+
+macro ichar ichar[<*>].sum(ichar[<*>] x) = $$reduce_add(x);
+macro ichar ichar[<*>].product(ichar[<*>] x) = $$reduce_mul(x);
+macro ichar ichar[<*>].and(ichar[<*>] x) = $$reduce_and(x);
+macro ichar ichar[<*>].or(ichar[<*>] x) = $$reduce_or(x);
+macro ichar ichar[<*>].xor(ichar[<*>] x) = $$reduce_xor(x);
+macro ichar ichar[<*>].max(ichar[<*>] x) = $$reduce_max(x);
+macro ichar ichar[<*>].min(ichar[<*>] x) = $$reduce_min(x);
+
+macro short short[<*>].sum(short[<*>] x) = $$reduce_add(x);
+macro short short[<*>].product(short[<*>] x) = $$reduce_mul(x);
+macro short short[<*>].and(short[<*>] x) = $$reduce_and(x);
+macro short short[<*>].or(short[<*>] x) = $$reduce_or(x);
+macro short short[<*>].xor(short[<*>] x) = $$reduce_xor(x);
+macro short short[<*>].max(short[<*>] x) = $$reduce_max(x);
+macro short short[<*>].min(short[<*>] x) = $$reduce_min(x);
+
+macro bool[<*>] int[<*>].comp_lt(int[<*>] x, int[<*>] y) = $$veccomplt(x, y);
+macro bool[<*>] int[<*>].comp_le(int[<*>] x, int[<*>] y) = $$veccomple(x, y);
+macro bool[<*>] int[<*>].comp_eq(int[<*>] x, int[<*>] y) = $$veccompeq(x, y);
+macro bool[<*>] int[<*>].comp_gt(int[<*>] x, int[<*>] y) = $$veccompgt(x, y);
+macro bool[<*>] int[<*>].comp_ge(int[<*>] x, int[<*>] y) = $$veccompge(x, y);
+macro bool[<*>] int[<*>].comp_ne(int[<*>] x, int[<*>] y) = $$veccompne(x, y);
+
+macro int int[<*>].sum(int[<*>] x) = $$reduce_add(x);
+macro int int[<*>].product(int[<*>] x) = $$reduce_mul(x);
+macro int int[<*>].and(int[<*>] x) = $$reduce_and(x);
+macro int int[<*>].or(int[<*>] x) = $$reduce_or(x);
+macro int int[<*>].xor(int[<*>] x) = $$reduce_xor(x);
+macro int int[<*>].max(int[<*>] x) = $$reduce_max(x);
+macro int int[<*>].min(int[<*>] x) = $$reduce_min(x);
+
+macro long long[<*>].sum(long[<*>] x) = $$reduce_add(x);
+macro long long[<*>].product(long[<*>] x) = $$reduce_mul(x);
+macro long long[<*>].and(long[<*>] x) = $$reduce_and(x);
+macro long long[<*>].or(long[<*>] x) = $$reduce_or(x);
+macro long long[<*>].xor(long[<*>] x) = $$reduce_xor(x);
+macro long long[<*>].max(long[<*>] x) = $$reduce_max(x);
+macro long long[<*>].min(long[<*>] x) = $$reduce_min(x);
+
+macro int128 int128[<*>].sum(int128[<*>] x) = $$reduce_add(x);
+macro int128 int128[<*>].product(int128[<*>] x) = $$reduce_mul(x);
+macro int128 int128[<*>].and(int128[<*>] x) = $$reduce_and(x);
+macro int128 int128[<*>].or(int128[<*>] x) = $$reduce_or(x);
+macro int128 int128[<*>].xor(int128[<*>] x) = $$reduce_xor(x);
+macro int128 int128[<*>].max(int128[<*>] x) = $$reduce_max(x);
+macro int128 int128[<*>].min(int128[<*>] x) = $$reduce_min(x);
+
+macro bool bool[<*>].sum(bool[<*>] x) = $$reduce_add(x);
+macro bool bool[<*>].product(bool[<*>] x) = $$reduce_mul(x);
+macro bool bool[<*>].and(bool[<*>] x) = $$reduce_and(x);
+macro bool bool[<*>].or(bool[<*>] x) = $$reduce_or(x);
+macro bool bool[<*>].xor(bool[<*>] x) = $$reduce_xor(x);
+macro bool bool[<*>].max(bool[<*>] x) = $$reduce_max(x);
+macro bool bool[<*>].min(bool[<*>] x) = $$reduce_min(x);
+
+macro char char[<*>].sum(char[<*>] x) = $$reduce_add(x);
+macro char char[<*>].product(char[<*>] x) = $$reduce_mul(x);
+macro char char[<*>].and(char[<*>] x) = $$reduce_and(x);
+macro char char[<*>].or(char[<*>] x) = $$reduce_or(x);
+macro char char[<*>].xor(char[<*>] x) = $$reduce_xor(x);
+macro char char[<*>].max(char[<*>] x) = $$reduce_max(x);
+macro char char[<*>].min(char[<*>] x) = $$reduce_min(x);
+
+
+macro ushort ushort[<*>].sum(ushort[<*>] x) = $$reduce_add(x);
+macro ushort ushort[<*>].product(ushort[<*>] x) = $$reduce_mul(x);
+macro ushort ushort[<*>].and(ushort[<*>] x) = $$reduce_and(x);
+macro ushort ushort[<*>].or(ushort[<*>] x) = $$reduce_or(x);
+macro ushort ushort[<*>].xor(ushort[<*>] x) = $$reduce_xor(x);
+macro ushort ushort[<*>].max(ushort[<*>] x) = $$reduce_max(x);
+macro ushort ushort[<*>].min(ushort[<*>] x) = $$reduce_min(x);
+
+macro uint uint[<*>].sum(uint[<*>] x) = $$reduce_add(x);
+macro uint uint[<*>].product(uint[<*>] x) = $$reduce_mul(x);
+macro uint uint[<*>].and(uint[<*>] x) = $$reduce_and(x);
+macro uint uint[<*>].or(uint[<*>] x) = $$reduce_or(x);
+macro uint uint[<*>].xor(uint[<*>] x) = $$reduce_xor(x);
+macro uint uint[<*>].max(uint[<*>] x) = $$reduce_max(x);
+macro uint uint[<*>].min(uint[<*>] x) = $$reduce_min(x);
+
+macro ulong ulong[<*>].sum(ulong[<*>] x) = $$reduce_add(x);
+macro ulong ulong[<*>].product(ulong[<*>] x) = $$reduce_mul(x);
+macro ulong ulong[<*>].and(ulong[<*>] x) = $$reduce_and(x);
+macro ulong ulong[<*>].or(ulong[<*>] x) = $$reduce_or(x);
+macro ulong ulong[<*>].xor(ulong[<*>] x) = $$reduce_xor(x);
+macro ulong ulong[<*>].max(ulong[<*>] x) = $$reduce_max(x);
+macro ulong ulong[<*>].min(ulong[<*>] x) = $$reduce_min(x);
+
+macro uint128 uint128[<*>].sum(uint128[<*>] x) = $$reduce_add(x);
+macro uint128 uint128[<*>].product(uint128[<*>] x) = $$reduce_mul(x);
+macro uint128 uint128[<*>].and(uint128[<*>] x) = $$reduce_and(x);
+macro uint128 uint128[<*>].or(uint128[<*>] x) = $$reduce_or(x);
+macro uint128 uint128[<*>].xor(uint128[<*>] x) = $$reduce_xor(x);
+macro uint128 uint128[<*>].max(uint128[<*>] x) = $$reduce_max(x);
+macro uint128 uint128[<*>].min(uint128[<*>] x) = $$reduce_min(x);
 
 /**
  * @checked x & 1
