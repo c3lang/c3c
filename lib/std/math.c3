@@ -95,6 +95,32 @@ macro sign(x)
 	return ($typeof(x))(x < 0 ? -1 : 1);
 }
 
+$if (env::COMPILER_LIBC_AVAILABLE):
+
+extern fn double _atan(double x) @extname("atan");
+extern fn float _atanf(float x) @extname("atanf");
+extern fn double _atan2(double x) @extname("atan2");
+extern fn float _atanf2(float x) @extname("atanf2");
+
+macro atan(x)
+{
+	$if ($typeof(x).typeid == float.typeid):
+		return _atanf(x);
+	$else:
+		return _atan(x);
+	$endif;
+}
+
+macro atan2(x, y)
+{
+	$if ($typeof(x).typeid == float.typeid && $typeof(y).typeid == float.typeid):
+		return _atan2f(x);
+	$else:
+		return _atan2(x);
+	$endif;
+}
+
+$endif;
 /**
  * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
  **/
