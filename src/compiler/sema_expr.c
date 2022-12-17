@@ -4083,16 +4083,17 @@ static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *
 	if (!sema_expr_check_assign(context, left)) return false;
 
 	Type *no_fail = type_no_optional(left->type);
+	Type *flat = type_flatten_distinct(no_fail);
 
 	// 3. If this is only defined for ints (*%, ^= |= &= %=) verify that this is an int.
-	if (int_only && !type_is_integer(no_fail))
+	if (int_only && !type_is_integer(flat))
 	{
 		SEMA_ERROR(left, "Expected an integer here.");
 		return false;
 	}
 
 	// 4. In any case, these ops are only defined on numbers.
-	if (!type_underlying_is_numeric(no_fail))
+	if (!type_underlying_is_numeric(flat))
 	{
 		SEMA_ERROR(left, "Expected a numeric type here.");
 		return false;
@@ -5005,7 +5006,10 @@ static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left,
 	}
 
 	// 6. Do the implicit cast.
-	bool success = cast_implicit(context, left, max) && cast_implicit(context, right, max);
+	bool success = true;
+	if (!cast_implicit(context, left, max)) success = cast(left, max);
+	if (!cast_implicit(context, right, max)) success = success && cast(right, max);
+
 	assert(success);
 DONE:
 

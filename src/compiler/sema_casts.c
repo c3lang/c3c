@@ -1898,14 +1898,14 @@ void cast_to_max_bit_size(SemaContext *context, Expr *left, Expr *right, Type *l
 		Type *to = left->type->type_kind < TYPE_U8
 		           ? type_int_signed_by_bitsize(bit_size_right)
 		           : type_int_unsigned_by_bitsize(bit_size_right);
-		bool success = cast_implicit(context, left, to);
+		bool success = cast(left, to);
 		assert(success);
 		return;
 	}
 	Type *to = right->type->type_kind < TYPE_U8
 	           ? type_int_signed_by_bitsize(bit_size_left)
 	           : type_int_unsigned_by_bitsize(bit_size_left);
-	bool success = cast_implicit(context, right, to);
+	bool success = cast(right, to);
 	assert(success);
 }
 

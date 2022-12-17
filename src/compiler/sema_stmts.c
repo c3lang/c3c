@@ -1538,6 +1538,7 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 			SCOPE_END;
 		}
 
+		if (!success) goto END;
 		else_jump = false;
 		if (statement->if_stmt.else_body)
 		{
@@ -1549,9 +1550,11 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 			SCOPE_END;
 		}
 
+END:
 		context_pop_defers_and_replace_ast(context, statement);
 
 	SCOPE_OUTER_END;
+	if (!success) return false;
 	if (then_jump)
 	{
 		sema_unwrappable_from_catch_in_else(context, cond);
@@ -1560,7 +1563,7 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 	{
 		context->active_scope.jump_end = true;
 	}
-	return success;
+	return true;
 }
 
 static bool sema_analyse_asm_string_stmt(SemaContext *context, Ast *stmt)
