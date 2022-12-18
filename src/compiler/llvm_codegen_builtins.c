@@ -481,7 +481,7 @@ static void llvm_emit_veccomp(GenContext *c, BEValue *value, Expr *expr, Builtin
 	}
 	else
 	{
-		bool is_signed = type_is_signed(args[0]->type);
+		bool is_signed = type_is_signed(args[0]->type->array.base);
 		switch (fn)
 		{
 			case BUILTIN_VECCOMPEQ:
