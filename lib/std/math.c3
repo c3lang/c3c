@@ -100,7 +100,7 @@ $if (env::COMPILER_LIBC_AVAILABLE):
 extern fn double _atan(double x) @extname("atan");
 extern fn float _atanf(float x) @extname("atanf");
 extern fn double _atan2(double x) @extname("atan2");
-extern fn float _atanf2(float x) @extname("atanf2");
+extern fn float _atan2f(float x) @extname("atan2f");
 
 macro atan(x)
 {
