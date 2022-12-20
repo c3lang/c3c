@@ -202,13 +202,35 @@ macro log10(x) = $$log10(x);
  * @require types::is_numerical($typeof(x)) `The input must be a floating point value or float vector`
  * @require types::is_same($typeof(x), $typeof(y)) `The input types must be equal`
  **/
-macro max(x, y) = $$max(x, y);
+macro max(x, y, ...)
+{
+	$if ($vacount == 0):
+		return $$max(x, y);
+	$else:
+		var m = $$max(x, y);
+		$for (var $i = 0; $i < $vacount; $i++):
+			m = $$max(m, $vaarg($i));
+		$endfor;
+		return m;
+	$endif;
+}
 
 /**
  * @require types::is_numerical($typeof(x)) `The input must be a numerical value or numerical vector`
  * @require types::is_same($typeof(x), $typeof(y)) `The input types must be equal`
  **/
-macro min(x, y) = $$min(x, y);
+macro min(x, y, ...)
+{
+	$if ($vacount == 0):
+		return $$min(x, y);
+    $else:
+    	var m = $$min(x, y);
+    	$for (var $i = 0; $i < $vacount; $i++):
+    		m = $$min(m, $vaarg($i));
+    	$endfor;
+    	return m;
+    $endif;
+}
 
 /**
  * @require types::@is_float(a) `The input must be a floating point value`
