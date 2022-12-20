@@ -758,10 +758,9 @@ static inline void sema_update_const_initializer_with_designator(
 			sema_update_const_initializer_with_designator_union(const_init, curr, end, value);
 			return;
 		case TYPE_ARRAY:
+		case TYPE_VECTOR:
 			sema_update_const_initializer_with_designator_array(const_init, curr, end, value);
 			return;
-		case TYPE_VECTOR:
-			TODO
 		default:
 			UNREACHABLE
 	}

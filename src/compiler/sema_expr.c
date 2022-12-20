@@ -179,6 +179,7 @@ void expr_insert_widening_type(Expr *expr, Type *infer_type);
 static Expr *expr_access_inline_member(Expr *parent, Decl *parent_decl);
 static inline int64_t expr_get_index_max(Expr *expr);
 static inline bool expr_both_any_integer_or_integer_vector(Expr *left, Expr *right);
+static inline bool expr_both_any_integer_or_integer_bool_vector(Expr *left, Expr *right);
 static inline bool expr_both_const(Expr *left, Expr *right);
 static inline bool sema_identifier_find_possible_inferred(Type *to, Expr *expr);
 static inline bool sema_expr_analyse_enum_constant(Expr *expr, const char *name, Decl *decl);
@@ -313,6 +314,16 @@ static inline bool expr_both_any_integer_or_integer_vector(Expr *left, Expr *rig
 	return type_is_integer(flatten_left->array.base) && type_is_integer(flatten_right->array.base);
 }
 
+static inline bool expr_both_any_integer_or_integer_bool_vector(Expr *left, Expr *right)
+{
+	Type *flatten_left = type_flatten(left->type);
+	Type *flatten_right = type_flatten(right->type);
+	if (type_is_integer(flatten_left) && type_is_integer(flatten_right)) return true;
+
+	if (flatten_left->type_kind != TYPE_VECTOR || flatten_right->type_kind != TYPE_VECTOR) return false;
+
+	return type_is_integer_or_bool_kind(flatten_left->array.base) && type_is_integer_or_bool_kind(flatten_right->array.base);
+}
 
 static void expr_binary_unify_failability(Expr *expr, Expr *left, Expr *right)
 {
@@ -4680,7 +4691,7 @@ static bool sema_expr_analyse_bit(SemaContext *context, Expr *expr, Expr *left, 
 
 	// 2. Check that both are integers or bools.
 	bool is_bool = left->type->canonical == type_bool;
-	if (!is_bool && !expr_both_any_integer_or_integer_vector(left, right))
+	if (!is_bool && !expr_both_any_integer_or_integer_bool_vector(left, right))
 	{
 		return sema_type_error_on_binop(expr);
 	}

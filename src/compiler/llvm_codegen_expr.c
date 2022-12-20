@@ -3708,6 +3708,11 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 		llvm_value_set_bool(be_value, val);
 		return;
 	}
+	if (lhs.kind == BE_BOOLVECTOR)
+	{
+		llvm_value_set_bool_vector(be_value, val, expr->type);
+		return;
+	}
 	llvm_value_set(be_value, val, expr->type);
 }
 
