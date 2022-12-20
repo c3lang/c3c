@@ -3,7 +3,7 @@ module test;
 fn void test1()
 {
     bool! x = 0;
-    if (x) // #error: The expression may not be a failable, but was 'bool!'
+    if (x) // #error: optional, but was 'bool!
     {
         x = 100;
     }
@@ -12,7 +12,7 @@ fn void test1()
 fn void test2()
 {
     bool! x = 0;
-    while (x) // #error: The expression may not be a failable, but was 'bool!'
+    while (x) // #error: optional, but was 'bool!
     {
         x = false;
     }

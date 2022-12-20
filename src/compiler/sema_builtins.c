@@ -447,7 +447,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 					SEMA_ERROR(args[i], "A constant value is required.");
 					return false;
 				}
-				if (!cast_implicit(context, args[i], type_int)) return false;
+				if (!cast_expression_inner(context, args[i], type_int, CAST_TYPE_IMPLICIT)) return false;
 			}
 			if (!expr_in_int_range(args[1], 0, 1))
 			{
@@ -459,7 +459,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 				SEMA_ERROR(args[2], "Expected a value between 0 and 3.");
 				return false;
 			}
-			if (!cast_implicit(context, args[0], type_voidptr)) return false;
+			if (!cast_expression_inner(context, args[0], type_voidptr, CAST_TYPE_IMPLICIT)) return false;
 			rtype = type_void;
 			break;
 		case BUILTIN_POW:
@@ -473,7 +473,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_check_builtin_args(args,
 			                             (BuiltinArg[]) { BA_FLOATLIKE, BA_INTLIKE },
 			                             arg_count)) return false;
-			if (!cast_implicit(context, args[1], type_cint)) return false;
+			if (!cast_expression_inner(context, args[1], type_cint, CAST_TYPE_IMPLICIT)) return false;
 			rtype = args[0]->type;
 			break;
 		case BUILTIN_REDUCE_FMUL:
@@ -481,7 +481,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_check_builtin_args(args,
 			                             (BuiltinArg[]) { BA_FLOATVEC, BA_FLOAT },
 			                             arg_count)) return false;
-			if (!cast_implicit(context, args[1], args[0]->type->canonical->array.base)) return false;
+			if (!cast_expression_inner(context, args[1], args[0]->type->canonical->array.base, CAST_TYPE_IMPLICIT)) return false;
 			{
 				Expr *arg = args[0];
 				args[0] = args[1];
@@ -557,7 +557,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			Type *original = type_flatten(args[0]->type);
 			if (original != type_voidptr)
 			{
-				if (!cast_implicit(context, args[1], original->pointer)) return false;
+				if (!cast_expression_inner(context, args[1], original->pointer, CAST_TYPE_IMPLICIT)) return false;
 			}
 			rtype = args[1]->type;
 			break;

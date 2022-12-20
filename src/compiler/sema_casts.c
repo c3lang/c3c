@@ -35,6 +35,7 @@ bool sema_error_failed_cast(Expr *expr, Type *from, Type *to)
 	return false;
 }
 
+
 Type *cast_infer_len(Type *to_infer, Type *actual_type)
 {
 	Type *may_infer = to_infer->canonical;
@@ -742,6 +743,24 @@ static inline bool cast_may_implicit_ptr(Type *from_pointee, Type *to_pointee)
 	return type_is_subtype(to_pointee, from_pointee);
 }
 
+bool cast_may_bool_convert(Type *type)
+{
+	switch (type_flatten_distinct(type)->type_kind)
+	{
+		case TYPE_BOOL:
+		case ALL_INTS:
+		case ALL_FLOATS:
+		case TYPE_SUBARRAY:
+		case TYPE_POINTER:
+		case TYPE_ANY:
+		case TYPE_FAULTTYPE:
+		case TYPE_ANYERR:
+			return true;
+		default:
+			return false;
+	}
+	return true;
+}
 /**
  * Can the conversion occur implicitly?
  */
@@ -1273,16 +1292,8 @@ static void sema_error_const_int_out_of_range(Expr *expr, Expr *problem, Type *t
 	           type_quoted_error_string(to_type));
 }
 
-static inline bool cast_maybe_null_to_distinct_voidptr(Expr *expr, Type *expr_canonical, Type *to_canonical)
-{
-	if (expr->expr_kind != EXPR_CONST || expr->const_expr.const_kind != CONST_POINTER) return false;
-	if (expr_canonical != type_voidptr) return false;
-	if (expr->const_expr.ptr) return false;
-	if (to_canonical->type_kind != TYPE_DISTINCT) return false;
-	return to_canonical->decl->distinct_decl.base_type->canonical->type_kind == TYPE_POINTER;
-}
 
-static inline bool cast_maybe_string_lit_to_char_array(Expr *expr, Type *expr_canonical, Type *to_canonical)
+static inline bool cast_maybe_string_lit_to_char_array(Expr *expr, Type *expr_canonical, Type *to_canonical, Type *to_original)
 {
 	if (expr->expr_kind != EXPR_CONST || expr->const_expr.const_kind != CONST_STRING) return false;
 	if (expr_canonical->type_kind != TYPE_POINTER) return false;
@@ -1291,11 +1302,13 @@ static inline bool cast_maybe_string_lit_to_char_array(Expr *expr, Type *expr_ca
 	Type *pointer = expr_canonical->pointer;
 	if (pointer->type_kind != TYPE_ARRAY) return false;
 	if (pointer->array.base != type_char) return false;
+	assert(!type_is_optional(expr->type));
 	if (to_canonical->type_kind == TYPE_INFERRED_ARRAY)
 	{
-		to_canonical = type_get_array(to_canonical->array.base, pointer->array.len);
+		assert(to_original->type_kind == TYPE_INFERRED_ARRAY);
+		to_original = type_get_array(to_original->array.base, pointer->array.len);
 	}
-	expr->type = to_canonical;
+	expr->type = to_original;
 	return true;
 }
 
@@ -1322,129 +1335,274 @@ static void recursively_rewrite_untyped_list(Expr *expr, Expr **list)
 
 bool cast_implicit(SemaContext *context, Expr *expr, Type *to_type)
 {
-	assert(!type_is_optional(to_type));
-	Type *expr_type = expr->type;
-	Type *expr_canonical = expr_type->canonical;
-	Type *to_canonical = to_type->canonical;
-	if (cast_maybe_string_lit_to_char_array(expr, expr_canonical, to_canonical))
+	return cast_expression_inner(context, expr, to_type, CAST_TYPE_IMPLICIT);
+}
+
+bool cast_implicit_silent(SemaContext *context, Expr *expr, Type *to_type)
+{
+	return cast_expression_inner(context, expr, to_type, CAST_TYPE_IMPLICIT | CAST_TYPE_NO_ERROR_REPORT);
+}
+
+bool cast_explicit(SemaContext *context, Expr *expr, Type *to_type)
+{
+	if (!cast_expression_inner(context, expr, to_type, CAST_TYPE_EXPLICIT)) return false;
+	if (expr_is_const(expr)) expr->const_expr.narrowable = false;
+	return true;
+}
+
+/**
+ * Do the following:
+ * 1. Special optional conversions.
+ * 2. String literal conversions
+ * 3. Constant pointer conversions
+ */
+bool cast_expression_inner(SemaContext *context, Expr *expr, Type *to_type, CastType option)
+{
+	Type *from_type = expr->type;
+	bool is_explicit = (option & CAST_TYPE_EXPLICIT) != 0;
+	assert(is_explicit || (option & CAST_TYPE_IMPLICIT));
+	bool report = !(option & CAST_TYPE_NO_ERROR_REPORT);
+
+	Type *to = is_explicit ? type_flatten_distinct_optional(to_type) : type_no_optional(to_type)->canonical;
+
+	// Step one, cast from optional.
+	// This handles:
+	// 1. *! -> any type
+	// 2. void! -> anyerr
+	// 3. void! -> SomeFault (explicit)
+	if (type_is_optional(from_type))
 	{
-		expr_type = expr->type;
-		expr_canonical = expr_type->canonical;
+		// *! -> int => ok, gives int!
+		if (from_type == type_anyfail)
+		{
+			// Just add the optional.
+			expr->type = type_add_optional(to_type, true);
+			return true;
+		}
+
+		// Here we have something like int!
+		assert(from_type->type_kind == TYPE_OPTIONAL);
+
+		// If it is void!, then there are special rules:
+		if (from_type->failable == type_void)
+		{
+			// void! x; anyerr y = x;
+			if (!type_is_optional(to_type) && to == type_anyerr)
+			{
+				cast(expr, to_type);
+				return true;
+			}
+
+			// void! x; FooFault y = (FooFault)x;
+			// Only allowed if explicit.
+			if (to->type_kind == TYPE_FAULTTYPE)
+			{
+				if (!is_explicit)
+				{
+					if (report)
+					{
+						SEMA_ERROR(expr, "A 'void!' can only be cast into %s using an explicit cast. You can try using (%s)",
+						           type_quoted_error_string(to_type), type_to_error_string(to_type));
+					}
+					return false;
+				}
+				cast(expr, to_type);
+				return true;
+			}
+		}
 	}
-	if (cast_maybe_null_to_distinct_voidptr(expr, expr_canonical, to_canonical))
+
+	// We're now done and can remove the optional
+	bool add_optional = type_is_optional(to_type) || type_is_optional(from_type);
+	to_type = type_no_optional(to_type);
+	from_type = type_no_optional(from_type);
+
+	// Grab the underlying expression type.
+	Type *from = is_explicit ? type_flatten_distinct(from_type) : from_type->canonical;
+
+	// We may already be done.
+	if (from == to)
 	{
+		expr->type = type_add_optional(to_type, add_optional);
 		return true;
 	}
-	if (expr_canonical == to_canonical) return true;
-	if (expr_type == type_untypedlist)
+
+
+	// Handle strings, these don't actually mess with the underlying data,
+	// just the type.
+	if (cast_maybe_string_lit_to_char_array(expr, from, to, to_type)) return true;
+
+	// For constant pointers cast into anything pointer-like:
+	if (expr_is_const_pointer(expr) && from == type_voidptr && type_flatten_distinct(to)->type_kind == TYPE_POINTER)
 	{
-		return cast_untyped_to_type(context, expr, to_type);
+		assert(!add_optional);
+		expr->type = to_type;
+		return true;
 	}
 
-	CastOption option = CAST_OPTION_ALLOW_OPTIONAL;
-	if (expr_is_simple(expr)) option |= CAST_OPTION_SIMPLE_EXPR;
-
-	if (!cast_may_implicit(expr_canonical, to_canonical, option))
+	if (!is_explicit) /*&& cast_may_implicit(from_type, to_type, option)*/
 	{
-		if (!cast_may_explicit(expr_canonical, to_canonical, false, expr->expr_kind == EXPR_CONST))
+		Type *expr_type = expr->type;
+		Type *expr_canonical = expr_type->canonical;
+		Type *to_canonical = to_type->canonical;
+		if (expr_canonical == to_canonical) return true;
+		if (expr_type == type_untypedlist)
 		{
-			if (expr_canonical->type_kind == TYPE_OPTIONAL && to_canonical->type_kind != TYPE_OPTIONAL)
-			{
-				SEMA_ERROR(expr, "An optional %s cannot be converted to %s.", type_quoted_error_string(expr->type), type_quoted_error_string(to_type));
-				return false;
-			}
-			if (to_canonical->type_kind == TYPE_ANY)
-			{
-				SEMA_ERROR(expr, "You can only convert pointers to 'variant', take the address of this expression first.");
-				return false;
-			}
-			SEMA_ERROR(expr, "You cannot cast %s into %s even with an explicit cast, so this looks like an error.", type_quoted_error_string(expr->type), type_quoted_error_string(to_type));
-			return false;
+			return cast_untyped_to_type(context, expr, to_type);
 		}
-		bool is_narrowing = type_size(expr_canonical) >= type_size(to_canonical);
-		if (expr->expr_kind == EXPR_CONST && expr->const_expr.narrowable && is_narrowing)
+
+		CastOption option = CAST_OPTION_ALLOW_OPTIONAL;
+		if (expr_is_simple(expr)) option |= CAST_OPTION_SIMPLE_EXPR;
+
+		if (!cast_may_implicit(expr_canonical, to_canonical, option))
 		{
-			Type *expr_flatten = type_flatten_distinct(expr_canonical);
-			Type *to_flatten = type_flatten_distinct(to_canonical);
-			if (type_is_integer(expr_flatten) && type_is_integer(to_flatten))
+			if (!cast_may_explicit(expr_canonical, to_canonical, false, expr->expr_kind == EXPR_CONST))
+			{
+				if (expr_canonical->type_kind == TYPE_OPTIONAL && to_canonical->type_kind != TYPE_OPTIONAL)
+				{
+					if (report)
+					{
+						SEMA_ERROR(expr, "An optional %s cannot be converted to %s.", type_quoted_error_string(expr->type), type_quoted_error_string(to_type));
+					}
+					return false;
+				}
+				if (to_canonical->type_kind == TYPE_ANY)
+				{
+					if (report)
+					{
+						SEMA_ERROR(expr, "You can only convert pointers to 'variant', take the address of this expression first.");
+					}
+					return false;
+				}
+				if (report)
+				{
+					SEMA_ERROR(expr, "You cannot cast %s into %s even with an explicit cast, so this looks like an error.", type_quoted_error_string(expr->type), type_quoted_error_string(to_type));
+				}
+				return false;
+			}
+			bool is_narrowing = type_size(expr_canonical) >= type_size(to_canonical);
+			if (expr->expr_kind == EXPR_CONST && expr->const_expr.narrowable && is_narrowing)
+			{
+				Type *expr_flatten = type_flatten_distinct(expr_canonical);
+				Type *to_flatten = type_flatten_distinct(to_canonical);
+				if (type_is_integer(expr_flatten) && type_is_integer(to_flatten))
+				{
+					Expr *problem = recursive_may_narrow_int(expr, to_canonical);
+					if (problem)
+					{
+						sema_error_const_int_out_of_range(expr, problem, to_type);
+						return false;
+					}
+					goto OK;
+				}
+				if (type_is_float(expr_flatten) && type_is_float(to_flatten))
+				{
+					Expr *problem = recursive_may_narrow_float(expr, to_canonical);
+					if (problem)
+					{
+						if (report)
+						{
+							SEMA_ERROR(problem, "The value '%s' is out of range for %s, so you need an explicit cast to truncate the value.", expr_const_to_error_string(&expr->const_expr),
+							           type_quoted_error_string(to_type));
+						}
+						return false;
+					}
+					goto OK;
+				}
+			}
+			if (type_is_integer(expr_canonical) && type_is_integer(to_canonical) && is_narrowing)
 			{
 				Expr *problem = recursive_may_narrow_int(expr, to_canonical);
 				if (problem)
 				{
-					sema_error_const_int_out_of_range(expr, problem, to_type);
+					if (report)
+					{
+						SEMA_ERROR(problem, "Cannot narrow %s to %s.", type_quoted_error_string(problem->type),
+						           type_quoted_error_string(to_type));
+					}
 					return false;
 				}
 				goto OK;
 			}
-			if (type_is_float(expr_flatten) && type_is_float(to_flatten))
+			if (type_is_float(expr_canonical) && type_is_float(to_canonical) && is_narrowing)
 			{
 				Expr *problem = recursive_may_narrow_float(expr, to_canonical);
 				if (problem)
 				{
-					SEMA_ERROR(problem, "The value '%s' is out of range for %s, so you need an explicit cast to truncate the value.", expr_const_to_error_string(&expr->const_expr),
-					           type_quoted_error_string(to_type));
+					if (problem->expr_kind == EXPR_CONST)
+					{
+						if (report)
+						{
+							SEMA_ERROR(problem, "The value '%s' is out of range for %s.", expr_const_to_error_string(&problem->const_expr),
+							           type_quoted_error_string(to_type));
+						}
+					}
+					else
+					{
+						if (report)
+						{
+							SEMA_ERROR(problem, "This expression cannot be implicitly narrowed.");
+						}
+					}
 					return false;
 				}
 				goto OK;
 			}
-		}
-		if (type_is_integer(expr_canonical) && type_is_integer(to_canonical) && is_narrowing)
-		{
-			Expr *problem = recursive_may_narrow_int(expr, to_canonical);
-			if (problem)
+			if (report)
 			{
-				SEMA_ERROR(problem, "Cannot narrow %s to %s.", type_quoted_error_string(problem->type),
-				           type_quoted_error_string(to_type));
-				return false;
+				SEMA_ERROR(expr, "Implicitly casting %s to %s is not permitted, but you can do an explicit cast by placing '(%s)' before the expression.", type_quoted_error_string(
+						type_no_optional(expr->type)), type_quoted_error_string(type_no_optional(to_type)),
+				           type_to_error_string(to_type));
 			}
-			goto OK;
+			return false;
 		}
-		if (type_is_float(expr_canonical) && type_is_float(to_canonical) && is_narrowing)
+
+		OK:
+		// Additional checks for compile time values.
+		if (expr->expr_kind == EXPR_CONST && expr->const_expr.narrowable)
 		{
-			Expr *problem = recursive_may_narrow_float(expr, to_canonical);
-			if (problem)
+			if (type_is_float(expr->type))
 			{
-				if (problem->expr_kind == EXPR_CONST)
-				{
-					SEMA_ERROR(problem, "The value '%s' is out of range for %s.", expr_const_to_error_string(&problem->const_expr),
-					           type_quoted_error_string(to_type));
-				}
-				else
-				{
-					SEMA_ERROR(problem, "This expression cannot be implicitly narrowed.");
-				}
-				return false;
+				if (!may_convert_float_const_implicit(expr, to_type)) return false;
 			}
-			goto OK;
+			else if (type_is_integer(expr->type))
+			{
+				if (!may_convert_int_const_implicit(expr, to_type)) return false;
+			}
 		}
-		SEMA_ERROR(expr, "Implicitly casting %s to %s is not permitted, but you can do an explicit cast by placing '(%s)' before the expression.", type_quoted_error_string(
-				type_no_optional(expr->type)), type_quoted_error_string(type_no_optional(to_type)),
+		cast(expr, to_type);
+		// Allow narrowing after widening
+		if (type_is_numeric(to_type) && expr->expr_kind == EXPR_CONST && type_size(expr_canonical) < type_size(to_canonical))
+		{
+			expr->const_expr.narrowable = true;
+		}
+		if (expr->expr_kind == EXPR_CAST) expr->cast_expr.implicit = true;
+		return true;
+	}
+	if (!is_explicit && !report) return false;
+	if (!cast_may_explicit(from_type, to_type, true, expr_is_const(expr)))
+	{
+		if (!is_explicit && report)
+		{
+			SEMA_ERROR(expr, "You cannot cast %s into %s even with an explicit cast, so this looks like an error.", type_quoted_error_string(expr->type), type_quoted_error_string(to_type));
+			return false;
+		}
+		if (report) sema_error_failed_cast(expr, type_no_optional(expr->type), to_type);
+		return false;
+	}
+	if (!is_explicit)
+	{
+		assert(report);
+		SEMA_ERROR(expr,
+		           "Implicitly casting %s to %s is not permitted, but you can do an explicit cast by placing '(%s)' before the expression.",
+		           type_quoted_error_string(type_no_optional(from_type)),
+		           type_quoted_error_string(type_no_optional(to_type)),
 		           type_to_error_string(to_type));
 		return false;
 	}
-
-	OK:
-	// Additional checks for compile time values.
-	if (expr->expr_kind == EXPR_CONST && expr->const_expr.narrowable)
-	{
-		if (type_is_float(expr->type))
-		{
-			if (!may_convert_float_const_implicit(expr, to_type)) return false;
-		}
-		else if (type_is_integer(expr->type))
-		{
-			if (!may_convert_int_const_implicit(expr, to_type)) return false;
-		}
-	}
-	cast(expr, to_type);
-	// Allow narrowing after widening
-	if (type_is_numeric(to_type) && expr->expr_kind == EXPR_CONST && type_size(expr_canonical) < type_size(to_canonical))
-	{
-		expr->const_expr.narrowable = true;
-	}
-	if (expr->expr_kind == EXPR_CAST) expr->cast_expr.implicit = true;
-	return true;
+	return cast(expr, to_type);
 }
+
 static bool arr_to_vec(Expr *expr, Type *to_type)
 {
 	if (insert_runtime_cast_unless_const(expr, CAST_ARRVEC, to_type)) return true;
@@ -1839,7 +1997,7 @@ bool cast_widen_top_down(SemaContext *context, Expr *expr, Type *type)
 	CONVERT_IF_BIGGER:
 	if (type_size(to) <= type_size(from)) return true;
 	CONVERT:
-	return cast_implicit(context, expr, type);
+	return cast_expression_inner(context, expr, type, CAST_TYPE_IMPLICIT);
 }
 
 bool cast_promote_vararg(Expr *arg)
@@ -1884,7 +2042,10 @@ bool cast_decay_array_pointers(SemaContext *context, Expr *expr)
 {
 	CanonicalType *pointer_type = type_pointer_type(type_no_optional(expr->type));
 	if (!pointer_type || !type_is_arraylike(pointer_type)) return true;
-	return cast_implicit(context, expr, type_add_optional(type_get_ptr(pointer_type->array.base), IS_OPTIONAL(expr)));
+	return cast_expression_inner(context,
+	                             expr,
+	                             type_add_optional(type_get_ptr(pointer_type->array.base), IS_OPTIONAL(expr)),
+	                             CAST_TYPE_IMPLICIT);
 }
 
 void cast_to_max_bit_size(SemaContext *context, Expr *left, Expr *right, Type *left_type, Type *right_type)

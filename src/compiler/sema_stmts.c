@@ -529,7 +529,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 			return false;
 		}
 
-		if (!cast_implicit(context, failable, ident->type)) return false;
+		if (!cast_expression_inner(context, failable, ident->type, CAST_TYPE_IMPLICIT)) return false;
 
 		expr->try_unwrap_expr.assign_existing = true;
 		expr->try_unwrap_expr.lhs = ident;
@@ -569,7 +569,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 
 		if (var_type)
 		{
-			if (!cast_implicit(context, failable, var_type->type)) return false;
+			if (!cast_expression_inner(context, failable, var_type->type, CAST_TYPE_IMPLICIT)) return false;
 		}
 
 		// 4c. Create a type_info if needed.
@@ -898,21 +898,16 @@ static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType 
 		}
 		return true;
 	}
-	// 3a. Check for failables in case of an expression.
+	// 3a. Check for optional in case of an expression.
 	if (IS_OPTIONAL(last))
 	{
-		if (!cast_to_bool || cast_may_implicit(type_no_optional(last->type), type_bool, CAST_OPTION_NONE))
-		{
-			SEMA_ERROR(last, "The expression may not be a failable, but was %s.", type_quoted_error_string(last->type));
-			return false;
-		}
-		sema_error_failed_cast(last, type_no_optional(last->type), type_bool);
+		SEMA_ERROR(last, "The expression may not be an optional, but was %s.", type_quoted_error_string(last->type));
 		return false;
 	}
 	// 3b. Cast to bool if that is needed
 	if (cast_to_bool)
 	{
-		if (!cast_implicit(context, last, type_bool)) return false;
+		if (!cast_expression_inner(context, last, type_bool, CAST_TYPE_IMPLICIT)) return false;
 	}
 	return true;
 }
@@ -1358,7 +1353,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 			// Create const len if missing.
 			len_call = expr_new_const_int(enumerator->span, type_isize, array_len, true);
 		}
-		if (!cast_implicit(context, len_call, index_type)) return false;
+		if (!cast_expression_inner(context, len_call, index_type, CAST_TYPE_IMPLICIT)) return false;
 		// __idx$ = (IndexType)(@__enum$.len()) (or const)
 		vec_add(expressions, expr_generate_decl(idx_decl, len_call));
 	}
@@ -1367,7 +1362,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		if (len_call)
 		{
 			len_decl = decl_new_generated_var(index_type, VARDECL_LOCAL, enumerator->span);
-			if (!cast_implicit(context, len_call, index_type)) return false;
+			if (!cast_expression_inner(context, len_call, index_type, CAST_TYPE_IMPLICIT)) return false;
 			vec_add(expressions, expr_generate_decl(len_decl, len_call));
 		}
 		Expr *idx_init = expr_new_const_int(idx_decl->span, index_type, 0, true);

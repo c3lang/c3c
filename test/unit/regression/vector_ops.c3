@@ -86,13 +86,13 @@ fn void! testi() @test
     w = z << y;
     assert(w == { 4, 8, 16, -1600 });
     w = $$veccompgt(z, y);
-    assert(w == { -1, 0, 0, -1});
+    assert(w == { -1, 0, 0, 0});
     w = $$veccompge(z, y);
-    assert(w == { -1, -1, 0, -1 });
+    assert(w == { -1, -1, 0, 0 });
     w = $$veccomplt(z, y);
-    assert(w == { 0, 0, -1, 0 });
+    assert(w == { 0, 0, -1, -1 });
     w = $$veccomple(z, y);
-    assert(w == { 0, -1, -1, 0 });
+    assert(w == { 0, -1, -1, -1 });
     w = $$veccompeq(z, y);
     assert(w == { 0, -1, 0, 0 });
     w = $$veccompne(z, y);

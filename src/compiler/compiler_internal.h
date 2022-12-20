@@ -2027,8 +2027,13 @@ INLINE AsmRegister *asm_reg_by_index(unsigned index);
 
 AsmRegister *asm_reg_by_index(unsigned index);
 
+bool cast_implicit_silent(SemaContext *context, Expr *expr, Type *to_type);
 bool cast_implicit(SemaContext *context, Expr *expr, Type *to_type);
+bool cast_explicit(SemaContext *context, Expr *expr, Type *to_type);
+bool cast_expression_inner(SemaContext *context, Expr *expr, Type *to_type, CastType option);
+
 bool cast(Expr *expr, Type *to_type);
+bool cast_may_bool_convert(Type *type);
 bool cast_may_implicit(Type *from_type, Type *to_type, CastOption option);
 bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability, bool is_const);
 Type *cast_infer_len(Type *to_infer, Type *actual_type);
@@ -3212,6 +3217,11 @@ static inline bool decl_is_local(Decl *decl)
 INLINE bool expr_is_const_string(Expr *expr)
 {
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_STRING;
+}
+
+INLINE bool expr_is_const_pointer(Expr *expr)
+{
+	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_POINTER;
 }
 
 INLINE bool expr_is_const_initializer(Expr *expr)
