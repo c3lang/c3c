@@ -162,7 +162,7 @@ macro Type List.@item_at(List &list, usz index) @operator([])
     return list.entries[index];
 }
 
-macro Type* List.@item_ref(List &list, usz index) @operator(&[])
+fn Type* List.get_ref(List* list, usz index) @operator(&[]) @inline
 {
     return &list.entries[index];
 }
