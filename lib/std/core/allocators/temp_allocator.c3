@@ -18,7 +18,7 @@ struct TempAllocator
 }
 
 
-private const usz PAGE_IS_ALIGNED = (usz)isz.max + 1;
+private const usz PAGE_IS_ALIGNED = (usz)isz.max + 1u;
 
 
 struct TempAllocatorPage

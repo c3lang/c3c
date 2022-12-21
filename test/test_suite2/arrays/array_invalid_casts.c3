@@ -8,5 +8,5 @@ fn void test()
 fn void test2()
 {
     int[3] x;
-    double[] z = &x; // #error: 'int[3]*' into 'double[]'
+    double[] z = &x; // #error: 'int[3]*' to 'double[]'
 }

@@ -1633,6 +1633,71 @@ Type *type_from_token(TokenType type)
 	}
 }
 
+bool type_array_element_is_equivalent(Type *element1, Type *element2, bool is_explicit)
+{
+	RETRY:
+	if (is_explicit)
+	{
+		element1 = type_flatten_distinct(element1);
+		element2 = type_flatten_distinct(element2);
+	}
+	else
+	{
+		element1 = element1->canonical;
+		element2 = element2->canonical;
+	}
+	if (element1 == element2) return true;
+	switch (element1->type_kind)
+	{
+		case TYPE_POINTER:
+			if (element2->type_kind != TYPE_POINTER) return false;
+			return type_is_pointer_equivalent(element1, element2, is_explicit);
+		case TYPE_ARRAY:
+			if (element2->type_kind != TYPE_INFERRED_ARRAY && element1->array.len != element2->array.len) return false;
+			element1 = element1->array.base;
+			element2 = element2->array.base;
+			goto RETRY;
+		case TYPE_VECTOR:
+			if (element2->type_kind != TYPE_INFERRED_VECTOR && element1->array.len != element2->array.len) return false;
+			element1 = element1->array.base;
+			element2 = element2->array.base;
+			goto RETRY;
+		case TYPE_STRUCT:
+			if (is_explicit) return type_is_structurally_equivalent(element1, element2);
+			return false;
+		default:
+			return false;
+	}
+}
+
+bool type_is_pointer_equivalent(Type *pointer1, Type *pointer2, bool flatten_distinct)
+{
+RETRY:
+	if (flatten_distinct)
+	{
+		pointer1 = type_flatten_distinct(pointer1);
+		pointer2 = type_flatten_distinct(pointer2);
+	}
+	if (pointer1 == type_voidptr || pointer2 == type_voidptr) return true;
+	Type *pointee1 = pointer1->pointer->canonical;
+	Type *pointee2 = pointer2->pointer->canonical;
+	if (flatten_distinct)
+	{
+		pointee1 = type_flatten_distinct(pointee1);
+		pointee2 = type_flatten_distinct(pointee2);
+	}
+	if (pointee1->type_kind != pointee2->type_kind) return false;
+	if (pointee1->type_kind == TYPE_POINTER)
+	{
+		pointer1 = pointee1;
+		pointer2 = pointee2;
+		goto RETRY;
+	}
+	if (!type_is_arraylike(pointee1)) return false;
+	if (pointee1->array.len != pointee2->array.len) return false;
+	return type_array_element_is_equivalent(pointee1->array.base, pointer2->array.base, flatten_distinct);
+}
+
 bool type_may_have_method(Type *type)
 {
 	DECL_TYPE_KIND_REAL(kind, type)

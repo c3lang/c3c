@@ -29,6 +29,12 @@
 
 typedef enum
 {
+	REPORT_ERROR,
+	REPORT_NONE,
+} ReportType;
+
+typedef enum
+{
 	SPLIT_PATH_IDENT,
 	SPLIT_PATH_CONST_IDENT,
 	SPLIT_PATH_TYPE_IDENT,

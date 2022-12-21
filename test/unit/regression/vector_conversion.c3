@@ -1,0 +1,17 @@
+module test;
+
+fn void! vector_array_inferred() @test
+{
+	int[<2>] x = { 4, 7 };
+	int[2] y = x;
+	int[*] y1 = y;
+	int[*] y2 = x;
+	int[<*>] z = x;
+	int[<*>] w = y;
+	double[<2>] ww = x;
+	assert((int[<2>])y == int[<2>]{ 4, 7});
+	assert((int[<2>])y1 == int[<2>] { 4, 7 });
+	assert((int[<2>])y2 == int[<2>] { 4, 7 });
+	assert(z == int[<2>] { 4, 7 });
+	assert(w == int[<2>] { 4, 7 });
+}

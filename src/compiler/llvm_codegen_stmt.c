@@ -141,7 +141,7 @@ void llvm_emit_decl_expr_list(GenContext *context, BEValue *be_value, Expr *expr
 		LLVMValueRef decl_value = llvm_get_ref(context, last->decl_expr);
 		if (bool_cast && last->decl_expr->var.unwrap)
 		{
-			llvm_value_set_bool(be_value, LLVMConstInt(context->bool_type, 1, false));
+			llvm_value_set(be_value, LLVMConstInt(context->bool_type, 1, false), type_bool);
 			return;
 		}
 		llvm_value_set_address_abi_aligned(be_value, decl_value, type);
@@ -638,7 +638,7 @@ static void llvm_emit_switch_body_if_chain(GenContext *c,
 			llvm_emit_comp(c, &le, &be_value, switch_value, BINARYOP_LE);
 			BEValue ge;
 			llvm_emit_comp(c, &ge, &to_value, switch_value, BINARYOP_GE);
-			llvm_value_set_bool(&equals, llvm_emit_and(c, &le, &ge));
+			llvm_value_set(&equals, llvm_emit_and(c, &le, &ge), type_bool);
 		}
 		else
 		{
@@ -1344,7 +1344,7 @@ void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *pani
 	LLVMBasicBlockRef panic_block = llvm_basic_block_new(c, "panic");
 	LLVMBasicBlockRef ok_block = llvm_basic_block_new(c, "checkok");
 	BEValue be_value;
-	llvm_value_set_bool(&be_value, value);
+	llvm_value_set(&be_value, value, type_bool);
 	llvm_emit_cond_br(c, &be_value, panic_block, ok_block);
 	llvm_emit_block(c, panic_block);
 	llvm_emit_panic(c, panic_name, loc);

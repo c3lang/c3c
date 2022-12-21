@@ -125,14 +125,13 @@ typedef enum
 {
 	CAST_OPTION_NONE = 0x00,
 	CAST_OPTION_SIMPLE_EXPR = 0x01,
-	CAST_OPTION_ALLOW_OPTIONAL = 0x02,
+
 } CastOption;
 
 typedef enum
 {
-	CAST_TYPE_EXPLICIT = 0x04,
-	CAST_TYPE_IMPLICIT = 0x10,
 	CAST_TYPE_NO_ERROR_REPORT = 0x08,
+	CAST_TYPE_NO_OPTIONAL = 0x02,
 } CastType;
 
 typedef enum

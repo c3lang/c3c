@@ -774,22 +774,6 @@ void llvm_set_linkage(GenContext *c, Decl *decl, LLVMValueRef value)
 }
 
 
-void llvm_value_set_bool(BEValue *value, LLVMValueRef llvm_value)
-{
-	value->value = llvm_value;
-	value->alignment = type_abi_alignment(type_bool);
-	value->kind = BE_BOOLEAN;
-	value->type = type_bool;
-}
-
-void llvm_value_set_bool_vector(BEValue *value, LLVMValueRef llvm_value, Type *type)
-{
-	value->value = llvm_value;
-	value->alignment = type_abi_alignment(type);
-	value->kind = BE_BOOLVECTOR;
-	value->type = type;
-}
-
 void llvm_value_set_int(GenContext *c, BEValue *value, Type *type, uint64_t i)
 {
 	llvm_value_set(value, llvm_const_int(c, type, i), type);

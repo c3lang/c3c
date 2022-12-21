@@ -28,7 +28,7 @@ fn void test3()
     $switch (3):
         $case 3:
             return;
-        $case 123.0: // #error: Implicitly casting 'double' to 'int' is not permitted
+        $case 123.0: // #error: 'int'
             return;
         $default:
             return;

@@ -695,10 +695,7 @@ static inline bool sema_expr_analyse_ternary(SemaContext *context, Expr *expr)
 			return false;
 		}
 		Type *no_fail_max = type_no_optional(max);
-		if (!cast_expression_inner(context, left, no_fail_max, CAST_TYPE_IMPLICIT) || !cast_expression_inner(context,
-		                                                                                                     right,
-		                                                                                                     no_fail_max,
-		                                                                                                     CAST_TYPE_IMPLICIT)) return false;
+		if (!cast_implicit(context, left, no_fail_max) || !cast_implicit(context, right, no_fail_max)) return false;
 	}
 
 	if (path > -1)
@@ -913,7 +910,25 @@ static inline bool sema_binary_promote_top_down(SemaContext *context, Expr *bina
 
 static inline bool sema_binary_analyse_subexpr(SemaContext *context, Expr *binary, Expr *left, Expr *right)
 {
-	return (int)sema_analyse_expr(context, left) & (int)sema_analyse_expr(context, right);
+	if (right->expr_kind == EXPR_INITIALIZER_LIST)
+	{
+		if (!sema_analyse_expr(context, left)) return false;
+		if (type_kind_is_any_vector(type_flatten(left->type)->type_kind))
+		{
+			return sema_analyse_inferred_expr(context, left->type, right);
+		}
+		return sema_analyse_expr(context, right);
+	}
+	if (left->expr_kind == EXPR_INITIALIZER_LIST)
+	{
+		if (!sema_analyse_expr(context, right)) return false;
+		if (type_kind_is_any_vector(type_flatten(right->type)->type_kind))
+		{
+			return sema_analyse_inferred_expr(context, right->type, right);
+		}
+		return sema_analyse_expr(context, left);
+	}
+	return sema_analyse_expr(context, left) && sema_analyse_expr(context, right);
 }
 
 static inline bool sema_binary_analyse_arithmetic_subexpr(SemaContext *context, Expr *expr, const char *error, bool bool_is_allowed)
@@ -1579,7 +1594,7 @@ static inline Type *context_unify_returns(SemaContext *context)
 			if (!return_stmt) continue;
 			Expr *ret_expr = return_stmt->return_stmt.expr;
 			// 8. All casts should work.
-			if (!cast_expression_inner(context, ret_expr, common_type, CAST_TYPE_IMPLICIT))
+			if (!cast_implicit(context, ret_expr, common_type))
 			{
 				return NULL;
 			}
@@ -1807,10 +1822,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 					inferred_len = false;
 				}
 			}
-			bool success = cast_expression_inner(context,
-			                                     ret_expr,
-			                                     rtype,
-			                                     CAST_TYPE_IMPLICIT | CAST_TYPE_NO_ERROR_REPORT);
+			bool success = cast_implicit_silent(context, ret_expr, rtype);
 			if (inferred_len || (!may_failable && IS_OPTIONAL(ret_expr)) || !success)
 			{
 				SEMA_ERROR(ret_expr, "Expected %s, not %s.", type_quoted_error_string(rtype),
@@ -2478,7 +2490,7 @@ static inline bool sema_expr_analyse_pointer_offset(SemaContext *context, Expr *
 	// 2. Evaluate the offset.
 	Expr *offset = exprptr(expr->pointer_offset_expr.offset);
 	if (!sema_analyse_expr(context, offset)) return false;
-	if (!cast_expression_inner(context, offset, type_isz, CAST_TYPE_IMPLICIT)) return false;
+	if (!cast_implicit(context, offset, type_isz)) return false;
 
 	// 3. Store optionality
 	bool is_optional = IS_OPTIONAL(pointer) || IS_OPTIONAL(offset);
@@ -2528,10 +2540,12 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr)
 	if (end && end->type != start->type)
 	{
 		Type *common = type_find_max_type(start->type, end->type);
-		if (!common || !cast_expression_inner(context, start, common, CAST_TYPE_IMPLICIT) || !cast_expression_inner(context,
-		                                                                                                            end,
-		                                                                                                            common,
-		                                                                                                            CAST_TYPE_IMPLICIT)) return false;
+		if (!common)
+		{
+			SEMA_ERROR(expr, "No common type can be found between start and end index.");
+			return false;
+		}
+		if (!cast_implicit(context, start, common) || !cast_implicit(context, end, common)) return false;
 	}
 
 	bool start_from_end = expr->subscript_expr.range.start_from_end;
@@ -3885,8 +3899,9 @@ bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type 
 	}
 
 	// 1. Evaluate right side to required type.
-	if (!sema_analyse_expr_rhs(context, left_type, right, true)) return false;
-	if (IS_OPTIONAL(right) && !type_is_optional(left_type))
+	bool to_optional = left_type && type_is_optional(left_type);
+	if (!sema_analyse_expr_rhs(context, left_type, right, is_unwrapped || to_optional)) return false;
+	if (IS_OPTIONAL(right) && !to_optional)
 	{
 		if (is_unwrapped)
 		{
@@ -4112,12 +4127,7 @@ static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *
 
 	// 5. Cast the right hand side to the one on the left
 	if (!sema_analyse_expr(context, right)) return false;
-	if (!cast_expression_inner(context, right, no_fail, CAST_TYPE_IMPLICIT)) return false;
-	if (IS_OPTIONAL(right) && !IS_OPTIONAL(left))
-	{
-		SEMA_ERROR(right, "This expression cannot be failable, since the assigned variable isn't.");
-		return false;
-	}
+	if (!cast_implicit_maybe_failable(context, right, no_fail, IS_OPTIONAL(left))) return false;
 	// 6. Check for zero in case of div or mod.
 	if (right->expr_kind == EXPR_CONST)
 	{
@@ -4222,7 +4232,7 @@ static bool sema_expr_analyse_add_sub_assign(SemaContext *context, Expr *expr, E
 	}
 
 	// 8. Otherwise we cast rhs to lhs
-	if (!cast_expression_inner(context, right, left->type, CAST_TYPE_IMPLICIT)) return false;
+	if (!cast_implicit(context, right, left->type)) return false;
 
 	// 9. We expect a numeric type on both left and right
 	if (!type_underlying_is_numeric(left->type))
@@ -4252,8 +4262,8 @@ static bool sema_binary_arithmetic_promotion(SemaContext *context, Expr *left, E
 		SEMA_ERROR(parent, error_message, type_quoted_error_string(left->type), type_quoted_error_string(right->type));
 		return false;
 	}
-	return cast_expression_inner(context, left, max, CAST_TYPE_IMPLICIT) &&
-	       cast_expression_inner(context, right, max, CAST_TYPE_IMPLICIT);
+	return cast_implicit(context, left, max) &&
+	       cast_implicit(context, right, max);
 }
 
 static void sema_binary_unify_voidptr(Expr *left, Expr *right, Type **left_type_ref, Type **right_type_ref)
@@ -4352,7 +4362,7 @@ static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, 
 		}
 
 		// 6. Convert to isz
-		if (!cast_expression_inner(context, right, type_isz, CAST_TYPE_IMPLICIT)) return true;
+		if (!cast_implicit(context, right, type_isz)) return true;
 
 		if (left->expr_kind == EXPR_POINTER_OFFSET)
 		{
@@ -4476,7 +4486,7 @@ static bool sema_expr_analyse_add(SemaContext *context, Expr *expr, Expr *left, 
 
 		// 3b. Cast it to usize or isize depending on underlying type.
 		//     Either is fine, but it looks a bit nicer if we actually do this and keep the sign.
-		bool success = cast_expression_inner(context, right, type_isz, CAST_TYPE_IMPLICIT);
+		bool success = cast_implicit(context, right, type_isz);
 
 		// No need to check the cast we just ensured it was an integer.
 		assert(success && "This should always work");
@@ -4760,10 +4770,7 @@ static bool sema_expr_analyse_shift(SemaContext *context, Expr *expr, Expr *left
 	if (expr->binary_expr.widen && !cast_widen_top_down(context, left, expr->type)) return false;
 
 	// 3. Promote lhs using the usual numeric promotion.
-	if (!cast_expression_inner(context,
-	                           left,
-	                           cast_numeric_arithmetic_promotion(type_no_optional(left->type)),
-	                           CAST_TYPE_IMPLICIT)) return false;
+	if (!cast_implicit(context, left, cast_numeric_arithmetic_promotion(type_no_optional(left->type)))) return false;
 
 	// 4. For a constant rhs side we will make a series of checks.
 	if (IS_CONST(right))
@@ -5021,8 +5028,8 @@ static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left,
 
 	// 6. Do the implicit cast.
 	bool success = true;
-	if (!cast_expression_inner(context, left, max, CAST_TYPE_IMPLICIT)) success = cast(left, max);
-	if (!cast_expression_inner(context, right, max, CAST_TYPE_IMPLICIT)) success = success && cast(right, max);
+	if (!cast_implicit(context, left, max)) success = cast(left, max);
+	if (!cast_implicit(context, right, max)) success = success && cast(right, max);
 
 	assert(success);
 DONE:
@@ -5252,7 +5259,7 @@ static inline bool sema_expr_analyse_neg(SemaContext *context, Expr *expr)
 	}
 	// 3. Promote the type
 	Type *result_type = cast_numeric_arithmetic_promotion(no_fail);
-	if (!cast_expression_inner(context, inner, result_type, CAST_TYPE_IMPLICIT)) return false;
+	if (!cast_implicit(context, inner, result_type)) return false;
 
 	// 4. If it's non-const, we're done.
 	if (inner->expr_kind != EXPR_CONST)
@@ -5572,8 +5579,8 @@ static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr)
 				   type_quoted_error_string(else_type));
 		return false;
 	}
-	if (!cast_expression_inner(context, lhs, common, CAST_TYPE_IMPLICIT)) return false;
-	if (!cast_expression_inner(context, rhs, common, CAST_TYPE_IMPLICIT)) return false;
+	if (!cast_implicit(context, lhs, common)) return false;
+	if (!cast_implicit(context, rhs, common)) return false;
 	expr->type = type_add_optional(common, add_optional);
 	return true;
 }
@@ -6877,7 +6884,7 @@ bool sema_analyse_cond_expr(SemaContext *context, Expr *expr)
 		           type_quoted_error_string(expr->type));
 		return false;
 	}
-	return cast_expression_inner(context, expr, type_bool, CAST_TYPE_IMPLICIT);
+	return cast_explicit(context, expr, type_bool);
 }
 
 
@@ -6898,7 +6905,7 @@ bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allo
 			return false;
 		}
 	}
-	if (to && !cast_expression_inner(context, expr, to, CAST_TYPE_IMPLICIT)) return false;
+	if (to && !cast_implicit_maybe_failable(context, expr, to, allow_failable)) return false;
 	if (!allow_failable && IS_OPTIONAL(expr))
 	{
 		SEMA_ERROR(expr, "You cannot have a failable here.");

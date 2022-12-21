@@ -171,20 +171,30 @@ bool expr_const_float_fits_type(const ExprConst *expr_const, TypeKind kind)
 
 bool expr_const_will_overflow(const ExprConst *expr, TypeKind kind)
 {
-	switch (kind)
+	switch (expr->const_kind)
 	{
-		case ALL_INTS:
-			return !int_fits(expr->ixx, kind);
-		case TYPE_F16:
-		case TYPE_F32:
-		case TYPE_F64:
-		case TYPE_F128:
+		case CONST_FLOAT:
 			return !expr_const_float_fits_type(expr, kind);
-		case TYPE_BOOL:
+		case CONST_INTEGER:
+			return !int_fits(expr->ixx, kind);
+		case CONST_BOOL:
 			return false;
-		default:
-			UNREACHABLE
+		case CONST_ENUM:
+		{
+			Int i = { .i = { .low = expr->enum_err_val->var.index }, .type = type_flatten(expr->enum_err_val->type)->type_kind };
+			return !int_fits(i, kind);
+		}
+		case CONST_ERR:
+		case CONST_BYTES:
+		case CONST_STRING:
+		case CONST_POINTER:
+		case CONST_TYPEID:
+		case CONST_INITIALIZER:
+		case CONST_UNTYPED_LIST:
+		case CONST_MEMBER:
+			UNREACHABLE;
 	}
+	UNREACHABLE;
 }
 
 const char *expr_const_to_error_string(const ExprConst *expr)

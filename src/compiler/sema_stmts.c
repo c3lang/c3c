@@ -529,7 +529,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 			return false;
 		}
 
-		if (!cast_expression_inner(context, failable, ident->type, CAST_TYPE_IMPLICIT)) return false;
+		if (!cast_implicit(context, failable, ident->type)) return false;
 
 		expr->try_unwrap_expr.assign_existing = true;
 		expr->try_unwrap_expr.lhs = ident;
@@ -569,7 +569,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 
 		if (var_type)
 		{
-			if (!cast_expression_inner(context, failable, var_type->type, CAST_TYPE_IMPLICIT)) return false;
+			if (!cast_implicit(context, failable, var_type->type)) return false;
 		}
 
 		// 4c. Create a type_info if needed.
@@ -907,7 +907,7 @@ static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType 
 	// 3b. Cast to bool if that is needed
 	if (cast_to_bool)
 	{
-		if (!cast_expression_inner(context, last, type_bool, CAST_TYPE_IMPLICIT)) return false;
+		if (!cast_explicit(context, last, type_bool)) return false;
 	}
 	return true;
 }
@@ -1353,7 +1353,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 			// Create const len if missing.
 			len_call = expr_new_const_int(enumerator->span, type_isize, array_len, true);
 		}
-		if (!cast_expression_inner(context, len_call, index_type, CAST_TYPE_IMPLICIT)) return false;
+		if (!cast_implicit(context, len_call, index_type)) return false;
 		// __idx$ = (IndexType)(@__enum$.len()) (or const)
 		vec_add(expressions, expr_generate_decl(idx_decl, len_call));
 	}
@@ -1362,7 +1362,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		if (len_call)
 		{
 			len_decl = decl_new_generated_var(index_type, VARDECL_LOCAL, enumerator->span);
-			if (!cast_expression_inner(context, len_call, index_type, CAST_TYPE_IMPLICIT)) return false;
+			if (!cast_implicit(context, len_call, index_type)) return false;
 			vec_add(expressions, expr_generate_decl(len_decl, len_call));
 		}
 		Expr *idx_init = expr_new_const_int(idx_decl->span, index_type, 0, true);
