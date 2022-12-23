@@ -312,7 +312,7 @@ fn char[] tconcat(char[] s1, char[] s2)
     mem::copy(str, s1.ptr, s1_len);
     mem::copy(str + s1_len, s2.ptr, s2.len);
     str[full_len] = 0;
-    return str[..full_len];
+    return str[:full_len];
 }
 
 fn char[] concat(char[] s1, char[] s2)
@@ -323,7 +323,7 @@ fn char[] concat(char[] s1, char[] s2)
     mem::copy(str, s1.ptr, s1_len);
     mem::copy(str + s1_len, s2.ptr, s2.len);
     str[full_len] = 0;
-    return str[..full_len];
+    return str[:full_len];
 }
 
 fn char[] ZString.as_str(ZString str)
