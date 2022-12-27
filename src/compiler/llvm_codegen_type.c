@@ -279,7 +279,7 @@ LLVMTypeRef llvm_update_prototype_abi(GenContext *context, FunctionPrototype *pr
 			break;
 	}
 
-	// If it's failable and it's not void (meaning ret_abi_info will be NULL)
+	// If it's optional and it's not void (meaning ret_abi_info will be NULL)
 	if (prototype->ret_by_ref)
 	{
 		add_func_type_param(context, type_get_ptr(type_lowering(prototype->ret_by_ref_type)), prototype->ret_by_ref_abi_info, params);
@@ -345,7 +345,7 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 		case CT_TYPES:
 			UNREACHABLE
 		case TYPE_OPTIONAL:
-		case TYPE_FAILABLE_ANY:
+		case TYPE_OPTIONAL_ANY:
 		case TYPE_TYPEDEF:
 		case TYPE_DISTINCT:
 		case TYPE_ENUM:
@@ -686,7 +686,7 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 	switch (type->type_kind)
 	{
 		case TYPE_OPTIONAL:
-			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_FAILABLE, type->failable, 0, NULL, false);
+			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_OPTIONAL, type->optional, 0, NULL, false);
 		case TYPE_FLEXIBLE_ARRAY:
 			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_ARRAY, type->array.base, 0, NULL, false);
 		case TYPE_VECTOR:
@@ -723,7 +723,7 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_UNTYPED_LIST:
-		case TYPE_FAILABLE_ANY:
+		case TYPE_OPTIONAL_ANY:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
 			UNREACHABLE

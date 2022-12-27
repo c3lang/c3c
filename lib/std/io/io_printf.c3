@@ -159,7 +159,7 @@ private fn void! Formatter.out_str(Formatter* this, variant arg)
 		case FUNC:
 			if (this.print_with_function(arg)?) return;
 			return this.out_substr("<function>");
-		case FAILABLE:
+		case OPTIONAL:
 			unreachable();
 		case DISTINCT:
 			if (this.print_with_function(arg)?) return;

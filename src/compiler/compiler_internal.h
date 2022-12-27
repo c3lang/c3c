@@ -332,8 +332,8 @@ struct Type_
 		TypeFunction function;
 		// Type*
 		Type *pointer;
-		// Failable
-		Type *failable;
+		// Optional
+		Type *optional;
 		// Bitstruct
 		Type *bitstruct;
 	};
@@ -354,7 +354,7 @@ struct TypeInfo_
 {
 	ResolveStatus resolve_status : 3;
 	TypeInfoKind kind : 6;
-	bool failable : 1;
+	bool optional : 1;
 	TypeInfoCompressedKind subtype : 4;
 	Type *type;
 	SourceSpan span;
@@ -447,8 +447,8 @@ typedef struct VarDecl_
 			union
 			{
 				// Variable
-				void *failable_ref;
-				int tb_failable_reg;
+				void *optional_ref;
+				int tb_optional_reg;
 			};
 		};
 		struct
@@ -976,7 +976,7 @@ typedef struct
 typedef struct
 {
 	void *block_return_exit;
-	void *block_failable_exit;
+	void *block_optional_exit;
 	void *block_error_var;
 	void *block_return_out;
 } BlockExit;
@@ -1047,7 +1047,7 @@ typedef struct
 		struct
 		{
 			bool assign_existing : 1;
-			Expr *failable;
+			Expr *optional;
 			union
 			{
 				Decl *decl;
@@ -1749,7 +1749,7 @@ typedef struct FunctionPrototype_
 	CallABI call_abi : 4;
 	Variadic variadic : 3;
 	bool use_win64 : 1;
-	bool is_failable : 1;
+	bool is_optional : 1;
 	bool ret_by_ref : 1;
 	unsigned short vararg_index;
 	Type *rtype;
@@ -2028,7 +2028,7 @@ AsmRegister *asm_reg_by_index(unsigned index);
 
 bool cast_implicit_silent(SemaContext *context, Expr *expr, Type *to_type);
 bool cast_implicit(SemaContext *context, Expr *expr, Type *to_type);
-bool cast_implicit_maybe_failable(SemaContext *context, Expr *expr, Type *to_type, bool may_be_failable);
+bool cast_implicit_maybe_optional(SemaContext *context, Expr *expr, Type *to_type, bool may_be_optional);
 bool cast_explicit(SemaContext *context, Expr *expr, Type *to_type);
 
 bool cast(Expr *expr, Type *to_type);
@@ -2188,7 +2188,7 @@ void sema_erase_var(SemaContext *context, Decl *decl);
 void sema_erase_unwrapped(SemaContext *context, Decl *decl);
 bool sema_analyse_cond_expr(SemaContext *context, Expr *expr);
 
-bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allow_failable);
+bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allow_optional);
 MemberIndex sema_get_initializer_const_array_size(SemaContext *context, Expr *initializer, bool *may_be_array, bool *is_const_size);
 bool sema_analyse_expr(SemaContext *context, Expr *expr);
 bool sema_analyse_inferred_expr(SemaContext *context, Type *to, Expr *expr);
@@ -2201,7 +2201,7 @@ bool sema_analyse_statement(SemaContext *context, Ast *statement);
 bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type *left_type, Expr *right, bool is_unwrapped_var);
 bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *expr);
 Expr **sema_expand_vasplat_exprs(SemaContext *c, Expr **exprs);
-bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl, Expr *struct_var, bool failable);
+bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl, Expr *struct_var, bool optional);
 Decl *sema_resolve_symbol_in_current_dynamic_scope(SemaContext *context, const char *symbol);
 Decl *sema_decl_stack_resolve_symbol(const char *symbol);
 Decl *sema_find_decl_in_modules(Module **module_list, Path *path, const char *interned_name);
@@ -2294,7 +2294,7 @@ Type *type_get_inferred_array(Type *arr_type);
 Type *type_get_inferred_vector(Type *arr_type);
 Type *type_get_flexible_array(Type *arr_type);
 Type *type_get_scaled_vector(Type *arr_type);
-Type *type_get_optional(Type *failable_type);
+Type *type_get_optional(Type *optional_type);
 Type *type_get_vector(Type *vector_type, unsigned len);
 Type *type_get_vector_bool(Type *original_type);
 Type *type_int_signed_by_bitsize(BitSize bitsize);
@@ -2392,8 +2392,8 @@ TokenType binaryop_to_token(BinaryOp type);
 INLINE Type *type_no_optional(Type *type)
 {
 	if (!type) return NULL;
-	if (type->type_kind == TYPE_OPTIONAL) return type->failable;
-	if (type->type_kind == TYPE_FAILABLE_ANY) return type_void;
+	if (type->type_kind == TYPE_OPTIONAL) return type->optional;
+	if (type->type_kind == TYPE_OPTIONAL_ANY) return type_void;
 	return type;
 }
 
@@ -2414,7 +2414,7 @@ INLINE bool type_is_pointer_sized(Type *type)
 
 INLINE Type *type_add_optional(Type *type, bool make_optional)
 {
-	if (!make_optional || type->type_kind == TYPE_OPTIONAL || type->type_kind == TYPE_FAILABLE_ANY) return type;
+	if (!make_optional || type->type_kind == TYPE_OPTIONAL || type->type_kind == TYPE_OPTIONAL_ANY) return type;
 	return type_get_optional(type);
 }
 
@@ -2466,7 +2466,7 @@ INLINE bool type_len_is_inferred(Type *type)
 INLINE bool type_is_optional(Type *type)
 {
 	DECL_TYPE_KIND_REAL(kind, type);
-	return kind == TYPE_OPTIONAL || kind == TYPE_FAILABLE_ANY;
+	return kind == TYPE_OPTIONAL || kind == TYPE_OPTIONAL_ANY;
 }
 
 INLINE bool type_is_optional_type(Type *type)
@@ -2571,7 +2571,7 @@ INLINE bool type_may_negate(Type *type)
 			type = type->canonical;
 			goto RETRY;
 		case TYPE_OPTIONAL:
-			type = type->failable;
+			type = type->optional;
 			goto RETRY;
 		default:
 			return false;
@@ -2695,7 +2695,7 @@ static inline Type *type_flatten_distinct_optional(Type *type)
 				type = type->canonical;
 				continue;
 			case TYPE_OPTIONAL:
-				type = type->failable;
+				type = type->optional;
 				continue;
 			case TYPE_DISTINCT:
 				type = type->decl->distinct_decl.base_type;
@@ -2729,9 +2729,9 @@ static inline Type *type_flatten(Type *type)
 				type = type->decl->enums.type_info->type;
 				break;
 			case TYPE_OPTIONAL:
-				type = type->failable;
+				type = type->optional;
 				break;
-			case TYPE_FAILABLE_ANY:
+			case TYPE_OPTIONAL_ANY:
 				return type_void;
 			case TYPE_TYPEDEF:
 				UNREACHABLE

@@ -28,7 +28,7 @@ fn void test4()
 
     int! a;
     int b;
-    if (try b = 1) {} // #error: Expected a failable expression to 'try' here. If it isn't a failable, remove 'try'
+    if (try b = 1) {} // #error: remove 'try'
 }
 
 fn void test5()
@@ -36,7 +36,7 @@ fn void test5()
 
     int! a;
     int b;
-    if (try a = a) {} // #error: This is a failable variable, you should only have non-failable variables on the left side unless you use 'try' without '='
+    if (try a = a) {} // #error: you use 'try' without '='
 }
 
 fn void test6()

@@ -84,7 +84,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 		return false;
 	}
 
-	bool failable = false;
+	bool optional = false;
 
 	bool is_bitstruct = assigned->decl_kind == DECL_BITSTRUCT;
 	if (is_bitstruct && assigned->bitstruct.overlap)
@@ -162,10 +162,10 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 		{
 			if (!sema_bit_assignment_check(element, members[i])) return false;
 		}
-		failable = failable || IS_OPTIONAL(element);
+		optional = optional || IS_OPTIONAL(element);
 	}
 	assert(initializer->type);
-	if (failable) initializer->type = type_get_optional(initializer->type);
+	if (optional) initializer->type = type_get_optional(initializer->type);
 
 	// 6. There's the case of too few values as well. Mark the last field as wrong.
 	assert(elements_needed <= size);
@@ -250,7 +250,7 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 		return false;
 	}
 
-	bool failable = false;
+	bool optional = false;
 	unsigned count = vec_size(elements);
 	for (unsigned i = 0; i < count; i++)
 	{
@@ -262,7 +262,7 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 		}
 		if (!sema_analyse_expr_rhs(context, inner_type, element, true)) return false;
 		Type *element_type = type_no_optional(element->type);
-		failable = failable || IS_OPTIONAL(element);
+		optional = optional || IS_OPTIONAL(element);
 	}
 	if (inferred_len)
 	{
@@ -274,7 +274,7 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 	}
 
 	assert(initializer->type);
-	if (failable) initializer->type = type_get_optional(initializer->type);
+	if (optional) initializer->type = type_get_optional(initializer->type);
 
 	if (expected_members > size)
 	{
@@ -334,7 +334,7 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 	bool is_bitstruct = original->type_kind == TYPE_BITSTRUCT;
 	bool is_structlike = type_is_union_or_strukt(original) || is_bitstruct;
 	MemberIndex max_index = -1;
-	bool failable = false;
+	bool optional = false;
 	Type *inner_type = NULL;
 	bool is_inferred = type_is_len_inferred(flattened);
 	VECEACH(init_expressions, i)
@@ -349,7 +349,7 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 		{
 			if (!sema_bit_assignment_check(value, member)) return false;
 		}
-		failable = failable || IS_OPTIONAL(value);
+		optional = optional || IS_OPTIONAL(value);
 		expr->resolve_status = RESOLVE_DONE;
 		if (!inner_type)
 		{

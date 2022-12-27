@@ -535,7 +535,7 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 		case CT_TYPES:
 			UNREACHABLE
 		case TYPE_OPTIONAL:
-		case TYPE_FAILABLE_ANY:
+		case TYPE_OPTIONAL_ANY:
 			// If this is reachable then we're not doing the proper lowering.
 			UNREACHABLE
 		case TYPE_BOOL:

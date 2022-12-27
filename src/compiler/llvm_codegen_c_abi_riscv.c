@@ -290,7 +290,7 @@ void c_abi_func_create_riscv(FunctionPrototype *prototype)
 	unsigned arg_gprs_left = is_ret_indirect ? gpr - 1 : gpr;
 	unsigned arg_fprs_left = platform_target.riscv.flen ? fpr : 0;
 
-	// If we have a failable, then the return type is a parameter.
+	// If we have an optional, then the return type is a parameter.
 	if (prototype->ret_by_ref)
 	{
 		prototype->ret_by_ref_abi_info = riscv_classify_argument_type(type_get_ptr(type_lowering(prototype->ret_by_ref_type)),

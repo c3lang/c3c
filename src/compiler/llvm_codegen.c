@@ -341,11 +341,11 @@ void llvm_set_global_tls(Decl *decl)
 	}
 	LLVMSetThreadLocal(decl->backend_ref, true);
 	LLVMSetThreadLocalMode(decl->backend_ref, thread_local_mode);
-	void *failable_ref = decl->var.failable_ref;
-	if (failable_ref)
+	void *optional_ref = decl->var.optional_ref;
+	if (optional_ref)
 	{
-		LLVMSetThreadLocal(failable_ref, true);
-		LLVMSetThreadLocalMode(failable_ref, thread_local_mode);
+		LLVMSetThreadLocal(optional_ref, true);
+		LLVMSetThreadLocalMode(optional_ref, thread_local_mode);
 	}
 }
 void llvm_set_internal_linkage(LLVMValueRef alloc)
@@ -425,22 +425,22 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	}
 	llvm_set_global_tls(decl);
 
-	LLVMValueRef failable_ref = decl->var.failable_ref;
-	if (failable_ref)
+	LLVMValueRef optional_ref = decl->var.optional_ref;
+	if (optional_ref)
 	{
-		llvm_set_alignment(failable_ref, type_alloca_alignment(type_anyerr));
-		LLVMSetUnnamedAddress(failable_ref, LLVMGlobalUnnamedAddr);
+		llvm_set_alignment(optional_ref, type_alloca_alignment(type_anyerr));
+		LLVMSetUnnamedAddress(optional_ref, LLVMGlobalUnnamedAddr);
 	}
-	if (init_expr && IS_OPTIONAL(init_expr) && init_expr->expr_kind == EXPR_FAILABLE)
+	if (init_expr && IS_OPTIONAL(init_expr) && init_expr->expr_kind == EXPR_OPTIONAL)
 	{
 		UNREACHABLE
 	}
 	if (decl->visibility != VISIBLE_EXTERN)
 	{
 		LLVMSetInitializer(decl->backend_ref, init_value);
-		if (failable_ref)
+		if (optional_ref)
 		{
-			LLVMSetInitializer(failable_ref, llvm_get_zero(c, type_anyerr));
+			LLVMSetInitializer(optional_ref, llvm_get_zero(c, type_anyerr));
 		}
 	}
 
@@ -452,20 +452,20 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	{
 		case VISIBLE_MODULE:
 			LLVMSetVisibility(global_ref, LLVMProtectedVisibility);
-			if (failable_ref) LLVMSetVisibility(failable_ref, LLVMProtectedVisibility);
+			if (optional_ref) LLVMSetVisibility(optional_ref, LLVMProtectedVisibility);
 			break;
 		case VISIBLE_PUBLIC:
 			LLVMSetVisibility(global_ref, LLVMDefaultVisibility);
-			if (failable_ref) LLVMSetVisibility(failable_ref, LLVMDefaultVisibility);
+			if (optional_ref) LLVMSetVisibility(optional_ref, LLVMDefaultVisibility);
 			break;
 		case VISIBLE_EXTERN:
 			LLVMSetLinkage(global_ref, LLVMExternalLinkage);
-			if (failable_ref) LLVMSetLinkage(failable_ref, LLVMExternalLinkage);
+			if (optional_ref) LLVMSetLinkage(optional_ref, LLVMExternalLinkage);
 			//LLVMSetVisibility(decl->backend_ref, LLVMDefaultVisibility);
 			break;
 		case VISIBLE_LOCAL:
 			LLVMSetLinkage(global_ref, LLVMInternalLinkage);
-			if (failable_ref) LLVMSetLinkage(failable_ref, LLVMInternalLinkage);
+			if (optional_ref) LLVMSetLinkage(optional_ref, LLVMInternalLinkage);
 			break;
 	}
 
@@ -928,7 +928,7 @@ void llvm_add_global_decl(GenContext *c, Decl *decl)
 		scratch_buffer_clear();
 		scratch_buffer_append(decl_get_extname(decl));
 		scratch_buffer_append(".f");
-		decl->var.failable_ref = llvm_add_global(c, scratch_buffer_to_string(), type_anyerr, 0);
+		decl->var.optional_ref = llvm_add_global(c, scratch_buffer_to_string(), type_anyerr, 0);
 	}
 	llvm_set_global_tls(decl);
 }
@@ -938,7 +938,7 @@ LLVMValueRef llvm_get_opt_ref(GenContext *c, Decl *decl)
 	llvm_get_ref(c, decl);
 	decl = decl_flatten(decl);
 	if (decl->decl_kind != DECL_VAR) return NULL;
-	return decl->var.failable_ref;
+	return decl->var.optional_ref;
 }
 
 LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)

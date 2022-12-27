@@ -410,8 +410,8 @@ static inline Ast* parse_while_stmt(ParseContext *c)
 
 /**
  * if_expr
- *  : failable_type IDENT '=' initializer
- *  | failable_type IDENT NOFAIL_ASSIGN expression
+ *  : optional_type IDENT '=' initializer
+ *  | optional_type IDENT NOFAIL_ASSIGN expression
  *  | expression
  *  ;
  *
@@ -625,7 +625,7 @@ static inline bool parse_foreach_var(ParseContext *c, Ast *foreach)
 	{
 		ASSIGN_TYPE_OR_RET(type, parse_optional_type(c), false);
 
-		// Add the failable to the type for nicer error reporting.
+		// Add the optional to the type for nicer error reporting.
 		RANGE_EXTEND_PREV(type);
 	}
 	if (try_consume(c, TOKEN_AMP))
@@ -769,7 +769,7 @@ static inline Ast *parse_decl_or_expr_stmt(ParseContext *c)
 	ast->span = expr->span;
 	// We might be parsing "int!"
 	// If so we need to unwrap this.
-	if (expr->expr_kind == EXPR_FAILABLE && expr->inner_expr->expr_kind == EXPR_TYPEINFO)
+	if (expr->expr_kind == EXPR_OPTIONAL && expr->inner_expr->expr_kind == EXPR_TYPEINFO)
 	{
 		UNREACHABLE
 	}

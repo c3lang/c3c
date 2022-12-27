@@ -216,7 +216,7 @@ enum TypeKind : char
     UNION,
     BITSTRUCT,
     FUNC,
-    FAILABLE,
+    OPTIONAL,
     ARRAY,
     SUBARRAY,
     VECTOR,

@@ -26,7 +26,7 @@ fn void! testMayError()
 
 fn void main()
 {
-    // ratio has a failable type.
+    // ratio has an optional type.
     double! ratio = divide(foo(), bar());
 
     // Handle the error

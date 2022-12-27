@@ -238,8 +238,8 @@ macro_argument_list
     ;
 
 declaration
-    : failable_type IDENT '=' initializer
-    | failable_type IDENT
+    : optional_type IDENT '=' initializer
+    | optional_type IDENT
     ;
 
 param_declaration
@@ -291,7 +291,7 @@ type
     | type '[' '+' ']'
     ;
 
-failable_type
+optional_type
     : type
     | type '!'
     ;
@@ -419,8 +419,8 @@ expression_statement
 
 
 if_expr
-    : failable_type IDENT '=' initializer
-    | failable_type IDENT NOFAIL_ASSIGN expression
+    : optional_type IDENT '=' initializer
+    | optional_type IDENT NOFAIL_ASSIGN expression
     | expression
     ;
 
@@ -513,7 +513,7 @@ func_name
     ;
 
 func_declaration
-    : FUNC failable_type func_name opt_parameter_type_list opt_attributes
+    : FUNC optional_type func_name opt_parameter_type_list opt_attributes
     ;
 
 func_definition
@@ -594,7 +594,7 @@ const_declaration
     ;
 
 func_typedef
-    : FUNC failable_type opt_parameter_type_list
+    : FUNC optional_type opt_parameter_type_list
     ;
 
 typedef_declaration

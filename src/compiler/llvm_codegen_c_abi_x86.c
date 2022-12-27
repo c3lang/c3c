@@ -122,7 +122,7 @@ static bool x86_should_return_type_in_reg(Type *type)
 		case TYPE_BITSTRUCT:
 		case CT_TYPES:
 		case TYPE_OPTIONAL:
-		case TYPE_FAILABLE_ANY:
+		case TYPE_OPTIONAL_ANY:
 		case TYPE_FLEXIBLE_ARRAY:
 			UNREACHABLE
 		case TYPE_SCALED_VECTOR:
@@ -589,7 +589,7 @@ static ABIArgInfo *x86_classify_argument(CallABI call, Regs *regs, Type *type)
 		case TYPE_TYPEID:
 		case TYPE_BITSTRUCT:
 		case TYPE_OPTIONAL:
-		case TYPE_FAILABLE_ANY:
+		case TYPE_OPTIONAL_ANY:
 		case CT_TYPES:
 		case TYPE_FLEXIBLE_ARRAY:
 			UNREACHABLE
@@ -663,7 +663,7 @@ void c_abi_func_create_x86(FunctionPrototype *prototype)
 		regs.int_regs = 3;
 	}
 
-	// 4. Classify the return type. In the case of failable, we need to classify the failable itself as the
+	// 4. Classify the return type. In the case of optional, we need to classify the optional itself as the
 	//    return type.
 	prototype->ret_abi_info = x86_classify_return(prototype->call_abi, &regs, prototype->abi_ret_type);
 	if (prototype->ret_by_ref)

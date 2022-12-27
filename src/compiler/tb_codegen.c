@@ -18,7 +18,7 @@ void tinybackend_codegen_setup()
 }
 
 static inline bool tinybackend_value_is_addr(TBEValue *value)
-{ return value->kind == TBE_ADDRESS || value->kind == TBE_ADDRESS_FAILABLE; }
+{ return value->kind == TBE_ADDRESS || value->kind == TBE_ADDRESS_OPTIONAL; }
 
 
 static TB_CallingConv tilde_call_convention(CallABI abi)
@@ -299,7 +299,7 @@ static TB_FunctionPrototype *tilde_get_function_type(TB_Module *module, Function
 			break;
 	}
 
-	// If it's failable and it's not void (meaning ret_abi_info will be NULL)
+	// If it's optional and it's not void (meaning ret_abi_info will be NULL)
 	if (prototype->ret_by_ref)
 	{
 		add_func_type_param(type_get_ptr(type_lowering(prototype->ret_by_ref_type)),
@@ -505,7 +505,7 @@ static inline void tilde_emit_block(TbContext *c, TB_Label label)
 TB_Register tilde_value_rvalue_get(TbContext *c, TBEValue *value)
 {
 	if (value->kind == TBE_VALUE) return value->reg;
-	//llvm_value_fold_failable(c, value);
+	//llvm_value_fold_optional(c, value);
 	return tilde_load_aligned(c,
 	                          tbtype(value->type),
 	                          value->reg,
@@ -694,7 +694,7 @@ static void tinybackend_emit_binary_expr(TbContext *c, TBEValue *TBE_VALUE, Expr
 		tinybackend_emit_exprid(c, TBE_VALUE, expr->binary_expr.left);
 		assert(tinybackend_value_is_addr(TBE_VALUE));
 
-		*TBE_VALUE = tilde_emit_assign_expr(c, TBE_VALUE, exprptr(expr->binary_expr.right), TB_NULL_REG /* failable_ref */);
+		*TBE_VALUE = tilde_emit_assign_expr(c, TBE_VALUE, exprptr(expr->binary_expr.right), TB_NULL_REG /* optional_ref */);
 		return;
 	}
 
@@ -767,7 +767,7 @@ static TB_Register tilde_emit_local_decl(TbContext *c, Decl *decl)
 		scratch_buffer_append(decl->name);
 		scratch_buffer_append(".f");
 		decl->var.tb_failable_reg = tb_inst_local(c->f, type_size(type_anyerr), type_alloca_alignment(type_anyerr));
-		// Only clear out the result if the assignment isn't a failable.
+		// Only clear out the result if the assignment isn't an optional.
 	}
 
 	TBEValue value;

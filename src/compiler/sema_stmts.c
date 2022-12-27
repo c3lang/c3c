@@ -256,7 +256,7 @@ static void sema_unwrappable_from_catch_in_else(SemaContext *c, Expr *cond)
 		if (expr->expr_kind != EXPR_IDENTIFIER) continue;
 		Decl *decl = expr->identifier_expr.decl;
 		if (decl->decl_kind != DECL_VAR) continue;
-		assert(decl->type->type_kind == TYPE_OPTIONAL && "The variable should always be failable at this point.");
+		assert(decl->type->type_kind == TYPE_OPTIONAL && "The variable should always be optional at this point.");
 
 		// 5. Locals and globals may be unwrapped
 		switch (decl->var.kind)
@@ -442,10 +442,10 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 {
 	assert(expr->expr_kind == EXPR_TRY_UNWRAP);
 	Expr *ident = expr->try_unwrap_expr.variable;
-	Expr *failable = expr->try_unwrap_expr.init;
+	Expr *optional = expr->try_unwrap_expr.init;
 
 	// Case A. Unwrapping a single variable.
-	if (!failable)
+	if (!optional)
 	{
 		if (!sema_analyse_expr(context, ident)) return false;
 		if (ident->expr_kind != EXPR_IDENTIFIER)
@@ -456,7 +456,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 		Decl *decl = ident->identifier_expr.decl;
 		if (decl->decl_kind != DECL_VAR)
 		{
-			SEMA_ERROR(ident, "Expected this to be the name of a failable variable, but it isn't. Did you mistype?");
+			SEMA_ERROR(ident, "Expected this to be the name of an optional variable, but it isn't. Did you mistype?");
 			return false;
 		}
 		if (!IS_OPTIONAL(decl))
@@ -466,7 +466,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 				SEMA_ERROR(ident, "This variable is already unwrapped, so you cannot use 'try' on it again, please remove the 'try'.");
 				return false;
 			}
-			SEMA_ERROR(ident, "Expected this variable to be a failable, otherwise it can't be used for unwrap, maybe you didn't intend to use 'try'?");
+			SEMA_ERROR(ident, "Expected this variable to be an optional, otherwise it can't be used for unwrap, maybe you didn't intend to use 'try'?");
 			return false;
 		}
 		expr->try_unwrap_expr.decl = decl;
@@ -492,7 +492,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 		if (!sema_resolve_type_info(context, var_type)) return false;
 		if (IS_OPTIONAL(var_type))
 		{
-			SEMA_ERROR(var_type, "Only non-failable types may be used as types for 'try', please remove the '!'.");
+			SEMA_ERROR(var_type, "Only non-optional types may be used as types for 'try', please remove the '!'.");
 			return false;
 		}
 	}
@@ -506,30 +506,30 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 		// 3b. Make sure it's assignable
 		if (!sema_expr_check_assign(context, ident)) return false;
 
-		// 3c. It can't be failable either.
+		// 3c. It can't be optional either.
 		if (IS_OPTIONAL(ident))
 		{
 			if (ident->expr_kind == EXPR_IDENTIFIER)
 			{
-				SEMA_ERROR(ident, "This is a failable variable, you should only have non-failable variables on the left side unless you use 'try' without '='.");
+				SEMA_ERROR(ident, "This is an optional variable, you should only have non-optional variables on the left side unless you use 'try' without '='.");
 			}
 			else
 			{
-				SEMA_ERROR(ident, "This is a failable expression, it can't go on the left hand side of a 'try'.");
+				SEMA_ERROR(ident, "This is an optional expression, it can't go on the left hand side of a 'try'.");
 			}
 			return false;
 		}
 
 		// 3d. We can now analyse the expression using the variable type.
-		if (!sema_analyse_expr(context, failable)) return false;
+		if (!sema_analyse_expr(context, optional)) return false;
 
-		if (!IS_OPTIONAL(failable))
+		if (!IS_OPTIONAL(optional))
 		{
-			SEMA_ERROR(failable, "Expected a failable expression to 'try' here. If it isn't a failable, remove 'try'.");
+			SEMA_ERROR(optional, "Expected an optional expression to 'try' here. If it isn't an optional, remove 'try'.");
 			return false;
 		}
 
-		if (!cast_implicit(context, failable, ident->type)) return false;
+		if (!cast_implicit(context, optional, ident->type)) return false;
 
 		expr->try_unwrap_expr.assign_existing = true;
 		expr->try_unwrap_expr.lhs = ident;
@@ -559,23 +559,23 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 		}
 
 		// 4b. Evaluate the expression
-		if (!sema_analyse_expr(context, failable)) return false;
+		if (!sema_analyse_expr(context, optional)) return false;
 
-		if (!IS_OPTIONAL(failable))
+		if (!IS_OPTIONAL(optional))
 		{
-			SEMA_ERROR(failable, "Expected a failable expression to 'try' here. If it isn't a failable, remove 'try'.");
+			SEMA_ERROR(optional, "Expected an optional expression to 'try' here. If it isn't an optional, remove 'try'.");
 			return false;
 		}
 
 		if (var_type)
 		{
-			if (!cast_implicit(context, failable, var_type->type)) return false;
+			if (!cast_implicit(context, optional, var_type->type)) return false;
 		}
 
 		// 4c. Create a type_info if needed.
 		if (!var_type)
 		{
-			var_type = type_info_new_base(failable->type->failable, failable->span);
+			var_type = type_info_new_base(optional->type->optional, optional->span);
 		}
 
 		// 4d. A new declaration is created.
@@ -587,7 +587,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 		expr->try_unwrap_expr.decl = decl;
 	}
 
-	expr->try_unwrap_expr.failable = failable;
+	expr->try_unwrap_expr.optional = optional;
 	expr->type = type_bool;
 	expr->resolve_status = RESOLVE_DONE;
 	return true;
@@ -698,7 +698,7 @@ RESOLVE_EXPRS:;
 		if (!sema_analyse_expr(context, fail)) return false;
 		if (!type_is_optional(fail->type))
 		{
-			SEMA_ERROR(fail, "This expression is not failable, did you add it by mistake?");
+			SEMA_ERROR(fail, "This expression is not optional, did you add it by mistake?");
 			return false;
 		}
 	}
@@ -718,7 +718,7 @@ static void sema_remove_unwraps_from_try(SemaContext *c, Expr *cond)
 		Expr *expr = chain[i];
 		if (expr->expr_kind != EXPR_TRY_UNWRAP) continue;
 		if (expr->try_unwrap_expr.assign_existing) continue;
-		if (expr->try_unwrap_expr.failable)
+		if (expr->try_unwrap_expr.optional)
 		{
 			sema_erase_var(c, expr->try_unwrap_expr.decl);
 		}
@@ -884,7 +884,7 @@ static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType 
 			SEMA_ERROR(last, "Expected a declaration with initializer.");
 			return false;
 		}
-		// 3e. Expect that it isn't a failable
+		// 3e. Expect that it isn't an optional
 		if (IS_OPTIONAL(init) && !decl->var.unwrap)
 		{
 			return sema_error_failed_cast(last, last->type, cast_to_bool ? type_bool : init->type);
@@ -1185,7 +1185,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 
 	if (IS_OPTIONAL(enumerator))
 	{
-		SEMA_ERROR(enumerator, "The expression may not be failable.");
+		SEMA_ERROR(enumerator, "The expression may not be optional.");
 		return false;
 	}
 
@@ -1259,7 +1259,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 
 	if (type_is_optional(var->var.type_info->type))
 	{
-		SEMA_ERROR(var->var.type_info, "The variable may not be a failable.");
+		SEMA_ERROR(var->var.type_info, "The variable may not be an optional.");
 		return false;
 	}
 
@@ -1272,7 +1272,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		index_var_type = index->var.type_info->type;
 		if (type_is_optional(index_var_type))
 		{
-			SEMA_ERROR(index->var.type_info, "The index may not be a failable.");
+			SEMA_ERROR(index->var.type_info, "The index may not be an optional.");
 			return false;
 		}
 		if (!type_is_integer(type_flatten(index_var_type)))

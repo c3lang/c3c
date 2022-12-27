@@ -142,9 +142,9 @@ void llvm_emit_jump_to_optional_exit(GenContext *c, LLVMValueRef opt_value)
 
 void llvm_value_fold_optional(GenContext *c, BEValue *value)
 {
-	if (value->kind == BE_ADDRESS_FAILABLE)
+	if (value->kind == BE_ADDRESS_OPTIONAL)
 	{
-		llvm_emit_jump_to_optional_exit(c, llvm_load_natural_alignment(c, type_anyerr, value->failable, "optval"));
+		llvm_emit_jump_to_optional_exit(c, llvm_load_natural_alignment(c, type_anyerr, value->optional, "optval"));
 		value->kind = BE_ADDRESS;
 	}
 }
@@ -154,8 +154,8 @@ void llvm_value_set_decl_address(GenContext *c, BEValue *value, Decl *decl)
 	LLVMValueRef backend_ref = llvm_get_ref(c, decl);
 	llvm_value_set_address(value, backend_ref, decl->type, decl->alignment);
 
-	if ((value->failable = llvm_get_opt_ref(c, decl)))
+	if ((value->optional = llvm_get_opt_ref(c, decl)))
 	{
-		value->kind = BE_ADDRESS_FAILABLE;
+		value->kind = BE_ADDRESS_OPTIONAL;
 	}
 }

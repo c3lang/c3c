@@ -874,7 +874,7 @@ void sema_unwrap_var(SemaContext *context, Decl *decl)
 	Decl *alias = decl_copy(decl);
 	alias->var.kind = VARDECL_UNWRAPPED;
 	alias->var.alias = decl;
-	alias->type = alias->type->failable;
+	alias->type = alias->type->optional;
 	alias->resolve_status = RESOLVE_DONE;
 	sema_append_local(context, alias);
 }

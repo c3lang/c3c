@@ -170,7 +170,7 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 	switch (type->type_kind)
 	{
 		case TYPE_OPTIONAL:
-			type = type->failable;
+			type = type->optional;
 			goto RETRY;
 		case TYPE_DISTINCT:
 			type = type->decl->distinct_decl.base_type;
@@ -183,7 +183,7 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 		case TYPE_FUNC:
 		case TYPE_SUBARRAY:
 		case CT_TYPES:
-		case TYPE_FAILABLE_ANY:
+		case TYPE_OPTIONAL_ANY:
 			return false;
 		case TYPE_ANY:
 			*base = type_iptr->canonical;

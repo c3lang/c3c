@@ -20,7 +20,7 @@ static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Ex
 static inline void llvm_emit_const_initialize_reference(GenContext *c, BEValue *ref, Expr *expr);
 static inline void llvm_emit_elvis_expr(GenContext *c, BEValue *value, Expr *expr);
 static inline void llvm_emit_expr_block(GenContext *context, BEValue *be_value, Expr *expr);
-static inline void llvm_emit_failable(GenContext *c, BEValue *be_value, Expr *expr);
+static inline void llvm_emit_optional(GenContext *c, BEValue *be_value, Expr *expr);
 static inline void llvm_emit_inc_dec_change(GenContext *c, BEValue *addr, BEValue *after, BEValue *before, Expr *expr,
                                             int diff);
 static inline void llvm_emit_initialize_reference(GenContext *c, BEValue *ref, Expr *expr);
@@ -72,13 +72,13 @@ static inline LLVMValueRef llvm_emit_exprid_to_rvalue(GenContext *c, ExprId expr
 	return value.value;
 }
 
-BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValueRef failable)
+BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValueRef optional)
 {
-	assert(ref->kind == BE_ADDRESS || ref->kind == BE_ADDRESS_FAILABLE);
+	assert(ref->kind == BE_ADDRESS || ref->kind == BE_ADDRESS_OPTIONAL);
 
-	assert(failable || !IS_OPTIONAL(expr));
-	// Special optimization of handling of failable
-	if (expr->expr_kind == EXPR_FAILABLE)
+	assert(optional || !IS_OPTIONAL(expr));
+	// Special optimization of handling of optional
+	if (expr->expr_kind == EXPR_OPTIONAL)
 	{
 		PUSH_OPT();
 
@@ -88,8 +88,8 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 		// Emit the fault type.
 		llvm_emit_expr(c, &result, expr->inner_expr);
 		LLVMValueRef err_val = result.value;
-		// Store it in the failable
-		llvm_store_to_ptr(c, failable, &result);
+		// Store it in the optional
+		llvm_store_to_ptr(c, optional, &result);
 		// Set the result to an undef value
 		llvm_value_set(&result, llvm_get_undef(c, ref->type), ref->type);
 
@@ -111,7 +111,7 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 	if (IS_OPTIONAL(expr))
 	{
 		assign_block = llvm_basic_block_new(c, "after_assign");
-		assert(failable);
+		assert(optional);
 		if (c->opt_var)
 		{
 			c->catch_block = rejump_block = llvm_basic_block_new(c, "optional_assign_jump");
@@ -120,7 +120,7 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 		{
 			c->catch_block = assign_block;
 		}
-		c->opt_var = failable;
+		c->opt_var = optional;
 	}
 	else
 	{
@@ -157,9 +157,9 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 		if (value.type != type_void) llvm_store(c, ref, &value);
 	}
 
-	if (failable)
+	if (optional)
 	{
-		llvm_store_to_ptr_raw(c, failable, llvm_get_zero(c, type_anyerr), type_anyerr);
+		llvm_store_to_ptr_raw(c, optional, llvm_get_zero(c, type_anyerr), type_anyerr);
 	}
 	POP_OPT();
 
@@ -169,7 +169,7 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 		if (rejump_block)
 		{
 			llvm_emit_block(c, rejump_block);
-			LLVMValueRef error = llvm_load_natural_alignment(c, type_anyerr, failable, "reload_err");
+			LLVMValueRef error = llvm_load_natural_alignment(c, type_anyerr, optional, "reload_err");
 			llvm_store_to_ptr_raw(c, c->opt_var, error, type_anyerr);
 			llvm_emit_br(c, c->catch_block);
 		}
@@ -2568,7 +2568,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 	LLVMValueRef parent_addr = parent_addr_x.value;
 	LLVMValueRef parent_load_value = NULL;
 	LLVMValueRef parent_base;
-	bool is_failable = type_is_optional(parent_type);
+	bool is_optional = type_is_optional(parent_type);
 	parent_type = type_no_optional(parent_type);
 	switch (parent_type->type_kind)
 	{
@@ -3803,7 +3803,7 @@ static inline void llvm_emit_catch_expr(GenContext *c, BEValue *value, Expr *exp
 		return;
 	}
 
-	if (inner->expr_kind == EXPR_FAILABLE)
+	if (inner->expr_kind == EXPR_OPTIONAL)
 	{
 		llvm_emit_expr(c, value, inner->inner_expr);
 		return;
@@ -3895,7 +3895,7 @@ static inline void llvm_emit_rethrow_expr(GenContext *c, BEValue *be_value, Expr
 	c->catch_block = guard_block;
 
 	llvm_emit_expr(c, be_value, expr->rethrow_expr.inner);
-	// Fold the failable.
+	// Fold the optional.
 	llvm_value_fold_optional(c, be_value);
 
 	// Restore.
@@ -4032,13 +4032,13 @@ static void llvm_emit_binary_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		Expr *left = exprptr(expr->binary_expr.left);
 		llvm_emit_expr(c, be_value, left);
 		assert(llvm_value_is_addr(be_value));
-		LLVMValueRef failable_ref = NULL;
+		LLVMValueRef optional_ref = NULL;
 		if (left->expr_kind == EXPR_IDENTIFIER)
 		{
-			failable_ref = decl_optional_ref(left->identifier_expr.decl);
+			optional_ref = decl_optional_ref(left->identifier_expr.decl);
 			be_value->kind = BE_ADDRESS;
 		}
-		*be_value = llvm_emit_assign_expr(c, be_value, exprptr(expr->binary_expr.right), failable_ref);
+		*be_value = llvm_emit_assign_expr(c, be_value, exprptr(expr->binary_expr.right), optional_ref);
 		return;
 	}
 
@@ -4453,7 +4453,7 @@ static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVM
 		case TYPE_BITSTRUCT:
 		case TYPE_OPTIONAL:
 		case CT_TYPES:
-		case TYPE_FAILABLE_ANY:
+		case TYPE_OPTIONAL_ANY:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_SCALED_VECTOR:
 			UNREACHABLE
@@ -4909,8 +4909,8 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 			UNREACHABLE
 		case ABI_ARG_IGNORE:
 			// 12. Basically void returns or empty structs.
-			//     Here we know we don't have a failable or any return value that can be used.
-			assert(!prototype->is_failable && "Failable should have produced a return value.");
+			//     Here we know we don't have an optional or any return value that can be used.
+			assert(!prototype->is_optional && "Optional should have produced a return value.");
 			*result_value = (BEValue) { .type = type_void, .kind = BE_VALUE };
 			return;
 		case ABI_ARG_INDIRECT:
@@ -5028,13 +5028,13 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 		}
 	}
 
-	// 17. Handle failables.
+	// 17. Handle optionals.
 	if (sret_return)
 	{
 		*result_value = (BEValue) { .type = type_void, .kind = BE_VALUE };
 		return;
 	}
-	if (prototype->is_failable)
+	if (prototype->is_optional)
 	{
 		BEValue no_err;
 
@@ -5191,7 +5191,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 	ABIArgInfo *ret_info = prototype->ret_abi_info;
 	Type *call_return_type = prototype->abi_ret_type;
 
-	// 5. In the case of a failable, the error is replacing the regular return abi.
+	// 5. In the case of an optional, the error is replacing the regular return abi.
 	LLVMValueRef error_var = NULL;
 
 	*result_value = (BEValue){ .kind = BE_VALUE, .value = NULL };
@@ -5201,7 +5201,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 	{
 		case ABI_ARG_INDIRECT:
 			// 6a. We can use the stored error var if there is no redirect.
-			if (prototype->is_failable && c->opt_var && !ret_info->attributes.realign)
+			if (prototype->is_optional && c->opt_var && !ret_info->attributes.realign)
 			{
 				error_var = c->opt_var;
 				arg_values[arg_count++] = error_var;
@@ -5239,7 +5239,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 	}
 
 
-	// 7. We might have a failable indirect return and a normal return.
+	// 7. We might have an optional indirect return and a normal return.
 	//    In this case we need to add it by hand.
 	BEValue synthetic_return_param = { 0 };
 	if (prototype->ret_by_ref)
@@ -5365,7 +5365,7 @@ static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type
 
 	BlockExit exit = {
 			.block_return_exit = expr_block,
-			.block_failable_exit = error_block,
+			.block_optional_exit = error_block,
 			.block_error_var = error_out,
 			.block_return_out = NULL,
 	};
@@ -5410,7 +5410,7 @@ static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type
 			goto DONE;
 		}
 
-		// Failable? Then we use the normal path
+		// Optional? Then we use the normal path
 		if (IS_OPTIONAL(ret_expr)) break;
 
 		// Optimization, emit directly to value
@@ -5510,7 +5510,7 @@ LLVMValueRef llvm_emit_call_intrinsic(GenContext *context, unsigned intrinsic, L
 	return LLVMBuildCall2(context->builder, type, decl, values, arg_count, "");
 }
 
-static inline void llvm_emit_failable(GenContext *c, BEValue *be_value, Expr *expr)
+static inline void llvm_emit_optional(GenContext *c, BEValue *be_value, Expr *expr)
 {
 	Expr *fail = expr->inner_expr;
 	// If there is an error value, assign to it.
@@ -5637,7 +5637,7 @@ static void llvm_emit_macro_body_expansion(GenContext *c, BEValue *value, Expr *
 
 static inline void llvm_emit_try_unwrap(GenContext *c, BEValue *value, Expr *expr)
 {
-	if (!expr->try_unwrap_expr.failable)
+	if (!expr->try_unwrap_expr.optional)
 	{
 		LLVMValueRef fail_ref = decl_optional_ref(expr->try_unwrap_expr.decl);
 		LLVMValueRef errv = llvm_load(c, llvm_get_type(c, type_anyerr), fail_ref, type_abi_alignment(type_anyerr), "load.err");
@@ -5656,7 +5656,7 @@ static inline void llvm_emit_try_unwrap(GenContext *c, BEValue *value, Expr *exp
 		llvm_value_set_decl_address(c, &addr, expr->try_unwrap_expr.decl);
 	}
 	assert(llvm_value_is_addr(&addr));
-	llvm_emit_try_assign_try_catch(c, true, value, &addr, NULL, expr->try_unwrap_expr.failable);
+	llvm_emit_try_assign_try_catch(c, true, value, &addr, NULL, expr->try_unwrap_expr.optional);
 }
 
 void llvm_emit_catch_unwrap(GenContext *c, BEValue *value, Expr *expr)
@@ -5729,9 +5729,9 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 				BEValue check;
 				LLVMBasicBlockRef exit = llvm_basic_block_new(c, "check_type_ok");
 				IntrospectType checks[8] = { INTROSPECT_TYPE_ARRAY, INTROSPECT_TYPE_POINTER,
-											 INTROSPECT_TYPE_VECTOR, INTROSPECT_TYPE_ENUM,
-											 INTROSPECT_TYPE_SUBARRAY, INTROSPECT_TYPE_DISTINCT,
-											 INTROSPECT_TYPE_FAILABLE, INTROSPECT_TYPE_SUBARRAY };
+				                             INTROSPECT_TYPE_VECTOR, INTROSPECT_TYPE_ENUM,
+				                             INTROSPECT_TYPE_SUBARRAY, INTROSPECT_TYPE_DISTINCT,
+				                             INTROSPECT_TYPE_OPTIONAL, INTROSPECT_TYPE_SUBARRAY };
 				for (int i = 0; i < 8; i++)
 				{
 					llvm_emit_int_comp_raw(c,
@@ -6155,8 +6155,8 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_POINTER_OFFSET:
 			llvm_emit_pointer_offset(c, value, expr);
 			return;
-		case EXPR_FAILABLE:
-			llvm_emit_failable(c, value, expr);
+		case EXPR_OPTIONAL:
+			llvm_emit_optional(c, value, expr);
 			return;
 		case EXPR_TRY:
 			llvm_emit_try_expr(c, value, expr);

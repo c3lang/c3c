@@ -384,7 +384,7 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_FORCE_UNWRAP:
 		case EXPR_TRY:
 		case EXPR_CATCH:
-		case EXPR_FAILABLE:
+		case EXPR_OPTIONAL:
 		case EXPR_GROUP:
 		case EXPR_STRINGIFY:
 		case EXPR_CT_EVAL:

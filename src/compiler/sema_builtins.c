@@ -28,10 +28,10 @@ static inline unsigned builtin_expected_args(BuiltinFunction func);
 
 static bool sema_check_builtin_args_match(Expr **args, size_t arg_len)
 {
-	Type *first = args[0]->type->canonical;
+	Type *first = type_no_optional(args[0]->type->canonical);
 	for (size_t i = 1; i < arg_len; i++)
 	{
-		if (first != args[i]->type->canonical)
+		if (first != type_no_optional(args[i]->type->canonical))
 		{
 			SEMA_ERROR(args[i], "Expected an expression of type %s.", type_quoted_error_string(args[0]->type));
 			return false;
@@ -167,7 +167,7 @@ static inline bool sema_expr_analyse_shufflevector(SemaContext *context, Expr *e
 		SEMA_ERROR(expr, "Expected 2 or 3 arguments.");
 		return false;
 	}
-	bool failable = false;
+	bool optional = false;
 	Expr *mask = args[arg_count - 1];
 	unsigned len = 0;
 	if (expr_is_const_initializer(mask))
@@ -186,7 +186,7 @@ static inline bool sema_expr_analyse_shufflevector(SemaContext *context, Expr *e
 	for (unsigned i = 0; i < arg_count; i++)
 	{
 		if (!sema_analyse_expr(context, args[i])) return false;
-		failable = failable || type_is_optional(args[i]->type);
+		optional = optional || type_is_optional(args[i]->type);
 	}
 
 	if (!sema_check_builtin_args(args,
@@ -231,7 +231,7 @@ static inline bool sema_expr_analyse_shufflevector(SemaContext *context, Expr *e
 			return false;
 		}
 	FOREACH_END();
-	expr->type = type_add_optional(args[0]->type, failable);
+	expr->type = type_add_optional(args[0]->type, optional);
 	return true;
 }
 
@@ -269,14 +269,14 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		SEMA_ERROR(expr, "Expected at least %d arguments to builtin.\n", expected_args);
 		return false;
 	}
-	bool failable = false;
+	bool optional = false;
 
 	// 2. We can now check all the arguments, since they in general work on the
 	//    exact type size, we don't do any forced promotion.
 	for (unsigned i = 0; i < arg_count; i++)
 	{
 		if (!sema_analyse_expr(context, args[i])) return false;
-		failable = failable || type_is_optional(args[i]->type);
+		optional = optional || type_is_optional(args[i]->type);
 	}
 
 	Type *rtype = NULL;
@@ -346,7 +346,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			                             (BuiltinArg[]) { BA_INTEGER, BA_INTEGER, BA_POINTER },
 			                             arg_count)) return false;
 			if (!sema_check_builtin_args_match(args, 2)) return false;
-			if (args[0]->type->canonical != args[2]->type->canonical->pointer)
+			if (type_no_optional(args[0]->type->canonical) != type_no_optional(args[2]->type->canonical->pointer))
 			{
 				SEMA_ERROR(args[2], "Expected %s, not %s.", type_to_error_string(type_get_ptr(args[0]->type)),
 				           type_to_error_string(args[2]->type));
@@ -364,11 +364,11 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			                             (BuiltinArg[]) { BA_INTEGER, BA_INTEGER },
 			                             arg_count)) return false;
 			if (!sema_check_builtin_args_match(args, arg_count)) return false;
-			rtype = type_no_optional(args[0]->type->canonical);
+			rtype = args[0]->type->canonical;
 			break;
 		case BUILTIN_EXACT_NEG:
 			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_INTLIKE }, arg_count)) return false;
-			rtype = type_no_optional(args[0]->type->canonical);
+			rtype = args[0]->type->canonical;
 			break;
 		case BUILTIN_MEMCOPY:
 		case BUILTIN_MEMCOPY_INLINE:
@@ -565,7 +565,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_NONE:
 			UNREACHABLE
 	}
-	expr->type = type_add_optional(rtype, failable);
+	expr->type = type_add_optional(rtype, optional);
 	return true;
 }
 

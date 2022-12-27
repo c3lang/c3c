@@ -35,7 +35,7 @@ static void header_print_type(FILE *file, Type *type)
 		case TYPE_BITSTRUCT:
 			TODO
 		case TYPE_OPTIONAL:
-		case TYPE_FAILABLE_ANY:
+		case TYPE_OPTIONAL_ANY:
 			// If this is reachable then we are not doing the proper lowering.
 			UNREACHABLE
 		case TYPE_VOID:

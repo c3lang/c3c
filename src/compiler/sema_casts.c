@@ -442,7 +442,7 @@ CastKind cast_to_bool_kind(Type *type)
 		case TYPE_UNTYPED_LIST:
 		case TYPE_OPTIONAL:
 		case TYPE_ANY:
-		case TYPE_FAILABLE_ANY:
+		case TYPE_OPTIONAL_ANY:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_SCALED_VECTOR:
 		case TYPE_INFERRED_VECTOR:
@@ -469,7 +469,7 @@ static bool cast_may_explicit(Type *from_type, Type *to_type, bool is_const)
 	TypeKind to_kind = to_type->type_kind;
 	switch (from_type->type_kind)
 	{
-		case TYPE_FAILABLE_ANY:
+		case TYPE_OPTIONAL_ANY:
 			return true;
 		case TYPE_DISTINCT:
 		case TYPE_TYPEDEF:
@@ -553,7 +553,7 @@ bool type_may_convert_to_anyerr(Type *type)
 {
 	if (type_is_optional_any(type)) return true;
 	if (!type_is_optional_type(type)) return false;
-	return type->failable->canonical == type_void;
+	return type->optional->canonical == type_void;
 }
 
 static inline bool cast_may_array(Type *from, Type *to, bool is_explicit)
@@ -828,7 +828,7 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 				return expr;
 			}
 			return NULL;
-		case EXPR_FAILABLE:
+		case EXPR_OPTIONAL:
 		case EXPR_HASH_IDENT:
 		case EXPR_FLATPATH:
 		case EXPR_INITIALIZER_LIST:
@@ -996,7 +996,7 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 				return expr;
 			}
 			return NULL;
-		case EXPR_FAILABLE:
+		case EXPR_OPTIONAL:
 		case EXPR_HASH_IDENT:
 		case EXPR_FLATPATH:
 		case EXPR_INITIALIZER_LIST:
@@ -1118,9 +1118,9 @@ bool cast_implicit(SemaContext *context, Expr *expr, Type *to_type)
 	return cast_expr_inner(context, expr, to_type, (CastOptions) { .no_report = false });
 }
 
-bool cast_implicit_maybe_failable(SemaContext *context, Expr *expr, Type *to_type, bool may_be_failable)
+bool cast_implicit_maybe_optional(SemaContext *context, Expr *expr, Type *to_type, bool may_be_optional)
 {
-	return cast_expr_inner(context, expr, to_type, (CastOptions) { .may_not_be_optional = !may_be_failable });
+	return cast_expr_inner(context, expr, to_type, (CastOptions) { .may_not_be_optional = !may_be_optional });
 }
 
 bool cast_implicit_silent(SemaContext *context, Expr *expr, Type *to_type)
@@ -1527,7 +1527,7 @@ static inline bool cast_pointer(SemaContext *context, Expr *expr, Type *from, Ty
 				return cast_with_optional(expr, to_type, add_optional);
 			}
 			return sema_error_cannot_convert(expr, to_type, true, options.no_report);
-		case TYPE_FAILABLE_ANY:
+		case TYPE_OPTIONAL_ANY:
 		case TYPE_OPTIONAL:
 			UNREACHABLE
 		default:
@@ -1573,7 +1573,7 @@ static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, Cas
 		assert(from_type->type_kind == TYPE_OPTIONAL);
 
 		// If it is void!, then there are special rules:
-		if (from_type->failable == type_void)
+		if (from_type->optional == type_void)
 		{
 			// void! x; anyerr y = x;
 			if (!type_is_optional(to_type) && to == type_anyerr)
@@ -1887,7 +1887,7 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 {
 	switch (from_type->type_kind)
 	{
-		case TYPE_FAILABLE_ANY:
+		case TYPE_OPTIONAL_ANY:
 		case TYPE_OPTIONAL:
 		case TYPE_VOID:
 			UNREACHABLE
@@ -2011,7 +2011,7 @@ bool cast(Expr *expr, Type *to_type)
 {
 	assert(!type_is_optional(to_type));
 	Type *from_type = expr->type;
-	bool from_is_failable = false;
+	bool from_is_optional = false;
 	Type *to = type_flatten_distinct(to_type);
 
 	// Special case *! => error
@@ -2028,8 +2028,8 @@ bool cast(Expr *expr, Type *to_type)
 
 	if (type_is_optional_type(from_type))
 	{
-		from_type = from_type->failable;
-		from_is_failable = true;
+		from_type = from_type->optional;
+		from_is_optional = true;
 	}
 	from_type = type_flatten_distinct(from_type);
 	if (type_len_is_inferred(to_type))
@@ -2039,7 +2039,7 @@ bool cast(Expr *expr, Type *to_type)
 	}
 	if (from_type == to)
 	{
-		expr->type = type_add_optional(to_type, from_is_failable);
+		expr->type = type_add_optional(to_type, from_is_optional);
 		if (expr->expr_kind == EXPR_CONST)
 		{
 			expr->const_expr.narrowable = false;
@@ -2051,7 +2051,7 @@ bool cast(Expr *expr, Type *to_type)
 	if (!cast_inner(expr, from_type, to, to_type)) return false;
 
 	Type *result_type = expr->type;
-	if (from_is_failable && !type_is_optional(result_type))
+	if (from_is_optional && !type_is_optional(result_type))
 	{
 		expr->type = type_get_optional(result_type);
 	}

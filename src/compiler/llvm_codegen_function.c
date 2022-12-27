@@ -273,7 +273,7 @@ static inline void llvm_emit_return_value(GenContext *context, LLVMValueRef valu
 }
 
 
-void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failable)
+void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *optional)
 {
 	FunctionPrototype *prototype = c->cur_func.prototype;
 
@@ -286,27 +286,27 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failabl
 
 	ABIArgInfo *info = prototype->ret_abi_info;
 
-	// If we have a failable it's always the return argument, so we need to copy
+	// If we have an optional it's always the return argument, so we need to copy
 	// the return value into the return value holder.
 	LLVMValueRef return_out = c->return_out;
 	Type *call_return_type = prototype->abi_ret_type;
 
 	BEValue no_fail;
 
-	// In this case we use the failable as the actual return.
-	if (prototype->is_failable)
+	// In this case we use the optional as the actual return.
+	if (prototype->is_optional)
 	{
 		if (return_value && return_value->value)
 		{
 			llvm_store_to_ptr_aligned(c, c->return_out, return_value, type_alloca_alignment(return_value->type));
 		}
-		return_out = c->failable_out;
-		if (!failable)
+		return_out = c->optional_out;
+		if (!optional)
 		{
 			llvm_value_set(&no_fail, llvm_get_zero(c, type_anyerr), type_anyerr);
-			failable = &no_fail;
+			optional = &no_fail;
 		}
-		return_value = failable;
+		return_value = optional;
 	}
 	assert(return_value || info->kind == ABI_ARG_IGNORE);
 
@@ -514,13 +514,13 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, const char *module_nam
 		}
 	}
 
-	c->failable_out = NULL;
+	c->optional_out = NULL;
 	c->return_out = NULL;
 	if (prototype && prototype->ret_abi_info->kind == ABI_ARG_INDIRECT)
 	{
-		if (prototype->is_failable)
+		if (prototype->is_optional)
 		{
-			c->failable_out = LLVMGetParam(c->function, arg++);
+			c->optional_out = LLVMGetParam(c->function, arg++);
 		}
 		else
 		{

@@ -106,7 +106,7 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_DESIGNATOR:
 		case EXPR_EXPRESSION_LIST:
 		case EXPR_EXPR_BLOCK:
-		case EXPR_FAILABLE:
+		case EXPR_OPTIONAL:
 		case EXPR_FLATPATH:
 		case EXPR_FORCE_UNWRAP:
 		case EXPR_HASH_IDENT:
@@ -240,7 +240,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_TYPEID_INFO:
 			expr = exprptr(expr->typeid_info_expr.parent);
 			goto RETRY;
-		case EXPR_FAILABLE:
+		case EXPR_OPTIONAL:
 		case EXPR_GROUP:
 			expr = expr->inner_expr;
 			goto RETRY;
@@ -462,8 +462,8 @@ void expr_insert_addr(Expr *original)
 	Expr *inner = expr_copy(original);
 	original->expr_kind = EXPR_UNARY;
 	Type *inner_type = inner->type;
-	bool failable = type_is_optional(inner->type);
-	original->type = type_add_optional(type_get_ptr(type_no_optional(inner_type)), failable);
+	bool optional = type_is_optional(inner->type);
+	original->type = type_add_optional(type_get_ptr(type_no_optional(inner_type)), optional);
 	original->unary_expr.operator = UNARYOP_ADDR;
 	original->unary_expr.expr = inner;
 }
@@ -577,7 +577,7 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 			break;
 		case TYPE_FUNC:
 		case TYPE_TYPEDEF:
-		case TYPE_FAILABLE_ANY:
+		case TYPE_OPTIONAL_ANY:
 		case TYPE_OPTIONAL:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
@@ -701,7 +701,7 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_DESIGNATOR:
 		case EXPR_DECL:
 		case EXPR_EXPR_BLOCK:
-		case EXPR_FAILABLE:
+		case EXPR_OPTIONAL:
 		case EXPR_RETHROW:
 		case EXPR_HASH_IDENT:
 		case EXPR_MACRO_BLOCK:

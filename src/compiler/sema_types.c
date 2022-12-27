@@ -412,7 +412,7 @@ APPEND_QUALIFIERS:
 			type_info->type = type_get_subarray(type_get_subarray(type_info->type));
 			break;
 	}
-	if (type_info->failable)
+	if (type_info->optional)
 	{
 		Type *type = type_info->type;
 		if (!type_is_optional(type)) type_info->type = type_get_optional(type);

@@ -757,8 +757,8 @@ TypeInfo *parse_optional_type(ParseContext *c)
 	ASSIGN_TYPE_OR_RET(info, parse_type_with_base(c, info), poisoned_type_info);
 	if (try_consume(c, TOKEN_BANG))
 	{
-		assert(!info->failable);
-		info->failable = true;
+		assert(!info->optional);
+		info->optional = true;
 		if (info->resolve_status == RESOLVE_DONE)
 		{
 			info->type = type_get_optional(info->type);
@@ -822,9 +822,9 @@ Decl *parse_decl(ParseContext *c)
 	ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_optional_type(c), poisoned_decl);
 
 	ASSIGN_DECL_OR_RET(Decl * decl, parse_decl_after_type(c, type), poisoned_decl);
-	if (type->failable && decl->var.unwrap)
+	if (type->optional && decl->var.unwrap)
 	{
-		SEMA_ERROR(decl, "You cannot use unwrap with a failable variable.");
+		SEMA_ERROR(decl, "You cannot use unwrap with an optional variable.");
 		return poisoned_decl;
 	}
 	decl->var.is_static = is_static || is_threadlocal;
@@ -1035,9 +1035,9 @@ bool parse_attributes(ParseContext *c, Attr ***attributes_ref)
 
 /**
  * global_declaration
- * 	: global? failable_type IDENT ';'
- * 	| global? failable_type IDENT '=' expression ';'
- * 	| global? failable_type func_definition
+ * 	: global? optional_type IDENT ';'
+ * 	| global? optional_type IDENT '=' expression ';'
+ * 	| global? optional_type func_definition
  * 	;
  *
  * @param visibility
@@ -1088,7 +1088,7 @@ static inline Decl *parse_global_declaration(ParseContext *c, Visibility visibil
 static inline bool parse_param_decl(ParseContext *c, Visibility parent_visibility, Decl*** parameters, bool require_name)
 {
 	ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_optional_type(c), false);
-	if (type->failable)
+	if (type->optional)
 	{
 		SEMA_ERROR(type, "Parameters may not be optional.");
 		return false;
@@ -1336,7 +1336,7 @@ bool parse_parameters(ParseContext *c, Visibility visibility, Decl ***params_ref
 				SEMA_ERROR_HERE("Expected a parameter.");
 				return false;
 		}
-		if (type && type->failable)
+		if (type && type->optional)
 		{
 			SEMA_ERROR(type, "Parameters may not be optional.");
 			return false;
@@ -1673,7 +1673,7 @@ static inline Expr **parse_generic_parameters(ParseContext *c)
 /**
  * define_type_body ::= TYPE_IDENT '=' 'distinct'? (func_typedef | type generic_params?) ';'
  *
- * func_typedef ::= 'fn' failable_type parameter_type_list
+ * func_typedef ::= 'fn' optional_type parameter_type_list
  */
 static inline Decl *parse_define_type(ParseContext *c, Visibility visibility)
 {
@@ -1924,8 +1924,8 @@ static inline bool parse_func_macro_header(ParseContext *c, Decl *decl)
 		// 5a. What if we don't have a method type?
 		if (!method_type)
 		{
-			// 5b. If the rtype is not optional or the return type was a failable, then this is an error.
-			if (!is_macro || rtype->failable)
+			// 5b. If the rtype is not optional or the return type was an optional, then this is an error.
+			if (!is_macro || rtype->optional)
 			{
 				SEMA_ERROR_LAST("This looks like you are declaring a method without a return type?");
 				return false;
@@ -2167,7 +2167,7 @@ static inline Decl *parse_enum_declaration(ParseContext *c, Visibility visibilit
  *  	;
  *
  * func_declaration
- *  	: FN failable_type func_name '(' opt_parameter_type_list ')' opt_attributes
+ *  	: FN optional_type func_name '(' opt_parameter_type_list ')' opt_attributes
  *		;
  *
  * @param visibility

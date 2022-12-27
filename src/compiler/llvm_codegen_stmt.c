@@ -51,7 +51,7 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 			scratch_buffer_clear();
 			scratch_buffer_append(decl->extname);
 			scratch_buffer_append("$f");
-			decl->var.failable_ref = llvm_add_global(c, scratch_buffer_to_string(), type_anyerr, 0);
+			decl->var.optional_ref = llvm_add_global(c, scratch_buffer_to_string(), type_anyerr, 0);
 		}
 		llvm_emit_global_variable_init(c, decl);
 		c->builder = builder;
@@ -61,36 +61,36 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 	assert(!decl->backend_ref);
 	llvm_emit_local_var_alloca(c, decl);
 	Expr *init = decl->var.init_expr;
-	bool is_failable = IS_OPTIONAL(decl);
-	if (is_failable)
+	bool is_optional = IS_OPTIONAL(decl);
+	if (is_optional)
 	{
 		scratch_buffer_clear();
 		scratch_buffer_append(decl->name);
 		scratch_buffer_append(".f");
-		decl->var.failable_ref = llvm_emit_alloca_aligned(c, type_anyerr, scratch_buffer_to_string());
-		// Only clear out the result if the assignment isn't a failable.
+		decl->var.optional_ref = llvm_emit_alloca_aligned(c, type_anyerr, scratch_buffer_to_string());
+		// Only clear out the result if the assignment isn't an optional.
 	}
 
 	if (init)
 	{
 		llvm_value_set_decl_address(c, value, decl);
 		value->kind = BE_ADDRESS;
-		BEValue res = llvm_emit_assign_expr(c, value, decl->var.init_expr, decl->var.failable_ref);
-		if (!is_failable) *value = res;
+		BEValue res = llvm_emit_assign_expr(c, value, decl->var.init_expr, decl->var.optional_ref);
+		if (!is_optional) *value = res;
 	}
 	else if (decl->var.no_init)
 	{
 		llvm_value_set(value, LLVMGetUndef(alloc_type), decl->type);
-		if (decl->var.failable_ref)
+		if (decl->var.optional_ref)
 		{
-			llvm_store_to_ptr_raw(c, decl->var.failable_ref, llvm_get_undef(c, type_anyerr), type_anyerr);
+			llvm_store_to_ptr_raw(c, decl->var.optional_ref, llvm_get_undef(c, type_anyerr), type_anyerr);
 		}
 	}
 	else
 	{
-		if (decl->var.failable_ref)
+		if (decl->var.optional_ref)
 		{
-			llvm_store_to_ptr_zero(c, decl->var.failable_ref, type_anyerr);
+			llvm_store_to_ptr_zero(c, decl->var.optional_ref, type_anyerr);
 		}
 
 		Type *type = type_lowering(decl->type);
@@ -170,7 +170,7 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 	PUSH_OPT();
 
 	Expr *expr = ast->return_stmt.expr;
-	if (expr && expr->expr_kind == EXPR_FAILABLE)
+	if (expr && expr->expr_kind == EXPR_OPTIONAL)
 	{
 		BEValue be_value;
 		llvm_emit_expr(c, &be_value, expr->inner_expr);
@@ -234,7 +234,7 @@ static inline void llvm_emit_block_exit_return(GenContext *c, Ast *ast)
 	LLVMValueRef error_out = NULL;
 	BlockExit *exit = *ast->return_stmt.block_exit_ref;
 	c->opt_var = exit->block_error_var;
-	c->catch_block = exit->block_failable_exit;
+	c->catch_block = exit->block_optional_exit;
 
 	LLVMBasicBlockRef err_cleanup_block = NULL;
 	Expr *ret_expr = ast->return_stmt.expr;
@@ -267,7 +267,7 @@ static inline void llvm_emit_block_exit_return(GenContext *c, Ast *ast)
 		llvm_emit_br(c, exit->block_return_exit);
 		llvm_emit_block(c, err_cleanup_block);
 		llvm_emit_statement_chain(c, err_cleanup);
-		llvm_emit_jmp(c, exit->block_failable_exit);
+		llvm_emit_jmp(c, exit->block_optional_exit);
 	}
 	else
 	{

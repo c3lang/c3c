@@ -33,12 +33,12 @@ fn void test4()
 
 fn void test5()
 {
-    foreach (int! y : z) foo(); // #error: The variable may not be a failable.
+    foreach (int! y : z) foo(); // #error: The variable may not be an optional.
 }
 
 fn void test6()
 {
-    foreach (int! i, y : z) foo(); // #error: The index may not be a failable.
+    foreach (int! i, y : z) foo(); // #error: The index may not be an optional.
 }
 
 fn void test7()

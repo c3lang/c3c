@@ -671,13 +671,13 @@ Expr *parse_initializer_list(ParseContext *c, Expr *left)
 	return initializer_list;
 }
 
-static Expr *parse_failable(ParseContext *c, Expr *left_side)
+static Expr *parse_optional(ParseContext *c, Expr *left_side)
 {
-	Expr *failable = expr_new(EXPR_FAILABLE, left_side->span);
+	Expr *optional = expr_new(EXPR_OPTIONAL, left_side->span);
 	advance_and_verify(c, TOKEN_BANG);
-	failable->inner_expr = left_side;
-	RANGE_EXTEND_PREV(failable);
-	return failable;
+	optional->inner_expr = left_side;
+	RANGE_EXTEND_PREV(optional);
+	return optional;
 }
 
 
@@ -881,7 +881,7 @@ static Expr *parse_ct_sizeof(ParseContext *c, Expr *left)
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 	Expr *typeof_expr = expr_new(EXPR_TYPEINFO, inner->span);
 	TypeInfo *type_info = type_info_new(TYPE_INFO_TYPEOF, inner->span);
-	type_info->failable = try_consume(c, TOKEN_BANG);
+	type_info->optional = try_consume(c, TOKEN_BANG);
 	type_info->unresolved_type_expr = inner;
 	typeof_expr->type_expr = type_info;
 	access->access_expr.parent = typeof_expr;
@@ -1626,7 +1626,7 @@ Expr *parse_type_expression_with_path(ParseContext *c, Path *path)
 		advance_and_verify(c, TOKEN_TYPE_IDENT);
 		RANGE_EXTEND_PREV(type);
 		ASSIGN_TYPE_OR_RET(type, parse_type_with_base(c, type), poisoned_expr);
-		type->failable = try_consume(c, TOKEN_BANG);
+		type->optional = try_consume(c, TOKEN_BANG);
 	}
 	else
 	{
@@ -1716,7 +1716,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_MOD] = { NULL, parse_binary, PREC_MULTIPLICATIVE },
 		[TOKEN_STAR] = { parse_unary_expr, parse_binary, PREC_MULTIPLICATIVE },
 		[TOKEN_DOT] = { NULL, parse_access_expr, PREC_CALL },
-		[TOKEN_BANG] = { parse_unary_expr, parse_failable, PREC_CALL },
+		[TOKEN_BANG] = { parse_unary_expr, parse_optional, PREC_CALL },
 		[TOKEN_BYTES] = { parse_bytes_expr, NULL, PREC_NONE },
 		[TOKEN_BIT_NOT] = { parse_unary_expr, NULL, PREC_UNARY },
 		[TOKEN_BIT_XOR] = { NULL, parse_binary, PREC_BIT },

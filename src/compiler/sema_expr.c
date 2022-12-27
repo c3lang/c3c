@@ -51,7 +51,7 @@ static inline bool sema_expr_analyse_force_unwrap(SemaContext *context, Expr *ex
 static inline bool sema_expr_analyse_typeid(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_call(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_expr_block(SemaContext *context, Type *infer_type, Expr *expr);
-static inline bool sema_expr_analyse_failable(SemaContext *context, Expr *expr);
+static inline bool sema_expr_analyse_optional(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *expr, bool report_missing);
 static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_ct_stringify(SemaContext *context, Expr *expr);
@@ -125,15 +125,15 @@ static bool sema_binary_is_expr_lvalue(Expr *top_expr, Expr *expr);
 static void sema_binary_unify_voidptr(Expr *left, Expr *right, Type **left_type_ref, Type **right_type_ref);
 
 // -- function helper functions
-static inline bool sema_expr_analyse_var_call(SemaContext *context, Expr *expr, Type *func_ptr_type, bool failable);
-static inline bool sema_expr_analyse_func_call(SemaContext *context, Expr *expr, Decl *decl, Expr *struct_var, bool failable);
-static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call, CalledDecl callee, bool *failable);
+static inline bool sema_expr_analyse_var_call(SemaContext *context, Expr *expr, Type *func_ptr_type, bool optional);
+static inline bool sema_expr_analyse_func_call(SemaContext *context, Expr *expr, Decl *decl, Expr *struct_var, bool optional);
+static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call, CalledDecl callee, bool *optional);
 static inline bool sema_call_analyse_func_invocation(SemaContext *context, Type *type, Expr *expr, Expr *struct_var,
-                                                     bool failable, const char *name);
+                                                     bool optional, const char *name);
 static inline bool sema_call_check_invalid_body_arguments(SemaContext *context, Expr *call, CalledDecl *callee);
 INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee, Expr *call, Expr **args,
                                        unsigned func_param_count, Variadic variadic, unsigned vararg_index,
-                                       bool *failable,
+                                       bool *optional,
                                        Expr ***varargs_ref,
                                        Expr **vararg_splat_ref);
 static inline int sema_call_find_index_of_named_parameter(Decl **func_params, Expr *expr);
@@ -463,7 +463,7 @@ static bool sema_binary_is_expr_lvalue(Expr *top_expr, Expr *expr)
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 		case EXPR_DESIGNATOR:
 		case EXPR_EXPR_BLOCK:
-		case EXPR_FAILABLE:
+		case EXPR_OPTIONAL:
 		case EXPR_FLATPATH:
 		case EXPR_FORCE_UNWRAP:
 		case EXPR_INITIALIZER_LIST:
@@ -670,17 +670,17 @@ static inline bool sema_expr_analyse_ternary(SemaContext *context, Expr *expr)
 	Expr *right = exprptr(expr->ternary_expr.else_expr);
 	if (!sema_analyse_expr(context, right)) return expr_poison(expr);
 
-	bool is_failable = false;
+	bool is_optional = false;
 	Type *left_canonical = left->type->canonical;
 	Type *right_canonical = right->type->canonical;
 	if (left_canonical != right_canonical)
 	{
 		Type *max;
-		if (left_canonical->type_kind == TYPE_FAILABLE_ANY)
+		if (left_canonical->type_kind == TYPE_OPTIONAL_ANY)
 		{
 			max = right_canonical;
 		}
-		else if (right_canonical->type_kind == TYPE_FAILABLE_ANY)
+		else if (right_canonical->type_kind == TYPE_OPTIONAL_ANY)
 		{
 			max = left_canonical;
 		}
@@ -833,7 +833,7 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 				}
 				if (IS_OPTIONAL(decl))
 				{
-					SEMA_ERROR(expr, "Constants may never be 'failable', please remove the '!'.");
+					SEMA_ERROR(expr, "Constants may never be 'optional', please remove the '!'.");
 					return false;
 				}
 				break;
@@ -1030,7 +1030,7 @@ static inline bool sema_call_check_invalid_body_arguments(SemaContext *context, 
 
 INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee, Expr *call, Expr **args,
                                        unsigned func_param_count, Variadic variadic, unsigned vararg_index,
-                                       bool *failable,
+                                       bool *optional,
                                        Expr ***varargs_ref,
                                        Expr **vararg_splat_ref)
 {
@@ -1222,7 +1222,7 @@ static inline bool sema_call_check_inout_param_match(SemaContext *context, Decl 
 	}
 	return true;
 }
-static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call, CalledDecl callee, bool *failable)
+static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call, CalledDecl callee, bool *optional)
 {
 	// 1. Check body arguments (for macro calls, or possibly broken )
 	if (!sema_call_check_invalid_body_arguments(context, call, &callee)) return false;
@@ -1293,7 +1293,7 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 	                                param_count,
 	                                variadic,
 	                                vararg_index,
-	                                failable, &varargs, &vararg_splat)) return false;
+	                                optional, &varargs, &vararg_splat)) return false;
 
 	args = call->call_expr.arguments;
 	num_args = vec_size(args);
@@ -1318,7 +1318,7 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 				}
 
 				// Set the argument at the location.
-				*failable |= IS_OPTIONAL(val);
+				*optional |= IS_OPTIONAL(val);
 			}
 		}
 		else
@@ -1327,7 +1327,7 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 			{
 				// 11e. A simple variadic value:
 				if (!sema_analyse_expr_rhs(context, variadic_type, val, true)) return false;
-				*failable |= IS_OPTIONAL(val);
+				*optional |= IS_OPTIONAL(val);
 			}
 		}
 		call->call_expr.varargs = varargs;
@@ -1346,7 +1346,7 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 			           type_quoted_error_string(variadic_type));
 			return false;
 		}
-		*failable |= IS_OPTIONAL(vararg_splat);
+		*optional |= IS_OPTIONAL(vararg_splat);
 		call->call_expr.splat = vararg_splat;
 	}
 	// 7. Loop through the parameters.
@@ -1373,7 +1373,7 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 				// &foo
 				if (!sema_analyse_expr_lvalue(context, arg)) return false;
 				if (!sema_expr_check_assign(context, arg)) return false;
-				*failable |= IS_OPTIONAL(arg);
+				*optional |= IS_OPTIONAL(arg);
 				if (!sema_call_check_inout_param_match(context, param, arg)) return false;
 				if (type_is_invalid_storage_type(type))
 				{
@@ -1400,7 +1400,7 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 			case VARDECL_PARAM:
 				// foo
 				if (!sema_analyse_expr_rhs(context, type, arg, true)) return false;
-				if (IS_OPTIONAL(arg)) *failable = true;
+				if (IS_OPTIONAL(arg)) *optional = true;
 				if (type_is_invalid_storage_type(arg->type))
 				{
 					SEMA_ERROR(arg, "A value of type %s can only be passed as a compile time parameter.", type_quoted_error_string(arg->type));
@@ -1457,7 +1457,7 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 	return true;
 }
 static inline bool sema_call_analyse_func_invocation(SemaContext *context, Type *type, Expr *expr, Expr *struct_var,
-                                                     bool failable, const char *name)
+                                                     bool optional, const char *name)
 {
 	Signature *sig = type->function.signature;
 	CalledDecl callee = {
@@ -1475,7 +1475,7 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Type 
 	}
 
 	bool is_unused = expr->call_expr.result_unused;
-	if (!sema_call_analyse_invocation(context, expr, callee, &failable)) return false;
+	if (!sema_call_analyse_invocation(context, expr, callee, &optional)) return false;
 
 	Type *rtype = type->function.prototype->rtype;
 
@@ -1493,12 +1493,12 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Type 
 		}
 	}
 
-	expr->type = type_add_optional(rtype, failable);
+	expr->type = type_add_optional(rtype, optional);
 
 	return true;
 }
 
-static inline bool sema_expr_analyse_var_call(SemaContext *context, Expr *expr, Type *func_ptr_type, bool failable)
+static inline bool sema_expr_analyse_var_call(SemaContext *context, Expr *expr, Type *func_ptr_type, bool optional)
 {
 	Decl *decl = NULL;
 	if (func_ptr_type->type_kind != TYPE_POINTER || func_ptr_type->pointer->type_kind != TYPE_FUNC)
@@ -1508,7 +1508,7 @@ static inline bool sema_expr_analyse_var_call(SemaContext *context, Expr *expr, 
 	}
 	Type *pointee = func_ptr_type->pointer;
 	expr->call_expr.is_pointer_call = true;
-	return sema_call_analyse_func_invocation(context, pointee, expr, NULL, failable, func_ptr_type->pointer->name);
+	return sema_call_analyse_func_invocation(context, pointee, expr, NULL, optional, func_ptr_type->pointer->name);
 }
 
 // Unify returns in a macro or expression block.
@@ -1517,7 +1517,7 @@ static inline Type *context_unify_returns(SemaContext *context)
 	bool all_returns_need_casts = false;
 	Type *common_type = NULL;
 
-	bool failable = false;
+	bool optional = false;
 	bool no_return = true;
 	// 1. Loop through the returns.
 	VECEACH(context->returns, i)
@@ -1525,7 +1525,7 @@ static inline Type *context_unify_returns(SemaContext *context)
 		Ast *return_stmt = context->returns[i];
 		if (!return_stmt)
 		{
-			failable = true;
+			optional = true;
 			continue;
 		}
 		no_return = false;
@@ -1533,12 +1533,12 @@ static inline Type *context_unify_returns(SemaContext *context)
 		Type *rtype = ret_expr ? ret_expr->type : type_void;
 		if (type_is_optional_any(rtype))
 		{
-			failable = true;
+			optional = true;
 			continue;
 		}
 		if (type_is_optional(rtype))
 		{
-			failable = true;
+			optional = true;
 			rtype = type_no_optional(rtype);
 		}
 		// 2. If we have no common type, set to the return type.
@@ -1574,13 +1574,13 @@ static inline Type *context_unify_returns(SemaContext *context)
 	if (!common_type)
 	{
 		assert(!all_returns_need_casts && "We should never need casts here.");
-		// A failable?
-		if (failable)
+		// An optional?
+		if (optional)
 		{
 			// If there are only implicit returns, then we assume void!, otherwise it's an "anyfail"
 			return no_return ? type_get_optional(type_void) : type_anyfail;
 		}
-		// No failable => void.
+		// No optional => void.
 		return type_void;
 	}
 
@@ -1601,10 +1601,10 @@ static inline Type *context_unify_returns(SemaContext *context)
 		}
 	}
 
-	return type_add_optional(common_type, failable);
+	return type_add_optional(common_type, optional);
 }
 
-static inline bool sema_expr_analyse_func_call(SemaContext *context, Expr *expr, Decl *decl, Expr *struct_var, bool failable)
+static inline bool sema_expr_analyse_func_call(SemaContext *context, Expr *expr, Decl *decl, Expr *struct_var, bool optional)
 {
 	expr->call_expr.is_pointer_call = false;
 	if (decl->func_decl.attr_test)
@@ -1616,14 +1616,14 @@ static inline bool sema_expr_analyse_func_call(SemaContext *context, Expr *expr,
 	                                         decl->type,
 	                                         expr,
 	                                         struct_var,
-	                                         failable,
+	                                         optional,
 	                                         decl->name);
 }
 
 
 
 
-bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *struct_var, Decl *decl, bool failable)
+bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *struct_var, Decl *decl, bool optional)
 {
 	assert(decl->decl_kind == DECL_MACRO);
 
@@ -1642,7 +1642,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 			.struct_var = struct_var
 	};
 
-	if (!sema_call_analyse_invocation(context, call_expr, callee, &failable)) return false;
+	if (!sema_call_analyse_invocation(context, call_expr, callee, &optional)) return false;
 
 	unsigned vararg_index = decl->func_decl.signature.vararg_index;
 	Expr **args = call_expr->call_expr.arguments;
@@ -1725,17 +1725,17 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	macro_context.call_env = context->call_env;
 	rtype = decl->func_decl.signature.rtype ? type_infoptr(decl->func_decl.signature.rtype)->type : NULL;
 	macro_context.expected_block_type = rtype;
-	bool may_failable = true;
+	bool may_be_optional = true;
 	if (rtype)
 	{
 		if (type_is_optional(rtype))
 		{
-			failable = true;
+			optional = true;
 			rtype = type_no_optional(rtype);
 		}
 		else
 		{
-			may_failable = false;
+			may_be_optional = false;
 		}
 	}
 
@@ -1797,7 +1797,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 			Ast *return_stmt = macro_context.returns[i];
 			if (!return_stmt)
 			{
-				assert(may_failable);
+				assert(may_be_optional);
 				continue;
 			}
 			Expr *ret_expr = return_stmt->return_stmt.expr;
@@ -1823,21 +1823,21 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 				}
 			}
 			bool success = cast_implicit_silent(context, ret_expr, rtype);
-			if (inferred_len || (!may_failable && IS_OPTIONAL(ret_expr)) || !success)
+			if (inferred_len || (!may_be_optional && IS_OPTIONAL(ret_expr)) || !success)
 			{
 				SEMA_ERROR(ret_expr, "Expected %s, not %s.", type_quoted_error_string(rtype),
 						   type_quoted_error_string(type));
 				return SCOPE_POP_ERROR();
 			}
-			if (may_failable) ret_expr->type = type_add_optional(ret_expr->type, may_failable);
+			if (may_be_optional) ret_expr->type = type_add_optional(ret_expr->type, may_be_optional);
 		}
-		call_expr->type = type_add_optional(rtype, failable);
+		call_expr->type = type_add_optional(rtype, optional);
 	}
 	else
 	{
 		Type *sum_returns = context_unify_returns(&macro_context);
 		if (!sum_returns) return SCOPE_POP_ERROR();
-		call_expr->type = type_add_optional(sum_returns, failable);
+		call_expr->type = type_add_optional(sum_returns, optional);
 	}
 
 	assert(call_expr->type);
@@ -1974,27 +1974,27 @@ static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *c
 	return true;
 }
 
-bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl, Expr *struct_var, bool failable)
+bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl, Expr *struct_var, bool optional)
 {
 	expr->call_expr.is_type_method = struct_var != NULL;
 	if (decl == NULL)
 	{
 		return sema_expr_analyse_var_call(context, expr,
-		                                  type_flatten_distinct_optional(exprptr(expr->call_expr.function)->type), failable);
+		                                  type_flatten_distinct_optional(exprptr(expr->call_expr.function)->type), optional);
 	}
 	switch (decl->decl_kind)
 	{
 		case DECL_MACRO:
 			expr->call_expr.func_ref = declid(decl);
 			expr->call_expr.is_func_ref = true;
-			return sema_expr_analyse_macro_call(context, expr, struct_var, decl, failable);
+			return sema_expr_analyse_macro_call(context, expr, struct_var, decl, optional);
 		case DECL_VAR:
 			assert(struct_var == NULL);
-			return sema_expr_analyse_var_call(context, expr, decl->type->canonical, failable || IS_OPTIONAL(decl));
+			return sema_expr_analyse_var_call(context, expr, decl->type->canonical, optional || IS_OPTIONAL(decl));
 		case DECL_FUNC:
 			expr->call_expr.func_ref = declid(decl);
 			expr->call_expr.is_func_ref = true;
-			return sema_expr_analyse_func_call(context, expr, decl, struct_var, failable);
+			return sema_expr_analyse_func_call(context, expr, decl, struct_var, optional);
 		case DECL_GENERIC:
 			expr->call_expr.func_ref = declid(decl);
 			expr->call_expr.is_func_ref = true;
@@ -2020,7 +2020,7 @@ static inline bool sema_expr_analyse_call(SemaContext *context, Expr *expr)
 	{
 		return sema_call_analyse_body_expansion(context, expr);
 	}
-	bool failable = func_expr->type && IS_OPTIONAL(func_expr);
+	bool optional = func_expr->type && IS_OPTIONAL(func_expr);
 	Decl *decl;
 	Expr *struct_var = NULL;
 	switch (func_expr->expr_kind)
@@ -2070,7 +2070,7 @@ static inline bool sema_expr_analyse_call(SemaContext *context, Expr *expr)
 		}
 	}
 	decl = decl ? decl_flatten(decl) : NULL;
-	return sema_expr_analyse_general_call(context, expr, decl, struct_var, failable);
+	return sema_expr_analyse_general_call(context, expr, decl, struct_var, optional);
 }
 
 static void sema_subscript_deref_array_pointers(Expr *expr)
@@ -2312,7 +2312,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	if (!sema_analyse_expr(context, index)) return false;
 
 	// 3. Check failability due to value.
-	bool failable = IS_OPTIONAL(subscripted);
+	bool optional = IS_OPTIONAL(subscripted);
 
 	Type *underlying_type = type_flatten(subscripted->type);
 
@@ -2475,7 +2475,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 		}
 	}
 	expr->subscript_expr.expr = exprid(current_expr);
-	expr->type = type_add_optional(index_type, failable);
+	expr->type = type_add_optional(index_type, optional);
 	return true;
 }
 
@@ -2515,7 +2515,7 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr)
 	assert(expr->expr_kind == EXPR_SLICE);
 	Expr *subscripted = exprptr(expr->subscript_expr.expr);
 	if (!sema_analyse_expr(context, subscripted)) return false;
-	bool failable = IS_OPTIONAL(subscripted);
+	bool optional = IS_OPTIONAL(subscripted);
 	Type *type = type_flatten(subscripted->type);
 	Type *original_type = type_no_optional(subscripted->type);
 	Expr *start = exprptr(expr->subscript_expr.range.start);
@@ -2633,7 +2633,7 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr)
 	{
 		result_type = original_type;
 	}
-	expr->type = type_add_optional(result_type, failable);
+	expr->type = type_add_optional(result_type, optional);
 	return true;
 }
 
@@ -2964,7 +2964,7 @@ static inline bool sema_create_const_inner(SemaContext *context, Expr *expr, Typ
 			inner = type->pointer;
 			break;
 		case TYPE_OPTIONAL:
-			inner = type->failable;
+			inner = type->optional;
 			break;
 		case TYPE_DISTINCT:
 			inner = type->decl->distinct_decl.base_type->canonical;
@@ -3427,7 +3427,7 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr)
 	}
 
 	// 6. Copy failability
-	bool failable = IS_OPTIONAL(parent);
+	bool optional = IS_OPTIONAL(parent);
 
 	assert(expr->expr_kind == EXPR_ACCESS);
 	assert(parent->resolve_status == RESOLVE_DONE);
@@ -3554,7 +3554,7 @@ CHECK_DEEPER:
 			return false;
 		}
 		expr->access_expr.parent = current_parent;
-		expr->type = method->type ? type_add_optional(method->type, failable) : NULL;
+		expr->type = method->type ? type_add_optional(method->type, optional) : NULL;
 		expr->access_expr.ref = method;
 		if (method->decl_kind == DECL_FUNC) unit_register_external_symbol(context->compilation_unit, method);
 		return true;
@@ -3627,7 +3627,7 @@ CHECK_DEEPER:
 	}
 	// 13. Copy properties.
 	expr->access_expr.parent = current_parent;
-	expr->type = type_add_optional(member->type, failable);
+	expr->type = type_add_optional(member->type, optional);
 	expr->access_expr.ref = member;
 	return true;
 }
@@ -4127,7 +4127,7 @@ static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *
 
 	// 5. Cast the right hand side to the one on the left
 	if (!sema_analyse_expr(context, right)) return false;
-	if (!cast_implicit_maybe_failable(context, right, no_fail, IS_OPTIONAL(left))) return false;
+	if (!cast_implicit_maybe_optional(context, right, no_fail, IS_OPTIONAL(left))) return false;
 	// 6. Check for zero in case of div or mod.
 	if (right->expr_kind == EXPR_CONST)
 	{
@@ -4206,11 +4206,11 @@ static bool sema_expr_analyse_add_sub_assign(SemaContext *context, Expr *expr, E
 	// 3. Copy type & set properties.
 	if (IS_OPTIONAL(right) && !IS_OPTIONAL(left))
 	{
-		SEMA_ERROR(right, "Cannot assign a failable value to a non-failable.");
+		SEMA_ERROR(right, "Cannot assign an optional value to a non-optional.");
 		return false;
 	}
 	expr->type = left->type;
-	bool failable = IS_OPTIONAL(left) || IS_OPTIONAL(right);
+	bool optional = IS_OPTIONAL(left) || IS_OPTIONAL(right);
 
 
 	// 5. In the pointer case we have to treat this differently.
@@ -4245,7 +4245,7 @@ static bool sema_expr_analyse_add_sub_assign(SemaContext *context, Expr *expr, E
 	{
 		expr->expr_kind = EXPR_BITASSIGN;
 	}
-	expr->type = type_add_optional(expr->type, failable);
+	expr->type = type_add_optional(expr->type, optional);
 	return true;
 }
 
@@ -4827,7 +4827,7 @@ static bool sema_expr_analyse_shift_assign(SemaContext *context, Expr *expr, Exp
 	// 1. Analyze the two sub lhs & rhs *without coercion*
 	if (!sema_binary_analyse_subexpr(context, expr, left, right)) return false;
 
-	bool failable = IS_OPTIONAL(left) || IS_OPTIONAL(right);
+	bool optional = IS_OPTIONAL(left) || IS_OPTIONAL(right);
 
 	// 2. Ensure the lhs side is assignable
 	if (!sema_expr_check_assign(context, left)) return false;
@@ -4860,7 +4860,7 @@ static bool sema_expr_analyse_shift_assign(SemaContext *context, Expr *expr, Exp
 	{
 		expr->expr_kind = EXPR_BITASSIGN;
 	}
-	expr->type = type_add_optional(left->type, failable);
+	expr->type = type_add_optional(left->type, optional);
 	return true;
 }
 
@@ -4952,7 +4952,7 @@ static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left,
 
 	bool is_equality_type_op = expr->binary_expr.operator == BINARYOP_NE || expr->binary_expr.operator == BINARYOP_EQ;
 
-	// Flatten enum/distinct/failable
+	// Flatten enum/distinct/optional
 	Type *left_type = type_flatten(left->type);
 	Type *right_type = type_flatten(right->type);
 
@@ -5447,7 +5447,7 @@ static inline bool sema_expr_analyse_incdec(SemaContext *context, Expr *expr)
 		return sema_expr_analyse_ct_incdec(context, expr, inner);
 	}
 
-	// 4. Flatten typedef, enum, distinct, failable
+	// 4. Flatten typedef, enum, distinct, optional
 	Type *type = type_flatten(inner->type);
 
 	// 5. We can only inc/dec numbers or pointers.
@@ -5534,7 +5534,7 @@ static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr)
 	Type *type = lhs->type;
 	if (!type_is_optional(type))
 	{
-		SEMA_ERROR(lhs, "No failable to use '\?\?' with, please remove the '\?\?'.");
+		SEMA_ERROR(lhs, "No optional to use '\?\?' with, please remove the '\?\?'.");
 		return false;
 	}
 
@@ -5542,7 +5542,7 @@ static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr)
 	if (!sema_analyse_expr(context, rhs)) return false;
 	if (expr->binary_expr.widen && !cast_widen_top_down(context, rhs, expr->type)) return false;
 
-	if (lhs->expr_kind == EXPR_FAILABLE)
+	if (lhs->expr_kind == EXPR_OPTIONAL)
 	{
 		expr_replace(expr, rhs);
 		return true;
@@ -5693,7 +5693,7 @@ static inline bool sema_expr_analyse_try(SemaContext *context, Expr *expr)
 	if (!sema_analyse_expr(context, inner)) return false;
 	if (!IS_OPTIONAL(inner))
 	{
-		SEMA_ERROR(inner, "Expected a failable expression to 'try'.");
+		SEMA_ERROR(inner, "Expected an optional expression to 'try'.");
 		return false;
 	}
 	expr->type = type_bool;
@@ -5706,7 +5706,7 @@ static inline bool sema_expr_analyse_catch(SemaContext *context, Expr *expr)
 	if (!sema_analyse_expr(context, inner)) return false;
 	if (!IS_OPTIONAL(inner))
 	{
-		SEMA_ERROR(inner, "Expected a failable expression to 'catch'.");
+		SEMA_ERROR(inner, "Expected an optional expression to 'catch'.");
 		return false;
 	}
 	expr->type = type_anyerr;
@@ -5738,7 +5738,7 @@ static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr)
 
 	if (!IS_OPTIONAL(inner))
 	{
-		SEMA_ERROR(expr, "No failable to rethrow before '?' in the expression, please remove '?'.");
+		SEMA_ERROR(expr, "No optional to rethrow before '?' in the expression, please remove '?'.");
 		return false;
 	}
 
@@ -5751,7 +5751,7 @@ static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr)
 	{
 		if (context->rtype && context->rtype->type_kind != TYPE_OPTIONAL)
 		{
-			SEMA_ERROR(expr, "This expression implicitly returns with a failable result, but the function does not allow failable results. Did you mean to use 'else' instead?");
+			SEMA_ERROR(expr, "This expression implicitly returns with an optional result, but the function does not allow optional results. Did you mean to use 'else' instead?");
 			return false;
 		}
 	}
@@ -5772,7 +5772,7 @@ static inline bool sema_expr_analyse_force_unwrap(SemaContext *context, Expr *ex
 	expr->type = type_no_optional(inner->type);
 	if (!IS_OPTIONAL(inner))
 	{
-		SEMA_ERROR(expr, "No failable to rethrow before '!!' in the expression, please remove '!!'.");
+		SEMA_ERROR(expr, "No optional to rethrow before '!!' in the expression, please remove '!!'.");
 		return false;
 	}
 	return true;
@@ -5856,18 +5856,18 @@ static inline bool sema_expr_analyse_expr_block(SemaContext *context, Type *infe
 
 
 
-static inline bool sema_expr_analyse_failable(SemaContext *context, Expr *expr)
+static inline bool sema_expr_analyse_optional(SemaContext *context, Expr *expr)
 {
 	Expr *inner = expr->inner_expr;
 	if (!sema_analyse_expr(context, inner)) return false;
 
 	if (IS_OPTIONAL(inner))
 	{
-		SEMA_ERROR(inner, "The inner expression is already a failable.");
+		SEMA_ERROR(inner, "The inner expression is already an optional.");
 		return false;
 	}
 
-	if (inner->expr_kind == EXPR_FAILABLE)
+	if (inner->expr_kind == EXPR_OPTIONAL)
 	{
 		SEMA_ERROR(inner, "It looks like you added one too many '!' after the error.");
 		return false;
@@ -6740,7 +6740,7 @@ static inline bool sema_expr_analyse_compound_literal(SemaContext *context, Expr
 	if (type_is_optional(type))
 	{
 		SEMA_ERROR(expr->expr_compound_literal.type_info,
-		           "The type here should always be written as a plain type and not a failable, please remove the '!'.");
+		           "The type here should always be written as a plain type and not an optional, please remove the '!'.");
 		return false;
 	}
 	if (!sema_expr_analyse_initializer_list(context, type, expr->expr_compound_literal.initializer)) return false;
@@ -6796,8 +6796,8 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 			return sema_expr_analyse_hash_identifier(context, expr);
 		case EXPR_CT_IDENT:
 			return sema_expr_analyse_ct_identifier(context, expr);
-		case EXPR_FAILABLE:
-			return sema_expr_analyse_failable(context, expr);
+		case EXPR_OPTIONAL:
+			return sema_expr_analyse_optional(context, expr);
 		case EXPR_COMPILER_CONST:
 			return sema_expr_analyse_compiler_const(context, expr, true);
 		case EXPR_POINTER_OFFSET:
@@ -6879,7 +6879,7 @@ bool sema_analyse_cond_expr(SemaContext *context, Expr *expr)
 	if (!sema_analyse_expr(context, expr)) return false;
 	if (IS_OPTIONAL(expr))
 	{
-		SEMA_ERROR(expr, "A failable %s cannot be implicitly converted to a regular boolean value, use 'try(<expr>)' "
+		SEMA_ERROR(expr, "An optional %s cannot be implicitly converted to a regular boolean value, use 'try(<expr>)' "
 		                 "and 'catch(<expr>)' to conditionally execute on success or failure.",
 		           type_quoted_error_string(expr->type));
 		return false;
@@ -6888,15 +6888,15 @@ bool sema_analyse_cond_expr(SemaContext *context, Expr *expr)
 }
 
 
-bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allow_failable)
+bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allow_optional)
 {
 	if (to && type_is_optional_type(to))
 	{
-		to = to->failable;
-		assert(allow_failable);
+		to = to->optional;
+		assert(allow_optional);
 	}
 	if (!sema_analyse_inferred_expr(context, to, expr)) return false;
-	if (to && allow_failable && to->canonical != expr->type->canonical && expr->type->canonical->type_kind == TYPE_FAULTTYPE)
+	if (to && allow_optional && to->canonical != expr->type->canonical && expr->type->canonical->type_kind == TYPE_FAULTTYPE)
 	{
 		Type *canonical = type_flatten_distinct(to);
 		if (canonical != type_anyerr && canonical->type_kind != TYPE_FAULTTYPE && expr->expr_kind == EXPR_CONST)
@@ -6905,10 +6905,10 @@ bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allo
 			return false;
 		}
 	}
-	if (to && !cast_implicit_maybe_failable(context, expr, to, allow_failable)) return false;
-	if (!allow_failable && IS_OPTIONAL(expr))
+	if (to && !cast_implicit_maybe_optional(context, expr, to, allow_optional)) return false;
+	if (!allow_optional && IS_OPTIONAL(expr))
 	{
-		SEMA_ERROR(expr, "You cannot have a failable here.");
+		SEMA_ERROR(expr, "You cannot have an optional here.");
 		return false;
 	}
 	return true;
@@ -7071,7 +7071,7 @@ RETRY:
 		case TYPE_VECTOR:
 			return type->array.len;
 		case TYPE_OPTIONAL:
-			type = type->failable;
+			type = type->optional;
 			goto RETRY;
 		default:
 			return -1;

@@ -40,7 +40,7 @@ LLVMValueRef llvm_store_to_ptr_aligned(GenContext *c, LLVMValueRef destination, 
 			FALLTHROUGH;
 		case BE_VALUE:
 			return llvm_store_to_ptr_raw_aligned(c, destination, value->value, alignment);
-		case BE_ADDRESS_FAILABLE:
+		case BE_ADDRESS_OPTIONAL:
 			UNREACHABLE
 		case BE_ADDRESS:
 		{
@@ -93,7 +93,7 @@ LLVMValueRef llvm_load_value(GenContext *c, BEValue *value)
 		case BE_BOOLEAN:
 		case BE_VALUE:
 			return value->value;
-		case BE_ADDRESS_FAILABLE:
+		case BE_ADDRESS_OPTIONAL:
 			UNREACHABLE
 		case BE_ADDRESS:
 			return llvm_load(c, llvm_get_type(c, value->type), value->value, value->alignment, "");

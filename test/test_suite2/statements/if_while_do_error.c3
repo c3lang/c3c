@@ -30,5 +30,5 @@ fn void test3()
     {
         x = !x;
     }
-    while (x); // #error: A failable 'bool!' cannot be implicitly converted to a regular boolean value
+    while (x); // #error: 'bool!' cannot be implicitly converted to a regular boolean value
 }

@@ -20,7 +20,7 @@ typedef enum
 {
 	BE_VALUE,
 	BE_ADDRESS,
-	BE_ADDRESS_FAILABLE,
+	BE_ADDRESS_OPTIONAL,
 	BE_BOOLEAN,
 	BE_BOOLVECTOR,
 } BackendValueKind;
@@ -31,7 +31,7 @@ typedef struct
 	AlignSize alignment;
 	Type *type; // Should never be a distinct or canonical type.
 	LLVMValueRef value;
-	LLVMValueRef failable;
+	LLVMValueRef optional;
 } BEValue;
 
 typedef struct
@@ -105,7 +105,7 @@ typedef struct GenContext_
 	DebugContext debug;
 	Module *code_module;
 	LLVMValueRef return_out;
-	LLVMValueRef failable_out;
+	LLVMValueRef optional_out;
 	BEValue retval;
 	int in_block;
 	bool current_block_is_target : 1;
@@ -245,7 +245,7 @@ static inline LLVMValueRef decl_optional_ref(Decl *decl)
 	assert(decl->decl_kind == DECL_VAR);
 	if (decl->var.kind == VARDECL_UNWRAPPED) return decl_optional_ref(decl->var.alias);
 	if (decl->type->type_kind != TYPE_OPTIONAL) return NULL;
-	return decl->var.failable_ref;
+	return decl->var.optional_ref;
 }
 
 INLINE bool llvm_is_global_eval(GenContext *c);
@@ -254,7 +254,7 @@ INLINE bool llvm_is_local_eval(GenContext *c);
 
 // -- BE value --
 void llvm_value_addr(GenContext *c, BEValue *value);
-static inline bool llvm_value_is_addr(BEValue *value) { return value->kind == BE_ADDRESS || value->kind == BE_ADDRESS_FAILABLE; }
+static inline bool llvm_value_is_addr(BEValue *value) { return value->kind == BE_ADDRESS || value->kind == BE_ADDRESS_OPTIONAL; }
 static inline bool llvm_value_is_bool(BEValue *value) { return value->kind == BE_BOOLEAN; }
 bool llvm_value_is_const(BEValue *value);
 void llvm_value_rvalue(GenContext *context, BEValue *value);
@@ -351,7 +351,7 @@ void llvm_emit_cond_br(GenContext *context, BEValue *value, LLVMBasicBlockRef th
 void llvm_emit_cond_br_raw(GenContext *context, LLVMValueRef b, LLVMBasicBlockRef then_block, LLVMBasicBlockRef else_block);
 void llvm_emit_br(GenContext *c, LLVMBasicBlockRef next_block);
 void llvm_emit_jump_to_optional_exit(GenContext *c, LLVMValueRef opt_value);
-void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failable);
+void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *optional);
 void llvm_emit_return_implicit(GenContext *c);
 
 // -- Blocks --
@@ -443,7 +443,7 @@ void llvm_emit_subarray_pointer(GenContext *context, BEValue *subarray, BEValue 
 void llvm_emit_compound_stmt(GenContext *c, Ast *ast);
 LLVMValueRef llvm_emit_const_bitstruct(GenContext *c, ConstInitializer *initializer);
 void llvm_emit_function_body(GenContext *context, Decl *decl);
-BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValueRef failable);
+BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValueRef optional);
 INLINE void llvm_emit_exprid(GenContext *c, BEValue *value, ExprId expr);
 INLINE void llvm_emit_statement_chain(GenContext *c, AstId current);
 void llvm_emit_initialize_reference_temporary_const(GenContext *c, BEValue *ref, Expr *expr);

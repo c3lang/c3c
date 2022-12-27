@@ -897,12 +897,12 @@ static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl)
 		case TYPE_FLEXIBLE_ARRAY:
 			UNREACHABLE
 			return false;
-		case TYPE_FAILABLE_ANY:
+		case TYPE_OPTIONAL_ANY:
 		case TYPE_OPTIONAL:
-			SEMA_ERROR(decl, "You cannot create a distinct type from a failable.");
+			SEMA_ERROR(decl, "You cannot create a distinct type from am optional.");
 			return false;
 		case TYPE_FAULTTYPE:
-			SEMA_ERROR(decl, "You cannot create a distinct type from an error type.");
+			SEMA_ERROR(decl, "You cannot create a distinct type from a fault type.");
 			return false;
 		case TYPE_ANYERR:
 			SEMA_ERROR(decl, "You cannot create a distinct type from an error union.");
@@ -970,7 +970,7 @@ static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param, bo
 		if (!sema_analyse_expr_rhs(context, param->type, expr, true)) return false;
 		if (IS_OPTIONAL(expr))
 		{
-			SEMA_ERROR(expr, "Default arguments may not be failable.");
+			SEMA_ERROR(expr, "Default arguments may not be optionals.");
 			return false;
 		}
 		if (!expr_is_constant_eval(expr, CONSTANT_EVAL_GLOBAL_INIT))
@@ -1886,12 +1886,12 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	Type *rtype = type_flatten_distinct(rtype_info->type);
 	bool is_int_return = true;
 	bool is_err_return = false;
-	if (rtype->type_kind == TYPE_FAILABLE_ANY) is_err_return = true;
+	if (rtype->type_kind == TYPE_OPTIONAL_ANY) is_err_return = true;
 	if (!is_err_return && type_is_optional(rtype))
 	{
-		if (rtype->failable->type_kind != TYPE_VOID)
+		if (rtype->optional->type_kind != TYPE_VOID)
 		{
-			SEMA_ERROR(rtype_info, "The return type of 'main' cannot be a failable, unless it is 'void!'.");
+			SEMA_ERROR(rtype_info, "The return type of 'main' cannot be an optional, unless it is 'void!'.");
 			return false;
 		}
 		is_int_return = false;
@@ -2295,7 +2295,7 @@ bool sema_analyse_decl_type(SemaContext *context, Type *type, SourceSpan span)
 			break;
 	}
 	if (!type_is_optional(type)) return true;
-	if (type_is_optional_any(type) || type_flatten_distinct(type->failable) == type_void)
+	if (type_is_optional_any(type) || type_flatten_distinct(type->optional) == type_void)
 	{
 		sema_error_at(span, "The use of 'void!' as a variable type is not permitted, use %s instead.",
 		                 type_quoted_error_string(type_anyerr));
@@ -2530,7 +2530,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 		{
 			if (decl->var.unwrap && IS_OPTIONAL(init))
 			{
-				SEMA_ERROR(decl->var.init_expr, "A failable expression was expected here.");
+				SEMA_ERROR(decl->var.init_expr, "An optional expression was expected here.");
 				return decl_poison(decl);
 			}
 		}

@@ -84,7 +84,7 @@ bool sema_analyse_ct_expr(SemaContext *context, Expr *expr);
 Decl *sema_find_operator(SemaContext *context, Expr *expr, OperatorOverload operator_overload);
 bool sema_insert_method_call(SemaContext *context, Expr *method_call, Decl *method_decl, Expr *parent, Expr **arguments);
 bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr);
-bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *struct_var, Decl *decl, bool failable);
+bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *struct_var, Decl *decl, bool optional);
 Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, Expr *index_expr);
 Expr *sema_ct_eval_expr(SemaContext *c, bool is_type, Expr *inner, bool report_missing);
 bool sema_analyse_asm(SemaContext *context, AsmInlineBlock *block, Ast *asm_stmt);

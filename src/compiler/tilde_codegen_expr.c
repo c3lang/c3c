@@ -271,7 +271,7 @@ void tilde_emit_call_expr(TbContext *c, TBEValue *result_value, Expr *expr)
 	ABIArgInfo *ret_info = prototype->ret_abi_info;
 	Type *call_return_type = prototype->abi_ret_type;
 
-	// 5. In the case of a failable, the error is replacing the regular return abi.
+	// 5. In the case of an optional, the error is replacing the regular return abi.
 	TB_Reg error_var = 0;
 
 	*result_value = (TBEValue){ .kind = TBE_VALUE, .reg = 0 };
