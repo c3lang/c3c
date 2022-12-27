@@ -8,6 +8,26 @@ void llvm_value_set(BEValue *value, LLVMValueRef llvm_value, Type *type)
 	value->alignment = type_abi_alignment(type);
 	value->kind = BE_VALUE;
 	value->type = type;
+
+	if (type == type_bool)
+	{
+		LLVMTypeRef llvm_type = LLVMTypeOf(llvm_value);
+		LLVMContextRef context = LLVMGetTypeContext(llvm_type);
+		if (llvm_type == LLVMIntTypeInContext(context, 1))
+		{
+			value->kind = BE_BOOLEAN;
+		}
+	}
+	if (type_kind_is_any_vector(type->type_kind) && type->array.base == type_bool)
+	{
+		LLVMTypeRef llvm_type = LLVMTypeOf(llvm_value);
+		LLVMTypeRef element = LLVMGetElementType(llvm_type);
+		LLVMContextRef context = LLVMGetTypeContext(llvm_type);
+		if (element == LLVMIntTypeInContext(context, 1))
+		{
+			value->kind = BE_BOOLVECTOR;
+		}
+	}
 }
 
 void llvm_value_set_address(BEValue *value, LLVMValueRef llvm_value, Type *type, AlignSize alignment)

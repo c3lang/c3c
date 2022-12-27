@@ -961,7 +961,6 @@ typedef struct
 typedef struct
 {
 	CastKind kind : 8;
-	bool implicit : 1;
 	ExprId expr;
 	TypeInfoId type_info;
 } ExprCast;
@@ -2027,10 +2026,14 @@ INLINE AsmRegister *asm_reg_by_index(unsigned index);
 
 AsmRegister *asm_reg_by_index(unsigned index);
 
+bool cast_implicit_silent(SemaContext *context, Expr *expr, Type *to_type);
 bool cast_implicit(SemaContext *context, Expr *expr, Type *to_type);
+bool cast_implicit_maybe_failable(SemaContext *context, Expr *expr, Type *to_type, bool may_be_failable);
+bool cast_explicit(SemaContext *context, Expr *expr, Type *to_type);
+
 bool cast(Expr *expr, Type *to_type);
-bool cast_may_implicit(Type *from_type, Type *to_type, CastOption option);
-bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability, bool is_const);
+bool cast_may_bool_convert(Type *type);
+
 Type *cast_infer_len(Type *to_infer, Type *actual_type);
 bool cast_to_index(Expr *index);
 
@@ -2312,6 +2315,9 @@ bool type_flat_is_boolintlike(Type *type);
 bool type_flat_is_numlike(Type *type);
 bool type_may_have_sub_elements(Type *type);
 bool type_may_have_method(Type *type);
+
+bool type_is_pointer_equivalent(Type *pointer1, Type *pointer2, bool flatten_distinct);
+bool type_array_element_is_equivalent(Type *element1, Type *element2, bool is_explicit);
 const char *type_to_error_string(Type *type);
 const char *type_quoted_error_string(Type *type);
 INLINE bool type_may_negate(Type *type);
@@ -3212,6 +3218,11 @@ static inline bool decl_is_local(Decl *decl)
 INLINE bool expr_is_const_string(Expr *expr)
 {
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_STRING;
+}
+
+INLINE bool expr_is_const_pointer(Expr *expr)
+{
+	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_POINTER;
 }
 
 INLINE bool expr_is_const_initializer(Expr *expr)

@@ -898,21 +898,16 @@ static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType 
 		}
 		return true;
 	}
-	// 3a. Check for failables in case of an expression.
+	// 3a. Check for optional in case of an expression.
 	if (IS_OPTIONAL(last))
 	{
-		if (!cast_to_bool || cast_may_implicit(type_no_optional(last->type), type_bool, CAST_OPTION_NONE))
-		{
-			SEMA_ERROR(last, "The expression may not be a failable, but was %s.", type_quoted_error_string(last->type));
-			return false;
-		}
-		sema_error_failed_cast(last, type_no_optional(last->type), type_bool);
+		SEMA_ERROR(last, "The expression may not be an optional, but was %s.", type_quoted_error_string(last->type));
 		return false;
 	}
 	// 3b. Cast to bool if that is needed
 	if (cast_to_bool)
 	{
-		if (!cast_implicit(context, last, type_bool)) return false;
+		if (!cast_explicit(context, last, type_bool)) return false;
 	}
 	return true;
 }

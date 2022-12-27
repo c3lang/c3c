@@ -18,7 +18,7 @@ fn void test3()
 {
     ichar a = 1;
     int b = 2;
-    ichar c = a + b; // #error: 'int' to 'ichar'
+    ichar c = a + b; // #error: 'ichar'
 }
 
 fn void test4()
@@ -54,7 +54,7 @@ define Number = int;
 fn void test8()
 {
     Number a = 10;
-    ichar c = a;         // #error: 'Number' (int) to 'ichar'
+    ichar c = a;         // #error: 'Number' (int)
 }
 
 
@@ -82,19 +82,19 @@ enum Enum : int
 fn void test11()
 {
     int a = Enum.A;
-    ichar b = Enum.B;     // #error: 'Enum' to 'ichar'
+    ichar b = Enum.B;
 }
 
 fn void test12()
 {
     float f = 3.14;
-    ichar a = f;         // #error: 'float' to 'ichar'
+    ichar a = f;         // #error: 'ichar'
 }
 
 fn void test13()
 {
     int a = 1;
-    ichar b = a;         // #error: 'int' to 'ichar'
+    ichar b = a;         // #error: 'ichar'
 }
 
 fn void test14()
@@ -118,14 +118,14 @@ fn void test16()
 
     ichar c = 1 ? 'c' : 'd';
     ichar d = 1 ? 'c' : i;
-    ichar e = 1 ? i : 0;         // #error: 'int' to 'ichar'
-    int g = 1 ? i : f;          // #error: 'float' to 'int'
+    ichar e = 1 ? i : 0;         // #error: 'ichar'
+    int g = 1 ? i : f;          // #error: 'float'
     int a = f ? 1 : 0;
 }
 
 fn void test17()
 {
-    int a = "test";             // #error: 'char[4]*' into 'int'
+    int a = "test";             // #error: 'char[4]*' to 'int'
 }
 
 fn void test18()
@@ -175,12 +175,15 @@ fn void test23()
 {
     int a = num;
     int b = test::num;
-    char c = test::num;         // #error: 'int' to 'char'
+    char c = test::num;         // #error: 'char'
 }
 
 int[2][3] b123;
 
 fn void test24()
 {
-    int a = b123;  // #error: 'int[2][3]' into 'int'
+    int a = b123;  // #error: 'int[2][3]' to 'int'
 }
+
+
+

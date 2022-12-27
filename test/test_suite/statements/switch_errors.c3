@@ -18,7 +18,7 @@ fn void test_other_enum()
             break;
         case B:
             break;
-        case Bar.B: // #error: 'Bar' into 'Foo'
+        case Bar.B: // #error: to 'Foo'
             break;
     }
 }

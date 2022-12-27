@@ -49,6 +49,6 @@ fn void test7()
 
 fn void test8()
 {
-    foreach_r (int a : { z }) foo(); // #error: 'int[3]' into 'int'
+    foreach_r (int a : { z }) foo(); // #error: 'int[3]' to 'int'
 }
 

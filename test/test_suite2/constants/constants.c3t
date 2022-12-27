@@ -13,7 +13,7 @@ private uint z2 = DD;
 
 fn void test()
 {
-    int xx = FOO;
+    int xx = (int)FOO;
     uint* yy = &&FOO;
 }
 

@@ -16,7 +16,7 @@ define FuncSame = fn void(int);
 fn void test1(Func arg)
 {
     bool a = (bool)(arg);
-    bool b = arg;
+    bool b = arg;                          // #error: 'Func' (fn void(int)) to 'bool'
 }
 
 fn void test2(Func arg)

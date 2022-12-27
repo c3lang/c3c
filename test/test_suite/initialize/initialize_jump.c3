@@ -5,5 +5,5 @@ static initialize
 
 static initialize
 {
-	return 123; // #error: You cannot cast 'int' into 'void' even with an explicit cast, so this looks like an error.
+	return 123; // #error: It is not possible to convert 'int' to 'void'
 }

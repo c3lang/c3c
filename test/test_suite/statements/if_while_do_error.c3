@@ -2,8 +2,8 @@ module test;
 
 fn void test1()
 {
-    bool! x = 0;
-    if (x) // #error: The expression may not be a failable, but was 'bool!'
+    bool! x = false;
+    if (x) // #error: optional, but was 'bool!
     {
         x = 100;
     }
@@ -11,8 +11,8 @@ fn void test1()
 
 fn void test2()
 {
-    bool! x = 0;
-    while (x) // #error: The expression may not be a failable, but was 'bool!'
+    bool! x = false;
+    while (x) // #error: optional, but was 'bool!
     {
         x = false;
     }
@@ -20,7 +20,7 @@ fn void test2()
 
 fn void test3()
 {
-    bool! x = 0;
+    bool! x = false;
     double y = 1;
     do
     {
