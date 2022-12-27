@@ -1198,7 +1198,7 @@ Expr *parse_integer(ParseContext *c, Expr *left)
 	}
 	expr_int->const_expr.const_kind = CONST_INTEGER;
 	expr_int->const_expr.is_hex = hex_characters > 0;
-	Type *type = is_unsigned ? type_cuint : type_cint;
+	Type *type_base = NULL;
 	expr_int->const_expr.narrowable = !type_bits;
 	if (type_bits)
 	{
@@ -1241,16 +1241,31 @@ Expr *parse_integer(ParseContext *c, Expr *left)
 		if (type_bits && !is_power_of_two((uint64_t)type_bits)) type_bits = (int)next_highest_power_of_2((uint32_t)type_bits);
 	}
 	if (type_bits) expr_int->const_expr.is_hex = false;
-	if (!type_bits)
-	{
-		type_bits = (int)type_size(type) * 8;
-	}
 	if (type_bits)
 	{
-		type = is_unsigned ? type_int_unsigned_by_bitsize((unsigned)type_bits) : type_int_signed_by_bitsize((unsigned)type_bits);
+		type_base = is_unsigned ? type_int_unsigned_by_bitsize((unsigned)type_bits)
+		                        : type_int_signed_by_bitsize((unsigned)type_bits);
 	}
-	expr_int->const_expr.ixx = (Int) { i, type->type_kind };
-	if (!int_fits(expr_int->const_expr.ixx, type->type_kind))
+	else
+	{
+		int min_bits = type_size(type_cint) * 8;
+		Int test = { .i = i };
+		for (int type_kind = 0; type_kind < 5; type_kind++)
+		{
+			TypeKind kind = (is_unsigned ? TYPE_U8 : TYPE_I8) + type_kind;
+			int bitsize = type_kind_bitsize(kind);
+			if (bitsize < min_bits) continue;
+			test.type = kind;
+			if (int_fits(test, kind))
+			{
+				type_base = is_unsigned ? type_int_unsigned_by_bitsize(bitsize) : type_int_signed_by_bitsize(bitsize);
+				break;
+			}
+		}
+		if (!type_base) type_base = is_unsigned ? type_cuint : type_cint;
+	}
+	expr_int->const_expr.ixx = (Int) { i, type_base->type_kind };
+	if (!int_fits(expr_int->const_expr.ixx, type_base->type_kind))
 	{
 		unsigned radix = 10;
 		if (hex_characters) radix = 16;
@@ -1268,7 +1283,7 @@ Expr *parse_integer(ParseContext *c, Expr *left)
 		}
 		return poisoned_expr;
 	}
-	expr_int->type = type;
+	expr_int->type = type_base;
 	advance(c);
 	return expr_int;
 }

@@ -5,7 +5,7 @@ struct SimpleRandom
     long seed;
 }
 
-private const long SIMPLE_RANDOM_MULTIPLIER = 0x5DEECE66Di64;
+private const long SIMPLE_RANDOM_MULTIPLIER = 0x5DEECE66D;
 private const long SIMPLE_RANDOM_ADDEND = 0xB;
 private const long SIMPLE_RANDOM_MASK = (1i64 << 48) - 1;
 
