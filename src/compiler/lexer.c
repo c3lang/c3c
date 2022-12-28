@@ -1280,7 +1280,7 @@ static bool lexer_scan_token_inner(Lexer *lexer)
 		case '\n':
 			return scan_doc_line(lexer);
 		case '@':
-			if (char_is_letter(peek(lexer)))
+			if (char_is_letter_(peek(lexer)))
 			{
 				return scan_ident(lexer, TOKEN_AT_IDENT, TOKEN_AT_CONST_IDENT, TOKEN_AT_TYPE_IDENT, '@');
 			}
