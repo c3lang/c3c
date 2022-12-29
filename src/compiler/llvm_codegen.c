@@ -1123,7 +1123,10 @@ void **llvm_gen(Module** modules, unsigned module_count)
 		}
 		if (!gen_contexts) return NULL;
 		GenContext *first = gen_contexts[0];
-		vec_add(gen_contexts, llvm_gen_tests(modules, module_count, context));
+		if (active_target.testing)
+		{
+			vec_add(gen_contexts, llvm_gen_tests(modules, module_count, context));
+		}
 		unsigned count = vec_size(gen_contexts);
 		for (unsigned i = 1; i < count; i++)
 		{
@@ -1140,7 +1143,10 @@ void **llvm_gen(Module** modules, unsigned module_count)
 			if (!result) continue;
 			vec_add(gen_contexts, result);
 	}
-	vec_add(gen_contexts, llvm_gen_tests(modules, module_count, NULL));
+	if (active_target.testing)
+	{
+		vec_add(gen_contexts, llvm_gen_tests(modules, module_count, NULL));
+	}
 	return (void**)gen_contexts;
 }
 
