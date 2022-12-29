@@ -148,6 +148,7 @@ void decl_register(Decl *decl)
 		case DECL_LABEL:
 		case DECL_DECLARRAY:
 		case DECL_BODYPARAM:
+		case DECL_CT_INCLUDE:
 			UNREACHABLE
 		case DECL_ATTRIBUTE:
 		case DECL_BITSTRUCT:
@@ -262,6 +263,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			UNREACHABLE
 		case DECL_CT_IF:
 		case DECL_CT_SWITCH:
+		case DECL_CT_INCLUDE:
 			vec_add(unit->ct_ifs, decl);
 			return;
 		case DECL_CT_ECHO:

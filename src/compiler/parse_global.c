@@ -6,6 +6,7 @@ static Decl *parse_const_declaration(ParseContext *c, Visibility visibility);
 static inline Decl *parse_func_definition(ParseContext *c, Visibility visibility, AstId docs, bool is_interface);
 static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl);
 static inline Decl *parse_static_top_level(ParseContext *c);
+static Decl *parse_include(ParseContext *c);
 
 #define DECL_VAR_NEW(type__, var__, visible__) decl_new_var(symstr(c), c->span, type__, var__, visible__);
 
@@ -2531,6 +2532,68 @@ static bool parse_docs(ParseContext *c, AstId *docs_ref)
 	}
 }
 
+static Decl *parse_include(ParseContext *c)
+{
+	SourceSpan loc = c->span;
+	Decl *decl = decl_new(DECL_CT_INCLUDE, NULL, loc, VISIBLE_LOCAL);
+	advance_and_verify(c, TOKEN_CT_INCLUDE);
+	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_decl);
+	const char *str = symstr(c);
+	CONSUME_OR_RET(TOKEN_STRING, poisoned_decl);
+	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_decl);
+	CONSUME_EOS_OR_RET(poisoned_decl);
+	bool loaded;
+	const char *error;
+	char *path;
+	char *name;
+	if (file_namesplit(c->unit->file->full_path, &name, &path))
+	{
+		str = file_append_path(path, str);
+	}
+	File *file = source_file_load(str, &loaded, &error);
+	if (!file)
+	{
+		sema_error_at(loc, "Failed to load file %s: %s", str, error);
+		return poisoned_decl;
+	}
+	decl->include.file = file;
+	if (global_context.errors_found) return poisoned_decl;
+
+	Lexer current_lexer = c->lexer;
+	File *current_file = c->unit->file;
+	TokenType old_tok = c->tok;
+	TokenData old_data = c->data;
+	SourceSpan old_prev = c->prev_span;
+	SourceSpan old_span = c->span;
+
+	c->lexer = (Lexer){ .file = decl->include.file, .context =  c };
+	lexer_init(&c->lexer);
+	// Prime everything
+	advance(c);
+	advance(c);
+	Decl **list = NULL;
+	while (!tok_is(c, TOKEN_EOF))
+	{
+		Decl *inner = parse_top_level_statement(c, &c);
+		if (!decl) continue;
+		if (!decl_ok(decl))
+		{
+			decl_poison(decl);
+			goto END;
+		}
+		vec_add(list, inner);
+	}
+	decl->include.decls = list;
+END:
+	c->lexer = current_lexer;
+	c->tok = old_tok;
+	c->data = old_data;
+	c->prev_span = old_prev;
+	c->span = old_span;
+	c->unit->file = current_file;
+	return decl;
+}
+
 /**
  * top_level_statement ::= visibility? top_level
  *
@@ -2690,6 +2753,15 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 			}
 			break;
 		}
+		case TOKEN_CT_INCLUDE:
+			if (!check_no_visibility_before(c, visibility)) return poisoned_decl;
+			if (docs)
+			{
+				SEMA_ERROR(astptr(docs), "Unexpected doc comment before $include, did you mean to use a regular comment?");
+				return poisoned_decl;
+			}
+			ASSIGN_DECL_OR_RET(decl, parse_include(c), poisoned_decl);
+			break;
 		case TOKEN_BITSTRUCT:
 		{
 			ASSIGN_DECL_OR_RET(decl, parse_bitstruct_declaration(c, visibility), poisoned_decl);

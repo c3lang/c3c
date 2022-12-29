@@ -2901,6 +2901,7 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 		case DECL_FAULTVALUE:
 		case DECL_DECLARRAY:
 		case DECL_BODYPARAM:
+		case DECL_CT_INCLUDE:
 			UNREACHABLE
 	}
 	decl->resolve_status = RESOLVE_DONE;

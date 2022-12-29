@@ -22,7 +22,7 @@ File *source_file_by_id(FileId file)
 	return global_context.loaded_sources[file];
 }
 
-File *source_file_load(const char *filename, bool *already_loaded)
+File *source_file_load(const char *filename, bool *already_loaded, const char **error)
 {
 	if (already_loaded) *already_loaded = false;
 	if (!global_context.loaded_sources) global_context.loaded_sources = VECNEW(File*, LEXER_FILES_START_CAPACITY);
@@ -31,7 +31,8 @@ File *source_file_load(const char *filename, bool *already_loaded)
 
 	if (!realpath(filename, full_path))
 	{
-		error_exit("Failed to resolve %s", filename);
+		*error = str_printf("Failed to resolve %s", filename);
+		return NULL;
 	}
 
 	VECEACH(global_context.loaded_sources, index)
@@ -44,7 +45,8 @@ File *source_file_load(const char *filename, bool *already_loaded)
 	}
 	if (vec_size(global_context.loaded_sources) == MAX_FILES)
 	{
-		error_exit("Exceeded max number of files %d", MAX_FILES);
+		*error = str_printf("Exceeded max number of files %d", MAX_FILES);
+		return NULL;
 	}
 
 	size_t size;

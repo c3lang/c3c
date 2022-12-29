@@ -1000,6 +1000,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 		case DECL_FINALIZE:
 		case DECL_BODYPARAM:
 		case DECL_CT_ECHO:
+		case DECL_CT_INCLUDE:
 			UNREACHABLE;
 	}
 	UNREACHABLE

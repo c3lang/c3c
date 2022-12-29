@@ -5,6 +5,7 @@
 #include "compiler_internal.h"
 #include "parser_internal.h"
 
+
 // --- Parser base methods
 
 /**
@@ -55,6 +56,8 @@ bool consume(ParseContext *c, TokenType type, const char *message, ...)
 
 // --- Extern functions
 
+static bool parse_include(ParseContext *c, Decl *decl);
+
 /**
  * module? imports top_level_statement*
  * @param c
@@ -78,6 +81,7 @@ static inline void parse_translation_unit(ParseContext *c)
 		}
 	}
 }
+
 
 /**
  * Parse a file, generating a default context for it.

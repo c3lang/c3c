@@ -76,7 +76,9 @@ static void compiler_lex(void)
 	VECEACH(global_context.sources, i)
 	{
 		bool loaded = false;
-		File *file = source_file_load(global_context.sources[i], &loaded);
+		const char *error;
+		File *file = source_file_load(global_context.sources[i], &loaded, &error);
+		if (!file) error_exit(error);
 		if (loaded) continue;
 		Lexer lexer = { .file = file };
 		lexer_init(&lexer);
@@ -97,7 +99,9 @@ void compiler_parse(void)
 	VECEACH(global_context.sources, i)
 	{
 		bool loaded = false;
-		File *file = source_file_load(global_context.sources[i], &loaded);
+		const char *error;
+		File *file = source_file_load(global_context.sources[i], &loaded, &error);
+		if (!file) error_exit(error);
 		if (loaded) continue;
 
 		global_context_clear_errors();

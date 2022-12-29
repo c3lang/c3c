@@ -243,6 +243,7 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 		case DECL_CT_ECHO:
 		case DECL_DECLARRAY:
 		case DECL_BODYPARAM:
+		case DECL_CT_INCLUDE:
 			UNREACHABLE
 	}
 	UNREACHABLE

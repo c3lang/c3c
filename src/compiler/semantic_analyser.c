@@ -182,6 +182,7 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 			case DECL_CT_ELIF:
 			case DECL_CT_ELSE:
 			case DECL_BODYPARAM:
+			case DECL_CT_INCLUDE:
 				UNREACHABLE
 			case DECL_MACRO:
 			case DECL_DEFINE:
@@ -242,7 +243,9 @@ void sema_analysis_run(void)
 	VECEACH(global_context.sources, i)
 	{
 		bool loaded = false;
-		File *file = source_file_load(global_context.sources[i], &loaded);
+		const char *error;
+		File *file = source_file_load(global_context.sources[i], &loaded, &error);
+		if (!file) error_exit(error);
 		if (loaded) continue;
 		if (!parse_file(file)) has_error = true;
 	}

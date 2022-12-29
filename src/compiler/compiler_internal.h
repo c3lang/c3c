@@ -395,6 +395,12 @@ typedef struct
 
 typedef struct
 {
+	File *file;
+	Decl **decls;
+} IncludeDecl;
+
+typedef struct
+{
 	TypeSize size;
 	Decl **members;
 	MemberIndex union_rep;
@@ -696,6 +702,7 @@ typedef struct Decl_
 				BitStructDecl bitstruct;
 			};
 		};
+		IncludeDecl include;
 		Decl** body_params;
 		ImportDecl import;
 		VarDecl var;
@@ -2231,7 +2238,7 @@ void sema_shadow_error(Decl *decl, Decl *old);
 bool sema_type_error_on_binop(Expr *expr);
 
 File *source_file_by_id(FileId file);
-File *source_file_load(const char *filename, bool *already_loaded);
+File *source_file_load(const char *filename, bool *already_loaded, const char **error);
 
 
 #define RANGE_EXTEND_PREV(x)  do { (x)->span = extend_span_with_token((x)->span, c->prev_span); } while (0)

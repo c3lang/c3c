@@ -182,6 +182,7 @@ static inline bool sema_analyse_top_level_if(SemaContext *context, Decl *ct_if)
 	return true;
 }
 
+
 static inline bool sema_analyse_top_level_switch(SemaContext *context, Decl *ct_switch)
 {
 	Expr *cond = ct_switch->ct_switch_decl.expr;
@@ -302,6 +303,10 @@ void sema_analysis_pass_conditional_compilation(Module *module)
 					break;
 				case DECL_CT_SWITCH:
 					success = sema_analyse_top_level_switch(&context, decl);
+					break;
+				case DECL_CT_INCLUDE:
+					sema_append_decls(context.unit, decl->include.decls);
+					success = true;
 					break;
 				default:
 					UNREACHABLE

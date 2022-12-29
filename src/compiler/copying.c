@@ -784,6 +784,8 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 	{
 		case DECL_POISONED:
 			break;
+		case DECL_CT_INCLUDE:
+			break;
 		case DECL_INITIALIZE:
 		case DECL_FINALIZE:
 			MACRO_COPY_ASTID(copy->xxlizer.init);
