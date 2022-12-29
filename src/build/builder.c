@@ -228,6 +228,8 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	target->testing = options->testing;
 	if (options->macos.sdk) target->macos.sdk = options->macos.sdk;
 	if (options->win.sdk) target->win.sdk = options->win.sdk;
+	if (options->macos.min_version) target->macos.min_version = options->macos.min_version;
+	if (options->macos.sdk_version) target->macos.sdk_version = options->macos.sdk_version;
 	if (options->win.crt_linking != WIN_CRT_DEFAULT) target->win.crt_linking = options->win.crt_linking;
 	if (options->x86_vector_capability != X86VECTOR_DEFAULT)
 	{

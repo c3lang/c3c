@@ -360,6 +360,8 @@ const char *token_type_to_string(TokenType type)
 			return "$extnameof";
 		case TOKEN_CT_IF:
 			return "$if";
+		case TOKEN_CT_INCLUDE:
+			return "$include";
 		case TOKEN_CT_VACOUNT:
 			return "$vacount";
 		case TOKEN_CT_VATYPE:

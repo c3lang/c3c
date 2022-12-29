@@ -1315,6 +1315,7 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_CT_ENDFOREACH:
 		case TOKEN_CT_VASPLAT:
 		case TOKEN_IMPLIES:
+		case TOKEN_CT_INCLUDE:
 			SEMA_ERROR_HERE("Unexpected '%s' found when expecting a statement.",
 			                token_type_to_string(c->tok));
 			advance(c);

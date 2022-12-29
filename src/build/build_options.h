@@ -242,6 +242,8 @@ typedef struct BuildOptions_
 	} win;
 	struct {
 		const char *sdk;
+		const char *min_version;
+		const char *sdk_version;
 	} macos;
 	int build_threads;
 	const char** files;
@@ -379,6 +381,8 @@ typedef struct
 	struct
 	{
 		const char *sdk;
+		const char *min_version;
+		const char *sdk_version;
 	} macos;
 	struct
 	{

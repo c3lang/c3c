@@ -327,6 +327,12 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	// macossdk
 	target->macos.sdk = get_valid_string(json, "macossdk", type, false);
 
+	// macos-min-version
+	target->macos.min_version = get_valid_string(json, "macos-min-version", type, false);
+
+	// macos-sdk-version
+	target->macos.sdk_version = get_valid_string(json, "macos-sdk-version", type, false);
+
 	// version
 	const char *version = get_valid_string(json, "version", type, false);
 	if (version) target->version = version;

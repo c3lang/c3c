@@ -689,6 +689,18 @@ static void parse_option(BuildOptions *options)
 				options->win.crt_linking = (WinCrtLinking)parse_multi_option(argopt, 3, wincrt_linking);
 				return;
 			}
+			if (match_longopt("macos-sdk-version"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --macos-sdk-version needs a version.");
+				options->macos.sdk_version = next_arg();
+				return;
+			}
+			if (match_longopt("macos-min-version"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --macos-min-version needs a version.");
+				options->macos.min_version = next_arg();
+				return;
+			}
 			if (match_longopt("build-dir"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --build-dir needs a directory.");

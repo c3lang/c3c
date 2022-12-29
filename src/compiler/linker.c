@@ -301,8 +301,22 @@ static void linker_setup_macos(const char ***args_ref, LinkerType linker_type)
 	if (is_pie(platform_target.reloc_model)) add_arg("-pie");
 	add_arg("-platform_version");
 	add_arg("macos");
-	add_arg(str_printf("%d.%d.0", mac_sdk->macos_min_deploy_target.major, mac_sdk->macos_min_deploy_target.minor));
-	add_arg(str_printf("%d.%d", mac_sdk->macos_deploy_target.major, mac_sdk->macos_deploy_target.minor));
+	if (active_target.macos.min_version)
+	{
+		add_arg(active_target.macos.min_version);
+	}
+	else
+	{
+		add_arg(str_printf("%d.%d.0", mac_sdk->macos_min_deploy_target.major, mac_sdk->macos_min_deploy_target.minor));
+	}
+	if (active_target.macos.sdk_version)
+	{
+		add_arg(active_target.macos.sdk_version);
+	}
+	else
+	{
+		add_arg(str_printf("%d.%d", mac_sdk->macos_deploy_target.major, mac_sdk->macos_deploy_target.minor));
+	}
 }
 
 
