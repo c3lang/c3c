@@ -5995,11 +5995,29 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 			return true;
 		}
 		case BUILTIN_DEF_TEST_NAMES:
+			if (!active_target.testing)
+			{
+				expr->const_expr.const_kind = CONST_INITIALIZER;
+				expr->expr_kind = EXPR_CONST;
+				ConstInitializer *init = expr->const_expr.initializer = CALLOCS(ConstInitializer);
+				init->kind = CONST_INIT_ZERO;
+				init->type = expr->type = type_get_subarray(type_chars);
+				return true;
+			}
 			expr->type = type_get_subarray(type_chars);
 			expr->test_hook_expr = BUILTIN_DEF_TEST_NAMES;
 			expr->expr_kind = EXPR_TEST_HOOK;
 			return true;
 		case BUILTIN_DEF_TEST_FNS:
+			if (!active_target.testing)
+			{
+				expr->const_expr.const_kind = CONST_INITIALIZER;
+				expr->expr_kind = EXPR_CONST;
+				ConstInitializer *init = expr->const_expr.initializer = CALLOCS(ConstInitializer);
+				init->kind = CONST_INIT_ZERO;
+				init->type = expr->type = type_get_subarray(type_voidptr);
+				return true;
+			}
 			expr->type = type_get_subarray(type_voidptr);
 			expr->test_hook_expr = BUILTIN_DEF_TEST_FNS;
 			expr->expr_kind = EXPR_TEST_HOOK;
