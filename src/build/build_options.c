@@ -532,7 +532,7 @@ static void parse_option(BuildOptions *options)
 			}
 			if ((argopt = match_argopt("x86vec")))
 			{
-				options->x86_vector_capability = (X86VectorCapability)parse_multi_option(argopt, 5, vector_capability);
+				options->x86_vector_capability = (X86VectorCapability)parse_multi_option(argopt, 6, vector_capability);
 				return;
 			}
 			if ((argopt = match_argopt("reloc")))

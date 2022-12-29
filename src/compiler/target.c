@@ -443,6 +443,32 @@ static inline void target_setup_x86_abi(BuildTarget *target)
 	}
 }
 
+X86VectorCapability x64_vector_capability_from_host(void)
+{
+	char *features = LLVMGetHostCPUFeatures();
+	if (strstr(features, "+avx512"))
+	{
+		LLVMDisposeMessage(features);
+		return X86VECTOR_AVX512;
+	}
+	else if (strstr(features, "+avx"))
+	{
+		LLVMDisposeMessage(features);
+		return X86VECTOR_AVX;
+	}
+	else if (strstr(features, "+sse"))
+	{
+		LLVMDisposeMessage(features);
+		return X86VECTOR_SSE;
+	}
+	else if (strstr(features, "+mmx"))
+	{
+		LLVMDisposeMessage(features);
+		return X86VECTOR_MMX;
+	}
+	LLVMDisposeMessage(features);
+	return X86VECTOR_NONE;
+}
 
 static inline void target_setup_x64_abi(BuildTarget *target)
 {
@@ -461,7 +487,6 @@ static inline void target_setup_x64_abi(BuildTarget *target)
 	if (target->feature.soft_float == SOFT_FLOAT_YES) platform_target.x64.soft_float = true;
 	if (platform_target.environment_type == ENV_TYPE_GNU)
 	{
-
 		//platform_target.x64.is_mingw64 = platform_target.x64.is_win64;
 		if (platform_target.x64.is_win64) DEBUG_LOG("Mingw");
 	}
@@ -469,6 +494,7 @@ static inline void target_setup_x64_abi(BuildTarget *target)
 	{
 		platform_target.x64.pass_int128_vector_in_mem = true;
 	}
+	if (capability == X86VECTOR_NATIVE) capability = x64_vector_capability_from_host();
 	switch (capability)
 	{
 		case X86VECTOR_AVX:
@@ -1252,6 +1278,14 @@ void *llvm_target_machine_create(void)
 		{
 			case X86VECTOR_DEFAULT:
 				UNREACHABLE
+			case X86VECTOR_NATIVE:
+			{
+				char *features = LLVMGetHostCPUFeatures();
+				scratch_buffer_append(features);
+				scratch_buffer_append_char(',');
+				LLVMDisposeMessage(features);
+				break;
+			}
 			case X86VECTOR_NONE:
 				scratch_buffer_append("-sse,-avx,-mmx,");
 				break;

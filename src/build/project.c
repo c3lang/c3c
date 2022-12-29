@@ -318,7 +318,7 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	if (wincrt > -1) target->win.crt_linking = (WinCrtLinking)wincrt;
 
 	// x86vec
-	int x86vec = get_valid_string_setting(json, "x86vec", type, vector_capability, 0, 5, "none, mmx, sse, avx or avx512");
+	int x86vec = get_valid_string_setting(json, "x86vec", type, vector_capability, 0, 6, "none, native, mmx, sse, avx or avx512");
 	if (x86vec > -1) target->feature.x86_vector_capability = x86vec;
 
 	// winsdk
