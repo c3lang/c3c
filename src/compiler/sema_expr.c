@@ -4634,6 +4634,9 @@ static bool sema_expr_analyse_div(SemaContext *context, Expr *expr, Expr *left, 
 			case CONST_FLOAT:
 				// This is allowed, as it will generate a NaN
 				break;
+			case CONST_INITIALIZER:
+				// Do not analyse
+				break;
 			default:
 				UNREACHABLE
 		}

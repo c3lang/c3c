@@ -349,8 +349,8 @@ macro double double.round(double x) = $$round(x);
 macro double double.roundeven(double x) = $$roundeven(x);
 macro double double.trunc(double x) = $$trunc(x);
 
-macro double double[<*>].sum(double[<*>] x, double start = 0.0) = $$reduce_add(x, start);
-macro double double[<*>].product(double[<*>] x, double start = 1.0) = $$reduce_mul(x, start);
+macro double double[<*>].sum(double[<*>] x, double start = 0.0) = $$reduce_fadd(x, start);
+macro double double[<*>].product(double[<*>] x, double start = 1.0) = $$reduce_fmul(x, start);
 macro double double[<*>].max(double[<*>] x) = $$reduce_fmax(x);
 macro double double[<*>].min(double[<*>] x) = $$reduce_fmin(x);
 macro double[<*>] double[<*>].ceil(double[<*>] x) = $$ceil(x);

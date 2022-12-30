@@ -1,4 +1,6 @@
 module nbodies;
+import std::io;
+import std::math;
 
 const PI = 3.141592653589793;
 const SOLAR_MASS = 4 * PI * PI;
@@ -24,7 +26,7 @@ fn void advance(Planet[] bodies) @noinline
 			double dx = b.x - b2.x;
 			double dy = b.y - b2.y;
 			double dz = b.z - b2.z;
-			double inv_distance = 1.0/sqrt(dx * dx + dy * dy + dz * dz);
+			double inv_distance = 1.0 / math::sqrt(dx * dx + dy * dy + dz * dz);
 			double mag = inv_distance * inv_distance * inv_distance;
 			b.vx -= dx * b2.mass * mag;
 			b.vy -= dy * b2.mass * mag;
@@ -56,7 +58,7 @@ fn double energy(Planet[] bodies)
 			double dx = b.x - b2.x;
 			double dy = b.y - b2.y;
 			double dz = b.z - b2.z;
-			double distance = sqrt(dx * dx + dy * dy + dz * dz);
+			double distance = math::sqrt(dx * dx + dy * dy + dz * dz);
 			e -= (b.mass * b2.mass) / distance;
 		}
 	}
@@ -139,23 +141,20 @@ fn void scale_bodies(Planet[] bodies, double scale)
 	}
 }
 
-extern fn int atoi(char *s);
-extern fn int printf(char *s, ...);
-extern fn double sqrt(double);
 
-fn int main(int argc, char ** argv)
+fn void main(char[][] args)
 {
-	int n = atoi(argv[1]);
+	int n = args.len < 2 ? 50000000 : str::to_int(args[1])!!;
 
 	Planet[] bodies = &planet_bodies;
 	offset_momentum(bodies);
-	printf ("%.9f\n", energy(bodies));
+	double start = energy(bodies);
 	scale_bodies(bodies, DT);
 	for (int i = 1; i <= n; i++)
 	{
 		advance(bodies);
 	}
 	scale_bodies(bodies, RECIP_DT);
-	printf ("%.9f\n", energy(bodies));
-	return 0;
+	io::printfln("%.9f", start);
+	io::printfln("%.9f", energy(bodies));
 }
