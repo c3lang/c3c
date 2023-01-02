@@ -60,8 +60,10 @@ uint16_t *win_utf8to16(const char *name);
 char *win_utf16to8(const uint16_t *name);
 // Use as if it was mkdir(..., 0755) == 0
 bool dir_make(const char *path);
+bool dir_make_recursive(char *path);
 // Use as if it was chdir(...) == 0
 bool dir_change(const char *path);
+const char *filename(const char *path);
 bool file_namesplit(const char *path, char** filename_ptr, char** directory_ptr);
 const char* file_expand_path(const char* path);
 const char* find_lib_dir(void);
@@ -580,3 +582,27 @@ static inline bool char_is_letter_(char c)
 	}
 }
 
+#define ZIP_MAX_NAME 512
+
+typedef struct
+{
+	char name[ZIP_MAX_NAME];
+	size_t offset;
+	size_t uncompressed_size;
+	size_t compressed_size;
+	uint32_t file_crc32;
+	int compression_method;
+} ZipFile;
+
+typedef struct
+{
+	long offset;
+	int files;
+	int current_file;
+	FILE *file;
+} ZipDirIterator;
+
+const char *zip_dir_iterator(FILE *zip, ZipDirIterator *iterator);
+const char *zip_dir_iterator_next(ZipDirIterator *iterator, ZipFile *file);
+const char *zip_file_read(FILE *zip, ZipFile *file, void **buffer_ptr);
+const char *zip_file_write(FILE *zip, ZipFile *file, const char *dir, bool overwrite);

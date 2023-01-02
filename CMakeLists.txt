@@ -168,6 +168,7 @@ message(STATUS "linking to llvm libs ${lld_libs}")
 message(STATUS "Found lld libs ${lld_libs}")
 
 add_library(c3c_wrappers STATIC wrapper/src/wrapper.cpp)
+add_library(miniz STATIC dependencies/miniz/miniz.c)
 
 add_executable(c3c
         src/build/builder.c
@@ -250,6 +251,7 @@ add_executable(c3c
         src/utils/vmem.h
         src/utils/whereami.c
         src/utils/cpus.c
+        src/utils/unzipper.c
         src/compiler/decltable.c
         src/compiler/mac_support.c
         src/compiler/tilde_codegen_storeload.c
@@ -273,10 +275,11 @@ target_include_directories(c3c PRIVATE
 target_include_directories(c3c_wrappers PRIVATE
         "${CMAKE_SOURCE_DIR}/wrapper/src/")
 
-
+target_include_directories(miniz PUBLIC
+        "${CMAKE_SOURCE_DIR}/dependencies/miniz/")
 
 target_link_libraries(c3c_wrappers ${llvm_libs} ${lld_libs})
-target_link_libraries(c3c ${llvm_libs} c3c_wrappers ${lld_libs})
+target_link_libraries(c3c ${llvm_libs} miniz c3c_wrappers ${lld_libs})
 if(C3_USE_TB)
     target_link_libraries(c3c c3c_wrappers ${TB_LIB})
     target_compile_definitions(c3c PUBLIC TB_BACKEND=1)
@@ -296,9 +299,11 @@ if(MSVC)
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         target_compile_options(c3c PUBLIC /MTd)
         target_compile_options(c3c_wrappers PUBLIC /MTd)
+        target_compile_options(miniz PUBLIC /MTd)
     else()
         target_compile_options(c3c PUBLIC /MT)
         target_compile_options(c3c_wrappers PUBLIC /MT)
+        target_compile_options(miniz PUBLIC /MT)
     endif()
 else()
     message(STATUS "using gcc/clang warning switches")
