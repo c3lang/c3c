@@ -1,10 +1,7 @@
 module spectralnorm;
-import std::mem;
 import std::array;
-
-extern fn int atoi(char *s);
-extern fn int printf(char *s, ...);
-extern fn double sqrt(double);
+import std::io;
+import std::math;
 
 double[] temparr;
 
@@ -13,47 +10,57 @@ fn double eval_A(int i, int j)
 	return 1.0 / ((i + j) * (i + j + 1) / 2 + i + 1);
 }
 
-fn void eval_A_times_u(double[] u, double[] au)
+fn void eval_A_times_u(double[] u, double[] au, double[] x)
 {
+	int len = au.len;
 	foreach (i, &val : au)
 	{
 		*val = 0;
 		foreach (j, uval : u)
 		{
-			*val += eval_A((int)(i), (int)(j)) * uval;
+			*val += x[i * len + j] * uval;
 		}
 	}
 }
 
-fn void eval_At_times_u(double[] u, double[] au)
+fn void eval_At_times_u(double[] u, double[] au, double[] x)
 {
+	int len = au.len;
 	foreach (i, &val : au)
 	{
 		*val = 0;
 		foreach (j, uval : u)
 		{
-			*val += eval_A((int)(j), (int)(i)) * uval;
+			*val += x[i * len + j] * uval;
 		}
 	}
 }
 
-fn void eval_AtA_times_u(double[] u, double[] atau) @noinline
+fn void eval_AtA_times_u(double[] u, double[] atau, double[] x)
 {
-	eval_A_times_u(u, temparr);
-	eval_At_times_u(temparr, atau);
+	eval_A_times_u(u, temparr, x);
+	eval_At_times_u(temparr, atau, x);
 }
 
-fn int main(int argc, char **argv)
+fn void main(char[][] args)
 {
-	int n = (argc == 2) ? atoi(argv[1]) : 2000;
+	int n = args.len == 2 ? str::to_int(args[1])!! : 2000;
 	temparr = array::alloc(double, n);
 	double[] u = array::alloc(double, n);
 	double[] v = array::alloc(double, n);
-	foreach(&uval : u) *uval = 1;
+	double[] x = array::alloc(double, n * n);
+	for (int i = 0; i < n; i++)
+	{
+		for (int j = 0; j < n; j++)
+		{
+			x[i * n + j] = eval_A(i, j);
+		}
+	}
+	u[..] = 1;
 	for (int i = 0; i < 10; i++)
 	{
-		eval_AtA_times_u(u, v);
-		eval_AtA_times_u(v, u);
+		eval_AtA_times_u(u, v, x);
+		eval_AtA_times_u(v, u, x);
 	}
 	double vBv;
 	double vv;
@@ -62,6 +69,5 @@ fn int main(int argc, char **argv)
 		vBv += u[i] * vval;
 		vv += vval * vval;
 	}
-	printf("%0.9f\n", sqrt(vBv / vv));
-	return 0;
+	io::printf("%0.9f\n", math::sqrt(vBv / vv));
 }

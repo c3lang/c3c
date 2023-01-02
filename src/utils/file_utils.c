@@ -87,6 +87,23 @@ bool dir_make(const char *path)
 #endif
 }
 
+bool dir_make_recursive(char *path)
+{
+	size_t len = strlen(path);
+	for (size_t i = len; i > 1; i--)
+	{
+		char c = path[i];
+		if (c == '\\' || c == '/')
+		{
+			path[i] = '\0';
+			dir_make_recursive(path);
+			path[i] = c;
+			break;
+		}
+	}
+	return dir_make(path);
+}
+
 bool dir_change(const char *path)
 {
 #if (_MSC_VER)
@@ -105,6 +122,22 @@ static inline bool is_path_separator(char c)
 #endif
 }
 
+const char *filename(const char *path)
+{
+	// Find the filename.
+	for (size_t j = strlen(path); j > 0; j--)
+	{
+		switch (path[j - 1])
+		{
+			case '/':
+			case '\\':
+				return &path[j];
+			default:
+				break;
+		}
+	}
+	return path;
+}
 
 /**
  * Split a file into path + filename, allocating memory for them and returning them in

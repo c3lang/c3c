@@ -1,4 +1,5 @@
 module snake;
+import raylib;
 /**
  *
  *   raylib - classic game: snake

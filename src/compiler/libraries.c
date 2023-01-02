@@ -142,6 +142,71 @@ static void add_library_dependency(Library *library, Library **library_list, siz
 	}
 }
 
+INLINE void zip_check_err(const char *lib, const char *error)
+{
+	if (error) error_exit("Malformed compressed '%s' library: %s.", lib, error);
+}
+
+INLINE JSONObject* read_manifest(const char *lib, const char *manifest_data)
+{
+	JsonParser parser;
+	json_init_string(&parser, manifest_data, &malloc_arena);
+	JSONObject *json = json_parse(&parser);
+	if (parser.error_message)
+	{
+		error_exit("Error on line %d reading '%s':'%s'", parser.line, lib, parser.error_message);
+	}
+	return json;
+}
+
+static inline JSONObject *resolve_zip_library(const char *lib, const char **resulting_library)
+{
+	FILE *f = fopen(lib, "rb");
+	if (!f) error_exit("Failed to open library '%s' for reading.", lib);
+	ZipDirIterator iterator;
+	const char *error;
+
+	// Find the manifest.
+	ZipFile file;
+	zip_check_err(lib, zip_dir_iterator(f, &iterator));
+	do
+	{
+		if (iterator.current_file >= iterator.files) error_exit("Missing manifest in '%s'.", lib);
+		zip_check_err(lib, zip_dir_iterator_next(&iterator, &file));
+		if (strcmp(file.name, MANIFEST_FILE) == 0) break;
+	} while (1);
+
+	// Read the manifest.
+	char *manifest_data;
+	zip_check_err(lib, zip_file_read(f, &file, (void**)&manifest_data));
+
+	// Parse the JSON
+	JSONObject *json = read_manifest(lib, manifest_data);
+
+	// Create the directory for the temporary files.
+	const char *lib_name = filename(lib);
+	scratch_buffer_clear();
+	scratch_buffer_append(active_target.build_dir ? active_target.build_dir : "_temp_build");
+	scratch_buffer_printf("/_c3l/%s_%x/", lib_name, file.file_crc32);
+	const char *lib_dir = scratch_buffer_copy();
+	dir_make_recursive(scratch_buffer_to_string());
+	scratch_buffer_append_char('/');
+	char *dir = scratch_buffer_to_string();
+
+	// Iterate through all files.
+	zip_check_err(lib, zip_dir_iterator(f, &iterator));
+	while (iterator.current_file < iterator.files)
+	{
+		zip_check_err(lib, zip_dir_iterator_next(&iterator, &file));
+		if (file.uncompressed_size == 0 || file.name[0] == '.') continue;
+		// Copy file.
+		zip_file_write(f, &file, dir, false);
+	}
+	fclose(f);
+	*resulting_library = lib_dir;
+	return json;
+
+}
 void resolve_libraries(void)
 {
 	static const char *c3lib_suffix = ".c3l";
@@ -155,19 +220,17 @@ void resolve_libraries(void)
 	size_t lib_count = 0;
 	VECEACH(c3_libs, i)
 	{
-		size_t size;
 		const char *lib = c3_libs[i];
+		JSONObject *json;
 		if (!file_is_dir(lib))
 		{
-			error_exit("Packaged .c3l are not supported yet.");
+			json = resolve_zip_library(lib, &lib);
 		}
-		const char *manifest_path = file_append_path(lib, MANIFEST_FILE);
-		char *read = file_read_all(manifest_path, &size);
-		json_init_string(&parser, read, &malloc_arena);
-		JSONObject *json = json_parse(&parser);
-		if (parser.error_message)
+		else
 		{
-			error_exit("Error on line %d reading '%s':'%s'", parser.line, manifest_path, parser.error_message);
+			const char *manifest_path = file_append_path(lib, MANIFEST_FILE);
+			size_t size;
+			json = read_manifest(lib, file_read_all(manifest_path, &size));
 		}
 		if (lib_count == MAX_LIB_DIRS * 2) error_exit("Too many libraries added, exceeded %d.", MAX_LIB_DIRS * 2);
 		libraries[lib_count++] = add_library(json, lib);
