@@ -272,6 +272,7 @@ typedef struct BuildOptions_
 	bool no_libc;
 	bool force_linker;
 	bool read_stdin;
+	bool print_output;
 	const char *panicfn;
 	const char *cc;
 	const char *build_dir;
@@ -357,6 +358,7 @@ typedef struct
 	bool benchmarking;
 	bool testing;
 	bool read_stdin;
+	bool print_output;
 	int build_threads;
 	OptimizationLevel optimization_level;
 	SizeOptimizationLevel size_optimization_level;

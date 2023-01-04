@@ -413,10 +413,22 @@ void compiler_compile(void)
 	TaskQueueRef queue = taskqueue_create(active_target.build_threads, tasks);
 	taskqueue_wait_for_completion(queue);
 
+	if (active_target.print_output)
+	{
+		puts("# output-files-begin");
+	}
 	for (unsigned i = 0; i < output_file_count; i++)
 	{
 		obj_files[i] = compile_data[i].object_name;
+		if (active_target.print_output)
+		{
+			puts(obj_files[i]);
+		}
 		assert(obj_files[i] || !output_exe);
+	}
+	if (active_target.print_output)
+	{
+		puts("# output-files-end");
 	}
 
 	output_file_count += cfiles;

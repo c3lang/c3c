@@ -147,6 +147,8 @@ static void usage(void)
 	OUTPUT("  --list-targets            - List all architectures the compiler supports.");
 	OUTPUT("  --list-type-properties    - List all type properties.");
 	OUTPUT("");
+	OUTPUT("  --print-output            - Print the object files created to stdout.");
+	OUTPUT("");
 	OUTPUT("  --winsdk <dir>            - Set the directory for Windows system library files for cross compilation.");
 	OUTPUT("  --wincrt=<option>         - Windows CRT linking: none, static, dynamic (default).");
 	OUTPUT("");
@@ -641,6 +643,11 @@ static void parse_option(BuildOptions *options)
 			if (match_longopt("emit-asm"))
 			{
 				options->emit_asm = true;
+				return;
+			}
+			if (match_longopt("print-output"))
+			{
+				options->print_output = true;
 				return;
 			}
 			if (match_longopt("cc"))
