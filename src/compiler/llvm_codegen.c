@@ -641,11 +641,15 @@ static void llvm_codegen_setup()
 	intrinsic_id.exp2 = lookup_intrinsic("llvm.exp2");
 	intrinsic_id.fabs = lookup_intrinsic("llvm.fabs");
 	intrinsic_id.floor = lookup_intrinsic("llvm.floor");
-	intrinsic_id.flt_rounds = lookup_intrinsic("llvm.flt.rounds");
 	intrinsic_id.fma = lookup_intrinsic("llvm.fma");
 	intrinsic_id.frameaddress = lookup_intrinsic("llvm.frameaddress");
 	intrinsic_id.fshl = lookup_intrinsic("llvm.fshl");
 	intrinsic_id.fshr = lookup_intrinsic("llvm.fshr");
+#if LLVM_VERSION_MAJOR < 16
+	intrinsic_id.get_rounding = lookup_intrinsic("llvm.flt.rounds");
+#else
+	intrinsic_id.get_rounding = lookup_intrinsic("llvm.get.rounding");
+#endif
 	intrinsic_id.lifetime_end = lookup_intrinsic("llvm.lifetime.end");
 	intrinsic_id.lifetime_start = lookup_intrinsic("llvm.lifetime.start");
 	intrinsic_id.llrint = lookup_intrinsic("llvm.llrint");
