@@ -133,12 +133,12 @@ typedef struct
 	unsigned exp2;
 	unsigned fabs;
 	unsigned floor;
-	unsigned flt_rounds;
 	unsigned fma;
 	unsigned fmuladd;
 	unsigned frameaddress;
 	unsigned fshl;
 	unsigned fshr;
+	unsigned get_rounding;
 	unsigned lifetime_end;
 	unsigned lifetime_start;
 	unsigned llrint;

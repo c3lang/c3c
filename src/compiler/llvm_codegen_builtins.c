@@ -688,7 +688,7 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.fshr);
 			return;
 		case BUILTIN_GET_ROUNDING_MODE:
-			llvm_value_set(result_value, llvm_emit_call_intrinsic(c, intrinsic_id.flt_rounds, NULL, 0, NULL, 0), expr->type);
+			llvm_value_set(result_value, llvm_emit_call_intrinsic(c, intrinsic_id.get_rounding, NULL, 0, NULL, 0), expr->type);
 			return;
 		case BUILTIN_LOG:
 			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.log);
