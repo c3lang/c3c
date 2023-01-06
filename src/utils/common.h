@@ -38,6 +38,12 @@
 #endif
 #endif
 
+#if CURL_FOUND || PLATFORM_WINDOWS
+#define FETCH_AVAILABLE 1
+#else
+#define FETCH_AVAILABLE 0
+#endif
+
 #define IS_GCC 0
 #define IS_CLANG 0
 #ifdef __GNUC__

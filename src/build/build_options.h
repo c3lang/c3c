@@ -33,6 +33,7 @@ typedef enum
 	COMMAND_RUN,
 	COMMAND_CLEAN_RUN,
 	COMMAND_CLEAN,
+	COMMAND_VENDOR_FETCH,
 	COMMAND_DIST,
 	COMMAND_DOCS,
 	COMMAND_BENCH,
@@ -248,6 +249,7 @@ typedef struct BuildOptions_
 		const char *sdk_version;
 	} macos;
 	int build_threads;
+	const char** libraries_to_fetch;
 	const char** files;
 	const char* output_name;
 	const char* project_name;

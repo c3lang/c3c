@@ -16,6 +16,7 @@ void init_default_build_target(BuildTarget *target, BuildOptions *options);
 void symtab_init(uint32_t max_size);
 void symtab_destroy();
 void print_syntax(BuildOptions *options);
+void vendor_fetch(BuildOptions *options);
 
 extern double compiler_init_time;
 extern double compiler_parsing_time;
