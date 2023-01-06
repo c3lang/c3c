@@ -6969,7 +6969,7 @@ static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr)
 		case EXPR_ACCESS:
 			if (expr->access_expr.ref->decl_kind == DECL_FUNC)
 			{
-				SEMA_ERROR(expr, "A function name must be followed by '(' or preceeded by '&'.");
+				SEMA_ERROR(expr, "A function name must be followed by '(' or preceded by '&'.");
 				return false;
 			}
 			if (expr->access_expr.ref->decl_kind == DECL_MACRO)
