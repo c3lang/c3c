@@ -207,7 +207,7 @@ void x64_classify_post_merge(ByteSize size, X64Class *lo_class, X64Class *hi_cla
 	// If one is MEM => both is mem
 	// If X87UP is not before X87 => mem
 	// If size > 16 && first isn't SSE or any other is not SSEUP => mem
-	// If SSEUP is not preceeded by SSE/SSEUP => convert to SSE.
+	// If SSEUP is not preceded by SSE/SSEUP => convert to SSE.
 	if (*hi_class == CLASS_MEMORY) goto DEFAULT_TO_MEMORY;
 	if (size > 16 && (*lo_class != CLASS_SSE || *hi_class != CLASS_SSEUP)) goto DEFAULT_TO_MEMORY;
 	if (*hi_class == CLASS_SSEUP && *lo_class != CLASS_SSE && *lo_class != CLASS_SSEUP)

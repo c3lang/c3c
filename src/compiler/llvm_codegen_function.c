@@ -296,8 +296,9 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *optiona
 	// In this case we use the optional as the actual return.
 	if (prototype->is_optional)
 	{
-		if (return_value && return_value->value)
+		if (return_value && return_value->type != type_void)
 		{
+			assert(return_value->value);
 			llvm_store_to_ptr_aligned(c, c->return_out, return_value, type_alloca_alignment(return_value->type));
 		}
 		return_out = c->optional_out;

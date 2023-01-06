@@ -50,7 +50,7 @@ private macro char_is_space_tab(char c)
 	return c == ' ' || c == '\t';
 }
 
-private macro to_signed_integer($Type, char[] string)
+private macro to_integer($Type, char[] string)
 {
 	usz len = string.len;
 	usz index = 0;
@@ -121,11 +121,17 @@ private macro to_signed_integer($Type, char[] string)
 	return value;
 }
 
-fn int128! to_int128(char[] string) = to_signed_integer(int128, string);
-fn long! to_long(char[] string) = to_signed_integer(long, string);
-fn int! to_int(char[] string) = to_signed_integer(int, string);
-fn short! to_short(char[] string) = to_signed_integer(short, string);
-fn ichar! to_ichar(char[] string) = to_signed_integer(ichar, string);
+fn int128! to_int128(char[] string) = to_integer(int128, string);
+fn long! to_long(char[] string) = to_integer(long, string);
+fn int! to_int(char[] string) = to_integer(int, string);
+fn short! to_short(char[] string) = to_integer(short, string);
+fn ichar! to_ichar(char[] string) = to_integer(ichar, string);
+
+fn uint128! to_uint128(char[] str) = to_integer(uint128, str);
+fn ulong! to_ulong(char[] str) = to_integer(ulong, str);
+fn uint! to_uint(char[] str) = to_integer(uint, str);
+fn ushort! to_ushort(char[] str) = to_integer(ushort, str);
+fn char! to_uchar(char[] str) = to_integer(char, str);
 
 fn char[] trim(char[] string, char[] to_trim = "\t\n\r ")
 {
@@ -177,6 +183,32 @@ fn char[][] split(char[] s, char[] needle, Allocator* allocator = mem::current_a
 		holder[i++] = res;
 	}
 	return holder[:i];
+}
+
+fn usz! rindex_of(char[] s, char[] needle)
+{
+	usz match = 0;
+	usz needed = needle.len;
+	if (!needed) return SearchResult.MISSING!;
+	usz index_start = 0;
+	char search = needle[0];
+	foreach_r (usz i, char c : s)
+	{
+		if (c == search)
+		{
+			if (!match) index_start = i;
+			match++;
+			if (match == needed) return index_start;
+			search = needle[match];
+			continue;
+		}
+		if (match)
+		{
+			match = 0;
+			search = needle[0];
+		}
+	}
+	return SearchResult.MISSING!;
 }
 
 fn usz! index_of(char[] s, char[] needle)

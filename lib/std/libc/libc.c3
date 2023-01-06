@@ -394,16 +394,19 @@ $if (env::OS_TYPE == OsType.MACOSX):
 const Errno EINPROGRESS = 36;   // Operation now in progress MacOS
 const Errno EALREADY = 37;      // Operation already in progress MacOS
 const Errno EDQUOT = 69;        // Quota exceeded, MacOS
+const Errno EWOULDBLOCK = 35;   // Operation would block
 
 $elif (env::OS_TYPE == OsType.WIN32):
 const Errno EALREADY = 103;     // Operation already in progress
 const Errno EINPROGRESS = 112;  // Operation now in progress Win32
 const Errno EDQUOT = -122;      // Quota exceeded, not in Win32
+const Errno EWOULDBLOCK = 140;  // Operation would block
 
 $else:
 const Errno EALREADY = 114;     // Operation already in progress
 const Errno EINPROGRESS = 115;  // Operation now in progress
 const Errno EDQUOT = 122;       // Quota exceeded
+const Errno EWOULDBLOCK = 41;   // Operation would block
 $endif;
 
 /*

@@ -1471,7 +1471,7 @@ CAST:
 static inline bool cast_pointer(SemaContext *context, Expr *expr, Type *from, Type *to, Type *to_type, bool add_optional, CastOptions options)
 {
 	// pointer -> any, void* -> pointer pointer -> void*
-	if (to == type_any || to == type_voidptr || from == type_voidptr) return cast_with_optional(expr, to_type, add_optional);
+	if (to == type_any || to == type_voidptr || (from == type_voidptr && type_is_pointer(to))) return cast_with_optional(expr, to_type, add_optional);
 
 	Type *pointee = from->pointer;
 	bool is_explicit = options.is_explicit;
