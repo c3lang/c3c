@@ -42,7 +42,9 @@ if(C3_USE_MIMALLOC)
     )
     FetchContent_MakeAvailable(mimalloc)
 endif()
-
+if (NOT WIN32)
+    find_package(CURL)
+endif()
 if (NOT C3_LLVM_VERSION STREQUAL "auto")
     if (${C3_LLVM_VERSION} VERSION_LESS 13 OR ${C3_LLVM_VERSION} VERSION_GREATER 16)
         message(FATAL_ERROR "LLVM ${C3_LLVM_VERSION} is not supported!")
@@ -263,7 +265,7 @@ add_executable(c3c
         src/compiler/codegen_asm.c
         src/compiler/asm_target.c
         src/compiler/llvm_codegen_builtins.c
-        src/compiler/expr.c src/utils/time.c)
+        src/compiler/expr.c src/utils/time.c src/utils/http.c)
 
 
 target_include_directories(c3c PRIVATE
@@ -289,6 +291,18 @@ endif()
 
 if(C3_USE_MIMALLOC)
     target_link_libraries(c3c mimalloc-static)
+endif()
+
+if (WIN32)
+    target_link_libraries(c3c Winhttp.lib)
+endif()
+
+if (CURL_FOUND)
+    target_link_libraries(c3c ${CURL_LIBRARIES})
+    target_include_directories(c3c PRIVATE ${CURL_INCLUDES})
+    target_compile_definitions(c3c PUBLIC CURL_FOUND=1)
+else()
+    target_compile_definitions(c3c PUBLIC CURL_FOUND=0)
 endif()
 
 if(MSVC)

@@ -84,6 +84,7 @@ bool command_is_projectless(CompilerCommand command)
 		case COMMAND_BENCH:
 		case COMMAND_PRINT_SYNTAX:
 		case COMMAND_TEST:
+		case COMMAND_VENDOR_FETCH:
 			return false;
 	}
 	UNREACHABLE

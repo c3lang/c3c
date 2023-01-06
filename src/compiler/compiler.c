@@ -574,6 +574,34 @@ static void setup_bool_define(const char *id, bool value)
 		error_exit("Redefined ident %s", id);
 	}
 }
+#if FETCH_AVAILABLE
+void vendor_fetch(BuildOptions *options)
+{
+	unsigned count = 0;
+	FOREACH_BEGIN(const char *lib, options->libraries_to_fetch)
+		const char *resource = str_printf("/c3lang/vendor/releases/download/latest/%s.c3l", lib);
+		printf("Fetching library '%s'...", lib);
+		fflush(stdout);
+		const char *error = download_file("https://github.com", resource, str_printf("%s.c3l", lib));
+		if (!error)
+		{
+			puts("ok.");
+			count++;
+		}
+		else
+		{
+			printf("FAILED: '%s'\n", error);
+		}
+	FOREACH_END();
+	if (count == 0)	error_exit("Error: Failed to download any libraries.");
+	if (count < vec_size(options->libraries_to_fetch)) error_exit("Error: Only some libraries were downloaded.");
+}
+#else
+void vendor_fetch(BuildOptions *options)
+{
+	error_exit("Error: vendor-fetch only available when compiled with cURL.");
+}
+#endif
 
 void print_syntax(BuildOptions *options)
 {

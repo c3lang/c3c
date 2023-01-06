@@ -76,6 +76,7 @@ static void usage(void)
 	OUTPUT("  static-lib <file1> [<file2> ...]   Compile files without a project into a static library.");
 	OUTPUT("  dynamic-lib <file1> [<file2> ...]  Compile files without a project into a dynamic library.");
 	OUTPUT("  headers <file1> [<file2> ...]      Analyse files and generate C headers for public methods.");
+	OUTPUT("  vendor-fetch <library> ...         Fetches one or more libraries from the vendor collection.");
 	OUTPUT("");
 	OUTPUT("Options:");
 	OUTPUT("  --tinybackend             - Use the TinyBackend for compilation.");
@@ -272,6 +273,17 @@ static void parse_command(BuildOptions *options)
 	if (arg_match("static-lib"))
 	{
 		options->command = COMMAND_STATIC_LIB;
+		return;
+	}
+	if (arg_match("vendor-fetch"))
+	{
+		options->command = COMMAND_VENDOR_FETCH;
+		if (at_end() || next_is_opt()) error_exit("error: vendor-fetch needs at least one library.");
+		while (!at_end() && !next_is_opt())
+		{
+			const char *lib = next_arg();
+			vec_add(options->libraries_to_fetch, lib);
+		}
 		return;
 	}
 	if (arg_match("dynamic-lib"))

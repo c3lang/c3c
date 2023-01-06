@@ -11,6 +11,9 @@
 #include "direct.h"
 #endif
 
+#if FETCH_AVAILABLE
+const char *download_file(const char *url, const char *resource, const char *file_path);
+#endif
 
 typedef struct StringSlice_
 {

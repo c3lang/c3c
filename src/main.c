@@ -69,6 +69,9 @@ int main_real(int argc, const char *argv[])
 		case COMMAND_CLEAN:
 			compile_clean(&build_options);
 			break;
+		case COMMAND_VENDOR_FETCH:
+			vendor_fetch(&build_options);
+			break;
 		case COMMAND_CLEAN_RUN:
 		case COMMAND_BUILD:
 		case COMMAND_RUN:
