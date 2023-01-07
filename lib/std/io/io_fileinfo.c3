@@ -43,7 +43,7 @@ fn void! FileInfo.read(FileInfo* info, Path path)
 	@pool()
 	{
 		Darwin64Stat stat;
-		int res = _stat(str::tcopy_zstring((char[])path), &stat);
+		int res = _stat(str::tcopy_zstring((String)path), &stat);
 		if (res != 0)
 		{
 			switch (libc::errno())

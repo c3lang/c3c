@@ -6,7 +6,7 @@ $if (env::OS_TYPE == OsType.WIN32):
 extern fn Char16* _wgetcwd(Char16* buffer, int maxlen);
 extern fn usz wcslen(Char16* str);
 
-macro char[]! getcwd(Allocator* allocator = mem::default_allocator())
+macro String! getcwd(Allocator* allocator = mem::default_allocator())
 {
 	const DEFAULT_BUFFER = 256;
 	Char16[DEFAULT_BUFFER] buffer;
@@ -26,7 +26,7 @@ macro char[]! getcwd(Allocator* allocator = mem::default_allocator())
 $else:
 
 extern fn ZString _getcwd(char* pwd, usz len) @extname("getcwd");
-macro char[]! getcwd(Allocator* allocator = mem::default_allocator())
+macro String! getcwd(Allocator* allocator = mem::default_allocator())
 {
 	const usz DEFAULT_BUFFER = 256;
 	char[DEFAULT_BUFFER] buffer;
@@ -40,7 +40,7 @@ macro char[]! getcwd(Allocator* allocator = mem::default_allocator())
 		free = true;
 	}
 	defer if (free) libc::free((void*)res);
-	char[] copy = str::copyz(res.as_str(), allocator);
+	String copy = str::copyz(res.as_str(), allocator);
 	return copy;
 }
 

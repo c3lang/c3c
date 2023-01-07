@@ -2,7 +2,7 @@ module tmem;
 import std::mem;
 import std::io;
 
-struct String
+struct VarString
 {
     Allocator allocator;
     usz len;
@@ -10,7 +10,7 @@ struct String
     char* ptr;
 }
 
-fn void String.init(String *s, char[] c)
+fn void VarString.init(VarString *s, String c)
 {
     s.capacity = c.len + 16;
     s.ptr = malloc(s.capacity);
@@ -18,7 +18,7 @@ fn void String.init(String *s, char[] c)
     mem::copy(s.ptr, (char*)(c), c.len);
 }
 
-fn char* String.zstr(String *s)
+fn char* VarString.zstr(VarString *s)
 {
     char* c = malloc(s.len + 1);
     mem::copy(c, s.ptr, s.len);
@@ -26,7 +26,7 @@ fn char* String.zstr(String *s)
     return c;
 }
 
-fn void String.appendc(String *s, char c)
+fn void VarString.appendc(VarString *s, char c)
 {
     if (s.capacity == s.len)
     {
@@ -38,7 +38,7 @@ fn void String.appendc(String *s, char c)
     s.ptr[s.len++] = c;
 }
 
-fn void String.append(String *s, char[] other_string)
+fn void VarString.append(VarString *s, String other_string)
 {
     if (s.capacity < s.len + other_string.len)
     {
@@ -55,7 +55,7 @@ fn void String.append(String *s, char[] other_string)
     s.len += other_string.len;
 }
 
-fn void String.concat(String *s, String* other_string)
+fn void VarString.concat(VarString *s, VarString* other_string)
 {
     if (s.capacity < s.len + other_string.len)
     {
@@ -74,12 +74,12 @@ fn void String.concat(String *s, String* other_string)
 
 fn void main()
 {
-    String s;
+    VarString s;
     s.init("Hello");
     s.appendc(' ');
     s.appendc('W');
     s.append("orld!");
-    String w;
+    VarString w;
     w.init("Yo man!");
     s.concat(&w);
     libc::printf("Message was: %s\n", s.zstr());

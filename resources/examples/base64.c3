@@ -42,7 +42,7 @@ const char PAD = '=';
 const char FIRST = '+';
 const char LAST = 'z';
 
-fn void encode(char[] in, char *out)
+fn void encode(String in, char *out)
 {
 	int j = 0;
 	char c = LUT_ENC[1];
@@ -76,7 +76,7 @@ fn void encode(char[] in, char *out)
 }
 
 
-fn int! decode(char[] in, char* out, int* invalid_char_index = null)
+fn int! decode(String in, char* out, int* invalid_char_index = null)
 {
 	int j = 0;
 

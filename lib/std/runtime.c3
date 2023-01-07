@@ -32,7 +32,7 @@ define TestFn = fn void!();
 
 struct TestRunner
 {
-	char[][] test_names;
+	String[] test_names;
 	TestFn[] test_fns;
 	JmpBuf buf;
 }
@@ -48,7 +48,7 @@ fn TestRunner test_runner_create()
 import libc;
 
 private TestRunner* current_runner;
-fn void test_panic(char[] message, char[] file, char[] function, uint line)
+fn void test_panic(String message, String file, String function, uint line)
 {
 	io::println("[error]");
 	io::printfln("\n Error: %s", message);
@@ -65,7 +65,7 @@ fn bool TestRunner.run(TestRunner* runner)
 	int tests_passed = 0;
 	int tests = runner.test_names.len;
 	io::println("----- TESTS -----");
-	foreach(i, char[] name : runner.test_names)
+	foreach(i, String name : runner.test_names)
 	{
 		io::printf("Testing %s ... ", name);
 		if (libc::setjmp(&runner.buf) == 0)

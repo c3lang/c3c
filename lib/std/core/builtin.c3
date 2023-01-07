@@ -56,12 +56,12 @@ macro varcast(variant v, $Type) @builtin
 struct CallstackElement
 {
 	CallstackElement* prev;
-	char[] function;
-	char[] file;
+	String function;
+	String file;
 	uint line;
 }
 
-fn void default_panic(char[] message, char[] file, char[] function, uint line)
+fn void default_panic(String message, String file, String function, uint line)
 {
 	CallstackElement* stack = $$stacktrace();
 	$if ($defined(libc::stderr) && $defined(libc::fprintf)):
@@ -88,7 +88,7 @@ fn void default_panic(char[] message, char[] file, char[] function, uint line)
 	$$trap();
 }
 
-define PanicFn = fn void(char[] message, char[] file, char[] function, uint line);
+define PanicFn = fn void(String message, String file, String function, uint line);
 
 PanicFn panic = &default_panic;
 
@@ -110,7 +110,7 @@ macro bitcast(expr, $Type) @builtin
 /**
  * @require $Type.kindof == TypeKind.ENUM `Only enums may be used`
  **/
-macro enum_by_name($Type, char[] enum_name) @builtin
+macro enum_by_name($Type, String enum_name) @builtin
 {
 	typeid x = $Type.typeid;
 	foreach (i, name : x.names)
@@ -164,4 +164,4 @@ macro uint long.hash(long i) = (uint)((i >> 32) ^ i);
 macro uint ulong.hash(ulong i) = (uint)((i >> 32) ^ i);
 macro uint bool.hash(bool b) = (uint)b;
 macro uint typeid.hash(typeid t) = (uint)(((uptr)t >> 32) ^ (uptr)t);
-macro uint char[].hash(char[] c) = (uint)fnv32a::encode(c);
+macro uint String.hash(String c) = (uint)fnv32a::encode(c);

@@ -7,7 +7,7 @@ import libc;
 
 fn void main()
 {
-    char[] y = "Hello World!";
+    String y = "Hello World!";
     libc::printf("Adler32 of %s is %x, expected 1c49043e\n", (char*)(y), adler32(y));
     libc::printf("CRC32B of %s is %x, expected 1c291ca3\n", (char*)(y), crc32(y));
     libc::printf("CRC64 of %s is %llx, expected fad9a77c67077205\n", (char*)(y), crc64(y));

@@ -4,10 +4,10 @@ import regex, stdio;
 fn void main()
 {
     println("Enter a story template, terminated by an empty line:");
-    String story = "";
+    VarString story = "";
     while (1)
     {
-        String line = stdin.readln().strip() else break;
+        VarString line = stdin.readln().strip() else break;
         story = story.append(line);
         story = story.append("\n");
     }
@@ -19,7 +19,7 @@ fn void main()
 
     foreach (RegexMatch* match : r.match(story))
     {
-        String s = match.string;
+        VarString s = match.string;
         printf("Enter a value for '%s': ", s[1..^2]);
         string word = stdin.readln().strip() else return;
         story = story.replace(s, word);

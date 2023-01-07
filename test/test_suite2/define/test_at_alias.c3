@@ -11,6 +11,6 @@ import private foo;
 
 define @intHello = foo::@hello<int>;
 
-fn void main(char[][] args) {
+fn void main(String[] args) {
     @intHello(42);
 }

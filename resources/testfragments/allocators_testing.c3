@@ -12,7 +12,7 @@ fn void print_pages()
 	mem::temp_allocator().print_pages(io::stdout());
 }
 
-fn void setstring(char* dst, char[] str)
+fn void setstring(char* dst, String str)
 {
 	foreach (char c : str)
 	{

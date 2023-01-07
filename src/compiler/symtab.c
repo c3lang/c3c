@@ -336,6 +336,15 @@ const char *symtab_find(const char *symbol, uint32_t len, uint32_t fnv1hash, Tok
 	return NULL;
 }
 
+const char *symtab_preset(const char *data, TokenType type)
+{
+	uint32_t len = (uint32_t)strlen(data);
+	TokenType result = type;
+	const char *res = symtab_add(data, len, fnv1a(data, len), &result);
+	assert(result == type);
+	return res;
+}
+
 const char *symtab_add(const char *data, uint32_t len, uint32_t fnv1hash, TokenType *type)
 {
 	size_t pos = fnv1hash & symtab.bucket_mask;

@@ -143,7 +143,7 @@ $else
 
 generic boofer2(i, g, eok)
 {
-    case int, char[], type($eoo):
+    case int, String, type($eoo):
         return "Helo";
     default:
         return 1000;

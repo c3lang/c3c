@@ -142,7 +142,7 @@ fn void scale_bodies(Planet[] bodies, double scale)
 }
 
 
-fn void main(char[][] args)
+fn void main(String[] args)
 {
 	int n = args.len < 2 ? 50000000 : str::to_int(args[1])!!;
 

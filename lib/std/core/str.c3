@@ -1,5 +1,7 @@
 module std::core::str;
+
 define ZString = distinct char*;
+define String = char[];
 define Char32 = uint;
 define Char16 = ushort;
 
@@ -18,17 +20,17 @@ fault NumberConversion
 	MALFORMED_INTEGER,
 	INTEGER_OVERFLOW,
 }
-fn String join(char[][] s, char[] joiner)
+fn VarString join(String[] s, String joiner)
 {
-	if (!s.len) return (String)null;
+	if (!s.len) return (VarString)null;
 	usz total_size = joiner.len * s.len;
-	foreach (char[]* &str : s)
+	foreach (String* &str : s)
 	{
 		total_size += str.len;
 	}
-	String res = string::new_with_capacity(total_size);
+	VarString res = string::new_with_capacity(total_size);
 	res.append(s[0]);
-	foreach (char[]* &str : s[1..])
+	foreach (String* &str : s[1..])
 	{
 		res.append(joiner);
 		res.append(*str);
@@ -36,7 +38,7 @@ fn String join(char[][] s, char[] joiner)
 	return res;
 }
 
-macro bool char_in_set(char c, char[] set)
+macro bool char_in_set(char c, String set)
 {
 	foreach (ch : set)
 	{
@@ -50,7 +52,7 @@ private macro char_is_space_tab(char c)
 	return c == ' ' || c == '\t';
 }
 
-private macro to_integer($Type, char[] string)
+private macro to_integer($Type, String string)
 {
 	usz len = string.len;
 	usz index = 0;
@@ -121,19 +123,19 @@ private macro to_integer($Type, char[] string)
 	return value;
 }
 
-fn int128! to_int128(char[] string) = to_integer(int128, string);
-fn long! to_long(char[] string) = to_integer(long, string);
-fn int! to_int(char[] string) = to_integer(int, string);
-fn short! to_short(char[] string) = to_integer(short, string);
-fn ichar! to_ichar(char[] string) = to_integer(ichar, string);
+fn int128! to_int128(String string) = to_integer(int128, string);
+fn long! to_long(String string) = to_integer(long, string);
+fn int! to_int(String string) = to_integer(int, string);
+fn short! to_short(String string) = to_integer(short, string);
+fn ichar! to_ichar(String string) = to_integer(ichar, string);
 
-fn uint128! to_uint128(char[] str) = to_integer(uint128, str);
-fn ulong! to_ulong(char[] str) = to_integer(ulong, str);
-fn uint! to_uint(char[] str) = to_integer(uint, str);
-fn ushort! to_ushort(char[] str) = to_integer(ushort, str);
-fn char! to_uchar(char[] str) = to_integer(char, str);
+fn uint128! to_uint128(String str) = to_integer(uint128, str);
+fn ulong! to_ulong(String str) = to_integer(ulong, str);
+fn uint! to_uint(String str) = to_integer(uint, str);
+fn ushort! to_ushort(String str) = to_integer(ushort, str);
+fn char! to_uchar(String str) = to_integer(char, str);
 
-fn char[] trim(char[] string, char[] to_trim = "\t\n\r ")
+fn String trim(String string, String to_trim = "\t\n\r ")
 {
 	usz start = 0;
 	usz len = string.len;
@@ -144,7 +146,7 @@ fn char[] trim(char[] string, char[] to_trim = "\t\n\r ")
 	return string[start..end];
 }
 
-fn bool starts_with(char[] s, char[] needle)
+fn bool starts_with(String s, String needle)
 {
 	if (needle.len > s.len) return false;
 	foreach (i, c : needle)
@@ -154,17 +156,17 @@ fn bool starts_with(char[] s, char[] needle)
 	return true;
 }
 
-fn char[][] tsplit(char[] s, char[] needle) = split(s, needle, mem::temp_allocator()) @inline;
+fn String[] tsplit(String s, String needle) = split(s, needle, mem::temp_allocator()) @inline;
 
-fn char[][] split(char[] s, char[] needle, Allocator* allocator = mem::current_allocator())
+fn String[] split(String s, String needle, Allocator* allocator = mem::current_allocator())
 {
 	usz capacity = 16;
 	usz i = 0;
-	char[]* holder = allocator.alloc(char[].sizeof * capacity)!!;
+	String* holder = allocator.alloc(String.sizeof * capacity)!!;
 	while (s.len)
 	{
 		usz! index = index_of(s, needle);
-		char[] res = void;
+		String res = void;
 		if (try index)
 		{
 			res = s[:index];
@@ -178,14 +180,14 @@ fn char[][] split(char[] s, char[] needle, Allocator* allocator = mem::current_a
 		if (i == capacity)
 		{
 			capacity *= 2;
-			holder = allocator.realloc(holder, char[].sizeof * capacity)!!;
+			holder = allocator.realloc(holder, String.sizeof * capacity)!!;
 		}
 		holder[i++] = res;
 	}
 	return holder[:i];
 }
 
-fn usz! rindex_of(char[] s, char[] needle)
+fn usz! rindex_of(String s, String needle)
 {
 	usz match = 0;
 	usz needed = needle.len;
@@ -211,7 +213,7 @@ fn usz! rindex_of(char[] s, char[] needle)
 	return SearchResult.MISSING!;
 }
 
-fn usz! index_of(char[] s, char[] needle)
+fn usz! index_of(String s, String needle)
 {
 	usz match = 0;
 	usz needed = needle.len;
@@ -237,7 +239,7 @@ fn usz! index_of(char[] s, char[] needle)
 	return SearchResult.MISSING!;
 }
 
-fn ZString copy_zstring(char[] s, Allocator* allocator = mem::current_allocator())
+fn ZString copy_zstring(String s, Allocator* allocator = mem::current_allocator())
 {
     usz len = s.len;
     char* str = allocator.alloc(len + 1)!!;
@@ -246,7 +248,7 @@ fn ZString copy_zstring(char[] s, Allocator* allocator = mem::current_allocator(
     return (ZString)str;
 }
 
-fn char[] copyz(char[] s, Allocator* allocator = mem::current_allocator())
+fn String copyz(String s, Allocator* allocator = mem::current_allocator())
 {
     usz len = s.len;
     char* str = allocator.alloc(len + 1)!!;
@@ -255,12 +257,12 @@ fn char[] copyz(char[] s, Allocator* allocator = mem::current_allocator())
     return str[:len];
 }
 
-fn ZString tcopy_zstring(char[] s)
+fn ZString tcopy_zstring(String s)
 {
 	return copy_zstring(s, mem::temp_allocator());
 }
 
-fn bool compare(char[] a, char[] b)
+fn bool compare(String a, String b)
 {
 	if (a.len != b.len) return false;
 	foreach (i, c : a)
@@ -276,7 +278,7 @@ fault UnicodeResult
 	CONVERSION_FAILED,
 }
 
-fn usz utf8_codepoints(char[] utf8)
+fn usz utf8_codepoints(String utf8)
 {
 	usz len = 0;
 	foreach (char c : utf8)
@@ -286,7 +288,7 @@ fn usz utf8_codepoints(char[] utf8)
 	return len;
 }
 
-fn Char32[]! utf8to32(char[] utf8, Allocator* allocator = mem::current_allocator)
+fn Char32[]! utf8to32(String utf8, Allocator* allocator = mem::current_allocator)
 {
 	usz codepoints = conv::utf8_codepoints(utf8);
 	Char32* data = allocator.alloc(Char32.sizeof * (codepoints + 1))?;
@@ -295,7 +297,7 @@ fn Char32[]! utf8to32(char[] utf8, Allocator* allocator = mem::current_allocator
 	return data[:codepoints];
 }
 
-fn char[] utf32to8(Char32[] utf32, Allocator* allocator = mem::current_allocator)
+fn String utf32to8(Char32[] utf32, Allocator* allocator = mem::current_allocator)
 {
 	usz len = conv::utf8len_for_utf32(utf32);
 	char* data = allocator.alloc(len + 1)!!;
@@ -304,7 +306,7 @@ fn char[] utf32to8(Char32[] utf32, Allocator* allocator = mem::current_allocator
 	return data[:len];
 }
 
-fn Char16[]! utf8to16(char[] utf8, Allocator* allocator = mem::current_allocator)
+fn Char16[]! utf8to16(String utf8, Allocator* allocator = mem::current_allocator)
 {
 	usz len16 = conv::utf16len_for_utf8(utf8);
 	Char16* data = allocator.alloc((len16 + 1) * Char16.sizeof)?;
@@ -314,7 +316,7 @@ fn Char16[]! utf8to16(char[] utf8, Allocator* allocator = mem::current_allocator
 }
 
 
-fn char[]! utf16to8(Char16[] utf16, Allocator* allocator = mem::current_allocator())
+fn String! utf16to8(Char16[] utf16, Allocator* allocator = mem::current_allocator())
 {
 	usz len = conv::utf8len_for_utf16(utf16);
 	char* data = allocator.alloc(len + 1)?;
@@ -322,21 +324,21 @@ fn char[]! utf16to8(Char16[] utf16, Allocator* allocator = mem::current_allocato
 	return data[:len];
 }
 
-fn char[] copy(char[] s, Allocator* allocator = mem::current_allocator())
+fn String copy(String s, Allocator* allocator = mem::current_allocator())
 {
     usz len = s.len;
     ZString str_copy = copy_zstring(s, allocator) @inline;
     return str_copy[:len];
 }
 
-fn char[] tcopy(char[] s)
+fn String tcopy(String s)
 {
     usz len = s.len;
     ZString str_copy = tcopy_zstring(s) @inline;
     return str_copy[:len];
 }
 
-fn char[] tconcat(char[] s1, char[] s2)
+fn String tconcat(String s1, String s2)
 {
     usz full_len = s1.len + s2.len;
     char* str = tmalloc(full_len + 1);
@@ -347,7 +349,7 @@ fn char[] tconcat(char[] s1, char[] s2)
     return str[:full_len];
 }
 
-fn char[] concat(char[] s1, char[] s2)
+fn String concat(String s1, String s2)
 {
     usz full_len = s1.len + s2.len;
     char* str = malloc(full_len + 1);
@@ -358,7 +360,7 @@ fn char[] concat(char[] s1, char[] s2)
     return str[:full_len];
 }
 
-fn char[] ZString.as_str(ZString str)
+fn String ZString.as_str(ZString str)
 {
 	return ((char*)str)[:str.len()];
 }

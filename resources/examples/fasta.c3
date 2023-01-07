@@ -15,7 +15,7 @@ fn float fasta_rand(float max_val)
 	return max_val * seed / IM;
 }
 
-private char[] alu =
+private String alu =
 	"GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGG"
 	"GAGGCCGAGGCGGGCGGATCACCTGAGGTCAGGAGTTCGAGA"
 	"CCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAAT"
@@ -25,7 +25,7 @@ private char[] alu =
 	"AGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAA";
 
 
-char[] iub = "acgtBDHKMNRSVWY";
+String iub = "acgtBDHKMNRSVWY";
 double[] iub_p = {
 	0.27,
 	0.12,
@@ -43,7 +43,7 @@ double[] iub_p = {
 	0.02,
 	0.02 };
 
-char[] homosapiens = "acgt";
+String homosapiens = "acgt";
 double[] homosapiens_p = {
 	0.3029549426680,
 	0.1979883004921,
@@ -54,7 +54,7 @@ double[] homosapiens_p = {
 const LINELEN = 60;
 
 // slowest character-at-a-time output
-fn void repeat_fasta(char[] seq, int n)
+fn void repeat_fasta(String seq, int n)
 {
 	usz len = seq.len;
 	int i = void;
@@ -66,7 +66,7 @@ fn void repeat_fasta(char[] seq, int n)
 	if (i % LINELEN != 0) io::putchar('\n');
 }
 
-fn void random_fasta(char[] symb, double[] probability, int n)
+fn void random_fasta(String symb, double[] probability, int n)
 {
 	assert(symb.len == probability.len);
 	int len = probability.len;

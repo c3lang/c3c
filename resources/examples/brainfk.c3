@@ -10,13 +10,13 @@ fault InterpretError
 	INTEPRET_FAILED
 }
 
-fn void! print_error(usz pos, char[] err)
+fn void! print_error(usz pos, String err)
 {
 	io::printfln("Error at %s: %s", pos, err);
 	return InterpretError.INTEPRET_FAILED!;
 }
 
-fn void! brainf(char[] program)
+fn void! brainf(String program)
 {
 	usz sp = 0;
 	usz mem = 0;
@@ -76,7 +76,7 @@ fn void! brainf(char[] program)
 }
 fn void! main()
 {
-	char[] program = `
+	String program = `
 	++++[>+++++<-]>[<+++++>-]+<+[
         >[>+>+<<-]++>>[<<+>>-]>>>[-]++>[-]+
         >>>+[[-]++++++>>>]<<<[[<++++++++<++>>-]+<.<[>----<-]<]

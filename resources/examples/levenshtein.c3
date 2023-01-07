@@ -2,7 +2,7 @@ module levenshtein;
 import std::math;
 
 // This levenshtein exercises C3 subarrays.
-fn int levenshtein(char[] s, char[] t)
+fn int levenshtein(String s, String t)
 {
 	// if either string is empty, difference is inserting all chars
 	// from the other

@@ -10,15 +10,15 @@ fault TokenResult
 
 // While we could have written this with libc
 // the C way, let's showcase some features added to C3.
-fn void main(char[][] args)
+fn void main(String[] args)
 {
 	// Grab a string from stdin
-	String s = io::stdin().getline();
+	VarString s = io::stdin().getline();
 	// Delete it at scope end [defer]
 	defer s.destroy();
 
 	// Grab the string as a slice.
-	char[] numbers = s.str();
+	String numbers = s.str();
 
 	// Track our current value
 	int val = 0;
@@ -26,7 +26,7 @@ fn void main(char[][] args)
 	// Is the current state an add?
 	bool add = true;
 
-	while (try char[] token = read_next(&numbers))
+	while (try String token = read_next(&numbers))
 	{
 		// We're assuming well formed input here
 		// so just use atoi.
@@ -36,7 +36,7 @@ fn void main(char[][] args)
 		val = add ? val + i : val - i;
 
 		// Read an optional token.
-		char[]! op = read_next(&numbers);
+		String! op = read_next(&numbers);
 
 		// If it's an error, then we're done.
 		if (catch op) break;
@@ -56,7 +56,7 @@ fn void main(char[][] args)
 	io::printfln("%d", val);
 }
 
-fn char[]! read_next(char[]* remaining)
+fn String! read_next(String* remaining)
 {
 	while (remaining.len > 0 && (*remaining)[0] == ' ')
 	{

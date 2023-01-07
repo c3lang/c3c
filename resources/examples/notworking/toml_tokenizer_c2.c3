@@ -7,7 +7,7 @@ import stdlib;
 
 const uint MaxText = 1024;
 
-enum TokenKind : char (String name)
+enum TokenKind : char (VarString name)
 {
     WORD("word"),
     TEXT("text"),

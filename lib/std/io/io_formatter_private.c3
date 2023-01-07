@@ -131,7 +131,7 @@ private fn uint simple_atoi(char* buf, usz maxlen, usz* len_ptr) @inline
 }
 
 
-private fn void! Formatter.out_substr(Formatter *this, char[] str)
+private fn void! Formatter.out_substr(Formatter *this, String str)
 {
 	usz l = conv::utf8_codepoints(str);
 	uint prec = this.prec;
@@ -415,7 +415,7 @@ private fn void! Formatter.ntoa(Formatter* this, uint128 value, bool negative, u
 	return this.ntoa_format(buf[:PRINTF_NTOA_BUFFER_SIZE], len, negative, base);
 }
 
-private fn void! Formatter.ntoa_format(Formatter* this, char[] buf, usz len, bool negative, uint base)
+private fn void! Formatter.ntoa_format(Formatter* this, String buf, usz len, bool negative, uint base)
 {
 	// pad leading zeros
 	if (!this.flags.left)
@@ -511,7 +511,7 @@ private fn void! Formatter.out_char(Formatter* this, variant arg)
 }
 
 
-private fn void! Formatter.out_reverse(Formatter* this, char[] buf)
+private fn void! Formatter.out_reverse(Formatter* this, String buf)
 {
 	usz buffer_start_idx = this.idx;
 	usz len = buf.len;

@@ -17,7 +17,7 @@ fault PrintFault
 
 
 define OutputFn = fn void!(char c, void* buffer);
-define ToStringFunction = fn char[](void* value, Allocator *allocator);
+define ToStringFunction = fn String(void* value, Allocator *allocator);
 define ToFormatFunction = fn void!(void* value, Formatter* formatter);
 define FloatType = double;
 
@@ -163,9 +163,9 @@ private fn void! Formatter.out_str(Formatter* this, variant arg)
 			unreachable();
 		case DISTINCT:
 			if (this.print_with_function(arg)?) return;
-			if (arg.type == String.typeid)
+			if (arg.type == VarString.typeid)
 			{
-				return this.out_substr(((String*)arg).str());
+				return this.out_substr(((VarString*)arg).str());
 			}
         	return this.out_str(variant { arg.ptr, arg.type.inner });
 		case POINTER:
@@ -188,7 +188,7 @@ private fn void! Formatter.out_str(Formatter* this, variant arg)
 			typeid inner = arg.type.inner;
 			usz size = inner.sizeof;
 			usz len = arg.type.len;
-			// Pretend this is a char[]
+			// Pretend this is a String
 			void* ptr = (void*)arg.ptr;
 			this.out('[')?;
 			for (usz i = 0; i < len; i++)
@@ -204,7 +204,7 @@ private fn void! Formatter.out_str(Formatter* this, variant arg)
 			typeid inner = arg.type.inner;
 			usz size = inner.sizeof;
 			usz len = arg.type.len;
-			// Pretend this is a char[]
+			// Pretend this is a String
 			void* ptr = (void*)arg.ptr;
 			this.out_substr("[<")?;
 			for (usz i = 0; i < len; i++)
@@ -220,11 +220,11 @@ private fn void! Formatter.out_str(Formatter* this, variant arg)
 			typeid inner = arg.type.inner;
 			if (inner == char.typeid)
 			{
-				return this.out_substr(*(char[]*)arg);
+				return this.out_substr(*(String*)arg);
 			}
 			usz size = inner.sizeof;
-            // Pretend this is a char[]
-			char[]* temp = (void*)arg.ptr;
+            // Pretend this is a String
+			String* temp = (void*)arg.ptr;
 			void* ptr = (void*)temp.ptr;
 			usz len = temp.len;
 			this.out('[')?;
@@ -283,18 +283,18 @@ private fn void! out_fputchar_fn(char c, void* data)
 
 private fn void! out_string_append_fn(char c, void* data)
 {
-	String* s = data;
+	VarString* s = data;
 	s.append_char(c);
 }
 
-fn usz! printf(char[] format, args...) @maydiscard
+fn usz! printf(String format, args...) @maydiscard
 {
 	Formatter formatter;
 	formatter.init(&out_putchar_fn);
     return formatter.vprintf(format, args);
 }
 
-fn usz! printfln(char[] format, args...) @maydiscard
+fn usz! printfln(String format, args...) @maydiscard
 {
 	Formatter formatter;
 	formatter.init(&out_putchar_fn);
@@ -303,14 +303,14 @@ fn usz! printfln(char[] format, args...) @maydiscard
 	return len + 1;
 }
 
-fn usz! String.printf(String* str, char[] format, args...) @maydiscard
+fn usz! VarString.printf(VarString* str, String format, args...) @maydiscard
 {
 	Formatter formatter;
 	formatter.init(&out_string_append_fn, str);
 	return formatter.vprintf(format, args);
 }
 
-fn usz! String.printfln(String* str, char[] format, args...) @maydiscard
+fn usz! VarString.printfln(VarString* str, String format, args...) @maydiscard
 {
 	Formatter formatter;
 	formatter.init(&out_string_append_fn, str);
@@ -325,7 +325,7 @@ private struct BufferData
 	usz written;
 }
 
-fn char[]! bprintf(char[] buffer, char[] format, args...) @maydiscard
+fn char[]! bprintf(char[] buffer, String format, args...) @maydiscard
 {
 	Formatter formatter;
 	BufferData data = { .buffer = buffer };
@@ -334,14 +334,14 @@ fn char[]! bprintf(char[] buffer, char[] format, args...) @maydiscard
 	return buffer[:size];
 }
 
-fn usz! File.printf(File file, char[] format, args...) @maydiscard
+fn usz! File.printf(File file, String format, args...) @maydiscard
 {
 	Formatter formatter;
     formatter.init(&out_putchar_fn, &file);
     return formatter.vprintf(format, args)?;
 }
 
-fn usz! File.printfln(File file, char[] format, args...) @maydiscard
+fn usz! File.printfln(File file, String format, args...) @maydiscard
 {
 	Formatter formatter;
     formatter.init(&out_putchar_fn, &file);
@@ -351,12 +351,12 @@ fn usz! File.printfln(File file, char[] format, args...) @maydiscard
 	return len + 1;
 }
 
-fn usz! Formatter.printf(Formatter* this, char[] format, args...)
+fn usz! Formatter.printf(Formatter* this, String format, args...)
 {
 	return this.vprintf(format, args) @inline;
 }
 
-fn usz! Formatter.vprintf(Formatter* this, char[] format, variant[] variants)
+fn usz! Formatter.vprintf(Formatter* this, String format, variant[] variants)
 {
 	if (!this.out_fn)
 	{

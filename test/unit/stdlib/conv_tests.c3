@@ -1,7 +1,7 @@
 module conv_tests;
 import std::io;
 
-fn void! comparison_helper_32_to_8(Char32 c32, char[] expected_output)
+fn void! comparison_helper_32_to_8(Char32 c32, String expected_output)
 {
 	char[8] out;
 	usz len = conv::char32_to_utf8(c32, &out, 4)?;
@@ -12,7 +12,7 @@ fn void! comparison_helper_32_to_8(Char32 c32, char[] expected_output)
 	}
 }
 
-fn void! comparison_helper_8_to_32(char[] in, Char32 c32)
+fn void! comparison_helper_8_to_32(String in, Char32 c32)
 {
 	usz len = in.len;
 	Char32 res = conv::utf8_to_char32(in.ptr, &len)?;
@@ -20,7 +20,7 @@ fn void! comparison_helper_8_to_32(char[] in, Char32 c32)
 	assert(res == c32, "Expected character match.");
 }
 
-fn void assert_utf8_is_error(char[] in)
+fn void assert_utf8_is_error(String in)
 {
 	usz len = in.len;
 	assert(catch(conv::utf8_to_char32(in.ptr, &len)), "Expected error");

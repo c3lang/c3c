@@ -750,6 +750,7 @@ void compile()
 	}
 	global_context.sources = active_target.sources;
 	global_context.main = NULL;
+	global_context.string_type = NULL;
 	asm_target.initialized = false;
 	target_setup(&active_target);
 	resolve_libraries();

@@ -2,7 +2,7 @@ import std::io;
 
 fn void main()
 {
-    char[][] greetings = {
+    String[] greetings = {
         "Hello, world!",
         "¡Hola Mundo!",
         "Γειά σου Κόσμε!",
