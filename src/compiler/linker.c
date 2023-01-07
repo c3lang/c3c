@@ -735,8 +735,30 @@ void platform_linker(const char *output_file, const char **files, unsigned file_
 	printf("Program linked to executable '%s'.\n", output_file);
 }
 
-void platform_compiler(const char **files, unsigned file_count, const char *flags)
+const char *platform_compiler(const char *file, const char *flags)
 {
+	const char *dir = active_target.object_file_dir;
+	if (!dir) dir = active_target.build_dir;
+
+	char *filename = NULL;
+	bool split_worked = file_namesplit(file, &filename, NULL);
+	if (!split_worked) error_exit("Cannot compile '%s'", file);
+	size_t len = strlen(filename);
+	// Remove .cpp or .c
+	if (len > 5 && memcmp(filename + len - 4, ".cpp", 4) == 0)
+	{
+		len -= 4;
+		filename[len] = 0;
+	}
+	else if (len > 2 && memcmp(filename + len - 2, ".c", 2) == 0)
+	{
+		len -= 2;
+		filename[len] = 0;
+	}
+	const char *out_name = dir
+			? str_printf("%s/%s%s", dir, filename, get_object_extension())
+			: str_printf("%s%s", filename, get_object_extension());
+
 	const char **parts = NULL;
 	vec_add(parts, active_target.cc);
 
@@ -750,17 +772,19 @@ void platform_compiler(const char **files, unsigned file_count, const char *flag
 	{
 		append_fpie_pic_options(platform_target.reloc_model, &parts);
 	}
+
 	vec_add(parts, "-c");
 	if (flags) vec_add(parts, flags);
-	for (unsigned i = 0; i < file_count; i++)
-	{
-		vec_add(parts, files[i]);
-	}
+	vec_add(parts, file);
+	vec_add(parts, "-o");
+	vec_add(parts, out_name);
+
 	const char *output = concat_string_parts(parts);
 	if (system(output) != 0)
 	{
 		error_exit("Failed to compile c sources using command '%s'.\n", output);
 	}
+	return out_name;
 }
 
 bool dynamic_lib_linker(const char *output_file, const char **files, unsigned file_count)

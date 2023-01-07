@@ -385,16 +385,11 @@ void compiler_compile(void)
 
 	if (cfiles)
 	{
-		platform_compiler(active_target.csources, cfiles, active_target.cflags);
 		for (int i = 0; i < cfiles; i++)
 		{
-			char *filename = NULL;
-			bool split_worked = file_namesplit(active_target.csources[i], &filename, NULL);
-			assert(split_worked);
-			size_t len = strlen(filename);
-			// .c -> .o (quick hack to fix the name on linux)
-			filename[len - 1] = 'o';
-			obj_files[output_file_count + i] = filename;
+			const char *file = active_target.csources[i];
+			const char *obj = platform_compiler(file, active_target.cflags);
+			obj_files[output_file_count + i] = obj;
 		}
 	}
 
