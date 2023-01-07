@@ -6,6 +6,12 @@ with the goal of evolving it while still retaining familiarity for C programmers
 It's an evolution, not a revolution: the C-like 
 for programmers who like C.
 
+Precompiled binaries for the following operating systems are available:
+ 
+- Windows x64 [download](https://github.com/c3lang/c3c/releases/download/latest/c3-windows.zip), [install instructions](#installing-on-windows-with-precompiled-binaries).
+- Debian x64 [download](https://github.com/c3lang/c3c/releases/download/latest/c3-linux.tar.gz), [install instructions](#installing-on-debian-with-precompiled-binaries).
+- MacOS x64 [download](https://github.com/c3lang/c3c/releases/download/untagged-6fcf1b0c7b17361947ce/c3-macos.zip), [install instructions](#installing-on-mac-with-precompiled-binaries).
+
 The manual for C3 can be found at [www.c3-lang.org](http://www.c3-lang.org).
 
 ![vkQuake](https://github.com/c3lang/c3c/blob/master/resources/images/vkQuake.png?raw=true)
