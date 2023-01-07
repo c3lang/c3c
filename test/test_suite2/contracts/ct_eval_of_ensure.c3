@@ -8,7 +8,7 @@ fn int test(int baz)
 }
 
 extern fn void printf(char*, ...);
-fn void main(char[][] args)
+fn void main(String[] args)
 {
    test(1022);
    printf("Hello\n");

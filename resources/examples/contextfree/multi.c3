@@ -9,7 +9,7 @@ fn void main()
     	    And a nested comment.
     	*/
     */
-	char[] text = `
+	String text = `
  		function hello() {
  		  console.log("name`"\t"`age");
  		}

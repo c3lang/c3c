@@ -1,7 +1,7 @@
 module std::core::string;
 import libc;
 
-define String = distinct void*;
+define VarString = distinct void*;
 
 private struct StringData
 {
@@ -13,30 +13,30 @@ private struct StringData
 
 const usz MIN_CAPACITY = 16;
 
-fn String new_with_capacity(usz capacity, Allocator* allocator = mem::current_allocator())
+fn VarString new_with_capacity(usz capacity, Allocator* allocator = mem::current_allocator())
 {
 	if (capacity < MIN_CAPACITY) capacity = MIN_CAPACITY;
 	StringData* data = allocator.alloc(StringData.sizeof + capacity)!!;
 	data.allocator = allocator;
 	data.len = 0;
 	data.capacity = capacity;
-	return (String)data;
+	return (VarString)data;
 }
 
-fn String new(char[] c)
+fn VarString new(String c)
 {
 	usz len = c.len;
-	String str = new_with_capacity(len);
+	VarString str = new_with_capacity(len);
 	StringData* data = str.data();
 	if (len)
 	{
 		data.len = len;
 		mem::copy(&data.chars, c.ptr, len);
 	}
-	return (String)data;
+	return (VarString)data;
 }
 
-fn ZString String.zstr(String str)
+fn ZString VarString.zstr(VarString str)
 {
 	StringData* data = str.data();
 	if (!data) return (ZString)"";
@@ -52,7 +52,7 @@ fn ZString String.zstr(String str)
 	return (ZString)&data.chars[0];
 }
 
-fn usz String.len(String this)
+fn usz VarString.len(VarString this)
 {
 	if (!this) return 0;
 	return this.data().len;
@@ -61,20 +61,20 @@ fn usz String.len(String this)
 /**
  * @require new_size <= this.len()
  */
-fn void String.chop(String this, usz new_size)
+fn void VarString.chop(VarString this, usz new_size)
 {
 	if (!this) return;
 	this.data().len = new_size;
 }
 
-fn char[] String.str(String str)
+fn String VarString.str(VarString str)
 {
 	StringData* data = (StringData*)str;
-	if (!data) return char[] {};
-	return data.chars[:data.len];
+	if (!data) return String {};
+	return (String)data.chars[:data.len];
 }
 
-fn void String.append_utf32(String* str, Char32[] chars)
+fn void VarString.append_utf32(VarString* str, Char32[] chars)
 {
 	str.reserve(chars.len);
 	foreach (Char32 c : chars)
@@ -86,12 +86,12 @@ fn void String.append_utf32(String* str, Char32[] chars)
 /**
  * @require index < str.len()
  **/
-fn void String.set(String str, usz index, char c)
+fn void VarString.set(VarString str, usz index, char c)
 {
 	str.data().chars[index] = c;
 }
 
-fn void String.append_repeat(String* str, char c, usz times)
+fn void VarString.append_repeat(VarString* str, char c, usz times)
 {
 	if (times == 0) return;
 	str.reserve(times);
@@ -105,7 +105,7 @@ fn void String.append_repeat(String* str, char c, usz times)
 /**
  * @require c < 0x10ffff
  */
-fn void String.append_char32(String* str, Char32 c)
+fn void VarString.append_char32(VarString* str, Char32 c)
 {
 	if (c < 0x7f)
 	{
@@ -139,23 +139,23 @@ fn void String.append_char32(String* str, Char32 c)
     data.chars[data.len++] = (char)(0x80 | (c & 0x3F));
 }
 
-fn String String.tcopy(String* str) = str.copy(mem::temp_allocator());
+fn VarString VarString.tcopy(VarString* str) = str.copy(mem::temp_allocator());
 
-fn String String.copy(String* str, Allocator* allocator = null)
+fn VarString VarString.copy(VarString* str, Allocator* allocator = null)
 {
 	if (!str)
 	{
 		if (allocator) return new_with_capacity(0, allocator);
-		return (String)null;
+		return (VarString)null;
 	}
 	if (!allocator) allocator = mem::current_allocator();
 	StringData* data = str.data();
-	String new_string = new_with_capacity(data.capacity, allocator);
+	VarString new_string = new_with_capacity(data.capacity, allocator);
 	mem::copy((char*)new_string.data(), (char*)data, StringData.sizeof + data.len);
 	return new_string;
 }
 
-fn ZString String.copy_zstr(String* str, Allocator* allocator = mem::current_allocator())
+fn ZString VarString.copy_zstr(VarString* str, Allocator* allocator = mem::current_allocator())
 {
 	usz str_len = str.len();
 	if (!str_len)
@@ -169,14 +169,14 @@ fn ZString String.copy_zstr(String* str, Allocator* allocator = mem::current_all
 	return (ZString)zstr;
 }
 
-fn char[] String.copy_str(String* str, Allocator* allocator = mem::current_allocator())
+fn String VarString.copy_str(VarString* str, Allocator* allocator = mem::current_allocator())
 {
-	return str.copy_zstr(allocator)[:str.len()];
+	return (String)str.copy_zstr(allocator)[:str.len()];
 }
 
-fn char[] String.tcopy_str(String* str) = str.copy_str(mem::temp_allocator()) @inline;
+fn String VarString.tcopy_str(VarString* str) = str.copy_str(mem::temp_allocator()) @inline;
 
-fn bool String.equals(String str, String other_string)
+fn bool VarString.equals(VarString str, VarString other_string)
 {
 	StringData *str1 = str.data();
 	StringData *str2 = other_string.data();
@@ -192,16 +192,16 @@ fn bool String.equals(String str, String other_string)
 	return true;
 }
 
-fn void String.destroy(String* str)
+fn void VarString.destroy(VarString* str)
 {
 	if (!*str) return;
 	StringData* data = str.data();
 	if (!data) return;
 	data.allocator.free(data)!!;
-	*str = (String)null;
+	*str = (VarString)null;
 }
 
-fn bool String.less(String str, String other_string)
+fn bool VarString.less(VarString str, VarString other_string)
 {
 	StringData* str1 = str.data();
 	StringData* str2 = other_string.data();
@@ -218,7 +218,7 @@ fn bool String.less(String str, String other_string)
 	return true;
 }
 
-fn void String.append_chars(String* this, char[] str)
+fn void VarString.append_chars(VarString* this, String str)
 {
 	usz other_len = str.len;
 	if (!other_len) return;
@@ -233,19 +233,19 @@ fn void String.append_chars(String* this, char[] str)
 	data.len += other_len;
 }
 
-fn Char32[] String.copy_utf32(String* this, Allocator* allocator = mem::current_allocator())
+fn Char32[] VarString.copy_utf32(VarString* this, Allocator* allocator = mem::current_allocator())
 {
 	return str::utf8to32(this.str(), allocator) @inline!!;
 }
 
-fn void String.append_string(String* this, String str)
+fn void VarString.append_string(VarString* this, VarString str)
 {
 	StringData* other = (StringData*)str;
 	if (!other) return;
 	this.append(str.str());
 }
 
-fn void String.append_char(String* str, char c)
+fn void VarString.append_char(VarString* str, char c)
 {
 	if (!*str)
 	{
@@ -257,23 +257,23 @@ fn void String.append_char(String* str, char c)
 }
 
 
-macro void String.append(String* str, value)
+macro void VarString.append(VarString* str, value)
 {
 	var $Type = $typeof(value);
 	$switch ($Type):
 		$case char:
 		$case ichar:
 			str.append_char(value);
-		$case String:
+		$case VarString:
 			str.append_string(value);
-		$case char[]:
+		$case String:
 			str.append_chars(value);
 		$case Char32:
 			str.append_char32(value);
 		$default:
 			$if (@convertible($Type, Char32)):
 				str.append_char32(value);
-			$elif (@convertible($Type, char[])):
+			$elif (@convertible($Type, String)):
 				str.append_chars(value);
 			$else:
 				$assert("Unsupported type for appending");
@@ -282,12 +282,12 @@ macro void String.append(String* str, value)
 }
 
 
-private fn StringData* String.data(String str) @inline
+private fn StringData* VarString.data(VarString str) @inline
 {
 	return (StringData*)str;
 }
 
-private fn void String.reserve(String* str, usz addition)
+private fn void VarString.reserve(VarString* str, usz addition)
 {
 	StringData* data = str.data();
 	if (!data)
@@ -299,12 +299,12 @@ private fn void String.reserve(String* str, usz addition)
 	if (data.capacity >= len) return;
 	usz new_capacity = data.capacity *= 2;
 	if (new_capacity < MIN_CAPACITY) new_capacity = MIN_CAPACITY;
-	*str = (String)data.allocator.realloc(data, StringData.sizeof + new_capacity)!!;
+	*str = (VarString)data.allocator.realloc(data, StringData.sizeof + new_capacity)!!;
 }
 
-fn String String.new_concat(String a, String b, Allocator* allocator = mem::current_allocator())
+fn VarString VarString.new_concat(VarString a, VarString b, Allocator* allocator = mem::current_allocator())
 {
-	String string = new_with_capacity(a.len() + b.len(), allocator);
+	VarString string = new_with_capacity(a.len() + b.len(), allocator);
 	string.append(a);
 	string.append(b);
 	return string; 

@@ -6,7 +6,7 @@ fn void! rc_crypt() @test
 	Rc4 rc;
 	rc.init(&&x"63727970746969");
 	char[200] x;
-	char[] text = "The quick brown fox jumps over the lazy dog.";
+	String text = "The quick brown fox jumps over the lazy dog.";
 	rc.crypt(text, &x);
 	char[*] res = x"2ac2fecdd8fbb84638e3a4
 	                820eb205cc8e29c28b9d5d

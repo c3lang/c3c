@@ -224,6 +224,20 @@ static void sema_analyze_to_stage(AnalysisStage stage)
 	halt_on_error();
 }
 
+Type *global_context_string_type(void)
+{
+	if (global_context.string_type) return global_context.string_type;
+	DeclId type = decltable_get(&global_context.symbols, symtab_preset("String", TOKEN_TYPE_IDENT));
+	if (!type) error_exit("Missing definition of 'String' type.");
+	Decl *decl = declptr(type);
+	if (decl->decl_kind == DECL_TYPEDEF || decl->decl_kind == DECL_DISTINCT)
+	{
+		if (type_flatten(decl->type) == type_chars) return global_context.string_type = decl->type;
+
+	}
+	error_exit("Invalid definition of String, expected a type with an underlying char[]");
+}
+
 /**
  * Perform the entire semantic analysis.
  */
@@ -265,7 +279,6 @@ void sema_analysis_run(void)
 
 	// Set a maximum of symbols in the std_module and test module
 	htable_init(&global_context.std_module.symbols, 0x10000);
-
 
 	// Setup the func prototype hash map
 	type_func_prototype_init(0x10000);
@@ -312,9 +325,10 @@ void sema_analysis_run(void)
 		{
 			error_exit("'%s::%s' is not a function pointer.", path->module, ident);
 		}
-		if (!type_func_match(panic_fn_type, type_void, 4, type_chars, type_chars, type_chars, type_uint))
+		Type *string = global_context_string_type();
+		if (!type_func_match(panic_fn_type, type_void, 4, string, string, string, type_uint))
 		{
-			error_exit("Expected panic function to have the signature fn void(char[], char[], char[], uint).");
+			error_exit("Expected panic function to have the signature fn void(String, String, String, uint).");
 		}
 		global_context.panic_var = decl;
 	}

@@ -556,7 +556,6 @@ static LLVMValueRef llvm_get_introspection_for_enum(GenContext *c, Type *type)
 
 	if (!is_dynamic) is_external = false;
 
-	LLVMTypeRef subarray = llvm_get_type(c, type_chars);
 	LLVMValueRef *values = elements ? malloc_arena(elements * sizeof(LLVMValueRef)) : NULL;
 
 	bool obfuscate = decl->obfuscate;
@@ -574,7 +573,7 @@ static LLVMValueRef llvm_get_introspection_for_enum(GenContext *c, Type *type)
 		}
 		values[i] = llvm_emit_string_const(c, name, scratch_buffer_to_string());
 	}
-	LLVMValueRef names = llvm_get_array(subarray, values, elements);
+	LLVMValueRef names = llvm_get_array(c->chars_type, values, elements);
 
 	LLVMValueRef val = llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_ENUM, type_flatten(type), elements, names, is_external);
 	LLVMTypeRef val_type;

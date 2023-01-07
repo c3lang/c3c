@@ -1,7 +1,7 @@
 module std::io::dir;
 import std::io::os;
 // In progress.
-define Path = distinct char[];
+define Path = distinct String;
 
 const PREFERRED_SEPARATOR = USE_WIN32_FILESYSTEM ? '\\' : '/';
 private const USE_WIN32_FILESYSTEM = env::OS_TYPE != OsType.WIN32;
@@ -11,12 +11,12 @@ fault PathResult
 	INVALID_PATH
 }
 
-fn char[]! getcwd(Allocator* allocator = mem::default_allocator())
+fn String! getcwd(Allocator* allocator = mem::default_allocator())
 {
 	return os::getcwd(allocator);
 }
 
-fn char[]! tgetcwd()
+fn String! tgetcwd()
 {
 	return getcwd(mem::temp_allocator()) @inline;
 }
@@ -56,7 +56,7 @@ $else:
 $endif;
 }
 
-private fn usz! root_name_len(char[] path)
+private fn usz! root_name_len(String path)
 {
 	usz len = path.len;
 	if (!len) return 0;
@@ -83,9 +83,9 @@ private fn usz! root_name_len(char[] path)
 	return 0;
 }
 
-private fn void! normalize_path(char[]* path_ref)
+private fn void! normalize_path(String* path_ref)
 {
-	char[] path = *path_ref;
+	String path = *path_ref;
 	if (!path.len) return;
     usz path_start = root_name_len(path)?;
 	usz len = path_start;
@@ -137,16 +137,16 @@ private fn void! normalize_path(char[]* path_ref)
 	*path_ref = path[:len];
 }
 
-fn Path new_path(char[] path)
+fn Path new_path(String path)
 {
-	char[] copy = str::copy(path);
+	String copy = str::copy(path);
 	normalize_path(&copy)!!;
 	return (Path)copy;
 }
 
 fn Path Path.root_name(Path path)
 {
-	char[] path_str = (char[])path;
+	String path_str = (String)path;
 	usz len = root_name_len(path_str)!!;
 	if (!len) return (Path)"";
 	return (Path)path_str[0:len];
@@ -154,7 +154,7 @@ fn Path Path.root_name(Path path)
 
 fn Path Path.root_directory(Path path)
 {
-	char[] path_str = (char[])path;
+	String path_str = (String)path;
 	usz len = path_str.len;
 	if (!len) return (Path)"";
 	$if (USE_WIN32_FILESYSTEM):

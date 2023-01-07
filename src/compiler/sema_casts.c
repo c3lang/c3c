@@ -516,7 +516,7 @@ static bool cast_may_explicit(Type *from_type, Type *to_type, bool is_const)
 			// Allow conversion float -> float/int/bool/enum
 			return type_is_integer(to_type) || type_is_float(to_type) || to_type == type_bool || to_kind == TYPE_ENUM;
 		case TYPE_POINTER:
-			UNREACHABLE
+			return type_is_pointer_sized_or_more(to_type) || to_type == type_bool;
 		case TYPE_ANY:
 			return to_kind == TYPE_POINTER;
 		case TYPE_FAULTTYPE:

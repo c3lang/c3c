@@ -11,7 +11,7 @@ define IntDoubleMap = std::map::HashMap<int, double>;
 
 fn char[] Foo.to_string(Foo* foo, Allocator* allocator = mem::current_allocator())
 {
-	String s = string::new_with_capacity(128, allocator);
+	VarString s = string::new_with_capacity(128, allocator);
 	s.printf("{%s, %p}", foo.x, foo.bar);
 	return s.str();
 }
@@ -91,7 +91,7 @@ entry:
   %9 = insertvalue %variant %8, i64 ptrtoint (ptr @"ct$p$void" to i64), 1
   %10 = getelementptr inbounds [2 x %variant], ptr %varargslots, i64 0, i64 1
   store %variant %9, ptr %10, align 16
-  %11 = call i64 @std_core_string_String_printf(ptr %retparam, ptr %s, ptr @.str.12, i64 8, ptr %varargslots, i64 2)
+  %11 = call i64 @std_core_string_VarString_printf(ptr %retparam, ptr %s, ptr @.str.12, i64 8, ptr %varargslots, i64 2)
   %not_err = icmp eq i64 %11, 0
   br i1 %not_err, label %after_check, label %voiderr
 
@@ -100,7 +100,7 @@ after_check:                                      ; preds = %entry
 
 voiderr:                                          ; preds = %after_check, %entry
   %12 = load ptr, ptr %s, align 8
-  %13 = call { ptr, i64 } @std_core_string_String_str(ptr %12)
+  %13 = call { ptr, i64 } @std_core_string_VarString_str(ptr %12)
   store { ptr, i64 } %13, ptr %result, align 8
   %14 = load { ptr, i64 }, ptr %result, align 8
   ret { ptr, i64 } %14

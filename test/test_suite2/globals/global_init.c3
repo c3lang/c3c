@@ -1,6 +1,6 @@
 // TODO string str = "hello";
 char* str2 = "hello";
-char[] str3 = "hello";
+String str3 = "hello";
 
 
 int[2] a1 = { 1, 2 };

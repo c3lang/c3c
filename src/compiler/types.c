@@ -8,9 +8,9 @@ static Type *flatten_raw_function_type(Type *type);
 
 static struct
 {
-	Type u0, u1, i8, i16, i32, i64, i128, ixx;
+	Type u0, u1, i8, i16, i32, i64, i128;
 	Type u8, u16, u32, u64, u128;
-	Type f16, f32, f64, f128, fxx;
+	Type f16, f32, f64, f128;
 	Type usz, isz, usize, isize, uptr, iptr;
 	Type voidstar, typeid, anyerr, member, typeinfo, untyped_list;
 	Type any, anyfail;

@@ -1,7 +1,7 @@
 module std::io;
 import libc;
 
-fn void! File.open(File* file, char[] filename, char[] mode)
+fn void! File.open(File* file, String filename, String mode)
 {
 	@pool()
 	{
@@ -102,7 +102,7 @@ fn usz File.write(File* file, void* buffer, usz items, usz element_size = 1)
  * @param [&in] file
  * @require file.file `File must be initialized`
  */
-fn usz! File.println(File* file, char[] string)
+fn usz! File.println(File* file, String string)
 {
     usz len = string.len;
     if (len != libc::fwrite(string.ptr, 1, len, file.file)) return IoError.UNKNOWN_ERROR!;
@@ -114,9 +114,9 @@ fn usz! File.println(File* file, char[] string)
  * @param [&in] file
  * @require file.file `File must be initialized`
  */
-fn String File.getline(File* file, Allocator* allocator = mem::current_allocator())
+fn VarString File.getline(File* file, Allocator* allocator = mem::current_allocator())
 {
-	String s = string::new_with_capacity(120, allocator);
+	VarString s = string::new_with_capacity(120, allocator);
 	while (!file.eof())
 	{
 		int c = libc::fgetc(file.file);
@@ -130,12 +130,12 @@ fn String File.getline(File* file, Allocator* allocator = mem::current_allocator
 /**
  * @param [&in] file
  * @require file.file `File must be initialized`
- * @return "a zero terminated char[] (the pointer may be safely cast into a ZString)"
+ * @return "a zero terminated String (the pointer may be safely cast into a ZString)"
  */
-fn char[] File.tgetline(File* file)
+fn String File.tgetline(File* file)
 {
 
-	String s = file.getline(mem::temp_allocator());
+	VarString s = file.getline(mem::temp_allocator());
 	ZString z = s.zstr();
 	return z[:s.len()];
 }

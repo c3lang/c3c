@@ -1065,10 +1065,10 @@ INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMC
 	unsigned test_count = vec_size(decls);
 	LLVMValueRef name_ref;
 	LLVMValueRef decl_ref;
-	LLVMTypeRef chars_type = llvm_get_type(c, type_chars);
+
 	if (test_count)
 	{
-		LLVMValueRef array_of_names = LLVMConstArray(chars_type, names, test_count);
+		LLVMValueRef array_of_names = LLVMConstArray(c->chars_type, names, test_count);
 		LLVMValueRef array_of_decls = LLVMConstArray(LLVMPointerType(opt_test, 0), decls, test_count);
 		LLVMTypeRef arr_type = LLVMTypeOf(array_of_names);
 		name_ref = llvm_add_global_raw(c, ".test_names", arr_type, 0);

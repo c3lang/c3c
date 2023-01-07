@@ -10,7 +10,7 @@ fn void IntArray.someFunc(IntArray *this, usz param) {
     this.push((int)param);
 }
 
-fn int main(char[][] argv)
+fn int main(String[] argv)
 {
     IntArray stk;
     stk.someFunc(256);

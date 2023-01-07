@@ -185,7 +185,7 @@ fn Char32! utf8_to_char32(char* ptr, usz* size)
  * @param utf8 `An UTF-8 encoded slice of bytes`
  * @return `the number of encoded code points`
  **/
-fn usz utf8_codepoints(char[] utf8)
+fn usz utf8_codepoints(String utf8)
 {
 	usz len = 0;
 	foreach (char c : utf8)
@@ -257,7 +257,7 @@ fn usz utf8len_for_utf16(Char16[] utf16)
  * @param utf8 `the utf8 data to calculate from`
  * @return `the length of the resulting UTF16 array`
  **/
-fn usz utf16len_for_utf8(char[] utf8)
+fn usz utf16len_for_utf8(String utf8)
 {
 	usz len = utf8.len;
 	usz len16 = 0;
@@ -297,7 +297,7 @@ fn usz utf16len_for_utf32(Char32[] utf32)
  * @param [out] utf8_buffer
  * @return `the number of bytes written.`
  **/
-fn usz! utf32to8(Char32[] utf32, char[] utf8_buffer)
+fn usz! utf32to8(Char32[] utf32, String utf8_buffer)
 {
 	usz len = utf8_buffer.len;
 	char* ptr = utf8_buffer.ptr;
@@ -317,7 +317,7 @@ fn usz! utf32to8(Char32[] utf32, char[] utf8_buffer)
  * @param [out] utf32_buffer
  * @return `the number of Char32s written.`
  **/
-fn usz! utf8to32(char[] utf8, Char32[] utf32_buffer)
+fn usz! utf8to32(String utf8, Char32[] utf32_buffer)
 {
 	usz len = utf8.len;
 	Char32* ptr = utf32_buffer.ptr;
@@ -361,7 +361,7 @@ fn void! utf16to8_unsafe(Char16[] utf16, char* utf8_buffer)
  * @param [in] utf8 `The UTF8 buffer containing the data to convert.`
  * @param [out] utf32_buffer `the (sufficiently large) buffer to hold the UTF8 data.`
  **/
-fn void! utf8to32_unsafe(char[] utf8, Char32* utf32_buffer)
+fn void! utf8to32_unsafe(String utf8, Char32* utf32_buffer)
 {
 	usz len = utf8.len;
 	for (usz i = 0; i < len;)
@@ -381,7 +381,7 @@ fn void! utf8to32_unsafe(char[] utf8, Char32* utf32_buffer)
  * @param [in] utf8 `The UTF8 buffer containing the data to convert.`
  * @param [out] utf16_buffer `the (sufficiently large) buffer to hold the UTF8 data.`
  **/
-fn void! utf8to16_unsafe(char[] utf8, Char16* utf16_buffer)
+fn void! utf8to16_unsafe(String utf8, Char16* utf16_buffer)
 {
 	usz len = utf8.len;
     for (usz i = 0; i < len;)

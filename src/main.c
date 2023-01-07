@@ -99,7 +99,7 @@ int wmain(int argc, const uint16_t *argv[])
 	{
 		args[i] = win_utf16to8(argv[i]);
 	}
-	main_real(argc, (const char **)args);
+	return main_real(argc, (const char **)args);
 }
 
 #else

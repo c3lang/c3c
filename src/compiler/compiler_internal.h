@@ -1666,12 +1666,13 @@ typedef struct
 	DeclTable symbols;
 	DeclTable generic_symbols;
 	Path std_module_path;
+	Type *string_type;
 	Decl *panic_var;
 	Decl *main;
 	Decl *test_func;
 	Decl *decl_stack[MAX_GLOBAL_DECL_STACK];
-	Decl** decl_stack_bottom;
-	Decl** decl_stack_top;
+	Decl **decl_stack_bottom;
+	Decl **decl_stack_top;
 } GlobalContext;
 
 
@@ -2259,6 +2260,7 @@ void decltable_set(DeclTable *table, Decl *decl);
 
 const char *scratch_buffer_interned(void);
 
+const char *symtab_preset(const char *data, TokenType type);
 const char *symtab_add(const char *symbol, uint32_t len, uint32_t fnv1hash, TokenType *type);
 const char *symtab_find(const char *symbol, uint32_t len, uint32_t fnv1hash, TokenType *type);
 void *llvm_target_machine_create(void);

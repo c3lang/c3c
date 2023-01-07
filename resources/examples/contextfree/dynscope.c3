@@ -1,7 +1,7 @@
 module foo;
 import std::io;
 
-tlocal char[] context_user = "safe";
+tlocal String context_user = "safe";
 
 macro long reallyPerform(task)
 {
@@ -14,7 +14,7 @@ macro long perform(task)
 	return reallyPerform(task);
 }
 
-macro @with_mode(char[] user, #action, ...)
+macro @with_mode(String user, #action, ...)
 {
 	@scope(context_user)
 	{
@@ -27,6 +27,6 @@ fn void main()
 {
 	long val1 = perform("something");
 	long val2 = @with_mode("faster", perform, "reliable");
-	long val3 = perform(char[][] {"something"});
+	long val3 = perform(String[] {"something"});
 	io::printfln("%d %d %d", val1, val2, val3);
 }

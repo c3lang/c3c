@@ -3,11 +3,11 @@ import libc;
 import std::io;
 
 struct Doc { Head *head; }
-struct Head { String* title; }
+struct Head { VarString* title; }
 
 struct Summary
 {
-	String* title;
+	VarString* title;
 	bool ok;
 }
 
@@ -21,11 +21,11 @@ private struct StringData
 
 fn void Summary.print(Summary *s, File out)
 {
-	char[] title = s.title ? s.title.str() : "missing";
+	String title = s.title ? s.title.str() : "missing";
 	out.printf("Summary({ .title = %s, .ok = %s})", title, s.ok);
 }
 
-fn bool contains(char[] haystack, char[] needle)
+fn bool contains(String haystack, String needle)
 {
 	usz len = haystack.len;
 	usz needle_len = needle.len;
@@ -54,13 +54,13 @@ fault ReadError
 	BAD_READ,
 }
 
-fn Doc! readDoc(char[] url)
+fn Doc! readDoc(String url)
 {
 	if (contains(url, "fail")) return ReadError.BAD_READ!;
 	if (contains(url, "head-missing")) return { .head = null };
 	if (contains(url, "title-missing")) return { @dupe(Head { .title = null }) };
-	if (contains(url, "title-empty")) return { @dupe(Head { .title = @dupe((String)null) }) };
-	String str;
+	if (contains(url, "title-empty")) return { @dupe(Head { .title = @dupe((VarString)null) }) };
+	VarString str;
 	str.printf("Title of %s", url);
 	return { @dupe(Head { .title = @dupe(str) }) };
 }
@@ -73,7 +73,7 @@ fn Summary buildSummary(Doc doc)
     };
 }
 
-fn Summary readAndBuildSummary(char[] url)
+fn Summary readAndBuildSummary(String url)
 {
 	return buildSummary(readDoc(url)) ?? Summary { .title = null, .ok = false };
 	/*
@@ -97,18 +97,18 @@ fault TitleResult
 fn bool! isTitleNonEmpty(Doc doc)
 {
 	if (!doc.head) return TitleResult.TITLE_MISSING!;
-	String* head = doc.head.title;
+	VarString* head = doc.head.title;
 	if (!head) return TitleResult.TITLE_MISSING!;
 	return head.len() > 0;
 }
 
 
-fn bool! readWhetherTitleNonEmpty(char[] url)
+fn bool! readWhetherTitleNonEmpty(String url)
 {
     return isTitleNonEmpty(readDoc(url));
 }
 
-fn char[] bool_to_string(bool b)
+fn String bool_to_string(bool b)
 {
 	return b ? "true" : "false";
 }
@@ -116,10 +116,10 @@ fn char[] bool_to_string(bool b)
 
 fn void main()
 {
-    const char[][] URLS = { "good", "title-empty", "title-missing", "head-missing", "fail" };
+    const String[] URLS = { "good", "title-empty", "title-missing", "head-missing", "fail" };
     DynamicArenaAllocator dynamic_arena;
 	dynamic_arena.init(1024);
-    foreach (char[] url : URLS)
+    foreach (String url : URLS)
     {
         mem::@scoped(&dynamic_arena)
         {
@@ -128,7 +128,7 @@ fn void main()
             io::printf("  Summary: ");
             summary.print(io::stdout());
             io::println("");
-            char[] title_sure = summary.title ? summary.title.str() : "";
+            String title_sure = summary.title ? summary.title.str() : "";
             io::printf("  Title: %s\n", title_sure);
             bool! has_title = readWhetherTitleNonEmpty(url);
             // This looks a bit less than elegant, but as you see it's mostly due to having to

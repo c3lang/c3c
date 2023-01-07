@@ -2,7 +2,7 @@ module std::core::string::iterator;
 
 struct StringIterator
 {
-	char[] utf8;
+	String utf8;
 	usz current;
 }
 

@@ -23,14 +23,14 @@ int err_count = 0;
 fn int! askGuess(int high)
 {
 	libc::printf("Guess a number between 1 and %d: ", high);
-	char[] text = readLine()?;
+	String text = readLine()?;
 	char* end = null;
 	int value = (int)libc::strtol(text.ptr, &end, 10);
 	if (end && end[0] >= ' ') return InputResult.NOT_AN_INT!;
 	return value;
 }
 
-fn char[]! readLine()
+fn String! readLine()
 {
 	char* chars = tmalloc(1024)?;
 	isz loaded = getline(&chars, &&(usz)1023, libc::stdin());
@@ -67,7 +67,7 @@ fn void! Game.play(Game *game)
 
 fn void Game.report(Game *game, int guess)
 {
-	char[] desc = {|
+	String desc = {|
 		if (guess < game.answer) return "too low";
 		if (guess > game.answer) return "too high";
 		return "the answer";

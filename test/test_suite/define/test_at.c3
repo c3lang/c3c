@@ -12,6 +12,6 @@ import private foo;
 define intHello = foo::@hello<int>; // #error: cannot be aliased
 define @intHello = foo::hello<int>; // #error: cannot use
 
-fn void main(char[][] args) {
+fn void main(String[] args) {
     @intHello(42);
 }

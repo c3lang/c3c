@@ -27,7 +27,7 @@ static inline LLVMTypeRef create_fault_type(GenContext *c)
 {
 	LLVMTypeRef type = LLVMStructCreateNamed(c->context, ".fault");
 	LLVMTypeRef typeid_type = llvm_get_type(c, type_typeid);
-	LLVMTypeRef chars_type = llvm_get_type(c, type_chars);
+	LLVMTypeRef chars_type = c->chars_type;
 	LLVMTypeRef fault_type[] = {
 			[0] = typeid_type,
 			[1] = chars_type,
@@ -123,11 +123,11 @@ void gencontext_begin_module(GenContext *c)
 	}
 	c->bool_type = LLVMInt1TypeInContext(c->context);
 	c->byte_type = LLVMInt8TypeInContext(c->context);
+	c->chars_type = llvm_get_type(c, type_chars);
 	c->introspect_type = create_introspection_type(c);
 	c->fault_type = create_fault_type(c);
 	c->size_type = llvm_get_type(c, type_usize);
 	c->char_ptr_type = LLVMPointerType(c->byte_type, 0);
-	c->chars_type = llvm_get_type(c, type_chars);
 	if (c->panic_var) c->panic_var->backend_ref = NULL;
 
 	if (active_target.debug_info != DEBUG_INFO_NONE)

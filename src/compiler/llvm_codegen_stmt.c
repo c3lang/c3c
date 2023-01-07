@@ -1245,13 +1245,13 @@ LLVMValueRef llvm_emit_string_const(GenContext *c, const char *str, const char *
 	if (!len) return llvm_emit_empty_string_const(c);
 	LLVMValueRef val = llvm_emit_zstring_named(c, str, extname);
 	LLVMValueRef data[2] = { val, llvm_const_int(c, type_usize, strlen(str)) };
-	return llvm_get_struct_named(llvm_get_type(c, type_chars), data, 2);
+	return llvm_get_struct_named(c->chars_type, data, 2);
 }
 
 LLVMValueRef llvm_emit_empty_string_const(GenContext *c)
 {
 	LLVMValueRef data[2] = { LLVMConstNull(c->char_ptr_type), llvm_const_int(c, type_usize, 0) };
-	return llvm_get_struct_named(llvm_get_type(c, type_chars), data, 2);
+	return llvm_get_struct_named(c->chars_type, data, 2);
 }
 
 LLVMValueRef llvm_emit_zstring(GenContext *c, const char *str)
