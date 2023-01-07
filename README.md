@@ -1,8 +1,10 @@
 # C3 Language
 
-C3 is a C-like language striving to be an evolution of C, rather than a 
-completely new language. As an alternative in the C/C++ niche it
-aims to be fast and close to the metal.
+C3 is a programming language that builds on the syntax and semantics of the C language,
+with the goal of evolving it while still retaining familiarity for C programmers. 
+
+It's an evolution, not a revolution: the C-like 
+for programmers who like C.
 
 The manual for C3 can be found at [www.c3-lang.org](http://www.c3-lang.org).
 
@@ -155,10 +157,10 @@ The compiler is currently verified to compile on Linux, Windows and MacOS.
 ### Installing
 
 #### Installing on Windows with precompiled binaries
-1. Make sure you have Visual Studio 17 2022 installed or alternatively install the "Buildtools for Visual Studio" (https://aka.ms/vs/17/release/vs_BuildTools.exe) and then select "Desktop development with C++" (there is also `c3c/resources/install_win_reqs.bat` to automate this)
-2. Download the zip file: [https://github.com/c3lang/c3c/releases/download/latest/c3-windows.zip](https://github.com/c3lang/c3c/releases/download/latest/c3-windows.zip) 
+1. Download the zip file: [https://github.com/c3lang/c3c/releases/download/latest/c3-windows.zip](https://github.com/c3lang/c3c/releases/download/latest/c3-windows.zip) 
 (debug version [here](https://github.com/c3lang/c3c/releases/download/latest/c3-windows-debug.zip))
-3. Unzip exe and standard lib.
+2. Unzip exe and standard lib.
+3. If you don't have Visual Studio 17 installed you can either do so, or run the `msvc_build_libraries.py` Python script which will download the necessary files to compile on Windows. 
 4. Run `c3c.exe`.
 
 #### Installing on Debian with precompiled binaries
@@ -282,6 +284,10 @@ You can try it out by running some sample code: `./c3c compile ../resources/exam
 7. Set up CMake build for debug: `cmake ..`. At this point you may need to manually 
 provide the link path to the LLVM CMake directories, e.g. `cmake -DLLVM_DIR=/usr/local/opt/llvm/lib/cmake/llvm/ ..`
 8. Build: `cmake --build .`
+
+*A note on compiling for Linux/Unix/MacOS: to be able to fetch vendor libraries
+libcurl is needed. The CMake script should detect it if it is available. Note that
+this functionality is non-essential and it is perfectly fine to user the compiler without it.*
 
 #### Licensing
 
