@@ -386,7 +386,7 @@ jobs:
           tag_name: latest
           release_name: latest
           draft: false
-          prerelease: true
+          prerelease: false
 
       - name: upload windows
         uses: actions/upload-release-asset@v1
