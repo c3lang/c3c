@@ -176,7 +176,6 @@ static inline bool sema_create_const_params(SemaContext *context, Expr *expr, Ty
 static inline void sema_create_const_membersof(SemaContext *context, Expr *expr, Type *type, AlignSize alignment,
                                                AlignSize offset);
 void expr_insert_widening_type(Expr *expr, Type *infer_type);
-static Expr *expr_access_inline_member(Expr *parent, Decl *parent_decl);
 static inline int64_t expr_get_index_max(Expr *expr);
 static inline bool expr_both_any_integer_or_integer_vector(Expr *left, Expr *right);
 static inline bool expr_both_any_integer_or_integer_bool_vector(Expr *left, Expr *right);
@@ -288,7 +287,7 @@ Expr *sema_ct_eval_expr(SemaContext *c, bool is_type_eval, Expr *inner, bool rep
 	return inner;
 }
 
-static Expr *expr_access_inline_member(Expr *parent, Decl *parent_decl)
+Expr *expr_access_inline_member(Expr *parent, Decl *parent_decl)
 {
 	Expr *embedded_struct = expr_new(EXPR_ACCESS, parent->span);
 	embedded_struct->resolve_status = RESOLVE_DONE;

@@ -81,6 +81,7 @@ void sema_analyze_stage(Module *module, AnalysisStage stage);
 
 bool sema_analyse_expr_lvalue(SemaContext *context, Expr *expr);
 bool sema_analyse_expr_lvalue_fold_const(SemaContext *context, Expr *expr);
+Expr *expr_access_inline_member(Expr *parent, Decl *parent_decl);
 bool sema_analyse_ct_expr(SemaContext *context, Expr *expr);
 Decl *sema_find_operator(SemaContext *context, Expr *expr, OperatorOverload operator_overload);
 bool sema_insert_method_call(SemaContext *context, Expr *method_call, Decl *method_decl, Expr *parent, Expr **arguments);
