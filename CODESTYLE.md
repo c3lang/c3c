@@ -116,7 +116,8 @@ more tests as you go along.
 ### Don't bring in dependencies
 
 External libraries has maintainability issues. Try to depend on as few libraries
-as possible. Currently c3c only depends on LLVM and libc.
+as possible. Currently, c3c only depends on LLVM and libc with an optional 
+dependency on libcurl.
 
 Do use rewrites of subsets of other libraries to bring in functionality, but avoid
 copying in libraries that needs to be updated separately.
