@@ -181,6 +181,7 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 {
 	Decl *decl = sema_resolve_symbol(context, type_info->unresolved.name, type_info->unresolved.path, type_info->span);
 
+	assert(decl);
 	// Already handled
 	if (!decl_ok(decl))
 	{

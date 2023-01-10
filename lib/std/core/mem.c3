@@ -3,14 +3,35 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::mem;
 
-macro @volatile_load(&x)
+macro @volatile_load(&x) @builtin
 {
     return $$volatile_load(&x);
 }
 
-macro @volatile_store(&x, y)
+macro @volatile_store(&x, y) @builtin
 {
     return $$volatile_store(&x, y);
+}
+
+enum AtomicOrdering : int
+{
+	NOT_ATOMIC,     // Not atomic
+	UNORDERED,      // No lock
+	MONOTONIC,      // Consistent ordering
+	AQUIRE,         // Barrier locking load/store
+	RELEASE,        // Barrier releasing load/store
+	AQUIRE_RELEASE, // Barrier fence to load/store
+	SEQ_CONSISTENT, // Aquire semantics, ordered with other seq_consistent
+}
+
+macro compare_exchange(ptr, compare, value, AtomicOrdering $success, AtomicOrdering $failure, bool $volatile = true, bool $weak = false, usz $alignment = 0)
+{
+	return $$compare_exchange(ptr, compare, value, $volatile, $weak, $success.ordinal, $failure.ordinal, $alignment);
+}
+
+macro compare_exchange_volatile(ptr, compare, value, AtomicOrdering $success, AtomicOrdering $failure)
+{
+	return compare_exchange(ptr, compare, value, $success, $failure, true);
 }
 
 /**

@@ -218,6 +218,18 @@ struct Tm
     char *tm_zone;	/* timezone abbreviation */
 }
 
+struct TimeSpec
+{
+	Time s;
+	ulong ns;
+}
+
+const int TIME_UTC = 1;
+
+
+extern fn int timespec_get(TimeSpec* ts, int base);
+extern fn int nanosleep(TimeSpec* req, TimeSpec* remaining);
+
 // Likely wrong, must be per platform.
 const CLOCKS_PER_SEC = 1000000;
 
@@ -243,6 +255,7 @@ extern fn SignalFunction signal(int sig, SignalFunction function);
 
 module libc::errno;
 
+const Errno OK = 0;
 const Errno EPERM = 1;      // Operation not permitted
 const Errno ENOENT = 2;     // No such file or directory
 const Errno ESRCH = 3;      // No such process
@@ -385,24 +398,26 @@ const Errno EISCONN = 106; /* Transport endpoint is already connected */
 const Errno ENOTCONN = 107; /* Transport endpoint is not connected */
 const Errno ESHUTDOWN = 108; /* Cannot send after transport endpoint shutdown */
 const Errno ETOOMANYREFS = 109; /* Too many references: cannot splice */
-const Errno ETIMEDOUT = 110; /* Connection timed out */
 const Errno ECONNREFUSED = 111; /* Connection refused */
 const Errno EHOSTDOWN = 112; /* Host is down */
 const Errno EHOSTUNREACH = 113; /* No route to host */
 */
 $if (env::OS_TYPE == OsType.MACOSX):
+const Errno ETIMEDOUT = 60;     // Connection timed out
 const Errno EINPROGRESS = 36;   // Operation now in progress MacOS
 const Errno EALREADY = 37;      // Operation already in progress MacOS
 const Errno EDQUOT = 69;        // Quota exceeded, MacOS
 const Errno EWOULDBLOCK = 35;   // Operation would block
 
 $elif (env::OS_TYPE == OsType.WIN32):
+const Errno ETIMEDOUT = 138;    // Connection timed out
 const Errno EALREADY = 103;     // Operation already in progress
 const Errno EINPROGRESS = 112;  // Operation now in progress Win32
 const Errno EDQUOT = -122;      // Quota exceeded, not in Win32
 const Errno EWOULDBLOCK = 140;  // Operation would block
 
 $else:
+const Errno ETIMEDOUT = 110;    // Connection timed out
 const Errno EALREADY = 114;     // Operation already in progress
 const Errno EINPROGRESS = 115;  // Operation now in progress
 const Errno EDQUOT = 122;       // Quota exceeded

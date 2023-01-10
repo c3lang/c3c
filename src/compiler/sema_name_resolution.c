@@ -548,7 +548,7 @@ INLINE Decl *sema_resolve_symbol_common(SemaContext *context, NameResolve *name_
 		decl = sema_resolve_path_symbol(context, name_resolve);
 		if (!decl && !name_resolve->maybe_decl && !name_resolve->path_found)
 		{
-			if (!name_resolve->suppress_error) return NULL;
+			if (name_resolve->suppress_error) return NULL;
 			SEMA_ERROR(name_resolve->path, "Unknown module '%.*s', did you type it right?", name_resolve->path->len, name_resolve->path->module);
 			return poisoned_decl;
 		}

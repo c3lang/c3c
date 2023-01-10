@@ -54,6 +54,56 @@ INLINE void llvm_emit_shufflevector(GenContext *c, BEValue *result_value, Expr *
 	return;
 }
 
+static LLVMAtomicOrdering ordering_to_llvm(int value)
+{
+	switch (value)
+	{
+		case 0: return LLVMAtomicOrderingNotAtomic;
+		case 1: return LLVMAtomicOrderingUnordered;
+		case 2: return LLVMAtomicOrderingMonotonic;
+		case 3: return LLVMAtomicOrderingAcquire;
+		case 4: return LLVMAtomicOrderingRelease;
+		case 5: return LLVMAtomicOrderingAcquireRelease;
+		case 6: return LLVMAtomicOrderingSequentiallyConsistent;
+		default: UNREACHABLE;
+	}
+}
+
+INLINE void llvm_emit_compare_exchange(GenContext *c, BEValue *result_value, Expr *expr)
+{
+	Expr **args = expr->call_expr.arguments;
+	LLVMValueRef normal_args[3];
+	BEValue value;
+	for (int i = 0; i < 3; i++)
+	{
+		llvm_emit_expr(c, &value, args[i]);
+		llvm_value_rvalue(c, &value);
+		normal_args[i] = value.value;
+	}
+	Type *type = value.type;
+	bool is_volatile = args[3]->const_expr.b;
+	bool is_weak = args[4]->const_expr.b;
+	uint64_t success_ordering = args[5]->const_expr.ixx.i.low;
+	uint64_t failure_ordering = args[6]->const_expr.ixx.i.low;
+	uint64_t alignment = args[7]->const_expr.ixx.i.low;
+	LLVMValueRef result = LLVMBuildAtomicCmpXchg(c->builder, normal_args[0], normal_args[1], normal_args[2],
+	                                             ordering_to_llvm(success_ordering), ordering_to_llvm(failure_ordering), false);
+	if (alignment && alignment >= type_abi_alignment(type))
+	{
+		LLVMSetAlignment(result, alignment);
+	}
+	if (is_volatile)
+	{
+		LLVMSetVolatile(result, true);
+	}
+	if (is_weak)
+	{
+		LLVMSetWeak(result, true);
+	}
+
+	llvm_value_set(result_value, llvm_emit_extract_value(c, result, 0), type);
+}
+
 INLINE void llvm_emit_unreachable(GenContext *c, BEValue *result_value, Expr *expr)
 {
 	llvm_value_set(result_value, LLVMBuildUnreachable(c->builder), type_void);
@@ -524,6 +574,9 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 			return;
 		case BUILTIN_SHUFFLEVECTOR:
 			llvm_emit_shufflevector(c, result_value, expr);
+			return;
+		case BUILTIN_COMPARE_EXCHANGE:
+			llvm_emit_compare_exchange(c, result_value, expr);
 			return;
 		case BUILTIN_FRAMEADDRESS:
 		{
