@@ -235,6 +235,16 @@ static inline bool sema_expr_analyse_shufflevector(SemaContext *context, Expr *e
 	return true;
 }
 
+bool is_valid_atomicity(Expr* expr)
+{
+	if (!expr_is_const_int(expr) || !int_fits(expr->const_expr.ixx, TYPE_U8) || expr->const_expr.ixx.i.low > 6)
+	{
+		SEMA_ERROR(expr, "Expected a constant integer value < 8.");
+		return false;
+	}
+	return true;
+}
+
 bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 {
 	expr->call_expr.is_builtin = true;
@@ -288,6 +298,46 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_UNREACHABLE:
 			rtype = type_void;
 			break;
+		case BUILTIN_COMPARE_EXCHANGE:
+		{
+			Type *comp_type = type_no_optional(args[0]->type->canonical);
+			if (!type_is_pointer(comp_type))
+			{
+				SEMA_ERROR(args[0], "Expected a pointer here.");
+				return false;
+			}
+			Type *pointee = comp_type->pointer;
+			for (int i = 1; i < 3; i++)
+			{
+				if (pointee != type_no_optional(args[i]->type->canonical))
+				{
+					SEMA_ERROR(args[i], "Expected an argument of type %s.", type_quoted_error_string(pointee));
+					return false;
+				}
+			}
+			for (int i = 3; i < 5; i++)
+			{
+				if (args[i]->type->canonical != type_bool || !expr_is_const(args[i]))
+				{
+					SEMA_ERROR(args[i], "Expected a constant boolean value.");
+					return false;
+				}
+			}
+			for (int i = 5; i < 7; i++)
+			{
+				if (!is_valid_atomicity(args[i])) return false;
+			}
+			Expr *align = args[7];
+			if (!expr_is_const_int(align)
+				|| !int_fits(align->const_expr.ixx, TYPE_U64)
+				|| (!is_power_of_two(align->const_expr.ixx.i.low) && align->const_expr.ixx.i.low))
+			{
+				SEMA_ERROR(args[7], "Expected a constant power-of-two alignment or zero.");
+				return false;
+			}
+			rtype = args[1]->type;
+			break;
+		}
 		case BUILTIN_SYSCLOCK:
 			rtype = type_ulong;
 			break;
@@ -657,6 +707,8 @@ static inline unsigned builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_MEMSET:
 		case BUILTIN_MEMSET_INLINE:
 			return 5;
+		case BUILTIN_COMPARE_EXCHANGE:
+			return 8;
 		case BUILTIN_SHUFFLEVECTOR:
 		case BUILTIN_NONE:
 			UNREACHABLE
