@@ -15,13 +15,13 @@ macro @volatile_store(&x, y) @builtin
 
 enum AtomicOrdering : int
 {
-	NOT_ATOMIC,     // Not atomic
-	UNORDERED,      // No lock
-	MONOTONIC,      // Consistent ordering
-	AQUIRE,         // Barrier locking load/store
-	RELEASE,        // Barrier releasing load/store
-	AQUIRE_RELEASE, // Barrier fence to load/store
-	SEQ_CONSISTENT, // Aquire semantics, ordered with other seq_consistent
+	NOT_ATOMIC,         // Not atomic
+	UNORDERED,          // No lock
+	MONOTONIC,          // Consistent ordering
+	AQUIRE,             // Barrier locking load/store
+	RELEASE,            // Barrier releasing load/store
+	ACQUIRE_RELEASE,    // Barrier fence to load/store
+	SEQ_CONSISTENT,     // Acquire semantics, ordered with other seq_consistent
 }
 
 macro compare_exchange(ptr, compare, value, AtomicOrdering $success, AtomicOrdering $failure, bool $volatile = true, bool $weak = false, usz $alignment = 0)
