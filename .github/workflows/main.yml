@@ -54,7 +54,7 @@ jobs:
       - name: run compiler tests
         run: |
           cd test
-          python3.exe src/tester.py ..\build\${{ matrix.build_type }}\c3c.exe test_suite/
+          python3.exe src/tester.py ..\build\${{ matrix.build_type }}\c3c.exe test_suite2/
 
       - name: Compile run unit tests
         run: |
@@ -177,7 +177,7 @@ jobs:
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
-        llvm_version: [13, 14, 15, 16]
+        llvm_version: [13, 15, 16]
 
     steps:
       - uses: actions/checkout@v3

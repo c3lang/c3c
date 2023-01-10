@@ -10,7 +10,7 @@ Precompiled binaries for the following operating systems are available:
  
 - Windows x64 [download](https://github.com/c3lang/c3c/releases/download/latest/c3-windows.zip), [install instructions](#installing-on-windows-with-precompiled-binaries).
 - Debian x64 [download](https://github.com/c3lang/c3c/releases/download/latest/c3-linux.tar.gz), [install instructions](#installing-on-debian-with-precompiled-binaries).
-- MacOS x64 [download](https://github.com/c3lang/c3c/releases/download/untagged-6fcf1b0c7b17361947ce/c3-macos.zip), [install instructions](#installing-on-mac-with-precompiled-binaries).
+- MacOS x64 [download](https://github.com/c3lang/c3c/releases/download/latest/c3-macos.zip), [install instructions](#installing-on-mac-with-precompiled-binaries).
 
 The manual for C3 can be found at [www.c3-lang.org](http://www.c3-lang.org).
 
@@ -211,7 +211,7 @@ A `c3c` executable will be found under `bin/`.
 #### Installing on OS X using Homebrew
 
 2. Install CMake: `brew install cmake`
-3. Install LLVM 13: `brew install llvm`
+3. Install LLVM 15: `brew install llvm`
 4. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
 5. Enter the C3C directory `cd c3c`.
 6. Create a build directory `mkdir build`
@@ -266,7 +266,7 @@ You can try it out by running some sample code: `c3c.exe compile ../resources/ex
 
 1. Make sure you have a C compiler that handles C11 and a C++ compiler, such as GCC or Clang. Git also needs to be installed.
 2. Install CMake: `sudo apt install cmake`
-3. Install LLVM 13 (or greater: C3C supports LLVM 13-16): `sudo apt-get install clang-13 zlib1g zlib1g-dev libllvm13 llvm-13 llvm-13-dev llvm-13-runtime liblld-13-dev liblld-13`
+3. Install LLVM 15 (or greater: C3C supports LLVM 13-16): `sudo apt-get install clang-15 zlib1g zlib1g-dev libllvm15 llvm-15 llvm-15-dev llvm-15-runtime liblld-15-dev liblld-15`
 4. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
 5. Enter the C3C directory `cd c3c`.
 6. Create a build directory `mkdir build`
@@ -282,7 +282,7 @@ You can try it out by running some sample code: `./c3c compile ../resources/exam
 #### Compiling on other Linux / Unix variants
 
 1. Install CMake.
-2. Install or compile LLVM and LLD *libraries* (version 13+ or higher)
+2. Install or compile LLVM and LLD *libraries* (version 15+ or higher)
 3. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
 4. Enter the C3C directory `cd c3c`.
 5. Create a build directory `mkdir build`
