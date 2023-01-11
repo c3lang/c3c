@@ -32,7 +32,7 @@ fn void testAllocator(Allocator* a, int val)
 	io::printf("Aligned with offset %p, align 16: %s offset align 128: %s\n", data, mem::ptr_is_aligned(data, 16), mem::ptr_is_aligned(data + 16, 128));
 	data = a.realloc_aligned(data, val + 1, 128, 0)!!;
 	io::printf("No offset %p, align 16: %s offset align 128: %s\n", data, mem::ptr_is_aligned(data, 16), mem::ptr_is_aligned(data + 16, 128));
-	io::printfln("Freeing %p", data);
+	io::printfn("Freeing %p", data);
 	a.free_aligned(data)!!;
 }
 fn void main()

@@ -64,6 +64,5 @@ declare double @"gen$$double_addMult"(double, double, double)
 // #expect: gen.double.ll
 
 define double @"gen$$double_addMult"(double %0, double %1, double %2)
-entry:
   %3 = call double @llvm.fmuladd.f64(double %0, double %1, double %2)
   ret double %3

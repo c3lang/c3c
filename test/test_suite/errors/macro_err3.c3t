@@ -24,14 +24,14 @@ entry:
   br label %opt_block_cleanup
 
 opt_block_cleanup:                                ; preds = %entry
-  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str.2, i32 0, i32 0))
+  %0 = call i32 (ptr, ...) @printf(ptr @.str.2)
   br label %else_block
 
 else_block:                                       ; preds = %opt_block_cleanup
   br label %phi_block
 
 phi_block:                                        ; preds = %else_block
-  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 2)
-  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str.3, i32 0, i32 0))
+  %1 = call i32 (ptr, ...) @printf(ptr @.str, i32 2)
+  %2 = call i32 (ptr, ...) @printf(ptr @.str.3)
   ret void
 }

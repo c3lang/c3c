@@ -1,0 +1,179 @@
+// #target: macos-x64
+module test;
+extern fn int printf(char *, ...);
+extern fn int foo();
+
+fn int main2() {
+  while (foo()) {
+     switch (foo()) {
+     case 0:
+     case 1:
+     case 2:
+     case 3:
+       printf("3");
+       nextcase;
+     case 4: printf("4"); nextcase;
+     case 5:
+     case 6:
+     default:
+     }
+   }
+   return 0;
+}
+
+fn double test(uint x)
+{
+  double[30] student_t={0.0 , 12.706 , 4.303 , 3.182 , 2.776 , 2.571 ,
+                               2.447 , 2.365 , 2.306 , 2.262 , 2.228 ,
+                               2.201 , 2.179 , 2.160 , 2.145 , 2.131 ,
+                               2.120 , 2.110 , 2.101 , 2.093 , 2.086 ,
+                               2.080 , 2.074 , 2.069 , 2.064 , 2.060 ,
+                               2.056 , 2.052 , 2.048 , 2.045 };
+  return student_t[x];
+}
+
+struct St {
+  int i;
+  short s1, s2;
+}
+
+extern fn St func_returning_struct();
+
+fn void loop() {
+  func_returning_struct();
+}
+
+struct FooSt {
+  char p;
+  short q;
+  char r;
+  int x;
+  short y, z;
+  int q2;
+}
+
+extern fn int testF(FooSt x, float);
+extern fn int testE(char,short,char,int,int,float);
+fn void test3(FooSt *x) {
+  x.q = 1;
+}
+
+fn void test2(FooSt y) {
+  testE(y.p, y.q, y.r, y.x, y.y, 0.1f);
+  testF(y, 0.1f);
+  test2(y);
+  test3(&y);
+}
+
+/* #expect: test.ll
+
+
+define i32 @test_main2() #0 {
+entry:
+  %switch = alloca i32, align 4
+  br label %loop.cond
+
+loop.cond:                                        ; preds = %switch.exit, %entry
+  %0 = call i32 @foo()
+  %intbool = icmp ne i32 %0, 0
+  br i1 %intbool, label %loop.body, label %loop.exit
+
+loop.body:                                        ; preds = %loop.cond
+  %1 = call i32 @foo()
+  store i32 %1, i32* %switch, align 4
+  br label %switch.entry
+
+switch.entry:                                     ; preds = %loop.body
+  %2 = load i32, i32* %switch, align 4
+  switch i32 %2, label %switch.exit [
+    i32 0, label %switch.case
+    i32 1, label %switch.case
+    i32 2, label %switch.case
+    i32 3, label %switch.case
+    i32 4, label %switch.case1
+    i32 5, label %switch.exit
+    i32 6, label %switch.exit
+  ]
+
+switch.case:                                      ; preds = %switch.entry, %switch.entry, %switch.entry, %switch.entry
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @.str, i32 0, i32 0))
+  br label %switch.case1
+
+switch.case1:                                     ; preds = %switch.entry, %switch.case
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @.str.1, i32 0, i32 0))
+  br label %switch.exit
+
+switch.exit:                                      ; preds = %switch.entry, %switch.entry, %switch.case1, %switch.entry
+  br label %loop.cond
+
+loop.exit:                                        ; preds = %loop.cond
+  ret i32 0
+}
+
+; Function Attrs: nounwind
+define double @test_test(i32 %0) #0 {
+entry:
+  %student_t = alloca [30 x double], align 16
+  %1 = bitcast [30 x double]* %student_t to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 16 %1, i8* align 16 bitcast ([30 x double]* @.__const to i8*), i32 240, i1 false)
+  %zext = zext i32 %0 to i64
+  %2 = getelementptr inbounds [30 x double], [30 x double]* %student_t, i64 0, i64 %zext
+  %3 = load double, double* %2, align 8
+  ret double %3
+}
+
+; Function Attrs: nounwind
+declare i64 @func_returning_struct() #0
+
+; Function Attrs: nounwind
+define void @test_loop() #0 {
+entry:
+  %result = alloca %St, align 4
+  %0 = call i64 @func_returning_struct()
+  %1 = bitcast %St* %result to i64*
+  store i64 %0, i64* %1, align 4
+  ret void
+}
+
+; Function Attrs: nounwind
+declare i32 @testF(%FooSt* byval(%FooSt) align 8, float) #0
+
+; Function Attrs: nounwind
+declare i32 @testE(i8 zeroext, i16 signext, i8 zeroext, i32, i32, float) #0
+
+; Function Attrs: nounwind
+define void @test_test3(%FooSt* %0) #0 {
+entry:
+  %1 = getelementptr inbounds %FooSt, %FooSt* %0, i32 0, i32 1
+  store i16 1, i16* %1, align 2
+  ret void
+}
+
+; Function Attrs: nounwind
+define void @test_test2(%FooSt* byval(%FooSt) align 8 %0) #0 {
+entry:
+  %indirectarg = alloca %FooSt, align 8
+  %indirectarg1 = alloca %FooSt, align 8
+  %1 = getelementptr inbounds %FooSt, %FooSt* %0, i32 0, i32 0
+  %2 = load i8, i8* %1, align 4
+  %3 = getelementptr inbounds %FooSt, %FooSt* %0, i32 0, i32 1
+  %4 = load i16, i16* %3, align 2
+  %5 = getelementptr inbounds %FooSt, %FooSt* %0, i32 0, i32 2
+  %6 = load i8, i8* %5, align 4
+  %7 = getelementptr inbounds %FooSt, %FooSt* %0, i32 0, i32 3
+  %8 = load i32, i32* %7, align 4
+  %9 = getelementptr inbounds %FooSt, %FooSt* %0, i32 0, i32 4
+  %10 = load i16, i16* %9, align 4
+  %sisiext = sext i16 %10 to i32
+  %11 = call i32 @testE(i8 %2, i16 %4, i8 %6, i32 %8, i32 %sisiext, float 0x3FB99999A0000000)
+  %12 = bitcast %FooSt* %indirectarg to i8*
+  %13 = bitcast %FooSt* %0 to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %12, i8* align 4 %13, i32 20, i1 false)
+  %14 = call i32 @testF(%FooSt* byval(%FooSt) align 8 %indirectarg, float 0x3FB99999A0000000)
+  %15 = bitcast %FooSt* %indirectarg1 to i8*
+  %16 = bitcast %FooSt* %0 to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %15, i8* align 4 %16, i32 20, i1 false)
+  call void @test_test2(%FooSt* byval(%FooSt) align 8 %indirectarg1)
+  call void @test_test3(%FooSt* %0)
+  ret void
+}

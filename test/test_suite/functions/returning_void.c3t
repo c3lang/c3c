@@ -7,8 +7,8 @@ fn void test1()
 // #expect: returning_void.ll
 
   %x = alloca i32, align 4
-  store i32 0, i32* %x, align 4
-  %0 = load i32, i32* %x, align 4
+  store i32 0, ptr %x, align 4
+  %0 = load i32, ptr %x, align 4
   %eq = icmp eq i32 %0, 0
   br i1 %eq, label %if.then, label %if.exit
 

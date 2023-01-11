@@ -54,7 +54,7 @@ jobs:
       - name: run compiler tests
         run: |
           cd test
-          python3.exe src/tester.py ..\build\${{ matrix.build_type }}\c3c.exe test_suite2/
+          python3.exe src/tester.py ..\build\${{ matrix.build_type }}\c3c.exe test_suite/
 
       - name: Compile run unit tests
         run: |
@@ -119,7 +119,7 @@ jobs:
       - name: run compiler tests
         run: |
           cd test
-          python3 src/tester.py ../build/c3c.exe test_suite2/
+          python3 src/tester.py ../build/c3c.exe test_suite/
 
 
   build-msys2-clang:
@@ -168,7 +168,7 @@ jobs:
       - name: run compiler tests
         run: |
           cd test
-          python3 src/tester.py ../build/c3c.exe test_suite/
+          python3 src/tester.py ../build/c3c.exe test_suite14/
 
   build-linux:
     runs-on: ubuntu-latest
@@ -237,9 +237,9 @@ jobs:
         run: |
           cd test
           if [[ "${{matrix.llvm_version}}" < 15 ]]; then
-            python3 src/tester.py ../build/c3c test_suite/
+            python3 src/tester.py ../build/c3c test_suite14/
           else
-            python3 src/tester.py ../build/c3c test_suite2/
+            python3 src/tester.py ../build/c3c test_suite/
           fi
 
       - name: bundle_output
@@ -317,9 +317,9 @@ jobs:
         run: |
           cd test
           if [[ "${{matrix.llvm_version}}" < 15 ]]; then
-            python3 src/tester.py ../build/c3c test_suite/
+            python3 src/tester.py ../build/c3c test_suite14/
           else
-            python3 src/tester.py ../build/c3c test_suite2/
+            python3 src/tester.py ../build/c3c test_suite/
           fi
 
       - name: bundle_output

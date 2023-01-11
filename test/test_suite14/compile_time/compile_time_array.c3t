@@ -1,0 +1,29 @@
+// #target: macos-x64
+module test;
+
+fn void test()
+{
+	var $foo = { 1, "a" };
+    var $bar = $foo[0];
+    var $i = 1;
+    var $baz = $foo[$i];
+    int x = $bar;
+    char[] z = $baz;
+}
+
+/* #expect: test.ll
+
+
+%"char[]" = type { i8*, i64 }
+
+@.str = private unnamed_addr constant [2 x i8] c"a\00", align 1
+
+define void @test_test() #0 {
+entry:
+  %x = alloca i32, align 4
+  %z = alloca %"char[]", align 8
+  store i32 1, i32* %x, align 4
+  store %"char[]" { i8* getelementptr inbounds ([2 x i8], [2 x i8]* @.str, i32 0, i32 0), i64 1 }, %"char[]"* %z, align 8
+  ret void
+}
+

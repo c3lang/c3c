@@ -1,0 +1,39 @@
+private const char AA = ~(char)(0);
+const char BB = 200 ;
+private const uint CC = ~(uint)(0);
+private const uint DD = FOO;
+
+private const FOO = ~(uint)(0);
+
+private uint x = AA;
+private uint z = CC;
+private char w = (char)(FOO);
+private ushort v = (ushort)(FOO);
+private uint z2 = DD;
+
+fn void test()
+{
+    int xx = (int)FOO;
+    uint* yy = &&FOO;
+}
+
+// #expect: constants.ll
+
+@constants_AA = protected unnamed_addr constant i8 -1, align 1
+@constants_BB = local_unnamed_addr constant i8 -56, align 1
+@constants_CC = protected unnamed_addr constant i32 -1, align 4
+@constants_DD = protected unnamed_addr constant i32 -1, align 4
+@constants_x = protected unnamed_addr global i32 255, align 4
+@constants_z = protected unnamed_addr global i32 -1, align 4
+@constants_w = protected unnamed_addr global i8 -1, align 1
+@constants_v = protected unnamed_addr global i16 -1, align 2
+@constants_z2 = protected unnamed_addr global i32 -1, align 4
+
+entry:
+    %xx = alloca i32
+    %yy = alloca i32*
+    %taddr = alloca i32
+    store i32 -1, i32* %xx
+    store i32 -1, i32* %taddr
+    store i32* %taddr, i32** %yy
+    ret void

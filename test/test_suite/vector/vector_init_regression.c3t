@@ -96,319 +96,318 @@ entry:
   %v = alloca <4 x float>, align 16
   %.anon85 = alloca i64, align 8
   %v89 = alloca <4 x float>, align 16
-  store float 0x3FE921CAC0000000, float* %radians, align 4
-  store <3 x float> <float 0.000000e+00, float 0.000000e+00, float 1.000000e+00>, <3 x float>* %axis, align 16
-  %0 = load float, float* %radians, align 4
+  store float 0x3FE921CAC0000000, ptr %radians, align 4
+  store <3 x float> <float 0.000000e+00, float 0.000000e+00, float 1.000000e+00>, ptr %axis, align 16
+  %0 = load float, ptr %radians, align 4
   %1 = call float @llvm.cos.f32(float %0)
-  store float %1, float* %cosr, align 4
-  %2 = load float, float* %radians, align 4
+  store float %1, ptr %cosr, align 4
+  %2 = load float, ptr %radians, align 4
   %3 = call float @llvm.sin.f32(float %2)
-  store float %3, float* %sinr, align 4
-  %4 = load <3 x float>, <3 x float>* %axis, align 16
+  store float %3, ptr %sinr, align 4
+  %4 = load <3 x float>, ptr %axis, align 16
   %5 = extractelement <3 x float> %4, i64 0
-  store float %5, float* %x, align 4
-  %6 = load <3 x float>, <3 x float>* %axis, align 16
+  store float %5, ptr %x, align 4
+  %6 = load <3 x float>, ptr %axis, align 16
   %7 = extractelement <3 x float> %6, i64 1
-  store float %7, float* %y, align 4
-  %8 = load <3 x float>, <3 x float>* %axis, align 16
+  store float %7, ptr %y, align 4
+  %8 = load <3 x float>, ptr %axis, align 16
   %9 = extractelement <3 x float> %8, i64 2
-  store float %9, float* %z, align 4
-  %10 = bitcast [4 x <4 x float>]* %a to i8*
-  call void @llvm.memset.p0i8.i64(i8* align 16 %10, i8 0, i64 64, i1 false)
-  %11 = getelementptr inbounds [4 x <4 x float>], [4 x <4 x float>]* %a, i64 0, i64 0
-  %12 = load float, float* %cosr, align 4
-  %13 = load float, float* %x, align 4
-  %14 = load float, float* %x, align 4
-  %fmul = fmul float %13, %14
-  %15 = load float, float* %cosr, align 4
-  %fpfpext = fpext float %15 to double
+  store float %9, ptr %z, align 4
+  call void @llvm.memset.p0.i64(ptr align 16 %a, i8 0, i64 64, i1 false)
+  %10 = getelementptr inbounds [4 x <4 x float>], ptr %a, i64 0, i64 0
+  %11 = load float, ptr %cosr, align 4
+  %12 = load float, ptr %x, align 4
+  %13 = load float, ptr %x, align 4
+  %fmul = fmul float %12, %13
+  %14 = load float, ptr %cosr, align 4
+  %fpfpext = fpext float %14 to double
   %fsub = fsub double 1.000000e+00, %fpfpext
   %fpfptrunc = fptrunc double %fsub to float
-  %16 = call float @llvm.fmuladd.f32(float %fmul, float %fpfptrunc, float %12)
-  %17 = insertelement <4 x float> undef, float %16, i64 0
-  %18 = load float, float* %x, align 4
-  %19 = load float, float* %y, align 4
-  %fmul1 = fmul float %18, %19
-  %20 = load float, float* %cosr, align 4
-  %fpfpext2 = fpext float %20 to double
+  %15 = call float @llvm.fmuladd.f32(float %fmul, float %fpfptrunc, float %11)
+  %16 = insertelement <4 x float> undef, float %15, i64 0
+  %17 = load float, ptr %x, align 4
+  %18 = load float, ptr %y, align 4
+  %fmul1 = fmul float %17, %18
+  %19 = load float, ptr %cosr, align 4
+  %fpfpext2 = fpext float %19 to double
   %fsub3 = fsub double 1.000000e+00, %fpfpext2
   %fpfptrunc4 = fptrunc double %fsub3 to float
-  %21 = load float, float* %z, align 4
-  %22 = load float, float* %sinr, align 4
-  %fmul5 = fmul float %21, %22
-  %23 = fneg float %fmul5
-  %24 = call float @llvm.fmuladd.f32(float %fmul1, float %fpfptrunc4, float %23)
-  %25 = insertelement <4 x float> %17, float %24, i64 1
-  %26 = load float, float* %x, align 4
-  %27 = load float, float* %z, align 4
-  %fmul6 = fmul float %26, %27
-  %28 = load float, float* %cosr, align 4
-  %fpfpext7 = fpext float %28 to double
+  %20 = load float, ptr %z, align 4
+  %21 = load float, ptr %sinr, align 4
+  %fmul5 = fmul float %20, %21
+  %22 = fneg float %fmul5
+  %23 = call float @llvm.fmuladd.f32(float %fmul1, float %fpfptrunc4, float %22)
+  %24 = insertelement <4 x float> %16, float %23, i64 1
+  %25 = load float, ptr %x, align 4
+  %26 = load float, ptr %z, align 4
+  %fmul6 = fmul float %25, %26
+  %27 = load float, ptr %cosr, align 4
+  %fpfpext7 = fpext float %27 to double
   %fsub8 = fsub double 1.000000e+00, %fpfpext7
   %fpfptrunc9 = fptrunc double %fsub8 to float
-  %29 = load float, float* %y, align 4
-  %30 = load float, float* %sinr, align 4
-  %fmul10 = fmul float %29, %30
-  %31 = call float @llvm.fmuladd.f32(float %fmul6, float %fpfptrunc9, float %fmul10)
-  %32 = insertelement <4 x float> %25, float %31, i64 2
-  %33 = insertelement <4 x float> %32, float 0.000000e+00, i64 3
-  store <4 x float> %33, <4 x float>* %11, align 16
-  %34 = getelementptr inbounds [4 x <4 x float>], [4 x <4 x float>]* %a, i64 0, i64 1
-  %35 = load float, float* %y, align 4
-  %36 = load float, float* %x, align 4
-  %fmul11 = fmul float %35, %36
-  %37 = load float, float* %cosr, align 4
-  %fpfpext12 = fpext float %37 to double
+  %28 = load float, ptr %y, align 4
+  %29 = load float, ptr %sinr, align 4
+  %fmul10 = fmul float %28, %29
+  %30 = call float @llvm.fmuladd.f32(float %fmul6, float %fpfptrunc9, float %fmul10)
+  %31 = insertelement <4 x float> %24, float %30, i64 2
+  %32 = insertelement <4 x float> %31, float 0.000000e+00, i64 3
+  store <4 x float> %32, ptr %10, align 16
+  %33 = getelementptr inbounds [4 x <4 x float>], ptr %a, i64 0, i64 1
+  %34 = load float, ptr %y, align 4
+  %35 = load float, ptr %x, align 4
+  %fmul11 = fmul float %34, %35
+  %36 = load float, ptr %cosr, align 4
+  %fpfpext12 = fpext float %36 to double
   %fsub13 = fsub double 1.000000e+00, %fpfpext12
   %fpfptrunc14 = fptrunc double %fsub13 to float
-  %38 = load float, float* %z, align 4
-  %39 = load float, float* %sinr, align 4
-  %fmul15 = fmul float %38, %39
-  %40 = call float @llvm.fmuladd.f32(float %fmul11, float %fpfptrunc14, float %fmul15)
-  %41 = insertelement <4 x float> undef, float %40, i64 0
-  %42 = load float, float* %cosr, align 4
-  %43 = load float, float* %y, align 4
-  %44 = load float, float* %y, align 4
-  %fmul16 = fmul float %43, %44
-  %45 = load float, float* %cosr, align 4
-  %fpfpext17 = fpext float %45 to double
+  %37 = load float, ptr %z, align 4
+  %38 = load float, ptr %sinr, align 4
+  %fmul15 = fmul float %37, %38
+  %39 = call float @llvm.fmuladd.f32(float %fmul11, float %fpfptrunc14, float %fmul15)
+  %40 = insertelement <4 x float> undef, float %39, i64 0
+  %41 = load float, ptr %cosr, align 4
+  %42 = load float, ptr %y, align 4
+  %43 = load float, ptr %y, align 4
+  %fmul16 = fmul float %42, %43
+  %44 = load float, ptr %cosr, align 4
+  %fpfpext17 = fpext float %44 to double
   %fsub18 = fsub double 1.000000e+00, %fpfpext17
   %fpfptrunc19 = fptrunc double %fsub18 to float
-  %46 = call float @llvm.fmuladd.f32(float %fmul16, float %fpfptrunc19, float %42)
-  %47 = insertelement <4 x float> %41, float %46, i64 1
-  %48 = load float, float* %y, align 4
-  %49 = load float, float* %z, align 4
-  %fmul20 = fmul float %48, %49
-  %50 = load float, float* %cosr, align 4
-  %fpfpext21 = fpext float %50 to double
+  %45 = call float @llvm.fmuladd.f32(float %fmul16, float %fpfptrunc19, float %41)
+  %46 = insertelement <4 x float> %40, float %45, i64 1
+  %47 = load float, ptr %y, align 4
+  %48 = load float, ptr %z, align 4
+  %fmul20 = fmul float %47, %48
+  %49 = load float, ptr %cosr, align 4
+  %fpfpext21 = fpext float %49 to double
   %fsub22 = fsub double 1.000000e+00, %fpfpext21
   %fpfptrunc23 = fptrunc double %fsub22 to float
-  %51 = load float, float* %x, align 4
-  %52 = load float, float* %sinr, align 4
-  %fmul24 = fmul float %51, %52
-  %53 = fneg float %fmul24
-  %54 = call float @llvm.fmuladd.f32(float %fmul20, float %fpfptrunc23, float %53)
-  %55 = insertelement <4 x float> %47, float %54, i64 2
-  %56 = insertelement <4 x float> %55, float 0.000000e+00, i64 3
-  store <4 x float> %56, <4 x float>* %34, align 16
-  %57 = getelementptr inbounds [4 x <4 x float>], [4 x <4 x float>]* %a, i64 0, i64 2
-  %58 = load float, float* %z, align 4
-  %59 = load float, float* %x, align 4
-  %fmul25 = fmul float %58, %59
-  %60 = load float, float* %cosr, align 4
-  %fpfpext26 = fpext float %60 to double
+  %50 = load float, ptr %x, align 4
+  %51 = load float, ptr %sinr, align 4
+  %fmul24 = fmul float %50, %51
+  %52 = fneg float %fmul24
+  %53 = call float @llvm.fmuladd.f32(float %fmul20, float %fpfptrunc23, float %52)
+  %54 = insertelement <4 x float> %46, float %53, i64 2
+  %55 = insertelement <4 x float> %54, float 0.000000e+00, i64 3
+  store <4 x float> %55, ptr %33, align 16
+  %56 = getelementptr inbounds [4 x <4 x float>], ptr %a, i64 0, i64 2
+  %57 = load float, ptr %z, align 4
+  %58 = load float, ptr %x, align 4
+  %fmul25 = fmul float %57, %58
+  %59 = load float, ptr %cosr, align 4
+  %fpfpext26 = fpext float %59 to double
   %fsub27 = fsub double 1.000000e+00, %fpfpext26
   %fpfptrunc28 = fptrunc double %fsub27 to float
-  %61 = load float, float* %y, align 4
-  %62 = load float, float* %sinr, align 4
-  %fmul29 = fmul float %61, %62
-  %63 = fneg float %fmul29
-  %64 = call float @llvm.fmuladd.f32(float %fmul25, float %fpfptrunc28, float %63)
-  %65 = insertelement <4 x float> undef, float %64, i64 0
-  %66 = load float, float* %z, align 4
-  %67 = load float, float* %y, align 4
-  %fmul30 = fmul float %66, %67
-  %68 = load float, float* %cosr, align 4
-  %fpfpext31 = fpext float %68 to double
+  %60 = load float, ptr %y, align 4
+  %61 = load float, ptr %sinr, align 4
+  %fmul29 = fmul float %60, %61
+  %62 = fneg float %fmul29
+  %63 = call float @llvm.fmuladd.f32(float %fmul25, float %fpfptrunc28, float %62)
+  %64 = insertelement <4 x float> undef, float %63, i64 0
+  %65 = load float, ptr %z, align 4
+  %66 = load float, ptr %y, align 4
+  %fmul30 = fmul float %65, %66
+  %67 = load float, ptr %cosr, align 4
+  %fpfpext31 = fpext float %67 to double
   %fsub32 = fsub double 1.000000e+00, %fpfpext31
   %fpfptrunc33 = fptrunc double %fsub32 to float
-  %69 = load float, float* %x, align 4
-  %70 = load float, float* %sinr, align 4
-  %fmul34 = fmul float %69, %70
-  %71 = call float @llvm.fmuladd.f32(float %fmul30, float %fpfptrunc33, float %fmul34)
-  %72 = insertelement <4 x float> %65, float %71, i64 1
-  %73 = load float, float* %cosr, align 4
-  %74 = load float, float* %z, align 4
-  %75 = load float, float* %z, align 4
-  %fmul35 = fmul float %74, %75
-  %76 = load float, float* %cosr, align 4
-  %fpfpext36 = fpext float %76 to double
+  %68 = load float, ptr %x, align 4
+  %69 = load float, ptr %sinr, align 4
+  %fmul34 = fmul float %68, %69
+  %70 = call float @llvm.fmuladd.f32(float %fmul30, float %fpfptrunc33, float %fmul34)
+  %71 = insertelement <4 x float> %64, float %70, i64 1
+  %72 = load float, ptr %cosr, align 4
+  %73 = load float, ptr %z, align 4
+  %74 = load float, ptr %z, align 4
+  %fmul35 = fmul float %73, %74
+  %75 = load float, ptr %cosr, align 4
+  %fpfpext36 = fpext float %75 to double
   %fsub37 = fsub double 1.000000e+00, %fpfpext36
   %fpfptrunc38 = fptrunc double %fsub37 to float
-  %77 = call float @llvm.fmuladd.f32(float %fmul35, float %fpfptrunc38, float %73)
-  %78 = insertelement <4 x float> %72, float %77, i64 2
-  %79 = insertelement <4 x float> %78, float 0.000000e+00, i64 3
-  store <4 x float> %79, <4 x float>* %57, align 16
-  %80 = getelementptr inbounds [4 x <4 x float>], [4 x <4 x float>]* %a, i64 0, i64 3
-  store <4 x float> <float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 1.000000e+00>, <4 x float>* %80, align 16
-  %81 = getelementptr inbounds [4 x <4 x float>], [4 x <4 x float>]* %b, i64 0, i64 0
-  %82 = load float, float* %cosr, align 4
-  %83 = load float, float* %x, align 4
-  %84 = load float, float* %x, align 4
-  %fmul39 = fmul float %83, %84
-  %85 = load float, float* %cosr, align 4
-  %fpfpext40 = fpext float %85 to double
+  %76 = call float @llvm.fmuladd.f32(float %fmul35, float %fpfptrunc38, float %72)
+  %77 = insertelement <4 x float> %71, float %76, i64 2
+  %78 = insertelement <4 x float> %77, float 0.000000e+00, i64 3
+  store <4 x float> %78, ptr %56, align 16
+  %79 = getelementptr inbounds [4 x <4 x float>], ptr %a, i64 0, i64 3
+  store <4 x float> <float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 1.000000e+00>, ptr %79, align 16
+  %80 = getelementptr inbounds [4 x <4 x float>], ptr %b, i64 0, i64 0
+  %81 = load float, ptr %cosr, align 4
+  %82 = load float, ptr %x, align 4
+  %83 = load float, ptr %x, align 4
+  %fmul39 = fmul float %82, %83
+  %84 = load float, ptr %cosr, align 4
+  %fpfpext40 = fpext float %84 to double
   %fsub41 = fsub double 1.000000e+00, %fpfpext40
   %fpfptrunc42 = fptrunc double %fsub41 to float
-  %86 = call float @llvm.fmuladd.f32(float %fmul39, float %fpfptrunc42, float %82)
-  %87 = insertelement <4 x float> undef, float %86, i64 0
-  %88 = load float, float* %x, align 4
-  %89 = load float, float* %y, align 4
-  %fmul43 = fmul float %88, %89
-  %90 = load float, float* %cosr, align 4
-  %fpfpext44 = fpext float %90 to double
+  %85 = call float @llvm.fmuladd.f32(float %fmul39, float %fpfptrunc42, float %81)
+  %86 = insertelement <4 x float> undef, float %85, i64 0
+  %87 = load float, ptr %x, align 4
+  %88 = load float, ptr %y, align 4
+  %fmul43 = fmul float %87, %88
+  %89 = load float, ptr %cosr, align 4
+  %fpfpext44 = fpext float %89 to double
   %fsub45 = fsub double 1.000000e+00, %fpfpext44
   %fpfptrunc46 = fptrunc double %fsub45 to float
-  %91 = load float, float* %z, align 4
-  %92 = load float, float* %sinr, align 4
-  %fmul47 = fmul float %91, %92
-  %93 = fneg float %fmul47
-  %94 = call float @llvm.fmuladd.f32(float %fmul43, float %fpfptrunc46, float %93)
-  %95 = insertelement <4 x float> %87, float %94, i64 1
-  %96 = load float, float* %x, align 4
-  %97 = load float, float* %z, align 4
-  %fmul48 = fmul float %96, %97
-  %98 = load float, float* %cosr, align 4
-  %fpfpext49 = fpext float %98 to double
+  %90 = load float, ptr %z, align 4
+  %91 = load float, ptr %sinr, align 4
+  %fmul47 = fmul float %90, %91
+  %92 = fneg float %fmul47
+  %93 = call float @llvm.fmuladd.f32(float %fmul43, float %fpfptrunc46, float %92)
+  %94 = insertelement <4 x float> %86, float %93, i64 1
+  %95 = load float, ptr %x, align 4
+  %96 = load float, ptr %z, align 4
+  %fmul48 = fmul float %95, %96
+  %97 = load float, ptr %cosr, align 4
+  %fpfpext49 = fpext float %97 to double
   %fsub50 = fsub double 1.000000e+00, %fpfpext49
   %fpfptrunc51 = fptrunc double %fsub50 to float
-  %99 = load float, float* %y, align 4
-  %100 = load float, float* %sinr, align 4
-  %fmul52 = fmul float %99, %100
-  %101 = call float @llvm.fmuladd.f32(float %fmul48, float %fpfptrunc51, float %fmul52)
-  %102 = insertelement <4 x float> %95, float %101, i64 2
-  %103 = insertelement <4 x float> %102, float 0.000000e+00, i64 3
-  store <4 x float> %103, <4 x float>* %81, align 16
-  %104 = getelementptr inbounds [4 x <4 x float>], [4 x <4 x float>]* %b, i64 0, i64 1
-  %105 = load float, float* %y, align 4
-  %106 = load float, float* %x, align 4
-  %fmul53 = fmul float %105, %106
-  %107 = load float, float* %cosr, align 4
-  %fpfpext54 = fpext float %107 to double
+  %98 = load float, ptr %y, align 4
+  %99 = load float, ptr %sinr, align 4
+  %fmul52 = fmul float %98, %99
+  %100 = call float @llvm.fmuladd.f32(float %fmul48, float %fpfptrunc51, float %fmul52)
+  %101 = insertelement <4 x float> %94, float %100, i64 2
+  %102 = insertelement <4 x float> %101, float 0.000000e+00, i64 3
+  store <4 x float> %102, ptr %80, align 16
+  %103 = getelementptr inbounds [4 x <4 x float>], ptr %b, i64 0, i64 1
+  %104 = load float, ptr %y, align 4
+  %105 = load float, ptr %x, align 4
+  %fmul53 = fmul float %104, %105
+  %106 = load float, ptr %cosr, align 4
+  %fpfpext54 = fpext float %106 to double
   %fsub55 = fsub double 1.000000e+00, %fpfpext54
   %fpfptrunc56 = fptrunc double %fsub55 to float
-  %108 = load float, float* %z, align 4
-  %109 = load float, float* %sinr, align 4
-  %fmul57 = fmul float %108, %109
-  %110 = call float @llvm.fmuladd.f32(float %fmul53, float %fpfptrunc56, float %fmul57)
-  %111 = insertelement <4 x float> undef, float %110, i64 0
-  %112 = load float, float* %cosr, align 4
-  %113 = load float, float* %y, align 4
-  %114 = load float, float* %y, align 4
-  %fmul58 = fmul float %113, %114
-  %115 = load float, float* %cosr, align 4
-  %fpfpext59 = fpext float %115 to double
+  %107 = load float, ptr %z, align 4
+  %108 = load float, ptr %sinr, align 4
+  %fmul57 = fmul float %107, %108
+  %109 = call float @llvm.fmuladd.f32(float %fmul53, float %fpfptrunc56, float %fmul57)
+  %110 = insertelement <4 x float> undef, float %109, i64 0
+  %111 = load float, ptr %cosr, align 4
+  %112 = load float, ptr %y, align 4
+  %113 = load float, ptr %y, align 4
+  %fmul58 = fmul float %112, %113
+  %114 = load float, ptr %cosr, align 4
+  %fpfpext59 = fpext float %114 to double
   %fsub60 = fsub double 1.000000e+00, %fpfpext59
   %fpfptrunc61 = fptrunc double %fsub60 to float
-  %116 = call float @llvm.fmuladd.f32(float %fmul58, float %fpfptrunc61, float %112)
-  %117 = insertelement <4 x float> %111, float %116, i64 1
-  %118 = load float, float* %y, align 4
-  %119 = load float, float* %z, align 4
-  %fmul62 = fmul float %118, %119
-  %120 = load float, float* %cosr, align 4
-  %fpfpext63 = fpext float %120 to double
+  %115 = call float @llvm.fmuladd.f32(float %fmul58, float %fpfptrunc61, float %111)
+  %116 = insertelement <4 x float> %110, float %115, i64 1
+  %117 = load float, ptr %y, align 4
+  %118 = load float, ptr %z, align 4
+  %fmul62 = fmul float %117, %118
+  %119 = load float, ptr %cosr, align 4
+  %fpfpext63 = fpext float %119 to double
   %fsub64 = fsub double 1.000000e+00, %fpfpext63
   %fpfptrunc65 = fptrunc double %fsub64 to float
-  %121 = load float, float* %x, align 4
-  %122 = load float, float* %sinr, align 4
-  %fmul66 = fmul float %121, %122
-  %123 = fneg float %fmul66
-  %124 = call float @llvm.fmuladd.f32(float %fmul62, float %fpfptrunc65, float %123)
-  %125 = insertelement <4 x float> %117, float %124, i64 2
-  %126 = insertelement <4 x float> %125, float 0.000000e+00, i64 3
-  store <4 x float> %126, <4 x float>* %104, align 16
-  %127 = getelementptr inbounds [4 x <4 x float>], [4 x <4 x float>]* %b, i64 0, i64 2
-  %128 = load float, float* %z, align 4
-  %129 = load float, float* %x, align 4
-  %fmul67 = fmul float %128, %129
-  %130 = load float, float* %cosr, align 4
-  %fpfpext68 = fpext float %130 to double
+  %120 = load float, ptr %x, align 4
+  %121 = load float, ptr %sinr, align 4
+  %fmul66 = fmul float %120, %121
+  %122 = fneg float %fmul66
+  %123 = call float @llvm.fmuladd.f32(float %fmul62, float %fpfptrunc65, float %122)
+  %124 = insertelement <4 x float> %116, float %123, i64 2
+  %125 = insertelement <4 x float> %124, float 0.000000e+00, i64 3
+  store <4 x float> %125, ptr %103, align 16
+  %126 = getelementptr inbounds [4 x <4 x float>], ptr %b, i64 0, i64 2
+  %127 = load float, ptr %z, align 4
+  %128 = load float, ptr %x, align 4
+  %fmul67 = fmul float %127, %128
+  %129 = load float, ptr %cosr, align 4
+  %fpfpext68 = fpext float %129 to double
   %fsub69 = fsub double 1.000000e+00, %fpfpext68
   %fpfptrunc70 = fptrunc double %fsub69 to float
-  %131 = load float, float* %y, align 4
-  %132 = load float, float* %sinr, align 4
-  %fmul71 = fmul float %131, %132
-  %133 = fneg float %fmul71
-  %134 = call float @llvm.fmuladd.f32(float %fmul67, float %fpfptrunc70, float %133)
-  %135 = insertelement <4 x float> undef, float %134, i64 0
-  %136 = load float, float* %z, align 4
-  %137 = load float, float* %y, align 4
-  %fmul72 = fmul float %136, %137
-  %138 = load float, float* %cosr, align 4
-  %fpfpext73 = fpext float %138 to double
+  %130 = load float, ptr %y, align 4
+  %131 = load float, ptr %sinr, align 4
+  %fmul71 = fmul float %130, %131
+  %132 = fneg float %fmul71
+  %133 = call float @llvm.fmuladd.f32(float %fmul67, float %fpfptrunc70, float %132)
+  %134 = insertelement <4 x float> undef, float %133, i64 0
+  %135 = load float, ptr %z, align 4
+  %136 = load float, ptr %y, align 4
+  %fmul72 = fmul float %135, %136
+  %137 = load float, ptr %cosr, align 4
+  %fpfpext73 = fpext float %137 to double
   %fsub74 = fsub double 1.000000e+00, %fpfpext73
   %fpfptrunc75 = fptrunc double %fsub74 to float
-  %139 = load float, float* %x, align 4
-  %140 = load float, float* %sinr, align 4
-  %fmul76 = fmul float %139, %140
-  %141 = call float @llvm.fmuladd.f32(float %fmul72, float %fpfptrunc75, float %fmul76)
-  %142 = insertelement <4 x float> %135, float %141, i64 1
-  %143 = load float, float* %cosr, align 4
-  %144 = load float, float* %z, align 4
-  %145 = load float, float* %z, align 4
-  %fmul77 = fmul float %144, %145
-  %146 = load float, float* %cosr, align 4
-  %fpfpext78 = fpext float %146 to double
+  %138 = load float, ptr %x, align 4
+  %139 = load float, ptr %sinr, align 4
+  %fmul76 = fmul float %138, %139
+  %140 = call float @llvm.fmuladd.f32(float %fmul72, float %fpfptrunc75, float %fmul76)
+  %141 = insertelement <4 x float> %134, float %140, i64 1
+  %142 = load float, ptr %cosr, align 4
+  %143 = load float, ptr %z, align 4
+  %144 = load float, ptr %z, align 4
+  %fmul77 = fmul float %143, %144
+  %145 = load float, ptr %cosr, align 4
+  %fpfpext78 = fpext float %145 to double
   %fsub79 = fsub double 1.000000e+00, %fpfpext78
   %fpfptrunc80 = fptrunc double %fsub79 to float
-  %147 = call float @llvm.fmuladd.f32(float %fmul77, float %fpfptrunc80, float %143)
-  %148 = insertelement <4 x float> %142, float %147, i64 2
-  %149 = insertelement <4 x float> %148, float 0.000000e+00, i64 3
-  store <4 x float> %149, <4 x float>* %127, align 16
-  %150 = getelementptr inbounds [4 x <4 x float>], [4 x <4 x float>]* %b, i64 0, i64 3
-  store <4 x float> <float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 1.000000e+00>, <4 x float>* %150, align 16
-  store i64 0, i64* %.anon, align 8
+  %146 = call float @llvm.fmuladd.f32(float %fmul77, float %fpfptrunc80, float %142)
+  %147 = insertelement <4 x float> %141, float %146, i64 2
+  %148 = insertelement <4 x float> %147, float 0.000000e+00, i64 3
+  store <4 x float> %148, ptr %126, align 16
+  %149 = getelementptr inbounds [4 x <4 x float>], ptr %b, i64 0, i64 3
+  store <4 x float> <float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 1.000000e+00>, ptr %149, align 16
+  store i64 0, ptr %.anon, align 8
   br label %loop.cond
 
 loop.cond:                                        ; preds = %loop.body, %entry
-  %151 = load i64, i64* %.anon, align 8
-  %gt = icmp ugt i64 4, %151
+  %150 = load i64, ptr %.anon, align 8
+  %gt = icmp ugt i64 4, %150
   br i1 %gt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
-  %152 = load i64, i64* %.anon, align 8
-  %153 = getelementptr inbounds [4 x <4 x float>], [4 x <4 x float>]* %a, i64 0, i64 %152
-  %154 = load <4 x float>, <4 x float>* %153, align 16
-  store <4 x float> %154, <4 x float>* %v, align 16
-  %155 = load <4 x float>, <4 x float>* %v, align 16
-  %156 = extractelement <4 x float> %155, i64 0
-  %fpfpext81 = fpext float %156 to double
-  %157 = load <4 x float>, <4 x float>* %v, align 16
-  %158 = extractelement <4 x float> %157, i64 1
-  %fpfpext82 = fpext float %158 to double
-  %159 = load <4 x float>, <4 x float>* %v, align 16
-  %160 = extractelement <4 x float> %159, i64 2
-  %fpfpext83 = fpext float %160 to double
-  %161 = load <4 x float>, <4 x float>* %v, align 16
-  %162 = extractelement <4 x float> %161, i64 3
-  %fpfpext84 = fpext float %162 to double
-  %163 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([16 x i8], [16 x i8]* @.str, i32 0, i32 0), double %fpfpext81, double %fpfpext82, double %fpfpext83, double %fpfpext84)
-  %164 = load i64, i64* %.anon, align 8
-  %add = add i64 %164, 1
-  store i64 %add, i64* %.anon, align 8
+  %151 = load i64, ptr %.anon, align 8
+  %152 = getelementptr inbounds [4 x <4 x float>], ptr %a, i64 0, i64 %151
+  %153 = load <4 x float>, ptr %152, align 16
+  store <4 x float> %153, ptr %v, align 16
+  %154 = load <4 x float>, ptr %v, align 16
+  %155 = extractelement <4 x float> %154, i64 0
+  %fpfpext81 = fpext float %155 to double
+  %156 = load <4 x float>, ptr %v, align 16
+  %157 = extractelement <4 x float> %156, i64 1
+  %fpfpext82 = fpext float %157 to double
+  %158 = load <4 x float>, ptr %v, align 16
+  %159 = extractelement <4 x float> %158, i64 2
+  %fpfpext83 = fpext float %159 to double
+  %160 = load <4 x float>, ptr %v, align 16
+  %161 = extractelement <4 x float> %160, i64 3
+  %fpfpext84 = fpext float %161 to double
+  %162 = call i32 (ptr, ...) @printf(ptr @.str, double %fpfpext81, double %fpfpext82, double %fpfpext83, double %fpfpext84)
+  %163 = load i64, ptr %.anon, align 8
+  %add = add i64 %163, 1
+  store i64 %add, ptr %.anon, align 8
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
-  %165 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @.str.1, i32 0, i32 0))
-  store i64 0, i64* %.anon85, align 8
+  %164 = call i32 (ptr, ...) @printf(ptr @.str.1)
+  store i64 0, ptr %.anon85, align 8
   br label %loop.cond86
 
 loop.cond86:                                      ; preds = %loop.body88, %loop.exit
-  %166 = load i64, i64* %.anon85, align 8
-  %gt87 = icmp ugt i64 4, %166
+  %165 = load i64, ptr %.anon85, align 8
+  %gt87 = icmp ugt i64 4, %165
   br i1 %gt87, label %loop.body88, label %loop.exit95
 
 loop.body88:                                      ; preds = %loop.cond86
-  %167 = load i64, i64* %.anon85, align 8
-  %168 = getelementptr inbounds [4 x <4 x float>], [4 x <4 x float>]* %b, i64 0, i64 %167
-  %169 = load <4 x float>, <4 x float>* %168, align 16
-  store <4 x float> %169, <4 x float>* %v89, align 16
-  %170 = load <4 x float>, <4 x float>* %v89, align 16
-  %171 = extractelement <4 x float> %170, i64 0
-  %fpfpext90 = fpext float %171 to double
-  %172 = load <4 x float>, <4 x float>* %v89, align 16
-  %173 = extractelement <4 x float> %172, i64 1
-  %fpfpext91 = fpext float %173 to double
-  %174 = load <4 x float>, <4 x float>* %v89, align 16
-  %175 = extractelement <4 x float> %174, i64 2
-  %fpfpext92 = fpext float %175 to double
-  %176 = load <4 x float>, <4 x float>* %v89, align 16
-  %177 = extractelement <4 x float> %176, i64 3
-  %fpfpext93 = fpext float %177 to double
-  %178 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([16 x i8], [16 x i8]* @.str.2, i32 0, i32 0), double %fpfpext90, double %fpfpext91, double %fpfpext92, double %fpfpext93)
-  %179 = load i64, i64* %.anon85, align 8
-  %add94 = add i64 %179, 1
-  store i64 %add94, i64* %.anon85, align 8
+  %166 = load i64, ptr %.anon85, align 8
+  %167 = getelementptr inbounds [4 x <4 x float>], ptr %b, i64 0, i64 %166
+  %168 = load <4 x float>, ptr %167, align 16
+  store <4 x float> %168, ptr %v89, align 16
+  %169 = load <4 x float>, ptr %v89, align 16
+  %170 = extractelement <4 x float> %169, i64 0
+  %fpfpext90 = fpext float %170 to double
+  %171 = load <4 x float>, ptr %v89, align 16
+  %172 = extractelement <4 x float> %171, i64 1
+  %fpfpext91 = fpext float %172 to double
+  %173 = load <4 x float>, ptr %v89, align 16
+  %174 = extractelement <4 x float> %173, i64 2
+  %fpfpext92 = fpext float %174 to double
+  %175 = load <4 x float>, ptr %v89, align 16
+  %176 = extractelement <4 x float> %175, i64 3
+  %fpfpext93 = fpext float %176 to double
+  %177 = call i32 (ptr, ...) @printf(ptr @.str.2, double %fpfpext90, double %fpfpext91, double %fpfpext92, double %fpfpext93)
+  %178 = load i64, ptr %.anon85, align 8
+  %add94 = add i64 %178, 1
+  store i64 %add94, ptr %.anon85, align 8
   br label %loop.cond86
 
 loop.exit95:                                      ; preds = %loop.cond86

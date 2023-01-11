@@ -37,19 +37,19 @@ entry:
   %w.f = alloca i64, align 8
   %gh = alloca i32, align 4
   %e = alloca i64, align 8
-  store i32 123, i32* %x, align 4
-  store i32 234, i32* %z, align 4
-  store i64 0, i64* %z.f, align 8
-  store i64 0, i64* %w.f, align 8
-  store i32 0, i32* %w, align 4
-  store i32 1, i32* %gh, align 4
-  %optval = load i64, i64* %z.f, align 8
+  store i32 123, ptr %x, align 4
+  store i32 234, ptr %z, align 4
+  store i64 0, ptr %z.f, align 8
+  store i64 0, ptr %w.f, align 8
+  store i32 0, ptr %w, align 4
+  store i32 1, ptr %gh, align 4
+  %optval = load i64, ptr %z.f, align 8
   %not_err = icmp eq i64 %optval, 0
   br i1 %not_err, label %after_check, label %catch_landing
 
 after_check:                                      ; preds = %entry
-  %0 = load i32, i32* %z, align 4
-  store i32 %0, i32* %x, align 4
+  %0 = load i32, ptr %z, align 4
+  store i32 %0, ptr %x, align 4
   br label %phi_try_catch
 
 catch_landing:                                    ; preds = %entry
@@ -60,13 +60,13 @@ phi_try_catch:                                    ; preds = %catch_landing, %aft
   br i1 %val, label %chain_next, label %fail_chain
 
 chain_next:                                       ; preds = %phi_try_catch
-  %optval1 = load i64, i64* %w.f, align 8
+  %optval1 = load i64, ptr %w.f, align 8
   %not_err2 = icmp eq i64 %optval1, 0
   br i1 %not_err2, label %after_check3, label %catch_landing4
 
 after_check3:                                     ; preds = %chain_next
-  %1 = load i32, i32* %w, align 4
-  store i32 %1, i32* %gh, align 4
+  %1 = load i32, ptr %w, align 4
+  store i32 %1, ptr %gh, align 4
   br label %phi_try_catch5
 
 catch_landing4:                                   ; preds = %chain_next
@@ -87,26 +87,26 @@ end_chain:                                        ; preds = %fail_chain, %chain_
   br i1 %chain.phi, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %end_chain
-  %2 = load i32, i32* %x, align 4
-  %3 = load i32, i32* %gh, align 4
-  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @.str, i32 0, i32 0), i32 %2, i32 %3)
+  %2 = load i32, ptr %x, align 4
+  %3 = load i32, ptr %gh, align 4
+  %4 = call i32 (ptr, ...) @printf(ptr @.str, i32 %2, i32 %3)
   br label %if.exit
 
 if.exit:                                          ; preds = %if.then, %end_chain
-  %optval8 = load i64, i64* %z.f, align 8
+  %optval8 = load i64, ptr %z.f, align 8
   %not_err9 = icmp eq i64 %optval8, 0
   br i1 %not_err9, label %after_check10, label %catch_landing14
 
 after_check10:                                    ; preds = %if.exit
-  %5 = load i32, i32* %z, align 4
-  %optval11 = load i64, i64* %w.f, align 8
+  %5 = load i32, ptr %z, align 4
+  %optval11 = load i64, ptr %w.f, align 8
   %not_err12 = icmp eq i64 %optval11, 0
   br i1 %not_err12, label %after_check13, label %catch_landing14
 
 after_check13:                                    ; preds = %after_check10
-  %6 = load i32, i32* %w, align 4
+  %6 = load i32, ptr %w, align 4
   %add = add i32 %5, %6
-  store i32 %add, i32* %x, align 4
+  store i32 %add, ptr %x, align 4
   br label %phi_try_catch15
 
 catch_landing14:                                  ; preds = %after_check10, %if.exit
@@ -117,33 +117,33 @@ phi_try_catch15:                                  ; preds = %catch_landing14, %a
   br i1 %val16, label %if.then17, label %if.exit18
 
 if.then17:                                        ; preds = %phi_try_catch15
-  %7 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str.1, i32 0, i32 0))
+  %7 = call i32 (ptr, ...) @printf(ptr @.str.1)
   br label %if.exit18
 
 if.exit18:                                        ; preds = %if.then17, %phi_try_catch15
-  store i64 0, i64* %e, align 8
+  store i64 0, ptr %e, align 8
   br label %testblock
 
 testblock:                                        ; preds = %if.exit18
-  %optval19 = load i64, i64* %z.f, align 8
+  %optval19 = load i64, ptr %z.f, align 8
   %not_err20 = icmp eq i64 %optval19, 0
   br i1 %not_err20, label %after_check21, label %assign_optional
 
 assign_optional:                                  ; preds = %testblock
-  store i64 %optval19, i64* %e, align 8
+  store i64 %optval19, ptr %e, align 8
   br label %end_block
 
 after_check21:                                    ; preds = %testblock
-  store i64 0, i64* %e, align 8
+  store i64 0, ptr %e, align 8
   br label %end_block
 
 end_block:                                        ; preds = %after_check21, %assign_optional
-  %8 = load i64, i64* %e, align 8
+  %8 = load i64, ptr %e, align 8
   %neq = icmp ne i64 %8, 0
   br i1 %neq, label %if.then22, label %if.exit23
 
 if.then22:                                        ; preds = %end_block
-  %9 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @.str.2, i32 0, i32 0))
+  %9 = call i32 (ptr, ...) @printf(ptr @.str.2)
   br label %if.exit23
 
 if.exit23:                                        ; preds = %if.then22, %end_block

@@ -11,5 +11,5 @@ fn void test()
 // #expect: reassign.ll
 
   %hello = alloca i32, align 4
-  store i32 0, i32* %hello, align 4
+  store i32 0, ptr %hello, align 4
   ret void

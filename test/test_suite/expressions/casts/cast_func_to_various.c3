@@ -3,7 +3,7 @@ struct Struct
     int x;
 }
 
-enum Enum : usz
+enum Enum : uptr
 {
     A, B
 }

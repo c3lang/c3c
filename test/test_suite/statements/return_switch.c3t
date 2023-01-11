@@ -17,7 +17,7 @@ fn int testReturnSwitch()
 // #expect: return_switch.ll
 
 switch.entry:
-  %1 = load i32, i32* %switch
+  %1 = load i32, ptr %switch
   switch i32 %1, label %switch.default [
     i32 0, label %switch.case
     i32 3, label %switch.case

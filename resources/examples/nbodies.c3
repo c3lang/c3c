@@ -155,6 +155,6 @@ fn void main(String[] args)
 		advance(bodies);
 	}
 	scale_bodies(bodies, RECIP_DT);
-	io::printfln("%.9f", start);
-	io::printfln("%.9f", energy(bodies));
+	io::printfn("%.9f", start);
+	io::printfn("%.9f", energy(bodies));
 }

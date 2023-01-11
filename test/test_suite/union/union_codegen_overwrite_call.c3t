@@ -17,15 +17,13 @@ fn void test()
     UnionB b = { .c = bar(), .b = {} };
 }
 
-// #expect: test.ll
+/* #expect: test.ll
 
+define void @test_test() #0 {
 entry:
   %b = alloca %UnionB, align 8
-  %0 = bitcast %UnionB* %b to i32*
-  %1 = call i32 @bar()
-  store i32 %1, i32* %0, align 8
-  %2 = bitcast %UnionB* %b to %b*
-  %3 = bitcast %b* %2 to i32*
-  store i32 0, i32* %3, align 8
+  %0 = call i32 @bar()
+  store i32 %0, ptr %b, align 8
+  store i32 0, ptr %b, align 8
   ret void
-
+}

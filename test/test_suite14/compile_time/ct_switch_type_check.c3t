@@ -1,0 +1,44 @@
+// #target: macos-x64
+
+module test;
+
+macro get_type($Type)
+{
+    $switch ($Type.typeid):
+        $case int:
+            return "int";
+        $case double:
+            return "double";
+        $default:
+            return "any other";
+    $endswitch;
+}
+
+extern fn void printf(char*, ...);
+
+fn void main()
+{
+    printf("%s\n", get_type(int));
+    printf("%s\n", get_type(double));
+    printf("%s\n", get_type(bool));
+
+}
+
+/* #expect: test.ll
+
+@.str = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
+@.str.1 = private unnamed_addr constant [4 x i8] c"int\00", align 1
+@.str.2 = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
+@.str.3 = private unnamed_addr constant [7 x i8] c"double\00", align 1
+@.str.4 = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
+@.str.5 = private unnamed_addr constant [10 x i8] c"any other\00", align 1
+; Function Attrs: nounwind
+declare void @printf(i8*, ...) #0
+; Function Attrs: nounwind
+define void @test_main() #0 {
+entry:
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), [3 x i8]* bitcast ([4 x i8]* @.str.1 to [3 x i8]*))
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.2, i32 0, i32 0), [6 x i8]* bitcast ([7 x i8]* @.str.3 to [6 x i8]*))
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.4, i32 0, i32 0), [9 x i8]* bitcast ([10 x i8]* @.str.5 to [9 x i8]*))
+  ret void
+}

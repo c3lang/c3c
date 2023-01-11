@@ -1,0 +1,112 @@
+// #target: macos-x64
+module test;
+
+extern fn void printf(char*, ...);
+
+fn void main()
+{
+    float[3] foo = { 2, 4.5, 8 };
+    float[<3>] foo2 = { 2, 4.5, 8 };
+    foreach_r (a : foo)
+    {
+        printf("Value: %f\n", a);
+    }
+    foreach_r (float* &a : foo)
+    {
+        *a *= 2;
+        printf("Value: %f\n", *a);
+    }
+    foreach_r (void* &a : foo)
+    {
+        printf("Value: %f\n", *((float*)(a)));
+    }
+    foreach_r (i, a : foo)
+    {
+        printf("Value[%d]: %f\n", i, a);
+    }
+    foreach_r (char i, double a : foo)
+    {
+        printf("Value2[%d]: %f\n", i, a);
+    }
+    foreach_r (double a : foo)
+    {
+        printf("Value3: %f\n", a);
+    }
+
+    foreach_r (a : foo2)
+    {
+        printf("Value: %f\n", a);
+    }
+    foreach_r (float* &a : foo2)
+    {
+        *a *= 2;
+        printf("Value: %f\n", *a);
+    }
+    foreach_r (i, a : foo2)
+    {
+        printf("Value[%d]: %f\n", i, a);
+    }
+    foreach_r (char i, double a : foo2)
+    {
+        printf("Value2[%d]: %f\n", i, a);
+    }
+    foreach_r (double a : foo2)
+    {
+        printf("Value3: %f\n", a);
+    }
+}
+
+/* #expect: test.ll
+
+entry:
+  %foo = alloca [3 x float], align 4
+  %foo2 = alloca <3 x float>, align 16
+  %.anon = alloca i64, align 8
+  %a = alloca float, align 4
+  %.anon1 = alloca i64, align 8
+  %a6 = alloca float*, align 8
+  %.anon9 = alloca i64, align 8
+  %a14 = alloca i8*, align 8
+  %.anon18 = alloca i64, align 8
+  %66 = load i64, i64* %.anon69, align 8
+  %sub73 = sub i64 %66, 1
+  store i64 %sub73, i64* %.anon69, align 8
+  %67 = load i64, i64* %.anon69, align 8
+  %ztrunc75 = trunc i64 %67 to i8
+  store i8 %ztrunc75, i8* %i74, align 1
+  %68 = load <3 x float>, <3 x float>* %foo2, align 16
+  %69 = load i64, i64* %.anon69, align 8
+  %70 = extractelement <3 x float> %68, i64 %69
+  %fpfpext77 = fpext float %70 to double
+  store double %fpfpext77, double* %a76, align 8
+  %71 = load i8, i8* %i74, align 1
+  %uisiext78 = zext i8 %71 to i32
+  %72 = load double, double* %a76, align 8
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([16 x i8], [16 x i8]* @.str.9, i32 0, i32 0), i32 %uisiext78, double %72)
+  br label %loop.cond70
+
+loop.exit79:                                      ; preds = %loop.cond70
+  store i64 3, i64* %.anon80, align 8
+  br label %loop.cond81
+
+loop.cond81:                                      ; preds = %loop.body83, %loop.exit79
+  %73 = load i64, i64* %.anon80, align 8
+  %gt82 = icmp ugt i64 %73, 0
+  br i1 %gt82, label %loop.body83, label %loop.exit87
+
+loop.body83:                                      ; preds = %loop.cond81
+  %74 = load i64, i64* %.anon80, align 8
+  %sub84 = sub i64 %74, 1
+  store i64 %sub84, i64* %.anon80, align 8
+  %75 = load <3 x float>, <3 x float>* %foo2, align 16
+  %76 = load i64, i64* %.anon80, align 8
+  %77 = extractelement <3 x float> %75, i64 %76
+  %fpfpext86 = fpext float %77 to double
+  store double %fpfpext86, double* %a85, align 8
+  %78 = load double, double* %a85, align 8
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @.str.10, i32 0, i32 0), double %78)
+  br label %loop.cond81
+
+loop.exit87:                                      ; preds = %loop.cond81
+  ret void
+}

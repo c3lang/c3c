@@ -17,11 +17,11 @@ define i32 @main
     %b = alloca i32
     %c = alloca i32
 
-    store i32 10, i32* %a
-    store i32 20, i32* %b
-    %2 = load i32, i32* %a
+    store i32 10, ptr %a
+    store i32 20, ptr %b
+    %2 = load i32, ptr %a
     trunc i32 %2 to i8
     sext i8 %sisitrunc to i32
-    store i32 %sisiext, i32* %c
+    store i32 %sisiext, ptr %c
     ret i32 0
 }

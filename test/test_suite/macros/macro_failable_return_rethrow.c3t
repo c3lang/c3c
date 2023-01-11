@@ -22,12 +22,12 @@ entry:
   %blockret = alloca i32, align 4
   %error_var1 = alloca i64, align 8
   %retparam = alloca i32, align 4
-  %0 = call i64 @test_xy(i32* %retparam)
+  %0 = call i64 @test_xy(ptr %retparam)
   %not_err = icmp eq i64 %0, 0
   br i1 %not_err, label %after_check, label %assign_optional
 
 assign_optional:                                  ; preds = %entry
-  store i64 %0, i64* %error_var1, align 8
+  store i64 %0, ptr %error_var1, align 8
   br label %guard_block
 
 after_check:                                      ; preds = %entry
@@ -37,11 +37,11 @@ guard_block:                                      ; preds = %assign_optional
   ret void
 
 noerr_block:                                      ; preds = %after_check
-  store i32 1, i32* %blockret, align 4
+  store i32 1, ptr %blockret, align 4
   br label %expr_block.exit
 
 expr_block.exit:                                  ; preds = %noerr_block
-  %1 = load i32, i32* %blockret, align 4
+  %1 = load i32, ptr %blockret, align 4
   br label %noerr_block2
 
 noerr_block2:                                     ; preds = %expr_block.exit

@@ -1,5 +1,6 @@
 module foo;
 import bar;
+import bar::abc;
 
 long x = Baz.sizeof;
 short y = $evaltype("Baz").sizeof;

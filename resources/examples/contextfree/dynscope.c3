@@ -5,7 +5,7 @@ tlocal String context_user = "safe";
 
 macro long reallyPerform(task)
 {
-	io::printfln("%s: %s", context_user, task);
+	io::printfn("%s: %s", context_user, task);
 	return task.len;
 }
 
@@ -28,5 +28,5 @@ fn void main()
 	long val1 = perform("something");
 	long val2 = @with_mode("faster", perform, "reliable");
 	long val3 = perform(String[] {"something"});
-	io::printfln("%d %d %d", val1, val2, val3);
+	io::printfn("%d %d %d", val1, val2, val3);
 }

@@ -10,12 +10,12 @@ fn void main()
 
 define void @string_escape_main() #0 {
 entry:
-  %s = alloca i8*, align 8
-  store i8* getelementptr inbounds ([18 x i8], [18 x i8]* @.str, i32 0, i32 0), i8** %s, align 8
+  %s = alloca ptr, align 8
+  store ptr @.str, ptr %s, align 8
   ret void
 }
 
-define i32 @main(i32 %0, i8** %1) #0 {
+define i32 @main(i32 %0, ptr %1) #0 {
 entry:
   call void @string_escape_main()
   ret i32 0

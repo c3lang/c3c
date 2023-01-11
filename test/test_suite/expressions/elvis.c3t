@@ -17,38 +17,38 @@ fn bool elvis3(bool x, bool y)
 
 // #expect: elvis.ll
 
-define i32* @elvis_elvis(i32* %0, i32* %1) #0 {
+define ptr @elvis_elvis(ptr %0, ptr %1) #0 {
 entry:
-  %ptrbool = icmp ne i32* %0, null
+  %ptrbool = icmp ne ptr %0, null
   br i1 %ptrbool, label %cond.phi, label %cond.rhs
 
 cond.rhs:                                         ; preds = %entry
   br label %cond.phi
 
 cond.phi:                                         ; preds = %cond.rhs, %entry
-  %val = phi i32* [ %0, %entry ], [ %1, %cond.rhs ]
-  ret i32* %val
+  %val = phi ptr [ %0, %entry ], [ %1, %cond.rhs ]
+  ret ptr %val
 }
 
-define i32* @elvis_elvis2(i32* %0, i32* %1) #0 {
+define ptr @elvis_elvis2(ptr %0, ptr %1) #0 {
 entry:
-  %ptrbool = icmp ne i32* %0, null
+  %ptrbool = icmp ne ptr %0, null
   br i1 %ptrbool, label %cond.phi3, label %cond.rhs
 
 cond.rhs:                                         ; preds = %entry
-  %ptrbool1 = icmp ne i32* %1, null
+  %ptrbool1 = icmp ne ptr %1, null
   br i1 %ptrbool1, label %cond.phi, label %cond.rhs2
 
 cond.rhs2:                                        ; preds = %cond.rhs
   br label %cond.phi
 
 cond.phi:                                         ; preds = %cond.rhs2, %cond.rhs
-  %val = phi i32* [ %1, %cond.rhs ], [ %0, %cond.rhs2 ]
+  %val = phi ptr [ %1, %cond.rhs ], [ %0, %cond.rhs2 ]
   br label %cond.phi3
 
 cond.phi3:                                        ; preds = %cond.phi, %entry
-  %val4 = phi i32* [ %0, %entry ], [ %val, %cond.phi ]
-  ret i32* %val4
+  %val4 = phi ptr [ %0, %entry ], [ %val, %cond.phi ]
+  ret ptr %val4
 }
 
 define zeroext i8 @elvis_elvis3(i8 zeroext %0, i8 zeroext %1) #0 {

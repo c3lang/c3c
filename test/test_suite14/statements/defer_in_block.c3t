@@ -1,0 +1,71 @@
+// #target: macos-x64
+module foo;
+extern fn void printf(char*,...);
+
+fn void test(int x)
+{
+	defer printf("---\n");
+	{|
+		defer printf("Hello %d\n", x);
+		x *= 2;
+		if (x < 100) return;
+		x *= 10000;
+	|};
+	printf("+++\n");
+	if (x == 0)
+	{
+		printf("0x\n");
+		return;
+	}
+    if (x == 1) return;
+}
+
+fn void main()
+{
+	test(123);
+	test(1);
+	test(0);
+}
+/* #expect: foo.ll
+
+define void @foo_test(i32 %0) #0 {
+entry:
+  %x = alloca i32, align 4
+  store i32 %0, i32* %x, align 4
+  %1 = load i32, i32* %x, align 4
+  %mul = mul i32 %1, 2
+  store i32 %mul, i32* %x, align 4
+  %2 = load i32, i32* %x, align 4
+  %lt = icmp slt i32 %2, 100
+  br i1 %lt, label %if.then, label %if.exit
+if.then:                                          ; preds = %entry
+  %3 = load i32, i32* %x, align 4
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @.str, i32 0, i32 0), i32 %3)
+  br label %expr_block.exit
+if.exit:                                          ; preds = %entry
+  %4 = load i32, i32* %x, align 4
+  %mul1 = mul i32 %4, 10000
+  store i32 %mul1, i32* %x, align 4
+  %5 = load i32, i32* %x, align 4
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @.str.1, i32 0, i32 0), i32 %5)
+  br label %expr_block.exit
+expr_block.exit:                                  ; preds = %if.exit, %if.then
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str.2, i32 0, i32 0))
+  %6 = load i32, i32* %x, align 4
+  %eq = icmp eq i32 %6, 0
+  br i1 %eq, label %if.then2, label %if.exit3
+if.then2:                                         ; preds = %expr_block.exit
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.3, i32 0, i32 0))
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str.4, i32 0, i32 0))
+  ret void
+if.exit3:                                         ; preds = %expr_block.exit
+  %7 = load i32, i32* %x, align 4
+  %eq4 = icmp eq i32 %7, 1
+  br i1 %eq4, label %if.then5, label %if.exit6
+if.then5:                                         ; preds = %if.exit3
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str.5, i32 0, i32 0))
+  ret void
+if.exit6:                                         ; preds = %if.exit3
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str.6, i32 0, i32 0))
+  ret void
+}

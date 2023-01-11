@@ -1,0 +1,44 @@
+// #target: linux-aarch64
+module test;
+
+struct Event
+{
+    int op;
+}
+
+fn Event test(int x)
+{
+  Event foo = { 1 };
+  Event bar = { 2 };
+  return x ? foo : bar;
+}
+
+/* #expect: test.ll
+
+define i32 @test_test(i32 %0) #0 {
+entry:
+  %foo = alloca %Event, align 4
+  %bar = alloca %Event, align 4
+  %taddr = alloca %Event, align 4
+  %1 = bitcast %Event* %foo to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %1, i8* align 4 bitcast (%Event* @.__const to i8*), i32 4, i1 false)
+  %2 = bitcast %Event* %bar to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %2, i8* align 4 bitcast (%Event* @.__const.1 to i8*), i32 4, i1 false)
+  %intbool = icmp ne i32 %0, 0
+  br i1 %intbool, label %cond.lhs, label %cond.rhs
+
+cond.lhs:                                         ; preds = %entry
+  %3 = load %Event, %Event* %foo, align 4
+  br label %cond.phi
+
+cond.rhs:                                         ; preds = %entry
+  %4 = load %Event, %Event* %bar, align 4
+  br label %cond.phi
+
+cond.phi:                                         ; preds = %cond.rhs, %cond.lhs
+  %val = phi %Event [ %3, %cond.lhs ], [ %4, %cond.rhs ]
+  store %Event %val, %Event* %taddr, align 4
+  %5 = getelementptr inbounds %Event, %Event* %taddr, i32 0, i32 0
+  %6 = load i32, i32* %5, align 4
+  ret i32 %6
+}

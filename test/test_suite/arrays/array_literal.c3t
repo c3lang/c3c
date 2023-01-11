@@ -19,10 +19,9 @@ fn double test(uint x)
 define double @array_literal_test(i32 %0) #0 {
 entry:
   %student_t = alloca [30 x double], align 16
-  %1 = bitcast [30 x double]* %student_t to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 16 %1, i8* align 16 bitcast ([30 x double]* @.__const to i8*), i32 240, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %student_t, ptr align 16 @.__const, i32 240, i1 false)
   %zext = zext i32 %0 to i64
-  %2 = getelementptr inbounds [30 x double], [30 x double]* %student_t, i64 0, i64 %zext
-  %3 = load double, double* %2, align 8
-  ret double %3
+  %1 = getelementptr inbounds [30 x double], ptr %student_t, i64 0, i64 %zext
+  %2 = load double, ptr %1, align 8
+  ret double %2
 }

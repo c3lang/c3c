@@ -45,10 +45,10 @@ entry:
   %z = alloca i32, align 4
   %z1 = alloca i32, align 4
   %i = alloca i32, align 4
-  call void (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str, i32 0, i32 0))
-  store i32 0, i32* %z, align 4
-  call void (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str.1, i32 0, i32 0))
-  store i32 0, i32* %z1, align 4
-  store i32 1, i32* %i, align 4
+  call void (ptr, ...) @printf(ptr @.str)
+  store i32 0, ptr %z, align 4
+  call void (ptr, ...) @printf(ptr @.str.1)
+  store i32 0, ptr %z1, align 4
+  store i32 1, ptr %i, align 4
   ret i32 1
 }

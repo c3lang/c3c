@@ -18,62 +18,72 @@ fn void main()
 
 /* #expect: test.ll
 
+@.str = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
+
+; Function Attrs: nounwind
+declare void @printf(ptr, ...) #0
+
 define void @test_main() #0 {
 entry:
   %x = alloca [8 x i32], align 16
   %.anon = alloca i64, align 8
   %i = alloca i32, align 4
-  %0 = bitcast [8 x i32]* %x to i8*
-  call void @llvm.memset.p0i8.i64(i8* align 16 %0, i8 0, i64 32, i1 false)
-  %1 = getelementptr inbounds [8 x i32], [8 x i32]* %x, i64 0, i64 0
-  store i32 3, i32* %1, align 4
-  %2 = getelementptr inbounds [8 x i32], [8 x i32]* %x, i64 0, i64 1
-  store i32 3, i32* %2, align 4
-  %3 = getelementptr inbounds [8 x i32], [8 x i32]* %x, i64 0, i64 1
-  store i32 5, i32* %3, align 4
-  %4 = getelementptr inbounds [8 x i32], [8 x i32]* %x, i64 0, i64 2
-  store i32 5, i32* %4, align 4
-  %5 = getelementptr inbounds [8 x i32], [8 x i32]* %x, i64 0, i64 5
-  store i32 52, i32* %5, align 4
-  %6 = getelementptr inbounds [8 x i32], [8 x i32]* %x, i64 0, i64 6
-  store i32 52, i32* %6, align 4
-  %7 = getelementptr inbounds [8 x i32], [8 x i32]* %x, i64 0, i64 7
-  store i32 52, i32* %7, align 4
-  store i64 0, i64* %.anon, align 8
+  call void @llvm.memset.p0.i64(ptr align 16 %x, i8 0, i64 32, i1 false)
+  %0 = getelementptr inbounds [8 x i32], ptr %x, i64 0, i64 0
+  store i32 3, ptr %0, align 4
+  %1 = getelementptr inbounds [8 x i32], ptr %x, i64 0, i64 1
+  store i32 3, ptr %1, align 4
+  %2 = getelementptr inbounds [8 x i32], ptr %x, i64 0, i64 1
+  store i32 5, ptr %2, align 4
+  %3 = getelementptr inbounds [8 x i32], ptr %x, i64 0, i64 2
+  store i32 5, ptr %3, align 4
+  %4 = getelementptr inbounds [8 x i32], ptr %x, i64 0, i64 5
+  store i32 52, ptr %4, align 4
+  %5 = getelementptr inbounds [8 x i32], ptr %x, i64 0, i64 6
+  store i32 52, ptr %5, align 4
+  %6 = getelementptr inbounds [8 x i32], ptr %x, i64 0, i64 7
+  store i32 52, ptr %6, align 4
+  store i64 0, ptr %.anon, align 8
   br label %loop.cond
 
 loop.cond:                                        ; preds = %loop.body, %entry
-  %8 = load i64, i64* %.anon, align 8
-  %gt = icmp ugt i64 8, %8
+  %7 = load i64, ptr %.anon, align 8
+  %gt = icmp ugt i64 8, %7
   br i1 %gt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
-  %9 = load i64, i64* %.anon, align 8
-  %10 = getelementptr inbounds [8 x i32], [8 x i32]* %x, i64 0, i64 %9
-  %11 = load i32, i32* %10, align 4
-  store i32 %11, i32* %i, align 4
-  %12 = load i32, i32* %i, align 4
-  call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 %12)
-  %13 = load i64, i64* %.anon, align 8
-  %add = add i64 %13, 1
-  store i64 %add, i64* %.anon, align 8
+  %8 = load i64, ptr %.anon, align 8
+  %9 = getelementptr inbounds [8 x i32], ptr %x, i64 0, i64 %8
+  %10 = load i32, ptr %9, align 4
+  store i32 %10, ptr %i, align 4
+  %11 = load i32, ptr %i, align 4
+  call void (ptr, ...) @printf(ptr @.str, i32 %11)
+  %12 = load i64, ptr %.anon, align 8
+  %add = add i64 %12, 1
+  store i64 %add, ptr %.anon, align 8
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
   br label %cond
 
 cond:                                             ; preds = %assign, %loop.exit
-  %14 = phi i64 [ 0, %loop.exit ], [ %add1, %assign ]
-  %lt = icmp slt i64 %14, 8
+  %13 = phi i64 [ 0, %loop.exit ], [ %add1, %assign ]
+  %lt = icmp slt i64 %13, 8
   br i1 %lt, label %assign, label %exit
 
 assign:                                           ; preds = %cond
-  %15 = getelementptr inbounds [8 x i32], [8 x i32]* %x, i64 0, i64 %14
-  store i32 123, i32* %15, align 4
-  %add1 = add i64 %14, 1
+  %14 = getelementptr inbounds [8 x i32], ptr %x, i64 0, i64 %13
+  store i32 123, ptr %14, align 4
+  %add1 = add i64 %13, 1
   br label %cond
 
 exit:                                             ; preds = %cond
   ret void
 }
 
+; Function Attrs: nounwind
+define i32 @main(i32 %0, ptr %1) #0 {
+entry:
+  call void @test_main()
+  ret i32 0
+}

@@ -1,0 +1,315 @@
+// #target: macos-x64
+module test;
+import std::io;
+
+bitstruct Test : int @bigendian
+{
+	ushort a : 0..15;
+	ushort b : 16..31;
+}
+
+bitstruct Test2 : char[4] @bigendian
+{
+	ushort a : 0..15;
+	ushort b : 16..31;
+}
+
+fn void main()
+{
+	IntBE x;
+	x.val = 123;
+
+	io::printf("BE 123 => %d (%d)\n", (int)x, x.val);
+	Test abc = { .a = 0x1234, .b = 0x5678 };
+	Test2 abc2 = { .a = 0x1234, .b = 0x5678 };
+	char[4]* z = (char[4]*)&abc;
+	char[4]* z2 = (char[4]*)&abc2;
+	foreach (d : z2) io::printf(" %x", d);
+	io::println("");
+	foreach (d : z) io::printf(" %x", d);
+	io::println("");
+	io::printfn("abc.a = %x", abc.a);
+	abc.a = 0x1234;
+	abc.b = 0x5678;
+	io::printfn("->abc.a = %x", abc.a);
+	foreach (d : z) io::printf(" %x", d);
+	io::println("");
+
+	IntLE y;
+	y.val = 123;
+	io::printf("LE 123 => %d (%d)\n", (int)y, y.val);
+
+}
+
+/* #expect: test.ll
+
+  %0 = load i32, i32* %x, align 4
+  %1 = call i32 @llvm.bswap.i32(i32 %0)
+  store i32 2063597568, i32* %x, align 4
+  %2 = bitcast i32* %x to i8*
+  %3 = insertvalue %variant undef, i8* %2, 0
+  %4 = insertvalue %variant %3, i64 ptrtoint (%.introspect* @"ct$int" to i64), 1
+  %5 = getelementptr inbounds [2 x %variant], [2 x %variant]* %varargslots, i64 0, i64 0
+  store %variant %4, %variant* %5, align 16
+  %6 = load i32, i32* %x, align 4
+  %7 = call i32 @llvm.bswap.i32(i32 %6)
+  store i32 %7, i32* %taddr, align 4
+  %8 = bitcast i32* %taddr to i8*
+  %9 = insertvalue %variant undef, i8* %8, 0
+  %10 = insertvalue %variant %9, i64 ptrtoint (%.introspect* @"ct$int" to i64), 1
+  %11 = getelementptr inbounds [2 x %variant], [2 x %variant]* %varargslots, i64 0, i64 1
+  store %variant %10, %variant* %11, align 16
+  %12 = bitcast [2 x %variant]* %varargslots to %variant*
+  %13 = insertvalue %"variant[]" undef, %variant* %12, 0
+  %14 = insertvalue %"variant[]" %13, i64 2, 1
+  store %"variant[]" %14, %"variant[]"* %taddr1, align 8
+  %15 = bitcast %"variant[]"* %taddr1 to { i8*, i64 }*
+  %16 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %15, i32 0, i32 0
+  %lo = load i8*, i8** %16, align 8
+  %17 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %15, i32 0, i32 1
+  %hi = load i64, i64* %17, align 8
+  %18 = call i64 @std_io_printf(i64* %retparam, i8* getelementptr inbounds ([19 x i8], [19 x i8]* @.str, i32 0, i32 0), i64 18, i8* %lo, i64 %hi)
+  %not_err = icmp eq i64 %18, 0
+  br i1 %not_err, label %after_check, label %voiderr
+
+after_check:                                      ; preds = %entry
+  br label %voiderr
+
+voiderr:                                          ; preds = %after_check, %entry
+  store i32 873625686, i32* %abc, align 4
+  store [4 x i8] c"\124Vx", [4 x i8]* %abc2, align 1
+  %ptrptr = bitcast i32* %abc to [4 x i8]*
+  store [4 x i8]* %ptrptr, [4 x i8]** %z, align 8
+  store [4 x i8]* %abc2, [4 x i8]** %z2, align 8
+  %19 = load [4 x i8]*, [4 x i8]** %z2, align 8
+  store [4 x i8]* %19, [4 x i8]** %.anon, align 8
+  store i64 0, i64* %.anon2, align 8
+  br label %loop.cond
+
+loop.cond:                                        ; preds = %voiderr10, %voiderr
+  %20 = load i64, i64* %.anon2, align 8
+  %gt = icmp ugt i64 4, %20
+  br i1 %gt, label %loop.body, label %loop.exit
+
+loop.body:                                        ; preds = %loop.cond
+  %21 = load [4 x i8]*, [4 x i8]** %.anon, align 8
+  %22 = load i64, i64* %.anon2, align 8
+  %23 = getelementptr inbounds [4 x i8], [4 x i8]* %21, i64 0, i64 %22
+  %24 = load i8, i8* %23, align 1
+  store i8 %24, i8* %d, align 1
+  %25 = insertvalue %variant undef, i8* %d, 0
+  %26 = insertvalue %variant %25, i64 ptrtoint (%.introspect* @"ct$char" to i64), 1
+  %27 = getelementptr inbounds [1 x %variant], [1 x %variant]* %varargslots4, i64 0, i64 0
+  store %variant %26, %variant* %27, align 16
+  %28 = bitcast [1 x %variant]* %varargslots4 to %variant*
+  %29 = insertvalue %"variant[]" undef, %variant* %28, 0
+  %30 = insertvalue %"variant[]" %29, i64 1, 1
+  store %"variant[]" %30, %"variant[]"* %taddr5, align 8
+  %31 = bitcast %"variant[]"* %taddr5 to { i8*, i64 }*
+  %32 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %31, i32 0, i32 0
+  %lo6 = load i8*, i8** %32, align 8
+  %33 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %31, i32 0, i32 1
+  %hi7 = load i64, i64* %33, align 8
+  %34 = call i64 @std_io_printf(i64* %retparam3, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.1, i32 0, i32 0), i64 3, i8* %lo6, i64 %hi7)
+  %not_err8 = icmp eq i64 %34, 0
+  br i1 %not_err8, label %after_check9, label %voiderr10
+
+after_check9:                                     ; preds = %loop.body
+  br label %voiderr10
+
+voiderr10:                                        ; preds = %after_check9, %loop.body
+  %35 = load i64, i64* %.anon2, align 8
+  %add = add i64 %35, 1
+  store i64 %add, i64* %.anon2, align 8
+  br label %loop.cond
+
+loop.exit:                                        ; preds = %loop.cond
+  %36 = call i32 @std_io_println(i8* getelementptr inbounds ([1 x i8], [1 x i8]* @.str.2, i32 0, i32 0)) #2
+  %37 = load [4 x i8]*, [4 x i8]** %z, align 8
+  store [4 x i8]* %37, [4 x i8]** %.anon11, align 8
+  store i64 0, i64* %.anon12, align 8
+  br label %loop.cond13
+
+loop.cond13:                                      ; preds = %voiderr24, %loop.exit
+  %38 = load i64, i64* %.anon12, align 8
+  %gt14 = icmp ugt i64 4, %38
+  br i1 %gt14, label %loop.body15, label %loop.exit26
+
+loop.body15:                                      ; preds = %loop.cond13
+  %39 = load [4 x i8]*, [4 x i8]** %.anon11, align 8
+  %40 = load i64, i64* %.anon12, align 8
+  %41 = getelementptr inbounds [4 x i8], [4 x i8]* %39, i64 0, i64 %40
+  %42 = load i8, i8* %41, align 1
+  store i8 %42, i8* %d16, align 1
+  %43 = insertvalue %variant undef, i8* %d16, 0
+  %44 = insertvalue %variant %43, i64 ptrtoint (%.introspect* @"ct$char" to i64), 1
+  %45 = getelementptr inbounds [1 x %variant], [1 x %variant]* %varargslots18, i64 0, i64 0
+  store %variant %44, %variant* %45, align 16
+  %46 = bitcast [1 x %variant]* %varargslots18 to %variant*
+  %47 = insertvalue %"variant[]" undef, %variant* %46, 0
+  %48 = insertvalue %"variant[]" %47, i64 1, 1
+  store %"variant[]" %48, %"variant[]"* %taddr19, align 8
+  %49 = bitcast %"variant[]"* %taddr19 to { i8*, i64 }*
+  %50 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %49, i32 0, i32 0
+  %lo20 = load i8*, i8** %50, align 8
+  %51 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %49, i32 0, i32 1
+  %hi21 = load i64, i64* %51, align 8
+  %52 = call i64 @std_io_printf(i64* %retparam17, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.3, i32 0, i32 0), i64 3, i8* %lo20, i64 %hi21)
+  %not_err22 = icmp eq i64 %52, 0
+  br i1 %not_err22, label %after_check23, label %voiderr24
+
+after_check23:                                    ; preds = %loop.body15
+  br label %voiderr24
+
+voiderr24:                                        ; preds = %after_check23, %loop.body15
+  %53 = load i64, i64* %.anon12, align 8
+  %add25 = add i64 %53, 1
+  store i64 %add25, i64* %.anon12, align 8
+  br label %loop.cond13
+
+loop.exit26:                                      ; preds = %loop.cond13
+  %54 = call i32 @std_io_println(i8* getelementptr inbounds ([1 x i8], [1 x i8]* @.str.4, i32 0, i32 0)) #2
+  %55 = load i32, i32* %abc, align 4
+  %56 = call i32 @llvm.bswap.i32(i32 %55)
+  %57 = and i32 65535, %56
+  %ztrunc = trunc i32 %57 to i16
+  store i16 %ztrunc, i16* %taddr29, align 2
+  %58 = bitcast i16* %taddr29 to i8*
+  %59 = insertvalue %variant undef, i8* %58, 0
+  %60 = insertvalue %variant %59, i64 ptrtoint (%.introspect* @"ct$ushort" to i64), 1
+  %61 = getelementptr inbounds [1 x %variant], [1 x %variant]* %varargslots28, i64 0, i64 0
+  store %variant %60, %variant* %61, align 16
+  %62 = bitcast [1 x %variant]* %varargslots28 to %variant*
+  %63 = insertvalue %"variant[]" undef, %variant* %62, 0
+  %64 = insertvalue %"variant[]" %63, i64 1, 1
+  store %"variant[]" %64, %"variant[]"* %taddr30, align 8
+  %65 = bitcast %"variant[]"* %taddr30 to { i8*, i64 }*
+  %66 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %65, i32 0, i32 0
+  %lo31 = load i8*, i8** %66, align 8
+  %67 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %65, i32 0, i32 1
+  %hi32 = load i64, i64* %67, align 8
+  %68 = call i64 @std_io_printfn(i64* %retparam27, i8* getelementptr inbounds ([11 x i8], [11 x i8]* @.str.5, i32 0, i32 0), i64 10, i8* %lo31, i64 %hi32)
+  %not_err33 = icmp eq i64 %68, 0
+  br i1 %not_err33, label %after_check34, label %voiderr35
+
+after_check34:                                    ; preds = %loop.exit26
+  br label %voiderr35
+
+voiderr35:                                        ; preds = %after_check34, %loop.exit26
+  %69 = load i32, i32* %abc, align 4
+  %70 = call i32 @llvm.bswap.i32(i32 %69)
+  %71 = and i32 %70, -65536
+  %72 = or i32 %71, 4660
+  %73 = call i32 @llvm.bswap.i32(i32 %72)
+  store i32 %73, i32* %abc, align 4
+  %74 = load i32, i32* %abc, align 4
+  %75 = call i32 @llvm.bswap.i32(i32 %74)
+  %76 = and i32 %75, 65535
+  %77 = or i32 %76, 1450704896
+  %78 = call i32 @llvm.bswap.i32(i32 %77)
+  store i32 %78, i32* %abc, align 4
+  %79 = load i32, i32* %abc, align 4
+  %80 = call i32 @llvm.bswap.i32(i32 %79)
+  %81 = and i32 65535, %80
+  %ztrunc38 = trunc i32 %81 to i16
+  store i16 %ztrunc38, i16* %taddr39, align 2
+  %82 = bitcast i16* %taddr39 to i8*
+  %83 = insertvalue %variant undef, i8* %82, 0
+  %84 = insertvalue %variant %83, i64 ptrtoint (%.introspect* @"ct$ushort" to i64), 1
+  %85 = getelementptr inbounds [1 x %variant], [1 x %variant]* %varargslots37, i64 0, i64 0
+  store %variant %84, %variant* %85, align 16
+  %86 = bitcast [1 x %variant]* %varargslots37 to %variant*
+  %87 = insertvalue %"variant[]" undef, %variant* %86, 0
+  %88 = insertvalue %"variant[]" %87, i64 1, 1
+  store %"variant[]" %88, %"variant[]"* %taddr40, align 8
+  %89 = bitcast %"variant[]"* %taddr40 to { i8*, i64 }*
+  %90 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %89, i32 0, i32 0
+  %lo41 = load i8*, i8** %90, align 8
+  %91 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %89, i32 0, i32 1
+  %hi42 = load i64, i64* %91, align 8
+  %92 = call i64 @std_io_printfn(i64* %retparam36, i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.6, i32 0, i32 0), i64 12, i8* %lo41, i64 %hi42)
+  %not_err43 = icmp eq i64 %92, 0
+  br i1 %not_err43, label %after_check44, label %voiderr45
+
+after_check44:                                    ; preds = %voiderr35
+  br label %voiderr45
+
+voiderr45:                                        ; preds = %after_check44, %voiderr35
+  %93 = load [4 x i8]*, [4 x i8]** %z, align 8
+  store [4 x i8]* %93, [4 x i8]** %.anon46, align 8
+  store i64 0, i64* %.anon47, align 8
+  br label %loop.cond48
+
+loop.cond48:                                      ; preds = %voiderr59, %voiderr45
+  %94 = load i64, i64* %.anon47, align 8
+  %gt49 = icmp ugt i64 4, %94
+  br i1 %gt49, label %loop.body50, label %loop.exit61
+
+loop.body50:                                      ; preds = %loop.cond48
+  %95 = load [4 x i8]*, [4 x i8]** %.anon46, align 8
+  %96 = load i64, i64* %.anon47, align 8
+  %97 = getelementptr inbounds [4 x i8], [4 x i8]* %95, i64 0, i64 %96
+  %98 = load i8, i8* %97, align 1
+  store i8 %98, i8* %d51, align 1
+  %99 = insertvalue %variant undef, i8* %d51, 0
+  %100 = insertvalue %variant %99, i64 ptrtoint (%.introspect* @"ct$char" to i64), 1
+  %101 = getelementptr inbounds [1 x %variant], [1 x %variant]* %varargslots53, i64 0, i64 0
+  store %variant %100, %variant* %101, align 16
+  %102 = bitcast [1 x %variant]* %varargslots53 to %variant*
+  %103 = insertvalue %"variant[]" undef, %variant* %102, 0
+  %104 = insertvalue %"variant[]" %103, i64 1, 1
+  store %"variant[]" %104, %"variant[]"* %taddr54, align 8
+  %105 = bitcast %"variant[]"* %taddr54 to { i8*, i64 }*
+  %106 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %105, i32 0, i32 0
+  %lo55 = load i8*, i8** %106, align 8
+  %107 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %105, i32 0, i32 1
+  %hi56 = load i64, i64* %107, align 8
+  %108 = call i64 @std_io_printf(i64* %retparam52, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.7, i32 0, i32 0), i64 3, i8* %lo55, i64 %hi56)
+  %not_err57 = icmp eq i64 %108, 0
+  br i1 %not_err57, label %after_check58, label %voiderr59
+
+after_check58:                                    ; preds = %loop.body50
+  br label %voiderr59
+
+voiderr59:                                        ; preds = %after_check58, %loop.body50
+  %109 = load i64, i64* %.anon47, align 8
+  %add60 = add i64 %109, 1
+  store i64 %add60, i64* %.anon47, align 8
+  br label %loop.cond48
+
+loop.exit61:                                      ; preds = %loop.cond48
+  %110 = call i32 @std_io_println(i8* getelementptr inbounds ([1 x i8], [1 x i8]* @.str.8, i32 0, i32 0)) #2
+  store i32 0, i32* %y, align 4
+  %111 = load i32, i32* %y, align 4
+  store i32 123, i32* %y, align 4
+  %112 = bitcast i32* %y to i8*
+  %113 = insertvalue %variant undef, i8* %112, 0
+  %114 = insertvalue %variant %113, i64 ptrtoint (%.introspect* @"ct$int" to i64), 1
+  %115 = getelementptr inbounds [2 x %variant], [2 x %variant]* %varargslots63, i64 0, i64 0
+  store %variant %114, %variant* %115, align 16
+  %116 = load i32, i32* %y, align 4
+  store i32 %116, i32* %taddr64, align 4
+  %117 = bitcast i32* %taddr64 to i8*
+  %118 = insertvalue %variant undef, i8* %117, 0
+  %119 = insertvalue %variant %118, i64 ptrtoint (%.introspect* @"ct$int" to i64), 1
+  %120 = getelementptr inbounds [2 x %variant], [2 x %variant]* %varargslots63, i64 0, i64 1
+  store %variant %119, %variant* %120, align 16
+  %121 = bitcast [2 x %variant]* %varargslots63 to %variant*
+  %122 = insertvalue %"variant[]" undef, %variant* %121, 0
+  %123 = insertvalue %"variant[]" %122, i64 2, 1
+  store %"variant[]" %123, %"variant[]"* %taddr65, align 8
+  %124 = bitcast %"variant[]"* %taddr65 to { i8*, i64 }*
+  %125 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %124, i32 0, i32 0
+  %lo66 = load i8*, i8** %125, align 8
+  %126 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %124, i32 0, i32 1
+  %hi67 = load i64, i64* %126, align 8
+  %127 = call i64 @std_io_printf(i64* %retparam62, i8* getelementptr inbounds ([19 x i8], [19 x i8]* @.str.9, i32 0, i32 0), i64 18, i8* %lo66, i64 %hi67)
+  %not_err68 = icmp eq i64 %127, 0
+  br i1 %not_err68, label %after_check69, label %voiderr70
+
+after_check69:                                    ; preds = %loop.exit61
+  br label %voiderr70
+
+voiderr70:                                        ; preds = %after_check69, %loop.exit61
+  ret void
+}

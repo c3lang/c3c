@@ -412,6 +412,13 @@ macro int128 int128[<*>].xor(int128[<*>] x) = $$reduce_xor(x);
 macro int128 int128[<*>].max(int128[<*>] x) = $$reduce_max(x);
 macro int128 int128[<*>].min(int128[<*>] x) = $$reduce_min(x);
 
+macro bool[<*>] bool[<*>].comp_lt(bool[<*>] x, bool[<*>] y) = $$veccomplt(x, y);
+macro bool[<*>] bool[<*>].comp_le(bool[<*>] x, bool[<*>] y) = $$veccomple(x, y);
+macro bool[<*>] bool[<*>].comp_eq(bool[<*>] x, bool[<*>] y) = $$veccompeq(x, y);
+macro bool[<*>] bool[<*>].comp_gt(bool[<*>] x, bool[<*>] y) = $$veccompgt(x, y);
+macro bool[<*>] bool[<*>].comp_ge(bool[<*>] x, bool[<*>] y) = $$veccompge(x, y);
+macro bool[<*>] bool[<*>].comp_ne(bool[<*>] x, bool[<*>] y) = $$veccompne(x, y);
+
 macro bool bool[<*>].sum(bool[<*>] x) = $$reduce_add(x);
 macro bool bool[<*>].product(bool[<*>] x) = $$reduce_mul(x);
 macro bool bool[<*>].and(bool[<*>] x) = $$reduce_and(x);

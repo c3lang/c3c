@@ -20,14 +20,14 @@ fn void main()
 
 /* #expect: foob.ll
 
-define void @foob_Foo_test(%Foo* %0) #0 {
+define void @foob_Foo_test(ptr %0) #0 {
 entry:
   ret void
 }
 
 // #expect: baz.ll
 
-define void @foob_Foo_test2(%Foo* %0, i32 %1) #0 {
+define void @foob_Foo_test2(ptr %0, i32 %1) #0 {
 entry:
   ret void
 }
@@ -35,9 +35,8 @@ entry:
 define void @baz_main() #0 {
 entry:
   %f = alloca %Foo, align 4
-  %0 = bitcast %Foo* %f to i32*
-  store i32 0, i32* %0, align 4
-  call void @foob_Foo_test(%Foo* %f)
-  call void @foob_Foo_test2(%Foo* %f, i32 123)
+  store i32 0, ptr %f, align 4
+  call void @foob_Foo_test(ptr %f)
+  call void @foob_Foo_test2(ptr %f, i32 123)
   ret void
 }

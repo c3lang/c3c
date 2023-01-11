@@ -1,0 +1,112 @@
+// #target: macos-x64
+
+extern fn int! testError();
+
+fn void test()
+{
+
+    double x = (testError() + testError()) ?? 100;
+    double y = (1 << testError()) ?? 100;
+    double z = testError() >> 1 ?? 100;
+    double w = testError() * testError() ?? 100;
+}
+
+/* #expect: else_checks.ll
+
+; Function Attrs: nounwind
+declare i64 @testError(i32*) #0
+
+; Function Attrs: nounwind
+define void @else_checks_test() #0 {
+entry:
+  %x = alloca double, align 8
+  %retparam = alloca i32, align 4
+  %retparam1 = alloca i32, align 4
+  %y = alloca double, align 8
+  %retparam4 = alloca i32, align 4
+  %z = alloca double, align 8
+  %retparam11 = alloca i32, align 4
+  %w = alloca double, align 8
+  %retparam18 = alloca i32, align 4
+  %retparam21 = alloca i32, align 4
+  %0 = call i64 @testError(i32* %retparam)
+  %not_err = icmp eq i64 %0, 0
+  br i1 %not_err, label %after_check, label %else_block
+
+after_check:                                      ; preds = %entry
+  %1 = load i32, i32* %retparam, align 4
+  %2 = call i64 @testError(i32* %retparam1)
+  %not_err2 = icmp eq i64 %2, 0
+  br i1 %not_err2, label %after_check3, label %else_block
+
+after_check3:                                     ; preds = %after_check
+  %3 = load i32, i32* %retparam1, align 4
+  %add = add i32 %1, %3
+  br label %phi_block
+
+else_block:                                       ; preds = %after_check, %entry
+  br label %phi_block
+
+phi_block:                                        ; preds = %else_block, %after_check3
+  %val = phi i32 [ %add, %after_check3 ], [ 100, %else_block ]
+  %sifp = sitofp i32 %val to double
+  store double %sifp, double* %x, align 8
+  %4 = call i64 @testError(i32* %retparam4)
+  %not_err5 = icmp eq i64 %4, 0
+  br i1 %not_err5, label %after_check6, label %else_block7
+
+after_check6:                                     ; preds = %phi_block
+  %5 = load i32, i32* %retparam4, align 4
+  %shl = shl i32 1, %5
+  %6 = freeze i32 %shl
+  br label %phi_block8
+
+else_block7:                                      ; preds = %phi_block
+  br label %phi_block8
+
+phi_block8:                                       ; preds = %else_block7, %after_check6
+  %val9 = phi i32 [ %6, %after_check6 ], [ 100, %else_block7 ]
+  %sifp10 = sitofp i32 %val9 to double
+  store double %sifp10, double* %y, align 8
+  %7 = call i64 @testError(i32* %retparam11)
+  %not_err12 = icmp eq i64 %7, 0
+  br i1 %not_err12, label %after_check13, label %else_block14
+
+after_check13:                                    ; preds = %phi_block8
+  %8 = load i32, i32* %retparam11, align 4
+  %ashr = ashr i32 %8, 1
+  %9 = freeze i32 %ashr
+  br label %phi_block15
+
+else_block14:                                     ; preds = %phi_block8
+  br label %phi_block15
+
+phi_block15:                                      ; preds = %else_block14, %after_check13
+  %val16 = phi i32 [ %9, %after_check13 ], [ 100, %else_block14 ]
+  %sifp17 = sitofp i32 %val16 to double
+  store double %sifp17, double* %z, align 8
+  %10 = call i64 @testError(i32* %retparam18)
+  %not_err19 = icmp eq i64 %10, 0
+  br i1 %not_err19, label %after_check20, label %else_block24
+
+after_check20:                                    ; preds = %phi_block15
+  %11 = load i32, i32* %retparam18, align 4
+  %12 = call i64 @testError(i32* %retparam21)
+  %not_err22 = icmp eq i64 %12, 0
+  br i1 %not_err22, label %after_check23, label %else_block24
+
+after_check23:                                    ; preds = %after_check20
+  %13 = load i32, i32* %retparam21, align 4
+  %mul = mul i32 %11, %13
+  br label %phi_block25
+
+else_block24:                                     ; preds = %after_check20, %phi_block15
+  br label %phi_block25
+
+phi_block25:                                      ; preds = %else_block24, %after_check23
+  %val26 = phi i32 [ %mul, %after_check23 ], [ 100, %else_block24 ]
+  %sifp27 = sitofp i32 %val26 to double
+  store double %sifp27, double* %w, align 8
+  ret void
+}
+

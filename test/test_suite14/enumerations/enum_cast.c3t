@@ -1,0 +1,102 @@
+// #target: macos-x64
+module test;
+
+enum MyEnum : char
+{
+    FOO,
+    BAR
+}
+
+fn void test2()
+{
+	char ww = MyEnum.FOO.ordinal;
+	MyEnum x = MyEnum.BAR;
+	char zz = x.ordinal;
+}
+
+fn void test()
+{
+    char b = MyEnum.FOO;
+    int z = (int)(MyEnum.BAR);
+    var $foo = (int)(MyEnum.FOO);
+    var $baz = MyEnum.BAR;
+    MyEnum x = MyEnum.BAR;
+    char b2 = x;
+    int z2 = (int)(x);
+    float d = (float)(MyEnum.FOO);
+    bool hello = (bool)(MyEnum.FOO);
+    var $d = (float)(MyEnum.FOO);
+    var $hello = (bool)(MyEnum.FOO);
+    MyEnum! xf = MyEnum.BAR;
+    float! e = (float)(x);
+    e = (float)(xf);
+
+}
+
+/* #expect: test.ll
+
+define void @test_test2() #0 {
+entry:
+  %ww = alloca i8, align 1
+  %x = alloca i8, align 1
+  %zz = alloca i8, align 1
+  store i8 0, i8* %ww, align 1
+  store i8 1, i8* %x, align 1
+  %0 = load i8, i8* %x, align 1
+  store i8 %0, i8* %zz, align 1
+  ret void
+}
+
+; Function Attrs: nounwind
+define void @test_test() #0 {
+entry:
+  %b = alloca i8, align 1
+  %z = alloca i32, align 4
+  %x = alloca i8, align 1
+  %b2 = alloca i8, align 1
+  %z2 = alloca i32, align 4
+  %d = alloca float, align 4
+  %hello = alloca i8, align 1
+  %xf = alloca i8, align 1
+  %xf.f = alloca i64, align 8
+  %e = alloca float, align 4
+  %e.f = alloca i64, align 8
+  store i8 0, i8* %b, align 1
+  store i32 1, i32* %z, align 4
+  store i8 1, i8* %x, align 1
+  %0 = load i8, i8* %x, align 1
+  store i8 %0, i8* %b2, align 1
+  %1 = load i8, i8* %x, align 1
+  %uisiext = zext i8 %1 to i32
+  store i32 %uisiext, i32* %z2, align 4
+  store float 0.000000e+00, float* %d, align 4
+  store i8 0, i8* %hello, align 1
+  store i8 1, i8* %xf, align 1
+  store i64 0, i64* %xf.f, align 8
+  %2 = load i8, i8* %x, align 1
+  %uifp = uitofp i8 %2 to float
+  store float %uifp, float* %e, align 4
+  store i64 0, i64* %e.f, align 8
+  %optval = load i64, i64* %xf.f, align 8
+  %not_err = icmp eq i64 %optval, 0
+  br i1 %not_err, label %after_check, label %assign_optional
+
+assign_optional:                                  ; preds = %entry
+  store i64 %optval, i64* %e.f, align 8
+  br label %after_assign
+
+after_check:                                      ; preds = %entry
+  %3 = load i8, i8* %xf, align 1
+  %uifp1 = uitofp i8 %3 to float
+  store float %uifp1, float* %e, align 4
+  store i64 0, i64* %e.f, align 8
+  br label %after_assign
+
+after_assign:                                     ; preds = %after_check, %assign_optional
+  br label %voiderr
+
+voiderr:                                          ; preds = %after_assign
+  ret void
+}
+
+attributes #0 = { nounwind }

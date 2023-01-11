@@ -12,7 +12,7 @@ fault InterpretError
 
 fn void! print_error(usz pos, String err)
 {
-	io::printfln("Error at %s: %s", pos, err);
+	io::printfn("Error at %s: %s", pos, err);
 	return InterpretError.INTEPRET_FAILED!;
 }
 

@@ -15,40 +15,38 @@ fn void main()
     printf("Bitcast %f to %d to %f", f, i, f2);
 }
 
-// #expect: typeof_example.ll
+/* #expect: typeof_example.ll
 
-   %f = alloca float, align 4
-   %i = alloca i32, align 4
-   %value = alloca float, align 4
-   %temp = alloca float, align 4
-   %result = alloca i32*, align 8
-   %f2 = alloca float, align 4
-   %value1 = alloca i32, align 4
-   %temp2 = alloca i32, align 4
-   %result3 = alloca float*, align 8
-   store float 1.000000e+02, float* %f, align 4
-   %0 = load float, float* %f, align 4
-   store float %0, float* %value, align 4
-   %1 = load float, float* %value, align 4
-   store float %1, float* %temp, align 4
-   %ptrptr = bitcast float* %temp to i32*
-   store i32* %ptrptr, i32** %result, align 8
-   %2 = load i32*, i32** %result, align 8
-   %3 = load i32, i32* %2, align 8
-   store i32 %3, i32* %i, align 4
-   %4 = load i32, i32* %i, align 4
-   store i32 %4, i32* %value1, align 4
-   %5 = load i32, i32* %value1, align 4
-   store i32 %5, i32* %temp2, align 4
-   %ptrptr4 = bitcast i32* %temp2 to float*
-   store float* %ptrptr4, float** %result3, align 8
-   %6 = load float*, float** %result3, align 8
-   %7 = load float, float* %6, align 8
-   store float %7, float* %f2, align 4
-   %8 = load float, float* %f, align 4
-   %fpfpext = fpext float %8 to double
-   %9 = load i32, i32* %i, align 4
-   %10 = load float, float* %f2, align 4
-   %fpfpext5 = fpext float %10 to double
-   call void (i8*, ...) @printf(i8* getelementptr inbounds ([23 x i8], [23 x i8]* @.str, i32 0, i32 0), double %fpfpext, i32 %9, double %fpfpext5)
-   ret void
+  %f = alloca float, align 4
+  %i = alloca i32, align 4
+  %value = alloca float, align 4
+  %temp = alloca float, align 4
+  %result = alloca ptr, align 8
+  %f2 = alloca float, align 4
+  %value1 = alloca i32, align 4
+  %temp2 = alloca i32, align 4
+  %result3 = alloca ptr, align 8
+  store float 1.000000e+02, ptr %f, align 4
+  %0 = load float, ptr %f, align 4
+  store float %0, ptr %value, align 4
+  %1 = load float, ptr %value, align 4
+  store float %1, ptr %temp, align 4
+  store ptr %temp, ptr %result, align 8
+  %2 = load ptr, ptr %result, align 8
+  %3 = load i32, ptr %2, align 8
+  store i32 %3, ptr %i, align 4
+  %4 = load i32, ptr %i, align 4
+  store i32 %4, ptr %value1, align 4
+  %5 = load i32, ptr %value1, align 4
+  store i32 %5, ptr %temp2, align 4
+  store ptr %temp2, ptr %result3, align 8
+  %6 = load ptr, ptr %result3, align 8
+  %7 = load float, ptr %6, align 8
+  store float %7, ptr %f2, align 4
+  %8 = load float, ptr %f, align 4
+  %fpfpext = fpext float %8 to double
+  %9 = load i32, ptr %i, align 4
+  %10 = load float, ptr %f2, align 4
+  %fpfpext4 = fpext float %10 to double
+  call void (ptr, ...) @printf(ptr @.str, double %fpfpext, i32 %9, double %fpfpext4)
+  ret void

@@ -9,14 +9,14 @@ int* c3 = (int*)(4 + (iptr)(&ptr));
 iptr ff = (iptr)(&ptr);
 int ptr = 0;
 
-// #expect: test.ll
+/* #expect: test.ll
 
-%"int*[]" = type { i32**, i64 }
+%"int*[]" = type { ptr, i64 }
 
-@.taddr = private global [5 x i32*] [i32* @test_ptr, i32* @test_ptr, i32* getelementptr inbounds (i32, i32* @test_ptr, i64 1), i32* getelementptr (i32, i32* @test_ptr, i64 -1), i32* bitcast (i8* getelementptr (i8, i8* bitcast (i32* @test_ptr to i8*), i64 -4) to i32*)], align 8
-@test_blurp = local_unnamed_addr global %"int*[]" { i32** getelementptr inbounds ([5 x i32*], [5 x i32*]* @.taddr, i32 0, i32 0), i64 5 }, align 8
-@test_c = local_unnamed_addr global i32* bitcast (i8* getelementptr (i8, i8* bitcast (i32* @test_ptr to i8*), i64 -4) to i32*), align 8
-@test_c2 = local_unnamed_addr global i32* bitcast (i8* getelementptr (i8, i8* bitcast (i32* @test_ptr to i8*), i64 4) to i32*), align 8
-@test_c3 = local_unnamed_addr global i32* bitcast (i8* getelementptr (i8, i8* bitcast (i32* @test_ptr to i8*), i64 4) to i32*), align 8
-@test_ff = local_unnamed_addr global i64 ptrtoint (i32* @test_ptr to i64), align 8
+@.taddr = private global [5 x ptr] [ptr @test_ptr, ptr @test_ptr, ptr getelementptr inbounds (i32, ptr @test_ptr, i64 1), ptr getelementptr (i32, ptr @test_ptr, i64 -1), ptr getelementptr (i8, ptr @test_ptr, i64 -4)], align 8
+@test_blurp = local_unnamed_addr global %"int*[]" { ptr @.taddr, i64 5 }, align 8
+@test_c = local_unnamed_addr global ptr getelementptr (i8, ptr @test_ptr, i64 -4), align 8
+@test_c2 = local_unnamed_addr global ptr getelementptr (i8, ptr @test_ptr, i64 4), align 8
+@test_c3 = local_unnamed_addr global ptr getelementptr (i8, ptr @test_ptr, i64 4), align 8
+@test_ff = local_unnamed_addr global i64 ptrtoint (ptr @test_ptr to i64), align 8
 @test_ptr = global i32 0, align 4

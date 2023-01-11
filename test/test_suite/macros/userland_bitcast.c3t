@@ -87,258 +87,244 @@ entry:
   %z = alloca %Foo, align 2
   %expr = alloca %Foo, align 2
   %x = alloca i64, align 8
-  %b = alloca i16*, align 8
-  %to = alloca i16*, align 8
+  %b = alloca ptr, align 8
+  %to = alloca ptr, align 8
   %i = alloca i64, align 8
-  %1 = getelementptr inbounds %Foo, %Foo* %z, i32 0, i32 0
-  store i16 0, i16* %1, align 2
-  %2 = getelementptr inbounds %Foo, %Foo* %z, i32 0, i32 1
-  store i8 0, i8* %2, align 2
-  %3 = getelementptr inbounds %Foo, %Foo* %z, i32 0, i32 2
-  store i8 0, i8* %3, align 1
-  %4 = getelementptr inbounds %Foo, %Foo* %z, i32 0, i32 3
-  store i16 0, i16* %4, align 2
-  %5 = getelementptr inbounds %Foo, %Foo* %z, i32 0, i32 4
-  store i16 0, i16* %5, align 2
-  %6 = getelementptr inbounds %Foo, %Foo* %z, i32 0, i32 0
-  store i16 %0, i16* %6, align 2
-  %7 = bitcast %Foo* %expr to i8*
-  %8 = bitcast %Foo* %z to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 2 %7, i8* align 2 %8, i32 8, i1 false)
-  %ptrptr = bitcast %Foo* %expr to i16*
-  store i16* %ptrptr, i16** %b, align 8
-  %ptrptr1 = bitcast i64* %x to i16*
-  store i16* %ptrptr1, i16** %to, align 8
-  store i64 0, i64* %i, align 8
+  %1 = getelementptr inbounds %Foo, ptr %z, i32 0, i32 0
+  store i16 0, ptr %1, align 2
+  %2 = getelementptr inbounds %Foo, ptr %z, i32 0, i32 1
+  store i8 0, ptr %2, align 2
+  %3 = getelementptr inbounds %Foo, ptr %z, i32 0, i32 2
+  store i8 0, ptr %3, align 1
+  %4 = getelementptr inbounds %Foo, ptr %z, i32 0, i32 3
+  store i16 0, ptr %4, align 2
+  %5 = getelementptr inbounds %Foo, ptr %z, i32 0, i32 4
+  store i16 0, ptr %5, align 2
+  %6 = getelementptr inbounds %Foo, ptr %z, i32 0, i32 0
+  store i16 %0, ptr %6, align 2
+  call void @llvm.memcpy.p0.p0.i32(ptr align 2 %expr, ptr align 2 %z, i32 8, i1 false)
+  store ptr %expr, ptr %b, align 8
+  store ptr %x, ptr %to, align 8
+  store i64 0, ptr %i, align 8
   br label %loop.cond
 
 loop.cond:                                        ; preds = %loop.body, %entry
-  %9 = load i64, i64* %i, align 8
-  %lt = icmp ult i64 %9, 8
+  %7 = load i64, ptr %i, align 8
+  %lt = icmp ult i64 %7, 8
   br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
-  %10 = load i16*, i16** %to, align 8
-  %11 = load i64, i64* %i, align 8
-  %ptroffset = getelementptr inbounds i16, i16* %10, i64 %11
-  %12 = load i16*, i16** %b, align 8
-  %13 = load i64, i64* %i, align 8
-  %ptroffset2 = getelementptr inbounds i16, i16* %12, i64 %13
-  %14 = load i16, i16* %ptroffset2, align 2
-  store i16 %14, i16* %ptroffset, align 2
-  %15 = load i64, i64* %i, align 8
-  %add = add i64 %15, 2
-  store i64 %add, i64* %i, align 8
+  %8 = load ptr, ptr %to, align 8
+  %9 = load i64, ptr %i, align 8
+  %ptroffset = getelementptr inbounds i16, ptr %8, i64 %9
+  %10 = load ptr, ptr %b, align 8
+  %11 = load i64, ptr %i, align 8
+  %ptroffset1 = getelementptr inbounds i16, ptr %10, i64 %11
+  %12 = load i16, ptr %ptroffset1, align 2
+  store i16 %12, ptr %ptroffset, align 2
+  %13 = load i64, ptr %i, align 8
+  %add = add i64 %13, 2
+  store i64 %add, ptr %i, align 8
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
-  %16 = load i64, i64* %x, align 8
-  ret i64 %16
+  %14 = load i64, ptr %x, align 8
+  ret i64 %14
 }
 
-; Function Attrs: nounwind
 define i32 @userland_bitcast_test(float %0) #0 {
 entry:
   %expr = alloca float, align 4
   %x = alloca [4 x i8], align 1
-  %b = alloca i8*, align 8
-  %to = alloca i8*, align 8
+  %b = alloca ptr, align 8
+  %to = alloca ptr, align 8
   %i = alloca i64, align 8
-  store float %0, float* %expr, align 4
-  %ptrptr = bitcast float* %expr to i8*
-  store i8* %ptrptr, i8** %b, align 8
-  %ptrptr1 = bitcast [4 x i8]* %x to i8*
-  store i8* %ptrptr1, i8** %to, align 8
-  store i64 0, i64* %i, align 8
+  store float %0, ptr %expr, align 4
+  store ptr %expr, ptr %b, align 8
+  store ptr %x, ptr %to, align 8
+  store i64 0, ptr %i, align 8
   br label %loop.cond
 
 loop.cond:                                        ; preds = %loop.body, %entry
-  %1 = load i64, i64* %i, align 8
+  %1 = load i64, ptr %i, align 8
   %lt = icmp ult i64 %1, 4
   br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
-  %2 = load i8*, i8** %to, align 8
-  %3 = load i64, i64* %i, align 8
-  %ptroffset = getelementptr inbounds i8, i8* %2, i64 %3
-  %4 = load i8*, i8** %b, align 8
-  %5 = load i64, i64* %i, align 8
-  %ptroffset2 = getelementptr inbounds i8, i8* %4, i64 %5
-  %6 = load i8, i8* %ptroffset2, align 1
-  store i8 %6, i8* %ptroffset, align 1
-  %7 = load i64, i64* %i, align 8
+  %2 = load ptr, ptr %to, align 8
+  %3 = load i64, ptr %i, align 8
+  %ptroffset = getelementptr inbounds i8, ptr %2, i64 %3
+  %4 = load ptr, ptr %b, align 8
+  %5 = load i64, ptr %i, align 8
+  %ptroffset1 = getelementptr inbounds i8, ptr %4, i64 %5
+  %6 = load i8, ptr %ptroffset1, align 1
+  store i8 %6, ptr %ptroffset, align 1
+  %7 = load i64, ptr %i, align 8
   %add = add i64 %7, 1
-  store i64 %add, i64* %i, align 8
+  store i64 %add, ptr %i, align 8
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
-  %8 = bitcast [4 x i8]* %x to i32*
-  %9 = load i32, i32* %8, align 1
-  ret i32 %9
+  %8 = load i32, ptr %x, align 1
+  ret i32 %8
 }
 
-; Function Attrs: nounwind
 define void @userland_bitcast_main() #0 {
 entry:
   %f = alloca float, align 4
   %i = alloca i32, align 4
   %expr = alloca float, align 4
   %x = alloca i32, align 4
-  %b = alloca i32*, align 8
-  %to = alloca i32*, align 8
+  %b = alloca ptr, align 8
+  %to = alloca ptr, align 8
   %i1 = alloca i64, align 8
   %f2 = alloca float, align 4
   %expr3 = alloca i32, align 4
   %x4 = alloca float, align 4
-  %b5 = alloca i32*, align 8
-  %to6 = alloca i32*, align 8
-  %i8 = alloca i64, align 8
+  %b5 = alloca ptr, align 8
+  %to6 = alloca ptr, align 8
+  %i7 = alloca i64, align 8
   %d = alloca double, align 8
   %l = alloca i64, align 8
-  %expr17 = alloca double, align 8
-  %x18 = alloca i64, align 8
-  %b19 = alloca i64*, align 8
-  %to21 = alloca i64*, align 8
-  %i22 = alloca i64, align 8
+  %expr16 = alloca double, align 8
+  %x17 = alloca i64, align 8
+  %b18 = alloca ptr, align 8
+  %to19 = alloca ptr, align 8
+  %i20 = alloca i64, align 8
   %d2 = alloca double, align 8
-  %expr30 = alloca double, align 8
-  %x31 = alloca double, align 8
-  %b32 = alloca i64*, align 8
-  %to34 = alloca i64*, align 8
-  %i36 = alloca i64, align 8
-  store float 0x4028B4BC60000000, float* %f, align 4
-  %0 = load float, float* %f, align 4
-  store float %0, float* %expr, align 4
-  %ptrptr = bitcast float* %expr to i32*
-  store i32* %ptrptr, i32** %b, align 8
-  store i32* %x, i32** %to, align 8
-  store i64 0, i64* %i1, align 8
+  %expr28 = alloca double, align 8
+  %x29 = alloca double, align 8
+  %b30 = alloca ptr, align 8
+  %to31 = alloca ptr, align 8
+  %i32 = alloca i64, align 8
+  store float 0x4028B4BC60000000, ptr %f, align 4
+  %0 = load float, ptr %f, align 4
+  store float %0, ptr %expr, align 4
+  store ptr %expr, ptr %b, align 8
+  store ptr %x, ptr %to, align 8
+  store i64 0, ptr %i1, align 8
   br label %loop.cond
 
 loop.cond:                                        ; preds = %loop.body, %entry
-  %1 = load i64, i64* %i1, align 8
+  %1 = load i64, ptr %i1, align 8
   %lt = icmp ult i64 %1, 4
   br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
-  %2 = load i32*, i32** %to, align 8
-  %3 = load i64, i64* %i1, align 8
-  %ptroffset = getelementptr inbounds i32, i32* %2, i64 %3
-  %4 = load i32*, i32** %b, align 8
-  %5 = load i64, i64* %i1, align 8
-  %ptroffset2 = getelementptr inbounds i32, i32* %4, i64 %5
-  %6 = load i32, i32* %ptroffset2, align 4
-  store i32 %6, i32* %ptroffset, align 4
-  %7 = load i64, i64* %i1, align 8
+  %2 = load ptr, ptr %to, align 8
+  %3 = load i64, ptr %i1, align 8
+  %ptroffset = getelementptr inbounds i32, ptr %2, i64 %3
+  %4 = load ptr, ptr %b, align 8
+  %5 = load i64, ptr %i1, align 8
+  %ptroffset2 = getelementptr inbounds i32, ptr %4, i64 %5
+  %6 = load i32, ptr %ptroffset2, align 4
+  store i32 %6, ptr %ptroffset, align 4
+  %7 = load i64, ptr %i1, align 8
   %add = add i64 %7, 4
-  store i64 %add, i64* %i1, align 8
+  store i64 %add, ptr %i1, align 8
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
-  %8 = load i32, i32* %x, align 4
-  store i32 %8, i32* %i, align 4
-  %9 = load i32, i32* %i, align 4
-  store i32 %9, i32* %expr3, align 4
-  store i32* %expr3, i32** %b5, align 8
-  %ptrptr7 = bitcast float* %x4 to i32*
-  store i32* %ptrptr7, i32** %to6, align 8
-  store i64 0, i64* %i8, align 8
-  br label %loop.cond9
+  %8 = load i32, ptr %x, align 4
+  store i32 %8, ptr %i, align 4
+  %9 = load i32, ptr %i, align 4
+  store i32 %9, ptr %expr3, align 4
+  store ptr %expr3, ptr %b5, align 8
+  store ptr %x4, ptr %to6, align 8
+  store i64 0, ptr %i7, align 8
+  br label %loop.cond8
 
-loop.cond9:                                       ; preds = %loop.body11, %loop.exit
-  %10 = load i64, i64* %i8, align 8
-  %lt10 = icmp ult i64 %10, 4
-  br i1 %lt10, label %loop.body11, label %loop.exit15
+loop.cond8:                                       ; preds = %loop.body10, %loop.exit
+  %10 = load i64, ptr %i7, align 8
+  %lt9 = icmp ult i64 %10, 4
+  br i1 %lt9, label %loop.body10, label %loop.exit14
 
-loop.body11:                                      ; preds = %loop.cond9
-  %11 = load i32*, i32** %to6, align 8
-  %12 = load i64, i64* %i8, align 8
-  %ptroffset12 = getelementptr inbounds i32, i32* %11, i64 %12
-  %13 = load i32*, i32** %b5, align 8
-  %14 = load i64, i64* %i8, align 8
-  %ptroffset13 = getelementptr inbounds i32, i32* %13, i64 %14
-  %15 = load i32, i32* %ptroffset13, align 4
-  store i32 %15, i32* %ptroffset12, align 4
-  %16 = load i64, i64* %i8, align 8
-  %add14 = add i64 %16, 4
-  store i64 %add14, i64* %i8, align 8
-  br label %loop.cond9
+loop.body10:                                      ; preds = %loop.cond8
+  %11 = load ptr, ptr %to6, align 8
+  %12 = load i64, ptr %i7, align 8
+  %ptroffset11 = getelementptr inbounds i32, ptr %11, i64 %12
+  %13 = load ptr, ptr %b5, align 8
+  %14 = load i64, ptr %i7, align 8
+  %ptroffset12 = getelementptr inbounds i32, ptr %13, i64 %14
+  %15 = load i32, ptr %ptroffset12, align 4
+  store i32 %15, ptr %ptroffset11, align 4
+  %16 = load i64, ptr %i7, align 8
+  %add13 = add i64 %16, 4
+  store i64 %add13, ptr %i7, align 8
+  br label %loop.cond8
 
-loop.exit15:                                      ; preds = %loop.cond9
-  %17 = load float, float* %x4, align 4
-  store float %17, float* %f2, align 4
-  %18 = load float, float* %f, align 4
+loop.exit14:                                      ; preds = %loop.cond8
+  %17 = load float, ptr %x4, align 4
+  store float %17, ptr %f2, align 4
+  %18 = load float, ptr %f, align 4
   %fpfpext = fpext float %18 to double
-  %19 = load i32, i32* %i, align 4
-  %20 = load float, float* %f2, align 4
-  %fpfpext16 = fpext float %20 to double
-  call void (i8*, ...) @printf(i8* getelementptr inbounds ([16 x i8], [16 x i8]* @.str, i32 0, i32 0), double %fpfpext, i32 %19, double %fpfpext16)
-  store double 1.235300e+268, double* %d, align 8
-  %21 = load double, double* %d, align 8
-  store double %21, double* %expr17, align 8
-  %ptrptr20 = bitcast double* %expr17 to i64*
-  store i64* %ptrptr20, i64** %b19, align 8
-  store i64* %x18, i64** %to21, align 8
-  store i64 0, i64* %i22, align 8
-  br label %loop.cond23
+  %19 = load i32, ptr %i, align 4
+  %20 = load float, ptr %f2, align 4
+  %fpfpext15 = fpext float %20 to double
+  call void (ptr, ...) @printf(ptr @.str, double %fpfpext, i32 %19, double %fpfpext15)
+  store double 1.235300e+268, ptr %d, align 8
+  %21 = load double, ptr %d, align 8
+  store double %21, ptr %expr16, align 8
+  store ptr %expr16, ptr %b18, align 8
+  store ptr %x17, ptr %to19, align 8
+  store i64 0, ptr %i20, align 8
+  br label %loop.cond21
 
-loop.cond23:                                      ; preds = %loop.body25, %loop.exit15
-  %22 = load i64, i64* %i22, align 8
-  %lt24 = icmp ult i64 %22, 8
-  br i1 %lt24, label %loop.body25, label %loop.exit29
+loop.cond21:                                      ; preds = %loop.body23, %loop.exit14
+  %22 = load i64, ptr %i20, align 8
+  %lt22 = icmp ult i64 %22, 8
+  br i1 %lt22, label %loop.body23, label %loop.exit27
 
-loop.body25:                                      ; preds = %loop.cond23
-  %23 = load i64*, i64** %to21, align 8
-  %24 = load i64, i64* %i22, align 8
-  %ptroffset26 = getelementptr inbounds i64, i64* %23, i64 %24
-  %25 = load i64*, i64** %b19, align 8
-  %26 = load i64, i64* %i22, align 8
-  %ptroffset27 = getelementptr inbounds i64, i64* %25, i64 %26
-  %27 = load i64, i64* %ptroffset27, align 8
-  store i64 %27, i64* %ptroffset26, align 8
-  %28 = load i64, i64* %i22, align 8
-  %add28 = add i64 %28, 8
-  store i64 %add28, i64* %i22, align 8
-  br label %loop.cond23
+loop.body23:                                      ; preds = %loop.cond21
+  %23 = load ptr, ptr %to19, align 8
+  %24 = load i64, ptr %i20, align 8
+  %ptroffset24 = getelementptr inbounds i64, ptr %23, i64 %24
+  %25 = load ptr, ptr %b18, align 8
+  %26 = load i64, ptr %i20, align 8
+  %ptroffset25 = getelementptr inbounds i64, ptr %25, i64 %26
+  %27 = load i64, ptr %ptroffset25, align 8
+  store i64 %27, ptr %ptroffset24, align 8
+  %28 = load i64, ptr %i20, align 8
+  %add26 = add i64 %28, 8
+  store i64 %add26, ptr %i20, align 8
+  br label %loop.cond21
 
-loop.exit29:                                      ; preds = %loop.cond23
-  %29 = load i64, i64* %x18, align 8
-  store i64 %29, i64* %l, align 8
-  %30 = load double, double* %d, align 8
-  store double %30, double* %expr30, align 8
-  %ptrptr33 = bitcast double* %expr30 to i64*
-  store i64* %ptrptr33, i64** %b32, align 8
-  %ptrptr35 = bitcast double* %x31 to i64*
-  store i64* %ptrptr35, i64** %to34, align 8
-  store i64 0, i64* %i36, align 8
-  br label %loop.cond37
+loop.exit27:                                      ; preds = %loop.cond21
+  %29 = load i64, ptr %x17, align 8
+  store i64 %29, ptr %l, align 8
+  %30 = load double, ptr %d, align 8
+  store double %30, ptr %expr28, align 8
+  store ptr %expr28, ptr %b30, align 8
+  store ptr %x29, ptr %to31, align 8
+  store i64 0, ptr %i32, align 8
+  br label %loop.cond33
 
-loop.cond37:                                      ; preds = %loop.body39, %loop.exit29
-  %31 = load i64, i64* %i36, align 8
-  %lt38 = icmp ult i64 %31, 8
-  br i1 %lt38, label %loop.body39, label %loop.exit43
+loop.cond33:                                      ; preds = %loop.body35, %loop.exit27
+  %31 = load i64, ptr %i32, align 8
+  %lt34 = icmp ult i64 %31, 8
+  br i1 %lt34, label %loop.body35, label %loop.exit39
 
-loop.body39:                                      ; preds = %loop.cond37
-  %32 = load i64*, i64** %to34, align 8
-  %33 = load i64, i64* %i36, align 8
-  %ptroffset40 = getelementptr inbounds i64, i64* %32, i64 %33
-  %34 = load i64*, i64** %b32, align 8
-  %35 = load i64, i64* %i36, align 8
-  %ptroffset41 = getelementptr inbounds i64, i64* %34, i64 %35
-  %36 = load i64, i64* %ptroffset41, align 8
-  store i64 %36, i64* %ptroffset40, align 8
-  %37 = load i64, i64* %i36, align 8
-  %add42 = add i64 %37, 8
-  store i64 %add42, i64* %i36, align 8
-  br label %loop.cond37
+loop.body35:                                      ; preds = %loop.cond33
+  %32 = load ptr, ptr %to31, align 8
+  %33 = load i64, ptr %i32, align 8
+  %ptroffset36 = getelementptr inbounds i64, ptr %32, i64 %33
+  %34 = load ptr, ptr %b30, align 8
+  %35 = load i64, ptr %i32, align 8
+  %ptroffset37 = getelementptr inbounds i64, ptr %34, i64 %35
+  %36 = load i64, ptr %ptroffset37, align 8
+  store i64 %36, ptr %ptroffset36, align 8
+  %37 = load i64, ptr %i32, align 8
+  %add38 = add i64 %37, 8
+  store i64 %add38, ptr %i32, align 8
+  br label %loop.cond33
 
-loop.exit43:                                      ; preds = %loop.cond37
-  %38 = load double, double* %x31, align 8
-  store double %38, double* %d2, align 8
-  %39 = load double, double* %d, align 8
-  %40 = load i64, i64* %l, align 8
-  %41 = load double, double* %d2, align 8
-  call void (i8*, ...) @printf(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @.str.1, i32 0, i32 0), double %39, i64 %40, double %41)
+loop.exit39:                                      ; preds = %loop.cond33
+  %38 = load double, ptr %x29, align 8
+  store double %38, ptr %d2, align 8
+  %39 = load double, ptr %d, align 8
+  %40 = load i64, ptr %l, align 8
+  %41 = load double, ptr %d2, align 8
+  call void (ptr, ...) @printf(ptr @.str.1, double %39, i64 %40, double %41)
   ret void
 }
 

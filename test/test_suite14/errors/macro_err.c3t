@@ -1,0 +1,54 @@
+// #target: macos-x64
+module test;
+import libc;
+fn int! abc()
+{
+	return 1;
+}
+macro test()
+{
+	return abc()?;
+}
+
+fn void main()
+{
+	libc::printf("%d\n", test() ?? 2);
+}
+
+/* #expect: test.ll
+
+
+define i64 @test_abc(i32* %0) #0 {
+entry:
+  %reterr = alloca i64, align 8
+  store i32 1, i32* %0, align 4
+  ret i64 0
+}
+
+; Function Attrs: nounwind
+define void @test_main() #0 {
+entry:
+  %error_var = alloca i64, align 8
+  %retparam = alloca i32, align 4
+  %0 = call i64 @test_abc(i32* %retparam)
+  %not_err = icmp eq i64 %0, 0
+  br i1 %not_err, label %after_check, label %assign_optional
+
+assign_optional:                                  ; preds = %entry
+  store i64 %0, i64* %error_var, align 8
+  br label %guard_block
+
+after_check:                                      ; preds = %entry
+  br label %noerr_block
+
+guard_block:                                      ; preds = %assign_optional
+  ret void
+
+noerr_block:                                      ; preds = %after_check
+  %1 = load i32, i32* %retparam, align 4
+  br label %phi_block
+
+phi_block:                                        ; preds = %noerr_block
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 %1)
+  ret void
+}

@@ -23,19 +23,17 @@ fn void test()
 
 /* #expect: struct_codegen_empty.ll
 
-  %a = alloca %StructA, align 4
-  %a2 = alloca %StructA, align 4
-  %b = alloca %StructB, align 4
-  %b2 = alloca %StructB, align 4
-  %b3 = alloca %StructB, align 4
-  %0 = bitcast %StructA* %a to i32*
-  store i32 0, i32* %0, align 4
-  %1 = bitcast %StructA* %a2 to i32*
-  store i32 0, i32* %1, align 4
-  %2 = bitcast %StructB* %b to i32*
-  store i32 0, i32* %2, align 4
-  %3 = bitcast %StructB* %b2 to i32*
-  store i32 0, i32* %3, align 4
-  %4 = bitcast %StructB* %b3 to i32*
-  store i32 0, i32* %4, align 4
-  ret void
+ define void @struct_codegen_empty_test() #0 {
+ entry:
+   %a = alloca %StructA, align 4
+   %a2 = alloca %StructA, align 4
+   %b = alloca %StructB, align 4
+   %b2 = alloca %StructB, align 4
+   %b3 = alloca %StructB, align 4
+   store i32 0, ptr %a, align 4
+   store i32 0, ptr %a2, align 4
+   store i32 0, ptr %b, align 4
+   store i32 0, ptr %b2, align 4
+   store i32 0, ptr %b3, align 4
+   ret void
+ }

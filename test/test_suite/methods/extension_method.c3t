@@ -25,15 +25,16 @@ fn int main()
     return 0;
 }
 
-// #expect: abc.ll
+/* #expect: abc.ll
 
+%Bar = type { i32 }
 
-define i32 @main()
+define i32 @main() #0 {
 entry:
   %bar = alloca %Bar, align 4
-  %0 = bitcast %Bar* %bar to i32*
-  store i32 0, i32* %0, align 4
-  call void @foo_Bar_test(%Bar* %bar)
+  store i32 0, ptr %bar, align 4
+  call void @foo_Bar_test(ptr %bar)
   ret i32 0
+}
 
-declare void @foo_Bar_test(%Bar*)
+declare void @foo_Bar_test(ptr)

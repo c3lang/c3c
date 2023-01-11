@@ -16,7 +16,7 @@ fn void test()
 define void @abc_test() #0 {
 entry:
   %x = alloca i32, align 4
-  %0 = load i32, i32* @abc_foo, align 32
-  store i32 %0, i32* %x, align 4
+  %0 = load i32, ptr @abc_foo, align 32
+  store i32 %0, ptr %x, align 4
   ret void
 }
