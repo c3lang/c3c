@@ -24,70 +24,70 @@ entry:
   %z = alloca i64, align 8
   %w = alloca i32, align 4
   %w.f = alloca i64, align 8
-  store i32 0, i32* %x, align 4
-  store i32 0, i32* %y, align 4
-  %0 = load i32, i32* %x, align 4
+  store i32 0, ptr %x, align 4
+  store i32 0, ptr %y, align 4
+  %0 = load i32, ptr %x, align 4
   %sisiext = sext i32 %0 to i64
-  %1 = load i32, i32* %y, align 4
+  %1 = load i32, ptr %y, align 4
   %sisiext1 = sext i32 %1 to i64
   %mul = mul i64 %sisiext, %sisiext1
-  store i64 %mul, i64* %z, align 8
-  %2 = load i32, i32* %x, align 4
+  store i64 %mul, ptr %z, align 8
+  %2 = load i32, ptr %x, align 4
   %sisiext2 = sext i32 %2 to i64
-  %3 = load i32, i32* %y, align 4
+  %3 = load i32, ptr %y, align 4
   %sisiext3 = sext i32 %3 to i64
   %sdiv = sdiv i64 %sisiext2, %sisiext3
-  store i64 %sdiv, i64* %z, align 8
-  %4 = load i32, i32* %x, align 4
+  store i64 %sdiv, ptr %z, align 8
+  %4 = load i32, ptr %x, align 4
   %sisiext4 = sext i32 %4 to i64
-  %5 = load i32, i32* %y, align 4
+  %5 = load i32, ptr %y, align 4
   %sisiext5 = sext i32 %5 to i64
   %add = add i64 %sisiext4, %sisiext5
-  store i64 %add, i64* %z, align 8
-  %6 = load i32, i32* %x, align 4
+  store i64 %add, ptr %z, align 8
+  %6 = load i32, ptr %x, align 4
   %sisiext6 = sext i32 %6 to i64
-  %7 = load i32, i32* %y, align 4
+  %7 = load i32, ptr %y, align 4
   %sisiext7 = sext i32 %7 to i64
   %sub = sub i64 %sisiext6, %sisiext7
-  store i64 %sub, i64* %z, align 8
-  %8 = load i32, i32* %x, align 4
+  store i64 %sub, ptr %z, align 8
+  %8 = load i32, ptr %x, align 4
   %sisiext8 = sext i32 %8 to i64
-  %9 = load i32, i32* %y, align 4
+  %9 = load i32, ptr %y, align 4
   %sisiext9 = sext i32 %9 to i64
   %smod = srem i64 %sisiext8, %sisiext9
-  store i64 %smod, i64* %z, align 8
-  %10 = load i32, i32* %x, align 4
+  store i64 %smod, ptr %z, align 8
+  %10 = load i32, ptr %x, align 4
   %sisiext10 = sext i32 %10 to i64
-  %11 = load i32, i32* %y, align 4
+  %11 = load i32, ptr %y, align 4
   %zext = zext i32 %11 to i64
   %shl = shl i64 %sisiext10, %zext
   %12 = freeze i64 %shl
-  store i64 %12, i64* %z, align 8
-  %13 = load i32, i32* %x, align 4
+  store i64 %12, ptr %z, align 8
+  %13 = load i32, ptr %x, align 4
   %sisiext11 = sext i32 %13 to i64
-  %14 = load i32, i32* %y, align 4
+  %14 = load i32, ptr %y, align 4
   %zext12 = zext i32 %14 to i64
   %ashr = ashr i64 %sisiext11, %zext12
   %15 = freeze i64 %ashr
-  store i64 %15, i64* %z, align 8
-  %16 = load i32, i32* %x, align 4
+  store i64 %15, ptr %z, align 8
+  %16 = load i32, ptr %x, align 4
   %sisiext13 = sext i32 %16 to i64
   %bnot = xor i64 %sisiext13, -1
-  store i64 %bnot, i64* %z, align 8
-  %17 = load i32, i32* %x, align 4
+  store i64 %bnot, ptr %z, align 8
+  %17 = load i32, ptr %x, align 4
   %sisiext14 = sext i32 %17 to i64
-  %18 = load i32, i32* %x, align 4
+  %18 = load i32, ptr %x, align 4
   %sisiext15 = sext i32 %18 to i64
   %neg = sub i64 0, %sisiext15
-  store i64 %neg, i64* %z, align 8
-  store i64 0, i64* %w.f, align 8
-  store i32 0, i32* %w, align 4
-  %optval = load i64, i64* %w.f, align 8
+  store i64 %neg, ptr %z, align 8
+  store i64 0, ptr %w.f, align 8
+  store i32 0, ptr %w, align 4
+  %optval = load i64, ptr %w.f, align 8
   %not_err = icmp eq i64 %optval, 0
   br i1 %not_err, label %after_check, label %else_block
 
 after_check:                                      ; preds = %entry
-  %19 = load i32, i32* %w, align 4
+  %19 = load i32, ptr %w, align 4
   %sisiext16 = sext i32 %19 to i64
   br label %phi_block
 
@@ -96,6 +96,6 @@ else_block:                                       ; preds = %entry
 
 phi_block:                                        ; preds = %else_block, %after_check
   %val = phi i64 [ %sisiext16, %after_check ], [ 1, %else_block ]
-  store i64 %val, i64* %z, align 8
+  store i64 %val, ptr %z, align 8
   ret void
 }

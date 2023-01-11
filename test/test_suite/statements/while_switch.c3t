@@ -30,10 +30,20 @@ fn int main()
 
 /* #expect: test.ll
 
+source_filename = "test"
+target datalayout = "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-apple-darwin"
 
 @.str = private unnamed_addr constant [2 x i8] c"3\00", align 1
 @.str.1 = private unnamed_addr constant [2 x i8] c"4\00", align 1
 
+; Function Attrs: nounwind
+declare i32 @printf(ptr, ...) #0
+
+; Function Attrs: nounwind
+declare i32 @foo() #0
+
+; Function Attrs: nounwind
 define i32 @main() #0 {
 entry:
   %switch = alloca i32, align 4
@@ -46,11 +56,11 @@ loop.cond:                                        ; preds = %switch.exit, %entry
 
 loop.body:                                        ; preds = %loop.cond
   %1 = call i32 @foo()
-  store i32 %1, i32* %switch, align 4
+  store i32 %1, ptr %switch, align 4
   br label %switch.entry
 
 switch.entry:                                     ; preds = %loop.body
-  %2 = load i32, i32* %switch, align 4
+  %2 = load i32, ptr %switch, align 4
   switch i32 %2, label %switch.default [
     i32 0, label %switch.case
     i32 1, label %switch.case
@@ -62,11 +72,11 @@ switch.entry:                                     ; preds = %loop.body
   ]
 
 switch.case:                                      ; preds = %switch.entry, %switch.entry, %switch.entry, %switch.entry
-  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @.str, i32 0, i32 0))
+  %3 = call i32 (ptr, ...) @printf(ptr @.str)
   br label %switch.case1
 
 switch.case1:                                     ; preds = %switch.entry, %switch.case
-  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @.str.1, i32 0, i32 0))
+  %4 = call i32 (ptr, ...) @printf(ptr @.str.1)
   br label %switch.default
 
 switch.default:                                   ; preds = %switch.entry, %switch.entry, %switch.case1, %switch.entry
@@ -79,3 +89,4 @@ loop.exit:                                        ; preds = %loop.cond
   ret i32 0
 }
 
+attributes #0 = { nounwind }

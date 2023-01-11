@@ -31,8 +31,8 @@ fn void use_vectors()
 
 /* #expect: foo.ll
 
-declare void @take_stringref(i8*, i64) #0
-call void @take_stringref(i8* %lo, i64 %hi)
+declare void @take_stringref(ptr, i64) #0
+call void @take_stringref(ptr %lo, i64 %hi)
 
 define void @foo_use_vectors() #0 {
 entry:

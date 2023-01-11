@@ -20,6 +20,6 @@ fn int test2() { return 3; }
 define void @ternary_folding_test() #0 {
 entry:
   %x = alloca i32, align 4
-  store i32 0, i32* %x, align 4
+  store i32 0, ptr %x, align 4
   ret void
 }

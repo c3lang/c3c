@@ -24,12 +24,12 @@ fn void test()
 /* #expect: test.ll
 
 @test_ABC = local_unnamed_addr constant i64 531, align 8
-@test_BAC = local_unnamed_addr constant i8* inttoptr (i64 143 to i8*), align 8
-@test_EXX = local_unnamed_addr constant i8* inttoptr (i64 155 to i8*), align 8
+@test_BAC = local_unnamed_addr constant ptr inttoptr (i64 143 to ptr), align 8
+@test_EXX = local_unnamed_addr constant ptr inttoptr (i64 155 to ptr), align 8
 @test_KEX = local_unnamed_addr constant i64 -12, align 8
-@test_CAB = local_unnamed_addr constant i8* inttoptr (i64 143 to i8*), align 8
+@test_CAB = local_unnamed_addr constant ptr inttoptr (i64 143 to ptr), align 8
 @test_ZAB = local_unnamed_addr constant i64 143, align 8
-@test_BOB = local_unnamed_addr constant i32* inttoptr (i64 12 to i32*), align 8
-@test_BAB = local_unnamed_addr constant i32* inttoptr (i64 20 to i32*), align 8
+@test_BOB = local_unnamed_addr constant ptr inttoptr (i64 12 to ptr), align 8
+@test_BAB = local_unnamed_addr constant ptr inttoptr (i64 20 to ptr), align 8
 @test_AO = local_unnamed_addr constant i64 2, align 8
 @test_abc = local_unnamed_addr global i32 123, align 4

@@ -1,0 +1,33 @@
+// #target: macos-x64
+
+module foo;
+
+struct Bar {
+  int a;
+}
+
+Bar[6] bar;
+
+fn int main()
+{
+    test_bar(0);
+    return 0;
+}
+
+fn void test_bar(int idx)
+{
+    bar[idx].a = 0;
+    bar[0].a = idx;
+}
+
+/* #expect: foo.ll
+
+define void @foo_test_bar(i32 %0) #0 {
+entry:
+  %sisiext = sext i32 %0 to i64
+  %1 = getelementptr inbounds [6 x %Bar], [6 x %Bar]* @foo_bar, i64 0, i64 %sisiext
+  %2 = getelementptr inbounds %Bar, %Bar* %1, i32 0, i32 0
+  store i32 0, i32* %2, align 4
+  store i32 %0, i32* getelementptr inbounds ([6 x %Bar], [6 x %Bar]* @foo_bar, i64 0, i64 0, i32 0), align 4
+  ret void
+}

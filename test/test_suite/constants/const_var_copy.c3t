@@ -19,11 +19,11 @@ entry:
   %s = alloca i8, align 1
   %zd = alloca i32, align 4
   %sisiext = sext i32 %0 to i64
-  %1 = getelementptr inbounds [100 x i8], [100 x i8]* bitcast ({ [50 x i8], i8, [49 x i8] }* @foo_FOO to [100 x i8]*), i64 0, i64 %sisiext
-  %2 = load i8, i8* %1, align 1
-  store i8 %2, i8* %s, align 1
+  %1 = getelementptr inbounds [100 x i8], ptr @foo_FOO, i64 0, i64 %sisiext
+  %2 = load i8, ptr %1, align 1
+  store i8 %2, ptr %s, align 1
   %sisiext1 = sext i32 %0 to i64
   %3 = extractelement <4 x i32> <i32 1, i32 2, i32 3, i32 4>, i64 %sisiext1
-  store i32 %3, i32* %zd, align 4
+  store i32 %3, ptr %zd, align 4
   ret void
 }

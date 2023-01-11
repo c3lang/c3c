@@ -17,12 +17,13 @@ fn void test()
     uint* yy = &&FOO;
 }
 
-// #expect: constants.ll
+/* #expect: constants.ll
 
 @constants_AA = protected unnamed_addr constant i8 -1, align 1
 @constants_BB = local_unnamed_addr constant i8 -56, align 1
 @constants_CC = protected unnamed_addr constant i32 -1, align 4
 @constants_DD = protected unnamed_addr constant i32 -1, align 4
+@constants_FOO = protected unnamed_addr constant i32 -1, align 4
 @constants_x = protected unnamed_addr global i32 255, align 4
 @constants_z = protected unnamed_addr global i32 -1, align 4
 @constants_w = protected unnamed_addr global i8 -1, align 1
@@ -30,10 +31,10 @@ fn void test()
 @constants_z2 = protected unnamed_addr global i32 -1, align 4
 
 entry:
-    %xx = alloca i32
-    %yy = alloca i32*
-    %taddr = alloca i32
-    store i32 -1, i32* %xx
-    store i32 -1, i32* %taddr
-    store i32* %taddr, i32** %yy
-    ret void
+  %xx = alloca i32, align 4
+  %yy = alloca ptr, align 8
+  %taddr = alloca i32, align 4
+  store i32 -1, ptr %xx, align 4
+  store i32 -1, ptr %taddr, align 4
+  store ptr %taddr, ptr %yy, align 8
+  ret void

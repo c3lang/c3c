@@ -34,72 +34,68 @@ fn int main()
 @"ct$double" = linkonce constant %.introspect { i8 4, i64 8, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
 @"ct$bool" = linkonce constant %.introspect { i8 1, i64 1, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
 
-define void @foo_test(i64 %0, i8* %1) #0 {
+define void @foo_test(i64 %0, ptr %1) #0 {
 entry:
   %z = alloca %variant, align 8
   %switch = alloca i64, align 8
-  %z1 = alloca i32*, align 8
-  %z4 = alloca double*, align 8
-  %pair = bitcast %variant* %z to { i64, i8* }*
-  %2 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %pair, i32 0, i32 0
-  store i64 %0, i64* %2, align 8
-  %3 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %pair, i32 0, i32 1
-  store i8* %1, i8** %3, align 8
-  %4 = getelementptr inbounds %variant, %variant* %z, i32 0, i32 1
-  %5 = load i64, i64* %4, align 8
-  store i64 %5, i64* %switch, align 8
+  %z1 = alloca ptr, align 8
+  %z4 = alloca ptr, align 8
+  %2 = getelementptr inbounds { i64, ptr }, ptr %z, i32 0, i32 0
+  store i64 %0, ptr %2, align 8
+  %3 = getelementptr inbounds { i64, ptr }, ptr %z, i32 0, i32 1
+  store ptr %1, ptr %3, align 8
+  %4 = getelementptr inbounds %variant, ptr %z, i32 0, i32 1
+  %5 = load i64, ptr %4, align 8
+  store i64 %5, ptr %switch, align 8
   br label %switch.entry
 
 switch.entry:                                     ; preds = %entry
-  %6 = load i64, i64* %switch, align 8
-  %eq = icmp eq i64 ptrtoint (%.introspect* @"ct$int" to i64), %6
+  %6 = load i64, ptr %switch, align 8
+  %eq = icmp eq i64 ptrtoint (ptr @"ct$int" to i64), %6
   br i1 %eq, label %switch.case, label %next_if
 
 switch.case:                                      ; preds = %switch.entry
-  %7 = getelementptr inbounds %variant, %variant* %z, i32 0, i32 0
-  %8 = bitcast i8** %7 to i32**
-  %9 = load i32*, i32** %8, align 8
-  store i32* %9, i32** %z1, align 8
-  %10 = load i32*, i32** %z1, align 8
-  %11 = load i32, i32* %10, align 8
-  call void (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str, i32 0, i32 0), i32 %11)
-  %12 = load i32*, i32** %z1, align 8
-  store i32 3, i32* %12, align 8
+  %7 = getelementptr inbounds %variant, ptr %z, i32 0, i32 0
+  %8 = load ptr, ptr %7, align 8
+  store ptr %8, ptr %z1, align 8
+  %9 = load ptr, ptr %z1, align 8
+  %10 = load i32, ptr %9, align 8
+  call void (ptr, ...) @printf(ptr @.str, i32 %10)
+  %11 = load ptr, ptr %z1, align 8
+  store i32 3, ptr %11, align 8
   br label %switch.exit
 
 next_if:                                          ; preds = %switch.entry
-  %eq2 = icmp eq i64 ptrtoint (%.introspect* @"ct$double" to i64), %6
+  %eq2 = icmp eq i64 ptrtoint (ptr @"ct$double" to i64), %6
   br i1 %eq2, label %switch.case3, label %next_if5
 
 switch.case3:                                     ; preds = %next_if
-  %13 = getelementptr inbounds %variant, %variant* %z, i32 0, i32 0
-  %14 = bitcast i8** %13 to double**
-  %15 = load double*, double** %14, align 8
-  store double* %15, double** %z4, align 8
-  %16 = load double*, double** %z4, align 8
-  %17 = load double, double* %16, align 8
-  call void (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @.str.1, i32 0, i32 0), double %17)
+  %12 = getelementptr inbounds %variant, ptr %z, i32 0, i32 0
+  %13 = load ptr, ptr %12, align 8
+  store ptr %13, ptr %z4, align 8
+  %14 = load ptr, ptr %z4, align 8
+  %15 = load double, ptr %14, align 8
+  call void (ptr, ...) @printf(ptr @.str.1, double %15)
   br label %switch.exit
 
 next_if5:                                         ; preds = %next_if
   br label %switch.default
 
 switch.default:                                   ; preds = %next_if5
-  call void (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str.2, i32 0, i32 0))
+  call void (ptr, ...) @printf(ptr @.str.2)
   br label %switch.exit
 
 switch.exit:                                      ; preds = %switch.default, %switch.case3, %switch.case
-  %18 = getelementptr inbounds %variant, %variant* %z, i32 0, i32 1
-  %19 = load i64, i64* %18, align 8
-  %eq6 = icmp eq i64 %19, ptrtoint (%.introspect* @"ct$int" to i64)
+  %16 = getelementptr inbounds %variant, ptr %z, i32 0, i32 1
+  %17 = load i64, ptr %16, align 8
+  %eq6 = icmp eq i64 %17, ptrtoint (ptr @"ct$int" to i64)
   br i1 %eq6, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %switch.exit
-  %20 = getelementptr inbounds %variant, %variant* %z, i32 0, i32 0
-  %21 = bitcast i8** %20 to i32**
-  %22 = load i32*, i32** %21, align 8
-  %23 = load i32, i32* %22, align 8
-  call void (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str.3, i32 0, i32 0), i32 %23)
+  %18 = getelementptr inbounds %variant, ptr %z, i32 0, i32 0
+  %19 = load ptr, ptr %18, align 8
+  %20 = load i32, ptr %19, align 8
+  call void (ptr, ...) @printf(ptr @.str.3, i32 %20)
   br label %if.exit
 
 if.exit:                                          ; preds = %if.then, %switch.exit
@@ -115,37 +111,32 @@ entry:
   %taddr3 = alloca %variant, align 8
   %taddr6 = alloca i8, align 1
   %taddr7 = alloca %variant, align 8
-  store double 1.230000e+02, double* %taddr, align 8
-  %0 = bitcast double* %taddr to i8*
-  %1 = insertvalue %variant undef, i8* %0, 0
-  %2 = insertvalue %variant %1, i64 ptrtoint (%.introspect* @"ct$double" to i64), 1
-  store %variant %2, %variant* %taddr1, align 8
-  %3 = bitcast %variant* %taddr1 to { i64, i8* }*
-  %4 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %3, i32 0, i32 0
-  %lo = load i64, i64* %4, align 8
-  %5 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %3, i32 0, i32 1
-  %hi = load i8*, i8** %5, align 8
-  call void @foo_test(i64 %lo, i8* %hi)
-  store i32 1, i32* %taddr2, align 4
-  %6 = bitcast i32* %taddr2 to i8*
-  %7 = insertvalue %variant undef, i8* %6, 0
-  %8 = insertvalue %variant %7, i64 ptrtoint (%.introspect* @"ct$int" to i64), 1
-  store %variant %8, %variant* %taddr3, align 8
-  %9 = bitcast %variant* %taddr3 to { i64, i8* }*
-  %10 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %9, i32 0, i32 0
-  %lo4 = load i64, i64* %10, align 8
-  %11 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %9, i32 0, i32 1
-  %hi5 = load i8*, i8** %11, align 8
-  call void @foo_test(i64 %lo4, i8* %hi5)
-  store i8 1, i8* %taddr6, align 1
-  %12 = insertvalue %variant undef, i8* %taddr6, 0
-  %13 = insertvalue %variant %12, i64 ptrtoint (%.introspect* @"ct$bool" to i64), 1
-  store %variant %13, %variant* %taddr7, align 8
-  %14 = bitcast %variant* %taddr7 to { i64, i8* }*
-  %15 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %14, i32 0, i32 0
-  %lo8 = load i64, i64* %15, align 8
-  %16 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %14, i32 0, i32 1
-  %hi9 = load i8*, i8** %16, align 8
-  call void @foo_test(i64 %lo8, i8* %hi9)
+  store double 1.230000e+02, ptr %taddr, align 8
+  %0 = insertvalue %variant undef, ptr %taddr, 0
+  %1 = insertvalue %variant %0, i64 ptrtoint (ptr @"ct$double" to i64), 1
+  store %variant %1, ptr %taddr1, align 8
+  %2 = getelementptr inbounds { i64, ptr }, ptr %taddr1, i32 0, i32 0
+  %lo = load i64, ptr %2, align 8
+  %3 = getelementptr inbounds { i64, ptr }, ptr %taddr1, i32 0, i32 1
+  %hi = load ptr, ptr %3, align 8
+  call void @foo_test(i64 %lo, ptr %hi)
+  store i32 1, ptr %taddr2, align 4
+  %4 = insertvalue %variant undef, ptr %taddr2, 0
+  %5 = insertvalue %variant %4, i64 ptrtoint (ptr @"ct$int" to i64), 1
+  store %variant %5, ptr %taddr3, align 8
+  %6 = getelementptr inbounds { i64, ptr }, ptr %taddr3, i32 0, i32 0
+  %lo4 = load i64, ptr %6, align 8
+  %7 = getelementptr inbounds { i64, ptr }, ptr %taddr3, i32 0, i32 1
+  %hi5 = load ptr, ptr %7, align 8
+  call void @foo_test(i64 %lo4, ptr %hi5)
+  store i8 1, ptr %taddr6, align 1
+  %8 = insertvalue %variant undef, ptr %taddr6, 0
+  %9 = insertvalue %variant %8, i64 ptrtoint (ptr @"ct$bool" to i64), 1
+  store %variant %9, ptr %taddr7, align 8
+  %10 = getelementptr inbounds { i64, ptr }, ptr %taddr7, i32 0, i32 0
+  %lo8 = load i64, ptr %10, align 8
+  %11 = getelementptr inbounds { i64, ptr }, ptr %taddr7, i32 0, i32 1
+  %hi9 = load ptr, ptr %11, align 8
+  call void @foo_test(i64 %lo8, ptr %hi9)
   ret i32 0
 }

@@ -17,9 +17,7 @@ define i32 @main() #0 {
 entry:
   %x = alloca [2 x i8], align 1
   %y = alloca [3 x i8], align 1
-  %0 = bitcast [2 x i8]* %x to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 1 %0, i8* align 1 getelementptr inbounds ([3 x i8], [3 x i8]* @.str, i32 0, i32 0), i32 2, i1 false)
-  %1 = bitcast [3 x i8]* %y to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 1 %1, i8* align 1 getelementptr inbounds ([4 x i8], [4 x i8]* @.str.1, i32 0, i32 0), i32 3, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 1 %x, ptr align 1 @.str, i32 2, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 1 %y, ptr align 1 @.str.1, i32 3, i1 false)
   ret i32 0
 }

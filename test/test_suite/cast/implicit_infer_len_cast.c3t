@@ -26,41 +26,31 @@ fn void main()
   %literal = alloca [1 x <2 x i32>], align 8
   %bb = alloca [1 x %"int[]"], align 16
   %literal1 = alloca [2 x i32], align 4
-  %y2 = alloca [2 x [2 x i32]]*, align 8
+  %y2 = alloca ptr, align 8
   %z3 = alloca [2 x [2 x i32]], align 16
-  %0 = bitcast [2 x [2 x i32]]* %x to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 16 %0, i8* align 16 bitcast ([2 x [2 x i32]]* @.__const to i8*), i32 16, i1 false)
-  %1 = bitcast [1 x <2 x i32>]* %y to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %1, i8* align 8 bitcast ([1 x <2 x i32>]* @.__const.1 to i8*), i32 8, i1 false)
-  %2 = bitcast [1 x <2 x i32>]* %z to i8*
-  %3 = bitcast [1 x <2 x i32>]* %y to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %2, i8* align 8 %3, i32 8, i1 false)
-  %4 = bitcast [1 x <2 x i32>]* %w to i8*
-  %5 = bitcast [1 x <2 x i32>]* %z to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %4, i8* align 8 %5, i32 8, i1 false)
-  %6 = getelementptr inbounds [1 x <2 x i32>], [1 x <2 x i32>]* %literal, i64 0, i64 0
-  %7 = getelementptr inbounds <2 x i32>, <2 x i32>* %6, i64 0, i64 0
-  store i32 1, i32* %7, align 4
-  %8 = getelementptr inbounds <2 x i32>, <2 x i32>* %6, i64 0, i64 1
-  store i32 3, i32* %8, align 4
-  %9 = bitcast [1 x <2 x i32>]* %literal to <2 x i32>*
-  %10 = insertvalue %"int[<2>][]" undef, <2 x i32>* %9, 0
-  %11 = insertvalue %"int[<2>][]" %10, i64 1, 1
-  store %"int[<2>][]" %11, %"int[<2>][]"* %aa, align 8
-  %12 = getelementptr inbounds [1 x %"int[]"], [1 x %"int[]"]* %bb, i64 0, i64 0
-  %13 = getelementptr inbounds [2 x i32], [2 x i32]* %literal1, i64 0, i64 0
-  store i32 1, i32* %13, align 4
-  %14 = getelementptr inbounds [2 x i32], [2 x i32]* %literal1, i64 0, i64 1
-  store i32 3, i32* %14, align 4
-  %15 = bitcast [2 x i32]* %literal1 to i32*
-  %16 = insertvalue %"int[]" undef, i32* %15, 0
-  %17 = insertvalue %"int[]" %16, i64 2, 1
-  store %"int[]" %17, %"int[]"* %12, align 16
-  store [2 x [2 x i32]]* %x, [2 x [2 x i32]]** %y2, align 8
-  %18 = load [2 x [2 x i32]]*, [2 x [2 x i32]]** %y2, align 8
-  %19 = bitcast [2 x [2 x i32]]* %z3 to i8*
-  %20 = bitcast [2 x [2 x i32]]* %18 to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 16 %19, i8* align 8 %20, i32 16, i1 false)
-  %21 = getelementptr inbounds [2 x [2 x i32]], [2 x [2 x i32]]* %z3, i64 0, i64 1
-  %22 = getelementptr inbounds [2 x i32], [2 x i32]* %21, i64 0, i64 1
+  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x, ptr align 16 @.__const, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %y, ptr align 8 @.__const.1, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %z, ptr align 8 %y, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %w, ptr align 8 %z, i32 8, i1 false)
+  %0 = getelementptr inbounds [1 x <2 x i32>], ptr %literal, i64 0, i64 0
+  %1 = getelementptr inbounds <2 x i32>, ptr %0, i64 0, i64 0
+  store i32 1, ptr %1, align 4
+  %2 = getelementptr inbounds <2 x i32>, ptr %0, i64 0, i64 1
+  store i32 3, ptr %2, align 4
+  %3 = insertvalue %"int[<2>][]" undef, ptr %literal, 0
+  %4 = insertvalue %"int[<2>][]" %3, i64 1, 1
+  store %"int[<2>][]" %4, ptr %aa, align 8
+  %5 = getelementptr inbounds [1 x %"int[]"], ptr %bb, i64 0, i64 0
+  %6 = getelementptr inbounds [2 x i32], ptr %literal1, i64 0, i64 0
+  store i32 1, ptr %6, align 4
+  %7 = getelementptr inbounds [2 x i32], ptr %literal1, i64 0, i64 1
+  store i32 3, ptr %7, align 4
+  %8 = insertvalue %"int[]" undef, ptr %literal1, 0
+  %9 = insertvalue %"int[]" %8, i64 2, 1
+  store %"int[]" %9, ptr %5, align 16
+  store ptr %x, ptr %y2, align 8
+  %10 = load ptr, ptr %y2, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %z3, ptr align 8 %10, i32 16, i1 false)
+  %11 = getelementptr inbounds [2 x [2 x i32]], ptr %z3, i64 0, i64 1
+  %12 = getelementptr inbounds [2 x i32], ptr %11, i64 0, i64 1
   ret void

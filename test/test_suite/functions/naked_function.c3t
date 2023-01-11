@@ -5,7 +5,7 @@ fn void test(int i) @naked
 
 }
 
-/* #expect: naked_function.ll
+// #expect: naked_function.ll
 
 define void @naked_function_test(i32 %0) #0 {
 entry:

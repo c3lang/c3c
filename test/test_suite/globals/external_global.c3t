@@ -21,14 +21,15 @@ fn int extract_or_test_files()
     return 0;
 }
 
-// #expect: test.ll
+/* #expect: test.ll
 
-%UzGlobs = type { i8, [1 x %MinInfo], %MinInfo* }
+
+%UzGlobs = type { i8, [1 x %MinInfo], ptr }
 %MinInfo = type { i64, i32 }
 
 @g = external global %UzGlobs, align 8
 
 entry:
-  store %MinInfo* getelementptr inbounds (%UzGlobs, %UzGlobs* @g, i32 0, i32 1, i32 0), %MinInfo** getelementptr inbounds (%UzGlobs, %UzGlobs* @g, i32 0, i32 2), align 8
+  store ptr getelementptr inbounds (%UzGlobs, ptr @g, i32 0, i32 1), ptr getelementptr inbounds (%UzGlobs, ptr @g, i32 0, i32 2), align 8
   ret i32 0
 }

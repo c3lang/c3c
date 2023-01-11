@@ -1,0 +1,106 @@
+// #target: macos-x64
+extern fn void printf(char* c, ...);
+
+struct ExtraSimple
+{
+    int a;
+    int b;
+    struct c
+    {
+        double e;
+        double f0;
+        double f1;
+        double f;
+        double j;
+    }
+    struct
+    {
+        int r;
+        int s;
+    }
+    union
+    {
+        double o0;
+        int o1;
+    }
+    int g;
+}
+
+
+fn void testSimple()
+{
+    ExtraSimple a = { .c.j = 3.3 };
+    a.c.j = 3.4;
+    printf("a = %d, c.e = %f, c.f = %f, c.j = %f, g = %d, o0 = %f, r = %d, s = %d\n", a.a, a.c.e, a.c.f, a.c.j, a.g, a.o0, a.r, a.s);
+}
+
+// TODO these may be wrong.
+/* #expect: pointer_access.ll
+
+%ExtraSimple = type { i32, i32, %c, %.anon, %.anon.0, i32 }
+%c = type { double, double, double, double, double }
+%.anon = type { i32, i32 }
+%.anon.0 = type { double }
+
+@"ct$pointer_access_c" = linkonce constant %.introspect { i8 10, i64 40, i64 0, i64 5, [0 x i64] zeroinitializer }, align 8
+@"ct$pointer_access_$anon" = linkonce constant %.introspect { i8 10, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"ct$pointer_access_$anon.4" = linkonce constant %.introspect { i8 11, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"ct$pointer_access_ExtraSimple" = linkonce constant %.introspect { i8 10, i64 72, i64 0, i64 6, [0 x i64] zeroinitializer }, align 8
+@.str = private unnamed_addr constant [71 x i8] c"a = %d, c.e = %f, c.f = %f, c.j = %f, g = %d, o0 = %f, r = %d, s = %d\0A\00", align 1
+
+define void @pointer_access_testSimple() #0 {
+entry:
+  %a = alloca %ExtraSimple, align 8
+  %0 = getelementptr inbounds %ExtraSimple, %ExtraSimple* %a, i32 0, i32 0
+  store i32 0, i32* %0, align 8
+  %1 = getelementptr inbounds %ExtraSimple, %ExtraSimple* %a, i32 0, i32 1
+  store i32 0, i32* %1, align 4
+  %2 = getelementptr inbounds %ExtraSimple, %ExtraSimple* %a, i32 0, i32 2
+  %3 = getelementptr inbounds %c, %c* %2, i32 0, i32 0
+  store double 0.000000e+00, double* %3, align 8
+  %4 = getelementptr inbounds %c, %c* %2, i32 0, i32 1
+  store double 0.000000e+00, double* %4, align 8
+  %5 = getelementptr inbounds %c, %c* %2, i32 0, i32 2
+  store double 0.000000e+00, double* %5, align 8
+  %6 = getelementptr inbounds %c, %c* %2, i32 0, i32 3
+  store double 0.000000e+00, double* %6, align 8
+  %7 = getelementptr inbounds %c, %c* %2, i32 0, i32 4
+  store double 3.300000e+00, double* %7, align 8
+  %8 = getelementptr inbounds %ExtraSimple, %ExtraSimple* %a, i32 0, i32 3
+  %9 = getelementptr inbounds %.anon, %.anon* %8, i32 0, i32 0
+  store i32 0, i32* %9, align 8
+  %10 = getelementptr inbounds %.anon, %.anon* %8, i32 0, i32 1
+  store i32 0, i32* %10, align 4
+  %11 = getelementptr inbounds %ExtraSimple, %ExtraSimple* %a, i32 0, i32 4
+  %12 = bitcast %.anon.0* %11 to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 8 %12, i8 0, i64 8, i1 false)
+  %13 = getelementptr inbounds %ExtraSimple, %ExtraSimple* %a, i32 0, i32 5
+  store i32 0, i32* %13, align 8
+  %14 = getelementptr inbounds %ExtraSimple, %ExtraSimple* %a, i32 0, i32 2
+  %15 = getelementptr inbounds %c, %c* %14, i32 0, i32 4
+  store double 3.400000e+00, double* %15, align 8
+  %16 = getelementptr inbounds %ExtraSimple, %ExtraSimple* %a, i32 0, i32 0
+  %17 = load i32, i32* %16, align 8
+  %18 = getelementptr inbounds %ExtraSimple, %ExtraSimple* %a, i32 0, i32 2
+  %19 = getelementptr inbounds %c, %c* %18, i32 0, i32 0
+  %20 = load double, double* %19, align 8
+  %21 = getelementptr inbounds %ExtraSimple, %ExtraSimple* %a, i32 0, i32 2
+  %22 = getelementptr inbounds %c, %c* %21, i32 0, i32 3
+  %23 = load double, double* %22, align 8
+  %24 = getelementptr inbounds %ExtraSimple, %ExtraSimple* %a, i32 0, i32 2
+  %25 = getelementptr inbounds %c, %c* %24, i32 0, i32 4
+  %26 = load double, double* %25, align 8
+  %27 = getelementptr inbounds %ExtraSimple, %ExtraSimple* %a, i32 0, i32 5
+  %28 = load i32, i32* %27, align 8
+  %29 = getelementptr inbounds %ExtraSimple, %ExtraSimple* %a, i32 0, i32 4
+  %30 = bitcast %.anon.0* %29 to double*
+  %31 = load double, double* %30, align 8
+  %32 = getelementptr inbounds %ExtraSimple, %ExtraSimple* %a, i32 0, i32 3
+  %33 = getelementptr inbounds %.anon, %.anon* %32, i32 0, i32 0
+  %34 = load i32, i32* %33, align 8
+  %35 = getelementptr inbounds %ExtraSimple, %ExtraSimple* %a, i32 0, i32 3
+  %36 = getelementptr inbounds %.anon, %.anon* %35, i32 0, i32 1
+  %37 = load i32, i32* %36, align 4
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([71 x i8], [71 x i8]* @.str, i32 0, i32 0), i32 %17, double %20, double %23, double %26, i32 %28, double %31, i32 %34, i32 %37)
+  ret void
+}

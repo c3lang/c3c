@@ -16,16 +16,17 @@ fn void bar() {
   Abc dummy2 = foo2();
 }
 
-// Cleanup for this result, since it's creating an unnecessary sret.
+/* #expect: test_sret.ll
 
-// #expect: test_sret.ll
+declare void @foo1(ptr noalias sret(%Abc) align 8) #0
 
-declare void @foo1(%Abc* noalias sret(%Abc) align 8)
+declare void @foo2(ptr noalias sret(%Abc) align 8) #0
 
-declare void @foo2(%Abc* noalias sret(%Abc) align 8)
-
+define void @test_sret_bar() #0 {
+entry:
   %dummy1 = alloca %Abc, align 8
   %dummy2 = alloca %Abc, align 8
-  call void @foo1(%Abc* sret(%Abc) align 8 %dummy1)
-  call void @foo2(%Abc* sret(%Abc) align 8 %dummy2)
+  call void @foo1(ptr sret(%Abc) align 8 %dummy1)
+  call void @foo2(ptr sret(%Abc) align 8 %dummy2)
   ret void
+}

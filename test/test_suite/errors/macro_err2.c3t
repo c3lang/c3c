@@ -21,31 +21,31 @@ fn void main()
 
 /* #expect: test.ll
 
-define i64 @test_abc(i32* %0) #0 {
+define i64 @test_abc(ptr %0) #0 {
 entry:
-  ret i64 ptrtoint (%.fault* @"test_Tester$FOO" to i64)
+  ret i64 ptrtoint (ptr @"test_Tester$FOO" to i64)
 }
 
 define void @test_main() #0 {
 entry:
   %blockret = alloca i32, align 4
   %retparam = alloca i32, align 4
-  %0 = call i64 @test_abc(i32* %retparam)
+  %0 = call i64 @test_abc(ptr %retparam)
   %not_err = icmp eq i64 %0, 0
   br i1 %not_err, label %after_check, label %opt_block_cleanup
 
 after_check:                                      ; preds = %entry
-  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str.1, i32 0, i32 0))
-  %2 = load i32, i32* %retparam, align 4
-  store i32 %2, i32* %blockret, align 4
+  %1 = call i32 (ptr, ...) @printf(ptr @.str.1)
+  %2 = load i32, ptr %retparam, align 4
+  store i32 %2, ptr %blockret, align 4
   br label %expr_block.exit
 
 opt_block_cleanup:                                ; preds = %entry
-  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str.2, i32 0, i32 0))
+  %3 = call i32 (ptr, ...) @printf(ptr @.str.2)
   br label %else_block
 
 expr_block.exit:                                  ; preds = %after_check
-  %4 = load i32, i32* %blockret, align 4
+  %4 = load i32, ptr %blockret, align 4
   br label %phi_block
 
 else_block:                                       ; preds = %opt_block_cleanup
@@ -53,7 +53,7 @@ else_block:                                       ; preds = %opt_block_cleanup
 
 phi_block:                                        ; preds = %else_block, %expr_block.exit
   %val = phi i32 [ %4, %expr_block.exit ], [ 2, %else_block ]
-  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 %val)
-  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str.3, i32 0, i32 0))
+  %5 = call i32 (ptr, ...) @printf(ptr @.str, i32 %val)
+  %6 = call i32 (ptr, ...) @printf(ptr @.str.3)
   ret void
 }

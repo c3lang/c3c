@@ -25,16 +25,14 @@ fn int main(int argc, char** argv)
 
 /* #expect: test.ll
 
-
-
-define i32 @main(i32 %0, i8** %1) #0 {
+define i32 @main(i32 %0, ptr %1) #0 {
 entry:
   %a = alloca i32, align 4
-  store i32 0, i32* %a, align 4
+  store i32 0, ptr %a, align 4
   br label %loop.cond
 
 loop.cond:                                        ; preds = %if.exit, %entry
-  %2 = load i32, i32* %a, align 4
+  %2 = load i32, ptr %a, align 4
   %intbool = icmp ne i32 %2, 0
   br i1 %intbool, label %loop.body, label %loop.exit
 

@@ -1,0 +1,25 @@
+// #target: macos-x64
+module foo;
+
+fn int main()
+{
+    char[2] x = "ab";
+    char[*] y = "abc";
+    return 0;
+}
+
+/* #expect: foo.ll
+
+@.str = private unnamed_addr constant [3 x i8] c"ab\00", align 1
+@.str.1 = private unnamed_addr constant [4 x i8] c"abc\00", align 1
+
+define i32 @main() #0 {
+entry:
+  %x = alloca [2 x i8], align 1
+  %y = alloca [3 x i8], align 1
+  %0 = bitcast [2 x i8]* %x to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 1 %0, i8* align 1 getelementptr inbounds ([3 x i8], [3 x i8]* @.str, i32 0, i32 0), i32 2, i1 false)
+  %1 = bitcast [3 x i8]* %y to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 1 %1, i8* align 1 getelementptr inbounds ([4 x i8], [4 x i8]* @.str.1, i32 0, i32 0), i32 3, i1 false)
+  ret i32 0
+}

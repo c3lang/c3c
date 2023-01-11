@@ -51,8 +51,8 @@ private TestRunner* current_runner;
 fn void test_panic(String message, String file, String function, uint line)
 {
 	io::println("[error]");
-	io::printfln("\n Error: %s", message);
-	io::printfln("  - in %s %s:%s.\n", function, file, line);
+	io::printfn("\n Error: %s", message);
+	io::printfn("  - in %s %s:%s.\n", function, file, line);
 	libc::longjmp(&current_runner.buf, 1);
 }
 
@@ -79,7 +79,7 @@ fn bool TestRunner.run(TestRunner* runner)
 			tests_passed++;
 		}
 	}
-	io::printfln("\n%d test(s) run.\n", tests);
+	io::printfn("\n%d test(s) run.\n", tests);
 	io::print("Test Result: ");
 	if (tests_passed < tests)
 	{
@@ -89,7 +89,7 @@ fn bool TestRunner.run(TestRunner* runner)
 	{
 		io::print("ok");
 	}
-	io::printfln(". %d passed, %d failed.", tests_passed, tests - tests_passed);
+	io::printfn(". %d passed, %d failed.", tests_passed, tests - tests_passed);
 	return tests == tests_passed;
 }
 

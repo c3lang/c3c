@@ -184,3 +184,6 @@ fn void test24()
 {
     int a = b123;  // #error: 'int[2][3]' to 'int'
 }
+
+
+

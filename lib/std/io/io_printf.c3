@@ -294,7 +294,9 @@ fn usz! printf(String format, args...) @maydiscard
     return formatter.vprintf(format, args);
 }
 
-fn usz! printfln(String format, args...) @maydiscard
+define printfln = printfn;
+
+fn usz! printfn(String format, args...) @maydiscard
 {
 	Formatter formatter;
 	formatter.init(&out_putchar_fn);
@@ -310,7 +312,7 @@ fn usz! VarString.printf(VarString* str, String format, args...) @maydiscard
 	return formatter.vprintf(format, args);
 }
 
-fn usz! VarString.printfln(VarString* str, String format, args...) @maydiscard
+fn usz! VarString.printfn(VarString* str, String format, args...) @maydiscard
 {
 	Formatter formatter;
 	formatter.init(&out_string_append_fn, str);
@@ -341,7 +343,7 @@ fn usz! File.printf(File file, String format, args...) @maydiscard
     return formatter.vprintf(format, args)?;
 }
 
-fn usz! File.printfln(File file, String format, args...) @maydiscard
+fn usz! File.printfn(File file, String format, args...) @maydiscard
 {
 	Formatter formatter;
     formatter.init(&out_putchar_fn, &file);

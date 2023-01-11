@@ -18,23 +18,23 @@ fn void test(int x)
 
 /* #expect: test.ll
 
-%"Foo[]" = type { i32*, i64 }
+%"Foo[]" = type { ptr, i64 }
 
 @test_zfok = local_unnamed_addr global i32 0, align 4
 @.taddr = private global [2 x i32] [i32 0, i32 1], align 4
-@test_zw = local_unnamed_addr global %"Foo[]" { i32* getelementptr inbounds ([2 x i32], [2 x i32]* @.taddr, i32 0, i32 0), i64 2 }, align 8
+@test_zw = local_unnamed_addr global %"Foo[]" { ptr @.taddr, i64 2 }, align 8
 
 define void @test_test(i32 %0) #0 {
 entry:
   %zonk = alloca i32, align 4
   %literal = alloca [2 x i32], align 4
-  %1 = getelementptr inbounds [2 x i32], [2 x i32]* %literal, i64 0, i64 0
-  store i32 0, i32* %1, align 4
-  %2 = getelementptr inbounds [2 x i32], [2 x i32]* %literal, i64 0, i64 1
-  store i32 1, i32* %2, align 4
+  %1 = getelementptr inbounds [2 x i32], ptr %literal, i64 0, i64 0
+  store i32 0, ptr %1, align 4
+  %2 = getelementptr inbounds [2 x i32], ptr %literal, i64 0, i64 1
+  store i32 1, ptr %2, align 4
   %sisiext = sext i32 %0 to i64
-  %3 = getelementptr inbounds [2 x i32], [2 x i32]* %literal, i64 0, i64 %sisiext
-  %4 = load i32, i32* %3, align 4
-  store i32 %4, i32* %zonk, align 4
+  %3 = getelementptr inbounds [2 x i32], ptr %literal, i64 0, i64 %sisiext
+  %4 = load i32, ptr %3, align 4
+  store i32 %4, ptr %zonk, align 4
   ret void
 }

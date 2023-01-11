@@ -1,0 +1,23 @@
+// #target: macos-x64
+
+enum HelloEnum
+{
+    HELLO,
+    WORLD,
+    ELLOWORLD,
+}
+fn void test()
+{
+    HelloEnum h = WORLD;
+    h = ELLOWORLD;
+}
+
+/* #expect: simple_inference.ll
+
+define void @simple_inference_test() #0 {
+entry:
+  %h = alloca i32, align 4
+  store i32 1, i32* %h, align 4
+  store i32 2, i32* %h, align 4
+  ret void
+}

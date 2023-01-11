@@ -1,0 +1,1 @@
+static int ifej; // #error: 'static' can only used with local variables

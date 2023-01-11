@@ -26,15 +26,15 @@ entry:
   br label %if.then
 
 if.then:                                          ; preds = %entry
-  call void (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @.str, i32 0, i32 0))
-  call void (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.1, i32 0, i32 0))
-  store i32 12, i32* %blockret, align 4
+  call void (ptr, ...) @printf(ptr @.str)
+  call void (ptr, ...) @printf(ptr @.str.1)
+  store i32 12, ptr %blockret, align 4
   br label %expr_block.exit
 
 expr_block.exit:                                  ; preds = %if.then
-  call void (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str.5, i32 0, i32 0))
-  call void (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str.6, i32 0, i32 0))
-  call void (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str.7, i32 0, i32 0))
+  call void (ptr, ...) @printf(ptr @.str.5)
+  call void (ptr, ...) @printf(ptr @.str.6)
+  call void (ptr, ...) @printf(ptr @.str.7)
   ret void
 }
 

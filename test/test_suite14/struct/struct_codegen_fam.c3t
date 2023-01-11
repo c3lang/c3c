@@ -1,0 +1,30 @@
+// #target: macos-x64
+module foo;
+
+struct Bar
+{
+    struct
+    {
+        int y;
+    }
+    int ufe;
+    int[*] z;
+}
+
+
+fn void test(Bar b)
+{
+    b.z[1];
+}
+
+/* #expect: foo.ll
+
+%Bar = type { %.anon, i32, [0 x i32] }
+%.anon = type { i32 }
+
+define void @foo_test(%Bar* byval(%Bar) align 8 %0) #0 {
+entry:
+  %1 = getelementptr inbounds %Bar, %Bar* %0, i32 0, i32 2
+  %2 = getelementptr inbounds [0 x i32], [0 x i32]* %1, i64 0, i64 1
+  ret void
+}

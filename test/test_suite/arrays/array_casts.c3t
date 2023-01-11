@@ -9,26 +9,24 @@ fn void test()
     int[] z = &x;
 }
 
-// #expect: array_casts.ll
+/* #expect: array_casts.ll
 
-%"int[]" = type { i32*, i64 }
+%"int[]" = type { ptr, i64 }
 
 define void @array_casts_test() #0 {
 entry:
   %x = alloca [3 x i32], align 4
-  %y = alloca i32*, align 8
+  %y = alloca ptr, align 8
   %z = alloca %"int[]", align 8
-  %0 = getelementptr inbounds [3 x i32], [3 x i32]* %x, i64 0, i64 0
-  store i32 0, i32* %0, align 4
-  %1 = getelementptr inbounds [3 x i32], [3 x i32]* %x, i64 0, i64 1
-  store i32 0, i32* %1, align 4
-  %2 = getelementptr inbounds [3 x i32], [3 x i32]* %x, i64 0, i64 2
-  store i32 0, i32* %2, align 4
-  %ptrptr = bitcast [3 x i32]* %x to i32*
-  store i32* %ptrptr, i32** %y, align 8
-  %3 = bitcast [3 x i32]* %x to i32*
-  %4 = insertvalue %"int[]" undef, i32* %3, 0
-  %5 = insertvalue %"int[]" %4, i64 3, 1
-  store %"int[]" %5, %"int[]"* %z, align 8
+  %0 = getelementptr inbounds [3 x i32], ptr %x, i64 0, i64 0
+  store i32 0, ptr %0, align 4
+  %1 = getelementptr inbounds [3 x i32], ptr %x, i64 0, i64 1
+  store i32 0, ptr %1, align 4
+  %2 = getelementptr inbounds [3 x i32], ptr %x, i64 0, i64 2
+  store i32 0, ptr %2, align 4
+  store ptr %x, ptr %y, align 8
+  %3 = insertvalue %"int[]" undef, ptr %x, 0
+  %4 = insertvalue %"int[]" %3, i64 3, 1
+  store %"int[]" %4, ptr %z, align 8
   ret void
 }

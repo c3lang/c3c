@@ -53,7 +53,7 @@ fn void main(String[] args)
 				return;
 		}
 	}
-	io::printfln("%d", val);
+	io::printfn("%d", val);
 }
 
 fn String! read_next(String* remaining)

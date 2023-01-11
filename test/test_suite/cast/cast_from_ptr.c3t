@@ -9,10 +9,14 @@ fn void tester()
 
 /* #expect: test.ll
 
-  %0 = load i32*, i32** %x, align 8
-  %ptrxi = ptrtoint i32* %0 to i16
-  store i16 %ptrxi, i16* %y, align 2
-  %1 = load i32*, i32** %x, align 8
-  %ptrxi1 = ptrtoint i32* %1 to i16
+  %x = alloca ptr, align 8
+  %y = alloca i16, align 2
+  %z = alloca i64, align 8
+  store ptr null, ptr %x, align 8
+  %0 = load ptr, ptr %x, align 8
+  %ptrxi = ptrtoint ptr %0 to i16
+  store i16 %ptrxi, ptr %y, align 2
+  %1 = load ptr, ptr %x, align 8
+  %ptrxi1 = ptrtoint ptr %1 to i16
   %siuiext = sext i16 %ptrxi1 to i64
-  store i64 %siuiext, i64* %z, align 8
+  store i64 %siuiext, ptr %z, align 8

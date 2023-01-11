@@ -13,11 +13,11 @@ fn void main()
 
 define void @foo_main() #0 {
 entry:
-  %foekf = alloca i8*, align 8
-  %xok = alloca i32*, align 8
-  store i8* bitcast (i32 (i8*, ...)* @printf to i8*), i8** %foekf, align 8
-  store i32* @libc_EXIT_SUCCESS, i32** %xok, align 8
+  %foekf = alloca ptr, align 8
+  %xok = alloca ptr, align 8
+  store ptr @printf, ptr %foekf, align 8
+  store ptr @libc_EXIT_SUCCESS, ptr %xok, align 8
   ret void
 }
 
-declare i32 @printf(i8*, ...)
+declare i32 @printf(ptr, ...)

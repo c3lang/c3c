@@ -1,0 +1,141 @@
+// #target: macos-x64
+module foo;
+import std::io;
+import libc;
+fault Foo
+{
+    X,
+    Y,
+    Z,
+    W,
+    W1
+
+
+}
+
+fault Foob
+{
+    X1,
+    Y2
+}
+
+define Bar = distinct int;
+
+enum MyEnum
+{
+    A,
+    B
+}
+
+fn void Foo.hello(Foo *f)
+{
+    io::println("Hello from Foo");
+}
+
+fn void Bar.hello(Bar *b)
+{
+    io::println("Hello from Bar");
+}
+
+fn void MyEnum.hello(MyEnum *myenum)
+{
+    io::println("Hello from MyEnum");
+}
+fn void main()
+{
+    Foo f = Foo.X;
+    Foo ef = Foo.Y;
+    anyerr x = f;
+    ulong z = (ulong)(x);
+    libc::printf("1: %p\n", z);
+    x = ef;
+    z = (ulong)(x);
+    libc::printf("2: %p\n", z);
+    x = Foo.W;
+    z = (ulong)(x);
+    libc::printf("21: %p\n", z);
+    x = Foo.W1;
+    z = (ulong)(x);
+    libc::printf("22: %p\n", z);
+    x = Foob.X1;
+    z = (ulong)(x);
+    libc::printf("3: %p\n", z);
+    x = Foob.Y2;
+    z = (ulong)(x);
+    libc::printf("4: %p\n", z);
+    Bar b;
+    MyEnum a = MyEnum.A;
+    f.hello();
+    b.hello();
+    a.hello();
+}
+
+/* #expect: foo.ll
+
+define void @foo_Foo_hello(i64* %0) #0 {
+entry:
+  %1 = call i32 @std_io_println(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str.12, i32 0, i32 0)) #1
+  ret void
+}
+
+define void @foo_Bar_hello(i32* %0) #0 {
+entry:
+  %1 = call i32 @std_io_println(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str.13, i32 0, i32 0)) #1
+  ret void
+}
+
+define void @foo_MyEnum_hello(i32* %0) #0 {
+entry:
+  %1 = call i32 @std_io_println(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @.str.14, i32 0, i32 0)) #1
+  ret void
+}
+
+define void @foo_main() #0 {
+entry:
+  %f = alloca i64, align 8
+  %ef = alloca i64, align 8
+  %x = alloca i64, align 8
+  %z = alloca i64, align 8
+  %b = alloca i32, align 4
+  %a = alloca i32, align 4
+  store i64 ptrtoint (%.fault* @"foo_Foo$X" to i64), i64* %f, align 8
+  store i64 ptrtoint (%.fault* @"foo_Foo$Y" to i64), i64* %ef, align 8
+  %0 = load i64, i64* %f, align 8
+  store i64 %0, i64* %x, align 8
+  %1 = load i64, i64* %x, align 8
+  store i64 %1, i64* %z, align 8
+  %2 = load i64, i64* %z, align 8
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str, i32 0, i32 0), i64 %2)
+  %4 = load i64, i64* %ef, align 8
+  store i64 %4, i64* %x, align 8
+  %5 = load i64, i64* %x, align 8
+  store i64 %5, i64* %z, align 8
+  %6 = load i64, i64* %z, align 8
+  %7 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str.7, i32 0, i32 0), i64 %6)
+  store i64 ptrtoint (%.fault* @"foo_Foo$W" to i64), i64* %x, align 8
+  %8 = load i64, i64* %x, align 8
+  store i64 %8, i64* %z, align 8
+  %9 = load i64, i64* %z, align 8
+  %10 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.8, i32 0, i32 0), i64 %9)
+  store i64 ptrtoint (%.fault* @"foo_Foo$W1" to i64), i64* %x, align 8
+  %11 = load i64, i64* %x, align 8
+  store i64 %11, i64* %z, align 8
+  %12 = load i64, i64* %z, align 8
+  %13 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.9, i32 0, i32 0), i64 %12)
+  store i64 ptrtoint (%.fault* @"foo_Foob$X1" to i64), i64* %x, align 8
+  %14 = load i64, i64* %x, align 8
+  store i64 %14, i64* %z, align 8
+  %15 = load i64, i64* %z, align 8
+  %16 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str.10, i32 0, i32 0), i64 %15)
+  store i64 ptrtoint (%.fault* @"foo_Foob$Y2" to i64), i64* %x, align 8
+  %17 = load i64, i64* %x, align 8
+  store i64 %17, i64* %z, align 8
+  %18 = load i64, i64* %z, align 8
+  %19 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str.11, i32 0, i32 0), i64 %18)
+  store i32 0, i32* %b, align 4
+  store i32 0, i32* %a, align 4
+  call void @foo_Foo_hello(i64* %f)
+  call void @foo_Bar_hello(i32* %b)
+  call void @foo_MyEnum_hello(i32* %a)
+  ret void
+}

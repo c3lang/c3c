@@ -13,13 +13,10 @@ fn void main()
 /* #expect: test.ll
 
   %a = alloca i32, align 4
-  %ptr = alloca i8*, align 8
-  store i32 0, i32* %a, align 4
-  %ptrptr = bitcast i32* %a to i8*
-  call void @llvm.prefetch.p0i8(i8* %ptrptr, i32 1, i32 3, i32 1)
-  %ptrptr1 = bitcast i32* %a to i8*
-  call void @llvm.prefetch.p0i8(i8* %ptrptr1, i32 0, i32 1, i32 1)
-  %ptrptr2 = bitcast i32* %a to i8*
-  store i8* %ptrptr2, i8** %ptr, align 8
-  %0 = load i8*, i8** %ptr, align 8
-  call void @llvm.prefetch.p0i8(i8* %0, i32 0, i32 3, i32 1)
+  %ptr = alloca ptr, align 8
+  store i32 0, ptr %a, align 4
+  call void @llvm.prefetch.p0(ptr %a, i32 1, i32 3, i32 1)
+  call void @llvm.prefetch.p0(ptr %a, i32 0, i32 1, i32 1)
+  store ptr %a, ptr %ptr, align 8
+  %0 = load ptr, ptr %ptr, align 8
+  call void @llvm.prefetch.p0(ptr %0, i32 0, i32 3, i32 1)

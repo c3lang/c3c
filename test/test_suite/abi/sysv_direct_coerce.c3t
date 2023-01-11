@@ -21,27 +21,23 @@ entry:
   %r = alloca %Rectangle, align 4
   %literal = alloca %Rectangle, align 4
   %coerce = alloca %Rectangle, align 8
-  %pair = bitcast %Rectangle* %r to { <2 x float>, <2 x float> }*
-  %2 = getelementptr inbounds { <2 x float>, <2 x float> }, { <2 x float>, <2 x float> }* %pair, i32 0, i32 0
-  store <2 x float> %0, <2 x float>* %2, align 4
-  %3 = getelementptr inbounds { <2 x float>, <2 x float> }, { <2 x float>, <2 x float> }* %pair, i32 0, i32 1
-  store <2 x float> %1, <2 x float>* %3, align 4
-  %4 = getelementptr inbounds %Rectangle, %Rectangle* %literal, i32 0, i32 0
-  store float 1.000000e+00, float* %4, align 4
-  %5 = getelementptr inbounds %Rectangle, %Rectangle* %literal, i32 0, i32 1
-  store float 2.000000e+00, float* %5, align 4
-  %6 = getelementptr inbounds %Rectangle, %Rectangle* %literal, i32 0, i32 2
-  store float 3.000000e+00, float* %6, align 4
-  %7 = getelementptr inbounds %Rectangle, %Rectangle* %literal, i32 0, i32 3
-  store float 4.000000e+00, float* %7, align 4
-  %8 = bitcast %Rectangle* %coerce to { <2 x float>, <2 x float> }*
-  %9 = bitcast { <2 x float>, <2 x float> }* %8 to i8*
-  %10 = bitcast %Rectangle* %literal to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %9, i8* align 4 %10, i32 16, i1 false)
-  %11 = getelementptr inbounds { <2 x float>, <2 x float> }, { <2 x float>, <2 x float> }* %8, i32 0, i32 0
-  %lo = load <2 x float>, <2 x float>* %11, align 8
-  %12 = getelementptr inbounds { <2 x float>, <2 x float> }, { <2 x float>, <2 x float> }* %8, i32 0, i32 1
-  %hi = load <2 x float>, <2 x float>* %12, align 8
+  %2 = getelementptr inbounds { <2 x float>, <2 x float> }, ptr %r, i32 0, i32 0
+  store <2 x float> %0, ptr %2, align 4
+  %3 = getelementptr inbounds { <2 x float>, <2 x float> }, ptr %r, i32 0, i32 1
+  store <2 x float> %1, ptr %3, align 4
+  %4 = getelementptr inbounds %Rectangle, ptr %literal, i32 0, i32 0
+  store float 1.000000e+00, ptr %4, align 4
+  %5 = getelementptr inbounds %Rectangle, ptr %literal, i32 0, i32 1
+  store float 2.000000e+00, ptr %5, align 4
+  %6 = getelementptr inbounds %Rectangle, ptr %literal, i32 0, i32 2
+  store float 3.000000e+00, ptr %6, align 4
+  %7 = getelementptr inbounds %Rectangle, ptr %literal, i32 0, i32 3
+  store float 4.000000e+00, ptr %7, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %coerce, ptr align 4 %literal, i32 16, i1 false)
+  %8 = getelementptr inbounds { <2 x float>, <2 x float> }, ptr %coerce, i32 0, i32 0
+  %lo = load <2 x float>, ptr %8, align 8
+  %9 = getelementptr inbounds { <2 x float>, <2 x float> }, ptr %coerce, i32 0, i32 1
+  %hi = load <2 x float>, ptr %9, align 8
   call void @foo_test(<2 x float> %lo, <2 x float> %hi)
   ret void
 }

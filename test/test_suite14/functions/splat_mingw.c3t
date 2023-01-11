@@ -1,0 +1,55 @@
+// #target: mingw-x64
+module splat;
+
+extern fn int sum_us(int... x);
+
+fn void test()
+{
+    sum_us(1, 2, 3);
+    int[3] x = { 1, 2, 3 };
+    int[] z = &x;
+    sum_us(...x);
+    sum_us(...z);
+    sum_us();
+}
+
+/* #expect: splat.ll
+
+declare i32 @sum_us(%"int[]"* align 8) #0
+
+  %varargslots = alloca [3 x i32], align 4
+  %indirectarg = alloca %"int[]", align 8
+  %x = alloca [3 x i32], align 4
+  %z = alloca %"int[]", align 8
+  %indirectarg1 = alloca %"int[]", align 8
+  %indirectarg2 = alloca %"int[]", align 8
+  %indirectarg3 = alloca %"int[]", align 8
+  %0 = getelementptr inbounds [3 x i32], [3 x i32]* %varargslots, i64 0, i64 0
+  store i32 1, i32* %0, align 4
+  %1 = getelementptr inbounds [3 x i32], [3 x i32]* %varargslots, i64 0, i64 1
+  store i32 2, i32* %1, align 4
+  %2 = getelementptr inbounds [3 x i32], [3 x i32]* %varargslots, i64 0, i64 2
+  store i32 3, i32* %2, align 4
+  %3 = bitcast [3 x i32]* %varargslots to i32*
+  %4 = insertvalue %"int[]" undef, i32* %3, 0
+  %5 = insertvalue %"int[]" %4, i64 3, 1
+  store %"int[]" %5, %"int[]"* %indirectarg, align 8
+  %6 = call i32 @sum_us(%"int[]"* align 8 %indirectarg)
+  %7 = bitcast [3 x i32]* %x to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %7, i8* align 4 bitcast ([3 x i32]* @.__const to i8*), i32 12, i1 false)
+  %8 = bitcast [3 x i32]* %x to i32*
+  %9 = insertvalue %"int[]" undef, i32* %8, 0
+  %10 = insertvalue %"int[]" %9, i64 3, 1
+  store %"int[]" %10, %"int[]"* %z, align 8
+  %11 = bitcast [3 x i32]* %x to i32*
+  %12 = insertvalue %"int[]" undef, i32* %11, 0
+  %13 = insertvalue %"int[]" %12, i64 3, 1
+  store %"int[]" %13, %"int[]"* %indirectarg1, align 8
+  %14 = call i32 @sum_us(%"int[]"* align 8 %indirectarg1)
+  %15 = bitcast %"int[]"* %indirectarg2 to i8*
+  %16 = bitcast %"int[]"* %z to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %15, i8* align 8 %16, i32 16, i1 false)
+  %17 = call i32 @sum_us(%"int[]"* align 8 %indirectarg2)
+  store %"int[]" zeroinitializer, %"int[]"* %indirectarg3, align 8
+  %18 = call i32 @sum_us(%"int[]"* align 8 %indirectarg3)
+  ret void

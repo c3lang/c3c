@@ -53,37 +53,24 @@ define void @foo_main() #0 {
 entry:
   %m = alloca %Matrix2x2, align 4
   %m2 = alloca %Matrix2x2_b, align 4
-  %0 = bitcast %Matrix2x2* %m to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %0, i8* align 4 bitcast (%Matrix2x2* @.__const to i8*), i32 16, i1 false)
-  %1 = bitcast %Matrix2x2_b* %m2 to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %1, i8* align 4 bitcast (%Matrix2x2_b* @.__const.8 to i8*), i32 16, i1 false)
-  %2 = getelementptr inbounds %Matrix2x2, %Matrix2x2* %m, i32 0, i32 0
-  %3 = bitcast %.anon* %2 to %.anon.0*
-  %4 = getelementptr inbounds %.anon.0, %.anon.0* %3, i32 0, i32 0
-  %5 = load float, float* %4, align 4
-  %fpfpext = fpext float %5 to double
-  %6 = getelementptr inbounds %Matrix2x2, %Matrix2x2* %m, i32 0, i32 0
-  %7 = bitcast %.anon* %6 to [4 x float]*
-  %8 = getelementptr inbounds [4 x float], [4 x float]* %7, i64 0, i64 1
-  %9 = load float, float* %8, align 4
-  %fpfpext1 = fpext float %9 to double
-  %10 = getelementptr inbounds %Matrix2x2, %Matrix2x2* %m, i32 0, i32 0
-  %11 = bitcast %.anon* %10 to %.anon.0*
-  %12 = getelementptr inbounds %.anon.0, %.anon.0* %11, i32 0, i32 2
-  %13 = load float, float* %12, align 4
-  %fpfpext2 = fpext float %13 to double
-  %14 = getelementptr inbounds %Matrix2x2, %Matrix2x2* %m, i32 0, i32 0
-  %15 = bitcast %.anon* %14 to [4 x float]*
-  %16 = getelementptr inbounds [4 x float], [4 x float]* %15, i64 0, i64 3
-  %17 = load float, float* %16, align 4
-  %fpfpext3 = fpext float %17 to double
-  %18 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str, i32 0, i32 0), double %fpfpext, double %fpfpext1, double %fpfpext2, double %fpfpext3)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %m, ptr align 4 @.__const, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %m2, ptr align 4 @.__const.8, i32 16, i1 false)
+  %0 = getelementptr inbounds %Matrix2x2, ptr %m, i32 0, i32 0
+  %1 = getelementptr inbounds %.anon.0, ptr %0, i32 0, i32 0
+  %2 = load float, ptr %1, align 4
+  %fpfpext = fpext float %2 to double
+  %3 = getelementptr inbounds %Matrix2x2, ptr %m, i32 0, i32 0
+  %4 = getelementptr inbounds [4 x float], ptr %3, i64 0, i64 1
+  %5 = load float, ptr %4, align 4
+  %fpfpext1 = fpext float %5 to double
+  %6 = getelementptr inbounds %Matrix2x2, ptr %m, i32 0, i32 0
+  %7 = getelementptr inbounds %.anon.0, ptr %6, i32 0, i32 2
+  %8 = load float, ptr %7, align 4
+  %fpfpext2 = fpext float %8 to double
+  %9 = getelementptr inbounds %Matrix2x2, ptr %m, i32 0, i32 0
+  %10 = getelementptr inbounds [4 x float], ptr %9, i64 0, i64 3
+  %11 = load float, ptr %10, align 4
+  %fpfpext3 = fpext float %11 to double
+  %12 = call i32 (ptr, ...) @printf(ptr @.str, double %fpfpext, double %fpfpext1, double %fpfpext2, double %fpfpext3)
   ret void
-}
-
-; Function Attrs: nounwind
-define i32 @main(i32 %0, i8** %1) #0 {
-entry:
-  call void @foo_main()
-  ret i32 0
 }

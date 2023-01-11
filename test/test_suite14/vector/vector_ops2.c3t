@@ -1,0 +1,104 @@
+// #target: macos-x64
+// #safe: yes
+module test;
+import libc;
+
+fn void testf()
+{
+    float[<4>] y = { 1, 2, 3, 4 };
+    float[<4>] z = { 2, 2, 2, -100 };
+    float[<4>] w = y + z;
+    w = y / z;
+}
+
+
+fn void testi()
+{
+    int[<4>] y = { 1, 2, 3, 4 };
+    int[<4>] z = { 2, 2, 2, -100 };
+    int[<4>] w = y / z;
+    w = z >> y;
+    w = z << y;
+}
+
+/* #expect: test.ll
+
+  %4 = call <4 x float> @llvm.fabs.v4f32(<4 x float> %3)
+  %5 = call float @llvm.vector.reduce.fmin.v4f32(<4 x float> %4)
+  %zero = fcmp ueq float %5, 0.000000e+00
+  br i1 %zero, label %panic, label %checkok
+
+panic:                                            ; preds = %entry
+  %6 = load void (i8*, i64, i8*, i64, i8*, i64, i32)*, void (i8*, i64, i8*, i64, i8*, i64, i32)** @std_core_builtin_panic, align 8
+  call void %6(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @.panic_msg, i64 0, i64 0), i64 17, i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.file, i64 0, i64 0), i64 14, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.func, i64 0, i64 0), i64 5, i32 9)
+  br label %checkok
+
+checkok:                                          ; preds = %panic, %entry
+  %fdiv = fdiv <4 x float> %2, %3
+  store <4 x float> %fdiv, <4 x float>* %w, align 16
+
+  %2 = call i32 @llvm.vector.reduce.umin.v4i32(<4 x i32> %1)
+  %zero = icmp eq i32 %2, 0
+  br i1 %zero, label %panic, label %checkok
+
+panic:                                            ; preds = %entry
+  %3 = load void (i8*, i64, i8*, i64, i8*, i64, i32)*, void (i8*, i64, i8*, i64, i8*, i64, i32)** @std_core_builtin_panic, align 8
+  call void %3(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @.panic_msg.1, i64 0, i64 0), i64 17, i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.file.2, i64 0, i64 0), i64 14, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.func.3, i64 0, i64 0), i64 5, i32 17)
+  br label %checkok
+
+checkok:                                          ; preds = %panic, %entry
+  %sdiv = sdiv <4 x i32> %0, %1
+  store <4 x i32> %sdiv, <4 x i32>* %w, align 16
+  %4 = load <4 x i32>, <4 x i32>* %z, align 16
+  %5 = load <4 x i32>, <4 x i32>* %y, align 16
+  %6 = call i32 @llvm.vector.reduce.smin.v4i32(<4 x i32> %5)
+  %shift_underflow = icmp slt i32 %6, 0
+  br i1 %shift_underflow, label %panic1, label %checkok2
+
+panic1:                                           ; preds = %checkok
+  %7 = load void (i8*, i64, i8*, i64, i8*, i64, i32)*, void (i8*, i64, i8*, i64, i8*, i64, i32)** @std_core_builtin_panic, align 8
+  call void %7(i8* getelementptr inbounds ([27 x i8], [27 x i8]* @.panic_msg.4, i64 0, i64 0), i64 26, i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.file.5, i64 0, i64 0), i64 14, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.func.6, i64 0, i64 0), i64 5, i32 18)
+  br label %checkok2
+
+checkok2:                                         ; preds = %panic1, %checkok
+  %8 = call i32 @llvm.vector.reduce.smax.v4i32(<4 x i32> %5)
+  %shift_exceeds = icmp sge i32 %8, 32
+  br i1 %shift_exceeds, label %panic3, label %checkok4
+
+panic3:                                           ; preds = %checkok2
+  %9 = load void (i8*, i64, i8*, i64, i8*, i64, i32)*, void (i8*, i64, i8*, i64, i8*, i64, i32)** @std_core_builtin_panic, align 8
+  call void %9(i8* getelementptr inbounds ([27 x i8], [27 x i8]* @.panic_msg.7, i64 0, i64 0), i64 26, i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.file.8, i64 0, i64 0), i64 14, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.func.9, i64 0, i64 0), i64 5, i32 18)
+  br label %checkok4
+
+checkok4:                                         ; preds = %panic3, %checkok2
+  %ashr = ashr <4 x i32> %4, %5
+  %10 = freeze <4 x i32> %ashr
+  store <4 x i32> %10, <4 x i32>* %w, align 16
+  %11 = load <4 x i32>, <4 x i32>* %z, align 16
+  %12 = load <4 x i32>, <4 x i32>* %y, align 16
+  %13 = call i32 @llvm.vector.reduce.smin.v4i32(<4 x i32> %12)
+  %shift_underflow5 = icmp slt i32 %13, 0
+  br i1 %shift_underflow5, label %panic6, label %checkok7
+
+panic6:                                           ; preds = %checkok4
+  %14 = load void (i8*, i64, i8*, i64, i8*, i64, i32)*, void (i8*, i64, i8*, i64, i8*, i64, i32)** @std_core_builtin_panic, align 8
+  call void %14(i8* getelementptr inbounds ([27 x i8], [27 x i8]* @.panic_msg.10, i64 0, i64 0), i64 26, i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.file.11, i64 0, i64 0), i64 14, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.func.12, i64 0, i64 0), i64 5, i32 19)
+  br label %checkok7
+
+checkok7:                                         ; preds = %panic6, %checkok4
+  %15 = call i32 @llvm.vector.reduce.smax.v4i32(<4 x i32> %12)
+  %shift_exceeds8 = icmp sge i32 %15, 32
+  br i1 %shift_exceeds8, label %panic9, label %checkok10
+
+panic9:                                           ; preds = %checkok7
+  %16 = load void (i8*, i64, i8*, i64, i8*, i64, i32)*, void (i8*, i64, i8*, i64, i8*, i64, i32)** @std_core_builtin_panic, align 8
+  call void %16(i8* getelementptr inbounds ([27 x i8], [27 x i8]* @.panic_msg.13, i64 0, i64 0), i64 26, i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.file.14, i64 0, i64 0), i64 14, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.func.15, i64 0, i64 0), i64 5, i32 19)
+  br label %checkok10
+
+checkok10:                                        ; preds = %panic9, %checkok7
+  %shl = shl <4 x i32> %11, %12
+  %17 = freeze <4 x i32> %shl
+  store <4 x i32> %17, <4 x i32>* %w, align 16
+  ret void
+}
+

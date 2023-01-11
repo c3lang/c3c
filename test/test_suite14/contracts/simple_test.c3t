@@ -1,0 +1,86 @@
+// #target: macos-x64
+
+/**
+ * @param [inout] foo `test`
+ * @require baz > 100 `whatever`
+ * @ensure *foo > 231
+*/
+fn void test(int *foo, int baz)
+{
+	*foo = 444;
+}
+
+/**
+ * @param [inout] foo `test`
+ * @require baz > 100 `whatever`
+ * @ensure return < 200
+*/
+fn int test2(int *foo, int baz)
+{
+	*foo = 444;
+	return baz;
+}
+
+/**
+ * @require x > 0
+ * @ensure return > 0
+ **/
+fn int test3(int x)
+{
+	return x + 1;
+}
+
+extern fn void printf(char*, ...);
+
+fn void main()
+{
+	int fooofke;
+	test(&fooofke, 330);
+	test2(&fooofke, 150);
+	test3(123);
+	printf("Foo: %d\n", fooofke);
+}
+
+/* #expect: simple_test.ll
+
+define void @simple_test_test(i32* %0, i32 %1) #0 {
+entry:
+  %gt = icmp sgt i32 %1, 100
+  call void @llvm.assume(i1 %gt)
+  store i32 444, i32* %0, align 8
+  ret void
+}
+
+define i32 @simple_test_test2(i32* %0, i32 %1) #0 {
+entry:
+  %gt = icmp sgt i32 %1, 100
+  call void @llvm.assume(i1 %gt)
+  store i32 444, i32* %0, align 8
+  ret i32 %1
+}
+
+define i32 @simple_test_test3(i32 %0) #0 {
+entry:
+  %gt = icmp sgt i32 %0, 0
+  call void @llvm.assume(i1 %gt)
+  %add = add i32 %0, 1
+  ret i32 %add
+}
+
+define void @simple_test_main() #0 {
+entry:
+  %fooofke = alloca i32, align 4
+  store i32 0, i32* %fooofke, align 4
+  call void @simple_test_test(i32* %fooofke, i32 330)
+  %0 = call i32 @simple_test_test2(i32* %fooofke, i32 150)
+  %1 = call i32 @simple_test_test3(i32 123)
+  %2 = load i32, i32* %fooofke, align 4
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str, i32 0, i32 0), i32 %2)
+  ret void
+}
+
+define i32 @main(i32 %0, i8** %1) #0 {
+entry:
+  call void @simple_test_main()
+  ret i32 0
+}
