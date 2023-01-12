@@ -133,70 +133,87 @@ macro ceil(x) = $$ceil(x);
 macro clamp(x, lower, upper) = $$max(lower, $$min(x, upper));
 
 /**
- * @require values::@is_floatlike(mag) `The input must be a floating point value or float vector`
- * @require types::is_same($typeof(mag), $typeof(sgn)) `The input types must be equal`
+ * @require values::@is_promotable_to_floatlike(mag) `The input must be a number value or float vector`
+ * @require values::@is_same_vector_type(mag, sgn) `The input types must match`
  **/
 macro copysign(mag, sgn) = $$copysign(mag, sgn);
 
 /**
- * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
+ * @require values::@is_promotable_to_floatlike(x) `The input must be a number value or float vector`
  **/
 macro cos(x) = $$cos(x);
 
+/**
+ * @require values::@is_promotable_to_floatlike(x) `The input must be a number value or float vector`
+ **/
 macro cosec(x) = 1 / sin(x);
 
+/**
+ * @require values::@is_promotable_to_floatlike(x) `The input must be a number value or float vector`
+ **/
 macro cosech(x) = 2 / (exp(x) - exp(-x));
 
 /**
- * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
+ * @require values::@is_promotable_to_floatlike(x) `The input must be a number value or float vector`
  **/
 macro cosh(x) = (exp(x) + exp(-x)) / 2.0;
 
+/**
+ * @require values::@is_promotable_to_floatlike(x) `The input must be a number value or float vector`
+ **/
 macro cotan(x) = cos(x) / sin(x);
 
+/**
+ * @require values::@is_promotable_to_floatlike(x) `The input must be a number value or float vector`
+ **/
 macro cotanh(x) = (exp(2.0 * x) + 1.0) / (exp(2.0 * x) - 1.0);
 
 /**
- * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
+ * @require values::@is_promotable_to_floatlike(x) `The input must be a number value or float vector`
  **/
-macro exp(x) = $$exp(x);
+macro exp(x) = $$exp(values::promote_int(x));
 
 /**
- * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
+ * @require values::@is_promotable_to_floatlike(x) `The input must be a number value or float vector`
  **/
-macro exp2(x) = $$exp2(x);
+macro exp2(x) = $$exp2(values::promote_int(x));
 
 /**
- * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
+ * @require values::@is_promotable_to_floatlike(x) `The input must be a number value or float vector`
  **/
-macro floor(x) = $$floor(x);
+macro floor(x) = $$floor(values::promote_int(x));
 
 /**
- * @require values::@is_floatlike(a) `The input must be a floating point value or float vector`
- * @require types::@has_same(a, b, c) `The input types must be equal`
+ * @require values::@is_promotable_to_floatlike(a) `The input must be a number or float vector`
+ * @require values::@is_promotable_to_floatlike(b) `The input must be a number or float vector`
+ * @require values::@is_promotable_to_floatlike(c) `The input must be a number or float vector`
+ * @require types::@is_same_vector_type(a, b) `The input types must be equal`
+ * @require types::@is_same_vector_type(a, c) `The input types must match`
  **/
 macro fma(a, b, c) = $$fma(a, b, c);
 
+
 /**
- * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
- * @require values::@is_floatlike(y) `The input must be a floating point value or float vector`
+ * @require values::@is_promotable_to_floatlike(x) `The input must be a number or a float vector`
+ * @require values::@is_promotable_to_floatlike(y) `The input must be a number or a float vector`
+ * @require types::@is_same_vector_type(x, y) `The input types must match`
  **/
 macro hypot(x, y) = sqrt(sqr(x) + sqr(y));
 
 /**
- * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
+ * @require values::@is_promotable_to_floatlike(x) `The input must be a number or a float vector`
  **/
-macro log(x) = $$log(x);
+macro log(x) = $$log(values::promote_int(x));
 
 /**
- * @require values::is_floatlike(x) `The input must be a floating point value or float vector`
+ * @require values::@is_promotable_to_floatlike(x) `The input must be a number or a float vector`
  **/
-macro log2(x) = $$log2(x);
+macro log2(x) = $$log2(values::promote_int(x));
 
 /**
- * @require values::is_floatlike(x) `The input must be a floating point value or float vector`
+ * @require values::@is_promotable_to_floatlike(x) `The input must be a number or a float vector`
  **/
-macro log10(x) = $$log10(x);
+macro log10(x) = $$log10(values::promote_int(x));
 
 /**
  * @require types::is_numerical($typeof(x)) `The input must be a floating point value or float vector`
@@ -244,7 +261,7 @@ macro muladd(a, b, c) = $$fmuladd(a, b, c);
 macro nearbyint(x) = $$nearbyint(x);
 
 /**
- * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
+ * @require values::@is_promotable_to_floatlike(x) `The input must be a number or a float vector`
  * @require values::@convertable_to(exp, x) || values::@is_int(exp) `The input must be an integer, castable to the type of x`
  **/
 macro pow(x, exp)
@@ -257,7 +274,7 @@ macro pow(x, exp)
 }
 
 /**
- * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
+ * @require values::@is_floatlike(x) `The input must be a number or a float vector`
  **/
 macro rint(x) = $$rint(x);
 
@@ -271,34 +288,43 @@ macro round(x) = $$round(x);
  **/
 macro roundeven(x) = $$roundeven(x);
 
+/**
+ * @require values::@is_promotable_to_floatlike(x) `The input must be a number or a float vector`
+ **/
 macro sec(x) = 1 / cos(x);
 
+/**
+ * @require values::@is_promotable_to_floatlike(x) `The input must be a number or a float vector`
+ **/
 macro sech(x) = 2 / (exp(x) + exp(-x));
 
 /**
- * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
+ * @require values::@is_promotable_to_floatlike(x) `The input must be a number or a float vector`
  **/
-macro sin(x) = $$sin(x);
+macro sin(x) = $$sin(values::promote_int(x));
 
 /**
- * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
+ * @require values::@is_promotable_to_floatlike(x) `The input must be a number or a float vector`
  **/
 macro sinh(x) = (exp(x) - exp(-x)) / 2.0;
 
 /**
- * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
+ * @require values::@is_promotable_to_floatlike(x) `The input must be a number or a float vector`
  **/
-macro sqr(x) = x * x;
+macro sqr(x) = values::promote_int(x) * values::promote_int(x);
 
 /**
- * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
+ * @require values::@is_promotable_to_floatlike(x) `The input must be a number or a float vector`
  **/
-macro sqrt(x) = $$sqrt(x);
+macro sqrt(x) = $$sqrt(values::promote_int(x));
 
+/**
+ * @require values::@is_promotable_to_floatlike(x) `The input must be a number or a float vector`
+ **/
 macro tan(x) = sin(x) / cos(x);
 
 /**
- * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
+ * @require values::@is_promotable_to_floatlike(x) `The input must be a number or a float vector`
  **/
 macro tanh(x) = (exp(2.0 * x) - 1.0) / (exp(2.0 * x) + 1.0);
 

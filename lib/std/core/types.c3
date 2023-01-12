@@ -182,6 +182,18 @@ macro bool @has_same(#a, #b, ...)
 	return true;
 }
 
+macro bool is_promotable_to_floatlike($Type) = types::is_floatlike($Type) || types::is_int($Type);
+
+
+macro bool is_same_vector_type($Type1, $Type2)
+{
+	$if ($Type1.kindof != TypeKind.VECTOR):
+		return $Type2.kindof != TypeKind.VECTOR;
+	$else:
+		return $Type1.inner == $Type2.inner && $Type1.len == $Type2.len;
+	$endif;
+}
+
 macro bool is_equatable_value(value)
 {
 	$if ($defined(value.less) || $defined(value.compare_to) || $defined(value.equals)):
