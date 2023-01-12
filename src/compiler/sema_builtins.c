@@ -98,7 +98,8 @@ static bool sema_check_builtin_args(Expr **args, BuiltinArg *arg_type, size_t ar
 			case BA_FLOATLIKE:
 				if (!type_flat_is_floatlike(type))
 				{
-					SEMA_ERROR(args[i], "Expected a floating point or floating point vector.");
+					SEMA_ERROR(args[i], "Expected a floating point or floating point vector, but was %s.",
+					           type_quoted_error_string(type));
 					return false;
 				}
 				break;

@@ -13,7 +13,7 @@ fn void main()
 
 fn VarString bin(int x)
 {
-    int bits = 1 + (int)(x == 0 ? 0 : math::log10((double)(x)) / math::log10(2));
+    int bits = x == 0 ? 1 : 1 + (int)math::log2(x);
     VarString str;
     str.append_repeat('0', bits);
     for (int i = 0; i < bits; i++)
