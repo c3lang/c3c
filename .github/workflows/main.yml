@@ -194,14 +194,14 @@ jobs:
             sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal main"
           fi
           sudo apt-get update
+          if [[ "${{matrix.llvm_version}}" == 14 ]]; then
+            sudo apt-get install -y libpolly-${{matrix.llvm_version}}-dev          
+          fi
           sudo apt-get install -y clang-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}}-dev lld-${{matrix.llvm_version}} liblld-${{matrix.llvm_version}}-dev
           sudo apt-get install -y libmlir-${{matrix.llvm_version}} libmlir-${{matrix.llvm_version}}-dev mlir-${{matrix.llvm_version}}-tools 
           if [[ "${{matrix.llvm_version}}" == 15 ]]; then
             sudo apt-get install -y libpolly-${{matrix.llvm_version}}-dev
-          elif [[ "${{matrix.llvm_version}}" == 14 ]]; then
-            sudo apt-get install -y libpolly-${{matrix.llvm_version}}-dev          
           fi
-
       - name: CMake
         run: |
           cmake -B build \
