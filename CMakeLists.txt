@@ -150,7 +150,23 @@ if (${LLVM_PACKAGE_VERSION} VERSION_LESS 14)
     find_library(LLD_YAML NAMES lldYAML.lib lldYAML.a liblldYAML.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
 endif ()
 
-set(lld_libs
+if (${LLVM_PACKAGE_VERSION} VERSION_GREATER_EQUAL 16)
+    find_library(LLD_LOONG NAMES libLLVMLoongArchCodeGen.lib libLLVMLoongArchAsmParser.lib libLLVMLoongArchCodeGen.a libLLVMLoongArchAsmParser.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    set(lld_libs
+        ${LLD_COFF}
+        ${LLD_COMMON}
+        ${LLD_WASM}
+        ${LLD_MINGW}
+        ${LLD_ELF}
+        ${LLD_DRIVER}
+        ${LLD_READER_WRITER}
+        ${LLD_LOONG}
+        ${LLD_MACHO}
+        ${LLD_YAML}
+        ${LLD_CORE}
+        )
+else()
+    set(lld_libs
         ${LLD_COFF}
         ${LLD_COMMON}
         ${LLD_WASM}
@@ -162,6 +178,8 @@ set(lld_libs
         ${LLD_YAML}
         ${LLD_CORE}
         )
+endif()
+
 if (APPLE)
     set(lld_libs ${lld_libs} xar)
 endif ()
