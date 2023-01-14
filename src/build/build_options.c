@@ -101,7 +101,7 @@ static void usage(void)
 	OUTPUT("  -O3                       - Aggressive optimization.");
 	OUTPUT("  -Os                       - Optimize for size.");
 	OUTPUT("  -Oz                       - Optimize for tiny size.");
-	OUTPUT("  -O0+                      - No optimization, single module");
+	OUTPUT("  -O0+                      - No optimization, single module.");
 	OUTPUT("  -O1+                      - Simple optimizations, single module.");
 	OUTPUT("  -O2+                      - Default optimization level, single module");
 	OUTPUT("  -O3+                      - Aggressive optimization, single module.");
@@ -128,8 +128,8 @@ static void usage(void)
 	OUTPUT("  -z <argument>             - Send the <argument> as a parameter to the linker.");
 	OUTPUT("  --forcelinker             - Force built in linker usage when doing non-cross linking.");
 	OUTPUT("");
-	OUTPUT("  --reloc=<option>          - Relocation model: none, pic, PIC, pie, PIE");
-	OUTPUT("  --x86vec=<option>         - Set max level of vector instructions: none, mmx, sse, avx, avx512.");
+	OUTPUT("  --reloc=<option>          - Relocation model: none, pic, PIC, pie, PIE.");
+	OUTPUT("  --x86vec=<option>         - Set max level of vector instructions: none, native, mmx, sse, avx, avx512.");
 	OUTPUT("");
 	OUTPUT("  --debug-stats             - Print debug statistics.");
 #ifndef NDEBUG
