@@ -169,7 +169,7 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 		if (rejump_block)
 		{
 			llvm_emit_block(c, rejump_block);
-			LLVMValueRef error = llvm_load_natural_alignment(c, type_anyerr, optional, "reload_err");
+			LLVMValueRef error = llvm_load_abi_alignment(c, type_anyerr, optional, "reload_err");
 			llvm_store_to_ptr_raw(c, c->opt_var, error, type_anyerr);
 			llvm_emit_br(c, c->catch_block);
 		}
@@ -3374,7 +3374,7 @@ void llvm_emit_comp(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, 
 		llvm_emit_array_comp(c, result, lhs, rhs, binary_op);
 		return;
 	}
-	TODO
+	TODO // When updated, also update tilde_codegen_expr
 }
 
 static void llvm_emit_else(GenContext *c, BEValue *be_value, Expr *expr)
@@ -3969,11 +3969,6 @@ static inline void llvm_emit_force_unwrap_expr(GenContext *c, BEValue *be_value,
 
 }
 
-static bool expr_is_vector_index(Expr *expr)
-{
-	return expr->expr_kind == EXPR_SUBSCRIPT
-		&& type_lowering(exprtype(expr->subscript_expr.expr))->type_kind == TYPE_VECTOR;
-}
 
 static void llvm_emit_vector_assign_expr(GenContext *c, BEValue *be_value, Expr *expr)
 {
@@ -4756,8 +4751,8 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef *args, unsigned *arg_count_
 			return;
 		}
 	}
-
 }
+
 static void llvm_emit_splatted_variadic_arg(GenContext *c, Expr *expr, Type *vararg_type, BEValue *subarray)
 {
 	BEValue value;

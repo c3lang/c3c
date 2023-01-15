@@ -371,7 +371,7 @@ INLINE bool llvm_is_const(LLVMValueRef value);
 
 // -- Load ---
 LLVMValueRef llvm_load(GenContext *c, LLVMTypeRef type, LLVMValueRef pointer, AlignSize alignment, const char *name);
-LLVMValueRef llvm_load_natural_alignment(GenContext *c, Type *type, LLVMValueRef pointer, const char *name);
+LLVMValueRef llvm_load_abi_alignment(GenContext *c, Type *type, LLVMValueRef pointer, const char *name);
 LLVMValueRef llvm_load_value(GenContext *c, BEValue *value);
 LLVMValueRef llvm_load_value_store(GenContext *c, BEValue *value);
 

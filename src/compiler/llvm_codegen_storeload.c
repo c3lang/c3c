@@ -78,7 +78,7 @@ LLVMValueRef llvm_load(GenContext *c, LLVMTypeRef type, LLVMValueRef pointer, Al
 	return value;
 }
 
-LLVMValueRef llvm_load_natural_alignment(GenContext *c, Type *type, LLVMValueRef pointer, const char *name)
+LLVMValueRef llvm_load_abi_alignment(GenContext *c, Type *type, LLVMValueRef pointer, const char *name)
 {
 	return llvm_load(c, llvm_get_type(c, type), pointer, type_abi_alignment(type), name);
 }

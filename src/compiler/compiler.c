@@ -132,9 +132,20 @@ void thread_compile_task_llvm(void *compile_data)
 void thread_compile_task_tb(void *compile_data)
 {
 	CompileData *data = compile_data;
-	data->object_name = tinybackend_codegen(data->context);
+	data->object_name = tilde_codegen(data->context);
 }
 
+#if !TB_AVAILABLE
+const char *tilde_codegen(void *context)
+{
+	error_exit("TB backend not available.");
+}
+void **tilde_gen(Module** modules, unsigned module_count)
+{
+	error_exit("TB backend not available.");
+}
+
+#endif
 
 static const char *exe_name(void)
 {
@@ -284,18 +295,18 @@ void compiler_compile(void)
 	void **gen_contexts = VECNEW(void*, module_count);
 	void (*task)(void *);
 
-	if (active_target.asm_file_dir || active_target.llvm_file_dir || active_target.emit_object_files)
+	if (active_target.asm_file_dir || active_target.ir_file_dir || active_target.emit_object_files)
 	{
 		if (active_target.build_dir && !file_exists(active_target.build_dir) && !dir_make(active_target.build_dir))
 		{
 			error_exit("Failed to create build directory '%s'.", active_target.build_dir);
 		}
 	}
-	if (active_target.llvm_file_dir && active_target.emit_llvm)
+	if (active_target.ir_file_dir && active_target.emit_llvm)
 	{
-		if (!file_exists(active_target.llvm_file_dir) && !dir_make(active_target.llvm_file_dir))
+		if (!file_exists(active_target.ir_file_dir) && !dir_make(active_target.ir_file_dir))
 		{
-			error_exit("Failed to create output directory '%s'.", active_target.llvm_file_dir);
+			error_exit("Failed to create output directory '%s'.", active_target.ir_file_dir);
 		}
 	}
 	if (active_target.asm_file_dir && active_target.emit_asm)
@@ -319,12 +330,7 @@ void compiler_compile(void)
 			task = &thread_compile_task_llvm;
 			break;
 		case BACKEND_TB:
-			tinybackend_codegen_setup();
-			for (unsigned i = 0; i < module_count; i++)
-			{
-				void *result = tinybackend_gen(modules[i]);
-				if (result) vec_add(gen_contexts, result);
-			}
+			gen_contexts = tilde_gen(modules, module_count);
 			task = &thread_compile_task_tb;
 			break;
 		default:

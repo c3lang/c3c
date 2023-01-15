@@ -121,7 +121,7 @@ void llvm_emit_decl_expr_list_ignore_result(GenContext *context, Expr *expr)
 	}
 }
 
-void llvm_emit_decl_expr_list(GenContext *context, BEValue *be_value, Expr *expr, bool bool_cast)
+static void llvm_emit_decl_expr_list(GenContext *context, BEValue *be_value, Expr *expr, bool bool_cast)
 {
 	assert(expr->expr_kind == EXPR_COND);
 	ByteSize size = vec_size(expr->cond_expr);
@@ -285,7 +285,7 @@ static inline void llvm_emit_block_exit_return(GenContext *c, Ast *ast)
  * 2. If the "else" branch is empty or missing, replace if with "exit".
  * 3. If both "else" and "then" branches are empty, replace it with just the condition and remove the "exit"
  */
-void llvm_emit_if(GenContext *c, Ast *ast)
+static void llvm_emit_if_stmt(GenContext *c, Ast *ast)
 {
 	// We need at least the exit block and the "then" block.
 	LLVMBasicBlockRef exit_block = llvm_basic_block_new(c, "if.exit");
@@ -1219,7 +1219,7 @@ static inline void llvm_emit_asm_block_stmt(GenContext *c, Ast *ast)
 }
 
 
-void gencontext_emit_expr_stmt(GenContext *c, Ast *ast)
+static void llvm_emit_expr_stmt(GenContext *c, Ast *ast)
 {
 	BEValue value;
 	if (IS_OPTIONAL(ast->expr_stmt))
@@ -1366,7 +1366,7 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 		case AST_ASM_STMT:
 			UNREACHABLE
 		case AST_EXPR_STMT:
-			gencontext_emit_expr_stmt(c, ast);
+			llvm_emit_expr_stmt(c, ast);
 			break;
 		case AST_DECLARE_STMT:
 		{
@@ -1381,7 +1381,7 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 			llvm_emit_continue(c, ast);
 			break;
 		case AST_IF_STMT:
-			llvm_emit_if(c, ast);
+			llvm_emit_if_stmt(c, ast);
 			break;
 		case AST_RETURN_STMT:
 			llvm_emit_return(c, ast);

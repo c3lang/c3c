@@ -317,7 +317,15 @@ struct Type_
 	CanonicalType *canonical;
 	const char *name;
 	Type **type_cache;
-	void *backend_type;
+	union
+	{
+		void *backend_type;
+		struct
+		{
+			uint16_t tb_set;
+			uint16_t tb_type;
+		};
+	};
 	void *backend_typeid;
 	void *backend_debug_type;
 	union
@@ -624,7 +632,11 @@ typedef struct
 {
 	AstId defer;
 	bool next_target : 1;
-	void *break_target;
+	union
+	{
+		void *break_target;
+		int tb_break_target;
+	};
 	void *continue_target;
 	AstId scope_defer;
 	AstId parent;
@@ -666,6 +678,7 @@ typedef struct Decl_
 		void *backend_ref;
 		int tb_register;
 		void *backend_value;
+		void *tb_symbol;
 	};
 	AlignSize alignment;
 	const char *section;
@@ -1193,7 +1206,11 @@ typedef struct
 		};
 		struct
 		{
-			void *break_block;
+			union
+			{
+				void *break_block;
+				int tb_break_block;
+			};
 		} codegen;
 	};
 } AstIfStmt;
@@ -2050,11 +2067,9 @@ bool cast_untyped_to_type(SemaContext *context, Expr *expr, Type *to_type);
 CastKind cast_to_bool_kind(Type *type);
 
 const char *llvm_codegen(void *context);
+const char *tilde_codegen(void *context);
 void **llvm_gen(Module** modules, unsigned module_count);
-
-const char *tinybackend_codegen(void *context);
-void *tinybackend_gen(Module *module);
-void tinybackend_codegen_setup();
+void **tilde_gen(Module** modules, unsigned module_count);
 
 void header_gen(Module *module);
 
@@ -2264,6 +2279,7 @@ const char *symtab_preset(const char *data, TokenType type);
 const char *symtab_add(const char *symbol, uint32_t len, uint32_t fnv1hash, TokenType *type);
 const char *symtab_find(const char *symbol, uint32_t len, uint32_t fnv1hash, TokenType *type);
 void *llvm_target_machine_create(void);
+void codegen_setup_object_names(Module *module, const char **ir_filename, const char **asm_filename, const char **object_filename);
 void target_setup(BuildTarget *build_target);
 int target_alloca_addr_space();
 bool os_is_apple(OsType os_type);

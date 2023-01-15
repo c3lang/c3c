@@ -24,9 +24,9 @@ endif()
 #set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -gdwarf-3 -fsanitize=undefined")
 #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=undefined")
 
-option(C3_USE_TB "Enable TB" OFF)
 set(C3_LLVM_VERSION "auto" CACHE STRING "Use LLVM version [default: auto]")
 option(C3_USE_MIMALLOC "Use built-in mimalloc" OFF)
+option(C3_USE_TB "Use TB" OFF)
 set(C3_MIMALLOC_TAG "v1.7.3" CACHE STRING "Used version of mimalloc")
 
 set(C3_USE_MIMALLOC OFF)
@@ -48,6 +48,21 @@ endif()
 if (NOT C3_LLVM_VERSION STREQUAL "auto")
     if (${C3_LLVM_VERSION} VERSION_LESS 13 OR ${C3_LLVM_VERSION} VERSION_GREATER 16)
         message(FATAL_ERROR "LLVM ${C3_LLVM_VERSION} is not supported!")
+    endif()
+endif()
+
+find_package(Git QUIET)
+if(C3_USE_TB AND GIT_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.git")
+    # Update submodules as needed
+    option(GIT_SUBMODULE "Check submodules during build" ON)
+    if(GIT_SUBMODULE)
+        message(STATUS "Submodule update")
+        execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
+                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                RESULT_VARIABLE GIT_SUBMOD_RESULT)
+        if(NOT GIT_SUBMOD_RESULT EQUAL "0")
+            message(FATAL_ERROR "git submodule update --init --recursive failed with ${GIT_SUBMOD_RESULT}, please checkout submodules")
+        endif()
     endif()
 endif()
 
@@ -129,9 +144,6 @@ file(COPY ${CMAKE_SOURCE_DIR}/lib DESTINATION ${CMAKE_BINARY_DIR})
 
 # These don't seem to be reliable on windows.
 message(STATUS "using find_library")
-if(C3_USE_TB)
-    find_library(TB_LIB NAMES tildebackend.a tildebackend.lib PATHS ${CMAKE_SOURCE_DIR}/tb/)
-endif()
 find_library(LLD_COFF NAMES lldCOFF.lib lldCOFF.a liblldCOFF.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
 find_library(LLD_COMMON NAMES lldCommon.lib lldCommon.a liblldCommon.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
 find_library(LLD_ELF NAMES lldELF.lib lldELF.a liblldELF.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
@@ -186,6 +198,7 @@ endif ()
 
 message(STATUS "linking to llvm libs ${lld_libs}")
 message(STATUS "Found lld libs ${lld_libs}")
+
 
 add_library(c3c_wrappers STATIC wrapper/src/wrapper.cpp)
 add_library(miniz STATIC dependencies/miniz/miniz.c)
@@ -249,11 +262,6 @@ add_executable(c3c
         src/compiler/symtab.c
         src/compiler/target.c
         src/compiler/sema_asm.c
-        src/compiler/tb_codegen.c
-        src/compiler/tilde_codegen.c
-        src/compiler/tilde_codegen_instr.c
-        src/compiler/tilde_codegen_value.c
-        src/compiler/tilde_codegen_storeload.c
         src/compiler_tests/benchmark.c
         src/compiler_tests/tests.c
         src/compiler/tokens.c
@@ -274,23 +282,57 @@ add_executable(c3c
         src/utils/unzipper.c
         src/compiler/decltable.c
         src/compiler/mac_support.c
-        src/compiler/tilde_codegen_storeload.c
         src/compiler/llvm_codegen_storeload.c
-        src/compiler/tilde_codegen_expr.c
-        src/compiler/tilde_codegen_stmt.c
-        src/compiler/tilde_codegen_type.c
         src/compiler/windows_support.c
         src/compiler/codegen_asm.c
         src/compiler/asm_target.c
         src/compiler/llvm_codegen_builtins.c
-        src/compiler/expr.c src/utils/time.c src/utils/http.c)
+        src/compiler/expr.c
+        src/utils/time.c
+        src/utils/http.c
+        )
+
+
+if (C3_USE_TB)
+    file(GLOB tilde-sources
+            tilde-backend/src/tb/*.c
+            tilde-backend/src/tb/codegen/*.c
+            tilde-backend/src/tb/bigint/*.c
+            tilde-backend/src/tb/objects/*.c
+            tilde-backend/src/tb/system/*.c
+            tilde-backend/src/tb/debug/cv/*.c
+            tilde-backend/src/tb/opt/*.c
+            tilde-backend/src/tb/x64/*.c
+            tilde-backend/src/tb/wasm/*.c
+            tilde-backend/src/tb/aarch64/*.c
+            )
+    target_sources(c3c PRIVATE
+            src/compiler/tilde_codegen.c
+            src/compiler/tilde_codegen_instr.c
+            src/compiler/tilde_codegen_value.c
+            src/compiler/tilde_codegen_storeload.c
+            src/compiler/tilde_codegen_expr.c
+            src/compiler/tilde_codegen_stmt.c
+            src/compiler/tilde_codegen_type.c
+            src/compiler/tilde_codegen_abi.c
+            src/compiler/tilde_codegen_storeload.c)
+
+    target_compile_definitions(c3c PUBLIC TB_AVAILABLE=1)
+    target_link_libraries(c3c tilde-backend)
+    add_library(tilde-backend STATIC ${tilde-sources})
+    target_include_directories(tilde-backend PRIVATE
+            "${CMAKE_SOURCE_DIR}/tilde-backend/src/" "${CMAKE_SOURCE_DIR}/tilde-backend/include")
+
+    target_include_directories(c3c PRIVATE
+            "${CMAKE_SOURCE_DIR}/tilde-backend/include/")
+else()
+    target_compile_definitions(c3c PUBLIC TB_AVAILABLE=0)
+endif()
 
 
 target_include_directories(c3c PRIVATE
         "${CMAKE_SOURCE_DIR}/src/")
 
-target_include_directories(c3c PRIVATE
-        "${CMAKE_SOURCE_DIR}/tb/")
 
 target_include_directories(c3c_wrappers PRIVATE
         "${CMAKE_SOURCE_DIR}/wrapper/src/")
@@ -300,12 +342,6 @@ target_include_directories(miniz PUBLIC
 
 target_link_libraries(c3c_wrappers ${llvm_libs} ${lld_libs})
 target_link_libraries(c3c ${llvm_libs} miniz c3c_wrappers ${lld_libs})
-if(C3_USE_TB)
-    target_link_libraries(c3c c3c_wrappers ${TB_LIB})
-    target_compile_definitions(c3c PUBLIC TB_BACKEND=1)
-else()
-    target_compile_definitions(c3c PUBLIC TB_BACKEND=0)
-endif()
 
 if(C3_USE_MIMALLOC)
     target_link_libraries(c3c mimalloc-static)
@@ -332,11 +368,18 @@ if(MSVC)
         target_compile_options(c3c PUBLIC /MTd)
         target_compile_options(c3c_wrappers PUBLIC /MTd)
         target_compile_options(miniz PUBLIC /MTd)
+        if (C3_USE_TB)
+            target_compile_options(tilde-backend PUBLIC /MTd)
+        endif()
     else()
         target_compile_options(c3c PUBLIC /MT)
         target_compile_options(c3c_wrappers PUBLIC /MT)
         target_compile_options(miniz PUBLIC /MT)
+        if (C3_USE_TB)
+            target_compile_options(tilde-backend PUBLIC /MT)
+        endif()
     endif()
+
 else()
     message(STATUS "using gcc/clang warning switches")
     target_link_options(c3c PRIVATE -pthread)

@@ -241,14 +241,14 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	{
 		target->build_dir = options->build_dir ? options->build_dir : NULL;
 		target->object_file_dir = options->obj_out ? options->obj_out : target->build_dir;
-		target->llvm_file_dir = options->llvm_out ? options->llvm_out : target->build_dir;
+		target->ir_file_dir = options->llvm_out ? options->llvm_out : target->build_dir;
 		target->asm_file_dir = options->asm_out ? options->asm_out : target->build_dir;
 	}
 	else
 	{
 		target->build_dir = options->build_dir ? options->build_dir : "build";
 		target->object_file_dir = options->obj_out ? options->obj_out : file_append_path(target->build_dir, "tmp");
-		target->llvm_file_dir = options->llvm_out ? options->llvm_out : file_append_path(target->build_dir, "llvm_ir");
+		target->ir_file_dir = options->llvm_out ? options->llvm_out : file_append_path(target->build_dir, "llvm_ir");
 		target->asm_file_dir = options->asm_out ? options->asm_out : file_append_path(target->build_dir, "asm");
 	}
 	switch (options->compile_option)
