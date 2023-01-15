@@ -56,6 +56,12 @@ static inline bool abi_type_is_promotable_integer_or_bool(AbiType type)
 	return false;
 }
 
+static inline bool expr_is_vector_index(Expr *expr)
+{
+	return expr->expr_kind == EXPR_SUBSCRIPT
+	       && type_lowering(exprtype(expr->subscript_expr.expr))->type_kind == TYPE_VECTOR;
+}
+
 const char *codegen_create_asm(Ast *ast);
 
 extern const char *test_fns_var_name;

@@ -144,7 +144,7 @@ void llvm_value_fold_optional(GenContext *c, BEValue *value)
 {
 	if (value->kind == BE_ADDRESS_OPTIONAL)
 	{
-		llvm_emit_jump_to_optional_exit(c, llvm_load_natural_alignment(c, type_anyerr, value->optional, "optval"));
+		llvm_emit_jump_to_optional_exit(c, llvm_load_abi_alignment(c, type_anyerr, value->optional, "optval"));
 		value->kind = BE_ADDRESS;
 	}
 }

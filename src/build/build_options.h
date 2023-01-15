@@ -14,8 +14,8 @@
 
 typedef enum
 {
-	BACKEND_LLVM,
-	BACKEND_TB
+	BACKEND_LLVM = 1,
+	BACKEND_TB = 2
 } CompilerBackend;
 
 typedef enum
@@ -341,7 +341,7 @@ typedef struct
 	const char **link_args;
 	const char *build_dir;
 	const char *object_file_dir;
-	const char *llvm_file_dir;
+	const char *ir_file_dir;
 	const char *asm_file_dir;
 	bool run_after_compile;
 	bool generate_test_runner;

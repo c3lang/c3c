@@ -1112,7 +1112,7 @@ INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMC
 void **llvm_gen(Module** modules, unsigned module_count)
 {
 	if (!module_count) return NULL;
-	GenContext ** gen_contexts = NULL;
+	GenContext **gen_contexts = NULL;
 	llvm_codegen_setup();
 	if (active_target.single_module)
 	{

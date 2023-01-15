@@ -79,7 +79,7 @@ static void usage(void)
 	OUTPUT("  vendor-fetch <library> ...         Fetches one or more libraries from the vendor collection.");
 	OUTPUT("");
 	OUTPUT("Options:");
-	OUTPUT("  --tinybackend             - Use the TinyBackend for compilation.");
+	OUTPUT("  --tb                      - Use Tilde Backend for compilation.");
 	OUTPUT("  --stdlib <dir>            - Use this directory as the C3 standard library path.");
 	OUTPUT("  --nostdlib                - Do not include the standard library.");
 	OUTPUT("  --nolibc                  - Do not implicitly link libc nor any associated files.");
@@ -516,14 +516,10 @@ static void parse_option(BuildOptions *options)
 			options->compile_option = COMPILE_LEX_PARSE_CHECK_ONLY;
 			return;
 		case '-':
-			if (match_longopt("tinybackend"))
+			if (match_longopt("tb"))
 			{
-#if TB_BACKEND
 				options->backend = BACKEND_TB;
 				return;
-#else
-				error_exit("error: The TinyBackend is not supported on this platform.");
-#endif
 			}
 			if (match_longopt("symtab"))
 			{

@@ -1,5 +1,6 @@
 #include "codegen_internal.h"
 
+
 const char *test_fns_var_name = "__$C3_TEST_FN_LIST";
 const char *test_count_var_name = "__$C3_TEST_COUNT";
 const char *test_names_var_name = "__$C3_TEST_NAMES_LIST";
@@ -304,3 +305,17 @@ AlignSize type_alloca_alignment(Type *type)
 	return align;
 }
 
+
+void codegen_setup_object_names(Module *module, const char **ir_filename, const char **asm_filename, const char **object_filename)
+{
+	const char *result = module_create_object_file_name(module);
+	*ir_filename = str_printf(active_target.backend == BACKEND_LLVM ? "%s.ll" : "%s.ir", result);
+	if (active_target.ir_file_dir) *ir_filename = file_append_path(active_target.ir_file_dir, *ir_filename);
+	*object_filename = str_printf("%s%s", result, get_object_extension());
+	if (active_target.emit_asm)
+	{
+		*asm_filename = str_printf("%s.s", result);
+		if (active_target.asm_file_dir) *asm_filename = file_append_path(active_target.asm_file_dir, *asm_filename);
+	}
+	if (active_target.object_file_dir) *object_filename = file_append_path(active_target.object_file_dir, *object_filename);
+}
