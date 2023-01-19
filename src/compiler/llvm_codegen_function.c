@@ -461,7 +461,6 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, const char *module_nam
 	LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(c->context, c->function, "entry");
 	c->current_block = entry;
 	c->current_block_is_target = true;
-	c->in_block = 0;
 	c->builder = LLVMCreateBuilderInContext(c->context);
 	LLVMPositionBuilderAtEnd(c->builder, entry);
 

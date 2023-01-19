@@ -52,15 +52,17 @@ typedef struct
 	TBEValue retval;
 	TB_Reg return_out;
 	TB_Reg optional_out;
+
 	struct
 	{
 		TB_Reg last_ptr;
 		TB_Reg stack_slot;
+		CompilationUnit *compile_unit;
 	} debug;
 } TildeContext;
 
 
-TB_DataType tildetype(Type *type);
+
 
 #define PUSH_OPT() TB_Label _old_catch = c->catch_block; TB_Reg _old_opt_var = c->opt_var
 #define POP_OPT() c->catch_block = _old_catch; c->opt_var = _old_opt_var
@@ -98,6 +100,7 @@ static inline bool value_is_addr(TBEValue *value) { return value->kind == TBE_AD
 void value_fold_optional(TildeContext *c, TBEValue *value);
 void value_rvalue(TildeContext *c, TBEValue *value);
 
+TB_Function *tilde_get_function(TildeContext *c, Decl *decl);
 TB_Reg tilde_get_ref(TildeContext *c, Decl *decl);
 TB_Reg tilde_get_opt_ref(TildeContext *c, Decl *decl);
 TB_Reg tilde_get_const_int(TildeContext *c, Type *type, uint64_t i);
@@ -105,6 +108,11 @@ TB_Reg tilde_get_const_float(TildeContext *c, Type *type, double d);
 TB_Register tilde_get_zero(TildeContext *c, Type *type);
 
 // -- type ---
+TB_DataType tilde_abi_type(AbiType type);
+TB_DataType tildetype(Type *type);
+TB_Global *tilde_get_typeid(TildeContext *c, Type *type);
+TB_DataType tilde_update_prototype_abi(TildeContext *context, FunctionPrototype *prototype, TB_DataType **params);
+void tilde_emit_function_decl(TildeContext *c, Decl *decl);
 
 // -- instructions --
 void tilde_emit_cond_br(TildeContext *c, TBEValue *value, TB_Label then_block, TB_Label else_block);
@@ -112,6 +120,7 @@ TB_Reg tilde_emit_lshr_fixed(TildeContext *c, Type *type, TB_Reg reg, int shift)
 
 // -- stmt ---
 void tilde_emit_stmt(TildeContext *c, Ast *ast);
+void tilde_emit_return_implicit(TildeContext *c);
 
 // -- general ---
 TB_Register tilde_emit_is_no_error(TildeContext *c, TB_Reg reg);
@@ -121,6 +130,7 @@ void tilde_emit_local_var_alloca(TildeContext *c, Decl *decl);
 void tilde_emit_and_set_decl_alloca(TildeContext *c, Decl *decl);
 INLINE TB_Linkage tilde_linkage_for_decl(Decl *decl);
 void tilde_emit_parameter(TildeContext *c, TB_Reg *args, unsigned *arg_count_ref, ABIArgInfo *info, TBEValue *be_value, Type *type);
+INLINE bool tilde_use_debug(TildeContext *context);
 
 
 // -- expr --
@@ -183,4 +193,9 @@ INLINE void tilde_store_to_ptr(TildeContext *c, TB_Reg destination, TBEValue *va
 INLINE void tilde_emit_block(TildeContext *c, TB_Label block)
 {
 	tb_inst_set_label(c->f, block);
+}
+
+INLINE bool tilde_use_debug(TildeContext *context)
+{
+	return false;
 }

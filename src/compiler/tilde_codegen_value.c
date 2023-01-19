@@ -58,6 +58,19 @@ TB_Reg tilde_get_opt_ref(TildeContext *c, Decl *decl)
 	return decl->var.tb_optional_reg;
 }
 
+TB_Function *tilde_get_function(TildeContext *c, Decl *decl)
+{
+	assert(decl->decl_kind == DECL_FUNC);
+	if (decl->tb_symbol && ((TB_Symbol *)decl->tb_symbol)->module == c->module)
+	{
+		return decl->tb_symbol;
+	}
+	bool is_internal = decl->unit->module == c->code_module && !decl->is_external_visible && !visible_external(decl->visibility);
+	decl->tb_symbol = tb_function_create(c->module, decl_get_extname(decl), is_internal ? TB_LINKAGE_PRIVATE : TB_LINKAGE_PUBLIC);
+	tb_function_set_prototype(decl->tb_symbol, tilde_get_func_prototype(c, decl->type->function.prototype));
+	return decl->tb_symbol;
+}
+
 TB_Reg tilde_get_ref(TildeContext *c, Decl *decl)
 {
 	switch (decl->decl_kind)

@@ -158,7 +158,7 @@ static void tilde_emit_return_abi(TildeContext *c, TBEValue *return_value, TBEVa
 	}
 }
 
-static void tilde_emit_return_implicit(TildeContext *c)
+void tilde_emit_return_implicit(TildeContext *c)
 {
 	Type *rtype_real = c->cur_func.prototype ? c->cur_func.prototype->rtype : type_void;
 	if (type_lowering(type_no_optional(rtype_real)) != type_void)

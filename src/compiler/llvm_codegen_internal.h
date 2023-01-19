@@ -107,7 +107,6 @@ typedef struct GenContext_
 	LLVMValueRef return_out;
 	LLVMValueRef optional_out;
 	BEValue retval;
-	int in_block;
 	bool current_block_is_target : 1;
 	LLVMTypeRef type_data_definitions[TYPE_KINDS];
 	SourceSpan last_emitted_loc;

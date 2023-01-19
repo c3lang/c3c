@@ -5352,7 +5352,6 @@ static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type
 	}
 
 	LLVMValueRef old_ret_out = c->return_out;
-	c->in_block++;
 
 	LLVMValueRef error_out = c->opt_var;
 	LLVMBasicBlockRef error_block = c->catch_block;
@@ -5446,7 +5445,6 @@ DONE:
 	c->return_out = old_ret_out;
 	c->catch_block = error_block;
 	c->opt_var = error_out;
-	c->in_block--;
 
 }
 

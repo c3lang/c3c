@@ -338,6 +338,245 @@ void tilde_emit_parameter(TildeContext *c, TB_Reg *args, unsigned *arg_count_ref
 	}
 }
 
+void tilde_emit_raw_call(TildeContext *c, TBEValue *result_value, FunctionPrototype *prototype, TB_FunctionPrototype *func_type,
+						 TB_Function *func, TB_Reg func_ptr, TB_Reg *args, unsigned arg_count, int inline_flag, TB_Reg error_var,
+						 bool sret_return, TBEValue *synthetic_return_param)
+{
+	ABIArgInfo *ret_info = prototype->ret_abi_info;
+	Type *call_return_type = prototype->abi_ret_type;
+
+	TB_Reg call_value;
+	if (func_ptr)
+	{
+		TODO
+	}
+	else
+	{
+		call_value = tb_inst_call(c->f, tildetype(call_return_type), (TB_Symbol *)func, arg_count, args);
+	}
+
+	switch (inline_flag)
+	{
+		case -1:
+			TODO // llvm_attribute_add_call(c, call_value, attribute_id.noinline, -1, 0);
+			break;
+		case 1:
+			TODO // llvm_attribute_add_call(c, call_value, attribute_id.alwaysinline, -1, 0);
+			break;
+		default:
+			break;
+	}
+
+	assert(!prototype->ret_by_ref || prototype->ret_by_ref_abi_info->kind != ABI_ARG_INDIRECT);
+
+	/*
+	llvm_add_abi_call_attributes(c, call_value, vec_size(prototype->param_types), prototype->abi_args);
+	if (prototype->abi_varargs)
+	{
+		llvm_add_abi_call_attributes(c,
+		                             call_value,
+		                             vec_size(prototype->varargs),
+		                             prototype->abi_varargs);
+	}*/
+
+	// 11. Process the return value.
+	switch (ret_info->kind)
+	{
+		case ABI_ARG_EXPAND:
+		case ABI_ARG_DIRECT_SPLIT_STRUCT:
+			UNREACHABLE
+		case ABI_ARG_IGNORE:
+			// 12. Basically void returns or empty structs.
+			//     Here we know we don't have an optional or any return value that can be used.
+			assert(!prototype->is_optional && "Optional should have produced a return value.");
+			*result_value = (TBEValue) { .type = type_void, .kind = TBE_VALUE };
+			return;
+		case ABI_ARG_INDIRECT:
+			TODO /*
+			llvm_attribute_add_call_type(c, call_value, attribute_id.sret, 1, llvm_get_type(c, ret_info->indirect.type));
+			llvm_attribute_add_call(c, call_value, attribute_id.align, 1, ret_info->indirect.alignment);
+			// 13. Indirect, that is passing the result through an out parameter.
+
+			// 13a. In the case of an already present error_var, we don't need to do a load here.
+			if (error_var || sret_return) break;
+
+			// 13b. If not it will be contained in a be_value that is an address
+			//      so we don't need to do anything more.
+			assert(result_value->kind == BE_ADDRESS);
+
+			break; --*/
+		case ABI_ARG_DIRECT_PAIR:
+		{
+			TODO
+			/*
+			// 14. A direct pair, in this case the data is stored like { lo, hi }
+			//     For example we might have { int, int, short, short, int },
+			//     this then gets bitcast to { long, long }, so we recover it by loading
+			//     { long, long } into memory, then performing a bitcast to { int, int, short, short, int }
+
+			// 14a. Generate the type.
+			LLVMTypeRef lo = llvm_abi_type(c, ret_info->direct_pair.lo);
+			LLVMTypeRef hi = llvm_abi_type(c, ret_info->direct_pair.hi);
+			LLVMTypeRef struct_type = llvm_get_twostruct(c, lo, hi);
+
+			// 14b. Use the coerce method to go from the struct to the actual type
+			//      by storing the { lo, hi } struct to memory, then loading it
+			//      again using a bitcast.
+			llvm_emit_convert_value_from_coerced(c, result_value, struct_type, call_value, call_return_type);
+			break; --*/
+		}
+		case ABI_ARG_EXPAND_COERCE:
+		{
+			TODO
+			/*
+			// 15. Expand-coerce, this is similar to "direct pair", but looks like this:
+			//     { lo, hi } set into { pad, lo, pad, hi } -> original type.
+
+			// 15a. Create memory to hold the return type.
+			LLVMValueRef ret = llvm_emit_alloca_aligned(c, call_return_type, "");
+			llvm_value_set_address_abi_aligned(result_value, ret, call_return_type);
+
+			// 15b. "Convert" this return type pointer in memory to our coerce type which is { pad, lo, pad, hi }
+			LLVMTypeRef coerce_type = llvm_get_coerce_type(c, ret_info);
+			LLVMValueRef coerce = LLVMBuildBitCast(c->builder, ret, coerce_type, "");
+
+			// 15d. Find the address to the low value
+			AlignSize alignment;
+			LLVMValueRef lo = llvm_emit_struct_gep_raw(c, coerce, coerce_type, ret_info->coerce_expand.lo_index,
+			                                           type_abi_alignment(call_return_type), &alignment);
+
+			// 15e. If there is only a single field, we simply store the value,
+			//      so { lo } set into { pad, lo, pad } -> original type.
+			if (!abi_type_is_valid(ret_info->coerce_expand.hi))
+			{
+				// Here we do a store to call -> lo (leaving the rest undefined)
+				llvm_store_to_ptr_raw_aligned(c, lo, call_value, alignment);
+				break;
+			}
+
+			// 15g. We can now extract { lo, hi } to lo_value and hi_value.
+			LLVMValueRef lo_value = llvm_emit_extract_value(c, call_value, 0);
+			LLVMValueRef hi_value = llvm_emit_extract_value(c, call_value, 1);
+
+			// 15h. Store lo_value into the { pad, lo, pad, hi } struct.
+			llvm_store_to_ptr_raw_aligned(c, lo, lo_value, alignment);
+
+			// 15i. Calculate the address to the high value (like for the low in 15d.
+			LLVMValueRef hi = llvm_emit_struct_gep_raw(c, coerce, coerce_type, ret_info->coerce_expand.hi_index,
+			                                           type_abi_alignment(call_return_type), &alignment);
+
+			// 15h. Store the high value.
+			llvm_store_to_ptr_raw_aligned(c, hi, hi_value, alignment);
+*/
+			break;
+		}
+		case ABI_ARG_DIRECT:
+			value_set(result_value, call_value, call_return_type);
+			break;
+		case ABI_ARG_DIRECT_COERCE_INT:
+		{
+			// 16. A direct coerce, this is basically "call result" bitcast return type.
+
+			// 16a. Get the type of the return.
+			TB_DataType coerce = tilde_get_int_type_of_bytesize(type_size(call_return_type));
+
+			// 16b. If we don't have any coerce type, or the actual LLVM types are the same, we're done.
+			TB_DataType ret_type = tildetype(call_return_type);
+			if (coerce.raw == ret_type.raw)
+			{
+				// 16c. We just set as a value in be_value.
+				value_set(result_value, call_value, call_return_type);
+				break;
+			}
+			// 16c. We use a normal bitcast coerce.
+			TODO // tilde_emit_convert_value_from_coerced(c, result_value, coerce, call_value, call_return_type);
+			break;
+		}
+		case ABI_ARG_DIRECT_COERCE:
+		{
+			TODO /*---
+			// 16. A direct coerce, this is basically "call result" bitcast return type.
+
+			// 16a. Get the type of the return.
+			LLVMTypeRef coerce = llvm_get_type(c, ret_info->direct_coerce_type);
+
+			// 16b. If we don't have any coerce type, or the actual LLVM types are the same, we're done.
+			if (coerce == llvm_get_type(c, call_return_type))
+			{
+				// 16c. We just set as a value in be_value.
+				llvm_value_set(result_value, call_value, call_return_type);
+				break;
+			}
+			// 16c. We use a normal bitcast coerce.
+			llvm_emit_convert_value_from_coerced(c, result_value, coerce, call_value, call_return_type);
+			break; */
+		}
+	}
+
+	// 17. Handle optionals.
+	if (sret_return)
+	{
+		*result_value = (TBEValue) { .type = type_void, .kind = TBE_VALUE };
+		return;
+	}
+	if (prototype->is_optional)
+	{
+		TBEValue no_err;
+
+		// Emit the current stack into the thread local or things will get messed up.
+		if (c->debug.last_ptr)
+			tilde_store_to_ptr_raw_aligned(c,
+										  type_voidptr,
+			                              c->debug.last_ptr,
+			                              c->debug.stack_slot,
+			                              type_alloca_alignment(type_voidptr));
+
+		// 17a. If we used the error var as the indirect recipient, then that will hold the error.
+		//      otherwise it's whatever value in be_value.
+		TBEValue error_holder = *result_value;
+		if (error_var)
+		{
+			value_set_address_abi_aligned(&error_holder, c->opt_var, type_anyerr);
+		}
+
+		TB_Reg stored_error;
+
+		if (error_var)
+		{
+			stored_error = c->opt_var;
+			c->opt_var = TB_NULL_REG;
+		}
+		tilde_emit_jump_to_optional_exit(c, tilde_load_value(c, &error_holder));
+		if (error_var)
+		{
+			c->opt_var = stored_error;
+		}
+
+
+		// 17g. If void, be_value contents should be skipped.
+		if (!prototype->ret_by_ref)
+		{
+			*result_value = (TBEValue) { .type = type_void, .kind = TBE_VALUE };
+			return;
+		}
+
+		// 17h. Assign the return param to be_value.
+		*result_value = *synthetic_return_param;
+		return;
+	}
+
+	// Emit the current stack into the thread local or things will get messed up.
+	if (c->debug.last_ptr)
+		tilde_store_to_ptr_raw_aligned(c,
+									  type_voidptr,
+		                              c->debug.last_ptr,
+		                              c->debug.stack_slot,
+		                              type_alloca_alignment(type_voidptr));
+
+	// 17i. The simple case here is where there is a normal return.
+	//      In this case be_value already holds the result
+}
+
 static void tilde_emit_call_expr(TildeContext *c, TBEValue *result_value, Expr *expr, TBEValue *target)
 {
 	if (expr->call_expr.is_builtin)
@@ -356,10 +595,9 @@ static void tilde_emit_call_expr(TildeContext *c, TBEValue *result_value, Expr *
 		                              type_abi_alignment(type_uint));
 	}*/
 
-	TODO
-	/*
 	TB_FunctionPrototype *func_type;
-	TB_Function *func;
+	TB_Function *func = NULL;
+	TB_Reg func_ptr = TB_NULL_REG;
 	TBEValue temp_value;
 
 	bool always_inline = false;
@@ -381,7 +619,7 @@ static void tilde_emit_call_expr(TildeContext *c, TBEValue *result_value, Expr *
 		tilde_emit_expr(c, &func_value, function);
 
 		// 1d. Load it as a value
-		func = tilde_load_value(c, &func_value);
+		func_ptr = tilde_load_value(c, &func_value);
 
 		// 1e. Calculate the function type
 		func_type = tilde_get_func_prototype(c, prototype);
@@ -437,7 +675,7 @@ static void tilde_emit_call_expr(TildeContext *c, TBEValue *result_value, Expr *
 			copy.abi_args = NULL;
 			c_abi_func_create(&copy);
 			prototype = &copy;
-			TB_FunctionPrototype *params_type = NULL;
+			TB_DataType *params_type = NULL;
 			tilde_update_prototype_abi(c, prototype, &params_type);
 		}
 	}
@@ -569,8 +807,7 @@ static void tilde_emit_call_expr(TildeContext *c, TBEValue *result_value, Expr *
 	{
 		inline_flag = expr->call_expr.attr_force_inline || always_inline ? 1 : 0;
 	}
-	TODO
-	// tilde_emit_raw_call(c, result_value, prototype, func_type, func, arg_values, arg_count, inline_flag, error_var, sret_return, &synthetic_return_param);
+	tilde_emit_raw_call(c, result_value, prototype, func_type, func, func_ptr, arg_values, arg_count, inline_flag, error_var, sret_return, &synthetic_return_param);
 
 	// Emit the current stack into the thread local or things will get messed up.
 	if (c->debug.last_ptr)
@@ -581,7 +818,7 @@ static void tilde_emit_call_expr(TildeContext *c, TBEValue *result_value, Expr *
 
 	// 17i. The simple case here is where there is a normal return.
 	//      In this case be_value already holds the result
-	return;*/
+	return;
 }
 
 TBEValue tilde_emit_assign_expr(TildeContext *c, TBEValue *ref, Expr *expr, TB_Reg optional)
@@ -1201,6 +1438,10 @@ void tilde_emit_expr(TildeContext *c, TBEValue *value, Expr *expr)
 		case EXPR_IDENTIFIER:
 			value_set_decl(c, value, expr->identifier_expr.decl);
 			return;
+		case EXPR_CALL:
+			tilde_emit_call_expr(c, value, expr, NULL);
+			return;
+
 		default:
 			break;
 	}

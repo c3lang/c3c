@@ -151,3 +151,10 @@ void tilde_store_value_zero(TildeContext *c, TBEValue *to)
 	tilde_store_zero(c, to->type, to->reg, to->alignment);
 }
 
+
+void tilde_emit_and_set_decl_alloca(TildeContext *c, Decl *decl)
+{
+	Type *type = type_lowering(decl->type);
+	if (type == type_void) return;
+	decl->tb_register = tilde_emit_alloca(c, type, decl->alignment);
+}
