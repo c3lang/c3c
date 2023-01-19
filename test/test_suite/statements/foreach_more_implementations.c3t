@@ -102,9 +102,9 @@ after_check:                                      ; preds = %loop.body
 
 voiderr:                                          ; preds = %after_check, %loop.body
   %16 = load ptr, ptr %ref, align 8
-  %17 = load i32, ptr %16, align 8
+  %17 = load i32, ptr %16, align 4
   %add = add i32 %17, 2
-  store i32 %add, ptr %16, align 8
+  store i32 %add, ptr %16, align 4
   %18 = load i64, ptr %.anon1, align 8
   %add3 = add i64 %18, 1
   store i64 %add3, ptr %.anon1, align 8

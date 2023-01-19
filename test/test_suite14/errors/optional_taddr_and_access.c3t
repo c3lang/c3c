@@ -74,7 +74,7 @@ after_assign:                                     ; preds = %after_check, %assig
 after_check3:                                     ; preds = %after_assign
   %3 = load %Foo*, %Foo** %w, align 8
   %4 = getelementptr inbounds %Foo, %Foo* %3, i32 0, i32 0
-  %5 = load i32, i32* %4, align 8
+  %5 = load i32, i32* %4, align 4
   %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 %5)
   br label %voiderr
 
@@ -112,7 +112,7 @@ voiderr12:                                        ; preds = %after_assign11
 after_check15:                                    ; preds = %voiderr12
   %10 = load %Foo*, %Foo** %w, align 8
   %11 = getelementptr inbounds %Foo, %Foo* %10, i32 0, i32 0
-  %12 = load i32, i32* %11, align 8
+  %12 = load i32, i32* %11, align 4
   %13 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @.str.1, i32 0, i32 0), i32 %12)
   br label %voiderr16
 

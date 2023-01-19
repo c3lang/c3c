@@ -72,9 +72,9 @@ entry:
   store i32 %0, i32* %taddr, align 4
   store i32* %taddr, i32** %h, align 8
   %1 = load i32*, i32** %x, align 8
-  %2 = load i32, i32* %1, align 8
+  %2 = load i32, i32* %1, align 4
   %3 = load i32*, i32** %h, align 8
-  %4 = load i32, i32* %3, align 8
+  %4 = load i32, i32* %3, align 4
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([24 x i8], [24 x i8]* @.str, i32 0, i32 0), i32 %2, i32 %4)
   ret void
 }
@@ -85,7 +85,7 @@ entry:
   %w = alloca i32*, align 8
   store i32* @test_XX, i32** %w, align 8
   %0 = load i32*, i32** %w, align 8
-  %1 = load i32, i32* %0, align 8
+  %1 = load i32, i32* %0, align 4
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @.str.1, i32 0, i32 0), i32 %1)
   ret void
 }
@@ -109,9 +109,9 @@ entry:
   %3 = bitcast [3 x i32]* %arr to i8*
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %3, i8* align 4 bitcast ([3 x i32]* @.__const.2 to i8*), i32 12, i1 false)
   %4 = load i32*, i32** %zx, align 8
-  %5 = load i32, i32* %4, align 8
+  %5 = load i32, i32* %4, align 4
   %6 = load i32*, i32** %zy, align 8
-  %7 = load i32, i32* %6, align 8
+  %7 = load i32, i32* %6, align 4
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([29 x i8], [29 x i8]* @.str.3, i32 0, i32 0), i32 %5, i32 %7)
   %8 = getelementptr inbounds [3 x i32], [3 x i32]* %arr, i64 0, i64 0
   %9 = load i32, i32* %8, align 4
@@ -133,7 +133,7 @@ entry:
   store %"int[]" %17, %"int[]"* %taddr, align 8
   store %"int[]"* %taddr, %"int[]"** %e, align 8
   %18 = load i32*, i32** %d, align 8
-  %19 = load i32, i32* %18, align 8
+  %19 = load i32, i32* %18, align 4
   %20 = load %"int[]"*, %"int[]"** %e, align 8
   %21 = getelementptr inbounds %"int[]", %"int[]"* %20, i32 0, i32 0
   %22 = load i32*, i32** %21, align 8

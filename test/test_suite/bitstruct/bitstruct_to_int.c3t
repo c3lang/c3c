@@ -63,7 +63,7 @@ entry:
   store [4 x i8] %1, ptr %y, align 1
   store ptr %b, ptr %c, align 8
   %2 = load ptr, ptr %c, align 8
-  %3 = load i32, ptr %2, align 8
+  %3 = load i32, ptr %2, align 4
   %shl = shl i32 %3, 28
   %ashr = ashr i32 %shl, 29
   %4 = load ptr, ptr %c, align 8

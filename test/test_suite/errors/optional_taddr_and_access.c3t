@@ -73,7 +73,7 @@ after_assign:                                     ; preds = %after_check, %assig
 after_check3:                                     ; preds = %after_assign
   %3 = load ptr, ptr %w, align 8
   %4 = getelementptr inbounds %Foo, ptr %3, i32 0, i32 0
-  %5 = load i32, ptr %4, align 8
+  %5 = load i32, ptr %4, align 4
   %6 = call i32 (ptr, ...) @printf(ptr @.str, i32 %5)
   br label %voiderr
 
@@ -111,7 +111,7 @@ voiderr12:                                        ; preds = %after_assign11
 after_check15:                                    ; preds = %voiderr12
   %10 = load ptr, ptr %w, align 8
   %11 = getelementptr inbounds %Foo, ptr %10, i32 0, i32 0
-  %12 = load i32, ptr %11, align 8
+  %12 = load i32, ptr %11, align 4
   %13 = call i32 (ptr, ...) @printf(ptr @.str.1, i32 %12)
   br label %voiderr16
 

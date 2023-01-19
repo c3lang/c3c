@@ -29,6 +29,6 @@ if.then:                                          ; preds = %entry
 if.exit:                                          ; preds = %entry
   %1 = load ptr, ptr @cfun, align 8
   %2 = getelementptr inbounds %Test, ptr %1, i32 0, i32 0
-  %3 = load i32, ptr %2, align 8
+  %3 = load i32, ptr %2, align 4
   ret i32 %3
 }

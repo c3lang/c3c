@@ -130,11 +130,11 @@ loop.body4:                                       ; preds = %loop.cond2
   %9 = getelementptr inbounds [3 x float], [3 x float]* %foo, i64 0, i64 %8
   store float* %9, float** %a5, align 8
   %10 = load float*, float** %a5, align 8
-  %11 = load float, float* %10, align 8
+  %11 = load float, float* %10, align 4
   %fmul = fmul float %11, 2.000000e+00
-  store float %fmul, float* %10, align 8
+  store float %fmul, float* %10, align 4
   %12 = load float*, float** %a5, align 8
-  %13 = load float, float* %12, align 8
+  %13 = load float, float* %12, align 4
   %fpfpext6 = fpext float %13 to double
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @.str.1, i32 0, i32 0), double %fpfpext6)
   %14 = load i64, i64* %.anon1, align 8
@@ -158,7 +158,7 @@ loop.body12:                                      ; preds = %loop.cond10
   store i8* %ptrptr, i8** %a13, align 8
   %18 = load i8*, i8** %a13, align 8
   %ptrptr14 = bitcast i8* %18 to float*
-  %19 = load float, float* %ptrptr14, align 8
+  %19 = load float, float* %ptrptr14, align 4
   %fpfpext15 = fpext float %19 to double
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @.str.2, i32 0, i32 0), double %fpfpext15)
   %20 = load i64, i64* %.anon9, align 8
@@ -280,11 +280,11 @@ loop.body55:                                      ; preds = %loop.cond53
   %53 = getelementptr inbounds <3 x float>, <3 x float>* %foo2, i64 0, i64 %52
   store float* %53, float** %a56, align 8
   %54 = load float*, float** %a56, align 8
-  %55 = load float, float* %54, align 8
+  %55 = load float, float* %54, align 4
   %fmul57 = fmul float %55, 2.000000e+00
-  store float %fmul57, float* %54, align 8
+  store float %fmul57, float* %54, align 4
   %56 = load float*, float** %a56, align 8
-  %57 = load float, float* %56, align 8
+  %57 = load float, float* %56, align 4
   %fpfpext58 = fpext float %57 to double
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @.str.7, i32 0, i32 0), double %fpfpext58)
   %58 = load i64, i64* %.anon52, align 8

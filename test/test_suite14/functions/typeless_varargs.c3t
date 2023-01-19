@@ -54,7 +54,7 @@ entry:
   %6 = getelementptr inbounds %variant, %variant* %ptroffset, i32 0, i32 0
   %7 = bitcast i8** %6 to i32**
   %8 = load i32*, i32** %7, align 8
-  %9 = load i32, i32* %8, align 8
+  %9 = load i32, i32* %8, align 4
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @.str, i32 0, i32 0), i32 %9)
   ret void
 }

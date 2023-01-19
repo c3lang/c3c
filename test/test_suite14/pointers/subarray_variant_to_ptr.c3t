@@ -45,7 +45,7 @@ entry:
   %ptrptr = bitcast i8* %5 to i32*
   store i32* %ptrptr, i32** %w, align 8
   %6 = load i32*, i32** %w, align 8
-  %7 = load i32, i32* %6, align 8
+  %7 = load i32, i32* %6, align 4
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 %7)
   ret void
 }
@@ -64,7 +64,7 @@ entry:
   %5 = load i32*, i32** %4, align 8
   store i32* %5, i32** %w, align 8
   %6 = load i32*, i32** %w, align 8
-  %7 = load i32, i32* %6, align 8
+  %7 = load i32, i32* %6, align 4
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.1, i32 0, i32 0), i32 %7)
   ret void
 }

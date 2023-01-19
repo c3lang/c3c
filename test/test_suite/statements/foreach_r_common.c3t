@@ -127,11 +127,11 @@ loop.body4:                                       ; preds = %loop.cond2
   %9 = getelementptr inbounds [3 x float], ptr %foo, i64 0, i64 %8
   store ptr %9, ptr %a6, align 8
   %10 = load ptr, ptr %a6, align 8
-  %11 = load float, ptr %10, align 8
+  %11 = load float, ptr %10, align 4
   %fmul = fmul float %11, 2.000000e+00
-  store float %fmul, ptr %10, align 8
+  store float %fmul, ptr %10, align 4
   %12 = load ptr, ptr %a6, align 8
-  %13 = load float, ptr %12, align 8
+  %13 = load float, ptr %12, align 4
   %fpfpext7 = fpext float %13 to double
   call void (ptr, ...) @printf(ptr @.str.1, double %fpfpext7)
   br label %loop.cond2
@@ -153,7 +153,7 @@ loop.body12:                                      ; preds = %loop.cond10
   %17 = getelementptr inbounds [3 x float], ptr %foo, i64 0, i64 %16
   store ptr %17, ptr %a14, align 8
   %18 = load ptr, ptr %a14, align 8
-  %19 = load float, ptr %18, align 8
+  %19 = load float, ptr %18, align 4
   %fpfpext15 = fpext float %19 to double
   call void (ptr, ...) @printf(ptr @.str.2, double %fpfpext15)
   br label %loop.cond10
@@ -271,11 +271,11 @@ loop.body53:                                      ; preds = %loop.cond51
   %51 = getelementptr inbounds <3 x float>, ptr %foo2, i64 0, i64 %50
   store ptr %51, ptr %a55, align 8
   %52 = load ptr, ptr %a55, align 8
-  %53 = load float, ptr %52, align 8
+  %53 = load float, ptr %52, align 4
   %fmul56 = fmul float %53, 2.000000e+00
-  store float %fmul56, ptr %52, align 8
+  store float %fmul56, ptr %52, align 4
   %54 = load ptr, ptr %a55, align 8
-  %55 = load float, ptr %54, align 8
+  %55 = load float, ptr %54, align 4
   %fpfpext57 = fpext float %55 to double
   call void (ptr, ...) @printf(ptr @.str.7, double %fpfpext57)
   br label %loop.cond51

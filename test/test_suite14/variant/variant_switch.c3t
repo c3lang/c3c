@@ -61,10 +61,10 @@ switch.case:                                      ; preds = %switch.entry
   %9 = load i32*, i32** %8, align 8
   store i32* %9, i32** %z1, align 8
   %10 = load i32*, i32** %z1, align 8
-  %11 = load i32, i32* %10, align 8
+  %11 = load i32, i32* %10, align 4
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str, i32 0, i32 0), i32 %11)
   %12 = load i32*, i32** %z1, align 8
-  store i32 3, i32* %12, align 8
+  store i32 3, i32* %12, align 4
   br label %switch.exit
 
 next_if:                                          ; preds = %switch.entry
@@ -98,7 +98,7 @@ if.then:                                          ; preds = %switch.exit
   %20 = getelementptr inbounds %variant, %variant* %z, i32 0, i32 0
   %21 = bitcast i8** %20 to i32**
   %22 = load i32*, i32** %21, align 8
-  %23 = load i32, i32* %22, align 8
+  %23 = load i32, i32* %22, align 4
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str.3, i32 0, i32 0), i32 %23)
   br label %if.exit
 

@@ -72,9 +72,9 @@ entry:
   store i32 %0, ptr %taddr, align 4
   store ptr %taddr, ptr %h, align 8
   %1 = load ptr, ptr %x, align 8
-  %2 = load i32, ptr %1, align 8
+  %2 = load i32, ptr %1, align 4
   %3 = load ptr, ptr %h, align 8
-  %4 = load i32, ptr %3, align 8
+  %4 = load i32, ptr %3, align 4
   call void (ptr, ...) @printf(ptr @.str, i32 %2, i32 %4)
   ret void
 }
@@ -85,7 +85,7 @@ entry:
   %w = alloca ptr, align 8
   store ptr @test_XX, ptr %w, align 8
   %0 = load ptr, ptr %w, align 8
-  %1 = load i32, ptr %0, align 8
+  %1 = load i32, ptr %0, align 4
   call void (ptr, ...) @printf(ptr @.str.1, i32 %1)
   ret void
 }
@@ -107,9 +107,9 @@ entry:
   store ptr %1, ptr %zy, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %arr, ptr align 4 @.__const.2, i32 12, i1 false)
   %2 = load ptr, ptr %zx, align 8
-  %3 = load i32, ptr %2, align 8
+  %3 = load i32, ptr %2, align 4
   %4 = load ptr, ptr %zy, align 8
-  %5 = load i32, ptr %4, align 8
+  %5 = load i32, ptr %4, align 4
   call void (ptr, ...) @printf(ptr @.str.3, i32 %3, i32 %5)
   %6 = getelementptr inbounds [3 x i32], ptr %arr, i64 0, i64 0
   %7 = load i32, ptr %6, align 4
@@ -131,7 +131,7 @@ entry:
   store %"int[]" %15, ptr %taddr, align 8
   store ptr %taddr, ptr %e, align 8
   %16 = load ptr, ptr %d, align 8
-  %17 = load i32, ptr %16, align 8
+  %17 = load i32, ptr %16, align 4
   %18 = load ptr, ptr %e, align 8
   %19 = getelementptr inbounds %"int[]", ptr %18, i32 0, i32 0
   %20 = load ptr, ptr %19, align 8

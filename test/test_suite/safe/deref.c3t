@@ -25,7 +25,7 @@ panic:                                            ; preds = %entry
   br label %checkok
 
 checkok:                                          ; preds = %panic, %entry
-  %2 = load i32, ptr %0, align 8
+  %2 = load i32, ptr %0, align 4
   store i32 %2, ptr %y, align 4
   ret void
 }

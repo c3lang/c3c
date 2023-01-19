@@ -254,12 +254,12 @@ loop.body13:                                      ; preds = %loop.cond11
   %32 = getelementptr inbounds [3 x i32], [3 x i32]* %30, i64 0, i64 %sisiext17
   store i32* %32, i32** %y15, align 8
   %33 = load i32*, i32** %y15, align 8
-  %34 = load i32, i32* %33, align 8
+  %34 = load i32, i32* %33, align 4
   %add18 = add i32 %34, 1
-  store i32 %add18, i32* %33, align 8
+  store i32 %add18, i32* %33, align 4
   %35 = load i32, i32* %i14, align 4
   %36 = load i32*, i32** %y15, align 8
-  %37 = load i32, i32* %36, align 8
+  %37 = load i32, i32* %36, align 4
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @.str.4, i32 0, i32 0), i32 %35, i32 %37)
   %38 = load i32, i32* %.anon10, align 4
   %add19 = add i32 %38, 1
@@ -461,9 +461,9 @@ loop.exit81:                                      ; preds = %loop.cond75
   %110 = getelementptr inbounds [3 x i32], [3 x i32]* %108, i64 0, i64 %sisiext88
   store i32* %110, i32** %y86, align 8
   %111 = load i32*, i32** %y86, align 8
-  %112 = load i32, i32* %111, align 8
+  %112 = load i32, i32* %111, align 4
   %add89 = add i32 %112, 1
-  store i32 %add89, i32* %111, align 8
+  store i32 %add89, i32* %111, align 4
   store i32 0, i32* %a90, align 4
   %113 = getelementptr inbounds %Foo, %Foo* %x, i32 0, i32 0
   %114 = load i32, i32* %a90, align 4

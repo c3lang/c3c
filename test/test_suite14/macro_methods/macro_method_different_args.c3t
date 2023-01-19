@@ -42,10 +42,10 @@ entry:
   store %Foo* %a, %Foo** %this, align 8
   %6 = load %Foo*, %Foo** %this, align 8
   %7 = getelementptr inbounds %Foo, %Foo* %6, i32 0, i32 0
-  store i32 4, i32* %7, align 8
+  store i32 4, i32* %7, align 4
   %8 = load %Foo*, %Foo** %this, align 8
   %9 = getelementptr inbounds %Foo, %Foo* %8, i32 0, i32 0
-  %10 = load i32, i32* %9, align 8
+  %10 = load i32, i32* %9, align 4
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str.2, i32 0, i32 0), i32 %10)
   %11 = getelementptr inbounds %Foo, %Foo* %a, i32 0, i32 0
   %12 = load i32, i32* %11, align 4

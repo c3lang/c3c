@@ -118,9 +118,9 @@ after_check:                                      ; preds = %loop.body
 
 voiderr:                                          ; preds = %after_check, %loop.body
   %26 = load i32*, i32** %ref, align 8
-  %27 = load i32, i32* %26, align 8
+  %27 = load i32, i32* %26, align 4
   %add = add i32 %27, 2
-  store i32 %add, i32* %26, align 8
+  store i32 %add, i32* %26, align 4
   %28 = load i64, i64* %.anon1, align 8
   %add3 = add i64 %28, 1
   store i64 %add3, i64* %.anon1, align 8

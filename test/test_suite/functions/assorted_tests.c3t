@@ -57,7 +57,7 @@ entry:
   %w_cnt = alloca i32, align 4
   %0 = load i32, ptr %w_cnt, align 4
   %1 = load ptr, ptr %pp, align 8
-  %2 = load i8, ptr %1, align 8
+  %2 = load i8, ptr %1, align 1
   %zext = zext i8 %2 to i32
   %add = add i32 %0, %zext
   store i32 %add, ptr %w_cnt, align 4
@@ -99,7 +99,7 @@ if.exit:                                          ; preds = %if.then, %entry
 define void @test_setInternalFPFZero(ptr %0) #1 {
 entry:
   %1 = getelementptr inbounds %InternalFPF, ptr %0, i32 0, i32 0
-  store i8 0, ptr %1, align 8
+  store i8 0, ptr %1, align 1
   ret void
 }
 

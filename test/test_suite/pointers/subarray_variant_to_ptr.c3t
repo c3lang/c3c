@@ -43,7 +43,7 @@ entry:
   %5 = load ptr, ptr %4, align 8
   store ptr %5, ptr %w, align 8
   %6 = load ptr, ptr %w, align 8
-  %7 = load i32, ptr %6, align 8
+  %7 = load i32, ptr %6, align 4
   call void (ptr, ...) @printf(ptr @.str, i32 %7)
   ret void
 }
@@ -60,7 +60,7 @@ entry:
   %5 = load ptr, ptr %4, align 8
   store ptr %5, ptr %w, align 8
   %6 = load ptr, ptr %w, align 8
-  %7 = load i32, ptr %6, align 8
+  %7 = load i32, ptr %6, align 4
   call void (ptr, ...) @printf(ptr @.str.1, i32 %7)
   ret void
 }

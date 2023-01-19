@@ -50,7 +50,7 @@ fn void main()
   store %"int[]" %9, ptr %5, align 16
   store ptr %x, ptr %y2, align 8
   %10 = load ptr, ptr %y2, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %z3, ptr align 8 %10, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %z3, ptr align 4 %10, i32 16, i1 false)
   %11 = getelementptr inbounds [2 x [2 x i32]], ptr %z3, i64 0, i64 1
   %12 = getelementptr inbounds [2 x i32], ptr %11, i64 0, i64 1
   ret void

@@ -66,7 +66,7 @@ entry:
   store double %1, ptr %vec, align 8
   %2 = getelementptr inbounds %Matrix2x2, ptr %0, i32 0, i32 0
   %3 = getelementptr inbounds %.anon.1, ptr %2, i32 0, i32 0
-  %4 = load <2 x float>, ptr %3, align 8
+  %4 = load <2 x float>, ptr %3, align 16
   %5 = getelementptr inbounds %Matrix2x2, ptr %0, i32 0, i32 0
   %6 = getelementptr inbounds %.anon.1, ptr %5, i32 0, i32 1
   %7 = load <2 x float>, ptr %6, align 8
@@ -74,7 +74,7 @@ entry:
   store <2 x float> %shuffle, ptr %a, align 8
   %8 = getelementptr inbounds %Matrix2x2, ptr %0, i32 0, i32 0
   %9 = getelementptr inbounds %.anon.1, ptr %8, i32 0, i32 0
-  %10 = load <2 x float>, ptr %9, align 8
+  %10 = load <2 x float>, ptr %9, align 16
   %11 = getelementptr inbounds %Matrix2x2, ptr %0, i32 0, i32 0
   %12 = getelementptr inbounds %.anon.1, ptr %11, i32 0, i32 1
   %13 = load <2 x float>, ptr %12, align 8

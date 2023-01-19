@@ -2299,6 +2299,7 @@ static inline void llvm_emit_deref(GenContext *c, BEValue *value, Expr *inner, T
 	// Convert pointer to address
 	value->kind = BE_ADDRESS;
 	value->type = type;
+	value->alignment = type_abi_alignment(type);
 }
 
 /**

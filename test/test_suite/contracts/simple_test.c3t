@@ -47,7 +47,7 @@ define void @simple_test_test(ptr %0, i32 %1) #0 {
 entry:
   %gt = icmp sgt i32 %1, 100
   call void @llvm.assume(i1 %gt)
-  store i32 444, ptr %0, align 8
+  store i32 444, ptr %0, align 4
   ret void
 }
 
@@ -55,7 +55,7 @@ define i32 @simple_test_test2(ptr %0, i32 %1) #0 {
 entry:
   %gt = icmp sgt i32 %1, 100
   call void @llvm.assume(i1 %gt)
-  store i32 444, ptr %0, align 8
+  store i32 444, ptr %0, align 4
   %lt = icmp slt i32 %1, 200
   call void @llvm.assume(i1 %lt)
   ret i32 %1

@@ -89,7 +89,7 @@ switch.case:                                      ; preds = %switch.entry
   %9 = load i32*, i32** %8, align 8
   store i32* %9, i32** %z1, align 8
   %10 = load i32*, i32** %z1, align 8
-  %11 = load i32, i32* %10, align 8
+  %11 = load i32, i32* %10, align 4
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str, i32 0, i32 0), i32 %11)
   br label %switch.exit
 
@@ -118,6 +118,7 @@ switch.exit:                                      ; preds = %switch.default, %sw
   ret void
 }
 
+; Function Attrs: nounwind
 define void @foo_test2(i64 %0, i8* %1) #0 {
 entry:
   %y = alloca %variant, align 8
@@ -155,7 +156,7 @@ switch.case:                                      ; preds = %switch.entry
   %14 = insertvalue %variant %13, i64 ptrtoint (%.introspect* @"ct$int" to i64), 1
   store %variant %14, %variant* %y, align 8
   %15 = load i32*, i32** %z, align 8
-  %16 = load i32, i32* %15, align 8
+  %16 = load i32, i32* %15, align 4
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str.3, i32 0, i32 0), i32 %16)
   br label %switch.exit
 
@@ -214,7 +215,7 @@ switch.case:                                      ; preds = %switch.entry
   %9 = getelementptr inbounds %variant, %variant* %.anon, i32 0, i32 0
   %10 = bitcast i8** %9 to i32**
   %11 = load i32*, i32** %10, align 8
-  %12 = load i32, i32* %11, align 8
+  %12 = load i32, i32* %11, align 4
   store i32 %12, i32* %z, align 4
   %13 = load i32, i32* %z, align 4
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str.6, i32 0, i32 0), i32 %13)

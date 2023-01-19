@@ -33,7 +33,7 @@ fn void main()
   store float %1, ptr %temp, align 4
   store ptr %temp, ptr %result, align 8
   %2 = load ptr, ptr %result, align 8
-  %3 = load i32, ptr %2, align 8
+  %3 = load i32, ptr %2, align 4
   store i32 %3, ptr %i, align 4
   %4 = load i32, ptr %i, align 4
   store i32 %4, ptr %value1, align 4
@@ -41,7 +41,7 @@ fn void main()
   store i32 %5, ptr %temp2, align 4
   store ptr %temp2, ptr %result3, align 8
   %6 = load ptr, ptr %result3, align 8
-  %7 = load float, ptr %6, align 8
+  %7 = load float, ptr %6, align 4
   store float %7, ptr %f2, align 4
   %8 = load float, ptr %f, align 4
   %fpfpext = fpext float %8 to double

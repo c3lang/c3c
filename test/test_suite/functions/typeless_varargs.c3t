@@ -51,7 +51,7 @@ entry:
   %ptroffset = getelementptr inbounds %variant, ptr %5, i64 0
   %6 = getelementptr inbounds %variant, ptr %ptroffset, i32 0, i32 0
   %7 = load ptr, ptr %6, align 8
-  %8 = load i32, ptr %7, align 8
+  %8 = load i32, ptr %7, align 4
   call void (ptr, ...) @printf(ptr @.str, i32 %8)
   ret void
 }

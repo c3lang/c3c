@@ -256,7 +256,7 @@ fn Type getValue(Blob blob)
 define void @test_Foo2_printme(%Foo2* %0) #0 {
 entry:
   %1 = getelementptr inbounds %Foo2, %Foo2* %0, i32 0, i32 0
-  %2 = load i32, i32* %1, align 8
+  %2 = load i32, i32* %1, align 4
   %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @.str.21, i32 0, i32 0), i32 %2)
   ret void
 }
@@ -266,9 +266,9 @@ define i32 @test_Foo2_mutate(%Foo2* %0) #0 {
 entry:
   %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str.22, i32 0, i32 0))
   %2 = getelementptr inbounds %Foo2, %Foo2* %0, i32 0, i32 0
-  %3 = load i32, i32* %2, align 8
+  %3 = load i32, i32* %2, align 4
   %add = add i32 %3, 1
-  store i32 %add, i32* %2, align 8
+  store i32 %add, i32* %2, align 4
   ret i32 %add
 }
 

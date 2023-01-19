@@ -87,7 +87,7 @@ switch.case:                                      ; preds = %switch.entry
   %8 = load ptr, ptr %7, align 8
   store ptr %8, ptr %z1, align 8
   %9 = load ptr, ptr %z1, align 8
-  %10 = load i32, ptr %9, align 8
+  %10 = load i32, ptr %9, align 4
   call void (ptr, ...) @printf(ptr @.str, i32 %10)
   br label %switch.exit
 
@@ -147,7 +147,7 @@ switch.case:                                      ; preds = %switch.entry
   %10 = insertvalue %variant %9, i64 ptrtoint (ptr @"ct$int" to i64), 1
   store %variant %10, ptr %y, align 8
   %11 = load ptr, ptr %z, align 8
-  %12 = load i32, ptr %11, align 8
+  %12 = load i32, ptr %11, align 4
   call void (ptr, ...) @printf(ptr @.str.3, i32 %12)
   br label %switch.exit
 
@@ -200,7 +200,7 @@ switch.entry:                                     ; preds = %entry
 switch.case:                                      ; preds = %switch.entry
   %7 = getelementptr inbounds %variant, ptr %.anon, i32 0, i32 0
   %8 = load ptr, ptr %7, align 8
-  %9 = load i32, ptr %8, align 8
+  %9 = load i32, ptr %8, align 4
   store i32 %9, ptr %z, align 4
   %10 = load i32, ptr %z, align 4
   call void (ptr, ...) @printf(ptr @.str.6, i32 %10)
