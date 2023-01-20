@@ -1,31 +1,27 @@
-module std::math::complex<Type>;
+module std::math::complex<Real>;
 
 union Complex
 {
 	struct
     {
-    	Type r, c;
+    	Real r, c;
     }
-	Type[<2>] v;
+	Real[<2>] v;
 }
 
-macro Complex Complex.add(Complex a, Complex b)
-{
-	return Complex { .v = a.v + b.v };
-}
 
-macro Complex Complex.sub(Complex a, Complex b)
+macro Complex identity() = { 1, 0 };
+macro Complex Complex.add(Complex a, Complex b) = Complex { .v = a.v + b.v };
+macro Complex Complex.add_each(Complex a, Real b) = Complex { .v = a.v + b };
+macro Complex Complex.sub(Complex a, Complex b) = Complex { .v = a.v - b.v };
+macro Complex Complex.sub_each(Complex a, Real b) = Complex { .v = a.v - b };
+macro Complex Complex.scale(Complex a, Real s) = Complex { .v = a.v * s };
+macro Complex Complex.mul(Complex a, Complex b)
 {
-	return Complex { .v = a.v - b.v };
+	return { .r = a.r * b.r - a.c * b.c, .c = a.r * b.c + b.r * a.c };
 }
-
-macro Complex Complex.mult(Complex a, Complex b)
+macro Complex Complex.div(Complex a, Complex b)
 {
-	return Complex { .r = a.r * b.r - a.c * b.c, .c = a.r * b.c + b.r * a.c };
-}
-
-fn Complex Complex.div(Complex a, Complex b)
-{
-	Type div = b.r * b.r + b.c * b.c;
+	Real div = b.r * b.r + b.c * b.c;
 	return Complex { .r = (a.r * b.r + a.c * b.c) / div, .c = (a.c * b.r - a.r * b.c) / div };
 }

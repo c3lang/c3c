@@ -835,6 +835,11 @@ Decl *parse_decl(ParseContext *c)
 
 Expr *parse_decl_or_expr(ParseContext *c, Decl **decl_ref)
 {
+	if (tok_is(c, TOKEN_VAR))
+	{
+		ASSIGN_DECL_OR_RET(*decl_ref, parse_var_decl(c), poisoned_expr);
+		return NULL;
+	}
 	TypeInfo *type_info;
 	Expr *expr = parse_expr(c);
 	if (expr->expr_kind != EXPR_TYPEINFO) return expr;

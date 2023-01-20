@@ -367,7 +367,6 @@ LLVMValueRef llvm_coerce_int_ptr(GenContext *c, LLVMValueRef value, LLVMTypeRef 
 
 LLVMValueRef llvm_emit_coerce(GenContext *c, LLVMTypeRef coerced, BEValue *value, Type *original_type)
 {
-	assert(type_flatten_distinct(original_type) == type_flatten_distinct(value->type));
 	LLVMTypeRef llvm_source_type = llvm_get_type(c, value->type);
 
 	// 1. If the types match then we're done, just load.
@@ -1164,6 +1163,19 @@ void llvm_emit_array_to_vector_cast(GenContext *c, BEValue *value, Type *to_type
 	llvm_value_set(value, vector, to_type);
 }
 
+void llvm_emit_num_to_vec_cast(GenContext *c, BEValue *value, Type *to_type, Type *from_type)
+{
+	llvm_value_rvalue(c, value);
+	LLVMTypeRef type = llvm_get_type(c, to_type);
+	unsigned elements = LLVMGetVectorSize(type);
+	LLVMValueRef res = LLVMGetUndef(type);
+	for (unsigned i = 0; i < elements; i++)
+	{
+		res = LLVMBuildInsertElement(c->builder, res, value->value, llvm_const_int(c, type_usize, i), "");
+	}
+	llvm_value_set(value, res, to_type);
+}
+
 void llvm_emit_bool_to_intvec_cast(GenContext *c, BEValue *value, Type *to_type, Type *from_type)
 {
 	llvm_value_rvalue(c, value);
@@ -1181,6 +1193,9 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 
 	switch (cast_kind)
 	{
+		case CAST_NUMVEC:
+			llvm_emit_num_to_vec_cast(c, value, to_type, from_type);
+			return;
 		case CAST_BOOLVECINT:
 			llvm_emit_bool_to_intvec_cast(c, value, to_type, from_type);
 			return;
@@ -2394,7 +2409,7 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 		case UNARYOP_NEG:
 			llvm_emit_expr(c, value, inner);
 			llvm_value_rvalue(c, value);
-			if (type_is_float(type))
+			if (type_is_floatlike(type))
 			{
 				value->value = LLVMBuildFNeg(c->builder, value->value, "fneg");
 				return;
@@ -2402,7 +2417,7 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 			assert(type->canonical != type_bool);
 			llvm_emit_expr(c, value, expr->unary_expr.expr);
 			llvm_value_rvalue(c, value);
-			if (active_target.feature.trap_on_wrap)
+			if (active_target.feature.trap_on_wrap && !type_flat_is_vector(value->type))
 			{
 				LLVMValueRef zero = llvm_get_zero(c, expr->unary_expr.expr->type);
 				LLVMTypeRef type_to_use = llvm_get_type(c, type->canonical);

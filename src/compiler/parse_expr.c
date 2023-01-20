@@ -477,6 +477,10 @@ static Expr *parse_type_expr(ParseContext *c, Expr *left)
 	assert(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_TYPEINFO);
 	ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_optional_type(c), poisoned_expr);
+	if (tok_is(c, TOKEN_LBRACE))
+	{
+		return parse_type_compound_literal_expr_after_type(c, type);
+	}
 	expr->span = type->span;
 	expr->type_expr = type;
 	if (tok_is(c, TOKEN_SCOPE))

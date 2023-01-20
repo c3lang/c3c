@@ -301,6 +301,22 @@ static bool int_conversion(Expr *expr, CastKind kind, Type *canonical, Type *typ
 	return true;
 }
 
+static bool int_vector_conversion(Expr *expr, Type *canonical, Type *type)
+{
+	// Fold pointer casts if narrowing
+	Type *base = type_get_indexed_type(type);
+	cast(expr, base);
+	return insert_cast(expr, CAST_NUMVEC, type);
+}
+
+static bool float_vector_conversion(Expr *expr, Type *canonical, Type *type)
+{
+	// Fold pointer casts if narrowing
+	Type *base = type_get_indexed_type(type);
+	cast(expr, base);
+	return insert_cast(expr, CAST_NUMVEC, type);
+}
+
 
 /**
  * Cast a signed or unsigned integer -> floating point
@@ -1231,6 +1247,9 @@ RETRY:
 		case TYPE_BOOL:
 			if (is_explicit) goto CAST;
 			goto REQUIRE_CAST;
+		case TYPE_VECTOR:
+			to = to->array.base->canonical;
+			goto RETRY;
 		case TYPE_ENUM:
 			if (from->type_kind == TYPE_ENUM) break;
 			to = to->decl->enums.type_info->type->canonical;
@@ -1313,6 +1332,9 @@ RETRY:
 		case TYPE_BOOL:
 			if (is_explicit) goto CAST;
 			goto REQUIRE_CAST;
+		case TYPE_VECTOR:
+			to = to->array.base->canonical;
+			goto RETRY;
 		case ALL_FLOATS:
 		{
 			if (is_explicit) goto CAST;
@@ -1850,6 +1872,7 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 			if (to == type_bool) return integer_to_bool(expr, to_type);
 			if (to->type_kind == TYPE_POINTER) return int_to_pointer(expr, to_type);
 			if (to->type_kind == TYPE_ENUM) return integer_to_enum(expr, to, to_type);
+			if (type_kind_is_any_vector(to->type_kind)) return int_vector_conversion(expr, to, to_type);
 			break;
 		case ALL_UNSIGNED_INTS:
 			if (type_is_integer_unsigned(to)) return int_conversion(expr, CAST_UIUI, to, to_type);
@@ -1858,11 +1881,13 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 			if (to == type_bool) return integer_to_bool(expr, to_type);
 			if (to->type_kind == TYPE_POINTER) return int_to_pointer(expr, to_type);
 			if (to->type_kind == TYPE_ENUM) return integer_to_enum(expr, to, to_type);
+			if (type_kind_is_any_vector(to->type_kind)) return int_vector_conversion(expr, to, to_type);
 			break;
 		case ALL_FLOATS:
 			if (type_is_integer(to)) return float_to_integer(expr, to, to_type);
 			if (to == type_bool) return float_to_bool(expr, to_type);
 			if (type_is_float(to)) return float_to_float(expr, to, to_type);
+			if (type_kind_is_any_vector(to->type_kind)) return float_vector_conversion(expr, to, to_type);
 			break;
 		case TYPE_TYPEID:
 		case TYPE_POINTER:

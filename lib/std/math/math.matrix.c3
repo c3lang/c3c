@@ -1,9 +1,4 @@
-module std::math::matrix;
-
-fault MatrixError
-{
-    MATRIX_INVERSE_DOESNT_EXIST,
-}
+module std::math::matrix<Real>;
 
 struct Matrix2x2
 {
@@ -11,10 +6,10 @@ struct Matrix2x2
 	{
 		struct
 		{
-			float m00, m01;
-			float m10, m11;
+			Real m00, m01;
+			Real m10, m11;
 		}
-		float[4] m;
+		Real[4] m;
 	}
 }
 
@@ -24,11 +19,11 @@ struct Matrix3x3
 	{
 		struct
 		{
-			float m00; float m01; float m02;
-			float m10; float m11; float m12;
-			float m20; float m21; float m22;
+			Real m00, m01, m02;
+			Real m10, m11, m12;
+			Real m20, m21, m22;
 		}
-		float[9] m;
+		Real[9] m;
 	}
 }
 
@@ -38,35 +33,35 @@ struct Matrix4x4
 	{
 		struct
 		{
-			float m00, m01, m02, m03;
-			float m10, m11, m12, m13;
-			float m20, m21, m22, m23;
-			float m30, m31, m32, m33;
+			Real m00, m01, m02, m03;
+			Real m10, m11, m12, m13;
+			Real m20, m21, m22, m23;
+			Real m30, m31, m32, m33;
 		}
-		float[16] m;
+		Real[16] m;
 	}
 }
 
-fn float[<2>] Matrix2x2.apply(Matrix2x2* mat, float[<2>] vec)
+fn Real[<2>] Matrix2x2.apply(Matrix2x2* mat, Real[<2>] vec)
 {
-	return float[<2>] {
+	return Real[<2>] {
 		mat.m00 * vec[0] + mat.m01 * vec[1],
 		mat.m10 * vec[0] + mat.m11 * vec[1],
 	};
 }
 
-fn float[<3>] Matrix3x3.apply(Matrix3x3* mat, float[<3>] vec)
+fn Real[<3>] Matrix3x3.apply(Matrix3x3* mat, Real[<3>] vec)
 {
-	return float[<3>] {
+	return Real[<3>] {
 		mat.m00 * vec[0] + mat.m01 * vec[1] + mat.m02 * vec[2],
 		mat.m10 * vec[0] + mat.m11 * vec[1] + mat.m12 * vec[2],
 		mat.m20 * vec[0] + mat.m21 * vec[1] + mat.m22 * vec[2],
 	};
 }
 
-fn float[<4>] Matrix4x4.apply(Matrix4x4* mat, float[<4>] vec)
+fn Real[<4>] Matrix4x4.apply(Matrix4x4* mat, Real[<4>] vec)
 {
-	return float[<4>] {
+	return Real[<4>] {
 		mat.m00 * vec[0] + mat.m01 * vec[1] + mat.m02 * vec[2] + mat.m03 * vec[3],
 		mat.m10 * vec[0] + mat.m11 * vec[1] + mat.m12 * vec[2] + mat.m13 * vec[3],
 		mat.m20 * vec[0] + mat.m21 * vec[1] + mat.m22 * vec[2] + mat.m23 * vec[3],
@@ -125,33 +120,18 @@ fn Matrix4x4 Matrix4x4.mul(Matrix4x4* a, Matrix4x4 b)
 	};
 }
 
+fn Matrix2x2 Matrix2x2.component_mul(Matrix2x2* mat, Real s) = matrix_component_mul(mat, s);
+fn Matrix3x3 Matrix3x3.component_mul(Matrix3x3* mat, Real s) = matrix_component_mul(mat, s);
+fn Matrix4x4 Matrix4x4.component_mul(Matrix4x4* mat, Real s) = matrix_component_mul(mat, s);
 
-fn Matrix2x2 Matrix2x2.component_mul(Matrix2x2* mat, float s)
-{
-	return Matrix2x2 {
-		mat.m00 * s, mat.m01 * s,
-		mat.m10 * s, mat.m11 * s,
-	};
-}
+fn Matrix2x2 Matrix2x2.add(Matrix2x2* mat, Matrix2x2 mat2) = matrix_add(mat, mat2);
+fn Matrix3x3 Matrix3x3.add(Matrix3x3* mat, Matrix3x3 mat2) = matrix_add(mat, mat2);
+fn Matrix4x4 Matrix4x4.add(Matrix4x4* mat, Matrix4x4 mat2) = matrix_add(mat, mat2);
 
-fn Matrix3x3 Matrix3x3.component_mul(Matrix3x3* mat, float s)
-{
-	return Matrix3x3 {
-		mat.m00 * s, mat.m01 * s, mat.m02 * s,
-		mat.m10 * s, mat.m11 * s, mat.m12 * s,
-		mat.m20 * s, mat.m21 * s, mat.m22 * s,
-	};
-}
+fn Matrix2x2 Matrix2x2.sub(Matrix2x2* mat, Matrix2x2 mat2) = matrix_sub(mat, mat2);
+fn Matrix3x3 Matrix3x3.sub(Matrix3x3* mat, Matrix3x3 mat2) = matrix_sub(mat, mat2);
+fn Matrix4x4 Matrix4x4.sub(Matrix4x4* mat, Matrix4x4 mat2) = matrix_sub(mat, mat2);
 
-fn Matrix4x4 Matrix4x4.component_mul(Matrix4x4* mat, float s)
-{
-	return Matrix4x4 {
-		mat.m00 * s, mat.m01 * s, mat.m02 * s, mat.m03 * s,
-		mat.m10 * s, mat.m11 * s, mat.m12 * s, mat.m13 * s,
-		mat.m20 * s, mat.m21 * s, mat.m22 * s, mat.m23 * s,
-		mat.m30 * s, mat.m31 * s, mat.m32 * s, mat.m33 * s,
-	};
-}
 
 
 fn Matrix2x2 Matrix2x2.transpose(Matrix2x2* mat)
@@ -182,12 +162,12 @@ fn Matrix4x4 Matrix4x4.transpose(Matrix4x4* mat)
 }
 
 
-fn float Matrix2x2.determinant(Matrix2x2* mat)
+fn Real Matrix2x2.determinant(Matrix2x2* mat)
 {
 	return mat.m00 * mat.m11 - mat.m01 * mat.m10;
 }
 
-fn float Matrix3x3.determinant(Matrix3x3* mat)
+fn Real Matrix3x3.determinant(Matrix3x3* mat)
 {
 	return
 		mat.m00 * (mat.m11 * mat.m22 - mat.m21 * mat.m12) -
@@ -195,7 +175,7 @@ fn float Matrix3x3.determinant(Matrix3x3* mat)
 		mat.m02 * (mat.m10 * mat.m21 - mat.m20 * mat.m11);
 }
 
-fn float Matrix4x4.determinant(Matrix4x4* mat)
+fn Real Matrix4x4.determinant(Matrix4x4* mat)
 {
 	return
 		mat.m00 * (mat.m11 * (mat.m22 * mat.m33 - mat.m32 * mat.m23) -
@@ -295,7 +275,7 @@ fn Matrix4x4 Matrix4x4.adjoint(Matrix4x4* mat)
 
 fn Matrix2x2! Matrix2x2.inverse(Matrix2x2* m)
 {
-	float det = m.determinant();
+	Real det = m.determinant();
 	if (det == 0) return MatrixError.MATRIX_INVERSE_DOESNT_EXIST!;
 	Matrix2x2 adj = m.adjoint();
 	return adj.component_mul(1 / det).transpose();
@@ -303,7 +283,7 @@ fn Matrix2x2! Matrix2x2.inverse(Matrix2x2* m)
 
 fn Matrix3x3! Matrix3x3.inverse(Matrix3x3* m)
 {
-	float det = m.determinant();
+	Real det = m.determinant();
 	if (det == 0) return MatrixError.MATRIX_INVERSE_DOESNT_EXIST!;
 	Matrix3x3 adj = m.adjoint();
 	return adj.component_mul(1 / det).transpose();
@@ -311,14 +291,14 @@ fn Matrix3x3! Matrix3x3.inverse(Matrix3x3* m)
 
 fn Matrix4x4! Matrix4x4.inverse(Matrix4x4* m)
 {
-	float det = m.determinant();
+	Real det = m.determinant();
 	if (det == 0) return MatrixError.MATRIX_INVERSE_DOESNT_EXIST!;
 	Matrix4x4 adj = m.adjoint();
 	return adj.component_mul(1 / det).transpose();
 }
 
 
-fn Matrix3x3 Matrix3x3.translate(Matrix3x3* m, float[<2>] v)
+fn Matrix3x3 Matrix3x3.translate(Matrix3x3* m, Real[<2>] v)
 {
 	return m.mul(Matrix3x3 {
 		1, 0, v[0],
@@ -327,7 +307,7 @@ fn Matrix3x3 Matrix3x3.translate(Matrix3x3* m, float[<2>] v)
 	});
 }
 
-fn Matrix4x4 Matrix4x4.translate(Matrix4x4* m, float[<3>] v)
+fn Matrix4x4 Matrix4x4.translate(Matrix4x4* m, Real[<3>] v)
 {
 	return m.mul(Matrix4x4 {
 		1, 0, 0, v[0],
@@ -338,7 +318,7 @@ fn Matrix4x4 Matrix4x4.translate(Matrix4x4* m, float[<3>] v)
 }
 
 // r in radians
-fn Matrix3x3 Matrix3x3.rotate(Matrix3x3* m, float r)
+fn Matrix3x3 Matrix3x3.rotate(Matrix3x3* m, Real r)
 {
 	return m.mul(Matrix3x3 {
 		math::cos(r), -math::sin(r), 0,
@@ -348,7 +328,7 @@ fn Matrix3x3 Matrix3x3.rotate(Matrix3x3* m, float r)
 }
 
 // r in radians
-fn Matrix4x4 Matrix4x4.rotate_z(Matrix4x4* m, float r)
+fn Matrix4x4 Matrix4x4.rotate_z(Matrix4x4* m, Real r)
 {
 	return m.mul(Matrix4x4 {
 		math::cos(r), -math::sin(r), 0, 0,
@@ -359,7 +339,7 @@ fn Matrix4x4 Matrix4x4.rotate_z(Matrix4x4* m, float r)
 }
 
 // r in radians
-fn Matrix4x4 Matrix4x4.rotate_y(Matrix4x4* m, float r)
+fn Matrix4x4 Matrix4x4.rotate_y(Matrix4x4* m, Real r)
 {
 	return m.mul(Matrix4x4 {
 		math::cos(r), 0, -math::sin(r), 0,
@@ -370,7 +350,7 @@ fn Matrix4x4 Matrix4x4.rotate_y(Matrix4x4* m, float r)
 }
 
 // r in radians
-fn Matrix4x4 Matrix4x4.rotate_x(Matrix4x4* m, float r)
+fn Matrix4x4 Matrix4x4.rotate_x(Matrix4x4* m, Real r)
 {
 	return m.mul(Matrix4x4 {
 		1, 0, 0, 0,
@@ -381,7 +361,7 @@ fn Matrix4x4 Matrix4x4.rotate_x(Matrix4x4* m, float r)
 }
 
 
-fn Matrix3x3 Matrix3x3.scale(Matrix3x3* m, float[<2>] v)
+fn Matrix3x3 Matrix3x3.scale(Matrix3x3* m, Real[<2>] v)
 {
 	return m.mul(Matrix3x3 {
 		v[0], 0, 0,
@@ -390,7 +370,11 @@ fn Matrix3x3 Matrix3x3.scale(Matrix3x3* m, float[<2>] v)
 	});
 }
 
-fn Matrix4x4 Matrix4x4.scale(Matrix4x4* m, float[<3>] v)
+fn Real Matrix2x2.trace(Matrix2x2* m) = m.m00 + m.m11;
+fn Real Matrix3x3.trace(Matrix3x3* m) = m.m00 + m.m11 + m.m22;
+fn Real Matrix4x4.trace(Matrix4x4* m) = m.m00 + m.m11 + m.m22 + m.m33;
+
+fn Matrix4x4 Matrix4x4.scale(Matrix4x4* m, Real[<3>] v)
 {
 	return m.mul(Matrix4x4 {
 		v[0], 0, 0, 0,
@@ -400,32 +384,48 @@ fn Matrix4x4 Matrix4x4.scale(Matrix4x4* m, float[<3>] v)
 	});
 }
 
-
-fn Matrix4x4 ortho(float left, float right, float top, float bottom, float near, float far)
+fn Matrix4x4 ortho(Real left, Real right, Real top, Real bottom, Real near, Real far)
 {
-    float width = right - left;
-    float height = top - bottom;
-    float depth = far - near;
+    Real width = right - left;
+    Real height = top - bottom;
+    Real depth = far - near;
     return Matrix4x4 {
-        2 / width,             0,                      0,                   0,
-        0,                     2 / height,             0,                   0,
-        0,                     0,                      -2 / depth,          0,
-        -(right + left) / width, -(top + bottom) / height, -(far + near) / depth, 1,
+        2 / width, 0, 0, 0,
+        0, 2 / height, 0, 0,
+        0, 0, -2 / depth, 0,
+        -(right + left) / width, -(top + bottom) / height, -(far + near) / depth, 1
     };
 }
 
 // fov in radians
-fn Matrix4x4 perspective(float fov, float aspect_ratio, float near, float far)
+fn Matrix4x4 perspective(Real fov, Real aspect_ratio, Real near, Real far)
 {
-
-    float top = ((float)math::sin(fov / 2) / (float)math::cos(fov / 2)) * near;
-    float right = top * aspect_ratio;
-    float depth = far - near;
+    Real top = (math::sin(fov / 2) / math::cos(fov / 2)) * near;
+    Real right = top * aspect_ratio;
+    Real depth = far - near;
     return Matrix4x4 {
-        1 / right, 0,       0,                   0,
-        0,         1 / top, 0,                   0,
-        0,         0,       -2 / depth,          0,
-        0,         0,       - (far + near) / depth, 1,
+        1 / right, 0, 0, 0,
+        0, 1 / top, 0, 0,
+        0, 0, -2 / depth, 0,
+        0, 0, -(far + near) / depth, 1,
     };
 }
 
+
+private macro matrix_component_mul(mat, val)
+{
+	var $Type = Real[<$typeof(mat.m).len>];
+	return $typeof(*mat) { .m = val * ($Type)mat.m };
+}
+
+private macro matrix_add(mat, mat2)
+{
+	var $Type = Real[<$typeof(mat.m).len>];
+	return $typeof(*mat) { .m = ($Type)mat.m + ($Type)mat2.m };
+}
+
+private macro matrix_sub(mat, mat2)
+{
+	var $Type = Real[<$typeof(mat.m).len>];
+	return $typeof(*mat) { .m = ($Type)mat.m - ($Type)mat2.m };
+}

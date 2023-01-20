@@ -1456,6 +1456,9 @@ void tilde_emit_cast(TildeContext *c, CastKind cast_kind, Expr *expr, TBEValue *
 
 	switch (cast_kind)
 	{
+		case CAST_NUMVEC:
+			TODO //	llvm_emit_num_to_vec_cast(c, value, to_type, from_type);
+			return;
 		case CAST_BOOLVECINT:
 			TODO // llvm_emit_bool_to_intvec_cast(c, value, to_type, from_type);
 			return;

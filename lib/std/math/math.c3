@@ -3,6 +3,8 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::math;
 import std::math::complex;
+import std::math::matrix;
+import std::math::quaternion;
 
 // TODO Define these using quad precision.
 const E = 2.718281828459045235360287471352662497757247093699959574966967627724076630353547594571382178525166427427466;
@@ -78,8 +80,31 @@ enum RoundingMode : int
 	TOWARD_NEG_INFINITY
 }
 
-define Complex32 = Complex<float>;
-define Complex64 = Complex<double>;
+fault MatrixError
+{
+    MATRIX_INVERSE_DOESNT_EXIST,
+}
+
+define Complexf = Complex<float>;
+define Complex = Complex<double>;
+define complexf_identity = complex::identity<float>;
+define complex_identity = complex::identity<double>;
+
+define Quaternionf = Quaternion<float>;
+define Quaternion = Quaternion<double>;
+define quaternionf_identity = quaternion::identity<float>;
+define quaternion_identity = quaternion::identity<double>;
+
+define Matrix2f = Matrix2x2<float>;
+define Matrix2 = Matrix2x2<double>;
+define Matrix3f = Matrix3x3<float>;
+define Matrix3 = Matrix3x3<double>;
+define Matrix4f = Matrix4x4<float>;
+define Matrix4 = Matrix4x4<double>;
+define matrix4_ortho = matrix::ortho<double>;
+define matrix4_perspective = matrix::perspective<double>;
+define matrix4f_ortho = matrix::ortho<float>;
+define matrix4f_perspective = matrix::perspective<float>;
 
 /**
  * @require types::is_numerical($typeof(x)) `The input must be a numerical value or numerical vector`
@@ -333,6 +358,19 @@ macro tanh(x) = (exp(2.0 * x) - 1.0) / (exp(2.0 * x) + 1.0);
  **/
 macro trunc(x) = $$trunc(x);
 
+private macro lerp(x, y, amount) = x + (y - x) * amount;
+private macro reflect(x, y)
+{
+	var dot = x.dot(y);
+	return x - 2 * y * dot;
+}
+private macro normalize(x)
+{
+	var len = x.length();
+	if (len == 0) return x;
+	return x * (1 / len);
+}
+
 macro float float.ceil(float x) = $$ceil(x);
 macro float float.clamp(float x, float lower, float upper) = $$max(lower, $$min(x, upper));
 macro float float.copysign(float mag, float sgn) = $$copysign(mag, sgn);
@@ -361,6 +399,20 @@ macro float[<*>] float[<*>].rint(float[<*>] x) = $$rint(x);
 macro float[<*>] float[<*>].round(float[<*>] x) = $$round(x);
 macro float[<*>] float[<*>].roundeven(float[<*>] x) = $$roundeven(x);
 macro float[<*>] float[<*>].trunc(float[<*>] x) = $$trunc(x);
+macro float float[<*>].dot(float[<*>] x, float[<*>] y) = (x * y).sum();
+macro float float[<*>].length(float[<*>] x) = $$sqrt(x.dot(x));
+macro float float[<*>].distance(float[<*>] x, float[<*>] y) = (x - y).length();
+macro float[<*>] float[<*>].normalize(float[<*>] x) = normalize(x);
+macro float[<*>] float[<*>].lerp(float[<*>] x, float[<*>] y, float amount) = lerp(x, y, amount);
+macro float[<*>] float[<*>].reflect(float[<*>] x, float[<*>] y) = reflect(x, y);
+macro bool float[<*>].equals(float[<*>] x, float[<*>] y) = equals_vec(x, y);
+
+macro bool[<*>] float[<*>].comp_lt(float[<*>] x, float[<*>] y) = $$veccomplt(x, y);
+macro bool[<*>] float[<*>].comp_le(float[<*>] x, float[<*>] y) = $$veccomple(x, y);
+macro bool[<*>] float[<*>].comp_eq(float[<*>] x, float[<*>] y) = $$veccompeq(x, y);
+macro bool[<*>] float[<*>].comp_gt(float[<*>] x, float[<*>] y) = $$veccompgt(x, y);
+macro bool[<*>] float[<*>].comp_ge(float[<*>] x, float[<*>] y) = $$veccompge(x, y);
+macro bool[<*>] float[<*>].comp_ne(float[<*>] x, float[<*>] y) = $$veccompne(x, y);
 
 macro double double.ceil(double x) = $$ceil(x);
 macro double double.clamp(double x, double lower, double upper) = $$max(lower, $$min(x, upper));
@@ -390,6 +442,20 @@ macro double[<*>] double[<*>].rint(double[<*>] x) = $$rint(x);
 macro double[<*>] double[<*>].round(double[<*>] x) = $$round(x);
 macro double[<*>] double[<*>].roundeven(double[<*>] x) = $$roundeven(x);
 macro double[<*>] double[<*>].trunc(double[<*>] x) = $$trunc(x);
+macro double double[<*>].dot(double[<*>] x, double[<*>] y) = (x * y).sum();
+macro double double[<*>].length(double[<*>] x) = $$sqrt(x.dot(x));
+macro double double[<*>].distance(double[<*>] x, double[<*>] y) = (x - y).length();
+macro double[<*>] double[<*>].normalize(double[<*>] x) = normalize(x);
+macro double[<*>] double[<*>].reflect(double[<*>] x, double[<*>] y) = reflect(x, y);
+macro double[<*>] double[<*>].lerp(double[<*>] x, double[<*>] y, double amount) = lerp(x, y, amount);
+macro bool double[<*>].equals(double[<*>] x, double[<*>] y) = equals_vec(x, y);
+
+macro bool[<*>] double[<*>].comp_lt(double[<*>] x, double[<*>] y) = $$veccomplt(x, y);
+macro bool[<*>] double[<*>].comp_le(double[<*>] x, double[<*>] y) = $$veccomple(x, y);
+macro bool[<*>] double[<*>].comp_eq(double[<*>] x, double[<*>] y) = $$veccompeq(x, y);
+macro bool[<*>] double[<*>].comp_gt(double[<*>] x, double[<*>] y) = $$veccompgt(x, y);
+macro bool[<*>] double[<*>].comp_ge(double[<*>] x, double[<*>] y) = $$veccompge(x, y);
+macro bool[<*>] double[<*>].comp_ne(double[<*>] x, double[<*>] y) = $$veccompne(x, y);
 
 macro ichar ichar[<*>].sum(ichar[<*>] x) = $$reduce_add(x);
 macro ichar ichar[<*>].product(ichar[<*>] x) = $$reduce_mul(x);
@@ -507,4 +573,17 @@ macro next_power_of_2(x)
 	$typeof(x) y = 1;
 	while (y < x) y += y;
 	return y;
+}
+
+import std::io;
+private macro equals_vec(v1, v2)
+{
+	var $elements = v1.len;
+	var abs_diff = math::abs(v1 - v2);
+	io::printfn("diff %s", abs_diff);
+	var abs_v1 = math::abs(v1);
+	var abs_v2 = math::abs(v2);
+	io::printfn("abs %s", abs_v1);
+    $typeof(abs_v2) eps = 1;
+	return abs_diff.comp_le(FLOAT_EPSILON * math::max(abs_v1, abs_v2, eps)).and();
 }
