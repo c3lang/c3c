@@ -1904,9 +1904,11 @@ Type *type_find_max_type(Type *type, Type *other)
 		case ALL_INTS:
 			if (other->type_kind == TYPE_DISTINCT && type_underlying_is_numeric(other)) return other;
 			if (other->type_kind == TYPE_ENUM) return type_find_max_type(type, other->decl->enums.type_info->type->canonical);
+			if (other->type_kind == TYPE_VECTOR) return other;
 			return type_find_max_num_type(type, other);
 		case ALL_FLOATS:
 			if (other->type_kind == TYPE_DISTINCT && type_is_float(other->decl->distinct_decl.base_type)) return other;
+			if (other->type_kind == TYPE_VECTOR) return other;
 			return type_find_max_num_type(type, other);
 		case TYPE_POINTER:
 			if (type->pointer->type_kind == TYPE_ARRAY)
