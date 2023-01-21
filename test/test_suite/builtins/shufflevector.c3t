@@ -39,9 +39,9 @@ fn float[<2>] apply2(Matrix2x2* mat, float[<2>] vec)
 
 fn float[<2>] apply3(Matrix2x2* mat, float[<2>] vec)
 {
-	float[<2>] a = $$shufflevector(mat.m0, mat.m1, { 0, 3 });
-	float[<2>] b = $$shufflevector(mat.m0, mat.m1, { 1, 2 });
-	float[<2>] flip = $$shufflevector(vec, { 1, 0 });
+	float[<2>] a = $$swizzle2(mat.m0, mat.m1, 0, 3);
+	float[<2>] b = $$swizzle2(mat.m0, mat.m1, 1, 2);
+	float[<2>] flip = $$swizzle(vec, 1, 0);
 	return a * vec + b * flip;
 }
 

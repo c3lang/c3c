@@ -23,7 +23,7 @@ typedef enum
 static bool sema_check_builtin_args_match(Expr **args, size_t arg_len);
 static bool sema_check_builtin_args_const(Expr **args, size_t arg_len);
 static bool sema_check_builtin_args(Expr **args, BuiltinArg *arg_type, size_t arg_len);
-static inline bool sema_expr_analyse_shufflevector(SemaContext *context, Expr *expr);
+static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, bool swizzle_two);
 static inline unsigned builtin_expected_args(BuiltinFunction func);
 
 static bool sema_check_builtin_args_match(Expr **args, size_t arg_len)
@@ -159,80 +159,45 @@ static bool sema_check_builtin_args(Expr **args, BuiltinArg *arg_type, size_t ar
 	return true;
 }
 
-static inline bool sema_expr_analyse_shufflevector(SemaContext *context, Expr *expr)
+static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, bool swizzle_two)
 {
 	Expr **args = expr->call_expr.arguments;
 	unsigned arg_count = vec_size(args);
-	if (arg_count < 2 || arg_count > 3)
+	if (swizzle_two && arg_count < 3)
 	{
-		SEMA_ERROR(expr, "Expected 2 or 3 arguments.");
+		SEMA_ERROR(expr, "Expected at least 3 arguments.");
+		return false;
+	}
+	else if (arg_count < 2)
+	{
+		SEMA_ERROR(expr, "Expected at least 2 arguments.");
 		return false;
 	}
 	bool optional = false;
-	Expr *mask = args[arg_count - 1];
-	unsigned len = 0;
-	if (expr_is_const_initializer(mask))
-	{
-		ConstInitializer *init = mask->const_expr.initializer;
-		len = init->kind == CONST_INIT_ARRAY_FULL ? vec_size(init->init_array_full) : 0;
-	}
-	else if (mask->expr_kind == EXPR_INITIALIZER_LIST)
-	{
-		len = vec_size(mask->initializer_list);
-	}
-	if (len)
-	{
-		if (!sema_analyse_expr_rhs(context, type_get_vector(type_int, len), mask, true)) return false;
-	}
-	for (unsigned i = 0; i < arg_count; i++)
+	int first_mask_value = swizzle_two ? 2 : 1;
+	for (unsigned i = 0; i < first_mask_value; i++)
 	{
 		if (!sema_analyse_expr(context, args[i])) return false;
 		optional = optional || type_is_optional(args[i]->type);
 	}
-
-	if (!sema_check_builtin_args(args,
-	                             arg_count == 2 ? (BuiltinArg[]) { BA_VEC, BA_INTVEC } : (BuiltinArg[]) { BA_VEC, BA_VEC, BA_INTVEC },
-	                             arg_count)) return false;
-	if (arg_count == 3 && type_flatten(args[0]->type) != type_flatten(args[1]->type))
+	unsigned components = type_flatten(args[0]->type)->array.len;
+	if (swizzle_two) components *= 2;
+	for (unsigned i = first_mask_value; i < arg_count; i++)
 	{
-		SEMA_ERROR(args[1], "Both vector types must match.");
-		return false;
-	}
-	if (type_flatten(args[0]->type)->array.len != type_flatten(mask->type)->array.len)
-	{
-		SEMA_ERROR(args[2], "Mask vector length must match operands.");
-		return false;
-	}
-	Type *vec_type = type_flatten(mask->type);
-	ArraySize max_size = vec_type->array.len;
-	if (arg_count == 3) max_size *= 2;
-	if (vec_type->array.base != type_int && vec_type->array.base != type_uint)
-	{
-		SEMA_ERROR(mask, "Mask must be an int or uint vector.");
-		return false;
-	}
-	if (mask->expr_kind != EXPR_CONST)
-	{
-		SEMA_ERROR(mask, "The mask must be a compile time constant.");
-		return false;
-	}
-	ConstInitializer *init = mask->const_expr.initializer;
-	if (init->kind != CONST_INIT_ARRAY_FULL)
-	{
-		SEMA_ERROR(mask, "The mask must be a fully specified list.");
-		return false;
-	}
-
-	FOREACH_BEGIN(ConstInitializer *val, init->init_array_full)
-		assert(val->kind == CONST_INIT_VALUE);
-		uint64_t index = int_to_u64(val->init_value->const_expr.ixx);
-		if (index >= max_size)
+		Expr *mask_val = args[i];
+		if (!sema_analyse_expr_rhs(context, type_int, mask_val, false)) return false;
+		if (!expr_is_const_int(mask_val))
 		{
-			SEMA_ERROR(val->init_value, "Index is out of bounds, expected a value between 0 and %u.", max_size - 1);
+			SEMA_ERROR(mask_val, "The swizzle positions must be compile time constants.");
 			return false;
 		}
-	FOREACH_END();
-	expr->type = type_add_optional(args[0]->type, optional);
+		if (mask_val->const_expr.ixx.i.low >= components)
+		{
+			SEMA_ERROR(mask_val, "The swizzle position must be between 0 and %d.", components - 1);
+			return false;
+		}
+	}
+	expr->type = type_add_optional(type_get_vector(type_get_indexed_type(args[0]->type), arg_count - first_mask_value), optional);
 	return true;
 }
 
@@ -249,10 +214,11 @@ bool is_valid_atomicity(Expr* expr)
 bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 {
 	expr->call_expr.is_builtin = true;
+	expr->call_expr.arguments = sema_expand_vasplat_exprs(context, expr->call_expr.arguments);
 	BuiltinFunction func = exprptr(expr->call_expr.function)->builtin_expr.builtin;
-	if (func == BUILTIN_SHUFFLEVECTOR)
+	if (func == BUILTIN_SWIZZLE || func == BUILTIN_SWIZZLE2)
 	{
-		return sema_expr_analyse_shufflevector(context, expr);
+		return sema_expr_analyse_swizzle(context, expr, func == BUILTIN_SWIZZLE2);
 	}
 	unsigned expected_args = builtin_expected_args(func);
 	Expr **args = expr->call_expr.arguments;
@@ -293,7 +259,8 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 	Type *rtype = NULL;
 	switch (func)
 	{
-		case BUILTIN_SHUFFLEVECTOR:
+		case BUILTIN_SWIZZLE2:
+		case BUILTIN_SWIZZLE:
 			UNREACHABLE;
 		case BUILTIN_TRAP:
 		case BUILTIN_UNREACHABLE:
@@ -710,7 +677,8 @@ static inline unsigned builtin_expected_args(BuiltinFunction func)
 			return 5;
 		case BUILTIN_COMPARE_EXCHANGE:
 			return 8;
-		case BUILTIN_SHUFFLEVECTOR:
+		case BUILTIN_SWIZZLE2:
+		case BUILTIN_SWIZZLE:
 		case BUILTIN_NONE:
 			UNREACHABLE
 	}
