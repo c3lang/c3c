@@ -131,8 +131,8 @@ private macro perpendicular3(v)
 
 private macro cross3(v1, v2)
 {
-	var a = $$shufflevector(v1, v1, { 1, 2, 0 }) * $$shufflevector(v2, v2, { 2, 0, 1 });
-	var b = $$shufflevector(v1, v1, { 2, 0, 1 }) * $$shufflevector(v2, v2, { 1, 2, 0 });
+	var a = v1.yzx * v2.zxy;
+	var b = v1.zxy * v2.yzx;
 	return a - b;
 }
 

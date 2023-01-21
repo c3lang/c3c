@@ -144,6 +144,16 @@ macro prefetch(void* ptr, PrefetchLocality $locality = VERY_NEAR, bool $write = 
 	$$prefetch(ptr, $write ? 1 : 0, $locality.ordinal);
 }
 
+macro swizzle(v, ...) @builtin
+{
+	return $$swizzle(v, $vasplat());
+}
+
+macro swizzle2(v, v2, ...) @builtin
+{
+	return $$swizzle2(v, v2, $vasplat());
+}
+
 macro bool @castable(#expr, $To) @builtin
 {
 	return $checks(($To)#expr);

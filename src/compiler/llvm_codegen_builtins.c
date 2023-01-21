@@ -24,7 +24,7 @@ INLINE void llvm_emit_reverse(GenContext *c, BEValue *result_value, Expr *expr)
 	llvm_value_set(result_value, LLVMBuildShuffleVector(c->builder, arg1, arg2, mask, "reverse"), rtype);
 }
 
-INLINE void llvm_emit_shufflevector(GenContext *c, BEValue *result_value, Expr *expr)
+INLINE void llvm_emit_swizzle(GenContext *c, BEValue *result_value, Expr *expr, bool swizzle_two)
 {
 	Expr **args = expr->call_expr.arguments;
 	unsigned count = vec_size(args);
@@ -33,24 +33,36 @@ INLINE void llvm_emit_shufflevector(GenContext *c, BEValue *result_value, Expr *
 	LLVMValueRef mask;
 	llvm_emit_expr(c, result_value, args[0]);
 	llvm_value_rvalue(c, result_value);
-	Type *rtype = result_value->type;
 	arg1 = result_value->value;
-	llvm_emit_expr(c, result_value, args[count - 1]);
-	llvm_value_rvalue(c, result_value);
-	mask = result_value->value;
-	assert(LLVMIsConstant(mask));
-	if (count == 2)
+	unsigned mask_start = 1;
+	if (swizzle_two)
 	{
-		arg2 = LLVMGetPoison(LLVMTypeOf(arg1));
-	}
-	else
-	{
+		mask_start = 2;
 		llvm_emit_expr(c, result_value, args[1]);
 		llvm_value_rvalue(c, result_value);
 		arg2 = result_value->value;
 	}
-	LLVMValueRef val = LLVMBuildShuffleVector(c->builder, arg1, arg2, mask, "shuffle");
-	llvm_value_set(result_value, val, rtype);
+	else
+	{
+		arg2 = LLVMGetPoison(LLVMTypeOf(arg1));
+	}
+#define MASK_VALS 256
+	LLVMValueRef mask_cache[MASK_VALS];
+	LLVMValueRef *mask_val = mask_cache;
+	unsigned mask_len = count - mask_start;
+	if (mask_len > MASK_VALS)
+	{
+		mask_val = malloc(sizeof(LLVMValueRef) * (mask_len));
+	}
+	for (unsigned i = mask_start; i < count; i++)
+	{
+		llvm_emit_expr(c, result_value, args[i]);
+		llvm_value_rvalue(c, result_value);
+		mask_val[i - mask_start] = result_value->value;
+	}
+	LLVMValueRef mask_value = LLVMConstVector(mask_val, mask_len);
+	LLVMValueRef val = LLVMBuildShuffleVector(c->builder, arg1, arg2, mask_value, "shuffle");
+	llvm_value_set(result_value, val, expr->type);
 	return;
 }
 
@@ -572,8 +584,11 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 		case BUILTIN_UNREACHABLE:
 			llvm_emit_unreachable(c, result_value, expr);
 			return;
-		case BUILTIN_SHUFFLEVECTOR:
-			llvm_emit_shufflevector(c, result_value, expr);
+		case BUILTIN_SWIZZLE:
+			llvm_emit_swizzle(c, result_value, expr, false);
+			return;
+		case BUILTIN_SWIZZLE2:
+			llvm_emit_swizzle(c, result_value, expr, true);
 			return;
 		case BUILTIN_COMPARE_EXCHANGE:
 			llvm_emit_compare_exchange(c, result_value, expr);

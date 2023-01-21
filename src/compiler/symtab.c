@@ -242,7 +242,8 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_SAT_SUB] = KW_DEF("sat_sub");
 	builtin_list[BUILTIN_SET_ROUNDING_MODE] = KW_DEF("set_rounding_mode");
 	builtin_list[BUILTIN_SIN] = KW_DEF("sin");
-	builtin_list[BUILTIN_SHUFFLEVECTOR] = KW_DEF("shufflevector");
+	builtin_list[BUILTIN_SWIZZLE] = KW_DEF("swizzle");
+	builtin_list[BUILTIN_SWIZZLE2] = KW_DEF("swizzle2");
 	builtin_list[BUILTIN_SQRT] = KW_DEF("sqrt");
 	builtin_list[BUILTIN_STACKTRACE] = KW_DEF("stacktrace");
 	builtin_list[BUILTIN_SYSCALL] = KW_DEF("syscall");
