@@ -6108,6 +6108,26 @@ static void llmv_emit_test_hook(GenContext *c, BEValue *value, Expr *expr)
 	llvm_value_set_address_abi_aligned(value, get_global, expr->type);
 }
 
+static void llvm_emit_swizzle(GenContext *c, BEValue *value, Expr *expr)
+{
+	llvm_emit_exprid(c, value, expr->swizzle_expr.parent);
+	llvm_value_rvalue(c, value);
+	LLVMValueRef parent = value->value;
+	LLVMTypeRef result_type = llvm_get_type(c, expr->type);
+	unsigned vec_len = LLVMGetVectorSize(result_type);
+	LLVMValueRef mask_val[4];
+	assert(vec_len <= 4);
+	const char *sw_ptr = expr->swizzle_expr.swizzle;
+	char ch;
+	for (unsigned i = 0; i < vec_len; i++)
+	{
+		int index = (sw_ptr[i] + 3 - 'w') % 4;
+		mask_val[i] = llvm_const_int(c, type_uint, index);
+	}
+	LLVMValueRef res = LLVMBuildShuffleVector(c->builder, parent, LLVMGetUndef(LLVMTypeOf(parent)), LLVMConstVector(mask_val, vec_len), sw_ptr);
+	llvm_value_set(value, res, expr->type);
+}
+
 void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 {
 	EMIT_LOC(c, expr);
@@ -6120,6 +6140,9 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_VASPLAT:
 		case EXPR_CT_CHECKS:
 			UNREACHABLE
+		case EXPR_SWIZZLE:
+			llvm_emit_swizzle(c, value, expr);
+			return;
 		case EXPR_TEST_HOOK:
 			llmv_emit_test_hook(c, value, expr);
 			return;

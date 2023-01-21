@@ -1108,6 +1108,12 @@ typedef struct
 
 typedef struct
 {
+	ExprId parent;
+	const char *swizzle;
+} ExprSwizzle;
+
+typedef struct
+{
 	Decl *argc;
 	Decl *argv;
 } ExprArgv;
@@ -1146,6 +1152,7 @@ struct Expr_
 		ExprSubscript subscript_expr;               // 12
 		ExprSubscriptAssign subscript_assign_expr;
 		ExprAccess access_expr;                     // 16
+		ExprSwizzle swizzle_expr;
 		ExprDesignator designator_expr;             // 16
 		ExprIdentifier identifier_expr;             // 24
 		ExprIdentifierRaw ct_ident_expr;            // 24

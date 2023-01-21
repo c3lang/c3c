@@ -769,6 +769,7 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 		case EXPR_OPERATOR_CHARS:
 		case EXPR_CT_CHECKS:
 		case EXPR_SUBSCRIPT_ASSIGN:
+		case EXPR_SWIZZLE:
 			UNREACHABLE
 		case EXPR_BUILTIN_ACCESS:
 		case EXPR_TEST_HOOK:
@@ -935,6 +936,7 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 		case EXPR_VASPLAT:
 		case EXPR_OPERATOR_CHARS:
 		case EXPR_CT_CHECKS:
+		case EXPR_SWIZZLE:
 			UNREACHABLE
 		case EXPR_TEST_HOOK:
 			return false;
@@ -1085,6 +1087,7 @@ static inline bool cast_subarray(SemaContext *context, Expr *expr, Type *from, T
 			if (type_array_element_is_equivalent(from->array.base, to->array.base, is_explicit)) goto CAST;
 			return sema_error_cannot_convert(expr, to, !is_explicit && type_array_element_is_equivalent(from->array.base, to->array.base, true), silent);
 		case TYPE_POINTER:
+			if (to == type_voidptr) goto CAST;
 			if (type_array_element_is_equivalent(from->array.base, to->pointer, is_explicit)) goto CAST;
 			return sema_error_cannot_convert(expr, to, !is_explicit && type_array_element_is_equivalent(from->array.base, to->pointer, true), silent);
 		case TYPE_BOOL:

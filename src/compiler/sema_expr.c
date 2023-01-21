@@ -370,6 +370,8 @@ static bool sema_binary_is_expr_lvalue(Expr *top_expr, Expr *expr)
 {
 	switch (expr->expr_kind)
 	{
+		case EXPR_SWIZZLE:
+			return false;
 		case EXPR_SUBSCRIPT_ASSIGN:
 		case EXPR_CT_IDENT:
 			return true;
@@ -3366,6 +3368,40 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 	UNREACHABLE
 }
 
+static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, Expr *parent, Type *flat_type, const char *kw, unsigned len)
+{
+	unsigned vec_len = flat_type->array.len;
+	Type *indexed_type = type_get_indexed_type(parent->type);
+	assert(len > 0);
+	int index;
+	for (unsigned i = 0; i < len; i++)
+	{
+		index = (kw[0] + 3 - 'w') % 4;
+		if (index >= vec_len)
+		{
+			SEMA_ERROR(expr, "The '%c' component is not present in a vector of length %d.", kw[i], vec_len);
+			return false;
+		}
+	}
+	if (len == 1)
+	{
+		expr->expr_kind = EXPR_SUBSCRIPT_ADDR;
+		expr->subscript_expr = (ExprSubscript) {
+				.range.start = exprid(expr_new_const_int(expr->span, type_usize, index, true)),
+				.expr = exprid(parent)
+		};
+		expr->resolve_status = RESOLVE_DONE;
+		expr->type = type_get_ptr(indexed_type);
+		expr_rewrite_insert_deref(expr);
+		return true;
+	}
+	Type *result = type_get_vector(indexed_type, len);
+	expr->expr_kind = EXPR_SWIZZLE;
+	expr->swizzle_expr = (ExprSwizzle) { exprid(parent), kw };
+	expr->type = result;
+	return true;
+}
+
 /**
  * Analyse "x.y"
  */
@@ -3480,6 +3516,20 @@ CHECK_DEEPER:
 		if (sema_expr_rewrite_to_typeid_property(context, expr, parent, kw)) return true;
 	}
 
+	if (type_flat_is_vector(flat_type))
+	{
+		unsigned len = strlen(kw);
+		if (len <= 4)
+		{
+			for (unsigned i = 0; i < len; i++)
+			{
+				char c = kw[i];
+				if (c < 'w' || c > 'z') goto NOT_SWIZZLE;
+			}
+			return sema_expr_analyse_swizzle(context, expr, parent, flat_type, kw, len);
+			NOT_SWIZZLE:;
+		}
+	}
 	// Hard coded ptr on subarrays and variant
 	if (kw == kw_ptr)
 	{
@@ -6787,6 +6837,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 		case EXPR_ASM:
 		case EXPR_OPERATOR_CHARS:
 		case EXPR_TEST_HOOK:
+		case EXPR_SWIZZLE:
 			UNREACHABLE
 		case EXPR_VASPLAT:
 			SEMA_ERROR(expr, "'$vasplat' can only be used inside of macros.");

@@ -238,12 +238,11 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 	Type *inner_type = type_get_indexed_type(assigned);
 	assert(inner_type);
 
-	unsigned size = vec_size(elements);
+	unsigned count = vec_size(elements);
 	unsigned expected_members = flattened->array.len;
-	if (type_is_len_inferred(flattened)) expected_members = size;
+	assert(count > 0 && "We should already have handled the size == 0 case.");
 
-	assert(size > 0 && "We should already have handled the size == 0 case.");
-	if (expected_members == 0)
+	if (expected_members == 0 && !inferred_len)
 	{
 		// Generate a nice error message for zero.
 		SEMA_ERROR(elements[0], "Too many elements in initializer, it must be empty.");
@@ -251,17 +250,59 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 	}
 
 	bool optional = false;
-	unsigned count = vec_size(elements);
+	bool is_vector = type_flat_is_vector(assigned);
 	for (unsigned i = 0; i < count; i++)
 	{
 		Expr *element = elements[i];
-		if (i >= expected_members)
+		if (!inferred_len && i >= expected_members)
 		{
 			SEMA_ERROR(element, "Too many elements in initializer, expected only %d.", expected_members);
 			return false;
 		}
-		if (!sema_analyse_expr_rhs(context, inner_type, element, true)) return false;
-		Type *element_type = type_no_optional(element->type);
+		if (is_vector)
+		{
+			if (!sema_analyse_inferred_expr(context, inner_type, element)) return false;
+			Type *element_type = element->type;
+			Type *element_flat = type_flatten(element_type);
+			if (element_flat->type_kind == TYPE_VECTOR
+				&& type_flatten(type_get_indexed_type(element_type)) == type_flatten(inner_type))
+			{
+				unsigned len = element_flat->array.len;
+				if (!inferred_len && i + len > expected_members)
+				{
+					SEMA_ERROR(element, "Too many elements in initializer when expanding, expected only %d.", expected_members);
+					return false;
+				}
+				Expr *expr_list = expr_new_expr(EXPR_EXPRESSION_LIST, element);
+				Decl *decl = decl_new_generated_var(element_type, VARDECL_LOCAL, element->span);
+				Expr *decl_expr = expr_generate_decl(decl, element);
+				vec_add(expr_list->expression_list, decl_expr);
+				Expr *sub = expr_new_expr(EXPR_SUBSCRIPT, element);
+				sub->subscript_expr.expr = exprid(expr_variable(decl));
+				sub->subscript_expr.range.start = exprid(expr_new_const_int(element->span, type_usize, 0, true));
+				vec_add(expr_list->expression_list, sub);
+				if (!sema_analyse_expr_rhs(context, inner_type, expr_list, true)) return false;
+				elements[i] = expr_list;
+				for (unsigned j = 1; j < len; j++)
+				{
+					sub = expr_new_expr(EXPR_SUBSCRIPT, element);
+					sub->subscript_expr.expr = exprid(expr_variable(decl));
+					sub->subscript_expr.range.start = exprid(expr_new_const_int(element->span, type_usize, 1, true));
+					vec_insert_at(elements, i + j, sub);
+					if (!sema_analyse_expr_rhs(context, inner_type, sub, true)) return false;
+				}
+				initializer->initializer_list = elements;
+				count += len - 1;
+				i += len - 1;
+				optional = optional || IS_OPTIONAL(element);
+				continue;
+			}
+			if (!cast_implicit_maybe_optional(context, element, inner_type, true)) return false;
+		}
+		else
+		{
+			if (!sema_analyse_expr_rhs(context, inner_type, element, true)) return false;
+		}
 		optional = optional || IS_OPTIONAL(element);
 	}
 	if (inferred_len)
@@ -276,9 +317,9 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 	assert(initializer->type);
 	if (optional) initializer->type = type_get_optional(initializer->type);
 
-	if (expected_members > size)
+	if (!inferred_len && expected_members > count)
 	{
-		SEMA_ERROR(elements[size - 1], "Too few elements in initializer, %d elements are needed.", expected_members);
+		SEMA_ERROR(elements[count - 1], "Too few elements in initializer, %d elements are needed.", expected_members);
 		return false;
 	}
 

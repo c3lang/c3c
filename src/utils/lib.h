@@ -302,6 +302,14 @@ void* CONCAT(foreach_vec_, __LINE__) = (vec__); unsigned CONCAT(foreach_len_, __
  (vec_)[0] = value_;       \
  } while (0)
 
+#define vec_insert_at(vec_, _at, value_) do { \
+ void *__temp = expand_((vec_), sizeof(*(vec_))); \
+ (vec_) = __temp;                           \
+ unsigned __xsize = vec_size(vec_); \
+ for (unsigned __x = __xsize - 1; __x > _at; __x--) (vec_)[__x] = (vec_)[__x - 1]; \
+ (vec_)[_at] = value_;       \
+ } while (0)
+
 #if IS_GCC || IS_CLANG
 #define VECLAST(_vec) ({ unsigned _size = vec_size(_vec); _size ? (_vec)[_size - 1] : NULL; })
 #else

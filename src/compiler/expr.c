@@ -135,6 +135,7 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_VARIANT:
 		case EXPR_VARIANTSWITCH:
 		case EXPR_VASPLAT:
+		case EXPR_SWIZZLE:
 			return false;
 	}
 	UNREACHABLE
@@ -158,6 +159,8 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 	RETRY:
 	switch (expr->expr_kind)
 	{
+		case EXPR_SWIZZLE:
+			return false;
 		case EXPR_POINTER_OFFSET:
 			return exprid_is_constant_eval(expr->pointer_offset_expr.ptr, eval_kind) && exprid_is_constant_eval(expr->pointer_offset_expr.offset, eval_kind);
 		case EXPR_RETVAL:
@@ -639,6 +642,8 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_BUILTIN:
 		case EXPR_TEST_HOOK:
 			return false;
+		case EXPR_SWIZZLE:
+			return exprid_is_pure(expr->swizzle_expr.parent);
 		case EXPR_BUILTIN_ACCESS:
 			return exprid_is_pure(expr->builtin_access_expr.inner);
 		case EXPR_VARIANT:

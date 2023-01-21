@@ -293,6 +293,9 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			MACRO_COPY_DECL_LIST(expr->body_expansion_expr.declarations);
 			MACRO_COPY_ASTID(expr->body_expansion_expr.first_stmt);
 			return expr;
+		case EXPR_SWIZZLE:
+			MACRO_COPY_EXPRID(expr->swizzle_expr.parent);
+			return expr;
 		case EXPR_FLATPATH:
 		case EXPR_NOP:
 		case EXPR_BUILTIN:
