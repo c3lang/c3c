@@ -123,7 +123,7 @@ macro bool is_subarray_convertable($Type)
 	$endswitch;
 }
 
-macro bool is_int($Type) = $Type.kindof == TypeKind.SIGNED_INT || $Type.kindof == TypeKind.UNSIGNED_INT;
+macro bool is_int($Type) => $Type.kindof == TypeKind.SIGNED_INT || $Type.kindof == TypeKind.UNSIGNED_INT;
 
 macro bool is_intlike($Type)
 {
@@ -139,7 +139,7 @@ macro bool is_intlike($Type)
 }
 
 
-macro bool is_float($Type) = $Type.kindof == TypeKind.FLOAT;
+macro bool is_float($Type) => $Type.kindof == TypeKind.FLOAT;
 
 macro bool is_floatlike($Type)
 {
@@ -182,7 +182,7 @@ macro bool @has_same(#a, #b, ...)
 	return true;
 }
 
-macro bool is_promotable_to_floatlike($Type) = types::is_floatlike($Type) || types::is_int($Type);
+macro bool is_promotable_to_floatlike($Type) => types::is_floatlike($Type) || types::is_int($Type);
 
 
 macro bool is_same_vector_type($Type1, $Type2)

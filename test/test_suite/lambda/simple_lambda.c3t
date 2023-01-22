@@ -1,0 +1,29 @@
+// #target: macos-x64
+import std::io;
+import std::math::vector;
+import std::math;
+
+define Callback = fn int();
+
+fn int xy(Callback a) => a();
+
+fn void main()
+{
+	const Callback F = fn int() { io::printfn("Hello"); return 23; };
+	int z = xy(F);
+	io::printfn("%d", z);
+	int y = xy(fn () { return 3; });
+}
+
+/* #expect: simple_lambda.ll
+
+define void @simple_lambda_main() #0 {
+entry:
+  %F = alloca ptr, align 8
+  %z = alloca i32, align 4
+  store ptr @"simple_lambda_main$lambda1", ptr %F, align 8
+  %0 = call i32 @simple_lambda_xy(ptr @"simple_lambda_main$lambda1")
+  %5 = call i32 @simple_lambda_xy(ptr @"simple_lambda_main$lambda2")
+
+define internal i32 @"simple_lambda_main$lambda2"() #0 {
+define internal i32 @"simple_lambda_main$lambda1"() #0 {

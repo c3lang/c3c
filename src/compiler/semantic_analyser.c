@@ -111,8 +111,6 @@ static inline void halt_on_error(void)
 	if (global_context.errors_found > 0) exit_compiler(EXIT_FAILURE);
 }
 
-
-
 void sema_analyze_stage(Module *module, AnalysisStage stage)
 {
 	while (module->stage < stage)
@@ -295,15 +293,25 @@ void sema_analysis_run(void)
 	global_context.core_module = compiler_find_or_create_module(&core_path, NULL, false);
 
 	// We parse the generic modules, just by storing the decls.
-	VECEACH(global_context.generic_module_list, i)
-	{
-		analyze_generic_module(global_context.generic_module_list[i]);
-	}
+	FOREACH_BEGIN(Module *module, global_context.generic_module_list)
+		analyze_generic_module(module);
+	FOREACH_END();
 
 	for (AnalysisStage stage = ANALYSIS_NOT_BEGUN + 1; stage <= ANALYSIS_LAST; stage++)
 	{
 		sema_analyze_to_stage(stage);
 	}
+
+RESOLVE_LAMBDA:;
+	bool found_lambda = false;
+	FOREACH_BEGIN(Module *module, global_context.module_list)
+		if (vec_size(module->lambdas_to_evaluate))
+		{
+			sema_analysis_pass_lambda(module);
+			found_lambda = true;
+		}
+	FOREACH_END();
+	if (found_lambda) goto RESOLVE_LAMBDA;
 
 	if (active_target.panicfn || !active_target.no_stdlib)
 	{

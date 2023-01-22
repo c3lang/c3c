@@ -139,7 +139,7 @@ fn void VarString.append_char32(VarString* str, Char32 c)
     data.chars[data.len++] = (char)(0x80 | (c & 0x3F));
 }
 
-fn VarString VarString.tcopy(VarString* str) = str.copy(mem::temp_allocator());
+fn VarString VarString.tcopy(VarString* str) => str.copy(mem::temp_allocator());
 
 fn VarString VarString.copy(VarString* str, Allocator* allocator = null)
 {
@@ -174,7 +174,7 @@ fn String VarString.copy_str(VarString* str, Allocator* allocator = mem::current
 	return (String)str.copy_zstr(allocator)[:str.len()];
 }
 
-fn String VarString.tcopy_str(VarString* str) = str.copy_str(mem::temp_allocator()) @inline;
+fn String VarString.tcopy_str(VarString* str) => str.copy_str(mem::temp_allocator()) @inline;
 
 fn bool VarString.equals(VarString str, VarString other_string)
 {

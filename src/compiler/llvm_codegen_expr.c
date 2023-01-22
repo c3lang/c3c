@@ -6108,6 +6108,12 @@ static void llmv_emit_test_hook(GenContext *c, BEValue *value, Expr *expr)
 	llvm_value_set_address_abi_aligned(value, get_global, expr->type);
 }
 
+static void llvm_emit_lambda(GenContext *c, BEValue *value, Expr *expr)
+{
+	Decl *decl = expr->lambda_expr;
+	llvm_value_set(value, llvm_get_ref(c, decl), decl->type);
+}
+
 static void llvm_emit_swizzle(GenContext *c, BEValue *value, Expr *expr)
 {
 	llvm_emit_exprid(c, value, expr->swizzle_expr.parent);
@@ -6140,6 +6146,9 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_VASPLAT:
 		case EXPR_CT_CHECKS:
 			UNREACHABLE
+		case EXPR_LAMBDA:
+			llvm_emit_lambda(c, value, expr);
+			return;
 		case EXPR_SWIZZLE:
 			llvm_emit_swizzle(c, value, expr);
 			return;

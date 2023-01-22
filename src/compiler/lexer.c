@@ -1346,7 +1346,7 @@ static bool lexer_scan_token_inner(Lexer *lexer)
 		case '*':
 			return match(lexer, '=') ? return_token(lexer, TOKEN_MULT_ASSIGN, "*=") : return_token(lexer, TOKEN_STAR, "*");
 		case '=':
-			if (match(lexer, '>')) return_token(lexer, TOKEN_IMPLIES, "=>");
+			if (match(lexer, '>')) return return_token(lexer, TOKEN_IMPLIES, "=>");
 			return match(lexer, '=') ? return_token(lexer, TOKEN_EQEQ, "==") : return_token(lexer, TOKEN_EQ, "=");
 		case '^':
 			return match(lexer, '=') ? return_token(lexer, TOKEN_BIT_XOR_ASSIGN, "^=") : return_token(lexer,

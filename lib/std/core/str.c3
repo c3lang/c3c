@@ -123,17 +123,17 @@ private macro to_integer($Type, String string)
 	return value;
 }
 
-fn int128! to_int128(String string) = to_integer(int128, string);
-fn long! to_long(String string) = to_integer(long, string);
-fn int! to_int(String string) = to_integer(int, string);
-fn short! to_short(String string) = to_integer(short, string);
-fn ichar! to_ichar(String string) = to_integer(ichar, string);
+fn int128! to_int128(String string) => to_integer(int128, string);
+fn long! to_long(String string) => to_integer(long, string);
+fn int! to_int(String string) => to_integer(int, string);
+fn short! to_short(String string) => to_integer(short, string);
+fn ichar! to_ichar(String string) => to_integer(ichar, string);
 
-fn uint128! to_uint128(String str) = to_integer(uint128, str);
-fn ulong! to_ulong(String str) = to_integer(ulong, str);
-fn uint! to_uint(String str) = to_integer(uint, str);
-fn ushort! to_ushort(String str) = to_integer(ushort, str);
-fn char! to_uchar(String str) = to_integer(char, str);
+fn uint128! to_uint128(String str) => to_integer(uint128, str);
+fn ulong! to_ulong(String str) => to_integer(ulong, str);
+fn uint! to_uint(String str) => to_integer(uint, str);
+fn ushort! to_ushort(String str) => to_integer(ushort, str);
+fn char! to_uchar(String str) => to_integer(char, str);
 
 fn String trim(String string, String to_trim = "\t\n\r ")
 {
@@ -156,7 +156,7 @@ fn bool starts_with(String s, String needle)
 	return true;
 }
 
-fn String[] tsplit(String s, String needle) = split(s, needle, mem::temp_allocator()) @inline;
+fn String[] tsplit(String s, String needle) => split(s, needle, mem::temp_allocator()) @inline;
 
 fn String[] split(String s, String needle, Allocator* allocator = mem::current_allocator())
 {

@@ -36,19 +36,19 @@ module std::math::easing;
  */
 
 // Linear Easing functions
-fn float linear_none(float t, float b, float c, float d) @inline = c * t / d + b;
-fn float linear_in(float t, float b, float c, float d) @inline = c * t / d + b;
-fn float linear_out(float t, float b, float c, float d) @inline = c * t / d + b;
-fn float linear_inout(float t, float b, float c, float d) @inline = c * t / d + b;
+fn float linear_none(float t, float b, float c, float d) @inline => c * t / d + b;
+fn float linear_in(float t, float b, float c, float d) @inline => c * t / d + b;
+fn float linear_out(float t, float b, float c, float d) @inline => c * t / d + b;
+fn float linear_inout(float t, float b, float c, float d) @inline => c * t / d + b;
 
 // Sine Easing functions
-fn float sine_in(float t, float b, float c, float d) @inline = -c * math::cos(t / d * (float)math::PI_2) + c + b;
-fn float sine_out(float t, float b, float c, float d) @inline = c * math::sin(t / d * (float)math::PI_2) + b;
-fn float sine_inout(float t, float b, float c, float d) @inline = (-c / 2) * (math::cos((float)math::PI * t / d) - 1) + b;
+fn float sine_in(float t, float b, float c, float d) @inline => -c * math::cos(t / d * (float)math::PI_2) + c + b;
+fn float sine_out(float t, float b, float c, float d) @inline => c * math::sin(t / d * (float)math::PI_2) + b;
+fn float sine_inout(float t, float b, float c, float d) @inline => (-c / 2) * (math::cos((float)math::PI * t / d) - 1) + b;
 
 // Circular Easing functions
-fn float circ_in(float t, float b, float c, float d) @inline = -c * (math::sqrt(1 - sq(t / d)) - 1) + b;
-fn float circ_out(float t, float b, float c, float d) @inline = c * math::sqrt(1 - sq(t / d - 1)) + b;
+fn float circ_in(float t, float b, float c, float d) @inline => -c * (math::sqrt(1 - sq(t / d)) - 1) + b;
+fn float circ_out(float t, float b, float c, float d) @inline => c * math::sqrt(1 - sq(t / d - 1)) + b;
 fn float circ_inout(float t, float b, float c, float d) @inline
 {
 	t /= d / 2;
@@ -58,8 +58,8 @@ fn float circ_inout(float t, float b, float c, float d) @inline
 }
 
 // Cubic Easing functions
-fn float cubic_in(float t, float b, float c, float d) @inline = c * cube(t / d) + b;
-fn float cubic_out(float t, float b, float c, float d) @inline =  c * (cube(t / d - 1) + 1) + b;
+fn float cubic_in(float t, float b, float c, float d) @inline => c * cube(t / d) + b;
+fn float cubic_out(float t, float b, float c, float d) @inline =>  c * (cube(t / d - 1) + 1) + b;
 fn float cubic_inout(float t, float b, float c, float d) @inline
 {
 	t /= d / 2;
@@ -69,7 +69,7 @@ fn float cubic_inout(float t, float b, float c, float d) @inline
 }
 
 // Quadratic Easing functions
-fn float quad_in(float t, float b, float c, float d) @inline = c * sq(t / d) + b;
+fn float quad_in(float t, float b, float c, float d) @inline => c * sq(t / d) + b;
 fn float quad_out(float t, float b, float c, float d) @inline
 {
 	t /= d;
@@ -85,7 +85,7 @@ fn float quad_inout(float t, float b, float c, float d) @inline
 }
 
 // Exponential Easing functions
-fn float expo_in(float t, float b, float c, float d) @inline = t ? b : c * math::pow(2.0f, 10 * (t / d - 1)) + b;
+fn float expo_in(float t, float b, float c, float d) @inline => t ? b : c * math::pow(2.0f, 10 * (t / d - 1)) + b;
 fn float expo_out(float t, float b, float c, float d) @inline
 {
 	return (t == d) ? b + c : c * (-math::pow(2.0f, -10 * t / d) + 1) + b;
@@ -145,7 +145,7 @@ fn float bounce_out(float t, float b, float c, float d) @inline
 	}
 }
 
-fn float bounce_in(float t, float b, float c, float d) @inline = c - bounce_out(d - t, 0, c, d) + b;
+fn float bounce_in(float t, float b, float c, float d) @inline => c - bounce_out(d - t, 0, c, d) + b;
 fn float bounce_inout(float t, float b, float c, float d) @inline
 {
 	return t < d / 2
@@ -196,6 +196,6 @@ fn float elastic_inout(float t, float b, float c, float d) @inline
         :  a * math::pow(2.0f, -10 * t) * math::sin((t * d - s) * (2 * (float)math::PI) / p) * 0.5f + c + b;
 }
 
-private macro sq(x) = x * x;
-private macro cube(x) = x * x * x;
+private macro sq(x) => x * x;
+private macro cube(x) => x * x * x;
 

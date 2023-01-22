@@ -1,0 +1,87 @@
+// #target: macos-x64
+module abc;
+import bar;
+import std::io;
+
+fn int xy(Callback a) => a();
+
+fn void main()
+{
+	const Callback F = bar::get_callback();
+	int z = xy(F);
+	z = xy(F);
+	io::printfn("val: %d", z);
+}
+
+module foo;
+import bar;
+import std::io;
+
+private int xz = 0;
+
+
+macro Callback get_callback()
+{
+	return fn int() { return bar::get_callback2()(); };
+}
+
+macro Callback get_callback2()
+{
+	return fn int() { io::printfn("Hello"); return ++xz; };
+}
+
+module bar;
+import foo;
+define Callback = fn int();
+
+macro Callback get_callback()
+{
+	return fn int() { return foo::get_callback()(); };
+}
+
+macro Callback get_callback2()
+{
+	return fn int() { return foo::get_callback2()(); };
+}
+
+/* #expect: abc.ll
+
+  store i32 ()* @"bar_get_callback$lambda1", i32 ()** %F, align 8
+  %0 = call i32 @abc_xy(i32 ()* @"bar_get_callback$lambda1")
+  %1 = call i32 @abc_xy(i32 ()* @"bar_get_callback$lambda1")
+
+declare i32 @"bar_get_callback$lambda1"()
+
+// #expect: foo.ll
+
+define i32 @"foo_get_callback$lambda1"() #0 {
+entry:
+  %0 = call i32 @"bar_get_callback2$lambda2"()
+  ret i32 %0
+}
+define i32 @"foo_get_callback2$lambda2"() #0 {
+
+  %4 = load i32, i32* @foo_xz, align 4
+  %add = add i32 %4, 1
+  store i32 %add, i32* @foo_xz, align 4
+  ret i32 %add
+}
+declare i32 @"bar_get_callback2$lambda2"()
+
+// #expect: bar.ll
+
+define i32 @"bar_get_callback$lambda1"() #0 {
+entry:
+  %0 = call i32 @"foo_get_callback$lambda1"()
+  ret i32 %0
+}
+
+define i32 @"bar_get_callback2$lambda2"() #0 {
+entry:
+  %0 = call i32 @"foo_get_callback2$lambda2"()
+  ret i32 %0
+}
+
+declare i32 @"foo_get_callback$lambda1"()
+declare i32 @"foo_get_callback2$lambda2"()
+

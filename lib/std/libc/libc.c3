@@ -64,7 +64,7 @@ extern fn void longjmp(JmpBuf* buffer, CInt value);
 $if (env::OS_TYPE == OsType.WIN32):
 // TODO win32 aarch64
 extern fn CInt _setjmp(void* frameptr, JmpBuf* buffer);
-macro CInt setjmp(JmpBuf* buffer) = _setjmp($$frameaddress(), buffer);
+macro CInt setjmp(JmpBuf* buffer) => _setjmp($$frameaddress(), buffer);
 $else:
 extern fn CInt setjmp(JmpBuf* buffer);
 $endif;

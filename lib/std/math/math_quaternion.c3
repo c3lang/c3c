@@ -9,16 +9,16 @@ union Quaternion
 	Real[<4>] v;
 }
 
-macro Quaternion identity() = { 0, 0, 0, 1 };
-macro Quaternion Quaternion.add(Quaternion a, Quaternion b) = Quaternion { .v = a.v + b.v };
-macro Quaternion Quaternion.add_each(Quaternion a, Real b) = Quaternion { .v = a.v + b };
-macro Quaternion Quaternion.sub(Quaternion a, Quaternion b) = Quaternion { .v = a.v - b.v };
-macro Quaternion Quaternion.sub_each(Quaternion a, Real b) = Quaternion { .v = a.v - b };
-macro Quaternion Quaternion.scale(Quaternion a, Real s) = Quaternion { .v = a.v * s };
-macro Quaternion Quaternion.normalize(Quaternion q) = { .v = q.v.normalize() };
-macro Real Quaternion.length(Quaternion q) = q.v.length();
-macro Quaternion Quaternion.lerp(Quaternion q1, Quaternion q2, Real amount) = { .v = q1.v.lerp(q2.v, amount) };
-fn Quaternion Quaternion.nlerp(Quaternion q1, Quaternion q2, Real amount) = { .v = q1.v.lerp(q2.v, amount).normalize() };
+macro Quaternion identity() => { 0, 0, 0, 1 };
+macro Quaternion Quaternion.add(Quaternion a, Quaternion b) => Quaternion { .v = a.v + b.v };
+macro Quaternion Quaternion.add_each(Quaternion a, Real b) => Quaternion { .v = a.v + b };
+macro Quaternion Quaternion.sub(Quaternion a, Quaternion b) => Quaternion { .v = a.v - b.v };
+macro Quaternion Quaternion.sub_each(Quaternion a, Real b) => Quaternion { .v = a.v - b };
+macro Quaternion Quaternion.scale(Quaternion a, Real s) => Quaternion { .v = a.v * s };
+macro Quaternion Quaternion.normalize(Quaternion q) => { .v = q.v.normalize() };
+macro Real Quaternion.length(Quaternion q) => q.v.length();
+macro Quaternion Quaternion.lerp(Quaternion q1, Quaternion q2, Real amount) => { .v = q1.v.lerp(q2.v, amount) };
+fn Quaternion Quaternion.nlerp(Quaternion q1, Quaternion q2, Real amount) => { .v = q1.v.lerp(q2.v, amount).normalize() };
 
 fn Quaternion Quaternion.invert(Quaternion q)
 {

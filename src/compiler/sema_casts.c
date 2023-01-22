@@ -770,6 +770,7 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 		case EXPR_CT_CHECKS:
 		case EXPR_SUBSCRIPT_ASSIGN:
 		case EXPR_SWIZZLE:
+		case EXPR_LAMBDA:
 			UNREACHABLE
 		case EXPR_BUILTIN_ACCESS:
 		case EXPR_TEST_HOOK:
@@ -937,6 +938,7 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 		case EXPR_OPERATOR_CHARS:
 		case EXPR_CT_CHECKS:
 		case EXPR_SWIZZLE:
+		case EXPR_LAMBDA:
 			UNREACHABLE
 		case EXPR_TEST_HOOK:
 			return false;

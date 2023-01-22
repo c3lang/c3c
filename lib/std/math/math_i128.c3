@@ -70,14 +70,14 @@ fn int128 __modti3(int128 a, int128 b) @extname("__modti3") @weak
 	return __umodti3(unsigned_a, unsigned_b) ^ sign + (-sign);
 }
 
-fn float __floattisf(int128 a) @extname("__floattisf") @weak = float_from_i128(float, a);
-fn double __floattidf(int128 a) @extname("__floattidf") @weak = float_from_i128(double, a);
-fn float __floatuntisf(uint128 a) @extname("__floatuntisf") @weak = float_from_u128(float, a);
-fn double __floatuntidf(uint128 a) @extname("__floatuntidf") @weak = float_from_u128(double, a);
-fn uint128 __fixunsdfti(double a) @weak @extname("__fixunsdfti") = fixuint(a);
-fn uint128 __fixunssfti(float a) @weak @extname("__fixunssfti") = fixuint(a);
-fn int128 __fixdfti(double a) @weak @extname("__fixdfti") = fixint(a);
-fn int128 __fixsfti(float a) @weak @extname("__fixsfti") = fixint(a);
+fn float __floattisf(int128 a) @extname("__floattisf") @weak => float_from_i128(float, a);
+fn double __floattidf(int128 a) @extname("__floattidf") @weak => float_from_i128(double, a);
+fn float __floatuntisf(uint128 a) @extname("__floatuntisf") @weak => float_from_u128(float, a);
+fn double __floatuntidf(uint128 a) @extname("__floatuntidf") @weak => float_from_u128(double, a);
+fn uint128 __fixunsdfti(double a) @weak @extname("__fixunsdfti") => fixuint(a);
+fn uint128 __fixunssfti(float a) @weak @extname("__fixunssfti") => fixuint(a);
+fn int128 __fixdfti(double a) @weak @extname("__fixdfti") => fixint(a);
+fn int128 __fixsfti(float a) @weak @extname("__fixsfti") => fixint(a);
 
 
 private macro float_from_i128($Type, a)

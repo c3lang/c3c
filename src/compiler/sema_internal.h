@@ -77,6 +77,8 @@ void sema_analysis_pass_decls(Module *module);
 void sema_analysis_pass_ct_assert(Module *module);
 void sema_analysis_pass_ct_echo(Module *module);
 void sema_analysis_pass_functions(Module *module);
+
+void sema_analysis_pass_lambda(Module *module);
 void sema_analyze_stage(Module *module, AnalysisStage stage);
 
 bool sema_analyse_expr_lvalue(SemaContext *context, Expr *expr);
@@ -93,6 +95,7 @@ bool sema_analyse_asm(SemaContext *context, AsmInlineBlock *block, Ast *asm_stmt
 bool sema_bit_assignment_check(Expr *right, Decl *member);
 int sema_check_comp_time_bool(SemaContext *context, Expr *expr);
 bool sema_expr_check_assign(SemaContext *c, Expr *expr);
+Type *sema_analyse_function_signature(SemaContext *context, Decl *parent, CallABI abi, Signature *signature, bool is_real_function);
 
 bool cast_widen_top_down(SemaContext *context, Expr *expr, Type *type);
 bool cast_promote_vararg(Expr *arg);
