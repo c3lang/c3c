@@ -371,6 +371,7 @@ static bool sema_binary_is_expr_lvalue(Expr *top_expr, Expr *expr)
 	switch (expr->expr_kind)
 	{
 		case EXPR_SWIZZLE:
+		case EXPR_LAMBDA:
 			return false;
 		case EXPR_SUBSCRIPT_ASSIGN:
 		case EXPR_CT_IDENT:
@@ -6476,6 +6477,151 @@ static inline bool sema_expr_analyse_ct_checks(SemaContext *context, Expr *expr)
 	return true;
 }
 
+
+static inline bool sema_may_reuse_lambda(SemaContext *context, Decl *lambda, Type **types)
+{
+	Signature *sig = &lambda->func_decl.signature;
+	if (typeinfotype(sig->rtype)->canonical != types[0]) return false;
+	FOREACH_BEGIN_IDX(i, Decl *param, sig->params)
+		TypeInfo *info = param->var.type_info;
+		if (info->type->canonical != types[i + 1]) return false;
+	FOREACH_END();
+	return true;
+}
+
+static inline Type *sema_evaluate_type_copy(SemaContext *context, TypeInfo *type_info)
+{
+	if (type_info->resolve_status == RESOLVE_DONE) return type_info->type;
+	type_info = copy_type_info_single(type_info);
+	if (!sema_resolve_type_info(context, type_info)) return NULL;
+	return type_info->type;
+}
+
+static inline Decl *sema_find_cached_lambda(SemaContext *context, Type *func_type, Decl *original)
+{
+	unsigned cached = vec_size(original->func_decl.generated_lambda);
+	if (!cached) return NULL;
+	// If it has a function type, then we just use that for comparison.
+	if (func_type)
+	{
+		Type *raw = func_type->canonical->pointer->function.prototype->raw_type;
+		FOREACH_BEGIN(Decl *candidate, original->func_decl.generated_lambda)
+			if (raw == candidate->type->function.prototype->raw_type) return candidate;
+		FOREACH_END();
+		return NULL;
+	}
+	Signature *sig = &original->func_decl.signature;
+	if (!sig->rtype) return false;
+	Type *rtype = sema_evaluate_type_copy(context, type_infoptr(sig->rtype));
+	if (!rtype) return false;
+	Type *types[200];
+	types[0] = rtype;
+	FOREACH_BEGIN_IDX(i, Decl *param, sig->params)
+		TypeInfo *info = param->var.type_info;
+		if (!info) return false;
+		Type *type = sema_evaluate_type_copy(context, param->var.type_info);
+		if (!type) return false;
+		assert(i < 198);
+		types[i + 1] = type;
+	FOREACH_END();
+
+	FOREACH_BEGIN(Decl *candidate, original->func_decl.generated_lambda)
+		if (sema_may_reuse_lambda(context, candidate, types)) return candidate;
+	FOREACH_END();
+	return NULL;
+}
+
+static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *func_type, Expr *expr)
+{
+	Decl *decl = expr->lambda_expr;
+	bool in_macro = context->current_macro;
+	if (in_macro && decl->resolve_status != RESOLVE_DONE)
+	{
+		Decl *decl_cached = sema_find_cached_lambda(context, func_type, decl);
+		if (decl_cached)
+		{
+			expr->type = type_get_ptr(decl_cached->type);
+			expr->lambda_expr = decl_cached;
+			return true;
+		}
+	}
+	Decl *original = decl;
+	if (in_macro) decl = expr->lambda_expr = copy_lambda_deep(decl);
+	Signature *sig = &decl->func_decl.signature;
+	Signature *to_sig = func_type ? func_type->canonical->pointer->function.signature : NULL;
+	if (!sig->rtype)
+	{
+		if (!to_sig) goto FAIL_NO_INFER;
+		sig->rtype = type_infoid(type_info_new_base(typeinfotype(to_sig->rtype), expr->span));
+	}
+	if (to_sig && vec_size(to_sig->params) != vec_size(sig->params))
+	{
+		SEMA_ERROR(expr, "The lambda doesn't match the required type %s.", type_quoted_error_string(func_type));
+		return false;
+	}
+	FOREACH_BEGIN_IDX(i, Decl *param, sig->params)
+		if (param->var.type_info) continue;
+		if (!to_sig) goto FAIL_NO_INFER;
+		param->var.type_info = type_info_new_base(to_sig->params[i]->type, param->span);
+	FOREACH_END();
+	CompilationUnit *unit = decl->unit = context->unit;
+	assert(!decl->name);
+	scratch_buffer_clear();
+	switch (context->call_env.kind)
+	{
+		case CALL_ENV_CHECKS:
+			scratch_buffer_append(unit->module->name->module);
+			scratch_buffer_append("_checks");
+			break;
+		case CALL_ENV_GLOBAL_INIT:
+			scratch_buffer_append(unit->module->name->module);
+			scratch_buffer_append("_global");
+			break;
+		case CALL_ENV_FUNCTION:
+			if (context->current_macro)
+			{
+				scratch_buffer_append(unit->module->name->module);
+				scratch_buffer_append("_");
+				scratch_buffer_append(context->current_macro->name);
+			}
+			else
+			{
+				scratch_buffer_append(decl_get_extname(context->call_env.current_function));
+			}
+			break;
+		case CALL_ENV_INITIALIZER:
+			scratch_buffer_append(unit->module->name->module);
+			scratch_buffer_append("_initializer");
+			break;
+		case CALL_ENV_FINALIZER:
+			scratch_buffer_append(unit->module->name->module);
+			scratch_buffer_append("_finalizer");
+			break;
+		case CALL_ENV_ATTR:
+			scratch_buffer_append(unit->module->name->module);
+			scratch_buffer_append("_attr");
+			break;
+	}
+	scratch_buffer_append("$lambda");
+	scratch_buffer_append_unsigned_int(++unit->lambda_count);
+	decl->extname = decl->name = scratch_buffer_copy();
+	Type *lambda_type = sema_analyse_function_signature(context, decl, sig->abi, sig, true);
+	if (!lambda_type) return false;
+	if (lambda_type)
+	decl->type = lambda_type;
+	decl->alignment = type_alloca_alignment(decl->type);
+	// We will actually compile this into any module using it (from a macro) by necessity,
+	// so we'll declare it as weak and externally visible.
+	if (context->compilation_unit != decl->unit) decl->is_external_visible = true;
+	vec_add(unit->module->lambdas_to_evaluate, decl);
+	expr->type = type_get_ptr(lambda_type);
+	if (in_macro) vec_add(original->func_decl.generated_lambda, decl);
+	return true;
+FAIL_NO_INFER:
+	SEMA_ERROR(decl, "Inferred lambda expressions cannot be used unless the type can be determined.");
+	return false;
+}
+
 static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr)
 {
 	if (expr->resolve_status == RESOLVE_DONE) return expr_ok(expr);
@@ -6842,6 +6988,8 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 		case EXPR_VASPLAT:
 			SEMA_ERROR(expr, "'$vasplat' can only be used inside of macros.");
 			return false;
+		case EXPR_LAMBDA:
+			return sema_expr_analyse_lambda(context, NULL, expr);
 		case EXPR_CT_CHECKS:
 			return sema_expr_analyse_ct_checks(context, expr);
 		case EXPR_CT_ARG:
@@ -7232,6 +7380,9 @@ bool sema_analyse_inferred_expr(SemaContext *context, Type *infer_type, Expr *ex
 			break;
 		case EXPR_IDENTIFIER:
 			if (!sema_expr_analyse_identifier(context, infer_type, expr)) return expr_poison(expr);
+			break;
+		case EXPR_LAMBDA:
+			if (!sema_expr_analyse_lambda(context, infer_type, expr)) return expr_poison(expr);
 			break;
 		default:
 			expr_insert_widening_type(expr, infer_type);

@@ -1383,7 +1383,7 @@ Ast* parse_compound_stmt(ParseContext *c)
 	return ast;
 }
 
-Ast* parse_short_stmt(ParseContext *c, TypeInfoId return_type)
+Ast *parse_short_body(ParseContext *c, TypeInfoId return_type, bool require_eos)
 {
 	advance(c);
 	Ast *ast = ast_new_curr(c, AST_COMPOUND_STMT);
@@ -1395,13 +1395,17 @@ Ast* parse_short_stmt(ParseContext *c, TypeInfoId return_type)
 		Ast *ret = ast_new_curr(c, AST_RETURN_STMT);
 		ast_append(&next, ret);
 		ASSIGN_EXPR_OR_RET(ret->return_stmt.expr, parse_expr(c), poisoned_ast);
-		RETURN_AFTER_EOS(ast);
 	}
 	else
 	{
-		ASSIGN_AST_OR_RET(Ast *stmt, parse_expr_stmt(c), poisoned_ast);
+		Ast *stmt = new_ast(AST_EXPR_STMT, c->span);
+		ASSIGN_EXPR_OR_RET(stmt->expr_stmt, parse_expr(c), poisoned_ast);
 		ast_append(&next, stmt);
-		return ast;
 	}
-	UNREACHABLE
+	RANGE_EXTEND_PREV(ast);
+	if (require_eos)
+	{
+		CONSUME_EOS_OR_RET(poisoned_ast);
+	}
+	return ast;
 }

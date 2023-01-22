@@ -165,6 +165,14 @@ Ast *copy_ast_single(Ast *source_ast)
 	return ast;
 }
 
+TypeInfo *copy_type_info_single(TypeInfo *type_info)
+{
+	copy_begin();
+	TypeInfo *type_info_copy = copy_type_info(&copy_struct, type_info);
+	copy_end();
+	return type_info_copy;
+}
+
 Ast *copy_ast_macro(Ast *source_ast)
 {
 	assert(copy_struct.copy_in_use);
@@ -292,6 +300,12 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			MACRO_COPY_EXPR_LIST(expr->body_expansion_expr.values);
 			MACRO_COPY_DECL_LIST(expr->body_expansion_expr.declarations);
 			MACRO_COPY_ASTID(expr->body_expansion_expr.first_stmt);
+			return expr;
+		case EXPR_LAMBDA:
+			if (copy_struct.is_template)
+			{
+				MACRO_COPY_DECL(expr->decl_expr);
+			}
 			return expr;
 		case EXPR_SWIZZLE:
 			MACRO_COPY_EXPRID(expr->swizzle_expr.parent);
@@ -684,6 +698,28 @@ Decl **copy_decl_list_single(Decl **decl_list)
 	copy_begin();
 	Decl **result = copy_decl_list_macro(decl_list);
 	copy_end();
+	return result;
+}
+
+Decl **copy_decl_list_single_for_unit(Decl **decl_list)
+{
+	bool old_is_template = copy_struct.is_template;
+	copy_struct.is_template = true;
+	copy_begin();
+	Decl **result = copy_decl_list_macro(decl_list);
+	copy_end();
+	copy_struct.is_template = old_is_template;
+	return result;
+}
+
+Decl *copy_lambda_deep(Decl *decl)
+{
+	bool old_is_template = copy_struct.is_template;
+	copy_struct.is_template = true;
+	copy_begin();
+	Decl *result = copy_decl(&copy_struct, decl);
+	copy_end();
+	copy_struct.is_template = old_is_template;
 	return result;
 }
 

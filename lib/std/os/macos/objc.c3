@@ -12,15 +12,15 @@ fault ObjcFailure
 	CLASS_NOT_FOUND
 }
 
-macro char* Class.name(Class cls) = _macos_class_getName(cls);
-macro Class Class.superclass(Class cls) = _macos_class_getSuperclass(cls);
-macro bool Class.responds_to(Class cls, Selector sel) = _macos_class_respondsToSelector(cls, sel);
-macro Method Class.method(Class cls, Selector name) = _macos_class_getClassMethod(cls, name);
+macro char* Class.name(Class cls) => _macos_class_getName(cls);
+macro Class Class.superclass(Class cls) => _macos_class_getSuperclass(cls);
+macro bool Class.responds_to(Class cls, Selector sel) => _macos_class_respondsToSelector(cls, sel);
+macro Method Class.method(Class cls, Selector name) => _macos_class_getClassMethod(cls, name);
 
-macro bool Selector.equals(Selector a, Selector b) = a == b;
-macro bool Class.equals(Class a, Class b) = a == b;
+macro bool Selector.equals(Selector a, Selector b) => a == b;
+macro bool Class.equals(Class a, Class b) => a == b;
 
-macro Selector selector_register(char* c) = _macos_sel_registerName(c);
+macro Selector selector_register(char* c) => _macos_sel_registerName(c);
 macro Class! class_by_name(char* c)
 {
 	Class cls = _macos_objc_lookUpClass(c);

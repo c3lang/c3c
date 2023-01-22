@@ -559,6 +559,7 @@ typedef struct
 			bool attr_extname : 1;
 			bool attr_naked : 1;
 			bool attr_test : 1;
+			Decl** generated_lambda;
 		};
 		struct
 		{
@@ -1139,6 +1140,7 @@ struct Expr_
 		ExprArgv argv_expr;                         // 16
 		ExprGuard rethrow_expr;                     // 16
 		Decl *decl_expr;                            // 8
+		Decl *lambda_expr;
 		ExprSliceAssign slice_assign_expr;          // 8
 		ExprBinary binary_expr;                     // 12
 		ExprTernary ternary_expr;                   // 16
@@ -1489,6 +1491,7 @@ typedef struct Module_
 	Module *top_module;
 	Module **sub_modules;
 	Decl **tests;
+	Decl **lambdas_to_evaluate;
 } Module;
 
 
@@ -1568,6 +1571,7 @@ struct CompilationUnit_
 	Decl** imports;
 	Decl **types;
 	Decl **functions;
+	Decl **lambdas;
 	Decl **enums;
 	Decl **attributes;
 	Decl **faulttypes;
@@ -1589,6 +1593,7 @@ struct CompilationUnit_
 	Decl **global_decls;
 	Decl *main_function;
 	HTable local_symbols;
+	int lambda_count;
 	struct
 	{
 		void *debug_file;
@@ -1826,6 +1831,7 @@ typedef struct CopyStruct_
 	CopyFixup *current_fixup;
 	bool single_static;
 	bool copy_in_use;
+	bool is_template;
 } CopyStruct;
 
 
@@ -2045,10 +2051,13 @@ void copy_begin(void);
 void copy_end(void);
 Expr *copy_expr_single(Expr *source_expr);
 Decl **copy_decl_list_single(Decl **decl_list);
+Decl **copy_decl_list_single_for_unit(Decl **decl_list);
+Decl *copy_lambda_deep(Decl *decl);
 Ast *copy_ast_single(Ast *source_ast);
 Decl **copy_decl_list_macro(Decl **decl_list);
 Ast *copy_ast_macro(Ast *source_ast);
 Ast *copy_ast_defer(Ast *source_ast);
+TypeInfo *copy_type_info_single(TypeInfo *type_info);
 
 void init_asm(void);
 AsmRegister *asm_reg_by_name(const char *name);
@@ -3276,3 +3285,4 @@ INLINE bool expr_is_const_member(Expr *expr)
 {
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_MEMBER;
 }
+

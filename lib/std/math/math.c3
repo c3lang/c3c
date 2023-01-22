@@ -109,7 +109,7 @@ define matrix4f_perspective = matrix::perspective<float>;
 /**
  * @require types::is_numerical($typeof(x)) `The input must be a numerical value or numerical vector`
  **/
-macro abs(x) = $$abs(x);
+macro abs(x) => $$abs(x);
 
 /**
  * @require values::@is_int(x) `The input must be an integer`
@@ -149,64 +149,64 @@ $endif;
 /**
  * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
  **/
-macro ceil(x) = $$ceil(x);
+macro ceil(x) => $$ceil(x);
 
 /**
  * @require types::is_numerical($typeof(x)) `The input must be a numerical value or numerical vector`
  * @require types::@has_same(x, lower, upper) `The input types must be equal`
  **/
-macro clamp(x, lower, upper) = $$max(lower, $$min(x, upper));
+macro clamp(x, lower, upper) => $$max(lower, $$min(x, upper));
 
 /**
  * @require values::@is_promotable_to_floatlike(mag) `The input must be a number value or float vector`
  * @require values::@is_same_vector_type(mag, sgn) `The input types must match`
  **/
-macro copysign(mag, sgn) = $$copysign(mag, sgn);
+macro copysign(mag, sgn) => $$copysign(mag, sgn);
 
 /**
  * @require values::@is_promotable_to_floatlike(x) `The input must be a number value or float vector`
  **/
-macro cos(x) = $$cos(x);
+macro cos(x) => $$cos(x);
 
 /**
  * @require values::@is_promotable_to_floatlike(x) `The input must be a number value or float vector`
  **/
-macro cosec(x) = 1 / sin(x);
+macro cosec(x) => 1 / sin(x);
 
 /**
  * @require values::@is_promotable_to_floatlike(x) `The input must be a number value or float vector`
  **/
-macro cosech(x) = 2 / (exp(x) - exp(-x));
+macro cosech(x) => 2 / (exp(x) - exp(-x));
 
 /**
  * @require values::@is_promotable_to_floatlike(x) `The input must be a number value or float vector`
  **/
-macro cosh(x) = (exp(x) + exp(-x)) / 2.0;
+macro cosh(x) => (exp(x) + exp(-x)) / 2.0;
 
 /**
  * @require values::@is_promotable_to_floatlike(x) `The input must be a number value or float vector`
  **/
-macro cotan(x) = cos(x) / sin(x);
+macro cotan(x) => cos(x) / sin(x);
 
 /**
  * @require values::@is_promotable_to_floatlike(x) `The input must be a number value or float vector`
  **/
-macro cotanh(x) = (exp(2.0 * x) + 1.0) / (exp(2.0 * x) - 1.0);
+macro cotanh(x) => (exp(2.0 * x) + 1.0) / (exp(2.0 * x) - 1.0);
 
 /**
  * @require values::@is_promotable_to_floatlike(x) `The input must be a number value or float vector`
  **/
-macro exp(x) = $$exp(values::promote_int(x));
+macro exp(x) => $$exp(values::promote_int(x));
 
 /**
  * @require values::@is_promotable_to_floatlike(x) `The input must be a number value or float vector`
  **/
-macro exp2(x) = $$exp2(values::promote_int(x));
+macro exp2(x) => $$exp2(values::promote_int(x));
 
 /**
  * @require values::@is_promotable_to_floatlike(x) `The input must be a number value or float vector`
  **/
-macro floor(x) = $$floor(values::promote_int(x));
+macro floor(x) => $$floor(values::promote_int(x));
 
 /**
  * @require values::@is_promotable_to_floatlike(a) `The input must be a number or float vector`
@@ -215,7 +215,7 @@ macro floor(x) = $$floor(values::promote_int(x));
  * @require types::@is_same_vector_type(a, b) `The input types must be equal`
  * @require types::@is_same_vector_type(a, c) `The input types must match`
  **/
-macro fma(a, b, c) = $$fma(a, b, c);
+macro fma(a, b, c) => $$fma(a, b, c);
 
 
 /**
@@ -223,22 +223,22 @@ macro fma(a, b, c) = $$fma(a, b, c);
  * @require values::@is_promotable_to_floatlike(y) `The input must be a number or a float vector`
  * @require types::@is_same_vector_type(x, y) `The input types must match`
  **/
-macro hypot(x, y) = sqrt(sqr(x) + sqr(y));
+macro hypot(x, y) => sqrt(sqr(x) + sqr(y));
 
 /**
  * @require values::@is_promotable_to_floatlike(x) `The input must be a number or a float vector`
  **/
-macro log(x) = $$log(values::promote_int(x));
+macro log(x) => $$log(values::promote_int(x));
 
 /**
  * @require values::@is_promotable_to_floatlike(x) `The input must be a number or a float vector`
  **/
-macro log2(x) = $$log2(values::promote_int(x));
+macro log2(x) => $$log2(values::promote_int(x));
 
 /**
  * @require values::@is_promotable_to_floatlike(x) `The input must be a number or a float vector`
  **/
-macro log10(x) = $$log10(values::promote_int(x));
+macro log10(x) => $$log10(values::promote_int(x));
 
 /**
  * @require types::is_numerical($typeof(x)) `The input must be a floating point value or float vector`
@@ -278,12 +278,12 @@ macro min(x, y, ...)
  * @require types::@is_float(a) `The input must be a floating point value`
  * @require types::@has_same(a, b, c) `The input types must be equal`
  **/
-macro muladd(a, b, c) = $$fmuladd(a, b, c);
+macro muladd(a, b, c) => $$fmuladd(a, b, c);
 
 /**
  * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
  **/
-macro nearbyint(x) = $$nearbyint(x);
+macro nearbyint(x) => $$nearbyint(x);
 
 /**
  * @require values::@is_promotable_to_floatlike(x) `The input must be a number or a float vector`
@@ -301,64 +301,64 @@ macro pow(x, exp)
 /**
  * @require values::@is_floatlike(x) `The input must be a number or a float vector`
  **/
-macro rint(x) = $$rint(x);
+macro rint(x) => $$rint(x);
 
 /**
  * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
  **/
-macro round(x) = $$round(x);
+macro round(x) => $$round(x);
 
 /**
  * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
  **/
-macro roundeven(x) = $$roundeven(x);
+macro roundeven(x) => $$roundeven(x);
 
 /**
  * @require values::@is_promotable_to_floatlike(x) `The input must be a number or a float vector`
  **/
-macro sec(x) = 1 / cos(x);
+macro sec(x) => 1 / cos(x);
 
 /**
  * @require values::@is_promotable_to_floatlike(x) `The input must be a number or a float vector`
  **/
-macro sech(x) = 2 / (exp(x) + exp(-x));
+macro sech(x) => 2 / (exp(x) + exp(-x));
 
 /**
  * @require values::@is_promotable_to_floatlike(x) `The input must be a number or a float vector`
  **/
-macro sin(x) = $$sin(values::promote_int(x));
+macro sin(x) => $$sin(values::promote_int(x));
 
 /**
  * @require values::@is_promotable_to_floatlike(x) `The input must be a number or a float vector`
  **/
-macro sinh(x) = (exp(x) - exp(-x)) / 2.0;
+macro sinh(x) => (exp(x) - exp(-x)) / 2.0;
 
 /**
  * @require values::@is_promotable_to_floatlike(x) `The input must be a number or a float vector`
  **/
-macro sqr(x) = values::promote_int(x) * values::promote_int(x);
+macro sqr(x) => values::promote_int(x) * values::promote_int(x);
 
 /**
  * @require values::@is_promotable_to_floatlike(x) `The input must be a number or a float vector`
  **/
-macro sqrt(x) = $$sqrt(values::promote_int(x));
+macro sqrt(x) => $$sqrt(values::promote_int(x));
 
 /**
  * @require values::@is_promotable_to_floatlike(x) `The input must be a number or a float vector`
  **/
-macro tan(x) = sin(x) / cos(x);
+macro tan(x) => sin(x) / cos(x);
 
 /**
  * @require values::@is_promotable_to_floatlike(x) `The input must be a number or a float vector`
  **/
-macro tanh(x) = (exp(2.0 * x) - 1.0) / (exp(2.0 * x) + 1.0);
+macro tanh(x) => (exp(2.0 * x) - 1.0) / (exp(2.0 * x) + 1.0);
 
 /**
  * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
  **/
-macro trunc(x) = $$trunc(x);
+macro trunc(x) => $$trunc(x);
 
-private macro lerp(x, y, amount) = x + (y - x) * amount;
+private macro lerp(x, y, amount) => x + (y - x) * amount;
 private macro reflect(x, y)
 {
 	var dot = x.dot(y);
@@ -371,194 +371,194 @@ private macro normalize(x)
 	return x * (1 / len);
 }
 
-macro float float.ceil(float x) = $$ceil(x);
-macro float float.clamp(float x, float lower, float upper) = $$max(lower, $$min(x, upper));
-macro float float.copysign(float mag, float sgn) = $$copysign(mag, sgn);
-macro float float.floor(float x) = $$floor(x);
-macro float float.fma(float a, float b, float c) = $$fma(a, b, c);
-macro float float.muladd(float a, float b, float c) = $$fmuladd(a, b, c);
-macro float float.nearbyint(float x) = $$nearbyint(x);
-macro float float.pow(float x, exp) = pow(x, exp);
-macro float float.rint(float x) = $$rint(x);
-macro float float.round(float x) = $$round(x);
-macro float float.roundeven(float x) = $$roundeven(x);
-macro float float.trunc(float x) = $$trunc(x);
+macro float float.ceil(float x) => $$ceil(x);
+macro float float.clamp(float x, float lower, float upper) => $$max(lower, $$min(x, upper));
+macro float float.copysign(float mag, float sgn) => $$copysign(mag, sgn);
+macro float float.floor(float x) => $$floor(x);
+macro float float.fma(float a, float b, float c) => $$fma(a, b, c);
+macro float float.muladd(float a, float b, float c) => $$fmuladd(a, b, c);
+macro float float.nearbyint(float x) => $$nearbyint(x);
+macro float float.pow(float x, exp) => pow(x, exp);
+macro float float.rint(float x) => $$rint(x);
+macro float float.round(float x) => $$round(x);
+macro float float.roundeven(float x) => $$roundeven(x);
+macro float float.trunc(float x) => $$trunc(x);
 
-macro float float[<*>].sum(float[<*>] x, float start = 0.0) = $$reduce_fadd(x, start);
-macro float float[<*>].product(float[<*>] x, float start = 1.0) = $$reduce_fmul(x, start);
-macro float float[<*>].max(float[<*>] x) = $$reduce_max(x);
-macro float float[<*>].min(float[<*>] x) = $$reduce_min(x);
-macro float[<*>] float[<*>].ceil(float[<*>] x) = $$ceil(x);
-macro float[<*>] float[<*>].clamp(float[<*>] x, float[<*>] lower, float[<*>] upper) = $$max(lower, $$min(x, upper));
-macro float[<*>] float[<*>].copysign(float[<*>] mag, float[<*>] sgn) = $$copysign(mag, sgn);
-macro float[<*>] float[<*>].fma(float[<*>] a, float[<*>] b, float[<*>] c) = $$fma(a, b, c);
-macro float[<*>] float[<*>].floor(float[<*>] x) = $$floor(x);
-macro float[<*>] float[<*>].nearbyint(float[<*>] x) = $$nearbyint(x);
-macro float[<*>] float[<*>].pow(float[<*>] x, exp) = pow(x, exp);
-macro float[<*>] float[<*>].rint(float[<*>] x) = $$rint(x);
-macro float[<*>] float[<*>].round(float[<*>] x) = $$round(x);
-macro float[<*>] float[<*>].roundeven(float[<*>] x) = $$roundeven(x);
-macro float[<*>] float[<*>].trunc(float[<*>] x) = $$trunc(x);
-macro float float[<*>].dot(float[<*>] x, float[<*>] y) = (x * y).sum();
-macro float float[<*>].length(float[<*>] x) = $$sqrt(x.dot(x));
-macro float float[<*>].distance(float[<*>] x, float[<*>] y) = (x - y).length();
-macro float[<*>] float[<*>].normalize(float[<*>] x) = normalize(x);
-macro float[<*>] float[<*>].lerp(float[<*>] x, float[<*>] y, float amount) = lerp(x, y, amount);
-macro float[<*>] float[<*>].reflect(float[<*>] x, float[<*>] y) = reflect(x, y);
-macro bool float[<*>].equals(float[<*>] x, float[<*>] y) = equals_vec(x, y);
+macro float float[<*>].sum(float[<*>] x, float start = 0.0) => $$reduce_fadd(x, start);
+macro float float[<*>].product(float[<*>] x, float start = 1.0) => $$reduce_fmul(x, start);
+macro float float[<*>].max(float[<*>] x) => $$reduce_max(x);
+macro float float[<*>].min(float[<*>] x) => $$reduce_min(x);
+macro float[<*>] float[<*>].ceil(float[<*>] x) => $$ceil(x);
+macro float[<*>] float[<*>].clamp(float[<*>] x, float[<*>] lower, float[<*>] upper) => $$max(lower, $$min(x, upper));
+macro float[<*>] float[<*>].copysign(float[<*>] mag, float[<*>] sgn) => $$copysign(mag, sgn);
+macro float[<*>] float[<*>].fma(float[<*>] a, float[<*>] b, float[<*>] c) => $$fma(a, b, c);
+macro float[<*>] float[<*>].floor(float[<*>] x) => $$floor(x);
+macro float[<*>] float[<*>].nearbyint(float[<*>] x) => $$nearbyint(x);
+macro float[<*>] float[<*>].pow(float[<*>] x, exp) => pow(x, exp);
+macro float[<*>] float[<*>].rint(float[<*>] x) => $$rint(x);
+macro float[<*>] float[<*>].round(float[<*>] x) => $$round(x);
+macro float[<*>] float[<*>].roundeven(float[<*>] x) => $$roundeven(x);
+macro float[<*>] float[<*>].trunc(float[<*>] x) => $$trunc(x);
+macro float float[<*>].dot(float[<*>] x, float[<*>] y) => (x * y).sum();
+macro float float[<*>].length(float[<*>] x) => $$sqrt(x.dot(x));
+macro float float[<*>].distance(float[<*>] x, float[<*>] y) => (x - y).length();
+macro float[<*>] float[<*>].normalize(float[<*>] x) => normalize(x);
+macro float[<*>] float[<*>].lerp(float[<*>] x, float[<*>] y, float amount) => lerp(x, y, amount);
+macro float[<*>] float[<*>].reflect(float[<*>] x, float[<*>] y) => reflect(x, y);
+macro bool float[<*>].equals(float[<*>] x, float[<*>] y) => equals_vec(x, y);
 
-macro bool[<*>] float[<*>].comp_lt(float[<*>] x, float[<*>] y) = $$veccomplt(x, y);
-macro bool[<*>] float[<*>].comp_le(float[<*>] x, float[<*>] y) = $$veccomple(x, y);
-macro bool[<*>] float[<*>].comp_eq(float[<*>] x, float[<*>] y) = $$veccompeq(x, y);
-macro bool[<*>] float[<*>].comp_gt(float[<*>] x, float[<*>] y) = $$veccompgt(x, y);
-macro bool[<*>] float[<*>].comp_ge(float[<*>] x, float[<*>] y) = $$veccompge(x, y);
-macro bool[<*>] float[<*>].comp_ne(float[<*>] x, float[<*>] y) = $$veccompne(x, y);
+macro bool[<*>] float[<*>].comp_lt(float[<*>] x, float[<*>] y) => $$veccomplt(x, y);
+macro bool[<*>] float[<*>].comp_le(float[<*>] x, float[<*>] y) => $$veccomple(x, y);
+macro bool[<*>] float[<*>].comp_eq(float[<*>] x, float[<*>] y) => $$veccompeq(x, y);
+macro bool[<*>] float[<*>].comp_gt(float[<*>] x, float[<*>] y) => $$veccompgt(x, y);
+macro bool[<*>] float[<*>].comp_ge(float[<*>] x, float[<*>] y) => $$veccompge(x, y);
+macro bool[<*>] float[<*>].comp_ne(float[<*>] x, float[<*>] y) => $$veccompne(x, y);
 
-macro double double.ceil(double x) = $$ceil(x);
-macro double double.clamp(double x, double lower, double upper) = $$max(lower, $$min(x, upper));
-macro double double.copysign(double mag, double sgn) = $$copysign(mag, sgn);
-macro double double.floor(double x) = $$floor(x);
-macro double double.fma(double a, double b, double c) = $$fma(a, b, c);
-macro double double.muladd(double a, double b, double c) = $$fmuladd(a, b, c);
-macro double double.nearbyint(double x) = $$nearbyint(x);
-macro double double.pow(double x, exp) = pow(x, exp);
-macro double double.rint(double x) = $$rint(x);
-macro double double.round(double x) = $$round(x);
-macro double double.roundeven(double x) = $$roundeven(x);
-macro double double.trunc(double x) = $$trunc(x);
+macro double double.ceil(double x) => $$ceil(x);
+macro double double.clamp(double x, double lower, double upper) => $$max(lower, $$min(x, upper));
+macro double double.copysign(double mag, double sgn) => $$copysign(mag, sgn);
+macro double double.floor(double x) => $$floor(x);
+macro double double.fma(double a, double b, double c) => $$fma(a, b, c);
+macro double double.muladd(double a, double b, double c) => $$fmuladd(a, b, c);
+macro double double.nearbyint(double x) => $$nearbyint(x);
+macro double double.pow(double x, exp) => pow(x, exp);
+macro double double.rint(double x) => $$rint(x);
+macro double double.round(double x) => $$round(x);
+macro double double.roundeven(double x) => $$roundeven(x);
+macro double double.trunc(double x) => $$trunc(x);
 
-macro double double[<*>].sum(double[<*>] x, double start = 0.0) = $$reduce_fadd(x, start);
-macro double double[<*>].product(double[<*>] x, double start = 1.0) = $$reduce_fmul(x, start);
-macro double double[<*>].max(double[<*>] x) = $$reduce_fmax(x);
-macro double double[<*>].min(double[<*>] x) = $$reduce_fmin(x);
-macro double[<*>] double[<*>].ceil(double[<*>] x) = $$ceil(x);
-macro double[<*>] double[<*>].clamp(double[<*>] x, double[<*>] lower, double[<*>] upper) = $$max(lower, $$min(x, upper));
-macro double[<*>] double[<*>].copysign(double[<*>] mag, double[<*>] sgn) = $$copysign(mag, sgn);
-macro double[<*>] double[<*>].floor(double[<*>] x) = $$floor(x);
-macro double[<*>] double[<*>].fma(double[<*>] a, double[<*>] b, double[<*>] c) = $$fma(a, b, c);
-macro double[<*>] double[<*>].nearbyint(double[<*>] x) = $$nearbyint(x);
-macro double[<*>] double[<*>].pow(double[<*>] x, exp) = pow(x, exp);
-macro double[<*>] double[<*>].rint(double[<*>] x) = $$rint(x);
-macro double[<*>] double[<*>].round(double[<*>] x) = $$round(x);
-macro double[<*>] double[<*>].roundeven(double[<*>] x) = $$roundeven(x);
-macro double[<*>] double[<*>].trunc(double[<*>] x) = $$trunc(x);
-macro double double[<*>].dot(double[<*>] x, double[<*>] y) = (x * y).sum();
-macro double double[<*>].length(double[<*>] x) = $$sqrt(x.dot(x));
-macro double double[<*>].distance(double[<*>] x, double[<*>] y) = (x - y).length();
-macro double[<*>] double[<*>].normalize(double[<*>] x) = normalize(x);
-macro double[<*>] double[<*>].reflect(double[<*>] x, double[<*>] y) = reflect(x, y);
-macro double[<*>] double[<*>].lerp(double[<*>] x, double[<*>] y, double amount) = lerp(x, y, amount);
-macro bool double[<*>].equals(double[<*>] x, double[<*>] y) = equals_vec(x, y);
+macro double double[<*>].sum(double[<*>] x, double start = 0.0) => $$reduce_fadd(x, start);
+macro double double[<*>].product(double[<*>] x, double start = 1.0) => $$reduce_fmul(x, start);
+macro double double[<*>].max(double[<*>] x) => $$reduce_fmax(x);
+macro double double[<*>].min(double[<*>] x) => $$reduce_fmin(x);
+macro double[<*>] double[<*>].ceil(double[<*>] x) => $$ceil(x);
+macro double[<*>] double[<*>].clamp(double[<*>] x, double[<*>] lower, double[<*>] upper) => $$max(lower, $$min(x, upper));
+macro double[<*>] double[<*>].copysign(double[<*>] mag, double[<*>] sgn) => $$copysign(mag, sgn);
+macro double[<*>] double[<*>].floor(double[<*>] x) => $$floor(x);
+macro double[<*>] double[<*>].fma(double[<*>] a, double[<*>] b, double[<*>] c) => $$fma(a, b, c);
+macro double[<*>] double[<*>].nearbyint(double[<*>] x) => $$nearbyint(x);
+macro double[<*>] double[<*>].pow(double[<*>] x, exp) => pow(x, exp);
+macro double[<*>] double[<*>].rint(double[<*>] x) => $$rint(x);
+macro double[<*>] double[<*>].round(double[<*>] x) => $$round(x);
+macro double[<*>] double[<*>].roundeven(double[<*>] x) => $$roundeven(x);
+macro double[<*>] double[<*>].trunc(double[<*>] x) => $$trunc(x);
+macro double double[<*>].dot(double[<*>] x, double[<*>] y) => (x * y).sum();
+macro double double[<*>].length(double[<*>] x) => $$sqrt(x.dot(x));
+macro double double[<*>].distance(double[<*>] x, double[<*>] y) => (x - y).length();
+macro double[<*>] double[<*>].normalize(double[<*>] x) => normalize(x);
+macro double[<*>] double[<*>].reflect(double[<*>] x, double[<*>] y) => reflect(x, y);
+macro double[<*>] double[<*>].lerp(double[<*>] x, double[<*>] y, double amount) => lerp(x, y, amount);
+macro bool double[<*>].equals(double[<*>] x, double[<*>] y) => equals_vec(x, y);
 
-macro bool[<*>] double[<*>].comp_lt(double[<*>] x, double[<*>] y) = $$veccomplt(x, y);
-macro bool[<*>] double[<*>].comp_le(double[<*>] x, double[<*>] y) = $$veccomple(x, y);
-macro bool[<*>] double[<*>].comp_eq(double[<*>] x, double[<*>] y) = $$veccompeq(x, y);
-macro bool[<*>] double[<*>].comp_gt(double[<*>] x, double[<*>] y) = $$veccompgt(x, y);
-macro bool[<*>] double[<*>].comp_ge(double[<*>] x, double[<*>] y) = $$veccompge(x, y);
-macro bool[<*>] double[<*>].comp_ne(double[<*>] x, double[<*>] y) = $$veccompne(x, y);
+macro bool[<*>] double[<*>].comp_lt(double[<*>] x, double[<*>] y) => $$veccomplt(x, y);
+macro bool[<*>] double[<*>].comp_le(double[<*>] x, double[<*>] y) => $$veccomple(x, y);
+macro bool[<*>] double[<*>].comp_eq(double[<*>] x, double[<*>] y) => $$veccompeq(x, y);
+macro bool[<*>] double[<*>].comp_gt(double[<*>] x, double[<*>] y) => $$veccompgt(x, y);
+macro bool[<*>] double[<*>].comp_ge(double[<*>] x, double[<*>] y) => $$veccompge(x, y);
+macro bool[<*>] double[<*>].comp_ne(double[<*>] x, double[<*>] y) => $$veccompne(x, y);
 
-macro ichar ichar[<*>].sum(ichar[<*>] x) = $$reduce_add(x);
-macro ichar ichar[<*>].product(ichar[<*>] x) = $$reduce_mul(x);
-macro ichar ichar[<*>].and(ichar[<*>] x) = $$reduce_and(x);
-macro ichar ichar[<*>].or(ichar[<*>] x) = $$reduce_or(x);
-macro ichar ichar[<*>].xor(ichar[<*>] x) = $$reduce_xor(x);
-macro ichar ichar[<*>].max(ichar[<*>] x) = $$reduce_max(x);
-macro ichar ichar[<*>].min(ichar[<*>] x) = $$reduce_min(x);
+macro ichar ichar[<*>].sum(ichar[<*>] x) => $$reduce_add(x);
+macro ichar ichar[<*>].product(ichar[<*>] x) => $$reduce_mul(x);
+macro ichar ichar[<*>].and(ichar[<*>] x) => $$reduce_and(x);
+macro ichar ichar[<*>].or(ichar[<*>] x) => $$reduce_or(x);
+macro ichar ichar[<*>].xor(ichar[<*>] x) => $$reduce_xor(x);
+macro ichar ichar[<*>].max(ichar[<*>] x) => $$reduce_max(x);
+macro ichar ichar[<*>].min(ichar[<*>] x) => $$reduce_min(x);
 
-macro short short[<*>].sum(short[<*>] x) = $$reduce_add(x);
-macro short short[<*>].product(short[<*>] x) = $$reduce_mul(x);
-macro short short[<*>].and(short[<*>] x) = $$reduce_and(x);
-macro short short[<*>].or(short[<*>] x) = $$reduce_or(x);
-macro short short[<*>].xor(short[<*>] x) = $$reduce_xor(x);
-macro short short[<*>].max(short[<*>] x) = $$reduce_max(x);
-macro short short[<*>].min(short[<*>] x) = $$reduce_min(x);
+macro short short[<*>].sum(short[<*>] x) => $$reduce_add(x);
+macro short short[<*>].product(short[<*>] x) => $$reduce_mul(x);
+macro short short[<*>].and(short[<*>] x) => $$reduce_and(x);
+macro short short[<*>].or(short[<*>] x) => $$reduce_or(x);
+macro short short[<*>].xor(short[<*>] x) => $$reduce_xor(x);
+macro short short[<*>].max(short[<*>] x) => $$reduce_max(x);
+macro short short[<*>].min(short[<*>] x) => $$reduce_min(x);
 
-macro bool[<*>] int[<*>].comp_lt(int[<*>] x, int[<*>] y) = $$veccomplt(x, y);
-macro bool[<*>] int[<*>].comp_le(int[<*>] x, int[<*>] y) = $$veccomple(x, y);
-macro bool[<*>] int[<*>].comp_eq(int[<*>] x, int[<*>] y) = $$veccompeq(x, y);
-macro bool[<*>] int[<*>].comp_gt(int[<*>] x, int[<*>] y) = $$veccompgt(x, y);
-macro bool[<*>] int[<*>].comp_ge(int[<*>] x, int[<*>] y) = $$veccompge(x, y);
-macro bool[<*>] int[<*>].comp_ne(int[<*>] x, int[<*>] y) = $$veccompne(x, y);
+macro bool[<*>] int[<*>].comp_lt(int[<*>] x, int[<*>] y) => $$veccomplt(x, y);
+macro bool[<*>] int[<*>].comp_le(int[<*>] x, int[<*>] y) => $$veccomple(x, y);
+macro bool[<*>] int[<*>].comp_eq(int[<*>] x, int[<*>] y) => $$veccompeq(x, y);
+macro bool[<*>] int[<*>].comp_gt(int[<*>] x, int[<*>] y) => $$veccompgt(x, y);
+macro bool[<*>] int[<*>].comp_ge(int[<*>] x, int[<*>] y) => $$veccompge(x, y);
+macro bool[<*>] int[<*>].comp_ne(int[<*>] x, int[<*>] y) => $$veccompne(x, y);
 
-macro int int[<*>].sum(int[<*>] x) = $$reduce_add(x);
-macro int int[<*>].product(int[<*>] x) = $$reduce_mul(x);
-macro int int[<*>].and(int[<*>] x) = $$reduce_and(x);
-macro int int[<*>].or(int[<*>] x) = $$reduce_or(x);
-macro int int[<*>].xor(int[<*>] x) = $$reduce_xor(x);
-macro int int[<*>].max(int[<*>] x) = $$reduce_max(x);
-macro int int[<*>].min(int[<*>] x) = $$reduce_min(x);
+macro int int[<*>].sum(int[<*>] x) => $$reduce_add(x);
+macro int int[<*>].product(int[<*>] x) => $$reduce_mul(x);
+macro int int[<*>].and(int[<*>] x) => $$reduce_and(x);
+macro int int[<*>].or(int[<*>] x) => $$reduce_or(x);
+macro int int[<*>].xor(int[<*>] x) => $$reduce_xor(x);
+macro int int[<*>].max(int[<*>] x) => $$reduce_max(x);
+macro int int[<*>].min(int[<*>] x) => $$reduce_min(x);
 
-macro long long[<*>].sum(long[<*>] x) = $$reduce_add(x);
-macro long long[<*>].product(long[<*>] x) = $$reduce_mul(x);
-macro long long[<*>].and(long[<*>] x) = $$reduce_and(x);
-macro long long[<*>].or(long[<*>] x) = $$reduce_or(x);
-macro long long[<*>].xor(long[<*>] x) = $$reduce_xor(x);
-macro long long[<*>].max(long[<*>] x) = $$reduce_max(x);
-macro long long[<*>].min(long[<*>] x) = $$reduce_min(x);
+macro long long[<*>].sum(long[<*>] x) => $$reduce_add(x);
+macro long long[<*>].product(long[<*>] x) => $$reduce_mul(x);
+macro long long[<*>].and(long[<*>] x) => $$reduce_and(x);
+macro long long[<*>].or(long[<*>] x) => $$reduce_or(x);
+macro long long[<*>].xor(long[<*>] x) => $$reduce_xor(x);
+macro long long[<*>].max(long[<*>] x) => $$reduce_max(x);
+macro long long[<*>].min(long[<*>] x) => $$reduce_min(x);
 
-macro int128 int128[<*>].sum(int128[<*>] x) = $$reduce_add(x);
-macro int128 int128[<*>].product(int128[<*>] x) = $$reduce_mul(x);
-macro int128 int128[<*>].and(int128[<*>] x) = $$reduce_and(x);
-macro int128 int128[<*>].or(int128[<*>] x) = $$reduce_or(x);
-macro int128 int128[<*>].xor(int128[<*>] x) = $$reduce_xor(x);
-macro int128 int128[<*>].max(int128[<*>] x) = $$reduce_max(x);
-macro int128 int128[<*>].min(int128[<*>] x) = $$reduce_min(x);
+macro int128 int128[<*>].sum(int128[<*>] x) => $$reduce_add(x);
+macro int128 int128[<*>].product(int128[<*>] x) => $$reduce_mul(x);
+macro int128 int128[<*>].and(int128[<*>] x) => $$reduce_and(x);
+macro int128 int128[<*>].or(int128[<*>] x) => $$reduce_or(x);
+macro int128 int128[<*>].xor(int128[<*>] x) => $$reduce_xor(x);
+macro int128 int128[<*>].max(int128[<*>] x) => $$reduce_max(x);
+macro int128 int128[<*>].min(int128[<*>] x) => $$reduce_min(x);
 
-macro bool[<*>] bool[<*>].comp_lt(bool[<*>] x, bool[<*>] y) = $$veccomplt(x, y);
-macro bool[<*>] bool[<*>].comp_le(bool[<*>] x, bool[<*>] y) = $$veccomple(x, y);
-macro bool[<*>] bool[<*>].comp_eq(bool[<*>] x, bool[<*>] y) = $$veccompeq(x, y);
-macro bool[<*>] bool[<*>].comp_gt(bool[<*>] x, bool[<*>] y) = $$veccompgt(x, y);
-macro bool[<*>] bool[<*>].comp_ge(bool[<*>] x, bool[<*>] y) = $$veccompge(x, y);
-macro bool[<*>] bool[<*>].comp_ne(bool[<*>] x, bool[<*>] y) = $$veccompne(x, y);
+macro bool[<*>] bool[<*>].comp_lt(bool[<*>] x, bool[<*>] y) => $$veccomplt(x, y);
+macro bool[<*>] bool[<*>].comp_le(bool[<*>] x, bool[<*>] y) => $$veccomple(x, y);
+macro bool[<*>] bool[<*>].comp_eq(bool[<*>] x, bool[<*>] y) => $$veccompeq(x, y);
+macro bool[<*>] bool[<*>].comp_gt(bool[<*>] x, bool[<*>] y) => $$veccompgt(x, y);
+macro bool[<*>] bool[<*>].comp_ge(bool[<*>] x, bool[<*>] y) => $$veccompge(x, y);
+macro bool[<*>] bool[<*>].comp_ne(bool[<*>] x, bool[<*>] y) => $$veccompne(x, y);
 
-macro bool bool[<*>].sum(bool[<*>] x) = $$reduce_add(x);
-macro bool bool[<*>].product(bool[<*>] x) = $$reduce_mul(x);
-macro bool bool[<*>].and(bool[<*>] x) = $$reduce_and(x);
-macro bool bool[<*>].or(bool[<*>] x) = $$reduce_or(x);
-macro bool bool[<*>].xor(bool[<*>] x) = $$reduce_xor(x);
-macro bool bool[<*>].max(bool[<*>] x) = $$reduce_max(x);
-macro bool bool[<*>].min(bool[<*>] x) = $$reduce_min(x);
+macro bool bool[<*>].sum(bool[<*>] x) => $$reduce_add(x);
+macro bool bool[<*>].product(bool[<*>] x) => $$reduce_mul(x);
+macro bool bool[<*>].and(bool[<*>] x) => $$reduce_and(x);
+macro bool bool[<*>].or(bool[<*>] x) => $$reduce_or(x);
+macro bool bool[<*>].xor(bool[<*>] x) => $$reduce_xor(x);
+macro bool bool[<*>].max(bool[<*>] x) => $$reduce_max(x);
+macro bool bool[<*>].min(bool[<*>] x) => $$reduce_min(x);
 
-macro char char[<*>].sum(char[<*>] x) = $$reduce_add(x);
-macro char char[<*>].product(char[<*>] x) = $$reduce_mul(x);
-macro char char[<*>].and(char[<*>] x) = $$reduce_and(x);
-macro char char[<*>].or(char[<*>] x) = $$reduce_or(x);
-macro char char[<*>].xor(char[<*>] x) = $$reduce_xor(x);
-macro char char[<*>].max(char[<*>] x) = $$reduce_max(x);
-macro char char[<*>].min(char[<*>] x) = $$reduce_min(x);
+macro char char[<*>].sum(char[<*>] x) => $$reduce_add(x);
+macro char char[<*>].product(char[<*>] x) => $$reduce_mul(x);
+macro char char[<*>].and(char[<*>] x) => $$reduce_and(x);
+macro char char[<*>].or(char[<*>] x) => $$reduce_or(x);
+macro char char[<*>].xor(char[<*>] x) => $$reduce_xor(x);
+macro char char[<*>].max(char[<*>] x) => $$reduce_max(x);
+macro char char[<*>].min(char[<*>] x) => $$reduce_min(x);
 
 
-macro ushort ushort[<*>].sum(ushort[<*>] x) = $$reduce_add(x);
-macro ushort ushort[<*>].product(ushort[<*>] x) = $$reduce_mul(x);
-macro ushort ushort[<*>].and(ushort[<*>] x) = $$reduce_and(x);
-macro ushort ushort[<*>].or(ushort[<*>] x) = $$reduce_or(x);
-macro ushort ushort[<*>].xor(ushort[<*>] x) = $$reduce_xor(x);
-macro ushort ushort[<*>].max(ushort[<*>] x) = $$reduce_max(x);
-macro ushort ushort[<*>].min(ushort[<*>] x) = $$reduce_min(x);
+macro ushort ushort[<*>].sum(ushort[<*>] x) => $$reduce_add(x);
+macro ushort ushort[<*>].product(ushort[<*>] x) => $$reduce_mul(x);
+macro ushort ushort[<*>].and(ushort[<*>] x) => $$reduce_and(x);
+macro ushort ushort[<*>].or(ushort[<*>] x) => $$reduce_or(x);
+macro ushort ushort[<*>].xor(ushort[<*>] x) => $$reduce_xor(x);
+macro ushort ushort[<*>].max(ushort[<*>] x) => $$reduce_max(x);
+macro ushort ushort[<*>].min(ushort[<*>] x) => $$reduce_min(x);
 
-macro uint uint[<*>].sum(uint[<*>] x) = $$reduce_add(x);
-macro uint uint[<*>].product(uint[<*>] x) = $$reduce_mul(x);
-macro uint uint[<*>].and(uint[<*>] x) = $$reduce_and(x);
-macro uint uint[<*>].or(uint[<*>] x) = $$reduce_or(x);
-macro uint uint[<*>].xor(uint[<*>] x) = $$reduce_xor(x);
-macro uint uint[<*>].max(uint[<*>] x) = $$reduce_max(x);
-macro uint uint[<*>].min(uint[<*>] x) = $$reduce_min(x);
+macro uint uint[<*>].sum(uint[<*>] x) => $$reduce_add(x);
+macro uint uint[<*>].product(uint[<*>] x) => $$reduce_mul(x);
+macro uint uint[<*>].and(uint[<*>] x) => $$reduce_and(x);
+macro uint uint[<*>].or(uint[<*>] x) => $$reduce_or(x);
+macro uint uint[<*>].xor(uint[<*>] x) => $$reduce_xor(x);
+macro uint uint[<*>].max(uint[<*>] x) => $$reduce_max(x);
+macro uint uint[<*>].min(uint[<*>] x) => $$reduce_min(x);
 
-macro ulong ulong[<*>].sum(ulong[<*>] x) = $$reduce_add(x);
-macro ulong ulong[<*>].product(ulong[<*>] x) = $$reduce_mul(x);
-macro ulong ulong[<*>].and(ulong[<*>] x) = $$reduce_and(x);
-macro ulong ulong[<*>].or(ulong[<*>] x) = $$reduce_or(x);
-macro ulong ulong[<*>].xor(ulong[<*>] x) = $$reduce_xor(x);
-macro ulong ulong[<*>].max(ulong[<*>] x) = $$reduce_max(x);
-macro ulong ulong[<*>].min(ulong[<*>] x) = $$reduce_min(x);
+macro ulong ulong[<*>].sum(ulong[<*>] x) => $$reduce_add(x);
+macro ulong ulong[<*>].product(ulong[<*>] x) => $$reduce_mul(x);
+macro ulong ulong[<*>].and(ulong[<*>] x) => $$reduce_and(x);
+macro ulong ulong[<*>].or(ulong[<*>] x) => $$reduce_or(x);
+macro ulong ulong[<*>].xor(ulong[<*>] x) => $$reduce_xor(x);
+macro ulong ulong[<*>].max(ulong[<*>] x) => $$reduce_max(x);
+macro ulong ulong[<*>].min(ulong[<*>] x) => $$reduce_min(x);
 
-macro uint128 uint128[<*>].sum(uint128[<*>] x) = $$reduce_add(x);
-macro uint128 uint128[<*>].product(uint128[<*>] x) = $$reduce_mul(x);
-macro uint128 uint128[<*>].and(uint128[<*>] x) = $$reduce_and(x);
-macro uint128 uint128[<*>].or(uint128[<*>] x) = $$reduce_or(x);
-macro uint128 uint128[<*>].xor(uint128[<*>] x) = $$reduce_xor(x);
-macro uint128 uint128[<*>].max(uint128[<*>] x) = $$reduce_max(x);
-macro uint128 uint128[<*>].min(uint128[<*>] x) = $$reduce_min(x);
+macro uint128 uint128[<*>].sum(uint128[<*>] x) => $$reduce_add(x);
+macro uint128 uint128[<*>].product(uint128[<*>] x) => $$reduce_mul(x);
+macro uint128 uint128[<*>].and(uint128[<*>] x) => $$reduce_and(x);
+macro uint128 uint128[<*>].or(uint128[<*>] x) => $$reduce_or(x);
+macro uint128 uint128[<*>].xor(uint128[<*>] x) => $$reduce_xor(x);
+macro uint128 uint128[<*>].max(uint128[<*>] x) => $$reduce_max(x);
+macro uint128 uint128[<*>].min(uint128[<*>] x) => $$reduce_min(x);
 
 /**
  * @checked x & 1

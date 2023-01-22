@@ -28,6 +28,6 @@ extern fn int wsa_startup(int, void*) @extname("WSAStartup");
 extern fn int ioctlsocket(NativeSocket, long cmd, ulong *argp);
 extern fn int closesocket(NativeSocket);
 
-macro NativeSocket.close(NativeSocket this) = closesocket(this);
+macro NativeSocket.close(NativeSocket this) => closesocket(this);
 
 $endif;

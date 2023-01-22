@@ -120,17 +120,17 @@ fn Matrix4x4 Matrix4x4.mul(Matrix4x4* a, Matrix4x4 b)
 	};
 }
 
-fn Matrix2x2 Matrix2x2.component_mul(Matrix2x2* mat, Real s) = matrix_component_mul(mat, s);
-fn Matrix3x3 Matrix3x3.component_mul(Matrix3x3* mat, Real s) = matrix_component_mul(mat, s);
-fn Matrix4x4 Matrix4x4.component_mul(Matrix4x4* mat, Real s) = matrix_component_mul(mat, s);
+fn Matrix2x2 Matrix2x2.component_mul(Matrix2x2* mat, Real s) => matrix_component_mul(mat, s);
+fn Matrix3x3 Matrix3x3.component_mul(Matrix3x3* mat, Real s) => matrix_component_mul(mat, s);
+fn Matrix4x4 Matrix4x4.component_mul(Matrix4x4* mat, Real s) => matrix_component_mul(mat, s);
 
-fn Matrix2x2 Matrix2x2.add(Matrix2x2* mat, Matrix2x2 mat2) = matrix_add(mat, mat2);
-fn Matrix3x3 Matrix3x3.add(Matrix3x3* mat, Matrix3x3 mat2) = matrix_add(mat, mat2);
-fn Matrix4x4 Matrix4x4.add(Matrix4x4* mat, Matrix4x4 mat2) = matrix_add(mat, mat2);
+fn Matrix2x2 Matrix2x2.add(Matrix2x2* mat, Matrix2x2 mat2) => matrix_add(mat, mat2);
+fn Matrix3x3 Matrix3x3.add(Matrix3x3* mat, Matrix3x3 mat2) => matrix_add(mat, mat2);
+fn Matrix4x4 Matrix4x4.add(Matrix4x4* mat, Matrix4x4 mat2) => matrix_add(mat, mat2);
 
-fn Matrix2x2 Matrix2x2.sub(Matrix2x2* mat, Matrix2x2 mat2) = matrix_sub(mat, mat2);
-fn Matrix3x3 Matrix3x3.sub(Matrix3x3* mat, Matrix3x3 mat2) = matrix_sub(mat, mat2);
-fn Matrix4x4 Matrix4x4.sub(Matrix4x4* mat, Matrix4x4 mat2) = matrix_sub(mat, mat2);
+fn Matrix2x2 Matrix2x2.sub(Matrix2x2* mat, Matrix2x2 mat2) => matrix_sub(mat, mat2);
+fn Matrix3x3 Matrix3x3.sub(Matrix3x3* mat, Matrix3x3 mat2) => matrix_sub(mat, mat2);
+fn Matrix4x4 Matrix4x4.sub(Matrix4x4* mat, Matrix4x4 mat2) => matrix_sub(mat, mat2);
 
 
 
@@ -370,9 +370,9 @@ fn Matrix3x3 Matrix3x3.scale(Matrix3x3* m, Real[<2>] v)
 	});
 }
 
-fn Real Matrix2x2.trace(Matrix2x2* m) = m.m00 + m.m11;
-fn Real Matrix3x3.trace(Matrix3x3* m) = m.m00 + m.m11 + m.m22;
-fn Real Matrix4x4.trace(Matrix4x4* m) = m.m00 + m.m11 + m.m22 + m.m33;
+fn Real Matrix2x2.trace(Matrix2x2* m) => m.m00 + m.m11;
+fn Real Matrix3x3.trace(Matrix3x3* m) => m.m00 + m.m11 + m.m22;
+fn Real Matrix4x4.trace(Matrix4x4* m) => m.m00 + m.m11 + m.m22 + m.m33;
 
 fn Matrix4x4 Matrix4x4.scale(Matrix4x4* m, Real[<3>] v)
 {

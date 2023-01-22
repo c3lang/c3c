@@ -1193,6 +1193,10 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 			llvm_emit_function_decl(gen_context, func);
 		FOREACH_END();
 
+		FOREACH_BEGIN(Decl *func, unit->lambdas)
+			llvm_emit_function_decl(gen_context, func);
+		FOREACH_END();
+
 		if (active_target.type != TARGET_TYPE_TEST && unit->main_function && unit->main_function->is_synthetic)
 		{
 			llvm_emit_function_decl(gen_context, unit->main_function);
@@ -1216,6 +1220,10 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 		FOREACH_BEGIN(Decl *decl, unit->functions)
 			if (decl->func_decl.attr_test && !active_target.testing) continue;
 			if (decl->func_decl.body) llvm_emit_function_body(gen_context, decl);
+		FOREACH_END();
+
+		FOREACH_BEGIN(Decl *func, unit->lambdas)
+			llvm_emit_function_body(gen_context, func);
 		FOREACH_END();
 
 		if (active_target.type != TARGET_TYPE_TEST && unit->main_function && unit->main_function->is_synthetic)

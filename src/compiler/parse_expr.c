@@ -335,6 +335,50 @@ static bool parse_param_path(ParseContext *c, DesignatorElement ***path)
 	}
 }
 
+static Expr *parse_lambda(ParseContext *c, Expr *left)
+{
+	assert(!left && "Unexpected left hand side");
+	Expr *expr = EXPR_NEW_TOKEN(EXPR_LAMBDA);
+	advance_and_verify(c, TOKEN_FN);
+	Decl *func = decl_calloc();
+	func->decl_kind = DECL_FUNC;
+	func->visibility = VISIBLE_LOCAL;
+	func->func_decl.generated_lambda = NULL;
+	TypeInfo *return_type = NULL;
+	if (!tok_is(c, TOKEN_LPAREN))
+	{
+		ASSIGN_TYPE_OR_RET(return_type, parse_optional_type(c), poisoned_expr);
+	}
+	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
+	Decl **params = NULL;
+	Decl **decls = NULL;
+	Variadic variadic = VARIADIC_NONE;
+	int vararg_index = -1;
+	if (!parse_parameters(c, VISIBLE_LOCAL, &decls, NULL, &variadic, &vararg_index, PARAM_PARSE_LAMBDA)) return false;
+	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
+	Signature *sig = &func->func_decl.signature;
+	sig->vararg_index = vararg_index < 0 ? vec_size(decls) : vararg_index;
+	sig->params = decls;
+	sig->rtype = return_type ? type_infoid(return_type) : 0;
+	sig->variadic = variadic;
+	if (!parse_attributes(c, &func->attributes)) return poisoned_expr;
+
+	if (tok_is(c, TOKEN_IMPLIES))
+	{
+		ASSIGN_ASTID_OR_RET(func->func_decl.body,
+		                    parse_short_body(c, func->func_decl.signature.rtype, false), poisoned_expr);
+	}
+	else if (tok_is(c, TOKEN_LBRACE))
+	{
+		ASSIGN_ASTID_OR_RET(func->func_decl.body, parse_compound_stmt(c), poisoned_expr);
+	}
+	else
+	{
+		SEMA_ERROR_HERE("Expected the beginning of a block or a short statement.");
+	}
+	expr->lambda_expr = func;
+	return expr;
+}
 Expr *parse_vasplat(ParseContext *c)
 {
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_VASPLAT);
@@ -736,7 +780,7 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left)
 			SEMA_ERROR_LAST("Expected an ending ')'. Did you forget a ')' before this ';'?");
 			return poisoned_expr;
 		}
-		if (!parse_parameters(c, VISIBLE_LOCAL, &body_args, NULL, NULL, NULL, true)) return poisoned_expr;
+		if (!parse_parameters(c, VISIBLE_LOCAL, &body_args, NULL, NULL, NULL, PARAM_PARSE_CALL)) return poisoned_expr;
 	}
 	if (!tok_is(c, TOKEN_RPAREN))
 	{
@@ -1781,6 +1825,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_AT_IDENT] = { parse_identifier, NULL, PREC_NONE },
 		//[TOKEN_HASH_TYPE_IDENT] = { parse_type_identifier, NULL, PREC_NONE }
 
+		[TOKEN_FN] = { parse_lambda, NULL, PREC_NONE },
 		[TOKEN_CT_SIZEOF] = { parse_ct_sizeof, NULL, PREC_NONE },
 		[TOKEN_CT_ALIGNOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_DEFINED] = { parse_ct_call, NULL, PREC_NONE },

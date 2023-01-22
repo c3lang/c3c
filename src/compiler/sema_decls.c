@@ -9,7 +9,6 @@ static inline bool sema_analyse_func_macro(SemaContext *context, Decl *decl, boo
 static inline bool sema_analyse_func(SemaContext *context, Decl *decl);
 static inline bool sema_analyse_macro(SemaContext *context, Decl *decl);
 static inline bool sema_analyse_signature(SemaContext *context, Signature *sig);
-static inline Type *sema_analyse_function_signature(SemaContext *context, Decl *parent, CallABI abi, Signature *signature, bool is_real_function);
 static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl);
 static inline bool sema_check_param_uniqueness_and_type(Decl **decls, Decl *current, unsigned current_index, unsigned count);
 
@@ -819,7 +818,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig)
 }
 
 
-static inline Type *sema_analyse_function_signature(SemaContext *context, Decl *parent, CallABI abi, Signature *signature, bool is_real_function)
+Type *sema_analyse_function_signature(SemaContext *context, Decl *parent, CallABI abi, Signature *signature, bool is_real_function)
 {
 	// Get param count and variadic type
 	Decl **params = signature->params;

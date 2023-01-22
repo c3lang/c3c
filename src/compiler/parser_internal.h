@@ -5,6 +5,16 @@
 // a copy of which can be found in the LICENSE file.
 
 
+typedef enum
+{
+	PARAM_PARSE_MACRO,
+	PARAM_PARSE_FUNC,
+	PARAM_PARSE_BODY,
+	PARAM_PARSE_CALL,
+	PARAM_PARSE_LAMBDA,
+	PARAM_PARSE_ATTR,
+} ParameterParseKind;
+
 #define EXPECT_IDENT_FOR_OR(_name, _res) do { if (!expect_ident(c, _name)) return _res; } while(0)
 #define EXPECT_OR_RET(_tok, _res) do { if (!expect(c, _tok)) return _res; } while(0)
 #define CONSUME_OR_RET(_tok, _res) do { if (!expect(c, _tok)) return _res; advance(c); } while(0)
@@ -35,7 +45,7 @@ void recover_top_level(ParseContext *c);
 Expr *parse_cond(ParseContext *c);
 Expr *parse_assert_expr(ParseContext *c);
 Ast* parse_compound_stmt(ParseContext *c);
-Ast* parse_short_stmt(ParseContext *c, TypeInfoId return_type);
+Ast *parse_short_body(ParseContext *c, TypeInfoId return_type, bool require_eos);
 Ast *parse_jump_stmt_no_eos(ParseContext *c);
 bool parse_attribute(ParseContext *c, Attr **attribute_ref);
 bool parse_attributes(ParseContext *c, Attr ***attributes_ref);
@@ -46,9 +56,8 @@ Expr *parse_expression_list(ParseContext *c, bool allow_decls);
 Decl *parse_decl_after_type(ParseContext *c, TypeInfo *type);
 Decl *parse_var_decl(ParseContext *c);
 
-bool
-parse_parameters(ParseContext *c, Visibility visibility, Decl ***params_ref, Decl **body_params,
-                 Variadic *variadic, int *vararg_index_ref, bool is_body_params);
+bool parse_parameters(ParseContext *c, Visibility visibility, Decl ***params_ref, Decl **body_params,
+					  Variadic *variadic, int *vararg_index_ref, ParameterParseKind parse_kind);
 
 bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *splat, bool vasplat);
 Expr *parse_type_compound_literal_expr_after_type(ParseContext *c, TypeInfo *type_info);

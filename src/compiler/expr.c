@@ -136,6 +136,7 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_VARIANTSWITCH:
 		case EXPR_VASPLAT:
 		case EXPR_SWIZZLE:
+		case EXPR_LAMBDA:
 			return false;
 	}
 	UNREACHABLE
@@ -201,6 +202,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_OPERATOR_CHARS:
 		case EXPR_STRINGIFY:
 		case EXPR_CT_CHECKS:
+		case EXPR_LAMBDA:
 			return true;
 		case EXPR_COND:
 			return expr_list_is_constant_eval(expr->cond_expr, eval_kind);
@@ -664,6 +666,7 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_CT_ARG:
 		case EXPR_OPERATOR_CHARS:
 		case EXPR_CT_CHECKS:
+		case EXPR_LAMBDA:
 			return true;
 		case EXPR_VASPLAT:
 			return true;

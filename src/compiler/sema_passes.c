@@ -439,10 +439,33 @@ void sema_analysis_pass_decls(Module *module)
 	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);
 }
 
+void sema_analysis_pass_lambda(Module *module)
+{
+	DEBUG_LOG("Extra pass: Lambda analysis %s", module->name->module);
+
+	VECEACH(module->units, index)
+	{
+		while (vec_size(module->lambdas_to_evaluate))
+		{
+			Decl *lambda = VECLAST(module->lambdas_to_evaluate);
+			CompilationUnit *unit = lambda->unit;
+			SemaContext context;
+			sema_context_init(&context, unit);
+			vec_pop(module->lambdas_to_evaluate);
+			if (analyse_func_body(&context, lambda))
+			{
+				vec_add(unit->lambdas, lambda);
+			}
+			sema_context_destroy(&context);
+		}
+	}
+
+	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);
+}
+
 void sema_analysis_pass_functions(Module *module)
 {
 	DEBUG_LOG("Pass: Function analysis %s", module->name->module);
-
 
 	VECEACH(module->units, index)
 	{
@@ -463,7 +486,6 @@ void sema_analysis_pass_functions(Module *module)
 		}
 		if (unit->main_function && unit->main_function->is_synthetic) analyse_func_body(&context, unit->main_function);
 		sema_context_destroy(&context);
-
 	}
 
 	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);
