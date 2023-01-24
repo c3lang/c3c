@@ -306,7 +306,7 @@ fn String utf32to8(Char32[] utf32, Allocator* allocator = mem::current_allocator
 	return data[:len];
 }
 
-fn Char16[]! utf8to16(String utf8, Allocator* allocator = mem::current_allocator)
+fn Char16[]! utf8to16(String utf8, Allocator* allocator = mem::current_allocator())
 {
 	usz len16 = conv::utf16len_for_utf8(utf8);
 	Char16* data = allocator.alloc((len16 + 1) * Char16.sizeof)?;
