@@ -498,10 +498,6 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 			}
 			break;
 		case OS_TYPE_NONE:
-			if (!active_target.no_libc)
-			{
-				error_exit("Linking is not supported for freestanding.");
-			}
 			break;
 	}
 	for (unsigned i = 0; i < file_count; i++)

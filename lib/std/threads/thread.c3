@@ -3,9 +3,15 @@ module std::thread;
 enum ThreadModel
 {
 	WIN32,
-	POSIX
+	POSIX,
+	NONE
 }
+
+$if (env::COMPILER_LIBC_AVAILABLE):
 const ThreadModel THREAD_MODEL = env::OS_TYPE == OsType.WIN32 ? ThreadModel.WIN32 : ThreadModel.POSIX;
+$else:
+const ThreadModel THREAD_MODEL = NONE;
+$endif;
 
 define MutexType = distinct int;
 
