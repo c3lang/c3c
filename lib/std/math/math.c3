@@ -124,8 +124,17 @@ $if (env::COMPILER_LIBC_AVAILABLE):
 
 extern fn double _atan(double x) @extname("atan");
 extern fn float _atanf(float x) @extname("atanf");
-extern fn double _atan2(double x) @extname("atan2");
-extern fn float _atan2f(float x) @extname("atan2f");
+extern fn double _atan2(double, double) @extname("atan2");
+extern fn float _atan2f(float, float) @extname("atan2f");
+
+macro atan2(x, y)
+{
+	$if ($typeof(x).typeid == float.typeid && $typeof(y).typeid == float.typeid):
+		return _atan2f(x, y);
+	$else:
+		return _atan2(x, y);
+	$endif;
+}
 
 macro atan(x)
 {
@@ -136,16 +145,32 @@ macro atan(x)
 	$endif;
 }
 
+$else:
+
 macro atan2(x, y)
 {
 	$if ($typeof(x).typeid == float.typeid && $typeof(y).typeid == float.typeid):
-		return _atan2f(x);
+		return atan::_atan2f(x, y);
 	$else:
-		return _atan2(x);
+		return atan::_atan2(x, y);
+	$endif;
+}
+
+macro atan(x)
+{
+	$if ($typeof(x).typeid == float.typeid):
+		return atan::_atanf(x);
+	$else:
+		return atan::_atan(x);
 	$endif;
 }
 
 $endif;
+
+
+
+
+
 /**
  * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
  **/
@@ -575,15 +600,28 @@ macro next_power_of_2(x)
 	return y;
 }
 
-import std::io;
 private macro equals_vec(v1, v2)
 {
 	var $elements = v1.len;
 	var abs_diff = math::abs(v1 - v2);
-	io::printfn("diff %s", abs_diff);
 	var abs_v1 = math::abs(v1);
 	var abs_v2 = math::abs(v2);
-	io::printfn("abs %s", abs_v1);
     $typeof(abs_v2) eps = 1;
 	return abs_diff.comp_le(FLOAT_EPSILON * math::max(abs_v1, abs_v2, eps)).and();
+}
+
+macro uint double.high_word(double d) => (uint)(bitcast(d, ulong) >> 32);
+macro uint double.low_word(double d) => (uint)bitcast(d, ulong);
+macro uint float.word(float d) => bitcast(d, uint);
+
+macro is_nan(x)
+{
+	$switch ($typeof(x)):
+	$case float:
+		return bitcast(x, uint) & 0x7fffffff > 0x7f800000;
+	$case double:
+		return bitcast(x, ulong) & (((ulong)-1) >> 1) > (0x7ffu64 << 52);
+	$default:
+		$assert(false, "Type cannot be used with is_nan");
+	$endswitch;
 }

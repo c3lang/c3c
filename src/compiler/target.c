@@ -5,6 +5,7 @@
 
 extern void LLVMSetTargetMachineUseInitArray(LLVMTargetMachineRef ref, bool use_init_array);
 
+static ObjectFormatType object_format_from_os(OsType os, ArchType arch_type);
 static unsigned arch_pointer_bit_width(OsType os, ArchType arch);
 static ArchType arch_from_llvm_string(StringSlice string);
 static EnvironmentType environment_type_from_llvm_string(StringSlice string);
@@ -14,7 +15,6 @@ static AlignData os_target_alignment_of_int(OsType os, ArchType arch, uint32_t b
 static AlignData os_target_alignment_of_float(OsType os, ArchType arch, uint32_t bits);
 static OsType os_from_llvm_string(StringSlice string);
 static VendorType vendor_from_llvm_string(StringSlice string);
-static ObjectFormatType object_format_from_os(OsType os);
 static unsigned os_target_supports_int128(OsType os, ArchType arch);
 static unsigned os_target_supports_float16(OsType os, ArchType arch);
 static unsigned os_target_supports_float128(OsType os, ArchType arch);
@@ -895,15 +895,17 @@ static unsigned os_target_supports_vec(OsType os, ArchType arch, int bits, bool 
 	}
 }
 
-static ObjectFormatType object_format_from_os(OsType os)
+static ObjectFormatType object_format_from_os(OsType os, ArchType arch_type)
 {
 	switch (os)
 	{
 		case OS_UNSUPPORTED:
 			return OBJ_FORMAT_UNSUPPORTED;
-		case OS_TYPE_LINUX:
 		case OS_TYPE_UNKNOWN:
 		case OS_TYPE_NONE:
+			if (arch_type == ARCH_TYPE_WASM64 || arch_type == ARCH_TYPE_WASM32) return OBJ_FORMAT_WASM;
+			FALLTHROUGH;
+		case OS_TYPE_LINUX:
 		case OS_TYPE_NETBSD:
 		case OS_TYPE_OPENBSD:
 		case OS_TYPE_FREE_BSD:
@@ -1395,7 +1397,7 @@ void target_setup(BuildTarget *target)
 	platform_target.big_endian = arch_big_endian(platform_target.arch);
 	platform_target.width_pointer = arch_pointer_bit_width(platform_target.os, platform_target.arch);
 	platform_target.alloca_address_space = 0;
-	platform_target.object_format = object_format_from_os(platform_target.os);
+	platform_target.object_format = object_format_from_os(platform_target.os, platform_target.arch);
 	switch (platform_target.object_format)
 	{
 		case OBJ_FORMAT_COFF:

@@ -1,21 +1,18 @@
 module libc::os;
 
-$switch (env::OS_TYPE):
-
-$case LINUX:
+$if (env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == OsType.LINUX):
 
 extern fn int* __errno_location();
-
 macro int errno() => *__errno_location();
 macro void errno_set(int err) => *(__errno_location()) = err;
 
-$case MACOSX:
+$elif (env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == OsType.MACOSX):
 
 extern fn int* __error();
 macro int errno() => *__error();
 macro void errno_set(int err) => *(__error()) = err;
 
-$case WIN32:
+$elif (env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == OsType.WIN32):
 
 macro int errno()
 {
@@ -29,9 +26,10 @@ macro void errno_set(int err) => _set_errno(err);
 extern fn void _get_errno(int* result);
 extern fn void _set_errno(int err);
 
-$default:
+$else:
 
-macro int errno() => 1;
-fn void errno_set(int err) {}
+tlocal int _errno_c3 = 0;
+fn void errno_set(int err) => _errno_c3 = err;
+fn int errno() => _errno_c3;
 
-$endswitch;
+$endif;

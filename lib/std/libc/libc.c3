@@ -4,9 +4,6 @@
 module libc;
 
 
-// stdlib
-
-
 // Constants need to be per os/arch
 const int EXIT_FAILURE = 1;
 const int EXIT_SUCCESS = 0;
@@ -24,8 +21,6 @@ struct LongDivResult
     long rem;
 }
 
-
-
 fn Errno errno()
 {
 	return (Errno)os::errno();
@@ -38,6 +33,10 @@ fn void errno_set(Errno e)
 
 define TerminateFunction = fn void();
 define CompareFunction = fn int(void*, void*);
+define JmpBuf = CInt[$$JMP_BUF_SIZE];
+
+$if (env::COMPILER_LIBC_AVAILABLE):
+
 extern fn double atof(char* str);
 extern fn int atoi(char* str);
 extern fn CLongLong atoll(char* str);
@@ -58,8 +57,6 @@ extern fn LongDivResult ldiv(long number, long denom);
 extern fn int rand();
 extern fn void srand(uint seed);
 
-define JmpBuf = CInt[$$JMP_BUF_SIZE];
-
 extern fn void longjmp(JmpBuf* buffer, CInt value);
 $if (env::OS_TYPE == OsType.WIN32):
 // TODO win32 aarch64
@@ -75,7 +72,7 @@ extern fn void* memchr(void* str, int c, usz n);
 extern fn int memcmp(void* str1, void* str2, usz n);
 extern fn void* memcpy(void* dest, void* src, usz n);
 extern fn void* memmove(void* dest, void* src, usz n);
-extern fn void* memset(void* dest, usz n);
+extern fn void* memset(void* dest, CInt value, usz n);
 extern fn char* strcat(char* dest, char* src);
 extern fn char* strncat(char* dest, char* src, usz n);
 extern fn char* strchr(char* str, int c);
@@ -99,13 +96,61 @@ extern fn void* calloc(usz count, usz size);
 extern fn void* free(void*);
 extern fn void* realloc(void* ptr, usz size);
 
+$else:
+
+fn void longjmp(JmpBuf* buffer, CInt value) @weak @extname("longjmp")
+{
+	unreachable("longjmp unavailable");
+}
+
+fn CInt setjmp(JmpBuf* buffer) @weak @extname("setjmp")
+{
+	unreachable("setjmp unavailable");
+}
+
+fn void* malloc(usz size) @weak @extname("malloc")
+{
+	unreachable("malloc unavailable");
+}
+fn void* calloc(usz count, usz size) @weak @extname("calloc")
+{
+	unreachable("calloc unavailable");
+}
+fn void* free(void*) @weak @extname("free")
+{
+	unreachable("free unavailable");
+}
+
+fn void* realloc(void* ptr, usz size) @weak @extname("realloc")
+{
+	unreachable("realloc unavailable");
+}
+
+fn void* memcpy(void* dest, void* src, usz n) @weak @extname("memcpy")
+{
+	for (usz i = 0; i < n; i++) ((char*)dest)[i] = ((char*)src)[i];
+	return dest;
+}
+
+fn void* memmove(void* dest, void* src, usz n) @weak @extname("memmove")
+{
+	return memcpy(dest, src, n) @inline;
+}
+
+fn void* memset(void* dest, CInt value, usz n) @weak @extname("memset")
+{
+	for (usz i = 0; i < n; i++) ((char*)dest)[i] = (char)value;
+	return dest;
+}
+
+$endif;
+
 // stdio
 
 define Fpos = long;
 define CFile = void*;
 
-$switch (env::OS_TYPE):
-$case OsType.LINUX:
+$if (env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == OsType.LINUX):
     extern CFile __stdin @extname("stdin");
     extern CFile __stdout @extname("stdout");
     extern CFile __stderr @extname("stderr");
@@ -115,7 +160,7 @@ $case OsType.LINUX:
     macro CFile stdin() { return __stdin; }
     macro CFile stdout() { return __stdout; }
     macro CFile stderr() { return __stderr; }
-$case OsType.MACOSX:
+$elif (env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == OsType.MACOSX):
     extern CFile __stdinp;
     extern CFile __stdoutp;
     extern CFile __stderrp;
@@ -124,19 +169,18 @@ $case OsType.MACOSX:
 	macro CFile stdin() { return __stdinp; }
     macro CFile stdout() { return __stdoutp; }
     macro CFile stderr() { return __stderrp; }
-$case OsType.WIN32:
+$elif (env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == OsType.WIN32):
     extern fn CFile __acrt_iob_func(CInt c);
     extern fn usz _msize(void* ptr);
     macro usz malloc_size(void* ptr) { return _msize(ptr); }
     macro CFile stdin() { return __acrt_iob_func(0); }
     macro CFile stdout() { return __acrt_iob_func(1); }
     macro CFile stderr() { return __acrt_iob_func(2); }
-$default:
+$else:
     macro CFile stdin() { return (CFile*)(uptr)0; }
     macro CFile stdout() { return (CFile*)(uptr)1; }
     macro CFile stderr() { return (CFile*)(uptr)2; }
-$endswitch;
-
+$endif;
 
 const HAS_MALLOC_SIZE =
 	env::OS_TYPE == OsType.LINUX
@@ -158,6 +202,8 @@ const int FILENAME_MAX = 1024;
 
 define Errno = distinct CInt;
 define SeekIndex = CLong;
+
+$if (env::COMPILER_LIBC_AVAILABLE):
 
 extern fn int fclose(CFile stream);
 extern fn void clearerr(CFile stream);
@@ -190,13 +236,78 @@ extern fn char* fgets(char* str, int n, CFile stream);
 extern fn int fputc(int c, CFile stream);
 extern fn int getc(CFile stream);
 extern fn int getchar();
-extern fn int putc(char c, CFile stream);
+extern fn int putc(int c, CFile stream);
 extern fn int putchar(int c);
 extern fn int puts(char* str);
 extern fn int ungetc(int c, CFile stream);
 extern fn void perror(char* str);
 extern fn isz getline(char** linep, usz* linecapp, CFile stream);
 
+$else:
+
+fn int fseek(CFile stream, SeekIndex offset, int whence) @weak @extname("fseek")
+{
+	unreachable("'fseek' not available.");
+}
+fn CFile fopen(char* filename, char* mode) @weak @extname("fopen")
+{
+	unreachable("'fopen' not available.");
+}
+
+fn usz fwrite(void* ptr, usz size, usz nmemb, CFile stream) @weak @extname("fwrite")
+{
+	unreachable("'fwrite' not available.");
+}
+
+fn usz fread(void* ptr, usz size, usz nmemb, CFile stream) @weak @extname("fread")
+{
+	unreachable("'fread' not available.");
+}
+
+fn CFile fclose(CFile) @weak @extname("fclose")
+{
+	unreachable("'fclose' not available.");
+}
+
+fn int fflush(CFile stream) @weak @extname("fflush")
+{
+	unreachable("'fflush' not available.");
+}
+
+fn int fputc(int c, CFile stream) @weak @extname("fputc")
+{
+	unreachable("'fputc' not available.");
+}
+
+fn char* fgets(char* str, int n, CFile stream) @weak @extname("fgets")
+{
+	unreachable("'fgets' not available.");
+}
+
+fn int fgetc(CFile stream) @weak @extname("fgetc")
+{
+	unreachable("'fgetc' not available.");
+}
+
+fn int feof(CFile stream) @weak @extname("feof")
+{
+	unreachable("'feof' not available.");
+}
+
+fn int putc(int c, CFile stream) @weak @extname("putc")
+{
+	unreachable("'putc' not available.");
+}
+fn int putchar(int c) @weak @extname("putchar")
+{
+	unreachable("'putchar' not available.");
+}
+fn int puts(char* str) @weak @extname("puts")
+{
+	unreachable("'puts' not available.");
+}
+
+$endif;
 // vsprintf vprintf not supported
 
 // time.h

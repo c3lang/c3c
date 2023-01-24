@@ -1,7 +1,14 @@
 module std::io::os;
 import libc;
 
-$if (env::OS_TYPE == OsType.WIN32):
+$if (!env::COMPILER_LIBC_AVAILABLE):
+
+fn String! getcwd(Allocator* allocator = mem::default_allocator())
+{
+	unreachable("'getcwd' not available");
+}
+
+$elif (env::OS_TYPE == OsType.WIN32):
 
 extern fn Char16* _wgetcwd(Char16* buffer, int maxlen);
 extern fn usz wcslen(Char16* str);
