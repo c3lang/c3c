@@ -170,8 +170,8 @@ fn int __rem_pio2_large(double* x, double* y, int e0, int nx, int prec)
 			z = q[j - 1] + fw;
 		}
 		// compute n
-		z  = nolibc::scalbn(z, q0);       /* actual value of z */
-		z -= 8.0 * nolibc::floor(z * 0.125); /* trim off integer >= 8 */
+		z  = nolibc::_scalbn(z, q0);       /* actual value of z */
+		z -= 8.0 * nolibc::_floor(z * 0.125); /* trim off integer >= 8 */
 		n = (int)z;
 		z -= (double)n;
 		switch
@@ -221,7 +221,7 @@ fn int __rem_pio2_large(double* x, double* y, int e0, int nx, int prec)
 			if (ih == 2)
 			{
 				z = 1.0 - z;
-				if (carry != 0) z -= nolibc::scalbn(1.0, q0);
+				if (carry != 0) z -= nolibc::_scalbn(1.0, q0);
 			}
 		}
 
@@ -265,7 +265,7 @@ fn int __rem_pio2_large(double* x, double* y, int e0, int nx, int prec)
 	else
 	{
 		/* break z into 24-bit if necessary */
-		z = nolibc::scalbn(z,-q0);
+		z = nolibc::_scalbn(z,-q0);
 		if (z >= 0x1p24)
 		{
 			fw = (double)(int)(0x1p-24 * z);
@@ -281,7 +281,7 @@ fn int __rem_pio2_large(double* x, double* y, int e0, int nx, int prec)
 	}
 
 	/* convert integer "bit" chunk to floating-point value */
-	fw = nolibc::scalbn(1.0 , q0);
+	fw = nolibc::_scalbn(1.0 , q0);
 	for (int i = jz; i >= 0; i --)
 	{
 		q[i] = fw * (double)iq[i];

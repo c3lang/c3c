@@ -1,4 +1,3 @@
-// #target: macos-x64
 module brainfk;
 import std::io;
 

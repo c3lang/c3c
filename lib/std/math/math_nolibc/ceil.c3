@@ -2,7 +2,7 @@ module std::math::nolibc;
 
 $if (!env::COMPILER_LIBC_AVAILABLE):
 
-fn double _floor(double x) @weak @extname("floor")
+fn double _ceil(double x) @weak @extname("ceil")
 {
 	ulong ui = bitcast(x, ulong);
 	int e = (int)((ui >> 52) & 0x7ff);
@@ -13,13 +13,13 @@ fn double _floor(double x) @weak @extname("floor")
 	if (e <= 0x3ff - 1)
 	{
 		@force_eval_add(y, 0);
-		return ui >> 63 ? -1 : 0;
+		return ui >> 63 ? -0.0 : 1;
 	}
-	return y > 0 ? x + y - 1 : x + y;
+	return y < 0 ? x + y + 1 : x + y;
 }
 
 
-fn float _floorf(float x) @weak @extname("floorf")
+fn float _ceilf(float x) @weak @extname("ceilf")
 {
 	uint u = bitcast(x, uint);
 	int e = (int)((u >> 23) & 0xff) - 0x7f;
@@ -31,13 +31,13 @@ fn float _floorf(float x) @weak @extname("floorf")
 			uint m = 0x007fffff >> e;
 			if (u & m == 0) return x;
 			@force_eval_add(x, 0x1p120f);
-			if (u >> 31) u += m;
+			if (u >> 31 == 0) u += m;
 			u &= ~m;
-		case u >> 31 == 0:
+		case u >> 31 != 0:
 			@force_eval_add(x, 0x1p120f);
-			u = 0;
-		case (u << 1 != 0):
-			return -1;
+			return -0.0f;
+		case u << 1 != 0:
+			return 1;
 	}
 	return bitcast(u, float);
 }
