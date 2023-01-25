@@ -149,6 +149,10 @@ fn float cosf_broken(float x) @extname("cosf") @weak
 {
 	unreachable("'cosf' not supported");
 }
+fn float sincosf_broken(float x) @extname("sincosf") @weak
+{
+	unreachable("'sincosf' not supported");
+}
 
 fn double sin_broken(double x) @extname("sin") @weak
 {
@@ -158,20 +162,10 @@ fn double cos_broken(double x) @extname("cos") @weak
 {
 	unreachable("'cos' not supported");
 }
-
-fn float roundf_broken(float x) @extname("roundf") @weak
+fn double sincos_broken(double x) @extname("sincos") @weak
 {
-	unreachable("'roundf' not supported");
+	unreachable("'sinccos' not supported");
 }
 
-fn double round_broken(double x) @extname("round") @weak
-{
-	unreachable("'round' not supported");
-}
-
-fn float powf_broken(float x) @extname("powf") @weak
-{
-	unreachable("'powf' not supported");
-}
 
 $endif;

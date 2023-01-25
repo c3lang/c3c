@@ -120,13 +120,11 @@ macro sign(x)
 	return ($typeof(x))(x < 0 ? -1 : 1);
 }
 
-$if (env::COMPILER_LIBC_AVAILABLE):
 
-extern fn double _atan(double x) @extname("atan");
-extern fn float _atanf(float x) @extname("atanf");
-extern fn double _atan2(double, double) @extname("atan2");
-extern fn float _atan2f(float, float) @extname("atan2f");
-
+/**
+ * @require values::@is_int(x) || values::@is_float(x) "Expected an integer or floating point value"
+ * @checked x + y
+ **/
 macro atan2(x, y)
 {
 	$if ($typeof(x).typeid == float.typeid && $typeof(y).typeid == float.typeid):
@@ -136,6 +134,10 @@ macro atan2(x, y)
 	$endif;
 }
 
+/**
+ * @require values::@is_int(x) || values::@is_float(x) "Expected an integer or floating point value"
+ * @checked x + y
+ **/
 macro atan(x)
 {
 	$if ($typeof(x).typeid == float.typeid):
@@ -144,32 +146,6 @@ macro atan(x)
 		return _atan(x);
 	$endif;
 }
-
-$else:
-
-macro atan2(x, y)
-{
-	$if ($typeof(x).typeid == float.typeid && $typeof(y).typeid == float.typeid):
-		return atan::_atan2f(x, y);
-	$else:
-		return atan::_atan2(x, y);
-	$endif;
-}
-
-macro atan(x)
-{
-	$if ($typeof(x).typeid == float.typeid):
-		return atan::_atanf(x);
-	$else:
-		return atan::_atan(x);
-	$endif;
-}
-
-$endif;
-
-
-
-
 
 /**
  * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
@@ -625,3 +601,9 @@ macro is_nan(x)
 		$assert(false, "Type cannot be used with is_nan");
 	$endswitch;
 }
+
+
+extern fn double _atan(double x) @extname("atan");
+extern fn float _atanf(float x) @extname("atanf");
+extern fn double _atan2(double, double) @extname("atan2");
+extern fn float _atan2f(float, float) @extname("atan2f");

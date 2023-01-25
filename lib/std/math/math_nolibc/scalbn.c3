@@ -1,6 +1,8 @@
 module std::math::nolibc;
 
-fn double scalbn(double x, int n) @weak @extname("scalbn")
+$if (!env::COMPILER_LIBC_AVAILABLE):
+
+fn double _scalbn(double x, int n) @weak @extname("scalbn")
 {
 	switch
 	{
@@ -25,3 +27,5 @@ fn double scalbn(double x, int n) @weak @extname("scalbn")
 	}
 	return x * bitcast(((ulong)(0x3ff + n)) << 52, double);
 }
+
+$endif;

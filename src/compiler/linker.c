@@ -144,6 +144,7 @@ static void linker_setup_windows(const char ***args_ref, LinkerType linker_type)
 
 	add_arg("kernel32.lib");
 	add_arg("ntdll.lib");
+	add_arg("user32.lib");
 	add_arg("legacy_stdio_definitions.lib");
 
 	if (active_target.win.crt_linking == WIN_CRT_STATIC)

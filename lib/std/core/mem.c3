@@ -10,7 +10,7 @@ macro @volatile_load(&x) @builtin
 
 macro @volatile_store(&x, y) @builtin
 {
-    return $$volatile_store(&x, y);
+    return $$volatile_store(&x, ($typeof(x))y);
 }
 
 enum AtomicOrdering : int
