@@ -138,7 +138,7 @@ if (${LLVM_PACKAGE_VERSION} VERSION_GREATER 14.1)
 endif()
 
 llvm_map_components_to_libnames(llvm_libs ${LLVM_LINK_COMPONENTS})
-
+file(REMOVE_RECURSE ${CMAKE_BINARY_DIR}/lib)
 file(COPY ${CMAKE_SOURCE_DIR}/lib DESTINATION ${CMAKE_BINARY_DIR})
 
 
