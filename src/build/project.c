@@ -20,6 +20,7 @@ const char *project_default_keys[] = {
 		"link-args",
 		"linked-libraries",
 		"macossdk",
+		"memory-env",
 		"no-entry",
 		"nolibc",
 		"nostdlib",
@@ -62,6 +63,7 @@ const char* project_target_keys[] = {
 		"link-args-override",
 		"link-args-add",
 		"macossdk",
+		"memory-env",
 		"nolibc",
 		"nostdlib",
 		"panicfn",
@@ -289,6 +291,9 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	DebugInfo info = get_valid_string_setting(json, "debug-info", type, debug_infos, 0, 3, "one of 'full' 'line-table' or 'none'.");
 	if (info > -1) target->debug_info = info;
 
+	MemoryEnvironment env = get_valid_string_setting(json, "memory-env", type, memory_environment, 0, 4, "one of 'normal', 'small', 'tiny' or 'none'.");
+	if (env > -1) target->memory_environment = env;
+
 	// Symtab
 	long symtab_size = get_valid_integer(json, "symtab", type, false);
 	if (symtab_size > 0)
@@ -409,6 +414,7 @@ static void project_add_targets(Project *project, JSONObject *project_data)
 
 	BuildTarget default_target = {
 			.optimization_level = OPTIMIZATION_DEFAULT,
+			.memory_environment = MEMORY_ENV_NORMAL,
 			.size_optimization_level = SIZE_OPTIMIZATION_NONE,
 			.arch_os_target = ARCH_OS_TARGET_DEFAULT,
 			.debug_info = DEBUG_INFO_NONE,

@@ -350,7 +350,7 @@ voiderr64:                                        ; preds = %after_check63, %voi
   br i1 %not, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %voiderr64
-  %79 = call i64 @std_core_mem_allocator_new_temp(ptr %retparam65, i64 131072, ptr @std_core_mem_allocator__SYSTEM_ALLOCATOR)
+  %79 = call i64 @std_core_mem_allocator_new_temp(ptr %retparam65, i64 262144, ptr @std_core_mem_allocator__SYSTEM_ALLOCATOR)
   %not_err66 = icmp eq i64 %79, 0
   br i1 %not_err66, label %after_check67, label %assign_optional
 
@@ -364,7 +364,7 @@ after_check67:                                    ; preds = %if.then
 
 panic_block:                                      ; preds = %assign_optional
   %81 = load ptr, ptr @std_core_builtin_panic, align 8
-  call void %81(ptr @.panic_msg, i64 27, ptr @.file, i64 6, ptr @.func, i64 4,
+  call void %81(ptr @.panic_msg,
   unreachable
 
 noerr_block:                                      ; preds = %after_check67

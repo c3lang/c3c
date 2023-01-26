@@ -494,7 +494,7 @@ voiderr97:                                        ; preds = %after_check96, %voi
   br i1 %not, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %voiderr97
-  %158 = call i64 @std_core_mem_allocator_new_temp(%TempAllocator** %retparam98, i64 131072, %Allocator* @std_core_mem_allocator__SYSTEM_ALLOCATOR)
+  %158 = call i64 @std_core_mem_allocator_new_temp(%TempAllocator** %retparam98, i64 262144, %Allocator* @std_core_mem_allocator__SYSTEM_ALLOCATOR)
   %not_err99 = icmp eq i64 %158, 0
   br i1 %not_err99, label %after_check100, label %assign_optional
 
@@ -508,7 +508,7 @@ after_check100:                                   ; preds = %if.then
 
 panic_block:                                      ; preds = %assign_optional
   %160 = load void (i8*, i64, i8*, i64, i8*, i64, i32)*, void (i8*, i64, i8*, i64, i8*, i64, i32)** @std_core_builtin_panic, align 8
-  call void %160(i8* getelementptr inbounds ([28 x i8], [28 x i8]* @.panic_msg, i64 0, i64 0), i64 27, i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.file, i64 0, i64 0), i64 6, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.func, i64 0, i64 0), i64 4,
+  call void %160(i8* getelementptr inbounds
   unreachable
 
 noerr_block:                                      ; preds = %after_check100
