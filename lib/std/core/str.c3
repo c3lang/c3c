@@ -288,7 +288,7 @@ fn usz utf8_codepoints(String utf8)
 	return len;
 }
 
-fn Char32[]! utf8to32(String utf8, Allocator* allocator = mem::current_allocator)
+fn Char32[]! utf8to32(String utf8, Allocator* allocator = mem::current_allocator())
 {
 	usz codepoints = conv::utf8_codepoints(utf8);
 	Char32* data = allocator.alloc(Char32.sizeof * (codepoints + 1))?;
@@ -297,7 +297,7 @@ fn Char32[]! utf8to32(String utf8, Allocator* allocator = mem::current_allocator
 	return data[:codepoints];
 }
 
-fn String utf32to8(Char32[] utf32, Allocator* allocator = mem::current_allocator)
+fn String utf32to8(Char32[] utf32, Allocator* allocator = mem::current_allocator())
 {
 	usz len = conv::utf8len_for_utf32(utf32);
 	char* data = allocator.alloc(len + 1)!!;
@@ -321,6 +321,7 @@ fn String! utf16to8(Char16[] utf16, Allocator* allocator = mem::current_allocato
 	usz len = conv::utf8len_for_utf16(utf16);
 	char* data = allocator.alloc(len + 1)?;
 	conv::utf16to8_unsafe(utf16, data)?;
+	data[len] = 0;
 	return data[:len];
 }
 

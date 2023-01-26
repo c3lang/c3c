@@ -307,6 +307,8 @@ fn usz! utf32to8(Char32[] utf32, String utf8_buffer)
 		len -= used;
 		ptr += used;
 	}
+	// Zero terminate if there is space.
+    if (len > 0) ptr[0] = 0;
 	return utf8_buffer.len - len;
 }
 
@@ -331,6 +333,8 @@ fn usz! utf8to32(String utf8, Char32[] utf32_buffer)
     	i += width;
     	ptr[len32++] = uc;
     }
+    // Zero terminate if possible
+    if (len32 + 1 < buf_len) ptr[len32] = 0;
     return len32;
 }
 

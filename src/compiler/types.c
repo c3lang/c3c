@@ -1041,6 +1041,9 @@ Type *type_get_indexed_type(Type *type)
 		case TYPE_DISTINCT:
 			type = type->decl->distinct_decl.base_type;
 			goto RETRY;
+		case TYPE_OPTIONAL:
+			type = type->optional;
+			goto RETRY;
 		case TYPE_TYPEDEF:
 			type = type->canonical;
 			goto RETRY;
