@@ -259,6 +259,8 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_UNREACHABLE] = KW_DEF("unreachable");
 	builtin_list[BUILTIN_VOLATILE_LOAD] = KW_DEF("volatile_load");
 	builtin_list[BUILTIN_VOLATILE_STORE] = KW_DEF("volatile_store");
+	builtin_list[BUILTIN_WASM_MEMORY_GROW] = KW_DEF("wasm_memory_grow");
+	builtin_list[BUILTIN_WASM_MEMORY_SIZE] = KW_DEF("wasm_memory_size");
 
 	for (unsigned i = 0; i < NUMBER_OF_BUILTINS; i++)
 	{
@@ -289,6 +291,7 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_BIGENDIAN] = KW_DEF("@bigendian");
 	attribute_list[ATTRIBUTE_BUILTIN] = KW_DEF("@builtin");
 	attribute_list[ATTRIBUTE_CDECL] = KW_DEF("@cdecl");
+	attribute_list[ATTRIBUTE_EXTERN] = KW_DEF("@extern");
 	attribute_list[ATTRIBUTE_EXTNAME] = KW_DEF("@extname");
 	attribute_list[ATTRIBUTE_FASTCALL] = KW_DEF("@fastcall");
 	attribute_list[ATTRIBUTE_INLINE] = KW_DEF("@inline");
@@ -312,6 +315,7 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_UNUSED] = KW_DEF("@unused");
 	attribute_list[ATTRIBUTE_USED] = KW_DEF("@used");
 	attribute_list[ATTRIBUTE_VECCALL] = KW_DEF("@veccall");
+	attribute_list[ATTRIBUTE_WASM] = KW_DEF("@wasm");
 	attribute_list[ATTRIBUTE_WEAK] = KW_DEF("@weak");
 
 	for (unsigned i = 0; i < NUMBER_OF_ATTRIBUTES; i++)

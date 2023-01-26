@@ -83,6 +83,7 @@ static void usage(void)
 	OUTPUT("  --stdlib <dir>            - Use this directory as the C3 standard library path.");
 	OUTPUT("  --nostdlib                - Do not include the standard library.");
 	OUTPUT("  --nolibc                  - Do not implicitly link libc nor any associated files.");
+	OUTPUT("  --no-entry                - Do not generate (or require) a main function.");
 	OUTPUT("  --libdir <dir>            - Add this directory to the C3 library search paths.");
 	OUTPUT("  --lib <name>              - Add this library to the compilation.");
 	OUTPUT("  --path <dir>              - Use this as the base directory for the current command.");
@@ -657,6 +658,10 @@ static void parse_option(BuildOptions *options)
 			{
 				options->print_output = true;
 				return;
+			}
+			if (match_longopt("no-entry"))
+			{
+				options->no_entry = true;
 			}
 			if (match_longopt("cc"))
 			{

@@ -1442,6 +1442,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_BUILTIN] = ATTR_MACRO | ATTR_FUNC,
 			[ATTRIBUTE_CDECL] = ATTR_FUNC,
 			[ATTRIBUTE_EXTNAME] = (AttributeDomain)~(ATTR_CALL | ATTR_BITSTRUCT | ATTR_MACRO | ATTR_XXLIZER),
+			[ATTRIBUTE_EXTERN] = (AttributeDomain)~(ATTR_CALL | ATTR_BITSTRUCT | ATTR_MACRO | ATTR_XXLIZER),
 			[ATTRIBUTE_FASTCALL] = ATTR_FUNC,
 			[ATTRIBUTE_INLINE] = ATTR_FUNC | ATTR_CALL,
 			[ATTRIBUTE_LITTLEENDIAN] = ATTR_BITSTRUCT,
@@ -1465,6 +1466,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_USED] = (AttributeDomain)~(ATTR_CALL | ATTR_XXLIZER ),
 			[ATTRIBUTE_VECCALL] = ATTR_FUNC,
 			[ATTRIBUTE_WEAK] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
+			[ATTRIBUTE_WASM] = ATTR_FUNC,
 	};
 
 	if ((attribute_domain[type] & domain) != domain)
@@ -1590,10 +1592,11 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 				return true;
 			}
 		case ATTRIBUTE_SECTION:
+		case ATTRIBUTE_EXTERN:
 		case ATTRIBUTE_EXTNAME:
 			if (context->unit->module->is_generic)
 			{
-				sema_error_at(attr->span, "'extname' attributes are not allowed in generic modules.");
+				sema_error_at(attr->span, "'%s' attributes are not allowed in generic modules.", attr->name);
 				return false;
 			}
 			if (!expr)
@@ -1607,15 +1610,19 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 				SEMA_ERROR(expr, "Expected a constant string value as argument.");
 				return false;
 			}
-			if (type == ATTRIBUTE_SECTION)
+			switch (type)
 			{
-				if (!sema_check_section(context, attr)) return false;
-				decl->section = expr->const_expr.string.chars;
-			}
-			else
-			{
-				decl->has_extname = true;
-				decl->extname = expr->const_expr.string.chars;
+				case ATTRIBUTE_SECTION:
+					if (!sema_check_section(context, attr)) return false;
+					decl->section = expr->const_expr.string.chars;
+					break;
+				case ATTRIBUTE_EXTNAME:
+				case ATTRIBUTE_EXTERN:
+					decl->has_extname = true;
+					decl->extname = expr->const_expr.string.chars;
+					break;
+				default:
+					UNREACHABLE;
 			}
 			return true;
 		case ATTRIBUTE_NOINLINE:
@@ -1637,6 +1644,9 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			break;
 		case ATTRIBUTE_WEAK:
 			decl->is_weak = true;
+			break;
+		case ATTRIBUTE_WASM:
+			decl->is_wasm_export = true;
 			break;
 		case ATTRIBUTE_NAKED:
 			assert(domain == ATTR_FUNC);
@@ -1939,8 +1949,12 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 			return false;
 	}
 	if (active_target.type == TARGET_TYPE_TEST) return true;
-
 	Decl *function;
+	if (active_target.no_entry)
+	{
+		function = decl;
+		goto REGISTER_MAIN;
+	}
 	if (!subarray_param && is_int_return)
 	{
 		// Int return is pass-through at the moment.

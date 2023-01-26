@@ -711,6 +711,8 @@ static void llvm_codegen_setup()
 	intrinsic_id.vector_reduce_and = lookup_intrinsic("llvm.vector.reduce.and");
 	intrinsic_id.vector_reduce_or = lookup_intrinsic("llvm.vector.reduce.or");
 	intrinsic_id.vector_reduce_xor = lookup_intrinsic("llvm.vector.reduce.xor");
+	intrinsic_id.wasm_memory_grow = lookup_intrinsic("llvm.wasm.memory.grow");
+	intrinsic_id.wasm_memory_size = lookup_intrinsic("llvm.wasm.memory.size");
 
 	attribute_id.align = lookup_attribute("align");
 	attribute_id.alwaysinline = lookup_attribute("alwaysinline");

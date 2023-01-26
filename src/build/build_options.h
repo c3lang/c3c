@@ -271,6 +271,7 @@ typedef struct BuildOptions_
 	bool emit_bitcode;
 	bool test_mode;
 	bool no_stdlib;
+	bool no_entry;
 	bool no_libc;
 	bool force_linker;
 	bool read_stdin;
@@ -361,6 +362,7 @@ typedef struct
 	bool testing;
 	bool read_stdin;
 	bool print_output;
+	bool no_entry;
 	int build_threads;
 	OptimizationLevel optimization_level;
 	SizeOptimizationLevel size_optimization_level;
