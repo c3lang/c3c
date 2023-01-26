@@ -551,9 +551,11 @@ static void setup_int_define(const char *id, uint64_t i, Type *type)
 {
 	TokenType token_type = TOKEN_CONST_IDENT;
 	id = symtab_add(id, (uint32_t) strlen(id), fnv1a(id, (uint32_t) strlen(id)), &token_type);
-	assert(type_is_integer(type));
-	Expr *expr = expr_new_const_int(INVALID_SPAN, type, i, true);
-	if (expr_const_will_overflow(&expr->const_expr, type->type_kind))
+	Type *flat = type_flatten(type);
+	assert(type_is_integer(flat));
+	Expr *expr = expr_new_const_int(INVALID_SPAN, flat, i, true);
+	expr->type = type;
+	if (expr_const_will_overflow(&expr->const_expr, flat->type_kind))
 	{
 		error_exit("Integer define %s overflow.", id);
 	}
@@ -745,6 +747,7 @@ static int jump_buffer_size()
 	}
 	UNREACHABLE
 }
+
 void compile()
 {
 	symtab_init(active_target.symtab_size);
@@ -770,6 +773,7 @@ void compile()
 	setup_bool_define("PLATFORM_I128_SUPPORTED", platform_target.int128);
 	setup_bool_define("PLATFORM_F128_SUPPORTED", platform_target.float128);
 	setup_bool_define("PLATFORM_F16_SUPPORTED", platform_target.float16);
+	setup_int_define("MEMORY_ENVIRONMENT", (uint64_t)active_target.memory_environment, type_int);
 	setup_bool_define("COMPILER_LIBC_AVAILABLE", !active_target.no_libc);
 	setup_int_define("COMPILER_OPT_LEVEL", (uint64_t)active_target.optimization_level, type_int);
 	setup_int_define("OS_TYPE", (uint64_t)platform_target.os, type_int);

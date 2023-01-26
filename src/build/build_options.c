@@ -131,6 +131,7 @@ static void usage(void)
 	OUTPUT("");
 	OUTPUT("  --reloc=<option>          - Relocation model: none, pic, PIC, pie, PIE.");
 	OUTPUT("  --x86vec=<option>         - Set max level of vector instructions: none, native, mmx, sse, avx, avx512.");
+	OUTPUT("  --memory-env=<option>     - Set the memory environment: normal, small, tiny, none.");
 	OUTPUT("");
 	OUTPUT("  --debug-stats             - Print debug statistics.");
 #ifndef NDEBUG
@@ -546,6 +547,11 @@ static void parse_option(BuildOptions *options)
 				options->x86_vector_capability = (X86VectorCapability)parse_multi_option(argopt, 6, vector_capability);
 				return;
 			}
+			if ((argopt = match_argopt("memory-env")))
+			{
+				options->memory_environment = (MemoryEnvironment )parse_multi_option(argopt, 4, memory_environment);
+				return;
+			}
 			if ((argopt = match_argopt("reloc")))
 			{
 				options->reloc_model = (RelocModel)parse_multi_option(argopt, 5, reloc_models);
@@ -839,6 +845,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.reloc_model = RELOC_DEFAULT,
 		.backend = BACKEND_LLVM,
 		.x86_vector_capability = X86VECTOR_DEFAULT,
+		.memory_environment = MEMORY_ENV_NOT_SET,
 		.win.crt_linking = WIN_CRT_DEFAULT,
 		.files = NULL,
 		.build_dir = NULL,

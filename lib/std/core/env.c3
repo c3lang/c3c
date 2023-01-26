@@ -11,6 +11,14 @@ enum CompilerOptLevel
     O3
 }
 
+enum MemoryEnvironment
+{
+	NORMAL,
+	SMALL,
+	TINY,
+	NONE
+}
+
 enum OsType
 {
 	UNKNOWN,
@@ -51,9 +59,9 @@ enum OsType
 	EMSCRIPTEN,
 }
 
-const OsType OS_TYPE = (OsType)($$OS_TYPE);
+const OsType OS_TYPE = (OsType)$$OS_TYPE;
 const bool COMPILER_LIBC_AVAILABLE = $$COMPILER_LIBC_AVAILABLE;
-const CompilerOptLevel COMPILER_OPT_LEVEL = (CompilerOptLevel)($$COMPILER_OPT_LEVEL);
+const CompilerOptLevel COMPILER_OPT_LEVEL = (CompilerOptLevel)$$COMPILER_OPT_LEVEL;
 const bool BIG_ENDIAN = $$PLATFORM_BIG_ENDIAN;
 const bool I128_NATIVE_SUPPORT = $$PLATFORM_I128_SUPPORTED;
 const bool F16_SUPPORT = $$PLATFORM_F16_SUPPORTED;
@@ -62,7 +70,7 @@ const bool COMPILER_SAFE_MODE = $$COMPILER_SAFE_MODE;
 const usz LLVM_VERSION = $$LLVM_VERSION;
 const bool BENCHMARKING = $$BENCHMARKING;
 const bool TESTING = $$TESTING;
-const usz TEMP_ALLOCATOR_SIZE = 128 * 1024;
+const MemoryEnvironment MEMORY_ENV = (MemoryEnvironment)$$MEMORY_ENVIRONMENT;
 
 macro bool os_is_posix()
 {
@@ -87,3 +95,4 @@ macro bool os_is_posix()
 		return false;
 	$endswitch;
 }
+

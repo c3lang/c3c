@@ -147,6 +147,7 @@ typedef enum
 	X86VECTOR_NATIVE = 5,
 } X86VectorCapability;
 
+
 static const char *vector_capability[6] = {
 		[X86VECTOR_NONE] = "none",
 		[X86VECTOR_MMX] = "mmx",
@@ -154,6 +155,22 @@ static const char *vector_capability[6] = {
 		[X86VECTOR_AVX] = "avx",
 		[X86VECTOR_AVX512] = "avx512",
 		[X86VECTOR_NATIVE] = "native"
+};
+
+typedef enum
+{
+	MEMORY_ENV_NOT_SET = -1,
+	MEMORY_ENV_NORMAL = 0,
+	MEMORY_ENV_SMALL = 1,
+	MEMORY_ENV_TINY = 2,
+	MEMORY_ENV_NONE = 3,
+} MemoryEnvironment;
+
+static const char *memory_environment[6] = {
+		[MEMORY_ENV_NORMAL] = "normal",
+		[MEMORY_ENV_SMALL] = "small",
+		[MEMORY_ENV_TINY] = "tiny",
+		[MEMORY_ENV_NONE] = "none",
 };
 
 typedef enum
@@ -284,6 +301,7 @@ typedef struct BuildOptions_
 	const char *obj_out;
 	RelocModel reloc_model;
 	X86VectorCapability x86_vector_capability;
+	MemoryEnvironment memory_environment;
 	bool print_keywords;
 	bool print_attributes;
 	bool print_builtins;
@@ -365,6 +383,7 @@ typedef struct
 	bool no_entry;
 	int build_threads;
 	OptimizationLevel optimization_level;
+	MemoryEnvironment memory_environment;
 	SizeOptimizationLevel size_optimization_level;
 	bool single_module;
 	DebugInfo debug_info;

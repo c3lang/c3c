@@ -275,7 +275,16 @@ macro TempAllocator* temp_allocator()
 {
 	if (!thread_temp_allocator)
 	{
-		thread_temp_allocator = allocator::new_temp(env::TEMP_ALLOCATOR_SIZE, allocator::LIBC_ALLOCATOR)!!;
+		$switch (env::MEMORY_ENV):
+		$case NORMAL:
+			thread_temp_allocator = allocator::new_temp(1024 * 256, allocator::LIBC_ALLOCATOR)!!;
+		$case SMALL:
+			thread_temp_allocator = allocator::new_temp(1024 * 16, allocator::LIBC_ALLOCATOR)!!;
+		$case TINY:
+			thread_temp_allocator = allocator::new_temp(1024 * 4, allocator::LIBC_ALLOCATOR)!!;
+		$case NONE:
+			unreachable("Temp allocator must explicitly created when memory-env is set to 'none'.");
+		$endswitch;
 	}
 	return thread_temp_allocator;
 }

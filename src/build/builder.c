@@ -196,6 +196,10 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	{
 		target->feature.safe_mode = options->safe_mode == 1;
 	}
+	if (options->memory_environment != MEMORY_ENV_NOT_SET)
+	{
+		target->memory_environment = options->memory_environment;
+	}
 	if (options->debug_info_override != DEBUG_INFO_NOT_SET)
 	{
 		target->debug_info = options->debug_info_override;
@@ -301,6 +305,7 @@ void init_default_build_target(BuildTarget *target, BuildOptions *options)
 		.source_dirs = options->files,
 		.name = options->output_name,
 		.optimization_level = OPTIMIZATION_DEFAULT,
+		.memory_environment = MEMORY_ENV_NORMAL,
 		.size_optimization_level = SIZE_OPTIMIZATION_NONE,
 		.symtab_size = options->symtab_size ? options->symtab_size : DEFAULT_SYMTAB_SIZE,
 		.switchrange_max_size = DEFAULT_SWITCHRANGE_MAX_SIZE,
