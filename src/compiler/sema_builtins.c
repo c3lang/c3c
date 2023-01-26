@@ -24,7 +24,7 @@ static bool sema_check_builtin_args_match(Expr **args, size_t arg_len);
 static bool sema_check_builtin_args_const(Expr **args, size_t arg_len);
 static bool sema_check_builtin_args(Expr **args, BuiltinArg *arg_type, size_t arg_len);
 static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, bool swizzle_two);
-static inline unsigned builtin_expected_args(BuiltinFunction func);
+static inline int builtin_expected_args(BuiltinFunction func);
 
 static bool sema_check_builtin_args_match(Expr **args, size_t arg_len)
 {
@@ -163,24 +163,31 @@ static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, b
 {
 	Expr **args = expr->call_expr.arguments;
 	unsigned arg_count = vec_size(args);
-	if (swizzle_two && arg_count < 3)
-	{
-		SEMA_ERROR(expr, "Expected at least 3 arguments.");
-		return false;
-	}
-	else if (arg_count < 2)
-	{
-		SEMA_ERROR(expr, "Expected at least 2 arguments.");
-		return false;
-	}
 	bool optional = false;
 	int first_mask_value = swizzle_two ? 2 : 1;
+	Type *first = NULL;
 	for (unsigned i = 0; i < first_mask_value; i++)
 	{
-		if (!sema_analyse_expr(context, args[i])) return false;
+		Expr *arg = args[i];
+		if (!sema_analyse_expr(context, arg)) return false;
+		if (!type_flat_is_vector(arg->type))
+		{
+			SEMA_ERROR(arg, "A vector was expected here.");
+			return false;
+		}
 		optional = optional || type_is_optional(args[i]->type);
+		if (i == 0)
+		{
+			first = type_no_optional(arg->type)->canonical;
+			continue;
+		}
+		else if (type_no_optional(arg->type->canonical) != first)
+		{
+			SEMA_ERROR(arg, "Vector type does not match the first vector.");
+			return false;
+		}
 	}
-	unsigned components = type_flatten(args[0]->type)->array.len;
+	unsigned components = type_flatten(first)->array.len;
 	if (swizzle_two) components *= 2;
 	for (unsigned i = first_mask_value; i < arg_count; i++)
 	{
@@ -193,7 +200,12 @@ static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, b
 		}
 		if (mask_val->const_expr.ixx.i.low >= components)
 		{
-			SEMA_ERROR(mask_val, "The swizzle position must be between 0 and %d.", components - 1);
+			if (components == 1)
+			{
+				SEMA_ERROR(mask_val, "The only possible swizzle position is 0.");
+				return false;
+			}
+			SEMA_ERROR(mask_val, "The swizzle position must be in the range 0-%d.", components - 1);
 			return false;
 		}
 	}
@@ -211,26 +223,104 @@ bool is_valid_atomicity(Expr* expr)
 	return true;
 }
 
+
+bool sema_expr_analyse_compare_exchange(SemaContext *context, Expr *expr)
+{
+	Expr **args = expr->call_expr.arguments;
+	Expr *pointer = args[0];
+
+	if (!sema_analyse_expr(context, pointer)) return false;
+	bool optional = IS_OPTIONAL(args[0]);
+	Type *comp_type = type_flatten(args[0]->type);
+	if (!type_is_pointer(comp_type))
+	{
+		SEMA_ERROR(args[0], "Expected a pointer here.");
+		return false;
+	}
+	Type *pointee = comp_type->pointer;
+	for (int i = 1; i < 3; i++)
+	{
+		if (!sema_analyse_expr_rhs(context, pointee, args[i], true)) return false;
+		optional = optional || IS_OPTIONAL(args[i]);
+	}
+	for (int i = 3; i < 5; i++)
+	{
+		if (!sema_analyse_expr_rhs(context, type_bool, args[i], false)) return false;
+		if (!expr_is_const(args[i]))
+		{
+			SEMA_ERROR(args[i], "Expected a constant boolean value.");
+			return false;
+		}
+	}
+	for (int i = 5; i < 7; i++)
+	{
+		if (!sema_analyse_expr_rhs(context, type_char, args[i], false)) return false;
+		if (!is_valid_atomicity(args[i])) return false;
+	}
+	Expr *align = args[7];
+	if (!sema_analyse_expr_rhs(context, type_usz, align, false)) return false;
+	if (!expr_is_const_int(align)
+	    || !int_fits(align->const_expr.ixx, TYPE_U64)
+	    || (!is_power_of_two(align->const_expr.ixx.i.low) && align->const_expr.ixx.i.low))
+	{
+		SEMA_ERROR(args[7], "Expected a constant power-of-two alignment or zero.");
+		return false;
+	}
+	expr->type = type_add_optional(args[1]->type, optional);
+	return true;
+}
+bool sema_expr_analyse_syscall(SemaContext *context, Expr *expr)
+{
+	Expr **args = expr->call_expr.arguments;
+	unsigned arg_count = vec_size(args);
+	if (arg_count > 7)
+	{
+		SEMA_ERROR(args[7], "Only 7 arguments supported for $$syscall.");
+	}
+	bool optional = false;
+	for (unsigned i = 0; i < arg_count; i++)
+	{
+		Expr *arg = args[i];
+		if (!sema_analyse_expr_rhs(context, type_uptr, arg, true)) return false;
+		optional = optional || type_is_optional(arg->type);
+	}
+	switch (platform_target.arch)
+	{
+		case ARCH_TYPE_AARCH64:
+		case ARCH_TYPE_AARCH64_BE:
+		case ARCH_TYPE_X86:
+		case ARCH_TYPE_X86_64:
+			break;
+		default:
+			SEMA_ERROR(expr, "Target does not support $$syscall.");
+			return false;
+	}
+	expr->type = type_add_optional(type_uptr, optional);
+	return true;
+}
+
 bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 {
 	expr->call_expr.is_builtin = true;
 	expr->call_expr.arguments = sema_expand_vasplat_exprs(context, expr->call_expr.arguments);
+
 	BuiltinFunction func = exprptr(expr->call_expr.function)->builtin_expr.builtin;
-	if (func == BUILTIN_SWIZZLE || func == BUILTIN_SWIZZLE2)
-	{
-		return sema_expr_analyse_swizzle(context, expr, func == BUILTIN_SWIZZLE2);
-	}
-	unsigned expected_args = builtin_expected_args(func);
 	Expr **args = expr->call_expr.arguments;
 	unsigned arg_count = vec_size(args);
+	int expected_args = builtin_expected_args(func);
+	bool expect_vararg = false;
+	if (expected_args < 0)
+	{
+		expected_args = -expected_args;
+		expect_vararg = true;
+	}
 
-	bool is_vararg = func == BUILTIN_SYSCALL;
 	// 1. Handle arg count, so at least we know that is ok.
-	if (expected_args != arg_count && !is_vararg)
+	if (arg_count < expected_args || (arg_count > expected_args  && !expect_vararg))
 	{
 		if (arg_count == 0)
 		{
-			SEMA_ERROR(expr, "Expected %d arguments to builtin.", expected_args);
+			SEMA_ERROR(expr, "Expected %s%d arguments to builtin.", expect_vararg ? "at least " : "", expected_args);
 			return false;
 		}
 		if (arg_count < expected_args)
@@ -241,11 +331,34 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		SEMA_ERROR(args[expected_args], "Too many arguments.");
 		return false;
 	}
-	if (is_vararg && expected_args > arg_count)
+
+	switch (func)
 	{
-		SEMA_ERROR(expr, "Expected at least %d arguments to builtin.\n", expected_args);
-		return false;
+		case BUILTIN_SWIZZLE2:
+		case BUILTIN_SWIZZLE:
+			return sema_expr_analyse_swizzle(context, expr, func == BUILTIN_SWIZZLE2);
+		case BUILTIN_SYSCALL:
+			return sema_expr_analyse_syscall(context, expr);
+		case BUILTIN_TRAP:
+		case BUILTIN_UNREACHABLE:
+			expr->type = type_void;
+			return true;
+		case BUILTIN_SYSCLOCK:
+			expr->type = type_ulong;
+			return true;
+		case BUILTIN_GET_ROUNDING_MODE:
+			expr->type = type_int;
+			return true;
+		case BUILTIN_FRAMEADDRESS:
+		case BUILTIN_STACKTRACE:
+			expr->type = type_voidptr;
+			return true;
+		case BUILTIN_COMPARE_EXCHANGE:
+			return sema_expr_analyse_compare_exchange(context, expr);
+		default:
+			break;
 	}
+
 	bool optional = false;
 
 	// 2. We can now check all the arguments, since they in general work on the
@@ -259,62 +372,6 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 	Type *rtype = NULL;
 	switch (func)
 	{
-		case BUILTIN_SWIZZLE2:
-		case BUILTIN_SWIZZLE:
-			UNREACHABLE;
-		case BUILTIN_TRAP:
-		case BUILTIN_UNREACHABLE:
-			rtype = type_void;
-			break;
-		case BUILTIN_COMPARE_EXCHANGE:
-		{
-			Type *comp_type = type_no_optional(args[0]->type->canonical);
-			if (!type_is_pointer(comp_type))
-			{
-				SEMA_ERROR(args[0], "Expected a pointer here.");
-				return false;
-			}
-			Type *pointee = comp_type->pointer;
-			for (int i = 1; i < 3; i++)
-			{
-				if (pointee != type_no_optional(args[i]->type->canonical))
-				{
-					SEMA_ERROR(args[i], "Expected an argument of type %s.", type_quoted_error_string(pointee));
-					return false;
-				}
-			}
-			for (int i = 3; i < 5; i++)
-			{
-				if (args[i]->type->canonical != type_bool || !expr_is_const(args[i]))
-				{
-					SEMA_ERROR(args[i], "Expected a constant boolean value.");
-					return false;
-				}
-			}
-			for (int i = 5; i < 7; i++)
-			{
-				if (!is_valid_atomicity(args[i])) return false;
-			}
-			Expr *align = args[7];
-			if (!expr_is_const_int(align)
-				|| !int_fits(align->const_expr.ixx, TYPE_U64)
-				|| (!is_power_of_two(align->const_expr.ixx.i.low) && align->const_expr.ixx.i.low))
-			{
-				SEMA_ERROR(args[7], "Expected a constant power-of-two alignment or zero.");
-				return false;
-			}
-			rtype = args[1]->type;
-			break;
-		}
-		case BUILTIN_SYSCLOCK:
-			rtype = type_ulong;
-			break;
-		case BUILTIN_GET_ROUNDING_MODE:
-			rtype = type_int;
-			break;
-		case BUILTIN_FRAMEADDRESS:
-			rtype = type_voidptr;
-			break;
 		case BUILTIN_SET_ROUNDING_MODE:
 			if (!sema_check_builtin_args(args,
 			                             (BuiltinArg[]) { BA_INTEGER },
@@ -323,27 +380,6 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			rtype = type_void;
 			break;
 		case BUILTIN_SYSCALL:
-			if (arg_count > 7)
-			{
-				SEMA_ERROR(args[7], "Only 7 arguments supported for $$syscall.");
-			}
-			rtype = type_uptr;
-			for (unsigned i = 0; i < arg_count; i++)
-			{
-				if (!cast_implicit(context, args[i], type_uptr)) return false;
-			}
-			switch (platform_target.arch)
-			{
-				case ARCH_TYPE_AARCH64:
-				case ARCH_TYPE_AARCH64_BE:
-				case ARCH_TYPE_X86:
-				case ARCH_TYPE_X86_64:
-					break;
-				default:
-					SEMA_ERROR(expr, "Target does not support $$syscall.");
-					return false;
-			}
-			break;
 		case BUILTIN_VECCOMPGE:
 		case BUILTIN_VECCOMPEQ:
 		case BUILTIN_VECCOMPLE:
@@ -404,9 +440,6 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 										 arg_count)) return false;
 			if (!sema_check_builtin_args_const(&args[3], 2)) return false;
 			rtype = type_void;
-			break;
-		case BUILTIN_STACKTRACE:
-			rtype = type_voidptr;
 			break;
 		case BUILTIN_BITREVERSE:
 		case BUILTIN_BSWAP:
@@ -590,16 +623,31 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			break;
 		}
 		case BUILTIN_NONE:
+		case BUILTIN_COMPARE_EXCHANGE:
+		case BUILTIN_FRAMEADDRESS:
+		case BUILTIN_GET_ROUNDING_MODE:
+		case BUILTIN_SWIZZLE:
+		case BUILTIN_SWIZZLE2:
+		case BUILTIN_STACKTRACE:
+		case BUILTIN_SYSCLOCK:
+		case BUILTIN_TRAP:
+		case BUILTIN_UNREACHABLE:
 			UNREACHABLE
 	}
 	expr->type = type_add_optional(rtype, optional);
 	return true;
 }
 
-static inline unsigned builtin_expected_args(BuiltinFunction func)
+static inline int builtin_expected_args(BuiltinFunction func)
 {
 	switch (func)
 	{
+		case BUILTIN_SYSCALL:
+			return -1;
+		case BUILTIN_SWIZZLE:
+			return -2;
+		case BUILTIN_SWIZZLE2:
+			return -3;
 		case BUILTIN_GET_ROUNDING_MODE:
 		case BUILTIN_STACKTRACE:
 		case BUILTIN_SYSCLOCK:
@@ -633,7 +681,6 @@ static inline unsigned builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_ROUNDEVEN:
 		case BUILTIN_SIN:
 		case BUILTIN_SQRT:
-		case BUILTIN_SYSCALL:
 		case BUILTIN_TRUNC:
 		case BUILTIN_VOLATILE_LOAD:
 		case BUILTIN_REDUCE_MUL:
@@ -688,8 +735,6 @@ static inline unsigned builtin_expected_args(BuiltinFunction func)
 			return 5;
 		case BUILTIN_COMPARE_EXCHANGE:
 			return 8;
-		case BUILTIN_SWIZZLE2:
-		case BUILTIN_SWIZZLE:
 		case BUILTIN_NONE:
 			UNREACHABLE
 	}
