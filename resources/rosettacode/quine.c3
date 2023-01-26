@@ -1,0 +1,1 @@
+import std::io; fn void main() => io::printfn("%schar[] q = \x60%s\x60;", q, q);char[] q = `import std::io; fn void main() => io::printfn("%schar[] q = \x60%s\x60;", q, q);`;
