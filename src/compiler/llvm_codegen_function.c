@@ -714,6 +714,10 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 	{
 		llvm_attribute_add(c, function, attribute_id.noreturn, -1);
 	}
+	if (decl->is_wasm_export && arch_is_wasm(platform_target.arch))
+	{
+		llvm_attribute_add_string(c, function, "wasm-export-name", decl_get_extname(decl), -1);
+	}
 	if (decl->alignment != type_abi_alignment(decl->type))
 	{
 		llvm_set_alignment(function, decl->alignment);

@@ -198,6 +198,8 @@ typedef struct
 	unsigned vector_reduce_and;
 	unsigned vector_reduce_or;
 	unsigned vector_reduce_xor;
+	unsigned wasm_memory_size;
+	unsigned wasm_memory_grow;
 } LLVMIntrinsics;
 
 extern LLVMIntrinsics intrinsic_id;
@@ -221,7 +223,6 @@ typedef struct
 	unsigned sret; // struct return pointer
 	unsigned writeonly; // No writes on pointer
 	unsigned zext; // zero extend
-
 } LLVMAttributes;
 
 extern LLVMAttributes attribute_id;

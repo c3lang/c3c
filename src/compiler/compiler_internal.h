@@ -673,6 +673,7 @@ typedef struct Decl_
 	bool obfuscate : 1;
 	bool is_dynamic : 1;
 	bool is_synthetic : 1;
+	bool is_wasm_export : 1;
 	OperatorOverload operator : 4;
 	union
 	{
@@ -2299,6 +2300,7 @@ void codegen_setup_object_names(Module *module, const char **ir_filename, const 
 void target_setup(BuildTarget *build_target);
 int target_alloca_addr_space();
 bool os_is_apple(OsType os_type);
+bool arch_is_wasm(ArchType type);
 
 const char *macos_sysroot(void);
 MacSDK *macos_sysroot_sdk_information(const char *sdk_path);

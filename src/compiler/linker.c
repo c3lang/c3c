@@ -461,9 +461,11 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 	if (use_win)
 	{
 		add_arg2("/OUT:", output_file);
+		if (active_target.no_entry) add_arg("/NOENTRY");
 	}
 	else
 	{
+		if (active_target.no_entry) add_arg("--no-entry");
 		add_arg("-o");
 		add_arg(output_file);
 	}

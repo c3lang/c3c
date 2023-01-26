@@ -207,6 +207,11 @@ bool os_is_apple(OsType os_type)
 	       os_type == OS_TYPE_MACOSX || os_type == OS_TYPE_IOS;
 }
 
+bool arch_is_wasm(ArchType type)
+{
+	return type == ARCH_TYPE_WASM32 || type == ARCH_TYPE_WASM64;
+}
+
 static AlignSize os_arch_max_alignment_of_vector(OsType os, ArchType arch, EnvironmentType type, ARMVariant variant)
 {
 	switch (arch)
@@ -903,7 +908,7 @@ static ObjectFormatType object_format_from_os(OsType os, ArchType arch_type)
 			return OBJ_FORMAT_UNSUPPORTED;
 		case OS_TYPE_UNKNOWN:
 		case OS_TYPE_NONE:
-			if (arch_type == ARCH_TYPE_WASM64 || arch_type == ARCH_TYPE_WASM32) return OBJ_FORMAT_WASM;
+			if (arch_is_wasm(arch_type)) return OBJ_FORMAT_WASM;
 			FALLTHROUGH;
 		case OS_TYPE_LINUX:
 		case OS_TYPE_NETBSD:
@@ -927,8 +932,9 @@ static unsigned os_target_supports_int128(OsType os, ArchType arch)
 	switch (arch)
 	{
 		case ARCH_TYPE_RISCV64:
-			return true;
 		case ARCH_TYPE_AARCH64:
+		case ARCH_TYPE_WASM32:
+		case ARCH_TYPE_WASM64:
 			return true;
 		case ARCH_TYPE_PPC:
 		default:

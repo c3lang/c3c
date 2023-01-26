@@ -456,6 +456,15 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 										 arg_count)) return false;
 			rtype = args[0]->type;
 			break;
+		case BUILTIN_WASM_MEMORY_SIZE:
+			if (!cast_implicit(context, args[0], type_uint)) return false;
+			rtype = type_uptr;
+			break;
+		case BUILTIN_WASM_MEMORY_GROW:
+			if (!cast_implicit(context, args[0], type_uint)) return false;
+			if (!cast_implicit(context, args[1], type_uptr)) return false;
+			rtype = type_iptr;
+			break;
 		case BUILTIN_PREFETCH:
 			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_POINTER, BA_INTEGER, BA_INTEGER }, arg_count)) return false;
 			for (unsigned i = 1; i < 3; i++)
@@ -635,6 +644,7 @@ static inline unsigned builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_REDUCE_MAX:
 		case BUILTIN_REDUCE_MIN:
 		case BUILTIN_SET_ROUNDING_MODE:
+		case BUILTIN_WASM_MEMORY_SIZE:
 			return 1;
 		case BUILTIN_COPYSIGN:
 		case BUILTIN_EXACT_ADD:
@@ -658,6 +668,7 @@ static inline unsigned builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_VECCOMPGE:
 		case BUILTIN_VECCOMPGT:
 		case BUILTIN_VECCOMPEQ:
+		case BUILTIN_WASM_MEMORY_GROW:
 			return 2;
 		case BUILTIN_FMA:
 		case BUILTIN_FSHL:

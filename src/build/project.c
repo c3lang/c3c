@@ -17,8 +17,10 @@ const char *project_default_keys[] = {
 		"langrev",
 		"dependency-search-paths",
 		"dependencies",
+		"link-args",
 		"linked-libraries",
 		"macossdk",
+		"no-entry",
 		"nolibc",
 		"nostdlib",
 		"panicfn",
@@ -50,11 +52,15 @@ const char* project_target_keys[] = {
 		"c-sources-override",
 		"debug-info",
 		"langrev",
+		"nolibc",
+		"no-entry",
 		"dependency-search-paths-add",
 		"dependency-search-paths-override",
 		"dependencies-add",
 		"dependencies-override",
 		"linked-libraries",
+		"link-args-override",
+		"link-args-add",
 		"macossdk",
 		"nolibc",
 		"nostdlib",
@@ -245,7 +251,6 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 			target->cflags = cflags_add;
 		}
 	}
-
 	// C source dirs.
 	target_append_strings(json, type, &target->csource_dirs, "c-sources", "c-sources-override", "c-sources-add", is_default);
 
@@ -257,6 +262,9 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 
 	// linker-search-paths libs dir - libraries to add at link time
 	target_append_strings(json, type, &target->linker_libdirs, "linker-search-paths", "linker-search-paths-override", "linker-search-paths-add", is_default);
+
+	// link-args - link args to add at link time
+	target_append_strings(json, type, &target->link_args, "link-args", "link-args-override", "link-args-add", is_default);
 
 	// dependency-search-paths - path to search for libraries
 	target_append_strings(json, type, &target->libdirs, "dependency-search-paths", "dependency-search-paths-override", "dependency-search-paths-add", is_default);
@@ -309,6 +317,7 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	int reloc = get_valid_string_setting(json, "reloc", type, reloc_models, 0, 5, "'none', 'pic', 'PIC', 'pie' or 'PIE'.");
 	if (reloc > -1) target->reloc_model = (RelocModel)reloc;
 
+
 	// Cpu
 	const char *cpu = get_valid_string(json, "cpu", type, false);
 	if (cpu) target->cpu = cpu;
@@ -347,6 +356,9 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 
 	// nolibc
 	target->no_libc = get_valid_bool(json, "nolibc", type, target->no_libc);
+
+	// no-entry
+	target->no_entry = get_valid_bool(json, "no-entry", type, target->no_entry);
 
 	// nostdlib
 	target->no_stdlib = get_valid_bool(json, "nostdlib", type, target->no_stdlib);

@@ -149,11 +149,11 @@ void **tilde_gen(Module** modules, unsigned module_count)
 
 static const char *exe_name(void)
 {
-	assert(global_context.main);
+	assert(global_context.main || active_target.no_entry);
 	const char *name;
-	if (active_target.name)
+	if (active_target.name || active_target.no_entry)
 	{
-		name = active_target.name;
+		name = active_target.name ? active_target.name : "out";
 	}
 	else
 	{
@@ -350,7 +350,7 @@ void compiler_compile(void)
 				output_exe = exe_name();
 				break;
 			case TARGET_TYPE_EXECUTABLE:
-				if (!global_context.main)
+				if (!global_context.main && !active_target.no_entry)
 				{
 					puts("No main function was found, compilation only object files are generated.");
 				}

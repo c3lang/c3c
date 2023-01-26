@@ -429,6 +429,23 @@ void llvm_emit_simple_builtin(GenContext *c, BEValue *be_value, Expr *expr, unsi
 	llvm_value_set(be_value, result, expr->type);
 }
 
+void llvm_emit_builtin_args_types3(GenContext *c, BEValue *be_value, Expr *expr, unsigned intrinsic, Type *type1, Type *type2, Type *type3)
+{
+	Expr **args = expr->call_expr.arguments;
+	unsigned count = vec_size(args);
+	assert(count <= 3);
+	assert(count > 0);
+	LLVMValueRef arg_slots[3];
+	llvm_emit_intrinsic_args(c, args, arg_slots, count);
+	LLVMTypeRef call_type[3];
+	unsigned type_slots = 0;
+	if (type1) call_type[type_slots++] = llvm_get_type(c, type1);
+	if (type2) call_type[type_slots++] = llvm_get_type(c, type2);
+	if (type3) call_type[type_slots++] = llvm_get_type(c, type3);
+	LLVMValueRef result = llvm_emit_call_intrinsic(c, intrinsic, call_type, type_slots, arg_slots, count);
+	llvm_value_set(be_value, result, expr->type);
+}
+
 static void llvm_emit_overflow_builtin(GenContext *c, BEValue *be_value, Expr *expr, unsigned intrinsic_signed, unsigned intrinsic_unsigned)
 {
 	Expr **args = expr->call_expr.arguments;
@@ -792,6 +809,24 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 				llvm_emit_intrinsic_args(c, args, arg_slots, 1);
 				llvm_value_set(result_value, llvm_emit_call_intrinsic(c, intrinsic_id.set_rounding, NULL, 0, arg_slots, 1), type_void);
 			}
+			return;
+		case BUILTIN_WASM_MEMORY_GROW:
+			// -1 on non-wasm
+			if (!arch_is_wasm(platform_target.arch))
+			{
+				llvm_value_set(result_value, llvm_const_int(c, expr->type, -1), expr->type);
+				return;
+			}
+			llvm_emit_builtin_args_types3(c, result_value, expr, intrinsic_id.wasm_memory_grow, expr->type, NULL, NULL);
+			return;
+		case BUILTIN_WASM_MEMORY_SIZE:
+			if (!arch_is_wasm(platform_target.arch))
+			{
+				// 0 (no mem) on non-wasm.
+				llvm_value_set(result_value, llvm_const_int(c, expr->type, 0), expr->type);
+				return;
+			}
+			llvm_emit_builtin_args_types3(c, result_value, expr, intrinsic_id.wasm_memory_size, expr->type, NULL, NULL);
 			return;
 		case BUILTIN_SIN:
 			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.sin);

@@ -220,6 +220,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	}
 	if (options->no_stdlib) target->no_stdlib = true;
 	if (options->no_libc) target->no_libc = true;
+	if (options->no_entry) target->no_entry = true;
 	target->print_output = options->print_output;
 	target->emit_llvm = options->emit_llvm;
 	target->build_threads = options->build_threads;
