@@ -5557,16 +5557,27 @@ static bool sema_binary_check_unclear_op_precedence(Expr *left_side, Expr * main
 			[BINARYOP_SHL] = 3,
 	};
 
-	int precedence_main = BINOP_PREC_REQ[main_expr->binary_expr.operator];
+	BinaryOp main_op = main_expr->binary_expr.operator;
+	int precedence_main = BINOP_PREC_REQ[main_op];
 	if (left_side->expr_kind == EXPR_BINARY)
 	{
-		int precedence_left = BINOP_PREC_REQ[left_side->binary_expr.operator];
-		return precedence_left && (precedence_left == precedence_main);
+		int left_op = left_side->binary_expr.operator;
+		int precedence_left = BINOP_PREC_REQ[left_op];
+		if (precedence_left && (precedence_left == precedence_main))
+		{
+			// ^|& has special rules
+			if (precedence_left != 1 || left_op != main_op) return true;
+		}
 	}
 	if (right_side->expr_kind == EXPR_BINARY)
 	{
-		int precedence_right = BINOP_PREC_REQ[right_side->binary_expr.operator];
-		return precedence_right && (precedence_right == precedence_main);
+		int right_op = right_side->binary_expr.operator;
+		int precedence_right = BINOP_PREC_REQ[right_op];
+		if (precedence_right && (precedence_right == precedence_main))
+		{
+			// ^|& has special rules
+			if (precedence_right != 1 || right_op != main_op) return true;
+		}
 	}
 	return false;
 }
