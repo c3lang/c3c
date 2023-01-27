@@ -20,21 +20,24 @@ private fn void*! null_allocator_fn(Allocator* this, usz bytes, usz alignment, u
 	}
 }
 
-private struct AlignedBlock
+struct AlignedBlock
 {
 	usz len;
 	void* start;
 }
 
-
 /**
  * @require bytes > 0
  * @require alignment > 0
  **/
-private fn void* _libc_aligned_alloc(usz bytes, usz alignment, usz offset) @inline
+macro void*! @aligned_alloc(#alloc_fn, usz bytes, usz alignment, usz offset)
 {
 	usz header = mem::aligned_offset(AlignedBlock.sizeof + offset, alignment) - offset;
-	void* data = libc::malloc(header + bytes);
+	$if ($checks(#alloc_fn(bytes)?)):
+		void* data = #alloc_fn(header + bytes)?;
+	$else:
+		void* data = #alloc_fn(header + bytes);
+	$endif;
     void* mem = mem::aligned_pointer(data + header + offset, alignment) - offset;
 	assert(mem > data);
 	AlignedBlock* desc = (AlignedBlock*)mem - 1;
@@ -46,10 +49,14 @@ private fn void* _libc_aligned_alloc(usz bytes, usz alignment, usz offset) @inli
  * @require bytes > 0
  * @require alignment > 0
  **/
-private fn void* _libc_aligned_calloc(usz bytes, usz alignment, usz offset) @inline
+macro void*! @aligned_calloc(#calloc_fn, usz bytes, usz alignment, usz offset)
 {
 	usz header = mem::aligned_offset(AlignedBlock.sizeof + offset, alignment) - offset;
-	void* data = libc::calloc(header + bytes, 1);
+	$if ($checks(#calloc_fn(bytes)?)):
+		void* data = #calloc_fn(header + bytes)?;
+	$else:
+		void* data = #calloc_fn(header + bytes);
+	$endif;
 	void* mem = mem::aligned_pointer(data + header + offset, alignment) - offset;
 	AlignedBlock* desc = (AlignedBlock*)mem - 1;
 	assert(mem > data);
@@ -61,20 +68,28 @@ private fn void* _libc_aligned_calloc(usz bytes, usz alignment, usz offset) @inl
  * @require bytes > 0
  * @require alignment > 0
  **/
-private fn void* _libc_aligned_realloc(void* old_pointer, usz bytes, usz alignment, usz offset) @inline
+macro void*! @aligned_realloc(#calloc_fn, #free_fn, void* old_pointer, usz bytes, usz alignment, usz offset)
 {
 	AlignedBlock* desc = (AlignedBlock*)old_pointer - 1;
 	void* data_start = desc.start;
-    void* new_data = _libc_aligned_calloc(bytes, alignment, offset);
+    void* new_data = @aligned_calloc(#calloc_fn, bytes, alignment, offset)?;
 	mem::copy(new_data, old_pointer, desc.len > bytes ? desc.len : bytes, DEFAULT_MEM_ALIGNMENT, DEFAULT_MEM_ALIGNMENT);
-	libc::free(data_start);
+	$if ($checks(#free_fn(data_start)?)):
+	#free_fn(data_start)?;
+	$else:
+	#free_fn(data_start);
+	$endif;
 	return new_data;
 }
 
-private fn void _libc_aligned_free(void* old_pointer) @inline
+macro void! @aligned_free(#free_fn, void* old_pointer)
 {
 	AlignedBlock* desc = (AlignedBlock*)old_pointer - 1;
-	libc::free(desc.start);
+	$if ($checks(#free_fn(desc.start)?)):
+	#free_fn(desc.start)?;
+	$else:
+	#free_fn(desc.start);
+	$endif;
 }
 
 fn void*! libc_allocator_fn(Allocator* unused, usz bytes, usz alignment, usz offset, void* old_pointer, AllocationKind kind) @inline
@@ -86,17 +101,17 @@ fn void*! libc_allocator_fn(Allocator* unused, usz bytes, usz alignment, usz off
     switch (kind)
     {
         case ALIGNED_ALLOC:
-            data = _libc_aligned_alloc(bytes, alignment, offset);
+            data = @aligned_alloc(libc::malloc, bytes, alignment, offset)!!;
         case ALLOC:
             data = libc::malloc(bytes);
         case ALIGNED_CALLOC:
-            data = _libc_aligned_calloc(bytes, alignment, offset);
+            data = @aligned_calloc(fn void*(usz bytes) => libc::calloc(bytes, 1), bytes, alignment, offset)!!;
 		case CALLOC:
             data = libc::calloc(bytes, 1);
         case ALIGNED_REALLOC:
             if (!bytes) nextcase ALIGNED_FREE;
             if (!old_pointer) nextcase ALIGNED_CALLOC;
-			data = _libc_aligned_realloc(old_pointer, bytes, alignment, offset);
+            data = @aligned_realloc(fn void*(usz bytes) => libc::calloc(bytes, 1), libc::free, old_pointer, bytes, alignment, offset)!!;
         case REALLOC:
             if (!bytes) nextcase FREE;
             if (!old_pointer) nextcase CALLOC;
@@ -104,7 +119,7 @@ fn void*! libc_allocator_fn(Allocator* unused, usz bytes, usz alignment, usz off
         case RESET:
             return AllocationFailure.UNSUPPORTED_OPERATION!;
         case ALIGNED_FREE:
-            _libc_aligned_free(old_pointer);
+            @aligned_free(libc::free, old_pointer)!!;
             return null;
         case FREE:
             libc::free(old_pointer);

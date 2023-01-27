@@ -897,7 +897,7 @@ static inline bool sema_expr_analyse_hash_identifier(SemaContext *context, Expr 
 	if (!sema_analyse_expr_lvalue_fold_const(decl->var.hash_var.context, expr))
 	{
 		// Poison the decl so we don't evaluate twice.
-		decl_poison(decl);
+		if (!global_context.suppress_errors) decl_poison(decl);
 		return false;
 	}
 	return true;
@@ -6534,6 +6534,12 @@ static inline Decl *sema_find_cached_lambda(SemaContext *context, Type *func_typ
 static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *func_type, Expr *expr)
 {
 	Decl *decl = expr->lambda_expr;
+	if (!decl_ok(decl)) return false;
+	if (decl->resolve_status == RESOLVE_DONE)
+	{
+		expr->type = expr->type = type_get_ptr(decl->type);
+		return true;
+	}
 	bool in_macro = context->current_macro;
 	if (in_macro && decl->resolve_status != RESOLVE_DONE)
 	{
@@ -6616,6 +6622,7 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *func_typ
 	vec_add(unit->module->lambdas_to_evaluate, decl);
 	expr->type = type_get_ptr(lambda_type);
 	if (in_macro) vec_add(original->func_decl.generated_lambda, decl);
+	decl->resolve_status = RESOLVE_DONE;
 	return true;
 FAIL_NO_INFER:
 	SEMA_ERROR(decl, "Inferred lambda expressions cannot be used unless the type can be determined.");
