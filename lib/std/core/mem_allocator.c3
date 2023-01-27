@@ -190,7 +190,7 @@ struct WasmMemory
 	uptr use;
 }
 
-fn void*! WasmMemory.allocate_block(WasmMemory* this, usz bytes)
+fn char[]! WasmMemory.allocate_block(WasmMemory* this, usz bytes)
 {
 	if (!this.allocation)
 	{
@@ -200,11 +200,12 @@ fn void*! WasmMemory.allocate_block(WasmMemory* this, usz bytes)
     if (bytes_required <= 0)
 	{
 		defer this.use += bytes;
-		return (void*)this.use;
+		return ((char*)this.use)[:bytes];
 	}
+
 	usz blocks_required = (bytes_required + WASM_BLOCK_SIZE + 1) / WASM_BLOCK_SIZE;
-	if (!$$wasm_memory_grow(0, blocks_required)) return AllocationFailure.OUT_OF_MEMORY!;
+	if ($$wasm_memory_grow(0, blocks_required) == -1) return AllocationFailure.OUT_OF_MEMORY!;
 	this.allocation = $$wasm_memory_size(0) * WASM_BLOCK_SIZE;
 	defer this.use += bytes;
-	return (void*)this.use;
+	return ((char*)this.use)[:bytes];
 }

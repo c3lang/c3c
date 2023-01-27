@@ -294,6 +294,15 @@ macro Allocator* current_allocator()
 	return thread_allocator;
 }
 
+$if (!env::COMPILER_LIBC_AVAILABLE && env::ARCH_TYPE == ArchType.WASM32 || env::ARCH_TYPE == ArchType.WASM64):
+private SimpleHeapAllocator wasm_allocator;
 
+static initialize @priority(1)
+{
+	allocator::wasm_memory.allocate_block(allocator::DEFAULT_MEM_ALIGNMENT)!!; // Give us a valid null.
+	wasm_allocator.init(fn (x) => allocator::wasm_memory.allocate_block(x));
+	thread_allocator = &wasm_allocator;
+}
+$endif;
 
 

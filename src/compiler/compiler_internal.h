@@ -673,7 +673,7 @@ typedef struct Decl_
 	bool obfuscate : 1;
 	bool is_dynamic : 1;
 	bool is_synthetic : 1;
-	bool is_wasm_export : 1;
+	bool is_wasm_interface : 1;
 	OperatorOverload operator : 4;
 	union
 	{

@@ -6537,7 +6537,7 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *func_typ
 	if (!decl_ok(decl)) return false;
 	if (decl->resolve_status == RESOLVE_DONE)
 	{
-		expr->type = expr->type = type_get_ptr(decl->type);
+		expr->type = type_get_ptr(decl->type);
 		return true;
 	}
 	bool in_macro = context->current_macro;

@@ -582,58 +582,6 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, const char *module_nam
 	c->function = prev_function;
 }
 
-static void llvm_emit_param_attributes(GenContext *c, LLVMValueRef function, ABIArgInfo *info, bool is_return, int index, int last_index)
-{
-	assert(last_index == index || info->kind == ABI_ARG_DIRECT_PAIR || info->kind == ABI_ARG_IGNORE
-	       || info->kind == ABI_ARG_EXPAND || info->kind == ABI_ARG_DIRECT || info->kind == ABI_ARG_DIRECT_COERCE
-	       || info->kind == ABI_ARG_DIRECT_COERCE_INT
-	       || info->kind == ABI_ARG_DIRECT_SPLIT_STRUCT);
-
-	if (info->attributes.zeroext)
-	{
-		// Direct only
-		assert(index == last_index);
-		llvm_attribute_add(c, function, attribute_id.zext, index);
-	}
-	if (info->attributes.signext)
-	{
-		// Direct only
-		assert(index == last_index);
-		llvm_attribute_add(c, function, attribute_id.sext, index);
-	}
-	if (info->attributes.by_reg)
-	{
-		llvm_attribute_add_range(c, function, attribute_id.inreg, index, last_index);
-	}
-	switch (info->kind)
-	{
-		case ABI_ARG_EXPAND:
-		case ABI_ARG_IGNORE:
-		case ABI_ARG_DIRECT_SPLIT_STRUCT:
-		case ABI_ARG_DIRECT_COERCE:
-		case ABI_ARG_DIRECT_COERCE_INT:
-		case ABI_ARG_DIRECT_PAIR:
-		case ABI_ARG_DIRECT:
-		case ABI_ARG_EXPAND_COERCE:
-			break;
-		case ABI_ARG_INDIRECT:
-			if (is_return)
-			{
-				assert(info->indirect.type);
-				llvm_attribute_add_type(c, function, attribute_id.sret, llvm_get_type(c, info->indirect.type), 1);
-				llvm_attribute_add(c, function, attribute_id.noalias, 1);
-				llvm_attribute_add_int(c, function, attribute_id.align, info->indirect.alignment, 1);
-			}
-			else
-			{
-				if (info->attributes.by_val) llvm_attribute_add_type(c, function, attribute_id.byval, llvm_get_type(c, info->indirect.type), index);
-				llvm_attribute_add_int(c, function, attribute_id.align, info->indirect.alignment, index);
-			}
-			break;
-
-	}
-
-}
 
 void llvm_emit_xxlizer(GenContext *c, Decl *decl)
 {
@@ -690,48 +638,14 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 
 	LLVMValueRef function = llvm_get_ref(c, decl);
 	decl->backend_ref = function;
-	FunctionPrototype *prototype = decl->type->function.prototype;
-
-	ABIArgInfo *ret_abi_info = prototype->ret_abi_info;
-	llvm_emit_param_attributes(c, function, ret_abi_info, true, 0, 0);
-	unsigned params = vec_size(prototype->param_types);
-	if (prototype->ret_by_ref)
-	{
-		ABIArgInfo *info = prototype->ret_by_ref_abi_info;
-		llvm_emit_param_attributes(c, function, prototype->ret_by_ref_abi_info, false, info->param_index_start + 1, info->param_index_end);
-	}
-	for (unsigned i = 0; i < params; i++)
-	{
-		ABIArgInfo *info = prototype->abi_args[i];
-		llvm_emit_param_attributes(c, function, info, false, info->param_index_start + 1, info->param_index_end);
-	}
-	// We ignore decl->func_decl.attr_inline and place it in every call instead.
-	if (decl->func_decl.attr_noinline)
-	{
-		llvm_attribute_add(c, function, attribute_id.noinline, -1);
-	}
-	if (decl->func_decl.signature.attrs.noreturn)
-	{
-		llvm_attribute_add(c, function, attribute_id.noreturn, -1);
-	}
-	if (decl->is_wasm_export && arch_is_wasm(platform_target.arch))
-	{
-		llvm_attribute_add_string(c, function, "wasm-export-name", decl_get_extname(decl), -1);
-	}
-	if (decl->alignment != type_abi_alignment(decl->type))
-	{
-		llvm_set_alignment(function, decl->alignment);
-	}
 	if (decl->section)
 	{
 		LLVMSetSection(function, decl->section);
 	}
-	llvm_attribute_add(c, function, attribute_id.nounwind, -1);
-	if (decl->func_decl.attr_naked)
+	if (llvm_use_debug(c))
 	{
-		llvm_attribute_add(c, function, attribute_id.naked, -1);
+		llvm_emit_debug_function(c, decl);
 	}
-	LLVMSetFunctionCallConv(function, llvm_call_convention_from_call(prototype->call_abi));
 
 	Visibility visibility = decl->visibility;
 	if (decl->is_external_visible) visibility = VISIBLE_PUBLIC;
@@ -748,7 +662,7 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 				LLVMSetLinkage(function, LLVMExternalLinkage);
 			}
 			LLVMSetVisibility(function, LLVMDefaultVisibility);
-			if (prototype->call_abi == CALL_X86_STD && platform_target.os == OS_TYPE_WIN32)
+			if (decl->type->function.prototype->call_abi == CALL_X86_STD && platform_target.os == OS_TYPE_WIN32)
 			{
 				LLVMSetDLLStorageClass(function, LLVMDLLImportStorageClass);
 			}
@@ -761,10 +675,6 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 			LLVMSetLinkage(function, decl->is_weak ? LLVMLinkerPrivateWeakLinkage : LLVMInternalLinkage);
 			LLVMSetVisibility(function, LLVMDefaultVisibility);
 			break;;
-	}
-	if (llvm_use_debug(c))
-	{
-		llvm_emit_debug_function(c, decl);
 	}
 }
 

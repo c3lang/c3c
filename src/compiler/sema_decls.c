@@ -1646,7 +1646,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			decl->is_weak = true;
 			break;
 		case ATTRIBUTE_WASM:
-			decl->is_wasm_export = true;
+			decl->is_wasm_interface = true;
 			break;
 		case ATTRIBUTE_NAKED:
 			assert(domain == ATTR_FUNC);

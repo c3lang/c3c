@@ -773,6 +773,7 @@ void compile()
 	setup_bool_define("PLATFORM_I128_SUPPORTED", platform_target.int128);
 	setup_bool_define("PLATFORM_F128_SUPPORTED", platform_target.float128);
 	setup_bool_define("PLATFORM_F16_SUPPORTED", platform_target.float16);
+	setup_int_define("ARCH_TYPE", (uint64_t)platform_target.arch, type_int);
 	setup_int_define("MEMORY_ENVIRONMENT", (uint64_t)active_target.memory_environment, type_int);
 	setup_bool_define("COMPILER_LIBC_AVAILABLE", !active_target.no_libc);
 	setup_int_define("COMPILER_OPT_LEVEL", (uint64_t)active_target.optimization_level, type_int);

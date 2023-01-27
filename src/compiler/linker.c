@@ -407,6 +407,7 @@ static void linker_setup_linux(const char ***args_ref, LinkerType linker_type)
 	add_arg("--dynamic-linker=/lib64/ld-linux-x86-64.so.2");
 	add_arg("-lc");
 	add_arg("-lm");
+	add_arg("-lpthread");
 	add_arg("-L/usr/lib/");
 	add_arg("-L/lib/");
 	add_arg("-m");
@@ -636,10 +637,6 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 	LinkerType linker_type = linker_find_linker_type();
 	linker_setup(&args, files_to_link, file_count, output_file, linker_type);
 
-	VECEACH(active_target.link_args, i)
-	{
-		vec_add(args, active_target.link_args[i]);
-	}
 	const char *error = NULL;
 	// This isn't used in most cases, but its contents should get freed after linking.
 

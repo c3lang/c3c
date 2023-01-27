@@ -74,9 +74,9 @@ if.exit:                                          ; preds = %if.then, %entry
   ret void
 }
 
-declare void @"std_map$$typeid.p$std_io$ToStringFunction_HashMap_init"(%HashMap*, i32, float, %Allocator*)
+declare void @"std_map$$typeid.p$std_io$ToStringFunction_HashMap_init"(%HashMap*, i32, float, %Allocator*) #0
 
-declare i8 @"std_map$$typeid.p$std_io$ToStringFunction_HashMap_set"(%HashMap*, i64, { i8*, i64 } (i8*, %Allocator*)*)
+declare zeroext i8 @"std_map$$typeid.p$std_io$ToStringFunction_HashMap_set"(%HashMap*, i64, { i8*, i64 } (i8*, %Allocator*)*) #0
 
 ; Function Attrs: nounwind
 define { i8*, i64 } @test_Foo_to_string(%Foo* %0, %Allocator* %1) #0 {
@@ -574,14 +574,14 @@ declare void @"std_map$$int.test_Foo_HashMap_tinit"(%HashMap.0*, i32, float)
 
 declare i64 @std_io_printfn(i64*, i8*, i64, i8*, i64)
 
-declare i8 @"std_map$$int.test_Foo_HashMap_set"(%HashMap.0*, i32, i64, i8*)
+declare zeroext i8 @"std_map$$int.test_Foo_HashMap_set"(%HashMap.0*, i32, i64, i8*)
 
 declare i64 @"std_map$$int.test_Foo_HashMap_get"(%Foo*, %HashMap.0*, i32)
 
-declare i8 @"std_map$$int.test_Foo_HashMap_has_key"(%HashMap.0*, i32)
+declare zeroext i8 @"std_map$$int.test_Foo_HashMap_has_key"(%HashMap.0*, i32)
 
 declare { i8*, i64 } @"std_map$$int.test_Foo_HashMap_value_list"(%HashMap.0*, %Allocator*)
 
 declare void @"std_map$$int.double_HashMap_tinit"(%HashMap.3*, i32, float)
 
-declare i8 @"std_map$$int.double_HashMap_set"(%HashMap.3*, i32, double)
+declare zeroext i8 @"std_map$$int.double_HashMap_set"(%HashMap.3*, i32, double)
