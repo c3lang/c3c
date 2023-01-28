@@ -136,7 +136,7 @@ private macro float_from_i128($Type, a)
     {
         a <<= (MANT_DIG - sd);
     }
-    return bitcast(((($Rep)sign & SIGN_BIT) | ((($Rep)e + ($Rep)EXP_BIAS) << SIGNIFICANT_BITS)) | (($Rep)a & ($Rep)MANTISSA_MASK), $Type);
+    return bitcast((($Rep)sign & SIGN_BIT) | ((($Rep)e + ($Rep)EXP_BIAS) << SIGNIFICANT_BITS) | (($Rep)a & ($Rep)MANTISSA_MASK), $Type);
 }
 
 private macro float_from_u128($Type, a)
