@@ -153,10 +153,18 @@ macro atan(x)
 macro ceil(x) => $$ceil(x);
 
 /**
+ * Constrain the value to lie within the given interval.
+ *
+ * @param x "the value to clamp, may be a number or a numerical vector."
+ * @param lower "the lower bounds"
+ * @param upper "the upper bounds"
+ * @return "lower if x < lower, upper if x > upper, otherwise return x."
+ *
  * @require types::is_numerical($typeof(x)) `The input must be a numerical value or numerical vector`
- * @require types::@has_same(x, lower, upper) `The input types must be equal`
+ * @checked $typeof(x) z = lower `The lower bound must be convertable to the value type.`
+ * @checked $typeof(x) z = upper `The upper bound must be convertable to the value type.`
  **/
-macro clamp(x, lower, upper) => $$max(lower, $$min(x, upper));
+macro clamp(x, lower, upper) => $$max(($typeof(x))lower, $$min(x, ($typeof(x))upper));
 
 /**
  * @require values::@is_promotable_to_floatlike(mag) `The input must be a number value or float vector`
