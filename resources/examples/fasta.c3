@@ -87,7 +87,7 @@ fn void random_fasta(String symb, double[] probability, int n)
 	if (i % LINELEN != 0) io::putchar('\n');
 }
 
-fn void main(int argc, char **argv)
+fn int main(int argc, char **argv)
 {
 	int n = 1000;
 	if (argc > 1) n = libc::atoi(argv[1]);
@@ -101,4 +101,5 @@ fn void main(int argc, char **argv)
 	io::printf(">THREE Homo sapiens frequency\n");
 	random_fasta(homosapiens, homosapiens_p, n * 5);
 
+	return 0;
 }

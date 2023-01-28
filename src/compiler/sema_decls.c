@@ -1881,6 +1881,285 @@ ADDED:;
 	return true;
 }
 
+static inline MainType sema_find_main_type(SemaContext *context, Signature *sig)
+{
+	Decl **params = sig->params;
+	unsigned param_count = vec_size(params);
+	bool is_win32 = platform_target.os == OS_TYPE_WIN32;
+	Type *arg_type, *arg_type2;
+	switch (param_count)
+	{
+		case 0:
+			return MAIN_TYPE_NO_ARGS;
+			break;
+		case 1:
+			arg_type = type_flatten_distinct(params[0]->type);
+			if (arg_type == type_get_subarray(type_get_subarray(type_char))) return MAIN_TYPE_ARGS;
+			SEMA_ERROR(params[0], "Expected a parameter of type 'String[]'.");
+			return MAIN_TYPE_ERROR;
+		case 2:
+			arg_type = type_flatten_distinct(params[0]->type);
+			arg_type2 = type_flatten_distinct(params[1]->type);
+			if (arg_type != type_cint)
+			{
+				SEMA_ERROR(params[0],
+				           "Expected a parameter of type %s for a C-style main.",
+				           type_quoted_error_string(type_cint));
+				return MAIN_TYPE_ERROR;
+			}
+			if (arg_type2 != type_get_ptr(type_get_ptr(type_char)))
+			{
+				SEMA_ERROR(params[1], "Expected a parameter of type 'char**' for a C-style main.");
+				return MAIN_TYPE_ERROR;
+			}
+			return MAIN_TYPE_RAW;
+		case 3:
+			if (!is_win32) break;
+			arg_type = type_flatten_distinct(params[0]->type);
+			arg_type2 = type_flatten_distinct(params[1]->type);
+			if (arg_type != type_voidptr)
+			{
+				SEMA_ERROR(params[0], "Expected a parameter of type 'void*' (HINSTANCE)");
+				return MAIN_TYPE_ERROR;
+			}
+			if (arg_type2 != type_get_subarray(type_get_subarray(type_char)))
+			{
+				SEMA_ERROR(params[1], "Expected a parameter of type 'String[]'.");
+				return MAIN_TYPE_ERROR;
+			}
+			if (type_flatten_distinct(params[2]->type) != type_cint)
+			{
+				SEMA_ERROR(params[2], "Expected a parameter of type %s for the 'showCmd' parameter.",
+				           type_quoted_error_string(type_cint));
+				return MAIN_TYPE_ERROR;
+			}
+			return MAIN_TYPE_WIN;
+		default:
+			break;
+	}
+	SEMA_ERROR(params[0], is_win32
+		? "Expected zero, 1 or 3 parameters for main."
+		: "Expected zero or 1 parameters for main.");
+	return MAIN_TYPE_ERROR;
+
+}
+
+static inline Decl *sema_create_synthetic_main(SemaContext *context, Decl *decl, MainType main, bool int_return, bool err_return)
+{
+	Decl *function = decl_new(DECL_FUNC, NULL, decl->span, VISIBLE_EXTERN);
+	function->name = kw_mainstub;
+	function->unit = decl->unit;
+	function->extname = kw_main;
+	function->has_extname = true;
+	function->func_decl.signature.rtype = type_infoid(type_info_new_base(type_cint, decl->span));
+	function->func_decl.signature.vararg_index = 2;
+	Decl *param1 = decl_new_generated_var(type_cint, VARDECL_PARAM, decl->span);
+	Decl *param2 = decl_new_generated_var(type_get_ptr(type_get_ptr(type_char)), VARDECL_PARAM, decl->span);
+	Decl **main_params = NULL;
+	vec_add(main_params, param1);
+	vec_add(main_params, param2);
+	function->func_decl.signature.params = main_params;
+	Ast *body = new_ast(AST_COMPOUND_STMT, decl->span);
+	AstId *next = &body->compound_stmt.first_stmt;
+	Ast *ret_stmt = new_ast(AST_RETURN_STMT, decl->span);
+	int type = int_return ? 1 : (err_return ? 2 : 0);
+	const char *main_invoker;
+	switch (main)
+	{
+		case MAIN_TYPE_ARGS:
+			switch (type)
+			{
+				case 0 : main_invoker = "@main_to_void_main_args"; goto NEXT;
+				case 1 : main_invoker = "@main_to_int_main_args"; goto NEXT;
+				case 2 : main_invoker = "@main_to_err_main_args"; goto NEXT;
+				default: UNREACHABLE
+			}
+		case MAIN_TYPE_NO_ARGS:
+			switch (type)
+			{
+				case 0 : main_invoker = "@main_to_void_main"; goto NEXT;
+				case 1 : main_invoker = "@main_to_int_main"; goto NEXT;
+				case 2 : main_invoker = "@main_to_err_main"; goto NEXT;
+				default: UNREACHABLE
+			}
+		default:
+			UNREACHABLE;
+	}
+NEXT:;
+	const char *kw_main_invoker = symtab_preset(main_invoker, TOKEN_AT_IDENT);
+	Decl *d = sema_find_symbol(context, kw_main_invoker);
+	if (!d)
+	{
+		SEMA_ERROR(decl, "Missing main forwarding function '%s'.", kw_main_invoker);
+		return poisoned_decl;
+	}
+	Expr *invoker = expr_new(EXPR_IDENTIFIER, decl->span);
+	invoker->identifier_expr.decl = d;
+	invoker->resolve_status = RESOLVE_DONE;
+	invoker->type = decl->type;
+	Expr *call = expr_new(EXPR_CALL, decl->span);
+	Expr *fn_ref = expr_variable(decl);
+	vec_add(call->call_expr.arguments, fn_ref);
+	vec_add(call->call_expr.arguments, expr_variable(param1));
+	vec_add(call->call_expr.arguments, expr_variable(param2));
+	call->call_expr.function = exprid(invoker);
+	param1->resolve_status = RESOLVE_NOT_DONE;
+	param2->resolve_status = RESOLVE_NOT_DONE;
+	ast_append(&next, ret_stmt);
+	ret_stmt->return_stmt.expr = call;
+	function->func_decl.body = astid(body);
+	function->is_synthetic = true;
+	return function;
+}
+
+static inline Decl *sema_create_synthetic_wmain(SemaContext *context, Decl *decl, MainType main, bool int_return, bool err_return)
+{
+	Decl *function = decl_new(DECL_FUNC, NULL, decl->span, VISIBLE_EXTERN);
+	function->name = kw_mainstub;
+	function->unit = decl->unit;
+	function->extname = kw_wmain;
+	function->has_extname = true;
+	function->func_decl.signature.rtype = type_infoid(type_info_new_base(type_cint, decl->span));
+	function->func_decl.signature.vararg_index = 2;
+	Decl *param1 = decl_new_generated_var(type_cint, VARDECL_PARAM, decl->span);
+	Decl *param2 = decl_new_generated_var(type_get_ptr(type_get_ptr(type_ushort)), VARDECL_PARAM, decl->span);
+	Decl **main_params = NULL;
+	vec_add(main_params, param1);
+	vec_add(main_params, param2);
+	function->func_decl.signature.params = main_params;
+	Ast *body = new_ast(AST_COMPOUND_STMT, decl->span);
+	AstId *next = &body->compound_stmt.first_stmt;
+	Ast *ret_stmt = new_ast(AST_RETURN_STMT, decl->span);
+	int type = int_return ? 1 : (err_return ? 2 : 0);
+	const char *main_invoker;
+	switch (main)
+	{
+		case MAIN_TYPE_ARGS:
+			switch (type)
+			{
+				case 0 : main_invoker = "@wmain_to_void_main_args"; goto NEXT;
+				case 1 : main_invoker = "@wmain_to_int_main_args"; goto NEXT;
+				case 2 : main_invoker = "@wmain_to_err_main_args"; goto NEXT;
+				default: UNREACHABLE
+			}
+		case MAIN_TYPE_NO_ARGS:
+			switch (type)
+			{
+				case 0 : main_invoker = "@main_to_void_main"; goto NEXT;
+				case 1 : main_invoker = "@main_to_int_main"; goto NEXT;
+				case 2 : main_invoker = "@main_to_err_main"; goto NEXT;
+				default: UNREACHABLE
+			}
+		default:
+			UNREACHABLE;
+	}
+	NEXT:;
+	const char *kw_main_invoker = symtab_preset(main_invoker, TOKEN_AT_IDENT);
+	Decl *d = sema_find_symbol(context, kw_main_invoker);
+	if (!d)
+	{
+		SEMA_ERROR(decl, "Missing main forwarding function '%s'.", kw_main_invoker);
+		return poisoned_decl;
+	}
+	Expr *invoker = expr_new(EXPR_IDENTIFIER, decl->span);
+	invoker->identifier_expr.decl = d;
+	invoker->resolve_status = RESOLVE_DONE;
+	invoker->type = decl->type;
+	Expr *call = expr_new(EXPR_CALL, decl->span);
+	Expr *fn_ref = expr_variable(decl);
+	vec_add(call->call_expr.arguments, fn_ref);
+	vec_add(call->call_expr.arguments, expr_variable(param1));
+	vec_add(call->call_expr.arguments, expr_variable(param2));
+	call->call_expr.function = exprid(invoker);
+	param1->resolve_status = RESOLVE_NOT_DONE;
+	param2->resolve_status = RESOLVE_NOT_DONE;
+	ast_append(&next, ret_stmt);
+	ret_stmt->return_stmt.expr = call;
+	function->func_decl.body = astid(body);
+	function->is_synthetic = true;
+	return function;
+}
+
+static inline Decl *sema_create_synthetic_win_main(SemaContext *context, Decl *decl, MainType main, bool int_return, bool err_return)
+{
+	Decl *function = decl_new(DECL_FUNC, NULL, decl->span, VISIBLE_EXTERN);
+	function->name = kw_mainstub;
+	function->unit = decl->unit;
+	function->extname = kw_winmain;
+	function->has_extname = true;
+	function->func_decl.signature.rtype = type_infoid(type_info_new_base(type_cint, decl->span));
+	function->func_decl.signature.vararg_index = 3;
+	Decl *param1 = decl_new_generated_var(type_voidptr, VARDECL_PARAM, decl->span);
+	Decl *param2 = decl_new_generated_var(type_get_ptr(type_ushort), VARDECL_PARAM, decl->span);
+	Decl *param3 = decl_new_generated_var(type_cint, VARDECL_PARAM, decl->span);
+	Decl **main_params = NULL;
+	vec_add(main_params, param1);
+	vec_add(main_params, param2);
+	vec_add(main_params, param3);
+	function->func_decl.signature.params = main_params;
+	Ast *body = new_ast(AST_COMPOUND_STMT, decl->span);
+	AstId *next = &body->compound_stmt.first_stmt;
+	Ast *ret_stmt = new_ast(AST_RETURN_STMT, decl->span);
+	int type = int_return ? 1 : (err_return ? 2 : 0);
+	const char *main_invoker;
+	switch (main)
+	{
+		case MAIN_TYPE_ARGS:
+			switch (type)
+			{
+				case 0 : main_invoker = "@win_to_void_main_args"; goto NEXT;
+				case 1 : main_invoker = "@win_to_int_main_args"; goto NEXT;
+				case 2 : main_invoker = "@win_to_err_main_args"; goto NEXT;
+				default: UNREACHABLE
+			}
+		case MAIN_TYPE_NO_ARGS:
+			switch (type)
+			{
+				case 0 : main_invoker = "@win_to_void_main_noargs"; goto NEXT;
+				case 1 : main_invoker = "@win_to_int_main_noargs"; goto NEXT;
+				case 2 : main_invoker = "@win_to_err_main_noargs"; goto NEXT;
+				default: UNREACHABLE
+			}
+		case MAIN_TYPE_WIN:
+			switch (type)
+			{
+				case 0 : main_invoker = "@win_to_void_main"; goto NEXT;
+				case 1 : main_invoker = "@win_to_int_main"; goto NEXT;
+				case 2 : main_invoker = "@win_to_err_main"; goto NEXT;
+				default: UNREACHABLE
+			}
+		default:
+			UNREACHABLE;
+	}
+NEXT:;
+	const char *kw_main_invoker = symtab_preset(main_invoker, TOKEN_AT_IDENT);
+	Decl *d = sema_find_symbol(context, kw_main_invoker);
+	if (!d)
+	{
+		SEMA_ERROR(decl, "Missing main forwarding macro '%s'.", kw_main_invoker);
+		return poisoned_decl;
+	}
+	Expr *invoker = expr_new(EXPR_IDENTIFIER, decl->span);
+	invoker->identifier_expr.decl = d;
+	invoker->resolve_status = RESOLVE_DONE;
+	invoker->type = decl->type;
+	Expr *call = expr_new(EXPR_CALL, decl->span);
+	Expr *fn_ref = expr_variable(decl);
+	vec_add(call->call_expr.arguments, fn_ref);
+	vec_add(call->call_expr.arguments, expr_variable(param1));
+	vec_add(call->call_expr.arguments, expr_variable(param2));
+	vec_add(call->call_expr.arguments, expr_variable(param3));
+	call->call_expr.function = exprid(invoker);
+	param1->resolve_status = RESOLVE_NOT_DONE;
+	param2->resolve_status = RESOLVE_NOT_DONE;
+	param3->resolve_status = RESOLVE_NOT_DONE;
+	ast_append(&next, ret_stmt);
+	ret_stmt->return_stmt.expr = call;
+	function->func_decl.body = astid(body);
+	function->is_synthetic = true;
+	return function;
+}
+
 static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 {
 	assert(decl != context->unit->main_function);
@@ -1914,40 +2193,8 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 		return false;
 	}
 	// At this point the style is either MAIN_INT_VOID, MAIN_VOID_VOID or MAIN_ERR_VOID
-	Decl **params = signature->params;
-	unsigned param_count = vec_size(params);
-	bool subarray_param = false;
-	bool cparam = false;
-	switch (param_count)
-	{
-		case 0:
-			// This is the default style already set
-			break;
-		case 1:
-			if (type_flatten_distinct(params[0]->type) != type_get_subarray(type_get_subarray(type_char)))
-			{
-				SEMA_ERROR(params[0], "Expected a parameter of type 'char[][]'");
-				return false;
-			}
-			subarray_param = true;
-			break;
-		case 2:
-			if (type_flatten_distinct(params[0]->type) != type_cint)
-			{
-				SEMA_ERROR(params[0], "Expected a parameter of type %s for a C-style main.", type_quoted_error_string(type_cint));
-				return false;
-			}
-			if (type_flatten_distinct(params[1]->type) != type_get_ptr(type_get_ptr(type_char)))
-			{
-				SEMA_ERROR(params[1], "Expected a parameter of type 'char**' for a C-style main.");
-				return false;
-			}
-			cparam = true;
-			break;
-		default:
-			SEMA_ERROR(params[0], "Expected zero, 1 or 2 parameters for main.");
-			return false;
-	}
+	MainType type = sema_find_main_type(context, signature);
+	if (type == MAIN_TYPE_ERROR) return false;
 	if (active_target.type == TARGET_TYPE_TEST) return true;
 	Decl *function;
 	if (active_target.no_entry)
@@ -1955,73 +2202,29 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 		function = decl;
 		goto REGISTER_MAIN;
 	}
-	if (!subarray_param && is_int_return)
+	if (type == MAIN_TYPE_RAW && !is_int_return)
+	{
+		SEMA_ERROR(rtype_info, "Int return is required for C style main.");
+		return false;
+	}
+	if ((type == MAIN_TYPE_RAW || type == MAIN_TYPE_NO_ARGS) && is_int_return && !active_target.gui)
 	{
 		// Int return is pass-through at the moment.
 		decl->visibility = VISIBLE_EXTERN;
 		function = decl;
 		goto REGISTER_MAIN;
 	}
-	function = decl_new(DECL_FUNC, NULL, decl->span, VISIBLE_EXTERN);
-	function->name = kw_mainstub;
-	function->unit = decl->unit;
-	function->extname = kw_main;
-	function->has_extname = true;
-	function->func_decl.signature.rtype = type_infoid(type_info_new_base(type_cint, decl->span));
-	function->func_decl.signature.vararg_index = 2;
-	Decl *param1 = decl_new_generated_var(type_cint, VARDECL_PARAM, decl->span);
-	Decl *param2 = decl_new_generated_var(type_get_ptr(type_get_ptr(type_char)), VARDECL_PARAM, decl->span);
-	Decl **main_params = NULL;
-	vec_add(main_params, param1);
-	vec_add(main_params, param2);
-	function->func_decl.signature.params = main_params;
-	Ast *body = new_ast(AST_COMPOUND_STMT, decl->span);
-	AstId *next = &body->compound_stmt.first_stmt;
-	Ast *ret_stmt = new_ast(AST_RETURN_STMT, decl->span);
-	Expr *call = expr_new(EXPR_CALL, decl->span);
-	call->call_expr.function = exprid(expr_variable(decl));
-	if (subarray_param)
+	if (platform_target.os == OS_TYPE_WIN32)
 	{
-		Expr *subarray = expr_new(EXPR_ARGV_TO_SUBARRAY, decl->span);
-		subarray->argv_expr.argc = param1;
-		subarray->argv_expr.argv = param2;
-		vec_add(call->call_expr.arguments, subarray);
-	}
-	else if (cparam)
-	{
-		vec_add(call->call_expr.arguments, expr_variable(param1));
-		vec_add(call->call_expr.arguments, expr_variable(param2));
-	}
-	// Unresolve them or the params cannot be resolved later.
-	param1->resolve_status = RESOLVE_NOT_DONE;
-	param2->resolve_status = RESOLVE_NOT_DONE;
-	if (is_int_return)
-	{
-		ret_stmt->return_stmt.expr = call;
-	}
-	else if (is_err_return)
-	{
-		Expr *try_expr = expr_new(EXPR_TRY, decl->span);
-		try_expr->inner_expr = call;
-		Expr *not_expr = expr_new(EXPR_UNARY, decl->span);
-		not_expr->unary_expr.expr = try_expr;
-		not_expr->unary_expr.operator = UNARYOP_NOT;
-		Expr *cast_expr = expr_new(EXPR_CAST, decl->span);
-		cast_expr->cast_expr.expr = exprid(not_expr);
-		cast_expr->cast_expr.type_info = type_infoid(type_info_new_base(type_cint, decl->span));
-		ret_stmt->return_stmt.expr = cast_expr;
+		function = active_target.gui
+				? sema_create_synthetic_win_main(context, decl, type, is_int_return, is_err_return)
+				: sema_create_synthetic_wmain(context, decl, type, is_int_return, is_err_return);
 	}
 	else
 	{
-		Ast *stmt = new_ast(AST_EXPR_STMT, decl->span);
-		stmt->expr_stmt = call;
-		ast_append(&next, stmt);
-		ret_stmt->expr_stmt = expr_new_const_int(decl->span, type_cint, 0, true);
+		function = sema_create_synthetic_main(context, decl, type, is_int_return, is_err_return);
 	}
-	ast_append(&next, ret_stmt);
-	assert(body);
-	function->func_decl.body = astid(body);
-	function->is_synthetic = true;
+	if (!decl_ok(function)) return false;
 REGISTER_MAIN:
 	context->unit->main_function = function;
 	if (global_context.main)

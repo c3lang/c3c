@@ -89,7 +89,7 @@ fn void random_fasta(char[] symb, double[] probability, int n)
 	if (i % LINELEN != 0) putchar('\n');
 }
 
-fn void main(int argc, char **argv)
+fn int main(int argc, char **argv)
 {
 	int n = 1000;
 	if (argc > 1) n = atoi(argv[1]);
@@ -103,6 +103,7 @@ fn void main(int argc, char **argv)
 	printf(">THREE Homo sapiens frequency\n");
 	random_fasta(homosapiens, homosapiens_p, n * 5);
 
+	return 0;
 }
 
 /* #expect: fasta.ll
@@ -326,7 +327,7 @@ if.exit14:                                        ; preds = %if.then13, %loop.ex
 }
 
 ; Function Attrs: nounwind
-define void @fasta_main(i32 %0, ptr %1) #0 {
+define i32 @main(i32 %0, ptr %1) #0 {
 entry:
   %n = alloca i32, align 4
   store i32 1000, ptr %n, align 4
@@ -363,11 +364,5 @@ if.exit:                                          ; preds = %if.then, %entry
   %9 = load i32, ptr %n, align 4
   %mul10 = mul i32 %9, 5
   call void @fasta_random_fasta(ptr %lo6, i64 %hi7, ptr %lo8, i64 %hi9, i32 %mul10)
-  ret void
-}
-
-define i32 @main(i32 %0, ptr %1) #0 {
-entry:
-  call void @fasta_main(i32 %0, ptr %1)
   ret i32 0
 }

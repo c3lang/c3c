@@ -129,6 +129,7 @@ static void usage(void)
 	OUTPUT("  -z <argument>             - Send the <argument> as a parameter to the linker.");
 	OUTPUT("  --forcelinker             - Force built in linker usage when doing non-cross linking.");
 	OUTPUT("");
+	OUTPUT("  --gui                     - Build a 'gui' variant of the executable (e.g. '/SUBSYSTEM:WINDOWS' on Win32).");
 	OUTPUT("  --reloc=<option>          - Relocation model: none, pic, PIC, pie, PIE.");
 	OUTPUT("  --x86vec=<option>         - Set max level of vector instructions: none, native, mmx, sse, avx, avx512.");
 	OUTPUT("  --memory-env=<option>     - Set the memory environment: normal, small, tiny, none.");
@@ -530,6 +531,11 @@ static void parse_option(BuildOptions *options)
 				int symtab = atoi(symtab_string);
 				if (symtab < 1024) OUTPUT("Expected a valid positive integer >= 1024.");
 				options->symtab_size = next_highest_power_of_2(symtab);
+				return;
+			}
+			if (match_longopt("gui"))
+			{
+				options->gui = true;
 				return;
 			}
 			if (match_longopt("forcelinker"))

@@ -106,21 +106,18 @@ define i32 @main(i32 %0, ptr %1) #0 {
 entry:
   %2 = call i64 @foo_main()
   %not_err = icmp eq i64 %2, 0
-  br i1 %not_err, label %after_check, label %error_block
+  br i1 %not_err, label %after_check, label %assign_optional
+
+assign_optional:                                  ; preds = %entry
+  store i64 %2, ptr %error_var, align 8
+  br label %noerr_block
 
 after_check:                                      ; preds = %entry
   br label %noerr_block
 
-noerr_block:                                      ; preds = %after_check
-  br label %phi_trycatch_block
-
-error_block:                                      ; preds = %entry
-  br label %phi_trycatch_block
-
-phi_trycatch_block:                               ; preds = %error_block, %noerr_block
-  %val = phi i8 [ 1, %noerr_block ], [ 0, %error_block ]
-  %3 = trunc i8 %val to i1
-  %not = xor i1 %3, true
-  %boolsi = zext i1 %not to i32
-  ret i32 %boolsi
+noerr_block:                                      ; preds = %after_check, %assign_optional
+  %3 = load i64, ptr %error_var, align 8
+  %neq = icmp ne i64 %3, 0
+  %ternary = select i1 %neq, i32 1, i32 0
+  ret i32 %ternary
 }
