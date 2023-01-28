@@ -65,7 +65,7 @@ entry:
 
 if.then:                                          ; preds = %entry
   %1 = load ptr, ptr @std_core_mem_thread_allocator, align 8
-  call void @"std_map$$typeid.p$std_io$ToStringFunction_HashMap_init"(ptr @std_io_tostring_functions, i32 512, float 7.500000e-01, ptr %1)
+  call void @"std_map$$typeid.p$std_io$ToStringFunction_HashMap_init"(ptr @std_io_tostring_functions, i32
   br label %if.exit
 
 if.exit:                                          ; preds = %if.then, %entry
@@ -364,7 +364,7 @@ after_check67:                                    ; preds = %if.then
 
 panic_block:                                      ; preds = %assign_optional
   %81 = load ptr, ptr @std_core_builtin_panic, align 8
-  call void %81(ptr @.panic_msg,
+  call void %81(ptr @.panic_msg, i64 27, ptr @.file, i64 6, ptr @.func, i64 4, i32 280)
   unreachable
 
 noerr_block:                                      ; preds = %after_check67
