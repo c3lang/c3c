@@ -290,6 +290,7 @@ typedef struct BuildOptions_
 	bool no_stdlib;
 	bool no_entry;
 	bool no_libc;
+	bool gui;
 	bool force_linker;
 	bool read_stdin;
 	bool print_output;
@@ -374,6 +375,7 @@ typedef struct
 	bool emit_asm;
 	bool no_stdlib;
 	bool no_libc;
+	bool gui;
 	bool emit_object_files;
 	bool force_linker;
 	bool benchmarking;

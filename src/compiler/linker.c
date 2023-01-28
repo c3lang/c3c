@@ -77,6 +77,7 @@ static const char *string_esc(const char *str)
 }
 static void linker_setup_windows(const char ***args_ref, LinkerType linker_type)
 {
+	add_arg(active_target.gui ? "/SUBSYSTEM:WINDOWS" : "/SUBSYSTEM:CONSOLE");
 	if (linker_type == LINKER_CC) return;
 	//add_arg("/MACHINE:X64");
 	bool is_debug = false;
@@ -145,6 +146,7 @@ static void linker_setup_windows(const char ***args_ref, LinkerType linker_type)
 	add_arg("kernel32.lib");
 	add_arg("ntdll.lib");
 	add_arg("user32.lib");
+	add_arg("shell32.lib");
 	add_arg("legacy_stdio_definitions.lib");
 
 	if (active_target.win.crt_linking == WIN_CRT_STATIC)

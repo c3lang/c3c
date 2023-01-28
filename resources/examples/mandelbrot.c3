@@ -4,7 +4,7 @@ extern fn int atoi(char *s);
 extern fn int printf(char *s, ...);
 extern fn void putchar(int c);
 
-fn void main(int argc, char **argv)
+fn int main(int argc, char **argv)
 {
 	int w = atoi(argv[1]);
 	int h = w;
@@ -55,4 +55,5 @@ fn void main(int argc, char **argv)
 			}
 		}
 	}
+	return 0;
 }

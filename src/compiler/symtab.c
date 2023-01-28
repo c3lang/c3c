@@ -82,6 +82,8 @@ const char *kw_std__core__types;
 const char *kw___run_default_test_runner;
 const char *kw_type;
 const char *kw_typekind;
+const char *kw_winmain;
+const char *kw_wmain;
 
 void symtab_destroy()
 {
@@ -162,6 +164,8 @@ void symtab_init(uint32_t capacity)
 	kw_std__core__types = KW_DEF("std::core::types");
 	kw___run_default_test_runner = KW_DEF("__run_default_test_runner");
 	kw_type = KW_DEF("type");
+	kw_winmain = KW_DEF("wWinMain");
+	kw_wmain = KW_DEF("wmain");
 
 	type_property_list[TYPE_PROPERTY_MAX] = builtin_list[BUILTIN_MAX] = KW_DEF("max");
 	type_property_list[TYPE_PROPERTY_MIN] = builtin_list[BUILTIN_MIN] = KW_DEF("min");

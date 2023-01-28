@@ -992,3 +992,13 @@ typedef enum
 	COND_TYPE_UNWRAP,
 	COND_TYPE_EVALTYPE_VALUE,
 } CondType;
+
+
+typedef enum
+{
+	MAIN_TYPE_ERROR,
+	MAIN_TYPE_RAW,
+	MAIN_TYPE_NO_ARGS,
+	MAIN_TYPE_ARGS,
+	MAIN_TYPE_WIN,
+} MainType;
