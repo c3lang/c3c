@@ -2014,6 +2014,7 @@ NEXT:;
 
 static inline Decl *sema_create_synthetic_wmain(SemaContext *context, Decl *decl, MainType main, bool int_return, bool err_return)
 {
+	if (main == MAIN_TYPE_NO_ARGS) return sema_create_synthetic_main(context, decl, main, int_return, err_return);
 	Decl *function = decl_new(DECL_FUNC, NULL, decl->span, VISIBLE_EXTERN);
 	function->name = kw_mainstub;
 	function->unit = decl->unit;
@@ -2040,14 +2041,6 @@ static inline Decl *sema_create_synthetic_wmain(SemaContext *context, Decl *decl
 				case 0 : main_invoker = "@wmain_to_void_main_args"; goto NEXT;
 				case 1 : main_invoker = "@wmain_to_int_main_args"; goto NEXT;
 				case 2 : main_invoker = "@wmain_to_err_main_args"; goto NEXT;
-				default: UNREACHABLE
-			}
-		case MAIN_TYPE_NO_ARGS:
-			switch (type)
-			{
-				case 0 : main_invoker = "@main_to_void_main"; goto NEXT;
-				case 1 : main_invoker = "@main_to_int_main"; goto NEXT;
-				case 2 : main_invoker = "@main_to_err_main"; goto NEXT;
 				default: UNREACHABLE
 			}
 		default:
@@ -2216,6 +2209,7 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	}
 	if (platform_target.os == OS_TYPE_WIN32)
 	{
+
 		function = active_target.gui
 				? sema_create_synthetic_win_main(context, decl, type, is_int_return, is_err_return)
 				: sema_create_synthetic_wmain(context, decl, type, is_int_return, is_err_return);

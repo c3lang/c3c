@@ -188,7 +188,7 @@ jobs:
       - name: Install Clang ${{matrix.llvm_version}}
         run: |
           wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-          if [[ "${{matrix.llvm_version}}" < 16 ]]; then
+          if [[ "${{matrix.llvm_version}}" < 17 ]]; then
             sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-${{matrix.llvm_version}} main"
           else
             sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal main"
