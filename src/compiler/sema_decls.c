@@ -1465,8 +1465,9 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_UNUSED] = (AttributeDomain)~(ATTR_CALL | ATTR_XXLIZER),
 			[ATTRIBUTE_USED] = (AttributeDomain)~(ATTR_CALL | ATTR_XXLIZER ),
 			[ATTRIBUTE_VECCALL] = ATTR_FUNC,
-			[ATTRIBUTE_WEAK] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
 			[ATTRIBUTE_WASM] = ATTR_FUNC,
+			[ATTRIBUTE_WEAK] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
+			[ATTRIBUTE_WINMAIN] = ATTR_FUNC,
 	};
 
 	if ((attribute_domain[type] & domain) != domain)
@@ -1483,6 +1484,14 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 	Expr *expr = args ? attr->exprs[0] : NULL;
 	switch (type)
 	{
+		case ATTRIBUTE_WINMAIN:
+			if (decl->name != kw_main)
+			{
+				SEMA_ERROR(attr, "'@winmain' can only be used on the 'main' function.");
+				return false;
+			}
+			decl->func_decl.attr_winmain = true;
+			break;
 		case ATTRIBUTE_CDECL:
 			decl->func_decl.signature.abi = CALL_C;
 			break;
@@ -1881,7 +1890,7 @@ ADDED:;
 	return true;
 }
 
-static inline MainType sema_find_main_type(SemaContext *context, Signature *sig)
+static inline MainType sema_find_main_type(SemaContext *context, Signature *sig, bool is_winmain)
 {
 	Decl **params = sig->params;
 	unsigned param_count = vec_size(params);
@@ -1912,9 +1921,14 @@ static inline MainType sema_find_main_type(SemaContext *context, Signature *sig)
 				SEMA_ERROR(params[1], "Expected a parameter of type 'char**' for a C-style main.");
 				return MAIN_TYPE_ERROR;
 			}
+			if (is_winmain)
+			{
+				SEMA_ERROR(params[0], "For '@winmain' functions, C-style 'main' with argc + argv isn't valid. It compiles if you remove the '@winmain' attribute.");
+				return MAIN_TYPE_ERROR;
+			}
 			return MAIN_TYPE_RAW;
 		case 3:
-			if (!is_win32) break;
+			if (!is_win32 || is_winmain) break;
 			arg_type = type_flatten_distinct(params[0]->type);
 			arg_type2 = type_flatten_distinct(params[1]->type);
 			if (arg_type != type_voidptr)
@@ -1933,11 +1947,16 @@ static inline MainType sema_find_main_type(SemaContext *context, Signature *sig)
 				           type_quoted_error_string(type_cint));
 				return MAIN_TYPE_ERROR;
 			}
+			if (!is_win32)
+			{
+				SEMA_ERROR(params[0], "'main(HINSTANCE, String[], int) is only valid for Windows.");
+				return MAIN_TYPE_ERROR;
+			}
 			return MAIN_TYPE_WIN;
 		default:
 			break;
 	}
-	SEMA_ERROR(params[0], is_win32
+	SEMA_ERROR(params[0], (is_win32 & is_winmain)
 		? "Expected zero, 1 or 3 parameters for main."
 		: "Expected zero or 1 parameters for main.");
 	return MAIN_TYPE_ERROR;
@@ -2079,6 +2098,7 @@ static inline Decl *sema_create_synthetic_win_main(SemaContext *context, Decl *d
 	function->name = kw_mainstub;
 	function->unit = decl->unit;
 	function->extname = kw_winmain;
+	function->func_decl.attr_winmain = true;
 	function->has_extname = true;
 	function->func_decl.signature.rtype = type_infoid(type_info_new_base(type_cint, decl->span));
 	function->func_decl.signature.vararg_index = 3;
@@ -2156,7 +2176,8 @@ NEXT:;
 static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 {
 	assert(decl != context->unit->main_function);
-
+	bool is_winmain = decl->func_decl.attr_winmain;
+	bool is_win32 = platform_target.os == OS_TYPE_WIN32;
 	if (decl->visibility == VISIBLE_LOCAL)
 	{
 		SEMA_ERROR(decl, "A main function may not have local visibility.");
@@ -2186,7 +2207,7 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 		return false;
 	}
 	// At this point the style is either MAIN_INT_VOID, MAIN_VOID_VOID or MAIN_ERR_VOID
-	MainType type = sema_find_main_type(context, signature);
+	MainType type = sema_find_main_type(context, signature, is_winmain);
 	if (type == MAIN_TYPE_ERROR) return false;
 	if (active_target.type == TARGET_TYPE_TEST) return true;
 	Decl *function;
@@ -2200,17 +2221,20 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 		SEMA_ERROR(rtype_info, "Int return is required for C style main.");
 		return false;
 	}
-	if ((type == MAIN_TYPE_RAW || type == MAIN_TYPE_NO_ARGS) && is_int_return && !active_target.gui)
+	// Suppress winmain on non-win32
+	if (platform_target.os != OS_TYPE_WIN32) is_winmain = false;
+
+	if ((type == MAIN_TYPE_RAW || type == MAIN_TYPE_NO_ARGS) && is_int_return && !is_winmain)
 	{
 		// Int return is pass-through at the moment.
 		decl->visibility = VISIBLE_EXTERN;
 		function = decl;
 		goto REGISTER_MAIN;
 	}
-	if (platform_target.os == OS_TYPE_WIN32)
+	if (is_win32)
 	{
-
-		function = active_target.gui
+		active_target.win.use_win_subsystem = is_winmain;
+		function = is_winmain
 				? sema_create_synthetic_win_main(context, decl, type, is_int_return, is_err_return)
 				: sema_create_synthetic_wmain(context, decl, type, is_int_return, is_err_return);
 	}

@@ -362,9 +362,6 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	// nolibc
 	target->no_libc = get_valid_bool(json, "nolibc", type, target->no_libc);
 
-	// gui
-	target->gui = get_valid_bool(json, "gui", type, target->gui);
-
 	// no-entry
 	target->no_entry = get_valid_bool(json, "no-entry", type, target->no_entry);
 

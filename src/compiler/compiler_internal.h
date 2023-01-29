@@ -559,6 +559,7 @@ typedef struct
 			bool attr_extname : 1;
 			bool attr_naked : 1;
 			bool attr_test : 1;
+			bool attr_winmain : 1;
 			Decl** generated_lambda;
 		};
 		struct
