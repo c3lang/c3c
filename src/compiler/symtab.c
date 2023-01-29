@@ -120,6 +120,7 @@ void symtab_init(uint32_t capacity)
 	TokenType type = TOKEN_CONST_IDENT;
 	builtin_defines[BUILTIN_DEF_DATE] = KW_DEF("DATE");
 	builtin_defines[BUILTIN_DEF_FILE] = KW_DEF("FILE");
+	builtin_defines[BUILTIN_DEF_FILEPATH] = KW_DEF("FILEPATH");
 	builtin_defines[BUILTIN_DEF_FUNCTION] = KW_DEF("FUNCTION");
 	builtin_defines[BUILTIN_DEF_FUNC] = KW_DEF("FUNC");
 	builtin_defines[BUILTIN_DEF_LINE] = KW_DEF("LINE");

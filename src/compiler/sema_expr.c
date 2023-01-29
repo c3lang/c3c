@@ -5971,6 +5971,9 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 		case BUILTIN_DEF_FILE:
 			expr_rewrite_to_string(expr, context->compilation_unit->file->name);
 			return true;
+		case BUILTIN_DEF_FILEPATH:
+			expr_rewrite_to_string(expr, context->compilation_unit->file->full_path);
+			return true;
 		case BUILTIN_DEF_MODULE:
 			expr_rewrite_to_string(expr, context->compilation_unit->module->name->module);
 			return true;
