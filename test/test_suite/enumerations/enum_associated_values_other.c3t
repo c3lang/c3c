@@ -1,0 +1,85 @@
+// #target: macos-x64
+module test;
+import std::io;
+import abc;
+
+fn void main(String[] args)
+{
+	typeid y = Abc.typeid;
+	int* x = &abc::dabc;
+	Foo a = Foo.DEF;
+	String z = a.val;
+	io::printfln("%s", z);
+}
+
+module abc;
+int dabc;
+
+struct Abc { int x; }
+enum Foo : int(String val)
+{
+	ABC("hello"),
+	DEF("world")
+}
+
+/* #expect: abc.ll
+
+@"ct$abc_Abc" = linkonce constant %.introspect { i8 10, i64 4, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
+@.enum.0 = internal constant [4 x i8] c"ABC\00", align 1
+@.enum.1 = internal constant [4 x i8] c"DEF\00", align 1
+@"ct$int" = linkonce constant %.introspect { i8 2, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
+@"ct$abc_Foo" = linkonce constant { i8, i64, i64, i64, [2 x %"char[]"] } { i8 8, i64 4, i64 ptrtoint (ptr @"ct$int" to i64), i64 2, [2 x %"char[]"] [%"char[]" { ptr @.enum.0, i64 3 }, %"char[]" { ptr @.enum.1, i64 3 }] }, align 8
+@.str = private unnamed_addr constant [6 x i8] c"hello\00", align 1
+@.str.1 = private unnamed_addr constant [6 x i8] c"world\00", align 1
+@"abc_Foo$val" = linkonce constant [2 x %"char[]"] [%"char[]" { ptr @.str, i64 5 }, %"char[]" { ptr @.str.1, i64 5 }], align 8
+@abc_dabc = global i32 0, align 4
+
+// #expect: test.ll
+
+
+@"ct$abc_Abc" = linkonce constant %.introspect { i8 10, i64 4, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
+@abc_dabc = external global i32, align 4
+@.enum.0 = internal constant [4 x i8] c"ABC\00", align 1
+@.enum.1 = internal constant [4 x i8] c"DEF\00", align 1
+@"ct$int" = linkonce constant %.introspect { i8 2, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
+@"ct$abc_Foo" = linkonce constant { i8, i64, i64, i64, [2 x %"char[]"] } { i8 8, i64 4, i64 ptrtoint (ptr @"ct$int" to i64), i64 2, [2 x %"char[]"] [%"char[]" { ptr @.enum.0, i64 3 }, %"char[]" { ptr @.enum.1, i64 3 }] }, align 8
+@.str = private unnamed_addr constant [6 x i8] c"hello\00", align 1
+@.str.1 = private unnamed_addr constant [6 x i8] c"world\00", align 1
+@"abc_Foo$val" = linkonce constant [2 x %"char[]"] [%"char[]" { ptr @.str, i64 5 }, %"char[]" { ptr @.str.1, i64 5 }], align 8
+@.str.2 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@"ct$char" = linkonce constant %.introspect { i8 3, i64 1, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
+@"ct$sa$char" = linkonce constant %.introspect { i8 16, i64 16, i64 ptrtoint (ptr @"ct$char" to i64), i64 0, [0 x i64] zeroinitializer }, align 8
+
+define void @test_main(ptr %0, i64 %1) #0 {
+entry:
+  %args = alloca %"char[][]", align 8
+  %y = alloca i64, align 8
+  %x = alloca ptr, align 8
+  %a = alloca i32, align 4
+  %z = alloca %"char[]", align 8
+  %retparam = alloca i64, align 8
+  %varargslots = alloca [1 x %variant], align 16
+  %2 = getelementptr inbounds { ptr, i64 }, ptr %args, i32 0, i32 0
+  store ptr %0, ptr %2, align 8
+  %3 = getelementptr inbounds { ptr, i64 }, ptr %args, i32 0, i32 1
+  store i64 %1, ptr %3, align 8
+  store i64 ptrtoint (ptr @"ct$abc_Abc" to i64), ptr %y, align 8
+  store ptr @abc_dabc, ptr %x, align 8
+  store i32 1, ptr %a, align 4
+  %4 = load i32, ptr %a, align 4
+  %5 = getelementptr inbounds [2 x %"char[]"], ptr @"abc_Foo$val", i32 0, i32 %4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %z, ptr align 8 %5, i32 16, i1 false)
+  %6 = insertvalue %variant undef, ptr %z, 0
+  %7 = insertvalue %variant %6, i64 ptrtoint (ptr @"ct$sa$char" to i64), 1
+  %8 = getelementptr inbounds [1 x %variant], ptr %varargslots, i64 0, i64 0
+  store %variant %7, ptr %8, align 16
+  %9 = call i64 @std_io_printfn(ptr %retparam, ptr @.str.2, i64 2, ptr %varargslots, i64 1)
+  %not_err = icmp eq i64 %9, 0
+  br i1 %not_err, label %after_check, label %voiderr
+
+after_check:                                      ; preds = %entry
+  br label %voiderr
+
+voiderr:                                          ; preds = %after_check, %entry
+  ret void
+}
