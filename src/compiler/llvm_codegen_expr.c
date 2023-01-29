@@ -1088,24 +1088,26 @@ static inline void llvm_emit_bitaccess(GenContext *c, BEValue *be_value, Expr *e
 	llvm_extract_bitvalue(c, be_value, parent, expr->access_expr.ref);
 }
 
-static inline void llvm_emit_access_addr(GenContext *context, BEValue *be_value, Expr *expr)
+static inline void llvm_emit_access_addr(GenContext *c, BEValue *be_value, Expr *expr)
 {
 	Expr *parent = expr->access_expr.parent;
-	llvm_emit_expr(context, be_value, parent);
+	llvm_emit_expr(c, be_value, parent);
 	Decl *member = expr->access_expr.ref;
 
 	Type *flat_type = type_flatten_distinct_optional(parent->type);
 	if (flat_type->type_kind == TYPE_ENUM)
 	{
-		llvm_value_rvalue(context, be_value);
-		LLVMTypeRef value_type = llvm_get_type(context, type_get_array(member->type, vec_size(flat_type->decl->enums.values)));
+		llvm_value_rvalue(c, be_value);
+		if (!member->backend_ref) llvm_get_typeid(c, parent->type);
+		assert(member->backend_ref);
+		LLVMTypeRef value_type = llvm_get_type(c, type_get_array(member->type, vec_size(flat_type->decl->enums.values)));
 		AlignSize align = LLVMGetAlignment(member->backend_ref);
 		AlignSize alignment;
-		LLVMValueRef ptr = llvm_emit_array_gep_raw_index(context, member->backend_ref, value_type, be_value->value, align, &alignment);
+		LLVMValueRef ptr = llvm_emit_array_gep_raw_index(c, member->backend_ref, value_type, be_value->value, align, &alignment);
 		llvm_value_set_address(be_value, ptr, member->type, alignment);
 		return;
 	}
-	llvm_emit_member_addr(context, be_value, type_lowering(parent->type)->decl, member);
+	llvm_emit_member_addr(c, be_value, type_lowering(parent->type)->decl, member);
 }
 
 
