@@ -40,12 +40,6 @@ const char *attribute_list[NUMBER_OF_ATTRIBUTES];
 const char *builtin_list[NUMBER_OF_BUILTINS];
 const char *builtin_defines[NUMBER_OF_BUILTIN_DEFINES];
 const char *type_property_list[NUMBER_OF_TYPE_PROPERTIES];
-const char *kw_FILE;
-const char *kw_FUNC;
-const char *kw_FUNCPTR;
-const char *kw_LINEREAL;
-const char *kw_LINE;
-const char *kw_align;
 const char *kw_argc;
 const char *kw_argv;
 const char *kw_at_checked;
@@ -321,6 +315,7 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_VECCALL] = KW_DEF("@veccall");
 	attribute_list[ATTRIBUTE_WASM] = KW_DEF("@wasm");
 	attribute_list[ATTRIBUTE_WEAK] = KW_DEF("@weak");
+	attribute_list[ATTRIBUTE_WINMAIN] = KW_DEF("@winmain");
 
 	for (unsigned i = 0; i < NUMBER_OF_ATTRIBUTES; i++)
 	{

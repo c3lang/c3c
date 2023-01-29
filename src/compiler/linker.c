@@ -77,7 +77,7 @@ static const char *string_esc(const char *str)
 }
 static void linker_setup_windows(const char ***args_ref, LinkerType linker_type)
 {
-	add_arg(active_target.gui ? "/SUBSYSTEM:WINDOWS" : "/SUBSYSTEM:CONSOLE");
+	add_arg(active_target.win.use_win_subsystem ? "/SUBSYSTEM:WINDOWS" : "/SUBSYSTEM:CONSOLE");
 	if (linker_type == LINKER_CC) return;
 	//add_arg("/MACHINE:X64");
 	bool is_debug = false;
