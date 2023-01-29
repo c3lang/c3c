@@ -746,7 +746,7 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 		case TYPE_ANYERR:
 			return llvm_get_introspection_for_builtin_type(c, type, INTROSPECT_TYPE_ANYERR, 0);
 		case TYPE_ANY:
-			return llvm_get_introspection_for_builtin_type(c, type, INTROSPECT_TYPE_ANY, 0);
+			return llvm_get_introspection_for_builtin_type(c, type, INTROSPECT_TYPE_VARIANT, 0);
 		case TYPE_TYPEID:
 			return llvm_get_introspection_for_builtin_type(c, type, INTROSPECT_TYPE_TYPEID, 0);
 		case TYPE_POISONED:

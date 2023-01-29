@@ -143,7 +143,7 @@ private fn void! Formatter.out_str(Formatter* this, variant arg)
 		case FAULT:
         	return this.out_substr((*(anyerr*)arg.ptr).nameof);
 		case VARIANT:
-        	return this.out_substr("<variant>");
+			return this.out_str(*(variant*)arg);
 		case ENUM:
 			if (this.print_with_function(arg)?) return;
         	return this.out_substr(arg.type.names[types::variant_to_int(arg, usz)!!]);

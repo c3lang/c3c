@@ -221,7 +221,7 @@ enum TypeKind : char
     FLOAT,
     TYPEID,
     ANYERR,
-    ANY,
+    VARIANT,
     ENUM,
     FAULT,
     STRUCT,
@@ -234,7 +234,6 @@ enum TypeKind : char
     VECTOR,
     DISTINCT,
     POINTER,
-    VARIANT
 }
 
 struct TypeEnum
