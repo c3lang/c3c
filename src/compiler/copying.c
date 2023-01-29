@@ -294,7 +294,6 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 	switch (source_expr->expr_kind)
 	{
 		case EXPR_VARIANTSWITCH:
-		case EXPR_ARGV_TO_SUBARRAY:
 			UNREACHABLE
 		case EXPR_MACRO_BODY_EXPANSION:
 			MACRO_COPY_EXPR_LIST(expr->body_expansion_expr.values);

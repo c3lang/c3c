@@ -47,12 +47,10 @@ LLVMValueRef llvm_store_to_ptr_aligned(GenContext *c, LLVMValueRef destination, 
 			// Here we do an optimized(?) memcopy.
 			ByteSize size = type_size(value->type);
 			LLVMValueRef copy_size = llvm_const_int(c, size <= UINT32_MAX ? type_uint : type_usize, size);
-			destination = LLVMBuildBitCast(c->builder, destination, llvm_get_ptr_type(c, type_char), "");
-			LLVMValueRef source = LLVMBuildBitCast(c->builder, value->value, llvm_get_ptr_type(c, type_char), "");
 			LLVMValueRef copy = LLVMBuildMemCpy(c->builder,
 			                                    destination,
 			                                    alignment,
-			                                    source,
+			                                    value->value,
 			                                    value->alignment ? value->alignment : type_abi_alignment(value->type),
 			                                    copy_size);
 			return copy;

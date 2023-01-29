@@ -443,7 +443,6 @@ static bool sema_binary_is_expr_lvalue(Expr *top_expr, Expr *expr)
 			if (!vec_size(expr->expression_list)) return false;
 			return sema_binary_is_expr_lvalue(top_expr, VECLAST(expr->expression_list));
 		case EXPR_POISONED:
-		case EXPR_ARGV_TO_SUBARRAY:
 		case EXPR_ASM:
 		case EXPR_BINARY:
 		case EXPR_BITASSIGN:
@@ -7019,9 +7018,6 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 			return sema_expr_analyse_variant(context, expr);
 		case EXPR_STRINGIFY:
 			if (!sema_expr_analyse_ct_stringify(context, expr)) return false;
-			return true;
-		case EXPR_ARGV_TO_SUBARRAY:
-			expr->type = type_get_subarray(global_context_string_type());
 			return true;
 		case EXPR_DECL:
 			if (!sema_analyse_var_decl(context, expr->decl_expr, true)) return false;

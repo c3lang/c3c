@@ -98,8 +98,8 @@ static void llvm_expand_from_args(GenContext *c, Type *type, LLVMValueRef ref, u
 		case TYPE_UNION:
 		{
 			Type *largest_type = type_find_largest_union_element(type);
-			LLVMValueRef cast_addr = llvm_emit_bitcast_ptr(c, ref, largest_type);
-			llvm_expand_from_args(c, largest_type, cast_addr, index, alignment);
+			// COERCE UPDATE bitcast removed, check for ways to optimize
+			llvm_expand_from_args(c, largest_type, ref, index, alignment);
 			return;
 		}
 		default:
@@ -128,7 +128,8 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIAr
 		{
 			// Create the expand type:
 			LLVMTypeRef coerce_type = llvm_get_coerce_type(c, info);
-			LLVMValueRef temp = LLVMBuildBitCast(c->builder, decl->backend_ref, LLVMPointerType(coerce_type, 0), "coerce");
+			// COERCE UPDATE bitcast removed, check for ways to optimize
+			LLVMValueRef temp = decl->backend_ref;
 			llvm_emit_and_set_decl_alloca(c, decl);
 
 			AlignSize alignment = decl->alignment;
@@ -144,35 +145,33 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIAr
 		}
 		case ABI_ARG_DIRECT_PAIR:
 		{
+			// Create the two abi types.
 			LLVMTypeRef lo = llvm_abi_type(c, info->direct_pair.lo);
 			LLVMTypeRef hi = llvm_abi_type(c, info->direct_pair.hi);
-			LLVMTypeRef struct_type = llvm_get_twostruct(c, lo, hi);
+
 			AlignSize decl_alignment = decl->alignment;
-			LLVMValueRef coerce;
-			if (llvm_store_size(c, struct_type) > type_size(decl->type))
-			{
-				AlignSize struct_alignment = llvm_abi_alignment(c, struct_type);
-				if (decl_alignment < struct_alignment) decl->alignment = decl_alignment = struct_alignment;
-				coerce = llvm_emit_alloca(c, struct_type, decl_alignment, "");
-				decl->backend_ref = LLVMBuildBitCast(c->builder, coerce, llvm_get_ptr_type(c, decl->type), decl->name ? decl->name : ".anon");
-			}
-			else
-			{
-				llvm_emit_and_set_decl_alloca(c, decl);
-				// Here we do the following transform:
-				// lo, hi -> { lo, hi } -> struct
-				// Cast to { lo, hi }
-				coerce = LLVMBuildBitCast(c->builder, decl->backend_ref, LLVMPointerType(struct_type, 0), "pair");
-			}
-			// Point to the lo value.
-			AlignSize element_align;
-			LLVMValueRef lo_ptr = llvm_emit_struct_gep_raw(c, coerce, struct_type, 0, decl_alignment, &element_align);
-			// Store it in the struct.
-			llvm_store_to_ptr_raw_aligned(c, lo_ptr, llvm_get_next_param(c, index), element_align);
-			// Point to the hi value.
-			LLVMValueRef hi_ptr = llvm_emit_struct_gep_raw(c, coerce, struct_type, 1, decl_alignment, &element_align);
-			// Store it in the struct.
-			llvm_store_to_ptr_raw_aligned(c, hi_ptr, llvm_get_next_param(c, index), element_align);
+			AlignSize hi_alignment = llvm_abi_alignment(c, hi);
+			AlignSize lo_alignment = llvm_abi_alignment(c, lo);
+			ByteSize hi_aligned_size = aligned_offset(llvm_store_size(c, hi), hi_alignment);
+			AlignSize pref_align = MAX(hi_alignment, lo_alignment);
+
+			// Realign to best alignment.
+			if (pref_align > decl_alignment) decl_alignment = decl->alignment = pref_align;
+			AlignSize hi_offset = aligned_offset(llvm_store_size(c, lo), hi_alignment);
+			assert(hi_offset + llvm_store_size(c, hi) <= type_size(decl->type));
+
+			// Emit decl
+			llvm_emit_and_set_decl_alloca(c, decl);
+			LLVMValueRef addr = decl->backend_ref;
+
+			// Store it in the lo position.
+			llvm_store_to_ptr_raw_aligned(c, addr, llvm_get_next_param(c, index), decl_alignment);
+
+			// Calculate the address
+			addr = llvm_emit_pointer_inbounds_gep_raw(c, hi, addr, llvm_const_int(c, type_usz, hi_offset / hi_aligned_size));
+
+			// Store it in the hi location
+			llvm_store_to_ptr_raw_aligned(c, addr, llvm_get_next_param(c, index), type_min_alignment(decl_alignment, hi_offset));
 			return;
 		}
 		case ABI_ARG_DIRECT:
@@ -193,7 +192,8 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIAr
 			llvm_emit_and_set_decl_alloca(c, decl);
 
 			// Cast to the coerce type.
-			LLVMValueRef cast = LLVMBuildBitCast(c->builder, decl->backend_ref, LLVMPointerType(coerce_type, 0), "coerce");
+			// COERCE UPDATE bitcast removed, check for ways to optimize
+			LLVMValueRef cast = decl->backend_ref;
 
 			AlignSize decl_alignment = decl->alignment;
 			// Store each expanded parameter.
@@ -334,7 +334,8 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *optiona
 			LLVMTypeRef coerce_type = llvm_get_coerce_type(c, info);
 			// Create the new pointer
 			assert(return_value);
-			LLVMValueRef coerce = LLVMBuildBitCast(c->builder, return_value->value, coerce_type, "");
+			// COERCE UPDATE bitcast removed, check for ways to optimize
+			LLVMValueRef coerce = return_value->value;
 			// We might have only one value, in that case, build a GEP to that one.
 			LLVMValueRef lo_val;
 			AlignSize alignment;
@@ -476,13 +477,12 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, const char *module_nam
 		if (c->debug.enable_stacktrace)
 		{
 			LLVMTypeRef slot_type = c->debug.stack_type;
-			LLVMTypeRef ptr_to_slot_type = LLVMPointerType(slot_type, 0);
 			if (!c->debug.last_ptr)
 			{
 				const char *name = ".$last_stack";
-				LLVMValueRef last_stack = c->debug.last_ptr = llvm_add_global_raw(c, name, ptr_to_slot_type, 0);
+				LLVMValueRef last_stack = c->debug.last_ptr = llvm_add_global_raw(c, name, c->ptr_type, 0);
 				LLVMSetThreadLocal(last_stack, true);
-				LLVMSetInitializer(last_stack, llvm_get_zero_raw(ptr_to_slot_type));
+				LLVMSetInitializer(last_stack, llvm_get_zero_raw(c->ptr_type));
 				llvm_set_weak(c, last_stack);
 			}
 			AlignSize alignment = llvm_abi_alignment(c, slot_type);
@@ -491,7 +491,7 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, const char *module_nam
 			LLVMValueRef prev_ptr = llvm_emit_struct_gep_raw(c, c->debug.stack_slot, slot_type, 0, alignment, &align_to_use);
 			llvm_store_to_ptr_raw_aligned(c,
 			                              prev_ptr,
-			                              LLVMBuildLoad2(c->builder, ptr_to_slot_type, c->debug.last_ptr, ""),
+			                              LLVMBuildLoad2(c->builder, c->ptr_type, c->debug.last_ptr, ""),
 			                              align_to_use);
 			LLVMValueRef func_name = llvm_emit_struct_gep_raw(c, c->debug.stack_slot, slot_type, 1, alignment, &align_to_use);
 			llvm_store_to_ptr_raw_aligned(c, func_name, c->debug.func_name, align_to_use);

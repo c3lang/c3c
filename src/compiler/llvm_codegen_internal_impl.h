@@ -64,25 +64,11 @@ INLINE LLVMValueRef llvm_store_to_ptr_raw(GenContext *c, LLVMValueRef pointer, L
 	return llvm_store_to_ptr_raw_aligned(c, pointer, value, llvm_type_or_alloca_align(pointer, type));
 }
 
-static inline LLVMValueRef llvm_emit_bitcast(GenContext *c, LLVMValueRef value, Type *type)
-{
-	assert(type->type_kind == TYPE_POINTER);
-	LLVMTypeRef result_type = llvm_get_type(c, type);
-	if (result_type == LLVMTypeOf(value)) return value;
-	return LLVMBuildBitCast(c->builder, value, result_type, "");
-}
-
 INLINE void llvm_value_bitcast(GenContext *c, BEValue *value, Type *type)
 {
 	assert(llvm_value_is_addr(value));
 	type = type_lowering(type);
-	value->value = llvm_emit_bitcast(c, value->value, type_get_ptr(type));
 	value->type = type;
-}
-
-INLINE LLVMValueRef llvm_emit_bitcast_ptr(GenContext *c, LLVMValueRef value, Type *type)
-{
-	return llvm_emit_bitcast(c, value, type_get_ptr(type));
 }
 
 INLINE LLVMValueRef llvm_emit_shl(GenContext *c, LLVMValueRef value, LLVMValueRef shift)
@@ -196,11 +182,6 @@ INLINE bool llvm_is_local_eval(GenContext *c)
 	return c->builder != c->global_builder;
 }
 
-
-INLINE LLVMTypeRef llvm_get_ptr_type(GenContext *c, Type *type)
-{
-	return llvm_get_type(c, type_get_ptr(type));
-}
 
 INLINE LLVMValueRef llvm_emit_and_raw(GenContext *c, LLVMValueRef lhs, LLVMValueRef rhs)
 {

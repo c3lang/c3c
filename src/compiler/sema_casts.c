@@ -757,7 +757,6 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 		case EXPR_TRY_UNWRAP_CHAIN:
 		case EXPR_SUBSCRIPT_ADDR:
 		case EXPR_VARIANTSWITCH:
-		case EXPR_ARGV_TO_SUBARRAY:
 		case EXPR_COMPILER_CONST:
 		case EXPR_STRINGIFY:
 		case EXPR_CT_EVAL:
@@ -925,7 +924,6 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 		case EXPR_TRY_UNWRAP:
 		case EXPR_TRY_UNWRAP_CHAIN:
 		case EXPR_SUBSCRIPT_ADDR:
-		case EXPR_ARGV_TO_SUBARRAY:
 		case EXPR_VARIANTSWITCH:
 		case EXPR_COMPILER_CONST:
 		case EXPR_STRINGIFY:

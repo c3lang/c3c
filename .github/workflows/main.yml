@@ -168,7 +168,7 @@ jobs:
       - name: run compiler tests
         run: |
           cd test
-          python3 src/tester.py ../build/c3c.exe test_suite14/
+          python3 src/tester.py ../build/c3c.exe test_suite/
 
   build-linux:
     runs-on: ubuntu-latest
@@ -177,7 +177,7 @@ jobs:
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
-        llvm_version: [13, 15, 16, 17]
+        llvm_version: [15, 16, 17]
 
     steps:
       - uses: actions/checkout@v3
@@ -196,9 +196,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y clang-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}}-dev lld-${{matrix.llvm_version}} liblld-${{matrix.llvm_version}}-dev
           sudo apt-get install -y libmlir-${{matrix.llvm_version}} libmlir-${{matrix.llvm_version}}-dev mlir-${{matrix.llvm_version}}-tools 
-          if [[ "${{matrix.llvm_version}}" > 13 ]]; then
-            sudo apt-get install -y libpolly-${{matrix.llvm_version}}-dev
-          fi
+          sudo apt-get install -y libpolly-${{matrix.llvm_version}}-dev
       - name: CMake
         run: |
           cmake -B build \
@@ -238,11 +236,7 @@ jobs:
       - name: run compiler tests
         run: |
           cd test
-          if [[ "${{matrix.llvm_version}}" < 15 ]]; then
-            python3 src/tester.py ../build/c3c test_suite14/
-          else
-            python3 src/tester.py ../build/c3c test_suite/
-          fi
+          python3 src/tester.py ../build/c3c test_suite/
 
       - name: bundle_output
         if: matrix.llvm_version == env.LLVM_RELEASE_VERSION
@@ -268,7 +262,7 @@ jobs:
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
-        llvm_version: [13, 14, 15]
+        llvm_version: [15]
     steps:
       - uses: actions/checkout@v3
       - name: Download LLVM
@@ -318,11 +312,7 @@ jobs:
       - name: run compiler tests
         run: |
           cd test
-          if [[ "${{matrix.llvm_version}}" < 15 ]]; then
-            python3 src/tester.py ../build/c3c test_suite14/
-          else
-            python3 src/tester.py ../build/c3c test_suite/
-          fi
+          python3 src/tester.py ../build/c3c test_suite/
 
       - name: bundle_output
         if: matrix.llvm_version == env.LLVM_RELEASE_VERSION

@@ -93,9 +93,6 @@ LLVMValueRef llvm_emit_is_no_opt(GenContext *c, LLVMValueRef error_value)
 
 LLVMValueRef llvm_emit_memclear_size_align(GenContext *c, LLVMValueRef ptr, uint64_t size, AlignSize align)
 {
-#if LLVM_VERSION_MAJOR < 15
-	ptr = LLVMBuildBitCast(c->builder, ptr, llvm_get_type(c, type_get_ptr(type_char)), "");
-#endif
 	return LLVMBuildMemSet(c->builder, ptr, llvm_get_zero(c, type_char), llvm_const_int(c, type_usize, size), align);
 }
 
@@ -469,10 +466,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 			break;
 	}
 
-	if (init_value && LLVMTypeOf(init_value) != llvm_get_type(c, var_type))
-	{
-		decl->backend_ref = global_ref = llvm_emit_bitcast_ptr(c, global_ref, var_type);
-	}
+	decl->backend_ref = global_ref;
 	LLVMReplaceAllUsesWith(old, global_ref);
 	LLVMDeleteGlobal(old);
 
@@ -1173,7 +1167,7 @@ INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMC
 	if (test_count)
 	{
 		LLVMValueRef array_of_names = LLVMConstArray(c->chars_type, names, test_count);
-		LLVMValueRef array_of_decls = LLVMConstArray(LLVMPointerType(opt_test, 0), decls, test_count);
+		LLVMValueRef array_of_decls = LLVMConstArray(c->ptr_type, decls, test_count);
 		LLVMTypeRef arr_type = LLVMTypeOf(array_of_names);
 		name_ref = llvm_add_global_raw(c, ".test_names", arr_type, 0);
 		decl_ref = llvm_add_global_raw(c, ".test_decls", LLVMTypeOf(array_of_decls), 0);
@@ -1183,13 +1177,11 @@ INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMC
 		LLVMSetGlobalConstant(decl_ref, 1);
 		LLVMSetInitializer(name_ref, array_of_names);
 		LLVMSetInitializer(decl_ref, array_of_decls);
-		name_ref = LLVMBuildBitCast(c->builder, name_ref, llvm_get_ptr_type(c, type_chars), "");
-		decl_ref = LLVMBuildBitCast(c->builder, decl_ref, llvm_get_ptr_type(c, type_voidptr), "");
 	}
 	else
 	{
-		name_ref = LLVMConstNull(llvm_get_ptr_type(c, type_chars));
-		decl_ref = LLVMConstNull(llvm_get_ptr_type(c, type_voidptr));
+		name_ref = LLVMConstNull(c->ptr_type);
+		decl_ref = LLVMConstNull(c->ptr_type);
 	}
 	LLVMValueRef count = llvm_const_int(c, type_usize, test_count);
 	Type *chars_array = type_get_subarray(type_chars);

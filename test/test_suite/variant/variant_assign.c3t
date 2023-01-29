@@ -68,40 +68,39 @@ entry:
   %switch = alloca i64, align 8
   %z1 = alloca ptr, align 8
   %z4 = alloca ptr, align 8
-  %2 = getelementptr inbounds { i64, ptr }, ptr %z, i32 0, i32 0
-  store i64 %0, ptr %2, align 8
-  %3 = getelementptr inbounds { i64, ptr }, ptr %z, i32 0, i32 1
-  store ptr %1, ptr %3, align 8
-  %4 = getelementptr inbounds %variant, ptr %z, i32 0, i32 1
-  %5 = load i64, ptr %4, align 8
-  store i64 %5, ptr %switch, align 8
+  store i64 %0, ptr %z, align 8
+  %ptroffset = getelementptr inbounds ptr, ptr %z, i64 1
+  store ptr %1, ptr %ptroffset, align 8
+  %2 = getelementptr inbounds %variant, ptr %z, i32 0, i32 1
+  %3 = load i64, ptr %2, align 8
+  store i64 %3, ptr %switch, align 8
   br label %switch.entry
 
 switch.entry:                                     ; preds = %entry
-  %6 = load i64, ptr %switch, align 8
-  %eq = icmp eq i64 ptrtoint (ptr @"ct$int" to i64), %6
+  %4 = load i64, ptr %switch, align 8
+  %eq = icmp eq i64 ptrtoint (ptr @"ct$int" to i64), %4
   br i1 %eq, label %switch.case, label %next_if
 
 switch.case:                                      ; preds = %switch.entry
-  %7 = getelementptr inbounds %variant, ptr %z, i32 0, i32 0
-  %8 = load ptr, ptr %7, align 8
-  store ptr %8, ptr %z1, align 8
-  %9 = load ptr, ptr %z1, align 8
-  %10 = load i32, ptr %9, align 4
-  call void (ptr, ...) @printf(ptr @.str, i32 %10)
+  %5 = getelementptr inbounds %variant, ptr %z, i32 0, i32 0
+  %6 = load ptr, ptr %5, align 8
+  store ptr %6, ptr %z1, align 8
+  %7 = load ptr, ptr %z1, align 8
+  %8 = load i32, ptr %7, align 4
+  call void (ptr, ...) @printf(ptr @.str, i32 %8)
   br label %switch.exit
 
 next_if:                                          ; preds = %switch.entry
-  %eq2 = icmp eq i64 ptrtoint (ptr @"ct$double" to i64), %6
+  %eq2 = icmp eq i64 ptrtoint (ptr @"ct$double" to i64), %4
   br i1 %eq2, label %switch.case3, label %next_if5
 
 switch.case3:                                     ; preds = %next_if
-  %11 = getelementptr inbounds %variant, ptr %z, i32 0, i32 0
-  %12 = load ptr, ptr %11, align 8
-  store ptr %12, ptr %z4, align 8
-  %13 = load ptr, ptr %z4, align 8
-  %14 = load double, ptr %13, align 8
-  call void (ptr, ...) @printf(ptr @.str.1, double %14)
+  %9 = getelementptr inbounds %variant, ptr %z, i32 0, i32 0
+  %10 = load ptr, ptr %9, align 8
+  store ptr %10, ptr %z4, align 8
+  %11 = load ptr, ptr %z4, align 8
+  %12 = load double, ptr %11, align 8
+  call void (ptr, ...) @printf(ptr @.str.1, double %12)
   br label %switch.exit
 
 next_if5:                                         ; preds = %next_if
@@ -123,45 +122,44 @@ entry:
   %z = alloca ptr, align 8
   %taddr = alloca i32, align 4
   %z3 = alloca ptr, align 8
-  %2 = getelementptr inbounds { i64, ptr }, ptr %y, i32 0, i32 0
-  store i64 %0, ptr %2, align 8
-  %3 = getelementptr inbounds { i64, ptr }, ptr %y, i32 0, i32 1
-  store ptr %1, ptr %3, align 8
+  store i64 %0, ptr %y, align 8
+  %ptroffset = getelementptr inbounds ptr, ptr %y, i64 1
+  store ptr %1, ptr %ptroffset, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %.anon, ptr align 8 %y, i32 16, i1 false)
-  %4 = getelementptr inbounds %variant, ptr %y, i32 0, i32 1
-  %5 = load i64, ptr %4, align 8
-  store i64 %5, ptr %switch, align 8
+  %2 = getelementptr inbounds %variant, ptr %y, i32 0, i32 1
+  %3 = load i64, ptr %2, align 8
+  store i64 %3, ptr %switch, align 8
   br label %switch.entry
 
 switch.entry:                                     ; preds = %entry
-  %6 = load i64, ptr %switch, align 8
-  %eq = icmp eq i64 ptrtoint (ptr @"ct$int" to i64), %6
+  %4 = load i64, ptr %switch, align 8
+  %eq = icmp eq i64 ptrtoint (ptr @"ct$int" to i64), %4
   br i1 %eq, label %switch.case, label %next_if
 
 switch.case:                                      ; preds = %switch.entry
-  %7 = getelementptr inbounds %variant, ptr %.anon, i32 0, i32 0
-  %8 = load ptr, ptr %7, align 8
-  store ptr %8, ptr %z, align 8
+  %5 = getelementptr inbounds %variant, ptr %.anon, i32 0, i32 0
+  %6 = load ptr, ptr %5, align 8
+  store ptr %6, ptr %z, align 8
   store i32 12, ptr %taddr, align 4
-  %9 = insertvalue %variant undef, ptr %taddr, 0
-  %10 = insertvalue %variant %9, i64 ptrtoint (ptr @"ct$int" to i64), 1
-  store %variant %10, ptr %y, align 8
-  %11 = load ptr, ptr %z, align 8
-  %12 = load i32, ptr %11, align 4
-  call void (ptr, ...) @printf(ptr @.str.3, i32 %12)
+  %7 = insertvalue %variant undef, ptr %taddr, 0
+  %8 = insertvalue %variant %7, i64 ptrtoint (ptr @"ct$int" to i64), 1
+  store %variant %8, ptr %y, align 8
+  %9 = load ptr, ptr %z, align 8
+  %10 = load i32, ptr %9, align 4
+  call void (ptr, ...) @printf(ptr @.str.3, i32 %10)
   br label %switch.exit
 
 next_if:                                          ; preds = %switch.entry
-  %eq1 = icmp eq i64 ptrtoint (ptr @"ct$double" to i64), %6
+  %eq1 = icmp eq i64 ptrtoint (ptr @"ct$double" to i64), %4
   br i1 %eq1, label %switch.case2, label %next_if4
 
 switch.case2:                                     ; preds = %next_if
-  %13 = getelementptr inbounds %variant, ptr %.anon, i32 0, i32 0
-  %14 = load ptr, ptr %13, align 8
-  store ptr %14, ptr %z3, align 8
-  %15 = load ptr, ptr %z3, align 8
-  %16 = load double, ptr %15, align 8
-  call void (ptr, ...) @printf(ptr @.str.4, double %16)
+  %11 = getelementptr inbounds %variant, ptr %.anon, i32 0, i32 0
+  %12 = load ptr, ptr %11, align 8
+  store ptr %12, ptr %z3, align 8
+  %13 = load ptr, ptr %z3, align 8
+  %14 = load double, ptr %13, align 8
+  call void (ptr, ...) @printf(ptr @.str.4, double %14)
   br label %switch.exit
 
 next_if4:                                         ; preds = %next_if
@@ -182,41 +180,40 @@ entry:
   %switch = alloca i64, align 8
   %z = alloca i32, align 4
   %z3 = alloca double, align 8
-  %2 = getelementptr inbounds { i64, ptr }, ptr %y, i32 0, i32 0
-  store i64 %0, ptr %2, align 8
-  %3 = getelementptr inbounds { i64, ptr }, ptr %y, i32 0, i32 1
-  store ptr %1, ptr %3, align 8
+  store i64 %0, ptr %y, align 8
+  %ptroffset = getelementptr inbounds ptr, ptr %y, i64 1
+  store ptr %1, ptr %ptroffset, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %.anon, ptr align 8 %y, i32 16, i1 false)
-  %4 = getelementptr inbounds %variant, ptr %y, i32 0, i32 1
-  %5 = load i64, ptr %4, align 8
-  store i64 %5, ptr %switch, align 8
+  %2 = getelementptr inbounds %variant, ptr %y, i32 0, i32 1
+  %3 = load i64, ptr %2, align 8
+  store i64 %3, ptr %switch, align 8
   br label %switch.entry
 
 switch.entry:                                     ; preds = %entry
-  %6 = load i64, ptr %switch, align 8
-  %eq = icmp eq i64 ptrtoint (ptr @"ct$int" to i64), %6
+  %4 = load i64, ptr %switch, align 8
+  %eq = icmp eq i64 ptrtoint (ptr @"ct$int" to i64), %4
   br i1 %eq, label %switch.case, label %next_if
 
 switch.case:                                      ; preds = %switch.entry
-  %7 = getelementptr inbounds %variant, ptr %.anon, i32 0, i32 0
-  %8 = load ptr, ptr %7, align 8
-  %9 = load i32, ptr %8, align 4
-  store i32 %9, ptr %z, align 4
-  %10 = load i32, ptr %z, align 4
-  call void (ptr, ...) @printf(ptr @.str.6, i32 %10)
+  %5 = getelementptr inbounds %variant, ptr %.anon, i32 0, i32 0
+  %6 = load ptr, ptr %5, align 8
+  %7 = load i32, ptr %6, align 4
+  store i32 %7, ptr %z, align 4
+  %8 = load i32, ptr %z, align 4
+  call void (ptr, ...) @printf(ptr @.str.6, i32 %8)
   br label %switch.exit
 
 next_if:                                          ; preds = %switch.entry
-  %eq1 = icmp eq i64 ptrtoint (ptr @"ct$double" to i64), %6
+  %eq1 = icmp eq i64 ptrtoint (ptr @"ct$double" to i64), %4
   br i1 %eq1, label %switch.case2, label %next_if4
 
 switch.case2:                                     ; preds = %next_if
-  %11 = getelementptr inbounds %variant, ptr %.anon, i32 0, i32 0
-  %12 = load ptr, ptr %11, align 8
-  %13 = load double, ptr %12, align 8
-  store double %13, ptr %z3, align 8
-  %14 = load double, ptr %z3, align 8
-  call void (ptr, ...) @printf(ptr @.str.7, double %14)
+  %9 = getelementptr inbounds %variant, ptr %.anon, i32 0, i32 0
+  %10 = load ptr, ptr %9, align 8
+  %11 = load double, ptr %10, align 8
+  store double %11, ptr %z3, align 8
+  %12 = load double, ptr %z3, align 8
+  call void (ptr, ...) @printf(ptr @.str.7, double %12)
   br label %switch.exit
 
 next_if4:                                         ; preds = %next_if

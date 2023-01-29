@@ -1,7 +1,0 @@
-// #target: macos-x64
-
-int i = "123".len;
-
-/* #expect: string_len.ll
-
-@string_len_i = local_unnamed_addr global i32 3, align 4

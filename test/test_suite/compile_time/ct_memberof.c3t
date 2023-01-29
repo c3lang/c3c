@@ -103,16 +103,14 @@ fn void main()
 
 define void @test_hello(i32 %0, double %1, i64 %2, i64 %3, ptr %4, i64 %5) #0 {
 entry:
-  %d = alloca [4 x i32], align 4
+  %d = alloca [4 x i32], align 8
   %args = alloca %"variant[]", align 8
-  %6 = getelementptr inbounds { i64, i64 }, ptr %d, i32 0, i32 0
-  store i64 %2, ptr %6, align 4
-  %7 = getelementptr inbounds { i64, i64 }, ptr %d, i32 0, i32 1
-  store i64 %3, ptr %7, align 4
-  %8 = getelementptr inbounds { ptr, i64 }, ptr %args, i32 0, i32 0
-  store ptr %4, ptr %8, align 8
-  %9 = getelementptr inbounds { ptr, i64 }, ptr %args, i32 0, i32 1
-  store i64 %5, ptr %9, align 8
+  store i64 %2, ptr %d, align 8
+  %ptroffset = getelementptr inbounds i64, ptr %d, i64 1
+  store i64 %3, ptr %ptroffset, align 8
+  store ptr %4, ptr %args, align 8
+  %ptroffset1 = getelementptr inbounds i64, ptr %args, i64 1
+  store i64 %5, ptr %ptroffset1, align 8
   ret void
 }
 

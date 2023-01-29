@@ -25,18 +25,17 @@ fn void main()
 define void @foo_test(i32 %0, ptr %1, i64 %2, i32 %3) #0 {
 entry:
   %y = alloca %"int[]", align 8
-  %4 = getelementptr inbounds { ptr, i64 }, ptr %y, i32 0, i32 0
-  store ptr %1, ptr %4, align 8
-  %5 = getelementptr inbounds { ptr, i64 }, ptr %y, i32 0, i32 1
-  store i64 %2, ptr %5, align 8
-  %6 = getelementptr inbounds %"int[]", ptr %y, i32 0, i32 1
-  %7 = load i64, ptr %6, align 8
-  %uisitrunc = trunc i64 %7 to i32
-  %8 = getelementptr inbounds %"int[]", ptr %y, i32 0, i32 0
-  %9 = load ptr, ptr %8, align 8
-  %ptroffset = getelementptr inbounds i32, ptr %9, i64 0
-  %10 = load i32, ptr %ptroffset, align 4
-  call void (ptr, ...) @printf(ptr @.str, i32 %0, i32 %uisitrunc, i32 %3, i32 %10)
+  store ptr %1, ptr %y, align 8
+  %ptroffset = getelementptr inbounds i64, ptr %y, i64 1
+  store i64 %2, ptr %ptroffset, align 8
+  %4 = getelementptr inbounds %"int[]", ptr %y, i32 0, i32 1
+  %5 = load i64, ptr %4, align 8
+  %uisitrunc = trunc i64 %5 to i32
+  %6 = getelementptr inbounds %"int[]", ptr %y, i32 0, i32 0
+  %7 = load ptr, ptr %6, align 8
+  %ptroffset1 = getelementptr inbounds i32, ptr %7, i64 0
+  %8 = load i32, ptr %ptroffset1, align 4
+  call void (ptr, ...) @printf(ptr @.str, i32 %0, i32 %uisitrunc, i32 %3, i32 %8)
   ret void
 }
 
@@ -44,13 +43,12 @@ entry:
 define void @foo_test2(i32 %0, ptr %1, i64 %2, i32 %3) #0 {
 entry:
   %y = alloca %"variant[]", align 8
-  %4 = getelementptr inbounds { ptr, i64 }, ptr %y, i32 0, i32 0
-  store ptr %1, ptr %4, align 8
-  %5 = getelementptr inbounds { ptr, i64 }, ptr %y, i32 0, i32 1
-  store i64 %2, ptr %5, align 8
-  %6 = getelementptr inbounds %"variant[]", ptr %y, i32 0, i32 1
-  %7 = load i64, ptr %6, align 8
-  %uisitrunc = trunc i64 %7 to i32
+  store ptr %1, ptr %y, align 8
+  %ptroffset = getelementptr inbounds i64, ptr %y, i64 1
+  store i64 %2, ptr %ptroffset, align 8
+  %4 = getelementptr inbounds %"variant[]", ptr %y, i32 0, i32 1
+  %5 = load i64, ptr %4, align 8
+  %uisitrunc = trunc i64 %5 to i32
   call void (ptr, ...) @printf(ptr @.str.1, i32 %0, i32 %uisitrunc, i32 %3)
   ret void
 }
