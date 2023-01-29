@@ -35,16 +35,15 @@ define void @foo_test1(i64 %0, ptr %1) #0 {
 entry:
   %z = alloca %variant, align 8
   %w = alloca ptr, align 8
-  %2 = getelementptr inbounds { i64, ptr }, ptr %z, i32 0, i32 0
-  store i64 %0, ptr %2, align 8
-  %3 = getelementptr inbounds { i64, ptr }, ptr %z, i32 0, i32 1
-  store ptr %1, ptr %3, align 8
-  %4 = getelementptr inbounds %variant, ptr %z, i32 0, i32 0
-  %5 = load ptr, ptr %4, align 8
-  store ptr %5, ptr %w, align 8
-  %6 = load ptr, ptr %w, align 8
-  %7 = load i32, ptr %6, align 4
-  call void (ptr, ...) @printf(ptr @.str, i32 %7)
+  store i64 %0, ptr %z, align 8
+  %ptroffset = getelementptr inbounds ptr, ptr %z, i64 1
+  store ptr %1, ptr %ptroffset, align 8
+  %2 = getelementptr inbounds %variant, ptr %z, i32 0, i32 0
+  %3 = load ptr, ptr %2, align 8
+  store ptr %3, ptr %w, align 8
+  %4 = load ptr, ptr %w, align 8
+  %5 = load i32, ptr %4, align 4
+  call void (ptr, ...) @printf(ptr @.str, i32 %5)
   ret void
 }
 
@@ -52,16 +51,15 @@ define void @foo_test2(ptr %0, i64 %1) #0 {
 entry:
   %z = alloca %"int[]", align 8
   %w = alloca ptr, align 8
-  %2 = getelementptr inbounds { ptr, i64 }, ptr %z, i32 0, i32 0
-  store ptr %0, ptr %2, align 8
-  %3 = getelementptr inbounds { ptr, i64 }, ptr %z, i32 0, i32 1
-  store i64 %1, ptr %3, align 8
-  %4 = getelementptr inbounds %"int[]", ptr %z, i32 0, i32 0
-  %5 = load ptr, ptr %4, align 8
-  store ptr %5, ptr %w, align 8
-  %6 = load ptr, ptr %w, align 8
-  %7 = load i32, ptr %6, align 4
-  call void (ptr, ...) @printf(ptr @.str.1, i32 %7)
+  store ptr %0, ptr %z, align 8
+  %ptroffset = getelementptr inbounds i64, ptr %z, i64 1
+  store i64 %1, ptr %ptroffset, align 8
+  %2 = getelementptr inbounds %"int[]", ptr %z, i32 0, i32 0
+  %3 = load ptr, ptr %2, align 8
+  store ptr %3, ptr %w, align 8
+  %4 = load ptr, ptr %w, align 8
+  %5 = load i32, ptr %4, align 4
+  call void (ptr, ...) @printf(ptr @.str.1, i32 %5)
   ret void
 }
 

@@ -46,7 +46,7 @@ if (NOT WIN32)
     find_package(CURL)
 endif()
 if (NOT C3_LLVM_VERSION STREQUAL "auto")
-    if (${C3_LLVM_VERSION} VERSION_LESS 13 OR ${C3_LLVM_VERSION} VERSION_GREATER 17)
+    if (${C3_LLVM_VERSION} VERSION_LESS 15 OR ${C3_LLVM_VERSION} VERSION_GREATER 17)
         message(FATAL_ERROR "LLVM ${C3_LLVM_VERSION} is not supported!")
     endif()
 endif()
@@ -68,7 +68,7 @@ endif()
 
 if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
     if (C3_LLVM_VERSION STREQUAL "auto")
-        set(C3_LLVM_VERSION "14")
+        set(C3_LLVM_VERSION "15")
     endif()
     FetchContent_Declare(
             LLVM_Windows
@@ -131,11 +131,8 @@ set(LLVM_LINK_COMPONENTS
         Target
         TransformUtils
         WindowsManifest
+        WindowsDriver
 )
-
-if (${LLVM_PACKAGE_VERSION} VERSION_GREATER 14.1)
-    set(LLVM_LINK_COMPONENTS ${LLVM_LINK_COMPONENTS} WindowsDriver)
-endif()
 
 llvm_map_components_to_libnames(llvm_libs ${LLVM_LINK_COMPONENTS})
 file(REMOVE_RECURSE ${CMAKE_BINARY_DIR}/lib)
@@ -147,20 +144,9 @@ message(STATUS "using find_library")
 find_library(LLD_COFF NAMES lldCOFF.lib lldCOFF.a liblldCOFF.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
 find_library(LLD_COMMON NAMES lldCommon.lib lldCommon.a liblldCommon.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
 find_library(LLD_ELF NAMES lldELF.lib lldELF.a liblldELF.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-if (${LLVM_PACKAGE_VERSION} VERSION_LESS 14)
-    find_library(LLD_MACHO NAMES lldMachO2.lib lldMachO2.a liblldMachO2.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-else ()
-    find_library(LLD_MACHO NAMES lldMachO.lib lldMachO.a liblldMachO.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-endif ()
+find_library(LLD_MACHO NAMES lldMachO.lib lldMachO.a liblldMachO.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
 find_library(LLD_MINGW NAMES lldMinGW.lib lldMinGW.a liblldMinGW.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
 find_library(LLD_WASM NAMES lldWasm.lib lldWasm.a liblldWasm.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-
-if (${LLVM_PACKAGE_VERSION} VERSION_LESS 14)
-    find_library(LLD_CORE NAMES lldCore.lib lldCore.a liblldCore.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-    find_library(LLD_DRIVER NAMES lldDriver.lib lldDriver.a liblldDriver.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-    find_library(LLD_READER_WRITER NAMES lldReaderWriter.lib lldReaderWriter.a liblldReaderWriter.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-    find_library(LLD_YAML NAMES lldYAML.lib lldYAML.a liblldYAML.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-endif ()
 
 if (${LLVM_PACKAGE_VERSION} VERSION_GREATER_EQUAL 16)
     find_library(LLD_LOONG NAMES libLLVMLoongArchCodeGen.lib libLLVMLoongArchAsmParser.lib libLLVMLoongArchCodeGen.a libLLVMLoongArchAsmParser.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)

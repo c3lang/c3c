@@ -14,7 +14,7 @@ static inline LLVMValueRef llvm_emit_expr_to_rvalue(GenContext *c, Expr *expr);
 static inline LLVMValueRef llvm_emit_exprid_to_rvalue(GenContext *c, ExprId expr_id);
 static inline LLVMValueRef llvm_update_vector(GenContext *c, LLVMValueRef vector, LLVMValueRef value, MemberIndex index);
 static inline void gencontext_emit_expression_list_expr(GenContext *context, BEValue *be_value, Expr *expr);
-static inline void llvm_emit_argv_to_subarray(GenContext *c, BEValue *value, Expr *expr);
+
 static inline void llvm_emit_bitassign_array(GenContext *c, BEValue *result, BEValue parent, Decl *parent_decl, Decl *member);
 static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Expr *expr);
 static inline void llvm_emit_const_initialize_reference(GenContext *c, BEValue *ref, Expr *expr);
@@ -48,7 +48,7 @@ static void llvm_emit_initialize_designated(GenContext *c, BEValue *ref, AlignSi
 static void llvm_emit_macro_body_expansion(GenContext *c, BEValue *value, Expr *body_expr);
 static void llvm_emit_post_unary_expr(GenContext *context, BEValue *be_value, Expr *expr);
 static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr);
-static void llvm_enter_struct_for_coerce(GenContext *c, LLVMValueRef *struct_ptr, LLVMTypeRef *type, ByteSize dest_size);
+static LLVMTypeRef llvm_find_inner_struct_type_for_coerce(GenContext *c, LLVMTypeRef struct_type, ByteSize dest_size);
 static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVMValueRef expand_ptr, LLVMValueRef *args, unsigned *arg_count_ref, AlignSize alignment);
 
 INLINE LLVMValueRef llvm_emit_bitstruct_value_update(GenContext *c, LLVMValueRef current_val, TypeSize bits, LLVMTypeRef bitstruct_type, Decl *member, LLVMValueRef val);
@@ -197,14 +197,14 @@ static LLVMValueRef llvm_emit_coerce_alignment(GenContext *c, BEValue *be_value,
 	// If we are loading something with greater alignment than what we have, we cannot directly memcpy.
 	if (!llvm_value_is_addr(be_value) || be_value->alignment < target_alignment)
 	{
-		LLVMValueRef cast = llvm_emit_alloca(c, llvm_get_type(c, be_value->type), target_alignment, "coerce");
-		LLVMValueRef target = LLVMBuildBitCast(c->builder, cast, LLVMPointerType(coerce_type, 0), "");
+		// COERCE UPDATE bitcast removed, check for ways to optimize
+		LLVMValueRef target = llvm_emit_alloca(c, llvm_get_type(c, be_value->type), target_alignment, "coerce");
 		llvm_store_to_ptr_aligned(c, target, be_value, target_alignment);
 		*resulting_alignment = target_alignment;
 		return target;
 	}
 	*resulting_alignment = be_value->alignment;
-	return LLVMBuildBitCast(c->builder, be_value->value, LLVMPointerType(coerce_type, 0), "");
+	return be_value->value;
 }
 
 LLVMValueRef llvm_emit_aggregate_two(GenContext *c, Type *type, LLVMValueRef value1, LLVMValueRef value2)
@@ -286,30 +286,25 @@ static inline LLVMValueRef llvm_emit_add_int(GenContext *c, Type *type, LLVMValu
 	return LLVMBuildAdd(c->builder, left, right, "add");
 }
 
-static void llvm_enter_struct_for_coerce(GenContext *c, LLVMValueRef *struct_ptr, LLVMTypeRef *type, ByteSize dest_size)
+static LLVMTypeRef llvm_find_inner_struct_type_for_coerce(GenContext *c, LLVMTypeRef type, ByteSize dest_size)
 {
 	while (1)
 	{
-		if (LLVMGetTypeKind(*type) != LLVMStructTypeKind) return;
-		if (!LLVMCountStructElementTypes(*type)) return;
-		LLVMTypeRef first_element = LLVMStructGetTypeAtIndex(*type, 0);
+		if (LLVMGetTypeKind(type) != LLVMStructTypeKind) break;
+		if (!LLVMCountStructElementTypes(type)) break;
+		LLVMTypeRef first_element = LLVMStructGetTypeAtIndex(type, 0);
 		ByteSize first_element_size = llvm_store_size(c, first_element);
 		// If the size is smaller than the total size and smaller than the destination size
 		// then we're done.
-		if (first_element_size < dest_size && first_element_size < llvm_store_size(c, *type))
-		{
-			return;
-		}
+		if (first_element_size < dest_size && first_element_size < llvm_store_size(c, type)) break;
 		AlignSize dummy;
-		LLVMValueRef ref = llvm_emit_struct_gep_raw(c, *struct_ptr, *type, 0, llvm_abi_alignment(c, *type), &dummy);
-
-		*struct_ptr = ref;
-		*type = first_element;
+		type = first_element;
 	}
+	return type;
 }
 
 /**
- * General functionality to convert int <-> int ptr <-> int
+ * General functionality to convert ptr <-> int
  */
 LLVMValueRef llvm_coerce_int_ptr(GenContext *c, LLVMValueRef value, LLVMTypeRef from, LLVMTypeRef to)
 {
@@ -320,12 +315,7 @@ LLVMValueRef llvm_coerce_int_ptr(GenContext *c, LLVMValueRef value, LLVMTypeRef 
 	bool to_is_pointer = LLVMGetTypeKind(to) == LLVMPointerTypeKind;
 	if (LLVMGetTypeKind(from) == LLVMPointerTypeKind)
 	{
-		// 2a. Destination is a pointer, perform a bitcast.
-		if (to_is_pointer)
-		{
-			return LLVMBuildBitCast(c->builder, value, to, "coerce.val");
-		}
-		// 2b. Otherwise perform ptr -> int
+		assert(!to_is_pointer && "ptr<->ptr should never happen in LLVM 15+");
 		from = llvm_get_type(c, type_iptr);
 		value = LLVMBuildPtrToInt(c->builder, value, from, "");
 	}
@@ -392,7 +382,7 @@ LLVMValueRef llvm_emit_coerce(GenContext *c, LLVMTypeRef coerced, BEValue *value
 	// 3. If this is a struct, we index into it.
 	if (LLVMGetTypeKind(llvm_source_type) == LLVMStructTypeKind)
 	{
-		llvm_enter_struct_for_coerce(c, &addr, &llvm_source_type, target_size);
+		llvm_source_type = llvm_find_inner_struct_type_for_coerce(c, llvm_source_type, target_size);
 	}
 	// --> from now on we only use LLVM types.
 
@@ -410,8 +400,8 @@ LLVMValueRef llvm_emit_coerce(GenContext *c, LLVMTypeRef coerced, BEValue *value
 
 	if (source_size >= target_size && source_type_kind != LLVMScalableVectorTypeKind && coerced_type_kind != LLVMScalableVectorTypeKind)
 	{
-		LLVMValueRef val = LLVMBuildBitCast(c->builder, addr, LLVMPointerType(coerced, 0), "");
-		return llvm_load(c, coerced, val, value->alignment, "");
+		// COERCE UPDATE bitcast removed, check for ways to optimize
+		return llvm_load(c, coerced, addr, value->alignment, "");
 	}
 
 	if (coerced_type_kind == LLVMScalableVectorTypeKind)
@@ -442,7 +432,7 @@ void llvm_emit_coerce_store(GenContext *c, LLVMValueRef addr, AlignSize alignmen
 	// 3. Enter into a struct in case the result is a struct.
 	if (LLVMGetTypeKind(target_type) == LLVMStructTypeKind)
 	{
-		llvm_enter_struct_for_coerce(c, &addr, &target_type, src_size);
+		target_type = llvm_find_inner_struct_type_for_coerce(c, target_type, src_size);
 	}
 
 	// 4. If we are going from int/ptr <-> ptr/int
@@ -460,8 +450,8 @@ void llvm_emit_coerce_store(GenContext *c, LLVMValueRef addr, AlignSize alignmen
 	ByteSize target_size = llvm_alloc_size(c, target_type);
 	if (src_size <= target_size && coerced_type_kind != LLVMScalableVectorTypeKind && source_type_kind != LLVMScalableVectorTypeKind)
 	{
-		LLVMValueRef val = LLVMBuildBitCast(c->builder, addr, LLVMPointerType(coerced, 0), "");
-		llvm_store_to_ptr_raw_aligned(c, val, value, alignment);
+		// COERCE UPDATE bitcast removed, check for ways to optimize
+		llvm_store_to_ptr_raw_aligned(c, addr, value, alignment);
 		return;
 	}
 
@@ -648,7 +638,6 @@ static inline void llvm_emit_pointer_offset(GenContext *c, BEValue *value, Expr 
 {
 	Expr *pointer = exprptr(expr->pointer_offset_expr.ptr);
 	Expr *offset_expr = exprptr(expr->pointer_offset_expr.offset);
-	LLVMTypeRef pointee_type = llvm_get_pointee_type(c, pointer->type);
 
 	// Emit the pointer
 	llvm_emit_expr(c, value, pointer);
@@ -661,14 +650,11 @@ static inline void llvm_emit_pointer_offset(GenContext *c, BEValue *value, Expr 
 
 	if (expr->pointer_offset_expr.raw_offset)
 	{
-		LLVMValueRef raw_pointer = llvm_emit_bitcast_ptr(c, value->value, type_char);
-		LLVMValueRef pointer_offset = llvm_emit_pointer_gep_raw(c, c->byte_type, raw_pointer, offset.value);
-		value->value = LLVMBuildBitCast(c->builder, pointer_offset, pointee_type, "");
+		// COERCE UPDATE bitcast removed, check for ways to optimize
+		value->value = llvm_emit_pointer_gep_raw(c, c->byte_type, value->value, offset.value);
+		return;
 	}
-	else
-	{
-		value->value = llvm_emit_pointer_gep_raw(c, pointee_type, value->value, offset.value);
-	}
+	value->value = llvm_emit_pointer_gep_raw(c, llvm_get_pointee_type(c, pointer->type), value->value, offset.value);
 }
 
 
@@ -1130,7 +1116,7 @@ static void llvm_emit_arr_to_subarray_cast(GenContext *c, BEValue *value, Type *
 	if (size)
 	{
 		llvm_value_rvalue(c, value);
-		pointer = llvm_emit_bitcast_ptr(c, value->value, array_type);
+		pointer = value->value;
 	}
 	else
 	{
@@ -1207,10 +1193,9 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 		case CAST_PTRANY:
 		{
 			llvm_value_rvalue(c, value);
-			LLVMValueRef pointer = llvm_emit_bitcast(c, value->value, type_voidptr);
 			BEValue typeid;
 			llvm_emit_typeid(c, &typeid, from_type->pointer);
-			llvm_value_aggregate_two(c, value, to_type, pointer, typeid.value);
+			llvm_value_aggregate_two(c, value, to_type, value->value, typeid.value);
 			return;
 		}
 		case CAST_BSARRY:
@@ -1242,14 +1227,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 			break;
 		case CAST_ANYPTR:
 			llvm_emit_any_pointer(c, value, value);
-			if (llvm_value_is_addr(value))
-			{
-				value->value = LLVMBuildBitCast(c->builder, value->value, llvm_get_ptr_type(c, to_type), "");
-			}
-			else
-			{
-				value->value = LLVMBuildBitCast(c->builder, value->value, llvm_get_type(c, to_type), "");
-			}
 			break;
 		case CAST_XIERR:
 			to_type = type_lowering(to_type);
@@ -1277,17 +1254,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 			break;
 		case CAST_SAPTR:
 			llvm_emit_subarray_pointer(c, value, value);
-			if (value->type != to_type)
-			{
-				if (llvm_value_is_addr(value))
-				{
-					value->value = LLVMBuildPointerCast(c->builder, value->value, llvm_get_ptr_type(c, to_type), "saptr");
-				}
-				else
-				{
-					value->value = LLVMBuildPointerCast(c->builder, value->value, llvm_get_ptr_type(c, to_type), "saptr");
-				}
-			}
 			break;
 		case CAST_EREU:
 			// This is a no op.
@@ -1388,7 +1354,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 			break;
 		case CAST_STST:
 			llvm_value_addr(c, value);
-			value->value = LLVMBuildBitCast(c->builder, value->value, llvm_get_ptr_type(c, to_type), "");
 			value->type = to_type;
 			return;
 		case CAST_INTENUM:
@@ -1522,11 +1487,6 @@ void llvm_emit_initialize_reference_temporary_const(GenContext *c, BEValue *ref,
 
 	// Ensure we have a reference.
 	llvm_value_addr(c, ref);
-
-	if (expected_type != type)
-	{
-		global_copy =  LLVMBuildBitCast(c->builder, global_copy, LLVMPointerType(expected_type, 0), "");
-	}
 
 	// Perform the memcpy.
 	llvm_emit_memcpy(c, ref->value, ref->alignment, global_copy, alignment, type_size(expr->type));
@@ -1720,8 +1680,6 @@ static inline void llvm_emit_initialize_reference_list(GenContext *c, BEValue *r
 	{
 		assert(vec_size(elements) == 1);
 		real_type = type_lowering(real_type->decl->strukt.members[0]->type);
-		value = LLVMBuildBitCast(c->builder, ref->value, llvm_get_ptr_type(c, real_type), "");
-		ref->value = value;
 		ref->type = real_type;
 	}
 
@@ -1829,7 +1787,7 @@ static void llvm_emit_initialize_designated(GenContext *c, BEValue *ref, AlignSi
 			if (ref->type->type_kind == TYPE_UNION)
 			{
 				llvm_value_set_address(&value,
-				                       llvm_emit_bitcast_ptr(c, ref->value, type),
+				                       ref->value,
 				                       type,
 				                       type_min_alignment(offset, decl_alignment));
 			}
@@ -2741,7 +2699,6 @@ static void gencontext_emit_slice(GenContext *c, BEValue *be_value, Expr *expr)
 			// Move pointer
 			AlignSize alignment;
 			start_pointer = llvm_emit_array_gep_raw_index(c, parent.value, llvm_get_type(c, parent.type), start.value, type_abi_alignment(parent.type), &alignment);
-			start_pointer = llvm_emit_bitcast_ptr(c, start_pointer, parent.type->array.base);
 			break;
 		}
 		case TYPE_SUBARRAY:
@@ -4288,7 +4245,6 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 				LLVMSetGlobalConstant(global_name, 1);
 
 				LLVMSetInitializer(global_name, llvm_get_bytes(c, expr->const_expr.bytes.ptr, expr->const_expr.bytes.len));
-				global_name = llvm_emit_bitcast_ptr(c, global_name, type_char);
 				llvm_value_set_address_abi_aligned(be_value, global_name, type);
 				return;
 			}
@@ -4357,12 +4313,10 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 				LLVMSetInitializer(global_name, string);
 				if (is_array)
 				{
-					global_name = llvm_emit_bitcast_ptr(c, global_name, type);
 					llvm_value_set_address(be_value, global_name, type, 1);
 				}
 				else
 				{
-					global_name = llvm_emit_bitcast(c, global_name, type);
 					llvm_value_set(be_value, global_name, type);
 				}
 				return;
@@ -4786,7 +4740,7 @@ static void llvm_emit_splatted_variadic_arg(GenContext *c, Expr *expr, Type *var
 		case TYPE_POINTER:
 			// Load the pointer
 			llvm_value_rvalue(c, &value);
-			llvm_value_aggregate_two(c, subarray, vararg_type, llvm_emit_bitcast_ptr(c, value.value, type->pointer->array.base), llvm_const_int(c, type_usize, type->pointer->array.len));
+			llvm_value_aggregate_two(c, subarray, vararg_type, value.value, llvm_const_int(c, type_usize, type->pointer->array.len));
 			return;
 		case TYPE_SUBARRAY:
 			*subarray = value;
@@ -4877,7 +4831,7 @@ static inline void llvm_emit_vararg_parameter(GenContext *c, BEValue *value, Typ
 		                                            &store_alignment);
 		llvm_store_to_ptr_aligned(c, slot, &temp_value, store_alignment);
 	}
-	llvm_value_aggregate_two(c, value, vararg_type, llvm_emit_bitcast_ptr(c, array_ref, pointee_type), llvm_const_int(c, type_usize, elements));
+	llvm_value_aggregate_two(c, value, vararg_type, array_ref, llvm_const_int(c, type_usize, elements));
 }
 
 
@@ -4963,12 +4917,13 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 			//     { lo, hi } set into { pad, lo, pad, hi } -> original type.
 
 			// 15a. Create memory to hold the return type.
-			LLVMValueRef ret = llvm_emit_alloca_aligned(c, call_return_type, "");
-			llvm_value_set_address_abi_aligned(result_value, ret, call_return_type);
+			// COERCE UPDATE bitcast removed, check for ways to optimize
+			LLVMValueRef coerce = llvm_emit_alloca_aligned(c, call_return_type, "");
+			llvm_value_set_address_abi_aligned(result_value, coerce, call_return_type);
 
-			// 15b. "Convert" this return type pointer in memory to our coerce type which is { pad, lo, pad, hi }
+			// COERCE UPDATE bitcast removed, check for ways to optimize
+			// 15b. Construct our coerce type which is { pad, lo, pad, hi }
 			LLVMTypeRef coerce_type = llvm_get_coerce_type(c, ret_info);
-			LLVMValueRef coerce = LLVMBuildBitCast(c->builder, ret, coerce_type, "");
 
 			// 15d. Find the address to the low value
 			AlignSize alignment;
@@ -5721,7 +5676,7 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 	llvm_value_rvalue(c, value);
 
 	LLVMValueRef kind;
-	LLVMValueRef ref = LLVMBuildIntToPtr(c->builder, value->value, LLVMPointerType(c->introspect_type, 0), "introspect*");
+	LLVMValueRef ref = LLVMBuildIntToPtr(c->builder, value->value, c->ptr_type, "introspect*");
 	AlignSize align = llvm_abi_alignment(c, c->introspect_type);
 	AlignSize alignment;
 	if (active_target.feature.safe_mode || expr->typeid_info_expr.kind == TYPEID_INFO_KIND)
@@ -5798,9 +5753,8 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 				LLVMValueRef len = llvm_emit_struct_gep_raw(c, ref, c->introspect_type, INTROSPECT_INDEX_LEN, align, &alignment);
 				len = llvm_load(c, c->size_type, len, alignment, "namelen");
 				LLVMValueRef val = llvm_emit_struct_gep_raw(c, ref, c->introspect_type, INTROSPECT_INDEX_ADDITIONAL, align, &alignment);
-				LLVMValueRef ptr_to_first = llvm_emit_bitcast_ptr(c, val, type_chars);
 				Type *subarray = type_get_subarray(type_chars);
-				llvm_value_set(value, llvm_emit_aggregate_two(c, subarray, ptr_to_first, len), subarray);
+				llvm_value_set(value, llvm_emit_aggregate_two(c, subarray, val, len), subarray);
 			}
 			break;
 		case TYPEID_INFO_LEN:
@@ -5914,88 +5868,6 @@ static inline void llvm_emit_variant(GenContext *c, BEValue *value, Expr *expr)
 	llvm_value_set(value, var, type_any);
 }
 
-static inline void llvm_emit_argv_to_subarray(GenContext *c, BEValue *value, Expr *expr)
-{
-	EMIT_LOC(c, expr);
-	BEValue argc_value;
-	BEValue argv_value;
-	llvm_value_set_decl(c, &argc_value, expr->argv_expr.argc);
-	llvm_value_set_decl(c, &argv_value, expr->argv_expr.argv);
-	llvm_value_rvalue(c, &argc_value);
-	llvm_value_rvalue(c, &argv_value);
-	LLVMValueRef argv_ptr = argv_value.value;
-	LLVMValueRef count = argc_value.value;
-	Type *arg_array_type = type_chars;
-	AlignSize alignment = type_alloca_alignment(type_get_array(arg_array_type, 1));
-	LLVMTypeRef arg_array_elem_type = llvm_get_type(c, arg_array_type);
-	LLVMValueRef arg_array = LLVMBuildArrayAlloca(c->builder, arg_array_elem_type, count, "argarray");
-	LLVMSetAlignment(arg_array, alignment);
-
-	// Store the addresses.
-	LLVMTypeRef loop_type = llvm_get_type(c, type_usize);
-	LLVMTypeRef char_ptr_type = llvm_get_ptr_type(c, type_char);
-	LLVMValueRef size = llvm_zext_trunc(c, count, loop_type);
-	llvm_value_aggregate_two(c, value, expr->type, arg_array, size);
-
-	// Check if zero:
-	BEValue cond;
-	llvm_value_set(&cond, LLVMBuildICmp(c->builder, LLVMIntEQ, count, llvm_get_zero(c, argc_value.type), ""), type_bool);
-	LLVMBasicBlockRef exit_block = llvm_basic_block_new(c, "exit_loop");
-	LLVMBasicBlockRef pre_loop_block = llvm_basic_block_new(c, "pre_loop");
-
-	// Jump to exit if zero
-	llvm_emit_cond_br(c, &cond, exit_block, pre_loop_block);
-
-	// Now we create the pre loop block
-	llvm_emit_block(c, pre_loop_block);
-	EMIT_LOC(c, expr);
-
-	LLVMBasicBlockRef body_block = llvm_basic_block_new(c, "body_loop");
-	LLVMValueRef zero = llvm_get_zero_raw(loop_type);
-
-	// Jump to the first entry
-	llvm_emit_br(c, body_block);
-	llvm_emit_block(c, body_block);
-	LLVMValueRef index_var = LLVMBuildPhi(c->builder, loop_type, "");
-
-	// Find the current substring
-	LLVMValueRef index = LLVMBuildInBoundsGEP2(c->builder, arg_array_elem_type, arg_array, &index_var, 1, "indexfe");
-	LLVMValueRef pointer_to_arg = LLVMBuildInBoundsGEP2(c->builder, char_ptr_type, argv_ptr, &index_var, 1, "");
-
-	// Get the char* to the argument
-	LLVMValueRef pointer_value = llvm_load(c, llvm_get_ptr_type(c, type_char), pointer_to_arg,
-	                                       type_abi_alignment(type_get_ptr(type_char)), "");
-	AlignSize index_align;
-
-	// Get strlen to calculate length
-	LLVMValueRef strlen = LLVMGetNamedFunction(c->module, "strlen");
-	LLVMTypeRef strlen_type = LLVMFunctionType(loop_type, &char_ptr_type, 1, false);
-	if (!strlen)
-	{
-		strlen = LLVMAddFunction(c->module, "strlen", strlen_type);
-	}
-	EMIT_LOC(c, expr);
-	LLVMValueRef len = LLVMBuildCall2(c->builder, strlen_type, strlen, &pointer_value, 1, "");
-
-	// We first set the pointer
-	AlignSize align = type_abi_alignment(arg_array_type);
-	LLVMValueRef ptr_loc = llvm_emit_struct_gep_raw(c, index, arg_array_elem_type, 0, align, &index_align);
-	llvm_store_to_ptr_raw_aligned(c, ptr_loc, pointer_value, index_align);
-	// Then the length
-	LLVMValueRef len_loc = llvm_emit_struct_gep_raw(c, index, arg_array_elem_type, 1, align, &index_align);
-	llvm_store_to_ptr_raw_aligned(c, len_loc, len, index_align);
-
-	// Add index
-	LLVMValueRef index_plus = LLVMBuildNUWAdd(c->builder, index_var, llvm_const_int(c, type_usize, 1), "");
-	llvm_value_set(&cond, LLVMBuildICmp(c->builder, LLVMIntULT, index_plus, size, ""), type_bool);
-	llvm_emit_cond_br(c, &cond, body_block, exit_block);
-	LLVMValueRef values[2] = { index_plus, zero };
-	LLVMBasicBlockRef blocks[2] = { body_block, pre_loop_block };
-	LLVMAddIncoming(index_var, values, blocks, 2);
-	llvm_emit_block(c, exit_block);
-	EMIT_LOC(c, expr);
-}
-
 static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Expr *expr)
 {
 	Expr *inner = exprptr(expr->builtin_access_expr.inner);
@@ -6034,11 +5906,11 @@ static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Ex
 			llvm_emit_br(c, exit_block);
 			llvm_emit_block(c, ok_block);
 			LLVMValueRef fault_data = LLVMBuildIntToPtr(c->builder, be_value->value,
-														LLVMPointerType(c->fault_type, 0), "");
+														c->ptr_type, "");
 			LLVMValueRef ptr = LLVMBuildStructGEP2(c->builder, c->fault_type, fault_data, 1, "");
 			llvm_emit_br(c, exit_block);
 			llvm_emit_block(c, exit_block);
-			LLVMValueRef phi = LLVMBuildPhi(c->builder, llvm_get_ptr_type(c, type_chars), "faultname");
+			LLVMValueRef phi = LLVMBuildPhi(c->builder, c->ptr_type, "faultname");
 			LLVMValueRef values[] = { zero.value, ptr };
 			LLVMBasicBlockRef blocks[] = { zero_block, ok_block };
 			LLVMAddIncoming(phi, values, blocks, 2);
@@ -6053,11 +5925,10 @@ static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Ex
 			LLVMTypeRef subarray = llvm_get_type(c, type_chars);
 
 			LLVMValueRef to_introspect = LLVMBuildIntToPtr(c->builder, inner_type->backend_typeid,
-			                                              LLVMPointerType(c->introspect_type, 0), "");
+			                                              c->ptr_type, "");
 			LLVMValueRef ptr = LLVMBuildStructGEP2(c->builder, c->introspect_type, to_introspect, INTROSPECT_INDEX_ADDITIONAL, "");
-			LLVMValueRef ptr_to_first = llvm_emit_bitcast_ptr(c, ptr, type_chars);
 			LLVMValueRef val = llvm_zext_trunc(c, be_value->value, llvm_get_type(c, type_usize));
-			llvm_value_set_address(be_value, llvm_emit_pointer_gep_raw(c, subarray, ptr_to_first, val),
+			llvm_value_set_address(be_value, llvm_emit_pointer_gep_raw(c, subarray, ptr, val),
 			                       type_chars, llvm_abi_alignment(c, subarray));
 			return;
 		}
@@ -6165,9 +6036,6 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			return;
 		case EXPR_VARIANT:
 			llvm_emit_variant(c, value, expr);
-			return;
-		case EXPR_ARGV_TO_SUBARRAY:
-			llvm_emit_argv_to_subarray(c, value, expr);
 			return;
 		case EXPR_TRY_UNWRAP_CHAIN:
 			llvm_emit_try_unwrap_chain(c, value, expr);

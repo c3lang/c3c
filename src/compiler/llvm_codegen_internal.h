@@ -87,6 +87,7 @@ typedef struct GenContext_
 	LLVMTypeRef fault_type;
 	LLVMTypeRef size_type;
 	LLVMTypeRef char_ptr_type;
+	LLVMTypeRef ptr_type;
 	LLVMTypeRef chars_type;
 	Decl *panic_var;
 	struct
@@ -276,7 +277,7 @@ TypeSize llvm_abi_size(GenContext *c, LLVMTypeRef type);
 BitSize llvm_bitsize(GenContext *c, LLVMTypeRef type);
 AlignSize llvm_abi_alignment(GenContext *c, LLVMTypeRef type);
 LLVMTypeRef llvm_func_type(GenContext *context, FunctionPrototype *prototype);
-LLVMTypeRef llvm_update_prototype_abi(GenContext *context, FunctionPrototype *prototype, LLVMTypeRef **params);
+LLVMTypeRef llvm_update_prototype_abi(GenContext *c, FunctionPrototype *prototype, LLVMTypeRef **params);
 LLVMTypeRef llvm_get_twostruct(GenContext *context, LLVMTypeRef lo, LLVMTypeRef hi);
 LLVMTypeRef llvm_const_padding_type(GenContext *c, TypeSize size);
 LLVMMetadataRef llvm_get_debug_type(GenContext *c, Type *type);
@@ -285,7 +286,6 @@ LLVMTypeRef llvm_get_pointee_type(GenContext *c, Type *any_type);
 void llvm_emit_function_decl(GenContext *c, Decl *decl);
 void llvm_emit_xxlizer(GenContext *c, Decl *decl);
 bool llvm_types_are_similar(LLVMTypeRef original, LLVMTypeRef coerce);
-INLINE LLVMTypeRef llvm_get_ptr_type(GenContext *c, Type *type);
 
 // -- Attributes ---
 void llvm_attribute_add_range(GenContext *c, LLVMValueRef value_to_add_attribute_to, unsigned attribute, int index_start, int index_end);
@@ -318,9 +318,6 @@ void llvm_emit_and_set_decl_alloca(GenContext *c, Decl *decl);
 INLINE void llvm_set_alignment(LLVMValueRef alloca, AlignSize alignment);
 INLINE AlignSize llvm_type_or_alloca_align(LLVMValueRef dest, Type *type);
 
-// -- Bitcast --
-static inline LLVMValueRef llvm_emit_bitcast(GenContext *c, LLVMValueRef value, Type *type);
-INLINE LLVMValueRef llvm_emit_bitcast_ptr(GenContext *c, LLVMValueRef value, Type *type);
 INLINE LLVMValueRef llvm_zext_trunc(GenContext *c, LLVMValueRef data, LLVMTypeRef type);
 
 // -- Constants --

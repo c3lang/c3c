@@ -115,11 +115,11 @@ void gencontext_begin_module(GenContext *c)
 	}
 	c->bool_type = LLVMInt1TypeInContext(c->context);
 	c->byte_type = LLVMInt8TypeInContext(c->context);
+	c->ptr_type = LLVMPointerType(c->byte_type, 0);
 	c->chars_type = llvm_get_type(c, type_chars);
 	c->introspect_type = create_introspection_type(c);
 	c->fault_type = create_fault_type(c);
 	c->size_type = llvm_get_type(c, type_usize);
-	c->char_ptr_type = LLVMPointerType(c->byte_type, 0);
 	if (c->panic_var) c->panic_var->backend_ref = NULL;
 
 	if (active_target.debug_info != DEBUG_INFO_NONE)
@@ -134,7 +134,7 @@ void gencontext_begin_module(GenContext *c)
 		if (active_target.debug_info == DEBUG_INFO_FULL && active_target.feature.safe_mode)
 		{
 			c->debug.stack_type = LLVMStructCreateNamed(c->context, ".$callstack");
-			LLVMTypeRef types[4] = { LLVMPointerType(c->debug.stack_type, 0),
+			LLVMTypeRef types[4] = { c->ptr_type,
 									 c->chars_type,
 									 c->chars_type,
 									 llvm_get_type(c, type_uint) };

@@ -184,10 +184,8 @@ entry:
   %le1 = icmp sle i32 %3, %4
   %or = or i1 %le, %le1
   br i1 %or, label %if.then, label %if.exit
-
 if.then:                                          ; preds = %entry
   ret ptr null
-
 if.exit:                                          ; preds = %entry
   ret ptr %0
 }
@@ -198,9 +196,8 @@ define void @test_teste2() #0 {
 entry:
   %xqic = alloca %Foostruct, align 2
   store i16 0, ptr %xqic, align 2
-  %0 = getelementptr inbounds %Foostruct, ptr %xqic, i32 0, i32 0
-  %1 = load i16, ptr %0, align 2
-  %2 = call i32 @foo3(i16 %1)
+  %0 = load i16, ptr %xqic, align 2
+  %1 = call i32 @foo3(i16 %0)
   ret void
 }
 
@@ -213,22 +210,18 @@ entry:
   store ptr null, ptr %basel, align 8
   store ptr null, ptr %rcand, align 8
   br label %loop.body
-
 loop.body:                                        ; preds = %if.exit, %entry
   %2 = load i32, ptr %lvalid, align 4
   %not = icmp eq i32 %2, 0
   br i1 %not, label %if.then, label %if.exit
-
 if.then:                                          ; preds = %loop.body
   %3 = load ptr, ptr %basel, align 8
   %4 = getelementptr inbounds %Edge_rec, ptr %3, i32 0, i32 1
   %5 = load ptr, ptr %4, align 8
   %ptrxi = ptrtoint ptr %5 to i32
   ret i32 %ptrxi
-
 if.exit:                                          ; preds = %loop.body
   br label %loop.body
-
 loop.exit:                                        ; No predecessors!
   ret i32 1
 }
@@ -261,60 +254,56 @@ entry:
 
 define i32 @test_test2(i32 %0, i64 %1, i32 %2, i32 %3) #0 {
 entry:
-  %4 = alloca { i64, i32 }, align 8
-  %5 = getelementptr inbounds { i64, i32 }, ptr %4, i32 0, i32 0
-  store i64 %1, ptr %5, align 8
-  %6 = getelementptr inbounds { i64, i32 }, ptr %4, i32 0, i32 1
-  store i32 %2, ptr %6, align 8
+  %a = alloca %Test, align 8
+  store i64 %1, ptr %a, align 8
+  %ptroffset = getelementptr inbounds i32, ptr %a, i64 2
+  store i32 %2, ptr %ptroffset, align 8
   %add = add i32 %0, %3
-  %7 = getelementptr inbounds %Test, ptr %4, i32 0, i32 1
-  %8 = load i16, ptr %7, align 2
-  %sisiext = sext i16 %8 to i32
+  %4 = getelementptr inbounds %Test, ptr %a, i32 0, i32 1
+  %5 = load i16, ptr %4, align 2
+  %sisiext = sext i16 %5 to i32
   %add1 = add i32 %add, %sisiext
-  %9 = getelementptr inbounds %Test, ptr %4, i32 0, i32 2
-  %10 = load i32, ptr %9, align 4
-  %add2 = add i32 %add1, %10
+  %6 = getelementptr inbounds %Test, ptr %a, i32 0, i32 2
+  %7 = load i32, ptr %6, align 4
+  %add2 = add i32 %add1, %7
   ret i32 %add2
 }
 
 define i32 @test_test3(i64 %0, i32 %1, i64 %2, i32 %3) #0 {
 entry:
-  %4 = alloca { i64, i32 }, align 8
-  %5 = alloca { i64, i32 }, align 8
-  %6 = getelementptr inbounds { i64, i32 }, ptr %4, i32 0, i32 0
-  store i64 %0, ptr %6, align 8
-  %7 = getelementptr inbounds { i64, i32 }, ptr %4, i32 0, i32 1
-  store i32 %1, ptr %7, align 8
-  %8 = getelementptr inbounds { i64, i32 }, ptr %5, i32 0, i32 0
-  store i64 %2, ptr %8, align 8
-  %9 = getelementptr inbounds { i64, i32 }, ptr %5, i32 0, i32 1
-  store i32 %3, ptr %9, align 8
-  %10 = getelementptr inbounds %Test, ptr %4, i32 0, i32 1
-  %11 = load i16, ptr %10, align 2
-  %sisiext = sext i16 %11 to i32
-  %12 = getelementptr inbounds %Test, ptr %4, i32 0, i32 2
-  %13 = load i32, ptr %12, align 4
-  %add = add i32 %sisiext, %13
-  %14 = getelementptr inbounds %Test, ptr %5, i32 0, i32 2
-  %15 = load i32, ptr %14, align 4
-  %add1 = add i32 %add, %15
-  %16 = getelementptr inbounds %Test, ptr %5, i32 0, i32 3
-  %17 = load i32, ptr %16, align 8
-  %add2 = add i32 %add1, %17
-  ret i32 %add2
+  %a = alloca %Test, align 8
+  %b = alloca %Test, align 8
+  store i64 %0, ptr %a, align 8
+  %ptroffset = getelementptr inbounds i32, ptr %a, i64 2
+  store i32 %1, ptr %ptroffset, align 8
+  store i64 %2, ptr %b, align 8
+  %ptroffset1 = getelementptr inbounds i32, ptr %b, i64 2
+  store i32 %3, ptr %ptroffset1, align 8
+  %4 = getelementptr inbounds %Test, ptr %a, i32 0, i32 1
+  %5 = load i16, ptr %4, align 2
+  %sisiext = sext i16 %5 to i32
+  %6 = getelementptr inbounds %Test, ptr %a, i32 0, i32 2
+  %7 = load i32, ptr %6, align 4
+  %add = add i32 %sisiext, %7
+  %8 = getelementptr inbounds %Test, ptr %b, i32 0, i32 2
+  %9 = load i32, ptr %8, align 4
+  %add2 = add i32 %add, %9
+  %10 = getelementptr inbounds %Test, ptr %b, i32 0, i32 3
+  %11 = load i32, ptr %10, align 8
+  %add3 = add i32 %add2, %11
+  ret i32 %add3
 }
 
 define { i64, i32 } @test_test4(i64 %0, i32 %1) #0 {
 entry:
-  %2 = alloca { i64, i32 }, align 8
+  %a = alloca %Test, align 8
   %tempcoerce = alloca { i64, i32 }, align 8
-  %3 = getelementptr inbounds { i64, i32 }, ptr %2, i32 0, i32 0
-  store i64 %0, ptr %3, align 8
-  %4 = getelementptr inbounds { i64, i32 }, ptr %2, i32 0, i32 1
-  store i32 %1, ptr %4, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %tempcoerce, ptr align 8 %2, i32 12, i1 false)
-  %5 = load { i64, i32 }, ptr %tempcoerce, align 8
-  ret { i64, i32 } %5
+  store i64 %0, ptr %a, align 8
+  %ptroffset = getelementptr inbounds i32, ptr %a, i64 2
+  store i32 %1, ptr %ptroffset, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %tempcoerce, ptr align 8 %a, i32 12, i1 false)
+  %2 = load { i64, i32 }, ptr %tempcoerce, align 8
+  ret { i64, i32 } %2
 }
 
 define i32 @test_test6() #0 {

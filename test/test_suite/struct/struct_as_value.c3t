@@ -41,7 +41,6 @@ cond.rhs:                                         ; preds = %entry
 cond.phi:                                         ; preds = %cond.rhs, %cond.lhs
   %val = phi %Event [ %1, %cond.lhs ], [ %2, %cond.rhs ]
   store %Event %val, ptr %taddr, align 4
-  %3 = getelementptr inbounds %Event, ptr %taddr, i32 0, i32 0
-  %4 = load i32, ptr %3, align 4
-  ret i32 %4
+  %3 = load i32, ptr %taddr, align 4
+  ret i32 %3
 }

@@ -1270,7 +1270,7 @@ LLVMValueRef llvm_emit_zstring_named(GenContext *c, const char *str, const char 
 	LLVMSetInitializer(global_string, llvm_get_zstring(c, str, len));
 	AlignSize alignment;
 	LLVMValueRef string = llvm_emit_array_gep_raw(c, global_string, char_array_type, 0, 1, &alignment);
-	return llvm_emit_bitcast_ptr(c, string, type_char);
+	return string;
 }
 
 

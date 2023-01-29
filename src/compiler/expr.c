@@ -82,7 +82,6 @@ bool expr_may_addr(Expr *expr)
 			return true;
 		case EXPR_TEST_HOOK:
 			return false;
-		case EXPR_ARGV_TO_SUBARRAY:
 		case EXPR_ASM:
 		case EXPR_BINARY:
 		case EXPR_BITASSIGN:
@@ -327,7 +326,6 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_FLATPATH:
 		case EXPR_COMPOUND_LITERAL:
 		case EXPR_POISONED:
-		case EXPR_ARGV_TO_SUBARRAY:
 		case EXPR_CT_ARG:
 		case EXPR_ASM:
 		case EXPR_SUBSCRIPT_ASSIGN:
@@ -670,7 +668,6 @@ bool expr_is_pure(Expr *expr)
 			return true;
 		case EXPR_VASPLAT:
 			return true;
-		case EXPR_ARGV_TO_SUBARRAY:
 		case EXPR_BITASSIGN:
 			return false;
 		case EXPR_VARIANTSWITCH:

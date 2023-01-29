@@ -76,18 +76,17 @@ define void @foo_test(i64 %0, ptr %1) #0 {
 entry:
   %x = alloca %variant, align 8
   %switch = alloca i64, align 8
-  %2 = getelementptr inbounds { i64, ptr }, ptr %x, i32 0, i32 0
-  store i64 %0, ptr %2, align 8
-  %3 = getelementptr inbounds { i64, ptr }, ptr %x, i32 0, i32 1
-  store ptr %1, ptr %3, align 8
-  %4 = getelementptr inbounds %variant, ptr %x, i32 0, i32 1
-  %5 = load i64, ptr %4, align 8
-  store i64 %5, ptr %switch, align 8
+  store i64 %0, ptr %x, align 8
+  %ptroffset = getelementptr inbounds ptr, ptr %x, i64 1
+  store ptr %1, ptr %ptroffset, align 8
+  %2 = getelementptr inbounds %variant, ptr %x, i32 0, i32 1
+  %3 = load i64, ptr %2, align 8
+  store i64 %3, ptr %switch, align 8
   br label %switch.entry
 
 switch.entry:                                     ; preds = %entry
-  %6 = load i64, ptr %switch, align 8
-  %eq = icmp eq i64 ptrtoint (ptr @"ct$int" to i64), %6
+  %4 = load i64, ptr %switch, align 8
+  %eq = icmp eq i64 ptrtoint (ptr @"ct$int" to i64), %4
   br i1 %eq, label %switch.case, label %next_if
 
 switch.case:                                      ; preds = %switch.entry
@@ -95,7 +94,7 @@ switch.case:                                      ; preds = %switch.entry
   br label %switch.exit
 
 next_if:                                          ; preds = %switch.entry
-  %eq1 = icmp eq i64 ptrtoint (ptr @"ct$double" to i64), %6
+  %eq1 = icmp eq i64 ptrtoint (ptr @"ct$double" to i64), %4
   br i1 %eq1, label %switch.case2, label %next_if3
 
 switch.case2:                                     ; preds = %next_if
@@ -103,7 +102,7 @@ switch.case2:                                     ; preds = %next_if
   br label %switch.exit
 
 next_if3:                                         ; preds = %next_if
-  %eq4 = icmp eq i64 ptrtoint (ptr @"ct$variant" to i64), %6
+  %eq4 = icmp eq i64 ptrtoint (ptr @"ct$variant" to i64), %4
   br i1 %eq4, label %switch.case5, label %next_if6
 
 switch.case5:                                     ; preds = %next_if3
@@ -111,7 +110,7 @@ switch.case5:                                     ; preds = %next_if3
   br label %switch.exit
 
 next_if6:                                         ; preds = %next_if3
-  %eq7 = icmp eq i64 ptrtoint (ptr @"ct$p$int" to i64), %6
+  %eq7 = icmp eq i64 ptrtoint (ptr @"ct$p$int" to i64), %4
   br i1 %eq7, label %switch.case8, label %next_if9
 
 switch.case8:                                     ; preds = %next_if6
@@ -136,35 +135,34 @@ entry:
   %.anon = alloca i64, align 8
   %.anon1 = alloca i64, align 8
   %element = alloca %variant, align 8
-  %2 = getelementptr inbounds { ptr, i64 }, ptr %y, i32 0, i32 0
-  store ptr %0, ptr %2, align 8
-  %3 = getelementptr inbounds { ptr, i64 }, ptr %y, i32 0, i32 1
-  store i64 %1, ptr %3, align 8
-  %4 = getelementptr inbounds %"variant[]", ptr %y, i32 0, i32 1
-  %5 = load i64, ptr %4, align 8
-  store i64 %5, ptr %.anon, align 8
+  store ptr %0, ptr %y, align 8
+  %ptroffset = getelementptr inbounds i64, ptr %y, i64 1
+  store i64 %1, ptr %ptroffset, align 8
+  %2 = getelementptr inbounds %"variant[]", ptr %y, i32 0, i32 1
+  %3 = load i64, ptr %2, align 8
+  store i64 %3, ptr %.anon, align 8
   store i64 0, ptr %.anon1, align 8
   br label %loop.cond
 
 loop.cond:                                        ; preds = %loop.body, %entry
-  %6 = load i64, ptr %.anon1, align 8
-  %7 = load i64, ptr %.anon, align 8
-  %lt = icmp ult i64 %6, %7
+  %4 = load i64, ptr %.anon1, align 8
+  %5 = load i64, ptr %.anon, align 8
+  %lt = icmp ult i64 %4, %5
   br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
-  %8 = getelementptr inbounds %"variant[]", ptr %y, i32 0, i32 0
-  %9 = load ptr, ptr %8, align 8
-  %10 = load i64, ptr %.anon1, align 8
-  %ptroffset = getelementptr inbounds %variant, ptr %9, i64 %10
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %element, ptr align 8 %ptroffset, i32 16, i1 false)
-  %11 = getelementptr inbounds { i64, ptr }, ptr %element, i32 0, i32 0
-  %lo = load i64, ptr %11, align 8
-  %12 = getelementptr inbounds { i64, ptr }, ptr %element, i32 0, i32 1
-  %hi = load ptr, ptr %12, align 8
+  %6 = getelementptr inbounds %"variant[]", ptr %y, i32 0, i32 0
+  %7 = load ptr, ptr %6, align 8
+  %8 = load i64, ptr %.anon1, align 8
+  %ptroffset2 = getelementptr inbounds %variant, ptr %7, i64 %8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %element, ptr align 8 %ptroffset2, i32 16, i1 false)
+  %9 = getelementptr inbounds { i64, ptr }, ptr %element, i32 0, i32 0
+  %lo = load i64, ptr %9, align 8
+  %10 = getelementptr inbounds { i64, ptr }, ptr %element, i32 0, i32 1
+  %hi = load ptr, ptr %10, align 8
   call void @foo_test(i64 %lo, ptr %hi)
-  %13 = load i64, ptr %.anon1, align 8
-  %add = add i64 %13, 1
+  %11 = load i64, ptr %.anon1, align 8
+  %add = add i64 %11, 1
   store i64 %add, ptr %.anon1, align 8
   br label %loop.cond
 
