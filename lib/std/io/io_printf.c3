@@ -339,14 +339,14 @@ fn char[]! bprintf(char[] buffer, String format, args...) @maydiscard
 fn usz! File.printf(File file, String format, args...) @maydiscard
 {
 	Formatter formatter;
-    formatter.init(&out_putchar_fn, &file);
+    formatter.init(&out_fputchar_fn, &file);
     return formatter.vprintf(format, args)?;
 }
 
 fn usz! File.printfn(File file, String format, args...) @maydiscard
 {
 	Formatter formatter;
-    formatter.init(&out_putchar_fn, &file);
+    formatter.init(&out_fputchar_fn, &file);
     usz len = formatter.vprintf(format, args)?;
 	file.putc('\n')?;
 	file.flush();
