@@ -271,11 +271,8 @@ typedef struct
 	{
 		struct
 		{
-			bool is_darwin_vector_abi : 1;
 			bool return_small_struct_in_reg_abi : 1;
-			bool is_win32_float_struct_abi : 1;
 			bool use_soft_float : 1;
-			bool is_win_api : 1;
 			bool is_mcu_api : 1;
 		} x86;
 		struct

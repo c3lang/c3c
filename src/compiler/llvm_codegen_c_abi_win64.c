@@ -4,7 +4,7 @@
 
 #include "c_abi_internal.h"
 
-ABIArgInfo *win64_classify(Regs *regs, Type *type, bool is_return, bool is_vector, bool is_reg)
+ABIArgInfo *win64_classify(Regs *regs, Type *type, bool is_return, bool is_vector)
 {
 	if (type_is_void(type)) return abi_arg_ignore();
 	
@@ -19,22 +19,6 @@ ABIArgInfo *win64_classify(Regs *regs, Type *type, bool is_return, bool is_vecto
 
 	Type *base = NULL;
 	unsigned elements = 0;
-	if (is_reg && type_is_homogenous_aggregate(type, &base, &elements))
-	{
-		// Enough registers? Then use direct/expand
-		if (regs->float_regs >= elements)
-		{
-			regs->float_regs -= elements;
-			// Direct if return / builtin / vector
-			if (is_return || type_is_builtin(type->type_kind) || type->type_kind == TYPE_VECTOR)
-			{
-				return abi_arg_new_direct();
-			}
-			return abi_arg_new_expand();
-		}
-		// Else use indirect
-		return abi_arg_new_indirect_not_by_val(type);
-	}
 	if (is_vector && type_is_homogenous_aggregate(type, &base, &elements))
 	{
 		// Enough registers AND return / builtin / vector
@@ -103,7 +87,7 @@ ABIArgInfo *win64_reclassify_hva_arg(Regs *regs, Type *type, ABIArgInfo *info)
 	return info;
 }
 
-void win64_vector_call_args(Regs *regs, FunctionPrototype *prototype, bool is_vector, bool is_reg)
+static void win64_vector_call_args(Regs *regs, FunctionPrototype *prototype, bool is_vector)
 {
 	static const unsigned max_param_vector_calls_as_reg = 6;
 	unsigned count = 0;
@@ -117,14 +101,14 @@ void win64_vector_call_args(Regs *regs, FunctionPrototype *prototype, bool is_ve
 			Type *type = params[i];
 			if (count < max_param_vector_calls_as_reg)
 			{
-				args[i] = win64_classify(regs, type, false, is_vector, is_reg);
+				args[i] = win64_classify(regs, type, false, is_vector);
 			}
 			else
 			{
 				// Cannot be passed in registers pretend no registers.
 				unsigned float_regs = regs->float_regs;
 				regs->float_regs = 0;
-				args[i] = win64_classify(regs, type, false, is_vector, is_reg);
+				args[i] = win64_classify(regs, type, false, is_vector);
 				regs->float_regs = float_regs;
 			}
 			count++;
@@ -137,14 +121,14 @@ void win64_vector_call_args(Regs *regs, FunctionPrototype *prototype, bool is_ve
 	}
 }
 
-ABIArgInfo **win64_create_params(Type **params, Regs *regs, bool is_vector_call, bool is_reg_call)
+ABIArgInfo **win64_create_params(Type **params, Regs *regs, bool is_vector_call)
 {
 	unsigned param_count = vec_size(params);
 	if (!param_count) return NULL;
 	ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);
 	for (unsigned i = 0; i < param_count; i++)
 	{
-		args[i] = win64_classify(regs, params[i], false, is_vector_call, is_reg_call);
+		args[i] = win64_classify(regs, params[i], false, is_vector_call);
 	}
 	return args;
 }
@@ -155,39 +139,33 @@ void c_abi_func_create_win64(FunctionPrototype *prototype)
 
 	// Set up return registers.
 	Regs regs = { 0, 0 };
-	bool is_reg_call = false;
 	bool is_vector_call = false;
 	switch (prototype->call_abi)
 	{
-		case CALL_X86_VECTOR:
+		case CALL_X64_VECTOR:
 			regs.float_regs = 4;
 			is_vector_call = true;
-			break;
-		case CALL_X86_REG:
-			regs.float_regs = 16;
-			is_reg_call = true;
 			break;
 		default:
 			regs.float_regs = 0;
 			break;
 	}
 
-	prototype->ret_abi_info = win64_classify(&regs, prototype->abi_ret_type, true, is_vector_call, is_reg_call);
+	prototype->ret_abi_info = win64_classify(&regs, prototype->abi_ret_type, true, is_vector_call);
 	if (prototype->ret_by_ref)
 	{
-		prototype->ret_by_ref_abi_info = win64_classify(&regs, type_get_ptr(type_lowering(prototype->ret_by_ref_type)), false, is_vector_call, is_reg_call);
+		prototype->ret_by_ref_abi_info = win64_classify(&regs,
+		                                                type_get_ptr(type_lowering(prototype->ret_by_ref_type)),
+		                                                false,
+		                                                is_vector_call);
 	}
 
 	// Set up parameter registers.
 	switch (prototype->call_abi)
 	{
-		case CALL_X86_VECTOR:
+		case CALL_X64_VECTOR:
 			regs.float_regs = 6;
 			is_vector_call = true;
-			break;
-		case CALL_X86_REG:
-			regs.float_regs = 16;
-			is_reg_call = true;
 			break;
 		default:
 			regs.float_regs = 0;
@@ -195,10 +173,10 @@ void c_abi_func_create_win64(FunctionPrototype *prototype)
 	}
 	if (is_vector_call)
 	{
-		win64_vector_call_args(&regs, prototype, is_vector_call, is_reg_call);
+		win64_vector_call_args(&regs, prototype, is_vector_call);
 		return;
 	}
 
-	prototype->abi_args = win64_create_params(prototype->param_types, &regs, is_vector_call, is_reg_call);
-	prototype->abi_varargs = win64_create_params(prototype->varargs, &regs, is_vector_call, is_reg_call);
+	prototype->abi_args = win64_create_params(prototype->param_types, &regs, is_vector_call);
+	prototype->abi_varargs = win64_create_params(prototype->varargs, &regs, is_vector_call);
 }

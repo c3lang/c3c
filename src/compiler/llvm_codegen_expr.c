@@ -4593,7 +4593,7 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef *args, unsigned *arg_count_
 		case ABI_ARG_DIRECT:
 			args[(*arg_count_ref)++] = llvm_load_value_store(c, be_value);
 			return;
-		case ABI_ARG_DIRECT_SPLIT_STRUCT:
+		case ABI_ARG_DIRECT_SPLIT_STRUCT_I32:
 		{
 			LLVMTypeRef coerce_type = llvm_get_coerce_type(c, info);
 			assert(coerce_type && coerce_type != llvm_get_type(c, type));
@@ -4601,8 +4601,8 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef *args, unsigned *arg_count_
 
 			AlignSize alignment;
 			LLVMValueRef cast = llvm_emit_coerce_alignment(c, be_value, coerce_type, target_alignment, &alignment);
-			LLVMTypeRef element = llvm_get_type(c, info->direct_struct_expand.type);
-			for (unsigned idx = 0; idx < info->direct_struct_expand.elements; idx++)
+			LLVMTypeRef element = llvm_get_type(c, type_uint);
+			for (unsigned idx = 0; idx < info->direct_struct_expand; idx++)
 			{
 				AlignSize load_align;
 				LLVMValueRef element_ptr = llvm_emit_struct_gep_raw(c, cast, coerce_type, idx, alignment, &load_align);
@@ -4715,11 +4715,6 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef *args, unsigned *arg_count_
 			// Move this to an address (if needed)
 			llvm_value_addr(c, be_value);
 			llvm_expand_type_to_args(c, type, be_value->value, args, arg_count_ref, be_value->alignment);
-			// Expand the padding here.
-			if (info->expand.padding_type)
-			{
-				args[(*arg_count_ref)++] = llvm_get_undef(c, info->expand.padding_type);
-			}
 			return;
 		}
 	}
@@ -4872,7 +4867,7 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 	switch (ret_info->kind)
 	{
 		case ABI_ARG_EXPAND:
-		case ABI_ARG_DIRECT_SPLIT_STRUCT:
+		case ABI_ARG_DIRECT_SPLIT_STRUCT_I32:
 			UNREACHABLE
 		case ABI_ARG_IGNORE:
 			// 12. Basically void returns or empty structs.
@@ -5195,7 +5190,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 			arg_values[arg_count++] = result_value->value;
 			break;
 		case ABI_ARG_EXPAND:
-		case ABI_ARG_DIRECT_SPLIT_STRUCT:
+		case ABI_ARG_DIRECT_SPLIT_STRUCT_I32:
 			UNREACHABLE
 		case ABI_ARG_DIRECT_PAIR:
 		case ABI_ARG_IGNORE:
