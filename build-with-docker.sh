@@ -2,12 +2,12 @@
 ## build-with-docker.sh
 ## @author gdm85
 ##
-## Script to build c3c for either Ubuntu 21 or 22.
+## Script to build c3c for either Ubuntu 22 or 23.
 ##
 #
 
 if [ $# -ne 1 -a $# -ne 2 ]; then
-	echo "Usage: build-with-docker.sh (21|22) [Debug|Release]" 1>&2
+	echo "Usage: build-with-docker.sh (22|23) [Debug|Release]" 1>&2
 	exit 1
 fi
 
@@ -29,17 +29,14 @@ else
 fi
 
 TAG="$1"
-if [ "$1" = 21 ]; then
-	UBUNTU_VERSION="21.10"
-	LLVM_VERSION="13"
-elif [ "$1" = 22 ]; then
-	UBUNTU_VERSION="22.04"
-	LLVM_VERSION="14"
-elif [ "$1" = 22 ]; then
+if [ "$1" = 22 ]; then
+	UBUNTU_VERSION="22.10"
+	LLVM_VERSION="15"
+elif [ "$1" = 23 ]; then
 	UBUNTU_VERSION="23.04"
 	LLVM_VERSION="15"
 else
-	echo "ERROR: expected 21, 22 or 23 as Ubuntu version argument" 1>&2
+	echo "ERROR: expected 22 or 23 as Ubuntu version argument" 1>&2
 	exit 2
 fi
 IMAGE="$IMAGE:$TAG"
