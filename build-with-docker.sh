@@ -1,15 +1,13 @@
 #!/bin/bash
 ## build-with-docker.sh
 ## @author gdm85
+## @modified by Kenta
 ##
 ## Script to build c3c for Ubuntu 22
 ##
 #
 
-if [ $# -ne 1 -a $# -ne 2 ]; then
-    echo "Usage: build-with-docker.sh [Debug|Release]" 1
-    exit 1
-fi
+read -p "Select Build Type: Debug/Release: " config
 
 set -e
 
@@ -22,10 +20,11 @@ if type podman 2>/dev/null >/dev/null; then
     IMAGE="localhost/$IMAGE"
 fi
 
-if [ -z "$1" ]; then
+if [ $config == "Debug" ]; then
+echo "debug???"
     CMAKE_BUILD_TYPE=Debug
 else
-    CMAKE_BUILD_TYPE="$1"
+    CMAKE_BUILD_TYPE="$config"
 fi
 
 UBUNTU_VERSION="22.10"
