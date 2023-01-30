@@ -156,7 +156,6 @@ static ABIArgInfo *riscv_classify_argument_type(Type *type, bool is_fixed, unsig
 		return abi_arg_new_direct();
 	}
 
-
 	if (is_fixed && platform_target.riscv.flen && type->type_kind == TYPE_STRUCT)
 	{
 		AbiType field1, field2;
@@ -205,17 +204,14 @@ static ABIArgInfo *riscv_classify_argument_type(Type *type, bool is_fixed, unsig
 	{
 		// All integral types are promoted to XLen width, unless passed on the
 		// stack.
-		if (size < xlen && type_is_integer(type) && !must_use_stack)
+		if (size < xlen && type_is_integer_or_bool_kind(type) && !must_use_stack)
 		{
-			if (xlen == 8 || type_is_promotable_integer(type))
+			// Clang: RV64 ABI requires unsigned 32 bit integers to be sign extended.
+			if (xlen == 8 && type == type_uint)
 			{
-				return abi_arg_new_direct_int_ext(type);
+				return abi_arg_new_direct_int_ext(type_int);
 			}
-			return abi_arg_new_direct();
-		}
-		if (size > 16 || (size > 8 && !platform_target.int128))
-		{
-			return abi_arg_new_indirect_not_by_val(type);
+			return abi_arg_new_direct_int_ext(type);
 		}
 		return abi_arg_new_direct();
 	}

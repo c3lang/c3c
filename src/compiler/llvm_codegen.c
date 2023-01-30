@@ -945,8 +945,8 @@ static void llvm_emit_param_attributes(GenContext *c, LLVMValueRef function, ABI
 {
 	assert(last_index == index || info->kind == ABI_ARG_DIRECT_PAIR || info->kind == ABI_ARG_IGNORE
 	       || info->kind == ABI_ARG_EXPAND || info->kind == ABI_ARG_DIRECT || info->kind == ABI_ARG_DIRECT_COERCE
-	       || info->kind == ABI_ARG_DIRECT_COERCE_INT
-	       || info->kind == ABI_ARG_DIRECT_SPLIT_STRUCT);
+	       || info->kind == ABI_ARG_DIRECT_COERCE_INT || info->kind == ABI_ARG_EXPAND_COERCE
+	       || info->kind == ABI_ARG_DIRECT_SPLIT_STRUCT_I32);
 
 	if (info->attributes.zeroext)
 	{
@@ -968,7 +968,7 @@ static void llvm_emit_param_attributes(GenContext *c, LLVMValueRef function, ABI
 	{
 		case ABI_ARG_EXPAND:
 		case ABI_ARG_IGNORE:
-		case ABI_ARG_DIRECT_SPLIT_STRUCT:
+		case ABI_ARG_DIRECT_SPLIT_STRUCT_I32:
 		case ABI_ARG_DIRECT_COERCE:
 		case ABI_ARG_DIRECT_COERCE_INT:
 		case ABI_ARG_DIRECT_PAIR:

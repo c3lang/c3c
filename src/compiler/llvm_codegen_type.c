@@ -172,20 +172,15 @@ static inline void add_func_type_param(GenContext *c, Type *param_type, ABIArgIn
 		case ABI_ARG_EXPAND:
 			// Expanding a structs
 			param_expand(c, params, param_type->canonical);
-			// If we have padding, add it here.
-			if (arg_info->expand.padding_type)
-			{
-				vec_add(*params, llvm_get_type(c, arg_info->expand.padding_type));
-			}
 			break;
 		case ABI_ARG_DIRECT:
 			vec_add(*params, llvm_get_type(c, param_type));
 			break;
-		case ABI_ARG_DIRECT_SPLIT_STRUCT:
+		case ABI_ARG_DIRECT_SPLIT_STRUCT_I32:
 		{
 			// Normal direct.
-			LLVMTypeRef coerce_type = llvm_get_type(c, arg_info->direct_struct_expand.type);
-			for (unsigned idx = 0; idx < arg_info->direct_struct_expand.elements; idx++)
+			LLVMTypeRef coerce_type = llvm_get_type(c, type_uint);
+			for (unsigned idx = 0; idx < arg_info->direct_struct_expand; idx++)
 			{
 				vec_add(*params, coerce_type);
 			}
@@ -194,15 +189,13 @@ static inline void add_func_type_param(GenContext *c, Type *param_type, ABIArgIn
 		case ABI_ARG_DIRECT_COERCE_INT:
 		{
 			// Normal direct.
-			LLVMTypeRef coerce_type = LLVMIntTypeInContext(c->context, type_size(param_type) * 8);
-			vec_add(*params, coerce_type);
+			vec_add(*params, LLVMIntTypeInContext(c->context, type_size(param_type) * 8));
 			break;
 		}
 		case ABI_ARG_DIRECT_COERCE:
 		{
 			// Normal direct.
-			LLVMTypeRef coerce_type = llvm_get_type(c, arg_info->direct_coerce_type);
-			vec_add(*params, coerce_type);
+			vec_add(*params, llvm_get_type(c, arg_info->direct_coerce_type));
 			break;
 		}
 		case ABI_ARG_DIRECT_PAIR:
@@ -233,13 +226,13 @@ LLVMTypeRef llvm_update_prototype_abi(GenContext *c, FunctionPrototype *prototyp
 			break;
 		case ABI_ARG_EXPAND_COERCE:
 		{
-			LLVMTypeRef lo = llvm_abi_type(c, ret_arg_info->direct_pair.lo);
-			if (!abi_type_is_valid(ret_arg_info->direct_pair.hi))
+			LLVMTypeRef lo = llvm_abi_type(c, ret_arg_info->coerce_expand.lo);
+			if (!abi_type_is_valid(ret_arg_info->coerce_expand.hi))
 			{
 				retval = lo;
 				break;
 			}
-			LLVMTypeRef hi = llvm_abi_type(c, ret_arg_info->direct_pair.hi);
+			LLVMTypeRef hi = llvm_abi_type(c, ret_arg_info->coerce_expand.hi);
 			retval = llvm_get_twostruct(c, lo, hi);
 			break;
 		}
@@ -256,7 +249,7 @@ LLVMTypeRef llvm_update_prototype_abi(GenContext *c, FunctionPrototype *prototyp
 		case ABI_ARG_DIRECT:
 			retval = llvm_get_type(c, call_return_type);
 			break;
-		case ABI_ARG_DIRECT_SPLIT_STRUCT:
+		case ABI_ARG_DIRECT_SPLIT_STRUCT_I32:
 			UNREACHABLE
 		case ABI_ARG_DIRECT_COERCE_INT:
 			retval = LLVMIntTypeInContext(c->context, type_size(call_return_type) * 8);
@@ -422,16 +415,16 @@ LLVMTypeRef llvm_get_coerce_type(GenContext *c, ABIArgInfo *arg_info)
 			}
 			return LLVMStructTypeInContext(c->context, elements, element_index, arg_info->coerce_expand.packed);
 		}
-		case ABI_ARG_DIRECT_SPLIT_STRUCT:
+		case ABI_ARG_DIRECT_SPLIT_STRUCT_I32:
 		{
-			LLVMTypeRef coerce_type = llvm_get_type(c, arg_info->direct_struct_expand.type);
-			assert(arg_info->direct_struct_expand.elements > 1U);
-			LLVMTypeRef *refs = MALLOC(sizeof(LLVMValueRef) * arg_info->direct_struct_expand.elements);
-			for (unsigned i = 0; i < arg_info->direct_struct_expand.elements; i++)
+			LLVMTypeRef coerce_type = llvm_get_type(c, type_uint);
+			assert(arg_info->direct_struct_expand > 1U && arg_info->direct_struct_expand < 10);
+			LLVMTypeRef refs[10];
+			for (unsigned i = 0; i < arg_info->direct_struct_expand; i++)
 			{
 				refs[i] = coerce_type;
 			}
-			return LLVMStructTypeInContext(c->context, refs, arg_info->direct_struct_expand.elements, false);
+			return LLVMStructTypeInContext(c->context, refs, arg_info->direct_struct_expand, false);
 		}
 		case ABI_ARG_DIRECT_PAIR:
 		{

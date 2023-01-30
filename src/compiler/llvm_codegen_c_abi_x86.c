@@ -8,7 +8,7 @@
 
 static bool x86_try_use_free_regs(Regs *regs, Type *type);
 
-ABIArgInfo **x86_create_params(CallABI abi, Type **p_type, Regs *ptr);
+static ABIArgInfo **x86_create_params(CallABI abi, Type **p_type, Regs *ptr);
 
 static inline bool type_is_simd_vector(Type *type)
 {
@@ -35,9 +35,6 @@ static unsigned x86_stack_alignment(Type *type, unsigned alignment)
 {
 	// Less than ABI, use default
 	if (alignment < MIN_ABI_STACK_ALIGN) return 0;
-
-	// On non-Darwin, the stack type alignment is always 4.
-	if (!platform_target.x86.is_darwin_vector_abi) return MIN_ABI_STACK_ALIGN;
 
 	// Otherwise, if the type contains an SSE vector type, the alignment is 16.
 	if (alignment >= 16 && (type_is_simd_vector(type) || type_is_union_struct_with_simd_vector(type)))
@@ -172,33 +169,8 @@ ABIArgInfo *x86_classify_return(CallABI call, Regs *regs, Type *type)
 	//    should be passed directly in a register.
 	Type *base = NULL;
 	unsigned elements = 0;
-	if (call == CALL_X86_VECTOR || call == CALL_X86_REG)
-	{
-		// This aggregate can lower safely
-		if (type_is_homogenous_aggregate(type, &base, &elements)) return abi_arg_new_direct();
-	}
 
-	if (type->type_kind == TYPE_VECTOR)
-	{
-		// On Darwin, vectors may be returned in registers.
-		if (platform_target.x86.is_darwin_vector_abi)
-		{
-			ByteSize size = type_size(type);
-			if (size == 16)
-			{
-				// Special case, convert 128 bit vector to two 64 bit elements.
-				return abi_arg_new_direct_coerce_type(type_get_vector(type_long, 2));
-			}
-			// Always return in register if it fits in a general purpose
-			// register, or if it is 64 bits and has a single field.
-			if (size == 1 || size == 2 || size == 4 || (size == 8 && type->array.len == 1))
-			{
-				return abi_arg_new_direct_coerce_type(type_int_unsigned_by_bitsize(size * 8));
-			}
-			return create_indirect_return_x86(type, regs);
-		}
-		return abi_arg_new_direct();
-	}
+	if (type->type_kind == TYPE_VECTOR) return abi_arg_new_direct();
 
 	if (type_is_abi_aggregate(type))
 	{
@@ -215,7 +187,7 @@ ABIArgInfo *x86_classify_return(CallABI call, Regs *regs, Type *type)
 			Type *single_element = type_abi_find_single_struct_element(type);
 			if (single_element)
 			{
-				if ((type_is_float(single_element) && !platform_target.x86.is_win32_float_struct_abi))
+				if (type_is_float(single_element))
 				{
 					return abi_arg_new_expand();
 				}
@@ -242,34 +214,6 @@ ABIArgInfo *x86_classify_return(CallABI call, Regs *regs, Type *type)
 	// Otherwise we expect to just pass this nicely in the return.
 	return abi_arg_new_direct();
 
-}
-
-static inline bool x86_should_aggregate_use_direct(CallABI call, Regs *regs, Type *type, bool *needs_padding)
-{
-	// On Windows, aggregates other than HFAs are never passed in registers, and
-	// they do not consume register slots. Homogenous floating-point aggregates
-	// (HFAs) have already been dealt with at this point.
-	if (platform_target.x86.is_win32_float_struct_abi) return false;
-
-	*needs_padding = false;
-
-	if (!x86_try_use_free_regs(regs, type)) return false;
-
-	if (platform_target.x86.is_mcu_api) return true;
-
-	switch (call)
-	{
-		case CALL_X86_FAST:
-		case CALL_X86_VECTOR:
-		case CALL_X86_REG:
-			if (type_size(type) <= 4 && regs->int_regs)
-			{
-				*needs_padding = true;
-			}
-			return false;
-		default:
-			return true;
-	}
 }
 
 static inline bool x86_is_mmxtype(Type *type)
@@ -371,22 +315,7 @@ static bool x86_try_put_primitive_in_reg(CallABI call, Regs *regs, Type *type)
 	// 2. On MCU, do not use the inreg attribute.
 	if (platform_target.x86.is_mcu_api) return false;
 
-	// 3. Reg/fast/vec calls limit it to 32 bits
-	//    and integer / pointer types.
-	//    for all other calls we're good to go.
-	//    Some questions here though – if we use 3 registers on these
-	//    we don't mark it as inreg, however a later register may use a reg.
-	//    to get an inreg attribute. Investigate!
-	switch (call)
-	{
-		case CALL_X86_FAST:
-		case CALL_X86_VECTOR:
-		case CALL_X86_REG:
-			if (type_size(type) > 4) return false;
-			return type_is_integer_or_bool_kind(type) || type_is_pointer(type);
-		default:
-			return true;
-	}
+	return true;
 }
 
 /**
@@ -429,27 +358,6 @@ static inline ABIArgInfo *x86_classify_vector(Regs *regs, Type *type)
 {
 	ByteSize size = type_size(type);
 
-	// On Windows, vectors are passed directly if registers are available, or
-	// indirectly if not. This avoids the need to align argument memory. Pass
-	// user-defined vector types larger than 512 bits indirectly for simplicity.
-	if (platform_target.x86.is_win32_float_struct_abi)
-	{
-		if (size < 64 && regs->float_regs)
-		{
-			regs->float_regs--;
-			return abi_arg_new_direct_by_reg(true);
-		}
-		return x86_create_indirect_result(regs, type, BY_VAL_SKIP);
-	}
-	// On Darwin, some vectors are passed in memory, we handle this by passing
-	// it as an i8/i16/i32/i64.
-	if (platform_target.x86.is_darwin_vector_abi)
-	{
-		if ((size == 1 || size == 2 || size == 4) || (size == 8 && type->array.len == 1))
-		{
-			return abi_arg_new_direct_coerce_type(type_int_unsigned_by_bitsize(size * 8));
-		}
-	}
 	// MMX passed as i64
 	if (x86_is_mmxtype(type))
 	{
@@ -477,18 +385,10 @@ static inline ABIArgInfo *x86_classify_aggregate(CallABI call, Regs *regs, Type 
 	}
 
 	unsigned size = type_size(type);
-	bool needs_padding_in_reg = false;
-
-	// Pass over-aligned aggregates on Windows indirectly. This behavior was
-	// added in MSVC 2015.
-	if (platform_target.x86.is_win32_float_struct_abi && type_abi_alignment(type) > 4)
-	{
-		return x86_create_indirect_result(regs, type, BY_VAL_SKIP);
-	}
 
 	// See if we can pass aggregates directly.
 	// this never happens for MSVC
-	if (x86_should_aggregate_use_direct(call, regs, type, &needs_padding_in_reg))
+	if (x86_try_use_free_regs(regs, type))
 	{
 		// Here we coerce the aggregate into a struct { i32, i32, ... }
 		// but we do not generate this struct immediately here.
@@ -497,7 +397,7 @@ static inline ABIArgInfo *x86_classify_aggregate(CallABI call, Regs *regs, Type 
 		ABIArgInfo *info;
 		if (size_in_regs > 1)
 		{
-			info = abi_arg_new_direct_struct_expand(type_uint, (int8_t)size_in_regs);
+			info = abi_arg_new_direct_struct_expand_i32((uint8_t)size_in_regs);
 		}
 		else
 		{
@@ -517,17 +417,7 @@ static inline ABIArgInfo *x86_classify_aggregate(CallABI call, Regs *regs, Type 
 	if (size <= 16 && (!platform_target.x86.is_mcu_api || !regs->int_regs) &&
 	    x86_can_expand_indirect_aggregate_arg(type))
 	{
-		if (!needs_padding_in_reg) return abi_arg_new_expand();
-
-		// This is padded expansion
-		ABIArgInfo *info = abi_arg_new_expand_padded(type_int);
-
-		bool is_reg_call = call == CALL_X86_REG;
-		bool is_vec_call = call == CALL_X86_VECTOR;
-		bool is_fast_call = call == CALL_X86_FAST;
-
-		info->expand.padding_by_reg = is_fast_call || is_reg_call || is_vec_call;
-		return info;
+		return abi_arg_new_expand();
 	}
 	return x86_create_indirect_result(regs, type, BY_VAL);
 }
@@ -563,19 +453,8 @@ static ABIArgInfo *x86_classify_argument(CallABI call, Regs *regs, Type *type)
 	// We lower all types here first to avoid enums and typedefs.
 	type = type_lowering(type);
 
-	bool is_reg_call = call == CALL_X86_REG;
-	bool is_vec_call = call == CALL_X86_VECTOR;
-
 	Type *base = NULL;
 	unsigned elements = 0;
-
-	// For vec and reg, check if we have a homogenous aggregate.
-	if ((is_vec_call || is_reg_call)
-		&& type_is_homogenous_aggregate(type, &base, &elements))
-	{
-		return x86_classify_homogenous_aggregate(regs, type, elements, is_vec_call);
-	}
-
 
 	switch (type->type_kind)
 	{
@@ -612,7 +491,7 @@ static ABIArgInfo *x86_classify_argument(CallABI call, Regs *regs, Type *type)
 	UNREACHABLE
 }
 
-ABIArgInfo **x86_create_params(CallABI abi, Type **params, Regs *regs)
+static ABIArgInfo **x86_create_params(CallABI abi, Type **params, Regs *regs)
 {
 	unsigned param_count = vec_size(params);
 	if (!param_count) return NULL;
@@ -635,23 +514,7 @@ void c_abi_func_create_x86(FunctionPrototype *prototype)
 	switch (prototype->call_abi)
 	{
 		case CALL_C:
-			if (platform_target.x86.is_win32_float_struct_abi)
-			{
-				regs.float_regs = 3;
-			}
 			regs.int_regs = platform_target.default_number_regs_x86;
-			break;
-		case CALL_X86_REG:
-			regs.int_regs = 5;
-			regs.float_regs = 8;
-			break;
-		case CALL_X86_VECTOR:
-			regs.int_regs = 2;
-			regs.float_regs = 6;
-			break;
-		case CALL_X86_FAST:
-			regs.int_regs = 2;
-			regs.float_regs = 3;
 			break;
 		default:
 			UNREACHABLE
@@ -682,10 +545,6 @@ void c_abi_func_create_x86(FunctionPrototype *prototype)
     runVectorCallFirstPass(FI, State);
 	 */
 
-	if (prototype->call_abi == CALL_X86_VECTOR)
-	{
-		FATAL_ERROR("X86 vector call not supported");
-	}
 	prototype->abi_args = x86_create_params(prototype->call_abi, prototype->param_types, &regs);
 	prototype->abi_varargs = x86_create_params(prototype->call_abi, prototype->varargs, &regs);
 }

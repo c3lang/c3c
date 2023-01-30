@@ -1443,7 +1443,6 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_CDECL] = ATTR_FUNC,
 			[ATTRIBUTE_EXTNAME] = (AttributeDomain)~(ATTR_CALL | ATTR_BITSTRUCT | ATTR_MACRO | ATTR_XXLIZER),
 			[ATTRIBUTE_EXTERN] = (AttributeDomain)~(ATTR_CALL | ATTR_BITSTRUCT | ATTR_MACRO | ATTR_XXLIZER),
-			[ATTRIBUTE_FASTCALL] = ATTR_FUNC,
 			[ATTRIBUTE_INLINE] = ATTR_FUNC | ATTR_CALL,
 			[ATTRIBUTE_LITTLEENDIAN] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_MAYDISCARD] = ATTR_FUNC | ATTR_MACRO,
@@ -1458,7 +1457,6 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_PRIORITY] = ATTR_XXLIZER,
 			[ATTRIBUTE_PURE] = ATTR_CALL,
 			[ATTRIBUTE_REFLECT] = ATTR_ENUM,
-			[ATTRIBUTE_REGCALL] = ATTR_FUNC,
 			[ATTRIBUTE_SECTION] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
 			[ATTRIBUTE_STDCALL] = ATTR_FUNC,
 			[ATTRIBUTE_TEST] = ATTR_FUNC,
@@ -1499,9 +1497,9 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			switch (platform_target.arch)
 			{
 				case ARCH_TYPE_X86_64:
-				case ARCH_TYPE_X86:
-					decl->func_decl.signature.abi = CALL_X86_VECTOR;
+					decl->func_decl.signature.abi = CALL_X64_VECTOR;
 					break;
+				case ARCH_TYPE_X86:
 				case ARCH_TYPE_ARM:
 				case ARCH_TYPE_ARMB:
 				case ARCH_TYPE_AARCH64:
@@ -1518,29 +1516,11 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			break;
 		case ATTRIBUTE_STDCALL:
 			assert(decl->decl_kind == DECL_FUNC);
-			if (platform_target.arch == ARCH_TYPE_X86 || platform_target.arch == ARCH_TYPE_X86_64)
-			{
-				decl->func_decl.signature.abi = CALL_X86_STD;
-			}
-			else if (platform_target.arch == ARCH_TYPE_ARM || platform_target.arch == ARCH_TYPE_ARMB)
+			if (platform_target.arch == ARCH_TYPE_ARM || platform_target.arch == ARCH_TYPE_ARMB)
 			{
 				decl->func_decl.signature.abi = CALL_AAPCS;
 			}
 			break; // Check args
-		case ATTRIBUTE_FASTCALL:
-			if (platform_target.arch == ARCH_TYPE_X86 ||
-			    (platform_target.arch == ARCH_TYPE_X86_64 && platform_target.os == OS_TYPE_WIN32))
-			{
-				decl->func_decl.signature.abi = CALL_X86_FAST;
-			}
-			break;
-		case ATTRIBUTE_REGCALL:
-			if (platform_target.arch == ARCH_TYPE_X86 ||
-			    (platform_target.arch == ARCH_TYPE_X86_64 && platform_target.os == OS_TYPE_WIN32))
-			{
-				decl->func_decl.signature.abi = CALL_X86_REG;
-			}
-			break;
 		case ATTRIBUTE_OPERATOR:
 		{
 			assert(decl->decl_kind == DECL_FUNC || decl->decl_kind == DECL_MACRO);

@@ -335,6 +335,10 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	int x86vec = get_valid_string_setting(json, "x86vec", type, vector_capability, 0, 6, "none, native, mmx, sse, avx or avx512");
 	if (x86vec > -1) target->feature.x86_vector_capability = x86vec;
 
+	// riscvfloat
+	int riscv_float = get_valid_string_setting(json, "riscvfloat", type, riscv_capability, 0, 3, "none, float or double");
+	if (riscv_float > -1) target->feature.riscv_float_capability = riscv_float;
+
 	// winsdk
 	target->win.sdk = get_valid_string(json, "winsdk", type, false);
 

@@ -148,6 +148,15 @@ typedef enum
 } X86VectorCapability;
 
 
+typedef enum
+{
+	RISCVFLOAT_DEFAULT = -1,
+	RISCVFLOAT_NONE = 0,
+	RISCVFLOAT_FLOAT = 1,
+	RISCVFLOAT_DOUBLE = 2,
+} RiscvFloatCapability;
+
+
 static const char *vector_capability[6] = {
 		[X86VECTOR_NONE] = "none",
 		[X86VECTOR_MMX] = "mmx",
@@ -155,6 +164,12 @@ static const char *vector_capability[6] = {
 		[X86VECTOR_AVX] = "avx",
 		[X86VECTOR_AVX512] = "avx512",
 		[X86VECTOR_NATIVE] = "native"
+};
+
+static const char *riscv_capability[3] = {
+		[RISCVFLOAT_NONE] = "none",
+		[RISCVFLOAT_FLOAT] = "float",
+		[RISCVFLOAT_DOUBLE] = "double",
 };
 
 typedef enum
@@ -301,6 +316,7 @@ typedef struct BuildOptions_
 	const char *obj_out;
 	RelocModel reloc_model;
 	X86VectorCapability x86_vector_capability;
+	RiscvFloatCapability riscv_float_capability;
 	MemoryEnvironment memory_environment;
 	bool print_keywords;
 	bool print_attributes;
@@ -402,6 +418,7 @@ typedef struct
 		SoftFloat soft_float : 3;
 		StructReturn x86_struct_return : 3;
 		X86VectorCapability x86_vector_capability : 4;
+		RiscvFloatCapability riscv_float_capability : 4;
 		bool trap_on_wrap : 1;
 		bool safe_mode : 1;
 	} feature;

@@ -129,8 +129,8 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIAr
 			// Create the expand type:
 			LLVMTypeRef coerce_type = llvm_get_coerce_type(c, info);
 			// COERCE UPDATE bitcast removed, check for ways to optimize
-			LLVMValueRef temp = decl->backend_ref;
 			llvm_emit_and_set_decl_alloca(c, decl);
+			LLVMValueRef temp = decl->backend_ref;
 
 			AlignSize alignment = decl->alignment;
 			AlignSize element_align;
@@ -185,7 +185,7 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIAr
 			llvm_emit_and_set_decl_alloca(c, decl);
 			llvm_store_decl_raw(c, decl, llvm_get_next_param(c, index));
 			return;
-		case ABI_ARG_DIRECT_SPLIT_STRUCT:
+		case ABI_ARG_DIRECT_SPLIT_STRUCT_I32:
 		{
 			// In this case we've been flattening the parameter into multiple registers.
 			LLVMTypeRef coerce_type = llvm_get_coerce_type(c, info);
@@ -197,7 +197,7 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIAr
 
 			AlignSize decl_alignment = decl->alignment;
 			// Store each expanded parameter.
-			for (unsigned idx = 0; idx < info->direct_struct_expand.elements; idx++)
+			for (unsigned idx = 0; idx < info->direct_struct_expand; idx++)
 			{
 				AlignSize align;
 				LLVMValueRef element_ptr = llvm_emit_struct_gep_raw(c, cast, coerce_type, idx, decl_alignment, &align);
@@ -238,11 +238,6 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIAr
 		{
 			llvm_emit_and_set_decl_alloca(c, decl);
 			llvm_expand_from_args(c, decl->type, decl->backend_ref, index, decl->alignment);
-			if (info->expand.padding_type)
-			{
-				// Skip the pad.
-				llvm_get_next_param(c, index);
-			}
 		}
 	}
 }
@@ -321,7 +316,7 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *optiona
 		case ABI_ARG_IGNORE:
 			llvm_emit_return_value(c, NULL);
 			return;
-		case ABI_ARG_DIRECT_SPLIT_STRUCT:
+		case ABI_ARG_DIRECT_SPLIT_STRUCT_I32:
 		case ABI_ARG_EXPAND:
 			// Expands to multiple slots -
 			// Not applicable to return values.
@@ -662,10 +657,11 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 				LLVMSetLinkage(function, LLVMExternalLinkage);
 			}
 			LLVMSetVisibility(function, LLVMDefaultVisibility);
+			/*
 			if (decl->type->function.prototype->call_abi == CALL_X86_STD && platform_target.os == OS_TYPE_WIN32)
 			{
 				LLVMSetDLLStorageClass(function, LLVMDLLImportStorageClass);
-			}
+			}*/
 			break;
 		case VISIBLE_PUBLIC:
 		case VISIBLE_MODULE:

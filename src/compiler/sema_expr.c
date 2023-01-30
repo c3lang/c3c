@@ -1316,6 +1316,12 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 				else
 				{
 					if (!sema_analyse_expr(context, val)) return false;
+					if (type_is_invalid_storage_type(val->type))
+					{
+						SEMA_ERROR(val, "A value of type %s cannot be passed as a variadic argument.",
+						           type_quoted_error_string(val->type));
+						return false;
+					}
 					if (!cast_promote_vararg(val)) return false;
 				}
 
@@ -1458,6 +1464,7 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 	}
 	return true;
 }
+
 static inline bool sema_call_analyse_func_invocation(SemaContext *context, Type *type, Expr *expr, Expr *struct_var,
                                                      bool optional, const char *name)
 {

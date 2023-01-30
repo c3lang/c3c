@@ -1714,7 +1714,7 @@ typedef enum
 	ABI_ARG_DIRECT_PAIR,
 	ABI_ARG_DIRECT_COERCE,
 	ABI_ARG_DIRECT_COERCE_INT,
-	ABI_ARG_DIRECT_SPLIT_STRUCT,
+	ABI_ARG_DIRECT_SPLIT_STRUCT_I32,
 	ABI_ARG_EXPAND_COERCE,
 	ABI_ARG_INDIRECT,
 	ABI_ARG_EXPAND,
@@ -1748,11 +1748,6 @@ typedef struct ABIArgInfo_
 	{
 		struct
 		{
-			bool padding_by_reg : 1;
-			Type *padding_type;
-		} expand;
-		struct
-		{
 			AbiType lo;
 			AbiType hi;
 		} direct_pair;
@@ -1768,11 +1763,7 @@ typedef struct ABIArgInfo_
 			AbiType hi;
 		} coerce_expand;
 		Type *direct_coerce_type;
-		struct
-		{
-			Type *type;
-			uint8_t elements;
-		} direct_struct_expand;
+		uint8_t direct_struct_expand;
 		struct
 		{
 			// We may request a certain alignment of the parameters.

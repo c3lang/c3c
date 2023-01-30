@@ -242,6 +242,10 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	{
 		target->feature.x86_vector_capability = options->x86_vector_capability;
 	}
+	if (options->riscv_float_capability != RISCVFLOAT_DEFAULT)
+	{
+		target->feature.riscv_float_capability = options->riscv_float_capability;
+	}
 	if (command_is_projectless(options->command))
 	{
 		target->build_dir = options->build_dir ? options->build_dir : NULL;
@@ -313,6 +317,7 @@ void init_default_build_target(BuildTarget *target, BuildOptions *options)
 		.arch_os_target = ARCH_OS_TARGET_DEFAULT,
 		.reloc_model = RELOC_DEFAULT,
 		.feature.x86_vector_capability = X86VECTOR_DEFAULT,
+		.feature.riscv_float_capability = RISCVFLOAT_DEFAULT,
 		.win.crt_linking = WIN_CRT_DEFAULT,
 	};
 	update_build_target_from_options(target, options);

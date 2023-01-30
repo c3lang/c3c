@@ -134,11 +134,7 @@ INLINE bool call_supports_variadic(CallABI abi)
 {
 	switch (abi)
 	{
-		case CALL_X86_STD:
-		case CALL_X86_REG:
-		case CALL_X86_THIS:
-		case CALL_X86_FAST:
-		case CALL_X86_VECTOR:
+		case CALL_X64_VECTOR:
 			return false;
 		default:
 			return true;
@@ -152,15 +148,7 @@ static inline LLVMCallConv llvm_call_convention_from_call(CallABI abi)
 	{
 		case CALL_C:
 			return LLVMCCallConv;
-		case CALL_X86_STD:
-			return LLVMX86StdcallCallConv;
-		case CALL_X86_FAST:
-			return LLVMX86FastcallCallConv;
-		case CALL_X86_REG:
-			return LLVMX86RegCallCallConv;
-		case CALL_X86_THIS:
-			return LLVMX86ThisCallCallConv;
-		case CALL_X86_VECTOR:
+		case CALL_X64_VECTOR:
 			return LLVMX86VectorCallCallConv;
 		case CALL_AAPCS:
 			return LLVMARMAAPCSCallConv;

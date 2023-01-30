@@ -1,0 +1,252 @@
+// #target: linux-riscv32
+// #opt: --riscvfloat=float
+module test;
+
+
+fn void f_void() {}
+
+// Scalar arguments and return values smaller than the word size are extended
+// according to the sign of their type, up to 32 bits
+
+fn bool f_scalar_0(bool x) { return x; }
+
+fn ichar f_scalar_1(ichar x) { return x; }
+
+fn char f_scalar_2(char x) { return x; }
+
+fn int f_scalar_3(int x) { return x; }
+
+fn long f_scalar_4(long x) { return x; }
+
+fn int128 f_scalar_5(int128 x) { return x; }
+
+fn float f_fp_scalar_1(float x) { return x; }
+
+fn double f_fp_scalar_2(double x) { return x; }
+
+// Scalars larger than 2*xlen are passed/returned indirect. However, the
+// RISC-V LLVM backend can handle this fine, so the function doesn't need to
+// be modified.
+
+fn float128 f_fp_scalar_3(float128 x) { return x; }
+
+// Aggregates <= 2*xlen may be passed in registers, so will be coerced to
+// integer arguments. The rules for return are the same.
+
+struct Tiny {
+  char a, b, c, d;
+}
+
+fn void f_agg_tiny(Tiny x) {
+  x.a += x.b;
+  x.c += x.d;
+}
+
+fn Tiny f_agg_tiny_ret() {
+  return {1, 2, 3, 4};
+}
+
+fn void f_vec_tiny_v4i8(char[<4>] x) {
+  x[0] = x[1];
+  x[2] = x[3];
+}
+
+fn char[<4>] f_vec_tiny_v4i8_ret() {
+  return {1, 2, 3, 4};
+}
+
+fn void f_vec_tiny_v1i32(int[<1>] x) {
+  x[0] = 114;
+}
+
+fn int[<1>] f_vec_tiny_v1i32_ret() {
+  return {1};
+}
+
+struct Small {
+  int a;
+   int* b;
+}
+
+fn void f_agg_small(Small x) {
+  x.a += *x.b;
+  x.b = &x.a;
+}
+
+fn Small f_agg_small_ret() {
+  return {1, null};
+}
+
+
+fn void f_vec_small_v8i8(char[<8>] x) {
+  x[0] = x[7];
+}
+
+fn char[<8>] f_vec_small_v8i8_ret() {
+  return {1, 2, 3, 4, 5, 6, 7, 8};
+}
+
+fn void f_vec_small_v1i64(long[<1>] x) {
+  x[0] = 114;
+}
+
+// CHECK-LABEL: define{{.*}} i64 @f_vec_small_v1i64_ret()
+fn long[<1>] f_vec_small_v1i64_ret() {
+  return {1};
+}
+
+// Aggregates of 2*xlen size and 2*xlen alignment should be coerced to a
+// single 2*xlen-sized argument, to ensure that alignment can be maintained if
+// passed on the stack.
+
+struct Small_aligned {
+  long a;
+}
+
+fn void f_agg_small_aligned(Small_aligned x) {
+  x.a += x.a;
+}
+
+fn Small_aligned f_agg_small_aligned_ret(Small_aligned x) {
+  return {10};
+}
+
+// Aggregates greater > 2*xlen will be passed and returned indirectly
+struct Large {
+  int a, b, c, d;
+}
+
+// CHECK-LABEL: define{{.*}} void @f_agg_large(%struct.large* %x)
+fn void f_agg_large(Large x) {
+  x.a = x.b + x.c + x.d;
+}
+
+// The address where the struct should be written to will be the first
+// argument
+fn Large f_agg_large_ret(int i, ichar j) {
+  return {1, 2, 3, 4};
+}
+
+fn void f_vec_large_v16i8(char[<16>] x) {
+  x[0] = x[7];
+}
+
+fn char[<16>] f_vec_large_v16i8_ret() {
+  return {1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8};
+}
+
+// Scalars passed on the stack should not have signext/zeroext attributes
+// (they are anyext).
+
+fn int f_scalar_stack_1(Tiny a, Small b, Small_aligned c,
+                     Large d, char e, ichar f, char g, ichar h) {
+  return g + h;
+}
+
+// Ensure that scalars passed on the stack are still determined correctly in
+// the presence of large return values that consume a register due to the need
+// to pass a pointer.
+
+fn Large f_scalar_stack_2(int a, long b, long c, float128 d,
+                              char e, ichar f, char g)
+{
+  return {a, e, f, g};
+}
+
+fn float128 f_scalar_stack_4(int a, long b, long c, float128 d,
+                             char e, ichar f, char g) {
+  return d;
+}
+
+// Aggregates and >=XLen scalars passed on the stack should be lowered just as
+// they would be if passed via registers.
+
+fn void f_scalar_stack_5(double a, long b, double c, long d, int e,
+                      long f, float g, double h, float128 i) {}
+
+fn void f_agg_stack(double a, long b, double c, long d, Tiny e,
+                 Small f, Small_aligned g, Large h) {}
+
+// Ensure that ABI lowering happens as expected for vararg calls. For RV32
+// with the base integer calling convention there will be no observable
+// differences in the lowered IR for a call with varargs vs without.
+
+extern fn int f_va_callee(int, ...);
+
+fn void f_va_caller() {
+  f_va_callee(1, 2, 3, 4.0, 5.0, Tiny{6, 7, 8, 9},
+              Small{10, null}, Small_aligned{11},
+              Large{12, 13, 14, 15});
+}
+
+
+/* #expect: test.ll
+
+define void @test_f_void()
+
+define zeroext i8 @test_f_scalar_0(i8 zeroext %0) #0 {
+
+define signext i8 @test_f_scalar_1(i8 signext %0)
+
+define zeroext i8 @test_f_scalar_2(i8 zeroext %0)
+
+define i32 @test_f_scalar_3(i32 %0)
+
+define i64 @test_f_scalar_4(i64 %0)
+
+define i128 @test_f_scalar_5(i128 %0)
+
+define float @test_f_fp_scalar_1(float %0)
+
+define double @test_f_fp_scalar_2(double %0)
+
+define fp128 @test_f_fp_scalar_3(fp128 %0)
+
+define void @test_f_agg_tiny(i32 %0)
+
+define i32 @test_f_agg_tiny_ret()
+
+define void @test_f_vec_tiny_v4i8(i32 %0)
+
+define i32 @test_f_vec_tiny_v4i8_ret()
+
+define void @test_f_vec_tiny_v1i32(i32 %0)
+
+define i32 @test_f_vec_tiny_v1i32_ret()
+
+define void @test_f_agg_small([2 x i32] %0)
+
+define [2 x i32] @test_f_agg_small_ret()
+
+define void @test_f_vec_small_v8i8(i64 %0)
+
+define i64 @test_f_vec_small_v8i8_ret()
+
+define void @test_f_vec_small_v1i64(i64 %0)
+
+define i64 @test_f_vec_small_v1i64_ret()
+
+define void @test_f_agg_small_aligned(i64 %0)
+
+define i64 @test_f_agg_small_aligned_ret(i64 %0)
+
+define void @test_f_agg_large(ptr align 4 %0)
+
+define void @test_f_agg_large_ret(ptr noalias sret(%Large) align 4 %0, i32 %1, i8 signext %2)
+
+define void @test_f_vec_large_v16i8(ptr align 16 %0)
+
+define void @test_f_vec_large_v16i8_ret(ptr noalias sret(<16 x i8>) align 16 %0)
+
+define i32 @test_f_scalar_stack_1(i32 %0, [2 x i32] %1, i64 %2, ptr align 4 %3, i8 zeroext %4, i8 signext %5, i8 %6, i8 %7)
+
+define void @test_f_scalar_stack_2(ptr noalias sret(%Large) align 4 %0, i32 %1, i64 %2, i64 %3, fp128 %4, i8 zeroext %5, i8 %6, i8 %7)
+
+define fp128 @test_f_scalar_stack_4(i32 %0, i64 %1, i64 %2, fp128 %3, i8 zeroext %4, i8 %5, i8 %6)
+
+define void @test_f_scalar_stack_5(double %0, i64 %1, double %2, i64 %3, i32 %4, i64 %5, float %6, double %7, fp128 %8)
+
+define void @test_f_agg_stack(double %0, i64 %1, double %2, i64 %3, i32 %4, [2 x i32] %5, i64 %6, ptr align 4 %7)
+
+define void @test_f_va_caller()
+call i32 (i32, ...) @f_va_callee(i32 1, i32 2, i32 3, double 4.000000e+00, double 5.000000e+00, i32 %4, [2 x i32] %7, i64 %9, ptr align 4 %indirectarg)

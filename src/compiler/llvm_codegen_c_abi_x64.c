@@ -37,6 +37,7 @@ typedef enum
 
 static ABIArgInfo *x64_classify_argument_type(Type *type, unsigned free_int_regs, Registers *needed_registers, NamedArgument is_named);
 static bool x64_type_is_structure(Type *type);
+static void x64_classify(Type *type, ByteSize offset_base, X64Class *lo_class, X64Class *hi_class, NamedArgument named);
 
 ABIArgInfo *x64_indirect_return_result(Type *type)
 {
@@ -165,7 +166,6 @@ ABIArgInfo *x64_classify_reg_call_struct_type_check(Type *type, Registers *neede
 }
 
 
-static void x64_classify(Type *type, ByteSize offset_base, X64Class *lo_class, X64Class *hi_class, NamedArgument named);
 
 static X64Class x64_merge(X64Class accum, X64Class field)
 {
@@ -842,20 +842,6 @@ bool x64_type_is_structure(Type *type)
 	}
 }
 
-static ABIArgInfo *x64_classify_return_type(Type *ret_type, Registers *registers, bool is_regcall)
-{
-	ret_type = type_lowering(ret_type);
-	// See if we can lower the reg call.
-	if (is_regcall && x64_type_is_structure(ret_type))
-	{
-		Registers needed_registers = { 0, 0 };
-		ABIArgInfo *info = x64_classify_reg_call_struct_type_check(ret_type, &needed_registers);
-		if (try_use_registers(registers, &needed_registers)) return info;
-		return x64_indirect_return_result(ret_type);
-	}
-	return x64_classify_return(ret_type);
-}
-
 /**
  * This code is based on the loop operations in X86_64ABIInfo::computeInfo in Clang
  * @param type
@@ -864,20 +850,12 @@ static ABIArgInfo *x64_classify_return_type(Type *ret_type, Registers *registers
  * @param named whether this is a named (non-vararg) parameter or not.
  * @return the calculated ABI
  */
-static ABIArgInfo *x64_classify_parameter(Type *type, Registers *available_registers, bool is_regcall, NamedArgument named)
+static ABIArgInfo *x64_classify_parameter(Type *type, Registers *available_registers, NamedArgument named)
 {
 	Registers needed_registers = { 0, 0 };
 	type = type_lowering(type);
-	ABIArgInfo *info;
-	// If this is a reg call, use the struct type check.
-	if (is_regcall && x64_type_is_structure(type))
-	{
-		info = x64_classify_reg_call_struct_type_check(type, &needed_registers);
-	}
-	else
-	{
-		info = x64_classify_argument_type(type, available_registers->int_registers, &needed_registers, named);
-	}
+	ABIArgInfo *info = x64_classify_argument_type(type, available_registers->int_registers, &needed_registers, named);
+
 	// Check if we can fit in a register, we're golden.
 	if (try_use_registers(available_registers, &needed_registers)) return info;
 
@@ -893,20 +871,20 @@ void c_abi_func_create_x64(FunctionPrototype *prototype)
 		c_abi_func_create_win64(prototype);
 		return;
 	}
-	// TODO 32 bit pointers
-	bool is_regcall = prototype->call_abi == CALL_X86_REG;
 
 	Registers available_registers = {
-			.int_registers = is_regcall ? 11 : 6,
-			.sse_registers = is_regcall ? 16 : 8
+			.int_registers = 6,
+			.sse_registers = 8
 	};
 
-	prototype->ret_abi_info = x64_classify_return_type(prototype->abi_ret_type, &available_registers, is_regcall);
+	prototype->ret_abi_info = x64_classify_return(type_lowering(prototype->abi_ret_type));
 	if (abi_arg_is_indirect(prototype->ret_abi_info)) available_registers.int_registers--;
 
 	if (prototype->ret_by_ref)
 	{
-		prototype->ret_by_ref_abi_info = x64_classify_parameter(type_get_ptr(type_lowering(prototype->ret_by_ref_type)), &available_registers, is_regcall, NAMED);
+		prototype->ret_by_ref_abi_info = x64_classify_parameter(type_get_ptr(type_lowering(prototype->ret_by_ref_type)),
+		                                                        &available_registers,
+		                                                        NAMED);
 	}
 
 	Type **params = prototype->param_types;
@@ -916,7 +894,7 @@ void c_abi_func_create_x64(FunctionPrototype *prototype)
 		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);
 		for (unsigned i = 0; i < param_count; i++)
 		{
-			args[i] = x64_classify_parameter(params[i], &available_registers, is_regcall, NAMED);
+			args[i] = x64_classify_parameter(params[i], &available_registers, NAMED);
 		}
 		prototype->abi_args = args;
 	}
@@ -926,7 +904,7 @@ void c_abi_func_create_x64(FunctionPrototype *prototype)
 		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * vararg_count);
 		for (unsigned i = 0; i < vararg_count; i++)
 		{
-			args[i] = x64_classify_parameter(prototype->varargs[i], &available_registers, is_regcall, UNNAMED);
+			args[i] = x64_classify_parameter(prototype->varargs[i], &available_registers, UNNAMED);
 		}
 		prototype->abi_varargs = args;
 	}

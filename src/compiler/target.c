@@ -407,11 +407,6 @@ static inline void target_setup_arm_abi(void)
 static inline void target_setup_x86_abi(BuildTarget *target)
 {
 	platform_target.abi = ABI_X86;
-	platform_target.x86.is_win_api = platform_target.os == OS_TYPE_WIN32;
-	if (os_is_apple(platform_target.os))
-	{
-		platform_target.x86.is_darwin_vector_abi = true;
-	}
 	platform_target.x86.use_soft_float = platform_target.float_abi == FLOAT_ABI_SOFT;
 	// Build target override.
 	if (target->feature.soft_float != SOFT_FLOAT_DEFAULT)
@@ -419,13 +414,7 @@ static inline void target_setup_x86_abi(BuildTarget *target)
 		platform_target.x86.use_soft_float = target->feature.soft_float == SOFT_FLOAT_YES;
 	}
 
-	platform_target.x86.is_win32_float_struct_abi = platform_target.os == OS_TYPE_WIN32;
 	platform_target.x86.is_mcu_api = platform_target.os == OS_TYPE_ELFIAMCU;
-	if (platform_target.environment_type == ENV_TYPE_CYGNUS
-	    || platform_target.environment_type == ENV_TYPE_GNU)
-	{
-		platform_target.x86.is_win32_float_struct_abi = false;
-	}
 	switch (platform_target.os)
 	{
 		case OS_TYPE_MACOSX:
@@ -863,6 +852,9 @@ static unsigned os_target_supports_float128(OsType os, ArchType arch)
 {
 	switch (arch)
 	{
+		case ARCH_TYPE_RISCV64:
+		case ARCH_TYPE_RISCV32:
+			return true;
 		case ARCH_TYPE_AARCH64:
 			return false;
 		case ARCH_TYPE_PPC64:
@@ -1487,7 +1479,17 @@ void target_setup(BuildTarget *target)
 		case ARCH_TYPE_RISCV64:
 		case ARCH_TYPE_RISCV32:
 			platform_target.riscv.xlen = arch_pointer_bit_width(platform_target.os, platform_target.arch) / 8; // pointer width
-			platform_target.riscv.flen = 0; // ends with f / d (64)
+			switch (target->feature.riscv_float_capability)
+			{
+				case RISCVFLOAT_DEFAULT:
+					platform_target.riscv.flen = 0;
+					break;
+				case RISCVFLOAT_NONE:
+				case RISCVFLOAT_FLOAT:
+				case RISCVFLOAT_DOUBLE:
+					platform_target.riscv.flen = 4 * target->feature.riscv_float_capability;
+					break;
+			}
 			platform_target.abi = ABI_RISCV;
 			break;
 		case ARCH_TYPE_X86:

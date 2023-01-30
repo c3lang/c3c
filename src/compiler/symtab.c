@@ -292,7 +292,6 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_CDECL] = KW_DEF("@cdecl");
 	attribute_list[ATTRIBUTE_EXTERN] = KW_DEF("@extern");
 	attribute_list[ATTRIBUTE_EXTNAME] = KW_DEF("@extname");
-	attribute_list[ATTRIBUTE_FASTCALL] = KW_DEF("@fastcall");
 	attribute_list[ATTRIBUTE_INLINE] = KW_DEF("@inline");
 	attribute_list[ATTRIBUTE_LITTLEENDIAN] = KW_DEF("@littleendian");
 	attribute_list[ATTRIBUTE_MAYDISCARD] = KW_DEF("@maydiscard");
@@ -307,7 +306,6 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_PRIORITY] = KW_DEF("@priority");
 	attribute_list[ATTRIBUTE_PURE] = kw_at_pure;
 	attribute_list[ATTRIBUTE_REFLECT] = KW_DEF("@reflect");
-	attribute_list[ATTRIBUTE_REGCALL] = KW_DEF("@regcall");
 	attribute_list[ATTRIBUTE_SECTION] = KW_DEF("@section");
 	attribute_list[ATTRIBUTE_STDCALL] = KW_DEF("@stdcall");
 	attribute_list[ATTRIBUTE_TEST] = KW_DEF("@test");

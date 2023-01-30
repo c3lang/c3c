@@ -50,7 +50,7 @@ bool abi_arg_is_indirect(ABIArgInfo *info)
 		case ABI_ARG_DIRECT:
 		case ABI_ARG_DIRECT_COERCE:
 		case ABI_ARG_DIRECT_COERCE_INT:
-		case ABI_ARG_DIRECT_SPLIT_STRUCT:
+		case ABI_ARG_DIRECT_SPLIT_STRUCT_I32:
 		case ABI_ARG_EXPAND:
 		case ABI_ARG_DIRECT_PAIR:
 		case ABI_ARG_EXPAND_COERCE:
@@ -198,18 +198,10 @@ ABIArgInfo *abi_arg_new_direct_coerce_type(Type *type)
 	return info;
 }
 
-ABIArgInfo *abi_arg_new_direct_struct_expand(Type *type, int8_t elements)
+ABIArgInfo *abi_arg_new_direct_struct_expand_i32(uint8_t elements)
 {
-	ABIArgInfo *info = abi_arg_new(ABI_ARG_DIRECT_SPLIT_STRUCT);
-	info->direct_struct_expand.type = type;
-	info->direct_struct_expand.elements = elements;
-	return info;
-}
-
-ABIArgInfo *abi_arg_new_expand_padded(Type *padding)
-{
-	ABIArgInfo *info = abi_arg_new(ABI_ARG_EXPAND);
-	info->expand.padding_type = padding;
+	ABIArgInfo *info = abi_arg_new(ABI_ARG_DIRECT_SPLIT_STRUCT_I32);
+	info->direct_struct_expand = elements;
 	return info;
 }
 
