@@ -11,6 +11,6 @@ RUN export DEBIAN_FRONTEND=noninteractive && export TERM=xterm && apt-get update
 ARG GID=1000
 ARG UID=1000
 
-RUN groupadd --gid=$GID c3c && useradd --gid=$GID --uid=$GID --create-home --shell /bin/bash c3c
+RUN groupadd -o --gid=$GID c3c && useradd --gid=$GID --uid=$GID --create-home --shell /bin/bash c3c
 
 USER c3c
