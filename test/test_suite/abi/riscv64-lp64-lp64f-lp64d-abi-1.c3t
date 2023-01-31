@@ -1,0 +1,208 @@
+// #target: linux-riscv64
+module test;
+
+fn void f_void() {}
+
+fn bool f_scalar_0(bool x) { return x; }
+fn int f_scalar_1(ichar x) { return x; }
+fn char f_scalar_2(char x) { return x; }
+fn uint f_scalar_3(int x) { return x; }
+fn long f_scalar_4(long x) { return x; }
+fn float f_fp_scalar_1(float x) { return x; }
+fn double f_fp_scalar_2(double x) { return x; }
+fn float128 f_fp_scalar_3(float128 x) { return x; }
+
+// Aggregates <= 2*xlen may be passed in registers, so will be coerced to
+// integer arguments. The rules for return are the same.
+
+struct Tiny {
+  ushort a, b, c, d;
+}
+
+fn void f_agg_tiny(Tiny x) {
+  x.a += x.b;
+  x.c += x.d;
+}
+
+fn Tiny f_agg_tiny_ret() {
+  return {1, 2, 3, 4};
+}
+
+fn void f_vec_tiny_v4i16(short[<4>] x) {
+  x[0] = x[1];
+  x[2] = x[3];
+}
+
+fn short[<4>] f_vec_tiny_v4i16_ret() {
+  return {1, 2, 3, 4};
+}
+
+fn void f_vec_tiny_v1i64(long[<1>] x) {
+  x[0] = 114;
+}
+
+fn long[<1>] f_vec_tiny_v1i64_ret() {
+  return {1};
+}
+
+struct Small {
+  long a;
+  long *b;
+}
+
+fn void f_agg_small(Small x) {
+  x.a += *x.b;
+  x.b = &x.a;
+}
+
+fn Small f_agg_small_ret() {
+  return {1, null};
+}
+
+fn void f_vec_small_v8i16(short[<8>] x) {
+  x[0] = x[7];
+}
+
+fn short[<8>] f_vec_small_v8i16_ret() {
+  return {1, 2, 3, 4, 5, 6, 7, 8};
+}
+
+fn void f_vec_small_v1i128(int128[<1>] x) {
+  x[0] = 114;
+}
+
+fn int128[<1>] f_vec_small_v1i128_ret() {
+  return {1};
+}
+
+// Aggregates of 2*xlen size and 2*xlen alignment should be coerced to a
+// single 2*xlen-sized argument, to ensure that alignment can be maintained if
+// passed on the stack.
+
+struct Small_aligned {
+  int128 a;
+}
+
+fn void f_agg_small_aligned(Small_aligned x) {
+  x.a += x.a;
+}
+
+fn Small_aligned f_agg_small_aligned_ret(Small_aligned x) {
+  return {10};
+}
+
+// Aggregates greater > 2*xlen will be passed and returned indirectly
+struct Large {
+  long a, b, c, d;
+}
+
+fn void f_agg_large(Large x) {
+  x.a = x.b + x.c + x.d;
+}
+
+// The address where the struct should be written to will be the first
+// argument
+fn Large f_agg_large_ret(int i, ichar j) {
+  return {1, 2, 3, 4};
+}
+
+fn void f_vec_large_v32i8(char[<32>] x) {
+  x[0] = x[7];
+}
+
+fn char[<32>] f_vec_large_v32i8_ret() {
+  return { [1] = 1, [31] = 31 };
+}
+
+// Scalars passed on the stack should not have signext/zeroext attributes
+// (they are anyext).
+
+fn int f_scalar_stack_1(Tiny a, Small b, Small_aligned c,
+                     Large d, char e, ichar f, char g, ichar h) {
+  return g + h;
+}
+
+fn int f_scalar_stack_2(int a, int128 b, long c, float128 d, char[<32>] e,
+                     char f, ichar g, char h) {
+  return g + h;
+}
+
+// Ensure that scalars passed on the stack are still determined correctly in
+// the presence of large return values that consume a register due to the need
+// to pass a pointer.
+
+fn Large f_scalar_stack_3(uint a, int128 b, float128 c, char[<32>] d,
+                              char e, ichar f, char g) {
+  return {a, e, f, g};
+}
+
+// Ensure that ABI lowering happens as expected for vararg calls.
+// Specifically, ensure that signext is emitted for varargs that will be
+// passed in registers but not on the stack. Ensure this takes into account
+// the use of "aligned" register pairs for varargs with 2*xlen alignment.
+
+fn int f_va_callee(int, ...);
+
+// CHECK-LABEL: define{{.*}} void @f_va_caller()
+fn void f_va_caller() {
+	float128 fq;
+  f_va_callee(1, 2, 3i64, 4.0f, 5.0, Tiny{6, 7, 8, 9},
+              Small{10, null}, Small_aligned{11},
+              Large{12, 13, 14, 15});
+  f_va_callee(1, 2, 3, 4, fq, 6, 7, 8, 9);
+  f_va_callee(1, 2, 3, 4, Small_aligned{5}, 6, 7, 8, 9);
+  f_va_callee(1, 2, 3, 4, Small{5,null}, 6, 7, 8, 9);
+  f_va_callee(1, 2, 3, 4, 5, fq, 7, 8, 9);
+  f_va_callee(1, 2, 3, 4, 5, Small_aligned{6}, 7, 8, 9);
+  f_va_callee(1, 2, 3, 4, 5, Small{6, null}, 7, 8, 9);
+  f_va_callee(1, 2, 3, 4, 5, 6, fq, 8, 9);
+  f_va_callee(1, 2, 3, 4, 5, 6, Small_aligned{7}, 8, 9);
+  f_va_callee(1, 2, 3, 4, 5, 6, Small{7, null}, 8, 9);
+}
+
+
+/* #expect: test.ll
+
+define void @test_f_void()
+define zeroext i8 @test_f_scalar_0(i8 zeroext %0)
+define signext i32 @test_f_scalar_1(i8 signext %0)
+define zeroext i8 @test_f_scalar_2(i8 zeroext %0)
+define signext i32 @test_f_scalar_3(i32 signext %0)
+define i64 @test_f_scalar_4(i64 %0)
+define float @test_f_fp_scalar_1(float %0)
+define double @test_f_fp_scalar_2(double %0)
+define fp128 @test_f_fp_scalar_3(fp128 %0)
+define void @test_f_agg_tiny(i64 %0)
+define i64 @test_f_agg_tiny_ret()
+define void @test_f_vec_tiny_v4i16(i64 %0)
+define i64 @test_f_vec_tiny_v4i16_ret()
+define void @test_f_vec_tiny_v1i64(i64 %0)
+define i64 @test_f_vec_tiny_v1i64_ret()
+define void @test_f_agg_small([2 x i64]
+define [2 x i64] @test_f_agg_small_ret()
+define void @test_f_vec_small_v8i16(i128 %0)
+define i128 @test_f_vec_small_v8i16_ret()
+define void @test_f_vec_small_v1i128(i128 %0)
+define i128 @test_f_vec_small_v1i128_ret()
+define void @test_f_agg_small_aligned(i128 %0)
+define i128 @test_f_agg_small_aligned_ret(i128 %0)
+define void @test_f_agg_large(ptr align 8 %0)
+define void @test_f_agg_large_ret(ptr noalias sret(%Large) align 8 %0, i32 signext %1, i8 signext %2)
+define void @test_f_vec_large_v32i8(ptr align 32 %0)
+define void @test_f_vec_large_v32i8_ret(ptr noalias sret(<32 x i8>) align 32 %0)
+define signext i32 @test_f_scalar_stack_1(i64 %0, [2 x i64] %1, i128 %2, ptr align 8 %3, i8 zeroext %4, i8 signext %5, i8 %6, i8 %7)
+define signext i32 @test_f_scalar_stack_2(i32 signext %0, i128 %1, i64 %2, fp128 %3, ptr align 32 %4, i8 zeroext %5, i8 %6, i8 %7) #0 {
+define void @test_f_scalar_stack_3(ptr noalias sret(%Large) align 8 %0, i32 signext %1, i128 %2, fp128 %3, ptr align 32 %4, i8 zeroext %5, i8 %6, i8 %7)
+declare signext i32 @test_f_va_callee(i32 signext, ...) #0
+call void @llvm.memcpy.p0.p0.i32(ptr align 8 %indirectarg, ptr align 8 %literal3, i32 32, i1 false)
+call i32 (i32, ...) @test_f_va_callee(i32 signext 1, i32 signext 2, i64 3, double 4.000000e+00, double 5.000000e+00, i64 %4, [2 x i64] %7, i128 %9, ptr align 8 %indirectarg)
+call i32 (i32, ...) @test_f_va_callee(i32 signext 1, i32 signext 2, i32 signext 3, i32 signext 4, fp128 %15, i32 signext 6, i32 signext 7, i32 8, i32 9)
+call i32 (i32, ...) @test_f_va_callee(i32 signext 1, i32 signext 2, i32 signext 3, i32 signext 4, i128 %18, i32 signext 6, i32 signext 7, i32 8, i32 9)
+call i32 (i32, ...) @test_f_va_callee(i32 signext 1, i32 signext 2, i32 signext 3, i32 signext 4, [2 x i64] %22, i32 signext 6, i32 signext 7, i32 8, i32 9)
+call i32 (i32, ...) @test_f_va_callee(i32 signext 1, i32 signext 2, i32 signext 3, i32 signext 4, i32 signext 5, fp128 %24, i32 7, i32 8, i32 9)
+call i32 (i32, ...) @test_f_va_callee(i32 signext 1, i32 signext 2, i32 signext 3, i32 signext 4, i32 signext 5, i128 %27, i32 7, i32 8, i32 9)
+call i32 (i32, ...) @test_f_va_callee(i32 signext 1, i32 signext 2, i32 signext 3, i32 signext 4, i32 signext 5, [2 x i64] %31, i32 signext 7, i32 8, i32 9)
+call i32 (i32, ...) @test_f_va_callee(i32 signext 1, i32 signext 2, i32 signext 3, i32 signext 4, i32 signext 5, i32 signext 6, fp128 %33, i32 8, i32 9)
+call i32 (i32, ...) @test_f_va_callee(i32 signext 1, i32 signext 2, i32 signext 3, i32 signext 4, i32 signext 5, i32 signext 6, i128 %36, i32 8, i32 9)
+call i32 (i32, ...) @test_f_va_callee(i32 signext 1, i32 signext 2, i32 signext 3, i32 signext 4, i32 signext 5, i32 signext 6, [2 x i64] %40, i32 8, i32 9)
+d

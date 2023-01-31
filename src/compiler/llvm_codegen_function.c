@@ -14,6 +14,7 @@ static inline void llvm_emit_body(GenContext *c, LLVMValueRef function, const ch
                                   const char *function_name,
                                   FileId file_id, FunctionPrototype *prototype, Signature *signature, Ast *body);
 
+
 bool llvm_emit_check_block_branch(GenContext *context)
 {
 	if (!context->current_block) return false;
@@ -126,21 +127,12 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIAr
 			return;
 		case ABI_ARG_EXPAND_COERCE:
 		{
-			// Create the expand type:
-			LLVMTypeRef coerce_type = llvm_get_coerce_type(c, info);
-			// COERCE UPDATE bitcast removed, check for ways to optimize
 			llvm_emit_and_set_decl_alloca(c, decl);
-			LLVMValueRef temp = decl->backend_ref;
-
-			AlignSize alignment = decl->alignment;
-			AlignSize element_align;
-			LLVMValueRef gep_first = llvm_emit_struct_gep_raw(c, temp, coerce_type, info->coerce_expand.lo_index, alignment, &element_align);
-			llvm_store_to_ptr_raw_aligned(c, gep_first, llvm_get_next_param(c, index), element_align);
-			if (abi_type_is_valid(info->coerce_expand.hi))
-			{
-				LLVMValueRef gep_second = llvm_emit_struct_gep_raw(c, temp, coerce_type, info->coerce_expand.hi_index, alignment, &element_align);
-				llvm_store_to_ptr_raw_aligned(c, gep_second, llvm_get_next_param(c, index), element_align);
-			}
+			LLVMValueRef addr = decl->backend_ref;
+			AlignSize align = decl->alignment;
+			llvm_store_to_ptr_raw_aligned(c, addr, llvm_get_next_param(c, index), align);
+			(void)llvm_coerce_expand_hi_offset(c, &addr, info, &align);
+			llvm_store_to_ptr_raw_aligned(c, addr, llvm_get_next_param(c, index), align);
 			break;
 		}
 		case ABI_ARG_DIRECT_PAIR:
@@ -325,38 +317,16 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *optiona
 		{
 			// Pick the return as an address.
 			llvm_value_addr(c, return_value);
-			// Get the coerce type.
-			LLVMTypeRef coerce_type = llvm_get_coerce_type(c, info);
-			// Create the new pointer
-			assert(return_value);
-			// COERCE UPDATE bitcast removed, check for ways to optimize
-			LLVMValueRef coerce = return_value->value;
-			// We might have only one value, in that case, build a GEP to that one.
-			LLVMValueRef lo_val;
-			AlignSize alignment;
-			LLVMValueRef lo = llvm_emit_struct_gep_raw(c, coerce, coerce_type, info->coerce_expand.lo_index,
-			                                           return_value->alignment, &alignment);
-			LLVMTypeRef lo_type = llvm_abi_type(c, info->coerce_expand.lo);
-			lo_val = llvm_load(c, lo_type, lo, alignment, "");
+			LLVMValueRef addr = return_value->value;
+			AlignSize align = return_value->alignment;
+			LLVMValueRef lo = llvm_load(c, llvm_get_type(c, info->coerce_expand.lo), addr, align, "");
+			LLVMTypeRef type2 = llvm_coerce_expand_hi_offset(c, &addr, info, &align);
+			LLVMValueRef hi = llvm_load(c, type2, addr, align, "");
+			LLVMTypeRef type = llvm_get_twostruct(c, LLVMTypeOf(lo), LLVMTypeOf(hi));
+			LLVMValueRef composite = llvm_get_undef_raw(type);
 
-			// We're done if there's a single field.
-			if (!abi_type_is_valid(info->coerce_expand.hi))
-			{
-				llvm_emit_return_value(c, lo_val);
-				return;
-			}
-
-			// Let's make a first class aggregate
-			LLVMValueRef hi = llvm_emit_struct_gep_raw(c, coerce, coerce_type, info->coerce_expand.hi_index,
-			                                           return_value->alignment, &alignment);
-			LLVMTypeRef hi_type = llvm_abi_type(c, info->coerce_expand.hi);
-			LLVMValueRef hi_val = llvm_load(c, hi_type, hi, alignment, "");
-
-			LLVMTypeRef unpadded_type = llvm_get_twostruct(c, lo_type, hi_type);
-			LLVMValueRef composite = llvm_get_undef_raw(unpadded_type);
-
-			composite = llvm_emit_insert_value(c, composite, lo_val, 0);
-			composite = llvm_emit_insert_value(c, composite, hi_val, 1);
+			composite = llvm_emit_insert_value(c, composite, lo, 0);
+			composite = llvm_emit_insert_value(c, composite, hi, 1);
 
 			// And return that unpadded result
 			llvm_emit_return_value(c, composite);

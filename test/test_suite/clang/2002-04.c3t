@@ -154,7 +154,7 @@ entry:
   %9 = getelementptr inbounds %FooSt, ptr %0, i32 0, i32 4
   %10 = load i16, ptr %9, align 4
   %sisiext = sext i16 %10 to i32
-  %11 = call i32 @testE(i8 %2, i16 %4, i8 %6, i32 %8, i32 %sisiext, float 0x3FB99999A0000000)
+  %11 = call i32 @testE(i8 zeroext %2, i16 signext %4, i8 zeroext %6, i32 %8, i32 %sisiext, float 0x3FB99999A0000000)
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %indirectarg, ptr align 4 %0, i32 20, i1 false)
   %12 = call i32 @testF(ptr byval(%FooSt) align 8 %indirectarg, float 0x3FB99999A0000000)
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %indirectarg1, ptr align 4 %0, i32 20, i1 false)

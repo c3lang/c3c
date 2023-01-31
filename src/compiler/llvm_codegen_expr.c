@@ -303,6 +303,19 @@ static LLVMTypeRef llvm_find_inner_struct_type_for_coerce(GenContext *c, LLVMTyp
 	return type;
 }
 
+LLVMTypeRef llvm_coerce_expand_hi_offset(GenContext *c, LLVMValueRef *addr, ABIArgInfo *info, AlignSize *align)
+{
+	LLVMTypeRef type2 = llvm_get_type(c, info->coerce_expand.hi);
+	if (info->coerce_expand.packed)
+	{
+		*align = type_min_alignment(*align, *align + info->coerce_expand.offset_hi);
+		llvm_emit_pointer_inbounds_gep_raw_index(c, c->byte_type, *addr, info->coerce_expand.offset_hi);
+		return type2;
+	}
+	*align = type_min_alignment(*align, *align + llvm_store_size(c, type2) * info->coerce_expand.offset_hi);
+	llvm_emit_pointer_inbounds_gep_raw_index(c, type2, *addr, info->coerce_expand.offset_hi);
+	return type2;
+}
 /**
  * General functionality to convert ptr <-> int
  */
@@ -4498,6 +4511,12 @@ LLVMValueRef llvm_emit_pointer_inbounds_gep_raw(GenContext *c, LLVMTypeRef point
 	return LLVMBuildInBoundsGEP2(c->builder, pointee_type, ptr, &offset, 1, "ptroffset");
 }
 
+LLVMValueRef llvm_emit_pointer_inbounds_gep_raw_index(GenContext *c, LLVMTypeRef pointee_type, LLVMValueRef ptr, ByteSize offset)
+{
+	LLVMValueRef offset_val = LLVMConstInt(c->size_type, offset, false);
+	return LLVMBuildInBoundsGEP2(c->builder, pointee_type, ptr, &offset_val, 1, "ptroffset");
+}
+
 void llvm_emit_subarray_len(GenContext *c, BEValue *subarray, BEValue *len)
 {
 	llvm_value_addr(c, subarray);
@@ -4696,18 +4715,11 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef *args, unsigned *arg_count_
 		{
 			// Move this to an address (if needed)
 			llvm_value_addr(c, be_value);
-			LLVMTypeRef coerce_type = llvm_get_coerce_type(c, info);
-			AlignSize alignment;
-			LLVMValueRef temp = llvm_emit_coerce_alignment(c, be_value, coerce_type, llvm_abi_alignment(c, coerce_type), &alignment);
-
-			AlignSize align;
-			LLVMValueRef gep_first = llvm_emit_struct_gep_raw(c, temp, coerce_type, info->coerce_expand.lo_index, alignment, &align);
-			args[(*arg_count_ref)++] = llvm_load(c, llvm_abi_type(c, info->coerce_expand.lo), gep_first, align, "");
-			if (abi_type_is_valid(info->coerce_expand.hi))
-			{
-				LLVMValueRef gep_second = llvm_emit_struct_gep_raw(c, temp, coerce_type, info->coerce_expand.hi_index, alignment, &align);
-				args[(*arg_count_ref)++] = llvm_load(c, llvm_abi_type(c, info->coerce_expand.hi), gep_second, align, "");
-			}
+			LLVMValueRef addr = be_value->value;
+			AlignSize align = be_value->alignment;
+			args[(*arg_count_ref)++] = llvm_load(c, llvm_get_type(c, info->coerce_expand.lo), addr, align, "");
+			LLVMTypeRef type2 = llvm_coerce_expand_hi_offset(c, &addr, info, &align);
+			args[(*arg_count_ref)++] = llvm_load(c, type2, addr, align, "");
 			return;
 		}
 		case ABI_ARG_EXPAND:
@@ -4769,6 +4781,14 @@ void llvm_add_abi_call_attributes(GenContext *c, LLVMValueRef call_value, int co
 	for (unsigned i = 0; i < count; i++)
 	{
 		ABIArgInfo *info = infos[i];
+		if (info->attributes.signext)
+		{
+			llvm_attribute_add_call(c, call_value, attribute_id.sext, (int)info->param_index_start + 1, 0);
+		}
+		if (info->attributes.zeroext)
+		{
+			llvm_attribute_add_call(c, call_value, attribute_id.zext, (int)info->param_index_start + 1, 0);
+		}
 		switch (info->kind)
 		{
 			case ABI_ARG_INDIRECT:
@@ -4913,41 +4933,17 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 
 			// 15a. Create memory to hold the return type.
 			// COERCE UPDATE bitcast removed, check for ways to optimize
-			LLVMValueRef coerce = llvm_emit_alloca_aligned(c, call_return_type, "");
-			llvm_value_set_address_abi_aligned(result_value, coerce, call_return_type);
 
-			// COERCE UPDATE bitcast removed, check for ways to optimize
-			// 15b. Construct our coerce type which is { pad, lo, pad, hi }
-			LLVMTypeRef coerce_type = llvm_get_coerce_type(c, ret_info);
+			LLVMValueRef addr = llvm_emit_alloca_aligned(c, call_return_type, "");
+			llvm_value_set_address_abi_aligned(result_value, addr, call_return_type);
 
-			// 15d. Find the address to the low value
-			AlignSize alignment;
-			LLVMValueRef lo = llvm_emit_struct_gep_raw(c, coerce, coerce_type, ret_info->coerce_expand.lo_index,
-			                                           type_abi_alignment(call_return_type), &alignment);
+			// Store lower
+			AlignSize align = result_value->alignment;
+			llvm_store_to_ptr_raw_aligned(c, addr, llvm_emit_extract_value(c, call_value, 0), align);
 
-			// 15e. If there is only a single field, we simply store the value,
-			//      so { lo } set into { pad, lo, pad } -> original type.
-			if (!abi_type_is_valid(ret_info->coerce_expand.hi))
-			{
-				// Here we do a store to call -> lo (leaving the rest undefined)
-				llvm_store_to_ptr_raw_aligned(c, lo, call_value, alignment);
-				break;
-			}
-
-			// 15g. We can now extract { lo, hi } to lo_value and hi_value.
-			LLVMValueRef lo_value = llvm_emit_extract_value(c, call_value, 0);
-			LLVMValueRef hi_value = llvm_emit_extract_value(c, call_value, 1);
-
-			// 15h. Store lo_value into the { pad, lo, pad, hi } struct.
-			llvm_store_to_ptr_raw_aligned(c, lo, lo_value, alignment);
-
-			// 15i. Calculate the address to the high value (like for the low in 15d.
-			LLVMValueRef hi = llvm_emit_struct_gep_raw(c, coerce, coerce_type, ret_info->coerce_expand.hi_index,
-			                                           type_abi_alignment(call_return_type), &alignment);
-
-			// 15h. Store the high value.
-			llvm_store_to_ptr_raw_aligned(c, hi, hi_value, alignment);
-
+			// Store upper
+			(void)llvm_coerce_expand_hi_offset(c, &addr, ret_info, &align);
+			llvm_store_to_ptr_raw_aligned(c, addr, llvm_emit_extract_value(c, call_value, 1), align);
 			break;
 		}
 		case ABI_ARG_DIRECT:

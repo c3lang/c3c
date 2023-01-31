@@ -159,29 +159,14 @@ ABIArgInfo *abi_arg_new_expand(void)
 	return abi_arg_new(ABI_ARG_EXPAND);
 }
 
-ABIArgInfo *abi_arg_new_expand_coerce(AbiType target_type, unsigned offset)
-{
-	ABIArgInfo *arg = abi_arg_new(ABI_ARG_EXPAND_COERCE);
-	arg->coerce_expand.packed = offset > 0;
-	assert(offset <= 0xFF);
-	arg->coerce_expand.offset_lo = (unsigned char)offset;
-	arg->coerce_expand.lo_index = offset > 0 ? 1 : 0;
-	arg->coerce_expand.lo = target_type;
-	return arg;
-}
 
-ABIArgInfo *abi_arg_new_expand_coerce_pair(AbiType first_element, unsigned initial_offset, AbiType second_element, unsigned padding, bool is_packed)
+ABIArgInfo *abi_arg_new_expand_coerce_pair(Type *first_element, Type *second_element, unsigned hi_offset, bool packed)
 {
 	ABIArgInfo *arg = abi_arg_new(ABI_ARG_EXPAND_COERCE);
-	arg->coerce_expand.packed = is_packed;
-	assert(initial_offset <= 0xFF && padding <= 0xFF);
-	arg->coerce_expand.offset_lo = (unsigned char)initial_offset;
-	arg->coerce_expand.lo_index = initial_offset > 0 ? 1 : 0;
 	arg->coerce_expand.lo = first_element;
 	arg->coerce_expand.hi = second_element;
-	arg->coerce_expand.padding_hi = (uint8_t)padding;
-	arg->coerce_expand.offset_hi = (uint8_t)(padding + initial_offset + abi_type_size(first_element));
-	arg->coerce_expand.hi_index = arg->coerce_expand.lo_index + (padding > 0 ? 1U : 0U);
+	arg->coerce_expand.offset_hi = hi_offset;
+	arg->coerce_expand.packed = packed;
 	return arg;
 }
 

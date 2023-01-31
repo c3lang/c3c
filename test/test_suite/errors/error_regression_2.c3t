@@ -825,7 +825,7 @@ after_assign:                                     ; preds = %after_check, %assig
 
 after_check6:                                     ; preds = %after_assign
   %39 = load i8, ptr %has_title, align 1
-  %40 = call ptr @test_bool_to_string(i8 %39)
+  %40 = call ptr @test_bool_to_string(i8 zeroext %39)
   br label %phi_block
 
 else_block:                                       ; preds = %after_assign
