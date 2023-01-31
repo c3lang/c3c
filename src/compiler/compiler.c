@@ -176,6 +176,7 @@ static const char *exe_name(void)
 		case MINGW_X64:
 			return str_cat(name, ".exe");
 		default:
+			if (arch_is_wasm(platform_target.arch)) return str_cat(name, ".wasm");
 			return name;
 	}
 }
