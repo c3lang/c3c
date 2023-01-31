@@ -571,7 +571,7 @@ entry:
   %add = add i32 %uisiext1, 1
   %siuitrunc2 = trunc i32 %add to i8
   %uisiext3 = zext i8 %2 to i64
-  %5 = call i8 @smallArgs2(i8 %siuitrunc, i8 %siuitrunc2, i64 %uisiext3, i8 %3, i8 %0)
+  %5 = call i8 @smallArgs2(i8 zeroext %siuitrunc, i8 zeroext %siuitrunc2, i64 %uisiext3, i8 zeroext %3, i8 zeroext %0)
   ret i8 %5
 }
 
@@ -813,7 +813,7 @@ entry:
   %i = alloca i32, align 4
   %2 = call i32 @puts(ptr @.str.10)
   %sisitrunc = trunc i32 %0 to i16
-  %3 = call i32 @foo_externFunc(i64 -1, ptr null, i16 %sisitrunc, i8 2)
+  %3 = call i32 @foo_externFunc(i64 -1, ptr null, i16 signext %sisitrunc, i8 zeroext 2)
   store i32 0, ptr %i, align 4
   br label %loop.cond
 

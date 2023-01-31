@@ -49,6 +49,47 @@ fn void f_agg_stack(double a, long b, double c, long d, Tiny e,
 
 
 define i32 @test_f_scalar_stack_1(i32 %0, i64 %1, float %2, double %3, fp128 %4, i8 zeroext %5, i8 %6, i8 %7) #0 {
+entry:
+  %sisiext = sext i8 %6 to i32
+  %uisiext = zext i8 %7 to i32
+  %add = add i32 %sisiext, %uisiext
+  ret i32 %add
+}
+
+
 define void @test_f_scalar_stack_2(ptr noalias sret(%Large) align 4 %0, float %1, i64 %2, double %3, fp128 %4, i8 zeroext %5, i8 %6, i8 %7) #0 {
+entry:
+  %literal = alloca %Large, align 4
+  %8 = getelementptr inbounds %Large, ptr %literal, i32 0, i32 0
+  %fpsi = fptosi float %1 to i32
+  store i32 %fpsi, ptr %8, align 4
+  %9 = getelementptr inbounds %Large, ptr %literal, i32 0, i32 1
+  %uisiext = zext i8 %5 to i32
+  store i32 %uisiext, ptr %9, align 4
+  %10 = getelementptr inbounds %Large, ptr %literal, i32 0, i32 2
+  %sisiext = sext i8 %6 to i32
+  store i32 %sisiext, ptr %10, align 4
+  %11 = getelementptr inbounds %Large, ptr %literal, i32 0, i32 3
+  %uisiext1 = zext i8 %7 to i32
+  store i32 %uisiext1, ptr %11, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %0, ptr align 4 %literal, i32 16, i1 false)
+  ret void
+}
+
+
 define void @test_f_scalar_stack_3(double %0, i64 %1, double %2, i64 %3, i32 %4, i64 %5, float %6, double %7, fp128 %8) #0 {
+entry:
+  ret void
+}
+
+
 define void @test_f_agg_stack(double %0, i64 %1, double %2, i64 %3, i32 %4, [2 x i32] %5, i64 %6, ptr align 4 %7) #0 {
+entry:
+  %e = alloca %Tiny, align 1
+  %f = alloca %Small, align 4
+  %g = alloca %Small_aligned, align 8
+  store i32 %4, ptr %e, align 1
+  store [2 x i32] %5, ptr %f, align 4
+  store i64 %6, ptr %g, align 8
+  ret void
+}

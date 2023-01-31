@@ -34,17 +34,63 @@ fn Int_double_s f_ret_int_double_s() {
 
 /* #expect: test.ll
 
-define void @test_f_fpr_tracking(double %0, double %1, double %2, double %3, i8 %4)
 
-define void @test_f_double_s_arg(i64 %0)
+define void @test_f_fpr_tracking(double %0, double %1, double %2, double %3, i8 %4) #0 {
+entry:
+  ret void
+}
 
-define i64 @test_f_ret_double_s()
 
-define void @test_f_double_double_s_arg(ptr align 8 %0)
+define void @test_f_double_s_arg(i64 %0) #0 {
+entry:
+  %a = alloca %Double_s, align 8
+  store i64 %0, ptr %a, align 8
+  ret void
+}
 
-define void @test_f_ret_double_double_s(ptr noalias sret(%Double_double_s) align 8 %0)
+
+define i64 @test_f_ret_double_s() #0 {
+entry:
+  %literal = alloca %Double_s, align 8
+  %0 = getelementptr inbounds %Double_s, ptr %literal, i32 0, i32 0
+  store double 1.000000e+00, ptr %0, align 8
+  %1 = load i64, ptr %literal, align 8
+  ret i64 %1
+}
+
+
+define void @test_f_double_double_s_arg(ptr align 8 %0) #0 {
+entry:
+  ret void
+}
+
+
+define void @test_f_ret_double_double_s(ptr noalias sret(%Double_double_s) align 8 %0) #0 {
+entry:
+  %literal = alloca %Double_double_s, align 8
+  %1 = getelementptr inbounds %Double_double_s, ptr %literal, i32 0, i32 0
+  store double 1.000000e+00, ptr %1, align 8
+  %2 = getelementptr inbounds %Double_double_s, ptr %literal, i32 0, i32 1
+  store double 2.000000e+00, ptr %2, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %0, ptr align 8 %literal, i32 16, i1 false)
+  ret void
+}
+
 
 define void @test_f_int_double_s_arg(ptr align 8 %0) #0 {
+entry:
+  ret void
+}
+
 
 define void @test_f_ret_int_double_s(ptr noalias sret(%Int_double_s) align 8 %0) #0 {
+entry:
+  %literal = alloca %Int_double_s, align 8
+  %1 = getelementptr inbounds %Int_double_s, ptr %literal, i32 0, i32 0
+  store i32 1, ptr %1, align 8
+  %2 = getelementptr inbounds %Int_double_s, ptr %literal, i32 0, i32 1
+  store double 2.000000e+00, ptr %2, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %0, ptr align 8 %literal, i32 16, i1 false)
+  ret void
+}
 

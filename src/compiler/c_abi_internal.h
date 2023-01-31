@@ -25,7 +25,7 @@ ABIArgInfo *abi_arg_new_direct_coerce_int(void);
 ABIArgInfo *abi_arg_new_direct_coerce_type(Type *type);
 ABIArgInfo *abi_arg_new_direct_struct_expand_i32(uint8_t elements);
 ABIArgInfo *abi_arg_new_expand_coerce(AbiType target_type, unsigned offset);
-ABIArgInfo *abi_arg_new_expand_coerce_pair(AbiType first_element, unsigned initial_offset, AbiType second_element, unsigned padding, bool is_packed);
+ABIArgInfo *abi_arg_new_expand_coerce_pair(Type *first_element, Type *second_element, unsigned hi_offset, bool packed);
 ABIArgInfo *abi_arg_new_indirect_realigned(AlignSize alignment, Type *by_val_type);
 ABIArgInfo *abi_arg_new_indirect_by_val(Type *by_val_type);
 ABIArgInfo *abi_arg_new_indirect_not_by_val(Type *type);

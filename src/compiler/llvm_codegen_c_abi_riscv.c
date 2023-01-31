@@ -7,34 +7,26 @@
 
 static ABIArgInfo *riscv_coerce_and_expand_fpcc_struct(AbiType field1, unsigned field1_offset, AbiType field2, unsigned field2_offset)
 {
+	assert(abi_type_is_type(field1));
 	if (!abi_type_is_valid(field2))
 	{
-		return abi_arg_new_expand_coerce(field1, field1_offset);
+		return abi_arg_new_direct_coerce_type(field1.type);
 	}
 
-	unsigned field2_alignment = abi_type_abi_alignment(field2);
-	unsigned field1_size = abi_type_size(field1);
-	unsigned field2_offset_no_pad = aligned_offset(field1_size, field2_alignment);
-
-	unsigned padding = 0;
-
-	if (field2_offset > field2_offset_no_pad)
+	assert(abi_type_is_type(field2));
+	Type *type2 = field2.type;
+	ByteSize abi_type_size = type_size(type2);
+	// Not on even offset, use packed semantics.
+	if (field2_offset % abi_type_size != 0)
 	{
-		padding = field2_offset - field2_offset_no_pad;
+		return abi_arg_new_expand_coerce_pair(field1.type, field2.type, field2_offset, true);
 	}
-	else if (field2_offset != field2_alignment && field2_offset > field1_size)
-	{
-		padding = field2_offset - field1_size;
-	}
-
-	bool is_packed = field2_offset % field2_alignment != 0;
-
-	return abi_arg_new_expand_coerce_pair(field1, field1_offset, field2, padding, is_packed);
+	return abi_arg_new_expand_coerce_pair(field1.type, field2.type, field2_offset / abi_type_size, false);
 }
 
 static bool riscv_detect_fpcc_struct_internal(Type *type, unsigned current_offset, AbiType *field1_ref, unsigned *field1_offset, AbiType *field2_ref, unsigned *field2_offset)
 {
-	bool is_int = type_is_integer(type);
+	bool is_int = type_is_integer_or_bool_kind(type);
 	bool is_float = type_is_float(type);
 	unsigned flen = platform_target.riscv.flen;
 	ByteSize size = type_size(type);

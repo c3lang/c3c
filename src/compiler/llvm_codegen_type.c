@@ -163,11 +163,8 @@ static inline void add_func_type_param(GenContext *c, Type *param_type, ABIArgIn
 			vec_add(*params, c->ptr_type);
 			break;
 		case ABI_ARG_EXPAND_COERCE:
-			vec_add(*params, llvm_abi_type(c, arg_info->coerce_expand.lo));
-			if (abi_type_is_valid(arg_info->coerce_expand.hi))
-			{
-				vec_add(*params, llvm_abi_type(c, arg_info->coerce_expand.hi));
-			}
+			vec_add(*params, llvm_get_type(c, arg_info->coerce_expand.lo));
+			vec_add(*params, llvm_get_type(c, arg_info->coerce_expand.hi));
 			break;
 		case ABI_ARG_EXPAND:
 			// Expanding a structs
@@ -226,13 +223,8 @@ LLVMTypeRef llvm_update_prototype_abi(GenContext *c, FunctionPrototype *prototyp
 			break;
 		case ABI_ARG_EXPAND_COERCE:
 		{
-			LLVMTypeRef lo = llvm_abi_type(c, ret_arg_info->coerce_expand.lo);
-			if (!abi_type_is_valid(ret_arg_info->coerce_expand.hi))
-			{
-				retval = lo;
-				break;
-			}
-			LLVMTypeRef hi = llvm_abi_type(c, ret_arg_info->coerce_expand.hi);
+			LLVMTypeRef lo = llvm_get_type(c, ret_arg_info->coerce_expand.lo);
+			LLVMTypeRef hi = llvm_get_type(c, ret_arg_info->coerce_expand.hi);
 			retval = llvm_get_twostruct(c, lo, hi);
 			break;
 		}
@@ -393,28 +385,6 @@ LLVMTypeRef llvm_get_coerce_type(GenContext *c, ABIArgInfo *arg_info)
 {
 	switch (arg_info->kind)
 	{
-		case ABI_ARG_EXPAND_COERCE:
-		{
-			unsigned element_index = 0;
-			LLVMTypeRef elements[4];
-			// Add optional padding to make the data appear at the correct offset.
-			if (arg_info->coerce_expand.offset_lo)
-			{
-				elements[element_index++] = llvm_const_padding_type(c, arg_info->coerce_expand.offset_lo);
-			}
-			elements[element_index++] = llvm_abi_type(c, arg_info->coerce_expand.lo);
-			// Add optional padding to make the high field appear at the correct off.
-			if (arg_info->coerce_expand.padding_hi)
-			{
-				elements[element_index++] = LLVMArrayType(llvm_get_type(c, type_char), arg_info->coerce_expand.padding_hi);
-			}
-			// Check if there is a top type as well.
-			if (abi_type_is_valid(arg_info->coerce_expand.hi))
-			{
-				elements[element_index++] = llvm_abi_type(c, arg_info->coerce_expand.hi);
-			}
-			return LLVMStructTypeInContext(c->context, elements, element_index, arg_info->coerce_expand.packed);
-		}
 		case ABI_ARG_DIRECT_SPLIT_STRUCT_I32:
 		{
 			LLVMTypeRef coerce_type = llvm_get_type(c, type_uint);
@@ -438,6 +408,7 @@ LLVMTypeRef llvm_get_coerce_type(GenContext *c, ABIArgInfo *arg_info)
 		case ABI_ARG_INDIRECT:
 		case ABI_ARG_EXPAND:
 		case ABI_ARG_DIRECT_COERCE_INT:
+		case ABI_ARG_EXPAND_COERCE:
 			UNREACHABLE
 	}
 	UNREACHABLE

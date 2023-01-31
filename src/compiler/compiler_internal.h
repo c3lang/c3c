@@ -1753,14 +1753,10 @@ typedef struct ABIArgInfo_
 		} direct_pair;
 		struct
 		{
-			uint8_t offset_lo;
-			uint8_t padding_hi;
-			uint8_t lo_index;
-			uint8_t hi_index;
 			uint8_t offset_hi;
-			bool packed : 1;
-			AbiType lo;
-			AbiType hi;
+			bool packed;
+			Type *lo;
+			Type *hi;
 		} coerce_expand;
 		Type *direct_coerce_type;
 		uint8_t direct_struct_expand;

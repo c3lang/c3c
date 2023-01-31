@@ -181,71 +181,386 @@ fn void f_va_caller() {
 
 /* #expect: test.ll
 
-define void @test_f_void()
+define void @test_f_void() #0 {
+entry:
+  ret void
+}
+
 
 define zeroext i8 @test_f_scalar_0(i8 zeroext %0) #0 {
+entry:
+  ret i8 %0
+}
 
-define signext i8 @test_f_scalar_1(i8 signext %0)
 
-define zeroext i8 @test_f_scalar_2(i8 zeroext %0)
+define signext i8 @test_f_scalar_1(i8 signext %0) #0 {
+entry:
+  ret i8 %0
+}
 
-define i32 @test_f_scalar_3(i32 %0)
 
-define i64 @test_f_scalar_4(i64 %0)
+define zeroext i8 @test_f_scalar_2(i8 zeroext %0) #0 {
+entry:
+  ret i8 %0
+}
 
-define i128 @test_f_scalar_5(i128 %0)
 
-define float @test_f_fp_scalar_1(float %0)
+define i32 @test_f_scalar_3(i32 %0) #0 {
+entry:
+  ret i32 %0
+}
 
-define double @test_f_fp_scalar_2(double %0)
 
-define fp128 @test_f_fp_scalar_3(fp128 %0)
+define i64 @test_f_scalar_4(i64 %0) #0 {
+entry:
+  ret i64 %0
+}
 
-define void @test_f_agg_tiny(i32 %0)
 
-define i32 @test_f_agg_tiny_ret()
+define i128 @test_f_scalar_5(i128 %0) #0 {
+entry:
+  ret i128 %0
+}
 
-define void @test_f_vec_tiny_v4i8(i32 %0)
 
-define i32 @test_f_vec_tiny_v4i8_ret()
+define float @test_f_fp_scalar_1(float %0) #0 {
+entry:
+  ret float %0
+}
 
-define void @test_f_vec_tiny_v1i32(i32 %0)
 
-define i32 @test_f_vec_tiny_v1i32_ret()
+define double @test_f_fp_scalar_2(double %0) #0 {
+entry:
+  ret double %0
+}
 
-define void @test_f_agg_small([2 x i32] %0)
 
-define [2 x i32] @test_f_agg_small_ret()
+define fp128 @test_f_fp_scalar_3(fp128 %0) #0 {
+entry:
+  ret fp128 %0
+}
 
-define void @test_f_vec_small_v8i8(i64 %0)
 
-define i64 @test_f_vec_small_v8i8_ret()
+define void @test_f_agg_tiny(i32 %0) #0 {
+entry:
+  %x = alloca %Tiny, align 1
+  store i32 %0, ptr %x, align 1
+  %1 = getelementptr inbounds %Tiny, ptr %x, i32 0, i32 0
+  %2 = load i8, ptr %1, align 1
+  %3 = getelementptr inbounds %Tiny, ptr %x, i32 0, i32 1
+  %4 = load i8, ptr %3, align 1
+  %add = add i8 %2, %4
+  store i8 %add, ptr %1, align 1
+  %5 = getelementptr inbounds %Tiny, ptr %x, i32 0, i32 2
+  %6 = load i8, ptr %5, align 1
+  %7 = getelementptr inbounds %Tiny, ptr %x, i32 0, i32 3
+  %8 = load i8, ptr %7, align 1
+  %add1 = add i8 %6, %8
+  store i8 %add1, ptr %5, align 1
+  ret void
+}
 
-define void @test_f_vec_small_v1i64(i64 %0)
 
-define i64 @test_f_vec_small_v1i64_ret()
+define i32 @test_f_agg_tiny_ret() #0 {
+entry:
+  %literal = alloca %Tiny, align 1
+  %0 = getelementptr inbounds %Tiny, ptr %literal, i32 0, i32 0
+  store i8 1, ptr %0, align 1
+  %1 = getelementptr inbounds %Tiny, ptr %literal, i32 0, i32 1
+  store i8 2, ptr %1, align 1
+  %2 = getelementptr inbounds %Tiny, ptr %literal, i32 0, i32 2
+  store i8 3, ptr %2, align 1
+  %3 = getelementptr inbounds %Tiny, ptr %literal, i32 0, i32 3
+  store i8 4, ptr %3, align 1
+  %4 = load i32, ptr %literal, align 1
+  ret i32 %4
+}
 
-define void @test_f_agg_small_aligned(i64 %0)
 
-define i64 @test_f_agg_small_aligned_ret(i64 %0)
+define void @test_f_vec_tiny_v4i8(i32 %0) #0 {
+entry:
+  %x = alloca <4 x i8>, align 4
+  store i32 %0, ptr %x, align 4
+  %1 = load <4 x i8>, ptr %x, align 4
+  %2 = load <4 x i8>, ptr %x, align 4
+  %3 = extractelement <4 x i8> %2, i32 1
+  %elemset = insertelement <4 x i8> %1, i8 %3, i32 0
+  store <4 x i8> %elemset, ptr %x, align 4
+  %4 = load <4 x i8>, ptr %x, align 4
+  %5 = load <4 x i8>, ptr %x, align 4
+  %6 = extractelement <4 x i8> %5, i32 3
+  %elemset1 = insertelement <4 x i8> %4, i8 %6, i32 2
+  store <4 x i8> %elemset1, ptr %x, align 4
+  ret void
+}
 
-define void @test_f_agg_large(ptr align 4 %0)
 
-define void @test_f_agg_large_ret(ptr noalias sret(%Large) align 4 %0, i32 %1, i8 signext %2)
+define i32 @test_f_vec_tiny_v4i8_ret() #0 {
+entry:
+  %taddr = alloca <4 x i8>, align 4
+  store <4 x i8> <i8 1, i8 2, i8 3, i8 4>, ptr %taddr, align 4
+  %0 = load i32, ptr %taddr, align 4
+  ret i32 %0
+}
 
-define void @test_f_vec_large_v16i8(ptr align 16 %0)
 
-define void @test_f_vec_large_v16i8_ret(ptr noalias sret(<16 x i8>) align 16 %0)
+define void @test_f_vec_tiny_v1i32(i32 %0) #0 {
+entry:
+  %x = alloca <1 x i32>, align 4
+  store i32 %0, ptr %x, align 4
+  %1 = load <1 x i32>, ptr %x, align 4
+  %elemset = insertelement <1 x i32> %1, i32 114, i32 0
+  store <1 x i32> %elemset, ptr %x, align 4
+  ret void
+}
 
-define i32 @test_f_scalar_stack_1(i32 %0, [2 x i32] %1, i64 %2, ptr align 4 %3, i8 zeroext %4, i8 signext %5, i8 %6, i8 %7)
 
-define void @test_f_scalar_stack_2(ptr noalias sret(%Large) align 4 %0, i32 %1, i64 %2, i64 %3, fp128 %4, i8 zeroext %5, i8 %6, i8 %7)
+define i32 @test_f_vec_tiny_v1i32_ret() #0 {
+entry:
+  %taddr = alloca <1 x i32>, align 4
+  store <1 x i32> <i32 1>, ptr %taddr, align 4
+  %0 = load i32, ptr %taddr, align 4
+  ret i32 %0
+}
 
-define fp128 @test_f_scalar_stack_4(i32 %0, i64 %1, i64 %2, fp128 %3, i8 zeroext %4, i8 %5, i8 %6)
 
-define void @test_f_scalar_stack_5(double %0, i64 %1, double %2, i64 %3, i32 %4, i64 %5, float %6, double %7, fp128 %8)
+define void @test_f_agg_small([2 x i32] %0) #0 {
+entry:
+  %x = alloca %Small, align 4
+  store [2 x i32] %0, ptr %x, align 4
+  %1 = getelementptr inbounds %Small, ptr %x, i32 0, i32 0
+  %2 = load i32, ptr %1, align 4
+  %3 = getelementptr inbounds %Small, ptr %x, i32 0, i32 1
+  %4 = load ptr, ptr %3, align 4
+  %5 = load i32, ptr %4, align 4
+  %add = add i32 %2, %5
+  store i32 %add, ptr %1, align 4
+  %6 = getelementptr inbounds %Small, ptr %x, i32 0, i32 1
+  %7 = getelementptr inbounds %Small, ptr %x, i32 0, i32 0
+  store ptr %7, ptr %6, align 4
+  ret void
+}
 
-define void @test_f_agg_stack(double %0, i64 %1, double %2, i64 %3, i32 %4, [2 x i32] %5, i64 %6, ptr align 4 %7)
 
-define void @test_f_va_caller()
-call i32 (i32, ...) @f_va_callee(i32 1, i32 2, i32 3, double 4.000000e+00, double 5.000000e+00, i32 %4, [2 x i32] %7, i64 %9, ptr align 4 %indirectarg)
+define [2 x i32] @test_f_agg_small_ret() #0 {
+entry:
+  %literal = alloca %Small, align 4
+  %0 = getelementptr inbounds %Small, ptr %literal, i32 0, i32 0
+  store i32 1, ptr %0, align 4
+  %1 = getelementptr inbounds %Small, ptr %literal, i32 0, i32 1
+  store ptr null, ptr %1, align 4
+  %2 = load [2 x i32], ptr %literal, align 4
+  ret [2 x i32] %2
+}
+
+
+define void @test_f_vec_small_v8i8(i64 %0) #0 {
+entry:
+  %x = alloca <8 x i8>, align 8
+  store i64 %0, ptr %x, align 8
+  %1 = load <8 x i8>, ptr %x, align 8
+  %2 = load <8 x i8>, ptr %x, align 8
+  %3 = extractelement <8 x i8> %2, i32 7
+  %elemset = insertelement <8 x i8> %1, i8 %3, i32 0
+  store <8 x i8> %elemset, ptr %x, align 8
+  ret void
+}
+
+
+define i64 @test_f_vec_small_v8i8_ret() #0 {
+entry:
+  %taddr = alloca <8 x i8>, align 8
+  store <8 x i8> <i8 1, i8 2, i8 3, i8 4, i8 5, i8 6, i8 7, i8 8>, ptr %taddr, align 8
+  %0 = load i64, ptr %taddr, align 8
+  ret i64 %0
+}
+
+
+define void @test_f_vec_small_v1i64(i64 %0) #0 {
+entry:
+  %x = alloca <1 x i64>, align 8
+  store i64 %0, ptr %x, align 8
+  %1 = load <1 x i64>, ptr %x, align 8
+  %elemset = insertelement <1 x i64> %1, i64 114, i32 0
+  store <1 x i64> %elemset, ptr %x, align 8
+  ret void
+}
+
+
+define i64 @test_f_vec_small_v1i64_ret() #0 {
+entry:
+  %taddr = alloca <1 x i64>, align 8
+  store <1 x i64> <i64 1>, ptr %taddr, align 8
+  %0 = load i64, ptr %taddr, align 8
+  ret i64 %0
+}
+
+
+define void @test_f_agg_small_aligned(i64 %0) #0 {
+entry:
+  %x = alloca %Small_aligned, align 8
+  store i64 %0, ptr %x, align 8
+  %1 = getelementptr inbounds %Small_aligned, ptr %x, i32 0, i32 0
+  %2 = load i64, ptr %1, align 8
+  %3 = getelementptr inbounds %Small_aligned, ptr %x, i32 0, i32 0
+  %4 = load i64, ptr %3, align 8
+  %add = add i64 %2, %4
+  store i64 %add, ptr %1, align 8
+  ret void
+}
+
+
+define i64 @test_f_agg_small_aligned_ret(i64 %0) #0 {
+entry:
+  %x = alloca %Small_aligned, align 8
+  %literal = alloca %Small_aligned, align 8
+  store i64 %0, ptr %x, align 8
+  %1 = getelementptr inbounds %Small_aligned, ptr %literal, i32 0, i32 0
+  store i64 10, ptr %1, align 8
+  %2 = load i64, ptr %literal, align 8
+  ret i64 %2
+}
+
+
+define void @test_f_agg_large(ptr align 4 %0) #0 {
+entry:
+  %1 = getelementptr inbounds %Large, ptr %0, i32 0, i32 0
+  %2 = getelementptr inbounds %Large, ptr %0, i32 0, i32 1
+  %3 = load i32, ptr %2, align 4
+  %4 = getelementptr inbounds %Large, ptr %0, i32 0, i32 2
+  %5 = load i32, ptr %4, align 4
+  %add = add i32 %3, %5
+  %6 = getelementptr inbounds %Large, ptr %0, i32 0, i32 3
+  %7 = load i32, ptr %6, align 4
+  %add1 = add i32 %add, %7
+  store i32 %add1, ptr %1, align 4
+  ret void
+}
+
+
+define void @test_f_agg_large_ret(ptr noalias sret(%Large) align 4 %0, i32 %1, i8 signext %2) #0 {
+entry:
+  %literal = alloca %Large, align 4
+  %3 = getelementptr inbounds %Large, ptr %literal, i32 0, i32 0
+  store i32 1, ptr %3, align 4
+  %4 = getelementptr inbounds %Large, ptr %literal, i32 0, i32 1
+  store i32 2, ptr %4, align 4
+  %5 = getelementptr inbounds %Large, ptr %literal, i32 0, i32 2
+  store i32 3, ptr %5, align 4
+  %6 = getelementptr inbounds %Large, ptr %literal, i32 0, i32 3
+  store i32 4, ptr %6, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %0, ptr align 4 %literal, i32 16, i1 false)
+  ret void
+}
+
+
+define void @test_f_vec_large_v16i8(ptr align 16 %0) #0 {
+entry:
+  %1 = load <16 x i8>, ptr %0, align 16
+  %2 = load <16 x i8>, ptr %0, align 16
+  %3 = extractelement <16 x i8> %2, i32 7
+  %elemset = insertelement <16 x i8> %1, i8 %3, i32 0
+  store <16 x i8> %elemset, ptr %0, align 16
+  ret void
+}
+
+
+define void @test_f_vec_large_v16i8_ret(ptr noalias sret(<16 x i8>) align 16 %0) #0 {
+entry:
+  store <16 x i8> <i8 1, i8 2, i8 3, i8 4, i8 5, i8 6, i8 7, i8 8, i8 1, i8 2, i8 3, i8 4, i8 5, i8 6, i8 7, i8 8>, ptr %0, align 16
+  ret void
+}
+
+
+define i32 @test_f_scalar_stack_1(i32 %0, [2 x i32] %1, i64 %2, ptr align 4 %3, i8 zeroext %4, i8 signext %5, i8 %6, i8 %7) #0 {
+entry:
+  %a = alloca %Tiny, align 1
+  %b = alloca %Small, align 4
+  %c = alloca %Small_aligned, align 8
+  store i32 %0, ptr %a, align 1
+  store [2 x i32] %1, ptr %b, align 4
+  store i64 %2, ptr %c, align 8
+  %uisiext = zext i8 %6 to i32
+  %sisiext = sext i8 %7 to i32
+  %add = add i32 %uisiext, %sisiext
+  ret i32 %add
+}
+
+
+define void @test_f_scalar_stack_2(ptr noalias sret(%Large) align 4 %0, i32 %1, i64 %2, i64 %3, fp128 %4, i8 zeroext %5, i8 %6, i8 %7) #0 {
+entry:
+  %literal = alloca %Large, align 4
+  %8 = getelementptr inbounds %Large, ptr %literal, i32 0, i32 0
+  store i32 %1, ptr %8, align 4
+  %9 = getelementptr inbounds %Large, ptr %literal, i32 0, i32 1
+  %uisiext = zext i8 %5 to i32
+  store i32 %uisiext, ptr %9, align 4
+  %10 = getelementptr inbounds %Large, ptr %literal, i32 0, i32 2
+  %sisiext = sext i8 %6 to i32
+  store i32 %sisiext, ptr %10, align 4
+  %11 = getelementptr inbounds %Large, ptr %literal, i32 0, i32 3
+  %uisiext1 = zext i8 %7 to i32
+  store i32 %uisiext1, ptr %11, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %0, ptr align 4 %literal, i32 16, i1 false)
+  ret void
+}
+
+
+define fp128 @test_f_scalar_stack_4(i32 %0, i64 %1, i64 %2, fp128 %3, i8 zeroext %4, i8 %5, i8 %6) #0 {
+entry:
+  ret fp128 %3
+}
+
+define void @test_f_scalar_stack_5(double %0, i64 %1, double %2, i64 %3, i32 %4, i64 %5, float %6, double %7, fp128 %8) #0 {
+entry:
+  ret void
+}
+
+define void @test_f_agg_stack(double %0, i64 %1, double %2, i64 %3, i32 %4, [2 x i32] %5, i64 %6, ptr align 4 %7) #0 {
+entry:
+  %e = alloca %Tiny, align 1
+  %f = alloca %Small, align 4
+  %g = alloca %Small_aligned, align 8
+  store i32 %4, ptr %e, align 1
+  store [2 x i32] %5, ptr %f, align 4
+  store i64 %6, ptr %g, align 8
+  ret void
+}
+
+
+define void @test_f_va_caller() #0 {
+entry:
+  %literal = alloca %Tiny, align 1
+  %literal1 = alloca %Small, align 4
+  %literal2 = alloca %Small_aligned, align 8
+  %literal3 = alloca %Large, align 4
+  %indirectarg = alloca %Large, align 4
+  %0 = getelementptr inbounds %Tiny, ptr %literal, i32 0, i32 0
+  store i8 6, ptr %0, align 1
+  %1 = getelementptr inbounds %Tiny, ptr %literal, i32 0, i32 1
+  store i8 7, ptr %1, align 1
+  %2 = getelementptr inbounds %Tiny, ptr %literal, i32 0, i32 2
+  store i8 8, ptr %2, align 1
+  %3 = getelementptr inbounds %Tiny, ptr %literal, i32 0, i32 3
+  store i8 9, ptr %3, align 1
+  %4 = load i32, ptr %literal, align 1
+  %5 = getelementptr inbounds %Small, ptr %literal1, i32 0, i32 0
+  store i32 10, ptr %5, align 4
+  %6 = getelementptr inbounds %Small, ptr %literal1, i32 0, i32 1
+  store ptr null, ptr %6, align 4
+  %7 = load [2 x i32], ptr %literal1, align 4
+  %8 = getelementptr inbounds %Small_aligned, ptr %literal2, i32 0, i32 0
+  store i64 11, ptr %8, align 8
+  %9 = load i64, ptr %literal2, align 8
+  %10 = getelementptr inbounds %Large, ptr %literal3, i32 0, i32 0
+  store i32 12, ptr %10, align 4
+  %11 = getelementptr inbounds %Large, ptr %literal3, i32 0, i32 1
+  store i32 13, ptr %11, align 4
+  %12 = getelementptr inbounds %Large, ptr %literal3, i32 0, i32 2
+  store i32 14, ptr %12, align 4
+  %13 = getelementptr inbounds %Large, ptr %literal3, i32 0, i32 3
+  store i32 15, ptr %13, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %indirectarg, ptr align 4 %literal3, i32 16, i1 false)
+  %14 = call i32 (i32, ...) @f_va_callee(i32 1, i32 2, i32 3, double 4.000000e+00, double 5.000000e+00, i32 %4, [2 x i32] %7, i64 %9, ptr align 4 %indirectarg)
+  ret void
+}
