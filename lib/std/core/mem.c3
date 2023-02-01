@@ -297,9 +297,14 @@ macro Allocator* current_allocator()
 $if (!env::COMPILER_LIBC_AVAILABLE && env::ARCH_TYPE == ArchType.WASM32 || env::ARCH_TYPE == ArchType.WASM64):
 private SimpleHeapAllocator wasm_allocator;
 
+extern int __heap_base;
+
 static initialize @priority(1)
 {
 	allocator::wasm_memory.allocate_block(allocator::DEFAULT_MEM_ALIGNMENT)!!; // Give us a valid null.
+	// Check if we need to move the heap.
+	uptr start = (uptr)&__heap_base;
+	if (start > allocator::DEFAULT_MEM_ALIGNMENT) allocator::wasm_memory.use = start;
 	wasm_allocator.init(fn (x) => allocator::wasm_memory.allocate_block(x));
 	thread_allocator = &wasm_allocator;
 }

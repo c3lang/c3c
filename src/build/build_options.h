@@ -440,3 +440,4 @@ typedef struct
 BuildOptions parse_arguments(int argc, const char *argv[]);
 ArchOsTarget arch_os_target_from_string(const char *target);
 bool command_is_projectless(CompilerCommand command);
+void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting level);

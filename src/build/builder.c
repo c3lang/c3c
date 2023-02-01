@@ -89,53 +89,10 @@ bool command_is_projectless(CompilerCommand command)
 	}
 	UNREACHABLE
 }
-static void update_build_target_from_options(BuildTarget *target, BuildOptions *options)
+
+void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting level)
 {
-	switch (options->command)
-	{
-		case COMMAND_COMPILE_TEST:
-		case COMMAND_TEST:
-			target->run_after_compile = true;
-			target->type = TARGET_TYPE_TEST;
-			break;
-		case COMMAND_RUN:
-		case COMMAND_COMPILE_RUN:
-		case COMMAND_CLEAN_RUN:
-			target->run_after_compile = true;
-			break;
-		case COMMAND_COMPILE_ONLY:
-			target->type = TARGET_TYPE_OBJECT_FILES;
-			target->emit_object_files = true;
-			break;
-		case COMMAND_DYNAMIC_LIB:
-			target->type = TARGET_TYPE_DYNAMIC_LIB;
-			break;
-		case COMMAND_STATIC_LIB:
-			target->type = TARGET_TYPE_STATIC_LIB;
-			break;
-		default:
-			target->run_after_compile = false;
-			break;
-	}
-
-	switch (options->command)
-	{
-		case COMMAND_BUILD:
-			target->output_headers = target->type == TARGET_TYPE_DYNAMIC_LIB || target->type == TARGET_TYPE_STATIC_LIB;
-			break;
-		case COMMAND_GENERATE_HEADERS:
-			target->output_headers = true;
-			break;
-		default:
-			target->output_headers = false;
-			break;
-	}
-
-	target->backend = options->backend;
-	target->single_module = false;
-
-	// Copy optimization levels.
-	switch (options->optimization_setting_override)
+	switch (level)
 	{
 		case OPT_SETTING_O0_PLUS:
 			target->single_module = true;
@@ -186,11 +143,57 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 			target->feature.safe_mode = false;
 			break;
 		case OPT_SETTING_NOT_SET:
-			target->feature.safe_mode = true;
 			break;
 		default:
 			UNREACHABLE
 	}
+}
+static void update_build_target_from_options(BuildTarget *target, BuildOptions *options)
+{
+	switch (options->command)
+	{
+		case COMMAND_COMPILE_TEST:
+		case COMMAND_TEST:
+			target->run_after_compile = true;
+			target->type = TARGET_TYPE_TEST;
+			break;
+		case COMMAND_RUN:
+		case COMMAND_COMPILE_RUN:
+		case COMMAND_CLEAN_RUN:
+			target->run_after_compile = true;
+			break;
+		case COMMAND_COMPILE_ONLY:
+			target->type = TARGET_TYPE_OBJECT_FILES;
+			target->emit_object_files = true;
+			break;
+		case COMMAND_DYNAMIC_LIB:
+			target->type = TARGET_TYPE_DYNAMIC_LIB;
+			break;
+		case COMMAND_STATIC_LIB:
+			target->type = TARGET_TYPE_STATIC_LIB;
+			break;
+		default:
+			target->run_after_compile = false;
+			break;
+	}
+
+	switch (options->command)
+	{
+		case COMMAND_BUILD:
+			target->output_headers = target->type == TARGET_TYPE_DYNAMIC_LIB || target->type == TARGET_TYPE_STATIC_LIB;
+			break;
+		case COMMAND_GENERATE_HEADERS:
+			target->output_headers = true;
+			break;
+		default:
+			target->output_headers = false;
+			break;
+	}
+
+	target->backend = options->backend;
+
+	update_build_target_with_opt_level(target, options->optimization_setting_override);
+
 	if (options->cc) target->cc = options->cc;
 	if (options->safe_mode > -1)
 	{
@@ -319,6 +322,7 @@ void init_default_build_target(BuildTarget *target, BuildOptions *options)
 		.feature.x86_vector_capability = X86VECTOR_DEFAULT,
 		.feature.riscv_float_capability = RISCVFLOAT_DEFAULT,
 		.win.crt_linking = WIN_CRT_DEFAULT,
+		.feature.safe_mode = true,
 	};
 	update_build_target_from_options(target, options);
 }

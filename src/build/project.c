@@ -9,14 +9,14 @@
 
 const char *project_default_keys[] = {
 		"authors",
+		"c-sources",
 		"cc",
 		"cflags",
 		"cpu",
-		"c-sources",
 		"debug-info",
-		"langrev",
-		"dependency-search-paths",
 		"dependencies",
+		"dependency-search-paths",
+		"langrev",
 		"link-args",
 		"linked-libraries",
 		"macossdk",
@@ -24,6 +24,8 @@ const char *project_default_keys[] = {
 		"no-entry",
 		"nolibc",
 		"nostdlib",
+		"opt",
+		"output",
 		"panicfn",
 		"reloc",
 		"soft-float",
@@ -38,34 +40,34 @@ const char *project_default_keys[] = {
 		"winsdk",
 		"x86-stack-struct-return",
 		"x86vec",
-		"output",
 };
 
 const int project_default_keys_count = sizeof(project_default_keys) / sizeof(char*);
 
 const char* project_target_keys[] = {
-		"output"
+		"c-sources-add",
+		"c-sources-override",
 		"cc",
 		"cflags-add",
 		"cflags-override",
 		"cpu",
-		"c-sources-add",
-		"c-sources-override",
 		"debug-info",
-		"langrev",
-		"nolibc",
-		"no-entry",
-		"dependency-search-paths-add",
-		"dependency-search-paths-override",
 		"dependencies-add",
 		"dependencies-override",
-		"linked-libraries",
-		"link-args-override",
+		"dependency-search-paths-add",
+		"dependency-search-paths-override",
+		"langrev",
 		"link-args-add",
+		"link-args-override",
+		"linked-libraries",
 		"macossdk",
 		"memory-env",
+		"no-entry",
+		"nolibc",
 		"nolibc",
 		"nostdlib",
+		"opt",
+		"output"
 		"panicfn",
 		"reloc",
 		"soft-float",
@@ -290,6 +292,23 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	};
 	DebugInfo info = get_valid_string_setting(json, "debug-info", type, debug_infos, 0, 3, "one of 'full' 'line-table' or 'none'.");
 	if (info > -1) target->debug_info = info;
+
+	static const char *opt_settings[12] = {
+			[OPT_SETTING_O0] = "O0",
+			[OPT_SETTING_O0_PLUS] = "O0+",
+			[OPT_SETTING_O1] = "O1",
+			[OPT_SETTING_O1_PLUS] = "O1+",
+			[OPT_SETTING_O2] = "O2",
+			[OPT_SETTING_O2_PLUS] = "O2+",
+			[OPT_SETTING_O3] = "O3",
+			[OPT_SETTING_O3_PLUS] = "O3+",
+			[OPT_SETTING_OSMALL] = "Os",
+			[OPT_SETTING_OSMALL_PLUS] = "Os+",
+			[OPT_SETTING_OTINY] = "Oz",
+			[OPT_SETTING_OTINY_PLUS] = "Oz+"
+	};
+	OptimizationSetting opt = (OptimizationSetting)get_valid_string_setting(json, "opt", type, opt_settings, 0, 12, "'O0', 'O1' etc.");
+	update_build_target_with_opt_level(target, opt);
 
 	MemoryEnvironment env = get_valid_string_setting(json, "memory-env", type, memory_environment, 0, 4, "one of 'normal', 'small', 'tiny' or 'none'.");
 	if (env > -1) target->memory_environment = env;
