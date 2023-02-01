@@ -24,6 +24,7 @@ private const double S2PI2_F = math::PI; /* 0x400921FB, 0x54442D18 */
 private const double S3PI2_F = math::PI + math::PI_2; /* 0x4012D97C, 0x7F3321D2 */
 private const double S4PI2_F = math::PI + math::PI; /* 0x401921FB, 0x54442D18 */
 
+
 fn float _sinf(float x) @weak @extname("sinf")
 {
 	uint ix = bitcast(x, uint);
@@ -145,10 +146,61 @@ fn float __cosdf(double x)
 	return (float)(((1.0f + z * C0) + w * C1) + (w * z) * r);
 }
 
-fn float cosf_broken(float x) @extname("cosf") @weak
+fn float _cosf(float x) @extname("cosf") @weak
 {
-	unreachable("'cosf' not supported");
+	uint ix = bitcast(x, uint);
+	uint sign = ix >> 31;
+	ix &= 0x7fffffff;
+
+	switch 
+	{
+		case (ix <= 0x3f490fda):
+			// |x| < 2**-12
+			if (ix < 0x39800000) {
+			/* raise inexact if x != 0 */
+			@volatile_load(x) + 0x1p120f;
+			return 1.0f;
+			}
+			return __cosdf(x);
+
+		// |x| ~<= 5*pi/4
+		case (ix <= 0x407b53d1):
+			// |x|  ~> 3*pi/4
+			if (ix > 0x4016cbe3)  
+			{
+				return -__cosdf(sign ? x + S2PI2_F : x - S2PI2_F);
+			}
+			else 
+			{
+			if (sign) return __sindf(x + S1PI2_F);
+			return __sindf(S1PI2_F - x);
+		}
+		// |x| ~<= 9*pi/4
+		case (ix <= 0x40e231d5):
+			if (ix > 0x40afeddf) 
+			{
+ 				return __cosdf(sign ? x + S4PI2_F : x - S4PI2_F);
+			}
+			else 
+			{
+				if (sign) return __sindf((double)(-x) - S3PI2_F);
+				return __sindf(x - S3PI2_F);
+			}
+	}
+
+	/* general argument reduction needed */
+	double y = void;
+	int n = rempi::__rem_pio2f(x, &y);
+	switch (n & 3)
+	{
+		case 0: return  __cosdf(y);
+		case 1: return  __sindf(-y);
+		case 2: return  -__cosdf(y);
+		default: return __sindf(y);
+	}
+	unreachable();
 }
+
 fn float sincosf_broken(float x) @extname("sincosf") @weak
 {
 	unreachable("'sincosf' not supported");
