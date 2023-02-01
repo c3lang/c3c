@@ -70,6 +70,103 @@ fn int128 __modti3(int128 a, int128 b) @extname("__modti3") @weak
 	return __umodti3(unsigned_a, unsigned_b) ^ sign + (-sign);
 }
 
+private union Int128bits
+{
+	struct
+	{
+		ulong ulow, uhigh;
+	}
+	struct
+	{
+		long ilow, ihigh;
+	}
+	uint128 all;
+}
+
+fn uint128 __lshrti3(uint128 a, uint b) @extname("__lshrti3") @weak
+{
+    Int128bits result;
+    result.all = a;
+    if (b >= 64)
+    {
+        result.ulow = result.uhigh >> (b - 64);
+        result.uhigh = 0;
+    }
+    else
+    {
+        if (b == 0) return a;
+        result.ulow = (result.uhigh << (64 - b)) | (result.ulow >> b);
+        result.uhigh  = result.uhigh >> b;
+    }
+    return result.all;
+}
+
+fn int128 __ashrti3(int128 a, uint b) @extern("__ashrti3") @weak
+{
+    Int128bits result;
+    result.all = a;
+    if (b >= 64)
+    {
+        result.ilow = result.ihigh >> (b - 64);
+        result.ihigh = result.ihigh >> 63;
+    }
+    else
+    {
+        if (b == 0) return a;
+        result.ilow = result.ihigh << (64 - b) | (result.ilow >> b);
+        result.ihigh  = result.ihigh >> b;
+    }
+    return result.all;
+}
+
+fn int128 __ashlti3(int128 a, uint b) @extern("__ashlti3") @weak
+{
+    Int128bits result;
+    result.all = a;
+    if (b >= 64)
+    {
+        result.ulow = 0;
+        result.uhigh = result.ulow << (b - 64);
+    }
+    else
+    {
+        if (b == 0) return a;
+        result.uhigh = (result.uhigh << b) | (result.ulow >> (64 - b));
+        result.ulow  = result.ulow << b;
+    }
+    return result.all;
+}
+
+// Returns: a * b
+
+private fn int128 __mulddi3(ulong a, ulong b)
+{
+	Int128bits r;
+	const ulong LOWER_MASK = 0xffff_ffff;
+    r.ulow = (a & LOWER_MASK) * (b & LOWER_MASK);
+	ulong t = r.ulow >> 32;
+	r.ulow &= LOWER_MASK;
+	t += (a >> 32) * (b & LOWER_MASK);
+	r.ulow += (t & LOWER_MASK) << 32;
+	r.uhigh = t >> 32;
+	t = r.ulow >> 32;
+	r.ulow &= LOWER_MASK;
+	t += (b >> 32) * (a & LOWER_MASK);
+	r.ulow += (t & LOWER_MASK) << 32;
+	r.uhigh += t >> 32;
+	r.uhigh += (a >> 32) * (b >> 32);
+	return r.all;
+}
+
+fn int128 __multi3(int128 a, int128 b) @extern("__multi3") @weak
+{
+	Int128bits x = { .all = a };
+	Int128bits y = { .all = b };
+	Int128bits r = { .all = __mulddi3(x.ulow, y.ulow) };
+	r.uhigh += x.uhigh * y.ulow + x.ulow * y.uhigh;
+	return r.all;
+}
+
 fn float __floattisf(int128 a) @extname("__floattisf") @weak => float_from_i128(float, a);
 fn double __floattidf(int128 a) @extname("__floattidf") @weak => float_from_i128(double, a);
 fn float __floatuntisf(uint128 a) @extname("__floatuntisf") @weak => float_from_u128(float, a);

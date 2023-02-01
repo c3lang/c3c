@@ -1024,15 +1024,13 @@ bool parse_attributes(ParseContext *c, Attr ***attributes_ref)
 		if (!parse_attribute(c, &attr)) return false;
 		if (!attr) return true;
 		const char *name = attr->name;
-		VECEACH(*attributes_ref, i)
-		{
-			Attr *other_attr = *attributes_ref[i];
+		FOREACH_BEGIN(Attr *other_attr, *attributes_ref)
 			if (other_attr->name == name)
 			{
 				SEMA_ERROR(attr, "Repeat of attribute '%s' here.", name);
 				return false;
 			}
-		}
+		FOREACH_END();
 		vec_add(*attributes_ref, attr);
 	}
 	return true;

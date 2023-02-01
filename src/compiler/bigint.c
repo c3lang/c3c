@@ -267,7 +267,7 @@ Int128 i128_shl64(Int128 op1, uint64_t amount)
 	if (amount > 127) return (Int128){ 0, 0 };
 	if (amount == 64) return (Int128){ op1.low, 0 };
 	if (amount > 64) return (Int128){ op1.low << (amount - 64), 0 };
-	return (Int128){ (op1.high <<= amount) | op1.low >> (64 - amount), op1.low << amount };
+	return (Int128){ (op1.high << amount) | op1.low >> (64 - amount), op1.low << amount };
 }
 
 Int128 i128_shl(Int128 op1, Int128 op)
