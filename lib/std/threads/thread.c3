@@ -7,11 +7,9 @@ enum ThreadModel
 	NONE
 }
 
-$if (env::COMPILER_LIBC_AVAILABLE):
-const ThreadModel THREAD_MODEL = env::OS_TYPE == OsType.WIN32 ? ThreadModel.WIN32 : ThreadModel.POSIX;
-$else:
-const ThreadModel THREAD_MODEL = NONE;
-$endif;
+const ThreadModel THREAD_MODEL =  env::COMPILER_LIBC_AVAILABLE
+	? (env::OS_TYPE == OsType.WIN32 ? ThreadModel.WIN32 : ThreadModel.POSIX)
+	: ThreadModel.NONE;
 
 define MutexType = distinct int;
 
