@@ -120,6 +120,17 @@ macro enum_by_name($Type, String enum_name) @builtin
 	return SearchResult.MISSING!;
 }
 
+macro bool @expect_true(bool value) @builtin => $$expect(value, true);
+macro bool @expect_false(bool value) @builtin => $$expect(value, false);
+
+/**
+ * @require values.is_int(value)
+ * @checked $typeof(value) a = expected
+ **/
+macro @expect(value, expected) @builtin
+{
+	return $$expect(value, ($typeof(value))expected);
+}
 /**
  * Locality for prefetch, levels 0 - 3, corresponding
  * to "extremely local" to "no locality"

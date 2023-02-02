@@ -593,6 +593,56 @@ macro uint128 uint128[<*>].xor(uint128[<*>] x) => $$reduce_xor(x);
 macro uint128 uint128[<*>].max(uint128[<*>] x) => $$reduce_max(x);
 macro uint128 uint128[<*>].min(uint128[<*>] x) => $$reduce_min(x);
 
+macro char char.sat_add(char x, char y) => $$sat_add(x, y);
+macro char char.sat_sub(char x, char y) => $$sat_sub(x, y);
+macro char char.sat_mul(char x, char y) => $$sat_mul(x, y);
+macro char char.sat_shl(char x, char y) => $$sat_shl(x, y);
+
+macro ichar ichar.sat_add(ichar x, ichar y) => $$sat_add(x, y);
+macro ichar ichar.sat_sub(ichar x, ichar y) => $$sat_sub(x, y);
+macro ichar ichar.sat_mul(ichar x, ichar y) => $$sat_mul(x, y);
+macro ichar ichar.sat_shl(ichar x, ichar y) => $$sat_shl(x, y);
+
+macro ushort ushort.sat_add(ushort x, ushort y) => $$sat_add(x, y);
+macro ushort ushort.sat_sub(ushort x, ushort y) => $$sat_sub(x, y);
+macro ushort ushort.sat_mul(ushort x, ushort y) => $$sat_mul(x, y);
+macro ushort ushort.sat_shl(ushort x, ushort y) => $$sat_shl(x, y);
+
+macro short short.sat_add(short x, short y) => $$sat_add(x, y);
+macro short short.sat_sub(short x, short y) => $$sat_sub(x, y);
+macro short short.sat_mul(short x, short y) => $$sat_mul(x, y);
+macro short short.sat_shl(short x, short y) => $$sat_shl(x, y);
+
+macro uint uint.sat_add(uint x, uint y) => $$sat_add(x, y);
+macro uint uint.sat_sub(uint x, uint y) => $$sat_sub(x, y);
+macro uint uint.sat_mul(uint x, uint y) => $$sat_mul(x, y);
+macro uint uint.sat_shl(uint x, uint y) => $$sat_shl(x, y);
+
+macro int int.sat_add(int x, int y) => $$sat_add(x, y);
+macro int int.sat_sub(int x, int y) => $$sat_sub(x, y);
+macro int int.sat_mul(int x, int y) => $$sat_mul(x, y);
+macro int int.sat_shl(int x, int y) => $$sat_shl(x, y);
+
+macro ulong ulong.sat_add(ulong x, ulong y) => $$sat_add(x, y);
+macro ulong ulong.sat_sub(ulong x, ulong y) => $$sat_sub(x, y);
+macro ulong ulong.sat_mul(ulong x, ulong y) => $$sat_mul(x, y);
+macro ulong ulong.sat_shl(ulong x, ulong y) => $$sat_shl(x, y);
+
+macro long long.sat_add(long x, long y) => $$sat_add(x, y);
+macro long long.sat_sub(long x, long y) => $$sat_sub(x, y);
+macro long long.sat_mul(long x, long y) => $$sat_mul(x, y);
+macro long long.sat_shl(long x, long y) => $$sat_shl(x, y);
+
+macro uint128 uint128.sat_add(uint128 x, uint128 y) => $$sat_add(x, y);
+macro uint128 uint128.sat_sub(uint128 x, uint128 y) => $$sat_sub(x, y);
+macro uint128 uint128.sat_mul(uint128 x, uint128 y) => $$sat_mul(x, y);
+macro uint128 uint128.sat_shl(uint128 x, uint128 y) => $$sat_shl(x, y);
+
+macro int128 int128.sat_add(int128 x, int128 y) => $$sat_add(x, y);
+macro int128 int128.sat_sub(int128 x, int128 y) => $$sat_sub(x, y);
+macro int128 int128.sat_mul(int128 x, int128 y) => $$sat_mul(x, y);
+macro int128 int128.sat_shl(int128 x, int128 y) => $$sat_shl(x, y);
+
 /**
  * @checked x & 1
  */

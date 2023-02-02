@@ -200,6 +200,8 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_EXACT_SUB] = KW_DEF("sub");
 	builtin_list[BUILTIN_EXP] = KW_DEF("exp");
 	builtin_list[BUILTIN_EXP2] = KW_DEF("exp2");
+	builtin_list[BUILTIN_EXPECT] = KW_DEF("expect");
+	builtin_list[BUILTIN_EXPECT_WITH_PROBABILITY] = KW_DEF("expect_with_probability");
 	builtin_list[BUILTIN_FLOOR] = KW_DEF("floor");
 	builtin_list[BUILTIN_FMA] = KW_DEF("fma");
 	builtin_list[BUILTIN_FMULADD] = KW_DEF("fmuladd");

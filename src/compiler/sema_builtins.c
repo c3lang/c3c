@@ -15,6 +15,7 @@ typedef enum
 	BA_INTLIKE,
 	BA_NUMLIKE,
 	BA_BOOLINTVEC,
+	BA_BOOLINT,
 	BA_INTVEC,
 	BA_FLOATVEC,
 	BA_VEC,
@@ -115,6 +116,13 @@ static bool sema_check_builtin_args(Expr **args, BuiltinArg *arg_type, size_t ar
 				if (type->type_kind != TYPE_VECTOR || !type_flat_is_intlike(type->array.base))
 				{
 					SEMA_ERROR(args[i], "Expected an integer vector.");
+					return false;
+				}
+				break;
+			case BA_BOOLINT:
+				if (!type_is_integer_or_bool_kind(type))
+				{
+					SEMA_ERROR(args[i], "Expected a boolean or integer value.");
 					return false;
 				}
 				break;
@@ -464,6 +472,35 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_VEC }, arg_count)) return false;
 			rtype = args[0]->type;
 			break;
+		case BUILTIN_EXPECT:
+			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_BOOLINT, BA_BOOLINT }, arg_count)) return false;
+			if (!sema_check_builtin_args_match(args, arg_count)) return false;
+			rtype = args[0]->type;
+			break;
+		case BUILTIN_EXPECT_WITH_PROBABILITY:
+			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_BOOLINT, BA_BOOLINT }, 2)) return false;
+			if (!cast_implicit(context, args[2], type_double))
+			{
+				SEMA_ERROR(args[2], "Expected a 'double', but was %s.", type_quoted_error_string(args[2]->type));
+				return false;
+			}
+			if (!expr_is_const(args[2]))
+			{
+				SEMA_ERROR(args[2], "This value must be a constant.");
+				return false;
+			}
+			else
+			{
+				Real r = args[2]->const_expr.fxx.f;
+				if (r < 0 || r > 1)
+				{
+					SEMA_ERROR(args[2], "The probability must be between 0 and 1.");
+					return false;
+				}
+			}
+			if (!sema_check_builtin_args_match(args, 2)) return false;
+			rtype = args[0]->type;
+			break;
 		case BUILTIN_CEIL:
 		case BUILTIN_COPYSIGN:
 		case BUILTIN_COS:
@@ -699,6 +736,7 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_EXACT_MOD:
 		case BUILTIN_EXACT_MUL:
 		case BUILTIN_EXACT_SUB:
+		case BUILTIN_EXPECT:
 		case BUILTIN_MAX:
 		case BUILTIN_MIN:
 		case BUILTIN_POW:
@@ -717,6 +755,7 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_VECCOMPEQ:
 		case BUILTIN_WASM_MEMORY_GROW:
 			return 2;
+		case BUILTIN_EXPECT_WITH_PROBABILITY:
 		case BUILTIN_FMA:
 		case BUILTIN_FSHL:
 		case BUILTIN_FSHR:

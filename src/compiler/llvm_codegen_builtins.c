@@ -424,6 +424,7 @@ void llvm_emit_simple_builtin(GenContext *c, BEValue *be_value, Expr *expr, unsi
 	llvm_value_set(be_value, result, expr->type);
 }
 
+
 void llvm_emit_builtin_args_types3(GenContext *c, BEValue *be_value, Expr *expr, unsigned intrinsic, Type *type1, Type *type2, Type *type3)
 {
 	Expr **args = expr->call_expr.arguments;
@@ -709,6 +710,20 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 			return;
 		case BUILTIN_CTLZ:
 			llvm_emit_int_with_bool_builtin(c, intrinsic_id.ctlz, result_value, expr, false);
+			return;
+		case BUILTIN_EXPECT:
+			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.expect);
+			return;
+		case BUILTIN_EXPECT_WITH_PROBABILITY:
+			if (active_target.optimization_level == OPTIMIZATION_NONE)
+			{
+				Expr **args = expr->call_expr.arguments;
+				llvm_emit_expr(c, result_value, args[0]);
+				BEValue dummy;
+				llvm_emit_expr(c, &dummy, args[1]);
+				return;
+			}
+			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.expect_with_probability);
 			return;
 		case BUILTIN_MAX:
 			llvm_emit_3_variant_builtin(c, result_value, expr, intrinsic_id.smax, intrinsic_id.umax, intrinsic_id.maxnum);

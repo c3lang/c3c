@@ -633,6 +633,8 @@ static void llvm_codegen_setup()
 	intrinsic_id.cttz = lookup_intrinsic("llvm.cttz");
 	intrinsic_id.exp = lookup_intrinsic("llvm.exp");
 	intrinsic_id.exp2 = lookup_intrinsic("llvm.exp2");
+	intrinsic_id.expect = lookup_intrinsic("llvm.expect");
+	intrinsic_id.expect_with_probability = lookup_intrinsic("llvm.expect.with.probability");
 	intrinsic_id.fabs = lookup_intrinsic("llvm.fabs");
 	intrinsic_id.floor = lookup_intrinsic("llvm.floor");
 	intrinsic_id.fma = lookup_intrinsic("llvm.fma");

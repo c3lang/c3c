@@ -131,6 +131,8 @@ typedef struct
 	unsigned cttz;
 	unsigned exp;
 	unsigned exp2;
+	unsigned expect;
+	unsigned expect_with_probability;
 	unsigned fabs;
 	unsigned floor;
 	unsigned fma;
