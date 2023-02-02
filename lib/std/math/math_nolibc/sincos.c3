@@ -78,11 +78,9 @@ fn void sincosf(float x, float *sin, float *cos) @extern("sincosf") @weak
         	}
         	*sin = __sindf(sign ? x + S4PI2 : x - S4PI2);
         	*cos = __cosdf(sign ? x + S4PI2 : x - S4PI2);
-        	return;
         case ix >= 0x7f800000:
             // sin(Inf or NaN) is NaN
 			*sin = *cos = x - x;
-			return;
 		default:
 			// general argument reduction needed
 			double y = void;
@@ -109,4 +107,53 @@ fn void sincosf(float x, float *sin, float *cos) @extern("sincosf") @weak
 
 }
 
+fn void sincos(double x, double *sin, double *cos) @extern("sincos") @weak
+{
+	// High word of x.
+	uint ix = (uint)(bitcast(x, ulong) >> 32);
+	ix &= 0x7fffffff;
+
+	// |x| ~< pi/4
+	switch
+	{
+		// |x| ~< pi/4
+		case ix <= 0x3fe921fb:
+			if (ix < 0x3e46a09e)
+			{
+				// raise inexact if x!=0 and underflow if subnormal
+				force_eval_add(ix < 0x00100000 ? x/0x1p120f : x+0x1p120f, 0);
+				*sin = x;
+				*cos = 1.0;
+				return;
+			}
+			// if |x| < 2**-27 * sqrt(2)
+			*sin = __sin(x, 0.0, 0);
+			*cos = __cos(x, 0.0);
+		// sincos(Inf or NaN) is NaN
+		case ix >= 0x7ff00000:
+    		*sin = *cos = x - x;
+    	default:
+			// argument reduction needed
+			double[2] y;
+			int n = __rem_pio2(x, &y);
+			double s = __sin(y[0], y[1], 1);
+			double c = __cos(y[0], y[1]);
+			switch (n & 3)
+			{
+				case 0:
+					*sin = s;
+					*cos = c;
+				case 1:
+					*sin = c;
+					*cos = -s;
+				case 2:
+					*sin = -s;
+					*cos = -c;
+				case 3:
+				default:
+					*sin = -c;
+					*cos = s;
+			}
+	}
+}
 $endif;

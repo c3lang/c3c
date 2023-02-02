@@ -136,6 +136,20 @@ macro atan2(x, y)
 
 /**
  * @require values::@is_int(x) || values::@is_float(x) "Expected an integer or floating point value"
+ * @checked (*y)[0] = x, y.len
+ * @require y.len == 2
+ **/
+macro @sincos(x, y)
+{
+	$if ($typeof(y[0]).typeid == float.typeid):
+		return _sincosf(x, y);
+	$else:
+		return _sincos(x, y);
+	$endif;
+}
+
+/**
+ * @require values::@is_int(x) || values::@is_float(x) "Expected an integer or floating point value"
  * @checked x + y
  **/
 macro atan(x)
@@ -355,7 +369,17 @@ macro sqrt(x) => $$sqrt(values::promote_int(x));
 /**
  * @require values::@is_promotable_to_floatlike(x) `The input must be a number or a float vector`
  **/
-macro tan(x) => sin(x) / cos(x);
+macro tan(x)
+{
+	var $Type = $typeof(x);
+	$if (types.is_vector($Type)):
+		return $$sin(x) / $$cos(x);
+	$elif ($Type.typeid == float.typeid):
+		return _tanf(x);
+	$else:
+		return tan(x);
+	$endif;
+}
 
 /**
  * @require values::@is_promotable_to_floatlike(x) `The input must be a number or a float vector`
@@ -615,3 +639,7 @@ extern fn double _atan(double x) @extname("atan");
 extern fn float _atanf(float x) @extname("atanf");
 extern fn double _atan2(double, double) @extname("atan2");
 extern fn float _atan2f(float, float) @extname("atan2f");
+extern fn void _sincos(double, double*) @extname("sincos");
+extern fn void _sincosf(float, float*) @extname("sincosf");
+extern fn void _tan(double x, double y) @extern("tan");
+extern fn void _tanf(double x, double y) @extern("tanf");
