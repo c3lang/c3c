@@ -8,11 +8,11 @@ const int F_SETFL = 4;
 
 define NativeSocket = distinct int;
 
-extern fn NativeSocket socket(int af, int type, int protocol) @extname("socket");
+extern fn NativeSocket socket(int af, int type, int protocol) @extern("socket");
 extern fn int getaddrinfo(ZString nodename, ZString servname, AddrInfo* hints, AddrInfo** res);
 extern fn void freeaddrinfo(AddrInfo* addr);
 extern fn int connect(NativeSocket, void*, usz);
-extern fn int fcntl(NativeSocket socket, int cmd, ...) @extname("fcntl");
+extern fn int fcntl(NativeSocket socket, int cmd, ...) @extern("fcntl");
 extern fn int close(NativeSocket);
 
 macro void! NativeSocket.close(NativeSocket this)

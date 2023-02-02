@@ -32,7 +32,7 @@ macro String! getcwd(Allocator* allocator = mem::default_allocator())
 
 $else:
 
-extern fn ZString _getcwd(char* pwd, usz len) @extname("getcwd");
+extern fn ZString _getcwd(char* pwd, usz len) @extern("getcwd");
 macro String! getcwd(Allocator* allocator = mem::default_allocator())
 {
 	const usz DEFAULT_BUFFER = 256;

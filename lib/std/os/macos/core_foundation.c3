@@ -10,7 +10,7 @@ struct CFRange
 	CFIndex length;
 }
 
-extern fn CFTypeRef _macos_CFRetain(CFTypeRef cf) @extname("CFRetain");
-extern fn void _macos_CFRelease(CFTypeRef cf) @extname("CFRelease");
+extern fn CFTypeRef _macos_CFRetain(CFTypeRef cf) @extern("CFRetain");
+extern fn void _macos_CFRelease(CFTypeRef cf) @extern("CFRelease");
 
 $endif;

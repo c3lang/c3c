@@ -18,7 +18,7 @@ $if (!env::COMPILER_LIBC_AVAILABLE):
  * ====================================================
  */
 
-fn float _sinf(float x) @weak @extname("sinf")
+fn float _sinf(float x) @weak @extern("sinf")
 {
 	uint ix = bitcast(x, uint);
 	int sign = ix >> 31;

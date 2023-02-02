@@ -1,8 +1,8 @@
 module std::os::win32::wsa;
 
 $if (env::OS_TYPE == OsType.WIN32):
-extern fn int get_last_error() @extname("WSAGetLastError");
-extern fn void set_last_error(int error) @extname("WSASetLastError");
+extern fn int get_last_error() @extern("WSAGetLastError");
+extern fn void set_last_error(int error) @extern("WSASetLastError");
 
 const int INVALID_HANDLE = 6;
 const int NOT_ENOUGHT_MEMORY = 8;

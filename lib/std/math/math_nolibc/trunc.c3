@@ -2,7 +2,7 @@ module std::math::nolibc;
 
 $if (!env::COMPILER_LIBC_AVAILABLE):
 
-fn double _trunc(double x) @weak @extname("trunc")
+fn double _trunc(double x) @weak @extern("trunc")
 {
 	ulong i = bitcast(x, ulong);
 	int e = (int)((i >> 52) & 0x7ff) - 0x3ff + 12;
@@ -15,7 +15,7 @@ fn double _trunc(double x) @weak @extname("trunc")
 	return bitcast(i, double);
 }
 
-fn float _truncf(float x) @weak @extname("truncf")
+fn float _truncf(float x) @weak @extern("truncf")
 {
 	uint i = bitcast(x, uint);
 	int e = (int)((i >> 23) & 0xff) - 0x7f + 9;

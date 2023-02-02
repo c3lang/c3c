@@ -2,7 +2,7 @@ module std::math::nolibc;
 
 $if (!env::COMPILER_LIBC_AVAILABLE):
 
-fn double _ceil(double x) @weak @extname("ceil")
+fn double _ceil(double x) @weak @extern("ceil")
 {
 	ulong ui = bitcast(x, ulong);
 	int e = (int)((ui >> 52) & 0x7ff);
@@ -19,7 +19,7 @@ fn double _ceil(double x) @weak @extname("ceil")
 }
 
 
-fn float _ceilf(float x) @weak @extname("ceilf")
+fn float _ceilf(float x) @weak @extern("ceilf")
 {
 	uint u = bitcast(x, uint);
 	int e = (int)((u >> 23) & 0xff) - 0x7f;

@@ -37,7 +37,7 @@ private struct Darwin64Stat
     int st_lspare;
     long[2] st_qspare;
 }
-extern fn int _stat(ZString str, Darwin64Stat* stat) @extname("stat64");
+extern fn int _stat(ZString str, Darwin64Stat* stat) @extern("stat64");
 fn void! FileInfo.read(FileInfo* info, Path path)
 {
 	@pool()

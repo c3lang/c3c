@@ -52,7 +52,7 @@ macro int @main_to_void_main_args(#m, int argc, char** argv)
 
 $if (env::OS_TYPE == OsType.WIN32):
 
-extern fn Char16** _win_command_line_to_argv_w(ushort* cmd_line, int* argc_ptr) @extname("CommandLineToArgvW");
+extern fn Char16** _win_command_line_to_argv_w(ushort* cmd_line, int* argc_ptr) @extern("CommandLineToArgvW");
 
 private macro String[] win_command_line_to_strings(ushort* cmd_line)
 {

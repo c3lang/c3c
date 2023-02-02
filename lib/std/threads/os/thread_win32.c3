@@ -39,27 +39,27 @@ struct NativeConditionVariable
 	Win32_CRITICAL_SECTION waiters_count_lock;
 }
 
-extern fn void win32_InitializeCriticalSection(Win32_CRITICAL_SECTION* section) @extname("InitializeCriticalSection");
-extern fn void win32_DeleteCriticalSection(Win32_CRITICAL_SECTION* section) @extname("DeleteCriticalSection");
-extern fn Win32_HANDLE win32_CreateMutex(void*, bool, void*) @extname("CreateMutexA");
-extern fn bool win32_CloseHandle(Win32_HANDLE) @extname("CloseHandle");
-extern fn bool win32_ReleaseMutex(Win32_HANDLE) @extname("ReleaseMutex");
-extern fn void win32_EnterCriticalSection(Win32_CRITICAL_SECTION* section) @extname("EnterCriticalSection");
-extern fn void win32_LeaveCriticalSection(Win32_CRITICAL_SECTION* section) @extname("LeaveCriticalSection");
-extern fn bool win32_TryEnterCriticalSection(Win32_CRITICAL_SECTION* section) @extname("TryEnterCriticalSection");
-extern fn uint win32_WaitForSingleObject(Win32_HANDLE, uint milliseconds) @extname("WaitForSingleObject");
-extern fn void win32_Sleep(uint ms) @extname("Sleep");
-extern fn uint win32_WaitForMultipleObjects(uint count, Win32_HANDLE* handles, bool wait_all, uint ms) @extname("WaitForMultipleObjects");
-extern fn Win32_HANDLE win32_CreateEventA(void* attributes, bool manual_reset, bool initial_state, char* name) @extname("CreateEventA");
-extern fn bool win32_ResetEvent(Win32_HANDLE event) @extname("ResetEvent");
-extern fn bool win32_SetEvent(Win32_HANDLE handle) @extname("SetEvent");
-extern fn long win32_InterlockedCompareExchange(int* dest, int exchange, int comperand) @extname("InterlockedCompareExchange");
-extern fn uint win32_SleepEx(uint ms, bool alertable) @extname("SleepEx");
-extern fn Win32_HANDLE win32_CreateThread(void* attributes, usz stack, ThreadFn func, void* arg, uint flags, uint* thread_id) @extname("CreateThread");
-extern fn bool win32_GetExitCodeThread(Win32_HANDLE handle, uint* exit_code) @extname("GetExitCodeThread");
-extern fn uint win32_GetThreadId(Win32_HANDLE) @extname("GetThreadId");
-extern fn void win32_ExitThread(uint res) @noreturn @extname("ExitThread");
-extern fn Win32_HANDLE win32_GetCurrentThread() @extname("GetCurrentThread");
+extern fn void win32_InitializeCriticalSection(Win32_CRITICAL_SECTION* section) @extern("InitializeCriticalSection");
+extern fn void win32_DeleteCriticalSection(Win32_CRITICAL_SECTION* section) @extern("DeleteCriticalSection");
+extern fn Win32_HANDLE win32_CreateMutex(void*, bool, void*) @extern("CreateMutexA");
+extern fn bool win32_CloseHandle(Win32_HANDLE) @extern("CloseHandle");
+extern fn bool win32_ReleaseMutex(Win32_HANDLE) @extern("ReleaseMutex");
+extern fn void win32_EnterCriticalSection(Win32_CRITICAL_SECTION* section) @extern("EnterCriticalSection");
+extern fn void win32_LeaveCriticalSection(Win32_CRITICAL_SECTION* section) @extern("LeaveCriticalSection");
+extern fn bool win32_TryEnterCriticalSection(Win32_CRITICAL_SECTION* section) @extern("TryEnterCriticalSection");
+extern fn uint win32_WaitForSingleObject(Win32_HANDLE, uint milliseconds) @extern("WaitForSingleObject");
+extern fn void win32_Sleep(uint ms) @extern("Sleep");
+extern fn uint win32_WaitForMultipleObjects(uint count, Win32_HANDLE* handles, bool wait_all, uint ms) @extern("WaitForMultipleObjects");
+extern fn Win32_HANDLE win32_CreateEventA(void* attributes, bool manual_reset, bool initial_state, char* name) @extern("CreateEventA");
+extern fn bool win32_ResetEvent(Win32_HANDLE event) @extern("ResetEvent");
+extern fn bool win32_SetEvent(Win32_HANDLE handle) @extern("SetEvent");
+extern fn long win32_InterlockedCompareExchange(int* dest, int exchange, int comperand) @extern("InterlockedCompareExchange");
+extern fn uint win32_SleepEx(uint ms, bool alertable) @extern("SleepEx");
+extern fn Win32_HANDLE win32_CreateThread(void* attributes, usz stack, ThreadFn func, void* arg, uint flags, uint* thread_id) @extern("CreateThread");
+extern fn bool win32_GetExitCodeThread(Win32_HANDLE handle, uint* exit_code) @extern("GetExitCodeThread");
+extern fn uint win32_GetThreadId(Win32_HANDLE) @extern("GetThreadId");
+extern fn void win32_ExitThread(uint res) @noreturn @extern("ExitThread");
+extern fn Win32_HANDLE win32_GetCurrentThread() @extern("GetCurrentThread");
 
 const uint WAIT_OBJECT_0 = 0;
 const uint WAIT_ABANDONED = 128;

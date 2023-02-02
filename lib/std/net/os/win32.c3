@@ -24,7 +24,7 @@ struct AddrInfo
 
 define NativeSocket = distinct uptr;
 
-extern fn int wsa_startup(int, void*) @extname("WSAStartup");
+extern fn int wsa_startup(int, void*) @extern("WSAStartup");
 extern fn int ioctlsocket(NativeSocket, long cmd, ulong *argp);
 extern fn int closesocket(NativeSocket);
 

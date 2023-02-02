@@ -2,7 +2,7 @@ module std::math::nolibc;
 
 $if (!env::COMPILER_LIBC_AVAILABLE):
 
-fn double _floor(double x) @weak @extname("floor")
+fn double _floor(double x) @weak @extern("floor")
 {
 	ulong ui = bitcast(x, ulong);
 	int e = (int)((ui >> 52) & 0x7ff);
@@ -19,7 +19,7 @@ fn double _floor(double x) @weak @extname("floor")
 }
 
 
-fn float _floorf(float x) @weak @extname("floorf")
+fn float _floorf(float x) @weak @extern("floorf")
 {
 	uint u = bitcast(x, uint);
 	int e = (int)((u >> 23) & 0xff) - 0x7f;

@@ -37,13 +37,13 @@ macro Class[] class_get_list(Allocator *allocator = mem::current_allocator())
 	return entries;
 }
 
-extern fn Class _macos_objc_getClass(char* name) @extname("objc_getClass");
-extern fn int _macos_objc_getClassList(Class* buffer, int buffer_count) @extname("objc_getClassList");
-extern fn char* _macos_class_getName(Class cls) @extname("class_getName");
-extern fn Class _macos_class_getSuperclass(Class cls) @extname("class_getSuperclass");
-extern fn Method _macos_class_getClassMethod(Class cls, Selector name) @extname("class_getClassMethod");
-extern fn bool _macos_class_respondsToSelector(Class cls, Selector name) @extname("class_respondsToSelector");
-extern fn Selector _macos_sel_registerName(char* str) @extname("sel_registerName");
-extern fn Class _macos_objc_lookUpClass(char* name) @extname("objc_lookUpClass");
+extern fn Class _macos_objc_getClass(char* name) @extern("objc_getClass");
+extern fn int _macos_objc_getClassList(Class* buffer, int buffer_count) @extern("objc_getClassList");
+extern fn char* _macos_class_getName(Class cls) @extern("class_getName");
+extern fn Class _macos_class_getSuperclass(Class cls) @extern("class_getSuperclass");
+extern fn Method _macos_class_getClassMethod(Class cls, Selector name) @extern("class_getClassMethod");
+extern fn bool _macos_class_respondsToSelector(Class cls, Selector name) @extern("class_respondsToSelector");
+extern fn Selector _macos_sel_registerName(char* str) @extern("sel_registerName");
+extern fn Class _macos_objc_lookUpClass(char* name) @extern("objc_lookUpClass");
 $endif;
 

@@ -635,11 +635,11 @@ macro is_nan(x)
 }
 
 
-extern fn double _atan(double x) @extname("atan");
-extern fn float _atanf(float x) @extname("atanf");
-extern fn double _atan2(double, double) @extname("atan2");
-extern fn float _atan2f(float, float) @extname("atan2f");
-extern fn void _sincos(double, double*) @extname("sincos");
-extern fn void _sincosf(float, float*) @extname("sincosf");
+extern fn double _atan(double x) @extern("atan");
+extern fn float _atanf(float x) @extern("atanf");
+extern fn double _atan2(double, double) @extern("atan2");
+extern fn float _atan2f(float, float) @extern("atan2f");
+extern fn void _sincos(double, double*) @extern("sincos");
+extern fn void _sincosf(float, float*) @extern("sincosf");
 extern fn void _tan(double x, double y) @extern("tan");
 extern fn void _tanf(double x, double y) @extern("tanf");

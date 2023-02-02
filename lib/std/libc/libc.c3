@@ -98,46 +98,46 @@ extern fn void* realloc(void* ptr, usz size);
 
 $else:
 
-fn void longjmp(JmpBuf* buffer, CInt value) @weak @extname("longjmp")
+fn void longjmp(JmpBuf* buffer, CInt value) @weak @extern("longjmp")
 {
 	unreachable("longjmp unavailable");
 }
 
-fn CInt setjmp(JmpBuf* buffer) @weak @extname("setjmp")
+fn CInt setjmp(JmpBuf* buffer) @weak @extern("setjmp")
 {
 	unreachable("setjmp unavailable");
 }
 
-fn void* malloc(usz size) @weak @extname("malloc")
+fn void* malloc(usz size) @weak @extern("malloc")
 {
 	unreachable("malloc unavailable");
 }
-fn void* calloc(usz count, usz size) @weak @extname("calloc")
+fn void* calloc(usz count, usz size) @weak @extern("calloc")
 {
 	unreachable("calloc unavailable");
 }
-fn void* free(void*) @weak @extname("free")
+fn void* free(void*) @weak @extern("free")
 {
 	unreachable("free unavailable");
 }
 
-fn void* realloc(void* ptr, usz size) @weak @extname("realloc")
+fn void* realloc(void* ptr, usz size) @weak @extern("realloc")
 {
 	unreachable("realloc unavailable");
 }
 
-fn void* memcpy(void* dest, void* src, usz n) @weak @extname("memcpy")
+fn void* memcpy(void* dest, void* src, usz n) @weak @extern("memcpy")
 {
 	for (usz i = 0; i < n; i++) ((char*)dest)[i] = ((char*)src)[i];
 	return dest;
 }
 
-fn void* memmove(void* dest, void* src, usz n) @weak @extname("memmove")
+fn void* memmove(void* dest, void* src, usz n) @weak @extern("memmove")
 {
 	return memcpy(dest, src, n) @inline;
 }
 
-fn void* memset(void* dest, CInt value, usz n) @weak @extname("memset")
+fn void* memset(void* dest, CInt value, usz n) @weak @extern("memset")
 {
 	for (usz i = 0; i < n; i++) ((char*)dest)[i] = (char)value;
 	return dest;
@@ -151,9 +151,9 @@ define Fpos = long;
 define CFile = void*;
 
 $if (env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == OsType.LINUX):
-    extern CFile __stdin @extname("stdin");
-    extern CFile __stdout @extname("stdout");
-    extern CFile __stderr @extname("stderr");
+    extern CFile __stdin @extern("stdin");
+    extern CFile __stdout @extern("stdout");
+    extern CFile __stderr @extern("stderr");
     extern fn usz malloc_usable_size(void* ptr);
     macro usz malloc_size(void* ptr) { return malloc_usable_size(ptr); }
 	extern fn void* aligned_alloc(usz align, usz size);
@@ -245,64 +245,64 @@ extern fn isz getline(char** linep, usz* linecapp, CFile stream);
 
 $else:
 
-fn int fseek(CFile stream, SeekIndex offset, int whence) @weak @extname("fseek")
+fn int fseek(CFile stream, SeekIndex offset, int whence) @weak @extern("fseek")
 {
 	unreachable("'fseek' not available.");
 }
-fn CFile fopen(char* filename, char* mode) @weak @extname("fopen")
+fn CFile fopen(char* filename, char* mode) @weak @extern("fopen")
 {
 	unreachable("'fopen' not available.");
 }
 
-fn usz fwrite(void* ptr, usz size, usz nmemb, CFile stream) @weak @extname("fwrite")
+fn usz fwrite(void* ptr, usz size, usz nmemb, CFile stream) @weak @extern("fwrite")
 {
 	unreachable("'fwrite' not available.");
 }
 
-fn usz fread(void* ptr, usz size, usz nmemb, CFile stream) @weak @extname("fread")
+fn usz fread(void* ptr, usz size, usz nmemb, CFile stream) @weak @extern("fread")
 {
 	unreachable("'fread' not available.");
 }
 
-fn CFile fclose(CFile) @weak @extname("fclose")
+fn CFile fclose(CFile) @weak @extern("fclose")
 {
 	unreachable("'fclose' not available.");
 }
 
-fn int fflush(CFile stream) @weak @extname("fflush")
+fn int fflush(CFile stream) @weak @extern("fflush")
 {
 	unreachable("'fflush' not available.");
 }
 
-fn int fputc(int c, CFile stream) @weak @extname("fputc")
+fn int fputc(int c, CFile stream) @weak @extern("fputc")
 {
 	unreachable("'fputc' not available.");
 }
 
-fn char* fgets(char* str, int n, CFile stream) @weak @extname("fgets")
+fn char* fgets(char* str, int n, CFile stream) @weak @extern("fgets")
 {
 	unreachable("'fgets' not available.");
 }
 
-fn int fgetc(CFile stream) @weak @extname("fgetc")
+fn int fgetc(CFile stream) @weak @extern("fgetc")
 {
 	unreachable("'fgetc' not available.");
 }
 
-fn int feof(CFile stream) @weak @extname("feof")
+fn int feof(CFile stream) @weak @extern("feof")
 {
 	unreachable("'feof' not available.");
 }
 
-fn int putc(int c, CFile stream) @weak @extname("putc")
+fn int putc(int c, CFile stream) @weak @extern("putc")
 {
 	unreachable("'putc' not available.");
 }
-fn int putchar(int c) @weak @extname("putchar")
+fn int putchar(int c) @weak @extern("putchar")
 {
 	unreachable("'putchar' not available.");
 }
-fn int puts(char* str) @weak @extname("puts")
+fn int puts(char* str) @weak @extern("puts")
 {
 	unreachable("'puts' not available.");
 }
