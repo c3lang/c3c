@@ -10,7 +10,7 @@ fn double _trunc(double x) @weak @extname("trunc")
 	if (e < 12) e = 1;
 	ulong m = ((ulong)-1) >> e;
 	if (i & m == 0) return x;
-	@force_eval_add(x, 0x1p120f);
+	force_eval_add(x, 0x1p120f);
 	i &= ~m;
 	return bitcast(i, double);
 }
@@ -23,7 +23,7 @@ fn float _truncf(float x) @weak @extname("truncf")
 	if (e < 9) e = 1;
 	uint m = ((uint)-1) >> e;
 	if (i & m == 0) return x;
-	@force_eval_add(x, 0x1p120f);
+	force_eval_add(x, 0x1p120f);
 	i &= ~m;
 	return bitcast(i, float);
 }

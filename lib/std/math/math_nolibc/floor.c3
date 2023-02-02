@@ -12,7 +12,7 @@ fn double _floor(double x) @weak @extname("floor")
 	// special case because of non-nearest rounding modes
 	if (e <= 0x3ff - 1)
 	{
-		@force_eval_add(y, 0);
+		force_eval_add(y, 0);
 		return ui >> 63 ? -1 : 0;
 	}
 	return y > 0 ? x + y - 1 : x + y;
@@ -30,11 +30,11 @@ fn float _floorf(float x) @weak @extname("floorf")
 		case e >= 0:
 			uint m = 0x007fffff >> e;
 			if (u & m == 0) return x;
-			@force_eval_add(x, 0x1p120f);
+			force_eval_add(x, 0x1p120f);
 			if (u >> 31) u += m;
 			u &= ~m;
 		case u >> 31 == 0:
-			@force_eval_add(x, 0x1p120f);
+			force_eval_add(x, 0x1p120f);
 			u = 0;
 		case (u << 1 != 0):
 			return -1;

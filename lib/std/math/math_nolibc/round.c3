@@ -11,7 +11,7 @@ fn double _round(double x) @extname("round") @weak
 	if (e < 0x3ff - 1)
 	{
 		/* raise inexact if x!=0 */
-		@force_eval_add(x, TOINT);
+		force_eval_add(x, TOINT);
 		return 0 * x;
 	}
 	double y = (x + TOINT) - TOINT - x;
@@ -28,7 +28,7 @@ fn double _round(double x) @extname("round") @weak
 	return y;
 }
 
-fn float roundf(float x) @extname("roundf") @weak
+fn float _roundf(float x) @extname("roundf") @weak
 {
 	uint u = bitcast(x, uint);
 	int e = (u >> 23) & 0xff;
@@ -36,7 +36,7 @@ fn float roundf(float x) @extname("roundf") @weak
 	if (u >> 31) x = -x;
 	if (e < 0x7f - 1)
 	{
-		@force_eval_add(x, TOINTF);
+		force_eval_add(x, TOINTF);
 		return 0 * x;
 	}
 	float y = (x + TOINTF) - TOINTF - x;

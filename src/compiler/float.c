@@ -243,13 +243,13 @@ Float float_from_hex(const char *string, char **error)
 		}
 		switch (i)
 		{
+			case 0:
 			case 32:
 				kind = TYPE_F32;
 				break;
 			case 16:
 				kind = TYPE_F16;
 				break;
-			case 0:
 			case 64:
 				kind = TYPE_F64;
 				break;
