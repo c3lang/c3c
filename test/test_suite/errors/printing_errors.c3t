@@ -48,12 +48,5 @@ faultname_exit:                                   ; preds = %faultname_ok, %faul
   %8 = getelementptr inbounds [2 x %variant], ptr %varargslots, i64 0, i64 1
   store %variant %7, ptr %8, align 16
   %9 = call i64 @std_io_printf(ptr %retparam, ptr @.str, i64 6, ptr %varargslots, i64 2)
-  %not_err = icmp eq i64 %9, 0
-  br i1 %not_err, label %after_check, label %voiderr
-
-after_check:                                      ; preds = %faultname_exit
-  br label %voiderr
-
-voiderr:                                          ; preds = %after_check, %faultname_exit
   ret void
 }

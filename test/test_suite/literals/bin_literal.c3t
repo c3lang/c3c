@@ -51,13 +51,6 @@ entry:
   %11 = getelementptr inbounds [2 x %variant], ptr %varargslots, i64 0, i64 1
   store %variant %10, ptr %11, align 16
   %12 = call i64 @std_io_printfn(ptr %retparam, ptr @.str, i64 5, ptr %varargslots, i64 2)
-  %not_err = icmp eq i64 %12, 0
-  br i1 %not_err, label %after_check, label %voiderr
-
-after_check:                                      ; preds = %entry
-  br label %voiderr
-
-voiderr:                                          ; preds = %after_check, %entry
   store i8 -35, ptr %z, align 1
   %13 = insertvalue %variant undef, ptr %z, 0
   %14 = insertvalue %variant %13, i64 ptrtoint (ptr @"ct$char" to i64), 1
@@ -88,12 +81,5 @@ voiderr:                                          ; preds = %after_check, %entry
   %31 = getelementptr inbounds [3 x %variant], ptr %varargslots2, i64 0, i64 2
   store %variant %30, ptr %31, align 16
   %32 = call i64 @std_io_printfn(ptr %retparam1, ptr @.str.1, i64 8, ptr %varargslots2, i64 3)
-  %not_err6 = icmp eq i64 %32, 0
-  br i1 %not_err6, label %after_check7, label %voiderr8
-
-after_check7:                                     ; preds = %voiderr
-  br label %voiderr8
-
-voiderr8:                                         ; preds = %after_check7, %voiderr
   ret void
 }

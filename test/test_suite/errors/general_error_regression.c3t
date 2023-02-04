@@ -75,87 +75,39 @@ fn void main()
 define void @foo_Foo_hello(ptr %0) #0 {
 entry:
   %x = alloca ptr, align 8
-  %error_var = alloca i64, align 8
   %retparam = alloca i64, align 8
   %result = alloca %File, align 8
   store ptr @.str.12, ptr %x, align 8
-  store i64 0, ptr %error_var, align 8
   %1 = call ptr @std_io_stdout()
   store ptr %1, ptr %result, align 8
   %2 = load ptr, ptr %x, align 8
   %3 = call i64 @std_io_File_printn(ptr %retparam, ptr %result, ptr %2, i64 14)
-  %not_err = icmp eq i64 %3, 0
-  br i1 %not_err, label %after_check, label %assign_optional
-
-assign_optional:                                  ; preds = %entry
-  store i64 %3, ptr %error_var, align 8
-  br label %noerr_block
-
-after_check:                                      ; preds = %entry
-  br label %noerr_block
-
-noerr_block:                                      ; preds = %after_check, %assign_optional
-  br label %voiderr
-
-voiderr:                                          ; preds = %noerr_block
   ret void
 }
 
 define void @foo_Bar_hello(ptr %0) #0 {
 entry:
   %x = alloca ptr, align 8
-  %error_var = alloca i64, align 8
   %retparam = alloca i64, align 8
   %result = alloca %File, align 8
   store ptr @.str.13, ptr %x, align 8
-  store i64 0, ptr %error_var, align 8
   %1 = call ptr @std_io_stdout()
   store ptr %1, ptr %result, align 8
   %2 = load ptr, ptr %x, align 8
   %3 = call i64 @std_io_File_printn(ptr %retparam, ptr %result, ptr %2, i64 14)
-  %not_err = icmp eq i64 %3, 0
-  br i1 %not_err, label %after_check, label %assign_optional
-
-assign_optional:                                  ; preds = %entry
-  store i64 %3, ptr %error_var, align 8
-  br label %noerr_block
-
-after_check:                                      ; preds = %entry
-  br label %noerr_block
-
-noerr_block:                                      ; preds = %after_check, %assign_optional
-  br label %voiderr
-
-voiderr:                                          ; preds = %noerr_block
   ret void
 }
 
 define void @foo_MyEnum_hello(ptr %0) #0 {
 entry:
   %x = alloca ptr, align 8
-  %error_var = alloca i64, align 8
   %retparam = alloca i64, align 8
   %result = alloca %File, align 8
   store ptr @.str.14, ptr %x, align 8
-  store i64 0, ptr %error_var, align 8
   %1 = call ptr @std_io_stdout()
   store ptr %1, ptr %result, align 8
   %2 = load ptr, ptr %x, align 8
   %3 = call i64 @std_io_File_printn(ptr %retparam, ptr %result, ptr %2, i64 17)
-  %not_err = icmp eq i64 %3, 0
-  br i1 %not_err, label %after_check, label %assign_optional
-
-assign_optional:                                  ; preds = %entry
-  store i64 %3, ptr %error_var, align 8
-  br label %noerr_block
-
-after_check:                                      ; preds = %entry
-  br label %noerr_block
-
-noerr_block:                                      ; preds = %after_check, %assign_optional
-  br label %voiderr
-
-voiderr:                                          ; preds = %noerr_block
   ret void
 }
 

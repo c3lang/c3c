@@ -44,7 +44,7 @@ entry:
   %w = alloca ptr, align 8
   %w.f = alloca i64, align 8
   %literal = alloca %Foo, align 4
-  %literal6 = alloca %Foo, align 4
+  %literal5 = alloca %Foo, align 4
   store i32 2, ptr %z, align 4
   store i64 0, ptr %z.f, align 8
   %0 = getelementptr inbounds %Foo, ptr %literal, i32 0, i32 0
@@ -79,42 +79,39 @@ after_check3:                                     ; preds = %after_assign
 
 voiderr:                                          ; preds = %after_check3, %after_assign
   store i64 ptrtoint (ptr @"test_MyErr$FOO" to i64), ptr %z.f, align 8
-  br label %voiderr5
+  br label %after_check4
 
-voiderr5:                                         ; preds = %voiderr
-  %7 = getelementptr inbounds %Foo, ptr %literal6, i32 0, i32 0
-  %optval7 = load i64, ptr %z.f, align 8
-  %not_err8 = icmp eq i64 %optval7, 0
-  br i1 %not_err8, label %after_check10, label %assign_optional9
+after_check4:                                     ; preds = %voiderr
+  %7 = getelementptr inbounds %Foo, ptr %literal5, i32 0, i32 0
+  %optval6 = load i64, ptr %z.f, align 8
+  %not_err7 = icmp eq i64 %optval6, 0
+  br i1 %not_err7, label %after_check9, label %assign_optional8
 
-assign_optional9:                                 ; preds = %voiderr5
-  store i64 %optval7, ptr %w.f, align 8
-  br label %after_assign11
+assign_optional8:                                 ; preds = %after_check4
+  store i64 %optval6, ptr %w.f, align 8
+  br label %after_assign10
 
-after_check10:                                    ; preds = %voiderr5
+after_check9:                                     ; preds = %after_check4
   %8 = load i32, ptr %z, align 4
   store i32 %8, ptr %7, align 4
-  %9 = getelementptr inbounds %Foo, ptr %literal6, i32 0, i32 1
+  %9 = getelementptr inbounds %Foo, ptr %literal5, i32 0, i32 1
   store i32 0, ptr %9, align 4
-  store ptr %literal6, ptr %w, align 8
+  store ptr %literal5, ptr %w, align 8
   store i64 0, ptr %w.f, align 8
-  br label %after_assign11
+  br label %after_assign10
 
-after_assign11:                                   ; preds = %after_check10, %assign_optional9
-  br label %voiderr12
+after_assign10:                                   ; preds = %after_check9, %assign_optional8
+  %optval11 = load i64, ptr %w.f, align 8
+  %not_err12 = icmp eq i64 %optval11, 0
+  br i1 %not_err12, label %after_check13, label %voiderr14
 
-voiderr12:                                        ; preds = %after_assign11
-  %optval13 = load i64, ptr %w.f, align 8
-  %not_err14 = icmp eq i64 %optval13, 0
-  br i1 %not_err14, label %after_check15, label %voiderr16
-
-after_check15:                                    ; preds = %voiderr12
+after_check13:                                    ; preds = %after_assign10
   %10 = load ptr, ptr %w, align 8
   %11 = getelementptr inbounds %Foo, ptr %10, i32 0, i32 0
   %12 = load i32, ptr %11, align 4
   %13 = call i32 (ptr, ...) @printf(ptr @.str.1, i32 %12)
-  br label %voiderr16
+  br label %voiderr14
 
-voiderr16:                                        ; preds = %after_check15, %voiderr12
+voiderr14:                                        ; preds = %after_check13, %after_assign10
   ret void
 }

@@ -71,13 +71,6 @@ entry:
   %3 = getelementptr inbounds [1 x %variant], ptr %varargslots, i64 0, i64 0
   store %variant %2, ptr %3, align 16
   %4 = call i64 @std_io_printfn(ptr %retparam, ptr @.str, i64 8, ptr %varargslots, i64 1)
-  %not_err = icmp eq i64 %4, 0
-  br i1 %not_err, label %after_check, label %voiderr
-
-after_check:                                      ; preds = %entry
-  br label %voiderr
-
-voiderr:                                          ; preds = %after_check, %entry
   ret i32 %0
 }
 
@@ -93,29 +86,29 @@ entry:
   %varargslots = alloca [1 x %variant], align 16
   %retparam5 = alloca i64, align 8
   %varargslots6 = alloca [1 x %variant], align 16
-  %retparam10 = alloca i64, align 8
-  %varargslots11 = alloca [1 x %variant], align 16
-  %retparam15 = alloca i64, align 8
-  %varargslots16 = alloca [1 x %variant], align 16
+  %retparam7 = alloca i64, align 8
+  %varargslots8 = alloca [1 x %variant], align 16
+  %retparam9 = alloca i64, align 8
+  %varargslots10 = alloca [1 x %variant], align 16
   %x = alloca i32, align 4
-  %retparam20 = alloca i64, align 8
-  %varargslots21 = alloca [1 x %variant], align 16
+  %retparam11 = alloca i64, align 8
+  %varargslots12 = alloca [1 x %variant], align 16
   %taddr = alloca ptr, align 8
-  %x25 = alloca double, align 8
-  %retparam26 = alloca i64, align 8
-  %varargslots27 = alloca [1 x %variant], align 16
-  %taddr28 = alloca ptr, align 8
-  %retparam32 = alloca i64, align 8
-  %varargslots33 = alloca [1 x %variant], align 16
-  %taddr34 = alloca i32, align 4
-  %x38 = alloca i32, align 4
+  %x13 = alloca double, align 8
+  %retparam14 = alloca i64, align 8
+  %varargslots15 = alloca [1 x %variant], align 16
+  %taddr16 = alloca ptr, align 8
+  %retparam17 = alloca i64, align 8
+  %varargslots18 = alloca [1 x %variant], align 16
+  %taddr19 = alloca i32, align 4
+  %x20 = alloca i32, align 4
   %y = alloca i32, align 4
   %a = alloca i32, align 4
-  %retparam39 = alloca i64, align 8
-  %varargslots40 = alloca [2 x %variant], align 16
-  %a44 = alloca i32, align 4
-  %retparam45 = alloca i64, align 8
-  %varargslots46 = alloca [2 x %variant], align 16
+  %retparam21 = alloca i64, align 8
+  %varargslots22 = alloca [2 x %variant], align 16
+  %a23 = alloca i32, align 4
+  %retparam24 = alloca i64, align 8
+  %varargslots25 = alloca [2 x %variant], align 16
   %0 = call i32 @test_ping(i32 -1)
   store i32 %0, ptr %.anon, align 4
   %1 = call i32 @test_ping(i32 1)
@@ -137,135 +130,72 @@ entry:
   %10 = getelementptr inbounds [1 x %variant], ptr %varargslots, i64 0, i64 0
   store %variant %9, ptr %10, align 16
   %11 = call i64 @std_io_printfn(ptr %retparam, ptr @.str.1, i64 2, ptr %varargslots, i64 1)
-  %not_err = icmp eq i64 %11, 0
-  br i1 %not_err, label %after_check, label %voiderr
-
-after_check:                                      ; preds = %entry
-  br label %voiderr
-
-voiderr:                                          ; preds = %after_check, %entry
   %12 = insertvalue %variant undef, ptr %.anon, 0
   %13 = insertvalue %variant %12, i64 ptrtoint (ptr @"ct$int" to i64), 1
   %14 = getelementptr inbounds [1 x %variant], ptr %varargslots6, i64 0, i64 0
   store %variant %13, ptr %14, align 16
   %15 = call i64 @std_io_printfn(ptr %retparam5, ptr @.str.2, i64 2, ptr %varargslots6, i64 1)
-  %not_err7 = icmp eq i64 %15, 0
-  br i1 %not_err7, label %after_check8, label %voiderr9
-
-after_check8:                                     ; preds = %voiderr
-  br label %voiderr9
-
-voiderr9:                                         ; preds = %after_check8, %voiderr
   %16 = insertvalue %variant undef, ptr %.anon2, 0
   %17 = insertvalue %variant %16, i64 ptrtoint (ptr @"ct$int" to i64), 1
-  %18 = getelementptr inbounds [1 x %variant], ptr %varargslots11, i64 0, i64 0
+  %18 = getelementptr inbounds [1 x %variant], ptr %varargslots8, i64 0, i64 0
   store %variant %17, ptr %18, align 16
-  %19 = call i64 @std_io_printfn(ptr %retparam10, ptr @.str.3, i64 2, ptr %varargslots11, i64 1)
-  %not_err12 = icmp eq i64 %19, 0
-  br i1 %not_err12, label %after_check13, label %voiderr14
-
-after_check13:                                    ; preds = %voiderr9
-  br label %voiderr14
-
-voiderr14:                                        ; preds = %after_check13, %voiderr9
+  %19 = call i64 @std_io_printfn(ptr %retparam7, ptr @.str.3, i64 2, ptr %varargslots8, i64 1)
   %20 = insertvalue %variant undef, ptr %.anon3, 0
   %21 = insertvalue %variant %20, i64 ptrtoint (ptr @"ct$int" to i64), 1
-  %22 = getelementptr inbounds [1 x %variant], ptr %varargslots16, i64 0, i64 0
+  %22 = getelementptr inbounds [1 x %variant], ptr %varargslots10, i64 0, i64 0
   store %variant %21, ptr %22, align 16
-  %23 = call i64 @std_io_printfn(ptr %retparam15, ptr @.str.4, i64 2, ptr %varargslots16, i64 1)
-  %not_err17 = icmp eq i64 %23, 0
-  br i1 %not_err17, label %after_check18, label %voiderr19
-
-after_check18:                                    ; preds = %voiderr14
-  br label %voiderr19
-
-voiderr19:                                        ; preds = %after_check18, %voiderr14
+  %23 = call i64 @std_io_printfn(ptr %retparam9, ptr @.str.4, i64 2, ptr %varargslots10, i64 1)
   store i32 0, ptr %x, align 4
   store ptr @.str.6, ptr %taddr, align 8
   %24 = insertvalue %variant undef, ptr %taddr, 0
   %25 = insertvalue %variant %24, i64 ptrtoint (ptr @"ct$p$a3$char" to i64), 1
-  %26 = getelementptr inbounds [1 x %variant], ptr %varargslots21, i64 0, i64 0
+  %26 = getelementptr inbounds [1 x %variant], ptr %varargslots12, i64 0, i64 0
   store %variant %25, ptr %26, align 16
-  %27 = call i64 @std_io_printfn(ptr %retparam20, ptr @.str.5, i64 2, ptr %varargslots21, i64 1)
-  %not_err22 = icmp eq i64 %27, 0
-  br i1 %not_err22, label %after_check23, label %voiderr24
-
-after_check23:                                    ; preds = %voiderr19
-  br label %voiderr24
-
-voiderr24:                                        ; preds = %after_check23, %voiderr19
-  store double 0.000000e+00, ptr %x25, align 8
-  store ptr @.str.8, ptr %taddr28, align 8
-  %28 = insertvalue %variant undef, ptr %taddr28, 0
+  %27 = call i64 @std_io_printfn(ptr %retparam11, ptr @.str.5, i64 2, ptr %varargslots12, i64 1)
+  store double 0.000000e+00, ptr %x13, align 8
+  store ptr @.str.8, ptr %taddr16, align 8
+  %28 = insertvalue %variant undef, ptr %taddr16, 0
   %29 = insertvalue %variant %28, i64 ptrtoint (ptr @"ct$p$a6$char" to i64), 1
-  %30 = getelementptr inbounds [1 x %variant], ptr %varargslots27, i64 0, i64 0
+  %30 = getelementptr inbounds [1 x %variant], ptr %varargslots15, i64 0, i64 0
   store %variant %29, ptr %30, align 16
-  %31 = call i64 @std_io_printfn(ptr %retparam26, ptr @.str.7, i64 2, ptr %varargslots27, i64 1)
-  %not_err29 = icmp eq i64 %31, 0
-  br i1 %not_err29, label %after_check30, label %voiderr31
-
-after_check30:                                    ; preds = %voiderr24
-  br label %voiderr31
-
-voiderr31:                                        ; preds = %after_check30, %voiderr24
-  store i32 105, ptr %taddr34, align 4
-  %32 = insertvalue %variant undef, ptr %taddr34, 0
+  %31 = call i64 @std_io_printfn(ptr %retparam14, ptr @.str.7, i64 2, ptr %varargslots15, i64 1)
+  store i32 105, ptr %taddr19, align 4
+  %32 = insertvalue %variant undef, ptr %taddr19, 0
   %33 = insertvalue %variant %32, i64 ptrtoint (ptr @"ct$int" to i64), 1
-  %34 = getelementptr inbounds [1 x %variant], ptr %varargslots33, i64 0, i64 0
+  %34 = getelementptr inbounds [1 x %variant], ptr %varargslots18, i64 0, i64 0
   store %variant %33, ptr %34, align 16
-  %35 = call i64 @std_io_printfn(ptr %retparam32, ptr @.str.9, i64 2, ptr %varargslots33, i64 1)
-  %not_err35 = icmp eq i64 %35, 0
-  br i1 %not_err35, label %after_check36, label %voiderr37
-
-after_check36:                                    ; preds = %voiderr31
-  br label %voiderr37
-
-voiderr37:                                        ; preds = %after_check36, %voiderr31
-  store i32 123, ptr %x38, align 4
+  %35 = call i64 @std_io_printfn(ptr %retparam17, ptr @.str.9, i64 2, ptr %varargslots18, i64 1)
+  store i32 123, ptr %x20, align 4
   store i32 33, ptr %y, align 4
-  %36 = load i32, ptr %x38, align 4
+  %36 = load i32, ptr %x20, align 4
   store i32 %36, ptr %a, align 4
   %37 = load i32, ptr %y, align 4
-  store i32 %37, ptr %x38, align 4
+  store i32 %37, ptr %x20, align 4
   %38 = load i32, ptr %a, align 4
   store i32 %38, ptr %y, align 4
-  %39 = insertvalue %variant undef, ptr %x38, 0
+  %39 = insertvalue %variant undef, ptr %x20, 0
   %40 = insertvalue %variant %39, i64 ptrtoint (ptr @"ct$int" to i64), 1
-  %41 = getelementptr inbounds [2 x %variant], ptr %varargslots40, i64 0, i64 0
+  %41 = getelementptr inbounds [2 x %variant], ptr %varargslots22, i64 0, i64 0
   store %variant %40, ptr %41, align 16
   %42 = insertvalue %variant undef, ptr %y, 0
   %43 = insertvalue %variant %42, i64 ptrtoint (ptr @"ct$int" to i64), 1
-  %44 = getelementptr inbounds [2 x %variant], ptr %varargslots40, i64 0, i64 1
+  %44 = getelementptr inbounds [2 x %variant], ptr %varargslots22, i64 0, i64 1
   store %variant %43, ptr %44, align 16
-  %45 = call i64 @std_io_printfn(ptr %retparam39, ptr @.str.10, i64 6, ptr %varargslots40, i64 2)
-  %not_err41 = icmp eq i64 %45, 0
-  br i1 %not_err41, label %after_check42, label %voiderr43
-
-after_check42:                                    ; preds = %voiderr37
-  br label %voiderr43
-
-voiderr43:                                        ; preds = %after_check42, %voiderr37
-  %46 = load i32, ptr %x38, align 4
-  store i32 %46, ptr %a44, align 4
+  %45 = call i64 @std_io_printfn(ptr %retparam21, ptr @.str.10, i64 6, ptr %varargslots22, i64 2)
+  %46 = load i32, ptr %x20, align 4
+  store i32 %46, ptr %a23, align 4
   %47 = load i32, ptr %y, align 4
-  store i32 %47, ptr %x38, align 4
-  %48 = load i32, ptr %a44, align 4
+  store i32 %47, ptr %x20, align 4
+  %48 = load i32, ptr %a23, align 4
   store i32 %48, ptr %y, align 4
-  %49 = insertvalue %variant undef, ptr %x38, 0
+  %49 = insertvalue %variant undef, ptr %x20, 0
   %50 = insertvalue %variant %49, i64 ptrtoint (ptr @"ct$int" to i64), 1
-  %51 = getelementptr inbounds [2 x %variant], ptr %varargslots46, i64 0, i64 0
+  %51 = getelementptr inbounds [2 x %variant], ptr %varargslots25, i64 0, i64 0
   store %variant %50, ptr %51, align 16
   %52 = insertvalue %variant undef, ptr %y, 0
   %53 = insertvalue %variant %52, i64 ptrtoint (ptr @"ct$int" to i64), 1
-  %54 = getelementptr inbounds [2 x %variant], ptr %varargslots46, i64 0, i64 1
+  %54 = getelementptr inbounds [2 x %variant], ptr %varargslots25, i64 0, i64 1
   store %variant %53, ptr %54, align 16
-  %55 = call i64 @std_io_printfn(ptr %retparam45, ptr @.str.11, i64 6, ptr %varargslots46, i64 2)
-  %not_err47 = icmp eq i64 %55, 0
-  br i1 %not_err47, label %after_check48, label %voiderr49
-
-after_check48:                                    ; preds = %voiderr43
-  br label %voiderr49
-
-voiderr49:                                        ; preds = %after_check48, %voiderr43
+  %55 = call i64 @std_io_printfn(ptr %retparam24, ptr @.str.11, i64 6, ptr %varargslots25, i64 2)
   ret void
 }

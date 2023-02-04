@@ -94,20 +94,6 @@ noerr_block:                                      ; preds = %after_check
 define void @test_main() #0 {
 entry:
   %0 = call i64 @test_test1()
-  %not_err = icmp eq i64 %0, 0
-  br i1 %not_err, label %after_check, label %voiderr
-
-after_check:                                      ; preds = %entry
-  br label %voiderr
-
-voiderr:                                          ; preds = %after_check, %entry
   %1 = call i64 @test_test2()
-  %not_err1 = icmp eq i64 %1, 0
-  br i1 %not_err1, label %after_check2, label %voiderr3
-
-after_check2:                                     ; preds = %voiderr
-  br label %voiderr3
-
-voiderr3:                                         ; preds = %after_check2, %voiderr
   ret void
 }

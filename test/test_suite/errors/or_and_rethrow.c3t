@@ -47,23 +47,19 @@ entry:
   %error_var = alloca i64, align 8
   %blockret = alloca i32, align 4
   %x = alloca ptr, align 8
-  %error_var1 = alloca i64, align 8
-  %retparam2 = alloca i64, align 8
+  %retparam1 = alloca i64, align 8
   %result = alloca %File, align 8
-  %x6 = alloca ptr, align 8
-  %error_var7 = alloca i64, align 8
-  %retparam8 = alloca i64, align 8
-  %result9 = alloca %File, align 8
-  %error_var15 = alloca i64, align 8
-  %blockret16 = alloca i32, align 4
-  %x21 = alloca ptr, align 8
-  %error_var22 = alloca i64, align 8
-  %retparam23 = alloca i64, align 8
-  %result24 = alloca %File, align 8
-  %x31 = alloca ptr, align 8
-  %error_var32 = alloca i64, align 8
-  %retparam33 = alloca i64, align 8
-  %result34 = alloca %File, align 8
+  %x2 = alloca ptr, align 8
+  %retparam3 = alloca i64, align 8
+  %result4 = alloca %File, align 8
+  %error_var5 = alloca i64, align 8
+  %blockret6 = alloca i32, align 4
+  %x10 = alloca ptr, align 8
+  %retparam11 = alloca i64, align 8
+  %result12 = alloca %File, align 8
+  %x14 = alloca ptr, align 8
+  %retparam15 = alloca i64, align 8
+  %result16 = alloca %File, align 8
   %reterr = alloca i64, align 8
   store i32 %0, ptr %taddr, align 4
   %1 = insertvalue %variant undef, ptr %taddr, 0
@@ -71,17 +67,10 @@ entry:
   %3 = getelementptr inbounds [1 x %variant], ptr %varargslots, i64 0, i64 0
   store %variant %2, ptr %3, align 16
   %4 = call i64 @std_io_printfn(ptr %retparam, ptr @.str.1, i64 8, ptr %varargslots, i64 1)
-  %not_err = icmp eq i64 %4, 0
-  br i1 %not_err, label %after_check, label %voiderr
-
-after_check:                                      ; preds = %entry
-  br label %voiderr
-
-voiderr:                                          ; preds = %after_check, %entry
   %intbool = icmp ne i32 %0, 0
   br i1 %intbool, label %or.phi, label %or.rhs
 
-or.rhs:                                           ; preds = %voiderr
+or.rhs:                                           ; preds = %entry
   store i64 ptrtoint (ptr @"foo_Foo$ABC" to i64), ptr %error_var, align 8
   br label %opt_block_cleanup
 
@@ -93,108 +82,40 @@ guard_block:                                      ; preds = %opt_block_cleanup
   %5 = load i64, ptr %error_var, align 8
   ret i64 %5
 
-or.phi:                                           ; preds = %voiderr
+or.phi:                                           ; preds = %entry
   br label %if.then
 
 if.then:                                          ; preds = %or.phi
   store ptr @.str.2, ptr %x, align 8
-  store i64 0, ptr %error_var1, align 8
   %6 = call ptr @std_io_stdout()
   store ptr %6, ptr %result, align 8
   %7 = load ptr, ptr %x, align 8
-  %8 = call i64 @std_io_File_printn(ptr %retparam2, ptr %result, ptr %7, i64 3)
-  %not_err3 = icmp eq i64 %8, 0
-  br i1 %not_err3, label %after_check4, label %assign_optional
-
-assign_optional:                                  ; preds = %if.then
-  store i64 %8, ptr %error_var1, align 8
-  br label %noerr_block
-
-after_check4:                                     ; preds = %if.then
-  br label %noerr_block
-
-noerr_block:                                      ; preds = %after_check4, %assign_optional
-  br label %voiderr5
-
-voiderr5:                                         ; preds = %noerr_block
+  %8 = call i64 @std_io_File_printn(ptr %retparam1, ptr %result, ptr %7, i64 3)
   br label %if.exit
 
-if.exit:                                          ; preds = %voiderr5
-  store ptr @.str.3, ptr %x6, align 8
-  store i64 0, ptr %error_var7, align 8
+if.exit:                                          ; preds = %if.then
+  store ptr @.str.3, ptr %x2, align 8
   %9 = call ptr @std_io_stdout()
-  store ptr %9, ptr %result9, align 8
-  %10 = load ptr, ptr %x6, align 8
-  %11 = call i64 @std_io_File_printn(ptr %retparam8, ptr %result9, ptr %10, i64 9)
-  %not_err10 = icmp eq i64 %11, 0
-  br i1 %not_err10, label %after_check12, label %assign_optional11
+  store ptr %9, ptr %result4, align 8
+  %10 = load ptr, ptr %x2, align 8
+  %11 = call i64 @std_io_File_printn(ptr %retparam3, ptr %result4, ptr %10, i64 9)
+  store i64 ptrtoint (ptr @"foo_Foo$ABC" to i64), ptr %error_var5, align 8
+  br label %opt_block_cleanup7
 
-assign_optional11:                                ; preds = %if.exit
-  store i64 %11, ptr %error_var7, align 8
-  br label %noerr_block13
-
-after_check12:                                    ; preds = %if.exit
-  br label %noerr_block13
-
-noerr_block13:                                    ; preds = %after_check12, %assign_optional11
-  br label %voiderr14
-
-voiderr14:                                        ; preds = %noerr_block13
-  store i64 ptrtoint (ptr @"foo_Foo$ABC" to i64), ptr %error_var15, align 8
-  br label %opt_block_cleanup17
-
-opt_block_cleanup17:                              ; preds = %voiderr14
+opt_block_cleanup7:                               ; preds = %if.exit
   call void @foo_blurb()
-  br label %guard_block18
+  br label %guard_block8
 
-guard_block18:                                    ; preds = %opt_block_cleanup17
-  %12 = load i64, ptr %error_var15, align 8
+guard_block8:                                     ; preds = %opt_block_cleanup7
+  %12 = load i64, ptr %error_var5, align 8
   ret i64 %12
 
-if.then20:                                        ; No predecessors!
-  store ptr @.str.4, ptr %x21, align 8
-  store i64 0, ptr %error_var22, align 8
+if.exit13:                                        ; No predecessors!
+  store ptr @.str.5, ptr %x14, align 8
   %13 = call ptr @std_io_stdout()
-  store ptr %13, ptr %result24, align 8
-  %14 = load ptr, ptr %x21, align 8
-  %15 = call i64 @std_io_File_printn(ptr %retparam23, ptr %result24, ptr %14, i64 3)
-  %not_err25 = icmp eq i64 %15, 0
-  br i1 %not_err25, label %after_check27, label %assign_optional26
-
-assign_optional26:                                ; preds = %if.then20
-  store i64 %15, ptr %error_var22, align 8
-  br label %noerr_block28
-
-after_check27:                                    ; preds = %if.then20
-  br label %noerr_block28
-
-noerr_block28:                                    ; preds = %after_check27, %assign_optional26
-  br label %voiderr29
-
-voiderr29:                                        ; preds = %noerr_block28
-  br label %if.exit30
-
-if.exit30:                                        ; preds = %voiderr29
-  store ptr @.str.5, ptr %x31, align 8
-  store i64 0, ptr %error_var32, align 8
-  %16 = call ptr @std_io_stdout()
-  store ptr %16, ptr %result34, align 8
-  %17 = load ptr, ptr %x31, align 8
-  %18 = call i64 @std_io_File_printn(ptr %retparam33, ptr %result34, ptr %17, i64 7)
-  %not_err35 = icmp eq i64 %18, 0
-  br i1 %not_err35, label %after_check37, label %assign_optional36
-
-assign_optional36:                                ; preds = %if.exit30
-  store i64 %18, ptr %error_var32, align 8
-  br label %noerr_block38
-
-after_check37:                                    ; preds = %if.exit30
-  br label %noerr_block38
-
-noerr_block38:                                    ; preds = %after_check37, %assign_optional36
-  br label %voiderr39
-
-voiderr39:                                        ; preds = %noerr_block38
+  store ptr %13, ptr %result16, align 8
+  %14 = load ptr, ptr %x14, align 8
+  %15 = call i64 @std_io_File_printn(ptr %retparam15, ptr %result16, ptr %14, i64 7)
   ret i64 0
 }
 
@@ -207,15 +128,13 @@ entry:
   %error_var = alloca i64, align 8
   %blockret = alloca i32, align 4
   %x = alloca ptr, align 8
-  %error_var1 = alloca i64, align 8
-  %retparam2 = alloca i64, align 8
+  %retparam1 = alloca i64, align 8
   %result = alloca %File, align 8
-  %error_var6 = alloca i64, align 8
-  %blockret7 = alloca i32, align 4
-  %x12 = alloca ptr, align 8
-  %error_var13 = alloca i64, align 8
-  %retparam14 = alloca i64, align 8
-  %result15 = alloca %File, align 8
+  %error_var2 = alloca i64, align 8
+  %blockret3 = alloca i32, align 4
+  %x7 = alloca ptr, align 8
+  %retparam8 = alloca i64, align 8
+  %result9 = alloca %File, align 8
   %reterr = alloca i64, align 8
   store i32 %0, ptr %taddr, align 4
   %1 = insertvalue %variant undef, ptr %taddr, 0
@@ -223,17 +142,10 @@ entry:
   %3 = getelementptr inbounds [1 x %variant], ptr %varargslots, i64 0, i64 0
   store %variant %2, ptr %3, align 16
   %4 = call i64 @std_io_printfn(ptr %retparam, ptr @.str.6, i64 9, ptr %varargslots, i64 1)
-  %not_err = icmp eq i64 %4, 0
-  br i1 %not_err, label %after_check, label %voiderr
-
-after_check:                                      ; preds = %entry
-  br label %voiderr
-
-voiderr:                                          ; preds = %after_check, %entry
   %intbool = icmp ne i32 %0, 0
   br i1 %intbool, label %and.rhs, label %and.phi
 
-and.rhs:                                          ; preds = %voiderr
+and.rhs:                                          ; preds = %entry
   store i64 ptrtoint (ptr @"foo_Foo$ABC" to i64), ptr %error_var, align 8
   br label %opt_block_cleanup
 
@@ -245,61 +157,127 @@ guard_block:                                      ; preds = %opt_block_cleanup
   %5 = load i64, ptr %error_var, align 8
   ret i64 %5
 
-and.phi:                                          ; preds = %voiderr
+and.phi:                                          ; preds = %entry
   br label %if.exit
 
 if.exit:                                          ; preds = %and.phi
   store ptr @.str.7, ptr %x, align 8
-  store i64 0, ptr %error_var1, align 8
   %6 = call ptr @std_io_stdout()
   store ptr %6, ptr %result, align 8
   %7 = load ptr, ptr %x, align 8
-  %8 = call i64 @std_io_File_printn(ptr %retparam2, ptr %result, ptr %7, i64 9)
-  %not_err3 = icmp eq i64 %8, 0
-  br i1 %not_err3, label %after_check4, label %assign_optional
+  %8 = call i64 @std_io_File_printn(ptr %retparam1, ptr %result, ptr %7, i64 9)
+  store i64 ptrtoint (ptr @"foo_Foo$ABC" to i64), ptr %error_var2, align 8
+  br label %opt_block_cleanup4
 
-assign_optional:                                  ; preds = %if.exit
-  store i64 %8, ptr %error_var1, align 8
-  br label %noerr_block
-
-after_check4:                                     ; preds = %if.exit
-  br label %noerr_block
-
-noerr_block:                                      ; preds = %after_check4, %assign_optional
-  br label %voiderr5
-
-voiderr5:                                         ; preds = %noerr_block
-  store i64 ptrtoint (ptr @"foo_Foo$ABC" to i64), ptr %error_var6, align 8
-  br label %opt_block_cleanup8
-
-opt_block_cleanup8:                               ; preds = %voiderr5
+opt_block_cleanup4:                               ; preds = %if.exit
   call void @foo_blurb()
-  br label %guard_block9
+  br label %guard_block5
 
-guard_block9:                                     ; preds = %opt_block_cleanup8
-  %9 = load i64, ptr %error_var6, align 8
+guard_block5:                                     ; preds = %opt_block_cleanup4
+  %9 = load i64, ptr %error_var2, align 8
   ret i64 %9
 
-if.exit11:                                        ; No predecessors!
-  store ptr @.str.8, ptr %x12, align 8
-  store i64 0, ptr %error_var13, align 8
+if.exit6:                                         ; No predecessors!
+  store ptr @.str.8, ptr %x7, align 8
   %10 = call ptr @std_io_stdout()
-  store ptr %10, ptr %result15, align 8
-  %11 = load ptr, ptr %x12, align 8
-  %12 = call i64 @std_io_File_printn(ptr %retparam14, ptr %result15, ptr %11, i64 7)
-  %not_err16 = icmp eq i64 %12, 0
-  br i1 %not_err16, label %after_check18, label %assign_optional17
-
-assign_optional17:                                ; preds = %if.exit11
-  store i64 %12, ptr %error_var13, align 8
-  br label %noerr_block19
-
-after_check18:                                    ; preds = %if.exit11
-  br label %noerr_block19
-
-noerr_block19:                                    ; preds = %after_check18, %assign_optional17
-  br label %voiderr20
-
-voiderr20:                                        ; preds = %noerr_block19
+  store ptr %10, ptr %result9, align 8
+  %11 = load ptr, ptr %x7, align 8
+  %12 = call i64 @std_io_File_printn(ptr %retparam8, ptr %result9, ptr %11, i64 7)
   ret i64 0
 }
+
+; Function Attrs: nounwind
+define void @foo_main() #0 {
+entry:
+  %a = alloca i64, align 8
+  %error_var = alloca i64, align 8
+  %b = alloca i64, align 8
+  %error_var1 = alloca i64, align 8
+  %c = alloca i64, align 8
+  %error_var6 = alloca i64, align 8
+  %d = alloca i64, align 8
+  %error_var11 = alloca i64, align 8
+  store i64 0, ptr %error_var, align 8
+  %0 = call i64 @foo_test(i32 0)
+  %not_err = icmp eq i64 %0, 0
+  br i1 %not_err, label %after_check, label %assign_optional
+
+assign_optional:                                  ; preds = %entry
+  store i64 %0, ptr %error_var, align 8
+  br label %noerr_block
+
+after_check:                                      ; preds = %entry
+  br label %noerr_block
+
+noerr_block:                                      ; preds = %after_check, %assign_optional
+  %1 = load i64, ptr %error_var, align 8
+  store i64 %1, ptr %a, align 8
+  store i64 0, ptr %error_var1, align 8
+  %2 = call i64 @foo_test(i32 1)
+  %not_err2 = icmp eq i64 %2, 0
+  br i1 %not_err2, label %after_check4, label %assign_optional3
+
+assign_optional3:                                 ; preds = %noerr_block
+  store i64 %2, ptr %error_var1, align 8
+  br label %noerr_block5
+
+after_check4:                                     ; preds = %noerr_block
+  br label %noerr_block5
+
+noerr_block5:                                     ; preds = %after_check4, %assign_optional3
+  %3 = load i64, ptr %error_var1, align 8
+  store i64 %3, ptr %b, align 8
+  store i64 0, ptr %error_var6, align 8
+  %4 = call i64 @foo_test2(i32 0)
+  %not_err7 = icmp eq i64 %4, 0
+  br i1 %not_err7, label %after_check9, label %assign_optional8
+
+assign_optional8:                                 ; preds = %noerr_block5
+  store i64 %4, ptr %error_var6, align 8
+  br label %noerr_block10
+
+after_check9:                                     ; preds = %noerr_block5
+  br label %noerr_block10
+
+noerr_block10:                                    ; preds = %after_check9, %assign_optional8
+  %5 = load i64, ptr %error_var6, align 8
+  store i64 %5, ptr %c, align 8
+  store i64 0, ptr %error_var11, align 8
+  %6 = call i64 @foo_test2(i32 1)
+  %not_err12 = icmp eq i64 %6, 0
+  br i1 %not_err12, label %after_check14, label %assign_optional13
+
+assign_optional13:                                ; preds = %noerr_block10
+  store i64 %6, ptr %error_var11, align 8
+  br label %noerr_block15
+
+after_check14:                                    ; preds = %noerr_block10
+  br label %noerr_block15
+
+noerr_block15:                                    ; preds = %after_check14, %assign_optional13
+  %7 = load i64, ptr %error_var11, align 8
+  store i64 %7, ptr %d, align 8
+  ret void
+}
+
+; Function Attrs: nounwind
+define i32 @main(i32 %0, ptr %1) #0 {
+entry:
+  %.anon = alloca i32, align 4
+  %.anon1 = alloca ptr, align 8
+  store i32 %0, ptr %.anon, align 4
+  store ptr %1, ptr %.anon1, align 8
+  call void @foo_main()
+  ret i32 0
+}
+
+; Function Attrs: nounwind
+declare i64 @std_io_File_printn(ptr, ptr, ptr, i64) #0
+
+; Function Attrs: nounwind
+declare ptr @std_io_stdout() #0
+
+; Function Attrs: nounwind
+declare i64 @std_io_printfn(ptr, ptr, i64, ptr, i64) #0
+
+attributes #0 = { nounwind }

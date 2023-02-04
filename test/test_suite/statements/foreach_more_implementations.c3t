@@ -72,7 +72,7 @@ entry:
   store i64 0, ptr %.anon1, align 8
   br label %loop.cond
 
-loop.cond:                                        ; preds = %voiderr, %entry
+loop.cond:                                        ; preds = %loop.body, %entry
   %4 = load i64, ptr %.anon1, align 8
   %5 = load i64, ptr %.anon, align 8
   %lt = icmp ult i64 %4, %5
@@ -94,13 +94,6 @@ loop.body:                                        ; preds = %loop.cond
   %14 = getelementptr inbounds [1 x %variant], ptr %varargslots, i64 0, i64 0
   store %variant %13, ptr %14, align 16
   %15 = call i64 @std_io_printf(ptr %retparam, ptr @.str, i64 3, ptr %varargslots, i64 1)
-  %not_err = icmp eq i64 %15, 0
-  br i1 %not_err, label %after_check, label %voiderr
-
-after_check:                                      ; preds = %loop.body
-  br label %voiderr
-
-voiderr:                                          ; preds = %after_check, %loop.body
   %16 = load ptr, ptr %ref, align 8
   %17 = load i32, ptr %16, align 4
   %add = add i32 %17, 2
@@ -118,11 +111,11 @@ loop.exit:                                        ; preds = %loop.cond
   store i64 0, ptr %.anon6, align 8
   br label %loop.cond7
 
-loop.cond7:                                       ; preds = %voiderr17, %loop.exit
+loop.cond7:                                       ; preds = %loop.body9, %loop.exit
   %21 = load i64, ptr %.anon6, align 8
   %22 = load i64, ptr %.anon4, align 8
   %lt8 = icmp ult i64 %21, %22
-  br i1 %lt8, label %loop.body9, label %loop.exit19
+  br i1 %lt8, label %loop.body9, label %loop.exit16
 
 loop.body9:                                       ; preds = %loop.cond7
   store ptr %v, ptr %vector10, align 8
@@ -140,18 +133,11 @@ loop.body9:                                       ; preds = %loop.cond7
   %31 = getelementptr inbounds [1 x %variant], ptr %varargslots14, i64 0, i64 0
   store %variant %30, ptr %31, align 16
   %32 = call i64 @std_io_printf(ptr %retparam13, ptr @.str.1, i64 3, ptr %varargslots14, i64 1)
-  %not_err15 = icmp eq i64 %32, 0
-  br i1 %not_err15, label %after_check16, label %voiderr17
-
-after_check16:                                    ; preds = %loop.body9
-  br label %voiderr17
-
-voiderr17:                                        ; preds = %after_check16, %loop.body9
   %33 = load i64, ptr %.anon6, align 8
-  %add18 = add i64 %33, 1
-  store i64 %add18, ptr %.anon6, align 8
+  %add15 = add i64 %33, 1
+  store i64 %add15, ptr %.anon6, align 8
   br label %loop.cond7
 
-loop.exit19:                                      ; preds = %loop.cond7
+loop.exit16:                                      ; preds = %loop.cond7
   ret void
 }

@@ -64,26 +64,26 @@ entry:
   %taddr20 = alloca i32, align 4
   %taddr23 = alloca i32, align 4
   %taddr26 = alloca i8, align 1
-  %retparam30 = alloca i64, align 8
-  %varargslots31 = alloca [3 x %variant], align 16
-  %taddr39 = alloca i32, align 4
-  %taddr47 = alloca i32, align 4
-  %taddr49 = alloca i8, align 1
-  %retparam67 = alloca i64, align 8
-  %varargslots68 = alloca [3 x %variant], align 16
-  %taddr70 = alloca i32, align 4
-  %taddr73 = alloca i32, align 4
-  %taddr76 = alloca i8, align 1
-  %retparam80 = alloca i64, align 8
-  %varargslots81 = alloca [3 x %variant], align 16
-  %taddr83 = alloca i32, align 4
-  %taddr86 = alloca i32, align 4
-  %taddr89 = alloca i8, align 1
-  %retparam93 = alloca i64, align 8
-  %varargslots94 = alloca [3 x %variant], align 16
-  %taddr102 = alloca i32, align 4
-  %taddr110 = alloca i32, align 4
-  %taddr112 = alloca i8, align 1
+  %retparam27 = alloca i64, align 8
+  %varargslots28 = alloca [3 x %variant], align 16
+  %taddr36 = alloca i32, align 4
+  %taddr44 = alloca i32, align 4
+  %taddr46 = alloca i8, align 1
+  %retparam61 = alloca i64, align 8
+  %varargslots62 = alloca [3 x %variant], align 16
+  %taddr64 = alloca i32, align 4
+  %taddr67 = alloca i32, align 4
+  %taddr70 = alloca i8, align 1
+  %retparam71 = alloca i64, align 8
+  %varargslots72 = alloca [3 x %variant], align 16
+  %taddr74 = alloca i32, align 4
+  %taddr77 = alloca i32, align 4
+  %taddr80 = alloca i8, align 1
+  %retparam81 = alloca i64, align 8
+  %varargslots82 = alloca [3 x %variant], align 16
+  %taddr90 = alloca i32, align 4
+  %taddr98 = alloca i32, align 4
+  %taddr100 = alloca i8, align 1
   store i64 0, ptr %x, align 8
   %zext = zext i32 %0 to i64
   %1 = and i64 %zext, 4294967295
@@ -180,13 +180,6 @@ entry:
   %45 = getelementptr inbounds [3 x %variant], ptr %varargslots, i64 0, i64 2
   store %variant %44, ptr %45, align 16
   %46 = call i64 @std_io_printfn(ptr %retparam, ptr @.str, i64 8, ptr %varargslots, i64 3)
-  %not_err = icmp eq i64 %46, 0
-  br i1 %not_err, label %after_check, label %voiderr
-
-after_check:                                      ; preds = %entry
-  br label %voiderr
-
-voiderr:                                          ; preds = %after_check, %entry
   %47 = getelementptr inbounds %Abc, ptr %y, i32 0, i32 1
   %48 = load i64, ptr %47, align 8
   %49 = and i64 4294967295, %48
@@ -217,88 +210,74 @@ voiderr:                                          ; preds = %after_check, %entry
   %64 = getelementptr inbounds [3 x %variant], ptr %varargslots18, i64 0, i64 2
   store %variant %63, ptr %64, align 16
   %65 = call i64 @std_io_printfn(ptr %retparam17, ptr @.str.2, i64 8, ptr %varargslots18, i64 3)
-  %not_err27 = icmp eq i64 %65, 0
-  br i1 %not_err27, label %after_check28, label %voiderr29
-
-after_check28:                                    ; preds = %voiderr
-  br label %voiderr29
-
-voiderr29:                                        ; preds = %after_check28, %voiderr
   %66 = getelementptr inbounds [8 x i8], ptr %b, i64 0, i64 0
   %67 = load i8, ptr %66, align 1
-  %zext32 = zext i8 %67 to i32
+  %zext29 = zext i8 %67 to i32
   %68 = getelementptr inbounds [8 x i8], ptr %b, i64 0, i64 1
   %69 = load i8, ptr %68, align 1
-  %zext33 = zext i8 %69 to i32
-  %shl34 = shl i32 %zext33, 8
-  %70 = or i32 %shl34, %zext32
+  %zext30 = zext i8 %69 to i32
+  %shl31 = shl i32 %zext30, 8
+  %70 = or i32 %shl31, %zext29
   %71 = getelementptr inbounds [8 x i8], ptr %b, i64 0, i64 2
   %72 = load i8, ptr %71, align 1
-  %zext35 = zext i8 %72 to i32
-  %shl36 = shl i32 %zext35, 16
-  %73 = or i32 %shl36, %70
+  %zext32 = zext i8 %72 to i32
+  %shl33 = shl i32 %zext32, 16
+  %73 = or i32 %shl33, %70
   %74 = getelementptr inbounds [8 x i8], ptr %b, i64 0, i64 3
   %75 = load i8, ptr %74, align 1
-  %zext37 = zext i8 %75 to i32
-  %shl38 = shl i32 %zext37, 24
-  %76 = or i32 %shl38, %73
-  store i32 %76, ptr %taddr39, align 4
-  %77 = insertvalue %variant undef, ptr %taddr39, 0
+  %zext34 = zext i8 %75 to i32
+  %shl35 = shl i32 %zext34, 24
+  %76 = or i32 %shl35, %73
+  store i32 %76, ptr %taddr36, align 4
+  %77 = insertvalue %variant undef, ptr %taddr36, 0
   %78 = insertvalue %variant %77, i64 ptrtoint (ptr @"ct$uint" to i64), 1
-  %79 = getelementptr inbounds [3 x %variant], ptr %varargslots31, i64 0, i64 0
+  %79 = getelementptr inbounds [3 x %variant], ptr %varargslots28, i64 0, i64 0
   store %variant %78, ptr %79, align 16
   %80 = getelementptr inbounds [8 x i8], ptr %b, i64 0, i64 4
   %81 = load i8, ptr %80, align 1
-  %zext40 = zext i8 %81 to i32
+  %zext37 = zext i8 %81 to i32
   %82 = getelementptr inbounds [8 x i8], ptr %b, i64 0, i64 5
   %83 = load i8, ptr %82, align 1
-  %zext41 = zext i8 %83 to i32
-  %shl42 = shl i32 %zext41, 8
-  %84 = or i32 %shl42, %zext40
+  %zext38 = zext i8 %83 to i32
+  %shl39 = shl i32 %zext38, 8
+  %84 = or i32 %shl39, %zext37
   %85 = getelementptr inbounds [8 x i8], ptr %b, i64 0, i64 6
   %86 = load i8, ptr %85, align 1
-  %zext43 = zext i8 %86 to i32
-  %shl44 = shl i32 %zext43, 16
-  %87 = or i32 %shl44, %84
+  %zext40 = zext i8 %86 to i32
+  %shl41 = shl i32 %zext40, 16
+  %87 = or i32 %shl41, %84
   %88 = getelementptr inbounds [8 x i8], ptr %b, i64 0, i64 7
   %89 = load i8, ptr %88, align 1
-  %zext45 = zext i8 %89 to i32
-  %shl46 = shl i32 %zext45, 24
-  %90 = or i32 %shl46, %87
+  %zext42 = zext i8 %89 to i32
+  %shl43 = shl i32 %zext42, 24
+  %90 = or i32 %shl43, %87
   %91 = and i32 2147483647, %90
-  store i32 %91, ptr %taddr47, align 4
-  %92 = insertvalue %variant undef, ptr %taddr47, 0
+  store i32 %91, ptr %taddr44, align 4
+  %92 = insertvalue %variant undef, ptr %taddr44, 0
   %93 = insertvalue %variant %92, i64 ptrtoint (ptr @"ct$uint" to i64), 1
-  %94 = getelementptr inbounds [3 x %variant], ptr %varargslots31, i64 0, i64 1
+  %94 = getelementptr inbounds [3 x %variant], ptr %varargslots28, i64 0, i64 1
   store %variant %93, ptr %94, align 16
   %95 = getelementptr inbounds [8 x i8], ptr %b, i64 0, i64 7
   %96 = load i8, ptr %95, align 1
-  %lshrl48 = lshr i8 %96, 7
-  %97 = trunc i8 %lshrl48 to i1
+  %lshrl45 = lshr i8 %96, 7
+  %97 = trunc i8 %lshrl45 to i1
   %98 = zext i1 %97 to i8
-  store i8 %98, ptr %taddr49, align 1
-  %99 = insertvalue %variant undef, ptr %taddr49, 0
+  store i8 %98, ptr %taddr46, align 1
+  %99 = insertvalue %variant undef, ptr %taddr46, 0
   %100 = insertvalue %variant %99, i64 ptrtoint (ptr @"ct$bool" to i64), 1
-  %101 = getelementptr inbounds [3 x %variant], ptr %varargslots31, i64 0, i64 2
+  %101 = getelementptr inbounds [3 x %variant], ptr %varargslots28, i64 0, i64 2
   store %variant %100, ptr %101, align 16
-  %102 = call i64 @std_io_printfn(ptr %retparam30, ptr @.str.3, i64 8, ptr %varargslots31, i64 3)
-  %not_err50 = icmp eq i64 %102, 0
-  br i1 %not_err50, label %after_check51, label %voiderr52
-
-after_check51:                                    ; preds = %voiderr29
-  br label %voiderr52
-
-voiderr52:                                        ; preds = %after_check51, %voiderr29
+  %102 = call i64 @std_io_printfn(ptr %retparam27, ptr @.str.3, i64 8, ptr %varargslots28, i64 3)
   %add = add i32 %0, 1
-  %zext53 = zext i32 %add to i64
-  %103 = and i64 %zext53, 4294967295
+  %zext47 = zext i32 %add to i64
+  %103 = and i64 %zext47, 4294967295
   %104 = and i64 %103, -9223372032559808513
   %105 = or i64 %104, 4294967296
   %gt = icmp sgt i32 %0, 100
   %106 = zext i1 %gt to i8
-  %zext54 = zext i8 %106 to i64
-  %shl55 = shl i64 %zext54, 63
-  %107 = and i64 %shl55, -9223372036854775808
+  %zext48 = zext i8 %106 to i64
+  %shl49 = shl i64 %zext48, 63
+  %107 = and i64 %shl49, -9223372036854775808
   %108 = and i64 %105, 9223372036854775807
   %109 = or i64 %108, %107
   store i64 %109, ptr %x, align 8
@@ -320,23 +299,23 @@ voiderr52:                                        ; preds = %after_check51, %voi
   store i8 0, ptr %117, align 1
   %118 = getelementptr inbounds [8 x i8], ptr %b, i64 0, i64 7
   store i8 0, ptr %118, align 1
-  %add56 = add i32 %0, 1
+  %add50 = add i32 %0, 1
   %119 = getelementptr inbounds [8 x i8], ptr %b, i64 0, i64 0
-  %ztrunc57 = trunc i32 %add56 to i8
-  store i8 %ztrunc57, ptr %119, align 1
-  %lshrl58 = lshr i32 %add56, 8
+  %ztrunc51 = trunc i32 %add50 to i8
+  store i8 %ztrunc51, ptr %119, align 1
+  %lshrl52 = lshr i32 %add50, 8
   %120 = getelementptr inbounds [8 x i8], ptr %b, i64 0, i64 1
-  %ztrunc59 = trunc i32 %lshrl58 to i8
-  store i8 %ztrunc59, ptr %120, align 1
-  %lshrl60 = lshr i32 %lshrl58, 8
+  %ztrunc53 = trunc i32 %lshrl52 to i8
+  store i8 %ztrunc53, ptr %120, align 1
+  %lshrl54 = lshr i32 %lshrl52, 8
   %121 = getelementptr inbounds [8 x i8], ptr %b, i64 0, i64 2
-  %ztrunc61 = trunc i32 %lshrl60 to i8
-  store i8 %ztrunc61, ptr %121, align 1
-  %lshrl62 = lshr i32 %lshrl60, 8
+  %ztrunc55 = trunc i32 %lshrl54 to i8
+  store i8 %ztrunc55, ptr %121, align 1
+  %lshrl56 = lshr i32 %lshrl54, 8
   %122 = getelementptr inbounds [8 x i8], ptr %b, i64 0, i64 3
-  %ztrunc63 = trunc i32 %lshrl62 to i8
-  store i8 %ztrunc63, ptr %122, align 1
-  %lshrl64 = lshr i32 %lshrl62, 8
+  %ztrunc57 = trunc i32 %lshrl56 to i8
+  store i8 %ztrunc57, ptr %122, align 1
+  %lshrl58 = lshr i32 %lshrl56, 8
   %123 = getelementptr inbounds [8 x i8], ptr %b, i64 0, i64 4
   store i8 1, ptr %123, align 1
   %124 = getelementptr inbounds [8 x i8], ptr %b, i64 0, i64 5
@@ -347,150 +326,129 @@ voiderr52:                                        ; preds = %after_check51, %voi
   %127 = load i8, ptr %126, align 1
   %128 = and i8 %127, -128
   store i8 %128, ptr %126, align 1
-  %gt65 = icmp sgt i32 %0, 100
-  %129 = zext i1 %gt65 to i8
-  %shl66 = shl i8 %129, 7
+  %gt59 = icmp sgt i32 %0, 100
+  %129 = zext i1 %gt59 to i8
+  %shl60 = shl i8 %129, 7
   %130 = getelementptr inbounds [8 x i8], ptr %b, i64 0, i64 7
   %131 = load i8, ptr %130, align 1
   %132 = and i8 %131, 127
-  %133 = or i8 %132, %shl66
+  %133 = or i8 %132, %shl60
   store i8 %133, ptr %130, align 1
   %134 = load i64, ptr %x, align 8
   %135 = and i64 4294967295, %134
-  %ztrunc69 = trunc i64 %135 to i32
-  store i32 %ztrunc69, ptr %taddr70, align 4
-  %136 = insertvalue %variant undef, ptr %taddr70, 0
+  %ztrunc63 = trunc i64 %135 to i32
+  store i32 %ztrunc63, ptr %taddr64, align 4
+  %136 = insertvalue %variant undef, ptr %taddr64, 0
   %137 = insertvalue %variant %136, i64 ptrtoint (ptr @"ct$uint" to i64), 1
-  %138 = getelementptr inbounds [3 x %variant], ptr %varargslots68, i64 0, i64 0
+  %138 = getelementptr inbounds [3 x %variant], ptr %varargslots62, i64 0, i64 0
   store %variant %137, ptr %138, align 16
   %139 = load i64, ptr %x, align 8
-  %lshrl71 = lshr i64 %139, 32
-  %140 = and i64 2147483647, %lshrl71
-  %ztrunc72 = trunc i64 %140 to i32
-  store i32 %ztrunc72, ptr %taddr73, align 4
-  %141 = insertvalue %variant undef, ptr %taddr73, 0
+  %lshrl65 = lshr i64 %139, 32
+  %140 = and i64 2147483647, %lshrl65
+  %ztrunc66 = trunc i64 %140 to i32
+  store i32 %ztrunc66, ptr %taddr67, align 4
+  %141 = insertvalue %variant undef, ptr %taddr67, 0
   %142 = insertvalue %variant %141, i64 ptrtoint (ptr @"ct$uint" to i64), 1
-  %143 = getelementptr inbounds [3 x %variant], ptr %varargslots68, i64 0, i64 1
+  %143 = getelementptr inbounds [3 x %variant], ptr %varargslots62, i64 0, i64 1
   store %variant %142, ptr %143, align 16
   %144 = load i64, ptr %x, align 8
-  %lshrl74 = lshr i64 %144, 63
-  %145 = and i64 1, %lshrl74
-  %ztrunc75 = trunc i64 %145 to i8
-  store i8 %ztrunc75, ptr %taddr76, align 1
-  %146 = insertvalue %variant undef, ptr %taddr76, 0
+  %lshrl68 = lshr i64 %144, 63
+  %145 = and i64 1, %lshrl68
+  %ztrunc69 = trunc i64 %145 to i8
+  store i8 %ztrunc69, ptr %taddr70, align 1
+  %146 = insertvalue %variant undef, ptr %taddr70, 0
   %147 = insertvalue %variant %146, i64 ptrtoint (ptr @"ct$bool" to i64), 1
-  %148 = getelementptr inbounds [3 x %variant], ptr %varargslots68, i64 0, i64 2
+  %148 = getelementptr inbounds [3 x %variant], ptr %varargslots62, i64 0, i64 2
   store %variant %147, ptr %148, align 16
-  %149 = call i64 @std_io_printfn(ptr %retparam67, ptr @.str.4, i64 8, ptr %varargslots68, i64 3)
-  %not_err77 = icmp eq i64 %149, 0
-  br i1 %not_err77, label %after_check78, label %voiderr79
-
-after_check78:                                    ; preds = %voiderr52
-  br label %voiderr79
-
-voiderr79:                                        ; preds = %after_check78, %voiderr52
+  %149 = call i64 @std_io_printfn(ptr %retparam61, ptr @.str.4, i64 8, ptr %varargslots62, i64 3)
   %150 = getelementptr inbounds %Abc, ptr %y, i32 0, i32 1
   %151 = load i64, ptr %150, align 8
   %152 = and i64 4294967295, %151
-  %ztrunc82 = trunc i64 %152 to i32
-  store i32 %ztrunc82, ptr %taddr83, align 4
-  %153 = insertvalue %variant undef, ptr %taddr83, 0
+  %ztrunc73 = trunc i64 %152 to i32
+  store i32 %ztrunc73, ptr %taddr74, align 4
+  %153 = insertvalue %variant undef, ptr %taddr74, 0
   %154 = insertvalue %variant %153, i64 ptrtoint (ptr @"ct$uint" to i64), 1
-  %155 = getelementptr inbounds [3 x %variant], ptr %varargslots81, i64 0, i64 0
+  %155 = getelementptr inbounds [3 x %variant], ptr %varargslots72, i64 0, i64 0
   store %variant %154, ptr %155, align 16
   %156 = getelementptr inbounds %Abc, ptr %y, i32 0, i32 1
   %157 = load i64, ptr %156, align 8
-  %lshrl84 = lshr i64 %157, 32
-  %158 = and i64 2147483647, %lshrl84
-  %ztrunc85 = trunc i64 %158 to i32
-  store i32 %ztrunc85, ptr %taddr86, align 4
-  %159 = insertvalue %variant undef, ptr %taddr86, 0
+  %lshrl75 = lshr i64 %157, 32
+  %158 = and i64 2147483647, %lshrl75
+  %ztrunc76 = trunc i64 %158 to i32
+  store i32 %ztrunc76, ptr %taddr77, align 4
+  %159 = insertvalue %variant undef, ptr %taddr77, 0
   %160 = insertvalue %variant %159, i64 ptrtoint (ptr @"ct$uint" to i64), 1
-  %161 = getelementptr inbounds [3 x %variant], ptr %varargslots81, i64 0, i64 1
+  %161 = getelementptr inbounds [3 x %variant], ptr %varargslots72, i64 0, i64 1
   store %variant %160, ptr %161, align 16
   %162 = getelementptr inbounds %Abc, ptr %y, i32 0, i32 1
   %163 = load i64, ptr %162, align 8
-  %lshrl87 = lshr i64 %163, 63
-  %164 = and i64 1, %lshrl87
-  %ztrunc88 = trunc i64 %164 to i8
-  store i8 %ztrunc88, ptr %taddr89, align 1
-  %165 = insertvalue %variant undef, ptr %taddr89, 0
+  %lshrl78 = lshr i64 %163, 63
+  %164 = and i64 1, %lshrl78
+  %ztrunc79 = trunc i64 %164 to i8
+  store i8 %ztrunc79, ptr %taddr80, align 1
+  %165 = insertvalue %variant undef, ptr %taddr80, 0
   %166 = insertvalue %variant %165, i64 ptrtoint (ptr @"ct$bool" to i64), 1
-  %167 = getelementptr inbounds [3 x %variant], ptr %varargslots81, i64 0, i64 2
+  %167 = getelementptr inbounds [3 x %variant], ptr %varargslots72, i64 0, i64 2
   store %variant %166, ptr %167, align 16
-  %168 = call i64 @std_io_printfn(ptr %retparam80, ptr @.str.5, i64 8, ptr %varargslots81, i64 3)
-  %not_err90 = icmp eq i64 %168, 0
-  br i1 %not_err90, label %after_check91, label %voiderr92
-
-after_check91:                                    ; preds = %voiderr79
-  br label %voiderr92
-
-voiderr92:                                        ; preds = %after_check91, %voiderr79
+  %168 = call i64 @std_io_printfn(ptr %retparam71, ptr @.str.5, i64 8, ptr %varargslots72, i64 3)
   %169 = getelementptr inbounds [8 x i8], ptr %b, i64 0, i64 0
   %170 = load i8, ptr %169, align 1
-  %zext95 = zext i8 %170 to i32
+  %zext83 = zext i8 %170 to i32
   %171 = getelementptr inbounds [8 x i8], ptr %b, i64 0, i64 1
   %172 = load i8, ptr %171, align 1
-  %zext96 = zext i8 %172 to i32
-  %shl97 = shl i32 %zext96, 8
-  %173 = or i32 %shl97, %zext95
+  %zext84 = zext i8 %172 to i32
+  %shl85 = shl i32 %zext84, 8
+  %173 = or i32 %shl85, %zext83
   %174 = getelementptr inbounds [8 x i8], ptr %b, i64 0, i64 2
   %175 = load i8, ptr %174, align 1
-  %zext98 = zext i8 %175 to i32
-  %shl99 = shl i32 %zext98, 16
-  %176 = or i32 %shl99, %173
+  %zext86 = zext i8 %175 to i32
+  %shl87 = shl i32 %zext86, 16
+  %176 = or i32 %shl87, %173
   %177 = getelementptr inbounds [8 x i8], ptr %b, i64 0, i64 3
   %178 = load i8, ptr %177, align 1
-  %zext100 = zext i8 %178 to i32
-  %shl101 = shl i32 %zext100, 24
-  %179 = or i32 %shl101, %176
-  store i32 %179, ptr %taddr102, align 4
-  %180 = insertvalue %variant undef, ptr %taddr102, 0
+  %zext88 = zext i8 %178 to i32
+  %shl89 = shl i32 %zext88, 24
+  %179 = or i32 %shl89, %176
+  store i32 %179, ptr %taddr90, align 4
+  %180 = insertvalue %variant undef, ptr %taddr90, 0
   %181 = insertvalue %variant %180, i64 ptrtoint (ptr @"ct$uint" to i64), 1
-  %182 = getelementptr inbounds [3 x %variant], ptr %varargslots94, i64 0, i64 0
+  %182 = getelementptr inbounds [3 x %variant], ptr %varargslots82, i64 0, i64 0
   store %variant %181, ptr %182, align 16
   %183 = getelementptr inbounds [8 x i8], ptr %b, i64 0, i64 4
   %184 = load i8, ptr %183, align 1
-  %zext103 = zext i8 %184 to i32
+  %zext91 = zext i8 %184 to i32
   %185 = getelementptr inbounds [8 x i8], ptr %b, i64 0, i64 5
   %186 = load i8, ptr %185, align 1
-  %zext104 = zext i8 %186 to i32
-  %shl105 = shl i32 %zext104, 8
-  %187 = or i32 %shl105, %zext103
+  %zext92 = zext i8 %186 to i32
+  %shl93 = shl i32 %zext92, 8
+  %187 = or i32 %shl93, %zext91
   %188 = getelementptr inbounds [8 x i8], ptr %b, i64 0, i64 6
   %189 = load i8, ptr %188, align 1
-  %zext106 = zext i8 %189 to i32
-  %shl107 = shl i32 %zext106, 16
-  %190 = or i32 %shl107, %187
+  %zext94 = zext i8 %189 to i32
+  %shl95 = shl i32 %zext94, 16
+  %190 = or i32 %shl95, %187
   %191 = getelementptr inbounds [8 x i8], ptr %b, i64 0, i64 7
   %192 = load i8, ptr %191, align 1
-  %zext108 = zext i8 %192 to i32
-  %shl109 = shl i32 %zext108, 24
-  %193 = or i32 %shl109, %190
+  %zext96 = zext i8 %192 to i32
+  %shl97 = shl i32 %zext96, 24
+  %193 = or i32 %shl97, %190
   %194 = and i32 2147483647, %193
-  store i32 %194, ptr %taddr110, align 4
-  %195 = insertvalue %variant undef, ptr %taddr110, 0
+  store i32 %194, ptr %taddr98, align 4
+  %195 = insertvalue %variant undef, ptr %taddr98, 0
   %196 = insertvalue %variant %195, i64 ptrtoint (ptr @"ct$uint" to i64), 1
-  %197 = getelementptr inbounds [3 x %variant], ptr %varargslots94, i64 0, i64 1
+  %197 = getelementptr inbounds [3 x %variant], ptr %varargslots82, i64 0, i64 1
   store %variant %196, ptr %197, align 16
   %198 = getelementptr inbounds [8 x i8], ptr %b, i64 0, i64 7
   %199 = load i8, ptr %198, align 1
-  %lshrl111 = lshr i8 %199, 7
-  %200 = trunc i8 %lshrl111 to i1
+  %lshrl99 = lshr i8 %199, 7
+  %200 = trunc i8 %lshrl99 to i1
   %201 = zext i1 %200 to i8
-  store i8 %201, ptr %taddr112, align 1
-  %202 = insertvalue %variant undef, ptr %taddr112, 0
+  store i8 %201, ptr %taddr100, align 1
+  %202 = insertvalue %variant undef, ptr %taddr100, 0
   %203 = insertvalue %variant %202, i64 ptrtoint (ptr @"ct$bool" to i64), 1
-  %204 = getelementptr inbounds [3 x %variant], ptr %varargslots94, i64 0, i64 2
+  %204 = getelementptr inbounds [3 x %variant], ptr %varargslots82, i64 0, i64 2
   store %variant %203, ptr %204, align 16
-  %205 = call i64 @std_io_printfn(ptr %retparam93, ptr @.str.6, i64 8, ptr %varargslots94, i64 3)
-  %not_err113 = icmp eq i64 %205, 0
-  br i1 %not_err113, label %after_check114, label %voiderr115
-
-after_check114:                                   ; preds = %voiderr92
-  br label %voiderr115
-
-voiderr115:                                       ; preds = %after_check114, %voiderr92
+  %205 = call i64 @std_io_printfn(ptr %retparam81, ptr @.str.6, i64 8, ptr %varargslots82, i64 3)
   ret void
 }
 
