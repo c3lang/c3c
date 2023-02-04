@@ -372,7 +372,7 @@ macro sqrt(x) => $$sqrt(values::promote_int(x));
 macro tan(x)
 {
 	var $Type = $typeof(x);
-	$if (types.is_vector($Type)):
+	$if (types::is_vector($Type)):
 		return $$sin(x) / $$cos(x);
 	$elif ($Type.typeid == float.typeid):
 		return _tanf(x);
