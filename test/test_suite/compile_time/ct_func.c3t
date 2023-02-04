@@ -4,7 +4,7 @@ import std::io;
 
 fn int test()
 {
-	io::println($$FUNC);
+	io::printn($$FUNC);
 	return 1;
 }
 
@@ -13,7 +13,7 @@ struct Foo
 
 fn void Foo.tester(Foo* f)
 {
-	io::println($$FUNC);
+	io::printn($$FUNC);
 }
 
 fn void main()

@@ -1446,14 +1446,3 @@ TypeSize llvm_alloc_size(GenContext *c, LLVMTypeRef type)
 	return (TypeSize)aligned_offset((AlignSize)LLVMStoreSizeOfType(c->target_data, type), llvm_abi_alignment(c, type));
 }
 
-void llvm_set_catch_exit(GenContext *c, LLVMBasicBlockRef block)
-{
-	c->catch_block = block;
-	c->opt_var = NULL;
-}
-
-void llvm_set_catch_exit_and_var(GenContext *c, LLVMBasicBlockRef block, LLVMValueRef catch_var)
-{
-	c->catch_block = block;
-	c->opt_var = catch_var;
-}

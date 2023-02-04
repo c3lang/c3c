@@ -49,7 +49,7 @@ fn void main(String[] args)
 			case "-":
 				add = false;
 			default:
-				io::println("Failed to parse expression.");
+				io::printn("Failed to parse expression.");
 				return;
 		}
 	}

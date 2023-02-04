@@ -45,20 +45,18 @@ fn int main()
 
 define void @foo_Foo_hello(ptr %0) #0 {
 entry:
-  %1 = call i32 @std_io_println(ptr @.str) #1
+  store ptr @.str, ptr %x, align 8
   ret void
 }
 
 define void @foo_Bar_hello(ptr %0) #0 {
 entry:
-  %1 = call i32 @std_io_println(ptr @.str.1) #1
-  ret void
+  store ptr @.str.1, ptr %x, align 8
 }
 
 define void @foo_MyEnum_hello(ptr %0) #0 {
 entry:
-  %1 = call i32 @std_io_println(ptr @.str.2) #1
-  ret void
+  store ptr @.str.2, ptr %x, align 8
 }
 
 define i32 @main() #0 {

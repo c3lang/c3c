@@ -16,7 +16,7 @@ fn void main()
 
  		hello();
  	`;
-	io::println(text);
+	io::printn(text);
 
     // Binary
     const DATA = x"4749463839610100010080"

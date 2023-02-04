@@ -31,10 +31,10 @@ fn void demo_enum(Height h)
     {
         case LOW:
         case MEDIUM:
-            io::println("Not high");
+            io::printn("Not high");
             // Implicit break.
         case HIGH:
-            io::println("High");
+            io::printn("High");
     }
 
     // This also works
@@ -42,10 +42,10 @@ fn void demo_enum(Height h)
     {
         case LOW:
         case MEDIUM:
-            io::println("Not high");
+            io::printn("Not high");
             // Implicit break.
         case Height.HIGH:
-            io::println("High");
+            io::printn("High");
     }
 
     // Completely empty cases are not allowed.
@@ -54,7 +54,7 @@ fn void demo_enum(Height h)
         case LOW:
             break; // Explicit break required, since switches can't be empty.
         case MEDIUM:
-            io::println("Medium");
+            io::printn("Medium");
         case HIGH:
             break;
     }
@@ -76,15 +76,15 @@ fn void demo_enum(Height h)
     {
         case LOW:
             int a = 1;
-            io::println("A");
+            io::printn("A");
             nextcase;
         case MEDIUM:
             int a = 2;
-            io::println("B");
+            io::printn("B");
             nextcase;
         case HIGH:
             // a is not defined here
-            io::println("C");
+            io::printn("C");
     }
 }
 /* #expect: examples.ll
@@ -121,12 +121,44 @@ unreachable_block:                                ; No predecessors!
 define void @examples_demo_enum(i32 %0) #0 {
 entry:
   %switch = alloca i32, align 4
-  %switch2 = alloca i32, align 4
-  %switch7 = alloca i32, align 4
-  %switch13 = alloca i32, align 4
-  %switch17 = alloca i32, align 4
+  %x = alloca ptr, align 8
+  %error_var = alloca i64, align 8
+  %retparam = alloca i64, align 8
+  %result = alloca %File, align 8
+  %x2 = alloca ptr, align 8
+  %error_var3 = alloca i64, align 8
+  %retparam4 = alloca i64, align 8
+  %result5 = alloca %File, align 8
+  %switch11 = alloca i32, align 4
+  %x14 = alloca ptr, align 8
+  %error_var15 = alloca i64, align 8
+  %retparam16 = alloca i64, align 8
+  %result17 = alloca %File, align 8
+  %x24 = alloca ptr, align 8
+  %error_var25 = alloca i64, align 8
+  %retparam26 = alloca i64, align 8
+  %result27 = alloca %File, align 8
+  %switch34 = alloca i32, align 4
+  %x38 = alloca ptr, align 8
+  %error_var39 = alloca i64, align 8
+  %retparam40 = alloca i64, align 8
+  %result41 = alloca %File, align 8
+  %switch49 = alloca i32, align 4
+  %switch53 = alloca i32, align 4
   %a = alloca i32, align 4
-  %a21 = alloca i32, align 4
+  %x56 = alloca ptr, align 8
+  %error_var57 = alloca i64, align 8
+  %retparam58 = alloca i64, align 8
+  %result59 = alloca %File, align 8
+  %a66 = alloca i32, align 4
+  %x67 = alloca ptr, align 8
+  %error_var68 = alloca i64, align 8
+  %retparam69 = alloca i64, align 8
+  %result70 = alloca %File, align 8
+  %x77 = alloca ptr, align 8
+  %error_var78 = alloca i64, align 8
+  %retparam79 = alloca i64, align 8
+  %result80 = alloca %File, align 8
   store i32 %0, ptr %switch, align 4
   br label %switch.entry
 
@@ -139,99 +171,251 @@ switch.entry:                                     ; preds = %entry
   ]
 
 switch.case:                                      ; preds = %switch.entry, %switch.entry
-  %2 = call i32 @std_io_println(ptr @.str.1) #1
+  store ptr @.str.1, ptr %x, align 8
+  store i64 0, ptr %error_var, align 8
+  %2 = call ptr @std_io_stdout()
+  store ptr %2, ptr %result, align 8
+  %3 = load ptr, ptr %x, align 8
+  %4 = call i64 @std_io_File_printn(ptr %retparam, ptr %result, ptr %3, i64 8)
+  %not_err = icmp eq i64 %4, 0
+  br i1 %not_err, label %after_check, label %assign_optional
+
+assign_optional:                                  ; preds = %switch.case
+  store i64 %4, ptr %error_var, align 8
+  br label %noerr_block
+
+after_check:                                      ; preds = %switch.case
+  br label %noerr_block
+
+noerr_block:                                      ; preds = %after_check, %assign_optional
+  br label %voiderr
+
+voiderr:                                          ; preds = %noerr_block
   br label %switch.exit
 
 switch.case1:                                     ; preds = %switch.entry
-  %3 = call i32 @std_io_println(ptr @.str.2) #1
+  store ptr @.str.2, ptr %x2, align 8
+  store i64 0, ptr %error_var3, align 8
+  %5 = call ptr @std_io_stdout()
+  store ptr %5, ptr %result5, align 8
+  %6 = load ptr, ptr %x2, align 8
+  %7 = call i64 @std_io_File_printn(ptr %retparam4, ptr %result5, ptr %6, i64 4)
+  %not_err6 = icmp eq i64 %7, 0
+  br i1 %not_err6, label %after_check8, label %assign_optional7
+
+assign_optional7:                                 ; preds = %switch.case1
+  store i64 %7, ptr %error_var3, align 8
+  br label %noerr_block9
+
+after_check8:                                     ; preds = %switch.case1
+  br label %noerr_block9
+
+noerr_block9:                                     ; preds = %after_check8, %assign_optional7
+  br label %voiderr10
+
+voiderr10:                                        ; preds = %noerr_block9
   br label %switch.exit
 
-switch.exit:                                      ; preds = %switch.case1, %switch.case, %switch.entry
-  store i32 %0, ptr %switch2, align 4
-  br label %switch.entry3
+switch.exit:                                      ; preds = %voiderr10, %voiderr, %switch.entry
+  store i32 %0, ptr %switch11, align 4
+  br label %switch.entry12
 
-switch.entry3:                                    ; preds = %switch.exit
-  %4 = load i32, ptr %switch2, align 4
-  switch i32 %4, label %switch.exit6 [
-    i32 0, label %switch.case4
-    i32 1, label %switch.case4
-    i32 2, label %switch.case5
+switch.entry12:                                   ; preds = %switch.exit
+  %8 = load i32, ptr %switch11, align 4
+  switch i32 %8, label %switch.exit33 [
+    i32 0, label %switch.case13
+    i32 1, label %switch.case13
+    i32 2, label %switch.case23
   ]
 
-switch.case4:                                     ; preds = %switch.entry3, %switch.entry3
-  %5 = call i32 @std_io_println(ptr @.str.3) #1
-  br label %switch.exit6
+switch.case13:                                    ; preds = %switch.entry12, %switch.entry12
+  store ptr @.str.3, ptr %x14, align 8
+  store i64 0, ptr %error_var15, align 8
+  %9 = call ptr @std_io_stdout()
+  store ptr %9, ptr %result17, align 8
+  %10 = load ptr, ptr %x14, align 8
+  %11 = call i64 @std_io_File_printn(ptr %retparam16, ptr %result17, ptr %10, i64 8)
+  %not_err18 = icmp eq i64 %11, 0
+  br i1 %not_err18, label %after_check20, label %assign_optional19
 
-switch.case5:                                     ; preds = %switch.entry3
-  %6 = call i32 @std_io_println(ptr @.str.4) #1
-  br label %switch.exit6
+assign_optional19:                                ; preds = %switch.case13
+  store i64 %11, ptr %error_var15, align 8
+  br label %noerr_block21
 
-switch.exit6:                                     ; preds = %switch.case5, %switch.case4, %switch.entry3
-  store i32 %0, ptr %switch7, align 4
-  br label %switch.entry8
+after_check20:                                    ; preds = %switch.case13
+  br label %noerr_block21
 
-switch.entry8:                                    ; preds = %switch.exit6
-  %7 = load i32, ptr %switch7, align 4
-  switch i32 %7, label %switch.exit12 [
-    i32 0, label %switch.case9
-    i32 1, label %switch.case10
-    i32 2, label %switch.case11
+noerr_block21:                                    ; preds = %after_check20, %assign_optional19
+  br label %voiderr22
+
+voiderr22:                                        ; preds = %noerr_block21
+  br label %switch.exit33
+
+switch.case23:                                    ; preds = %switch.entry12
+  store ptr @.str.4, ptr %x24, align 8
+  store i64 0, ptr %error_var25, align 8
+  %12 = call ptr @std_io_stdout()
+  store ptr %12, ptr %result27, align 8
+  %13 = load ptr, ptr %x24, align 8
+  %14 = call i64 @std_io_File_printn(ptr %retparam26, ptr %result27, ptr %13, i64 4)
+  %not_err28 = icmp eq i64 %14, 0
+  br i1 %not_err28, label %after_check30, label %assign_optional29
+
+assign_optional29:                                ; preds = %switch.case23
+  store i64 %14, ptr %error_var25, align 8
+  br label %noerr_block31
+
+after_check30:                                    ; preds = %switch.case23
+  br label %noerr_block31
+
+noerr_block31:                                    ; preds = %after_check30, %assign_optional29
+  br label %voiderr32
+
+voiderr32:                                        ; preds = %noerr_block31
+  br label %switch.exit33
+
+switch.exit33:                                    ; preds = %voiderr32, %voiderr22, %switch.entry12
+  store i32 %0, ptr %switch34, align 4
+  br label %switch.entry35
+
+switch.entry35:                                   ; preds = %switch.exit33
+  %15 = load i32, ptr %switch34, align 4
+  switch i32 %15, label %switch.exit48 [
+    i32 0, label %switch.case36
+    i32 1, label %switch.case37
+    i32 2, label %switch.case47
   ]
 
-switch.case9:                                     ; preds = %switch.entry8
-  br label %switch.exit12
+switch.case36:                                    ; preds = %switch.entry35
+  br label %switch.exit48
 
-switch.case10:                                    ; preds = %switch.entry8
-  %8 = call i32 @std_io_println(ptr @.str.5) #1
-  br label %switch.exit12
+switch.case37:                                    ; preds = %switch.entry35
+  store ptr @.str.5, ptr %x38, align 8
+  store i64 0, ptr %error_var39, align 8
+  %16 = call ptr @std_io_stdout()
+  store ptr %16, ptr %result41, align 8
+  %17 = load ptr, ptr %x38, align 8
+  %18 = call i64 @std_io_File_printn(ptr %retparam40, ptr %result41, ptr %17, i64 6)
+  %not_err42 = icmp eq i64 %18, 0
+  br i1 %not_err42, label %after_check44, label %assign_optional43
 
-switch.case11:                                    ; preds = %switch.entry8
-  br label %switch.exit12
+assign_optional43:                                ; preds = %switch.case37
+  store i64 %18, ptr %error_var39, align 8
+  br label %noerr_block45
 
-switch.exit12:                                    ; preds = %switch.case11, %switch.case10, %switch.case9, %switch.entry8
-  store i32 %0, ptr %switch13, align 4
-  br label %switch.entry14
+after_check44:                                    ; preds = %switch.case37
+  br label %noerr_block45
 
-switch.entry14:                                   ; preds = %switch.exit12
-  %9 = load i32, ptr %switch13, align 4
-  switch i32 %9, label %switch.default [
-    i32 0, label %switch.case15
-    i32 1, label %switch.case15
-    i32 2, label %switch.case15
+noerr_block45:                                    ; preds = %after_check44, %assign_optional43
+  br label %voiderr46
+
+voiderr46:                                        ; preds = %noerr_block45
+  br label %switch.exit48
+
+switch.case47:                                    ; preds = %switch.entry35
+  br label %switch.exit48
+
+switch.exit48:                                    ; preds = %switch.case47, %voiderr46, %switch.case36, %switch.entry35
+  store i32 %0, ptr %switch49, align 4
+  br label %switch.entry50
+
+switch.entry50:                                   ; preds = %switch.exit48
+  %19 = load i32, ptr %switch49, align 4
+  switch i32 %19, label %switch.default [
+    i32 0, label %switch.case51
+    i32 1, label %switch.case51
+    i32 2, label %switch.case51
   ]
 
-switch.case15:                                    ; preds = %switch.entry14, %switch.entry14, %switch.entry14
-  br label %switch.exit16
+switch.case51:                                    ; preds = %switch.entry50, %switch.entry50, %switch.entry50
+  br label %switch.exit52
 
-switch.default:                                   ; preds = %switch.entry14
-  br label %switch.exit16
+switch.default:                                   ; preds = %switch.entry50
+  br label %switch.exit52
 
-switch.exit16:                                    ; preds = %switch.default, %switch.case15
-  store i32 %0, ptr %switch17, align 4
-  br label %switch.entry18
+switch.exit52:                                    ; preds = %switch.default, %switch.case51
+  store i32 %0, ptr %switch53, align 4
+  br label %switch.entry54
 
-switch.entry18:                                   ; preds = %switch.exit16
-  %10 = load i32, ptr %switch17, align 4
-  switch i32 %10, label %switch.exit23 [
-    i32 0, label %switch.case19
-    i32 1, label %switch.case20
-    i32 2, label %switch.case22
+switch.entry54:                                   ; preds = %switch.exit52
+  %20 = load i32, ptr %switch53, align 4
+  switch i32 %20, label %switch.exit86 [
+    i32 0, label %switch.case55
+    i32 1, label %switch.case65
+    i32 2, label %switch.case76
   ]
 
-switch.case19:                                    ; preds = %switch.entry18
+switch.case55:                                    ; preds = %switch.entry54
   store i32 1, ptr %a, align 4
-  %11 = call i32 @std_io_println(ptr @.str.6) #1
-  br label %switch.case20
+  store ptr @.str.6, ptr %x56, align 8
+  store i64 0, ptr %error_var57, align 8
+  %21 = call ptr @std_io_stdout()
+  store ptr %21, ptr %result59, align 8
+  %22 = load ptr, ptr %x56, align 8
+  %23 = call i64 @std_io_File_printn(ptr %retparam58, ptr %result59, ptr %22, i64 1)
+  %not_err60 = icmp eq i64 %23, 0
+  br i1 %not_err60, label %after_check62, label %assign_optional61
 
-switch.case20:                                    ; preds = %switch.entry18, %switch.case19
-  store i32 2, ptr %a21, align 4
-  %12 = call i32 @std_io_println(ptr @.str.7) #1
-  br label %switch.case22
+assign_optional61:                                ; preds = %switch.case55
+  store i64 %23, ptr %error_var57, align 8
+  br label %noerr_block63
 
-switch.case22:                                    ; preds = %switch.entry18, %switch.case20
-  %13 = call i32 @std_io_println(ptr @.str.8) #1
-  br label %switch.exit23
+after_check62:                                    ; preds = %switch.case55
+  br label %noerr_block63
 
-switch.exit23:                                    ; preds = %switch.case22, %switch.entry18
+noerr_block63:                                    ; preds = %after_check62, %assign_optional61
+  br label %voiderr64
+
+voiderr64:                                        ; preds = %noerr_block63
+  br label %switch.case65
+
+switch.case65:                                    ; preds = %switch.entry54, %voiderr64
+  store i32 2, ptr %a66, align 4
+  store ptr @.str.7, ptr %x67, align 8
+  store i64 0, ptr %error_var68, align 8
+  %24 = call ptr @std_io_stdout()
+  store ptr %24, ptr %result70, align 8
+  %25 = load ptr, ptr %x67, align 8
+  %26 = call i64 @std_io_File_printn(ptr %retparam69, ptr %result70, ptr %25, i64 1)
+  %not_err71 = icmp eq i64 %26, 0
+  br i1 %not_err71, label %after_check73, label %assign_optional72
+
+assign_optional72:                                ; preds = %switch.case65
+  store i64 %26, ptr %error_var68, align 8
+  br label %noerr_block74
+
+after_check73:                                    ; preds = %switch.case65
+  br label %noerr_block74
+
+noerr_block74:                                    ; preds = %after_check73, %assign_optional72
+  br label %voiderr75
+
+voiderr75:                                        ; preds = %noerr_block74
+  br label %switch.case76
+
+switch.case76:                                    ; preds = %switch.entry54, %voiderr75
+  store ptr @.str.8, ptr %x77, align 8
+  store i64 0, ptr %error_var78, align 8
+  %27 = call ptr @std_io_stdout()
+  store ptr %27, ptr %result80, align 8
+  %28 = load ptr, ptr %x77, align 8
+  %29 = call i64 @std_io_File_printn(ptr %retparam79, ptr %result80, ptr %28, i64 1)
+  %not_err81 = icmp eq i64 %29, 0
+  br i1 %not_err81, label %after_check83, label %assign_optional82
+
+assign_optional82:                                ; preds = %switch.case76
+  store i64 %29, ptr %error_var78, align 8
+  br label %noerr_block84
+
+after_check83:                                    ; preds = %switch.case76
+  br label %noerr_block84
+
+noerr_block84:                                    ; preds = %after_check83, %assign_optional82
+  br label %voiderr85
+
+voiderr85:                                        ; preds = %noerr_block84
+  br label %switch.exit86
+
+switch.exit86:                                    ; preds = %voiderr85, %switch.entry54
   ret void
 }

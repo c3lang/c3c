@@ -23,7 +23,7 @@ fn void setstring(char* dst, String str)
 
 fn void testAllocator(Allocator* a, int val)
 {
-	io::println("Test");
+	io::printn("Test");
 	void* data = a.alloc_aligned(val, 128, 16)!!;
 	io::printf("Aligned with offset %p, align 16: %s offset align 128: %s\n", data, mem::ptr_is_aligned(data, 16), mem::ptr_is_aligned(data + 16, 128));
 	data = a.calloc_aligned(val, 128, 16)!!;
@@ -78,7 +78,7 @@ fn void main()
 	ArenaAllocator aa;
 	aa.init(&&char[1024] {});
 	testAllocator(&aa, 126);
-	io::println("Test dynamic arena");
+	io::printn("Test dynamic arena");
 	DynamicArenaAllocator dynamic_arena;
 	dynamic_arena.init(1024);
     testAllocator(&dynamic_arena, 112);

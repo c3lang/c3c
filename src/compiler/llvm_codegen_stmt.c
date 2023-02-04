@@ -1222,7 +1222,13 @@ static inline void llvm_emit_asm_block_stmt(GenContext *c, Ast *ast)
 static void llvm_emit_expr_stmt(GenContext *c, Ast *ast)
 {
 	BEValue value;
-	if (IS_OPTIONAL(ast->expr_stmt))
+	Expr *e = ast->expr_stmt;
+	// For a standalone catch, we can ignore storing the value.
+	if (e->expr_kind == EXPR_CATCH)
+	{
+		e = e->inner_expr;
+	}
+	if (IS_OPTIONAL(e))
 	{
 		PUSH_OPT();
 		LLVMBasicBlockRef discard_fail = llvm_basic_block_new(c, "voiderr");
@@ -1236,7 +1242,7 @@ static void llvm_emit_expr_stmt(GenContext *c, Ast *ast)
 		POP_OPT();
 		return;
 	}
-	llvm_emit_expr(c, &value, ast->expr_stmt);
+	llvm_emit_expr(c, &value, e);
 }
 
 LLVMValueRef llvm_emit_string_const(GenContext *c, const char *str, const char *extname)

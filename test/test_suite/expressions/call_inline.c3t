@@ -4,17 +4,17 @@ import std::io;
 
 fn void test1() @inline
 {
-    io::println("Inline!");
+    io::printn("Inline!");
 }
 
 fn void test2() @noinline
 {
-    io::println("No inline!");
+    io::printn("No inline!");
 }
 
 fn void test3()
 {
-    io::println("Plain");
+    io::printn("Plain");
 }
 
 fn void main()

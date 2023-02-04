@@ -16,7 +16,7 @@ fn int main()
 {
     int maxDiv;
     int count;
-    io::println("The first 20 anti-primes are:");
+    io::printn("The first 20 anti-primes are:");
     int n = 1;
     while (count < 20)
     {
@@ -29,6 +29,6 @@ fn int main()
         }
         n++;
     }
-    io::println("");
+    io::printn("");
     return 0;
 }
