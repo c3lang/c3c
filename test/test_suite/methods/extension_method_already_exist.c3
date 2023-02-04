@@ -2,7 +2,7 @@ module foo;
 
 fn void Bar.test(Bar *bar)
 {
-    io::println("Inside of baz::Bar.test");
+    io::printn("Inside of baz::Bar.test");
 }
 
 struct Bar
@@ -16,7 +16,7 @@ import std::io;
 
 fn void foo::Bar.test(Bar *bar) // #error: This method is already defined for 'Bar'
 {
-    io::println("Inside of baz::Bar.test");
+    io::printn("Inside of baz::Bar.test");
 }
 
 module abc;

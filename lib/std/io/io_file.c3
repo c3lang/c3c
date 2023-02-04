@@ -5,17 +5,48 @@ fn void! File.open(File* file, String filename, String mode)
 {
 	@pool()
 	{
-	    char* filename_copy = tmalloc(filename.len + 1);
-        char* mode_copy = tmalloc(mode.len + 1);
-
-	    mem::copy(filename_copy, (char*)(filename), filename.len);
-        mem::copy(mode_copy, (char*)(mode), mode.len);
-        filename_copy[filename.len] = 0;
-        mode_copy[filename.len] = 0;
-        file.file = libc::fopen(filename_copy, mode_copy);
+		file.file = libc::fopen(filename.zstrtcopy(), mode.zstrtcopy());
         if (!file.file) return IoError.FILE_NOT_FOUND!;
 	};
 }
+
+/**
+ * @require file.file != null
+ **/
+fn void! File.reopen(File* file, String filename, String mode)
+{
+	@pool()
+	{
+		file.file = libc::freopen(filename.zstrtcopy(), mode.zstrtcopy(), file.file);
+        if (!file.file) return IoError.FILE_NOT_FOUND!;
+	};
+}
+
+/**
+ * @require file.file != null
+ **/
+fn void! File.chmode(File* file, String filename, String mode)
+{
+	@pool()
+	{
+		file.file = libc::freopen(null, mode.zstrtcopy(), file.file);
+        if (!file.file) return IoError.FILE_NOT_FOUND!;
+	};
+}
+/*
+Implement later
+/**
+ * @require file.file == null
+ **/
+fn void! File.memopen(File* file, char[] data, String mode)
+{
+	@pool()
+	{
+		file.file = libc::memopen(data.ptr, data.len, mode.zstrtcopy(), file.file);
+		// TODO errors
+	};
+}
+*/
 
 /**
  * @require file.file != null
@@ -102,13 +133,25 @@ fn usz File.write(File* file, void* buffer, usz items, usz element_size = 1)
  * @param [&in] file
  * @require file.file `File must be initialized`
  */
-fn usz! File.println(File* file, String string)
+fn usz! File.printn(File* file, String string)
+{
+	usz len = file.print(string)?;
+	if (!libc::putc('\n', file.file)) return IoError.UNKNOWN_ERROR!;
+    return len + 1;
+}
+
+/**
+ * @param [&in] file
+ * @require file.file `File must be initialized`
+ */
+fn usz! File.print(File* file, String string)
 {
     usz len = string.len;
     if (len != libc::fwrite(string.ptr, 1, len, file.file)) return IoError.UNKNOWN_ERROR!;
-    if (!libc::putc('\n', file.file)) return IoError.UNKNOWN_ERROR!;
-    return len + 1;
+    return len;
 }
+
+fn usz! File.println(File* file, String string) => file.printn(string);
 
 /**
  * @param [&in] file
@@ -134,10 +177,7 @@ fn VarString File.getline(File* file, Allocator* allocator = mem::current_alloca
  */
 fn String File.tgetline(File* file)
 {
-
-	VarString s = file.getline(mem::temp_allocator());
-	ZString z = s.zstr();
-	return z[:s.len()];
+	return file.getline(mem::temp_allocator()).zstr().as_str();
 }
 
 fn char! File.getc(File* file)

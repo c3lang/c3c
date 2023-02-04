@@ -239,6 +239,11 @@ fn usz! index_of(String s, String needle)
 	return SearchResult.MISSING!;
 }
 
+fn ZString String.zstrcopy(String s, Allocator* allocator = mem::current_allocator()) => copy_zstring(s, allocator) @inline;
+fn ZString String.zstrtcopy(String s) => copy_zstring(s, mem::temp_allocator()) @inline;
+fn String String.copyz(String s, Allocator* allocator = mem::current_allocator()) => copyz(s, allocator) @inline;
+fn String String.tcopyz(String s) => copyz(s, mem::temp_allocator()) @inline;
+
 fn ZString copy_zstring(String s, Allocator* allocator = mem::current_allocator())
 {
     usz len = s.len;
@@ -247,6 +252,7 @@ fn ZString copy_zstring(String s, Allocator* allocator = mem::current_allocator(
     str[len] = 0;
     return (ZString)str;
 }
+
 
 fn String copyz(String s, Allocator* allocator = mem::current_allocator())
 {

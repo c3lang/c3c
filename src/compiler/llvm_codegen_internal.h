@@ -459,8 +459,7 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr);
 // -- Optional --
 LLVMValueRef llvm_emit_is_no_opt(GenContext *c, LLVMValueRef error_value);
 LLVMValueRef llvm_get_opt_ref(GenContext *c, Decl *decl);
-void llvm_set_catch_exit(GenContext *c, LLVMBasicBlockRef block);
-void llvm_set_catch_exit_and_var(GenContext *c, LLVMBasicBlockRef block, LLVMValueRef catch_var);
+
 #define PUSH_OPT() LLVMBasicBlockRef _old_catch = c->catch_block; LLVMValueRef _old_opt_var = c->opt_var
 #define POP_OPT() c->catch_block = _old_catch; c->opt_var = _old_opt_var
 

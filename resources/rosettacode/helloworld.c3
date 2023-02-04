@@ -2,6 +2,6 @@ import std::io;
 
 fn int main()
 {
-    io::println("Hello world");
+    io::printn("Hello world");
     return 0;
 }

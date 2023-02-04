@@ -3,7 +3,7 @@ import regex, stdio;
 
 fn void main()
 {
-    println("Enter a story template, terminated by an empty line:");
+    printn("Enter a story template, terminated by an empty line:");
     VarString story = "";
     while (1)
     {
@@ -25,5 +25,5 @@ fn void main()
         story = story.replace(s, word);
     }
 
-    println("\nThe story becomes:\n%s\n", story);
+    printn("\nThe story becomes:\n%s\n", story);
 }

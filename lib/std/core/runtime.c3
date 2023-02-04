@@ -50,7 +50,7 @@ import libc;
 private TestRunner* current_runner;
 fn void test_panic(String message, String file, String function, uint line)
 {
-	io::println("[error]");
+	io::printn("[error]");
 	io::printfn("\n Error: %s", message);
 	io::printfn("  - in %s %s:%s.\n", function, file, line);
 	libc::longjmp(&current_runner.buf, 1);
@@ -64,7 +64,7 @@ fn bool TestRunner.run(TestRunner* runner)
 	builtin::panic = &test_panic;
 	int tests_passed = 0;
 	int tests = runner.test_names.len;
-	io::println("----- TESTS -----");
+	io::printn("----- TESTS -----");
 	foreach(i, String name : runner.test_names)
 	{
 		io::printf("Testing %s ... ", name);
@@ -72,10 +72,10 @@ fn bool TestRunner.run(TestRunner* runner)
 		{
 			if (catch err = runner.test_fns[i]())
 			{
-				io::println("[failed]");
+				io::printn("[failed]");
 				continue;
 			}
-			io::println("[ok]");
+			io::printn("[ok]");
 			tests_passed++;
 		}
 	}

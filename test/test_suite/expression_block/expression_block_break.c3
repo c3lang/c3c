@@ -8,6 +8,6 @@ fn int main()
     {
         return {| break; return 0; |}; // #error: There is no valid target for 'break', did you make a mistake
     }
-    io::println("I didn't return.");
+    io::printn("I didn't return.");
     return 0;
 }

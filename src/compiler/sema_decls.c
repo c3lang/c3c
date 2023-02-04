@@ -1371,13 +1371,6 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 	TypeInfo *parent_type = type_infoptr(decl->func_decl.type_parent);
 	if (!sema_resolve_type_info(context, parent_type)) return false;
 	Type *type = parent_type->type->canonical;
-	if (!type_may_have_sub_elements(type) && !type_underlying_is_numeric(type) && !type_is_arraylike(type))
-	{
-		SEMA_ERROR(decl,
-		           "Methods can not be associated with '%s'",
-		           type_to_error_string(parent_type->type));
-		return false;
-	}
 	Decl **params = decl->func_decl.signature.params;
 	if (!vec_size(params))
 	{

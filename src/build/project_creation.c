@@ -191,7 +191,7 @@ const char* MAIN_TEMPLATE =
 		"\n"
 		"fn int main(char[][] args)\n"
 		"{\n"
-		"\tio::println(\"Hello, World!\");\n"
+		"\tio::printn(\"Hello, World!\");\n"
 		"\treturn 0;\n"
 		"}\n";
 

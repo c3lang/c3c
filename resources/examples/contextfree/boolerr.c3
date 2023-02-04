@@ -127,7 +127,7 @@ fn void main()
             Summary summary = readAndBuildSummary(url);
             io::printf("  Summary: ");
             summary.print(io::stdout());
-            io::println("");
+            io::printn("");
             String title_sure = summary.title ? summary.title.str() : "";
             io::printf("  Title: %s\n", title_sure);
             bool! has_title = readWhetherTitleNonEmpty(url);

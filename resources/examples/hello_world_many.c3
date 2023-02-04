@@ -14,6 +14,6 @@ fn void main()
     };
     foreach (greeting : greetings)
     {
-        io::println(greeting);
+        io::printn(greeting);
     }
 }

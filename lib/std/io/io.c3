@@ -34,37 +34,50 @@ fault IoError
     UNKNOWN_ERROR,
 }
 
-fn int putchar(char c) @inline
+fn void putchar(char c) @inline
 {
-    return libc::putchar(c);
+    libc::putchar(c);
 }
 
-/**
- * @param [&in] message
- * @return `number of bytes printed.`
- */
-fn int print(char* message)
+macro void print(x)
 {
-    char* pointer = message;
-    while (*pointer != '\0')
-    {
-        if (!putchar(*pointer)) return 0;
-        pointer++;
-    }
-    return 1;
+	var $Type = $typeof(x);
+	$switch ($Type):
+	$case String:
+		catch(stdout().print(x));
+	$case ZString:
+		catch(stdout().print(x.as_str()));
+	$case VarString:
+		catch(stdout().print(x.str()));
+	$default:
+		$if (@convertible(x, String)):
+			catch(stdout().print((String)x));
+		$else:
+			catch(stdout().printf("%s", x));
+		$endif;
+	$endswitch;
 }
 
-/**
- * @param [&in] message
- * @return `number of bytes printed.`
- */
-fn int println(char *message = "") @inline
+macro void printn(x = "")
 {
-    return libc::puts(message);
+	var $Type = $typeof(x);
+	$switch ($Type):
+	$case String:
+		catch(stdout().printn(x));
+	$case ZString:
+		catch(stdout().printn(x.as_str()));
+	$case VarString:
+		catch(stdout().printn(x.str()));
+	$default:
+		$if (@convertible(x, String)):
+			catch(stdout().printn((String)x));
+		$else:
+			catch(stdout().printfn("%s", x));
+		$endif;
+	$endswitch;
 }
 
-
-
+macro void println(x = "") => printn(x);
 
 fn File stdout()
 {
