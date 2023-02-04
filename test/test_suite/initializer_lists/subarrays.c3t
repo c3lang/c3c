@@ -73,7 +73,6 @@ entry:
   %y = alloca ptr, align 8
   %literal2 = alloca [3 x i32], align 4
   %x3 = alloca ptr, align 8
-  %error_var = alloca i64, align 8
   %retparam = alloca i64, align 8
   %result = alloca %File, align 8
   %ffe = alloca %Baz, align 8
@@ -81,9 +80,8 @@ entry:
   %xy = alloca i8, align 1
   %literal7 = alloca [3 x i32], align 4
   %x9 = alloca ptr, align 8
-  %error_var10 = alloca i64, align 8
-  %retparam11 = alloca i64, align 8
-  %result12 = alloca %File, align 8
+  %retparam10 = alloca i64, align 8
+  %result11 = alloca %File, align 8
   %b = alloca %Bar, align 4
   %z = alloca %Baz, align 8
   %sub = alloca %"int[]", align 8
@@ -114,21 +112,10 @@ entry:
   store i32 567, ptr %12, align 4
   store ptr %literal2, ptr %y, align 8
   store ptr @.str.5, ptr %x3, align 8
-  store i64 0, ptr %error_var, align 8
   %13 = call ptr @std_io_stdout()
   store ptr %13, ptr %result, align 8
   %14 = load ptr, ptr %x3, align 8
   %15 = call i64 @std_io_File_printn(ptr %retparam, ptr %result, ptr %14, i64 6)
-  %not_err = icmp eq i64 %15, 0
-  br i1 %not_err, label %after_check, label %assign_optional
-assign_optional:                                  ; preds = %entry
-  store i64 %15, ptr %error_var, align 8
-  br label %noerr_block
-after_check:                                      ; preds = %entry
-  br label %noerr_block
-noerr_block:                                      ; preds = %after_check, %assign_optional
-  br label %voiderr
-voiderr:                                          ; preds = %noerr_block
   %16 = getelementptr inbounds %"int[]", ptr %x, i32 0, i32 1
   %17 = load i64, ptr %16, align 8
   %uisitrunc = trunc i64 %17 to i32
@@ -164,25 +151,16 @@ voiderr:                                          ; preds = %noerr_block
   %37 = trunc i8 %36 to i1
   %not8 = xor i1 %37, true
   br i1 %not8, label %if.then, label %if.exit
-if.then:                                          ; preds = %voiderr
+
+if.then:                                          ; preds = %entry
   store ptr @.str.9, ptr %x9, align 8
-  store i64 0, ptr %error_var10, align 8
   %38 = call ptr @std_io_stdout()
-  store ptr %38, ptr %result12, align 8
+  store ptr %38, ptr %result11, align 8
   %39 = load ptr, ptr %x9, align 8
-  %40 = call i64 @std_io_File_printn(ptr %retparam11, ptr %result12, ptr %39, i64 2)
-  %not_err13 = icmp eq i64 %40, 0
-  br i1 %not_err13, label %after_check15, label %assign_optional14
-assign_optional14:                                ; preds = %if.then
-  store i64 %40, ptr %error_var10, align 8
-  br label %noerr_block16
-after_check15:                                    ; preds = %if.then
-  br label %noerr_block16
-noerr_block16:                                    ; preds = %after_check15, %assign_optional14
-  br label %voiderr17
-voiderr17:                                        ; preds = %noerr_block16
+  %40 = call i64 @std_io_File_printn(ptr %retparam10, ptr %result11, ptr %39, i64 2)
   br label %if.exit
-if.exit:                                          ; preds = %voiderr17, %voiderr
+
+if.exit:                                          ; preds = %if.then, %entry
   %41 = getelementptr inbounds %Bar, ptr %b, i32 0, i32 0
   store i32 0, ptr %41, align 4
   %42 = getelementptr inbounds %Bar, ptr %b, i32 0, i32 1

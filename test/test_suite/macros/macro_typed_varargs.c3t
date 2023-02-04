@@ -64,13 +64,11 @@ entry:
   store i64 %7, ptr %.anon, align 8
   store i64 0, ptr %.anon1, align 8
   br label %loop.cond
-
-loop.cond:                                        ; preds = %voiderr, %entry
+loop.cond:                                        ; preds = %loop.body, %entry
   %8 = load i64, ptr %.anon1, align 8
   %9 = load i64, ptr %.anon, align 8
   %lt = icmp ult i64 %8, %9
   br i1 %lt, label %loop.body, label %loop.exit
-
 loop.body:                                        ; preds = %loop.cond
   %10 = getelementptr inbounds %"int[]", ptr %x, i32 0, i32 0
   %11 = load ptr, ptr %10, align 8
@@ -83,18 +81,10 @@ loop.body:                                        ; preds = %loop.cond
   %16 = getelementptr inbounds [1 x %variant], ptr %varargslots, i64 0, i64 0
   store %variant %15, ptr %16, align 16
   %17 = call i64 @std_io_printfn(ptr %retparam, ptr @.str, i64 2, ptr %varargslots, i64 1)
-  %not_err = icmp eq i64 %17, 0
-  br i1 %not_err, label %after_check, label %voiderr
-
-after_check:                                      ; preds = %loop.body
-  br label %voiderr
-
-voiderr:                                          ; preds = %after_check, %loop.body
   %18 = load i64, ptr %.anon1, align 8
   %add = add i64 %18, 1
   store i64 %add, ptr %.anon1, align 8
   br label %loop.cond
-
 loop.exit:                                        ; preds = %loop.cond
   %19 = getelementptr inbounds [4 x %variant], ptr %literal3, i64 0, i64 0
   store i32 1, ptr %taddr, align 4
@@ -124,13 +114,11 @@ loop.exit:                                        ; preds = %loop.cond
   store i64 %34, ptr %.anon7, align 8
   store i64 0, ptr %.anon8, align 8
   br label %loop.cond9
-
-loop.cond9:                                       ; preds = %voiderr18, %loop.exit
+loop.cond9:                                       ; preds = %loop.body11, %loop.exit
   %35 = load i64, ptr %.anon8, align 8
   %36 = load i64, ptr %.anon7, align 8
   %lt10 = icmp ult i64 %35, %36
-  br i1 %lt10, label %loop.body11, label %loop.exit20
-
+  br i1 %lt10, label %loop.body11, label %loop.exit17
 loop.body11:                                      ; preds = %loop.cond9
   %37 = getelementptr inbounds %"variant[]", ptr %x2, i32 0, i32 0
   %38 = load ptr, ptr %37, align 8
@@ -144,18 +132,10 @@ loop.body11:                                      ; preds = %loop.cond9
   %44 = getelementptr inbounds [1 x %variant], ptr %varargslots15, i64 0, i64 0
   store %variant %43, ptr %44, align 16
   %45 = call i64 @std_io_printfn(ptr %retparam14, ptr @.str.1, i64 2, ptr %varargslots15, i64 1)
-  %not_err16 = icmp eq i64 %45, 0
-  br i1 %not_err16, label %after_check17, label %voiderr18
-
-after_check17:                                    ; preds = %loop.body11
-  br label %voiderr18
-
-voiderr18:                                        ; preds = %after_check17, %loop.body11
   %46 = load i64, ptr %.anon8, align 8
-  %add19 = add i64 %46, 1
-  store i64 %add19, ptr %.anon8, align 8
+  %add16 = add i64 %46, 1
+  store i64 %add16, ptr %.anon8, align 8
   br label %loop.cond9
-
-loop.exit20:                                      ; preds = %loop.cond9
+loop.exit17:                                      ; preds = %loop.cond9
   ret void
 }

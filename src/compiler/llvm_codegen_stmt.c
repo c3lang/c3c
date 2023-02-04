@@ -1218,6 +1218,60 @@ static inline void llvm_emit_asm_block_stmt(GenContext *c, Ast *ast)
 	}
 }
 
+// Prune the common occurrence where the optional is not used.
+static void llvm_prune_optional(GenContext *c, LLVMBasicBlockRef discard_fail)
+{
+	// Replace discard with the current block,
+	// this removes the jump in the case:
+	// br i1 %not_err, label %after_check, label %voiderr
+	//after_check:
+	// br label %voiderr
+	//voiderr:
+	// <insert point>
+	LLVMValueRef block_value = LLVMBasicBlockAsValue(c->current_block);
+	LLVMReplaceAllUsesWith(LLVMBasicBlockAsValue(discard_fail), block_value);
+
+	// We now have:
+	// br i1 %not_err, label %after_check, label %after_check
+	//after_check:
+	// <insert point>
+
+	// Find the use of this block.
+	LLVMUseRef use = LLVMGetFirstUse(block_value);
+	if (!use) return;
+
+	LLVMValueRef maybe_br = LLVMGetUser(use);
+	// Expect a br instruction.
+	if (!LLVMIsAInstruction(maybe_br) || LLVMGetInstructionOpcode(maybe_br) != LLVMBr) return;
+	if (LLVMGetNumOperands(maybe_br) != 3) return;
+	// We expect a single user.
+	LLVMUseRef other_use = LLVMGetNextUse(use);
+	while (other_use)
+	{
+		if (LLVMGetUser(other_use) != maybe_br) return;
+		other_use = LLVMGetNextUse(other_use);
+	}
+	// Both operands same block value
+	if (LLVMGetOperand(maybe_br, 1) != block_value || LLVMGetOperand(maybe_br, 2) != block_value) return;
+
+	// Grab the compared value
+	LLVMValueRef compared = LLVMGetOperand(maybe_br, 0);
+
+	// Remove the block and the br
+	LLVMBasicBlockRef prev_block = LLVMGetInstructionParent(maybe_br);
+	LLVMRemoveBasicBlockFromParent(c->current_block);
+	LLVMInstructionEraseFromParent(maybe_br);
+
+	// Optionally remove the comparison
+	if (!LLVMGetFirstUse(compared))
+	{
+		LLVMInstructionEraseFromParent(compared);
+	}
+	// Update the context
+	c->current_block = prev_block;
+	c->current_block_is_target = LLVMGetFirstBasicBlock(c->function) == prev_block;
+	LLVMPositionBuilderAtEnd(c->builder, prev_block);
+}
 
 static void llvm_emit_expr_stmt(GenContext *c, Ast *ast)
 {
@@ -1234,11 +1288,19 @@ static void llvm_emit_expr_stmt(GenContext *c, Ast *ast)
 		LLVMBasicBlockRef discard_fail = llvm_basic_block_new(c, "voiderr");
 		c->catch_block = discard_fail;
 		c->opt_var = NULL;
-		llvm_emit_expr(c, &value, ast->expr_stmt);
+		llvm_emit_expr(c, &value, e);
 		llvm_value_fold_optional(c, &value);
 		EMIT_LOC(c, ast);
-		llvm_emit_br(c, discard_fail);
-		llvm_emit_block(c, discard_fail);
+		// We only optimize if there is no instruction the current block
+		if (!LLVMGetFirstInstruction(c->current_block))
+		{
+			llvm_prune_optional(c, discard_fail);
+		}
+		else
+		{
+			llvm_emit_br(c, discard_fail);
+			llvm_emit_block(c, discard_fail);
+		}
 		POP_OPT();
 		return;
 	}

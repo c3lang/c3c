@@ -31,13 +31,6 @@ entry:
   %3 = getelementptr inbounds [1 x %variant], ptr %varargslots, i64 0, i64 0
   store %variant %2, ptr %3, align 16
   %4 = call i64 @std_io_printfn(ptr %retparam, ptr @.str, i64 2, ptr %varargslots, i64 1)
-  %not_err = icmp eq i64 %4, 0
-  br i1 %not_err, label %after_check, label %voiderr
-
-after_check:                                      ; preds = %entry
-  br label %voiderr
-
-voiderr:                                          ; preds = %after_check, %entry
   ret void
 }
 

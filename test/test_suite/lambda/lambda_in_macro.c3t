@@ -33,7 +33,7 @@ fn void main()
   %1 = call i32 %0(i32 3)
   store ptr @"test_test$lambda2", ptr %z3, align 8
   %7 = call double %6(double 3.300000e+00)
-  store ptr @"test_test$lambda2", ptr %z10, align 8
+  store ptr @"test_test$lambda2", ptr %z7, align 8
   %13 = call double %12(double 3.300000e+00)
   %18 = call i32 @"test_test2$lambda3"(i32 3)
   %23 = call i32 @"test_test2$lambda3"(i32 3)
