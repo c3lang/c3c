@@ -2792,6 +2792,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 		.pure = func->func_decl.signature.attrs.is_pure
 	};
 	context->rtype = prototype->rtype;
+	context->macro_call_depth = 0;
 	context->active_scope = (DynamicScope) {
 			.scope_id = 0,
 			.depth = 0,

@@ -1645,6 +1645,7 @@ typedef struct SemaContext_
 	CallEnv call_env;
 	Decl *current_macro;
 	ScopeId scope_id;
+	unsigned macro_call_depth;
 	Ast *break_target;
 	AstId break_defer;
 	Ast *continue_target;

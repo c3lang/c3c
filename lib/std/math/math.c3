@@ -377,7 +377,7 @@ macro tan(x)
 	$elif ($Type.typeid == float.typeid):
 		return _tanf(x);
 	$else:
-		return tan(x);
+		return _tan(x);
 	$endif;
 }
 
@@ -691,5 +691,5 @@ extern fn double _atan2(double, double) @extern("atan2");
 extern fn float _atan2f(float, float) @extern("atan2f");
 extern fn void _sincos(double, double*) @extern("sincos");
 extern fn void _sincosf(float, float*) @extern("sincosf");
-extern fn void _tan(double x, double y) @extern("tan");
-extern fn void _tanf(double x, double y) @extern("tanf");
+extern fn double _tan(double x) @extern("tan");
+extern fn float _tanf(float x) @extern("tanf");

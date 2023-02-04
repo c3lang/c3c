@@ -1635,7 +1635,11 @@ static inline bool sema_expr_analyse_func_call(SemaContext *context, Expr *expr,
 bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *struct_var, Decl *decl, bool optional)
 {
 	assert(decl->decl_kind == DECL_MACRO);
-
+	if (context->macro_call_depth > 1024)
+	{
+		SEMA_ERROR(call_expr, "Failure evaluating macro, max call depth reached.");
+		return false;
+	}
 	copy_begin();
 	Decl **params = copy_decl_list_macro(decl->func_decl.signature.params);
 	Ast *body = copy_ast_macro(astptr(decl->func_decl.body));
@@ -1731,6 +1735,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	Type *rtype = NULL;
 	sema_context_init(&macro_context, decl->unit);
 	macro_context.compilation_unit = context->unit;
+	macro_context.macro_call_depth = context->macro_call_depth + 1;
 	macro_context.call_env = context->call_env;
 	rtype = decl->func_decl.signature.rtype ? type_infoptr(decl->func_decl.signature.rtype)->type : NULL;
 	macro_context.expected_block_type = rtype;
