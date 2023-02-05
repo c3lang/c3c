@@ -1,6 +1,5 @@
 module topologicalsort;
 import std::mem;
-import std::array;
 
 extern fn void printf(char* x, ...);
 

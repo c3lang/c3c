@@ -1,5 +1,4 @@
 module fannkuch;
-import std::array;
 import std::io;
 import std::math;
 import libc;

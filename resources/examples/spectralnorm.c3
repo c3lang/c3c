@@ -1,5 +1,4 @@
 module spectralnorm;
-import std::array;
 import std::io;
 import std::math;
 
