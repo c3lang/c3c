@@ -1862,6 +1862,7 @@ extern const char *kw_typekind;
 extern const char *kw_argc;
 extern const char *kw_argv;
 extern const char *kw_at_checked;
+extern const char *kw_at_deprecated;
 extern const char *kw_at_ensure;
 extern const char *kw_at_optreturn;
 extern const char *kw_at_param;

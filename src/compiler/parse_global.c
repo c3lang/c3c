@@ -2489,6 +2489,13 @@ static bool parse_docs(ParseContext *c, AstId *docs_ref)
 					if (!consume(c, TOKEN_STRING, "Expected a string description.")) return false;
 					break;
 				}
+				else if (name == kw_at_deprecated)
+				{
+					advance(c);
+					(void)try_consume(c, TOKEN_STRING);
+					REMINDER("Implement @deprecated tracking");
+					break;
+				}
 				else if (name == kw_at_require)
 				{
 					if (!parse_doc_contract(c, &docs_ref, DOC_DIRECTIVE_REQUIRE)) return false;

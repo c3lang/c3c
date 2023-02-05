@@ -43,6 +43,7 @@ const char *type_property_list[NUMBER_OF_TYPE_PROPERTIES];
 const char *kw_argc;
 const char *kw_argv;
 const char *kw_at_checked;
+const char *kw_at_deprecated;
 const char *kw_at_ensure;
 const char *kw_at_optreturn;
 const char *kw_at_param;
@@ -283,6 +284,7 @@ void symtab_init(uint32_t capacity)
 	kw_at_checked = KW_DEF("@checked");
 	kw_at_ensure = KW_DEF("@ensure");
 	kw_at_optreturn = KW_DEF("@optreturn");
+	kw_at_deprecated = KW_DEF("@deprecated");
 	kw_at_param = KW_DEF("@param");
 	kw_at_pure = KW_DEF("@pure");
 	kw_at_require = KW_DEF("@require");
