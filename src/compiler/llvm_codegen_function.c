@@ -168,15 +168,23 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIAr
 		}
 		case ABI_ARG_DIRECT:
 	DIRECT_FROM_COERCE:
+		{
+			LLVMValueRef param_value = llvm_get_next_param(c, index);
+			if (decl->var.not_null && active_target.feature.safe_mode)
+			{
+				LLVMValueRef is_null = LLVMBuildIsNull(c->builder, param_value, "");
+				llvm_emit_panic_on_true(c, is_null, "Unexpected null pointer passed as '&' parameter.", decl->span);
+			}
 			if (!decl->var.is_written && !decl->var.is_addr)
 			{
-				decl->backend_value = llvm_get_next_param(c, index);
+				decl->backend_value = param_value;
 				decl->is_value = true;
 				return;
 			}
 			llvm_emit_and_set_decl_alloca(c, decl);
-			llvm_store_decl_raw(c, decl, llvm_get_next_param(c, index));
+			llvm_store_decl_raw(c, decl, param_value);
 			return;
+		}
 		case ABI_ARG_DIRECT_SPLIT_STRUCT_I32:
 		{
 			// In this case we've been flattening the parameter into multiple registers.

@@ -137,7 +137,7 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
                                        Expr ***varargs_ref,
                                        Expr **vararg_splat_ref);
 static inline int sema_call_find_index_of_named_parameter(Decl **func_params, Expr *expr);
-static inline bool sema_call_check_inout_param_match(SemaContext *context, Decl *param, Expr *expr);
+static inline bool sema_call_check_contract_param_match(SemaContext *context, Decl *param, Expr *expr);
 static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *call);
 
 
@@ -1207,8 +1207,13 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
 	return true;
 }
 
-static inline bool sema_call_check_inout_param_match(SemaContext *context, Decl *param, Expr *expr)
+static inline bool sema_call_check_contract_param_match(SemaContext *context, Decl *param, Expr *expr)
 {
+	if (param->var.not_null && expr_is_const_pointer(expr) && !expr->const_expr.ptr)
+	{
+		SEMA_ERROR(expr, "You may not pass null to a '&' parameter.");
+		return false;
+	}
 	if (expr->expr_kind != EXPR_IDENTIFIER) return true;
 	Decl *ident = expr->identifier_expr.decl;
 	if (ident->decl_kind != DECL_VAR) return true;
@@ -1382,7 +1387,7 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 				if (!sema_analyse_expr_lvalue(context, arg)) return false;
 				if (!sema_expr_check_assign(context, arg)) return false;
 				*optional |= IS_OPTIONAL(arg);
-				if (!sema_call_check_inout_param_match(context, param, arg)) return false;
+				if (!sema_call_check_contract_param_match(context, param, arg)) return false;
 				if (type_is_invalid_storage_type(type))
 				{
 					SEMA_ERROR(arg, "A value of type %s cannot be passed by reference.", type_quoted_error_string(type));
@@ -1419,7 +1424,7 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 					assert(callee.macro && "Only in the macro case should we need to insert the alignment.");
 					param->alignment = type_alloca_alignment(arg->type);
 				}
-				if (!sema_call_check_inout_param_match(context, param, arg)) return false;
+				if (!sema_call_check_contract_param_match(context, param, arg)) return false;
 				break;
 			case VARDECL_PARAM_EXPR:
 				// #foo
