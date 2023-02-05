@@ -303,3 +303,12 @@ MIT licensed.
 #### Editor plugins
 
 Editor plugins can be found at https://github.com/c3lang/editor-plugins.
+
+#### Contributing unit tests
+
+1. Write the test, either adding to existing test files in `/test/unit/` or add
+   a new file. (If testing the standard library, put it in the `/test/unit/stdlib/` subdirectory).
+2. Make sure that the test functions have the `@test` attribute. 
+3. Run tests and see that they pass. (Recommended settings: `c3c compile-test --safe -g1 -O0 test/unit`.
+   - in this example `test/unit/` is the relative path to the test directory, so adjust as required)
+4. Make a pull request for the new tests.

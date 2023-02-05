@@ -116,8 +116,12 @@ macro abs(x) => $$abs(x);
  **/
 macro sign(x)
 {
-	if (!x) return ($typeof(x))0;
-	return ($typeof(x))(x < 0 ? -1 : 1);
+	var $Type = $typeof(x);
+	$if ($Type.kindof == TypeKind.UNSIGNED_INT):
+		return ($Type)(x > 0);
+	$else:
+		return ($Type)(x > 0) - ($Type)(x < 0);
+	$endif;
 }
 
 
@@ -127,7 +131,7 @@ macro sign(x)
  **/
 macro atan2(x, y)
 {
-	$if ($typeof(x).typeid == float.typeid && $typeof(y).typeid == float.typeid):
+	$if (@typeis(x, float) && @typeis(y, float)):
 		return _atan2f(x, y);
 	$else:
 		return _atan2(x, y);
@@ -150,7 +154,7 @@ macro @sincos(x, y)
 
 /**
  * @require values::@is_int(x) || values::@is_float(x) "Expected an integer or floating point value"
- * @checked x + y
+ * @checked x
  **/
 macro atan(x)
 {
