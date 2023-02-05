@@ -2,7 +2,7 @@
 module test;
 import std::io;
 import std::math;
-import std::priorityqueue;
+import std::collections::priorityqueue;
 
 define FooPriorityQueue = PriorityQueue<Foo>;
 

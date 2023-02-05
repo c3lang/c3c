@@ -1,5 +1,5 @@
 // TODO: ensure the type is an enum first.
-module std::enumset<Enum>;
+module std::collections::enumset<Enum>;
 
 $assert(Enum.elements < 64, "Maximum number of elements for an enum used as enum set is 63");
 

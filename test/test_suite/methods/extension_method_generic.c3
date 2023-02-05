@@ -1,5 +1,5 @@
 module compiler_c3;
-import std::array::list;
+import std::collections::list;
 
 define IntArray = List<int>;
 

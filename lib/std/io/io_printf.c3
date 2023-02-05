@@ -1,5 +1,5 @@
 module std::io;
-import std::map;
+import std::collections::map;
 import libc;
 
 const int PRINTF_NTOA_BUFFER_SIZE = 256;
@@ -21,8 +21,8 @@ define ToStringFunction = fn String(void* value, Allocator *allocator);
 define ToFormatFunction = fn void!(void* value, Formatter* formatter);
 define FloatType = double;
 
-private define StringFunctionMap = std::map::HashMap<typeid, ToStringFunction>;
-private define FormatterFunctionMap = std::map::HashMap<typeid, ToFormatFunction>;
+private define StringFunctionMap = HashMap<typeid, ToStringFunction>;
+private define FormatterFunctionMap = HashMap<typeid, ToFormatFunction>;
 private FormatterFunctionMap toformat_functions;
 private StringFunctionMap tostring_functions;
 

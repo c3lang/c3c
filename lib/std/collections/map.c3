@@ -1,4 +1,4 @@
-module std::map<Key, Value>;
+module std::collections::map<Key, Value>;
 import std::math;
 
 const uint DEFAULT_INITIAL_CAPACITY = 16;
@@ -12,6 +12,7 @@ private struct Entry
 	Value value;
 	Entry* next;
 }
+
 struct HashMap
 {
 	Entry*[] table;
@@ -140,17 +141,17 @@ fn void HashMap.clear(HashMap* map)
 	{
 		Entry* entry = *entry_ref;
 		if (!entry) continue;
-		map.free(entry);
+		map.free_internal(entry);
 		*entry_ref = null;
 	}
 	map.count = 0;
 }
 
-fn void HashMap.destroy(HashMap* map)
+fn void HashMap.free(HashMap* map)
 {
 	if (!map.allocator) return;
 	map.clear();
-	map.free(map.table.ptr);
+	map.free_internal(map.table.ptr);
 	map.table = Entry*[] {};
 }
 
@@ -238,7 +239,7 @@ private fn void HashMap.resize(HashMap* map, uint new_capacity)
 	Entry*[] new_table = array::make(Entry*, new_capacity, map.allocator);
 	map.transfer(new_table);
 	map.table = new_table;
-	map.free(old_table.ptr);
+	map.free_internal(old_table.ptr);
 	map.threshold = (uint)(new_capacity * map.load_factor);
 }
 
@@ -297,7 +298,7 @@ private fn void HashMap.put_for_create(HashMap* map, Key key, Value value)
 	map.create_entry(hash, key, value, i);
 }
 
-private fn void HashMap.free(HashMap* map, void* ptr)
+private fn void HashMap.free_internal(HashMap* map, void* ptr) @inline
 {
 	map.allocator.free(ptr)!!;
 }
@@ -322,7 +323,7 @@ private fn bool HashMap.remove_entry_for_key(HashMap* map, Key key)
 			{
 				prev.next = next;
 			}
-			map.free(e);
+			map.free_internal(e);
 			return true;
 		}
 		prev = e;
