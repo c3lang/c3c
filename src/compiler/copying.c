@@ -938,7 +938,9 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			MACRO_COPY_DECL_LIST(decl->ct_case_decl.body);
 			break;
 		case DECL_ATTRIBUTE:
-			TODO
+			MACRO_COPY_DECL_LIST(decl->attr_decl.params);
+			decl->attr_decl.attrs = copy_attributes(c, decl->attr_decl.attrs);
+			break;
 		case DECL_DEFINE:
 			switch (decl->define_decl.define_kind)
 			{

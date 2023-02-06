@@ -1016,8 +1016,6 @@ bool parse_attribute(ParseContext *c, Attr **attribute_ref)
  */
 bool parse_attributes(ParseContext *c, Attr ***attributes_ref)
 {
-	*attributes_ref = NULL;
-
 	while (1)
 	{
 		Attr *attr;

@@ -37,7 +37,8 @@ static inline bool sema_analyse_doc_header(AstId doc, Decl **params, Decl **extr
 
 static const char *attribute_domain_to_string(AttributeDomain domain);
 static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr, AttributeDomain domain);
-static bool sema_analyse_attributes_inner(SemaContext *context, Decl *decl, Attr** attrs, AttributeDomain domain, Decl *top, int counter);
+static bool sema_analyse_attributes_inner(SemaContext *context, Decl *decl, Attr **attrs, AttributeDomain domain,
+                                          Decl *top);
 static bool sema_analyse_attributes(SemaContext *context, Decl *decl, Attr** attrs, AttributeDomain domain);
 static bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl);
 static bool sema_check_section(SemaContext *context, Attr *attr);
@@ -1698,11 +1699,13 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 }
 
 // TODO consider doing this evaluation early, it should be possible.
-static bool sema_analyse_attributes_inner(SemaContext *context, Decl *decl, Attr** attrs, AttributeDomain domain, Decl *top, int counter)
+static bool sema_analyse_attributes_inner(SemaContext *context, Decl *decl, Attr **attrs, AttributeDomain domain,
+                                          Decl *top)
 {
 	// Detect cycles of the type @Foo = @BarCyclic, @BarCyclic = @BarCyclic
-	if (counter > 1000)
+	if (context->macro_call_depth > 1024)
 	{
+		if (!top) top = decl;
 		SEMA_ERROR(top, "Recursive declaration of attribute '%s'.", top->name);
 		return false;
 	}
@@ -1760,6 +1763,7 @@ static bool sema_analyse_attributes_inner(SemaContext *context, Decl *decl, Attr
 		// context.
 		SemaContext eval_context;
 		sema_context_init(&eval_context, attr_decl->unit);
+		eval_context.macro_call_depth = context->macro_call_depth + 1;
 		eval_context.call_env = (CallEnv) { .kind = CALL_ENV_ATTR, .attr_declaration = decl };
 		// We copy the compilation unit.
 		eval_context.compilation_unit = context->unit;
@@ -1768,15 +1772,15 @@ static bool sema_analyse_attributes_inner(SemaContext *context, Decl *decl, Attr
 		for (int j = 0; j < param_count; j++)
 		{
 			if (!sema_analyse_ct_expr(context, args[j])) goto ERR;
-			params[i]->var.init_expr = args[j];
-			params[i]->var.kind = VARDECL_CONST;
+			params[j]->var.init_expr = args[j];
+			params[j]->var.kind = VARDECL_CONST;
 			// Then add them to the evaluation context.
 			// (Yes this is messy)
-			sema_add_local(&eval_context, params[i]);
+			sema_add_local(&eval_context, params[j]);
 		}
 		// Now we've added everything to the evaluation context, so we can (recursively)
 		// apply it to the contained attributes, which in turn may be derived attributes.
-		if (!sema_analyse_attributes_inner(&eval_context, decl, attributes, domain, top ? top : attr_decl, counter + 1)) goto ERR;
+		if (!sema_analyse_attributes_inner(&eval_context, decl, attributes, domain, top ? top : attr_decl)) goto ERR;
 		// Then destroy the eval context.
 		sema_context_destroy(&eval_context);
 		continue;
@@ -1789,7 +1793,7 @@ ERR:
 
 static bool sema_analyse_attributes(SemaContext *context, Decl *decl, Attr** attrs, AttributeDomain domain)
 {
-	return sema_analyse_attributes_inner(context, decl, attrs, domain, NULL, 0);
+	return sema_analyse_attributes_inner(context, decl, attrs, domain, NULL);
 }
 
 static inline bool sema_analyse_doc_header(AstId doc, Decl **params, Decl **extra_params, bool *pure_ref)
