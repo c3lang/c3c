@@ -486,7 +486,8 @@ static ABIArgInfo *x86_classify_argument(CallABI call, Regs *regs, Type *type)
 		case TYPE_ARRAY:
 			return x86_classify_aggregate(call, regs, type);
 		case TYPE_SCALED_VECTOR:
-			TODO
+			// No scaled vectors in x86
+			UNREACHABLE
 	}
 	UNREACHABLE
 }

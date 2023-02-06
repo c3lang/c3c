@@ -786,6 +786,17 @@ Decl *parse_decl_after_type(ParseContext *c, TypeInfo *type)
 		return poisoned_decl;
 	}
 
+	if (tok_is(c, TOKEN_CT_IDENT))
+	{
+		Decl *decl = DECL_VAR_NEW(type, VARDECL_LOCAL_CT, VISIBLE_LOCAL);
+		advance(c);
+		if (try_consume(c, TOKEN_EQ))
+		{
+			if (!parse_decl_initializer(c, decl, false)) return poisoned_decl;
+		}
+		return decl;
+	}
+
 	EXPECT_IDENT_FOR_OR("variable name", poisoned_decl);
 
 	Decl *decl = DECL_VAR_NEW(type, VARDECL_LOCAL, VISIBLE_LOCAL);

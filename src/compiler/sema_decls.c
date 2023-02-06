@@ -2460,24 +2460,17 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 			if (decl->var.type_info)
 			{
 				decl->type = decl->var.type_info->type->canonical;
-				if (!type_is_builtin(decl->type->type_kind))
+				init = decl->var.init_expr;
+				if (!init)
 				{
-					SEMA_ERROR(decl->var.type_info, "Compile time variables may only be built-in types.");
+					decl->var.init_expr = init = expr_new(EXPR_POISONED, decl->span);
+					expr_rewrite_to_const_zero(init, decl->type);
+				}
+				if (!sema_analyse_expr_rhs(context, decl->type, init, false)) goto FAIL;
+				if (!expr_is_constant_eval(init, CONSTANT_EVAL_CONSTANT_VALUE))
+				{
+					SEMA_ERROR(init, "Expected a constant expression assigned to %s.", decl->name);
 					goto FAIL;
-				}
-				if ((init = decl->var.init_expr))
-				{
-					if (!sema_analyse_expr_rhs(context, decl->type, init, false)) goto FAIL;
-					if (!expr_is_constant_eval(init, CONSTANT_EVAL_CONSTANT_VALUE))
-					{
-						SEMA_ERROR(init, "Expected a constant expression assigned to %s.", decl->name);
-						goto FAIL;
-					}
-				}
-				else
-				{
-					TODO // generate.
-					// decl->var.init_expr =
 				}
 			}
 			else

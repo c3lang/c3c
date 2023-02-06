@@ -373,7 +373,7 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 			return any_type->backend_type = virtual_type;
 		}
 		case TYPE_SCALED_VECTOR:
-			TODO
+			return any_type->backend_type = LLVMScalableVectorType(llvm_get_type(c, any_type->array.base), any_type->array.len);
 		case TYPE_VECTOR:
 			return any_type->backend_type = LLVMVectorType(llvm_get_type(c, any_type->array.base), any_type->array.len);
 	}

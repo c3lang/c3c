@@ -1,0 +1,29 @@
+// #target: macos-x64
+module test;
+
+struct Foo
+{
+	int x, y;
+}
+
+fn void test()
+{
+	Foo $z = { 1, 2 };
+	Foo $y;
+	Foo y = $z;
+	Foo z = $y;
+}
+
+/* #expect: test.ll
+
+define void @test_test() #0 {
+entry:
+  %y = alloca %Foo, align 4
+  %z = alloca %Foo, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %y, ptr align 4 @.__const, i32 8, i1 false)
+  %0 = getelementptr inbounds %Foo, ptr %z, i32 0, i32 0
+  store i32 0, ptr %0, align 4
+  %1 = getelementptr inbounds %Foo, ptr %z, i32 0, i32 1
+  store i32 0, ptr %1, align 4
+  ret void
+}
