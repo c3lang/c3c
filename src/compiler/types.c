@@ -1985,18 +1985,24 @@ Type *type_find_max_type(Type *type, Type *other)
 			return NULL;
 		case TYPE_UNION:
 		case TYPE_STRUCT:
-			TODO
+			// union/struct + anything else => no
+			// even if the struct has an inline type, this should not
+			// be implicit
+			return NULL;
 		case TYPE_TYPEID:
 		case TYPE_MEMBER:
 			return NULL;
 		case TYPE_TYPEDEF:
 			UNREACHABLE
 		case TYPE_DISTINCT:
+			// distinct + any other type => no
 			return NULL;
 		case TYPE_ARRAY:
+			// array + [subarray, other array, vector] => no
 			return NULL;
 		case TYPE_SUBARRAY:
-			TODO
+			// subarray + [other subarray, vector] => no
+			return NULL;
 		case TYPE_VECTOR:
 			// No implicit conversion between vectors
 			return NULL;
