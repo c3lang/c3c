@@ -4,15 +4,71 @@
 
 #include "c_abi_internal.h"
 
-ABIArgInfo *aarch64_illegal_vector(Type *type)
+INLINE bool is_aarch64_illegal_vector(Type *type)
 {
-	// Need to look up SVE vectors.
-	return false;
+	if (type->type_kind != TYPE_VECTOR) return type->type_kind == TYPE_SCALED_VECTOR;
+	ArraySize len = type->array.len;
+	if (!is_power_of_two(len)) return true;
+	switch (type_size(type))
+	{
+		case 8:
+			return false;
+		case 16:
+			return len == 1;
+		default:
+			return true;
+	}
 }
 
 ABIArgInfo *aarch64_coerce_illegal_vector(Type *type)
 {
-	TODO
+	if (type->type_kind == TYPE_SCALED_VECTOR)
+	{
+		/*
+		Type *base_type = type->array.base;
+		if (base_type == type_bool) return abi_arg_new_direct_coerce_type(type_get_scaled_vector(type_bool, 16));
+		switch (type->type_kind)
+		{
+			case TYPE_U8:
+			case TYPE_I8:
+				return abi_arg_new_direct_coerce_type(type_get_scaled_vector(type_char, 16));
+			case TYPE_U16:
+			case TYPE_I16:
+				return abi_arg_new_direct_coerce_type(type_get_scaled_vector(type_ushort, 8));
+			case TYPE_I32:
+			case TYPE_U32:
+				return abi_arg_new_direct_coerce_type(type_get_scaled_vector(type_uint, 4));
+			case TYPE_I64:
+			case TYPE_U64:
+				return abi_arg_new_direct_coerce_type(type_get_scaled_vector(type_uint, 2));
+			case TYPE_F16:
+				return abi_arg_new_direct_coerce_type(type_get_scaled_vector(type_float16, 8));
+			case TYPE_F32:
+				return abi_arg_new_direct_coerce_type(type_get_scaled_vector(type_float, 4));
+			case TYPE_F64:
+				return abi_arg_new_direct_coerce_type(type_get_scaled_vector(type_double, 4));
+			case TYPE_BF16:
+				return abi_arg_new_direct_coerce_type(type_get_scaled_vector(type_bfloat16, 8));
+			default:
+				UNREACHABLE
+		}*/
+	}
+	assert(type->type_kind == TYPE_VECTOR);
+	TypeSize size = type_size(type);
+
+	// CLANG: Android promotes char[<2>] to ushort, not uint
+	if (platform_target.environment_type == ENV_TYPE_ANDROID && size <= 2)
+	{
+		return abi_arg_new_direct_coerce_type(type_ushort);
+	}
+	// 32 bits or less? Put in int.
+	if (size <= 4) return abi_arg_new_direct_coerce_type(type_uint);
+
+	// 64 bits or less? Put in uint[<2>]
+	if (size <= 8) return abi_arg_new_direct_coerce_type(type_get_vector(type_uint, 2));
+	// 128 bits in a single val? Put in uint[<4>]
+	if (size == 128) return abi_arg_new_direct_coerce_type(type_get_vector(type_uint, 4));
+	return abi_arg_new_indirect_not_by_val(type);
 }
 
 ABIArgInfo *aarch64_classify_argument_type(Type *type)
@@ -21,7 +77,7 @@ ABIArgInfo *aarch64_classify_argument_type(Type *type)
 
 	if (type_is_void(type)) return abi_arg_ignore();
 
-	if (type->type_kind == TYPE_VECTOR && aarch64_illegal_vector(type))
+	if (is_aarch64_illegal_vector(type))
 	{
 		return aarch64_coerce_illegal_vector(type);
 	}
@@ -92,7 +148,7 @@ ABIArgInfo *aarch64_classify_return_type(Type *type, bool variadic)
 
 	if (type_is_void(type)) return abi_arg_ignore();
 
-	if (type->type_kind == TYPE_VECTOR && aarch64_illegal_vector(type))
+	if (is_aarch64_illegal_vector(type))
 	{
 		return aarch64_coerce_illegal_vector(type);
 	}
