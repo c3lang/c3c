@@ -1789,11 +1789,6 @@ typedef struct FunctionPrototype_
 	ABIArgInfo *ret_by_ref_abi_info;
 	ABIArgInfo **abi_args;
 	ABIArgInfo **abi_varargs;
-	union
-	{
-		void *tb_prototype;
-		void *llvm_prototype;
-	};
 	Type *raw_type;
 } FunctionPrototype;
 

@@ -171,7 +171,7 @@ static const char *exe_name(void)
 	}
 	switch (active_target.arch_os_target)
 	{
-		case WINDOWS_X86:
+		case WINDOWS_AARCH64:
 		case WINDOWS_X64:
 		case MINGW_X64:
 			return str_cat(name, ".exe");
@@ -207,7 +207,7 @@ static const char *static_lib_name(void)
 	}
 	switch (active_target.arch_os_target)
 	{
-		case WINDOWS_X86:
+		case WINDOWS_AARCH64:
 		case WINDOWS_X64:
 		case MINGW_X64:
 			return str_cat(name, ".lib");
@@ -713,34 +713,45 @@ static int jump_buffer_size()
 		case ARCH_OS_TARGET_DEFAULT:
 			return 512;
 		case ELF_RISCV32:
-		case ELF_RISCV64:
 		case LINUX_RISCV32:
+			// Godbolt test
+			return 76;
+		case ELF_RISCV64:
 		case LINUX_RISCV64:
-			REMINDER("RISCV jmpbuf size is unknown");
-			return 512;
-		case ELF_X64:
-		case FREEBSD_X64:
-		case LINUX_X64:
+			// Godbolt test
+			return 43;
 		case MACOS_X64:
-		case WINDOWS_X64:
+			return 19; // Actually 18.5
+		case WINDOWS_X64: // 16 on x32
 		case MINGW_X64:
+			// Godbolt test
+			return 32;
+		case ELF_X64:
+		case LINUX_X64:
+			// Godbolt test
+			return 25;
+		case FREEBSD_X64:
 		case NETBSD_X64:
 		case OPENBSD_X64:
-			// Based on MacOS headers
-			return ((9 * 2) + 3 + 16);
+			REMINDER("Guessing setjmp for platform.");
+			return 32;
 		case LINUX_AARCH64:
 		case ELF_AARCH64:
+			return 39;
+		case WINDOWS_AARCH64:
+			// Based on Godbolt
+			return 24;
 		case MACOS_AARCH64:
 			// Based on MacOS headers
-			return ((14 + 8 + 2) * 2);
+			return 25;
 		case LINUX_X86:
 		case MCU_X86:
 		case NETBSD_X86:
 		case OPENBSD_X86:
-		case WINDOWS_X86:
 		case ELF_X86:
 		case FREEBSD_X86:
-			return 18;
+			// Early GCC
+			return 39;
 		case WASM32:
 		case WASM64:
 			REMINDER("WASM setjmp size is unknown");
@@ -838,7 +849,7 @@ const char *get_object_extension(void)
 	switch (active_target.arch_os_target)
 	{
 		case WINDOWS_X64:
-		case WINDOWS_X86:
+		case WINDOWS_AARCH64:
 		case MINGW_X64:
 			return ".obj";
 		default:

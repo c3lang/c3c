@@ -5071,8 +5071,16 @@ static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left,
 
 	if (!type_is_comparable(max))
 	{
-		SEMA_ERROR(expr, "%s does not support comparisons, you need to manually implement a comparison if you need it.",
-		           type_quoted_error_string(left->type));
+		if (type_is_user_defined(max->canonical))
+		{
+			SEMA_ERROR(expr, "%s does not support comparisons, you need to manually implement a comparison if you need it.",
+			           type_quoted_error_string(left->type));
+		}
+		else
+		{
+			SEMA_ERROR(expr, "%s does not support comparisons.",
+			           type_quoted_error_string(left->type));
+		}
 		return false;
 	}
 	if (!is_equality_type_op)

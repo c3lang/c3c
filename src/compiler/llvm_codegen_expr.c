@@ -1276,7 +1276,8 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 			llvm_emit_vector_to_array_cast(c, value, to_type, from_type);
 			break;
 		case CAST_EUER:
-			TODO // gencontext_emit_value_bitcast(c, value->value, to_type, from_type);
+			REMINDER("Improve fault to err comparison");
+			break;
 		case CAST_ERBOOL:
 		case CAST_EUBOOL:
 		{
@@ -1712,7 +1713,7 @@ static inline void llvm_emit_initialize_reference_list(GenContext *c, BEValue *r
 		}
 		else if (is_array)
 		{
-			// Todo optimize
+			REMINDER("Optimize array reference list init");
 			AlignSize alignment;
 			LLVMValueRef ptr = llvm_emit_array_gep_raw(c, value, llvm_type, i, ref->alignment, &alignment);
 			llvm_value_set_address(&pointer, ptr, element->type, alignment);
@@ -2720,7 +2721,6 @@ static void gencontext_emit_slice(GenContext *c, BEValue *be_value, Expr *expr)
 		case TYPE_POINTER:
 			start_pointer = llvm_emit_pointer_inbounds_gep_raw(c, llvm_get_pointee_type(c, parent.type), parent.value, start.value);
 			break;
-			TODO
 		default:
 			UNREACHABLE
 	}
@@ -3276,7 +3276,92 @@ static void llvm_emit_subarray_comp(GenContext *c, BEValue *be_value, BEValue *l
 
 static void llvm_emit_array_comp(GenContext *c, BEValue *be_value, BEValue *lhs, BEValue *rhs, BinaryOp binary_op)
 {
-	TODO
+	bool want_match = binary_op == BINARYOP_EQ;
+	ArraySize len = lhs->type->array.len;
+	Type *array_base_type = type_lowering(lhs->type->array.base);
+	LLVMTypeRef array_type = llvm_get_type(c, lhs->type);
+	if (len <= 16)
+	{
+		LLVMBasicBlockRef blocks[17];
+		LLVMValueRef value_block[17];
+		LLVMBasicBlockRef ok_block = llvm_basic_block_new(c, "match");
+		LLVMBasicBlockRef exit_block = llvm_basic_block_new(c, "exit");
+		llvm_value_addr(c, lhs);
+		llvm_value_addr(c, rhs);
+		LLVMValueRef success = LLVMConstInt(c->bool_type, want_match ? 1 : 0, false);
+		LLVMValueRef failure = LLVMConstInt(c->bool_type, want_match ? 0 : 1, false);
+		blocks[0] = c->current_block;
+		for (unsigned i = 0; i < len; i++)
+		{
+			value_block[i] = failure;
+			AlignSize align_lhs;
+			BEValue lhs_v;
+			LLVMValueRef lhs_ptr = llvm_emit_array_gep_raw(c, lhs->value, array_type, i, lhs->alignment, &align_lhs);
+			llvm_value_set_address(&lhs_v, lhs_ptr, array_base_type, align_lhs);
+			AlignSize align_rhs;
+			BEValue rhs_v;
+			LLVMValueRef rhs_ptr = llvm_emit_array_gep_raw(c, rhs->value, array_type, i, rhs->alignment, &align_rhs);
+			llvm_value_set_address(&rhs_v, rhs_ptr, array_base_type, align_rhs);
+			BEValue comp;
+			llvm_emit_comp(c, &comp, &lhs_v, &rhs_v, BINARYOP_EQ);
+			LLVMBasicBlockRef block = ok_block;
+			if (i < len - 1)
+			{
+				block = blocks[i + 1] = llvm_basic_block_new(c, "next_check");
+			}
+			llvm_emit_cond_br(c, &comp, block, exit_block);
+			llvm_emit_block(c, block);
+		}
+		llvm_emit_br(c, exit_block);
+		llvm_emit_block(c, exit_block);
+		value_block[len] = success;
+		blocks[len] = ok_block;
+		LLVMValueRef phi = LLVMBuildPhi(c->builder, c->bool_type, "array_cmp_phi");
+		LLVMAddIncoming(phi, value_block, blocks, len + 1);
+		llvm_value_set(be_value, phi, type_bool);
+		return;
+	}
+
+	LLVMBasicBlockRef exit = llvm_basic_block_new(c, "array_cmp_exit");
+	LLVMBasicBlockRef loop_begin = llvm_basic_block_new(c, "array_loop_start");
+	LLVMBasicBlockRef comparison = llvm_basic_block_new(c, "array_loop_comparison");
+
+	LLVMValueRef len_val = llvm_const_int(c, type_usize, len);
+	LLVMValueRef one = llvm_const_int(c, type_usize, 1);
+	BEValue index_var;
+	llvm_value_set_address_abi_aligned(&index_var, llvm_emit_alloca_aligned(c, type_usize, "cmp.idx"), type_usize);
+	llvm_store_raw(c, &index_var, llvm_get_zero(c, type_usize));
+
+	llvm_emit_br(c, loop_begin);
+	llvm_emit_block(c, loop_begin);
+
+	AlignSize align_lhs;
+	BEValue lhs_v;
+	LLVMValueRef index = llvm_load_value(c, &index_var);
+	LLVMValueRef lhs_ptr = llvm_emit_array_gep_raw_index(c, lhs->value, array_type, index, lhs->alignment, &align_lhs);
+	llvm_value_set_address(&lhs_v, lhs_ptr, array_base_type, align_lhs);
+	AlignSize align_rhs;
+	BEValue rhs_v;
+	LLVMValueRef rhs_ptr = llvm_emit_array_gep_raw_index(c, rhs->value, array_type, index, rhs->alignment, &align_rhs);
+	llvm_value_set_address(&rhs_v, rhs_ptr, array_base_type, align_rhs);
+	BEValue comp;
+	llvm_emit_comp(c, &comp, &lhs_v, &rhs_v, BINARYOP_EQ);
+	llvm_emit_cond_br(c, &comp, comparison, exit);
+	llvm_emit_block(c, comparison);
+
+	LLVMValueRef new_index = LLVMBuildAdd(c->builder, index, one, "inc");
+	llvm_store_raw(c, &index_var, new_index);
+	llvm_emit_int_comp_raw(c, &comp, type_usize, type_usize, new_index, len_val, BINARYOP_LT);
+	llvm_emit_cond_br(c, &comp, loop_begin, exit);
+	llvm_emit_block(c, exit);
+	LLVMValueRef phi = LLVMBuildPhi(c->builder, c->bool_type, "array_cmp_phi");
+
+	LLVMValueRef success = LLVMConstInt(c->bool_type, want_match ? 1 : 0, false);
+	LLVMValueRef failure = LLVMConstInt(c->bool_type, want_match ? 0 : 1, false);
+	LLVMValueRef logic_values[3] = { success, failure };
+	LLVMBasicBlockRef blocks[3] = { comparison, loop_begin };
+	LLVMAddIncoming(phi, logic_values, blocks, 2);
+	llvm_value_set(be_value, phi, type_bool);
 }
 
 static void llvm_emit_float_comp(GenContext *c, BEValue *be_value, BEValue *lhs, BEValue *rhs, BinaryOp binary_op, Type *vector_type)
@@ -3322,45 +3407,64 @@ static void llvm_emit_float_comp(GenContext *c, BEValue *be_value, BEValue *lhs,
 void llvm_emit_comp(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, BinaryOp binary_op)
 {
 	assert(binary_op >= BINARYOP_GT && binary_op <= BINARYOP_EQ);
-	llvm_value_rvalue(c, lhs);
-	llvm_value_rvalue(c, rhs);
-	if (type_is_integer_or_bool_kind(lhs->type))
+	switch (lhs->type->type_kind)
 	{
-		llvm_emit_int_comp_raw(c, result, lhs->type, rhs->type, lhs->value, rhs->value, binary_op);
-		return;
-	}
-	if (type_is_pointer(lhs->type))
-	{
-		llvm_emit_ptr_comparison(c, result, lhs, rhs, binary_op);
-		return;
-	}
-	if (type_is_float(lhs->type))
-	{
-		llvm_emit_float_comp(c, result, lhs, rhs, binary_op, NULL);
-		return;
-	}
-	if (lhs->type->type_kind == TYPE_SUBARRAY)
-	{
-		llvm_emit_subarray_comp(c, result, lhs, rhs, binary_op);
-		return;
-	}
-	if (lhs->type->type_kind == TYPE_VECTOR)
-	{
-		Type *type = type_vector_type(lhs->type);
-		if (type_is_float(type))
-		{
-			llvm_emit_float_comp(c, result, lhs, rhs, binary_op, lhs->type);
-		}
-		else
-		{
+		case TYPE_POISONED:
+		case TYPE_VOID:
+			UNREACHABLE;
+		case TYPE_BOOL:
+		case ALL_INTS:
+			llvm_value_rvalue(c, lhs);
+			llvm_value_rvalue(c, rhs);
 			llvm_emit_int_comp_raw(c, result, lhs->type, rhs->type, lhs->value, rhs->value, binary_op);
-		}
-		return;
-	}
-	if (lhs->type->type_kind == TYPE_ARRAY)
-	{
-		llvm_emit_array_comp(c, result, lhs, rhs, binary_op);
-		return;
+			return;
+		case ALL_FLOATS:
+			llvm_emit_float_comp(c, result, lhs, rhs, binary_op, NULL);
+			return;
+		case TYPE_POINTER:
+			llvm_emit_ptr_comparison(c, result, lhs, rhs, binary_op);
+			return;
+		case TYPE_ARRAY:
+			llvm_emit_array_comp(c, result, lhs, rhs, binary_op);
+			return;
+		case TYPE_ANY:
+		case TYPE_ANYERR:
+		case TYPE_TYPEID:
+		case TYPE_ENUM:
+		case TYPE_FAULTTYPE:
+		case TYPE_TYPEDEF:
+		case TYPE_DISTINCT:
+		case TYPE_INFERRED_ARRAY:
+		case TYPE_UNTYPED_LIST:
+		case TYPE_OPTIONAL:
+		case TYPE_OPTIONAL_ANY:
+		case TYPE_TYPEINFO:
+		case TYPE_MEMBER:
+		case TYPE_INFERRED_VECTOR:
+			UNREACHABLE
+		case TYPE_FUNC:
+			break;
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		case TYPE_BITSTRUCT:
+		case TYPE_SCALED_VECTOR:
+		case TYPE_FLEXIBLE_ARRAY:
+			UNREACHABLE
+		case TYPE_SUBARRAY:
+			llvm_emit_subarray_comp(c, result, lhs, rhs, binary_op);
+			return;
+		case TYPE_VECTOR:
+			if (type_is_float(type_vector_type(lhs->type)))
+			{
+				llvm_emit_float_comp(c, result, lhs, rhs, binary_op, lhs->type);
+			}
+			else
+			{
+				llvm_value_rvalue(c, lhs);
+				llvm_value_rvalue(c, rhs);
+				llvm_emit_int_comp_raw(c, result, lhs->type, rhs->type, lhs->value, rhs->value, binary_op);
+			}
+			return;
 	}
 	TODO // When updated, also update tilde_codegen_expr
 }
@@ -3561,12 +3665,12 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 		llvm_emit_expr(c, &lhs, exprptr(expr->binary_expr.left));
 	}
 	// We need the rvalue.
-	llvm_value_rvalue(c, &lhs);
+	if (lhs.type->type_kind != TYPE_ARRAY) llvm_value_rvalue(c, &lhs);
 
 	// Evaluate rhs
 	BEValue rhs;
 	llvm_emit_expr(c, &rhs, exprptr(expr->binary_expr.right));
-	llvm_value_rvalue(c, &rhs);
+	if (rhs.type->type_kind != TYPE_ARRAY) llvm_value_rvalue(c, &rhs);
 
 	EMIT_LOC(c, expr);
 	// Comparison <=>

@@ -400,10 +400,9 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	}
 
 
-	// TODO fix name
 	LLVMValueRef old = decl->backend_ref;
 	LLVMValueRef global_ref = decl->backend_ref = llvm_add_global_raw(c,
-	                                                                  decl->extname,
+																	  decl_get_extname(decl),
 	                                                                  LLVMTypeOf(init_value),
 	                                                                  decl->alignment);
 	if (decl->var.is_addr)
@@ -816,19 +815,19 @@ static void llvm_emit_type_decls(GenContext *context, Decl *decl)
 	switch (decl->decl_kind)
 	{
 		case DECL_POISONED:
-			UNREACHABLE;
-		case DECL_FUNC:
-			// TODO
-			break;
 		case DECL_VAR:
-			// TODO
-			break;
-		case DECL_TYPEDEF:
-			break;
 		case DECL_ENUM_CONSTANT:
 		case DECL_FAULTVALUE:
-			// TODO
-			break;;
+			UNREACHABLE;
+		case DECL_TYPEDEF:
+			if (decl->typedef_decl.is_func)
+			{
+				REMINDER("Emit func typeid");
+			}
+			break;
+		case DECL_FUNC:
+			// Never directly invoked.
+			UNREACHABLE
 		case DECL_DISTINCT:
 		case DECL_STRUCT:
 		case DECL_UNION:

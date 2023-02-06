@@ -1865,7 +1865,11 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 			break;
 		case TYPE_ANYERR:
 			if (to->type_kind == TYPE_BOOL) return insert_cast(expr, CAST_EUBOOL, to_type);
-			if (to->type_kind == TYPE_FAULTTYPE) return insert_cast(expr, CAST_EUER, to_type);
+			if (to->type_kind == TYPE_FAULTTYPE)
+			{
+				REMINDER("Improve anyerr -> fault conversion.");
+				return insert_cast(expr, CAST_EUER, to_type);
+			}
 			if (type_is_integer(to)) return insert_cast(expr, CAST_EUINT, to_type);
 			break;
 		case ALL_SIGNED_INTS:

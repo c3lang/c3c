@@ -1,0 +1,17 @@
+// #target: macos-x64
+module test;
+
+fn bool[2] get() { return { false, false }; }
+
+/* #expect: test.ll
+
+define i16 @test_get() #0 {
+entry:
+  %literal = alloca [2 x i8], align 1
+  %0 = getelementptr inbounds [2 x i8], ptr %literal, i64 0, i64 0
+  store i8 0, ptr %0, align 1
+  %1 = getelementptr inbounds [2 x i8], ptr %literal, i64 0, i64 1
+  store i8 0, ptr %1, align 1
+  %2 = load i16, ptr %literal, align 1
+  ret i16 %2
+}

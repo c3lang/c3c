@@ -253,10 +253,8 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl, Decl **
 
 	if (!max_size)
 	{
-		REMINDER("Check if this should really be allowed.");
-		decl->strukt.size = 0;
-		decl->alignment = 1;
-		return true;
+		SEMA_ERROR(decl, "Zero size unions are not allowed.");
+		return false;
 	}
 
 	// The actual size might be larger than the max size due to alignment.

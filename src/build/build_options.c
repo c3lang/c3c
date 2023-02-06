@@ -46,7 +46,7 @@ char *arch_os_target[ARCH_OS_TARGET_LAST + 1] = {
 		[OPENBSD_X64] = "openbsd-x64",
 		[WASM32] = "wasm32",
 		[WASM64] = "wasm64",
-		[WINDOWS_X86] = "windows-x86",
+		[WINDOWS_AARCH64] = "windows-aarch64",
 		[WINDOWS_X64] = "windows-x64",
 };
 

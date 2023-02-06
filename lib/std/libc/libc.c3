@@ -33,7 +33,7 @@ fn void errno_set(Errno e)
 
 define TerminateFunction = fn void();
 define CompareFunction = fn int(void*, void*);
-define JmpBuf = CInt[$$JMP_BUF_SIZE];
+define JmpBuf = uptr[$$JMP_BUF_SIZE];
 
 $if (env::COMPILER_LIBC_AVAILABLE):
 

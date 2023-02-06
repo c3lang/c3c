@@ -274,7 +274,7 @@ LLVMTypeRef llvm_func_type(GenContext *context, FunctionPrototype *prototype)
 {
 	LLVMTypeRef *params = NULL;
 	LLVMTypeRef ret = llvm_update_prototype_abi(context, prototype, &params);
-	return prototype->llvm_prototype = LLVMFunctionType(ret, params, vec_size(params), prototype->variadic == VARIADIC_RAW);
+	return LLVMFunctionType(ret, params, vec_size(params), prototype->variadic == VARIADIC_RAW);
 }
 
 

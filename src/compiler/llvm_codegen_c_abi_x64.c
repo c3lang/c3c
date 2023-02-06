@@ -681,7 +681,7 @@ ABIArgInfo *x64_classify_return(Type *return_type)
 			// AMD64-ABI 3.2.3p4: Rule 3. If the class is INTEGER, the next
 			// available register of the sequence %rax, %rdx is used.
 			result_type = x64_get_int_type_at_offset(return_type, 0, return_type, 0);
-			if (hi_class == CLASS_NO_CLASS && abi_type_is_promotable_integer_or_bool(result_type))
+			if (hi_class == CLASS_NO_CLASS && type_is_promotable_integer(return_type))
 			{
 				return abi_arg_new_direct_coerce_int_ext(return_type);
 			}

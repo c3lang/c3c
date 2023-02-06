@@ -464,6 +464,7 @@ bool type_is_comparable(Type *type)
 	RETRY:
 	switch (type->type_kind)
 	{
+		case TYPE_INFERRED_VECTOR:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_POISONED:
 			UNREACHABLE
@@ -471,6 +472,10 @@ bool type_is_comparable(Type *type)
 		case TYPE_UNION:
 		case TYPE_STRUCT:
 		case TYPE_BITSTRUCT:
+		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_OPTIONAL:
+		case TYPE_OPTIONAL_ANY:
+		case TYPE_MEMBER:
 			return false;
 		case TYPE_TYPEDEF:
 			type = type->canonical;
@@ -483,7 +488,20 @@ bool type_is_comparable(Type *type)
 		case TYPE_DISTINCT:
 			type = type->decl->distinct_decl.base_type;
 			goto RETRY;
-		default:
+		case TYPE_BOOL:
+		case ALL_INTS:
+		case ALL_FLOATS:
+		case TYPE_ANY:
+		case TYPE_ANYERR:
+		case TYPE_TYPEID:
+		case TYPE_POINTER:
+		case TYPE_ENUM:
+		case TYPE_FUNC:
+		case TYPE_FAULTTYPE:
+		case TYPE_UNTYPED_LIST:
+		case TYPE_TYPEINFO:
+		case TYPE_SCALED_VECTOR:
+		case TYPE_VECTOR:
 			return true;
 	}
 }
