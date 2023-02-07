@@ -124,7 +124,7 @@ macro bool @expect_true(bool value) @builtin => $$expect(value, true);
 macro bool @expect_false(bool value) @builtin => $$expect(value, false);
 
 /**
- * @require values.is_int(value)
+ * @require values::@is_int(value)
  * @checked $typeof(value) a = expected
  **/
 macro @expect(value, expected) @builtin
