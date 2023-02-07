@@ -2,6 +2,7 @@ module std::core::values;
 
 macro TypeKind @typekind(#value) @builtin => $typeof(#value).kindof;
 macro bool @typeis(#value, $Type) @builtin => $typeof(#value).typeid == $Type.typeid;
+macro bool @is_bool(#value) => types::is_bool($typeof(#value));
 macro bool @is_int(#value) => types::is_int($typeof(#value));
 macro bool @convertable_to(#a, #b) => $checks($typeof(#b) x = #a);
 macro bool @is_floatlike(#value) => types::is_floatlike($typeof(#value));

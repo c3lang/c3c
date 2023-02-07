@@ -120,17 +120,37 @@ macro enum_by_name($Type, String enum_name) @builtin
 	return SearchResult.MISSING!;
 }
 
-macro bool @expect_true(bool value) @builtin => $$expect(value, true);
-macro bool @expect_false(bool value) @builtin => $$expect(value, false);
+macro bool @likely(bool value, $probability = 1.0) @builtin
+{
+    $if ($probability == 1.0):
+	return $$expect(value, true);
+    $else:
+	return $$expect_with_probability(value, true, $probability);
+    $endif;
+}
+
+macro bool @unlikely(bool value, $probability = 1.0) @builtin
+{
+    $if ($probability == 1.0):
+	return $$expect(value, false);
+    $else:
+	return $$expect_with_probability(value, false, $probability);
+    $endif;
+}
 
 /**
- * @require values.is_int(value)
+ * @require values::@is_int(value) || values::@is_bool(value)
  * @checked $typeof(value) a = expected
  **/
-macro @expect(value, expected) @builtin
+macro @expect(value, expected, $probability = 1.0) @builtin
 {
+    $if ($probability == 1.0):
 	return $$expect(value, ($typeof(value))expected);
+    $else:
+	return $$expect_with_probability(value, expected, $probability);
+    $endif;
 }
+
 /**
  * Locality for prefetch, levels 0 - 3, corresponding
  * to "extremely local" to "no locality"
