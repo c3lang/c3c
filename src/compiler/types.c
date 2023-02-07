@@ -504,6 +504,7 @@ bool type_is_comparable(Type *type)
 		case TYPE_VECTOR:
 			return true;
 	}
+	UNREACHABLE
 }
 
 void type_mangle_introspect_name_to_buffer(Type *type)
