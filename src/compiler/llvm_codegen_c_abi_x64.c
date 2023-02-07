@@ -212,7 +212,7 @@ void x64_classify_post_merge(ByteSize size, X64Class *lo_class, X64Class *hi_cla
 	if (size > 16 && (*lo_class != CLASS_SSE || *hi_class != CLASS_SSEUP)) goto DEFAULT_TO_MEMORY;
 	if (*hi_class == CLASS_SSEUP && *lo_class != CLASS_SSE && *lo_class != CLASS_SSEUP)
 	{
-		// TODO check this
+		// This can happen for unions for example
 		*hi_class = CLASS_SSE;
 	}
 	return;
