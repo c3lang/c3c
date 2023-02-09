@@ -11,6 +11,14 @@
 static void header_gen_struct_union(FILE *file, int indent, Decl *decl);
 static void header_gen_maybe_generate_type(FILE *file, HTable *table, Type *type);
 
+static bool type_is_func_pointer(Type *type)
+{
+	if (type->type_kind != TYPE_DISTINCT && type->type_kind != TYPE_TYPEDEF) return false;
+	type = type_flatten_distinct(type);
+	if (type->type_kind != TYPE_POINTER) return false;
+	return type->pointer->type_kind == TYPE_FUNC;
+}
+
 static void indent_line(FILE *file, int indent)
 {
 	for (int i = 0; i < indent; i++)
@@ -28,6 +36,11 @@ static void header_gen_type_decl(FILE *file, int indent, Decl *decl);
 
 static void header_print_type(FILE *file, Type *type)
 {
+	if (type_is_func_pointer(type))
+	{
+		OUTPUT("%s", decl_get_extname(type->decl));
+		return;
+	}
 	type = type_flatten_distinct(type);
 	switch (type->type_kind)
 	{
@@ -93,10 +106,9 @@ static void header_print_type(FILE *file, Type *type)
 			OUTPUT("*");
 			return;
 		case TYPE_SCALED_VECTOR:
-			TODO
+			error_exit("Scaled vectors are not supported yet.");
 		case TYPE_FUNC:
-			REMINDER("Fix FUNC output");
-			OUTPUT("TODOFUNC");
+			OUTPUT("%s", decl_get_extname(type->decl));
 			return;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
@@ -128,17 +140,69 @@ static void header_print_type(FILE *file, Type *type)
 			OUTPUT("c3slice_t");
 			return;
 		case TYPE_VECTOR:
-			REMINDER("Fix vector");
-			OUTPUT("TODOVECTOR");
+			switch (type->array.base->type_kind)
+			{
+				case ALL_SIGNED_INTS:
+					OUTPUT("int");
+					break;
+				case ALL_UNSIGNED_INTS:
+					OUTPUT("uint");
+					break;
+				case ALL_FLOATS:
+					OUTPUT("float");
+					break;
+				default:
+					UNREACHABLE;
+			}
+			OUTPUT("%dx%d", (int)type_bit_size(type->array.base), type->array.len);
+			return;
 	}
+}
+
+static void header_gen_function_ptr(FILE *file, HTable *table, Type *type)
+{
+	TypeFunction *fun = &type_flatten_distinct(type)->pointer->function;
+	Signature *sig = fun->signature;
+	Type *rtype = typeinfotype(sig->rtype);
+	Type *extra_ret = NULL;
+	if (type_is_optional(rtype))
+	{
+		extra_ret = rtype->optional;
+		header_gen_maybe_generate_type(file, table, extra_ret);
+		rtype = type_anyerr;
+	}
+	header_gen_maybe_generate_type(file, table, rtype);
+	FOREACH_BEGIN_IDX(i, Decl *param, sig->params)
+		header_gen_maybe_generate_type(file, table, param->type);
+	FOREACH_END();
+
+	OUTPUT("typedef ");
+	header_print_type(file, rtype);
+	OUTPUT("(*%s)(", decl_get_extname(type->decl));
+	if (!vec_size(sig->params) && !extra_ret)
+	{
+		OUTPUT("void);\n");
+		return;
+	}
+	if (extra_ret)
+	{
+		header_print_type(file, type_get_ptr(extra_ret));
+		OUTPUT(" return_ref");
+	}
+	FOREACH_BEGIN_IDX(i, Decl *param, sig->params)
+		if (i || extra_ret) OUTPUT(", ");
+		header_print_type(file, param->type);
+		if (param->name) OUTPUT(" %s", param->name);
+	FOREACH_END();
+	OUTPUT(");\n");
 }
 
 static void header_gen_function(FILE *file, FILE *file_types, HTable *table, Decl *decl)
 {
-	if (decl->visibility != VISIBLE_PUBLIC) return;
+	if (!decl->is_export) return;
 	Signature *sig = &decl->func_decl.signature;
 	OUTPUT("extern ");
-	Type *rtype = type_flatten_distinct(typeinfotype(sig->rtype));
+	Type *rtype = typeinfotype(sig->rtype);
 	Type *extra_ret = NULL;
 	if (type_is_optional(rtype))
 	{
@@ -177,6 +241,12 @@ static void header_gen_members(FILE *file, int indent, Decl **members)
 		{
 			case DECL_VAR:
 				INDENT();
+				if (member->type->canonical->type_kind == TYPE_ARRAY)
+				{
+					header_print_type(file, member->type->canonical->array.base);
+					OUTPUT(" %s[%d];\n", member->name, member->type->canonical->array.len);
+					break;
+				}
 				header_print_type(file, member->type);
 				OUTPUT(" %s;\n", member->name);
 				break;
@@ -236,10 +306,8 @@ static void header_gen_type_decl(FILE *file, int indent, Decl *decl)
 		case DECL_POISONED:
 		case DECL_VAR:
 		case DECL_BODYPARAM:
-			UNREACHABLE
 		case DECL_FUNC:
-			REMINDER("Fix func");
-			return;
+			UNREACHABLE
 		case DECL_BITSTRUCT:
 			header_print_type(file, decl->bitstruct.base_type->type);
 			return;
@@ -280,6 +348,13 @@ void header_ensure_member_types_exist(FILE *file, HTable *table, Decl **members)
 }
 static void header_gen_maybe_generate_type(FILE *file, HTable *table, Type *type)
 {
+	if (type_is_func_pointer(type))
+	{
+		if (htable_get(table, type)) return;
+		htable_set(table, type, type);
+		header_gen_function_ptr(file, table, type);
+		return;
+	}
 RETRY:
 	type = type_flatten_distinct(type);
 	switch (type->type_kind)
@@ -328,12 +403,12 @@ RETRY:
 				header_print_type(file, underlying_type);
 				OUTPUT(" %s;\n", decl_get_extname(decl));
 				FOREACH_BEGIN_IDX(i, Decl *enum_member, decl->enums.values)
-					OUTPUT("%s %s_%s = %d;\n", decl_get_extname(decl), decl_get_extname(decl), decl->name, i);
+					OUTPUT("%s %s_%s = %d;\n", decl_get_extname(decl), decl_get_extname(decl), enum_member->name, i);
 				FOREACH_END();
 				return;
 			}
 		case TYPE_FUNC:
-			REMINDER("Do functions");
+			UNREACHABLE
 			return;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
@@ -373,9 +448,14 @@ RETRY:
 			goto RETRY;
 			break;
 		case TYPE_SCALED_VECTOR:
-			TODO
+			error_exit("Scaled vectors are not supported yet.");
 		case TYPE_VECTOR:
-			REMINDER("Setup vector type");
+			if (htable_get(table, type)) return;
+			OUTPUT("typedef ");
+			header_print_type(file, type->array.base);
+			OUTPUT(" ");
+			header_print_type(file, type);
+			OUTPUT(" __attribute__((vector_size(%d)));\n", (int)type_size(type->array.base) * type->array.len);
 			return;
 	}
 }
@@ -383,8 +463,8 @@ RETRY:
 static void header_gen_global_var(FILE *file, FILE *file_type, HTable *table, Decl *decl)
 {
 	assert(decl->decl_kind == DECL_VAR);
-	// Private decls are ignored.
-	if (decl->visibility != VISIBLE_PUBLIC) return;
+	// Only exports.
+	if (!decl->is_export) return;
 	Type *type = decl->type->canonical;
 	// Optionals are ignored.
 	if (type_is_optional(type)) return;
@@ -449,21 +529,11 @@ static void header_gen_global_var(FILE *file, FILE *file_type, HTable *table, De
 	assert(decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST);
 	OUTPUT("extern ");
 	if (decl->var.kind == VARDECL_CONST) OUTPUT("const ");
-	header_gen_maybe_generate_type(file_type, table, type);
-	header_print_type(file, type);
+	header_gen_maybe_generate_type(file_type, table, decl->type);
+	header_print_type(file, decl->type);
 	OUTPUT(" %s;\n", decl_get_extname(decl));
 }
 
-
-
-static bool should_ignore_standard_module(Module *module)
-{
-	Module *top_module = module;
-	while (top_module->parent_module) top_module = top_module->parent_module;
-	if (top_module->name->module == kw_std) return true;
-	if (top_module->name->module == kw_libc) return true;
-	return false;
-}
 
 void header_gen(Module **modules, unsigned module_count)
 {
@@ -483,14 +553,23 @@ void header_gen(Module **modules, unsigned module_count)
 	OUT(file_types, "typedef struct { void* ptr; size_t len; } c3slice_t;\n");
 	OUT(file_types, "\n#endif\n\n");
 	OUTPUT("#include \"foo_types.h\"\n");
+
+	for (unsigned i = 0; i < module_count; i++)
+	{
+		Module *module = modules[i];
+		// Produce all constants.
+		FOREACH_BEGIN(CompilationUnit *unit, module->units)
+			FOREACH_BEGIN(Decl *var, unit->enums)
+				if (!var->is_export) continue;
+				header_gen_maybe_generate_type(file_types, &table, var->type);
+			FOREACH_END();
+		FOREACH_END();
+	}
+
 	OUTPUT("/* Constants */\n");
 	for (unsigned i = 0; i < module_count; i++)
 	{
 		Module *module = modules[i];
-
-		// Ignore stdlib modules
-		if (should_ignore_standard_module(module)) continue;
-
 		// Produce all constants.
 		FOREACH_BEGIN(CompilationUnit *unit, module->units)
 			FOREACH_BEGIN(Decl *var, unit->vars)
@@ -504,9 +583,6 @@ void header_gen(Module **modules, unsigned module_count)
 	for (unsigned i = 0; i < module_count; i++)
 	{
 		Module *module = modules[i];
-
-		// Ignore stdlib modules
-		if (should_ignore_standard_module(module)) continue;
 
 		// Generate all globals
 		FOREACH_BEGIN(CompilationUnit *unit, module->units)
@@ -522,9 +598,6 @@ void header_gen(Module **modules, unsigned module_count)
 	for (unsigned i = 0; i < module_count; i++)
 	{
 		Module *module = modules[i];
-
-		// Ignore stdlib modules
-		if (should_ignore_standard_module(module)) continue;
 
 		// Generate all functions
 		FOREACH_BEGIN(CompilationUnit *unit, module->units)

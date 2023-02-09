@@ -1433,6 +1433,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_BIGENDIAN] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_BUILTIN] = ATTR_MACRO | ATTR_FUNC,
 			[ATTRIBUTE_CDECL] = ATTR_FUNC,
+			[ATTRIBUTE_EXPORT] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | ATTR_ENUM | ATTR_UNION | ATTR_STRUCT,
 			[ATTRIBUTE_EXTNAME] = (AttributeDomain)~(ATTR_CALL | ATTR_BITSTRUCT | ATTR_MACRO | ATTR_XXLIZER),
 			[ATTRIBUTE_EXTERN] = (AttributeDomain)~(ATTR_CALL | ATTR_BITSTRUCT | ATTR_MACRO | ATTR_XXLIZER),
 			[ATTRIBUTE_INLINE] = ATTR_FUNC | ATTR_CALL,
@@ -1572,6 +1573,30 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 				decl->alignment = (AlignSize)align;
 				return true;
 			}
+		case ATTRIBUTE_EXPORT:
+			if (context->unit->module->is_generic)
+			{
+				sema_error_at(attr->span, "'@export' is not allowed in generic modules.");
+				return false;
+			}
+			if (expr)
+			{
+				if (!sema_analyse_expr(context, expr)) return false;
+				if (!expr_is_const_string(expr))
+				{
+					SEMA_ERROR(expr, "Expected a constant string value as argument.");
+					return false;
+				}
+				if (decl->has_extname)
+				{
+					SEMA_ERROR(expr, "An external name is already defined, please use '@extern` without an argument.");
+					return false;
+				}
+				decl->has_extname = true;
+				decl->extname = expr->const_expr.string.chars;
+			}
+			decl->is_export = true;
+			return true;
 		case ATTRIBUTE_SECTION:
 		case ATTRIBUTE_EXTERN:
 		case ATTRIBUTE_EXTNAME:
