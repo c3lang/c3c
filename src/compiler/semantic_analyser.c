@@ -196,7 +196,7 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 			case DECL_BITSTRUCT:
 				break;
 		}
-		htable_set(&unit->module->symbols, decl->name, decl);
+		htable_set(&unit->module->symbols, (void *)decl->name, decl);
 		if (decl->visibility == VISIBLE_PUBLIC) global_context_add_generic_decl(decl);
 	}
 }
@@ -289,8 +289,11 @@ void sema_analysis_run(void)
 	}
 
 	// Create the core module if needed.
-	Path core_path = { .module = kw_std__core, .span = INVALID_SPAN, .len = strlen(kw_std__core) };
-	global_context.core_module = compiler_find_or_create_module(&core_path, NULL, false);
+	Path *core_path = MALLOCS(Path);
+	core_path->module = kw_std__core;
+	core_path->span = INVALID_SPAN;
+	core_path->len = strlen(kw_std__core);
+	global_context.core_module = compiler_find_or_create_module(core_path, NULL, false);
 
 	// We parse the generic modules, just by storing the decls.
 	FOREACH_BEGIN(Module *module, global_context.generic_module_list)

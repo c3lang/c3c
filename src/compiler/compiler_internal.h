@@ -261,7 +261,7 @@ typedef struct
 
 typedef struct SEntry2_
 {
-	const char *key;
+	void *key;
 	void *value;
 	struct SEntry2_ *next;
 } HTEntry;
@@ -1875,6 +1875,7 @@ extern const char *kw_inline;
 extern const char *kw_inout;
 extern const char *kw_kind;
 extern const char *kw_len;
+extern const char *kw_libc;
 extern const char *kw_main;
 extern const char *kw_mainstub;
 extern const char *kw_nameof;
@@ -2075,7 +2076,7 @@ const char *tilde_codegen(void *context);
 void **llvm_gen(Module** modules, unsigned module_count);
 void **tilde_gen(Module** modules, unsigned module_count);
 
-void header_gen(Module *module);
+void header_gen(Module **modules, unsigned module_count);
 
 void global_context_clear_errors(void);
 void global_context_add_type(Type *type);
@@ -2268,8 +2269,8 @@ void *stable_set(STable *table, const char *key, void *value);
 void *stable_get(STable *table, const char *key);
 
 void htable_init(HTable *table, uint32_t initial_size);
-void *htable_set(HTable *table, const char *key, void *value);
-void *htable_get(HTable *table, const char *key);
+void *htable_set(HTable *table, void *key, void *value);
+void *htable_get(HTable *table, void *key);
 
 UNUSED void stable_clear(STable *table);
 

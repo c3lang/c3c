@@ -6,7 +6,7 @@
 
 Decl *module_find_symbol(Module *module, const char *symbol)
 {
-	return htable_get(&module->symbols, symbol);
+	return htable_get(&module->symbols, (void*)symbol);
 }
 
 const char *module_create_object_file_name(Module *module)

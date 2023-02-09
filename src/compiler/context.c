@@ -280,8 +280,8 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 	DEBUG_LOG("Registering symbol '%s' in %s.", decl->name, unit->module->name->module);
 
 	Decl *old;
-	if ((old = htable_set(&unit->local_symbols, decl->name, decl))) goto ERR;
-	if ((old = htable_set(&unit->module->symbols, decl->name, decl))) goto ERR;
+	if ((old = htable_set(&unit->local_symbols, (void*)decl->name, decl))) goto ERR;
+	if ((old = htable_set(&unit->module->symbols, (void*)decl->name, decl))) goto ERR;
 	return;
 ERR:
 	assert(decl != old);

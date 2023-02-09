@@ -771,7 +771,7 @@ Int int_conv(Int op, TypeKind to_type)
 	int bitsize = type_kind_bitsize(op.type);
 	int to_bitsize = type_kind_bitsize(to_type);
 	// Simple conversion, to 128 is a no op.
-	if (to_bitsize == bitsize || to_bitsize == 128) return (Int){ op.i, to_type };
+	if (to_bitsize == 128) return (Int){ op.i, to_type };
 
 	bool from_signed = type_kind_is_signed(op.type);
 	bool to_signed = type_kind_is_signed(to_type);
@@ -848,7 +848,7 @@ Int int_xor(Int op1, Int op2)
 
 Int int_neg(Int op)
 {
-	return (Int){ i128_neg(op.i), op.type };
+	return int_sub((Int) { { 0, 0 }, op.type}, op);
 }
 
 Int int_not(Int op)

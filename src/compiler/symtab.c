@@ -61,6 +61,7 @@ const char *kw_inline;
 const char *kw_inout;
 const char *kw_kind;
 const char *kw_len;
+const char *kw_libc;
 const char *kw_main;
 const char *kw_mainstub;
 const char *kw_nameof;
@@ -146,6 +147,7 @@ void symtab_init(uint32_t capacity)
 	kw_incr = KW_DEF("incr");
 	kw_inline = KW_DEF("inline");
 	kw_inout = KW_DEF("inout");
+	kw_libc = KW_DEF("libc");
 	kw_mainstub = KW_DEF("_$start");
 	kw_main = KW_DEF("main");
 	kw_nameof = KW_DEF("nameof");
@@ -488,7 +490,7 @@ void htable_init(HTable *table, uint32_t initial_size)
 	table->mask = size - 1;
 }
 
-void *htable_set(HTable *table, const char *key, void *value)
+void *htable_set(HTable *table, void *key, void *value)
 {
 	assert(value && "Cannot insert NULL");
 	uint32_t idx = (((uintptr_t)key) ^ ((uintptr_t)key) >> 8) & table->mask;
@@ -518,7 +520,7 @@ void *htable_set(HTable *table, const char *key, void *value)
 }
 
 
-void *htable_get(HTable *table, const char *key)
+void *htable_get(HTable *table, void *key)
 {
 	uint32_t idx = (((uintptr_t)key) ^ ((uintptr_t)key) >> 8) & table->mask;
 	HTEntry *entry = table->entries[idx];

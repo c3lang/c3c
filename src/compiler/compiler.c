@@ -280,11 +280,7 @@ void compiler_compile(void)
 
 	if (active_target.output_headers)
 	{
-		for (unsigned i = 0; i < module_count; i++)
-		{
-			REMINDER("Header gen is needed");
-			// header_gen(modules[i]);
-		}
+		header_gen(modules, module_count);
 	}
 
 	if (active_target.check_only)
@@ -560,7 +556,7 @@ static void setup_int_define(const char *id, uint64_t i, Type *type)
 	{
 		error_exit("Integer define %s overflow.", id);
 	}
-	void *previous = htable_set(&global_context.compiler_defines, id, expr);
+	void *previous = htable_set(&global_context.compiler_defines, (void*)id, expr);
 	if (previous)
 	{
 		error_exit("Redefined ident %s", id);
@@ -572,7 +568,7 @@ static void setup_bool_define(const char *id, bool value)
 	TokenType token_type = TOKEN_CONST_IDENT;
 	id = symtab_add(id, (uint32_t) strlen(id), fnv1a(id, (uint32_t) strlen(id)), &token_type);
 	Expr *expr = expr_new_const_bool(INVALID_SPAN, type_bool, value);
-	void *previous = htable_set(&global_context.compiler_defines, id, expr);
+	void *previous = htable_set(&global_context.compiler_defines, (void *)id, expr);
 	if (previous)
 	{
 		error_exit("Redefined ident %s", id);
@@ -859,7 +855,7 @@ const char *get_object_extension(void)
 
 Module *global_context_find_module(const char *name)
 {
-	return htable_get(&global_context.modules, name);
+	return htable_get(&global_context.modules, (void *)name);
 }
 
 Module *compiler_find_or_create_module(Path *module_name, const char **parameters, bool is_private)
@@ -876,7 +872,7 @@ Module *compiler_find_or_create_module(Path *module_name, const char **parameter
 	module->is_generic = vec_size(parameters) > 0;
 	module->is_private = is_private;
 	htable_init(&module->symbols, 0x10000);
-	htable_set(&global_context.modules, module_name->module, module);
+	htable_set(&global_context.modules, (void *)module_name->module, module);
 	if (parameters)
 	{
 		vec_add(global_context.generic_module_list, module);

@@ -6073,7 +6073,7 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 			UNREACHABLE
 		case BUILTIN_DEF_NONE:
 		{
-			Expr *value = htable_get(&global_context.compiler_defines, string);
+			Expr *value = htable_get(&global_context.compiler_defines, (void *)string);
 			if (!value)
 			{
 				if (report_missing)

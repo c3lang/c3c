@@ -435,7 +435,7 @@ static Decl *sema_resolve_no_path_symbol(SemaContext *context, NameResolve *name
 	CompilationUnit *unit = context->unit;
 
 	// Search in file scope.
-	decl = htable_get(&unit->local_symbols, symbol);
+	decl = htable_get(&unit->local_symbols, (void*)symbol);
 
 	if (decl) return decl;
 

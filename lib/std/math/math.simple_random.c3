@@ -1,4 +1,4 @@
-module math;
+module std::math;
 
 struct SimpleRandom
 {
