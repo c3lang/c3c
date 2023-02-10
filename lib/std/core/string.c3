@@ -2,6 +2,10 @@ module std::core::string;
 import libc;
 
 define VarString = distinct void*;
+define DynStr = VarString;
+define DynString = VarString;
+define DString = VarString;
+define VString = VarString;
 
 private struct StringData
 {
@@ -50,6 +54,12 @@ fn ZString VarString.zstr(VarString str)
 		data.chars[data.len] = 0;
 	}
 	return (ZString)&data.chars[0];
+}
+
+fn usz VarString.capacity(VarString this)
+{
+	if (!this) return 0;
+	return this.data().capacity;
 }
 
 fn usz VarString.len(VarString this)
@@ -243,6 +253,11 @@ fn void VarString.append_string(VarString* this, VarString str)
 	StringData* other = (StringData*)str;
 	if (!other) return;
 	this.append(str.str());
+}
+
+fn void VarString.clear(VarString* str)
+{
+	str.data().len = 0;
 }
 
 fn void VarString.append_char(VarString* str, char c)
