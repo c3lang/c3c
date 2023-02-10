@@ -1,0 +1,25 @@
+module test;
+
+struct Abc
+{
+	int[100] x;
+}
+int z @noinit;
+Abc y @noinit;
+
+fn void main()
+{
+	z = y.x[0];
+}
+
+/* #expect: test.ll
+
+@test_z = local_unnamed_addr global i32 undef, align 4
+@test_y = local_unnamed_addr global %Abc undef, align 4
+
+define void @test_main() #0 {
+entry:
+  %0 = load i32, ptr @test_y, align 4
+  store i32 %0, ptr @test_z, align 4
+  ret void
+}

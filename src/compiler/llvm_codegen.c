@@ -396,7 +396,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	}
 	else
 	{
-		init_value = llvm_get_zero(c, var_type);
+		init_value = decl->var.no_init ? llvm_get_undef(c, var_type) : llvm_get_zero(c, var_type);
 	}
 
 

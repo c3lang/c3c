@@ -210,13 +210,13 @@ add_executable(c3c
         src/compiler/libraries.c
         src/compiler/linker.c
         src/compiler/llvm_codegen.c
-        src/compiler/llvm_codegen_c_abi_aarch64.c
-        src/compiler/llvm_codegen_c_abi.c
-        src/compiler/llvm_codegen_c_abi_riscv.c
-        src/compiler/llvm_codegen_c_abi_wasm.c
-        src/compiler/llvm_codegen_c_abi_win64.c
-        src/compiler/llvm_codegen_c_abi_x64.c
-        src/compiler/llvm_codegen_c_abi_x86.c
+        src/compiler/abi/c_abi_aarch64.c
+        src/compiler/abi/c_abi.c
+        src/compiler/abi/c_abi_riscv.c
+        src/compiler/abi/c_abi_wasm.c
+        src/compiler/abi/c_abi_win64.c
+        src/compiler/abi/c_abi_x64.c
+        src/compiler/abi/c_abi_x86.c
         src/compiler/llvm_codegen_debug_info.c
         src/compiler/llvm_codegen_expr.c
         src/compiler/llvm_codegen_function.c

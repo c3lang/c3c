@@ -2,7 +2,7 @@
 // Use of this source code is governed by a LGPLv3.0
 // a copy of which can be found in the LICENSE file.
 
-#include "c_abi_internal.h"
+#include "compiler/c_abi_internal.h"
 
 
 static ABIArgInfo *riscv_coerce_and_expand_fpcc_struct(AbiType field1, unsigned field1_offset, AbiType field2, unsigned field2_offset)

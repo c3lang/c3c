@@ -1441,6 +1441,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_MAYDISCARD] = ATTR_FUNC | ATTR_MACRO,
 			[ATTRIBUTE_NAKED] = ATTR_FUNC,
 			[ATTRIBUTE_NODISCARD] = ATTR_FUNC | ATTR_MACRO,
+			[ATTRIBUTE_NOINIT] = ATTR_GLOBAL | ATTR_LOCAL,
 			[ATTRIBUTE_NOINLINE] = ATTR_FUNC | ATTR_CALL,
 			[ATTRIBUTE_NORETURN] = ATTR_FUNC | ATTR_MACRO,
 			[ATTRIBUTE_OBFUSCATE] = ATTR_ENUM,
@@ -1634,6 +1635,9 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 		case ATTRIBUTE_NOINLINE:
 			decl->func_decl.attr_noinline = true;
 			decl->func_decl.attr_inline = false;
+			break;
+		case ATTRIBUTE_NOINIT:
+			decl->var.no_init = true;
 			break;
 		case ATTRIBUTE_NODISCARD:
 			decl->func_decl.signature.attrs.nodiscard = true;

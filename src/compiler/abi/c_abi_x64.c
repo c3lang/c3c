@@ -2,7 +2,7 @@
 // Use of this source code is governed by a LGPLv3.0
 // a copy of which can be found in the LICENSE file.
 
-#include "c_abi_internal.h"
+#include "compiler/c_abi_internal.h"
 
 typedef enum
 {
