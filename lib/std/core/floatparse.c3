@@ -124,6 +124,10 @@ macro double! decfloat(char[] chars, int $bits, int $emin, int sign)
 		if (catch e10) return NumberConversion.MALFORMED_FLOAT!;
 		lrp += e10;
 	}
+	else if (index != last_char)
+	{
+		return NumberConversion.MALFORMED_FLOAT!;
+	}
 	// Handle zero specially to avoid nasty special cases later
 	if (!x[0]) return sign * 0.0;
 

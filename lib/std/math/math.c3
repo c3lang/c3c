@@ -186,9 +186,9 @@ macro clamp(x, lower, upper) => $$max(($typeof(x))lower, $$min(x, ($typeof(x))up
 
 /**
  * @require values::@is_promotable_to_floatlike(mag) `The input must be a number value or float vector`
- * @require values::@is_same_vector_type(mag, sgn) `The input types must match`
+ * @require @convertable(sgn, $typeof(values::promote_int(mag)))
  **/
-macro copysign(mag, sgn) => $$copysign(mag, sgn);
+macro copysign(mag, sgn) => $$copysign(values::promote_int(mag), ($typeof(values::promote_int(mag)))sgn);
 
 /**
  * @require values::@is_promotable_to_floatlike(x) `The input must be a number value or float vector`

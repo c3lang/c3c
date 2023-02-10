@@ -158,7 +158,7 @@ macro bool is_vector($Type)
 	return $Type.kindof == TypeKind.VECTOR;
 }
 
-macro bool @convertable(#a, $TypeB)
+macro bool @convertable(#a, $TypeB) @builtin
 {
 	return $checks($TypeB x = #a);
 }
