@@ -151,17 +151,10 @@ private fn void! Formatter.out_substr(Formatter *this, String str)
 	return this.left_adjust(l);
 }
 
-
-union ConvUnion
-{
-	ulong u;
-	double f;
-}
-
 private fn void! Formatter.etoa(Formatter* this, FloatType value)
 {
 	// check for NaN and special values
-	if (value != value || value < -FloatType.max || value > FloatType.max)
+	if (!value || value != value || value < -FloatType.max || value > FloatType.max)
 	{
 		return this.ftoa(value);
 	}
@@ -178,25 +171,24 @@ private fn void! Formatter.etoa(Formatter* this, FloatType value)
 
 	// determine the decimal exponent
 	// based on the algorithm by David Gay (https://www.ampl.com/netlib/fp/dtoa.c)
-	ConvUnion conv;
-
-	conv.f = (double)value;
-	int exp2 = (int)(conv.u >> 52 & 0x7FF) - 1023;           // effectively log2
-	conv.u = (conv.u & (1u64 << 52 - 1)) | (1023u64 << 52);  // drop the exponent so conv.F is now in [1,2)
+	ulong u = bitcast((double)value, ulong);
+	int exp2 = (int)(u >> 52 & 0x7FFu) - 1023;           // effectively log2
+	u = (u & (1u64 << 52 - 1u)) | (1023u64 << 52u);  // drop the exponent so conv.F is now in [1,2)
 	// now approximate log10 from the log2 integer part and an expansion of ln around 1.5
-	int expval = (int)(0.1760912590558 + exp2 * 0.301029995663981 + (conv.f - 1.5) * 0.289529654602168);
+	double f = bitcast(u, double);
+	int expval = (int)(0.1760912590558 + exp2 * 0.301029995663981 + (f - 1.5) * 0.289529654602168);
 	// now we want to compute 10^expval but we want to be sure it won't overflow
 	exp2 = (int)(expval * 3.321928094887362 + 0.5);
 	double z  = expval * 2.302585092994046 - exp2 * 0.6931471805599453;
 	double z2 = z * z;
-	conv.u = (ulong)(exp2 + 1023) << 52;
+	f = bitcast((ulong)(exp2 + 1023) << 52, double);
 	// compute exp(z) using continued fractions, see https://en.wikipedia.org/wiki/Exponential_function#Continued_fractions_for_ex
-	conv.f *= 1 + 2 * z / (2 - z + (z2 / (6 + (z2 / (10 + z2 / 14)))));
+	f *= 1 + 2 * z / (2 - z + (z2 / (6 + (z2 / (10 + z2 / 14)))));
 	// correct for rounding errors
-	if (value < conv.f)
+	if (value < f)
 	{
 		expval--;
-		conv.f /= 10;
+		f /= 10;
 	}
 
 	// the exponent format is "%+03d" and largest value is "307", so set aside 4-5 characters
@@ -220,7 +212,6 @@ private fn void! Formatter.etoa(Formatter* this, FloatType value)
 			if (this.prec > 0 && this.flags.precision) this.prec--;
 		}
 	}
-
 	// Adjust width
 	uint fwidth = this.width > minwidth ? this.width - minwidth : 0;
 
@@ -228,8 +219,7 @@ private fn void! Formatter.etoa(Formatter* this, FloatType value)
 	if (this.flags.left && minwidth) fwidth = 0;
 
 	// rescale the float value
-	if (expval) value /= conv.f;
-
+	if (expval) value /= f;
 	// output the floating part
 	usz start_idx = this.idx;
 	PrintFlags old = this.flags;
@@ -303,14 +293,12 @@ private fn void! Formatter.ftoa(Formatter* this, FloatType value)
 		buf[len++] = '0';
 		this.prec--;
 	}
-
 	// Safe due to 1e9 limit.
 	int whole = (int)value;
 	FloatType tmp = (value - whole) * POW10[this.prec];
 	ulong frac = (ulong)tmp;
 	diff = tmp - frac;
-
-	switch (true)
+	switch
 	{
 		case diff > 0.5:
 			++frac;

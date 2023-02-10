@@ -2330,7 +2330,7 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 				Type *vec_type = type_vector_type(type);
 				if (type_is_float(vec_type))
 				{
-					llvm_value = LLVMBuildFCmp(c->builder, LLVMRealUNE, value->value, llvm_get_zero(c, type), "not");
+					llvm_value = LLVMBuildFCmp(c->builder, LLVMRealUEQ, value->value, llvm_get_zero(c, type), "not");
 				}
 				else
 				{
@@ -2345,7 +2345,7 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 			{
 				case ALL_FLOATS:
 					llvm_value_rvalue(c, value);
-					llvm_value = LLVMBuildFCmp(c->builder, LLVMRealUNE, value->value, llvm_get_zero(c, type), "not");
+					llvm_value = LLVMBuildFCmp(c->builder, LLVMRealUEQ, value->value, llvm_get_zero(c, type), "not");
 					break;
 				case TYPE_BOOL:
 					llvm_value_rvalue(c, value);

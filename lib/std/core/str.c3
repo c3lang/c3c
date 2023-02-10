@@ -19,6 +19,8 @@ fault NumberConversion
 	NEGATIVE_VALUE,
 	MALFORMED_INTEGER,
 	INTEGER_OVERFLOW,
+	MALFORMED_FLOAT,
+	FLOAT_OUT_OF_RANGE,
 }
 fn VarString join(String[] s, String joiner)
 {
@@ -123,6 +125,8 @@ private macro to_integer($Type, String string)
 	return value;
 }
 
+fn float! to_float(String string) => floatparse(string, float);
+fn double! to_double(String string) => floatparse(string, double);
 fn int128! to_int128(String string) => to_integer(int128, string);
 fn long! to_long(String string) => to_integer(long, string);
 fn int! to_int(String string) => to_integer(int, string);

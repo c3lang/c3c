@@ -688,6 +688,7 @@ macro is_nan(x)
 	$endswitch;
 }
 
+macro double scalbn(double x, int n) => _scalbn(x, n);
 
 extern fn double _atan(double x) @extern("atan");
 extern fn float _atanf(float x) @extern("atanf");
@@ -697,3 +698,4 @@ extern fn void _sincos(double, double*) @extern("sincos");
 extern fn void _sincosf(float, float*) @extern("sincosf");
 extern fn double _tan(double x) @extern("tan");
 extern fn float _tanf(float x) @extern("tanf");
+extern fn double _scalbn(double x, int n) @extern("scalbn");
