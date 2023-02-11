@@ -4,7 +4,7 @@
 
 module std::hash::adler32;
 
-private const uint ADLER_CONST = 65521;
+const uint ADLER_CONST @private = 65521;
 
 struct Adler32
 {

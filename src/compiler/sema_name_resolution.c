@@ -151,7 +151,7 @@ static Decl *sema_find_decl_in_imports(Decl **imports, NameResolve *name_resolve
 		if (!found) continue;
 
 		// If we found something private but we don't import privately?
-		if (found->visibility <= VISIBLE_MODULE && !import->import.private && !decl)
+		if (found->is_private && !import->import.private && !decl)
 		{
 			// Register this as a possible private decl.
 			name_resolve->private_decl = found;
@@ -594,7 +594,7 @@ Decl *sema_resolve_method_in_module(Module *module, Type *actual_type, const cha
 	if (module->is_generic) return NULL;
 	Decl *found = sema_find_extension_method_in_module(module->private_method_extensions, actual_type, method_name);
 	// The found one might not be visible
-	if (found && search_type < METHOD_SEARCH_CURRENT && found->visibility < VISIBLE_PUBLIC)
+	if (found && search_type < METHOD_SEARCH_CURRENT && found->is_private)
 	{
 		*private_found = found;
 		found = NULL;

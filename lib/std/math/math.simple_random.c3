@@ -5,16 +5,16 @@ struct SimpleRandom
     long seed;
 }
 
-private const long SIMPLE_RANDOM_MULTIPLIER = 0x5DEECE66D;
-private const long SIMPLE_RANDOM_ADDEND = 0xB;
-private const long SIMPLE_RANDOM_MASK = (1i64 << 48) - 1;
+const long SIMPLE_RANDOM_MULTIPLIER @private = 0x5DEECE66D;
+const long SIMPLE_RANDOM_ADDEND @private = 0xB;
+const long SIMPLE_RANDOM_MASK @private = (1i64 << 48) - 1;
 
-private fn long simple_random_initial_scramble(long seed)
+fn long simple_random_initial_scramble(long seed) @private
 {
     return (seed ^ SIMPLE_RANDOM_MULTIPLIER) & SIMPLE_RANDOM_MASK;
 }
 
-private fn int SimpleRandom.next(SimpleRandom* r, int bits)
+fn int SimpleRandom.next(SimpleRandom* r, int bits) @private
 {
     long nextseed = (r.seed * SIMPLE_RANDOM_MULTIPLIER + SIMPLE_RANDOM_ADDEND) & SIMPLE_RANDOM_MASK;
     r.seed = nextseed;

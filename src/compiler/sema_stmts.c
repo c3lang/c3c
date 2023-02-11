@@ -579,7 +579,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 		}
 
 		// 4d. A new declaration is created.
-		Decl *decl = decl_new_var(ident->identifier_expr.ident, ident->span, var_type, VARDECL_LOCAL, VISIBLE_LOCAL);
+		Decl *decl = decl_new_var(ident->identifier_expr.ident, ident->span, var_type, VARDECL_LOCAL);
 
 		// 4e. Analyse it
 		if (!sema_analyse_var_decl(context, decl, true)) return false;
@@ -681,7 +681,7 @@ static inline bool sema_analyse_catch_unwrap(SemaContext *context, Expr *expr)
 		}
 
 		// 4d. A new declaration is created.
-		Decl *decl = decl_new_var(ident->identifier_expr.ident, ident->span, type, VARDECL_LOCAL, VISIBLE_LOCAL);
+		Decl *decl = decl_new_var(ident->identifier_expr.ident, ident->span, type, VARDECL_LOCAL);
 		decl->var.no_init = true;
 
 		// 4e. Analyse it
@@ -2072,7 +2072,7 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 					Decl *new_var = decl_new_var(variant->new_ident, variant->span,
 												 type_info_new_base(variant->is_deref
 					                             ? real_type->pointer : real_type, variant->span),
-					                             VARDECL_LOCAL, VISIBLE_LOCAL);
+					                             VARDECL_LOCAL);
 					Expr *var_result = expr_variable(var_holder);
 					if (!cast(var_result, real_type)) return false;
 					if (variant->is_deref)
@@ -2089,7 +2089,7 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 					Type *type = type_get_ptr(stmt->case_stmt.expr->const_expr.typeid);
 					Decl *alias = decl_new_var(var_holder->name, var_holder->span,
 											   type_info_new_base(type, stmt->case_stmt.expr->span),
-											   VARDECL_LOCAL, VISIBLE_LOCAL);
+											   VARDECL_LOCAL);
 					Expr *ident_converted = expr_variable(var_holder);
 					if (!cast(ident_converted, type)) return false;
 					alias->var.init_expr = ident_converted;
@@ -2304,11 +2304,11 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 	AstId start = 0;
 	if (index_name)
 	{
-		index = decl_new_var(index_name, statement->ct_foreach_stmt.index_span, NULL, VARDECL_LOCAL_CT, VISIBLE_LOCAL);
+		index = decl_new_var(index_name, statement->ct_foreach_stmt.index_span, NULL, VARDECL_LOCAL_CT);
 		index->type = type_int;
 		if (!sema_add_local(context, index)) goto FAILED;
 	}
-	Decl *value = decl_new_var(statement->ct_foreach_stmt.value_name, statement->ct_foreach_stmt.value_span, NULL, VARDECL_LOCAL_CT, VISIBLE_LOCAL);
+	Decl *value = decl_new_var(statement->ct_foreach_stmt.value_name, statement->ct_foreach_stmt.value_span, NULL, VARDECL_LOCAL_CT);
 	if (!sema_add_local(context, value)) goto FAILED;
 	// Get the body
 	Ast *body = astptr(statement->ct_foreach_stmt.body);

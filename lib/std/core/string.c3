@@ -7,13 +7,6 @@ define DynString = VarString;
 define DString = VarString;
 define VString = VarString;
 
-private struct StringData
-{
-	Allocator* allocator;
-	usz len;
-	usz capacity;
-	char[*] chars;
-}
 
 const usz MIN_CAPACITY = 16;
 
@@ -297,12 +290,12 @@ macro void VarString.append(VarString* str, value)
 }
 
 
-private fn StringData* VarString.data(VarString str) @inline
+fn StringData* VarString.data(VarString str) @inline @private
 {
 	return (StringData*)str;
 }
 
-private fn void VarString.reserve(VarString* str, usz addition)
+fn void VarString.reserve(VarString* str, usz addition) @private
 {
 	StringData* data = str.data();
 	if (!data)
@@ -323,4 +316,12 @@ fn VarString VarString.new_concat(VarString a, VarString b, Allocator* allocator
 	string.append(a);
 	string.append(b);
 	return string; 
+}
+
+struct StringData @private
+{
+	Allocator* allocator;
+	usz len;
+	usz capacity;
+	char[*] chars;
 }

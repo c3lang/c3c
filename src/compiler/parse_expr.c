@@ -342,7 +342,7 @@ static Expr *parse_lambda(ParseContext *c, Expr *left)
 	advance_and_verify(c, TOKEN_FN);
 	Decl *func = decl_calloc();
 	func->decl_kind = DECL_FUNC;
-	func->visibility = VISIBLE_LOCAL;
+	func->is_private = true;
 	func->func_decl.generated_lambda = NULL;
 	TypeInfo *return_type = NULL;
 	if (!tok_is(c, TOKEN_LPAREN))
@@ -354,14 +354,14 @@ static Expr *parse_lambda(ParseContext *c, Expr *left)
 	Decl **decls = NULL;
 	Variadic variadic = VARIADIC_NONE;
 	int vararg_index = -1;
-	if (!parse_parameters(c, VISIBLE_LOCAL, &decls, NULL, &variadic, &vararg_index, PARAM_PARSE_LAMBDA)) return false;
+	if (!parse_parameters(c, &decls, NULL, &variadic, &vararg_index, PARAM_PARSE_LAMBDA)) return false;
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 	Signature *sig = &func->func_decl.signature;
 	sig->vararg_index = vararg_index < 0 ? vec_size(decls) : vararg_index;
 	sig->params = decls;
 	sig->rtype = return_type ? type_infoid(return_type) : 0;
 	sig->variadic = variadic;
-	if (!parse_attributes(c, &func->attributes)) return poisoned_expr;
+	if (!parse_attributes(c, &func->attributes, NULL)) return poisoned_expr;
 
 	if (tok_is(c, TOKEN_IMPLIES))
 	{
@@ -780,7 +780,7 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left)
 			SEMA_ERROR_LAST("Expected an ending ')'. Did you forget a ')' before this ';'?");
 			return poisoned_expr;
 		}
-		if (!parse_parameters(c, VISIBLE_LOCAL, &body_args, NULL, NULL, NULL, PARAM_PARSE_CALL)) return poisoned_expr;
+		if (!parse_parameters(c, &body_args, NULL, NULL, NULL, PARAM_PARSE_CALL)) return poisoned_expr;
 	}
 	if (!tok_is(c, TOKEN_RPAREN))
 	{

@@ -412,19 +412,19 @@ fn Matrix4x4 perspective(Real fov, Real aspect_ratio, Real near, Real far)
 }
 
 
-private macro matrix_component_mul(mat, val)
+macro matrix_component_mul(mat, val) @private
 {
 	var $Type = Real[<$typeof(mat.m).len>];
 	return $typeof(*mat) { .m = val * ($Type)mat.m };
 }
 
-private macro matrix_add(mat, mat2)
+macro matrix_add(mat, mat2) @private
 {
 	var $Type = Real[<$typeof(mat.m).len>];
 	return $typeof(*mat) { .m = ($Type)mat.m + ($Type)mat2.m };
 }
 
-private macro matrix_sub(mat, mat2)
+macro matrix_sub(mat, mat2) @private
 {
 	var $Type = Real[<$typeof(mat.m).len>];
 	return $typeof(*mat) { .m = ($Type)mat.m - ($Type)mat2.m };

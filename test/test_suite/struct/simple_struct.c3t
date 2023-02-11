@@ -1,6 +1,6 @@
 module test;
 
-private Foo a;
+Foo a @private;
 
 struct Foo
 {
@@ -10,5 +10,6 @@ struct Foo
 
 // #expect: test.ll
 
-%Foo = type { i32, double }
-@test_a = protected unnamed_addr global %Foo zeroinitializer, align 8
+ %Foo = type { i32, double }
+
+ @test_a = internal unnamed_addr global %Foo zeroinitializer, align 8

@@ -1,6 +1,6 @@
 module std::core::mem::allocator;
 
-private struct DynamicArenaPage
+struct DynamicArenaPage @private
 {
 	void* memory;
 	void* prev_arena;
@@ -9,7 +9,7 @@ private struct DynamicArenaPage
 	void* last_ptr;
 }
 
-private struct DynamicArenaChunk
+struct DynamicArenaChunk @private
 {
 	usz size;
 }
@@ -18,7 +18,7 @@ private struct DynamicArenaChunk
  * @require ptr && this
  * @require this.page `tried to free pointer on invalid allocator`
  */
-private fn void DynamicArenaAllocator.free(DynamicArenaAllocator* this, void* ptr)
+fn void DynamicArenaAllocator.free(DynamicArenaAllocator* this, void* ptr) @private
 {
 	DynamicArenaPage* current_page = this.page;
 	if (ptr == current_page.last_ptr)
@@ -32,7 +32,7 @@ private fn void DynamicArenaAllocator.free(DynamicArenaAllocator* this, void* pt
  * @require old_pointer && size > 0
  * @require this.page `tried to realloc pointer on invalid allocator`
  */
-private fn void*! DynamicArenaAllocator._realloc(DynamicArenaAllocator* this, void* old_pointer, usz size, usz alignment, usz offset)
+fn void*! DynamicArenaAllocator._realloc(DynamicArenaAllocator* this, void* old_pointer, usz size, usz alignment, usz offset) @private
 {
 	DynamicArenaPage* current_page = this.page;
 	alignment = alignment_for_allocation(alignment);
@@ -62,7 +62,7 @@ private fn void*! DynamicArenaAllocator._realloc(DynamicArenaAllocator* this, vo
 	return new_mem;
 }
 
-private fn void DynamicArenaAllocator.reset(DynamicArenaAllocator* this)
+fn void DynamicArenaAllocator.reset(DynamicArenaAllocator* this) @private
 {
 	DynamicArenaPage* page = this.page;
 	DynamicArenaPage** unused_page_ptr = &this.unused_page;
@@ -82,7 +82,7 @@ private fn void DynamicArenaAllocator.reset(DynamicArenaAllocator* this)
  * @require math::is_power_of_2(alignment)
  * @require size > 0
  */
-private fn void*! DynamicArenaAllocator._alloc_new(DynamicArenaAllocator* this, usz size, usz alignment, usz offset)
+fn void*! DynamicArenaAllocator._alloc_new(DynamicArenaAllocator* this, usz size, usz alignment, usz offset) @private
 {
 	// First, make sure that we can align it, extending the page size if needed.
 	usz page_size = max(this.page_size, mem::aligned_offset(size + DynamicArenaChunk.sizeof + offset, alignment) - offset);
@@ -113,7 +113,7 @@ private fn void*! DynamicArenaAllocator._alloc_new(DynamicArenaAllocator* this, 
  * @require size > 0
  * @require this
  */
-private fn void*! DynamicArenaAllocator._alloc(DynamicArenaAllocator* this, usz size, usz alignment, usz offset)
+fn void*! DynamicArenaAllocator._alloc(DynamicArenaAllocator* this, usz size, usz alignment, usz offset) @private
 {
 	alignment = alignment_for_allocation(alignment);
 	DynamicArenaPage* page = this.page;
@@ -155,7 +155,7 @@ private fn void*! DynamicArenaAllocator._alloc(DynamicArenaAllocator* this, usz 
  * @require !alignment || math::is_power_of_2(alignment)
  * @require data `unexpectedly missing the allocator`
  */
-private fn void*! dynamic_arena_allocator_function(Allocator* data, usz size, usz alignment, usz offset, void* old_pointer, AllocationKind kind)
+fn void*! dynamic_arena_allocator_function(Allocator* data, usz size, usz alignment, usz offset, void* old_pointer, AllocationKind kind) @private
 {
 	DynamicArenaAllocator* allocator = (DynamicArenaAllocator*)data;
 	switch (kind)

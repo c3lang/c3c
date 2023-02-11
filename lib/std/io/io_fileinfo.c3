@@ -11,12 +11,12 @@ $case MACOSX:
 $case IOS:
 $case WATCHOS:
 $case TVOS:
-private struct DarwinTimespec
+struct DarwinTimespec @private
 {
 	long tv_sec;
 	long tv_nsec;
 }
-private struct Darwin64Stat
+struct Darwin64Stat @private
 {
 	int st_dev;
 	ushort st_mode;

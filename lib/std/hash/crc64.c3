@@ -43,7 +43,7 @@ fn ulong encode(char[] data)
 	return result;
 }
 
-private const ulong[256] CRC64_TABLE = {
+const ulong[256] CRC64_TABLE @private = {
     0x0000000000000000, 0x42f0e1eba9ea3693, 0x85e1c3d753d46d26, 0xc711223cfa3e5bb5,
    	0x493366450e42ecdf, 0x0bc387aea7a8da4c, 0xccd2a5925d9681f9, 0x8e224479f47cb76a,
    	0x9266cc8a1c85d9be, 0xd0962d61b56fef2d, 0x17870f5d4f51b498, 0x5577eeb6e6bb820b,

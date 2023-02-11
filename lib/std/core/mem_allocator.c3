@@ -98,7 +98,7 @@ fn void Allocator.reset(Allocator* allocator, usz mark = 0)
 	allocator.function(allocator, mark, 0, 0, null, RESET)!!;
 }
 
-private fn usz alignment_for_allocation(usz alignment) @inline
+fn usz alignment_for_allocation(usz alignment) @inline @private
 {
 	if (alignment < DEFAULT_MEM_ALIGNMENT)
 	{

@@ -215,7 +215,7 @@ fn void! NativeConditionVariable.broadcast(NativeConditionVariable* cond)
 	if (have_waiters && !win32_SetEvent(cond.event_all)) return ThreadFault.SIGNAL_FAILED!;
 }
 
-private fn void! timedwait(NativeConditionVariable* cond, NativeMutex* mtx, uint timeout)
+fn void! timedwait(NativeConditionVariable* cond, NativeMutex* mtx, uint timeout) @private
 {
 	win32_EnterCriticalSection(&cond.waiters_count_lock);
     cond.waiters_count++;

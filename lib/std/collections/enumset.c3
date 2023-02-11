@@ -5,20 +5,20 @@ $assert(Enum.elements < 64, "Maximum number of elements for an enum used as enum
 
 $switch ($$C_INT_SIZE):
 $case 64:
-    private define EnumSetType = ulong;
+    define EnumSetType @private = ulong;
 $case 32:
     $if (Enum.elements < 32):
-        private define EnumSetType = uint;
+        define EnumSetType @private = uint;
     $else:
-        private define EnumSetType = ulong;
+        define EnumSetType @private = ulong;
     $endif;
 $default:
     $if (Enum.elements < 16):
-        private define EnumSetType = ushort;
+        define EnumSetType @private = ushort;
     $elif (Enum.elements < 31):
-        private define EnumSetType = uint;
+        define EnumSetType @private = uint;
     $else:
-        private define EnumSetType = ulong;
+        define EnumSetType @private = ulong;
     $endif;
 $endswitch;
 

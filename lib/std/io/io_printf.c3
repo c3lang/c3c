@@ -15,16 +15,83 @@ fault PrintFault
 	MISSING_ARG,
 }
 
+fault FormattingFault
+{
+	UNTERMINATED_FORMAT,
+	MISSING_ARG,
+	INVALID_WIDTH_ARG,
+	INVALID_FORMAT_TYPE,
+}
 
 define OutputFn = fn void!(char c, void* buffer);
 define ToStringFunction = fn String(void* value, Allocator *allocator);
 define ToFormatFunction = fn void!(void* value, Formatter* formatter);
 define FloatType = double;
 
-private define StringFunctionMap = HashMap<typeid, ToStringFunction>;
-private define FormatterFunctionMap = HashMap<typeid, ToFormatFunction>;
-private FormatterFunctionMap toformat_functions;
-private StringFunctionMap tostring_functions;
+fn usz! printf(String format, args...) @maydiscard
+{
+	Formatter formatter;
+	formatter.init(&out_putchar_fn);
+    return formatter.vprintf(format, args);
+}
+
+define printfln = printfn;
+
+fn usz! printfn(String format, args...) @maydiscard
+{
+	Formatter formatter;
+	formatter.init(&out_putchar_fn);
+    usz len = formatter.vprintf(format, args)?;
+	putchar('\n');
+	return len + 1;
+}
+
+fn usz! VarString.printf(VarString* str, String format, args...) @maydiscard
+{
+	Formatter formatter;
+	formatter.init(&out_string_append_fn, str);
+	return formatter.vprintf(format, args);
+}
+
+fn usz! VarString.printfn(VarString* str, String format, args...) @maydiscard
+{
+	Formatter formatter;
+	formatter.init(&out_string_append_fn, str);
+	usz len = formatter.vprintf(format, args)?;
+	str.append('\n');
+	return len + 1;
+}
+
+fn char[]! bprintf(char[] buffer, String format, args...) @maydiscard
+{
+	Formatter formatter;
+	BufferData data = { .buffer = buffer };
+    formatter.init(&out_buffer_fn, &data);
+    usz size = formatter.vprintf(format, args)?;
+	return buffer[:size];
+}
+
+fn usz! File.printf(File file, String format, args...) @maydiscard
+{
+	Formatter formatter;
+    formatter.init(&out_fputchar_fn, &file);
+    return formatter.vprintf(format, args)?;
+}
+
+fn usz! File.printfn(File file, String format, args...) @maydiscard
+{
+	Formatter formatter;
+    formatter.init(&out_fputchar_fn, &file);
+    usz len = formatter.vprintf(format, args)?;
+	file.putc('\n')?;
+	file.flush();
+	return len + 1;
+}
+
+fn usz! Formatter.printf(Formatter* this, String format, args...)
+{
+	return this.vprintf(format, args) @inline;
+}
 
 struct Formatter
 {
@@ -91,7 +158,7 @@ static initialize @priority(101)
 	}
 }
 
-private fn void! Formatter.out(Formatter* this, char c)
+fn void! Formatter.out(Formatter* this, char c) @private
 {
 	this.out_fn(c, this.data)?;
 }
@@ -131,7 +198,8 @@ macro bool! Formatter.print_with_function(Formatter* this, variant arg)
     }
     return false;
 }
-private fn void! Formatter.out_str(Formatter* this, variant arg)
+
+fn void! Formatter.out_str(Formatter* this, variant arg) @private
 {
 	switch (arg.type.kindof)
 	{
@@ -250,113 +318,43 @@ private fn void! Formatter.out_str(Formatter* this, variant arg)
 	}
 }
 
-fault FormattingFault
-{
-	UNTERMINATED_FORMAT,
-	MISSING_ARG,
-	INVALID_WIDTH_ARG,
-	INVALID_FORMAT_TYPE,
-}
 
 
-private fn void! out_buffer_fn(char c, void *data)
+fn void! out_buffer_fn(char c, void *data) @private
 {
 	BufferData *buffer_data = data;
 	if (buffer_data.written >= buffer_data.buffer.len) return PrintFault.BUFFER_EXCEEDED!;
 	buffer_data.buffer[buffer_data.written++] = c;
 }
 
-private fn void! out_null_fn(char c @unused, void* data @unused)
+fn void! out_null_fn(char c @unused, void* data @unused) @private
 {
 }
 
-private fn void! out_putchar_fn(char c, void* data @unused)
+fn void! out_putchar_fn(char c, void* data @unused) @private
 {
 	libc::putchar(c);
 }
 
-private fn void! out_fputchar_fn(char c, void* data)
+fn void! out_fputchar_fn(char c, void* data) @private
 {
 	File* f = data;
 	f.putc(c)?;
 }
 
-private fn void! out_string_append_fn(char c, void* data)
+fn void! out_string_append_fn(char c, void* data) @private
 {
 	VarString* s = data;
 	s.append_char(c);
 }
 
-fn usz! printf(String format, args...) @maydiscard
-{
-	Formatter formatter;
-	formatter.init(&out_putchar_fn);
-    return formatter.vprintf(format, args);
-}
 
-define printfln = printfn;
-
-fn usz! printfn(String format, args...) @maydiscard
-{
-	Formatter formatter;
-	formatter.init(&out_putchar_fn);
-    usz len = formatter.vprintf(format, args)?;
-	putchar('\n');
-	return len + 1;
-}
-
-fn usz! VarString.printf(VarString* str, String format, args...) @maydiscard
-{
-	Formatter formatter;
-	formatter.init(&out_string_append_fn, str);
-	return formatter.vprintf(format, args);
-}
-
-fn usz! VarString.printfn(VarString* str, String format, args...) @maydiscard
-{
-	Formatter formatter;
-	formatter.init(&out_string_append_fn, str);
-	usz len = formatter.vprintf(format, args)?;
-	str.append('\n');
-	return len + 1;
-}
-
-private struct BufferData
+struct BufferData @private
 {
 	char[] buffer;
 	usz written;
 }
 
-fn char[]! bprintf(char[] buffer, String format, args...) @maydiscard
-{
-	Formatter formatter;
-	BufferData data = { .buffer = buffer };
-    formatter.init(&out_buffer_fn, &data);
-    usz size = formatter.vprintf(format, args)?;
-	return buffer[:size];
-}
-
-fn usz! File.printf(File file, String format, args...) @maydiscard
-{
-	Formatter formatter;
-    formatter.init(&out_fputchar_fn, &file);
-    return formatter.vprintf(format, args)?;
-}
-
-fn usz! File.printfn(File file, String format, args...) @maydiscard
-{
-	Formatter formatter;
-    formatter.init(&out_fputchar_fn, &file);
-    usz len = formatter.vprintf(format, args)?;
-	file.putc('\n')?;
-	file.flush();
-	return len + 1;
-}
-
-fn usz! Formatter.printf(Formatter* this, String format, args...)
-{
-	return this.vprintf(format, args) @inline;
-}
 
 fn usz! Formatter.vprintf(Formatter* this, String format, variant[] variants)
 {
@@ -497,3 +495,7 @@ fn usz! Formatter.vprintf(Formatter* this, String format, variant[] variants)
 	return this.idx;
 }
 
+define StringFunctionMap = HashMap<typeid, ToStringFunction> @private;
+define FormatterFunctionMap = HashMap<typeid, ToFormatFunction> @private;
+FormatterFunctionMap toformat_functions @private;
+StringFunctionMap tostring_functions @private;

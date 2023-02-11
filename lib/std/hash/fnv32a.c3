@@ -5,10 +5,10 @@ module std::hash::fnv32a;
 
 define Fnv32a = distinct uint;
 
-private const FNV32A_START = 0x811c9dc5;
-private const FNV32A_MUL = 0x01000193;
+const FNV32A_START @private = 0x811c9dc5;
+const FNV32A_MUL @private = 0x01000193;
 
-private macro void @update(uint &h, char x) => h = (h * FNV32A_MUL) ^ x;
+macro void @update(uint &h, char x) @private => h = (h * FNV32A_MUL) ^ x;
 
 fn void Fnv32a.init(Fnv32a* this)
 {

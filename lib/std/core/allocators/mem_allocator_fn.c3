@@ -1,10 +1,10 @@
 module std::core::mem::allocator;
 import libc;
 
-private const Allocator _NULL_ALLOCATOR = { &null_allocator_fn };
-private const Allocator _SYSTEM_ALLOCATOR = { &libc_allocator_fn };
+const Allocator _NULL_ALLOCATOR @private = { &null_allocator_fn };
+const Allocator _SYSTEM_ALLOCATOR @private = { &libc_allocator_fn };
 
-private fn void*! null_allocator_fn(Allocator* this, usz bytes, usz alignment, usz offset, void* old_pointer, AllocationKind kind)
+fn void*! null_allocator_fn(Allocator* this, usz bytes, usz alignment, usz offset, void* old_pointer, AllocationKind kind) @private
 {
 	switch (kind)
 	{

@@ -10,7 +10,7 @@ fn void runBar()
 // #file: file2.c3
 module bar;
 
-private fn void notVisible()
-{
+fn void notVisible()
+ @private{
 
 }

@@ -4,7 +4,7 @@ import std::io::os;
 define Path = distinct String;
 
 const PREFERRED_SEPARATOR = USE_WIN32_FILESYSTEM ? '\\' : '/';
-private const USE_WIN32_FILESYSTEM = env::OS_TYPE != OsType.WIN32;
+const USE_WIN32_FILESYSTEM @private = env::OS_TYPE != OsType.WIN32;
 
 fault PathResult
 {
@@ -56,7 +56,7 @@ $else:
 $endif;
 }
 
-private fn usz! root_name_len(String path)
+fn usz! root_name_len(String path) @private
 {
 	usz len = path.len;
 	if (!len) return 0;
@@ -83,7 +83,7 @@ private fn usz! root_name_len(String path)
 	return 0;
 }
 
-private fn void! normalize_path(String* path_ref)
+fn void! normalize_path(String* path_ref) @private
 {
 	String path = *path_ref;
 	if (!path.len) return;

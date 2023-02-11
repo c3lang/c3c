@@ -1,7 +1,7 @@
 module std::core::mem::allocator;
 import std::io;
 
-private struct TempAllocatorChunk
+struct TempAllocatorChunk @private
 {
 	usz size;
 	char[*] data;
@@ -18,7 +18,7 @@ struct TempAllocator
 }
 
 
-private const usz PAGE_IS_ALIGNED = (usz)isz.max + 1u;
+const usz PAGE_IS_ALIGNED @private = (usz)isz.max + 1u;
 
 
 struct TempAllocatorPage
@@ -52,7 +52,7 @@ fn TempAllocator*! new_temp(usz size, Allocator* backing_allocator)
  * @require !alignment || math::is_power_of_2(alignment)
  * @require data `unexpectedly missing the allocator`
  */
-private fn void*! temp_allocator_function(Allocator* data, usz size, usz alignment, usz offset, void* old_pointer, AllocationKind kind)
+fn void*! temp_allocator_function(Allocator* data, usz size, usz alignment, usz offset, void* old_pointer, AllocationKind kind) @private
 {
 	TempAllocator* arena = (TempAllocator*)data;
 	switch (kind)
@@ -86,7 +86,7 @@ private fn void*! temp_allocator_function(Allocator* data, usz size, usz alignme
 	unreachable();
 }
 
-private fn void! TempAllocator._free(TempAllocator* this, void* old_pointer)
+fn void! TempAllocator._free(TempAllocator* this, void* old_pointer) @private
 {
 	// TODO fix free
 	assert((uptr)old_pointer >= (uptr)&this.data, "Pointer originates from a different allocator.");
@@ -96,7 +96,7 @@ private fn void! TempAllocator._free(TempAllocator* this, void* old_pointer)
         this.used -= old_size;
     }
 }
-private fn void! TempAllocator._reset(TempAllocator* this, usz mark)
+fn void! TempAllocator._reset(TempAllocator* this, usz mark) @private
 {
 	TempAllocatorPage *last_page = this.last_page;
 	while (last_page && last_page.mark > mark)
@@ -109,14 +109,14 @@ private fn void! TempAllocator._reset(TempAllocator* this, usz mark)
 	this.used = mark;
 }
 
-private fn void! TempAllocator._free_page(TempAllocator* this, TempAllocatorPage* page) @inline
+fn void! TempAllocator._free_page(TempAllocator* this, TempAllocatorPage* page) @inline @private
 {
 	void* mem = page.start;
 	if (page.is_aligned()) return this.backing_allocator.free_aligned(mem);
 	return this.backing_allocator.free(mem);
 }
 
-private fn void*! TempAllocator._realloc_page(TempAllocator* this, TempAllocatorPage* page, usz size, usz alignment, usz offset) @inline
+fn void*! TempAllocator._realloc_page(TempAllocator* this, TempAllocatorPage* page, usz size, usz alignment, usz offset) @inline @private
 {
 	// Then the actual start pointer:
 	void* real_pointer = page.start;
@@ -144,7 +144,7 @@ private fn void*! TempAllocator._realloc_page(TempAllocator* this, TempAllocator
 	return data;
 }
 
-private fn void*! TempAllocator._realloc(TempAllocator* this, void* pointer, usz size, usz alignment, usz offset) @inline
+fn void*! TempAllocator._realloc(TempAllocator* this, void* pointer, usz size, usz alignment, usz offset) @inline @private
 {
 	TempAllocatorChunk *chunk = pointer - TempAllocatorChunk.sizeof;
 	if (chunk.size == (usz)-1)
@@ -170,7 +170,7 @@ private fn void*! TempAllocator._realloc(TempAllocator* this, void* pointer, usz
  * @require alignment <= MAX_MEMORY_ALIGNMENT `alignment too big`
  * @require this != null
  **/
-private fn void*! TempAllocator._alloc(TempAllocator* this, usz size, usz alignment, usz offset, bool clear)
+fn void*! TempAllocator._alloc(TempAllocator* this, usz size, usz alignment, usz offset, bool clear) @private
 {
 	void* start_mem = &this.data;
 	void* starting_ptr = start_mem + this.used;

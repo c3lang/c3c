@@ -395,13 +395,13 @@ macro tanh(x) => (exp(2.0 * x) - 1.0) / (exp(2.0 * x) + 1.0);
  **/
 macro trunc(x) => $$trunc(x);
 
-private macro lerp(x, y, amount) => x + (y - x) * amount;
-private macro reflect(x, y)
+macro lerp(x, y, amount) @private => x + (y - x) * amount;
+macro reflect(x, y) @private
 {
 	var dot = x.dot(y);
 	return x - 2 * y * dot;
 }
-private macro normalize(x)
+macro normalize(x) @private
 {
 	var len = x.length();
 	if (len == 0) return x;
@@ -662,7 +662,7 @@ macro next_power_of_2(x)
 	return y;
 }
 
-private macro equals_vec(v1, v2)
+macro equals_vec(v1, v2) @private
 {
 	var $elements = v1.len;
 	var abs_diff = math::abs(v1 - v2);

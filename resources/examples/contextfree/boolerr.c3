@@ -11,7 +11,7 @@ struct Summary
 	bool ok;
 }
 
-private struct StringData
+struct StringData @private
 {
 	Allocator allocator;
 	usz len;

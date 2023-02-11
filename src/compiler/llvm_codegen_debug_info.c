@@ -98,7 +98,7 @@ void llvm_emit_debug_global_var(GenContext *c, Decl *global)
 			c->debug.file,
 			loc.row ? loc.row : 1,
 			llvm_get_debug_type(c, global->type),
-			global->visibility == VISIBLE_LOCAL,
+			global->is_private,
 			LLVMDIBuilderCreateExpression(c->debug.builder, NULL, 0),
 			NULL,
 			global->alignment);
@@ -108,20 +108,13 @@ void llvm_emit_debug_function(GenContext *c, Decl *decl)
 {
 	LLVMDIFlags flags = LLVMDIFlagZero;
 	if (!decl->func_decl.body) return;
-	switch (decl->visibility)
+	if (decl->is_private)
 	{
-		case VISIBLE_LOCAL:
-			flags |= LLVMDIFlagPrivate;
-			break;
-		case VISIBLE_MODULE:
-			flags |= LLVMDIFlagProtected;
-			break;
-		case VISIBLE_PUBLIC:
-		case VISIBLE_EXTERN:
-			flags |= LLVMDIFlagPublic;
-			break;
-		default:
-			UNREACHABLE
+		flags |= LLVMDIFlagPrivate;
+	}
+	else
+	{
+		flags |= LLVMDIFlagPublic;
 	}
 	flags |= LLVMDIFlagPrototyped;
 	if (decl->func_decl.signature.attrs.noreturn) flags |= LLVMDIFlagNoReturn;
@@ -135,7 +128,7 @@ void llvm_emit_debug_function(GenContext *c, Decl *decl)
 	                                                c->debug.file,
 	                                                row,
 	                                                llvm_get_debug_type(c, decl->type),
-	                                                decl->visibility == VISIBLE_LOCAL,
+	                                                decl->is_private,
 	                                                true,
 	                                                row,
 	                                                flags,

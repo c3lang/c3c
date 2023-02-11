@@ -1,20 +1,20 @@
 // #target: macos-x64
 // #debuginfo: yes
-private const char AA = 1;
+const char AA @private = 1;
 const char BB = 200 ;
-private const uint CC = ~(uint)(0);
-private const FOO = ~(uint)(0);
+const uint CC @private = ~(uint)(0);
+const FOO @private = ~(uint)(0);
 
 /* #expect: constants.ll
 
-@constants_AA = protected unnamed_addr constant i8 1, align 1
+@constants_AA = internal unnamed_addr constant i8 1, align 1
 @constants_BB = local_unnamed_addr constant i8 -56, align 1
-@constants_CC = protected unnamed_addr constant i32 -1, align 4
-@constants_FOO = protected unnamed_addr constant i32 -1, align 4
+@constants_CC = internal unnamed_addr constant i32 -1, align 4
+@constants_FOO = internal unnamed_addr constant i32 -1, align 4
 
 !llvm.dbg.cu = !{!0}
 
-!0 = distinct !DICompileUnit(language: DW_LANG_C, file: !1, producer: "c3c", isOptimized: false, runtimeVersion: 1, emissionKind: FullDebug
+!0 = distinct !DICompileUnit(language: DW_LANG_C, file: !1, producer: "c3c", isOptimized: false, runtimeVersion: 1, emissionKind: FullDebug, globals: !2, splitDebugInlining: false)
 !1 = !DIFile(filename: "constants.c3",
 !DIGlobalVariableExpression
 distinct !DIGlobalVariable(name: "AA", linkageName: "constants_AA", scope: !1, file: !1, line: 1

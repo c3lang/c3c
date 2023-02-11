@@ -17,8 +17,8 @@ import bar;
 
 int a;
 
-private fn void test2()
-{
+fn void test2()
+ @private{
     int c = a;  // This is fine.
     c = foo::b;
     c = bar::b;

@@ -4,7 +4,7 @@ macro int @cofefe(#a)
     return #a + #a;
 }
 
-private int abc = 1;
+int abc @private = 1;
 
 fn int xx()
 {

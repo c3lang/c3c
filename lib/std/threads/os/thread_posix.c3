@@ -156,7 +156,7 @@ fn void! NativeConditionVariable.wait_timeout(NativeConditionVariable* cond, Nat
 }
 
 
-private fn void* callback(void* arg)
+fn void* callback(void* arg) @private
 {
 	PosixThreadData *data = arg;
 	return (void*)(iptr)data.thread_fn(data.arg);
@@ -211,7 +211,7 @@ fn void native_thread_yield()
 	sched_yield();
 }
 
-private struct PosixThreadData
+struct PosixThreadData @private
 {
 	ThreadFn thread_fn;
 	void* arg;

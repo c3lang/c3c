@@ -2,7 +2,7 @@ module std::math::nolibc;
 
 $if (!env::COMPILER_LIBC_AVAILABLE):
 
-private macro uint _top12f(float x) => bitcast(x, uint) >> 20;
+macro uint _top12f(float x) @private => bitcast(x, uint) >> 20;
 
 
 fn float _exp2f(float x) @extern("exp2f") @weak
@@ -44,7 +44,7 @@ fn float _exp2f(float x) @extern("exp2f") @weak
 	return (float)y;
 }
 
-private fn double _exp2_specialcase(double tmp, ulong sbits, ulong ki)
+fn double _exp2_specialcase(double tmp, ulong sbits, ulong ki) @private
 {
 	if (ki & 0x80000000 == 0)
 	{
@@ -77,7 +77,7 @@ private fn double _exp2_specialcase(double tmp, ulong sbits, ulong ki)
 }
 
 
-private macro uint _top12d(double x)
+macro uint _top12d(double x) @private
 {
 	return (uint)(bitcast(x, ulong) >> 52);
 }

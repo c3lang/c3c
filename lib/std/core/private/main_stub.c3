@@ -1,6 +1,6 @@
 module std::core::main_stub;
 
-private macro usz _strlen(ptr)
+macro usz _strlen(ptr) @private
 {
 	usz len = 0;
 	while (ptr[len]) len++;
@@ -15,7 +15,7 @@ macro int @main_to_void_main(#m, int, char**)
 	return 0;
 }
 
-private macro String[] args_to_strings(int argc, char** argv)
+macro String[] args_to_strings(int argc, char** argv) @private
 {
 	String *list = malloc(String.sizeof * argc);
 	for (int i = 0; i < argc; i++)
@@ -54,14 +54,14 @@ $if (env::OS_TYPE == OsType.WIN32):
 
 extern fn Char16** _win_command_line_to_argv_w(ushort* cmd_line, int* argc_ptr) @extern("CommandLineToArgvW");
 
-private macro String[] win_command_line_to_strings(ushort* cmd_line)
+macro String[] win_command_line_to_strings(ushort* cmd_line) @private
 {
 	int argc;
 	Char16** argv = _win_command_line_to_argv_w(cmd_line, &argc);
 	return wargs_strings(argc, argv);
 }
 
-private macro String[] wargs_strings(int argc, Char16** argv)
+macro String[] wargs_strings(int argc, Char16** argv) @private
 {
 	String *list = malloc(String.sizeof * argc);
 	for (int i = 0; i < argc; i++)
@@ -73,7 +73,7 @@ private macro String[] wargs_strings(int argc, Char16** argv)
 	return list[:argc];
 }
 
-private macro void release_wargs(String[] list)
+macro void release_wargs(String[] list) @private
 {
 	foreach (s : list) free(s.ptr);
 	free(list.ptr);

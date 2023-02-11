@@ -1,19 +1,19 @@
 module std::io;
 
-private fn void! Formatter.left_adjust(Formatter* this, usz len)
+fn void! Formatter.left_adjust(Formatter* this, usz len) @private
 {
 	if (!this.flags.left) return;
 	for (usz l = len; l < this.width; l++) this.out(' ')?;
 }
 
-private fn void! Formatter.right_adjust(Formatter* this, usz len)
+fn void! Formatter.right_adjust(Formatter* this, usz len) @private
 {
 	if (this.flags.left) return;
 	for (usz l = len; l < this.width; l++) this.out(' ')?;
 }
 
 
-private fn uint128 int_from_variant(variant arg, bool *is_neg)
+fn uint128 int_from_variant(variant arg, bool *is_neg) @private
 {
 	*is_neg = false;
 	if (arg.type.kindof == TypeKind.POINTER)
@@ -60,7 +60,7 @@ private fn uint128 int_from_variant(variant arg, bool *is_neg)
 	}
 }
 
-private fn FloatType float_from_variant(variant arg)
+fn FloatType float_from_variant(variant arg) @private
 {
 	$if (env::F128_SUPPORT):
 		if (arg.type == float128.typeid) return *((float128*)arg.ptr);
@@ -115,7 +115,7 @@ private fn FloatType float_from_variant(variant arg)
  * @param maxlen "the maximum len that can be read."
  * @return "The result of the atoi."
  **/
-private fn uint simple_atoi(char* buf, usz maxlen, usz* len_ptr) @inline
+fn uint simple_atoi(char* buf, usz maxlen, usz* len_ptr) @inline @private
 {
 	uint i = 0;
 	usz len = *len_ptr;
@@ -131,7 +131,7 @@ private fn uint simple_atoi(char* buf, usz maxlen, usz* len_ptr) @inline
 }
 
 
-private fn void! Formatter.out_substr(Formatter *this, String str)
+fn void! Formatter.out_substr(Formatter *this, String str) @private
 {
 	usz l = conv::utf8_codepoints(str);
 	uint prec = this.prec;
@@ -151,7 +151,7 @@ private fn void! Formatter.out_substr(Formatter *this, String str)
 	return this.left_adjust(l);
 }
 
-private fn void! Formatter.etoa(Formatter* this, FloatType value)
+fn void! Formatter.etoa(Formatter* this, FloatType value) @private
 {
 	// check for NaN and special values
 	if (!value || value != value || value < -FloatType.max || value > FloatType.max)
@@ -245,7 +245,7 @@ private fn void! Formatter.etoa(Formatter* this, FloatType value)
 }
 
 // internal ftoa for fixed decimal floating point
-private fn void! Formatter.ftoa(Formatter* this, FloatType value)
+fn void! Formatter.ftoa(Formatter* this, FloatType value) @private
 {
 	char[PRINTF_FTOA_BUFFER_SIZE] buf @noinit;
 	usz len = 0;
@@ -379,7 +379,7 @@ private fn void! Formatter.ftoa(Formatter* this, FloatType value)
 	return this.out_reverse(buf[:len]);
 }
 
-private fn void! Formatter.ntoa(Formatter* this, uint128 value, bool negative, uint base)
+fn void! Formatter.ntoa(Formatter* this, uint128 value, bool negative, uint base) @private
 {
 	char[PRINTF_NTOA_BUFFER_SIZE] buf @noinit;
 	usz len = 0;
@@ -403,7 +403,7 @@ private fn void! Formatter.ntoa(Formatter* this, uint128 value, bool negative, u
 	return this.ntoa_format(buf[:PRINTF_NTOA_BUFFER_SIZE], len, negative, base);
 }
 
-private fn void! Formatter.ntoa_format(Formatter* this, String buf, usz len, bool negative, uint base)
+fn void! Formatter.ntoa_format(Formatter* this, String buf, usz len, bool negative, uint base) @private
 {
 	// pad leading zeros
 	if (!this.flags.left)
@@ -464,14 +464,14 @@ private fn void! Formatter.ntoa_format(Formatter* this, String buf, usz len, boo
 }
 
 
-private fn void! Formatter.ntoa_variant(Formatter* this, variant arg, uint base)
+fn void! Formatter.ntoa_variant(Formatter* this, variant arg, uint base) @private
 {
 	bool is_neg;
 	uint128 val = int_from_variant(arg, &is_neg);
 	return this.ntoa(val, is_neg, base) @inline;
 }
 
-private fn void! Formatter.out_char(Formatter* this, variant arg)
+fn void! Formatter.out_char(Formatter* this, variant arg) @private
 {
 	uint l = 1;
 	// pre padding
@@ -499,7 +499,7 @@ private fn void! Formatter.out_char(Formatter* this, variant arg)
 }
 
 
-private fn void! Formatter.out_reverse(Formatter* this, String buf)
+fn void! Formatter.out_reverse(Formatter* this, String buf) @private
 {
 	usz buffer_start_idx = this.idx;
 	usz len = buf.len;
@@ -518,19 +518,21 @@ private fn void! Formatter.out_reverse(Formatter* this, String buf)
 	return this.left_adjust(this.idx - buffer_start_idx);
 }
 
-private fn void! printf_advance_format(usz format_len, usz *index_ptr) @inline
+fn void! printf_advance_format(usz format_len, usz *index_ptr) @inline @private
 {
 	usz val = ++(*index_ptr);
 	if (val >= format_len) return FormattingFault.UNTERMINATED_FORMAT!;
 }
 
-private fn variant! next_variant(variant* args_ptr, usz args_len, usz* arg_index_ptr) @inline
+fn variant! next_variant(variant* args_ptr, usz args_len, usz* arg_index_ptr) @inline @private
 {
 	if (*arg_index_ptr >= args_len) return FormattingFault.MISSING_ARG!;
 	return args_ptr[(*arg_index_ptr)++];
 }
 
-private fn int! printf_parse_format_field(variant* args_ptr, usz args_len, usz* args_index_ptr, char* format_ptr, usz format_len, usz* index_ptr) @inline
+fn int! printf_parse_format_field(
+	variant* args_ptr, usz args_len, usz* args_index_ptr,
+	char* format_ptr, usz format_len, usz* index_ptr) @inline @private
 {
 	char c = format_ptr[*index_ptr];
 	if (c >= '0' && c <= '9') return simple_atoi(format_ptr, format_len, index_ptr);

@@ -6,8 +6,8 @@ struct Foo
     int x, y;
 }
 
-private Foo[10] array;
+Foo[10] array @private;
 
 // #expect: test.ll
 
-@test_array = protected unnamed_addr global [10 x %Foo] zeroinitializer, align 16
+@test_array = internal unnamed_addr global [10 x %Foo] zeroinitializer, align 16

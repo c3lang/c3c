@@ -168,7 +168,7 @@ fn Type* List.get_ref(List* list, usz index) @operator(&[]) @inline
 }
 
 
-private fn void List.ensure_capacity(List* list) @inline
+fn void List.ensure_capacity(List* list) @inline @private
 {
     if (list.capacity == list.size)
     {

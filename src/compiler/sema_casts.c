@@ -1976,6 +1976,12 @@ static bool bitstruct_cast(Expr *expr, Type *from_type, Type *to, Type *to_type)
 
 bool cast(Expr *expr, Type *to_type)
 {
+	if (to_type == type_void)
+	{
+		expr->type = type_void;
+		return true;
+	}
+
 	assert(!type_is_optional(to_type));
 	Type *from_type = expr->type;
 	bool from_is_optional = false;

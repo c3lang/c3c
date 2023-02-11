@@ -25,13 +25,12 @@ Decl *decl_new_ct(DeclKind kind, SourceSpan span)
 	return decl;
 }
 
-Decl *decl_new(DeclKind decl_kind, const char *name, SourceSpan span, Visibility visibility)
+Decl *decl_new(DeclKind decl_kind, const char *name, SourceSpan span)
 {
 	Decl *decl = decl_calloc();
 	decl->decl_kind = decl_kind;
 	decl->span = span;
 	decl->name = name;
-	decl->visibility = visibility;
 	return decl;
 }
 
@@ -42,13 +41,12 @@ bool decl_is_ct_var(Decl *decl)
 	UNREACHABLE;
 }
 
-Decl *decl_new_with_type(const char *name, SourceSpan loc, DeclKind decl_type, Visibility visibility)
+Decl *decl_new_with_type(const char *name, SourceSpan loc, DeclKind decl_type)
 {
 	Decl *decl = decl_calloc();
 	decl->decl_kind = decl_type;
 	decl->name = name;
 	decl->span = loc;
-	decl->visibility = visibility;
 	TypeKind kind = TYPE_POISONED;
 	switch (decl_type)
 	{
@@ -227,7 +225,7 @@ void decl_set_external_name(Decl *decl)
 	if (!name) name = "$anon";
 
 	// "extern" or the module has no prefix?
-	if (decl->visibility == VISIBLE_EXTERN || decl->unit->module->no_extprefix)
+	if (decl->is_extern || decl->unit->module->no_extprefix)
 	{
 		assert(decl->name || decl->unit->module->no_extprefix);
 		decl->extname = name;
@@ -260,9 +258,9 @@ void decl_set_external_name(Decl *decl)
 	decl->extname = scratch_buffer_copy();
 }
 
-Decl *decl_new_var(const char *name, SourceSpan loc, TypeInfo *type, VarDeclKind kind, Visibility visibility)
+Decl *decl_new_var(const char *name, SourceSpan loc, TypeInfo *type, VarDeclKind kind)
 {
-	Decl *decl = decl_new(DECL_VAR, name, loc, visibility);
+	Decl *decl = decl_new(DECL_VAR, name, loc);
 	decl->var.kind = kind;
 	decl->var.type_info = type;
 	return decl;
@@ -274,7 +272,6 @@ Decl *decl_new_generated_var(Type *type, VarDeclKind kind, SourceSpan span)
 	decl->decl_kind = DECL_VAR;
 	decl->span = span;
 	decl->name = NULL;
-	decl->visibility = VISIBLE_LOCAL;
 	decl->var.kind = kind;
 	decl->type = type;
 	decl->alignment = type ? type_alloca_alignment(type) : 0;

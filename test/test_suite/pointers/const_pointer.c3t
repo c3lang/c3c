@@ -2,15 +2,15 @@
 
 module const_pointer;
 
-private double foo = 17;
-private double bar = 12.0;
-private float xx = 12.0;
+double foo @private = 17;
+double bar @private = 12.0;
+float xx @private = 12.0;
 
-private void*[3] data = { &foo, &bar, &xx };
+void*[3] data @private = { &foo, &bar, &xx };
 
 /* #expect: const_pointer.ll
 
-@const_pointer_foo = protected global double 1.700000e+01, align 8
-@const_pointer_bar = protected global double 1.200000e+01, align 8
-@const_pointer_xx = protected global float 1.200000e+01, align 4
-@const_pointer_data = protected unnamed_addr global [3 x ptr] [ptr @const_pointer_foo, ptr @const_pointer_bar, ptr @const_pointer_xx], align 16
+@const_pointer_foo = internal global double 1.700000e+01, align 8
+@const_pointer_bar = internal global double 1.200000e+01, align 8
+@const_pointer_xx = internal global float 1.200000e+01, align 4
+@const_pointer_data = internal unnamed_addr global [3 x ptr] [ptr @const_pointer_foo, ptr @const_pointer_bar, ptr @const_pointer_xx], align 16
