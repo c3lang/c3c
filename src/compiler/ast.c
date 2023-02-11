@@ -98,6 +98,7 @@ Decl *decl_new_with_type(const char *name, SourceSpan loc, DeclKind decl_type, V
 		case DECL_FINALIZE:
 		case DECL_CT_ECHO:
 		case DECL_CT_INCLUDE:
+		case DECL_GLOBALS:
 			UNREACHABLE
 	}
 	Type *type = type_new(kind, name ? name : "$anon");
@@ -175,6 +176,8 @@ const char *decl_to_a_name(Decl *decl)
 			return "a static finalizer";
 		case DECL_CT_INCLUDE:
 			return "an include";
+		case DECL_GLOBALS:
+			return "globals";
 		case DECL_VAR:
 			switch (decl->var.kind)
 			{

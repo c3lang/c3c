@@ -850,6 +850,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			MACRO_COPY_DECL_LIST(copy->methods);
 			break;
 		case DECL_DECLARRAY:
+		case DECL_GLOBALS:
 			UNREACHABLE
 		case DECL_BITSTRUCT:
 			copy_decl_type(copy);

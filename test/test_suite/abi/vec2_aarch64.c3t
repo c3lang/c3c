@@ -5,12 +5,13 @@ struct Vector2 {
   float x;
   float y;
 }
-extern fn Vector2 vector2_zero() { return Vector2 {}; }
-extern fn Vector2 vector2_one() { return Vector2 {}; }
-extern fn Vector2 vector2_add(Vector2 v1, Vector2 v2) { return Vector2 {}; }
-extern fn Vector2 vector2_add_value(Vector2 v, float add) { return Vector2 {}; }
-extern fn Vector2 vector2_subtract(Vector2 v1, Vector2 v2) { return Vector2 {}; }
-extern fn Vector2 vector2_subtract_value(Vector2 v, float sub) { return Vector2 {}; }
+fn Vector2 vector2_zero() @extern("vector2_zero") { return Vector2 {}; }
+fn Vector2 vector2_one() @extern("vector2_one") { return Vector2 {}; }
+fn Vector2 vector2_add(Vector2 v1, Vector2 v2) @extern("vector2_add") { return Vector2 {}; }
+fn Vector2 vector2_add_value(Vector2 v, float add) @extern("vector2_add_value") { return Vector2 {}; }
+fn Vector2 vector2_subtract(Vector2 v1, Vector2 v2) @extern("vector2_subtract") { return Vector2 {}; }
+fn Vector2 vector2_subtract_value(Vector2 v, float sub) @extern("vector2_subtract_value")  { return Vector2 {}; }
+
 
 /* #expect: abi.ll
 

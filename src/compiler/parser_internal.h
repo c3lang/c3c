@@ -62,6 +62,18 @@ bool parse_parameters(ParseContext *c, Visibility visibility, Decl ***params_ref
 bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *splat, bool vasplat);
 Expr *parse_type_compound_literal_expr_after_type(ParseContext *c, TypeInfo *type_info);
 
+INLINE void add_decl_to_list(Decl ***list, Decl *decl)
+{
+	if (decl->decl_kind == DECL_GLOBALS)
+	{
+		FOREACH_BEGIN(Decl *d, decl->decls)
+			vec_add(*list, d);
+		FOREACH_END();
+		return;
+	}
+	vec_add(*list, decl);
+}
+
 bool parse_module(ParseContext *c, AstId docs);
 Expr *parse_generic_parameter(ParseContext *c);
 bool try_consume(ParseContext *c, TokenType type);

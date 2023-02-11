@@ -181,6 +181,7 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 			case DECL_CT_ELSE:
 			case DECL_BODYPARAM:
 			case DECL_CT_INCLUDE:
+			case DECL_GLOBALS:
 				UNREACHABLE
 			case DECL_MACRO:
 			case DECL_DEFINE:

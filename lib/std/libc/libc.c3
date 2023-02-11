@@ -250,9 +250,14 @@ fn int fseek(CFile stream, SeekIndex offset, int whence) @weak @extern("fseek")
 {
 	unreachable("'fseek' not available.");
 }
-fn CFile fopen(char* filename, char* mode) @weak @extern("fopen")
+fn CFile fopen(ZString filename, ZString mode) @weak @extern("fopen")
 {
 	unreachable("'fopen' not available.");
+}
+
+fn CFile freopen(ZString filename, ZString mode, CFile stream) @weak @extern("fopen")
+{
+	unreachable("'freopen' not available.");
 }
 
 fn usz fwrite(void* ptr, usz size, usz nmemb, CFile stream) @weak @extern("fwrite")
@@ -280,7 +285,7 @@ fn int fputc(int c, CFile stream) @weak @extern("fputc")
 	unreachable("'fputc' not available.");
 }
 
-fn char* fgets(char* str, int n, CFile stream) @weak @extern("fgets")
+fn char* fgets(ZString str, int n, CFile stream) @weak @extern("fgets")
 {
 	unreachable("'fgets' not available.");
 }
@@ -303,7 +308,7 @@ fn int putchar(int c) @weak @extern("putchar")
 {
 	unreachable("'putchar' not available.");
 }
-fn int puts(char* str) @weak @extern("puts")
+fn int puts(ZString str) @weak @extern("puts")
 {
 	unreachable("'puts' not available.");
 }

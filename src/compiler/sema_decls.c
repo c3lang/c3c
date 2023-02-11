@@ -1656,7 +1656,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			decl->is_weak = true;
 			break;
 		case ATTRIBUTE_WASM:
-			decl->is_wasm_interface = true;
+			decl->is_export = true;
 			break;
 		case ATTRIBUTE_NAKED:
 			assert(domain == ATTR_FUNC);
@@ -1969,7 +1969,10 @@ static inline MainType sema_find_main_type(SemaContext *context, Signature *sig,
 
 static inline Decl *sema_create_synthetic_main(SemaContext *context, Decl *decl, MainType main, bool int_return, bool err_return, bool is_winmain, bool is_wmain)
 {
-	Decl *function = decl_new(DECL_FUNC, NULL, decl->span, VISIBLE_EXTERN);
+	Decl *function = decl_new(DECL_FUNC, NULL, decl->span, VISIBLE_PUBLIC);
+	function->is_export = true;
+	function->has_extname = true;
+	function->extname = kw_mainstub;
 	function->name = kw_mainstub;
 	function->unit = decl->unit;
 
@@ -2158,7 +2161,9 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	if ((type == MAIN_TYPE_RAW || type == MAIN_TYPE_NO_ARGS) && is_int_return && !is_winmain)
 	{
 		// Int return is pass-through at the moment.
-		decl->visibility = VISIBLE_EXTERN;
+		decl->is_export = true;
+		decl->has_extname = true;
+		decl->extname = kw_main;
 		function = decl;
 		goto REGISTER_MAIN;
 	}
@@ -3052,6 +3057,7 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 		case DECL_DECLARRAY:
 		case DECL_BODYPARAM:
 		case DECL_CT_INCLUDE:
+		case DECL_GLOBALS:
 			UNREACHABLE
 	}
 	decl->resolve_status = RESOLVE_DONE;

@@ -674,7 +674,6 @@ typedef struct Decl_
 	bool obfuscate : 1;
 	bool is_dynamic : 1;
 	bool is_synthetic : 1;
-	bool is_wasm_interface : 1;
 	bool is_export : 1;
 	OperatorOverload operator : 4;
 	union
@@ -727,6 +726,7 @@ typedef struct Decl_
 		EnumConstantDecl enum_constant;
 		FuncDecl func_decl;
 		AttrDecl attr_decl;
+		Decl** decls;
 		TypedefDecl typedef_decl;
 		DefineDecl define_decl;
 		CtIfDecl ct_if_decl;

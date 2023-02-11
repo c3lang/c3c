@@ -96,7 +96,7 @@ static inline bool parse_top_level_block(ParseContext *c, Decl ***decls, TokenTy
 		assert(decl);
 		if (decl_ok(decl))
 		{
-			vec_add(*decls, decl);
+			add_decl_to_list(decls, decl);
 		}
 		else
 		{
@@ -175,7 +175,7 @@ static inline Decl *parse_ct_case(ParseContext *c)
 		TokenType type = c->tok;
 		if (type == TOKEN_CT_DEFAULT || type == TOKEN_CT_CASE || type == TOKEN_CT_ENDSWITCH) break;
 		ASSIGN_DECL_OR_RET(Decl *stmt, parse_top_level_statement(c, NULL), poisoned_decl);
-		vec_add(decl->ct_case_decl.body, stmt);
+		add_decl_to_list(&decl->ct_case_decl.body, stmt);
 	}
 	return decl;
 }
@@ -1062,9 +1062,6 @@ static inline Decl *parse_global_declaration(ParseContext *c, Visibility visibil
 
 	ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_optional_type(c), poisoned_decl);
 
-	Decl *decl = DECL_VAR_NEW(type, VARDECL_GLOBAL, visibility);
-
-	decl->var.is_threadlocal = threadlocal;
 
 	if (tok_is(c, TOKEN_CONST_IDENT))
 	{
@@ -1072,23 +1069,54 @@ static inline Decl *parse_global_declaration(ParseContext *c, Visibility visibil
 		return poisoned_decl;
 	}
 
-	if (!try_consume(c, TOKEN_IDENT))
+	Decl *decl;
+	Decl **decls = NULL;
+	while (true)
 	{
-		if (token_is_some_ident(c->tok))
+		decl = DECL_VAR_NEW(type, VARDECL_GLOBAL, visibility);
+		decl->var.is_threadlocal = threadlocal;
+		if (!try_consume(c, TOKEN_IDENT))
 		{
-			SEMA_ERROR_HERE("I expected a variable name here, but global variables need to start with lower case.");
+			if (token_is_some_ident(c->tok))
+			{
+				SEMA_ERROR_HERE("I expected a variable name here, but global variables need to start with lower case.");
+				return poisoned_decl;
+			}
+			SEMA_ERROR_HERE("The name of a global variable was expected here");
 			return poisoned_decl;
 		}
-		SEMA_ERROR_HERE("The name of a global variable was expected here");
-		return poisoned_decl;
+		if (!try_consume(c, TOKEN_COMMA)) break;
+		vec_add(decls, decl);
 	}
+	// Add the last, or we miss it.
+	if (decls) vec_add(decls, decl);
 
 	if (!parse_attributes(c, &decl->attributes)) return poisoned_decl;
 	if (try_consume(c, TOKEN_EQ))
 	{
+		if (decls)
+		{
+			SEMA_ERROR_HERE("Initialization is not allowed with multiple declarations.");
+			return poisoned_decl;
+		}
 		if (!parse_decl_initializer(c, decl, true)) return poisoned_decl;
 	}
 	CONSUME_EOS_OR_RET(poisoned_decl);
+	Attr **attributes = decl->attributes;
+	if (attributes)
+	{
+		FOREACH_BEGIN(Decl *d, decls)
+			if (d == decl) continue;
+			d->attributes = copy_attributes_single(attributes);
+		FOREACH_END();
+	}
+	if (decls)
+	{
+		decl = decl_calloc();
+		decl->decl_kind = DECL_GLOBALS;
+		decl->decls = decls;
+		return decl;
+	}
 	return decl;
 }
 
@@ -2606,7 +2634,7 @@ static Decl *parse_include(ParseContext *c)
 			decl_poison(decl);
 			goto END;
 		}
-		vec_add(list, inner);
+		add_decl_to_list(&list, inner);
 	}
 	decl->include.decls = list;
 END:

@@ -1021,16 +1021,16 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 	{
 		llvm_attribute_add(c, function, attribute_id.noreturn, -1);
 	}
-	if (decl->is_wasm_interface && arch_is_wasm(platform_target.arch))
+	if (decl->is_export && arch_is_wasm(platform_target.arch))
 	{
-		if (decl->visibility == VISIBLE_EXTERN)
-		{
-			llvm_attribute_add_string(c, function, "wasm-import-name", decl_get_extname(decl), -1);
-		}
-		else if (c->code_module == decl->unit->module)
+		if (c->code_module == decl->unit->module)
 		{
 			llvm_attribute_add_string(c, function, "wasm-export-name", decl_get_extname(decl), -1);
 		}
+	}
+	if (decl->visibility == VISIBLE_EXTERN && arch_is_wasm(platform_target.arch))
+	{
+		llvm_attribute_add_string(c, function, "wasm-import-name", decl_get_extname(decl), -1);
 	}
 	if (decl->alignment != type_abi_alignment(decl->type))
 	{
@@ -1104,6 +1104,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 		case DECL_BODYPARAM:
 		case DECL_CT_ECHO:
 		case DECL_CT_INCLUDE:
+		case DECL_GLOBALS:
 			UNREACHABLE;
 	}
 	UNREACHABLE

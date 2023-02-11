@@ -1,0 +1,17 @@
+// #target: wasm32
+module test;
+extern fn int get_abc();
+fn int hello() @export("fgh")
+{
+	return 1;
+}
+
+/* #expect: test.ll
+
+target triple = "wasm32-unknown-unknown"
+
+declare i32 @get_abc() #0
+define i32 @fgh() #1
+
+attributes #0 = { nounwind "wasm-import-name"="get_abc" }
+attributes #1 = { nounwind "wasm-export-name"="fgh" }
