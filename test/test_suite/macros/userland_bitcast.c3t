@@ -3,7 +3,7 @@
 macro testbitcast(expr, $Type)
 {
     $assert($sizeof(expr) == $Type.sizeof, "Cannot bitcast between types of different size.");
-    $Type x = void;
+    $Type x @noinit;
     var $size = (usz)($sizeof(expr));
 
     $if ($alignof(expr) >= 8 && $Type.alignof >= 8):

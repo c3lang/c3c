@@ -1125,7 +1125,7 @@ static inline void llvm_emit_asm_block_stmt(GenContext *c, Ast *ast)
 					if (val->ident.copy_output)
 					{
 						char buf[10];
-						sprintf(buf, "%d", val->index);
+						snprintf(buf, 10, "%d", val->index);
 						codegen_append_constraints(&clobber_list, buf);
 					}
 					else
@@ -1440,6 +1440,14 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 		{
 			BEValue value;
 			llvm_emit_local_decl(c, ast->declare_stmt, &value);
+			break;
+		}
+		case AST_DECLS_STMT:
+		{
+			BEValue value;
+			FOREACH_BEGIN(Decl *decl, ast->decls_stmt)
+				llvm_emit_local_decl(c, decl, &value);
+			FOREACH_END();
 			break;
 		}
 		case AST_BREAK_STMT:

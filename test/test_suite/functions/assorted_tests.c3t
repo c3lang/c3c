@@ -2,8 +2,8 @@ module test;
 
 fn int foo1()
 {
-  char *pp = void;
-  uint w_cnt = void;
+  char *pp @noinit;
+  uint w_cnt @noinit;
 
   w_cnt += *pp;
 
@@ -19,9 +19,9 @@ fn void foo2(int x)
 
 fn int trys(ichar* s, int x)
 {
-    int asa = void;
-    double val = void;
-    int lls = void;
+    int asa @noinit;
+    double val @noinit;
+    int lls @noinit;
     if (x)
     {
         asa = lls + asa;

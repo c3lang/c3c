@@ -247,7 +247,7 @@ private fn void! Formatter.etoa(Formatter* this, FloatType value)
 // internal ftoa for fixed decimal floating point
 private fn void! Formatter.ftoa(Formatter* this, FloatType value)
 {
-	char[PRINTF_FTOA_BUFFER_SIZE] buf = void;
+	char[PRINTF_FTOA_BUFFER_SIZE] buf @noinit;
 	usz len = 0;
 	const FloatType[] POW10 = { 1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000 };
 	FloatType diff = 0.0;
@@ -381,7 +381,7 @@ private fn void! Formatter.ftoa(Formatter* this, FloatType value)
 
 private fn void! Formatter.ntoa(Formatter* this, uint128 value, bool negative, uint base)
 {
-	char[PRINTF_NTOA_BUFFER_SIZE] buf = void;
+	char[PRINTF_NTOA_BUFFER_SIZE] buf @noinit;
 	usz len = 0;
 
 	// no hash for 0 values

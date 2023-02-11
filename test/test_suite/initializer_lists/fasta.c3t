@@ -59,7 +59,7 @@ const LINELEN = 60;
 fn void repeat_fasta(char[] seq, int n)
 {
 	usz len = seq.len;
-	int i = void;
+	int i @noinit;
 	for (i = 0; i < n; i++)
 	{
 		putchar(seq[i % len]);
@@ -72,12 +72,12 @@ fn void random_fasta(char[] symb, double[] probability, int n)
 {
 	assert(symb.len == probability.len);
 	int len = probability.len;
-	int i = void;
+	int i @noinit;
 	for (i = 0; i < n; i++)
 	{
 		double v = fasta_rand(1.0);
 		/* slowest idiomatic linear lookup.  Fast if len is short though. */
-		int j = void;
+		int j @noinit;
 		for (j = 0; j < len - 1; j++)
 		{
 			v -= probability[j];

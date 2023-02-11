@@ -161,7 +161,7 @@ fn char smallArgs(char w, char x, char y, char z) {
 }
 
 private fn int f0(Quad q, int i) {              /* Pass Q by value */
-  Quad r = void;
+  Quad r @noinit;
   if (i) r.ss = q.ss;
   q.ssp = &r.ss;
   q.w = q.y = q.c = 1;
@@ -169,7 +169,7 @@ private fn int f0(Quad q, int i) {              /* Pass Q by value */
 }
 
 fn int f1(Quad *q, int i) {             /* Pass Q by address */
-  Quad r = void;
+  Quad r @noinit;
   if (i) r = *q;
   q.w = q.y = q.c = 1;
   return q.ss.y+i+r.y-q.c;
@@ -177,7 +177,7 @@ fn int f1(Quad *q, int i) {             /* Pass Q by address */
 
 
 fn int badFunc(float val) {
-  int result = void;
+  int result @noinit;
   if (val > 12.345) result = 4;
   return result;     /* Test use of undefined value */
 }
@@ -188,7 +188,7 @@ fn int func(int param, long param2) {
   int result = param;
 
   {{{{
-      char c = void; int x = void;
+      char c @noinit; int x @noinit;
       ef1(&result, &c, &x);
     }}}
 
@@ -220,7 +220,7 @@ fn int funcZ(int i, int j) {
 }
 
 fn int sumArray(int* array, int num) {
-  int i = void;
+  int i @noinit;
   int result = 0;
   for (i = 0; i < num; ++i)
     result += array[i];
@@ -233,7 +233,7 @@ fn int arrayParam(int* values) {
 }
 
 fn int arrayToSum() {
-  int[100] a = void;
+  int[100] a @noinit;
   int i;
   for (i = 0; i < 100; ++i)
     a[i] = i*4;
@@ -245,7 +245,7 @@ fn int arrayToSum() {
 fn int externFunc(long, uint*, short, char);
 
 fn int main(int argc, char **argv) {
-  uint i = void;
+  uint i @noinit;
   puts("Hello world!\n");
 
   externFunc(-1, null, (short)argc, 2);

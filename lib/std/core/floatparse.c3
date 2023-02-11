@@ -50,7 +50,7 @@ macro double! decfloat(char[] chars, int $bits, int $emin, int sign)
 
 	assert(len);
 
-	char c = void;
+	char c @noinit;
 	// Skip past first characters
 	while ((c = chars[index]) == '0')
 	{
@@ -335,7 +335,7 @@ macro double! hexfloat(char[] chars, int $bits, int $emin, int sign)
 	uint x;
 	long rp;
 	long dc;
-	char c = void;
+	char c @noinit;
 	bool got_rad;
 	bool got_digit;
 	bool got_tail;

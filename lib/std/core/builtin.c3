@@ -102,7 +102,7 @@ macro bitcast(expr, $Type) @builtin
 {
 	var $size = (usz)($sizeof(expr));
 	$assert($size == $Type.sizeof, "Cannot bitcast between types of different size.");
-	$Type x = void;
+	$Type x @noinit;
 	mem::copy(&x, &expr, $size, $Type.alignof, $alignof(expr));
 	return x;
 }

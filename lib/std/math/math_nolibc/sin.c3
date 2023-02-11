@@ -64,7 +64,7 @@ fn float _sinf(float x) @weak @extern("sinf")
 			return x - x;
 	}
 	/* general argument reduction needed */
-	double y = void;
+	double y @noinit;
 	switch (__rem_pio2f(x, &y) & 3)
 	{
 		case 0: return  __sindf(y);

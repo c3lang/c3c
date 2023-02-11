@@ -99,8 +99,8 @@ macro bool equals(a, b, isz len = -1, usz $align = 0)
 	$if (!$align):
 		$align = $typeof(a[0]).alignof;
 	$endif;
-	void* x = void;
-	void* y = void;
+	void* x @noinit;
+	void* y @noinit;
 	$if ($typeof(a).kindof == TypeKind.SUBARRAY):
 		len = a.len;
 		if (len != b.len) return false;

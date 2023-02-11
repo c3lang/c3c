@@ -913,6 +913,22 @@ static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType 
 }
 
 
+static inline bool sema_analyse_decls_stmt(SemaContext *context, Ast *statement)
+{
+	bool should_nop = false;
+	FOREACH_BEGIN(Decl *decl, statement->decls_stmt)
+		VarDeclKind kind = decl->var.kind;
+		if (kind == VARDECL_LOCAL_CT_TYPE || kind == VARDECL_LOCAL_CT)
+		{
+			if (!sema_analyse_var_decl_ct(context, decl)) return false;
+		}
+		assert(!should_nop);
+		if (!sema_analyse_var_decl(context, decl, true)) return false;
+	FOREACH_END();
+	if (should_nop) statement->ast_kind = AST_NOP_STMT;
+	return true;
+}
+
 static inline bool sema_analyse_declare_stmt(SemaContext *context, Ast *statement)
 {
 	VarDeclKind kind = statement->declare_stmt->var.kind;
@@ -1250,7 +1266,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 
 
 	// Set up the value, assigning the type as needed.
-	// Element *value = void
+	// Element *value @noinit
 	if (!var->var.type_info)
 	{
 		var->var.type_info = type_info_new_base(value_type, var->span);
@@ -2583,6 +2599,8 @@ static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *state
 		case AST_DOC_STMT:
 		case AST_ASM_STMT:
 			UNREACHABLE
+		case AST_DECLS_STMT:
+			return sema_analyse_decls_stmt(context, statement);
 		case AST_ASM_BLOCK_STMT:
 			return sema_analyse_asm_stmt(context, statement);
 		case AST_ASSERT_STMT:

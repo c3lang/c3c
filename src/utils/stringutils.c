@@ -6,7 +6,7 @@
 #include <stddef.h>
 #include <assert.h>
 #include "lib.h"
-#include "stdio.h"
+#include <stdio.h>
 
 struct ScratchBuf scratch_buffer;
 
@@ -224,7 +224,7 @@ void scratch_buffer_append(const char *string)
 
 void scratch_buffer_append_signed_int(int64_t i)
 {
-	uint32_t len_needed = (uint32_t)sprintf(&scratch_buffer.str[scratch_buffer.len], "%lld", (long long)i);
+	uint32_t len_needed = (uint32_t)snprintf(&scratch_buffer.str[scratch_buffer.len], MAX_STRING_BUFFER, "%lld", (long long)i);
 	if (scratch_buffer.len + len_needed > MAX_STRING_BUFFER - 1)
 	{
 		error_exit("Scratch buffer size (%d chars) exceeded", MAX_STRING_BUFFER - 1);
@@ -234,7 +234,7 @@ void scratch_buffer_append_signed_int(int64_t i)
 
 void scratch_buffer_append_double(double d)
 {
-	uint32_t len_needed = (uint32_t)sprintf(&scratch_buffer.str[scratch_buffer.len], "%f", d);
+	uint32_t len_needed = (uint32_t)snprintf(&scratch_buffer.str[scratch_buffer.len], MAX_STRING_BUFFER, "%f", d);
 	if (scratch_buffer.len + len_needed > MAX_STRING_BUFFER - 1)
 	{
 		error_exit("Scratch buffer size (%d chars) exceeded", MAX_STRING_BUFFER - 1);
@@ -255,7 +255,7 @@ void scratch_buffer_append_double(double d)
 
 void scratch_buffer_append_unsigned_int(uint64_t i)
 {
-	uint32_t len_needed = (uint32_t)sprintf(&scratch_buffer.str[scratch_buffer.len], "%llu", (unsigned long long)i);
+	uint32_t len_needed = (uint32_t)snprintf(&scratch_buffer.str[scratch_buffer.len], MAX_STRING_BUFFER, "%llu", (unsigned long long)i);
 	if (scratch_buffer.len + len_needed > MAX_STRING_BUFFER - 1)
 	{
 		error_exit("Scratch buffer size (%d chars) exceeded", MAX_STRING_BUFFER - 1);
@@ -267,7 +267,7 @@ void scratch_buffer_printf(const char *format, ...)
 {
 	va_list args;
 	va_start(args, format);
-	uint32_t len_needed = (uint32_t)vsprintf(&scratch_buffer.str[scratch_buffer.len], format, args);
+	uint32_t len_needed = (uint32_t)vsnprintf(&scratch_buffer.str[scratch_buffer.len], MAX_STRING_BUFFER, format, args);
 	if (scratch_buffer.len + len_needed > MAX_STRING_BUFFER - 1)
 	{
 		error_exit("Scratch buffer size (%d chars) exceeded", MAX_STRING_BUFFER - 1);

@@ -83,7 +83,7 @@ fn void sincosf(float x, float *sin, float *cos) @extern("sincosf") @weak
 			*sin = *cos = x - x;
 		default:
 			// general argument reduction needed
-			double y = void;
+			double y @noinit;
 			uint n = __rem_pio2f(x, &y);
 			float s = __sindf(y);
 			float c = __cosdf(y);

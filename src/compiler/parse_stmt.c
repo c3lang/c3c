@@ -10,16 +10,104 @@
 
 static inline Expr *parse_asm_expr(ParseContext *c);
 
+static Ast *parse_declaration_statment_after_type(ParseContext *c, TypeInfo *type)
+{
+	Ast *ast = ast_calloc();
+	ast->span = type->span;
+	ast->ast_kind = AST_DECLARE_STMT;
+	ASSIGN_DECL_OR_RET(ast->declare_stmt, parse_decl_after_type(c, type), poisoned_ast);
+
+	if (tok_is(c, TOKEN_EOS)) return ast;
+	Decl *decl = ast->declare_stmt;
+	if (decl->attributes || decl->var.init_expr)
+	{
+		if (tok_is(c, TOKEN_COMMA) && peek(c) == TOKEN_IDENT)
+		{
+			if (decl->var.init_expr)
+			{
+				SEMA_ERROR(decl->var.init_expr, "Multiple variable declarations cannot use initialization.");
+				return poisoned_ast;
+			}
+			if (decl->attributes)
+			{
+				assert(VECLAST(decl->attributes));
+				SEMA_ERROR(VECLAST(decl->attributes), "Multiple variable declarations must have attributes at the end.");
+				return poisoned_ast;
+			}
+		}
+		RANGE_EXTEND_PREV(ast);
+		return ast;
+	}
+	Decl **decls = NULL;
+	vec_add(decls, decl);
+	Attr **attributes = NULL;
+	while (try_consume(c, TOKEN_COMMA))
+	{
+		ASSIGN_DECL_OR_RET(decl, parse_decl_after_type(c, copy_type_info_single(type)), poisoned_ast);
+		if (decl->var.init_expr)
+		{
+			SEMA_ERROR(decl->var.init_expr, "Multiple variable declarations cannot use initialization.");
+			return poisoned_ast;
+		}
+		if (decl->attributes)
+		{
+			if (tok_is(c, TOKEN_COMMA))
+			{
+				assert(VECLAST(decl->attributes));
+				SEMA_ERROR(VECLAST(decl->attributes), "Multiple variable declarations must have attributes at the end.");
+				return poisoned_ast;
+			}
+			attributes = decl->attributes;
+		}
+		vec_add(decls, decl);
+	}
+	if (attributes)
+	{
+		FOREACH_BEGIN(Decl *d, decls)
+			if (d == decl) continue;
+			d->attributes = copy_attributes_single(attributes);
+		FOREACH_END();
+	}
+	ast->decls_stmt = decls;
+	ast->ast_kind = AST_DECLS_STMT;
+	RANGE_EXTEND_PREV(ast);
+	return ast;
+
+}
+
 /**
  * declaration_stmt
  * 	: declaration ';'
  */
 static inline Ast *parse_declaration_stmt(ParseContext *c)
 {
-	Ast *decl_stmt = new_ast(AST_DECLARE_STMT, c->span);
-	ASSIGN_DECL_OR_RET(decl_stmt->declare_stmt, parse_decl(c), poisoned_ast);
+	if (tok_is(c, TOKEN_CONST))
+	{
+		// Consts don't have multiple declarations.
+		Ast *decl_stmt = new_ast(AST_DECLARE_STMT, c->span);
+		ASSIGN_DECL_OR_RET(decl_stmt->declare_stmt, parse_decl(c), poisoned_ast);
+		RANGE_EXTEND_PREV(decl_stmt);
+		CONSUME_EOS_OR_RET(poisoned_ast);
+		return decl_stmt;
+	}
+
+	bool is_threadlocal = try_consume(c, TOKEN_TLOCAL);
+	bool is_static = !is_threadlocal && try_consume(c, TOKEN_STATIC);
+	is_static = is_threadlocal || is_static;
+	ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_optional_type(c), poisoned_ast);
+	ASSIGN_AST_OR_RET(Ast *result, parse_declaration_statment_after_type(c, type), poisoned_ast);
 	CONSUME_EOS_OR_RET(poisoned_ast);
-	return decl_stmt;
+	if (result->ast_kind == AST_DECLARE_STMT)
+	{
+		result->declare_stmt->var.is_threadlocal = is_threadlocal;
+		result->declare_stmt->var.is_static = is_static;
+		return result;
+	}
+	FOREACH_BEGIN(Decl *var, result->decls_stmt)
+		var->var.is_threadlocal = is_threadlocal;
+		var->var.is_static = is_static;
+	FOREACH_END();
+	return result;
 }
 
 static inline Decl *parse_optional_label(ParseContext *c, Ast *parent)
@@ -765,8 +853,6 @@ static inline Ast *parse_expr_stmt(ParseContext *c)
 static inline Ast *parse_decl_or_expr_stmt(ParseContext *c)
 {
 	ASSIGN_EXPR_OR_RET(Expr * expr, parse_expr(c), poisoned_ast);
-	Ast *ast = ast_calloc();
-	ast->span = expr->span;
 	// We might be parsing "int!"
 	// If so we need to unwrap this.
 	if (expr->expr_kind == EXPR_OPTIONAL && expr->inner_expr->expr_kind == EXPR_TYPEINFO)
@@ -775,18 +861,16 @@ static inline Ast *parse_decl_or_expr_stmt(ParseContext *c)
 	}
 	if (expr->expr_kind == EXPR_TYPEINFO)
 	{
-		ast->ast_kind = AST_DECLARE_STMT;
-		ASSIGN_DECL_OR_RET(ast->declare_stmt, parse_decl_after_type(c, expr->type_expr), poisoned_ast);
+		return parse_declaration_statment_after_type(c, expr->type_expr);
 	}
-	else
+	Ast *ast = ast_calloc();
+	ast->span = expr->span;
+	ast->ast_kind = AST_EXPR_STMT;
+	ast->expr_stmt = expr;
+	if (tok_is(c, TOKEN_IDENT) && expr->expr_kind == EXPR_IDENTIFIER)
 	{
-		ast->ast_kind = AST_EXPR_STMT;
-		ast->expr_stmt = expr;
-		if (tok_is(c, TOKEN_IDENT) && expr->expr_kind == EXPR_IDENTIFIER)
-		{
-			SEMA_ERROR(expr, "Expected a type here.");
-			return poisoned_ast;
-		}
+		SEMA_ERROR(expr, "Expected a type here.");
+		return poisoned_ast;
 	}
 	CONSUME_EOS_OR_RET(poisoned_ast);
 	return ast;

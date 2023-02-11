@@ -535,6 +535,9 @@ RETRY:
 	{
 		case AST_POISONED:
 			break;
+		case AST_DECLS_STMT:
+			MACRO_COPY_DECL_LIST(ast->decls_stmt);
+			break;
 		case AST_DOC_STMT:
 			doc_ast_copy(c, &source->doc_stmt);
 			break;
@@ -700,6 +703,29 @@ Decl **copy_decl_list_single(Decl **decl_list)
 	return result;
 }
 
+static Attr **copy_attributes(CopyStruct *c, Attr** attr_list)
+{
+	if (!attr_list) return attr_list;
+	Attr** list = NULL;
+	VECEACH(attr_list, i)
+	{
+		Attr *attribute = attr_list[i];
+		Attr *copy = MALLOCS(Attr);
+		*copy = *attribute;
+		MACRO_COPY_EXPR_LIST(copy->exprs);
+		vec_add(list, copy);
+	}
+	return list;
+}
+
+Attr **copy_attributes_single(Attr** attr_list)
+{
+	copy_begin();
+	Attr **attrs = copy_attributes(&copy_struct, attr_list);
+	copy_end();
+	return attrs;
+}
+
 Decl **copy_decl_list_single_for_unit(Decl **decl_list)
 {
 	bool old_is_template = copy_struct.is_template;
@@ -788,20 +814,6 @@ void copy_decl_type(Decl *decl)
 	decl->type = copy;
 }
 
-static Attr **copy_attributes(CopyStruct *c, Attr** attr_list)
-{
-	if (!attr_list) return attr_list;
-	Attr** list = NULL;
-	VECEACH(attr_list, i)
-	{
-		Attr *attribute = attr_list[i];
-		Attr *copy = MALLOCS(Attr);
-		*copy = *attribute;
-		MACRO_COPY_EXPR_LIST(copy->exprs);
-		vec_add(list, copy);
-	}
-	return list;
-}
 
 static inline bool decl_is_resolved_static_var(Decl *decl)
 {

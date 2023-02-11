@@ -522,7 +522,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_SQRT:
 		case BUILTIN_TRUNC:
 			if (!sema_check_builtin_args(args,
-										 (BuiltinArg[]) { BA_FLOATLIKE },
+										 (BuiltinArg[]) { BA_FLOATLIKE, BA_FLOATLIKE, BA_FLOATLIKE },
 										 arg_count)) return false;
 			rtype = args[0]->type;
 			break;

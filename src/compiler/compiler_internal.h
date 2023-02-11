@@ -1448,6 +1448,7 @@ typedef struct Ast_
 		AstAsmStmt asm_stmt;
 		AstCompoundStmt compound_stmt;      // 12
 		Decl *declare_stmt;                 // 8
+		Decl **decls_stmt;
 		Expr *expr_stmt;                    // 8
 		Decl *var_stmt;                     // 8
 		AstReturnStmt return_stmt;          // 16
@@ -2042,6 +2043,7 @@ void copy_end(void);
 Expr *copy_expr_single(Expr *source_expr);
 Decl **copy_decl_list_single(Decl **decl_list);
 Decl **copy_decl_list_single_for_unit(Decl **decl_list);
+Attr **copy_attributes_single(Attr** attr_list);
 Decl *copy_lambda_deep(Decl *decl);
 Ast *copy_ast_single(Ast *source_ast);
 Decl **copy_decl_list_macro(Decl **decl_list);

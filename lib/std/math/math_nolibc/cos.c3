@@ -31,7 +31,7 @@ fn float _cosf(float x) @extern("cosf") @weak
 	}
 
 	// general argument reduction needed
-	double y = void;
+	double y @noinit;
 	switch (__rem_pio2f(x, &y) & 3)
 	{
 		case 0: return  __cosdf(y);
@@ -77,7 +77,7 @@ fn double _cos(double x) @extern("cos") @weak
 			return x - x;
 		default:
 			// argument reduction
-			double[2] y = void;
+			double[2] y @noinit;
 			switch (__rem_pio2(x, &y) & 3)
 			{
 				case 0: return __cos(y[0], y[1]);

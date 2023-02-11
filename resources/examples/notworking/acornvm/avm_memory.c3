@@ -137,7 +137,7 @@ fn MemInfo* newnolink(Value th, int enc, Auint sz)
 fn void growaux_(Value th, void *block, AuintIdx *size, AuintIdx size_elems, AuintIdx limit)
 {
 	void* newblock;
-	AuintIdx newsize = void;
+	AuintIdx newsize @noinit;
 	// cannot double it?
 	if (*size >= limit / 2)
 	{

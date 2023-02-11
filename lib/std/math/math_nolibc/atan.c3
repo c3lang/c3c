@@ -32,7 +32,7 @@ private const double[*] AT = {
 
 fn double _atan(double x) @weak @extern("atan")
 {
-	int id = void;
+	int id @noinit;
 	uint ix = x.high_word();
 	uint sign = ix >> 31;
 	ix &= 0x7fffffff;
@@ -115,7 +115,7 @@ private const float[*] ATF = {
 
 fn float _atanf(float x) @weak @extern("atanf")
 {
-	int id = void;
+	int id @noinit;
 	uint ix = x.word();
 	uint sign = ix >> 31;
 	ix &= 0x7fffffff;
@@ -190,11 +190,11 @@ fn double _atan2(double y, double x) @weak @extern("atan2")
 {
 	if (math::is_nan(x) || math::is_nan(y)) return x + y;
 
-	uint lx = void;
-	uint ix = void;
+	uint lx @noinit;
+	uint ix @noinit;
 	extract_words(x, &ix, &lx);
-	uint ly = void;
-	uint iy = void;
+	uint ly @noinit;
+	uint iy @noinit;
 	extract_words(y, &iy, &ly);
 
 	// x = 1.0

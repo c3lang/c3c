@@ -36,7 +36,7 @@ fn double __tan(double x, double y, int odd) @extern("__tan") @weak
 
 	uint hx = (uint)(bitcast(x, ulong) >> 32);
 	bool big = (hx &0x7fffffff) >= 0x3FE59428; // |x| >= 0.6744
-	int sign = void;
+	int sign @noinit;
 	if (big)
 	{
 		sign = hx >> 31;

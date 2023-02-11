@@ -170,7 +170,7 @@ fn String[] split(String s, String needle, Allocator* allocator = mem::current_a
 	while (s.len)
 	{
 		usz! index = index_of(s, needle);
-		String res = void;
+		String res @noinit;
 		if (try index)
 		{
 			res = s[:index];

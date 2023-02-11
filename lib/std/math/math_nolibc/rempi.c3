@@ -73,7 +73,7 @@ fn int __rem_pio2f(float x, double *y)
 	int e0 = (ix >> 23) - (0x7f + 23);  /* e0 = ilogb(|x|)-23, positive */
 	ux = ix - e0 << 23;
 	double tx = bitcast(ux, float);
-	double ty = void;
+	double ty @noinit;
 	int n = __rem_pio2_large(&tx,&ty, e0, 1, 0);
 	if (sign)
 	{
@@ -124,11 +124,11 @@ const double[*] PIO2 = {
 
 fn int __rem_pio2_large(double* x, double* y, int e0, int nx, int prec)
 {
-	double[20] f = void;
-	double[20] fq = void;
-	double[20] q = void;
-	int[20] iq = void;
-	double fw = void;
+	double[20] f @noinit;
+	double[20] fq @noinit;
+	double[20] q @noinit;
+	int[20] iq @noinit;
+	double fw @noinit;
 	/* initialize jk*/
 	int jk = INIT_JK[prec];
 	int jp = jk;
@@ -155,9 +155,9 @@ fn int __rem_pio2_large(double* x, double* y, int e0, int nx, int prec)
 	}
 
 	int jz = jk;
-	double z = void;
+	double z @noinit;
 	int ih = 0;
-	int n = void;
+	int n @noinit;
 	while (1)
 	{
 		/* distill q[] into iq[] reversingly */

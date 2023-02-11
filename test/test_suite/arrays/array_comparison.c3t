@@ -7,22 +7,22 @@ extern fn void get3(bool[2]*);
 
 fn void test()
 {
-	double[2] a = void;
-	double[2] b = void;
+	double[2] a @noinit;
+	double[2] b @noinit;
 	get(&a);
 	get(&b);
 	bool x = a == b;
 	bool y = a != b;
 
-	int[2] a2 = void;
-	int[2] b2 = void;
+	int[2] a2 @noinit;
+	int[2] b2 @noinit;
 	get2(&a2);
 	get2(&b2);
 	bool x2 = a2 == b2;
 	bool y2 = a2 != b2;
 
-	bool[2] a3 = void;
-	bool[2] b3 = void;
+	bool[2] a3 @noinit;
+	bool[2] b3 @noinit;
 	get3(&a3);
     get3(&b3);
 
@@ -37,22 +37,22 @@ extern fn void aget3(bool[200]*);
 
 fn void test2()
 {
-	double[200] a = void;
-	double[200] b = void;
+	double[200] a @noinit;
+	double[200] b @noinit;
 	aget(&a);
 	aget(&b);
 	bool x = a == b;
 	bool y = a != b;
 
-	int[200] a2 = void;
-	int[200] b2 = void;
+	int[200] a2 @noinit;
+	int[200] b2 @noinit;
 	aget2(&a2);
 	aget2(&b2);
 	bool x2 = a2 == b2;
 	bool y2 = a2 != b2;
 
-	bool[200] a3 = void;
-	bool[200] b3 = void;
+	bool[200] a3 @noinit;
+	bool[200] b3 @noinit;
 	aget3(&a3);
 	aget3(&b3);
 	bool x3 = a3 == b3;

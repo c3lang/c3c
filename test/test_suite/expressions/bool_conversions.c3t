@@ -6,7 +6,7 @@ fn int f0() { return (int)f0_0((void*)0x2); }
 
 define Test = fn void();
 
-fn bool f1() { return (bool){| Test x = void; return x = (Test)0; |}; }
+fn bool f1() { return (bool){| Test x @noinit; return x = (Test)0; |}; }
 
 /* #expect: bool_conversions.ll
 
