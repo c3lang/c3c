@@ -1465,6 +1465,13 @@ static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, boo
 	Type *from_type = expr->type;
 
 	assert(!type_is_optional(to_type) || may_not_be_optional);
+
+	// Allow (void)foo
+	if (is_explicit && to_type == type_void)
+	{
+		return cast(expr, to_type);
+	}
+
 	Type *to = is_explicit ? type_flatten_distinct_optional(to_type) : type_no_optional(to_type)->canonical;
 
 	// Step one, cast from optional.
@@ -1978,7 +1985,7 @@ bool cast(Expr *expr, Type *to_type)
 {
 	if (to_type == type_void)
 	{
-		expr->type = type_void;
+		insert_cast(expr, CAST_VOID, type_void);
 		return true;
 	}
 

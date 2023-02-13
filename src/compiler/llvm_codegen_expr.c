@@ -1185,6 +1185,31 @@ void llvm_emit_bool_to_intvec_cast(GenContext *c, BEValue *value, Type *to_type,
 	llvm_value_set(value, res, to_type);
 }
 
+void llvm_emit_void_cast(GenContext *c, Expr *expr, BEValue *value)
+{
+	// Simple path
+	if (!IS_OPTIONAL(expr))
+	{
+		llvm_emit_expr_to_rvalue(c, expr);
+		llvm_value_set(value, NULL, type_void);
+		return;
+	}
+
+	PUSH_OPT();
+	LLVMBasicBlockRef after_void = llvm_basic_block_new(c, "end_block");
+	c->opt_var = NULL;
+	c->catch_block = after_void;
+	llvm_emit_expr_to_rvalue(c, expr);
+	llvm_emit_br(c, after_void);
+	// Ensure we are on a branch that is non-empty.
+	if (llvm_emit_check_block_branch(c))
+	{
+		c->current_block = NULL;
+		c->current_block_is_target = false;
+	}
+	POP_OPT();
+	llvm_emit_block(c, after_void);
+}
 
 void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *value, Type *to_type, Type *from_type)
 {
@@ -1221,6 +1246,8 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 			llvm_value_bitcast(c, value, to_type);
 			llvm_value_rvalue(c, value);
 			return;
+		case CAST_VOID:
+			UNREACHABLE;
 		case CAST_EUINT:
 		case CAST_ERINT:
 			to_type = type_lowering(to_type);
@@ -1414,8 +1441,13 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 	value->type = to_type;
 }
 
-static inline void gencontext_emit_cast_expr(GenContext *context, BEValue *be_value, Expr *expr)
+static inline void llvm_emit_cast_expr(GenContext *context, BEValue *be_value, Expr *expr)
 {
+	if (expr->cast_expr.kind == CAST_VOID)
+	{
+		llvm_emit_void_cast(context, exprptr(expr->cast_expr.expr), be_value);
+		return;
+	}
 	llvm_emit_exprid(context, be_value, expr->cast_expr.expr);
 	llvm_emit_cast(context,
 	               expr->cast_expr.kind,
@@ -6235,7 +6267,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			gencontext_emit_expression_list_expr(c, value, expr);
 			return;
 		case EXPR_CAST:
-			gencontext_emit_cast_expr(c, value, expr);
+			llvm_emit_cast_expr(c, value, expr);
 			return;
 		case EXPR_BITACCESS:
 			llvm_emit_bitaccess(c, value, expr);
