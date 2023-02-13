@@ -19,17 +19,16 @@ fn void test()
 
 /* #expect: constants.ll
 
-@constants_AA = internal unnamed_addr constant i8 -1, align 1
+@constants_AA = protected unnamed_addr constant i8 -1, align 1
 @constants_BB = local_unnamed_addr constant i8 -56, align 1
-@constants_CC = internal unnamed_addr constant i32 -1, align 4
-@constants_DD = internal unnamed_addr constant i32 -1, align 4
-@constants_FOO = internal unnamed_addr constant i32 -1, align 4
-@constants_x = internal unnamed_addr global i32 255, align 4
-@constants_z = internal unnamed_addr global i32 -1, align 4
-@constants_w = internal unnamed_addr global i8 -1, align 1
-@constants_v = internal unnamed_addr global i16 -1, align 2
-@constants_z2 = internal unnamed_addr global i32 -1, align 4
-
+@constants_CC = protected unnamed_addr constant i32 -1, align 4
+@constants_DD = protected unnamed_addr constant i32 -1, align 4
+@constants_FOO = protected unnamed_addr constant i32 -1, align 4
+@constants_x = protected unnamed_addr global i32 255, align 4
+@constants_z = protected unnamed_addr global i32 -1, align 4
+@constants_w = protected unnamed_addr global i8 -1, align 1
+@constants_v = protected unnamed_addr global i16 -1, align 2
+@constants_z2 = protected unnamed_addr global i32 -1, align 4
 
 entry:
   %xx = alloca i32, align 4
