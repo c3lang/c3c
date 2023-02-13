@@ -268,8 +268,8 @@ macro void @pool(;@body) @builtin
 	@body();
 }
 
-private tlocal Allocator* thread_allocator = allocator::LIBC_ALLOCATOR;
-private tlocal TempAllocator* thread_temp_allocator = null;
+tlocal Allocator* thread_allocator @private = allocator::LIBC_ALLOCATOR;
+tlocal TempAllocator* thread_temp_allocator @private = null;
 
 macro TempAllocator* temp_allocator()
 {
@@ -295,7 +295,8 @@ macro Allocator* current_allocator()
 }
 
 $if (!env::COMPILER_LIBC_AVAILABLE && env::ARCH_TYPE == ArchType.WASM32 || env::ARCH_TYPE == ArchType.WASM64):
-private SimpleHeapAllocator wasm_allocator;
+
+SimpleHeapAllocator wasm_allocator @private;
 
 extern int __heap_base;
 

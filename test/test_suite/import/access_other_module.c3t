@@ -9,7 +9,7 @@ fn void main()
 
 /* #expect: foo.ll
 
-@libc_EXIT_SUCCESS = external global i32, align 4
+@libc_EXIT_SUCCESS = external constant i32, align 4
 
 define void @foo_main() #0 {
 entry:

@@ -5,13 +5,13 @@ define String = char[];
 define Char32 = uint;
 define Char16 = ushort;
 
-private const uint SURROGATE_OFFSET = 0x10000;
-private const uint SURROGATE_GENERIC_MASK = 0xF800;
-private const uint SURROGATE_MASK = 0xFC00;
-private const uint SURROGATE_CODEPOINT_MASK = 0x03FF;
-private const uint SURROGATE_BITS = 10;
-private const uint SURROGATE_LOW_VALUE = 0xDC00;
-private const uint SURROGATE_HIGH_VALUE = 0xD800;
+const uint SURROGATE_OFFSET @private = 0x10000;
+const uint SURROGATE_GENERIC_MASK @private = 0xF800;
+const uint SURROGATE_MASK @private = 0xFC00;
+const uint SURROGATE_CODEPOINT_MASK @private = 0x03FF;
+const uint SURROGATE_BITS @private = 10;
+const uint SURROGATE_LOW_VALUE @private = 0xDC00;
+const uint SURROGATE_HIGH_VALUE @private = 0xD800;
 
 fault NumberConversion
 {
@@ -49,12 +49,12 @@ macro bool char_in_set(char c, String set)
 	return false;
 }
 
-private macro char_is_space_tab(char c)
+macro char_is_space_tab(char c) @private
 {
 	return c == ' ' || c == '\t';
 }
 
-private macro to_integer($Type, String string)
+macro to_integer($Type, String string) @private
 {
 	usz len = string.len;
 	usz index = 0;

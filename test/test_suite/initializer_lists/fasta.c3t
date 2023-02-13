@@ -14,7 +14,7 @@ fn float fasta_rand(float maxval)
 	return maxval * seed / IM;
 }
 
-private char[] alu =
+char[] alu @private =
   "GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGG"
   "GAGGCCGAGGCGGGCGGATCACCTGAGGTCAGGAGTTCGAGA"
   "CCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAAT"

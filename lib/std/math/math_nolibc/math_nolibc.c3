@@ -3,15 +3,15 @@ module std::math::nolibc;
 const double TOINT = 1 / math::DOUBLE_EPSILON;
 const double TOINT15 = 1.5 / math::DOUBLE_EPSILON;
 const float TOINTF = (float)(1 / math::FLOAT_EPSILON);
-private const double S1PI2 = math::PI_2; /* 0x3FF921FB, 0x54442D18 */
-private const double S2PI2 = math::PI; /* 0x400921FB, 0x54442D18 */
-private const double S3PI2 = math::PI + math::PI_2; /* 0x4012D97C, 0x7F3321D2 */
-private const double S4PI2 = math::PI + math::PI; /* 0x401921FB, 0x54442D18 */
+const double S1PI2 @private = math::PI_2; /* 0x3FF921FB, 0x54442D18 */
+const double S2PI2 @private = math::PI; /* 0x400921FB, 0x54442D18 */
+const double S3PI2 @private = math::PI + math::PI_2; /* 0x4012D97C, 0x7F3321D2 */
+const double S4PI2 @private = math::PI + math::PI; /* 0x401921FB, 0x54442D18 */
 
 // Shared between expf, exp2f and powf.
-private const EXP2F_TABLE_BITS = 5;
-private const EXP2F_POLY_ORDER = 3;
-private struct Exp2fData
+const EXP2F_TABLE_BITS @private = 5;
+const EXP2F_POLY_ORDER @private = 3;
+struct Exp2fData @private
 {
 	ulong[1 << EXP2F_TABLE_BITS] tab;
 	double shift_scaled;
@@ -21,7 +21,7 @@ private struct Exp2fData
 	double[EXP2F_POLY_ORDER] poly_scaled;
 }
 
-private const Exp2fData __EXP2F_DATA = {
+const Exp2fData __EXP2F_DATA @private = {
 	.tab = {
 		0x3ff0000000000000, 0x3fefd9b0d3158574, 0x3fefb5586cf9890f, 0x3fef9301d0125b51,
 		0x3fef72b83c7d517b, 0x3fef54873168b9aa, 0x3fef387a6e756238, 0x3fef1e9df51fdee1,
@@ -49,7 +49,7 @@ const EXP_TABLE_BITS = 7;
 const EXP_POLY_ORDER = 5;
 const EXP2_POLY_ORDER = 5;
 const EXP_DATA_WIDTH = 1 << EXP_TABLE_BITS;
-private struct Exp2Data
+struct Exp2Data @private
 {
 	double invln2N;
 	double shift;

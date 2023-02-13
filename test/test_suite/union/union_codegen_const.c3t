@@ -6,9 +6,9 @@ union Foo
     double b;
 }
 
-private Foo f = { .a = 23 };
-private Foo g = { .b = 2.3 };
-private Foo h = { .a = 23, .b = 2.3 };
+Foo f @private = { .a = 23 };
+Foo g @private = { .b = 2.3 };
+Foo h @private = { .a = 23, .b = 2.3 };
 Foo i = { .b = 2.3, .a = 23 };
 
 // #expect: test.ll
@@ -17,4 +17,3 @@ Foo i = { .b = 2.3, .a = 23 };
 @test_g = protected unnamed_addr global %Foo { double 2.300000e+00 }, align 8
 @test_h = protected unnamed_addr global %Foo { double 2.300000e+00 }, align 8
 @test_i = local_unnamed_addr global { i32, [4 x i8] } { i32 23, [4 x i8] undef }, align 8
-

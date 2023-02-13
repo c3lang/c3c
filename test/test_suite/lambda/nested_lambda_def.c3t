@@ -17,7 +17,7 @@ module foo;
 import bar;
 import std::io;
 
-private int xz = 0;
+int xz @private = 0;
 
 
 macro Callback get_callback()

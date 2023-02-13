@@ -8,7 +8,7 @@ struct Connection
    long length;
 }
 
-private Connection[3] link
+Connection[3] link @private
 = { {1, "link1", 10},
     {2, "link2", 20},
     {3, "link3", 30} };

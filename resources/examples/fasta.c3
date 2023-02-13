@@ -15,7 +15,7 @@ fn float fasta_rand(float max_val)
 	return max_val * seed / IM;
 }
 
-private String alu =
+String alu @private =
 	"GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGG"
 	"GAGGCCGAGGCGGGCGGATCACCTGAGGTCAGGAGTTCGAGA"
 	"CCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAAT"

@@ -332,7 +332,7 @@ void llvm_set_global_tls(Decl *decl)
 {
 	if (!decl->var.is_threadlocal) return;
 	LLVMThreadLocalMode thread_local_mode = LLVMGeneralDynamicTLSModel;
-	if (!decl->var.is_addr && (decl->visibility == VISIBLE_LOCAL || decl->visibility == VISIBLE_MODULE) && !decl->is_external_visible)
+	if (!decl->var.is_addr && decl->is_private && !decl->is_external_visible)
 	{
 		thread_local_mode = LLVMLocalDynamicTLSModel;
 	}
@@ -412,7 +412,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	else
 	{
 		LLVMUnnamedAddr addr = LLVMGlobalUnnamedAddr;
-		if (decl->is_external_visible || visible_external(decl->visibility)) addr = LLVMLocalUnnamedAddr;
+		if (!decl->is_private || decl->is_external_visible) addr = LLVMLocalUnnamedAddr;
 		LLVMSetUnnamedAddress(decl->backend_ref, addr);
 	}
 	if (decl->section)
@@ -431,7 +431,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	{
 		UNREACHABLE
 	}
-	if (decl->visibility != VISIBLE_EXTERN)
+	if (!decl->is_extern)
 	{
 		LLVMSetInitializer(decl->backend_ref, init_value);
 		if (optional_ref)
@@ -442,27 +442,28 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 
 	LLVMSetGlobalConstant(global_ref, decl->var.kind == VARDECL_CONST);
 
-	Visibility visibility = decl->visibility;
-	if (decl->is_external_visible) visibility = VISIBLE_PUBLIC;
-	switch (visibility)
+	if (decl->is_extern)
 	{
-		case VISIBLE_MODULE:
+		LLVMSetLinkage(global_ref, LLVMExternalLinkage);
+		if (optional_ref) LLVMSetLinkage(optional_ref, LLVMExternalLinkage);
+	}
+	else if (decl->is_private && !decl->is_external_visible)
+	{
+		if (decl->var.kind == VARDECL_CONST || decl->var.kind == VARDECL_GLOBAL)
+		{
 			LLVMSetVisibility(global_ref, LLVMProtectedVisibility);
 			if (optional_ref) LLVMSetVisibility(optional_ref, LLVMProtectedVisibility);
-			break;
-		case VISIBLE_PUBLIC:
-			LLVMSetVisibility(global_ref, LLVMDefaultVisibility);
-			if (optional_ref) LLVMSetVisibility(optional_ref, LLVMDefaultVisibility);
-			break;
-		case VISIBLE_EXTERN:
-			LLVMSetLinkage(global_ref, LLVMExternalLinkage);
-			if (optional_ref) LLVMSetLinkage(optional_ref, LLVMExternalLinkage);
-			//LLVMSetVisibility(decl->backend_ref, LLVMDefaultVisibility);
-			break;
-		case VISIBLE_LOCAL:
+		}
+		else
+		{
 			LLVMSetLinkage(global_ref, LLVMInternalLinkage);
 			if (optional_ref) LLVMSetLinkage(optional_ref, LLVMInternalLinkage);
-			break;
+		}
+	}
+	else
+	{
+		LLVMSetVisibility(global_ref, LLVMDefaultVisibility);
+		if (optional_ref) LLVMSetVisibility(optional_ref, LLVMDefaultVisibility);
 	}
 
 	decl->backend_ref = global_ref;
@@ -758,19 +759,14 @@ void llvm_set_linkage(GenContext *c, Decl *decl, LLVMValueRef value)
 		llvm_set_linkonce(c, value);
 		return;
 	}
-	Visibility visibility = decl->visibility;
-	if (decl->is_external_visible) visibility = VISIBLE_PUBLIC;
-	switch (visibility)
+	if (decl->is_private && !decl->is_external_visible)
 	{
-		case VISIBLE_MODULE:
-		case VISIBLE_PUBLIC:
-			llvm_set_linkonce(c, value);
-			break;
-		case VISIBLE_EXTERN:
-		case VISIBLE_LOCAL:
-			LLVMSetVisibility(value, LLVMHiddenVisibility);
-			LLVMSetLinkage(value, LLVMLinkerPrivateLinkage);
-			break;
+		LLVMSetVisibility(value, LLVMHiddenVisibility);
+		LLVMSetLinkage(value, LLVMLinkerPrivateLinkage);
+	}
+	else
+	{
+		llvm_set_linkonce(c, value);
 	}
 }
 
@@ -920,10 +916,18 @@ void llvm_add_global_decl(GenContext *c, Decl *decl)
 {
 	assert(decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST);
 
-	const char *name = decl->unit->module == c->code_module ? "tempglobal" : decl_get_extname(decl);
+	bool same_module = decl->unit->module == c->code_module;
+	const char *name = same_module ? "tempglobal" : decl_get_extname(decl);
 	decl->backend_ref = llvm_add_global(c, name, decl->type, decl->alignment);
 	llvm_set_alignment(decl->backend_ref, decl->alignment);
-
+	if (!same_module)
+	{
+		LLVMSetLinkage(decl->backend_ref, LLVMExternalLinkage);
+	}
+	if (decl->var.kind == VARDECL_CONST)
+	{
+		LLVMSetGlobalConstant(decl->backend_ref, true);
+	}
 	if (IS_OPTIONAL(decl))
 	{
 		scratch_buffer_clear();
@@ -1028,7 +1032,7 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 			llvm_attribute_add_string(c, function, "wasm-export-name", decl_get_extname(decl), -1);
 		}
 	}
-	if (decl->visibility == VISIBLE_EXTERN && arch_is_wasm(platform_target.arch))
+	if (decl->is_extern && arch_is_wasm(platform_target.arch))
 	{
 		llvm_attribute_add_string(c, function, "wasm-import-name", decl_get_extname(decl), -1);
 	}
@@ -1063,7 +1067,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 		case DECL_FUNC:
 			backend_ref = decl->backend_ref = LLVMAddFunction(c->module, decl_get_extname(decl), llvm_get_type(c, decl->type));
 			llvm_append_function_attributes(c, decl);
-			if (decl->unit->module == c->code_module && !decl->is_external_visible && !visible_external(decl->visibility))
+			if (decl->unit->module == c->code_module && !decl->is_external_visible && decl->is_private)
 			{
 				llvm_set_internal_linkage(backend_ref);
 			}

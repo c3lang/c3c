@@ -1,15 +1,15 @@
-private const char AA = ~(char)(0);
+const char AA @private = ~(char)(0);
 const char BB = 200 ;
-private const uint CC = ~(uint)(0);
-private const uint DD = FOO;
+const uint CC @private = ~(uint)(0);
+const uint DD @private = FOO;
 
-private const FOO = ~(uint)(0);
+const FOO @private = ~(uint)(0);
 
-private uint x = AA;
-private uint z = CC;
-private char w = (char)(FOO);
-private ushort v = (ushort)(FOO);
-private uint z2 = DD;
+uint x @private = AA;
+uint z @private = CC;
+char w @private = (char)(FOO);
+ushort v @private = (ushort)(FOO);
+uint z2 @private = DD;
 
 fn void test()
 {

@@ -47,7 +47,7 @@ fn TestRunner test_runner_create()
 
 import libc;
 
-private TestRunner* current_runner;
+TestRunner* current_runner @private;
 fn void test_panic(String message, String file, String function, uint line)
 {
 	io::printn("[error]");

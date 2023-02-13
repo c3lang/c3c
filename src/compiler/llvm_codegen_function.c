@@ -620,36 +620,27 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 		llvm_emit_debug_function(c, decl);
 	}
 
-	Visibility visibility = decl->visibility;
-	if (decl->is_external_visible) visibility = VISIBLE_PUBLIC;
-	switch (visibility)
+	if (decl->is_extern)
 	{
-		case VISIBLE_EXTERN:
-			if (decl->is_weak)
-			{
-				LLVMSetLinkage(function, LLVMExternalWeakLinkage);
-				llvm_set_comdat(c, function);
-			}
-			else
-			{
-				LLVMSetLinkage(function, LLVMExternalLinkage);
-			}
-			LLVMSetVisibility(function, LLVMDefaultVisibility);
-			/*
-			if (decl->type->function.prototype->call_abi == CALL_X86_STD && platform_target.os == OS_TYPE_WIN32)
-			{
-				LLVMSetDLLStorageClass(function, LLVMDLLImportStorageClass);
-			}*/
-			break;
-		case VISIBLE_PUBLIC:
-		case VISIBLE_MODULE:
-			if (decl->is_weak) llvm_set_weak(c, function);
-			break;
-		case VISIBLE_LOCAL:
-			LLVMSetLinkage(function, decl->is_weak ? LLVMLinkerPrivateWeakLinkage : LLVMInternalLinkage);
-			LLVMSetVisibility(function, LLVMDefaultVisibility);
-			break;;
+		if (decl->is_weak)
+		{
+			LLVMSetLinkage(function, LLVMExternalWeakLinkage);
+			llvm_set_comdat(c, function);
+		}
+		else
+		{
+			LLVMSetLinkage(function, LLVMExternalLinkage);
+		}
+		LLVMSetVisibility(function, LLVMDefaultVisibility);
+		return;
 	}
+	if (decl->is_private && !decl->is_external_visible)
+	{
+		LLVMSetLinkage(function, decl->is_weak ? LLVMLinkerPrivateWeakLinkage : LLVMInternalLinkage);
+		LLVMSetVisibility(function, LLVMDefaultVisibility);
+		return;
+	}
+	if (decl->is_weak) llvm_set_weak(c, function);
 }
 
 

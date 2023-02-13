@@ -1,6 +1,6 @@
 // #target: macos-x64
 module foo;
-private fn void foo1()
+fn void foo1() @private
 {}
 
 module bar;

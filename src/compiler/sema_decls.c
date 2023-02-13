@@ -854,6 +854,8 @@ Type *sema_analyse_function_signature(SemaContext *context, Decl *parent, CallAB
 
 static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl)
 {
+	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_DEFINE)) return decl_poison(decl);
+
 	if (decl->typedef_decl.is_func)
 	{
 		Type *func_type = sema_analyse_function_signature(context, decl, CALL_C, &decl->typedef_decl.function_signature, false);
@@ -1282,7 +1284,7 @@ static inline bool unit_add_base_extension_method(CompilationUnit *unit, Type *p
 	if (!method_like->has_extname)
 	{
 		scratch_buffer_clear();
-		if (method_like->visibility <= VISIBLE_MODULE)
+		if (method_like->is_private)
 		{
 			scratch_buffer_append(parent_type->name);
 			scratch_buffer_append_char('$');
@@ -1297,7 +1299,7 @@ static inline bool unit_add_base_extension_method(CompilationUnit *unit, Type *p
 		method_like->extname = scratch_buffer_copy();
 	}
 	DEBUG_LOG("Method-like '%s.%s' analysed.", parent_type->name, method_like->name);
-	if (method_like->visibility == VISIBLE_LOCAL)
+	if (method_like->is_private)
 	{
 		vec_add(unit->module->private_method_extensions, method_like);
 	}
@@ -1338,7 +1340,7 @@ static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type
 	if (!method_like->has_extname)
 	{
 		scratch_buffer_clear();
-		if (method_like->visibility <= VISIBLE_MODULE)
+		if (method_like->is_private)
 		{
 			scratch_buffer_append(parent->extname);
 			scratch_buffer_append_char('$');
@@ -1353,7 +1355,7 @@ static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type
 		method_like->extname = scratch_buffer_copy();
 	}
 	DEBUG_LOG("Method-like '%s.%s' analysed.", parent->name, method_like->name);
-	if (parent->unit->module == unit->module || method_like->visibility != VISIBLE_LOCAL)
+	if (parent->unit->module == unit->module || !method_like->is_private)
 	{
 		vec_add(parent->methods, method_like);
 	}
@@ -1418,12 +1420,16 @@ static const char *attribute_domain_to_string(AttributeDomain domain)
 			return "static initializer";
 		case ATTR_FINALIZER:
 			return "static finalizer";
+		case ATTR_DEFINE:
+			return "define";
 		case ATTR_XXLIZER:
 			UNREACHABLE
 	}
 	UNREACHABLE
 }
 
+#define EXPORTED_USER_DEFINED_TYPES ATTR_ENUM | ATTR_UNION | ATTR_STRUCT
+#define USER_DEFINED_TYPES EXPORTED_USER_DEFINED_TYPES | ATTR_BITSTRUCT
 static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr, AttributeDomain domain)
 {
 	AttributeType type = attr->attr_kind;
@@ -1433,9 +1439,9 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_BIGENDIAN] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_BUILTIN] = ATTR_MACRO | ATTR_FUNC,
 			[ATTRIBUTE_CDECL] = ATTR_FUNC,
-			[ATTRIBUTE_EXPORT] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | ATTR_ENUM | ATTR_UNION | ATTR_STRUCT,
-			[ATTRIBUTE_EXTNAME] = (AttributeDomain)~(ATTR_CALL | ATTR_BITSTRUCT | ATTR_MACRO | ATTR_XXLIZER),
-			[ATTRIBUTE_EXTERN] = (AttributeDomain)~(ATTR_CALL | ATTR_BITSTRUCT | ATTR_MACRO | ATTR_XXLIZER),
+			[ATTRIBUTE_EXPORT] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | EXPORTED_USER_DEFINED_TYPES,
+			[ATTRIBUTE_EXTNAME] = (AttributeDomain)~(ATTR_CALL | ATTR_BITSTRUCT | ATTR_DEFINE | ATTR_MACRO | ATTR_XXLIZER),
+			[ATTRIBUTE_EXTERN] = (AttributeDomain)~(ATTR_CALL | ATTR_BITSTRUCT | ATTR_DEFINE | ATTR_MACRO | ATTR_XXLIZER),
 			[ATTRIBUTE_INLINE] = ATTR_FUNC | ATTR_CALL,
 			[ATTRIBUTE_LITTLEENDIAN] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_MAYDISCARD] = ATTR_FUNC | ATTR_MACRO,
@@ -1449,6 +1455,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_OVERLAP] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_PACKED] = ATTR_STRUCT | ATTR_UNION,
 			[ATTRIBUTE_PRIORITY] = ATTR_XXLIZER,
+			[ATTRIBUTE_PRIVATE] = ATTR_FUNC | ATTR_MACRO | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES | ATTR_DEFINE,
 			[ATTRIBUTE_PURE] = ATTR_CALL,
 			[ATTRIBUTE_REFLECT] = ATTR_ENUM,
 			[ATTRIBUTE_SECTION] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
@@ -1504,6 +1511,9 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 				default:
 					break;
 			}
+			break;
+		case ATTRIBUTE_PRIVATE:
+			decl->is_private = true;
 			break;
 		case ATTRIBUTE_TEST:
 			decl->func_decl.attr_test = true;
@@ -1969,7 +1979,7 @@ static inline MainType sema_find_main_type(SemaContext *context, Signature *sig,
 
 static inline Decl *sema_create_synthetic_main(SemaContext *context, Decl *decl, MainType main, bool int_return, bool err_return, bool is_winmain, bool is_wmain)
 {
-	Decl *function = decl_new(DECL_FUNC, NULL, decl->span, VISIBLE_PUBLIC);
+	Decl *function = decl_new(DECL_FUNC, NULL, decl->span);
 	function->is_export = true;
 	function->has_extname = true;
 	function->extname = kw_mainstub;
@@ -2112,9 +2122,9 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	assert(decl != context->unit->main_function);
 	bool is_winmain = decl->func_decl.attr_winmain;
 	bool is_win32 = platform_target.os == OS_TYPE_WIN32;
-	if (decl->visibility == VISIBLE_LOCAL)
+	if (decl->is_private)
 	{
-		SEMA_ERROR(decl, "A main function may not have local visibility.");
+		SEMA_ERROR(decl, "A main function may not be private.");
 		return false;
 	}
 	Signature *signature = &decl->func_decl.signature;
@@ -2727,14 +2737,14 @@ static Module *module_instantiate_generic(Module *module, Path *path, Expr **par
 		Expr *param = params[i];
 		if (param->expr_kind != EXPR_TYPEINFO)
 		{
-			Decl *decl = decl_new_var(param_name, param->span, NULL, VARDECL_CONST, VISIBLE_PUBLIC);
+			Decl *decl = decl_new_var(param_name, param->span, NULL, VARDECL_CONST);
 			decl->var.init_expr = param;
 			decl->type = param->type;
 			decl->resolve_status = RESOLVE_NOT_DONE;
 			vec_add(first_context->global_decls, decl);
 			continue;
 		}
-		Decl *decl = decl_new_with_type(param_name, params[i]->span, DECL_TYPEDEF, VISIBLE_PUBLIC);
+		Decl *decl = decl_new_with_type(param_name, params[i]->span, DECL_TYPEDEF);
 		decl->resolve_status = RESOLVE_DONE;
 		TypeInfo *type_info = param->type_expr;
 		assert(type_info->resolve_status == RESOLVE_DONE);
@@ -2967,6 +2977,8 @@ static inline bool sema_analyse_attribute_decl(SemaContext *c, Decl *decl)
 
 static inline bool sema_analyse_define(SemaContext *c, Decl *decl)
 {
+	if (!sema_analyse_attributes(c, decl, decl->attributes, ATTR_DEFINE)) return decl_poison(decl);
+
 	// 1. The plain define
 	if (decl->define_decl.define_kind == DEFINE_IDENT_ALIAS)
 	{

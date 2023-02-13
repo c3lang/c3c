@@ -85,7 +85,7 @@ static inline Ast *parse_declaration_stmt(ParseContext *c)
 	{
 		// Consts don't have multiple declarations.
 		Ast *decl_stmt = new_ast(AST_DECLARE_STMT, c->span);
-		ASSIGN_DECL_OR_RET(decl_stmt->declare_stmt, parse_decl(c), poisoned_ast);
+		ASSIGN_DECL_OR_RET(decl_stmt->declare_stmt, parse_local_decl(c), poisoned_ast);
 		RANGE_EXTEND_PREV(decl_stmt);
 		CONSUME_EOS_OR_RET(poisoned_ast);
 		return decl_stmt;
@@ -100,12 +100,14 @@ static inline Ast *parse_declaration_stmt(ParseContext *c)
 	if (result->ast_kind == AST_DECLARE_STMT)
 	{
 		result->declare_stmt->var.is_threadlocal = is_threadlocal;
-		result->declare_stmt->var.is_static = is_static;
+		result->declare_stmt->var.is_static = is_static || is_threadlocal;
+		result->declare_stmt->is_private = true;
 		return result;
 	}
 	FOREACH_BEGIN(Decl *var, result->decls_stmt)
 		var->var.is_threadlocal = is_threadlocal;
-		var->var.is_static = is_static;
+		var->var.is_static = is_static || is_threadlocal;
+		var->is_private = true;
 	FOREACH_END();
 	return result;
 }
@@ -113,7 +115,7 @@ static inline Ast *parse_declaration_stmt(ParseContext *c)
 static inline Decl *parse_optional_label(ParseContext *c, Ast *parent)
 {
 	if (!tok_is(c, TOKEN_CONST_IDENT)) return NULL;
-	Decl *decl = decl_new(DECL_LABEL, symstr(c), c->span, VISIBLE_LOCAL);
+	Decl *decl = decl_new(DECL_LABEL, symstr(c), c->span);
 	decl->label.parent = astid(parent);
 	advance_and_verify(c, TOKEN_CONST_IDENT);
 	if (!try_consume(c, TOKEN_COLON))
@@ -720,7 +722,7 @@ static inline bool parse_foreach_var(ParseContext *c, Ast *foreach)
 	{
 		foreach->foreach_stmt.value_by_ref = true;
 	}
-	Decl *var = decl_new_var(symstr(c), c->span, type, VARDECL_LOCAL, VISIBLE_LOCAL);
+	Decl *var = decl_new_var(symstr(c), c->span, type, VARDECL_LOCAL);
 	if (!try_consume(c, TOKEN_IDENT))
 	{
 		if (type)

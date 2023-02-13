@@ -129,7 +129,7 @@ void unit_register_external_symbol(CompilationUnit *unit, Decl *decl)
 
 void decl_register(Decl *decl)
 {
-	if (decl->visibility != VISIBLE_PUBLIC && decl->visibility != VISIBLE_EXTERN) return;
+	if (decl->is_private) return;
 	switch (decl->decl_kind)
 	{
 		case DECL_INITIALIZE:
@@ -305,7 +305,6 @@ bool unit_add_import(CompilationUnit *unit, Path *path, bool private_import)
 	Decl *import = decl_calloc();
 	import->span = path->span;
 	import->decl_kind = DECL_IMPORT;
-	import->visibility = VISIBLE_LOCAL;
 	import->import.path = path;
 	import->import.private = private_import;
 

@@ -2,13 +2,13 @@
 #include "parser_internal.h"
 
 
-static Decl *parse_const_declaration(ParseContext *c, Visibility visibility);
-static inline Decl *parse_func_definition(ParseContext *c, Visibility visibility, AstId docs, bool is_interface);
+static Decl *parse_const_declaration(ParseContext *c);
+static inline Decl *parse_func_definition(ParseContext *c, AstId docs, bool is_interface);
 static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl);
 static inline Decl *parse_static_top_level(ParseContext *c);
 static Decl *parse_include(ParseContext *c);
 
-#define DECL_VAR_NEW(type__, var__, visible__) decl_new_var(symstr(c), c->span, type__, var__, visible__);
+#define DECL_VAR_NEW(type__, var__) decl_new_var(symstr(c), c->span, type__, var__);
 
 
 static bool context_next_is_path_prefix_start(ParseContext *c)
@@ -788,7 +788,7 @@ Decl *parse_decl_after_type(ParseContext *c, TypeInfo *type)
 
 	if (tok_is(c, TOKEN_CT_IDENT))
 	{
-		Decl *decl = DECL_VAR_NEW(type, VARDECL_LOCAL_CT, VISIBLE_LOCAL);
+		Decl *decl = DECL_VAR_NEW(type, VARDECL_LOCAL_CT);
 		advance(c);
 		if (try_consume(c, TOKEN_EQ))
 		{
@@ -799,10 +799,10 @@ Decl *parse_decl_after_type(ParseContext *c, TypeInfo *type)
 
 	EXPECT_IDENT_FOR_OR("variable name", poisoned_decl);
 
-	Decl *decl = DECL_VAR_NEW(type, VARDECL_LOCAL, VISIBLE_LOCAL);
+	Decl *decl = DECL_VAR_NEW(type, VARDECL_LOCAL);
 	advance(c);
 
-	if (!parse_attributes(c, &decl->attributes)) return poisoned_decl;
+	if (!parse_attributes(c, &decl->attributes, decl)) return poisoned_decl;
 	if (tok_is(c, TOKEN_EQ))
 	{
 		if (!decl)
@@ -821,11 +821,13 @@ Decl *parse_decl_after_type(ParseContext *c, TypeInfo *type)
  *
  * @return Decl* (poisoned on error)
  */
-Decl *parse_decl(ParseContext *c)
+Decl *parse_local_decl(ParseContext *c)
 {
 	if (tok_is(c, TOKEN_CONST))
 	{
-		return parse_const_declaration(c, VISIBLE_LOCAL);
+		ASSIGN_DECL_OR_RET(Decl *decl, parse_const_declaration(c), poisoned_decl);
+		decl->is_private = true;
+		return decl;
 	}
 
 	bool is_threadlocal = try_consume(c, TOKEN_TLOCAL);
@@ -841,6 +843,7 @@ Decl *parse_decl(ParseContext *c)
 	}
 	decl->var.is_static = is_static || is_threadlocal;
 	decl->var.is_threadlocal = is_threadlocal;
+	decl->is_private = true;
 	return decl;
 }
 
@@ -864,7 +867,7 @@ Expr *parse_decl_or_expr(ParseContext *c, Decl **decl_ref)
  *  : 'const' type? IDENT '=' const_expr
  *  ;
  */
-static Decl *parse_const_declaration(ParseContext *c, Visibility visibility)
+static Decl *parse_const_declaration(ParseContext *c)
 {
 	advance_and_verify(c, TOKEN_CONST);
 
@@ -874,9 +877,11 @@ static Decl *parse_const_declaration(ParseContext *c, Visibility visibility)
 	{
 		ASSIGN_TYPE_OR_RET(type_info, parse_type(c), poisoned_decl);
 	}
-	Decl *decl = decl_new_var(symstr(c), c->span, type_info, VARDECL_CONST, visibility);
+	Decl *decl = decl_new_var(symstr(c), c->span, type_info, VARDECL_CONST);
 
 	if (!consume_const_name(c, "const")) return poisoned_decl;
+
+	if (!parse_attributes(c, &decl->attributes, decl)) return poisoned_decl;
 
 	CONSUME_OR_RET(TOKEN_EQ, poisoned_decl);
 
@@ -897,7 +902,7 @@ Decl *parse_var_decl(ParseContext *c)
 			SEMA_ERROR_HERE("Constants must be declared using 'const' not 'var'.");
 			return poisoned_decl;
 		case TOKEN_IDENT:
-			decl = DECL_VAR_NEW(NULL, VARDECL_LOCAL, VISIBLE_LOCAL);
+			decl = DECL_VAR_NEW(NULL, VARDECL_LOCAL);
 			advance(c);
 			if (!tok_is(c, TOKEN_EQ))
 			{
@@ -908,7 +913,7 @@ Decl *parse_var_decl(ParseContext *c)
 			ASSIGN_EXPR_OR_RET(decl->var.init_expr, parse_expr(c), poisoned_decl);
 			break;
 		case TOKEN_CT_IDENT:
-			decl = DECL_VAR_NEW(NULL, VARDECL_LOCAL_CT, VISIBLE_LOCAL);
+			decl = DECL_VAR_NEW(NULL, VARDECL_LOCAL_CT);
 			advance(c);
 			if (try_consume(c, TOKEN_EQ))
 			{
@@ -916,7 +921,7 @@ Decl *parse_var_decl(ParseContext *c)
 			}
 			break;
 		case TOKEN_CT_TYPE_IDENT:
-			decl = DECL_VAR_NEW(NULL, VARDECL_LOCAL_CT_TYPE, VISIBLE_LOCAL);
+			decl = DECL_VAR_NEW(NULL, VARDECL_LOCAL_CT_TYPE);
 			advance(c);
 			if (try_consume(c, TOKEN_EQ))
 			{
@@ -1025,7 +1030,7 @@ bool parse_attribute(ParseContext *c, Attr **attribute_ref)
  *
  * @return true if parsing succeeded, false if recovery is needed
  */
-bool parse_attributes(ParseContext *c, Attr ***attributes_ref)
+bool parse_attributes(ParseContext *c, Attr ***attributes_ref, Decl *owner)
 {
 	while (1)
 	{
@@ -1033,6 +1038,15 @@ bool parse_attributes(ParseContext *c, Attr ***attributes_ref)
 		if (!parse_attribute(c, &attr)) return false;
 		if (!attr) return true;
 		const char *name = attr->name;
+		if (name == attribute_list[ATTRIBUTE_PRIVATE])
+		{
+			if (!owner)
+			{
+				SEMA_ERROR(attr, "'%s' cannot be used here.");
+				return false;
+			}
+			owner->is_private = true;
+		}
 		FOREACH_BEGIN(Attr *other_attr, *attributes_ref)
 			if (other_attr->name == name)
 			{
@@ -1056,7 +1070,7 @@ bool parse_attributes(ParseContext *c, Attr ***attributes_ref)
  * @param visibility
  * @return true if parsing succeeded
  */
-static inline Decl *parse_global_declaration(ParseContext *c, Visibility visibility)
+static inline Decl *parse_global_declaration(ParseContext *c)
 {
 	bool threadlocal = try_consume(c, TOKEN_TLOCAL);
 
@@ -1073,7 +1087,7 @@ static inline Decl *parse_global_declaration(ParseContext *c, Visibility visibil
 	Decl **decls = NULL;
 	while (true)
 	{
-		decl = DECL_VAR_NEW(type, VARDECL_GLOBAL, visibility);
+		decl = DECL_VAR_NEW(type, VARDECL_GLOBAL);
 		decl->var.is_threadlocal = threadlocal;
 		if (!try_consume(c, TOKEN_IDENT))
 		{
@@ -1091,7 +1105,7 @@ static inline Decl *parse_global_declaration(ParseContext *c, Visibility visibil
 	// Add the last, or we miss it.
 	if (decls) vec_add(decls, decl);
 
-	if (!parse_attributes(c, &decl->attributes)) return poisoned_decl;
+	if (!parse_attributes(c, &decl->attributes, decl)) return poisoned_decl;
 	if (try_consume(c, TOKEN_EQ))
 	{
 		if (decls)
@@ -1126,7 +1140,7 @@ static inline Decl *parse_global_declaration(ParseContext *c, Visibility visibil
  * param_declaration ::= type_expression '...'?) (IDENT ('=' initializer)?)?
  *  ;
  */
-static inline bool parse_param_decl(ParseContext *c, Visibility parent_visibility, Decl*** parameters, bool require_name)
+static inline bool parse_param_decl(ParseContext *c, Decl*** parameters, bool require_name)
 {
 	ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_optional_type(c), false);
 	if (type->optional)
@@ -1135,7 +1149,7 @@ static inline bool parse_param_decl(ParseContext *c, Visibility parent_visibilit
 		return false;
 	}
 	bool vararg = try_consume(c, TOKEN_ELLIPSIS);
-	Decl *param = DECL_VAR_NEW(type, VARDECL_PARAM, parent_visibility);
+	Decl *param = DECL_VAR_NEW(type, VARDECL_PARAM);
 	param->var.vararg = vararg;
 	if (!try_consume(c, TOKEN_IDENT))
 	{
@@ -1200,7 +1214,7 @@ INLINE bool is_end_of_param_list(ParseContext *c)
  * parameter ::= type ELLIPSIS? (non_type_ident ('=' expr))?
  *             | ELLIPSIS (CT_TYPE_IDENT | non_type_ident ('=' expr)?)?
  */
-bool parse_parameters(ParseContext *c, Visibility visibility, Decl ***params_ref, Decl **body_params,
+bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
                       Variadic *variadic, int *vararg_index_ref, ParameterParseKind parse_kind)
 {
 	Decl** params = NULL;
@@ -1386,7 +1400,7 @@ bool parse_parameters(ParseContext *c, Visibility visibility, Decl ***params_ref
 			SEMA_ERROR(type, "Parameters may not be optional.");
 			return false;
 		}
-		Decl *param = decl_new_var(name, span, type, param_kind, visibility);
+		Decl *param = decl_new_var(name, span, type, param_kind);
 		param->var.type_info = type;
 		if (!no_name)
 		{
@@ -1395,7 +1409,7 @@ bool parse_parameters(ParseContext *c, Visibility visibility, Decl ***params_ref
 				if (!parse_decl_initializer(c, param, false)) return poisoned_decl;
 			}
 		}
-		if (!parse_attributes(c, &param->attributes)) return false;
+		if (!parse_attributes(c, &param->attributes, NULL)) return false;
 		if (ellipsis)
 		{
 			var_arg_found = true;
@@ -1414,13 +1428,13 @@ bool parse_parameters(ParseContext *c, Visibility visibility, Decl ***params_ref
  *
  * parameter_type_list ::= '(' parameters ')'
  */
-static inline bool parse_fn_parameter_list(ParseContext *c, Visibility parent_visibility, Signature *signature, bool is_interface)
+static inline bool parse_fn_parameter_list(ParseContext *c, Signature *signature, bool is_interface)
 {
 	Decl **decls = NULL;
 	CONSUME_OR_RET(TOKEN_LPAREN, false);
 	Variadic variadic = VARIADIC_NONE;
 	int vararg_index = -1;
-	if (!parse_parameters(c, parent_visibility, &decls, NULL, &variadic, &vararg_index, PARAM_PARSE_FUNC)) return false;
+	if (!parse_parameters(c, &decls, NULL, &variadic, &vararg_index, PARAM_PARSE_FUNC)) return false;
 	CONSUME_OR_RET(TOKEN_RPAREN, false);
 	signature->vararg_index = vararg_index < 0 ? vec_size(decls) : vararg_index;
 	signature->params = decls;
@@ -1467,13 +1481,13 @@ bool parse_struct_body(ParseContext *c, Decl *parent)
 			Decl *member;
 			if (peek(c) != TOKEN_IDENT)
 			{
-				member = decl_new_with_type(NULL, c->span, decl_kind, parent->visibility);
+				member = decl_new_with_type(NULL, c->span, decl_kind);
 				advance(c);
 			}
 			else
 			{
 				advance(c);
-				member = decl_new_with_type(symstr(c), c->span, decl_kind, parent->visibility);
+				member = decl_new_with_type(symstr(c), c->span, decl_kind);
 				advance_and_verify(c, TOKEN_IDENT);
 			}
 			if (decl_kind == DECL_BITSTRUCT)
@@ -1484,7 +1498,7 @@ bool parse_struct_body(ParseContext *c, Decl *parent)
 			}
 			else
 			{
-				if (!parse_attributes(c, &member->attributes)) return false;
+				if (!parse_attributes(c, &member->attributes, NULL)) return false;
 				if (!parse_struct_body(c, member)) return decl_poison(parent);
 			}
 			vec_add(parent->strukt.members, member);
@@ -1522,7 +1536,7 @@ bool parse_struct_body(ParseContext *c, Decl *parent)
 				SEMA_ERROR_HERE("A valid member name was expected here.");
 				return false;
 			}
-			Decl *member = DECL_VAR_NEW(type, VARDECL_MEMBER, parent->visibility);
+			Decl *member = DECL_VAR_NEW(type, VARDECL_MEMBER);
 			vec_add(parent->strukt.members, member);
 			index++;
 			if (index > MAX_MEMBERS)
@@ -1531,7 +1545,7 @@ bool parse_struct_body(ParseContext *c, Decl *parent)
 				return false;
 			}
 			advance(c);
-			if (!parse_attributes(c, &member->attributes)) return false;
+			if (!parse_attributes(c, &member->attributes, NULL)) return false;
 			if (!try_consume(c, TOKEN_COMMA)) break;
 			if (was_inline)
 			{
@@ -1554,18 +1568,18 @@ bool parse_struct_body(ParseContext *c, Decl *parent)
  *
  * @param visibility
  */
-static inline Decl *parse_struct_declaration(ParseContext *c, Visibility visibility)
+static inline Decl *parse_struct_declaration(ParseContext *c)
 {
 	TokenType type = c->tok;
 
 	advance(c);
 	const char* type_name = type == TOKEN_STRUCT ? "struct" : "union";
 
-	Decl *decl = decl_new_with_type(symstr(c), c->span, decl_from_token(type), visibility);
+	Decl *decl = decl_new_with_type(symstr(c), c->span, decl_from_token(type));
 
 	if (!consume_type_name(c, type_name)) return poisoned_decl;
 
-	if (!parse_attributes(c, &decl->attributes))
+	if (!parse_attributes(c, &decl->attributes, decl))
 	{
 		return poisoned_decl;
 	}
@@ -1591,7 +1605,7 @@ static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl)
 	while (!try_consume(c, TOKEN_RBRACE))
 	{
 		ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_type(c), false);
-		Decl *member_decl = DECL_VAR_NEW(type, VARDECL_BITMEMBER, VISIBLE_LOCAL);
+		Decl *member_decl = DECL_VAR_NEW(type, VARDECL_BITMEMBER);
 
 		if (!try_consume(c, TOKEN_IDENT))
 		{
@@ -1622,18 +1636,19 @@ static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl)
 /**
  * bitstruct_declaration = 'bitstruct' IDENT ':' type bitstruct_body
  */
-static inline Decl *parse_bitstruct_declaration(ParseContext *c, Visibility visibility)
+static inline Decl *parse_bitstruct_declaration(ParseContext *c)
 {
 	advance_and_verify(c, TOKEN_BITSTRUCT);
 
-	Decl *decl = decl_new_with_type(symstr(c), c->span, DECL_BITSTRUCT, visibility);
+	Decl *decl = decl_new_with_type(symstr(c), c->span, DECL_BITSTRUCT);
+
 	if (!consume_type_name(c, "bitstruct")) return poisoned_decl;
 
 	TRY_CONSUME_OR_RET(TOKEN_COLON, "':' followed by bitstruct type (e.g. 'int') was expected here.", poisoned_decl);
 
 	ASSIGN_TYPE_OR_RET(decl->bitstruct.base_type, parse_type(c), poisoned_decl);
 
-	if (!parse_attributes(c, &decl->attributes))
+	if (!parse_attributes(c, &decl->attributes, decl))
 	{
 		return poisoned_decl;
 	}
@@ -1647,9 +1662,9 @@ static inline Decl *parse_bitstruct_declaration(ParseContext *c, Visibility visi
 
 }
 
-static inline Decl *parse_top_level_const_declaration(ParseContext *c, Visibility visibility)
+static inline Decl *parse_top_level_const_declaration(ParseContext *c)
 {
-	ASSIGN_DECL_OR_RET(Decl * decl, parse_const_declaration(c, visibility), poisoned_decl);
+	ASSIGN_DECL_OR_RET(Decl * decl, parse_const_declaration(c), poisoned_decl);
 	CONSUME_EOS_OR_RET(poisoned_decl);
 	return decl;
 }
@@ -1660,7 +1675,7 @@ static inline Decl *parse_top_level_const_declaration(ParseContext *c, Visibilit
  *
  * trailing_block_parameter ::= '@' IDENT ( '(' parameters ')' )?
  */
-static bool parse_macro_arguments(ParseContext *c, Visibility visibility, Decl *macro)
+static bool parse_macro_arguments(ParseContext *c, Decl *macro)
 {
 	CONSUME_OR_RET(TOKEN_LPAREN, false);
 
@@ -1668,7 +1683,7 @@ static bool parse_macro_arguments(ParseContext *c, Visibility visibility, Decl *
 	Variadic variadic = VARIADIC_NONE;
 	int vararg_index = -1;
 	Decl **params = NULL;
-	if (!parse_parameters(c, visibility, &params, NULL, &variadic, &vararg_index, PARAM_PARSE_MACRO)) return false;
+	if (!parse_parameters(c, &params, NULL, &variadic, &vararg_index, PARAM_PARSE_MACRO)) return false;
 	macro->func_decl.signature.params = params;
 	macro->func_decl.signature.vararg_index = vararg_index < 0 ? vec_size(params) : vararg_index;
 	macro->func_decl.signature.variadic = variadic;
@@ -1677,11 +1692,11 @@ static bool parse_macro_arguments(ParseContext *c, Visibility visibility, Decl *
 	if (try_consume(c, TOKEN_EOS))
 	{
 		// Consume AT_IDENT
-		Decl *body_param = decl_new(DECL_BODYPARAM, symstr(c), c->span, visibility);
+		Decl *body_param = decl_new(DECL_BODYPARAM, symstr(c), c->span);
 		TRY_CONSUME_OR_RET(TOKEN_AT_IDENT, "Expected an ending ')' or a block parameter on the format '@block(...).", false);
 		if (try_consume(c, TOKEN_LPAREN))
 		{
-			if (!parse_parameters(c, visibility, &body_param->body_params, NULL, NULL, NULL, PARAM_PARSE_BODY)) return false;
+			if (!parse_parameters(c, &body_param->body_params, NULL, NULL, NULL, PARAM_PARSE_BODY)) return false;
 			CONSUME_OR_RET(TOKEN_RPAREN, false);
 		}
 		macro->func_decl.body_param = declid(body_param);
@@ -1715,19 +1730,26 @@ static inline Expr **parse_generic_parameters(ParseContext *c)
 	return params;
 }
 
+static inline void decl_add_type(Decl *decl, TypeKind kind)
+{
+	Type *type = type_new(kind, decl->name);
+	type->canonical = type;
+	type->decl = decl;
+	decl->type = type;
+}
 /**
  * define_type_body ::= TYPE_IDENT '=' 'distinct'? (func_typedef | type generic_params?) ';'
  *
  * func_typedef ::= 'fn' optional_type parameter_type_list
  */
-static inline Decl *parse_define_type(ParseContext *c, Visibility visibility)
+static inline Decl *parse_define_type(ParseContext *c)
 {
 	advance_and_verify(c, TOKEN_DEFINE);
 
-	const char *alias_name = symstr(c);
-	SourceSpan name_loc = c->span;
-	DEBUG_LOG("Parse define %s", alias_name);
+	Decl *decl = decl_new(DECL_POISONED, symstr(c), c->span);
+	DEBUG_LOG("Parse define %s", decl->name);
 	advance_and_verify(c, TOKEN_TYPE_IDENT);
+	if (!parse_attributes(c, &decl->attributes, decl)) return false;
 	CONSUME_OR_RET(TOKEN_EQ, poisoned_decl);
 	bool distinct = false;
 	if (tok_is(c, TOKEN_IDENT) && symstr(c) == kw_distinct)
@@ -1739,12 +1761,13 @@ static inline Decl *parse_define_type(ParseContext *c, Visibility visibility)
 	// 1. Did we have `fn`? In that case it's a function pointer.
 	if (try_consume(c, TOKEN_FN))
 	{
-		Decl *decl = decl_new_with_type(alias_name, name_loc, DECL_TYPEDEF, visibility);
+		decl->decl_kind = DECL_TYPEDEF;
+		decl_add_type(decl, TYPE_TYPEDEF);
 		decl->typedef_decl.is_func = true;
 		decl->typedef_decl.is_distinct = distinct;
 		ASSIGN_TYPE_OR_RET(TypeInfo *type_info, parse_optional_type(c), poisoned_decl);
 		decl->typedef_decl.function_signature.rtype = type_infoid(type_info);
-		if (!parse_fn_parameter_list(c, decl->visibility, &(decl->typedef_decl.function_signature), true))
+		if (!parse_fn_parameter_list(c, &(decl->typedef_decl.function_signature), true))
 		{
 			return poisoned_decl;
 		}
@@ -1761,24 +1784,32 @@ static inline Decl *parse_define_type(ParseContext *c, Visibility visibility)
 	{
 		Expr **params = parse_generic_parameters(c);
 		if (!params) return poisoned_decl;
-		Decl *decl = decl_new(DECL_DEFINE, alias_name, name_loc, visibility);
+		decl->decl_kind = DECL_DEFINE;
+		decl_add_type(decl, TYPE_TYPEDEF);
 		decl->define_decl.define_kind = DEFINE_TYPE_GENERIC;
 		decl->define_decl.type_info = type_info;
 		decl->define_decl.generic_params = params;
 		RANGE_EXTEND_PREV(decl);
+		if (!parse_attributes(c, &decl->attributes, decl)) return false;
 		CONSUME_EOS_OR_RET(poisoned_decl);
 		return decl;
 	}
-
-	Decl *decl = decl_new_with_type(alias_name, name_loc, distinct ? DECL_DISTINCT : DECL_TYPEDEF, visibility);
+	REMINDER("Distinct fn??");
 	decl->typedef_decl.type_info = type_info;
 	decl->typedef_decl.is_func = false;
 	if (distinct)
 	{
+		decl->decl_kind = DECL_DISTINCT;
+		decl_add_type(decl, TYPE_DISTINCT);
 		TypedefDecl typedef_decl = decl->typedef_decl; // Ensure value semantics.
 		decl->distinct_decl.typedef_decl = typedef_decl;
 		decl->type->type_kind = TYPE_DISTINCT;
 		decl->decl_kind = DECL_DISTINCT;
+	}
+	else
+	{
+		decl->decl_kind = DECL_TYPEDEF;
+		decl_add_type(decl, TYPE_TYPEDEF);
 	}
 	RANGE_EXTEND_PREV(decl);
 	CONSUME_EOS_OR_RET(poisoned_decl);
@@ -1790,7 +1821,7 @@ static inline Decl *parse_define_type(ParseContext *c, Visibility visibility)
  *
  * identifier_alias ::= path? (IDENT | CONST_IDENT)
  */
-static inline Decl *parse_define_ident(ParseContext *c, Visibility visibility)
+static inline Decl *parse_define_ident(ParseContext *c)
 {
 	// 1. Store the beginning of the "define".
 	advance_and_verify(c, TOKEN_DEFINE);
@@ -1813,7 +1844,7 @@ static inline Decl *parse_define_ident(ParseContext *c, Visibility visibility)
 	}
 
 	// 3. Set up the "define".
-	Decl *decl = decl_new(DECL_DEFINE, symstr(c), c->span, visibility);
+	Decl *decl = decl_new(DECL_DEFINE, symstr(c), c->span);
 	decl->define_decl.define_kind = DEFINE_IDENT_ALIAS;
 
 	if (decl->name == kw_main)
@@ -1884,32 +1915,28 @@ static inline Decl *parse_define_ident(ParseContext *c, Visibility visibility)
 /**
  * define_attribute ::= 'define' '@' IDENT '(' parameter_list ')' ('=' attribute_list)?
  */
-static inline Decl *parse_define_attribute(ParseContext *c, Visibility visibility)
+static inline Decl *parse_define_attribute(ParseContext *c)
 {
 	// 1. Store the beginning of the "define".
 	advance_and_verify(c, TOKEN_DEFINE);
 
-	Decl *decl = decl_new(DECL_ATTRIBUTE, symstr(c), c->span, visibility);
+	Decl *decl = decl_new(DECL_ATTRIBUTE, symstr(c), c->span);
 
 	advance_and_verify(c, TOKEN_AT_TYPE_IDENT);
 
 	if (try_consume(c, TOKEN_LPAREN))
 	{
-		if (!parse_parameters(c, visibility, &decl->attr_decl.params, NULL, NULL, NULL, PARAM_PARSE_ATTR)) return poisoned_decl;
+		if (!parse_parameters(c, &decl->attr_decl.params, NULL, NULL, NULL, PARAM_PARSE_ATTR)) return poisoned_decl;
 		CONSUME_OR_RET(TOKEN_RPAREN, poisoned_decl);
 	}
 
 	Attr **attributes = NULL;
-	if (try_consume(c, TOKEN_EQ))
-	{
-		while (1)
-		{
-			if (!parse_attributes(c, &attributes)) return poisoned_decl;
-			if (tok_is(c, TOKEN_EOS)) break;
-			CONSUME_OR_RET(TOKEN_COMMA, poisoned_decl);
-		}
-	}
+	if (!parse_attributes(c, &decl->attributes, decl)) return poisoned_decl;
+	CONSUME_OR_RET(TOKEN_EQ, poisoned_decl);
+	CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
 
+	if (!parse_attributes(c, &attributes, NULL)) return poisoned_decl;
+	CONSUME_OR_RET(TOKEN_RBRACE, poisoned_decl);
 	decl->attr_decl.attrs = attributes;
 	CONSUME_EOS_OR_RET(poisoned_decl);
 	return decl;
@@ -1918,17 +1945,17 @@ static inline Decl *parse_define_attribute(ParseContext *c, Visibility visibilit
 /**
  * define_decl ::= DEFINE define_type_body |
  */
-static inline Decl *parse_define(ParseContext *c, Visibility visibility)
+static inline Decl *parse_define(ParseContext *c)
 {
 	switch (peek(c))
 	{
 		case TOKEN_AT_TYPE_IDENT:
 			// define @Foo = @inline, @noreturn
-			return parse_define_attribute(c, visibility);
+			return parse_define_attribute(c);
 		case TOKEN_TYPE_IDENT:
-			return parse_define_type(c, visibility);
+			return parse_define_type(c);
 		default:
-			return parse_define_ident(c, visibility);
+			return parse_define_ident(c);
 	}
 }
 
@@ -2010,20 +2037,19 @@ static inline bool parse_func_macro_header(ParseContext *c, Decl *decl)
 /**
  * macro ::= macro_header '(' macro_params ')' compound_statement
  */
-static inline Decl *parse_macro_declaration(ParseContext *c, Visibility visibility, AstId docs)
+static inline Decl *parse_macro_declaration(ParseContext *c, AstId docs)
 {
 	DeclKind kind = try_consume(c, TOKEN_MACRO) ? DECL_MACRO : DECL_GENERIC;
 	if (kind == DECL_GENERIC) advance_and_verify(c, TOKEN_GENERIC);
 
 	Decl *decl = decl_calloc();
 	decl->decl_kind = kind;
-	decl->visibility = visibility;
 	decl->func_decl.docs = docs;
 	if (!parse_func_macro_header(c, decl)) return poisoned_decl;
 	const char *block_parameter = NULL;
-	if (!parse_macro_arguments(c, visibility, decl)) return poisoned_decl;
+	if (!parse_macro_arguments(c, decl)) return poisoned_decl;
 
-	if (!parse_attributes(c, &decl->attributes)) return poisoned_decl;
+	if (!parse_attributes(c, &decl->attributes, decl)) return poisoned_decl;
 	if (tok_is(c, TOKEN_IMPLIES))
 	{
 		ASSIGN_ASTID_OR_RET(decl->func_decl.body,
@@ -2041,13 +2067,13 @@ static inline Decl *parse_macro_declaration(ParseContext *c, Visibility visibili
  *		| FAULT TYPE_IDENT '{' error_data '}'
  *		;
  */
-static inline Decl *parse_fault_declaration(ParseContext *c, Visibility visibility)
+static inline Decl *parse_fault_declaration(ParseContext *c, bool is_private)
 {
 	advance(c);
 	// advance_and_verify(context, TOKEN_ERRTYPE);
 
-	Decl *decl = decl_new_with_type(symstr(c), c->span, DECL_FAULT, visibility);
-
+	Decl *decl = decl_new_with_type(symstr(c), c->span, DECL_FAULT);
+	decl->is_private = is_private;
 	if (!consume_type_name(c, "fault")) return poisoned_decl;
 
 	TypeInfo *type = NULL;
@@ -2058,7 +2084,8 @@ static inline Decl *parse_fault_declaration(ParseContext *c, Visibility visibili
 	uint64_t ordinal = 0;
 	while (!try_consume(c, TOKEN_RBRACE))
 	{
-		Decl *fault_const = decl_new(DECL_FAULTVALUE, symstr(c), c->span, decl->visibility);
+		Decl *fault_const = decl_new(DECL_FAULTVALUE, symstr(c), c->span);
+		fault_const->is_private = is_private;
 		if (!consume_const_name(c, "fault value"))
 		{
 			return poisoned_decl;
@@ -2094,7 +2121,7 @@ static inline Decl *parse_fault_declaration(ParseContext *c, Visibility visibili
  *  | type '(' opt_parameter_type_list ')'
  *  ;
  */
-static inline bool parse_enum_spec(ParseContext *c, TypeInfo **type_ref, Decl*** parameters_ref, Visibility parent_visibility)
+static inline bool parse_enum_spec(ParseContext *c, TypeInfo **type_ref, Decl*** parameters_ref)
 {
 
 	ASSIGN_TYPE_OR_RET(*type_ref, parse_type(c), false);
@@ -2102,7 +2129,7 @@ static inline bool parse_enum_spec(ParseContext *c, TypeInfo **type_ref, Decl***
 	if (!try_consume(c, TOKEN_LPAREN)) return true;
 	while (!try_consume(c, TOKEN_RPAREN))
 	{
-		if (!parse_param_decl(c, parent_visibility, parameters_ref, true)) return false;
+		if (!parse_param_decl(c, parameters_ref, true)) return false;
 		Decl *last_parameter = VECLAST(*parameters_ref);
 		assert(last_parameter);
 		if (last_parameter->var.vararg)
@@ -2139,28 +2166,29 @@ static inline bool parse_enum_spec(ParseContext *c, TypeInfo **type_ref, Decl***
  *  ;
  *
  */
-static inline Decl *parse_enum_declaration(ParseContext *c, Visibility visibility)
+static inline Decl *parse_enum_declaration(ParseContext *c, bool is_private)
 {
 	advance_and_verify(c, TOKEN_ENUM);
 
-	Decl *decl = decl_new_with_type(symstr(c), c->span, DECL_ENUM, visibility);
-
+	Decl *decl = decl_new_with_type(symstr(c), c->span, DECL_ENUM);
+	decl->is_private = is_private;
 	if (!consume_type_name(c, "enum")) return poisoned_decl;
 
 	TypeInfo *type = NULL;
 	if (try_consume(c, TOKEN_COLON))
 	{
-		if (!parse_enum_spec(c, &type, &decl->enums.parameters, visibility)) return poisoned_decl;
+		if (!parse_enum_spec(c, &type, &decl->enums.parameters)) return poisoned_decl;
 	}
 
-	if (!parse_attributes(c, &decl->attributes)) return poisoned_decl;
+	if (!parse_attributes(c, &decl->attributes, decl)) return poisoned_decl;
 
 	CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
 
 	decl->enums.type_info = type ? type : type_info_new_base(type_int, decl->span);
 	while (!try_consume(c, TOKEN_RBRACE))
 	{
-		Decl *enum_const = decl_new(DECL_ENUM_CONSTANT, symstr(c), c->span, decl->visibility);
+		Decl *enum_const = decl_new(DECL_ENUM_CONSTANT, symstr(c), c->span);
+		enum_const->is_private = is_private;
 		const char *name = enum_const->name;
 		if (!consume_const_name(c, "enum constant"))
 		{
@@ -2219,12 +2247,11 @@ static inline Decl *parse_enum_declaration(ParseContext *c, Visibility visibilit
  * @param visibility
  * @return Decl*
  */
-static inline Decl *parse_func_definition(ParseContext *c, Visibility visibility, AstId docs, bool is_interface)
+static inline Decl *parse_func_definition(ParseContext *c, AstId docs, bool is_interface)
 {
 	advance_and_verify(c, TOKEN_FN);
 	Decl *func = decl_calloc();
 	func->decl_kind = DECL_FUNC;
-	func->visibility = visibility;
 	func->func_decl.docs = docs;
 	if (!parse_func_macro_header(c, func)) return poisoned_decl;
 	if (func->name[0] == '@')
@@ -2232,8 +2259,8 @@ static inline Decl *parse_func_definition(ParseContext *c, Visibility visibility
 		SEMA_ERROR(func, "Function names may not use '@'.");
 		return false;
 	}
-	if (!parse_fn_parameter_list(c, visibility, &(func->func_decl.signature), is_interface)) return poisoned_decl;
-	if (!parse_attributes(c, &func->attributes)) return poisoned_decl;
+	if (!parse_fn_parameter_list(c, &(func->func_decl.signature), is_interface)) return poisoned_decl;
+	if (!parse_attributes(c, &func->attributes, func)) return poisoned_decl;
 
 	// TODO remove
 	is_interface = tok_is(c, TOKEN_EOS);
@@ -2294,25 +2321,20 @@ static inline Decl *parse_static_top_level(ParseContext *c)
 	}
 	advance(c);
 	Attr *attr = NULL;
-	if (!parse_attributes(c, &init->attributes)) return poisoned_decl;
+	if (!parse_attributes(c, &init->attributes, NULL)) return poisoned_decl;
 	ASSIGN_ASTID_OR_RET(init->xxlizer.init, parse_compound_stmt(c), poisoned_decl);
 	RANGE_EXTEND_PREV(init);
 	return init;
 }
 
-static inline bool check_no_visibility_before(ParseContext *c, Visibility visibility)
+static inline bool check_no_visibility_before(ParseContext *c, bool is_private)
 {
-	switch (visibility)
+	if (is_private)
 	{
-		case VISIBLE_MODULE:
-			SEMA_ERROR_HERE("Unexpected 'static' before '%s'", symstr(c));
-			return false;
-		case VISIBLE_EXTERN:
-			SEMA_ERROR_HERE("Unexpected 'extern' before '%s'.", symstr(c));
-			return false;
-		default:
-			return true;
+		SEMA_ERROR_HERE("Unexpected 'private' before '%s'", symstr(c));
+		return false;
 	}
+	return true;
 }
 
 
@@ -2588,7 +2610,7 @@ static bool parse_docs(ParseContext *c, AstId *docs_ref)
 static Decl *parse_include(ParseContext *c)
 {
 	SourceSpan loc = c->span;
-	Decl *decl = decl_new(DECL_CT_INCLUDE, NULL, loc, VISIBLE_LOCAL);
+	Decl *decl = decl_new(DECL_CT_INCLUDE, NULL, loc);
 	advance_and_verify(c, TOKEN_CT_INCLUDE);
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_decl);
 	const char *str = symstr(c);
@@ -2670,20 +2692,6 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 {
 	AstId docs = 0;
 	if (!parse_docs(c, &docs)) return poisoned_decl;
-	Visibility visibility = VISIBLE_PUBLIC;
-	switch (c->tok)
-	{
-		case TOKEN_PRIVATE:
-			visibility = VISIBLE_MODULE;
-			advance(c);
-			break;
-		case TOKEN_EXTERN:
-			visibility = VISIBLE_EXTERN;
-			advance(c);
-		default:
-			break;
-	}
-
 	Decl *decl;
 	TokenType tok = c->tok;
 	if (tok != TOKEN_MODULE && !c->unit->module)
@@ -2691,13 +2699,56 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 		if (!context_set_module_from_filename(c)) return poisoned_decl;
 		// Pass the docs to the next thing.
 	}
-
+	bool is_private = false;
+AFTER_VISIBILITY:
 	switch (tok)
 	{
-		case TOKEN_MODULE:
-			if (visibility != VISIBLE_PUBLIC)
+		case TOKEN_PRIVATE:
+			if (is_private)
 			{
-				SEMA_ERROR_HERE("Did not expect visibility before 'module'.");
+				SEMA_ERROR_HERE("Two 'private' modifiers cannot be used in a row.");
+				return poisoned_decl;
+			}
+			is_private = true;
+			advance(c);
+			tok = c->tok;
+			goto AFTER_VISIBILITY;
+		case TOKEN_EXTERN:
+			if (is_private)
+			{
+				SEMA_ERROR_HERE("'private' cannot be combined with 'extern'.");
+			}
+			advance(c);
+			tok = c->tok;
+			switch (tok)
+			{
+				case TOKEN_FN:
+				{
+					ASSIGN_DECL_OR_RET(decl, parse_func_definition(c, docs, false), poisoned_decl);
+					break;
+				}
+				case TOKEN_CONST:
+				{
+					ASSIGN_DECL_OR_RET(decl, parse_top_level_const_declaration(c), poisoned_decl);
+					break;
+				}
+				case TOKEN_IDENT:
+				case TOKEN_TLOCAL:
+				case TYPELIKE_TOKENS:
+				{
+					ASSIGN_DECL_OR_RET(decl, parse_global_declaration(c), poisoned_decl);
+					break;
+				}
+				default:
+					SEMA_ERROR_HERE("Expected 'extern' to be followed by a function, constant or global variable.");
+					return poisoned_decl;
+			}
+			decl->is_extern = true;
+			break;
+		case TOKEN_MODULE:
+			if (is_private)
+			{
+				SEMA_ERROR_HERE("Did not expect 'private' before 'module'.");
 				return poisoned_decl;
 			}
 			if (!c_ref)
@@ -2716,26 +2767,28 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 			if (!parse_module(c, docs)) return poisoned_decl;
 			return NULL;
 		case TOKEN_DOCS_START:
-			if (visibility != VISIBLE_PUBLIC)
+			if (is_private)
 			{
-				SEMA_ERROR_HERE("Did not expect doc comments after visibility.");
+				SEMA_ERROR_HERE("Did not expect doc comments after 'private'.");
 				return poisoned_decl;
 			}
 			SEMA_ERROR_HERE("There are more than one doc comment in a row, that is not allowed.");
 			return poisoned_decl;
 		case TOKEN_DEFINE:
 		{
-			ASSIGN_DECL_OR_RET(decl, parse_define(c, visibility), poisoned_decl);
+			ASSIGN_DECL_OR_RET(decl, parse_define(c), poisoned_decl);
+			if (is_private) decl->is_private = is_private;
 			break;
 		}
 		case TOKEN_FN:
 		{
-			ASSIGN_DECL_OR_RET(decl, parse_func_definition(c, visibility, docs, false), poisoned_decl);
+			ASSIGN_DECL_OR_RET(decl, parse_func_definition(c, docs, false), poisoned_decl);
+			if (is_private) decl->is_private = is_private;
 			break;
 		}
 		case TOKEN_STATIC:
 		{
-			if (!check_no_visibility_before(c, visibility)) return poisoned_decl;
+			if (!check_no_visibility_before(c, is_private)) return poisoned_decl;
 			ASSIGN_DECL_OR_RET(decl, parse_static_top_level(c), poisoned_decl);
 			if (docs)
 			{
@@ -2745,7 +2798,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 			break;
 		}
 		case TOKEN_CT_ASSERT:
-			if (!check_no_visibility_before(c, visibility)) return poisoned_decl;
+			if (!check_no_visibility_before(c, is_private)) return poisoned_decl;
 			{
 				ASSIGN_AST_OR_RET(Ast *ast, parse_ct_assert_stmt(c), poisoned_decl);
 				decl = decl_new_ct(DECL_CT_ASSERT, ast->span);
@@ -2758,7 +2811,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 				return decl;
 			}
 		case TOKEN_CT_ECHO:
-			if (!check_no_visibility_before(c, visibility)) return poisoned_decl;
+			if (!check_no_visibility_before(c, is_private)) return poisoned_decl;
 			{
 				ASSIGN_AST_OR_RET(Ast *ast, parse_ct_echo_stmt(c), poisoned_decl);
 				decl = decl_new_ct(DECL_CT_ECHO, ast->span);
@@ -2772,7 +2825,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 			}
 		case TOKEN_CT_IF:
 		{
-			if (!check_no_visibility_before(c, visibility)) return poisoned_decl;
+			if (!check_no_visibility_before(c, is_private)) return poisoned_decl;
 			ASSIGN_DECL_OR_RET(decl, parse_ct_if_top_level(c), poisoned_decl);
 			if (docs)
 			{
@@ -2782,7 +2835,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 			break;
 		}
 		case TOKEN_IMPORT:
-			if (!check_no_visibility_before(c, visibility)) return poisoned_decl;
+			if (!check_no_visibility_before(c, is_private)) return poisoned_decl;
 			if (!c_ref)
 			{
 				SEMA_ERROR_HERE("'import' may not appear inside a compile time statement.");
@@ -2797,7 +2850,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 			return NULL;
 		case TOKEN_CT_SWITCH:
 		{
-			if (!check_no_visibility_before(c, visibility)) return poisoned_decl;
+			if (!check_no_visibility_before(c, is_private)) return poisoned_decl;
 			ASSIGN_DECL_OR_RET(decl, parse_ct_switch_top_level(c), poisoned_decl);
 			if (docs)
 			{
@@ -2807,7 +2860,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 			break;
 		}
 		case TOKEN_CT_INCLUDE:
-			if (!check_no_visibility_before(c, visibility)) return poisoned_decl;
+			if (!check_no_visibility_before(c, is_private)) return poisoned_decl;
 			if (docs)
 			{
 				SEMA_ERROR(astptr(docs), "Unexpected doc comment before $include, did you mean to use a regular comment?");
@@ -2817,38 +2870,48 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 			break;
 		case TOKEN_BITSTRUCT:
 		{
-			ASSIGN_DECL_OR_RET(decl, parse_bitstruct_declaration(c, visibility), poisoned_decl);
+			ASSIGN_DECL_OR_RET(decl, parse_bitstruct_declaration(c), poisoned_decl);
+			if (is_private) decl->is_private = is_private;
 			break;
 		}
 		case TOKEN_CONST:
 		{
-			ASSIGN_DECL_OR_RET(decl, parse_top_level_const_declaration(c, visibility), poisoned_decl);
+			ASSIGN_DECL_OR_RET(decl, parse_top_level_const_declaration(c), poisoned_decl);
+			if (is_private) decl->is_private = is_private;
 			break;
 		}
 		case TOKEN_STRUCT:
 		case TOKEN_UNION:
 		{
-			ASSIGN_DECL_OR_RET(decl, parse_struct_declaration(c, visibility), poisoned_decl);
+			ASSIGN_DECL_OR_RET(decl, parse_struct_declaration(c), poisoned_decl);
+			if (is_private) decl->is_private = is_private;
 			break;
 		}
 		case TOKEN_GENERIC:
 		case TOKEN_MACRO:
 		{
-			ASSIGN_DECL_OR_RET(decl, parse_macro_declaration(c, visibility, docs), poisoned_decl);
+			ASSIGN_DECL_OR_RET(decl, parse_macro_declaration(c, docs), poisoned_decl);
+			if (is_private) decl->is_private = is_private;
 			break;
 		}
 		case TOKEN_ENUM:
 		{
-			ASSIGN_DECL_OR_RET(decl, parse_enum_declaration(c, visibility), poisoned_decl);
+			ASSIGN_DECL_OR_RET(decl, parse_enum_declaration(c, is_private), poisoned_decl);
+			if (is_private) decl->is_private = is_private;
 			break;
 		}
 		case TOKEN_FAULT:
 		{
-			ASSIGN_DECL_OR_RET(decl, parse_fault_declaration(c, visibility), poisoned_decl);
+			ASSIGN_DECL_OR_RET(decl, parse_fault_declaration(c, is_private), poisoned_decl);
+			if (is_private) decl->is_private = is_private;
 			break;
 		}
 		case TOKEN_IDENT:
-			return parse_global_declaration(c, visibility);
+		{
+			ASSIGN_DECL_OR_RET(decl, parse_global_declaration(c), poisoned_decl);
+			if (is_private) decl->is_private = is_private;
+			break;
+		}
 		case TOKEN_EOF:
 			SEMA_ERROR_LAST("Expected a top level declaration");
 			return poisoned_decl;
@@ -2867,7 +2930,8 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 		case TOKEN_TLOCAL:
 		case TYPELIKE_TOKENS:
 		{
-			ASSIGN_DECL_OR_RET(decl, parse_global_declaration(c, visibility), poisoned_decl);
+			ASSIGN_DECL_OR_RET(decl, parse_global_declaration(c), poisoned_decl);
+			if (is_private) decl->is_private = is_private;
 			break;
 		}
 		case TOKEN_EOS:

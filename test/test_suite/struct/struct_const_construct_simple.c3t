@@ -7,16 +7,16 @@ struct Foo
     long bar;
 }
 
-private usz x = Foo.sizeof;
+usz x @private = Foo.sizeof;
 
-private Foo foo1 = { 1, 2 };
-private Foo foo2 = { .foo = 2 };
-private Foo foo3 = { .bar = 3 };
-private Foo foo4 = { .bar = 4, .foo = 4, .bar = 1 };
-private Foo foo5 = {};
-private Foo foo6;
-private const Foo FOO7 = { 1, 2 };
-private Foo foo8 = FOO7;
+Foo foo1 @private = { 1, 2 };
+Foo foo2 @private = { .foo = 2 };
+Foo foo3 @private = { .bar = 3 };
+Foo foo4 @private = { .bar = 4, .foo = 4, .bar = 1 };
+Foo foo5 @private = {};
+Foo foo6 @private;
+const Foo FOO7 @private = { 1, 2 };
+Foo foo8 @private = FOO7;
 
 /* #expect: structo.ll
 

@@ -196,6 +196,6 @@ fn float elastic_inout(float t, float b, float c, float d) @inline
         :  a * math::pow(2.0f, -10 * t) * math::sin((t * d - s) * (2 * (float)math::PI) / p) * 0.5f + c + b;
 }
 
-private macro sq(x) => x * x;
-private macro cube(x) => x * x * x;
+macro sq(x) @private => x * x;
+macro cube(x) @private => x * x * x;
 

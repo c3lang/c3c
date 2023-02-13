@@ -1,6 +1,6 @@
 module test;
 
-private Foo a;
+Foo a @private;
 
 struct Foo
 {

@@ -9,7 +9,7 @@ fn void runBar()
 // #file: file2.c3
 module baz;
 
-private fn void visible()
-{
+fn void visible()
+ @private{
 
 }

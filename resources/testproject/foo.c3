@@ -9,10 +9,10 @@ struct Foo
 
 extern fn void printf(char *hello);
 
-private fn void ofke()
+fn void ofke() @private
 {}
 
-private fn void exple() {}
+fn void exple() @private{}
 
 fn void test()
 {

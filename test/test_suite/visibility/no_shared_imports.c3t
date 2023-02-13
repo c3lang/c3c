@@ -11,13 +11,13 @@ fn void runBar()
 module baz;
 import private bar;
 
-private fn void visible()
-{
+fn void visible()
+ @private{
     bar::barFunc();
 }
 
 // #file: file3.c3
 module bar;
 
-private fn void barFunc()
-{}
+fn void barFunc()
+ @private{}

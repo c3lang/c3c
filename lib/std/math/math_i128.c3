@@ -70,7 +70,7 @@ fn int128 __modti3(int128 a, int128 b) @extern("__modti3") @weak
 	return __umodti3(unsigned_a, unsigned_b) ^ sign + (-sign);
 }
 
-private union Int128bits
+union Int128bits @private
 {
 	struct
 	{
@@ -139,7 +139,7 @@ fn int128 __ashlti3(int128 a, uint b) @extern("__ashlti3") @weak
 
 // Returns: a * b
 
-private fn int128 __mulddi3(ulong a, ulong b)
+fn int128 __mulddi3(ulong a, ulong b) @private
 {
 	Int128bits r;
 	const ulong LOWER_MASK = 0xffff_ffff;
@@ -177,7 +177,7 @@ fn int128 __fixdfti(double a) @weak @extern("__fixdfti") => fixint(a);
 fn int128 __fixsfti(float a) @weak @extern("__fixsfti") => fixint(a);
 
 
-private macro float_from_i128($Type, a)
+macro float_from_i128($Type, a) @private
 {
 	var $Rep;
 	$switch ($Type):
@@ -236,7 +236,7 @@ private macro float_from_i128($Type, a)
     return bitcast((($Rep)sign & SIGN_BIT) | ((($Rep)e + ($Rep)EXP_BIAS) << SIGNIFICANT_BITS) | (($Rep)a & ($Rep)MANTISSA_MASK), $Type);
 }
 
-private macro float_from_u128($Type, a)
+macro float_from_u128($Type, a) @private
 {
 	var $Rep;
 	$switch ($Type):
@@ -291,7 +291,7 @@ private macro float_from_u128($Type, a)
 }
 
 
-private macro fixuint(a)
+macro fixuint(a) @private
 {
 	var $Rep;
 	$switch ($typeof(a)):
@@ -335,7 +335,7 @@ private macro fixuint(a)
     return (uint128)significand << (exponent - SIGNIFICANT_BITS);
 }
 
-private macro fixint(a)
+macro fixint(a) @private
 {
 	var $Rep;
 	$switch ($typeof(a)):

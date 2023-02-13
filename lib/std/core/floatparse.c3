@@ -451,7 +451,7 @@ macro double! hexfloat(char[] chars, int $bits, int $emin, int sign)
 	return math::scalbn(y, (int)e2);
 }
 
-private macro floatparse(String chars, $Type)
+macro floatparse(String chars, $Type) @private
 {
 	int sign = 1;
 	$switch ($Type):

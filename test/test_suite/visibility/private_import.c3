@@ -1,6 +1,6 @@
 module foo;
 
-private fn void hidden()
+fn void hidden() @private
 {
 }
 

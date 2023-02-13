@@ -78,7 +78,7 @@ fn Vec3 Vec3.rotate_axis(Vec3 v, Vec3 axis, double angle) => rotate_axis_angle(v
 fn Vec3f Vec3f.unproject(Vec3f v, Matrix4f projection, Matrix4f view) => unproject3(v, projection, view);
 fn Vec3 Vec3.unproject(Vec3 v, Matrix4 projection, Matrix4 view) => unproject3(v, projection, view);
 
-private macro towards(v, target, max_distance)
+macro towards(v, target, max_distance) @private
 {
 	var delta = target - v;
     var square = delta.length_sq();
@@ -90,7 +90,7 @@ private macro towards(v, target, max_distance)
 	return v + delta * max_distance / dist;
 }
 
-private macro clamp_magnitude(v, min, max)
+macro clamp_magnitude(v, min, max) @private
 {
 	var length = v.dot(v);
     if (length > 0)
@@ -103,14 +103,14 @@ private macro clamp_magnitude(v, min, max)
 	return v;
 }
 
-private macro rotate(v, angle)
+macro rotate(v, angle) @private
 {
 	var c = math::cos(angle);
 	var s = math::sin(angle);
 	return $typeof(v) { v[0] * c - v[1] * s, v[0] * s + v[1] * c };
 }
 
-private macro perpendicular3(v)
+macro perpendicular3(v) @private
 {
     var min = math::abs(v[0]);
     $typeof(v) cardinal_axis = { 1, 0, 0 };
@@ -129,20 +129,20 @@ private macro perpendicular3(v)
 	return cross3(v, cardinal_axis);
 }
 
-private macro cross3(v1, v2)
+macro cross3(v1, v2) @private
 {
 	var a = v1.yzx * v2.zxy;
 	var b = v1.zxy * v2.yzx;
 	return a - b;
 }
 
-private macro transform2(v, mat)
+macro transform2(v, mat) @private
 {
 	return $typeof(v) { mat.m00 * v[0] + mat.m10 * v[1] + mat.30,
 		     mat.m01 * v[0] + mar.m11 * v[1] + mat.31 };
 }
 
-private macro transform3(v, mat)
+macro transform3(v, mat) @private
 {
     return $typeof(v) {
         mat.m00 * v[0] + mat.m10 * v[1] + mat.m20 * v[2] + mat.m30,
@@ -152,21 +152,21 @@ private macro transform3(v, mat)
 }
 
 
-private macro angle3(v1, v2)
+macro angle3(v1, v2) @private
 {
 	var len = v1.cross(v2).length();
     var dot = v1.dot(v2);
     return math::atan2(len, dot);
 }
 
-private macro void ortho_normalize3(v1, v2)
+macro void ortho_normalize3(v1, v2) @private
 {
 	var v1n = *v1 = v1.normalize();
 	var vn1 = v1n.cross(*v2).normalize();
 	*v2 = v1n.cross(vn1);
 }
 
-private macro rotate_by_quat3(v, q)
+macro rotate_by_quat3(v, q) @private
 {
 	return $typeof(v) {
 		v[0] * (q.i * q.i + q.l * q.l - q.j * q.j - q.k * q.k)
@@ -181,7 +181,7 @@ private macro rotate_by_quat3(v, q)
 	};
 }
 
-private macro rotate_axis_angle(v, axis, angle)
+macro rotate_axis_angle(v, axis, angle) @private
 {
     axis = axis.normalize();
 
@@ -195,7 +195,7 @@ private macro rotate_axis_angle(v, axis, angle)
 	return v + wv + wwv;
 }
 
-private macro matrix_look_at($Type, eye, target, up)
+macro matrix_look_at($Type, eye, target, up) @private
 {
     var vz = (eye - target).normalize();
 	var vx = up.cross(vz).normalize();
@@ -209,7 +209,7 @@ private macro matrix_look_at($Type, eye, target, up)
 	};
 }
 
-private macro unproject3(v, m1, m2)
+macro unproject3(v, m1, m2) @private
 {
 return v;
 /*
@@ -233,7 +233,7 @@ return v;
     };*/
 }
 
-private macro barycenter3(p, a, b, c)
+macro barycenter3(p, a, b, c) @private
 {
 	var v0 = b - a;
 	var v1 = c - a;
@@ -249,7 +249,7 @@ private macro barycenter3(p, a, b, c)
 	return $typeof(p) { 1 - y - z, y, z };
 }
 
-private macro refract3(v, n, r)
+macro refract3(v, n, r) @private
 {
     var dot = v.dot(n);
     var d = 1 - r * r * (1 - dot * dot);

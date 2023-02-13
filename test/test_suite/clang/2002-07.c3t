@@ -85,9 +85,9 @@ fn void* memset_impl(void* dstpp, int c, uint len)
 
 // TEST problem with signed/unsigned versions of the same constants being shared
 // incorrectly!
-private char* temp;
-private int remaining;
-private fn char* localmalloc(int size) {
+char* temp @private;
+int remaining @private;
+fn char* localmalloc(int size) @private {
   char* blah;
 
   if (size>remaining)
@@ -160,7 +160,7 @@ fn char smallArgs(char w, char x, char y, char z) {
   return smallArgs2(w-1, x+1, y, z, w);
 }
 
-private fn int f0(Quad q, int i) {              /* Pass Q by value */
+fn int f0(Quad q, int i) @private {              /* Pass Q by value */
   Quad r @noinit;
   if (i) r.ss = q.ss;
   q.ssp = &r.ss;

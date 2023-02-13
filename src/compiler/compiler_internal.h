@@ -658,9 +658,10 @@ typedef struct Decl_
 	const char *extname;
 	SourceSpan span;
 	DeclKind decl_kind : 7;
-	Visibility visibility : 3;
 	ResolveStatus resolve_status : 3;
 	bool is_packed : 1;
+	bool is_extern : 1;
+	bool is_private : 1;
 	bool is_substruct : 1;
 	bool has_variable_array : 1;
 	bool is_value : 1;
@@ -2100,10 +2101,10 @@ bool context_set_module(ParseContext *context, Path *path, const char **generic_
 
 // --- Decl functions
 
-Decl *decl_new(DeclKind decl_kind, const char *name, SourceSpan span, Visibility visibility);
+Decl *decl_new(DeclKind decl_kind, const char *name, SourceSpan span);
 Decl *decl_new_ct(DeclKind kind, SourceSpan span);
-Decl *decl_new_with_type(const char *name, SourceSpan span, DeclKind decl_type, Visibility visibility);
-Decl *decl_new_var(const char *name, SourceSpan span, TypeInfo *type, VarDeclKind kind, Visibility visibility);
+Decl *decl_new_with_type(const char *name, SourceSpan span, DeclKind decl_type);
+Decl *decl_new_var(const char *name, SourceSpan span, TypeInfo *type, VarDeclKind kind);
 Decl *decl_new_generated_var(Type *type, VarDeclKind kind, SourceSpan span);
 void decl_set_external_name(Decl *decl);
 const char *decl_to_name(Decl *decl);
@@ -2297,7 +2298,6 @@ const char *macos_sysroot(void);
 MacSDK *macos_sysroot_sdk_information(const char *sdk_path);
 WindowsSDK *windows_get_sdk(void);
 const char *windows_cross_compile_library(void);
-INLINE bool visible_external(Visibility  visibility);
 
 void c_abi_func_create(FunctionPrototype *proto);
 
@@ -3058,10 +3058,6 @@ INLINE void ast_prepend(AstId *first, Ast *ast)
 	*first = astid(ast);
 }
 
-INLINE bool visible_external(Visibility  visibility)
-{
-	return visibility == VISIBLE_PUBLIC || visibility == VISIBLE_EXTERN;
-}
 
 INLINE Ast *ast_next(AstId *current_ptr)
 {

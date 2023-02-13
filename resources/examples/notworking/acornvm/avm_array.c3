@@ -49,7 +49,7 @@ fn int Value.isClosure(Value* val)
 	return val.isEnc(ArrEnc) && arr_info(val)->flags1 & TypeClo;
 }
 
-private fn ArrInfo.fill(ArrInfo* a, AuintIdx start, AuintIdx end, Value value) @inline
+fn ArrInfo.fill(ArrInfo* a, AuintIdx start, AuintIdx end, Value value) @inline @private
 {
 	for (AuintIdx i = start; i < end; i++) a.arr[i] = value;
 }

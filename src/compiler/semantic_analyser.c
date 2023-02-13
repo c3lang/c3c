@@ -198,7 +198,7 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 				break;
 		}
 		htable_set(&unit->module->symbols, (void *)decl->name, decl);
-		if (decl->visibility == VISIBLE_PUBLIC) global_context_add_generic_decl(decl);
+		if (!decl->is_private) global_context_add_generic_decl(decl);
 	}
 }
 

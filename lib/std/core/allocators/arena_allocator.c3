@@ -9,7 +9,7 @@ struct ArenaAllocatorHeader
  * @require !alignment || math::is_power_of_2(alignment)
  * @require data `unexpectedly missing the allocator`
  */
-private fn void*! arena_allocator_function(Allocator* data, usz size, usz alignment, usz offset, void* old_pointer, AllocationKind kind)
+fn void*! arena_allocator_function(Allocator* data, usz size, usz alignment, usz offset, void* old_pointer, AllocationKind kind) @private
 {
 	ArenaAllocator* arena = (ArenaAllocator*)data;
 	bool clear = false;
@@ -63,7 +63,7 @@ private fn void*! arena_allocator_function(Allocator* data, usz size, usz alignm
  * @require mem::aligned_offset(offset, ArenaAllocatorHeader.alignof) == offset
  * @require this != null
  **/
-private fn void*! ArenaAllocator._alloc(ArenaAllocator* this, usz size, usz alignment, usz offset)
+fn void*! ArenaAllocator._alloc(ArenaAllocator* this, usz size, usz alignment, usz offset) @private
 {
 	usz total_len = this.data.len;
 	if (size > total_len) return AllocationFailure.CHUNK_TOO_LARGE!;
@@ -89,7 +89,7 @@ private fn void*! ArenaAllocator._alloc(ArenaAllocator* this, usz size, usz alig
  * @require mem::aligned_offset(offset, ArenaAllocatorHeader.alignof) == offset
  * @require this != null
  **/
-private fn void*! ArenaAllocator._realloc(ArenaAllocator* this, void *old_pointer, usz size, usz alignment, usz offset)
+fn void*! ArenaAllocator._realloc(ArenaAllocator* this, void *old_pointer, usz size, usz alignment, usz offset) @private
 {
 	assert(old_pointer >= this.data.ptr, "Pointer originates from a different allocator.");
 	usz total_len = this.data.len;

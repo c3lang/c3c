@@ -368,7 +368,7 @@ void sema_analysis_pass_ct_echo(Module *module)
 static inline bool analyse_func_body(SemaContext *context, Decl *decl)
 {
 	if (!decl->func_decl.body) return true;
-	if (decl->visibility == VISIBLE_EXTERN)
+	if (decl->is_extern)
 	{
 		SEMA_ERROR(decl, "'extern' functions should never have a body.");
 		return decl_poison(decl);

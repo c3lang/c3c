@@ -3,7 +3,7 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::collections::linkedlist<Type>;
 
-private struct Node
+struct Node @private
 {
     Node *next;
     Node *prev;
@@ -38,17 +38,17 @@ fn void LinkedList.tinit(LinkedList* list) => list.init(mem::temp_allocator()) @
 /**
  * @require list.allocator
  **/
-private macro void LinkedList.@free_node(LinkedList &list, Node* node)
+macro void LinkedList.@free_node(LinkedList &list, Node* node) @private
 {
 	list.allocator.free(node)!!;
 }
-private macro Node* LinkedList.@alloc_node(LinkedList &list)
+macro Node* LinkedList.@alloc_node(LinkedList &list) @private
 {
 	if (!list.allocator) list.allocator = mem::current_allocator();
 	return list.allocator.alloc(Node.sizeof)!!;
 }
 
-private fn void LinkedList.link_first(LinkedList* list, Type value)
+fn void LinkedList.link_first(LinkedList* list, Type value) @private
 {
     Node *first = list._first;
     Node *new_node = list.@alloc_node();
@@ -65,7 +65,7 @@ private fn void LinkedList.link_first(LinkedList* list, Type value)
     list.size++;
 }
 
-private fn void LinkedList.link_last(LinkedList* list, Type value)
+fn void LinkedList.link_last(LinkedList* list, Type value) @private
 {
     Node *last = list._last;
     Node *new_node = list.@alloc_node();
@@ -172,7 +172,7 @@ fn void LinkedList.insert(LinkedList* list, usz index, Type element)
 /**
  * @require succ != null
  **/
-private fn void LinkedList.link_before(LinkedList *list, Node *succ, Type value)
+fn void LinkedList.link_before(LinkedList *list, Node *succ, Type value) @private
 {
     Node* pred = succ.prev;
     Node* new_node = mem::alloc(Node);
@@ -192,7 +192,7 @@ private fn void LinkedList.link_before(LinkedList *list, Node *succ, Type value)
 /**
  * @require list && list._first
  **/
-private fn void LinkedList.unlink_first(LinkedList* list)
+fn void LinkedList.unlink_first(LinkedList* list) @private
 {
 	Node* f = list._first;
     Node* next = f.next;
@@ -267,7 +267,7 @@ fn void! LinkedList.remove_first(LinkedList* list)
  * @param [&inout] list
  * @require list._last
  **/
-private fn void LinkedList.unlink_last(LinkedList *list) @inline
+fn void LinkedList.unlink_last(LinkedList *list) @inline @private
 {
 	Node* l = list._last;
     Node* prev = l.prev;
@@ -287,7 +287,7 @@ private fn void LinkedList.unlink_last(LinkedList *list) @inline
 /**
  * @require list != null, x != null
  **/
-private fn void LinkedList.unlink(LinkedList* list, Node* x)
+fn void LinkedList.unlink(LinkedList* list, Node* x) @private
 {
     Node* next = x.next;
     Node* prev = x.prev;

@@ -25,7 +25,7 @@ fn void SimpleHeapAllocator.init(SimpleHeapAllocator* this, MemoryAllocFn alloca
  * @require !alignment || math::is_power_of_2(alignment)
  * @require this `unexpectedly missing the allocator`
  */
-private fn void*! simple_heap_allocator_function(Allocator* this, usz size, usz alignment, usz offset, void* old_pointer, AllocationKind kind)
+fn void*! simple_heap_allocator_function(Allocator* this, usz size, usz alignment, usz offset, void* old_pointer, AllocationKind kind) @private
 {
 	SimpleHeapAllocator* heap = (SimpleHeapAllocator*)this;
 	switch (kind)
@@ -74,14 +74,14 @@ fn void*! SimpleHeapAllocator._realloc(SimpleHeapAllocator* this, void* old_poin
 	return new;
 }
 
-private fn void*! SimpleHeapAllocator._calloc(SimpleHeapAllocator* this, usz bytes)
+fn void*! SimpleHeapAllocator._calloc(SimpleHeapAllocator* this, usz bytes) @private
 {
 	void* data = this._alloc(bytes)?;
 	mem::clear(data, bytes, DEFAULT_MEM_ALIGNMENT);
 	return data;
 }
 
-private fn void*! SimpleHeapAllocator._alloc(SimpleHeapAllocator* this, usz bytes)
+fn void*! SimpleHeapAllocator._alloc(SimpleHeapAllocator* this, usz bytes) @private
 {
 	usz aligned_bytes = mem::aligned_offset(bytes, DEFAULT_MEM_ALIGNMENT);
     if (!this.free_list)
@@ -130,7 +130,7 @@ private fn void*! SimpleHeapAllocator._alloc(SimpleHeapAllocator* this, usz byte
 	return this.alloc(aligned_bytes);
 }
 
-private fn void! SimpleHeapAllocator.add_block(SimpleHeapAllocator* this, usz aligned_bytes)
+fn void! SimpleHeapAllocator.add_block(SimpleHeapAllocator* this, usz aligned_bytes) @private
 {
 	assert(mem::aligned_offset(aligned_bytes, DEFAULT_MEM_ALIGNMENT) == aligned_bytes);
 	char[] result = this.alloc_fn(aligned_bytes + Header.sizeof)?;
@@ -141,7 +141,7 @@ private fn void! SimpleHeapAllocator.add_block(SimpleHeapAllocator* this, usz al
 }
 
 
-private fn void SimpleHeapAllocator._free(SimpleHeapAllocator* this, void* ptr)
+fn void SimpleHeapAllocator._free(SimpleHeapAllocator* this, void* ptr) @private
 {
 	// Empty ptr -> do nothing.
 	if (!ptr) return;
@@ -208,7 +208,7 @@ private fn void SimpleHeapAllocator._free(SimpleHeapAllocator* this, void* ptr)
 	}
 }
 
-private union Header
+union Header @private
 {
 	struct
 	{

@@ -360,7 +360,7 @@ bool lexScanNumber(LexInfo *lex) {
 }
 
 /** List of all reserved names (excluding literals) */
-private VmLiterals ReservedNames[] = {
+VmLiterals ReservedNames[] @private = {
 	SymAnd,
 	SymAsync,
 	SymBaseurl,

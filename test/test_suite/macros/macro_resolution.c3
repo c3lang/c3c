@@ -10,7 +10,7 @@ fn void run2()
     bar::test2();
 }
 
-private fn void tester() {}
+fn void tester() @private {}
 
 module bar;
 macro test()

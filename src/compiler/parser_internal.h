@@ -38,7 +38,7 @@ TypeInfo *parse_type(ParseContext *c);
 TypeInfo *parse_optional_type(ParseContext *c);
 TypeInfo *parse_type_with_base(ParseContext *c, TypeInfo *type_info);
 Expr* parse_constant_expr(ParseContext *c);
-Decl *parse_decl(ParseContext *c);
+Decl *parse_local_decl(ParseContext *c);
 Expr *parse_integer(ParseContext *c, Expr *left);
 Expr *parse_decl_or_expr(ParseContext *c, Decl **decl_ref);
 void recover_top_level(ParseContext *c);
@@ -48,7 +48,7 @@ Ast* parse_compound_stmt(ParseContext *c);
 Ast *parse_short_body(ParseContext *c, TypeInfoId return_type, bool require_eos);
 Ast *parse_jump_stmt_no_eos(ParseContext *c);
 bool parse_attribute(ParseContext *c, Attr **attribute_ref);
-bool parse_attributes(ParseContext *c, Attr ***attributes_ref);
+bool parse_attributes(ParseContext *c, Attr ***attributes_ref, Decl *owner);
 
 bool parse_switch_body(ParseContext *c, Ast ***cases, TokenType case_type, TokenType default_type);
 Expr *parse_ct_expression_list(ParseContext *c, bool allow_decl);
@@ -56,7 +56,7 @@ Expr *parse_expression_list(ParseContext *c, bool allow_decls);
 Decl *parse_decl_after_type(ParseContext *c, TypeInfo *type);
 Decl *parse_var_decl(ParseContext *c);
 
-bool parse_parameters(ParseContext *c, Visibility visibility, Decl ***params_ref, Decl **body_params,
+bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 					  Variadic *variadic, int *vararg_index_ref, ParameterParseKind parse_kind);
 
 bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *splat, bool vasplat);

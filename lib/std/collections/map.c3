@@ -5,13 +5,6 @@ const uint DEFAULT_INITIAL_CAPACITY = 16;
 const uint MAXIMUM_CAPACITY = 1u << 31;
 const float DEFAULT_LOAD_FACTOR = 0.75;
 
-private struct Entry
-{
-	uint hash;
-	Key key;
-	Value value;
-	Entry* next;
-}
 
 struct HashMap
 {
@@ -216,7 +209,7 @@ $endif;
 
 // --- private methods
 
-private fn void HashMap.add_entry(HashMap* map, uint hash, Key key, Value value, uint bucket_index)
+fn void HashMap.add_entry(HashMap* map, uint hash, Key key, Value value, uint bucket_index) @private
 {
 	Entry* entry = map.allocator.alloc(Entry.sizeof)!!;
 	*entry = { .hash = hash, .key = key, .value = value, .next = map.table[bucket_index] };
@@ -227,7 +220,7 @@ private fn void HashMap.add_entry(HashMap* map, uint hash, Key key, Value value,
     }
 }
 
-private fn void HashMap.resize(HashMap* map, uint new_capacity)
+fn void HashMap.resize(HashMap* map, uint new_capacity) @private
 {
 	Entry*[] old_table = map.table;
 	uint old_capacity = old_table.len;
@@ -243,18 +236,18 @@ private fn void HashMap.resize(HashMap* map, uint new_capacity)
 	map.threshold = (uint)(new_capacity * map.load_factor);
 }
 
-private fn uint rehash(uint hash) @inline
+fn uint rehash(uint hash) @inline @private
 {
     hash ^= (hash >> 20) ^ (hash >> 12);
     return hash ^ ((hash >> 7) ^ (hash >> 4));
 }
 
-private macro uint index_for(uint hash, uint capacity)
+macro uint index_for(uint hash, uint capacity) @private
 {
 	return hash & (capacity - 1);
 }
 
-private fn void HashMap.transfer(HashMap* map, Entry*[] new_table)
+fn void HashMap.transfer(HashMap* map, Entry*[] new_table) @private
 {
 	Entry*[] src = map.table;
     uint new_capacity = new_table.len;
@@ -273,7 +266,7 @@ private fn void HashMap.transfer(HashMap* map, Entry*[] new_table)
     }
 }
 
-private fn void HashMap.put_all_for_create(HashMap* map, HashMap* other_map)
+fn void HashMap.put_all_for_create(HashMap* map, HashMap* other_map) @private
 {
 	if (!other_map.count) return;
     foreach (Entry *e : other_map.table)
@@ -283,7 +276,7 @@ private fn void HashMap.put_all_for_create(HashMap* map, HashMap* other_map)
     }
 }
 
-private fn void HashMap.put_for_create(HashMap* map, Key key, Value value)
+fn void HashMap.put_for_create(HashMap* map, Key key, Value value) @private
 {
     uint hash = rehash(key.hash());
     uint i = index_for(hash, map.table.len);
@@ -298,12 +291,12 @@ private fn void HashMap.put_for_create(HashMap* map, Key key, Value value)
 	map.create_entry(hash, key, value, i);
 }
 
-private fn void HashMap.free_internal(HashMap* map, void* ptr) @inline
+fn void HashMap.free_internal(HashMap* map, void* ptr) @inline @private
 {
 	map.allocator.free(ptr)!!;
 }
 
-private fn bool HashMap.remove_entry_for_key(HashMap* map, Key key)
+fn bool HashMap.remove_entry_for_key(HashMap* map, Key key) @private
 {
 	uint hash = rehash(key.hash());
 	uint i = index_for(hash, map.table.len);
@@ -332,11 +325,19 @@ private fn bool HashMap.remove_entry_for_key(HashMap* map, Key key)
 	return false;
 }
 
-private fn void HashMap.create_entry(HashMap* map, uint hash, Key key, Value value, int bucket_index)
+fn void HashMap.create_entry(HashMap* map, uint hash, Key key, Value value, int bucket_index) @private
 {
 	Entry *e = map.table[bucket_index];
 	Entry* entry = map.allocator.alloc(Entry.sizeof)!!;
 	*entry = { .hash = hash, .key = key, .value = value, .next = map.table[bucket_index] };
 	map.table[bucket_index] = entry;
 	map.count++;
+}
+
+struct Entry @private
+{
+	uint hash;
+	Key key;
+	Value value;
+	Entry* next;
 }

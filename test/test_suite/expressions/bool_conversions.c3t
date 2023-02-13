@@ -1,6 +1,6 @@
 // #target: macos-x64
 
-private fn bool f0_0(void* a0) {  return (bool)a0; }
+fn bool f0_0(void* a0) @private {  return (bool)a0; }
 
 fn int f0() { return (int)f0_0((void*)0x2); }
 
