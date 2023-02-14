@@ -270,9 +270,11 @@ RETRY:
 	switch (type->type_kind)
 	{
 		case TYPE_BITSTRUCT:
+			assert(type->decl->resolve_status == RESOLVE_DONE);
 			type = type->decl->bitstruct.base_type->type;
 			goto RETRY;
 		case TYPE_DISTINCT:
+			assert(type->decl->resolve_status == RESOLVE_DONE);
 			type = type->decl->distinct_decl.base_type;
 			goto RETRY;
 		case TYPE_VECTOR:
@@ -300,6 +302,7 @@ RETRY:
 			type = type_iptr->canonical;
 			goto RETRY;
 		case TYPE_ENUM:
+			assert(type->decl->enums.type_info->resolve_status == RESOLVE_DONE);
 			return type->decl->enums.type_info->type->canonical->builtin.bytesize;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
@@ -625,6 +628,7 @@ bool type_func_match(Type *fn_type, Type *rtype, unsigned arg_count, ...)
 	va_end(ap);
 	return true;
 }
+
 AlignSize type_abi_alignment(Type *type)
 {
 	RETRY:
@@ -1034,9 +1038,10 @@ bool type_is_user_defined(Type *type)
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_FAULTTYPE:
-		case TYPE_TYPEDEF:
 		case TYPE_DISTINCT:
 			return true;
+		case TYPE_TYPEDEF:
+			return type->decl != NULL;
 		default:
 			return false;
 	}

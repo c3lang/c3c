@@ -2241,6 +2241,7 @@ Decl *unit_resolve_parameterized_symbol(CompilationUnit *unit, NameResolve *name
 Decl *sema_resolve_type_method(CompilationUnit *unit, Type *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref);
 Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref);
 Decl *sema_find_extension_method_in_module(Decl **extensions, Type *type, const char *method_name);
+bool sema_resolve_type_decl(SemaContext *context, Type *type);
 
 Decl *sema_find_symbol(SemaContext *context, const char *symbol);
 Decl *sema_find_path_symbol(SemaContext *context, const char *symbol, Path *path);
@@ -2305,6 +2306,7 @@ bool token_is_any_type(TokenType type);
 const char *token_type_to_string(TokenType type);
 
 #define IS_OPTIONAL(element_) (type_is_optional((element_)->type))
+#define IS_RESOLVED(element_) ((element_)->resolve_status == RESOLVE_DONE)
 bool type_is_comparable(Type *type);
 bool type_is_ordered(Type *type);
 unsigned type_get_introspection_kind(TypeKind kind);
@@ -2333,7 +2335,7 @@ Type *type_get_vector(Type *vector_type, unsigned len);
 Type *type_get_vector_bool(Type *original_type);
 Type *type_int_signed_by_bitsize(BitSize bitsize);
 Type *type_int_unsigned_by_bitsize(BitSize bit_size);
-TypeSize type_size(Type *type);
+TypeSize type_size(Type *type); // Only call after all types are resolved.
 void type_init_cint(void);
 void type_func_prototype_init(uint32_t capacity);
 bool type_is_subtype(Type *type, Type *possible_subtype);

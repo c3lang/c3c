@@ -96,9 +96,24 @@ bool sema_bit_assignment_check(Expr *right, Decl *member);
 int sema_check_comp_time_bool(SemaContext *context, Expr *expr);
 bool sema_expr_check_assign(SemaContext *c, Expr *expr);
 Type *sema_analyse_function_signature(SemaContext *context, Decl *parent, CallABI abi, Signature *signature, bool is_real_function);
-
 bool cast_widen_top_down(SemaContext *context, Expr *expr, Type *type);
 bool cast_promote_vararg(Expr *arg);
 Type *cast_numeric_arithmetic_promotion(Type *type);
 void cast_to_max_bit_size(SemaContext *context, Expr *left, Expr *right, Type *left_type, Type *right_type);
 bool cast_decay_array_pointers(SemaContext *context, Expr *expr);
+INLINE bool sema_set_abi_alignment(SemaContext *context, Type *type, AlignSize *result);
+INLINE bool sema_set_alloca_alignment(SemaContext *context, Type *type, AlignSize *result);
+
+INLINE bool sema_set_abi_alignment(SemaContext *context, Type *type, AlignSize *result)
+{
+	if (!sema_resolve_type_decl(context, type)) return false;
+	*result = type_abi_alignment(type);
+	return true;
+}
+
+INLINE bool sema_set_alloca_alignment(SemaContext *context, Type *type, AlignSize *result)
+{
+	if (!sema_resolve_type_decl(context, type)) return false;
+	*result = type_alloca_alignment(type);
+	return true;
+}

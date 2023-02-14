@@ -628,6 +628,54 @@ Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_
 	return sema_resolve_type_method(unit, type->type, method_name, ambiguous_ref, private_ref);
 }
 
+bool sema_resolve_type_decl(SemaContext *context, Type *type)
+{
+	switch (type->type_kind)
+	{
+		case TYPE_OPTIONAL_ANY:
+			return true;
+		case TYPE_POISONED:
+			return false;
+		case TYPE_VOID:
+		case TYPE_BOOL:
+		case ALL_INTS:
+		case ALL_FLOATS:
+		case TYPE_ANY:
+		case TYPE_ANYERR:
+		case TYPE_TYPEID:
+		case TYPE_POINTER:
+		case TYPE_UNTYPED_LIST:
+		case TYPE_MEMBER:
+		case TYPE_INFERRED_VECTOR:
+		case TYPE_SCALED_VECTOR:
+		case TYPE_VECTOR:
+		case TYPE_SUBARRAY:
+			return true;
+		case TYPE_OPTIONAL:
+			return sema_resolve_type_decl(context, type->optional);
+		case TYPE_TYPEINFO:
+			UNREACHABLE
+		case TYPE_TYPEDEF:
+			return sema_resolve_type_decl(context, type->canonical);
+		case TYPE_DISTINCT:
+			if (!sema_analyse_decl(context, type->decl)) return false;
+			return sema_resolve_type_decl(context, type->decl->distinct_decl.base_type);
+		case TYPE_FUNC:
+			return true;
+		case TYPE_ENUM:
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		case TYPE_BITSTRUCT:
+		case TYPE_FAULTTYPE:
+			return sema_analyse_decl(context, type->decl);
+		case TYPE_ARRAY:
+		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_INFERRED_ARRAY:
+			return sema_resolve_type_decl(context, type->array.base);
+	}
+	UNREACHABLE
+}
+
 Decl *sema_resolve_type_method(CompilationUnit *unit, Type *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref)
 {
 	assert(type == type->canonical);
