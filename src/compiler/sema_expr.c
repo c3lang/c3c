@@ -3655,6 +3655,10 @@ CHECK_DEEPER:
 		return true;
 	}
 	Decl *private = NULL;
+	if (strcmp(kw, "put_all_for_create") == 0)
+	{
+		int x = 123;
+	}
 	if (!member)
 	{
 		Decl *ambiguous = NULL;
@@ -6389,7 +6393,7 @@ static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr)
 		expr_rewrite_to_string(expr, decl->extname);
 		return true;
 	}
-	if (!decl->unit || name_type == TOKEN_CT_NAMEOF || decl_is_local(decl))
+	if (!decl->unit || name_type == TOKEN_CT_NAMEOF || decl_is_var_local(decl))
 	{
 		expr_rewrite_to_string(expr, decl->name);
 		return true;

@@ -150,8 +150,10 @@ static Decl *sema_find_decl_in_imports(Decl **imports, NameResolve *name_resolve
 		// No match, so continue
 		if (!found) continue;
 
+		assert(found->visibility != VISIBLE_LOCAL);
+
 		// If we found something private but we don't import privately?
-		if (found->is_private && !import->import.private && !decl)
+		if (found->visibility == VISIBLE_PRIVATE && !import->import.private && !decl)
 		{
 			// Register this as a possible private decl.
 			name_resolve->private_decl = found;
@@ -568,7 +570,7 @@ INLINE Decl *sema_resolve_symbol_common(SemaContext *context, NameResolve *name_
 	return decl;
 }
 
-Decl *sema_find_extension_method_in_module(Decl **extensions, Type *type, const char *method_name)
+Decl *sema_find_extension_method_in_list(Decl **extensions, Type *type, const char *method_name)
 {
 	VECEACH(extensions, i)
 	{
@@ -592,13 +594,14 @@ Decl *sema_resolve_method_in_module(Module *module, Type *actual_type, const cha
 									Decl **private_found, Decl **ambiguous, MethodSearchType search_type)
 {
 	if (module->is_generic) return NULL;
-	Decl *found = sema_find_extension_method_in_module(module->private_method_extensions, actual_type, method_name);
+	Decl *found = sema_find_extension_method_in_list(module->private_method_extensions, actual_type, method_name);
 	// The found one might not be visible
-	if (found && search_type < METHOD_SEARCH_CURRENT && found->is_private)
+	if (found && search_type < METHOD_SEARCH_CURRENT && found->visibility == VISIBLE_PRIVATE)
 	{
 		*private_found = found;
 		found = NULL;
 	}
+	assert(!found || found->visibility != VISIBLE_LOCAL);
 	if (found && search_type == METHOD_SEARCH_CURRENT) return found;
 	// We are now searching submodules, so hide the private ones.
 	if (search_type == METHOD_SEARCH_CURRENT) search_type = METHOD_SEARCH_SUBMODULE_CURRENT;
@@ -622,7 +625,10 @@ Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_
 	VECEACH(type->methods, i)
 	{
 		Decl *func = type->methods[i];
-		if (method_name == func->name) return func;
+		if (method_name == func->name)
+		{
+			return func;
+		}
 	}
 
 	return sema_resolve_type_method(unit, type->type, method_name, ambiguous_ref, private_ref);
@@ -681,7 +687,8 @@ Decl *sema_resolve_type_method(CompilationUnit *unit, Type *type, const char *me
 	assert(type == type->canonical);
 	Decl *private = NULL;
 	Decl *ambiguous = NULL;
-	Decl *found = sema_resolve_method_in_module(unit->module, type, method_name, &private, &ambiguous, METHOD_SEARCH_CURRENT);
+	Decl *found = sema_find_extension_method_in_list(unit->local_method_extensions, type, method_name);
+	if (!found) found = sema_resolve_method_in_module(unit->module, type, method_name, &private, &ambiguous, METHOD_SEARCH_CURRENT);
 	if (ambiguous)
 	{
 		*ambiguous_ref = ambiguous;
@@ -725,7 +732,7 @@ Decl *sema_resolve_type_method(CompilationUnit *unit, Type *type, const char *me
 	}
 	if (!found)
 	{
-		found = sema_find_extension_method_in_module(global_context.method_extensions, type, method_name);
+		found = sema_find_extension_method_in_list(global_context.method_extensions, type, method_name);
 		private = NULL;
 	}
 	if (private) *private_ref = private;

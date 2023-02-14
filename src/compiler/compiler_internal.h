@@ -659,9 +659,9 @@ typedef struct Decl_
 	SourceSpan span;
 	DeclKind decl_kind : 7;
 	ResolveStatus resolve_status : 3;
+	Visibility visibility : 3;
 	bool is_packed : 1;
 	bool is_extern : 1;
-	bool is_private : 1;
 	bool is_substruct : 1;
 	bool has_variable_array : 1;
 	bool is_value : 1;
@@ -1599,6 +1599,7 @@ struct CompilationUnit_
 	Decl *main_function;
 	HTable local_symbols;
 	int lambda_count;
+	Decl **local_method_extensions;
 	struct
 	{
 		void *debug_file;
@@ -2119,10 +2120,12 @@ INLINE Decl *decl_flatten(Decl *decl);
 INLINE const char *decl_get_extname(Decl *decl);
 static inline Decl *decl_raw(Decl *decl);
 static inline DeclKind decl_from_token(TokenType type);
-static inline bool decl_is_local(Decl *decl);
+static inline bool decl_is_var_local(Decl *decl);
 bool decl_is_ct_var(Decl *decl);
 Decl *decl_find_enum_constant(Decl *decl, const char *name);
 AlignSize decl_find_member_offset(Decl *decl, Decl *member);
+bool decl_is_externally_visible(Decl *decl);
+bool decl_is_local(Decl *decl);
 
 // --- Expression functions
 
@@ -2240,7 +2243,7 @@ Decl *sema_find_decl_in_modules(Module **module_list, Path *path, const char *in
 Decl *unit_resolve_parameterized_symbol(CompilationUnit *unit, NameResolve *name_resolve);
 Decl *sema_resolve_type_method(CompilationUnit *unit, Type *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref);
 Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref);
-Decl *sema_find_extension_method_in_module(Decl **extensions, Type *type, const char *method_name);
+Decl *sema_find_extension_method_in_list(Decl **extensions, Type *type, const char *method_name);
 bool sema_resolve_type_decl(SemaContext *context, Type *type);
 
 Decl *sema_find_symbol(SemaContext *context, const char *symbol);
@@ -3231,7 +3234,7 @@ INLINE bool decl_var_kind_is_ct(VarDeclKind kind)
 	return kind >= VARDECL_FIRST_CT && kind <= VARDECL_LAST_CT;
 }
 
-static inline bool decl_is_local(Decl *decl)
+static inline bool decl_is_var_local(Decl *decl)
 {
 	if (decl->decl_kind != DECL_VAR) return false;
 	VarDeclKind kind = decl->var.kind;

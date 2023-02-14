@@ -826,7 +826,7 @@ Decl *parse_local_decl(ParseContext *c)
 	if (tok_is(c, TOKEN_CONST))
 	{
 		ASSIGN_DECL_OR_RET(Decl *decl, parse_const_declaration(c), poisoned_decl);
-		decl->is_private = true;
+		decl->visibility = VISIBLE_LOCAL;
 		return decl;
 	}
 
@@ -843,7 +843,7 @@ Decl *parse_local_decl(ParseContext *c)
 	}
 	decl->var.is_static = is_static || is_threadlocal;
 	decl->var.is_threadlocal = is_threadlocal;
-	decl->is_private = true;
+	decl->visibility = VISIBLE_LOCAL;
 	return decl;
 }
 
@@ -1045,7 +1045,28 @@ bool parse_attributes(ParseContext *c, Attr ***attributes_ref, Decl *owner)
 				SEMA_ERROR(attr, "'%s' cannot be used here.");
 				return false;
 			}
-			owner->is_private = true;
+			if (owner->visibility != VISIBLE_PUBLIC)
+			{
+				SEMA_ERROR(attr, "Only a single visibility attribute may be added.");
+				return false;
+			}
+			owner->visibility = VISIBLE_PRIVATE;
+			continue;
+		}
+		if (name == attribute_list[ATTRIBUTE_LOCAL])
+		{
+			if (!owner)
+			{
+				SEMA_ERROR(attr, "'%s' cannot be used here.");
+				return false;
+			}
+			if (owner->visibility != VISIBLE_PUBLIC)
+			{
+				SEMA_ERROR(attr, "Only a single visibility attribute may be added.");
+				return false;
+			}
+			owner->visibility = VISIBLE_LOCAL;
+			continue;
 		}
 		FOREACH_BEGIN(Attr *other_attr, *attributes_ref)
 			if (other_attr->name == name)
@@ -2073,7 +2094,7 @@ static inline Decl *parse_fault_declaration(ParseContext *c, bool is_private)
 	// advance_and_verify(context, TOKEN_ERRTYPE);
 
 	Decl *decl = decl_new_with_type(symstr(c), c->span, DECL_FAULT);
-	decl->is_private = is_private;
+	if (is_private) decl->visibility = VISIBLE_PRIVATE;
 	if (!consume_type_name(c, "fault")) return poisoned_decl;
 
 	TypeInfo *type = NULL;
@@ -2085,7 +2106,7 @@ static inline Decl *parse_fault_declaration(ParseContext *c, bool is_private)
 	while (!try_consume(c, TOKEN_RBRACE))
 	{
 		Decl *fault_const = decl_new(DECL_FAULTVALUE, symstr(c), c->span);
-		fault_const->is_private = is_private;
+		if (is_private) decl->visibility = VISIBLE_PRIVATE;
 		if (!consume_const_name(c, "fault value"))
 		{
 			return poisoned_decl;
@@ -2171,7 +2192,7 @@ static inline Decl *parse_enum_declaration(ParseContext *c, bool is_private)
 	advance_and_verify(c, TOKEN_ENUM);
 
 	Decl *decl = decl_new_with_type(symstr(c), c->span, DECL_ENUM);
-	decl->is_private = is_private;
+	if (is_private) decl->visibility = VISIBLE_PRIVATE;
 	if (!consume_type_name(c, "enum")) return poisoned_decl;
 
 	TypeInfo *type = NULL;
@@ -2181,14 +2202,14 @@ static inline Decl *parse_enum_declaration(ParseContext *c, bool is_private)
 	}
 
 	if (!parse_attributes(c, &decl->attributes, decl)) return poisoned_decl;
-
+	Visibility visibility = decl->visibility;
 	CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
 
 	decl->enums.type_info = type ? type : type_info_new_base(type_int, decl->span);
 	while (!try_consume(c, TOKEN_RBRACE))
 	{
 		Decl *enum_const = decl_new(DECL_ENUM_CONSTANT, symstr(c), c->span);
-		enum_const->is_private = is_private;
+		enum_const->visibility = visibility;
 		const char *name = enum_const->name;
 		if (!consume_const_name(c, "enum constant"))
 		{
@@ -2373,6 +2394,11 @@ static inline bool parse_import(ParseContext *c)
 		Path *path = parse_module_path(c);
 		if (!path) return false;
 		unit_add_import(c->unit, path, private);
+		if (tok_is(c, TOKEN_COLON) && peek(c) == TOKEN_IDENT)
+		{
+			SEMA_ERROR_HERE("'::' was expected here, did you make a mistake?");
+			return false;
+		}
 		if (!try_consume(c, TOKEN_COMMA)) break;
 	}
 
@@ -2777,13 +2803,13 @@ AFTER_VISIBILITY:
 		case TOKEN_DEFINE:
 		{
 			ASSIGN_DECL_OR_RET(decl, parse_define(c), poisoned_decl);
-			if (is_private) decl->is_private = is_private;
+			if (is_private) decl->visibility = VISIBLE_PRIVATE;
 			break;
 		}
 		case TOKEN_FN:
 		{
 			ASSIGN_DECL_OR_RET(decl, parse_func_definition(c, docs, false), poisoned_decl);
-			if (is_private) decl->is_private = is_private;
+			if (is_private) decl->visibility = VISIBLE_PRIVATE;
 			break;
 		}
 		case TOKEN_STATIC:
@@ -2871,45 +2897,43 @@ AFTER_VISIBILITY:
 		case TOKEN_BITSTRUCT:
 		{
 			ASSIGN_DECL_OR_RET(decl, parse_bitstruct_declaration(c), poisoned_decl);
-			if (is_private) decl->is_private = is_private;
+			if (is_private) decl->visibility = VISIBLE_PRIVATE;
 			break;
 		}
 		case TOKEN_CONST:
 		{
 			ASSIGN_DECL_OR_RET(decl, parse_top_level_const_declaration(c), poisoned_decl);
-			if (is_private) decl->is_private = is_private;
+			if (is_private) decl->visibility = VISIBLE_PRIVATE;
 			break;
 		}
 		case TOKEN_STRUCT:
 		case TOKEN_UNION:
 		{
 			ASSIGN_DECL_OR_RET(decl, parse_struct_declaration(c), poisoned_decl);
-			if (is_private) decl->is_private = is_private;
+			if (is_private) decl->visibility = VISIBLE_PRIVATE;
 			break;
 		}
 		case TOKEN_GENERIC:
 		case TOKEN_MACRO:
 		{
 			ASSIGN_DECL_OR_RET(decl, parse_macro_declaration(c, docs), poisoned_decl);
-			if (is_private) decl->is_private = is_private;
+			if (is_private) decl->visibility = VISIBLE_PRIVATE;
 			break;
 		}
 		case TOKEN_ENUM:
 		{
 			ASSIGN_DECL_OR_RET(decl, parse_enum_declaration(c, is_private), poisoned_decl);
-			if (is_private) decl->is_private = is_private;
 			break;
 		}
 		case TOKEN_FAULT:
 		{
 			ASSIGN_DECL_OR_RET(decl, parse_fault_declaration(c, is_private), poisoned_decl);
-			if (is_private) decl->is_private = is_private;
 			break;
 		}
 		case TOKEN_IDENT:
 		{
 			ASSIGN_DECL_OR_RET(decl, parse_global_declaration(c), poisoned_decl);
-			if (is_private) decl->is_private = is_private;
+			if (is_private) decl->visibility = VISIBLE_PRIVATE;
 			break;
 		}
 		case TOKEN_EOF:
@@ -2931,7 +2955,7 @@ AFTER_VISIBILITY:
 		case TYPELIKE_TOKENS:
 		{
 			ASSIGN_DECL_OR_RET(decl, parse_global_declaration(c), poisoned_decl);
-			if (is_private) decl->is_private = is_private;
+			if (is_private) decl->visibility = VISIBLE_PRIVATE;
 			break;
 		}
 		case TOKEN_EOS:
