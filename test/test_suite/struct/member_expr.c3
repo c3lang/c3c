@@ -1,7 +1,7 @@
 
-define Func = fn int(int);
+typedef Func = fn int(int);
 
-define Func2 = fn int(Foo*, int);
+typedef Func2 = fn int(Foo*, int);
 
 struct Foo
 {

@@ -11,7 +11,7 @@ fn void test()
 
 fn int test2() { return 3; }
 
-// #expect: ternary_folding.ll
+/* #expect: ternary_folding.ll
 
 @ternary_folding_foo = local_unnamed_addr global i32 1, align 4
 @ternary_folding_bar = local_unnamed_addr global double 2.000000e+00, align 8

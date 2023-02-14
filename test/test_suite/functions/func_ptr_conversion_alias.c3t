@@ -1,9 +1,9 @@
 module test;
 
-define Callback = fn void();
-define Callback2 = fn void();
+typedef Callback = fn void();
+typedef Callback2 = fn void();
 
-define GetCallback = fn Callback2**[][123]*();
+typedef GetCallback = fn Callback2**[][123]*();
 
 fn Callback**[][123]* tester()
 {
@@ -13,7 +13,7 @@ fn Callback**[][123]* tester()
 GetCallback x = &tester;
 
 
-define GetCallbackOpt = fn Callback2!();
+typedef GetCallbackOpt = fn Callback2!();
 
 fn Callback2! tester2() => null;
 

@@ -4,7 +4,7 @@ import std::io;
 import std::math;
 import std::collections::priorityqueue;
 
-define FooPriorityQueue = PriorityQueue<Foo>;
+typedef FooPriorityQueue = PriorityQueue<Foo>;
 
 fn void main()
 {

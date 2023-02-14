@@ -1,5 +1,5 @@
 import std::io;
-define Tester = fn int(int x, int y, int z);
+typedef Tester = fn int(int x, int y, int z);
 
 fn int test1(
 	int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, // 20

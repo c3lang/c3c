@@ -22,7 +22,7 @@ struct AddrInfo
     AddrInfo* ai_next;
 }
 
-define NativeSocket = distinct uptr;
+typedef NativeSocket = distinct uptr;
 
 extern fn int wsa_startup(int, void*) @extern("WSAStartup");
 extern fn int ioctlsocket(NativeSocket, long cmd, ulong *argp);

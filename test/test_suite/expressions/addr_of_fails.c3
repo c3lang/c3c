@@ -60,8 +60,8 @@ fn void test6()
     int[]* e = &arr[1..2]; // #error: To take the address of a temporary value, use '&&' instead of '&'
 }
 
-define Baz = Foo;
-define Bar = distinct int;
+typedef Baz = Foo;
+typedef Bar = distinct int;
 fault Err { FOO }
 union Un { int x; }
 enum MyEnum { BAR }

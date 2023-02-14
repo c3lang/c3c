@@ -2,9 +2,9 @@ module std::os::macos::cf;
 
 $if (env::OS_TYPE == OsType.MACOSX):
 
-define CFArrayRef = distinct void*;
-define CFArrayCallBacksRef = distinct void*;
-define CFMutableArrayRef = distinct void*;
+typedef CFArrayRef = distinct void*;
+typedef CFArrayCallBacksRef = distinct void*;
+typedef CFMutableArrayRef = distinct void*;
 extern fn CFArrayRef _macos_CFArrayCreate(CFAllocatorRef allocator, void** values, CFIndex num_values, CFArrayCallBacksRef callBacks) @extern("CFArrayCreate");
 extern fn CFArrayRef _macos_CFArrayCopy(CFAllocatorRef allocator, CFArrayRef array) @extern("CFArrayCopy");
 extern fn CFIndex _macos_CFArrayGetCount(CFArrayRef array) @extern("CFArrayGetCount");

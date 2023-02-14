@@ -1,7 +1,7 @@
 module linkedlist_test;
 import std::collections::linkedlist;
 
-define IntList = LinkedList<int>;
+typedef IntList = LinkedList<int>;
 
 fn void! test_push() @test
 {

@@ -5,24 +5,24 @@ $assert(Enum.elements < 64, "Maximum number of elements for an enum used as enum
 
 $switch ($$C_INT_SIZE):
 $case 64:
-    define EnumSetType @private = ulong;
+    typedef EnumSetType @private = ulong;
 $case 32:
     $if (Enum.elements < 32):
-        define EnumSetType @private = uint;
+typedef EnumSetType @private = uint;
     $else:
-        define EnumSetType @private = ulong;
+typedef EnumSetType @private = ulong;
     $endif;
 $default:
     $if (Enum.elements < 16):
-        define EnumSetType @private = ushort;
+typedef EnumSetType @private = ushort;
     $elif (Enum.elements < 31):
-        define EnumSetType @private = uint;
+typedef EnumSetType @private = uint;
     $else:
-        define EnumSetType @private = ulong;
+typedef EnumSetType @private = ulong;
     $endif;
 $endswitch;
 
-define EnumSet = distinct EnumSetType;
+typedef EnumSet = distinct EnumSetType;
 
 fn void EnumSet.add(EnumSet* this, Enum v)
 {

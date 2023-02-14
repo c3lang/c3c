@@ -8,7 +8,7 @@ fault Foo
     X
 }
 
-define Bar = distinct int;
+typedef Bar = distinct int;
 
 enum MyEnum
 {

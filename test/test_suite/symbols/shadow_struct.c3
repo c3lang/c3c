@@ -4,7 +4,7 @@ struct Foo
     int y;
 }
 
-define Foo = float; // #error: shadow a previous declaration
+typedef Foo = float; // #error: shadow a previous declaration
 
 enum Bar
 {
@@ -12,4 +12,4 @@ enum Bar
     TEST2
 }
 
-define Bar = float; // #error: shadow a previous declaration
+typedef Bar = float; // #error: shadow a previous declaration

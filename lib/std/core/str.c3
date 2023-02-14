@@ -1,9 +1,9 @@
 module std::core::str;
 
-define ZString = distinct char*;
-define String = char[];
-define Char32 = uint;
-define Char16 = ushort;
+typedef ZString = distinct char*;
+typedef String = char[];
+typedef Char32 = uint;
+typedef Char16 = ushort;
 
 const uint SURROGATE_OFFSET @private = 0x10000;
 const uint SURROGATE_GENERIC_MASK @private = 0xF800;

@@ -40,6 +40,7 @@ void recover_top_level(ParseContext *c)
 			case TOKEN_ENUM:
 			case TOKEN_GENERIC:
 			case TOKEN_DEFINE:
+			case TOKEN_TYPEDEF:
 			case TOKEN_FAULT:
 				return;
 			case TOKEN_IDENT: // Incr arrays only
@@ -1771,11 +1772,26 @@ static inline void decl_add_type(Decl *decl, TypeKind kind)
  */
 static inline Decl *parse_define_type(ParseContext *c)
 {
-	advance_and_verify(c, TOKEN_DEFINE);
+	advance(c);
 
 	Decl *decl = decl_new(DECL_POISONED, symstr(c), c->span);
 	DEBUG_LOG("Parse define %s", decl->name);
-	advance_and_verify(c, TOKEN_TYPE_IDENT);
+	if (!try_consume(c, TOKEN_TYPE_IDENT))
+	{
+		if (token_is_any_type(c->tok))
+		{
+			SEMA_ERROR_HERE("'%s' is the name of a built-in type and can't be used as an alias.",
+			                token_type_to_string(c->tok));
+			return poisoned_decl;
+		}
+		if (token_is_some_ident(c->tok))
+		{
+			SEMA_ERROR_HERE("The type name must start with an uppercase letter followed by at least 1 lowercase letter.");
+			return poisoned_decl;
+		}
+		SEMA_ERROR_HERE("A type name was expected here.");
+		return poisoned_decl;
+	}
 	if (!parse_attributes(c, &decl->attributes, decl)) return false;
 	CONSUME_OR_RET(TOKEN_EQ, poisoned_decl);
 	bool distinct = false;
@@ -2818,6 +2834,12 @@ AFTER_VISIBILITY:
 			}
 			SEMA_ERROR_HERE("There are more than one doc comment in a row, that is not allowed.");
 			return poisoned_decl;
+		case TOKEN_TYPEDEF:
+		{
+			ASSIGN_DECL_OR_RET(decl, parse_define_type(c), poisoned_decl);
+			if (is_private) decl->visibility = VISIBLE_PRIVATE;
+			break;
+		}
 		case TOKEN_DEFINE:
 		{
 			ASSIGN_DECL_OR_RET(decl, parse_define(c), poisoned_decl);

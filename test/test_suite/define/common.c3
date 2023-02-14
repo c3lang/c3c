@@ -3,7 +3,7 @@ module foo;
 // define <name> = <name>
 define standard_foo = __stdin;
 define someFunctionIntBool = someFunction<int, bool>;
-define FooInt = Foo<int>;
+typedef FooInt = Foo<int>;
 define A_CONST_INT = A_CONST<int>;
 
 define standard_foo<int> = ofke; // #error: Expected '='

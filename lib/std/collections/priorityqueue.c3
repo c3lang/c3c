@@ -23,7 +23,7 @@
 module std::collections::priorityqueue<Type>;
 import std::collections::list;
 
-define Heap = List<Type>;
+typedef Heap = List<Type>;
 
 struct PriorityQueue
 {

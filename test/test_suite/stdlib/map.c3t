@@ -6,8 +6,8 @@ import std::collections::map;
 
 struct Foo { int x; void* bar; }
 
-define IntFooMap = HashMap<int, Foo>;
-define IntDoubleMap = HashMap<int, double>;
+typedef IntFooMap = HashMap<int, Foo>;
+typedef IntDoubleMap = HashMap<int, double>;
 
 fn char[] Foo.to_string(Foo* foo, Allocator* allocator = mem::current_allocator())
 {

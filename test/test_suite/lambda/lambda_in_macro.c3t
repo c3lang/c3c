@@ -2,8 +2,8 @@
 module test;
 import std::io;
 
-define Callback1 = fn double(double x);
-define Callback2 = fn int(int y);
+typedef Callback1 = fn double(double x);
+typedef Callback2 = fn int(int y);
 
 macro test2(y)
 {

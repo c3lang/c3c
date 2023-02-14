@@ -5,7 +5,7 @@ struct Large {
   long a, b, c, d;
 }
 
-define V32i8 = char[<32>];
+typedef V32i8 = char[<32>];
 
 fn int f_scalar_stack_1(int a, int128 b, float c, float128 d, V32i8 e,
                      char f, char g, char h) {

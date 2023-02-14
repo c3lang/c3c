@@ -13,7 +13,7 @@ enum EnumB : char
     C, D
 }
 
-define Func = fn void(Enum);
+typedef Func = fn void(Enum);
 
 fn void test1(Enum e)
 {

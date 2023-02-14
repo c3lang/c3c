@@ -2,7 +2,7 @@
 // #opt: --x86vec=sse
 module test;
 
-define Mm256 = float[<8>];
+typedef Mm256 = float[<8>];
 struct St256 {
   Mm256 m;
 }
@@ -19,7 +19,7 @@ fn void f39() { f38(x38); f37(x37); }
 
 // CHECK: declare void @func40(%struct.t128* byval(%struct.t128) align 16)
 
-define Mm128 = float[<4>];
+typedef Mm128 = float[<4>];
 struct Two128 {
   Mm128 m;
   Mm128 n;

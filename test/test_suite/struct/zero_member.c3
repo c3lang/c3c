@@ -1,4 +1,4 @@
-define Foo = int[0]; // #error: An array may not have zero
+typedef Foo = int[0]; // #error: An array may not have zero
 
 struct Bar
 {

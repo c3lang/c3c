@@ -2,8 +2,8 @@
 // #opt: --x86vec=avx512
 module test;
 
-define Mm256 = float[<8>];
-define Mm512 = float[<16>];
+typedef Mm256 = float[<8>];
+typedef Mm512 = float[<16>];
 struct St512 {
   Mm512 m;
 }

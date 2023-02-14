@@ -2,9 +2,9 @@ module std::thread::os;
 
 $if (thread::THREAD_MODEL == ThreadModel.WIN32):
 
-define NativeThread = Win32_HANDLE;
-define Win32_CRITICAL_SECTION = distinct ulong[5];
-define Win32_HANDLE = distinct ulong;
+typedef NativeThread = Win32_HANDLE;
+typedef Win32_CRITICAL_SECTION = distinct ulong[5];
+typedef Win32_HANDLE = distinct ulong;
 
 struct NativeMutex
 {
