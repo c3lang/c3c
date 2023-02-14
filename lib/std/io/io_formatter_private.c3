@@ -1,25 +1,29 @@
 module std::io;
 
-fn void! Formatter.left_adjust(Formatter* this, usz len) @private
+fn void! Formatter.left_adjust(Formatter* this, usz len) @local
 {
 	if (!this.flags.left) return;
 	for (usz l = len; l < this.width; l++) this.out(' ')?;
 }
 
-fn void! Formatter.right_adjust(Formatter* this, usz len) @private
+fn void! Formatter.right_adjust(Formatter* this, usz len) @local
 {
 	if (this.flags.left) return;
 	for (usz l = len; l < this.width; l++) this.out(' ')?;
 }
 
 
-fn uint128 int_from_variant(variant arg, bool *is_neg) @private
+fn uint128! int_from_variant(variant arg, bool *is_neg) @private
 {
 	*is_neg = false;
 	if (arg.type.kindof == TypeKind.POINTER)
 	{
 		return (uint128)(uptr)*(void**)arg.ptr;
 	}
+	if (arg.type.kindof == TypeKind.DISTINCT)
+    {
+    	return int_from_variant(variant { arg.ptr, arg.type.inner }, is_neg);
+    }
 	switch (arg)
 	{
 		case bool:
@@ -56,11 +60,11 @@ fn uint128 int_from_variant(variant arg, bool *is_neg) @private
 			double d = *arg;
 			return (uint128)((*is_neg = d < 0) ? -d : d);
 		default:
-			return 0;
+			return PrintFault.INVALID_ARGUMENT_TYPE!;
 	}
 }
 
-fn FloatType float_from_variant(variant arg) @private
+fn FloatType! float_from_variant(variant arg) @private
 {
 	$if (env::F128_SUPPORT):
 		if (arg.type == float128.typeid) return *((float128*)arg.ptr);
@@ -68,10 +72,9 @@ fn FloatType float_from_variant(variant arg) @private
 	$if (env::F16_SUPPORT):
 		if (arg.type == float16.typeid) return *((float16*)arg.ptr);
 	$endif;
-
-	if (arg.type.kindof == TypeKind.POINTER)
+	if (arg.type.kindof == TypeKind.DISTINCT)
 	{
-		return (FloatType)(uptr)(void*)arg.ptr;
+		return float_from_variant(variant { arg.ptr, arg.type.inner });
 	}
 	switch (arg)
 	{
@@ -102,7 +105,7 @@ fn FloatType float_from_variant(variant arg) @private
 		case double:
 			return (FloatType)*arg;
 		default:
-			return 0;
+			return PrintFault.INVALID_ARGUMENT_TYPE!;
 	}
 }
 
@@ -467,7 +470,7 @@ fn void! Formatter.ntoa_format(Formatter* this, String buf, usz len, bool negati
 fn void! Formatter.ntoa_variant(Formatter* this, variant arg, uint base) @private
 {
 	bool is_neg;
-	uint128 val = int_from_variant(arg, &is_neg);
+	uint128 val = int_from_variant(arg, &is_neg)!!;
 	return this.ntoa(val, is_neg, base) @inline;
 }
 

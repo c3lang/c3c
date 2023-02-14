@@ -468,7 +468,10 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 	}
 	else
 	{
-		if (active_target.no_entry) add_arg("--no-entry");
+		if (linker_type == LINKER_WASM)
+		{
+			if (active_target.no_entry) add_arg("--no-entry");
+		}
 		add_arg("-o");
 		add_arg(output_file);
 	}

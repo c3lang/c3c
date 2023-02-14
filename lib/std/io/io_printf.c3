@@ -13,6 +13,7 @@ fault PrintFault
 	INTERNAL_BUFFER_EXCEEDED,
 	INVALID_FORMAT_STRING,
 	MISSING_ARG,
+	INVALID_ARGUMENT_TYPE,
 }
 
 fault FormattingFault
@@ -249,7 +250,7 @@ fn void! Formatter.out_str(Formatter* this, variant arg) @private
 		case UNSIGNED_INT:
 			return this.ntoa_variant(arg, 10);
 		case FLOAT:
-			return this.ftoa(float_from_variant(arg));
+			return this.ftoa(float_from_variant(arg)!!);
 		case ARRAY:
 			if (this.print_with_function(arg)?) return;
 			// this is SomeType[*] so grab the "SomeType"
@@ -447,20 +448,20 @@ fn usz! Formatter.vprintf(Formatter* this, String format, variant[] variants)
 		        this.flags.uppercase = true;
 		        nextcase;
 		    case 'f':
-		        this.ftoa(float_from_variant(current))?;
+		        this.ftoa(float_from_variant(current)!!)?;
 				continue;
 			case 'E':
 		        this.flags.uppercase = true;
 		        nextcase;
             case 'e':
-				this.etoa(float_from_variant(current))?;
+				this.etoa(float_from_variant(current)!!)?;
 				continue;
 			case 'G':
 				this.flags.uppercase = true;
 				nextcase;
 			case 'g':
 				this.flags.adapt_exp = true;
-				this.etoa(float_from_variant(current))?;
+				this.etoa(float_from_variant(current)!!)?;
 				continue;
 			case 'c':
 				this.out_char(current)?;
@@ -484,7 +485,7 @@ fn usz! Formatter.vprintf(Formatter* this, String format, variant[] variants)
 		if (this.flags.precision) this.flags.zeropad = false;
 
 		bool is_neg;
-		uint128 v = int_from_variant(current, &is_neg);
+		uint128 v = int_from_variant(current, &is_neg)!!;
 
 		this.ntoa(v, is_neg, base)?;
 	}
