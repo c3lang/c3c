@@ -3655,10 +3655,6 @@ CHECK_DEEPER:
 		return true;
 	}
 	Decl *private = NULL;
-	if (strcmp(kw, "put_all_for_create") == 0)
-	{
-		int x = 123;
-	}
 	if (!member)
 	{
 		Decl *ambiguous = NULL;
@@ -5271,6 +5267,10 @@ static const char *sema_addr_check_may_take(Expr *inner)
 			if (inner->unary_expr.operator == UNARYOP_DEREF) return NULL;
 			break;
 		case EXPR_ACCESS:
+			if (inner->access_expr.ref->decl_kind == DECL_FUNC)
+			{
+				return "Taking the address of a method should be done through the type e.g. '&Foo.method' not through the value.";
+			}
 			return sema_addr_check_may_take(inner->access_expr.parent);
 		case EXPR_GROUP:
 			return sema_addr_check_may_take(inner->inner_expr);
