@@ -674,6 +674,7 @@ static void parse_option(BuildOptions *options)
 			if (match_longopt("no-entry"))
 			{
 				options->no_entry = true;
+				return;
 			}
 			if (match_longopt("cc"))
 			{
