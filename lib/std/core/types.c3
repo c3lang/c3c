@@ -123,6 +123,7 @@ macro bool is_subarray_convertable($Type)
 	$endswitch;
 }
 
+macro bool is_bool($Type) => $Type.kindof == TypeKind.BOOL;
 macro bool is_int($Type) => $Type.kindof == TypeKind.SIGNED_INT || $Type.kindof == TypeKind.UNSIGNED_INT;
 
 macro bool is_intlike($Type)
