@@ -88,7 +88,7 @@ fn void default_panic(String message, String file, String function, uint line)
 	$$trap();
 }
 
-define PanicFn = fn void(String message, String file, String function, uint line);
+typedef PanicFn = fn void(String message, String file, String function, uint line);
 
 PanicFn panic = &default_panic;
 

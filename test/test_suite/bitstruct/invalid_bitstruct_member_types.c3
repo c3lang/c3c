@@ -5,8 +5,8 @@ bitstruct Test : int
     float a : 1..3; // #error: 'float' is not supported in a bitstruct, only enums, integer and boolean values may be used.
 }
 
-define Baz = distinct float;
-define Foo = distinct bool;
+typedef Baz = distinct float;
+typedef Foo = distinct bool;
 enum Boo
 {
     BAR

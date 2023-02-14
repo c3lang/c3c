@@ -18,70 +18,70 @@ $assert (C_LONG_SIZE <= C_LONG_LONG_SIZE);
 
 $switch ($$C_INT_SIZE):
 $case 64:
-    define CInt = long;
-    define CUInt = ulong;
+    typedef CInt = long;
+    typedef CUInt = ulong;
 $case 32:
-    define CInt = int;
-    define CUInt = uint;
+    typedef CInt = int;
+    typedef CUInt = uint;
 $case 16:
-    define CInt = short;
-    define CUInt = ushort;
+    typedef CInt = short;
+    typedef CUInt = ushort;
 $default:
     $assert(false, "Invalid C int size");
 $endswitch;
 
 $switch ($$C_LONG_SIZE):
 $case 64:
-    define CLong = long;
-    define CULong = ulong;
+    typedef CLong = long;
+    typedef CULong = ulong;
 $case 32:
-    define CLong = int;
-    define CULong = uint;
+    typedef CLong = int;
+    typedef CULong = uint;
 $case 16:
-    define CLong = short;
-    define CULong = ushort;
+    typedef CLong = short;
+    typedef CULong = ushort;
 $default:
     $assert(false, "Invalid C long size");
 $endswitch;
 
 $switch ($$C_SHORT_SIZE):
 $case 32:
-    define CShort = int;
-    define CUShort = uint;
+    typedef CShort = int;
+    typedef CUShort = uint;
 $case 16:
-    define CShort = short;
-    define CUShort = ushort;
+    typedef CShort = short;
+    typedef CUShort = ushort;
 $case 8:
-    define CShort = ichar;
-    define CUShort = char;
+    typedef CShort = ichar;
+    typedef CUShort = char;
 $default:
     $assert(false, "Invalid C short size");
 $endswitch;
 
 $switch ($$C_LONG_LONG_SIZE):
 $case 128:
-    define CLongLong = int128;
-    define CULongLong = uint128;
+    typedef CLongLong = int128;
+    typedef CULongLong = uint128;
 $case 64:
-    define CLongLong = long;
-    define CULongLong = ulong;
+    typedef CLongLong = long;
+    typedef CULongLong = ulong;
 $case 32:
-    define CLongLong = int;
-    define CULongLong = uint;
+    typedef CLongLong = int;
+    typedef CULongLong = uint;
 $case 16:
-    define CLongLong = short;
-    define CULongLong = ushort;
+    typedef CLongLong = short;
+    typedef CULongLong = ushort;
 $default:
     $assert(false, "Invalid C long long size");
 $endswitch;
 
 
 
-define CSChar = ichar;
-define CUChar = char;
+typedef CSChar = ichar;
+typedef CUChar = char;
 
 $if ($$C_CHAR_IS_SIGNED):
-    define CChar = ichar;
+    typedef CChar = ichar;
 $else:
-    define CChar = char;
+    typedef CChar = char;
 $endif;

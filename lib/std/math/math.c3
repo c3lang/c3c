@@ -85,22 +85,22 @@ fault MatrixError
     MATRIX_INVERSE_DOESNT_EXIST,
 }
 
-define Complexf = Complex<float>;
-define Complex = Complex<double>;
+typedef Complexf = Complex<float>;
+typedef Complex = Complex<double>;
 define complexf_identity = complex::identity<float>;
 define complex_identity = complex::identity<double>;
 
-define Quaternionf = Quaternion<float>;
-define Quaternion = Quaternion<double>;
+typedef Quaternionf = Quaternion<float>;
+typedef Quaternion = Quaternion<double>;
 define quaternionf_identity = quaternion::identity<float>;
 define quaternion_identity = quaternion::identity<double>;
 
-define Matrix2f = Matrix2x2<float>;
-define Matrix2 = Matrix2x2<double>;
-define Matrix3f = Matrix3x3<float>;
-define Matrix3 = Matrix3x3<double>;
-define Matrix4f = Matrix4x4<float>;
-define Matrix4 = Matrix4x4<double>;
+typedef Matrix2f = Matrix2x2<float>;
+typedef Matrix2 = Matrix2x2<double>;
+typedef Matrix3f = Matrix3x3<float>;
+typedef Matrix3 = Matrix3x3<double>;
+typedef Matrix4f = Matrix4x4<float>;
+typedef Matrix4 = Matrix4x4<double>;
 define matrix4_ortho = matrix::ortho<double>;
 define matrix4_perspective = matrix::perspective<double>;
 define matrix4f_ortho = matrix::ortho<float>;

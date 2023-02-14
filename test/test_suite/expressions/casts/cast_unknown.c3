@@ -1,4 +1,4 @@
-define Number = int;
+typedef Number = int;
 
 fn void test1()
 {

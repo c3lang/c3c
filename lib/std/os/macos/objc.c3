@@ -2,10 +2,10 @@ module std::os::macos::objc;
 
 $if (env::OS_TYPE == OsType.MACOSX):
 
-define Class = distinct void*;
-define Method = distinct void*;
-define Ivar = distinct void*;
-define Selector = distinct void*;
+typedef Class = distinct void*;
+typedef Method = distinct void*;
+typedef Ivar = distinct void*;
+typedef Selector = distinct void*;
 
 fault ObjcFailure
 {

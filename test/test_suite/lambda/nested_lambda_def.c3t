@@ -32,7 +32,7 @@ macro Callback get_callback2()
 
 module bar;
 import foo;
-define Callback = fn int();
+typedef Callback = fn int();
 
 macro Callback get_callback()
 {

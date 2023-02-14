@@ -2,9 +2,9 @@ module std::os::macos::cf;
 
 $if (env::OS_TYPE == OsType.MACOSX):
 
-define CFAllocatorRef = distinct void*;
-define CFAllocatorContextRef = distinct void*;
-define CFOptionFlags = usz;
+typedef CFAllocatorRef = distinct void*;
+typedef CFAllocatorContextRef = distinct void*;
+typedef CFOptionFlags = usz;
 
 macro CFAllocatorRef default_allocator() => _macos_CFAllocatorGetDefault();
 macro void CFAllocatorRef.dealloc(CFAllocatorRef allocator, void* ptr) => _macos_CFAllocatorDeallocate(allocator, ptr);

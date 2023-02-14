@@ -3,7 +3,7 @@ module test;
 import std::io;
 import std::collections::enumset;
 
-define AbcEnumSet = EnumSet<Abc>;
+typedef AbcEnumSet = EnumSet<Abc>;
 
 enum Abc
 {

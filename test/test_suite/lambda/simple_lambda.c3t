@@ -3,7 +3,7 @@ import std::io;
 import std::math::vector;
 import std::math;
 
-define Callback = fn int();
+typedef Callback = fn int();
 
 fn int xy(Callback a) => a();
 

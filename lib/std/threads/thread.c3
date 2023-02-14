@@ -11,19 +11,19 @@ const ThreadModel THREAD_MODEL =  env::COMPILER_LIBC_AVAILABLE
 	? (env::OS_TYPE == OsType.WIN32 ? ThreadModel.WIN32 : ThreadModel.POSIX)
 	: ThreadModel.NONE;
 
-define MutexType = distinct int;
+typedef MutexType = distinct int;
 
 const MutexType MUTEX_PLAIN = 0;
 const MutexType MUTEX_TIMED = 1;
 const MutexType MUTEX_RECURSIVE = 2;
 
-define Mutex = distinct NativeMutex;
-define ConditionVariable = distinct NativeConditionVariable;
-define Thread = distinct NativeThread;
-define OnceFlag = distinct NativeOnceFlag;
-define OnceFn = fn void();
+typedef Mutex = distinct NativeMutex;
+typedef ConditionVariable = distinct NativeConditionVariable;
+typedef Thread = distinct NativeThread;
+typedef OnceFlag = distinct NativeOnceFlag;
+typedef OnceFn = fn void();
 
-define ThreadFn = fn int(void* arg);
+typedef ThreadFn = fn int(void* arg);
 
 fault ThreadFault
 {

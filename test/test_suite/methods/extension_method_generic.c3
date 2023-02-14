@@ -1,7 +1,7 @@
 module compiler_c3;
 import std::collections::list;
 
-define IntArray = List<int>;
+typedef IntArray = List<int>;
 
 extern fn void printf(char*, ...);
 

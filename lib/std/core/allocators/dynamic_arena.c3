@@ -1,6 +1,6 @@
 module std::core::mem::allocator;
 
-struct DynamicArenaPage @private
+struct DynamicArenaPage @local
 {
 	void* memory;
 	void* prev_arena;
@@ -9,7 +9,7 @@ struct DynamicArenaPage @private
 	void* last_ptr;
 }
 
-struct DynamicArenaChunk @private
+struct DynamicArenaChunk @local
 {
 	usz size;
 }
@@ -32,7 +32,7 @@ fn void DynamicArenaAllocator.free(DynamicArenaAllocator* this, void* ptr) @priv
  * @require old_pointer && size > 0
  * @require this.page `tried to realloc pointer on invalid allocator`
  */
-fn void*! DynamicArenaAllocator._realloc(DynamicArenaAllocator* this, void* old_pointer, usz size, usz alignment, usz offset) @private
+fn void*! DynamicArenaAllocator._realloc(DynamicArenaAllocator* this, void* old_pointer, usz size, usz alignment, usz offset) @local
 {
 	DynamicArenaPage* current_page = this.page;
 	alignment = alignment_for_allocation(alignment);
@@ -82,7 +82,7 @@ fn void DynamicArenaAllocator.reset(DynamicArenaAllocator* this) @private
  * @require math::is_power_of_2(alignment)
  * @require size > 0
  */
-fn void*! DynamicArenaAllocator._alloc_new(DynamicArenaAllocator* this, usz size, usz alignment, usz offset) @private
+fn void*! DynamicArenaAllocator._alloc_new(DynamicArenaAllocator* this, usz size, usz alignment, usz offset) @local
 {
 	// First, make sure that we can align it, extending the page size if needed.
 	usz page_size = max(this.page_size, mem::aligned_offset(size + DynamicArenaChunk.sizeof + offset, alignment) - offset);
@@ -113,7 +113,7 @@ fn void*! DynamicArenaAllocator._alloc_new(DynamicArenaAllocator* this, usz size
  * @require size > 0
  * @require this
  */
-fn void*! DynamicArenaAllocator._alloc(DynamicArenaAllocator* this, usz size, usz alignment, usz offset) @private
+fn void*! DynamicArenaAllocator._alloc(DynamicArenaAllocator* this, usz size, usz alignment, usz offset) @local
 {
 	alignment = alignment_for_allocation(alignment);
 	DynamicArenaPage* page = this.page;

@@ -28,7 +28,7 @@ struct VarArrayHeader
     void *allocator;
 }
 
-define TestFn = fn void!();
+typedef TestFn = fn void!();
 
 struct TestRunner
 {

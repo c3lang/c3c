@@ -1,6 +1,6 @@
 module std::thread;
 
-define NativeMutex = distinct int;
-define NativeConditionVariable = distinct int;
-define NativeOnceFlag = distinct int;
-define NativeThread = distinct int;
+typedef NativeMutex = distinct int;
+typedef NativeConditionVariable = distinct int;
+typedef NativeOnceFlag = distinct int;
+typedef NativeThread = distinct int;

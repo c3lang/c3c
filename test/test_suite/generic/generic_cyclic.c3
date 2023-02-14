@@ -2,7 +2,7 @@
 module test;
 import bar;
 
-define BazTest = Baz<Test>;
+typedef BazTest = Baz<Test>;
 
 struct Test // #error: Recursive definition of 'Test'
 {

@@ -31,9 +31,9 @@ fn void errno_set(Errno e)
 	os::errno_set((int)e);
 }
 
-define TerminateFunction = fn void();
-define CompareFunction = fn int(void*, void*);
-define JmpBuf = uptr[$$JMP_BUF_SIZE];
+typedef TerminateFunction = fn void();
+typedef CompareFunction = fn int(void*, void*);
+typedef JmpBuf = uptr[$$JMP_BUF_SIZE];
 
 $if (env::COMPILER_LIBC_AVAILABLE):
 
@@ -147,8 +147,8 @@ $endif;
 
 // stdio
 
-define Fpos = long;
-define CFile = void*;
+typedef Fpos = long;
+typedef CFile = void*;
 
 $if (env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == OsType.LINUX):
     extern CFile __stdin @extern("stdin");
@@ -200,8 +200,8 @@ const int EOF = -1;
 const int FOPEN_MAX = 20;
 const int FILENAME_MAX = 1024;
 
-define Errno = distinct CInt;
-define SeekIndex = CLong;
+typedef Errno = distinct CInt;
+typedef SeekIndex = CLong;
 
 $if (env::COMPILER_LIBC_AVAILABLE):
 
@@ -318,7 +318,7 @@ $endif;
 
 // time.h
 
-define TimeOffset = CLong;
+typedef TimeOffset = CLong;
 
 struct Tm
 {
@@ -351,8 +351,8 @@ extern fn int nanosleep(TimeSpec* req, TimeSpec* remaining);
 const CLOCKS_PER_SEC = 1000000;
 
 // Time also needs to be per platform
-define Time = long;
-define Clock = ulong;
+typedef Time = long;
+typedef Clock = ulong;
 
 extern fn ZString asctime(Tm *timeptr);
 extern fn Clock clock();
@@ -365,7 +365,7 @@ extern fn usz strftime(char* str, usz maxsize, char* format, Tm *timeptr);
 extern fn Time time(Time *timer);
 
 // signal
-define SignalFunction = fn void(int);
+typedef SignalFunction = fn void(int);
 extern fn SignalFunction signal(int sig, SignalFunction function);
 // Incomplete
 

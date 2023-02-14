@@ -1,7 +1,7 @@
 module std::io::dir;
 import std::io::os;
 // In progress.
-define Path = distinct String;
+typedef Path = distinct String;
 
 const PREFERRED_SEPARATOR = USE_WIN32_FILESYSTEM ? '\\' : '/';
 const USE_WIN32_FILESYSTEM @private = env::OS_TYPE != OsType.WIN32;

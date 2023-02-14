@@ -1,4 +1,4 @@
-define Foo = distinct double[];
+typedef Foo = distinct double[];
 
 fn void main()
 {

@@ -3,7 +3,7 @@ module test;
 import std::io;
 import std::collections::list;
 
-define TreeNodeList = List<TreeNode>;
+typedef TreeNodeList = List<TreeNode>;
 
 struct TreeNode
 {

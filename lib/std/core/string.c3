@@ -1,11 +1,11 @@
 module std::core::string;
 import libc;
 
-define VarString = distinct void*;
-define DynStr = VarString;
-define DynString = VarString;
-define DString = VarString;
-define VString = VarString;
+typedef VarString = distinct void*;
+typedef DynStr = VarString;
+typedef DynString = VarString;
+typedef DString = VarString;
+typedef VString = VarString;
 
 
 const usz MIN_CAPACITY = 16;
