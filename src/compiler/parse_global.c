@@ -2666,7 +2666,7 @@ static Decl *parse_include(ParseContext *c)
 	TokenData old_data = c->data;
 	SourceSpan old_prev = c->prev_span;
 	SourceSpan old_span = c->span;
-
+	c->tok = TOKEN_INVALID_TOKEN;
 	c->lexer = (Lexer){ .file = decl->include.file, .context =  c };
 	lexer_init(&c->lexer);
 	// Prime everything
@@ -2676,10 +2676,10 @@ static Decl *parse_include(ParseContext *c)
 	while (!tok_is(c, TOKEN_EOF))
 	{
 		Decl *inner = parse_top_level_statement(c, &c);
-		if (!decl) continue;
-		if (!decl_ok(decl))
+		if (!inner) continue;
+		if (!decl_ok(inner))
 		{
-			decl_poison(decl);
+			decl_poison(inner);
 			goto END;
 		}
 		add_decl_to_list(&list, inner);
