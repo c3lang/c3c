@@ -634,7 +634,7 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 		LLVMSetVisibility(function, LLVMDefaultVisibility);
 		return;
 	}
-	if (decl->is_private && !decl->is_external_visible)
+	if (decl_is_local(decl))
 	{
 		LLVMSetLinkage(function, decl->is_weak ? LLVMLinkerPrivateWeakLinkage : LLVMInternalLinkage);
 		LLVMSetVisibility(function, LLVMDefaultVisibility);

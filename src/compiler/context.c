@@ -129,7 +129,7 @@ void unit_register_external_symbol(CompilationUnit *unit, Decl *decl)
 
 void decl_register(Decl *decl)
 {
-	if (decl->is_private) return;
+	if (decl->visibility > VISIBLE_PUBLIC) return;
 	switch (decl->decl_kind)
 	{
 		case DECL_INITIALIZE:

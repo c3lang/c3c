@@ -101,13 +101,13 @@ static inline Ast *parse_declaration_stmt(ParseContext *c)
 	{
 		result->declare_stmt->var.is_threadlocal = is_threadlocal;
 		result->declare_stmt->var.is_static = is_static || is_threadlocal;
-		result->declare_stmt->is_private = true;
+		result->declare_stmt->visibility = VISIBLE_LOCAL;
 		return result;
 	}
 	FOREACH_BEGIN(Decl *var, result->decls_stmt)
 		var->var.is_threadlocal = is_threadlocal;
 		var->var.is_static = is_static || is_threadlocal;
-		var->is_private = true;
+		var->visibility = VISIBLE_LOCAL;
 	FOREACH_END();
 	return result;
 }

@@ -1282,34 +1282,48 @@ static bool sema_check_operator_method_validity(Decl *method)
 	UNREACHABLE
 }
 
-static inline bool unit_add_base_extension_method(CompilationUnit *unit, Type *parent_type, Decl *method_like)
+INLINE void sema_set_method_ext_name(CompilationUnit *unit, const char *parent_name, Decl *method_like)
 {
-	if (!method_like->has_extname)
+	if (method_like->has_extname) return;
+	scratch_buffer_clear();
+	switch (method_like->visibility)
 	{
-		scratch_buffer_clear();
-		if (method_like->is_private)
-		{
-			scratch_buffer_append(parent_type->name);
-			scratch_buffer_append_char('$');
-			scratch_buffer_append(method_like->name);
-		}
-		else
-		{
-			scratch_buffer_append(parent_type->name);
+		case VISIBLE_PUBLIC:
+			scratch_buffer_append(parent_name);
 			scratch_buffer_append("_");
 			scratch_buffer_append(method_like->name);
-		}
-		method_like->extname = scratch_buffer_copy();
+			break;
+		case VISIBLE_PRIVATE:
+			scratch_buffer_append(parent_name);
+			scratch_buffer_append_char('$');
+			scratch_buffer_append(method_like->name);
+			break;
+		case VISIBLE_LOCAL:
+			scratch_buffer_append(unit->file->name);
+			scratch_buffer_append_char('.');
+			scratch_buffer_append(parent_name);
+			scratch_buffer_append_char('.');
+			scratch_buffer_append(method_like->name);
+			break;
+	}
+	method_like->extname = scratch_buffer_copy();
+}
+static inline bool unit_add_base_extension_method(CompilationUnit *unit, Type *parent_type, Decl *method_like)
+{
+	sema_set_method_ext_name(unit, parent_type->name, method_like);
+	switch (method_like->visibility)
+	{
+		case VISIBLE_PUBLIC:
+			vec_add(global_context.method_extensions, method_like);
+			break;
+		case VISIBLE_PRIVATE:
+			vec_add(unit->module->private_method_extensions, method_like);
+			break;
+		case VISIBLE_LOCAL:
+			vec_add(unit->local_method_extensions, method_like);
+			break;
 	}
 	DEBUG_LOG("Method-like '%s.%s' analysed.", parent_type->name, method_like->name);
-	if (method_like->is_private)
-	{
-		vec_add(unit->module->private_method_extensions, method_like);
-	}
-	else
-	{
-		vec_add(global_context.method_extensions, method_like);
-	}
 	return true;
 }
 
@@ -1317,8 +1331,9 @@ static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type
 {
 	assert(parent_type->canonical == parent_type);
 	const char *name = method_like->name;
-	Decl *method = sema_find_extension_method_in_module(unit->module->private_method_extensions, parent_type, name);
-	if (!method) sema_find_extension_method_in_module(global_context.method_extensions, parent_type, name);
+	Decl *method = sema_find_extension_method_in_list(unit->local_method_extensions, parent_type, name);
+	if (!method) sema_find_extension_method_in_list(unit->module->private_method_extensions, parent_type, name);
+	if (!method) sema_find_extension_method_in_list(global_context.method_extensions, parent_type, name);
 	if (method)
 	{
 		SEMA_ERROR(method_like, "This %s is already defined.", method_name_by_decl(method_like));
@@ -1340,31 +1355,31 @@ static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type
 	}
 	if (method_like->operator && !sema_check_operator_method_validity(method_like)) return false;
 	REMINDER("Check multiple operator");
-	if (!method_like->has_extname)
-	{
-		scratch_buffer_clear();
-		if (method_like->is_private)
-		{
-			scratch_buffer_append(parent->extname);
-			scratch_buffer_append_char('$');
-			scratch_buffer_append(method_like->name);
-		}
-		else
-		{
-			scratch_buffer_append(parent->extname);
-			scratch_buffer_append("_");
-			scratch_buffer_append(method_like->name);
-		}
-		method_like->extname = scratch_buffer_copy();
-	}
+	sema_set_method_ext_name(unit, parent->extname, method_like);
 	DEBUG_LOG("Method-like '%s.%s' analysed.", parent->name, method_like->name);
-	if (parent->unit->module == unit->module || !method_like->is_private)
+	switch (method_like->visibility)
 	{
-		vec_add(parent->methods, method_like);
-	}
-	else
-	{
-		vec_add(unit->module->private_method_extensions, method_like);
+		case VISIBLE_PUBLIC:
+			vec_add(parent->methods, method_like);
+			break;
+		case VISIBLE_PRIVATE:
+			if (parent->unit->module == unit->module && parent->visibility >= VISIBLE_PRIVATE)
+			{
+				vec_add(parent->methods, method_like);
+				break;
+			}
+			vec_add(unit->module->private_method_extensions, method_like);
+			break;
+		case VISIBLE_LOCAL:
+			if (parent->unit == unit && parent->visibility >= VISIBLE_LOCAL)
+			{
+				vec_add(parent->methods, method_like);
+				break;
+			}
+			vec_add(unit->local_method_extensions, method_like);
+			break;
+		default:
+			UNREACHABLE
 	}
 	return true;
 
@@ -1447,6 +1462,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_EXTERN] = (AttributeDomain)~(ATTR_CALL | ATTR_BITSTRUCT | ATTR_DEFINE | ATTR_MACRO | ATTR_XXLIZER),
 			[ATTRIBUTE_INLINE] = ATTR_FUNC | ATTR_CALL,
 			[ATTRIBUTE_LITTLEENDIAN] = ATTR_BITSTRUCT,
+			[ATTRIBUTE_LOCAL] = ATTR_FUNC | ATTR_MACRO | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES | ATTR_DEFINE,
 			[ATTRIBUTE_MAYDISCARD] = ATTR_FUNC | ATTR_MACRO,
 			[ATTRIBUTE_NAKED] = ATTR_FUNC,
 			[ATTRIBUTE_NODISCARD] = ATTR_FUNC | ATTR_MACRO,
@@ -1516,7 +1532,20 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			}
 			break;
 		case ATTRIBUTE_PRIVATE:
-			decl->is_private = true;
+			if (decl->visibility != VISIBLE_PUBLIC)
+			{
+				SEMA_ERROR(decl, "Multiple visibility attributes cannot be combined.");
+				return false;
+			}
+			decl->visibility = VISIBLE_PRIVATE;
+			break;
+		case ATTRIBUTE_LOCAL:
+			if (decl->visibility != VISIBLE_PUBLIC)
+			{
+				SEMA_ERROR(decl, "Multiple visibility attributes cannot be combined.");
+				return false;
+			}
+			decl->visibility = VISIBLE_LOCAL;
 			break;
 		case ATTRIBUTE_TEST:
 			decl->func_decl.attr_test = true;
@@ -2125,9 +2154,9 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	assert(decl != context->unit->main_function);
 	bool is_winmain = decl->func_decl.attr_winmain;
 	bool is_win32 = platform_target.os == OS_TYPE_WIN32;
-	if (decl->is_private)
+	if (decl->visibility != VISIBLE_PUBLIC)
 	{
-		SEMA_ERROR(decl, "A main function may not be private.");
+		SEMA_ERROR(decl, "A main function must be public.");
 		return false;
 	}
 	Signature *signature = &decl->func_decl.signature;
@@ -2736,7 +2765,7 @@ static CompilationUnit *unit_copy(Module *module, CompilationUnit *unit)
 static Module *module_instantiate_generic(Module *module, Path *path, Expr **params)
 {
 	Module *new_module = compiler_find_or_create_module(path, NULL, module->is_private);
-	new_module->is_generic = true;
+	new_module->is_generic = false;
 	CompilationUnit **units = module->units;
 	VECEACH(units, i)
 	{

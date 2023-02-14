@@ -342,7 +342,7 @@ static Expr *parse_lambda(ParseContext *c, Expr *left)
 	advance_and_verify(c, TOKEN_FN);
 	Decl *func = decl_calloc();
 	func->decl_kind = DECL_FUNC;
-	func->is_private = true;
+	func->visibility = VISIBLE_LOCAL;
 	func->func_decl.generated_lambda = NULL;
 	TypeInfo *return_type = NULL;
 	if (!tok_is(c, TOKEN_LPAREN))

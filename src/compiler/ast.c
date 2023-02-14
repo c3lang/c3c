@@ -436,6 +436,16 @@ bool ast_is_compile_time(Ast *ast)
 	}
 }
 
+bool decl_is_externally_visible(Decl *decl)
+{
+	return decl->is_external_visible || decl->visibility == VISIBLE_PUBLIC || decl->is_export;
+}
+
+bool decl_is_local(Decl *decl)
+{
+	return !decl->is_external_visible && decl->visibility != VISIBLE_PUBLIC && !decl->is_export;
+}
+
 Decl *decl_find_enum_constant(Decl *decl, const char *name)
 {
 	VECEACH(decl->enums.values, i)
