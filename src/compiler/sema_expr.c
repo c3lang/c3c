@@ -2825,6 +2825,23 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 	Decl *member = sema_decl_stack_find_decl_member(decl, name);
 	if (!member)
 	{
+		Decl *ambiguous = NULL;
+		Decl *private = NULL;
+		member = sema_resolve_type_method(context->unit, decl->type, name, &ambiguous, &private);
+		if (private)
+		{
+			SEMA_ERROR(expr, "The method '%s' has private visibility.", name);
+			return false;
+		}
+		if (ambiguous)
+		{
+			SEMA_ERROR(expr, "'%s' is an ambiguous name and so cannot be resolved, it may refer to method defined in '%s' or one in '%s'",
+			           name, member->unit->module->name->module, ambiguous->unit->module->name->module);
+			return false;
+		}
+	}
+	if (!member)
+	{
 		SEMA_ERROR(expr, "No method or inner struct/union '%s.%s' found.", type_to_error_string(decl->type), name);
 		return false;
 	}
