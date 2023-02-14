@@ -208,7 +208,8 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl, Decl **
 			SEMA_ERROR(member, "Scaled vector members not allowed in unions / structs.");
 			return false;
 		}
-		AlignSize member_alignment = type_abi_alignment(member->type);
+		AlignSize member_alignment;
+		if (!sema_set_abi_alignment(context, member->type, &member_alignment)) return false;
 		ByteSize member_size = type_size(member->type);
 		assert(member_size <= MAX_TYPE_SIZE);
 		// Update max alignment
@@ -334,7 +335,8 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl, Decl *
 
 		if (!decl_ok(decl)) return false;
 
-		AlignSize member_natural_alignment = type_abi_alignment(member->type);
+		AlignSize member_natural_alignment;
+		if (!sema_set_abi_alignment(context, member->type, &member_natural_alignment)) return decl_poison(decl);
 		AlignSize member_alignment = is_packed ? 1 : member_natural_alignment;
 		Attr **attributes = member->attributes;
 
@@ -800,7 +802,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig)
 		if (param->var.type_info)
 		{
 			param->type = param->var.type_info->type;
-			param->alignment = type_abi_alignment(param->type);
+			if (!sema_set_abi_alignment(context, param->type, &param->alignment)) return false;
 		}
 		if (param->var.init_expr)
 		{
@@ -839,6 +841,8 @@ Type *sema_analyse_function_signature(SemaContext *context, Decl *parent, CallAB
 
 	for (unsigned i = 0; i < param_count; i++)
 	{
+		assert(IS_RESOLVED(params[i]));
+		assert(params[i]->type->canonical);
 		vec_add(types, params[i]->type);
 	}
 
@@ -980,8 +984,7 @@ static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param, bo
 		}
 		*has_default = true;
 	}
-	param->alignment = type_abi_alignment(param->type);
-	return true;
+	return sema_set_abi_alignment(context, param->type, &param->alignment);
 }
 
 static inline bool sema_analyse_enum(SemaContext *context, Decl *decl)
@@ -2315,7 +2318,7 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl)
 	bool pure = false;
 	if (!sema_analyse_doc_header(decl->func_decl.docs, decl->func_decl.signature.params, NULL, &pure)) return decl_poison(decl);
 	decl->func_decl.signature.attrs.is_pure = pure;
-	decl->alignment = type_alloca_alignment(decl->type);
+	if (!sema_set_alloca_alignment(context, decl->type, &decl->alignment)) return false;
 	DEBUG_LOG("Function analysis done.");
 	return true;
 }
@@ -2621,7 +2624,10 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 				}
 				return decl_poison(decl);
 			}
-			if (!decl->alignment) decl->alignment = type_alloca_alignment(decl->type);
+			if (!decl->alignment)
+			{
+				if (!sema_set_alloca_alignment(context, decl->type, &decl->alignment)) return false;
+			}
 			if (!sema_analyse_decl_type(context, decl->type, init_expr->span)) return decl_poison(decl);
 			// Skip further evaluation.
 			goto EXIT_OK;
@@ -2661,7 +2667,10 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 		{
 			// Pre resolve to avoid problem with recursive definitions.
 			decl->resolve_status = RESOLVE_DONE;
-			if (!decl->alignment) decl->alignment = type_alloca_alignment(decl->type);
+			if (!decl->alignment)
+			{
+				if (!sema_set_alloca_alignment(context, decl->type, &decl->alignment)) return false;
+			}
 		}
 
 		CallEnvKind env_kind = context->call_env.kind;
@@ -2706,7 +2715,10 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 		}
 	}
 	EXIT_OK:
-	if (!decl->alignment) decl->alignment = type_alloca_alignment(decl->type);
+	if (!decl->alignment)
+	{
+		if (!sema_set_alloca_alignment(context, decl->type, &decl->alignment)) return false;
+	}
 	return true;
 }
 
@@ -2911,7 +2923,7 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 		path->span = module->name->span;
 		path->len = scratch_buffer.len;
 		instantiated_module = module_instantiate_generic(module, path, decl->define_decl.generic_params);
-		sema_analyze_stage(instantiated_module, c->unit->module->stage);
+		sema_analyze_stage(instantiated_module, c->unit->module->stage - 1);
 	}
 	if (global_context.errors_found) return decl_poison(decl);
 	Decl *symbol = module_find_symbol(instantiated_module, name);

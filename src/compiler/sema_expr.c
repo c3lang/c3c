@@ -1407,7 +1407,7 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 					}
 					else
 					{
-						param->alignment = type_alloca_alignment(arg->type);
+						if (!sema_set_alloca_alignment(context, arg->type, &param->alignment)) return false;
 					}
 				}
 				break;
@@ -1423,7 +1423,7 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 				if (!param->alignment)
 				{
 					assert(callee.macro && "Only in the macro case should we need to insert the alignment.");
-					param->alignment = type_alloca_alignment(arg->type);
+					if (!sema_set_alloca_alignment(context, arg->type, &param->alignment)) return false;
 				}
 				if (!sema_call_check_contract_param_match(context, param, arg)) return false;
 				break;
@@ -1729,7 +1729,10 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 				return false;
 			}
 		}
-		if (!body_arg->alignment) body_arg->alignment = type_alloca_alignment(body_arg->type);
+		if (!body_arg->alignment)
+		{
+			if (!sema_set_alloca_alignment(context, body_arg->type, &body_arg->alignment)) return false;
+		}
 	}
 
 
@@ -2769,8 +2772,10 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 
 	if (!is_const)
 	{
+		AlignSize align;
+		if (!sema_set_abi_alignment(context, parent->type, &align)) return false;
 		if (sema_expr_rewrite_to_type_property(context, expr, canonical, type_property_by_name(name),
-		                                       type_abi_alignment(parent->type), 0)) return true;
+		                                       align, 0)) return true;
 	}
 
 	if (!type_may_have_sub_elements(canonical))
@@ -2779,6 +2784,8 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 		return false;
 	}
 	Decl *decl = canonical->decl;
+	if (!sema_analyse_decl(context, decl)) return false;
+
 	// TODO add more constants that can be inspected?
 	// e.g. SomeEnum.values, MyUnion.x.offset etc?
 	switch (decl->decl_kind)
@@ -2825,9 +2832,11 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 	if (member->decl_kind == DECL_VAR || member->decl_kind == DECL_UNION || member->decl_kind == DECL_STRUCT || member->decl_kind == DECL_BITSTRUCT)
 	{
 		expr->expr_kind = EXPR_CONST;
+		AlignSize align;
+		if (!sema_set_abi_alignment(context, decl->type, &align)) return false;
 		expr->const_expr = (ExprConst) {
 			.member.decl = member,
-			.member.align = type_abi_alignment(decl->type),
+			.member.align = align,
 			.member.offset = decl_find_member_offset(decl, member),
 			.const_kind = CONST_MEMBER
 		};
@@ -3215,7 +3224,9 @@ static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *exp
 	if (typeid->expr_kind == EXPR_CONST)
 	{
 		Type *type = typeid->const_expr.typeid;
-		return sema_expr_rewrite_to_type_property(context, expr, type, property, type_abi_alignment(type), 0);
+		AlignSize align;
+		if (!sema_set_abi_alignment(context, type, &align)) return false;
+		return sema_expr_rewrite_to_type_property(context, expr, type, property, align, 0);
 	}
 	switch (property)
 	{
@@ -3374,8 +3385,12 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			sema_expr_rewrite_to_type_nameof(expr, type, TOKEN_CT_QNAMEOF);
 			return true;
 		case TYPE_PROPERTY_ALIGNOF:
-			expr_rewrite_const_int(expr, type_usize, type_abi_alignment(type), true);
+		{
+			AlignSize align;
+			if (!sema_set_abi_alignment(context, type, &align)) return false;
+			expr_rewrite_const_int(expr, type_usize, align, true);
 			return true;
+		}
 		case TYPE_PROPERTY_EXTNAMEOF:
 			if (type_is_builtin(type->type_kind)) return false;
 			sema_expr_rewrite_to_type_nameof(expr, type, TOKEN_CT_EXTNAMEOF);
@@ -6291,7 +6306,15 @@ static inline bool sema_expr_analyse_ct_alignof(SemaContext *context, Expr *expr
 		SEMA_ERROR(main_var, "Cannot use '$alignof' on type %s.", type_quoted_error_string(type));
 		return false;
 	}
-	AlignSize align = decl && !decl_is_user_defined_type(decl) ? decl->alignment : type_abi_alignment(type);
+	AlignSize align;
+	if (decl && !decl_is_user_defined_type(decl))
+	{
+		align = decl->alignment;
+	}
+	else
+	{
+		if (!sema_set_abi_alignment(context, type, &align)) return false;
+	}
 	VECEACH(path, i)
 	{
 		ExprFlatElement *element = &path[i];

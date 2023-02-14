@@ -32,21 +32,10 @@ bool sema_resolve_type_info(SemaContext *context, TypeInfo *type_info)
 
 bool sema_resolve_type_info_maybe_inferred(SemaContext *context, TypeInfo *type_info, bool allow_inferred_type)
 {
-	// Resolve the type non-shallow
-	if (!sema_resolve_type(context, type_info, allow_inferred_type, false)) return false;
-
-	// What is the underlying non-optional type.
-	Type *type = type_no_optional(type_info->type);
-
-	// usz and similar typedefs will not have a decl.
-	if (type->type_kind == TYPE_TYPEDEF && type->decl == NULL) return true;
-
-	// If it is a basic type, then we're done.
-	if (!type_is_user_defined(type)) return true;
-
-	// Otherwise analyse the underlying declaration.
-	return sema_analyse_decl(context, type->decl);
+	return sema_resolve_type(context, type_info, allow_inferred_type, false);
 }
+
+
 
 bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, ArraySize *len_ref)
 {
