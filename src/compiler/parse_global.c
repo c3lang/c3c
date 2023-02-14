@@ -1136,6 +1136,12 @@ static inline Decl *parse_global_declaration(ParseContext *c)
 		}
 		if (!parse_decl_initializer(c, decl, true)) return poisoned_decl;
 	}
+	else if (!decl->attributes && tok_is(c, TOKEN_LPAREN) && !threadlocal)
+	{
+		// Guess we forgot `fn`?
+		sema_error_at(type->span, "This looks like the beginning of a function declaration but it's missing the initial `fn`. Did you forget it?");
+		return poisoned_decl;
+	}
 	CONSUME_EOS_OR_RET(poisoned_decl);
 	Attr **attributes = decl->attributes;
 	if (attributes)
@@ -1927,6 +1933,18 @@ static inline Decl *parse_define_ident(ParseContext *c)
 		Expr **params = parse_generic_parameters(c);
 		if (!params) return poisoned_decl;
 		decl->define_decl.generic_params = params;
+	}
+	else if (!tok_is(c, TOKEN_EOS) && decl->define_decl.ident == kw_distinct)
+	{
+		if (token_is_any_type(c->tok))
+		{
+			SEMA_ERROR(decl, "A type name alias must start with an uppercase letter.");
+		}
+		else
+		{
+			sema_error_at(decl->define_decl.span, "'distinct' can only be used with types.");
+		}
+		return poisoned_decl;
 	}
 	RANGE_EXTEND_PREV(decl);
 	CONSUME_EOS_OR_RET(poisoned_decl);
