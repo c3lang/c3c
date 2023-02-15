@@ -283,8 +283,8 @@ INLINE void llvm_emit_memcpy_builtin(GenContext *c, unsigned intrinsic, BEValue 
 	LLVMValueRef arg_slots[4];
 	llvm_emit_intrinsic_args(c, args, arg_slots, 4);
 	LLVMTypeRef call_type[3];
-	call_type[0] = call_type[1] = llvm_get_type(c, type_voidptr);
-	call_type[2] = llvm_get_type(c, type_usize);
+	call_type[0] = call_type[1] = c->ptr_type;
+	call_type[2] = c->size_type;
 	LLVMValueRef result = llvm_emit_call_intrinsic(c, intrinsic, call_type, 3, arg_slots, 4);
 	assert(args[4]->const_expr.const_kind == CONST_INTEGER);
 	assert(args[5]->const_expr.const_kind == CONST_INTEGER);
@@ -301,8 +301,8 @@ INLINE void llvm_emit_memmove_builtin(GenContext *c, BEValue *be_value, Expr *ex
 	LLVMValueRef arg_slots[4];
 	llvm_emit_intrinsic_args(c, args, arg_slots, 4);
 	LLVMTypeRef call_type[3];
-	call_type[0] = call_type[1] = llvm_get_type(c, type_voidptr);
-	call_type[2] = llvm_get_type(c, type_usize);
+	call_type[0] = call_type[1] = c->ptr_type;
+	call_type[2] = c->size_type;
 	LLVMValueRef result = llvm_emit_call_intrinsic(c, intrinsic_id.memmove, call_type, 3, arg_slots, 4);
 	assert(args[4]->const_expr.const_kind == CONST_INTEGER);
 	assert(args[5]->const_expr.const_kind == CONST_INTEGER);
@@ -318,7 +318,7 @@ INLINE void llvm_emit_memset_builtin(GenContext *c, unsigned intrinsic, BEValue 
 	Expr **args = expr->call_expr.arguments;
 	LLVMValueRef arg_slots[4];
 	llvm_emit_intrinsic_args(c, args, arg_slots, 4);
-	LLVMTypeRef call_type[2] = { llvm_get_type(c, type_voidptr), llvm_get_type(c, type_usize) };
+	LLVMTypeRef call_type[2] = { c->ptr_type, c->size_type };
 	LLVMValueRef result = llvm_emit_call_intrinsic(c, intrinsic, call_type, 2, arg_slots, 4);
 	assert(args[4]->const_expr.const_kind == CONST_INTEGER);
 	uint64_t dst_align = int_to_u64(args[4]->const_expr.ixx);
@@ -332,7 +332,7 @@ INLINE void llvm_emit_prefetch(GenContext *c, BEValue *be_value, Expr *expr)
 	LLVMValueRef arg_slots[4];
 	llvm_emit_intrinsic_args(c, args, arg_slots, 3);
 	arg_slots[3] = llvm_const_int(c, type_int, 1);
-	LLVMTypeRef call_type[1] = { llvm_get_type(c, type_voidptr) };
+	LLVMTypeRef call_type[1] = { c->ptr_type };
 	LLVMValueRef result = llvm_emit_call_intrinsic(c, intrinsic_id.prefetch, call_type, 1, arg_slots, 4);
 	llvm_value_set(be_value, result, type_void);
 }
@@ -608,7 +608,7 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 			return;
 		case BUILTIN_FRAMEADDRESS:
 		{
-			LLVMTypeRef type[2] = { llvm_get_type(c, type_voidptr), llvm_get_type(c, type_int) };
+			LLVMTypeRef type[2] = { c->ptr_type, llvm_get_type(c, type_int) };
 			LLVMValueRef value = LLVMConstNull(type[1]);
 			value = llvm_emit_call_intrinsic(c, intrinsic_id.frameaddress, type, 1, &value, 1);
 			llvm_value_set(result_value, value, expr->type);

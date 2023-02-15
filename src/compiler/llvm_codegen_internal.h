@@ -86,6 +86,7 @@ typedef struct GenContext_
 	LLVMTypeRef introspect_type;
 	LLVMTypeRef fault_type;
 	LLVMTypeRef size_type;
+	LLVMTypeRef typeid_type;
 	LLVMTypeRef char_ptr_type;
 	LLVMTypeRef ptr_type;
 	LLVMTypeRef chars_type;

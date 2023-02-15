@@ -9,15 +9,12 @@
 static inline LLVMTypeRef create_introspection_type(GenContext *c)
 {
 	LLVMTypeRef type = LLVMStructCreateNamed(c->context, ".introspect");
-	LLVMTypeRef typeid_type = llvm_get_type(c, type_typeid);
-	LLVMTypeRef kind_type = llvm_get_type(c, type_char);
-	LLVMTypeRef usize_type = llvm_get_type(c, type_usize);
 	LLVMTypeRef introspect_type[INTROSPECT_INDEX_TOTAL] = {
-			[INTROSPECT_INDEX_KIND] = kind_type,
-			[INTROSPECT_INDEX_SIZEOF] = usize_type,
-			[INTROSPECT_INDEX_INNER] = typeid_type,
-			[INTROSPECT_INDEX_LEN] = usize_type,
-			[INTROSPECT_INDEX_ADDITIONAL] = LLVMArrayType(typeid_type, 0),
+			[INTROSPECT_INDEX_KIND] = c->byte_type,
+			[INTROSPECT_INDEX_SIZEOF] = c->size_type,
+			[INTROSPECT_INDEX_INNER] = c->typeid_type,
+			[INTROSPECT_INDEX_LEN] = c->size_type,
+			[INTROSPECT_INDEX_ADDITIONAL] = LLVMArrayType(c->typeid_type, 0),
 	};
 	LLVMStructSetBody(type, introspect_type, INTROSPECT_INDEX_TOTAL, false);
 	return type;
@@ -26,12 +23,7 @@ static inline LLVMTypeRef create_introspection_type(GenContext *c)
 static inline LLVMTypeRef create_fault_type(GenContext *c)
 {
 	LLVMTypeRef type = LLVMStructCreateNamed(c->context, ".fault");
-	LLVMTypeRef typeid_type = llvm_get_type(c, type_typeid);
-	LLVMTypeRef chars_type = c->chars_type;
-	LLVMTypeRef fault_type[] = {
-			[0] = typeid_type,
-			[1] = chars_type,
-	};
+	LLVMTypeRef fault_type[] = { c->typeid_type, c->chars_type };
 	LLVMStructSetBody(type, fault_type, 2, false);
 	return type;
 }
@@ -117,10 +109,11 @@ void gencontext_begin_module(GenContext *c)
 	c->bool_type = LLVMInt1TypeInContext(c->context);
 	c->byte_type = LLVMInt8TypeInContext(c->context);
 	c->ptr_type = LLVMPointerType(c->byte_type, 0);
+	c->size_type = llvm_get_type(c, type_usz);
+	c->typeid_type = llvm_get_type(c, type_typeid);
 	c->chars_type = llvm_get_type(c, type_chars);
 	c->introspect_type = create_introspection_type(c);
 	c->fault_type = create_fault_type(c);
-	c->size_type = llvm_get_type(c, type_usize);
 	if (c->panic_var) c->panic_var->backend_ref = NULL;
 
 	if (active_target.debug_info != DEBUG_INFO_NONE)

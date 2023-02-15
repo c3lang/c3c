@@ -1235,7 +1235,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 
 	Decl *len = NULL;
 	Decl *index_macro = NULL;
-	Type *index_type = type_usize;
+	Type *index_type = type_usz;
 
 	if (!value_type)
 	{
@@ -1354,7 +1354,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 			len_call->builtin_access_expr.inner = exprid(enum_val);
 			len_call->builtin_access_expr.kind = ACCESS_LEN;
 			len_call->resolve_status = RESOLVE_DONE;
-			len_call->type = type_isize;
+			len_call->type = type_isz;
 		}
 	}
 	Decl *idx_decl = decl_new_generated_var(index_type, VARDECL_LOCAL, index ? index->span : enumerator->span);
@@ -1367,7 +1367,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		if (!len_call)
 		{
 			// Create const len if missing.
-			len_call = expr_new_const_int(enumerator->span, type_isize, array_len, true);
+			len_call = expr_new_const_int(enumerator->span, type_isz, array_len, true);
 		}
 		if (!cast_implicit(context, len_call, index_type)) return false;
 		// __idx$ = (IndexType)(@__enum$.len()) (or const)
@@ -1420,7 +1420,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		}
 		else
 		{
-			Expr *rhs = expr_new_const_int(enumerator->span, type_isize, array_len, true);
+			Expr *rhs = expr_new_const_int(enumerator->span, type_isz, array_len, true);
 			cond->binary_expr.right = exprid(rhs);
 		}
 

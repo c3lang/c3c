@@ -356,19 +356,15 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 			return any_type->backend_type = llvm_type_from_array(c, any_type);
 		case TYPE_SUBARRAY:
 		{
-			LLVMTypeRef base_type = llvm_get_type(c, type_get_ptr(any_type->array.base));
-			LLVMTypeRef size_type = llvm_get_type(c, type_usize);
 			LLVMTypeRef array_type = LLVMStructCreateNamed(c->context, any_type->name);
-			LLVMTypeRef types[2] = { base_type, size_type };
+			LLVMTypeRef types[2] = { c->ptr_type, c->size_type };
 			LLVMStructSetBody(array_type, types, 2, false);
 			return any_type->backend_type = array_type;
 		}
 		case TYPE_ANY:
 		{
-			LLVMTypeRef pointer_type = llvm_get_type(c, type_voidptr);
-			LLVMTypeRef type_type = llvm_get_type(c, type_typeid);
 			LLVMTypeRef virtual_type = LLVMStructCreateNamed(c->context, any_type->name);
-			LLVMTypeRef types[2] = { pointer_type, type_type };
+			LLVMTypeRef types[2] = { c->ptr_type, c->typeid_type };
 			LLVMStructSetBody(virtual_type, types, 2, false);
 			return any_type->backend_type = virtual_type;
 		}
@@ -431,7 +427,7 @@ static inline LLVMValueRef llvm_generate_temp_introspection_global(GenContext *c
 {
 	assert(!type->backend_typeid);
 	LLVMValueRef temp = LLVMAddGlobal(c->module, c->introspect_type, "tempid");
-	type->backend_typeid = LLVMBuildPointerCast(c->builder, temp, llvm_get_type(c, type_typeid), "");
+	type->backend_typeid = LLVMBuildPtrToInt(c->builder, temp, c->typeid_type, "");
 	return temp;
 }
 
@@ -482,7 +478,7 @@ static inline LLVMValueRef llvm_generate_introspection_global(GenContext *c, LLV
 	}
 	else
 	{
-		type->backend_typeid = LLVMBuildPointerCast(c->builder, global_name, llvm_get_type(c, type_typeid), "");
+		type->backend_typeid = LLVMBuildPtrToInt(c->builder, global_name, c->typeid_type, "");
 	}
 	return type->backend_typeid;
 }
@@ -606,12 +602,12 @@ static LLVMValueRef llvm_get_introspection_for_fault(GenContext *c, Type *type)
 		LLVMSetAlignment(global_name, LLVMPreferredAlignmentOfGlobal(c->target_data, global_name));
 		LLVMSetGlobalConstant(global_name, 1);
 
-		LLVMValueRef vals[2] = { LLVMBuildPtrToInt(c->builder, ref, llvm_get_type(c, type_typeid), ""),
+		LLVMValueRef vals[2] = { LLVMBuildPtrToInt(c->builder, ref, c->typeid_type, ""),
 		                         llvm_emit_string_const(c, val->name, ".fault") };
 
 		LLVMSetInitializer(global_name, llvm_get_struct_named(c->fault_type, vals, 2));
 		llvm_set_linkonce(c, global_name);
-		val->backend_ref = LLVMBuildPointerCast(c->builder, global_name, llvm_get_type(c, type_typeid), "");
+		val->backend_ref = LLVMBuildPtrToInt(c->builder, global_name, c->typeid_type, "");
 	}
 	LLVMValueRef* values = elements ? MALLOC(sizeof(LLVMValueRef) * elements) : NULL;
 	for (unsigned i = 0; i < elements; i++)

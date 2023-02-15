@@ -383,7 +383,7 @@ static LLVMMetadataRef llvm_debug_subarray_type(GenContext *c, Type *type)
 
 	LLVMMetadataRef elements[2] = {
 			llvm_get_debug_member(c, type_get_ptr(type->array.base), "ptr", 0, NULL, forward, LLVMDIFlagZero),
-			llvm_get_debug_member(c, type_usize, "len", type_size(type_voidptr), NULL, forward, LLVMDIFlagZero)
+			llvm_get_debug_member(c, type_usz, "len", type_size(type_voidptr), NULL, forward, LLVMDIFlagZero)
 	};
 	return llvm_get_debug_struct(c, type, type->name, elements, 2, NULL, NULL, LLVMDIFlagZero);
 }

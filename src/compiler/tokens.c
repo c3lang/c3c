@@ -305,10 +305,6 @@ const char *token_type_to_string(TokenType type)
 			return "ichar";
 		case TOKEN_CHAR:
 			return "char";
-		case TOKEN_ISIZE:
-			return "isize";
-		case TOKEN_USIZE:
-			return "usize";
 		case TOKEN_ISZ:
 			return "isz";
 		case TOKEN_USZ:

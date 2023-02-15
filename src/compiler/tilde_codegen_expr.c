@@ -1692,7 +1692,7 @@ void tilde_emit_cast(TildeContext *c, CastKind cast_kind, Expr *expr, TBEValue *
 			{
 				value->value = llvm_emit_extract_value(c, value->value, 1);
 			}
-			value->type = type_usize->canonical;
+			value->type = type_usz->canonical;
 			llvm_value_rvalue(c, value);
 			llvm_emit_int_comp_zero(c, value, value, BINARYOP_NE);
 			break;*/

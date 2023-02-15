@@ -76,9 +76,9 @@ static bool sema_check_builtin_args(Expr **args, BuiltinArg *arg_type, size_t ar
 				}
 				break;
 			case BA_SIZE:
-				if (!type_is_integer(type) || type_size(type) != type_size(type_usize))
+				if (!type_is_integer(type) || type_size(type) != type_size(type_usz))
 				{
-					SEMA_ERROR(args[i], "Expected an usize or isize value.");
+					SEMA_ERROR(args[i], "Expected an usz or isz value.");
 					return false;
 				}
 				break;

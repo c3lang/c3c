@@ -93,7 +93,7 @@ LLVMValueRef llvm_emit_is_no_opt(GenContext *c, LLVMValueRef error_value)
 
 LLVMValueRef llvm_emit_memclear_size_align(GenContext *c, LLVMValueRef ptr, uint64_t size, AlignSize align)
 {
-	return LLVMBuildMemSet(c->builder, ptr, llvm_get_zero(c, type_char), llvm_const_int(c, type_usize, size), align);
+	return LLVMBuildMemSet(c->builder, ptr, llvm_get_zero(c, type_char), llvm_const_int(c, type_usz, size), align);
 }
 
 INLINE void llvm_emit_xtor(GenContext *c, LLVMValueRef *list, const char *name)
@@ -1171,7 +1171,7 @@ INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMC
 		name_ref = LLVMConstNull(c->ptr_type);
 		decl_ref = LLVMConstNull(c->ptr_type);
 	}
-	LLVMValueRef count = llvm_const_int(c, type_usize, test_count);
+	LLVMValueRef count = llvm_const_int(c, type_usz, test_count);
 	Type *chars_array = type_get_subarray(type_chars);
 	LLVMValueRef name_list = llvm_add_global(c, test_names_var_name, chars_array, type_alloca_alignment(chars_array));
 	LLVMSetGlobalConstant(name_list, 1);

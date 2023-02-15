@@ -141,7 +141,7 @@ void tilde_store_zero(TildeContext *c, Type *type, TB_Reg addr, AlignSize alignm
 	ByteSize size = type_size(type);
 	ByteSize min = type_min_alignment(alignment, size);
 	TB_Register zero = tb_inst_uint(c->f, TB_TYPE_I8, 0);
-	TB_Register elements = tb_inst_uint(c->f, tildetype(type_usize), size);
+	TB_Register elements = tb_inst_uint(c->f, tildetype(type_usz), size);
 	tb_inst_memset(c->f, addr, zero, elements, min);
 }
 
