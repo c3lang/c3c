@@ -153,7 +153,7 @@ static Decl *sema_find_decl_in_imports(Decl **imports, NameResolve *name_resolve
 		assert(found->visibility != VISIBLE_LOCAL);
 
 		// If we found something private but we don't import privately?
-		if (found->visibility == VISIBLE_PRIVATE && !import->import.private && !decl)
+		if (found->visibility == VISIBLE_PRIVATE && !import->import.import_private_as_public && !decl)
 		{
 			// Register this as a possible private decl.
 			name_resolve->private_decl = found;
@@ -704,7 +704,7 @@ Decl *sema_resolve_type_method(CompilationUnit *unit, Type *type, const char *me
 
 		Decl *new_found = sema_resolve_method_in_module(import->import.module, type, method_name,
 		                                                &private, &ambiguous,
-		                                                import->import.private
+		                                                import->import.import_private_as_public
 		                                                ? METHOD_SEARCH_PRIVATE_IMPORTED
 		                                                : METHOD_SEARCH_IMPORTED);
 		if (!new_found) continue;

@@ -1502,6 +1502,11 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 	Expr *expr = args ? attr->exprs[0] : NULL;
 	switch (type)
 	{
+		case ATTRIBUTE_PRIVATE:
+		case ATTRIBUTE_PUBLIC:
+		case ATTRIBUTE_LOCAL:
+			// These are pseudo-attributes.
+			UNREACHABLE;
 		case ATTRIBUTE_WINMAIN:
 			if (decl->name != kw_main)
 			{
@@ -1530,22 +1535,6 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 				default:
 					break;
 			}
-			break;
-		case ATTRIBUTE_PRIVATE:
-			if (decl->visibility != VISIBLE_PUBLIC)
-			{
-				SEMA_ERROR(decl, "Multiple visibility attributes cannot be combined.");
-				return false;
-			}
-			decl->visibility = VISIBLE_PRIVATE;
-			break;
-		case ATTRIBUTE_LOCAL:
-			if (decl->visibility != VISIBLE_PUBLIC)
-			{
-				SEMA_ERROR(decl, "Multiple visibility attributes cannot be combined.");
-				return false;
-			}
-			decl->visibility = VISIBLE_LOCAL;
 			break;
 		case ATTRIBUTE_TEST:
 			decl->func_decl.attr_test = true;
@@ -2764,7 +2753,7 @@ static CompilationUnit *unit_copy(Module *module, CompilationUnit *unit)
 
 static Module *module_instantiate_generic(Module *module, Path *path, Expr **params)
 {
-	Module *new_module = compiler_find_or_create_module(path, NULL, module->is_private);
+	Module *new_module = compiler_find_or_create_module(path, NULL);
 	new_module->is_generic = false;
 	CompilationUnit **units = module->units;
 	VECEACH(units, i)

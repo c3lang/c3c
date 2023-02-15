@@ -397,7 +397,7 @@ typedef struct
 typedef struct
 {
 	Path *path;
-	bool private;
+	bool import_private_as_public;
 	Module *module;
 } ImportDecl;
 
@@ -1484,7 +1484,6 @@ typedef struct Module_
 	bool is_c_library : 1;
 	bool is_exported : 1;
 	bool is_generic : 1;
-	bool is_private : 1;
 	bool no_extprefix : 1;
 	AnalysisStage stage : 6;
 
@@ -1580,6 +1579,7 @@ struct CompilationUnit_
 	Decl **enums;
 	Decl **attributes;
 	Decl **faulttypes;
+	Visibility default_visibility;
 	struct
 	{
 		// Not properly implemented
@@ -2088,7 +2088,7 @@ void global_context_add_type(Type *type);
 void global_context_add_decl(Decl *type_decl);
 void global_context_add_generic_decl(Decl *decl);
 
-Module *compiler_find_or_create_module(Path *module_name, const char **parameters, bool is_private);
+Module *compiler_find_or_create_module(Path *module_name, const char **parameters);
 Module *global_context_find_module(const char *name);
 const char *get_object_extension(void);
 
@@ -2098,7 +2098,7 @@ void unit_register_external_symbol(CompilationUnit *unit, Decl *decl);
 
 bool unit_add_import(CompilationUnit *unit, Path *path, bool private_import);
 bool context_set_module_from_filename(ParseContext *context);
-bool context_set_module(ParseContext *context, Path *path, const char **generic_parameters, bool is_private);
+bool context_set_module(ParseContext *context, Path *path, const char **generic_parameters);
 
 // --- Decl functions
 

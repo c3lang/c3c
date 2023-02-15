@@ -294,7 +294,7 @@ void sema_analysis_run(void)
 	core_path->module = kw_std__core;
 	core_path->span = INVALID_SPAN;
 	core_path->len = strlen(kw_std__core);
-	global_context.core_module = compiler_find_or_create_module(core_path, NULL, false);
+	global_context.core_module = compiler_find_or_create_module(core_path, NULL);
 
 	// We parse the generic modules, just by storing the decls.
 	FOREACH_BEGIN(Module *module, global_context.generic_module_list)

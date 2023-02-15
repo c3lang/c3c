@@ -4,7 +4,7 @@ fn void foo1() @private
 {}
 
 module bar;
-import private foo;
+import foo @public;
 macro bar1()
 {
     foo::foo1();

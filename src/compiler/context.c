@@ -14,12 +14,12 @@ CompilationUnit *unit_create(File *file)
 }
 
 
-static inline bool create_module_or_check_name(CompilationUnit *unit, Path *module_name, const char **parameters, bool is_private)
+static inline bool create_module_or_check_name(CompilationUnit *unit, Path *module_name, const char **parameters)
 {
     Module *module = unit->module;
 	if (!module)
 	{
-		module = unit->module = compiler_find_or_create_module(module_name, parameters, is_private);
+		module = unit->module = compiler_find_or_create_module(module_name, parameters);
 	}
 	else
 	{
@@ -33,19 +33,6 @@ static inline bool create_module_or_check_name(CompilationUnit *unit, Path *modu
 		}
 	}
 
-    if (module->is_private != is_private)
-    {
-    	if (is_private)
-	    {
-    		SEMA_ERROR(module_name, "The module is declared as private here, but was declared as public elsewhere.");
-	    }
-    	else
-	    {
-    		SEMA_ERROR(module_name, "The module is declared as public here, but was declared as private elsewhere.");
-	    }
-	    return false;
-
-    }
 	vec_add(module->units, unit);
 	return true;
 }
@@ -104,10 +91,10 @@ bool context_set_module_from_filename(ParseContext *context)
     path->span = INVALID_SPAN;
     path->module = module_name;
     path->len = scratch_buffer.len;
-    return create_module_or_check_name(context->unit, path, NULL, true);
+    return create_module_or_check_name(context->unit, path, NULL);
 }
 
-bool context_set_module(ParseContext *context, Path *path, const char **generic_parameters, bool is_private)
+bool context_set_module(ParseContext *context, Path *path, const char **generic_parameters)
 {
     // Note that we allow the illegal name for now, to be able to parse further.
     if (!str_has_no_uppercase(path->module))
@@ -116,7 +103,7 @@ bool context_set_module(ParseContext *context, Path *path, const char **generic_
         return false;
     }
 
-    return create_module_or_check_name(context->unit, path, generic_parameters, is_private);
+    return create_module_or_check_name(context->unit, path, generic_parameters);
 }
 
 
@@ -283,7 +270,10 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 
 	Decl *old;
 	if ((old = htable_set(&unit->local_symbols, (void*)decl->name, decl))) goto ERR;
-	if ((old = htable_set(&unit->module->symbols, (void*)decl->name, decl))) goto ERR;
+	if (decl->visibility < VISIBLE_LOCAL)
+	{
+		if ((old = htable_set(&unit->module->symbols, (void*)decl->name, decl))) goto ERR;
+	}
 	return;
 ERR:
 	assert(decl != old);
@@ -306,7 +296,7 @@ bool unit_add_import(CompilationUnit *unit, Path *path, bool private_import)
 	import->span = path->span;
 	import->decl_kind = DECL_IMPORT;
 	import->import.path = path;
-	import->import.private = private_import;
+	import->import.import_private_as_public = private_import;
 
     vec_add(unit->imports, import);
 	DEBUG_LOG("Added import %s", path->module);

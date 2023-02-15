@@ -15,7 +15,7 @@ fn int Bar.get2(Bar* f) => f.x;
 fn int Bar.get3(Bar* f) @local => f.x;
 
 module abc;
-import private test;
+import test @public;
 
 struct Bar
 {

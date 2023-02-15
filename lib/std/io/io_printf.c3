@@ -496,8 +496,8 @@ fn usz! Formatter.vprintf(Formatter* this, String format, variant[] variants)
 	return this.idx;
 }
 
-typedef StringFunctionMap = HashMap<typeid, ToStringFunction> @private;
-typedef FormatterFunctionMap = HashMap<typeid, ToFormatFunction> @private;
+typedef StringFunctionMap @private = HashMap<typeid, ToStringFunction>;
+typedef FormatterFunctionMap @private = HashMap<typeid, ToFormatFunction>;
 
 FormatterFunctionMap toformat_functions @private;
 StringFunctionMap tostring_functions @private;

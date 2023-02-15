@@ -858,7 +858,7 @@ Module *global_context_find_module(const char *name)
 	return htable_get(&global_context.modules, (void *)name);
 }
 
-Module *compiler_find_or_create_module(Path *module_name, const char **parameters, bool is_private)
+Module *compiler_find_or_create_module(Path *module_name, const char **parameters)
 {
 	Module *module = global_context_find_module(module_name->module);
 	if (module) return module;
@@ -870,7 +870,6 @@ Module *compiler_find_or_create_module(Path *module_name, const char **parameter
 	module->stage = ANALYSIS_NOT_BEGUN;
 	module->parameters = parameters;
 	module->is_generic = vec_size(parameters) > 0;
-	module->is_private = is_private;
 	htable_init(&module->symbols, 0x10000);
 	htable_set(&global_context.modules, (void *)module_name->module, module);
 	if (parameters)

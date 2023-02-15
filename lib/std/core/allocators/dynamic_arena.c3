@@ -1,6 +1,6 @@
 module std::core::mem::allocator;
 
-struct DynamicArenaPage @local
+struct DynamicArenaPage
 {
 	void* memory;
 	void* prev_arena;

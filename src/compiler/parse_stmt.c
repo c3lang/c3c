@@ -15,7 +15,7 @@ static Ast *parse_declaration_statment_after_type(ParseContext *c, TypeInfo *typ
 	Ast *ast = ast_calloc();
 	ast->span = type->span;
 	ast->ast_kind = AST_DECLARE_STMT;
-	ASSIGN_DECL_OR_RET(ast->declare_stmt, parse_decl_after_type(c, type), poisoned_ast);
+	ASSIGN_DECL_OR_RET(ast->declare_stmt, parse_local_decl_after_type(c, type), poisoned_ast);
 
 	if (tok_is(c, TOKEN_EOS)) return ast;
 	Decl *decl = ast->declare_stmt;
@@ -43,7 +43,7 @@ static Ast *parse_declaration_statment_after_type(ParseContext *c, TypeInfo *typ
 	Attr **attributes = NULL;
 	while (try_consume(c, TOKEN_COMMA))
 	{
-		ASSIGN_DECL_OR_RET(decl, parse_decl_after_type(c, copy_type_info_single(type)), poisoned_ast);
+		ASSIGN_DECL_OR_RET(decl, parse_local_decl_after_type(c, copy_type_info_single(type)), poisoned_ast);
 		if (decl->var.init_expr)
 		{
 			SEMA_ERROR(decl->var.init_expr, "Multiple variable declarations cannot use initialization.");

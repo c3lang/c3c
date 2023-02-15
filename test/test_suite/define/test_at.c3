@@ -7,7 +7,7 @@ macro @hello(Type thing) {
 
 module bar;
 
-import private foo;
+import foo @public;
 
 define intHello = foo::@hello<int>; // #error: cannot be aliased
 define @intHello = foo::hello<int>; // #error: cannot use

@@ -2,11 +2,12 @@
 #include "parser_internal.h"
 
 
-static Decl *parse_const_declaration(ParseContext *c);
+static Decl *parse_const_declaration(ParseContext *c, bool is_global);
 static inline Decl *parse_func_definition(ParseContext *c, AstId docs, bool is_interface);
 static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl);
 static inline Decl *parse_static_top_level(ParseContext *c);
 static Decl *parse_include(ParseContext *c);
+static bool parse_attributes_for_global(ParseContext *c, Decl *decl);
 
 #define DECL_VAR_NEW(type__, var__) decl_new_var(symstr(c), c->span, type__, var__);
 
@@ -310,12 +311,10 @@ static inline bool parse_optional_module_params(ParseContext *c, const char ***t
 
 }
 /**
- * module ::= MODULE module_path ('<' module_params '>')? EOS
+ * module ::= MODULE module_path ('<' module_params '>')? (@public|@private|@local)? EOS
  */
 bool parse_module(ParseContext *c, AstId docs)
 {
-	bool is_private = try_consume(c, TOKEN_PRIVATE);
-
 	if (tok_is(c, TOKEN_STRING))
 	{
 		SEMA_ERROR_HERE("'module' should be followed by a plain identifier, not a string. Did you accidentally put the module name between \"\"?");
@@ -348,7 +347,7 @@ bool parse_module(ParseContext *c, AstId docs)
 		path->len = (unsigned)strlen("#invalid");
 		path->module = "#invalid";
 		path->span = INVALID_SPAN;
-		context_set_module(c, path, NULL, false);
+		context_set_module(c, path, NULL);
 		recover_top_level(c);
 		return false;
 	}
@@ -357,7 +356,7 @@ bool parse_module(ParseContext *c, AstId docs)
 	const char **generic_parameters = NULL;
 	if (!parse_optional_module_params(c, &generic_parameters))
 	{
-		if (!context_set_module(c, path, NULL, is_private)) return false;
+		if (!context_set_module(c, path, NULL)) return false;
 		recover_top_level(c);
 		if (docs)
 		{
@@ -366,7 +365,7 @@ bool parse_module(ParseContext *c, AstId docs)
 		}
 		return true;
 	}
-	if (!context_set_module(c, path, generic_parameters, is_private)) return false;
+	if (!context_set_module(c, path, generic_parameters)) return false;
 	if (docs)
 	{
 		AstId old_docs = c->unit->module->docs;
@@ -380,7 +379,15 @@ bool parse_module(ParseContext *c, AstId docs)
 			c->unit->module->docs = docs;
 		}
 	}
-
+	Visibility visibility = VISIBLE_PUBLIC;
+	Attr** attrs = NULL;
+	if (!parse_attributes(c, &attrs, &visibility)) return false;
+	if (attrs)
+	{
+		sema_error_at(attrs[0]->span, "Unexpected '%s' after module name - only @public, @private and @local is permitted here.", attrs[0]->name);
+		return false;
+	}
+	c->unit->default_visibility = visibility;
 	CONSUME_EOS_OR_RET(false);
 	return true;
 }
@@ -779,7 +786,7 @@ TypeInfo *parse_optional_type(ParseContext *c)
  * @param type
  * @return
  */
-Decl *parse_decl_after_type(ParseContext *c, TypeInfo *type)
+Decl *parse_local_decl_after_type(ParseContext *c, TypeInfo *type)
 {
 	if (tok_is(c, TOKEN_LPAREN))
 	{
@@ -803,7 +810,7 @@ Decl *parse_decl_after_type(ParseContext *c, TypeInfo *type)
 	Decl *decl = DECL_VAR_NEW(type, VARDECL_LOCAL);
 	advance(c);
 
-	if (!parse_attributes(c, &decl->attributes, decl)) return poisoned_decl;
+	if (!parse_attributes(c, &decl->attributes, NULL)) return poisoned_decl;
 	if (tok_is(c, TOKEN_EQ))
 	{
 		if (!decl)
@@ -826,7 +833,7 @@ Decl *parse_local_decl(ParseContext *c)
 {
 	if (tok_is(c, TOKEN_CONST))
 	{
-		ASSIGN_DECL_OR_RET(Decl *decl, parse_const_declaration(c), poisoned_decl);
+		ASSIGN_DECL_OR_RET(Decl *decl, parse_const_declaration(c, false), poisoned_decl);
 		decl->visibility = VISIBLE_LOCAL;
 		return decl;
 	}
@@ -836,7 +843,7 @@ Decl *parse_local_decl(ParseContext *c)
 
 	ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_optional_type(c), poisoned_decl);
 
-	ASSIGN_DECL_OR_RET(Decl * decl, parse_decl_after_type(c, type), poisoned_decl);
+	ASSIGN_DECL_OR_RET(Decl * decl, parse_local_decl_after_type(c, type), poisoned_decl);
 	if (type->optional && decl->var.unwrap)
 	{
 		SEMA_ERROR(decl, "You cannot use unwrap with an optional variable.");
@@ -858,7 +865,7 @@ Expr *parse_decl_or_expr(ParseContext *c, Decl **decl_ref)
 	TypeInfo *type_info;
 	Expr *expr = parse_expr(c);
 	if (expr->expr_kind != EXPR_TYPEINFO) return expr;
-	ASSIGN_DECL_OR_RET(*decl_ref, parse_decl_after_type(c, expr->type_expr), poisoned_expr);
+	ASSIGN_DECL_OR_RET(*decl_ref, parse_local_decl_after_type(c, expr->type_expr), poisoned_expr);
 	return NULL;
 }
 
@@ -868,7 +875,7 @@ Expr *parse_decl_or_expr(ParseContext *c, Decl **decl_ref)
  *  : 'const' type? IDENT '=' const_expr
  *  ;
  */
-static Decl *parse_const_declaration(ParseContext *c)
+static Decl *parse_const_declaration(ParseContext *c, bool is_global)
 {
 	advance_and_verify(c, TOKEN_CONST);
 
@@ -882,7 +889,9 @@ static Decl *parse_const_declaration(ParseContext *c)
 
 	if (!consume_const_name(c, "const")) return poisoned_decl;
 
-	if (!parse_attributes(c, &decl->attributes, decl)) return poisoned_decl;
+	Visibility visibility = is_global ? c->unit->default_visibility : VISIBLE_LOCAL;
+	if (!parse_attributes(c, &decl->attributes, is_global ? &visibility : NULL)) return poisoned_decl;
+	decl->visibility = visibility;
 
 	CONSUME_OR_RET(TOKEN_EQ, poisoned_decl);
 
@@ -1020,6 +1029,15 @@ bool parse_attribute(ParseContext *c, Attr **attribute_ref)
 	*attribute_ref = attr;
 	return true;
 }
+
+static bool parse_attributes_for_global(ParseContext *c, Decl *decl)
+{
+	Visibility visibility = c->unit->default_visibility;
+	if (!parse_attributes(c, &decl->attributes, &visibility)) return false;
+	decl->visibility = visibility;
+	return true;
+}
+
 /**
  * attribute_list
  *  : attribute
@@ -1031,42 +1049,41 @@ bool parse_attribute(ParseContext *c, Attr **attribute_ref)
  *
  * @return true if parsing succeeded, false if recovery is needed
  */
-bool parse_attributes(ParseContext *c, Attr ***attributes_ref, Decl *owner)
+bool parse_attributes(ParseContext *c, Attr ***attributes_ref, Visibility *visibility_ref)
 {
+	Visibility visibility = -1;
 	while (1)
 	{
 		Attr *attr;
 		if (!parse_attribute(c, &attr)) return false;
 		if (!attr) return true;
 		const char *name = attr->name;
+		Visibility parsed_visibility = -1;
 		if (name == attribute_list[ATTRIBUTE_PRIVATE])
 		{
-			if (!owner)
-			{
-				SEMA_ERROR(attr, "'%s' cannot be used here.");
-				return false;
-			}
-			if (owner->visibility != VISIBLE_PUBLIC)
-			{
-				SEMA_ERROR(attr, "Only a single visibility attribute may be added.");
-				return false;
-			}
-			owner->visibility = VISIBLE_PRIVATE;
-			continue;
+			parsed_visibility = VISIBLE_PRIVATE;
 		}
-		if (name == attribute_list[ATTRIBUTE_LOCAL])
+		else if (name == attribute_list[ATTRIBUTE_PUBLIC])
 		{
-			if (!owner)
+			parsed_visibility = VISIBLE_PUBLIC;
+		}
+		else if (name == attribute_list[ATTRIBUTE_LOCAL])
+		{
+			parsed_visibility = VISIBLE_LOCAL;
+		}
+		if (parsed_visibility != -1)
+		{
+			if (!visibility_ref)
 			{
 				SEMA_ERROR(attr, "'%s' cannot be used here.");
 				return false;
 			}
-			if (owner->visibility != VISIBLE_PUBLIC)
+			if (visibility != -1)
 			{
 				SEMA_ERROR(attr, "Only a single visibility attribute may be added.");
 				return false;
 			}
-			owner->visibility = VISIBLE_LOCAL;
+			*visibility_ref = visibility = parsed_visibility;
 			continue;
 		}
 		FOREACH_BEGIN(Attr *other_attr, *attributes_ref)
@@ -1127,7 +1144,8 @@ static inline Decl *parse_global_declaration(ParseContext *c)
 	// Add the last, or we miss it.
 	if (decls) vec_add(decls, decl);
 
-	if (!parse_attributes(c, &decl->attributes, decl)) return poisoned_decl;
+	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
+
 	if (try_consume(c, TOKEN_EQ))
 	{
 		if (decls)
@@ -1607,10 +1625,7 @@ static inline Decl *parse_struct_declaration(ParseContext *c)
 
 	if (!consume_type_name(c, type_name)) return poisoned_decl;
 
-	if (!parse_attributes(c, &decl->attributes, decl))
-	{
-		return poisoned_decl;
-	}
+	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 
 	if (!parse_struct_body(c, decl))
 	{
@@ -1676,15 +1691,9 @@ static inline Decl *parse_bitstruct_declaration(ParseContext *c)
 
 	ASSIGN_TYPE_OR_RET(decl->bitstruct.base_type, parse_type(c), poisoned_decl);
 
-	if (!parse_attributes(c, &decl->attributes, decl))
-	{
-		return poisoned_decl;
-	}
+	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 
-	if (!parse_bitstruct_body(c, decl))
-	{
-		return poisoned_decl;
-	}
+	if (!parse_bitstruct_body(c, decl)) return poisoned_decl;
 
 	return decl;
 
@@ -1692,7 +1701,7 @@ static inline Decl *parse_bitstruct_declaration(ParseContext *c)
 
 static inline Decl *parse_top_level_const_declaration(ParseContext *c)
 {
-	ASSIGN_DECL_OR_RET(Decl * decl, parse_const_declaration(c), poisoned_decl);
+	ASSIGN_DECL_OR_RET(Decl * decl, parse_const_declaration(c, true), poisoned_decl);
 	CONSUME_EOS_OR_RET(poisoned_decl);
 	return decl;
 }
@@ -1792,7 +1801,9 @@ static inline Decl *parse_define_type(ParseContext *c)
 		SEMA_ERROR_HERE("A type name was expected here.");
 		return poisoned_decl;
 	}
-	if (!parse_attributes(c, &decl->attributes, decl)) return false;
+
+	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
+
 	CONSUME_OR_RET(TOKEN_EQ, poisoned_decl);
 	bool distinct = false;
 	if (tok_is(c, TOKEN_IDENT) && symstr(c) == kw_distinct)
@@ -1833,7 +1844,6 @@ static inline Decl *parse_define_type(ParseContext *c)
 		decl->define_decl.type_info = type_info;
 		decl->define_decl.generic_params = params;
 		RANGE_EXTEND_PREV(decl);
-		if (!parse_attributes(c, &decl->attributes, decl)) return false;
 		CONSUME_EOS_OR_RET(poisoned_decl);
 		return decl;
 	}
@@ -1985,8 +1995,9 @@ static inline Decl *parse_define_attribute(ParseContext *c)
 		CONSUME_OR_RET(TOKEN_RPAREN, poisoned_decl);
 	}
 
+	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 	Attr **attributes = NULL;
-	if (!parse_attributes(c, &decl->attributes, decl)) return poisoned_decl;
+
 	CONSUME_OR_RET(TOKEN_EQ, poisoned_decl);
 	CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
 
@@ -2104,7 +2115,7 @@ static inline Decl *parse_macro_declaration(ParseContext *c, AstId docs)
 	const char *block_parameter = NULL;
 	if (!parse_macro_arguments(c, decl)) return poisoned_decl;
 
-	if (!parse_attributes(c, &decl->attributes, decl)) return poisoned_decl;
+	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 	if (tok_is(c, TOKEN_IMPLIES))
 	{
 		ASSIGN_ASTID_OR_RET(decl->func_decl.body,
@@ -2235,7 +2246,8 @@ static inline Decl *parse_enum_declaration(ParseContext *c, bool is_private)
 		if (!parse_enum_spec(c, &type, &decl->enums.parameters)) return poisoned_decl;
 	}
 
-	if (!parse_attributes(c, &decl->attributes, decl)) return poisoned_decl;
+	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
+
 	Visibility visibility = decl->visibility;
 	CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
 
@@ -2315,7 +2327,7 @@ static inline Decl *parse_func_definition(ParseContext *c, AstId docs, bool is_i
 		return false;
 	}
 	if (!parse_fn_parameter_list(c, &(func->func_decl.signature), is_interface)) return poisoned_decl;
-	if (!parse_attributes(c, &func->attributes, func)) return poisoned_decl;
+	if (!parse_attributes_for_global(c, func)) return poisoned_decl;
 
 	// TODO remove
 	is_interface = tok_is(c, TOKEN_EOS);
@@ -2404,8 +2416,6 @@ static inline bool parse_import(ParseContext *c)
 {
 	advance_and_verify(c, TOKEN_IMPORT);
 
-	bool private = try_consume(c, TOKEN_PRIVATE);
-
 	bool is_not_first = false;
 	while (1)
 	{
@@ -2427,6 +2437,17 @@ static inline bool parse_import(ParseContext *c)
 		is_not_first = true;
 		Path *path = parse_module_path(c);
 		if (!path) return false;
+		bool private = false;
+		if (tok_is(c, TOKEN_AT_IDENT))
+		{
+			if (symstr(c) != attribute_list[ATTRIBUTE_PUBLIC])
+			{
+				SEMA_ERROR_HERE("Only '@public' is a valid attribute here.");
+				return false;
+			}
+			private = true;
+			advance_and_verify(c, TOKEN_AT_IDENT);
+		}
 		unit_add_import(c->unit, path, private);
 		if (tok_is(c, TOKEN_COLON) && peek(c) == TOKEN_IDENT)
 		{

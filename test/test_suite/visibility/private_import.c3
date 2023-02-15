@@ -13,7 +13,7 @@ fn void test()
 }
 
 module baz;
-import private foo;
+import foo @public;
 
 fn void test()
 {

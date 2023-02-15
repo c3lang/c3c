@@ -1123,7 +1123,7 @@ static void llvm_gen_test_main(GenContext *c)
 INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMContextRef shared_context)
 {
 	Path *test_path = path_create_from_string("$test", 5, INVALID_SPAN);
-	Module *test_module = compiler_find_or_create_module(test_path, NULL, false);
+	Module *test_module = compiler_find_or_create_module(test_path, NULL);
 
 	GenContext *c = cmalloc(sizeof(GenContext));
 	active_target.debug_info = DEBUG_INFO_NONE;

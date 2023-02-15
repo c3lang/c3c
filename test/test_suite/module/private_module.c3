@@ -1,1 +1,1 @@
-module private foo;
+module foo @private;

@@ -52,7 +52,7 @@ void sema_analyse_pass_module_hierarchy(Module *module)
 	// No match, so we create a synthetic module.
 	Path *path = path_create_from_string(slice.ptr, slice.len, module->name->span);
 	DEBUG_LOG("Creating parent module for %s: %s", module->name->module, path->module);
-	Module *parent_module = compiler_find_or_create_module(path, NULL, false /* always public */);
+	Module *parent_module = compiler_find_or_create_module(path, NULL);
 	module->parent_module = parent_module;
 	vec_add(parent_module->sub_modules, module);
 	sema_analyze_stage(parent_module, ANALYSIS_MODULE_HIERARCHY);
@@ -100,15 +100,7 @@ void sema_analysis_pass_process_imports(Module *module)
 				continue;
 			}
 
-			// 7. Importing private is not allowed.
-			if (import_module->is_private && !import->import.private)
-			{
-				SEMA_ERROR(import, "Importing a private module is not allowed (unless 'import private' is used).");
-				decl_poison(import);
-				continue;
-			}
-
-			// 8. Assign the module.
+			// 7. Assign the module.
 			DEBUG_LOG("* Import of %s.", path->module);
 			import->import.module = import_module;
 		}
