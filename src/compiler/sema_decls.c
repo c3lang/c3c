@@ -1458,6 +1458,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_BUILTIN] = ATTR_MACRO | ATTR_FUNC,
 			[ATTRIBUTE_CDECL] = ATTR_FUNC,
 			[ATTRIBUTE_EXPORT] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | EXPORTED_USER_DEFINED_TYPES,
+			[ATTRIBUTE_NOSTRIP] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | EXPORTED_USER_DEFINED_TYPES,
 			[ATTRIBUTE_EXTNAME] = (AttributeDomain)~(ATTR_CALL | ATTR_BITSTRUCT | ATTR_DEFINE | ATTR_MACRO | ATTR_XXLIZER),
 			[ATTRIBUTE_EXTERN] = (AttributeDomain)~(ATTR_CALL | ATTR_BITSTRUCT | ATTR_DEFINE | ATTR_MACRO | ATTR_XXLIZER),
 			[ATTRIBUTE_INLINE] = ATTR_FUNC | ATTR_CALL,
@@ -1628,6 +1629,9 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 				decl->extname = expr->const_expr.string.chars;
 			}
 			decl->is_export = true;
+			return true;
+		case ATTRIBUTE_NOSTRIP:
+			decl->no_strip = true;
 			return true;
 		case ATTRIBUTE_SECTION:
 		case ATTRIBUTE_EXTERN:

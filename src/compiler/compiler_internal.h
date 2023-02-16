@@ -676,6 +676,8 @@ typedef struct Decl_
 	bool is_dynamic : 1;
 	bool is_synthetic : 1;
 	bool is_export : 1;
+	bool is_live : 1;
+	bool no_strip : 1;
 	OperatorOverload operator : 4;
 	union
 	{

@@ -1,6 +1,6 @@
 module std::math;
 
-fn int128 __divti3(int128 a, int128 b) @extern("__divti3") @weak
+fn int128 __divti3(int128 a, int128 b) @extern("__divti3") @weak @nostrip
 {
 	int128 sign_a = a >> 127; // -1 : 0
 	int128 sign_b = b >> 127; // -1 : 0
@@ -10,7 +10,7 @@ fn int128 __divti3(int128 a, int128 b) @extern("__divti3") @weak
 	return __udivti3(unsigned_a, unsigned_b) @inline ^ sign_a + (-sign_a);
 }
 
-fn uint128 __umodti3(uint128 n, uint128 d) @extern("__umodti3") @weak
+fn uint128 __umodti3(uint128 n, uint128 d) @extern("__umodti3") @weak @nostrip
 {
 	// Ignore d = 0
     uint128 sr = (d ? $$clz(d) : 128) - (n ? $$clz(n) : 128);
@@ -34,7 +34,7 @@ fn uint128 __umodti3(uint128 n, uint128 d) @extern("__umodti3") @weak
     return r;
 }
 
-fn uint128 __udivti3(uint128 n, uint128 d) @extern("__udivti3") @weak
+fn uint128 __udivti3(uint128 n, uint128 d) @extern("__udivti3") @weak @nostrip
 {
 	// Ignore d = 0
     uint128 sr = (d ? $$clz(d) : 128) - (n ? $$clz(n) : 128);
@@ -60,7 +60,7 @@ fn uint128 __udivti3(uint128 n, uint128 d) @extern("__udivti3") @weak
     return n;
 }
 
-fn int128 __modti3(int128 a, int128 b) @extern("__modti3") @weak
+fn int128 __modti3(int128 a, int128 b) @extern("__modti3") @weak @nostrip
 {
 	int128 sign = b >> 127;
 	uint128 unsigned_b = (uint128)(b ^ sign) + (-sign);
@@ -83,7 +83,7 @@ union Int128bits @private
 	uint128 all;
 }
 
-fn uint128 __lshrti3(uint128 a, uint b) @extern("__lshrti3") @weak
+fn uint128 __lshrti3(uint128 a, uint b) @extern("__lshrti3") @weak @nostrip
 {
     Int128bits result;
     result.all = a;
@@ -101,7 +101,7 @@ fn uint128 __lshrti3(uint128 a, uint b) @extern("__lshrti3") @weak
     return result.all;
 }
 
-fn int128 __ashrti3(int128 a, uint b) @extern("__ashrti3") @weak
+fn int128 __ashrti3(int128 a, uint b) @extern("__ashrti3") @weak @nostrip
 {
     Int128bits result;
     result.all = a;
@@ -119,7 +119,7 @@ fn int128 __ashrti3(int128 a, uint b) @extern("__ashrti3") @weak
     return result.all;
 }
 
-fn int128 __ashlti3(int128 a, uint b) @extern("__ashlti3") @weak
+fn int128 __ashlti3(int128 a, uint b) @extern("__ashlti3") @weak @nostrip
 {
     Int128bits result;
     result.all = a;
@@ -158,7 +158,7 @@ fn int128 __mulddi3(ulong a, ulong b) @private
 	return r.all;
 }
 
-fn int128 __multi3(int128 a, int128 b) @extern("__multi3") @weak
+fn int128 __multi3(int128 a, int128 b) @extern("__multi3") @weak @nostrip
 {
 	Int128bits x = { .all = a };
 	Int128bits y = { .all = b };
@@ -167,14 +167,14 @@ fn int128 __multi3(int128 a, int128 b) @extern("__multi3") @weak
 	return r.all;
 }
 
-fn float __floattisf(int128 a) @extern("__floattisf") @weak => float_from_i128(float, a);
-fn double __floattidf(int128 a) @extern("__floattidf") @weak => float_from_i128(double, a);
-fn float __floatuntisf(uint128 a) @extern("__floatuntisf") @weak => float_from_u128(float, a);
-fn double __floatuntidf(uint128 a) @extern("__floatuntidf") @weak => float_from_u128(double, a);
-fn uint128 __fixunsdfti(double a) @weak @extern("__fixunsdfti") => fixuint(a);
-fn uint128 __fixunssfti(float a) @weak @extern("__fixunssfti") => fixuint(a);
-fn int128 __fixdfti(double a) @weak @extern("__fixdfti") => fixint(a);
-fn int128 __fixsfti(float a) @weak @extern("__fixsfti") => fixint(a);
+fn float __floattisf(int128 a) @extern("__floattisf") @weak @nostrip => float_from_i128(float, a);
+fn double __floattidf(int128 a) @extern("__floattidf") @weak @nostrip => float_from_i128(double, a);
+fn float __floatuntisf(uint128 a) @extern("__floatuntisf") @weak @nostrip => float_from_u128(float, a);
+fn double __floatuntidf(uint128 a) @extern("__floatuntidf") @weak @nostrip => float_from_u128(double, a);
+fn uint128 __fixunsdfti(double a) @weak @extern("__fixunsdfti") @nostrip => fixuint(a);
+fn uint128 __fixunssfti(float a) @weak @extern("__fixunssfti") @nostrip => fixuint(a);
+fn int128 __fixdfti(double a) @weak @extern("__fixdfti") @nostrip => fixint(a);
+fn int128 __fixsfti(float a) @weak @extern("__fixsfti") @nostrip => fixint(a);
 
 
 macro float_from_i128($Type, a) @private

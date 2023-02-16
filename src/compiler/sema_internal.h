@@ -80,6 +80,7 @@ void sema_analysis_pass_functions(Module *module);
 
 void sema_analysis_pass_lambda(Module *module);
 void sema_analyze_stage(Module *module, AnalysisStage stage);
+void sema_trace_liveness(void);
 
 bool sema_analyse_expr_lvalue(SemaContext *context, Expr *expr);
 bool sema_analyse_expr_lvalue_fold_const(SemaContext *context, Expr *expr);

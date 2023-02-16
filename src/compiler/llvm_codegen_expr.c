@@ -13,7 +13,7 @@ static inline LLVMValueRef llvm_const_low_bitmask(GenContext *c, LLVMTypeRef typ
 static inline LLVMValueRef llvm_emit_expr_to_rvalue(GenContext *c, Expr *expr);
 static inline LLVMValueRef llvm_emit_exprid_to_rvalue(GenContext *c, ExprId expr_id);
 static inline LLVMValueRef llvm_update_vector(GenContext *c, LLVMValueRef vector, LLVMValueRef value, MemberIndex index);
-static inline void gencontext_emit_expression_list_expr(GenContext *context, BEValue *be_value, Expr *expr);
+static inline void llvm_emit_expression_list_expr(GenContext *c, BEValue *be_value, Expr *expr);
 
 static inline void llvm_emit_bitassign_array(GenContext *c, BEValue *result, BEValue parent, Decl *parent_decl, Decl *member);
 static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Expr *expr);
@@ -5431,11 +5431,11 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 
 
 
-static inline void gencontext_emit_expression_list_expr(GenContext *context, BEValue *be_value, Expr *expr)
+static inline void llvm_emit_expression_list_expr(GenContext *c, BEValue *be_value, Expr *expr)
 {
 	VECEACH(expr->expression_list, i)
 	{
-		llvm_emit_expr(context, be_value, expr->expression_list[i]);
+		llvm_emit_expr(c, be_value, expr->expression_list[i]);
 	}
 }
 
@@ -6138,10 +6138,8 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 	{
 		case NON_RUNTIME_EXPR:
 		case EXPR_COND:
-		case EXPR_CT_ARG:
 		case EXPR_ASM:
 		case EXPR_VASPLAT:
-		case EXPR_CT_CHECKS:
 			UNREACHABLE
 		case EXPR_LAMBDA:
 			llvm_emit_lambda(c, value, expr);
@@ -6261,7 +6259,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			llvm_emit_call_expr(c, value, expr, NULL);
 			return;
 		case EXPR_EXPRESSION_LIST:
-			gencontext_emit_expression_list_expr(c, value, expr);
+			llvm_emit_expression_list_expr(c, value, expr);
 			return;
 		case EXPR_CAST:
 			llvm_emit_cast_expr(c, value, expr);

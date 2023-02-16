@@ -2,7 +2,7 @@ module std::math::nolibc;
 
 $if (!env::COMPILER_LIBC_AVAILABLE):
 
-fn double _round(double x) @extern("round") @weak
+fn double _round(double x) @extern("round") @weak @nostrip
 {
 	ulong u = bitcast(x, ulong);
 	int e = (int)((u >> 52) & 0x7ff);
@@ -28,7 +28,7 @@ fn double _round(double x) @extern("round") @weak
 	return y;
 }
 
-fn float _roundf(float x) @extern("roundf") @weak
+fn float _roundf(float x) @extern("roundf") @weak @nostrip
 {
 	uint u = bitcast(x, uint);
 	int e = (u >> 23) & 0xff;

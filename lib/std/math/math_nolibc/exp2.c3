@@ -5,7 +5,7 @@ $if (!env::COMPILER_LIBC_AVAILABLE):
 macro uint _top12f(float x) @private => bitcast(x, uint) >> 20;
 
 
-fn float _exp2f(float x) @extern("exp2f") @weak
+fn float _exp2f(float x) @extern("exp2f") @weak @nostrip
 {
 	double xd = x;
 	uint abstop = _top12f(x) & 0x7ff;
@@ -82,7 +82,7 @@ macro uint _top12d(double x) @private
 	return (uint)(bitcast(x, ulong) >> 52);
 }
 
-fn double _exp2(double x) @extern("exp2") @weak
+fn double _exp2(double x) @extern("exp2") @weak @nostrip
 {
 	uint abstop = _top12d(x) & 0x7ff;
 	ulong u = bitcast(x, ulong);

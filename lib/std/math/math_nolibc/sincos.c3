@@ -18,7 +18,7 @@ $if (!env::COMPILER_LIBC_AVAILABLE):
  * ====================================================
  */
 
-fn void sincosf(float x, float *sin, float *cos) @extern("sincosf") @weak
+fn void sincosf(float x, float *sin, float *cos) @extern("sincosf") @weak @nostrip
 {
 
 	uint ix = bitcast(x, uint);
@@ -107,7 +107,7 @@ fn void sincosf(float x, float *sin, float *cos) @extern("sincosf") @weak
 
 }
 
-fn void sincos(double x, double *sin, double *cos) @extern("sincos") @weak
+fn void sincos(double x, double *sin, double *cos) @extern("sincos") @weak @nostrip
 {
 	// High word of x.
 	uint ix = (uint)(bitcast(x, ulong) >> 32);

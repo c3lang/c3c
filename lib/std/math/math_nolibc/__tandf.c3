@@ -27,7 +27,7 @@ const double[*] TANDF = {
 	0x1362b9bf971bcd.0p-59, /* 0.00946564784943673166728 */
 };
 
-fn float __tandf(double x, int odd) @extern("__tandf") @weak
+fn float __tandf(double x, int odd) @extern("__tandf") @weak @nostrip
 {
 	double z = x * x;
 	/*

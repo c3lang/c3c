@@ -14,7 +14,7 @@ $if (!env::COMPILER_LIBC_AVAILABLE):
  * ====================================================
  */
 
-fn double tan(double x) @extern("tan") @weak
+fn double tan(double x) @extern("tan") @weak @nostrip
 {
 	uint ix = (uint)(bitcast(x, ulong) >> 32);
 	ix &= 0x7fffffff;
@@ -59,7 +59,7 @@ fn double tan(double x) @extern("tan") @weak
  * ====================================================
  */
 
-fn float tanf(float x) @extern("tanf") @weak
+fn float tanf(float x) @extern("tanf") @weak @nostrip
 {
 	uint ix = bitcast(x, uint);
 	uint sign = ix >> 31;

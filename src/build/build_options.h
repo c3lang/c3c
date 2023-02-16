@@ -318,6 +318,7 @@ typedef struct BuildOptions_
 	X86VectorCapability x86_vector_capability;
 	RiscvFloatCapability riscv_float_capability;
 	MemoryEnvironment memory_environment;
+	bool strip_unused;
 	bool print_keywords;
 	bool print_attributes;
 	bool print_builtins;
@@ -390,6 +391,7 @@ typedef struct
 	bool emit_asm;
 	bool no_stdlib;
 	bool no_libc;
+	bool strip_unused;
 	bool emit_object_files;
 	bool force_linker;
 	bool benchmarking;
