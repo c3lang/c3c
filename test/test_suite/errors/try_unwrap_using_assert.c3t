@@ -21,21 +21,22 @@ entry:
   %x = alloca i32, align 4
   %1 = call i64 @maybe(ptr %retparam)
   %not_err = icmp eq i64 %1, 0
-  br i1 %not_err, label %after_check, label %assign_optional
+  %2 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %2, label %after_check, label %assign_optional
 
 assign_optional:                                  ; preds = %entry
   store i64 %1, ptr %num.f, align 8
   br label %after_assign
 
 after_check:                                      ; preds = %entry
-  %2 = load i32, ptr %retparam, align 4
-  store i32 %2, ptr %num, align 4
+  %3 = load i32, ptr %retparam, align 4
+  store i32 %3, ptr %num, align 4
   store i64 0, ptr %num.f, align 8
   br label %after_assign
 
 after_assign:                                     ; preds = %after_check, %assign_optional
-  %3 = load i32, ptr %num, align 4
-  store i32 %3, ptr %x, align 4
   %4 = load i32, ptr %num, align 4
-  ret i32 %4
+  store i32 %4, ptr %x, align 4
+  %5 = load i32, ptr %num, align 4
+  ret i32 %5
 }

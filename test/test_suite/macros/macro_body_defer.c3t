@@ -104,9 +104,16 @@ loop.exit4:                                       ; No predecessors!
 ; Function Attrs: nounwind
 define i32 @main(i32 %0, ptr %1) #0 {
 entry:
+  %.anon = alloca i32, align 4
+  %.anon1 = alloca ptr, align 8
+  %error_var = alloca i64, align 8
+  store i32 %0, ptr %.anon, align 4
+  store ptr %1, ptr %.anon1, align 8
+  store i64 0, ptr %error_var, align 8
   %2 = call i64 @foo_main()
   %not_err = icmp eq i64 %2, 0
-  br i1 %not_err, label %after_check, label %assign_optional
+  %3 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %3, label %after_check, label %assign_optional
 
 assign_optional:                                  ; preds = %entry
   store i64 %2, ptr %error_var, align 8
@@ -116,8 +123,8 @@ after_check:                                      ; preds = %entry
   br label %noerr_block
 
 noerr_block:                                      ; preds = %after_check, %assign_optional
-  %3 = load i64, ptr %error_var, align 8
-  %neq = icmp ne i64 %3, 0
+  %4 = load i64, ptr %error_var, align 8
+  %neq = icmp ne i64 %4, 0
   %ternary = select i1 %neq, i32 1, i32 0
   ret i32 %ternary
 }

@@ -334,7 +334,7 @@ if.then7:                                         ; preds = %if.exit4
   %17 = getelementptr inbounds %Head, ptr %literal10, i32 0, i32 0
   store ptr null, ptr %17, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %value, ptr align 8 %literal10, i32 8, i1 false)
-  %18 = call ptr @std_core_mem_malloc(i64 8) #2
+  %18 = call ptr @std_core_mem_malloc(i64 8) #3
   store ptr %18, ptr %temp, align 8
   %19 = load ptr, ptr %temp, align 8
   %not = icmp eq ptr %19, null
@@ -373,7 +373,7 @@ if.then16:                                        ; preds = %if.exit13
   store ptr null, ptr %literal21, align 8
   %28 = getelementptr inbounds %Head, ptr %literal21, i32 0, i32 0
   store %"char[]" zeroinitializer, ptr %value23, align 8
-  %29 = call ptr @std_core_mem_malloc(i64 16) #2
+  %29 = call ptr @std_core_mem_malloc(i64 16) #3
   store ptr %29, ptr %temp24, align 8
   %30 = load ptr, ptr %temp24, align 8
   %not25 = icmp eq ptr %30, null
@@ -396,7 +396,7 @@ noerr_block29:                                    ; preds = %if.exit27
   %33 = load ptr, ptr %temp24, align 8
   store ptr %33, ptr %28, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %value20, ptr align 8 %literal21, i32 8, i1 false)
-  %34 = call ptr @std_core_mem_malloc(i64 8) #2
+  %34 = call ptr @std_core_mem_malloc(i64 8) #3
   store ptr %34, ptr %temp30, align 8
   %35 = load ptr, ptr %temp30, align 8
   %not31 = icmp eq ptr %35, null
@@ -432,7 +432,7 @@ if.exit36:                                        ; preds = %if.exit13
   %44 = load i32, ptr %len, align 4
   %siuiext = sext i32 %44 to i64
   %add = add i64 %siuiext, 1
-  %45 = call ptr @std_core_mem_malloc(i64 %add) #2
+  %45 = call ptr @std_core_mem_malloc(i64 %add) #3
   store ptr %45, ptr %str, align 8
   %46 = load ptr, ptr %str, align 8
   %not37 = icmp eq ptr %46, null
@@ -465,7 +465,7 @@ if.exit39:                                        ; preds = %if.exit36
   %59 = insertvalue %"char[]" undef, ptr %ptroffset50, 0
   %60 = insertvalue %"char[]" %59, i64 %size, 1
   store %"char[]" %60, ptr %value49, align 8
-  %61 = call ptr @std_core_mem_malloc(i64 16) #2
+  %61 = call ptr @std_core_mem_malloc(i64 16) #3
   store ptr %61, ptr %temp51, align 8
   %62 = load ptr, ptr %temp51, align 8
   %not52 = icmp eq ptr %62, null
@@ -488,7 +488,7 @@ noerr_block56:                                    ; preds = %if.exit54
   %65 = load ptr, ptr %temp51, align 8
   store ptr %65, ptr %55, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %value46, ptr align 8 %literal47, i32 8, i1 false)
-  %66 = call ptr @std_core_mem_malloc(i64 8) #2
+  %66 = call ptr @std_core_mem_malloc(i64 8) #3
   store ptr %66, ptr %temp57, align 8
   %67 = load ptr, ptr %temp57, align 8
   %not58 = icmp eq ptr %67, null
@@ -566,28 +566,29 @@ entry:
   %hi = load i64, ptr %3, align 8
   %4 = call i64 @test_readDoc(ptr %retparam, ptr %lo, i64 %hi)
   %not_err = icmp eq i64 %4, 0
-  br i1 %not_err, label %after_check, label %else_block
+  %5 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %5, label %after_check, label %else_block
 
 after_check:                                      ; preds = %entry
-  %5 = load ptr, ptr %retparam, align 8
-  %6 = call { ptr, i8 } @test_buildSummary(ptr %5)
-  store { ptr, i8 } %6, ptr %result, align 8
-  %7 = load %Summary, ptr %result, align 8
+  %6 = load ptr, ptr %retparam, align 8
+  %7 = call { ptr, i8 } @test_buildSummary(ptr %6)
+  store { ptr, i8 } %7, ptr %result, align 8
+  %8 = load %Summary, ptr %result, align 8
   br label %phi_block
 
 else_block:                                       ; preds = %entry
-  %8 = getelementptr inbounds %Summary, ptr %literal, i32 0, i32 0
-  store ptr null, ptr %8, align 8
-  %9 = getelementptr inbounds %Summary, ptr %literal, i32 0, i32 1
-  store i8 0, ptr %9, align 8
-  %10 = load %Summary, ptr %literal, align 8
+  %9 = getelementptr inbounds %Summary, ptr %literal, i32 0, i32 0
+  store ptr null, ptr %9, align 8
+  %10 = getelementptr inbounds %Summary, ptr %literal, i32 0, i32 1
+  store i8 0, ptr %10, align 8
+  %11 = load %Summary, ptr %literal, align 8
   br label %phi_block
 
 phi_block:                                        ; preds = %else_block, %after_check
-  %val = phi %Summary [ %7, %after_check ], [ %10, %else_block ]
+  %val = phi %Summary [ %8, %after_check ], [ %11, %else_block ]
   store %Summary %val, ptr %taddr, align 8
-  %11 = load { ptr, i8 }, ptr %taddr, align 8
-  ret { ptr, i8 } %11
+  %12 = load { ptr, i8 }, ptr %taddr, align 8
+  ret { ptr, i8 } %12
 }
 
 ; Function Attrs: nounwind
@@ -644,30 +645,32 @@ entry:
   %hi = load i64, ptr %4, align 8
   %5 = call i64 @test_readDoc(ptr %retparam1, ptr %lo, i64 %hi)
   %not_err = icmp eq i64 %5, 0
-  br i1 %not_err, label %after_check, label %assign_optional
+  %6 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %6, label %after_check, label %assign_optional
 
 assign_optional:                                  ; preds = %entry
   store i64 %5, ptr %reterr, align 8
   br label %err_retblock
 
 after_check:                                      ; preds = %entry
-  %6 = load ptr, ptr %retparam1, align 8
-  %7 = call i64 @test_isTitleNonEmpty(ptr %retparam, ptr %6)
-  %not_err2 = icmp eq i64 %7, 0
-  br i1 %not_err2, label %after_check4, label %assign_optional3
+  %7 = load ptr, ptr %retparam1, align 8
+  %8 = call i64 @test_isTitleNonEmpty(ptr %retparam, ptr %7)
+  %not_err2 = icmp eq i64 %8, 0
+  %9 = call i1 @llvm.expect.i1(i1 %not_err2, i1 true)
+  br i1 %9, label %after_check4, label %assign_optional3
 
 assign_optional3:                                 ; preds = %after_check
-  store i64 %7, ptr %reterr, align 8
+  store i64 %8, ptr %reterr, align 8
   br label %err_retblock
 
 after_check4:                                     ; preds = %after_check
-  %8 = load i8, ptr %retparam, align 1
-  store i8 %8, ptr %0, align 1
+  %10 = load i8, ptr %retparam, align 1
+  store i8 %10, ptr %0, align 1
   ret i64 0
 
 err_retblock:                                     ; preds = %assign_optional3, %assign_optional
-  %9 = load i64, ptr %reterr, align 8
-  ret i64 %9
+  %11 = load i64, ptr %reterr, align 8
+  ret i64 %11
 }
 
 ; Function Attrs: nounwind
@@ -806,53 +809,56 @@ cond.phi:                                         ; preds = %cond.rhs, %cond.lhs
   %hi4 = load i64, ptr %36, align 8
   %37 = call i64 @test_readWhetherTitleNonEmpty(ptr %retparam, ptr %lo3, i64 %hi4)
   %not_err = icmp eq i64 %37, 0
-  br i1 %not_err, label %after_check, label %assign_optional
+  %38 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %38, label %after_check, label %assign_optional
 
 assign_optional:                                  ; preds = %cond.phi
   store i64 %37, ptr %has_title.f, align 8
   br label %after_assign
 
 after_check:                                      ; preds = %cond.phi
-  %38 = load i8, ptr %retparam, align 1
-  store i8 %38, ptr %has_title, align 1
+  %39 = load i8, ptr %retparam, align 1
+  store i8 %39, ptr %has_title, align 1
   store i64 0, ptr %has_title.f, align 8
   br label %after_assign
 
 after_assign:                                     ; preds = %after_check, %assign_optional
   %optval = load i64, ptr %has_title.f, align 8
   %not_err5 = icmp eq i64 %optval, 0
-  br i1 %not_err5, label %after_check6, label %else_block
+  %40 = call i1 @llvm.expect.i1(i1 %not_err5, i1 true)
+  br i1 %40, label %after_check6, label %else_block
 
 after_check6:                                     ; preds = %after_assign
-  %39 = load i8, ptr %has_title, align 1
-  %40 = call ptr @test_bool_to_string(i8 zeroext %39)
+  %41 = load i8, ptr %has_title, align 1
+  %42 = call ptr @test_bool_to_string(i8 zeroext %41)
   br label %phi_block
 
 else_block:                                       ; preds = %after_assign
-  %41 = load i64, ptr %has_title.f, align 8
-  %42 = call ptr @test_nameFromError(i64 %41)
+  %43 = load i64, ptr %has_title.f, align 8
+  %44 = call ptr @test_nameFromError(i64 %43)
   br label %phi_block
 
 phi_block:                                        ; preds = %else_block, %after_check6
-  %val7 = phi ptr [ %40, %after_check6 ], [ %42, %else_block ]
+  %val7 = phi ptr [ %42, %after_check6 ], [ %44, %else_block ]
   %optval8 = load i64, ptr %has_title.f, align 8
   %not_err9 = icmp eq i64 %optval8, 0
-  br i1 %not_err9, label %after_check10, label %else_block11
+  %45 = call i1 @llvm.expect.i1(i1 %not_err9, i1 true)
+  br i1 %45, label %after_check10, label %else_block11
 
 after_check10:                                    ; preds = %phi_block
-  %43 = load i8, ptr %has_title, align 1
-  %44 = trunc i8 %43 to i1
+  %46 = load i8, ptr %has_title, align 1
+  %47 = trunc i8 %46 to i1
   br label %phi_block12
 
 else_block11:                                     ; preds = %phi_block
   br label %phi_block12
 
 phi_block12:                                      ; preds = %else_block11, %after_check10
-  %val13 = phi i1 [ %44, %after_check10 ], [ false, %else_block11 ]
+  %val13 = phi i1 [ %47, %after_check10 ], [ false, %else_block11 ]
   %ternary = select i1 %val13, ptr @.str.26, ptr @.str.27
-  %45 = call i32 (ptr, ...) @printf(ptr @.str.25, ptr %val7, ptr %ternary)
-  %46 = load i64, ptr %.anon1, align 8
-  %add = add i64 %46, 1
+  %48 = call i32 (ptr, ...) @printf(ptr @.str.25, ptr %val7, ptr %ternary)
+  %49 = load i64, ptr %.anon1, align 8
+  %add = add i64 %49, 1
   store i64 %add, ptr %.anon1, align 8
   br label %loop.cond
 

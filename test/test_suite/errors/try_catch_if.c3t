@@ -58,7 +58,8 @@ entry:
 testblock:                                        ; preds = %entry
   %optval = load i64, ptr %a.f, align 8
   %not_err = icmp eq i64 %optval, 0
-  br i1 %not_err, label %after_check, label %assign_optional
+  %0 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %0, label %after_check, label %assign_optional
 
 assign_optional:                                  ; preds = %testblock
   store i64 %optval, ptr %err, align 8
@@ -68,12 +69,13 @@ after_check:                                      ; preds = %testblock
   br label %testblock1
 
 testblock1:                                       ; preds = %after_check
-  %0 = call i64 @try_catch_if_tester(ptr %retparam)
-  %not_err2 = icmp eq i64 %0, 0
-  br i1 %not_err2, label %after_check4, label %assign_optional3
+  %1 = call i64 @try_catch_if_tester(ptr %retparam)
+  %not_err2 = icmp eq i64 %1, 0
+  %2 = call i1 @llvm.expect.i1(i1 %not_err2, i1 true)
+  br i1 %2, label %after_check4, label %assign_optional3
 
 assign_optional3:                                 ; preds = %testblock1
-  store i64 %0, ptr %err, align 8
+  store i64 %1, ptr %err, align 8
   br label %end_block
 
 after_check4:                                     ; preds = %testblock1
@@ -81,17 +83,17 @@ after_check4:                                     ; preds = %testblock1
   br label %end_block
 
 end_block:                                        ; preds = %after_check4, %assign_optional3, %assign_optional
-  %1 = load i64, ptr %err, align 8
-  %neq = icmp ne i64 %1, 0
+  %3 = load i64, ptr %err, align 8
+  %neq = icmp ne i64 %3, 0
   br i1 %neq, label %if.then, label %if.else
 
 if.then:                                          ; preds = %end_block
-  %2 = call i32 (ptr, ...) @printf(ptr @.str.1)
+  %4 = call i32 (ptr, ...) @printf(ptr @.str.1)
   br label %if.exit
 
 if.else:                                          ; preds = %end_block
-  %3 = load i32, ptr %a, align 4
-  %4 = call i32 (ptr, ...) @printf(ptr @.str.2, i32 %3)
+  %5 = load i32, ptr %a, align 4
+  %6 = call i32 (ptr, ...) @printf(ptr @.str.2, i32 %5)
   br label %if.exit
 
 if.exit:                                          ; preds = %if.else, %if.then

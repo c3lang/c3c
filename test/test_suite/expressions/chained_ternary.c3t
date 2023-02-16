@@ -57,107 +57,112 @@ cond.phi4:                                        ; preds = %cond.phi, %cond.lhs
 cond.lhs7:                                        ; preds = %cond.phi4
   %optval = load i64, ptr %x.f, align 8
   %not_err = icmp eq i64 %optval, 0
-  br i1 %not_err, label %after_check, label %assign_optional
+  %6 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %6, label %after_check, label %assign_optional
 
 assign_optional:                                  ; preds = %cond.lhs7
   store i64 %optval, ptr %y.f, align 8
   br label %after_assign
 
 after_check:                                      ; preds = %cond.lhs7
-  %6 = load ptr, ptr %x, align 8
+  %7 = load ptr, ptr %x, align 8
   br label %cond.phi9
 
 cond.rhs8:                                        ; preds = %cond.phi4
-  %7 = load ptr, ptr %b, align 8
+  %8 = load ptr, ptr %b, align 8
   br label %cond.phi9
 
 cond.phi9:                                        ; preds = %cond.rhs8, %after_check
-  %val10 = phi ptr [ %6, %after_check ], [ %7, %cond.rhs8 ]
+  %val10 = phi ptr [ %7, %after_check ], [ %8, %cond.rhs8 ]
   store ptr %val10, ptr %y, align 8
   store i64 0, ptr %y.f, align 8
   br label %after_assign
 
 after_assign:                                     ; preds = %cond.phi9, %assign_optional
-  %8 = load ptr, ptr %a, align 8
-  %not11 = icmp eq ptr %8, null
+  %9 = load ptr, ptr %a, align 8
+  %not11 = icmp eq ptr %9, null
   br i1 %not11, label %cond.lhs12, label %cond.rhs13
 
 cond.lhs12:                                       ; preds = %after_assign
-  %9 = load ptr, ptr %b, align 8
+  %10 = load ptr, ptr %b, align 8
   br label %cond.phi18
 
 cond.rhs13:                                       ; preds = %after_assign
   %optval14 = load i64, ptr %x.f, align 8
   %not_err15 = icmp eq i64 %optval14, 0
-  br i1 %not_err15, label %after_check17, label %assign_optional16
+  %11 = call i1 @llvm.expect.i1(i1 %not_err15, i1 true)
+  br i1 %11, label %after_check17, label %assign_optional16
 
 assign_optional16:                                ; preds = %cond.rhs13
   store i64 %optval14, ptr %y.f, align 8
   br label %after_assign20
 
 after_check17:                                    ; preds = %cond.rhs13
-  %10 = load ptr, ptr %x, align 8
+  %12 = load ptr, ptr %x, align 8
   br label %cond.phi18
 
 cond.phi18:                                       ; preds = %after_check17, %cond.lhs12
-  %val19 = phi ptr [ %9, %cond.lhs12 ], [ %10, %after_check17 ]
+  %val19 = phi ptr [ %10, %cond.lhs12 ], [ %12, %after_check17 ]
   store ptr %val19, ptr %y, align 8
   store i64 0, ptr %y.f, align 8
   br label %after_assign20
 
 after_assign20:                                   ; preds = %cond.phi18, %assign_optional16
-  %11 = load ptr, ptr %a, align 8
-  %not21 = icmp eq ptr %11, null
+  %13 = load ptr, ptr %a, align 8
+  %not21 = icmp eq ptr %13, null
   br i1 %not21, label %cond.lhs22, label %cond.rhs27
 
 cond.lhs22:                                       ; preds = %after_assign20
   %optval23 = load i64, ptr %x.f, align 8
   %not_err24 = icmp eq i64 %optval23, 0
-  br i1 %not_err24, label %after_check26, label %assign_optional25
+  %14 = call i1 @llvm.expect.i1(i1 %not_err24, i1 true)
+  br i1 %14, label %after_check26, label %assign_optional25
 
 assign_optional25:                                ; preds = %cond.lhs22
   store i64 %optval23, ptr %y.f, align 8
   br label %after_assign34
 
 after_check26:                                    ; preds = %cond.lhs22
-  %12 = load ptr, ptr %x, align 8
+  %15 = load ptr, ptr %x, align 8
   br label %cond.phi32
 
 cond.rhs27:                                       ; preds = %after_assign20
   %optval28 = load i64, ptr %x.f, align 8
   %not_err29 = icmp eq i64 %optval28, 0
-  br i1 %not_err29, label %after_check31, label %assign_optional30
+  %16 = call i1 @llvm.expect.i1(i1 %not_err29, i1 true)
+  br i1 %16, label %after_check31, label %assign_optional30
 
 assign_optional30:                                ; preds = %cond.rhs27
   store i64 %optval28, ptr %y.f, align 8
   br label %after_assign34
 
 after_check31:                                    ; preds = %cond.rhs27
-  %13 = load ptr, ptr %x, align 8
+  %17 = load ptr, ptr %x, align 8
   br label %cond.phi32
 
 cond.phi32:                                       ; preds = %after_check31, %after_check26
-  %val33 = phi ptr [ %12, %after_check26 ], [ %13, %after_check31 ]
+  %val33 = phi ptr [ %15, %after_check26 ], [ %17, %after_check31 ]
   store ptr %val33, ptr %y, align 8
   store i64 0, ptr %y.f, align 8
   br label %after_assign34
 
 after_assign34:                                   ; preds = %cond.phi32, %assign_optional30, %assign_optional25
-  %14 = load ptr, ptr %a, align 8
-  %not35 = icmp eq ptr %14, null
+  %18 = load ptr, ptr %a, align 8
+  %not35 = icmp eq ptr %18, null
   br i1 %not35, label %cond.lhs36, label %cond.rhs41
 
 cond.lhs36:                                       ; preds = %after_assign34
   %optval37 = load i64, ptr %x.f, align 8
   %not_err38 = icmp eq i64 %optval37, 0
-  br i1 %not_err38, label %after_check40, label %assign_optional39
+  %19 = call i1 @llvm.expect.i1(i1 %not_err38, i1 true)
+  br i1 %19, label %after_check40, label %assign_optional39
 
 assign_optional39:                                ; preds = %cond.lhs36
   store i64 %optval37, ptr %y.f, align 8
   br label %after_assign43
 
 after_check40:                                    ; preds = %cond.lhs36
-  %15 = load ptr, ptr %x, align 8
+  %20 = load ptr, ptr %x, align 8
   br label %cond.phi42
 
 cond.rhs41:                                       ; preds = %after_assign34
@@ -165,13 +170,13 @@ cond.rhs41:                                       ; preds = %after_assign34
   br label %after_assign43
 
 cond.phi42:                                       ; preds = %after_check40
-  store ptr %15, ptr %y, align 8
+  store ptr %20, ptr %y, align 8
   store i64 0, ptr %y.f, align 8
   br label %after_assign43
 
 after_assign43:                                   ; preds = %cond.phi42, %cond.rhs41, %assign_optional39
-  %16 = load ptr, ptr %a, align 8
-  %not44 = icmp eq ptr %16, null
+  %21 = load ptr, ptr %a, align 8
+  %not44 = icmp eq ptr %21, null
   br i1 %not44, label %cond.lhs45, label %cond.rhs46
 
 cond.lhs45:                                       ; preds = %after_assign43
@@ -181,24 +186,25 @@ cond.lhs45:                                       ; preds = %after_assign43
 cond.rhs46:                                       ; preds = %after_assign43
   %optval47 = load i64, ptr %x.f, align 8
   %not_err48 = icmp eq i64 %optval47, 0
-  br i1 %not_err48, label %after_check50, label %assign_optional49
+  %22 = call i1 @llvm.expect.i1(i1 %not_err48, i1 true)
+  br i1 %22, label %after_check50, label %assign_optional49
 
 assign_optional49:                                ; preds = %cond.rhs46
   store i64 %optval47, ptr %y.f, align 8
   br label %after_assign52
 
 after_check50:                                    ; preds = %cond.rhs46
-  %17 = load ptr, ptr %x, align 8
+  %23 = load ptr, ptr %x, align 8
   br label %cond.phi51
 
 cond.phi51:                                       ; preds = %after_check50
-  store ptr %17, ptr %y, align 8
+  store ptr %23, ptr %y, align 8
   store i64 0, ptr %y.f, align 8
   br label %after_assign52
 
 after_assign52:                                   ; preds = %cond.phi51, %assign_optional49, %cond.lhs45
-  %18 = load ptr, ptr %a, align 8
-  %not53 = icmp eq ptr %18, null
+  %24 = load ptr, ptr %a, align 8
+  %not53 = icmp eq ptr %24, null
   br i1 %not53, label %cond.lhs54, label %cond.rhs55
 
 cond.lhs54:                                       ; preds = %after_assign52

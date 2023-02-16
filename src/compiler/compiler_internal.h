@@ -1580,6 +1580,7 @@ struct CompilationUnit_
 	Decl **attributes;
 	Decl **faulttypes;
 	Visibility default_visibility;
+	bool export_by_default;
 	struct
 	{
 		// Not properly implemented

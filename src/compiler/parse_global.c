@@ -382,11 +382,54 @@ bool parse_module(ParseContext *c, AstId docs)
 	Visibility visibility = VISIBLE_PUBLIC;
 	Attr** attrs = NULL;
 	if (!parse_attributes(c, &attrs, &visibility)) return false;
-	if (attrs)
-	{
-		sema_error_at(attrs[0]->span, "Unexpected '%s' after module name - only @public, @private and @local is permitted here.", attrs[0]->name);
+	FOREACH_BEGIN(Attr *attr, attrs)
+		if (attr->is_custom)
+		{
+			SEMA_ERROR(attr, "Custom attributes cannot be used with 'module'.");
+			return false;
+		}
+		switch (attr->attr_kind)
+		{
+			case ATTRIBUTE_EXPORT:
+				if (attr->exprs)
+				{
+					SEMA_ERROR(attr, "Expected no arguments to '@export'");
+					return false;
+				}
+				if (c->unit->export_by_default)
+				{
+					SEMA_ERROR(attr, "'@export' appeared more than once.");
+					return false;
+				}
+				c->unit->export_by_default = true;
+				continue;
+			case ATTRIBUTE_EXTERN:
+			{
+				if (vec_size(attr->exprs) != 1)
+				{
+					SEMA_ERROR(attr, "Expected 1 argument to '@extern(..), not %d'.", vec_size(attr->exprs));
+					return false;
+				}
+				Expr *expr = attr->exprs[0];
+				if (!expr_is_const_string(expr))
+				{
+					SEMA_ERROR(expr, "Expected a constant string.");
+					return false;
+				}
+				if (c->unit->module->extname)
+				{
+					SEMA_ERROR(attr, "External name for the module may only be declared in one location.");
+					return false;
+				}
+				c->unit->module->extname = expr->const_expr.string.chars;
+				continue;
+			}
+			default:
+				break;
+		}
+		SEMA_ERROR(attr, "'%s' cannot be used with the module declaration.", attr->name);
 		return false;
-	}
+	FOREACH_END();
 	c->unit->default_visibility = visibility;
 	CONSUME_EOS_OR_RET(false);
 	return true;
@@ -889,10 +932,14 @@ static Decl *parse_const_declaration(ParseContext *c, bool is_global)
 
 	if (!consume_const_name(c, "const")) return poisoned_decl;
 
-	Visibility visibility = is_global ? c->unit->default_visibility : VISIBLE_LOCAL;
-	if (!parse_attributes(c, &decl->attributes, is_global ? &visibility : NULL)) return poisoned_decl;
-	decl->visibility = visibility;
-
+	if (is_global)
+	{
+		if (!parse_attributes_for_global(c, decl)) return false;
+	}
+	else
+	{
+		if (!parse_attributes(c, &decl->attributes, NULL)) return poisoned_decl;
+	}
 	CONSUME_OR_RET(TOKEN_EQ, poisoned_decl);
 
 	if (!parse_decl_initializer(c, decl, false)) return poisoned_decl;
@@ -1035,6 +1082,7 @@ static bool parse_attributes_for_global(ParseContext *c, Decl *decl)
 	Visibility visibility = c->unit->default_visibility;
 	if (!parse_attributes(c, &decl->attributes, &visibility)) return false;
 	decl->visibility = visibility;
+	decl->is_export = c->unit->export_by_default;
 	return true;
 }
 
@@ -1057,35 +1105,40 @@ bool parse_attributes(ParseContext *c, Attr ***attributes_ref, Visibility *visib
 		Attr *attr;
 		if (!parse_attribute(c, &attr)) return false;
 		if (!attr) return true;
-		const char *name = attr->name;
 		Visibility parsed_visibility = -1;
-		if (name == attribute_list[ATTRIBUTE_PRIVATE])
+		if (!attr->is_custom)
 		{
-			parsed_visibility = VISIBLE_PRIVATE;
-		}
-		else if (name == attribute_list[ATTRIBUTE_PUBLIC])
-		{
-			parsed_visibility = VISIBLE_PUBLIC;
-		}
-		else if (name == attribute_list[ATTRIBUTE_LOCAL])
-		{
-			parsed_visibility = VISIBLE_LOCAL;
-		}
-		if (parsed_visibility != -1)
-		{
-			if (!visibility_ref)
+			switch (attr->attr_kind)
 			{
-				SEMA_ERROR(attr, "'%s' cannot be used here.");
-				return false;
+				case ATTRIBUTE_PUBLIC:
+					parsed_visibility = VISIBLE_PUBLIC;
+					break;
+				case ATTRIBUTE_PRIVATE:
+					parsed_visibility = VISIBLE_PRIVATE;
+					break;
+				case ATTRIBUTE_LOCAL:
+					parsed_visibility = VISIBLE_LOCAL;
+					break;
+				default:
+					break;
 			}
-			if (visibility != -1)
+			if (parsed_visibility != -1)
 			{
-				SEMA_ERROR(attr, "Only a single visibility attribute may be added.");
-				return false;
+				if (!visibility_ref)
+				{
+					SEMA_ERROR(attr, "'%s' cannot be used here.");
+					return false;
+				}
+				if (visibility != -1)
+				{
+					SEMA_ERROR(attr, "Only a single visibility attribute may be added.");
+					return false;
+				}
+				*visibility_ref = visibility = parsed_visibility;
+				continue;
 			}
-			*visibility_ref = visibility = parsed_visibility;
-			continue;
 		}
+		const char *name = attr->name;
 		FOREACH_BEGIN(Attr *other_attr, *attributes_ref)
 			if (other_attr->name == name)
 			{

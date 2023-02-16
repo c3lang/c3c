@@ -88,7 +88,9 @@ static void gencontext_destroy(GenContext *context)
 
 LLVMValueRef llvm_emit_is_no_opt(GenContext *c, LLVMValueRef error_value)
 {
-	return LLVMBuildICmp(c->builder, LLVMIntEQ, error_value, llvm_get_zero(c, type_anyerr), "not_err");
+	LLVMValueRef compare = LLVMBuildICmp(c->builder, LLVMIntEQ, error_value, llvm_get_zero(c, type_anyerr), "not_err");
+	LLVMValueRef vals[2] = { compare, LLVMConstInt(c->bool_type, 1, false) };
+	return llvm_emit_call_intrinsic(c, intrinsic_id.expect, &c->bool_type, 1, vals, 2);
 }
 
 LLVMValueRef llvm_emit_memclear_size_align(GenContext *c, LLVMValueRef ptr, uint64_t size, AlignSize align)

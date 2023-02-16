@@ -1265,6 +1265,10 @@ static void llvm_prune_optional(GenContext *c, LLVMBasicBlockRef discard_fail)
 	// Optionally remove the comparison
 	if (!LLVMGetFirstUse(compared))
 	{
+		if (LLVMGetInstructionOpcode(compared) == LLVMCall)
+		{
+			LLVMInstructionEraseFromParent(LLVMGetOperand(compared, 0));
+		}
 		LLVMInstructionEraseFromParent(compared);
 	}
 	// Update the context
