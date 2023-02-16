@@ -612,6 +612,7 @@ static void append_fpie_pic_options(RelocModel reloc, const char ***args_ref)
 
 LinkerType linker_find_linker_type(void)
 {
+	if (arch_is_wasm(platform_target.arch)) return LINKER_WASM;
 	switch (platform_target.os)
 	{
 		case OS_UNSUPPORTED:

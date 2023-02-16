@@ -98,21 +98,21 @@ extern fn void* realloc(void* ptr, usz size);
 
 $else:
 
-fn void longjmp(JmpBuf* buffer, CInt value) @weak @extern("longjmp")
+fn void longjmp(JmpBuf* buffer, CInt value) @weak @extern("longjmp") @nostrip
 {
 	unreachable("longjmp unavailable");
 }
 
-fn CInt setjmp(JmpBuf* buffer) @weak @extern("setjmp")
+fn CInt setjmp(JmpBuf* buffer) @weak @extern("setjmp") @nostrip
 {
 	unreachable("setjmp unavailable");
 }
 
-fn void* malloc(usz size) @weak @extern("malloc")
+fn void* malloc(usz size) @weak @extern("malloc") @nostrip
 {
 	unreachable("malloc unavailable");
 }
-fn void* calloc(usz count, usz size) @weak @extern("calloc")
+fn void* calloc(usz count, usz size) @weak @extern("calloc") @nostrip
 {
 	unreachable("calloc unavailable");
 }
@@ -121,23 +121,23 @@ fn void* free(void*) @weak @extern("free")
 	unreachable("free unavailable");
 }
 
-fn void* realloc(void* ptr, usz size) @weak @extern("realloc")
+fn void* realloc(void* ptr, usz size) @weak @extern("realloc") @nostrip
 {
 	unreachable("realloc unavailable");
 }
 
-fn void* memcpy(void* dest, void* src, usz n) @weak @extern("memcpy")
+fn void* memcpy(void* dest, void* src, usz n) @weak @extern("memcpy") @nostrip
 {
 	for (usz i = 0; i < n; i++) ((char*)dest)[i] = ((char*)src)[i];
 	return dest;
 }
 
-fn void* memmove(void* dest, void* src, usz n) @weak @extern("memmove")
+fn void* memmove(void* dest, void* src, usz n) @weak @extern("memmove") @nostrip
 {
 	return memcpy(dest, src, n) @inline;
 }
 
-fn void* memset(void* dest, CInt value, usz n) @weak @extern("memset")
+fn void* memset(void* dest, CInt value, usz n) @weak @extern("memset") @nostrip
 {
 	for (usz i = 0; i < n; i++) ((char*)dest)[i] = (char)value;
 	return dest;
@@ -246,69 +246,69 @@ extern fn isz getline(char** linep, usz* linecapp, CFile stream);
 
 $else:
 
-fn int fseek(CFile stream, SeekIndex offset, int whence) @weak @extern("fseek")
+fn int fseek(CFile stream, SeekIndex offset, int whence) @weak @extern("fseek") @nostrip
 {
 	unreachable("'fseek' not available.");
 }
-fn CFile fopen(ZString filename, ZString mode) @weak @extern("fopen")
+fn CFile fopen(ZString filename, ZString mode) @weak @extern("fopen") @nostrip
 {
 	unreachable("'fopen' not available.");
 }
 
-fn CFile freopen(ZString filename, ZString mode, CFile stream) @weak @extern("fopen")
+fn CFile freopen(ZString filename, ZString mode, CFile stream) @weak @extern("fopen") @nostrip
 {
 	unreachable("'freopen' not available.");
 }
 
-fn usz fwrite(void* ptr, usz size, usz nmemb, CFile stream) @weak @extern("fwrite")
+fn usz fwrite(void* ptr, usz size, usz nmemb, CFile stream) @weak @extern("fwrite") @nostrip
 {
 	unreachable("'fwrite' not available.");
 }
 
-fn usz fread(void* ptr, usz size, usz nmemb, CFile stream) @weak @extern("fread")
+fn usz fread(void* ptr, usz size, usz nmemb, CFile stream) @weak @extern("fread") @nostrip
 {
 	unreachable("'fread' not available.");
 }
 
-fn CFile fclose(CFile) @weak @extern("fclose")
+fn CFile fclose(CFile) @weak @extern("fclose") @nostrip
 {
 	unreachable("'fclose' not available.");
 }
 
-fn int fflush(CFile stream) @weak @extern("fflush")
+fn int fflush(CFile stream) @weak @extern("fflush") @nostrip
 {
 	unreachable("'fflush' not available.");
 }
 
-fn int fputc(int c, CFile stream) @weak @extern("fputc")
+fn int fputc(int c, CFile stream) @weak @extern("fputc") @nostrip
 {
 	unreachable("'fputc' not available.");
 }
 
-fn char* fgets(ZString str, int n, CFile stream) @weak @extern("fgets")
+fn char* fgets(ZString str, int n, CFile stream) @weak @extern("fgets") @nostrip
 {
 	unreachable("'fgets' not available.");
 }
 
-fn int fgetc(CFile stream) @weak @extern("fgetc")
+fn int fgetc(CFile stream) @weak @extern("fgetc") @nostrip
 {
 	unreachable("'fgetc' not available.");
 }
 
-fn int feof(CFile stream) @weak @extern("feof")
+fn int feof(CFile stream) @weak @extern("feof") @nostrip
 {
 	unreachable("'feof' not available.");
 }
 
-fn int putc(int c, CFile stream) @weak @extern("putc")
+fn int putc(int c, CFile stream) @weak @extern("putc") @nostrip
 {
 	unreachable("'putc' not available.");
 }
-fn int putchar(int c) @weak @extern("putchar")
+fn int putchar(int c) @weak @extern("putchar") @nostrip
 {
 	unreachable("'putchar' not available.");
 }
-fn int puts(ZString str) @weak @extern("puts")
+fn int puts(ZString str) @weak @extern("puts") @nostrip
 {
 	unreachable("'puts' not available.");
 }

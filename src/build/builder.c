@@ -199,6 +199,8 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	{
 		target->feature.safe_mode = options->safe_mode == 1;
 	}
+	if (options->strip_unused) target->strip_unused = true;
+
 	if (options->memory_environment != MEMORY_ENV_NOT_SET)
 	{
 		target->memory_environment = options->memory_environment;

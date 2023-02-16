@@ -867,7 +867,7 @@ static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *swi
 void gencontext_emit_switch(GenContext *context, Ast *ast)
 {
 	BEValue switch_value;
-	llvm_emit_decl_expr_list(context, &switch_value, exprptr(ast->switch_stmt.cond), false);
+	llvm_emit_decl_expr_list(context, &switch_value, exprptrzero(ast->switch_stmt.cond), false);
 	llvm_emit_switch_body(context, &switch_value, ast);
 }
 
@@ -1192,7 +1192,6 @@ static inline void llvm_emit_asm_block_stmt(GenContext *c, Ast *ast)
 										   /* can throw */ false
 	                                       );
 	LLVMValueRef res = LLVMBuildCall2(c->builder, asm_fn_type, asm_fn, args, param_count, "");
-#if LLVM_VERSION_MAJOR > 13
 	for (unsigned i = 0; i < param_count; i++)
 	{
 		if (pointer_type[i])
@@ -1200,9 +1199,6 @@ static inline void llvm_emit_asm_block_stmt(GenContext *c, Ast *ast)
 			llvm_attribute_add_call_type(c, res, attribute_id.elementtype, i + 1, pointer_type[i]);
 		}
 	}
-#else
-	(void)pointer_type;
-#endif
 	if (!result_count) return;
 	if (result_count == 1)
 	{

@@ -14,7 +14,7 @@ $if (!env::COMPILER_LIBC_AVAILABLE):
  * ====================================================
  */
 
-fn double __cos(double x, double y) @extern("__cos") @weak
+fn double __cos(double x, double y) @extern("__cos") @weak @nostrip
 {
 	const C1 =  4.16666666666666019037e-02; /* 0x3FA55555, 0x5555554C */
 	const C2 = -1.38888888888741095749e-03; /* 0xBF56C16C, 0x16C15177 */

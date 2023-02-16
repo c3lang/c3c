@@ -18,7 +18,7 @@ $if (!env::COMPILER_LIBC_AVAILABLE):
  * ====================================================
  */
 
-fn float _sinf(float x) @weak @extern("sinf")
+fn float _sinf(float x) @weak @extern("sinf") @nostrip
 {
 	uint ix = bitcast(x, uint);
 	int sign = ix >> 31;
@@ -87,7 +87,7 @@ fn float _sinf(float x) @weak @extern("sinf")
  * ====================================================
  */
 
-fn double sin(double x) @extern("sin") @weak
+fn double sin(double x) @extern("sin") @weak @nostrip
 {
 	// High word of x.
 	uint ix = (uint)(bitcast(x, ulong) >> 32);

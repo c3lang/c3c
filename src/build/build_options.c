@@ -133,6 +133,7 @@ static void usage(void)
 	OUTPUT("  --x86vec=<option>         - Set max level of vector instructions: none, native, mmx, sse, avx, avx512.");
 	OUTPUT("  --riscvfloat=<option>     - Set type of RISC-V float support: none, float, double");
 	OUTPUT("  --memory-env=<option>     - Set the memory environment: normal, small, tiny, none.");
+	OUTPUT("  --strip-unused            - Strip unused code and globals from the output (experimental)");
 	OUTPUT("");
 	OUTPUT("  --debug-stats             - Print debug statistics.");
 #ifndef NDEBUG
@@ -542,6 +543,11 @@ static void parse_option(BuildOptions *options)
 			{
 				print_version();
 				exit_compiler(COMPILER_SUCCESS_EXIT);
+			}
+			if (match_longopt("strip-unused"))
+			{
+				options->strip_unused = true;
+				return;
 			}
 			if ((argopt = match_argopt("x86vec")))
 			{

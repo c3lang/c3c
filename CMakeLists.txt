@@ -276,7 +276,7 @@ add_executable(c3c
         src/compiler/expr.c
         src/utils/time.c
         src/utils/http.c
-        )
+        src/compiler/sema_liveness.c)
 
 
 if (C3_USE_TB)

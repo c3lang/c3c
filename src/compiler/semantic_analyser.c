@@ -317,6 +317,11 @@ RESOLVE_LAMBDA:;
 	FOREACH_END();
 	if (found_lambda) goto RESOLVE_LAMBDA;
 
+	if (active_target.strip_unused && !active_target.testing)
+	{
+		sema_trace_liveness();
+	}
+
 	if (active_target.panicfn || !active_target.no_stdlib)
 	{
 		const char *panicfn = active_target.panicfn ? active_target.panicfn : "std::core::builtin::panic";
