@@ -22,6 +22,6 @@ const char *date_get(void)
 	time(&rawtime);
 	timeinfo = localtime(&rawtime);
 	scratch_buffer_clear();
-	scratch_buffer_printf("%02d-%02d-%02d", timeinfo->tm_year + 1900, timeinfo->tm_mon, timeinfo->tm_mday);
+	scratch_buffer_printf("%02d-%02d-%02d", timeinfo->tm_year + 1900, timeinfo->tm_mon + 1, timeinfo->tm_mday);
 	return scratch_buffer_copy();
 }
