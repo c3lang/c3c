@@ -3830,7 +3830,7 @@ static Expr **sema_vasplat_append(SemaContext *c, Expr **init_expressions, Expr 
 	}
 	for (unsigned i = start_idx; i < end_idx; i++)
 	{
-		vec_add(init_expressions, args[i]);
+		vec_add(init_expressions, copy_expr_single(args[i]));
 	}
 	return init_expressions;
 }
