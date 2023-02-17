@@ -288,7 +288,7 @@ after_check51:                                    ; preds = %if.then
 
 panic_block:                                      ; preds = %assign_optional
   %85 = load ptr, ptr @std_core_builtin_panic, align 8
-  call void %85(ptr @.panic_msg, i64 27, ptr @.file, i64 6, ptr @.func, i64 4, i32 280)
+  call void %85(ptr @.panic_msg, i64 27, ptr @.file, i64 6, ptr @.func
   unreachable
 
 noerr_block:                                      ; preds = %after_check51

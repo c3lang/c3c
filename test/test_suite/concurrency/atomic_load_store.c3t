@@ -1,0 +1,26 @@
+// #target: macos-x64
+module test;
+import std::io;
+
+struct Ghh
+{
+	int a;
+	int b;
+	int c;
+}
+fn void main()
+{
+	int a = 111;
+	int x = @atomic_load(a);
+	int y = @atomic_load(a, MONOTONIC, true);
+	@atomic_store(a, 123 + x);
+	@atomic_store(a, 33 + y, MONOTONIC, true);
+	io::printfn("%d", a);
+}
+
+/* #expect: test.ll
+
+  %0 = load atomic i32, ptr %a seq_cst, align 4
+  %1 = load atomic volatile i32, ptr %a monotonic, align 4
+  store atomic i32 %3, ptr %a seq_cst, align 4
+  store atomic volatile i32 %5, ptr %a monotonic, align 4

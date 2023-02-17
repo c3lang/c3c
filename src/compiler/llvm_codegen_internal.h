@@ -476,6 +476,7 @@ void llvm_emit_debug_local_var(GenContext *c, Decl *var);
 void llvm_emit_debug_global_var(GenContext *c, Decl *global);
 #define EMIT_LOC(c, x) do { if (c->debug.builder) llvm_emit_debug_location(c, x->span); } while (0);
 
+LLVMAtomicOrdering llvm_atomic_ordering(Atomicity atomicity);
 
 // Implementations
 

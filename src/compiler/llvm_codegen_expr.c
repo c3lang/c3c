@@ -5,7 +5,6 @@
 #include "llvm_codegen_internal.h"
 #include <math.h>
 
-static LLVMAtomicOrdering llvm_atomic_ordering(Atomicity atomicity);
 static LLVMValueRef llvm_emit_coerce_alignment(GenContext *c, BEValue *be_value, LLVMTypeRef coerce_type, AlignSize target_alignment, AlignSize *resulting_alignment);
 static bool bitstruct_requires_bitswap(Decl *decl);
 static inline LLVMValueRef llvm_const_high_bitmask(GenContext *c, LLVMTypeRef type, int type_bits, int high_bits);
@@ -4894,20 +4893,6 @@ static void llvm_emit_splatted_variadic_arg(GenContext *c, Expr *expr, Type *var
 }
 
 
-static LLVMAtomicOrdering llvm_atomic_ordering(Atomicity atomicity)
-{
-	switch (atomicity)
-	{
-		case ATOMIC_NONE: return LLVMAtomicOrderingNotAtomic;
-		case ATOMIC_UNORDERED: return LLVMAtomicOrderingUnordered;
-		case ATOMIC_RELAXED: return LLVMAtomicOrderingMonotonic;
-		case ATOMIC_ACQUIRE: return LLVMAtomicOrderingAcquire;
-		case ATOMIC_RELEASE: return LLVMAtomicOrderingRelease;
-		case ATOMIC_ACQUIRE_RELEASE: return LLVMAtomicOrderingAcquireRelease;
-		case ATOMIC_SEQ_CONSISTENT: return LLVMAtomicOrderingSequentiallyConsistent;
-	}
-	UNREACHABLE
-}
 
 
 

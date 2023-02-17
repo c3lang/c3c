@@ -636,6 +636,36 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_check_builtin_args_match(args, arg_count)) return false;
 			rtype = args[0]->type;
 			break;
+		case BUILTIN_ATOMIC_LOAD:
+		{
+			if (!sema_check_builtin_args(args, (BuiltinArg[]){ BA_POINTER, BA_BOOL, BA_INTEGER }, 3)) return false;
+			Type *original = type_flatten(args[0]->type);
+			if (original == type_voidptr)
+			{
+				SEMA_ERROR(args[0], "Expected a typed pointer.");
+				return false;
+			}
+			if (!expr_is_const(args[1]))
+			{
+				SEMA_ERROR(args[1], "'is_volatile' must be a compile time constant.");
+				return false;
+			}
+			if (!expr_is_const(args[2]))
+			{
+				SEMA_ERROR(args[2], "Ordering must be a compile time constant.");
+				return false;
+			}
+			if (!is_valid_atomicity(args[2])) return false;
+			switch (expr->const_expr.ixx.i.low)
+			{
+				case ATOMIC_ACQUIRE_RELEASE:
+				case ATOMIC_RELEASE:
+					SEMA_ERROR(args[2], "'release' and 'acquire release' are not valid for atomic loads.");
+					return false;
+			}
+			rtype = original->pointer;
+			break;
+		}
 		case BUILTIN_VOLATILE_LOAD:
 		{
 			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_POINTER }, 1)) return false;
@@ -655,6 +685,36 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (original != type_voidptr)
 			{
 				if (!cast_implicit(context, args[1], original->pointer)) return false;
+			}
+			rtype = args[1]->type;
+			break;
+		}
+		case BUILTIN_ATOMIC_STORE:
+		{
+			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_POINTER }, 1)) return false;
+			if (!sema_check_builtin_args(&args[2], (BuiltinArg[]) { BA_BOOL, BA_INTEGER }, 2)) return false;
+			Type *original = type_flatten(args[0]->type);
+			if (original != type_voidptr)
+			{
+				if (!cast_implicit(context, args[1], original->pointer)) return false;
+			}
+			if (!expr_is_const(args[2]))
+			{
+				SEMA_ERROR(args[2], "'is_volatile' must be a compile time constant.");
+				return false;
+			}
+			if (!expr_is_const(args[3]))
+			{
+				SEMA_ERROR(args[3], "Ordering must be a compile time constant.");
+				return false;
+			}
+			if (!is_valid_atomicity(args[3])) return false;
+			switch (expr->const_expr.ixx.i.low)
+			{
+				case ATOMIC_ACQUIRE_RELEASE:
+				case ATOMIC_ACQUIRE:
+					SEMA_ERROR(args[2], "'acquire' and 'acquire release' are not valid for atomic stores.");
+					return false;
 			}
 			rtype = args[1]->type;
 			break;
@@ -764,7 +824,10 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_OVERFLOW_MUL:
 		case BUILTIN_OVERFLOW_SUB:
 		case BUILTIN_PREFETCH:
+		case BUILTIN_ATOMIC_LOAD:
 			return 3;
+		case BUILTIN_ATOMIC_STORE:
+			return 4;
 		case BUILTIN_MEMCOPY:
 		case BUILTIN_MEMCOPY_INLINE:
 		case BUILTIN_MEMMOVE:

@@ -187,6 +187,8 @@ void symtab_init(uint32_t capacity)
 	type_property_list[TYPE_PROPERTY_VALUES] = KW_DEF("values");
 
 	builtin_list[BUILTIN_ABS] = KW_DEF("abs");
+	builtin_list[BUILTIN_ATOMIC_LOAD] = KW_DEF("atomic_load");
+	builtin_list[BUILTIN_ATOMIC_STORE] = KW_DEF("atomic_store");
 	builtin_list[BUILTIN_BITREVERSE] = KW_DEF("bitreverse");
 	builtin_list[BUILTIN_BSWAP] = KW_DEF("bswap");
 	builtin_list[BUILTIN_CEIL] = KW_DEF("ceil");

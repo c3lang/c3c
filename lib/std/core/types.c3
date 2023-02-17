@@ -183,6 +183,21 @@ macro bool @has_same(#a, #b, ...)
 	return true;
 }
 
+macro bool may_load_atomic($Type)
+{
+	$switch ($Type.kindof):
+	$case SIGNED_INT:
+	$case UNSIGNED_INT:
+	$case POINTER:
+	$case FLOAT:
+		return true;
+	$case DISTINCT:
+		return may_load_atomic($Type.inner);
+	$default:
+		return false;
+	$endswitch;
+}
+
 macro bool is_promotable_to_floatlike($Type) => types::is_floatlike($Type) || types::is_int($Type);
 
 

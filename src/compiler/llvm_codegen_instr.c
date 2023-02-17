@@ -52,3 +52,18 @@ LLVMValueRef llvm_emit_shl_fixed(GenContext *c, LLVMValueRef data, int shift)
 	if (shift >= bit_width) return llvm_get_zero_raw(type);
 	return llvm_emit_shl(c, data, LLVMConstInt(type, (unsigned)shift, false));
 }
+
+LLVMAtomicOrdering llvm_atomic_ordering(Atomicity atomicity)
+{
+	switch (atomicity)
+	{
+		case ATOMIC_NONE: return LLVMAtomicOrderingNotAtomic;
+		case ATOMIC_UNORDERED: return LLVMAtomicOrderingUnordered;
+		case ATOMIC_RELAXED: return LLVMAtomicOrderingMonotonic;
+		case ATOMIC_ACQUIRE: return LLVMAtomicOrderingAcquire;
+		case ATOMIC_RELEASE: return LLVMAtomicOrderingRelease;
+		case ATOMIC_ACQUIRE_RELEASE: return LLVMAtomicOrderingAcquireRelease;
+		case ATOMIC_SEQ_CONSISTENT: return LLVMAtomicOrderingSequentiallyConsistent;
+	}
+	UNREACHABLE
+}

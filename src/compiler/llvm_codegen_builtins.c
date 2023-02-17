@@ -157,6 +157,33 @@ INLINE void llvm_emit_volatile_load(GenContext *c, BEValue *result_value, Expr *
 	LLVMSetVolatile(result_value->value, true);
 }
 
+INLINE void llvm_emit_atomic_store(GenContext *c, BEValue *result_value, Expr *expr)
+{
+	BEValue value;
+	llvm_emit_expr(c, &value, expr->call_expr.arguments[0]);
+	llvm_emit_expr(c, result_value, expr->call_expr.arguments[1]);
+	llvm_value_rvalue(c, &value);
+	value.kind = BE_ADDRESS;
+	BEValue store_value = *result_value;
+	LLVMValueRef store = llvm_store(c, &value, &store_value);
+	if (store)
+	{
+		if (expr->call_expr.arguments[2]->const_expr.b) LLVMSetVolatile(store, true);
+		LLVMSetOrdering(store, llvm_atomic_ordering(expr->call_expr.arguments[3]->const_expr.ixx.i.low));
+	}
+}
+
+INLINE void llvm_emit_atomic_load(GenContext *c, BEValue *result_value, Expr *expr)
+{
+	llvm_emit_expr(c, result_value, expr->call_expr.arguments[0]);
+	llvm_value_rvalue(c, result_value);
+	result_value->kind = BE_ADDRESS;
+	result_value->type = type_lowering(result_value->type->pointer);
+	llvm_value_rvalue(c, result_value);
+	if (expr->call_expr.arguments[1]->const_expr.b) LLVMSetVolatile(result_value->value, true);
+	LLVMSetOrdering(result_value->value,  llvm_atomic_ordering(expr->call_expr.arguments[2]->const_expr.ixx.i.low));
+}
+
 static inline LLVMValueRef llvm_syscall_asm(GenContext *c, LLVMTypeRef func_type, char *call)
 {
 	return LLVMGetInlineAsm(func_type, call, strlen(call),
@@ -633,6 +660,12 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 			return;
 		case BUILTIN_VOLATILE_LOAD:
 			llvm_emit_volatile_load(c, result_value, expr);
+			return;
+		case BUILTIN_ATOMIC_STORE:
+			llvm_emit_atomic_store(c, result_value, expr);
+			return;
+		case BUILTIN_ATOMIC_LOAD:
+			llvm_emit_atomic_load(c, result_value, expr);
 			return;
 		case BUILTIN_SYSCALL:
 			llvm_emit_syscall(c, result_value, expr);
