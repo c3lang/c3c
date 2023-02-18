@@ -54,12 +54,12 @@ macro void @atomic_store(&x, value, AtomicOrdering $ordering = SEQ_CONSISTENT, $
 	$$atomic_store(&x, value, $volatile, (int)$ordering);
 }
 
-macro compare_exchange(ptr, compare, value, AtomicOrdering $success, AtomicOrdering $failure, bool $volatile = true, bool $weak = false, usz $alignment = 0)
+macro compare_exchange(ptr, compare, value, AtomicOrdering $success = SEQ_CONSISTENT, AtomicOrdering $failure = SEQ_CONSISTENT, bool $volatile = true, bool $weak = false, usz $alignment = 0)
 {
 	return $$compare_exchange(ptr, compare, value, $volatile, $weak, $success.ordinal, $failure.ordinal, $alignment);
 }
 
-macro compare_exchange_volatile(ptr, compare, value, AtomicOrdering $success, AtomicOrdering $failure)
+macro compare_exchange_volatile(ptr, compare, value, AtomicOrdering $success = SEQ_CONSISTENT, AtomicOrdering $failure = SEQ_CONSISTENT)
 {
 	return compare_exchange(ptr, compare, value, $success, $failure, true);
 }

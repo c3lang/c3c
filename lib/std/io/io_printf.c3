@@ -69,7 +69,7 @@ fn char[]! bprintf(char[] buffer, String format, args...) @maydiscard
 	BufferData data = { .buffer = buffer };
     formatter.init(&out_buffer_fn, &data);
     usz size = formatter.vprintf(format, args)?;
-	return buffer[:size];
+    return buffer[:data.written];
 }
 
 fn usz! File.printf(File file, String format, args...) @maydiscard

@@ -354,6 +354,46 @@ static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *state
 }
 
 /**
+ * Prevent the common mistake of `return &a` where "a" is a local.
+ * @return true if the check is ok (no such escape)
+ */
+INLINE bool sema_check_not_stack_variable_escape(SemaContext *context, Expr *expr)
+{
+	Expr *outer = expr;
+	while (expr->expr_kind == EXPR_CAST) expr = exprptr(expr->cast_expr.expr);
+	// We only want && and &
+	if (expr->expr_kind == EXPR_SUBSCRIPT_ADDR)
+	{
+		expr = exprptr(expr->subscript_expr.expr);
+		goto CHECK_ACCESS;
+	}
+	if (expr->expr_kind != EXPR_UNARY) return true;
+	if (expr->unary_expr.operator == UNARYOP_TADDR)
+	{
+		SEMA_ERROR(outer, "A pointer to a temporary value will be invalid once the function returns. Try copying the value to the heap or the temp memory instead.");
+		return false;
+	}
+	if (expr->unary_expr.operator != UNARYOP_ADDR) return true;
+	expr = expr->unary_expr.expr;
+CHECK_ACCESS:
+	while (expr->expr_kind == EXPR_ACCESS) expr = expr->access_expr.parent;
+	if (expr->expr_kind != EXPR_IDENTIFIER) return true;
+	Decl *decl = expr->identifier_expr.decl;
+	if (decl->decl_kind != DECL_VAR) return true;
+	switch (decl->var.kind)
+	{
+		case VARDECL_LOCAL:
+		case VARDECL_PARAM:
+			break;
+		default:
+			return true;
+	}
+	SEMA_ERROR(outer, "A pointer to a local variable will be invalid once the function returns. "
+					  "Allocate the data on the heap or temp memory to return a pointer.");
+	return false;
+}
+
+/**
  * We have the following possibilities:
  *  1. return
  *  2. return <non void expr>
@@ -389,6 +429,7 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 	if (return_expr)
 	{
 		if (!sema_analyse_expr_rhs(context, expected_rtype, return_expr, type_is_optional(expected_rtype))) return false;
+		if (!sema_check_not_stack_variable_escape(context, return_expr)) return false;
 	}
 	else
 	{
