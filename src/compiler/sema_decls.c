@@ -482,7 +482,8 @@ static bool sema_analyse_struct_union(SemaContext *context, Decl *decl)
 
 static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *decl, unsigned index, bool allow_overlap)
 {
-	Decl **members = decl->strukt.members;
+	bool is_consecutive = decl->bitstruct.consecutive;
+	Decl **members = decl->bitstruct.members;
 	Decl *member = members[index];
 
 	// Resolve the type.
@@ -511,6 +512,25 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *dec
 	Int max_bits = (Int) { .type = TYPE_I64, .i = { .low =  bits } };
 
 	// Resolve the bit range, starting with the beginning
+
+	unsigned start_bit, end_bit;
+
+	if (is_consecutive)
+	{
+		if (member_type != type_bool)
+		{
+			SEMA_ERROR(member->var.type_info, "For bitstructs without bit ranges, the types must all be 'bool'.");
+			return false;
+		}
+		start_bit = end_bit = member->var.start_bit;
+		if (start_bit >= bits)
+		{
+			SEMA_ERROR(member, "This element would overflow the bitstruct size (%d bits).", bits);
+			return false;
+		}
+		goto AFTER_BITCHECK;
+	}
+
 	Expr *start = member->var.start;
 	if (!sema_analyse_expr(context, start)) return false;
 
@@ -528,7 +548,6 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *dec
 		return false;
 	}
 
-	unsigned start_bit, end_bit;
 	end_bit = start_bit = (unsigned)start->const_expr.ixx.i.low;
 
 	// Handle the end
@@ -567,6 +586,7 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *dec
 		return false;
 	}
 
+
 	// Check how many bits we need.
 	TypeSize bitsize_type = member_type == type_bool ? 1 : type_size(member_type) * 8;
 
@@ -585,6 +605,7 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *dec
 	member->var.start_bit = start_bit;
 	member->var.end_bit = end_bit;
 
+AFTER_BITCHECK:
 	// Check for duplicate members.
 	for (unsigned i = 0; i < index; i++)
 	{

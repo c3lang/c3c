@@ -424,6 +424,7 @@ typedef struct
 	bool big_endian : 1;
 	bool little_endian : 1;
 	bool overlap : 1;
+	bool consecutive : 1;
 } BitStructDecl;
 
 typedef struct VarDecl_

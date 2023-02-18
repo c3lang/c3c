@@ -1698,6 +1698,7 @@ static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl)
 {
 	CONSUME_OR_RET(TOKEN_LBRACE, false);
 
+	bool is_consecutive = false;
 	while (!try_consume(c, TOKEN_RBRACE))
 	{
 		ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_type(c), false);
@@ -1713,6 +1714,24 @@ static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl)
 			SEMA_ERROR_HERE("Expected a field name at this position.");
 			return false;
 		}
+		if (is_consecutive || tok_is(c, TOKEN_EOS))
+		{
+			if (!is_consecutive)
+			{
+				if (decl->bitstruct.members)
+				{
+					SEMA_ERROR_HERE("Expected a ':'.");
+					return false;
+				}
+				is_consecutive = true;
+			}
+			CONSUME_OR_RET(TOKEN_EOS, false);
+			unsigned index = vec_size(decl->bitstruct.members);
+			member_decl->var.start_bit = index;
+			member_decl->var.end_bit = index;
+			vec_add(decl->bitstruct.members, member_decl);
+			continue;
+		}
 		CONSUME_OR_RET(TOKEN_COLON, false);
 		ASSIGN_EXPR_OR_RET(member_decl->var.start, parse_constant_expr(c), false);
 		if (try_consume(c, TOKEN_DOTDOT))
@@ -1726,7 +1745,7 @@ static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl)
 		CONSUME_EOS_OR_RET(false);
 		vec_add(decl->bitstruct.members, member_decl);
 	}
-
+	decl->bitstruct.consecutive = is_consecutive;
 	return true;
 }
 /**

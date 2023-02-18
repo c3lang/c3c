@@ -1,17 +1,17 @@
-module bitstruct_ops;
+module bitstruct_ops_bool;
 import std::io;
 
 bitstruct Foo : int
 {
-	bool a : 0;
-	bool b : 1;
+	bool a;
+	bool b;
 }
 
 bitstruct Bar : char[13]
 {
-	bool z : 0;
-	bool w : 1;
-	bool gh : 25;
+	bool z;
+	bool w;
+	bool gh;
 }
 
 fn void! test_bitops() @test
