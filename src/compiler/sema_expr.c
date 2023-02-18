@@ -27,7 +27,7 @@ typedef struct
 // Properties
 static inline BuiltinFunction builtin_by_name(const char *name);
 static inline TypeProperty type_property_by_name(const char *name);
-
+static inline bool sema_constant_fold_ops(Expr *expr);
 static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr, SubscriptEval eval_type);
 static inline bool sema_expr_analyse_pointer_offset(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr);
@@ -78,7 +78,7 @@ static bool sema_expr_analyse_ct_identifier_assign(SemaContext *context, Expr *e
 static bool sema_expr_analyse_ct_type_identifier_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right);
 static bool sema_expr_analyse_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right);
 static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left, Expr *right);
-static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool int_only);
+static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool int_only, bool allow_bitstruct);
 
 // -- unary
 static inline bool sema_expr_analyse_addr(SemaContext *context, Expr *expr);
@@ -115,7 +115,7 @@ static void sema_subscript_deref_array_pointers(Expr *expr);
 static void expr_binary_unify_failability(Expr *expr, Expr *left, Expr *right);
 static inline bool sema_binary_promote_top_down(SemaContext *context, Expr *binary, Expr *left, Expr *right);
 static inline bool sema_binary_analyse_subexpr(SemaContext *context, Expr *binary, Expr *left, Expr *right);
-static inline bool sema_binary_analyse_arithmetic_subexpr(SemaContext *context, Expr *expr, const char *error, bool bool_is_allowed);
+static inline bool sema_binary_analyse_arithmetic_subexpr(SemaContext *context, Expr *expr, const char *error, bool bool_and_bitstruct_is_allowed);
 static inline bool sema_binary_analyse_ct_identifier_lvalue(SemaContext *context, Expr *expr);
 static bool sema_binary_check_unclear_op_precedence(Expr *left_side, Expr * main_expr, Expr *right_side);
 static bool sema_binary_analyse_ct_common_assign(SemaContext *context, Expr *expr, Expr *left);
@@ -191,6 +191,29 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 static inline bool sema_expr_fold_to_member(Expr *expr, Expr *parent, Decl *member);
 
 // -- implementations
+
+static inline bool sema_constant_fold_ops(Expr *expr)
+{
+	if (expr->expr_kind != EXPR_CONST) return false;
+	switch (expr->const_expr.const_kind)
+	{
+		case CONST_INTEGER:
+		case CONST_FLOAT:
+		case CONST_BOOL:
+		case CONST_ENUM:
+		case CONST_ERR:
+		case CONST_STRING:
+		case CONST_POINTER:
+		case CONST_TYPEID:
+		case CONST_BYTES:
+		case CONST_MEMBER:
+			return true;
+		case CONST_INITIALIZER:
+		case CONST_UNTYPED_LIST:
+			return false;
+	}
+	UNREACHABLE
+}
 
 Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, Expr *index_expr)
 {
@@ -934,7 +957,7 @@ static inline bool sema_binary_analyse_subexpr(SemaContext *context, Expr *binar
 	return sema_analyse_expr(context, left) && sema_analyse_expr(context, right);
 }
 
-static inline bool sema_binary_analyse_arithmetic_subexpr(SemaContext *context, Expr *expr, const char *error, bool bool_is_allowed)
+static inline bool sema_binary_analyse_arithmetic_subexpr(SemaContext *context, Expr *expr, const char *error, bool bool_and_bitstruct_is_allowed)
 {
 	Expr *left = exprptr(expr->binary_expr.left);
 	Expr *right = exprptr(expr->binary_expr.right);
@@ -947,7 +970,11 @@ static inline bool sema_binary_analyse_arithmetic_subexpr(SemaContext *context, 
 	Type *left_type = type_no_optional(left->type)->canonical;
 	Type *right_type = type_no_optional(right->type)->canonical;
 
-	if (bool_is_allowed && left_type == type_bool && right_type == type_bool) return true;
+	if (bool_and_bitstruct_is_allowed)
+	{
+		if (left_type->type_kind == TYPE_BITSTRUCT && left_type == right_type) return true;
+		if (left_type == type_bool && right_type == type_bool) return true;
+	}
 	// 2. Perform promotion to a common type.
 	return sema_binary_arithmetic_promotion(context, left, right, left_type, right_type, expr, error);
 }
@@ -4195,7 +4222,7 @@ static bool sema_binary_analyse_ct_common_assign(SemaContext *context, Expr *exp
  *
  * @return true if analysis worked.
  */
-static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool int_only)
+static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool int_only, bool allow_bitstruct)
 {
 	if (left->expr_kind == EXPR_CT_IDENT)
 	{
@@ -4212,8 +4239,9 @@ static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *
 	Type *flat = type_flatten_distinct(no_fail);
 
 	// 3. If this is only defined for ints (*%, ^= |= &= %=) verify that this is an int.
-	if (int_only && !type_is_integer(flat))
+	if (int_only && !type_flat_is_intlike(flat))
 	{
+		if (allow_bitstruct && flat->type_kind == TYPE_BITSTRUCT) goto BITSTRUCT_OK;
 		SEMA_ERROR(left, "Expected an integer here.");
 		return false;
 	}
@@ -4225,6 +4253,7 @@ static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *
 		return false;
 	}
 
+BITSTRUCT_OK:
 	// 5. Cast the right hand side to the one on the left
 	if (!sema_analyse_expr(context, right)) return false;
 	if (!cast_implicit_maybe_optional(context, right, no_fail, IS_OPTIONAL(left))) return false;
@@ -4250,7 +4279,7 @@ static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *
 					}
 					break;
 				default:
-					UNREACHABLE
+					break;
 			}
 		}
 		else if (expr->binary_expr.operator == BINARYOP_MOD_ASSIGN)
@@ -4265,7 +4294,7 @@ static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *
 					}
 					break;
 				default:
-					UNREACHABLE
+					break;
 			}
 		}
 	}
@@ -4433,7 +4462,7 @@ static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, 
 				return false;
 			}
 
-			if (expr_both_const(left, right))
+			if (expr_both_const(left, right) && sema_constant_fold_ops(left))
 			{
 				expr_rewrite_const_int(expr, type_isz, (left->const_expr.ptr - right->const_expr.ptr) /
 						type_size(left_type->pointer), false);
@@ -4521,7 +4550,7 @@ static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, 
 	expr->type = type_add_optional(left->type, IS_OPTIONAL(right));
 
 	// 8. Handle constant folding.
-	if (expr_both_const(left, right))
+	if (expr_both_const(left, right) && sema_constant_fold_ops(left))
 	{
 		expr_replace(expr, left);
 		switch (left_type->type_kind)
@@ -4648,7 +4677,7 @@ static bool sema_expr_analyse_add(SemaContext *context, Expr *expr, Expr *left, 
 	}
 
 	// 5. Handle the "both const" case. We should only see ints and floats at this point.
-	if (expr_both_const(left, right))
+	if (expr_both_const(left, right) && sema_constant_fold_ops(left))
 	{
 		expr_replace(expr, left);
 		switch (left->const_expr.const_kind)
@@ -4687,7 +4716,7 @@ static bool sema_expr_analyse_mult(SemaContext *context, Expr *expr, Expr *left,
 
 
 	// 2. Handle constant folding.
-	if (expr_both_const(left, right))
+	if (expr_both_const(left, right) && sema_constant_fold_ops(left))
 	{
 		expr_replace(expr, left);
 		switch (left->const_expr.const_kind)
@@ -4742,7 +4771,7 @@ static bool sema_expr_analyse_div(SemaContext *context, Expr *expr, Expr *left, 
 	}
 
 	// 3. Perform constant folding.
-	if (expr_both_const(left, right))
+	if (expr_both_const(left, right) && sema_constant_fold_ops(left))
 	{
 		expr_replace(expr, left);
 		switch (left->const_expr.const_kind)
@@ -4781,7 +4810,7 @@ static bool sema_expr_analyse_mod(SemaContext *context, Expr *expr, Expr *left, 
 	}
 
 	// 4. Constant fold
-	if (expr_both_const(left, right))
+	if (expr_both_const(left, right) && sema_constant_fold_ops(left))
 	{
 		expr_replace(expr, left);
 		// 4a. Remember this is remainder.
@@ -4804,13 +4833,15 @@ static bool sema_expr_analyse_bit(SemaContext *context, Expr *expr, Expr *left, 
 
 	// 2. Check that both are integers or bools.
 	bool is_bool = left->type->canonical == type_bool;
-	if (!is_bool && !expr_both_any_integer_or_integer_bool_vector(left, right))
+	bool is_bitstruct = left->type->canonical->type_kind == TYPE_BITSTRUCT;
+
+	if (!is_bool && !is_bitstruct && !expr_both_any_integer_or_integer_bool_vector(left, right))
 	{
 		return sema_type_error_on_binop(expr);
 	}
 
 	// 3. Do constant folding if both sides are constant.
-	if (expr_both_const(left, right))
+	if (expr_both_const(left, right) && sema_constant_fold_ops(left))
 	{
 		BinaryOp op = expr->binary_expr.operator;
 		expr_replace(expr, left);
@@ -4973,7 +5004,7 @@ static bool sema_expr_analyse_and_or(SemaContext *context, Expr *expr, Expr *lef
 	if (!sema_binary_analyse_subexpr(context, expr, left, right)) return false;
 	if (!cast_explicit(context, left, type_bool) || !cast_explicit(context, right, type_bool)) return false;
 
-	if (expr_both_const(left, right))
+	if (expr_both_const(left, right) && sema_constant_fold_ops(left))
 	{
 		if (expr->binary_expr.operator == BINARYOP_AND)
 		{
@@ -5146,7 +5177,7 @@ static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left,
 DONE:
 
 	// 7. Do constant folding.
-	if (expr_both_const(left, right))
+	if (expr_both_const(left, right) && sema_constant_fold_ops(left))
 	{
 		expr->const_expr.b = expr_const_compare(&left->const_expr, &right->const_expr, expr->binary_expr.operator);
 		expr->const_expr.const_kind = CONST_BOOL;
@@ -5377,7 +5408,7 @@ static inline bool sema_expr_analyse_neg(SemaContext *context, Expr *expr)
 	if (!cast_implicit(context, inner, result_type)) return false;
 
 	// 4. If it's non-const, we're done.
-	if (inner->expr_kind != EXPR_CONST)
+	if (!sema_constant_fold_ops(inner))
 	{
 		expr->type = inner->type;
 		return true;
@@ -5414,7 +5445,8 @@ static inline bool sema_expr_analyse_bit_not(SemaContext *context, Expr *expr)
 
 	// 2. Check that it's a vector, bool
 	Type *canonical = type_no_optional(inner->type)->canonical;
-	if (!type_is_integer_or_bool_kind(type_flatten_distinct(canonical)))
+	Type *flat = type_flatten_distinct(canonical);
+	if (!type_is_integer_or_bool_kind(flat) && flat->type_kind != TYPE_BITSTRUCT)
 	{
 		Type *vector_type = type_vector_type(canonical);
 		if (vector_type && (type_is_integer(vector_type) || vector_type == type_bool)) goto VALID_VEC;
@@ -5424,7 +5456,7 @@ static inline bool sema_expr_analyse_bit_not(SemaContext *context, Expr *expr)
 
 VALID_VEC:
 	// 3. The simple case, non-const.
-	if (inner->expr_kind != EXPR_CONST)
+	if (!sema_constant_fold_ops(inner))
 	{
 		expr->type = inner->type;
 		return true;
@@ -5742,12 +5774,13 @@ static inline bool sema_expr_analyse_binary(SemaContext *context, Expr *expr)
 			return sema_expr_analyse_div(context, expr, left, right);
 		case BINARYOP_MULT_ASSIGN:
 		case BINARYOP_DIV_ASSIGN:
-			return sema_expr_analyse_op_assign(context, expr, left, right, false);
+			return sema_expr_analyse_op_assign(context, expr, left, right, false, false);
 		case BINARYOP_BIT_AND_ASSIGN:
 		case BINARYOP_BIT_OR_ASSIGN:
 		case BINARYOP_BIT_XOR_ASSIGN:
+			return sema_expr_analyse_op_assign(context, expr, left, right, true, true);
 		case BINARYOP_MOD_ASSIGN:
-			return sema_expr_analyse_op_assign(context, expr, left, right, true);
+			return sema_expr_analyse_op_assign(context, expr, left, right, true, false);
 		case BINARYOP_MOD:
 			return sema_expr_analyse_mod(context, expr, left, right);
 		case BINARYOP_AND:

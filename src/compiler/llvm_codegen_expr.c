@@ -2408,6 +2408,17 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 			return;
 		case UNARYOP_BITNEG:
 			llvm_emit_expr(c, value, inner);
+			if (value->type->type_kind == TYPE_ARRAY)
+			{
+				llvm_value_addr(c, value);
+				LLVMTypeRef big_int = LLVMIntTypeInContext(c->context, type_size(value->type) * 8);
+				LLVMValueRef val = llvm_load(c, big_int, value->value, value->alignment, "");
+				val = LLVMBuildNot(c->builder, val, "bnot");
+				LLVMValueRef store = llvm_emit_alloca(c, big_int, value->alignment, "");
+				LLVMBuildStore(c->builder, val, store);
+				llvm_value_set_address(value, store, value->type, value->alignment);
+				return;
+			}
 			llvm_value_rvalue(c, value);
 			value->value = LLVMBuildNot(c->builder, value->value, "bnot");
 			return;
@@ -3665,6 +3676,34 @@ INLINE bool llvm_emit_fmuladd_maybe(GenContext *c, BEValue *be_value, Expr *expr
 	return true;
 }
 
+
+void llvm_emit_bitstruct_binary_op(GenContext *c, BEValue *be_value, BEValue *lhs, BEValue *rhs, BinaryOp binary_op)
+{
+	llvm_value_addr(c, lhs);
+	llvm_value_addr(c, rhs);
+	LLVMTypeRef big_int = LLVMIntTypeInContext(c->context, type_size(lhs->type) * 8);
+	LLVMValueRef l = llvm_load(c, big_int, lhs->value, lhs->alignment, "");
+	LLVMValueRef r = llvm_load(c, big_int, rhs->value, rhs->alignment, "");
+	LLVMValueRef val;
+	switch (binary_op)
+	{
+		case BINARYOP_BIT_AND:
+			val = LLVMBuildAnd(c->builder, l, r, "and");
+			break;
+		case BINARYOP_BIT_OR:
+			val = LLVMBuildOr(c->builder, l, r, "or");
+			break;
+		case BINARYOP_BIT_XOR:
+			val = LLVMBuildXor(c->builder, l, r, "xor");
+			break;
+		default:
+			UNREACHABLE
+	}
+	LLVMValueRef store = llvm_emit_alloca(c, big_int, lhs->alignment, "");
+	LLVMBuildStore(c->builder, val, store);
+	llvm_value_set_address(be_value, store, lhs->type, lhs->alignment);
+}
+
 void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs_loaded, BinaryOp binary_op)
 {
 	// foo ?? bar
@@ -3803,12 +3842,27 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 			val = LLVMBuildFreeze(c->builder, val, "");
 			break;
 		case BINARYOP_BIT_AND:
+			if (lhs.type->type_kind == TYPE_ARRAY)
+			{
+				llvm_emit_bitstruct_binary_op(c, be_value, &lhs, &rhs, binary_op);
+				return;
+			}
 			val = LLVMBuildAnd(c->builder, lhs_value, rhs_value, "and");
 			break;
 		case BINARYOP_BIT_OR:
+			if (lhs.type->type_kind == TYPE_ARRAY)
+			{
+				llvm_emit_bitstruct_binary_op(c, be_value, &lhs, &rhs, binary_op);
+				return;
+			}
 			val = LLVMBuildOr(c->builder, lhs_value, rhs_value, "or");
 			break;
 		case BINARYOP_BIT_XOR:
+			if (lhs.type->type_kind == TYPE_ARRAY)
+			{
+				llvm_emit_bitstruct_binary_op(c, be_value, &lhs, &rhs, binary_op);
+				return;
+			}
 			val = LLVMBuildXor(c->builder, lhs_value, rhs_value, "xor");
 			break;
 		case BINARYOP_ELSE:

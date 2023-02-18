@@ -2398,6 +2398,7 @@ INLINE bool type_ok(Type *type);
 INLINE bool type_is_unsigned(Type *type);
 INLINE bool type_is_union_or_strukt(Type *type);
 INLINE bool type_flat_is_vector(Type *type);
+INLINE bool type_flat_is_vector_bitstruct(Type *type);
 INLINE AlignSize type_min_alignment(AlignSize a, AlignSize b);
 INLINE AlignSize type_max_alignment(AlignSize a, AlignSize b);
 INLINE BitSize type_bit_size(Type *type);
@@ -2842,6 +2843,12 @@ INLINE bool type_underlying_is_numeric(Type *type)
 INLINE bool type_flat_is_vector(Type *type)
 {
 	return type_flatten(type)->type_kind == TYPE_VECTOR;
+}
+
+INLINE bool type_flat_is_vector_bitstruct(Type *type)
+{
+	TypeKind kind = type_flatten(type)->type_kind;
+	return kind == TYPE_VECTOR || kind == TYPE_BITSTRUCT;
 }
 
 INLINE bool type_kind_is_any_vector(TypeKind kind)
