@@ -1593,6 +1593,7 @@ bool parse_struct_body(ParseContext *c, Decl *parent)
 			{
 				TRY_CONSUME_OR_RET(TOKEN_COLON, "':' followed by bitstruct type (e.g. 'int') was expected here.", poisoned_decl);
 				ASSIGN_TYPE_OR_RET(member->bitstruct.base_type, parse_type(c), poisoned_decl);
+				if (!parse_attributes_for_global(c, member)) return decl_poison(parent);
 				if (!parse_bitstruct_body(c, member)) return decl_poison(parent);
 			}
 			else

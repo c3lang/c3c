@@ -2306,7 +2306,28 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl)
 		}
 		global_context.test_func = decl;
 	}
+	bool is_test = decl->func_decl.attr_test;
 	Signature *sig = &decl->func_decl.signature;
+	if (is_test)
+	{
+		if (vec_size(sig->params))
+		{
+			SEMA_ERROR(sig->params[0], "'@test' functions may not take any parameters.");
+			return false;
+		}
+		TypeInfo *rtype_info = type_infoptr(sig->rtype);
+		if (!sema_resolve_type_info(context, rtype_info)) return false;
+		if (type_no_optional(rtype_info->type) != type_void)
+		{
+			SEMA_ERROR(rtype_info, "'@test' functions may only return 'void' or 'void!'.");
+			return false;
+		}
+		if (rtype_info->type == type_void)
+		{
+			rtype_info->type = type_get_optional(rtype_info->type);
+		}
+	}
+
 	Type *func_type = sema_analyse_function_signature(context, decl, sig->abi, sig, true);
 	decl->type = func_type;
 	if (!func_type) return decl_poison(decl);
@@ -2329,7 +2350,6 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl)
 			return decl_poison(decl);
 		}
 	}
-	bool is_test = decl->func_decl.attr_test;
 	if (decl->func_decl.type_parent)
 	{
 		if (is_test) SEMA_ERROR(decl, "Methods may not be annotated @test.");
@@ -2343,19 +2363,6 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl)
 			if (!sema_analyse_main_function(context, decl)) return decl_poison(decl);
 		}
 		decl_set_external_name(decl);
-		if (is_test)
-		{
-			if (vec_size(sig->params))
-			{
-				SEMA_ERROR(sig->params[0], "'@test' functions may not take any parameters.");
-				return false;
-			}
-			if (type_no_optional(rtype) != type_void)
-			{
-				SEMA_ERROR(rtype_info, "'@test' functions may only return 'void' or 'void!'.");
-				return false;
-			}
-		}
 	}
 
 	bool pure = false;
