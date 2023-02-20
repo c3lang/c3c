@@ -64,9 +64,9 @@ target triple = "x86_64-apple-darwin"
 %"char[]" = type { i8*, i64 }
 %.introspect = type { i8, i64, i64, i64, [0 x i64] }
 
-@"test.Foo$X" = linkonce constant %.fault { i64 ptrtoint (%.introspect* @"ct$test.Foo" to i64), %"char[]" { i8* getelementptr inbounds ([2 x i8], [2 x i8]* @.fault, i64 0, i64 0), i64 1 } }, align 8
+@"test.Foo$X" = linkonce constant %.fault { i64 ptrtoint (%.introspect* @"$ct.test.Foo" to i64), %"char[]" { i8* getelementptr inbounds ([2 x i8], [2 x i8]* @.fault, i64 0, i64 0), i64 1 } }, align 8
 @.fault = internal constant [2 x i8] c"X\00", align 1
-@"ct$test.Foo" = linkonce constant %.introspect { i8 9, i64 8, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
+@"$ct.test.Foo" = linkonce constant %.introspect { i8 9, i64 8, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
 @.zstr = internal constant [28 x i8] c"Runtime error force unwrap!\00", align 1
 @.zstr.1 = internal constant [20 x i8] c"optional_ternary.c3\00", align 1
 @.zstr.2 = internal constant [5 x i8] c"main\00", align 1
@@ -347,7 +347,7 @@ after_check:                                      ; preds = %entry
   br label %noerr_block
 
 panic_block:                                      ; preds = %assign_optional
-  call void @std_core_builtin.panic(i8* getelementptr inbounds ([28 x i8], [28 x i8]* @.zstr, i64 0, i64 0), i8* getelementptr inbounds ([20 x i8], [20 x i8]* @.zstr.1, i64 0, i64 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.zstr.2, i64 0, i64 0), i32 51)
+  call void @std.core.builtin.panic(i8* getelementptr inbounds ([28 x i8], [28 x i8]* @.zstr, i64 0, i64 0), i8* getelementptr inbounds ([20 x i8], [20 x i8]* @.zstr.1, i64 0, i64 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.zstr.2, i64 0, i64 0), i32 51)
   unreachable
 
 noerr_block:                                      ; preds = %after_check
@@ -364,7 +364,7 @@ after_check5:                                     ; preds = %noerr_block
   br label %noerr_block7
 
 panic_block6:                                     ; preds = %assign_optional4
-  call void @std_core_builtin.panic(i8* getelementptr inbounds ([28 x i8], [28 x i8]* @.zstr.3, i64 0, i64 0), i8* getelementptr inbounds ([20 x i8], [20 x i8]* @.zstr.4, i64 0, i64 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.zstr.5, i64 0, i64 0), i32 52)
+  call void @std.core.builtin.panic(i8* getelementptr inbounds ([28 x i8], [28 x i8]* @.zstr.3, i64 0, i64 0), i8* getelementptr inbounds ([20 x i8], [20 x i8]* @.zstr.4, i64 0, i64 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.zstr.5, i64 0, i64 0), i32 52)
   unreachable
 
 noerr_block7:                                     ; preds = %after_check5
@@ -381,7 +381,7 @@ after_check12:                                    ; preds = %noerr_block7
   br label %noerr_block14
 
 panic_block13:                                    ; preds = %assign_optional11
-  call void @std_core_builtin.panic(i8* getelementptr inbounds ([28 x i8], [28 x i8]* @.zstr.6, i64 0, i64 0), i8* getelementptr inbounds ([20 x i8], [20 x i8]* @.zstr.7, i64 0, i64 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.zstr.8, i64 0, i64 0), i32 53)
+  call void @std.core.builtin.panic(i8* getelementptr inbounds ([28 x i8], [28 x i8]* @.zstr.6, i64 0, i64 0), i8* getelementptr inbounds ([20 x i8], [20 x i8]* @.zstr.7, i64 0, i64 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.zstr.8, i64 0, i64 0), i32 53)
   unreachable
 
 noerr_block14:                                    ; preds = %after_check12
@@ -410,6 +410,6 @@ entry:
   ret i32 0
 }
 
-declare void @std_core_builtin.panic(i8*, i8*, i8*, i32)
+declare void @std.core.builtin.panic(i8*, i8*, i8*, i32)
 
 attributes #0 = { nounwind }

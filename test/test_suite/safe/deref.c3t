@@ -20,7 +20,7 @@ entry:
   br i1 %checknull, label %panic, label %checkok
 
 panic:                                            ; preds = %entry
-  %1 = load ptr, ptr @std_core_builtin.panic, align 8
+  %1 = load ptr, ptr @std.core.builtin.panic, align 8
   call void %1(ptr @.panic_msg, i64 27, ptr @.file, i64 8, ptr @.func, i64 4, i32 6)
   br label %checkok
 

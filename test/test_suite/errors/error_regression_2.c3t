@@ -150,7 +150,7 @@ fn void main()
 
 /* #expect: test.ll
 
-define void @test.Summary_print(ptr %0, ptr %1) #0 {
+define void @test.Summary.print(ptr %0, ptr %1) #0 {
 entry:
   %title = alloca %"char[]", align 8
   %2 = getelementptr inbounds %Summary, ptr %0, i32 0, i32 0
@@ -334,7 +334,7 @@ if.then7:                                         ; preds = %if.exit4
   %17 = getelementptr inbounds %Head, ptr %literal10, i32 0, i32 0
   store ptr null, ptr %17, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %value, ptr align 8 %literal10, i32 8, i1 false)
-  %18 = call ptr @std_core_mem.malloc(i64 8) #3
+  %18 = call ptr @std.core.mem.malloc(i64 8) #3
   store ptr %18, ptr %temp, align 8
   %19 = load ptr, ptr %temp, align 8
   %not = icmp eq ptr %19, null
@@ -373,7 +373,7 @@ if.then16:                                        ; preds = %if.exit13
   store ptr null, ptr %literal21, align 8
   %28 = getelementptr inbounds %Head, ptr %literal21, i32 0, i32 0
   store %"char[]" zeroinitializer, ptr %value23, align 8
-  %29 = call ptr @std_core_mem.malloc(i64 16) #3
+  %29 = call ptr @std.core.mem.malloc(i64 16) #3
   store ptr %29, ptr %temp24, align 8
   %30 = load ptr, ptr %temp24, align 8
   %not25 = icmp eq ptr %30, null
@@ -396,7 +396,7 @@ noerr_block29:                                    ; preds = %if.exit27
   %33 = load ptr, ptr %temp24, align 8
   store ptr %33, ptr %28, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %value20, ptr align 8 %literal21, i32 8, i1 false)
-  %34 = call ptr @std_core_mem.malloc(i64 8) #3
+  %34 = call ptr @std.core.mem.malloc(i64 8) #3
   store ptr %34, ptr %temp30, align 8
   %35 = load ptr, ptr %temp30, align 8
   %not31 = icmp eq ptr %35, null
@@ -432,7 +432,7 @@ if.exit36:                                        ; preds = %if.exit13
   %44 = load i32, ptr %len, align 4
   %siuiext = sext i32 %44 to i64
   %add = add i64 %siuiext, 1
-  %45 = call ptr @std_core_mem.malloc(i64 %add) #3
+  %45 = call ptr @std.core.mem.malloc(i64 %add) #3
   store ptr %45, ptr %str, align 8
   %46 = load ptr, ptr %str, align 8
   %not37 = icmp eq ptr %46, null
@@ -465,7 +465,7 @@ if.exit39:                                        ; preds = %if.exit36
   %59 = insertvalue %"char[]" undef, ptr %ptroffset50, 0
   %60 = insertvalue %"char[]" %59, i64 %size, 1
   store %"char[]" %60, ptr %value49, align 8
-  %61 = call ptr @std_core_mem.malloc(i64 16) #3
+  %61 = call ptr @std.core.mem.malloc(i64 16) #3
   store ptr %61, ptr %temp51, align 8
   %62 = load ptr, ptr %temp51, align 8
   %not52 = icmp eq ptr %62, null
@@ -488,7 +488,7 @@ noerr_block56:                                    ; preds = %if.exit54
   %65 = load ptr, ptr %temp51, align 8
   store ptr %65, ptr %55, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %value46, ptr align 8 %literal47, i32 8, i1 false)
-  %66 = call ptr @std_core_mem.malloc(i64 8) #3
+  %66 = call ptr @std.core.mem.malloc(i64 8) #3
   store ptr %66, ptr %temp57, align 8
   %67 = load ptr, ptr %temp57, align 8
   %not58 = icmp eq ptr %67, null
@@ -778,7 +778,7 @@ loop.body:                                        ; preds = %loop.cond
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %summary, ptr align 8 %result, i32 16, i1 false)
   %22 = call i32 (ptr, ...) @printf(ptr @.str.21)
   %23 = load ptr, ptr @__stdoutp, align 8
-  call void @test.Summary_print(ptr %summary, ptr %23)
+  call void @test.Summary.print(ptr %summary, ptr %23)
   %24 = call i32 (ptr, ...) @printf(ptr @.str.22)
   %25 = getelementptr inbounds %Summary, ptr %summary, i32 0, i32 0
   %26 = load ptr, ptr %25, align 8

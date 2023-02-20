@@ -29,7 +29,7 @@ fn void main()
 %variant = type { ptr, i64 }
 %"int[]" = type { ptr, i64 }
 
-@"ct$int" = linkonce constant %.introspect { i8 2, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
+@"$ct.int" = linkonce constant %.introspect { i8 2, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
 
 define void @foo.test1(i64 %0, ptr %1) #0 {
 entry:
@@ -73,7 +73,7 @@ entry:
   store i32 293483, ptr %y, align 4
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %w, ptr align 4 @.__const, i32 8, i1 false)
   %0 = insertvalue %variant undef, ptr %x, 0
-  %1 = insertvalue %variant %0, i64 ptrtoint (ptr @"ct$int" to i64), 1
+  %1 = insertvalue %variant %0, i64 ptrtoint (ptr @"$ct.int" to i64), 1
   store %variant %1, ptr %taddr, align 8
   %2 = getelementptr inbounds { i64, ptr }, ptr %taddr, i32 0, i32 0
   %lo = load i64, ptr %2, align 8

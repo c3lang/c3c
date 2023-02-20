@@ -1307,16 +1307,20 @@ INLINE void sema_set_method_ext_name(CompilationUnit *unit, const char *parent_n
 {
 	if (method_like->has_extname) return;
 	scratch_buffer_clear();
+	if (method_like->is_export)
+	{
+		scratch_buffer_append(parent_name);
+		scratch_buffer_append("_");
+		scratch_buffer_append(method_like->name);
+		method_like->extname = scratch_buffer_copy();
+		return;
+	}
 	switch (method_like->visibility)
 	{
 		case VISIBLE_PUBLIC:
-			scratch_buffer_append(parent_name);
-			scratch_buffer_append("_");
-			scratch_buffer_append(method_like->name);
-			break;
 		case VISIBLE_PRIVATE:
 			scratch_buffer_append(parent_name);
-			scratch_buffer_append_char('$');
+			scratch_buffer_append_char('.');
 			scratch_buffer_append(method_like->name);
 			break;
 		case VISIBLE_LOCAL:
@@ -1326,6 +1330,8 @@ INLINE void sema_set_method_ext_name(CompilationUnit *unit, const char *parent_n
 			scratch_buffer_append_char('.');
 			scratch_buffer_append(method_like->name);
 			break;
+		default:
+			UNREACHABLE
 	}
 	method_like->extname = scratch_buffer_copy();
 }
@@ -2823,7 +2829,7 @@ static bool sema_append_generate_parameterized_name(SemaContext *c, Module *modu
 	if (mangled)
 	{
 		scratch_buffer_append_len(module->name->module, module->name->len);
-		scratch_buffer_append("$$");
+		scratch_buffer_append("$");
 	}
 	else
 	{
@@ -2832,7 +2838,7 @@ static bool sema_append_generate_parameterized_name(SemaContext *c, Module *modu
 	FOREACH_BEGIN_IDX(i, Expr *param, decl->define_decl.generic_params)
 		if (i != 0)
 		{
-			scratch_buffer_append(mangled ? "." : ", ");
+			scratch_buffer_append(mangled ? "$" : ", ");
 		}
 		if (param->expr_kind == EXPR_TYPEINFO)
 		{
@@ -2906,7 +2912,7 @@ static bool sema_append_generate_parameterized_name(SemaContext *c, Module *modu
 			}
 		}
 	FOREACH_END();
-	if (!mangled) scratch_buffer_append_char('>');
+	scratch_buffer_append_char(mangled ? '$' : '>');
 	return true;
 }
 static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)

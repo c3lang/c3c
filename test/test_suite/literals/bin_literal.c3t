@@ -43,17 +43,17 @@ entry:
   %5 = call i32 @llvm.smax.i32(i32 %3, i32 %4)
   store i32 %5, ptr %d, align 4
   %6 = insertvalue %variant undef, ptr %c, 0
-  %7 = insertvalue %variant %6, i64 ptrtoint (ptr @"ct$int" to i64), 1
+  %7 = insertvalue %variant %6, i64 ptrtoint (ptr @"$ct.int" to i64), 1
   %8 = getelementptr inbounds [2 x %variant], ptr %varargslots, i64 0, i64 0
   store %variant %7, ptr %8, align 16
   %9 = insertvalue %variant undef, ptr %d, 0
-  %10 = insertvalue %variant %9, i64 ptrtoint (ptr @"ct$int" to i64), 1
+  %10 = insertvalue %variant %9, i64 ptrtoint (ptr @"$ct.int" to i64), 1
   %11 = getelementptr inbounds [2 x %variant], ptr %varargslots, i64 0, i64 1
   store %variant %10, ptr %11, align 16
-  %12 = call i64 @std_io.printfn(ptr %retparam, ptr @.str, i64 5, ptr %varargslots, i64 2)
+  %12 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 5, ptr %varargslots, i64 2)
   store i8 -35, ptr %z, align 1
   %13 = insertvalue %variant undef, ptr %z, 0
-  %14 = insertvalue %variant %13, i64 ptrtoint (ptr @"ct$char" to i64), 1
+  %14 = insertvalue %variant %13, i64 ptrtoint (ptr @"$ct.char" to i64), 1
   %15 = getelementptr inbounds [3 x %variant], ptr %varargslots2, i64 0, i64 0
   store %variant %14, ptr %15, align 16
   %16 = load i8, ptr %z, align 1
@@ -65,7 +65,7 @@ entry:
   %20 = call i8 @llvm.fshr.i8(i8 %17, i8 %18, i8 %19)
   store i8 %20, ptr %taddr, align 1
   %21 = insertvalue %variant undef, ptr %taddr, 0
-  %22 = insertvalue %variant %21, i64 ptrtoint (ptr @"ct$char" to i64), 1
+  %22 = insertvalue %variant %21, i64 ptrtoint (ptr @"$ct.char" to i64), 1
   %23 = getelementptr inbounds [3 x %variant], ptr %varargslots2, i64 0, i64 1
   store %variant %22, ptr %23, align 16
   %24 = load i8, ptr %z, align 1
@@ -77,9 +77,9 @@ entry:
   %28 = call i8 @llvm.fshl.i8(i8 %25, i8 %26, i8 %27)
   store i8 %28, ptr %taddr5, align 1
   %29 = insertvalue %variant undef, ptr %taddr5, 0
-  %30 = insertvalue %variant %29, i64 ptrtoint (ptr @"ct$char" to i64), 1
+  %30 = insertvalue %variant %29, i64 ptrtoint (ptr @"$ct.char" to i64), 1
   %31 = getelementptr inbounds [3 x %variant], ptr %varargslots2, i64 0, i64 2
   store %variant %30, ptr %31, align 16
-  %32 = call i64 @std_io.printfn(ptr %retparam1, ptr @.str.1, i64 8, ptr %varargslots2, i64 3)
+  %32 = call i64 @std.io.printfn(ptr %retparam1, ptr @.str.1, i64 8, ptr %varargslots2, i64 3)
   ret void
 }

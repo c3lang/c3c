@@ -28,7 +28,7 @@ if.then:                                          ; preds = %entry
   ret void
 
 if.exit:                                          ; preds = %entry
-  %2 = load ptr, ptr @std_core_builtin.panic, align 8
+  %2 = load ptr, ptr @std.core.builtin.panic, align 8
   call void %2(ptr @.str, i64 30, ptr @.str.1, i64 14, ptr @.str.2, i64 4, i32 10)
   unreachable
 

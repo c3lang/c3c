@@ -29,21 +29,21 @@ fn void main()
 %"int[]" = type { ptr, i64 }
 %variant = type { ptr, i64 }
 
-@"ct$test.Foo" = linkonce constant %.introspect { i8 10, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.test.Foo" = linkonce constant %.introspect { i8 10, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @.str = private unnamed_addr constant [9 x i8] c"%s %s %s\00", align 1
-@"ct$int" = linkonce constant %.introspect { i8 2, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
-@"ct$a2$int" = linkonce constant %.introspect { i8 15, i64 8, i64 ptrtoint (ptr @"ct$int" to i64), i64 2, [0 x i64] zeroinitializer }, align 8
-@"ct$sa$int" = linkonce constant %.introspect { i8 16, i64 16, i64 ptrtoint (ptr @"ct$int" to i64), i64 0, [0 x i64] zeroinitializer }, align 8
-@"ct$v2$int" = linkonce constant %.introspect { i8 17, i64 8, i64 ptrtoint (ptr @"ct$int" to i64), i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.int" = linkonce constant %.introspect { i8 2, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
+@"$ct.a2$int" = linkonce constant %.introspect { i8 15, i64 8, i64 ptrtoint (ptr @"$ct.int" to i64), i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.sa$int" = linkonce constant %.introspect { i8 16, i64 16, i64 ptrtoint (ptr @"$ct.int" to i64), i64 0, [0 x i64] zeroinitializer }, align 8
+@"$ct.v2$int" = linkonce constant %.introspect { i8 17, i64 8, i64 ptrtoint (ptr @"$ct.int" to i64), i64 2, [0 x i64] zeroinitializer }, align 8
 @.__const = private unnamed_addr constant [1 x %Foo] [%Foo { i32 1, i32 2 }], align 4
 @.__const.1 = private unnamed_addr constant %Foo { i32 1, i32 2 }, align 4
 @.__const.2 = private unnamed_addr constant [1 x [2 x i32]] [[2 x i32] [i32 1, i32 2]], align 4
 @.__const.3 = private unnamed_addr constant [1 x [2 x double]] [[2 x double] [double 1.000000e+00, double 2.000000e+00]], align 16
 @.str.4 = private unnamed_addr constant [15 x i8] c"%s %s {%s, %s}\00", align 1
-@"ct$a1$a2$int" = linkonce constant %.introspect { i8 15, i64 8, i64 ptrtoint (ptr @"ct$a2$int" to i64), i64 1, [0 x i64] zeroinitializer }, align 8
-@"ct$double" = linkonce constant %.introspect { i8 4, i64 8, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
-@"ct$a2$double" = linkonce constant %.introspect { i8 15, i64 16, i64 ptrtoint (ptr @"ct$double" to i64), i64 2, [0 x i64] zeroinitializer }, align 8
-@"ct$a1$a2$double" = linkonce constant %.introspect { i8 15, i64 16, i64 ptrtoint (ptr @"ct$a2$double" to i64), i64 1, [0 x i64] zeroinitializer }, align 8
+@"$ct.a1$a2$int" = linkonce constant %.introspect { i8 15, i64 8, i64 ptrtoint (ptr @"$ct.a2$int" to i64), i64 1, [0 x i64] zeroinitializer }, align 8
+@"$ct.double" = linkonce constant %.introspect { i8 4, i64 8, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
+@"$ct.a2$double" = linkonce constant %.introspect { i8 15, i64 16, i64 ptrtoint (ptr @"$ct.double" to i64), i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.a1$a2$double" = linkonce constant %.introspect { i8 15, i64 16, i64 ptrtoint (ptr @"$ct.a2$double" to i64), i64 1, [0 x i64] zeroinitializer }, align 8
 
 ; Function Attrs: nounwind
 define void @test.test(i64 %0, ptr %1, i64 %2, double %3) #0 {
@@ -59,18 +59,18 @@ entry:
   store i64 %2, ptr %ptroffset, align 8
   store double %3, ptr %c, align 8
   %4 = insertvalue %variant undef, ptr %a, 0
-  %5 = insertvalue %variant %4, i64 ptrtoint (ptr @"ct$a2$int" to i64), 1
+  %5 = insertvalue %variant %4, i64 ptrtoint (ptr @"$ct.a2$int" to i64), 1
   %6 = getelementptr inbounds [3 x %variant], ptr %varargslots, i64 0, i64 0
   store %variant %5, ptr %6, align 16
   %7 = insertvalue %variant undef, ptr %b, 0
-  %8 = insertvalue %variant %7, i64 ptrtoint (ptr @"ct$sa$int" to i64), 1
+  %8 = insertvalue %variant %7, i64 ptrtoint (ptr @"$ct.sa$int" to i64), 1
   %9 = getelementptr inbounds [3 x %variant], ptr %varargslots, i64 0, i64 1
   store %variant %8, ptr %9, align 16
   %10 = insertvalue %variant undef, ptr %c, 0
-  %11 = insertvalue %variant %10, i64 ptrtoint (ptr @"ct$v2$int" to i64), 1
+  %11 = insertvalue %variant %10, i64 ptrtoint (ptr @"$ct.v2$int" to i64), 1
   %12 = getelementptr inbounds [3 x %variant], ptr %varargslots, i64 0, i64 2
   store %variant %11, ptr %12, align 16
-  %13 = call i64 @std_io.printfn(ptr %retparam, ptr @.str, i64 8, ptr %varargslots, i64 3)
+  %13 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 8, ptr %varargslots, i64 3)
   ret void
 }
 
@@ -94,24 +94,24 @@ entry:
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %y, ptr align 4 @.__const.2, i32 8, i1 false)
   call void @llvm.memcpy.p0.p0.i32(ptr align 16 %y2, ptr align 16 @.__const.3, i32 16, i1 false)
   %0 = insertvalue %variant undef, ptr %y, 0
-  %1 = insertvalue %variant %0, i64 ptrtoint (ptr @"ct$a1$a2$int" to i64), 1
+  %1 = insertvalue %variant %0, i64 ptrtoint (ptr @"$ct.a1$a2$int" to i64), 1
   %2 = getelementptr inbounds [4 x %variant], ptr %varargslots, i64 0, i64 0
   store %variant %1, ptr %2, align 16
   %3 = insertvalue %variant undef, ptr %y2, 0
-  %4 = insertvalue %variant %3, i64 ptrtoint (ptr @"ct$a1$a2$double" to i64), 1
+  %4 = insertvalue %variant %3, i64 ptrtoint (ptr @"$ct.a1$a2$double" to i64), 1
   %5 = getelementptr inbounds [4 x %variant], ptr %varargslots, i64 0, i64 1
   store %variant %4, ptr %5, align 16
   %6 = getelementptr inbounds %Foo, ptr %def, i32 0, i32 0
   %7 = insertvalue %variant undef, ptr %6, 0
-  %8 = insertvalue %variant %7, i64 ptrtoint (ptr @"ct$int" to i64), 1
+  %8 = insertvalue %variant %7, i64 ptrtoint (ptr @"$ct.int" to i64), 1
   %9 = getelementptr inbounds [4 x %variant], ptr %varargslots, i64 0, i64 2
   store %variant %8, ptr %9, align 16
   %10 = getelementptr inbounds %Foo, ptr %def, i32 0, i32 1
   %11 = insertvalue %variant undef, ptr %10, 0
-  %12 = insertvalue %variant %11, i64 ptrtoint (ptr @"ct$int" to i64), 1
+  %12 = insertvalue %variant %11, i64 ptrtoint (ptr @"$ct.int" to i64), 1
   %13 = getelementptr inbounds [4 x %variant], ptr %varargslots, i64 0, i64 3
   store %variant %12, ptr %13, align 16
-  %14 = call i64 @std_io.printfn(ptr %retparam, ptr @.str.4, i64 14, ptr %varargslots, i64 4)
+  %14 = call i64 @std.io.printfn(ptr %retparam, ptr @.str.4, i64 14, ptr %varargslots, i64 4)
   %15 = getelementptr inbounds [2 x i32], ptr %literal, i64 0, i64 0
   store i32 1, ptr %15, align 4
   %16 = getelementptr inbounds [2 x i32], ptr %literal, i64 0, i64 1

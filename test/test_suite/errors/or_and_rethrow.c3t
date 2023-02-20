@@ -63,10 +63,10 @@ entry:
   %reterr = alloca i64, align 8
   store i32 %0, ptr %taddr, align 4
   %1 = insertvalue %variant undef, ptr %taddr, 0
-  %2 = insertvalue %variant %1, i64 ptrtoint (ptr @"ct$int" to i64), 1
+  %2 = insertvalue %variant %1, i64 ptrtoint (ptr @"$ct.int" to i64), 1
   %3 = getelementptr inbounds [1 x %variant], ptr %varargslots, i64 0, i64 0
   store %variant %2, ptr %3, align 16
-  %4 = call i64 @std_io.printfn(ptr %retparam, ptr @.str.1, i64 8, ptr %varargslots, i64 1)
+  %4 = call i64 @std.io.printfn(ptr %retparam, ptr @.str.1, i64 8, ptr %varargslots, i64 1)
   %intbool = icmp ne i32 %0, 0
   br i1 %intbool, label %or.phi, label %or.rhs
 
@@ -87,18 +87,18 @@ or.phi:                                           ; preds = %entry
 
 if.then:                                          ; preds = %or.phi
   store ptr @.str.2, ptr %x, align 8
-  %6 = call ptr @std_io.stdout()
+  %6 = call ptr @std.io.stdout()
   store ptr %6, ptr %result, align 8
   %7 = load ptr, ptr %x, align 8
-  %8 = call i64 @std_io.File_printn(ptr %retparam1, ptr %result, ptr %7, i64 3)
+  %8 = call i64 @std.io.File.printn(ptr %retparam1, ptr %result, ptr %7, i64 3)
   br label %if.exit
 
 if.exit:                                          ; preds = %if.then
   store ptr @.str.3, ptr %x2, align 8
-  %9 = call ptr @std_io.stdout()
+  %9 = call ptr @std.io.stdout()
   store ptr %9, ptr %result4, align 8
   %10 = load ptr, ptr %x2, align 8
-  %11 = call i64 @std_io.File_printn(ptr %retparam3, ptr %result4, ptr %10, i64 9)
+  %11 = call i64 @std.io.File.printn(ptr %retparam3, ptr %result4, ptr %10, i64 9)
   store i64 ptrtoint (ptr @"foo.Foo$ABC" to i64), ptr %error_var5, align 8
   br label %opt_block_cleanup7
 
@@ -112,10 +112,10 @@ guard_block8:                                     ; preds = %opt_block_cleanup7
 
 if.exit13:                                        ; No predecessors!
   store ptr @.str.5, ptr %x14, align 8
-  %13 = call ptr @std_io.stdout()
+  %13 = call ptr @std.io.stdout()
   store ptr %13, ptr %result16, align 8
   %14 = load ptr, ptr %x14, align 8
-  %15 = call i64 @std_io.File_printn(ptr %retparam15, ptr %result16, ptr %14, i64 7)
+  %15 = call i64 @std.io.File.printn(ptr %retparam15, ptr %result16, ptr %14, i64 7)
   ret i64 0
 }
 
@@ -138,10 +138,10 @@ entry:
   %reterr = alloca i64, align 8
   store i32 %0, ptr %taddr, align 4
   %1 = insertvalue %variant undef, ptr %taddr, 0
-  %2 = insertvalue %variant %1, i64 ptrtoint (ptr @"ct$int" to i64), 1
+  %2 = insertvalue %variant %1, i64 ptrtoint (ptr @"$ct.int" to i64), 1
   %3 = getelementptr inbounds [1 x %variant], ptr %varargslots, i64 0, i64 0
   store %variant %2, ptr %3, align 16
-  %4 = call i64 @std_io.printfn(ptr %retparam, ptr @.str.6, i64 9, ptr %varargslots, i64 1)
+  %4 = call i64 @std.io.printfn(ptr %retparam, ptr @.str.6, i64 9, ptr %varargslots, i64 1)
   %intbool = icmp ne i32 %0, 0
   br i1 %intbool, label %and.rhs, label %and.phi
 
@@ -162,10 +162,10 @@ and.phi:                                          ; preds = %entry
 
 if.exit:                                          ; preds = %and.phi
   store ptr @.str.7, ptr %x, align 8
-  %6 = call ptr @std_io.stdout()
+  %6 = call ptr @std.io.stdout()
   store ptr %6, ptr %result, align 8
   %7 = load ptr, ptr %x, align 8
-  %8 = call i64 @std_io.File_printn(ptr %retparam1, ptr %result, ptr %7, i64 9)
+  %8 = call i64 @std.io.File.printn(ptr %retparam1, ptr %result, ptr %7, i64 9)
   store i64 ptrtoint (ptr @"foo.Foo$ABC" to i64), ptr %error_var2, align 8
   br label %opt_block_cleanup4
 
@@ -179,10 +179,10 @@ guard_block5:                                     ; preds = %opt_block_cleanup4
 
 if.exit6:                                         ; No predecessors!
   store ptr @.str.8, ptr %x7, align 8
-  %10 = call ptr @std_io.stdout()
+  %10 = call ptr @std.io.stdout()
   store ptr %10, ptr %result9, align 8
   %11 = load ptr, ptr %x7, align 8
-  %12 = call i64 @std_io.File_printn(ptr %retparam8, ptr %result9, ptr %11, i64 7)
+  %12 = call i64 @std.io.File.printn(ptr %retparam8, ptr %result9, ptr %11, i64 7)
   ret i64 0
 }
 

@@ -242,7 +242,7 @@ void decl_set_external_name(Decl *decl)
 		switch (c)
 		{
 			case ':':
-				scratch_buffer_append_char('_');
+				scratch_buffer_append_char('.');
 				module_name++;
 				break;
 			default:

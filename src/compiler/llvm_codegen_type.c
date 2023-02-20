@@ -447,7 +447,7 @@ static inline LLVMValueRef llvm_generate_introspection_global(GenContext *c, LLV
 	};
 	LLVMValueRef global_name;
 	scratch_buffer_clear();
-	scratch_buffer_append("ct$");
+	scratch_buffer_append("$ct.");
 	type_mangle_introspect_name_to_buffer(type);
 	if (additional)
 	{

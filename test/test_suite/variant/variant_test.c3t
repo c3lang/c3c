@@ -66,11 +66,11 @@ fn void main()
 %variant = type { ptr, i64 }
 %"variant[]" = type { ptr, i64 }
 
-@"ct$int" = linkonce constant %.introspect { i8 2, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
-@"ct$double" = linkonce constant %.introspect { i8 4, i64 8, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
-@"ct$variant" = linkonce constant %.introspect { i8 7, i64 16, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
-@"ct$p$int" = linkonce constant %.introspect { i8 19, i64 8, i64 ptrtoint (ptr @"ct$int" to i64), i64 0, [0 x i64] zeroinitializer }, align 8
-@"ct$bool" = linkonce constant %.introspect { i8 1, i64 1, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
+@"$ct.int" = linkonce constant %.introspect { i8 2, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
+@"$ct.double" = linkonce constant %.introspect { i8 4, i64 8, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
+@"$ct.variant" = linkonce constant %.introspect { i8 7, i64 16, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
+@"$ct.p$int" = linkonce constant %.introspect { i8 19, i64 8, i64 ptrtoint (ptr @"$ct.int" to i64), i64 0, [0 x i64] zeroinitializer }, align 8
+@"$ct.bool" = linkonce constant %.introspect { i8 1, i64 1, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
 
 define void @foo.test(i64 %0, ptr %1) #0 {
 entry:
@@ -86,7 +86,7 @@ entry:
 
 switch.entry:                                     ; preds = %entry
   %4 = load i64, ptr %switch, align 8
-  %eq = icmp eq i64 ptrtoint (ptr @"ct$int" to i64), %4
+  %eq = icmp eq i64 ptrtoint (ptr @"$ct.int" to i64), %4
   br i1 %eq, label %switch.case, label %next_if
 
 switch.case:                                      ; preds = %switch.entry
@@ -94,7 +94,7 @@ switch.case:                                      ; preds = %switch.entry
   br label %switch.exit
 
 next_if:                                          ; preds = %switch.entry
-  %eq1 = icmp eq i64 ptrtoint (ptr @"ct$double" to i64), %4
+  %eq1 = icmp eq i64 ptrtoint (ptr @"$ct.double" to i64), %4
   br i1 %eq1, label %switch.case2, label %next_if3
 
 switch.case2:                                     ; preds = %next_if
@@ -102,7 +102,7 @@ switch.case2:                                     ; preds = %next_if
   br label %switch.exit
 
 next_if3:                                         ; preds = %next_if
-  %eq4 = icmp eq i64 ptrtoint (ptr @"ct$variant" to i64), %4
+  %eq4 = icmp eq i64 ptrtoint (ptr @"$ct.variant" to i64), %4
   br i1 %eq4, label %switch.case5, label %next_if6
 
 switch.case5:                                     ; preds = %next_if3
@@ -110,7 +110,7 @@ switch.case5:                                     ; preds = %next_if3
   br label %switch.exit
 
 next_if6:                                         ; preds = %next_if3
-  %eq7 = icmp eq i64 ptrtoint (ptr @"ct$p$int" to i64), %4
+  %eq7 = icmp eq i64 ptrtoint (ptr @"$ct.p$int" to i64), %4
   br i1 %eq7, label %switch.case8, label %next_if9
 
 switch.case8:                                     ; preds = %next_if6
@@ -191,11 +191,11 @@ entry:
   %taddr23 = alloca double, align 8
   store i32 1, ptr %taddr, align 4
   %0 = insertvalue %variant undef, ptr %taddr, 0
-  %1 = insertvalue %variant %0, i64 ptrtoint (ptr @"ct$int" to i64), 1
+  %1 = insertvalue %variant %0, i64 ptrtoint (ptr @"$ct.int" to i64), 1
   store %variant %1, ptr %x, align 8
   store i32 0, ptr %z, align 4
   %2 = insertvalue %variant undef, ptr %z, 0
-  %3 = insertvalue %variant %2, i64 ptrtoint (ptr @"ct$int" to i64), 1
+  %3 = insertvalue %variant %2, i64 ptrtoint (ptr @"$ct.int" to i64), 1
   store %variant %3, ptr %y, align 8
   %4 = getelementptr inbounds %variant, ptr %y, i32 0, i32 1
   %5 = load i64, ptr %4, align 8
@@ -205,7 +205,7 @@ entry:
   store i64 %7, ptr %h, align 8
   %8 = getelementptr inbounds %variant, ptr %y, i32 0, i32 1
   %9 = load i64, ptr %8, align 8
-  %eq = icmp eq i64 %9, ptrtoint (ptr @"ct$int" to i64)
+  %eq = icmp eq i64 %9, ptrtoint (ptr @"$ct.int" to i64)
   br i1 %eq, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %entry
@@ -215,7 +215,7 @@ if.then:                                          ; preds = %entry
 if.exit:                                          ; preds = %if.then, %entry
   %10 = getelementptr inbounds %variant, ptr %x, i32 0, i32 1
   %11 = load i64, ptr %10, align 8
-  %eq1 = icmp eq i64 %11, ptrtoint (ptr @"ct$int" to i64)
+  %eq1 = icmp eq i64 %11, ptrtoint (ptr @"$ct.int" to i64)
   br i1 %eq1, label %if.then2, label %if.exit3
 
 if.then2:                                         ; preds = %if.exit
@@ -225,14 +225,14 @@ if.then2:                                         ; preds = %if.exit
 if.exit3:                                         ; preds = %if.then2, %if.exit
   store double 1.000000e+00, ptr %taddr4, align 8
   %12 = insertvalue %variant undef, ptr %taddr4, 0
-  %13 = insertvalue %variant %12, i64 ptrtoint (ptr @"ct$double" to i64), 1
+  %13 = insertvalue %variant %12, i64 ptrtoint (ptr @"$ct.double" to i64), 1
   store %variant %13, ptr %y, align 8
   %14 = insertvalue %variant undef, ptr %x, 0
-  %15 = insertvalue %variant %14, i64 ptrtoint (ptr @"ct$variant" to i64), 1
+  %15 = insertvalue %variant %14, i64 ptrtoint (ptr @"$ct.variant" to i64), 1
   store %variant %15, ptr %x, align 8
   %16 = getelementptr inbounds %variant, ptr %y, i32 0, i32 1
   %17 = load i64, ptr %16, align 8
-  %eq5 = icmp eq i64 %17, ptrtoint (ptr @"ct$int" to i64)
+  %eq5 = icmp eq i64 %17, ptrtoint (ptr @"$ct.int" to i64)
   br i1 %eq5, label %if.then6, label %if.exit7
 
 if.then6:                                         ; preds = %if.exit3
@@ -242,7 +242,7 @@ if.then6:                                         ; preds = %if.exit3
 if.exit7:                                         ; preds = %if.then6, %if.exit3
   %18 = getelementptr inbounds %variant, ptr %x, i32 0, i32 1
   %19 = load i64, ptr %18, align 8
-  %eq8 = icmp eq i64 %19, ptrtoint (ptr @"ct$int" to i64)
+  %eq8 = icmp eq i64 %19, ptrtoint (ptr @"$ct.int" to i64)
   br i1 %eq8, label %if.then9, label %if.exit10
 
 if.then9:                                         ; preds = %if.exit7
@@ -257,7 +257,7 @@ if.exit10:                                        ; preds = %if.then9, %if.exit7
   call void @foo.test(i64 %lo, ptr %hi)
   store double 1.000000e+00, ptr %taddr11, align 8
   %22 = insertvalue %variant undef, ptr %taddr11, 0
-  %23 = insertvalue %variant %22, i64 ptrtoint (ptr @"ct$double" to i64), 1
+  %23 = insertvalue %variant %22, i64 ptrtoint (ptr @"$ct.double" to i64), 1
   store %variant %23, ptr %taddr12, align 8
   %24 = getelementptr inbounds { i64, ptr }, ptr %taddr12, i32 0, i32 0
   %lo13 = load i64, ptr %24, align 8
@@ -266,7 +266,7 @@ if.exit10:                                        ; preds = %if.then9, %if.exit7
   call void @foo.test(i64 %lo13, ptr %hi14)
   store i32 1, ptr %taddr15, align 4
   %26 = insertvalue %variant undef, ptr %taddr15, 0
-  %27 = insertvalue %variant %26, i64 ptrtoint (ptr @"ct$int" to i64), 1
+  %27 = insertvalue %variant %26, i64 ptrtoint (ptr @"$ct.int" to i64), 1
   store %variant %27, ptr %taddr16, align 8
   %28 = getelementptr inbounds { i64, ptr }, ptr %taddr16, i32 0, i32 0
   %lo17 = load i64, ptr %28, align 8
@@ -275,7 +275,7 @@ if.exit10:                                        ; preds = %if.then9, %if.exit7
   call void @foo.test(i64 %lo17, ptr %hi18)
   store i8 1, ptr %taddr19, align 1
   %30 = insertvalue %variant undef, ptr %taddr19, 0
-  %31 = insertvalue %variant %30, i64 ptrtoint (ptr @"ct$bool" to i64), 1
+  %31 = insertvalue %variant %30, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
   store %variant %31, ptr %taddr20, align 8
   %32 = getelementptr inbounds { i64, ptr }, ptr %taddr20, i32 0, i32 0
   %lo21 = load i64, ptr %32, align 8
@@ -290,15 +290,15 @@ if.exit10:                                        ; preds = %if.then9, %if.exit7
   call void @llvm.memcpy.p0.p0.i32(ptr align 16 %35, ptr align 8 %x, i32 16, i1 false)
   store double 1.000000e+00, ptr %taddr23, align 8
   %36 = insertvalue %variant undef, ptr %taddr23, 0
-  %37 = insertvalue %variant %36, i64 ptrtoint (ptr @"ct$double" to i64), 1
+  %37 = insertvalue %variant %36, i64 ptrtoint (ptr @"$ct.double" to i64), 1
   %38 = getelementptr inbounds [5 x %variant], ptr %varargslots, i64 0, i64 2
   store %variant %37, ptr %38, align 16
   %39 = insertvalue %variant undef, ptr %x, 0
-  %40 = insertvalue %variant %39, i64 ptrtoint (ptr @"ct$variant" to i64), 1
+  %40 = insertvalue %variant %39, i64 ptrtoint (ptr @"$ct.variant" to i64), 1
   %41 = getelementptr inbounds [5 x %variant], ptr %varargslots, i64 0, i64 3
   store %variant %40, ptr %41, align 16
   %42 = insertvalue %variant undef, ptr %df, 0
-  %43 = insertvalue %variant %42, i64 ptrtoint (ptr @"ct$p$int" to i64), 1
+  %43 = insertvalue %variant %42, i64 ptrtoint (ptr @"$ct.p$int" to i64), 1
   %44 = getelementptr inbounds [5 x %variant], ptr %varargslots, i64 0, i64 4
   store %variant %43, ptr %44, align 16
   call void @foo.test_all(ptr %varargslots, i64 5)

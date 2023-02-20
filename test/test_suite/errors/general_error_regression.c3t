@@ -72,42 +72,42 @@ fn void main()
 
 /* #expect: foo.ll
 
-define void @foo.Foo_hello(ptr %0) #0 {
+define void @foo.Foo.hello(ptr %0) #0 {
 entry:
   %x = alloca ptr, align 8
   %retparam = alloca i64, align 8
   %result = alloca %File, align 8
   store ptr @.str.12, ptr %x, align 8
-  %1 = call ptr @std_io.stdout()
+  %1 = call ptr @std.io.stdout()
   store ptr %1, ptr %result, align 8
   %2 = load ptr, ptr %x, align 8
-  %3 = call i64 @std_io.File_printn(ptr %retparam, ptr %result, ptr %2, i64 14)
+  %3 = call i64 @std.io.File.printn(ptr %retparam, ptr %result, ptr %2, i64 14)
   ret void
 }
 
-define void @foo.Bar_hello(ptr %0) #0 {
+define void @foo.Bar.hello(ptr %0) #0 {
 entry:
   %x = alloca ptr, align 8
   %retparam = alloca i64, align 8
   %result = alloca %File, align 8
   store ptr @.str.13, ptr %x, align 8
-  %1 = call ptr @std_io.stdout()
+  %1 = call ptr @std.io.stdout()
   store ptr %1, ptr %result, align 8
   %2 = load ptr, ptr %x, align 8
-  %3 = call i64 @std_io.File_printn(ptr %retparam, ptr %result, ptr %2, i64 14)
+  %3 = call i64 @std.io.File.printn(ptr %retparam, ptr %result, ptr %2, i64 14)
   ret void
 }
 
-define void @foo.MyEnum_hello(ptr %0) #0 {
+define void @foo.MyEnum.hello(ptr %0) #0 {
 entry:
   %x = alloca ptr, align 8
   %retparam = alloca i64, align 8
   %result = alloca %File, align 8
   store ptr @.str.14, ptr %x, align 8
-  %1 = call ptr @std_io.stdout()
+  %1 = call ptr @std.io.stdout()
   store ptr %1, ptr %result, align 8
   %2 = load ptr, ptr %x, align 8
-  %3 = call i64 @std_io.File_printn(ptr %retparam, ptr %result, ptr %2, i64 17)
+  %3 = call i64 @std.io.File.printn(ptr %retparam, ptr %result, ptr %2, i64 17)
   ret void
 }
 
@@ -155,8 +155,8 @@ entry:
   %19 = call i32 (ptr, ...) @printf(ptr @.str.11, i64 %18)
   store i32 0, ptr %b, align 4
   store i32 0, ptr %a, align 4
-  call void @foo.Foo_hello(ptr %f)
-  call void @foo.Bar_hello(ptr %b)
-  call void @foo.MyEnum_hello(ptr %a)
+  call void @foo.Foo.hello(ptr %f)
+  call void @foo.Bar.hello(ptr %b)
+  call void @foo.MyEnum.hello(ptr %a)
   ret void
 }

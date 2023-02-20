@@ -82,7 +82,7 @@ entry:
   %switch17 = alloca i32, align 4
   %switch27 = alloca i8, align 1
   store i64 ptrtoint (ptr @"mymodule.ByeErr$BAR" to i64), ptr %x.f, align 8
-  store i64 ptrtoint (ptr @"ct$int" to i64), ptr %z, align 8
+  store i64 ptrtoint (ptr @"$ct.int" to i64), ptr %z, align 8
   br label %testblock
 
 testblock:                                        ; preds = %entry
@@ -142,7 +142,7 @@ if.exit:                                          ; preds = %switch.exit, %end_b
 
 switch.entry5:                                    ; preds = %if.exit
   %4 = load i64, ptr %switch4, align 8
-  %eq6 = icmp eq i64 ptrtoint (ptr @"ct$int" to i64), %4
+  %eq6 = icmp eq i64 ptrtoint (ptr @"$ct.int" to i64), %4
   br i1 %eq6, label %switch.case7, label %next_if8
 
 switch.case7:                                     ; preds = %switch.entry5
@@ -150,14 +150,14 @@ switch.case7:                                     ; preds = %switch.entry5
   br label %switch.exit16
 
 next_if8:                                         ; preds = %switch.entry5
-  %eq9 = icmp eq i64 ptrtoint (ptr @"ct$bool" to i64), %4
+  %eq9 = icmp eq i64 ptrtoint (ptr @"$ct.bool" to i64), %4
   br i1 %eq9, label %switch.case10, label %next_if11
 
 switch.case10:                                    ; preds = %next_if8
   br label %switch.case13
 
 next_if11:                                        ; preds = %next_if8
-  %eq12 = icmp eq i64 ptrtoint (ptr @"ct$double" to i64), %4
+  %eq12 = icmp eq i64 ptrtoint (ptr @"$ct.double" to i64), %4
   br i1 %eq12, label %switch.case13, label %next_if14
 
 switch.case13:                                    ; preds = %next_if11, %switch.case10

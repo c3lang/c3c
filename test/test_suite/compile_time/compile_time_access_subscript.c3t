@@ -95,9 +95,9 @@ fn void main()
   %13 = getelementptr inbounds %Abc, ptr %literal, i32 0, i32 3
   store float 0.000000e+00, ptr %13, align 4
   %14 = insertvalue %variant undef, ptr %literal, 0
-  %15 = insertvalue %variant %14, i64 ptrtoint (ptr @"ct$test.Abc" to i64), 1
+  %15 = insertvalue %variant %14, i64 ptrtoint (ptr @"$ct.test.Abc" to i64), 1
   %16 = getelementptr inbounds [1 x %variant], ptr %varargslots, i64 0, i64 0
   store %variant %15, ptr %16, align 16
-  %17 = call i64 @std_io.printfn(ptr %retparam, ptr @.str, i64 2, ptr %varargslots, i64 1)
+  %17 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 2, ptr %varargslots, i64 1)
   ret void
 }

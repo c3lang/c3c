@@ -49,8 +49,8 @@ fn int main()
 %"Bar[]" = type { ptr, i64 }
 %"int[]" = type { ptr, i64 }
 %Baz = type { double }
-@"ct$subarrays.Baz" = linkonce constant %.introspect { i8 11, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
-@"ct$subarrays.Bar" = linkonce constant %.introspect { i8 10, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.subarrays.Baz" = linkonce constant %.introspect { i8 11, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.subarrays.Bar" = linkonce constant %.introspect { i8 10, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @.taddr = private global [2 x %Bar] [%Bar { i32 3, i32 4 }, %Bar { i32 8, i32 9 }], align 8
 @subarrays.arrbar = local_unnamed_addr global %"Bar[]" { ptr @.taddr, i64 2 }, align 8
 @.taddr.3 = private global [2 x i32] [i32 1, i32 2], align 4
@@ -112,10 +112,10 @@ entry:
   store i32 567, ptr %12, align 4
   store ptr %literal2, ptr %y, align 8
   store ptr @.str.5, ptr %x3, align 8
-  %13 = call ptr @std_io.stdout()
+  %13 = call ptr @std.io.stdout()
   store ptr %13, ptr %result, align 8
   %14 = load ptr, ptr %x3, align 8
-  %15 = call i64 @std_io.File_printn(ptr %retparam, ptr %result, ptr %14, i64 6)
+  %15 = call i64 @std.io.File.printn(ptr %retparam, ptr %result, ptr %14, i64 6)
   %16 = getelementptr inbounds %"int[]", ptr %x, i32 0, i32 1
   %17 = load i64, ptr %16, align 8
   %uisitrunc = trunc i64 %17 to i32
@@ -154,10 +154,10 @@ entry:
 
 if.then:                                          ; preds = %entry
   store ptr @.str.9, ptr %x9, align 8
-  %38 = call ptr @std_io.stdout()
+  %38 = call ptr @std.io.stdout()
   store ptr %38, ptr %result11, align 8
   %39 = load ptr, ptr %x9, align 8
-  %40 = call i64 @std_io.File_printn(ptr %retparam10, ptr %result11, ptr %39, i64 2)
+  %40 = call i64 @std.io.File.printn(ptr %retparam10, ptr %result11, ptr %39, i64 2)
   br label %if.exit
 
 if.exit:                                          ; preds = %if.then, %entry
