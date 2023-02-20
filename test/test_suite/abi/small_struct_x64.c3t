@@ -23,10 +23,10 @@ fn Foo getFoo(Foo f)
 %.introspect = type { i8, i64, i64, i64, [0 x i64] }
 %Foo = type { i8, i8, i8 }
 
-@"ct$test_Foo" = linkonce constant %.introspect { i8 10, i64 3, i64 0, i64 3, [0 x i64] zeroinitializer }, align 8
+@"ct$test.Foo" = linkonce constant %.introspect { i8 10, i64 3, i64 0, i64 3, [0 x i64] zeroinitializer }, align 8
 
 ; Function Attrs: nounwind
-define i32 @test_testing() #0 {
+define i32 @test.testing() #0 {
 entry:
   %y = alloca %Foo, align 1
   %literal = alloca %Foo, align 1
@@ -41,7 +41,7 @@ entry:
   store i8 6, ptr %2, align 1
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %tempcoerce, ptr align 1 %literal, i32 3, i1 false)
   %3 = load i24, ptr %tempcoerce, align 4
-  %4 = call i24 @test_getFoo(i24 %3)
+  %4 = call i24 @test.getFoo(i24 %3)
   store i24 %4, ptr %tempcoerce1, align 4
   call void @llvm.memcpy.p0.p0.i32(ptr align 1 %result, ptr align 4 %tempcoerce1, i32 3, i1 false)
   call void @llvm.memcpy.p0.p0.i32(ptr align 1 %y, ptr align 1 %result, i32 3, i1 false)
@@ -56,7 +56,7 @@ entry:
 }
 
 ; Function Attrs: nounwind
-define i24 @test_getFoo(i24 %0) #0 {
+define i24 @test.getFoo(i24 %0) #0 {
 entry:
   %f = alloca %Foo, align 1
   %tempcoerce = alloca i24, align 4

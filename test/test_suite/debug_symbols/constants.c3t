@@ -7,22 +7,22 @@ const FOO @private = ~(uint)(0);
 
 /* #expect: constants.ll
 
-@constants_AA = protected unnamed_addr constant i8 1, align 1
-@constants_BB = local_unnamed_addr constant i8 -56, align 1
-@constants_CC = protected unnamed_addr constant i32 -1, align 4
-@constants_FOO = protected unnamed_addr constant i32 -1, align 4
+@constants.AA = protected unnamed_addr constant i8 1, align 1
+@constants.BB = local_unnamed_addr constant i8 -56, align 1
+@constants.CC = protected unnamed_addr constant i32 -1, align 4
+@constants.FOO = protected unnamed_addr constant i32 -1, align 4
 
 !llvm.dbg.cu = !{!0}
 
-!0 = distinct !DICompileUnit(language: DW_LANG_C, file: !1, producer: "c3c", isOptimized: false, runtimeVersion: 1, emissionKind: FullDebug
+!0 = distinct !DICompileUnit(language: DW_LANG_C, file: !1, producer: "c3c", isOptimized: false, runtimeVersion: 1, emissionKind: FullDebug, globals: !2, splitDebugInlining: false)
 !1 = !DIFile(filename: "constants.c3",
 !DIGlobalVariableExpression
-distinct !DIGlobalVariable(name: "AA", linkageName: "constants_AA", scope: !1, file: !1, line: 1
+distinct !DIGlobalVariable(name: "AA", linkageName: "constants.AA", scope: !1,
 !DIBasicType(name: "char", size: 8, encoding: DW_ATE_unsigned_char)
 !DIGlobalVariableExpression
-distinct !DIGlobalVariable(name: "BB", linkageName: "constants_BB", scope: !1, file: !1, line: 2
+distinct !DIGlobalVariable(name: "BB", linkageName: "constants.BB", scope: !1, file: !1, line: 2
 !DIGlobalVariableExpression
-distinct !DIGlobalVariable(name: "CC", linkageName: "constants_CC", scope: !1, file: !1, line: 3
-!DIBasicType(name: "uint", size: 32, encoding: DW_ATE_unsigned)
-!DIGlobalVariableExpression
-distinct !DIGlobalVariable(name: "FOO", linkageName: "constants_FOO", scope: !1, file: !1, line: 4
+distinct !DIGlobalVariable(name: "CC", linkageName: "constants.CC", scope: !1, file: !1, line: 3
+ !DIBasicType(name: "uint", size: 32, encoding: DW_ATE_unsigned)
+ !DIGlobalVariableExpression
+ distinct !DIGlobalVariable(name: "FOO", linkageName: "constants.FOO", scope: !1, file: !1, line:

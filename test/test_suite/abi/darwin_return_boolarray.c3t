@@ -5,7 +5,7 @@ fn bool[2] get() { return { false, false }; }
 
 /* #expect: test.ll
 
-define i16 @test_get() #0 {
+define i16 @test.get() #0 {
 entry:
   %literal = alloca [2 x i8], align 1
   %0 = getelementptr inbounds [2 x i8], ptr %literal, i64 0, i64 0

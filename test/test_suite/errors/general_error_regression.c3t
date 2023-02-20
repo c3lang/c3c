@@ -72,46 +72,46 @@ fn void main()
 
 /* #expect: foo.ll
 
-define void @foo_Foo_hello(ptr %0) #0 {
+define void @foo.Foo_hello(ptr %0) #0 {
 entry:
   %x = alloca ptr, align 8
   %retparam = alloca i64, align 8
   %result = alloca %File, align 8
   store ptr @.str.12, ptr %x, align 8
-  %1 = call ptr @std_io_stdout()
+  %1 = call ptr @std_io.stdout()
   store ptr %1, ptr %result, align 8
   %2 = load ptr, ptr %x, align 8
-  %3 = call i64 @std_io_File_printn(ptr %retparam, ptr %result, ptr %2, i64 14)
+  %3 = call i64 @std_io.File_printn(ptr %retparam, ptr %result, ptr %2, i64 14)
   ret void
 }
 
-define void @foo_Bar_hello(ptr %0) #0 {
+define void @foo.Bar_hello(ptr %0) #0 {
 entry:
   %x = alloca ptr, align 8
   %retparam = alloca i64, align 8
   %result = alloca %File, align 8
   store ptr @.str.13, ptr %x, align 8
-  %1 = call ptr @std_io_stdout()
+  %1 = call ptr @std_io.stdout()
   store ptr %1, ptr %result, align 8
   %2 = load ptr, ptr %x, align 8
-  %3 = call i64 @std_io_File_printn(ptr %retparam, ptr %result, ptr %2, i64 14)
+  %3 = call i64 @std_io.File_printn(ptr %retparam, ptr %result, ptr %2, i64 14)
   ret void
 }
 
-define void @foo_MyEnum_hello(ptr %0) #0 {
+define void @foo.MyEnum_hello(ptr %0) #0 {
 entry:
   %x = alloca ptr, align 8
   %retparam = alloca i64, align 8
   %result = alloca %File, align 8
   store ptr @.str.14, ptr %x, align 8
-  %1 = call ptr @std_io_stdout()
+  %1 = call ptr @std_io.stdout()
   store ptr %1, ptr %result, align 8
   %2 = load ptr, ptr %x, align 8
-  %3 = call i64 @std_io_File_printn(ptr %retparam, ptr %result, ptr %2, i64 17)
+  %3 = call i64 @std_io.File_printn(ptr %retparam, ptr %result, ptr %2, i64 17)
   ret void
 }
 
-define void @foo_main() #0 {
+define void @foo.main() #0 {
 entry:
   %f = alloca i64, align 8
   %ef = alloca i64, align 8
@@ -119,8 +119,8 @@ entry:
   %z = alloca i64, align 8
   %b = alloca i32, align 4
   %a = alloca i32, align 4
-  store i64 ptrtoint (ptr @"foo_Foo$X" to i64), ptr %f, align 8
-  store i64 ptrtoint (ptr @"foo_Foo$Y" to i64), ptr %ef, align 8
+  store i64 ptrtoint (ptr @"foo.Foo$X" to i64), ptr %f, align 8
+  store i64 ptrtoint (ptr @"foo.Foo$Y" to i64), ptr %ef, align 8
   %0 = load i64, ptr %f, align 8
   store i64 %0, ptr %x, align 8
   %1 = load i64, ptr %x, align 8
@@ -133,30 +133,30 @@ entry:
   store i64 %5, ptr %z, align 8
   %6 = load i64, ptr %z, align 8
   %7 = call i32 (ptr, ...) @printf(ptr @.str.7, i64 %6)
-  store i64 ptrtoint (ptr @"foo_Foo$W" to i64), ptr %x, align 8
+  store i64 ptrtoint (ptr @"foo.Foo$W" to i64), ptr %x, align 8
   %8 = load i64, ptr %x, align 8
   store i64 %8, ptr %z, align 8
   %9 = load i64, ptr %z, align 8
   %10 = call i32 (ptr, ...) @printf(ptr @.str.8, i64 %9)
-  store i64 ptrtoint (ptr @"foo_Foo$W1" to i64), ptr %x, align 8
+  store i64 ptrtoint (ptr @"foo.Foo$W1" to i64), ptr %x, align 8
   %11 = load i64, ptr %x, align 8
   store i64 %11, ptr %z, align 8
   %12 = load i64, ptr %z, align 8
   %13 = call i32 (ptr, ...) @printf(ptr @.str.9, i64 %12)
-  store i64 ptrtoint (ptr @"foo_Foob$X1" to i64), ptr %x, align 8
+  store i64 ptrtoint (ptr @"foo.Foob$X1" to i64), ptr %x, align 8
   %14 = load i64, ptr %x, align 8
   store i64 %14, ptr %z, align 8
   %15 = load i64, ptr %z, align 8
   %16 = call i32 (ptr, ...) @printf(ptr @.str.10, i64 %15)
-  store i64 ptrtoint (ptr @"foo_Foob$Y2" to i64), ptr %x, align 8
+  store i64 ptrtoint (ptr @"foo.Foob$Y2" to i64), ptr %x, align 8
   %17 = load i64, ptr %x, align 8
   store i64 %17, ptr %z, align 8
   %18 = load i64, ptr %z, align 8
   %19 = call i32 (ptr, ...) @printf(ptr @.str.11, i64 %18)
   store i32 0, ptr %b, align 4
   store i32 0, ptr %a, align 4
-  call void @foo_Foo_hello(ptr %f)
-  call void @foo_Bar_hello(ptr %b)
-  call void @foo_MyEnum_hello(ptr %a)
+  call void @foo.Foo_hello(ptr %f)
+  call void @foo.Bar_hello(ptr %b)
+  call void @foo.MyEnum_hello(ptr %a)
   ret void
 }

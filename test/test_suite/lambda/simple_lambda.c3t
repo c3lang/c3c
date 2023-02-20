@@ -17,13 +17,13 @@ fn void main()
 
 /* #expect: simple_lambda.ll
 
-define void @simple_lambda_main() #0 {
+define void @simple_lambda.main() #0 {
 entry:
   %F = alloca ptr, align 8
   %z = alloca i32, align 4
-  store ptr @"simple_lambda_main$lambda1", ptr %F, align 8
-  %0 = call i32 @simple_lambda_xy(ptr @"simple_lambda_main$lambda1")
-  %5 = call i32 @simple_lambda_xy(ptr @"simple_lambda_main$lambda2")
+  store ptr @"simple_lambda.main$lambda1", ptr %F, align 8
+  %0 = call i32 @simple_lambda.xy(ptr @"simple_lambda.main$lambda1")
+  %5 = call i32 @simple_lambda.xy(ptr @"simple_lambda.main$lambda2")
 
-define internal i32 @"simple_lambda_main$lambda2"() #0 {
-define internal i32 @"simple_lambda_main$lambda1"() #0 {
+define internal i32 @"simple_lambda.main$lambda2"() #0 {
+define internal i32 @"simple_lambda.main$lambda1"() #0 {

@@ -51,7 +51,7 @@ fn void denormalize(InternalFPF* ptr)
 /* #expect: test.ll
 
 
-define i32 @test_foo1() #0 {
+define i32 @test.foo1() #0 {
 entry:
   %pp = alloca ptr, align 8
   %w_cnt = alloca i32, align 4
@@ -65,7 +65,7 @@ entry:
   ret i32 %3
 }
 
-define void @test_foo2(i32 %0) #0 {
+define void @test.foo2(i32 %0) #0 {
 entry:
   %intbool = icmp ne i32 %0, 0
   %ternary = select i1 %intbool, double 1.000000e+00, double 1.250000e+01
@@ -73,7 +73,7 @@ entry:
   ret void
 }
 
-define i32 @test_trys(ptr %0, i32 %1) #0 {
+define i32 @test.trys(ptr %0, i32 %1) #0 {
 entry:
   %asa = alloca i32, align 4
   %val = alloca double, align 8
@@ -96,15 +96,15 @@ if.exit:                                          ; preds = %if.then, %entry
   ret i32 %add1
 }
 
-define void @test_setInternalFPFZero(ptr %0) #1 {
+define void @test.setInternalFPFZero(ptr %0) #1 {
 entry:
   %1 = getelementptr inbounds %InternalFPF, ptr %0, i32 0, i32 0
   store i8 0, ptr %1, align 1
   ret void
 }
 
-define void @test_denormalize(ptr %0) #0 {
+define void @test.denormalize(ptr %0) #0 {
 entry:
-  call void @test_setInternalFPFZero(ptr %0)
+  call void @test.setInternalFPFZero(ptr %0)
   ret void
 }

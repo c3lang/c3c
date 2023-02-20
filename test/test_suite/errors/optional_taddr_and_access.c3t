@@ -27,9 +27,9 @@ fn void main()
 
 %Foo = type { i32, i32 }
 
-@"ct$test_Foo" = linkonce constant %.introspect { i8 10, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
-@"test_MyErr$FOO" = linkonce constant %.fault { i64 ptrtoint (ptr @"ct$test_MyErr" to i64), %"char[]" { ptr @.fault, i64 3 } }, align 8
-@"ct$test_MyErr" = linkonce constant %.introspect { i8 9, i64 8, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
+@"ct$test.Foo" = linkonce constant %.introspect { i8 10, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"test.MyErr$FOO" = linkonce constant %.fault { i64 ptrtoint (ptr @"ct$test.MyErr" to i64), %"char[]" { ptr @.fault, i64 3 } }, align 8
+@"ct$test.MyErr" = linkonce constant %.introspect { i8 9, i64 8, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
 @.str = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
 @.str.1 = private unnamed_addr constant [17 x i8] c"Not visible: %d\0A\00", align 1
 
@@ -37,7 +37,7 @@ fn void main()
 declare i32 @printf(ptr, ...) #0
 
 ; Function Attrs: nounwind
-define void @test_main() #0 {
+define void @test.main() #0 {
 entry:
   %z = alloca i32, align 4
   %z.f = alloca i64, align 8
@@ -80,7 +80,7 @@ after_check3:                                     ; preds = %after_assign
   br label %voiderr
 
 voiderr:                                          ; preds = %after_check3, %after_assign
-  store i64 ptrtoint (ptr @"test_MyErr$FOO" to i64), ptr %z.f, align 8
+  store i64 ptrtoint (ptr @"test.MyErr$FOO" to i64), ptr %z.f, align 8
   br label %after_check4
 
 after_check4:                                     ; preds = %voiderr

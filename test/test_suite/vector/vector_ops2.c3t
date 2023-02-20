@@ -24,7 +24,7 @@ fn void testi()
 /* #expect: test.ll
 
 ; Function Attrs: nounwind
-define void @test_testf() #0 {
+define void @test.testf() #0 {
 entry:
   %y = alloca <4 x float>, align 16
   %z = alloca <4 x float>, align 16
@@ -43,7 +43,7 @@ entry:
   br i1 %zero, label %panic, label %checkok
 
 panic:                                            ; preds = %entry
-  %6 = load ptr, ptr @std_core_builtin_panic, align 8
+  %6 = load ptr, ptr @std_core_builtin.panic, align 8
   call void %6(ptr @.panic_msg, i64 17, ptr @.file, i64 14, ptr @.func, i64 5, i32 9)
   br label %checkok
 

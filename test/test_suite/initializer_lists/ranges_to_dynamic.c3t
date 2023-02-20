@@ -19,7 +19,7 @@ fn void main()
 
 /* #expect: test.ll
 
-define void @test_test(i32 %0) #0 {
+define void @test.test(i32 %0) #0 {
 entry:
   %y = alloca [10 x i32], align 16
   %.anon = alloca i64, align 8

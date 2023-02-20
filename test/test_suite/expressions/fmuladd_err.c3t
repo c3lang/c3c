@@ -18,7 +18,7 @@ fn float easeElasticIn(float t, float b, float c, float d) @inline // Ease: Elas
 /* #expect: test.ll
 
 
-define float @test_easeElasticIn(float %0, float %1, float %2, float %3) #0 {
+define float @test.easeElasticIn(float %0, float %1, float %2, float %3) #0 {
 entry:
   %t = alloca float, align 4
   %p = alloca float, align 4

@@ -20,7 +20,7 @@ fn void main()
 }
 /* #expect: test.ll
 
-define void @test_main() #0 {
+define void @test.main() #0 {
 entry:
   %z = alloca [7 x i32], align 16
   %y = alloca [6 x i32], align 16
@@ -66,7 +66,7 @@ entry:
   %15 = insertvalue %variant %14, i64 ptrtoint (ptr @"ct$a7$int" to i64), 1
   %16 = getelementptr inbounds [2 x %variant], ptr %varargslots, i64 0, i64 1
   store %variant %15, ptr %16, align 16
-  %17 = call i64 @std_io_printfn(ptr %retparam, ptr @.str, i64 5, ptr %varargslots, i64 2)
+  %17 = call i64 @std_io.printfn(ptr %retparam, ptr @.str, i64 5, ptr %varargslots, i64 2)
   %18 = getelementptr inbounds [7 x i32], ptr %z, i64 0, i64 5
   %19 = insertvalue %"int[]" undef, ptr %18, 0
   %20 = insertvalue %"int[]" %19, i64 2, 1
@@ -88,7 +88,7 @@ entry:
   %33 = insertvalue %variant %32, i64 ptrtoint (ptr @"ct$a7$int" to i64), 1
   %34 = getelementptr inbounds [2 x %variant], ptr %varargslots3, i64 0, i64 1
   store %variant %33, ptr %34, align 16
-  %35 = call i64 @std_io_printfn(ptr %retparam2, ptr @.str.1, i64 5, ptr %varargslots3, i64 2)
+  %35 = call i64 @std_io.printfn(ptr %retparam2, ptr @.str.1, i64 5, ptr %varargslots3, i64 2)
   %36 = getelementptr inbounds [1 x %"int[]"], ptr %literal, i64 0, i64 0
   %37 = getelementptr inbounds [1 x i32], ptr %literal4, i64 0, i64 0
   store i32 1, ptr %37, align 4
@@ -111,7 +111,7 @@ entry:
   %49 = insertvalue %variant %48, i64 ptrtoint (ptr @"ct$sa$sa$int" to i64), 1
   %50 = getelementptr inbounds [1 x %variant], ptr %varargslots8, i64 0, i64 0
   store %variant %49, ptr %50, align 16
-  %51 = call i64 @std_io_printfn(ptr %retparam7, ptr @.str.2, i64 2, ptr %varargslots8, i64 1)
+  %51 = call i64 @std_io.printfn(ptr %retparam7, ptr @.str.2, i64 2, ptr %varargslots8, i64 1)
   %52 = load %"int[][]", ptr %b, align 8
   %53 = extractvalue %"int[][]" %52, 0
   %ptroffset = getelementptr inbounds %"int[]", ptr %53, i64 0
@@ -133,7 +133,7 @@ entry:
   %66 = insertvalue %variant %65, i64 ptrtoint (ptr @"ct$sa$sa$int" to i64), 1
   %67 = getelementptr inbounds [1 x %variant], ptr %varargslots12, i64 0, i64 0
   store %variant %66, ptr %67, align 16
-  %68 = call i64 @std_io_printfn(ptr %retparam11, ptr @.str.3, i64 2, ptr %varargslots12, i64 1)
+  %68 = call i64 @std_io.printfn(ptr %retparam11, ptr @.str.3, i64 2, ptr %varargslots12, i64 1)
   %69 = getelementptr inbounds [6 x i32], ptr %y, i64 0, i64 2
   %70 = insertvalue %"int[]" undef, ptr %69, 0
   %71 = insertvalue %"int[]" %70, i64 3, 1
@@ -145,6 +145,6 @@ entry:
   %75 = insertvalue %variant %74, i64 ptrtoint (ptr @"ct$sa$sa$int" to i64), 1
   %76 = getelementptr inbounds [1 x %variant], ptr %varargslots15, i64 0, i64 0
   store %variant %75, ptr %76, align 16
-  %77 = call i64 @std_io_printfn(ptr %retparam14, ptr @.str.4, i64 2, ptr %varargslots15, i64 1)
+  %77 = call i64 @std_io.printfn(ptr %retparam14, ptr @.str.4, i64 2, ptr %varargslots15, i64 1)
   ret void
 }

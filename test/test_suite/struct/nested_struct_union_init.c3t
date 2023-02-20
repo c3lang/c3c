@@ -62,7 +62,7 @@ fn void main()
 %.anon = type { %.anon.0 }
 %.anon.0 = type { float, float, float, float, float, float, float, float, float }
 
-define void @foob_main() #0 {
+define void @foob.main() #0 {
 entry:
   %x = alloca %Matrix3x3, align 4
   %m = alloca %Matrix2x2, align 4

@@ -56,7 +56,7 @@ fn void main()
 
 /* #expect: test.ll
 
-define double @test_apply3(ptr %0, double %1) #0 {
+define double @test.apply3(ptr %0, double %1) #0 {
 entry:
   %vec = alloca <2 x float>, align 8
   %a = alloca <2 x float>, align 8

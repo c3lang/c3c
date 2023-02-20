@@ -35,13 +35,13 @@ fn int main()
 %Bar = type { i32, i32 }
 %"Bar[]" = type { ptr, i64 }
 
-@"ct$statics_Baz" = linkonce constant %.introspect { i8 11, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
-@"ct$statics_Bar" = linkonce constant %.introspect { i8 10, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"ct$statics.Baz" = linkonce constant %.introspect { i8 11, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"ct$statics.Bar" = linkonce constant %.introspect { i8 10, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @.taddr = private global [1 x %Bar] [%Bar { i32 1, i32 2 }], align 8
 @"test$c" = internal unnamed_addr global %"Bar[]" { ptr @.taddr, i64 1 }, align 8
 @.str = private unnamed_addr constant [7 x i8] c"%d %d\0A\00", align 1
 
-define void @statics_test() #0 {
+define void @statics.test() #0 {
 entry:
   %b = alloca %"Bar[]", align 8
   %literal = alloca [1 x %Bar], align 4
@@ -81,9 +81,9 @@ entry:
 
 define i32 @main() #0 {
 entry:
-  call void @statics_test()
-  call void @statics_test()
-  call void @statics_test()
+  call void @statics.test()
+  call void @statics.test()
+  call void @statics.test()
   ret i32 1
 }
 

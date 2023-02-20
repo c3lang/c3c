@@ -390,6 +390,9 @@ bool parse_module(ParseContext *c, AstId docs)
 		}
 		switch (attr->attr_kind)
 		{
+			case ATTRIBUTE_TEST:
+				c->unit->test_by_default = true;
+				continue;
 			case ATTRIBUTE_EXPORT:
 				if (attr->exprs)
 				{
@@ -427,7 +430,7 @@ bool parse_module(ParseContext *c, AstId docs)
 			default:
 				break;
 		}
-		SEMA_ERROR(attr, "'%s' cannot be used with the module declaration.", attr->name);
+		SEMA_ERROR(attr, "'%s' cannot be used after a module declaration.", attr->name);
 		return false;
 	FOREACH_END();
 	c->unit->default_visibility = visibility;
@@ -1080,9 +1083,10 @@ bool parse_attribute(ParseContext *c, Attr **attribute_ref)
 static bool parse_attributes_for_global(ParseContext *c, Decl *decl)
 {
 	Visibility visibility = c->unit->default_visibility;
+	if (decl->decl_kind == DECL_FUNC) decl->func_decl.attr_test = c->unit->test_by_default;
+	decl->is_export = c->unit->export_by_default;
 	if (!parse_attributes(c, &decl->attributes, &visibility)) return false;
 	decl->visibility = visibility;
-	decl->is_export = c->unit->export_by_default;
 	return true;
 }
 

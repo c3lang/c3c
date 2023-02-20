@@ -20,6 +20,6 @@ const B = foo();
 
 /* #expect: test.ll
 
-@test_Z = local_unnamed_addr constant i32 1, align 4
-@test_B = local_unnamed_addr constant i32 223, align 4
-@test_A = local_unnamed_addr constant i32 222, align 4
+@test.Z = local_unnamed_addr constant i32 1, align 4
+@test.B = local_unnamed_addr constant i32 223, align 4
+@test.A = local_unnamed_addr constant i32 222, align 4

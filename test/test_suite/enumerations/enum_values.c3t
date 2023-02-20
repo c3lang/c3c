@@ -20,11 +20,11 @@ fn void test(int x)
 
 %"Foo[]" = type { ptr, i64 }
 
-@test_zfok = local_unnamed_addr global i32 0, align 4
+@test.zfok = local_unnamed_addr global i32 0, align 4
 @.taddr = private global [2 x i32] [i32 0, i32 1], align 4
-@test_zw = local_unnamed_addr global %"Foo[]" { ptr @.taddr, i64 2 }, align 8
+@test.zw = local_unnamed_addr global %"Foo[]" { ptr @.taddr, i64 2 }, align 8
 
-define void @test_test(i32 %0) #0 {
+define void @test.test(i32 %0) #0 {
 entry:
   %zonk = alloca i32, align 4
   %literal = alloca [2 x i32], align 4

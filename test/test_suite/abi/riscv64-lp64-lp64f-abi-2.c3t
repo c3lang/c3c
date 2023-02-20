@@ -24,7 +24,7 @@ fn Large f_scalar_stack_2(double a, int128 b, float128 c, char[<32>] d,
 
 /* #expect: test.ll
 
-define signext i32 @test_f_scalar_stack_1(i32 signext %0, i128 %1, double %2, fp128 %3, ptr align 32 %4, i8 zeroext %5, i8 %6, i8 %7) #0 {
+define signext i32 @test.f_scalar_stack_1(i32 signext %0, i128 %1, double %2, fp128 %3, ptr align 32 %4, i8 zeroext %5, i8 %6, i8 %7) #0 {
 entry:
   %sisiext = sext i8 %6 to i32
   %uisiext = zext i8 %7 to i32
@@ -32,7 +32,7 @@ entry:
   ret i32 %add
 }
 
-define void @test_f_scalar_stack_2(ptr noalias sret(%Large) align 8 %0, double %1, i128 %2, fp128 %3, ptr align 32 %4, i8 zeroext %5, i8 %6, i8 %7) #0 {
+define void @test.f_scalar_stack_2(ptr noalias sret(%Large) align 8 %0, double %1, i128 %2, fp128 %3, ptr align 32 %4, i8 zeroext %5, i8 %6, i8 %7) #0 {
 entry:
   %literal = alloca %Large, align 8
   %8 = getelementptr inbounds %Large, ptr %literal, i32 0, i32 0

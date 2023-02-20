@@ -22,7 +22,7 @@ declare void @foo1(ptr noalias sret(%Abc) align 8) #0
 
 declare void @foo2(ptr noalias sret(%Abc) align 8) #0
 
-define void @test_sret_bar() #0 {
+define void @test_sret.bar() #0 {
 entry:
   %dummy1 = alloca %Abc, align 8
   %dummy2 = alloca %Abc, align 8

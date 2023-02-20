@@ -166,7 +166,7 @@ after_check40:                                    ; preds = %cond.lhs36
   br label %cond.phi42
 
 cond.rhs41:                                       ; preds = %after_assign34
-  store i64 ptrtoint (ptr @"test_Test$FOO" to i64), ptr %y.f, align 8
+  store i64 ptrtoint (ptr @"test.Test$FOO" to i64), ptr %y.f, align 8
   br label %after_assign43
 
 cond.phi42:                                       ; preds = %after_check40
@@ -180,7 +180,7 @@ after_assign43:                                   ; preds = %cond.phi42, %cond.r
   br i1 %not44, label %cond.lhs45, label %cond.rhs46
 
 cond.lhs45:                                       ; preds = %after_assign43
-  store i64 ptrtoint (ptr @"test_Test$FOO" to i64), ptr %y.f, align 8
+  store i64 ptrtoint (ptr @"test.Test$FOO" to i64), ptr %y.f, align 8
   br label %after_assign52
 
 cond.rhs46:                                       ; preds = %after_assign43
@@ -208,11 +208,11 @@ after_assign52:                                   ; preds = %cond.phi51, %assign
   br i1 %not53, label %cond.lhs54, label %cond.rhs55
 
 cond.lhs54:                                       ; preds = %after_assign52
-  store i64 ptrtoint (ptr @"test_Test$FOO" to i64), ptr %y.f, align 8
+  store i64 ptrtoint (ptr @"test.Test$FOO" to i64), ptr %y.f, align 8
   br label %after_assign57
 
 cond.rhs55:                                       ; preds = %after_assign52
-  store i64 ptrtoint (ptr @"test_Test$BAR" to i64), ptr %y.f, align 8
+  store i64 ptrtoint (ptr @"test.Test$BAR" to i64), ptr %y.f, align 8
   br label %after_assign57
 
 after_assign57:                                   ; preds = %cond.rhs55, %cond.lhs54

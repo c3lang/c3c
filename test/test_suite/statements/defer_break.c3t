@@ -51,7 +51,7 @@ define i32 @main(i32 %0, ptr %1) #0 {
 entry:
   %a = alloca i32, align 4
   store i32 0, ptr %a, align 4
-  call void @foo_defer2()
+  call void @foo.defer2()
   %2 = load i32, ptr %a, align 4
   %eq = icmp eq i32 %2, 1
   br i1 %eq, label %if.then, label %if.exit
@@ -60,7 +60,7 @@ if.then:                                          ; preds = %entry
   br label %loop.exit
 
 if.exit:                                          ; preds = %entry
-  call void @foo_defer1()
+  call void @foo.defer1()
   br label %loop.exit
 
 loop.exit:                                        ; preds = %if.exit, %if.then
@@ -76,13 +76,13 @@ loop.body:                                        ; preds = %loop.cond
   br i1 %eq1, label %if.then2, label %if.exit3
 
 if.then2:                                         ; preds = %loop.body
-  call void @foo_defer4()
+  call void @foo.defer4()
   br label %loop.exit4
 
 if.exit3:                                         ; preds = %loop.body
-  call void @foo_defer6()
-  call void @foo_defer5()
-  call void @foo_defer4()
+  call void @foo.defer6()
+  call void @foo.defer5()
+  call void @foo.defer4()
   br label %loop.cond
 
 loop.exit4:                                       ; preds = %if.then2, %loop.cond
@@ -98,17 +98,17 @@ loop.body7:                                       ; preds = %loop.cond5
   br i1 %eq8, label %if.then9, label %if.exit10
 
 if.then9:                                         ; preds = %loop.body7
-  call void @foo_defer8()
+  call void @foo.defer8()
   br label %loop.exit11
 
 if.exit10:                                        ; preds = %loop.body7
-  call void @foo_defer10()
-  call void @foo_defer9()
-  call void @foo_defer8()
+  call void @foo.defer10()
+  call void @foo.defer9()
+  call void @foo.defer8()
   br label %loop.exit11
 
 loop.exit11:                                      ; preds = %if.exit10, %if.then9, %loop.cond5
-  call void @foo_defer7()
-  call void @foo_defer3()
+  call void @foo.defer7()
+  call void @foo.defer3()
   ret i32 0
 }

@@ -46,7 +46,7 @@ fn void main()
 
 /* #expect: foo.ll
 
-define void @foo_main() #0 {
+define void @foo.main() #0 {
 entry:
   %b = alloca %Bar, align 4
   %f = alloca %Foo, align 4

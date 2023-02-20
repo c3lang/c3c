@@ -34,7 +34,7 @@ fn void use_vectors()
 declare void @take_stringref(ptr, i64) #0
 call void @take_stringref(ptr %lo, i64 %hi)
 
-define void @foo_use_vectors() #0 {
+define void @foo.use_vectors() #0 {
 entry:
   %0 = call <8 x float> @get_m256()
   call void @take_m256(<8 x float> %1)

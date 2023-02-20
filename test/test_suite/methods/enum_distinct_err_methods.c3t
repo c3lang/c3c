@@ -43,18 +43,18 @@ fn int main()
 
 /* #expect: foo.ll
 
-define void @foo_Foo_hello(ptr %0) #0 {
+define void @foo.Foo_hello(ptr %0) #0 {
 entry:
   store ptr @.str, ptr %x, align 8
   ret void
 }
 
-define void @foo_Bar_hello(ptr %0) #0 {
+define void @foo.Bar_hello(ptr %0) #0 {
 entry:
   store ptr @.str.1, ptr %x, align 8
 }
 
-define void @foo_MyEnum_hello(ptr %0) #0 {
+define void @foo.MyEnum_hello(ptr %0) #0 {
 entry:
   store ptr @.str.2, ptr %x, align 8
 }
@@ -67,8 +67,8 @@ entry:
   store i64 0, ptr %f, align 8
   store i32 0, ptr %b, align 4
   store i32 0, ptr %a, align 4
-  call void @foo_Foo_hello(ptr %f)
-  call void @foo_Bar_hello(ptr %b)
-  call void @foo_MyEnum_hello(ptr %a)
+  call void @foo.Foo_hello(ptr %f)
+  call void @foo.Bar_hello(ptr %b)
+  call void @foo.MyEnum_hello(ptr %a)
   ret i32 0
 }

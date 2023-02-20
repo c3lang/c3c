@@ -17,7 +17,7 @@ fn void test()
 declare i64 @testError(ptr) #0
 
 ; Function Attrs: nounwind
-define void @else_checks_test() #0 {
+define void @else_checks.test() #0 {
 entry:
   %x = alloca double, align 8
   %retparam = alloca i32, align 4

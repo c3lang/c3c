@@ -153,48 +153,48 @@ fn Float_u f_ret_float_u() {
 
 /* #expect: test.ll
 
-define void @test_f_fpr_tracking(float %0, float %1, float %2, float %3, float %4, float %5, float %6, float %7, i8 zeroext %8)
+define void @test.f_fpr_tracking(float %0, float %1, float %2, float %3, float %4, float %5, float %6, float %7, i8 zeroext %8)
 
-define void @test_f_float_s_arg(float %0)
-define float @test_f_ret_float_s()
+define void @test.f_float_s_arg(float %0)
+define float @test.f_ret_float_s()
 
-define void @test_f_float_float_s_arg(float %0, float %1)
-define { float, float } @test_f_ret_float_float_s()
+define void @test.f_float_float_s_arg(float %0, float %1)
+define { float, float } @test.f_ret_float_float_s()
 
-define void @test_f_float_float_s_arg_insufficient_fprs(float %0, float %1, float %2, float %3, float %4, float %5, float %6, [2 x i32] %7) #0 {
+define void @test.f_float_float_s_arg_insufficient_fprs(float %0, float %1, float %2, float %3, float %4, float %5, float %6, [2 x i32] %7) #0 {
 
-define void @test_f_float_int8_s_arg(float %0, i8 %1)
-define { float, i8 } @test_f_ret_float_int8_s()
+define void @test.f_float_int8_s_arg(float %0, i8 %1)
+define { float, i8 } @test.f_ret_float_int8_s()
 
-define void @test_f_float_uint8_s_arg(float %0, i8 %1)
-define { float, i8 } @test_f_ret_float_uint8_s()
+define void @test.f_float_uint8_s_arg(float %0, i8 %1)
+define { float, i8 } @test.f_ret_float_uint8_s()
 
-define void @test_f_float_int32_s_arg(float %0, i32 %1)
-define { float, i32 } @test_f_ret_float_int32_s()
+define void @test.f_float_int32_s_arg(float %0, i32 %1)
+define { float, i32 } @test.f_ret_float_int32_s()
 
-define void @test_f_float_int64_s_arg(ptr align 8 %0)
-define void @test_f_ret_float_int64_s(ptr noalias sret(%Float_int64_s) align 8 %0)
+define void @test.f_float_int64_s_arg(ptr align 8 %0)
+define void @test.f_ret_float_int64_s(ptr noalias sret(%Float_int64_s) align 8 %0)
 
-define void @test_f_float_int8_s_arg_insufficient_gprs(i32 %0, i32 %1, i32 %2, i32 %3, i32 %4, i32 %5, i32 %6, i32 %7, [2 x i32] %8)
-define void @test_f_struct_float_int8_insufficient_fprs(float %0, float %1, float %2, float %3, float %4, float %5, float %6, float %7, [2 x i32] %8)
+define void @test.f_float_int8_s_arg_insufficient_gprs(i32 %0, i32 %1, i32 %2, i32 %3, i32 %4, i32 %5, i32 %6, i32 %7, [2 x i32] %8)
+define void @test.f_struct_float_int8_insufficient_fprs(float %0, float %1, float %2, float %3, float %4, float %5, float %6, float %7, [2 x i32] %8)
 
-define void @test_f_floatarr1_s_arg(float %0)
-define float @test_f_ret_floatarr1_s()
+define void @test.f_floatarr1_s_arg(float %0)
+define float @test.f_ret_floatarr1_s()
 
-define void @test_f_floatarr2_s_arg(float %0, float %1)
-define { float, float } @test_f_ret_floatarr2_s()
+define void @test.f_floatarr2_s_arg(float %0, float %1)
+define { float, float } @test.f_ret_floatarr2_s()
 
-define void @test_f_floatarr2_tricky1_s_arg(float %0, float %1)
-define { float, float } @test_f_ret_floatarr2_tricky1_s()
+define void @test.f_floatarr2_tricky1_s_arg(float %0, float %1)
+define { float, float } @test.f_ret_floatarr2_tricky1_s()
 
-define void @test_f_int_float_int_s_arg(ptr align 4 %0)
-define void @test_f_ret_int_float_int_s(ptr noalias sret(%Int_float_int_s) align 4 %0)
+define void @test.f_int_float_int_s_arg(ptr align 4 %0)
+define void @test.f_ret_int_float_int_s(ptr noalias sret(%Int_float_int_s) align 4 %0)
 
-define void @test_f_int64_float_s_arg(ptr align 8 %0)
-define void @test_f_ret_int64_float_s(ptr noalias sret(%Int64_float_s) align 8 %0)
+define void @test.f_int64_float_s_arg(ptr align 8 %0)
+define void @test.f_ret_int64_float_s(ptr noalias sret(%Int64_float_s) align 8 %0)
 
-define void @test_f_char_char_float_s_arg([2 x i32] %0)
-define [2 x i32] @test_f_ret_char_char_float_s()
+define void @test.f_char_char_float_s_arg([2 x i32] %0)
+define [2 x i32] @test.f_ret_char_char_float_s()
 
-define void @test_f_float_u_arg(i32 %0)
-define i32 @test_f_ret_float_u()
+define void @test.f_float_u_arg(i32 %0)
+define i32 @test.f_ret_float_u()

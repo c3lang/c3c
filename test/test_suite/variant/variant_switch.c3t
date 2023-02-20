@@ -34,7 +34,7 @@ fn int main()
 @"ct$double" = linkonce constant %.introspect { i8 4, i64 8, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
 @"ct$bool" = linkonce constant %.introspect { i8 1, i64 1, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
 
-define void @foo_test(i64 %0, ptr %1) #0 {
+define void @foo.test(i64 %0, ptr %1) #0 {
 entry:
   %z = alloca %variant, align 8
   %switch = alloca i64, align 8
@@ -118,7 +118,7 @@ entry:
   %lo = load i64, ptr %2, align 8
   %3 = getelementptr inbounds { i64, ptr }, ptr %taddr1, i32 0, i32 1
   %hi = load ptr, ptr %3, align 8
-  call void @foo_test(i64 %lo, ptr %hi)
+  call void @foo.test(i64 %lo, ptr %hi)
   store i32 1, ptr %taddr2, align 4
   %4 = insertvalue %variant undef, ptr %taddr2, 0
   %5 = insertvalue %variant %4, i64 ptrtoint (ptr @"ct$int" to i64), 1
@@ -127,7 +127,7 @@ entry:
   %lo4 = load i64, ptr %6, align 8
   %7 = getelementptr inbounds { i64, ptr }, ptr %taddr3, i32 0, i32 1
   %hi5 = load ptr, ptr %7, align 8
-  call void @foo_test(i64 %lo4, ptr %hi5)
+  call void @foo.test(i64 %lo4, ptr %hi5)
   store i8 1, ptr %taddr6, align 1
   %8 = insertvalue %variant undef, ptr %taddr6, 0
   %9 = insertvalue %variant %8, i64 ptrtoint (ptr @"ct$bool" to i64), 1
@@ -136,6 +136,6 @@ entry:
   %lo8 = load i64, ptr %10, align 8
   %11 = getelementptr inbounds { i64, ptr }, ptr %taddr7, i32 0, i32 1
   %hi9 = load ptr, ptr %11, align 8
-  call void @foo_test(i64 %lo8, ptr %hi9)
+  call void @foo.test(i64 %lo8, ptr %hi9)
   ret i32 0
 }

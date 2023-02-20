@@ -33,14 +33,14 @@ fn void main()
 
 /* #expect: test.ll
 
-define i64 @test_test1() #0 {
+define i64 @test.test1() #0 {
 entry:
   %x = alloca %Bar, align 4
   %x.f = alloca i64, align 8
   %y = alloca %Bar, align 4
   %error_var = alloca i64, align 8
   %reterr = alloca i64, align 8
-  store i64 ptrtoint (ptr @"test_Foo$MY_VAL1" to i64), ptr %x.f, align 8
+  store i64 ptrtoint (ptr @"test.Foo$MY_VAL1" to i64), ptr %x.f, align 8
   %optval = load i64, ptr %x.f, align 8
   %not_err = icmp eq i64 %optval, 0
   %0 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
@@ -63,7 +63,7 @@ noerr_block:                                      ; preds = %after_check
 }
 
 ; Function Attrs: nounwind
-define i64 @test_test2() #0 {
+define i64 @test.test2() #0 {
 entry:
   %x = alloca %Bar, align 4
   %x.f = alloca i64, align 8
@@ -94,9 +94,9 @@ noerr_block:                                      ; preds = %after_check
 }
 
 ; Function Attrs: nounwind
-define void @test_main() #0 {
+define void @test.main() #0 {
 entry:
-  %0 = call i64 @test_test1()
-  %1 = call i64 @test_test2()
+  %0 = call i64 @test.test1()
+  %1 = call i64 @test.test2()
   ret void
 }

@@ -19,7 +19,7 @@ fn void test()
 
 /* #expect: test.ll
 
-define void @test_test() #0 {
+define void @test.test() #0 {
 entry:
   %b = alloca %UnionB, align 8
   %0 = call i32 @bar()

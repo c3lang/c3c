@@ -78,11 +78,11 @@ fn void main()
 
 %Foo = type { i16, i8, i8, i16, i16 }
 
-@"ct$userland_bitcast_Foo" = linkonce constant %.introspect { i8 10, i64 8, i64 0, i64 5, [0 x i64] zeroinitializer }, align 8
+@"ct$userland_bitcast.Foo" = linkonce constant %.introspect { i8 10, i64 8, i64 0, i64 5, [0 x i64] zeroinitializer }, align 8
 @.str = private unnamed_addr constant [16 x i8] c"%f => %d => %f\0A\00", align 1
 @.str.1 = private unnamed_addr constant [18 x i8] c"%e => %llu => %e\0A\00", align 1
 
-define i64 @userland_bitcast_testFoo(i16 signext %0) #0 {
+define i64 @userland_bitcast.testFoo(i16 signext %0) #0 {
 entry:
   %z = alloca %Foo, align 2
   %expr = alloca %Foo, align 2
@@ -132,7 +132,7 @@ loop.exit:                                        ; preds = %loop.cond
   ret i64 %14
 }
 
-define i32 @userland_bitcast_test(float %0) #0 {
+define i32 @userland_bitcast.test(float %0) #0 {
 entry:
   %expr = alloca float, align 4
   %x = alloca [4 x i8], align 1
@@ -169,7 +169,7 @@ loop.exit:                                        ; preds = %loop.cond
   ret i32 %8
 }
 
-define void @userland_bitcast_main() #0 {
+define void @userland_bitcast.main() #0 {
 entry:
   %f = alloca float, align 4
   %i = alloca i32, align 4

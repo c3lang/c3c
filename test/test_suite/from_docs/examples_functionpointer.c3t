@@ -19,15 +19,15 @@ fn void main()
 /* #expect: demo.ll
 
 
-define i32 @demo_my_callback(ptr %0, i32 %1) #0 {
+define i32 @demo.my_callback(ptr %0, i32 %1) #0 {
 entry:
   ret i32 0
 }
 
-define void @demo_main() #0 {
+define void @demo.main() #0 {
 entry:
   %result = alloca i32, align 4
-  %0 = load ptr, ptr @demo_cb, align 8
+  %0 = load ptr, ptr @demo.cb, align 8
   %1 = call i32 %0(ptr @.str, i32 123)
   store i32 %1, ptr %result, align 4
   ret void

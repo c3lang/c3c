@@ -28,7 +28,7 @@ fn void main()
 }
 /* #expect: foo.ll
 
-define void @foo_test(i32 %0) #0 {
+define void @foo.test(i32 %0) #0 {
 entry:
   %x = alloca i32, align 4
   store i32 %0, ptr %x, align 4
@@ -78,10 +78,10 @@ if.exit6:                                         ; preds = %if.exit3
 }
 
 ; Function Attrs: nounwind
-define void @foo_main() #0 {
+define void @foo.main() #0 {
 entry:
-  call void @foo_test(i32 123)
-  call void @foo_test(i32 1)
-  call void @foo_test(i32 0)
+  call void @foo.test(i32 123)
+  call void @foo.test(i32 1)
+  call void @foo.test(i32 0)
   ret void
 }

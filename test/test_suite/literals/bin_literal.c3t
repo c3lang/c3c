@@ -15,7 +15,7 @@ fn void main()
 
 /* #expect: test.ll
 
-define void @test_main() #0 {
+define void @test.main() #0 {
 entry:
   %a = alloca i32, align 4
   %b = alloca i32, align 4
@@ -50,7 +50,7 @@ entry:
   %10 = insertvalue %variant %9, i64 ptrtoint (ptr @"ct$int" to i64), 1
   %11 = getelementptr inbounds [2 x %variant], ptr %varargslots, i64 0, i64 1
   store %variant %10, ptr %11, align 16
-  %12 = call i64 @std_io_printfn(ptr %retparam, ptr @.str, i64 5, ptr %varargslots, i64 2)
+  %12 = call i64 @std_io.printfn(ptr %retparam, ptr @.str, i64 5, ptr %varargslots, i64 2)
   store i8 -35, ptr %z, align 1
   %13 = insertvalue %variant undef, ptr %z, 0
   %14 = insertvalue %variant %13, i64 ptrtoint (ptr @"ct$char" to i64), 1
@@ -80,6 +80,6 @@ entry:
   %30 = insertvalue %variant %29, i64 ptrtoint (ptr @"ct$char" to i64), 1
   %31 = getelementptr inbounds [3 x %variant], ptr %varargslots2, i64 0, i64 2
   store %variant %30, ptr %31, align 16
-  %32 = call i64 @std_io_printfn(ptr %retparam1, ptr @.str.1, i64 8, ptr %varargslots2, i64 3)
+  %32 = call i64 @std_io.printfn(ptr %retparam1, ptr @.str.1, i64 8, ptr %varargslots2, i64 3)
   ret void
 }

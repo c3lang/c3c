@@ -27,11 +27,11 @@ entry:
   %x = alloca i32, align 4
   %y = alloca i32, align 4
   %z = alloca i32, align 4
-  %0 = call i32 @chained_foo()
+  %0 = call i32 @chained.foo()
   store i32 %0, ptr %x, align 4
-  %1 = call i32 @chained_foo()
+  %1 = call i32 @chained.foo()
   store i32 %1, ptr %y, align 4
-  %2 = call i32 @chained_foo()
+  %2 = call i32 @chained.foo()
   store i32 %2, ptr %z, align 4
   %3 = load i32, ptr %x, align 4
   %gt = icmp sgt i32 %3, 0
@@ -56,7 +56,7 @@ and.phi4:
   br i1 %val5, label %if.then, label %if.else
 
 if.then:
-  %6 = call i32 @chained_foo()
+  %6 = call i32 @chained.foo()
   br label %if.exit
 
 if.else:

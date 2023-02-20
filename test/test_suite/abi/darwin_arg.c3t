@@ -20,6 +20,6 @@ fn void f9122143()
 
 declare void @d(i64, double) #0
 
-  %lo = load i64, ptr @test_ss, align 16
-  %hi = load double, ptr getelementptr inbounds ({ i64, double }, ptr @test_ss, i32 0, i32 1), align 8
+  %lo = load i64, ptr @test.ss, align 16
+  %hi = load double, ptr getelementptr inbounds ({ i64, double }, ptr @test.ss, i32 0, i32 1), align 8
   call void @d(i64 %lo, double %hi)

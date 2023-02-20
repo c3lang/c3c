@@ -81,7 +81,7 @@ fn void main() {
 
 /* #expect: test.ll
 
-define void @test_main() #0 {
+define void @test.main() #0 {
 entry:
   %radians = alloca float, align 4
   %axis = alloca <3 x float>, align 16

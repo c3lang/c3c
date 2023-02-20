@@ -8,7 +8,7 @@ fn void main()
 
 @.str = private unnamed_addr constant [18 x i8] c"Hello\00 world! now\00", align 1
 
-define void @string_escape_main() #0 {
+define void @string_escape.main() #0 {
 entry:
   %s = alloca ptr, align 8
   store ptr @.str, ptr %s, align 8
@@ -17,6 +17,6 @@ entry:
 
 define i32 @main(i32 %0, ptr %1) #0 {
 entry:
-  call void @string_escape_main()
+  call void @string_escape.main()
   ret i32 0
 }

@@ -46,36 +46,36 @@ macro Callback get_callback2()
 
 /* #expect: abc.ll
 
-  store ptr @"bar_get_callback$lambda1", ptr %F, align 8
-  %0 = call i32 @abc_xy(ptr @"bar_get_callback$lambda1")
-  %1 = call i32 @abc_xy(ptr @"bar_get_callback$lambda1")
+  store ptr @"bar.get_callback$lambda1", ptr %F, align 8
+  %0 = call i32 @abc.xy(ptr @"bar.get_callback$lambda1")
+  %1 = call i32 @abc.xy(ptr @"bar.get_callback$lambda1")
 
-declare i32 @"bar_get_callback$lambda1"()
+declare i32 @"bar.get_callback$lambda1"()
 
 // #expect: foo.ll
 
-define i32 @"foo_get_callback$lambda1"() #0 {
-  %0 = call i32 @"bar_get_callback2$lambda2"()
+define i32 @"foo.get_callback$lambda1"() #0 {
+  %0 = call i32 @"bar.get_callback2$lambda2"()
 
-define i32 @"foo_get_callback2$lambda2"() #0 {
-  %1 = load i32, ptr @foo_xz, align 4
+define i32 @"foo.get_callback2$lambda2"() #0 {
+  %1 = load i32, ptr @foo.xz, align 4
 
-declare i32 @"bar_get_callback2$lambda2"()
+declare i32 @"bar.get_callback2$lambda2"()
 
 // #expect: bar.ll
 
-define i32 @"bar_get_callback$lambda1"() #0 {
+define i32 @"bar.get_callback$lambda1"() #0 {
 entry:
-  %0 = call i32 @"foo_get_callback$lambda1"()
+  %0 = call i32 @"foo.get_callback$lambda1"()
   ret i32 %0
 }
 
-define i32 @"bar_get_callback2$lambda2"() #0 {
+define i32 @"bar.get_callback2$lambda2"() #0 {
 entry:
-  %0 = call i32 @"foo_get_callback2$lambda2"()
+  %0 = call i32 @"foo.get_callback2$lambda2"()
   ret i32 %0
 }
 
-declare i32 @"foo_get_callback$lambda1"()
-declare i32 @"foo_get_callback2$lambda2"()
+declare i32 @"foo.get_callback$lambda1"()
+declare i32 @"foo.get_callback2$lambda2"()
 

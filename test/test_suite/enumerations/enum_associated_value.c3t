@@ -19,15 +19,15 @@ fn void main()
 /* #expect: test.ll
 
 @"ct$uint" = linkonce constant %.introspect { i8 3, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
-@"ct$test_Foo" = linkonce constant { i8, i64, i64, i64, [2 x %"char[]"] } { i8 8, i64 4, i64 ptrtoint (ptr @"ct$uint" to i64), i64 2, [2 x %"char[]"] [%"char[]" { ptr @.enum.0, i64 1 }, %"char[]" { ptr @.enum.1, i64 1 }] }, align 8
-@"test_Foo$val" = linkonce constant [2 x i32] [i32 123, i32 333], align 4
+@"ct$test.Foo" = linkonce constant { i8, i64, i64, i64, [2 x %"char[]"] } { i8 8, i64 4, i64 ptrtoint (ptr @"ct$uint" to i64), i64 2, [2 x %"char[]"] [%"char[]" { ptr @.enum.0, i64 1 }, %"char[]" { ptr @.enum.1, i64 1 }] }, align 8
+@"test.Foo$val" = linkonce constant [2 x i32] [i32 123, i32 333], align 4
 @.str = private unnamed_addr constant [9 x i8] c"Number A\00", align 1
 @.str.1 = private unnamed_addr constant [9 x i8] c"Number B\00", align 1
-@"test_Foo$testme" = linkonce constant [2 x ptr] [ptr @.str, ptr @.str.1], align 8
+@"test.Foo$testme" = linkonce constant [2 x ptr] [ptr @.str, ptr @.str.1], align 8
 @.str.2 = private unnamed_addr constant [17 x i8] c"%d (%s) %d (%s)\0A\00", align 1
 
 ; Function Attrs: nounwind
-define void @test_main() #0 {
+define void @test.main() #0 {
 entry:
   %x = alloca i32, align 4
   %f = alloca i32, align 4
@@ -36,16 +36,16 @@ entry:
   store i32 1, ptr %f, align 4
   store i32 0, ptr %g, align 4
   %0 = load i32, ptr %f, align 4
-  %1 = getelementptr inbounds [2 x i32], ptr @"test_Foo$val", i32 0, i32 %0
+  %1 = getelementptr inbounds [2 x i32], ptr @"test.Foo$val", i32 0, i32 %0
   %2 = load i32, ptr %1, align 4
   %3 = load i32, ptr %f, align 4
-  %4 = getelementptr inbounds [2 x ptr], ptr @"test_Foo$testme", i32 0, i32 %3
+  %4 = getelementptr inbounds [2 x ptr], ptr @"test.Foo$testme", i32 0, i32 %3
   %5 = load ptr, ptr %4, align 8
   %6 = load i32, ptr %g, align 4
-  %7 = getelementptr inbounds [2 x i32], ptr @"test_Foo$val", i32 0, i32 %6
+  %7 = getelementptr inbounds [2 x i32], ptr @"test.Foo$val", i32 0, i32 %6
   %8 = load i32, ptr %7, align 4
   %9 = load i32, ptr %g, align 4
-  %10 = getelementptr inbounds [2 x ptr], ptr @"test_Foo$testme", i32 0, i32 %9
+  %10 = getelementptr inbounds [2 x ptr], ptr @"test.Foo$testme", i32 0, i32 %9
   %11 = load ptr, ptr %10, align 8
   %12 = call i32 (ptr, ...) @printf(ptr @.str.2, i32 %2, ptr %5, i32 %8, ptr %11)
   ret void

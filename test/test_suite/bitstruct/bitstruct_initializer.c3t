@@ -48,7 +48,7 @@ fn void main()
 
 /* #expect: test.ll
 
-define void @test_hello(i32 %0) #0 {
+define void @test.hello(i32 %0) #0 {
 entry:
   %x = alloca i64, align 8
   %y = alloca %Abc, align 8
@@ -179,7 +179,7 @@ entry:
   %44 = insertvalue %variant %43, i64 ptrtoint (ptr @"ct$bool" to i64), 1
   %45 = getelementptr inbounds [3 x %variant], ptr %varargslots, i64 0, i64 2
   store %variant %44, ptr %45, align 16
-  %46 = call i64 @std_io_printfn(ptr %retparam, ptr @.str, i64 8, ptr %varargslots, i64 3)
+  %46 = call i64 @std_io.printfn(ptr %retparam, ptr @.str, i64 8, ptr %varargslots, i64 3)
   %47 = getelementptr inbounds %Abc, ptr %y, i32 0, i32 1
   %48 = load i64, ptr %47, align 8
   %49 = and i64 4294967295, %48
@@ -209,7 +209,7 @@ entry:
   %63 = insertvalue %variant %62, i64 ptrtoint (ptr @"ct$bool" to i64), 1
   %64 = getelementptr inbounds [3 x %variant], ptr %varargslots18, i64 0, i64 2
   store %variant %63, ptr %64, align 16
-  %65 = call i64 @std_io_printfn(ptr %retparam17, ptr @.str.2, i64 8, ptr %varargslots18, i64 3)
+  %65 = call i64 @std_io.printfn(ptr %retparam17, ptr @.str.2, i64 8, ptr %varargslots18, i64 3)
   %66 = getelementptr inbounds [8 x i8], ptr %b, i64 0, i64 0
   %67 = load i8, ptr %66, align 1
   %zext29 = zext i8 %67 to i32
@@ -267,7 +267,7 @@ entry:
   %100 = insertvalue %variant %99, i64 ptrtoint (ptr @"ct$bool" to i64), 1
   %101 = getelementptr inbounds [3 x %variant], ptr %varargslots28, i64 0, i64 2
   store %variant %100, ptr %101, align 16
-  %102 = call i64 @std_io_printfn(ptr %retparam27, ptr @.str.3, i64 8, ptr %varargslots28, i64 3)
+  %102 = call i64 @std_io.printfn(ptr %retparam27, ptr @.str.3, i64 8, ptr %varargslots28, i64 3)
   %add = add i32 %0, 1
   %zext47 = zext i32 %add to i64
   %103 = and i64 %zext47, 4294967295
@@ -360,7 +360,7 @@ entry:
   %147 = insertvalue %variant %146, i64 ptrtoint (ptr @"ct$bool" to i64), 1
   %148 = getelementptr inbounds [3 x %variant], ptr %varargslots62, i64 0, i64 2
   store %variant %147, ptr %148, align 16
-  %149 = call i64 @std_io_printfn(ptr %retparam61, ptr @.str.4, i64 8, ptr %varargslots62, i64 3)
+  %149 = call i64 @std_io.printfn(ptr %retparam61, ptr @.str.4, i64 8, ptr %varargslots62, i64 3)
   %150 = getelementptr inbounds %Abc, ptr %y, i32 0, i32 1
   %151 = load i64, ptr %150, align 8
   %152 = and i64 4294967295, %151
@@ -390,7 +390,7 @@ entry:
   %166 = insertvalue %variant %165, i64 ptrtoint (ptr @"ct$bool" to i64), 1
   %167 = getelementptr inbounds [3 x %variant], ptr %varargslots72, i64 0, i64 2
   store %variant %166, ptr %167, align 16
-  %168 = call i64 @std_io_printfn(ptr %retparam71, ptr @.str.5, i64 8, ptr %varargslots72, i64 3)
+  %168 = call i64 @std_io.printfn(ptr %retparam71, ptr @.str.5, i64 8, ptr %varargslots72, i64 3)
   %169 = getelementptr inbounds [8 x i8], ptr %b, i64 0, i64 0
   %170 = load i8, ptr %169, align 1
   %zext83 = zext i8 %170 to i32
@@ -448,13 +448,13 @@ entry:
   %203 = insertvalue %variant %202, i64 ptrtoint (ptr @"ct$bool" to i64), 1
   %204 = getelementptr inbounds [3 x %variant], ptr %varargslots82, i64 0, i64 2
   store %variant %203, ptr %204, align 16
-  %205 = call i64 @std_io_printfn(ptr %retparam81, ptr @.str.6, i64 8, ptr %varargslots82, i64 3)
+  %205 = call i64 @std_io.printfn(ptr %retparam81, ptr @.str.6, i64 8, ptr %varargslots82, i64 3)
   ret void
 }
 
 ; Function Attrs: nounwind
-define void @test_main() #0 {
+define void @test.main() #0 {
 entry:
-  call void @test_hello(i32 12)
+  call void @test.hello(i32 12)
   ret void
 }

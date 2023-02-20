@@ -54,14 +54,14 @@ loop.body:                                        ; preds = %loop.cond
 if.then:                                          ; preds = %loop.body
   %3 = load i32, ptr %a, align 4
   %add = add i32 %3, %0
-  call void @test_test2()
-  call void @test_test1()
+  call void @test.test2()
+  call void @test.test1()
   ret i32 %add
 
 if.exit:                                          ; preds = %loop.body
-  call void @test_test4()
-  call void @test_test3()
-  call void @test_test2()
+  call void @test.test4()
+  call void @test.test3()
+  call void @test.test2()
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
@@ -79,22 +79,22 @@ loop.body3:                                       ; preds = %loop.cond1
 if.then5:                                         ; preds = %loop.body3
   %5 = load i32, ptr %a, align 4
   %add6 = add i32 %5, 2
-  call void @test_test6()
-  call void @test_test5()
-  call void @test_test1()
+  call void @test.test6()
+  call void @test.test5()
+  call void @test.test1()
   ret i32 %add6
 
 if.exit7:                                         ; preds = %loop.body3
-  call void @test_test8()
-  call void @test_test7()
-  call void @test_test6()
-  call void @test_test5()
-  call void @test_test1()
+  call void @test.test8()
+  call void @test.test7()
+  call void @test.test6()
+  call void @test.test5()
+  call void @test.test1()
   ret i32 4
 
 loop.exit8:                                       ; preds = %loop.cond1
   %add9 = add i32 0, %0
-  call void @test_test5()
-  call void @test_test1()
+  call void @test.test5()
+  call void @test.test1()
   ret i32 %add9
 }

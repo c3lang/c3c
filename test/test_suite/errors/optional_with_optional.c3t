@@ -32,7 +32,7 @@ fn int! get_b(int x)
 
 /* #expect: test.ll
 
-define void @test_main() #0 {
+define void @test.main() #0 {
 entry:
   %retparam = alloca i64, align 8
   %varargslots = alloca [1 x %variant], align 16
@@ -66,7 +66,7 @@ entry:
   %varargslots66 = alloca [1 x %variant], align 16
   %xy = alloca i32, align 4
   %xy.f = alloca i64, align 8
-  %0 = call i64 @test_get_a(ptr %retparam1, i32 1)
+  %0 = call i64 @test.get_a(ptr %retparam1, i32 1)
   %not_err = icmp eq i64 %0, 0
   %1 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
   br i1 %1, label %after_check, label %else_block
@@ -76,7 +76,7 @@ after_check:                                      ; preds = %entry
   br label %phi_block
 
 else_block:                                       ; preds = %entry
-  %3 = call i64 @test_get_b(ptr %retparam2, i32 4)
+  %3 = call i64 @test.get_b(ptr %retparam2, i32 4)
   %not_err3 = icmp eq i64 %3, 0
   %4 = call i1 @llvm.expect.i1(i1 %not_err3, i1 true)
   br i1 %4, label %after_check4, label %else_block5
@@ -99,8 +99,8 @@ phi_block6:                                       ; preds = %else_block5, %phi_b
   %7 = insertvalue %variant %6, i64 ptrtoint (ptr @"ct$int" to i64), 1
   %8 = getelementptr inbounds [1 x %variant], ptr %varargslots, i64 0, i64 0
   store %variant %7, ptr %8, align 16
-  %9 = call i64 @std_io_printfn(ptr %retparam, ptr @.str, i64 4, ptr %varargslots, i64 1)
-  %10 = call i64 @test_get_a(ptr %retparam12, i32 2)
+  %9 = call i64 @std_io.printfn(ptr %retparam, ptr @.str, i64 4, ptr %varargslots, i64 1)
+  %10 = call i64 @test.get_a(ptr %retparam12, i32 2)
   %not_err13 = icmp eq i64 %10, 0
   %11 = call i1 @llvm.expect.i1(i1 %not_err13, i1 true)
   br i1 %11, label %after_check14, label %else_block15
@@ -110,7 +110,7 @@ after_check14:                                    ; preds = %phi_block6
   br label %phi_block19
 
 else_block15:                                     ; preds = %phi_block6
-  %13 = call i64 @test_get_b(ptr %retparam16, i32 4)
+  %13 = call i64 @test.get_b(ptr %retparam16, i32 4)
   %not_err17 = icmp eq i64 %13, 0
   %14 = call i1 @llvm.expect.i1(i1 %not_err17, i1 true)
   br i1 %14, label %after_check18, label %else_block21
@@ -133,8 +133,8 @@ phi_block22:                                      ; preds = %else_block21, %phi_
   %17 = insertvalue %variant %16, i64 ptrtoint (ptr @"ct$int" to i64), 1
   %18 = getelementptr inbounds [1 x %variant], ptr %varargslots11, i64 0, i64 0
   store %variant %17, ptr %18, align 16
-  %19 = call i64 @std_io_printfn(ptr %retparam10, ptr @.str.2, i64 4, ptr %varargslots11, i64 1)
-  %20 = call i64 @test_get_a(ptr %retparam29, i32 1)
+  %19 = call i64 @std_io.printfn(ptr %retparam10, ptr @.str.2, i64 4, ptr %varargslots11, i64 1)
+  %20 = call i64 @test.get_a(ptr %retparam29, i32 1)
   %not_err30 = icmp eq i64 %20, 0
   %21 = call i1 @llvm.expect.i1(i1 %not_err30, i1 true)
   br i1 %21, label %after_check31, label %else_block32
@@ -144,7 +144,7 @@ after_check31:                                    ; preds = %phi_block22
   br label %phi_block36
 
 else_block32:                                     ; preds = %phi_block22
-  %23 = call i64 @test_get_b(ptr %retparam33, i32 5)
+  %23 = call i64 @test.get_b(ptr %retparam33, i32 5)
   %not_err34 = icmp eq i64 %23, 0
   %24 = call i1 @llvm.expect.i1(i1 %not_err34, i1 true)
   br i1 %24, label %after_check35, label %else_block38
@@ -167,25 +167,25 @@ phi_block39:                                      ; preds = %else_block38, %phi_
   %27 = insertvalue %variant %26, i64 ptrtoint (ptr @"ct$int" to i64), 1
   %28 = getelementptr inbounds [1 x %variant], ptr %varargslots28, i64 0, i64 0
   store %variant %27, ptr %28, align 16
-  %29 = call i64 @std_io_printfn(ptr %retparam27, ptr @.str.3, i64 4, ptr %varargslots28, i64 1)
-  store i64 ptrtoint (ptr @"test_Foo$DEF" to i64), ptr %taddr46, align 8
+  %29 = call i64 @std_io.printfn(ptr %retparam27, ptr @.str.3, i64 4, ptr %varargslots28, i64 1)
+  store i64 ptrtoint (ptr @"test.Foo$DEF" to i64), ptr %taddr46, align 8
   %30 = insertvalue %variant undef, ptr %taddr46, 0
   %31 = insertvalue %variant %30, i64 ptrtoint (ptr @"ct$anyerr" to i64), 1
   %32 = getelementptr inbounds [1 x %variant], ptr %varargslots45, i64 0, i64 0
   store %variant %31, ptr %32, align 16
-  %33 = call i64 @std_io_printfn(ptr %retparam44, ptr @.str.4, i64 4, ptr %varargslots45, i64 1)
+  %33 = call i64 @std_io.printfn(ptr %retparam44, ptr @.str.4, i64 4, ptr %varargslots45, i64 1)
   store i32 3, ptr %taddr51, align 4
   %34 = insertvalue %variant undef, ptr %taddr51, 0
   %35 = insertvalue %variant %34, i64 ptrtoint (ptr @"ct$int" to i64), 1
   %36 = getelementptr inbounds [1 x %variant], ptr %varargslots50, i64 0, i64 0
   store %variant %35, ptr %36, align 16
-  %37 = call i64 @std_io_printfn(ptr %retparam49, ptr @.str.5, i64 4, ptr %varargslots50, i64 1)
-  store i64 ptrtoint (ptr @"test_Foo$DEF" to i64), ptr %taddr56, align 8
+  %37 = call i64 @std_io.printfn(ptr %retparam49, ptr @.str.5, i64 4, ptr %varargslots50, i64 1)
+  store i64 ptrtoint (ptr @"test.Foo$DEF" to i64), ptr %taddr56, align 8
   %38 = insertvalue %variant undef, ptr %taddr56, 0
   %39 = insertvalue %variant %38, i64 ptrtoint (ptr @"ct$anyerr" to i64), 1
   %40 = getelementptr inbounds [1 x %variant], ptr %varargslots55, i64 0, i64 0
   store %variant %39, ptr %40, align 16
-  %41 = call i64 @std_io_printfn(ptr %retparam54, ptr @.str.6, i64 4, ptr %varargslots55, i64 1)
+  %41 = call i64 @std_io.printfn(ptr %retparam54, ptr @.str.6, i64 4, ptr %varargslots55, i64 1)
   store i64 0, ptr %error_var, align 8
   br label %phi_block62
 
@@ -197,19 +197,19 @@ noerr_block:                                      ; preds = %phi_block62
   %43 = insertvalue %variant %42, i64 ptrtoint (ptr @"ct$anyerr" to i64), 1
   %44 = getelementptr inbounds [1 x %variant], ptr %varargslots60, i64 0, i64 0
   store %variant %43, ptr %44, align 16
-  %45 = call i64 @std_io_printfn(ptr %retparam59, ptr @.str.7, i64 4, ptr %varargslots60, i64 1)
+  %45 = call i64 @std_io.printfn(ptr %retparam59, ptr @.str.7, i64 4, ptr %varargslots60, i64 1)
   store i64 3, ptr %x, align 8
   %46 = insertvalue %variant undef, ptr %x, 0
   %47 = insertvalue %variant %46, i64 ptrtoint (ptr @"ct$long" to i64), 1
   %48 = getelementptr inbounds [1 x %variant], ptr %varargslots66, i64 0, i64 0
   store %variant %47, ptr %48, align 16
-  %49 = call i64 @std_io_printfn(ptr %retparam65, ptr @.str.8, i64 4, ptr %varargslots66, i64 1)
-  store i64 ptrtoint (ptr @"test_Foo$DEF" to i64), ptr %xy.f, align 8
+  %49 = call i64 @std_io.printfn(ptr %retparam65, ptr @.str.8, i64 4, ptr %varargslots66, i64 1)
+  store i64 ptrtoint (ptr @"test.Foo$DEF" to i64), ptr %xy.f, align 8
   ret void
 }
 
 ; Function Attrs: nounwind
-define i64 @test_get_a(ptr %0, i32 %1) #0 {
+define i64 @test.get_a(ptr %0, i32 %1) #0 {
 entry:
   %reterr = alloca i64, align 8
   %smod = srem i32 %1, 2
@@ -217,7 +217,7 @@ entry:
   br i1 %intbool, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %entry
-  ret i64 ptrtoint (ptr @"test_Foo$ABC" to i64)
+  ret i64 ptrtoint (ptr @"test.Foo$ABC" to i64)
 
 if.exit:                                          ; preds = %entry
   %mul = mul i32 %1, 2
@@ -226,7 +226,7 @@ if.exit:                                          ; preds = %entry
 }
 
 ; Function Attrs: nounwind
-define i64 @test_get_b(ptr %0, i32 %1) #0 {
+define i64 @test.get_b(ptr %0, i32 %1) #0 {
 entry:
   %reterr = alloca i64, align 8
   %smod = srem i32 %1, 2
@@ -234,7 +234,7 @@ entry:
   br i1 %eq, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %entry
-  ret i64 ptrtoint (ptr @"test_Foo$ABC" to i64)
+  ret i64 ptrtoint (ptr @"test.Foo$ABC" to i64)
 
 if.exit:                                          ; preds = %entry
   %mul = mul i32 %1, 2

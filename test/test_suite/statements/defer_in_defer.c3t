@@ -22,17 +22,17 @@ fn void test_line()
 
 // #expect: defer_in_defer.ll
 
-define void @defer_in_defer_test() #0 {
+define void @defer_in_defer.test() #0 {
 entry:
-  call void @defer_in_defer_test4()
-  call void @defer_in_defer_test2()
-  call void @defer_in_defer_test3()
-  call void @defer_in_defer_test1()
+  call void @defer_in_defer.test4()
+  call void @defer_in_defer.test2()
+  call void @defer_in_defer.test3()
+  call void @defer_in_defer.test1()
   ret void
 }
 
-define void @defer_in_defer_test_line() #0 {
+define void @defer_in_defer.test_line() #0 {
 entry:
-  call void @defer_in_defer_test1()
+  call void @defer_in_defer.test1()
   ret void
 }

@@ -51,7 +51,7 @@ after_check:                                      ; preds = %entry
   br label %end_block
 
 end_block:                                        ; preds = %after_check, %entry
-  %2 = call i64 @test_foo()
+  %2 = call i64 @test.foo()
   %not_err1 = icmp eq i64 %2, 0
   br i1 %not_err1, label %after_check2, label %end_block3
 
@@ -65,7 +65,7 @@ end_block4:                                       ; preds = %end_block3
   br label %end_block5
 
 end_block5:                                       ; preds = %end_block4
-  %3 = call i64 @test_baz(ptr %retparam)
+  %3 = call i64 @test.baz(ptr %retparam)
   %not_err6 = icmp eq i64 %3, 0
   br i1 %not_err6, label %after_check7, label %end_block8
 
@@ -74,7 +74,7 @@ after_check7:                                     ; preds = %end_block5
   br label %end_block8
 
 end_block8:                                       ; preds = %after_check7, %end_block5
-  %5 = call i64 @test_baz(ptr %retparam9)
+  %5 = call i64 @test.baz(ptr %retparam9)
   %not_err10 = icmp eq i64 %5, 0
   br i1 %not_err10, label %after_check11, label %end_block12
 

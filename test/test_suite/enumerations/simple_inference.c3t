@@ -14,7 +14,7 @@ fn void test()
 
 /* #expect: simple_inference.ll
 
-define void @simple_inference_test() #0 {
+define void @simple_inference.test() #0 {
 entry:
   %h = alloca i32, align 4
   store i32 1, ptr %h, align 4

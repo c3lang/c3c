@@ -68,7 +68,7 @@ fn void main()
 
 /* #expect: mymodule.ll
 
-define void @mymodule_test() #0 {
+define void @mymodule.test() #0 {
 entry:
   %x = alloca i32, align 4
   %x.f = alloca i64, align 8
@@ -81,7 +81,7 @@ entry:
   %zy = alloca i32, align 4
   %switch17 = alloca i32, align 4
   %switch27 = alloca i8, align 1
-  store i64 ptrtoint (ptr @"mymodule_ByeErr$BAR" to i64), ptr %x.f, align 8
+  store i64 ptrtoint (ptr @"mymodule.ByeErr$BAR" to i64), ptr %x.f, align 8
   store i64 ptrtoint (ptr @"ct$int" to i64), ptr %z, align 8
   br label %testblock
 
@@ -110,7 +110,7 @@ if.then:                                          ; preds = %end_block
 
 switch.entry:                                     ; preds = %if.then
   %2 = load i64, ptr %switch, align 8
-  %eq = icmp eq i64 ptrtoint (ptr @"mymodule_HelloErr$FOO" to i64), %2
+  %eq = icmp eq i64 ptrtoint (ptr @"mymodule.HelloErr$FOO" to i64), %2
   br i1 %eq, label %switch.case, label %next_if
 
 switch.case:                                      ; preds = %switch.entry
@@ -118,7 +118,7 @@ switch.case:                                      ; preds = %switch.entry
   br label %switch.exit
 
 next_if:                                          ; preds = %switch.entry
-  %eq1 = icmp eq i64 ptrtoint (ptr @"mymodule_ByeErr$BAR" to i64), %2
+  %eq1 = icmp eq i64 ptrtoint (ptr @"mymodule.ByeErr$BAR" to i64), %2
   br i1 %eq1, label %switch.case2, label %next_if3
 
 switch.case2:                                     ; preds = %next_if

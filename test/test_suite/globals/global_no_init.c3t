@@ -18,15 +18,15 @@ fn void main()
 
 /* #expect: test.ll
 
-@test_z = local_unnamed_addr global i32 undef, align 4
-@test_y = local_unnamed_addr global %Abc undef, align 4
-@test_a = local_unnamed_addr global i32 0, align 4
-@test_b = local_unnamed_addr global i32 0, align 4
-@test_c = local_unnamed_addr global i32 0, align 4
-@test_x1 = local_unnamed_addr global i32 undef, align 4
-@test_y1 = local_unnamed_addr global i32 undef, align 4
-@test_w = thread_local local_unnamed_addr global i32 0, align 4
-@test_v = thread_local local_unnamed_addr global i32 0, align 4
+@test.z = local_unnamed_addr global i32 undef, align 4
+@test.y = local_unnamed_addr global %Abc undef, align 4
+@test.a = local_unnamed_addr global i32 0, align 4
+@test.b = local_unnamed_addr global i32 0, align 4
+@test.c = local_unnamed_addr global i32 0, align 4
+@test.x1 = local_unnamed_addr global i32 undef, align 4
+@test.y1 = local_unnamed_addr global i32 undef, align 4
+@test.w = thread_local local_unnamed_addr global i32 0, align 4
+@test.v = thread_local local_unnamed_addr global i32 0, align 4
 
-%0 = load i32, ptr @test_y, align 4
-store i32 %0, ptr @test_z, align 4
+%0 = load i32, ptr @test.y, align 4
+store i32 %0, ptr @test.z, align 4

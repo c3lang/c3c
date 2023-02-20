@@ -17,7 +17,7 @@ fn Test creator()
 
 /* #expect: literal_load.ll
 
-define i32 @literal_load_creator() #0 {
+define i32 @literal_load.creator() #0 {
 entry:
   %literal = alloca %Test, align 4
   %literal1 = alloca %Test, align 4

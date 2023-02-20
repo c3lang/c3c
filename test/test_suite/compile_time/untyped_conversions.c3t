@@ -29,7 +29,7 @@ fn void main()
 %"int[]" = type { ptr, i64 }
 %variant = type { ptr, i64 }
 
-@"ct$test_Foo" = linkonce constant %.introspect { i8 10, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"ct$test.Foo" = linkonce constant %.introspect { i8 10, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @.str = private unnamed_addr constant [9 x i8] c"%s %s %s\00", align 1
 @"ct$int" = linkonce constant %.introspect { i8 2, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
 @"ct$a2$int" = linkonce constant %.introspect { i8 15, i64 8, i64 ptrtoint (ptr @"ct$int" to i64), i64 2, [0 x i64] zeroinitializer }, align 8
@@ -46,7 +46,7 @@ fn void main()
 @"ct$a1$a2$double" = linkonce constant %.introspect { i8 15, i64 16, i64 ptrtoint (ptr @"ct$a2$double" to i64), i64 1, [0 x i64] zeroinitializer }, align 8
 
 ; Function Attrs: nounwind
-define void @test_test(i64 %0, ptr %1, i64 %2, double %3) #0 {
+define void @test.test(i64 %0, ptr %1, i64 %2, double %3) #0 {
 entry:
   %a = alloca [2 x i32], align 4
   %b = alloca %"int[]", align 8
@@ -70,12 +70,12 @@ entry:
   %11 = insertvalue %variant %10, i64 ptrtoint (ptr @"ct$v2$int" to i64), 1
   %12 = getelementptr inbounds [3 x %variant], ptr %varargslots, i64 0, i64 2
   store %variant %11, ptr %12, align 16
-  %13 = call i64 @std_io_printfn(ptr %retparam, ptr @.str, i64 8, ptr %varargslots, i64 3)
+  %13 = call i64 @std_io.printfn(ptr %retparam, ptr @.str, i64 8, ptr %varargslots, i64 3)
   ret void
 }
 
 ; Function Attrs: nounwind
-define void @test_main() #0 {
+define void @test.main() #0 {
 entry:
   %abc = alloca [1 x %Foo], align 4
   %def = alloca %Foo, align 4
@@ -111,7 +111,7 @@ entry:
   %12 = insertvalue %variant %11, i64 ptrtoint (ptr @"ct$int" to i64), 1
   %13 = getelementptr inbounds [4 x %variant], ptr %varargslots, i64 0, i64 3
   store %variant %12, ptr %13, align 16
-  %14 = call i64 @std_io_printfn(ptr %retparam, ptr @.str.4, i64 14, ptr %varargslots, i64 4)
+  %14 = call i64 @std_io.printfn(ptr %retparam, ptr @.str.4, i64 14, ptr %varargslots, i64 4)
   %15 = getelementptr inbounds [2 x i32], ptr %literal, i64 0, i64 0
   store i32 1, ptr %15, align 4
   %16 = getelementptr inbounds [2 x i32], ptr %literal, i64 0, i64 1
@@ -123,7 +123,7 @@ entry:
   store i32 4, ptr %19, align 4
   store <2 x i32> <i32 5, i32 6>, ptr %taddr, align 8
   %20 = load double, ptr %taddr, align 8
-  call void @test_test(i64 %17, ptr %literal1, i64 2, double %20)
+  call void @test.test(i64 %17, ptr %literal1, i64 2, double %20)
   %21 = getelementptr inbounds [2 x i32], ptr %literal2, i64 0, i64 0
   store i32 2, ptr %21, align 4
   %22 = getelementptr inbounds [2 x i32], ptr %literal2, i64 0, i64 1
@@ -135,6 +135,6 @@ entry:
   store i32 7, ptr %25, align 4
   store <2 x i32> <i32 2, i32 7>, ptr %taddr4, align 8
   %26 = load double, ptr %taddr4, align 8
-  call void @test_test(i64 %23, ptr %literal3, i64 2, double %26)
+  call void @test.test(i64 %23, ptr %literal3, i64 2, double %26)
   ret void
 }

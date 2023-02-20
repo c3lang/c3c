@@ -35,12 +35,12 @@ extern fn int printf(char *fmt, ...);
 %Foo = type { %"int[]" }
 %"int[]" = type { ptr, i64 }
 
-@"ct$foo_Foo" = linkonce constant %.introspect { i8 10, i64 16, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
+@"ct$foo.Foo" = linkonce constant %.introspect { i8 10, i64 16, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
 @.__const = private unnamed_addr constant [3 x i32] [i32 1, i32 3, i32 10], align 4
 @.str = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
 
 ; Function Attrs: nounwind
-define void @foo_main() #0 {
+define void @foo.main() #0 {
 entry:
   %i = alloca [3 x i32], align 4
   %x = alloca %Foo, align 8
@@ -93,6 +93,6 @@ declare i32 @printf(ptr, ...) #0
 ; Function Attrs: nounwind
 define i32 @main(i32 %0, ptr %1) #0 {
 entry:
-  call void @foo_main()
+  call void @foo.main()
   ret i32 0
 }

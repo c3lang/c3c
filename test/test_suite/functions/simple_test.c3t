@@ -13,7 +13,7 @@ fn int foo()
 /* #expect: simple_test.ll
 
 
-define i32 @simple_test_foo() #0 {
+define i32 @simple_test.foo() #0 {
 entry:
   %pp = alloca ptr, align 8
   %w_cnt = alloca i32, align 4

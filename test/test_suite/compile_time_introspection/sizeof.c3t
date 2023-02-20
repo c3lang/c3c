@@ -48,19 +48,19 @@ struct Foo
 
 // #expect: foo.ll
 
-@foo_x = local_unnamed_addr global i64 64, align 8
-@foo_y = local_unnamed_addr global i16 64, align 2
-@foo_z = local_unnamed_addr global i32 64, align 4
-@foo_w = local_unnamed_addr global i32 64, align 4
-@foo_v = local_unnamed_addr global i32 1, align 4
-@foo_x1 = local_unnamed_addr global i32 8, align 4
-@foo_y1 = local_unnamed_addr global i32 2, align 4
-@foo_a = local_unnamed_addr global i32 60, align 4
-@foo_b = local_unnamed_addr global i32 5, align 4
-@foo_c = local_unnamed_addr global i32 5, align 4
-@foo_d = local_unnamed_addr global i32 1600, align 4
-@foo_e = local_unnamed_addr global i32 8, align 4
-@foo_a2 = local_unnamed_addr global i32 60, align 4
-@foo_a3 = local_unnamed_addr global i32 60, align 4
-@foo_a4 = local_unnamed_addr global i32 60, align 4
-@foo_a5 = local_unnamed_addr global i32 60, align 4
+@foo.x = local_unnamed_addr global i64 64, align 8
+@foo.y = local_unnamed_addr global i16 64, align 2
+@foo.z = local_unnamed_addr global i32 64, align 4
+@foo.w = local_unnamed_addr global i32 64, align 4
+@foo.v = local_unnamed_addr global i32 1, align 4
+@foo.x1 = local_unnamed_addr global i32 8, align 4
+@foo.y1 = local_unnamed_addr global i32 2, align 4
+@foo.a = local_unnamed_addr global i32 60, align 4
+@foo.b = local_unnamed_addr global i32 5, align 4
+@foo.c = local_unnamed_addr global i32 5, align 4
+@foo.d = local_unnamed_addr global i32 1600, align 4
+@foo.e = local_unnamed_addr global i32 8, align 4
+@foo.a2 = local_unnamed_addr global i32 60, align 4
+@foo.a3 = local_unnamed_addr global i32 60, align 4
+@foo.a4 = local_unnamed_addr global i32 60, align 4
+@foo.a5 = local_unnamed_addr global i32 60, align 4

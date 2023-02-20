@@ -85,7 +85,7 @@ fn void main()
 
 %Foo = type { [3 x i32] }
 
-@"ct$foo_Foo" = linkonce constant %.introspect { i8 10, i64 12, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
+@"ct$foo.Foo" = linkonce constant %.introspect { i8 10, i64 12, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
 @.str = private unnamed_addr constant [11 x i8] c"getFields\0A\00", align 1
 @.str.1 = private unnamed_addr constant [11 x i8] c"Call made\0A\00", align 1
 @.__const = private unnamed_addr constant %Foo { [3 x i32] [i32 1, i32 5, i32 7] }, align 4
@@ -102,7 +102,7 @@ fn void main()
 @.str.12 = private unnamed_addr constant [7 x i8] c"%d %d\0A\00", align 1
 @.str.13 = private unnamed_addr constant [7 x i8] c"%d %d\0A\00", align 1
 
-define void @foo_getFields(ptr noalias sret([5 x i32]) align 4 %0) #0 {
+define void @foo.getFields(ptr noalias sret([5 x i32]) align 4 %0) #0 {
 entry:
   %literal = alloca [5 x i32], align 16
   call void (ptr, ...) @printf(ptr @.str)
@@ -120,13 +120,13 @@ entry:
   ret void
 }
 
-define ptr @foo_call(ptr %0) #0 {
+define ptr @foo.call(ptr %0) #0 {
 entry:
   call void (ptr, ...) @printf(ptr @.str.1)
   ret ptr %0
 }
 
-define void @foo_main() #0 {
+define void @foo.main() #0 {
 entry:
   %x = alloca %Foo, align 4
   %a = alloca i32, align 4
@@ -197,7 +197,7 @@ entry:
   %10 = getelementptr inbounds [3 x i32], ptr %8, i64 0, i64 %sisiext4
   %11 = load i32, ptr %10, align 4
   call void (ptr, ...) @printf(ptr @.str.2, i32 %3, i32 %7, i32 %11)
-  %12 = call ptr @foo_call(ptr %x)
+  %12 = call ptr @foo.call(ptr %x)
   store ptr %12, ptr %.anon, align 8
   store i32 3, ptr %.anon5, align 4
   store i32 0, ptr %.anon6, align 4
@@ -385,7 +385,7 @@ loop.body58:                                      ; preds = %loop.cond57
   br label %loop.cond57
 
 loop.exit63:                                      ; preds = %loop.cond57
-  call void @foo_getFields(ptr sret([5 x i32]) align 4 %.anon64)
+  call void @foo.getFields(ptr sret([5 x i32]) align 4 %.anon64)
   store i64 0, ptr %.anon65, align 8
   br label %loop.cond66
 
@@ -410,7 +410,7 @@ loop.body68:                                      ; preds = %loop.cond66
   br label %loop.cond66
 
 loop.exit72:                                      ; preds = %loop.cond66
-  call void @foo_getFields(ptr sret([5 x i32]) align 4 %sretparam)
+  call void @foo.getFields(ptr sret([5 x i32]) align 4 %sretparam)
   store ptr %sretparam, ptr %.anon73, align 8
   store i64 0, ptr %.anon74, align 8
   br label %loop.cond75

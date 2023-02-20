@@ -48,7 +48,7 @@ fn void f_agg_stack(double a, long b, double c, long d, Tiny e,
 /* #expect: test.ll
 
 
-define i32 @test_f_scalar_stack_1(i32 %0, i64 %1, float %2, double %3, fp128 %4, i8 zeroext %5, i8 %6, i8 %7) #0 {
+define i32 @test.f_scalar_stack_1(i32 %0, i64 %1, float %2, double %3, fp128 %4, i8 zeroext %5, i8 %6, i8 %7) #0 {
 entry:
   %sisiext = sext i8 %6 to i32
   %uisiext = zext i8 %7 to i32
@@ -57,7 +57,7 @@ entry:
 }
 
 
-define void @test_f_scalar_stack_2(ptr noalias sret(%Large) align 4 %0, float %1, i64 %2, double %3, fp128 %4, i8 zeroext %5, i8 %6, i8 %7) #0 {
+define void @test.f_scalar_stack_2(ptr noalias sret(%Large) align 4 %0, float %1, i64 %2, double %3, fp128 %4, i8 zeroext %5, i8 %6, i8 %7) #0 {
 entry:
   %literal = alloca %Large, align 4
   %8 = getelementptr inbounds %Large, ptr %literal, i32 0, i32 0
@@ -77,13 +77,13 @@ entry:
 }
 
 
-define void @test_f_scalar_stack_3(double %0, i64 %1, double %2, i64 %3, i32 %4, i64 %5, float %6, double %7, fp128 %8) #0 {
+define void @test.f_scalar_stack_3(double %0, i64 %1, double %2, i64 %3, i32 %4, i64 %5, float %6, double %7, fp128 %8) #0 {
 entry:
   ret void
 }
 
 
-define void @test_f_agg_stack(double %0, i64 %1, double %2, i64 %3, i32 %4, [2 x i32] %5, i64 %6, ptr align 4 %7) #0 {
+define void @test.f_agg_stack(double %0, i64 %1, double %2, i64 %3, i32 %4, [2 x i32] %5, i64 %6, ptr align 4 %7) #0 {
 entry:
   %e = alloca %Tiny, align 1
   %f = alloca %Small, align 4

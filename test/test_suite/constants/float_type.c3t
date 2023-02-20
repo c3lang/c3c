@@ -6,6 +6,6 @@ uint f64 = $typeof(1.0f64).sizeof;
 
 /* #expect: test.ll
 
-@test_f0 = local_unnamed_addr global i32 4, align 4
-@test_f32 = local_unnamed_addr global i32 4, align 4
-@test_f64 = local_unnamed_addr global i32 8, align 4
+@test.f0 = local_unnamed_addr global i32 4, align 4
+@test.f32 = local_unnamed_addr global i32 4, align 4
+@test.f64 = local_unnamed_addr global i32 8, align 4

@@ -43,8 +43,8 @@ int z0 = Foob.c.offsetof;
 int z03 = Foob.a.offsetof;
 
 // #expect: foo.ll
-@foo_y = local_unnamed_addr global i16 16, align 2
-@foo_z = local_unnamed_addr global i32 116, align 4
-@foo_w = local_unnamed_addr global i32 116, align 4
-@foo_z0 = local_unnamed_addr global i32 0, align 4
-@foo_z03 = local_unnamed_addr global i32 0, align 4
+@foo.y = local_unnamed_addr global i16 16, align 2
+@foo.z = local_unnamed_addr global i32 116, align 4
+@foo.w = local_unnamed_addr global i32 116, align 4
+@foo.z0 = local_unnamed_addr global i32 0, align 4
+@foo.z03 = local_unnamed_addr global i32 0, align 4

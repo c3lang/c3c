@@ -16,7 +16,7 @@ fn void test(Rectangle r)
 
 /* #expect: foo.ll
 
-define void @foo_test(<2 x float> %0, <2 x float> %1) #0 {
+define void @foo.test(<2 x float> %0, <2 x float> %1) #0 {
 entry:
   %r = alloca %Rectangle, align 8
   %literal = alloca %Rectangle, align 4
@@ -37,6 +37,6 @@ entry:
   %lo = load <2 x float>, ptr %6, align 8
   %7 = getelementptr inbounds { <2 x float>, <2 x float> }, ptr %coerce, i32 0, i32 1
   %hi = load <2 x float>, ptr %7, align 8
-  call void @foo_test(<2 x float> %lo, <2 x float> %hi)
+  call void @foo.test(<2 x float> %lo, <2 x float> %hi)
   ret void
 }

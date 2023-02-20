@@ -16,7 +16,7 @@ fn void test()
 
 /* #expect: test.ll
 
-define void @test_test() #0 {
+define void @test.test() #0 {
 entry:
   %y = alloca %Foo, align 4
   %z = alloca %Foo, align 4

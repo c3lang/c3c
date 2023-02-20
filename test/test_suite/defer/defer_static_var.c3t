@@ -47,7 +47,7 @@ fn void main()
 @"main$y.7" = internal unnamed_addr global i32 0, align 4
 @"main$y.12" = internal unnamed_addr global i32 0, align 4
 
-define i32 @foo_foo(i32 %0) #0 {
+define i32 @foo.foo(i32 %0) #0 {
 entry:
   %gt = icmp sgt i32 %0, 0
   br i1 %gt, label %if.then, label %if.exit
@@ -69,7 +69,7 @@ if.exit:                                          ; preds = %entry
   ret i32 %0
 }
 
-define void @foo_main() #0 {
+define void @foo.main() #0 {
 entry:
   %x = alloca i32, align 4
   %i = alloca i32, align 4
@@ -77,9 +77,9 @@ entry:
   %i4 = alloca i32, align 4
   %x15 = alloca i32, align 4
   %i16 = alloca i32, align 4
-  %0 = call i32 @foo_foo(i32 1)
-  %1 = call i32 @foo_foo(i32 2)
-  %2 = call i32 @foo_foo(i32 -2)
+  %0 = call i32 @foo.foo(i32 1)
+  %1 = call i32 @foo.foo(i32 2)
+  %2 = call i32 @foo.foo(i32 -2)
   store i32 0, ptr %x, align 4
   %3 = load i32, ptr %x, align 4
   call void (ptr, ...) @printf(ptr @.str.2, i32 %3)

@@ -122,7 +122,7 @@ fn void test3()
 
 /* #expect: foo.ll
 
-define void @foo_test1() #0 {
+define void @foo.test1() #0 {
 entry:
   %xx = alloca i64, align 8
   store i64 531994, ptr %xx, align 8
@@ -333,7 +333,7 @@ entry:
 }
 
 ; Function Attrs: nounwind
-define void @foo_test2() #0 {
+define void @foo.test2() #0 {
 entry:
   %xx = alloca [3 x i8], align 1
   store [3 x i8] c"\1A\1E\00", ptr %xx, align 1
@@ -730,7 +730,7 @@ entry:
 }
 
 ; Function Attrs: nounwind
-define void @foo_test3() #0 {
+define void @foo.test3() #0 {
 entry:
   %xx = alloca [3 x i8], align 1
   store [3 x i8] c"4<\00", ptr %xx, align 1

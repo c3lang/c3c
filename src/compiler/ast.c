@@ -251,7 +251,7 @@ void decl_set_external_name(Decl *decl)
 		}
 	}
 	// Concat with the name
-	scratch_buffer_append("_");
+	scratch_buffer_append(decl->is_export ? "_" : ".");
 	scratch_buffer_append(name);
 
 	// Copy it to extname

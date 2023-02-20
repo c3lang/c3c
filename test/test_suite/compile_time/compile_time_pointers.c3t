@@ -23,13 +23,13 @@ fn void test()
 
 /* #expect: test.ll
 
-@test_ABC = local_unnamed_addr constant i64 531, align 8
-@test_BAC = local_unnamed_addr constant ptr inttoptr (i64 143 to ptr), align 8
-@test_EXX = local_unnamed_addr constant ptr inttoptr (i64 155 to ptr), align 8
-@test_KEX = local_unnamed_addr constant i64 -12, align 8
-@test_CAB = local_unnamed_addr constant ptr inttoptr (i64 143 to ptr), align 8
-@test_ZAB = local_unnamed_addr constant i64 143, align 8
-@test_BOB = local_unnamed_addr constant ptr inttoptr (i64 12 to ptr), align 8
-@test_BAB = local_unnamed_addr constant ptr inttoptr (i64 20 to ptr), align 8
-@test_AO = local_unnamed_addr constant i64 2, align 8
-@test_abc = local_unnamed_addr global i32 123, align 4
+@test.ABC = local_unnamed_addr constant i64 531, align 8
+@test.BAC = local_unnamed_addr constant ptr inttoptr (i64 143 to ptr), align 8
+@test.EXX = local_unnamed_addr constant ptr inttoptr (i64 155 to ptr), align 8
+@test.KEX = local_unnamed_addr constant i64 -12, align 8
+@test.CAB = local_unnamed_addr constant ptr inttoptr (i64 143 to ptr), align 8
+@test.ZAB = local_unnamed_addr constant i64 143, align 8
+@test.BOB = local_unnamed_addr constant ptr inttoptr (i64 12 to ptr), align 8
+@test.BAB = local_unnamed_addr constant ptr inttoptr (i64 20 to ptr), align 8
+@test.AO = local_unnamed_addr constant i64 2, align 8
+@test.abc = local_unnamed_addr global i32 123, align 4

@@ -32,15 +32,15 @@ fn void main()
 // #expect: inlineme.ll
 
 entry:
-  call void @inlineme_test1() #3
-  call void @inlineme_test2() #3
-  call void @inlineme_test3() #3
-  call void @inlineme_test1() #4
-  call void @inlineme_test2() #4
-  call void @inlineme_test3() #4
-  call void @inlineme_test1() #3
-  call void @inlineme_test2()
-  call void @inlineme_test3()
+  call void @inlineme.test1() #3
+  call void @inlineme.test2() #3
+  call void @inlineme.test3() #3
+  call void @inlineme.test1() #4
+  call void @inlineme.test2() #4
+  call void @inlineme.test3() #4
+  call void @inlineme.test1() #3
+  call void @inlineme.test2()
+  call void @inlineme.test3()
   ret void
 }
 

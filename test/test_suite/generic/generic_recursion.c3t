@@ -18,4 +18,4 @@ TreeNode abc;
 
 %TreeNode = type { ptr, ptr, %List }
 %List = type { i64, i64, ptr, ptr }
-@test_abc = local_unnamed_addr global %TreeNode zeroinitializer, align 8
+@test.abc = local_unnamed_addr global %TreeNode zeroinitializer, align 8

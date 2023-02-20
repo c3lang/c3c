@@ -27,7 +27,7 @@ fn void main()
 
 /* #expect: test.ll
 
-define void @test_main() #0 {
+define void @test.main() #0 {
 entry:
   %set = alloca i32, align 4
   %retparam = alloca i64, align 8
@@ -47,47 +47,47 @@ entry:
   %varargslots11 = alloca [1 x %variant], align 16
   %taddr12 = alloca i8, align 1
   store i32 0, ptr %set, align 4
-  %0 = call i8 @"std_collections_enumset$$test_Abc_EnumSet_has"(ptr %set, i32 1)
+  %0 = call i8 @"std_collections_enumset$$test.Abc.EnumSet_has"(ptr %set, i32 1)
   store i8 %0, ptr %taddr, align 1
   %1 = insertvalue %variant undef, ptr %taddr, 0
   %2 = insertvalue %variant %1, i64 ptrtoint (ptr @"ct$bool" to i64), 1
   %3 = getelementptr inbounds [1 x %variant], ptr %varargslots, i64 0, i64 0
   store %variant %2, ptr %3, align 16
-  %4 = call i64 @std_io_printf(ptr %retparam, ptr @.str, i64 14, ptr %varargslots, i64 1)
-  call void @"std_collections_enumset$$test_Abc_EnumSet_add"(ptr %set, i32 0)
-  %5 = call i8 @"std_collections_enumset$$test_Abc_EnumSet_has"(ptr %set, i32 1)
+  %4 = call i64 @std_io.printf(ptr %retparam, ptr @.str, i64 14, ptr %varargslots, i64 1)
+  call void @"std_collections_enumset$$test.Abc.EnumSet_add"(ptr %set, i32 0)
+  %5 = call i8 @"std_collections_enumset$$test.Abc.EnumSet_has"(ptr %set, i32 1)
   store i8 %5, ptr %taddr3, align 1
   %6 = insertvalue %variant undef, ptr %taddr3, 0
   %7 = insertvalue %variant %6, i64 ptrtoint (ptr @"ct$bool" to i64), 1
   %8 = getelementptr inbounds [1 x %variant], ptr %varargslots2, i64 0, i64 0
   store %variant %7, ptr %8, align 16
-  %9 = call i64 @std_io_printf(ptr %retparam1, ptr @.str.1, i64 14, ptr %varargslots2, i64 1)
-  call void @"std_collections_enumset$$test_Abc_EnumSet_add"(ptr %set, i32 1)
-  %10 = call i8 @"std_collections_enumset$$test_Abc_EnumSet_has"(ptr %set, i32 1)
+  %9 = call i64 @std_io.printf(ptr %retparam1, ptr @.str.1, i64 14, ptr %varargslots2, i64 1)
+  call void @"std_collections_enumset$$test.Abc.EnumSet_add"(ptr %set, i32 1)
+  %10 = call i8 @"std_collections_enumset$$test.Abc.EnumSet_has"(ptr %set, i32 1)
   store i8 %10, ptr %taddr6, align 1
   %11 = insertvalue %variant undef, ptr %taddr6, 0
   %12 = insertvalue %variant %11, i64 ptrtoint (ptr @"ct$bool" to i64), 1
   %13 = getelementptr inbounds [1 x %variant], ptr %varargslots5, i64 0, i64 0
   store %variant %12, ptr %13, align 16
-  %14 = call i64 @std_io_printf(ptr %retparam4, ptr @.str.2, i64 14, ptr %varargslots5, i64 1)
+  %14 = call i64 @std_io.printf(ptr %retparam4, ptr @.str.2, i64 14, ptr %varargslots5, i64 1)
   store i32 0, ptr %set2, align 4
   %15 = load i32, ptr %set, align 4
-  call void @"std_collections_enumset$$test_Abc_EnumSet_add_all"(ptr %set2, i32 %15)
-  %16 = call i8 @"std_collections_enumset$$test_Abc_EnumSet_has"(ptr %set2, i32 1)
+  call void @"std_collections_enumset$$test.Abc.EnumSet_add_all"(ptr %set2, i32 %15)
+  %16 = call i8 @"std_collections_enumset$$test.Abc.EnumSet_has"(ptr %set2, i32 1)
   store i8 %16, ptr %taddr9, align 1
   %17 = insertvalue %variant undef, ptr %taddr9, 0
   %18 = insertvalue %variant %17, i64 ptrtoint (ptr @"ct$bool" to i64), 1
   %19 = getelementptr inbounds [1 x %variant], ptr %varargslots8, i64 0, i64 0
   store %variant %18, ptr %19, align 16
-  %20 = call i64 @std_io_printf(ptr %retparam7, ptr @.str.3, i64 14, ptr %varargslots8, i64 1)
+  %20 = call i64 @std_io.printf(ptr %retparam7, ptr @.str.3, i64 14, ptr %varargslots8, i64 1)
   %21 = load i32, ptr %set2, align 4
-  call void @"std_collections_enumset$$test_Abc_EnumSet_remove_all"(ptr %set, i32 %21)
-  %22 = call i8 @"std_collections_enumset$$test_Abc_EnumSet_has"(ptr %set, i32 1)
+  call void @"std_collections_enumset$$test.Abc.EnumSet_remove_all"(ptr %set, i32 %21)
+  %22 = call i8 @"std_collections_enumset$$test.Abc.EnumSet_has"(ptr %set, i32 1)
   store i8 %22, ptr %taddr12, align 1
   %23 = insertvalue %variant undef, ptr %taddr12, 0
   %24 = insertvalue %variant %23, i64 ptrtoint (ptr @"ct$bool" to i64), 1
   %25 = getelementptr inbounds [1 x %variant], ptr %varargslots11, i64 0, i64 0
   store %variant %24, ptr %25, align 16
-  %26 = call i64 @std_io_printf(ptr %retparam10, ptr @.str.4, i64 14, ptr %varargslots11, i64 1)
+  %26 = call i64 @std_io.printf(ptr %retparam10, ptr @.str.4, i64 14, ptr %varargslots11, i64 1)
   ret void
 }

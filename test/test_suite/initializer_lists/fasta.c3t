@@ -111,35 +111,35 @@ fn int main(int argc, char **argv)
 %"char[]" = type { ptr, i64 }
 %"double[]" = type { ptr, i64 }
 
-@fasta_IM = local_unnamed_addr constant i32 139968, align 4
-@fasta_IA = local_unnamed_addr constant i32 3877, align 4
-@fasta_IC = local_unnamed_addr constant i32 29573, align 4
-@fasta_SEED = local_unnamed_addr constant i32 42, align 4
-@fasta_seed = local_unnamed_addr global i32 42, align 4
+@fasta.IM = local_unnamed_addr constant i32 139968, align 4
+@fasta.IA = local_unnamed_addr constant i32 3877, align 4
+@fasta.IC = local_unnamed_addr constant i32 29573, align 4
+@fasta.SEED = local_unnamed_addr constant i32 42, align 4
+@fasta.seed = local_unnamed_addr global i32 42, align 4
 @.str = private unnamed_addr constant [288 x i8] c"GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGATCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAATACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAGGCTGAGGCAGGAGAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCCAGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAA\00", align 1
-@fasta_alu = protected unnamed_addr global %"char[]" { ptr @.str, i64 287 }, align 8
+@fasta.alu = protected unnamed_addr global %"char[]" { ptr @.str, i64 287 }, align 8
 @.str.11 = private unnamed_addr constant [16 x i8] c"acgtBDHKMNRSVWY\00", align 1
-@fasta_iub = local_unnamed_addr global %"char[]" { ptr @.str.11, i64 15 }, align 8
+@fasta.iub = local_unnamed_addr global %"char[]" { ptr @.str.11, i64 15 }, align 8
 @.taddr = private global [15 x double] [double 2.700000e-01, double 1.200000e-01, double 1.200000e-01, double 2.700000e-01, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02], align 8
-@fasta_iub_p = local_unnamed_addr global %"double[]" { ptr @.taddr, i64 15 }, align 8
+@fasta.iub_p = local_unnamed_addr global %"double[]" { ptr @.taddr, i64 15 }, align 8
 @.str.12 = private unnamed_addr constant [5 x i8] c"acgt\00", align 1
-@fasta_homosapiens = local_unnamed_addr global %"char[]" { ptr @.str.12, i64 4 }, align 8
+@fasta.homosapiens = local_unnamed_addr global %"char[]" { ptr @.str.12, i64 4 }, align 8
 @.taddr.13 = private global [4 x double] [double 0x3FD3639D20BAEB5B, double 0x3FC957AE3DCD561B, double 0x3FC9493AEAB6C2BF, double 0x3FD34BEE4B030838], align 8
-@fasta_homosapiens_p = local_unnamed_addr global %"double[]" { ptr @.taddr.13, i64 4 }, align 8
-@fasta_LINELEN = local_unnamed_addr constant i32 60, align 4
+@fasta.homosapiens_p = local_unnamed_addr global %"double[]" { ptr @.taddr.13, i64 4 }, align 8
+@fasta.LINELEN = local_unnamed_addr constant i32 60, align 4
 @.str.14 = private unnamed_addr constant [23 x i8] c">ONE Homo sapiens alu\0A\00", align 1
 @.str.15 = private unnamed_addr constant [26 x i8] c">TWO IUB ambiguity codes\0A\00", align 1
 @.str.16 = private unnamed_addr constant [31 x i8] c">THREE Homo sapiens frequency\0A\00", align 1
 
 ; Function Attrs: nounwind
-define float @fasta_fasta_rand(float %0) #0 {
+define float @fasta.fasta_rand(float %0) #0 {
 entry:
-  %1 = load i32, ptr @fasta_seed, align 4
+  %1 = load i32, ptr @fasta.seed, align 4
   %mul = mul i32 %1, 3877
   %add = add i32 %mul, 29573
   %umod = urem i32 %add, 139968
-  store i32 %umod, ptr @fasta_seed, align 4
-  %2 = load i32, ptr @fasta_seed, align 4
+  store i32 %umod, ptr @fasta.seed, align 4
+  %2 = load i32, ptr @fasta.seed, align 4
   %uifp = uitofp i32 %2 to float
   %fmul = fmul float %0, %uifp
   %fdiv = fdiv float %fmul, 1.399680e+05
@@ -156,7 +156,7 @@ declare i32 @printf(ptr, ...) #0
 declare void @putchar(i32) #0
 
 ; Function Attrs: nounwind
-define void @fasta_repeat_fasta(ptr %0, i64 %1, i32 %2) #0 {
+define void @fasta.repeat_fasta(ptr %0, i64 %1, i32 %2) #0 {
 entry:
   %seq = alloca %"char[]", align 8
   %len = alloca i64, align 8
@@ -216,7 +216,7 @@ if.exit5:                                         ; preds = %if.then4, %loop.exi
 }
 
 ; Function Attrs: nounwind
-define void @fasta_random_fasta(ptr %0, i64 %1, ptr %2, i64 %3, i32 %4) #0 {
+define void @fasta.random_fasta(ptr %0, i64 %1, ptr %2, i64 %3, i32 %4) #0 {
 entry:
   %symb = alloca %"char[]", align 8
   %probability = alloca %"double[]", align 8
@@ -249,7 +249,7 @@ loop.cond:                                        ; preds = %if.exit11, %entry
   br i1 %lt, label %loop.body, label %loop.exit13
 
 loop.body:                                        ; preds = %loop.cond
-  %12 = call float @fasta_fasta_rand(float 1.000000e+00)
+  %12 = call float @fasta.fasta_rand(float 1.000000e+00)
   %fpfpext = fpext float %12 to double
   store double %fpfpext, ptr %v, align 8
   store i32 0, ptr %j, align 4
@@ -340,26 +340,26 @@ if.then:                                          ; preds = %entry
 
 if.exit:                                          ; preds = %if.then, %entry
   %4 = call i32 (ptr, ...) @printf(ptr @.str.14)
-  %lo = load ptr, ptr @fasta_alu, align 8
-  %hi = load i64, ptr getelementptr inbounds (%"char[]", ptr @fasta_alu, i32 0, i32 1), align 8
+  %lo = load ptr, ptr @fasta.alu, align 8
+  %hi = load i64, ptr getelementptr inbounds (%"char[]", ptr @fasta.alu, i32 0, i32 1), align 8
   %5 = load i32, ptr %n, align 4
   %mul = mul i32 %5, 2
-  call void @fasta_repeat_fasta(ptr %lo, i64 %hi, i32 %mul)
+  call void @fasta.repeat_fasta(ptr %lo, i64 %hi, i32 %mul)
   %6 = call i32 (ptr, ...) @printf(ptr @.str.15)
-  %lo1 = load ptr, ptr @fasta_iub, align 8
-  %hi2 = load i64, ptr getelementptr inbounds (%"char[]", ptr @fasta_iub, i32 0, i32 1), align 8
-  %lo3 = load ptr, ptr @fasta_iub_p, align 8
-  %hi4 = load i64, ptr getelementptr inbounds (%"double[]", ptr @fasta_iub_p, i32 0, i32 1), align 8
+  %lo1 = load ptr, ptr @fasta.iub, align 8
+  %hi2 = load i64, ptr getelementptr inbounds (%"char[]", ptr @fasta.iub, i32 0, i32 1), align 8
+  %lo3 = load ptr, ptr @fasta.iub_p, align 8
+  %hi4 = load i64, ptr getelementptr inbounds (%"double[]", ptr @fasta.iub_p, i32 0, i32 1), align 8
   %7 = load i32, ptr %n, align 4
   %mul5 = mul i32 %7, 3
-  call void @fasta_random_fasta(ptr %lo1, i64 %hi2, ptr %lo3, i64 %hi4, i32 %mul5)
+  call void @fasta.random_fasta(ptr %lo1, i64 %hi2, ptr %lo3, i64 %hi4, i32 %mul5)
   %8 = call i32 (ptr, ...) @printf(ptr @.str.16)
-  %lo6 = load ptr, ptr @fasta_homosapiens, align 8
-  %hi7 = load i64, ptr getelementptr inbounds (%"char[]", ptr @fasta_homosapiens, i32 0, i32 1), align 8
-  %lo8 = load ptr, ptr @fasta_homosapiens_p, align 8
-  %hi9 = load i64, ptr getelementptr inbounds (%"double[]", ptr @fasta_homosapiens_p, i32 0, i32 1), align 8
+  %lo6 = load ptr, ptr @fasta.homosapiens, align 8
+  %hi7 = load i64, ptr getelementptr inbounds (%"char[]", ptr @fasta.homosapiens, i32 0, i32 1), align 8
+  %lo8 = load ptr, ptr @fasta.homosapiens_p, align 8
+  %hi9 = load i64, ptr getelementptr inbounds (%"double[]", ptr @fasta.homosapiens_p, i32 0, i32 1), align 8
   %9 = load i32, ptr %n, align 4
   %mul10 = mul i32 %9, 5
-  call void @fasta_random_fasta(ptr %lo6, i64 %hi7, ptr %lo8, i64 %hi9, i32 %mul10)
+  call void @fasta.random_fasta(ptr %lo6, i64 %hi7, ptr %lo8, i64 %hi9, i32 %mul10)
   ret i32 0
 }

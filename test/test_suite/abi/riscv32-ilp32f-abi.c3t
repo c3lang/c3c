@@ -35,13 +35,13 @@ fn Int_double_s f_ret_int_double_s() {
 /* #expect: test.ll
 
 
-define void @test_f_fpr_tracking(double %0, double %1, double %2, double %3, i8 %4) #0 {
+define void @test.f_fpr_tracking(double %0, double %1, double %2, double %3, i8 %4) #0 {
 entry:
   ret void
 }
 
 
-define void @test_f_double_s_arg(i64 %0) #0 {
+define void @test.f_double_s_arg(i64 %0) #0 {
 entry:
   %a = alloca %Double_s, align 8
   store i64 %0, ptr %a, align 8
@@ -49,7 +49,7 @@ entry:
 }
 
 
-define i64 @test_f_ret_double_s() #0 {
+define i64 @test.f_ret_double_s() #0 {
 entry:
   %literal = alloca %Double_s, align 8
   %0 = getelementptr inbounds %Double_s, ptr %literal, i32 0, i32 0
@@ -59,13 +59,13 @@ entry:
 }
 
 
-define void @test_f_double_double_s_arg(ptr align 8 %0) #0 {
+define void @test.f_double_double_s_arg(ptr align 8 %0) #0 {
 entry:
   ret void
 }
 
 
-define void @test_f_ret_double_double_s(ptr noalias sret(%Double_double_s) align 8 %0) #0 {
+define void @test.f_ret_double_double_s(ptr noalias sret(%Double_double_s) align 8 %0) #0 {
 entry:
   %literal = alloca %Double_double_s, align 8
   %1 = getelementptr inbounds %Double_double_s, ptr %literal, i32 0, i32 0
@@ -77,13 +77,13 @@ entry:
 }
 
 
-define void @test_f_int_double_s_arg(ptr align 8 %0) #0 {
+define void @test.f_int_double_s_arg(ptr align 8 %0) #0 {
 entry:
   ret void
 }
 
 
-define void @test_f_ret_int_double_s(ptr noalias sret(%Int_double_s) align 8 %0) #0 {
+define void @test.f_ret_int_double_s(ptr noalias sret(%Int_double_s) align 8 %0) #0 {
 entry:
   %literal = alloca %Int_double_s, align 8
   %1 = getelementptr inbounds %Int_double_s, ptr %literal, i32 0, i32 0

@@ -52,14 +52,14 @@ int z0 = Foob.c.alignof;
 
 /* #expect: foo.ll
 
-@foo_x = local_unnamed_addr global i64 16, align 8
-@foo_y = local_unnamed_addr global i16 8, align 2
-@foo_z = local_unnamed_addr global i32 4, align 4
-@foo_v = local_unnamed_addr global i32 4, align 4
-@foo_x1 = local_unnamed_addr global i32 8, align 4
-@foo_x2 = local_unnamed_addr global i32 8, align 4
-@foo_x3 = local_unnamed_addr global i32 1, align 4
-@foo_x9 = local_unnamed_addr global i32 4, align 4
-@foo_x10 = local_unnamed_addr global i32 4, align 4
-@foo_x11 = local_unnamed_addr global i32 4, align 4
-@foo_z0 = local_unnamed_addr global i32 8, align 4
+@foo.x = local_unnamed_addr global i64 16, align 8
+@foo.y = local_unnamed_addr global i16 8, align 2
+@foo.z = local_unnamed_addr global i32 4, align 4
+@foo.v = local_unnamed_addr global i32 4, align 4
+@foo.x1 = local_unnamed_addr global i32 8, align 4
+@foo.x2 = local_unnamed_addr global i32 8, align 4
+@foo.x3 = local_unnamed_addr global i32 1, align 4
+@foo.x9 = local_unnamed_addr global i32 4, align 4
+@foo.x10 = local_unnamed_addr global i32 4, align 4
+@foo.x11 = local_unnamed_addr global i32 4, align 4
+@foo.z0 = local_unnamed_addr global i32 8, align 4

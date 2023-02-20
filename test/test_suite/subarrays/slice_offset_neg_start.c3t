@@ -6,7 +6,7 @@ fn void test()
 
 /* #expect: slice_offset_neg_start.ll
 
-define void @slice_offset_neg_start_test() #0 {
+define void @slice_offset_neg_start.test() #0 {
 entry:
   %x = alloca [3 x i32], align 4
   %y = alloca %"int[]", align 8

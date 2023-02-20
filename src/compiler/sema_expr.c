@@ -6693,17 +6693,17 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *func_typ
 	{
 		case CALL_ENV_CHECKS:
 			scratch_buffer_append(unit->module->name->module);
-			scratch_buffer_append("_checks");
+			scratch_buffer_append(".$checks");
 			break;
 		case CALL_ENV_GLOBAL_INIT:
 			scratch_buffer_append(unit->module->name->module);
-			scratch_buffer_append("_global");
+			scratch_buffer_append(".$global");
 			break;
 		case CALL_ENV_FUNCTION:
 			if (context->current_macro)
 			{
 				scratch_buffer_append(unit->module->name->module);
-				scratch_buffer_append("_");
+				scratch_buffer_append(".");
 				scratch_buffer_append(context->current_macro->name);
 			}
 			else
@@ -6713,15 +6713,15 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *func_typ
 			break;
 		case CALL_ENV_INITIALIZER:
 			scratch_buffer_append(unit->module->name->module);
-			scratch_buffer_append("_initializer");
+			scratch_buffer_append(".$initializer");
 			break;
 		case CALL_ENV_FINALIZER:
 			scratch_buffer_append(unit->module->name->module);
-			scratch_buffer_append("_finalizer");
+			scratch_buffer_append(".$finalizer");
 			break;
 		case CALL_ENV_ATTR:
 			scratch_buffer_append(unit->module->name->module);
-			scratch_buffer_append("_attr");
+			scratch_buffer_append(".$attr");
 			break;
 	}
 	scratch_buffer_append("$lambda");

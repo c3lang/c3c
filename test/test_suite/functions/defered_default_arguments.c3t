@@ -37,20 +37,20 @@ fn void main()
 // #expect: test3.ll
 
 entry:
-  call void @test_test(i32 1, i32 2)
-  %0 = call i32 @test2_foo()
-  call void @test_test(i32 3, i32 %0)
-  call void @test_test(i32 1, i32 32)
+  call void @test.test(i32 1, i32 2)
+  %0 = call i32 @test2.foo()
+  call void @test.test(i32 3, i32 %0)
+  call void @test.test(i32 1, i32 32)
   %1 = load i32, ptr @"main$x", align 4
   %add = add i32 %1, 1
   store i32 %add, ptr @"main$x", align 4
-  %2 = call i32 @test2_foo()
-  call void @test_test(i32 %add, i32 %2)
+  %2 = call i32 @test2.foo()
+  call void @test.test(i32 %add, i32 %2)
   %3 = load i32, ptr @"main$x.1", align 4
   %add1 = add i32 %3, 1
   store i32 %add1, ptr @"main$x.1", align 4
-  %4 = call i32 @test2_foo()
-  call void @test_test(i32 %add1, i32 %4)
+  %4 = call i32 @test2.foo()
+  call void @test.test(i32 %add1, i32 %4)
   ret void
 }
 

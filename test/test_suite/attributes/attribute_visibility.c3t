@@ -9,4 +9,4 @@ int black @Align(16) = 123;
 
 /* #expect: test2.ll
 
-@test2_black = local_unnamed_addr global i32 123, align 64
+@test2.black = local_unnamed_addr global i32 123, align 64

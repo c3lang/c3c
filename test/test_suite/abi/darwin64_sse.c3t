@@ -50,7 +50,7 @@ declare void @f38(ptr byval(%St256) align 32)
 declare void @f37(ptr byval(<8 x float>) align 32)
 
 declare void @func40(ptr byval(%Two128) align 16)
-define void @test_func41(ptr byval(%Two128) align 16 %0)
+define void @test.func41(ptr byval(%Two128) align 16 %0)
 
 declare void @func42(ptr byval(%Sa) align 16)
-define void @test_func43(ptr byval(%Sa) align 16 %0)
+define void @test.func43(ptr byval(%Sa) align 16 %0)

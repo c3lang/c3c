@@ -62,7 +62,7 @@ fn void test2()
 
 /* #expect: test.ll
 
-define void @test_test() #0 {
+define void @test.test() #0 {
 entry:
   %a = alloca [2 x double], align 16
   %b = alloca [2 x double], align 16
@@ -224,7 +224,7 @@ exit30:                                           ; preds = %match29, %next_chec
   store i8 %61, ptr %y3, align 1
   ret void
 }
-define void @test_test2() #0 {
+define void @test.test2() #0 {
 entry:
   %a = alloca [200 x double], align 16
   %b = alloca [200 x double], align 16

@@ -15,7 +15,7 @@ fn void example() {
 
 /* #expect: test.ll
 
-define void @test_example() #0 {
+define void @test.example() #0 {
 entry:
   %l = alloca %Large, align 8
   %indirectarg = alloca %Large, align 8

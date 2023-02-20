@@ -23,7 +23,7 @@ fn void test()
 
 /* #expect: struct_codegen_empty.ll
 
- define void @struct_codegen_empty_test() #0 {
+ define void @struct_codegen_empty.test() #0 {
  entry:
    %a = alloca %StructA, align 4
    %a2 = alloca %StructA, align 4

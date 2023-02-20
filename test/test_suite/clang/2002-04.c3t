@@ -68,7 +68,7 @@ fn void test2(FooSt y) {
 /* #expect: test.ll
 
 
-define i32 @test_main2() #0 {
+define i32 @test.main2() #0 {
 entry:
   %switch = alloca i32, align 4
   br label %loop.cond
@@ -110,7 +110,7 @@ loop.exit:                                        ; preds = %loop.cond
   ret i32 0
 }
 
-define double @test_test(i32 %0) #0 {
+define double @test.test(i32 %0) #0 {
 entry:
   %student_t = alloca [30 x double], align 16
   call void @llvm.memcpy.p0.p0.i32(ptr align 16 %student_t, ptr align 16 @.__const, i32 240, i1 false)
@@ -120,7 +120,7 @@ entry:
   ret double %2
 }
 
-define void @test_loop() #0 {
+define void @test.loop() #0 {
 entry:
   %result = alloca %St, align 4
   %0 = call i64 @func_returning_struct()
@@ -132,14 +132,14 @@ declare i32 @testF(ptr byval(%FooSt) align 8, float) #0
 
 declare i32 @testE(i8 zeroext, i16 signext, i8 zeroext, i32, i32, float) #0
 
-define void @test_test3(ptr %0) #0 {
+define void @test.test3(ptr %0) #0 {
 entry:
   %1 = getelementptr inbounds %FooSt, ptr %0, i32 0, i32 1
   store i16 1, ptr %1, align 2
   ret void
 }
 
-define void @test_test2(ptr byval(%FooSt) align 8 %0) #0 {
+define void @test.test2(ptr byval(%FooSt) align 8 %0) #0 {
 entry:
   %indirectarg = alloca %FooSt, align 8
   %indirectarg1 = alloca %FooSt, align 8
@@ -158,7 +158,7 @@ entry:
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %indirectarg, ptr align 4 %0, i32 20, i1 false)
   %12 = call i32 @testF(ptr byval(%FooSt) align 8 %indirectarg, float 0x3FB99999A0000000)
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %indirectarg1, ptr align 4 %0, i32 20, i1 false)
-  call void @test_test2(ptr byval(%FooSt) align 8 %indirectarg1)
-  call void @test_test3(ptr %0)
+  call void @test.test2(ptr byval(%FooSt) align 8 %indirectarg1)
+  call void @test.test3(ptr %0)
   ret void
 }

@@ -16,7 +16,7 @@ fn int f()
 
 /* #expect: test.ll
 
-define i32 @test_f() #0 {
+define i32 @test.f() #0 {
 entry:
   %0 = load ptr, ptr @cfun, align 8
   %ptroffset = getelementptr %Test, ptr %0, i64 0

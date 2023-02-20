@@ -24,7 +24,7 @@ fn void test3(long* x)
 
 // #expect: pointer_index.ll
 
-define void @pointer_index_test1(ptr %0) #0 {
+define void @pointer_index.test1(ptr %0) #0 {
 entry:
   %a = alloca i32, align 4
   %b = alloca i32, align 4
@@ -45,7 +45,7 @@ entry:
 }
 
 ; Function Attrs: nounwind
-define void @pointer_index_test2(ptr %0) #0 {
+define void @pointer_index.test2(ptr %0) #0 {
 entry:
   %a = alloca i8, align 1
   %b = alloca i8, align 1
@@ -61,7 +61,7 @@ entry:
   ret void
 }
 
-define void @pointer_index_test3(ptr %0) #0 {
+define void @pointer_index.test3(ptr %0) #0 {
 entry:
   %a = alloca i64, align 8
   %b = alloca i64, align 8

@@ -38,7 +38,7 @@ fn void main()
 
 /* #expect: vector_bit.ll
 
-define void @vector_bit_testf() #0 {
+define void @vector_bit.testf() #0 {
 entry:
   %y = alloca <4 x float>, align 16
   %w = alloca <4 x i32>, align 16
@@ -60,7 +60,7 @@ entry:
 }
 
 ; Function Attrs: nounwind
-define void @vector_bit_testi() #0 {
+define void @vector_bit.testi() #0 {
 entry:
   %y = alloca <4 x i32>, align 16
   %z = alloca <4 x i32>, align 16

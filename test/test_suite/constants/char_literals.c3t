@@ -13,12 +13,12 @@ char i = '\e';
 
 // #expect: test.ll
 
-@test_a = local_unnamed_addr global i8 32, align 1
-@test_b = local_unnamed_addr global i8 13, align 1
-@test_c = local_unnamed_addr global i8 9, align 1
-@test_d = local_unnamed_addr global i8 10, align 1
-@test_e = local_unnamed_addr global i8 0, align 1
-@test_f = local_unnamed_addr global i8 39, align 1
-@test_g = local_unnamed_addr global i8 34, align 1
-@test_h = local_unnamed_addr global i8 92, align 1
-@test_i = local_unnamed_addr global i8 27, align 1
+@test.a = local_unnamed_addr global i8 32, align 1
+@test.b = local_unnamed_addr global i8 13, align 1
+@test.c = local_unnamed_addr global i8 9, align 1
+@test.d = local_unnamed_addr global i8 10, align 1
+@test.e = local_unnamed_addr global i8 0, align 1
+@test.f = local_unnamed_addr global i8 39, align 1
+@test.g = local_unnamed_addr global i8 34, align 1
+@test.h = local_unnamed_addr global i8 92, align 1
+@test.i = local_unnamed_addr global i8 27, align 1
