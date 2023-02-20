@@ -1,5 +1,6 @@
 module std::net;
-
+import std::io;
+import std::ascii;
 
 struct InetAddress
 {
@@ -21,7 +22,7 @@ struct InetAddress
 		{
 			uint128 val : 0..127;
 		}
-
+		UShortBE[8] ipv6arr;
 		bitstruct ipv4 : char[16] @bigendian
 		{
 			char a : 96..103;
@@ -34,6 +35,92 @@ struct InetAddress
 			uint val : 96..127;
 		}
 	}
+}
+
+static initialize
+{
+	io::formatter_register_type(InetAddress);
+}
+
+fn void! InetAddress.to_format(InetAddress* addr, Formatter* formatter)
+{
+	if (addr.is_ipv6)
+	{
+		formatter.printf("%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x",
+			addr.ipv6.a, addr.ipv6.b, addr.ipv6.c, addr.ipv6.d,
+			addr.ipv6.e, addr.ipv6.f, addr.ipv6.g, addr.ipv6.h)?;
+		return;
+	}
+	formatter.printf("%d.%d.%d.%d", addr.ipv4.a, addr.ipv4.b, addr.ipv4.c, addr.ipv4.d)?;
+}
+
+fn String! InetAddress.to_string(InetAddress* addr, Allocator* allocator = mem::current_allocator())
+{
+	if (addr.is_ipv6)
+	{
+		char[8 * 5 + 1] buffer;
+		String res = (String)io::bprintf(&buffer, "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x",
+			addr.ipv6.a, addr.ipv6.b, addr.ipv6.c, addr.ipv6.d,
+			addr.ipv6.e, addr.ipv6.f, addr.ipv6.g, addr.ipv6.h)?;
+		return res.copyz(allocator);
+	}
+	char[3 * 4 + 3 + 1] buffer;
+	String res = (String)io::bprintf(&buffer, "%d.%d.%d.%d", addr.ipv4.a, addr.ipv4.b, addr.ipv4.c, addr.ipv4.d)?;
+	return res.copyz(allocator);
+}
+
+fn InetAddress! ipv6_from_str(String s)
+{
+	uint sections = 0;
+	if (s.len < 2) return NetError.INVALID_IP_STRING!;
+	foreach (c : s) if (c == ':') sections++;
+	int zero_segment_len = s[0] == ':' || s[^1] == ':' ? 9 - sections : 8 - sections;
+	if (zero_segment_len == 7 && s.len == 2) return { .is_ipv6 = true };
+	if (zero_segment_len > 7) return NetError.INVALID_IP_STRING!;
+	usz index = 0;
+	bool last_was_colon, found_zero;
+	int current = -1;
+	InetAddress addr = { .is_ipv6 = true };
+    foreach (i, c : s)
+    {
+		if (c == ':')
+        {
+            if (!last_was_colon)
+            {
+                if (current == -1)
+                {
+		            last_was_colon = true;
+                    continue;
+                }
+                if (current < 0 || current > 65535) return NetError.INVALID_IP_STRING!;
+                addr.ipv6arr[index++].val = (ushort)current;
+                current = -1;
+	            last_was_colon = true;
+                continue;
+            }
+            assert(current == -1);
+            // Check that this is the first ::
+            if (found_zero) return NetError.INVALID_IP_STRING!;
+            // Also check that the zeroed section is at least 2
+            if (zero_segment_len < 2) return NetError.INVALID_IP_STRING!;
+            // Skip (will be zero by default
+            index += zero_segment_len;
+            found_zero = true;
+            last_was_colon = false;
+            continue;
+        }
+        last_was_colon = false;
+        if (index > 7 || !c.is_xdigit()) return NetError.INVALID_IP_STRING!;
+        if (current < 0) current = 0;
+        current = current * 16 + (c <= '9' ? c - '0' : (c | 32) - 'a' + 10);
+    }
+    // Ends with ::
+    if (index == 8 && current == -1) return addr;
+
+    // Ends with number
+    if (index != 7 || current < 0 || current > 65535) return NetError.INVALID_IP_STRING!;
+    addr.ipv6arr[7].val = (ushort)current;
+    return addr;
 }
 
 fn InetAddress! ipv4_from_str(String s)
