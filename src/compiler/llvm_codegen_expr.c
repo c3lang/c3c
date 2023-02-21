@@ -5532,7 +5532,7 @@ static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type
 
 		// Defers? In that case we also use the default behaviour.
 		// We might optimize this later.
-		if (value->return_stmt.cleanup) break;
+		if (value->return_stmt.cleanup || value->return_stmt.cleanup_fail) break;
 
 		Expr *ret_expr = value->return_stmt.expr;
 

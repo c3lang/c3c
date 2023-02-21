@@ -1195,6 +1195,7 @@ typedef struct
 {
 	Expr *expr; // May be NULL
 	AstId cleanup;
+	AstId cleanup_fail;
 	BlockExit** block_exit_ref; // For block exits
 } AstReturnStmt;
 
@@ -1300,6 +1301,8 @@ typedef struct
 {
 	AstId prev_defer;
 	AstId body; // Compound statement
+	bool is_try : 1;
+	bool is_catch : 1;
 } AstDeferStmt;
 
 

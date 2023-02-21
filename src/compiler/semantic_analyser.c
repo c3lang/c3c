@@ -60,13 +60,18 @@ void context_change_scope_for_label(SemaContext *context, Decl *label)
 	}
 }
 
-AstId context_get_defers(SemaContext *context, AstId defer_top, AstId defer_bottom)
+AstId context_get_defers(SemaContext *context, AstId defer_top, AstId defer_bottom, bool is_success)
 {
 	AstId first = 0;
 	AstId *next = &first;
 	while (defer_bottom != defer_top)
 	{
 		Ast *defer = astptr(defer_top);
+		if ((is_success && defer->defer_stmt.is_catch) || (!is_success && defer->defer_stmt.is_try))
+		{
+			defer_top = defer->defer_stmt.prev_defer;
+			continue;
+		}
 		Ast *defer_body = copy_ast_defer(astptr(defer->defer_stmt.body));
 		*next = astid(defer_body);
 		next = &defer_body->next;
@@ -84,9 +89,12 @@ void context_pop_defers(SemaContext *context, AstId *next)
 		while (defer_current != defer_start)
 		{
 			Ast *defer = astptr(defer_current);
-			Ast *defer_body = copy_ast_defer(astptr(defer->defer_stmt.body));
-			*next = astid(defer_body);
-			next = &defer_body->next;
+			if (!defer->defer_stmt.is_catch)
+			{
+				Ast *defer_body = copy_ast_defer(astptr(defer->defer_stmt.body));
+				*next = astid(defer_body);
+				next = &defer_body->next;
+			}
 			defer_current = defer->defer_stmt.prev_defer;
 		}
 	}

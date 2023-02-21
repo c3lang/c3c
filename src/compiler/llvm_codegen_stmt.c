@@ -174,7 +174,7 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 	{
 		BEValue be_value;
 		llvm_emit_expr(c, &be_value, expr->inner_expr);
-		llvm_emit_statement_chain(c, ast->return_stmt.cleanup);
+		llvm_emit_statement_chain(c, ast->return_stmt.cleanup_fail);
 		llvm_emit_return_abi(c, NULL, &be_value);
 		return;
 	}
@@ -200,7 +200,6 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 
 	POP_OPT();
 
-
 	llvm_emit_statement_chain(c, ast->return_stmt.cleanup);
 
 	// Are we in an expression block?
@@ -216,6 +215,7 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 	if (error_return_block && LLVMGetFirstUse(LLVMBasicBlockAsValue(error_return_block)))
 	{
 		llvm_emit_block(c, error_return_block);
+		llvm_emit_statement_chain(c, ast->return_stmt.cleanup_fail);
 		BEValue value;
 		llvm_value_set_address_abi_aligned(&value, error_out, type_anyerr);
 		llvm_emit_return_abi(c, NULL, &value);
@@ -242,7 +242,7 @@ static inline void llvm_emit_block_exit_return(GenContext *c, Ast *ast)
 	BEValue return_value = { 0 };
 	if (ret_expr)
 	{
-		if (ast->return_stmt.cleanup && IS_OPTIONAL(ret_expr))
+		if (ast->return_stmt.cleanup_fail && IS_OPTIONAL(ret_expr))
 		{
 			assert(c->catch_block);
 			err_cleanup_block = llvm_basic_block_new(c, "opt_block_cleanup");
@@ -255,7 +255,8 @@ static inline void llvm_emit_block_exit_return(GenContext *c, Ast *ast)
 	POP_OPT();
 
 	AstId cleanup = ast->return_stmt.cleanup;
-	AstId err_cleanup = err_cleanup_block && cleanup ? astid(copy_ast_defer(astptr(cleanup))) : 0;
+	AstId cleanup_fail = ast->return_stmt.cleanup_fail;
+	AstId err_cleanup = err_cleanup_block && cleanup_fail ? astid(copy_ast_defer(astptr(cleanup_fail))) : 0;
 	llvm_emit_statement_chain(c, cleanup);
 	if (exit->block_return_out && return_value.value)
 	{

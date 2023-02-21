@@ -104,6 +104,10 @@ static void sema_trace_stmt_liveness(Ast *ast)
 		case AST_BLOCK_EXIT_STMT:
 			sema_trace_expr_liveness(ast->return_stmt.expr);
 			sema_trace_astid_liveness(ast->return_stmt.cleanup);
+			if (ast->return_stmt.cleanup != ast->return_stmt.cleanup_fail)
+			{
+				sema_trace_astid_liveness(ast->return_stmt.cleanup_fail);
+			}
 			return;
 		case AST_ASM_BLOCK_STMT:
 			if (ast->asm_block_stmt.is_string)

@@ -23,6 +23,7 @@ static inline bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *stateme
 static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement);
 static inline bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement);
 
+static inline bool sema_defer_by_result(AstId defer_top, AstId defer_bottom);
 static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *statement);
 static inline bool sema_analyse_defer_stmt_body(SemaContext *context, Ast *statement, Ast *body);
 static inline bool sema_analyse_for_cond(SemaContext *context, ExprId *cond_ref, bool *infinite);
@@ -126,7 +127,6 @@ static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement
 	return true;
 }
 
-
 /**
  * break and break LABEL;
  */
@@ -174,7 +174,7 @@ static inline bool sema_analyse_break_stmt(SemaContext *context, Ast *statement)
 	statement->contbreak_stmt.ast = astid(parent);
 
 	// Append the defers.
-	statement->contbreak_stmt.defers = context_get_defers(context, context->active_scope.defer_last, defer_begin);
+	statement->contbreak_stmt.defers = context_get_defers(context, context->active_scope.defer_last, defer_begin, true);
 	return true;
 }
 
@@ -233,7 +233,7 @@ static inline bool sema_analyse_continue_stmt(SemaContext *context, Ast *stateme
 
 	// Link the parent and add the defers.
 	statement->contbreak_stmt.ast = astid(parent);
-	statement->contbreak_stmt.defers = context_get_defers(context, context->active_scope.defer_last, defer_id);
+	statement->contbreak_stmt.defers = context_get_defers(context, context->active_scope.defer_last, defer_id, true);
 	return true;
 }
 
@@ -316,6 +316,28 @@ static inline bool assert_create_from_contract(SemaContext *context, Ast *direct
 	return true;
 }
 
+static inline bool sema_defer_by_result(AstId defer_top, AstId defer_bottom)
+{
+	AstId first = 0;
+	AstId *next = &first;
+	while (defer_bottom != defer_top)
+	{
+		Ast *defer = astptr(defer_top);
+		if (defer->defer_stmt.is_catch || defer->defer_stmt.is_try) return true;
+		defer_top = defer->defer_stmt.prev_defer;
+	}
+	return false;
+}
+
+static inline void sema_inline_return_defers(SemaContext *context, Ast *stmt, AstId defer_top, AstId defer_bottom)
+{
+	stmt->return_stmt.cleanup_fail = stmt->return_stmt.cleanup = context_get_defers(context, defer_top, defer_bottom, true);
+	if (stmt->return_stmt.expr && IS_OPTIONAL(stmt->return_stmt.expr) && sema_defer_by_result(context->active_scope.defer_last, context->block_return_defer))
+	{
+		stmt->return_stmt.cleanup_fail = context_get_defers(context, context->active_scope.defer_last, context->block_return_defer, false);
+	}
+}
+
 /**
  * Handle exit in a macro or in an expression block.
  * @param context
@@ -348,7 +370,7 @@ static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *state
 		}
 	}
 	statement->return_stmt.block_exit_ref = context->block_exit_ref;
-	statement->return_stmt.cleanup = context_get_defers(context, context->active_scope.defer_last, context->block_return_defer);
+	sema_inline_return_defers(context, statement, context->active_scope.defer_last, context->block_return_defer);
 	vec_add(context->returns, statement);
 	return true;
 }
@@ -438,12 +460,12 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 			SEMA_ERROR(statement, "Expected to return a result of type %s.", type_to_error_string(expected_rtype));
 			return false;
 		}
-		statement->return_stmt.cleanup = context_get_defers(context, context->active_scope.defer_last, 0);
+		statement->return_stmt.cleanup = context_get_defers(context, context->active_scope.defer_last, 0, true);
 		return true;
 	}
 
 	// Process any ensures.
-	AstId cleanup = context_get_defers(context, context->active_scope.defer_last, 0);
+	sema_inline_return_defers(context, statement, context->active_scope.defer_last, 0);
 	if (context->call_env.ensures)
 	{
 		AstId first = 0;
@@ -460,21 +482,25 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 			}
 			doc_directive = directive->next;
 		}
-		if (cleanup)
+		if (!first) goto SKIP_ENSURE;
+		if (statement->return_stmt.cleanup)
 		{
-			Ast *last = ast_last(astptr(cleanup));
+			// If we have the same ast on cleanup / cleanup-fail we need to separate them.
+			if (type_is_optional(expected_rtype) && statement->return_stmt.cleanup == statement->return_stmt.cleanup_fail)
+			{
+				statement->return_stmt.cleanup_fail = astid(copy_ast_defer(astptr(statement->return_stmt.cleanup)));
+			}
+			Ast *last = ast_last(astptr(statement->return_stmt.cleanup));
 			last->next = first;
 		}
 		else
 		{
-			cleanup = first;
+			statement->return_stmt.cleanup = statement->return_stmt.cleanup_fail = first;
 		}
 	}
-
-	statement->return_stmt.cleanup = cleanup;
+SKIP_ENSURE:;
 
 	assert(type_no_optional(statement->return_stmt.expr->type)->canonical == type_no_optional(expected_rtype)->canonical);
-
 	return true;
 }
 
@@ -1005,7 +1031,6 @@ bool sema_analyse_defer_stmt_body(SemaContext *context, Ast *statement, Ast *bod
 		SEMA_ERROR(body, "A defer may not have a body consisting of a raw 'defer', this looks like a mistake.");
 		return false;
 	}
-	// TODO special parsing of "catch"
 	bool success;
 	SCOPE_START
 
@@ -1033,7 +1058,6 @@ bool sema_analyse_defer_stmt_body(SemaContext *context, Ast *statement, Ast *bod
 }
 static inline bool sema_analyse_defer_stmt(SemaContext *context, Ast *statement)
 {
-	// TODO special parsing of "catch"
 	if (!sema_analyse_defer_stmt_body(context, statement, astptr(statement->defer_stmt.body))) return false;
 
 	statement->defer_stmt.prev_defer = context->active_scope.defer_last;
@@ -1766,7 +1790,7 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 	if (!statement->nextcase_stmt.expr)
 	{
 		assert(context->next_target);
-		statement->nextcase_stmt.defer_id = context_get_defers(context, context->active_scope.defer_last, parent->switch_stmt.defer);
+		statement->nextcase_stmt.defer_id = context_get_defers(context, context->active_scope.defer_last, parent->switch_stmt.defer, true);
 		statement->nextcase_stmt.case_switch_stmt = astid(context->next_target);
 		return true;
 	}
@@ -1777,7 +1801,7 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 		TypeInfo *type_info = statement->nextcase_stmt.expr->type_expr;
 		if (!sema_resolve_type_info(context, type_info)) return false;
 		Ast **cases;
-		statement->nextcase_stmt.defer_id = context_get_defers(context, context->active_scope.defer_last, parent->switch_stmt.defer);
+		statement->nextcase_stmt.defer_id = context_get_defers(context, context->active_scope.defer_last, parent->switch_stmt.defer, true);
 		if (cond->type->canonical != type_typeid)
 		{
 			SEMA_ERROR(statement, "Unexpected 'type' in as an 'nextcase' destination.");
@@ -1818,7 +1842,7 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 
 	if (!sema_analyse_expr_rhs(context, expected_type, target, false)) return false;
 
-	statement->nextcase_stmt.defer_id = context_get_defers(context, context->active_scope.defer_last, parent->switch_stmt.defer);
+	statement->nextcase_stmt.defer_id = context_get_defers(context, context->active_scope.defer_last, parent->switch_stmt.defer, true);
 
 	if (target->expr_kind == EXPR_CONST)
 	{

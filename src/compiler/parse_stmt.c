@@ -467,6 +467,24 @@ static inline Ast* parse_defer_stmt(ParseContext *c)
 {
 	advance_and_verify(c, TOKEN_DEFER);
 	Ast *defer_stmt = new_ast(AST_DEFER_STMT, c->span);
+	if (try_consume(c, TOKEN_TRY))
+	{
+		defer_stmt->defer_stmt.is_try = true;
+		if (tok_is(c, TOKEN_LPAREN))
+		{
+			SEMA_ERROR_HERE("Expected a '{' or a non-'try' statement after 'defer try'.");
+			return poisoned_ast;
+		}
+	}
+	else if (try_consume(c, TOKEN_CATCH))
+	{
+		defer_stmt->defer_stmt.is_catch = true;
+		if (tok_is(c, TOKEN_LPAREN))
+		{
+			SEMA_ERROR_HERE("Expected a '{' or a non-'catch' statement after 'defer catch'.");
+			return poisoned_ast;
+		}
+	}
 	ASSIGN_ASTID_OR_RET(defer_stmt->defer_stmt.body, parse_stmt(c), poisoned_ast);
 	return defer_stmt;
 }

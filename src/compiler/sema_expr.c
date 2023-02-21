@@ -560,9 +560,8 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 			SEMA_ERROR(expr, "Did you forget a '!' after '%s'?", decl->name);
 			return expr_poison(expr);
 		case DECL_ENUM_CONSTANT:
-			TODO
-			//expr_replace(expr, decl->enum_constant.expr);
-			return true;
+			// This can't happen, inferred identifiers are folded to consts they are never identifiers.
+			UNREACHABLE;
 		case DECL_VAR:
 			break;
 		case DECL_DISTINCT:
@@ -5887,7 +5886,7 @@ static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr)
 		SEMA_ERROR(expr, "Returns are not allowed inside of defers.");
 		return false;
 	}
-	expr->rethrow_expr.cleanup = context_get_defers(context, context->active_scope.defer_last, 0);
+	expr->rethrow_expr.cleanup = context_get_defers(context, context->active_scope.defer_last, 0, false);
 	if (inner->type == type_anyfail)
 	{
 		SEMA_ERROR(expr, "This expression will always throw, which isn't allowed.");
