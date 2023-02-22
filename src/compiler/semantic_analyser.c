@@ -324,6 +324,7 @@ RESOLVE_LAMBDA:;
 		}
 	FOREACH_END();
 	if (found_lambda) goto RESOLVE_LAMBDA;
+	halt_on_error();
 
 	if (active_target.strip_unused && !active_target.testing)
 	{

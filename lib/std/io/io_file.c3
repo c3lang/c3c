@@ -51,19 +51,21 @@ fn void! File.memopen(File* file, char[] data, String mode)
 /**
  * @require file.file != null
  **/
-fn void! File.seek(File *file, long offset, Seek seekMode = Seek.SET)
+fn usz! File.seek(File *file, isz offset, Seek seekMode = Seek.SET)
 {
     if (libc::fseek(file.file, (SeekIndex)(offset), (int)(seekMode)))
     {
         switch (libc::errno())
         {
-            case errno::EBADF: return IoError.FILE_NOT_SEEKABLE!;
-            case errno::EINVAL: return IoError.FILE_INVALID_POSITION!;
+            case errno::EBADF: return IoError.NOT_SEEKABLE!;
+            case errno::EINVAL: return IoError.INVALID_POSITION!;
             case errno::EOVERFLOW: return IoError.FILE_OVERFLOW!;
             case errno::ESPIPE: return IoError.FILE_IS_PIPE!;
             default: return IoError.UNKNOWN_ERROR!;
         }
     }
+    if (seekMode == Seek.SET) return offset;
+    return libc::ftell(file.file);
 }
 
 /**
@@ -93,7 +95,7 @@ fn void! File.close(File *file) @inline
             case errno::ENETDOWN:
             case errno::ENETUNREACH:
             case errno::ENOSPC:
-            case errno::EIO: return IoError.FILE_INCOMPLETE_WRITE!;
+            case errno::EIO: return IoError.INCOMPLETE_WRITE!;
             default: return IoError.UNKNOWN_ERROR!;
         }
     }
@@ -109,24 +111,21 @@ fn bool File.eof(File* file) @inline
 }
 
 /**
- * @require file && file.file
+ * @param [in] buffer
  */
-fn usz File.read(File* file, void* buffer, usz items, usz element_size = 1)
+fn usz File.read(File* file, char[] buffer)
 {
-    return libc::fread(buffer, element_size, items, file.file);
+    return libc::fread(buffer.ptr, 1, buffer.len, file.file);
 }
 
 /**
  * @param [&in] file
  * @param [&out] buffer
- * @param items
- * @param element_size
  * @require file.file `File must be initialized`
- * @require element_size > 1
  */
-fn usz File.write(File* file, void* buffer, usz items, usz element_size = 1)
+fn usz File.write(File* file, char[] buffer)
 {
-    return libc::fwrite(buffer, element_size, items, file.file);
+    return libc::fwrite(buffer.ptr, 1, buffer.len, file.file);
 }
 
 /**
