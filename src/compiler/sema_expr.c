@@ -1715,7 +1715,6 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 			}
 		}
 		param->var.init_expr = args[i];
-		VarDeclKind kind = param->var.kind;
 	}
 
 	Decl **body_params = call_expr->call_expr.body_arguments;

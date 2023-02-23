@@ -3,8 +3,7 @@ import std::io::os;
 // In progress.
 typedef Path = distinct String;
 
-const PREFERRED_SEPARATOR = USE_WIN32_FILESYSTEM ? '\\' : '/';
-const USE_WIN32_FILESYSTEM @private = env::OS_TYPE != OsType.WIN32;
+const PREFERRED_SEPARATOR = env::os_is_win32() ? '\\' : '/';
 
 fault PathResult
 {
@@ -23,7 +22,7 @@ fn String! tgetcwd()
 
 macro bool is_separator(char c)
 {
-	$if (USE_WIN32_FILESYSTEM):
+	$if (env::os_is_win32()):
 		return c == '/' || c == '\\';
 	$else:
 		return c == '/';
@@ -49,7 +48,7 @@ const bool[256] RESERVED_PATH_CHAR_WIN32 = {
 
 macro bool is_reserved_path_char(char c)
 {
-$if (USE_WIN32_FILESYSTEM):
+$if (env::os_is_win32()):
 	return RESERVED_PATH_CHAR_WIN32[c];
 $else:
 	return RESERVED_PATH_CHAR_POSIX[c];
@@ -60,7 +59,7 @@ fn usz! root_name_len(String path) @private
 {
 	usz len = path.len;
 	if (!len) return 0;
-	$if (USE_WIN32_FILESYSTEM):
+	$if (env::os_is_win32()):
 		switch (path[0])
 		{
 			case '\\':
@@ -157,7 +156,7 @@ fn Path Path.root_directory(Path path)
 	String path_str = (String)path;
 	usz len = path_str.len;
 	if (!len) return (Path)"";
-	$if (USE_WIN32_FILESYSTEM):
+	$if (env::os_is_win32()):
 		usz root_len = root_name_len(path_str)!!;
 		if (root_len == len || !is_separator(path_str[root_len])) return (Path)"";
 		return (Path)path_str[root_len..root_len];
