@@ -376,7 +376,7 @@ fn String ZString.as_str(ZString str)
 	return ((char*)str)[:str.len()];
 }
 
-fn usz ZString.len(ZString str)
+fn usz ZString.char_len(ZString str)
 {
 	usz len = 0;
 	char* ptr = (char*)str;
@@ -385,5 +385,13 @@ fn usz ZString.len(ZString str)
 		if (c & 0xC0 != 0x80) len++;
 	}
 	return len;
+}
+
+fn usz ZString.len(ZString str)
+{
+	usz len = 0;
+    char* ptr = (char*)str;
+    while (char c = ptr++[0]) len++;
+    return len;
 }
 

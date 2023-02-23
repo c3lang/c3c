@@ -1,11 +1,22 @@
 module std::io;
 import libc;
 
+
+$if (env::OS_TYPE == OsType.WIN32):
+extern fn void* _wfopen(Char16*, Char16*) @local;
+$endif;
+
 fn void! File.open(File* file, String filename, String mode)
 {
 	@pool()
 	{
+$if (env::OS_TYPE == OsType.WIN32):
+		file.file = (CFile)_wfopen(
+			str::utf8to16(filename, mem::temp_allocator())!!,
+			str::utf8to16(mode, mem::temp_allocator())!!);
+$else:
 		file.file = libc::fopen(filename.zstrtcopy(), mode.zstrtcopy());
+$endif;
         if (!file.file) return IoError.FILE_NOT_FOUND!;
 	};
 }
