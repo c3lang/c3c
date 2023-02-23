@@ -1,5 +1,32 @@
 module std::core::mem::allocator;
 
+struct ArenaAllocator
+{
+	inline Allocator allocator;
+	char[] data;
+	usz used;
+}
+
+/**
+ * Initialize a memory arena for use using the provided bytes.
+ *
+ * @require this != null
+ **/
+fn void ArenaAllocator.init(ArenaAllocator* this, char[] data)
+{
+	this.function = &arena_allocator_function;
+	this.data = data;
+	this.used = 0;
+}
+
+/**
+ * @require this != null
+ **/
+fn void ArenaAllocator.reset(ArenaAllocator* this)
+{
+	this.used = 0;
+}
+
 struct ArenaAllocatorHeader
 {
 	usz size;

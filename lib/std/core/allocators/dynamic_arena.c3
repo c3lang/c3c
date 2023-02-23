@@ -1,5 +1,50 @@
 module std::core::mem::allocator;
 
+struct DynamicArenaAllocator
+{
+	inline Allocator allocator;
+	Allocator* backing_allocator;
+	DynamicArenaPage* page;
+	DynamicArenaPage* unused_page;
+	usz page_size;
+}
+
+/**
+ * @require page_size >= 128
+ * @require this != null
+ **/
+fn void DynamicArenaAllocator.init(DynamicArenaAllocator* this, usz page_size, Allocator* backing_allocator = mem::current_allocator())
+{
+	this.function = &dynamic_arena_allocator_function;
+	this.page = null;
+	this.unused_page = null;
+	this.page_size = page_size;
+	this.backing_allocator = backing_allocator;
+}
+
+/**
+ * @require this != null
+ **/
+fn void DynamicArenaAllocator.destroy(DynamicArenaAllocator* this)
+{
+	DynamicArenaPage* page = this.page;
+	while (page)
+	{
+		DynamicArenaPage* next_page = page.prev_arena;
+		this.backing_allocator.free(page)!!;
+		page = next_page;
+	}
+	page = this.unused_page;
+	while (page)
+	{
+		DynamicArenaPage* next_page = page.prev_arena;
+		this.backing_allocator.free(page)!!;
+		page = next_page;
+	}
+	this.page = null;
+	this.unused_page = null;
+}
+
 struct DynamicArenaPage
 {
 	void* memory;
