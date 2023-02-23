@@ -2,23 +2,11 @@ module std::io;
 import libc;
 
 
-$if (env::OS_TYPE == OsType.WIN32):
-extern fn void* _wfopen(Char16*, Char16*) @local;
-$endif;
+
 
 fn void! File.open(File* file, String filename, String mode)
 {
-	@pool()
-	{
-$if (env::OS_TYPE == OsType.WIN32):
-		file.file = (CFile)_wfopen(
-			str::utf8to16(filename, mem::temp_allocator())!!,
-			str::utf8to16(mode, mem::temp_allocator())!!);
-$else:
-		file.file = libc::fopen(filename.zstrtcopy(), mode.zstrtcopy());
-$endif;
-        if (!file.file) return IoError.FILE_NOT_FOUND!;
-	};
+	file.file = os::native_fopen(filename, mode)?;
 }
 
 /**
@@ -26,24 +14,19 @@ $endif;
  **/
 fn void! File.reopen(File* file, String filename, String mode)
 {
-	@pool()
-	{
-		file.file = libc::freopen(filename.zstrtcopy(), mode.zstrtcopy(), file.file);
-        if (!file.file) return IoError.FILE_NOT_FOUND!;
-	};
+	file.file = os::native_freopen(file.file, filename, mode)?;
 }
 
 /**
  * @require file.file != null
  **/
-fn void! File.chmode(File* file, String filename, String mode)
+fn usz! File.seek(File file, isz offset, Seek seek_mode = Seek.SET)
 {
-	@pool()
-	{
-		file.file = libc::freopen(null, mode.zstrtcopy(), file.file);
-        if (!file.file) return IoError.FILE_NOT_FOUND!;
-	};
+	os::native_fseek(file.file, offset, seek_mode)?;
+	return os::native_ftell(file.file);
 }
+
+
 /*
 Implement later
 /**
@@ -59,25 +42,6 @@ fn void! File.memopen(File* file, char[] data, String mode)
 }
 */
 
-/**
- * @require file.file != null
- **/
-fn usz! File.seek(File *file, isz offset, Seek seekMode = Seek.SET)
-{
-    if (libc::fseek(file.file, (SeekIndex)(offset), (int)(seekMode)))
-    {
-        switch (libc::errno())
-        {
-            case errno::EBADF: return IoError.NOT_SEEKABLE!;
-            case errno::EINVAL: return IoError.INVALID_POSITION!;
-            case errno::EOVERFLOW: return IoError.FILE_OVERFLOW!;
-            case errno::ESPIPE: return IoError.FILE_IS_PIPE!;
-            default: return IoError.UNKNOWN_ERROR!;
-        }
-    }
-    if (seekMode == Seek.SET) return offset;
-    return libc::ftell(file.file);
-}
 
 /**
  * @require file && file.file != null
@@ -124,9 +88,9 @@ fn bool File.eof(File* file) @inline
 /**
  * @param [in] buffer
  */
-fn usz File.read(File* file, char[] buffer)
+fn usz! File.read(File* file, char[] buffer)
 {
-    return libc::fread(buffer.ptr, 1, buffer.len, file.file);
+	return os::native_fread(file.file, buffer);
 }
 
 /**
@@ -134,16 +98,16 @@ fn usz File.read(File* file, char[] buffer)
  * @param [&out] buffer
  * @require file.file `File must be initialized`
  */
-fn usz File.write(File* file, char[] buffer)
+fn usz! File.write(File file, char[] buffer)
 {
-    return libc::fwrite(buffer.ptr, 1, buffer.len, file.file);
+	return os::native_fwrite(file.file, buffer);
 }
 
 /**
  * @param [&in] file
  * @require file.file `File must be initialized`
  */
-fn usz! File.printn(File* file, String string)
+fn usz! File.printn(File file, String string)
 {
 	usz len = file.print(string)?;
 	if (!libc::putc('\n', file.file)) return IoError.UNKNOWN_ERROR!;
@@ -154,14 +118,14 @@ fn usz! File.printn(File* file, String string)
  * @param [&in] file
  * @require file.file `File must be initialized`
  */
-fn usz! File.print(File* file, String string)
+fn usz! File.print(File file, String string)
 {
     usz len = string.len;
-    if (len != libc::fwrite(string.ptr, 1, len, file.file)) return IoError.UNKNOWN_ERROR!;
+    if (len != file.write((char[])string)?) return IoError.UNKNOWN_ERROR!;
     return len;
 }
 
-fn usz! File.println(File* file, String string) => file.printn(string);
+fn usz! File.println(File file, String string) => file.printn(string);
 
 /**
  * @param [&in] file

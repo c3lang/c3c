@@ -128,6 +128,11 @@ const bool BENCHMARKING = $$BENCHMARKING;
 const bool TESTING = $$TESTING;
 const MemoryEnvironment MEMORY_ENV = (MemoryEnvironment)$$MEMORY_ENVIRONMENT;
 
+macro bool os_is_win32()
+{
+	return OS_TYPE == OsType.WIN32;
+}
+
 macro bool os_is_posix()
 {
 	$switch (OS_TYPE):
@@ -205,3 +210,4 @@ $if (COMPILER_LIBC_AVAILABLE && OS_TYPE != OsType.WIN32):
 	};
 $endif;
 }
+

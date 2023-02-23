@@ -190,166 +190,173 @@ entry:
   store ptr @.str, ptr %x, align 8
   %1 = call ptr @std.io.stdout()
   store ptr %1, ptr %result, align 8
-  %2 = load ptr, ptr %x, align 8
-  %3 = call i64 @std.io.File.printn(ptr %retparam, ptr %result, ptr %2, i64 3)
+  %2 = load ptr, ptr %result, align 8
+  %3 = load ptr, ptr %x, align 8
+  %4 = call i64 @std.io.File.printn(ptr %retparam, ptr %2, ptr %3, i64 3)
   store ptr @.str.10, ptr %x1, align 8
-  %4 = call ptr @std.io.stdout()
-  store ptr %4, ptr %result3, align 8
-  %5 = load ptr, ptr %x1, align 8
-  %6 = call i64 @std.io.File.printn(ptr %retparam2, ptr %result3, ptr %5, i64 3)
+  %5 = call ptr @std.io.stdout()
+  store ptr %5, ptr %result3, align 8
+  %6 = load ptr, ptr %result3, align 8
+  %7 = load ptr, ptr %x1, align 8
+  %8 = call i64 @std.io.File.printn(ptr %retparam2, ptr %6, ptr %7, i64 3)
   store ptr @.str.11, ptr %x4, align 8
-  %7 = call ptr @std.io.stdout()
-  store ptr %7, ptr %result6, align 8
-  %8 = load ptr, ptr %x4, align 8
-  %9 = call i64 @std.io.File.printn(ptr %retparam5, ptr %result6, ptr %8, i64 6)
+  %9 = call ptr @std.io.stdout()
+  store ptr %9, ptr %result6, align 8
+  %10 = load ptr, ptr %result6, align 8
+  %11 = load ptr, ptr %x4, align 8
+  %12 = call i64 @std.io.File.printn(ptr %retparam5, ptr %10, ptr %11, i64 6)
   store ptr @.str.12, ptr %x7, align 8
-  %10 = call ptr @std.io.stdout()
-  store ptr %10, ptr %result9, align 8
-  %11 = load ptr, ptr %x7, align 8
-  %12 = call i64 @std.io.File.printn(ptr %retparam8, ptr %result9, ptr %11, i64 6)
-  store ptr @.str.13, ptr %x10, align 8
   %13 = call ptr @std.io.stdout()
-  store ptr %13, ptr %result12, align 8
-  %14 = load ptr, ptr %x10, align 8
-  %15 = call i64 @std.io.File.printn(ptr %retparam11, ptr %result12, ptr %14, i64 9)
+  store ptr %13, ptr %result9, align 8
+  %14 = load ptr, ptr %result9, align 8
+  %15 = load ptr, ptr %x7, align 8
+  %16 = call i64 @std.io.File.printn(ptr %retparam8, ptr %14, ptr %15, i64 6)
+  store ptr @.str.13, ptr %x10, align 8
+  %17 = call ptr @std.io.stdout()
+  store ptr %17, ptr %result12, align 8
+  %18 = load ptr, ptr %result12, align 8
+  %19 = load ptr, ptr %x10, align 8
+  %20 = call i64 @std.io.File.printn(ptr %retparam11, ptr %18, ptr %19, i64 9)
   store ptr @.str.14, ptr %x13, align 8
-  %16 = call ptr @std.io.stdout()
-  store ptr %16, ptr %result15, align 8
-  %17 = load ptr, ptr %x13, align 8
-  %18 = call i64 @std.io.File.printn(ptr %retparam14, ptr %result15, ptr %17, i64 4)
+  %21 = call ptr @std.io.stdout()
+  store ptr %21, ptr %result15, align 8
+  %22 = load ptr, ptr %result15, align 8
+  %23 = load ptr, ptr %x13, align 8
+  %24 = call i64 @std.io.File.printn(ptr %retparam14, ptr %22, ptr %23, i64 4)
   store ptr @.str.15, ptr %x16, align 8
-  %19 = call ptr @std.io.stdout()
-  store ptr %19, ptr %result18, align 8
-  %20 = load ptr, ptr %x16, align 8
-  %21 = call i64 @std.io.File.printn(ptr %retparam17, ptr %result18, ptr %20, i64 3)
+  %25 = call ptr @std.io.stdout()
+  store ptr %25, ptr %result18, align 8
+  %26 = load ptr, ptr %result18, align 8
+  %27 = load ptr, ptr %x16, align 8
+  %28 = call i64 @std.io.File.printn(ptr %retparam17, ptr %26, ptr %27, i64 3)
   store ptr @.str.17, ptr %taddr, align 8
-  %22 = insertvalue %variant undef, ptr %taddr, 0
-  %23 = insertvalue %variant %22, i64 ptrtoint (ptr @"$ct.p$a3$char" to i64), 1
-  %24 = getelementptr inbounds [1 x %variant], ptr %varargslots, i64 0, i64 0
-  store %variant %23, ptr %24, align 16
-  %25 = call i64 @std.io.printfn(ptr %retparam19, ptr @.str.16, i64 8, ptr %varargslots, i64 1)
-  store ptr @.str.19, ptr %taddr22, align 8
-  %26 = insertvalue %variant undef, ptr %taddr22, 0
-  %27 = insertvalue %variant %26, i64 ptrtoint (ptr @"$ct.p$a1$char" to i64), 1
-  %28 = getelementptr inbounds [2 x %variant], ptr %varargslots21, i64 0, i64 0
-  store %variant %27, ptr %28, align 16
-  store ptr @.str.20, ptr %taddr23, align 8
-  %29 = insertvalue %variant undef, ptr %taddr23, 0
+  %29 = insertvalue %variant undef, ptr %taddr, 0
   %30 = insertvalue %variant %29, i64 ptrtoint (ptr @"$ct.p$a3$char" to i64), 1
-  %31 = getelementptr inbounds [2 x %variant], ptr %varargslots21, i64 0, i64 1
+  %31 = getelementptr inbounds [1 x %variant], ptr %varargslots, i64 0, i64 0
   store %variant %30, ptr %31, align 16
-  %32 = call i64 @std.io.printfn(ptr %retparam20, ptr @.str.18, i64 6, ptr %varargslots21, i64 2)
-  store ptr @.str.22, ptr %taddr26, align 8
-  %33 = insertvalue %variant undef, ptr %taddr26, 0
-  %34 = insertvalue %variant %33, i64 ptrtoint (ptr @"$ct.p$a4$char" to i64), 1
-  %35 = getelementptr inbounds [2 x %variant], ptr %varargslots25, i64 0, i64 0
+  %32 = call i64 @std.io.printfn(ptr %retparam19, ptr @.str.16, i64 8, ptr %varargslots, i64 1)
+  store ptr @.str.19, ptr %taddr22, align 8
+  %33 = insertvalue %variant undef, ptr %taddr22, 0
+  %34 = insertvalue %variant %33, i64 ptrtoint (ptr @"$ct.p$a1$char" to i64), 1
+  %35 = getelementptr inbounds [2 x %variant], ptr %varargslots21, i64 0, i64 0
   store %variant %34, ptr %35, align 16
-  store ptr @.str.23, ptr %taddr27, align 8
-  %36 = insertvalue %variant undef, ptr %taddr27, 0
-  %37 = insertvalue %variant %36, i64 ptrtoint (ptr @"$ct.p$a4$char" to i64), 1
-  %38 = getelementptr inbounds [2 x %variant], ptr %varargslots25, i64 0, i64 1
+  store ptr @.str.20, ptr %taddr23, align 8
+  %36 = insertvalue %variant undef, ptr %taddr23, 0
+  %37 = insertvalue %variant %36, i64 ptrtoint (ptr @"$ct.p$a3$char" to i64), 1
+  %38 = getelementptr inbounds [2 x %variant], ptr %varargslots21, i64 0, i64 1
   store %variant %37, ptr %38, align 16
-  %39 = call i64 @std.io.printfn(ptr %retparam24, ptr @.str.21, i64 6, ptr %varargslots25, i64 2)
-  store ptr @.str.25, ptr %taddr30, align 8
-  %40 = insertvalue %variant undef, ptr %taddr30, 0
-  %41 = insertvalue %variant %40, i64 ptrtoint (ptr @"$ct.p$a0$char" to i64), 1
-  %42 = getelementptr inbounds [2 x %variant], ptr %varargslots29, i64 0, i64 0
+  %39 = call i64 @std.io.printfn(ptr %retparam20, ptr @.str.18, i64 6, ptr %varargslots21, i64 2)
+  store ptr @.str.22, ptr %taddr26, align 8
+  %40 = insertvalue %variant undef, ptr %taddr26, 0
+  %41 = insertvalue %variant %40, i64 ptrtoint (ptr @"$ct.p$a4$char" to i64), 1
+  %42 = getelementptr inbounds [2 x %variant], ptr %varargslots25, i64 0, i64 0
   store %variant %41, ptr %42, align 16
-  store ptr @.str.26, ptr %taddr31, align 8
-  %43 = insertvalue %variant undef, ptr %taddr31, 0
-  %44 = insertvalue %variant %43, i64 ptrtoint (ptr @"$ct.p$a5$char" to i64), 1
-  %45 = getelementptr inbounds [2 x %variant], ptr %varargslots29, i64 0, i64 1
+  store ptr @.str.23, ptr %taddr27, align 8
+  %43 = insertvalue %variant undef, ptr %taddr27, 0
+  %44 = insertvalue %variant %43, i64 ptrtoint (ptr @"$ct.p$a4$char" to i64), 1
+  %45 = getelementptr inbounds [2 x %variant], ptr %varargslots25, i64 0, i64 1
   store %variant %44, ptr %45, align 16
-  %46 = call i64 @std.io.printfn(ptr %retparam28, ptr @.str.24, i64 6, ptr %varargslots29, i64 2)
-  store ptr @.str.28, ptr %taddr34, align 8
-  %47 = insertvalue %variant undef, ptr %taddr34, 0
-  %48 = insertvalue %variant %47, i64 ptrtoint (ptr @"$ct.p$a1$char" to i64), 1
-  %49 = getelementptr inbounds [2 x %variant], ptr %varargslots33, i64 0, i64 0
+  %46 = call i64 @std.io.printfn(ptr %retparam24, ptr @.str.21, i64 6, ptr %varargslots25, i64 2)
+  store ptr @.str.25, ptr %taddr30, align 8
+  %47 = insertvalue %variant undef, ptr %taddr30, 0
+  %48 = insertvalue %variant %47, i64 ptrtoint (ptr @"$ct.p$a0$char" to i64), 1
+  %49 = getelementptr inbounds [2 x %variant], ptr %varargslots29, i64 0, i64 0
   store %variant %48, ptr %49, align 16
-  store ptr @.str.29, ptr %taddr35, align 8
-  %50 = insertvalue %variant undef, ptr %taddr35, 0
-  %51 = insertvalue %variant %50, i64 ptrtoint (ptr @"$ct.p$a6$char" to i64), 1
-  %52 = getelementptr inbounds [2 x %variant], ptr %varargslots33, i64 0, i64 1
+  store ptr @.str.26, ptr %taddr31, align 8
+  %50 = insertvalue %variant undef, ptr %taddr31, 0
+  %51 = insertvalue %variant %50, i64 ptrtoint (ptr @"$ct.p$a5$char" to i64), 1
+  %52 = getelementptr inbounds [2 x %variant], ptr %varargslots29, i64 0, i64 1
   store %variant %51, ptr %52, align 16
-  %53 = call i64 @std.io.printfn(ptr %retparam32, ptr @.str.27, i64 6, ptr %varargslots33, i64 2)
-  store ptr @.str.31, ptr %taddr38, align 8
-  %54 = insertvalue %variant undef, ptr %taddr38, 0
-  %55 = insertvalue %variant %54, i64 ptrtoint (ptr @"$ct.p$a3$char" to i64), 1
-  %56 = getelementptr inbounds [1 x %variant], ptr %varargslots37, i64 0, i64 0
+  %53 = call i64 @std.io.printfn(ptr %retparam28, ptr @.str.24, i64 6, ptr %varargslots29, i64 2)
+  store ptr @.str.28, ptr %taddr34, align 8
+  %54 = insertvalue %variant undef, ptr %taddr34, 0
+  %55 = insertvalue %variant %54, i64 ptrtoint (ptr @"$ct.p$a1$char" to i64), 1
+  %56 = getelementptr inbounds [2 x %variant], ptr %varargslots33, i64 0, i64 0
   store %variant %55, ptr %56, align 16
-  %57 = call i64 @std.io.printfn(ptr %retparam36, ptr @.str.30, i64 8, ptr %varargslots37, i64 1)
-  store ptr @.str.33, ptr %taddr41, align 8
-  %58 = insertvalue %variant undef, ptr %taddr41, 0
-  %59 = insertvalue %variant %58, i64 ptrtoint (ptr @"$ct.p$a1$char" to i64), 1
-  %60 = getelementptr inbounds [2 x %variant], ptr %varargslots40, i64 0, i64 0
-  store %variant %59, ptr %60, align 16
-  store ptr @.str.34, ptr %taddr42, align 8
-  %61 = insertvalue %variant undef, ptr %taddr42, 0
-  %62 = insertvalue %variant %61, i64 ptrtoint (ptr @"$ct.p$a4$char" to i64), 1
-  %63 = getelementptr inbounds [2 x %variant], ptr %varargslots40, i64 0, i64 1
+  store ptr @.str.29, ptr %taddr35, align 8
+  %57 = insertvalue %variant undef, ptr %taddr35, 0
+  %58 = insertvalue %variant %57, i64 ptrtoint (ptr @"$ct.p$a6$char" to i64), 1
+  %59 = getelementptr inbounds [2 x %variant], ptr %varargslots33, i64 0, i64 1
+  store %variant %58, ptr %59, align 16
+  %60 = call i64 @std.io.printfn(ptr %retparam32, ptr @.str.27, i64 6, ptr %varargslots33, i64 2)
+  store ptr @.str.31, ptr %taddr38, align 8
+  %61 = insertvalue %variant undef, ptr %taddr38, 0
+  %62 = insertvalue %variant %61, i64 ptrtoint (ptr @"$ct.p$a3$char" to i64), 1
+  %63 = getelementptr inbounds [1 x %variant], ptr %varargslots37, i64 0, i64 0
   store %variant %62, ptr %63, align 16
-  %64 = call i64 @std.io.printfn(ptr %retparam39, ptr @.str.32, i64 6, ptr %varargslots40, i64 2)
-  store ptr @.str.36, ptr %taddr45, align 8
-  %65 = insertvalue %variant undef, ptr %taddr45, 0
+  %64 = call i64 @std.io.printfn(ptr %retparam36, ptr @.str.30, i64 8, ptr %varargslots37, i64 1)
+  store ptr @.str.33, ptr %taddr41, align 8
+  %65 = insertvalue %variant undef, ptr %taddr41, 0
   %66 = insertvalue %variant %65, i64 ptrtoint (ptr @"$ct.p$a1$char" to i64), 1
-  %67 = getelementptr inbounds [2 x %variant], ptr %varargslots44, i64 0, i64 0
+  %67 = getelementptr inbounds [2 x %variant], ptr %varargslots40, i64 0, i64 0
   store %variant %66, ptr %67, align 16
-  store ptr @.str.37, ptr %taddr46, align 8
-  %68 = insertvalue %variant undef, ptr %taddr46, 0
-  %69 = insertvalue %variant %68, i64 ptrtoint (ptr @"$ct.p$a5$char" to i64), 1
-  %70 = getelementptr inbounds [2 x %variant], ptr %varargslots44, i64 0, i64 1
+  store ptr @.str.34, ptr %taddr42, align 8
+  %68 = insertvalue %variant undef, ptr %taddr42, 0
+  %69 = insertvalue %variant %68, i64 ptrtoint (ptr @"$ct.p$a4$char" to i64), 1
+  %70 = getelementptr inbounds [2 x %variant], ptr %varargslots40, i64 0, i64 1
   store %variant %69, ptr %70, align 16
-  %71 = call i64 @std.io.printfn(ptr %retparam43, ptr @.str.35, i64 6, ptr %varargslots44, i64 2)
-  store ptr @.str.39, ptr %taddr49, align 8
-  %72 = insertvalue %variant undef, ptr %taddr49, 0
-  %73 = insertvalue %variant %72, i64 ptrtoint (ptr @"$ct.p$a0$char" to i64), 1
-  %74 = getelementptr inbounds [2 x %variant], ptr %varargslots48, i64 0, i64 0
+  %71 = call i64 @std.io.printfn(ptr %retparam39, ptr @.str.32, i64 6, ptr %varargslots40, i64 2)
+  store ptr @.str.36, ptr %taddr45, align 8
+  %72 = insertvalue %variant undef, ptr %taddr45, 0
+  %73 = insertvalue %variant %72, i64 ptrtoint (ptr @"$ct.p$a1$char" to i64), 1
+  %74 = getelementptr inbounds [2 x %variant], ptr %varargslots44, i64 0, i64 0
   store %variant %73, ptr %74, align 16
-  store ptr @.str.40, ptr %taddr50, align 8
-  %75 = insertvalue %variant undef, ptr %taddr50, 0
+  store ptr @.str.37, ptr %taddr46, align 8
+  %75 = insertvalue %variant undef, ptr %taddr46, 0
   %76 = insertvalue %variant %75, i64 ptrtoint (ptr @"$ct.p$a5$char" to i64), 1
-  %77 = getelementptr inbounds [2 x %variant], ptr %varargslots48, i64 0, i64 1
+  %77 = getelementptr inbounds [2 x %variant], ptr %varargslots44, i64 0, i64 1
   store %variant %76, ptr %77, align 16
-  %78 = call i64 @std.io.printfn(ptr %retparam47, ptr @.str.38, i64 6, ptr %varargslots48, i64 2)
-  store ptr @.str.42, ptr %taddr53, align 8
-  %79 = insertvalue %variant undef, ptr %taddr53, 0
-  %80 = insertvalue %variant %79, i64 ptrtoint (ptr @"$ct.p$a3$char" to i64), 1
-  %81 = getelementptr inbounds [2 x %variant], ptr %varargslots52, i64 0, i64 0
+  %78 = call i64 @std.io.printfn(ptr %retparam43, ptr @.str.35, i64 6, ptr %varargslots44, i64 2)
+  store ptr @.str.39, ptr %taddr49, align 8
+  %79 = insertvalue %variant undef, ptr %taddr49, 0
+  %80 = insertvalue %variant %79, i64 ptrtoint (ptr @"$ct.p$a0$char" to i64), 1
+  %81 = getelementptr inbounds [2 x %variant], ptr %varargslots48, i64 0, i64 0
   store %variant %80, ptr %81, align 16
-  store ptr @.str.43, ptr %taddr54, align 8
-  %82 = insertvalue %variant undef, ptr %taddr54, 0
-  %83 = insertvalue %variant %82, i64 ptrtoint (ptr @"$ct.p$a3$char" to i64), 1
-  %84 = getelementptr inbounds [2 x %variant], ptr %varargslots52, i64 0, i64 1
+  store ptr @.str.40, ptr %taddr50, align 8
+  %82 = insertvalue %variant undef, ptr %taddr50, 0
+  %83 = insertvalue %variant %82, i64 ptrtoint (ptr @"$ct.p$a5$char" to i64), 1
+  %84 = getelementptr inbounds [2 x %variant], ptr %varargslots48, i64 0, i64 1
   store %variant %83, ptr %84, align 16
-  %85 = call i64 @std.io.printfn(ptr %retparam51, ptr @.str.41, i64 6, ptr %varargslots52, i64 2)
-  store ptr @.str.45, ptr %taddr57, align 8
-  %86 = insertvalue %variant undef, ptr %taddr57, 0
-  %87 = insertvalue %variant %86, i64 ptrtoint (ptr @"$ct.p$a4$char" to i64), 1
-  %88 = getelementptr inbounds [1 x %variant], ptr %varargslots56, i64 0, i64 0
+  %85 = call i64 @std.io.printfn(ptr %retparam47, ptr @.str.38, i64 6, ptr %varargslots48, i64 2)
+  store ptr @.str.42, ptr %taddr53, align 8
+  %86 = insertvalue %variant undef, ptr %taddr53, 0
+  %87 = insertvalue %variant %86, i64 ptrtoint (ptr @"$ct.p$a3$char" to i64), 1
+  %88 = getelementptr inbounds [2 x %variant], ptr %varargslots52, i64 0, i64 0
   store %variant %87, ptr %88, align 16
-  %89 = call i64 @std.io.printfn(ptr %retparam55, ptr @.str.44, i64 8, ptr %varargslots56, i64 1)
-  store ptr @.str.47, ptr %taddr60, align 8
-  %90 = insertvalue %variant undef, ptr %taddr60, 0
-  %91 = insertvalue %variant %90, i64 ptrtoint (ptr @"$ct.p$a1$char" to i64), 1
-  %92 = getelementptr inbounds [2 x %variant], ptr %varargslots59, i64 0, i64 0
-  store %variant %91, ptr %92, align 16
-  store ptr @.str.48, ptr %taddr61, align 8
-  %93 = insertvalue %variant undef, ptr %taddr61, 0
-  %94 = insertvalue %variant %93, i64 ptrtoint (ptr @"$ct.p$a3$char" to i64), 1
-  %95 = getelementptr inbounds [2 x %variant], ptr %varargslots59, i64 0, i64 1
+  store ptr @.str.43, ptr %taddr54, align 8
+  %89 = insertvalue %variant undef, ptr %taddr54, 0
+  %90 = insertvalue %variant %89, i64 ptrtoint (ptr @"$ct.p$a3$char" to i64), 1
+  %91 = getelementptr inbounds [2 x %variant], ptr %varargslots52, i64 0, i64 1
+  store %variant %90, ptr %91, align 16
+  %92 = call i64 @std.io.printfn(ptr %retparam51, ptr @.str.41, i64 6, ptr %varargslots52, i64 2)
+  store ptr @.str.45, ptr %taddr57, align 8
+  %93 = insertvalue %variant undef, ptr %taddr57, 0
+  %94 = insertvalue %variant %93, i64 ptrtoint (ptr @"$ct.p$a4$char" to i64), 1
+  %95 = getelementptr inbounds [1 x %variant], ptr %varargslots56, i64 0, i64 0
   store %variant %94, ptr %95, align 16
-  %96 = call i64 @std.io.printfn(ptr %retparam58, ptr @.str.46, i64 6, ptr %varargslots59, i64 2)
-  store ptr @.str.50, ptr %taddr64, align 8
-  %97 = insertvalue %variant undef, ptr %taddr64, 0
+  %96 = call i64 @std.io.printfn(ptr %retparam55, ptr @.str.44, i64 8, ptr %varargslots56, i64 1)
+  store ptr @.str.47, ptr %taddr60, align 8
+  %97 = insertvalue %variant undef, ptr %taddr60, 0
   %98 = insertvalue %variant %97, i64 ptrtoint (ptr @"$ct.p$a1$char" to i64), 1
-  %99 = getelementptr inbounds [2 x %variant], ptr %varargslots63, i64 0, i64 0
+  %99 = getelementptr inbounds [2 x %variant], ptr %varargslots59, i64 0, i64 0
   store %variant %98, ptr %99, align 16
-  store ptr @.str.51, ptr %taddr65, align 8
-  %100 = insertvalue %variant undef, ptr %taddr65, 0
-  %101 = insertvalue %variant %100, i64 ptrtoint (ptr @"$ct.p$a5$char" to i64), 1
-  %102 = getelementptr inbounds [2 x %variant], ptr %varargslots63, i64 0, i64 1
+  store ptr @.str.48, ptr %taddr61, align 8
+  %100 = insertvalue %variant undef, ptr %taddr61, 0
+  %101 = insertvalue %variant %100, i64 ptrtoint (ptr @"$ct.p$a3$char" to i64), 1
+  %102 = getelementptr inbounds [2 x %variant], ptr %varargslots59, i64 0, i64 1
   store %variant %101, ptr %102, align 16
-  %103 = call i64 @std.io.printfn(ptr %retparam62, ptr @.str.49, i64 6, ptr %varargslots63, i64 2)
+  %103 = call i64 @std.io.printfn(ptr %retparam58, ptr @.str.46, i64 6, ptr %varargslots59, i64 2)
+  store ptr @.str.50, ptr %taddr64, align 8
+  %104 = insertvalue %variant undef, ptr %taddr64, 0
+  %105 = insertvalue %variant %104, i64 ptrtoint (ptr @"$ct.p$a1$char" to i64), 1
+  %106 = getelementptr inbounds [2 x %variant], ptr %varargslots63, i64 0, i64 0
+  store %variant %105, ptr %106, align 16
+  store ptr @.str.51, ptr %taddr65, align 8
+  %107 = insertvalue %variant undef, ptr %taddr65, 0
+  %108 = insertvalue %variant %107, i64 ptrtoint (ptr @"$ct.p$a5$char" to i64), 1
+  %109 = getelementptr inbounds [2 x %variant], ptr %varargslots63, i64 0, i64 1
+  store %variant %108, ptr %109, align 16
+  %110 = call i64 @std.io.printfn(ptr %retparam62, ptr @.str.49, i64 6, ptr %varargslots63, i64 2)
   ret void
 }
 

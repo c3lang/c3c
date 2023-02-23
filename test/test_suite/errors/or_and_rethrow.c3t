@@ -89,16 +89,18 @@ if.then:                                          ; preds = %or.phi
   store ptr @.str.2, ptr %x, align 8
   %6 = call ptr @std.io.stdout()
   store ptr %6, ptr %result, align 8
-  %7 = load ptr, ptr %x, align 8
-  %8 = call i64 @std.io.File.printn(ptr %retparam1, ptr %result, ptr %7, i64 3)
+  %7 = load ptr, ptr %result, align 8
+  %8 = load ptr, ptr %x, align 8
+  %9 = call i64 @std.io.File.printn(ptr %retparam1, ptr %7, ptr %8, i64 3)
   br label %if.exit
 
 if.exit:                                          ; preds = %if.then
   store ptr @.str.3, ptr %x2, align 8
-  %9 = call ptr @std.io.stdout()
-  store ptr %9, ptr %result4, align 8
-  %10 = load ptr, ptr %x2, align 8
-  %11 = call i64 @std.io.File.printn(ptr %retparam3, ptr %result4, ptr %10, i64 9)
+  %10 = call ptr @std.io.stdout()
+  store ptr %10, ptr %result4, align 8
+  %11 = load ptr, ptr %result4, align 8
+  %12 = load ptr, ptr %x2, align 8
+  %13 = call i64 @std.io.File.printn(ptr %retparam3, ptr %11, ptr %12, i64 9)
   store i64 ptrtoint (ptr @"foo.Foo$ABC" to i64), ptr %error_var5, align 8
   br label %opt_block_cleanup7
 
@@ -107,15 +109,16 @@ opt_block_cleanup7:                               ; preds = %if.exit
   br label %guard_block8
 
 guard_block8:                                     ; preds = %opt_block_cleanup7
-  %12 = load i64, ptr %error_var5, align 8
-  ret i64 %12
+  %14 = load i64, ptr %error_var5, align 8
+  ret i64 %14
 
 if.exit13:                                        ; No predecessors!
   store ptr @.str.5, ptr %x14, align 8
-  %13 = call ptr @std.io.stdout()
-  store ptr %13, ptr %result16, align 8
-  %14 = load ptr, ptr %x14, align 8
-  %15 = call i64 @std.io.File.printn(ptr %retparam15, ptr %result16, ptr %14, i64 7)
+  %15 = call ptr @std.io.stdout()
+  store ptr %15, ptr %result16, align 8
+  %16 = load ptr, ptr %result16, align 8
+  %17 = load ptr, ptr %x14, align 8
+  %18 = call i64 @std.io.File.printn(ptr %retparam15, ptr %16, ptr %17, i64 7)
   ret i64 0
 }
 
@@ -164,8 +167,9 @@ if.exit:                                          ; preds = %and.phi
   store ptr @.str.7, ptr %x, align 8
   %6 = call ptr @std.io.stdout()
   store ptr %6, ptr %result, align 8
-  %7 = load ptr, ptr %x, align 8
-  %8 = call i64 @std.io.File.printn(ptr %retparam1, ptr %result, ptr %7, i64 9)
+  %7 = load ptr, ptr %result, align 8
+  %8 = load ptr, ptr %x, align 8
+  %9 = call i64 @std.io.File.printn(ptr %retparam1, ptr %7, ptr %8, i64 9)
   store i64 ptrtoint (ptr @"foo.Foo$ABC" to i64), ptr %error_var2, align 8
   br label %opt_block_cleanup4
 
@@ -174,15 +178,16 @@ opt_block_cleanup4:                               ; preds = %if.exit
   br label %guard_block5
 
 guard_block5:                                     ; preds = %opt_block_cleanup4
-  %9 = load i64, ptr %error_var2, align 8
-  ret i64 %9
+  %10 = load i64, ptr %error_var2, align 8
+  ret i64 %10
 
 if.exit6:                                         ; No predecessors!
   store ptr @.str.8, ptr %x7, align 8
-  %10 = call ptr @std.io.stdout()
-  store ptr %10, ptr %result9, align 8
-  %11 = load ptr, ptr %x7, align 8
-  %12 = call i64 @std.io.File.printn(ptr %retparam8, ptr %result9, ptr %11, i64 7)
+  %11 = call ptr @std.io.stdout()
+  store ptr %11, ptr %result9, align 8
+  %12 = load ptr, ptr %result9, align 8
+  %13 = load ptr, ptr %x7, align 8
+  %14 = call i64 @std.io.File.printn(ptr %retparam8, ptr %12, ptr %13, i64 7)
   ret i64 0
 }
 

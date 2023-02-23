@@ -425,6 +425,7 @@ const Errno ECONNRESET = 54;    // Connection reset by peer Macos
 const Errno ENETDOWN = 50;      // Network is down MacOS
 const Errno ENETUNREACH = 51;   // Network is unreachable MacOS
 const Errno ENETRESET = 52;     // Network dropped connection because of reset MacOS
+const Errno EOPNOTSUPP = 45;    // Operation not supported on transport endpoint
 
 $elif (env::OS_TYPE == OsType.WIN32):
 const Errno EDEADLK = 36;       // Resource deadlock would occur Win32
@@ -435,6 +436,7 @@ const Errno ENETDOWN = 116;     // Network is down
 const Errno ECONNRESET = 108;   // Connection reset by peer
 const Errno ENETUNREACH = 118;  // Network is unreachable
 const Errno ENETRESET = 117;    // Network dropped connection because of reset
+const Errno EOPNOTSUPP = 130;   // Operation not supported on transport endpoint
 
 $else:
 const Errno EDEADLK = 35;       // Resource deadlock would occur Linux (others?)
@@ -445,8 +447,10 @@ const Errno ENETDOWN = 100;     // Network is down
 const Errno ECONNRESET = 104;   // Connection reset by peer
 const Errno ENETUNREACH = 101;  // Network is unreachable
 const Errno ENETRESET = 102;    // Network dropped connection because of reset
+const Errno EOPNOTSUPP = 95;    // Operation not supported on transport endpoint
 
 $endif;
+
 
 
 /*
@@ -506,7 +510,6 @@ const Errno EPROTOTYPE = 91;  /* Protocol wrong type for socket */
 const Errno ENOPROTOOPT = 92;  /* Protocol not available */
 const Errno EPROTONOSUPPORT = 93;  /* Protocol not supported */
 const Errno ESOCKTNOSUPPORT = 94;  /* Socket type not supported */
-const Errno EOPNOTSUPP = 95;  /* Operation not supported on transport endpoint */
 const Errno EPFNOSUPPORT = 96;  /* Protocol family not supported */
 const Errno EAFNOSUPPORT = 97;  /* Address family not supported by protocol */
 const Errno EADDRINUSE = 98;  /* Address already in use */

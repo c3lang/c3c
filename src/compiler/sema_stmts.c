@@ -1881,27 +1881,27 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 
 static inline bool sema_analyse_then_overwrite(SemaContext *context, Ast *statement, AstId replacement)
 {
-	statement->ast_kind = AST_NOP_STMT;
 	if (!replacement)
 	{
+		statement->ast_kind = AST_NOP_STMT;
 		return true;
 	}
-	AstId current = replacement;
 	Ast *last;
+	AstId next = statement->next;
+	*statement = *astptr(replacement);
+	AstId current = astid(statement);
 	while (1)
 	{
 		Ast *curr_ast = astptr(current);
 		if (!sema_analyse_statement(context, curr_ast)) return false;
-		current = curr_ast->next;
-		if (!current)
+		if (!curr_ast->next)
 		{
 			last = curr_ast;
 			break;
 		}
+		current = curr_ast->next;
 	}
-	// NOP and insert after.
-	last->next = statement->next;
-	statement->next = replacement;
+	last->next = next;
 	return true;
 }
 

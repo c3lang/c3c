@@ -32,12 +32,14 @@ if.then:                                          ; preds = %entry
   store ptr @.str, ptr %x, align 8
   %1 = call ptr @std.io.stdout()
   store ptr %1, ptr %result, align 8
-  %2 = load ptr, ptr %x, align 8
-  %3 = call i64 @std.io.File.print(ptr %retparam, ptr %result, ptr %2, i64 1)
+  %2 = load ptr, ptr %result, align 8
+  %3 = load ptr, ptr %x, align 8
+  %4 = call i64 @std.io.File.print(ptr %retparam, ptr %2, ptr %3, i64 1)
   store ptr @.str.1, ptr %x1, align 8
-  %4 = call ptr @std.io.stdout()
-  store ptr %4, ptr %result3, align 8
-  %5 = call i64 @std.io.File.printn(ptr %retparam2, ptr %result3, ptr null, i64 0)
+  %5 = call ptr @std.io.stdout()
+  store ptr %5, ptr %result3, align 8
+  %6 = load ptr, ptr %result3, align 8
+  %7 = call i64 @std.io.File.printn(ptr %retparam2, ptr %6, ptr null, i64 0)
   ret void
 
 if.exit:                                          ; preds = %entry
@@ -46,41 +48,48 @@ if.exit:                                          ; preds = %entry
 
 if.then5:                                         ; preds = %if.exit
   store ptr @.str.2, ptr %x6, align 8
-  %6 = call ptr @std.io.stdout()
-  store ptr %6, ptr %result8, align 8
-  %7 = load ptr, ptr %x6, align 8
-  %8 = call i64 @std.io.File.print(ptr %retparam7, ptr %result8, ptr %7, i64 1)
+  %8 = call ptr @std.io.stdout()
+  store ptr %8, ptr %result8, align 8
+  %9 = load ptr, ptr %result8, align 8
+  %10 = load ptr, ptr %x6, align 8
+  %11 = call i64 @std.io.File.print(ptr %retparam7, ptr %9, ptr %10, i64 1)
   store ptr @.str.3, ptr %x9, align 8
-  %9 = call ptr @std.io.stdout()
-  store ptr %9, ptr %result11, align 8
-  %10 = load ptr, ptr %x9, align 8
-  %11 = call i64 @std.io.File.print(ptr %retparam10, ptr %result11, ptr %10, i64 1)
-  store ptr @.str.4, ptr %x12, align 8
   %12 = call ptr @std.io.stdout()
-  store ptr %12, ptr %result14, align 8
-  %13 = call i64 @std.io.File.printn(ptr %retparam13, ptr %result14, ptr null, i64 0)
+  store ptr %12, ptr %result11, align 8
+  %13 = load ptr, ptr %result11, align 8
+  %14 = load ptr, ptr %x9, align 8
+  %15 = call i64 @std.io.File.print(ptr %retparam10, ptr %13, ptr %14, i64 1)
+  store ptr @.str.4, ptr %x12, align 8
+  %16 = call ptr @std.io.stdout()
+  store ptr %16, ptr %result14, align 8
+  %17 = load ptr, ptr %result14, align 8
+  %18 = call i64 @std.io.File.printn(ptr %retparam13, ptr %17, ptr null, i64 0)
   ret void
 
 if.exit15:                                        ; preds = %if.exit
   store ptr @.str.5, ptr %x16, align 8
-  %14 = call ptr @std.io.stdout()
-  store ptr %14, ptr %result18, align 8
-  %15 = load ptr, ptr %x16, align 8
-  %16 = call i64 @std.io.File.print(ptr %retparam17, ptr %result18, ptr %15, i64 1)
+  %19 = call ptr @std.io.stdout()
+  store ptr %19, ptr %result18, align 8
+  %20 = load ptr, ptr %result18, align 8
+  %21 = load ptr, ptr %x16, align 8
+  %22 = call i64 @std.io.File.print(ptr %retparam17, ptr %20, ptr %21, i64 1)
   store ptr @.str.6, ptr %x19, align 8
-  %17 = call ptr @std.io.stdout()
-  store ptr %17, ptr %result21, align 8
-  %18 = load ptr, ptr %x19, align 8
-  %19 = call i64 @std.io.File.print(ptr %retparam20, ptr %result21, ptr %18, i64 1)
-  store ptr @.str.7, ptr %x22, align 8
-  %20 = call ptr @std.io.stdout()
-  store ptr %20, ptr %result24, align 8
-  %21 = load ptr, ptr %x22, align 8
-  %22 = call i64 @std.io.File.print(ptr %retparam23, ptr %result24, ptr %21, i64 1)
-  store ptr @.str.8, ptr %x25, align 8
   %23 = call ptr @std.io.stdout()
-  store ptr %23, ptr %result27, align 8
-  %24 = call i64 @std.io.File.printn(ptr %retparam26, ptr %result27, ptr null, i64 0)
+  store ptr %23, ptr %result21, align 8
+  %24 = load ptr, ptr %result21, align 8
+  %25 = load ptr, ptr %x19, align 8
+  %26 = call i64 @std.io.File.print(ptr %retparam20, ptr %24, ptr %25, i64 1)
+  store ptr @.str.7, ptr %x22, align 8
+  %27 = call ptr @std.io.stdout()
+  store ptr %27, ptr %result24, align 8
+  %28 = load ptr, ptr %result24, align 8
+  %29 = load ptr, ptr %x22, align 8
+  %30 = call i64 @std.io.File.print(ptr %retparam23, ptr %28, ptr %29, i64 1)
+  store ptr @.str.8, ptr %x25, align 8
+  %31 = call ptr @std.io.stdout()
+  store ptr %31, ptr %result27, align 8
+  %32 = load ptr, ptr %result27, align 8
+  %33 = call i64 @std.io.File.printn(ptr %retparam26, ptr %32, ptr null, i64 0)
   ret void
 }
 
