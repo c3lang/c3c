@@ -52,7 +52,6 @@ extern fn int unsetenv(ZString name);
 extern fn int system(char* str);
 extern fn void bsearch(void* key, void *base, usz items, usz size, CompareFunction compare);
 extern fn void qsort(void* base, usz items, usz size, CompareFunction compare);
-extern fn int abs(int x);
 extern fn DivResult div(int numer, int denom);
 extern fn long labs(long x);
 extern fn LongDivResult ldiv(long number, long denom);
