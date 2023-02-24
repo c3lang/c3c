@@ -74,14 +74,14 @@ fn void*! SimpleHeapAllocator._realloc(SimpleHeapAllocator* this, void* old_poin
 	return new;
 }
 
-fn void*! SimpleHeapAllocator._calloc(SimpleHeapAllocator* this, usz bytes) @private
+fn void*! SimpleHeapAllocator._calloc(SimpleHeapAllocator* this, usz bytes) @local
 {
 	void* data = this._alloc(bytes)?;
 	mem::clear(data, bytes, DEFAULT_MEM_ALIGNMENT);
 	return data;
 }
 
-fn void*! SimpleHeapAllocator._alloc(SimpleHeapAllocator* this, usz bytes) @private
+fn void*! SimpleHeapAllocator._alloc(SimpleHeapAllocator* this, usz bytes) @local
 {
 	usz aligned_bytes = mem::aligned_offset(bytes, DEFAULT_MEM_ALIGNMENT);
     if (!this.free_list)
@@ -130,7 +130,7 @@ fn void*! SimpleHeapAllocator._alloc(SimpleHeapAllocator* this, usz bytes) @priv
 	return this.alloc(aligned_bytes);
 }
 
-fn void! SimpleHeapAllocator.add_block(SimpleHeapAllocator* this, usz aligned_bytes) @private
+fn void! SimpleHeapAllocator.add_block(SimpleHeapAllocator* this, usz aligned_bytes) @local
 {
 	assert(mem::aligned_offset(aligned_bytes, DEFAULT_MEM_ALIGNMENT) == aligned_bytes);
 	char[] result = this.alloc_fn(aligned_bytes + Header.sizeof)?;
@@ -141,7 +141,7 @@ fn void! SimpleHeapAllocator.add_block(SimpleHeapAllocator* this, usz aligned_by
 }
 
 
-fn void SimpleHeapAllocator._free(SimpleHeapAllocator* this, void* ptr) @private
+fn void SimpleHeapAllocator._free(SimpleHeapAllocator* this, void* ptr) @local
 {
 	// Empty ptr -> do nothing.
 	if (!ptr) return;

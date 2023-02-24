@@ -6,7 +6,7 @@ typedef DynStr = VarString;
 typedef DynString = VarString;
 typedef DString = VarString;
 typedef VString = VarString;
-
+typedef Text = VarString;
 
 const usz MIN_CAPACITY = 16;
 
