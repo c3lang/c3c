@@ -332,7 +332,7 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 		case TYPE_BITSTRUCT:
 			return any_type->backend_type = llvm_type_from_decl(c, any_type->decl);
 		case TYPE_FUNC:
-			return any_type->backend_type = llvm_func_type(c, any_type->function.prototype);
+			return any_type->backend_type = llvm_func_type(c, type_get_resolved_prototype(any_type));
 		case TYPE_VOID:
 			return any_type->backend_type = LLVMVoidTypeInContext(c->context);
 		case TYPE_F64:

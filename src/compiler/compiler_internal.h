@@ -1790,6 +1790,7 @@ typedef struct FunctionPrototype_
 	bool use_win64 : 1;
 	bool is_optional : 1;
 	bool ret_by_ref : 1;
+	bool is_resolved : 1;
 	unsigned short vararg_index;
 	Type *rtype;
 	Type **param_types;
@@ -2365,6 +2366,7 @@ bool type_may_have_method(Type *type);
 
 bool type_is_pointer_equivalent(Type *pointer1, Type *pointer2, bool flatten_distinct);
 bool type_array_element_is_equivalent(Type *element1, Type *element2, bool is_explicit);
+FunctionPrototype *type_get_resolved_prototype(Type *type);
 const char *type_to_error_string(Type *type);
 const char *type_quoted_error_string(Type *type);
 INLINE bool type_may_negate(Type *type);

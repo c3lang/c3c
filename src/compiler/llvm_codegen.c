@@ -983,7 +983,7 @@ static void llvm_emit_param_attributes(GenContext *c, LLVMValueRef function, ABI
 
 void llvm_append_function_attributes(GenContext *c, Decl *decl)
 {
-	FunctionPrototype *prototype = decl->type->function.prototype;
+	FunctionPrototype *prototype = type_get_resolved_prototype(decl->type);
 
 	LLVMValueRef function = decl->backend_ref;
 	ABIArgInfo *ret_abi_info = prototype->ret_abi_info;

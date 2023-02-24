@@ -193,6 +193,8 @@ ABIArgInfo *abi_arg_new_direct_struct_expand_i32(uint8_t elements)
 
 void c_abi_func_create(FunctionPrototype *proto)
 {
+	assert(!proto->is_resolved);
+	proto->is_resolved = true;
 	switch (platform_target.abi)
 	{
 		case ABI_X64:

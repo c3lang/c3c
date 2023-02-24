@@ -489,7 +489,7 @@ static LLVMMetadataRef llvm_debug_vector_type(GenContext *c, Type *type)
 
 static LLVMMetadataRef llvm_debug_func_type(GenContext *c, Type *type)
 {
-	FunctionPrototype *prototype = type->function.prototype;
+	FunctionPrototype *prototype = type_get_resolved_prototype(type);
 	// 1. Generate all the parameter types, this may cause this function to be called again!
 	VECEACH(prototype->param_types, i)
 	{

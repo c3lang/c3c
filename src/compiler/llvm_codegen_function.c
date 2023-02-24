@@ -396,7 +396,7 @@ void llvm_emit_function_body(GenContext *c, Decl *decl)
 	               decl->unit->module->name->module,
 	               decl->name,
 	               decl->span.file_id,
-	               decl->type->function.prototype,
+	               type_get_resolved_prototype(decl->type),
 	               decl->func_decl.attr_naked ? NULL : &decl->func_decl.signature,
 	               astptr(decl->func_decl.body));
 }
@@ -404,7 +404,6 @@ void llvm_emit_function_body(GenContext *c, Decl *decl)
 void llvm_emit_body(GenContext *c, LLVMValueRef function, const char *module_name, const char *function_name,
                     FileId file_id, FunctionPrototype *prototype, Signature *signature, Ast *body)
 {
-
 	bool emit_debug = llvm_use_debug(c);
 	LLVMValueRef prev_function = c->function;
 	LLVMBuilderRef prev_builder = c->builder;

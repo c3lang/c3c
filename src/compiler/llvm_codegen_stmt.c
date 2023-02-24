@@ -1370,7 +1370,7 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc)
 			llvm_emit_string_const(c, c->cur_func.name, ".func"),
 			llvm_const_int(c, type_uint, loc.row)
 	};
-	FunctionPrototype *prototype = panic_var->type->canonical->pointer->function.prototype;
+	FunctionPrototype *prototype = type_get_resolved_prototype(panic_var->type->canonical->pointer);
 	LLVMValueRef actual_args[16];
 	unsigned count = 0;
 	ABIArgInfo **abi_args = prototype->abi_args;

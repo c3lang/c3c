@@ -5255,7 +5255,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 		Type *type = function->type->canonical->pointer;
 
 		// 1b. Find the type signature using the underlying pointer.
-		prototype = type->function.prototype;
+		prototype = type_get_resolved_prototype(type);
 
 		// 1c. Evaluate the pointer expression.
 		BEValue func_value;
@@ -5275,7 +5275,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 		always_inline = function_decl->func_decl.attr_inline;
 
 		// 2b. Set signature, function and function type
-		prototype = function_decl->type->function.prototype;
+		prototype = type_get_resolved_prototype(function_decl->type);
 		func = llvm_get_ref(c, function_decl);
 		assert(func);
 		func_type = llvm_get_type(c, function_decl->type);
@@ -5313,6 +5313,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 			{
 				vec_add(copy.varargs, type_flatten(val->type));
 			}
+			copy.is_resolved = false;
 			copy.ret_abi_info = NULL;
 			copy.ret_by_ref_abi_info = NULL;
 			copy.abi_args = NULL;

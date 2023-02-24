@@ -327,6 +327,13 @@ RETRY:
 	UNREACHABLE
 }
 
+FunctionPrototype *type_get_resolved_prototype(Type *type)
+{
+	assert(type->type_kind == TYPE_FUNC);
+	FunctionPrototype *prototype = type->function.prototype;
+	if (!prototype->is_resolved) c_abi_func_create(prototype);
+	return prototype;
+}
 
 bool type_flat_is_numlike(Type *type)
 {
@@ -1361,7 +1368,6 @@ static inline Type *func_create_new_func_proto(Signature *sig, CallABI abi, uint
 		proto->param_types = param_types;
 		proto->param_copy = param_copy;
 	}
-	c_abi_func_create(proto);
 
 	scratch_buffer_clear();
 	scratch_buffer_append("fn ");
