@@ -1292,6 +1292,7 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 			llvm_value_bitcast(c, value, to_type);
 			break;
 		case CAST_SAPTR:
+			llvm_value_fold_optional(c, value);
 			llvm_emit_subarray_pointer(c, value, value);
 			break;
 		case CAST_EREU:

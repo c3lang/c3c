@@ -106,7 +106,7 @@ fn void VarString.append_repeat(VarString* str, char c, usz times)
 }
 
 /**
- * @require c < 0x10ffff
+ * @require c <= 0x10ffff
  */
 fn void VarString.append_char32(VarString* str, Char32 c)
 {

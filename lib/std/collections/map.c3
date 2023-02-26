@@ -69,6 +69,17 @@ fn Value*! HashMap.get_ref(HashMap* map, Key key)
 	return SearchResult.MISSING!;
 }
 
+fn Entry*! HashMap.get_entry(HashMap* map, Key key)
+{
+	if (!map.count) return SearchResult.MISSING!;
+	uint hash = rehash(key.hash());
+	for (Entry *e = map.table[index_for(hash, map.table.len)]; e != null; e = e.next)
+	{
+		if (e.hash == hash && equals(key, e.key)) return e;
+	}
+	return SearchResult.MISSING!;
+}
+
 /**
  * Get the value or update and
  **/
@@ -334,7 +345,7 @@ fn void HashMap.create_entry(HashMap* map, uint hash, Key key, Value value, int 
 	map.count++;
 }
 
-struct Entry @private
+struct Entry
 {
 	uint hash;
 	Key key;

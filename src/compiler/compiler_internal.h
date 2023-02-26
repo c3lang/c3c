@@ -2883,6 +2883,11 @@ INLINE bool decl_ok(Decl *decl)
 
 INLINE bool decl_poison(Decl *decl)
 {
+	if (global_context.suppress_errors)
+	{
+		if (decl->resolve_status == RESOLVE_RUNNING) decl->resolve_status = RESOLVE_NOT_DONE;
+		return false;
+	}
 	decl->decl_kind = DECL_POISONED; decl->resolve_status = RESOLVE_DONE; return false;
 }
 
