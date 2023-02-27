@@ -995,7 +995,7 @@ static inline int sema_call_find_index_of_named_parameter(Decl **func_params, Ex
 	const char *name = element->field;
 	VECEACH(func_params, i)
 	{
-		if (func_params[i]->name == name) return (int)i;
+		if (func_params[i] && func_params[i]->name == name) return (int)i;
 	}
 	SEMA_ERROR(expr, "There's no parameter with the name '%s'.", name);
 	return -1;
@@ -1791,6 +1791,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 
 	macro_context.block_return_defer = macro_context.active_scope.defer_last;
 
+	macro_context.inlining_span = context->current_macro ? context->inlining_span : call_expr->span;
 	macro_context.current_macro = decl;
 	AstId body_id = call_expr->call_expr.body;
 	macro_context.yield_body = body_id ? astptr(body_id) : NULL;

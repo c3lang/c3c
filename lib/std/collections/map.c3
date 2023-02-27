@@ -28,7 +28,7 @@ fn void HashMap.init(HashMap* map, uint capacity = DEFAULT_INITIAL_CAPACITY, flo
 	map.allocator = allocator;
 	map.load_factor = load_factor;
 	map.threshold = (uint)(capacity * load_factor);
-	map.table = array::make(Entry*, capacity, allocator);
+	map.table = calloc(Entry*, capacity, .using = allocator);
 }
 
 /**
@@ -168,7 +168,7 @@ fn Key[] HashMap.key_list(HashMap* map, Allocator* allocator = mem::current_allo
 {
 	if (!map.count) return Key[] {};
 
-	Key[] list = array::make(Key, map.count, allocator);
+	Key[] list = calloc(Key, map.count, .using = allocator);
 	usz index = 0;
 	foreach (Entry* entry : map.table)
 	{
@@ -189,7 +189,7 @@ fn Value[] HashMap.value_tlist(HashMap* map)
 fn Value[] HashMap.value_list(HashMap* map, Allocator* allocator = mem::current_allocator())
 {
 	if (!map.count) return Value[] {};
-	Value[] list = array::make(Value, map.count, allocator);
+	Value[] list = calloc(Value, map.count, .using = allocator);
 	usz index = 0;
 	foreach (Entry* entry : map.table)
 	{
@@ -222,7 +222,7 @@ $endif;
 
 fn void HashMap.add_entry(HashMap* map, uint hash, Key key, Value value, uint bucket_index) @private
 {
-	Entry* entry = map.allocator.alloc(Entry.sizeof)!!;
+	Entry* entry = malloc(Entry, .using = map.allocator);
 	*entry = { .hash = hash, .key = key, .value = value, .next = map.table[bucket_index] };
 	map.table[bucket_index] = entry;
 	if (map.count++ >= map.threshold)
@@ -240,7 +240,7 @@ fn void HashMap.resize(HashMap* map, uint new_capacity) @private
 		map.threshold = uint.max;
 		return;
 	}
-	Entry*[] new_table = array::make(Entry*, new_capacity, map.allocator);
+	Entry*[] new_table = calloc(Entry*, new_capacity, .using = map.allocator);
 	map.transfer(new_table);
 	map.table = new_table;
 	map.free_internal(old_table.ptr);
@@ -339,7 +339,7 @@ fn bool HashMap.remove_entry_for_key(HashMap* map, Key key) @private
 fn void HashMap.create_entry(HashMap* map, uint hash, Key key, Value value, int bucket_index) @private
 {
 	Entry *e = map.table[bucket_index];
-	Entry* entry = map.allocator.alloc(Entry.sizeof)!!;
+	Entry* entry = malloc(Entry, .using = map.allocator);
 	*entry = { .hash = hash, .key = key, .value = value, .next = map.table[bucket_index] };
 	map.table[bucket_index] = entry;
 	map.count++;

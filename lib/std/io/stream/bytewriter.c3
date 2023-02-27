@@ -36,7 +36,7 @@ fn Stream ByteWriter.as_stream(ByteWriter* writer)
 fn void ByteWriter.destroy(ByteWriter* writer)
 {
 	if (!writer.allocator) return;
-	if (void* ptr = writer.bytes.ptr) writer.allocator.free(ptr)!!;
+	if (void* ptr = writer.bytes.ptr) free(ptr, .using = writer.allocator);
 	*writer = { };
 }
 
@@ -50,7 +50,7 @@ fn void! ByteWriter.ensure_capacity(ByteWriter* writer, usz len) @inline
 	if (writer.bytes.len > len) return;
 	if (len < 16) len = 16;
 	usz new_capacity = math::next_power_of_2(len);
-	char* new_ptr = writer.allocator.realloc(writer.bytes.ptr, new_capacity)?;
+	char* new_ptr = realloc_checked(writer.bytes.ptr, new_capacity, .using = writer.allocator)?;
 	writer.bytes = new_ptr[:new_capacity];
 }
 

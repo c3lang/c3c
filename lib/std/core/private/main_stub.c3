@@ -17,7 +17,7 @@ macro int @main_to_void_main(#m, int, char**)
 
 macro String[] args_to_strings(int argc, char** argv) @private
 {
-	String *list = malloc(String.sizeof * argc);
+	String *list = malloc(String, argc);
 	for (int i = 0; i < argc; i++)
 	{
 		char* arg = argv[i];
@@ -63,7 +63,7 @@ macro String[] win_command_line_to_strings(ushort* cmd_line) @private
 
 macro String[] wargs_strings(int argc, Char16** argv) @private
 {
-	String *list = malloc(String.sizeof * argc);
+	String *list = malloc(String, argc);
 	for (int i = 0; i < argc; i++)
 	{
 		Char16* arg = argv[i];

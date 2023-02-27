@@ -173,12 +173,12 @@ $switch (env::MEMORY_ENV):
 $case NORMAL:
 	@pool()
 	{
-		return copy_through_buffer(s, dst, array::talloc(char, 4096));
+		return copy_through_buffer(s, dst, tmalloc(char, 4096));
 	};
 $case SMALL:
 	@pool()
 	{
-		return copy_through_buffer(s, dst, array::talloc(char, 1024));
+		return copy_through_buffer(s, dst, tmalloc(char, 1024));
 	};
 $case TINY:
 $case NONE:

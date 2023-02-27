@@ -118,7 +118,7 @@ static inline bool sema_check_param_uniqueness_and_type(Decl **decls, Decl *curr
 	if (!name) return true;
 	for (int i = 0; i < current_index; i++)
 	{
-		if (name == decls[i]->name)
+		if (decls[i] && name == decls[i]->name)
 		{
 			SEMA_ERROR(current, "Duplicate parameter name '%s'.", name);
 			SEMA_NOTE(decls[i], "Previous use of the name was here.");
@@ -1484,6 +1484,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_BIGENDIAN] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_BUILTIN] = ATTR_MACRO | ATTR_FUNC,
 			[ATTRIBUTE_CDECL] = ATTR_FUNC,
+			[ATTRIBUTE_DEPRECATED] = USER_DEFINED_TYPES | ATTR_FUNC | ATTR_MACRO | ATTR_CONST | ATTR_GLOBAL | ATTR_MEMBER,
 			[ATTRIBUTE_EXPORT] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | EXPORTED_USER_DEFINED_TYPES,
 			[ATTRIBUTE_NOSTRIP] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | EXPORTED_USER_DEFINED_TYPES,
 			[ATTRIBUTE_EXTNAME] = (AttributeDomain)~(ATTR_CALL | ATTR_BITSTRUCT | ATTR_DEFINE | ATTR_MACRO | ATTR_XXLIZER),
@@ -1535,6 +1536,18 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 		case ATTRIBUTE_LOCAL:
 			// These are pseudo-attributes.
 			UNREACHABLE;
+		case ATTRIBUTE_DEPRECATED:
+			if (expr)
+			{
+				if (!sema_analyse_expr(context, expr)) return false;
+				if (!expr_is_const_string(expr))
+				{
+					SEMA_ERROR(expr, "Expected a constant string value as argument.");
+					return false;
+				}
+			}
+			decl->is_deprecated = true;
+			break;
 		case ATTRIBUTE_WINMAIN:
 			if (decl->name != kw_main)
 			{

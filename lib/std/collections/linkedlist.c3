@@ -45,7 +45,7 @@ macro void LinkedList.@free_node(LinkedList &list, Node* node) @private
 macro Node* LinkedList.@alloc_node(LinkedList &list) @private
 {
 	if (!list.allocator) list.allocator = mem::current_allocator();
-	return list.allocator.alloc(Node.sizeof)!!;
+	return malloc(Node, .using = list.allocator);
 }
 
 fn void LinkedList.link_first(LinkedList* list, Type value) @private
@@ -175,7 +175,7 @@ fn void LinkedList.insert(LinkedList* list, usz index, Type element)
 fn void LinkedList.link_before(LinkedList *list, Node *succ, Type value) @private
 {
     Node* pred = succ.prev;
-    Node* new_node = mem::alloc(Node);
+    Node* new_node = malloc(Node);
     *new_node = { .prev = pred, .next = succ, .value = value };
     succ.prev = new_node;
     if (!pred)

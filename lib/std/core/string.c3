@@ -13,7 +13,7 @@ const usz MIN_CAPACITY = 16;
 fn VarString new_with_capacity(usz capacity, Allocator* allocator = mem::current_allocator())
 {
 	if (capacity < MIN_CAPACITY) capacity = MIN_CAPACITY;
-	StringData* data = allocator.alloc(StringData.sizeof + capacity)!!;
+	StringData* data = malloc(StringData, 1, .using = allocator, .end_padding = capacity);
 	data.allocator = allocator;
 	data.len = 0;
 	data.capacity = capacity;
@@ -163,9 +163,9 @@ fn ZString VarString.copy_zstr(VarString* str, Allocator* allocator = mem::curre
 	usz str_len = str.len();
 	if (!str_len)
 	{
-		return (ZString)allocator.calloc(1)!!;
+		return (ZString)calloc(1, .using = allocator);
 	}
-	char* zstr = allocator.alloc(str_len + 1)!!;
+	char* zstr = malloc(str_len + 1, .using = allocator);
 	StringData* data = str.data();
 	mem::copy(zstr, &data.chars, str_len);
 	zstr[str_len] = 0;
@@ -200,7 +200,7 @@ fn void VarString.destroy(VarString* str)
 	if (!*str) return;
 	StringData* data = str.data();
 	if (!data) return;
-	data.allocator.free(data)!!;
+	free(data, .using = data.allocator);
 	*str = (VarString)null;
 }
 
@@ -307,7 +307,7 @@ fn void VarString.reserve(VarString* str, usz addition) @private
 	if (data.capacity >= len) return;
 	usz new_capacity = data.capacity *= 2;
 	if (new_capacity < MIN_CAPACITY) new_capacity = MIN_CAPACITY;
-	*str = (VarString)data.allocator.realloc(data, StringData.sizeof + new_capacity)!!;
+	*str = (VarString)realloc(data, StringData.sizeof + new_capacity, .using = data.allocator);
 }
 
 fn VarString VarString.new_concat(VarString a, VarString b, Allocator* allocator = mem::current_allocator())

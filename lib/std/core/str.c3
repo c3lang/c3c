@@ -166,7 +166,7 @@ fn String[] split(String s, String needle, Allocator* allocator = mem::current_a
 {
 	usz capacity = 16;
 	usz i = 0;
-	String* holder = allocator.alloc(String.sizeof * capacity)!!;
+	String* holder = malloc(String, capacity, .using = allocator);
 	while (s.len)
 	{
 		usz! index = index_of(s, needle);
@@ -184,7 +184,7 @@ fn String[] split(String s, String needle, Allocator* allocator = mem::current_a
 		if (i == capacity)
 		{
 			capacity *= 2;
-			holder = allocator.realloc(holder, String.sizeof * capacity)!!;
+			holder = realloc(holder, String.sizeof * capacity, .using = allocator);
 		}
 		holder[i++] = res;
 	}
@@ -251,7 +251,7 @@ fn String String.tcopyz(String s) => copyz(s, mem::temp_allocator()) @inline;
 fn ZString copy_zstring(String s, Allocator* allocator = mem::current_allocator())
 {
     usz len = s.len;
-    char* str = allocator.alloc(len + 1)!!;
+    char* str = malloc(len + 1, .using = allocator);
     mem::copy(str, s.ptr, len);
     str[len] = 0;
     return (ZString)str;
@@ -261,7 +261,7 @@ fn ZString copy_zstring(String s, Allocator* allocator = mem::current_allocator(
 fn String copyz(String s, Allocator* allocator = mem::current_allocator())
 {
     usz len = s.len;
-    char* str = allocator.alloc(len + 1)!!;
+    char* str = malloc(len + 1, .using = allocator);
     mem::copy(str, s.ptr, len);
     str[len] = 0;
     return str[:len];
@@ -301,7 +301,7 @@ fn usz utf8_codepoints(String utf8)
 fn Char32[]! utf8to32(String utf8, Allocator* allocator = mem::current_allocator())
 {
 	usz codepoints = conv::utf8_codepoints(utf8);
-	Char32* data = allocator.alloc(Char32.sizeof * (codepoints + 1))?;
+	Char32* data = malloc_checked(Char32, codepoints + 1, .using = allocator)?;
 	conv::utf8to32_unsafe(utf8, data)?;
 	data[codepoints] = 0;
 	return data[:codepoints];
@@ -310,7 +310,7 @@ fn Char32[]! utf8to32(String utf8, Allocator* allocator = mem::current_allocator
 fn String utf32to8(Char32[] utf32, Allocator* allocator = mem::current_allocator())
 {
 	usz len = conv::utf8len_for_utf32(utf32);
-	char* data = allocator.alloc(len + 1)!!;
+	char* data = malloc_checked(len + 1, .using = allocator)!!;
 	conv::utf32to8_unsafe(utf32, data);
 	data[len] = 0;
 	return data[:len];
@@ -319,7 +319,7 @@ fn String utf32to8(Char32[] utf32, Allocator* allocator = mem::current_allocator
 fn Char16[]! utf8to16(String utf8, Allocator* allocator = mem::current_allocator())
 {
 	usz len16 = conv::utf16len_for_utf8(utf8);
-	Char16* data = allocator.alloc((len16 + 1) * Char16.sizeof)?;
+	Char16* data = malloc_checked(Char16, len16 + 1, .using = allocator)?;
 	conv::utf8to16_unsafe(utf8, data)?;
 	data[len16] = 0;
 	return data[:len16];
@@ -329,7 +329,7 @@ fn Char16[]! utf8to16(String utf8, Allocator* allocator = mem::current_allocator
 fn String! utf16to8(Char16[] utf16, Allocator* allocator = mem::current_allocator())
 {
 	usz len = conv::utf8len_for_utf16(utf16);
-	char* data = allocator.alloc(len + 1)?;
+	char* data = malloc_checked(len + 1, .using = allocator)?;
 	conv::utf16to8_unsafe(utf16, data)?;
 	data[len] = 0;
 	return data[:len];

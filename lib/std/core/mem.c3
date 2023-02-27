@@ -3,6 +3,10 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::mem;
 
+const MAX_MEMORY_ALIGNMENT = 0x1000_0000;
+const DEFAULT_MEM_ALIGNMENT = (void*.alignof) * 2;
+
+
 macro @volatile_load(&x) @builtin
 {
     return $$volatile_load(&x);
@@ -183,80 +187,136 @@ macro @tclone(&value) @builtin
 	return x;
 }
 
-fn void* malloc(usz size) @builtin @inline
+macro type_alloc_must_be_aligned($Type)
 {
-	return thread_allocator.alloc(size)!!;
+	return $Type.alignof > DEFAULT_MEM_ALIGNMENT;
+}
+/**
+ * @require $vacount > 0 && $vacount < 3 "Expected size, type, or type + len"
+ * @require $vacount != 2 || $checks($vatype(0).sizeof) "Expected 'malloc(Foo, 12)'"
+ **/
+macro malloc(..., Allocator* using = mem::thread_allocator, usz end_padding = 0) @builtin
+{
+	return malloc_checked($vasplat(), .using = using, .end_padding = end_padding)!!;
 }
 
-fn void*! malloc_checked(usz size) @builtin @inline
+/**
+ * @require $vacount > 0 && $vacount < 3 "Expected size, type, or type + len"
+ * @require $vacount != 2 || $checks($vatype(0).sizeof) "Expected 'malloc(Foo, 12)'"
+ **/
+macro malloc_checked(..., Allocator* using = mem::thread_allocator, usz end_padding = 0) @builtin
 {
-	return thread_allocator.alloc(size);
+	$if ($checks($vatype(0).sizeof)):
+		var $Type = $vatype(0);
+		$assert(!type_alloc_must_be_aligned($vatype(0)),  "Type must be allocated with malloc_aligned");
+		$if ($vacount == 2):
+			usz size = $vaarg(1);
+			return (($Type*)using.alloc($Type.sizeof * size + end_padding))[:size];
+		$else:
+			return ($Type*)using.alloc($Type.sizeof + end_padding);
+		$endif;
+	$else:
+		return using.alloc($vaarg(0) + end_padding);
+	$endif;
+}
+
+
+/**
+ * @require $vacount > 0 && $vacount < 3 "Expected size, type, or type + len"
+ * @require $vacount != 2 || $checks($vatype(0).sizeof) "Expected 'malloc(Foo, 12)'"
+ * @require alignment && math::is_power_of_2(alignment)
+ **/
+macro malloc_aligned(..., usz alignment = 0, usz end_padding = 0, Allocator* using = mem::thread_allocator) @builtin
+{
+	$if ($checks($vatype(0).sizeof)):
+		var $Type = $vatype(0);
+		$if ($vacount == 2):
+			usz size = $vaarg(1);
+			return (($Type*)using.alloc_aligned($Type.sizeof * size + end_padding, alignment))[:size];
+		$else:
+			return ($Type*)using.alloc_aligned($Type.sizeof + end_padding, alignment);
+		$endif;
+	$else:
+		return using.alloc_aligned($vaarg(0) + end_padding, alignment);
+	$endif;
+}
+
+macro alloc($Type) @deprecated => malloc($Type);
+
+macro char[] alloc_bytes(usz bytes) @deprecated => malloc(char, bytes);
+
+/**
+ * @require $vacount > 0 && $vacount < 3 "Expected size, type, or type + len"
+ * @require $vacount != 2 || $checks($vatype(0).sizeof) "Expected 'malloc(Foo, 12)'"
+ **/
+macro calloc(..., Allocator* using = mem::thread_allocator, usz end_padding = 0) @builtin
+{
+	return calloc_checked($vasplat(), .using = using, .end_padding = end_padding)!!;
+}
+
+/**
+ * @require $vacount > 0 && $vacount < 3 "Expected size, type, or type + len"
+ * @require $vacount != 2 || $checks($vatype(0).sizeof) "Expected 'malloc(Foo, 12)'"
+ **/
+macro calloc_checked(..., Allocator* using = mem::thread_allocator, usz end_padding = 0) @builtin
+{
+	$if ($checks($vatype(0).sizeof)):
+		var $Type = $vatype(0);
+		$assert(!type_alloc_must_be_aligned($vatype(0)),  "Type must be allocated with calloc_aligned");
+		$if ($vacount == 2):
+			usz size = $vaarg(1);
+			return (($Type*)using.calloc($Type.sizeof * size + end_padding))[:size];
+		$else:
+			return ($Type*)using.calloc($Type.sizeof + end_padding);
+		$endif;
+	$else:
+		return using.calloc($vaarg(0) + end_padding);
+	$endif;
+}
+
+
+/**
+ * @require $vacount > 0 && $vacount < 3 "Expected size, type, or type + len"
+ * @require $vacount != 2 || $checks($vatype(0).sizeof) "Expected 'malloc(Foo, 12)'"
+ * @require alignment && math::is_power_of_2(alignment)
+ **/
+macro calloc_aligned(..., usz alignment = 0, Allocator* using = mem::thread_allocator, usz end_padding = 0) @builtin
+{
+	$if ($checks($vatype(0).sizeof)):
+		var $Type = $vatype(0);
+		$if ($vacount == 2):
+			usz size = $vaarg(1);
+			return (($Type*)using.calloc_aligned($Type.sizeof * size + end_padding, alignment))[:size];
+		$else:
+			return ($Type*)using.calloc_aligned($Type.sizeof + end_padding, alignment);
+		$endif;
+	$else:
+		return using.calloc_aligned($vaarg(0) + end_padding, alignment);
+	$endif;
+}
+
+fn void* realloc(void *ptr, usz new_size, Allocator* using = mem::thread_allocator) @builtin @inline
+{
+	return using.realloc(ptr, new_size)!!;
+}
+
+fn void*! realloc_checked(void *ptr, usz new_size, Allocator* using = mem::thread_allocator) @builtin @inline
+{
+	return using.realloc(ptr, new_size);
 }
 
 /**
  * @require alignment && math::is_power_of_2(alignment)
  */
-fn void*! malloc_aligned(usz size, usz alignment) @builtin @inline
+fn void*! realloc_aligned(void *ptr, usz new_size, usz alignment, Allocator* using = mem::thread_allocator) @builtin @inline
 {
-	return thread_allocator.alloc_aligned(size, alignment);
+	return using.realloc_aligned(ptr, new_size, alignment);
 }
 
-fn char[] alloc_bytes(usz bytes) @inline
-{
-	return ((char*)thread_allocator.alloc(bytes))[:bytes]!!;
-}
-
-macro alloc($Type)
-{
-	return ($Type*)thread_allocator.alloc($Type.sizeof)!!;
-}
-
-
-fn void* calloc(usz size) @builtin @inline
-{
-	return thread_allocator.calloc(size)!!;
-}
-
-fn void*! calloc_checked(usz size) @builtin @inline
-{
-	return thread_allocator.calloc(size);
-}
-
-/**
- * @require alignment && math::is_power_of_2(alignment)
- */
-fn void*! calloc_aligned(usz size, usz alignment) @builtin @inline
-{
-	return thread_allocator.calloc_aligned(size, alignment);
-}
-
-fn void* realloc(void *ptr, usz new_size) @builtin @inline
-{
-	return thread_allocator.realloc(ptr, new_size)!!;
-}
-
-fn void*! realloc_checked(void *ptr, usz new_size) @builtin @inline
-{
-	return thread_allocator.realloc(ptr, new_size);
-}
-
-/**
- * @require alignment && math::is_power_of_2(alignment)
- */
-fn void*! realloc_aligned(void *ptr, usz new_size, usz alignment) @builtin @inline
-{
-	return thread_allocator.realloc_aligned(ptr, new_size, alignment);
-}
-
-fn void free(void* ptr) @builtin @inline
-{
-	return thread_allocator.free(ptr)!!;
-}
-
-fn void free_aligned(void* ptr) @builtin @inline
-{
-	return thread_allocator.free_aligned(ptr)!!;
-}
+macro void free(void* ptr, Allocator* using = mem::thread_allocator) @builtin => using.free(ptr)!!;
+macro void! free_checked(void* ptr, Allocator* using = mem::thread_allocator) @builtin => using.free(ptr);
+macro void free_aligned(void* ptr, Allocator* using = mem::thread_allocator) @builtin => using.free_aligned(ptr)!!;
+macro void! free_aligned_checked(void* ptr, Allocator* using = mem::thread_allocator) @builtin => using.free_aligned(ptr);
 
 /**
  * Run with a specific allocator inside of the macro body.
@@ -269,20 +329,44 @@ macro void @scoped(Allocator* allocator; @body())
 	@body();
 }
 
+macro talloc($Type) @builtin @deprecated => tmalloc($Type);
 
-macro talloc($Type) @builtin
+/**
+ * @require $vacount > 0 && $vacount < 3 "Expected size, type, or type + len"
+ * @require $vacount != 2 || $checks($vatype(0).sizeof) "Expected 'malloc(Foo, 12)'"
+ **/
+macro tmalloc(..., usz end_padding = 0, usz alignment = DEFAULT_MEM_ALIGNMENT) @builtin
 {
-	return temp_allocator().alloc_aligned($Type.sizeof, $Type.alignof)!!;
+	$if ($checks($vatype(0).sizeof)):
+		var $Type = $vatype(0);
+		$if ($vacount == 2):
+			usz size = $vaarg(1);
+			return (($Type*)temp_allocator().alloc_aligned($Type.sizeof * size + end_padding, alignment))[:size]!!;
+		$else:
+			return ($Type*)temp_allocator().alloc_aligned($Type.sizeof + end_padding, alignment)!!;
+		$endif;
+	$else:
+		return temp_allocator().alloc_aligned($vaarg(0) + end_padding, alignment)!!;
+	$endif;
 }
 
-fn void* tmalloc(usz size, usz alignment = allocator::DEFAULT_MEM_ALIGNMENT) @builtin @inline
+/**
+ * @require $vacount > 0 && $vacount < 3 "Expected size, type, or type + len"
+ * @require $vacount != 2 || $checks($vatype(0).sizeof) "Expected 'malloc(Foo, 12)'"
+ **/
+macro tcalloc(..., usz end_padding = 0, usz alignment = allocator::DEFAULT_MEM_ALIGNMENT) @builtin
 {
-    return temp_allocator().alloc_aligned(size, alignment)!!;
-}
-
-fn void* tcalloc(usz size, usz alignment = allocator::DEFAULT_MEM_ALIGNMENT) @builtin @inline
-{
-	return temp_allocator().calloc_aligned(size, alignment)!!;
+	$if ($checks($vatype(0).sizeof)):
+		var $Type = $vatype(0);
+		$if ($vacount == 2):
+			usz size = $vaarg(1);
+			return (($Type*)temp_allocator().calloc_aligned($Type.sizeof * size + end_padding, alignment))[:size]!!;
+		$else:
+			return ($Type*)temp_allocator().calloc_aligned($Type.sizeof + end_padding, alignment)!!;
+		$endif;
+	$else:
+		return temp_allocator().calloc_aligned($vaarg(0) + end_padding, alignment)!!;
+	$endif;
 }
 
 fn void* trealloc(void* ptr, usz size, usz alignment = allocator::DEFAULT_MEM_ALIGNMENT) @builtin @inline
