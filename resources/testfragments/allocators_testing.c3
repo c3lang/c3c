@@ -65,13 +65,13 @@ fn void main()
 	};
 	mem::@tscoped()
 	{
-		io::printf("Malloc: %p\n", malloc(23));
-		io::printf("Malloc: %p\n", malloc(23));
+		io::printf("Malloc: %p\n", (void*)malloc(23));
+		io::printf("Malloc: %p\n", (void*)malloc(23));
 	};
-	io::printf("Malloc: %p\n", malloc(23));
+	io::printf("Malloc: %p\n", (void*)malloc(23));
 	@pool()
 	{
-		io::printf("Talloc: %p\n", tmalloc(22));
+		io::printf("Talloc: %p\n", (void*)tmalloc(22));
 	};
 	testAllocator(mem::temp_allocator(), 126);
 	testAllocator(mem::temp_allocator(), 12600);

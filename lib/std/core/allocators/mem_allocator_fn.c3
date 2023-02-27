@@ -73,7 +73,7 @@ macro void*! @aligned_realloc(#calloc_fn, #free_fn, void* old_pointer, usz bytes
 	AlignedBlock* desc = (AlignedBlock*)old_pointer - 1;
 	void* data_start = desc.start;
     void* new_data = @aligned_calloc(#calloc_fn, bytes, alignment, offset)?;
-	mem::copy(new_data, old_pointer, desc.len > bytes ? desc.len : bytes, DEFAULT_MEM_ALIGNMENT, DEFAULT_MEM_ALIGNMENT);
+	mem::copy(new_data, old_pointer, desc.len > bytes ? desc.len : bytes, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
 	$if ($checks(#free_fn(data_start)?)):
 	#free_fn(data_start)?;
 	$else:
@@ -94,7 +94,7 @@ macro void! @aligned_free(#free_fn, void* old_pointer)
 
 fn void*! libc_allocator_fn(Allocator* unused, usz bytes, usz alignment, usz offset, void* old_pointer, AllocationKind kind) @inline
 {
-	if (!alignment) alignment = DEFAULT_MEM_ALIGNMENT;
+	if (!alignment) alignment = mem::DEFAULT_MEM_ALIGNMENT;
 	assert(math::is_power_of_2(alignment), "Alignment was not a power of 2");
 
     void* data;

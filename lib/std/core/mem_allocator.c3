@@ -1,7 +1,5 @@
 module std::core::mem::allocator;
 
-const MAX_MEMORY_ALIGNMENT = 0x1000_0000;
-const DEFAULT_MEM_ALIGNMENT = (void*.alignof) * 2;
 const DEFAULT_SIZE_PREFIX = usz.sizeof;
 const DEFAULT_SIZE_PREFIX_ALIGNMENT = usz.alignof;
 
@@ -100,9 +98,9 @@ fn void Allocator.reset(Allocator* allocator, usz mark = 0)
 
 fn usz alignment_for_allocation(usz alignment) @inline @private
 {
-	if (alignment < DEFAULT_MEM_ALIGNMENT)
+	if (alignment < mem::DEFAULT_MEM_ALIGNMENT)
 	{
-		alignment = DEFAULT_MEM_ALIGNMENT;
+		alignment = mem::DEFAULT_MEM_ALIGNMENT;
 	}
 	return alignment;
 }

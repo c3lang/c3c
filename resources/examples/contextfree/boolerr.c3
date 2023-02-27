@@ -44,7 +44,7 @@ fn bool contains(String haystack, String needle)
 
 macro @dupe(value)
 {
-	$typeof(&value) temp = malloc_checked($sizeof(value))?;
+	$typeof(&value) temp = malloc_checked($typeof(value))?;
 	*temp = value;
 	return temp;
 }

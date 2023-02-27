@@ -164,7 +164,7 @@ fn void* callback(void* arg) @private
 
 fn void! NativeThread.create(NativeThread* thread, ThreadFn thread_fn, void* arg)
 {
-	PosixThreadData *thread_data = mem::alloc(PosixThreadData);
+	PosixThreadData *thread_data = malloc(PosixThreadData);
 	*thread_data = { .thread_fn = thread_fn, .arg = arg };
 	if (pthread_create(thread, null, &callback, thread_data) != 0)
     {

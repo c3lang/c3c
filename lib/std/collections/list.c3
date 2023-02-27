@@ -22,7 +22,7 @@ fn void List.init(List* list, usz initial_capacity = 16, Allocator* allocator = 
 	if (initial_capacity > 0)
 	{
 		initial_capacity = math::next_power_of_2(initial_capacity);
-		list.entries = allocator.alloc_aligned(Type.sizeof * initial_capacity, Type[1].alignof)!!;
+		list.entries = malloc_aligned(Type, initial_capacity, .alignment = Type[1].alignof, .using = allocator)!!;
 	}
 	else
 	{
@@ -133,7 +133,7 @@ fn Type List.get(List* list, usz index)
 fn void List.free(List* list)
 {
 	if (!list.allocator) return;
-    list.allocator.free_aligned(list.entries)!!;
+    free_aligned(list.entries, .using = list.allocator);
     list.capacity = 0;
     list.size = 0;
     list.entries = null;
@@ -153,7 +153,7 @@ fn void List.reserve(List* list, usz min_capacity)
 	if (list.capacity >= min_capacity) return;
 	if (!list.allocator) list.allocator = mem::temp_allocator();
 	min_capacity = math::next_power_of_2(min_capacity);
-    list.entries = list.allocator.realloc_aligned(list.entries, Type.sizeof * min_capacity, Type[1].alignof) ?? null;
+    list.entries = realloc_aligned(list.entries, Type.sizeof * min_capacity, .alignment = Type[1].alignof, .using = list.allocator) ?? null;
 	list.capacity = min_capacity;
 }
 

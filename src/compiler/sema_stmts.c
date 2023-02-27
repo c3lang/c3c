@@ -1897,6 +1897,7 @@ static inline bool sema_analyse_then_overwrite(SemaContext *context, Ast *statem
 		if (!sema_analyse_statement(context, ast)) return false;
 		last = ast;
 	}
+	last = ast_last(last);
 	last->next = next;
 	return true;
 }
@@ -2496,9 +2497,22 @@ bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement)
 	if (res == -1) return false;
 	if (!res)
 	{
+		if (context->current_macro)
+		{
+			if (message_expr)
+			{
+				sema_error_at(context->inlining_span, "%.*s", EXPAND_EXPR_STRING(message_expr));
+			}
+			else
+			{
+				sema_error_at(context->inlining_span, "Compile time assert", EXPAND_EXPR_STRING(message_expr));
+			}
+			sema_error_prev_at(expr->span, "$assert was defined here.");
+			return false;
+		}
 		if (message_expr)
 		{
-			SEMA_ERROR(expr, "Compile time assert - %.*s", EXPAND_EXPR_STRING(message_expr));
+			SEMA_ERROR(expr, "%.*s", EXPAND_EXPR_STRING(message_expr));
 		}
 		else
 		{

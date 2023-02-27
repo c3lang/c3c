@@ -77,13 +77,13 @@ fn void*! SimpleHeapAllocator._realloc(SimpleHeapAllocator* this, void* old_poin
 fn void*! SimpleHeapAllocator._calloc(SimpleHeapAllocator* this, usz bytes) @local
 {
 	void* data = this._alloc(bytes)?;
-	mem::clear(data, bytes, DEFAULT_MEM_ALIGNMENT);
+	mem::clear(data, bytes, mem::DEFAULT_MEM_ALIGNMENT);
 	return data;
 }
 
 fn void*! SimpleHeapAllocator._alloc(SimpleHeapAllocator* this, usz bytes) @local
 {
-	usz aligned_bytes = mem::aligned_offset(bytes, DEFAULT_MEM_ALIGNMENT);
+	usz aligned_bytes = mem::aligned_offset(bytes, mem::DEFAULT_MEM_ALIGNMENT);
     if (!this.free_list)
     {
 		this.add_block(aligned_bytes)?;
@@ -132,7 +132,7 @@ fn void*! SimpleHeapAllocator._alloc(SimpleHeapAllocator* this, usz bytes) @loca
 
 fn void! SimpleHeapAllocator.add_block(SimpleHeapAllocator* this, usz aligned_bytes) @local
 {
-	assert(mem::aligned_offset(aligned_bytes, DEFAULT_MEM_ALIGNMENT) == aligned_bytes);
+	assert(mem::aligned_offset(aligned_bytes, mem::DEFAULT_MEM_ALIGNMENT) == aligned_bytes);
 	char[] result = this.alloc_fn(aligned_bytes + Header.sizeof)?;
 	Header* new_block = (Header*)result.ptr;
 	new_block.size = result.len - Header.sizeof;

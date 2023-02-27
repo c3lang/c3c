@@ -679,6 +679,7 @@ typedef struct Decl_
 	bool is_export : 1;
 	bool is_live : 1;
 	bool no_strip : 1;
+	bool is_deprecated : 1;
 	OperatorOverload operator : 4;
 	union
 	{
@@ -1656,6 +1657,7 @@ typedef struct SemaContext_
 	CompilationUnit *compilation_unit;
 	CallEnv call_env;
 	Decl *current_macro;
+	SourceSpan inlining_span;
 	ScopeId scope_id;
 	unsigned macro_call_depth;
 	Ast *break_target;

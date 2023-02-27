@@ -52,7 +52,7 @@ fn void*! arena_allocator_function(Allocator* data, usz size, usz alignment, usz
 			if (!size) return null;
 			alignment = alignment_for_allocation(alignment);
 			void* mem = arena._alloc(size, alignment, offset)?;
-			if (clear) mem::clear(mem, size, DEFAULT_MEM_ALIGNMENT);
+			if (clear) mem::clear(mem, size, mem::DEFAULT_MEM_ALIGNMENT);
         	return mem;
 		case ALIGNED_REALLOC:
 		case REALLOC:
@@ -84,8 +84,8 @@ fn void*! arena_allocator_function(Allocator* data, usz size, usz alignment, usz
  * @require alignment > 0 `alignment must be non zero`
  * @require math::is_power_of_2(alignment)
  * @require size > 0
- * @require alignment <= MAX_MEMORY_ALIGNMENT `alignment too big`
- * @require offset <= MAX_MEMORY_ALIGNMENT `offset too big`
+ * @require alignment <= mem::MAX_MEMORY_ALIGNMENT `alignment too big`
+ * @require offset <= mem::MAX_MEMORY_ALIGNMENT `offset too big`
  * @require offset <= size && offset >= 0
  * @require mem::aligned_offset(offset, ArenaAllocatorHeader.alignof) == offset
  * @require this != null
@@ -110,8 +110,8 @@ fn void*! ArenaAllocator._alloc(ArenaAllocator* this, usz size, usz alignment, u
  * @require alignment > 0 `alignment must be non zero`
  * @require math::is_power_of_2(alignment)
  * @require size > 0
- * @require alignment <= MAX_MEMORY_ALIGNMENT `alignment too big`
- * @require offset <= MAX_MEMORY_ALIGNMENT `offset too big`
+ * @require alignment <= mem::MAX_MEMORY_ALIGNMENT `alignment too big`
+ * @require offset <= mem::MAX_MEMORY_ALIGNMENT `offset too big`
  * @require offset <= size && offset >= 0
  * @require mem::aligned_offset(offset, ArenaAllocatorHeader.alignof) == offset
  * @require this != null
@@ -141,6 +141,6 @@ fn void*! ArenaAllocator._realloc(ArenaAllocator* this, void *old_pointer, usz s
 	}
 	// Otherwise just allocate new memory.
 	void* mem = this._alloc(size, alignment, offset)?;
-	mem::copy(mem, old_pointer, old_size, DEFAULT_MEM_ALIGNMENT, DEFAULT_MEM_ALIGNMENT);
+	mem::copy(mem, old_pointer, old_size, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
 	return mem;
 }
