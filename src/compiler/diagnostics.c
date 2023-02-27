@@ -160,6 +160,15 @@ void sema_verror_range(SourceSpan location, const char *message, va_list args)
 	global_context.errors_found++;
 }
 
+void sema_warning_at(SourceSpan loc, const char *message, ...)
+{
+	if (global_context.suppress_errors) return;
+	va_list list;
+	va_start(list, message);
+	print_error(loc, str_vprintf(message, list), PRINT_TYPE_NOTE);
+	va_end(list);
+}
+
 
 void sema_error_at(SourceSpan loc, const char *message, ...)
 {

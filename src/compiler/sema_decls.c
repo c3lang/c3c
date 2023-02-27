@@ -1547,7 +1547,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 				}
 			}
 			decl->is_deprecated = true;
-			break;
+			return true;
 		case ATTRIBUTE_WINMAIN:
 			if (decl->name != kw_main)
 			{
@@ -2705,8 +2705,15 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 
 	if (!sema_resolve_type_info_maybe_inferred(context, decl->var.type_info, decl->var.init_expr != NULL)) return decl_poison(decl);
 
-	decl->type = decl->var.type_info->type;
+	Type *type = decl->type = decl->var.type_info->type;
 	if (!sema_analyse_decl_type(context, decl->type, decl->var.type_info->span)) return decl_poison(decl);
+
+	if (type) type = type_no_optional(type);
+	if (type_is_user_defined(type))
+	{
+		sema_display_deprecated_warning_on_use(context, type->decl, decl->var.type_info->span);
+	}
+
 	bool is_static = decl->var.is_static;
 	if (is_static && context->call_env.pure)
 	{
@@ -2783,7 +2790,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 			init_expr->const_expr.is_hex = false;
 		}
 	}
-	EXIT_OK:
+	EXIT_OK:;
 	if (!decl->alignment)
 	{
 		if (!sema_set_alloca_alignment(context, decl->type, &decl->alignment)) return false;
@@ -3155,8 +3162,28 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 	}
 	decl->resolve_status = RESOLVE_DONE;
 	sema_context_destroy(&temp_context);
+
 	return true;
 FAILED:
 	sema_context_destroy(&temp_context);
 	return decl_poison(decl);
+}
+
+void sema_display_deprecated_warning_on_use(SemaContext *context, Decl *decl, SourceSpan span)
+{
+	if (!decl->is_deprecated) return;
+	decl->is_deprecated = false;
+	FOREACH_BEGIN(Attr *attr, decl->attributes)
+		if (attr->attr_kind == ATTRIBUTE_DEPRECATED)
+		{
+			if (attr->exprs)
+			{
+				const char *comment_string = attr->exprs[0]->const_expr.string.chars;
+				sema_warning_at(span, "'%s' is deprecated: %s.", decl->name, comment_string);
+				return;
+			}
+			break;
+		}
+	FOREACH_END();
+	sema_warning_at(span, "'%s' is deprecated.", decl->name);
 }

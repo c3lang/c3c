@@ -2274,6 +2274,7 @@ void sema_error_prev_at(SourceSpan loc, const char *message, ...);
 void sema_verror_range(SourceSpan location, const char *message, va_list args);
 void sema_error(ParseContext *context, const char *message, ...);
 
+void sema_warning_at(SourceSpan loc, const char *message, ...);
 void sema_shadow_error(Decl *decl, Decl *old);
 bool sema_type_error_on_binop(Expr *expr);
 

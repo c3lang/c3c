@@ -104,6 +104,7 @@ void cast_to_max_bit_size(SemaContext *context, Expr *left, Expr *right, Type *l
 bool cast_decay_array_pointers(SemaContext *context, Expr *expr);
 INLINE bool sema_set_abi_alignment(SemaContext *context, Type *type, AlignSize *result);
 INLINE bool sema_set_alloca_alignment(SemaContext *context, Type *type, AlignSize *result);
+void sema_display_deprecated_warning_on_use(SemaContext *context, Decl *decl, SourceSpan use);
 
 INLINE bool sema_set_abi_alignment(SemaContext *context, Type *type, AlignSize *result)
 {

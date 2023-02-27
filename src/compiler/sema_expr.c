@@ -837,6 +837,8 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 	{
 		if (!sema_analyse_decl(context, decl)) return decl_poison(decl);
 	}
+	sema_display_deprecated_warning_on_use(context, decl, expr->span);
+
 	unit_register_external_symbol(context->compilation_unit, decl);
 	if (decl->decl_kind == DECL_VAR)
 	{
@@ -1516,6 +1518,7 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Type 
 	}
 
 	bool is_unused = expr->call_expr.result_unused;
+
 	if (!sema_call_analyse_invocation(context, expr, callee, &optional)) return false;
 
 	Type *rtype = type->function.prototype->rtype;
@@ -1653,6 +1656,8 @@ static inline bool sema_expr_analyse_func_call(SemaContext *context, Expr *expr,
 		SEMA_ERROR(expr, "@test functions may not be directly called.");
 		return false;
 	}
+	sema_display_deprecated_warning_on_use(context, decl, expr->span);
+
 	return sema_call_analyse_func_invocation(context,
 	                                         decl->type,
 	                                         expr,
@@ -1672,6 +1677,8 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		SEMA_ERROR(call_expr, "Failure evaluating macro, max call depth reached.");
 		return false;
 	}
+	sema_display_deprecated_warning_on_use(context, decl, call_expr->span);
+
 	copy_begin();
 	Decl **params = copy_decl_list_macro(decl->func_decl.signature.params);
 	Ast *body = copy_ast_macro(astptr(decl->func_decl.body));
