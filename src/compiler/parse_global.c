@@ -1,6 +1,9 @@
+// Copyright (c) 2019-2023 Christoffer Lerno. All rights reserved.
+// Use of this source code is governed by the GNU LGPLv3.0 license
+// a copy of which can be found in the LICENSE file.
+
 #include "compiler_internal.h"
 #include "parser_internal.h"
-
 
 static Decl *parse_const_declaration(ParseContext *c, bool is_global);
 static inline Decl *parse_func_definition(ParseContext *c, AstId docs, bool is_interface);

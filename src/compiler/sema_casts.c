@@ -1618,7 +1618,7 @@ static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, boo
 			if (type_is_substruct(from))
 			{
 				Type *type;
-				Expr *access = expr_access_inline_member(expr_copy(expr), from->decl->strukt.members[0]);
+				Expr *access = expr_access_inline_member(expr_copy(expr), from->decl);
 				while (1)
 				{
 					type = access->type->canonical;
