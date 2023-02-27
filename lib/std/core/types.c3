@@ -39,7 +39,7 @@ macro variant_to_int(variant v, $Type)
 			if (i > max || i < min) return ConversionResult.VALUE_OUT_OF_RANGE!;
 			return ($Type)i;
 		case long:
-			long l = *(long*)v.ptr;;
+			long l = *(long*)v.ptr;
 			if (is_mixed_signed && l < 0) return ConversionResult.VALUE_OUT_OF_UNSIGNED_RANGE!;
 			if (l > max || l < min) return ConversionResult.VALUE_OUT_OF_RANGE!;
 			return ($Type)l;
@@ -53,15 +53,15 @@ macro variant_to_int(variant v, $Type)
 			if (c > max) return ConversionResult.VALUE_OUT_OF_RANGE!;
 			return ($Type)c;
 		case ushort:
-			ushort s = *(ushort*)v.ptr;;
+			ushort s = *(ushort*)v.ptr;
 			if (s > max || s < min) return ConversionResult.VALUE_OUT_OF_RANGE!;
 			return ($Type)s;
 		case uint:
-			uint i = *(uint*)v.ptr;;
+			uint i = *(uint*)v.ptr;
 			if (i > max || i < min) return ConversionResult.VALUE_OUT_OF_RANGE!;
 			return ($Type)i;
 		case ulong:
-			ulong l = *(ulong*)v.ptr;;
+			ulong l = *(ulong*)v.ptr;
 			if (l > max || l < min) return ConversionResult.VALUE_OUT_OF_RANGE!;
 			return ($Type)l;
 		case uint128:

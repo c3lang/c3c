@@ -855,16 +855,7 @@ static inline Ast *parse_expr_stmt(ParseContext *c)
 	Ast *stmt = new_ast(AST_EXPR_STMT, c->span);
 	ASSIGN_EXPR_OR_RET(stmt->expr_stmt, parse_expr(c), poisoned_ast);
 	RANGE_EXTEND_PREV(stmt);
-	do
-	{
-		if (!tok_is(c, TOKEN_EOS))
-		{
-			sema_error_at_after(c->prev_span, "Expected ';' after the expression.");
-			return poisoned_ast;
-		}
-		advance(c);
-	}
-	while (0);
+	CONSUME_EOS_OR_RET(poisoned_ast);
 	return stmt;
 }
 
@@ -881,7 +872,9 @@ static inline Ast *parse_decl_or_expr_stmt(ParseContext *c)
 	}
 	if (expr->expr_kind == EXPR_TYPEINFO)
 	{
-		return parse_declaration_statment_after_type(c, expr->type_expr);
+		ASSIGN_AST_OR_RET(Ast *ast, parse_declaration_statment_after_type(c, expr->type_expr), poisoned_ast);
+		CONSUME_EOS_OR_RET(poisoned_ast);
+		return ast;
 	}
 	Ast *ast = ast_calloc();
 	ast->span = expr->span;
@@ -907,16 +900,7 @@ static inline Ast *parse_var_stmt(ParseContext *c)
 	Ast *ast = new_ast(AST_DECLARE_STMT, c->span);
 	ASSIGN_DECL_OR_RET(ast->var_stmt, parse_var_decl(c), poisoned_ast);
 	RANGE_EXTEND_PREV(ast);
-	do
-	{
-		if (!tok_is(c, TOKEN_EOS))
-		{
-			sema_error_at_after(c->prev_span, "Expected ';'");
-			return poisoned_ast;
-		}
-		advance(c);
-	}
-	while (0);
+	CONSUME_EOS_OR_RET(poisoned_ast);
 	return ast;
 }
 

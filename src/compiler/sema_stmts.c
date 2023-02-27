@@ -1886,20 +1886,16 @@ static inline bool sema_analyse_then_overwrite(SemaContext *context, Ast *statem
 		statement->ast_kind = AST_NOP_STMT;
 		return true;
 	}
-	Ast *last;
+	Ast *last = NULL;
 	AstId next = statement->next;
 	*statement = *astptr(replacement);
 	AstId current = astid(statement);
-	while (1)
+	assert(current);
+	while (current)
 	{
-		Ast *curr_ast = astptr(current);
-		if (!sema_analyse_statement(context, curr_ast)) return false;
-		if (!curr_ast->next)
-		{
-			last = curr_ast;
-			break;
-		}
-		current = curr_ast->next;
+		Ast *ast = ast_next(&current);
+		if (!sema_analyse_statement(context, ast)) return false;
+		last = ast;
 	}
 	last->next = next;
 	return true;
