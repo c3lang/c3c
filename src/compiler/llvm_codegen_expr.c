@@ -1720,15 +1720,6 @@ static inline void llvm_emit_initialize_reference_list(GenContext *c, BEValue *r
 	llvm_value_addr(c, ref);
 	LLVMValueRef value = ref->value;
 
-
-	// If this is a union, we assume it's initializing the first element.
-	if (real_type->type_kind == TYPE_UNION)
-	{
-		assert(vec_size(elements) == 1);
-		real_type = type_lowering(real_type->decl->strukt.members[0]->type);
-		ref->type = real_type;
-	}
-
 	LLVMTypeRef llvm_type = llvm_get_type(c, real_type);
 	bool is_struct = type_is_union_or_strukt(real_type);
 	bool is_array = real_type->type_kind == TYPE_ARRAY;

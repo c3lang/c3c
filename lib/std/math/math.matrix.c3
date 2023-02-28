@@ -74,7 +74,7 @@ fn Matrix2x2 Matrix2x2.mul(Matrix2x2* a, Matrix2x2 b)
 {
 	return Matrix2x2 {
 		a.m00 * b.m00 + a.m01 * b.m10, a.m00 * b.m01 + a.m01 * b.m11,
-		a.m10 * b.m01 + a.m11 * b.m11, a.m10 * b.m01 + a.m11 * b.m11,
+		a.m10 * b.m00 + a.m11 * b.m10, a.m10 * b.m01 + a.m11 * b.m11,
 	};
 }
 

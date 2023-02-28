@@ -25,6 +25,10 @@ static bool pointer_to_pointer(Expr* expr, Type *type);
 static bool bool_to_int(Expr *expr, Type *canonical, Type *type);
 static bool bool_to_float(Expr *expr, Type *canonical, Type *type);
 static bool integer_to_bool(Expr *expr, Type *type);
+static bool float_to_bool(Expr *expr, Type *type);
+static bool float_to_float(Expr* expr, Type *canonical, Type *type);
+static bool float_to_integer(Expr *expr, Type *canonical, Type *type);
+
 static bool voidfail_to_error(Expr *expr, Type *type);
 static void const_int_to_fp_cast(Expr *expr, Type *canonical, Type *type);
 INLINE bool insert_runtime_cast_unless_const(Expr *expr, CastKind kind, Type *type);
@@ -262,7 +266,7 @@ static bool integer_to_bool(Expr *expr, Type *type)
  * Cast any float to bool using CAST_FPBOOL
  * or rewrite 0.0 => false, any other value => true
  */
-bool float_to_bool(Expr *expr, Type *type)
+static bool float_to_bool(Expr *expr, Type *type)
 {
 	if (insert_runtime_cast_unless_const(expr, CAST_FPBOOL, type)) return true;
 
@@ -288,9 +292,10 @@ static bool float_to_float(Expr* expr, Type *canonical, Type *type)
 }
 
 /**
- * Convert from any floating point to int
+ * Convert from any floating point to int using CAST_FPSI / CAST_FPUI
+ * Const conversion will disable narrowable and hex.
  */
-bool float_to_integer(Expr *expr, Type *canonical, Type *type)
+static bool float_to_integer(Expr *expr, Type *canonical, Type *type)
 {
 	bool is_signed = type_is_signed(canonical);
 	if (insert_runtime_cast_unless_const(expr, is_signed ? CAST_FPSI : CAST_FPUI, type)) return true;
