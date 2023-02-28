@@ -2760,12 +2760,12 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 
 		if (infer_len)
 		{
-			if (type_is_len_inferred(init->type))
+			if (type_is_inferred(init->type))
 			{
 				SEMA_ERROR(decl->var.type_info, "You cannot use [*] and [<*>] underlying types with initializers.");
 				return decl_poison(decl);
 			}
-			decl->type = cast_infer_len(decl->type,  init->type);
+			decl->type = type_infer_len_from_actual_type(decl->type, init->type);
 		}
 
 		Expr *init_expr = decl->var.init_expr;

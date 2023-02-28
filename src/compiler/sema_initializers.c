@@ -251,6 +251,8 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 
 	bool optional = false;
 	bool is_vector = type_flat_is_vector(assigned);
+	bool inner_is_inferred = type_len_is_inferred(inner_type);
+	Type *inferred_element = NULL;
 	for (unsigned i = 0; i < count; i++)
 	{
 		Expr *element = elements[i];
@@ -302,8 +304,33 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 		else
 		{
 			if (!sema_analyse_expr_rhs(context, inner_type, element, true)) return false;
+			if (inner_is_inferred)
+			{
+				Type *element_type = type_no_optional(element->type);
+				if (inferred_element)
+				{
+					if (!cast_implicit(context, element, inferred_element))
+					{
+						SEMA_NOTE(elements[0], "Type inferred from here.");
+						return false;
+					}
+				}
+				else
+				{
+					inferred_element = type_infer_len_from_actual_type(inner_type, element_type);
+				}
+			}
 		}
 		optional = optional || IS_OPTIONAL(element);
+	}
+	if (inner_is_inferred)
+	{
+		if (!inferred_element)
+		{
+			SEMA_ERROR(initializer, "Zero sized elements are not allowed when inferring size.");
+			return false;
+		}
+		inner_type = inferred_element;
 	}
 	if (inferred_len)
 	{
@@ -377,7 +404,7 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 	MemberIndex max_index = -1;
 	bool optional = false;
 	Type *inner_type = NULL;
-	bool is_inferred = type_is_len_inferred(flattened);
+	bool is_inferred = type_is_inferred(flattened);
 	VECEACH(init_expressions, i)
 	{
 		Expr *expr = init_expressions[i];
@@ -423,11 +450,6 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ass
 	// EXPR_DESIGNATED_INITIALIZER_LIST
 	// or EXPR_INITIALIZER_LIST
 
-	if (type_len_is_inferred(flattened) && type_len_is_inferred(type_get_indexed_type(flattened)))
-	{
-		SEMA_ERROR(expr, "Initializers cannot be used with inferred length element types (e.g. %s).", type_quoted_error_string(type_get_indexed_type(flattened)));
-		return false;
-	}
 	// 1. Designated initializer is separately evaluated.
 	if (expr->expr_kind == EXPR_DESIGNATED_INITIALIZER_LIST)
 	{

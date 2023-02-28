@@ -18,7 +18,20 @@ static Expr *recursive_may_narrow_int(Expr *expr, Type *type);
 static void recursively_rewrite_untyped_list(Expr *expr, Expr **list);
 static inline bool cast_may_implicit_ptr(Type *from_pointee, Type *to_pointee);
 static inline bool cast_may_array(Type *from, Type *to, bool is_explicit);
+static inline bool insert_cast(Expr *expr, CastKind kind, Type *type);
+static bool pointer_to_integer(Expr *expr, Type *type);
+static bool pointer_to_bool(Expr *expr, Type *type);
+static bool pointer_to_pointer(Expr* expr, Type *type);
+static bool bool_to_int(Expr *expr, Type *canonical, Type *type);
+static bool bool_to_float(Expr *expr, Type *canonical, Type *type);
+static bool integer_to_bool(Expr *expr, Type *type);
+static bool voidfail_to_error(Expr *expr, Type *type);
+static void const_int_to_fp_cast(Expr *expr, Type *canonical, Type *type);
+INLINE bool insert_runtime_cast_unless_const(Expr *expr, CastKind kind, Type *type);
 
+/**
+ * Insert a cast. This will assume that the cast is valid. No typeinfo will be registered.
+ */
 static inline bool insert_cast(Expr *expr, CastKind kind, Type *type)
 {
 	assert(expr->resolve_status == RESOLVE_DONE);
@@ -32,6 +45,9 @@ static inline bool insert_cast(Expr *expr, CastKind kind, Type *type)
 	return true;
 }
 
+/**
+ * General error due to casts.
+ */
 bool sema_error_failed_cast(Expr *expr, Type *from, Type *to)
 {
 	SEMA_ERROR(expr, "The cast %s to %s is not allowed.", type_quoted_error_string(from), type_quoted_error_string(to));
@@ -39,45 +55,82 @@ bool sema_error_failed_cast(Expr *expr, Type *from, Type *to)
 }
 
 
-Type *cast_infer_len(Type *to_infer, Type *actual_type)
+/**
+ * Create a type by inferring the length.
+ */
+Type *type_infer_len_from_actual_type(Type *to_infer, Type *actual_type)
 {
-	Type *may_infer = to_infer->canonical;
-	Type *actual = actual_type->canonical;
-	if (may_infer == actual) return to_infer;
-	bool canonical_same_kind = may_infer->type_kind == to_infer->type_kind;
-	assert(type_is_arraylike(actual_type));
-	if (may_infer->type_kind == TYPE_INFERRED_ARRAY)
+	// This may be called on types not inferrable,
+	// if so we assume the original type
+	if (!type_len_is_inferred(to_infer)) return to_infer;
+
+	// Handle int[*]! a = { ... } by stripping the optional.
+	bool is_optional = type_is_optional(to_infer);
+
+	assert(is_optional || !type_is_optional(actual_type) && "int[*] x = { may_fail } should have been caught.");
+
+	// Strip the optional
+	if (is_optional) to_infer = to_infer->optional;
+
+	// And from the actual type.
+	actual_type = type_no_optional(actual_type);
+
+	// Grab the underlying indexed type,
+	// because we can only have [*] [] [<*>] [<>] * here
+	Type *indexed = type_get_indexed_type(to_infer);
+	Type *actual = type_get_indexed_type(actual_type);
+
+	// We should always have indexed types.
+	assert(indexed && actual);
+
+	// The underlying type may also be inferred.
+	// In this case, infer it.
+	if (type_len_is_inferred(indexed))
 	{
-		Type *base_type = cast_infer_len(canonical_same_kind ? to_infer->array.base :
-		                                 may_infer->array.base, actual->array.base);
-		return type_get_array(base_type, actual->array.len);
+		// if we have int[*][*] => the inner is int[*], we cast it here.
+		indexed = type_infer_len_from_actual_type(indexed, actual);
 	}
-	if (may_infer->type_kind == TYPE_INFERRED_VECTOR)
+
+	// Construct the real type
+	switch (to_infer->type_kind)
 	{
-		Type *base_type = cast_infer_len(canonical_same_kind ? to_infer->array.base : may_infer->array.base, actual->array.base);
-		if (actual_type->type_kind == TYPE_SCALED_VECTOR)
-		{
-			return type_get_scaled_vector(base_type);
-		}
-		return type_get_vector(base_type, actual->array.len);
+		case TYPE_POINTER:
+			// The case of int[*]* x = ...
+			return type_add_optional(type_get_ptr(indexed), is_optional);
+		case TYPE_ARRAY:
+			// The case of int[*][2] x = ...
+			return type_add_optional(type_get_array(indexed, to_infer->array.len), is_optional);
+		case TYPE_INFERRED_ARRAY:
+			assert(type_is_arraylike(type_flatten(actual_type)));
+			return type_add_optional(type_get_array(indexed, type_flatten(actual_type)->array.len), is_optional);
+		case TYPE_INFERRED_VECTOR:
+			assert(type_is_arraylike(type_flatten(actual_type)));
+			return type_add_optional(type_get_vector(indexed, type_flatten(actual_type)->array.len), is_optional);
+		case TYPE_VECTOR:
+			// This is unreachable, because unlike arrays, there is no inner type that may be
+			// the inferred part.
+			UNREACHABLE
+		case TYPE_SUBARRAY:
+			// The case of int[*][] y = ... is disallowed
+			UNREACHABLE
+		default:
+			UNREACHABLE
 	}
-	if (may_infer->type_kind == TYPE_POINTER)
-	{
-		assert(actual->type_kind == TYPE_POINTER);
-		Type *base_type = cast_infer_len(canonical_same_kind ? to_infer->array.base : may_infer->pointer, actual->pointer);
-		return type_get_ptr(base_type);
-	}
-	UNREACHABLE
 }
 
-static inline bool insert_runtime_cast_unless_const(Expr *expr, CastKind kind, Type *type)
+/**
+ * Insert a cast on non-const only
+ */
+INLINE bool insert_runtime_cast_unless_const(Expr *expr, CastKind kind, Type *type)
 {
 	if (expr->expr_kind == EXPR_CONST) return false;
 	return insert_cast(expr, kind, type);
 }
 
-
-bool pointer_to_integer(Expr *expr, Type *type)
+/**
+ * Insert the PTRXI cast, or on const do a rewrite.
+ */
+static bool pointer_to_integer(Expr *expr, Type *type)
 {
 	if (insert_runtime_cast_unless_const(expr, CAST_PTRXI, type)) return true;
 
@@ -86,37 +139,49 @@ bool pointer_to_integer(Expr *expr, Type *type)
 	return true;
 }
 
-bool pointer_to_bool(Expr *expr, Type *type)
+/**
+ * Insert the PTRBOOL cast or on const do a rewrite.
+ */
+static bool pointer_to_bool(Expr *expr, Type *type)
 {
 	if (insert_runtime_cast_unless_const(expr, CAST_PTRBOOL, type)) return true;
 
+	// It may be a pointer
 	if (expr->const_expr.const_kind == CONST_POINTER)
 	{
 		expr_rewrite_const_bool(expr, type, expr->const_expr.ptr != 0);
 		return true;
 	}
+
+	// Or it's a string, in which case it is always true.
 	assert(expr->const_expr.const_kind == CONST_STRING);
 	expr_rewrite_const_bool(expr, type, true);
 	return true;
 }
 
-
-bool pointer_to_pointer(Expr* expr, Type *type)
+/**
+ * Insert a PTRPTR cast or update the pointer type
+ */
+static bool pointer_to_pointer(Expr* expr, Type *type)
 {
 	if (insert_runtime_cast_unless_const(expr, CAST_PTRPTR, type)) return true;
 
+	// Strings cannot be compile-time folded, so insert a runtime cast.
 	if (expr->const_expr.const_kind == CONST_STRING)
 	{
 		return insert_cast(expr, CAST_PTRPTR, type);
 	}
-	// Must have been a null
+
+	// Insert the cast, this removes the ability to narrow it.
 	expr->type = type;
 	expr->const_expr.narrowable = false;
 	expr->const_expr.is_hex = false;
 	return true;
 }
 
-
+/**
+ * Do a const int -> float cast.
+ */
 static void const_int_to_fp_cast(Expr *expr, Type *canonical, Type *type)
 {
 	Real f = int_to_real(expr->const_expr.ixx);
@@ -129,9 +194,11 @@ static void const_int_to_fp_cast(Expr *expr, Type *canonical, Type *type)
 			expr->const_expr.fxx = (Float) { (double)f, TYPE_F64 };
 			break;
 		default:
+			REMINDER("Int to fp cast may be too wide.");
 			expr->const_expr.fxx = (Float) { f, canonical->type_kind };
 			break;
 	}
+	// It's not allowed to narrow after a cast.
 	expr->type = type;
 	expr->const_expr.const_kind = CONST_FLOAT;
 	expr->const_expr.narrowable = false;
@@ -140,20 +207,23 @@ static void const_int_to_fp_cast(Expr *expr, Type *canonical, Type *type)
 
 
 /**
- * Bool into a signed or unsigned int.
+ * Bool into a signed or unsigned int using CAST_BOOLXI
+ * or rewrite to 0 / 1 for false / true.
  */
-bool bool_to_int(Expr *expr, Type *canonical, Type *type)
+static bool bool_to_int(Expr *expr, Type *canonical, Type *type)
 {
-	if (insert_runtime_cast_unless_const(expr, CAST_BOOLINT, type)) return true;
+	if (insert_runtime_cast_unless_const(expr, CAST_BOOLXI, type)) return true;
+
 	expr_rewrite_const_int(expr, type, expr->const_expr.b ? 1 : 0, false);
 	return true;
 }
 
 
 /**
- * Cast bool to float.
+ * Cast bool to float using CAST_BOOLFP
+ * or rewrite to 0.0 / 1.0 for false / true
  */
-bool bool_to_float(Expr *expr, Type *canonical, Type *type)
+static bool bool_to_float(Expr *expr, Type *canonical, Type *type)
 {
 	if (insert_runtime_cast_unless_const(expr, CAST_BOOLFP, type)) return true;
 
@@ -163,10 +233,12 @@ bool bool_to_float(Expr *expr, Type *canonical, Type *type)
 }
 
 /**
- * Cast bool to float.
+ * Insert a cast from `void!` to some fault type by inserting a `catch`,
+ * so "anyerr a = returns_voidfail()" => "anyerr a = catch(returns_voidfail())"
  */
-bool voidfail_to_error(Expr *expr, Type *type)
+static bool voidfail_to_error(Expr *expr, Type *type)
 {
+	assert(type->canonical->type_kind == TYPE_FAULTTYPE || type == type_anyerr);
 	Expr *inner = expr_copy(expr);
 	expr->expr_kind = EXPR_CATCH;
 	expr->inner_expr = inner;
@@ -175,19 +247,20 @@ bool voidfail_to_error(Expr *expr, Type *type)
 }
 
 /**
- * Convert from any into to bool.
- * @return true for any implicit conversion except assign and assign add.
+ * Cast int to bool using CAST_XIBOOL
+ * or rewrite 0 => false, any other value => true
  */
-bool integer_to_bool(Expr *expr, Type *type)
+static bool integer_to_bool(Expr *expr, Type *type)
 {
-	if (insert_runtime_cast_unless_const(expr, CAST_INTBOOL, type)) return true;
+	if (insert_runtime_cast_unless_const(expr, CAST_XIBOOL, type)) return true;
 
 	expr_rewrite_const_bool(expr, type, !int_is_zero(expr->const_expr.ixx));
 	return true;
 }
 
 /**
- * Convert from any float to bool
+ * Cast any float to bool using CAST_FPBOOL
+ * or rewrite 0.0 => false, any other value => true
  */
 bool float_to_bool(Expr *expr, Type *type)
 {
@@ -199,11 +272,17 @@ bool float_to_bool(Expr *expr, Type *type)
 
 
 /**
- * Convert from any fp to fp
+ * Convert any fp to another fp type using CAST_FPFP
  */
 static bool float_to_float(Expr* expr, Type *canonical, Type *type)
 {
+	// Change to same type should never enter here.
+	assert(type_flatten(canonical) != type_flatten(expr->type));
+
+	// Insert runtime cast if needed.
 	if (insert_runtime_cast_unless_const(expr, CAST_FPFP, type)) return true;
+
+	// Otherwise rewrite the const, which may cause rounding.
 	expr_rewrite_const_float(expr, type, expr->const_expr.fxx.f);
 	return true;
 }
@@ -431,7 +510,7 @@ CastKind cast_to_bool_kind(Type *type)
 		case TYPE_SUBARRAY:
 			return CAST_SABOOL;
 		case ALL_INTS:
-			return CAST_INTBOOL;
+			return CAST_XIBOOL;
 		case ALL_FLOATS:
 			return CAST_FPBOOL;
 		case TYPE_POINTER:
@@ -1132,7 +1211,7 @@ CAST_ELEMENT:
 CAST:
 	if (infer_type)
 	{
-		to_type = cast_infer_len(to_type, from);
+		to_type = type_infer_len_from_actual_type(to_type, from);
 	}
 	return cast_with_optional(expr, to_type, add_optional);
 CAST_ILLEGAL:
@@ -1228,7 +1307,7 @@ TRY_CAST:
 CAST_ILLEGAL:
 	return sema_error_cannot_convert(expr, to_type, false, silent);
 CAST:
-	if (infer_len) to_type = cast_infer_len(to_type, from);
+	if (infer_len) to_type = type_infer_len_from_actual_type(to_type, from);
 	return cast_with_optional(expr, to_type, add_optional);
 }
 
@@ -1763,14 +1842,14 @@ static bool vec_to_vec(Expr *expr, Type *to_type)
 		}
 		if (type_is_signed(from_element))
 		{
-			if (to_element == type_bool) return insert_cast(expr, CAST_INTBOOL, to_type);
+			if (to_element == type_bool) return insert_cast(expr, CAST_XIBOOL, to_type);
 			if (type_is_unsigned(to_element)) return insert_cast(expr, CAST_SIUI, to_type);
 			if (type_is_signed(to_element)) return insert_cast(expr, CAST_SISI, to_type);
 			if (type_is_float(to_element)) return insert_cast(expr, CAST_SIFP, to_type);
 			UNREACHABLE
 		}
 		assert(type_is_unsigned(from_element));
-		if (to_element == type_bool) return insert_cast(expr, CAST_INTBOOL, to_type);
+		if (to_element == type_bool) return insert_cast(expr, CAST_XIBOOL, to_type);
 		if (type_is_unsigned(to_element)) return insert_cast(expr, CAST_UIUI, to_type);
 		if (type_is_signed(to_element)) return insert_cast(expr, CAST_UISI, to_type);
 		if (type_is_float(to_element)) return insert_cast(expr, CAST_UIFP, to_type);

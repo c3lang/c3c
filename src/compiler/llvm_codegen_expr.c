@@ -1318,7 +1318,7 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 			value->value = LLVMBuildIsNotNull(c->builder, value->value, "ptrbool");
 			value->kind = BE_BOOLEAN;
 			break;
-		case CAST_BOOLINT:
+		case CAST_BOOLXI:
 			llvm_value_rvalue(c, value);
 			value->value =  LLVMBuildZExt(c->builder, value->value, llvm_get_type(c, to_type), "boolsi");
 			value->kind = BE_VALUE;
@@ -1337,7 +1337,7 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 			value->value =  LLVMBuildUIToFP(c->builder, value->value, llvm_get_type(c, to_type), "boolfp");
 			value->kind = BE_VALUE;
 			break;
-		case CAST_INTBOOL:
+		case CAST_XIBOOL:
 			llvm_value_rvalue(c, value);
 			value->value = LLVMBuildICmp(c->builder, LLVMIntNE, value->value, llvm_get_zero(c, from_type), "intbool");
 			value->kind = type_kind_is_any_vector(value->type->type_kind) ? BE_BOOLVECTOR : BE_BOOLEAN;

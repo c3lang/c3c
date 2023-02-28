@@ -2080,7 +2080,7 @@ bool cast_explicit(SemaContext *context, Expr *expr, Type *to_type);
 bool cast(Expr *expr, Type *to_type);
 bool cast_may_bool_convert(Type *type);
 
-Type *cast_infer_len(Type *to_infer, Type *actual_type);
+Type *type_infer_len_from_actual_type(Type *to_infer, Type *actual_type);
 bool cast_to_index(Expr *index);
 
 bool cast_untyped_to_type(SemaContext *context, Expr *expr, Type *to_type);
@@ -2396,7 +2396,7 @@ INLINE bool type_is_integer_unsigned(Type *type);
 INLINE bool type_is_integer_signed(Type *type);
 INLINE bool type_is_integer_or_bool_kind(Type *type);
 INLINE bool type_is_numeric(Type *type);
-INLINE bool type_is_len_inferred(Type *type);
+INLINE bool type_is_inferred(Type *type);
 INLINE bool type_underlying_is_numeric(Type *type);
 INLINE bool type_is_pointer(Type *type);
 INLINE bool type_is_arraylike(Type *type);
@@ -2475,12 +2475,20 @@ INLINE Type *type_from_inferred(Type *flattened, Type *element_type, unsigned co
 {
 	switch (flattened->type_kind)
 	{
+		case TYPE_POINTER:
+			assert(count == 0);
+			return type_get_ptr(element_type);
+		case TYPE_VECTOR:
+			assert(flattened->array.len == count);
+			FALLTHROUGH;
 		case TYPE_INFERRED_VECTOR:
 			return type_get_vector(element_type, count);
 			break;
+		case TYPE_ARRAY:
+			assert(flattened->array.len == count);
+			FALLTHROUGH;
 		case TYPE_INFERRED_ARRAY:
 			return type_get_array(element_type, count);
-			break;
 		default:
 			UNREACHABLE
 	}
@@ -2495,6 +2503,9 @@ INLINE bool type_len_is_inferred(Type *type)
 		{
 			case TYPE_TYPEDEF:
 				type = type->canonical;
+				continue;
+			case TYPE_OPTIONAL:
+				type = type->optional;
 				continue;
 			case TYPE_ARRAY:
 			case TYPE_SUBARRAY:
@@ -2833,7 +2844,7 @@ INLINE bool type_is_func_ptr(Type *fn_type)
 	return fn_type->pointer->type_kind == TYPE_FUNC;
 }
 
-INLINE bool type_is_len_inferred(Type *type)
+INLINE bool type_is_inferred(Type *type)
 {
 	TypeKind kind = type->type_kind;
 	return kind == TYPE_INFERRED_VECTOR || kind == TYPE_INFERRED_ARRAY;

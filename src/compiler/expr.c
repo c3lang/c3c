@@ -354,11 +354,11 @@ static inline bool expr_cast_is_constant_eval(Expr *expr, ConstantEvalKind eval_
 		case CAST_XIERR:
 		case CAST_STRPTR:
 		case CAST_PTRBOOL:
-		case CAST_BOOLINT:
+		case CAST_BOOLXI:
 		case CAST_BOOLFP:
 		case CAST_BOOLBOOL:
 		case CAST_FPBOOL:
-		case CAST_INTBOOL:
+		case CAST_XIBOOL:
 		case CAST_FPFP:
 		case CAST_FPSI:
 		case CAST_FPUI:

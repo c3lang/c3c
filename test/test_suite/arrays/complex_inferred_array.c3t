@@ -1,0 +1,17 @@
+// #target: macos-x64
+module test;
+
+fn void main()
+{
+	int[*][*][2][*]! y = { {{{1}, {2}}, { {3}, {4}}}};
+	int[*][*][2][*] x = { {{{1}, {2}}, { {3}, {4}}}};
+}
+
+/* #expect: test.ll
+
+
+@.__const = private unnamed_addr constant [1 x [2 x [2 x [1 x i32]]]] [[2 x [2 x [1 x i32]]] [[2 x [1 x i32]] [[1 x i32] [i32 1], [1 x i32] [i32 2]], [2 x [1 x i32]] [[1 x i32] [i32 3], [1 x i32] [i32 4]]]], align 16
+@.__const.1 = private unnamed_addr constant [1 x [2 x [2 x [1 x i32]]]] [[2 x [2 x [1 x i32]]] [[2 x [1 x i32]] [[1 x i32] [i32 1], [1 x i32] [i32 2]], [2 x [1 x i32]] [[1 x i32] [i32 3], [1 x i32] [i32 4]]]], align 16
+
+  %y = alloca [1 x [2 x [2 x [1 x i32]]]], align 16
+  %x = alloca [1 x [2 x [2 x [1 x i32]]]], align 16
