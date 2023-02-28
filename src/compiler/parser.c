@@ -56,7 +56,6 @@ bool consume(ParseContext *c, TokenType type, const char *message, ...)
 
 // --- Extern functions
 
-static bool parse_include(ParseContext *c, Decl *decl);
 
 /**
  * module? imports top_level_statement*

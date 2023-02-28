@@ -27,23 +27,6 @@
 #define POP_BREAKCONT() POP_CONTINUE(); POP_BREAK()
 #define IS_CONST(_x) ((_x)->expr_kind == EXPR_CONST)
 
-typedef enum
-{
-	REPORT_ERROR,
-	REPORT_NONE,
-} ReportType;
-
-typedef enum
-{
-	SPLIT_PATH_IDENT,
-	SPLIT_PATH_CONST_IDENT,
-	SPLIT_PATH_TYPE_IDENT,
-	SPLIT_PATH_BUILTIN_TYPE_IDENT,
-	SPLIT_PATH_UNKNOWN_IDENTIFIER,
-	SPLIT_PATH_NOT_SINGLE_IDENTIFIER,
-	SPLIT_PATH_NOT_AN_IDENTIFIER,
-} SplitPathResult;
-
 extern const char *ct_eval_error;
 
 Decl **global_context_acquire_locals_list(void);

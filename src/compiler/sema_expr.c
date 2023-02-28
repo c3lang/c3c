@@ -109,7 +109,6 @@ static inline const char *sema_addr_may_take_of_ident(Expr *inner);
 // -- subscript helpers
 static bool sema_subscript_rewrite_index_const_list(Expr *const_list, Expr *index, Expr *result);
 static Type *sema_subscript_find_indexable_type_recursively(Type **type, Expr **parent);
-static void sema_subscript_deref_array_pointers(Expr *expr);
 
 // -- binary helper functions
 static void expr_binary_unify_failability(Expr *expr, Expr *left, Expr *right);
@@ -2127,23 +2126,6 @@ static inline bool sema_expr_analyse_call(SemaContext *context, Expr *expr)
 	}
 	decl = decl ? decl_flatten(decl) : NULL;
 	return sema_expr_analyse_general_call(context, expr, decl, struct_var, optional);
-}
-
-static void sema_subscript_deref_array_pointers(Expr *expr)
-{
-	Type *expr_type = expr->type->canonical;
-	if (expr_type->type_kind == TYPE_POINTER)
-	{
-		switch (expr_type->pointer->type_kind)
-		{
-			case TYPE_ARRAY:
-			case TYPE_VECTOR:
-				expr_rewrite_insert_deref(expr);
-				break;
-			default:
-				break;
-		}
-	}
 }
 
 static bool sema_slice_len_is_in_range(SemaContext *context, Type *type, Expr *len_expr, bool from_end, bool *remove_from_end)

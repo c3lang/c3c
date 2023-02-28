@@ -22,7 +22,7 @@ static inline bool matches_subpath(Path *path_to_check, Path *path_to_find)
 	// This means that the compare_start must be 3 or more.
 	if (compare_start < 3) return false;
 
-	// We also want to make sure that the preceeding 2 characters are ::
+	// We also want to make sure that the preceding 2 characters are ::
 	if (path_to_check->module[compare_start - 1] != ':' || path_to_check->module[compare_start - 2] != ':') return false;
 
 	// Ok, now we know this is a subpath, so check:
@@ -112,18 +112,6 @@ Decl *sema_decl_stack_find_decl_member(Decl *decl_owner, const char *symbol)
 	return member;
 }
 
-Decl *sema_resolve_symbol_in_current_dynamic_scope(SemaContext *context, const char *symbol)
-{
-	Decl **locals = context->locals;
-	size_t first = context->active_scope.label_start;
-	for (size_t i = context->active_scope.current_local; i > first; i--)
-	{
-		Decl *decl = locals[i - 1];
-		if (decl->name == symbol) return decl;
-	}
-	return NULL;
-}
-
 static inline Decl *sema_find_decl_in_module(Module *module, Path *path, const char *symbol, bool *path_found)
 {
 	if (!path) return module_find_symbol(module, symbol);
@@ -152,7 +140,7 @@ static Decl *sema_find_decl_in_imports(Decl **imports, NameResolve *name_resolve
 
 		assert(found->visibility != VISIBLE_LOCAL);
 
-		// If we found something private but we don't import privately?
+		// If we found something private, but we don't import privately?
 		if (found->visibility == VISIBLE_PRIVATE && !import->import.import_private_as_public && !decl)
 		{
 			// Register this as a possible private decl.
@@ -449,7 +437,7 @@ static Decl *sema_resolve_no_path_symbol(SemaContext *context, NameResolve *name
 	decl = sema_find_decl_in_imports(unit->imports, name_resolve, false);
 
 	// Special case: the declaration in import is not autoimport and is not a type (which won't be @builtin)
-	// e.g we have a malloc builtin and libc::malloc
+	// e.g. we have a malloc builtin and libc::malloc
 	if (decl && !decl->is_autoimport && !decl_is_user_defined_type(decl))
 	{
 		// Find the global

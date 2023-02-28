@@ -5,7 +5,6 @@
 #include "utils/common.h"
 #include "benchmark.h"
 #include <time.h>
-#include <stdio.h>
 
 BenchTime begin;
 

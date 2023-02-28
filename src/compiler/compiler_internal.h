@@ -2248,7 +2248,7 @@ bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type 
 bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *expr);
 Expr **sema_expand_vasplat_exprs(SemaContext *c, Expr **exprs);
 bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl, Expr *struct_var, bool optional);
-Decl *sema_resolve_symbol_in_current_dynamic_scope(SemaContext *context, const char *symbol);
+
 Decl *sema_decl_stack_resolve_symbol(const char *symbol);
 Decl *sema_find_decl_in_modules(Module **module_list, Path *path, const char *interned_name);
 Decl *unit_resolve_parameterized_symbol(CompilationUnit *unit, NameResolve *name_resolve);

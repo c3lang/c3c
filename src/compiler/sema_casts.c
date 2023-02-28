@@ -463,13 +463,6 @@ CastKind cast_to_bool_kind(Type *type)
 }
 
 
-bool type_may_convert_to_anyerr(Type *type)
-{
-	if (type_is_optional_any(type)) return true;
-	if (!type_is_optional_type(type)) return false;
-	return type->optional->canonical == type_void;
-}
-
 static inline bool cast_may_array(Type *from, Type *to, bool is_explicit)
 {
 	RETRY:;
