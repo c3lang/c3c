@@ -67,7 +67,7 @@ Type *type_infer_len_from_actual_type(Type *to_infer, Type *actual_type)
 	// Handle int[*]! a = { ... } by stripping the optional.
 	bool is_optional = type_is_optional(to_infer);
 
-	assert(is_optional || !type_is_optional(actual_type) && "int[*] x = { may_fail } should have been caught.");
+	assert((is_optional || !type_is_optional(actual_type)) && "int[*] x = { may_fail } should have been caught.");
 
 	// Strip the optional
 	if (is_optional) to_infer = to_infer->optional;
