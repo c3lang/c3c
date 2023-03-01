@@ -1267,7 +1267,7 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 		case CAST_ANYPTR:
 			llvm_emit_any_pointer(c, value, value);
 			break;
-		case CAST_XIERR:
+		case CAST_INTERR:
 			to_type = type_lowering(to_type);
 			llvm_value_rvalue(c, value);
 			value->value = llvm_zext_trunc(c, value->value, llvm_get_type(c, to_type));
@@ -1279,7 +1279,7 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 			llvm_value_rvalue(c, value);
 			value->value = LLVMBuildPointerCast(c->builder, value->value, llvm_get_type(c, to_type), "ptrptr");
 			break;
-		case CAST_PTRXI:
+		case CAST_PTRINT:
 			llvm_value_rvalue(c, value);
 			value->value = LLVMBuildPtrToInt(c->builder, value->value, llvm_get_type(c, to_type), "ptrxi");
 			break;
@@ -1318,7 +1318,7 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 			value->value = LLVMBuildIsNotNull(c->builder, value->value, "ptrbool");
 			value->kind = BE_BOOLEAN;
 			break;
-		case CAST_BOOLXI:
+		case CAST_BOOLINT:
 			llvm_value_rvalue(c, value);
 			value->value =  LLVMBuildZExt(c->builder, value->value, llvm_get_type(c, to_type), "boolsi");
 			value->kind = BE_VALUE;
@@ -1337,7 +1337,7 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 			value->value =  LLVMBuildUIToFP(c->builder, value->value, llvm_get_type(c, to_type), "boolfp");
 			value->kind = BE_VALUE;
 			break;
-		case CAST_XIBOOL:
+		case CAST_INTBOOL:
 			llvm_value_rvalue(c, value);
 			value->value = LLVMBuildICmp(c->builder, LLVMIntNE, value->value, llvm_get_zero(c, from_type), "intbool");
 			value->kind = type_kind_is_any_vector(value->type->type_kind) ? BE_BOOLVECTOR : BE_BOOLEAN;
@@ -1372,7 +1372,7 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 			llvm_value_rvalue(c, value);
 			value->value = LLVMBuildSIToFP(c->builder, value->value, llvm_get_type(c, to_type), "sifp");
 			break;
-		case CAST_XIPTR:
+		case CAST_INTPTR:
 			llvm_value_rvalue(c, value);
 			value->value = LLVMBuildIntToPtr(c->builder, value->value, llvm_get_type(c, to_type), "xiptr");
 			break;
@@ -1416,6 +1416,13 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 				LLVMValueRef val = llvm_const_int(c, value->type, max);
 				llvm_emit_int_comp_raw(c, &check, value->type, value->type, value->value, val, BINARYOP_GE);
 				llvm_emit_panic_on_true(c, check.value,scratch_buffer_to_string(), expr->span);
+			}
+			// We might need to extend or truncate.
+			if (type_size(to_type) != type_size(from_type))
+			{
+				llvm_value_rvalue(c, value);
+				llvm_value_set(value, llvm_zext_trunc(c, value->value, llvm_get_type(c, to_type)), to_type);
+				return;
 			}
 			return;
 		case CAST_SABOOL:

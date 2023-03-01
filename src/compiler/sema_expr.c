@@ -4393,7 +4393,7 @@ static Type *defer_iptr_cast(Expr *maybe_pointer, Expr *maybe_diff)
 	// Do we have (iptr)(ptr) +- rhs? If so we change it to
 	// (iptr)((char*)(ptr) +- 1)
 	if (maybe_pointer->expr_kind == EXPR_CAST
-		&& maybe_pointer->cast_expr.kind == CAST_PTRXI
+		&& maybe_pointer->cast_expr.kind == CAST_PTRINT
 		&& type_flatten(maybe_pointer->type) == type_flatten(type_iptr))
 	{
 		Type *cast_to_iptr = maybe_pointer->type;

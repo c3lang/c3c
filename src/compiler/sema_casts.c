@@ -25,6 +25,7 @@ static bool pointer_to_pointer(Expr* expr, Type *type);
 static bool bool_to_int(Expr *expr, Type *canonical, Type *type);
 static bool bool_to_float(Expr *expr, Type *canonical, Type *type);
 static bool integer_to_bool(Expr *expr, Type *type);
+static bool integer_to_enum(Expr *expr, Type *canonical, Type *type);
 static bool float_to_bool(Expr *expr, Type *type);
 static bool float_to_float(Expr* expr, Type *canonical, Type *type);
 static bool float_to_integer(Expr *expr, Type *canonical, Type *type);
@@ -136,7 +137,7 @@ INLINE bool insert_runtime_cast_unless_const(Expr *expr, CastKind kind, Type *ty
  */
 static bool pointer_to_integer(Expr *expr, Type *type)
 {
-	if (insert_runtime_cast_unless_const(expr, CAST_PTRXI, type)) return true;
+	if (insert_runtime_cast_unless_const(expr, CAST_PTRINT, type)) return true;
 
 	// Revisit this to support pointers > 64 bits.
 	expr_rewrite_const_int(expr, type, expr->const_expr.ptr, false);
@@ -211,12 +212,12 @@ static void const_int_to_fp_cast(Expr *expr, Type *canonical, Type *type)
 
 
 /**
- * Bool into a signed or unsigned int using CAST_BOOLXI
+ * Bool into a signed or unsigned int using CAST_BOOLINT
  * or rewrite to 0 / 1 for false / true.
  */
 static bool bool_to_int(Expr *expr, Type *canonical, Type *type)
 {
-	if (insert_runtime_cast_unless_const(expr, CAST_BOOLXI, type)) return true;
+	if (insert_runtime_cast_unless_const(expr, CAST_BOOLINT, type)) return true;
 
 	expr_rewrite_const_int(expr, type, expr->const_expr.b ? 1 : 0, false);
 	return true;
@@ -251,12 +252,12 @@ static bool voidfail_to_error(Expr *expr, Type *type)
 }
 
 /**
- * Cast int to bool using CAST_XIBOOL
+ * Cast int to bool using CAST_INTBOOL
  * or rewrite 0 => false, any other value => true
  */
 static bool integer_to_bool(Expr *expr, Type *type)
 {
-	if (insert_runtime_cast_unless_const(expr, CAST_XIBOOL, type)) return true;
+	if (insert_runtime_cast_unless_const(expr, CAST_INTBOOL, type)) return true;
 
 	expr_rewrite_const_bool(expr, type, !int_is_zero(expr->const_expr.ixx));
 	return true;
@@ -312,37 +313,16 @@ static bool float_to_integer(Expr *expr, Type *canonical, Type *type)
 
 
 /**
- * Convert from compile time int to any signed or unsigned int
- * @return true unless the conversion was lossy.
+ * Convert from integer to enum using CAST_INTENUM / or do a const conversion.
  */
-static bool int_literal_to_int(Expr *expr, Type *canonical, Type *type)
-{
-	if (expr->expr_kind != EXPR_CONST)
-	{
-		SEMA_ERROR(expr, "This expression could not be resolved to a concrete type. Please add more type annotations.");
-		UNREACHABLE
-	}
-	expr->const_expr.ixx = int_conv(expr->const_expr.ixx, canonical->type_kind);
-	assert(expr->const_expr.const_kind == CONST_INTEGER);
-	expr->type = type;
-	expr->const_expr.narrowable = false;
-	expr->const_expr.is_hex = false;
-	return true;
-}
-
-/**
- * Convert from compile time int to any enum
- */
-bool integer_to_enum(Expr *expr, Type *canonical, Type *type)
+static bool integer_to_enum(Expr *expr, Type *canonical, Type *type)
 {
 	assert(canonical->type_kind == TYPE_ENUM);
 	Decl *enum_decl = canonical->decl;
-	if (expr->expr_kind != EXPR_CONST)
-	{
-		Type *underlying_type = enum_decl->enums.type_info->type->canonical;
-		if (!cast(expr, underlying_type)) return false;
-		return insert_cast(expr, CAST_INTENUM, type);
-	}
+
+	if (insert_runtime_cast_unless_const(expr, CAST_INTENUM, type)) return true;
+
+	// Check that the type is within limits.
 	unsigned max_enums = vec_size(enum_decl->enums.values);
 	Int to_convert = expr->const_expr.ixx;
 	if (int_is_neg(to_convert))
@@ -350,12 +330,15 @@ bool integer_to_enum(Expr *expr, Type *canonical, Type *type)
 		SEMA_ERROR(expr, "A negative number cannot be converted to an enum.");
 		return false;
 	}
-	Int max = { .i.low = max_enums, .type = TYPE_I32 };
+
+	// We don't support more than 4 billion enum values :D
+	Int max = { .i.low = max_enums, .type = TYPE_U32 };
 	if (int_comp(to_convert, max, BINARYOP_GE))
 	{
 		SEMA_ERROR(expr, "This value exceeds the number of enums in %s.", canonical->decl->name);
 		return false;
 	}
+	// Fold the const into the actual value.
 	Decl *decl = enum_decl->enums.values[to_convert.i.low];
 	expr->const_expr = (ExprConst) {
 		.enum_err_val = decl,
@@ -369,7 +352,7 @@ bool integer_to_enum(Expr *expr, Type *canonical, Type *type)
 static bool int_conversion(Expr *expr, CastKind kind, Type *canonical, Type *type)
 {
 	// Fold pointer casts if narrowing
-	if (expr->expr_kind == EXPR_CAST && expr->cast_expr.kind == CAST_PTRXI
+	if (expr->expr_kind == EXPR_CAST && expr->cast_expr.kind == CAST_PTRINT
 	    && type_size(type) <= type_size(expr->type))
 	{
 		expr->type = type;
@@ -443,7 +426,7 @@ static bool int_to_pointer(Expr *expr, Type *type)
 		return true;
 	}
 	cast(expr, type_uptr);
-	return insert_cast(expr, CAST_XIPTR, type);
+	return insert_cast(expr, CAST_INTPTR, type);
 }
 
 
@@ -515,7 +498,7 @@ CastKind cast_to_bool_kind(Type *type)
 		case TYPE_SUBARRAY:
 			return CAST_SABOOL;
 		case ALL_INTS:
-			return CAST_XIBOOL;
+			return CAST_INTBOOL;
 		case ALL_FLOATS:
 			return CAST_FPBOOL;
 		case TYPE_POINTER:
@@ -1847,14 +1830,14 @@ static bool vec_to_vec(Expr *expr, Type *to_type)
 		}
 		if (type_is_signed(from_element))
 		{
-			if (to_element == type_bool) return insert_cast(expr, CAST_XIBOOL, to_type);
+			if (to_element == type_bool) return insert_cast(expr, CAST_INTBOOL, to_type);
 			if (type_is_unsigned(to_element)) return insert_cast(expr, CAST_SIUI, to_type);
 			if (type_is_signed(to_element)) return insert_cast(expr, CAST_SISI, to_type);
 			if (type_is_float(to_element)) return insert_cast(expr, CAST_SIFP, to_type);
 			UNREACHABLE
 		}
 		assert(type_is_unsigned(from_element));
-		if (to_element == type_bool) return insert_cast(expr, CAST_XIBOOL, to_type);
+		if (to_element == type_bool) return insert_cast(expr, CAST_INTBOOL, to_type);
 		if (type_is_unsigned(to_element)) return insert_cast(expr, CAST_UIUI, to_type);
 		if (type_is_signed(to_element)) return insert_cast(expr, CAST_UISI, to_type);
 		if (type_is_float(to_element)) return insert_cast(expr, CAST_UIFP, to_type);
