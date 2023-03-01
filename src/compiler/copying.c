@@ -957,7 +957,6 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			break;
 		case DECL_IMPORT:
 			break;
-		case DECL_GENERIC:
 		case DECL_MACRO:
 			MACRO_COPY_ASTID(copy->func_decl.docs);
 			MACRO_COPY_TYPEID(decl->func_decl.type_parent);

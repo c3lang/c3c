@@ -1079,7 +1079,6 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 		case DECL_ENUM:
 		case DECL_ENUM_CONSTANT:
 		case DECL_FAULT:
-		case DECL_GENERIC:
 		case DECL_IMPORT:
 		case DECL_LABEL:
 		case DECL_MACRO:

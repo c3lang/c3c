@@ -80,7 +80,6 @@ Decl *decl_new_with_type(const char *name, SourceSpan loc, DeclKind decl_type)
 		case DECL_FAULTVALUE:
 		case DECL_IMPORT:
 		case DECL_MACRO:
-		case DECL_GENERIC:
 		case DECL_CT_IF:
 		case DECL_CT_ELSE:
 		case DECL_CT_ELIF:
@@ -160,8 +159,6 @@ const char *decl_to_a_name(Decl *decl)
 			return "a fault";
 		case DECL_FUNC:
 			return "a function";
-		case DECL_GENERIC:
-			return "a generic";
 		case DECL_MACRO:
 			return "a macro";
 		case DECL_STRUCT:

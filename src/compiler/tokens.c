@@ -231,8 +231,6 @@ const char *token_type_to_string(TokenType type)
 			return "foreach_r";
 		case TOKEN_FN:
 			return "fn";
-		case TOKEN_GENERIC:
-			return "generic";
 		case TOKEN_IF:
 			return "if";
 		case TOKEN_IMPORT:

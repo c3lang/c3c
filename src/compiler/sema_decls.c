@@ -1162,8 +1162,6 @@ static inline const char *method_name_by_decl(Decl *method_like)
 			return "macro method";
 		case DECL_FUNC:
 			return "method";
-		case DECL_GENERIC:
-			return "generic method";
 		default:
 			UNREACHABLE
 	}
@@ -2444,7 +2442,6 @@ static bool sema_analyse_macro_method(SemaContext *context, Decl *decl)
 
 static inline bool sema_analyse_macro(SemaContext *context, Decl *decl)
 {
-	bool is_generic = decl->decl_kind == DECL_GENERIC;
 	decl->func_decl.unit = context->unit;
 
 	if (!sema_analyse_func_macro(context, decl, false)) return false;
@@ -3110,7 +3107,6 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 			if (!sema_analyse_func(context, decl)) goto FAILED;
 			break;
 		case DECL_MACRO:
-		case DECL_GENERIC:
 			if (!sema_analyse_macro(context, decl)) goto FAILED;
 			break;
 		case DECL_VAR:

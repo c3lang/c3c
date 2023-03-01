@@ -1589,13 +1589,7 @@ struct CompilationUnit_
 	Visibility default_visibility;
 	bool export_by_default;
 	bool test_by_default;
-	struct
-	{
-		// Not properly implemented
-		Decl **generic_methods;
-		Decl **generics;
-		Decl **generic_defines;
-	};
+	Decl **generic_defines;
 	Decl **ct_ifs;
 	Decl **ct_asserts;
 	Decl **ct_echos;

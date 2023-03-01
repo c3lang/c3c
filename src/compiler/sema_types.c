@@ -217,7 +217,6 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 		case DECL_ENUM_CONSTANT:
 		case DECL_IMPORT:
 		case DECL_MACRO:
-		case DECL_GENERIC:
 		case DECL_LABEL:
 		case DECL_ATTRIBUTE:
 			SEMA_ERROR(type_info, "This is not a type.");

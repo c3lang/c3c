@@ -552,9 +552,6 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 		case DECL_MACRO:
 			SEMA_ERROR(expr, "Expected a macro followed by (...).");
 			return expr_poison(expr);
-		case DECL_GENERIC:
-			SEMA_ERROR(expr, "Expected generic function followed by (...).");
-			return expr_poison(expr);
 		case DECL_FAULTVALUE:
 			SEMA_ERROR(expr, "Did you forget a '!' after '%s'?", decl->name);
 			return expr_poison(expr);
@@ -806,7 +803,7 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 		return false;
 	}
 
-	if (decl->decl_kind == DECL_VAR || decl->decl_kind == DECL_FUNC || decl->decl_kind == DECL_MACRO || decl->decl_kind == DECL_GENERIC)
+	if (decl->decl_kind == DECL_VAR || decl->decl_kind == DECL_FUNC || decl->decl_kind == DECL_MACRO)
 	{
 		if (decl->unit->module != context->unit->module && !decl->is_autoimport && !expr->identifier_expr.path)
 		{
@@ -821,9 +818,6 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 					break;
 				case DECL_MACRO:
 					message = "Macros from other modules must be prefixed with the module name.";
-					break;
-				case DECL_GENERIC:
-					message = "Generic functions from other modules must be prefixed with the module name.";
 					break;
 				default:
 					UNREACHABLE
@@ -2050,10 +2044,6 @@ bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl
 			expr->call_expr.func_ref = declid(decl);
 			expr->call_expr.is_func_ref = true;
 			return sema_expr_analyse_func_call(context, expr, decl, struct_var, optional);
-		case DECL_GENERIC:
-			expr->call_expr.func_ref = declid(decl);
-			expr->call_expr.is_func_ref = true;
-			TODO // Maybe generics won't happen
 		case DECL_POISONED:
 			return false;
 		default:
@@ -5283,8 +5273,6 @@ static inline const char *sema_addr_may_take_of_ident(Expr *inner)
 			return sema_addr_may_take_of_var(inner, decl);
 		case DECL_MACRO:
 			return "It is not possible to take the address of a macro.";
-		case DECL_GENERIC:
-			return "It is not possible to take the address of a generic function.";
 		default:
 			UNREACHABLE
 	}

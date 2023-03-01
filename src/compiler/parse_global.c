@@ -42,7 +42,6 @@ void recover_top_level(ParseContext *c)
 			case TOKEN_IMPORT:
 			case TOKEN_EXTERN:
 			case TOKEN_ENUM:
-			case TOKEN_GENERIC:
 			case TOKEN_DEFINE:
 			case TOKEN_TYPEDEF:
 			case TOKEN_FAULT:
@@ -2185,11 +2184,10 @@ static inline bool parse_func_macro_header(ParseContext *c, Decl *decl)
  */
 static inline Decl *parse_macro_declaration(ParseContext *c, AstId docs)
 {
-	DeclKind kind = try_consume(c, TOKEN_MACRO) ? DECL_MACRO : DECL_GENERIC;
-	if (kind == DECL_GENERIC) advance_and_verify(c, TOKEN_GENERIC);
+	advance_and_verify(c, TOKEN_MACRO);
 
 	Decl *decl = decl_calloc();
-	decl->decl_kind = kind;
+	decl->decl_kind = DECL_MACRO;
 	decl->func_decl.docs = docs;
 	if (!parse_func_macro_header(c, decl)) return poisoned_decl;
 	const char *block_parameter = NULL;
@@ -3054,7 +3052,6 @@ AFTER_VISIBILITY:
 			if (is_private) decl->visibility = VISIBLE_PRIVATE;
 			break;
 		}
-		case TOKEN_GENERIC:
 		case TOKEN_MACRO:
 		{
 			ASSIGN_DECL_OR_RET(decl, parse_macro_declaration(c, docs), poisoned_decl);

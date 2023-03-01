@@ -418,7 +418,7 @@ LLVMValueRef llvm_emit_coerce(GenContext *c, LLVMTypeRef coerced, BEValue *value
 
 	if (coerced_type_kind == LLVMScalableVectorTypeKind)
 	{
-		TODO
+		UNSUPPORTED;
 	}
 
 	// Otherwise, do it through memory.

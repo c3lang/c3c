@@ -148,7 +148,6 @@ void decl_register(Decl *decl)
 		case DECL_UNION:
 		case DECL_DEFINE:
 		case DECL_FUNC:
-		case DECL_GENERIC:
 		case DECL_MACRO:
 		case DECL_VAR:
 			global_context_add_decl(decl);
@@ -164,20 +163,6 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 	switch (decl->decl_kind)
 	{
 		case DECL_POISONED:
-			break;
-		case DECL_GENERIC:
-			assert(decl->name);
-			if (decl->func_decl.type_parent)
-			{
-				vec_add(unit->generic_methods, decl);
-				return;
-			}
-			else
-			{
-				vec_add(unit->generics, decl);
-			}
-			decl_set_external_name(decl);
-			decl_register(decl);
 			break;
 		case DECL_MACRO:
 			assert(decl->name);

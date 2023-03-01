@@ -692,7 +692,7 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 		case TYPE_POISONED:
 			UNREACHABLE
 		case TYPE_SCALED_VECTOR:
-			TODO
+			UNSUPPORTED;
 	}
 	UNREACHABLE
 }

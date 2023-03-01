@@ -195,7 +195,6 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 			case DECL_DEFINE:
 			case DECL_DISTINCT:
 			case DECL_ENUM:
-			case DECL_GENERIC:
 			case DECL_FAULT:
 			case DECL_FUNC:
 			case DECL_STRUCT:

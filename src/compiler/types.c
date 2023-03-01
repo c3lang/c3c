@@ -699,7 +699,7 @@ AlignSize type_abi_alignment(Type *type)
 		case TYPE_SUBARRAY:
 			return alignment_subarray;
 		case TYPE_SCALED_VECTOR:
-			TODO
+			UNSUPPORTED;
 	}
 	UNREACHABLE
 }

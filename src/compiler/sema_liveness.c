@@ -494,7 +494,6 @@ static void sema_trace_decl_liveness(Decl *decl)
 		case DECL_CT_SWITCH:
 		case DECL_CT_ASSERT:
 		case DECL_CT_ECHO:
-		case DECL_GENERIC:
 		case DECL_IMPORT:
 		case DECL_CT_INCLUDE:
 		case DECL_LABEL:

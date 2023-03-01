@@ -51,6 +51,7 @@
 
 
 #define TODO FATAL_ERROR("TODO reached");
+#define UNSUPPORTED do { error_exit("Unsupported functionality"); } while (0)
 
 #define TEST_ASSERT(condition_, string_) while (!(condition_)) { FATAL_ERROR(string_); }
 #define TEST_ASSERTF(condition_, string_, ...) while (!(condition_)) { char* str_ = str_printf(string_, __VA_ARGS__); FATAL_ERROR(str_); }

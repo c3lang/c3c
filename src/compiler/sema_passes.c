@@ -403,10 +403,6 @@ void sema_analysis_pass_decls(Module *module)
 		{
 			sema_analyse_decl(&context, unit->macros[i]);
 		}
-		VECEACH(unit->generics, i)
-		{
-			sema_analyse_decl(&context, unit->generics[i]);
-		}
 		VECEACH(unit->methods, i)
 		{
 			sema_analyse_decl(&context, unit->methods[i]);
