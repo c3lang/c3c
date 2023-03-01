@@ -1356,42 +1356,21 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 			llvm_value_rvalue(c, value);
 			value->value = LLVMBuildFPToUI(c->builder, value->value, llvm_get_type(c, to_type), "fpui");
 			break;
-		case CAST_SISI:
-			llvm_value_rvalue(c, value);
-			value->value = type_convert_will_trunc(to_type, from_type)
-			       ? LLVMBuildTrunc(c->builder, value->value, llvm_get_type(c, to_type), "sisitrunc")
-			       : LLVMBuildSExt(c->builder, value->value, llvm_get_type(c, to_type), "sisiext");
+		case CAST_INTINT:
+			llvm_value_ext_trunc(c, value, to_type);
 			break;
-		case CAST_SIUI:
+		case CAST_INTFP:
 			llvm_value_rvalue(c, value);
-			value->value = type_convert_will_trunc(to_type, from_type)
-			       ? LLVMBuildTrunc(c->builder, value->value, llvm_get_type(c, to_type), "siuitrunc")
-			       : LLVMBuildSExt(c->builder, value->value, llvm_get_type(c, to_type), "siuiext");
-			break;
-		case CAST_SIFP:
-			llvm_value_rvalue(c, value);
-			value->value = LLVMBuildSIToFP(c->builder, value->value, llvm_get_type(c, to_type), "sifp");
+			if (type_is_signed(value->type))
+			{
+				value->value = LLVMBuildSIToFP(c->builder, value->value, llvm_get_type(c, to_type), "sifp");
+				break;
+			}
+			value->value = LLVMBuildUIToFP(c->builder, value->value, llvm_get_type(c, to_type), "uifp");
 			break;
 		case CAST_INTPTR:
 			llvm_value_rvalue(c, value);
-			value->value = LLVMBuildIntToPtr(c->builder, value->value, llvm_get_type(c, to_type), "xiptr");
-			break;
-		case CAST_UISI:
-			llvm_value_rvalue(c, value);
-			value->value = type_convert_will_trunc(to_type, from_type)
-			       ? LLVMBuildTrunc(c->builder, value->value, llvm_get_type(c, to_type), "uisitrunc")
-			       : LLVMBuildZExt(c->builder, value->value, llvm_get_type(c, to_type), "uisiext");
-			break;
-		case CAST_UIUI:
-			llvm_value_rvalue(c, value);
-			value->value = llvm_zext_trunc(c, value->value, llvm_get_type(c, to_type));
-			break;
-		case CAST_UIFP:
-			llvm_value_rvalue(c, value);
-			value->value = LLVMBuildUIToFP(c->builder, value->value, llvm_get_type(c, to_type), "uifp");
-			break;
-		case CAST_ENUMLOW:
-			llvm_value_rvalue(c, value);
+			value->value = LLVMBuildIntToPtr(c->builder, value->value, llvm_get_type(c, to_type), "intptr");
 			break;
 		case CAST_STST:
 			llvm_value_addr(c, value);

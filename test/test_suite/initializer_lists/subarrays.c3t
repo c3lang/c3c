@@ -119,12 +119,12 @@ entry:
   %16 = call i64 @std.io.File.printn(ptr %retparam, ptr %14, ptr %15, i64 6)
   %17 = getelementptr inbounds %"int[]", ptr %x, i32 0, i32 1
   %18 = load i64, ptr %17, align 8
-  %uisitrunc = trunc i64 %18 to i32
+  %trunc = trunc i64 %18 to i32
   %19 = getelementptr inbounds %"int[]", ptr %x, i32 0, i32 0
   %20 = load ptr, ptr %19, align 8
   %ptroffset4 = getelementptr inbounds i32, ptr %20, i64 1
   %21 = load i32, ptr %ptroffset4, align 4
-  %22 = call i32 (ptr, ...) @printf(ptr @.str.6, i32 %uisitrunc, i32 %21)
+  %22 = call i32 (ptr, ...) @printf(ptr @.str.6, i32 %trunc, i32 %21)
   %23 = load ptr, ptr %y, align 8
   %ptroffset5 = getelementptr inbounds i32, ptr %23, i64 1
   %24 = load i32, ptr %ptroffset5, align 4

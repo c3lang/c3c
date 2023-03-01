@@ -321,6 +321,8 @@ INLINE void llvm_set_alignment(LLVMValueRef alloca, AlignSize alignment);
 INLINE AlignSize llvm_type_or_alloca_align(LLVMValueRef dest, Type *type);
 
 INLINE LLVMValueRef llvm_zext_trunc(GenContext *c, LLVMValueRef data, LLVMTypeRef type);
+INLINE LLVMValueRef llvm_sext_trunc(GenContext *c, LLVMValueRef data, LLVMTypeRef type);
+INLINE void llvm_value_ext_trunc(GenContext *c, BEValue *value, Type *type);
 
 // -- Constants --
 void llvm_emit_typeid(GenContext *c, BEValue *be_value, Type *type);

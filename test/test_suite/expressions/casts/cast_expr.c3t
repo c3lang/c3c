@@ -21,7 +21,7 @@ define i32 @main
     store i32 20, ptr %b
     %2 = load i32, ptr %a
     trunc i32 %2 to i8
-    sext i8 %sisitrunc to i32
-    store i32 %sisiext, ptr %c
+    sext i8 %trunc to i32
+    store i32 %sext, ptr %c
     ret i32 0
 }

@@ -362,18 +362,14 @@ static inline bool expr_cast_is_constant_eval(Expr *expr, ConstantEvalKind eval_
 		case CAST_FPFP:
 		case CAST_FPSI:
 		case CAST_FPUI:
-		case CAST_SISI:
-		case CAST_SIUI:
-		case CAST_SIFP:
-		case CAST_UISI:
-		case CAST_UIUI:
-		case CAST_UIFP:
+		case CAST_INTFP:
 		case CAST_SABOOL:
 		case CAST_STST:
 		case CAST_VECARR:
 		case CAST_ARRVEC:
 		case CAST_BOOLVECINT:
 		case CAST_NUMVEC:
+		case CAST_INTINT:
 			if (eval_kind != CONSTANT_EVAL_NO_SIDE_EFFECTS) return false;
 			return exprid_is_constant_eval(expr->cast_expr.expr, eval_kind);
 		case CAST_INTPTR:
@@ -381,7 +377,6 @@ static inline bool expr_cast_is_constant_eval(Expr *expr, ConstantEvalKind eval_
 		case CAST_APTSA:
 		case CAST_SAPTR:
 		case CAST_SASA:
-		case CAST_ENUMLOW:
 		case CAST_VOID:
 			return exprid_is_constant_eval(expr->cast_expr.expr, eval_kind);
 		case CAST_PTRANY:
@@ -564,7 +559,7 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 			expr_rewrite_const_int(expr, type, 0, true);
 			return;
 		case ALL_FLOATS:
-			expr_rewrite_const_float(expr, type, 0);
+			expr_rewrite_const_float(expr, type, 0, true);
 			break;
 		case TYPE_BOOL:
 			expr_rewrite_const_bool(expr, type, false);

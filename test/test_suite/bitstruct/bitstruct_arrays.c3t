@@ -315,8 +315,8 @@ entry:
   %92 = load i64, ptr %xx, align 8
   %lshrl = lshr i64 %92, 20
   %93 = and i64 1, %lshrl
-  %ztrunc = trunc i64 %93 to i8
-  %94 = trunc i8 %ztrunc to i1
+  %trunc = trunc i64 %93 to i8
+  %94 = trunc i8 %trunc to i1
   %boolsi = zext i1 %94 to i32
   call void (ptr, ...) @printf(ptr @.str.9, i32 %boolsi)
   %95 = load i64, ptr %xx, align 8
@@ -325,8 +325,8 @@ entry:
   %97 = load i64, ptr %xx, align 8
   %lshrl67 = lshr i64 %97, 20
   %98 = and i64 1, %lshrl67
-  %ztrunc68 = trunc i64 %98 to i8
-  %99 = trunc i8 %ztrunc68 to i1
+  %trunc68 = trunc i64 %98 to i8
+  %99 = trunc i8 %trunc68 to i1
   %boolsi69 = zext i1 %99 to i32
   call void (ptr, ...) @printf(ptr @.str.10, i32 %boolsi69)
   ret void
@@ -366,8 +366,8 @@ entry:
   %ashr8 = ashr i32 %shl7, 29
   %sub = sub i32 %ashr8, 1
   %13 = getelementptr inbounds [3 x i8], ptr %xx, i64 0, i64 0
-  %ztrunc = trunc i32 %sub to i8
-  %14 = and i8 %ztrunc, 7
+  %trunc = trunc i32 %sub to i8
+  %14 = and i8 %trunc, 7
   %15 = load i8, ptr %13, align 1
   %16 = and i8 %15, -8
   %17 = or i8 %16, %14
@@ -403,15 +403,15 @@ entry:
   %mul = mul i32 %ashr23, 2
   %30 = getelementptr inbounds [3 x i8], ptr %xx, i64 0, i64 0
   %shl24 = shl i32 %mul, 3
-  %ztrunc25 = trunc i32 %shl24 to i8
+  %trunc25 = trunc i32 %shl24 to i8
   %31 = load i8, ptr %30, align 1
   %32 = and i8 %31, 7
-  %33 = or i8 %32, %ztrunc25
+  %33 = or i8 %32, %trunc25
   store i8 %33, ptr %30, align 1
   %lshrl26 = lshr i32 %mul, 5
   %34 = getelementptr inbounds [3 x i8], ptr %xx, i64 0, i64 1
-  %ztrunc27 = trunc i32 %lshrl26 to i8
-  %35 = and i8 %ztrunc27, 1
+  %trunc27 = trunc i32 %lshrl26 to i8
+  %35 = and i8 %trunc27, 1
   %36 = load i8, ptr %34, align 1
   %37 = and i8 %36, -2
   %38 = or i8 %37, %35
@@ -447,15 +447,15 @@ entry:
   %xor = xor i32 %ashr42, 4
   %51 = getelementptr inbounds [3 x i8], ptr %xx, i64 0, i64 0
   %shl43 = shl i32 %xor, 3
-  %ztrunc44 = trunc i32 %shl43 to i8
+  %trunc44 = trunc i32 %shl43 to i8
   %52 = load i8, ptr %51, align 1
   %53 = and i8 %52, 7
-  %54 = or i8 %53, %ztrunc44
+  %54 = or i8 %53, %trunc44
   store i8 %54, ptr %51, align 1
   %lshrl45 = lshr i32 %xor, 5
   %55 = getelementptr inbounds [3 x i8], ptr %xx, i64 0, i64 1
-  %ztrunc46 = trunc i32 %lshrl45 to i8
-  %56 = and i8 %ztrunc46, 1
+  %trunc46 = trunc i32 %lshrl45 to i8
+  %56 = and i8 %trunc46, 1
   %57 = load i8, ptr %55, align 1
   %58 = and i8 %57, -2
   %59 = or i8 %58, %56
@@ -491,15 +491,15 @@ entry:
   %or = or i32 %ashr61, 4
   %72 = getelementptr inbounds [3 x i8], ptr %xx, i64 0, i64 0
   %shl62 = shl i32 %or, 3
-  %ztrunc63 = trunc i32 %shl62 to i8
+  %trunc63 = trunc i32 %shl62 to i8
   %73 = load i8, ptr %72, align 1
   %74 = and i8 %73, 7
-  %75 = or i8 %74, %ztrunc63
+  %75 = or i8 %74, %trunc63
   store i8 %75, ptr %72, align 1
   %lshrl64 = lshr i32 %or, 5
   %76 = getelementptr inbounds [3 x i8], ptr %xx, i64 0, i64 1
-  %ztrunc65 = trunc i32 %lshrl64 to i8
-  %77 = and i8 %ztrunc65, 1
+  %trunc65 = trunc i32 %lshrl64 to i8
+  %77 = and i8 %trunc65, 1
   %78 = load i8, ptr %76, align 1
   %79 = and i8 %78, -2
   %80 = or i8 %79, %77
@@ -536,15 +536,15 @@ entry:
   %93 = freeze i32 %shl81
   %94 = getelementptr inbounds [3 x i8], ptr %xx, i64 0, i64 0
   %shl82 = shl i32 %93, 3
-  %ztrunc83 = trunc i32 %shl82 to i8
+  %trunc83 = trunc i32 %shl82 to i8
   %95 = load i8, ptr %94, align 1
   %96 = and i8 %95, 7
-  %97 = or i8 %96, %ztrunc83
+  %97 = or i8 %96, %trunc83
   store i8 %97, ptr %94, align 1
   %lshrl84 = lshr i32 %93, 5
   %98 = getelementptr inbounds [3 x i8], ptr %xx, i64 0, i64 1
-  %ztrunc85 = trunc i32 %lshrl84 to i8
-  %99 = and i8 %ztrunc85, 1
+  %trunc85 = trunc i32 %lshrl84 to i8
+  %99 = and i8 %trunc85, 1
   %100 = load i8, ptr %98, align 1
   %101 = and i8 %100, -2
   %102 = or i8 %101, %99
@@ -581,15 +581,15 @@ entry:
   %115 = freeze i32 %ashr101
   %116 = getelementptr inbounds [3 x i8], ptr %xx, i64 0, i64 0
   %shl102 = shl i32 %115, 3
-  %ztrunc103 = trunc i32 %shl102 to i8
+  %trunc103 = trunc i32 %shl102 to i8
   %117 = load i8, ptr %116, align 1
   %118 = and i8 %117, 7
-  %119 = or i8 %118, %ztrunc103
+  %119 = or i8 %118, %trunc103
   store i8 %119, ptr %116, align 1
   %lshrl104 = lshr i32 %115, 5
   %120 = getelementptr inbounds [3 x i8], ptr %xx, i64 0, i64 1
-  %ztrunc105 = trunc i32 %lshrl104 to i8
-  %121 = and i8 %ztrunc105, 1
+  %trunc105 = trunc i32 %lshrl104 to i8
+  %121 = and i8 %trunc105, 1
   %122 = load i8, ptr %120, align 1
   %123 = and i8 %122, -2
   %124 = or i8 %123, %121
@@ -625,15 +625,15 @@ entry:
   %sdiv = sdiv i32 %ashr120, 2
   %137 = getelementptr inbounds [3 x i8], ptr %xx, i64 0, i64 0
   %shl121 = shl i32 %sdiv, 3
-  %ztrunc122 = trunc i32 %shl121 to i8
+  %trunc122 = trunc i32 %shl121 to i8
   %138 = load i8, ptr %137, align 1
   %139 = and i8 %138, 7
-  %140 = or i8 %139, %ztrunc122
+  %140 = or i8 %139, %trunc122
   store i8 %140, ptr %137, align 1
   %lshrl123 = lshr i32 %sdiv, 5
   %141 = getelementptr inbounds [3 x i8], ptr %xx, i64 0, i64 1
-  %ztrunc124 = trunc i32 %lshrl123 to i8
-  %142 = and i8 %ztrunc124, 1
+  %trunc124 = trunc i32 %lshrl123 to i8
+  %142 = and i8 %trunc124, 1
   %143 = load i8, ptr %141, align 1
   %144 = and i8 %143, -2
   %145 = or i8 %144, %142
@@ -669,15 +669,15 @@ entry:
   %smod = srem i32 %ashr139, 2
   %158 = getelementptr inbounds [3 x i8], ptr %xx, i64 0, i64 0
   %shl140 = shl i32 %smod, 3
-  %ztrunc141 = trunc i32 %shl140 to i8
+  %trunc141 = trunc i32 %shl140 to i8
   %159 = load i8, ptr %158, align 1
   %160 = and i8 %159, 7
-  %161 = or i8 %160, %ztrunc141
+  %161 = or i8 %160, %trunc141
   store i8 %161, ptr %158, align 1
   %lshrl142 = lshr i32 %smod, 5
   %162 = getelementptr inbounds [3 x i8], ptr %xx, i64 0, i64 1
-  %ztrunc143 = trunc i32 %lshrl142 to i8
-  %163 = and i8 %ztrunc143, 1
+  %trunc143 = trunc i32 %lshrl142 to i8
+  %163 = and i8 %trunc143, 1
   %164 = load i8, ptr %162, align 1
   %165 = and i8 %164, -2
   %166 = or i8 %165, %163
@@ -766,8 +766,8 @@ entry:
   %sub = sub i32 %ashr10, 1
   %13 = getelementptr inbounds [3 x i8], ptr %xx, i64 0, i64 0
   %shl11 = shl i32 %sub, 1
-  %ztrunc = trunc i32 %shl11 to i8
-  %14 = and i8 %ztrunc, 15
+  %trunc = trunc i32 %shl11 to i8
+  %14 = and i8 %trunc, 15
   %15 = load i8, ptr %13, align 1
   %16 = and i8 %15, -15
   %17 = or i8 %16, %14
@@ -805,15 +805,15 @@ entry:
   %mul = mul i32 %ashr28, 2
   %30 = getelementptr inbounds [3 x i8], ptr %xx, i64 0, i64 0
   %shl29 = shl i32 %mul, 4
-  %ztrunc30 = trunc i32 %shl29 to i8
+  %trunc30 = trunc i32 %shl29 to i8
   %31 = load i8, ptr %30, align 1
   %32 = and i8 %31, 15
-  %33 = or i8 %32, %ztrunc30
+  %33 = or i8 %32, %trunc30
   store i8 %33, ptr %30, align 1
   %lshrl31 = lshr i32 %mul, 4
   %34 = getelementptr inbounds [3 x i8], ptr %xx, i64 0, i64 1
-  %ztrunc32 = trunc i32 %lshrl31 to i8
-  %35 = and i8 %ztrunc32, 3
+  %trunc32 = trunc i32 %lshrl31 to i8
+  %35 = and i8 %trunc32, 3
   %36 = load i8, ptr %34, align 1
   %37 = and i8 %36, -4
   %38 = or i8 %37, %35
@@ -850,15 +850,15 @@ entry:
   %xor = xor i32 %ashr48, 4
   %51 = getelementptr inbounds [3 x i8], ptr %xx, i64 0, i64 0
   %shl49 = shl i32 %xor, 4
-  %ztrunc50 = trunc i32 %shl49 to i8
+  %trunc50 = trunc i32 %shl49 to i8
   %52 = load i8, ptr %51, align 1
   %53 = and i8 %52, 15
-  %54 = or i8 %53, %ztrunc50
+  %54 = or i8 %53, %trunc50
   store i8 %54, ptr %51, align 1
   %lshrl51 = lshr i32 %xor, 4
   %55 = getelementptr inbounds [3 x i8], ptr %xx, i64 0, i64 1
-  %ztrunc52 = trunc i32 %lshrl51 to i8
-  %56 = and i8 %ztrunc52, 3
+  %trunc52 = trunc i32 %lshrl51 to i8
+  %56 = and i8 %trunc52, 3
   %57 = load i8, ptr %55, align 1
   %58 = and i8 %57, -4
   %59 = or i8 %58, %56
@@ -895,15 +895,15 @@ entry:
   %or = or i32 %ashr68, 4
   %72 = getelementptr inbounds [3 x i8], ptr %xx, i64 0, i64 0
   %shl69 = shl i32 %or, 4
-  %ztrunc70 = trunc i32 %shl69 to i8
+  %trunc70 = trunc i32 %shl69 to i8
   %73 = load i8, ptr %72, align 1
   %74 = and i8 %73, 15
-  %75 = or i8 %74, %ztrunc70
+  %75 = or i8 %74, %trunc70
   store i8 %75, ptr %72, align 1
   %lshrl71 = lshr i32 %or, 4
   %76 = getelementptr inbounds [3 x i8], ptr %xx, i64 0, i64 1
-  %ztrunc72 = trunc i32 %lshrl71 to i8
-  %77 = and i8 %ztrunc72, 3
+  %trunc72 = trunc i32 %lshrl71 to i8
+  %77 = and i8 %trunc72, 3
   %78 = load i8, ptr %76, align 1
   %79 = and i8 %78, -4
   %80 = or i8 %79, %77
@@ -941,15 +941,15 @@ entry:
   %93 = freeze i32 %shl89
   %94 = getelementptr inbounds [3 x i8], ptr %xx, i64 0, i64 0
   %shl90 = shl i32 %93, 4
-  %ztrunc91 = trunc i32 %shl90 to i8
+  %trunc91 = trunc i32 %shl90 to i8
   %95 = load i8, ptr %94, align 1
   %96 = and i8 %95, 15
-  %97 = or i8 %96, %ztrunc91
+  %97 = or i8 %96, %trunc91
   store i8 %97, ptr %94, align 1
   %lshrl92 = lshr i32 %93, 4
   %98 = getelementptr inbounds [3 x i8], ptr %xx, i64 0, i64 1
-  %ztrunc93 = trunc i32 %lshrl92 to i8
-  %99 = and i8 %ztrunc93, 3
+  %trunc93 = trunc i32 %lshrl92 to i8
+  %99 = and i8 %trunc93, 3
   %100 = load i8, ptr %98, align 1
   %101 = and i8 %100, -4
   %102 = or i8 %101, %99
@@ -987,15 +987,15 @@ entry:
   %115 = freeze i32 %ashr110
   %116 = getelementptr inbounds [3 x i8], ptr %xx, i64 0, i64 0
   %shl111 = shl i32 %115, 4
-  %ztrunc112 = trunc i32 %shl111 to i8
+  %trunc112 = trunc i32 %shl111 to i8
   %117 = load i8, ptr %116, align 1
   %118 = and i8 %117, 15
-  %119 = or i8 %118, %ztrunc112
+  %119 = or i8 %118, %trunc112
   store i8 %119, ptr %116, align 1
   %lshrl113 = lshr i32 %115, 4
   %120 = getelementptr inbounds [3 x i8], ptr %xx, i64 0, i64 1
-  %ztrunc114 = trunc i32 %lshrl113 to i8
-  %121 = and i8 %ztrunc114, 3
+  %trunc114 = trunc i32 %lshrl113 to i8
+  %121 = and i8 %trunc114, 3
   %122 = load i8, ptr %120, align 1
   %123 = and i8 %122, -4
   %124 = or i8 %123, %121
@@ -1032,15 +1032,15 @@ entry:
   %sdiv = sdiv i32 %ashr130, 2
   %137 = getelementptr inbounds [3 x i8], ptr %xx, i64 0, i64 0
   %shl131 = shl i32 %sdiv, 4
-  %ztrunc132 = trunc i32 %shl131 to i8
+  %trunc132 = trunc i32 %shl131 to i8
   %138 = load i8, ptr %137, align 1
   %139 = and i8 %138, 15
-  %140 = or i8 %139, %ztrunc132
+  %140 = or i8 %139, %trunc132
   store i8 %140, ptr %137, align 1
   %lshrl133 = lshr i32 %sdiv, 4
   %141 = getelementptr inbounds [3 x i8], ptr %xx, i64 0, i64 1
-  %ztrunc134 = trunc i32 %lshrl133 to i8
-  %142 = and i8 %ztrunc134, 3
+  %trunc134 = trunc i32 %lshrl133 to i8
+  %142 = and i8 %trunc134, 3
   %143 = load i8, ptr %141, align 1
   %144 = and i8 %143, -4
   %145 = or i8 %144, %142
@@ -1077,15 +1077,15 @@ entry:
   %smod = srem i32 %ashr150, 2
   %158 = getelementptr inbounds [3 x i8], ptr %xx, i64 0, i64 0
   %shl151 = shl i32 %smod, 4
-  %ztrunc152 = trunc i32 %shl151 to i8
+  %trunc152 = trunc i32 %shl151 to i8
   %159 = load i8, ptr %158, align 1
   %160 = and i8 %159, 15
-  %161 = or i8 %160, %ztrunc152
+  %161 = or i8 %160, %trunc152
   store i8 %161, ptr %158, align 1
   %lshrl153 = lshr i32 %smod, 4
   %162 = getelementptr inbounds [3 x i8], ptr %xx, i64 0, i64 1
-  %ztrunc154 = trunc i32 %lshrl153 to i8
-  %163 = and i8 %ztrunc154, 3
+  %trunc154 = trunc i32 %lshrl153 to i8
+  %163 = and i8 %trunc154, 3
   %164 = load i8, ptr %162, align 1
   %165 = and i8 %164, -4
   %166 = or i8 %165, %163

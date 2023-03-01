@@ -74,32 +74,32 @@ entry:
   %4 = load i64, ptr %xxy, align 8
   %lshrl3 = lshr i64 %4, 5
   %5 = and i64 262143, %lshrl3
-  %ztrunc = trunc i64 %5 to i32
+  %trunc = trunc i64 %5 to i32
   %6 = load i64, ptr %xxy, align 8
   %lshrl4 = lshr i64 %6, 23
   %7 = and i64 262143, %lshrl4
-  %ztrunc5 = trunc i64 %7 to i32
+  %trunc5 = trunc i64 %7 to i32
   %8 = load i64, ptr %xxy, align 8
   %lshrl6 = lshr i64 %8, 41
   %9 = and i64 2097151, %lshrl6
-  %ztrunc7 = trunc i64 %9 to i32
-  call void (ptr, ...) @printf(ptr @.str.3, i32 %ztrunc, i32 %ztrunc5, i32 %ztrunc7)
+  %trunc7 = trunc i64 %9 to i32
+  call void (ptr, ...) @printf(ptr @.str.3, i32 %trunc, i32 %trunc5, i32 %trunc7)
   store i64 2292133196431502101, ptr %xxybe, align 8
   %10 = load i64, ptr %xxybe, align 8
   %11 = call i64 @llvm.bswap.i64(i64 %10)
   %lshrl8 = lshr i64 %11, 5
   %12 = and i64 262143, %lshrl8
-  %ztrunc9 = trunc i64 %12 to i32
+  %trunc9 = trunc i64 %12 to i32
   %13 = load i64, ptr %xxybe, align 8
   %14 = call i64 @llvm.bswap.i64(i64 %13)
   %lshrl10 = lshr i64 %14, 23
   %15 = and i64 262143, %lshrl10
-  %ztrunc11 = trunc i64 %15 to i32
+  %trunc11 = trunc i64 %15 to i32
   %16 = load i64, ptr %xxybe, align 8
   %17 = call i64 @llvm.bswap.i64(i64 %16)
   %lshrl12 = lshr i64 %17, 41
   %18 = and i64 2097151, %lshrl12
-  %ztrunc13 = trunc i64 %18 to i32
-  call void (ptr, ...) @printf(ptr @.str.4, i32 %ztrunc9, i32 %ztrunc11, i32 %ztrunc13)
+  %trunc13 = trunc i64 %18 to i32
+  call void (ptr, ...) @printf(ptr @.str.4, i32 %trunc9, i32 %trunc11, i32 %trunc13)
   ret void
 }

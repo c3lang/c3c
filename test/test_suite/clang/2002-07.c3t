@@ -462,10 +462,10 @@ loop.cond:                                        ; preds = %loop.body, %entry
 
 loop.body:                                        ; preds = %loop.cond
   %4 = load i64, ptr %dstp, align 8
-  %xiptr = inttoptr i64 %4 to ptr
-  %ptroffset = getelementptr inbounds i8, ptr %xiptr, i64 0
-  %siuitrunc = trunc i32 %1 to i8
-  store i8 %siuitrunc, ptr %ptroffset, align 1
+  %intptr = inttoptr i64 %4 to ptr
+  %ptroffset = getelementptr inbounds i8, ptr %intptr, i64 0
+  %trunc = trunc i32 %1 to i8
+  store i8 %trunc, ptr %ptroffset, align 1
   %5 = load i64, ptr %dstp, align 8
   %add = add i64 %5, 1
   store i64 %add, ptr %dstp, align 8
@@ -553,25 +553,25 @@ entry:
 
 define zeroext i8 @foo.ptrFunc2(ptr byval([30 x ptr]) align 8 %0, i32 %1) #0 {
 entry:
-  %sisiext = sext i32 %1 to i64
-  %2 = getelementptr inbounds [30 x ptr], ptr %0, i64 0, i64 %sisiext
+  %sext = sext i32 %1 to i64
+  %2 = getelementptr inbounds [30 x ptr], ptr %0, i64 0, i64 %sext
   %3 = load ptr, ptr %2, align 8
   %4 = call i32 %3(i32 98)
-  %siuitrunc = trunc i32 %4 to i8
-  ret i8 %siuitrunc
+  %trunc = trunc i32 %4 to i8
+  ret i8 %trunc
 }
 
 define zeroext i8 @foo.smallArgs(i8 zeroext %0, i8 zeroext %1, i8 zeroext %2, i8 zeroext %3) #0 {
 entry:
   %4 = call i32 @someFuncA()
-  %uisiext = zext i8 %0 to i32
-  %sub = sub i32 %uisiext, 1
-  %siuitrunc = trunc i32 %sub to i8
-  %uisiext1 = zext i8 %1 to i32
-  %add = add i32 %uisiext1, 1
-  %siuitrunc2 = trunc i32 %add to i8
-  %uisiext3 = zext i8 %2 to i64
-  %5 = call i8 @smallArgs2(i8 zeroext %siuitrunc, i8 zeroext %siuitrunc2, i64 %uisiext3, i8 zeroext %3, i8 zeroext %0)
+  %zext = zext i8 %0 to i32
+  %sub = sub i32 %zext, 1
+  %trunc = trunc i32 %sub to i8
+  %zext1 = zext i8 %1 to i32
+  %add = add i32 %zext1, 1
+  %trunc2 = trunc i32 %add to i8
+  %zext3 = zext i8 %2 to i64
+  %5 = call i8 @smallArgs2(i8 zeroext %trunc, i8 zeroext %trunc2, i64 %zext3, i8 zeroext %3, i8 zeroext %0)
   ret i8 %5
 }
 
@@ -600,15 +600,15 @@ if.exit:                                          ; preds = %if.then, %entry
   %9 = getelementptr inbounds %Quad, ptr %0, i32 0, i32 1
   %10 = getelementptr inbounds %SubStruct, ptr %9, i32 0, i32 1
   %11 = load i16, ptr %10, align 2
-  %sisiext = sext i16 %11 to i32
-  %add = add i32 %sisiext, %1
+  %sext = sext i16 %11 to i32
+  %add = add i32 %sext, %1
   %12 = getelementptr inbounds %Quad, ptr %r, i32 0, i32 4
   %13 = load i32, ptr %12, align 4
   %add1 = add i32 %add, %13
   %14 = getelementptr inbounds %Quad, ptr %0, i32 0, i32 3
   %15 = load i8, ptr %14, align 8
-  %uisiext = zext i8 %15 to i32
-  %sub = sub i32 %add1, %uisiext
+  %zext = zext i8 %15 to i32
+  %sub = sub i32 %add1, %zext
   ret i32 %sub
 }
 
@@ -617,11 +617,9 @@ entry:
   %r = alloca %Quad, align 8
   %intbool = icmp ne i32 %1, 0
   br i1 %intbool, label %if.then, label %if.exit
-
 if.then:                                          ; preds = %entry
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %r, ptr align 8 %0, i32 24, i1 false)
   br label %if.exit
-
 if.exit:                                          ; preds = %if.then, %entry
   %2 = getelementptr inbounds %Quad, ptr %0, i32 0, i32 0
   %3 = getelementptr inbounds %Quad, ptr %0, i32 0, i32 4
@@ -632,15 +630,15 @@ if.exit:                                          ; preds = %if.then, %entry
   %5 = getelementptr inbounds %Quad, ptr %0, i32 0, i32 1
   %6 = getelementptr inbounds %SubStruct, ptr %5, i32 0, i32 1
   %7 = load i16, ptr %6, align 2
-  %sisiext = sext i16 %7 to i32
-  %add = add i32 %sisiext, %1
+  %sext = sext i16 %7 to i32
+  %add = add i32 %sext, %1
   %8 = getelementptr inbounds %Quad, ptr %r, i32 0, i32 4
   %9 = load i32, ptr %8, align 4
   %add1 = add i32 %add, %9
   %10 = getelementptr inbounds %Quad, ptr %0, i32 0, i32 3
   %11 = load i8, ptr %10, align 8
-  %uisiext = zext i8 %11 to i32
-  %sub = sub i32 %add1, %uisiext
+  %zext = zext i8 %11 to i32
+  %sub = sub i32 %add1, %zext
   ret i32 %sub
 }
 
@@ -650,11 +648,9 @@ entry:
   %fpfpext = fpext float %0 to double
   %gt = fcmp ogt double %fpfpext, 1.234500e+01
   br i1 %gt, label %if.then, label %if.exit
-
 if.then:                                          ; preds = %entry
   store i32 4, ptr %result, align 4
   br label %if.exit
-
 if.exit:                                          ; preds = %if.then, %entry
   %1 = load i32, ptr %result, align 4
   ret i32 %1
@@ -678,10 +674,10 @@ entry:
 
 define signext i16 @foo.funFunc(i64 %0, i8 zeroext %1) #0 {
 entry:
-  %uisiext = zext i8 %1 to i64
-  %add = add i64 %0, %uisiext
-  %sisitrunc = trunc i64 %add to i16
-  ret i16 %sisitrunc
+  %zext = zext i8 %1 to i64
+  %add = add i64 %0, %zext
+  %trunc = trunc i64 %add to i16
+  ret i16 %trunc
 }
 
 define i32 @foo.castTest(i32 %0) #0 {
@@ -704,18 +700,15 @@ entry:
   store i32 %0, ptr %i, align 4
   store i32 %1, ptr %j, align 4
   br label %loop.cond
-
 loop.cond:                                        ; preds = %loop.body, %entry
   %2 = load i32, ptr %i, align 4
   %neq = icmp ne i32 %2, 20
   br i1 %neq, label %loop.body, label %loop.exit
-
 loop.body:                                        ; preds = %loop.cond
   %3 = load i32, ptr %i, align 4
   %add = add i32 %3, 2
   store i32 %add, ptr %i, align 4
   br label %loop.cond
-
 loop.exit:                                        ; preds = %loop.cond
   %4 = load i32, ptr %j, align 4
   %5 = load i32, ptr %i, align 4
@@ -739,17 +732,15 @@ entry:
   store i32 0, ptr %result, align 4
   store i32 0, ptr %i, align 4
   br label %loop.cond
-
 loop.cond:                                        ; preds = %loop.body, %entry
   %2 = load i32, ptr %i, align 4
   %lt = icmp slt i32 %2, %1
   br i1 %lt, label %loop.body, label %loop.exit
-
 loop.body:                                        ; preds = %loop.cond
   %3 = load i32, ptr %result, align 4
   %4 = load i32, ptr %i, align 4
-  %sisiext = sext i32 %4 to i64
-  %ptroffset = getelementptr inbounds i32, ptr %0, i64 %sisiext
+  %sext = sext i32 %4 to i64
+  %ptroffset = getelementptr inbounds i32, ptr %0, i64 %sext
   %5 = load i32, ptr %ptroffset, align 4
   %add = add i32 %3, %5
   store i32 %add, ptr %result, align 4
@@ -757,7 +748,6 @@ loop.body:                                        ; preds = %loop.cond
   %add1 = add i32 %6, 1
   store i32 %add1, ptr %i, align 4
   br label %loop.cond
-
 loop.exit:                                        ; preds = %loop.cond
   %7 = load i32, ptr %result, align 4
   ret i32 %7
@@ -767,10 +757,10 @@ define i32 @foo.arrayParam(ptr %0) #0 {
 entry:
   %ptroffset = getelementptr inbounds i32, ptr %0, i64 50
   %1 = load i32, ptr %ptroffset, align 4
-  %sisiext = sext i32 %1 to i64
-  %xiptr = inttoptr i64 %sisiext to ptr
+  %sext = sext i32 %1 to i64
+  %intptr = inttoptr i64 %sext to ptr
   %ptroffset1 = getelementptr inbounds i32, ptr %0, i64 50
-  %2 = call i32 @ef1(ptr %xiptr, ptr inttoptr (i64 1 to ptr), ptr %ptroffset1)
+  %2 = call i32 @ef1(ptr %intptr, ptr inttoptr (i64 1 to ptr), ptr %ptroffset1)
   ret i32 %2
 }
 
@@ -781,16 +771,14 @@ entry:
   store i32 0, ptr %i, align 4
   store i32 0, ptr %i, align 4
   br label %loop.cond
-
 loop.cond:                                        ; preds = %loop.body, %entry
   %0 = load i32, ptr %i, align 4
   %lt = icmp slt i32 %0, 100
   br i1 %lt, label %loop.body, label %loop.exit
-
 loop.body:                                        ; preds = %loop.cond
   %1 = load i32, ptr %i, align 4
-  %sisiext = sext i32 %1 to i64
-  %2 = getelementptr inbounds [100 x i32], ptr %a, i64 0, i64 %sisiext
+  %sext = sext i32 %1 to i64
+  %2 = getelementptr inbounds [100 x i32], ptr %a, i64 0, i64 %sext
   %3 = load i32, ptr %i, align 4
   %mul = mul i32 %3, 4
   store i32 %mul, ptr %2, align 4
@@ -798,12 +786,11 @@ loop.body:                                        ; preds = %loop.cond
   %add = add i32 %4, 1
   store i32 %add, ptr %i, align 4
   br label %loop.cond
-
 loop.exit:                                        ; preds = %loop.cond
   %5 = getelementptr inbounds [100 x i32], ptr %a, i64 0, i64 0
   %6 = load i32, ptr %5, align 4
-  %sisiext1 = sext i32 %6 to i64
-  %7 = getelementptr inbounds [100 x i32], ptr %a, i64 0, i64 %sisiext1
+  %sext1 = sext i32 %6 to i64
+  %7 = getelementptr inbounds [100 x i32], ptr %a, i64 0, i64 %sext1
   %8 = load i32, ptr %7, align 4
   ret i32 %8
 }
@@ -812,16 +799,14 @@ define i32 @main(i32 %0, ptr %1) #0 {
 entry:
   %i = alloca i32, align 4
   %2 = call i32 @puts(ptr @.str.10)
-  %sisitrunc = trunc i32 %0 to i16
-  %3 = call i32 @foo.externFunc(i64 -1, ptr null, i16 signext %sisitrunc, i8 zeroext 2)
+  %trunc = trunc i32 %0 to i16
+  %3 = call i32 @foo.externFunc(i64 -1, ptr null, i16 signext %trunc, i8 zeroext 2)
   store i32 0, ptr %i, align 4
   br label %loop.cond
-
 loop.cond:                                        ; preds = %loop.body, %entry
   %4 = load i32, ptr %i, align 4
   %gt = icmp ugt i32 10, %4
   br i1 %gt, label %loop.body, label %loop.exit
-
 loop.body:                                        ; preds = %loop.cond
   %ptroffset = getelementptr inbounds ptr, ptr %1, i64 3
   %5 = load ptr, ptr %ptroffset, align 8
@@ -830,7 +815,6 @@ loop.body:                                        ; preds = %loop.cond
   %add = add i32 %7, 1
   store i32 %add, ptr %i, align 4
   br label %loop.cond
-
 loop.exit:                                        ; preds = %loop.cond
   ret i32 0
 }
@@ -863,7 +847,6 @@ entry:
   store ptr %0, ptr %s1, align 8
   store ptr %1, ptr %s2, align 8
   br label %loop.cond
-
 loop.cond:                                        ; preds = %loop.body, %entry
   %2 = load ptr, ptr %s1, align 8
   %ptroffset = getelementptr i8, ptr %2, i8 1
@@ -875,10 +858,8 @@ loop.cond:                                        ; preds = %loop.body, %entry
   store i8 %4, ptr %2, align 1
   %intbool = icmp ne i8 %4, 0
   br i1 %intbool, label %loop.body, label %loop.exit
-
 loop.body:                                        ; preds = %loop.cond
   br label %loop.cond
-
 loop.exit:                                        ; preds = %loop.cond
   ret void
 }
@@ -890,7 +871,6 @@ entry:
   store ptr %0, ptr %s1, align 8
   store ptr %1, ptr %s2, align 8
   br label %loop.cond
-
 loop.cond:                                        ; preds = %loop.body, %entry
   %2 = load ptr, ptr %s1, align 8
   %ptroffset = getelementptr i8, ptr %2, i8 1
@@ -898,16 +878,13 @@ loop.cond:                                        ; preds = %loop.body, %entry
   %3 = load i8, ptr %2, align 1
   %intbool = icmp ne i8 %3, 0
   br i1 %intbool, label %loop.body, label %loop.exit
-
 loop.body:                                        ; preds = %loop.cond
   br label %loop.cond
-
 loop.exit:                                        ; preds = %loop.cond
   %4 = load ptr, ptr %s1, align 8
   %ptroffset1 = getelementptr i8, ptr %4, i8 -1
   store ptr %ptroffset1, ptr %s1, align 8
   br label %loop.cond2
-
 loop.cond2:                                       ; preds = %loop.body6, %loop.exit
   %5 = load ptr, ptr %s1, align 8
   %ptroffset3 = getelementptr i8, ptr %5, i8 1
@@ -919,10 +896,8 @@ loop.cond2:                                       ; preds = %loop.body6, %loop.e
   store i8 %7, ptr %5, align 1
   %intbool5 = icmp ne i8 %7, 0
   br i1 %intbool5, label %loop.body6, label %loop.exit7
-
 loop.body6:                                       ; preds = %loop.cond2
   br label %loop.cond2
-
 loop.exit7:                                       ; preds = %loop.cond2
   ret void
 }
@@ -934,7 +909,6 @@ entry:
   store ptr %0, ptr %s1, align 8
   store ptr %1, ptr %s2, align 8
   br label %loop.cond
-
 loop.cond:                                        ; preds = %loop.body, %entry
   %2 = load ptr, ptr %s1, align 8
   %ptroffset = getelementptr i8, ptr %2, i8 1
@@ -946,51 +920,43 @@ loop.cond:                                        ; preds = %loop.body, %entry
   %5 = load i8, ptr %4, align 1
   %eq = icmp eq i8 %3, %5
   br i1 %eq, label %loop.body, label %loop.exit
-
 loop.body:                                        ; preds = %loop.cond
   br label %loop.cond
-
 loop.exit:                                        ; preds = %loop.cond
   %6 = load ptr, ptr %s1, align 8
   %7 = load i8, ptr %6, align 1
   %zext = zext i8 %7 to i32
   %eq2 = icmp eq i32 0, %zext
   br i1 %eq2, label %if.then, label %if.else6
-
 if.then:                                          ; preds = %loop.exit
   %8 = load ptr, ptr %s2, align 8
   %9 = load i8, ptr %8, align 1
   %zext3 = zext i8 %9 to i32
   %eq4 = icmp eq i32 0, %zext3
   br i1 %eq4, label %if.then5, label %if.else
-
 if.then5:                                         ; preds = %if.then
   ret i32 0
-
 if.else:                                          ; preds = %if.then
   ret i32 -1
-
 if.else6:                                         ; preds = %loop.exit
   %10 = load ptr, ptr %s2, align 8
   %11 = load i8, ptr %10, align 1
   %zext7 = zext i8 %11 to i32
   %eq8 = icmp eq i32 0, %zext7
   br i1 %eq8, label %if.then9, label %if.else10
-
 if.then9:                                         ; preds = %if.else6
   ret i32 1
-
 if.else10:                                        ; preds = %if.else6
   %12 = load ptr, ptr %s1, align 8
   %ptroffset11 = getelementptr i8, ptr %12, i8 -1
   store ptr %ptroffset11, ptr %s1, align 8
   %13 = load i8, ptr %ptroffset11, align 1
-  %uisiext = zext i8 %13 to i32
+  %zext12 = zext i8 %13 to i32
   %14 = load ptr, ptr %s2, align 8
-  %ptroffset12 = getelementptr i8, ptr %14, i8 -1
-  store ptr %ptroffset12, ptr %s2, align 8
-  %15 = load i8, ptr %ptroffset12, align 1
-  %uisiext13 = zext i8 %15 to i32
-  %sub = sub i32 %uisiext, %uisiext13
+  %ptroffset13 = getelementptr i8, ptr %14, i8 -1
+  store ptr %ptroffset13, ptr %s2, align 8
+  %15 = load i8, ptr %ptroffset13, align 1
+  %zext14 = zext i8 %15 to i32
+  %sub = sub i32 %zext12, %zext14
   ret i32 %sub
 }

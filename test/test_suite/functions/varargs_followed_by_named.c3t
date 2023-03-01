@@ -30,12 +30,12 @@ entry:
   store i64 %2, ptr %ptroffset, align 8
   %4 = getelementptr inbounds %"int[]", ptr %y, i32 0, i32 1
   %5 = load i64, ptr %4, align 8
-  %uisitrunc = trunc i64 %5 to i32
+  %trunc = trunc i64 %5 to i32
   %6 = getelementptr inbounds %"int[]", ptr %y, i32 0, i32 0
   %7 = load ptr, ptr %6, align 8
   %ptroffset1 = getelementptr inbounds i32, ptr %7, i64 0
   %8 = load i32, ptr %ptroffset1, align 4
-  call void (ptr, ...) @printf(ptr @.str, i32 %0, i32 %uisitrunc, i32 %3, i32 %8)
+  call void (ptr, ...) @printf(ptr @.str, i32 %0, i32 %trunc, i32 %3, i32 %8)
   ret void
 }
 
@@ -48,8 +48,8 @@ entry:
   store i64 %2, ptr %ptroffset, align 8
   %4 = getelementptr inbounds %"variant[]", ptr %y, i32 0, i32 1
   %5 = load i64, ptr %4, align 8
-  %uisitrunc = trunc i64 %5 to i32
-  call void (ptr, ...) @printf(ptr @.str.1, i32 %0, i32 %uisitrunc, i32 %3)
+  %trunc = trunc i64 %5 to i32
+  call void (ptr, ...) @printf(ptr @.str.1, i32 %0, i32 %trunc, i32 %3)
   ret void
 }
 

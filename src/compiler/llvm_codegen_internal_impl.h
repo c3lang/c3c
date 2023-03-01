@@ -8,21 +8,77 @@ INLINE LLVMValueRef llvm_emit_insert_value(GenContext *c, LLVMValueRef agg, LLVM
 	return LLVMBuildInsertValue(c->builder, agg, new_value, index, "");
 }
 
+INLINE bool llvm_is_int_or_vector_int(LLVMTypeRef type)
+{
+	if (LLVMGetTypeKind(type) == LLVMIntegerTypeKind) return true;
+	return LLVMGetTypeKind(type) == LLVMVectorTypeKind
+		&& LLVMGetTypeKind(LLVMGetElementType(type)) == LLVMIntegerTypeKind;
+}
 
 INLINE LLVMValueRef llvm_zext_trunc(GenContext *c, LLVMValueRef data, LLVMTypeRef type)
 {
 	LLVMTypeRef current_type = LLVMTypeOf(data);
 	if (current_type == type) return data;
-	assert(LLVMGetTypeKind(type) == LLVMIntegerTypeKind);
-	assert(LLVMGetTypeKind(current_type) == LLVMIntegerTypeKind);
+	assert(llvm_is_int_or_vector_int(type));
+	assert(llvm_is_int_or_vector_int(current_type));
 	if (llvm_bitsize(c, current_type) < llvm_bitsize(c, type))
 	{
 		return LLVMBuildZExt(c->builder, data, type, "zext");
 	}
 	assert(llvm_bitsize(c, current_type) > llvm_bitsize(c, type));
-	return LLVMBuildTrunc(c->builder, data, type, "ztrunc");
+	return LLVMBuildTrunc(c->builder, data, type, "trunc");
 }
 
+INLINE LLVMValueRef llvm_sext_trunc(GenContext *c, LLVMValueRef data, LLVMTypeRef type)
+{
+	LLVMTypeRef current_type = LLVMTypeOf(data);
+	if (current_type == type) return data;
+	assert(llvm_is_int_or_vector_int(type));
+	assert(llvm_is_int_or_vector_int(current_type));
+	if (llvm_bitsize(c, current_type) < llvm_bitsize(c, type))
+	{
+		return LLVMBuildSExt(c->builder, data, type, "sext");
+	}
+	assert(llvm_bitsize(c, current_type) > llvm_bitsize(c, type));
+	return LLVMBuildTrunc(c->builder, data, type, "trunc");
+}
+
+INLINE bool type_is_intlike(Type *type)
+{
+	type = type_flatten(type);
+	if (type_is_integer_or_bool_kind(type)) return true;
+	if (type->type_kind != TYPE_VECTOR) return false;
+	type = type->array.base;
+	return type_is_integer_or_bool_kind(type);
+}
+
+INLINE void llvm_value_ext_trunc(GenContext *c, BEValue *value, Type *type)
+{
+	type = type_flatten(type);
+	Type *from_type = value->type;
+	ByteSize size = type_size(from_type);
+	ByteSize to_size = type_size(type);
+
+	assert(type_is_intlike(type) && type_is_intlike(from_type));
+	if (size == to_size) return;
+
+	llvm_value_rvalue(c, value);
+	LLVMTypeRef current_type = llvm_get_type(c, type);
+	if (size < to_size)
+	{
+		if (type_is_signed(from_type))
+		{
+			value->value = LLVMBuildSExt(c->builder, value->value, current_type, "sext");
+			value->type = type;
+			return;
+		}
+		value->value = LLVMBuildZExt(c->builder, value->value, current_type, "zext");
+		value->type = type;
+		return;
+	}
+	value->value = LLVMBuildTrunc(c->builder, value->value, current_type, "trunc");
+	value->type = type;
+}
 
 INLINE LLVMValueRef llvm_store_decl(GenContext *c, Decl *decl, BEValue *value)
 {

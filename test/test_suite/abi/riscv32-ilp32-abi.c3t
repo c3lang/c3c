@@ -50,9 +50,9 @@ fn void f_agg_stack(double a, long b, double c, long d, Tiny e,
 
 define i32 @test.f_scalar_stack_1(i32 %0, i64 %1, float %2, double %3, fp128 %4, i8 zeroext %5, i8 %6, i8 %7) #0 {
 entry:
-  %sisiext = sext i8 %6 to i32
-  %uisiext = zext i8 %7 to i32
-  %add = add i32 %sisiext, %uisiext
+  %sext = sext i8 %6 to i32
+  %zext = zext i8 %7 to i32
+  %add = add i32 %sext, %zext
   ret i32 %add
 }
 
@@ -64,14 +64,14 @@ entry:
   %fpsi = fptosi float %1 to i32
   store i32 %fpsi, ptr %8, align 4
   %9 = getelementptr inbounds %Large, ptr %literal, i32 0, i32 1
-  %uisiext = zext i8 %5 to i32
-  store i32 %uisiext, ptr %9, align 4
+  %zext = zext i8 %5 to i32
+  store i32 %zext, ptr %9, align 4
   %10 = getelementptr inbounds %Large, ptr %literal, i32 0, i32 2
-  %sisiext = sext i8 %6 to i32
-  store i32 %sisiext, ptr %10, align 4
+  %sext = sext i8 %6 to i32
+  store i32 %sext, ptr %10, align 4
   %11 = getelementptr inbounds %Large, ptr %literal, i32 0, i32 3
-  %uisiext1 = zext i8 %7 to i32
-  store i32 %uisiext1, ptr %11, align 4
+  %zext1 = zext i8 %7 to i32
+  store i32 %zext1, ptr %11, align 4
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %0, ptr align 4 %literal, i32 16, i1 false)
   ret void
 }

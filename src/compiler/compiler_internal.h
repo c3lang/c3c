@@ -2174,7 +2174,7 @@ INLINE bool expr_is_const_member(Expr *expr);
 
 INLINE void expr_rewrite_const_null(Expr *expr, Type *type);
 INLINE void expr_rewrite_const_bool(Expr *expr, Type *type, bool b);
-INLINE void expr_rewrite_const_float(Expr *expr, Type *type, Real d);
+INLINE void expr_rewrite_const_float(Expr *expr, Type *type, Real d, bool is_narrowable);
 INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v, bool narrowable);
 INLINE void expr_rewrite_const_typeid(Expr *expr, Type *type);
 INLINE void expr_rewrite_const_initializer(Expr *expr, Type *type, ConstInitializer *initializer);
@@ -2829,7 +2829,14 @@ INLINE bool type_ok(Type *type) { return !type || type->type_kind != TYPE_POISON
 INLINE bool type_info_ok(TypeInfo *type_info) { return !type_info || type_info->kind != TYPE_INFO_POISON; }
 bool type_is_scalar(Type *type);
 
-INLINE bool type_is_signed(Type *type) { return type->type_kind >= TYPE_I8 && type->type_kind < TYPE_U8; }
+INLINE bool type_is_signed(Type *type)
+{
+	TypeKind kind = type->type_kind;
+	if (kind >= TYPE_I8 && kind < TYPE_U8) return true;
+	if (kind != TYPE_VECTOR) return false;
+	kind = type->array.base->type_kind;
+	return kind >= TYPE_I8 && kind < TYPE_U8;
+}
 
 INLINE bool type_is_func_ptr(Type *fn_type)
 {
@@ -3165,24 +3172,30 @@ INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v, bool narr
 	expr->const_expr.narrowable = narrowable;
 }
 
-INLINE void expr_rewrite_const_float(Expr *expr, Type *type, Real d)
+INLINE void expr_rewrite_const_float(Expr *expr, Type *type, Real d, bool is_narrowable)
 {
 	expr->expr_kind = EXPR_CONST;
 	expr->type = type;
 	TypeKind kind = type_flatten(type)->type_kind;
+	Real real;
 	switch (kind)
 	{
 		case TYPE_F32:
-			expr->const_expr.fxx = (Float){ (float)d, TYPE_F32 };
+			real = (float)d;
 			break;
 		case TYPE_F64:
-			expr->const_expr.fxx = (Float){ (double)d, TYPE_F64 };
+			real = (double)d;
 			break;
 		default:
-			expr->const_expr.fxx = (Float){ d, kind };
+			REMINDER("Handling of float type may not be accurate");
+			real = d;
 			break;
 	}
-	expr->const_expr.const_kind = CONST_FLOAT;
+	expr->const_expr = (ExprConst) {
+			.fxx = (Float){ real, kind },
+			.const_kind = CONST_FLOAT,
+			.narrowable = is_narrowable,
+		};
 	expr->resolve_status = RESOLVE_DONE;
 }
 

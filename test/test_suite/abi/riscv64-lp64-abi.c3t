@@ -21,9 +21,9 @@ fn Large f_scalar_stack_2(double a, int128 b, float128 c, V32i8 d,
 
 define signext i32 @test.f_scalar_stack_1(i32 signext %0, i128 %1, float %2, fp128 %3, ptr align 32 %4, i8 zeroext %5, i8 %6, i8 %7)
 entry:
-  %uisiext = zext i8 %6 to i32
-  %uisiext1 = zext i8 %7 to i32
-  %add = add i32 %uisiext, %uisiext1
+  %zext = zext i8 %6 to i32
+  %zext1 = zext i8 %7 to i32
+  %add = add i32 %zext, %zext1
   ret i32 %add
 
 define void @test.f_scalar_stack_2(ptr noalias sret(%Large) align 8 %0, double %1, i128 %2, fp128 %3, ptr align 32 %4, i8 zeroext %5, i8 %6, i8 %7)
@@ -33,13 +33,13 @@ entry:
   %fpsi = fptosi double %1 to i64
   store i64 %fpsi, ptr %8, align 8
   %9 = getelementptr inbounds %Large, ptr %literal, i32 0, i32 1
-  %uisiext = zext i8 %5 to i64
-  store i64 %uisiext, ptr %9, align 8
+  %zext = zext i8 %5 to i64
+  store i64 %zext, ptr %9, align 8
   %10 = getelementptr inbounds %Large, ptr %literal, i32 0, i32 2
-  %sisiext = sext i8 %6 to i64
-  store i64 %sisiext, ptr %10, align 8
+  %sext = sext i8 %6 to i64
+  store i64 %sext, ptr %10, align 8
   %11 = getelementptr inbounds %Large, ptr %literal, i32 0, i32 3
-  %uisiext1 = zext i8 %7 to i64
-  store i64 %uisiext1, ptr %11, align 8
+  %zext1 = zext i8 %7 to i64
+  store i64 %zext1, ptr %11, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %0, ptr align 8 %literal, i32 32, i1 false)
   ret void

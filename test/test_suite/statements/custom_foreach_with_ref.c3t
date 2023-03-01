@@ -181,20 +181,20 @@ entry:
   store i32 0, ptr %a, align 4
   %0 = getelementptr inbounds %Foo, ptr %x, i32 0, i32 0
   %1 = load i32, ptr %a, align 4
-  %sisiext = sext i32 %1 to i64
-  %2 = getelementptr inbounds [3 x i32], ptr %0, i64 0, i64 %sisiext
+  %sext = sext i32 %1 to i64
+  %2 = getelementptr inbounds [3 x i32], ptr %0, i64 0, i64 %sext
   %3 = load i32, ptr %2, align 4
   store i32 1, ptr %a1, align 4
   %4 = getelementptr inbounds %Foo, ptr %x, i32 0, i32 0
   %5 = load i32, ptr %a1, align 4
-  %sisiext2 = sext i32 %5 to i64
-  %6 = getelementptr inbounds [3 x i32], ptr %4, i64 0, i64 %sisiext2
+  %sext2 = sext i32 %5 to i64
+  %6 = getelementptr inbounds [3 x i32], ptr %4, i64 0, i64 %sext2
   %7 = load i32, ptr %6, align 4
   store i32 2, ptr %a3, align 4
   %8 = getelementptr inbounds %Foo, ptr %x, i32 0, i32 0
   %9 = load i32, ptr %a3, align 4
-  %sisiext4 = sext i32 %9 to i64
-  %10 = getelementptr inbounds [3 x i32], ptr %8, i64 0, i64 %sisiext4
+  %sext4 = sext i32 %9 to i64
+  %10 = getelementptr inbounds [3 x i32], ptr %8, i64 0, i64 %sext4
   %11 = load i32, ptr %10, align 4
   call void (ptr, ...) @printf(ptr @.str.2, i32 %3, i32 %7, i32 %11)
   %12 = call ptr @foo.call(ptr %x)
@@ -217,8 +217,8 @@ loop.body:                                        ; preds = %loop.cond
   store i32 %17, ptr %a7, align 4
   %18 = getelementptr inbounds %Foo, ptr %16, i32 0, i32 0
   %19 = load i32, ptr %a7, align 4
-  %sisiext8 = sext i32 %19 to i64
-  %20 = getelementptr inbounds [3 x i32], ptr %18, i64 0, i64 %sisiext8
+  %sext8 = sext i32 %19 to i64
+  %20 = getelementptr inbounds [3 x i32], ptr %18, i64 0, i64 %sext8
   %21 = load i32, ptr %20, align 4
   store i32 %21, ptr %y, align 4
   %22 = load i32, ptr %i, align 4
@@ -247,8 +247,8 @@ loop.body13:                                      ; preds = %loop.cond11
   store i32 %28, ptr %a16, align 4
   %29 = getelementptr inbounds %Foo, ptr %x, i32 0, i32 0
   %30 = load i32, ptr %a16, align 4
-  %sisiext17 = sext i32 %30 to i64
-  %31 = getelementptr inbounds [3 x i32], ptr %29, i64 0, i64 %sisiext17
+  %sext17 = sext i32 %30 to i64
+  %31 = getelementptr inbounds [3 x i32], ptr %29, i64 0, i64 %sext17
   store ptr %31, ptr %y15, align 8
   %32 = load ptr, ptr %y15, align 8
   %33 = load i32, ptr %32, align 4
@@ -281,8 +281,8 @@ loop.body25:                                      ; preds = %loop.cond23
   store i32 %41, ptr %a28, align 4
   %42 = getelementptr inbounds %Foo, ptr %x, i32 0, i32 0
   %43 = load i32, ptr %a28, align 4
-  %sisiext29 = sext i32 %43 to i64
-  %44 = getelementptr inbounds [3 x i32], ptr %42, i64 0, i64 %sisiext29
+  %sext29 = sext i32 %43 to i64
+  %44 = getelementptr inbounds [3 x i32], ptr %42, i64 0, i64 %sext29
   %45 = load i32, ptr %44, align 4
   store i32 %45, ptr %y27, align 4
   %46 = load i32, ptr %i26, align 4
@@ -311,8 +311,8 @@ loop.body36:                                      ; preds = %loop.cond34
   store i32 %52, ptr %a39, align 4
   %53 = getelementptr inbounds %Foo, ptr %x, i32 0, i32 0
   %54 = load i32, ptr %a39, align 4
-  %sisiext40 = sext i32 %54 to i64
-  %55 = getelementptr inbounds [3 x i32], ptr %53, i64 0, i64 %sisiext40
+  %sext40 = sext i32 %54 to i64
+  %55 = getelementptr inbounds [3 x i32], ptr %53, i64 0, i64 %sext40
   %56 = load i32, ptr %55, align 4
   store i32 %56, ptr %y38, align 4
   %57 = load i32, ptr %i37, align 4
@@ -341,8 +341,8 @@ loop.body47:                                      ; preds = %loop.cond45
   store i32 %63, ptr %a50, align 4
   %64 = getelementptr inbounds %Foo, ptr %x, i32 0, i32 0
   %65 = load i32, ptr %a50, align 4
-  %sisiext51 = sext i32 %65 to i64
-  %66 = getelementptr inbounds [3 x i32], ptr %64, i64 0, i64 %sisiext51
+  %sext51 = sext i32 %65 to i64
+  %66 = getelementptr inbounds [3 x i32], ptr %64, i64 0, i64 %sext51
   %67 = load i32, ptr %66, align 4
   store i32 %67, ptr %y49, align 4
   %68 = load i32, ptr %i48, align 4
@@ -440,21 +440,21 @@ loop.exit81:                                      ; preds = %loop.cond75
   store i32 0, ptr %a82, align 4
   %98 = getelementptr inbounds %Foo, ptr %x, i32 0, i32 0
   %99 = load i32, ptr %a82, align 4
-  %sisiext83 = sext i32 %99 to i64
-  %100 = getelementptr inbounds [3 x i32], ptr %98, i64 0, i64 %sisiext83
+  %sext83 = sext i32 %99 to i64
+  %100 = getelementptr inbounds [3 x i32], ptr %98, i64 0, i64 %sext83
   %101 = load i32, ptr %100, align 4
   store i32 1, ptr %a84, align 4
   %102 = getelementptr inbounds %Foo, ptr %x, i32 0, i32 0
   %103 = load i32, ptr %a84, align 4
-  %sisiext85 = sext i32 %103 to i64
-  %104 = getelementptr inbounds [3 x i32], ptr %102, i64 0, i64 %sisiext85
+  %sext85 = sext i32 %103 to i64
+  %104 = getelementptr inbounds [3 x i32], ptr %102, i64 0, i64 %sext85
   %105 = load i32, ptr %104, align 4
   call void (ptr, ...) @printf(ptr @.str.12, i32 %101, i32 %105)
   store i32 1, ptr %a87, align 4
   %106 = getelementptr inbounds %Foo, ptr %x, i32 0, i32 0
   %107 = load i32, ptr %a87, align 4
-  %sisiext88 = sext i32 %107 to i64
-  %108 = getelementptr inbounds [3 x i32], ptr %106, i64 0, i64 %sisiext88
+  %sext88 = sext i32 %107 to i64
+  %108 = getelementptr inbounds [3 x i32], ptr %106, i64 0, i64 %sext88
   store ptr %108, ptr %y86, align 8
   %109 = load ptr, ptr %y86, align 8
   %110 = load i32, ptr %109, align 4
@@ -463,14 +463,14 @@ loop.exit81:                                      ; preds = %loop.cond75
   store i32 0, ptr %a90, align 4
   %111 = getelementptr inbounds %Foo, ptr %x, i32 0, i32 0
   %112 = load i32, ptr %a90, align 4
-  %sisiext91 = sext i32 %112 to i64
-  %113 = getelementptr inbounds [3 x i32], ptr %111, i64 0, i64 %sisiext91
+  %sext91 = sext i32 %112 to i64
+  %113 = getelementptr inbounds [3 x i32], ptr %111, i64 0, i64 %sext91
   %114 = load i32, ptr %113, align 4
   store i32 1, ptr %a92, align 4
   %115 = getelementptr inbounds %Foo, ptr %x, i32 0, i32 0
   %116 = load i32, ptr %a92, align 4
-  %sisiext93 = sext i32 %116 to i64
-  %117 = getelementptr inbounds [3 x i32], ptr %115, i64 0, i64 %sisiext93
+  %sext93 = sext i32 %116 to i64
+  %117 = getelementptr inbounds [3 x i32], ptr %115, i64 0, i64 %sext93
   %118 = load i32, ptr %117, align 4
   call void (ptr, ...) @printf(ptr @.str.13, i32 %114, i32 %118)
   ret void

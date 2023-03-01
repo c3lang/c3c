@@ -66,8 +66,8 @@ entry:
   %0 = load i8, ptr %x, align 1
   store i8 %0, ptr %b2, align 1
   %1 = load i8, ptr %x, align 1
-  %uisiext = zext i8 %1 to i32
-  store i32 %uisiext, ptr %z2, align 4
+  %zext = zext i8 %1 to i32
+  store i32 %zext, ptr %z2, align 4
   store float 0.000000e+00, ptr %d, align 4
   store i8 0, ptr %hello, align 1
   store i8 1, ptr %xf, align 1

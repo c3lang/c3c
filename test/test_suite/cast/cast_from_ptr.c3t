@@ -18,5 +18,5 @@ fn void tester()
   store i16 %ptrxi, ptr %y, align 2
   %1 = load ptr, ptr %x, align 8
   %ptrxi1 = ptrtoint ptr %1 to i16
-  %siuiext = sext i16 %ptrxi1 to i64
-  store i64 %siuiext, ptr %z, align 8
+  %sext = sext i16 %ptrxi1 to i64
+  store i64 %sext, ptr %z, align 8

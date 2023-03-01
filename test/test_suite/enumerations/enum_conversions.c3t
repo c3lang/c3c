@@ -43,8 +43,8 @@ panic1:                                           ; preds = %checkok
   br label %checkok2
 
 checkok2:                                         ; preds = %panic1, %checkok
-  %ztrunc = trunc i32 %0 to i8
-  store i8 %ztrunc, ptr %x, align 1
+  %trunc = trunc i32 %0 to i8
+  store i8 %trunc, ptr %x, align 1
   store i64 0, ptr %z, align 8
   %3 = load i64, ptr %z, align 8
   %lt3 = icmp slt i64 %3, 0
@@ -65,8 +65,8 @@ panic7:                                           ; preds = %checkok5
   br label %checkok8
 
 checkok8:                                         ; preds = %panic7, %checkok5
-  %ztrunc9 = trunc i64 %3 to i8
-  store i8 %ztrunc9, ptr %y, align 1
+  %trunc9 = trunc i64 %3 to i8
+  store i8 %trunc9, ptr %y, align 1
   store i32 256, ptr %a, align 4
   %6 = load i32, ptr %a, align 4
   %lt10 = icmp slt i32 %6, 0
@@ -87,8 +87,8 @@ panic14:                                          ; preds = %checkok12
   br label %checkok15
 
 checkok15:                                        ; preds = %panic14, %checkok12
-  %ztrunc16 = trunc i32 %6 to i8
-  store i8 %ztrunc16, ptr %y, align 1
+  %trunc16 = trunc i32 %6 to i8
+  store i8 %trunc16, ptr %y, align 1
   store i32 -1, ptr %a, align 4
   %9 = load i32, ptr %a, align 4
   %lt17 = icmp slt i32 %9, 0
@@ -109,7 +109,7 @@ panic21:                                          ; preds = %checkok19
   br label %checkok22
 
 checkok22:                                        ; preds = %panic21, %checkok19
-  %ztrunc23 = trunc i32 %9 to i8
-  store i8 %ztrunc23, ptr %y, align 1
+  %trunc23 = trunc i32 %9 to i8
+  store i8 %trunc23, ptr %y, align 1
   ret void
 }

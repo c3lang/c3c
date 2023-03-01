@@ -451,9 +451,9 @@ entry:
   store i32 %0, ptr %a, align 1
   store [2 x i32] %1, ptr %b, align 4
   store i64 %2, ptr %c, align 8
-  %uisiext = zext i8 %6 to i32
-  %sisiext = sext i8 %7 to i32
-  %add = add i32 %uisiext, %sisiext
+  %zext = zext i8 %6 to i32
+  %sext = sext i8 %7 to i32
+  %add = add i32 %zext, %sext
   ret i32 %add
 }
 
@@ -463,14 +463,14 @@ entry:
   %8 = getelementptr inbounds %Large, ptr %literal, i32 0, i32 0
   store i32 %1, ptr %8, align 4
   %9 = getelementptr inbounds %Large, ptr %literal, i32 0, i32 1
-  %uisiext = zext i8 %5 to i32
-  store i32 %uisiext, ptr %9, align 4
+  %zext = zext i8 %5 to i32
+  store i32 %zext, ptr %9, align 4
   %10 = getelementptr inbounds %Large, ptr %literal, i32 0, i32 2
-  %sisiext = sext i8 %6 to i32
-  store i32 %sisiext, ptr %10, align 4
+  %sext = sext i8 %6 to i32
+  store i32 %sext, ptr %10, align 4
   %11 = getelementptr inbounds %Large, ptr %literal, i32 0, i32 3
-  %uisiext1 = zext i8 %7 to i32
-  store i32 %uisiext1, ptr %11, align 4
+  %zext1 = zext i8 %7 to i32
+  store i32 %zext1, ptr %11, align 4
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %0, ptr align 4 %literal, i32 16, i1 false)
   ret void
 }

@@ -95,8 +95,8 @@ entry:
   store i32 %and, ptr %f3, align 4
   %5 = load i32, ptr %f3, align 4
   %6 = and i32 1, %5
-  %ztrunc = trunc i32 %6 to i8
-  store i8 %ztrunc, ptr %taddr, align 1
+  %trunc = trunc i32 %6 to i8
+  store i8 %trunc, ptr %taddr, align 1
   %7 = insertvalue %variant undef, ptr %taddr, 0
   %8 = insertvalue %variant %7, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
   %9 = getelementptr inbounds [2 x %variant], ptr %varargslots, i64 0, i64 0
@@ -104,8 +104,8 @@ entry:
   %10 = load i32, ptr %f3, align 4
   %lshrl = lshr i32 %10, 1
   %11 = and i32 1, %lshrl
-  %ztrunc1 = trunc i32 %11 to i8
-  store i8 %ztrunc1, ptr %taddr2, align 1
+  %trunc1 = trunc i32 %11 to i8
+  store i8 %trunc1, ptr %taddr2, align 1
   %12 = insertvalue %variant undef, ptr %taddr2, 0
   %13 = insertvalue %variant %12, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
   %14 = getelementptr inbounds [2 x %variant], ptr %varargslots, i64 0, i64 1
@@ -120,8 +120,8 @@ entry:
   store i32 %xor, ptr %f4, align 4
   %19 = load i32, ptr %f4, align 4
   %20 = and i32 1, %19
-  %ztrunc5 = trunc i32 %20 to i8
-  store i8 %ztrunc5, ptr %taddr6, align 1
+  %trunc5 = trunc i32 %20 to i8
+  store i8 %trunc5, ptr %taddr6, align 1
   %21 = insertvalue %variant undef, ptr %taddr6, 0
   %22 = insertvalue %variant %21, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
   %23 = getelementptr inbounds [2 x %variant], ptr %varargslots4, i64 0, i64 0
@@ -129,8 +129,8 @@ entry:
   %24 = load i32, ptr %f4, align 4
   %lshrl7 = lshr i32 %24, 1
   %25 = and i32 1, %lshrl7
-  %ztrunc8 = trunc i32 %25 to i8
-  store i8 %ztrunc8, ptr %taddr9, align 1
+  %trunc8 = trunc i32 %25 to i8
+  store i8 %trunc8, ptr %taddr9, align 1
   %26 = insertvalue %variant undef, ptr %taddr9, 0
   %27 = insertvalue %variant %26, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
   %28 = getelementptr inbounds [2 x %variant], ptr %varargslots4, i64 0, i64 1
@@ -139,8 +139,8 @@ entry:
   store i32 3, ptr %f5, align 4
   %30 = load i32, ptr %f5, align 4
   %31 = and i32 1, %30
-  %ztrunc12 = trunc i32 %31 to i8
-  store i8 %ztrunc12, ptr %taddr13, align 1
+  %trunc12 = trunc i32 %31 to i8
+  store i8 %trunc12, ptr %taddr13, align 1
   %32 = insertvalue %variant undef, ptr %taddr13, 0
   %33 = insertvalue %variant %32, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
   %34 = getelementptr inbounds [2 x %variant], ptr %varargslots11, i64 0, i64 0
@@ -148,8 +148,8 @@ entry:
   %35 = load i32, ptr %f5, align 4
   %lshrl14 = lshr i32 %35, 1
   %36 = and i32 1, %lshrl14
-  %ztrunc15 = trunc i32 %36 to i8
-  store i8 %ztrunc15, ptr %taddr16, align 1
+  %trunc15 = trunc i32 %36 to i8
+  store i8 %trunc15, ptr %taddr16, align 1
   %37 = insertvalue %variant undef, ptr %taddr16, 0
   %38 = insertvalue %variant %37, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
   %39 = getelementptr inbounds [2 x %variant], ptr %varargslots11, i64 0, i64 1
@@ -161,8 +161,8 @@ entry:
   store i32 %and17, ptr %f5, align 4
   %43 = load i32, ptr %f5, align 4
   %44 = and i32 1, %43
-  %ztrunc20 = trunc i32 %44 to i8
-  store i8 %ztrunc20, ptr %taddr21, align 1
+  %trunc20 = trunc i32 %44 to i8
+  store i8 %trunc20, ptr %taddr21, align 1
   %45 = insertvalue %variant undef, ptr %taddr21, 0
   %46 = insertvalue %variant %45, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
   %47 = getelementptr inbounds [2 x %variant], ptr %varargslots19, i64 0, i64 0
@@ -170,8 +170,8 @@ entry:
   %48 = load i32, ptr %f5, align 4
   %lshrl22 = lshr i32 %48, 1
   %49 = and i32 1, %lshrl22
-  %ztrunc23 = trunc i32 %49 to i8
-  store i8 %ztrunc23, ptr %taddr24, align 1
+  %trunc23 = trunc i32 %49 to i8
+  store i8 %trunc23, ptr %taddr24, align 1
   %50 = insertvalue %variant undef, ptr %taddr24, 0
   %51 = insertvalue %variant %50, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
   %52 = getelementptr inbounds [2 x %variant], ptr %varargslots19, i64 0, i64 1

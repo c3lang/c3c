@@ -179,13 +179,13 @@ loop.body:                                        ; preds = %loop.cond
   %6 = getelementptr inbounds %"char[]", ptr %seq, i32 0, i32 0
   %7 = load ptr, ptr %6, align 8
   %8 = load i32, ptr %i, align 4
-  %sisiext = sext i32 %8 to i64
+  %sext = sext i32 %8 to i64
   %9 = load i64, ptr %len, align 8
-  %smod = srem i64 %sisiext, %9
+  %smod = srem i64 %sext, %9
   %ptroffset1 = getelementptr inbounds i8, ptr %7, i64 %smod
   %10 = load i8, ptr %ptroffset1, align 1
-  %uisiext = zext i8 %10 to i32
-  call void @putchar(i32 %uisiext)
+  %zext = zext i8 %10 to i32
+  call void @putchar(i32 %zext)
   %11 = load i32, ptr %i, align 4
   %smod2 = srem i32 %11, 60
   %eq = icmp eq i32 %smod2, 59
@@ -238,8 +238,8 @@ entry:
   call void @llvm.assume(i1 %eq)
   %9 = getelementptr inbounds %"double[]", ptr %probability, i32 0, i32 1
   %10 = load i64, ptr %9, align 8
-  %uisitrunc = trunc i64 %10 to i32
-  store i32 %uisitrunc, ptr %len, align 4
+  %trunc = trunc i64 %10 to i32
+  store i32 %trunc, ptr %len, align 4
   store i32 0, ptr %i, align 4
   br label %loop.cond
 
@@ -267,8 +267,8 @@ loop.body4:                                       ; preds = %loop.cond2
   %16 = getelementptr inbounds %"double[]", ptr %probability, i32 0, i32 0
   %17 = load ptr, ptr %16, align 8
   %18 = load i32, ptr %j, align 4
-  %sisiext = sext i32 %18 to i64
-  %ptroffset5 = getelementptr inbounds double, ptr %17, i64 %sisiext
+  %sext = sext i32 %18 to i64
+  %ptroffset5 = getelementptr inbounds double, ptr %17, i64 %sext
   %19 = load double, ptr %ptroffset5, align 8
   %fsub = fsub double %15, %19
   store double %fsub, ptr %v, align 8
@@ -289,11 +289,11 @@ loop.exit:                                        ; preds = %if.then, %loop.cond
   %22 = getelementptr inbounds %"char[]", ptr %symb, i32 0, i32 0
   %23 = load ptr, ptr %22, align 8
   %24 = load i32, ptr %j, align 4
-  %sisiext7 = sext i32 %24 to i64
-  %ptroffset8 = getelementptr inbounds i8, ptr %23, i64 %sisiext7
+  %sext7 = sext i32 %24 to i64
+  %ptroffset8 = getelementptr inbounds i8, ptr %23, i64 %sext7
   %25 = load i8, ptr %ptroffset8, align 1
-  %uisiext = zext i8 %25 to i32
-  call void @putchar(i32 %uisiext)
+  %zext = zext i8 %25 to i32
+  call void @putchar(i32 %zext)
   %26 = load i32, ptr %i, align 4
   %smod = srem i32 %26, 60
   %eq9 = icmp eq i32 %smod, 59
