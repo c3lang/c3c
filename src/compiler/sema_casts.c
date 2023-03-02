@@ -36,6 +36,8 @@ static bool float_expand_to_vector_conversion(Expr *expr, Type *canonical, Type 
 static bool array_to_vector(Expr *expr, Type *to_type);
 static bool vector_to_array(Expr *expr, Type *to_type);
 static bool vector_to_vector(Expr *expr, Type *to_type);
+INLINE bool subarray_to_subarray(Expr *expr, Type *to_type);
+
 static void vector_const_initializer_convert_to_type(ConstInitializer *initializer, Type *to_type);
 
 static void enum_to_int_lowering(Expr* expr);
@@ -459,6 +461,21 @@ static bool array_to_vector(Expr *expr, Type *to_type)
 	list->type = to_type;
 	expr->type = to_type;
 	return true;
+}
+
+/**
+ * We have two cases:
+ * 1. int[] -> Foo[] where Foo is a distinct or typedef OR it is a constant. Then we can just redefine
+ * 2. The second case is something like int*[] -> void*[] for this case we need to make a bitcast.
+ */
+INLINE bool subarray_to_subarray(Expr *expr, Type *to_type)
+{
+	if (expr_is_const(expr) || type_flatten(type_flatten(to_type)->array.base) == type_flatten(type_flatten(expr->type)->array.base))
+	{
+		expr->type = to_type;
+		return true;
+	}
+	return insert_cast(expr, CAST_SASA, to_type);
 }
 
 /**
@@ -1874,14 +1891,6 @@ static bool err_to_bool(Expr *expr, Type *to_type)
 	return true;
 }
 
-static inline bool subarray_to_subarray(Expr *expr, Type *to_type)
-{
-	if (expr_is_const(expr))
-	{
-		expr->type = to_type;
-	}
-	return insert_cast(expr, CAST_SASA, to_type);
-}
 static inline bool subarray_to_bool(Expr *expr)
 {
 	if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER)
