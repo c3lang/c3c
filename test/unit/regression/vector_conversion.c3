@@ -1,6 +1,6 @@
-module test;
+module test @test;
 
-fn void! vector_array_inferred() @test
+fn void vector_array_inferred()
 {
 	int[<2>] x = { 4, 7 };
 	int[2] y = x;
@@ -14,4 +14,11 @@ fn void! vector_array_inferred() @test
 	assert((int[<2>])y2 == int[<2>] { 4, 7 });
 	assert(z == int[<2>] { 4, 7 });
 	assert(w == int[<2>] { 4, 7 });
+}
+
+fn void vector_convert_bool()
+{
+	bool[<2>] a = { true, false };
+	assert(int[<2>] { -1, 0 } == (int[<2>])a);
+	assert(float[<2>] { 1.0, 0 } == (float[<2>])a);
 }

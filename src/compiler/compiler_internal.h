@@ -2396,7 +2396,7 @@ INLINE bool type_is_pointer(Type *type);
 INLINE bool type_is_arraylike(Type *type);
 INLINE bool type_is_any_arraylike(Type *type);
 INLINE bool type_is_promotable_float(Type *type);
-INLINE bool type_is_promotable_integer(Type *type);
+INLINE bool type_is_promotable_int_bool(Type *type);
 INLINE bool type_is_signed(Type *type);
 INLINE bool type_ok(Type *type);
 INLINE bool type_is_unsigned(Type *type);
@@ -3009,7 +3009,7 @@ INLINE Expr *expr_new_expr(ExprKind kind, Expr *expr)
 	return expr_new(kind, expr->span);
 }
 
-INLINE bool type_is_promotable_integer(Type *type)
+INLINE bool type_is_promotable_int_bool(Type *type)
 {
 	// If we support other architectures, update this.
 	return type_is_integer_or_bool_kind(type) && type->builtin.bitsize < platform_target.width_c_int;

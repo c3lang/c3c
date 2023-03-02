@@ -88,7 +88,7 @@ ABIArgInfo *aarch64_classify_argument_type(Type *type)
 	{
 		// Over 128 bits should be indirect, but
 		// we don't have that (yet?)
-		if (type_is_promotable_integer(type) && platform_target.aarch64.is_darwin_pcs)
+		if (type_is_promotable_int_bool(type) && platform_target.aarch64.is_darwin_pcs)
 		{
 			return abi_arg_new_direct_int_ext(type);
 		}
@@ -163,7 +163,7 @@ ABIArgInfo *aarch64_classify_return_type(Type *type, bool variadic)
 
 	if (!type_is_abi_aggregate(type))
 	{
-		if (type_is_promotable_integer(type) && platform_target.aarch64.is_darwin_pcs)
+		if (type_is_promotable_int_bool(type) && platform_target.aarch64.is_darwin_pcs)
 		{
 			return abi_arg_new_direct_int_ext(type);
 		}

@@ -46,7 +46,7 @@ ABIArgInfo *x64_indirect_return_result(Type *type)
 		return abi_arg_new_indirect_not_by_val(type);
 	}
 	type = type_lowering(type);
-	if (type_is_promotable_integer(type))
+	if (type_is_promotable_int_bool(type))
 	{
 		return abi_arg_new_direct_int_ext(type);
 	}
@@ -85,7 +85,7 @@ ABIArgInfo *x64_indirect_result(Type *type, unsigned free_int_regs)
 	type = type_lowering(type);
 	if (!type_is_abi_aggregate(type) && !x64_type_is_illegal_vector(type))
 	{
-		if (type_is_promotable_integer(type))
+		if (type_is_promotable_int_bool(type))
 		{
 			return abi_arg_new_direct_int_ext(type);
 		}
@@ -681,7 +681,7 @@ ABIArgInfo *x64_classify_return(Type *return_type)
 			// AMD64-ABI 3.2.3p4: Rule 3. If the class is INTEGER, the next
 			// available register of the sequence %rax, %rdx is used.
 			result_type = x64_get_int_type_at_offset(return_type, 0, return_type, 0);
-			if (hi_class == CLASS_NO_CLASS && type_is_promotable_integer(return_type))
+			if (hi_class == CLASS_NO_CLASS && type_is_promotable_int_bool(return_type))
 			{
 				return abi_arg_new_direct_coerce_int_ext(return_type);
 			}
@@ -772,7 +772,7 @@ static ABIArgInfo *x64_classify_argument_type(Type *type, unsigned free_int_regs
 		case CLASS_INTEGER:
 			needed_registers->int_registers++;
 			result_type = x64_get_int_type_at_offset(type, 0, type, 0);
-			if (hi_class == CLASS_NO_CLASS && type_is_promotable_integer(type))
+			if (hi_class == CLASS_NO_CLASS && type_is_promotable_int_bool(type))
 			{
 				assert(abi_type_is_type(result_type));
 				return abi_arg_new_direct_coerce_int_ext(result_type.type);

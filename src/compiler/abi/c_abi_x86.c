@@ -203,7 +203,7 @@ ABIArgInfo *x86_classify_return(CallABI call, Regs *regs, Type *type)
 	}
 
 	// Is this small enough to need to be extended?
-	if (type_is_promotable_integer(type))
+	if (type_is_promotable_int_bool(type))
 	{
 		return abi_arg_new_direct_int_ext(type);
 	}
@@ -435,7 +435,7 @@ static ABIArgInfo *x86_classify_primitives(CallABI call, Regs *regs, Type *type)
 
 	bool in_reg = x86_try_put_primitive_in_reg(call, regs, type);
 
-	if (type_is_promotable_integer(type))
+	if (type_is_promotable_int_bool(type))
 	{
 		return abi_arg_new_direct_int_ext_by_reg(type, in_reg);
 	}

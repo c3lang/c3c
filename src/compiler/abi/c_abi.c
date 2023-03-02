@@ -238,7 +238,7 @@ ABIArgInfo *c_abi_classify_argument_type_default(Type *type)
 	if (type_is_int128(type) && !platform_target.int128) return abi_arg_new_indirect_by_val(type);
 
 	// Otherwise do we have a type that needs promotion?
-	if (type_is_promotable_integer(type)) return abi_arg_new_direct_int_ext(type);
+	if (type_is_promotable_int_bool(type)) return abi_arg_new_direct_int_ext(type);
 
 	// No, then do a direct pass.
 	return abi_arg_new_direct();

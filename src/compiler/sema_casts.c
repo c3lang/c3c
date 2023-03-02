@@ -33,6 +33,11 @@ static bool float_to_bool(Expr *expr, Type *type);
 static bool float_to_float(Expr* expr, Type *canonical, Type *type);
 static bool float_to_integer(Expr *expr, Type *canonical, Type *type);
 static bool float_expand_to_vector_conversion(Expr *expr, Type *canonical, Type *type);
+static bool array_to_vector(Expr *expr, Type *to_type);
+static bool vector_to_array(Expr *expr, Type *to_type);
+static bool vector_to_vector(Expr *expr, Type *to_type);
+static void vector_const_initializer_convert_to_type(ConstInitializer *initializer, Type *to_type);
+
 static void enum_to_int_lowering(Expr* expr);
 
 static bool voidfail_to_error(Expr *expr, Type *type);
@@ -272,13 +277,12 @@ static bool float_to_float(Expr* expr, Type *canonical, Type *type)
 }
 
 /**
- * Convert from any floating point to int using CAST_FPSI / CAST_FPUI
+ * Convert from any floating point to int using CAST_FPINT
  * Const conversion will disable narrowable and hex.
  */
 static bool float_to_integer(Expr *expr, Type *canonical, Type *type)
 {
-	bool is_signed = type_is_signed(canonical);
-	if (insert_runtime_cast_unless_const(expr, is_signed ? CAST_FPSI : CAST_FPUI, type)) return true;
+	if (insert_runtime_cast_unless_const(expr, CAST_FPINT, type)) return true;
 
 	// Run the int->real to and rewrite.
 	assert(type_is_integer(canonical));
@@ -438,6 +442,113 @@ static void enum_to_int_lowering(Expr* expr)
 
 	}
 	expr->type = type_add_optional(underlying_type, IS_OPTIONAL(expr));
+}
+
+/**
+ * Cast using CAST_ARRVEC, casting an array to a vector. For the constant, this
+ * is a simple type change.
+ */
+static bool array_to_vector(Expr *expr, Type *to_type)
+{
+	// Runtime cast
+	if (insert_runtime_cast_unless_const(expr, CAST_ARRVEC, to_type)) return true;
+
+	// For the array -> vector this is always a simple rewrite of type.
+	assert(expr->const_expr.const_kind == CONST_INITIALIZER);
+	ConstInitializer *list = expr->const_expr.initializer;
+	list->type = to_type;
+	expr->type = to_type;
+	return true;
+}
+
+/**
+ * Cast using CAST_VECARR, casting an array to a vector. For the constant, this
+ * is a simple type change, see array_to_vector.
+ */
+static bool vector_to_array(Expr *expr, Type *to_type)
+{
+	if (insert_runtime_cast_unless_const(expr, CAST_VECARR, to_type)) return true;
+
+	assert(expr->const_expr.const_kind == CONST_INITIALIZER);
+	ConstInitializer *list = expr->const_expr.initializer;
+	list->type = to_type;
+	expr->type = to_type;
+	return true;
+}
+
+/**
+ * Convert vector -> vector. This is somewhat complex as there are various functions
+ * we need to invoke depending on the underlying type.
+ */
+static bool vector_to_vector(Expr *expr, Type *to_type)
+{
+	//
+	if (expr->expr_kind != EXPR_CONST)
+	{
+		// Extract indexed types.
+		Type *from_type = type_flatten(expr->type);
+		Type *from_element = from_type->array.base;
+		to_type = type_flatten(to_type);
+		Type *to_element = to_type->array.base;
+
+		// float vec -> float/int/bool vec
+		if (type_is_float(from_element))
+		{
+			switch (to_element->type_kind)
+			{
+				case ALL_FLOATS: return insert_cast(expr, CAST_FPFP, to_type);
+				case TYPE_BOOL: return insert_cast(expr, CAST_FPBOOL, to_type);
+				case ALL_INTS: return insert_cast(expr, CAST_FPINT, to_type);
+				default: UNREACHABLE;
+			}
+		}
+
+		// bool vec -> float vec
+		if (from_element == type_bool)
+		{
+			// Special conversion to retain the sign.
+			if (type_is_integer(to_element)) return insert_cast(expr, CAST_BOOLVECINT, to_type);
+			if (type_is_float(to_element)) return insert_cast(expr, CAST_BOOLFP, to_type);
+			UNREACHABLE;
+		}
+
+		// The last possibility is int -> bool/int/fp
+		assert(type_is_integer(from_element));
+		switch (to_element->type_kind)
+		{
+			case ALL_FLOATS: return insert_cast(expr, CAST_INTFP, to_type);
+			case TYPE_BOOL: return insert_cast(expr, CAST_INTBOOL, to_type);
+			case ALL_INTS: return insert_cast(expr, CAST_INTINT, to_type);
+			default: UNREACHABLE;
+		}
+	}
+
+	assert(expr->const_expr.const_kind == CONST_INITIALIZER);
+
+	// For the const initializer we need to change the internal type
+	ConstInitializer *list = expr->const_expr.initializer;
+	vector_const_initializer_convert_to_type(list, to_type);
+	expr->type = to_type;
+	return true;
+}
+
+/**
+ * Perform vararg promotions typical for C style varargs:
+ * 1. Widen int and bool to C int size
+ * 2. Widen float and smaller to double
+ */
+bool cast_promote_vararg(Expr *arg)
+{
+	// Remove things like distinct, optional, enum etc.
+	Type *arg_type = type_flatten(arg->type);
+
+	// 1. Promote any integer or bool to at least CInt
+	if (type_is_promotable_int_bool(arg_type)) return cast(arg, type_cint);
+
+	// 2. Promote any float to at least double
+	if (type_is_promotable_float(arg_type)) return cast(arg, type_double);
+
+	return true;
 }
 
 /**
@@ -1696,29 +1807,7 @@ CAST_FAILED:
 	return false;
 }
 
-static bool arr_to_vec(Expr *expr, Type *to_type)
-{
-	if (insert_runtime_cast_unless_const(expr, CAST_ARRVEC, to_type)) return true;
-
-	assert(expr->const_expr.const_kind == CONST_INITIALIZER);
-	ConstInitializer *list = expr->const_expr.initializer;
-	list->type = to_type;
-	expr->type = to_type;
-	return true;
-}
-
-static bool vec_to_arr(Expr *expr, Type *to_type)
-{
-	if (insert_runtime_cast_unless_const(expr, CAST_VECARR, to_type)) return true;
-
-	assert(expr->const_expr.const_kind == CONST_INITIALIZER);
-	ConstInitializer *list = expr->const_expr.initializer;
-	list->type = to_type;
-	expr->type = to_type;
-	return true;
-}
-
-static void vec_const_init_to_type(ConstInitializer *initializer, Type *to_type)
+static void vector_const_initializer_convert_to_type(ConstInitializer *initializer, Type *to_type)
 {
 	switch (initializer->kind)
 	{
@@ -1726,7 +1815,7 @@ static void vec_const_init_to_type(ConstInitializer *initializer, Type *to_type)
 		{
 			Type *element_type = type_flatten(to_type)->array.base;
 			FOREACH_BEGIN(ConstInitializer *element, initializer->init_array.elements)
-				vec_const_init_to_type(element, element_type);
+				vector_const_initializer_convert_to_type(element, element_type);
 			FOREACH_END();
 			break;
 		}
@@ -1734,7 +1823,7 @@ static void vec_const_init_to_type(ConstInitializer *initializer, Type *to_type)
 		{
 			Type *element_type = type_flatten(to_type)->array.base;
 			FOREACH_BEGIN(ConstInitializer *element, initializer->init_array_full)
-				vec_const_init_to_type(element, element_type);
+				vector_const_initializer_convert_to_type(element, element_type);
 			FOREACH_END();
 			break;
 		}
@@ -1762,54 +1851,12 @@ static void vec_const_init_to_type(ConstInitializer *initializer, Type *to_type)
 		case CONST_INIT_STRUCT:
 			UNREACHABLE
 		case CONST_INIT_ARRAY_VALUE:
-			vec_const_init_to_type(initializer->init_array_value.element, to_type);
+			vector_const_initializer_convert_to_type(initializer->init_array_value.element, to_type);
 			break;
 	}
 	initializer->type = to_type;
 }
-static bool vec_to_vec(Expr *expr, Type *to_type)
-{
-	if (expr->expr_kind != EXPR_CONST)
-	{
-		Type *from_type = type_flatten(expr->type);
-		Type *from_element = from_type->array.base;
-		to_type = type_flatten(to_type);
-		Type *to_element = to_type->array.base;
-		if (type_is_float(from_element))
-		{
-			if (to_element == type_bool) return insert_cast(expr, CAST_FPBOOL, to_type);
-			if (type_is_unsigned(to_element)) return insert_cast(expr, CAST_FPUI, to_type);
-			if (type_is_signed(to_element)) return insert_cast(expr, CAST_FPSI, to_type);
-			if (type_is_float(to_element)) return insert_cast(expr, CAST_FPFP, to_type);
-			UNREACHABLE;
-		}
-		if (from_element == type_bool)
-		{
-			if (type_is_integer(to_element)) return insert_cast(expr, CAST_BOOLVECINT, to_type);
-			if (type_is_float(to_element)) return insert_cast(expr, CAST_FPFP, to_type);
-			UNREACHABLE;
-		}
-		if (type_is_signed(from_element))
-		{
-			if (to_element == type_bool) return insert_cast(expr, CAST_INTBOOL, to_type);
-			if (type_is_integer(to_element)) return insert_cast(expr, CAST_INTINT, to_type);
-			if (type_is_float(to_element)) return insert_cast(expr, CAST_INTFP, to_type);
-			UNREACHABLE
-		}
-		assert(type_is_unsigned(from_element));
-		if (to_element == type_bool) return insert_cast(expr, CAST_INTBOOL, to_type);
-		if (type_is_integer(to_element)) return insert_cast(expr, CAST_INTINT, to_type);
-		if (type_is_float(to_element)) return insert_cast(expr, CAST_INTFP, to_type);
-		UNREACHABLE
-	}
 
-	assert(expr->const_expr.const_kind == CONST_INITIALIZER);
-
-	ConstInitializer *list = expr->const_expr.initializer;
-	vec_const_init_to_type(list, to_type);
-	expr->type = to_type;
-	return true;
-}
 
 static bool err_to_anyerr(Expr *expr, Type *to_type)
 {
@@ -1940,7 +1987,7 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 		case TYPE_SCALED_VECTOR:
 			return false;
 		case TYPE_ARRAY:
-			if (to->type_kind == TYPE_VECTOR) return arr_to_vec(expr, to_type);
+			if (to->type_kind == TYPE_VECTOR) return array_to_vector(expr, to_type);
 			FALLTHROUGH;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
@@ -1956,8 +2003,8 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 			if (to->type_kind == TYPE_SUBARRAY) return subarray_to_subarray(expr, to);
 			break;
 		case TYPE_VECTOR:
-			if (to->type_kind == TYPE_ARRAY) return vec_to_arr(expr, to_type);
-			if (to->type_kind == TYPE_VECTOR) return vec_to_vec(expr, to_type);
+			if (to->type_kind == TYPE_ARRAY) return vector_to_array(expr, to_type);
+			if (to->type_kind == TYPE_VECTOR) return vector_to_vector(expr, to_type);
 			break;
 	}
 	UNREACHABLE
@@ -2095,22 +2142,6 @@ bool cast_widen_top_down(SemaContext *context, Expr *expr, Type *type)
 	return cast_implicit(context, expr, type);
 }
 
-bool cast_promote_vararg(Expr *arg)
-{
-	Type *arg_type = arg->type->canonical;
-
-	// 2. Promote any integer or bool to at least CInt
-	if (type_is_promotable_integer(arg_type) || arg_type == type_bool)
-	{
-		return cast(arg, type_cint);
-	}
-	// 3. Promote any float to at least double
-	if (type_is_promotable_float(arg->type))
-	{
-		return cast(arg, type_double);
-	}
-	return true;
-}
 
 Type *cast_numeric_arithmetic_promotion(Type *type)
 {
