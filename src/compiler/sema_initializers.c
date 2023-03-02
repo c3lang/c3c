@@ -281,7 +281,7 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 				vec_add(expr_list->expression_list, decl_expr);
 				Expr *sub = expr_new_expr(EXPR_SUBSCRIPT, element);
 				sub->subscript_expr.expr = exprid(expr_variable(decl));
-				sub->subscript_expr.range.start = exprid(expr_new_const_int(element->span, type_usz, 0, true));
+				sub->subscript_expr.range.start = exprid(expr_new_const_int(element->span, type_usz, 0));
 				vec_add(expr_list->expression_list, sub);
 				if (!sema_analyse_expr_rhs(context, inner_type, expr_list, true)) return false;
 				elements[i] = expr_list;
@@ -289,7 +289,7 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 				{
 					sub = expr_new_expr(EXPR_SUBSCRIPT, element);
 					sub->subscript_expr.expr = exprid(expr_variable(decl));
-					sub->subscript_expr.range.start = exprid(expr_new_const_int(element->span, type_usz, 1, true));
+					sub->subscript_expr.range.start = exprid(expr_new_const_int(element->span, type_usz, 1));
 					vec_insert_at(elements, i + j, sub);
 					if (!sema_analyse_expr_rhs(context, inner_type, sub, true)) return false;
 				}

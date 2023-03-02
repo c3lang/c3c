@@ -2889,7 +2889,7 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 
 	if (name == kw_offsetof)
 	{
-		expr_rewrite_const_int(expr, type_usz, parent->const_expr.member.offset, true);
+		expr_rewrite_const_int(expr, type_usz, parent->const_expr.member.offset);
 		return true;
 	}
 	TypeProperty type_property = type_property_by_name(name);
@@ -2904,8 +2904,8 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 			return true;
 		case TYPE_PROPERTY_ALIGNOF:
 			expr_rewrite_const_int(expr, type_usz,
-								   type_min_alignment(parent->const_expr.member.offset, parent->const_expr.member.align),
-								   true);
+			                       type_min_alignment(parent->const_expr.member.offset,
+			                                          parent->const_expr.member.align));
 			return true;
 		case TYPE_PROPERTY_MEMBERSOF:
 			sema_create_const_membersof(context, expr, decl->type->canonical, parent->const_expr.member.align, parent->const_expr.member.offset);
@@ -2977,7 +2977,7 @@ static inline bool sema_create_const_kind(Expr *expr, Type *type)
 	Type *type_for_kind = type_kind ? type_kind->type : type_char;
 	unsigned val = type_get_introspection_kind(type->type_kind);
 	assert(type_for_kind->type_kind == TYPE_ENUM);
-	expr_rewrite_const_int(expr, type_flatten(type_for_kind), val, false);
+	expr_rewrite_const_int(expr, type_flatten(type_for_kind), val);
 	return cast(expr, type_for_kind);
 }
 
@@ -3002,7 +3002,7 @@ static inline bool sema_create_const_len(SemaContext *context, Expr *expr, Type 
 		default:
 			return false;
 	}
-	expr_rewrite_const_int(expr, type_usz, len, true);
+	expr_rewrite_const_int(expr, type_usz, len);
 	return true;
 }
 
@@ -3373,7 +3373,7 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			return sema_analyse_expr(context, expr);
 		case TYPE_PROPERTY_ELEMENTS:
 			if (!type_kind_is_enumlike(flat->type_kind)) return false;
-			expr_rewrite_const_int(expr, type_isz, vec_size(flat->decl->enums.values), true);
+			expr_rewrite_const_int(expr, type_isz, vec_size(flat->decl->enums.values));
 			return true;
 		case TYPE_PROPERTY_VALUES:
 			if (!type_kind_is_enumlike(flat->type_kind)) return false;
@@ -3398,7 +3398,7 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			expr_rewrite_const_typeid(expr, type_infoptr(flat->function.signature->rtype)->type);
 			return true;
 		case TYPE_PROPERTY_SIZEOF:
-			expr_rewrite_const_int(expr, type_usz, type_size(type), true);
+			expr_rewrite_const_int(expr, type_usz, type_size(type));
 			return true;
 		case TYPE_PROPERTY_NAMEOF:
 			sema_expr_rewrite_to_type_nameof(expr, type, TOKEN_CT_NAMEOF);
@@ -3410,7 +3410,7 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 		{
 			AlignSize align;
 			if (!sema_set_abi_alignment(context, type, &align)) return false;
-			expr_rewrite_const_int(expr, type_usz, align, true);
+			expr_rewrite_const_int(expr, type_usz, align);
 			return true;
 		}
 		case TYPE_PROPERTY_EXTNAMEOF:
@@ -3442,7 +3442,7 @@ static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, E
 	{
 		expr->expr_kind = EXPR_SUBSCRIPT_ADDR;
 		expr->subscript_expr = (ExprSubscript) {
-				.range.start = exprid(expr_new_const_int(expr->span, type_usz, index, true)),
+				.range.start = exprid(expr_new_const_int(expr->span, type_usz, index)),
 				.expr = exprid(parent)
 		};
 		expr->resolve_status = RESOLVE_DONE;
@@ -3557,12 +3557,12 @@ CHECK_DEEPER:
 		}
 		if (flat_type->type_kind == TYPE_ARRAY || flat_type->type_kind == TYPE_VECTOR)
 		{
-			expr_rewrite_const_int(expr, type_isz, flat_type->array.len, true);
+			expr_rewrite_const_int(expr, type_isz, flat_type->array.len);
 			return true;
 		}
 		if (flat_type->type_kind == TYPE_UNTYPED_LIST)
 		{
-			expr_rewrite_const_int(expr, type_isz, vec_size(current_parent->const_expr.untyped_list), true);
+			expr_rewrite_const_int(expr, type_isz, vec_size(current_parent->const_expr.untyped_list));
 			return true;
 		}
 	}
@@ -4440,7 +4440,7 @@ static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, 
 			if (expr_both_const(left, right) && sema_constant_fold_ops(left))
 			{
 				expr_rewrite_const_int(expr, type_isz, (left->const_expr.ptr - right->const_expr.ptr) /
-						type_size(left_type->pointer), false);
+				                                       type_size(left_type->pointer));
 				return true;
 			}
 			// 3b. Set the type
@@ -6043,15 +6043,15 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 		case BUILTIN_DEF_LINE:
 			if (context->original_inline_line)
 			{
-				expr_rewrite_const_int(expr, type_isz, context->original_inline_line, true);
+				expr_rewrite_const_int(expr, type_isz, context->original_inline_line);
 			}
 			else
 			{
-				expr_rewrite_const_int(expr, type_isz, expr->span.row, true);
+				expr_rewrite_const_int(expr, type_isz, expr->span.row);
 			}
 			return true;
 		case BUILTIN_DEF_LINE_RAW:
-			expr_rewrite_const_int(expr, type_isz, expr->span.row, true);
+			expr_rewrite_const_int(expr, type_isz, expr->span.row);
 			return true;
 		case BUILTIN_DEF_FUNCTION:
 			switch (context->call_env.kind)
@@ -6357,7 +6357,7 @@ static inline bool sema_expr_analyse_ct_alignof(SemaContext *context, Expr *expr
 		type = result_type;
 	}
 
-	expr_rewrite_const_int(expr, type_isz, align, true);
+	expr_rewrite_const_int(expr, type_isz, align);
 	return true;
 }
 
@@ -6811,7 +6811,7 @@ static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Expr *expr)
 	switch (type)
 	{
 		case TOKEN_CT_VACOUNT:
-			expr_rewrite_const_int(expr, type_usz, vec_size(context->macro_varargs), true);
+			expr_rewrite_const_int(expr, type_usz, vec_size(context->macro_varargs));
 			return true;
 		case TOKEN_CT_VAARG:
 		{
@@ -6965,7 +6965,7 @@ static inline bool sema_expr_analyse_ct_offsetof(SemaContext *context, Expr *exp
 		type = result_type;
 	}
 
-	expr_rewrite_const_int(expr, type_isz, offset, true);
+	expr_rewrite_const_int(expr, type_isz, offset);
 
 	return true;
 }

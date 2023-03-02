@@ -1432,7 +1432,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		if (!len_call)
 		{
 			// Create const len if missing.
-			len_call = expr_new_const_int(enumerator->span, type_isz, array_len, true);
+			len_call = expr_new_const_int(enumerator->span, type_isz, array_len);
 		}
 		if (!cast_implicit(context, len_call, index_type)) return false;
 		// __idx$ = (IndexType)(@__enum$.len()) (or const)
@@ -1446,7 +1446,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 			if (!cast_implicit(context, len_call, index_type)) return false;
 			vec_add(expressions, expr_generate_decl(len_decl, len_call));
 		}
-		Expr *idx_init = expr_new_const_int(idx_decl->span, index_type, 0, true);
+		Expr *idx_init = expr_new_const_int(idx_decl->span, index_type, 0);
 		vec_add(expressions, expr_generate_decl(idx_decl, idx_init));
 	}
 
@@ -1462,7 +1462,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		cond = expr_new(EXPR_BINARY, idx_decl->span);
 		cond->binary_expr.operator = BINARYOP_GT;
 		cond->binary_expr.left = exprid(expr_variable(idx_decl));
-		Expr *rhs = expr_new_const_int(enumerator->span, index_type, 0, true);
+		Expr *rhs = expr_new_const_int(enumerator->span, index_type, 0);
 		cond->binary_expr.right = exprid(rhs);
 
 		// Create --__idx$
@@ -1485,7 +1485,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		}
 		else
 		{
-			Expr *rhs = expr_new_const_int(enumerator->span, type_isz, array_len, true);
+			Expr *rhs = expr_new_const_int(enumerator->span, type_isz, array_len);
 			cond->binary_expr.right = exprid(rhs);
 		}
 
@@ -2396,7 +2396,7 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 		}
 		if (index)
 		{
-			index->var.init_expr = expr_new_const_int(index->span, type_int, i, true);
+			index->var.init_expr = expr_new_const_int(index->span, type_int, i);
 			index->type = type_int;
 		}
 		if (!sema_analyse_compound_stmt(context, compound_stmt)) goto FAILED;

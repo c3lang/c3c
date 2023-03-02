@@ -550,7 +550,7 @@ static void setup_int_define(const char *id, uint64_t i, Type *type)
 	id = symtab_add(id, (uint32_t) strlen(id), fnv1a(id, (uint32_t) strlen(id)), &token_type);
 	Type *flat = type_flatten(type);
 	assert(type_is_integer(flat));
-	Expr *expr = expr_new_const_int(INVALID_SPAN, flat, i, true);
+	Expr *expr = expr_new_const_int(INVALID_SPAN, flat, i);
 	expr->type = type;
 	if (expr_const_will_overflow(&expr->const_expr, flat->type_kind))
 	{

@@ -547,7 +547,6 @@ static inline ConstInitializer *initializer_for_index(ConstInitializer *initiali
 void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 {
 	expr->expr_kind = EXPR_CONST;
-	expr->const_expr.narrowable = true;
 	switch (type->canonical->type_kind)
 	{
 		case TYPE_POISONED:
@@ -555,10 +554,10 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 		case TYPE_INFERRED_VECTOR:
 			UNREACHABLE
 		case ALL_INTS:
-			expr_rewrite_const_int(expr, type, 0, true);
+			expr_rewrite_const_int(expr, type, 0);
 			return;
 		case ALL_FLOATS:
-			expr_rewrite_const_float(expr, type, 0, true);
+			expr_rewrite_const_float(expr, type, 0);
 			break;
 		case TYPE_BOOL:
 			expr_rewrite_const_bool(expr, type, false);
@@ -815,7 +814,7 @@ Expr *expr_new(ExprKind kind, SourceSpan start)
 	return expr;
 }
 
-Expr *expr_new_const_int(SourceSpan span, Type *type, uint64_t v, bool narrowable)
+Expr *expr_new_const_int(SourceSpan span, Type *type, uint64_t v)
 {
 	Expr *expr = expr_calloc();
 	expr->expr_kind = EXPR_CONST;
@@ -830,7 +829,6 @@ Expr *expr_new_const_int(SourceSpan span, Type *type, uint64_t v, bool narrowabl
 	expr->const_expr.ixx.i.low = v;
 	expr->const_expr.ixx.type = kind;
 	expr->const_expr.const_kind = CONST_INTEGER;
-	expr->const_expr.narrowable = narrowable;
 	expr->resolve_status = RESOLVE_DONE;
 	return expr;
 }

@@ -2783,7 +2783,6 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 		}
 		if (init_expr->expr_kind == EXPR_CONST)
 		{
-			init_expr->const_expr.narrowable = false;
 			init_expr->const_expr.is_hex = false;
 		}
 	}

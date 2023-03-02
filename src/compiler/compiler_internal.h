@@ -185,7 +185,6 @@ typedef struct
 typedef struct
 {
 	ConstKind const_kind : 8;
-	bool narrowable : 1;
 	bool is_character : 1;
 	bool is_hex : 1;
 	union
@@ -2136,7 +2135,7 @@ bool decl_is_local(Decl *decl);
 
 #define EXPR_NEW_TOKEN(kind_) expr_new(kind_, c->span)
 Expr *expr_new(ExprKind kind, SourceSpan start);
-Expr *expr_new_const_int(SourceSpan span, Type *type, uint64_t v, bool narrowable);
+Expr *expr_new_const_int(SourceSpan span, Type *type, uint64_t v);
 Expr *expr_new_const_bool(SourceSpan span, Type *type, bool value);
 Expr *expr_new_const_typeid(SourceSpan span, Type *type);
 bool expr_is_simple(Expr *expr);
@@ -2174,8 +2173,8 @@ INLINE bool expr_is_const_member(Expr *expr);
 
 INLINE void expr_rewrite_const_null(Expr *expr, Type *type);
 INLINE void expr_rewrite_const_bool(Expr *expr, Type *type, bool b);
-INLINE void expr_rewrite_const_float(Expr *expr, Type *type, Real d, bool is_narrowable);
-INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v, bool narrowable);
+INLINE void expr_rewrite_const_float(Expr *expr, Type *type, Real d);
+INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v);
 INLINE void expr_rewrite_const_typeid(Expr *expr, Type *type);
 INLINE void expr_rewrite_const_initializer(Expr *expr, Type *type, ConstInitializer *initializer);
 INLINE void expr_rewrite_const_untyped_list(Expr *expr, Expr **elements);
@@ -3156,7 +3155,7 @@ INLINE void expr_rewrite_const_typeid(Expr *expr, Type *type)
 	expr->resolve_status = RESOLVE_DONE;
 }
 
-INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v, bool narrowable)
+INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v)
 {
 	expr->expr_kind = EXPR_CONST;
 	expr->type = type;
@@ -3169,10 +3168,9 @@ INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v, bool narr
 	(&expr->const_expr)->ixx.i.low = v;
 	(&expr->const_expr)->ixx.type = kind;
 	(&expr->const_expr)->const_kind = CONST_INTEGER;
-	expr->const_expr.narrowable = narrowable;
 }
 
-INLINE void expr_rewrite_const_float(Expr *expr, Type *type, Real d, bool is_narrowable)
+INLINE void expr_rewrite_const_float(Expr *expr, Type *type, Real d)
 {
 	expr->expr_kind = EXPR_CONST;
 	expr->type = type;
@@ -3194,7 +3192,6 @@ INLINE void expr_rewrite_const_float(Expr *expr, Type *type, Real d, bool is_nar
 	expr->const_expr = (ExprConst) {
 			.fxx = (Float){ real, kind },
 			.const_kind = CONST_FLOAT,
-			.narrowable = is_narrowable,
 		};
 	expr->resolve_status = RESOLVE_DONE;
 }

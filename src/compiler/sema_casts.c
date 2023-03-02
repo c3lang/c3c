@@ -13,8 +13,7 @@ static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, boo
                             bool may_not_be_optional);
 static bool bitstruct_cast(Expr *expr, Type *from_type, Type *to, Type *to_type);
 static void sema_error_const_int_out_of_range(Expr *expr, Expr *problem, Type *to_type);
-static Expr *recursive_may_narrow_float(Expr *expr, Type *type);
-static Expr *recursive_may_narrow_int(Expr *expr, Type *type);
+static Expr *recursive_may_narrow(Expr *expr, Type *type);
 static void recursively_rewrite_untyped_list(Expr *expr, Expr **list);
 static inline bool cast_may_implicit_ptr(Type *from_pointee, Type *to_pointee);
 static inline bool cast_may_array(Type *from, Type *to, bool is_explicit);
@@ -152,7 +151,7 @@ static bool pointer_to_integer(Expr *expr, Type *type)
 	if (insert_runtime_cast_unless_const(expr, CAST_PTRINT, type)) return true;
 
 	// Revisit this to support pointers > 64 bits.
-	expr_rewrite_const_int(expr, type, expr->const_expr.ptr, false);
+	expr_rewrite_const_int(expr, type, expr->const_expr.ptr);
 	return true;
 }
 
@@ -191,7 +190,6 @@ static bool pointer_to_pointer(Expr* expr, Type *type)
 
 	// Insert the cast, this removes the ability to narrow it.
 	expr->type = type;
-	expr->const_expr.narrowable = false;
 	expr->const_expr.is_hex = false;
 	return true;
 }
@@ -205,7 +203,7 @@ static bool bool_to_int(Expr *expr, Type *canonical, Type *type)
 {
 	if (insert_runtime_cast_unless_const(expr, CAST_BOOLINT, type)) return true;
 
-	expr_rewrite_const_int(expr, type, expr->const_expr.b ? 1 : 0, false);
+	expr_rewrite_const_int(expr, type, expr->const_expr.b ? 1 : 0);
 	return true;
 }
 
@@ -219,7 +217,7 @@ static bool bool_to_float(Expr *expr, Type *canonical, Type *type)
 	if (insert_runtime_cast_unless_const(expr, CAST_BOOLFP, type)) return true;
 
 	assert(expr->const_expr.const_kind == CONST_BOOL);
-	expr_rewrite_const_float(expr, type, expr->const_expr.b ? 1.0 : 0.0, false);
+	expr_rewrite_const_float(expr, type, expr->const_expr.b ? 1.0 : 0.0);
 	return true;
 }
 
@@ -275,7 +273,7 @@ static bool float_to_float(Expr* expr, Type *canonical, Type *type)
 	if (insert_runtime_cast_unless_const(expr, CAST_FPFP, type)) return true;
 
 	// Otherwise rewrite the const, which may cause rounding.
-	expr_rewrite_const_float(expr, type, expr->const_expr.fxx.f, false);
+	expr_rewrite_const_float(expr, type, expr->const_expr.fxx.f);
 	return true;
 }
 
@@ -293,7 +291,6 @@ static bool float_to_integer(Expr *expr, Type *canonical, Type *type)
 	expr->const_expr.ixx = int_from_real(d, canonical->type_kind);
 	expr->const_expr.const_kind = CONST_INTEGER;
 	expr->type = type;
-	expr->const_expr.narrowable = false;
 	expr->const_expr.is_hex = false;
 	return true;
 }
@@ -361,7 +358,6 @@ static bool integer_to_integer(Expr *expr, Type *canonical, Type *type)
 	expr->const_expr.ixx = int_conv(expr->const_expr.ixx, canonical->type_kind);
 	expr->const_expr.const_kind = CONST_INTEGER;
 	expr->type = type;
-	expr->const_expr.narrowable = false;
 	expr->const_expr.is_hex = false;
 	return true;
 }
@@ -398,7 +394,7 @@ static bool integer_to_float(Expr *expr, Type *canonical, Type *type)
 	if (insert_runtime_cast_unless_const(expr, CAST_INTFP, type)) return true;
 
 	Real f = int_to_real(expr->const_expr.ixx);
-	expr_rewrite_const_float(expr, type, f, false);
+	expr_rewrite_const_float(expr, type, f);
 	return true;
 }
 
@@ -441,7 +437,7 @@ static void enum_to_int_lowering(Expr* expr)
 	if (expr->expr_kind == EXPR_CONST)
 	{
 		assert(expr->const_expr.const_kind == CONST_ENUM);
-		expr_rewrite_const_int(expr, underlying_type, expr->const_expr.enum_err_val->enum_constant.ordinal, false);
+		expr_rewrite_const_int(expr, underlying_type, expr->const_expr.enum_err_val->enum_constant.ordinal);
 
 	}
 	expr->type = type_add_optional(underlying_type, IS_OPTIONAL(expr));
@@ -860,17 +856,20 @@ bool cast_may_bool_convert(Type *type)
 	return true;
 }
 
-INLINE Expr *recursive_may_narrow_floatid(ExprId expr, Type *type)
+/**
+ * Check whether an expression may narrow.
+ * 1. If it has an intrinsic type, then compare it against the type. If the bitwidth is smaller or same => ok
+ * 2. If it is a constant, then if it fits in the type it is ok.
+ * 3. If it has sub expressions, recursively check those if they affect the type.
+ * 4. Widening casts are ignored, all other casts are opaque.
+ */
+Expr *recursive_may_narrow(Expr *expr, Type *type)
 {
-	return recursive_may_narrow_float(exprptr(expr), type);
-}
-
-Expr *recursive_may_narrow_float(Expr *expr, Type *type)
-{
+RETRY:
 	switch (expr->expr_kind)
 	{
-		case EXPR_BINARY:
 		case EXPR_BITASSIGN:
+		case EXPR_BINARY:
 			switch (expr->binary_expr.operator)
 			{
 				case BINARYOP_ERROR:
@@ -880,15 +879,33 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 				case BINARYOP_ADD:
 				case BINARYOP_DIV:
 				case BINARYOP_MOD:
-				case BINARYOP_ELSE:
-				{
-					Expr *res = recursive_may_narrow_float(exprptr(expr->binary_expr.left), type);
-					if (res) return res;
-					return recursive_may_narrow_float(exprptr(expr->binary_expr.right), type);
-				}
 				case BINARYOP_BIT_OR:
 				case BINARYOP_BIT_XOR:
 				case BINARYOP_BIT_AND:
+				case BINARYOP_ELSE:
+				{
+					// *, -, +, /, %, |, ^, &, ?? -> check both sides.
+					Expr *res = recursive_may_narrow(exprptr(expr->binary_expr.left), type);
+					if (res) return res;
+					expr = exprptr(expr->binary_expr.right);
+					goto RETRY;
+				}
+				case BINARYOP_SHR:
+				case BINARYOP_SHL:
+				case BINARYOP_ASSIGN:
+				case BINARYOP_ADD_ASSIGN:
+				case BINARYOP_BIT_AND_ASSIGN:
+				case BINARYOP_BIT_OR_ASSIGN:
+				case BINARYOP_BIT_XOR_ASSIGN:
+				case BINARYOP_DIV_ASSIGN:
+				case BINARYOP_MOD_ASSIGN:
+				case BINARYOP_MULT_ASSIGN:
+				case BINARYOP_SHR_ASSIGN:
+				case BINARYOP_SHL_ASSIGN:
+				case BINARYOP_SUB_ASSIGN:
+					// For shifts and assignment, ignore the right hand side.
+					expr = exprptr(expr->binary_expr.left);
+					goto RETRY;
 				case BINARYOP_AND:
 				case BINARYOP_OR:
 				case BINARYOP_GT:
@@ -897,296 +914,114 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 				case BINARYOP_LE:
 				case BINARYOP_NE:
 				case BINARYOP_EQ:
-				case BINARYOP_SHR:
-				case BINARYOP_SHL:
-				case BINARYOP_BIT_AND_ASSIGN:
-				case BINARYOP_BIT_OR_ASSIGN:
-				case BINARYOP_BIT_XOR_ASSIGN:
-				case BINARYOP_SHR_ASSIGN:
-				case BINARYOP_SHL_ASSIGN:
+					// This type is bool, so check should never happen.
 					UNREACHABLE
-				case BINARYOP_ASSIGN:
-				case BINARYOP_ADD_ASSIGN:
-				case BINARYOP_DIV_ASSIGN:
-				case BINARYOP_MOD_ASSIGN:
-				case BINARYOP_MULT_ASSIGN:
-				case BINARYOP_SUB_ASSIGN:
-					return recursive_may_narrow_float(exprptr(expr->binary_expr.left), type);
 			}
 			UNREACHABLE
-		case EXPR_MACRO_BODY_EXPANSION:
-		case EXPR_CALL:
-		case EXPR_POISONED:
-		case EXPR_BITACCESS:
-		case EXPR_ACCESS:
-		case EXPR_CATCH_UNWRAP:
-		case EXPR_COMPOUND_LITERAL:
-		case EXPR_COND:
-		case EXPR_DECL:
-		case EXPR_CT_IDENT:
-		case EXPR_DESIGNATOR:
-		case EXPR_EXPR_BLOCK:
-		case EXPR_MACRO_BLOCK:
-		case EXPR_IDENTIFIER:
-		case EXPR_SLICE_ASSIGN:
-		case EXPR_SLICE_COPY:
-		case EXPR_SLICE:
-		case EXPR_SUBSCRIPT:
-		case EXPR_RETVAL:
-		case EXPR_TYPEID_INFO:
-			if (type_size(expr->type) > type_size(type)) return expr;
-			return NULL;
+		case EXPR_BUILTIN_ACCESS:
+			switch (expr->builtin_access_expr.kind)
+			{
+				case ACCESS_LEN:
+					// Special: we may resize this, but not smaller than cint.
+					if (type_size(type) < type_size(type_cint)) return expr;
+					return NULL;
+				case ACCESS_PTR:
+				case ACCESS_TYPEOFANY:
+				case ACCESS_ENUMNAME:
+				case ACCESS_FAULTNAME:
+					// For the rest, just check size.
+					goto CHECK_SIZE;
+			}
+			UNREACHABLE;
 		case EXPR_EXPRESSION_LIST:
-			return recursive_may_narrow_float(VECLAST(expr->expression_list), type);
-		case EXPR_GROUP:
-		case EXPR_FORCE_UNWRAP:
-			return recursive_may_narrow_float(expr->inner_expr, type);
-		case EXPR_RETHROW:
-			return recursive_may_narrow_float(expr->rethrow_expr.inner, type);
+			// Only the last expression counts for narrowing.
+			// It's unclear if this can happen.
+			expr = VECLAST(expr->expression_list);
+			goto RETRY;
 		case EXPR_TERNARY:
 		{
-			Expr *res = recursive_may_narrow_floatid(expr->ternary_expr.then_expr ? expr->ternary_expr.then_expr
-			                                                                      : expr->ternary_expr.cond, type);
+			// In the case a ?: b -> check a and b
+			// In the case a ? b : c -> check b and c
+			Expr *res = recursive_may_narrow(exprptr(expr->ternary_expr.then_expr
+					? expr->ternary_expr.then_expr
+					: expr->ternary_expr.cond), type);
 			if (res) return res;
-			return recursive_may_narrow_floatid(expr->ternary_expr.else_expr, type);
+			expr = exprptr(expr->ternary_expr.else_expr);
+			goto RETRY;
 		}
 		case EXPR_CAST:
-			return recursive_may_narrow_floatid(expr->cast_expr.expr, type);
-		case EXPR_CONST:
-			if (!expr->const_expr.narrowable)
+			switch (expr->cast_expr.kind)
 			{
-				return type_size(expr->type) > type_size(type) ? expr : NULL;
+				case CAST_INTINT:
+				case CAST_FPFP:
+					// If this is a narrowing cast that makes it smaller that then target type
+					// we're done.
+					if (type_size(type) >= type_size(expr->type))
+					{
+						return NULL;
+					}
+					// Otherwise just look through it.
+					expr = exprptr(expr->cast_expr.expr);
+					goto RETRY;
+				default:
+					// For all other casts we regard them as opaque.
+					goto CHECK_SIZE;
 			}
+		case EXPR_CONST:
+			// For constants, just check that they will fit.
+			if (type_is_integer(type))
+			{
+				assert(expr->const_expr.const_kind == CONST_INTEGER || expr->const_expr.const_kind == CONST_ENUM);
+				if (expr_const_will_overflow(&expr->const_expr, type_flatten(type)->type_kind))
+				{
+					return expr;
+				}
+				return NULL;
+			}
+			assert(type_is_float(type));
 			assert(expr->const_expr.const_kind == CONST_FLOAT);
 			if (!expr_const_float_fits_type(&expr->const_expr, type_flatten(type)->type_kind))
 			{
 				return expr;
 			}
 			return NULL;
-		case EXPR_OPTIONAL:
-		case EXPR_HASH_IDENT:
-		case EXPR_FLATPATH:
-		case EXPR_INITIALIZER_LIST:
-		case EXPR_DESIGNATED_INITIALIZER_LIST:
-		case EXPR_TYPEID:
-		case EXPR_TYPEINFO:
-		case EXPR_CT_CALL:
-		case EXPR_NOP:
-		case EXPR_CATCH:
-		case EXPR_BUILTIN:
-		case EXPR_TRY_UNWRAP:
-		case EXPR_TRY_UNWRAP_CHAIN:
-		case EXPR_SUBSCRIPT_ADDR:
-		case EXPR_VARIANTSWITCH:
-		case EXPR_COMPILER_CONST:
-		case EXPR_STRINGIFY:
-		case EXPR_CT_EVAL:
-		case EXPR_VARIANT:
-		case EXPR_POINTER_OFFSET:
-		case EXPR_CT_ARG:
-		case EXPR_ASM:
-		case EXPR_VASPLAT:
-		case EXPR_OPERATOR_CHARS:
-		case EXPR_CT_CHECKS:
-		case EXPR_SUBSCRIPT_ASSIGN:
-		case EXPR_SWIZZLE:
-		case EXPR_LAMBDA:
-			UNREACHABLE
-		case EXPR_BUILTIN_ACCESS:
-		case EXPR_TEST_HOOK:
-			return false;
 		case EXPR_POST_UNARY:
-			return recursive_may_narrow_float(expr->unary_expr.expr, type);
-		case EXPR_TRY:
-			return recursive_may_narrow_float(expr->inner_expr, type);
-		case EXPR_UNARY:
-		{
-			switch (expr->unary_expr.operator)
-			{
-				case UNARYOP_DEREF:
-					return false;
-				case UNARYOP_ERROR:
-				case UNARYOP_ADDR:
-				case UNARYOP_NOT:
-				case UNARYOP_TADDR:
-					UNREACHABLE
-				case UNARYOP_NEG:
-				case UNARYOP_BITNEG:
-				case UNARYOP_INC:
-				case UNARYOP_DEC:
-					return recursive_may_narrow_float(expr->unary_expr.expr, type);
-			}
-		}
-	}
-	UNREACHABLE
-}
-
-INLINE Expr *recursive_may_narrow_intid(ExprId expr, Type *type)
-{
-	assert(expr);
-	return recursive_may_narrow_int(exprptr(expr), type);
-}
-
-Expr *recursive_may_narrow_int(Expr *expr, Type *type)
-{
-	switch (expr->expr_kind)
-	{
-		case EXPR_BITASSIGN:
-		case EXPR_BINARY:
-			switch (expr->binary_expr.operator)
-			{
-				case BINARYOP_ERROR:
-					UNREACHABLE
-				case BINARYOP_MULT:
-				case BINARYOP_SUB:
-				case BINARYOP_ADD:
-				case BINARYOP_DIV:
-				case BINARYOP_MOD:
-				case BINARYOP_BIT_OR:
-				case BINARYOP_BIT_XOR:
-				case BINARYOP_BIT_AND:
-				case BINARYOP_ELSE:
-				{
-					Expr *res = recursive_may_narrow_int(exprptr(expr->binary_expr.left), type);
-					if (res) return res;
-					return recursive_may_narrow_int(exprptr(expr->binary_expr.right), type);
-				}
-				case BINARYOP_AND:
-				case BINARYOP_OR:
-				case BINARYOP_GT:
-				case BINARYOP_GE:
-				case BINARYOP_LT:
-				case BINARYOP_LE:
-				case BINARYOP_NE:
-				case BINARYOP_EQ:
-					return NULL;
-				case BINARYOP_SHR:
-				case BINARYOP_SHL:
-				case BINARYOP_ASSIGN:
-				case BINARYOP_ADD_ASSIGN:
-				case BINARYOP_BIT_AND_ASSIGN:
-				case BINARYOP_BIT_OR_ASSIGN:
-				case BINARYOP_BIT_XOR_ASSIGN:
-				case BINARYOP_DIV_ASSIGN:
-				case BINARYOP_MOD_ASSIGN:
-				case BINARYOP_MULT_ASSIGN:
-				case BINARYOP_SHR_ASSIGN:
-				case BINARYOP_SHL_ASSIGN:
-				case BINARYOP_SUB_ASSIGN:
-					return recursive_may_narrow_int(exprptr(expr->binary_expr.left), type);
-			}
-			UNREACHABLE
-		case EXPR_MACRO_BODY_EXPANSION:
-		case EXPR_CALL:
-		case EXPR_POISONED:
-		case EXPR_BITACCESS:
-		case EXPR_ACCESS:
-		case EXPR_CATCH_UNWRAP:
-		case EXPR_COMPOUND_LITERAL:
-		case EXPR_COND:
-		case EXPR_DECL:
-		case EXPR_CT_IDENT:
-		case EXPR_DESIGNATOR:
-		case EXPR_EXPR_BLOCK:
-		case EXPR_MACRO_BLOCK:
-		case EXPR_IDENTIFIER:
-		case EXPR_SLICE_ASSIGN:
-		case EXPR_SLICE_COPY:
-		case EXPR_SLICE:
-		case EXPR_SUBSCRIPT:
-		case EXPR_RETVAL:
-		case EXPR_SUBSCRIPT_ASSIGN:
-		case EXPR_TYPEID_INFO:
-			if (type_size(expr->type) > type_size(type)) return expr;
-			return NULL;
-		case EXPR_BUILTIN_ACCESS:
-			switch (expr->builtin_access_expr.kind)
-			{
-				case ACCESS_LEN:
-					if (type_size(type) < type_size(type_cint)) return expr;
-					return NULL;
-				case ACCESS_TYPEOFANY:
-				case ACCESS_PTR:
-				case ACCESS_ENUMNAME:
-				case ACCESS_FAULTNAME:
-					return NULL;
-			}
-			UNREACHABLE;
-		case EXPR_EXPRESSION_LIST:
-			return recursive_may_narrow_int(VECLAST(expr->expression_list), type);
-		case EXPR_RETHROW:
-			return recursive_may_narrow_int(expr->rethrow_expr.inner, type);
-		case EXPR_TERNARY:
-		{
-			Expr *res = recursive_may_narrow_intid(expr->ternary_expr.then_expr ? expr->ternary_expr.then_expr
-			                                                                  : expr->ternary_expr.cond, type);
-			if (res) return res;
-			return recursive_may_narrow_intid(expr->ternary_expr.else_expr, type);
-		}
-		case EXPR_CAST:
-			return recursive_may_narrow_intid(expr->cast_expr.expr, type);
-		case EXPR_CONST:
-			assert(expr->const_expr.const_kind == CONST_INTEGER || expr->const_expr.const_kind == CONST_ENUM);
-			if (expr_const_will_overflow(&expr->const_expr, type_flatten(type)->type_kind))
-			{
-				return expr;
-			}
-			return NULL;
-		case EXPR_OPTIONAL:
-		case EXPR_HASH_IDENT:
-		case EXPR_FLATPATH:
-		case EXPR_INITIALIZER_LIST:
-		case EXPR_DESIGNATED_INITIALIZER_LIST:
-		case EXPR_TYPEID:
-		case EXPR_TYPEINFO:
-		case EXPR_CT_CALL:
-		case EXPR_NOP:
-		case EXPR_BUILTIN:
-		case EXPR_TRY_UNWRAP:
-		case EXPR_TRY_UNWRAP_CHAIN:
-		case EXPR_SUBSCRIPT_ADDR:
-		case EXPR_VARIANTSWITCH:
-		case EXPR_COMPILER_CONST:
-		case EXPR_STRINGIFY:
-		case EXPR_CT_EVAL:
-		case EXPR_VARIANT:
-		case EXPR_POINTER_OFFSET:
-		case EXPR_CT_ARG:
-		case EXPR_ASM:
-		case EXPR_VASPLAT:
-		case EXPR_OPERATOR_CHARS:
-		case EXPR_CT_CHECKS:
-		case EXPR_SWIZZLE:
-		case EXPR_LAMBDA:
-			UNREACHABLE
-		case EXPR_TEST_HOOK:
-			return false;
-		case EXPR_POST_UNARY:
-			return recursive_may_narrow_int(expr->unary_expr.expr, type);
-		case EXPR_TRY:
-		case EXPR_CATCH:
+			expr = expr->unary_expr.expr;
+			goto RETRY;
 		case EXPR_GROUP:
 		case EXPR_FORCE_UNWRAP:
-			return recursive_may_narrow_int(expr->inner_expr, type);
+			expr = expr->inner_expr;
+			goto RETRY;
+		case EXPR_RETHROW:
+			expr = expr->rethrow_expr.inner;
+			goto RETRY;
 		case EXPR_UNARY:
 		{
 			switch (expr->unary_expr.operator)
 			{
 				case UNARYOP_ERROR:
-				case UNARYOP_DEREF:
 				case UNARYOP_ADDR:
 				case UNARYOP_NOT:
 				case UNARYOP_TADDR:
 					UNREACHABLE
+				case UNARYOP_DEREF:
+					// Check sizes.
+					goto CHECK_SIZE;
 				case UNARYOP_NEG:
 				case UNARYOP_BITNEG:
 				case UNARYOP_INC:
 				case UNARYOP_DEC:
-					return recursive_may_narrow_int(expr->unary_expr.expr, type);
+					expr = expr->unary_expr.expr;
+					goto RETRY;
 			}
 		}
+		default:
+			// Check type sizes
+			goto CHECK_SIZE;
 	}
-	UNREACHABLE
+CHECK_SIZE:
+	if (type_size(expr->type) > type_size(type)) return expr;
+	return NULL;
 }
 
 static void sema_error_const_int_out_of_range(Expr *expr, Expr *problem, Type *to_type)
@@ -1267,9 +1102,7 @@ bool cast_implicit_silent(SemaContext *context, Expr *expr, Type *to_type)
 
 bool cast_explicit(SemaContext *context, Expr *expr, Type *to_type)
 {
-	if (!cast_expr_inner(context, expr, to_type, true, false, false)) return false;
-	if (expr_is_const(expr)) expr->const_expr.narrowable = false;
-	return true;
+	return cast_expr_inner(context, expr, to_type, true, false, false);
 }
 
 static inline bool cast_with_optional(Expr *expr, Type *to_type, bool add_optional)
@@ -1491,10 +1324,12 @@ RETRY:
 				return false;
 			}
 			if (to_size == from_size) goto CAST;
-			Expr *problem = recursive_may_narrow_int(expr, to);
+			assert(to == type_flatten(to));
+			Expr *problem = recursive_may_narrow(expr, to);
 			if (problem)
 			{
 				if (no_report) return false;
+				expr = problem;
 				goto REQUIRE_CAST;
 			}
 			goto CAST;
@@ -1573,10 +1408,11 @@ RETRY:
 				return false;
 			}
 			if (to_size == from_size) goto CAST;
-			Expr *problem = recursive_may_narrow_float(expr, to);
+			Expr *problem = recursive_may_narrow(expr, to);
 			if (problem)
 			{
 				if (silent) return false;
+				expr = problem;
 				goto REQUIRE_CAST;
 			}
 			goto CAST;
@@ -2133,7 +1969,6 @@ bool cast(Expr *expr, Type *to_type)
 		expr->type = type_add_optional(to_type, from_is_optional);
 		if (expr->expr_kind == EXPR_CONST)
 		{
-			expr->const_expr.narrowable = false;
 			expr->const_expr.is_hex = false;
 		}
 		return true;

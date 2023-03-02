@@ -26,7 +26,7 @@ bool parse_range(ParseContext *c, Range *range)
 	{
 		// ..123 and :123
 		range->start_from_end = false;
-		range->start = exprid(expr_new_const_int(c->span, type_uint, 0, true));
+		range->start = exprid(expr_new_const_int(c->span, type_uint, 0));
 	}
 	else
 	{
@@ -1247,7 +1247,6 @@ Expr *parse_integer(ParseContext *c, Expr *left)
 	expr_int->const_expr.const_kind = CONST_INTEGER;
 	expr_int->const_expr.is_hex = hex_characters > 0;
 	Type *type_base = NULL;
-	expr_int->const_expr.narrowable = !type_bits;
 	if (type_bits)
 	{
 		if (type_bits < 0 || !is_power_of_two((uint64_t)type_bits) || type_bits > 128)
@@ -1449,7 +1448,6 @@ static Expr *parse_char_lit(ParseContext *c, Expr *left)
 	Expr *expr_int = EXPR_NEW_TOKEN(EXPR_CONST);
 	expr_int->const_expr.is_character = true;
 	expr_int->const_expr.ixx.i = c->data.char_value;
-	expr_int->const_expr.narrowable = true;
 	expr_int->const_expr.const_kind = CONST_INTEGER;
 	switch (c->data.width)
 	{
@@ -1515,7 +1513,6 @@ static Expr *parse_double(ParseContext *c, Expr *left)
 			UNREACHABLE
 	}
 	number->const_expr.const_kind = CONST_FLOAT;
-	number->const_expr.narrowable = true;
 	advance(c);
 	return number;
 }
