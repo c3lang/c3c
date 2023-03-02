@@ -83,8 +83,8 @@ Type *sema_analyse_function_signature(SemaContext *context, Decl *parent, CallAB
 bool cast_widen_top_down(SemaContext *context, Expr *expr, Type *type);
 bool cast_promote_vararg(Expr *arg);
 Type *cast_numeric_arithmetic_promotion(Type *type);
-void cast_to_max_bit_size(SemaContext *context, Expr *left, Expr *right, Type *left_type, Type *right_type);
-bool cast_decay_array_pointers(SemaContext *context, Expr *expr);
+void cast_to_int_to_max_bit_size(SemaContext *context, Expr *lhs, Expr *rhs, Type *left_type, Type *right_type);
+
 INLINE bool sema_set_abi_alignment(SemaContext *context, Type *type, AlignSize *result);
 INLINE bool sema_set_alloca_alignment(SemaContext *context, Type *type, AlignSize *result);
 void sema_display_deprecated_warning_on_use(SemaContext *context, Decl *decl, SourceSpan use);

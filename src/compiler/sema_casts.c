@@ -237,6 +237,7 @@ static bool voidfail_to_error(Expr *expr, Type *type)
 	return true;
 }
 
+
 /**
  * Cast int to bool using CAST_INTBOOL
  * or rewrite 0 => false, any other value => true
@@ -466,16 +467,54 @@ static bool array_to_vector(Expr *expr, Type *to_type)
 /**
  * We have two cases:
  * 1. int[] -> Foo[] where Foo is a distinct or typedef OR it is a constant. Then we can just redefine
- * 2. The second case is something like int*[] -> void*[] for this case we need to make a bitcast.
+ * 2. The second case is something like int*[] -> void*[] for this case we need to make a bitcast using CAST_SASA.
  */
 INLINE bool subarray_to_subarray(Expr *expr, Type *to_type)
 {
 	if (expr_is_const(expr) || type_flatten(type_flatten(to_type)->array.base) == type_flatten(type_flatten(expr->type)->array.base))
 	{
+		// Here we assume int[] -> float[] can't happen.
 		expr->type = to_type;
 		return true;
 	}
 	return insert_cast(expr, CAST_SASA, to_type);
+}
+
+/**
+ * Bitstruct casts go from its base type to any integer or char array of the same size.
+ */
+static bool bitstruct_cast(Expr *expr, Type *bitstruct_type, Type *to, Type *to_type)
+{
+	assert(type_size(to) == type_size(bitstruct_type) && "Only casts to the same width expected.");
+
+	// The case where the bitstruct is backed by an integer
+	if (type_is_integer(bitstruct_type))
+	{
+		// The same size integer, this is the simple case.
+		if (type_is_integer(to))
+		{
+			expr->type = to_type;
+			return true;
+		}
+		// Now we expect a char array of the same size. This
+		// is runtime only.
+		assert(to->type_kind == TYPE_ARRAY);
+		return insert_cast(expr, CAST_BSARRY, to_type);
+	}
+
+	// Converting from a char array.
+	assert(bitstruct_type->type_kind == TYPE_ARRAY);
+
+	// Converting to a char array is the simple case, just change the type.
+	if (to->type_kind == TYPE_ARRAY)
+	{
+		expr->type = to_type;
+		return true;
+	}
+
+	// Converting to an integer, this is a runtime cast.
+	assert(type_is_integer(to));
+	return insert_cast(expr, CAST_BSINT, to_type);
 }
 
 /**
@@ -566,6 +605,39 @@ bool cast_promote_vararg(Expr *arg)
 	if (type_is_promotable_float(arg_type)) return cast(arg, type_double);
 
 	return true;
+}
+
+/**
+ * Given lhs and rhs, promote to the maximum bit size, this will retain
+ * signed/unsigned type of each side.
+ */
+void cast_to_int_to_max_bit_size(SemaContext *context, Expr *lhs, Expr *rhs, Type *left_type, Type *right_type)
+{
+	unsigned bit_size_left = left_type->builtin.bitsize;
+	unsigned bit_size_right = right_type->builtin.bitsize;
+
+	assert(bit_size_left && bit_size_right);
+
+	// Simple case they are the same size, just return.
+	if (bit_size_left == bit_size_right) return;
+
+	// Lhs is smaller than rhs, so widen it using the right type
+	if (bit_size_left < bit_size_right)
+	{
+		Type *to = lhs->type->type_kind < TYPE_U8
+		           ? type_int_signed_by_bitsize(bit_size_right)
+		           : type_int_unsigned_by_bitsize(bit_size_right);
+		bool success = cast(lhs, to);
+		assert(success);
+		return;
+	}
+
+	// Rhs is smaller, do the same thing as above but with the rhs.
+	Type *to = rhs->type->type_kind < TYPE_U8
+	           ? type_int_signed_by_bitsize(bit_size_left)
+	           : type_int_unsigned_by_bitsize(bit_size_left);
+	bool success = cast(rhs, to);
+	assert(success);
 }
 
 /**
@@ -1931,7 +2003,7 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 		case CT_TYPES:
 			UNREACHABLE
 		case TYPE_BITSTRUCT:
-			return bitstruct_cast(expr, from_type, to, to_type);
+			return bitstruct_cast(expr, type_flatten(from_type->decl->bitstruct.base_type->type), to, to_type);
 		case TYPE_BOOL:
 			// Bool may convert into integers and floats but only explicitly.
 			if (type_is_integer(to)) return bool_to_int(expr, to, to_type);
@@ -2019,28 +2091,6 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 	UNREACHABLE
 }
 
-static bool bitstruct_cast(Expr *expr, Type *from_type, Type *to, Type *to_type)
-{
-	Type *base_type = type_flatten_distinct(from_type->decl->bitstruct.base_type->type);
-	assert(type_size(to) == type_size(base_type));
-	if (type_is_integer(base_type) && type_is_integer(to))
-	{
-		expr->type = to_type;
-		return true;
-	}
-	if (base_type->type_kind == TYPE_ARRAY && to->type_kind == TYPE_ARRAY)
-	{
-		expr->type = to_type;
-		return true;
-	}
-	if (type_is_integer(base_type))
-	{
-		assert(to->type_kind == TYPE_ARRAY);
-		return insert_cast(expr, CAST_BSARRY, to_type);
-	}
-	assert(base_type->type_kind == TYPE_ARRAY);
-	return insert_cast(expr, CAST_BSINT, to_type);
-}
 
 bool cast(Expr *expr, Type *to_type)
 {
@@ -2173,37 +2223,7 @@ Type *cast_numeric_arithmetic_promotion(Type *type)
 	}
 }
 
-bool cast_decay_array_pointers(SemaContext *context, Expr *expr)
-{
-	CanonicalType *pointer_type = type_pointer_type(type_no_optional(expr->type));
-	if (!pointer_type || !type_is_arraylike(pointer_type)) return true;
-	return cast_expr_inner(context,
-	                       expr,
-	                       type_add_optional(type_get_ptr(pointer_type->array.base), IS_OPTIONAL(expr)),
-	                       true, false, false);
-}
 
-void cast_to_max_bit_size(SemaContext *context, Expr *left, Expr *right, Type *left_type, Type *right_type)
-{
-	unsigned bit_size_left = left_type->builtin.bitsize;
-	unsigned bit_size_right = right_type->builtin.bitsize;
-	assert(bit_size_left && bit_size_right);
-	if (bit_size_left == bit_size_right) return;
-	if (bit_size_left < bit_size_right)
-	{
-		Type *to = left->type->type_kind < TYPE_U8
-		           ? type_int_signed_by_bitsize(bit_size_right)
-		           : type_int_unsigned_by_bitsize(bit_size_right);
-		bool success = cast(left, to);
-		assert(success);
-		return;
-	}
-	Type *to = right->type->type_kind < TYPE_U8
-	           ? type_int_signed_by_bitsize(bit_size_left)
-	           : type_int_unsigned_by_bitsize(bit_size_left);
-	bool success = cast(right, to);
-	assert(success);
-}
 
 
 #pragma clang diagnostic pop

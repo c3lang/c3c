@@ -4324,7 +4324,6 @@ static bool sema_expr_analyse_add_sub_assign(SemaContext *context, Expr *expr, E
 	if (left_type_canonical->type_kind == TYPE_POINTER)
 	{
 
-		if (!cast_decay_array_pointers(context, left)) return false;
 		expr->type = left->type;
 
 		// 7. Finally, check that the right side is indeed an integer.
@@ -4423,13 +4422,11 @@ static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, 
 	// 2. Handle the ptr - x and ptr - other_pointer
 	if (left_type->type_kind == TYPE_POINTER)
 	{
-		if (!cast_decay_array_pointers(context, left)) return false;
 		left_type = type_no_optional(left->type)->canonical;
 
 		// 3. ptr - other pointer
 		if (right_type->type_kind == TYPE_POINTER)
 		{
-			if (!cast_decay_array_pointers(context, right)) return false;
 			right_type = type_no_optional(right->type)->canonical;
 
 			// 3a. Require that both types are the same.
@@ -4580,8 +4577,6 @@ static bool sema_expr_analyse_add(SemaContext *context, Expr *expr, Expr *left, 
 	//    so check if we want to do the normal pointer add special handling.
 	if (left_type->type_kind == TYPE_POINTER)
 	{
-		if (!cast_decay_array_pointers(context, left)) return false;
-
 		// 3a. Check that the other side is an integer of some sort.
 		if (!type_is_integer(right_type))
 		{
@@ -5076,7 +5071,7 @@ static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left,
 		|| (type_is_signed(left_type) && type_is_unsigned(right_type)))
 	{
 		// 2a. Resize so that both sides have the same bit width. This will always work.
-		cast_to_max_bit_size(context, left, right, left_type, right_type);
+		cast_to_int_to_max_bit_size(context, left, right, left_type, right_type);
 		goto DONE;
 	}
 
@@ -5579,8 +5574,6 @@ static inline bool sema_expr_analyse_incdec(SemaContext *context, Expr *expr)
 		SEMA_ERROR(inner, "The expression must be a number or a pointer.");
 		return false;
 	}
-
-	if (!cast_decay_array_pointers(context, inner)) return false;
 
 	// 6. Done, the result is same as the inner type.
 	expr->type = inner->type;

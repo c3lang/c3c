@@ -13,7 +13,7 @@ fn void main()
     int* xx = &x + 1;
     int[3]* yy = (int[3]*)(xx);
     int* zz = yy - 1;
-    printf("%p = %p = %p, %p = %p\n", y, z, zz, &(*y)[1], xx);
+    printf("%p = %p = %p, %p != %p\n", y, z, zz, &(*y)[1], xx);
     x[1] = 123;
     printf("%d = %d\n", x[1], z[1]);
 }
@@ -52,12 +52,12 @@ entry:
   %ptroffset1 = getelementptr inbounds i32, ptr %8, i64 1
   %9 = load i32, ptr %ptroffset1, align 4
   store i32 %9, ptr %z1, align 4
-  %ptroffset2 = getelementptr i32, ptr %x, i64 1
+  %ptroffset2 = getelementptr [3 x i32], ptr %x, i64 1
   store ptr %ptroffset2, ptr %xx, align 8
   %10 = load ptr, ptr %xx, align 8
   store ptr %10, ptr %yy, align 8
   %11 = load ptr, ptr %yy, align 8
-  %ptroffset3 = getelementptr i32, ptr %11, i64 -1
+  %ptroffset3 = getelementptr [3 x i32], ptr %11, i64 -1
   store ptr %ptroffset3, ptr %zz, align 8
   %12 = load ptr, ptr %y, align 8
   %13 = load ptr, ptr %z, align 8
