@@ -4338,6 +4338,14 @@ static bool sema_expr_analyse_add_sub_assign(SemaContext *context, Expr *expr, E
 		return true;
 	}
 
+	Type *lhs_flat = type_flatten_distinct(left_type_canonical);
+	if (lhs_flat->type_kind == TYPE_ENUM)
+	{
+		if (!cast_implicit(context, right, lhs_flat->decl->enums.type_info->type)) return false;
+		expr->type = type_add_optional(expr->type, optional);
+		return true;
+	}
+
 	// 8. Otherwise we cast rhs to lhs
 	if (!cast_implicit(context, right, left->type)) return false;
 

@@ -1014,10 +1014,9 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl)
 	if (!sema_resolve_type_info(context, decl->enums.type_info)) return false;
 
 	Type *type = decl->enums.type_info->type;
-	Type *canonical = type->canonical;
-
+	Type *flat_underlying_type = type_flatten_distinct(type);
 	// Require an integer type
-	if (!type_is_integer(canonical))
+	if (!type_is_integer(flat_underlying_type))
 	{
 		SEMA_ERROR(decl->enums.type_info, "The enum type must be an integer type not '%s'.", type_to_error_string(type));
 		return false;
@@ -1067,6 +1066,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl)
 	Int128 value = { 0, 0 };
 
 	Decl **enum_values = decl->enums.values;
+
 	for (unsigned i = 0; i < enums; i++)
 	{
 		Decl *enum_value = enum_values[i];
@@ -1082,12 +1082,13 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl)
 
 		// Create a "fake" expression.
 		// This will be evaluated later to catch the case
-		Int val = (Int){ value, canonical->type_kind };
-		if (!int_fits(val, canonical->type_kind))
+
+		Int val = (Int){ value, flat_underlying_type->type_kind };
+		if (!int_fits(val, flat_underlying_type->type_kind))
 		{
 			SEMA_ERROR(enum_value,
 			           "The enum value would implicitly be %s which does not fit in %s.",
-			           i128_to_string(value, 10, type_is_signed(canonical)),
+			           i128_to_string(value, 10, type_is_signed(flat_underlying_type)),
 			           type_quoted_error_string(type));
 			return false;
 		}

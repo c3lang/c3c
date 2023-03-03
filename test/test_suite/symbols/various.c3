@@ -81,8 +81,8 @@ enum Enum : int
 
 fn void test11()
 {
-    int a = Enum.A;
-    ichar b = Enum.B;
+    int a = Enum.A; // #error: Implicitly casting
+    ichar b = Enum.B; // #error: Implicitly casting
 }
 
 fn void test12()

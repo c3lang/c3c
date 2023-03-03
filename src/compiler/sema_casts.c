@@ -1257,6 +1257,25 @@ static bool cast_from_vector(SemaContext *context, Expr *expr, Type *from, Type 
 
 
 /**
+ * Cast an enum.
+ */
+static bool cast_from_enum(SemaContext *context, Expr *expr, Type *from, Type *to, Type *to_type, bool add_optional, bool is_explicit, bool silent)
+{
+	if (!is_explicit)
+	{
+		bool may_cast = type_is_integer(type_flatten(to));
+		sema_error_cannot_convert(expr, to_type, may_cast, silent);
+		return false;
+	}
+	if (!type_is_integer(to))
+	{
+		sema_error_cannot_convert(expr, to_type, false, silent);
+		return false;
+	}
+	return cast_with_optional(expr, to_type, add_optional);
+}
+
+/**
  * Cast an integer. Note here that "from" may be an enum.
  * 1. Floats -> always works
  * 2. Bools -> explicit only
@@ -1282,12 +1301,8 @@ RETRY:
 			to = to->array.base->canonical;
 			goto RETRY;
 		case TYPE_ENUM:
-			// Enum <-> enum is not allowed
-			if (from->type_kind == TYPE_ENUM) break;
-			// Look at the underlying int, then use int conversion.
-			to = to->decl->enums.type_info->type->canonical;
-			if (is_explicit) to = type_flatten_distinct(to);
-			FALLTHROUGH;
+			if (is_explicit) goto CAST;
+			goto REQUIRE_CAST;
 		case ALL_INTS:
 		{
 			// All explicit casts work.
@@ -1565,6 +1580,7 @@ static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, boo
 		case TYPE_ARRAY:
 			return cast_from_array(context, expr, from, to, to_type, add_optional, is_explicit, silent);
 		case TYPE_ENUM:
+			return cast_from_enum(context, expr, from, to, to_type, add_optional, is_explicit, silent);
 		case ALL_INTS:
 			return cast_from_integer(context, expr, from, to, to_type, add_optional, is_explicit, silent);
 		case ALL_FLOATS:

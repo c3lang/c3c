@@ -17,11 +17,11 @@ typedef Func = fn void(Enum);
 
 fn void test1(Enum e)
 {
-    bool a = (bool)(e);
-    char b = (char)(e);
-    uint c = (uint)(e);
-    float d = (float)(e);
-    uint* f = (uint*)(e);         // #error: 'uint*'
+    bool a = (bool)e; // #error: bool
+    char b = (char)e;
+    uint c = (uint)e;
+    float d = (float)e; // #error: float
+    uint* f = (uint*)e;         // #error: 'uint*'
 }
 
 fn void test2(Enum e)
