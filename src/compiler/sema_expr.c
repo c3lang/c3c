@@ -69,6 +69,7 @@ static bool sema_expr_analyse_mult(SemaContext *context, Expr *expr, Expr *left,
 static bool sema_expr_analyse_div(SemaContext *context, Expr *expr, Expr *left, Expr *right);
 static bool sema_expr_analyse_mod(SemaContext *context, Expr *expr, Expr *left, Expr *right);
 static bool sema_expr_analyse_bit(SemaContext *context, Expr *expr, Expr *left, Expr *right);
+static bool sema_expr_analyse_enum_add_sub(SemaContext *context, Expr *expr, Expr *left, Expr *right);
 static bool sema_expr_analyse_shift(SemaContext *context, Expr *expr, Expr *left, Expr *right);
 static bool sema_expr_analyse_shift_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right);
 static bool sema_expr_analyse_and_or(SemaContext *context, Expr *expr, Expr *left, Expr *right);
@@ -4403,6 +4404,73 @@ static Type *defer_iptr_cast(Expr *maybe_pointer, Expr *maybe_diff)
 	return NULL;
 }
 
+static bool sema_expr_analyse_enum_add_sub(SemaContext *context, Expr *expr, Expr *left, Expr *right)
+{
+	Type *left_type = type_no_optional(left->type)->canonical;
+	Type *right_type = type_no_optional(right->type)->canonical;
+
+	bool is_sub = expr->binary_expr.operator == BINARYOP_SUB;
+
+	// Enum - Enum / Enum + Enum
+	if (right_type->type_kind == TYPE_ENUM)
+	{
+		if (left_type != right_type)
+		{
+
+			SEMA_ERROR(expr, is_sub ? "Cannot subtract %s from %s" : "Cannot add %s to %s",
+					   type_quoted_error_string(left->type),
+			           type_quoted_error_string(right->type));
+			return false;
+		}
+		Type *underlying_type = left_type->decl->enums.type_info->type;
+		if (!cast(left, underlying_type)) return false;
+		if (!cast(right, underlying_type)) return false;
+		expr->type = type_add_optional(underlying_type, IS_OPTIONAL(left) || IS_OPTIONAL(right));
+		if (expr_both_const(left, right))
+		{
+			if (is_sub)
+			{
+				expr->const_expr.ixx = int_sub(left->const_expr.ixx, right->const_expr.ixx);
+			}
+			else
+			{
+				expr->const_expr.ixx = int_add(left->const_expr.ixx, right->const_expr.ixx);
+			}
+			expr->const_expr.const_kind = CONST_INTEGER;
+			expr->expr_kind = EXPR_CONST;
+		}
+		return true;
+	}
+	// Enum - value / Enum + value
+	Type *underlying_type = left_type->decl->enums.type_info->type;
+	if (!cast_implicit(context, right, underlying_type)) return false;
+	if (!cast(left, underlying_type)) return false;
+	if (!cast(right, underlying_type)) return false;
+	expr->type = type_add_optional(left_type, IS_OPTIONAL(left) || IS_OPTIONAL(right));
+	if (expr_both_const(left, right))
+	{
+		Int i;
+		if (is_sub)
+		{
+			i = int_sub(left->const_expr.ixx, right->const_expr.ixx);
+		}
+		else
+		{
+			i = int_add(left->const_expr.ixx, right->const_expr.ixx);
+		}
+		Decl **enums = left_type->decl->enums.values;
+		if (int_is_neg(i) || int_ucomp(i, vec_size(enums), BINARYOP_GE))
+		{
+			SEMA_ERROR(expr, "This does not result in a valid enum. If you want to do the %s, cast the enum to an integer.",
+					   is_sub ? "subtraction" : "addition");
+			return false;
+		}
+		expr->const_expr = (ExprConst) { .const_kind = CONST_ENUM, .enum_err_val = enums[int_to_i64(i)] };
+		expr->expr_kind = EXPR_CONST;
+	}
+	return true;
+
+}
 /**
  * Analyse a - b
  * @return true if analysis succeeded
@@ -4503,6 +4571,12 @@ static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, 
 		return true;
 	}
 
+	// Enum - Enum and Enum - int
+	if (left_type->type_kind == TYPE_ENUM)
+	{
+		return sema_expr_analyse_enum_add_sub(context, expr, left, right);
+	}
+
 	if (!sema_binary_promote_top_down(context, expr, left, right)) return false;
 
 	left_type = type_no_optional(left->type)->canonical;
@@ -4527,7 +4601,9 @@ static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, 
 	// 8. Handle constant folding.
 	if (expr_both_const(left, right) && sema_constant_fold_ops(left))
 	{
+		Type *type = expr->type;
 		expr_replace(expr, left);
+		expr->type = type;
 		switch (left_type->type_kind)
 		{
 			case ALL_INTS:
@@ -4629,6 +4705,11 @@ static bool sema_expr_analyse_add(SemaContext *context, Expr *expr, Expr *left, 
 			return cast(expr, cast_to_iptr);
 		}
 		return true;
+	}
+
+	if (left_type->type_kind == TYPE_ENUM)
+	{
+		return sema_expr_analyse_enum_add_sub(context, expr, left, right);
 	}
 
 	if (!sema_binary_promote_top_down(context, expr, left, right)) return false;

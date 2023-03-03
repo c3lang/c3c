@@ -3164,6 +3164,23 @@ INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v)
 	{
 		if (v > (uint64_t)INT64_MAX) (&expr->const_expr)->ixx.i.high = UINT64_MAX;
 	}
+	else
+	{
+		switch (kind)
+		{
+			case TYPE_U8:
+				v &= 0xFF;
+				break;
+			case TYPE_U16:
+				v &= 0xFFFF;
+				break;
+			case TYPE_U32:
+				v &= 0xFFFFFFFF;
+				break;
+			default:
+				break;
+		}
+	}
 	(&expr->const_expr)->ixx.i.low = v;
 	(&expr->const_expr)->ixx.type = kind;
 	(&expr->const_expr)->const_kind = CONST_INTEGER;

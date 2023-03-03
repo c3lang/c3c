@@ -16,6 +16,7 @@ static bool cast_from_pointer(SemaContext *context, Expr *expr, Type *from, Type
 static bool cast_from_subarray(SemaContext *context, Expr *expr, Type *from, Type *to, Type *to_type, bool add_optional, bool is_explicit, bool silent);
 static bool cast_from_vector(SemaContext *context, Expr *expr, Type *from, Type *to, Type *to_type, bool add_optional, bool is_explicit, bool silent);
 static bool cast_from_array(SemaContext *context, Expr *expr, Type *from, Type *to, Type *to_type, bool add_optional, bool is_explicit, bool silent);
+static bool cast_from_integer(SemaContext *context, Expr *expr, Type *from, Type *to, Type *to_type, bool add_optional, bool is_explicit, bool silent);
 
 static bool bitstruct_cast(Expr *expr, Type *from_type, Type *to, Type *to_type);
 static void sema_error_const_int_out_of_range(Expr *expr, Expr *problem, Type *to_type);
@@ -1255,60 +1256,78 @@ static bool cast_from_vector(SemaContext *context, Expr *expr, Type *from, Type 
 }
 
 
-static inline bool cast_integer(SemaContext *context, Expr *expr, Type *from, Type *to, Type *to_type, bool add_optional, bool is_explicit, bool silent)
+/**
+ * Cast an integer. Note here that "from" may be an enum.
+ * 1. Floats -> always works
+ * 2. Bools -> explicit only
+ * 3. Vector -> check if the underlying type can be converted.
+ * 4. Enum -> if from is an enum, then fails, otherwise follow int conversions.
+ * 5. Int -> any int is ok if explicit or same width, if const, check fits, wider -> only simple, narrow -> check narrowing.
+ * 6. Distinct -> expr is const, then try as if it was the base type, otherwise fail.
+ */
+static bool cast_from_integer(SemaContext *context, Expr *expr, Type *from, Type *to, Type *to_type, bool add_optional, bool is_explicit, bool silent)
 {
-	bool no_report = silent;
 RETRY:
 	switch (to->type_kind)
 	{
 		case ALL_FLOATS:
+			// All floats are ok.
 			goto CAST;
 		case TYPE_BOOL:
+			// Explicit only
 			if (is_explicit) goto CAST;
 			goto REQUIRE_CAST;
 		case TYPE_VECTOR:
+			// Check underlying type
 			to = to->array.base->canonical;
 			goto RETRY;
 		case TYPE_ENUM:
+			// Enum <-> enum is not allowed
 			if (from->type_kind == TYPE_ENUM) break;
+			// Look at the underlying int, then use int conversion.
 			to = to->decl->enums.type_info->type->canonical;
 			if (is_explicit) to = type_flatten_distinct(to);
 			FALLTHROUGH;
 		case ALL_INTS:
 		{
+			// All explicit casts work.
 			if (is_explicit) goto CAST;
 			ByteSize to_size = type_size(to);
 			ByteSize from_size = type_size(from);
+			// If widening, require simple.
 			if (to_size > from_size) goto ONLY_SIMPLE;
+			// If const, check in range.
 			if (expr_is_const(expr) && expr_const_will_overflow(&expr->const_expr, type_flatten(to)->type_kind))
 			{
 				sema_error_const_int_out_of_range(expr, expr, to_type);
 				return false;
 			}
+			// Same size => ok
 			if (to_size == from_size) goto CAST;
 			assert(to == type_flatten(to));
+			// Check if narrowing works
 			Expr *problem = recursive_may_narrow(expr, to);
 			if (problem)
 			{
-				if (no_report) return false;
+				if (silent) return false;
 				expr = problem;
+				// Otherwise require a cast.
 				goto REQUIRE_CAST;
 			}
 			goto CAST;
 		}
 		case TYPE_DISTINCT:
-			if (expr_is_const(expr))
+			// The only conversion works if the expr is const.
+			if (expr_is_const(expr) && type_is_integer(from))
 			{
 				to = type_flatten_distinct(to);
 				goto RETRY;
 			}
-			else
-			{
-				if (no_report) return false;
-				bool may_explicit = cast_expr_inner(context, expr_copy(expr), to_type, true, true, false);
-				if (may_explicit) goto REQUIRE_CAST;
-				break;
-			}
+			// Failure
+			if (silent) return false;
+			bool may_explicit = cast_expr_inner(context, expr_copy(expr), to_type, true, true, false);
+			if (may_explicit) goto REQUIRE_CAST;
+			break;
 		case TYPE_POINTER:
 		{
 			if (from->type_kind == TYPE_ENUM) break;
@@ -1320,7 +1339,7 @@ RETRY:
 			}
 			if (!may_cast)
 			{
-				if (no_report) return false;
+				if (silent) return false;
 				SEMA_ERROR(expr, "You cannot cast from a type smaller than %s.",
 				           type_quoted_error_string(type_iptr));
 				return false;
@@ -1330,14 +1349,14 @@ RETRY:
 		default:
 			break;
 	}
-	return sema_error_cannot_convert(expr, to_type, false, no_report);
+	return sema_error_cannot_convert(expr, to_type, false, silent);
 ONLY_SIMPLE:
 	if (expr_is_simple(expr)) goto CAST;
-	if (no_report) return false;
+	if (silent) return false;
 	SEMA_ERROR(expr, "This conversion requires an explicit cast to %s, because the widening of the expression may be done in more than one way.", type_quoted_error_string(to_type));
 	return false;
 REQUIRE_CAST:
-	if (no_report) return false;
+	if (silent) return false;
 	SEMA_ERROR(expr, "%s cannot implicitly be converted to %s, but you may use a cast.", type_quoted_error_string(expr->type), type_quoted_error_string(to_type));
 	return false;
 CAST:
@@ -1547,7 +1566,7 @@ static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, boo
 			return cast_from_array(context, expr, from, to, to_type, add_optional, is_explicit, silent);
 		case TYPE_ENUM:
 		case ALL_INTS:
-			return cast_integer(context, expr, from, to, to_type, add_optional, is_explicit, silent);
+			return cast_from_integer(context, expr, from, to, to_type, add_optional, is_explicit, silent);
 		case ALL_FLOATS:
 			return cast_float(context, expr, from, to, to_type, add_optional, is_explicit, silent);
 		case TYPE_POISONED:
