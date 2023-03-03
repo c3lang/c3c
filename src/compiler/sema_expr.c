@@ -5484,7 +5484,7 @@ static inline bool sema_expr_analyse_not(SemaContext *context, Expr *expr)
 		}
 	}
 
-	if (!cast_may_bool_convert(type))
+	if (cast_to_bool_kind(type_flatten(type)) == CAST_ERROR)
 	{
 		SEMA_ERROR(expr, "The %s can't be converted to a boolean value.", type_quoted_error_string(inner->type));
 		return false;

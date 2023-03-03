@@ -2071,7 +2071,6 @@ bool cast_implicit_maybe_optional(SemaContext *context, Expr *expr, Type *to_typ
 bool cast_explicit(SemaContext *context, Expr *expr, Type *to_type);
 
 bool cast(Expr *expr, Type *to_type);
-bool cast_may_bool_convert(Type *type);
 
 Type *type_infer_len_from_actual_type(Type *to_infer, Type *actual_type);
 bool cast_to_index(Expr *index);

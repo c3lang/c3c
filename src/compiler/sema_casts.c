@@ -1,22 +1,28 @@
-// Copyright (c) 2019 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2019-2023 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
+//
+// This source file contains functions related to both explicit and
+// implicit conversions. C3 has a fairly complex set of rules,
+// which makes this code somewhat lengthy.
 
 #include "sema_internal.h"
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "ConstantFunctionResult"
 
+static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, bool is_explicit, bool silent, bool may_not_be_optional);
+static bool cast_from_pointer(SemaContext *context, Expr *expr, Type *from, Type *to, Type *to_type, bool add_optional, bool is_explicit, bool silent);
+static bool cast_from_subarray(SemaContext *context, Expr *expr, Type *from, Type *to, Type *to_type, bool add_optional, bool is_explicit, bool silent);
+static bool cast_from_vector(SemaContext *context, Expr *expr, Type *from, Type *to, Type *to_type, bool add_optional, bool is_explicit, bool silent);
+static bool cast_from_array(SemaContext *context, Expr *expr, Type *from, Type *to, Type *to_type, bool add_optional, bool is_explicit, bool silent);
 
-static inline bool sema_error_cannot_convert(Expr *expr, Type *to, bool may_cast_explicit, bool silent);
-static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, bool is_explicit, bool silent,
-                            bool may_not_be_optional);
 static bool bitstruct_cast(Expr *expr, Type *from_type, Type *to, Type *to_type);
 static void sema_error_const_int_out_of_range(Expr *expr, Expr *problem, Type *to_type);
 static Expr *recursive_may_narrow(Expr *expr, Type *type);
-static void recursively_rewrite_untyped_list(Expr *expr, Expr **list);
+static void expr_recursively_rewrite_untyped_list(Expr *expr, Expr **list);
 static inline bool cast_may_implicit_ptr(Type *from_pointee, Type *to_pointee);
-static inline bool cast_may_array(Type *from, Type *to, bool is_explicit);
+static inline bool cast_to_array_is_valid(Type *from, Type *to);
 static inline bool insert_cast(Expr *expr, CastKind kind, Type *type);
 static bool pointer_to_integer(Expr *expr, Type *type);
 static bool pointer_to_bool(Expr *expr, Type *type);
@@ -36,14 +42,13 @@ static bool array_to_vector(Expr *expr, Type *to_type);
 static bool vector_to_array(Expr *expr, Type *to_type);
 static bool vector_to_vector(Expr *expr, Type *to_type);
 INLINE bool subarray_to_subarray(Expr *expr, Type *to_type);
-
 static void vector_const_initializer_convert_to_type(ConstInitializer *initializer, Type *to_type);
-
+static bool cast_vector_element_may_implicitly_convert(Expr *expr, Type *from, Type *to);
 static void enum_to_int_lowering(Expr* expr);
-
 static bool voidfail_to_error(Expr *expr, Type *type);
-
 INLINE bool insert_runtime_cast_unless_const(Expr *expr, CastKind kind, Type *type);
+INLINE bool cast_with_optional(Expr *expr, Type *to_type, bool add_optional);
+static inline bool sema_error_cannot_convert(Expr *expr, Type *to, bool may_cast_explicit, bool silent);
 
 /**
  * Insert a cast. This will assume that the cast is valid. No typeinfo will be registered.
@@ -602,6 +607,19 @@ bool cast_promote_vararg(Expr *arg)
 
 	return true;
 }
+/**
+ * Cast an untyped list to a particular type.
+ */
+bool cast_untyped_to_type(SemaContext *context, Expr *expr, Type *to_type)
+{
+	// Recursively set the type of all ConstInitializer inside.
+	expr_recursively_rewrite_untyped_list(expr, expr->const_expr.untyped_list);
+	// We can now analyse the list (this is where the actual check happens)
+	if (!sema_expr_analyse_initializer_list(context, type_flatten(to_type), expr)) return false;
+	// And set the type.
+	expr->type = to_type;
+	return true;
+}
 
 /**
  * Given lhs and rhs, promote to the maximum bit size, this will retain
@@ -658,11 +676,21 @@ CastKind cast_to_bool_kind(Type *type)
 			return CAST_PTRBOOL;
 		case TYPE_FAULTTYPE:
 			return CAST_ERBOOL;
+		case TYPE_TYPEDEF:
+		case TYPE_DISTINCT:
+		case TYPE_OPTIONAL:
+		case TYPE_OPTIONAL_ANY:
+		case TYPE_ENUM:
+			// These are not possible due to flattening.
+			UNREACHABLE
+		case TYPE_INFERRED_ARRAY:
+		case TYPE_INFERRED_VECTOR:
+			// These should never be here, type should already be known.
+			UNREACHABLE
 		case TYPE_POISONED:
 		case TYPE_VOID:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
-		case TYPE_ENUM:
 		case TYPE_FUNC:
 		case TYPE_ARRAY:
 		case TYPE_TYPEID:
@@ -670,191 +698,16 @@ CastKind cast_to_bool_kind(Type *type)
 		case TYPE_VECTOR:
 		case TYPE_BITSTRUCT:
 		case TYPE_UNTYPED_LIST:
-		case TYPE_OPTIONAL:
 		case TYPE_ANY:
-		case TYPE_OPTIONAL_ANY:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_SCALED_VECTOR:
-		case TYPE_INFERRED_VECTOR:
 		case TYPE_MEMBER:
+			// Everything else is an error
 			return CAST_ERROR;
-		case TYPE_TYPEDEF:
-		case TYPE_DISTINCT:
-		case TYPE_INFERRED_ARRAY:
-			UNREACHABLE
 	}
 	UNREACHABLE
 }
 
-
-static inline bool cast_may_array(Type *from, Type *to, bool is_explicit)
-{
-	RETRY:;
-	assert(!type_is_optional(from) && !type_is_optional(to) && "Optional should already been handled");
-
-	bool compare_len = true;
-	if (from->type_kind != to->type_kind)
-	{
-		switch (to->type_kind)
-		{
-			case TYPE_INFERRED_ARRAY:
-				switch (from->type_kind)
-				{
-					case TYPE_INFERRED_VECTOR:
-					case TYPE_VECTOR:
-						if (!is_explicit) return false;
-						FALLTHROUGH;
-					case TYPE_ARRAY:
-						compare_len = false;
-						break;
-					default:
-						return false;
-				}
-				break;
-			case TYPE_ARRAY:
-				switch (from->type_kind)
-				{
-					case TYPE_INFERRED_VECTOR:
-						compare_len = false;
-						FALLTHROUGH;
-					case TYPE_VECTOR:
-						if (!is_explicit) return false;
-						break;
-					case TYPE_INFERRED_ARRAY:
-						compare_len = false;
-						break;
-					default:
-						return false;
-				}
-				break;
-			case TYPE_INFERRED_VECTOR:
-				switch (from->type_kind)
-				{
-					case TYPE_INFERRED_ARRAY:
-					case TYPE_ARRAY:
-						if (!is_explicit) return false;
-						FALLTHROUGH;
-					case TYPE_VECTOR:
-					case TYPE_SCALED_VECTOR:
-						compare_len = false;
-						break;
-					default:
-						return false;
-				}
-				break;
-			case TYPE_VECTOR:
-				switch (from->type_kind)
-				{
-					case TYPE_INFERRED_ARRAY:
-						compare_len = false;
-						FALLTHROUGH;
-					case TYPE_ARRAY:
-						if (!is_explicit) return false;
-						break;
-					case TYPE_INFERRED_VECTOR:
-						compare_len = false;
-						break;
-					default:
-						return false;
-				}
-				break;
-			case TYPE_SCALED_VECTOR:
-				if (from->type_kind != TYPE_INFERRED_VECTOR) return false;
-				compare_len = false;
-				break;
-			default:
-				return false;
-		}
-	}
-	if (compare_len && to->array.len != from->array.len) return false;
-
-	Type *from_base = from->array.base;
-	Type *to_base = to->array.base;
-	if (is_explicit)
-	{
-		from_base = type_flatten(from_base);
-		to_base = type_flatten(to_base);
-	}
-
-	if (from_base == to_base) return true;
-
-	switch (to_base->type_kind)
-	{
-		case TYPE_POINTER:
-			if (from_base->type_kind == TYPE_POINTER)
-			{
-				if (is_explicit) return true;
-				return cast_may_implicit_ptr(to_base->pointer, from_base->pointer);
-			}
-			return false;
-		case TYPE_ARRAY:
-		case TYPE_INFERRED_ARRAY:
-		case TYPE_VECTOR:
-		case TYPE_INFERRED_VECTOR:
-			to = to_base;
-			from = from_base;
-			goto RETRY;
-		default:
-			return is_explicit && type_is_structurally_equivalent(to_base, from_base);
-	}
-}
-
-static inline bool cast_may_implicit_ptr(Type *from_pointee, Type *to_pointee)
-{
-	assert(!type_is_optional(from_pointee) && !type_is_optional(to_pointee) && "Optional should already been handled");
-	if (from_pointee == to_pointee) return true;
-
-	// For void* on either side, no checks.
-	if (to_pointee == type_voidptr || from_pointee == type_voidptr) return true;
-
-	// Step through all *:
-	while (from_pointee->type_kind == TYPE_POINTER && to_pointee->type_kind == TYPE_POINTER)
-	{
-		if (from_pointee == type_voidptr || to_pointee == type_voidptr) return true;
-		from_pointee = from_pointee->pointer;
-		to_pointee = to_pointee->pointer;
-	}
-
-	assert(to_pointee != from_pointee);
-
-	// Functions compare raw types.
-	if (from_pointee->type_kind == TYPE_FUNC && to_pointee->type_kind == TYPE_FUNC)
-	{
-		return to_pointee->function.prototype->raw_type == from_pointee->function.prototype->raw_type;
-	}
-
-	// Special handling of int* = int[4]* (so we have int[4] -> int)
-	if (type_is_arraylike(from_pointee))
-	{
-		if (cast_may_implicit_ptr(to_pointee, from_pointee->array.base)) return true;
-	}
-
-	if (type_is_any_arraylike(to_pointee) || type_is_any_arraylike(from_pointee))
-	{
-		return cast_may_array(from_pointee, to_pointee, false);
-	}
-	// Use subtype matching
-	return type_is_subtype(to_pointee, from_pointee);
-}
-
-bool cast_may_bool_convert(Type *type)
-{
-	switch (type_flatten_distinct(type)->type_kind)
-	{
-		case TYPE_BOOL:
-		case ALL_INTS:
-		case ALL_FLOATS:
-		case TYPE_SUBARRAY:
-		case TYPE_POINTER:
-		case TYPE_ANY:
-		case TYPE_FAULTTYPE:
-		case TYPE_ANYERR:
-			return true;
-		default:
-			return false;
-	}
-	return true;
-}
 
 /**
  * Check whether an expression may narrow.
@@ -1024,6 +877,136 @@ CHECK_SIZE:
 	return NULL;
 }
 
+/**
+ * Cast to a given type, making it an optional type as needed.
+ *
+ */
+INLINE bool cast_with_optional(Expr *expr, Type *to_type, bool add_optional)
+{
+	if (!cast(expr, to_type)) return false;
+	if (add_optional) expr->type = type_add_optional(expr->type, true);
+	return true;
+}
+
+/**
+ * Cast a subarray to some other type:
+ * 1. To another subarray => works if the array elements are equivalent.
+ * 2. To another pointer => works if the pointer is void* or the array element and pointee is equivalent.
+ * 3. To bool => explicit cast is ok.
+ */
+static bool cast_from_subarray(SemaContext *context, Expr *expr, Type *from, Type *to, Type *to_type, bool add_optional, bool is_explicit, bool silent)
+{
+	switch (to->type_kind)
+	{
+		case TYPE_SUBARRAY:
+			// Casting to another subarray works if the elements are equivalent.
+			if (!type_array_element_is_equivalent(from->array.base, to->array.base, is_explicit))
+			{
+				return sema_error_cannot_convert(expr, to, !is_explicit && type_array_element_is_equivalent(from->array.base, to->array.base, true), silent);
+			}
+			return cast_with_optional(expr, to_type, add_optional);
+		case TYPE_POINTER:
+			// Casting to another pointer works if either the pointer is void* or the element and pointee are equivalent.
+			if (to != type_voidptr && !type_array_element_is_equivalent(from->array.base, to->pointer, is_explicit))
+			{
+				return sema_error_cannot_convert(expr, to, !is_explicit && type_array_element_is_equivalent(from->array.base, to->pointer, true), silent);
+			}
+			return cast_with_optional(expr, to_type, add_optional);
+		case TYPE_BOOL:
+			// Only explicit bool casts are allowed.
+			if (!is_explicit) return sema_error_cannot_convert(expr, to_type, true, silent);
+			return cast_with_optional(expr, to_type, add_optional);
+		default:
+			return sema_error_cannot_convert(expr, to_type, false, silent);
+	}
+	UNREACHABLE
+}
+
+/**
+ * Try casting to a pointer.
+ * 1. Any pointer -> variant, any pointer -> void*, void* -> any pointer - always works.
+ * 2. Pointer -> integer must be explicit and type size >= uptr
+ * 3. Pointer -> subarray if the pointer points to a vector or array, allow void*[2]* -> int*[2]* (pointer equivalence).
+ * 4. Pointer -> bool must be explicit (conditionals are treated as a special case.
+ * 5. Pointer -> pointer explicit always works, otherwise they must have pointer equivalence.
+ */
+static bool cast_from_pointer(SemaContext *context, Expr *expr, Type *from, Type *to, Type *to_type, bool add_optional, bool is_explicit, bool silent)
+{
+	// pointer -> any, void* -> pointer pointer -> void*
+	if (to == type_any || to == type_voidptr || (from == type_voidptr && type_is_pointer(to))) return cast_with_optional(expr, to_type, add_optional);
+
+	Type *pointee = from->pointer;
+	pointee = is_explicit ? type_flatten(pointee) : pointee->canonical;
+	TypeKind pointee_kind = pointee->type_kind;
+	switch (to->type_kind)
+	{
+		case ALL_INTS:
+			// Only explicit cast
+			if (!is_explicit) return sema_error_cannot_convert(expr, to_type, true, silent);
+			// The type must be uptr or bigger.
+			if (type_size(to_type) < type_size(type_uptr))
+			{
+				SEMA_ERROR(expr, "Casting %s to %s is not allowed because '%s' is smaller than a pointer. "
+				                 "Use (%s)(iptr) if you want this lossy cast.",
+				           type_quoted_error_string(expr->type), type_quoted_error_string(to_type),
+				           type_to_error_string(to_type), type_to_error_string(to_type));
+				return false;
+			}
+			return cast_with_optional(expr, to_type, add_optional);
+		case TYPE_SUBARRAY:
+			// int[<2>]*, int[2]*
+			if (pointee_kind == TYPE_ARRAY || pointee_kind == TYPE_VECTOR)
+			{
+				Type *subarray_base = to->array.base->canonical;
+				Type *from_base = pointee->array.base;
+				if (is_explicit)
+				{
+					subarray_base = type_flatten_distinct(subarray_base);
+					from_base = type_flatten_distinct(from_base);
+				}
+				// Same base type? E.g. int[2]* -> int[], then we're done.
+				if (subarray_base == from_base) return cast_with_optional(expr, to_type, add_optional);
+
+				// Otherwise we might have int*[2]* -> void*[], use pointer equivalence.
+				if (subarray_base->type_kind == TYPE_POINTER && from_base->type_kind == TYPE_POINTER)
+				{
+					if (type_is_pointer_equivalent(subarray_base, from_base, is_explicit)) return cast_with_optional(expr, to_type, add_optional);
+				}
+				// Silent? Then we're done.
+				if (silent) return false;
+				// Check if this would work if explicit for a good error message:
+				bool would_work_explicit = false;
+				if (!is_explicit)
+				{
+					would_work_explicit = cast_from_pointer(context, expr_copy(expr),
+					                                        from, to, to_type, add_optional, true, true);
+				}
+				return sema_error_cannot_convert(expr, to_type, would_work_explicit, false);
+			}
+			// All other fails.
+			return sema_error_cannot_convert(expr, to_type, false, silent);
+		case TYPE_BOOL:
+			// Only explicit conversion allowed.
+			if (is_explicit) return cast_with_optional(expr, to_type, add_optional);
+			return sema_error_cannot_convert(expr, to_type, true, silent);
+		case TYPE_POINTER:
+			// Explicit conversion always works.
+			if (is_explicit) return cast_with_optional(expr, to_type, add_optional);
+			// See if the pointee is equivalent.
+			if (type_is_pointer_equivalent(from, to, false))
+			{
+				return cast_with_optional(expr, to_type, add_optional);
+			}
+			return sema_error_cannot_convert(expr, to_type, true, silent);
+		case TYPE_OPTIONAL_ANY:
+		case TYPE_OPTIONAL:
+			UNREACHABLE
+		default:
+			// All other types are forbidden.
+			return sema_error_cannot_convert(expr, to_type, false, silent);
+	}
+}
+
 static void sema_error_const_int_out_of_range(Expr *expr, Expr *problem, Type *to_type)
 {
 	assert(expr->expr_kind == EXPR_CONST);
@@ -1064,15 +1047,11 @@ static inline bool cast_maybe_string_lit_to_char_array(Expr *expr, Type *expr_ca
 	return true;
 }
 
-bool cast_untyped_to_type(SemaContext *context, Expr *expr, Type *to_type)
-{
-	recursively_rewrite_untyped_list(expr, expr->const_expr.untyped_list);
-	if (!sema_expr_analyse_initializer_list(context, type_flatten(to_type), expr)) return false;
-	expr->type = to_type;
-	return true;
-}
 
-static void recursively_rewrite_untyped_list(Expr *expr, Expr **list)
+/**
+ * Recursively change a const list to an initializer list.
+ */
+static void expr_recursively_rewrite_untyped_list(Expr *expr, Expr **list)
 {
 	expr->expr_kind = EXPR_INITIALIZER_LIST;
 	expr->initializer_list = list;
@@ -1080,38 +1059,46 @@ static void recursively_rewrite_untyped_list(Expr *expr, Expr **list)
 	FOREACH_BEGIN(Expr *inner, list)
 		if (expr_is_const_untyped_list(inner))
 		{
-			recursively_rewrite_untyped_list(inner, inner->const_expr.untyped_list);
+			expr_recursively_rewrite_untyped_list(inner, inner->const_expr.untyped_list);
 		}
 	FOREACH_END();
 }
 
+/**
+ * Try to make an implicit cast. Optional types are allowed.
+ */
 bool cast_implicit(SemaContext *context, Expr *expr, Type *to_type)
 {
 	return cast_expr_inner(context, expr, to_type, false, false, false);
 }
-
-bool cast_implicit_maybe_optional(SemaContext *context, Expr *expr, Type *to_type, bool may_be_optional)
-{
-	return cast_expr_inner(context, expr, to_type, false, false, !may_be_optional);
-}
-
-bool cast_implicit_silent(SemaContext *context, Expr *expr, Type *to_type)
-{
-	return cast_expr_inner(context, expr, to_type, false, true, false);
-}
-
+/**
+ * Try to make an explicit cast, Optional types are allowed.
+ */
 bool cast_explicit(SemaContext *context, Expr *expr, Type *to_type)
 {
 	return cast_expr_inner(context, expr, to_type, true, false, false);
 }
 
-static inline bool cast_with_optional(Expr *expr, Type *to_type, bool add_optional)
+/**
+ * Try to make an implicit cast. If optional is allowed or not depends on the parameter.
+ * This is mostly used with assignment.
+ */
+bool cast_implicit_maybe_optional(SemaContext *context, Expr *expr, Type *to_type, bool may_be_optional)
 {
-	if (!cast(expr, to_type)) return false;
-	if (add_optional) expr->type = type_add_optional(expr->type, true);
-	return true;
+	return cast_expr_inner(context, expr, to_type, false, false, !may_be_optional);
 }
 
+/**
+ * Silent implicit casting will attempt a cast, but will silently back out if it fails.
+ */
+bool cast_implicit_silent(SemaContext *context, Expr *expr, Type *to_type)
+{
+	return cast_expr_inner(context, expr, to_type, false, true, false);
+}
+
+/**
+ * Common error reporting for casts.
+ */
 static inline bool sema_error_cannot_convert(Expr *expr, Type *to, bool may_cast_explicit, bool silent)
 {
 	if (silent) return false;
@@ -1133,79 +1120,58 @@ static inline bool sema_error_cannot_convert(Expr *expr, Type *to, bool may_cast
 
 }
 
-static inline bool cast_subarray(SemaContext *context, Expr *expr, Type *from, Type *to, Type *to_type, bool add_optional, bool is_explicit, bool silent)
+/**
+ * Attempt casting an array.
+ * 1. Inferred array / vector => infer type
+ * 2. Array / vector => ok if len matches.
+ * 3. Check for array element equivalence.
+ */
+static bool cast_from_array(SemaContext *context, Expr *expr, Type *from, Type *to, Type *to_type, bool add_optional, bool is_explicit, bool silent)
 {
-	switch (to->type_kind)
-	{
-		case TYPE_SUBARRAY:
-			if (type_array_element_is_equivalent(from->array.base, to->array.base, is_explicit)) goto CAST;
-			return sema_error_cannot_convert(expr, to, !is_explicit && type_array_element_is_equivalent(from->array.base, to->array.base, true), silent);
-		case TYPE_POINTER:
-			if (to == type_voidptr) goto CAST;
-			if (type_array_element_is_equivalent(from->array.base, to->pointer, is_explicit)) goto CAST;
-			return sema_error_cannot_convert(expr, to, !is_explicit && type_array_element_is_equivalent(from->array.base, to->pointer, true), silent);
-		case TYPE_BOOL:
-			if (!is_explicit) goto CAST_MAY_EXPLICIT;
-			goto CAST;
-		default:
-			goto CAST_ILLEGAL;
-	}
-CAST_ILLEGAL:
-	return sema_error_cannot_convert(expr, to_type, false, silent);
-CAST_MAY_EXPLICIT:
-	return sema_error_cannot_convert(expr, to_type, true, silent);
-CAST:
-	return cast_with_optional(expr, to_type, add_optional);
-}
-
-static inline bool cast_array(SemaContext *context, Expr *expr, Type *from, Type *to, Type *to_type, bool add_optional, bool is_explicit, bool silent)
-{
-	bool infer_type = false;
 	switch (to->type_kind)
 	{
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
-			infer_type = true;
-			goto CAST_ELEMENT;
+			// We infer the target type (note that to and to_type are now of different kinds.
+			to_type = type_infer_len_from_actual_type(to_type, from);
+			break;
 		case TYPE_VECTOR:
 		case TYPE_ARRAY:
-			if (to->array.len != from->array.len) goto CAST_ILLEGAL;
-			goto CAST_ELEMENT;
-		case TYPE_STRUCT:
-			if (type_is_structurally_equivalent(from, to))
-			{
-				if (is_explicit) goto CAST;
-				if (silent) return false;
-				return sema_error_cannot_convert(expr, to_type, true, silent);
-			}
+			// Len must be checked.
+			if (to->array.len != from->array.len) return sema_error_cannot_convert(expr, to_type, false, silent);
+			break;
 		default:
-			goto CAST_ILLEGAL;
+			// No other conversions are allowed.
+			return sema_error_cannot_convert(expr, to_type, false, silent);
 	}
-CAST_ELEMENT:
+	// Check array element equivalence.
 	if (!type_array_element_is_equivalent(from->array.base, to->array.base, is_explicit))
 	{
-		if (!silent && !is_explicit && type_array_element_is_equivalent(from->array.base, to->array.base, true))
-		{
-			return sema_error_cannot_convert(expr, to_type, true, silent);
-		}
-		goto CAST_ILLEGAL;
+		if (silent) return false;
+		// Create a good error message, so we can give a hint that maybe you can do an explicit cast.
+		bool explicit_would_work = !is_explicit && type_array_element_is_equivalent(from->array.base, to->array.base, true);
+		return sema_error_cannot_convert(expr, to_type, explicit_would_work, silent);
 	}
-CAST:
-	if (infer_type)
-	{
-		to_type = type_infer_len_from_actual_type(to_type, from);
-	}
+	// Insert the cast.
 	return cast_with_optional(expr, to_type, add_optional);
-CAST_ILLEGAL:
-	return sema_error_cannot_convert(expr, to_type, false, silent);
 }
 
-static bool cast_may_number_convert(Expr *expr, Type *from, Type *to, bool is_explicit, bool cast_from_bool)
+static bool cast_vector_element_may_implicitly_convert(Expr *expr, Type *from, Type *to)
 {
-	// Same canonical type - we're fine.
+	from = from->canonical;
+	to = to->canonical;
+
+	// Same type - we're fine.
 	if (from == to) return true;
 
+	// If any of the elements are distinct we know it doesn't work.
 	if (from->type_kind == TYPE_DISTINCT || to->type_kind == TYPE_DISTINCT) return false;
+
+	// Casting from bool always works (for int, float)
+	if (from == type_bool) return true;
+
+	// Casting to bool never works (for int, float)
+	if (to == type_bool) return false;
 
 	// Handle floats
 	if (type_is_float(to))
@@ -1213,85 +1179,81 @@ static bool cast_may_number_convert(Expr *expr, Type *from, Type *to, bool is_ex
 		// Any integer may convert to a float.
 		if (type_is_integer(from)) return true;
 
-		// Cast from bool if explicit or cast from bool.
-		if (from == type_bool) return cast_from_bool || is_explicit;
-
-		// Any narrower float
 		if (type_is_float(from))
 		{
-			if (is_explicit) return true;
+			// Explict casts always work
 			ByteSize to_size = type_size(to);
 			ByteSize from_size = type_size(from);
+			// Same size is ok
 			if (to_size == from_size) return true;
+			// Widening is ok if the expression is simple.
 			return to_size > from_size && expr_is_simple(expr);
 		}
-
+		// No other possibility
 		UNREACHABLE;
 	}
 
-	// Handle ints
-	if (type_is_integer(to))
-	{
-		if (type_is_float(from)) return is_explicit;
+	// Last case is integer.
+	assert(type_is_integer(to));
 
-		// Cast from bool if explicit or cast from bool.
-		if (from == type_bool) return cast_from_bool || is_explicit;
+	// float -> int can't be done implicitly
+	if (type_is_float(from)) return false;
 
-		if (type_is_integer(from))
-		{
-			if (is_explicit) return true;
-			ByteSize to_size = type_size(to);
-			ByteSize from_size = type_size(from);
-			if (to_size == from_size) return true;
-			return to_size > from_size && expr_is_simple(expr);
-		}
+	assert(type_is_integer(from));
 
-		UNREACHABLE
-	}
-	assert(to == type_bool);
-	if (!is_explicit) return false;
-	return true;
+	ByteSize to_size = type_size(to);
+	ByteSize from_size = type_size(from);
+	// Same size is ok
+	if (to_size == from_size) return true;
+	// Widening is ok if expression is simple. Narrowing is prohibited.
+	return to_size > from_size && expr_is_simple(expr);
 }
-static inline bool cast_vector(SemaContext *context, Expr *expr, Type *from, Type *to, Type *to_type, bool add_optional, bool is_explicit, bool silent)
+
+static bool cast_from_vector(SemaContext *context, Expr *expr, Type *from, Type *to, Type *to_type, bool add_optional, bool is_explicit, bool silent)
 {
-	bool is_scaled = from->type_kind == TYPE_SCALED_VECTOR;
-	bool to_vector = type_kind_is_any_vector(to->type_kind);
-	bool infer_len = false;
+	bool not_to_vector = !type_kind_is_any_vector(to->type_kind);
 	switch (to->type_kind)
 	{
 		case TYPE_INFERRED_ARRAY:
-			infer_len = true;
-			if (is_scaled) goto CAST_ILLEGAL;
-			goto TRY_CAST;
 		case TYPE_INFERRED_VECTOR:
-			infer_len = true;
-			if (is_scaled) goto CAST_ILLEGAL;
-			goto TRY_CONVERT;
+			// Update the to_type (but not to!)
+			to_type = type_infer_len_from_actual_type(to_type, from);
+			break;
 		case TYPE_ARRAY:
-			if (is_scaled || to->array.len != from->array.len) goto CAST_ILLEGAL;
-			goto TRY_CAST;
 		case TYPE_VECTOR:
-			if (is_scaled || to->array.len != from->array.len) goto CAST_ILLEGAL;
-			goto TRY_CONVERT;
-		case TYPE_SCALED_VECTOR:
-			if (!is_scaled) goto CAST_ILLEGAL;
-			goto TRY_CONVERT;
+			// Len must match.
+			if (to->array.len != from->array.len) return sema_error_cannot_convert(expr, to_type, false, silent);
+			break;
 		default:
-			goto CAST_ILLEGAL;
+			// All other conversions fail
+			return sema_error_cannot_convert(expr, to_type, false, silent);
 	}
-TRY_CONVERT:
-	if (cast_may_number_convert(expr, from->array.base, to->array.base, is_explicit, to_vector)) goto CAST;
-	return sema_error_cannot_convert(expr, to, !is_explicit && cast_may_number_convert(expr, from->array.base, to->array.base, true, to_vector), silent);
-TRY_CAST:
-	if (type_array_element_is_equivalent(from->array.base, to->array.base, is_explicit)) goto CAST;
-	if (silent) return false;
-	return sema_error_cannot_convert(expr, to, !is_explicit && type_array_element_is_equivalent(from->array.base, to->array.base, true), true);
-CAST_ILLEGAL:
-	return sema_error_cannot_convert(expr, to_type, false, silent);
-CAST:
-	if (infer_len) to_type = type_infer_len_from_actual_type(to_type, from);
+	Type *from_base = from->array.base;
+	Type *to_base = to->array.base;
+	// vector -> array cast.
+	if (not_to_vector)
+	{
+		// Here we do simple array element equivalence, that is int[<2>] -> int[2] is ok, but not int[<2>] -> float[2]
+		if (!type_array_element_is_equivalent(from_base, to_base, is_explicit))
+		{
+			// Give us a nice hint in case an explicit conversion would work.
+			if (silent) return false;
+			bool may_explicit = !is_explicit && type_array_element_is_equivalent(from_base, to_base, true);
+			return sema_error_cannot_convert(expr, to, may_explicit, true);
+		}
+		return cast_with_optional(expr, to_type, add_optional);
+	}
+	// Vector -> vector cast
+	// This allows for things like int[<2>] -> float[<2>] conversions.
+	if (!is_explicit && !cast_vector_element_may_implicitly_convert(expr, from_base, to_base))
+	{
+		if (silent) return false;
+		// Give us a nice hint that explicit conversion would work.
+		return sema_error_cannot_convert(expr, to, true, true);
+	}
 	return cast_with_optional(expr, to_type, add_optional);
 }
+
 
 static inline bool cast_integer(SemaContext *context, Expr *expr, Type *from, Type *to, Type *to_type, bool add_optional, bool is_explicit, bool silent)
 {
@@ -1447,69 +1409,6 @@ CAST:
 	return cast_with_optional(expr, to_type, add_optional);
 }
 
-static inline bool cast_pointer(SemaContext *context, Expr *expr, Type *from, Type *to, Type *to_type, bool add_optional, bool is_explicit, bool silent)
-{
-	// pointer -> any, void* -> pointer pointer -> void*
-	if (to == type_any || to == type_voidptr || (from == type_voidptr && type_is_pointer(to))) return cast_with_optional(expr, to_type, add_optional);
-
-	Type *pointee = from->pointer;
-	pointee = is_explicit ? type_flatten(pointee) : pointee->canonical;
-	TypeKind pointee_kind = pointee->type_kind;
-	switch (to->type_kind)
-	{
-		case ALL_INTS:
-			if (!is_explicit) return sema_error_cannot_convert(expr, to_type, true, silent);
-			if (type_size(to_type) < type_size(type_iptr))
-			{
-				SEMA_ERROR(expr, "Casting %s to %s is not allowed because '%s' is smaller than a pointer. "
-								 "Use (%s)(iptr) if you want this lossy cast.",
-								 type_quoted_error_string(expr->type), type_quoted_error_string(to_type),
-								 type_to_error_string(to_type), type_to_error_string(to_type));
-				return false;
-			}
-			return cast_with_optional(expr, to_type, add_optional);
-		case TYPE_SUBARRAY:
-			// int[<2>], int[2], int[<*>]
-			if (pointee_kind == TYPE_ARRAY || pointee_kind == TYPE_VECTOR || pointee_kind == TYPE_SCALED_VECTOR)
-			{
-				Type *subarray_base = to->array.base->canonical;
-				Type *from_base = pointee->array.base;
-				if (is_explicit)
-				{
-					subarray_base = type_flatten_distinct(subarray_base);
-					from_base = type_flatten_distinct(from_base);
-				}
-				if (subarray_base == from_base) return cast_with_optional(expr, to_type, add_optional);
-				if (subarray_base->type_kind == TYPE_POINTER && from_base->type_kind == TYPE_POINTER)
-				{
-					if (type_is_pointer_equivalent(subarray_base, from_base, is_explicit)) return cast_with_optional(expr, to_type, add_optional);
-				}
-				if (silent) return false;
-				bool would_work_explicit = false;
-				if (!is_explicit)
-				{
-					would_work_explicit = cast_pointer(context, expr_copy(expr), from, to, to_type, add_optional, true, true);
-				}
-				return sema_error_cannot_convert(expr, to_type, would_work_explicit, false);
-			}
-			return sema_error_cannot_convert(expr, to_type, false, silent);
-		case TYPE_BOOL:
-			if (is_explicit) return cast_with_optional(expr, to_type, add_optional);
-			return sema_error_cannot_convert(expr, to_type, true, silent);
-		case TYPE_POINTER:
-			if (is_explicit) return cast_with_optional(expr, to_type, add_optional);
-			if (cast_may_implicit_ptr(from->pointer, to->pointer))
-			{
-				return cast_with_optional(expr, to_type, add_optional);
-			}
-			return sema_error_cannot_convert(expr, to_type, true, silent);
-		case TYPE_OPTIONAL_ANY:
-		case TYPE_OPTIONAL:
-			UNREACHABLE
-		default:
-			return sema_error_cannot_convert(expr, to_type, false, silent);
-	}
-}
 /**
  * Do the following:
  * 1. Special optional conversions.
@@ -1634,18 +1533,18 @@ static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, boo
 			}
 			goto CAST_FAILED;
 		case TYPE_POINTER:
-			return cast_pointer(context, expr, from, to, to_type, add_optional, is_explicit, silent);
+			return cast_from_pointer(context, expr, from, to, to_type, add_optional, is_explicit, silent);
 		case TYPE_SUBARRAY:
-			return cast_subarray(context, expr, from, to, to_type, add_optional, is_explicit, silent);
+			return cast_from_subarray(context, expr, from, to, to_type, add_optional, is_explicit, silent);
 		case TYPE_BOOL:
 			// Bool may convert into integers and floats but only explicitly.
 			if (type_is_integer(to) || type_is_float(to)) goto CAST_IF_EXPLICIT;
 			goto CAST_FAILED;
 		case TYPE_VECTOR:
 		case TYPE_SCALED_VECTOR:
-			return cast_vector(context, expr, from, to, to_type, add_optional, is_explicit, silent);
+			return cast_from_vector(context, expr, from, to, to_type, add_optional, is_explicit, silent);
 		case TYPE_ARRAY:
-			return cast_array(context, expr, from, to, to_type, add_optional, is_explicit, silent);
+			return cast_from_array(context, expr, from, to, to_type, add_optional, is_explicit, silent);
 		case TYPE_ENUM:
 		case ALL_INTS:
 			return cast_integer(context, expr, from, to, to_type, add_optional, is_explicit, silent);

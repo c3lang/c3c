@@ -1658,9 +1658,33 @@ Type *type_from_token(TokenType type)
 	}
 }
 
+bool type_array_is_equivalent(Type *from, Type *to, bool is_explicit)
+{
+	TypeKind to_kind = to->type_kind;
+	switch (from->type_kind)
+	{
+		case TYPE_INFERRED_ARRAY:
+			assert(to_kind != TYPE_INFERRED_ARRAY);
+			if (to_kind != TYPE_ARRAY) return false;
+			return type_array_element_is_equivalent(from->array.base, to->array.base, is_explicit);
+		case TYPE_ARRAY:
+			if (to_kind != TYPE_ARRAY && to_kind != TYPE_INFERRED_ARRAY) return false;
+			if (to->type_kind == TYPE_ARRAY && from->array.len != to->array.len) return false;
+			return type_array_element_is_equivalent(from->array.base, to->array.base, is_explicit);
+		case TYPE_INFERRED_VECTOR:
+			assert(to_kind != TYPE_INFERRED_VECTOR);
+			if (to->type_kind != TYPE_VECTOR) return false;
+			return type_array_element_is_equivalent(from->array.base, to->array.base, is_explicit);
+		case TYPE_VECTOR:
+			if (to_kind != TYPE_VECTOR && to_kind != TYPE_INFERRED_VECTOR) return false;
+			if (to->type_kind == TYPE_VECTOR && from->array.len != to->array.len) return false;
+			return type_array_element_is_equivalent(from->array.base, to->array.base, is_explicit);
+		default:
+			return false;
+	}
+}
 bool type_array_element_is_equivalent(Type *element1, Type *element2, bool is_explicit)
 {
-	RETRY:
 	if (is_explicit)
 	{
 		element1 = type_flatten_distinct(element1);
@@ -1677,19 +1701,14 @@ bool type_array_element_is_equivalent(Type *element1, Type *element2, bool is_ex
 		case TYPE_POINTER:
 			if (element2->type_kind != TYPE_POINTER) return false;
 			return type_is_pointer_equivalent(element1, element2, is_explicit);
-		case TYPE_ARRAY:
-			if (element2->type_kind != TYPE_INFERRED_ARRAY && element1->array.len != element2->array.len) return false;
-			element1 = element1->array.base;
-			element2 = element2->array.base;
-			goto RETRY;
-		case TYPE_VECTOR:
-			if (element2->type_kind != TYPE_INFERRED_VECTOR && element1->array.len != element2->array.len) return false;
-			element1 = element1->array.base;
-			element2 = element2->array.base;
-			goto RETRY;
 		case TYPE_STRUCT:
 			if (is_explicit) return type_is_structurally_equivalent(element1, element2);
 			return false;
+		case TYPE_VECTOR:
+		case TYPE_ARRAY:
+		case TYPE_INFERRED_ARRAY:
+		case TYPE_INFERRED_VECTOR:
+			return type_array_is_equivalent(element1, element2, is_explicit);
 		default:
 			return false;
 	}
@@ -1703,6 +1722,7 @@ RETRY:
 		pointer1 = type_flatten_distinct(pointer1);
 		pointer2 = type_flatten_distinct(pointer2);
 	}
+	if (pointer1 == pointer2) return true;
 	if (pointer1 == type_voidptr || pointer2 == type_voidptr) return true;
 	Type *pointee1 = pointer1->pointer->canonical;
 	Type *pointee2 = pointer2->pointer->canonical;
@@ -1711,16 +1731,37 @@ RETRY:
 		pointee1 = type_flatten_distinct(pointee1);
 		pointee2 = type_flatten_distinct(pointee2);
 	}
-	if (pointee1->type_kind != pointee2->type_kind) return false;
+	if (pointee1 == pointee2) return true;
+	if (type_is_subtype(pointee2, pointee1)) return true;
+
+	if (pointee1->type_kind != pointee2->type_kind)
+	{
+		if (type_is_any_arraylike(pointee1))
+		{
+			// Try array equivalence.
+			if (type_is_any_arraylike(pointee2))
+			{
+				if (type_array_is_equivalent(pointee1, pointee2, flatten_distinct)) return true;
+
+			}
+			// A possible int[4]* -> int* decay?
+			return type_is_pointer_equivalent(type_get_ptr(pointee1->array.base), pointer2, flatten_distinct);
+		}
+		// Not arraylike and no array decay. Failure.
+		return false;
+	}
+
+	if (pointee1->type_kind == TYPE_FUNC && pointee2->type_kind == TYPE_FUNC)
+	{
+		return pointee1->function.prototype->raw_type == pointee2->function.prototype->raw_type;
+	}
 	if (pointee1->type_kind == TYPE_POINTER)
 	{
 		pointer1 = pointee1;
 		pointer2 = pointee2;
 		goto RETRY;
 	}
-	if (!type_is_arraylike(pointee1)) return false;
-	if (pointee1->array.len != pointee2->array.len) return false;
-	return type_array_element_is_equivalent(pointee1->array.base, pointer2->array.base, flatten_distinct);
+	return false;
 }
 
 bool type_may_have_method(Type *type)
