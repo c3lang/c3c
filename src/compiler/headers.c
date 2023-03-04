@@ -14,7 +14,7 @@ static void header_gen_maybe_generate_type(FILE *file, HTable *table, Type *type
 static bool type_is_func_pointer(Type *type)
 {
 	if (type->type_kind != TYPE_DISTINCT && type->type_kind != TYPE_TYPEDEF) return false;
-	type = type_flatten_distinct(type);
+	type = type_flatten(type);
 	if (type->type_kind != TYPE_POINTER) return false;
 	return type->pointer->type_kind == TYPE_FUNC;
 }
@@ -41,14 +41,13 @@ static void header_print_type(FILE *file, Type *type)
 		OUTPUT("%s", decl_get_extname(type->decl));
 		return;
 	}
-	type = type_flatten_distinct(type);
+	assert(!type_is_optional(type));
+	type = type_flatten(type);
 	switch (type->type_kind)
 	{
 		case CT_TYPES:
-			UNREACHABLE
 		case TYPE_OPTIONAL:
 		case TYPE_OPTIONAL_ANY:
-			// If this is reachable then we are not doing the proper lowering.
 			UNREACHABLE
 		case TYPE_VOID:
 			OUTPUT("void");
@@ -161,7 +160,7 @@ static void header_print_type(FILE *file, Type *type)
 
 static void header_gen_function_ptr(FILE *file, HTable *table, Type *type)
 {
-	TypeFunction *fun = &type_flatten_distinct(type)->pointer->function;
+	TypeFunction *fun = &type_flatten(type)->pointer->function;
 	Signature *sig = fun->signature;
 	Type *rtype = typeinfotype(sig->rtype);
 	Type *extra_ret = NULL;
@@ -356,7 +355,8 @@ static void header_gen_maybe_generate_type(FILE *file, HTable *table, Type *type
 		return;
 	}
 RETRY:
-	type = type_flatten_distinct(type);
+	if (type_is_optional(type)) return;
+	type = type_flatten(type);
 	switch (type->type_kind)
 	{
 		case TYPE_POISONED:
@@ -468,7 +468,7 @@ static void header_gen_global_var(FILE *file, FILE *file_type, HTable *table, De
 	Type *type = decl->type->canonical;
 	// Optionals are ignored.
 	if (type_is_optional(type)) return;
-	type = type_flatten_distinct(type);
+	type = type_flatten(type);
 	// Flatten bitstructs.
 	if (type->type_kind == TYPE_BITSTRUCT) type = type->decl->bitstruct.base_type->type->canonical;
 	// We will lower some consts to defines, if they are:

@@ -307,7 +307,7 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 		assert(LLVMGetTypeContext(any_type->backend_type) == c->context && "Should have been purged");
 		return any_type->backend_type;
 	}
-	Type *type = type_flatten(any_type);
+	Type *type = type_lowering(any_type);
 	if (type != any_type)
 	{
 		return any_type->backend_type = llvm_get_type(c, type);
@@ -523,7 +523,7 @@ static LLVMValueRef llvm_get_introspection_for_enum(GenContext *c, Type *type)
 	}
 	LLVMValueRef names = llvm_get_array(c->chars_type, values, elements);
 
-	LLVMValueRef val = llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_ENUM, type_flatten(type), elements, names, is_external);
+	LLVMValueRef val = llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_ENUM, type_base(type), elements, names, is_external);
 	LLVMTypeRef val_type;
 
 

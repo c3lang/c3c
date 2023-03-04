@@ -154,7 +154,7 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 			if (!sema_resolve_type_info_maybe_inferred(context, decl->var.type_info, true)) return decl_poison(decl);
 			decl->type = decl->var.type_info->type;
 			decl->resolve_status = RESOLVE_DONE;
-			Type *member_type = type_flatten_distinct(decl->type);
+			Type *member_type = type_flatten(decl->type);
 			if (member_type->type_kind == TYPE_ARRAY)
 			{
 				if (member_type->array.len == 0)
@@ -302,7 +302,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl, Decl *
 			}
 			continue;
 		}
-		Type *member_type = type_flatten_distinct(member->type);
+		Type *member_type = type_flatten(member->type);
 		if (member_type->type_kind == TYPE_STRUCT && member_type->decl->has_variable_array)
 		{
 			if (i != member_count - 1)
@@ -911,7 +911,12 @@ static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl)
 	}
 	TypeInfo *info = decl->distinct_decl.typedef_decl.type_info;
 	if (!sema_resolve_type_info(context, info)) return false;
-	Type *base = type_flatten_distinct(info->type);
+	if (type_is_optional(info->type))
+	{
+		SEMA_ERROR(decl, "You cannot create a distinct type from an optional.");
+		return false;
+	}
+	Type *base = type_flatten(info->type);
 	decl->distinct_decl.base_type = base;
 	switch (base->type_kind)
 	{
@@ -924,8 +929,7 @@ static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl)
 			return false;
 		case TYPE_OPTIONAL_ANY:
 		case TYPE_OPTIONAL:
-			SEMA_ERROR(decl, "You cannot create a distinct type from am optional.");
-			return false;
+			UNREACHABLE
 		case TYPE_FAULTTYPE:
 			SEMA_ERROR(decl, "You cannot create a distinct type from a fault type.");
 			return false;
@@ -1014,7 +1018,9 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl)
 	if (!sema_resolve_type_info(context, decl->enums.type_info)) return false;
 
 	Type *type = decl->enums.type_info->type;
-	Type *flat_underlying_type = type_flatten_distinct(type);
+	assert(!type_is_optional(type) && "Already stopped when parsing.");
+
+	Type *flat_underlying_type = type_flatten(type);
 	// Require an integer type
 	if (!type_is_integer(flat_underlying_type))
 	{
@@ -1980,13 +1986,13 @@ static inline MainType sema_find_main_type(SemaContext *context, Signature *sig,
 			return MAIN_TYPE_NO_ARGS;
 			break;
 		case 1:
-			arg_type = type_flatten_distinct(params[0]->type);
+			arg_type = type_flatten(params[0]->type);
 			if (arg_type == type_get_subarray(type_get_subarray(type_char))) return MAIN_TYPE_ARGS;
 			SEMA_ERROR(params[0], "Expected a parameter of type 'String[]'.");
 			return MAIN_TYPE_ERROR;
 		case 2:
-			arg_type = type_flatten_distinct(params[0]->type);
-			arg_type2 = type_flatten_distinct(params[1]->type);
+			arg_type = type_flatten(params[0]->type);
+			arg_type2 = type_flatten(params[1]->type);
 			if (arg_type != type_cint)
 			{
 				SEMA_ERROR(params[0],
@@ -2007,8 +2013,8 @@ static inline MainType sema_find_main_type(SemaContext *context, Signature *sig,
 			return MAIN_TYPE_RAW;
 		case 3:
 			if (!is_win32 || is_winmain) break;
-			arg_type = type_flatten_distinct(params[0]->type);
-			arg_type2 = type_flatten_distinct(params[1]->type);
+			arg_type = type_flatten(params[0]->type);
+			arg_type2 = type_flatten(params[1]->type);
 			if (arg_type != type_voidptr)
 			{
 				SEMA_ERROR(params[0], "Expected a parameter of type 'void*' (HINSTANCE)");
@@ -2019,7 +2025,7 @@ static inline MainType sema_find_main_type(SemaContext *context, Signature *sig,
 				SEMA_ERROR(params[1], "Expected a parameter of type 'String[]'.");
 				return MAIN_TYPE_ERROR;
 			}
-			if (type_flatten_distinct(params[2]->type) != type_cint)
+			if (type_flatten(params[2]->type) != type_cint)
 			{
 				SEMA_ERROR(params[2], "Expected a parameter of type %s for the 'showCmd' parameter.",
 				           type_quoted_error_string(type_cint));
@@ -2193,7 +2199,7 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	}
 	Signature *signature = &decl->func_decl.signature;
 	TypeInfo *rtype_info = type_infoptr(signature->rtype);
-	Type *rtype = type_flatten_distinct(rtype_info->type);
+	Type *rtype = rtype_info->type;
 	bool is_int_return = true;
 	bool is_err_return = false;
 	if (rtype->type_kind == TYPE_OPTIONAL_ANY) is_err_return = true;
@@ -2207,9 +2213,10 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 		is_int_return = false;
 		is_err_return = true;
 	}
+
 	if (type_is_void(rtype)) is_int_return = false;
 
-	if (type_is_integer(rtype) && rtype != type_cint)
+	if (is_int_return && type_flatten(rtype) != type_cint)
 	{
 		SEMA_ERROR(rtype_info, "Expected a return type of 'void' or %s.", type_quoted_error_string(type_cint));
 		return false;
@@ -2537,7 +2544,7 @@ bool sema_analyse_decl_type(SemaContext *context, Type *type, SourceSpan span)
 			break;
 	}
 	if (!type_is_optional(type)) return true;
-	if (type_is_optional_any(type) || type_flatten_distinct(type->optional) == type_void)
+	if (type_is_optional_any(type) || type->optional == type_void)
 	{
 		sema_error_at(span, "The use of 'void!' as a variable type is not permitted, use %s instead.",
 		                 type_quoted_error_string(type_anyerr));

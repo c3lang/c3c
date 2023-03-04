@@ -2390,6 +2390,7 @@ INLINE bool type_is_integer_or_bool_kind(Type *type);
 INLINE bool type_is_numeric(Type *type);
 INLINE bool type_is_inferred(Type *type);
 INLINE bool type_underlying_is_numeric(Type *type);
+INLINE bool type_underlying_may_add_sub(Type *type);
 INLINE bool type_is_pointer(Type *type);
 INLINE bool type_is_arraylike(Type *type);
 INLINE bool type_is_any_arraylike(Type *type);
@@ -2408,9 +2409,8 @@ INLINE Type *type_vector_type(Type *type);
 
 static inline CanonicalType *type_pointer_type(Type *type);
 static inline Type *type_flatten(Type *type);
-static inline Type *type_flatten_distinct(Type *type);
-static inline Type *type_flatten_distinct_optional(Type *type);
 static inline bool type_flat_is_char_array(Type *type);
+static inline Type *type_base(Type *type);
 
 INLINE TypeInfo *type_info_new(TypeInfoKind kind, SourceSpan span);
 INLINE TypeInfo *type_info_new_base(Type *type, SourceSpan span);
@@ -2741,37 +2741,7 @@ INLINE Type *type_flatten_for_bitstruct(Type *type)
 	return type;
 }
 
-static inline Type *type_flatten_distinct_optional(Type *type)
-{
-	while (1)
-	{
-		switch (type->type_kind)
-		{
-			case TYPE_TYPEDEF:
-				type = type->canonical;
-				continue;
-			case TYPE_OPTIONAL:
-				type = type->optional;
-				continue;
-			case TYPE_DISTINCT:
-				type = type->decl->distinct_decl.base_type;
-				continue;
-			default:
-				return type;
-		}
-	}
-}
-static inline Type *type_flatten_distinct(Type *type)
-{
-	type = type->canonical;
-	while (type->type_kind == TYPE_DISTINCT)
-	{
-		type = type->decl->distinct_decl.base_type;
-	}
-	return type;
-}
-
-static inline Type *type_flatten(Type *type)
+static inline Type *type_base(Type *type)
 {
 	while (1)
 	{
@@ -2797,9 +2767,32 @@ static inline Type *type_flatten(Type *type)
 	}
 }
 
+static inline Type *type_flatten(Type *type)
+{
+	while (1)
+	{
+		type = type->canonical;
+		switch (type->type_kind)
+		{
+			case TYPE_DISTINCT:
+				type = type->decl->distinct_decl.base_type;
+				break;
+			case TYPE_OPTIONAL:
+				type = type->optional;
+				break;
+			case TYPE_OPTIONAL_ANY:
+				return type_void;
+			case TYPE_TYPEDEF:
+				UNREACHABLE
+			default:
+				return type;
+		}
+	}
+}
+
 static inline bool type_flat_is_char_array(Type *type)
 {
-	type = type_flatten_distinct(type);
+	type = type_flatten(type);
 	if (type->type_kind != TYPE_ARRAY) return false;
 	switch (type->array.base->type_kind)
 	{
@@ -2858,6 +2851,12 @@ INLINE bool type_is_numeric(Type *type)
 INLINE bool type_underlying_is_numeric(Type *type)
 {
 	return type_is_numeric(type_flatten(type));
+}
+
+INLINE bool type_underlying_may_add_sub(Type *type)
+{
+	type = type_flatten(type);
+	return type->type_kind == TYPE_ENUM || type_is_numeric(type_flatten(type));
 }
 
 INLINE bool type_flat_is_vector(Type *type)

@@ -2030,7 +2030,7 @@ bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl
 	if (decl == NULL)
 	{
 		return sema_expr_analyse_var_call(context, expr,
-		                                  type_flatten_distinct_optional(exprptr(expr->call_expr.function)->type), optional);
+		                                  type_flatten(exprptr(expr->call_expr.function)->type), optional);
 	}
 	switch (decl->decl_kind)
 	{
@@ -2104,7 +2104,7 @@ static inline bool sema_expr_analyse_call(SemaContext *context, Expr *expr)
 			return false;
 		default:
 		{
-			Type *type = type_flatten_distinct(func_expr->type);
+			Type *type = type_flatten(func_expr->type);
 			if (type->type_kind == TYPE_POINTER)
 			{
 				decl = NULL;
@@ -2658,7 +2658,7 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr)
 	// Retain the original type when doing distinct slices.
 	Type *result_type = type_get_subarray(inner_type);
 	Type *original_type_canonical = original_type->canonical;
-	if (original_type_canonical->type_kind == TYPE_DISTINCT && type_flatten_distinct(original_type_canonical) == result_type)
+	if (original_type_canonical->type_kind == TYPE_DISTINCT && type_base(original_type_canonical) == result_type)
 	{
 		result_type = original_type;
 	}
@@ -2932,7 +2932,7 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 			break;
 	}
 
-	Type *underlying_type = type_flatten_distinct(decl->type);
+	Type *underlying_type = type_flatten(decl->type);
 
 	if (!type_is_union_or_strukt(underlying_type) && underlying_type->type_kind != TYPE_BITSTRUCT)
 	{
@@ -2975,16 +2975,27 @@ static inline bool sema_create_const_kind(Expr *expr, Type *type)
 {
 	Module *module = global_context_find_module(kw_std__core__types);
 	Decl *type_kind = module ? module_find_symbol(module, kw_typekind) : NULL;
-	Type *type_for_kind = type_kind ? type_kind->type : type_char;
 	unsigned val = type_get_introspection_kind(type->type_kind);
-	assert(type_for_kind->type_kind == TYPE_ENUM);
-	expr_rewrite_const_int(expr, type_flatten(type_for_kind), val);
-	return cast(expr, type_for_kind);
+	if (!type_kind)
+	{
+		// No TypeKind defined, fallback to char.
+		expr_rewrite_const_int(expr, type_char, val);
+		return true;
+	}
+	Decl **values = type_kind->enums.values;
+	assert(vec_size(values) > val);
+	expr->type = type_kind->type;
+	expr->expr_kind = EXPR_CONST;
+	expr->const_expr = (ExprConst) {
+		.const_kind = CONST_ENUM,
+		.enum_err_val = values[val]
+	};
+	return true;
 }
 
 static inline bool sema_create_const_len(SemaContext *context, Expr *expr, Type *type)
 {
-	assert(type == type_flatten_distinct(type) && "Should be flattened already.");
+	assert(type == type_flatten(type) && "Should be flattened already.");
 	size_t len;
 	switch (type->type_kind)
 	{
@@ -3347,7 +3358,7 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 	assert(type == type->canonical);
 	if (property == TYPE_PROPERTY_NONE) return false;
 
-	Type *flat = type_flatten_distinct(type);
+	Type *flat = type_flatten(type);
 	switch (property)
 	{
 		case TYPE_PROPERTY_INF:
@@ -3572,7 +3583,7 @@ CHECK_DEEPER:
 		if (sema_expr_rewrite_to_typeid_property(context, expr, parent, kw)) return true;
 	}
 
-	if (type_flat_is_vector(flat_type))
+	if (flat_type->type_kind == TYPE_VECTOR)
 	{
 		unsigned len = strlen(kw);
 		if (len <= 4)
@@ -3603,7 +3614,7 @@ CHECK_DEEPER:
 
 	if (kw == kw_ordinal)
 	{
-		if (type->type_kind == TYPE_ENUM)
+		if (flat_type->type_kind == TYPE_ENUM)
 		{
 			if (!cast(current_parent, type->decl->enums.type_info->type)) return false;
 			expr_replace(expr, current_parent);
@@ -3612,7 +3623,7 @@ CHECK_DEEPER:
 	}
 	if (kw == kw_nameof)
 	{
-		if (type->type_kind == TYPE_ENUM)
+		if (flat_type->type_kind == TYPE_ENUM)
 		{
 			if (current_parent->expr_kind == EXPR_CONST)
 			{
@@ -3625,7 +3636,7 @@ CHECK_DEEPER:
 				return true;
 			}
 		}
-		if (type->type_kind == TYPE_FAULTTYPE || type->type_kind == TYPE_ANYERR)
+		if (flat_type->type_kind == TYPE_FAULTTYPE || flat_type->type_kind == TYPE_ANYERR)
 		{
 			if (current_parent->expr_kind == EXPR_CONST)
 			{
@@ -4215,7 +4226,7 @@ static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *
 	if (!sema_expr_check_assign(context, left)) return false;
 
 	Type *no_fail = type_no_optional(left->type);
-	Type *flat = type_flatten_distinct(no_fail);
+	Type *flat = type_flatten(no_fail);
 
 	// 3. If this is only defined for ints (*%, ^= |= &= %=) verify that this is an int.
 	if (int_only && !type_flat_is_intlike(flat))
@@ -4338,10 +4349,10 @@ static bool sema_expr_analyse_add_sub_assign(SemaContext *context, Expr *expr, E
 		return true;
 	}
 
-	Type *lhs_flat = type_flatten_distinct(left_type_canonical);
+	Type *lhs_flat = type_flatten(left_type_canonical);
 	if (lhs_flat->type_kind == TYPE_ENUM)
 	{
-		if (!cast_implicit(context, right, lhs_flat->decl->enums.type_info->type)) return false;
+		if (!cast_implicit(context, right, type_base(lhs_flat))) return false;
 		expr->type = type_add_optional(expr->type, optional);
 		return true;
 	}
@@ -4350,7 +4361,7 @@ static bool sema_expr_analyse_add_sub_assign(SemaContext *context, Expr *expr, E
 	if (!cast_implicit(context, right, left->type)) return false;
 
 	// 9. We expect a numeric type on both left and right
-	if (!type_underlying_is_numeric(left->type))
+	if (!type_underlying_may_add_sub(left->type))
 	{
 		SEMA_ERROR(left, "Expected a numeric type here.");
 		return false;
@@ -5091,7 +5102,7 @@ static bool sema_binary_is_unsigned_always_false_comparison(SemaContext *context
 	if (context->active_scope.flags & SCOPE_MACRO) return true;
 	if (!expr_is_const(left) && !expr_is_const(right)) return true;
 	if (!type_is_integer(left->type)) return true;
-	if (expr_is_const(left) && type_is_unsigned(type_flatten_distinct(right->type)))
+	if (expr_is_const(left) && type_is_unsigned(type_flatten(right->type)))
 	{
 		if (int_is_neg(left->const_expr.ixx))
 		{
@@ -5113,7 +5124,7 @@ static bool sema_binary_is_unsigned_always_false_comparison(SemaContext *context
 				return true;
 		}
 	}
-	if (!expr_is_const(right) || !type_is_unsigned(type_flatten_distinct(left->type))) return true;
+	if (!expr_is_const(right) || !type_is_unsigned(type_flatten(left->type))) return true;
 	if (int_is_neg(right->const_expr.ixx))
 	{
 		SEMA_ERROR(right, "Comparing an unsigned value with a negative constant is only allowed inside of macros.");
@@ -5148,7 +5159,7 @@ static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left,
 
 	bool is_equality_type_op = expr->binary_expr.operator == BINARYOP_NE || expr->binary_expr.operator == BINARYOP_EQ;
 
-	// Flatten enum/distinct/optional
+	// Flatten distinct/optional
 	Type *left_type = type_flatten(left->type);
 	Type *right_type = type_flatten(right->type);
 
@@ -5505,7 +5516,7 @@ static inline bool sema_expr_analyse_bit_not(SemaContext *context, Expr *expr)
 
 	// 2. Check that it's a vector, bool
 	Type *canonical = type_no_optional(inner->type)->canonical;
-	Type *flat = type_flatten_distinct(canonical);
+	Type *flat = type_flatten(canonical);
 	if (!type_is_integer_or_bool_kind(flat) && flat->type_kind != TYPE_BITSTRUCT)
 	{
 		Type *vector_type = type_vector_type(canonical);
@@ -5547,7 +5558,7 @@ static inline bool sema_expr_analyse_not(SemaContext *context, Expr *expr)
 
 	// 2. Check whether the type is a vector
 	Type *type = type_no_optional(inner->type);
-	Type *flat = type_flatten_distinct(type);
+	Type *flat = type_flatten(type);
 	if (type_kind_is_any_vector(flat->type_kind))
 	{
 		// This may be some form of bool vector.
@@ -5658,7 +5669,7 @@ static inline bool sema_expr_analyse_incdec(SemaContext *context, Expr *expr)
 	Type *type = type_flatten(inner->type);
 
 	// 5. We can only inc/dec numbers or pointers.
-	if (!type_underlying_is_numeric(type) && type->type_kind != TYPE_POINTER)
+	if (!type_underlying_may_add_sub(type) && type->type_kind != TYPE_POINTER)
 	{
 		SEMA_ERROR(inner, "The expression must be a number or a pointer.");
 		return false;
@@ -6273,7 +6284,7 @@ static inline bool sema_expr_analyse_flat_element(SemaContext *context, ExprFlat
 												  bool *is_missing)
 {
 	Expr *inner = element->inner;
-	Type *actual_type = type_flatten_distinct(type);
+	Type *actual_type = type_flatten(type);
 	if (element->array)
 	{
 		if (!type_is_arraylike(actual_type) && actual_type->type_kind != TYPE_POINTER)
@@ -7296,8 +7307,8 @@ bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allo
 	if (!sema_analyse_inferred_expr(context, to, expr)) return false;
 	if (to && allow_optional && to->canonical != expr->type->canonical && expr->type->canonical->type_kind == TYPE_FAULTTYPE)
 	{
-		Type *canonical = type_flatten_distinct(to);
-		if (canonical != type_anyerr && canonical->type_kind != TYPE_FAULTTYPE && expr->expr_kind == EXPR_CONST)
+		Type *flat = type_flatten(to);
+		if (flat != type_anyerr && flat->type_kind != TYPE_FAULTTYPE && expr->expr_kind == EXPR_CONST)
 		{
 			sema_error_at_after(expr->span, "You need to add a trailing '!' here to make this an optional.");
 			return false;

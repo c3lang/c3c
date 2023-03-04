@@ -2268,8 +2268,12 @@ static inline Decl *parse_fault_declaration(ParseContext *c, bool is_private)
 static inline bool parse_enum_spec(ParseContext *c, TypeInfo **type_ref, Decl*** parameters_ref)
 {
 
-	ASSIGN_TYPE_OR_RET(*type_ref, parse_type(c), false);
-
+	ASSIGN_TYPE_OR_RET(*type_ref, parse_optional_type(c), false);
+	if ((*type_ref)->optional)
+	{
+		SEMA_ERROR(*type_ref, "An enum can't have an optional type.");
+		return false;
+	}
 	if (!try_consume(c, TOKEN_LPAREN)) return true;
 	while (!try_consume(c, TOKEN_RPAREN))
 	{
@@ -2330,6 +2334,7 @@ static inline Decl *parse_enum_declaration(ParseContext *c, bool is_private)
 	CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
 
 	decl->enums.type_info = type ? type : type_info_new_base(type_int, decl->span);
+
 	while (!try_consume(c, TOKEN_RBRACE))
 	{
 		Decl *enum_const = decl_new(DECL_ENUM_CONSTANT, symstr(c), c->span);

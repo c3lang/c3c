@@ -438,8 +438,8 @@ static bool integer_to_pointer(Expr *expr, Type *type)
  */
 static void enum_to_int_lowering(Expr* expr)
 {
-	assert(type_flatten_distinct_optional(expr->type)->type_kind == TYPE_ENUM);
-	Type *underlying_type = type_flatten_distinct_optional(expr->type)->decl->enums.type_info->type;
+	assert(type_flatten(expr->type)->type_kind == TYPE_ENUM);
+	Type *underlying_type = type_base(expr->type);
 	if (expr->expr_kind == EXPR_CONST)
 	{
 		assert(expr->const_expr.const_kind == CONST_ENUM);
@@ -962,8 +962,8 @@ static bool cast_from_pointer(SemaContext *context, Expr *expr, Type *from, Type
 				Type *from_base = pointee->array.base;
 				if (is_explicit)
 				{
-					subarray_base = type_flatten_distinct(subarray_base);
-					from_base = type_flatten_distinct(from_base);
+					subarray_base = type_flatten(subarray_base);
+					from_base = type_flatten(from_base);
 				}
 				// Same base type? E.g. int[2]* -> int[], then we're done.
 				if (subarray_base == from_base) return cast_with_optional(expr, to_type, add_optional);
@@ -1335,7 +1335,7 @@ RETRY:
 			// The only conversion works if the expr is const.
 			if (expr_is_const(expr) && type_is_integer(from))
 			{
-				to = type_flatten_distinct(to);
+				to = type_flatten(to);
 				goto RETRY;
 			}
 			// Failure
@@ -1416,7 +1416,7 @@ RETRY:
 		case TYPE_DISTINCT:
 			if (expr_is_const(expr))
 			{
-				to = type_flatten_distinct(to);
+				to = type_flatten(to);
 				goto RETRY;
 			}
 			else
@@ -1462,7 +1462,7 @@ static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, boo
 		return cast(expr, to_type);
 	}
 
-	Type *to = is_explicit ? type_flatten_distinct_optional(to_type) : type_no_optional(to_type)->canonical;
+	Type *to = is_explicit ? type_flatten(to_type) : type_no_optional(to_type)->canonical;
 
 	// Step one, cast from optional.
 	// This handles:
@@ -1528,7 +1528,7 @@ static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, boo
 	from_type = type_no_optional(from_type);
 
 	// Grab the underlying expression type.
-	Type *from = is_explicit ? type_flatten_distinct(from_type) : from_type->canonical;
+	Type *from = is_explicit ? type_flatten(from_type) : from_type->canonical;
 
 	// We may already be done.
 	if (from == to)
@@ -1543,7 +1543,7 @@ static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, boo
 	if (cast_maybe_string_lit_to_char_array(expr, from, to, to_type)) return true;
 
 	// For constant pointers cast into anything pointer-like:
-	if (expr_is_const_pointer(expr) && from == type_voidptr && type_flatten_distinct(to)->type_kind == TYPE_POINTER)
+	if (expr_is_const_pointer(expr) && from == type_voidptr && type_flatten(to)->type_kind == TYPE_POINTER)
 	{
 		assert(!add_optional);
 		expr->type = to_type;
@@ -1873,7 +1873,7 @@ bool cast(Expr *expr, Type *to_type)
 	assert(!type_is_optional(to_type));
 	Type *from_type = expr->type;
 	bool from_is_optional = false;
-	Type *to = type_flatten_distinct(to_type);
+	Type *to = type_flatten(to_type);
 
 	// Special case *! => error
 	if (to == type_anyerr || to->type_kind == TYPE_FAULTTYPE)
@@ -1892,7 +1892,7 @@ bool cast(Expr *expr, Type *to_type)
 		from_type = from_type->optional;
 		from_is_optional = true;
 	}
-	from_type = type_flatten_distinct(from_type);
+	from_type = type_flatten(from_type);
 	if (type_len_is_inferred(to_type))
 	{
 		to_type = from_type;

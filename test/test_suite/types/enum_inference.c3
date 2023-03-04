@@ -25,7 +25,7 @@ fn void enumInferenceTest()
     bool y = x1 == x1;
     Inf2 z = C;
     if (z == Inf2.A) return;
-    if (z == 1) return;
+    if (z == (Inf2)1) return;
     z = (Inf2)(2);
     switch (z)
     {

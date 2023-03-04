@@ -172,7 +172,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 	initializer->resolve_status = RESOLVE_DONE;
 	if (expr_is_constant_eval(initializer, env_eval_type(context)))
 	{
-		bool is_union = type_flatten_distinct(initializer->type)->type_kind == TYPE_UNION;
+		bool is_union = type_flatten(initializer->type)->type_kind == TYPE_UNION;
 		assert(!is_union || vec_size(elements) == 1);
 		ConstInitializer *const_init = CALLOCS(ConstInitializer);
 		const_init->kind = is_union ? CONST_INIT_UNION : CONST_INIT_STRUCT;

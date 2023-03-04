@@ -18,13 +18,33 @@ static inline bool abi_type_is_valid(AbiType type);
 
 static inline Type *type_lowering(Type *type)
 {
-	Type *canonical = type_flatten(type);
-	if (canonical->type_kind == TYPE_ENUM) return canonical->decl->enums.type_info->type->canonical;
-	if (canonical->type_kind == TYPE_TYPEID) return type_iptr->canonical;
-	if (canonical->type_kind == TYPE_ANYERR) return type_iptr->canonical;
-	if (canonical->type_kind == TYPE_FAULTTYPE) return type_iptr->canonical;
-	if (canonical->type_kind == TYPE_BITSTRUCT) return type_lowering(canonical->decl->bitstruct.base_type->type);
-	return canonical;
+	while (1)
+	{
+		type = type->canonical;
+		switch (type->type_kind)
+		{
+			case TYPE_TYPEDEF:
+				UNREACHABLE
+			case TYPE_OPTIONAL:
+				type = type->optional;
+				continue;
+			case TYPE_DISTINCT:
+				type = type->decl->distinct_decl.base_type;
+				continue;
+			case TYPE_ENUM:
+				type = type->decl->enums.type_info->type;
+				continue;
+			case TYPE_ANYERR:
+			case TYPE_TYPEID:
+			case TYPE_FAULTTYPE:
+				return type_iptr->canonical;
+			case TYPE_BITSTRUCT:
+				type = type->decl->bitstruct.base_type->type;
+				continue;
+			default:
+				return type;
+		}
+	}
 }
 
 static inline Type *type_reduced_from_expr(Expr *expr)

@@ -1058,7 +1058,7 @@ static inline void llvm_emit_bitassign_expr(GenContext *c, BEValue *be_value, Ex
 		llvm_emit_expr(c, be_value, exprptr(expr->binary_expr.right));
 	}
 
-	Type *parent_type = type_flatten_distinct(parent_expr->type);
+	Type *parent_type = type_flatten(parent_expr->type);
 	if (type_lowering(parent_type)->type_kind == TYPE_ARRAY)
 	{
 		llvm_emit_bitassign_array(c, be_value, parent, parent_type->decl, member);
@@ -1092,7 +1092,7 @@ static inline void llvm_emit_access_addr(GenContext *c, BEValue *be_value, Expr 
 	llvm_emit_expr(c, be_value, parent);
 	Decl *member = expr->access_expr.ref;
 
-	Type *flat_type = type_flatten_distinct_optional(parent->type);
+	Type *flat_type = type_flatten(parent->type);
 	if (flat_type->type_kind == TYPE_ENUM)
 	{
 		llvm_value_rvalue(c, be_value);
@@ -2572,7 +2572,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 	Expr *start = exprptr(slice->subscript_expr.range.start);
 	Expr *end = exprptrzero(slice->subscript_expr.range.end);
 
-	Type *parent_type = type_flatten_distinct(parent_expr->type);
+	Type *parent_type = type_flatten(parent_expr->type);
 	BEValue parent_addr_x;
 	llvm_emit_expr(c, &parent_addr_x, parent_expr);
 	llvm_value_addr(c, &parent_addr_x);
@@ -4400,7 +4400,7 @@ static LLVMValueRef llvm_emit_real(LLVMTypeRef type, Float f)
 
 static inline void llvm_emit_const_initializer_list_expr(GenContext *c, BEValue *value, Expr *expr)
 {
-	if (llvm_is_global_eval(c) || type_flat_is_vector(expr->type) || type_flatten_distinct(expr->type)->type_kind == TYPE_BITSTRUCT)
+	if (llvm_is_global_eval(c) || type_flat_is_vector(expr->type) || type_flatten(expr->type)->type_kind == TYPE_BITSTRUCT)
 	{
 		llvm_value_set(value, llvm_emit_const_initializer(c, expr->const_expr.initializer), expr->type);
 		return;

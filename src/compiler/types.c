@@ -1689,8 +1689,8 @@ bool type_array_element_is_equivalent(Type *element1, Type *element2, bool is_ex
 {
 	if (is_explicit)
 	{
-		element1 = type_flatten_distinct(element1);
-		element2 = type_flatten_distinct(element2);
+		element1 = type_flatten(element1);
+		element2 = type_flatten(element2);
 	}
 	else
 	{
@@ -1721,8 +1721,8 @@ bool type_is_pointer_equivalent(Type *pointer1, Type *pointer2, bool flatten_dis
 RETRY:
 	if (flatten_distinct)
 	{
-		pointer1 = type_flatten_distinct(pointer1);
-		pointer2 = type_flatten_distinct(pointer2);
+		pointer1 = type_flatten(pointer1);
+		pointer2 = type_flatten(pointer2);
 	}
 	if (pointer1 == pointer2) return true;
 	if (pointer1 == type_voidptr || pointer2 == type_voidptr) return true;
@@ -1730,8 +1730,8 @@ RETRY:
 	Type *pointee2 = pointer2->pointer->canonical;
 	if (flatten_distinct)
 	{
-		pointee1 = type_flatten_distinct(pointee1);
-		pointee2 = type_flatten_distinct(pointee2);
+		pointee1 = type_flatten(pointee1);
+		pointee2 = type_flatten(pointee2);
 	}
 	if (pointee1 == pointee2) return true;
 	if (type_is_subtype(pointee2, pointee1)) return true;

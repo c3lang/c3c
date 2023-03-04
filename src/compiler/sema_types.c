@@ -120,7 +120,7 @@ static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type,
 			return type_info_poison(type);
 		}
 	}
-	Type *distinct_base = type_flatten_distinct(type->array.base->type);
+	Type *distinct_base = type_flatten(type->array.base->type);
 	if (distinct_base->type_kind == TYPE_STRUCT)
 	{
 		if (distinct_base->decl->has_variable_array)

@@ -2064,8 +2064,9 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 		sema_error_at(expr_span, "You cannot test '%s' for equality, and only values that supports '==' for comparison can be used in a switch.", type_to_error_string(switch_type));
 		return false;
 	}
-	// We need an if chain if this isn't an integer type.
-	bool if_chain = !type_is_integer(type_flatten(switch_type));
+	// We need an if-chain if this isn't an enum/integer type.
+	TypeKind flat_switch_type_kind = type_flatten(switch_type)->type_kind;
+	bool if_chain = flat_switch_type_kind != TYPE_ENUM && !type_kind_is_any_integer(flat_switch_type_kind);
 
 	Ast *default_case = NULL;
 	assert(context->active_scope.defer_start == context->active_scope.defer_last);
@@ -2189,6 +2190,7 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 		case TYPE_TYPEID:
 			is_type = true;
 			FALLTHROUGH;
+		case TYPE_ENUM:
 		case ALL_INTS:
 		case ALL_FLOATS:
 		case TYPE_BOOL:
@@ -2197,7 +2199,7 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 			if (expr_is_const_string(cond)) break;
 			FALLTHROUGH;
 		default:
-			SEMA_ERROR(cond, "Only types, strings, integers, floats and booleans may be used with '$switch'.");
+			SEMA_ERROR(cond, "Only types, strings, enums, integers, floats and booleans may be used with '$switch'.");
 			goto FAILED;
 	}
 
