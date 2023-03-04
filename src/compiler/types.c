@@ -301,7 +301,8 @@ RETRY:
 			goto RETRY;
 		case TYPE_ENUM:
 			assert(type->decl->enums.type_info->resolve_status == RESOLVE_DONE);
-			return type->decl->enums.type_info->type->canonical->builtin.bytesize;
+			type = type->decl->enums.type_info->type->canonical;
+			goto RETRY;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 			assert(type->decl->resolve_status == RESOLVE_DONE);
@@ -674,7 +675,8 @@ AlignSize type_abi_alignment(Type *type)
 			type = type->canonical;
 			goto RETRY;
 		case TYPE_ENUM:
-			return type->decl->enums.type_info->type->canonical->builtin.abi_alignment;
+			type = type->decl->enums.type_info->type->canonical;
+			goto RETRY;
 		case TYPE_FAULTTYPE:
 			return t.iptr.canonical->builtin.abi_alignment;
 		case TYPE_STRUCT:
