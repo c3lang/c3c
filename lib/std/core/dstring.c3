@@ -4,14 +4,29 @@ typedef DString = distinct void*;
 
 const usz MIN_CAPACITY @private = 16;
 
-fn DString new_with_capacity(usz capacity, Allocator* allocator = mem::current_allocator())
+/**
+ * @require !str.data() "String already initialized"
+ **/
+fn void DString.init(DString *str, usz capacity = MIN_CAPACITY, Allocator* allocator = mem::current_allocator())
 {
 	if (capacity < MIN_CAPACITY) capacity = MIN_CAPACITY;
 	StringData* data = malloc(StringData, 1, .using = allocator, .end_padding = capacity);
 	data.allocator = allocator;
 	data.len = 0;
 	data.capacity = capacity;
-	return (DString)data;
+	*str = (DString)data;
+}
+
+/**
+ * @require !str.data() "String already initialized"
+ **/
+fn void DString.tinit(DString *str, usz capacity = MIN_CAPACITY) => str.init(capacity, mem::temp_allocator()) @inline;
+
+fn DString new_with_capacity(usz capacity, Allocator* allocator = mem::current_allocator())
+{
+	DString dstr;
+	dstr.init(capacity, allocator);
+	return dstr;
 }
 
 fn DString tnew_with_capacity(usz capacity) => new_with_capacity(capacity, mem::temp_allocator()) @inline;
@@ -32,7 +47,8 @@ fn DString tnew(String s = "") => new(s, mem::temp_allocator()) @inline;
 
 fn DString DString.new_concat(DString a, DString b, Allocator* allocator = mem::current_allocator())
 {
-	DString string = new_with_capacity(a.len() + b.len(), allocator);
+	DString string;
+	string.init(a.len() + b.len(), allocator);
 	string.append(a);
 	string.append(b);
 	return string;
