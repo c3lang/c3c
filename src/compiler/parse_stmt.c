@@ -1460,14 +1460,15 @@ Ast *parse_jump_stmt_no_eos(ParseContext *c)
  */
 Ast* parse_compound_stmt(ParseContext *c)
 {
-	CONSUME_OR_RET(TOKEN_LBRACE, poisoned_ast);
 	Ast *ast = ast_new_curr(c, AST_COMPOUND_STMT);
+	CONSUME_OR_RET(TOKEN_LBRACE, poisoned_ast);
 	AstId *next = &ast->compound_stmt.first_stmt;
 	while (!try_consume(c, TOKEN_RBRACE))
 	{
 		ASSIGN_AST_OR_RET(Ast *stmt, parse_stmt(c), poisoned_ast);
 		ast_append(&next, stmt);
 	}
+	RANGE_EXTEND_PREV(ast);
 	return ast;
 }
 

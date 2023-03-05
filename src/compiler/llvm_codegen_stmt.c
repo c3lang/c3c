@@ -1425,7 +1425,7 @@ void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *pani
 
 void llvm_emit_stmt(GenContext *c, Ast *ast)
 {
-	EMIT_LOC(c, ast);
+	if (ast->ast_kind != AST_COMPOUND_STMT) EMIT_LOC(c, ast);
 	assert(!c->catch_block && "Did not expect a catch block here.");
 	switch (ast->ast_kind)
 	{

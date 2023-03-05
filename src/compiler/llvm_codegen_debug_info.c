@@ -29,7 +29,7 @@ static inline LLVMMetadataRef llvm_get_debug_struct(GenContext *c, Type *type, c
 	size_t external_name_len = strlen(external_name);
 	if (loc)
 	{
-		file = c->debug.file;
+		file = c->debug.file.debug_file;
 		row = loc->row;
 		if (!row) row = 1;
 	}
@@ -58,7 +58,7 @@ static inline LLVMMetadataRef llvm_get_debug_member(GenContext *c, Type *type, c
 			c->debug.builder,
 			scope,
 			name, strlen(name),
-			loc ? c->debug.file : NULL,
+			loc ? c->debug.file.debug_file : NULL,
 			loc ? loc->row : 0,
 			type_size(type) * 8,
 			(uint32_t)(type_abi_alignment(type) * 8),
@@ -90,12 +90,12 @@ void llvm_emit_debug_global_var(GenContext *c, Decl *global)
 	SourceSpan loc = global->span;
 	global->var.backend_debug_ref = LLVMDIBuilderCreateGlobalVariableExpression(
 			c->debug.builder,
-			c->debug.file,
+			c->debug.file.debug_file,
 			global->name,
 			strlen(global->name),
 			global->extname,
 			strlen(global->extname),
-			c->debug.file,
+			c->debug.file.debug_file,
 			loc.row ? loc.row : 1,
 			llvm_get_debug_type(c, global->type),
 			decl_is_local(global),
@@ -122,10 +122,10 @@ void llvm_emit_debug_function(GenContext *c, Decl *decl)
 	uint32_t row = decl->span.row;
 	if (!row) row = 1;
 	c->debug.function = LLVMDIBuilderCreateFunction(c->debug.builder,
-	                                                c->debug.file,
+	                                                c->debug.file.debug_file,
 	                                                decl->name, strlen(decl->name),
 	                                                decl->extname, strlen(decl->extname),
-	                                                c->debug.file,
+	                                                c->debug.file.debug_file,
 	                                                row,
 	                                                llvm_get_debug_type(c, decl->type),
 	                                                decl_is_local(decl),
@@ -146,12 +146,13 @@ void llvm_emit_debug_local_var(GenContext *c, Decl *decl)
 	if (!col) col = 1;
 	const char *name = decl->name;
 	if (!name) name = ".temp";
+	LLVMMetadataRef scope = llvm_debug_current_scope(c);
 	LLVMMetadataRef var = LLVMDIBuilderCreateAutoVariable(
 			c->debug.builder,
-			c->debug.function,
+			scope,
 			name,
 			strlen(name),
-			c->debug.file,
+			c->debug.file.debug_file,
 			row,
 			llvm_get_debug_type(c, decl->type),
 			active_target.optimization_level != OPTIMIZATION_NONE,
@@ -164,7 +165,7 @@ void llvm_emit_debug_local_var(GenContext *c, Decl *decl)
 	                                decl->backend_ref, var,
 	                                LLVMDIBuilderCreateExpression(c->debug.builder, NULL, 0),
 	                                LLVMDIBuilderCreateDebugLocation(c->context, row, col,
-	                                                                 c->debug.function, inline_at),
+	                                                                 scope, inline_at),
 	                                LLVMGetInsertBlock(c->builder));
 }
 
@@ -191,7 +192,7 @@ void llvm_emit_debug_parameter(GenContext *c, Decl *parameter, unsigned index)
 			name,
 			strlen(name),
 			index + 1,
-			c->debug.file,
+			c->debug.file.debug_file,
 			row,
 			llvm_get_debug_type(c, parameter->type),
 			always_preserve,
@@ -238,7 +239,7 @@ static LLVMMetadataRef llvm_debug_forward_comp(GenContext *c, Type *type, const 
 	return LLVMDIBuilderCreateReplaceableCompositeType(c->debug.builder, id_counter++,
 	                                                   type->name, strlen(type->name),
 	                                                   scope,
-	                                                   c->debug.file, row,
+	                                                   c->debug.file.debug_file, row,
 	                                                   1 /* version TODO */,
 	                                                   type_size(type) * 8,
 	                                                   type_abi_alignment(type) * 8,
@@ -261,8 +262,13 @@ void llvm_debug_push_lexical_scope(GenContext *context, SourceSpan location)
 
 	unsigned row = location.row;
 	unsigned col = location.col;
+	LLVMMetadataRef debug_file = context->debug.file.debug_file;
+	if (location.file_id != context->debug.file.file_id)
+	{
+		debug_file = llvm_get_debug_file(context, location.file_id);
+	}
 	LLVMMetadataRef block =
-			LLVMDIBuilderCreateLexicalBlock(context->debug.builder, scope, context->debug.file,
+			LLVMDIBuilderCreateLexicalBlock(context->debug.builder, scope, debug_file,
 			                                row ? row : 1,
 			                                col ? col : 1);
 
@@ -321,7 +327,7 @@ static LLVMMetadataRef llvm_debug_enum_type(GenContext *c, Type *type, LLVMMetad
 	LLVMMetadataRef real = LLVMDIBuilderCreateEnumerationType(c->debug.builder,
 	                                                          scope,
 	                                                          type->decl->name, strlen(type->decl->name),
-	                                                          c->debug.file, row ? row : 1, type_size(type) * 8,
+	                                                          c->debug.file.debug_file, row ? row : 1, type_size(type) * 8,
 	                                                          type_abi_alignment(type) * 8,
 	                                                          elements, vec_size(elements),
 	                                                          llvm_get_debug_type(c, enum_real_type));
@@ -363,7 +369,7 @@ static LLVMMetadataRef llvm_debug_structlike_type(GenContext *c, Type *type, LLV
 		                                    scope,
 		                                    type->decl->name ? type->decl->name : "",
 		                                    type->decl->name ? strlen(type->decl->name) : 0,
-		                                    c->debug.file, row ? row : 1, type_size(type) * 8,
+		                                    c->debug.file.debug_file, row ? row : 1, type_size(type) * 8,
 		                                    type_abi_alignment(type) * 8,
 		                                    LLVMDIFlagZero,
 		                                    elements, vec_size(members),
@@ -460,8 +466,8 @@ static LLVMMetadataRef llvm_debug_typedef_type(GenContext *c, Type *type)
 	LLVMMetadataRef real = LLVMDIBuilderCreateTypedef(c->debug.builder,
 	                                                  llvm_get_debug_type(c, original_type),
 	                                                  decl->name, strlen(decl->name),
-	                                                  c->debug.file, row ? row : 1,
-	                                                  c->debug.file, type_abi_alignment(type));
+	                                                  c->debug.file.debug_file, row ? row : 1,
+	                                                  c->debug.file.debug_file, type_abi_alignment(type));
 	if (type->backend_debug_type)
 	{
 		LLVMMetadataReplaceAllUsesWith(type->backend_debug_type, real);
@@ -507,7 +513,7 @@ static LLVMMetadataRef llvm_debug_func_type(GenContext *c, Type *type)
 		vec_add(buffer, llvm_get_debug_type(c, prototype->param_types[i]));
 	}
 	return LLVMDIBuilderCreateSubroutineType(c->debug.builder,
-	                                         c->debug.file,
+	                                         c->debug.file.debug_file,
 	                                         buffer,
 	                                         vec_size(buffer), 0);
 }
@@ -590,5 +596,5 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 LLVMMetadataRef llvm_get_debug_type(GenContext *c, Type *type)
 {
 	// All types should be generated in the outer scope.
-	return llvm_get_debug_type_internal(c, type, c->debug.file);
+	return llvm_get_debug_type_internal(c, type, c->debug.file.debug_file);
 }
