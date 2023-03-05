@@ -57,6 +57,8 @@ macro void print(x)
 		catch(stdout().print(x));
 	$case ZString:
 		catch(stdout().print(x.as_str()));
+	$case DString:
+		catch(stdout().print(x.str()));
 	$case VarString:
 		catch(stdout().print(x.str()));
 	$default:
@@ -76,6 +78,8 @@ macro void printn(x = "")
 		catch(stdout().printn(x));
 	$case ZString:
 		catch(stdout().printn(x.as_str()));
+	$case DString:
+		catch(stdout().printn(x.str()));
 	$case VarString:
 		catch(stdout().printn(x.str()));
 	$default:

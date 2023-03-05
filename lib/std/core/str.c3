@@ -22,6 +22,7 @@ fault NumberConversion
 	MALFORMED_FLOAT,
 	FLOAT_OUT_OF_RANGE,
 }
+
 fn VarString join(String[] s, String joiner)
 {
 	if (!s.len) return (VarString)null;
@@ -335,7 +336,7 @@ fn String! utf16to8(Char16[] utf16, Allocator* allocator = mem::current_allocato
 	return data[:len];
 }
 
-fn String copy(String s, Allocator* allocator = mem::current_allocator())
+	fn String copy(String s, Allocator* allocator = mem::current_allocator())
 {
     usz len = s.len;
     ZString str_copy = copy_zstring(s, allocator) @inline;

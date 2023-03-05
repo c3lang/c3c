@@ -236,6 +236,10 @@ fn void! Formatter.out_str(Formatter* this, variant arg) @private
 			{
 				return this.out_substr(((VarString*)arg).str());
 			}
+			if (arg.type == DString.typeid)
+			{
+				return this.out_substr(((DString*)arg).str());
+			}
         	return this.out_str(variant { arg.ptr, arg.type.inner });
 		case POINTER:
 			if (this.print_with_function(arg)?) return;

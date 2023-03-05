@@ -1,38 +1,46 @@
-module std::core::string;
-import libc;
+module std::core::dstring;
 
-typedef VarString = distinct void*;
-typedef DynStr = VarString;
-typedef DynString = VarString;
-typedef VString = VarString;
-typedef Text = VarString;
+typedef DString = distinct void*;
 
-const usz MIN_CAPACITY = 16;
+const usz MIN_CAPACITY @private = 16;
 
-fn VarString new_with_capacity(usz capacity, Allocator* allocator = mem::current_allocator())
+fn DString new_with_capacity(usz capacity, Allocator* allocator = mem::current_allocator())
 {
 	if (capacity < MIN_CAPACITY) capacity = MIN_CAPACITY;
 	StringData* data = malloc(StringData, 1, .using = allocator, .end_padding = capacity);
 	data.allocator = allocator;
 	data.len = 0;
 	data.capacity = capacity;
-	return (VarString)data;
+	return (DString)data;
 }
 
-fn VarString new(String c)
+fn DString tnew_with_capacity(usz capacity) => new_with_capacity(capacity, mem::temp_allocator()) @inline;
+
+fn DString new(String c = "", Allocator* allocator = mem::current_allocator())
 {
 	usz len = c.len;
-	VarString str = new_with_capacity(len);
-	StringData* data = str.data();
+	StringData* data = (StringData*)new_with_capacity(len, allocator);
 	if (len)
 	{
 		data.len = len;
 		mem::copy(&data.chars, c.ptr, len);
 	}
-	return (VarString)data;
+	return (DString)data;
 }
 
-fn ZString VarString.zstr(VarString str)
+fn DString tnew(String s = "") => new(s, mem::temp_allocator()) @inline;
+
+fn DString DString.new_concat(DString a, DString b, Allocator* allocator = mem::current_allocator())
+{
+	DString string = new_with_capacity(a.len() + b.len(), allocator);
+	string.append(a);
+	string.append(b);
+	return string;
+}
+
+fn DString DString.new_tconcat(DString a, DString b) => a.new_concat(b, mem::temp_allocator());
+
+fn ZString DString.zstr(DString str)
 {
 	StringData* data = str.data();
 	if (!data) return (ZString)"";
@@ -48,13 +56,13 @@ fn ZString VarString.zstr(VarString str)
 	return (ZString)&data.chars[0];
 }
 
-fn usz VarString.capacity(VarString this)
+fn usz DString.capacity(DString this)
 {
 	if (!this) return 0;
 	return this.data().capacity;
 }
 
-fn usz VarString.len(VarString this)
+fn usz DString.len(DString this)
 {
 	if (!this) return 0;
 	return this.data().len;
@@ -63,20 +71,20 @@ fn usz VarString.len(VarString this)
 /**
  * @require new_size <= this.len()
  */
-fn void VarString.chop(VarString this, usz new_size)
+fn void DString.chop(DString this, usz new_size)
 {
 	if (!this) return;
 	this.data().len = new_size;
 }
 
-fn String VarString.str(VarString str)
+fn String DString.str(DString str)
 {
 	StringData* data = (StringData*)str;
 	if (!data) return String {};
 	return (String)data.chars[:data.len];
 }
 
-fn void VarString.append_utf32(VarString* str, Char32[] chars)
+fn void DString.append_utf32(DString* str, Char32[] chars)
 {
 	str.reserve(chars.len);
 	foreach (Char32 c : chars)
@@ -88,12 +96,12 @@ fn void VarString.append_utf32(VarString* str, Char32[] chars)
 /**
  * @require index < str.len()
  **/
-fn void VarString.set(VarString str, usz index, char c)
+fn void DString.set(DString str, usz index, char c)
 {
 	str.data().chars[index] = c;
 }
 
-fn void VarString.append_repeat(VarString* str, char c, usz times)
+fn void DString.append_repeat(DString* str, char c, usz times)
 {
 	if (times == 0) return;
 	str.reserve(times);
@@ -107,7 +115,7 @@ fn void VarString.append_repeat(VarString* str, char c, usz times)
 /**
  * @require c <= 0x10ffff
  */
-fn void VarString.append_char32(VarString* str, Char32 c)
+fn void DString.append_char32(DString* str, Char32 c)
 {
 	if (c < 0x7f)
 	{
@@ -141,23 +149,23 @@ fn void VarString.append_char32(VarString* str, Char32 c)
     data.chars[data.len++] = (char)(0x80 | (c & 0x3F));
 }
 
-fn VarString VarString.tcopy(VarString* str) => str.copy(mem::temp_allocator());
+fn DString DString.tcopy(DString* str) => str.copy(mem::temp_allocator());
 
-fn VarString VarString.copy(VarString* str, Allocator* allocator = null)
+fn DString DString.copy(DString* str, Allocator* allocator = null)
 {
 	if (!str)
 	{
 		if (allocator) return new_with_capacity(0, allocator);
-		return (VarString)null;
+		return (DString)null;
 	}
 	if (!allocator) allocator = mem::current_allocator();
 	StringData* data = str.data();
-	VarString new_string = new_with_capacity(data.capacity, allocator);
+	DString new_string = new_with_capacity(data.capacity, allocator);
 	mem::copy((char*)new_string.data(), (char*)data, StringData.sizeof + data.len);
 	return new_string;
 }
 
-fn ZString VarString.copy_zstr(VarString* str, Allocator* allocator = mem::current_allocator())
+fn ZString DString.copy_zstr(DString* str, Allocator* allocator = mem::current_allocator())
 {
 	usz str_len = str.len();
 	if (!str_len)
@@ -171,14 +179,14 @@ fn ZString VarString.copy_zstr(VarString* str, Allocator* allocator = mem::curre
 	return (ZString)zstr;
 }
 
-fn String VarString.copy_str(VarString* str, Allocator* allocator = mem::current_allocator())
+fn String DString.copy_str(DString* str, Allocator* allocator = mem::current_allocator())
 {
 	return (String)str.copy_zstr(allocator)[:str.len()];
 }
 
-fn String VarString.tcopy_str(VarString* str) => str.copy_str(mem::temp_allocator()) @inline;
+fn String DString.tcopy_str(DString* str) => str.copy_str(mem::temp_allocator()) @inline;
 
-fn bool VarString.equals(VarString str, VarString other_string)
+fn bool DString.equals(DString str, DString other_string)
 {
 	StringData *str1 = str.data();
 	StringData *str2 = other_string.data();
@@ -194,16 +202,16 @@ fn bool VarString.equals(VarString str, VarString other_string)
 	return true;
 }
 
-fn void VarString.destroy(VarString* str)
+fn void DString.free(DString* str)
 {
 	if (!*str) return;
 	StringData* data = str.data();
 	if (!data) return;
 	free(data, .using = data.allocator);
-	*str = (VarString)null;
+	*str = (DString)null;
 }
 
-fn bool VarString.less(VarString str, VarString other_string)
+fn bool DString.less(DString str, DString other_string)
 {
 	StringData* str1 = str.data();
 	StringData* str2 = other_string.data();
@@ -220,7 +228,7 @@ fn bool VarString.less(VarString str, VarString other_string)
 	return true;
 }
 
-fn void VarString.append_chars(VarString* this, String str)
+fn void DString.append_chars(DString* this, String str)
 {
 	usz other_len = str.len;
 	if (!other_len) return;
@@ -235,24 +243,24 @@ fn void VarString.append_chars(VarString* this, String str)
 	data.len += other_len;
 }
 
-fn Char32[] VarString.copy_utf32(VarString* this, Allocator* allocator = mem::current_allocator())
+fn Char32[] DString.copy_utf32(DString* this, Allocator* allocator = mem::current_allocator())
 {
 	return str::utf8to32(this.str(), allocator) @inline!!;
 }
 
-fn void VarString.append_string(VarString* this, VarString str)
+fn void DString.append_string(DString* this, DString str)
 {
 	StringData* other = (StringData*)str;
 	if (!other) return;
 	this.append(str.str());
 }
 
-fn void VarString.clear(VarString* str)
+fn void DString.clear(DString* str)
 {
 	str.data().len = 0;
 }
 
-fn void VarString.append_char(VarString* str, char c)
+fn void DString.append_char(DString* str, char c)
 {
 	if (!*str)
 	{
@@ -264,14 +272,14 @@ fn void VarString.append_char(VarString* str, char c)
 }
 
 
-macro void VarString.append(VarString* str, value)
+macro void DString.append(DString* str, value)
 {
 	var $Type = $typeof(value);
 	$switch ($Type):
 		$case char:
 		$case ichar:
 			str.append_char(value);
-		$case VarString:
+		$case DString:
 			str.append_string(value);
 		$case String:
 			str.append_chars(value);
@@ -289,33 +297,67 @@ macro void VarString.append(VarString* str, value)
 }
 
 
-fn StringData* VarString.data(VarString str) @inline @private
+fn usz! DString.printf(DString* str, String format, args...) @maydiscard
+{
+	Formatter formatter;
+	formatter.init(&out_string_append_fn, str);
+	return formatter.vprintf(format, args);
+}
+
+fn usz! DString.printfn(DString* str, String format, args...) @maydiscard
+{
+	Formatter formatter;
+	formatter.init(&out_string_append_fn, str);
+	usz len = formatter.vprintf(format, args)?;
+	str.append('\n');
+	return len + 1;
+}
+
+fn DString new_join(String[] s, String joiner, Allocator* allocator = mem::current_allocator())
+{
+	if (!s.len) return (DString)null;
+	usz total_size = joiner.len * s.len;
+	foreach (String* &str : s)
+	{
+		total_size += str.len;
+	}
+	DString res = new_with_capacity(total_size, allocator);
+	res.append(s[0]);
+	foreach (String* &str : s[1..])
+	{
+		res.append(joiner);
+		res.append(*str);
+	}
+	return res;
+}
+
+fn void! out_string_append_fn(char c, void* data) @private
+{
+	DynString* s = data;
+	s.append_char(c);
+}
+
+
+fn StringData* DString.data(DString str) @inline @private
 {
 	return (StringData*)str;
 }
 
-fn void VarString.reserve(VarString* str, usz addition) @private
+fn void DString.reserve(DString* str, usz addition) @private
 {
 	StringData* data = str.data();
 	if (!data)
 	{
-		*str = string::new_with_capacity(addition);
+		*str = dstring::new_with_capacity(addition);
 		return;
 	}
 	usz len = data.len + addition;
 	if (data.capacity >= len) return;
 	usz new_capacity = data.capacity *= 2;
 	if (new_capacity < MIN_CAPACITY) new_capacity = MIN_CAPACITY;
-	*str = (VarString)realloc(data, StringData.sizeof + new_capacity, .using = data.allocator);
+	*str = (DString)realloc(data, StringData.sizeof + new_capacity, .using = data.allocator);
 }
 
-fn VarString VarString.new_concat(VarString a, VarString b, Allocator* allocator = mem::current_allocator())
-{
-	VarString string = new_with_capacity(a.len() + b.len(), allocator);
-	string.append(a);
-	string.append(b);
-	return string; 
-}
 
 struct StringData @private
 {

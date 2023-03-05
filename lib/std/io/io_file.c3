@@ -131,9 +131,9 @@ fn usz! File.println(File file, String string) => file.printn(string);
  * @param [&in] file
  * @require file.file `File must be initialized`
  */
-fn VarString File.getline(File* file, Allocator* allocator = mem::current_allocator())
+fn DString File.getline(File* file, Allocator* allocator = mem::current_allocator())
 {
-	VarString s = string::new_with_capacity(120, allocator);
+	DString s = dstring::new_with_capacity(120, allocator);
 	while (!file.eof())
 	{
 		int c = libc::fgetc(file.file);

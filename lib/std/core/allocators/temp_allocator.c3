@@ -154,8 +154,6 @@ fn void*! TempAllocator._realloc(TempAllocator* this, void* pointer, usz size, u
 		TempAllocatorPage *page = pointer - TempAllocatorPage.sizeof;
 		return this._realloc_page(page, size, alignment, offset);
 	}
-	assert(pointer < &this.data + this.capacity && pointer >= &this.data, "This is not a temp allocated pointer.");
-	assert(pointer < &this.data + this.used, "This is a stale temp pointer.");
 
 	// TODO optimize last allocation
 	TempAllocatorChunk* data = this._alloc(size, alignment, offset, size > chunk.size)?;

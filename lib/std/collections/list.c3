@@ -151,7 +151,7 @@ fn void List.reserve(List* list, usz min_capacity)
 {
 	if (!min_capacity) return;
 	if (list.capacity >= min_capacity) return;
-	if (!list.allocator) list.allocator = mem::temp_allocator();
+	if (!list.allocator) list.allocator = mem::current_allocator();
 	min_capacity = math::next_power_of_2(min_capacity);
     list.entries = realloc_aligned(list.entries, Type.sizeof * min_capacity, .alignment = Type[1].alignof, .using = list.allocator) ?? null;
 	list.capacity = min_capacity;
