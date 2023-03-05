@@ -574,13 +574,13 @@ void llvm_emit_xxlizer(GenContext *c, Decl *decl)
 	{
 		uint32_t row = decl->span.row;
 		if (!row) row = 1;
-		LLVMMetadataRef type = LLVMDIBuilderCreateSubroutineType(c->debug.builder, c->debug.file, NULL, 0, 0);
+		LLVMMetadataRef type = LLVMDIBuilderCreateSubroutineType(c->debug.builder, c->debug.file.debug_file, NULL, 0, 0);
 
 		c->debug.function = LLVMDIBuilderCreateFunction(c->debug.builder,
-		                                                c->debug.file,
+		                                                c->debug.file.debug_file,
 		                                                scratch_buffer.str, scratch_buffer.len,
 		                                                scratch_buffer.str, scratch_buffer.len,
-		                                                c->debug.file,
+		                                                c->debug.file.debug_file,
 														row,
 		                                                type,
 		                                                true,

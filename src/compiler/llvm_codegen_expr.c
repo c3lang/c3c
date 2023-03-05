@@ -5611,7 +5611,15 @@ static inline void llvm_emit_macro_block(GenContext *context, BEValue *be_value,
 		llvm_store_decl(context, val, &value);
 	FOREACH_END();
 
+	if (llvm_use_debug(context))
+	{
+		llvm_debug_push_lexical_scope(context, astptr(expr->macro_block.first_stmt)->span);
+	}
 	llvm_emit_return_block(context, be_value, expr->type, expr->macro_block.first_stmt, expr->macro_block.block_exit);
+	if (llvm_use_debug(context))
+	{
+		llvm_debug_scope_pop(context);
+	}
 }
 
 LLVMValueRef llvm_emit_call_intrinsic(GenContext *context, unsigned intrinsic, LLVMTypeRef *types, unsigned type_count,

@@ -28,6 +28,12 @@ static inline LLVMTypeRef create_fault_type(GenContext *c)
 	return type;
 }
 
+static void llvm_set_module_flag(GenContext *c, LLVMModuleFlagBehavior flag_behavior, const char *flag, uint64_t value, Type *type)
+{
+	LLVMMetadataRef val = LLVMValueAsMetadata(LLVMConstInt(LLVMIntTypeInContext(c->context, type_bit_size(type)), value, false));
+	LLVMAddModuleFlag(c->module, flag_behavior, flag, strlen(flag), val);
+}
+
 void gencontext_begin_module(GenContext *c)
 {
 	assert(!c->module && "Expected no module");
@@ -41,7 +47,6 @@ void gencontext_begin_module(GenContext *c)
 
 	LLVMSetModuleDataLayout(c->module, c->target_data);
 	LLVMSetSourceFileName(c->module, c->code_module->name->module, strlen(c->code_module->name->module));
-	LLVMTypeRef options_type = LLVMInt8TypeInContext(c->context);
 
 	static const char *pic_level = "PIC Level";
 	static const char *pie_level = "PIE Level";
@@ -49,20 +54,16 @@ void gencontext_begin_module(GenContext *c)
 	switch (active_target.reloc_model)
 	{
 		case RELOC_BIG_PIE:
-			setting = LLVMValueAsMetadata(LLVMConstInt(options_type, (unsigned)2 /* PIE */, false));
-			LLVMAddModuleFlag(c->module, LLVMModuleFlagBehaviorOverride, pie_level, strlen(pie_level), setting);
+			llvm_set_module_flag(c, LLVMModuleFlagBehaviorOverride, pie_level, (unsigned)2 /* PIE */, type_uint);
 			FALLTHROUGH;
 		case RELOC_BIG_PIC:
-			setting = LLVMValueAsMetadata(LLVMConstInt(options_type, (unsigned)2 /* PIC */, false));
-			LLVMAddModuleFlag(c->module, LLVMModuleFlagBehaviorOverride, pic_level, strlen(pic_level), setting);
+			llvm_set_module_flag(c, LLVMModuleFlagBehaviorOverride, pic_level, (unsigned)2 /* PIC */, type_uint);
 			break;
 		case RELOC_SMALL_PIE:
-			setting = LLVMValueAsMetadata(LLVMConstInt(options_type, (unsigned)1 /* pie */, false));
-			LLVMAddModuleFlag(c->module, LLVMModuleFlagBehaviorOverride, pie_level, strlen(pie_level), setting);
+			llvm_set_module_flag(c, LLVMModuleFlagBehaviorOverride, pie_level, (unsigned)1 /* pie */, type_uint);
 			FALLTHROUGH;
 		case RELOC_SMALL_PIC:
-			setting = LLVMValueAsMetadata(LLVMConstInt(options_type, (unsigned)1 /* pic */, false));
-			LLVMAddModuleFlag(c->module, LLVMModuleFlagBehaviorOverride, pic_level, strlen(pic_level), setting);
+			llvm_set_module_flag(c, LLVMModuleFlagBehaviorOverride, pic_level, (unsigned)1 /* pic */, type_uint);
 			break;
 		default:
 			break;
@@ -120,8 +121,12 @@ void gencontext_begin_module(GenContext *c)
 	{
 		if (active_target.arch_os_target == WINDOWS_X64 || active_target.arch_os_target == WINDOWS_AARCH64)
 		{
-			setting = LLVMValueAsMetadata(LLVMConstInt(options_type, (unsigned)1 /* pic */, false));
-			LLVMAddModuleFlag(c->module, LLVMModuleFlagBehaviorError, "CodeView", strlen("CodeView"), setting);
+			llvm_set_module_flag(c, LLVMModuleFlagBehaviorError, "CodeView", 1, type_uint);
+		}
+		else
+		{
+			llvm_set_module_flag(c, LLVMModuleFlagBehaviorWarning, "Dwarf Version", 4, type_uint);
+			llvm_set_module_flag(c, LLVMModuleFlagBehaviorWarning, "Debug Info Version", 3, type_uint);
 		}
 		c->debug.runtime_version = 1;
 		c->debug.builder = LLVMCreateDIBuilder(c->module);
@@ -145,18 +150,12 @@ void gencontext_init_file_emit(GenContext *c, CompilationUnit *unit)
 {
 	if (active_target.debug_info != DEBUG_INFO_NONE)
 	{
-		const char *filename = unit->file->name;
-		const char *dir_path = unit->file->dir_path;
 		// Set runtime version here.
-		unit->llvm.debug_file = LLVMDIBuilderCreateFile(c->debug.builder,
-		                                                filename,
-		                                                strlen(filename),
-		                                                dir_path,
-		                                                strlen(dir_path));
+		unit->llvm.debug_file = llvm_get_debug_file(c, unit->file->file_id);
 
 		bool is_optimized = active_target.optimization_level != OPTIMIZATION_NONE;
 		const char *dwarf_flags = "";
-		unsigned runtime_version = 1;
+		unsigned runtime_version = 0;
 		LLVMDWARFEmissionKind emission_kind =
 				active_target.debug_info == DEBUG_INFO_FULL ? LLVMDWARFEmissionFull : LLVMDWARFEmissionLineTablesOnly;
 		const char *debug_output_file = "";
@@ -171,7 +170,7 @@ void gencontext_init_file_emit(GenContext *c, CompilationUnit *unit)
 			return;
 		}
 		unit->llvm.debug_compile_unit = LLVMDIBuilderCreateCompileUnit(c->debug.builder,
-		                                                               LLVMDWARFSourceLanguageC,
+		                                                               LLVMDWARFSourceLanguageC11,
 		                                                               unit->llvm.debug_file,
 		                                                               DWARF_PRODUCER_NAME,
 		                                                               strlen(DWARF_PRODUCER_NAME),

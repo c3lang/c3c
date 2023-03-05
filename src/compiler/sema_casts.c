@@ -1072,6 +1072,7 @@ bool cast_implicit(SemaContext *context, Expr *expr, Type *to_type)
 {
 	return cast_expr_inner(context, expr, to_type, false, false, false);
 }
+
 /**
  * Try to make an explicit cast, Optional types are allowed.
  */
@@ -1157,6 +1158,9 @@ static bool cast_from_array(SemaContext *context, Expr *expr, Type *from, Type *
 	return cast_with_optional(expr, to_type, add_optional);
 }
 
+/**
+ * Check a vector element and see if it may implicitly convert to the other type.
+ */
 static bool cast_vector_element_may_implicitly_convert(Expr *expr, Type *from, Type *to)
 {
 	from = from->canonical;
@@ -1165,7 +1169,7 @@ static bool cast_vector_element_may_implicitly_convert(Expr *expr, Type *from, T
 	// Same type - we're fine.
 	if (from == to) return true;
 
-	// If any of the elements are distinct we know it doesn't work.
+	// If any of the elements are distinct we know it doesn't work,
 	if (from->type_kind == TYPE_DISTINCT || to->type_kind == TYPE_DISTINCT) return false;
 
 	// Casting from bool always works (for int, float)
@@ -1210,6 +1214,11 @@ static bool cast_vector_element_may_implicitly_convert(Expr *expr, Type *from, T
 	return to_size > from_size && expr_is_simple(expr);
 }
 
+/**
+ * Check all casts from vectors:
+ * 1. To arrays and inferred arrays -> if the array type matches, eg int[<2>] to int[2]
+ * 2. To vectors and inferred vectors -> if the vector type can be promoted, e.g. int[<2>] to long[<2>]
+ */
 static bool cast_from_vector(SemaContext *context, Expr *expr, Type *from, Type *to, Type *to_type, bool add_optional, bool is_explicit, bool silent)
 {
 	bool not_to_vector = !type_kind_is_any_vector(to->type_kind);
@@ -1257,7 +1266,9 @@ static bool cast_from_vector(SemaContext *context, Expr *expr, Type *from, Type 
 
 
 /**
- * Cast an enum.
+ * Cast from an enum to other types.
+ * 1. Only explicit casts are allowed.
+ * 2. Casting to any integer is valid for the explicit cast.
  */
 static bool cast_from_enum(SemaContext *context, Expr *expr, Type *from, Type *to, Type *to_type, bool add_optional, bool is_explicit, bool silent)
 {
@@ -1378,24 +1389,38 @@ CAST:
 	return cast_with_optional(expr, to_type, add_optional);
 }
 
-static inline bool cast_float(SemaContext *context, Expr *expr, Type *from, Type *to, Type *to_type, bool add_optional, bool is_explicit, bool silent)
+/**
+ * Casting from a float
+ * 1. To ints and bools -> valid with explicit casts.
+ * 2. To vectors -> valid if the it can cast to vector element type.
+ * 3. To floats -> narrowing if sub expression can be narrowed. Widening if the expr is simple.
+ * 4. To distinct -> try as if it was the base type if const, otherwise fail.
+ */
+static inline bool cast_from_float(SemaContext *context, Expr *expr, Type *from, Type *to, Type *to_type, bool add_optional, bool is_explicit, bool silent)
 {
 RETRY:
 	switch (to->type_kind)
 	{
 		case ALL_INTS:
 		case TYPE_BOOL:
+			// Bool and ints? Explicit casts only.
 			if (is_explicit) goto CAST;
 			goto REQUIRE_CAST;
 		case TYPE_VECTOR:
+			// Check if the underlying element may be cast.
 			to = to->array.base->canonical;
 			goto RETRY;
 		case ALL_FLOATS:
 		{
+			// All explicit casts just work.
 			if (is_explicit) goto CAST;
+			// If widening, only allow simple expressions.
 			ByteSize to_size = type_size(to);
 			ByteSize from_size = type_size(from);
 			if (to_size > from_size) goto ONLY_SIMPLE;
+			// If same size, just cast.
+			if (to_size == from_size) goto CAST;
+			// If const, check it fits.
 			if (expr_is_const(expr) && expr_const_will_overflow(&expr->const_expr, type_flatten(to)->type_kind))
 			{
 				if (silent) return false;
@@ -1403,7 +1428,7 @@ RETRY:
 					           type_quoted_error_string(to_type));
 				return false;
 			}
-			if (to_size == from_size) goto CAST;
+			// Otherwise, check if the underlying code may narrow.
 			Expr *problem = recursive_may_narrow(expr, to);
 			if (problem)
 			{
@@ -1411,9 +1436,11 @@ RETRY:
 				expr = problem;
 				goto REQUIRE_CAST;
 			}
+			// If no problem -> cast.
 			goto CAST;
 		}
 		case TYPE_DISTINCT:
+			// Ignore distinct if casting from a const.
 			if (expr_is_const(expr))
 			{
 				to = type_flatten(to);
@@ -1422,7 +1449,8 @@ RETRY:
 			else
 			{
 				if (silent) return false;
-				bool may_explicit = cast_expr_inner(context, expr_copy(expr), to_type, true, true, false);
+				// Give a good error message, suggesting a cast if the cast had worked
+				bool may_explicit = cast_from_float(context, expr_copy(expr), from, type_flatten(to), to_type, add_optional, true, true);
 				if (may_explicit) goto REQUIRE_CAST;
 				break;
 			}
@@ -1584,7 +1612,7 @@ static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, boo
 		case ALL_INTS:
 			return cast_from_integer(context, expr, from, to, to_type, add_optional, is_explicit, silent);
 		case ALL_FLOATS:
-			return cast_float(context, expr, from, to, to_type, add_optional, is_explicit, silent);
+			return cast_from_float(context, expr, from, to, to_type, add_optional, is_explicit, silent);
 		case TYPE_POISONED:
 			return false;
 		case TYPE_VOID:

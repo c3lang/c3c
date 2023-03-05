@@ -41,12 +41,19 @@ typedef struct
 	LLVMBasicBlockRef next_block;
 }  BreakContinue;
 
+typedef struct DebugFile_
+{
+	FileId file_id;
+	LLVMMetadataRef debug_file;
+} DebugFile;
+
 typedef struct
 {
 	unsigned runtime_version : 8;
 	bool enable_stacktrace : 1;
 	LLVMDIBuilderRef builder;
-	LLVMMetadataRef file;
+	DebugFile *debug_files;
+	DebugFile file;
 	LLVMMetadataRef compile_unit;
 	LLVMMetadataRef function;
 	SourceSpan current_range;
@@ -59,6 +66,7 @@ typedef struct
 	LLVMValueRef stack_slot;
 	LLVMValueRef stack_slot_row;
 } DebugContext;
+
 
 
 typedef struct GenContext_
@@ -225,6 +233,7 @@ typedef struct
 	unsigned readonly; // No reads on pointer
 	unsigned sext; // sign extend
 	unsigned sret; // struct return pointer
+	unsigned uwtable;
 	unsigned writeonly; // No writes on pointer
 	unsigned zext; // zero extend
 } LLVMAttributes;
@@ -466,6 +475,7 @@ LLVMValueRef llvm_get_opt_ref(GenContext *c, Decl *decl);
 #define POP_OPT() c->catch_block = _old_catch; c->opt_var = _old_opt_var
 
 // -- Debug --
+LLVMMetadataRef llvm_get_debug_file(GenContext *c, FileId file_id);
 INLINE bool llvm_use_debug(GenContext *context);
 void llvm_debug_scope_push(GenContext *context, LLVMMetadataRef debug_scope);
 void llvm_debug_scope_pop(GenContext *context);

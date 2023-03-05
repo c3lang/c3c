@@ -726,6 +726,7 @@ static void llvm_codegen_setup()
 	attribute_id.readonly = lookup_attribute("readonly");
 	attribute_id.sext = lookup_attribute("signext");
 	attribute_id.sret = lookup_attribute("sret");
+	attribute_id.uwtable = lookup_attribute("uwtable");
 	attribute_id.writeonly = lookup_attribute("writeonly");
 	attribute_id.zext = lookup_attribute("zeroext");
 	intrinsics_setup = true;
@@ -1239,6 +1240,24 @@ void **llvm_gen(Module** modules, unsigned module_count)
 	return (void**)gen_contexts;
 }
 
+LLVMMetadataRef llvm_get_debug_file(GenContext *c, FileId file_id)
+{
+	VECEACH(c->debug.debug_files, i)
+	{
+		DebugFile *ref = &c->debug.debug_files[i];
+		if (ref->file_id == file_id) return ref->debug_file;
+	}
+	File *f = source_file_by_id(file_id);
+	LLVMMetadataRef file = LLVMDIBuilderCreateFile(c->debug.builder,
+	                                               f->name,
+	                                               strlen(f->name),
+	                                               f->dir_path,
+	                                               strlen(f->dir_path));
+	DebugFile debug_file = { .file_id = file_id, .debug_file = file };
+	vec_add(c->debug.debug_files, debug_file);
+	return file;
+}
+
 static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context)
 {
 	if (!vec_size(module->units)) return NULL;
@@ -1250,11 +1269,14 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 	gencontext_begin_module(gen_context);
 
 	bool only_used = active_target.strip_unused && !active_target.testing;
+
 	FOREACH_BEGIN(CompilationUnit *unit, module->units)
 
 		gencontext_init_file_emit(gen_context, unit);
 		gen_context->debug.compile_unit = unit->llvm.debug_compile_unit;
-		gen_context->debug.file = unit->llvm.debug_file;
+		gen_context->debug.file = (DebugFile){
+				.debug_file = unit->llvm.debug_file,
+				.file_id = unit->file->file_id };
 
 		FOREACH_BEGIN(Decl *initializer, unit->xxlizers)
 			has_elements = true;
@@ -1301,7 +1323,9 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 	FOREACH_BEGIN(CompilationUnit *unit, module->units)
 
 		gen_context->debug.compile_unit = unit->llvm.debug_compile_unit;
-		gen_context->debug.file = unit->llvm.debug_file;
+		gen_context->debug.file = (DebugFile){
+				.debug_file = unit->llvm.debug_file,
+				.file_id = unit->file->file_id };
 
 		FOREACH_BEGIN(Decl *var, unit->vars)
 			if (only_used && !var->is_live) continue;
