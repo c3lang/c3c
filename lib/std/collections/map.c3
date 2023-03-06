@@ -22,7 +22,7 @@ struct HashMap
  * @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
  * @require allocator != null "The allocator must be non-null"
  **/
-fn void HashMap.init(HashMap* map, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator* allocator = mem::current_allocator())
+fn void HashMap.init(HashMap* map, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator* allocator = mem::heap())
 {
 	capacity = math::next_power_of_2(capacity);
 	map.allocator = allocator;
@@ -39,10 +39,10 @@ fn void HashMap.init(HashMap* map, uint capacity = DEFAULT_INITIAL_CAPACITY, flo
  **/
 fn void HashMap.tinit(HashMap* map, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
-	map.init(capacity, load_factor, mem::temp_allocator());
+	map.init(capacity, load_factor, mem::temp());
 }
 
-fn void HashMap.init_from_map(HashMap* map, HashMap* other_map, Allocator* allocator = mem::current_allocator())
+fn void HashMap.init_from_map(HashMap* map, HashMap* other_map, Allocator* allocator = mem::heap())
 {
 	map.init(other_map.table.len, other_map.load_factor, allocator);
 	map.put_all_for_create(other_map);
@@ -50,7 +50,7 @@ fn void HashMap.init_from_map(HashMap* map, HashMap* other_map, Allocator* alloc
 
 fn void HashMap.tinit_from_map(HashMap* map, HashMap* other_map)
 {
-	map.init_from_map(other_map, mem::temp_allocator()) @inline;
+	map.init_from_map(other_map, mem::temp()) @inline;
 }
 
 fn bool HashMap.is_empty(HashMap* map) @inline
@@ -161,10 +161,10 @@ fn void HashMap.free(HashMap* map)
 
 fn Key[] HashMap.key_tlist(HashMap* map)
 {
-	return map.key_list(mem::temp_allocator()) @inline;
+	return map.key_list(mem::temp()) @inline;
 }
 
-fn Key[] HashMap.key_list(HashMap* map, Allocator* allocator = mem::current_allocator())
+fn Key[] HashMap.key_list(HashMap* map, Allocator* allocator = mem::heap())
 {
 	if (!map.count) return Key[] {};
 
@@ -183,10 +183,10 @@ fn Key[] HashMap.key_list(HashMap* map, Allocator* allocator = mem::current_allo
 
 fn Value[] HashMap.value_tlist(HashMap* map)
 {
-	return map.value_list(mem::temp_allocator()) @inline;
+	return map.value_list(mem::temp()) @inline;
 }
 
-fn Value[] HashMap.value_list(HashMap* map, Allocator* allocator = mem::current_allocator())
+fn Value[] HashMap.value_list(HashMap* map, Allocator* allocator = mem::heap())
 {
 	if (!map.count) return Value[] {};
 	Value[] list = calloc(Value, map.count, .using = allocator);

@@ -131,7 +131,7 @@ fn usz! File.println(File file, String string) => file.printn(string);
  * @param [&in] file
  * @require file.file `File must be initialized`
  */
-fn DString File.getline(File* file, Allocator* allocator = mem::current_allocator())
+fn DString File.getline(File* file, Allocator* allocator = mem::heap())
 {
 	DString s = dstring::new_with_capacity(120, allocator);
 	while (!file.eof())
@@ -151,7 +151,7 @@ fn DString File.getline(File* file, Allocator* allocator = mem::current_allocato
  */
 fn String File.tgetline(File* file)
 {
-	return file.getline(mem::temp_allocator()).zstr().as_str();
+	return file.getline(mem::temp()).zstr().as_str();
 }
 
 fn char! File.getc(File* file)

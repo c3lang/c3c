@@ -37,7 +37,7 @@ fn uint! ipv4toint(String s)
 	return out;
 }
 
-fn String! inttoipv4(uint val, Allocator* allocator = mem::current_allocator())
+fn String! inttoipv4(uint val, Allocator* allocator = mem::heap())
 {
 	char[3 * 4 + 3 + 1] buffer;
 	String res = (String)io::bprintf(&buffer, "%d.%d.%d.%d", val >> 24, (val >> 16) & 0xFF, (val >> 8) & 0xFF, val & 0xFF)?;

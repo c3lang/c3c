@@ -9,7 +9,7 @@ typedef Text = VarString;
 
 const usz MIN_CAPACITY = 16;
 
-fn VarString new_with_capacity(usz capacity, Allocator* allocator = mem::current_allocator())
+fn VarString new_with_capacity(usz capacity, Allocator* allocator = mem::heap())
 {
 	if (capacity < MIN_CAPACITY) capacity = MIN_CAPACITY;
 	StringData* data = malloc(StringData, 1, .using = allocator, .end_padding = capacity);
@@ -141,7 +141,7 @@ fn void VarString.append_char32(VarString* str, Char32 c)
     data.chars[data.len++] = (char)(0x80 | (c & 0x3F));
 }
 
-fn VarString VarString.tcopy(VarString* str) => str.copy(mem::temp_allocator());
+fn VarString VarString.tcopy(VarString* str) => str.copy(mem::temp());
 
 fn VarString VarString.copy(VarString* str, Allocator* allocator = null)
 {
@@ -150,14 +150,14 @@ fn VarString VarString.copy(VarString* str, Allocator* allocator = null)
 		if (allocator) return new_with_capacity(0, allocator);
 		return (VarString)null;
 	}
-	if (!allocator) allocator = mem::current_allocator();
+	if (!allocator) allocator = mem::heap();
 	StringData* data = str.data();
 	VarString new_string = new_with_capacity(data.capacity, allocator);
 	mem::copy((char*)new_string.data(), (char*)data, StringData.sizeof + data.len);
 	return new_string;
 }
 
-fn ZString VarString.copy_zstr(VarString* str, Allocator* allocator = mem::current_allocator())
+fn ZString VarString.copy_zstr(VarString* str, Allocator* allocator = mem::heap())
 {
 	usz str_len = str.len();
 	if (!str_len)
@@ -171,12 +171,12 @@ fn ZString VarString.copy_zstr(VarString* str, Allocator* allocator = mem::curre
 	return (ZString)zstr;
 }
 
-fn String VarString.copy_str(VarString* str, Allocator* allocator = mem::current_allocator())
+fn String VarString.copy_str(VarString* str, Allocator* allocator = mem::heap())
 {
 	return (String)str.copy_zstr(allocator)[:str.len()];
 }
 
-fn String VarString.tcopy_str(VarString* str) => str.copy_str(mem::temp_allocator()) @inline;
+fn String VarString.tcopy_str(VarString* str) => str.copy_str(mem::temp()) @inline;
 
 fn bool VarString.equals(VarString str, VarString other_string)
 {
@@ -235,7 +235,7 @@ fn void VarString.append_chars(VarString* this, String str)
 	data.len += other_len;
 }
 
-fn Char32[] VarString.copy_utf32(VarString* this, Allocator* allocator = mem::current_allocator())
+fn Char32[] VarString.copy_utf32(VarString* this, Allocator* allocator = mem::heap())
 {
 	return str::utf8to32(this.str(), allocator) @inline!!;
 }
@@ -309,7 +309,7 @@ fn void VarString.reserve(VarString* str, usz addition) @private
 	*str = (VarString)realloc(data, StringData.sizeof + new_capacity, .using = data.allocator);
 }
 
-fn VarString VarString.new_concat(VarString a, VarString b, Allocator* allocator = mem::current_allocator())
+fn VarString VarString.new_concat(VarString a, VarString b, Allocator* allocator = mem::heap())
 {
 	VarString string = new_with_capacity(a.len() + b.len(), allocator);
 	string.append(a);

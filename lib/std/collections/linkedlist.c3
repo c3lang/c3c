@@ -28,12 +28,12 @@ fn void LinkedList.push_last(LinkedList* list, Type value)
 	list.link_last(value);
 }
 
-fn void LinkedList.init(LinkedList* list, Allocator* alloc = mem::current_allocator())
+fn void LinkedList.init(LinkedList* list, Allocator* alloc = mem::heap())
 {
 	*list = { .allocator = alloc };
 }
 
-fn void LinkedList.tinit(LinkedList* list) => list.init(mem::temp_allocator()) @inline;
+fn void LinkedList.tinit(LinkedList* list) => list.init(mem::temp()) @inline;
 
 /**
  * @require list.allocator
@@ -44,7 +44,7 @@ macro void LinkedList.@free_node(LinkedList &list, Node* node) @private
 }
 macro Node* LinkedList.@alloc_node(LinkedList &list) @private
 {
-	if (!list.allocator) list.allocator = mem::current_allocator();
+	if (!list.allocator) list.allocator = mem::heap();
 	return malloc(Node, .using = list.allocator);
 }
 

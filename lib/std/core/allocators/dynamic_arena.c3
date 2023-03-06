@@ -13,7 +13,7 @@ struct DynamicArenaAllocator
  * @require page_size >= 128
  * @require this != null
  **/
-fn void DynamicArenaAllocator.init(DynamicArenaAllocator* this, usz page_size, Allocator* backing_allocator = mem::current_allocator())
+fn void DynamicArenaAllocator.init(DynamicArenaAllocator* this, usz page_size, Allocator* backing_allocator = mem::heap())
 {
 	this.function = &dynamic_arena_allocator_function;
 	this.page = null;

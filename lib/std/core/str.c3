@@ -161,9 +161,9 @@ fn bool starts_with(String s, String needle)
 	return true;
 }
 
-fn String[] tsplit(String s, String needle) => split(s, needle, mem::temp_allocator()) @inline;
+fn String[] tsplit(String s, String needle) => split(s, needle, mem::temp()) @inline;
 
-fn String[] split(String s, String needle, Allocator* allocator = mem::current_allocator())
+fn String[] split(String s, String needle, Allocator* allocator = mem::heap())
 {
 	usz capacity = 16;
 	usz i = 0;
@@ -244,12 +244,12 @@ fn usz! index_of(String s, String needle)
 	return SearchResult.MISSING!;
 }
 
-fn ZString String.zstrcopy(String s, Allocator* allocator = mem::current_allocator()) => copy_zstring(s, allocator) @inline;
-fn ZString String.zstrtcopy(String s) => copy_zstring(s, mem::temp_allocator()) @inline;
-fn String String.copyz(String s, Allocator* allocator = mem::current_allocator()) => copyz(s, allocator) @inline;
-fn String String.tcopyz(String s) => copyz(s, mem::temp_allocator()) @inline;
+fn ZString String.zstrcopy(String s, Allocator* allocator = mem::heap()) => copy_zstring(s, allocator) @inline;
+fn ZString String.zstrtcopy(String s) => copy_zstring(s, mem::temp()) @inline;
+fn String String.copyz(String s, Allocator* allocator = mem::heap()) => copyz(s, allocator) @inline;
+fn String String.tcopyz(String s) => copyz(s, mem::temp()) @inline;
 
-fn ZString copy_zstring(String s, Allocator* allocator = mem::current_allocator())
+fn ZString copy_zstring(String s, Allocator* allocator = mem::heap())
 {
     usz len = s.len;
     char* str = malloc(len + 1, .using = allocator);
@@ -259,7 +259,7 @@ fn ZString copy_zstring(String s, Allocator* allocator = mem::current_allocator(
 }
 
 
-fn String copyz(String s, Allocator* allocator = mem::current_allocator())
+fn String copyz(String s, Allocator* allocator = mem::heap())
 {
     usz len = s.len;
     char* str = malloc(len + 1, .using = allocator);
@@ -270,7 +270,7 @@ fn String copyz(String s, Allocator* allocator = mem::current_allocator())
 
 fn ZString tcopy_zstring(String s)
 {
-	return copy_zstring(s, mem::temp_allocator());
+	return copy_zstring(s, mem::temp());
 }
 
 fn bool compare(String a, String b)
@@ -299,7 +299,7 @@ fn usz utf8_codepoints(String utf8)
 	return len;
 }
 
-fn Char32[]! utf8to32(String utf8, Allocator* allocator = mem::current_allocator())
+fn Char32[]! utf8to32(String utf8, Allocator* allocator = mem::heap())
 {
 	usz codepoints = conv::utf8_codepoints(utf8);
 	Char32* data = malloc_checked(Char32, codepoints + 1, .using = allocator)?;
@@ -308,7 +308,7 @@ fn Char32[]! utf8to32(String utf8, Allocator* allocator = mem::current_allocator
 	return data[:codepoints];
 }
 
-fn String utf32to8(Char32[] utf32, Allocator* allocator = mem::current_allocator())
+fn String utf32to8(Char32[] utf32, Allocator* allocator = mem::heap())
 {
 	usz len = conv::utf8len_for_utf32(utf32);
 	char* data = malloc_checked(len + 1, .using = allocator)!!;
@@ -317,7 +317,7 @@ fn String utf32to8(Char32[] utf32, Allocator* allocator = mem::current_allocator
 	return data[:len];
 }
 
-fn Char16[]! utf8to16(String utf8, Allocator* allocator = mem::current_allocator())
+fn Char16[]! utf8to16(String utf8, Allocator* allocator = mem::heap())
 {
 	usz len16 = conv::utf16len_for_utf8(utf8);
 	Char16* data = malloc_checked(Char16, len16 + 1, .using = allocator)?;
@@ -327,7 +327,7 @@ fn Char16[]! utf8to16(String utf8, Allocator* allocator = mem::current_allocator
 }
 
 
-fn String! utf16to8(Char16[] utf16, Allocator* allocator = mem::current_allocator())
+fn String! utf16to8(Char16[] utf16, Allocator* allocator = mem::heap())
 {
 	usz len = conv::utf8len_for_utf16(utf16);
 	char* data = malloc_checked(len + 1, .using = allocator)?;
@@ -336,7 +336,7 @@ fn String! utf16to8(Char16[] utf16, Allocator* allocator = mem::current_allocato
 	return data[:len];
 }
 
-	fn String copy(String s, Allocator* allocator = mem::current_allocator())
+	fn String copy(String s, Allocator* allocator = mem::heap())
 {
     usz len = s.len;
     ZString str_copy = copy_zstring(s, allocator) @inline;

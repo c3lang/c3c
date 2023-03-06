@@ -15,7 +15,7 @@ struct List
 /**
  * @require allocator != null "A valid allocator must be provided"
  **/
-fn void List.init(List* list, usz initial_capacity = 16, Allocator* allocator = mem::current_allocator())
+fn void List.init(List* list, usz initial_capacity = 16, Allocator* allocator = mem::heap())
 {
 	list.allocator = allocator;
 	list.size = 0;
@@ -33,7 +33,7 @@ fn void List.init(List* list, usz initial_capacity = 16, Allocator* allocator = 
 
 fn void List.tinit(List* list, usz initial_capacity = 16)
 {
-	list.init(initial_capacity, mem::temp_allocator()) @inline;
+	list.init(initial_capacity, mem::temp()) @inline;
 }
 
 fn void List.push(List* list, Type element) @inline
@@ -151,7 +151,7 @@ fn void List.reserve(List* list, usz min_capacity)
 {
 	if (!min_capacity) return;
 	if (list.capacity >= min_capacity) return;
-	if (!list.allocator) list.allocator = mem::current_allocator();
+	if (!list.allocator) list.allocator = mem::heap();
 	min_capacity = math::next_power_of_2(min_capacity);
     list.entries = realloc_aligned(list.entries, Type.sizeof * min_capacity, .alignment = Type[1].alignof, .using = list.allocator) ?? null;
 	list.capacity = min_capacity;

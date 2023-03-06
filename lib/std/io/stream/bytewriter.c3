@@ -13,7 +13,7 @@ struct ByteWriter
  * @require writer.bytes.len == 0 "Init may not run on on already initialized data"
  * @ensure allocator != null, index == 0
  **/
-fn void ByteWriter.init(ByteWriter* writer, Allocator* allocator = mem::current_allocator())
+fn void ByteWriter.init(ByteWriter* writer, Allocator* allocator = mem::heap())
 {
 	*writer = { .bytes = {}, .allocator = allocator };
 }
@@ -25,7 +25,7 @@ fn void ByteWriter.init(ByteWriter* writer, Allocator* allocator = mem::current_
  **/
 fn void ByteWriter.tinit(ByteWriter* writer)
 {
-	*writer = { .bytes = {}, .allocator = mem::temp_allocator() };
+	*writer = { .bytes = {}, .allocator = mem::temp() };
 }
 
 fn Stream ByteWriter.as_stream(ByteWriter* writer)

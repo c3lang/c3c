@@ -9,7 +9,7 @@ struct Foo { int x; void* bar; }
 typedef IntFooMap = HashMap<int, Foo>;
 typedef IntDoubleMap = HashMap<int, double>;
 
-fn char[] Foo.to_string(Foo* foo, Allocator* allocator = mem::current_allocator())
+fn char[] Foo.to_string(Foo* foo, Allocator* allocator = mem::heap())
 {
 	VarString s = string::new_with_capacity(128, allocator);
 	s.printf("{%s, %p}", foo.x, foo.bar);
@@ -139,12 +139,12 @@ entry:
   %result46 = alloca %"double[]", align 8
   %temp = alloca ptr, align 8
   %error_var = alloca i64, align 8
-  %retparam49 = alloca ptr, align 8
+  %retparam50 = alloca ptr, align 8
   %mark = alloca i64, align 8
   %map3 = alloca %HashMap.2, align 8
-  %retparam52 = alloca i64, align 8
-  %varargslots53 = alloca [1 x %variant], align 16
-  %result54 = alloca %"int[]", align 8
+  %retparam53 = alloca i64, align 8
+  %varargslots54 = alloca [1 x %variant], align 16
+  %result55 = alloca %"int[]", align 8
   call void @llvm.memset.p0.i64(ptr align 8 %map, i8 0, i64 40, i1 false)
   %0 = load ptr, ptr @std.core.mem.thread_allocator, align 8
   call void @"std.collections.map$int$test.Foo$.HashMap.init"(ptr %map, i32 16, float 7.500000e-01, ptr %0)
@@ -273,17 +273,17 @@ after_check12:                                    ; preds = %entry, %after_check
 
 if.then:                                          ; preds = %after_check12
   %81 = load ptr, ptr @std.core.mem.thread_allocator, align 8
-  %82 = call i64 @std.core.mem.allocator.new_temp(ptr %retparam49, i64 262144, ptr %81)
-  %not_err50 = icmp eq i64 %82, 0
-  %83 = call i1 @llvm.expect.i1(i1 %not_err50, i1 true)
-  br i1 %83, label %after_check51, label %assign_optional
+  %82 = call i64 @std.core.mem.allocator.new_temp(ptr %retparam50, i64 262144, ptr %81)
+  %not_err51 = icmp eq i64 %82, 0
+  %83 = call i1 @llvm.expect.i1(i1 %not_err51, i1 true)
+  br i1 %83, label %after_check52, label %assign_optional
 
 assign_optional:                                  ; preds = %if.then
   store i64 %82, ptr %error_var, align 8
   br label %panic_block
 
-after_check51:                                    ; preds = %if.then
-  %84 = load ptr, ptr %retparam49, align 8
+after_check52:                                    ; preds = %if.then
+  %84 = load ptr, ptr %retparam50, align 8
   br label %noerr_block
 
 panic_block:                                      ; preds = %assign_optional
@@ -291,7 +291,7 @@ panic_block:                                      ; preds = %assign_optional
   call void %85(ptr @.panic_msg, i64 27, ptr @.file, i64 6, ptr @.func
   unreachable
 
-noerr_block:                                      ; preds = %after_check51
+noerr_block:                                      ; preds = %after_check52
   store ptr %84, ptr @std.core.mem.thread_temp_allocator, align 8
   br label %if.exit
 
@@ -309,12 +309,12 @@ if.exit:                                          ; preds = %noerr_block, %after
   %92 = call i8 @"std.collections.map$int$double$.HashMap.set"(ptr %map3, i32 7, double 5.200000e+00)
   %93 = load ptr, ptr @std.core.mem.thread_allocator, align 8
   %94 = call { ptr, i64 } @"std.collections.map$int$double$.HashMap.key_list"(ptr %map3, ptr %93)
-  store { ptr, i64 } %94, ptr %result54, align 8
-  %95 = insertvalue %variant undef, ptr %result54, 0
+  store { ptr, i64 } %94, ptr %result55, align 8
+  %95 = insertvalue %variant undef, ptr %result55, 0
   %96 = insertvalue %variant %95, i64 ptrtoint (ptr @"$ct.sa$int" to i64), 1
-  %97 = getelementptr inbounds [1 x %variant], ptr %varargslots53, i64 0, i64 0
+  %97 = getelementptr inbounds [1 x %variant], ptr %varargslots54, i64 0, i64 0
   store %variant %96, ptr %97, align 16
-  %98 = call i64 @std.io.printfn(ptr %retparam52, ptr @.str.11, i64 2, ptr %varargslots53, i64 1)
+  %98 = call i64 @std.io.printfn(ptr %retparam53, ptr @.str.11, i64 2, ptr %varargslots54, i64 1)
   %99 = load ptr, ptr %temp, align 8
   %100 = getelementptr inbounds %TempAllocator, ptr %99, i32 0, i32 0
   %101 = load i64, ptr %mark, align 8

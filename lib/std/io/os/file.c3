@@ -46,8 +46,8 @@ $else:
 	{
 	$if (env::os_is_win32()):
 		CFile file = (CFile)_wfopen(
-			str::utf8to16(filename, mem::temp_allocator())!!,
-			str::utf8to16(mode, mem::temp_allocator())!!);
+			str::utf8to16(filename, mem::temp())!!,
+			str::utf8to16(mode, mem::temp())!!);
 	$else:
 		CFile file = libc::fopen(filename.zstrtcopy(), mode.zstrtcopy());
 	$endif;
@@ -70,8 +70,8 @@ $else:
 	{
 	$if (env::os_is_win32()):
 		file = (CFile)_wfreopen(
-			str::utf8to16(filename, mem::temp_allocator())!!,
-			str::utf8to16(mode, mem::temp_allocator())!!,
+			str::utf8to16(filename, mem::temp())!!,
+			str::utf8to16(mode, mem::temp())!!,
 			file);
 	$else:
 		file = libc::freopen(filename.zstrtcopy(), mode.zstrtcopy(), file);

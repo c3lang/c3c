@@ -193,7 +193,7 @@ macro bool! Formatter.print_with_function(Formatter* this, variant arg)
 		}
 		@pool()
 		{
-			this.out_substr(to_string(arg.ptr, mem::temp_allocator()))?;
+			this.out_substr(to_string(arg.ptr, mem::temp()))?;
 			return true;
 		};
     }

@@ -9,7 +9,7 @@ enum Foo
 
 fn void print_pages()
 {
-	mem::temp_allocator().print_pages(io::stdout());
+	mem::temp().print_pages(io::stdout());
 }
 
 fn void setstring(char* dst, String str)
@@ -73,8 +73,8 @@ fn void main()
 	{
 		io::printf("Talloc: %p\n", (void*)tmalloc(22));
 	};
-	testAllocator(mem::temp_allocator(), 126);
-	testAllocator(mem::temp_allocator(), 12600);
+	testAllocator(mem::temp(), 126);
+	testAllocator(mem::temp(), 12600);
 	ArenaAllocator aa;
 	aa.init(&&char[1024] {});
 	testAllocator(&aa, 126);

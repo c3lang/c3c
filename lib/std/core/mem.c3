@@ -195,7 +195,7 @@ macro type_alloc_must_be_aligned($Type)
  * @require $vacount > 0 && $vacount < 3 "Expected size, type, or type + len"
  * @require $vacount != 2 || $checks($vatype(0).sizeof) "Expected 'malloc(Foo, 12)'"
  **/
-macro malloc(..., Allocator* using = mem::thread_allocator, usz end_padding = 0) @builtin
+macro malloc(..., Allocator* using = mem::heap(), usz end_padding = 0) @builtin
 {
 	return malloc_checked($vasplat(), .using = using, .end_padding = end_padding)!!;
 }
@@ -204,7 +204,7 @@ macro malloc(..., Allocator* using = mem::thread_allocator, usz end_padding = 0)
  * @require $vacount > 0 && $vacount < 3 "Expected size, type, or type + len"
  * @require $vacount != 2 || $checks($vatype(0).sizeof) "Expected 'malloc(Foo, 12)'"
  **/
-macro malloc_checked(..., Allocator* using = mem::thread_allocator, usz end_padding = 0) @builtin
+macro malloc_checked(..., Allocator* using = mem::heap(), usz end_padding = 0) @builtin
 {
 	$if ($checks($vatype(0).sizeof)):
 		var $Type = $vatype(0);
@@ -226,7 +226,7 @@ macro malloc_checked(..., Allocator* using = mem::thread_allocator, usz end_padd
  * @require $vacount != 2 || $checks($vatype(0).sizeof) "Expected 'malloc(Foo, 12)'"
  * @require alignment && math::is_power_of_2(alignment)
  **/
-macro malloc_aligned(..., usz alignment = 0, usz end_padding = 0, Allocator* using = mem::thread_allocator) @builtin
+macro malloc_aligned(..., usz alignment = 0, usz end_padding = 0, Allocator* using = mem::heap()) @builtin
 {
 	$if ($checks($vatype(0).sizeof)):
 		var $Type = $vatype(0);
@@ -249,7 +249,7 @@ macro char[] alloc_bytes(usz bytes) @deprecated => malloc(char, bytes);
  * @require $vacount > 0 && $vacount < 3 "Expected size, type, or type + len"
  * @require $vacount != 2 || $checks($vatype(0).sizeof) "Expected 'malloc(Foo, 12)'"
  **/
-macro calloc(..., Allocator* using = mem::thread_allocator, usz end_padding = 0) @builtin
+macro calloc(..., Allocator* using = mem::heap(), usz end_padding = 0) @builtin
 {
 	return calloc_checked($vasplat(), .using = using, .end_padding = end_padding)!!;
 }
@@ -258,7 +258,7 @@ macro calloc(..., Allocator* using = mem::thread_allocator, usz end_padding = 0)
  * @require $vacount > 0 && $vacount < 3 "Expected size, type, or type + len"
  * @require $vacount != 2 || $checks($vatype(0).sizeof) "Expected 'malloc(Foo, 12)'"
  **/
-macro calloc_checked(..., Allocator* using = mem::thread_allocator, usz end_padding = 0) @builtin
+macro calloc_checked(..., Allocator* using = mem::heap(), usz end_padding = 0) @builtin
 {
 	$if ($checks($vatype(0).sizeof)):
 		var $Type = $vatype(0);
@@ -280,7 +280,7 @@ macro calloc_checked(..., Allocator* using = mem::thread_allocator, usz end_padd
  * @require $vacount != 2 || $checks($vatype(0).sizeof) "Expected 'malloc(Foo, 12)'"
  * @require alignment && math::is_power_of_2(alignment)
  **/
-macro calloc_aligned(..., usz alignment = 0, Allocator* using = mem::thread_allocator, usz end_padding = 0) @builtin
+macro calloc_aligned(..., usz alignment = 0, Allocator* using = mem::heap(), usz end_padding = 0) @builtin
 {
 	$if ($checks($vatype(0).sizeof)):
 		var $Type = $vatype(0);
@@ -295,12 +295,12 @@ macro calloc_aligned(..., usz alignment = 0, Allocator* using = mem::thread_allo
 	$endif;
 }
 
-fn void* realloc(void *ptr, usz new_size, Allocator* using = mem::thread_allocator) @builtin @inline
+fn void* realloc(void *ptr, usz new_size, Allocator* using = mem::heap()) @builtin @inline
 {
 	return using.realloc(ptr, new_size)!!;
 }
 
-fn void*! realloc_checked(void *ptr, usz new_size, Allocator* using = mem::thread_allocator) @builtin @inline
+fn void*! realloc_checked(void *ptr, usz new_size, Allocator* using = mem::heap()) @builtin @inline
 {
 	return using.realloc(ptr, new_size);
 }
@@ -308,15 +308,15 @@ fn void*! realloc_checked(void *ptr, usz new_size, Allocator* using = mem::threa
 /**
  * @require alignment && math::is_power_of_2(alignment)
  */
-fn void*! realloc_aligned(void *ptr, usz new_size, usz alignment, Allocator* using = mem::thread_allocator) @builtin @inline
+fn void*! realloc_aligned(void *ptr, usz new_size, usz alignment, Allocator* using = mem::heap()) @builtin @inline
 {
 	return using.realloc_aligned(ptr, new_size, alignment);
 }
 
-macro void free(void* ptr, Allocator* using = mem::thread_allocator) @builtin => using.free(ptr)!!;
-macro void! free_checked(void* ptr, Allocator* using = mem::thread_allocator) @builtin => using.free(ptr);
-macro void free_aligned(void* ptr, Allocator* using = mem::thread_allocator) @builtin => using.free_aligned(ptr)!!;
-macro void! free_aligned_checked(void* ptr, Allocator* using = mem::thread_allocator) @builtin => using.free_aligned(ptr);
+macro void free(void* ptr, Allocator* using = mem::heap()) @builtin => using.free(ptr)!!;
+macro void! free_checked(void* ptr, Allocator* using = mem::heap()) @builtin => using.free(ptr);
+macro void free_aligned(void* ptr, Allocator* using = mem::heap()) @builtin => using.free_aligned(ptr)!!;
+macro void! free_aligned_checked(void* ptr, Allocator* using = mem::heap()) @builtin => using.free_aligned(ptr);
 
 /**
  * Run with a specific allocator inside of the macro body.
@@ -385,7 +385,9 @@ macro void @pool(;@body) @builtin
 tlocal Allocator* thread_allocator @private = allocator::LIBC_ALLOCATOR;
 tlocal TempAllocator* thread_temp_allocator @private = null;
 
-macro TempAllocator* temp_allocator()
+macro TempAllocator* temp_allocator() => temp();
+
+macro TempAllocator* temp()
 {
 	if (!thread_temp_allocator)
 	{
@@ -403,10 +405,8 @@ macro TempAllocator* temp_allocator()
 	return thread_temp_allocator;
 }
 
-macro Allocator* current_allocator()
-{
-	return thread_allocator;
-}
+macro Allocator* current_allocator() => thread_allocator;
+macro Allocator* heap() => thread_allocator;
 
 $if (!env::COMPILER_LIBC_AVAILABLE && env::ARCH_TYPE == ArchType.WASM32 || env::ARCH_TYPE == ArchType.WASM64):
 

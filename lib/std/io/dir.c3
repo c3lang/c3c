@@ -17,7 +17,7 @@ fn String! getcwd(Allocator* allocator = mem::default_allocator())
 
 fn String! tgetcwd()
 {
-	return getcwd(mem::temp_allocator()) @inline;
+	return getcwd(mem::temp()) @inline;
 }
 
 macro bool is_separator(char c)

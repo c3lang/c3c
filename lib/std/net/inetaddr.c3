@@ -54,7 +54,7 @@ fn void! InetAddress.to_format(InetAddress* addr, Formatter* formatter)
 	formatter.printf("%d.%d.%d.%d", addr.ipv4.a, addr.ipv4.b, addr.ipv4.c, addr.ipv4.d)?;
 }
 
-fn String! InetAddress.to_string(InetAddress* addr, Allocator* allocator = mem::current_allocator())
+fn String! InetAddress.to_string(InetAddress* addr, Allocator* allocator = mem::heap())
 {
 	if (addr.is_ipv6)
 	{
