@@ -256,10 +256,12 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 			}
 			Decl *decl = const_init->type->decl;
 			Decl **members = decl->strukt.members;
+			bool is_packed = decl->is_packed;
 			uint32_t count = vec_size(members);
 			if (decl->decl_kind == DECL_UNION && count) count = 1;
 			LLVMValueRef *entries = NULL;
 			bool was_modified = false;
+			ByteSize prev_size = 0;
 			for (MemberIndex i = 0; i < count; i++)
 			{
 				if (members[i]->padding)
@@ -273,12 +275,23 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 				{
 					was_modified = true;
 				}
-				AlignSize new_align = llvm_abi_alignment(c, element_type);
-				AlignSize expected_align = llvm_abi_alignment(c, expected_type);
-				if (i != 0 && new_align < expected_align)
+				// We may need to adjust alignment here due to the lack
+				// of LLVM union support (while still being strict about structs)
+				if (i > 0 && was_modified)
 				{
-					vec_add(entries, llvm_emit_const_padding(c, expected_align - new_align));
+					// Let's look at the old offset.
+					ByteSize old_offset = members[i - 1]->offset;
+					// What is the expected offset we would get?
+					ByteSize new_offset = is_packed ? old_offset + prev_size : aligned_offset(old_offset + prev_size, llvm_abi_alignment(c, element_type));
+					// Add the padding we have built in.
+					new_offset += members[i]->padding;
+					// If this offset is too small, add const padding.
+					if (new_offset < members[i]->offset)
+					{
+						vec_add(entries, llvm_emit_const_padding(c, members[i]->offset - new_offset));
+					}
 				}
+				prev_size = llvm_abi_size(c, element_type);
 				vec_add(entries, element);
 			}
 			if (decl->strukt.padding)

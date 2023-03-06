@@ -95,6 +95,14 @@ fn void List.insert_at(List* list, usz index, Type type)
     list.entries[index] = type;
 }
 
+/**
+ * @require index < list.size
+ **/
+fn void List.set_at(List* list, usz index, Type type)
+{
+    list.entries[index] = type;
+}
+
 fn void List.remove_last(List* list)
 {
     list.size--;
