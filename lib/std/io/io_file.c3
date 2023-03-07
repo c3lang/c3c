@@ -36,7 +36,7 @@ fn void! File.memopen(File* file, char[] data, String mode)
 {
 	@pool()
 	{
-		file.file = libc::memopen(data.ptr, data.len, mode.zstrtcopy(), file.file);
+		file.file = libc::memopen(data.ptr, data.len, mode.zstr_tcopy(), file.file);
 		// TODO errors
 	};
 }
@@ -131,9 +131,9 @@ fn usz! File.println(File file, String string) => file.printn(string);
  * @param [&in] file
  * @require file.file `File must be initialized`
  */
-fn DString File.getline(File* file, Allocator* allocator = mem::heap())
+fn DString File.getline(File* file, Allocator* using = mem::heap())
 {
-	DString s = dstring::new_with_capacity(120, allocator);
+	DString s = dstring::new_with_capacity(120, using);
 	while (!file.eof())
 	{
 		int c = libc::fgetc(file.file);

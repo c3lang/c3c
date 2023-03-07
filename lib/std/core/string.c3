@@ -9,7 +9,7 @@ typedef Text = VarString;
 
 const usz MIN_CAPACITY = 16;
 
-fn VarString new_with_capacity(usz capacity, Allocator* allocator = mem::heap())
+fn VarString new_with_capacity(usz capacity, Allocator* allocator = mem::heap()) @deprecated
 {
 	if (capacity < MIN_CAPACITY) capacity = MIN_CAPACITY;
 	StringData* data = malloc(StringData, 1, .using = allocator, .end_padding = capacity);
@@ -19,7 +19,7 @@ fn VarString new_with_capacity(usz capacity, Allocator* allocator = mem::heap())
 	return (VarString)data;
 }
 
-fn VarString new(String c)
+fn VarString new(String c) @deprecated
 {
 	usz len = c.len;
 	VarString str = new_with_capacity(len);

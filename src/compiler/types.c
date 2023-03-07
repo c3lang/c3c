@@ -1916,7 +1916,14 @@ static inline Type *type_find_max_ptr_type(Type *type, Type *other)
 		// Decay foo[n]* to foo*
 		other_pointer_type = type_get_ptr(other_pointer_type->array.base);
 	}
-
+	if (type_is_subtype(pointer_type->canonical, other_pointer_type->canonical))
+	{
+		return type;
+	}
+	if (type_is_subtype(other_pointer_type->canonical, pointer_type->canonical))
+	{
+		return other;
+	}
 	Type *max_type = type_find_max_type(pointer_type, other_pointer_type);
 	if (!max_type) return NULL;
 	return type_get_ptr(max_type);

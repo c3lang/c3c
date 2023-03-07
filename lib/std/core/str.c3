@@ -1,4 +1,4 @@
-module std::core::str;
+module std::core::string;
 
 typedef ZString = distinct char*;
 typedef String = char[];
@@ -22,6 +22,213 @@ fault NumberConversion
 	MALFORMED_FLOAT,
 	FLOAT_OUT_OF_RANGE,
 }
+
+macro String printf(String fmt, ..., Allocator* using = mem::heap())
+{
+	if (using == mem::temp())
+	{
+		DString str;
+		str.tinit();
+		str.printf(fmt, $vasplat());
+		return str.str();
+	}
+	@pool()
+	{
+		DString str;
+		str.tinit();
+		str.printf(fmt, $vasplat());
+		return str.copy_str(using);
+	};
+}
+
+macro String tprintf(String fmt, ...)
+{
+	DString str;
+	str.tinit();
+	str.printf(fmt, $vasplat());
+	return str.str();
+}
+
+macro bool char_in_set(char c, String set)
+{
+	foreach (ch : set) if (ch == c) return true;
+	return false;
+}
+
+/**
+ * @param [in] string
+ * @param [in] to_trim
+ **/
+fn String String.trim(String string, String to_trim = "\t\n\r ")
+{
+	usz start = 0;
+	usz len = string.len;
+	while (start < len && char_in_set(string[start], to_trim)) start++;
+	if (start == len) return string[:0];
+	usz end = len - 1;
+	while (end > start && char_in_set(string[end], to_trim)) end--;
+	return string[start..end];
+}
+
+/**
+ * @param [in] string
+ * @param [in] needle
+ **/
+fn bool String.starts_with(String string, String needle)
+{
+	if (needle.len > string.len) return false;
+	if (!needle.len) return true;
+	return string[:needle.len] == needle;
+}
+
+
+/**
+ * Split a string into parts, e.g "a|b|c" split with "|" yields { "a", "b", "c" }
+ *
+ * @param [in] s
+ * @param [in] needle
+ * @param [&inout] using "The allocator, defaults to the heap allocator"
+ * @param max "Max number of elements, 0 means no limit, defaults to 0"
+ * @require needle.len > 0 "The needle must be at least 1 character long"
+ * @ensure return.len > 0
+ **/
+fn String[] String.split(String s, String needle, usz max = 0, Allocator* using = mem::heap())
+{
+	usz capacity = 16;
+	usz i = 0;
+	String* holder = malloc(String, capacity, .using = using);
+	bool no_more = false;
+	while (!no_more)
+	{
+		usz! index = i == max - 1 ? SearchResult.MISSING! : s.index_of(needle);
+		String res @noinit;
+		if (try index)
+		{
+			res = s[:index];
+			s = s[index + needle.len..];
+		}
+		else
+		{
+			res = s;
+			no_more = true;
+		}
+		if (i == capacity)
+		{
+			capacity *= 2;
+			holder = realloc(holder, String.sizeof * capacity, .using = using);
+		}
+		holder[i++] = res;
+	}
+	return holder[:i];
+}
+
+/**
+ * This function is identical to String.split, but implicitly uses the
+ * temporary allocator.
+ *
+ * @param [in] s
+ * @param [in] needle
+ * @param max "Max number of elements, 0 means no limit, defaults to 0"
+ **/
+fn String[] tsplit(String s, String needle, usz max = 0)
+{
+	return s.split(needle, max, mem::temp()) @inline;
+}
+
+/**
+ * Find the index of the first incidence of a string.
+ *
+ * @param [in] s
+ * @param [in] needle
+ * @pure
+ * @ensure return < s.len
+ * @require needle.len > 0 "The needle must be len 1 or more"
+ **/
+fn usz! String.index_of(String s, String needle)
+{
+	usz match = 0;
+	usz needed = needle.len;
+	usz index_start = 0;
+	char search = needle[0];
+	foreach (usz i, char c : s)
+	{
+		if (c == search)
+		{
+			if (!match) index_start = i;
+			match++;
+			if (match == needed) return index_start;
+			search = needle[match];
+			continue;
+		}
+		if (match)
+		{
+			match = 0;
+			search = needle[0];
+		}
+	}
+	return SearchResult.MISSING!;
+}
+
+/**
+ * Find the index of the last incidence of a string.
+ *
+ * @param [in] s
+ * @param [in] needle
+ * @pure
+ * @ensure return < s.len
+ * @require needle.len > 0 "The needle must be len 1 or more"
+ **/
+fn usz! String.rindex_of(String s, String needle)
+{
+	usz match = 0;
+	usz needed = needle.len;
+	usz index_start = 0;
+	char search = needle[^1];
+	foreach_r (usz i, char c : s)
+	{
+		if (c == search)
+		{
+			if (!match) index_start = i;
+			match++;
+			if (match == needed) return index_start - needle.len + 1;
+			search = needle[^(match + 1)];
+			continue;
+		}
+		if (match)
+		{
+			match = 0;
+			search = needle[^1];
+		}
+	}
+	return SearchResult.MISSING!;
+}
+
+fn ZString String.zstr_copy(String s, Allocator* using = mem::heap())
+{
+    usz len = s.len;
+    char* str = malloc(len + 1, .using = using);
+    mem::copy(str, s.ptr, len);
+    str[len] = 0;
+    return (ZString)str;
+}
+
+fn ZString String.zstr_tcopy(String s) => s.zstr_copy(mem::temp()) @inline;
+
+fn String String.copy(String s, Allocator* using = mem::heap())
+{
+    usz len = s.len;
+    char* str = malloc(len + 1, .using = using);
+    mem::copy(str, s.ptr, len);
+    str[len] = 0;
+    return str[:len];
+}
+
+fn String String.tcopy(String s) => s.copy(mem::temp()) @inline;
+
+fn String ZString.copy(ZString z, Allocator* using = mem::heap()) => z.as_str().copy(using) @inline;
+fn String ZString.tcopy(ZString z) => z.as_str().copy(mem::temp()) @inline;
+
+module std::core::str;
 
 fn VarString join(String[] s, String joiner)
 {
@@ -140,138 +347,21 @@ fn uint! to_uint(String str) => to_integer(uint, str);
 fn ushort! to_ushort(String str) => to_integer(ushort, str);
 fn char! to_uchar(String str) => to_integer(char, str);
 
-fn String trim(String string, String to_trim = "\t\n\r ")
-{
-	usz start = 0;
-	usz len = string.len;
-	while (start < len && char_in_set(string[start], to_trim)) start++;
-	if (start == len) return string[:0];
-	usz end = len - 1;
-	while (end > start && char_in_set(string[end], to_trim)) end--;
-	return string[start..end];
-}
+fn String trim(String string, String to_trim = "\t\n\r ") @deprecated => string.trim(to_trim);
 
-fn bool starts_with(String s, String needle)
-{
-	if (needle.len > s.len) return false;
-	foreach (i, c : needle)
-	{
-		if (c != s[i]) return false;
-	}
-	return true;
-}
+fn bool starts_with(String s, String needle) @deprecated => s.starts_with(needle);
 
-fn String[] tsplit(String s, String needle) => split(s, needle, mem::temp()) @inline;
+fn String[] tsplit(String s, String needle) @deprecated => s.split(needle, .using = mem::temp()) @inline;
+fn String[] split(String s, String needle, Allocator* using = mem::heap()) @deprecated => s.split(needle, .using = using);
+fn usz! rindex_of(String s, String needle) @deprecated => s.rindex_of(needle);
+fn usz! index_of(String s, String needle) @deprecated => s.index_of(needle);
 
-fn String[] split(String s, String needle, Allocator* allocator = mem::heap())
-{
-	usz capacity = 16;
-	usz i = 0;
-	String* holder = malloc(String, capacity, .using = allocator);
-	while (s.len)
-	{
-		usz! index = index_of(s, needle);
-		String res @noinit;
-		if (try index)
-		{
-			res = s[:index];
-			s = s[index + needle.len..];
-		}
-		else
-		{
-			res = s;
-			s = s[:0];
-		}
-		if (i == capacity)
-		{
-			capacity *= 2;
-			holder = realloc(holder, String.sizeof * capacity, .using = allocator);
-		}
-		holder[i++] = res;
-	}
-	return holder[:i];
-}
+fn ZString String.zstrcopy(String s, Allocator* using = mem::heap()) @deprecated => s.zstr_copy(using);
+fn ZString String.zstrtcopy(String s) @deprecated => s.zstr_tcopy();
 
-fn usz! rindex_of(String s, String needle)
-{
-	usz match = 0;
-	usz needed = needle.len;
-	if (!needed) return SearchResult.MISSING!;
-	usz index_start = 0;
-	char search = needle[0];
-	foreach_r (usz i, char c : s)
-	{
-		if (c == search)
-		{
-			if (!match) index_start = i;
-			match++;
-			if (match == needed) return index_start;
-			search = needle[match];
-			continue;
-		}
-		if (match)
-		{
-			match = 0;
-			search = needle[0];
-		}
-	}
-	return SearchResult.MISSING!;
-}
-
-fn usz! index_of(String s, String needle)
-{
-	usz match = 0;
-	usz needed = needle.len;
-	if (!needed) return SearchResult.MISSING!;
-	usz index_start = 0;
-	char search = needle[0];
-	foreach (usz i, char c : s)
-	{
-		if (c == search)
-		{
-			if (!match) index_start = i;
-			match++;
-			if (match == needed) return index_start;
-			search = needle[match];
-			continue;
-		}
-		if (match)
-		{
-			match = 0;
-			search = needle[0];
-		}
-	}
-	return SearchResult.MISSING!;
-}
-
-fn ZString String.zstrcopy(String s, Allocator* allocator = mem::heap()) => copy_zstring(s, allocator) @inline;
-fn ZString String.zstrtcopy(String s) => copy_zstring(s, mem::temp()) @inline;
-fn String String.copyz(String s, Allocator* allocator = mem::heap()) => copyz(s, allocator) @inline;
-fn String String.tcopyz(String s) => copyz(s, mem::temp()) @inline;
-
-fn ZString copy_zstring(String s, Allocator* allocator = mem::heap())
-{
-    usz len = s.len;
-    char* str = malloc(len + 1, .using = allocator);
-    mem::copy(str, s.ptr, len);
-    str[len] = 0;
-    return (ZString)str;
-}
-
-
-fn String copyz(String s, Allocator* allocator = mem::heap())
-{
-    usz len = s.len;
-    char* str = malloc(len + 1, .using = allocator);
-    mem::copy(str, s.ptr, len);
-    str[len] = 0;
-    return str[:len];
-}
-
-fn ZString tcopy_zstring(String s)
-{
-	return copy_zstring(s, mem::temp());
-}
+fn ZString copy_zstring(String s, Allocator* using = mem::heap()) @deprecated => s.zstr_copy(using);
+fn String copyz(String s, Allocator* using = mem::heap()) @deprecated => s.copy(using);
+fn ZString tcopy_zstring(String s) @deprecated => s.zstr_tcopy();
 
 fn bool compare(String a, String b)
 {
@@ -282,6 +372,7 @@ fn bool compare(String a, String b)
 	}
 	return true;
 }
+
 fault UnicodeResult
 {
 	INVALID_UTF8,
@@ -299,54 +390,54 @@ fn usz utf8_codepoints(String utf8)
 	return len;
 }
 
-fn Char32[]! utf8to32(String utf8, Allocator* allocator = mem::heap())
+fn Char32[]! utf8to32(String utf8, Allocator* using = mem::heap())
 {
 	usz codepoints = conv::utf8_codepoints(utf8);
-	Char32* data = malloc_checked(Char32, codepoints + 1, .using = allocator)?;
+	Char32* data = malloc_checked(Char32, codepoints + 1, .using = using)?;
 	conv::utf8to32_unsafe(utf8, data)?;
 	data[codepoints] = 0;
 	return data[:codepoints];
 }
 
-fn String utf32to8(Char32[] utf32, Allocator* allocator = mem::heap())
+fn String utf32to8(Char32[] utf32, Allocator* using = mem::heap())
 {
 	usz len = conv::utf8len_for_utf32(utf32);
-	char* data = malloc_checked(len + 1, .using = allocator)!!;
+	char* data = malloc_checked(len + 1, .using = using)!!;
 	conv::utf32to8_unsafe(utf32, data);
 	data[len] = 0;
 	return data[:len];
 }
 
-fn Char16[]! utf8to16(String utf8, Allocator* allocator = mem::heap())
+fn Char16[]! utf8to16(String utf8, Allocator* using = mem::heap())
 {
 	usz len16 = conv::utf16len_for_utf8(utf8);
-	Char16* data = malloc_checked(Char16, len16 + 1, .using = allocator)?;
+	Char16* data = malloc_checked(Char16, len16 + 1, .using = using)?;
 	conv::utf8to16_unsafe(utf8, data)?;
 	data[len16] = 0;
 	return data[:len16];
 }
 
 
-fn String! utf16to8(Char16[] utf16, Allocator* allocator = mem::heap())
+fn String! utf16to8(Char16[] utf16, Allocator* using = mem::heap())
 {
 	usz len = conv::utf8len_for_utf16(utf16);
-	char* data = malloc_checked(len + 1, .using = allocator)?;
+	char* data = malloc_checked(len + 1, .using = using)?;
 	conv::utf16to8_unsafe(utf16, data)?;
 	data[len] = 0;
 	return data[:len];
 }
 
-	fn String copy(String s, Allocator* allocator = mem::heap())
+fn String copy(String s, Allocator* using = mem::heap()) @deprecated
 {
     usz len = s.len;
-    ZString str_copy = copy_zstring(s, allocator) @inline;
+    ZString str_copy = s.zstr_copy(using) @inline;
     return str_copy[:len];
 }
 
-fn String tcopy(String s)
+fn String tcopy(String s) @deprecated
 {
     usz len = s.len;
-    ZString str_copy = tcopy_zstring(s) @inline;
+    ZString str_copy = s.zstr_tcopy() @inline;
     return str_copy[:len];
 }
 

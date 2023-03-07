@@ -20,15 +20,15 @@ struct HashMap
  * @require load_factor > 0.0 "The load factor must be higher than 0"
  * @require !map.allocator "Map was already initialized"
  * @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
- * @require allocator != null "The allocator must be non-null"
+ * @require using != null "The allocator must be non-null"
  **/
-fn void HashMap.init(HashMap* map, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator* allocator = mem::heap())
+fn void HashMap.init(HashMap* map, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator* using = mem::heap())
 {
 	capacity = math::next_power_of_2(capacity);
-	map.allocator = allocator;
+	map.allocator = using;
 	map.load_factor = load_factor;
 	map.threshold = (uint)(capacity * load_factor);
-	map.table = calloc(Entry*, capacity, .using = allocator);
+	map.table = calloc(Entry*, capacity, .using = using);
 }
 
 /**
@@ -42,9 +42,9 @@ fn void HashMap.tinit(HashMap* map, uint capacity = DEFAULT_INITIAL_CAPACITY, fl
 	map.init(capacity, load_factor, mem::temp());
 }
 
-fn void HashMap.init_from_map(HashMap* map, HashMap* other_map, Allocator* allocator = mem::heap())
+fn void HashMap.init_from_map(HashMap* map, HashMap* other_map, Allocator* using = mem::heap())
 {
-	map.init(other_map.table.len, other_map.load_factor, allocator);
+	map.init(other_map.table.len, other_map.load_factor, using);
 	map.put_all_for_create(other_map);
 }
 
@@ -164,11 +164,11 @@ fn Key[] HashMap.key_tlist(HashMap* map)
 	return map.key_list(mem::temp()) @inline;
 }
 
-fn Key[] HashMap.key_list(HashMap* map, Allocator* allocator = mem::heap())
+fn Key[] HashMap.key_list(HashMap* map, Allocator* using = mem::heap())
 {
 	if (!map.count) return Key[] {};
 
-	Key[] list = calloc(Key, map.count, .using = allocator);
+	Key[] list = calloc(Key, map.count, .using = using);
 	usz index = 0;
 	foreach (Entry* entry : map.table)
 	{
@@ -186,10 +186,10 @@ fn Value[] HashMap.value_tlist(HashMap* map)
 	return map.value_list(mem::temp()) @inline;
 }
 
-fn Value[] HashMap.value_list(HashMap* map, Allocator* allocator = mem::heap())
+fn Value[] HashMap.value_list(HashMap* map, Allocator* using = mem::heap())
 {
 	if (!map.count) return Value[] {};
-	Value[] list = calloc(Value, map.count, .using = allocator);
+	Value[] list = calloc(Value, map.count, .using = using);
 	usz index = 0;
 	foreach (Entry* entry : map.table)
 	{

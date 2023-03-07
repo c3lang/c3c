@@ -46,9 +46,9 @@ fault JsonParsingError
 	INVALID_NUMBER,
 }
 
-fn void JsonParser.init(JsonParser* parser, Stream s, Allocator* allocator = mem::heap())
+fn void JsonParser.init(JsonParser* parser, Stream s, Allocator* using = mem::heap())
 {
-	*parser = { .last_string = dstring::new_with_capacity(64, allocator), .stream = s, .allocator = allocator };
+	*parser = { .last_string = dstring::new_with_capacity(64, using), .stream = s, .allocator = using };
 }
 
 fn Object*! JsonParser.parse_from_token(JsonParser* this, JsonTokenType token)

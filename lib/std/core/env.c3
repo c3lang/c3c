@@ -167,7 +167,7 @@ fn String! get_var(String name)
 $if (COMPILER_LIBC_AVAILABLE && OS_TYPE != OsType.WIN32):
 	@pool()
 	{
-		ZString val = libc::getenv(name.zstrtcopy());
+		ZString val = libc::getenv(name.zstr_tcopy());
 		return val ? val.as_str() : SearchResult.MISSING!;
 	};
 $else:
@@ -186,7 +186,7 @@ fn void set_var(String name, String value, bool overwrite = true)
 $if (COMPILER_LIBC_AVAILABLE && OS_TYPE != OsType.WIN32):
 	@pool()
 	{
-		if (libc::setenv(name.zstrtcopy(), value.zstrcopy(), (int)overwrite))
+		if (libc::setenv(name.zstr_tcopy(), value.zstr_copy(), (int)overwrite))
 		{
 			unreachable();
 		}
@@ -203,7 +203,7 @@ fn void clear_var(String name)
 $if (COMPILER_LIBC_AVAILABLE && OS_TYPE != OsType.WIN32):
 	@pool()
 	{
-		if (libc::unsetenv(name.zstrtcopy()))
+		if (libc::unsetenv(name.zstr_tcopy()))
 		{
 			unreachable();
 		}

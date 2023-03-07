@@ -25,7 +25,7 @@ fault FormattingFault
 }
 
 typedef OutputFn = fn void!(char c, void* buffer);
-typedef ToStringFunction = fn String(void* value, Allocator *allocator);
+typedef ToStringFunction = fn String(void* value, Allocator *using);
 typedef ToFormatFunction = fn void!(void* value, Formatter* formatter);
 typedef FloatType = double;
 

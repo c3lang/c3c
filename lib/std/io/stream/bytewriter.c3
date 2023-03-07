@@ -9,19 +9,18 @@ struct ByteWriter
 
 /**
  * @param [&inout] writer
- * @param [&in] allocator
+ * @param [&in] using
  * @require writer.bytes.len == 0 "Init may not run on on already initialized data"
- * @ensure allocator != null, index == 0
+ * @ensure using != null, index == 0
  **/
-fn void ByteWriter.init(ByteWriter* writer, Allocator* allocator = mem::heap())
+fn void ByteWriter.init(ByteWriter* writer, Allocator* using = mem::heap())
 {
-	*writer = { .bytes = {}, .allocator = allocator };
+	*writer = { .bytes = {}, .allocator = using };
 }
 
 /**
  * @param [&inout] writer
  * @require writer.bytes.len == 0 "Init may not run on on already initialized data"
- * @ensure allocator != null, index == 0
  **/
 fn void ByteWriter.tinit(ByteWriter* writer)
 {
