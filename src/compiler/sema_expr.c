@@ -1237,17 +1237,25 @@ static inline bool sema_call_check_contract_param_match(SemaContext *context, De
 		SEMA_ERROR(expr, "You may not pass null to a '&' parameter.");
 		return false;
 	}
+	if (expr->expr_kind == EXPR_UNARY && expr->unary_expr.expr->expr_kind == EXPR_IDENTIFIER)
+	{
+		if (expr->unary_expr.expr->identifier_expr.decl->var.kind == VARDECL_CONST && param->var.out_param)
+		{
+			SEMA_ERROR(expr, "A const parameter may not be passed into a function or macro as an 'out' argument.");
+			return false;
+		}
+	}
 	if (expr->expr_kind != EXPR_IDENTIFIER) return true;
 	Decl *ident = expr->identifier_expr.decl;
 	if (ident->decl_kind != DECL_VAR) return true;
 	if (ident->var.out_param && param->var.in_param)
 	{
-		SEMA_ERROR(expr, "It's not allowed to pass an 'out' parameter into a function or macro as an 'in' argument.");
+		SEMA_ERROR(expr, "An 'out' parameter may not be passed into a function or macro as an 'in' argument.");
 		return false;
 	}
 	if (ident->var.in_param && param->var.out_param)
 	{
-		SEMA_ERROR(expr, "It's not allowed to pass an 'in' parameter into a function or macro as an 'out' argument.");
+		SEMA_ERROR(expr, "An 'in' parameter may not be passed into a function or macro as an 'out' argument.");
 		return false;
 	}
 	return true;

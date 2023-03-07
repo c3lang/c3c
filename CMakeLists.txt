@@ -1,10 +1,24 @@
 cmake_minimum_required(VERSION 3.15)
-project(c3c)
+
+# Grab the version
+file(READ "src/version.h" ver)
+if (NOT ${ver} MATCHES "COMPILER_VERSION \"([0-9]+.[0-9]+.[0-9]+)\"")
+    message(FATAL_ERROR "Compiler version could not be parsed from version.h")
+endif()
+
+# Set the project and version
+project(c3c VERSION ${CMAKE_MATCH_1})
+message("C3C version: ${CMAKE_PROJECT_VERSION}")
+
+# Enable fetching (for Windows)
 include(FetchContent)
 include(FeatureSummary)
 
+
 set(CMAKE_FIND_PACKAGE_SORT_ORDER NATURAL)
 set(CMAKE_FIND_PACKAGE_SORT_DIRECTION DEC)
+
+# We use C11 and C++17
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 

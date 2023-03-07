@@ -12,7 +12,7 @@ fn void bar(Foo* f)
  **/
 fn void foo(Foo* f)
 {
-  bar(f); // #error: It's not allowed to pass an 'in'
+  bar(f); // #error: macro as an 'out' argument
 }
 
 /**
@@ -27,5 +27,5 @@ fn void foo2(Foo* f)
  **/
 fn void baz(Foo *f)
 {
-	foo2(f); // #error: It's not allowed to pass an 'out'
+	foo2(f); // #error: may not be passed into a function
 }
