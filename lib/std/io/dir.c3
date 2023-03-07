@@ -10,9 +10,9 @@ fault PathResult
 	INVALID_PATH
 }
 
-fn String! getcwd(Allocator* allocator = mem::default_allocator())
+fn String! getcwd(Allocator* using = mem::heap())
 {
-	return os::getcwd(allocator);
+	return os::getcwd(using);
 }
 
 fn String! tgetcwd()
@@ -136,9 +136,9 @@ fn void! normalize_path(String* path_ref) @private
 	*path_ref = path[:len];
 }
 
-fn Path new_path(String path)
+fn Path new_path(String path, Allocator* using = using)
 {
-	String copy = str::copy(path);
+	String copy = path.copy(using);
 	normalize_path(&copy)!!;
 	return (Path)copy;
 }

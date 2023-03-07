@@ -80,10 +80,10 @@ fn void! Object.to_format(Object* o, Formatter* formatter)
 	}
 }
 
-fn Object* new_obj(Allocator* allocator = mem::heap())
+fn Object* new_obj(Allocator* using = mem::heap())
 {
-	Object* o = malloc(Object, .using = allocator);
-	*o = { .allocator = allocator, .type = void.typeid };
+	Object* o = malloc(Object, .using = using);
+	*o = { .allocator = using, .type = void.typeid };
 	return o;
 }
 
@@ -92,31 +92,31 @@ fn Object* new_null()
 	return &NULL_OBJECT;
 }
 
-fn Object* new_int(int128 i, Allocator* allocator = mem::heap())
+fn Object* new_int(int128 i, Allocator* using = mem::heap())
 {
-	Object* o = malloc(Object, .using = allocator);
-	*o = { .i = i, .allocator = allocator, .type = int128.typeid };
+	Object* o = malloc(Object, .using = using);
+	*o = { .i = i, .allocator = using, .type = int128.typeid };
 	return o;
 }
 
-macro Object* new_enum(e, Allocator* allocator = mem::heap())
+macro Object* new_enum(e, Allocator* using = mem::heap())
 {
-	Object* o = malloc(Object, .using = allocator);
-	*o = { .i = (int128)e, .allocator = allocator, .type = $typeof(e).typeid };
+	Object* o = malloc(Object, .using = using);
+	*o = { .i = (int128)e, .allocator = using, .type = $typeof(e).typeid };
 	return o;
 }
 
-fn Object* new_float(double f, Allocator* allocator = mem::current_allocator())
+fn Object* new_float(double f, Allocator* using = mem::current_allocator())
 {
-	Object* o = malloc(Object, .using = allocator);
-	*o = { .f = f, .allocator = allocator, .type = double.typeid };
+	Object* o = malloc(Object, .using = using);
+	*o = { .f = f, .allocator = using, .type = double.typeid };
 	return o;
 }
 
-fn Object* new_string(String s, Allocator* allocator = mem::heap())
+fn Object* new_string(String s, Allocator* using = mem::heap())
 {
-	Object* o = malloc(Object, .using = allocator);
-	*o = { .s = s.copyz(allocator), .allocator = allocator, .type = String.typeid };
+	Object* o = malloc(Object, .using = using);
+	*o = { .s = s.copy(using), .allocator = using, .type = String.typeid };
 	return o;
 }
 
@@ -178,7 +178,7 @@ fn void Object.init_map_if_needed(Object* o) @private
 	if (o.is_empty())
 	{
 		o.type = ObjectInternalMap.typeid;
-		o.map.init(.allocator = o.allocator);
+		o.map.init(.using = o.allocator);
 	}
 }
 
@@ -190,7 +190,7 @@ fn void Object.init_array_if_needed(Object* o) @private
 	if (o.is_empty())
 	{
 		o.type = ObjectInternalList.typeid;
-		o.array.init(.allocator = o.allocator);
+		o.array.init(.using = o.allocator);
 	}
 }
 
@@ -206,7 +206,7 @@ fn void Object.set_object(Object* o, String key, Object* new_object) @private
 		(void)free(entry.key, .using = o.allocator);
 		entry.value.free();
 	}
-	o.map.set(str::copyz(key, o.map.allocator), new_object);
+	o.map.set(key.copy(o.map.allocator), new_object);
 }
 
 macro Object* object_from_value(value) @private

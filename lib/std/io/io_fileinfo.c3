@@ -6,6 +6,14 @@ struct FileInfo
 	ulong size;
 }
 
+fn bool exits(String path)
+{
+	File f;
+	if (catch(f.open(path, "r"))) return false;
+	(void)f.close();
+	return true;
+}
+
 $switch (env::OS_TYPE):
 $case MACOSX:
 $case IOS:
@@ -38,12 +46,13 @@ struct Darwin64Stat @private
     long[2] st_qspare;
 }
 extern fn int _stat(ZString str, Darwin64Stat* stat) @extern("stat64");
+
 fn void! FileInfo.read(FileInfo* info, Path path)
 {
 	@pool()
 	{
 		Darwin64Stat stat;
-		int res = _stat(str::tcopy_zstring((String)path), &stat);
+		int res = _stat(((String)path).zstr_tcopy(), &stat);
 		if (res != 0)
 		{
 			switch (libc::errno())

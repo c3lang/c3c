@@ -28,9 +28,9 @@ fn void LinkedList.push_last(LinkedList* list, Type value)
 	list.link_last(value);
 }
 
-fn void LinkedList.init(LinkedList* list, Allocator* alloc = mem::heap())
+fn void LinkedList.init(LinkedList* list, Allocator* using = mem::heap())
 {
-	*list = { .allocator = alloc };
+	*list = { .allocator = using };
 }
 
 fn void LinkedList.tinit(LinkedList* list) => list.init(mem::temp()) @inline;

@@ -321,10 +321,10 @@ macro void! free_aligned_checked(void* ptr, Allocator* using = mem::heap()) @bui
 /**
  * Run with a specific allocator inside of the macro body.
  **/
-macro void @scoped(Allocator* allocator; @body())
+macro void @scoped(Allocator* using; @body())
 {
 	Allocator* old_allocator = thread_allocator;
-	thread_allocator = allocator;
+	thread_allocator = using;
 	defer thread_allocator = old_allocator;
 	@body();
 }
@@ -354,7 +354,7 @@ macro tmalloc(..., usz end_padding = 0, usz alignment = DEFAULT_MEM_ALIGNMENT) @
  * @require $vacount > 0 && $vacount < 3 "Expected size, type, or type + len"
  * @require $vacount != 2 || $checks($vatype(0).sizeof) "Expected 'malloc(Foo, 12)'"
  **/
-macro tcalloc(..., usz end_padding = 0, usz alignment = allocator::DEFAULT_MEM_ALIGNMENT) @builtin
+macro tcalloc(..., usz end_padding = 0, usz alignment = mem::DEFAULT_MEM_ALIGNMENT) @builtin
 {
 	$if ($checks($vatype(0).sizeof)):
 		var $Type = $vatype(0);
@@ -369,7 +369,7 @@ macro tcalloc(..., usz end_padding = 0, usz alignment = allocator::DEFAULT_MEM_A
 	$endif;
 }
 
-fn void* trealloc(void* ptr, usz size, usz alignment = allocator::DEFAULT_MEM_ALIGNMENT) @builtin @inline
+fn void* trealloc(void* ptr, usz size, usz alignment = mem::DEFAULT_MEM_ALIGNMENT) @builtin @inline
 {
 	return temp_allocator().realloc_aligned(ptr, size, alignment)!!;
 }

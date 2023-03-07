@@ -13,16 +13,16 @@ struct List
 }
 
 /**
- * @require allocator != null "A valid allocator must be provided"
+ * @require using != null "A valid allocator must be provided"
  **/
-fn void List.init(List* list, usz initial_capacity = 16, Allocator* allocator = mem::heap())
+fn void List.init(List* list, usz initial_capacity = 16, Allocator* using = mem::heap())
 {
-	list.allocator = allocator;
+	list.allocator = using;
 	list.size = 0;
 	if (initial_capacity > 0)
 	{
 		initial_capacity = math::next_power_of_2(initial_capacity);
-		list.entries = malloc_aligned(Type, initial_capacity, .alignment = Type[1].alignof, .using = allocator)!!;
+		list.entries = malloc_aligned(Type, initial_capacity, .alignment = Type[1].alignof, .using = using)!!;
 	}
 	else
 	{

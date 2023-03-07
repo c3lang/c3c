@@ -17,9 +17,9 @@ macro talloc($Type, usz elements) @deprecated => tmalloc($Type, elements);
 /**
  * @require (usz.max / elements > $Type.sizeof)
  **/
-macro make($Type, usz elements, Allocator* allocator = mem::heap()) @deprecated
+macro make($Type, usz elements, Allocator* using = mem::heap()) @deprecated
 {
-	return calloc($Type, elements, .using = allocator);
+	return calloc($Type, elements, .using = using);
 }
 
 /**

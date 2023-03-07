@@ -468,6 +468,8 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 	sema_inline_return_defers(context, statement, context->active_scope.defer_last, 0);
 	if (context->call_env.ensures)
 	{
+		// Never generate an expression.
+		if (return_expr && return_expr->expr_kind == EXPR_OPTIONAL) goto SKIP_ENSURE;
 		AstId first = 0;
 		AstId *append_id = &first;
 		// Creating an assign statement
@@ -486,7 +488,8 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 		if (statement->return_stmt.cleanup)
 		{
 			// If we have the same ast on cleanup / cleanup-fail we need to separate them.
-			if (type_is_optional(expected_rtype) && statement->return_stmt.cleanup == statement->return_stmt.cleanup_fail)
+			if (type_is_optional(expected_rtype) &&
+			    statement->return_stmt.cleanup == statement->return_stmt.cleanup_fail)
 			{
 				statement->return_stmt.cleanup_fail = astid(copy_ast_defer(astptr(statement->return_stmt.cleanup)));
 			}
@@ -495,7 +498,7 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 		}
 		else
 		{
-			statement->return_stmt.cleanup = statement->return_stmt.cleanup_fail = first;
+			statement->return_stmt.cleanup = first;
 		}
 	}
 SKIP_ENSURE:;

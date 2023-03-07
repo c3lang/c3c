@@ -49,7 +49,7 @@ $else:
 			str::utf8to16(filename, mem::temp())!!,
 			str::utf8to16(mode, mem::temp())!!);
 	$else:
-		CFile file = libc::fopen(filename.zstrtcopy(), mode.zstrtcopy());
+		CFile file = libc::fopen(filename.zstr_tcopy(), mode.zstr_tcopy());
 	$endif;
 		return file ?: file_open_errno()!;
 	};
@@ -74,7 +74,7 @@ $else:
 			str::utf8to16(mode, mem::temp())!!,
 			file);
 	$else:
-		file = libc::freopen(filename.zstrtcopy(), mode.zstrtcopy(), file);
+		file = libc::freopen(filename.zstr_tcopy(), mode.zstr_tcopy(), file);
 	$endif;
 		return file ?: file_open_errno()!;
 	};

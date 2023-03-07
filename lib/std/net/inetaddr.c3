@@ -54,7 +54,7 @@ fn void! InetAddress.to_format(InetAddress* addr, Formatter* formatter)
 	formatter.printf("%d.%d.%d.%d", addr.ipv4.a, addr.ipv4.b, addr.ipv4.c, addr.ipv4.d)?;
 }
 
-fn String! InetAddress.to_string(InetAddress* addr, Allocator* allocator = mem::heap())
+fn String! InetAddress.to_string(InetAddress* addr, Allocator* using = mem::heap())
 {
 	if (addr.is_ipv6)
 	{
@@ -62,11 +62,11 @@ fn String! InetAddress.to_string(InetAddress* addr, Allocator* allocator = mem::
 		String res = (String)io::bprintf(&buffer, "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x",
 			addr.ipv6.a, addr.ipv6.b, addr.ipv6.c, addr.ipv6.d,
 			addr.ipv6.e, addr.ipv6.f, addr.ipv6.g, addr.ipv6.h)?;
-		return res.copyz(allocator);
+		return res.copy(using);
 	}
 	char[3 * 4 + 3 + 1] buffer;
 	String res = (String)io::bprintf(&buffer, "%d.%d.%d.%d", addr.ipv4.a, addr.ipv4.b, addr.ipv4.c, addr.ipv4.d)?;
-	return res.copyz(allocator);
+	return res.copy(using);
 }
 
 fn InetAddress! ipv6_from_str(String s)

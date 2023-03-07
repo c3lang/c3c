@@ -7122,6 +7122,7 @@ static inline bool sema_expr_analyse_retval(SemaContext *c, Expr *expr)
 	{
 		TODO
 	}
+	expr->type = type_no_optional(c->rtype);
 	if (expr->type == type_void)
 	{
 		SEMA_ERROR(expr, "'return' cannot be used on void functions.");
@@ -7129,7 +7130,6 @@ static inline bool sema_expr_analyse_retval(SemaContext *c, Expr *expr)
 	}
 	Expr *return_value = c->return_expr;
 	assert(return_value);
-	expr->type = c->rtype;
 	if (expr_is_const(return_value))
 	{
 		expr_replace(expr, return_value);
