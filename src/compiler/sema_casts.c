@@ -1761,7 +1761,7 @@ static bool err_to_bool(Expr *expr, Type *to_type)
 	return true;
 }
 
-static inline bool subarray_to_bool(Expr *expr)
+static inline bool subarray_to_bool(Expr *expr, Type *type)
 {
 	if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER)
 	{
@@ -1769,13 +1769,13 @@ static inline bool subarray_to_bool(Expr *expr)
 		switch (list->kind)
 		{
 			case CONST_INIT_ZERO:
-				expr_rewrite_const_bool(expr, type_bool, false);
+				expr_rewrite_const_bool(expr, type, false);
 				return true;
 			case CONST_INIT_ARRAY:
-				expr_rewrite_const_bool(expr, type_bool, vec_size(list->init_array.elements) > 0);
+				expr_rewrite_const_bool(expr, type, vec_size(list->init_array.elements) > 0);
 				return true;
 			case CONST_INIT_ARRAY_FULL:
-				expr_rewrite_const_bool(expr, type_bool, vec_size(list->init_array_full) > 0);
+				expr_rewrite_const_bool(expr, type, vec_size(list->init_array_full) > 0);
 				return true;
 			case CONST_INIT_STRUCT:
 			case CONST_INIT_UNION:
@@ -1784,7 +1784,7 @@ static inline bool subarray_to_bool(Expr *expr)
 				break;
 		}
 	}
-	return insert_cast(expr, CAST_SABOOL, type_bool);
+	return insert_cast(expr, CAST_SABOOL, type);
 }
 
 static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
@@ -1877,9 +1877,9 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 			} // Starting in a little while...
 			break;
 		case TYPE_SUBARRAY:
-			if (to->type_kind == TYPE_POINTER) return insert_cast(expr, CAST_SAPTR, to);
-			if (to->type_kind == TYPE_BOOL) return subarray_to_bool(expr);
-			if (to->type_kind == TYPE_SUBARRAY) return subarray_to_subarray(expr, to);
+			if (to->type_kind == TYPE_POINTER) return insert_cast(expr, CAST_SAPTR, to_type);
+			if (to->type_kind == TYPE_BOOL) return subarray_to_bool(expr, to_type);
+			if (to->type_kind == TYPE_SUBARRAY) return subarray_to_subarray(expr, to_type);
 			break;
 		case TYPE_VECTOR:
 			if (to->type_kind == TYPE_ARRAY) return vector_to_array(expr, to_type);
