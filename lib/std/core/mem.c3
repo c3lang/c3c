@@ -416,10 +416,10 @@ extern int __heap_base;
 
 static initialize @priority(1)
 {
-	allocator::wasm_memory.allocate_block(allocator::DEFAULT_MEM_ALIGNMENT)!!; // Give us a valid null.
+	allocator::wasm_memory.allocate_block(mem::DEFAULT_MEM_ALIGNMENT)!!; // Give us a valid null.
 	// Check if we need to move the heap.
 	uptr start = (uptr)&__heap_base;
-	if (start > allocator::DEFAULT_MEM_ALIGNMENT) allocator::wasm_memory.use = start;
+	if (start > mem::DEFAULT_MEM_ALIGNMENT) allocator::wasm_memory.use = start;
 	wasm_allocator.init(fn (x) => allocator::wasm_memory.allocate_block(x));
 	thread_allocator = &wasm_allocator;
 }
