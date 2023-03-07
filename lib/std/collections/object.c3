@@ -1,6 +1,10 @@
+// Copyright (c) 2023 Christoffer Lerno. All rights reserved.
+// Use of this source code is governed by the MIT license
+// a copy of which can be found in the LICENSE_STDLIB file.
 module std::collections::object;
 import std::collections::map;
 import std::collections::list;
+import std::io;
 
 const Object TRUE_OBJECT = { .b = true, .type = bool.typeid };
 const Object FALSE_OBJECT = { .b = false, .type = bool.typeid };
@@ -19,6 +23,60 @@ struct Object
 		void* other;
 		ObjectInternalList array;
 		ObjectInternalMap map;
+	}
+}
+
+static initialize
+{
+	io::formatter_register_type(Object);
+}
+
+fn void! Object.to_format(Object* o, Formatter* formatter)
+{
+	switch (o.type)
+	{
+		case void:
+			formatter.printf("{}")?;
+		case void*:
+			formatter.printf("null")?;
+		case String:
+			formatter.printf(`"%s"`, o.s)?;
+		case bool:
+			formatter.printf(o.b ? "true" : "false")?;
+		case ObjectInternalList:
+			formatter.printf("[")?;
+			foreach (i, ol : o.array)
+			{
+				formatter.printf(i == 0 ? " " : ", ")?;
+				ol.to_format(formatter)?;
+			}
+			formatter.printf(" ]")?;
+		case ObjectInternalMap:
+			formatter.printf("{")?;
+			@pool()
+			{
+				foreach (i, key : o.map.key_tlist())
+				{
+					formatter.printf(i == 0 ? " " : ", ")?;
+					formatter.printf(`"%s": `, key)?;
+					o.map.get(key).to_format(formatter)?;
+				}
+			};
+			formatter.printf(" }")?;
+		default:
+			switch (o.type.kindof)
+			{
+				case SIGNED_INT:
+					formatter.printf("%d", o.i)?;
+				case UNSIGNED_INT:
+					formatter.printf("%d", (uint128)o.i)?;
+				case FLOAT:
+					formatter.printf("%d", o.f)?;
+				case ENUM:
+					formatter.printf("%d", o.i)?;
+				default:
+					formatter.printf("<>")?;
+			}
 	}
 }
 
@@ -206,6 +264,9 @@ macro Object* Object.append(Object* o, value)
  * @require o.is_keyable()
  **/
 fn Object*! Object.get(Object* o, String key) => o.is_empty() ? SearchResult.MISSING! : o.map.get(key);
+
+
+fn bool Object.has_key(Object* o, String key) => o.is_map() && o.map.has_key(key);
 
 /**
  * @require o.is_indexable()
