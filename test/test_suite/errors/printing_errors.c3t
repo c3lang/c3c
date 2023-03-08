@@ -62,15 +62,3 @@ entry:
   ret i32 0
 }
 
-; Function Attrs: nounwind
-declare i64 @std.io.printf(ptr, ptr, i64, ptr, i64) #0
-
-; Function Attrs: argmemonly nocallback nofree nounwind willreturn writeonly
-declare void @llvm.memset.p0.i64(ptr nocapture writeonly, i8, i64, i1 immarg) #1
-
-; Function Attrs: nocallback nofree nosync nounwind readnone willreturn
-declare i1 @llvm.expect.i1(i1, i1) #2
-
-attributes #0 = { nounwind }
-attributes #1 = { argmemonly nocallback nofree nounwind willreturn writeonly }
-attributes #2 = { nocallback nofree nosync nounwind readnone willreturn }
