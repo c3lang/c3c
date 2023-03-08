@@ -1,7 +1,7 @@
 // #target: macos-x64
 module test;
 
-fn void main(char[][] args)
+fn void main(String[] args)
 {
 	int x;
 	if (args.len < 10) return;

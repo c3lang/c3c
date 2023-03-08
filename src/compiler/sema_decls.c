@@ -1987,7 +1987,7 @@ static inline MainType sema_find_main_type(SemaContext *context, Signature *sig,
 			break;
 		case 1:
 			arg_type = type_flatten(params[0]->type);
-			if (arg_type == type_get_subarray(type_get_subarray(type_char))) return MAIN_TYPE_ARGS;
+			if (arg_type == type_get_subarray(type_string)) return MAIN_TYPE_ARGS;
 			SEMA_ERROR(params[0], "Expected a parameter of type 'String[]'.");
 			return MAIN_TYPE_ERROR;
 		case 2:
@@ -2020,7 +2020,7 @@ static inline MainType sema_find_main_type(SemaContext *context, Signature *sig,
 				SEMA_ERROR(params[0], "Expected a parameter of type 'void*' (HINSTANCE)");
 				return MAIN_TYPE_ERROR;
 			}
-			if (arg_type2 != type_get_subarray(type_get_subarray(type_char)))
+			if (arg_type2 != type_get_subarray(type_string))
 			{
 				SEMA_ERROR(params[1], "Expected a parameter of type 'String[]'.");
 				return MAIN_TYPE_ERROR;

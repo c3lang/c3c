@@ -1575,6 +1575,12 @@ static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, boo
 	// Grab the underlying expression type.
 	Type *from = is_explicit ? type_flatten(from_type) : from_type->canonical;
 
+	// Auto-converting distinct type.
+	if (from->type_kind == TYPE_DISTINCT && from->decl->is_substruct && from != to)
+	{
+		from = type_flatten(from);
+	}
+
 	// We may already be done.
 	if (from == to)
 	{

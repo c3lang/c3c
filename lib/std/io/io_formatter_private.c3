@@ -403,7 +403,7 @@ fn void! Formatter.ntoa(Formatter* this, uint128 value, bool negative, uint base
 		}
 		while (value);
 	}
-	return this.ntoa_format(buf[:PRINTF_NTOA_BUFFER_SIZE], len, negative, base);
+	return this.ntoa_format((String)buf[:PRINTF_NTOA_BUFFER_SIZE], len, negative, base);
 }
 
 fn void! Formatter.ntoa_format(Formatter* this, String buf, usz len, bool negative, uint base) @private
@@ -502,7 +502,7 @@ fn void! Formatter.out_char(Formatter* this, variant arg) @private
 }
 
 
-fn void! Formatter.out_reverse(Formatter* this, String buf) @private
+fn void! Formatter.out_reverse(Formatter* this, char[] buf) @private
 {
 	usz buffer_start_idx = this.idx;
 	usz len = buf.len;

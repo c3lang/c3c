@@ -72,7 +72,7 @@ fn void VarString.chop(VarString this, usz new_size)
 fn String VarString.str(VarString str)
 {
 	StringData* data = (StringData*)str;
-	if (!data) return String {};
+	if (!data) return "";
 	return (String)data.chars[:data.len];
 }
 

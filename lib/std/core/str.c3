@@ -1,7 +1,6 @@
 module std::core::string;
 
-typedef ZString = distinct char*;
-typedef String = char[];
+typedef ZString = distinct inline char*;
 typedef Char32 = uint;
 typedef Char16 = ushort;
 
@@ -220,7 +219,7 @@ fn String String.copy(String s, Allocator* using = mem::heap())
     char* str = malloc(len + 1, .using = using);
     mem::copy(str, s.ptr, len);
     str[len] = 0;
-    return str[:len];
+    return (String)str[:len];
 }
 
 fn String String.tcopy(String s) => s.copy(mem::temp()) @inline;
@@ -405,7 +404,7 @@ fn String utf32to8(Char32[] utf32, Allocator* using = mem::heap())
 	char* data = malloc_checked(len + 1, .using = using)!!;
 	conv::utf32to8_unsafe(utf32, data);
 	data[len] = 0;
-	return data[:len];
+	return (String)data[:len];
 }
 
 fn Char16[]! utf8to16(String utf8, Allocator* using = mem::heap())
@@ -424,21 +423,21 @@ fn String! utf16to8(Char16[] utf16, Allocator* using = mem::heap())
 	char* data = malloc_checked(len + 1, .using = using)?;
 	conv::utf16to8_unsafe(utf16, data)?;
 	data[len] = 0;
-	return data[:len];
+	return (String)data[:len];
 }
 
 fn String copy(String s, Allocator* using = mem::heap()) @deprecated
 {
     usz len = s.len;
     ZString str_copy = s.zstr_copy(using) @inline;
-    return str_copy[:len];
+    return (String)str_copy[:len];
 }
 
 fn String tcopy(String s) @deprecated
 {
     usz len = s.len;
     ZString str_copy = s.zstr_tcopy() @inline;
-    return str_copy[:len];
+    return (String)str_copy[:len];
 }
 
 fn String tconcat(String s1, String s2)
@@ -449,7 +448,7 @@ fn String tconcat(String s1, String s2)
     mem::copy(str, s1.ptr, s1_len);
     mem::copy(str + s1_len, s2.ptr, s2.len);
     str[full_len] = 0;
-    return str[:full_len];
+    return (String)str[:full_len];
 }
 
 fn String concat(String s1, String s2)
@@ -460,12 +459,12 @@ fn String concat(String s1, String s2)
     mem::copy(str, s1.ptr, s1_len);
     mem::copy(str + s1_len, s2.ptr, s2.len);
     str[full_len] = 0;
-    return str[:full_len];
+    return (String)str[:full_len];
 }
 
 fn String ZString.as_str(ZString str)
 {
-	return ((char*)str)[:str.len()];
+	return (String)((char*)str)[:str.len()];
 }
 
 fn usz ZString.char_len(ZString str)

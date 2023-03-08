@@ -41,7 +41,7 @@ fn void ByteWriter.destroy(ByteWriter* writer)
 
 fn String ByteWriter.as_str(ByteWriter* writer)
 {
-	return writer.bytes[:writer.index];
+	return (String)writer.bytes[:writer.index];
 }
 
 fn void! ByteWriter.ensure_capacity(ByteWriter* writer, usz len) @inline

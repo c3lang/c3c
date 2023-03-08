@@ -206,3 +206,4 @@ macro uint ulong.hash(ulong i) => (uint)((i >> 32) ^ i);
 macro uint bool.hash(bool b) => (uint)b;
 macro uint typeid.hash(typeid t) => (uint)(((uptr)t >> 32) ^ (uptr)t);
 macro uint String.hash(String c) => (uint)fnv32a::encode(c);
+macro uint char[].hash(char[] c) => (uint)fnv32a::encode(c);

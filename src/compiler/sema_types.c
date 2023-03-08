@@ -168,6 +168,12 @@ static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type,
 
 static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_info)
 {
+	if (type_info->unresolved.name == type_string->name && !type_info->unresolved.path)
+	{
+		type_info->type = type_string;
+		type_info->resolve_status = RESOLVE_DONE;
+		return true;
+	}
 	Decl *decl = sema_resolve_symbol(context, type_info->unresolved.name, type_info->unresolved.path, type_info->span);
 
 	assert(decl);

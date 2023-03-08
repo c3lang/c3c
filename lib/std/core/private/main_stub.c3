@@ -22,7 +22,7 @@ macro String[] args_to_strings(int argc, char** argv) @private
 	{
 		char* arg = argv[i];
 		usz len = 0;
-		list[i] = arg[:_strlen(arg)];
+		list[i] = (String)arg[:_strlen(arg)];
 	}
 	return list[:argc];
 }

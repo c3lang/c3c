@@ -1885,10 +1885,24 @@ static inline Decl *parse_define_type(ParseContext *c)
 
 	CONSUME_OR_RET(TOKEN_EQ, poisoned_decl);
 	bool distinct = false;
-	if (tok_is(c, TOKEN_IDENT) && symstr(c) == kw_distinct)
+	bool is_inline = false;
+	if (tok_is(c, TOKEN_IDENT))
 	{
-		distinct = true;
-		advance(c);
+		if (symstr(c) == kw_inline)
+		{
+			SEMA_ERROR_HERE("'inline' must always follow 'distinct'.");
+			return poisoned_decl;
+		}
+		if (symstr(c) == kw_distinct)
+		{
+			distinct = true;
+			advance(c);
+			if (tok_is(c, TOKEN_IDENT) && symstr(c) == kw_inline)
+			{
+				is_inline = true;
+				advance(c);
+			}
+		}
 	}
 
 	// 1. Did we have `fn`? In that case it's a function pointer.
@@ -1898,6 +1912,7 @@ static inline Decl *parse_define_type(ParseContext *c)
 		decl_add_type(decl, TYPE_TYPEDEF);
 		decl->typedef_decl.is_func = true;
 		decl->typedef_decl.is_distinct = distinct;
+		decl->is_substruct = is_inline;
 		ASSIGN_TYPE_OR_RET(TypeInfo *type_info, parse_optional_type(c), poisoned_decl);
 		decl->typedef_decl.function_signature.rtype = type_infoid(type_info);
 		if (!parse_fn_parameter_list(c, &(decl->typedef_decl.function_signature), true))
@@ -1933,6 +1948,7 @@ static inline Decl *parse_define_type(ParseContext *c)
 	{
 		decl->decl_kind = DECL_DISTINCT;
 		decl_add_type(decl, TYPE_DISTINCT);
+		decl->is_substruct = is_inline;
 		TypedefDecl typedef_decl = decl->typedef_decl; // Ensure value semantics.
 		decl->distinct_decl.typedef_decl = typedef_decl;
 		decl->type->type_kind = TYPE_DISTINCT;

@@ -148,14 +148,14 @@ entry:
   store i32 0, ptr %x, align 4
   store %"char[]" { ptr @.str.6, i64 3 }, ptr %taddr, align 8
   %24 = insertvalue %variant undef, ptr %taddr, 0
-  %25 = insertvalue %variant %24, i64 ptrtoint (ptr @"$ct.sa$char" to i64), 1
+  %25 = insertvalue %variant %24, i64 ptrtoint (ptr @"$ct.String" to i64), 1
   %26 = getelementptr inbounds [1 x %variant], ptr %varargslots12, i64 0, i64 0
   store %variant %25, ptr %26, align 16
   %27 = call i64 @std.io.printfn(ptr %retparam11, ptr @.str.5, i64 2, ptr %varargslots12, i64 1)
   store double 0.000000e+00, ptr %x13, align 8
   store %"char[]" { ptr @.str.8, i64 6 }, ptr %taddr16, align 8
   %28 = insertvalue %variant undef, ptr %taddr16, 0
-  %29 = insertvalue %variant %28, i64 ptrtoint (ptr @"$ct.sa$char" to i64), 1
+  %29 = insertvalue %variant %28, i64 ptrtoint (ptr @"$ct.String" to i64), 1
   %30 = getelementptr inbounds [1 x %variant], ptr %varargslots15, i64 0, i64 0
   store %variant %29, ptr %30, align 16
   %31 = call i64 @std.io.printfn(ptr %retparam14, ptr @.str.7, i64 2, ptr %varargslots15, i64 1)

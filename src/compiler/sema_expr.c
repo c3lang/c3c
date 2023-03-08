@@ -2772,7 +2772,7 @@ static inline void sema_expr_replace_with_enum_name_array(Expr *enum_array_expr,
 	initializer->initializer_list = element_values;
 	enum_array_expr->expr_kind = EXPR_COMPOUND_LITERAL;
 	enum_array_expr->expr_compound_literal.initializer = initializer;
-	enum_array_expr->expr_compound_literal.type_info = type_info_new_base(type_get_subarray(global_context_string_type()), span);
+	enum_array_expr->expr_compound_literal.type_info = type_info_new_base(type_get_subarray(type_string), span);
 	enum_array_expr->resolve_status = RESOLVE_NOT_DONE;
 }
 
@@ -3282,7 +3282,7 @@ static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *exp
 			sema_expr_rewrite_typeid_kind(expr, typeid);
 			return true;
 		case TYPE_PROPERTY_NAMES:
-			return sema_expr_rewrite_typeid_call(expr, typeid, TYPEID_INFO_NAMES, type_get_subarray(global_context_string_type()));
+			return sema_expr_rewrite_typeid_call(expr, typeid, TYPEID_INFO_NAMES, type_get_subarray(type_string));
 		case TYPE_PROPERTY_ALIGNOF:
 		case TYPE_PROPERTY_INF:
 		case TYPE_PROPERTY_MIN:
@@ -3646,7 +3646,7 @@ CHECK_DEEPER:
 			}
 			else
 			{
-				expr_rewrite_to_builtin_access(expr, current_parent, ACCESS_ENUMNAME, global_context_string_type());
+				expr_rewrite_to_builtin_access(expr, current_parent, ACCESS_ENUMNAME, type_string);
 				return true;
 			}
 		}
@@ -3657,7 +3657,7 @@ CHECK_DEEPER:
 				expr_rewrite_to_string(expr, current_parent->const_expr.enum_err_val->name);
 				return true;
 			}
-			expr_rewrite_to_builtin_access(expr, current_parent, ACCESS_FAULTNAME, global_context_string_type());
+			expr_rewrite_to_builtin_access(expr, current_parent, ACCESS_FAULTNAME, type_string);
 			return true;
 		}
 	}
@@ -6245,10 +6245,10 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 				expr->expr_kind = EXPR_CONST;
 				ConstInitializer *init = expr->const_expr.initializer = CALLOCS(ConstInitializer);
 				init->kind = CONST_INIT_ZERO;
-				init->type = expr->type = type_get_subarray(global_context_string_type());
+				init->type = expr->type = type_get_subarray(type_string);
 				return true;
 			}
-			expr->type = type_get_subarray(global_context_string_type());
+			expr->type = type_get_subarray(type_string);
 			expr->test_hook_expr = BUILTIN_DEF_TEST_NAMES;
 			expr->expr_kind = EXPR_TEST_HOOK;
 			return true;

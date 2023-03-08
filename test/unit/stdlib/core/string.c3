@@ -16,9 +16,9 @@ fn void test_trim()
 {
 	String s = " \t\nabc ";
 	assert(s.trim() == "abc");
-	assert(((String)"\n\t").trim() == "");
-	assert(((String)"  \n\tok").trim() == "ok");
-	assert(((String)"!! \n\t ").trim() == "!!");
+	assert("\n\t".trim() == "");
+	assert("  \n\tok".trim() == "ok");
+	assert("!! \n\t ".trim() == "!!");
 	assert(s.trim("c \t") == "\nab");
 }
 

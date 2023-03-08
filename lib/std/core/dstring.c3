@@ -96,7 +96,7 @@ fn void DString.chop(DString this, usz new_size)
 fn String DString.str(DString str)
 {
 	StringData* data = (StringData*)str;
-	if (!data) return String {};
+	if (!data) return "";
 	return (String)data.chars[:data.len];
 }
 

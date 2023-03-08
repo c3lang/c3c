@@ -243,12 +243,6 @@ fn void! Formatter.out_str(Formatter* this, variant arg) @private
         	return this.out_str(variant { arg.ptr, arg.type.inner });
 		case POINTER:
 			if (this.print_with_function(arg)?) return;
-			typeid inner = arg.type.inner;
-			if (inner.kindof == TypeKind.ARRAY && inner.inner == char.typeid)
-			{
-				char *ptr = *(char**)arg.ptr;
-				return this.out_substr(ptr[:inner.len]);
-			}
 			return this.ntoa_variant(arg, 16);
 		case SIGNED_INT:
 		case UNSIGNED_INT:

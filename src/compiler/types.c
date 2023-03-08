@@ -12,6 +12,7 @@ static struct
 	Type u8, u16, u32, u64, u128;
 	Type f16, f32, f64, f128;
 	Type usz, isz, uptr, iptr;
+	Type string;
 	Type voidstar, typeid, anyerr, member, typeinfo, untyped_list;
 	Type any, anyfail;
 } t;
@@ -45,7 +46,7 @@ Type *type_untypedlist = &t.untyped_list;
 Type *type_anyfail = &t.anyfail;
 Type *type_member = &t.member;
 Type *type_chars = NULL;
-Type *type_string = NULL;
+Type *type_string = &t.string;
 
 static unsigned size_subarray;
 static AlignSize alignment_subarray;
@@ -1506,7 +1507,14 @@ void type_setup(PlatformTarget *target)
 	size_subarray = (unsigned)(alignment_subarray * 2);
 	type_init("anyerr", &t.anyerr, TYPE_ANYERR, target->width_pointer, target->align_pointer);
 	type_chars = type_get_subarray(type_char);
-	type_string = type_chars;
+	Decl *string_decl = decl_new_with_type(symtab_preset("String", TOKEN_TYPE_IDENT), INVALID_SPAN, DECL_DISTINCT);
+	string_decl->extname = string_decl->name;
+	string_decl->is_substruct = true;
+	string_decl->distinct_decl.base_type = type_chars;
+	string_decl->resolve_status = RESOLVE_DONE;
+	type_string = string_decl->type;
+	global_context_add_type(string_decl->type);
+	global_context_add_decl(string_decl);
 }
 
 int type_kind_bitsize(TypeKind kind)
@@ -1952,6 +1960,13 @@ Type *type_find_max_type(Type *type, Type *other)
 
 	assert(!type_is_optional(type) && !type_is_optional(other));
 
+	if (type == other) return type;
+
+	// Lower inlined distinct types.
+	while (type->type_kind == TYPE_DISTINCT && type->decl->is_substruct) type = type->decl->distinct_decl.base_type;
+	while (other->type_kind == TYPE_DISTINCT && other->decl->is_substruct) other = other->decl->distinct_decl.base_type;
+
+	// We may now have a match.
 	if (type == other) return type;
 
 	// Sort types

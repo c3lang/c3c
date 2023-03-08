@@ -546,7 +546,7 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 				expr->expr_kind = EXPR_CONST;
 				expr->const_expr.const_kind = CONST_POINTER;
 				expr->const_expr.ptr = 0;
-				expr->type = flattened;
+				expr->type = to;
 				return true;
 			}
 			// Resolve this as an inferred array.

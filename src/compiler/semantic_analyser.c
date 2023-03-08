@@ -230,20 +230,6 @@ static void sema_analyze_to_stage(AnalysisStage stage)
 	halt_on_error();
 }
 
-Type *global_context_string_type(void)
-{
-	if (global_context.string_type) return global_context.string_type;
-	DeclId type = decltable_get(&global_context.symbols, symtab_preset("String", TOKEN_TYPE_IDENT));
-	if (!type) error_exit("Missing definition of 'String' type.");
-	Decl *decl = declptr(type);
-	if (decl->decl_kind == DECL_TYPEDEF || decl->decl_kind == DECL_DISTINCT)
-	{
-		if (type_flatten(decl->type) == type_chars) return global_context.string_type = decl->type;
-
-	}
-	error_exit("Invalid definition of String, expected a type with an underlying char[]");
-}
-
 /**
  * Perform the entire semantic analysis.
  */
@@ -350,8 +336,7 @@ RESOLVE_LAMBDA:;
 		{
 			error_exit("'%s::%s' is not a function pointer.", path->module, ident);
 		}
-		Type *string = global_context_string_type();
-		if (!type_func_match(panic_fn_type, type_void, 4, string, string, string, type_uint))
+		if (!type_func_match(panic_fn_type, type_void, 4, type_string, type_string, type_string, type_uint))
 		{
 			error_exit("Expected panic function to have the signature fn void(String, String, String, uint).");
 		}

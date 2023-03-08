@@ -1377,7 +1377,7 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc)
 	Type **types = prototype->param_types;
 	for (unsigned i = 0; i < 4; i++)
 	{
-		Type *type = types[i]->canonical;
+		Type *type = type_lowering(types[i]);
 		BEValue value = { .value = args[i], .type = type };
 		llvm_emit_parameter(c, actual_args, &count, abi_args[i], &value, type);
 	}

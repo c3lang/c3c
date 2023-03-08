@@ -10,7 +10,7 @@ fn void! bytestream()
 	assert('a' == s.read_byte()?);
 	s.pushback_byte()?;
 	usz len = s.read(&buffer)?;
-	assert(buffer[:len] == "abc");
+	assert((String)buffer[:len] == "abc");
 	ByteWriter w;
 	w.init();
 	Stream ws = w.as_stream();
