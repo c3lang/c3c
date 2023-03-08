@@ -1851,6 +1851,7 @@ extern Type *type_anyfail;
 extern Type *type_cint;
 extern Type *type_cuint;
 extern Type *type_chars;
+extern Type *type_string;
 
 
 extern const char *attribute_list[NUMBER_OF_ATTRIBUTES];

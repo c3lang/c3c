@@ -59,7 +59,7 @@ fn DString DString.new_tconcat(DString a, DString b) => a.new_concat(b, mem::tem
 fn ZString DString.zstr(DString str)
 {
 	StringData* data = str.data();
-	if (!data) return (ZString)"";
+	if (!data) return "";
 	if (data.capacity == data.len)
 	{
 		str.reserve(1);

@@ -46,20 +46,20 @@ entry:
   %taddr = alloca i32, align 4
   %error_var = alloca i64, align 8
   %blockret = alloca i32, align 4
-  %x = alloca ptr, align 8
+  %x = alloca %"char[]", align 8
   %retparam1 = alloca i64, align 8
   %result = alloca %File, align 8
-  %x2 = alloca ptr, align 8
+  %x2 = alloca %"char[]", align 8
   %retparam3 = alloca i64, align 8
   %result4 = alloca %File, align 8
-  %error_var5 = alloca i64, align 8
-  %blockret6 = alloca i32, align 4
-  %x10 = alloca ptr, align 8
-  %retparam11 = alloca i64, align 8
-  %result12 = alloca %File, align 8
-  %x14 = alloca ptr, align 8
-  %retparam15 = alloca i64, align 8
-  %result16 = alloca %File, align 8
+  %error_var7 = alloca i64, align 8
+  %blockret8 = alloca i32, align 4
+  %x12 = alloca %"char[]", align 8
+  %retparam13 = alloca i64, align 8
+  %result14 = alloca %File, align 8
+  %x18 = alloca %"char[]", align 8
+  %retparam19 = alloca i64, align 8
+  %result20 = alloca %File, align 8
   %reterr = alloca i64, align 8
   store i32 %0, ptr %taddr, align 4
   %1 = insertvalue %variant undef, ptr %taddr, 0
@@ -86,39 +86,48 @@ or.phi:                                           ; preds = %entry
   br label %if.then
 
 if.then:                                          ; preds = %or.phi
-  store ptr @.str.2, ptr %x, align 8
+  store %"char[]" { ptr @.str.2, i64 3 }, ptr %x, align 8
   %6 = call ptr @std.io.stdout()
   store ptr %6, ptr %result, align 8
   %7 = load ptr, ptr %result, align 8
-  %8 = load ptr, ptr %x, align 8
-  %9 = call i64 @std.io.File.printn(ptr %retparam1, ptr %7, ptr %8, i64 3)
+  %8 = getelementptr inbounds %"char[]", ptr %x, i32 0, i32 0
+  %lo = load ptr, ptr %8, align 8
+  %9 = getelementptr inbounds %"char[]", ptr %x, i32 0, i32 1
+  %hi = load i64, ptr %9, align 8
+  %10 = call i64 @std.io.File.printn(ptr %retparam1, ptr %7, ptr %lo, i64 %hi)
   br label %if.exit
 
 if.exit:                                          ; preds = %if.then
-  store ptr @.str.3, ptr %x2, align 8
-  %10 = call ptr @std.io.stdout()
-  store ptr %10, ptr %result4, align 8
-  %11 = load ptr, ptr %result4, align 8
-  %12 = load ptr, ptr %x2, align 8
-  %13 = call i64 @std.io.File.printn(ptr %retparam3, ptr %11, ptr %12, i64 9)
-  store i64 ptrtoint (ptr @"foo.Foo$ABC" to i64), ptr %error_var5, align 8
-  br label %opt_block_cleanup7
+  store %"char[]" { ptr @.str.3, i64 9 }, ptr %x2, align 8
+  %11 = call ptr @std.io.stdout()
+  store ptr %11, ptr %result4, align 8
+  %12 = load ptr, ptr %result4, align 8
+  %13 = getelementptr inbounds %"char[]", ptr %x2, i32 0, i32 0
+  %lo5 = load ptr, ptr %13, align 8
+  %14 = getelementptr inbounds %"char[]", ptr %x2, i32 0, i32 1
+  %hi6 = load i64, ptr %14, align 8
+  %15 = call i64 @std.io.File.printn(ptr %retparam3, ptr %12, ptr %lo5, i64 %hi6)
+  store i64 ptrtoint (ptr @"foo.Foo$ABC" to i64), ptr %error_var7, align 8
+  br label %opt_block_cleanup9
 
-opt_block_cleanup7:                               ; preds = %if.exit
+opt_block_cleanup9:                               ; preds = %if.exit
   call void @foo.blurb()
-  br label %guard_block8
+  br label %guard_block10
 
-guard_block8:                                     ; preds = %opt_block_cleanup7
-  %14 = load i64, ptr %error_var5, align 8
-  ret i64 %14
+guard_block10:                                    ; preds = %opt_block_cleanup9
+  %16 = load i64, ptr %error_var7, align 8
+  ret i64 %16
 
-if.exit13:                                        ; No predecessors!
-  store ptr @.str.5, ptr %x14, align 8
-  %15 = call ptr @std.io.stdout()
-  store ptr %15, ptr %result16, align 8
-  %16 = load ptr, ptr %result16, align 8
-  %17 = load ptr, ptr %x14, align 8
-  %18 = call i64 @std.io.File.printn(ptr %retparam15, ptr %16, ptr %17, i64 7)
+if.exit17:                                        ; No predecessors!
+  store %"char[]" { ptr @.str.5, i64 7 }, ptr %x18, align 8
+  %17 = call ptr @std.io.stdout()
+  store ptr %17, ptr %result20, align 8
+  %18 = load ptr, ptr %result20, align 8
+  %19 = getelementptr inbounds %"char[]", ptr %x18, i32 0, i32 0
+  %lo21 = load ptr, ptr %19, align 8
+  %20 = getelementptr inbounds %"char[]", ptr %x18, i32 0, i32 1
+  %hi22 = load i64, ptr %20, align 8
+  %21 = call i64 @std.io.File.printn(ptr %retparam19, ptr %18, ptr %lo21, i64 %hi22)
   ret i64 0
 }
 
@@ -130,12 +139,12 @@ entry:
   %taddr = alloca i32, align 4
   %error_var = alloca i64, align 8
   %blockret = alloca i32, align 4
-  %x = alloca ptr, align 8
+  %x = alloca %"char[]", align 8
   %retparam1 = alloca i64, align 8
   %result = alloca %File, align 8
   %error_var2 = alloca i64, align 8
   %blockret3 = alloca i32, align 4
-  %x7 = alloca ptr, align 8
+  %x7 = alloca %"char[]", align 8
   %retparam8 = alloca i64, align 8
   %result9 = alloca %File, align 8
   %reterr = alloca i64, align 8
@@ -164,12 +173,15 @@ and.phi:                                          ; preds = %entry
   br label %if.exit
 
 if.exit:                                          ; preds = %and.phi
-  store ptr @.str.7, ptr %x, align 8
+  store %"char[]" { ptr @.str.7, i64 9 }, ptr %x, align 8
   %6 = call ptr @std.io.stdout()
   store ptr %6, ptr %result, align 8
   %7 = load ptr, ptr %result, align 8
-  %8 = load ptr, ptr %x, align 8
-  %9 = call i64 @std.io.File.printn(ptr %retparam1, ptr %7, ptr %8, i64 9)
+  %8 = getelementptr inbounds %"char[]", ptr %x, i32 0, i32 0
+  %lo = load ptr, ptr %8, align 8
+  %9 = getelementptr inbounds %"char[]", ptr %x, i32 0, i32 1
+  %hi = load i64, ptr %9, align 8
+  %10 = call i64 @std.io.File.printn(ptr %retparam1, ptr %7, ptr %lo, i64 %hi)
   store i64 ptrtoint (ptr @"foo.Foo$ABC" to i64), ptr %error_var2, align 8
   br label %opt_block_cleanup4
 
@@ -178,16 +190,19 @@ opt_block_cleanup4:                               ; preds = %if.exit
   br label %guard_block5
 
 guard_block5:                                     ; preds = %opt_block_cleanup4
-  %10 = load i64, ptr %error_var2, align 8
-  ret i64 %10
+  %11 = load i64, ptr %error_var2, align 8
+  ret i64 %11
 
 if.exit6:                                         ; No predecessors!
-  store ptr @.str.8, ptr %x7, align 8
-  %11 = call ptr @std.io.stdout()
-  store ptr %11, ptr %result9, align 8
-  %12 = load ptr, ptr %result9, align 8
-  %13 = load ptr, ptr %x7, align 8
-  %14 = call i64 @std.io.File.printn(ptr %retparam8, ptr %12, ptr %13, i64 7)
+  store %"char[]" { ptr @.str.8, i64 7 }, ptr %x7, align 8
+  %12 = call ptr @std.io.stdout()
+  store ptr %12, ptr %result9, align 8
+  %13 = load ptr, ptr %result9, align 8
+  %14 = getelementptr inbounds %"char[]", ptr %x7, i32 0, i32 0
+  %lo10 = load ptr, ptr %14, align 8
+  %15 = getelementptr inbounds %"char[]", ptr %x7, i32 0, i32 1
+  %hi11 = load i64, ptr %15, align 8
+  %16 = call i64 @std.io.File.printn(ptr %retparam8, ptr %13, ptr %lo10, i64 %hi11)
   ret i64 0
 }
 

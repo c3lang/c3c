@@ -43,20 +43,62 @@ fn int main()
 
 /* #expect: foo.ll
 
+
 define void @foo.Foo.hello(ptr %0) #0 {
 entry:
-  store ptr @.str, ptr %x, align 8
+  %x = alloca %"char[]", align 8
+  %x1 = alloca %"char[]", align 8
+  %retparam = alloca i64, align 8
+  %result = alloca %File, align 8
+  store %"char[]" { ptr @.str, i64 14 }, ptr %x, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %x1, ptr align 8 %x, i32 16, i1 false)
+  %1 = call ptr @std.io.stdout()
+  store ptr %1, ptr %result, align 8
+  %2 = load ptr, ptr %result, align 8
+  %3 = getelementptr inbounds %"char[]", ptr %x1, i32 0, i32 0
+  %lo = load ptr, ptr %3, align 8
+  %4 = getelementptr inbounds %"char[]", ptr %x1, i32 0, i32 1
+  %hi = load i64, ptr %4, align 8
+  %5 = call i64 @std.io.File.printn(ptr %retparam, ptr %2, ptr %lo, i64 %hi)
   ret void
 }
 
 define void @foo.Bar.hello(ptr %0) #0 {
 entry:
-  store ptr @.str.1, ptr %x, align 8
+  %x = alloca %"char[]", align 8
+  %x1 = alloca %"char[]", align 8
+  %retparam = alloca i64, align 8
+  %result = alloca %File, align 8
+  store %"char[]" { ptr @.str.1, i64 14 }, ptr %x, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %x1, ptr align 8 %x, i32 16, i1 false)
+  %1 = call ptr @std.io.stdout()
+  store ptr %1, ptr %result, align 8
+  %2 = load ptr, ptr %result, align 8
+  %3 = getelementptr inbounds %"char[]", ptr %x1, i32 0, i32 0
+  %lo = load ptr, ptr %3, align 8
+  %4 = getelementptr inbounds %"char[]", ptr %x1, i32 0, i32 1
+  %hi = load i64, ptr %4, align 8
+  %5 = call i64 @std.io.File.printn(ptr %retparam, ptr %2, ptr %lo, i64 %hi)
+  ret void
 }
 
 define void @foo.MyEnum.hello(ptr %0) #0 {
 entry:
-  store ptr @.str.2, ptr %x, align 8
+  %x = alloca %"char[]", align 8
+  %x1 = alloca %"char[]", align 8
+  %retparam = alloca i64, align 8
+  %result = alloca %File, align 8
+  store %"char[]" { ptr @.str.2, i64 17 }, ptr %x, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %x1, ptr align 8 %x, i32 16, i1 false)
+  %1 = call ptr @std.io.stdout()
+  store ptr %1, ptr %result, align 8
+  %2 = load ptr, ptr %result, align 8
+  %3 = getelementptr inbounds %"char[]", ptr %x1, i32 0, i32 0
+  %lo = load ptr, ptr %3, align 8
+  %4 = getelementptr inbounds %"char[]", ptr %x1, i32 0, i32 1
+  %hi = load i64, ptr %4, align 8
+  %5 = call i64 @std.io.File.printn(ptr %retparam, ptr %2, ptr %lo, i64 %hi)
+  ret void
 }
 
 define i32 @main() #0 {

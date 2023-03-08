@@ -594,6 +594,7 @@ static bool vector_to_vector(Expr *expr, Type *to_type)
  * Perform vararg promotions typical for C style varargs:
  * 1. Widen int and bool to C int size
  * 2. Widen float and smaller to double
+ * 3. Turn subarrays into pointers
  */
 bool cast_promote_vararg(Expr *arg)
 {
@@ -605,6 +606,9 @@ bool cast_promote_vararg(Expr *arg)
 
 	// 2. Promote any float to at least double
 	if (type_is_promotable_float(arg_type)) return cast(arg, type_double);
+
+	// 3. Turn subarrays into pointers
+	if (arg_type->type_kind == TYPE_SUBARRAY) return cast(arg, type_get_ptr(arg_type->array.base));
 
 	return true;
 }
@@ -1029,23 +1033,36 @@ static void sema_error_const_int_out_of_range(Expr *expr, Expr *problem, Type *t
 }
 
 
-static inline bool cast_maybe_string_lit_to_char_array(Expr *expr, Type *expr_canonical, Type *to_canonical, Type *to_original)
+static inline bool cast_maybe_string_lit(Expr *expr, Type *to_canonical, Type *to_original)
 {
-	if (expr->expr_kind != EXPR_CONST || expr->const_expr.const_kind != CONST_STRING) return false;
-	if (expr_canonical->type_kind != TYPE_POINTER) return false;
-	if (to_canonical->type_kind != TYPE_ARRAY && to_canonical->type_kind != TYPE_INFERRED_ARRAY) return false;
-	if (to_canonical->array.base != type_char) return false;
-	Type *pointer = expr_canonical->pointer;
-	if (pointer->type_kind != TYPE_ARRAY) return false;
-	if (pointer->array.base != type_char) return false;
-	assert(!type_is_optional(expr->type));
-	if (to_canonical->type_kind == TYPE_INFERRED_ARRAY)
+	if (expr->expr_kind != EXPR_CONST || expr->const_expr.const_kind != CONST_STRING || expr->type != type_string) return false;
+	Type *flat = type_flatten(to_canonical);
+	Type *indexed_type = type_get_indexed_type(flat);
+	if (indexed_type) indexed_type = type_flatten(indexed_type);
+	switch (flat->type_kind)
 	{
-		assert(to_original->type_kind == TYPE_INFERRED_ARRAY);
-		to_original = type_get_array(to_original->array.base, pointer->array.len);
+		case TYPE_SUBARRAY:
+		case TYPE_POINTER:
+			if (indexed_type != type_char && indexed_type != type_ichar) return false;
+			expr->type = to_original;
+		case TYPE_INFERRED_ARRAY:
+			if (indexed_type != type_char && indexed_type != type_ichar) return false;
+			expr->type = type_infer_len_from_actual_type(to_original, type_get_array(indexed_type, expr->const_expr.string.len));
+			return true;
+			break;
+		case TYPE_ARRAY:
+			if (indexed_type != type_char && indexed_type != type_ichar) return false;
+			{
+				ArraySize len = expr->const_expr.string.len;
+				ArraySize to_len = flat->array.len;
+				if (len > to_len) return false;
+				expr->type = to_original;
+				return true;
+			}
+			break;
+		default:
+			return false;
 	}
-	expr->type = to_original;
-	return true;
 }
 
 
@@ -1568,7 +1585,7 @@ static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, boo
 
 	// Handle strings, these don't actually mess with the underlying data,
 	// just the type.
-	if (cast_maybe_string_lit_to_char_array(expr, from, to, to_type)) return true;
+	if (cast_maybe_string_lit(expr, to, to_type)) return true;
 
 	// For constant pointers cast into anything pointer-like:
 	if (expr_is_const_pointer(expr) && from == type_voidptr && type_flatten(to)->type_kind == TYPE_POINTER)

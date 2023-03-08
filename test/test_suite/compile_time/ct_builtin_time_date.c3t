@@ -26,30 +26,29 @@ fn void main()
 
 /* #expect: test.ll
 
-
 define void @test.test(i32 %0) #0 {
 entry:
   %retparam = alloca i64, align 8
   %varargslots = alloca [1 x %variant], align 16
   %taddr = alloca i32, align 4
-  %x = alloca ptr, align 8
+  %x = alloca %"char[]", align 8
   %retparam1 = alloca i64, align 8
   %result = alloca %File, align 8
-  %x2 = alloca ptr, align 8
+  %x2 = alloca %"char[]", align 8
   %retparam3 = alloca i64, align 8
   %result4 = alloca %File, align 8
-  %retparam5 = alloca i64, align 8
-  %varargslots6 = alloca [1 x %variant], align 16
-  %taddr7 = alloca i64, align 8
-  %retparam8 = alloca i64, align 8
-  %varargslots9 = alloca [1 x %variant], align 16
-  %taddr10 = alloca i64, align 8
-  %x11 = alloca ptr, align 8
-  %retparam12 = alloca i64, align 8
-  %result13 = alloca %File, align 8
-  %x14 = alloca ptr, align 8
-  %retparam15 = alloca i64, align 8
-  %result16 = alloca %File, align 8
+  %retparam7 = alloca i64, align 8
+  %varargslots8 = alloca [1 x %variant], align 16
+  %taddr9 = alloca i64, align 8
+  %retparam10 = alloca i64, align 8
+  %varargslots11 = alloca [1 x %variant], align 16
+  %taddr12 = alloca i64, align 8
+  %x13 = alloca %"char[]", align 8
+  %retparam14 = alloca i64, align 8
+  %result15 = alloca %File, align 8
+  %x18 = alloca %"char[]", align 8
+  %retparam19 = alloca i64, align 8
+  %result20 = alloca %File, align 8
   store i32 %0, ptr %taddr, align 4
   %1 = insertvalue %variant undef, ptr %taddr, 0
   %2 = insertvalue %variant %1, i64 ptrtoint (ptr @"$ct.int" to i64), 1
@@ -63,41 +62,61 @@ if.then:                                          ; preds = %entry
   call void @test.test(i32 %sub)
   br label %if.exit
 if.exit:                                          ; preds = %if.then, %entry
-  store ptr @.str.1, ptr %x, align 8
+  store %"char[]" { ptr @.str.1, i64 8 }, ptr %x, align 8
   %5 = call ptr @std.io.stdout()
   store ptr %5, ptr %result, align 8
   %6 = load ptr, ptr %result, align 8
-  %7 = load ptr, ptr %x, align 8
-  %8 = call i64 @std.io.File.printn(ptr %retparam1, ptr %6, ptr %7, i64 8)
-  store ptr @.str.2, ptr %x2, align 8
-  %9 = call ptr @std.io.stdout()
-  store ptr %9, ptr %result4, align 8
-  %10 = load ptr, ptr %result4, align 8
-  %11 = load ptr, ptr %x2, align 8
-  %12 = call i64 @std.io.File.printn(ptr %retparam3, ptr %10, ptr %11, i64 10)
-  store i64 14, ptr %taddr7, align 8
-  %13 = insertvalue %variant undef, ptr %taddr7, 0
-  %14 = insertvalue %variant %13, i64 ptrtoint (ptr @"$ct.long" to i64), 1
-  %15 = getelementptr inbounds [1 x %variant], ptr %varargslots6, i64 0, i64 0
-  store %variant %14, ptr %15, align 16
-  %16 = call i64 @std.io.printfn(ptr %retparam5, ptr @.str.3, i64 2, ptr %varargslots6, i64 1)
-  store i64 6, ptr %taddr10, align 8
-  %17 = insertvalue %variant undef, ptr %taddr10, 0
-  %18 = insertvalue %variant %17, i64 ptrtoint (ptr @"$ct.long" to i64), 1
-  %19 = getelementptr inbounds [1 x %variant], ptr %varargslots9, i64 0, i64 0
-  store %variant %18, ptr %19, align 16
-  %20 = call i64 @std.io.printfn(ptr %retparam8, ptr @.str.4, i64 2, ptr %varargslots9, i64 1)
-  store ptr @.str.5, ptr %x11, align 8
-  %21 = call ptr @std.io.stdout()
-  store ptr %21, ptr %result13, align 8
-  %22 = load ptr, ptr %result13, align 8
-  %23 = load ptr, ptr %x11, align 8
-  %24 = call i64 @std.io.File.printn(ptr %retparam12, ptr %22, ptr %23, i64 23)
-  store ptr @.str.6, ptr %x14, align 8
-  %25 = call ptr @std.io.stdout()
-  store ptr %25, ptr %result16, align 8
-  %26 = load ptr, ptr %result16, align 8
-  %27 = load ptr, ptr %x14, align 8
-  %28 = call i64 @std.io.File.printn(ptr %retparam15, ptr %26, ptr %27, i64 4)
+  %7 = getelementptr inbounds %"char[]", ptr %x, i32 0, i32 0
+  %lo = load ptr, ptr %7, align 8
+  %8 = getelementptr inbounds %"char[]", ptr %x, i32 0, i32 1
+  %hi = load i64, ptr %8, align 8
+  %9 = call i64 @std.io.File.printn(ptr %retparam1, ptr %6, ptr %lo, i64 %hi)
+  store %"char[]" { ptr @.str.2, i64 10 }, ptr %x2, align 8
+  %10 = call ptr @std.io.stdout()
+  store ptr %10, ptr %result4, align 8
+  %11 = load ptr, ptr %result4, align 8
+  %12 = getelementptr inbounds %"char[]", ptr %x2, i32 0, i32 0
+  %lo5 = load ptr, ptr %12, align 8
+  %13 = getelementptr inbounds %"char[]", ptr %x2, i32 0, i32 1
+  %hi6 = load i64, ptr %13, align 8
+  %14 = call i64 @std.io.File.printn(ptr %retparam3, ptr %11, ptr %lo5, i64 %hi6)
+  store i64 14, ptr %taddr9, align 8
+  %15 = insertvalue %variant undef, ptr %taddr9, 0
+  %16 = insertvalue %variant %15, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  %17 = getelementptr inbounds [1 x %variant], ptr %varargslots8, i64 0, i64 0
+  store %variant %16, ptr %17, align 16
+  %18 = call i64 @std.io.printfn(ptr %retparam7, ptr @.str.3, i64 2, ptr %varargslots8, i64 1)
+  store i64 6, ptr %taddr12, align 8
+  %19 = insertvalue %variant undef, ptr %taddr12, 0
+  %20 = insertvalue %variant %19, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  %21 = getelementptr inbounds [1 x %variant], ptr %varargslots11, i64 0, i64 0
+  store %variant %20, ptr %21, align 16
+  %22 = call i64 @std.io.printfn(ptr %retparam10, ptr @.str.4, i64 2, ptr %varargslots11, i64 1)
+  store %"char[]" { ptr @.str.5, i64 23 }, ptr %x13, align 8
+  %23 = call ptr @std.io.stdout()
+  store ptr %23, ptr %result15, align 8
+  %24 = load ptr, ptr %result15, align 8
+  %25 = getelementptr inbounds %"char[]", ptr %x13, i32 0, i32 0
+  %lo16 = load ptr, ptr %25, align 8
+  %26 = getelementptr inbounds %"char[]", ptr %x13, i32 0, i32 1
+  %hi17 = load i64, ptr %26, align 8
+  %27 = call i64 @std.io.File.printn(ptr %retparam14, ptr %24, ptr %lo16, i64 %hi17)
+  store %"char[]" { ptr @.str.6, i64 4 }, ptr %x18, align 8
+  %28 = call ptr @std.io.stdout()
+  store ptr %28, ptr %result20, align 8
+  %29 = load ptr, ptr %result20, align 8
+  %30 = getelementptr inbounds %"char[]", ptr %x18, i32 0, i32 0
+  %lo21 = load ptr, ptr %30, align 8
+  %31 = getelementptr inbounds %"char[]", ptr %x18, i32 0, i32 1
+  %hi22 = load i64, ptr %31, align 8
+  %32 = call i64 @std.io.File.printn(ptr %retparam19, ptr %29, ptr %lo21, i64 %hi22)
+  ret void
+}
+; Function Attrs: nounwind
+define void @test.main() #0 {
+entry:
+  %is_def2 = alloca i8, align 1
+  store i8 1, ptr %is_def2, align 1
+  call void @test.test(i32 10)
   ret void
 }

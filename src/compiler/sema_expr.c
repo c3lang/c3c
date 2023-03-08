@@ -3572,6 +3572,12 @@ CHECK_DEEPER:
 	{
 		if (flat_type->type_kind == TYPE_SUBARRAY)
 		{
+			// Handle literal "foo".len which is now a subarray.
+			if (expr_is_const_string(parent))
+			{
+				expr_rewrite_const_int(expr, type_isz, parent->const_expr.string.len);
+				return true;
+			}
 			expr_rewrite_to_builtin_access(expr, current_parent, ACCESS_LEN, type_usz);
 			return true;
 		}

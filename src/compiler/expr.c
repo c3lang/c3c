@@ -933,7 +933,7 @@ void expr_rewrite_to_string(Expr *expr_to_rewrite, const char *string)
 	ArraySize len = (ArraySize)strlen(string);
 	expr_to_rewrite->const_expr.string.len = len;
 	expr_to_rewrite->resolve_status = RESOLVE_DONE;
-	expr_to_rewrite->type = type_get_ptr(type_get_array(type_char, len));
+	expr_to_rewrite->type = type_string;
 }
 
 void expr_rewrite_to_binary(Expr *expr_to_rewrite, Expr *left, Expr *right, BinaryOp op)

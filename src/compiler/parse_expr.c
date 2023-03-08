@@ -558,7 +558,7 @@ static Expr *parse_ct_stringify(ParseContext *c, Expr *left)
 	expr->const_expr.const_kind = CONST_STRING;
 	expr->const_expr.string.chars = content;
 	expr->const_expr.string.len = len;
-	expr->type = type_get_ptr(type_get_array(type_char, len));
+	expr->type = type_string;
 	return expr;
 }
 
@@ -1622,7 +1622,7 @@ static Expr *parse_string_literal(ParseContext *c, Expr *left)
 	assert(str);
 	expr_string->const_expr.string.chars = str;
 	expr_string->const_expr.string.len = (uint32_t)len;
-	expr_string->type = type_get_ptr(type_get_array(type_char, len));
+	expr_string->type = type_string;
 	expr_string->const_expr.const_kind = CONST_STRING;
 	return expr_string;
 }

@@ -125,7 +125,7 @@ fn void test16()
 
 fn void test17()
 {
-    int a = "test";             // #error: 'char[4]*' to 'int'
+    int a = "test";             // #error: 'char[]' to 'int'
 }
 
 fn void test18()

@@ -168,7 +168,7 @@ cond.rhs:                                         ; preds = %entry
   br label %cond.phi
 
 cond.phi:                                         ; preds = %cond.rhs, %cond.lhs
-  %val = phi %"char[]" [ %6, %cond.lhs ], [ { ptr @.str.43, i64 7 }, %cond.rhs ]
+  %val = phi %"char[]" [ %6, %cond.lhs ], [ { ptr @.str.41, i64 7 }, %cond.rhs ]
   store %"char[]" %val, ptr %title, align 8
   %7 = getelementptr inbounds %"char[]", ptr %title, i32 0, i32 1
   %8 = load i64, ptr %7, align 8
@@ -178,8 +178,8 @@ cond.phi:                                         ; preds = %cond.rhs, %cond.lhs
   %11 = getelementptr inbounds %Summary, ptr %0, i32 0, i32 1
   %12 = load i8, ptr %11, align 8
   %13 = trunc i8 %12 to i1
-  %ternary = select i1 %13, ptr @.str.45, ptr @.str.46
-  %14 = call i32 (ptr, ptr, ...) @fprintf(ptr %1, ptr @.str.44, i32 %trunc, ptr %10, ptr %ternary)
+  %ternary = select i1 %13, ptr @.str.43, ptr @.str.44
+  %14 = call i32 (ptr, ptr, ...) @fprintf(ptr %1, ptr @.str.42, i32 %trunc, ptr %10, ptr %ternary)
   ret void
 }
 
@@ -488,7 +488,7 @@ expr_block.exit46:                                ; preds = %after_check45
 
 panic_block47:                                    ; preds = %assign_optional44
   %49 = load ptr, ptr @std.core.builtin.panic, align 8
-  call void %49(ptr @.panic_msg.7, i64 27, ptr @.file.8, i64 6, ptr @.func.9, i64 7
+  call void %49(ptr @.panic_msg.6, i64 27, ptr @.file.7, i64 6, ptr @.func.8, i64 7
   unreachable
 
 noerr_block48:                                    ; preds = %expr_block.exit46
@@ -546,7 +546,7 @@ expr_block.exit69:                                ; preds = %after_check68
 
 panic_block70:                                    ; preds = %assign_optional67
   %64 = load ptr, ptr @std.core.builtin.panic, align 8
-  call void %64(ptr @.panic_msg.10, i64 27, ptr @.file.11, i64 6, ptr @.func.12, i64 7
+  call void %64(ptr @.panic_msg.9, i64 27, ptr @.file.10, i64 6, ptr @.func.11, i64 7
   unreachable
 
 noerr_block71:                                    ; preds = %expr_block.exit69
@@ -580,7 +580,7 @@ if.exit77:                                        ; preds = %if.exit20
   %trunc = trunc i64 %70 to i32
   %71 = getelementptr inbounds %"char[]", ptr %url, i32 0, i32 0
   %72 = load ptr, ptr %71, align 8
-  %73 = call i32 (ptr, i64, ptr, ...) @snprintf(ptr null, i64 0, ptr @.str.13, i32 %trunc, ptr %72)
+  %73 = call i32 (ptr, i64, ptr, ...) @snprintf(ptr null, i64 0, ptr @.str.12, i32 %trunc, ptr %72)
   store i32 %73, ptr %len, align 4
   %74 = load ptr, ptr @std.core.mem.thread_allocator, align 8
   store ptr %74, ptr %using78, align 8
@@ -617,7 +617,7 @@ expr_block.exit91:                                ; preds = %after_check90
 
 panic_block92:                                    ; preds = %assign_optional89
   %85 = load ptr, ptr @std.core.builtin.panic, align 8
-  call void %85(ptr @.panic_msg.14, i64 27, ptr @.file.15, i64 6, ptr @.func.16
+  call void %85(ptr @.panic_msg.13, i64 27, ptr @.file.14, i64 6, ptr @.func.15
   unreachable
 
 noerr_block93:                                    ; preds = %expr_block.exit91
@@ -639,7 +639,7 @@ if.exit96:                                        ; preds = %noerr_block93
   %trunc99 = trunc i64 %90 to i32
   %91 = getelementptr inbounds %"char[]", ptr %url, i32 0, i32 0
   %92 = load ptr, ptr %91, align 8
-  %93 = call i32 (ptr, i64, ptr, ...) @snprintf(ptr %87, i64 %add98, ptr @.str.17, i32 %trunc99, ptr %92)
+  %93 = call i32 (ptr, i64, ptr, ...) @snprintf(ptr %87, i64 %add98, ptr @.str.16, i32 %trunc99, ptr %92)
   %94 = getelementptr inbounds %Doc, ptr %literal101, i32 0, i32 0
   store ptr null, ptr %literal104, align 8
   %95 = getelementptr inbounds %Head, ptr %literal104, i32 0, i32 0
@@ -685,7 +685,7 @@ expr_block.exit124:                               ; preds = %after_check123
 
 panic_block125:                                   ; preds = %assign_optional122
   %111 = load ptr, ptr @std.core.builtin.panic, align 8
-  call void %111(ptr @.panic_msg.18, i64 27, ptr @.file.19, i64 6, ptr @.func.20
+  call void %111(ptr @.panic_msg.17, i64 27, ptr @.file.18, i64 6, ptr @.func.19
   unreachable
 
 noerr_block126:                                   ; preds = %expr_block.exit124
@@ -743,7 +743,7 @@ expr_block.exit147:                               ; preds = %after_check146
 
 panic_block148:                                   ; preds = %assign_optional145
   %126 = load ptr, ptr @std.core.builtin.panic, align 8
-  call void %126(ptr @.panic_msg.21, i64 27, ptr @.file.22, i64 6, ptr @.func.23
+  call void %126(ptr @.panic_msg.20, i64 27, ptr @.file.21, i64 6, ptr @.func.22
   unreachable
 
 noerr_block149:                                   ; preds = %expr_block.exit147
@@ -935,7 +935,7 @@ err_retblock:                                     ; preds = %assign_optional3, %
 define ptr @test.bool_to_string(i8 zeroext %0) #0 {
 entry:
   %1 = trunc i8 %0 to i1
-  %ternary = select i1 %1, %"char[]" { ptr @.str.24, i64 4 }, %"char[]" { ptr @.str.25, i64 5 }
+  %ternary = select i1 %1, %"char[]" { ptr @.str.23, i64 4 }, %"char[]" { ptr @.str.24, i64 5 }
   %2 = extractvalue %"char[]" %ternary, 0
   ret ptr %2
 }
@@ -953,27 +953,27 @@ switch.entry:                                     ; preds = %entry
   br i1 %eq, label %switch.case, label %next_if
 
 switch.case:                                      ; preds = %switch.entry
-  ret ptr @.str.26
+  ret ptr @.str.25
 
 next_if:                                          ; preds = %switch.entry
   %eq1 = icmp eq i64 ptrtoint (ptr @"test.ReadError$BAD_READ" to i64), %1
   br i1 %eq1, label %switch.case2, label %next_if3
 
 switch.case2:                                     ; preds = %next_if
-  ret ptr @.str.27
+  ret ptr @.str.26
 
 next_if3:                                         ; preds = %next_if
   %eq4 = icmp eq i64 ptrtoint (ptr @"test.ReadError$OUT_OF_MEMORY" to i64), %1
   br i1 %eq4, label %switch.case5, label %next_if6
 
 switch.case5:                                     ; preds = %next_if3
-  ret ptr @.str.28
+  ret ptr @.str.27
 
 next_if6:                                         ; preds = %next_if3
   br label %switch.default
 
 switch.default:                                   ; preds = %next_if6
-  ret ptr @.str.29
+  ret ptr @.str.28
 }
 
 ; Function Attrs: nounwind
@@ -991,15 +991,15 @@ entry:
   %has_title.f = alloca i64, align 8
   %retparam = alloca i8, align 1
   %0 = getelementptr inbounds [5 x %"char[]"], ptr %literal, i64 0, i64 0
-  store %"char[]" { ptr @.str.30, i64 4 }, ptr %0, align 8
+  store %"char[]" { ptr @.str.29, i64 4 }, ptr %0, align 8
   %1 = getelementptr inbounds [5 x %"char[]"], ptr %literal, i64 0, i64 1
-  store %"char[]" { ptr @.str.31, i64 11 }, ptr %1, align 8
+  store %"char[]" { ptr @.str.30, i64 11 }, ptr %1, align 8
   %2 = getelementptr inbounds [5 x %"char[]"], ptr %literal, i64 0, i64 2
-  store %"char[]" { ptr @.str.32, i64 13 }, ptr %2, align 8
+  store %"char[]" { ptr @.str.31, i64 13 }, ptr %2, align 8
   %3 = getelementptr inbounds [5 x %"char[]"], ptr %literal, i64 0, i64 3
-  store %"char[]" { ptr @.str.33, i64 12 }, ptr %3, align 8
+  store %"char[]" { ptr @.str.32, i64 12 }, ptr %3, align 8
   %4 = getelementptr inbounds [5 x %"char[]"], ptr %literal, i64 0, i64 4
-  store %"char[]" { ptr @.str.34, i64 4 }, ptr %4, align 8
+  store %"char[]" { ptr @.str.33, i64 4 }, ptr %4, align 8
   %5 = insertvalue %"char[][]" undef, ptr %literal, 0
   %6 = insertvalue %"char[][]" %5, i64 5, 1
   store %"char[][]" %6, ptr %URLS, align 8
@@ -1026,7 +1026,7 @@ loop.body:                                        ; preds = %loop.cond
   %trunc = trunc i64 %15 to i32
   %16 = getelementptr inbounds %"char[]", ptr %url, i32 0, i32 0
   %17 = load ptr, ptr %16, align 8
-  %18 = call i32 (ptr, ...) @printf(ptr @.str.35, i32 %trunc, ptr %17)
+  %18 = call i32 (ptr, ...) @printf(ptr @.str.34, i32 %trunc, ptr %17)
   %19 = getelementptr inbounds %"char[]", ptr %url, i32 0, i32 0
   %lo = load ptr, ptr %19, align 8
   %20 = getelementptr inbounds %"char[]", ptr %url, i32 0, i32 1
@@ -1034,10 +1034,10 @@ loop.body:                                        ; preds = %loop.cond
   %21 = call { ptr, i8 } @test.readAndBuildSummary(ptr %lo, i64 %hi)
   store { ptr, i8 } %21, ptr %result, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %summary, ptr align 8 %result, i32 16, i1 false)
-  %22 = call i32 (ptr, ...) @printf(ptr @.str.36)
+  %22 = call i32 (ptr, ...) @printf(ptr @.str.35)
   %23 = load ptr, ptr @__stdoutp, align 8
   call void @test.Summary.print(ptr %summary, ptr %23)
-  %24 = call i32 (ptr, ...) @printf(ptr @.str.37)
+  %24 = call i32 (ptr, ...) @printf(ptr @.str.36)
   %25 = getelementptr inbounds %Summary, ptr %summary, i32 0, i32 0
   %26 = load ptr, ptr %25, align 8
   %ptrbool = icmp ne ptr %26, null
@@ -1060,7 +1060,7 @@ cond.phi:                                         ; preds = %cond.rhs, %cond.lhs
   %trunc2 = trunc i64 %31 to i32
   %32 = getelementptr inbounds %"char[]", ptr %title_sure, i32 0, i32 0
   %33 = load ptr, ptr %32, align 8
-  %34 = call i32 (ptr, ...) @printf(ptr @.str.39, i32 %trunc2, ptr %33)
+  %34 = call i32 (ptr, ...) @printf(ptr @.str.37, i32 %trunc2, ptr %33)
   %35 = getelementptr inbounds %"char[]", ptr %url, i32 0, i32 0
   %lo3 = load ptr, ptr %35, align 8
   %36 = getelementptr inbounds %"char[]", ptr %url, i32 0, i32 1
@@ -1113,8 +1113,8 @@ else_block11:                                     ; preds = %phi_block
 
 phi_block12:                                      ; preds = %else_block11, %after_check10
   %val13 = phi i1 [ %47, %after_check10 ], [ false, %else_block11 ]
-  %ternary = select i1 %val13, ptr @.str.41, ptr @.str.42
-  %48 = call i32 (ptr, ...) @printf(ptr @.str.40, ptr %val7, ptr %ternary)
+  %ternary = select i1 %val13, ptr @.str.39, ptr @.str.40
+  %48 = call i32 (ptr, ...) @printf(ptr @.str.38, ptr %val7, ptr %ternary)
   %49 = load i64, ptr %.anon1, align 8
   %add = add i64 %49, 1
   store i64 %add, ptr %.anon1, align 8

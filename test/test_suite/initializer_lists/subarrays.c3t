@@ -48,7 +48,10 @@ fn int main()
 %Bar = type { i32, i32 }
 %"Bar[]" = type { ptr, i64 }
 %"int[]" = type { ptr, i64 }
+%"char[]" = type { ptr, i64 }
+%File = type { ptr }
 %Baz = type { double }
+
 @"$ct.subarrays.Baz" = linkonce constant %.introspect { i8 11, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @"$ct.subarrays.Bar" = linkonce constant %.introspect { i8 10, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @.taddr = private global [2 x %Bar] [%Bar { i32 3, i32 4 }, %Bar { i32 8, i32 9 }], align 8
@@ -72,14 +75,14 @@ entry:
   %literal = alloca [3 x i32], align 4
   %y = alloca ptr, align 8
   %literal2 = alloca [3 x i32], align 4
-  %x3 = alloca ptr, align 8
+  %x3 = alloca %"char[]", align 8
   %retparam = alloca i64, align 8
   %result = alloca %File, align 8
   %ffe = alloca %Baz, align 8
   %azz = alloca [1 x i32], align 4
   %xy = alloca i8, align 1
   %literal7 = alloca [3 x i32], align 4
-  %x9 = alloca ptr, align 8
+  %x9 = alloca %"char[]", align 8
   %retparam10 = alloca i64, align 8
   %result11 = alloca %File, align 8
   %b = alloca %Bar, align 4
@@ -111,62 +114,68 @@ entry:
   %12 = getelementptr inbounds [3 x i32], ptr %literal2, i64 0, i64 2
   store i32 567, ptr %12, align 4
   store ptr %literal2, ptr %y, align 8
-  store ptr @.str.5, ptr %x3, align 8
+  store %"char[]" { ptr @.str.5, i64 6 }, ptr %x3, align 8
   %13 = call ptr @std.io.stdout()
   store ptr %13, ptr %result, align 8
   %14 = load ptr, ptr %result, align 8
-  %15 = load ptr, ptr %x3, align 8
-  %16 = call i64 @std.io.File.printn(ptr %retparam, ptr %14, ptr %15, i64 6)
-  %17 = getelementptr inbounds %"int[]", ptr %x, i32 0, i32 1
-  %18 = load i64, ptr %17, align 8
-  %trunc = trunc i64 %18 to i32
-  %19 = getelementptr inbounds %"int[]", ptr %x, i32 0, i32 0
-  %20 = load ptr, ptr %19, align 8
-  %ptroffset4 = getelementptr inbounds i32, ptr %20, i64 1
-  %21 = load i32, ptr %ptroffset4, align 4
-  %22 = call i32 (ptr, ...) @printf(ptr @.str.6, i32 %trunc, i32 %21)
-  %23 = load ptr, ptr %y, align 8
-  %ptroffset5 = getelementptr inbounds i32, ptr %23, i64 1
-  %24 = load i32, ptr %ptroffset5, align 4
-  %25 = call i32 (ptr, ...) @printf(ptr @.str.7, i32 %24)
-  %26 = load ptr, ptr @subarrays.fofeo, align 8
-  %ptroffset6 = getelementptr inbounds i32, ptr %26, i64 1
-  %27 = load i32, ptr %ptroffset6, align 4
-  %28 = call i32 (ptr, ...) @printf(ptr @.str.8, i32 %27)
+  %15 = getelementptr inbounds %"char[]", ptr %x3, i32 0, i32 0
+  %lo = load ptr, ptr %15, align 8
+  %16 = getelementptr inbounds %"char[]", ptr %x3, i32 0, i32 1
+  %hi = load i64, ptr %16, align 8
+  %17 = call i64 @std.io.File.printn(ptr %retparam, ptr %14, ptr %lo, i64 %hi)
+  %18 = getelementptr inbounds %"int[]", ptr %x, i32 0, i32 1
+  %19 = load i64, ptr %18, align 8
+  %trunc = trunc i64 %19 to i32
+  %20 = getelementptr inbounds %"int[]", ptr %x, i32 0, i32 0
+  %21 = load ptr, ptr %20, align 8
+  %ptroffset4 = getelementptr inbounds i32, ptr %21, i64 1
+  %22 = load i32, ptr %ptroffset4, align 4
+  %23 = call i32 (ptr, ...) @printf(ptr @.str.6, i32 %trunc, i32 %22)
+  %24 = load ptr, ptr %y, align 8
+  %ptroffset5 = getelementptr inbounds i32, ptr %24, i64 1
+  %25 = load i32, ptr %ptroffset5, align 4
+  %26 = call i32 (ptr, ...) @printf(ptr @.str.7, i32 %25)
+  %27 = load ptr, ptr @subarrays.fofeo, align 8
+  %ptroffset6 = getelementptr inbounds i32, ptr %27, i64 1
+  %28 = load i32, ptr %ptroffset6, align 4
+  %29 = call i32 (ptr, ...) @printf(ptr @.str.8, i32 %28)
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %ffe, ptr align 8 @.__const, i32 8, i1 false)
-  %29 = getelementptr inbounds [1 x i32], ptr %azz, i64 0, i64 0
-  store i32 0, ptr %29, align 4
-  %30 = getelementptr inbounds [3 x i32], ptr %literal7, i64 0, i64 0
-  store i32 1, ptr %30, align 4
-  %31 = getelementptr inbounds [3 x i32], ptr %literal7, i64 0, i64 1
-  store i32 2, ptr %31, align 4
-  %32 = getelementptr inbounds [3 x i32], ptr %literal7, i64 0, i64 2
-  store i32 3, ptr %32, align 4
-  %33 = insertvalue %"int[]" undef, ptr %literal7, 0
-  %34 = insertvalue %"int[]" %33, i64 3, 1
-  %35 = extractvalue %"int[]" %34, 1
-  %not = icmp eq i64 %35, 0
-  %36 = zext i1 %not to i8
-  store i8 %36, ptr %xy, align 1
-  %37 = load i8, ptr %xy, align 1
-  %38 = trunc i8 %37 to i1
-  %not8 = xor i1 %38, true
+  %30 = getelementptr inbounds [1 x i32], ptr %azz, i64 0, i64 0
+  store i32 0, ptr %30, align 4
+  %31 = getelementptr inbounds [3 x i32], ptr %literal7, i64 0, i64 0
+  store i32 1, ptr %31, align 4
+  %32 = getelementptr inbounds [3 x i32], ptr %literal7, i64 0, i64 1
+  store i32 2, ptr %32, align 4
+  %33 = getelementptr inbounds [3 x i32], ptr %literal7, i64 0, i64 2
+  store i32 3, ptr %33, align 4
+  %34 = insertvalue %"int[]" undef, ptr %literal7, 0
+  %35 = insertvalue %"int[]" %34, i64 3, 1
+  %36 = extractvalue %"int[]" %35, 1
+  %not = icmp eq i64 %36, 0
+  %37 = zext i1 %not to i8
+  store i8 %37, ptr %xy, align 1
+  %38 = load i8, ptr %xy, align 1
+  %39 = trunc i8 %38 to i1
+  %not8 = xor i1 %39, true
   br i1 %not8, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %entry
-  store ptr @.str.9, ptr %x9, align 8
-  %39 = call ptr @std.io.stdout()
-  store ptr %39, ptr %result11, align 8
-  %40 = load ptr, ptr %result11, align 8
-  %41 = load ptr, ptr %x9, align 8
-  %42 = call i64 @std.io.File.printn(ptr %retparam10, ptr %40, ptr %41, i64 2)
+  store %"char[]" { ptr @.str.9, i64 2 }, ptr %x9, align 8
+  %40 = call ptr @std.io.stdout()
+  store ptr %40, ptr %result11, align 8
+  %41 = load ptr, ptr %result11, align 8
+  %42 = getelementptr inbounds %"char[]", ptr %x9, i32 0, i32 0
+  %lo12 = load ptr, ptr %42, align 8
+  %43 = getelementptr inbounds %"char[]", ptr %x9, i32 0, i32 1
+  %hi13 = load i64, ptr %43, align 8
+  %44 = call i64 @std.io.File.printn(ptr %retparam10, ptr %41, ptr %lo12, i64 %hi13)
   br label %if.exit
 
 if.exit:                                          ; preds = %if.then, %entry
-  %43 = getelementptr inbounds %Bar, ptr %b, i32 0, i32 0
-  store i32 0, ptr %43, align 4
-  %44 = getelementptr inbounds %Bar, ptr %b, i32 0, i32 1
-  store i32 0, ptr %44, align 4
+  %45 = getelementptr inbounds %Bar, ptr %b, i32 0, i32 0
+  store i32 0, ptr %45, align 4
+  %46 = getelementptr inbounds %Bar, ptr %b, i32 0, i32 1
+  store i32 0, ptr %46, align 4
   call void @llvm.memset.p0.i64(ptr align 8 %z, i8 0, i64 8, i1 false)
   store %"int[]" zeroinitializer, ptr %sub, align 8
   store %"Bar[]" zeroinitializer, ptr %foo, align 8

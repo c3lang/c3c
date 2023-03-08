@@ -4471,59 +4471,68 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		case CONST_STRING:
 		{
 			Type *str_type = type_lowering(expr->type);
-			bool is_array = type_flat_is_char_array(str_type);
-			if (llvm_is_local_eval(c) || !is_array)
+			bool is_array = str_type->type_kind == TYPE_ARRAY;
+			if (is_array && llvm_is_global_eval(c))
 			{
-				ArraySize strlen = expr->const_expr.string.len;
+				// In the global alloc case, create the byte array.
+				ArraySize array_len = str_type->array.len;
 				ArraySize size = expr->const_expr.string.len + 1;
-				if (type_flat_is_char_array(expr->type) && type->array.len > size) size = type->array.len;
-				LLVMValueRef global_name = llvm_add_global_raw(c,
-				                                               ".str",
-				                                               LLVMArrayType(llvm_get_type(c, type_char), size),
-				                                               1);
-				llvm_set_private_linkage(global_name);
-				LLVMSetUnnamedAddress(global_name, LLVMGlobalUnnamedAddr);
-				LLVMSetGlobalConstant(global_name, 1);
-				LLVMValueRef string = llvm_get_zstring(c, expr->const_expr.string.chars, expr->const_expr.string.len);
-				if (size > strlen + 1)
+				LLVMValueRef string;
+				if (array_len == size)
 				{
-					LLVMValueRef trailing_zeros = llvm_get_zero_raw(LLVMArrayType(c->byte_type, size - strlen - 1));
-					LLVMValueRef values[2] = { string, trailing_zeros };
-					string = llvm_get_packed_struct(c, values, 2);
+					string = llvm_get_zstring(c, expr->const_expr.string.chars, expr->const_expr.string.len);
 				}
-				LLVMSetInitializer(global_name, string);
-				if (is_array)
+				else if (array_len < size)
 				{
-					llvm_value_set_address(be_value, global_name, type, 1);
+					string = llvm_get_bytes(c, expr->const_expr.string.chars, array_len);
+				}
+				else
+				{
+					char *buffer = ccalloc(1, array_len);
+					memcpy(buffer, expr->const_expr.string.chars, expr->const_expr.string.len);
+					string = llvm_get_bytes(c, buffer, array_len);
+				}
+				llvm_value_set(be_value, string, type);
+				return;
+			}
+			// local case or creating a pointer / subarray.
+			// In this case we first create the constant.
+			ArraySize strlen = expr->const_expr.string.len;
+			if (strlen == 0 && str_type->type_kind == TYPE_SUBARRAY)
+			{
+				llvm_value_set(be_value, llvm_get_zero(c, expr->type), expr->type);
+				return;
+			}
+			ArraySize size = expr->const_expr.string.len + 1;
+			if (is_array && type->array.len > size) size = type->array.len;
+			LLVMValueRef global_name = llvm_add_global_raw(c, ".str", LLVMArrayType(llvm_get_type(c, type_char), size), 1);
+			llvm_set_private_linkage(global_name);
+			LLVMSetUnnamedAddress(global_name, LLVMGlobalUnnamedAddr);
+			LLVMSetGlobalConstant(global_name, 1);
+			LLVMValueRef string = llvm_get_zstring(c, expr->const_expr.string.chars, expr->const_expr.string.len);
+			if (size > strlen + 1)
+			{
+				LLVMValueRef trailing_zeros = llvm_get_zero_raw(LLVMArrayType(c->byte_type, size - strlen - 1));
+				LLVMValueRef values[2] = { string, trailing_zeros };
+				string = llvm_get_packed_struct(c, values, 2);
+			}
+			LLVMSetInitializer(global_name, string);
+			if (is_array)
+			{
+				llvm_value_set_address(be_value, global_name, type, 1);
+			}
+			else
+			{
+				if (str_type->type_kind == TYPE_SUBARRAY)
+				{
+					LLVMValueRef len = llvm_const_int(c, type_usz, strlen);
+					llvm_value_aggregate_two(c, be_value, str_type, global_name, len);
 				}
 				else
 				{
 					llvm_value_set(be_value, global_name, type);
 				}
-				return;
 			}
-			ArraySize array_len = type->array.len;
-			ArraySize size = expr->const_expr.string.len + 1;
-			bool zero_terminate = array_len == size;
-			LLVMValueRef string;
-			if (array_len <= size)
-			{
-				if (zero_terminate)
-				{
-					string = llvm_get_zstring(c, expr->const_expr.string.chars, expr->const_expr.string.len);
-				}
-				else
-				{
-					string = llvm_get_bytes(c, expr->const_expr.string.chars, array_len);
-				}
-			}
-			else
-			{
-				char *buffer = ccalloc(1, array_len);
-				memcpy(buffer, expr->const_expr.string.chars, expr->const_expr.string.len);
-				string = llvm_get_bytes(c, buffer, array_len);
-			}
-			llvm_value_set(be_value, string, type);
 			return;
 		}
 		case CONST_TYPEID:

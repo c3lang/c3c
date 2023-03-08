@@ -20,12 +20,12 @@ entry:
   %x = alloca i64, align 8
   %retparam = alloca i64, align 8
   %varargslots = alloca [2 x %variant], align 16
-  %taddr = alloca ptr, align 8
+  %taddr = alloca %"char[]", align 8
   %faultname_zero = alloca %"char[]", align 8
   store i64 ptrtoint (ptr @"test.Cde$WORLD" to i64), ptr %x, align 8
-  store ptr @.str.2, ptr %taddr, align 8
+  store %"char[]" { ptr @.str.2, i64 5 }, ptr %taddr, align 8
   %0 = insertvalue %variant undef, ptr %taddr, 0
-  %1 = insertvalue %variant %0, i64 ptrtoint (ptr @"$ct.p$a5$char" to i64), 1
+  %1 = insertvalue %variant %0, i64 ptrtoint (ptr @"$ct.sa$char" to i64), 1
   %2 = getelementptr inbounds [2 x %variant], ptr %varargslots, i64 0, i64 0
   store %variant %1, ptr %2, align 16
   %3 = load i64, ptr %x, align 8
@@ -50,3 +50,27 @@ faultname_exit:                                   ; preds = %faultname_ok, %faul
   %9 = call i64 @std.io.printf(ptr %retparam, ptr @.str, i64 6, ptr %varargslots, i64 2)
   ret void
 }
+
+; Function Attrs: nounwind
+define i32 @main(i32 %0, ptr %1) #0 {
+entry:
+  %.anon = alloca i32, align 4
+  %.anon1 = alloca ptr, align 8
+  store i32 %0, ptr %.anon, align 4
+  store ptr %1, ptr %.anon1, align 8
+  call void @test.main()
+  ret i32 0
+}
+
+; Function Attrs: nounwind
+declare i64 @std.io.printf(ptr, ptr, i64, ptr, i64) #0
+
+; Function Attrs: argmemonly nocallback nofree nounwind willreturn writeonly
+declare void @llvm.memset.p0.i64(ptr nocapture writeonly, i8, i64, i1 immarg) #1
+
+; Function Attrs: nocallback nofree nosync nounwind readnone willreturn
+declare i1 @llvm.expect.i1(i1, i1) #2
+
+attributes #0 = { nounwind }
+attributes #1 = { argmemonly nocallback nofree nounwind willreturn writeonly }
+attributes #2 = { nocallback nofree nosync nounwind readnone willreturn }

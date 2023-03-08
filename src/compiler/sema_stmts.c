@@ -2198,7 +2198,7 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 		case ALL_FLOATS:
 		case TYPE_BOOL:
 			break;
-		case TYPE_POINTER:
+		case TYPE_SUBARRAY:
 			if (expr_is_const_string(cond)) break;
 			FALLTHROUGH;
 		default:
