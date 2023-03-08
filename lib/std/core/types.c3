@@ -159,6 +159,15 @@ macro bool is_vector($Type)
 	return $Type.kindof == TypeKind.VECTOR;
 }
 
+macro TypeKind inner_kind($Type)
+{
+	$if ($Type.kindof == TypeKind.DISTINCT):
+		return inner_kind($typefrom($Type.inner));
+	$else:
+		return $Type.kindof;
+	$endif;
+}
+
 macro bool @convertable(#a, $TypeB) @builtin
 {
 	return $checks($TypeB x = #a);

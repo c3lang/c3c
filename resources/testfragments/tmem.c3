@@ -1,6 +1,6 @@
 module tmem;
-import std::mem;
 import std::io;
+import libc;
 
 struct VarString
 {

@@ -122,10 +122,10 @@ macro void set(void* dst, char val, usz len, usz $dst_align = 0, bool $is_volati
 }
 
 /**
- * @require $typeof(a).kindof == TypeKind.SUBARRAY || $typeof(a).kindof == TypeKind.POINTER
- * @require $typeof(b).kindof == TypeKind.SUBARRAY || $typeof(b).kindof == TypeKind.POINTER
- * @require $typeof(a).kindof != TypeKind.SUBARRAY || len == -1
- * @require $typeof(a).kindof != TypeKind.POINTER || len > -1
+ * @require values::@inner_kind(a) == TypeKind.SUBARRAY || values::@inner_kind(a) == TypeKind.POINTER
+ * @require values::@inner_kind(b) == TypeKind.SUBARRAY || values::@inner_kind(b) == TypeKind.POINTER
+ * @require values::@inner_kind(a) != TypeKind.SUBARRAY || len == -1
+ * @require values::@inner_kind(a) != TypeKind.POINTER || len > -1
  * @checked (a = b), (b = a)
  **/
 macro bool equals(a, b, isz len = -1, usz $align = 0)
@@ -135,7 +135,7 @@ macro bool equals(a, b, isz len = -1, usz $align = 0)
 	$endif;
 	void* x @noinit;
 	void* y @noinit;
-	$if ($typeof(a).kindof == TypeKind.SUBARRAY):
+	$if (values::@inner_kind(a) == TypeKind.SUBARRAY):
 		len = a.len;
 		if (len != b.len) return false;
 		x = a.ptr;

@@ -32,11 +32,11 @@ fn int! askGuess(int high)
 
 fn String! readLine()
 {
-	char* chars = tmalloc(1024)?;
+	char* chars = tmalloc(1024);
 	isz loaded = getline(&chars, &&(usz)1023, libc::stdin());
 	if (loaded < 0) return InputResult.FAILED_TO_READ!;
 	chars[loaded] = 0;
-	return chars[0..(loaded - 1)];
+	return (String)chars[0..(loaded - 1)];
 }
 
 fn int! askGuessMulti(int high)
@@ -87,7 +87,7 @@ fn void! main()
 	int high = 100;
 	int answer = libc::rand() % high + 1;
 	Game game = { .answer = answer, .high = high };
-	game.play();
+	(void)game.play();
 	libc::printf("Finished in %d guesses.\n", game.guesses);
 	libc::printf("Total input errors: %d.\n", err_count);
 }

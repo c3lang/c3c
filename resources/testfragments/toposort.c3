@@ -1,5 +1,4 @@
 module topologicalsort;
-import std::mem;
 
 extern fn void printf(char* x, ...);
 
@@ -24,8 +23,8 @@ struct TopoList
 
 fn void sort(InputPair[] pairs, uint elements)
 {
-    InputPair[] result = array::alloc(InputPair, pairs.len);
-    TopoList* top = array::alloc(TopoList, elements);
+    InputPair[] result = malloc(InputPair, pairs.len);
+    TopoList* top = malloc(TopoList, elements);
     for (int i = 0; i < pairs.len; i++)
     {
         InputPair pair = pairs[i];
@@ -41,7 +40,7 @@ fn void sort(InputPair[] pairs, uint elements)
         }
         *next_ref = successor_entry;
     }
-    int[] intout = array::alloc(int, elements);
+    int[] intout = malloc(int, elements);
     int count = 0;
     while LOOP: (1)
     {

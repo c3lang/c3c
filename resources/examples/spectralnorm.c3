@@ -44,10 +44,10 @@ fn void eval_AtA_times_u(double[] u, double[] atau, double[] x)
 fn void main(String[] args)
 {
 	int n = args.len == 2 ? str::to_int(args[1])!! : 2000;
-	temparr = array::alloc(double, n);
-	double[] u = array::alloc(double, n);
-	double[] v = array::alloc(double, n);
-	double[] x = array::alloc(double, n * n);
+	temparr = malloc(double, n);
+	double[] u = malloc(double, n);
+	double[] v = malloc(double, n);
+	double[] x = malloc(double, n * n);
 	for (int i = 0; i < n; i++)
 	{
 		for (int j = 0; j < n; j++)

@@ -18,3 +18,4 @@ macro promote_int(x)
 	$endif;
 }
 
+macro TypeKind @inner_kind(#value) => types::inner_kind($typeof(#value));

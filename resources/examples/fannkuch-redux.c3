@@ -5,9 +5,9 @@ import libc;
 
 fn int fannkuchredux(int n)
 {
-	int* perm = array::alloc(int, n);
-	int* perm1 = array::alloc(int, n);
-	int* count = array::alloc(int, n);
+	int* perm = malloc(int, n);
+	int* perm1 = malloc(int, n);
+	int* count = malloc(int, n);
 	int max_flips_count;
 	int perm_count;
 	int checksum;

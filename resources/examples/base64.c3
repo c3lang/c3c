@@ -42,7 +42,7 @@ const char PAD = '=';
 const char FIRST = '+';
 const char LAST = 'z';
 
-fn void encode(String in, char *out)
+fn void encode(char[] in, char *out)
 {
 	int j = 0;
 	char c = LUT_ENC[1];
@@ -120,7 +120,7 @@ fn int! decode(String in, char* out, int* invalid_char_index = null)
 
 extern fn void printf(char *fmt, ...);
 
-fn void main()
+fn void! main()
 {
 	char *helloworld = "Hello World\n";
 	char[1000] buffer;
@@ -128,7 +128,7 @@ fn void main()
 	printf("Result: %s\n", &buffer);
 	char *to_decode = "aGVsbG8gd29ybGRcMA==";
 	char[*] result = b64"aGVsbG8gd29ybGRcMA==";
-	decode(to_decode[0..19], &buffer);
+	decode((String)to_decode[0..19], &buffer)?;
 	printf("Result: %s\n", &buffer);
 	printf("Result direct: %.*s\n", 13, &result);
 }
