@@ -331,10 +331,14 @@ static inline bool sema_defer_by_result(AstId defer_top, AstId defer_bottom)
 
 static inline void sema_inline_return_defers(SemaContext *context, Ast *stmt, AstId defer_top, AstId defer_bottom)
 {
-	stmt->return_stmt.cleanup_fail = stmt->return_stmt.cleanup = context_get_defers(context, defer_top, defer_bottom, true);
+	stmt->return_stmt.cleanup = context_get_defers(context, defer_top, defer_bottom, true);
 	if (stmt->return_stmt.expr && IS_OPTIONAL(stmt->return_stmt.expr) && sema_defer_by_result(context->active_scope.defer_last, context->block_return_defer))
 	{
 		stmt->return_stmt.cleanup_fail = context_get_defers(context, context->active_scope.defer_last, context->block_return_defer, false);
+	}
+	else
+	{
+		stmt->return_stmt.cleanup_fail = stmt->return_stmt.cleanup ? astid(copy_ast_defer(astptr(stmt->return_stmt.cleanup))) : 0;
 	}
 }
 
@@ -487,12 +491,6 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 		if (!first) goto SKIP_ENSURE;
 		if (statement->return_stmt.cleanup)
 		{
-			// If we have the same ast on cleanup / cleanup-fail we need to separate them.
-			if (type_is_optional(expected_rtype) &&
-			    statement->return_stmt.cleanup == statement->return_stmt.cleanup_fail)
-			{
-				statement->return_stmt.cleanup_fail = astid(copy_ast_defer(astptr(statement->return_stmt.cleanup)));
-			}
 			Ast *last = ast_last(astptr(statement->return_stmt.cleanup));
 			last->next = first;
 		}

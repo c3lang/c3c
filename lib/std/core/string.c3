@@ -1,326 +1,299 @@
 module std::core::string;
-import libc;
 
-typedef VarString = distinct void*;
-typedef DynStr = VarString;
-typedef DynString = VarString;
-typedef VString = VarString;
-typedef Text = VarString;
+typedef ZString = distinct inline char*;
+typedef Char32 = uint;
+typedef Char16 = ushort;
 
-const usz MIN_CAPACITY = 16;
+const uint SURROGATE_OFFSET @private = 0x10000;
+const uint SURROGATE_GENERIC_MASK @private = 0xF800;
+const uint SURROGATE_MASK @private = 0xFC00;
+const uint SURROGATE_CODEPOINT_MASK @private = 0x03FF;
+const uint SURROGATE_BITS @private = 10;
+const uint SURROGATE_LOW_VALUE @private = 0xDC00;
+const uint SURROGATE_HIGH_VALUE @private = 0xD800;
 
-fn VarString new_with_capacity(usz capacity, Allocator* allocator = mem::heap())
+fault NumberConversion
 {
-	if (capacity < MIN_CAPACITY) capacity = MIN_CAPACITY;
-	StringData* data = malloc(StringData, 1, .using = allocator, .end_padding = capacity);
-	data.allocator = allocator;
-	data.len = 0;
-	data.capacity = capacity;
-	return (VarString)data;
+	EMPTY_STRING,
+	NEGATIVE_VALUE,
+	MALFORMED_INTEGER,
+	INTEGER_OVERFLOW,
+	MALFORMED_FLOAT,
+	FLOAT_OUT_OF_RANGE,
 }
 
-fn VarString new(String c)
+macro String printf(String fmt, ..., Allocator* using = mem::heap())
 {
-	usz len = c.len;
-	VarString str = new_with_capacity(len);
-	StringData* data = str.data();
-	if (len)
+	if (using == mem::temp())
 	{
-		data.len = len;
-		mem::copy(&data.chars, c.ptr, len);
+		DString str;
+		str.tinit();
+		str.printf(fmt, $vasplat());
+		return str.str();
 	}
-	return (VarString)data;
-}
-
-fn ZString VarString.zstr(VarString str)
-{
-	StringData* data = str.data();
-	if (!data) return (ZString)"";
-	if (data.capacity == data.len)
+	@pool()
 	{
-		str.reserve(1);
-		data.chars[data.len] = 0;
-	}
-	else if (data.chars[data.len] != 0)
-	{
-		data.chars[data.len] = 0;
-	}
-	return (ZString)&data.chars[0];
+		DString str;
+		str.tinit();
+		str.printf(fmt, $vasplat());
+		return str.copy_str(using);
+	};
 }
 
-fn usz VarString.capacity(VarString this)
+macro String tprintf(String fmt, ...)
 {
-	if (!this) return 0;
-	return this.data().capacity;
+	DString str;
+	str.tinit();
+	str.printf(fmt, $vasplat());
+	return str.str();
 }
 
-fn usz VarString.len(VarString this)
+macro bool char_in_set(char c, String set)
 {
-	if (!this) return 0;
-	return this.data().len;
+	foreach (ch : set) if (ch == c) return true;
+	return false;
 }
 
 /**
- * @require new_size <= this.len()
- */
-fn void VarString.chop(VarString this, usz new_size)
-{
-	if (!this) return;
-	this.data().len = new_size;
-}
-
-fn String VarString.str(VarString str)
-{
-	StringData* data = (StringData*)str;
-	if (!data) return "";
-	return (String)data.chars[:data.len];
-}
-
-fn void VarString.append_utf32(VarString* str, Char32[] chars)
-{
-	str.reserve(chars.len);
-	foreach (Char32 c : chars)
-	{
-		str.append_char32(c);
-	}
-}
-
-/**
- * @require index < str.len()
+ * @param [in] string
+ * @param [in] to_trim
  **/
-fn void VarString.set(VarString str, usz index, char c)
+fn String String.trim(String string, String to_trim = "\t\n\r ")
 {
-	str.data().chars[index] = c;
-}
-
-fn void VarString.append_repeat(VarString* str, char c, usz times)
-{
-	if (times == 0) return;
-	str.reserve(times);
-	StringData* data = str.data();
-	for (usz i = 0; i < times; i++)
-	{
-        data.chars[data.len++] = c;
-	}
+	usz start = 0;
+	usz len = string.len;
+	while (start < len && char_in_set(string[start], to_trim)) start++;
+	if (start == len) return string[:0];
+	usz end = len - 1;
+	while (end > start && char_in_set(string[end], to_trim)) end--;
+	return string[start..end];
 }
 
 /**
- * @require c <= 0x10ffff
- */
-fn void VarString.append_char32(VarString* str, Char32 c)
+ * @param [in] string
+ * @param [in] needle
+ **/
+fn bool String.starts_with(String string, String needle)
 {
-	if (c < 0x7f)
-	{
-		str.reserve(1);
-		StringData* data = str.data();
-        data.chars[data.len++] = (char)c;
-        return;
-    }
-    if (c < 0x7ff)
-    {
-		str.reserve(2);
-		StringData* data = str.data();
-		data.chars[data.len++] = (char)(0xC0 | c >> 6);
-        data.chars[data.len++] = (char)(0x80 | (c & 0x3F));
-        return;
-    }
-    if (c < 0xffff)
-    {
-		str.reserve(3);
-		StringData* data = str.data();
-		data.chars[data.len++] = (char)(0xE0 | c >> 12);
-        data.chars[data.len++] = (char)(0x80 | (c >> 6 & 0x3F));
-        data.chars[data.len++] = (char)(0x80 | (c & 0x3F));
-        return;
-    }
-	str.reserve(4);
-	StringData* data = str.data();
-	data.chars[data.len++] = (char)(0xF0 | c >> 18);
-    data.chars[data.len++] = (char)(0x80 | (c >> 12 & 0x3F));
-    data.chars[data.len++] = (char)(0x80 | (c >> 6 & 0x3F));
-    data.chars[data.len++] = (char)(0x80 | (c & 0x3F));
+	if (needle.len > string.len) return false;
+	if (!needle.len) return true;
+	return string[:needle.len] == needle;
 }
 
-fn VarString VarString.tcopy(VarString* str) => str.copy(mem::temp());
-
-fn VarString VarString.copy(VarString* str, Allocator* allocator = null)
+/**
+ * @param [in] string
+ * @param [in] needle
+ **/
+fn bool String.ends_with(String string, String needle)
 {
-	if (!str)
+	if (needle.len > string.len) return false;
+	if (!needle.len) return true;
+	return string[^needle.len..] == needle;
+}
+
+/**
+ * Strip the front of the string if the prefix exists.
+ *
+ * @param [in] string
+ * @param [in] needle
+ **/
+fn String String.strip(String string, String needle)
+{
+	if (!needle.len || !string.starts_with(needle)) return string;
+	return string[needle.len..];
+}
+
+/**
+ * Strip the end of the string if the suffix exists.
+ *
+ * @param [in] string
+ * @param [in] needle
+ **/
+fn String String.strip_end(String string, String needle)
+{
+	if (!needle.len || !string.ends_with(needle)) return string;
+	// Note that this is the safe way if we want to support zero length.
+	return string[:(string.len - needle.len)];
+}
+
+
+/**
+ * Split a string into parts, e.g "a|b|c" split with "|" yields { "a", "b", "c" }
+ *
+ * @param [in] s
+ * @param [in] needle
+ * @param [&inout] using "The allocator, defaults to the heap allocator"
+ * @param max "Max number of elements, 0 means no limit, defaults to 0"
+ * @require needle.len > 0 "The needle must be at least 1 character long"
+ * @ensure return.len > 0
+ **/
+fn String[] String.split(String s, String needle, usz max = 0, Allocator* using = mem::heap())
+{
+	usz capacity = 16;
+	usz i = 0;
+	String* holder = malloc(String, capacity, .using = using);
+	bool no_more = false;
+	while (!no_more)
 	{
-		if (allocator) return new_with_capacity(0, allocator);
-		return (VarString)null;
+		usz! index = i == max - 1 ? SearchResult.MISSING! : s.index_of(needle);
+		String res @noinit;
+		if (try index)
+		{
+			res = s[:index];
+			s = s[index + needle.len..];
+		}
+		else
+		{
+			res = s;
+			no_more = true;
+		}
+		if (i == capacity)
+		{
+			capacity *= 2;
+			holder = realloc(holder, String.sizeof * capacity, .using = using);
+		}
+		holder[i++] = res;
 	}
-	if (!allocator) allocator = mem::heap();
-	StringData* data = str.data();
-	VarString new_string = new_with_capacity(data.capacity, allocator);
-	mem::copy((char*)new_string.data(), (char*)data, StringData.sizeof + data.len);
-	return new_string;
+	return holder[:i];
 }
 
-fn ZString VarString.copy_zstr(VarString* str, Allocator* allocator = mem::heap())
+/**
+ * This function is identical to String.split, but implicitly uses the
+ * temporary allocator.
+ *
+ * @param [in] s
+ * @param [in] needle
+ * @param max "Max number of elements, 0 means no limit, defaults to 0"
+ **/
+fn String[] tsplit(String s, String needle, usz max = 0)
 {
-	usz str_len = str.len();
-	if (!str_len)
+	return s.split(needle, max, mem::temp()) @inline;
+}
+
+/**
+ * Find the index of the first incidence of a string.
+ *
+ * @param [in] s
+ * @param [in] needle
+ * @pure
+ * @ensure return < s.len
+ * @require needle.len > 0 "The needle must be len 1 or more"
+ **/
+fn usz! String.index_of(String s, String needle)
+{
+	usz match = 0;
+	usz needed = needle.len;
+	usz index_start = 0;
+	char search = needle[0];
+	foreach (usz i, char c : s)
 	{
-		return (ZString)calloc(1, .using = allocator);
+		if (c == search)
+		{
+			if (!match) index_start = i;
+			match++;
+			if (match == needed) return index_start;
+			search = needle[match];
+			continue;
+		}
+		if (match)
+		{
+			match = 0;
+			search = needle[0];
+		}
 	}
-	char* zstr = malloc(str_len + 1, .using = allocator);
-	StringData* data = str.data();
-	mem::copy(zstr, &data.chars, str_len);
-	zstr[str_len] = 0;
-	return (ZString)zstr;
+	return SearchResult.MISSING!;
 }
 
-fn String VarString.copy_str(VarString* str, Allocator* allocator = mem::heap())
+/**
+ * Find the index of the last incidence of a string.
+ *
+ * @param [in] s
+ * @param [in] needle
+ * @pure
+ * @ensure return < s.len
+ * @require needle.len > 0 "The needle must be len 1 or more"
+ **/
+fn usz! String.rindex_of(String s, String needle)
 {
-	return (String)str.copy_zstr(allocator)[:str.len()];
-}
-
-fn String VarString.tcopy_str(VarString* str) => str.copy_str(mem::temp()) @inline;
-
-fn bool VarString.equals(VarString str, VarString other_string)
-{
-	StringData *str1 = str.data();
-	StringData *str2 = other_string.data();
-	if (str1 == str2) return true;
-	if (!str1) return str2.len == 0;
-	if (!str2) return str1.len == 0;
-	usz str1_len = str1.len;
-	if (str1_len != str2.len) return false;
-	for (int i = 0; i < str1_len; i++)
+	usz match = 0;
+	usz needed = needle.len;
+	usz index_start = 0;
+	char search = needle[^1];
+	foreach_r (usz i, char c : s)
 	{
-		if (str1.chars[i] != str2.chars[i]) return false;
+		if (c == search)
+		{
+			if (!match) index_start = i;
+			match++;
+			if (match == needed) return index_start - needle.len + 1;
+			search = needle[^(match + 1)];
+			continue;
+		}
+		if (match)
+		{
+			match = 0;
+			search = needle[^1];
+		}
 	}
-	return true;
+	return SearchResult.MISSING!;
 }
 
-fn void VarString.destroy(VarString* str)
+fn ZString String.zstr_copy(String s, Allocator* using = mem::heap())
 {
-	if (!*str) return;
-	StringData* data = str.data();
-	if (!data) return;
-	free(data, .using = data.allocator);
-	*str = (VarString)null;
+    usz len = s.len;
+    char* str = malloc(len + 1, .using = using);
+    mem::copy(str, s.ptr, len);
+    str[len] = 0;
+    return (ZString)str;
 }
 
-fn bool VarString.less(VarString str, VarString other_string)
+fn String String.concat(String s1, String s2, Allocator* using = mem::heap())
 {
-	StringData* str1 = str.data();
-	StringData* str2 = other_string.data();
-	if (str1 == str2) return false;
-	if (!str1) return str2.len != 0;
-	if (!str2) return str1.len == 0;
-	usz str1_len = str1.len;
-	usz str2_len = str2.len;
-	if (str1_len != str2_len) return str1_len < str2_len;
-	for (int i = 0; i < str1_len; i++)
-	{
-		if (str1.chars[i] >= str2.chars[i]) return false;
-	}
-	return true;
+    usz full_len = s1.len + s2.len;
+    char* str = malloc(full_len + 1, .using = using);
+    usz s1_len = s1.len;
+    mem::copy(str, s1.ptr, s1_len);
+    mem::copy(str + s1_len, s2.ptr, s2.len);
+    str[full_len] = 0;
+    return (String)str[:full_len];
 }
 
-fn void VarString.append_chars(VarString* this, String str)
+fn String String.tconcat(String s1, String s2) => s1.concat(s2, mem::temp());
+
+
+fn ZString String.zstr_tcopy(String s) => s.zstr_copy(mem::temp()) @inline;
+
+fn String String.copy(String s, Allocator* using = mem::heap())
 {
-	usz other_len = str.len;
-	if (!other_len) return;
-	if (!*this)
-	{
-		*this = new(str);
-		return;
-	}
-	this.reserve(other_len);
-	StringData* data = (StringData*)*this;
-	mem::copy(&data.chars[data.len], str.ptr, other_len);
-	data.len += other_len;
+    usz len = s.len;
+    char* str = malloc(len + 1, .using = using);
+    mem::copy(str, s.ptr, len);
+    str[len] = 0;
+    return (String)str[:len];
 }
 
-fn Char32[] VarString.copy_utf32(VarString* this, Allocator* allocator = mem::heap())
+fn String String.tcopy(String s) => s.copy(mem::temp()) @inline;
+
+fn String ZString.copy(ZString z, Allocator* using = mem::heap()) => z.as_str().copy(using) @inline;
+fn String ZString.tcopy(ZString z) => z.as_str().copy(mem::temp()) @inline;
+
+fn Char16[]! String.to_utf16(String s, Allocator* using = mem::heap())
 {
-	return str::utf8to32(this.str(), allocator) @inline!!;
+	usz len16 = conv::utf16len_for_utf8(s);
+	Char16* data = malloc_checked(Char16, len16 + 1, .using = using)?;
+	conv::utf8to16_unsafe(s, data)?;
+	data[len16] = 0;
+	return data[:len16];
 }
 
-fn void VarString.append_string(VarString* this, VarString str)
+fn String! from_utf16(Char16[] utf16, Allocator* using = mem::heap())
 {
-	StringData* other = (StringData*)str;
-	if (!other) return;
-	this.append(str.str());
-}
-
-fn void VarString.clear(VarString* str)
-{
-	str.data().len = 0;
-}
-
-fn void VarString.append_char(VarString* str, char c)
-{
-	if (!*str)
-	{
-		*str = new_with_capacity(MIN_CAPACITY);
-	}
-	str.reserve(1);
-	StringData* data = (StringData*)*str;
-	data.chars[data.len++] = c;
+	usz len = conv::utf8len_for_utf16(utf16);
+	char* data = malloc_checked(len + 1, .using = using)?;
+	conv::utf16to8_unsafe(utf16, data)?;
+	data[len] = 0;
+	return (String)data[:len];
 }
 
 
-macro void VarString.append(VarString* str, value)
-{
-	var $Type = $typeof(value);
-	$switch ($Type):
-		$case char:
-		$case ichar:
-			str.append_char(value);
-		$case VarString:
-			str.append_string(value);
-		$case String:
-			str.append_chars(value);
-		$case Char32:
-			str.append_char32(value);
-		$default:
-			$if (@convertible(value, Char32)):
-				str.append_char32(value);
-			$elif (@convertible(value, String)):
-				str.append_chars(value);
-			$else:
-				$assert(false, "Unsupported type for append – use printf instead.");
-			$endif;
-	$endswitch;
-}
-
-
-fn StringData* VarString.data(VarString str) @inline @private
-{
-	return (StringData*)str;
-}
-
-fn void VarString.reserve(VarString* str, usz addition) @private
-{
-	StringData* data = str.data();
-	if (!data)
-	{
-		*str = string::new_with_capacity(addition);
-		return;
-	}
-	usz len = data.len + addition;
-	if (data.capacity >= len) return;
-	usz new_capacity = data.capacity *= 2;
-	if (new_capacity < MIN_CAPACITY) new_capacity = MIN_CAPACITY;
-	*str = (VarString)realloc(data, StringData.sizeof + new_capacity, .using = data.allocator);
-}
-
-fn VarString VarString.new_concat(VarString a, VarString b, Allocator* allocator = mem::heap())
-{
-	VarString string = new_with_capacity(a.len() + b.len(), allocator);
-	string.append(a);
-	string.append(b);
-	return string; 
-}
-
-struct StringData @private
-{
-	Allocator* allocator;
-	usz len;
-	usz capacity;
-	char[*] chars;
-}
+fn Char16[]! String.to_temp_utf16(String s) => s.to_utf16(mem::temp());

@@ -186,3 +186,7 @@ extern fn void* _wfreopen(Char16*, Char16*, CFile) @local;
 extern fn int _fseeki64(CFile, long, int) @local;
 extern fn long _ftelli64(CFile) @local;
 $endif;
+
+$if (env::os_is_posix()):
+extern fn CInt access(ZString path, CInt mode);
+$endif;

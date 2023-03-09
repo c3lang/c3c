@@ -12,6 +12,43 @@ fn void test_starts_with()
 	assert(!s.starts_with("o"));
 }
 
+fn void test_strip()
+{
+	String s = "ofke";
+	assert(s.strip("of") == "ke");
+	assert(s.strip("ofke") == "");
+	assert(s.strip("ofkes") == "ofke");
+	assert(s.strip("ofkf") == "ofke");
+	assert(s.strip("") == "ofke");
+	s = "";
+	assert(s.strip("") == "");
+	assert(s.strip("o") == "");
+}
+
+fn void test_strip_end()
+{
+	String s = "ofke";
+	assert(s.strip_end("ke") == "of");
+	assert(s.strip_end("ofke") == "");
+	assert(s.strip_end("ofkes") == "ofke");
+	assert(s.strip_end("ofkf") == "ofke");
+	assert(s.strip_end("") == "ofke");
+	s = "";
+	assert(s.strip_end("") == "");
+	assert(s.strip_end("o") == "");
+}
+
+fn void test_ends_with()
+{
+	String s = "ofke";
+	assert(s.ends_with("ke"));
+	assert(s.ends_with("ofke"));
+	assert(!s.ends_with("ofkes"));
+	assert(!s.ends_with("ofkf"));
+	s = "";
+	assert(s.ends_with(""));
+	assert(!s.ends_with("e"));
+}
 fn void test_trim()
 {
 	String s = " \t\nabc ";

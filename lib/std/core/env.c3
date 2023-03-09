@@ -133,6 +133,19 @@ macro bool os_is_win32()
 	return OS_TYPE == OsType.WIN32;
 }
 
+macro bool os_is_darwin()
+{
+	$switch (OS_TYPE):
+	$case IOS:
+	$case MACOSX:
+	$case TVOS:
+	$case WATCHOS:
+		return true;
+	$default:
+		return false;
+	$endswitch;
+}
+
 macro bool os_is_posix()
 {
 	$switch (OS_TYPE):
