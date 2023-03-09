@@ -341,12 +341,12 @@ macro tmalloc(..., usz end_padding = 0, usz alignment = DEFAULT_MEM_ALIGNMENT) @
 		var $Type = $vatype(0);
 		$if ($vacount == 2):
 			usz size = $vaarg(1);
-			return (($Type*)temp_allocator().alloc_aligned($Type.sizeof * size + end_padding, alignment))[:size]!!;
+			return (($Type*)temp().alloc_aligned($Type.sizeof * size + end_padding, alignment))[:size]!!;
 		$else:
-			return ($Type*)temp_allocator().alloc_aligned($Type.sizeof + end_padding, alignment)!!;
+			return ($Type*)temp().alloc_aligned($Type.sizeof + end_padding, alignment)!!;
 		$endif;
 	$else:
-		return temp_allocator().alloc_aligned($vaarg(0) + end_padding, alignment)!!;
+		return temp().alloc_aligned($vaarg(0) + end_padding, alignment)!!;
 	$endif;
 }
 
@@ -360,26 +360,35 @@ macro tcalloc(..., usz end_padding = 0, usz alignment = mem::DEFAULT_MEM_ALIGNME
 		var $Type = $vatype(0);
 		$if ($vacount == 2):
 			usz size = $vaarg(1);
-			return (($Type*)temp_allocator().calloc_aligned($Type.sizeof * size + end_padding, alignment))[:size]!!;
+			return (($Type*)temp().calloc_aligned($Type.sizeof * size + end_padding, alignment))[:size]!!;
 		$else:
-			return ($Type*)temp_allocator().calloc_aligned($Type.sizeof + end_padding, alignment)!!;
+			return ($Type*)temp().calloc_aligned($Type.sizeof + end_padding, alignment)!!;
 		$endif;
 	$else:
-		return temp_allocator().calloc_aligned($vaarg(0) + end_padding, alignment)!!;
+		return temp().calloc_aligned($vaarg(0) + end_padding, alignment)!!;
 	$endif;
 }
 
 fn void* trealloc(void* ptr, usz size, usz alignment = mem::DEFAULT_MEM_ALIGNMENT) @builtin @inline
 {
-	return temp_allocator().realloc_aligned(ptr, size, alignment)!!;
+	return temp().realloc_aligned(ptr, size, alignment)!!;
 }
 
 macro void @pool(;@body) @builtin
 {
-	TempAllocator* temp = temp_allocator();
-	usz mark = temp.used;
-	defer temp.reset(mark);
+	TempAllocator* allocator = temp();
+	usz mark = allocator.used;
+	defer allocator.reset(mark);
 	@body();
+}
+
+macro void @allocating_pool(Allocator* using; @body(bool is_temp)) @builtin
+{
+	TempAllocator* allocator = temp();
+	usz mark = allocator.used;
+	bool is_temp = allocator == using;
+	defer if (!is_temp) allocator.reset(mark);
+	@body(is_temp);
 }
 
 tlocal Allocator* thread_allocator @private = allocator::LIBC_ALLOCATOR;

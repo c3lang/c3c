@@ -17,14 +17,14 @@ macro int @main_to_void_main(#m, int, char**)
 
 macro String[] args_to_strings(int argc, char** argv) @private
 {
-	String *list = malloc(String, argc);
+	String[] list = malloc(String, argc);
 	for (int i = 0; i < argc; i++)
 	{
 		char* arg = argv[i];
 		usz len = 0;
 		list[i] = (String)arg[:_strlen(arg)];
 	}
-	return list[:argc];
+	return list;
 }
 
 
@@ -63,12 +63,12 @@ macro String[] win_command_line_to_strings(ushort* cmd_line) @private
 
 macro String[] wargs_strings(int argc, Char16** argv) @private
 {
-	String *list = malloc(String, argc);
+	String[] list = malloc(String, argc);
 	for (int i = 0; i < argc; i++)
 	{
 		Char16* arg = argv[i];
 		Char16[] argstring = arg[:_strlen(arg)];
-		list[i] = str::utf16to8(argstring) ?? str::copy("?");
+		list[i] = string::from_utf16(argstring) ?? "?".copy();
 	}
 	return list[:argc];
 }

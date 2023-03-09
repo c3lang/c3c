@@ -45,9 +45,7 @@ $else:
 	@pool()
 	{
 	$if (env::os_is_win32()):
-		CFile file = (CFile)_wfopen(
-			str::utf8to16(filename, mem::temp())!!,
-			str::utf8to16(mode, mem::temp())!!);
+		CFile file = (CFile)_wfopen(filename.to_temp_utf16(), filename.to_temp_utf16())?;
 	$else:
 		CFile file = libc::fopen(filename.zstr_tcopy(), mode.zstr_tcopy());
 	$endif;
@@ -69,10 +67,7 @@ $else:
 	@pool()
 	{
 	$if (env::os_is_win32()):
-		file = (CFile)_wfreopen(
-			str::utf8to16(filename, mem::temp())!!,
-			str::utf8to16(mode, mem::temp())!!,
-			file);
+		file = (CFile)_wfreopen(filename.to_temp_utf16(), mode.to_temp_utf16(), file)?;
 	$else:
 		file = libc::freopen(filename.zstr_tcopy(), mode.zstr_tcopy(), file);
 	$endif;
