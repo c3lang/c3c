@@ -661,16 +661,8 @@ RETRY:
 		case AST_BLOCK_EXIT_STMT:
 		case AST_RETURN_STMT:
 			MACRO_COPY_EXPR(ast->return_stmt.expr);
-			if (ast->return_stmt.cleanup == ast->return_stmt.cleanup_fail)
-			{
-				MACRO_COPY_ASTID(ast->return_stmt.cleanup);
-				ast->return_stmt.cleanup_fail = ast->return_stmt.cleanup;
-			}
-			else
-			{
-				MACRO_COPY_ASTID(ast->return_stmt.cleanup);
-				MACRO_COPY_ASTID(ast->return_stmt.cleanup_fail);
-			}
+			MACRO_COPY_ASTID(ast->return_stmt.cleanup);
+			MACRO_COPY_ASTID(ast->return_stmt.cleanup_fail);
 			break;
 		case AST_SWITCH_STMT:
 		case AST_IF_CATCH_SWITCH_STMT:

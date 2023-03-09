@@ -1,90 +1,12 @@
 module std::io::file;
 import libc;
 
-struct FileInfo
+fn bool is_file(String path)
 {
-	ulong size;
+	return os::native_is_file(path);
 }
 
-fn bool exits(String path)
+fn usz! get_size(String path)
 {
-	File f;
-	if (catch(f.open(path, "r"))) return false;
-	(void)f.close();
-	return true;
+	return os::native_file_size(path);
 }
-
-$switch (env::OS_TYPE):
-$case MACOSX:
-$case IOS:
-$case WATCHOS:
-$case TVOS:
-struct DarwinTimespec @private
-{
-	long tv_sec;
-	long tv_nsec;
-}
-struct Darwin64Stat @private
-{
-	int st_dev;
-	ushort st_mode;
-	ushort st_nlink;
-	ulong st_ino;
-	uint st_uid;
-	uint st_gid;
-	int st_rdev;
-	DarwinTimespec st_atimespec; // time of last access
-    DarwinTimespec st_mtimespec; // time of last data modification
-    DarwinTimespec st_ctimespec; // time of last status change
-    DarwinTimespec st_birthtimespec; // time of file creation(birth)
-    long st_size;
-    long st_blocks;
-    int st_blocksize;
-    uint st_flags;
-    uint st_gen;
-    int st_lspare;
-    long[2] st_qspare;
-}
-extern fn int _stat(ZString str, Darwin64Stat* stat) @extern("stat64");
-
-fn void! FileInfo.read(FileInfo* info, Path path)
-{
-	@pool()
-	{
-		Darwin64Stat stat;
-		int res = _stat(((String)path).zstr_tcopy(), &stat);
-		if (res != 0)
-		{
-			switch (libc::errno())
-			{
-				case errno::EBADF:
-					return IoError.FILE_NOT_VALID!;
-				case errno::EFAULT:
-					unreachable("Invalid stat");
-				case errno::EIO:
-					return IoError.GENERAL_ERROR!;
-				case errno::EACCES:
-					return IoError.NO_PERMISSION!;
-				case errno::ELOOP:
-					return IoError.NO_PERMISSION!;
-				case errno::ENAMETOOLONG:
-					return IoError.NAME_TOO_LONG!;
-				case errno::ENOENT:
-					return IoError.FILE_NOT_FOUND!;
-				case errno::ENOTDIR:
-					return IoError.FILE_NOT_DIR!;
-				case errno::EOVERFLOW:
-					return IoError.GENERAL_ERROR!;
-				default:
-					return IoError.UNKNOWN_ERROR!;
-			}
-		}
-		info.size = stat.st_size;
-	};
-}
-$default:
-macro void! FileInfo.read(FileInfo* info, Path path)
-{
-	$assert("Unsupported function");
-}
-$endswitch;

@@ -2,8 +2,6 @@ module std::io;
 import libc;
 
 
-
-
 fn void! File.open(File* file, String filename, String mode)
 {
 	file.file = os::native_fopen(filename, mode)?;
