@@ -41,21 +41,14 @@ fn bool native_is_dir(String path)
 
 fn Path! native_temp_directory(Allocator* using = mem::heap())
 {
-	Char16[256] default_buffer;
-	Char16* buff = &default_buffer;
-	// Free if we allocated on the heap.
-	defer if (buff != &default_buffer) free(buff);
-
-    Win32_DWORD len = files::win32_GetTempPathW(default_buffer.len, buff);
-	if (!len) return IoError.GENERAL_ERROR!;
-	// Too long, allocate
-	if (len > default_buffer.len)
+	@allocating_pool(using; bool is_temp)
 	{
-		// Allocate on the heap
-		buff = tmalloc(Char16, len);
+	    Win32_DWORD len = files::win32_GetTempPathW(0, null);
+		if (!len) return IoError.GENERAL_ERROR!;
+		Char16[] buff = tmalloc(Char16, len + 1);
 		if (!files::win32_GetTempPathW(len, buff)) return IoError.GENERAL_ERROR!;
-	}
-	return (Path)string::from_utf16(buff[:len], using);
+		return path::new(string::from_utf16(buff[:len]), using);
+	};
 }
 
 /*

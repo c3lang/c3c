@@ -2012,7 +2012,7 @@ static inline MainType sema_find_main_type(SemaContext *context, Signature *sig,
 			}
 			return MAIN_TYPE_RAW;
 		case 3:
-			if (!is_win32 || is_winmain) break;
+			if (!is_win32 || !is_winmain) break;
 			arg_type = type_flatten(params[0]->type);
 			arg_type2 = type_flatten(params[1]->type);
 			if (arg_type != type_voidptr)

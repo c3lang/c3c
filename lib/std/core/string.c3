@@ -24,19 +24,12 @@ fault NumberConversion
 
 macro String printf(String fmt, ..., Allocator* using = mem::heap())
 {
-	if (using == mem::temp())
+	@allocating_pool(using; bool is_temp)
 	{
 		DString str;
 		str.tinit();
 		str.printf(fmt, $vasplat());
-		return str.str();
-	}
-	@pool()
-	{
-		DString str;
-		str.tinit();
-		str.printf(fmt, $vasplat());
-		return str.copy_str(using);
+		return using == is_temp ? str.str() : str.copy_str(using);
 	};
 }
 
