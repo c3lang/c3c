@@ -28,10 +28,9 @@ fn bool native_file_or_dir_exists(String path)
 
 fn bool native_is_file(String path)
 {
-	File f;
-	if (catch(f.open(path, "r"))) return false;
-	(void)f.close();
-	return true;
+	File! f = file::open(path, "r");
+	defer (void)f.close();
+	return try(f);
 }
 
 fn bool native_is_dir(String path)

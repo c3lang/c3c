@@ -1,13 +1,13 @@
 module std::io::os;
 import libc;
 
-define FopenFn = fn CFile!(String, String);
-define FreopenFn = fn CFile!(CFile, String, String);
-define FcloseFn = fn void!(CFile);
-define FseekFn = fn void!(CFile, isz, Seek);
-define FtellFn = fn usz!(CFile);
-define FwriteFn = fn usz!(CFile, char[] buffer);
-define FreadFn = fn usz!(CFile, char[] buffer);
+define FopenFn = fn void*!(String, String);
+define FreopenFn = fn void*!(void*, String, String);
+define FcloseFn = fn void!(void*);
+define FseekFn = fn void!(void*, isz, Seek);
+define FtellFn = fn usz!(void*);
+define FwriteFn = fn usz!(void*, char[] buffer);
+define FreadFn = fn usz!(void*, char[] buffer);
 
 $if (!$defined(native_fopen_fn)):
 FopenFn native_fopen_fn @weak;
@@ -36,7 +36,7 @@ $endif;
  * @require mode.len > 0
  * @require filename.len > 0
  **/
-fn CFile! native_fopen(String filename, String mode) @inline
+fn void*! native_fopen(String filename, String mode) @inline
 {
 $if (!env::COMPILER_LIBC_AVAILABLE):
 		if (native_fopen_fn) return native_fopen_fn(filename, mode);
@@ -45,9 +45,9 @@ $else:
 	@pool()
 	{
 	$if (env::os_is_win32()):
-		CFile file = (CFile)_wfopen(filename.to_temp_utf16(), filename.to_temp_utf16())?;
+		void* file = (CFile)_wfopen(filename.to_temp_utf16(), filename.to_temp_utf16())?;
 	$else:
-		CFile file = libc::fopen(filename.zstr_tcopy(), mode.zstr_tcopy());
+		void* file = libc::fopen(filename.zstr_tcopy(), mode.zstr_tcopy());
 	$endif;
 		return file ?: file_open_errno()!;
 	};
@@ -58,7 +58,7 @@ $endif;
  * @require mode.len > 0
  * @require filename.len > 0
  **/
-fn CFile! native_freopen(CFile file, String filename, String mode) @inline
+fn void*! native_freopen(void* file, String filename, String mode) @inline
 {
 $if (!env::COMPILER_LIBC_AVAILABLE):
 		if (native_freopen_fn) return native_freopen_fn(file, filename, mode);
@@ -67,7 +67,7 @@ $else:
 	@pool()
 	{
 	$if (env::os_is_win32()):
-		file = (CFile)_wfreopen(filename.to_temp_utf16(), mode.to_temp_utf16(), file)?;
+		file = _wfreopen(filename.to_temp_utf16(), mode.to_temp_utf16(), file)?;
 	$else:
 		file = libc::freopen(filename.zstr_tcopy(), mode.zstr_tcopy(), file);
 	$endif;
@@ -76,7 +76,7 @@ $else:
 $endif;
 }
 
-fn void! native_fseek(CFile file, isz offset, Seek seek_mode) @inline
+fn void! native_fseek(void* file, isz offset, Seek seek_mode) @inline
 {
 $if (!env::COMPILER_LIBC_AVAILABLE):
 	if (native_fseek_fn) return native_fseek_fn(file, offset, seek_mode);

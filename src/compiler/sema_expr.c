@@ -3993,7 +3993,7 @@ static inline IndexDiff range_const_len(Range *range)
 static bool sema_expr_analyse_slice_assign(SemaContext *context, Expr *expr, Type *left_type, Expr *right, bool is_unwrapped)
 {
 	Expr *left = exprptr(expr->binary_expr.left);
-	Type *base = left_type->array.base;
+	Type *base = type_flatten(left_type)->array.base;
 	if (right->expr_kind == EXPR_SLICE)
 	{
 		Range *left_range = &left->subscript_expr.range;

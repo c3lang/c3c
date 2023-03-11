@@ -35,15 +35,12 @@ fn Path! getcwd(Allocator* using = mem::heap())
 	};
 }
 
-fn Path! tgetcwd()
-{
-	return getcwd(mem::temp()) @inline;
-}
-
-fn bool is_dir(String path)
-{
-	return os::native_is_dir(path);
-}
+fn bool is_dir(Path path) => os::native_is_dir(path.as_str());
+fn bool is_file(Path path) => os::native_is_file(path.as_str());
+fn usz! file_size(Path path) => os::native_file_size(path.as_str());
+fn bool exists(Path path) => os::native_file_or_dir_exists(path.as_str());
+fn Path! tgetcwd() => getcwd(mem::temp()) @inline;
+fn Path! temp_directory(Allocator* using = mem::heap()) => os::native_temp_directory(using);
 
 macro bool is_separator(char c, PathEnv path_env = DEFAULT_PATH_ENV)
 {
@@ -105,10 +102,6 @@ fn Path! Path.append(Path path, String filename, Allocator* using = mem::heap())
 
 fn Path! Path.tappend(Path path, String filename) => path.append(filename, mem::temp());
 
-fn Path! temp_directory(Allocator* using = mem::heap())
-{
-	return os::native_temp_directory(using);
-}
 
 fn String Path.volume_name(Path path)
 {
@@ -287,34 +280,16 @@ fn String Path.root_directory(Path path)
 	return path_str;
 }
 
-fn usz! Path.file_size(Path path)
-{
-	return os::native_file_size(path.as_str());
-}
 
 fn String Path.as_str(Path path)
 {
 	return path.path_string;
 }
 
-fn bool Path.file_or_dir_exists(Path path)
-{
-	return os::native_file_or_dir_exists(path.as_str());
-}
-
-fn bool Path.is_dir(Path path)
-{
-	return os::native_is_dir(path.as_str());
-}
 
 fn bool Path.has_suffix(Path path, String str)
 {
 	return path.as_str().ends_with(str);
-}
-
-fn bool Path.is_file(Path path)
-{
-	return os::native_is_file(path.as_str());
 }
 
 

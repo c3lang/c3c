@@ -28,11 +28,13 @@ const DT_LNK     = 10;
 const DT_SOCK    = 12;
 const DT_WHT     = 14;
 
-fn void! native_readdir(PathList* list, Path dir, bool no_dirs, bool no_symlinks, String mask, Allocator* using)
+fn PathList! native_readdir(Path dir, bool no_dirs, bool no_symlinks, String mask, Allocator* using)
 {
+	PathList list;
+	list.init(.using = using);
 	void* directory = opendir(dir.as_str() ? dir.as_zstr() : (ZString)".");
 	defer if (directory) closedir(directory);
-	if (!directory) return (dir.is_dir() ? IoError.CANNOT_READ_DIR : IoError.FILE_NOT_DIR)!;
+	if (!directory) return (path::is_dir(dir) ? IoError.CANNOT_READ_DIR : IoError.FILE_NOT_DIR)!;
 	NativeDirentry* entry;
 	while ((entry = readdir(directory)))
 	{
@@ -43,6 +45,7 @@ fn void! native_readdir(PathList* list, Path dir, bool no_dirs, bool no_symlinks
 		Path path = path::new(name.copy(using), using)!!;
 		list.append(path);
 	}
+	return list;
 }
 
 $endif;
@@ -53,8 +56,7 @@ $if (!env::os_is_darwin() && !env::os_is_win32()):
 
 fn usz! native_file_size(String path)
 {
-	File f;
-	f.open(path, "r")?;
+	File f = file::open(path, "r")?;
 	defer (void)f.close();
 	return f.seek(0, Seek.END)?;
 }
@@ -71,10 +73,9 @@ fn bool native_file_or_dir_exists(String path)
 
 fn bool native_is_file(String path)
 {
-	File f;
-	if (catch(f.open(path, "r"))) return false;
-	(void)f.close();
-	return true;
+	File! f = file::open(path, "r");
+	defer (void)f.close();
+	return try(f);
 }
 
 fn bool native_is_dir(String path)

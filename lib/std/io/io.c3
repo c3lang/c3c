@@ -92,7 +92,7 @@ macro void printn(x = "")
 	$endswitch;
 }
 
-macro void println(x = "") => printn(x);
+macro void println(x = "") @deprecated => printn(x);
 
 fn File stdout()
 {

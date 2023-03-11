@@ -158,7 +158,7 @@ fn String[] String.split(String s, String needle, usz max = 0, Allocator* using 
  * @param [in] needle
  * @param max "Max number of elements, 0 means no limit, defaults to 0"
  **/
-fn String[] tsplit(String s, String needle, usz max = 0)
+fn String[] String.tsplit(String s, String needle, usz max = 0)
 {
 	return s.split(needle, max, mem::temp()) @inline;
 }

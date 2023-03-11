@@ -1,8 +1,12 @@
-module std::io;
+module std::io::file;
 import libc;
 
+fn File! open(String filename, String mode)
+{
+	return { .file = os::native_fopen(filename, mode) };
+}
 
-fn void! File.open(File* file, String filename, String mode)
+fn void! File.open(File* file, String filename, String mode) @deprecated
 {
 	file.file = os::native_fopen(filename, mode)?;
 }
@@ -123,7 +127,7 @@ fn usz! File.print(File file, String string)
     return len;
 }
 
-fn usz! File.println(File file, String string) => file.printn(string);
+fn usz! File.println(File file, String string) @deprecated => file.printn(string);
 
 /**
  * @param [&in] file
