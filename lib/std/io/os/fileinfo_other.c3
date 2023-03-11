@@ -13,6 +13,40 @@ fn Path! native_temp_directory(Allocator* using = mem::heap())
 	return path::new("/tmp", using);
 }
 
+$if (env::COMPILER_LIBC_AVAILABLE):
+
+extern fn void* opendir(ZString);
+extern fn void closedir(void*);
+
+const DT_UNKNOWN =  0;
+const DT_FIFO    =  1;
+const DT_CHR     =  2;
+const DT_DIR     =  4;
+const DT_BLK     =  6;
+const DT_REG     =  8;
+const DT_LNK     = 10;
+const DT_SOCK    = 12;
+const DT_WHT     = 14;
+
+fn void! native_readdir(PathList* list, Path dir, bool no_dirs, bool no_symlinks, String mask, Allocator* using)
+{
+	void* directory = opendir(dir.as_str() ? dir.as_zstr() : (ZString)".");
+	defer if (directory) closedir(directory);
+	if (!directory) return (dir.is_dir() ? IoError.CANNOT_READ_DIR : IoError.FILE_NOT_DIR)!;
+	NativeDirentry* entry;
+	while ((entry = readdir(directory)))
+	{
+		String name = ((ZString)&entry.name).as_str();
+		if (!name || name == "." || name == "..") continue;
+		if (entry.type == DT_LNK && no_symlinks) continue;
+		if (entry.type == DT_DIR && no_dirs) continue;
+		Path path = path::new(name.copy(using), using)!!;
+		list.append(path);
+	}
+}
+
+$endif;
+
 $endif;
 
 $if (!env::os_is_darwin() && !env::os_is_win32()):
@@ -68,3 +102,41 @@ fn bool native_is_file(String path)
 $endif;
 
 $endif;
+
+$switch (env::OS_TYPE):
+$case IOS:
+$case MACOSX:
+$case TVOS:
+$case WATCHOS:
+extern fn NativeDirentry* readdir(void*) @extern("readdir$INODE64");
+struct NativeDirentry
+{
+	usz ino;
+	usz seekoff;
+	ushort reclen;
+	ushort namelen;
+	char type;
+	char[1024] name;
+}
+$case LINUX:
+extern fn NativeDirentry* readdir(void*);
+struct NativeDirentry
+{
+	usz ino;
+	isz seekoff;
+	ushort reclen;
+	char type;
+	char[*] name;
+}
+$default:
+// Fix this as we go along.
+extern fn NativeDirentry* readdir(void*);
+struct NativeDirentry
+{
+	usz ino;
+	isz seekoff;
+	ushort reclen;
+	char type;
+	char[*] name;
+}
+$endswitch;

@@ -3,6 +3,7 @@ import libc;
 
 $if (env::os_is_darwin()):
 
+
 struct DarwinTimespec @private
 {
 	long tv_sec;

@@ -29,6 +29,7 @@ fault IoError
     OUT_OF_DISK,
     INVALID_PUSHBACK,
     EOF,
+    CANNOT_READ_DIR,
     TOO_MANY_DESCRIPTORS,
     FILE_IS_DIR,
     READ_ONLY,

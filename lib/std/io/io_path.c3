@@ -1,9 +1,12 @@
 module std::io::path;
+import std::collections::list;
 
 const PathEnv DEFAULT_PATH_ENV = env::os_is_win32() ? PathEnv.WIN32 : PathEnv.POSIX;
 const char PREFERRED_SEPARATOR_WIN32 = '\\';
 const char PREFERRED_SEPARATOR_POSIX = '/';
 const char PREFERRED_SEPARATOR = env::os_is_win32() ? PREFERRED_SEPARATOR_WIN32 : PREFERRED_SEPARATOR_POSIX;
+
+typedef PathList = List<Path>;
 
 fault PathResult
 {
@@ -99,6 +102,8 @@ fn Path! Path.append(Path path, String filename, Allocator* using = mem::heap())
 		return { normalize(is_temp ? dstr.str() : dstr.copy_str(using), path.env), path.env };
 	};
 }
+
+fn Path! Path.tappend(Path path, String filename) => path.append(filename, mem::temp());
 
 fn Path! temp_directory(Allocator* using = mem::heap())
 {
@@ -214,8 +219,25 @@ fn String! normalize(String path_str, PathEnv path_env = DEFAULT_PATH_ENV)
 					i++;
 					continue;
 				case 2:
-					// We're walking back, doing so when already at the root is invalid.
-					if (len == path_start) return PathResult.INVALID_PATH!;
+					// This is an error: /a/../..
+					if (len == path_start && has_root) return PathResult.INVALID_PATH!;
+
+					// If this .. at the start, or after ../? If so, we just copy ..
+					if (len == path_start ||
+						(len - path_start >= 3 && path_str[len - 1] == path_separator
+						&& path_str[len - 3] == '.' && path_str[len - 3] == '.' &&
+						(len - 3 == 0 || path_str[len - 4] == path_separator)))
+					{
+						if (i != len)
+						{
+							path_str[len] = '.';
+							path_str[len + 1] = '.';
+						}
+						len += 2;
+						if (len < path_len) path_str[len++] = path_separator;
+						i += 2;
+						continue;
+					}
 					// Step back, now looking at '/' abc/def/. -> abc/def/
 					len--;
 					// Step back until finding a separator or the start.
@@ -240,6 +262,8 @@ fn String! normalize(String path_str, PathEnv path_env = DEFAULT_PATH_ENV)
 	path_str.ptr[len] = 0;
 	return path_str[:len];
 }
+
+fn ZString Path.as_zstr(Path path) => (ZString)path.path_string.ptr;
 
 fn String Path.root_directory(Path path)
 {

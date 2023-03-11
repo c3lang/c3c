@@ -24,18 +24,10 @@ fn void! test_path_normalized()
 	assert(catch(path::new(`\\server\a\b\..\..\..\c`, .path_env = PathEnv.WIN32)));
 
 	assert(catch(path::new(`\\a`, .path_env = PathEnv.WIN32)));
-	assert(catch(path::new(`a/b/../../../c`, .path_env = PathEnv.WIN32)));
-	assert(catch(path::new(`a/b/../../../c`, .path_env = PathEnv.POSIX)));
 	assert(catch(path::new(`/a/b/../../../c`, .path_env = PathEnv.WIN32)));
 	assert(catch(path::new(`/a/b/../../../c`, .path_env = PathEnv.POSIX)));
-	assert(catch(path::new(`a/b/../../..`, .path_env = PathEnv.WIN32)));
-	assert(catch(path::new(`a/b/../../..`, .path_env = PathEnv.POSIX)));
 	assert(catch(path::new(`/a/b/../../..`, .path_env = PathEnv.WIN32)));
 	assert(catch(path::new(`/a/b/../../..`, .path_env = PathEnv.POSIX)));
-	assert(catch(path::new(`../a`, .path_env = PathEnv.WIN32)));
-	assert(catch(path::new(`../a`, .path_env = PathEnv.POSIX)));
-	assert(catch(path::new(`..`, .path_env = PathEnv.WIN32)));
-	assert(catch(path::new(`..`, .path_env = PathEnv.POSIX)));
 	assert(catch(path::new(`/../a`, .path_env = PathEnv.WIN32)));
 	assert(catch(path::new(`/../a`, .path_env = PathEnv.POSIX)));
 	assert(catch(path::new(`/..`, .path_env = PathEnv.WIN32)));
@@ -43,9 +35,6 @@ fn void! test_path_normalized()
 	assert(catch(path::new(`C:/a/b/../../../c`, .path_env = PathEnv.WIN32)));
 	assert(catch(path::new(`C:/../a`, .path_env = PathEnv.WIN32)));
 	assert(catch(path::new(`C:/..`, .path_env = PathEnv.WIN32)));
-	assert(catch(path::new(`C:a/b/../../../c`, .path_env = PathEnv.WIN32)));
-	assert(catch(path::new(`C:../a`, .path_env = PathEnv.WIN32)));
-	assert(catch(path::new(`C:..`, .path_env = PathEnv.WIN32)));
 
 	assert(path::new("/", .path_env = PathEnv.POSIX).as_str()? == "/");
 	assert(path::new("/./", .path_env = PathEnv.POSIX).as_str()? == "/");
@@ -64,6 +53,15 @@ fn void! test_path_normalized()
 	assert(path::new(`~\a\b/c.txt`, .path_env = PathEnv.WIN32).as_str()? == `~\a\b\c.txt`);
 	assert(path::new(`~\a\b/c.txt`, .path_env = PathEnv.POSIX).as_str()? == `~\a\b/c.txt`);
 
+
+	assert(path::new(`a/b/../../../c`, .path_env = PathEnv.WIN32).as_str()? == `..\c`);
+	assert(path::new(`a/b/../../../c`, .path_env = PathEnv.POSIX).as_str()? == `../c`);
+	assert(path::new(`a/b/../../..`, .path_env = PathEnv.WIN32).as_str()? == `..`);
+	assert(path::new(`a/b/../../..`, .path_env = PathEnv.POSIX).as_str()? == `..`);
+	assert(path::new(`../a`, .path_env = PathEnv.WIN32).as_str()? == `..\a`);
+	assert(path::new(`../a`, .path_env = PathEnv.POSIX).as_str()? == `../a`);
+	assert(path::new(`..`, .path_env = PathEnv.WIN32).as_str()? == `..`);
+	assert(path::new(`..`, .path_env = PathEnv.POSIX).as_str()? == `..`);
 	assert(path::new(`a/b/../c`, .path_env = PathEnv.WIN32).as_str()? == `a\c`);
 	assert(path::new(`a/b/../c`, .path_env = PathEnv.POSIX).as_str()? == `a/c`);
 	assert(path::new(`a/b/../../c`, .path_env = PathEnv.WIN32).as_str()? == `c`);
@@ -162,12 +160,15 @@ fn void! test_path_normalized()
 	assert(path::new(`C:a/b//d`, .path_env = PathEnv.POSIX).as_str()? == `C:a/b/d`);
 	assert(path::new(`C:a/b/././.`, .path_env = PathEnv.WIN32).as_str()? == `C:a\b`);
 	assert(path::new(`C:a/b/././.`, .path_env = PathEnv.POSIX).as_str()? == `C:a/b`);
+	assert(path::new(`C:a/b/../../../c`, .path_env = PathEnv.WIN32).as_str()? == `C:..\c`);
 	assert(path::new(`C:./a`, .path_env = PathEnv.WIN32).as_str()? == `C:a`);
 	assert(path::new(`C:./a`, .path_env = PathEnv.POSIX).as_str()? == `C:./a`);
 	assert(path::new(`C:./`, .path_env = PathEnv.WIN32).as_str()? == `C:`);
 	assert(path::new(`C:./`, .path_env = PathEnv.POSIX).as_str()? == `C:.`);
 	assert(path::new(`C:../a`, .path_env = PathEnv.POSIX).as_str()? == `C:../a`);
+	assert(path::new(`C:../a`, .path_env = PathEnv.WIN32).as_str()? == `C:..\a`);
 	assert(path::new(`C:..`, .path_env = PathEnv.POSIX).as_str()? == `C:..`);
+	assert(path::new(`C:..`, .path_env = PathEnv.WIN32).as_str()? == `C:..`);
 	assert(path::new(`C:`, .path_env = PathEnv.WIN32).as_str()? == `C:`);
 	assert(path::new(`C:`, .path_env = PathEnv.POSIX).as_str()? == `C:`);
 
