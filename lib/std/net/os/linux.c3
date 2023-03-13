@@ -3,7 +3,6 @@ import libc;
 
 $if (env::OS_TYPE == OsType.LINUX):
 
-
 struct AddrInfo
 {
 	int ai_flags;

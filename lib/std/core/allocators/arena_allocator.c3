@@ -1,3 +1,6 @@
+// Copyright (c) 2023 Christoffer Lerno. All rights reserved.
+// Use of this source code is governed by the MIT license
+// a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::mem::allocator;
 
 struct ArenaAllocator

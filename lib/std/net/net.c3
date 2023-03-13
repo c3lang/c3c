@@ -9,6 +9,7 @@ fault NetError
 	INVALID_IP_STRING,
 }
 
+
 fn uint! ipv4toint(String s)
 {
 	uint out;

@@ -185,11 +185,99 @@ fn void! test_path_normalized()
 	assert(path::new(`\\server\.`, .path_env = PathEnv.WIN32).as_str()? == `\\server\`);
 	assert(path::new(`\\server\`, .path_env = PathEnv.WIN32).as_str()? == `\\server\`);
 
+}
 
-/*
-        assertEquals(null, FilenameUtils.normalize("//server/../a"));
-        assertEquals(null, FilenameUtils.normalize("//server/.."));
-        assertEquals(SEP + SEP + "server" + SEP + "", FilenameUtils.normalize("//server/"));*/
+fn void! test_extension()
+{
+	assert(catch(path::new(`C:`, .path_env = PathEnv.WIN32).extension()));
+	assert(catch(path::new(`C:`, .path_env = PathEnv.POSIX).extension()));
+	assert(catch(path::new(`file`, .path_env = PathEnv.WIN32).extension()));
+	assert(catch(path::new(`file`, .path_env = PathEnv.POSIX).extension()));
+	assert(catch(path::new(`C:\temp\foo.bar\README`, .path_env = PathEnv.WIN32).extension()));
+
+	assert(path::new_windows("file.txt").extension()? == "txt");
+	assert(path::new_posix("file.txt").extension()? == "txt");
+
+	assert(path::new_windows("a/b/file.txt").extension()? == "txt");
+	assert(path::new_posix("a/b/file.txt").extension()? == "txt");
+
+	assert(path::new_windows("a\\b\\file.txt").extension()? == "txt");
+
+	assert(path::new_windows("a.b/file.txt").extension()? == "txt");
+	assert(path::new_posix("a.b/file.txt").extension()? == "txt");
+	assert(path::new_windows("a.b/file.txt").extension()? == "txt");
+	assert(path::new_posix("a.b/file.txt").extension()? == "txt");
+
+	assert(path::new_windows("a.b\\file.txt").extension()? == "txt");
+
+	assert(path::new_windows("domain.dot.com").extension()? == "com");
+	assert(path::new_posix("domain.dot.com").extension()? == "com");
+
+	assert(path::new_windows("image.jpeg").extension()? == "jpeg");
+	assert(path::new_posix("image.jpeg").extension()? == "jpeg");
+
+	assert(path::new_windows("../filename.ext").extension()? == "ext");
+	assert(path::new_posix("../filename.ext").extension()? == "ext");
+
+}
+
+fn void! test_basename()
+{
+
+	assert(path::new_windows("file.txt").basename()? == "file.txt");
+	assert(path::new_posix("file.txt").basename()? == "file.txt");
+
+	assert(path::new_windows("a/b/file.txt").basename()? == "file.txt");
+	assert(path::new_posix("a/b/file.txt").basename()? == "file.txt");
+
+	assert(path::new_windows("a.b/file.txt").basename()? == "file.txt");
+	assert(path::new_posix("a.b/file.txt").basename()? == "file.txt");
+
+	assert(path::new_windows("a.b/file.txt").basename()? == "file.txt");
+	assert(path::new_posix("a.b/file.txt").basename()? == "file.txt");
+
+	assert(path::new_windows("../filename.ext").basename()? == "filename.ext");
+	assert(path::new_posix("../filename.ext").basename()? == "filename.ext");
+
+	assert(path::new_windows("C:").basename()? == "");
+	assert(path::new_posix("C:").basename()? == "C:");
+
+	assert(path::new_windows("../..").basename()? == "..");
+	assert(path::new_posix("../..").basename()? == "..");
+
+	assert(path::new_windows(`\\server\`).basename()? == "");
+	assert(path::new_posix(`\\server\`).basename()? == `\\server\`);
+}
+
+fn void! test_dirname()
+{
+
+	assert(path::new_windows("file.txt").dirname()? == "");
+	assert(path::new_posix("file.txt").dirname()? == "");
+
+	assert(path::new_windows("a/b/file.txt").dirname()? == `a\b`);
+	assert(path::new_posix("a/b/file.txt").dirname()? == "a/b");
+
+	assert(path::new_windows("a.b/file.txt").dirname()? == "a.b");
+	assert(path::new_posix("a.b/file.txt").dirname()? == "a.b");
+
+	assert(path::new_windows("../filename.ext").dirname()? == "..");
+	assert(path::new_posix("../filename.ext").dirname()? == "..");
+
+	assert(path::new_windows("C:").dirname()? == "C:");
+	assert(path::new_posix("C:").dirname()? == "");
+
+	assert(path::new_windows("C:/").dirname()? == "C:\\");
+	assert(path::new_posix("C:/").dirname()? == "");
+
+	assert(path::new_windows("C:/a").dirname()? == "C:\\");
+	assert(path::new_posix("C:/a").dirname()? == "C:");
+
+	assert(path::new_windows("../..").dirname()? == "..");
+	assert(path::new_posix("../..").dirname()? == "..");
+
+	assert(path::new_windows(`\\server\`).dirname()? == `\\server\`);
+	assert(path::new_posix(`\\server\`).dirname()? == ``);
 }
 
 fn void! test_path_volume()

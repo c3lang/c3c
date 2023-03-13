@@ -29,9 +29,9 @@ enum PathEnv
 
 fn Path! getcwd(Allocator* using = mem::heap())
 {
-	@allocating_pool(using; bool is_temp)
+	@stack_mem(256; Allocator* mem)
 	{
-		return new(os::getcwd(using));
+		return new(os::getcwd(mem), using);
 	};
 }
 
@@ -89,19 +89,56 @@ fn Path! Path.append(Path path, String filename, Allocator* using = mem::heap())
 	if (!path.path_string.len) return new(filename, using, path.env)?;
 	assert(!is_separator(path.path_string[^1], path.env));
 
-	// Handle temp nested temp allocations.
-	@allocating_pool(using; bool is_temp)
+	@stack_mem(256; Allocator* mem)
 	{
-		DString dstr = dstring::tnew_with_capacity(path.path_string.len + 1 + filename.len);
+		DString dstr = dstring::new_with_capacity(path.path_string.len + 1 + filename.len, .using = mem);
 		dstr.append(path.path_string);
 		dstr.append(PREFERRED_SEPARATOR);
 		dstr.append(filename);
-		return { normalize(is_temp ? dstr.str() : dstr.copy_str(using), path.env), path.env };
+		return { normalize(dstr.copy_str(using), path.env), path.env };
 	};
 }
 
 fn Path! Path.tappend(Path path, String filename) => path.append(filename, mem::temp());
 
+fn usz Path.start_of_base_name(Path path) @local
+{
+	String path_str = path.path_string;
+	if (!path_str.len) return 0;
+	if (path.env == PathEnv.WIN32)
+	{
+		return path_str.rindex_of(`\`) + 1 ?? volume_name_len(path_str, path.env)!!;
+	}
+	return path_str.rindex_of("/") + 1 ?? 0;
+}
+
+fn String Path.basename(Path path)
+{
+	usz basename_start = path.start_of_base_name();
+	String path_str = path.path_string;
+	if (basename_start == path_str.len) return "";
+	return path_str[basename_start..];
+}
+
+fn String Path.dirname(Path path)
+{
+	usz basename_start = path.start_of_base_name();
+	String path_str = path.path_string;
+	if (basename_start == 0) return "";
+	usz start = volume_name_len(path_str, path.env)!!;
+	if (basename_start <= start + 1) return path_str[:basename_start];
+	return path_str[:basename_start - 1];
+}
+
+fn String! Path.extension(Path path)
+{
+	String basename = path.basename();
+	usz index = basename.rindex_of(".")?;
+	// Plain ".foo" does not have an
+	if (index == 0) return SearchResult.MISSING!;
+	if (index == basename.len) return "";
+	return basename[index + 1..];
+}
 
 fn String Path.volume_name(Path path)
 {

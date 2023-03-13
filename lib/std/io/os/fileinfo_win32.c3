@@ -40,13 +40,13 @@ fn bool native_is_dir(String path)
 
 fn Path! native_temp_directory(Allocator* using = mem::heap())
 {
-	@allocating_pool(using; bool is_temp)
+	@stack_mem(256; Allocator* mem)
 	{
 	    Win32_DWORD len = files::win32_GetTempPathW(0, null);
 		if (!len) return IoError.GENERAL_ERROR!;
-		Char16[] buff = tmalloc(Char16, len + 1);
+		Char16[] buff = malloc(Char16, len + 1, .using = mem);
 		if (!files::win32_GetTempPathW(len, buff)) return IoError.GENERAL_ERROR!;
-		return path::new(string::from_utf16(buff[:len]), using);
+		return path::new(string::from_utf16(buff[:len], .using = mem), using);
 	};
 }
 
