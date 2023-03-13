@@ -898,6 +898,10 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		}
 		FAIL_WITH_ERR("Found the unexpected argument \"%s\".", current_arg);
 	}
+	if (build_options.command == COMMAND_MISSING)
+	{
+		FAIL_WITH_ERR("Missing a compiler command such as 'compile' or 'build'.");
+	}
 	return build_options;
 }
 

@@ -40,6 +40,7 @@ fn bool is_file(Path path) => os::native_is_file(path.as_str());
 fn usz! file_size(Path path) => os::native_file_size(path.as_str());
 fn bool exists(Path path) => os::native_file_or_dir_exists(path.as_str());
 fn Path! tgetcwd() => getcwd(mem::temp()) @inline;
+fn void! chdir(Path path) => os::native_chdir(path) @inline;
 fn Path! temp_directory(Allocator* using = mem::heap()) => os::native_temp_directory(using);
 
 macro bool is_separator(char c, PathEnv path_env = DEFAULT_PATH_ENV)

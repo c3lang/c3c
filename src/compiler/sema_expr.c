@@ -931,6 +931,24 @@ static inline bool sema_binary_promote_top_down(SemaContext *context, Expr *bina
 
 static inline bool sema_binary_analyse_subexpr(SemaContext *context, Expr *binary, Expr *left, Expr *right)
 {
+	// Special handling of f = FOO_BAR
+	if (right->expr_kind == EXPR_IDENTIFIER && right->identifier_expr.is_const)
+	{
+		if (!sema_analyse_expr(context, left)) return false;
+		if (type_flatten(left->type)->type_kind == TYPE_ENUM)
+		{
+			return sema_analyse_inferred_expr(context, left->type, right);
+		}
+	}
+	// Special handling of f = FOO_BAR
+	if (left->expr_kind == EXPR_IDENTIFIER && left->identifier_expr.is_const)
+	{
+		if (!sema_analyse_expr(context, right)) return false;
+		if (type_flatten(right->type)->type_kind == TYPE_ENUM)
+		{
+			return sema_analyse_inferred_expr(context, right->type, left);
+		}
+	}
 	if (right->expr_kind == EXPR_INITIALIZER_LIST)
 	{
 		if (!sema_analyse_expr(context, left)) return false;
@@ -2103,11 +2121,11 @@ static inline bool sema_expr_analyse_call(SemaContext *context, Expr *expr)
 		case EXPR_TYPEINFO:
 			if (func_expr->type_expr->resolve_status == RESOLVE_DONE)
 			{
-				SEMA_ERROR(expr, "A type cannot be followed by (), if you intended a cast, use (type)(expression).");
+				SEMA_ERROR(expr, "A type cannot be followed by (), if you intended a cast, use '(type) expression'.");
 			}
 			else
 			{
-				SEMA_ERROR(expr, "A type cannot be followed by (), did you mean to use {}?");
+				SEMA_ERROR(expr, "A type cannot be followed by (), did you mean to use 'type {}'?");
 			}
 			return false;
 		default:

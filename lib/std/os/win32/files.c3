@@ -27,6 +27,7 @@ struct Win32_FILE_ATTRIBUTE_DATA
 extern fn bool win32_GetFileAttributesExW(Win32_LPCWSTR, Win32_GET_FILEEX_INFO_LEVELS, Win32_LPVOID) @extern("GetFileAttributesExW");
 extern fn bool win32_PathFileExistsW(Win32_LPCWSTR) @extern("PathFileExistsW");
 extern fn Win32_DWORD win32_GetTempPathW(Win32_DWORD nBufferLength, Win32_LPWSTR lpBuffer) @extern("GetTempPathW");
+extern fn bool win32_SetCurrentDirectoryW(Win32_LPCTSTR buffer) @extern("SetCurrentDirectoryW");
 
 /*
 extern ulong _win32_GetCurrentDirectoryW(ulong, Char16* buffer) @extern("GetCurrentDirectoryW");

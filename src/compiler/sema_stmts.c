@@ -367,7 +367,7 @@ static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *state
 	}
 	else
 	{
-		if (block_type && block_type != type_void)
+		if (block_type && type_no_optional(block_type) != type_void)
 		{
 			SEMA_ERROR(statement, "Expected a return value of type %s here.", type_quoted_error_string(block_type));
 			return false;
@@ -966,9 +966,24 @@ static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType 
 		}
 		return true;
 	}
+
 	// 3a. Check for optional in case of an expression.
 	if (IS_OPTIONAL(last))
 	{
+		if (type_no_optional(last->type) == type_void && cast_to_bool)
+		{
+			Expr *catch = expr_new_expr(EXPR_CATCH, last);
+			catch->expr_kind = EXPR_CATCH;
+			catch->inner_expr = expr_copy(last);
+			catch->type = type_anyerr;
+			catch->resolve_status = RESOLVE_DONE;
+			catch->inner_expr->resolve_status = RESOLVE_DONE;
+			last->expr_kind = EXPR_UNARY;
+			last->unary_expr.operator = UNARYOP_NOT;
+			last->unary_expr.expr = catch;
+			last->type = type_bool;
+			return true;
+		}
 		SEMA_ERROR(last, "The expression may not be an optional, but was %s.", type_quoted_error_string(last->type));
 		return false;
 	}

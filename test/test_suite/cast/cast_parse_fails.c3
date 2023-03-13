@@ -7,7 +7,7 @@ fn void test2()
 
 fn void test3()
 {
-    int x = int(32);    // #error: A type cannot be followed by (), if you intended a cast, use (type)(expression)
+    int x = int(32);    // #error: A type cannot be followed by (), if you intended a cast, use '(type) expression'
 }
 
 

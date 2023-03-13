@@ -528,6 +528,7 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 	if (!to) to = type_untypedlist;
 	assert(to);
 	Type *flattened = type_flatten(to);
+	bool is_zero_init = expr->expr_kind == EXPR_INITIALIZER_LIST && !vec_size(expr->initializer_list);
 	switch (flattened->type_kind)
 	{
 		case TYPE_UNTYPED_LIST:
@@ -541,7 +542,7 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 			return sema_expr_analyse_initializer(context, to, flattened, expr);
 		case TYPE_SUBARRAY:
 		{
-			if (expr->expr_kind == EXPR_INITIALIZER_LIST && !vec_size(expr->initializer_list))
+			if (is_zero_init)
 			{
 				expr->expr_kind = EXPR_CONST;
 				expr->const_expr.const_kind = CONST_POINTER;
@@ -561,12 +562,31 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 			SEMA_ERROR(expr, "Scaled vectors cannot be initialized using an initializer list, since the length is not known at compile time.");
 			return false;
 		case TYPE_POINTER:
+			if (is_zero_init)
+			{
+				expr_rewrite_to_const_zero(expr, to);
+				return true;
+			}
 			SEMA_ERROR(expr, "Pointers cannot be initialized using an initializer list, instead you need to take the address of an array.");
 			return false;
+		case TYPE_VOID:
+		case TYPE_POISONED:
+		case TYPE_FUNC:
+		case TYPE_TYPEDEF:
+		case TYPE_OPTIONAL_ANY:
+		case TYPE_OPTIONAL:
+		case TYPE_TYPEINFO:
+		case TYPE_MEMBER:
+			break;
 		default:
+			if (is_zero_init)
+			{
+				expr_rewrite_to_const_zero(expr, flattened);
+				expr->type = to;
+				return true;
+			}
 			break;
 	}
-	// Fix error on compound literals
 	SEMA_ERROR(expr, "'%s' cannot use compound literal initialization, did you intend to use a cast?", type_to_error_string(to));
 	return false;
 }
