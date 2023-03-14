@@ -21,7 +21,7 @@ fn bool native_file_or_dir_exists(String path)
 {
 	@pool()
 	{
-		return files::win32_PathFileExistsW(path.to_temp_utf16()) ?? false;
+		return (bool)files::win32_PathFileExistsW(path.to_temp_utf16()) ?? false;
 	};
 }
 

@@ -3,8 +3,6 @@ module std::thread::os;
 $if (thread::THREAD_MODEL == ThreadModel.WIN32):
 
 typedef NativeThread = Win32_HANDLE;
-typedef Win32_CRITICAL_SECTION = distinct ulong[5];
-typedef Win32_HANDLE = distinct ulong;
 
 struct NativeMutex
 {

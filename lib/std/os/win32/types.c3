@@ -184,3 +184,59 @@ union Win32_LARGE_INTEGER
 	}
 	ulong quadPart;
 }
+
+typedef Win32_CRITICAL_SECTION = distinct ulong[5];
+
+struct Win32_SECURITY_ATTRIBUTES
+{
+	Win32_DWORD  nLength;
+    Win32_LPVOID lpSecurityDescriptor;
+	Win32_BOOL   bInheritHandle;
+}
+
+typedef Win32_LPSECURITY_ATTRIBUTES = Win32_SECURITY_ATTRIBUTES*;
+typedef Win32_PSECURITY_ATTRIBUTES = Win32_SECURITY_ATTRIBUTES*;
+
+struct Win32_STARTUPINFOW
+{
+	Win32_DWORD  cb;
+	Win32_LPWSTR lpReserved;
+	Win32_LPWSTR lpDesktop;
+	Win32_LPWSTR lpTitle;
+	Win32_DWORD  dwX;
+	Win32_DWORD  dwY;
+	Win32_DWORD  dwXSize;
+	Win32_DWORD  dwYSize;
+	Win32_DWORD  dwXCountChars;
+	Win32_DWORD  dwYCountChars;
+	Win32_DWORD  dwFillAttribute;
+	Win32_DWORD  dwFlags;
+	Win32_WORD   wShowWindow;
+	Win32_WORD   cbReserved2;
+	Win32_LPBYTE lpReserved2;
+	Win32_HANDLE hStdInput;
+	Win32_HANDLE hStdOutput;
+	Win32_HANDLE hStdError;
+}
+
+typedef Win32_LPSTARTUPINFOW = Win32_STARTUPINFOW*;
+
+struct Win32_STARTUPINFOEXW
+{
+	inline Win32_STARTUPINFOW win32_StartupInfo;
+    Win32_LPPROC_THREAD_ATTRIBUTE_LIST lpAttributeList;
+}
+
+typedef Win32_LPPROC_THREAD_ATTRIBUTE_LIST = void*;
+typedef Win32_LPSTARTUPINFOEXW = Win32_STARTUPINFOEXW*;
+
+struct Win32_PROCESS_INFORMATION
+{
+	Win32_HANDLE hProcess;
+	Win32_HANDLE hThread;
+	Win32_DWORD  dwProcessId;
+	Win32_DWORD  dwThreadId;
+}
+
+typedef Win32_PPROCESS_INFORMATION = Win32_PROCESS_INFORMATION*;
+typedef Win32_LPPROCESS_INFORMATION = Win32_PROCESS_INFORMATION*;
