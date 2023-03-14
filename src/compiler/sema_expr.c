@@ -1841,7 +1841,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	AstId assert_first = 0;
 	AstId* next = &assert_first;
 
-	if (!sema_analyse_contracts(&macro_context, docs, &next)) return false;
+	if (!sema_analyse_contracts(&macro_context, docs, &next, call_expr->span)) return false;
 	sema_append_contract_asserts(assert_first, body);
 
 	if (!sema_analyse_statement(&macro_context, body)) goto EXIT_FAIL;

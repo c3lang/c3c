@@ -1431,7 +1431,7 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 		case AST_POISONED:
 		case AST_IF_CATCH_SWITCH_STMT:
 		case AST_FOREACH_STMT:
-		case AST_DOC_STMT:
+		case AST_CONTRACT:
 		case AST_ASM_STMT:
 			UNREACHABLE
 		case AST_EXPR_STMT:

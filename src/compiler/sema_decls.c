@@ -51,7 +51,8 @@ static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl);
 
 static CompilationUnit *unit_copy(Module *module, CompilationUnit *unit);
 static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl);
-static Module *module_instantiate_generic(Module *module, Path *path, Expr **params);
+static Module *module_instantiate_generic(SemaContext *context, Module *module, Path *path, Expr **params,
+                                          SourceSpan from);
 
 static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param, bool *has_default);
 static inline bool sema_analyse_enum(SemaContext *context, Decl *decl);
@@ -1911,8 +1912,8 @@ static inline bool sema_analyse_doc_header(AstId doc, Decl **params, Decl **extr
 	{
 		Ast *directive = astptr(doc);
 		doc = directive->next;
-		DocDirectiveKind directive_kind = directive->doc_stmt.kind;
-		if (directive_kind == DOC_DIRECTIVE_PURE)
+		ContractKind directive_kind = directive->contract.kind;
+		if (directive_kind == CONTRACT_PURE)
 		{
 			if (*pure_ref)
 			{
@@ -1922,8 +1923,8 @@ static inline bool sema_analyse_doc_header(AstId doc, Decl **params, Decl **extr
 			*pure_ref = true;
 			continue;
 		}
-		if (directive_kind != DOC_DIRECTIVE_PARAM) continue;
-		const char *param_name = directive->doc_stmt.param.name;
+		if (directive_kind != CONTRACT_PARAM) continue;
+		const char *param_name = directive->contract.param.name;
 		Decl *extra_param = NULL;
 		Decl *param = NULL;
 		VECEACH(params, j)
@@ -1936,13 +1937,13 @@ static inline bool sema_analyse_doc_header(AstId doc, Decl **params, Decl **extr
 			param = extra_params[j];
 			if (param->name == param_name) goto NEXT;
 		}
-		SEMA_ERROR(&directive->doc_stmt.param, "There is no parameter '%s', did you misspell it?", param_name);
+		SEMA_ERROR(&directive->contract.param, "There is no parameter '%s', did you misspell it?", param_name);
 		return false;
 	NEXT:;
 		Type *type = param->type;
 		if (type) type = type_flatten(type);
 		bool may_be_pointer = !type || type_is_pointer(type);
-		if (directive->doc_stmt.param.by_ref)
+		if (directive->contract.param.by_ref)
 		{
 			if (!may_be_pointer)
 			{
@@ -1951,7 +1952,7 @@ static inline bool sema_analyse_doc_header(AstId doc, Decl **params, Decl **extr
 			}
 			param->var.not_null = true;
 		}
-		switch (directive->doc_stmt.param.modifier)
+		switch (directive->contract.param.modifier)
 		{
 			case PARAM_ANY:
 				goto ADDED;
@@ -2813,7 +2814,8 @@ static CompilationUnit *unit_copy(Module *module, CompilationUnit *unit)
 	return copy;
 }
 
-static Module *module_instantiate_generic(Module *module, Path *path, Expr **params)
+static Module *module_instantiate_generic(SemaContext *context, Module *module, Path *path, Expr **params,
+                                          SourceSpan from)
 {
 	Module *new_module = compiler_find_or_create_module(path, NULL);
 	new_module->is_generic = false;
@@ -2823,6 +2825,12 @@ static Module *module_instantiate_generic(Module *module, Path *path, Expr **par
 		vec_add(new_module->units, unit_copy(new_module, units[i]));
 	}
 	CompilationUnit *first_context = new_module->units[0];
+	if (module->contracts)
+	{
+		copy_begin();
+		new_module->contracts = astid(copy_ast_macro(astptr(module->contracts)));
+		copy_end();
+	}
 	VECEACH(module->parameters, i)
 	{
 		const char *param_name = module->parameters[i];
@@ -2939,6 +2947,47 @@ static bool sema_append_generate_parameterized_name(SemaContext *c, Module *modu
 	scratch_buffer_append_char(mangled ? '$' : '>');
 	return true;
 }
+
+static bool sema_analyse_generic_module_contracts(SemaContext *c, Module *module, SourceSpan error_span)
+{
+	assert(module->contracts);
+	AstId contract = module->contracts;
+	while (contract)
+	{
+		Ast *ast = astptr(contract);
+		contract = ast->next;
+		assert(ast->ast_kind == AST_CONTRACT);
+		SemaContext temp_context;
+
+		assert(ast->contract.kind == CONTRACT_CHECKED || ast->contract.kind == CONTRACT_REQUIRE);
+		SemaContext *new_context = context_transform_for_eval(c, &temp_context, module->units[0]);
+		if (ast->contract.kind == CONTRACT_CHECKED)
+		{
+			if (!sema_analyse_checked(new_context, ast, error_span)) return false;
+		}
+		else
+		{
+			FOREACH_BEGIN(Expr *expr, ast->contract.contract.decl_exprs->expression_list)
+				int res = sema_check_comp_time_bool(new_context, expr);
+				if (res == -1) return false;
+				if (res) continue;
+				if (ast->contract.contract.comment)
+				{
+					sema_error_at(error_span,
+					              "Parameter(s) would violate constraint: %s.",
+					              ast->contract.contract.comment);
+				}
+				else
+				{
+					sema_error_at(error_span, "Parameter(s) failed validation: %s", ast->contract.contract.expr_string);
+				}
+				return false;
+			FOREACH_END();
+		}
+		sema_context_destroy(&temp_context);
+	}
+	return true;
+}
 static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 {
 	Path *decl_path;
@@ -2996,17 +3045,29 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 	TokenType ident_type = TOKEN_IDENT;
 	const char *path_string = scratch_buffer_interned();
 	Module *instantiated_module = global_context_find_module(path_string);
+
+	bool was_initiated = false;
 	if (!instantiated_module)
 	{
+		was_initiated = true;
 		Path *path = CALLOCS(Path);
 		path->module = path_string;
 		path->span = module->name->span;
 		path->len = scratch_buffer.len;
-		instantiated_module = module_instantiate_generic(module, path, decl->define_decl.generic_params);
+		instantiated_module = module_instantiate_generic(c, module, path,
+														 decl->define_decl.generic_params, decl->span);
 		sema_analyze_stage(instantiated_module, c->unit->module->stage - 1);
 	}
 	if (global_context.errors_found) return decl_poison(decl);
 	Decl *symbol = module_find_symbol(instantiated_module, name);
+	if (was_initiated && instantiated_module->contracts)
+	{
+		SourceSpan error_span = extend_span_with_token(params[0]->span, params[parameter_count - 1]->span);
+		if (!sema_analyse_generic_module_contracts(c, instantiated_module, error_span))
+		{
+			return decl_poison(decl);
+		}
+	}
 	assert(symbol);
 	unit_register_external_symbol(c->compilation_unit, symbol);
 	switch (decl->define_decl.define_kind)

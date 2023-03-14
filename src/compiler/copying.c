@@ -517,19 +517,19 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 	UNREACHABLE
 }
 
-void doc_ast_copy(CopyStruct *c, AstDocStmt *doc)
+void doc_ast_copy(CopyStruct *c, AstContractStmt *doc)
 {
 	switch (doc->kind)
 	{
-		case DOC_DIRECTIVE_REQUIRE:
-		case DOC_DIRECTIVE_ENSURE:
-		case DOC_DIRECTIVE_CHECKED:
+		case CONTRACT_REQUIRE:
+		case CONTRACT_ENSURE:
+		case CONTRACT_CHECKED:
 			MACRO_COPY_EXPR(doc->contract.decl_exprs);
 			break;
-		case DOC_DIRECTIVE_PARAM:
-		case DOC_DIRECTIVE_ERRORS:
-		case DOC_DIRECTIVE_PURE:
-		case DOC_DIRECTIVE_UNKNOWN:
+		case CONTRACT_PARAM:
+		case CONTRACT_ERRORS:
+		case CONTRACT_PURE:
+		case CONTRACT_UNKNOWN:
 			break;
 	}
 }
@@ -553,8 +553,8 @@ RETRY:
 		case AST_DECLS_STMT:
 			MACRO_COPY_DECL_LIST(ast->decls_stmt);
 			break;
-		case AST_DOC_STMT:
-			doc_ast_copy(c, &source->doc_stmt);
+		case AST_CONTRACT:
+			doc_ast_copy(c, &source->contract);
 			break;
 		case AST_ASM_BLOCK_STMT:
 			if (ast->asm_block_stmt.is_string)

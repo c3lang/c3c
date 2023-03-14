@@ -47,7 +47,7 @@ unsigned sema_context_push_ct_stack(SemaContext *context);
 void sema_context_pop_ct_stack(SemaContext *context, unsigned old_state);
 
 bool sema_analyse_function_body(SemaContext *context, Decl *func);
-bool sema_analyse_contracts(SemaContext *context, AstId doc, AstId **asserts);
+bool sema_analyse_contracts(SemaContext *context, AstId doc, AstId **asserts, SourceSpan span);
 void sema_append_contract_asserts(AstId assert_first, Ast* compound_stmt);
 
 void sema_analyse_pass_top(Module *module);
@@ -83,6 +83,8 @@ bool cast_widen_top_down(SemaContext *context, Expr *expr, Type *type);
 bool cast_promote_vararg(Expr *arg);
 Type *cast_numeric_arithmetic_promotion(Type *type);
 void cast_to_int_to_max_bit_size(SemaContext *context, Expr *lhs, Expr *rhs, Type *left_type, Type *right_type);
+
+bool sema_analyse_checked(SemaContext *context, Ast *directive, SourceSpan span);
 
 INLINE bool sema_set_abi_alignment(SemaContext *context, Type *type, AlignSize *result);
 INLINE bool sema_set_alloca_alignment(SemaContext *context, Type *type, AlignSize *result);

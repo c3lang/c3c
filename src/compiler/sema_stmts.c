@@ -49,7 +49,6 @@ static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *state
 static bool sema_analyse_require(SemaContext *context, Ast *directive, AstId **asserts);
 static bool sema_analyse_ensure(SemaContext *context, Ast *directive);
 static bool sema_analyse_errors(SemaContext *context, Ast *directive);
-static bool sema_analyse_checked(SemaContext *context, Ast *directive, AstId **asserts);
 
 static inline bool sema_analyse_asm_stmt(SemaContext *context, Ast *stmt)
 {
@@ -278,7 +277,7 @@ static void sema_unwrappable_from_catch_in_else(SemaContext *c, Expr *cond)
 
 static inline bool assert_create_from_contract(SemaContext *context, Ast *directive, AstId **asserts, SourceSpan evaluation_location)
 {
-	Expr *declexpr = directive->doc_stmt.contract.decl_exprs;
+	Expr *declexpr = directive->contract.contract.decl_exprs;
 	assert(declexpr->expr_kind == EXPR_EXPRESSION_LIST);
 
 	Expr **exprs = declexpr->expression_list;
@@ -292,8 +291,8 @@ static inline bool assert_create_from_contract(SemaContext *context, Ast *direct
 		}
 		if (!sema_analyse_cond_expr(context, expr)) return false;
 
-		const char *comment = directive->doc_stmt.contract.comment;
-		if (!comment) comment = directive->doc_stmt.contract.expr_string;
+		const char *comment = directive->contract.contract.comment;
+		if (!comment) comment = directive->contract.contract.expr_string;
 		if (expr_is_const(expr))
 		{
 			assert(expr->const_expr.const_kind == CONST_BOOL);
@@ -482,7 +481,7 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 		while (doc_directive)
 		{
 			Ast *directive = astptr(doc_directive);
-			if (directive->doc_stmt.kind == DOC_DIRECTIVE_ENSURE)
+			if (directive->contract.kind == CONTRACT_ENSURE)
 			{
 				if (!assert_create_from_contract(context, directive, &append_id, statement->span)) return false;
 			}
@@ -2689,7 +2688,7 @@ static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *state
 	{
 		case AST_POISONED:
 		case AST_IF_CATCH_SWITCH_STMT:
-		case AST_DOC_STMT:
+		case AST_CONTRACT:
 		case AST_ASM_STMT:
 			UNREACHABLE
 		case AST_DECLS_STMT:
@@ -2766,7 +2765,7 @@ static bool sema_analyse_require(SemaContext *context, Ast *directive, AstId **a
 
 static bool sema_analyse_ensure(SemaContext *context, Ast *directive)
 {
-	Expr *declexpr = directive->doc_stmt.contract.decl_exprs;
+	Expr *declexpr = directive->contract.contract.decl_exprs;
 	assert(declexpr->expr_kind == EXPR_EXPRESSION_LIST);
 
 	VECEACH(declexpr->expression_list, j)
@@ -2783,7 +2782,7 @@ static bool sema_analyse_ensure(SemaContext *context, Ast *directive)
 
 static bool sema_analyse_errors(SemaContext *context, Ast *directive)
 {
-	DocOptReturn *returns = directive->doc_stmt.optreturns;
+	DocOptReturn *returns = directive->contract.optreturns;
 	VECEACH(returns, i)
 	{
 		TypeInfo *type_info = returns[i].type;
@@ -2823,30 +2822,28 @@ NEXT:;
 	return true;
 }
 
-static bool sema_analyse_checked(SemaContext *context, Ast *directive, AstId **asserts)
+bool sema_analyse_checked(SemaContext *context, Ast *directive, SourceSpan span)
 {
-	Expr *declexpr = directive->doc_stmt.contract.decl_exprs;
+	Expr *declexpr = directive->contract.contract.decl_exprs;
 	bool success = true;
 	bool suppress_error = global_context.suppress_errors;
 	global_context.suppress_errors = true;
+	CallEnvKind eval_kind = context->call_env.kind;
+	context->call_env.kind = CALL_ENV_CHECKS;
 	SCOPE_START_WITH_FLAGS(SCOPE_CHECKS)
 		VECEACH(declexpr->cond_expr, j)
 		{
 			Expr *expr = declexpr->cond_expr[j];
-			const char *comment = directive->doc_stmt.contract.comment;
-			global_context.suppress_errors = comment != NULL;
-			if (!sema_analyse_cond_expr(context, expr))
-			{
-				if (comment)
-				{
-					global_context.suppress_errors = false;
-					SEMA_ERROR(expr, comment);
-				}
-				success = false;
-				goto END;
-			}
+			if (sema_analyse_expr(context, expr)) continue;
+			const char *comment = directive->contract.contract.comment;
+			global_context.suppress_errors = suppress_error;
+			sema_error_at(span.row == 0 ? expr->span : span, "Contraint failed: %s",
+						  comment ? comment : directive->contract.contract.expr_string);
+			success = false;
+			goto END;
 		}
 END:
+	context->call_env.kind = eval_kind;
 	SCOPE_END;
 	global_context.suppress_errors = suppress_error;
 	return success;
@@ -2861,28 +2858,28 @@ void sema_append_contract_asserts(AstId assert_first, Ast* compound_stmt)
 	ast_prepend(&compound_stmt->compound_stmt.first_stmt, ast);
 }
 
-bool sema_analyse_contracts(SemaContext *context, AstId doc, AstId **asserts)
+bool sema_analyse_contracts(SemaContext *context, AstId doc, AstId **asserts, SourceSpan call_span)
 {
 	while (doc)
 	{
 		Ast *directive = astptr(doc);
-		switch (directive->doc_stmt.kind)
+		switch (directive->contract.kind)
 		{
-			case DOC_DIRECTIVE_UNKNOWN:
-			case DOC_DIRECTIVE_PURE:
+			case CONTRACT_UNKNOWN:
+			case CONTRACT_PURE:
 				break;
-			case DOC_DIRECTIVE_REQUIRE:
+			case CONTRACT_REQUIRE:
 				if (!sema_analyse_require(context, directive, asserts)) return false;
 				break;
-			case DOC_DIRECTIVE_CHECKED:
-				if (!sema_analyse_checked(context, directive, asserts)) return false;
+			case CONTRACT_CHECKED:
+				if (!sema_analyse_checked(context, directive, call_span)) return false;
 				break;
-			case DOC_DIRECTIVE_PARAM:
+			case CONTRACT_PARAM:
 				break;
-			case DOC_DIRECTIVE_ERRORS:
+			case CONTRACT_ERRORS:
 				if (!sema_analyse_errors(context, directive)) return false;
 				break;
-			case DOC_DIRECTIVE_ENSURE:
+			case CONTRACT_ENSURE:
 				if (!sema_analyse_ensure(context, directive)) return false;
 				context->call_env.ensures = true;
 				break;
@@ -2930,7 +2927,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 		}
 		AstId assert_first = 0;
 		AstId *next = &assert_first;
-		if (!sema_analyse_contracts(context, func->func_decl.docs, &next)) return false;
+		if (!sema_analyse_contracts(context, func->func_decl.docs, &next, INVALID_SPAN)) return false;
 		if (func->func_decl.attr_naked)
 		{
 			AstId current = body->compound_stmt.first_stmt;
