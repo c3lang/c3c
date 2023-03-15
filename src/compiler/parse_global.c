@@ -370,7 +370,7 @@ bool parse_module(ParseContext *c, AstId docs)
 	if (!context_set_module(c, path, generic_parameters)) return false;
 	if (docs)
 	{
-		AstId old_docs = c->unit->module->docs;
+		AstId old_docs = c->unit->module->contracts;
 		if (old_docs)
 		{
 			Ast *last = ast_last(astptr(old_docs));
@@ -378,7 +378,27 @@ bool parse_module(ParseContext *c, AstId docs)
 		}
 		else
 		{
-			c->unit->module->docs = docs;
+			c->unit->module->contracts = docs;
+		}
+		while (docs)
+		{
+			Ast *current = astptr(docs);
+			docs = current->next;
+			assert(current->ast_kind == AST_CONTRACT);
+			switch (current->contract.kind)
+			{
+				case CONTRACT_UNKNOWN:
+				case CONTRACT_PURE:
+				case CONTRACT_PARAM:
+				case CONTRACT_ERRORS:
+				case CONTRACT_ENSURE:
+					break;
+				case CONTRACT_REQUIRE:
+				case CONTRACT_CHECKED:
+					continue;
+			}
+			SEMA_ERROR(current, "Invalid constraint - only '@require' and '@checked' are valid for modules.");
+			return false;
 		}
 	}
 	Visibility visibility = VISIBLE_PUBLIC;
@@ -2562,14 +2582,16 @@ static inline bool parse_import(ParseContext *c)
 
 
 
-
-static inline bool parse_doc_contract(ParseContext *c, AstId **docs_ref, DocDirectiveKind kind)
+/**
+ * contract ::= expression_list (':'? STRING)?
+ */
+static inline bool parse_doc_contract(ParseContext *c, AstId **docs_ref, ContractKind kind)
 {
-	Ast *ast = ast_new_curr(c, AST_DOC_STMT);
-	ast->doc_stmt.kind = kind;
+	Ast *ast = ast_new_curr(c, AST_CONTRACT);
+	ast->contract.kind = kind;
 	const char *start = c->lexer.data.lex_start;
 	advance(c);
-	ASSIGN_EXPR_OR_RET(ast->doc_stmt.contract.decl_exprs, parse_expression_list(c, kind == DOC_DIRECTIVE_CHECKED), false);
+	ASSIGN_EXPR_OR_RET(ast->contract.contract.decl_exprs, parse_expression_list(c, kind == CONTRACT_CHECKED), false);
 	const char *end = start;
 	while (*++end != '\n' && *end != '\0') end++;
 	if (end > c->data.lex_start) end = c->data.lex_start;
@@ -2577,10 +2599,10 @@ static inline bool parse_doc_contract(ParseContext *c, AstId **docs_ref, DocDire
 	scratch_buffer_clear();
 	switch (kind)
 	{
-		case DOC_DIRECTIVE_CHECKED:
+		case CONTRACT_CHECKED:
 			scratch_buffer_append("@checked \"");
 			break;
-		case DOC_DIRECTIVE_ENSURE:
+		case CONTRACT_ENSURE:
 			scratch_buffer_append("@ensure \"");
 			break;
 		default:
@@ -2589,31 +2611,43 @@ static inline bool parse_doc_contract(ParseContext *c, AstId **docs_ref, DocDire
 	}
 	scratch_buffer_append_len(start, end - start);
 	scratch_buffer_append("\" violated");
+	if (try_consume(c, TOKEN_COLON))
+	{
+		if (!tok_is(c, TOKEN_STRING))
+		{
+			sema_error_at(c->prev_span, "Expected a string after ':'");
+			return false;
+		}
+	}
 	if (tok_is(c, TOKEN_STRING))
 	{
 		scratch_buffer_append(": '");
 		scratch_buffer_append(symstr(c));
 		scratch_buffer_append("'.");
-		ast->doc_stmt.contract.comment = scratch_buffer_copy();
+		ast->contract.contract.comment = scratch_buffer_copy();
 		advance(c);
 	}
 	else
 	{
 		scratch_buffer_append(".");
-		ast->doc_stmt.contract.expr_string = scratch_buffer_copy();
+		ast->contract.contract.expr_string = scratch_buffer_copy();
 	}
 	**docs_ref = astid(ast);
 	*docs_ref = &ast->next;
 	return true;
 }
 
-static inline bool parse_doc_param(ParseContext *c, AstId **docs_ref)
+/**
+ * param_contract ::= '@param' inout_attribute? any_identifier ( (':' STRING) | STRING )?
+ * inout_attribute ::= '[' '&'? ('in' | 'inout' | 'out') ']'
+ */
+static inline bool parse_contract_param(ParseContext *c, AstId **docs_ref)
 {
-	Ast *ast = ast_new_curr(c, AST_DOC_STMT);
-	ast->doc_stmt.kind = DOC_DIRECTIVE_PARAM;
+	Ast *ast = ast_new_curr(c, AST_CONTRACT);
+	ast->contract.kind = CONTRACT_PARAM;
 	advance(c);
 
-	// [&inout] [in] [out]
+	// [inout] [in] [out]
 	bool is_ref = false;
 	InOutModifier mod = PARAM_ANY;
 	if (try_consume(c, TOKEN_LBRACKET))
@@ -2657,13 +2691,19 @@ static inline bool parse_doc_param(ParseContext *c, AstId **docs_ref)
 			SEMA_ERROR_HERE("Expected a parameter name here.");
 			return false;
 	}
-
-	ast->doc_stmt.param.name = symstr(c);
-	ast->doc_stmt.param.span = c->span;
-	ast->doc_stmt.param.modifier = mod;
-	ast->doc_stmt.param.by_ref = is_ref;
+	ast->contract.param.name = symstr(c);
+	ast->contract.param.span = c->span;
+	ast->contract.param.modifier = mod;
+	ast->contract.param.by_ref = is_ref;
 	advance(c);
-	try_consume(c, TOKEN_STRING);
+	if (try_consume(c, TOKEN_COLON))
+	{
+		CONSUME_OR_RET(TOKEN_STRING, false);
+	}
+	else
+	{
+		try_consume(c, TOKEN_STRING);
+	}
 	**docs_ref = astid(ast);
 	*docs_ref = &ast->next;
 	return true;
@@ -2672,8 +2712,8 @@ static inline bool parse_doc_param(ParseContext *c, AstId **docs_ref)
 static inline bool parse_doc_errors(ParseContext *c, AstId **docs_ref)
 {
 	DocOptReturn *returns = NULL;
-	Ast *ast = ast_new_curr(c, AST_DOC_STMT);
-	ast->doc_stmt.kind = DOC_DIRECTIVE_ERRORS;
+	Ast *ast = ast_new_curr(c, AST_CONTRACT);
+	ast->contract.kind = CONTRACT_ERRORS;
 	advance(c);
 	while (1)
 	{
@@ -2694,19 +2734,19 @@ static inline bool parse_doc_errors(ParseContext *c, AstId **docs_ref)
 		if (!try_consume(c, TOKEN_COMMA)) break;
 	}
 	RANGE_EXTEND_PREV(ast);
-	ast->doc_stmt.optreturns = returns;
+	ast->contract.optreturns = returns;
 	**docs_ref = astid(ast);
 	*docs_ref = &ast->next;
 	return true;
 }
 
 
-static bool parse_docs(ParseContext *c, AstId *docs_ref)
+static bool parse_contracts(ParseContext *c, AstId *contracts_ref)
 {
-	*docs_ref = 0;
+	*contracts_ref = 0;
 	if (!try_consume(c, TOKEN_DOCS_START)) return true;
 
-	AstId *last = docs_ref;
+	AstId *last = contracts_ref;
 	uint32_t row_last_row = c->span.row;
 	while (1)
 	{
@@ -2719,7 +2759,7 @@ static bool parse_docs(ParseContext *c, AstId *docs_ref)
 				const char *name = symstr(c);
 				if (name == kw_at_param)
 				{
-					if (!parse_doc_param(c, &last)) return false;
+					if (!parse_contract_param(c, &last)) return false;
 					break;
 				}
 				else if (name == kw_at_return)
@@ -2737,30 +2777,30 @@ static bool parse_docs(ParseContext *c, AstId *docs_ref)
 				}
 				else if (name == kw_at_require)
 				{
-					if (!parse_doc_contract(c, &docs_ref, DOC_DIRECTIVE_REQUIRE)) return false;
+					if (!parse_doc_contract(c, &contracts_ref, CONTRACT_REQUIRE)) return false;
 					break;
 				}
 				else if (name == kw_at_checked)
 				{
-					if (!parse_doc_contract(c, &docs_ref, DOC_DIRECTIVE_CHECKED)) return false;
+					if (!parse_doc_contract(c, &contracts_ref, CONTRACT_CHECKED)) return false;
 					break;
 				}
 				else if (name == kw_at_ensure)
 				{
-					if (!parse_doc_contract(c, &docs_ref, DOC_DIRECTIVE_ENSURE)) return false;
+					if (!parse_doc_contract(c, &contracts_ref, CONTRACT_ENSURE)) return false;
 					break;
 				}
 				else if (name == kw_at_optreturn)
 				{
-					if (!parse_doc_errors(c, &docs_ref)) return false;
+					if (!parse_doc_errors(c, &contracts_ref)) return false;
 					break;
 				}
 				else if (name == kw_at_pure)
 				{
-					Ast *ast = ast_new_curr(c, AST_DOC_STMT);
-					ast->doc_stmt.kind = DOC_DIRECTIVE_PURE;
-					*docs_ref = astid(ast);
-					docs_ref = &ast->next;
+					Ast *ast = ast_new_curr(c, AST_CONTRACT);
+					ast->contract.kind = CONTRACT_PURE;
+					*contracts_ref = astid(ast);
+					contracts_ref = &ast->next;
 					advance(c);
 					break;
 				}
@@ -2871,7 +2911,7 @@ END:
 Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 {
 	AstId docs = 0;
-	if (!parse_docs(c, &docs)) return poisoned_decl;
+	if (!parse_contracts(c, &docs)) return poisoned_decl;
 	Decl *decl;
 	TokenType tok = c->tok;
 	if (tok != TOKEN_MODULE && !c->unit->module)

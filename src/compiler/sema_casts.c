@@ -787,6 +787,7 @@ RETRY:
 				case ACCESS_TYPEOFANY:
 				case ACCESS_ENUMNAME:
 				case ACCESS_FAULTNAME:
+				case ACCESS_FAULTORDINAL:
 					// For the rest, just check size.
 					goto CHECK_SIZE;
 			}

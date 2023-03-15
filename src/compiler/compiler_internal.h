@@ -847,6 +847,7 @@ typedef enum
 	ACCESS_TYPEOFANY,
 	ACCESS_ENUMNAME,
 	ACCESS_FAULTNAME,
+	ACCESS_FAULTORDINAL,
 } BuiltinAccessKind;
 
 typedef struct
@@ -1418,7 +1419,7 @@ typedef struct
 typedef struct AstDocDirective_
 {
 	SourceSpan span;
-	DocDirectiveKind kind : 4;
+	ContractKind kind : 4;
 	union
 	{
 		struct
@@ -1441,7 +1442,7 @@ typedef struct AstDocDirective_
 			const char *rest_of_line;
 		} generic;
 	};
-} AstDocStmt;
+} AstContractStmt;
 
 typedef struct Ast_
 {
@@ -1472,7 +1473,7 @@ typedef struct Ast_
 		AstId ct_else_stmt;                 // 4
 		AstCtForeachStmt ct_foreach_stmt;   // 40
 		AstAssertStmt assert_stmt;          // 16
-		AstDocStmt doc_stmt;
+		AstContractStmt contract;
 	};
 } Ast;
 
@@ -1493,7 +1494,7 @@ typedef struct Module_
 	bool no_extprefix : 1;
 	AnalysisStage stage : 6;
 
-	AstId docs;
+	AstId contracts;
 	Decl** private_method_extensions;
 	HTable symbols;
 	struct CompilationUnit_ **units;

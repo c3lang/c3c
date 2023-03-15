@@ -82,7 +82,7 @@ static void sema_trace_stmt_liveness(Ast *ast)
 		case AST_CT_IF_STMT:
 		case AST_CT_ASSERT:
 		case AST_CT_SWITCH_STMT:
-		case AST_DOC_STMT:
+		case AST_CONTRACT:
 		case AST_FOREACH_STMT:
 			UNREACHABLE
 		case AST_ASM_STMT:

@@ -18,9 +18,9 @@ fn void main()
 
 /* #expect: foo.ll
 
-@"foo.Foo$BAR" = linkonce constant %.fault { i64 ptrtoint (ptr @"$ct.foo.Foo" to i64), %"char[]" { ptr @.fault, i64 3 } }, align 8
+@"foo.Foo$BAR" = linkonce constant %.fault { i64 ptrtoint (ptr @"$ct.foo.Foo" to i64), %"char[]" { ptr @.fault, i64 3 }, i64 1 }, align 8
 @.fault = internal constant [4 x i8] c"BAR\00", align 1
-@"foo.Foo$BAZ" = linkonce constant %.fault { i64 ptrtoint (ptr @"$ct.foo.Foo" to i64), %"char[]" { ptr @.fault.1, i64 3 } }, align 8
+@"foo.Foo$BAZ" = linkonce constant %.fault { i64 ptrtoint (ptr @"$ct.foo.Foo" to i64), %"char[]" { ptr @.fault.1, i64 3 }, i64 2 }, align 8
 @.fault.1 = internal constant [4 x i8] c"BAZ\00", align 1
 @"$ct.foo.Foo" = linkonce constant %.introspect { i8 9, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @.str = private unnamed_addr constant [4 x i8] c"BAR\00", align 1
@@ -34,7 +34,6 @@ fn void main()
 @"$ct.a2$foo.Foo" = linkonce constant %.introspect { i8 15, i64 16, i64 ptrtoint (ptr @"$ct.foo.Foo" to i64), i64 2, [0 x i64] zeroinitializer }, align 8
 @.str.5 = private unnamed_addr constant [17 x i8] c"Foo.elements: %s\00", align 1
 @"$ct.long" = linkonce constant %.introspect { i8 2, i64 8, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
-
 
 entry:
   %x = alloca %"String[]", align 8
