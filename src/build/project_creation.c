@@ -189,7 +189,7 @@ const char* MAIN_TEMPLATE =
 		"module %s;\n"
 		"import std::io;\n"
 		"\n"
-		"fn int main(char[][] args)\n"
+		"fn int main(String[] args)\n"
 		"{\n"
 		"\tio::printn(\"Hello, World!\");\n"
 		"\treturn 0;\n"
