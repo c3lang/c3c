@@ -23,8 +23,8 @@ static inline LLVMTypeRef create_introspection_type(GenContext *c)
 static inline LLVMTypeRef create_fault_type(GenContext *c)
 {
 	LLVMTypeRef type = LLVMStructCreateNamed(c->context, ".fault");
-	LLVMTypeRef fault_type[] = { c->typeid_type, c->chars_type };
-	LLVMStructSetBody(type, fault_type, 2, false);
+	LLVMTypeRef fault_type[] = { c->typeid_type, c->chars_type, c->size_type };
+	LLVMStructSetBody(type, fault_type, 3, false);
 	return type;
 }
 

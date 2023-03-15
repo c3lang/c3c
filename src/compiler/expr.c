@@ -185,6 +185,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 				case ACCESS_FAULTNAME:
 				case ACCESS_LEN:
 				case ACCESS_PTR:
+				case ACCESS_FAULTORDINAL:
 					break;
 				case ACCESS_TYPEOFANY:
 					if (eval_kind != CONSTANT_EVAL_NO_SIDE_EFFECTS) return false;

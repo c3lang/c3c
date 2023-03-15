@@ -602,10 +602,11 @@ static LLVMValueRef llvm_get_introspection_for_fault(GenContext *c, Type *type)
 		LLVMSetAlignment(global_name, LLVMPreferredAlignmentOfGlobal(c->target_data, global_name));
 		LLVMSetGlobalConstant(global_name, 1);
 
-		LLVMValueRef vals[2] = { LLVMBuildPtrToInt(c->builder, ref, c->typeid_type, ""),
-		                         llvm_emit_string_const(c, val->name, ".fault") };
+		LLVMValueRef vals[3] = { LLVMBuildPtrToInt(c->builder, ref, c->typeid_type, ""),
+		                         llvm_emit_string_const(c, val->name, ".fault"),
+		                         llvm_const_int(c, type_usz, val->enum_constant.ordinal + 1 )};
 
-		LLVMSetInitializer(global_name, llvm_get_struct_named(c->fault_type, vals, 2));
+		LLVMSetInitializer(global_name, llvm_get_struct_named(c->fault_type, vals, 3));
 		llvm_set_linkonce(c, global_name);
 		val->backend_ref = LLVMBuildPtrToInt(c->builder, global_name, c->typeid_type, "");
 	}

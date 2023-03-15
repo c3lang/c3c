@@ -3652,12 +3652,28 @@ CHECK_DEEPER:
 			expr_replace(expr, current_parent);
 			return true;
 		}
+		if (flat_type->type_kind == TYPE_FAULTTYPE)
+		{
+			if (expr_is_const(current_parent))
+			{
+				if (current_parent->const_expr.const_kind == CONST_POINTER)
+				{
+					assert(!current_parent->const_expr.ptr);
+					expr_rewrite_const_int(expr, type_usz, 0);
+					return true;
+				}
+				expr_rewrite_const_int(expr, type_usz, current_parent->const_expr.enum_err_val->enum_constant.ordinal + 1);
+				return true;
+			}
+			expr_rewrite_to_builtin_access(expr, current_parent, ACCESS_FAULTORDINAL, type_usz);
+			return true;
+		}
 	}
 	if (kw == kw_nameof)
 	{
 		if (flat_type->type_kind == TYPE_ENUM)
 		{
-			if (current_parent->expr_kind == EXPR_CONST)
+			if (expr_is_const(current_parent))
 			{
 				expr_rewrite_to_string(expr, current_parent->const_expr.enum_err_val->name);
 				return true;

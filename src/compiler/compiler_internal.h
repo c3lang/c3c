@@ -847,6 +847,7 @@ typedef enum
 	ACCESS_TYPEOFANY,
 	ACCESS_ENUMNAME,
 	ACCESS_FAULTNAME,
+	ACCESS_FAULTORDINAL,
 } BuiltinAccessKind;
 
 typedef struct
