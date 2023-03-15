@@ -1004,13 +1004,6 @@ static bool cast_from_pointer(SemaContext *context, Expr *expr, Type *from, Type
 				return cast_with_optional(expr, to_type, add_optional);
 			}
 			return sema_error_cannot_convert(expr, to_type, true, silent);
-		case TYPE_FAULTTYPE:
-		case TYPE_ANYERR:
-			if (expr_is_const_pointer(expr) && !expr->const_expr.ptr)
-			{
-				expr_rewrite_to_const_zero(expr, to_type);
-				return true;
-			}
 		case TYPE_OPTIONAL_ANY:
 		case TYPE_OPTIONAL:
 			UNREACHABLE
