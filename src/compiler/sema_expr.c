@@ -7336,8 +7336,8 @@ bool sema_analyse_cond_expr(SemaContext *context, Expr *expr)
 	if (!sema_analyse_expr(context, expr)) return false;
 	if (IS_OPTIONAL(expr))
 	{
-		SEMA_ERROR(expr, "An optional %s cannot be implicitly converted to a regular boolean value, use 'try(<expr>)' "
-		                 "and 'catch(<expr>)' to conditionally execute on success or failure.",
+		SEMA_ERROR(expr, "An optional %s cannot be implicitly converted to a regular boolean value, use 'try? <expr>' "
+		                 "and 'catch? <expr>' to conditionally execute on success or failure.",
 		           type_quoted_error_string(expr->type));
 		return false;
 	}

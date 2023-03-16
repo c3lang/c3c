@@ -470,20 +470,10 @@ static inline Ast* parse_defer_stmt(ParseContext *c)
 	if (try_consume(c, TOKEN_TRY))
 	{
 		defer_stmt->defer_stmt.is_try = true;
-		if (tok_is(c, TOKEN_LPAREN))
-		{
-			SEMA_ERROR_HERE("Expected a '{' or a non-'try' statement after 'defer try'.");
-			return poisoned_ast;
-		}
 	}
 	else if (try_consume(c, TOKEN_CATCH))
 	{
 		defer_stmt->defer_stmt.is_catch = true;
-		if (tok_is(c, TOKEN_LPAREN))
-		{
-			SEMA_ERROR_HERE("Expected a '{' or a non-'catch' statement after 'defer catch'.");
-			return poisoned_ast;
-		}
 	}
 	ASSIGN_ASTID_OR_RET(defer_stmt->defer_stmt.body, parse_stmt(c), poisoned_ast);
 	return defer_stmt;
@@ -1319,8 +1309,8 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_CT_CHECKS:
 		case TOKEN_CT_STRINGIFY:
 		case TOKEN_CT_EVAL:
-		case TOKEN_TRY:
-		case TOKEN_CATCH:
+		case TOKEN_TRY_QUESTION:
+		case TOKEN_CATCH_QUESTION:
 		case TOKEN_BYTES:
 		case TOKEN_BUILTIN:
 		case TOKEN_CT_VACOUNT:
@@ -1412,6 +1402,11 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_RBRACE:
 		case TOKEN_RBRACKET:
 			SEMA_ERROR_HERE("Mismatched '%s' found.", token_type_to_string(c->tok));
+			advance(c);
+			return poisoned_ast;
+		case TOKEN_TRY:
+		case TOKEN_CATCH:
+			SEMA_ERROR_HERE("'%s' can only be used when unwrapping an optional, did you mean '%s?'?", token_type_to_string(c->tok), token_type_to_string(c->tok));
 			advance(c);
 			return poisoned_ast;
 		case TOKEN_EOS:

@@ -19,9 +19,15 @@ typedef struct
 extern ParseRule rules[TOKEN_EOF + 1];
 
 
+/**
+ * maybe_range ::= range | ('^'? INTEGER)
+ * range ::= dot_range | colon_range
+ * dot_range ::= ('^'? INTEGER)? .. ('^'? INTEGER)?
+ * colon_range ::= ('^'? INTEGER)? : ('^'? INTEGER)?
+ */
 bool parse_range(ParseContext *c, Range *range)
 {
-	// Not range with missing entry
+	// Insert zero if missing
 	if (tok_is(c, TOKEN_DOTDOT) || tok_is(c, TOKEN_COLON))
 	{
 		// ..123 and :123
@@ -30,17 +36,20 @@ bool parse_range(ParseContext *c, Range *range)
 	}
 	else
 	{
-		// Might be ^ prefix
+		// Parse ^123 and 123
 		range->start_from_end = try_consume(c, TOKEN_BIT_XOR);
 		ASSIGN_EXPRID_OR_RET(range->start, parse_expr(c), false);
 	}
+	// Check if .. or :
 	bool is_len_range = range->is_len = try_consume(c, TOKEN_COLON);
 	if (!is_len_range && !try_consume(c, TOKEN_DOTDOT))
 	{
+		// Otherwise this is not a range.
 		range->is_range = false;
 		return true;
 	}
 	range->is_range = true;
+
 	// ] ) are the possible ways to end a range.
 	if (tok_is(c, TOKEN_RBRACKET) || tok_is(c, TOKEN_RPAREN))
 	{
@@ -54,59 +63,65 @@ bool parse_range(ParseContext *c, Range *range)
 	return true;
 }
 
+/**
+ * Parse lhs [op] [rhs]
+ * This will return lhs if no candidate is found.
+ */
 inline Expr *parse_precedence_with_left_side(ParseContext *c, Expr *left_side, Precedence precedence)
 {
 	while (1)
 	{
 		TokenType tok = c->tok;
 		Precedence token_precedence = rules[tok].precedence;
+		// See if the operator precedence is greater than the last, if so exit.
+		// Note that if the token is not an operator then token_precedence = 0
 		if (precedence > token_precedence) break;
+		// LHS may be poison.
 		if (!expr_ok(left_side)) return left_side;
+		// See if there is a rule for infix.
 		ParseFn infix_rule = rules[tok].infix;
+		// Otherwise we ran into a symbol that can't appear in this position.
 		if (!infix_rule)
 		{
-			SEMA_ERROR_HERE("An expression was expected.");
+			SEMA_ERROR_HERE("'%s' can't appear in this position, did you forget something before the operator?", token_type_to_string(tok));
 			return poisoned_expr;
 		}
+		// The rule exists, so run it.
 		left_side = infix_rule(c, left_side);
 	}
 	return left_side;
 }
 
 
+/**
+ * Parse an expression in any position.
+ */
 static Expr *parse_precedence(ParseContext *c, Precedence precedence)
 {
 	// Get the rule for the previous token.
 	ParseFn prefix_rule = rules[c->tok].prefix;
-	if (prefix_rule == NULL)
+	// No prefix rule => either it's not an expression
+	// or it is a token that can't be in a prefix position.
+	if (!prefix_rule)
 	{
 		SEMA_ERROR_HERE("An expression was expected.");
 		return poisoned_expr;
 	}
-
+	// Get the expression
 	Expr *left_side = prefix_rule(c, NULL);
+	// Exit if it's an error.
 	if (!expr_ok(left_side)) return left_side;
+	// Now parse the (optional) right hand side.
 	return parse_precedence_with_left_side(c, left_side, precedence);
 }
 
+/**
+ * Since generic parameters can't be longer expressions, we require they have
+ * ADDITIVE precedence or higher. This excludes <> and we can use those safely.
+ */
 Expr *parse_generic_parameter(ParseContext *c)
 {
 	return parse_precedence(c, PREC_ADDITIVE);
-}
-
-Expr *parse_expr_or_initializer_list(ParseContext *c)
-{
-	return parse_expr(c);
-}
-
-static inline bool next_is_try_unwrap(ParseContext *c)
-{
-	return tok_is(c, TOKEN_TRY) && peek(c) != TOKEN_LPAREN;
-}
-
-static inline bool next_is_catch_unwrap(ParseContext *c)
-{
-	return tok_is(c, TOKEN_CATCH) && peek(c) != TOKEN_LPAREN;
 }
 
 static inline Expr *parse_for_try_expr(ParseContext *c)
@@ -204,7 +219,7 @@ static inline Expr *parse_try_unwrap_chain(ParseContext *c)
 	vec_add(unwraps, first_unwrap);
 	while (try_consume(c, TOKEN_AND))
 	{
-		if (next_is_try_unwrap(c))
+		if (tok_is(c, TOKEN_TRY))
 		{
 			ASSIGN_EXPR_OR_RET(Expr * expr, parse_try_unwrap(c), poisoned_expr);
 			vec_add(unwraps, expr);
@@ -221,7 +236,7 @@ static inline Expr *parse_try_unwrap_chain(ParseContext *c)
 
 Expr *parse_assert_expr(ParseContext *c)
 {
-	if (next_is_try_unwrap(c))
+	if (tok_is(c, TOKEN_TRY))
 	{
 		return parse_try_unwrap_chain(c);
 	}
@@ -239,7 +254,7 @@ Expr *parse_cond(ParseContext *c)
 	decl_expr->cond_expr = NULL;
 	while (1)
 	{
-		if (next_is_try_unwrap(c))
+		if (tok_is(c, TOKEN_TRY))
 		{
 			ASSIGN_EXPR_OR_RET(Expr * try_unwrap, parse_try_unwrap_chain(c), poisoned_expr);
 			vec_add(decl_expr->cond_expr, try_unwrap);
@@ -250,9 +265,9 @@ Expr *parse_cond(ParseContext *c)
 			}
 			break;
 		}
-		if (next_is_catch_unwrap(c))
+		if (tok_is(c, TOKEN_CATCH))
 		{
-			ASSIGN_EXPR_OR_RET(Expr * catch_unwrap, parse_catch_unwrap(c), poisoned_expr);
+			ASSIGN_EXPR_OR_RET(Expr* catch_unwrap, parse_catch_unwrap(c), poisoned_expr);
 			vec_add(decl_expr->cond_expr, catch_unwrap);
 			if (tok_is(c, TOKEN_COMMA))
 			{
@@ -417,7 +432,7 @@ bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *
 			CONSUME_OR_RET(TOKEN_EQ, false);
 
 			// Now parse the rest
-			ASSIGN_EXPR_OR_RET(expr->designator_expr.value, parse_expr_or_initializer_list(c), false);
+			ASSIGN_EXPR_OR_RET(expr->designator_expr.value, parse_expr(c), false);
 
 			RANGE_EXTEND_PREV(expr);
 		}
@@ -431,7 +446,7 @@ bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *
 			{
 				*splat = try_consume(c, TOKEN_ELLIPSIS);
 			}
-			ASSIGN_EXPR_OR_RET(expr, parse_expr_or_initializer_list(c), false);
+			ASSIGN_EXPR_OR_RET(expr, parse_expr(c), false);
 		}
 		vec_add(*result, expr);
 		if (!try_consume(c, TOKEN_COMMA))
@@ -1059,24 +1074,10 @@ static Expr *parse_identifier_starting_expression(ParseContext *c, Expr *left)
 static Expr *parse_try_expr(ParseContext *c, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
-	bool is_try = tok_is(c, TOKEN_TRY);
+	bool is_try = tok_is(c, TOKEN_TRY_QUESTION);
 	Expr *try_expr = EXPR_NEW_TOKEN(is_try ? EXPR_TRY : EXPR_CATCH);
 	advance(c);
-	if (!try_consume(c, TOKEN_LPAREN))
-	{
-		if (is_try)
-		{
-			SEMA_ERROR(try_expr, "An unwrapping 'try' can only occur as the last element of a conditional, did you want 'try(expr)'?");
-			return poisoned_expr;
-		}
-		else
-		{
-			SEMA_ERROR(try_expr, "An unwrapping 'catch' can only occur as the last element of a conditional, did you want 'catch(expr)'?");
-			return poisoned_expr;
-		}
-	}
-	ASSIGN_EXPR_OR_RET(try_expr->inner_expr, parse_expr(c), poisoned_expr);
-	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
+	ASSIGN_EXPR_OR_RET(try_expr->inner_expr, parse_precedence(c, PREC_UNARY), poisoned_expr);
 	RANGE_EXTEND_PREV(try_expr);
 	return try_expr;
 }
@@ -1764,8 +1765,8 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_MINUSMINUS] = { parse_unary_expr, parse_post_unary, PREC_CALL },
 		[TOKEN_LPAREN] = { parse_grouping_expr, parse_call_expr, PREC_CALL },
 		[TOKEN_LBRAPIPE] = { parse_expr_block, NULL, PREC_NONE },
-		[TOKEN_TRY] = { parse_try_expr, NULL, PREC_NONE },
-		[TOKEN_CATCH] = { parse_try_expr, NULL, PREC_NONE },
+		[TOKEN_TRY_QUESTION] = { parse_try_expr, NULL, PREC_NONE },
+		[TOKEN_CATCH_QUESTION] = { parse_try_expr, NULL, PREC_NONE },
 		[TOKEN_BANGBANG] = { NULL, parse_force_unwrap_expr, PREC_CALL },
 		[TOKEN_LBRACKET] = { NULL, parse_subscript_expr, PREC_CALL },
 		[TOKEN_MINUS] = { parse_unary_expr, parse_binary, PREC_ADDITIVE },

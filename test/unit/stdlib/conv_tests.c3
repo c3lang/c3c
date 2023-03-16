@@ -23,7 +23,7 @@ fn void! comparison_helper_8_to_32(String in, Char32 c32)
 fn void assert_utf8_is_error(String in)
 {
 	usz len = in.len;
-	assert(catch(conv::utf8_to_char32(in.ptr, &len)), "Expected error");
+	assert(catch? conv::utf8_to_char32(in.ptr, &len), "Expected error");
 }
 
 fn void! test_char32_ut8_boundary() @test
@@ -33,7 +33,7 @@ fn void! test_char32_ut8_boundary() @test
 	comparison_helper_32_to_8(0x00000080, { 0xc2, 0x80 })?;
 	comparison_helper_32_to_8(0x00000800, { 0xe0, 0xa0, 0x80 })?;
 	comparison_helper_32_to_8(0x00010000, { 0xf0, 0x90, 0x80, 0x80 })?;
-	assert(catch(comparison_helper_32_to_8(0x10ffff + 1, { 0 })), "Expected error");
+	assert(catch? comparison_helper_32_to_8(0x10ffff + 1, { 0 }), "Expected error");
 	// Last seq per len
 	comparison_helper_32_to_8(0x0000007f, { 0x7f })?;
 	comparison_helper_32_to_8(0x000007ff, { 0xdf, 0xbf })?;

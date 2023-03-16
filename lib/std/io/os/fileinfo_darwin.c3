@@ -51,19 +51,19 @@ fn usz! native_file_size(String path)
 fn bool native_file_or_dir_exists(String path)
 {
 	Darwin64Stat stat;
-	return try(read_stat(&stat, path));
+	return try? read_stat(&stat, path);
 }
 
 fn bool native_is_file(String path)
 {
 	Darwin64Stat stat;
-	return try(read_stat(&stat, path)) && (stat.st_mode & S_IFREG);
+	return try? read_stat(&stat, path) && (stat.st_mode & S_IFREG);
 }
 
 fn bool native_is_dir(String path)
 {
 	Darwin64Stat stat;
-	return try(read_stat(&stat, path)) && (stat.st_mode & S_IFDIR);
+	return try? read_stat(&stat, path) && (stat.st_mode & S_IFDIR);
 }
 
 fn void! read_stat(Darwin64Stat* stat, String path) @local

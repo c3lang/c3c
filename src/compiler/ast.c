@@ -16,7 +16,7 @@ Decl *poisoned_decl = &poison_decl;
 Expr *poisoned_expr = &poison_expr;
 Ast *poisoned_ast = &poison_ast;
 
-
+// Standard decl creation, used by compile time constructs, since they have no need for neither type nor name.
 Decl *decl_new_ct(DeclKind kind, SourceSpan span)
 {
 	Decl *decl = decl_calloc();
@@ -25,6 +25,7 @@ Decl *decl_new_ct(DeclKind kind, SourceSpan span)
 	return decl;
 }
 
+// Named declaration without type.
 Decl *decl_new(DeclKind decl_kind, const char *name, SourceSpan span)
 {
 	Decl *decl = decl_calloc();
@@ -34,11 +35,11 @@ Decl *decl_new(DeclKind decl_kind, const char *name, SourceSpan span)
 	return decl;
 }
 
+// Check if local or parameter $foo/$Foo
 bool decl_is_ct_var(Decl *decl)
 {
 	if (decl->decl_kind != DECL_VAR) return false;
 	return decl_var_kind_is_ct(decl->var.kind);
-	UNREACHABLE;
 }
 
 Decl *decl_new_with_type(const char *name, SourceSpan loc, DeclKind decl_type)

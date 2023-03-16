@@ -9,10 +9,10 @@ fn void main()
 	io::printfn("1:%d", get_a(1) ?? get_b(4) ?? -1);
 	io::printfn("2:%d", get_a(2) ?? get_b(4) ?? -1);
 	io::printfn("3:%d", get_a(1) ?? get_b(5) ?? -1);
-	io::printfn("4:%s", catch(Foo.ABC! ?? Foo.DEF!));
+	io::printfn("4:%s", catch? (Foo.ABC! ?? Foo.DEF!));
 	io::printfn("5:%s", Foo.ABC! ?? 3);
-	io::printfn("6:%s", catch((3 > 2 ? Foo.ABC! : 4) ?? Foo.DEF!));
-	io::printfn("7:%s", catch((3 < 2 ? Foo.ABC! : 4) ?? Foo.DEF!));
+	io::printfn("6:%s", catch? ((3 > 2 ? Foo.ABC! : 4) ?? Foo.DEF!));
+	io::printfn("7:%s", catch? ((3 < 2 ? Foo.ABC! : 4) ?? Foo.DEF!));
 	long x = Foo.DEF! ?? 3;
 	io::printfn("8:%s", x);
 	int! xy = Foo.ABC! ?? Foo.DEF!;

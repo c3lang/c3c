@@ -75,7 +75,7 @@ fn bool native_is_file(String path)
 {
 	File! f = file::open(path, "r");
 	defer (void)f.close();
-	return try(f);
+	return try? f;
 }
 
 fn bool native_is_dir(String path)
