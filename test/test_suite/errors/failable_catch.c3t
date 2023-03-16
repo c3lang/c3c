@@ -22,7 +22,7 @@ fn int main()
     printf("a = %d\n", a);
     printf("b = %d\n", b);
     printf("c = %d\n", c);
-    if (catch(c)) printf("c had error\n");
+    if (catch? c) printf("c had error\n");
     c = 3;
     printf("c = %d\n", c);
     return 0;

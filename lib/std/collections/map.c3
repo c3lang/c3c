@@ -112,7 +112,7 @@ fn Value! HashMap.get(HashMap* map, Key key) @operator([])
 
 fn bool HashMap.has_key(HashMap* map, Key key)
 {
-	return try(map.get_ref(key));
+	return try? map.get_ref(key);
 }
 
 fn bool HashMap.set(HashMap* map, Key key, Value value) @operator([]=)

@@ -87,7 +87,7 @@ typedef struct GenContext_
 	const char *ir_filename;
 	const char *object_filename;
 	const char *asm_filename;
-	// The recipient of the error value in a catch(err = ...) expression.
+	// The recipient of the error value in a catch err = ... expression.
 	LLVMValueRef opt_var;
 	LLVMTypeRef bool_type;
 	LLVMTypeRef byte_type;

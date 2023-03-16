@@ -50,6 +50,7 @@ const char *kw_at_param;
 const char *kw_at_pure;
 const char *kw_at_require;
 const char *kw_at_return;
+const char *kw_catch_question;
 const char *kw_check_assign;
 const char *kw_deprecated;
 const char *kw_distinct;
@@ -76,6 +77,7 @@ const char *kw_std;
 const char *kw_std__core;
 const char *kw_std__core__types;
 const char *kw___run_default_test_runner;
+const char *kw_try_question;
 const char *kw_type;
 const char *kw_typekind;
 const char *kw_winmain;
@@ -101,19 +103,27 @@ void symtab_init(uint32_t capacity)
 	memset(symtab.bucket, 0, size);
 
 	// Add keywords.
-	for (int i = 0; i < TOKEN_LAST; i++)
+	for (TokenType i = TOKEN_FIRST_KEYWORD; i <= TOKEN_LAST_KEYWORD; i++)
 	{
-		const char* name = token_type_to_string((TokenType)i);
-		// Skip non-keywords
-		if (!char_is_lower(name[0]))
-		{
-			if ((name[0] != '@' && name[0] != '$') || !char_is_lower(name[1])) continue;
-		}
+		TokenType type = i;
+		const char* name = token_type_to_string(type);
 		uint32_t len = (uint32_t)strlen(name);
-		TokenType type = (TokenType)i;
 		const char* interned = symtab_add(name, (uint32_t)strlen(name), fnv1a(name, len), &type);
-		if (type == TOKEN_RETURN) kw_return = interned;
-		assert(type == (TokenType)i);
+		switch (type)
+		{
+			case TOKEN_RETURN:
+				kw_return = interned;
+				break;
+			case TOKEN_TRY_QUESTION:
+				kw_try_question = interned;
+				break;
+			case TOKEN_CATCH_QUESTION:
+				kw_catch_question = interned;
+				break;
+			default:
+				break;
+		}
+		assert(type == i);
 		assert(symtab_add(name, (uint32_t)strlen(name), fnv1a(name, len), &type) == interned);
 	}
 

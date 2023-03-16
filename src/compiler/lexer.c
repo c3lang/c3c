@@ -367,7 +367,27 @@ static inline bool scan_ident(Lexer *lexer, TokenType normal, TokenType const_to
 		return add_error_token(lexer, "An identifier may not consist of only '_' characters.");
 	}
 	const char* interned_string = symtab_add(lexer->lexing_start, len, hash, &type);
-	if (type == TOKEN_RETURN && lexer->mode == LEX_DOCS) type = TOKEN_IDENT;
+	switch (type)
+	{
+		case TOKEN_RETURN:
+			if (lexer->mode == LEX_DOCS) type = TOKEN_IDENT;
+			break;
+		case TOKEN_TRY:
+			if (peek(lexer) == '?')
+			{
+				next(lexer);
+				return return_token(lexer, TOKEN_TRY_QUESTION, kw_try_question);
+			}
+			break;
+		case TOKEN_CATCH:
+			if (peek(lexer) == '?')
+			{
+				next(lexer);
+				return return_token(lexer, TOKEN_CATCH_QUESTION, kw_catch_question);
+			}
+		default:
+			break;
+	}
 	return return_token(lexer, type, interned_string);
 }
 

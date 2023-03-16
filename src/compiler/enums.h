@@ -345,7 +345,7 @@ typedef enum
 	PREC_BIT,               // ^ | &
 	PREC_SHIFT,             // << >>
 	PREC_MULTIPLICATIVE,    // * / %
-	PREC_UNARY,             // ! - + ~ * & prefix ++/-- try catch (type)
+	PREC_UNARY,             // ! - + ~ * & prefix ++/-- try? catch? (type)
 	PREC_CALL,              // . () [] postfix ++/--
 	PREC_MACRO,
 	PREC_FIRST = PREC_MACRO
@@ -455,31 +455,6 @@ typedef enum
 	TOKEN_SHL_ASSIGN,       // <<=
 	TOKEN_SHR_ASSIGN,       // >>=
 
-	// Basic types names
-	TOKEN_VOID,
-	TOKEN_BOOL,
-	TOKEN_CHAR,
-	TOKEN_DOUBLE,
-	TOKEN_FLOAT,
-	TOKEN_FLOAT16,
-	TOKEN_INT128,
-	TOKEN_ICHAR,
-	TOKEN_INT,
-	TOKEN_IPTR,
-	TOKEN_ISZ,
-	TOKEN_LONG,
-	TOKEN_SHORT,
-	TOKEN_UINT128,
-	TOKEN_UINT,
-	TOKEN_ULONG,
-	TOKEN_UPTR,
-	TOKEN_USHORT,
-	TOKEN_USZ,
-	TOKEN_FLOAT128,
-	TOKEN_VARIANT,
-	TOKEN_ANYERR,
-	TOKEN_TYPEID,
-
 	// Literals.
 	TOKEN_IDENT,            // Any normal ident.
 	TOKEN_CONST_IDENT,      // Any purely uppercase ident,
@@ -508,6 +483,32 @@ typedef enum
 
 	TOKEN_DOC_COMMENT,      // Doc Comment start
 
+	// Basic types names
+	TOKEN_VOID,
+	TOKEN_FIRST_KEYWORD = TOKEN_VOID,
+	TOKEN_BOOL,
+	TOKEN_CHAR,
+	TOKEN_DOUBLE,
+	TOKEN_FLOAT,
+	TOKEN_FLOAT16,
+	TOKEN_INT128,
+	TOKEN_ICHAR,
+	TOKEN_INT,
+	TOKEN_IPTR,
+	TOKEN_ISZ,
+	TOKEN_LONG,
+	TOKEN_SHORT,
+	TOKEN_UINT128,
+	TOKEN_UINT,
+	TOKEN_ULONG,
+	TOKEN_UPTR,
+	TOKEN_USHORT,
+	TOKEN_USZ,
+	TOKEN_FLOAT128,
+	TOKEN_VARIANT,
+	TOKEN_ANYERR,
+	TOKEN_TYPEID,
+
 	// Keywords
 	TOKEN_ALIAS,            // Reserved
 	TOKEN_AS,
@@ -517,6 +518,7 @@ typedef enum
 	TOKEN_BREAK,
 	TOKEN_CASE,
 	TOKEN_CATCH,
+	TOKEN_CATCH_QUESTION,
 	TOKEN_CONST,
 	TOKEN_CONTINUE,
 	TOKEN_DEFINE,
@@ -546,6 +548,7 @@ typedef enum
 	TOKEN_SWITCH,
 	TOKEN_TRUE,
 	TOKEN_TRY,
+	TOKEN_TRY_QUESTION,
 	TOKEN_TYPEDEF,
 	TOKEN_UNION,
 	TOKEN_VAR,
@@ -586,6 +589,7 @@ typedef enum
 	TOKEN_CT_VAARG,             // $vaarg,
 	TOKEN_CT_VAEXPR,            // $vaexpr,
 	TOKEN_CT_VASPLAT,           // $vasplat,
+	TOKEN_LAST_KEYWORD = TOKEN_CT_VASPLAT,
 	TOKEN_DOCS_START,       // /**
 	TOKEN_DOCS_END,         // */ (may start with an arbitrary number of `*`
 	TOKEN_DOC_DIRECTIVE,    // Any doc directive

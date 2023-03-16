@@ -201,6 +201,8 @@ const char *token_type_to_string(TokenType type)
 			return "case";
 		case TOKEN_CATCH:
 			return "catch";
+		case TOKEN_CATCH_QUESTION:
+			return "catch?";
 		case TOKEN_CONST:
 			return "const";
 		case TOKEN_CONTINUE:
@@ -259,6 +261,8 @@ const char *token_type_to_string(TokenType type)
 			return "true";
 		case TOKEN_TRY:
 			return "try";
+		case TOKEN_TRY_QUESTION:
+			return "try?";
 		case TOKEN_TYPEDEF:
 			return "typedef";
 		case TOKEN_TYPEID:

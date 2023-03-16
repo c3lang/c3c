@@ -810,7 +810,7 @@ static inline bool sema_analyse_last_cond(SemaContext *context, Expr *expr, Cond
 		case EXPR_CATCH_UNWRAP:
 			if (cond_type != COND_TYPE_UNWRAP_BOOL && cond_type != COND_TYPE_UNWRAP)
 			{
-				SEMA_ERROR(expr, "Catch unwrapping is only allowed inside of a 'while' or 'if' conditional, maybe catch(...) will do what you need?");
+				SEMA_ERROR(expr, "Catch unwrapping is only allowed inside of a 'while' or 'if' conditional, maybe catch? <expr> will do what you need?");
 				return false;
 			}
 			return sema_analyse_catch_unwrap(context, expr);

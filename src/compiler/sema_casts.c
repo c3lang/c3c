@@ -229,7 +229,7 @@ static bool bool_to_float(Expr *expr, Type *canonical, Type *type)
 
 /**
  * Insert a cast from `void!` to some fault type by inserting a `catch`,
- * so "anyerr a = returns_voidfail()" => "anyerr a = catch(returns_voidfail())"
+ * so "anyerr a = returns_voidfail()" => "anyerr a = catch? returns_voidfail()"
  */
 static bool voidfail_to_error(Expr *expr, Type *type)
 {

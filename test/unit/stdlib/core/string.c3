@@ -80,7 +80,7 @@ fn void! test_index_of()
 	String test = "hello world hello";
 	assert(test.index_of("o")? == 4);
 	assert(test.index_of("ll")? == 2);
-	assert(catch(test.index_of("wi")));
+	assert(catch? test.index_of("wi"));
 }
 
 fn void! test_rindex_of()
@@ -90,5 +90,5 @@ fn void! test_rindex_of()
 	assert(test.rindex_of("ll")? == 14);
 	assert(test.rindex_of("he")? == 12);
 	assert(test.rindex_of("world")? == 6);
-	assert(catch(test.rindex_of("wi")));
+	assert(catch? test.rindex_of("wi"));
 }

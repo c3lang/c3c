@@ -55,18 +55,18 @@ macro void print(x)
 	var $Type = $typeof(x);
 	$switch ($Type):
 	$case String:
-		catch(stdout().print(x));
+		catch? stdout().print(x);
 	$case ZString:
-		catch(stdout().print(x.as_str()));
+		catch? stdout().print(x.as_str());
 	$case DString:
-		catch(stdout().print(x.str()));
+		catch? stdout().print(x.str());
 	$case VarString:
-		catch(stdout().print(x.str()));
+		catch? stdout().print(x.str());
 	$default:
 		$if (@convertible(x, String)):
-			catch(stdout().print((String)x));
+			catch? stdout().print((String)x);
 		$else:
-			catch(stdout().printf("%s", x));
+			catch? stdout().printf("%s", x);
 		$endif;
 	$endswitch;
 }
@@ -76,18 +76,18 @@ macro void printn(x = "")
 	var $Type = $typeof(x);
 	$switch ($Type):
 	$case String:
-		catch(stdout().printn(x));
+		catch? stdout().printn(x);
 	$case ZString:
-		catch(stdout().printn(x.as_str()));
+		catch? stdout().printn(x.as_str());
 	$case DString:
-		catch(stdout().printn(x.str()));
+		catch? stdout().printn(x.str());
 	$case VarString:
-		catch(stdout().printn(x.str()));
+		catch? stdout().printn(x.str());
 	$default:
 		$if (@convertible(x, String)):
-			catch(stdout().printn((String)x));
+			catch? stdout().printn((String)x);
 		$else:
-			catch(stdout().printfn("%s", x));
+			catch? stdout().printfn("%s", x);
 		$endif;
 	$endswitch;
 }
