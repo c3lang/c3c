@@ -329,6 +329,18 @@ macro pow(x, exp)
 }
 
 /**
+ * @require values::@is_float(a) : `The input must be floating type`
+ **/
+macro frexp(x, int* e)
+{
+	$if (@typeis(x, float)):
+		return _frexpf(x, e);
+	$else:
+		return _frexp(x, e);
+	$endif;
+}
+
+/**
  * @require values::@is_floatlike(x) `The input must be a number or a float vector`
  **/
 macro rint(x) => $$rint(x);
@@ -693,6 +705,7 @@ macro is_nan(x)
 
 macro double scalbn(double x, int n) => _scalbn(x, n);
 
+
 extern fn double _atan(double x) @extern("atan");
 extern fn float _atanf(float x) @extern("atanf");
 extern fn double _atan2(double, double) @extern("atan2");
@@ -702,3 +715,5 @@ extern fn void _sincosf(float, float*) @extern("sincosf");
 extern fn double _tan(double x) @extern("tan");
 extern fn float _tanf(float x) @extern("tanf");
 extern fn double _scalbn(double x, int n) @extern("scalbn");
+extern fn double _frexp(double x, int* e) @extern("frexp");
+extern fn float _frexpf(float x, int* e) @extern("frexp");
