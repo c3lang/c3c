@@ -8,6 +8,7 @@ macro bool @convertable_to(#a, #b) => $checks($typeof(#b) x = #a);
 macro bool @is_floatlike(#value) => types::is_floatlike($typeof(#value));
 macro bool @is_float(#value) => types::is_float($typeof(#value));
 macro bool @is_promotable_to_floatlike(#value) => types::is_promotable_to_floatlike($typeof(#value));
+macro bool @is_promotable_to_float(#value) => types::is_promotable_to_float($typeof(#value));
 macro bool @is_same_vector_type(#value1, #value2) => types::is_same_vector_type($typeof(#value1), $typeof(#value2));
 macro promote_int(x)
 {

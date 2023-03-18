@@ -208,7 +208,7 @@ macro bool may_load_atomic($Type)
 }
 
 macro bool is_promotable_to_floatlike($Type) => types::is_floatlike($Type) || types::is_int($Type);
-
+macro bool is_promotable_to_float($Type) => types::is_float($Type) || types::is_int($Type);
 
 macro bool is_same_vector_type($Type1, $Type2)
 {

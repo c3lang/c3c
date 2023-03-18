@@ -329,15 +329,31 @@ macro pow(x, exp)
 }
 
 /**
- * @require values::@is_float(a) : `The input must be floating type`
+ * @require values::@is_promotable_to_float(x) : `The input must be integer or floating type`
  **/
 macro frexp(x, int* e)
 {
-	$if (@typeis(x, float)):
-		return _frexpf(x, e);
-	$else:
-		return _frexp(x, e);
-	$endif;
+	$switch($typeof(x)):
+	$case float:
+	$case float16:
+		return _frexpf((float)x, e);
+	$default:
+		return _frexp((double)x, e);
+	$endswitch;
+}
+
+/**
+ * @require values::@is_promotable_to_float(x) : `The input must be integer or floating type`
+ **/
+macro int signbit(x)
+{
+	$switch($typeof(x)):
+	$case float:
+	$case float16:
+		return bitcast((float)x, uint) >> 31;
+	$default:
+		return (int)(bitcast((double)x, ulong) >> 63);
+	$endswitch;
 }
 
 /**
@@ -716,4 +732,4 @@ extern fn double _tan(double x) @extern("tan");
 extern fn float _tanf(float x) @extern("tanf");
 extern fn double _scalbn(double x, int n) @extern("scalbn");
 extern fn double _frexp(double x, int* e) @extern("frexp");
-extern fn float _frexpf(float x, int* e) @extern("frexp");
+extern fn float _frexpf(float x, int* e) @extern("frexpf");
