@@ -417,6 +417,48 @@ macro tan(x)
 }
 
 /**
+ * @require values::@is_promotable_to_float(x) `The input must be a float`
+ **/
+macro bool is_finite(x)
+{
+	$switch($typeof(x)):
+	$case float:
+	$case float16:
+		return bitcast((float)x, uint) & 0x7fffffff < 0x7f800000;
+	$default:
+		return bitcast((double)x, ulong) & (~0u64 >> 1) < 0x7ff << 52;
+	$endswitch;
+}
+
+/**
+ * @require values::@is_promotable_to_float(x) `The input must be a float`
+ **/
+macro is_nan(x)
+{
+	$switch ($typeof(x)):
+	$case float:
+	$case float16:
+		return bitcast((float)x, uint) & 0x7fffffff > 0x7f800000;
+	$default:
+		return bitcast((double)x, ulong) & (~0u64 >> 1) > 0x7ff << 52;
+	$endswitch;
+}
+
+/**
+ * @require values::@is_promotable_to_float(x) `The input must be a float`
+ **/
+macro is_inf(x)
+{
+	$switch ($typeof(x)):
+	$case float:
+	$case float16:
+		return bitcast((float)x, uint) & 0x7fffffff == 0x7f800000;
+	$default:
+		return bitcast((double)x, ulong) & (~0u64 >> 1) == 0x7ff << 52;
+	$endswitch;
+}
+
+/**
  * @require values::@is_promotable_to_floatlike(x) `The input must be a number or a float vector`
  **/
 macro tanh(x) => (exp(2.0 * x) - 1.0) / (exp(2.0 * x) + 1.0);
@@ -707,17 +749,6 @@ macro uint double.high_word(double d) => (uint)(bitcast(d, ulong) >> 32);
 macro uint double.low_word(double d) => (uint)bitcast(d, ulong);
 macro uint float.word(float d) => bitcast(d, uint);
 
-macro is_nan(x)
-{
-	$switch ($typeof(x)):
-	$case float:
-		return bitcast(x, uint) & 0x7fffffff > 0x7f800000;
-	$case double:
-		return bitcast(x, ulong) & (((ulong)-1) >> 1) > (0x7ffu64 << 52);
-	$default:
-		$assert(false, "Type cannot be used with is_nan");
-	$endswitch;
-}
 
 macro double scalbn(double x, int n) => _scalbn(x, n);
 
@@ -731,5 +762,54 @@ extern fn void _sincosf(float, float*) @extern("sincosf");
 extern fn double _tan(double x) @extern("tan");
 extern fn float _tanf(float x) @extern("tanf");
 extern fn double _scalbn(double x, int n) @extern("scalbn");
-extern fn double _frexp(double x, int* e) @extern("frexp");
-extern fn float _frexpf(float x, int* e) @extern("frexpf");
+
+fn double _frexp(double x, int* e)
+{
+	ulong i = bitcast(x, ulong);
+	int ee = (int)((i >> 52) & 0x7ff);
+	switch
+	{
+		case !ee:
+			if (!x)
+			{
+				*e = 0;
+				return x;
+			}
+			x = _frexp(x * 0x1p64, e);
+			*e -= 64;
+			return x;
+		case ee == 0x7ff:
+			return x;
+		default:
+			*e = ee - 0x3fe;
+			i &= 0x800fffffffffffffu64;
+			i |= 0x3fe0000000000000u64;
+			return bitcast(i, double);
+	}
+}
+
+fn float _frexpf(float x, int* e)
+{
+	uint i = bitcast(x, uint);
+	int ee = (i >> 23) & 0xff;
+
+	switch
+	{
+		case !ee:
+			if (!x)
+			{
+				*e = 0;
+				return x;
+			}
+			x = _frexpf(x * 0x1p64, e);
+			*e -= 64;
+			return x;
+		case ee == 0xff:
+			return x;
+		default:
+			*e = ee - 0x7e;
+			i &= 0x807fffffu32;
+			i |= 0x3f000000u32;
+			return bitcast(i, float);
+	}
+}
