@@ -544,6 +544,5 @@ fn int! printf_parse_format_field(
 	variant val = next_variant(args_ptr, args_len, args_index_ptr)?;
     if (!val.type.kindof.is_int()) return FormattingFault.INVALID_WIDTH_ARG!;
     uint! intval = types::variant_to_int(val, int);
-	if (catch intval) return FormattingFault.INVALID_WIDTH_ARG!;
-	return intval;
+	return intval ?? FormattingFault.INVALID_WIDTH_ARG!;
 }

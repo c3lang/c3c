@@ -117,8 +117,7 @@ macro double! decfloat(char[] chars, int $bits, int $emin, int sign)
 	if ((c | 32) == 'e')
 	{
 		if (last_char == index) return NumberConversion.MALFORMED_FLOAT!;
-		long! e10 = str::to_long((String)chars[index + 1..]);
-		if (catch e10) return NumberConversion.MALFORMED_FLOAT!;
+		long e10 = str::to_long((String)chars[index + 1..]) ?? NumberConversion.MALFORMED_FLOAT!?;
 		lrp += e10;
 	}
 	else if (index != last_char)
@@ -404,8 +403,7 @@ macro double! hexfloat(char[] chars, int $bits, int $emin, int sign)
 	long e2;
 	if ((c | 32) == 'p')
 	{
-		long! e2val = str::to_long((String)chars[index + 1..]);
-    	if (catch e2val) return NumberConversion.MALFORMED_FLOAT!;
+		long e2val = str::to_long((String)chars[index + 1..]) ?? NumberConversion.MALFORMED_FLOAT!?;
     	e2 = e2val;
 	}
 	e2 += 4 * rp - 32;
