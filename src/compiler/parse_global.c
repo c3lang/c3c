@@ -8,19 +8,24 @@
 static Decl *parse_const_declaration(ParseContext *c, bool is_global);
 static inline Decl *parse_func_definition(ParseContext *c, AstId docs, bool is_interface);
 static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl);
+INLINE bool parse_decl_initializer(ParseContext *c, Decl *decl);
 static inline Decl *parse_static_top_level(ParseContext *c);
 static Decl *parse_include(ParseContext *c);
 static bool parse_attributes_for_global(ParseContext *c, Decl *decl);
 
-#define DECL_VAR_NEW(type__, var__) decl_new_var(symstr(c), c->span, type__, var__);
+INLINE Decl *decl_new_var_current(ParseContext *c, TypeInfo *type, VarDeclKind kind);
 
+static bool context_next_is_path_prefix_start(ParseContext *c);
+
+INLINE Decl *decl_new_var_current(ParseContext *c, TypeInfo *type, VarDeclKind kind)
+{
+	return decl_new_var(symstr(c), c->span, type, kind);
+}
 
 static bool context_next_is_path_prefix_start(ParseContext *c)
 {
 	return tok_is(c, TOKEN_IDENT) && peek(c) == TOKEN_SCOPE;
 }
-
-
 
 /**
  * Walk until we find the first top level construct, the current heuristic is this:
@@ -72,40 +77,34 @@ void recover_top_level(ParseContext *c)
 	}
 }
 
-static inline bool parse_decl_initializer(ParseContext *c, Decl *decl, bool allow_void)
+INLINE bool parse_decl_initializer(ParseContext *c, Decl *decl)
 {
-	if (try_consume(c, TOKEN_VOID))
-	{
-		if (!allow_void)
-		{
-			SEMA_ERROR_LAST("'void' is not allowed here, it's only allowed for non constant global and local variables.");
-			return false;
-		}
-		decl->var.no_init = true;
-		return true;
-	}
 	ASSIGN_EXPR_OR_RET(decl->var.init_expr, parse_expr(c), false);
 	return true;
 }
 
 // --- Parse CT conditional code
 
+/**
+ * A general CT block contains 0 - n number of declarations, and may be terminated
+ * by 1-3 different tokens. We don't accept imports or modules inside.
+ */
 static inline bool parse_top_level_block(ParseContext *c, Decl ***decls, TokenType end1, TokenType end2, TokenType end3)
 {
+	// This is the last part consumed by the leading block
 	CONSUME_OR_RET(TOKEN_COLON, false);
+
+	// Check whether we reached a terminating token or EOF
 	while (!tok_is(c, end1) && !tok_is(c, end2) && !tok_is(c, end3) && !tok_is(c, TOKEN_EOF))
 	{
+		// Otherwise, try to parse it, passing in NULL ensures modules/imports are prohibited.
 		Decl *decl = parse_top_level_statement(c, NULL);
-		if (!decl) continue;
-		assert(decl);
-		if (decl_ok(decl))
-		{
-			add_decl_to_list(decls, decl);
-		}
-		else
-		{
-			return false;
-		}
+		// Decl may be null only on import/module, which we prohibit
+		assert(decl && "Should never happen.");
+		// Bad decl?
+		if (!decl_ok(decl)) return false;
+		// Otherwise add it to the list.
+		add_decl_to_list(decls, decl);
 	}
 	return true;
 }
@@ -158,6 +157,7 @@ static inline Decl *parse_ct_if_top_level(ParseContext *c)
 static inline Decl *parse_ct_case(ParseContext *c)
 {
 	Decl *decl;
+	// Parse the $case expr / $default
 	switch (c->tok)
 	{
 		case TOKEN_CT_DEFAULT:
@@ -173,14 +173,8 @@ static inline Decl *parse_ct_case(ParseContext *c)
 			SEMA_ERROR_HERE("Expected a $case or $default statement here.");
 			return poisoned_decl;
 	}
-	TRY_CONSUME_OR_RET(TOKEN_COLON, "Expected ':' here.", poisoned_decl);
-	while (1)
-	{
-		TokenType type = c->tok;
-		if (type == TOKEN_CT_DEFAULT || type == TOKEN_CT_CASE || type == TOKEN_CT_ENDSWITCH) break;
-		ASSIGN_DECL_OR_RET(Decl *stmt, parse_top_level_statement(c, NULL), poisoned_decl);
-		add_decl_to_list(&decl->ct_case_decl.body, stmt);
-	}
+	// Parse the body
+	if (!parse_top_level_block(c, &decl->ct_case_decl.body, TOKEN_CT_DEFAULT, TOKEN_CT_CASE, TOKEN_CT_ENDSWITCH)) return poisoned_decl;
 	return decl;
 }
 
@@ -198,7 +192,7 @@ static inline Decl *parse_ct_switch_top_level(ParseContext *c)
 	CONSUME_OR_RET(TOKEN_COLON, poisoned_decl);
 	while (!try_consume(c, TOKEN_CT_ENDSWITCH))
 	{
-		ASSIGN_DECL_OR_RET(Decl * result, parse_ct_case(c), poisoned_decl);
+		ASSIGN_DECL_OR_RET(Decl *result, parse_ct_case(c), poisoned_decl);
 		vec_add(ct->ct_switch_decl.cases, result);
 	}
 	CONSUME_EOS_OR_RET(poisoned_decl);
@@ -864,18 +858,18 @@ Decl *parse_local_decl_after_type(ParseContext *c, TypeInfo *type)
 
 	if (tok_is(c, TOKEN_CT_IDENT))
 	{
-		Decl *decl = DECL_VAR_NEW(type, VARDECL_LOCAL_CT);
+		Decl *decl = decl_new_var_current(c, type, VARDECL_LOCAL_CT);
 		advance(c);
 		if (try_consume(c, TOKEN_EQ))
 		{
-			if (!parse_decl_initializer(c, decl, false)) return poisoned_decl;
+			if (!parse_decl_initializer(c, decl)) return poisoned_decl;
 		}
 		return decl;
 	}
 
 	EXPECT_IDENT_FOR_OR("variable name", poisoned_decl);
 
-	Decl *decl = DECL_VAR_NEW(type, VARDECL_LOCAL);
+	Decl *decl = decl_new_var_current(c, type, VARDECL_LOCAL);
 	advance(c);
 
 	if (!parse_attributes(c, &decl->attributes, NULL)) return poisoned_decl;
@@ -887,7 +881,7 @@ Decl *parse_local_decl_after_type(ParseContext *c, TypeInfo *type)
 			return poisoned_decl;
 		}
 		advance_and_verify(c, TOKEN_EQ);
-		if (!parse_decl_initializer(c, decl, true)) return poisoned_decl;
+		if (!parse_decl_initializer(c, decl)) return poisoned_decl;
 	}
 	return decl;
 }
@@ -967,7 +961,7 @@ static Decl *parse_const_declaration(ParseContext *c, bool is_global)
 	}
 	CONSUME_OR_RET(TOKEN_EQ, poisoned_decl);
 
-	if (!parse_decl_initializer(c, decl, false)) return poisoned_decl;
+	if (!parse_decl_initializer(c, decl)) return poisoned_decl;
 
 	RANGE_EXTEND_PREV(decl);
 
@@ -984,7 +978,7 @@ Decl *parse_var_decl(ParseContext *c)
 			SEMA_ERROR_HERE("Constants must be declared using 'const' not 'var'.");
 			return poisoned_decl;
 		case TOKEN_IDENT:
-			decl = DECL_VAR_NEW(NULL, VARDECL_LOCAL);
+			decl = decl_new_var_current(c, NULL, VARDECL_LOCAL);
 			advance(c);
 			if (!tok_is(c, TOKEN_EQ))
 			{
@@ -995,7 +989,7 @@ Decl *parse_var_decl(ParseContext *c)
 			ASSIGN_EXPR_OR_RET(decl->var.init_expr, parse_expr(c), poisoned_decl);
 			break;
 		case TOKEN_CT_IDENT:
-			decl = DECL_VAR_NEW(NULL, VARDECL_LOCAL_CT);
+			decl = decl_new_var_current(c, NULL, VARDECL_LOCAL_CT);
 			advance(c);
 			if (try_consume(c, TOKEN_EQ))
 			{
@@ -1003,7 +997,7 @@ Decl *parse_var_decl(ParseContext *c)
 			}
 			break;
 		case TOKEN_CT_TYPE_IDENT:
-			decl = DECL_VAR_NEW(NULL, VARDECL_LOCAL_CT_TYPE);
+			decl = decl_new_var_current(c, NULL, VARDECL_LOCAL_CT_TYPE);
 			advance(c);
 			if (try_consume(c, TOKEN_EQ))
 			{
@@ -1205,7 +1199,7 @@ static inline Decl *parse_global_declaration(ParseContext *c)
 	Decl **decls = NULL;
 	while (true)
 	{
-		decl = DECL_VAR_NEW(type, VARDECL_GLOBAL);
+		decl = decl_new_var_current(c, type, VARDECL_GLOBAL);
 		decl->var.is_threadlocal = threadlocal;
 		if (!try_consume(c, TOKEN_IDENT))
 		{
@@ -1232,7 +1226,7 @@ static inline Decl *parse_global_declaration(ParseContext *c)
 			SEMA_ERROR_HERE("Initialization is not allowed with multiple declarations.");
 			return poisoned_decl;
 		}
-		if (!parse_decl_initializer(c, decl, true)) return poisoned_decl;
+		if (!parse_decl_initializer(c, decl)) return poisoned_decl;
 	}
 	else if (!decl->attributes && tok_is(c, TOKEN_LPAREN) && !threadlocal)
 	{
@@ -1274,7 +1268,7 @@ static inline bool parse_param_decl(ParseContext *c, Decl*** parameters, bool re
 		return false;
 	}
 	bool vararg = try_consume(c, TOKEN_ELLIPSIS);
-	Decl *param = DECL_VAR_NEW(type, VARDECL_PARAM);
+	Decl *param = decl_new_var_current(c, type, VARDECL_PARAM);
 	param->var.vararg = vararg;
 	if (!try_consume(c, TOKEN_IDENT))
 	{
@@ -1299,7 +1293,7 @@ static inline bool parse_param_decl(ParseContext *c, Decl*** parameters, bool re
 	}
 	if (name && try_consume(c, TOKEN_EQ))
 	{
-		if (!parse_decl_initializer(c, param, false)) return poisoned_decl;
+		if (!parse_decl_initializer(c, param)) return poisoned_decl;
 	}
 
 	vec_add(*parameters, param);
@@ -1531,7 +1525,7 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 		{
 			if (try_consume(c, TOKEN_EQ))
 			{
-				if (!parse_decl_initializer(c, param, false)) return poisoned_decl;
+				if (!parse_decl_initializer(c, param)) return poisoned_decl;
 			}
 		}
 		if (!parse_attributes(c, &param->attributes, NULL)) return false;
@@ -1662,7 +1656,7 @@ bool parse_struct_body(ParseContext *c, Decl *parent)
 				SEMA_ERROR_HERE("A valid member name was expected here.");
 				return false;
 			}
-			Decl *member = DECL_VAR_NEW(type, VARDECL_MEMBER);
+			Decl *member = decl_new_var_current(c, type, VARDECL_MEMBER);
 			vec_add(parent->strukt.members, member);
 			index++;
 			if (index > MAX_MEMBERS)
@@ -1729,7 +1723,7 @@ static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl)
 	while (!try_consume(c, TOKEN_RBRACE))
 	{
 		ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_type(c), false);
-		Decl *member_decl = DECL_VAR_NEW(type, VARDECL_BITMEMBER);
+		Decl *member_decl = decl_new_var_current(c, type, VARDECL_BITMEMBER);
 
 		if (!try_consume(c, TOKEN_IDENT))
 		{
@@ -2929,6 +2923,7 @@ AFTER_VISIBILITY:
 				SEMA_ERROR_HERE("Two 'private' modifiers cannot be used in a row.");
 				return poisoned_decl;
 			}
+			sema_warning_at(c->span, "The use of 'private' is deprecated. Use '@private' instead.");
 			is_private = true;
 			advance(c);
 			tok = c->tok;
