@@ -4731,7 +4731,7 @@ static bool sema_expr_analyse_add(SemaContext *context, Expr *expr, Expr *left, 
 
 		// 3b. Cast it to usz or isz depending on underlying type.
 		//     Either is fine, but it looks a bit nicer if we actually do this and keep the sign.
-		bool success = cast_implicit(context, right, type_isz);
+		bool success = cast_explicit(context, right, type_isz);
 
 		// No need to check the cast we just ensured it was an integer.
 		assert(success && "This should always work");

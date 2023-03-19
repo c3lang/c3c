@@ -1354,7 +1354,8 @@ RETRY:
 			if (problem)
 			{
 				if (silent) return false;
-				expr = problem;
+				// If it's an integer that's the problem, zoom in on that one.
+				if (type_is_integer(type_flatten(problem->type))) expr = problem;
 				// Otherwise require a cast.
 				goto REQUIRE_CAST;
 			}

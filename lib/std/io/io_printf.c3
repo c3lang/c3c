@@ -3,9 +3,6 @@ import std::collections::map;
 import libc;
 
 const int PRINTF_NTOA_BUFFER_SIZE = 256;
-const int PRINTF_FTOA_BUFFER_SIZE = 256;
-const float PRINTF_MAX_FLOAT = 1e9;
-const uint PRINTF_DEFAULT_FLOAT_PRECISION = 6;
 
 fault PrintFault
 {
@@ -116,7 +113,6 @@ bitstruct PrintFlags : uint
 	bool hash : 4;
 	bool uppercase : 5;
 	bool precision : 6;
-	bool adapt_exp : 7;
 }
 
 fn void Formatter.init(Formatter* this, OutputFn out_fn, void* data = null)
@@ -442,6 +438,12 @@ fn usz! Formatter.vprintf(Formatter* this, String format, variant[] variants)
 				nextcase;
 			case 'b' :
 				base = 2;
+			case 'A':
+				this.flags.uppercase = true;
+				nextcase;
+			case 'a':
+				this.atoa(float_from_variant(current)!!)?;
+				continue;
 		    case 'F' :
 		        this.flags.uppercase = true;
 		        nextcase;
@@ -452,14 +454,13 @@ fn usz! Formatter.vprintf(Formatter* this, String format, variant[] variants)
 		        this.flags.uppercase = true;
 		        nextcase;
             case 'e':
-				this.etoa(float_from_variant(current)!!)?;
+                this.etoa(float_from_variant(current)!!)?;
 				continue;
 			case 'G':
 				this.flags.uppercase = true;
 				nextcase;
 			case 'g':
-				this.flags.adapt_exp = true;
-				this.etoa(float_from_variant(current)!!)?;
+				this.gtoa(float_from_variant(current)!!)?;
 				continue;
 			case 'c':
 				this.out_char(current)?;

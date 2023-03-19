@@ -1,5 +1,8 @@
 module std::io;
 
+const char[16] XDIGITS_H = "0123456789ABCDEF";
+const char[16] XDIGITS_L = "0123456789abcdef";
+
 fn void! Formatter.left_adjust(Formatter* this, usz len) @local
 {
 	if (!this.flags.left) return;
@@ -133,7 +136,6 @@ fn uint simple_atoi(char* buf, usz maxlen, usz* len_ptr) @inline @private
     return i;
 }
 
-
 fn void! Formatter.out_substr(Formatter *this, String str) @private
 {
 	usz l = conv::utf8_codepoints(str);
@@ -154,232 +156,349 @@ fn void! Formatter.out_substr(Formatter *this, String str) @private
 	return this.left_adjust(l);
 }
 
-fn void! Formatter.etoa(Formatter* this, FloatType value) @private
+fn void! Formatter.pad(Formatter* this, char c, isz width, isz len) @inline
 {
-	// check for NaN and special values
-	if (!value || value != value || value < -FloatType.max || value > FloatType.max)
-	{
-		return this.ftoa(value);
-	}
-
-	// determine the sign
-	bool negative = value < 0;
-	if (negative) value = -value;
-
-	// default precision
-	if (!this.flags.precision)
-	{
-		this.prec = PRINTF_DEFAULT_FLOAT_PRECISION;
-	}
-
-	// determine the decimal exponent
-	// based on the algorithm by David Gay (https://www.ampl.com/netlib/fp/dtoa.c)
-	ulong u = bitcast((double)value, ulong);
-	int exp2 = (int)(u >> 52 & 0x7FFu) - 1023;           // effectively log2
-	u = (u & (1u64 << 52 - 1u)) | (1023u64 << 52u);  // drop the exponent so conv.F is now in [1,2)
-	// now approximate log10 from the log2 integer part and an expansion of ln around 1.5
-	double f = bitcast(u, double);
-	int expval = (int)(0.1760912590558 + exp2 * 0.301029995663981 + (f - 1.5) * 0.289529654602168);
-	// now we want to compute 10^expval but we want to be sure it won't overflow
-	exp2 = (int)(expval * 3.321928094887362 + 0.5);
-	double z  = expval * 2.302585092994046 - exp2 * 0.6931471805599453;
-	double z2 = z * z;
-	f = bitcast((ulong)(exp2 + 1023) << 52, double);
-	// compute exp(z) using continued fractions, see https://en.wikipedia.org/wiki/Exponential_function#Continued_fractions_for_ex
-	f *= 1 + 2 * z / (2 - z + (z2 / (6 + (z2 / (10 + z2 / 14)))));
-	// correct for rounding errors
-	if (value < f)
-	{
-		expval--;
-		f /= 10;
-	}
-
-	// the exponent format is "%+03d" and largest value is "307", so set aside 4-5 characters
-	uint minwidth = ((expval < 100) && (expval > -100)) ? 4 : 5;
-
-	// in "%g" mode, "prec" is the number of *significant figures* not decimals
-	if (this.flags.adapt_exp)
-	{
-		// do we want to fall-back to "%f" mode?
-		if (value >= 1e-4 && value < 1e6)
-		{
-			this.prec = this.prec > expval ? this.prec - expval - 1 : 0;
-			this.flags.precision = true;   // make sure ftoa respects precision
-			// no characters in exponent
-			minwidth = 0;
-			expval = 0;
-		}
-		else
-		{
-			// we use one sigfig for the whole part
-			if (this.prec > 0 && this.flags.precision) this.prec--;
-		}
-	}
-	// Adjust width
-	uint fwidth = this.width > minwidth ? this.width - minwidth : 0;
-
-	// if we're padding on the right, DON'T pad the floating part
-	if (this.flags.left && minwidth) fwidth = 0;
-
-	// rescale the float value
-	if (expval) value /= f;
-	// output the floating part
-	usz start_idx = this.idx;
-	PrintFlags old = this.flags;
-	this.flags.adapt_exp = false;
-	this.width = fwidth;
-	this.ftoa(negative ? -value : value)?;
-	this.flags = old;
-
-	// output the exponent part
-	if (minwidth)
-	{
-		// output the exponential symbol
-		this.out(this.flags.uppercase ? 'E' : 'e')?;
-		// output the exponent value
-		this.flags = { .zeropad = true, .plus = true };
-		this.width = minwidth - 1;
-		this.prec = 0;
-		this.ntoa((uint128)(expval < 0 ? -expval : expval), expval < 0, 10)?;
-		this.flags = old;
-		// might need to right-pad spaces
-		this.left_adjust(this.idx - start_idx)?;
-	}
+	for (isz i = len; i < width; i++) this.out(c)?;
 }
 
-// internal ftoa for fixed decimal floating point
-fn void! Formatter.ftoa(Formatter* this, FloatType value) @private
+fn char* fmt_u(uint128 x, char* s)
 {
-	char[PRINTF_FTOA_BUFFER_SIZE] buf @noinit;
-	usz len = 0;
-	const FloatType[] POW10 = { 1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000 };
-	FloatType diff = 0.0;
+	for (; x > ulong.max; x /= 10) *--s = '0' + (char)(x % 10);
+	for (ulong y = (ulong)x; y; y /= 10) *--s = '0' + (char)(y % 10);
+	return s;
+}
 
-	// powers of 10
+fn void! Formatter.out_chars(Formatter* this, char[] s)
+{
+	foreach (c : s) this.out(c)?;
+}
 
-	// test for special values
-	if (value != value)
+enum FloatFormatting
+{
+	FLOAT,
+	EXPONENTIAL,
+	ADAPTIVE,
+	HEX
+}
+
+fn void! Formatter.etoa(Formatter* this, double y) => this.floatformat(EXPONENTIAL, y);
+fn void! Formatter.ftoa(Formatter* this, double y) => this.floatformat(FLOAT, y);
+fn void! Formatter.gtoa(Formatter* this, double y) => this.floatformat(ADAPTIVE, y);
+fn void! Formatter.atoa(Formatter* this, double y) => this.floatformat(HEX, y);
+
+fn void! Formatter.floatformat(Formatter* this, FloatFormatting formatting, double y) @private
+{
+	// This code is heavily based on musl's printf code
+	const BUF_SIZE = (math::DOUBLE_MANT_DIG + 28) / 29 + 1
+		+ (math::DOUBLE_MAX_EXP + math::DOUBLE_MANT_DIG + 28 + 8) / 9;
+	uint[BUF_SIZE] big;
+    bool is_neg = false;
+    if (math::signbit(y))
+    {
+        is_neg = true;
+        y = -y;
+    }
+    int pl = is_neg || this.flags.plus ? 1 : 0;
+    // Print inf/nan
+	if (!math::is_finite(y))
 	{
-		return this.out_reverse("nan");
+		// Add padding
+		if (!this.flags.left) this.pad(' ', this.width, 3 + pl)?;
+		String s = this.flags.uppercase ? "INF" : "inf";
+		if (y != y) this.flags.uppercase ? "NAN" : "nan";
+		if (pl) this.out(is_neg ? '-' : '+')?;
+		this.out_chars(s)?;
+		if (this.flags.left) this.pad(' ', this.width, 3 + pl)?;
+		return;
 	}
-	if (value < -FloatType.max)
+	// Rescale
+	int e2;
+
+	y = math::frexp(y, &e2) * 2;
+	if (y) e2--;
+	char[12] ebuf0;
+	char* ebuf = 12 + (char*)&ebuf0;
+	char[9 + math::DOUBLE_MANT_DIG / 4] buf_array;
+	char* buf = &buf_array;
+	isz p = this.flags.precision ? this.prec : -1;
+	if (formatting == HEX)
 	{
-		return this.out_reverse("fni-");
-	}
-	if (value > FloatType.max)
-	{
-		if (this.flags.plus)
+		double round = 8.0;
+		// 0x / 0X
+		pl += 2;
+		if (p > 0 && p < math::DOUBLE_MANT_DIG / 4 - 1)
 		{
-			return this.out_reverse("fni+");
+			int re = math::DOUBLE_MANT_DIG / 4 - 1 - (int)p;
+    		round *= 1 << (math::DOUBLE_MANT_DIG % 4);
+    		while (re--) round *= 16;
+    		if (is_neg)
+    		{
+    		    y = -y;
+				y -= round;
+    			y += round;
+    			y = -y;
+    		}
+    		else
+    		{
+    		    y += round;
+    			y -= round;
+    		}
 		}
-		return this.out_reverse("fni");
-	}
-
-	// test for very large values
-	// standard printf behavior is to print EVERY whole number digit -- which could be 100s of characters overflowing your buffers == bad
-	if (value > PRINTF_MAX_FLOAT || value < -PRINTF_MAX_FLOAT)
-	{
-		return this.etoa(value);
-	}
-
-	// test for negative
-	bool negative = value < 0;
-	if (negative) value = 0 - value;
-
-	// set default precision, if not set explicitly
-	if (!this.flags.precision) this.prec = PRINTF_DEFAULT_FLOAT_PRECISION;
-
-	// limit precision to 9, cause a prec >= 10 can lead to overflow errors
-	while (this.prec > 9)
-	{
-		if (len >= PRINTF_FTOA_BUFFER_SIZE) return PrintFault.INTERNAL_BUFFER_EXCEEDED!;
-		buf[len++] = '0';
-		this.prec--;
-	}
-	// Safe due to 1e9 limit.
-	int whole = (int)value;
-	FloatType tmp = (value - whole) * POW10[this.prec];
-	ulong frac = (ulong)tmp;
-	diff = tmp - frac;
-	switch
-	{
-		case diff > 0.5:
-			++frac;
-			// handle rollover, e.g. case 0.99 with prec 1 is 1.0
-			if (frac >= POW10[this.prec])
-			{
-				frac = 0;
-				++whole;
-			}
-		case diff < 0.5:
-			break;
-		case !frac && (frac & 1):
-			// if halfway, round up if odd OR if last digit is 0
-			++frac;
-	}
-	if (!this.prec)
-	{
-		diff = value - (FloatType)whole;
-		if ((!(diff < 0.5) || diff > 0.5) && (whole & 1))
+		// Reverse print
+		char* estr = fmt_u(e2 < 0 ? (int128)-e2 : (int128)e2, ebuf);
+		if (estr == ebuf) *--estr = '0';
+		*--estr = (e2 < 0 ? '-' : '+');
+		*--estr = this.flags.uppercase ? 'P' : 'p';
+		char* s = buf;
+		char* xdigits = this.flags.uppercase ? &XDIGITS_H : &XDIGITS_L;
+		do
 		{
-			// exactly 0.5 and ODD, then round up
-			// 1.5 -> 2, but 2.5 -> 2
-			++whole;
-		}
+			int x = (int)y;
+			*s++ = xdigits[x];
+			y = 16 * (y - x);
+			if (s - buf == 1 && (y || p > 0 || this.flags.hash)) *s++ = '.';
+		} while (y);
+		isz outlen = s - buf;
+		isz explen = ebuf - estr;
+		if (p > int.max - 2 - explen - pl) return PrintFault.INTERNAL_BUFFER_EXCEEDED!;
+		usz l = p && outlen - 2 < p
+				? p + 2 + explen
+				: outlen + explen;
+		if (!this.flags.left && !this.flags.zeropad) this.pad(' ', this.width, pl + l)?;
+		if (is_neg || this.flags.plus) this.out(is_neg ? '-' : '+')?;
+		this.out_chars(this.flags.uppercase ? "0X" : "0x")?;
+		if (this.flags.zeropad) this.pad('0', this.width, pl + l)?;
+		this.out_chars(buf[:outlen])?;
+		this.pad('0', l - outlen - explen, 0)?;
+		this.out_chars(estr[:explen])?;
+		if (this.flags.left) this.pad(' ', this.width, pl + l)?;
+		return;
+	}
+	if (p < 0) p = 6;
+	if (y)
+	{
+		y *= 0x1p28;
+		e2 -= 28;
+	}
+
+	uint* a, z, r;
+	if (e2 < 0)
+	{
+		a = r = z = &big;
 	}
 	else
 	{
-		uint count = this.prec;
-		// now do fractional part, as an unsigned number
-		do
-		{
-			if (len >= PRINTF_FTOA_BUFFER_SIZE) return PrintFault.INTERNAL_BUFFER_EXCEEDED!;
-			--count;
-			buf[len++] = (char)(48 + (frac % 10));
-		}
-		while (frac /= 10);
-		// add extra 0s
-		while (count-- > 0)
-		{
-			if (len >= PRINTF_FTOA_BUFFER_SIZE) return PrintFault.INTERNAL_BUFFER_EXCEEDED!;
-			buf[len++] = '0';
-		}
-		if (len >= PRINTF_FTOA_BUFFER_SIZE) return PrintFault.INTERNAL_BUFFER_EXCEEDED!;
-		// add decimal
-		buf[len++] = '.';
+		a = r = z = (uint*)&big + big.len - math::DOUBLE_MANT_DIG - 1;
 	}
 
-	// do whole part, number is reversed
 	do
 	{
-		if (len >= PRINTF_FTOA_BUFFER_SIZE) return PrintFault.INTERNAL_BUFFER_EXCEEDED!;
-		buf[len++] = (char)(48 + (whole % 10));
-	}
-	while (whole /= 10);
+		uint v = z++[0] = (uint)y;
+		y = 1000000000 * (y - v);
+	} while (y);
 
-	// pad leading zeros
-	if (!this.flags.left && this.flags.zeropad)
+	while (e2 > 0)
 	{
-		if (this.width && (negative || this.flags.plus || this.flags.space)) this.width--;
-		while (len < this.width)
+		uint carry = 0;
+		int sh = math::min(29, e2);
+		for (uint* d = z - 1; d >= a; d--)
 		{
-			if (len >= PRINTF_FTOA_BUFFER_SIZE) return PrintFault.INTERNAL_BUFFER_EXCEEDED!;
-			buf[len++] = '0';
+			ulong x = (ulong)*d << sh + carry;
+			*d = (uint)(x % 1000000000);
+			carry = (uint)(x / 1000000000);
+		}
+		if (carry) *--a = carry;
+		while (z > a && !z[-1]) z--;
+		e2 -= sh;
+	}
+
+	while (e2 < 0)
+	{
+		uint carry = 0;
+		uint* b;
+		int sh = math::min(9, -e2);
+		int need = (int)(1 + (p + math::DOUBLE_MANT_DIG / 3u + 8) / 9);
+		for (uint* d = a; d < z; d++)
+		{
+			// CHECK THIS
+			uint rm = *d & ((1 << sh) - 1);
+			*d = (*d >> sh) + carry;
+			carry = (1000000000 >> sh) * rm;
+		}
+		if (!a[0]) a++;
+		if (carry) z++[0] = carry;
+		// Avoid (slow!) computation past requested precision
+		b = formatting == FLOAT ? r : a;
+		if (z - b > need) z = b + need;
+		e2 += sh;
+	}
+
+	int e;
+	if (a < z)
+	{
+		for (int i = 10, e = (int)(9 * (r - a)); *a >= i; i *= 10, e++);
+	}
+
+	// Perform rounding: j is precision after the radix (possibly neg)
+	int j = (int)(p - (isz)(formatting == FLOAT ? 0 : e - (int)(formatting == ADAPTIVE && p)));
+	if (j < 9 * (z - r - 1))
+	{
+		uint x;
+		// We avoid C's broken division of negative numbers
+		uint* d = r + 1 + ((j + 9 * math::DOUBLE_MAX_EXP) / 9 - math::DOUBLE_MAX_EXP);
+		j += 9 * math::DOUBLE_MAX_EXP;
+		j %= 9;
+		int i;
+		for (i = 10, j++; j < 9; i *= 10, j++);
+		x = *d % i;
+		// Are there any significant digits past j?
+		if (x || (d + 1) != z)
+		{
+			double round = 2 / math::DOUBLE_EPSILON;
+			double small;
+			if (((*d / i) & 1) || (i == 1000000000 && d > a && (d[-1] & 1)))
+			{
+				round += 2;
+			}
+			switch
+			{
+				case x < i / 2:
+					small = 0x0.8p0;
+				case x == i / 2 && d + 1 == z:
+					small = 0x1.0p0;
+				default:
+					small = 0x1.8p0;
+			}
+			if (pl && is_neg)
+			{
+				round *= -1;
+				small *= -1;
+			}
+			*d -= x;
+			// Decide whether to round by probing round+small
+			if (round + small != round)
+			{
+				*d = *d + i;
+				while (*d > 999999999)
+				{
+					*d-- = 0;
+					if (d < a) *--a = 0;
+					(*d)++;
+				}
+				for (i = 10, e = (int)(9 * (r - a)); *a >= i; i *= 10, e++);
+			}
+		}
+		if (z > d + 1) z = d + 1;
+	}
+	for (; z>a && !z[-1]; z--);
+
+	if (formatting == ADAPTIVE)
+	{
+		if (!p) p++;
+		if (p > e && e >= -4)
+		{
+			formatting = FLOAT;
+			p -= (isz)e + 1;
+		}
+		else
+		{
+			formatting = EXPONENTIAL;
+			p--;
+		}
+		if (!this.flags.hash)
+		{
+			// Count trailing zeros in last place
+			if (z > a && z[-1])
+			{
+				for (int i = 10, j = 0; z[-1] % i == 0; i *= 10, j++);
+			}
+			else
+			{
+				j = 9;
+			}
+			if (formatting == FLOAT)
+			{
+				p = math::min(p, math::max((isz)0, 9 * (z - r - 1) - j));
+			}
+			else
+			{
+				p = math::min(p, math::max((isz)0, 9 * (z - r - 1) + e - j));
+
+			}
 		}
 	}
-
-	char next = {|
-		if (negative) return '-';
-		if (this.flags.plus) return '+';
-		if (this.flags.space) return ' ';
-		return 0;
-	|};
-	if (next)
+	if (p > int.max - 1 - (isz)(p || this.flags.hash)) return PrintFault.INTERNAL_BUFFER_EXCEEDED!;
+	int l = (int)(1 + p + (isz)(p || this.flags.hash));
+	char* estr @noinit;
+	if (formatting == FLOAT)
 	{
-		if (len >= PRINTF_FTOA_BUFFER_SIZE) return PrintFault.INTERNAL_BUFFER_EXCEEDED!;
-		buf[len++] = next;
+		if (e > int.max - l) return PrintFault.INTERNAL_BUFFER_EXCEEDED!;
+		if (e > 0) l += e;
 	}
-	return this.out_reverse(buf[:len]);
+	else
+	{
+		estr = fmt_u((uint128)(e < 0 ? -e : e), ebuf);
+		while (ebuf - estr < 2) (--estr)[0] = '0';
+		*--estr = (e < 0 ? '-' : '+');
+		*--estr = this.flags.uppercase ? 'E' : 'e';
+		if (ebuf - estr > (isz)int.max - l) return PrintFault.INTERNAL_BUFFER_EXCEEDED!;
+		l += (int)(ebuf - estr);
+	}
+	if (l > int.max - pl) return PrintFault.INTERNAL_BUFFER_EXCEEDED!;
+	if (!this.flags.left && !this.flags.zeropad) this.pad(' ', this.width, pl + l)?;
+	if (is_neg || this.flags.plus) this.out(is_neg ? '-' : '+')?;
+	if (this.flags.zeropad) this.pad('0', this.width, pl + l)?;
+	if (formatting == FLOAT)
+	{
+		if (a > r) a = r;
+		uint* d = a;
+		for (; d <= r; d++)
+		{
+			char* s = fmt_u(*d, buf + 9);
+			switch
+			{
+				case d != a:
+					while (s > buf) (--s)[0] = '0';
+				case s == buf + 9:
+					*--s = '0';
+			}
+			this.out_chars(s[:buf + 9 - s])?;
+		}
+		if (p || this.flags.hash) this.out('.')?;
+		for (; d < z && p > 0; d++, p -= 9)
+		{
+			char* s = fmt_u(*d, buf + 9);
+			while (s > buf) *--s = '0';
+			this.out_chars(s[:math::min((isz)9, p)])?;
+		}
+		this.pad('0', p + 9, 9)?;
+	}
+	else
+	{
+		if (z <= a) z = a + 1;
+    	for (uint* d = a; d < z && p >= 0; d++)
+    	{
+			char* s = fmt_u(*d, buf + 9);
+			if (s == buf + 9) (--s)[0] = '0';
+    		if (d != a)
+    		{
+    		    while (s > buf) (--s)[0] = '0';
+    		}
+    		else
+    		{
+    		    this.out(s++[0])?;
+    		    if (p > 0 || this.flags.hash) this.out('.')?;
+    		}
+    		this.out_chars(s[:math::min(buf + 9 - s, p)])?;
+    		p -= buf + 9 - s;
+    	}
+    	this.pad('0', p + 18, 18)?;
+    	this.out_chars(estr[:ebuf - estr])?;
+	}
+
+	if (this.flags.left) this.pad(' ', this.width, pl + l)?;
+
+	return;
 }
 
 fn void! Formatter.ntoa(Formatter* this, uint128 value, bool negative, uint base) @private

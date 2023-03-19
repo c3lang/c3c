@@ -426,7 +426,7 @@ macro bool is_finite(x)
 	$case float16:
 		return bitcast((float)x, uint) & 0x7fffffff < 0x7f800000;
 	$default:
-		return bitcast((double)x, ulong) & (~0u64 >> 1) < 0x7ff << 52;
+		return bitcast((double)x, ulong) & (~0u64 >> 1) < 0x7ffu64 << 52;
 	$endswitch;
 }
 
