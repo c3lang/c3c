@@ -307,6 +307,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 					if (eval_kind == CONSTANT_EVAL_CONSTANT_VALUE || eval_kind == CONSTANT_EVAL_LOCAL_INIT) return false;
 					expr = expr->unary_expr.expr;
 					goto RETRY;
+				case UNARYOP_PLUS:
 				case UNARYOP_NEG:
 				case UNARYOP_BITNEG:
 				case UNARYOP_NOT:
@@ -685,6 +686,7 @@ bool expr_is_pure(Expr *expr)
 				case UNARYOP_NEG:
 				case UNARYOP_BITNEG:
 				case UNARYOP_NOT:
+				case UNARYOP_PLUS:
 					return expr_is_pure(expr->unary_expr.expr);
 			}
 			UNREACHABLE

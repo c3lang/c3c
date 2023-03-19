@@ -83,7 +83,7 @@ static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *
 
 // -- unary
 static inline bool sema_expr_analyse_addr(SemaContext *context, Expr *expr);
-static inline bool sema_expr_analyse_neg(SemaContext *context, Expr *expr);
+static inline bool sema_expr_analyse_neg_plus(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_bit_not(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_not(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_deref(SemaContext *context, Expr *expr);
@@ -5506,12 +5506,13 @@ static inline bool sema_expr_analyse_addr(SemaContext *context, Expr *expr)
 }
 
 /**
- * Test -a
+ * Test -a / +a
  */
-static inline bool sema_expr_analyse_neg(SemaContext *context, Expr *expr)
+static inline bool sema_expr_analyse_neg_plus(SemaContext *context, Expr *expr)
 {
 	// 1. Check the inner expression
 	Expr *inner = expr->unary_expr.expr;
+	bool is_plus = expr->unary_expr.operator == UNARYOP_PLUS;
 	if (!sema_analyse_expr(context, inner)) return false;
 	if (expr->unary_expr.widen && !cast_widen_top_down(context, inner, expr->type)) return false;
 
@@ -5519,6 +5520,11 @@ static inline bool sema_expr_analyse_neg(SemaContext *context, Expr *expr)
 	Type *no_fail = type_no_optional(inner->type);
 	if (!type_may_negate(no_fail))
 	{
+		if (is_plus)
+		{
+			SEMA_ERROR(expr, "Cannot use '+' with an expression of type %s.", type_quoted_error_string(no_fail));
+			return false;
+		}
 		SEMA_ERROR(expr, "Cannot negate an expression of type %s.", type_quoted_error_string(no_fail));
 		return false;
 	}
@@ -5526,6 +5532,12 @@ static inline bool sema_expr_analyse_neg(SemaContext *context, Expr *expr)
 	Type *result_type = cast_numeric_arithmetic_promotion(no_fail);
 	if (!cast_implicit(context, inner, result_type)) return false;
 
+	// If it's a plus, we simply replace the inner with the outer.
+	if (is_plus)
+	{
+		expr_replace(expr, inner);
+		return true;
+	}
 	// 4. If it's non-const, we're done.
 	if (!sema_constant_fold_ops(inner))
 	{
@@ -5946,7 +5958,8 @@ static inline bool sema_expr_analyse_unary(SemaContext *context, Expr *expr)
 		case UNARYOP_ADDR:
 			return sema_expr_analyse_addr(context, expr);
 		case UNARYOP_NEG:
-			return sema_expr_analyse_neg(context, expr);
+		case UNARYOP_PLUS:
+			return sema_expr_analyse_neg_plus(context, expr);
 		case UNARYOP_BITNEG:
 			return sema_expr_analyse_bit_not(context, expr);
 		case UNARYOP_NOT:

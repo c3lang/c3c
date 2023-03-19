@@ -866,6 +866,7 @@ RETRY:
 				case UNARYOP_DEREF:
 					// Check sizes.
 					goto CHECK_SIZE;
+				case UNARYOP_PLUS:
 				case UNARYOP_NEG:
 				case UNARYOP_BITNEG:
 				case UNARYOP_INC:

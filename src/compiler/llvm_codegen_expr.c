@@ -2332,6 +2332,9 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 	{
 		case UNARYOP_ERROR:
 			FATAL_ERROR("Illegal unary op %s", expr->unary_expr.operator);
+		case UNARYOP_PLUS:
+			// Folded
+			UNREACHABLE
 		case UNARYOP_NOT:
 			llvm_emit_expr(c, value, inner);
 			if (type_flat_is_vector(type))
