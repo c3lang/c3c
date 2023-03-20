@@ -8,13 +8,13 @@ module std::core::builtin;
  **/
 macro less(a, b) @builtin
 {
-	$if ($defined(a.less)):
+	$if ($defined(a.less))
 		return a.less(b);
-	$elif ($defined(a.compare_to)):
+	$elif ($defined(a.compare_to))
 		return a.compare_to(b) < 0;
-	$else:
+	$else
 		return a < b;
-	$endif;
+	$endif
 }
 
 /**
@@ -22,13 +22,13 @@ macro less(a, b) @builtin
  **/
 macro less_eq(a, b) @builtin
 {
-	$if ($defined(a.less)):
+	$if ($defined(a.less))
 		return !b.less(a);
-	$elif ($defined(a.compare_to)):
+	$elif ($defined(a.compare_to))
 		return a.compare_to(b) <= 0;
-	$else:
+	$else
 		return a <= b;
-	$endif;
+	$endif
 }
 
 /**
@@ -36,13 +36,13 @@ macro less_eq(a, b) @builtin
  **/
 macro greater(a, b) @builtin
 {
-	$if ($defined(a.less)):
+	$if ($defined(a.less))
 		return b.less(a);
-	$elif ($defined(a.compare_to)):
+	$elif ($defined(a.compare_to))
 		return a.compare_to(b) > 0;
-	$else:
+	$else
 		return a > b;
-	$endif;
+	$endif
 }
 
 /**
@@ -50,13 +50,13 @@ macro greater(a, b) @builtin
  **/
 macro greater_eq(a, b) @builtin
 {
-	$if ($defined(a.less)):
+	$if ($defined(a.less))
 		return !a.less(b);
-	$elif ($defined(a.compare_to)):
+	$elif ($defined(a.compare_to))
 		return a.compare_to(b) >= 0;
-	$else:
+	$else
 		return a >= b;
-	$endif;
+	$endif
 }
 
 /**
@@ -64,46 +64,46 @@ macro greater_eq(a, b) @builtin
  **/
 macro bool equals(a, b) @builtin
 {
-	$if ($defined(a.equals)):
+	$if ($defined(a.equals))
 		return a.equals(b);
-	$elif ($defined(a.compare_to)):
+	$elif ($defined(a.compare_to))
 		return a.compare_to(b) == 0;
-	$elif ($defined(a.less)):
+	$elif ($defined(a.less))
 		return !a.less(b) && !b.less(a);
-	$else:
+	$else
 		return a == b;
-	$endif;
+	$endif
 }
 
 macro min(x, ...) @builtin
 {
-    $if ($vacount == 1):
+    $if ($vacount == 1)
         return less(x, $vaarg(0)) ? x : $vaarg(0);
-    $else:
+    $else
         var result = x;
-        $for (var $i = 0; $i < $vacount; $i++):
+        $for (var $i = 0; $i < $vacount; $i++)
             if (less($vaarg($i), result))
             {
                  result = $vaarg($i);
             }
-        $endfor;
+        $endfor
         return result;
-    $endif;
+    $endif
 }
 
 macro max(x, ...) @builtin
 {
-    $if ($vacount == 1):
+    $if ($vacount == 1)
         return greater(x, $vaarg(0)) ? x : $vaarg(0);
-    $else:
+    $else
         var result = x;
-        $for (var $i = 0; $i < $vacount; $i++):
+        $for (var $i = 0; $i < $vacount; $i++)
             if (greater($vaarg($i), result))
             {
                  result = $vaarg($i);
             }
-        $endfor;
+        $endfor
         return result;
-    $endif;
+    $endif
 }
 

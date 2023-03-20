@@ -1,60 +1,60 @@
-$if (0):
-$else:
-    $if (0):
-    $elif (0):
-    $elif (0):
-    $else:
+$if (0)
+$else
+    $if (0)
+    $elif (0)
+    $elif (0)
+    $else
         int x = 1;
-    $endif;
-$endif;
+    $endif
+$endif
 
-$if (0):
+$if (0)
 $assert(false);
-$elif (0):
+$elif (0)
 $assert(false);
-$else:
+$else
 $assert(true);
-$endif;
+$endif
 
-$if (1):
+$if (1)
 $assert(true);
 int d = 5;
-$elif (0):
+$elif (0)
 $assert(false);
-$else:
+$else
 $assert(false);
-$endif;
+$endif
 
-$if (0):
+$if (0)
 $assert(true);
-$elif (1):
+$elif (1)
 $assert(true);
 int c = 5;
-$else:
+$else
 $assert(false);
-$endif;
+$endif
 
-$if (0):
+$if (0)
 $assert(true);
-$elif (1):
+$elif (1)
 $assert(true);
 int b = 4;
-$elif (0):
+$elif (0)
 $assert(false);
-$else:
+$else
 $assert(false);
-$endif;
+$endif
 
-$if (0):
+$if (0)
 $assert(true);
-$elif (0):
+$elif (0)
 $assert(false);
-$elif (1):
+$elif (1)
 $assert(true);
 int a = 3;
-$else:
+$else
 $assert(false);
-$endif;
+$endif
 
 // #expect: ct_if.ll
 

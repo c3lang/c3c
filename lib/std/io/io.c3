@@ -53,7 +53,7 @@ fn void putchar(char c) @inline
 macro void print(x)
 {
 	var $Type = $typeof(x);
-	$switch ($Type):
+	$switch ($Type)
 	$case String:
 		catch? stdout().print(x);
 	$case ZString:
@@ -63,18 +63,18 @@ macro void print(x)
 	$case VarString:
 		catch? stdout().print(x.str());
 	$default:
-		$if (@convertible(x, String)):
+		$if (@convertible(x, String))
 			catch? stdout().print((String)x);
-		$else:
+		$else
 			catch? stdout().printf("%s", x);
-		$endif;
-	$endswitch;
+		$endif
+	$endswitch
 }
 
 macro void printn(x = "")
 {
 	var $Type = $typeof(x);
-	$switch ($Type):
+	$switch ($Type)
 	$case String:
 		catch? stdout().printn(x);
 	$case ZString:
@@ -84,12 +84,12 @@ macro void printn(x = "")
 	$case VarString:
 		catch? stdout().printn(x.str());
 	$default:
-		$if (@convertible(x, String)):
+		$if (@convertible(x, String))
 			catch? stdout().printn((String)x);
-		$else:
+		$else
 			catch? stdout().printfn("%s", x);
-		$endif;
-	$endswitch;
+		$endif
+	$endswitch
 }
 
 macro void println(x = "") @deprecated => printn(x);

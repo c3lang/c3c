@@ -2,14 +2,14 @@ module std::io::os;
 import libc;
 
 
-$if (!env::COMPILER_LIBC_AVAILABLE):
+$if (!env::COMPILER_LIBC_AVAILABLE)
 
 fn void! native_chdir(Path path)
 {
 	unreachable("'getcwd' not available");
 }
 
-$elif (env::OS_TYPE == OsType.WIN32):
+$elif (env::OS_TYPE == OsType.WIN32)
 
 macro void! native_chdir(Path path)
 {
@@ -20,7 +20,7 @@ macro void! native_chdir(Path path)
 	return IoError.GENERAL_ERROR!;
 }
 
-$else:
+$else
 
 extern fn int _chdir(ZString) @extern("chdir");
 macro void! native_chdir(Path p)
@@ -39,4 +39,4 @@ macro void! native_chdir(Path p)
 	}
 }
 
-$endif;
+$endif

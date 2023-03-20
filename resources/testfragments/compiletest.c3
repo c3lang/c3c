@@ -95,7 +95,7 @@ fn int boo()
 	}
 	switch (eok)
 	{
-		case 1:
+		case 1
 			eok++;
 			next;
 		case 3:

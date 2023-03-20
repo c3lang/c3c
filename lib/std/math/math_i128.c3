@@ -180,7 +180,7 @@ fn int128 __fixsfti(float a) @weak @extern("__fixsfti") @nostrip => fixint(a);
 macro float_from_i128($Type, a) @private
 {
 	var $Rep;
-	$switch ($Type):
+	$switch ($Type)
 		$case double:
 			$Rep = ulong;
 			const MANT_DIG = DOUBLE_MANT_DIG;
@@ -201,7 +201,7 @@ macro float_from_i128($Type, a) @private
 		$case float128:
 			$Rep = uint128;
 			const MANT_DIG = QUAD_MANT_DIG;
-	$endswitch;
+	$endswitch
 	if (a == 0) return ($Type)0;
 	// Grab and remove sign.
     int128 sign = a >> 127;
@@ -239,7 +239,7 @@ macro float_from_i128($Type, a) @private
 macro float_from_u128($Type, a) @private
 {
 	var $Rep;
-	$switch ($Type):
+	$switch ($Type)
 		$case double:
 			$Rep = ulong;
 			const MANT_DIG = DOUBLE_MANT_DIG;
@@ -258,7 +258,7 @@ macro float_from_u128($Type, a) @private
 		$case float128:
 			$Rep = uint128;
 			const MANT_DIG = QUAD_MANT_DIG;
-	$endswitch;
+	$endswitch
 	if (a == 0) return ($Type)0;
 	int sd = 128 - (int)$$clz(a); // digits
 	int e = sd - 1; // exponent
@@ -294,7 +294,7 @@ macro float_from_u128($Type, a) @private
 macro fixuint(a) @private
 {
 	var $Rep;
-	$switch ($typeof(a)):
+	$switch ($typeof(a))
 		$case double:
 			$Rep = ulong;
 			const EXPONENT_BITS = 11;
@@ -311,7 +311,7 @@ macro fixuint(a) @private
 			$Rep = uint128;
 			const EXPONENT_BITS = 15;
 			const SIGNIFICANT_BITS = 112;
-	$endswitch;
+	$endswitch
 	const $Rep MAX_EXPONENT = ($Rep)1 << EXPONENT_BITS - 1u;
 	const $Rep EXPONENT_BIAS = MAX_EXPONENT >> 1u;
 	const $Rep ONE_REP =EXPONENT_BIAS << SIGNIFICANT_BITS;
@@ -338,7 +338,7 @@ macro fixuint(a) @private
 macro fixint(a) @private
 {
 	var $Rep;
-	$switch ($typeof(a)):
+	$switch ($typeof(a))
 		$case double:
 			$Rep = ulong;
 			const EXPONENT_BITS = 11;
@@ -355,7 +355,7 @@ macro fixint(a) @private
 			$Rep = uint128;
 			const EXPONENT_BITS = 15;
 			const SIGNIFICANT_BITS = 112;
-	$endswitch;
+	$endswitch
 	const $Rep MAX_EXPONENT = ($Rep)1 << EXPONENT_BITS - 1u;
 	const $Rep EXPONENT_BIAS = MAX_EXPONENT >> 1u;
 	const $Rep ONE_REP = EXPONENT_BIAS << SIGNIFICANT_BITS;

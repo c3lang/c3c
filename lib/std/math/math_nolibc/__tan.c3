@@ -1,6 +1,6 @@
 module std::math::nolibc;
 
-$if (!env::COMPILER_LIBC_AVAILABLE):
+$if (!env::COMPILER_LIBC_AVAILABLE)
 
 /* origin: FreeBSD /usr/src/lib/msun/src/k_tan.c */
 /*
@@ -80,4 +80,4 @@ fn double __tan(double x, double y, int odd) @extern("__tan") @weak @nostrip
 	return a0 + a * (1.0 + a0 * w0 + a0 * v);
 }
 
-$endif;
+$endif

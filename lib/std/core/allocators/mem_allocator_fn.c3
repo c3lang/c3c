@@ -37,11 +37,11 @@ struct AlignedBlock
 macro void*! @aligned_alloc(#alloc_fn, usz bytes, usz alignment, usz offset)
 {
 	usz header = mem::aligned_offset(AlignedBlock.sizeof + offset, alignment) - offset;
-	$if ($checks(#alloc_fn(bytes)?)):
+	$if ($checks(#alloc_fn(bytes)?))
 		void* data = #alloc_fn(header + bytes)?;
-	$else:
+	$else
 		void* data = #alloc_fn(header + bytes);
-	$endif;
+	$endif
     void* mem = mem::aligned_pointer(data + header + offset, alignment) - offset;
 	assert(mem > data);
 	AlignedBlock* desc = (AlignedBlock*)mem - 1;
@@ -56,11 +56,11 @@ macro void*! @aligned_alloc(#alloc_fn, usz bytes, usz alignment, usz offset)
 macro void*! @aligned_calloc(#calloc_fn, usz bytes, usz alignment, usz offset)
 {
 	usz header = mem::aligned_offset(AlignedBlock.sizeof + offset, alignment) - offset;
-	$if ($checks(#calloc_fn(bytes)?)):
+	$if ($checks(#calloc_fn(bytes)?))
 		void* data = #calloc_fn(header + bytes)?;
-	$else:
+	$else
 		void* data = #calloc_fn(header + bytes);
-	$endif;
+	$endif
 	void* mem = mem::aligned_pointer(data + header + offset, alignment) - offset;
 	AlignedBlock* desc = (AlignedBlock*)mem - 1;
 	assert(mem > data);
@@ -78,22 +78,22 @@ macro void*! @aligned_realloc(#calloc_fn, #free_fn, void* old_pointer, usz bytes
 	void* data_start = desc.start;
     void* new_data = @aligned_calloc(#calloc_fn, bytes, alignment, offset)?;
 	mem::copy(new_data, old_pointer, desc.len > bytes ? desc.len : bytes, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
-	$if ($checks(#free_fn(data_start)?)):
+	$if ($checks(#free_fn(data_start)?))
 	#free_fn(data_start)?;
-	$else:
+	$else
 	#free_fn(data_start);
-	$endif;
+	$endif
 	return new_data;
 }
 
 macro void! @aligned_free(#free_fn, void* old_pointer)
 {
 	AlignedBlock* desc = (AlignedBlock*)old_pointer - 1;
-	$if ($checks(#free_fn(desc.start)?)):
+	$if ($checks(#free_fn(desc.start)?))
 	#free_fn(desc.start)?;
-	$else:
+	$else
 	#free_fn(desc.start);
-	$endif;
+	$endif
 }
 
 fn void*! libc_allocator_fn(Allocator* unused, usz bytes, usz alignment, usz offset, void* old_pointer, AllocationKind kind) @inline

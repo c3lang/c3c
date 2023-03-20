@@ -35,7 +35,7 @@ typedef TerminateFunction = fn void();
 typedef CompareFunction = fn int(void*, void*);
 typedef JmpBuf = uptr[$$JMP_BUF_SIZE];
 
-$if (env::COMPILER_LIBC_AVAILABLE):
+$if (env::COMPILER_LIBC_AVAILABLE)
 
 extern fn double atof(char* str);
 extern fn int atoi(char* str);
@@ -59,13 +59,13 @@ extern fn int rand();
 extern fn void srand(uint seed);
 
 extern fn void longjmp(JmpBuf* buffer, CInt value);
-$if (env::OS_TYPE == OsType.WIN32):
+$if (env::OS_TYPE == OsType.WIN32)
 // TODO win32 aarch64
 extern fn CInt _setjmp(void* frameptr, JmpBuf* buffer);
 macro CInt setjmp(JmpBuf* buffer) => _setjmp($$frameaddress(), buffer);
-$else:
+$else
 extern fn CInt setjmp(JmpBuf* buffer);
-$endif;
+$endif
 // MB functions omitted
 
 // string
@@ -97,7 +97,7 @@ extern fn void* calloc(usz count, usz size);
 extern fn void* free(void*);
 extern fn void* realloc(void* ptr, usz size);
 
-$else:
+$else
 
 fn void longjmp(JmpBuf* buffer, CInt value) @weak @extern("longjmp") @nostrip
 {
@@ -144,14 +144,14 @@ fn void* memset(void* dest, CInt value, usz n) @weak @extern("memset") @nostrip
 	return dest;
 }
 
-$endif;
+$endif
 
 // stdio
 
 typedef Fpos = long;
 typedef CFile = void*;
 
-$if (env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == OsType.LINUX):
+$if (env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == OsType.LINUX)
     extern CFile __stdin @extern("stdin");
     extern CFile __stdout @extern("stdout");
     extern CFile __stderr @extern("stderr");
@@ -161,7 +161,7 @@ $if (env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == OsType.LINUX):
     macro CFile stdin() { return __stdin; }
     macro CFile stdout() { return __stdout; }
     macro CFile stderr() { return __stderr; }
-$elif (env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == OsType.MACOSX):
+$elif (env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == OsType.MACOSX)
     extern CFile __stdinp;
     extern CFile __stdoutp;
     extern CFile __stderrp;
@@ -170,18 +170,18 @@ $elif (env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == OsType.MACOSX):
 	macro CFile stdin() { return __stdinp; }
     macro CFile stdout() { return __stdoutp; }
     macro CFile stderr() { return __stderrp; }
-$elif (env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == OsType.WIN32):
+$elif (env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == OsType.WIN32)
     extern fn CFile __acrt_iob_func(CInt c);
     extern fn usz _msize(void* ptr);
     macro usz malloc_size(void* ptr) { return _msize(ptr); }
     macro CFile stdin() { return __acrt_iob_func(0); }
     macro CFile stdout() { return __acrt_iob_func(1); }
     macro CFile stderr() { return __acrt_iob_func(2); }
-$else:
+$else
     macro CFile stdin() { return (CFile*)(uptr)0; }
     macro CFile stdout() { return (CFile*)(uptr)1; }
     macro CFile stderr() { return (CFile*)(uptr)2; }
-$endif;
+$endif
 
 const HAS_MALLOC_SIZE =
 	env::OS_TYPE == OsType.LINUX
@@ -204,7 +204,7 @@ const int FILENAME_MAX = 1024;
 typedef Errno = distinct CInt;
 typedef SeekIndex = CLong;
 
-$if (env::COMPILER_LIBC_AVAILABLE):
+$if (env::COMPILER_LIBC_AVAILABLE)
 
 extern fn int fclose(CFile stream);
 extern fn void clearerr(CFile stream);
@@ -245,7 +245,7 @@ extern fn int ungetc(int c, CFile stream);
 extern fn void perror(char* str);
 extern fn isz getline(char** linep, usz* linecapp, CFile stream);
 
-$else:
+$else
 
 fn int fseek(CFile stream, SeekIndex offset, int whence) @weak @extern("fseek") @nostrip
 {
@@ -314,7 +314,7 @@ fn int puts(ZString str) @weak @extern("puts") @nostrip
 	unreachable("'puts' not available.");
 }
 
-$endif;
+$endif
 // vsprintf vprintf not supported
 
 // time.h
@@ -385,11 +385,11 @@ const Errno ENOEXEC = 8;    // Exec format error
 const Errno EBADF = 9;      // Bad file number
 const Errno ECHILD = 10;    // No child processes
 
-$if (env::OS_TYPE == OsType.MACOSX):
+$if (env::OS_TYPE == OsType.MACOSX)
 const Errno EAGAIN = 35;    // Try again Macos
-$else:
+$else
 const Errno EAGAIN = 11;    // Try again
-$endif;
+$endif
 
 const Errno ENOMEM = 12;    // Out of memory
 const Errno EACCES = 13;    // Permission denied
@@ -415,7 +415,7 @@ const Errno EPIPE = 32;     // Broken pipe
 const Errno EDOM = 33;      // Math argument out of domain of func
 const Errno ERANGE = 34;    // Math result not representable
 
-$if (env::OS_TYPE == OsType.MACOSX):
+$if (env::OS_TYPE == OsType.MACOSX)
 const Errno EDEADLK = 11;       // Resource deadlock would occur MacOS
 const Errno ENAMETOOLONG = 63;  // File name too long MacOS
 const Errno ELOOP = 62;         // Too many symbolic links encountered
@@ -426,7 +426,7 @@ const Errno ENETUNREACH = 51;   // Network is unreachable MacOS
 const Errno ENETRESET = 52;     // Network dropped connection because of reset MacOS
 const Errno EOPNOTSUPP = 45;    // Operation not supported on transport endpoint
 
-$elif (env::OS_TYPE == OsType.WIN32):
+$elif (env::OS_TYPE == OsType.WIN32)
 const Errno EDEADLK = 36;       // Resource deadlock would occur Win32
 const Errno ENAMETOOLONG = 38;  // File name too long Win32
 const Errno ELOOP = 114;        // Too many symbolic links encountered
@@ -437,7 +437,7 @@ const Errno ENETUNREACH = 118;  // Network is unreachable
 const Errno ENETRESET = 117;    // Network dropped connection because of reset
 const Errno EOPNOTSUPP = 130;   // Operation not supported on transport endpoint
 
-$else:
+$else
 const Errno EDEADLK = 35;       // Resource deadlock would occur Linux (others?)
 const Errno ENAMETOOLONG = 36;  // File name too long Linux (others?)
 const Errno ELOOP = 40;         // Too many symbolic links encountered
@@ -448,7 +448,7 @@ const Errno ENETUNREACH = 101;  // Network is unreachable
 const Errno ENETRESET = 102;    // Network dropped connection because of reset
 const Errno EOPNOTSUPP = 95;    // Operation not supported on transport endpoint
 
-$endif;
+$endif
 
 
 
@@ -523,27 +523,27 @@ const Errno ECONNREFUSED = 111; /* Connection refused */
 const Errno EHOSTDOWN = 112; /* Host is down */
 const Errno EHOSTUNREACH = 113; /* No route to host */
 */
-$if (env::OS_TYPE == OsType.MACOSX):
+$if (env::OS_TYPE == OsType.MACOSX)
 const Errno ETIMEDOUT = 60;     // Connection timed out
 const Errno EINPROGRESS = 36;   // Operation now in progress MacOS
 const Errno EALREADY = 37;      // Operation already in progress MacOS
 const Errno EDQUOT = 69;        // Quota exceeded, MacOS
 const Errno EWOULDBLOCK = 35;   // Operation would block
 
-$elif (env::OS_TYPE == OsType.WIN32):
+$elif (env::OS_TYPE == OsType.WIN32)
 const Errno ETIMEDOUT = 138;    // Connection timed out
 const Errno EALREADY = 103;     // Operation already in progress
 const Errno EINPROGRESS = 112;  // Operation now in progress Win32
 const Errno EDQUOT = -122;      // Quota exceeded, not in Win32
 const Errno EWOULDBLOCK = 140;  // Operation would block
 
-$else:
+$else
 const Errno ETIMEDOUT = 110;    // Connection timed out
 const Errno EALREADY = 114;     // Operation already in progress
 const Errno EINPROGRESS = 115;  // Operation now in progress
 const Errno EDQUOT = 122;       // Quota exceeded
 const Errno EWOULDBLOCK = 41;   // Operation would block
-$endif;
+$endif
 
 /*
 const Errno ESTALE = 116; /* Stale NFS file handle */

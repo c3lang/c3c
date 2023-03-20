@@ -1,6 +1,6 @@
 module std::math::nolibc;
 
-$if (!env::COMPILER_LIBC_AVAILABLE):
+$if (!env::COMPILER_LIBC_AVAILABLE)
 
 /* origin: FreeBSD /usr/src/lib/msun/src/s_sinf.c */
 /*
@@ -119,4 +119,4 @@ fn double sin(double x) @extern("sin") @weak @nostrip
 			}
 	}
 }
-$endif;
+$endif

@@ -1,6 +1,6 @@
 module std::math::nolibc;
 
-$if (!env::COMPILER_LIBC_AVAILABLE):
+$if (!env::COMPILER_LIBC_AVAILABLE)
 
 fn double _floor(double x) @weak @extern("floor") @nostrip
 {
@@ -42,4 +42,4 @@ fn float _floorf(float x) @weak @extern("floorf") @nostrip
 	return bitcast(u, float);
 }
 
-$endif;
+$endif

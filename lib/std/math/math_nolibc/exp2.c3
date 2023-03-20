@@ -1,6 +1,6 @@
 module std::math::nolibc;
 
-$if (!env::COMPILER_LIBC_AVAILABLE):
+$if (!env::COMPILER_LIBC_AVAILABLE)
 
 macro uint _top12f(float x) @private => bitcast(x, uint) >> 20;
 
@@ -141,4 +141,4 @@ fn double _exp2(double x) @extern("exp2") @weak @nostrip
 	   is no spurious underflow here even without fma.  */
 	return scale + scale * tmp;
 }
-$endif;
+$endif

@@ -4,7 +4,7 @@ module test;
 
 macro getisprime($x)
 {
-    $switch ($x):
+    $switch ($x)
         $case 1:
         $case 2:
         $case 3:
@@ -23,7 +23,7 @@ macro getisprime($x)
         $case 17:
         $default:
             return "donnowifprime";
-    $endswitch;
+    $endswitch
 }
 
 extern fn void printf(char*, ...);

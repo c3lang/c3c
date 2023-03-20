@@ -135,7 +135,7 @@ macro bool os_is_win32()
 
 macro bool os_is_darwin()
 {
-	$switch (OS_TYPE):
+	$switch (OS_TYPE)
 	$case IOS:
 	$case MACOSX:
 	$case TVOS:
@@ -143,12 +143,12 @@ macro bool os_is_darwin()
 		return true;
 	$default:
 		return false;
-	$endswitch;
+	$endswitch
 }
 
 macro bool os_is_posix()
 {
-	$switch (OS_TYPE):
+	$switch (OS_TYPE)
 	$case IOS:
 	$case MACOSX:
 	$case NETBSD:
@@ -167,7 +167,7 @@ macro bool os_is_posix()
 	$default:
 		$echo("Assuming non-Posix environment");
 		return false;
-	$endswitch;
+	$endswitch
 }
 
 
@@ -177,15 +177,15 @@ macro bool os_is_posix()
  **/
 fn String! get_var(String name)
 {
-$if (COMPILER_LIBC_AVAILABLE && OS_TYPE != OsType.WIN32):
+$if (COMPILER_LIBC_AVAILABLE && OS_TYPE != OsType.WIN32)
 	@pool()
 	{
 		ZString val = libc::getenv(name.zstr_tcopy());
 		return val ? val.as_str() : SearchResult.MISSING!;
 	};
-$else:
+$else
 	return "";
-$endif;
+$endif
 }
 
 
@@ -196,7 +196,7 @@ $endif;
  **/
 fn void set_var(String name, String value, bool overwrite = true)
 {
-$if (COMPILER_LIBC_AVAILABLE && OS_TYPE != OsType.WIN32):
+$if (COMPILER_LIBC_AVAILABLE && OS_TYPE != OsType.WIN32)
 	@pool()
 	{
 		if (libc::setenv(name.zstr_tcopy(), value.zstr_copy(), (int)overwrite))
@@ -204,7 +204,7 @@ $if (COMPILER_LIBC_AVAILABLE && OS_TYPE != OsType.WIN32):
 			unreachable();
 		}
 	};
-$endif;
+$endif
 }
 
 /**
@@ -213,7 +213,7 @@ $endif;
  **/
 fn void clear_var(String name)
 {
-$if (COMPILER_LIBC_AVAILABLE && OS_TYPE != OsType.WIN32):
+$if (COMPILER_LIBC_AVAILABLE && OS_TYPE != OsType.WIN32)
 	@pool()
 	{
 		if (libc::unsetenv(name.zstr_tcopy()))
@@ -221,6 +221,6 @@ $if (COMPILER_LIBC_AVAILABLE && OS_TYPE != OsType.WIN32):
 			unreachable();
 		}
 	};
-$endif;
+$endif
 }
 

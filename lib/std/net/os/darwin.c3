@@ -1,7 +1,7 @@
 module std::net::os;
 import libc;
 
-$if (env::OS_TYPE == OsType.MACOSX):
+$if (env::OS_TYPE == OsType.MACOSX)
 
 const AI_NUMERICSERV = 0x1000;
 const AI_ALL = 0x100;
@@ -64,4 +64,4 @@ const int PLATFORM_AF_MAX = 41;
 
 const int PLATFORM_O_NONBLOCK = 0x30;
 
-$endif;
+$endif

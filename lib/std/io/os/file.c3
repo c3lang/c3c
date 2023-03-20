@@ -9,27 +9,27 @@ define FtellFn = fn usz!(void*);
 define FwriteFn = fn usz!(void*, char[] buffer);
 define FreadFn = fn usz!(void*, char[] buffer);
 
-$if (!$defined(native_fopen_fn)):
+$if (!$defined(native_fopen_fn))
 FopenFn native_fopen_fn @weak;
-$endif;
-$if (!$defined(native_fclose_fn)):
+$endif
+$if (!$defined(native_fclose_fn))
 FcloseFn native_fclose_fn @weak;
-$endif;
-$if (!$defined(native_freopen_fn)):
+$endif
+$if (!$defined(native_freopen_fn))
 FreopenFn native_freopen_fn @weak;
-$endif;
-$if (!$defined(native_fseek_fn)):
+$endif
+$if (!$defined(native_fseek_fn))
 FseekFn native_fseek_fn @weak;
-$endif;
-$if (!$defined(native_ftell_fn)):
+$endif
+$if (!$defined(native_ftell_fn))
 FtellFn native_ftell_fn @weak;
-$endif;
-$if (!$defined(native_fwrite_fn)):
+$endif
+$if (!$defined(native_fwrite_fn))
 FwriteFn native_fwrite_fn @weak;
-$endif;
-$if (!$defined(native_fread_fn)):
+$endif
+$if (!$defined(native_fread_fn))
 FreadFn native_fread_fn @weak;
-$endif;
+$endif
 
 
 /**
@@ -38,20 +38,20 @@ $endif;
  **/
 fn void*! native_fopen(String filename, String mode) @inline
 {
-$if (!env::COMPILER_LIBC_AVAILABLE):
+$if (!env::COMPILER_LIBC_AVAILABLE)
 		if (native_fopen_fn) return native_fopen_fn(filename, mode);
 		unreachable("Tried to call fopen without support.");
-$else:
+$else
 	@pool()
 	{
-	$if (env::os_is_win32()):
+	$if (env::os_is_win32())
 		void* file = (CFile)_wfopen(filename.to_temp_utf16(), filename.to_temp_utf16())?;
-	$else:
+	$else
 		void* file = libc::fopen(filename.zstr_tcopy(), mode.zstr_tcopy());
-	$endif;
+	$endif
 		return file ?: file_open_errno()!;
 	};
-$endif;
+$endif
 }
 
 /**
@@ -60,71 +60,71 @@ $endif;
  **/
 fn void*! native_freopen(void* file, String filename, String mode) @inline
 {
-$if (!env::COMPILER_LIBC_AVAILABLE):
+$if (!env::COMPILER_LIBC_AVAILABLE)
 		if (native_freopen_fn) return native_freopen_fn(file, filename, mode);
 		unreachable("Tried to call freopen without support.");
-$else:
+$else
 	@pool()
 	{
-	$if (env::os_is_win32()):
+	$if (env::os_is_win32())
 		file = _wfreopen(filename.to_temp_utf16(), mode.to_temp_utf16(), file)?;
-	$else:
+	$else
 		file = libc::freopen(filename.zstr_tcopy(), mode.zstr_tcopy(), file);
-	$endif;
+	$endif
 		return file ?: file_open_errno()!;
 	};
-$endif;
+$endif
 }
 
 fn void! native_fseek(void* file, isz offset, Seek seek_mode) @inline
 {
-$if (!env::COMPILER_LIBC_AVAILABLE):
+$if (!env::COMPILER_LIBC_AVAILABLE)
 	if (native_fseek_fn) return native_fseek_fn(file, offset, seek_mode);
 	unreachable("Tried to call fseek without support.");
-$else:
-	$if (env::os_is_win32()):
+$else
+	$if (env::os_is_win32())
 		bool success = _fseeki64(file, (long)offset, (int)seek_mode) == 0;
-	$else:
+	$else
 		bool success = libc::fseek(file, (SeekIndex)offset, (CInt)seek_mode) == 0;
-	$endif;
+	$endif
 		if (!success) return file_seek_errno()!;
-$endif;
+$endif
 }
 
 fn usz! native_ftell(CFile file) @inline
 {
-$if (!env::COMPILER_LIBC_AVAILABLE):
+$if (!env::COMPILER_LIBC_AVAILABLE)
 	if (native_ftell_fn) return native_ftell_fn(file);
 	unreachable("Tried to call ftell without support.");
-$else:
-	$if (env::os_is_win32()):
+$else
+	$if (env::os_is_win32())
 		long index = _ftelli64(file);
 		return index >= 0 ? index : file_seek_errno()!;
-	$else:
+	$else
 		SeekIndex index = libc::ftell(file);
 		return index >= 0 ? index : file_seek_errno()!;
-	$endif;
-$endif;
+	$endif
+$endif
 }
 
 fn usz! native_fwrite(CFile file, char[] buffer) @inline
 {
-$if (!env::COMPILER_LIBC_AVAILABLE):
+$if (!env::COMPILER_LIBC_AVAILABLE)
 	if (native_fwrite_fn) return native_fwrite_fn(file, buffer);
 	unreachable("Tried to call fwrite without support.");
-$else:
+$else
     return libc::fwrite(buffer.ptr, 1, buffer.len, file);
-$endif;
+$endif
 }
 
 fn usz! native_fread(CFile file, char[] buffer) @inline
 {
-$if (!env::COMPILER_LIBC_AVAILABLE):
+$if (!env::COMPILER_LIBC_AVAILABLE)
 	if (native_fread_fn) return native_fread_fn(file, buffer);
 	unreachable("Tried to call fread without support.");
-$else:
+$else
     return libc::fread(buffer.ptr, 1, buffer.len, file);
-$endif;
+$endif
 }
 
 macro anyerr file_open_errno() @local
@@ -175,13 +175,13 @@ macro anyerr file_seek_errno() @local
 }
 
 // Win functions
-$if (env::os_is_win32()):
+$if (env::os_is_win32())
 extern fn void* _wfopen(Char16*, Char16*) @local;
 extern fn void* _wfreopen(Char16*, Char16*, CFile) @local;
 extern fn int _fseeki64(CFile, long, int) @local;
 extern fn long _ftelli64(CFile) @local;
-$endif;
+$endif
 
-$if (env::os_is_posix()):
+$if (env::os_is_posix())
 extern fn CInt access(ZString path, CInt mode);
-$endif;
+$endif

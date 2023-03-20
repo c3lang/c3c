@@ -91,8 +91,10 @@ INLINE bool parse_decl_initializer(ParseContext *c, Decl *decl)
  */
 static inline bool parse_top_level_block(ParseContext *c, Decl ***decls, TokenType end1, TokenType end2, TokenType end3)
 {
-	// This is the last part consumed by the leading block
-	CONSUME_OR_RET(TOKEN_COLON, false);
+	if (try_consume(c, TOKEN_COLON))
+	{
+		sema_warning_at(c->prev_span, "':' is deprecated here.");
+	}
 
 	// Check whether we reached a terminating token or EOF
 	while (!tok_is(c, end1) && !tok_is(c, end2) && !tok_is(c, end3) && !tok_is(c, TOKEN_EOF))
@@ -144,7 +146,10 @@ static inline Decl *parse_ct_if_top_level(ParseContext *c)
 		if (!parse_top_level_block(c, &ct_else->ct_else_decl, TOKEN_CT_ENDIF, TOKEN_CT_ENDIF, TOKEN_CT_ENDIF)) return poisoned_decl;
 	}
 	CONSUME_OR_RET(TOKEN_CT_ENDIF, poisoned_decl);
-	CONSUME_EOS_OR_RET(poisoned_decl);
+	if (try_consume(c, TOKEN_EOS))
+	{
+		sema_warning_at(c->prev_span, "';' is deprecated here.");
+	}
 	return ct;
 }
 
@@ -174,6 +179,7 @@ static inline Decl *parse_ct_case(ParseContext *c)
 			return poisoned_decl;
 	}
 	// Parse the body
+	CONSUME_OR_RET(TOKEN_COLON, poisoned_decl);
 	if (!parse_top_level_block(c, &decl->ct_case_decl.body, TOKEN_CT_DEFAULT, TOKEN_CT_CASE, TOKEN_CT_ENDSWITCH)) return poisoned_decl;
 	return decl;
 }
@@ -188,14 +194,19 @@ static inline Decl *parse_ct_switch_top_level(ParseContext *c)
 	Decl *ct = decl_new_ct(DECL_CT_SWITCH, c->span);
 	advance_and_verify(c, TOKEN_CT_SWITCH);
 	ASSIGN_EXPR_OR_RET(ct->ct_switch_decl.expr, parse_const_paren_expr(c), poisoned_decl);
-
-	CONSUME_OR_RET(TOKEN_COLON, poisoned_decl);
+	if (try_consume(c, TOKEN_COLON))
+	{
+		sema_warning_at(c->prev_span, "':' is deprecated here.");
+	}
 	while (!try_consume(c, TOKEN_CT_ENDSWITCH))
 	{
 		ASSIGN_DECL_OR_RET(Decl *result, parse_ct_case(c), poisoned_decl);
 		vec_add(ct->ct_switch_decl.cases, result);
 	}
-	CONSUME_EOS_OR_RET(poisoned_decl);
+	if (try_consume(c, TOKEN_EOS))
+	{
+		sema_warning_at(c->prev_span, "';' is deprecated here.");
+	}
 	return ct;
 }
 

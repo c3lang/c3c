@@ -1,6 +1,6 @@
 module std::net::os;
 
-$if (env::OS_TYPE == OsType.WIN32):
+$if (env::OS_TYPE == OsType.WIN32)
 
 const int PLATFORM_AF_INET = 1;
 const int PLATFORM_AF_IPX = 6;
@@ -30,4 +30,4 @@ extern fn int closesocket(NativeSocket);
 
 macro NativeSocket.close(NativeSocket this) => closesocket(this);
 
-$endif;
+$endif

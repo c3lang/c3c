@@ -120,11 +120,11 @@ macro abs(x) => $$abs(x);
 macro sign(x)
 {
 	var $Type = $typeof(x);
-	$if ($Type.kindof == TypeKind.UNSIGNED_INT):
+	$if ($Type.kindof == TypeKind.UNSIGNED_INT)
 		return ($Type)(x > 0);
-	$else:
+	$else
 		return ($Type)(x > 0) - ($Type)(x < 0);
-	$endif;
+	$endif
 }
 
 
@@ -134,11 +134,11 @@ macro sign(x)
  **/
 macro atan2(x, y)
 {
-	$if (@typeis(x, float) && @typeis(y, float)):
+	$if (@typeis(x, float) && @typeis(y, float))
 		return _atan2f(x, y);
-	$else:
+	$else
 		return _atan2(x, y);
-	$endif;
+	$endif
 }
 
 /**
@@ -148,11 +148,11 @@ macro atan2(x, y)
  **/
 macro @sincos(x, y)
 {
-	$if ($typeof(y[0]).typeid == float.typeid):
+	$if ($typeof(y[0]).typeid == float.typeid)
 		return _sincosf(x, y);
-	$else:
+	$else
 		return _sincos(x, y);
-	$endif;
+	$endif
 }
 
 /**
@@ -161,11 +161,11 @@ macro @sincos(x, y)
  **/
 macro atan(x)
 {
-	$if ($typeof(x).typeid == float.typeid):
+	$if ($typeof(x).typeid == float.typeid)
 		return _atanf(x);
-	$else:
+	$else
 		return _atan(x);
-	$endif;
+	$endif
 }
 
 /**
@@ -276,15 +276,15 @@ macro log10(x) => $$log10(values::promote_int(x));
  **/
 macro max(x, y, ...)
 {
-	$if ($vacount == 0):
+	$if ($vacount == 0)
 		return $$max(x, y);
-	$else:
+	$else
 		var m = $$max(x, y);
-		$for (var $i = 0; $i < $vacount; $i++):
+		$for (var $i = 0; $i < $vacount; $i++)
 			m = $$max(m, $vaarg($i));
-		$endfor;
+		$endfor
 		return m;
-	$endif;
+	$endif
 }
 
 /**
@@ -293,15 +293,15 @@ macro max(x, y, ...)
  **/
 macro min(x, y, ...)
 {
-	$if ($vacount == 0):
+	$if ($vacount == 0)
 		return $$min(x, y);
-    $else:
+    $else
     	var m = $$min(x, y);
-    	$for (var $i = 0; $i < $vacount; $i++):
+    	$for (var $i = 0; $i < $vacount; $i++)
     		m = $$min(m, $vaarg($i));
-    	$endfor;
+    	$endfor
     	return m;
-    $endif;
+    $endif
 }
 
 /**
@@ -321,11 +321,11 @@ macro nearbyint(x) => $$nearbyint(x);
  **/
 macro pow(x, exp)
 {
-    $if (types::is_floatlike($typeof(exp))):
+    $if (types::is_floatlike($typeof(exp)))
 		return $$pow(x, ($typeof(x))exp);
-    $else:
+    $else
 		return $$pow_int(x, exp);
-    $endif;
+    $endif
 }
 
 /**
@@ -333,13 +333,13 @@ macro pow(x, exp)
  **/
 macro frexp(x, int* e)
 {
-	$switch($typeof(x)):
+	$switch($typeof(x))
 	$case float:
 	$case float16:
 		return _frexpf((float)x, e);
 	$default:
 		return _frexp((double)x, e);
-	$endswitch;
+	$endswitch
 }
 
 /**
@@ -347,13 +347,13 @@ macro frexp(x, int* e)
  **/
 macro int signbit(x)
 {
-	$switch($typeof(x)):
+	$switch($typeof(x))
 	$case float:
 	$case float16:
 		return bitcast((float)x, uint) >> 31;
 	$default:
 		return (int)(bitcast((double)x, ulong) >> 63);
-	$endswitch;
+	$endswitch
 }
 
 /**
@@ -407,13 +407,13 @@ macro sqrt(x) => $$sqrt(values::promote_int(x));
 macro tan(x)
 {
 	var $Type = $typeof(x);
-	$if (types::is_vector($Type)):
+	$if (types::is_vector($Type))
 		return $$sin(x) / $$cos(x);
-	$elif ($Type.typeid == float.typeid):
+	$elif ($Type.typeid == float.typeid)
 		return _tanf(x);
-	$else:
+	$else
 		return _tan(x);
-	$endif;
+	$endif
 }
 
 /**
@@ -421,13 +421,13 @@ macro tan(x)
  **/
 macro bool is_finite(x)
 {
-	$switch($typeof(x)):
+	$switch($typeof(x))
 	$case float:
 	$case float16:
 		return bitcast((float)x, uint) & 0x7fffffff < 0x7f800000;
 	$default:
 		return bitcast((double)x, ulong) & (~0u64 >> 1) < 0x7ffu64 << 52;
-	$endswitch;
+	$endswitch
 }
 
 /**
@@ -435,13 +435,13 @@ macro bool is_finite(x)
  **/
 macro is_nan(x)
 {
-	$switch ($typeof(x)):
+	$switch ($typeof(x))
 	$case float:
 	$case float16:
 		return bitcast((float)x, uint) & 0x7fffffff > 0x7f800000;
 	$default:
 		return bitcast((double)x, ulong) & (~0u64 >> 1) > 0x7ff << 52;
-	$endswitch;
+	$endswitch
 }
 
 /**
@@ -449,13 +449,13 @@ macro is_nan(x)
  **/
 macro is_inf(x)
 {
-	$switch ($typeof(x)):
+	$switch ($typeof(x))
 	$case float:
 	$case float16:
 		return bitcast((float)x, uint) & 0x7fffffff == 0x7f800000;
 	$default:
 		return bitcast((double)x, ulong) & (~0u64 >> 1) == 0x7ff << 52;
-	$endswitch;
+	$endswitch
 }
 
 /**

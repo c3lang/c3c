@@ -4,23 +4,23 @@ import std::io;
 fn void foo()
 {
 	int a;
-	$switch ($typeof(a)):
+	$switch ($typeof(a))
 		$case int..float: // #error: $case ranges are only allowed for floats
 			io::printn("Hello");
 		$default:
 			io::printn("World");
-	$endswitch;
+	$endswitch
 }
 
 fn void foo2()
 {
 	int a;
-	$switch ($typeof(a)):
+	$switch ($typeof(a))
 		$case true..false: // #error: $case ranges are only allowed
 			io::printn("Hello");
 		$default:
 			io::printn("World");
-	$endswitch;
+	$endswitch
 }
 
 fn void foo3()
@@ -31,18 +31,18 @@ fn void foo3()
 			io::printn("Hello");
 		$default:
 			io::printn("World");
-	$endswitch;
+	$endswitch
 }
 
 fn void main()
 {
 	int a;
-	$switch ("abc"):
+	$switch ("abc")
 		$case "cde":
 			io::printn("!!!");
 		$case "abc":
 			io::printn("Hello");
 		$default:
 			io::printn("World");
-	$endswitch;
+	$endswitch
 }

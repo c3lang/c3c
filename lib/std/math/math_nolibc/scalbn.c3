@@ -1,6 +1,6 @@
 module std::math::nolibc;
 
-$if (!env::COMPILER_LIBC_AVAILABLE):
+$if (!env::COMPILER_LIBC_AVAILABLE)
 
 fn double _scalbn(double x, int n) @weak @extern("scalbn") @nostrip
 {
@@ -28,4 +28,4 @@ fn double _scalbn(double x, int n) @weak @extern("scalbn") @nostrip
 	return x * bitcast(((ulong)(0x3ff + n)) << 52, double);
 }
 
-$endif;
+$endif

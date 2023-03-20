@@ -291,7 +291,7 @@ fn void DString.append_char(DString* str, char c)
 macro void DString.append(DString* str, value)
 {
 	var $Type = $typeof(value);
-	$switch ($Type):
+	$switch ($Type)
 		$case char:
 		$case ichar:
 			str.append_char(value);
@@ -302,14 +302,14 @@ macro void DString.append(DString* str, value)
 		$case Char32:
 			str.append_char32(value);
 		$default:
-			$if (@convertible(value, Char32)):
+			$if (@convertible(value, Char32))
 				str.append_char32(value);
-			$elif (@convertible(value, String)):
+			$elif (@convertible(value, String))
 				str.append_chars(value);
-			$else:
+			$else
 				$assert(false, "Unsupported type for append – use printf instead.");
-			$endif;
-	$endswitch;
+			$endif
+	$endswitch
 }
 
 

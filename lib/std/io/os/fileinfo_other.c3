@@ -1,7 +1,7 @@
 module std::io::file::os;
 
 // native_temp_directory, for non Win32
-$if (!env::os_is_win32()):
+$if (!env::os_is_win32())
 
 fn Path! native_temp_directory(Allocator* using = mem::heap())
 {
@@ -13,7 +13,7 @@ fn Path! native_temp_directory(Allocator* using = mem::heap())
 	return path::new("/tmp", using);
 }
 
-$if (env::COMPILER_LIBC_AVAILABLE):
+$if (env::COMPILER_LIBC_AVAILABLE)
 
 extern fn void* opendir(ZString);
 extern fn void closedir(void*);
@@ -48,11 +48,11 @@ fn PathList! native_readdir(Path dir, bool no_dirs, bool no_symlinks, String mas
 	return list;
 }
 
-$endif;
+$endif
 
-$endif;
+$endif
 
-$if (!env::os_is_darwin() && !env::os_is_win32()):
+$if (!env::os_is_darwin() && !env::os_is_win32())
 
 fn usz! native_file_size(String path)
 {
@@ -61,7 +61,7 @@ fn usz! native_file_size(String path)
 	return f.seek(0, Seek.END)?;
 }
 
-$if (env::os_is_posix() && env::COMPILER_LIBC_AVAILABLE):
+$if (env::os_is_posix() && env::COMPILER_LIBC_AVAILABLE)
 
 fn bool native_file_or_dir_exists(String path)
 {
@@ -83,7 +83,7 @@ fn bool native_is_dir(String path)
 	return native_file_or_dir_exists(path) && !native_is_file(path);
 }
 
-$else:
+$else
 
 fn bool native_file_or_dir_exists(String path)
 {
@@ -100,11 +100,11 @@ fn bool native_is_file(String path)
 	unreachable("Tried to call is_file without support.");
 }
 
-$endif;
+$endif
 
-$endif;
+$endif
 
-$switch (env::OS_TYPE):
+$switch (env::OS_TYPE)
 $case IOS:
 $case MACOSX:
 $case TVOS:
@@ -140,4 +140,4 @@ struct NativeDirentry
 	char type;
 	char[*] name;
 }
-$endswitch;
+$endswitch

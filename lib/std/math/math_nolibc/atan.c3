@@ -1,6 +1,6 @@
 module std::math::nolibc::atan;
 
-$if (!env::COMPILER_LIBC_AVAILABLE):
+$if (!env::COMPILER_LIBC_AVAILABLE)
 
 const double[*] ATANHI @private = {
   4.63647609000806093515e-01, /* atan(0.5)hi 0x3FDDAC67, 0x0561BB4F */
@@ -321,4 +321,4 @@ fn float _atan2f(float y, float x) @weak @extern("atan2f") @nostrip
 	}
 }
 
-$endif;
+$endif

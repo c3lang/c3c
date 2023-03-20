@@ -1,6 +1,6 @@
 module std::math::nolibc;
 
-$if (!env::COMPILER_LIBC_AVAILABLE):
+$if (!env::COMPILER_LIBC_AVAILABLE)
 
 /* origin: FreeBSD /usr/src/lib/msun/src/k_cos.c */
 /*
@@ -31,4 +31,4 @@ fn double __cos(double x, double y) @extern("__cos") @weak @nostrip
 	return w + (((1.0 - w) - hz) + (z * r - x * y));
 }
 
-$endif;
+$endif

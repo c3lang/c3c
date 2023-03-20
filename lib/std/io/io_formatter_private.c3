@@ -69,12 +69,12 @@ fn uint128! int_from_variant(variant arg, bool *is_neg) @private
 
 fn FloatType! float_from_variant(variant arg) @private
 {
-	$if (env::F128_SUPPORT):
+	$if (env::F128_SUPPORT)
 		if (arg.type == float128.typeid) return (FloatType)*((float128*)arg.ptr);
-	$endif;
-	$if (env::F16_SUPPORT):
+	$endif
+	$if (env::F16_SUPPORT)
 		if (arg.type == float16.typeid) return *((float16*)arg.ptr);
-	$endif;
+	$endif
 	if (arg.type.kindof == TypeKind.DISTINCT)
 	{
 		return float_from_variant(variant { arg.ptr, arg.type.inner });

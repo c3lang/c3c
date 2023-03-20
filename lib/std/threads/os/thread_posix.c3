@@ -1,7 +1,7 @@
 module std::thread::os;
 import libc;
 
-$if (thread::THREAD_MODEL == ThreadModel.POSIX):
+$if (thread::THREAD_MODEL == ThreadModel.POSIX)
 
 const PTHREAD_MUTEX_NORMAL = 0;
 const PTHREAD_MUTEX_ERRORCHECK = 1;
@@ -14,21 +14,21 @@ typedef NativeOnceFlag = PthreadOnce;
 
 typedef Pthread = distinct void*;
 
-$if (env::OS_TYPE == OsType.LINUX):
+$if (env::OS_TYPE == OsType.LINUX)
 typedef PthreadMutex = distinct ulong[5];
 typedef PthreadAttribute = distinct ulong[7];
 typedef PthreadMutexAttribute = distinct uint;
 typedef PthreadCondAttribute = distinct uint;
 typedef PthreadCond = distinct ulong[6];
 typedef PthreadOnce = distinct uint;
-$else:
+$else
 typedef PthreadMutex = distinct ulong[8];
 typedef PthreadMutexAttribute = distinct ulong[2];
 typedef PthreadAttribute = distinct ulong[8];
 typedef PthreadCond = distinct ulong[6];
 typedef PthreadCondAttribute = distinct ulong[8];
 typedef PthreadOnce = distinct ulong[2];
-$endif;
+$endif
 
 typedef PosixThreadFn = fn void*(void*);
 
@@ -236,4 +236,4 @@ fn void! native_sleep(double s)
 	if (libc::nanosleep(&to, null)) return ThreadFault.INTERRUPTED!;
 }
 
-$endif;
+$endif

@@ -4,14 +4,14 @@ module test;
 
 macro get_type($Type)
 {
-    $switch ($Type.typeid):
+    $switch ($Type.typeid)
         $case int:
             return "int";
         $case double:
             return "double";
         $default:
             return "any other";
-    $endswitch;
+    $endswitch
 }
 
 extern fn void printf(char*, ...);

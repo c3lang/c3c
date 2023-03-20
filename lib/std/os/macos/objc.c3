@@ -1,6 +1,6 @@
 module std::os::macos::objc;
 
-$if (env::OS_TYPE == OsType.MACOSX):
+$if (env::OS_TYPE == OsType.MACOSX)
 
 typedef Class = distinct void*;
 typedef Method = distinct void*;
@@ -45,5 +45,5 @@ extern fn Method _macos_class_getClassMethod(Class cls, Selector name) @extern("
 extern fn bool _macos_class_respondsToSelector(Class cls, Selector name) @extern("class_respondsToSelector");
 extern fn Selector _macos_sel_registerName(char* str) @extern("sel_registerName");
 extern fn Class _macos_objc_lookUpClass(char* name) @extern("objc_lookUpClass");
-$endif;
+$endif
 

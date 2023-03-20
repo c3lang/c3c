@@ -3,18 +3,18 @@ module test;
 
 macro foo()
 {
-	$if ($defined(A)):
+	$if ($defined(A))
         return A + 1;
-    $else:
+    $else
         return 1;
-    $endif;
+    $endif
 }
 
 const Z = foo();
 
-$if (!$defined(A) && Z == 1):
+$if (!$defined(A) && Z == 1)
     const A = 222;
-$endif;
+$endif
 
 const B = foo();
 

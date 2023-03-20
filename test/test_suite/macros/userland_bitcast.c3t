@@ -6,35 +6,35 @@ macro testbitcast(expr, $Type)
     $Type x @noinit;
     var $size = (usz)($sizeof(expr));
 
-    $if ($alignof(expr) >= 8 && $Type.alignof >= 8):
+    $if ($alignof(expr) >= 8 && $Type.alignof >= 8)
         ulong *b = (ulong*)(&expr);
         ulong *to = (ulong*)(&x);
         for (usz i = 0; i < $size; i += 8)
         {
             to[i] = b[i];
         }
-    $elif ($alignof(expr) >= 4 && $Type.alignof >= 4):
+    $elif ($alignof(expr) >= 4 && $Type.alignof >= 4)
         uint* b = (uint*)(&expr);
         uint* to = (uint*)(&x);
         for (usz i = 0; i < $size; i += 4)
         {
             to[i] = b[i];
         }
-    $elif ($alignof(expr) >= 2 && $Type.alignof >= 2):
+    $elif ($alignof(expr) >= 2 && $Type.alignof >= 2)
         ushort* b = (ushort*)(&expr);
         ushort* to = (ushort*)(&x);
         for (usz i = 0; i < $size; i += 2)
         {
             to[i] = b[i];
         }
-    $else:
+    $else
         char* b = (char*)(&expr);
         char* to = (char*)(&x);
         for (usz i = 0; i < $size; i++)
         {
             to[i] = b[i];
         }
-    $endif;
+    $endif
     return x;
 }
 

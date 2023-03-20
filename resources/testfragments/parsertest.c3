@@ -143,9 +143,9 @@ $else
 
 generic boofer2(i, g, eok)
 {
-    case int, String, type($eoo):
+    case int, String, type($eoo)
         return "Helo";
-    default:
+    default
         return 1000;
 }
 

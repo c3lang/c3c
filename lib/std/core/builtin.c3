@@ -64,7 +64,7 @@ struct CallstackElement
 fn void default_panic(String message, String file, String function, uint line)
 {
 	CallstackElement* stack = $$stacktrace();
-	$if ($defined(libc::stderr) && $defined(libc::fprintf)):
+	$if ($defined(libc::stderr) && $defined(libc::fprintf))
 
 	if (stack) stack = stack.prev;
 	if (stack)
@@ -84,7 +84,7 @@ fn void default_panic(String message, String file, String function, uint line)
 		stack = stack.prev;
 	}
 
-	$endif;
+	$endif
 	$$trap();
 }
 
@@ -122,20 +122,20 @@ macro enum_by_name($Type, String enum_name) @builtin
 
 macro bool @likely(bool value, $probability = 1.0) @builtin
 {
-    $if ($probability == 1.0):
+    $if ($probability == 1.0)
 	return $$expect(value, true);
-    $else:
+    $else
 	return $$expect_with_probability(value, true, $probability);
-    $endif;
+    $endif
 }
 
 macro bool @unlikely(bool value, $probability = 1.0) @builtin
 {
-    $if ($probability == 1.0):
+    $if ($probability == 1.0)
 	return $$expect(value, false);
-    $else:
+    $else
 	return $$expect_with_probability(value, false, $probability);
-    $endif;
+    $endif
 }
 
 /**
@@ -144,11 +144,11 @@ macro bool @unlikely(bool value, $probability = 1.0) @builtin
  **/
 macro @expect(value, expected, $probability = 1.0) @builtin
 {
-    $if ($probability == 1.0):
+    $if ($probability == 1.0)
 	return $$expect(value, ($typeof(value))expected);
-    $else:
+    $else
 	return $$expect_with_probability(value, expected, $probability);
-    $endif;
+    $endif
 }
 
 /**

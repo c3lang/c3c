@@ -1,7 +1,7 @@
 module std::io::file::os;
 import std::os::win32::files;
 
-$if (env::os_is_win32()):
+$if (env::os_is_win32())
 
 fn usz! native_file_size(String path)
 {
@@ -60,4 +60,4 @@ fn Path! native_temp_directory(Allocator* using = mem::heap())
 		}
 	}
 */
-$endif;
+$endif

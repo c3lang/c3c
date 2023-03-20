@@ -127,19 +127,19 @@ fn void Formatter.init(Formatter* this, OutputFn out_fn, void* data = null)
  */
 macro void formatter_register_type($Type)
 {
-	$if ($checks($Type a, a.to_format(&&Formatter {}))):
+	$if ($checks($Type a, a.to_format(&&Formatter {})))
 		if (!toformat_functions.table.len)
 		{
 			toformat_functions.init(64);
 		}
 		toformat_functions.set($Type.typeid, (ToFormatFunction)&$Type.to_format);
-	$else:
+	$else
 		if (!tostring_functions.table.len)
 		{
 			tostring_functions.init(64);
 		}
 		tostring_functions.set($Type.typeid, (ToStringFunction)&$Type.to_string);
-	$endif;
+	$endif
 }
 
 

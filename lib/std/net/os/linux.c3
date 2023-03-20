@@ -1,7 +1,7 @@
 module std::net::os;
 import libc;
 
-$if (env::OS_TYPE == OsType.LINUX):
+$if (env::OS_TYPE == OsType.LINUX)
 
 struct AddrInfo
 {
@@ -28,4 +28,4 @@ const int PLATFORM_AF_INET6 = 10;
 
 const PLATFORM_O_NONBLOCK = 0o4000;
 
-$endif;
+$endif

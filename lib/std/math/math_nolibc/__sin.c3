@@ -1,6 +1,6 @@
 module std::math::nolibc;
 
-$if (!env::COMPILER_LIBC_AVAILABLE):
+$if (!env::COMPILER_LIBC_AVAILABLE)
 
 /* origin: FreeBSD /usr/src/lib/msun/src/k_sin.c */
 /*
@@ -32,4 +32,4 @@ fn double __sin(double x, double y, int iy) @extern("__sin") @weak @nostrip
 		: x - ((z * (0.5 * y - v * r) - y) - v * S1);
 }
 
-$endif;
+$endif

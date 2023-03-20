@@ -452,7 +452,7 @@ macro double! hexfloat(char[] chars, int $bits, int $emin, int sign)
 macro floatparse(String chars, $Type) @private
 {
 	int sign = 1;
-	$switch ($Type):
+	$switch ($Type)
 	$case float:
 		const int BITS = math::FLOAT_MANT_DIG;
 		const int EMIN = math::FLOAT_MIN_EXP - BITS;
@@ -463,7 +463,7 @@ macro floatparse(String chars, $Type) @private
 		$assert(false, "Not yet supported");
 	$default:
 		$assert(false, "Unexpected type");
-	$endswitch;
+	$endswitch
 
  	while (chars.len && chars[0] == ' ') chars = chars[1..];
  	if (!chars.len) return NumberConversion.MALFORMED_FLOAT!;

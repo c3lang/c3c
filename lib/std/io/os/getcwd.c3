@@ -1,14 +1,14 @@
 module std::io::os;
 import libc;
 
-$if (!env::COMPILER_LIBC_AVAILABLE):
+$if (!env::COMPILER_LIBC_AVAILABLE)
 
 fn String! getcwd(Allocator* using = mem::heap())
 {
 	unreachable("'getcwd' not available");
 }
 
-$elif (env::OS_TYPE == OsType.WIN32):
+$elif (env::OS_TYPE == OsType.WIN32)
 
 extern fn Char16* _wgetcwd(Char16* buffer, int maxlen);
 extern fn usz wcslen(Char16* str);
@@ -30,7 +30,7 @@ macro String! getcwd(Allocator* using = mem::heap())
 	return str::utf16to8(str16, using);
 }
 
-$else:
+$else
 
 extern fn ZString _getcwd(char* pwd, usz len) @extern("getcwd");
 macro String! getcwd(Allocator* using = mem::heap())
@@ -50,4 +50,4 @@ macro String! getcwd(Allocator* using = mem::heap())
 	return res.copy(using);
 }
 
-$endif;
+$endif

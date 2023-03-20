@@ -1,6 +1,6 @@
 module std::os::macos::cf;
 
-$if (env::OS_TYPE == OsType.MACOSX):
+$if (env::OS_TYPE == OsType.MACOSX)
 
 typedef CFAllocatorRef = distinct void*;
 typedef CFAllocatorContextRef = distinct void*;
@@ -18,4 +18,4 @@ extern fn CFAllocatorRef _macos_CFAllocatorGetDefault() @extern("CFAllocatorGetD
 extern fn void _macos_CFAllocatorSetDefault(CFAllocatorRef allocator) @extern("CFAllocatorSetDefault");
 extern fn void* _macos_CFAllocatorAllocate(CFAllocatorRef allocator, CFIndex size, CFOptionFlags hint) @extern("CFAllocatorAllocate");
 extern fn CFIndex _macos_CFAllocatorGetPreferredSizeForSize(CFAllocatorRef allocator, CFIndex size, CFOptionFlags hint) @extern("CFAllocatorGetPreferredSizeForSize");
-$endif;
+$endif

@@ -1,10 +1,10 @@
 module std::net::os;
 
-$if ($defined(PLATFORM_AF_INET)):
+$if ($defined(PLATFORM_AF_INET))
 
-$if (!$defined(PLATFORM_O_NONBLOCK)):
+$if (!$defined(PLATFORM_O_NONBLOCK))
 	const PLATFORM_O_NONBLOCK = 0;
-$endif;
+$endif
 
 const AI_PASSIVE = 0x1;
 const AI_CANONNAME = 0x2;
@@ -18,4 +18,4 @@ const int AF_INET6 = PLATFORM_AF_INET6;
 
 const O_NONBLOCK = PLATFORM_O_NONBLOCK;
 
-$endif;
+$endif

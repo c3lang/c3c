@@ -212,24 +212,24 @@ fn void Object.set_object(Object* o, String key, Object* new_object) @private
 macro Object* object_from_value(value) @private
 {
 	var $Type = $typeof(value);
-	$if (types::is_int($Type)):
+	$if (types::is_int($Type))
 		return new_int(value);
-	$elif (types::is_float($Type)):
+	$elif (types::is_float($Type))
 		return new_float(value);
-	$elif ($Type.typeid == String.typeid):
+	$elif ($Type.typeid == String.typeid)
 		return new_string(value);
-	$elif ($Type.typeid == bool.typeid):
+	$elif ($Type.typeid == bool.typeid)
 		return new_bool(value);
-	$elif ($Type.typeid == Object*.typeid):
+	$elif ($Type.typeid == Object*.typeid)
 		return value;
-	$elif ($Type.typeid == void*.typeid):
+	$elif ($Type.typeid == void*.typeid)
 		assert(value == null);
 		return &NULL_OBJECT;
-	$elif ($checks(String s = value)):
+	$elif ($checks(String s = value))
 		return new_string(value);
-	$else:
+	$else
 		$assert(false, "Unsupported object type.");
-	$endif;
+	$endif
 }
 
 macro Object* Object.set(Object* o, String key, value)
@@ -312,11 +312,11 @@ macro get_integer_value(Object* value, $Type)
 	}
 	if (value.is_string())
 	{
-		$if ($Type.kindof == TypeKind.SIGNED_INT):
+		$if ($Type.kindof == TypeKind.SIGNED_INT)
 			return ($Type)str::to_int128(value.s);
-		$else:
+		$else
 			return ($Type)str::to_uint128(value.s);
-		$endif;
+		$endif
 	}
 	if (!value.is_int()) return NumberConversion.MALFORMED_INTEGER!;
 	return ($Type)value.i;

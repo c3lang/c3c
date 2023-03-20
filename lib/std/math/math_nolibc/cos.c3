@@ -1,6 +1,6 @@
 module std::math::nolibc;
 
-$if (!env::COMPILER_LIBC_AVAILABLE):
+$if (!env::COMPILER_LIBC_AVAILABLE)
 
 fn float _cosf(float x) @extern("cosf") @weak @nostrip
 {
@@ -88,4 +88,4 @@ fn double _cos(double x) @extern("cos") @weak @nostrip
 	}
 }
 
-$endif;
+$endif

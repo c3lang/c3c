@@ -16,7 +16,7 @@ const uint MaxDepth = 8;
 
 //#define DEBUG_NODES
 
-$if (DEBUG_NODES):
+$if (DEBUG_NODES)
 
 fn void Blocks.dump(Blocks* b)
 {
@@ -77,7 +77,7 @@ fn void Blocks.dump(Blocks* b)
     }
 }
 
-$endif;
+$endif
 
 /**
  * @ensure const(a), const(b)
@@ -436,7 +436,7 @@ fn const Node* Reader.findNode(const Reader* r, const char* key)
     Node* node = nil;
     while (1) {
         switch (*cp) {
-        case 0:
+        case 0
             len = cast<u32>(cp - start);
             mem::copy(name, start, len);
             name[len] = 0;

@@ -1,7 +1,7 @@
 module std::net::os;
 import libc;
 
-$if (env::OS_TYPE != OsType.WIN32 && $defined(AddrInfo)):
+$if (env::OS_TYPE != OsType.WIN32 && $defined(AddrInfo))
 
 const int F_GETFL = 3;
 const int F_SETFL = 4;
@@ -39,4 +39,4 @@ macro bool NativeSocket.is_non_blocking(NativeSocket this)
 	return fcntl(this, F_GETFL, 0) & O_NONBLOCK == O_NONBLOCK;
 }
 
-$endif;
+$endif

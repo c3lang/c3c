@@ -16,7 +16,7 @@ $assert (C_SHORT_SIZE <= C_INT_SIZE);
 $assert (C_INT_SIZE <= C_LONG_SIZE);
 $assert (C_LONG_SIZE <= C_LONG_LONG_SIZE);
 
-$switch ($$C_INT_SIZE):
+$switch ($$C_INT_SIZE)
 $case 64:
     typedef CInt = long;
     typedef CUInt = ulong;
@@ -28,9 +28,9 @@ $case 16:
     typedef CUInt = ushort;
 $default:
     $assert(false, "Invalid C int size");
-$endswitch;
+$endswitch
 
-$switch ($$C_LONG_SIZE):
+$switch ($$C_LONG_SIZE)
 $case 64:
     typedef CLong = long;
     typedef CULong = ulong;
@@ -42,9 +42,9 @@ $case 16:
     typedef CULong = ushort;
 $default:
     $assert(false, "Invalid C long size");
-$endswitch;
+$endswitch
 
-$switch ($$C_SHORT_SIZE):
+$switch ($$C_SHORT_SIZE)
 $case 32:
     typedef CShort = int;
     typedef CUShort = uint;
@@ -56,9 +56,9 @@ $case 8:
     typedef CUShort = char;
 $default:
     $assert(false, "Invalid C short size");
-$endswitch;
+$endswitch
 
-$switch ($$C_LONG_LONG_SIZE):
+$switch ($$C_LONG_LONG_SIZE)
 $case 128:
     typedef CLongLong = int128;
     typedef CULongLong = uint128;
@@ -73,15 +73,15 @@ $case 16:
     typedef CULongLong = ushort;
 $default:
     $assert(false, "Invalid C long long size");
-$endswitch;
+$endswitch
 
 
 
 typedef CSChar = ichar;
 typedef CUChar = char;
 
-$if ($$C_CHAR_IS_SIGNED):
+$if ($$C_CHAR_IS_SIGNED)
     typedef CChar = ichar;
-$else:
+$else
     typedef CChar = char;
-$endif;
+$endif

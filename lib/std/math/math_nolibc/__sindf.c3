@@ -1,6 +1,6 @@
 module std::math::nolibc;
 
-$if (!env::COMPILER_LIBC_AVAILABLE):
+$if (!env::COMPILER_LIBC_AVAILABLE)
 
 /* origin: FreeBSD /usr/src/lib/msun/src/k_sinf.c */
 /*
@@ -31,4 +31,4 @@ fn float __sindf(double x) @extern("__sindf") @weak @nostrip
 	return (float)((x + s * (S1F + z * S2F)) +  s * w * r);
 }
 
-$endif;
+$endif

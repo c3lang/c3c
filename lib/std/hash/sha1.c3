@@ -96,12 +96,12 @@ macro @blk(&block, i) @local
 
 macro @blk0(&block, i) @local
 {
-$if (env::BIG_ENDIAN):
+$if (env::BIG_ENDIAN)
 	return block.l[i];
-$else:
+$else
 	return block.l[i] = (block.l[i].rotl(24) & 0xFF00FF00)
         | (block.l[i].rotl(8) & 0x00FF00FF);
-$endif;
+$endif
 }
 
 macro @r0(&block, v, &w, x, y, &z, i) @local

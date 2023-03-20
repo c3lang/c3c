@@ -1,6 +1,6 @@
 module std::thread::os;
 
-$if (thread::THREAD_MODEL == ThreadModel.WIN32):
+$if (thread::THREAD_MODEL == ThreadModel.WIN32)
 
 typedef NativeThread = Win32_HANDLE;
 
@@ -346,4 +346,4 @@ fn void! native_sleep_nano(ulong ns)
 	return native_sleep_ms(ns < 1000_000 ? 1 : ns / 1000_000);
 }
 
-$endif;
+$endif

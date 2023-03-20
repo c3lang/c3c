@@ -1,6 +1,6 @@
 module std::os::win32::process;
 
-$if (env::os_is_win32()):
+$if (env::os_is_win32())
 
 extern fn bool win32_CreateProcessW(
 	Win32_LPCWSTR lpApplicationName,
@@ -15,4 +15,4 @@ extern fn bool win32_CreateProcessW(
 	Win32_LPPROCESS_INFORMATION lpProcessInformation
 );
 
-$endif;
+$endif

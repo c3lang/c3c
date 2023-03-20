@@ -1,6 +1,6 @@
 module std::math::nolibc;
 
-$if (!env::COMPILER_LIBC_AVAILABLE):
+$if (!env::COMPILER_LIBC_AVAILABLE)
 
 /* origin: FreeBSD /usr/src/lib/msun/src/s_tan.c */
 /*
@@ -100,4 +100,4 @@ fn float tanf(float x) @extern("tanf") @weak @nostrip
 	}
 }
 
-$endif;
+$endif
