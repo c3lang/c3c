@@ -90,7 +90,7 @@ INLINE bool parse_decl_initializer(ParseContext *c, Decl *decl)
  */
 static inline bool parse_top_level_block(ParseContext *c, Decl ***decls, TokenType end1, TokenType end2, TokenType end3)
 {
-	consume_deprecated_symbol(c, TOKEN_COLON);
+	consume_deprecated_symbol(c, TOKEN_COLON); // TODO remove
 
 	// Check whether we reached a terminating token or EOF
 	while (!tok_is(c, end1) && !tok_is(c, end2) && !tok_is(c, end3) && !tok_is(c, TOKEN_EOF))
@@ -108,11 +108,7 @@ static inline bool parse_top_level_block(ParseContext *c, Decl ***decls, TokenTy
 }
 
 /**
- * ct_if_top_level ::= CT_IF const_paren_expr ':' top_level_block
-    	(CT_ELIF const_paren_expr ':' top_level_block)*
-    	(CT_ELSE top_level_block)?
-    	CT_ENDIF
- * @param c
+ * ct_if_top_level ::= CT_IF const_paren_expr top_level_block (CT_ELSE top_level_block)? CT_ENDIF
  * @return the declaration if successfully parsed, poisoned_decl otherwise.
  */
 static inline Decl *parse_ct_if_top_level(ParseContext *c)
@@ -124,18 +120,20 @@ static inline Decl *parse_ct_if_top_level(ParseContext *c)
 	if (!parse_top_level_block(c, &ct->ct_if_decl.then, TOKEN_CT_ENDIF, TOKEN_CT_ELIF, TOKEN_CT_ELSE)) return poisoned_decl;
 
 	CtIfDecl *ct_if_decl = &ct->ct_if_decl;
-	// Chain elif
+
+	// Chain elif TODO remove
 	while (tok_is(c, TOKEN_CT_ELIF))
 	{
 		sema_warning_at(c->span, "$elif is deprecated, use $switch instead.");
-		Decl *ct_elif = decl_new_ct(DECL_CT_ELIF, c->span);
+		Decl *ct_elif = decl_new_ct(DECL_CT_IF, c->span);
 		advance_and_verify(c, TOKEN_CT_ELIF);
 		ASSIGN_EXPR_OR_RET(ct_elif->ct_elif_decl.expr, parse_const_paren_expr(c), poisoned_decl);
-
 		if (!parse_top_level_block(c, &ct_elif->ct_elif_decl.then, TOKEN_CT_ENDIF, TOKEN_CT_ELIF, TOKEN_CT_ELSE)) return poisoned_decl;
 		ct_if_decl->elif = ct_elif;
 		ct_if_decl = &ct_elif->ct_elif_decl;
 	}
+	// <- end
+
 	// final else
 	if (tok_is(c, TOKEN_CT_ELSE))
 	{
@@ -145,14 +143,13 @@ static inline Decl *parse_ct_if_top_level(ParseContext *c)
 		if (!parse_top_level_block(c, &ct_else->ct_else_decl, TOKEN_CT_ENDIF, TOKEN_CT_ENDIF, TOKEN_CT_ENDIF)) return poisoned_decl;
 	}
 	CONSUME_OR_RET(TOKEN_CT_ENDIF, poisoned_decl);
-	consume_deprecated_symbol(c, TOKEN_EOS);
+	consume_deprecated_symbol(c, TOKEN_EOS); // TODO remove
 	return ct;
 }
 
 /**
- * ct_case ::= (CT_DEFAULT | CT_CASE type) ':' top_level_statement*
+ * ct_case ::= (CT_DEFAULT | CT_CASE constant_expr) ':' top_level_statement*
  *
- * @param c
  * @return poisoned decl if parsing fails.
  */
 static inline Decl *parse_ct_case(ParseContext *c)
@@ -175,14 +172,17 @@ static inline Decl *parse_ct_case(ParseContext *c)
 			return poisoned_decl;
 	}
 	// Parse the body
-	CONSUME_OR_RET(TOKEN_COLON, poisoned_decl);
+	if (!try_consume(c, TOKEN_COLON))
+	{
+		sema_error_at_after(c->prev_span, "Expected a ':' here.");
+		return poisoned_decl;
+	}
 	if (!parse_top_level_block(c, &decl->ct_case_decl.body, TOKEN_CT_DEFAULT, TOKEN_CT_CASE, TOKEN_CT_ENDSWITCH)) return poisoned_decl;
 	return decl;
 }
 
 /**
  * ct_switch_top_level ::= CT_SWITCH const_paren_expr? ct_case* CT_ENDSWITCH
- * @param c
  * @return the declaration if successfully parsed, NULL otherwise.
  */
 static inline Decl *parse_ct_switch_top_level(ParseContext *c)
@@ -192,14 +192,14 @@ static inline Decl *parse_ct_switch_top_level(ParseContext *c)
 	if (!tok_is(c, TOKEN_CT_CASE) && !tok_is(c, TOKEN_CT_DEFAULT) && !tok_is(c, TOKEN_CT_ENDSWITCH))
 	{
 		ASSIGN_EXPR_OR_RET(ct->ct_switch_decl.expr, parse_const_paren_expr(c), poisoned_decl);
-		consume_deprecated_symbol(c, TOKEN_COLON);
+		consume_deprecated_symbol(c, TOKEN_COLON); // TODO remove
 	}
 	while (!try_consume(c, TOKEN_CT_ENDSWITCH))
 	{
 		ASSIGN_DECL_OR_RET(Decl *result, parse_ct_case(c), poisoned_decl);
 		vec_add(ct->ct_switch_decl.cases, result);
 	}
-	consume_deprecated_symbol(c, TOKEN_EOS);
+	consume_deprecated_symbol(c, TOKEN_EOS); // TODO remove
 	return ct;
 }
 
@@ -225,19 +225,14 @@ static inline Path *parse_module_path(ParseContext *c)
 			if (token_is_keyword(c->tok))
 			{
 				SEMA_ERROR_HERE("The module path cannot contain a reserved keyword, try another name.");
-				return false;
+				return NULL;
 			}
 			if (token_is_some_ident(c->tok))
 			{
 				SEMA_ERROR_HERE("The elements of a module path must consist of only lower case letters, 0-9 and '_'.");
-				return false;
+				return NULL;
 			}
 			SEMA_ERROR_HERE("Each '::' must be followed by a regular lower case sub module name.");
-			return NULL;
-		}
-		if (string == kw_main)
-		{
-			SEMA_ERROR_LAST("'main' is not a valid name in a module path, please pick something else.");
 			return NULL;
 		}
 		scratch_buffer_append(string);
@@ -258,7 +253,7 @@ static inline Path *parse_module_path(ParseContext *c)
  *
  * module_param
  * 		: TYPE_IDENT
- *		| IDENT
+ *		| CONST_IDENT
  *		;
  *
  * module_params
@@ -275,8 +270,7 @@ static inline bool parse_optional_module_params(ParseContext *c, const char ***t
 
 	if (try_consume(c, TOKEN_GREATER))
 	{
-		SEMA_ERROR_HERE("Generic parameter list cannot be empty.");
-		return false;
+		return SEMA_ERROR_HERE("Generic parameter list cannot be empty.");
 	}
 
 	// No params
@@ -288,18 +282,14 @@ static inline bool parse_optional_module_params(ParseContext *c, const char ***t
 			case TOKEN_CONST_IDENT:
 				break;
 			case TOKEN_COMMA:
-				SEMA_ERROR_HERE("Unexpected ','");
-				return false;
+				return SEMA_ERROR_HERE("Unexpected ','");
 			case TOKEN_IDENT:
-				SEMA_ERROR_HERE("The module parameter must be a type or a constant.");
-				return false;
+				return SEMA_ERROR_HERE("The module parameter must be a type or a constant.");
 			case TOKEN_CT_IDENT:
 			case TOKEN_CT_TYPE_IDENT:
-				SEMA_ERROR_HERE("The module parameter cannot be a $-prefixed name.");
-				return false;
+				return SEMA_ERROR_HERE("The module parameter cannot be a $-prefixed name.");
 			default:
-				SEMA_ERROR_HERE("Only generic parameters are allowed here as parameters to the module.");
-				return false;
+				return SEMA_ERROR_HERE("Only generic parameters are allowed here as parameters to the module.");
 		}
 		vec_add(*tokens_ref, symstr(c));
 		advance(c);
@@ -311,32 +301,27 @@ static inline bool parse_optional_module_params(ParseContext *c, const char ***t
 
 }
 /**
- * module ::= MODULE module_path ('<' module_params '>')? (@public|@private|@local)? EOS
+ * module ::= MODULE module_path ('<' module_params '>')? (@public|@private|@local|@test|@export|@extern) EOS
  */
-bool parse_module(ParseContext *c, AstId docs)
+bool parse_module(ParseContext *c, AstId contracts)
 {
 	if (tok_is(c, TOKEN_STRING))
 	{
-		SEMA_ERROR_HERE("'module' should be followed by a plain identifier, not a string. Did you accidentally put the module name between \"\"?");
-		return false;
+		return SEMA_ERROR_HERE("'module' should be followed by a plain identifier, not a string. Did you accidentally put the module name between \"\"?");
 	}
 
 	if (!tok_is(c, TOKEN_IDENT))
 	{
 		if (token_is_keyword(c->tok))
 		{
-			SEMA_ERROR_HERE("The module name cannot contain a reserved keyword, try another name.");
-			return false;
+			return SEMA_ERROR_HERE("The module name cannot contain a reserved keyword, try another name.");
 		}
 		if (token_is_some_ident(c->tok))
 		{
-			SEMA_ERROR_HERE("The module name must consist of only lower case letters, 0-9 and '_'.");
-			return false;
+			return SEMA_ERROR_HERE("The module name must consist of only lower case letters, 0-9 and '_'.");
 		}
-		SEMA_ERROR_HERE("'module' should be followed by a module name.");
-		return false;
+		return SEMA_ERROR_HERE("'module' should be followed by a module name.");
 	}
-
 
 	Path *path = parse_module_path(c);
 
@@ -358,30 +343,26 @@ bool parse_module(ParseContext *c, AstId docs)
 	{
 		if (!context_set_module(c, path, NULL)) return false;
 		recover_top_level(c);
-		if (docs)
-		{
-			SEMA_ERROR(astptr(docs), "Contracts cannot be use with non-generic modules.");
-			return false;
-		}
+		if (contracts) return SEMA_ERROR(astptr(contracts), "Contracts cannot be use with non-generic modules.");
 		return true;
 	}
 	if (!context_set_module(c, path, generic_parameters)) return false;
-	if (docs)
+	if (contracts)
 	{
-		AstId old_docs = c->unit->module->contracts;
-		if (old_docs)
+		AstId old_contracts = c->unit->module->contracts;
+		if (old_contracts)
 		{
-			Ast *last = ast_last(astptr(old_docs));
-			last->next = docs;
+			Ast *last = ast_last(astptr(old_contracts));
+			last->next = contracts;
 		}
 		else
 		{
-			c->unit->module->contracts = docs;
+			c->unit->module->contracts = contracts;
 		}
-		while (docs)
+		while (contracts)
 		{
-			Ast *current = astptr(docs);
-			docs = current->next;
+			Ast *current = astptr(contracts);
+			contracts = current->next;
 			assert(current->ast_kind == AST_CONTRACT);
 			switch (current->contract.kind)
 			{
@@ -395,35 +376,22 @@ bool parse_module(ParseContext *c, AstId docs)
 				case CONTRACT_CHECKED:
 					continue;
 			}
-			SEMA_ERROR(current, "Invalid constraint - only '@require' and '@checked' are valid for modules.");
-			return false;
+			return SEMA_ERROR(current, "Invalid constraint - only '@require' and '@checked' are valid for modules.");
 		}
 	}
 	Visibility visibility = VISIBLE_PUBLIC;
 	Attr** attrs = NULL;
 	if (!parse_attributes(c, &attrs, &visibility)) return false;
 	FOREACH_BEGIN(Attr *attr, attrs)
-		if (attr->is_custom)
-		{
-			SEMA_ERROR(attr, "Custom attributes cannot be used with 'module'.");
-			return false;
-		}
+		if (attr->is_custom) return SEMA_ERROR(attr, "Custom attributes cannot be used with 'module'.");
 		switch (attr->attr_kind)
 		{
 			case ATTRIBUTE_TEST:
 				c->unit->test_by_default = true;
 				continue;
 			case ATTRIBUTE_EXPORT:
-				if (attr->exprs)
-				{
-					SEMA_ERROR(attr, "Expected no arguments to '@export'");
-					return false;
-				}
-				if (c->unit->export_by_default)
-				{
-					SEMA_ERROR(attr, "'@export' appeared more than once.");
-					return false;
-				}
+				if (attr->exprs) return SEMA_ERROR(attr, "Expected no arguments to '@export'");
+				if (c->unit->export_by_default) return SEMA_ERROR(attr, "'@export' appeared more than once.");
 				c->unit->export_by_default = true;
 				continue;
 			case ATTRIBUTE_EXTERN:
@@ -434,11 +402,7 @@ bool parse_module(ParseContext *c, AstId docs)
 					return false;
 				}
 				Expr *expr = attr->exprs[0];
-				if (!expr_is_const_string(expr))
-				{
-					SEMA_ERROR(expr, "Expected a constant string.");
-					return false;
-				}
+				if (!expr_is_const_string(expr)) return SEMA_ERROR(expr, "Expected a constant string.");
 				if (c->unit->module->extname)
 				{
 					SEMA_ERROR(attr, "External name for the module may only be declared in one location.");
@@ -450,8 +414,7 @@ bool parse_module(ParseContext *c, AstId docs)
 			default:
 				break;
 		}
-		SEMA_ERROR(attr, "'%s' cannot be used after a module declaration.", attr->name);
-		return false;
+		return SEMA_ERROR(attr, "'%s' cannot be used after a module declaration.", attr->name);
 	FOREACH_END();
 	c->unit->default_visibility = visibility;
 	CONSUME_EOS_OR_RET(false);
@@ -459,55 +422,35 @@ bool parse_module(ParseContext *c, AstId docs)
 }
 
 
-bool consume_ident(ParseContext *c, const char* name)
-{
-	if (try_consume(c, TOKEN_IDENT)) return true;
-	if (tok_is(c, TOKEN_TYPE_IDENT) || tok_is(c, TOKEN_CONST_IDENT))
-	{
-		SEMA_ERROR_HERE("A %s must start with a lower case letter.", name);
-		return false;
-	}
-	if (token_is_keyword(c->tok))
-	{
-		SEMA_ERROR_HERE("This is a reserved keyword, did you accidentally use it?");
-		return false;
-	}
-	SEMA_ERROR_HERE("A %s was expected.", name);
-	return false;
-}
-
 static bool consume_type_name(ParseContext *c, const char* type)
 {
 	if (tok_is(c, TOKEN_IDENT) || token_is_keyword(c->tok))
 	{
-		SEMA_ERROR_HERE("Names of %ss must start with an uppercase letter.", type);
-		return false;
+		return SEMA_ERROR_HERE("Names of %ss must start with an uppercase letter.", type);
 	}
 	if (tok_is(c, TOKEN_CONST_IDENT))
 	{
-		SEMA_ERROR_HERE("Names of %ss cannot be all uppercase.", type);
-		return false;
+		return SEMA_ERROR_HERE("Names of %ss cannot be all uppercase.", type);
 	}
-	if (!consume(c, TOKEN_TYPE_IDENT, "'%s' should be followed by the name of the %s.", type, type)) return false;
-	return true;
+	return consume(c, TOKEN_TYPE_IDENT, "'%s' should be followed by the name of the %s.", type, type);
 }
 
 bool consume_const_name(ParseContext *c, const char* type)
 {
-	if (tok_is(c, TOKEN_IDENT) || tok_is(c, TOKEN_TYPE_IDENT))
+	if (tok_is(c, TOKEN_IDENT) || tok_is(c, TOKEN_TYPE_IDENT) || token_is_keyword(c->tok))
 	{
-		SEMA_ERROR_HERE("Names of %ss must be all uppercase.", type);
-		return false;
+		return SEMA_ERROR_HERE("Names of %ss must be all uppercase.", type);
 	}
-	if (!consume(c, TOKEN_CONST_IDENT, "A constant name was expected here, did you forget it?")) return false;
-	return true;
+	return consume(c, TOKEN_CONST_IDENT, "A constant name was expected here, did you forget it?");
 }
 
-
-Path *parse_path_prefix(ParseContext *c, bool *had_error)
+/**
+ * Parse an optional foo::bar::
+ */
+bool parse_path_prefix(ParseContext *c, Path** path_ref)
 {
-	*had_error = false;
-	if (!tok_is(c, TOKEN_IDENT) || peek(c) != TOKEN_SCOPE) return NULL;
+	*path_ref = NULL;
+	if (!tok_is(c, TOKEN_IDENT) || peek(c) != TOKEN_SCOPE) return true;
 
 	char *scratch_ptr = scratch_buffer.str;
 	uint32_t offset = 0;
@@ -536,14 +479,11 @@ Path *parse_path_prefix(ParseContext *c, bool *had_error)
 	path->module = symtab_add(scratch_ptr, offset, fnv1a(scratch_ptr, offset), &type);
 	if (type != TOKEN_IDENT)
 	{
-		SEMA_ERROR(path, "A module name was expected here.");
-		*had_error = true;
-		return NULL;
-
+		return SEMA_ERROR(path, "A module name was expected here.");
 	}
 	path->len = offset;
-
-	return path;
+	*path_ref = path;
+	return true;
 }
 
 // --- Type parsing
@@ -613,8 +553,8 @@ static inline TypeInfo *parse_base_type(ParseContext *c)
 	}
 	SourceSpan range = c->span;
 	bool had_error;
-	Path *path = parse_path_prefix(c, &had_error);
-	if (had_error) return poisoned_type_info;
+	Path *path;
+	if (!parse_path_prefix(c, &path)) return poisoned_type_info;
 	if (path)
 	{
 		TypeInfo *type_info = type_info_new(TYPE_INFO_IDENTIFIER, range);
@@ -1022,8 +962,8 @@ Decl *parse_var_decl(ParseContext *c)
 bool parse_attribute(ParseContext *c, Attr **attribute_ref)
 {
 	bool had_error;
-	Path *path = parse_path_prefix(c, &had_error);
-	if (had_error) return false;
+	Path *path;
+	if (!parse_path_prefix(c, &path)) return false;
 	if (!tok_is(c, TOKEN_AT_IDENT) && !tok_is(c, TOKEN_AT_TYPE_IDENT))
 	{
 		if (path)
@@ -2027,9 +1967,7 @@ static inline Decl *parse_define_ident(ParseContext *c)
 	Path *path = NULL;
 	if (context_next_is_path_prefix_start(c))
 	{
-		bool error;
-		path = parse_path_prefix(c, &error);
-		if (error) return poisoned_decl;
+		if (!parse_path_prefix(c, &path)) return poisoned_decl;
 	}
 
 	decl->define_decl.path = path;
@@ -2091,7 +2029,7 @@ static inline Decl *parse_define_ident(ParseContext *c)
 }
 
 /**
- * define_attribute ::= 'define' '@' IDENT '(' parameter_list ')' ('=' attribute_list)?
+ * define_attribute ::= 'define' AT_TYPE_IDENT '(' parameter_list ')' ('=' attribute_list)?
  */
 static inline Decl *parse_define_attribute(ParseContext *c)
 {
@@ -2132,6 +2070,7 @@ static inline Decl *parse_define(ParseContext *c)
 			// define @Foo = @inline, @noreturn
 			return parse_define_attribute(c);
 		case TOKEN_TYPE_IDENT:
+			sema_warning_at(c->span, "Defining types with 'define' is deprecated. Use 'typedef'.");
 			return parse_define_type(c);
 		default:
 			return parse_define_ident(c);
@@ -2651,8 +2590,8 @@ static inline bool parse_contract_param(ParseContext *c, AstId **docs_ref)
 	if (try_consume(c, TOKEN_LBRACKET))
 	{
 		is_ref = try_consume(c, TOKEN_AMP);
-		const char *modifier = symstr(c);
-		if (!consume_ident(c, "Expected 'in', 'inout' or 'out'")) return false;
+		const char *modifier = tok_is(c, TOKEN_IDENT) ? symstr(c) : NULL;
+		if (modifier) advance(c);
 		if (modifier == kw_in)
 		{
 			mod = PARAM_IN;
@@ -2667,8 +2606,7 @@ static inline bool parse_contract_param(ParseContext *c, AstId **docs_ref)
 		}
 		else
 		{
-			SEMA_ERROR_LAST("'in', 'out' or 'inout' were expected.");
-			return false;
+			return SEMA_ERROR_LAST("'in', 'out' or 'inout' were expected.");
 		}
 		CONSUME_OR_RET(TOKEN_RBRACKET, false);
 	}

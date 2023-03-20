@@ -29,10 +29,10 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **new_context);
 Ast *parse_ct_assert_stmt(ParseContext *c);
 Ast *parse_ct_echo_stmt(ParseContext *c);
 Ast *parse_stmt(ParseContext *c);
-Path *parse_path_prefix(ParseContext *c, bool *had_error);
+bool parse_path_prefix(ParseContext *c, Path** path_ref);
 Expr *parse_type_expression_with_path(ParseContext *c, Path *path);
 Expr *parse_expr(ParseContext *c);
-bool consume_ident(ParseContext *c, const char* name);
+
 TypeInfo *parse_type(ParseContext *c);
 TypeInfo *parse_optional_type(ParseContext *c);
 TypeInfo *parse_type_with_base(ParseContext *c, TypeInfo *type_info);
@@ -73,7 +73,7 @@ INLINE void add_decl_to_list(Decl ***list, Decl *decl)
 	vec_add(*list, decl);
 }
 
-bool parse_module(ParseContext *c, AstId docs);
+bool parse_module(ParseContext *c, AstId contracts);
 Expr *parse_generic_parameter(ParseContext *c);
 bool try_consume(ParseContext *c, TokenType type);
 bool consume(ParseContext *c, TokenType type, const char *message, ...);

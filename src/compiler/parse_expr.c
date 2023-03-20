@@ -1049,8 +1049,8 @@ static Expr *parse_identifier_starting_expression(ParseContext *c, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
 	bool had_error;
-	Path *path = parse_path_prefix(c, &had_error);
-	if (had_error) return poisoned_expr;
+	Path *path;
+	if (!parse_path_prefix(c, &path)) return poisoned_expr;
 	switch (c->tok)
 	{
 		case TOKEN_IDENT:

@@ -5,7 +5,7 @@
 module std::core::mem::allocator;
 import std::collections::map;
 
-define PtrMap = HashMap<uptr, usz>;
+typedef PtrMap = HashMap<uptr, usz>;
 
 // A simple tracking allocator.
 // It tracks allocations using a hash map but

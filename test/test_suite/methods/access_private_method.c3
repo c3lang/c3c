@@ -1,4 +1,4 @@
-define NodeNotifyHandler = fn void(TreeView* this, TreeNode* node, String prop, void* data);
+typedef NodeNotifyHandler = fn void(TreeView* this, TreeNode* node, String prop, void* data);
 fn void TreeView.nodeNotifyHandler(TreeView* this, TreeNode* node, String prop, void* data) @private {}
 
 struct TreeNode { int abc; NodeNotifyHandler notifyHandler; }
