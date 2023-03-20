@@ -915,10 +915,7 @@ static inline Ast* parse_ct_else_stmt(ParseContext *c)
 {
 	Ast *ast = new_ast(AST_CT_ELSE_STMT, c->span);
 	advance_and_verify(c, TOKEN_CT_ELSE);
-	if (try_consume(c, TOKEN_EOS))
-	{
-		sema_warning_at(c->prev_span, "';' is deprecated here.");
-	}
+	consume_deprecated_symbol(c, TOKEN_COLON);
 	if (!parse_ct_compound_stmt(c, &ast->ct_else_stmt)) return poisoned_ast;
 	return ast;
 }
@@ -935,10 +932,7 @@ static inline Ast* parse_ct_if_stmt(ParseContext *c, bool is_elif)
 	Ast *ast = ast_new_curr(c, AST_CT_IF_STMT);
 	advance_and_verify(c, is_elif ? TOKEN_CT_ELIF : TOKEN_CT_IF);
 	ASSIGN_EXPR_OR_RET(ast->ct_if_stmt.expr, parse_const_paren_expr(c), poisoned_ast);
-	if (try_consume(c, TOKEN_COLON))
-	{
-		sema_warning_at(c->prev_span, "':' is deprecated here.");
-	}
+	consume_deprecated_symbol(c, TOKEN_COLON);
 	if (!parse_ct_compound_stmt(c, &ast->ct_if_stmt.then)) return poisoned_ast;
 
 	if (tok_is(c, TOKEN_CT_ELIF))
@@ -952,10 +946,7 @@ static inline Ast* parse_ct_if_stmt(ParseContext *c, bool is_elif)
 	if (is_elif) return ast;
 	advance_and_verify(c, TOKEN_CT_ENDIF);
 	RANGE_EXTEND_PREV(ast);
-	if (try_consume(c, TOKEN_EOS))
-	{
-		sema_warning_at(c->prev_span, "';' is deprecated here.");
-	}
+	consume_deprecated_symbol(c, TOKEN_EOS);
 	return ast;
 }
 
@@ -1009,10 +1000,7 @@ static inline Ast* parse_ct_foreach_stmt(ParseContext *c)
 	TRY_CONSUME_OR_RET(TOKEN_COLON, "Expected ':'.", poisoned_ast);
 	ASSIGN_EXPRID_OR_RET(ast->ct_foreach_stmt.expr, parse_expr(c), poisoned_ast);
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_ast);
-	if (try_consume(c, TOKEN_COLON))
-	{
-		sema_warning_at(c->prev_span, "':' is deprecated here.");
-	}
+	consume_deprecated_symbol(c, TOKEN_COLON);
 	Ast *body = new_ast(AST_COMPOUND_STMT, ast->span);
 	ast->ct_foreach_stmt.body = astid(body);
 	AstId *current = &body->compound_stmt.first_stmt;
@@ -1022,10 +1010,7 @@ static inline Ast* parse_ct_foreach_stmt(ParseContext *c)
 		*current = astid(stmt);
 		current = &stmt->next;
 	}
-	if (try_consume(c, TOKEN_EOS))
-	{
-		sema_warning_at(c->prev_span, "';' is deprecated here.");
-	}
+	consume_deprecated_symbol(c, TOKEN_EOS);
 	return ast;
 }
 
@@ -1057,10 +1042,7 @@ static inline Ast* parse_ct_for_stmt(ParseContext *c)
 
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_ast);
 
-	if (try_consume(c, TOKEN_COLON))
-	{
-		sema_warning_at(c->prev_span, "':' is deprecated here.");
-	}
+	consume_deprecated_symbol(c, TOKEN_COLON);
 
 	Ast *body = new_ast(AST_COMPOUND_STMT, ast->span);
 	ast->for_stmt.body = astid(body);
@@ -1071,10 +1053,7 @@ static inline Ast* parse_ct_for_stmt(ParseContext *c)
 		*current = astid(stmt);
 		current = &stmt->next;
 	}
-	if (try_consume(c, TOKEN_EOS))
-	{
-		sema_warning_at(c->prev_span, "';' is deprecated here.");
-	}
+	consume_deprecated_symbol(c, TOKEN_EOS);
 	return ast;
 }
 
@@ -1098,10 +1077,7 @@ static inline Ast* parse_ct_switch_stmt(ParseContext *c)
 	Ast *ast = ast_new_curr(c, AST_CT_SWITCH_STMT);
 	advance_and_verify(c, TOKEN_CT_SWITCH);
 	ASSIGN_EXPRID_OR_RET(ast->ct_switch_stmt.cond, parse_const_paren_expr(c), poisoned_ast);
-	if (try_consume(c, TOKEN_COLON))
-	{
-		sema_warning_at(c->prev_span, "':' is deprecated here.");
-	}
+	consume_deprecated_symbol(c, TOKEN_COLON);
 
 	Ast **cases = NULL;
 	while (!try_consume(c, TOKEN_CT_ENDSWITCH))
@@ -1123,11 +1099,7 @@ static inline Ast* parse_ct_switch_stmt(ParseContext *c)
 		}
 		vec_add(cases, result);
 	}
-	if (try_consume(c, TOKEN_EOS))
-	{
-		sema_warning_at(c->prev_span, "';' is deprecated here.");
-	}
-	while (0);
+	consume_deprecated_symbol(c, TOKEN_EOS);
 	ast->ct_switch_stmt.body = cases;
 	return ast;
 }

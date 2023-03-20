@@ -91,10 +91,7 @@ INLINE bool parse_decl_initializer(ParseContext *c, Decl *decl)
  */
 static inline bool parse_top_level_block(ParseContext *c, Decl ***decls, TokenType end1, TokenType end2, TokenType end3)
 {
-	if (try_consume(c, TOKEN_COLON))
-	{
-		sema_warning_at(c->prev_span, "':' is deprecated here.");
-	}
+	consume_deprecated_symbol(c, TOKEN_COLON);
 
 	// Check whether we reached a terminating token or EOF
 	while (!tok_is(c, end1) && !tok_is(c, end2) && !tok_is(c, end3) && !tok_is(c, TOKEN_EOF))
@@ -146,10 +143,7 @@ static inline Decl *parse_ct_if_top_level(ParseContext *c)
 		if (!parse_top_level_block(c, &ct_else->ct_else_decl, TOKEN_CT_ENDIF, TOKEN_CT_ENDIF, TOKEN_CT_ENDIF)) return poisoned_decl;
 	}
 	CONSUME_OR_RET(TOKEN_CT_ENDIF, poisoned_decl);
-	if (try_consume(c, TOKEN_EOS))
-	{
-		sema_warning_at(c->prev_span, "';' is deprecated here.");
-	}
+	consume_deprecated_symbol(c, TOKEN_EOS);
 	return ct;
 }
 
@@ -194,19 +188,13 @@ static inline Decl *parse_ct_switch_top_level(ParseContext *c)
 	Decl *ct = decl_new_ct(DECL_CT_SWITCH, c->span);
 	advance_and_verify(c, TOKEN_CT_SWITCH);
 	ASSIGN_EXPR_OR_RET(ct->ct_switch_decl.expr, parse_const_paren_expr(c), poisoned_decl);
-	if (try_consume(c, TOKEN_COLON))
-	{
-		sema_warning_at(c->prev_span, "':' is deprecated here.");
-	}
+	consume_deprecated_symbol(c, TOKEN_COLON);
 	while (!try_consume(c, TOKEN_CT_ENDSWITCH))
 	{
 		ASSIGN_DECL_OR_RET(Decl *result, parse_ct_case(c), poisoned_decl);
 		vec_add(ct->ct_switch_decl.cases, result);
 	}
-	if (try_consume(c, TOKEN_EOS))
-	{
-		sema_warning_at(c->prev_span, "';' is deprecated here.");
-	}
+	consume_deprecated_symbol(c, TOKEN_EOS);
 	return ct;
 }
 
@@ -3172,5 +3160,13 @@ AFTER_VISIBILITY:
 	}
 	assert(decl);
 	return decl;
+}
+
+void consume_deprecated_symbol(ParseContext *c, TokenType type)
+{
+	if (try_consume(c, type))
+	{
+		sema_warning_at(c->prev_span, "'%s' is deprecated here.", token_type_to_string(type));
+	}
 }
 
