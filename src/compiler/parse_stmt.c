@@ -802,9 +802,7 @@ static inline Ast* parse_continue(ParseContext *c)
 
 
 /**
- * next
- *  : NEXT
- *  | NEXT expr
+ * next ::= NEXTCASE ((CONST ':')? expression)?
  */
 static inline Ast* parse_next(ParseContext *c)
 {
@@ -1018,7 +1016,7 @@ static inline Ast* parse_ct_foreach_stmt(ParseContext *c)
 
 /**
  * ct_for_stmt
- *  | CT_FOR '(' decl_expr_list? ';' expression_list? ';' expression_list? ')' ':' statement* CT_ENDFOR ';'
+ *  | CT_FOR '(' decl_expr_list? ';' expression_list? ';' expression_list? ')' statement* CT_ENDFOR
  *  ;
  */
 static inline Ast* parse_ct_for_stmt(ParseContext *c)

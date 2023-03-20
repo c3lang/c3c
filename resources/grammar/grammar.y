@@ -9,27 +9,28 @@ int yylex(void);
 void yyerror(char *s);
 %}
 
-%token IDENT CT_IDENT CT_TYPE_IDENT CONSTANT CT_CONST_IDENT CONST_IDENT TYPE_IDENT STRING_LITERAL SIZEOF
+%token IDENT HASH_IDENT CT_IDENT CONST_IDENT
+%token TYPE_IDENT CT_TYPE_IDENT
+%token AT_TYPE_IDENT AT_IDENT
+%token STRING_LITERAL CTSIZEOF
 %token INC_OP DEC_OP LEFT_OP RIGHT_OP LE_OP GE_OP EQ_OP NE_OP
 %token AND_OP OR_OP MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN ADD_ASSIGN
 %token SUB_ASSIGN LEFT_ASSIGN RIGHT_ASSIGN AND_ASSIGN
 %token ADD_MOD SUB_MOD MULT_MOD ADD_MOD_ASSIGN SUB_MOD_ASSIGN
 %token MULT_MOD_ASSIGN NEG_MOD
-%token XOR_ASSIGN OR_ASSIGN VAR NIL ELVIS HASH_IDENT NEXT
-%token NOFAIL_ASSIGN
-
-%token TYPEDEF MODULE IMPORT
-%token CHAR SHORT INT LONG FLOAT DOUBLE CONST VOLATILE VOID
+%token XOR_ASSIGN OR_ASSIGN VAR NIL ELVIS NEXTCASE
+%token TYPEDEF MODULE IMPORT DEFINE
+%token CHAR SHORT INT LONG FLOAT DOUBLE CONST VOID
 %token BYTE USHORT UINT ULONG BOOL
 %token TYPEID
-%token STRUCT UNION ENUM ELLIPSIS AS LOCAL
+%token STRUCT UNION ENUM ELLIPSIS DOTDOT
 
 %token CASE DEFAULT IF ELSE SWITCH WHILE DO FOR GOTO CONTINUE BREAK RETURN
-%token FUNC ERROR MACRO GENERIC CTIF CTELIF CTENDIF CTELSE CTSWITCH CTCASE CTDEFAULT CTFOR
-%token TRY CATCH SCOPE PUBLIC DEFER ATTRIBUTE IN
+%token FN FAULT MACRO GENERIC CT_IF CT_ENDIF CT_ELSE CT_SWITCH CT_CASE CT_DEFAULT CT_FOR CT_FOREACH CT_ENDFOREACH
+%token CT_ENDFOR CT_ENDSWITCH BUILTIN IMPLIES
+%token TRY CATCH SCOPE PUBLIC DEFER ATTRIBUTE TRY_Q CATCH_Q LVEC RVEC OPTELSE
 
 %token FN_BLOCK_START FN_BLOCK_END
-%token AUTO
 
 %start translation_unit
 %%
@@ -47,14 +48,15 @@ import_path
 ident_expression
 	: CONST_IDENT
 	| IDENT
-    | CT_IDENT
-    | CT_CONST_IDENT
+	| CT_IDENT
+	| HASH_IDENT
+	| AT_IDENT
 	;
 
 primary_expression
 	: STRING_LITERAL
-	| CONSTANT
 	| NIL
+	| BUILTIN
 	| path ident_expression
 	| ident_expression
 	| base_type initializer_list
@@ -96,7 +98,8 @@ unary_operator
 	| NEG_MOD
 	| '~'
 	| '!'
-	| '@'
+	| TRY_Q
+	| CATCH_Q
 	;
 
 mult_operator
@@ -179,8 +182,7 @@ assignment_expression
 
 expression
 	: assignment_expression
-	| TRY assignment_expression
-	| assignment_expression ELSE assignment_expression
+	| assignment_expression OPTELSE assignment_expression
 	;
 
 
@@ -266,7 +268,6 @@ parameter_list
 
 base_type
     : VOID
-    | AUTO
     | BOOL
     | CHAR
     | BYTE
@@ -288,7 +289,9 @@ type
     | type '*'
     | type '[' constant_expression ']'
     | type '[' ']'
-    | type '[' '+' ']'
+    | type '[' '*' ']'
+    | type LVEC constant_expression RVEC
+    | type LVEC '*' RVEC
     ;
 
 optional_type
@@ -312,19 +315,8 @@ initializer_list
 	;
 
 ct_case_statement
-    : CTCASE type_list ':' statement
-    | CTDEFAULT ':' statement
-    ;
-
-ct_elif_body
-    : ct_elif compound_statement
-    | ct_elif_body ct_elif compound_statement
-    ;
-
-ct_else_body
-    : ct_elif_body
-    | CTELSE compound_statement
-    | ct_elif_body CTELSE compound_statement
+    : CT_CASE expression ':' opt_stmt_list
+    | CT_DEFAULT ':' opt_stmt_list
     ;
 
 ct_switch_body
@@ -332,75 +324,43 @@ ct_switch_body
     | ct_switch_body ct_case_statement
     ;
 
+
 ct_for_stmt
-    : CTFOR '(' CT_IDENT IN expression ')' statement
-    | CTFOR '(' CT_IDENT ',' CT_IDENT IN expression ')' statement
-    ;
+    	: CT_FOR '(' decl_expr_list ';' expression_list ';' expression_list ')' opt_stmt_list CT_ENDFOR
+	;
+
+ct_foreach_stmt
+	: CT_FOREACH '(' CT_IDENT ':' expression ')' opt_stmt_list CT_ENDFOREACH
 
 ct_statement
-    : ct_if compound_statement
-    | ct_if compound_statement ct_else_body
-    | ct_switch '{' ct_switch_body '}'
-    | ct_for_stmt
-    ;
+    	: ct_if opt_stmt_list CT_ENDIF
+    	| ct_if opt_stmt_list CT_ELSE opt_stmt_list CT_ENDIF
+    	| ct_switch ct_switch_body CT_ENDSWITCH
+    	| ct_for_stmt
+    	| ct_foreach_stmt
+    	;
 
 
 statement
 	: compound_statement
-    | labeled_statement
-	| expression_statement
+    	| expression_statement
 	| selection_statement
 	| iteration_statement
 	| jump_statement
 	| declaration_statement
-	| volatile_statement
-	| catch_statement
-	| try_statement
 	| defer_statement
 	| ct_statement
 	;
 
-defer_catch_body
-    : compound_statement
-    | expression_statement
-    | jump_statement
-    | iteration_statement
-    | selection_statement
-    ;
-
 defer_statement
-    : DEFER defer_catch_body
-    | DEFER catch_statement
+    : DEFER statement
+    | DEFER TRY statement
+    | DEFER CATCH statement
     ;
 
-catch_statement
-    : CATCH '(' expression ')' defer_catch_body
-    ;
-
-try_statement
-    : TRY selection_statement
-    | TRY iteration_statement
-    | TRY jump_statement
-    ;
-
-volatile_statement
-    : VOLATILE compound_statement
-    ;
-
-label_statement
-    : IDENT ':' statement
-
-
-labeled_statement
-	: label_statement
-	| CASE constant_expression ':'
-	| CASE constant_expression ELLIPSIS constant_expression ':'
-	| DEFAULT ':'
-	;
 
 compound_statement
-	: '{' '}'
-	| '{' statement_list '}'
+	: '{' opt_stmt_list '}'
 	;
 
 statement_list
@@ -408,19 +368,26 @@ statement_list
 	| statement_list statement
 	;
 
+opt_stmt_list
+	: statement_list
+	|
+	;
+
 declaration_statement
     : declaration ';'
     ;
 
 expression_statement
-	: ';'
-	| expression ';'
+	: expression ';'
 	;
 
 
 if_expr
-    : optional_type IDENT '=' initializer
-    | optional_type IDENT NOFAIL_ASSIGN expression
+    : type IDENT '=' initializer
+    | TRY type IDENT '=' expression
+    | TRY IDENT '=' expression
+    | TRY IDENT
+    | CATCH IDENT '=' expression
     | expression
     ;
 
@@ -464,13 +431,14 @@ iteration_statement
 	;
 
 jump_statement
-	: CONTINUE CONSTANT ';'
+	: CONTINUE CONST_IDENT ';'
 	| CONTINUE ';'
 	| BREAK ';'
-	| BREAK CONSTANT ';'
-	| NEXT CONSTANT ';'
-	| NEXT ';'
-	| NEXT expression ';'
+	| BREAK CONST_IDENT ';'
+	| NEXTCASE CONST_IDENT ':' ';'
+	| NEXTCASE CONST_IDENT ':' expression ';'
+	| NEXTCASE ';'
+	| NEXTCASE expression ';'
 	| RETURN ';'
 	| RETURN expression ';'
 	;
@@ -495,17 +463,6 @@ opt_attributes
     |
     ;
 
-error_type
-    : path TYPE_IDENT
-    | TYPE_IDENT
-    | ERROR '(' expression ')'
-    ;
-
-error_list
-    : error_type
-    | error_list error_type
-    ;
-
 func_name
     : path TYPE_IDENT '.' IDENT
     | TYPE_IDENT '.' IDENT
@@ -513,12 +470,13 @@ func_name
     ;
 
 func_declaration
-    : FUNC optional_type func_name opt_parameter_type_list opt_attributes
+    : FN optional_type func_name opt_parameter_type_list opt_attributes
     ;
 
 func_definition
     : func_declaration compound_statement
     | func_declaration ';'
+    | func_declaration IMPLIES expression ';'
     ;
 
 macro_declaration
@@ -556,118 +514,71 @@ enum_declaration
     | ENUM TYPE_IDENT opt_attributes '{' enumerator_list '}'
     ;
 
-errors
+faults
     : CONST_IDENT
-    | errors ',' CONST_IDENT
+    | faults ',' CONST_IDENT
     ;
 
-error_list
-    : errors
-    | errors ','
-    ;
-
-error_declaration
-    : ERROR TYPE_IDENT '{' error_list '}'
-    ;
-
-type_list
-    : type
-    | type_list ',' type
-    ;
-
-generics_case
-    : CASE type_list ':' statement
-
-generics_body
-    : generics_case
-    | generics_body generics_case
-    ;
-
-generics_declaration
-    : GENERIC IDENT '(' macro_argument_list ')' '{' generics_body '}'
-    | GENERIC type IDENT '(' macro_argument_list ')' '{' generics_body '}'
+fault_declaration
+    : FAULT opt_attributes '{' faults '}'
+    | FAULT opt_attributes '{' faults ',' '}'
     ;
 
 const_declaration
-    : CONST CT_CONST_IDENT '=' initializer ';'
-    | CONST type CONST_IDENT '=' initializer ';'
+    : CONST CONST_IDENT opt_attributes '=' initializer ';'
+    | CONST type CONST_IDENT opt_attributes '=' initializer ';'
     ;
 
 func_typedef
-    : FUNC optional_type opt_parameter_type_list
+    : FN optional_type opt_parameter_type_list
     ;
 
 typedef_declaration
-    : TYPEDEF type AS TYPE_IDENT ';'
-    | TYPEDEF func_typedef AS TYPE_IDENT ';'
+    : TYPEDEF TYPE_IDENT '=' TYPE_IDENT ';'
+    | TYPEDEF TYPE_IDENT '=' TYPE_IDENT '<' '>' ';'
+    | TYPEDEF TYPE_IDENT '=' func_typedef ';'
     ;
 
-attribute_domain
-    : FUNC
-    | VAR
-    | ENUM
-    | STRUCT
-    | UNION
-    | TYPEDEF
-    | CONST
-    | ERROR
-    ;
-
-attribute_domains
-    : attribute_domain
-    | attribute_domains ',' attribute_domain
-    ;
-
-attribute_declaration
-    : ATTRIBUTE attribute_domains IDENT ';'
-    | ATTRIBUTE attribute_domains IDENT '(' parameter_type_list ')' ';'
-    ;
 
 global_declaration
-    : type IDENT ';'
-    | type IDENT '=' initializer ';'
+    : type IDENT opt_attributes ';'
+    | type IDENT opt_attributes '=' initializer ';'
     ;
 
 ct_if
-    : CTIF '(' expression ')'
-    ;
-
-ct_elif
-    : CTELIF '(' expression ')'
+    : CT_IF '(' expression ')'
     ;
 
 ct_switch
-    : CTSWITCH '(' expression ')'
+    : CT_SWITCH '(' expression ')'
+    | CT_SWITCH
     ;
 
-top_level_block
-    : '{' top_level_statements '}'
-    ;
 
-tl_ct_elif_body
-    : ct_elif top_level_block
-    | tl_ct_elif_body ct_elif top_level_block
-    ;
+opt_tl_stmts
+	: top_level_statements
+	|
+	;
 
-tl_ct_else_body
-    : tl_ct_elif_body
-    | tl_ct_else_body CTELSE top_level_block
-    ;
 
 tl_ct_case
-    : CTCASE type_list ':' top_level_statements
-    | CTDEFAULT ':' top_level_statements
-    ;
+	: CT_CASE expression ':' top_level_statements
+    	| CT_DEFAULT ':' top_level_statements
+    	;
 
 tl_ct_switch_body
     : tl_ct_case
     | tl_ct_switch_body tl_ct_case
     ;
 
+define_declaration
+	: DEFINE IDENT '=' IDENT ';'
+	;
+
 conditional_compilation
-    : ct_if top_level_block
-    | ct_if top_level_block tl_ct_else_body
-    | ct_switch '{' tl_ct_switch_body '}'
+    : ct_if opt_tl_stmts CT_ENDIF
+    | ct_if opt_tl_stmts CT_ELSE opt_tl_stmts CT_ENDIF
+    | ct_switch tl_ct_switch_body CT_ENDSWITCH
     ;
 
 module_param
@@ -684,64 +595,38 @@ module_params
     ;
 
 module
-    : MODULE import_path ';'
-    | MODULE import_path '(' module_params ')' ';'
-    ;
-
-specified_import
-    : IDENT AS IDENT
-    | IDENT
-    | CONST_IDENT
-    | '@' IDENT
-    | TYPE_IDENT AS TYPE_IDENT
-    | CONST_IDENT AS CONST_IDENT
-    | '@' IDENT AS '@' IDENT
-    ;
-
-specified_import_list
-    : specified_import
-    | specified_import_list ',' specified_import
+    : MODULE import_path opt_attributes';'
+    | MODULE import_path '<' module_params '>' ';'
     ;
 
 import_decl
     : IMPORT import_path ';'
-    | IMPORT import_path ':' specified_import_list ';'
-    ;
-
-imports
-    : import_decl
-    | imports import_decl
     ;
 
 translation_unit
-    : module imports top_level_statements
-    ;
-
-top_level_statements
-    : visibility top_level
-    | top_level_statements visibility top_level
-    ;
-
-visibility
-    : LOCAL
-    | PUBLIC
-    | LOCAL PUBLIC
-    | PUBLIC LOCAL
+    : top_level_statements
     |
     ;
 
+top_level_statements
+    : top_level
+    | top_level_statements top_level
+    ;
+
+
 top_level
 	: func_definition
+	| module
+	| import_decl
 	| conditional_compilation
 	| struct_declaration
-	| attribute_declaration
 	| enum_declaration
-	| error_declaration
+	| fault_declaration
 	| const_declaration
 	| global_declaration
 	| macro_declaration
-	| generics_declaration
 	| typedef_declaration
+	| define_declaration
 	;
 
 
