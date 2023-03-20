@@ -930,7 +930,9 @@ static inline Ast* parse_ct_else_stmt(ParseContext *c)
 static inline Ast* parse_ct_if_stmt(ParseContext *c, bool is_elif)
 {
 	Ast *ast = ast_new_curr(c, AST_CT_IF_STMT);
+	if (is_elif) sema_warning_at(c->span, "$elif is deprecated, use $switch instead.");
 	advance_and_verify(c, is_elif ? TOKEN_CT_ELIF : TOKEN_CT_IF);
+
 	ASSIGN_EXPR_OR_RET(ast->ct_if_stmt.expr, parse_const_paren_expr(c), poisoned_ast);
 	consume_deprecated_symbol(c, TOKEN_COLON);
 	if (!parse_ct_compound_stmt(c, &ast->ct_if_stmt.then)) return poisoned_ast;
@@ -1076,8 +1078,11 @@ static inline Ast* parse_ct_switch_stmt(ParseContext *c)
 {
 	Ast *ast = ast_new_curr(c, AST_CT_SWITCH_STMT);
 	advance_and_verify(c, TOKEN_CT_SWITCH);
-	ASSIGN_EXPRID_OR_RET(ast->ct_switch_stmt.cond, parse_const_paren_expr(c), poisoned_ast);
-	consume_deprecated_symbol(c, TOKEN_COLON);
+	if (!tok_is(c, TOKEN_CT_CASE) && !tok_is(c, TOKEN_CT_DEFAULT) && !tok_is(c, TOKEN_CT_ENDSWITCH))
+	{
+		ASSIGN_EXPRID_OR_RET(ast->ct_switch_stmt.cond, parse_const_paren_expr(c), poisoned_ast);
+		consume_deprecated_symbol(c, TOKEN_COLON);
+	}
 
 	Ast **cases = NULL;
 	while (!try_consume(c, TOKEN_CT_ENDSWITCH))

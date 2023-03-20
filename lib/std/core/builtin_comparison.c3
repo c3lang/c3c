@@ -8,13 +8,14 @@ module std::core::builtin;
  **/
 macro less(a, b) @builtin
 {
-	$if ($defined(a.less))
+$switch
+	$case $defined(a.less):
 		return a.less(b);
-	$elif ($defined(a.compare_to))
+	$case $defined(a.compare_to):
 		return a.compare_to(b) < 0;
-	$else
+	$default:
 		return a < b;
-	$endif
+$endswitch
 }
 
 /**
@@ -22,13 +23,14 @@ macro less(a, b) @builtin
  **/
 macro less_eq(a, b) @builtin
 {
-	$if ($defined(a.less))
+$switch
+	$case $defined(a.less):
 		return !b.less(a);
-	$elif ($defined(a.compare_to))
+	$case $defined(a.compare_to):
 		return a.compare_to(b) <= 0;
-	$else
+	$default:
 		return a <= b;
-	$endif
+$endswitch
 }
 
 /**
@@ -36,13 +38,14 @@ macro less_eq(a, b) @builtin
  **/
 macro greater(a, b) @builtin
 {
-	$if ($defined(a.less))
+$switch
+	$case $defined(a.less):
 		return b.less(a);
-	$elif ($defined(a.compare_to))
+	$case $defined(a.compare_to):
 		return a.compare_to(b) > 0;
-	$else
+	$default:
 		return a > b;
-	$endif
+$endswitch
 }
 
 /**
@@ -50,13 +53,14 @@ macro greater(a, b) @builtin
  **/
 macro greater_eq(a, b) @builtin
 {
-	$if ($defined(a.less))
+$switch
+	$case $defined(a.less):
 		return !a.less(b);
-	$elif ($defined(a.compare_to))
+	$case $defined(a.compare_to):
 		return a.compare_to(b) >= 0;
-	$else
+	$default:
 		return a >= b;
-	$endif
+$endswitch
 }
 
 /**
@@ -64,15 +68,16 @@ macro greater_eq(a, b) @builtin
  **/
 macro bool equals(a, b) @builtin
 {
-	$if ($defined(a.equals))
+$switch
+	$case $defined(a.equals):
 		return a.equals(b);
-	$elif ($defined(a.compare_to))
+	$case $defined(a.compare_to):
 		return a.compare_to(b) == 0;
-	$elif ($defined(a.less))
+	$case $defined(a.less):
 		return !a.less(b) && !b.less(a);
-	$else
+	$default:
 		return a == b;
-	$endif
+$endswitch
 }
 
 macro min(x, ...) @builtin

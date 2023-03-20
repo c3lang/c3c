@@ -8,25 +8,26 @@
 module std::collections::enumset<Enum>;
 
 
-$if (Enum.elements > 128)
+$switch
+$case (Enum.elements > 128):
 typedef EnumSetType @private = char[(Enum.elements + 7) / 8];
 const IS_CHAR_ARRAY = true;
-$elif (Enum.elements > 64)
+$case (Enum.elements > 64):
 typedef EnumSetType @private = uint128;
 const IS_CHAR_ARRAY = false;
-$elif (Enum.elements > 32 || $$C_INT_SIZE > 32)
+$case (Enum.elements > 32 || $$C_INT_SIZE > 32):
 typedef EnumSetType @private = ulong;
 const IS_CHAR_ARRAY = false;
-$elif (Enum.elements > 16 || $$C_INT_SIZE > 16)
+$case (Enum.elements > 16 || $$C_INT_SIZE > 16):
 typedef EnumSetType @private = uint;
 const IS_CHAR_ARRAY = false;
-$elif (Enum.elements > 8 || $$C_INT_SIZE > 8)
+$case (Enum.elements > 8 || $$C_INT_SIZE > 8):
 typedef EnumSetType @private = ushort;
 const IS_CHAR_ARRAY = false;
-$else
+$default:
 typedef EnumSetType @private = char;
 const IS_CHAR_ARRAY = false;
-$endif
+$endswitch
 
 typedef EnumSet = distinct EnumSetType;
 

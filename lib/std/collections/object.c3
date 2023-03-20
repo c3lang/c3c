@@ -212,24 +212,27 @@ fn void Object.set_object(Object* o, String key, Object* new_object) @private
 macro Object* object_from_value(value) @private
 {
 	var $Type = $typeof(value);
-	$if (types::is_int($Type))
+
+$switch
+	$case types::is_int($Type):
 		return new_int(value);
-	$elif (types::is_float($Type))
+	$case types::is_float($Type):
 		return new_float(value);
-	$elif ($Type.typeid == String.typeid)
+	$case $Type.typeid == String.typeid:
 		return new_string(value);
-	$elif ($Type.typeid == bool.typeid)
+	$case $Type.typeid == bool.typeid:
 		return new_bool(value);
-	$elif ($Type.typeid == Object*.typeid)
+	$case $Type.typeid == Object*.typeid:
 		return value;
-	$elif ($Type.typeid == void*.typeid)
+	$case $Type.typeid == void*.typeid:
 		assert(value == null);
 		return &NULL_OBJECT;
-	$elif ($checks(String s = value))
+	$case $checks(String s = value):
 		return new_string(value);
-	$else
+	$default:
 		$assert(false, "Unsupported object type.");
-	$endif
+$endswitch
+
 }
 
 macro Object* Object.set(Object* o, String key, value)

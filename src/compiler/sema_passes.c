@@ -178,10 +178,10 @@ static inline bool sema_analyse_top_level_if(SemaContext *context, Decl *ct_if)
 static inline bool sema_analyse_top_level_switch(SemaContext *context, Decl *ct_switch)
 {
 	Expr *cond = ct_switch->ct_switch_decl.expr;
-	if (!sema_analyse_ct_expr(context, cond)) return false;
-	Type *type = cond->type;
+	if (cond && !sema_analyse_ct_expr(context, cond)) return false;
+	Type *type = cond ? cond->type : type_bool;
 	bool is_type = type == type_typeid;
-	ExprConst *switch_expr_const = &cond->const_expr;
+	ExprConst *switch_expr_const = cond ? &cond->const_expr : NULL;
 	Decl **cases = ct_switch->ct_switch_decl.cases;
 
 	unsigned case_count = vec_size(cases);
@@ -212,6 +212,12 @@ static inline bool sema_analyse_top_level_switch(SemaContext *context, Decl *ct_
 			{
 				SEMA_ERROR(expr, "The $case must have a constant expression.");
 				return false;
+			}
+			if (!cond)
+			{
+				if (!expr->const_expr.b) continue;
+				if (matched_case == case_count) matched_case = (int)i;
+				continue;
 			}
 			if (to_expr && to_expr->expr_kind != EXPR_CONST)
 			{

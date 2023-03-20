@@ -278,13 +278,14 @@ macro void VarString.append(VarString* str, value)
 		$case Char32:
 			str.append_char32(value);
 		$default:
-			$if (@convertible(value, Char32))
-				str.append_char32(value);
-			$elif (@convertible(value, String))
-				str.append_chars(value);
-			$else
-				$assert(false, "Unsupported type for append – use printf instead.");
-			$endif
+			$switch
+				$case @convertible(value, Char32):
+					str.append_char32(value);
+				$case @convertible(value, String):
+					str.append_chars(value);
+				$default:
+					$assert(false, "Unsupported type for append – use printf instead.");
+			$endswitch
 	$endswitch
 }
 

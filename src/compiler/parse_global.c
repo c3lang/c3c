@@ -5,17 +5,16 @@
 #include "compiler_internal.h"
 #include "parser_internal.h"
 
+static bool context_next_is_path_prefix_start(ParseContext *c);
 static Decl *parse_const_declaration(ParseContext *c, bool is_global);
 static inline Decl *parse_func_definition(ParseContext *c, AstId docs, bool is_interface);
 static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl);
-INLINE bool parse_decl_initializer(ParseContext *c, Decl *decl);
 static inline Decl *parse_static_top_level(ParseContext *c);
 static Decl *parse_include(ParseContext *c);
 static bool parse_attributes_for_global(ParseContext *c, Decl *decl);
-
+INLINE bool parse_decl_initializer(ParseContext *c, Decl *decl);
 INLINE Decl *decl_new_var_current(ParseContext *c, TypeInfo *type, VarDeclKind kind);
 
-static bool context_next_is_path_prefix_start(ParseContext *c);
 
 INLINE Decl *decl_new_var_current(ParseContext *c, TypeInfo *type, VarDeclKind kind)
 {
@@ -125,8 +124,10 @@ static inline Decl *parse_ct_if_top_level(ParseContext *c)
 	if (!parse_top_level_block(c, &ct->ct_if_decl.then, TOKEN_CT_ENDIF, TOKEN_CT_ELIF, TOKEN_CT_ELSE)) return poisoned_decl;
 
 	CtIfDecl *ct_if_decl = &ct->ct_if_decl;
+	// Chain elif
 	while (tok_is(c, TOKEN_CT_ELIF))
 	{
+		sema_warning_at(c->span, "$elif is deprecated, use $switch instead.");
 		Decl *ct_elif = decl_new_ct(DECL_CT_ELIF, c->span);
 		advance_and_verify(c, TOKEN_CT_ELIF);
 		ASSIGN_EXPR_OR_RET(ct_elif->ct_elif_decl.expr, parse_const_paren_expr(c), poisoned_decl);
@@ -135,6 +136,7 @@ static inline Decl *parse_ct_if_top_level(ParseContext *c)
 		ct_if_decl->elif = ct_elif;
 		ct_if_decl = &ct_elif->ct_elif_decl;
 	}
+	// final else
 	if (tok_is(c, TOKEN_CT_ELSE))
 	{
 		Decl *ct_else = decl_new_ct(DECL_CT_ELSE, c->span);
@@ -179,7 +181,7 @@ static inline Decl *parse_ct_case(ParseContext *c)
 }
 
 /**
- * ct_switch_top_level ::= CT_SWITCH const_paren_expr '{' ct_case* '}'
+ * ct_switch_top_level ::= CT_SWITCH const_paren_expr? ct_case* CT_ENDSWITCH
  * @param c
  * @return the declaration if successfully parsed, NULL otherwise.
  */
@@ -187,8 +189,11 @@ static inline Decl *parse_ct_switch_top_level(ParseContext *c)
 {
 	Decl *ct = decl_new_ct(DECL_CT_SWITCH, c->span);
 	advance_and_verify(c, TOKEN_CT_SWITCH);
-	ASSIGN_EXPR_OR_RET(ct->ct_switch_decl.expr, parse_const_paren_expr(c), poisoned_decl);
-	consume_deprecated_symbol(c, TOKEN_COLON);
+	if (!tok_is(c, TOKEN_CT_CASE) && !tok_is(c, TOKEN_CT_DEFAULT) && !tok_is(c, TOKEN_CT_ENDSWITCH))
+	{
+		ASSIGN_EXPR_OR_RET(ct->ct_switch_decl.expr, parse_const_paren_expr(c), poisoned_decl);
+		consume_deprecated_symbol(c, TOKEN_COLON);
+	}
 	while (!try_consume(c, TOKEN_CT_ENDSWITCH))
 	{
 		ASSIGN_DECL_OR_RET(Decl *result, parse_ct_case(c), poisoned_decl);

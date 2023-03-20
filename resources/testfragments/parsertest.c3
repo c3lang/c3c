@@ -109,18 +109,21 @@ generic boor2(i)
         return 10001;
 }
 
-$if ($e > 0)
+$switch
+
+$case $e > 0:
 {
     fn void foo() {}
 }
-$elif ($e < 0)
+$case $e < 0:
 {
     fn void foo() { printf("HELO"); }
 }
-$else
+$default:
 {
     fn void foo() { printf("OLEH"); }
 }
+$endswitch
 
 $if ($e > 0)
 {

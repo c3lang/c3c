@@ -2193,12 +2193,12 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 {
 	unsigned ct_context = sema_context_push_ct_stack(context);
 	// Evaluate the switch statement
-	Expr *cond = exprptr(statement->ct_switch_stmt.cond);
-	if (!sema_analyse_ct_expr(context, cond)) goto FAILED;
+	Expr *cond = exprptrzero(statement->ct_switch_stmt.cond);
+	if (cond && !sema_analyse_ct_expr(context, cond)) goto FAILED;
 
 	// If we have a type, then we do different evaluation
 	// compared to when it is a value.
-	Type *type = cond->type;
+	Type *type = cond ? cond->type : type_bool;
 	bool is_type = false;
 	switch (type_flatten(type)->type_kind)
 	{
@@ -2214,11 +2214,12 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 			if (expr_is_const_string(cond)) break;
 			FALLTHROUGH;
 		default:
+			assert(cond);
 			SEMA_ERROR(cond, "Only types, strings, enums, integers, floats and booleans may be used with '$switch'.");
 			goto FAILED;
 	}
 
-	ExprConst *switch_expr_const = &cond->const_expr;
+	ExprConst *switch_expr_const = cond ? &cond->const_expr : NULL;
 	Ast **cases = statement->ct_switch_stmt.body;
 
 	unsigned case_count = vec_size(cases);
@@ -2234,7 +2235,6 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 		{
 			case AST_CASE_STMT:
 			{
-
 				Expr *expr = stmt->case_stmt.expr;
 				Expr *to_expr = stmt->case_stmt.to_expr;
 				if (to_expr)
@@ -2264,6 +2264,12 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 					SEMA_ERROR(expr, "The $case must have a constant expression.");
 					goto FAILED;
 				}
+				if (!cond)
+				{
+					if (!expr->const_expr.b) continue;
+					if (matched_case == case_count) matched_case = (int)i;
+					continue;
+				}
 				if (to_expr && !expr_is_const(to_expr))
 				{
 					SEMA_ERROR(to_expr, "The $case must have a constant expression.");
@@ -2292,7 +2298,7 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 				}
 				if (expr_const_in_range(switch_expr_const, const_expr, const_to_expr))
 				{
-					matched_case = (int) i;
+					matched_case = (int)i;
 				}
 				break;
 			}

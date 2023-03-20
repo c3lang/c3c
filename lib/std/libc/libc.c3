@@ -151,7 +151,8 @@ $endif
 typedef Fpos = long;
 typedef CFile = void*;
 
-$if (env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == OsType.LINUX)
+$switch
+$case env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == OsType.LINUX:
     extern CFile __stdin @extern("stdin");
     extern CFile __stdout @extern("stdout");
     extern CFile __stderr @extern("stderr");
@@ -161,7 +162,7 @@ $if (env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == OsType.LINUX)
     macro CFile stdin() { return __stdin; }
     macro CFile stdout() { return __stdout; }
     macro CFile stderr() { return __stderr; }
-$elif (env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == OsType.MACOSX)
+$case env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == OsType.MACOSX:
     extern CFile __stdinp;
     extern CFile __stdoutp;
     extern CFile __stderrp;
@@ -170,18 +171,18 @@ $elif (env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == OsType.MACOSX)
 	macro CFile stdin() { return __stdinp; }
     macro CFile stdout() { return __stdoutp; }
     macro CFile stderr() { return __stderrp; }
-$elif (env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == OsType.WIN32)
+$case env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == OsType.WIN32:
     extern fn CFile __acrt_iob_func(CInt c);
     extern fn usz _msize(void* ptr);
     macro usz malloc_size(void* ptr) { return _msize(ptr); }
     macro CFile stdin() { return __acrt_iob_func(0); }
     macro CFile stdout() { return __acrt_iob_func(1); }
     macro CFile stderr() { return __acrt_iob_func(2); }
-$else
+$default:
     macro CFile stdin() { return (CFile*)(uptr)0; }
     macro CFile stdout() { return (CFile*)(uptr)1; }
     macro CFile stderr() { return (CFile*)(uptr)2; }
-$endif
+$endswitch
 
 const HAS_MALLOC_SIZE =
 	env::OS_TYPE == OsType.LINUX
@@ -385,7 +386,7 @@ const Errno ENOEXEC = 8;    // Exec format error
 const Errno EBADF = 9;      // Bad file number
 const Errno ECHILD = 10;    // No child processes
 
-$if (env::OS_TYPE == OsType.MACOSX)
+$if (env::OS_TYPE == MACOSX)
 const Errno EAGAIN = 35;    // Try again Macos
 $else
 const Errno EAGAIN = 11;    // Try again
@@ -415,7 +416,9 @@ const Errno EPIPE = 32;     // Broken pipe
 const Errno EDOM = 33;      // Math argument out of domain of func
 const Errno ERANGE = 34;    // Math result not representable
 
-$if (env::OS_TYPE == OsType.MACOSX)
+$switch (env::OS_TYPE)
+
+$case MACOSX:
 const Errno EDEADLK = 11;       // Resource deadlock would occur MacOS
 const Errno ENAMETOOLONG = 63;  // File name too long MacOS
 const Errno ELOOP = 62;         // Too many symbolic links encountered
@@ -426,7 +429,7 @@ const Errno ENETUNREACH = 51;   // Network is unreachable MacOS
 const Errno ENETRESET = 52;     // Network dropped connection because of reset MacOS
 const Errno EOPNOTSUPP = 45;    // Operation not supported on transport endpoint
 
-$elif (env::OS_TYPE == OsType.WIN32)
+$case WIN32:
 const Errno EDEADLK = 36;       // Resource deadlock would occur Win32
 const Errno ENAMETOOLONG = 38;  // File name too long Win32
 const Errno ELOOP = 114;        // Too many symbolic links encountered
@@ -437,7 +440,7 @@ const Errno ENETUNREACH = 118;  // Network is unreachable
 const Errno ENETRESET = 117;    // Network dropped connection because of reset
 const Errno EOPNOTSUPP = 130;   // Operation not supported on transport endpoint
 
-$else
+$default:
 const Errno EDEADLK = 35;       // Resource deadlock would occur Linux (others?)
 const Errno ENAMETOOLONG = 36;  // File name too long Linux (others?)
 const Errno ELOOP = 40;         // Too many symbolic links encountered
@@ -448,7 +451,7 @@ const Errno ENETUNREACH = 101;  // Network is unreachable
 const Errno ENETRESET = 102;    // Network dropped connection because of reset
 const Errno EOPNOTSUPP = 95;    // Operation not supported on transport endpoint
 
-$endif
+$endswitch
 
 
 
@@ -523,27 +526,30 @@ const Errno ECONNREFUSED = 111; /* Connection refused */
 const Errno EHOSTDOWN = 112; /* Host is down */
 const Errno EHOSTUNREACH = 113; /* No route to host */
 */
-$if (env::OS_TYPE == OsType.MACOSX)
+
+$switch (env::OS_TYPE)
+
+$case MACOSX:
 const Errno ETIMEDOUT = 60;     // Connection timed out
 const Errno EINPROGRESS = 36;   // Operation now in progress MacOS
 const Errno EALREADY = 37;      // Operation already in progress MacOS
 const Errno EDQUOT = 69;        // Quota exceeded, MacOS
 const Errno EWOULDBLOCK = 35;   // Operation would block
 
-$elif (env::OS_TYPE == OsType.WIN32)
+$case WIN32:
 const Errno ETIMEDOUT = 138;    // Connection timed out
 const Errno EALREADY = 103;     // Operation already in progress
 const Errno EINPROGRESS = 112;  // Operation now in progress Win32
 const Errno EDQUOT = -122;      // Quota exceeded, not in Win32
 const Errno EWOULDBLOCK = 140;  // Operation would block
 
-$else
+$default:
 const Errno ETIMEDOUT = 110;    // Connection timed out
 const Errno EALREADY = 114;     // Operation already in progress
 const Errno EINPROGRESS = 115;  // Operation now in progress
 const Errno EDQUOT = 122;       // Quota exceeded
 const Errno EWOULDBLOCK = 41;   // Operation would block
-$endif
+$endswitch
 
 /*
 const Errno ESTALE = 116; /* Stale NFS file handle */

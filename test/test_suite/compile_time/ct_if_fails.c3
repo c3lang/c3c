@@ -16,13 +16,16 @@ $else // #error: Expected the start of a global declaration here
 $endif
 
 
-$if (1)
-$elif (2)
-$else
-$endif
+$switch
+$case true:
+$case true:
+$default:
+$endswitch
 
-$if (1)
-$elif (2)
-$elif (3)
-$else
-$endif
+$switch
+$case true:
+$case true:
+$case true:
+$default:
+$endswitch
+

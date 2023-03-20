@@ -1,60 +1,63 @@
 $if (0)
 $else
-    $if (0)
-    $elif (0)
-    $elif (0)
-    $else
+	$switch
+	$case false:
+	$case false:
+	$case false:
+	$default:
         int x = 1;
-    $endif
+    $endswitch
 $endif
 
-$if (0)
+$switch
+$case false:
 $assert(false);
-$elif (0)
+$case false:
 $assert(false);
-$else
+$default:
 $assert(true);
-$endif
+$endswitch
 
 $if (1)
 $assert(true);
 int d = 5;
-$elif (0)
-$assert(false);
 $else
 $assert(false);
 $endif
 
-$if (0)
+$switch
+$case false:
 $assert(true);
-$elif (1)
+$case true:
 $assert(true);
 int c = 5;
-$else
+$default:
 $assert(false);
-$endif
+$endswitch
 
-$if (0)
+$switch
+$case false:
 $assert(true);
-$elif (1)
+$case true:
 $assert(true);
 int b = 4;
-$elif (0)
+$case false:
 $assert(false);
-$else
+$default:
 $assert(false);
-$endif
+$endswitch
 
-$if (0)
+$switch
+$case false:
 $assert(true);
-$elif (0)
+$case false:
 $assert(false);
-$elif (1)
+$case true:
 $assert(true);
 int a = 3;
-$else
+$default:
 $assert(false);
-$endif
+$endswitch
 
 // #expect: ct_if.ll
 
