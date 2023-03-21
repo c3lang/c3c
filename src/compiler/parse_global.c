@@ -268,10 +268,7 @@ static inline bool parse_optional_module_params(ParseContext *c, const char ***t
 
 	if (!try_consume(c, TOKEN_LESS)) return true;
 
-	if (try_consume(c, TOKEN_GREATER))
-	{
-		return SEMA_ERROR_HERE("Generic parameter list cannot be empty.");
-	}
+	if (try_consume(c, TOKEN_GREATER)) RETURN_SEMA_ERROR_HERE("Generic parameter list cannot be empty.");
 
 	// No params
 	while (1)
@@ -282,14 +279,14 @@ static inline bool parse_optional_module_params(ParseContext *c, const char ***t
 			case TOKEN_CONST_IDENT:
 				break;
 			case TOKEN_COMMA:
-				return SEMA_ERROR_HERE("Unexpected ','");
+				RETURN_SEMA_ERROR_HERE("Unexpected ','");
 			case TOKEN_IDENT:
-				return SEMA_ERROR_HERE("The module parameter must be a type or a constant.");
+				RETURN_SEMA_ERROR_HERE("The module parameter must be a type or a constant.");
 			case TOKEN_CT_IDENT:
 			case TOKEN_CT_TYPE_IDENT:
-				return SEMA_ERROR_HERE("The module parameter cannot be a $-prefixed name.");
+				RETURN_SEMA_ERROR_HERE("The module parameter cannot be a $-prefixed name.");
 			default:
-				return SEMA_ERROR_HERE("Only generic parameters are allowed here as parameters to the module.");
+				RETURN_SEMA_ERROR_HERE("Only generic parameters are allowed here as parameters to the module.");
 		}
 		vec_add(*tokens_ref, symstr(c));
 		advance(c);
@@ -307,20 +304,20 @@ bool parse_module(ParseContext *c, AstId contracts)
 {
 	if (tok_is(c, TOKEN_STRING))
 	{
-		return SEMA_ERROR_HERE("'module' should be followed by a plain identifier, not a string. Did you accidentally put the module name between \"\"?");
+		RETURN_SEMA_ERROR_HERE("'module' should be followed by a plain identifier, not a string. Did you accidentally put the module name between \"\"?");
 	}
 
 	if (!tok_is(c, TOKEN_IDENT))
 	{
 		if (token_is_keyword(c->tok))
 		{
-			return SEMA_ERROR_HERE("The module name cannot contain a reserved keyword, try another name.");
+			RETURN_SEMA_ERROR_HERE("The module name cannot contain a reserved keyword, try another name.");
 		}
 		if (token_is_some_ident(c->tok))
 		{
-			return SEMA_ERROR_HERE("The module name must consist of only lower case letters, 0-9 and '_'.");
+			RETURN_SEMA_ERROR_HERE("The module name must consist of only lower case letters, 0-9 and '_'.");
 		}
-		return SEMA_ERROR_HERE("'module' should be followed by a module name.");
+		RETURN_SEMA_ERROR_HERE("'module' should be followed by a module name.");
 	}
 
 	Path *path = parse_module_path(c);
@@ -343,7 +340,7 @@ bool parse_module(ParseContext *c, AstId contracts)
 	{
 		if (!context_set_module(c, path, NULL)) return false;
 		recover_top_level(c);
-		if (contracts) return SEMA_ERROR(astptr(contracts), "Contracts cannot be use with non-generic modules.");
+		if (contracts) RETURN_SEMA_ERROR(astptr(contracts), "Contracts cannot be use with non-generic modules.");
 		return true;
 	}
 	if (!context_set_module(c, path, generic_parameters)) return false;
@@ -376,37 +373,35 @@ bool parse_module(ParseContext *c, AstId contracts)
 				case CONTRACT_CHECKED:
 					continue;
 			}
-			return SEMA_ERROR(current, "Invalid constraint - only '@require' and '@checked' are valid for modules.");
+			RETURN_SEMA_ERROR(current, "Invalid constraint - only '@require' and '@checked' are valid for modules.");
 		}
 	}
 	Visibility visibility = VISIBLE_PUBLIC;
 	Attr** attrs = NULL;
 	if (!parse_attributes(c, &attrs, &visibility)) return false;
 	FOREACH_BEGIN(Attr *attr, attrs)
-		if (attr->is_custom) return SEMA_ERROR(attr, "Custom attributes cannot be used with 'module'.");
+		if (attr->is_custom) RETURN_SEMA_ERROR(attr, "Custom attributes cannot be used with 'module'.");
 		switch (attr->attr_kind)
 		{
 			case ATTRIBUTE_TEST:
 				c->unit->test_by_default = true;
 				continue;
 			case ATTRIBUTE_EXPORT:
-				if (attr->exprs) return SEMA_ERROR(attr, "Expected no arguments to '@export'");
-				if (c->unit->export_by_default) return SEMA_ERROR(attr, "'@export' appeared more than once.");
+				if (attr->exprs) RETURN_SEMA_ERROR(attr, "Expected no arguments to '@export'");
+				if (c->unit->export_by_default) RETURN_SEMA_ERROR(attr, "'@export' appeared more than once.");
 				c->unit->export_by_default = true;
 				continue;
 			case ATTRIBUTE_EXTERN:
 			{
 				if (vec_size(attr->exprs) != 1)
 				{
-					SEMA_ERROR(attr, "Expected 1 argument to '@extern(..), not %d'.", vec_size(attr->exprs));
-					return false;
+					RETURN_SEMA_ERROR(attr, "Expected 1 argument to '@extern(..), not %d'.", vec_size(attr->exprs));
 				}
 				Expr *expr = attr->exprs[0];
-				if (!expr_is_const_string(expr)) return SEMA_ERROR(expr, "Expected a constant string.");
+				if (!expr_is_const_string(expr)) RETURN_SEMA_ERROR(expr, "Expected a constant string.");
 				if (c->unit->module->extname)
 				{
-					SEMA_ERROR(attr, "External name for the module may only be declared in one location.");
-					return false;
+					RETURN_SEMA_ERROR(attr, "External name for the module may only be declared in one location.");
 				}
 				c->unit->module->extname = expr->const_expr.string.chars;
 				continue;
@@ -414,7 +409,7 @@ bool parse_module(ParseContext *c, AstId contracts)
 			default:
 				break;
 		}
-		return SEMA_ERROR(attr, "'%s' cannot be used after a module declaration.", attr->name);
+		RETURN_SEMA_ERROR(attr, "'%s' cannot be used after a module declaration.", attr->name);
 	FOREACH_END();
 	c->unit->default_visibility = visibility;
 	CONSUME_EOS_OR_RET(false);
@@ -426,11 +421,11 @@ static bool consume_type_name(ParseContext *c, const char* type)
 {
 	if (tok_is(c, TOKEN_IDENT) || token_is_keyword(c->tok))
 	{
-		return SEMA_ERROR_HERE("Names of %ss must start with an uppercase letter.", type);
+		RETURN_SEMA_ERROR_HERE("Names of %ss must start with an uppercase letter.", type);
 	}
 	if (tok_is(c, TOKEN_CONST_IDENT))
 	{
-		return SEMA_ERROR_HERE("Names of %ss cannot be all uppercase.", type);
+		RETURN_SEMA_ERROR_HERE("Names of %ss cannot be all uppercase.", type);
 	}
 	return consume(c, TOKEN_TYPE_IDENT, "'%s' should be followed by the name of the %s.", type, type);
 }
@@ -439,7 +434,7 @@ bool consume_const_name(ParseContext *c, const char* type)
 {
 	if (tok_is(c, TOKEN_IDENT) || tok_is(c, TOKEN_TYPE_IDENT) || token_is_keyword(c->tok))
 	{
-		return SEMA_ERROR_HERE("Names of %ss must be all uppercase.", type);
+		RETURN_SEMA_ERROR_HERE("Names of %ss must be all uppercase.", type);
 	}
 	return consume(c, TOKEN_CONST_IDENT, "A constant name was expected here, did you forget it?");
 }
@@ -479,7 +474,7 @@ bool parse_path_prefix(ParseContext *c, Path** path_ref)
 	path->module = symtab_add(scratch_ptr, offset, fnv1a(scratch_ptr, offset), &type);
 	if (type != TOKEN_IDENT)
 	{
-		return SEMA_ERROR(path, "A module name was expected here.");
+		RETURN_SEMA_ERROR(path, "A module name was expected here.");
 	}
 	path->len = offset;
 	*path_ref = path;
@@ -2606,7 +2601,7 @@ static inline bool parse_contract_param(ParseContext *c, AstId **docs_ref)
 		}
 		else
 		{
-			return SEMA_ERROR_LAST("'in', 'out' or 'inout' were expected.");
+			RETURN_SEMA_ERROR_LAST("'in', 'out' or 'inout' were expected.");
 		}
 		CONSUME_OR_RET(TOKEN_RBRACKET, false);
 	}
