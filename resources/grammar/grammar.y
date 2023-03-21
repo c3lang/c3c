@@ -21,14 +21,14 @@ void yyerror(char *s);
 %token XOR_ASSIGN OR_ASSIGN VAR NIL ELVIS NEXTCASE
 %token TYPEDEF MODULE IMPORT DEFINE
 %token CHAR SHORT INT LONG FLOAT DOUBLE CONST VOID
-%token BYTE USHORT UINT ULONG BOOL
-%token TYPEID
+%token ICHAR USHORT UINT ULONG BOOL INT128 UINT128 FLOAT16 FLOAT128
+%token TYPEID BITSTRUCT STATIC
 %token STRUCT UNION ENUM ELLIPSIS DOTDOT
 
 %token CASE DEFAULT IF ELSE SWITCH WHILE DO FOR GOTO CONTINUE BREAK RETURN
 %token FN FAULT MACRO GENERIC CT_IF CT_ENDIF CT_ELSE CT_SWITCH CT_CASE CT_DEFAULT CT_FOR CT_FOREACH CT_ENDFOREACH
-%token CT_ENDFOR CT_ENDSWITCH BUILTIN IMPLIES
-%token TRY CATCH SCOPE PUBLIC DEFER ATTRIBUTE TRY_Q CATCH_Q LVEC RVEC OPTELSE
+%token CT_ENDFOR CT_ENDSWITCH BUILTIN IMPLIES INITIALIZE FINALIZE CT_ECHO CT_ASSERT CT_EVALTYPE CT_VATYPE
+%token TRY CATCH SCOPE PUBLIC DEFER ATTRIBUTE TRY_Q CATCH_Q LVEC RVEC OPTELSE CT_TYPEFROM CT_TYPEOF
 
 %token FN_BLOCK_START FN_BLOCK_END
 
@@ -270,18 +270,26 @@ base_type
     : VOID
     | BOOL
     | CHAR
-    | BYTE
+    | ICHAR
     | SHORT
     | USHORT
     | INT
     | UINT
     | LONG
     | ULONG
+    | INT128
+    | UINT128
     | FLOAT
+    | FLOAT16
+    | FLOAT128
     | DOUBLE
     | TYPE_IDENT
     | path TYPE_IDENT
     | CT_TYPE_IDENT
+    | CT_TYPEOF '(' expression ')'
+    | CT_TYPEFROM '(' constant_expression ')'
+    | CT_VATYPE '(' constant_expression ')'
+    | CT_EVALTYPE '(' constant_expression ')'
     ;
 
 type
@@ -418,6 +426,37 @@ decl_expr_list
     | decl_expr_list ',' expression
     | decl_expr_list ',' declaration
     ;
+
+ct_assert_stmt
+	: CT_ASSERT '(' expression ',' expression ')' ';'
+	| CT_ASSERT '(' expression ')' ';'
+	;
+
+ct_echo_stmt
+	: CT_ECHO '(' expression ')' ';'
+
+bitstruct_declaration
+	: BITSTRUCT IDENT ':' type opt_attributes bitstruct_body
+
+bitstruct_body
+	: '{' '}'
+	| '{' bitstruct_defs '}'
+	;
+
+bitstruct_defs
+	: bitstruct_def
+	| bitstruct_defs bitstruct_def
+	;
+
+bitstruct_def
+	: type IDENT ':' constant_expression DOTDOT constant_expression ';'
+	| type IDENT ':' constant_expression ';'
+	;
+
+static_declaration
+	: STATIC INITIALIZE opt_attributes compound_statement
+	| STATIC FINALIZE opt_attributes compound_statement
+	;
 
 for_statement
     : FOR '(' decl_expr_list ';' expression_statement ')' statement
@@ -627,6 +666,10 @@ top_level
 	| macro_declaration
 	| typedef_declaration
 	| define_declaration
+	| static_declaration
+	| ct_assert_stmt
+	| ct_echo_stmt
+	| bitstruct_declaration
 	;
 
 

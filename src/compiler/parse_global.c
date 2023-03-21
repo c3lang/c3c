@@ -487,20 +487,23 @@ bool parse_path_prefix(ParseContext *c, Path** path_ref)
  * base_type
  *		: VOID
  *		| BOOL
+ *		| ICHAR
  *		| CHAR
- *		| BYTE
  *		| SHORT
  *		| USHORT
  *		| INT
  *		| UINT
  *		| LONG
  *		| ULONG
+ *		| INT128
+ *		| UINT128
  *		| FLOAT
  *		| DOUBLE
+ *		| FLOAT16
+ *		| FLOAT128
  *		| TYPE_IDENT
  *		| ident_scope TYPE_IDENT
  *		| CT_TYPE_IDENT
- *		| VIRTUAL (ident_scope TYPE_IDENT)?
  *		| CT_TYPEOF '(' expr ')'
  *		| CT_EVALTYPE '(' expr ')'
  *		;
@@ -2179,13 +2182,12 @@ static inline Decl *parse_macro_declaration(ParseContext *c, AstId docs)
  *		| FAULT TYPE_IDENT '{' error_data '}'
  *		;
  */
-static inline Decl *parse_fault_declaration(ParseContext *c, bool is_private)
+static inline Decl *parse_fault_declaration(ParseContext *c)
 {
 	advance(c);
 	// advance_and_verify(context, TOKEN_ERRTYPE);
 
 	Decl *decl = decl_new_with_type(symstr(c), c->span, DECL_FAULT);
-	if (is_private) decl->visibility = VISIBLE_PRIVATE;
 	if (!consume_type_name(c, "fault")) return poisoned_decl;
 
 	TypeInfo *type = NULL;
@@ -2197,7 +2199,6 @@ static inline Decl *parse_fault_declaration(ParseContext *c, bool is_private)
 	while (!try_consume(c, TOKEN_RBRACE))
 	{
 		Decl *fault_const = decl_new(DECL_FAULTVALUE, symstr(c), c->span);
-		if (is_private) decl->visibility = VISIBLE_PRIVATE;
 		if (!consume_const_name(c, "fault value"))
 		{
 			return poisoned_decl;
@@ -2282,12 +2283,11 @@ static inline bool parse_enum_spec(ParseContext *c, TypeInfo **type_ref, Decl***
  *  ;
  *
  */
-static inline Decl *parse_enum_declaration(ParseContext *c, bool is_private)
+static inline Decl *parse_enum_declaration(ParseContext *c)
 {
 	advance_and_verify(c, TOKEN_ENUM);
 
 	Decl *decl = decl_new_with_type(symstr(c), c->span, DECL_ENUM);
-	if (is_private) decl->visibility = VISIBLE_PRIVATE;
 	if (!consume_type_name(c, "enum")) return poisoned_decl;
 
 	TypeInfo *type = NULL;
@@ -2821,88 +2821,60 @@ END:
 }
 
 /**
- * top_level_statement ::= visibility? top_level
+ * top_level_statement ::= struct_declaration | enum_declaration | fault_declaration | const_declaration
+ *                       | global_declaration | macro_declaration | func_definition | typedef_declaration
+ *                       | conditional_compilation | define_declaration | import_declaration | module_declaration
+ *                       | static_declaration | ct_assert_declaration | ct_echo_declaration | bitstruct_declaration
  *
- * top_level
- *		: struct_declaration
- *		| enum_declaration
- *		| error_declaration
- *		| const_declaration
- *		| global_declaration
- *		| macro_declaration
- *		| func_definition
- *		| generics_declaration
- *		| typedef_declaration
- *		| conditional_compilation
- *		| attribute_declaration
- *		;
- * @param visibility
  * @return Decl* or a poison value if parsing failed
  */
 Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 {
-	AstId docs = 0;
-	if (!parse_contracts(c, &docs)) return poisoned_decl;
+	AstId contracts = 0;
+	if (!parse_contracts(c, &contracts)) return poisoned_decl;
 	Decl *decl;
+	bool is_private = try_consume(c, TOKEN_PRIVATE); // TODO remove
+	if (is_private)
+	{
+		sema_warning_at(c->prev_span, "The use of 'private' is deprecated. Use '@private' instead.");
+	}
+
 	TokenType tok = c->tok;
 	if (tok != TOKEN_MODULE && !c->unit->module)
 	{
 		if (!context_set_module_from_filename(c)) return poisoned_decl;
 		// Pass the docs to the next thing.
 	}
-	bool is_private = false;
-AFTER_VISIBILITY:
+
 	switch (tok)
 	{
-		case TOKEN_PRIVATE:
-			if (is_private)
-			{
-				SEMA_ERROR_HERE("Two 'private' modifiers cannot be used in a row.");
-				return poisoned_decl;
-			}
-			sema_warning_at(c->span, "The use of 'private' is deprecated. Use '@private' instead.");
-			is_private = true;
-			advance(c);
-			tok = c->tok;
-			goto AFTER_VISIBILITY;
 		case TOKEN_EXTERN:
-			if (is_private)
-			{
-				SEMA_ERROR_HERE("'private' cannot be combined with 'extern'.");
-			}
+			// Extern declarations
 			advance(c);
 			tok = c->tok;
 			switch (tok)
 			{
 				case TOKEN_FN:
-				{
-					ASSIGN_DECL_OR_RET(decl, parse_func_definition(c, docs, false), poisoned_decl);
+					decl = parse_func_definition(c, contracts, false);
 					break;
-				}
 				case TOKEN_CONST:
-				{
-					ASSIGN_DECL_OR_RET(decl, parse_top_level_const_declaration(c), poisoned_decl);
+					if (contracts) goto CONTRACT_NOT_ALLOWED;
+					decl = parse_top_level_const_declaration(c);
 					break;
-				}
 				case TOKEN_IDENT:
 				case TOKEN_TLOCAL:
 				case TYPELIKE_TOKENS:
-				{
-					ASSIGN_DECL_OR_RET(decl, parse_global_declaration(c), poisoned_decl);
+					if (contracts) goto CONTRACT_NOT_ALLOWED;
+					decl = parse_global_declaration(c);
 					break;
-				}
 				default:
 					SEMA_ERROR_HERE("Expected 'extern' to be followed by a function, constant or global variable.");
 					return poisoned_decl;
 			}
+			if (!decl_ok(decl)) return decl;
 			decl->is_extern = true;
 			break;
 		case TOKEN_MODULE:
-			if (is_private)
-			{
-				SEMA_ERROR_HERE("Did not expect 'private' before 'module'.");
-				return poisoned_decl;
-			}
 			if (!c_ref)
 			{
 				SEMA_ERROR_HERE("'module' cannot appear inside of conditional compilation.");
@@ -2911,167 +2883,101 @@ AFTER_VISIBILITY:
 			advance(c);
 			if (c->unit->module)
 			{
+				// We might run into another module declaration. If so, create a new unit.
 				ParseContext *new_context = CALLOCS(ParseContext);
 				*new_context = *c;
 				new_context->unit = unit_create(c->unit->file);
 				*c_ref = c = new_context;
 			}
-			if (!parse_module(c, docs)) return poisoned_decl;
+			if (!parse_module(c, contracts)) return poisoned_decl;
 			return NULL;
 		case TOKEN_DOCS_START:
-			if (is_private)
-			{
-				SEMA_ERROR_HERE("Did not expect doc comments after 'private'.");
-				return poisoned_decl;
-			}
 			SEMA_ERROR_HERE("There are more than one doc comment in a row, that is not allowed.");
 			return poisoned_decl;
 		case TOKEN_TYPEDEF:
-		{
-			ASSIGN_DECL_OR_RET(decl, parse_define_type(c), poisoned_decl);
-			if (is_private) decl->visibility = VISIBLE_PRIVATE;
+			if (contracts) goto CONTRACT_NOT_ALLOWED;
+			decl = parse_define_type(c);
 			break;
-		}
 		case TOKEN_DEFINE:
-		{
-			ASSIGN_DECL_OR_RET(decl, parse_define(c), poisoned_decl);
-			if (is_private) decl->visibility = VISIBLE_PRIVATE;
+			if (contracts) goto CONTRACT_NOT_ALLOWED;
+			decl = parse_define(c);
 			break;
-		}
 		case TOKEN_FN:
-		{
-			ASSIGN_DECL_OR_RET(decl, parse_func_definition(c, docs, false), poisoned_decl);
-			if (is_private) decl->visibility = VISIBLE_PRIVATE;
+			decl = parse_func_definition(c, contracts, false);
 			break;
-		}
 		case TOKEN_STATIC:
-		{
-			if (!check_no_visibility_before(c, is_private)) return poisoned_decl;
-			ASSIGN_DECL_OR_RET(decl, parse_static_top_level(c), poisoned_decl);
-			if (docs)
-			{
-				SEMA_ERROR(astptr(docs), "Unexpected doc comment before 'static', did you mean to use a regular comment?");
-				return poisoned_decl;
-			}
+			if (contracts) goto CONTRACT_NOT_ALLOWED;
+			decl = parse_static_top_level(c);
 			break;
-		}
 		case TOKEN_CT_ASSERT:
-			if (!check_no_visibility_before(c, is_private)) return poisoned_decl;
 			{
+				if (contracts) goto CONTRACT_NOT_ALLOWED;
 				ASSIGN_AST_OR_RET(Ast *ast, parse_ct_assert_stmt(c), poisoned_decl);
 				decl = decl_new_ct(DECL_CT_ASSERT, ast->span);
 				decl->ct_assert_decl = ast;
-				if (docs)
-				{
-					SEMA_ERROR(astptr(docs), "Unexpected doc comment before $assert, did you mean to use a regular comment?");
-					return poisoned_decl;
-				}
 				return decl;
 			}
 		case TOKEN_CT_ECHO:
-			if (!check_no_visibility_before(c, is_private)) return poisoned_decl;
 			{
+				if (contracts) goto CONTRACT_NOT_ALLOWED;
 				ASSIGN_AST_OR_RET(Ast *ast, parse_ct_echo_stmt(c), poisoned_decl);
 				decl = decl_new_ct(DECL_CT_ECHO, ast->span);
 				decl->ct_echo_decl = ast;
-				if (docs)
-				{
-					SEMA_ERROR(astptr(docs), "Unexpected doc comment before $echo, did you mean to use a regular comment?");
-					return poisoned_decl;
-				}
-				return decl;
+				break;
 			}
 		case TOKEN_CT_IF:
-		{
-			if (!check_no_visibility_before(c, is_private)) return poisoned_decl;
-			ASSIGN_DECL_OR_RET(decl, parse_ct_if_top_level(c), poisoned_decl);
-			if (docs)
-			{
-				SEMA_ERROR(astptr(docs), "Unexpected doc comment before $if, did you mean to use a regular comment?");
-				return poisoned_decl;
-			}
+			if (contracts) goto CONTRACT_NOT_ALLOWED;
+			decl = parse_ct_if_top_level(c);
 			break;
-		}
 		case TOKEN_IMPORT:
-			if (!check_no_visibility_before(c, is_private)) return poisoned_decl;
+			if (contracts) goto CONTRACT_NOT_ALLOWED;
 			if (!c_ref)
 			{
 				SEMA_ERROR_HERE("'import' may not appear inside a compile time statement.");
 				return poisoned_decl;
 			}
 			if (!parse_import(c)) return poisoned_decl;
-			if (docs)
-			{
-				SEMA_ERROR(astptr(docs), "Unexpected doc comment before import, did you mean to use a regular comment?");
-				return poisoned_decl;
-			}
 			return NULL;
 		case TOKEN_CT_SWITCH:
-		{
-			if (!check_no_visibility_before(c, is_private)) return poisoned_decl;
-			ASSIGN_DECL_OR_RET(decl, parse_ct_switch_top_level(c), poisoned_decl);
-			if (docs)
-			{
-				SEMA_ERROR(astptr(docs), "Unexpected doc comment before $switch, did you mean to use a regular comment?");
-				return poisoned_decl;
-			}
+			if (contracts) goto CONTRACT_NOT_ALLOWED;
+			decl = parse_ct_switch_top_level(c);
 			break;
-		}
 		case TOKEN_CT_INCLUDE:
-			if (!check_no_visibility_before(c, is_private)) return poisoned_decl;
-			if (docs)
-			{
-				SEMA_ERROR(astptr(docs), "Unexpected doc comment before $include, did you mean to use a regular comment?");
-				return poisoned_decl;
-			}
-			ASSIGN_DECL_OR_RET(decl, parse_include(c), poisoned_decl);
+			if (contracts) goto CONTRACT_NOT_ALLOWED;
+			decl = parse_include(c);
 			break;
 		case TOKEN_BITSTRUCT:
-		{
-			ASSIGN_DECL_OR_RET(decl, parse_bitstruct_declaration(c), poisoned_decl);
-			if (is_private) decl->visibility = VISIBLE_PRIVATE;
+			if (contracts) goto CONTRACT_NOT_ALLOWED;
+			decl = parse_bitstruct_declaration(c);
 			break;
-		}
 		case TOKEN_CONST:
-		{
-			ASSIGN_DECL_OR_RET(decl, parse_top_level_const_declaration(c), poisoned_decl);
-			if (is_private) decl->visibility = VISIBLE_PRIVATE;
+			if (contracts) goto CONTRACT_NOT_ALLOWED;
+			decl = parse_top_level_const_declaration(c);
 			break;
-		}
 		case TOKEN_STRUCT:
 		case TOKEN_UNION:
-		{
-			ASSIGN_DECL_OR_RET(decl, parse_struct_declaration(c), poisoned_decl);
-			if (is_private) decl->visibility = VISIBLE_PRIVATE;
+			if (contracts) goto CONTRACT_NOT_ALLOWED;
+			decl = parse_struct_declaration(c);
 			break;
-		}
 		case TOKEN_MACRO:
-		{
-			ASSIGN_DECL_OR_RET(decl, parse_macro_declaration(c, docs), poisoned_decl);
-			if (is_private) decl->visibility = VISIBLE_PRIVATE;
+			decl = parse_macro_declaration(c, contracts);
 			break;
-		}
 		case TOKEN_ENUM:
-		{
-			ASSIGN_DECL_OR_RET(decl, parse_enum_declaration(c, is_private), poisoned_decl);
+			if (contracts) goto CONTRACT_NOT_ALLOWED;
+			decl = parse_enum_declaration(c);
 			break;
-		}
 		case TOKEN_FAULT:
-		{
-			ASSIGN_DECL_OR_RET(decl, parse_fault_declaration(c, is_private), poisoned_decl);
+			if (contracts) goto CONTRACT_NOT_ALLOWED;
+			decl = parse_fault_declaration(c);
 			break;
-		}
 		case TOKEN_IDENT:
-		{
-			ASSIGN_DECL_OR_RET(decl, parse_global_declaration(c), poisoned_decl);
-			if (is_private) decl->visibility = VISIBLE_PRIVATE;
+			if (contracts) goto CONTRACT_NOT_ALLOWED;
+			decl = parse_global_declaration(c);
 			break;
-		}
 		case TOKEN_EOF:
-			SEMA_ERROR_LAST("Expected a top level declaration");
+			SEMA_ERROR_LAST("Expected a top level declaration.");
 			return poisoned_decl;
 		case TOKEN_CT_CONST_IDENT:
-		{
 			if (peek(c) == TOKEN_EQ)
 			{
 				SEMA_ERROR_HERE("Did you forget a 'const' before the name of this compile time constant?");
@@ -3080,15 +2986,12 @@ AFTER_VISIBILITY:
 			{
 				SEMA_ERROR_HERE("Compile time constant unexpectedly found.");
 			}
-		}
 			return poisoned_decl;
 		case TOKEN_TLOCAL:
 		case TYPELIKE_TOKENS:
-		{
-			ASSIGN_DECL_OR_RET(decl, parse_global_declaration(c), poisoned_decl);
-			if (is_private) decl->visibility = VISIBLE_PRIVATE;
+			if (contracts) goto CONTRACT_NOT_ALLOWED;
+			decl = parse_global_declaration(c);
 			break;
-		}
 		case TOKEN_EOS:
 			SEMA_ERROR_HERE("';' wasn't expected here, try removing it.");
 			return poisoned_decl;
@@ -3096,8 +2999,13 @@ AFTER_VISIBILITY:
 			SEMA_ERROR_HERE("Expected the start of a global declaration here.");
 			return poisoned_decl;
 	}
+	if (!decl_ok(decl)) return decl;
+	if (is_private) decl->visibility = VISIBLE_PRIVATE; // TODO remove
 	assert(decl);
 	return decl;
+CONTRACT_NOT_ALLOWED:
+	SEMA_ERROR(astptr(contracts), "Contracts are only used for modules, functions and macros.");
+	return poisoned_decl;
 }
 
 void consume_deprecated_symbol(ParseContext *c, TokenType type)
