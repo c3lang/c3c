@@ -1679,9 +1679,9 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 		case ATTRIBUTE_NOSTRIP:
 			decl->no_strip = true;
 			return true;
+		case ATTRIBUTE_EXTNAME:
 		case ATTRIBUTE_SECTION:
 		case ATTRIBUTE_EXTERN:
-		case ATTRIBUTE_EXTNAME:
 			if (context->unit->module->is_generic)
 			{
 				sema_error_at(attr->span, "'%s' attributes are not allowed in generic modules.", attr->name);
@@ -1705,6 +1705,8 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 					decl->section = expr->const_expr.string.chars;
 					break;
 				case ATTRIBUTE_EXTNAME:
+					sema_warning_at(attr->span, "'@extname' is deprecated, plase use '@extern' instead.");
+					FALLTHROUGH;
 				case ATTRIBUTE_EXTERN:
 					decl->has_extname = true;
 					decl->extname = expr->const_expr.string.chars;
