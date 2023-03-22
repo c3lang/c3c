@@ -2223,9 +2223,11 @@ static bool sema_slice_index_is_in_range(SemaContext *context, Type *type, Expr 
 	switch (type->type_kind)
 	{
 		case TYPE_POINTER:
-		case TYPE_FLEXIBLE_ARRAY:
 			assert(!from_end);
 			return true;
+		case TYPE_FLEXIBLE_ARRAY:
+			assert(!from_end);
+			break;
 		case TYPE_UNTYPED_LIST:
 		case TYPE_ARRAY:
 		case TYPE_VECTOR:

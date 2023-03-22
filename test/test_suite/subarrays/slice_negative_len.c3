@@ -41,13 +41,13 @@ fn void test6()
 fn void test7()
 {
     int[3] x = { 1, 2, 3 };
-    int[] z = x[-1..]; // #error: Index out of bounds, using a negative index is only allowed for pointers.
+    int[] z = x[-1..]; // #error: Index out of bounds, using a negative index is only allowed for pointers
 }
 
 fn void test8()
 {
     int[3] x = { 1, 2, 3 };
-    int[] z = x[^4..]; // #error: Index out of bounds, using a negative index is only allowed for pointers.
+    int[] z = x[^4..]; // #error: Index out of bounds, using a negative index is only allowed for pointers
 }
 
 fn void test9()
@@ -60,9 +60,24 @@ fn void test10()
 {
     int* x = null;
     x[-10..-3];
-    int[] w = x[0..]; // #error: Omitting end index is not allowed for pointers.
-    int[] z = x[^2..]; // #error: Indexing from the end is not allowed for pointers.
-    int[] y = x[..^2]; // #error: Indexing from the end is not allowed for pointers.
+    int[] w = x[0..]; // #error: Omitting end index is not allowed for pointers
+    int[] z = x[^2..]; // #error: Indexing from the end is not allowed for pointers
+    int[] y = x[..^2]; // #error: Indexing from the end is not allowed for pointers
+}
+
+struct Abc
+{
+	int a;
+	char[*] z;
+}
+
+fn void test105()
+{
+	Abc a;
+    int[] w = a.z[0..]; // #error: Omitting end index is not allowed for pointers
+    int[] z = a.z[^2..]; // #error: Indexing from the end is not allowed for pointers
+    int[] y = a.z[..^2]; // #error: Indexing from the end is not allowed for pointers
+    a.z[-10..-3]; // #error: Index out of bounds, using a negative index is only allowed for pointers
 }
 
 fn void test11()
