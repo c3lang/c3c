@@ -18,6 +18,11 @@ fn void ByteWriter.init(ByteWriter* writer, Allocator* using = mem::heap())
 	*writer = { .bytes = {}, .allocator = using };
 }
 
+fn void ByteWriter.init_buffer(ByteWriter* writer, char[] data)
+{
+	*writer = { .bytes = data, .allocator = null };
+}
+
 /**
  * @param [&inout] writer
  * @require writer.bytes.len == 0 "Init may not run on on already initialized data"
@@ -47,6 +52,7 @@ fn String ByteWriter.as_str(ByteWriter* writer)
 fn void! ByteWriter.ensure_capacity(ByteWriter* writer, usz len) @inline
 {
 	if (writer.bytes.len > len) return;
+	if (!writer.allocator) return IoError.OUT_OF_SPACE!;
 	if (len < 16) len = 16;
 	usz new_capacity = math::next_power_of_2(len);
 	char* new_ptr = realloc_checked(writer.bytes.ptr, new_capacity, .using = writer.allocator)?;

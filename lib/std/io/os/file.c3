@@ -132,7 +132,7 @@ macro anyerr file_open_errno() @local
 	switch (libc::errno())
 	{
 	    case errno::EACCES: return IoError.NO_PERMISSION;
-	    case errno::EDQUOT: return IoError.OUT_OF_DISK;
+	    case errno::EDQUOT: return IoError.OUT_OF_SPACE;
 	    case errno::EBADF: return IoError.FILE_NOT_VALID;
 	    case errno::EEXIST: return IoError.ALREADY_EXISTS;
 	    case errno::EINTR: return IoError.INTERRUPTED;
@@ -141,10 +141,10 @@ macro anyerr file_open_errno() @local
 	    case errno::ELOOP: return IoError.SYMLINK_FAILED;
 	    case errno::EMFILE: return IoError.TOO_MANY_DESCRIPTORS;
 	    case errno::ENAMETOOLONG: return IoError.NAME_TOO_LONG;
-	    case errno::ENFILE: return IoError.OUT_OF_DISK;
+	    case errno::ENFILE: return IoError.OUT_OF_SPACE;
 	    case errno::ENOTDIR: return IoError.FILE_NOT_DIR;
 		case errno::ENOENT: return IoError.FILE_NOT_FOUND;
-	    case errno::ENOSPC: return IoError.OUT_OF_DISK;
+	    case errno::ENOSPC: return IoError.OUT_OF_SPACE;
 		case errno::ENXIO: return IoError.FILE_NOT_FOUND;
 		case errno::EOVERFLOW: return IoError.OVERFLOW;
 		case errno::EROFS: return IoError.READ_ONLY;
@@ -163,11 +163,11 @@ macro anyerr file_seek_errno() @local
 		case errno::EPIPE: return IoError.FILE_IS_PIPE;
 		case errno::EOVERFLOW: return IoError.OVERFLOW;
 	    case errno::ENXIO: return IoError.FILE_NOT_FOUND;
-	    case errno::ENOSPC: return IoError.OUT_OF_DISK;
+	    case errno::ENOSPC: return IoError.OUT_OF_SPACE;
         case errno::EIO: return IoError.INCOMPLETE_WRITE;
 		case errno::EINVAL: return IoError.INVALID_POSITION;
 	    case errno::EINTR: return IoError.INTERRUPTED;
-	    case errno::EFBIG: return IoError.OUT_OF_DISK;
+	    case errno::EFBIG: return IoError.OUT_OF_SPACE;
 	    case errno::EBADF: return IoError.FILE_NOT_VALID;
 	    case errno::EAGAIN: return IoError.WOULD_BLOCK;
 	    default: return IoError.UNKNOWN_ERROR;

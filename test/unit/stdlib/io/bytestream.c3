@@ -23,3 +23,15 @@ fn void! bytestream()
 	assert(w.as_str() == "helloworldabcbc");
 }
 
+fn void! bytewriter_buffer()
+{
+	ByteWriter writer;
+	char[8] z;
+	writer.init_buffer(&z);
+	Stream s = writer.as_stream();
+	s.write("hello")!!;
+	s.write_byte(0)!!;
+	String o = ((ZString)&z).as_str();
+	assert(o == "hello");
+	assert(catch? s.write("xxxx"));
+}
