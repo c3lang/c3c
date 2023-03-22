@@ -360,7 +360,7 @@ fn StringData* DString.data(DString str) @inline @private
 	return (StringData*)str;
 }
 
-fn void DString.reserve(DString* str, usz addition) @private
+fn void DString.reserve(DString* str, usz addition)
 {
 	StringData* data = str.data();
 	if (!data)
@@ -375,6 +375,35 @@ fn void DString.reserve(DString* str, usz addition) @private
 	*str = (DString)realloc(data, StringData.sizeof + new_capacity, .using = data.allocator);
 }
 
+fn usz! DString.read_from_stream(DString* string, Stream* reader)
+{
+	if (reader.supports_available())
+	{
+		usz total_read = 0;
+		while (usz available = reader.available()?)
+		{
+			string.reserve(available);
+			StringData* data = string.data();
+			usz len = reader.read(data.chars[data.len..(data.capacity - 1)])?;
+			total_read += len;
+			data.len += len;
+		}
+		return total_read;
+	}
+	usz total_read = 0;
+	while (true)
+	{
+		// Reserve at least 16 bytes
+		string.reserve(16);
+		StringData* data = string.data();
+		// Read into the rest of the buffer
+		usz read = reader.read(data.chars[data.len..(data.capacity - 1)])?;
+		data.len += read;
+		// Ok, we reached the end.
+		if (read < 16) return total_read;
+		// Otherwise go another round
+	}
+}
 
 struct StringData @private
 {

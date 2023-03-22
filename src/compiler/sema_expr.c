@@ -2607,21 +2607,21 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr)
 	bool end_from_end = expr->subscript_expr.range.end_from_end;
 
 	// Check range
-	if (type->type_kind == TYPE_POINTER)
+	if (type->type_kind == TYPE_POINTER || type->type_kind == TYPE_FLEXIBLE_ARRAY)
 	{
 		if (start_from_end)
 		{
-			SEMA_ERROR(start, "Indexing from the end is not allowed for pointers.");
+			SEMA_ERROR(start, "Indexing from the end is not allowed for pointers or flexible array members.");
 			return false;
 		}
 		if (!end)
 		{
-			SEMA_ERROR(expr, "Omitting end index is not allowed for pointers.");
+			SEMA_ERROR(expr, "Omitting end index is not allowed for pointers or flexible array members.");
 			return false;
 		}
 		if (end && end_from_end)
 		{
-			SEMA_ERROR(end, "Indexing from the end is not allowed for pointers.");
+			SEMA_ERROR(end, "Indexing from the end is not allowed for pointers or flexible array members.");
 			return false;
 		}
 	}
