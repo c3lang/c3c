@@ -1605,7 +1605,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 					decl->operator = OVERLOAD_LEN;
 					break;
 				case EXPR_OPERATOR_CHARS:
-					decl->operator = expr->expr_operator_chars;
+					decl->operator = expr->overload_expr;
 					break;
 				default:
 					goto FAILED_OP_TYPE;

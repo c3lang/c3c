@@ -1142,7 +1142,7 @@ struct Expr_
 		ExprVariant variant_expr;
 		ExprPointerOffset pointer_offset_expr;
 		ExprAsmArg expr_asm_arg;
-		OperatorOverload expr_operator_chars;
+		OperatorOverload overload_expr;
 		TypeInfo *type_expr;                        // 8
 		ExprConst const_expr;                       // 32
 		ExprArgv argv_expr;                         // 16

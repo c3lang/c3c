@@ -7,7 +7,7 @@
 
 static bool context_next_is_path_prefix_start(ParseContext *c);
 static Decl *parse_const_declaration(ParseContext *c, bool is_global);
-static inline Decl *parse_func_definition(ParseContext *c, AstId docs, bool is_interface);
+static inline Decl *parse_func_definition(ParseContext *c, AstId contracts, bool is_interface);
 static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl);
 static inline Decl *parse_static_top_level(ParseContext *c);
 static Decl *parse_include(ParseContext *c);
@@ -502,9 +502,11 @@ bool parse_path_prefix(ParseContext *c, Path** path_ref)
  *		| FLOAT16
  *		| FLOAT128
  *		| TYPE_IDENT
- *		| ident_scope TYPE_IDENT
+ *		| path_prefix TYPE_IDENT
  *		| CT_TYPE_IDENT
  *		| CT_TYPEOF '(' expr ')'
+ *		| CT_TYPEFROM '(' expr ')'
+ *		| CT_VATYPE '(' expr ')'
  *		| CT_EVALTYPE '(' expr ')'
  *		;
  *
@@ -785,10 +787,7 @@ TypeInfo *parse_optional_type(ParseContext *c)
 // --- Decl parsing
 
 /**
- * Parse ident ('=' expr)?
- * @param is_static
- * @param type
- * @return
+ * after_type ::= (CT_IDENT | IDENT) attributes? ('=' decl_initializer)?
  */
 Decl *parse_local_decl_after_type(ParseContext *c, TypeInfo *type)
 {
@@ -859,25 +858,30 @@ Decl *parse_local_decl(ParseContext *c)
 	return decl;
 }
 
+/**
+ * decl_or_expr ::= var_decl | type local_decl_after_type | expression
+ */
 Expr *parse_decl_or_expr(ParseContext *c, Decl **decl_ref)
 {
+	// var-initialization is done separately.
 	if (tok_is(c, TOKEN_VAR))
 	{
 		ASSIGN_DECL_OR_RET(*decl_ref, parse_var_decl(c), poisoned_expr);
 		return NULL;
 	}
-	TypeInfo *type_info;
 	Expr *expr = parse_expr(c);
+
+	// If it's not a type info, we assume an expr.
 	if (expr->expr_kind != EXPR_TYPEINFO) return expr;
+
+	// Otherwise we expect a declaration.
 	ASSIGN_DECL_OR_RET(*decl_ref, parse_local_decl_after_type(c, expr->type_expr), poisoned_expr);
 	return NULL;
 }
 
 
 /**
- * const_decl
- *  : 'const' type? IDENT '=' const_expr
- *  ;
+ * const_decl ::= 'const' type? CONST_IDENT attributes? '=' const_expr
  */
 static Decl *parse_const_declaration(ParseContext *c, bool is_global)
 {
@@ -885,14 +889,19 @@ static Decl *parse_const_declaration(ParseContext *c, bool is_global)
 
 	TypeInfo *type_info = NULL;
 
+	// If not a const ident, assume we want the type
 	if (c->tok != TOKEN_CONST_IDENT)
 	{
 		ASSIGN_TYPE_OR_RET(type_info, parse_type(c), poisoned_decl);
 	}
+
+	// Create the decl
 	Decl *decl = decl_new_var(symstr(c), c->span, type_info, VARDECL_CONST);
 
+	// Check the name
 	if (!consume_const_name(c, "const")) return poisoned_decl;
 
+	// Differentiate between global and local attributes, global have visibility
 	if (is_global)
 	{
 		if (!parse_attributes_for_global(c, decl)) return false;
@@ -901,17 +910,22 @@ static Decl *parse_const_declaration(ParseContext *c, bool is_global)
 	{
 		if (!parse_attributes(c, &decl->attributes, NULL)) return poisoned_decl;
 	}
+
+	// Required initializer
 	CONSUME_OR_RET(TOKEN_EQ, poisoned_decl);
-
 	if (!parse_decl_initializer(c, decl)) return poisoned_decl;
-
 	RANGE_EXTEND_PREV(decl);
 
 	return decl;
 }
 
+/**
+ * var_decl ::= VAR (IDENT '=' expression) | (CT_IDENT ('=' expression)?) | (CT_TYPE_IDENT ('=' expression)?)
+ */
 Decl *parse_var_decl(ParseContext *c)
 {
+	// CT variants will naturally be macro only, for runtime variables it is enforced in the semantic
+	// analyser. The runtime variables must have an initializer unlike the CT ones.
 	advance_and_verify(c, TOKEN_VAR);
 	Decl *decl;
 	switch (c->tok)
@@ -957,34 +971,43 @@ Decl *parse_var_decl(ParseContext *c)
 
 // --- Parse parameters & throws & attributes
 
+/**
+ * attribute ::= (AT_IDENT | path_prefix? AT_TYPE_IDENT) attr_params?
+ * attr_params ::= '(' attr_param (',' attr_param)* ')'
+ * attr_param ::= const_expr | '&' '[' ']' || '[' ']' '='?
+ */
 bool parse_attribute(ParseContext *c, Attr **attribute_ref)
 {
 	bool had_error;
 	Path *path;
 	if (!parse_path_prefix(c, &path)) return false;
+
+	// Something not starting with `@` in attribute position:
 	if (!tok_is(c, TOKEN_AT_IDENT) && !tok_is(c, TOKEN_AT_TYPE_IDENT))
 	{
-		if (path)
-		{
-			SEMA_ERROR_HERE("Expected an attribute name.");
-			return false;
-		}
+		// Started a path? If so hard error
+		if (path) RETURN_SEMA_ERROR_HERE("Expected an attribute name.");
+
+		// Otherwise assume no attributes
 		*attribute_ref = NULL;
 		return true;
 	}
-	Attr *attr = CALLOCS(Attr);
 
+	// Create an attribute
+	Attr *attr = CALLOCS(Attr);
 	attr->name = symstr(c);
 	attr->span = c->span;
 	attr->path = path;
+
+	// Pre-defined idents
 	if (tok_is(c, TOKEN_AT_IDENT))
 	{
+		// Error for foo::bar::@inline
+		if (path) RETURN_SEMA_ERROR_HERE("Only user-defined attribute names can have a module path prefix.");
+
+		// Check attribute it exists, theoretically we could defer this to semantic analysis
 		AttributeType type = attribute_by_name(attr->name);
-		if (type == ATTRIBUTE_NONE)
-		{
-			SEMA_ERROR_HERE("This is not a known valid attribute name.");
-			return false;
-		}
+		if (type == ATTRIBUTE_NONE) RETURN_SEMA_ERROR_HERE("This is not a known valid attribute name.");
 		attr->attr_kind = type;
 	}
 	else
@@ -992,9 +1015,9 @@ bool parse_attribute(ParseContext *c, Attr **attribute_ref)
 		attr->is_custom = true;
 	}
 	advance(c);
-
 	Expr **list = NULL;
 
+	// Consume the optional (expr | attr_param, ...)
 	if (try_consume(c, TOKEN_LPAREN))
 	{
 		while (1)
@@ -1009,16 +1032,16 @@ bool parse_attribute(ParseContext *c, Attr **attribute_ref)
 					advance(c);
 					CONSUME_OR_RET(TOKEN_LBRACKET, false);
 					CONSUME_OR_RET(TOKEN_RBRACKET, false);
-					expr->expr_operator_chars = OVERLOAD_ELEMENT_REF;
+					expr->overload_expr = OVERLOAD_ELEMENT_REF;
 					RANGE_EXTEND_PREV(expr);
 					break;
 				case TOKEN_LBRACKET:
-					// []
+					// [] and []=
 					expr = EXPR_NEW_TOKEN(EXPR_OPERATOR_CHARS);
 					expr->resolve_status = RESOLVE_DONE;
 					advance(c);
 					CONSUME_OR_RET(TOKEN_RBRACKET, false);
-					expr->expr_operator_chars = try_consume(c, TOKEN_EQ) ? OVERLOAD_ELEMENT_SET : OVERLOAD_ELEMENT_AT;
+					expr->overload_expr = try_consume(c, TOKEN_EQ) ? OVERLOAD_ELEMENT_SET : OVERLOAD_ELEMENT_AT;
 					RANGE_EXTEND_PREV(expr);
 					break;
 				default:
@@ -1033,11 +1056,13 @@ bool parse_attribute(ParseContext *c, Attr **attribute_ref)
 	}
 
 	attr->exprs = list;
-
 	*attribute_ref = attr;
 	return true;
 }
 
+/**
+ * Parse global attributes, setting visibility defaults from the parent unit.
+ */
 static bool parse_attributes_for_global(ParseContext *c, Decl *decl)
 {
 	Visibility visibility = c->unit->default_visibility;
@@ -1049,13 +1074,9 @@ static bool parse_attributes_for_global(ParseContext *c, Decl *decl)
 }
 
 /**
- * attribute_list
- *  : attribute
- *  | attribute_list attribute
- *  ;
+ * attribute_list ::= attribute*
  *
- * attribute
- *  : path AT_IDENT | AT_TYPE_IDENT ('(' constant_expression ')')?
+ * Patch visibility attributes immediately.
  *
  * @return true if parsing succeeded, false if recovery is needed
  */
@@ -1070,6 +1091,9 @@ bool parse_attributes(ParseContext *c, Attr ***attributes_ref, Visibility *visib
 		Visibility parsed_visibility = -1;
 		if (!attr->is_custom)
 		{
+			// This is important: if we would allow user defined attributes,
+			// ordering between visibility of attributes would be complex.
+			// since there is little
 			switch (attr->attr_kind)
 			{
 				case ATTRIBUTE_PUBLIC:
@@ -1086,27 +1110,15 @@ bool parse_attributes(ParseContext *c, Attr ***attributes_ref, Visibility *visib
 			}
 			if (parsed_visibility != -1)
 			{
-				if (!visibility_ref)
-				{
-					SEMA_ERROR(attr, "'%s' cannot be used here.");
-					return false;
-				}
-				if (visibility != -1)
-				{
-					SEMA_ERROR(attr, "Only a single visibility attribute may be added.");
-					return false;
-				}
+				if (!visibility_ref) RETURN_SEMA_ERROR(attr, "'%s' cannot be used here.");
+				if (visibility != -1) RETURN_SEMA_ERROR(attr, "Only a single visibility attribute may be added.");
 				*visibility_ref = visibility = parsed_visibility;
 				continue;
 			}
 		}
 		const char *name = attr->name;
 		FOREACH_BEGIN(Attr *other_attr, *attributes_ref)
-			if (other_attr->name == name)
-			{
-				SEMA_ERROR(attr, "Repeat of attribute '%s' here.", name);
-				return false;
-			}
+			if (other_attr->name == name) RETURN_SEMA_ERROR(attr, "Repeat of attribute '%s' here.", name);
 		FOREACH_END();
 		vec_add(*attributes_ref, attr);
 	}
@@ -1115,13 +1127,8 @@ bool parse_attributes(ParseContext *c, Attr ***attributes_ref, Visibility *visib
 
 
 /**
- * global_declaration
- * 	: global? optional_type IDENT ';'
- * 	| global? optional_type IDENT '=' expression ';'
- * 	| global? optional_type func_definition
- * 	;
+ * global_declaration ::= TLOCAL? optional_type IDENT (('=' expression)? | (',' IDENT)* opt_attributes) ';'
  *
- * @param visibility
  * @return true if parsing succeeded
  */
 static inline Decl *parse_global_declaration(ParseContext *c)
@@ -1129,7 +1136,6 @@ static inline Decl *parse_global_declaration(ParseContext *c)
 	bool threadlocal = try_consume(c, TOKEN_TLOCAL);
 
 	ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_optional_type(c), poisoned_decl);
-
 
 	if (tok_is(c, TOKEN_CONST_IDENT))
 	{
@@ -1139,9 +1145,11 @@ static inline Decl *parse_global_declaration(ParseContext *c)
 
 	Decl *decl;
 	Decl **decls = NULL;
+	// Parse IDENT (',' IDENT)*
 	while (true)
 	{
 		decl = decl_new_var_current(c, type, VARDECL_GLOBAL);
+		// Update threadlocal setting
 		decl->var.is_threadlocal = threadlocal;
 		if (!try_consume(c, TOKEN_IDENT))
 		{
@@ -1161,6 +1169,7 @@ static inline Decl *parse_global_declaration(ParseContext *c)
 
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 
+	// If we get '=' we can't have multiple idents.
 	if (try_consume(c, TOKEN_EQ))
 	{
 		if (decls)
@@ -1172,12 +1181,13 @@ static inline Decl *parse_global_declaration(ParseContext *c)
 	}
 	else if (!decl->attributes && tok_is(c, TOKEN_LPAREN) && !threadlocal)
 	{
-		// Guess we forgot `fn`?
+		// Guess we forgot `fn`? -> improve error reporting.
 		sema_error_at(type->span, "This looks like the beginning of a function declaration but it's missing the initial `fn`. Did you forget it?");
 		return poisoned_decl;
 	}
 	CONSUME_EOS_OR_RET(poisoned_decl);
 	Attr **attributes = decl->attributes;
+	// Copy the attributes to the other variables.
 	if (attributes)
 	{
 		FOREACH_BEGIN(Decl *d, decls)
@@ -1185,6 +1195,7 @@ static inline Decl *parse_global_declaration(ParseContext *c)
 			d->attributes = copy_attributes_single(attributes);
 		FOREACH_END();
 	}
+	// If we have multiple decls, then we return that as a bundled decl_globals
 	if (decls)
 	{
 		decl = decl_calloc();
@@ -1198,46 +1209,23 @@ static inline Decl *parse_global_declaration(ParseContext *c)
 
 
 /**
- * param_declaration ::= type_expression '...'?) (IDENT ('=' initializer)?)?
- *  ;
+ * enum_param_decl ::= type IDENT ('=' expr)?
  */
-static inline bool parse_param_decl(ParseContext *c, Decl*** parameters, bool require_name)
+static inline bool parse_enum_param_decl(ParseContext *c, Decl*** parameters)
 {
 	ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_optional_type(c), false);
-	if (type->optional)
-	{
-		SEMA_ERROR(type, "Parameters may not be optional.");
-		return false;
-	}
-	bool vararg = try_consume(c, TOKEN_ELLIPSIS);
+	if (type->optional) RETURN_SEMA_ERROR(type, "Parameters may not be optional.");
 	Decl *param = decl_new_var_current(c, type, VARDECL_PARAM);
-	param->var.vararg = vararg;
 	if (!try_consume(c, TOKEN_IDENT))
 	{
-		param->name = NULL;
+		if (token_is_keyword(c->tok)) RETURN_SEMA_ERROR_HERE("Keywords cannot be used as member names.");
+		if (token_is_some_ident(c->tok)) RETURN_SEMA_ERROR_HERE("Expected a name starting with a lower-case letter.");
+		RETURN_SEMA_ERROR_HERE("Expected a member name here.");
 	}
-	const char *name = param->name;
-
-	if (!name && require_name)
-	{
-		if (!tok_is(c, TOKEN_COMMA) && !tok_is(c, TOKEN_RPAREN))
-		{
-			if (tok_is(c, TOKEN_CT_IDENT))
-			{
-				SEMA_ERROR_HERE("Compile time identifiers are only allowed as macro parameters.");
-				return false;
-			}
-			sema_error_at_after(type->span, "Unexpected end of the parameter list, did you forget an ')'?");
-			return false;
-		}
-		SEMA_ERROR(type, "The parameter must be named.");
-		return false;
-	}
-	if (name && try_consume(c, TOKEN_EQ))
+	if (try_consume(c, TOKEN_EQ))
 	{
 		if (!parse_decl_initializer(c, param)) return poisoned_decl;
 	}
-
 	vec_add(*parameters, param);
 	RANGE_EXTEND_PREV(param);
 	return true;
@@ -1463,6 +1451,7 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 		}
 		Decl *param = decl_new_var(name, span, type, param_kind);
 		param->var.type_info = type;
+		if (!parse_attributes(c, &param->attributes, NULL)) return false;
 		if (!no_name)
 		{
 			if (try_consume(c, TOKEN_EQ))
@@ -1470,7 +1459,6 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 				if (!parse_decl_initializer(c, param)) return poisoned_decl;
 			}
 		}
-		if (!parse_attributes(c, &param->attributes, NULL)) return false;
 		if (ellipsis)
 		{
 			var_arg_found = true;
@@ -1486,8 +1474,7 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 
 
 /**
- *
- * parameter_type_list ::= '(' parameters ')'
+ * fn_parameter_list ::= '(' parameters ')'
  */
 static inline bool parse_fn_parameter_list(ParseContext *c, Signature *signature, bool is_interface)
 {
@@ -2081,8 +2068,8 @@ static inline bool parse_is_macro_name(ParseContext *c)
 }
 
 /**
- * func_header ::= type '!'? (type '.')? (IDENT | MACRO_IDENT)
- * macro_header ::= (type '!'?)? (type '.')? (IDENT | MACRO_IDENT)
+ * func_header ::= optional_type (type '.')? IDENT
+ * macro_header ::= optional_type? (type '.')? (IDENT | MACRO_IDENT)
  */
 static inline bool parse_func_macro_header(ParseContext *c, Decl *decl)
 {
@@ -2229,31 +2216,25 @@ static inline Decl *parse_fault_declaration(ParseContext *c)
 }
 
 /**
- * enum_spec
- *  : type
- *  | type '(' opt_parameter_type_list ')'
- *  ;
+ * enum_spec ::= type ('(' enum_params ')')?
  */
 static inline bool parse_enum_spec(ParseContext *c, TypeInfo **type_ref, Decl*** parameters_ref)
 {
-
 	ASSIGN_TYPE_OR_RET(*type_ref, parse_optional_type(c), false);
 	if ((*type_ref)->optional)
 	{
 		SEMA_ERROR(*type_ref, "An enum can't have an optional type.");
 		return false;
 	}
+	// If no left parenthesis we're done.
 	if (!try_consume(c, TOKEN_LPAREN)) return true;
+
+	// We allow (), but we might consider making it an error later on.
 	while (!try_consume(c, TOKEN_RPAREN))
 	{
-		if (!parse_param_decl(c, parameters_ref, true)) return false;
+		if (!parse_enum_param_decl(c, parameters_ref)) return false;
 		Decl *last_parameter = VECLAST(*parameters_ref);
 		assert(last_parameter);
-		if (last_parameter->var.vararg)
-		{
-			SEMA_ERROR_LAST("Vararg parameters are not allowed as enum parameters.");
-			return false;
-		}
 		last_parameter->var.index = vec_size(*parameters_ref) - 1;
 		if (!try_consume(c, TOKEN_COMMA))
 		{
@@ -2263,25 +2244,13 @@ static inline bool parse_enum_spec(ParseContext *c, TypeInfo **type_ref, Decl***
 	return true;
 }
 
+
 /**
- * Expect current at enum name.
+ * Parse an enum declaration (after "enum")
  *
- * enum
- *  : ENUM type_ident '{' enum_body '}'
- *  | ENUM type_ident ':' enum_spec '{' enum_body '}'
- *  ;
- *
- * enum_body
- *  : enum_def
- *  | enum_def ',' enum_body
- *  | enum_body ','
- *  ;
- *
- * enum_def
- *  : CAPS_IDENT
- *  | CAPS_IDENT '(' expr_list ')'
- *  ;
- *
+ * enum ::= ENUM TYPE_IDENT enum_spec? opt_attributes '{' enum_body '}'
+ * enum_body ::= enum_def (',' enum_def)* ','?
+ * enum_def ::= CONST_IDENT ('(' arg_list ')')?
  */
 static inline Decl *parse_enum_declaration(ParseContext *c)
 {
@@ -2291,6 +2260,7 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 	if (!consume_type_name(c, "enum")) return poisoned_decl;
 
 	TypeInfo *type = NULL;
+	// Parse the spec
 	if (try_consume(c, TOKEN_COLON))
 	{
 		if (!parse_enum_spec(c, &type, &decl->enums.parameters)) return poisoned_decl;
@@ -2302,7 +2272,6 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 	CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
 
 	decl->enums.type_info = type ? type : type_info_new_base(type_int, decl->span);
-
 	while (!try_consume(c, TOKEN_RBRACE))
 	{
 		Decl *enum_const = decl_new(DECL_ENUM_CONSTANT, symstr(c), c->span);
@@ -2342,8 +2311,6 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 
 // --- Parse function
 
-
-
 /**
  * Starts after 'fn'
  *
@@ -2365,12 +2332,12 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
  * @param visibility
  * @return Decl*
  */
-static inline Decl *parse_func_definition(ParseContext *c, AstId docs, bool is_interface)
+static inline Decl *parse_func_definition(ParseContext *c, AstId contracts, bool is_interface)
 {
 	advance_and_verify(c, TOKEN_FN);
 	Decl *func = decl_calloc();
 	func->decl_kind = DECL_FUNC;
-	func->func_decl.docs = docs;
+	func->func_decl.docs = contracts;
 	if (!parse_func_macro_header(c, func)) return poisoned_decl;
 	if (func->name[0] == '@')
 	{

@@ -1,15 +1,15 @@
 
-enum EnumWithErrorWithMissingName : int (int) // #error: The parameter must be named
+enum EnumWithErrorWithMissingName : int (int) // #error: Expected a member name here
 {
     TEST
 }
 
-enum EnumWithErrorData : int (int // #error: end of the parameter list
-{
+enum EnumWithErrorData : int (int
+{ // #error: Expected a member name here
     TEST
 }
 
-enum EnumWithErrorData2 : int (int, int bar) // #error: The parameter must be named
+enum EnumWithErrorData2 : int (int, int bar) // #error: Expected a member name here
 {
     TEST
 }
