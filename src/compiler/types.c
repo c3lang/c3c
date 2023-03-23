@@ -14,7 +14,7 @@ static struct
 	Type usz, isz, uptr, iptr;
 	Type string;
 	Type voidstar, typeid, anyerr, member, typeinfo, untyped_list;
-	Type any, anyfail;
+	Type any, wildcard;
 } t;
 
 Type *type_bool = &t.u1;
@@ -43,9 +43,10 @@ Type *type_uptr = &t.uptr;
 Type *type_usz = &t.usz;
 Type *type_anyerr = &t.anyerr;
 Type *type_untypedlist = &t.untyped_list;
-Type *type_anyfail = &t.anyfail;
+Type *type_wildcard = &t.wildcard;
 Type *type_member = &t.member;
 Type *type_chars = NULL;
+Type *type_wildcard_optional = NULL;
 Type *type_string = &t.string;
 
 static unsigned size_subarray;
@@ -56,10 +57,9 @@ static AlignSize max_alignment_vector;
 #define INFERRED_ARRAY_OFFSET 1
 #define FLEXIBLE_ARRAY_OFFSET 2
 #define SUB_ARRAY_OFFSET 3
-#define SCALED_VECTOR_OFFSET 4
-#define INFERRED_VECTOR_OFFSET 5
-#define OPTIONAL_OFFSET 6
-#define ARRAY_OFFSET 7
+#define INFERRED_VECTOR_OFFSET 4
+#define OPTIONAL_OFFSET 5
+#define ARRAY_OFFSET 6
 
 Type *type_cint;
 Type *type_cuint;
@@ -126,9 +126,6 @@ static void type_append_name_to_scratch(Type *type)
 			type_append_name_to_scratch(type->pointer);
 			scratch_buffer_append_char('*');
 			break;
-		case TYPE_OPTIONAL_ANY:
-			scratch_buffer_append("void!");
-			break;
 		case TYPE_OPTIONAL:
 			if (type->optional)
 			{
@@ -148,10 +145,6 @@ static void type_append_name_to_scratch(Type *type)
 			type_append_name_to_scratch(type->array.base);
 			scratch_buffer_append("[*]");
 			break;
-		case TYPE_SCALED_VECTOR:
-			type_append_name_to_scratch(type->array.base);
-			scratch_buffer_append("[<>]");
-			break;
 		case TYPE_VOID:
 		case TYPE_BOOL:
 		case ALL_INTS:
@@ -167,6 +160,7 @@ static void type_append_name_to_scratch(Type *type)
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
+		case TYPE_WILDCARD:
 			UNREACHABLE
 			break;
 		case TYPE_FUNC:
@@ -226,6 +220,7 @@ const char *type_to_error_string(Type *type)
 		case TYPE_UNTYPED_LIST:
 		case TYPE_ANY:
 		case TYPE_MEMBER:
+		case TYPE_WILDCARD:
 			return type->name;
 		case TYPE_FUNC:
 			scratch_buffer_clear();
@@ -233,16 +228,12 @@ const char *type_to_error_string(Type *type)
 			return str_printf("fn %s", scratch_buffer_to_string());
 		case TYPE_INFERRED_VECTOR:
 			return str_printf("%s[<*>]", type_to_error_string(type->array.base));
-		case TYPE_SCALED_VECTOR:
-			return str_printf("%s[<>]", type_to_error_string(type->array.base));
 		case TYPE_VECTOR:
 			return str_printf("%s[<%llu>]", type_to_error_string(type->array.base), (unsigned long long)type->array.len);
 		case TYPE_TYPEINFO:
 			return "typeinfo";
 		case TYPE_TYPEID:
 			return "typeid";
-		case TYPE_OPTIONAL_ANY:
-			return "void!";
 		case TYPE_POINTER:
 			if (type->pointer->type_kind == TYPE_FUNC)
 			{
@@ -289,7 +280,6 @@ RETRY:
 		}
 		case CT_TYPES:
 			UNREACHABLE;
-		case TYPE_SCALED_VECTOR:
 		case TYPE_FLEXIBLE_ARRAY:
 			return 0;
 		case TYPE_OPTIONAL:
@@ -310,7 +300,6 @@ RETRY:
 			assert(type->decl->resolve_status == RESOLVE_DONE);
 			return type->decl->strukt.size;
 		case TYPE_VOID:
-		case TYPE_OPTIONAL_ANY:
 			return 1;
 		case TYPE_BOOL:
 		case TYPE_TYPEID:
@@ -385,8 +374,6 @@ bool type_is_abi_aggregate(Type *type)
 	RETRY:
 	switch (type->type_kind)
 	{
-		case TYPE_POISONED:
-			return false;
 		case TYPE_OPTIONAL:
 			type = type->optional;
 			goto RETRY;
@@ -399,7 +386,6 @@ bool type_is_abi_aggregate(Type *type)
 		case TYPE_BITSTRUCT:
 		case ALL_FLOATS:
 		case TYPE_VOID:
-		case TYPE_OPTIONAL_ANY:
 		case ALL_INTS:
 		case TYPE_BOOL:
 		case TYPE_TYPEID:
@@ -416,13 +402,8 @@ bool type_is_abi_aggregate(Type *type)
 		case TYPE_ARRAY:
 		case TYPE_ANY:
 			return true;
-		case TYPE_TYPEINFO:
-		case TYPE_INFERRED_ARRAY:
-		case TYPE_INFERRED_VECTOR:
-		case TYPE_UNTYPED_LIST:
+		case CT_TYPES:
 		case TYPE_FLEXIBLE_ARRAY:
-		case TYPE_SCALED_VECTOR:
-		case TYPE_MEMBER:
 			UNREACHABLE
 	}
 	UNREACHABLE
@@ -485,7 +466,6 @@ bool type_is_comparable(Type *type)
 		case TYPE_BITSTRUCT:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_OPTIONAL:
-		case TYPE_OPTIONAL_ANY:
 		case TYPE_MEMBER:
 			return false;
 		case TYPE_TYPEDEF:
@@ -511,8 +491,8 @@ bool type_is_comparable(Type *type)
 		case TYPE_FAULTTYPE:
 		case TYPE_UNTYPED_LIST:
 		case TYPE_TYPEINFO:
-		case TYPE_SCALED_VECTOR:
 		case TYPE_VECTOR:
+		case TYPE_WILDCARD:
 			return true;
 	}
 	UNREACHABLE
@@ -522,13 +502,7 @@ void type_mangle_introspect_name_to_buffer(Type *type)
 {
 	switch (type->type_kind)
 	{
-		case TYPE_POISONED:
-		case TYPE_TYPEINFO:
-		case TYPE_INFERRED_ARRAY:
-		case TYPE_INFERRED_VECTOR:
-		case TYPE_UNTYPED_LIST:
-		case TYPE_OPTIONAL_ANY:
-		case TYPE_MEMBER:
+		case CT_TYPES:
 			UNREACHABLE
 		case TYPE_VOID:
 		case TYPE_BOOL:
@@ -559,10 +533,6 @@ void type_mangle_introspect_name_to_buffer(Type *type)
 			scratch_buffer_append_char('v');
 			scratch_buffer_append_unsigned_int(type->array.len);
 			scratch_buffer_append_char('$');
-			type_mangle_introspect_name_to_buffer(type->array.base);
-			return;
-		case TYPE_SCALED_VECTOR:
-			scratch_buffer_append("vn$");
 			type_mangle_introspect_name_to_buffer(type->array.base);
 			return;
 		case TYPE_ARRAY:
@@ -646,6 +616,7 @@ AlignSize type_abi_alignment(Type *type)
 		case TYPE_TYPEINFO:
 		case TYPE_UNTYPED_LIST:
 		case TYPE_MEMBER:
+		case TYPE_WILDCARD:
 			UNREACHABLE;
 		case TYPE_BITSTRUCT:
 			type = type->decl->bitstruct.base_type->type;
@@ -665,7 +636,6 @@ AlignSize type_abi_alignment(Type *type)
 			return alignment;
 		}
 		case TYPE_VOID:
-		case TYPE_OPTIONAL_ANY:
 			return 1;
 		case TYPE_OPTIONAL:
 			type = type->optional;
@@ -702,8 +672,6 @@ AlignSize type_abi_alignment(Type *type)
 			goto RETRY;
 		case TYPE_SUBARRAY:
 			return alignment_subarray;
-		case TYPE_SCALED_VECTOR:
-			UNSUPPORTED;
 	}
 	UNREACHABLE
 }
@@ -872,37 +840,10 @@ static Type *type_generate_flexible_array(Type *arr_type, bool canonical)
 	return arr;
 }
 
-static Type *type_generate_scaled_vector(Type *arr_type, bool canonical)
-{
-	if (canonical) arr_type = arr_type->canonical;
-	if (!arr_type->type_cache)
-	{
-		create_type_cache(arr_type);
-	}
-
-	Type *arr = arr_type->type_cache[SCALED_VECTOR_OFFSET];
-	if (arr == NULL)
-	{
-		arr = type_new(TYPE_SCALED_VECTOR, str_printf("%s[<>]", arr_type->name));
-		arr->array.base = arr_type;
-		arr->array.len = 0;
-		arr_type->type_cache[SCALED_VECTOR_OFFSET] = arr;
-		if (arr_type == arr_type->canonical)
-		{
-			arr->canonical = arr;
-		}
-		else
-		{
-			arr->canonical = type_generate_scaled_vector(arr_type->canonical, true);
-		}
-	}
-	return arr;
-}
 
 
 Type *type_get_ptr_recurse(Type *ptr_type)
 {
-	assert(ptr_type->type_kind != TYPE_OPTIONAL_ANY);
 	if (ptr_type->type_kind == TYPE_OPTIONAL)
 	{
 		ptr_type = ptr_type->optional;
@@ -941,11 +882,6 @@ Type *type_get_inferred_vector(Type *arr_type)
 Type *type_get_flexible_array(Type *arr_type)
 {
 	return type_generate_flexible_array(arr_type, false);
-}
-
-Type *type_get_scaled_vector(Type *arr_type)
-{
-	return type_generate_scaled_vector(arr_type, false);
 }
 
 static inline bool array_structurally_equivalent_to_struct(Type *array, Type *type)
@@ -1067,7 +1003,6 @@ Type *type_get_indexed_type(Type *type)
 		case TYPE_SUBARRAY:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
-		case TYPE_SCALED_VECTOR:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_VECTOR:
 			return type->array.base;
@@ -1490,7 +1425,7 @@ void type_setup(PlatformTarget *target)
 	type_create("typeinfo", &t.typeinfo, TYPE_TYPEINFO, 1, 1, 1);
 	type_create("member_ref", &t.member, TYPE_MEMBER, 1, 1, 1);
 	type_create("untyped_list", &t.untyped_list, TYPE_UNTYPED_LIST, 1, 1, 1);
-	type_create("void!", &t.anyfail, TYPE_OPTIONAL_ANY, 1, 1, 1);
+	type_create("void", &t.wildcard, TYPE_WILDCARD, 1, 1, 1);
 	type_init("typeid", &t.typeid, TYPE_TYPEID, target->width_pointer, target->align_pointer);
 	type_init("void*", &t.voidstar, TYPE_POINTER, target->width_pointer, target->align_pointer);
 	create_type_cache(type_void);
@@ -1507,6 +1442,7 @@ void type_setup(PlatformTarget *target)
 	size_subarray = (unsigned)(alignment_subarray * 2);
 	type_init("anyerr", &t.anyerr, TYPE_ANYERR, target->width_pointer, target->align_pointer);
 	type_chars = type_get_subarray(type_char);
+	type_wildcard_optional = type_get_optional(type_wildcard);
 	Decl *string_decl = decl_new_with_type(symtab_preset("String", TOKEN_TYPE_IDENT), INVALID_SPAN, DECL_DISTINCT);
 	string_decl->extname = string_decl->name;
 	string_decl->is_substruct = true;
@@ -1558,10 +1494,8 @@ bool type_is_scalar(Type *type)
 		case TYPE_ARRAY:
 		case TYPE_SUBARRAY:
 		case TYPE_VECTOR:
-		case TYPE_OPTIONAL_ANY:
 		case TYPE_ANY:
 		case TYPE_FLEXIBLE_ARRAY:
-		case TYPE_SCALED_VECTOR:
 			return false;
 		case TYPE_BOOL:
 		case ALL_INTS:
@@ -1799,7 +1733,6 @@ bool type_may_have_method(Type *type)
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_VECTOR:
 		case TYPE_BOOL:
-		case TYPE_SCALED_VECTOR:
 			return true;
 		case TYPE_TYPEDEF:
 			UNREACHABLE
@@ -1809,9 +1742,9 @@ bool type_may_have_method(Type *type)
 		case TYPE_FUNC:
 		case TYPE_UNTYPED_LIST:
 		case TYPE_OPTIONAL:
-		case TYPE_OPTIONAL_ANY:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
+		case TYPE_WILDCARD:
 			return false;
 	}
 	UNREACHABLE
@@ -1962,6 +1895,9 @@ Type *type_find_max_type(Type *type, Type *other)
 
 	if (type == other) return type;
 
+	if (type == type_wildcard) return other;
+	if (other == type_wildcard) return type;
+
 	// Lower inlined distinct types.
 	while (type->type_kind == TYPE_DISTINCT && type->decl->is_substruct) type = type->decl->distinct_decl.base_type;
 	while (other->type_kind == TYPE_DISTINCT && other->decl->is_substruct) other = other->decl->distinct_decl.base_type;
@@ -1983,7 +1919,7 @@ Type *type_find_max_type(Type *type, Type *other)
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_POISONED:
 		case TYPE_OPTIONAL:
-		case TYPE_OPTIONAL_ANY:
+		case TYPE_WILDCARD:
 			UNREACHABLE
 		case TYPE_VOID:
 		case TYPE_BOOL:
@@ -1991,7 +1927,6 @@ Type *type_find_max_type(Type *type, Type *other)
 		case TYPE_ANY:
 		case TYPE_BITSTRUCT:
 		case TYPE_FLEXIBLE_ARRAY:
-		case TYPE_SCALED_VECTOR:
 			return NULL;
 		case ALL_INTS:
 			if (other->type_kind == TYPE_DISTINCT && type_underlying_is_numeric(other)) return other;
@@ -2183,14 +2118,13 @@ unsigned type_get_introspection_kind(TypeKind kind)
 		case TYPE_SUBARRAY:
 			return INTROSPECT_TYPE_SUBARRAY;
 		case TYPE_VECTOR:
-		case TYPE_SCALED_VECTOR:
 		case TYPE_INFERRED_VECTOR:
 			return INTROSPECT_TYPE_VECTOR;
 		case TYPE_UNTYPED_LIST:
-		case TYPE_OPTIONAL_ANY:
 		case TYPE_TYPEINFO:
 		case TYPE_OPTIONAL:
 		case TYPE_MEMBER:
+		case TYPE_WILDCARD:
 			UNREACHABLE
 			return 0;
 	}
@@ -2210,6 +2144,7 @@ Module *type_base_module(Type *type)
 		case TYPE_ANY:
 		case TYPE_ANYERR:
 		case TYPE_TYPEID:
+		case TYPE_WILDCARD:
 			return NULL;
 		case TYPE_POINTER:
 			type = type->pointer;
@@ -2231,7 +2166,6 @@ Module *type_base_module(Type *type)
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_VECTOR:
-		case TYPE_SCALED_VECTOR:
 		case TYPE_INFERRED_VECTOR:
 			type = type->array.base;
 			goto RETRY;
@@ -2239,7 +2173,6 @@ Module *type_base_module(Type *type)
 			type = type->optional;
 			goto RETRY;
 		case TYPE_UNTYPED_LIST:
-		case TYPE_OPTIONAL_ANY:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
 			UNREACHABLE

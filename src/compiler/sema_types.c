@@ -140,9 +140,6 @@ static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type,
 		case TYPE_INFO_INFERRED_VECTOR:
 			type->type = type_get_inferred_vector(type->array.base->type);
 			break;
-		case TYPE_INFO_SCALED_VECTOR:
-			type->type = type_get_scaled_vector(type->array.base->type);
-			break;
 		case TYPE_INFO_VECTOR:
 		{
 			ArraySize width;
@@ -273,14 +270,18 @@ INLINE bool sema_resolve_evaltype(SemaContext *context, TypeInfo *type_info, boo
 INLINE bool sema_resolve_typeof(SemaContext *context, TypeInfo *type_info)
 {
 	Expr *expr = type_info->unresolved_type_expr;
-	if (!sema_analyse_expr(context, expr))
-	{
-		return false;
-	}
+	if (!sema_analyse_expr(context, expr)) return false;
 	if (type_is_invalid_storage_type(expr->type))
 	{
-		SEMA_ERROR(expr, "Expected a regular runtime expression here.");
-		return false;
+		if (expr->type == type_wildcard)
+		{
+			RETURN_SEMA_ERROR(expr, "This expression has no concrete type.");
+		}
+		if (expr->type == type_wildcard_optional)
+		{
+			RETURN_SEMA_ERROR(expr, "This optional expression is untyped.");
+		}
+		RETURN_SEMA_ERROR(expr, "Expected a regular runtime expression here.");
 	}
 	type_info->type = expr->type;
 	return true;
@@ -292,8 +293,7 @@ INLINE bool sema_resolve_typefrom(SemaContext *context, TypeInfo *type_info)
 	if (!sema_analyse_expr(context, expr)) return false;
 	if (!expr_is_const(expr) || expr->const_expr.const_kind != CONST_TYPEID)
 	{
-		SEMA_ERROR(expr, "Expected a constant typeid value.");
-		return false;
+		RETURN_SEMA_ERROR(expr, "Expected a constant typeid value.");
 	}
 	type_info->type = expr->const_expr.typeid;
 	return true;
@@ -304,16 +304,12 @@ INLINE bool sema_resolve_vatype(SemaContext *context, TypeInfo *type_info)
 {
 	if (!context->current_macro)
 	{
-		SEMA_ERROR(type_info, "'%s' can only be used inside of a macro.", token_type_to_string(TOKEN_CT_VATYPE));
-		return false;
+		RETURN_SEMA_ERROR(type_info, "'%s' can only be used inside of a macro.", token_type_to_string(TOKEN_CT_VATYPE));
 	}
 	ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, type_info->unresolved_type_expr),
 	                   false);
-	if (arg_expr->expr_kind != EXPR_TYPEINFO)
-	{
-		SEMA_ERROR(arg_expr, "The argument was not a type.");
-		return false;
-	}
+	if (arg_expr->expr_kind != EXPR_TYPEINFO) RETURN_SEMA_ERROR(arg_expr, "The argument was not a type.");
+
 	assert(arg_expr->resolve_status == RESOLVE_DONE);
 	type_info->type = arg_expr->type_expr->type;
 	return true;
@@ -372,7 +368,6 @@ static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, 
 				return type_info_poison(type_info);
 			}
 			FALLTHROUGH;
-		case TYPE_INFO_SCALED_VECTOR:
 		case TYPE_INFO_SUBARRAY:
 		case TYPE_INFO_ARRAY:
 		case TYPE_INFO_VECTOR:

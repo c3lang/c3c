@@ -698,18 +698,7 @@ static inline bool sema_expr_analyse_ternary(SemaContext *context, Expr *expr)
 	if (left_canonical != right_canonical)
 	{
 		Type *max;
-		if (left_canonical->type_kind == TYPE_OPTIONAL_ANY)
-		{
-			max = right_canonical;
-		}
-		else if (right_canonical->type_kind == TYPE_OPTIONAL_ANY)
-		{
-			max = left_canonical;
-		}
-		else
-		{
-			max = type_find_max_type(type_no_optional(left_canonical), type_no_optional(right_canonical));
-		}
+		max = type_find_max_type(type_no_optional(left_canonical), type_no_optional(right_canonical));
 		if (!max)
 		{
 			SEMA_ERROR(expr, "Cannot find a common parent type of '%s' and '%s'",
@@ -1465,8 +1454,8 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 				if (IS_OPTIONAL(arg)) *optional = true;
 				if (type_is_invalid_storage_type(arg->type))
 				{
-					SEMA_ERROR(arg, "A value of type %s can only be passed as a compile time parameter.", type_quoted_error_string(arg->type));
-					return false;
+					assert(!type_is_wildcard(arg->type));
+					RETURN_SEMA_ERROR(arg, "A value of type %s can only be passed as a compile time parameter.", type_quoted_error_string(arg->type));
 				}
 				if (!param->alignment)
 				{
@@ -1581,29 +1570,28 @@ static inline Type *context_unify_returns(SemaContext *context)
 	bool all_returns_need_casts = false;
 	Type *common_type = NULL;
 
-	bool optional = false;
-	bool no_return = true;
 	// 1. Loop through the returns.
-	VECEACH(context->returns, i)
+	bool optional = false;
+	unsigned returns = vec_size(context->returns);
+	if (!returns) return type_void;
+	for (unsigned i = 0; i < returns; i++)
 	{
 		Ast *return_stmt = context->returns[i];
+		Type *rtype;
 		if (!return_stmt)
 		{
 			optional = true;
-			continue;
+			rtype = type_wildcard;
 		}
-		no_return = false;
-		Expr *ret_expr = return_stmt->return_stmt.expr;
-		Type *rtype = ret_expr ? ret_expr->type : type_void;
-		if (type_is_optional_any(rtype))
+		else
 		{
-			optional = true;
-			continue;
-		}
-		if (type_is_optional(rtype))
-		{
-			optional = true;
-			rtype = type_no_optional(rtype);
+			Expr *ret_expr = return_stmt->return_stmt.expr;
+			rtype = ret_expr ? ret_expr->type : type_void;
+			if (type_is_optional(rtype))
+			{
+				optional = true;
+				rtype = type_no_optional(rtype);
+			}
 		}
 		// 2. If we have no common type, set to the return type.
 		if (!common_type)
@@ -1634,24 +1622,12 @@ static inline Type *context_unify_returns(SemaContext *context)
 		all_returns_need_casts = true;
 	}
 
-	// If we have no return (or only anyfail)
-	if (!common_type)
-	{
-		assert(!all_returns_need_casts && "We should never need casts here.");
-		// An optional?
-		if (optional)
-		{
-			// If there are only implicit returns, then we assume void!, otherwise it's an "anyfail"
-			return no_return ? type_get_optional(type_void) : type_anyfail;
-		}
-		// No optional => void.
-		return type_void;
-	}
+	assert(common_type);
 
 	// 7. Insert casts.
 	if (all_returns_need_casts)
 	{
-		assert(!type_is_optional_type(common_type));
+		assert(common_type != type_wildcard);
 		VECEACH(context->returns, i)
 		{
 			Ast *return_stmt = context->returns[i];
@@ -3035,7 +3011,6 @@ static inline bool sema_create_const_len(SemaContext *context, Expr *expr, Type 
 		case TYPE_FAULTTYPE:
 			len = vec_size(type->decl->enums.values);
 			break;
-		case TYPE_SCALED_VECTOR:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_SUBARRAY:
@@ -3071,7 +3046,6 @@ static inline bool sema_create_const_inner(SemaContext *context, Expr *expr, Typ
 		case TYPE_SUBARRAY:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
-		case TYPE_SCALED_VECTOR:
 		case TYPE_VECTOR:
 			inner = type->array.base;
 			break;
@@ -5636,9 +5610,6 @@ static inline bool sema_expr_analyse_not(SemaContext *context, Expr *expr)
 			case TYPE_VECTOR:
 				expr->type = type_get_vector(type_bool, canonical->array.len);
 				return true;
-			case TYPE_SCALED_VECTOR:
-				expr->type = type_get_scaled_vector(type_bool);
-				return true;
 			case TYPE_INFERRED_VECTOR:
 				UNREACHABLE;
 			default:
@@ -5840,23 +5811,7 @@ static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr)
 	// Here we might need to insert casts.
 	Type *else_type = rhs->type;
 
-	if (type_is_optional_any(type))
-	{
-		// One possibility is that both sides have the "optional any" type
-		// if so then we're done.
-		if (else_type == type)
-		{
-			expr->type = type;
-			return true;
-		}
-		// Otherwise assign the type of "else":
-		type = else_type;
-	}
-	else if (type_is_optional_any(else_type))
-	{
-		expr->type = type;
-		return true;
-	}
+
 	// Remove any possible optional of the else type.
 	bool add_optional = type_is_optional(else_type);
 	type = type_no_optional(type);
@@ -6020,11 +5975,7 @@ static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr)
 		return false;
 	}
 	expr->rethrow_expr.cleanup = context_get_defers(context, context->active_scope.defer_last, 0, false);
-	if (inner->type == type_anyfail)
-	{
-		SEMA_ERROR(expr, "This expression will always throw, which isn't allowed.");
-		return false;
-	}
+
 	expr->type = type_no_optional(inner->type);
 
 	if (!IS_OPTIONAL(inner))
@@ -6032,7 +5983,6 @@ static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr)
 		SEMA_ERROR(expr, "No optional to rethrow before '?' in the expression, please remove '?'.");
 		return false;
 	}
-
 
 	if (context->active_scope.flags & (SCOPE_EXPR_BLOCK | SCOPE_MACRO))
 	{
@@ -6042,7 +5992,7 @@ static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr)
 	{
 		if (context->rtype && context->rtype->type_kind != TYPE_OPTIONAL)
 		{
-			SEMA_ERROR(expr, "This expression implicitly returns with an optional result, but the function does not allow optional results. Did you mean to use 'else' instead?");
+			SEMA_ERROR(expr, "This expression implicitly returns with an optional result, but the function does not allow optional results. Did you mean to use '!!' instead?");
 			return false;
 		}
 	}
@@ -6055,11 +6005,6 @@ static inline bool sema_expr_analyse_force_unwrap(SemaContext *context, Expr *ex
 {
 	Expr *inner = expr->inner_expr;
 	if (!sema_analyse_expr(context, inner)) return false;
-	if (inner->type == type_anyfail)
-	{
-		SEMA_ERROR(expr, "This expression will always throw, which isn't allowed.");
-		return false;
-	}
 	expr->type = type_no_optional(inner->type);
 	if (!IS_OPTIONAL(inner))
 	{
@@ -6123,7 +6068,8 @@ static inline bool sema_expr_analyse_expr_block(SemaContext *context, Type *infe
 			success = false;
 			goto EXIT;
 		}
-		if (type_no_optional(sum_returns) != type_void && !context->active_scope.jump_end)
+		Type *return_no_optional = type_no_optional(sum_returns);
+		if (return_no_optional != type_wildcard && return_no_optional != type_void && !context->active_scope.jump_end)
 		{
 			Ast *ast = ast_last(astptr(expr->expr_block.first_stmt));
 			SEMA_ERROR(ast, "Expected a return statement following this statement.");
@@ -6170,7 +6116,7 @@ static inline bool sema_expr_analyse_optional(SemaContext *context, Expr *expr)
 		SEMA_ERROR(inner, "You cannot use the '!' operator on expressions of type %s", type_quoted_error_string(type));
 		return false;
 	}
-	expr->type = type_anyfail;
+	expr->type = type_wildcard_optional;
 	return true;
 }
 
@@ -6676,13 +6622,6 @@ RETRY:
 			if (!type) return NULL;
 			if (!type_ok(type)) return type;
 			return type_get_inferred_vector(type);
-		}
-		case TYPE_INFO_SCALED_VECTOR:
-		{
-			Type *type = sema_expr_check_type_exists(context, type_info->array.base);
-			if (!type) return NULL;
-			if (!type_ok(type)) return type;
-			return type_get_scaled_vector(type);
 		}
 		case TYPE_INFO_POINTER:
 		{
@@ -7362,7 +7301,7 @@ bool sema_analyse_cond_expr(SemaContext *context, Expr *expr)
 
 bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allow_optional)
 {
-	if (to && type_is_optional_type(to))
+	if (to && type_is_optional(to))
 	{
 		to = to->optional;
 		assert(allow_optional);

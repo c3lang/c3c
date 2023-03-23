@@ -6,7 +6,11 @@
 
 INLINE bool is_aarch64_illegal_vector(Type *type)
 {
-	if (type->type_kind != TYPE_VECTOR) return type->type_kind == TYPE_SCALED_VECTOR;
+	if (type->type_kind != TYPE_VECTOR)
+	{
+		// Return true if scaled vector
+		return false;
+	}
 	ArraySize len = type->array.len;
 	if (!is_power_of_two(len)) return true;
 	switch (type_size(type))
@@ -22,7 +26,7 @@ INLINE bool is_aarch64_illegal_vector(Type *type)
 
 ABIArgInfo *aarch64_coerce_illegal_vector(Type *type)
 {
-	if (type->type_kind == TYPE_SCALED_VECTOR)
+	if (false /*type->type_kind == TYPE_SCALED_VECTOR*/)
 	{
 		/*
 		Type *base_type = type->array.base;

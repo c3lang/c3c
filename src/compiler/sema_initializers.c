@@ -558,9 +558,6 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 			if (!sema_analyse_expr(context, expr)) return false;
 			return cast(expr, to);
 		}
-		case TYPE_SCALED_VECTOR:
-			SEMA_ERROR(expr, "Scaled vectors cannot be initialized using an initializer list, since the length is not known at compile time.");
-			return false;
 		case TYPE_POINTER:
 			if (is_zero_init)
 			{
@@ -573,7 +570,6 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 		case TYPE_POISONED:
 		case TYPE_FUNC:
 		case TYPE_TYPEDEF:
-		case TYPE_OPTIONAL_ANY:
 		case TYPE_OPTIONAL:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:

@@ -554,6 +554,7 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 		case TYPE_POISONED:
 		case TYPE_VOID:
 		case TYPE_INFERRED_VECTOR:
+		case TYPE_WILDCARD:
 			UNREACHABLE
 		case ALL_INTS:
 			expr_rewrite_const_int(expr, type, 0);
@@ -577,7 +578,6 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 			break;
 		case TYPE_FUNC:
 		case TYPE_TYPEDEF:
-		case TYPE_OPTIONAL_ANY:
 		case TYPE_OPTIONAL:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
@@ -590,7 +590,6 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_UNTYPED_LIST:
-		case TYPE_SCALED_VECTOR:
 		case TYPE_VECTOR:
 		{
 			ConstInitializer *init = CALLOCS(ConstInitializer);

@@ -317,7 +317,6 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 		case CT_TYPES:
 			UNREACHABLE
 		case TYPE_OPTIONAL:
-		case TYPE_OPTIONAL_ANY:
 		case TYPE_TYPEDEF:
 		case TYPE_DISTINCT:
 		case TYPE_ENUM:
@@ -368,8 +367,6 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 			LLVMStructSetBody(virtual_type, types, 2, false);
 			return any_type->backend_type = virtual_type;
 		}
-		case TYPE_SCALED_VECTOR:
-			return any_type->backend_type = LLVMScalableVectorType(llvm_get_type(c, any_type->array.base), any_type->array.len);
 		case TYPE_VECTOR:
 			return any_type->backend_type = LLVMVectorType(llvm_get_type(c, any_type->array.base), any_type->array.len);
 	}
@@ -660,12 +657,7 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 		}
 		case TYPE_TYPEDEF:
 			return llvm_get_typeid(c, type->canonical);
-		case TYPE_INFERRED_ARRAY:
-		case TYPE_INFERRED_VECTOR:
-		case TYPE_UNTYPED_LIST:
-		case TYPE_OPTIONAL_ANY:
-		case TYPE_TYPEINFO:
-		case TYPE_MEMBER:
+		case CT_TYPES:
 			UNREACHABLE
 		case TYPE_VOID:
 			return llvm_get_introspection_for_builtin_type(c, type, INTROSPECT_TYPE_VOID, 0);
@@ -690,10 +682,6 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 			return llvm_get_introspection_for_builtin_type(c, type, INTROSPECT_TYPE_VARIANT, 0);
 		case TYPE_TYPEID:
 			return llvm_get_introspection_for_builtin_type(c, type, INTROSPECT_TYPE_TYPEID, 0);
-		case TYPE_POISONED:
-			UNREACHABLE
-		case TYPE_SCALED_VECTOR:
-			UNSUPPORTED;
 	}
 	UNREACHABLE
 }

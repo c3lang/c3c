@@ -653,7 +653,7 @@ RETRY:
 			MACRO_COPY_ASTID(ast->if_stmt.else_body);
 			MACRO_COPY_ASTID(ast->if_stmt.then_body);
 			break;
-		case AST_NEXT_STMT:
+		case AST_NEXTCASE_STMT:
 			MACRO_COPY_EXPR(ast->nextcase_stmt.expr);
 			break;
 		case AST_NOP_STMT:
@@ -802,7 +802,6 @@ TypeInfo *copy_type_info(CopyStruct *c, TypeInfo *source)
 		case TYPE_INFO_INFERRED_ARRAY:
 		case TYPE_INFO_SUBARRAY:
 		case TYPE_INFO_INFERRED_VECTOR:
-		case TYPE_INFO_SCALED_VECTOR:
 			assert(source->resolve_status == RESOLVE_NOT_DONE);
 			copy->array.base = copy_type_info(c, source->array.base);
 			return copy;

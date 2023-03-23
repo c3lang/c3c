@@ -64,6 +64,20 @@ bool parse_range(ParseContext *c, Range *range)
 }
 
 /**
+ * rethrow_expr ::= call_expr '?'
+ */
+static Expr *parse_rethrow_expr(ParseContext *c, Expr *left_side)
+{
+	assert(expr_ok(left_side));
+	advance_and_verify(c, TOKEN_QUESTION);
+	Expr *expr_ternary = expr_new_expr(EXPR_RETHROW, left_side);
+	expr_ternary->rethrow_expr.inner = left_side;
+	RANGE_EXTEND_PREV(expr_ternary);
+
+	return expr_ternary;
+}
+
+/**
  * Parse lhs [op] [rhs]
  * This will return lhs if no candidate is found.
  */
@@ -72,6 +86,15 @@ inline Expr *parse_precedence_with_left_side(ParseContext *c, Expr *left_side, P
 	while (1)
 	{
 		TokenType tok = c->tok;
+		// Special '?' parsing
+		if (tok == TOKEN_QUESTION && !rules[peek((c))].prefix)
+		{
+			// Greater than rethrow precedence? Then break
+			if (precedence > PREC_CALL) break;
+			if (!expr_ok(left_side)) return left_side;
+			left_side = parse_rethrow_expr(c, left_side);
+			continue;
+		}
 		Precedence token_precedence = rules[tok].precedence;
 		// See if the operator precedence is greater than the last, if so exit.
 		// Note that if the token is not an operator then token_precedence = 0
@@ -91,7 +114,6 @@ inline Expr *parse_precedence_with_left_side(ParseContext *c, Expr *left_side, P
 	}
 	return left_side;
 }
-
 
 /**
  * Parse an expression in any position.
@@ -130,7 +152,7 @@ static inline Expr *parse_for_try_expr(ParseContext *c)
 }
 
 /**
- * catch_unwrap ::= CATCH IDENT | (type? IDENT '=' (expr | '(' expr (',' expr) ')'))
+ * catch_unwrap ::= CATCH (IDENT | type? IDENT '=' (expr | '(' expr (',' expr) ')')))
  */
 static inline Expr *parse_catch_unwrap(ParseContext *c)
 {
@@ -234,6 +256,9 @@ static inline Expr *parse_try_unwrap_chain(ParseContext *c)
 	return try_unwrap_chain;
 }
 
+/**
+ * assert_expr ::= try_unwrap_chain | expr
+ */
 Expr *parse_assert_expr(ParseContext *c)
 {
 	if (tok_is(c, TOKEN_TRY))
@@ -305,7 +330,7 @@ Expr* parse_constant_expr(ParseContext *c)
 }
 
 /**
- * param_path : ('[' expression ']' | '.' IDENT)*
+ * param_path ::= ('[' expr ']' | '.' IDENT)*
  *
  * @param c
  * @param path reference to the path to return
@@ -408,7 +433,7 @@ Expr *parse_vasplat(ParseContext *c)
 	return expr;
 }
 /**
- * param_list ::= ('...' parameter | parameter (',' parameter)*)?
+ * param_list ::= ('...' arg | arg (',' arg)*)?
  *
  * parameter ::= (param_path '=')? expr
  */
@@ -465,11 +490,7 @@ bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *
 
 
 /**
- * expression_list
- *	: expression
- *	| expression_list ',' expression
- *	;
- * @return Ast *
+ * expression_list ::= decl_or_expr+
  */
 Expr *parse_expression_list(ParseContext *c, bool allow_decl)
 {
@@ -606,8 +627,6 @@ static Expr *parse_post_unary(ParseContext *c, Expr *left)
 }
 
 
-
-
 static Expr *parse_ternary_expr(ParseContext *c, Expr *left_side)
 {
 	assert(expr_ok(left_side));
@@ -624,14 +643,7 @@ static Expr *parse_ternary_expr(ParseContext *c, Expr *left_side)
 	else
 	{
 		advance_and_verify(c, TOKEN_QUESTION);
-		if (!rules[c->tok].prefix)
-		{
-			expr_ternary->expr_kind = EXPR_RETHROW;
-			expr_ternary->rethrow_expr.inner = left_side;
-			RANGE_EXTEND_PREV(expr_ternary);
-			return expr_ternary;
-		}
-		ASSIGN_EXPR_OR_RET(Expr * true_expr, parse_expr(c), poisoned_expr);
+		ASSIGN_EXPR_OR_RET(Expr *true_expr, parse_expr(c), poisoned_expr);
 		expr_ternary->ternary_expr.then_expr = exprid(true_expr);
 		CONSUME_OR_RET(TOKEN_COLON, poisoned_expr);
 	}
@@ -1758,8 +1770,9 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_ANYERR] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_VARIANT] = { parse_type_identifier, NULL, PREC_NONE },
 
+		// This is handles in a special manner for rethrow.
 		[TOKEN_QUESTION] = { NULL, parse_ternary_expr, PREC_TERNARY },
-		[TOKEN_QUESTQUEST] = { NULL, parse_binary, PREC_TERNARY},
+		[TOKEN_QUESTQUEST] = { NULL, parse_binary, PREC_OR},
 		[TOKEN_ELVIS] = { NULL, parse_ternary_expr, PREC_TERNARY },
 		[TOKEN_PLUSPLUS] = { parse_unary_expr, parse_post_unary, PREC_CALL },
 		[TOKEN_MINUSMINUS] = { parse_unary_expr, parse_post_unary, PREC_CALL },

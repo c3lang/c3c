@@ -245,8 +245,6 @@ const char *token_type_to_string(TokenType type)
 			return "nextcase";
 		case TOKEN_NULL:
 			return "null";
-		case TOKEN_PRIVATE:
-			return "private";
 		case TOKEN_RETURN:
 			return "return";
 		case TOKEN_STATIC:
@@ -346,8 +344,6 @@ const char *token_type_to_string(TokenType type)
 			return "$foreach";
 		case TOKEN_CT_ELSE:
 			return "$else";
-		case TOKEN_CT_ELIF:
-			return "$elif";
 		case TOKEN_CT_ENDIF:
 			return "$endif";
 		case TOKEN_CT_ENDSWITCH:

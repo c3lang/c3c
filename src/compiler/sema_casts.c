@@ -667,6 +667,7 @@ CastKind cast_to_bool_kind(Type *type)
 {
 	switch (type_flatten(type)->type_kind)
 	{
+		case TYPE_WILDCARD:
 		case TYPE_BOOL:
 			return CAST_BOOLBOOL;
 		case TYPE_ANYERR:
@@ -684,7 +685,6 @@ CastKind cast_to_bool_kind(Type *type)
 		case TYPE_TYPEDEF:
 		case TYPE_DISTINCT:
 		case TYPE_OPTIONAL:
-		case TYPE_OPTIONAL_ANY:
 		case TYPE_ENUM:
 			// These are not possible due to flattening.
 			UNREACHABLE
@@ -705,7 +705,6 @@ CastKind cast_to_bool_kind(Type *type)
 		case TYPE_UNTYPED_LIST:
 		case TYPE_ANY:
 		case TYPE_FLEXIBLE_ARRAY:
-		case TYPE_SCALED_VECTOR:
 		case TYPE_MEMBER:
 			// Everything else is an error
 			return CAST_ERROR;
@@ -1005,7 +1004,6 @@ static bool cast_from_pointer(SemaContext *context, Expr *expr, Type *from, Type
 				return cast_with_optional(expr, to_type, add_optional);
 			}
 			return sema_error_cannot_convert(expr, to_type, true, silent);
-		case TYPE_OPTIONAL_ANY:
 		case TYPE_OPTIONAL:
 			UNREACHABLE
 		default:
@@ -1519,8 +1517,10 @@ static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, boo
 	// 3. void! -> SomeFault (explicit)
 	if (type_is_optional(from_type))
 	{
+		Type *opt = from_type->optional;
+
 		// *! -> int => ok, gives int!
-		if (from_type == type_anyfail)
+		if (opt == type_wildcard)
 		{
 			if (may_not_be_optional)
 			{
@@ -1533,11 +1533,8 @@ static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, boo
 			return true;
 		}
 
-		// Here we have something like int!
-		assert(from_type->type_kind == TYPE_OPTIONAL);
-
 		// If it is void!, then there are special rules:
-		if (from_type->optional == type_void)
+		if (opt == type_void)
 		{
 			// void! x; anyerr y = x;
 			if (!type_is_optional(to_type) && to == type_anyerr)
@@ -1585,7 +1582,7 @@ static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, boo
 	}
 
 	// We may already be done.
-	if (from == to)
+	if (from == to || from == type_wildcard)
 	{
 		expr->type = type_add_optional(to_type, add_optional);
 		return true;
@@ -1629,7 +1626,6 @@ static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, boo
 			if (type_is_integer(to) || type_is_float(to)) goto CAST_IF_EXPLICIT;
 			goto CAST_FAILED;
 		case TYPE_VECTOR:
-		case TYPE_SCALED_VECTOR:
 			return cast_from_vector(context, expr, from, to, to_type, add_optional, is_explicit, silent);
 		case TYPE_ARRAY:
 			return cast_from_array(context, expr, from, to, to_type, add_optional, is_explicit, silent);
@@ -1641,6 +1637,8 @@ static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, boo
 			return cast_from_float(context, expr, from, to, to_type, add_optional, is_explicit, silent);
 		case TYPE_POISONED:
 			return false;
+		case TYPE_WILDCARD:
+			UNREACHABLE
 		case TYPE_VOID:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_TYPEINFO:
@@ -1653,7 +1651,6 @@ static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, boo
 			if (!type_is_pointer_sized_or_more(to_type)) goto CAST_FAILED;
 			goto CAST_IF_EXPLICIT;
 		case TYPE_OPTIONAL:
-		case TYPE_OPTIONAL_ANY:
 		case TYPE_TYPEDEF:
 			UNREACHABLE;
 		case TYPE_ANY:
@@ -1817,7 +1814,6 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 {
 	switch (from_type->type_kind)
 	{
-		case TYPE_OPTIONAL_ANY:
 		case TYPE_OPTIONAL:
 		case TYPE_VOID:
 			UNREACHABLE
@@ -1889,7 +1885,6 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 			if (type_is_integer(to)) return insert_cast(expr, CAST_ERINT, to_type);
 			break;
 		case TYPE_FLEXIBLE_ARRAY:
-		case TYPE_SCALED_VECTOR:
 			return false;
 		case TYPE_ARRAY:
 			if (to->type_kind == TYPE_VECTOR) return array_to_vector(expr, to_type);
@@ -1935,17 +1930,18 @@ bool cast(Expr *expr, Type *to_type)
 		if (type_is_optional(from_type)) return voidfail_to_error(expr, to_type);
 	}
 
-	if (type_is_optional_any(from_type))
-	{
-		expr->type = type_get_optional(to_type);
-		return true;
-	}
-
-	if (type_is_optional_type(from_type))
+	if (type_is_optional(from_type))
 	{
 		from_type = from_type->optional;
 		from_is_optional = true;
 	}
+
+	if (from_type == type_wildcard)
+	{
+		expr->type = type_add_optional(to_type, from_is_optional);
+		return true;
+	}
+
 	from_type = type_flatten(from_type);
 	if (type_len_is_inferred(to_type))
 	{

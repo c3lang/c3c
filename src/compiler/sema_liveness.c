@@ -37,7 +37,7 @@ static void sema_trace_stmt_chain_liveness(AstId astid)
 			case AST_RETURN_STMT:
 			case AST_BREAK_STMT:
 			case AST_CONTINUE_STMT:
-			case AST_NEXT_STMT:
+			case AST_NEXTCASE_STMT:
 				return;
 			default:
 				break;
@@ -163,7 +163,7 @@ static void sema_trace_stmt_liveness(Ast *ast)
 		case AST_DEFAULT_STMT:
 			sema_trace_stmt_liveness(ast->case_stmt.body);
 			return;
-		case AST_NEXT_STMT:
+		case AST_NEXTCASE_STMT:
 			sema_trace_stmt_chain_liveness(ast->nextcase_stmt.defer_id);
 			sema_trace_expr_liveness(ast->nextcase_stmt.switch_expr);
 			return;

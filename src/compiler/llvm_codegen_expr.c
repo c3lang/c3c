@@ -153,6 +153,7 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 		{
 			llvm_emit_expr(c, &value, expr);
 		}
+
 		if (value.type != type_void) llvm_store(c, ref, &value);
 	}
 
@@ -3433,7 +3434,6 @@ void llvm_emit_comp(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, 
 	assert(binary_op >= BINARYOP_GT && binary_op <= BINARYOP_EQ);
 	switch (lhs->type->type_kind)
 	{
-		case TYPE_POISONED:
 		case TYPE_VOID:
 			UNREACHABLE;
 		case TYPE_BOOL:
@@ -3458,20 +3458,14 @@ void llvm_emit_comp(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, 
 		case TYPE_FAULTTYPE:
 		case TYPE_TYPEDEF:
 		case TYPE_DISTINCT:
-		case TYPE_INFERRED_ARRAY:
-		case TYPE_UNTYPED_LIST:
 		case TYPE_OPTIONAL:
-		case TYPE_OPTIONAL_ANY:
-		case TYPE_TYPEINFO:
-		case TYPE_MEMBER:
-		case TYPE_INFERRED_VECTOR:
+		case CT_TYPES:
 			UNREACHABLE
 		case TYPE_FUNC:
 			break;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
-		case TYPE_SCALED_VECTOR:
 		case TYPE_FLEXIBLE_ARRAY:
 			UNREACHABLE
 		case TYPE_SUBARRAY:
@@ -4613,9 +4607,7 @@ static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVM
 		case TYPE_BITSTRUCT:
 		case TYPE_OPTIONAL:
 		case CT_TYPES:
-		case TYPE_OPTIONAL_ANY:
 		case TYPE_FLEXIBLE_ARRAY:
-		case TYPE_SCALED_VECTOR:
 			UNREACHABLE
 			break;
 		case TYPE_BOOL:
@@ -5660,8 +5652,8 @@ static inline void llvm_emit_optional(GenContext *c, BEValue *be_value, Expr *ex
 
 	// Finally we need to replace the result with something undefined here.
 	// It will be optimized away.
-	Type *type = type_no_optional(expr->type);
-	if (type->canonical == type_void)
+	Type *type = type_lowering(expr->type);
+	if (type == type_void)
 	{
 		llvm_value_set(be_value, NULL, type_void);
 		return;

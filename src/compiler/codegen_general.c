@@ -184,7 +184,6 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 		case TYPE_FUNC:
 		case TYPE_SUBARRAY:
 		case CT_TYPES:
-		case TYPE_OPTIONAL_ANY:
 			return false;
 		case TYPE_ANY:
 			*base = type_iptr->canonical;
@@ -238,7 +237,7 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 			}
 			goto TYPECHECK;
 		case TYPE_FLEXIBLE_ARRAY:
-		case TYPE_SCALED_VECTOR:
+			// Same with scaled vectors
 			return false;
 		case TYPE_ARRAY:
 			// Empty arrays? Not homogenous.

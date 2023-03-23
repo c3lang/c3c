@@ -72,7 +72,7 @@ typedef enum
 	AST_RETURN_STMT,
 	AST_BLOCK_EXIT_STMT,
 	AST_SWITCH_STMT,
-	AST_NEXT_STMT,
+	AST_NEXTCASE_STMT,
 	AST_CONTRACT,
 } AstKind;
 
@@ -346,7 +346,7 @@ typedef enum
 	PREC_SHIFT,             // << >>
 	PREC_MULTIPLICATIVE,    // * / %
 	PREC_UNARY,             // ! - + ~ * & prefix ++/-- try? catch? (type)
-	PREC_CALL,              // . () [] postfix ++/--
+	PREC_CALL,              // . () [] postfix ++ -- !! ? !
 	PREC_MACRO,
 	PREC_FIRST = PREC_MACRO
 } Precedence;
@@ -379,7 +379,6 @@ typedef enum
 	TYPE_INFO_VECTOR,
 	TYPE_INFO_INFERRED_ARRAY,
 	TYPE_INFO_INFERRED_VECTOR,
-	TYPE_INFO_SCALED_VECTOR,
 	TYPE_INFO_SUBARRAY,
 	TYPE_INFO_POINTER,
 } TypeInfoKind;
@@ -541,7 +540,6 @@ typedef enum
 	TOKEN_MODULE,
 	TOKEN_NEXTCASE,
 	TOKEN_NULL,
-	TOKEN_PRIVATE,
 	TOKEN_RETURN,
 	TOKEN_STATIC,
 	TOKEN_STRUCT,
@@ -561,7 +559,6 @@ typedef enum
 	TOKEN_CT_DEFAULT,           // $default
 	TOKEN_CT_DEFINED,           // $defined
 	TOKEN_CT_ECHO,              // $echo
-	TOKEN_CT_ELIF,              // $elif
 	TOKEN_CT_ELSE,              // $else
 	TOKEN_CT_ENDFOR,            // $endfor
 	TOKEN_CT_ENDFOREACH,        // $endforeach
@@ -657,22 +654,23 @@ typedef enum
 	TYPE_TYPEDEF,
 	TYPE_DISTINCT,
 	TYPE_ARRAY,
+	TYPE_FIRST_ARRAYLIKE = TYPE_ARRAY,
 	TYPE_SUBARRAY,
-	TYPE_INFERRED_ARRAY,
 	TYPE_FLEXIBLE_ARRAY,
+	TYPE_INFERRED_ARRAY,
+	TYPE_VECTOR,
+	TYPE_INFERRED_VECTOR,
+	TYPE_LAST_ARRAYLIKE = TYPE_INFERRED_VECTOR,
 	TYPE_UNTYPED_LIST,
 	TYPE_OPTIONAL,
-	TYPE_OPTIONAL_ANY,
+	TYPE_WILDCARD,
 	TYPE_TYPEINFO,
 	TYPE_MEMBER,
-	TYPE_INFERRED_VECTOR,
-	TYPE_SCALED_VECTOR,
-	TYPE_VECTOR,
 	TYPE_LAST = TYPE_ANY
 } TypeKind;
 
 #define CT_TYPES TYPE_TYPEINFO: case TYPE_INFERRED_ARRAY: case TYPE_INFERRED_VECTOR: case TYPE_UNTYPED_LIST: \
-case TYPE_POISONED: case TYPE_MEMBER
+case TYPE_POISONED: case TYPE_MEMBER: case TYPE_WILDCARD
 #define ALL_INTS TYPE_I8: case TYPE_I16: case TYPE_I32: case TYPE_I64: case TYPE_I128: \
 case TYPE_U8: case TYPE_U16: case TYPE_U32: case TYPE_U64: case TYPE_U128
 #define ALL_SIGNED_INTS TYPE_I8: case TYPE_I16: case TYPE_I32: case TYPE_I64: case TYPE_I128

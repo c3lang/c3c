@@ -41,6 +41,8 @@ static inline Type *type_lowering(Type *type)
 			case TYPE_BITSTRUCT:
 				type = type->decl->bitstruct.base_type->type;
 				continue;
+			case TYPE_WILDCARD:
+				type = type_void;
 			default:
 				return type;
 		}

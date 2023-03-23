@@ -749,7 +749,7 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *switch_ast)
 {
 	bool is_if_chain = switch_ast->switch_stmt.flow.if_chain;
-	Type *switch_type = switch_ast->ast_kind == AST_IF_CATCH_SWITCH_STMT ? type_lowering(type_anyerr) : exprptr(switch_ast->switch_stmt.cond)->type;
+	Type *switch_type = switch_ast->ast_kind == AST_IF_CATCH_SWITCH_STMT ? type_lowering(type_anyerr) : switch_value->type;
 
 	Ast **cases = switch_ast->switch_stmt.cases;
 	ArraySize case_count = vec_size(cases);
@@ -865,11 +865,21 @@ static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *swi
 	llvm_emit_block(c, exit_block);
 }
 
-void gencontext_emit_switch(GenContext *context, Ast *ast)
+void llvm_emit_switch(GenContext *c, Ast *ast)
 {
 	BEValue switch_value;
-	llvm_emit_decl_expr_list(context, &switch_value, exprptrzero(ast->switch_stmt.cond), false);
-	llvm_emit_switch_body(context, &switch_value, ast);
+	Expr *expr = exprptrzero(ast->switch_stmt.cond);
+	if (expr)
+	{
+		// Regular switch
+		llvm_emit_decl_expr_list(c, &switch_value, expr, false);
+	}
+	else
+	{
+		// Match switch, so set the value to true
+		llvm_value_set(&switch_value, llvm_const_int(c, type_bool, 1), type_bool);
+	}
+	llvm_emit_switch_body(c, &switch_value, ast);
 }
 
 
@@ -1472,7 +1482,7 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 		case AST_FOR_STMT:
 			llvm_emit_for_stmt(c, ast);
 			break;
-		case AST_NEXT_STMT:
+		case AST_NEXTCASE_STMT:
 			gencontext_emit_next_stmt(c, ast);
 			break;
 		case AST_DEFER_STMT:
@@ -1495,7 +1505,7 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 		case AST_CT_FOREACH_STMT:
 			UNREACHABLE
 		case AST_SWITCH_STMT:
-			gencontext_emit_switch(c, ast);
+			llvm_emit_switch(c, ast);
 			break;
 	}
 }

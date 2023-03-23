@@ -626,10 +626,9 @@ bool sema_resolve_type_decl(SemaContext *context, Type *type)
 {
 	switch (type->type_kind)
 	{
-		case TYPE_OPTIONAL_ANY:
-			return true;
 		case TYPE_POISONED:
 			return false;
+		case TYPE_WILDCARD:
 		case TYPE_VOID:
 		case TYPE_BOOL:
 		case ALL_INTS:
@@ -641,7 +640,6 @@ bool sema_resolve_type_decl(SemaContext *context, Type *type)
 		case TYPE_UNTYPED_LIST:
 		case TYPE_MEMBER:
 		case TYPE_INFERRED_VECTOR:
-		case TYPE_SCALED_VECTOR:
 		case TYPE_VECTOR:
 		case TYPE_SUBARRAY:
 			return true;

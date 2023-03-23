@@ -204,11 +204,6 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl, Decl **
 			SEMA_ERROR(member, "Flexible array members not allowed in unions.");
 			return false;
 		}
-		if (member->type->type_kind == TYPE_SCALED_VECTOR)
-		{
-			SEMA_ERROR(member, "Scaled vector members not allowed in unions / structs.");
-			return false;
-		}
 		AlignSize member_alignment;
 		if (!sema_set_abi_alignment(context, member->type, &member_alignment)) return false;
 		ByteSize member_size = type_size(member->type);
@@ -312,11 +307,6 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl, Decl *
 				return false;
 			}
 			decl->has_variable_array = true;
-		}
-		if (member_type->type_kind == TYPE_SCALED_VECTOR)
-		{
-			SEMA_ERROR(member, "Scaled vectors may not be used in structs and unions.");
-			return false;
 		}
 		if (member_type->type_kind == TYPE_INFERRED_ARRAY)
 		{
@@ -928,7 +918,6 @@ static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl)
 		case TYPE_FLEXIBLE_ARRAY:
 			UNREACHABLE
 			return false;
-		case TYPE_OPTIONAL_ANY:
 		case TYPE_OPTIONAL:
 			UNREACHABLE
 		case TYPE_FAULTTYPE:
@@ -952,7 +941,6 @@ static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl)
 		case TYPE_ARRAY:
 		case TYPE_SUBARRAY:
 		case TYPE_VECTOR:
-		case TYPE_SCALED_VECTOR:
 			break;
 	}
 	// Do we need anything else?
@@ -2205,7 +2193,6 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	Type *rtype = rtype_info->type;
 	bool is_int_return = true;
 	bool is_err_return = false;
-	if (rtype->type_kind == TYPE_OPTIONAL_ANY) is_err_return = true;
 	if (!is_err_return && type_is_optional(rtype))
 	{
 		if (rtype->optional->type_kind != TYPE_VOID)
@@ -2547,7 +2534,7 @@ bool sema_analyse_decl_type(SemaContext *context, Type *type, SourceSpan span)
 			break;
 	}
 	if (!type_is_optional(type)) return true;
-	if (type_is_optional_any(type) || type->optional == type_void)
+	if (type == type_wildcard_optional || type->optional == type_void)
 	{
 		sema_error_at(span, "The use of 'void!' as a variable type is not permitted, use %s instead.",
 		                 type_quoted_error_string(type_anyerr));
@@ -2687,6 +2674,11 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 			decl->type = init_expr->type;
 			if (type_is_invalid_storage_type(init_expr->type))
 			{
+				if (init_expr->type == type_wildcard_optional || init_expr->type == type_wildcard)
+				{
+					SEMA_ERROR(init_expr, "No type can be inferred from the optional result.");
+					return false;
+				}
 				if (init_expr->type == type_untypedlist)
 				{
 					SEMA_ERROR(init_expr, "The type of an untyped list cannot be inferred, you can try adding an explicit type to solve this.");

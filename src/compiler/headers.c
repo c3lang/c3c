@@ -47,7 +47,6 @@ static void header_print_type(FILE *file, Type *type)
 	{
 		case CT_TYPES:
 		case TYPE_OPTIONAL:
-		case TYPE_OPTIONAL_ANY:
 			UNREACHABLE
 		case TYPE_VOID:
 			OUTPUT("void");
@@ -104,8 +103,6 @@ static void header_print_type(FILE *file, Type *type)
 			header_print_type(file, type->pointer);
 			OUTPUT("*");
 			return;
-		case TYPE_SCALED_VECTOR:
-			error_exit("Scaled vectors are not supported yet.");
 		case TYPE_FUNC:
 			OUTPUT("%s", decl_get_extname(type->decl));
 			return;
@@ -367,8 +364,8 @@ RETRY:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
 		case TYPE_INFERRED_VECTOR:
+		case TYPE_WILDCARD:
 			UNREACHABLE
-		case TYPE_OPTIONAL_ANY:
 		case TYPE_VOID:
 		case TYPE_BOOL:
 		case ALL_FLOATS:
@@ -447,8 +444,6 @@ RETRY:
 			type = type->optional;
 			goto RETRY;
 			break;
-		case TYPE_SCALED_VECTOR:
-			error_exit("Scaled vectors are not supported yet.");
 		case TYPE_VECTOR:
 			if (htable_get(table, type)) return;
 			OUTPUT("typedef ");

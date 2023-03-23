@@ -119,11 +119,8 @@ static bool x86_should_return_type_in_reg(Type *type)
 		case TYPE_BITSTRUCT:
 		case CT_TYPES:
 		case TYPE_OPTIONAL:
-		case TYPE_OPTIONAL_ANY:
 		case TYPE_FLEXIBLE_ARRAY:
 			UNREACHABLE
-		case TYPE_SCALED_VECTOR:
-			return false;
 		case ALL_INTS:
 		case ALL_FLOATS:
 		case TYPE_BOOL:
@@ -468,7 +465,6 @@ static ABIArgInfo *x86_classify_argument(CallABI call, Regs *regs, Type *type)
 		case TYPE_TYPEID:
 		case TYPE_BITSTRUCT:
 		case TYPE_OPTIONAL:
-		case TYPE_OPTIONAL_ANY:
 		case CT_TYPES:
 		case TYPE_FLEXIBLE_ARRAY:
 			UNREACHABLE
@@ -485,8 +481,6 @@ static ABIArgInfo *x86_classify_argument(CallABI call, Regs *regs, Type *type)
 		case TYPE_ANY:
 		case TYPE_ARRAY:
 			return x86_classify_aggregate(call, regs, type);
-		case TYPE_SCALED_VECTOR:
-			// No scaled vectors in x86
 			UNREACHABLE
 	}
 	UNREACHABLE

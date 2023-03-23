@@ -12,205 +12,286 @@ void yyerror(char *s);
 %token IDENT HASH_IDENT CT_IDENT CONST_IDENT
 %token TYPE_IDENT CT_TYPE_IDENT
 %token AT_TYPE_IDENT AT_IDENT
-%token STRING_LITERAL CTSIZEOF
-%token INC_OP DEC_OP LEFT_OP RIGHT_OP LE_OP GE_OP EQ_OP NE_OP
+%token STRING_LITERAL INTEGER
+%token INC_OP DEC_OP SHL_OP SHR_OP LE_OP GE_OP EQ_OP NE_OP
 %token AND_OP OR_OP MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN ADD_ASSIGN
-%token SUB_ASSIGN LEFT_ASSIGN RIGHT_ASSIGN AND_ASSIGN
-%token ADD_MOD SUB_MOD MULT_MOD ADD_MOD_ASSIGN SUB_MOD_ASSIGN
-%token MULT_MOD_ASSIGN NEG_MOD
-%token XOR_ASSIGN OR_ASSIGN VAR NIL ELVIS NEXTCASE
+%token SUB_ASSIGN SHL_ASSIGN SHR_ASSIGN AND_ASSIGN
+%token XOR_ASSIGN OR_ASSIGN VAR NUL ELVIS NEXTCASE
 %token TYPEDEF MODULE IMPORT DEFINE
 %token CHAR SHORT INT LONG FLOAT DOUBLE CONST VOID
 %token ICHAR USHORT UINT ULONG BOOL INT128 UINT128 FLOAT16 FLOAT128
-%token TYPEID BITSTRUCT STATIC
-%token STRUCT UNION ENUM ELLIPSIS DOTDOT
+%token TYPEID BITSTRUCT STATIC BANGBANG AT_CONST_IDENT HASH_TYPE_IDENT
+%token STRUCT UNION ENUM ELLIPSIS DOTDOT BYTES
 
-%token CASE DEFAULT IF ELSE SWITCH WHILE DO FOR GOTO CONTINUE BREAK RETURN
-%token FN FAULT MACRO GENERIC CT_IF CT_ENDIF CT_ELSE CT_SWITCH CT_CASE CT_DEFAULT CT_FOR CT_FOREACH CT_ENDFOREACH
+%token CASE DEFAULT IF ELSE SWITCH WHILE DO FOR CONTINUE BREAK RETURN FOREACH_R FOREACH
+%token FN FAULT MACRO CT_IF CT_ENDIF CT_ELSE CT_SWITCH CT_CASE CT_DEFAULT CT_FOR CT_FOREACH CT_ENDFOREACH
 %token CT_ENDFOR CT_ENDSWITCH BUILTIN IMPLIES INITIALIZE FINALIZE CT_ECHO CT_ASSERT CT_EVALTYPE CT_VATYPE
-%token TRY CATCH SCOPE PUBLIC DEFER ATTRIBUTE TRY_Q CATCH_Q LVEC RVEC OPTELSE CT_TYPEFROM CT_TYPEOF TLOCAL
-%token CT_VASPLAT
-
-%token FN_BLOCK_START FN_BLOCK_END
+%token TRY CATCH SCOPE DEFER TRY_Q CATCH_Q LVEC RVEC OPTELSE CT_TYPEFROM CT_TYPEOF TLOCAL
+%token CT_VASPLAT INLINE DISTINCT CT_VACONST CT_NAMEOF CT_VAREF CT_VACOUNT CT_VAARG
+%token CT_SIZEOF CT_STRINGIFY CT_QNAMEOF CT_OFFSETOF CT_VAEXPR
+%token CT_EXTNAMEOF CT_EVAL CT_DEFINED CT_CHECKS CT_ALIGNOF ASSERT
+%token ASM CHAR_LITERAL REAL TRUE FALSE CT_CONST_IDENT
+%token FN_BLOCK_BEGIN FN_BLOCK_END HASH_CONST_IDENT
 
 %start translation_unit
 %%
 
 path
-    : IDENT SCOPE
-    | path IDENT SCOPE
-    ;
+    	: IDENT SCOPE
+    	| path IDENT SCOPE
+    	;
 
-/* Checked for 0.5 */
 import_path
-    : IDENT
-    | import_path SCOPE IDENT
-    ;
+    	: IDENT
+    	| path IDENT
+    	;
 
-ident_expression
+ident_expr
 	: CONST_IDENT
 	| IDENT
-	| CT_IDENT
-	| HASH_IDENT
 	| AT_IDENT
 	;
 
+local_ident_expr
+	: CT_IDENT
+        | HASH_IDENT
+	;
+
+ct_call
+	: CT_ALIGNOF
+	| CT_DEFINED
+	| CT_EXTNAMEOF
+	| CT_NAMEOF
+	| CT_OFFSETOF
+	| CT_QNAMEOF
+	;
+
+ct_analyse
+	: CT_EVAL
+	| CT_SIZEOF
+	| CT_STRINGIFY
+	;
+
+ct_arg
+	: CT_VACONST
+        | CT_VAARG
+        | CT_VAREF
+        | CT_VAEXPR
+	;
+
+flat_path_element
+	: '[' expr ']'
+	| '.' primary_expression
+	;
+
+flat_path_elements
+	: flat_path_element
+	| flat_path_elements flat_path_element
+	;
+
+flat_path
+	: primary_expression flat_path_elements
+	| primary_expression
+	;
+
+maybe_optional_type
+	: optional_type
+	|
+	;
+
+
 primary_expression
 	: STRING_LITERAL
-	| NIL
+	| INTEGER
+	| BYTES
+	| NUL
 	| BUILTIN
-	| path ident_expression
-	| ident_expression
+	| CHAR_LITERAL
+	| REAL
+	| TRUE
+	| FALSE
+	| path ident_expr
+	| ident_expr
+	| local_ident_expr
+	| initializer_list
 	| base_type initializer_list
 	| type '.' IDENT
 	| type '.' TYPEID
 	| '(' type ')' '.' IDENT
 	| '(' type ')' '.' TYPEID
-	| '(' expression ')'
-	| FN_BLOCK_START statement_list FN_BLOCK_END
+	| '(' expr ')'
+	| FN_BLOCK_BEGIN statement_list FN_BLOCK_END
+	| ct_call '(' flat_path ')'
+	| ct_arg '(' expr ')'
+	| ct_analyse '(' expr ')'
+	| CT_VACOUNT
+	| CT_CHECKS '(' expression_list ')'
 	;
 
-postfix_expression
+range_loc
+	: expr
+	| '^' expr
+	|
+	;
+
+range_expr
+	: range_loc DOTDOT range_loc
+	| range_loc ':' range_loc
+	;
+
+call_expr
 	: primary_expression
-	| postfix_expression '[' expression ']'
-	| postfix_expression '(' ')'
-	| postfix_expression '(' argument_expression_list ')'
-	| postfix_expression '.' IDENT
-	| postfix_expression INC_OP
-	| postfix_expression DEC_OP
+	| call_expr '[' expr ']'
+	| call_expr '[' '^' expr ']'
+	| call_expr '[' range_expr ']'
+	| call_expr '(' ')'
+	| call_expr '(' arg_list ')'
+	| call_expr '.' IDENT
+	| call_expr INC_OP
+	| call_expr DEC_OP
+	| call_expr '!'
+	| call_expr BANGBANG
 	;
 
-argument_expression_list
-	: expression
-	| argument_expression_list ',' expression
+rethrow_expr
+	: call_expr '?'
 	;
 
-unary_expression
-	: postfix_expression
-	| INC_OP unary_expression
-	| DEC_OP unary_expression
-	| unary_operator unary_expression
+unary_expr
+	: rethrow_expr
+	| INC_OP unary_expr
+	| DEC_OP unary_expr
+	| unary_op unary_expr
+	| '(' type ')' unary_expr
 	;
 
-unary_operator
+unary_op
 	: '&'
 	| '*'
 	| '+'
 	| '-'
-	| NEG_MOD
 	| '~'
 	| '!'
 	| TRY_Q
 	| CATCH_Q
 	;
 
-mult_operator
-    : '*'
-    | MULT_MOD
-    | '/'
-    | '%'
-    ;
+mult_op
+	: '*'
+	| '/'
+	| '%'
+    	;
 
-multiplicative_expression
-	: unary_expression
-	| multiplicative_expression mult_operator unary_expression
+multiplicative_expr
+	: unary_expr
+	| multiplicative_expr mult_op unary_expr
 	;
 
 shift_op
-    : LEFT_OP
-    | RIGHT_OP
-    ;
+	: SHL_OP
+	| SHR_OP
+	;
 
-shift_expression
-	: multiplicative_expression
-	| shift_expression shift_op multiplicative_expression
+shift_expr
+	: multiplicative_expr
+	| shift_expr shift_op multiplicative_expr
 	;
 
 bit_op
-    : '&'
-    | '^'
-    | '|'
-    ;
+    	: '&'
+    	| '^'
+    	| '|'
+    	;
 
-bit_expression
-	: shift_expression
-	| bit_expression bit_op shift_expression
+bit_expr
+	: shift_expr
+	| bit_expr bit_op shift_expr
 	;
 
 additive_op
-    : '+'
-    | ADD_MOD
-    | SUB_MOD
-    | '-'
-    ;
+	: '+'
+	| '-'
+    	;
 
-additive_expression
-	: bit_expression
-	| additive_expression additive_op bit_expression
+additive_expr
+	: bit_expr
+	| additive_expr additive_op bit_expr
 	;
 
-relational_expression
-	: additive_expression
-	| relational_expression '<' additive_expression
-	| relational_expression '>' additive_expression
-	| relational_expression LE_OP additive_expression
-	| relational_expression GE_OP additive_expression
-	| relational_expression EQ_OP additive_expression
-	| relational_expression NE_OP additive_expression
+relational_op
+	: '<'
+	| '>'
+	| LE_OP
+	| GE_OP
+	| EQ_OP
+	| NE_OP
 	;
 
-logical_expression
-	: relational_expression
-	| logical_expression AND_OP relational_expression
-	| logical_expression OR_OP relational_expression
+relational_expr
+	: additive_expr
+	| relational_expr relational_op additive_expr
 	;
 
-conditional_expression
-	: logical_expression
-	| logical_expression '?' expression ':' conditional_expression
-	| logical_expression ELVIS conditional_expression
+and_expr
+	: relational_expr
+	| and_expr AND_OP relational_expr
+	;
+or_expr
+	: and_expr
+	| or_expr OR_OP and_expr
+	| or_expr OPTELSE and_expr
 	;
 
-error_expression
-    : conditional_expression
-    | conditional_expression '!'
-    ;
-
-assignment_expression
-    : error_expression
-    | unary_expression assignment_operator assignment_expression
-    | unary_expression '=' initializer_list
-    ;
-
-expression
-	: assignment_expression
-	| assignment_expression OPTELSE assignment_expression
+ternary_expr
+	: or_expr
+	| or_expr '?' expr ':' ternary_expr
+	| or_expr ELVIS ternary_expr
 	;
 
+error_expr
+    	: ternary_expr
+    	;
 
-assignment_operator
+assignment_op
 	: '='
+	| ADD_ASSIGN
+	| SUB_ASSIGN
 	| MUL_ASSIGN
 	| DIV_ASSIGN
 	| MOD_ASSIGN
-	| ADD_ASSIGN
-	| SUB_ASSIGN
-	| LEFT_ASSIGN
-	| RIGHT_ASSIGN
+	| SHL_ASSIGN
+	| SHR_ASSIGN
 	| AND_ASSIGN
 	| XOR_ASSIGN
 	| OR_ASSIGN
-	| MULT_MOD_ASSIGN
-	| ADD_MOD_ASSIGN
-	| SUB_MOD_ASSIGN
+	;
+
+assignment_expr
+    : error_expr
+    | unary_expr assignment_op assignment_expr
+    ;
+
+lambda_expr
+	: assignment_expr
+	| FN maybe_optional_type '(' parameters ')' opt_attributes IMPLIES assignment_expr
+	| FN maybe_optional_type '(' parameters ')' opt_attributes compound_statement
+	;
+
+expr
+	: lambda_expr
 	;
 
 constant_expr
-	: conditional_expression
+	: error_expr
+	;
+
+const_paren_expr
+	: '(' constant_expr ')'
 	;
 
 param_path_element
-	: '[' expression ']'
+	: '[' expr ']'
+	| '[' range_expr ']'
 	| '.' IDENT
 	;
 
@@ -219,10 +300,10 @@ param_path
 	| param_path param_path_element
 	;
 
-arg	: param_path '=' expression
-	| expression
+arg	: param_path '=' expr
+	| expr
 	| CT_VASPLAT '(' constant_expr ')'
-	| ELLIPSIS expression
+	| ELLIPSIS expr
 	;
 
 arg_list
@@ -230,17 +311,17 @@ arg_list
 	| arg_list ',' arg
 	;
 
-enumerators
-    : enumerator
-    | enumerators ',' enumerator
+enum_constants
+    : enum_constant
+    | enum_constants ',' enum_constant
     ;
 
 enum_list
-	: enumerators
-	| enumerators ','
+	: enum_constants
+	| enum_constants ','
 	;
 
-enumerator
+enum_constant
 	: CONST_IDENT
 	| CONST_IDENT '(' arg_list ')'
 	;
@@ -250,52 +331,12 @@ identifier_list
 	| identifier_list ',' IDENT
 	;
 
-macro_argument
-    : CT_IDENT
-    | IDENT
-    | type IDENT
-    | type CT_IDENT
-    ;
-
-macro_argument_list
-    : macro_argument
-    | macro_argument_list ',' macro_argument
-    ;
-
-declaration
-    : optional_type IDENT '=' initializer
-    | optional_type IDENT
-    ;
-
 enum_param_decl
 	: type
 	| type IDENT
-	| type IDENT '=' expression
+	| type IDENT '=' expr
 	;
 
-param_declaration
-    : type
-    | type IDENT
-    | type IDENT '=' initializer
-    ;
-
-parameter_type_list
-	: parameter_list
-	| parameter_list ',' ELLIPSIS
-	| parameter_list ',' type ELLIPSIS
-	;
-
-opt_parameter_type_list
-    : '(' ')'
-    | '(' parameter_type_list ')'
-    ;
-
-parameter_list
-	: param_declaration
-	| parameter_list ',' param_declaration
-	;
-
-/* Updated for 0.5 */
 base_type
     : VOID
     | BOOL
@@ -316,13 +357,12 @@ base_type
     | TYPE_IDENT
     | path TYPE_IDENT
     | CT_TYPE_IDENT
-    | CT_TYPEOF '(' expression ')'
+    | CT_TYPEOF '(' expr ')'
     | CT_TYPEFROM '(' constant_expr ')'
     | CT_VATYPE '(' constant_expr ')'
     | CT_EVALTYPE '(' constant_expr ')'
     ;
 
-/* Updated for 0.5 */
 type
     : base_type
     | type '*'
@@ -333,24 +373,16 @@ type
     | type LVEC '*' RVEC
     ;
 
-/* Updated for 0.5 */
 optional_type
     : type
     | type '!'
     ;
 
-initializer
-	: expression
-	| initializer_list
-	;
-
-
-/* Updated for 0.5 */
 local_decl_after_type
 	: CT_IDENT
 	| CT_IDENT '=' constant_expr
 	| IDENT opt_attributes
-	| IDENT opt_attributes '=' expression
+	| IDENT opt_attributes '=' expr
 	;
 
 local_decl_storage
@@ -359,82 +391,253 @@ local_decl_storage
 	|
 	;
 
-/* Updated for 0.5 */
 local_decl
 	: const_declaration
 	| local_decl_storage optional_type local_decl_after_type
 	;
 
-/* Updated for 0.5 */
 decl_or_expr
 	: var_decl
 	| optional_type local_decl_after_type
-	| expression
+	| expr
 	;
 
-/* Updated for 0.5 */
 var_decl
-	: VAR IDENT '=' expression
-	| VAR CT_IDENT '=' expression
+	: VAR IDENT '=' expr
+	| VAR CT_IDENT '=' expr
 	| VAR CT_IDENT
-	| VAR CT_TYPE_IDENT '=' expression
+	| VAR CT_TYPE_IDENT '=' expr
 	| VAR CT_TYPE_IDENT
 	;
 
-initializer_values
-	: initializer
-	| initializer_values ',' initializer
-    ;
-
 initializer_list
-	: '{' initializer_values '}'
-    	| '{' initializer_values ',' '}'
+	: '{' arg_list '}'
+    	| '{' arg_list ',' '}'
 	;
 
 ct_case_statement
-    : CT_CASE constant_expr ':' opt_stmt_list
-    | CT_DEFAULT ':' opt_stmt_list
-    ;
+    	: CT_CASE constant_expr ':' opt_stmt_list
+    	| CT_DEFAULT ':' opt_stmt_list
+    	;
 
 ct_switch_body
-    : ct_case_statement
-    | ct_switch_body ct_case_statement
-    ;
-
+	: ct_case_statement
+    	| ct_switch_body ct_case_statement
+    	;
 
 ct_for_stmt
-    	: CT_FOR '(' decl_expr_list ';' expression_list ';' expression_list ')' opt_stmt_list CT_ENDFOR
+    	: CT_FOR '(' expression_list ';' expr ';' expression_list ')' opt_stmt_list CT_ENDFOR
 	;
 
 ct_foreach_stmt
-	: CT_FOREACH '(' CT_IDENT ':' constant_expr ')' opt_stmt_list CT_ENDFOREACH
+	: CT_FOREACH '(' CT_IDENT ':' expr ')' opt_stmt_list CT_ENDFOREACH
 
-ct_statement
-    	: ct_if opt_stmt_list CT_ENDIF
-    	| ct_if opt_stmt_list CT_ELSE opt_stmt_list CT_ENDIF
-    	| ct_switch ct_switch_body CT_ENDSWITCH
-    	| ct_for_stmt
-    	| ct_foreach_stmt
-    	;
+ct_switch
+    	: CT_SWITCH '(' constant_expr ')'
+    	| CT_SWITCH '(' type ')'
+    	| CT_SWITCH
+   	;
 
-
-statement
-	: compound_statement
-    	| expression_statement
-	| selection_statement
-	| iteration_statement
-	| jump_statement
-	| declaration_statement
-	| defer_statement
-	| ct_statement
+ct_switch_stmt
+	: ct_switch ct_switch_body CT_ENDSWITCH
 	;
 
-defer_statement
-    : DEFER statement
-    | DEFER TRY statement
-    | DEFER CATCH statement
-    ;
+var_stmt
+	: VAR var_decl ';'
 
+decl_stmt_after_type
+	: local_decl_after_type
+	| local_decl_after_type ',' identifier_list
+	;
+
+declaration_stmt
+	: CONST local_decl ';'
+	| STATIC optional_type decl_stmt_after_type ';'
+	| TLOCAL optional_type decl_stmt_after_type ';'
+	| optional_type decl_stmt_after_type ';'
+	;
+
+return_stmt
+	: RETURN expr ';'
+	| RETURN ';'
+	;
+
+catch_unwrap
+	: CATCH relational_expr
+	| CATCH IDENT '=' relational_expr
+	| CATCH type IDENT '=' relational_expr
+	;
+
+try_unwrap
+	: TRY relational_expr
+	| TRY IDENT '=' relational_expr
+	| TRY type IDENT '=' relational_expr
+	;
+
+try_unwrap_chain
+	: try_unwrap
+	| try_unwrap_chain AND_OP try_unwrap
+	| try_unwrap_chain AND_OP relational_expr
+	;
+
+
+case_stmts
+	: statement_list
+	;
+
+default_stmt
+	: DEFAULT ':' statement_list
+	;
+
+case_stmt
+	: CASE expr ':' case_stmts
+	| CASE expr DOTDOT expr ':' case_stmts
+	| CASE type ':' case_stmts
+	;
+
+switch_body
+	: case_stmt
+	| default_stmt
+	| switch_body case_stmt
+	| switch_body default_stmt
+	;
+
+cond_repeat
+	: decl_or_expr
+	| cond_repeat ',' decl_or_expr
+	;
+
+cond
+	: try_unwrap_chain
+	| catch_unwrap
+	| cond_repeat
+	| cond_repeat ',' try_unwrap_chain
+	| cond_repeat ',' catch_unwrap
+	;
+
+if_stmt
+	: IF optional_label '(' cond ')' '{' switch_body '}'
+	| IF optional_label '(' cond ')' '{' switch_body '}' ELSE compound_statement
+	| IF optional_label '(' cond ')' statement
+	| IF optional_label '(' cond ')' compound_statement ELSE compound_statement
+	;
+
+expr_list_eos
+	: expression_list ';'
+	| ';'
+	;
+
+cond_eos
+	: cond ';'
+	| ';'
+	;
+
+for_stmt
+	: FOR optional_label '(' expr_list_eos cond_eos expression_list ')' statement
+	| FOR optional_label '(' expr_list_eos cond_eos ')' statement
+	;
+
+while_stmt
+	: WHILE optional_label '(' cond ')' statement
+	;
+
+do_stmt
+	: DO optional_label compound_statement WHILE '(' expr ')' ';'
+	| DO optional_label compound_statement ';'
+	;
+
+optional_label_target
+	: CONST_IDENT
+	|
+	;
+
+continue_stmt
+	: CONTINUE optional_label_target ';'
+	;
+
+break_stmt
+	: BREAK optional_label_target ';'
+	;
+
+nextcase_stmt
+	: NEXTCASE CONST_IDENT ':' expr ';'
+	| NEXTCASE expr ';'
+	| NEXTCASE ';'
+	;
+
+foreach_var
+	: optional_type '&' IDENT
+	| optional_type IDENT
+	| '&' IDENT
+	| IDENT
+	;
+
+foreach_vars
+	: foreach_var
+	| foreach_var ',' foreach_var
+	;
+
+foreach_stmt
+	: FOREACH optional_label '(' foreach_vars ':' expr ')' statement
+	: FOREACH_R optional_label '(' foreach_vars ':' expr ')' statement
+	;
+
+defer_stmt
+	: DEFER statement
+	| DEFER TRY statement
+	| DEFER CATCH statement
+	;
+
+ct_if_stmt
+	: CT_IF const_paren_expr opt_stmt_list CT_ENDIF
+	| CT_IF const_paren_expr opt_stmt_list CT_ELSE opt_stmt_list CT_ENDIF
+	;
+
+assert_expr
+	: try_unwrap_chain
+	| expr
+	;
+
+assert_stmt
+	: ASSERT '(' assert_expr ')' ';'
+	| ASSERT '(' assert_expr ',' expr ')' ';'
+	;
+
+/* TODO */
+asm_block_stmt
+	: ASM
+	;
+
+expr_stmt
+	: expr ';'
+	;
+
+/* Order here matches compiler */
+statement
+	: compound_statement
+	| var_stmt
+	| declaration_stmt
+	| return_stmt
+	| if_stmt
+	| while_stmt
+	| defer_stmt
+	| switch_stmt
+	| do_stmt
+	| for_stmt
+	| foreach_stmt
+	| continue_stmt
+	| break_stmt
+	| nextcase_stmt
+	| asm_block_stmt
+        | ct_echo_stmt
+	| ct_assert_stmt
+        | ct_if_stmt
+        | ct_switch_stmt
+        | ct_foreach_stmt
+        | ct_for_stmt
+    	| expr_stmt
+        | assert_stmt
+	;
 
 compound_statement
 	: '{' opt_stmt_list '}'
@@ -450,51 +653,22 @@ opt_stmt_list
 	|
 	;
 
-declaration_statement
-    : declaration ';'
-    ;
-
-expression_statement
-	: expression ';'
-	;
-
-
-if_expr
-    : type IDENT '=' initializer
-    | TRY type IDENT '=' expression
-    | TRY IDENT '=' expression
-    | TRY IDENT
-    | CATCH IDENT '=' expression
-    | expression
-    ;
-
-if_cond_expr
-    : if_expr
-    | if_cond_expr ',' if_expr
-    ;
-
-control_expression
-    : decl_expr_list
-    | decl_expr_list ';' decl_expr_list
-    ;
-
-selection_statement
-	: IF '(' if_cond_expr ')' statement
-	| IF '(' if_cond_expr ')' compound_statement ELSE statement
-	| SWITCH '(' control_expression ')' compound_statement
+switch_stmt
+	: SWITCH optional_label '{' switch_body '}'
+	| SWITCH optional_label '{' '}'
+	| SWITCH optional_label '(' cond ')' '{' switch_body '}'
+	| SWITCH optional_label '(' cond ')' '{' '}'
 	;
 
 expression_list
-    : expression
-    | expression_list ',' expression
-    ;
+    	: decl_or_expr
+    	| expression_list ',' decl_or_expr
+    	;
 
-decl_expr_list
-    : expression
-    | declaration
-    | decl_expr_list ',' expression
-    | decl_expr_list ',' declaration
-    ;
+optional_label
+	: CONST_IDENT ':'
+	|
+	;
 
 ct_assert_stmt
 	: CT_ASSERT '(' constant_expr ',' constant_expr ')' ';'
@@ -505,11 +679,12 @@ ct_echo_stmt
 	: CT_ECHO '(' constant_expr ')' ';'
 
 bitstruct_declaration
-	: BITSTRUCT IDENT ':' type opt_attributes bitstruct_body
+	: BITSTRUCT TYPE_IDENT ':' type opt_attributes bitstruct_body
 
 bitstruct_body
 	: '{' '}'
 	| '{' bitstruct_defs '}'
+	| '{' bitstruct_simple_defs '}'
 	;
 
 bitstruct_defs
@@ -517,9 +692,14 @@ bitstruct_defs
 	| bitstruct_defs bitstruct_def
 	;
 
+bitstruct_simple_defs
+	: base_type IDENT ';'
+	| bitstruct_simple_defs base_type IDENT ';'
+	;
+
 bitstruct_def
-	: type IDENT ':' constant_expr DOTDOT constant_expr ';'
-	| type IDENT ':' constant_expr ';'
+	: base_type IDENT ':' constant_expr DOTDOT constant_expr ';'
+	| base_type IDENT ':' constant_expr ';'
 	;
 
 static_declaration
@@ -527,113 +707,92 @@ static_declaration
 	| STATIC FINALIZE opt_attributes compound_statement
 	;
 
-for_statement
-    : FOR '(' decl_expr_list ';' expression_statement ')' statement
-    | FOR '(' decl_expr_list ';' expression_statement expression_list ')' statement
-    ;
-
-iteration_statement
-	: WHILE '(' control_expression ')' statement
-	| DO statement WHILE '(' expression ')' ';'
-	| for_statement
-	;
-
-jump_statement
-	: CONTINUE CONST_IDENT ';'
-	| CONTINUE ';'
-	| BREAK ';'
-	| BREAK CONST_IDENT ';'
-	| NEXTCASE CONST_IDENT ':' ';'
-	| NEXTCASE CONST_IDENT ':' expression ';'
-	| NEXTCASE ';'
-	| NEXTCASE expression ';'
-	| RETURN ';'
-	| RETURN expression ';'
-	;
-
-/* Updated for 0.5 */
 attribute_name
 	: AT_IDENT
 	| AT_TYPE_IDENT
 	| path AT_TYPE_IDENT
 	;
 
-/* Checked for 0.5 */
 attribute_operator_expr
 	: '&' '[' ']'
 	| '[' ']' '='
 	| '[' ']'
 	;
 
-/* Checked for 0.5 */
 attr_param
 	: attribute_operator_expr
 	| constant_expr
 	;
 
-/* Checked for 0.5 */
 attribute_param_list
 	: attr_param
 	| attribute_param_list ',' attr_param
 	;
 
-/* Checked for 0.5 */
 attribute
     : attribute_name
     | attribute_name '(' attribute_param_list ')'
     ;
 
-/* Checked for 0.5 */
 attribute_list
 	: attribute
 	| attribute_list attribute
 	;
 
-/* Checked for 0.5 */
 opt_attributes
    	: attribute_list
     	|
     	;
 
+trailing_block_param
+	: AT_IDENT
+	| AT_IDENT '(' ')'
+	| AT_IDENT '(' parameters ')'
+	;
+
+macro_params
+	: parameters
+	| parameters ';' trailing_block_param
+	| ';' trailing_block_param
+	|
+	;
+
 macro_declaration
-    : MACRO type IDENT '(' macro_argument_list ')' compound_statement
-    : MACRO IDENT '(' macro_argument_list ')' compound_statement
-    ;
+    	: MACRO macro_header '(' macro_params ')' opt_attributes IMPLIES expr ';'
+    	| MACRO macro_header '(' macro_params ')' opt_attributes compound_statement
+	;
 
-
-/* Checked for 0.5 */
 struct_or_union
 	: STRUCT
 	| UNION
 	;
 
-/* Checked for 0.5 */
 struct_declaration
 	: struct_or_union TYPE_IDENT opt_attributes struct_body
     	;
 
 struct_body
-    : '{' struct_declaration_list '}'
+    	: '{' struct_declaration_list '}'
 	;
 
 struct_declaration_list
-    : struct_member_declaration
-    | struct_declaration_list struct_member_declaration
-    ;
+	: struct_member_decl
+    	| struct_declaration_list struct_member_decl
+    	;
 
-struct_member_declaration
-    : type identifier_list opt_attributes ';'
-    | struct_or_union IDENT opt_attributes struct_body
-    | struct_or_union opt_attributes struct_body
+struct_member_decl
+    	: type identifier_list opt_attributes ';'
+    	| struct_or_union IDENT opt_attributes struct_body
+    	| struct_or_union opt_attributes struct_body
+    	| BITSTRUCT ':' type opt_attributes bitstruct_body
+    	| BITSTRUCT IDENT ':' type opt_attributes bitstruct_body
 	;
 
-/* Checked for 0.5 */
 enum_params
 	: enum_param_decl
 	| enum_params ',' enum_param_decl
 	;
 
-/* Checked for 0.5 */
 enum_spec
 	: ':' type
 	| ':' type '(' ')'
@@ -641,7 +800,6 @@ enum_spec
 	|
 	;
 
-/* Checked for 0.5 */
 enum_declaration
 	: ENUM TYPE_IDENT enum_spec opt_attributes '{' enum_list '}'
 	;
@@ -656,19 +814,16 @@ fault_declaration
     | FAULT opt_attributes '{' faults ',' '}'
     ;
 
-/* Checked for 0.5 */
 func_header
 	: optional_type type '.' IDENT
 	| optional_type IDENT
 	;
 
-/* Checked for 0.5 */
 macro_name
 	: IDENT
 	| AT_IDENT
 	;
 
-/* Checked for 0.5 */
 macro_header
 	: optional_type type '.' macro_name
 	| optional_type macro_name
@@ -676,23 +831,18 @@ macro_header
 	| macro_name
 	;
 
-/* Checked for 0.5 */
 fn_parameter_list
 	: '(' parameters ')'
 	| '(' ')'
 	;
 
-
-/* Checked for 0.5 */
 parameters
-	: parameter '=' expression
+	: parameter '=' expr
 	| parameter
 	| parameters ',' parameter
-	| parameters ',' parameter '=' expression
+	| parameters ',' parameter '=' expr
 	;
 
-
-/* Checked for 0.5 */
 parameter
 	: type IDENT opt_attributes
 	| ELLIPSIS
@@ -711,24 +861,41 @@ parameter
 
 function_definition
 	: FN func_header fn_parameter_list opt_attributes ';'
-	| FN func_header fn_parameter_list opt_attributes IMPLIES expression ';'
+	| FN func_header fn_parameter_list opt_attributes IMPLIES expr ';'
 	| FN func_header fn_parameter_list opt_attributes compound_statement
 	;
 
-/* Checked for 0.5 */
 const_declaration
-	: CONST CONST_IDENT opt_attributes '=' expression
-	| CONST type CONST_IDENT opt_attributes '=' expression
+	: CONST CONST_IDENT opt_attributes '=' expr
+	| CONST type CONST_IDENT opt_attributes '=' expr
 	;
 
 func_typedef
-    : FN optional_type opt_parameter_type_list
+    : FN optional_type fn_parameter_list
     ;
 
+opt_distinct_inline
+	: DISTINCT
+	| DISTINCT INLINE
+	| INLINE DISTINCT
+	| INLINE
+	|
+	;
+
+generic_parameters
+	: bit_expr
+	| type
+	| generic_parameters ',' bit_expr
+	| generic_parameters ',' type
+	;
+
+typedef_type
+	: func_typedef
+	| type opt_generic_parameters
+	;
+
 typedef_declaration
-    : TYPEDEF TYPE_IDENT '=' TYPE_IDENT ';'
-    | TYPEDEF TYPE_IDENT '=' TYPE_IDENT '<' '>' ';'
-    | TYPEDEF TYPE_IDENT '=' func_typedef ';'
+    : TYPEDEF TYPE_IDENT opt_attributes '=' opt_distinct_inline typedef_type ';'
     ;
 
 
@@ -737,78 +904,85 @@ multi_declaration
 	| multi_declaration ',' IDENT
 	;
 
-opt_multi_declaration
-	: multi_declaration
-	|
-	;
-
 global_storage
 	: TLOCAL
 	|
 	;
 
 global_declaration
-    : global_storage optional_type IDENT opt_multi_declaration opt_attributes ';'
-    | global_storage optional_type IDENT '=' constant_expr ';'
+    : global_storage optional_type IDENT opt_attributes ';'
+    | global_storage optional_type IDENT multi_declaration opt_attributes ';'
+    | global_storage optional_type IDENT opt_attributes '=' expr ';'
     ;
-
-ct_if
-    : CT_IF '(' expression ')'
-    ;
-
-ct_switch
-    : CT_SWITCH '(' expression ')'
-    | CT_SWITCH
-    ;
-
 
 opt_tl_stmts
 	: top_level_statements
 	|
 	;
 
-
 tl_ct_case
-	: CT_CASE expression ':' top_level_statements
+	: CT_CASE constant_expr ':' top_level_statements
     	| CT_DEFAULT ':' top_level_statements
     	;
 
 tl_ct_switch_body
-    : tl_ct_case
-    | tl_ct_switch_body tl_ct_case
-    ;
+    	: tl_ct_case
+    	| tl_ct_switch_body tl_ct_case
+    	;
 
-define_declaration
-	: DEFINE IDENT '=' IDENT ';'
+define_attribute
+	: DEFINE AT_TYPE_IDENT '(' parameters ')' opt_attributes '=' '{' opt_attributes '}' ';'
+	| DEFINE AT_TYPE_IDENT opt_attributes '=' '{' opt_attributes '}' ';'
 	;
 
-conditional_compilation
-    : ct_if opt_tl_stmts CT_ENDIF
-    | ct_if opt_tl_stmts CT_ELSE opt_tl_stmts CT_ENDIF
-    | ct_switch tl_ct_switch_body CT_ENDSWITCH
-    ;
+opt_generic_parameters
+	: '<' generic_parameters '>'
+	|
+	;
 
-/* Checked for 0.5 */
+define_ident
+	: DEFINE IDENT '=' param_path IDENT opt_generic_parameters ';'
+	| DEFINE CONST_IDENT '=' param_path CONST_IDENT opt_generic_parameters ';'
+	| DEFINE AT_IDENT '=' param_path AT_IDENT opt_generic_parameters ';'
+        ;
+
+define_declaration
+	: define_ident
+	| define_attribute
+	;
+
+tl_ct_if
+	: CT_IF const_paren_expr opt_tl_stmts CT_ENDIF
+	| CT_IF const_paren_expr opt_tl_stmts CT_ELSE opt_tl_stmts CT_ENDIF
+	;
+
+tl_ct_switch
+	: ct_switch tl_ct_switch_body CT_ENDSWITCH
+	;
+
 module_param
-    : CONST_IDENT
-    | TYPE_IDENT
-    ;
+    	: CONST_IDENT
+    	| TYPE_IDENT
+    	;
 
-/* Checked for 0.5 */
 module_params
-    : module_param
-    | module_params ',' module_param
-    ;
+	: module_param
+    	| module_params ',' module_param
+    	;
 
-/* Checked for 0.5 */
 module
-    : MODULE import_path opt_attributes ';'
-    | MODULE import_path '<' module_params '>' opt_attributes ';'
-    ;
+	: MODULE import_path opt_attributes ';'
+	| MODULE import_path '<' module_params '>' opt_attributes ';'
+	;
+
+import_paths
+	: import_path
+	| import_paths ',' import_path
+	;
 
 import_decl
-    : IMPORT import_path ';'
-    ;
+    	: IMPORT import_paths opt_attributes ';'
+    	;
 
 translation_unit
     : top_level_statements
@@ -820,23 +994,23 @@ top_level_statements
     | top_level_statements top_level
     ;
 
-
 top_level
 	: function_definition
 	| module
 	| import_decl
-	| conditional_compilation
+	| ct_assert_stmt
+	| ct_echo_stmt
+	| tl_ct_if
+	| tl_ct_switch
 	| struct_declaration
-	| enum_declaration
 	| fault_declaration
+	| enum_declaration
 	| const_declaration ';'
 	| global_declaration
 	| macro_declaration
 	| typedef_declaration
 	| define_declaration
 	| static_declaration
-	| ct_assert_stmt
-	| ct_echo_stmt
 	| bitstruct_declaration
 	;
 
@@ -851,6 +1025,6 @@ void yyerror(char *s)
 
 int main(int argc, char *argv[])
 {
-  yyparse();
-  return(0);
+	yyparse();
+	return 0;
 }

@@ -42,7 +42,6 @@ void recover_top_level(ParseContext *c)
 	{
 		switch (c->tok)
 		{
-			case TOKEN_PRIVATE:
 			case TOKEN_IMPORT:
 			case TOKEN_EXTERN:
 			case TOKEN_ENUM:
@@ -90,8 +89,6 @@ INLINE bool parse_decl_initializer(ParseContext *c, Decl *decl)
  */
 static inline bool parse_top_level_block(ParseContext *c, Decl ***decls, TokenType end1, TokenType end2, TokenType end3)
 {
-	consume_deprecated_symbol(c, TOKEN_COLON); // TODO remove
-
 	// Check whether we reached a terminating token or EOF
 	while (!tok_is(c, end1) && !tok_is(c, end2) && !tok_is(c, end3) && !tok_is(c, TOKEN_EOF))
 	{
@@ -117,22 +114,8 @@ static inline Decl *parse_ct_if_top_level(ParseContext *c)
 	advance_and_verify(c, TOKEN_CT_IF);
 	ASSIGN_EXPR_OR_RET(ct->ct_if_decl.expr, parse_const_paren_expr(c), poisoned_decl);
 
-	if (!parse_top_level_block(c, &ct->ct_if_decl.then, TOKEN_CT_ENDIF, TOKEN_CT_ELIF, TOKEN_CT_ELSE)) return poisoned_decl;
-
+	if (!parse_top_level_block(c, &ct->ct_if_decl.then, TOKEN_CT_ENDIF, TOKEN_CT_ENDIF, TOKEN_CT_ELSE)) return poisoned_decl;
 	CtIfDecl *ct_if_decl = &ct->ct_if_decl;
-
-	// Chain elif TODO remove
-	while (tok_is(c, TOKEN_CT_ELIF))
-	{
-		sema_warning_at(c->span, "$elif is deprecated, use $switch instead.");
-		Decl *ct_elif = decl_new_ct(DECL_CT_IF, c->span);
-		advance_and_verify(c, TOKEN_CT_ELIF);
-		ASSIGN_EXPR_OR_RET(ct_elif->ct_elif_decl.expr, parse_const_paren_expr(c), poisoned_decl);
-		if (!parse_top_level_block(c, &ct_elif->ct_elif_decl.then, TOKEN_CT_ENDIF, TOKEN_CT_ELIF, TOKEN_CT_ELSE)) return poisoned_decl;
-		ct_if_decl->elif = ct_elif;
-		ct_if_decl = &ct_elif->ct_elif_decl;
-	}
-	// <- end
 
 	// final else
 	if (tok_is(c, TOKEN_CT_ELSE))
@@ -143,7 +126,6 @@ static inline Decl *parse_ct_if_top_level(ParseContext *c)
 		if (!parse_top_level_block(c, &ct_else->ct_else_decl, TOKEN_CT_ENDIF, TOKEN_CT_ENDIF, TOKEN_CT_ENDIF)) return poisoned_decl;
 	}
 	CONSUME_OR_RET(TOKEN_CT_ENDIF, poisoned_decl);
-	consume_deprecated_symbol(c, TOKEN_EOS); // TODO remove
 	return ct;
 }
 
@@ -192,14 +174,12 @@ static inline Decl *parse_ct_switch_top_level(ParseContext *c)
 	if (!tok_is(c, TOKEN_CT_CASE) && !tok_is(c, TOKEN_CT_DEFAULT) && !tok_is(c, TOKEN_CT_ENDSWITCH))
 	{
 		ASSIGN_EXPR_OR_RET(ct->ct_switch_decl.expr, parse_const_paren_expr(c), poisoned_decl);
-		consume_deprecated_symbol(c, TOKEN_COLON); // TODO remove
 	}
 	while (!try_consume(c, TOKEN_CT_ENDSWITCH))
 	{
 		ASSIGN_DECL_OR_RET(Decl *result, parse_ct_case(c), poisoned_decl);
 		vec_add(ct->ct_switch_decl.cases, result);
 	}
-	consume_deprecated_symbol(c, TOKEN_EOS); // TODO remove
 	return ct;
 }
 
@@ -672,11 +652,7 @@ static inline TypeInfo *parse_vector_type_index(ParseContext *c, TypeInfo *type)
 	advance_and_verify(c, TOKEN_LVEC);
 	TypeInfo *vector = type_info_new(TYPE_INFO_VECTOR, type->span);
 	vector->array.base = type;
-	if (try_consume(c, TOKEN_RVEC))
-	{
-		vector->kind = TYPE_INFO_SCALED_VECTOR;
-	}
-	else if (try_consume(c, TOKEN_STAR))
+	if (try_consume(c, TOKEN_STAR))
 	{
 		CONSUME_OR_RET(TOKEN_RVEC, poisoned_type_info);
 		vector->kind = TYPE_INFO_INFERRED_VECTOR;
@@ -1497,20 +1473,16 @@ static inline bool parse_fn_parameter_list(ParseContext *c, Signature *signature
 /**
  * Expect pointer to after '{'
  *
- * struct_body
- *		: '{' struct_declaration_list '}'
- *		;
+ * struct_body ::= '{' struct_declaration_list '}'
  *
- * struct_declaration_list
- * 		: struct_member_declaration
- * 		| struct_declaration_list struct_member_declaration
- * 		;
+ * struct_declaration_list ::= struct_member_decl+
  *
- * struct_member_declaration
- * 		: type_expression identifier_list opt_attributes ';'
+ * struct_member_decl ::=
+ *        (type_expression identifier_list opt_attributes ';')
  * 		| struct_or_union IDENT opt_attributes struct_body
  *		| struct_or_union opt_attributes struct_body
- *		;
+ * 		| BITSTRUCT IDENT ':' type opt_attributes struct_body
+ *		| BITSTRUCT ':' type opt_attributes struct_body
  *
  * @param parent the parent of the struct
  */
@@ -1554,8 +1526,7 @@ bool parse_struct_body(ParseContext *c, Decl *parent)
 			index++;
 			if (index > MAX_MEMBERS)
 			{
-				SEMA_ERROR(member, "Can't add another member: the count would exceed maximum of %d elements.", MAX_MEMBERS);
-				return false;
+				RETURN_SEMA_ERROR(member, "Can't add another member: the count would exceed maximum of %d elements.", MAX_MEMBERS);
 			}
 			continue;
 		}
@@ -1564,13 +1535,11 @@ bool parse_struct_body(ParseContext *c, Decl *parent)
 		{
 			if (parent->decl_kind != DECL_STRUCT)
 			{
-				SEMA_ERROR_HERE("Only structs may have 'inline' elements, did you make a mistake?");
-				return false;
+				RETURN_SEMA_ERROR_HERE("Only structs may have 'inline' elements, did you make a mistake?");
 			}
 			if (index > 0)
 			{
-				SEMA_ERROR_LAST("Only the first element may be 'inline', did you order your fields wrong?");
-				return false;
+				RETURN_SEMA_ERROR_LAST("Only the first element may be 'inline', did you order your fields wrong?");
 			}
 			parent->is_substruct = true;
 			was_inline = true;
@@ -1580,26 +1549,21 @@ bool parse_struct_body(ParseContext *c, Decl *parent)
 
 		while (1)
 		{
-			if (!tok_is(c, TOKEN_IDENT))
-			{
-				SEMA_ERROR_HERE("A valid member name was expected here.");
-				return false;
-			}
+			if (!tok_is(c, TOKEN_IDENT)) RETURN_SEMA_ERROR_HERE("A valid member name was expected here.");
+
 			Decl *member = decl_new_var_current(c, type, VARDECL_MEMBER);
 			vec_add(parent->strukt.members, member);
 			index++;
 			if (index > MAX_MEMBERS)
 			{
-				SEMA_ERROR(member, "Can't add another member: the count would exceed maximum of %d elements.", MAX_MEMBERS);
-				return false;
+				RETURN_SEMA_ERROR(member, "Can't add another member: the count would exceed maximum of %d elements.", MAX_MEMBERS);
 			}
 			advance(c);
 			if (!parse_attributes(c, &member->attributes, NULL)) return false;
 			if (!try_consume(c, TOKEN_COMMA)) break;
 			if (was_inline)
 			{
-				SEMA_ERROR(member, "'Inline' can only be applied to a single member, so please define it on its own line.");
-				return false;
+				RETURN_SEMA_ERROR(member, "'inline' can only be applied to a single member, so please define it on its own line.");
 			}
 		}
 		CONSUME_EOS_OR_RET(false);
@@ -1611,11 +1575,7 @@ bool parse_struct_body(ParseContext *c, Decl *parent)
 
 
 /**
- * struct_declaration
- * 		: struct_or_union TYPE_IDENT opt_attributes struct_body
- * 		;
- *
- * @param visibility
+ * struct_declaration ::= struct_or_union TYPE_IDENT opt_attributes struct_body
  */
 static inline Decl *parse_struct_declaration(ParseContext *c)
 {
@@ -1627,22 +1587,18 @@ static inline Decl *parse_struct_declaration(ParseContext *c)
 	Decl *decl = decl_new_with_type(symstr(c), c->span, decl_from_token(type));
 
 	if (!consume_type_name(c, type_name)) return poisoned_decl;
-
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
+	if (!parse_struct_body(c, decl)) return poisoned_decl;
 
-	if (!parse_struct_body(c, decl))
-	{
-		return poisoned_decl;
-	}
 	DEBUG_LOG("Parsed %s %s completely.", type_name, decl->name);
 	return decl;
 }
 
 /**
- * body ::= '{' (TYPE IDENT ':' expr '..' expr EOS)* '}'
- * @param c
- * @param decl
- * @return
+ * bitstruct_body ::= '{' bitstruct_def* | bitstruct_simple_def* '}'
+ *
+ * bitstruct_def ::= base_type IDENT ':' constant_expr (DOTDOT constant_expr)? ';'
+ * bitstruct_simple_def ::= base_type IDENT ';'
  */
 static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl)
 {
@@ -1651,7 +1607,7 @@ static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl)
 	bool is_consecutive = false;
 	while (!try_consume(c, TOKEN_RBRACE))
 	{
-		ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_type(c), false);
+		ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_base_type(c), false);
 		Decl *member_decl = decl_new_var_current(c, type, VARDECL_BITMEMBER);
 
 		if (!try_consume(c, TOKEN_IDENT))
@@ -1664,13 +1620,13 @@ static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl)
 			SEMA_ERROR_HERE("Expected a field name at this position.");
 			return false;
 		}
-		if (is_consecutive || tok_is(c, TOKEN_EOS))
+		if (tok_is(c, TOKEN_EOS))
 		{
 			if (!is_consecutive)
 			{
 				if (decl->bitstruct.members)
 				{
-					SEMA_ERROR_HERE("Expected a ':'.");
+					SEMA_ERROR(member_decl, "Bitstructs either have bit ranges for all members, or no members have ranges – mixing is not permitted. Either add a range to this member or remove ranges from the other member(s).");
 					return false;
 				}
 				is_consecutive = true;
@@ -1693,13 +1649,18 @@ static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl)
 			member_decl->var.end = NULL;
 		}
 		CONSUME_EOS_OR_RET(false);
+		if (is_consecutive)
+		{
+			SEMA_ERROR(member_decl->var.start, "Bitstructs either have bit ranges for all members, or no members have ranges – mixing is not permitted. Either remove this range, or add ranges to all other members.");
+			return false;
+		}
 		vec_add(decl->bitstruct.members, member_decl);
 	}
 	decl->bitstruct.consecutive = is_consecutive;
 	return true;
 }
 /**
- * bitstruct_declaration = 'bitstruct' IDENT ':' type bitstruct_body
+ * bitstruct_declaration ::= 'bitstruct' TYPE_IDENT ':' type bitstruct_body
  */
 static inline Decl *parse_bitstruct_declaration(ParseContext *c)
 {
@@ -1730,11 +1691,11 @@ static inline Decl *parse_top_level_const_declaration(ParseContext *c)
 
 
 /**
- * macro_arguments ::= '(' parameters (EOS trailing_block_parameter )? ')'
+ * macro_params ::= parameters? (EOS trailing_block_param)?
  *
- * trailing_block_parameter ::= '@' IDENT ( '(' parameters ')' )?
+ * trailing_block_param ::= AT_IDENT ( '(' parameters? ')' )?
  */
-static bool parse_macro_arguments(ParseContext *c, Decl *macro)
+static bool parse_macro_params(ParseContext *c, Decl *macro)
 {
 	CONSUME_OR_RET(TOKEN_LPAREN, false);
 
@@ -1797,16 +1758,17 @@ static inline void decl_add_type(Decl *decl, TypeKind kind)
 	decl->type = type;
 }
 /**
- * define_type_body ::= TYPE_IDENT '=' 'distinct'? (func_typedef | type generic_params?) ';'
+ * typedef_declaration ::= TYPEDEF TYPE_IDENT '=' 'distinct'? typedef_type ';'
  *
+ * typedef_type ::= func_typedef | type generic_params?
  * func_typedef ::= 'fn' optional_type parameter_type_list
  */
-static inline Decl *parse_define_type(ParseContext *c)
+static inline Decl *parse_typedef_declaration(ParseContext *c)
 {
-	advance(c);
+	advance_and_verify(c, TOKEN_TYPEDEF);
 
 	Decl *decl = decl_new(DECL_POISONED, symstr(c), c->span);
-	DEBUG_LOG("Parse define %s", decl->name);
+	DEBUG_LOG("Parse typedef %s", decl->name);
 	if (!try_consume(c, TOKEN_TYPE_IDENT))
 	{
 		if (token_is_any_type(c->tok))
@@ -1908,9 +1870,9 @@ static inline Decl *parse_define_type(ParseContext *c)
 }
 
 /**
- * define_ident ::= 'define' (IDENT | CONST_IDENT) '=' identifier_alias generic_params?
+ * define_ident ::= 'define' (IDENT | CONST_IDENT | AT_IDENT) '=' identifier_alias generic_params?
  *
- * identifier_alias ::= path? (IDENT | CONST_IDENT)
+ * identifier_alias ::= path? (IDENT | CONST_IDENT | AT_IDENT)
  */
 static inline Decl *parse_define_ident(ParseContext *c)
 {
@@ -1996,25 +1958,13 @@ static inline Decl *parse_define_ident(ParseContext *c)
 		if (!params) return poisoned_decl;
 		decl->define_decl.generic_params = params;
 	}
-	else if (!tok_is(c, TOKEN_EOS) && decl->define_decl.ident == kw_distinct)
-	{
-		if (token_is_any_type(c->tok))
-		{
-			SEMA_ERROR(decl, "A type name alias must start with an uppercase letter.");
-		}
-		else
-		{
-			sema_error_at(decl->define_decl.span, "'distinct' can only be used with types.");
-		}
-		return poisoned_decl;
-	}
 	RANGE_EXTEND_PREV(decl);
 	CONSUME_EOS_OR_RET(poisoned_decl);
 	return decl;
 }
 
 /**
- * define_attribute ::= 'define' AT_TYPE_IDENT '(' parameter_list ')' ('=' attribute_list)?
+ * define_attribute ::= 'define' AT_TYPE_IDENT '(' parameter_list ')' opt_attributes '=' '{' attributes? '}' ';'
  */
 static inline Decl *parse_define_attribute(ParseContext *c)
 {
@@ -2054,9 +2004,6 @@ static inline Decl *parse_define(ParseContext *c)
 		case TOKEN_AT_TYPE_IDENT:
 			// define @Foo = @inline, @noreturn
 			return parse_define_attribute(c);
-		case TOKEN_TYPE_IDENT:
-			sema_warning_at(c->span, "Defining types with 'define' is deprecated. Use 'typedef'.");
-			return parse_define_type(c);
 		default:
 			return parse_define_ident(c);
 	}
@@ -2138,7 +2085,8 @@ static inline bool parse_func_macro_header(ParseContext *c, Decl *decl)
 
 
 /**
- * macro ::= macro_header '(' macro_params ')' compound_statement
+ * macro ::= MACRO macro_header '(' macro_params ')' opt_attributes macro_body
+ * macro_body ::= IMPLIES expression ';' | compound_statement
  */
 static inline Decl *parse_macro_declaration(ParseContext *c, AstId docs)
 {
@@ -2149,7 +2097,7 @@ static inline Decl *parse_macro_declaration(ParseContext *c, AstId docs)
 	decl->func_decl.docs = docs;
 	if (!parse_func_macro_header(c, decl)) return poisoned_decl;
 	const char *block_parameter = NULL;
-	if (!parse_macro_arguments(c, decl)) return poisoned_decl;
+	if (!parse_macro_params(c, decl)) return poisoned_decl;
 
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 	if (tok_is(c, TOKEN_IMPLIES))
@@ -2158,26 +2106,20 @@ static inline Decl *parse_macro_declaration(ParseContext *c, AstId docs)
 		                    parse_short_body(c, decl->func_decl.signature.rtype, true), poisoned_decl);
 		return decl;
 	}
-	ASSIGN_ASTID_OR_RET(decl->func_decl.body, parse_stmt(c), poisoned_decl);
+	ASSIGN_ASTID_OR_RET(decl->func_decl.body, parse_compound_stmt(c), poisoned_decl);
 	return decl;
 }
 
 
 /**
- * error_declaration
- *		: FAULT TYPE_IDENT ';'
- *		| FAULT TYPE_IDENT '{' error_data '}'
- *		;
+ * fault_declaration ::= FAULT opt_attributes '{' faults ','? '}'
  */
 static inline Decl *parse_fault_declaration(ParseContext *c)
 {
-	advance(c);
-	// advance_and_verify(context, TOKEN_ERRTYPE);
+	advance_and_verify(c, TOKEN_FAULT);
 
 	Decl *decl = decl_new_with_type(symstr(c), c->span, DECL_FAULT);
 	if (!consume_type_name(c, "fault")) return poisoned_decl;
-
-	TypeInfo *type = NULL;
 
 	CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
 
@@ -2201,8 +2143,7 @@ static inline Decl *parse_fault_declaration(ParseContext *c)
 			{
 				SEMA_ERROR(fault_const, "This fault value was declared twice.");
 				SEMA_NOTE(other_constant, "The previous declaration was here.");
-				decl_poison(fault_const);
-				break;
+				return poisoned_decl;
 			}
 		}
 		vec_add(decl->enums.values, fault_const);
@@ -2211,6 +2152,11 @@ static inline Decl *parse_fault_declaration(ParseContext *c)
 		{
 			EXPECT_OR_RET(TOKEN_RBRACE, poisoned_decl);
 		}
+	}
+	if (ordinal == 0)
+	{
+		sema_error_at(c->prev_span, "Declaration of '%s' contains no values, at least one value is required.", decl->name);
+		return poisoned_decl;
 	}
 	return decl;
 }
@@ -2426,7 +2372,7 @@ static inline bool check_no_visibility_before(ParseContext *c, bool is_private)
 
 /**
  *
- * import ::= IMPORT import_path (',' import_path)* EOS
+ * import ::= IMPORT import_path (',' import_path)* opt_attributes EOS
  *
  * @return true if import succeeded
  */
@@ -2800,11 +2746,6 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 	AstId contracts = 0;
 	if (!parse_contracts(c, &contracts)) return poisoned_decl;
 	Decl *decl;
-	bool is_private = try_consume(c, TOKEN_PRIVATE); // TODO remove
-	if (is_private)
-	{
-		sema_warning_at(c->prev_span, "The use of 'private' is deprecated. Use '@private' instead.");
-	}
 
 	TokenType tok = c->tok;
 	if (tok != TOKEN_MODULE && !c->unit->module)
@@ -2863,7 +2804,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 			return poisoned_decl;
 		case TOKEN_TYPEDEF:
 			if (contracts) goto CONTRACT_NOT_ALLOWED;
-			decl = parse_define_type(c);
+			decl = parse_typedef_declaration(c);
 			break;
 		case TOKEN_DEFINE:
 			if (contracts) goto CONTRACT_NOT_ALLOWED;
@@ -2967,19 +2908,10 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 			return poisoned_decl;
 	}
 	if (!decl_ok(decl)) return decl;
-	if (is_private) decl->visibility = VISIBLE_PRIVATE; // TODO remove
 	assert(decl);
 	return decl;
 CONTRACT_NOT_ALLOWED:
 	SEMA_ERROR(astptr(contracts), "Contracts are only used for modules, functions and macros.");
 	return poisoned_decl;
-}
-
-void consume_deprecated_symbol(ParseContext *c, TokenType type)
-{
-	if (try_consume(c, type))
-	{
-		sema_warning_at(c->prev_span, "'%s' is deprecated here.", token_type_to_string(type));
-	}
 }
 

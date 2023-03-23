@@ -389,7 +389,6 @@ static void x64_classify(Type *type, ByteSize offset_base, X64Class *lo_class, X
 		case TYPE_FAULTTYPE:
 		case TYPE_BITSTRUCT:
 		case TYPE_OPTIONAL:
-		case TYPE_OPTIONAL_ANY:
 		case CT_TYPES:
 			UNREACHABLE
 		case TYPE_VOID:
@@ -435,9 +434,6 @@ static void x64_classify(Type *type, ByteSize offset_base, X64Class *lo_class, X
 			break;
 		case TYPE_VECTOR:
 			x64_classify_vector(type, offset_base, current, lo_class, hi_class, named);
-			break;
-		case TYPE_SCALED_VECTOR:
-			*current = CLASS_MEMORY;
 			break;
 	}
 }
@@ -584,7 +580,6 @@ AbiType x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_typ
 		case TYPE_FAULTTYPE:
 		case TYPE_BITSTRUCT:
 		case TYPE_OPTIONAL:
-		case TYPE_OPTIONAL_ANY:
 		case CT_TYPES:
 			UNREACHABLE
 		case TYPE_I128:
@@ -596,8 +591,6 @@ AbiType x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_typ
 		case TYPE_UNION:
 		case TYPE_VECTOR:
 			break;
-		case TYPE_SCALED_VECTOR:
-			return (AbiType) { .type = type };
 	}
 	ByteSize size = type_size(source_type);
 	assert(size != source_offset);

@@ -1205,6 +1205,12 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 	return success;
 }
 
+/**
+ * foreach_stmt ::= foreach
+ * @param context
+ * @param statement
+ * @return
+ */
 static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statement)
 {
 	// Pull out the relevant data.
@@ -1678,7 +1684,7 @@ static bool sema_analyse_asm_string_stmt(SemaContext *context, Ast *stmt)
  */
 static inline Decl *sema_analyse_label(SemaContext *context, Ast *stmt)
 {
-	Label *label = stmt->ast_kind == AST_NEXT_STMT ? &stmt->nextcase_stmt.label : &stmt->contbreak_stmt.label;
+	Label *label = stmt->ast_kind == AST_NEXTCASE_STMT ? &stmt->nextcase_stmt.label : &stmt->contbreak_stmt.label;
 	const char *name = label->name;
 	Decl *target = sema_find_label_symbol(context, name);
 	if (!target)
@@ -1696,7 +1702,7 @@ static inline Decl *sema_analyse_label(SemaContext *context, Ast *stmt)
 					case AST_CONTINUE_STMT:
 						SEMA_ERROR(stmt, "You cannot use continue out of an expression block.");
 						return poisoned_decl;
-					case AST_NEXT_STMT:
+					case AST_NEXTCASE_STMT:
 						SEMA_ERROR(stmt, "You cannot use nextcase to exit an expression block.");
 						return poisoned_decl;
 					default:
@@ -1713,7 +1719,7 @@ static inline Decl *sema_analyse_label(SemaContext *context, Ast *stmt)
 					case AST_CONTINUE_STMT:
 						SEMA_ERROR(stmt, "You cannot use continue out of a defer.");
 						return poisoned_decl;
-					case AST_NEXT_STMT:
+					case AST_NEXTCASE_STMT:
 						SEMA_ERROR(stmt, "You cannot use nextcase out of a defer.");
 						return poisoned_decl;
 					default:
@@ -1743,7 +1749,7 @@ static inline Decl *sema_analyse_label(SemaContext *context, Ast *stmt)
 				case AST_CONTINUE_STMT:
 					SEMA_ERROR(stmt, "You cannot use continue out of a defer.");
 					return poisoned_decl;
-				case AST_NEXT_STMT:
+				case AST_NEXTCASE_STMT:
 					SEMA_ERROR(stmt, "You cannot use nextcase out of a defer.");
 					return poisoned_decl;
 				default:
@@ -2441,21 +2447,19 @@ static inline bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement
 
 	SCOPE_START_WITH_LABEL(statement->switch_stmt.flow.label);
 
-		Expr *cond = exprptr(statement->switch_stmt.cond);
+		Expr *cond = exprptrzero(statement->switch_stmt.cond);
 		Type *switch_type;
 
 		ExprVariantSwitch var_switch;
 		Decl *variant_decl = NULL;
 		if (statement->ast_kind == AST_SWITCH_STMT)
 		{
-			if (!sema_analyse_cond(context, cond, COND_TYPE_EVALTYPE_VALUE)) return false;
-			Expr *last = VECLAST(cond->cond_expr);
-			switch_type = last->type->canonical;
-			if (last->expr_kind == EXPR_VARIANTSWITCH)
+			if (cond && !sema_analyse_cond(context, cond, COND_TYPE_EVALTYPE_VALUE)) return false;
+			Expr *last = cond ? VECLAST(cond->cond_expr) : NULL;
+			switch_type = last ? last->type->canonical : type_bool;
+			if (last && last->expr_kind == EXPR_VARIANTSWITCH)
 			{
 				var_switch = last->variant_switch;
-
-
 				Expr *inner;
 				if (var_switch.is_assign)
 				{
@@ -2741,7 +2745,7 @@ static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *state
 			return sema_analyse_return_stmt(context, statement);
 		case AST_SWITCH_STMT:
 			return sema_analyse_switch_stmt(context, statement);
-		case AST_NEXT_STMT:
+		case AST_NEXTCASE_STMT:
 			return sema_analyse_nextcase_stmt(context, statement);
 		case AST_CT_SWITCH_STMT:
 			return sema_analyse_ct_switch_stmt(context, statement);

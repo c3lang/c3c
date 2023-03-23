@@ -1848,10 +1848,11 @@ extern Type *type_u128, *type_i128;
 extern Type *type_typeid, *type_anyerr, *type_typeinfo, *type_member;
 extern Type *type_any;
 extern Type *type_untypedlist;
-extern Type *type_anyfail;
+extern Type *type_wildcard;
 extern Type *type_cint;
 extern Type *type_cuint;
 extern Type *type_chars;
+extern Type *type_wildcard_optional;
 extern Type *type_string;
 
 
@@ -2343,7 +2344,7 @@ Type *type_get_subarray(Type *arr_type);
 Type *type_get_inferred_array(Type *arr_type);
 Type *type_get_inferred_vector(Type *arr_type);
 Type *type_get_flexible_array(Type *arr_type);
-Type *type_get_scaled_vector(Type *arr_type);
+
 Type *type_get_optional(Type *optional_type);
 Type *type_get_vector(Type *vector_type, unsigned len);
 Type *type_get_vector_bool(Type *original_type);
@@ -2387,8 +2388,7 @@ INLINE const char *type_invalid_storage_type_name(Type *type);
 INLINE bool type_is_float(Type *type);
 INLINE bool type_is_floatlike(Type *type);
 INLINE bool type_is_optional(Type *type);
-INLINE bool type_is_optional_type(Type *type);
-INLINE bool type_is_optional_any(Type *type);
+INLINE bool type_is_wildcard(Type *type);
 INLINE bool type_is_void(Type *type);
 INLINE bool type_is_integer(Type *type);
 INLINE bool type_is_integer_unsigned(Type *type);
@@ -2445,7 +2445,6 @@ INLINE Type *type_no_optional(Type *type)
 {
 	if (!type) return NULL;
 	if (type->type_kind == TYPE_OPTIONAL) return type->optional;
-	if (type->type_kind == TYPE_OPTIONAL_ANY) return type_void;
 	return type;
 }
 
@@ -2466,7 +2465,7 @@ INLINE bool type_is_pointer_sized(Type *type)
 
 INLINE Type *type_add_optional(Type *type, bool make_optional)
 {
-	if (!make_optional || type->type_kind == TYPE_OPTIONAL || type->type_kind == TYPE_OPTIONAL_ANY) return type;
+	if (!make_optional || type->type_kind == TYPE_OPTIONAL) return type;
 	return type_get_optional(type);
 }
 
@@ -2510,7 +2509,6 @@ INLINE bool type_len_is_inferred(Type *type)
 			case TYPE_SUBARRAY:
 			case TYPE_FLEXIBLE_ARRAY:
 			case TYPE_VECTOR:
-			case TYPE_SCALED_VECTOR:
 				type = type->array.base;
 				continue;
 			case TYPE_INFERRED_ARRAY:
@@ -2526,22 +2524,17 @@ INLINE bool type_len_is_inferred(Type *type)
 	}
 }
 
-INLINE bool type_is_optional(Type *type)
+INLINE bool type_is_wildcard(Type *type)
 {
-	DECL_TYPE_KIND_REAL(kind, type);
-	return kind == TYPE_OPTIONAL || kind == TYPE_OPTIONAL_ANY;
+	return type == type_wildcard || type == type_wildcard_optional;
 }
 
-INLINE bool type_is_optional_type(Type *type)
+INLINE bool type_is_optional(Type *type)
 {
 	DECL_TYPE_KIND_REAL(kind, type);
 	return kind == TYPE_OPTIONAL;
 }
 
-INLINE bool type_is_optional_any(Type *type)
-{
-	return type->canonical == type_anyfail;
-}
 INLINE bool type_is_void(Type *type)
 {
 	return type->canonical == type_void;
@@ -2581,15 +2574,13 @@ INLINE bool type_info_poison(TypeInfo *type)
 INLINE bool type_is_arraylike(Type *type)
 {
 	DECL_TYPE_KIND_REAL(kind, type);
-	return kind == TYPE_ARRAY || kind == TYPE_VECTOR || kind == TYPE_FLEXIBLE_ARRAY || kind == TYPE_SCALED_VECTOR;
+	return kind == TYPE_ARRAY || kind == TYPE_VECTOR || kind == TYPE_FLEXIBLE_ARRAY;
 }
 
 INLINE bool type_is_any_arraylike(Type *type)
 {
 	DECL_TYPE_KIND_REAL(kind, type);
-	return kind == TYPE_ARRAY || kind == TYPE_VECTOR
-		|| kind == TYPE_FLEXIBLE_ARRAY || kind == TYPE_SCALED_VECTOR
-		|| kind == TYPE_INFERRED_VECTOR || kind == TYPE_INFERRED_ARRAY;
+	return kind >= TYPE_FIRST_ARRAYLIKE && kind <= TYPE_LAST_ARRAYLIKE;
 }
 
 INLINE CanonicalType *type_pointer_type(Type *type)
@@ -2674,13 +2665,16 @@ INLINE const char *type_invalid_storage_type_name(Type *type)
 INLINE bool type_is_invalid_storage_type(Type *type)
 {
 	if (!type) return false;
+	if (type == type_wildcard_optional) return true;
 	switch (type->type_kind)
 	{
 		case TYPE_MEMBER:
 		case TYPE_UNTYPED_LIST:
 		case TYPE_TYPEINFO:
+		case TYPE_WILDCARD:
 			return true;
 		default:
+
 			return false;
 	}
 }
@@ -2764,8 +2758,6 @@ static inline Type *type_base(Type *type)
 			case TYPE_OPTIONAL:
 				type = type->optional;
 				break;
-			case TYPE_OPTIONAL_ANY:
-				return type_void;
 			case TYPE_TYPEDEF:
 				UNREACHABLE
 			default:
@@ -2787,8 +2779,6 @@ static inline Type *type_flatten(Type *type)
 			case TYPE_OPTIONAL:
 				type = type->optional;
 				break;
-			case TYPE_OPTIONAL_ANY:
-				return type_void;
 			case TYPE_TYPEDEF:
 				UNREACHABLE
 			default:
@@ -2879,7 +2869,7 @@ INLINE bool type_flat_is_vector_bitstruct(Type *type)
 
 INLINE bool type_kind_is_any_vector(TypeKind kind)
 {
-	return kind == TYPE_VECTOR || kind == TYPE_INFERRED_VECTOR || kind == TYPE_SCALED_VECTOR;
+	return kind == TYPE_VECTOR || kind == TYPE_INFERRED_VECTOR;
 }
 
 INLINE bool type_flat_is_bool_vector(Type *type)
