@@ -1,4 +1,4 @@
-module std::core::str;
+module std::core::string;
 import std::math;
 
 // Float parsing based on code in Musl floatscan.c by Rich Felker.
@@ -64,7 +64,7 @@ macro double! decfloat(char[] chars, int $bits, int $emin, int sign)
 		got_rad = true;
 		if (index == last_char)
 		{
-			if (!got_digit) return NumberConversion.MALFORMED_FLOAT!;
+			if (!got_digit) return NumberConversion.MALFORMED_FLOAT?;
 			return sign * 0.0;
 		}
 		if (index != last_char && (c = chars[++index]) == '0')
@@ -83,7 +83,7 @@ macro double! decfloat(char[] chars, int $bits, int $emin, int sign)
 		switch
 		{
 			case c == '.':
-				if (got_rad) return NumberConversion.MALFORMED_FLOAT!;
+				if (got_rad) return NumberConversion.MALFORMED_FLOAT?;
 				got_rad = true;
 				lrp = dc;
 			case k < KMAX - 3:
@@ -113,24 +113,24 @@ macro double! decfloat(char[] chars, int $bits, int $emin, int sign)
 		c = chars[++index];
 	}
 	if (!got_rad) lrp = dc;
-	if (!got_digit) return NumberConversion.MALFORMED_FLOAT!;
+	if (!got_digit) return NumberConversion.MALFORMED_FLOAT?;
 	if ((c | 32) == 'e')
 	{
-		if (last_char == index) return NumberConversion.MALFORMED_FLOAT!;
-		long e10 = str::to_long((String)chars[index + 1..]) ?? NumberConversion.MALFORMED_FLOAT!?;
+		if (last_char == index) return NumberConversion.MALFORMED_FLOAT?;
+		long e10 = String.to_long((String)chars[index + 1..]) ?? NumberConversion.MALFORMED_FLOAT?!;
 		lrp += e10;
 	}
 	else if (index != last_char)
 	{
-		return NumberConversion.MALFORMED_FLOAT!;
+		return NumberConversion.MALFORMED_FLOAT?;
 	}
 	// Handle zero specially to avoid nasty special cases later
 	if (!x[0]) return sign * 0.0;
 
 	// Optimize small integers (w/no exponent) and over/under-flow
 	if (lrp == dc && dc < 10 && ($bits > 30 || (ulong)x[0] >> $bits == 0)) return sign * (double)x[0];
-	if (lrp > - $emin / 2) return NumberConversion.FLOAT_OUT_OF_RANGE!;
-	if (lrp < $emin - 2 * math::DOUBLE_MANT_DIG) return NumberConversion.FLOAT_OUT_OF_RANGE!;
+	if (lrp > - $emin / 2) return NumberConversion.FLOAT_OUT_OF_RANGE?;
+	if (lrp < $emin - 2 * math::DOUBLE_MANT_DIG) return NumberConversion.FLOAT_OUT_OF_RANGE?;
 
 	// Align incomplete final B1B digit
 	if (j)
@@ -320,7 +320,7 @@ macro double! decfloat(char[] chars, int $bits, int $emin, int sign)
 			y *= 0.5;
 			e2++;
 		}
-		if (e2 + math::DOUBLE_MANT_DIG > emax || (denormal && frac)) return NumberConversion.MALFORMED_FLOAT!;
+		if (e2 + math::DOUBLE_MANT_DIG > emax || (denormal && frac)) return NumberConversion.MALFORMED_FLOAT?;
 	}
 	return math::scalbn(y, e2);
 }
@@ -351,7 +351,7 @@ macro double! hexfloat(char[] chars, int $bits, int $emin, int sign)
 		got_rad = true;
 		if (index == last_char)
 		{
-			if (!got_digit) return NumberConversion.MALFORMED_FLOAT!;
+			if (!got_digit) return NumberConversion.MALFORMED_FLOAT?;
 			return sign * 0.0;
 		}
 		if (index != last_char && (c = chars[++index]) == '0')
@@ -369,7 +369,7 @@ macro double! hexfloat(char[] chars, int $bits, int $emin, int sign)
 	{
 		if (c == '.')
 		{
-			if (got_rad) return NumberConversion.MALFORMED_FLOAT!;
+			if (got_rad) return NumberConversion.MALFORMED_FLOAT?;
 			got_rad = true;
 			rp = dc;
 		}
@@ -396,20 +396,20 @@ macro double! hexfloat(char[] chars, int $bits, int $emin, int sign)
 		if (index == last_char) break;
 		c = chars[++index];
 	}
-	if (!got_digit) return NumberConversion.MALFORMED_FLOAT!;
+	if (!got_digit) return NumberConversion.MALFORMED_FLOAT?;
 	if (!got_rad) rp = dc;
 	for (; dc < 8; dc++) x *= 16;
 
 	long e2;
 	if ((c | 32) == 'p')
 	{
-		long e2val = str::to_long((String)chars[index + 1..]) ?? NumberConversion.MALFORMED_FLOAT!?;
+		long e2val = String.to_long((String)chars[index + 1..]) ?? (NumberConversion.MALFORMED_FLOAT?)!;
     	e2 = e2val;
 	}
 	e2 += 4 * rp - 32;
 	if (!x) return sign * 0.0;
-	if (e2 > -$emin) return NumberConversion.FLOAT_OUT_OF_RANGE!;
-	if (e2 < $emin - 2 * math::DOUBLE_MANT_DIG) return NumberConversion.FLOAT_OUT_OF_RANGE!;
+	if (e2 > -$emin) return NumberConversion.FLOAT_OUT_OF_RANGE?;
+	if (e2 < $emin - 2 * math::DOUBLE_MANT_DIG) return NumberConversion.FLOAT_OUT_OF_RANGE?;
 
 	while (x < 0x80000000)
 	{
@@ -444,12 +444,12 @@ macro double! hexfloat(char[] chars, int $bits, int $emin, int sign)
 	}
 	y = bias + sign * (double)x + sign * y;
 	y -= bias;
-	if (!y) return NumberConversion.FLOAT_OUT_OF_RANGE!;
+	if (!y) return NumberConversion.FLOAT_OUT_OF_RANGE?;
 
 	return math::scalbn(y, (int)e2);
 }
 
-macro floatparse(String chars, $Type) @private
+macro String.to_real(String chars, $Type) @private
 {
 	int sign = 1;
 	$switch ($Type)
@@ -466,7 +466,7 @@ macro floatparse(String chars, $Type) @private
 	$endswitch
 
  	while (chars.len && chars[0] == ' ') chars = chars[1..];
- 	if (!chars.len) return NumberConversion.MALFORMED_FLOAT!;
+ 	if (!chars.len) return NumberConversion.MALFORMED_FLOAT?;
  	switch (chars[0])
  	{
  	    case '-':

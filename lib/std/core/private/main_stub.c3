@@ -7,7 +7,11 @@ macro usz _strlen(ptr) @private
 	return len;
 }
 
-macro int @main_to_err_main(#m, int, char**) => catch? #m() ? 1 : 0;
+macro int @main_to_err_main(#m, int, char**)
+{
+	if (catch #m()) return 1;
+	return 0;
+}
 macro int @main_to_int_main(#m, int, char**) => #m();
 macro int @main_to_void_main(#m, int, char**)
 {
@@ -32,7 +36,8 @@ macro int @main_to_err_main_args(#m, int argc, char** argv)
 {
 	String[] list = args_to_strings(argc, argv);
 	defer free(list.ptr);
-	return catch? #m(list) ? 1 : 0;
+	if (catch #m(list)) return 1;
+	return 0;
 }
 
 macro int @main_to_int_main_args(#m, int argc, char** argv)
@@ -79,7 +84,11 @@ macro void release_wargs(String[] list) @private
 	free(list.ptr);
 }
 
-macro int @win_to_err_main_noargs(#m, void* handle, Char16* cmd_line, int show_cmd) => catch? #m() ? 1 : 0;
+macro int @win_to_err_main_noargs(#m, void* handle, Char16* cmd_line, int show_cmd)
+{
+	if (catch #m()) return 1;
+	return 0;
+}
 macro int @win_to_int_main_noargs(#m, void* handle, Char16* cmd_line, int show_cmd) => #m();
 macro int @win_to_void_main_noargs(#m, void* handle, Char16* cmd_line, int show_cmd)
 {
@@ -91,7 +100,8 @@ macro int @win_to_err_main_args(#m, void* handle, Char16* cmd_line, int show_cmd
 {
 	String[] args = win_command_line_to_strings(cmd_line);
 	defer release_wargs(args);
-    return catch? #m(args) ? 1 : 0;
+	if (catch #m(args)) return 1;
+    return 0;
 }
 
 macro int @win_to_int_main_args(#m, void* handle, Char16* cmd_line, int show_cmd)
@@ -113,7 +123,8 @@ macro int @win_to_err_main(#m, void* handle, Char16* cmd_line, int show_cmd)
 {
 	String[] args = win_command_line_to_strings(cmd_line);
 	defer release_wargs(args);
-    return catch? #m(handle, args, show_cmd) ? 1 : 0;
+	if (catch #m(handle, args, show_cmd)) return 1;
+    return 0;
 }
 
 macro int @win_to_int_main(#m, void* handle, Char16* cmd_line, int show_cmd)
@@ -135,7 +146,8 @@ macro int @wmain_to_err_main_args(#m, int argc, Char16** argv)
 {
 	String[] args = wargs_strings(argc, argv);
 	defer release_wargs(args);
-    return catch? #m(args) ? 1 : 0;
+	if (catch #m(args)) return 1;
+	return 1;
 }
 
 macro int @wmain_to_int_main_args(#m, int argc, Char16** argv)

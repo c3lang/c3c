@@ -1,5 +1,7 @@
 fault Error
-{}
+{
+	ABC
+}
 
 typedef Foo1 = distinct Error; // #error: You cannot create a distinct type
 

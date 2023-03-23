@@ -37,7 +37,8 @@ TypeInfo *parse_type(ParseContext *c);
 TypeInfo *parse_optional_type(ParseContext *c);
 TypeInfo *parse_type_with_base(ParseContext *c, TypeInfo *type_info);
 Expr* parse_constant_expr(ParseContext *c);
-Decl *parse_local_decl(ParseContext *c);
+
+Decl *parse_const_declaration(ParseContext *c, bool is_global);
 Expr *parse_integer(ParseContext *c, Expr *left);
 Expr *parse_decl_or_expr(ParseContext *c, Decl **decl_ref);
 void recover_top_level(ParseContext *c);
@@ -45,7 +46,6 @@ Expr *parse_cond(ParseContext *c);
 Expr *parse_assert_expr(ParseContext *c);
 Ast* parse_compound_stmt(ParseContext *c);
 Ast *parse_short_body(ParseContext *c, TypeInfoId return_type, bool require_eos);
-Ast *parse_jump_stmt_no_eos(ParseContext *c);
 bool parse_attribute(ParseContext *c, Attr **attribute_ref);
 bool parse_attributes(ParseContext *c, Attr ***attributes_ref, Visibility *visibility_ref);
 
@@ -54,11 +54,13 @@ Expr *parse_ct_expression_list(ParseContext *c, bool allow_decl);
 Expr *parse_expression_list(ParseContext *c, bool allow_decls);
 Decl *parse_local_decl_after_type(ParseContext *c, TypeInfo *type);
 Decl *parse_var_decl(ParseContext *c);
+bool parse_current_is_expr(ParseContext *c);
 
 bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 					  Variadic *variadic, int *vararg_index_ref, ParameterParseKind parse_kind);
 
-bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *splat, bool vasplat);
+bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *splat, bool vasplat,
+                    bool allow_trailing_comma);
 Expr *parse_type_compound_literal_expr_after_type(ParseContext *c, TypeInfo *type_info);
 
 INLINE void add_decl_to_list(Decl ***list, Decl *decl)
@@ -79,7 +81,6 @@ bool try_consume(ParseContext *c, TokenType type);
 bool consume(ParseContext *c, TokenType type, const char *message, ...);
 bool consume_const_name(ParseContext *c, const char* type);
 Expr *parse_precedence_with_left_side(ParseContext *c, Expr *left_side, Precedence precedence);
-void consume_deprecated_symbol(ParseContext *c, TokenType type);
 
 INLINE const char *symstr(ParseContext *c)
 {

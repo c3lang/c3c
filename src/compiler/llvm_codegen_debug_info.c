@@ -534,7 +534,6 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 		case CT_TYPES:
 			UNREACHABLE
 		case TYPE_OPTIONAL:
-		case TYPE_OPTIONAL_ANY:
 			// If this is reachable then we're not doing the proper lowering.
 			UNREACHABLE
 		case TYPE_BOOL:
@@ -554,6 +553,7 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 		case TYPE_U128:
 			return llvm_debug_simple_type(c, type, DW_ATE_unsigned);
 		case TYPE_F16:
+		case TYPE_BF16:
 		case TYPE_F32:
 		case TYPE_F64:
 		case TYPE_F128:
@@ -583,12 +583,10 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 			return type->backend_debug_type = llvm_debug_array_type(c, type);
 		case TYPE_SUBARRAY:
 			return type->backend_debug_type = llvm_debug_subarray_type(c, type);
-		case TYPE_ANYERR:
+		case TYPE_ANYFAULT:
 			return type->backend_debug_type = llvm_debug_errunion_type(c, type);
 		case TYPE_ANY:
 			return type->backend_debug_type = llvm_debug_any_type(c, type);
-		case TYPE_SCALED_VECTOR:
-			UNSUPPORTED;
 	}
 	UNREACHABLE
 }

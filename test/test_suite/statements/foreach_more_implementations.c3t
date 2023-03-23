@@ -51,7 +51,7 @@ entry:
   %vector2 = alloca ptr, align 8
   %element = alloca i64, align 8
   %retparam = alloca i64, align 8
-  %varargslots = alloca [1 x %variant], align 16
+  %varargslots = alloca [1 x %any], align 16
   %.anon4 = alloca i64, align 8
   %vector5 = alloca %Vector, align 8
   %.anon6 = alloca i64, align 8
@@ -59,7 +59,7 @@ entry:
   %vector10 = alloca ptr, align 8
   %element11 = alloca i64, align 8
   %retparam13 = alloca i64, align 8
-  %varargslots14 = alloca [1 x %variant], align 16
+  %varargslots14 = alloca [1 x %any], align 16
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 4 @.__const, i32 8, i1 false)
   %0 = getelementptr inbounds %Vector, ptr %v, i32 0, i32 0
   store i64 2, ptr %0, align 8
@@ -89,10 +89,10 @@ loop.body:                                        ; preds = %loop.cond
   %ptroffset = getelementptr inbounds i32, ptr %9, i64 %10
   store ptr %ptroffset, ptr %ref, align 8
   %11 = load ptr, ptr %ref, align 8
-  %12 = insertvalue %variant undef, ptr %11, 0
-  %13 = insertvalue %variant %12, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  %14 = getelementptr inbounds [1 x %variant], ptr %varargslots, i64 0, i64 0
-  store %variant %13, ptr %14, align 16
+  %12 = insertvalue %any undef, ptr %11, 0
+  %13 = insertvalue %any %12, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  %14 = getelementptr inbounds [1 x %any], ptr %varargslots, i64 0, i64 0
+  store %any %13, ptr %14, align 16
   %15 = call i64 @std.io.printf(ptr %retparam, ptr @.str, i64 3, ptr %varargslots, i64 1)
   %16 = load ptr, ptr %ref, align 8
   %17 = load i32, ptr %16, align 4
@@ -128,10 +128,10 @@ loop.body9:                                       ; preds = %loop.cond7
   %ptroffset12 = getelementptr inbounds i32, ptr %26, i64 %27
   %28 = load i32, ptr %ptroffset12, align 4
   store i32 %28, ptr %i, align 4
-  %29 = insertvalue %variant undef, ptr %i, 0
-  %30 = insertvalue %variant %29, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  %31 = getelementptr inbounds [1 x %variant], ptr %varargslots14, i64 0, i64 0
-  store %variant %30, ptr %31, align 16
+  %29 = insertvalue %any undef, ptr %i, 0
+  %30 = insertvalue %any %29, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  %31 = getelementptr inbounds [1 x %any], ptr %varargslots14, i64 0, i64 0
+  store %any %30, ptr %31, align 16
   %32 = call i64 @std.io.printf(ptr %retparam13, ptr @.str.1, i64 3, ptr %varargslots14, i64 1)
   %33 = load i64, ptr %.anon6, align 8
   %add15 = add i64 %33, 1

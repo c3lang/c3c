@@ -79,6 +79,50 @@ fn void List.remove_at(List* list, usz index)
     list.size--;
 }
 
+fn void List.add_all(List* list, List* other_list)
+{
+	if (!other_list.size) return;
+	list.reserve(other_list.size);
+	foreach (&value : other_list)
+	{
+	    list.entries[list.size++] = *value;
+	}
+}
+
+fn Type[] List.to_array(List* list, Allocator* using = mem::heap())
+{
+	if (!list.size) return Type[] {};
+	Type[] result = malloc(Type, list.size, .using = using);
+	result[..] = list.entries[:list.size];
+	return result;
+}
+
+fn void List.reverse(List* list)
+{
+	if (list.size < 2) return;
+	usz half = list.size / 2U;
+	usz end = list.size - 1;
+	for (usz i = 0; i < half; i++)
+	{
+		@swap(list.entries[i], list.entries[end - i]);
+	}
+}
+
+fn Type[] List.array_view(List* list)
+{
+	return list.entries[:list.size];
+}
+
+fn void List.add_array(List* list, Type[] array)
+{
+	if (!array.len) return;
+	list.reserve(array.len);
+	foreach (&value : array)
+	{
+	    list.entries[list.size++] = *value;
+	}
+}
+
 fn void List.push_front(List* list, Type type) @inline
 {
     list.insert_at(0, type);
@@ -175,11 +219,45 @@ fn Type* List.get_ref(List* list, usz index) @operator(&[]) @inline
     return &list.entries[index];
 }
 
+$if (types::is_equatable_type(Type))
 
-fn void List.ensure_capacity(List* list) @inline @private
+fn usz! List.index_of(List* list, Type type)
 {
-    if (list.capacity == list.size)
-    {
-        list.reserve(list.capacity ? 2 * list.capacity : 16);
-    }
+	foreach (i, v : list)
+	{
+		if (v == type) return i;
+	}
+	return SearchResult.MISSING?;
+}
+
+fn bool List.equals(List* list, List other_list)
+{
+	if (list.size != other_list.size) return false;
+	foreach (i, v : list)
+	{
+		if (v != other_list.entries[i]) return false;
+	}
+	return true;
+}
+
+fn bool List.contains(List* list, Type type)
+{
+	foreach (i, v : list)
+	{
+		if (v == type) return true;
+	}
+	return false;
+}
+
+$endif
+
+fn void List.ensure_capacity(List* list, usz added = 1) @inline @private
+{
+	usz new_size = list.size + added;
+    if (list.capacity > new_size) return;
+
+	assert(new_size < usz.max / 2U);
+	usz new_capacity = list.capacity ? 2U * list.capacity : 16U;
+	while (new_size >= new_capacity) new_capacity *= 2U;
+	list.reserve(new_capacity);
 }

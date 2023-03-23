@@ -5,7 +5,7 @@ fault Tester { FOO }
 
 fn int! abc()
 {
-	return Tester.FOO!;
+	return Tester.FOO?;
 }
 macro test()
 {

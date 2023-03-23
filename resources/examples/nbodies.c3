@@ -144,7 +144,7 @@ fn void scale_bodies(Planet[] bodies, double scale)
 
 fn void main(String[] args)
 {
-	int n = args.len < 2 ? 50000000 : str::to_int(args[1])!!;
+	int n = args.len < 2 ? 50000000 : args[1].to_int()!!;
 
 	Planet[] bodies = &planet_bodies;
 	offset_momentum(bodies);

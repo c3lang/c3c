@@ -173,7 +173,21 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIAr
 			if (decl->var.not_null && active_target.feature.safe_mode)
 			{
 				LLVMValueRef is_null = LLVMBuildIsNull(c->builder, param_value, "");
-				llvm_emit_panic_on_true(c, is_null, "Unexpected null pointer passed as '&' parameter.", decl->span);
+				scratch_buffer_clear();
+				if (decl->name)
+				{
+					scratch_buffer_printf("Reference parameter '%s' was passed a null pointer argument.", decl->name);
+				}
+				else
+				{
+					// This is currently not possible, but let's handle it anyway.
+					scratch_buffer_append("A null pointer argument was passed to a '&' parameter.");
+				}
+				llvm_emit_panic_on_true(c,
+				                        is_null,
+				                        scratch_buffer_to_string(),
+				                        decl->span,
+										NULL, NULL, NULL);
 			}
 			if (!decl->var.is_written && !decl->var.is_addr)
 			{
@@ -299,7 +313,7 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *optiona
 		return_out = c->optional_out;
 		if (!optional)
 		{
-			llvm_value_set(&no_fail, llvm_get_zero(c, type_anyerr), type_anyerr);
+			llvm_value_set(&no_fail, llvm_get_zero(c, type_anyfault), type_anyfault);
 			optional = &no_fail;
 		}
 		return_value = optional;
@@ -383,7 +397,7 @@ void llvm_emit_return_implicit(GenContext *c)
 		return;
 	}
 	BEValue value;
-	llvm_value_set(&value, llvm_get_zero(c, type_anyerr), type_anyerr);
+	llvm_value_set(&value, llvm_get_zero(c, type_anyfault), type_anyfault);
 	llvm_emit_return_abi(c, NULL, &value);
 }
 

@@ -33,8 +33,7 @@ static inline void llvm_emit_pre_inc_dec(GenContext *c, BEValue *value, Expr *ex
 static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type *type, AstId current, BlockExit **block_exit);
 static inline void llvm_emit_subscript_addr_with_base(GenContext *c, BEValue *result, BEValue *parent, BEValue *index, SourceSpan loc);
 static inline void llvm_emit_try_unwrap(GenContext *c, BEValue *value, Expr *expr);
-static inline void llvm_emit_vararg_parameter(GenContext *c, BEValue *value, Type *vararg_type, ABIArgInfo *abi_info, Expr **varargs, Expr *vararg_splat);
-static inline void llvm_emit_variant(GenContext *c, BEValue *value, Expr *expr);
+static inline void llvm_emit_any(GenContext *c, BEValue *value, Expr *expr);
 static inline void llvm_emit_vector_initializer_list(GenContext *c, BEValue *value, Expr *expr);
 static inline void llvm_extract_bitvalue_from_array(GenContext *c, BEValue *be_value, Decl *member, Decl *parent_decl);
 static void llvm_convert_vector_comparison(GenContext *c, BEValue *be_value, LLVMValueRef val, Type *vector_type,
@@ -153,12 +152,13 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 		{
 			llvm_emit_expr(c, &value, expr);
 		}
+
 		if (value.type != type_void) llvm_store(c, ref, &value);
 	}
 
 	if (optional)
 	{
-		llvm_store_to_ptr_raw(c, optional, llvm_get_zero(c, type_anyerr), type_anyerr);
+		llvm_store_to_ptr_raw(c, optional, llvm_get_zero(c, type_anyfault), type_anyfault);
 	}
 	POP_OPT();
 
@@ -168,8 +168,8 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 		if (rejump_block)
 		{
 			llvm_emit_block(c, rejump_block);
-			LLVMValueRef error = llvm_load_abi_alignment(c, type_anyerr, optional, "reload_err");
-			llvm_store_to_ptr_raw(c, c->opt_var, error, type_anyerr);
+			LLVMValueRef error = llvm_load_abi_alignment(c, type_anyfault, optional, "reload_err");
+			llvm_store_to_ptr_raw(c, c->opt_var, error, type_anyfault);
 			llvm_emit_br(c, c->catch_block);
 		}
 		llvm_emit_block(c, assign_block);
@@ -278,7 +278,7 @@ static inline LLVMValueRef llvm_emit_add_int(GenContext *c, Type *type, LLVMValu
 		}
 		LLVMValueRef result = llvm_emit_extract_value(c, add_res, 0);
 		LLVMValueRef ok = llvm_emit_extract_value(c, add_res, 1);
-		llvm_emit_panic_on_true(c, ok, "Addition overflow", loc);
+		llvm_emit_panic_on_true(c, ok, "Addition overflow", loc, NULL, NULL, NULL);
 		return result;
 	}
 
@@ -500,7 +500,7 @@ static inline LLVMValueRef llvm_emit_sub_int(GenContext *c, Type *type, LLVMValu
 		}
 		LLVMValueRef result = llvm_emit_extract_value(c, add_res, 0);
 		LLVMValueRef ok = llvm_emit_extract_value(c, add_res, 1);
-		llvm_emit_panic_on_true(c, ok, "Subtraction overflow", loc);
+		llvm_emit_panic_on_true(c, ok, "Subtraction overflow", loc, NULL, NULL, NULL);
 		return result;
 	}
 
@@ -518,13 +518,15 @@ static void llvm_emit_array_bounds_check(GenContext *c, BEValue *index, LLVMValu
 	{
 		llvm_emit_int_comp_raw(c, &result, index->type, index->type, index->value,
 		                       llvm_get_zero(c, index->type), BINARYOP_LT);
-		llvm_emit_panic_if_true(c, &result, "Negative array indexing", loc);
+		llvm_emit_panic_if_true(c, &result, "Negative array indexing", loc, "Negative array indexing (index was %d)", index, NULL);
 	}
 
 	llvm_emit_int_comp_raw(c, &result, index->type, index->type,
 	                       index->value, array_max_index,
 	                       BINARYOP_GE);
-	llvm_emit_panic_if_true(c, &result, "Array index out of bounds", loc);
+	BEValue max;
+	llvm_value_set(&max, array_max_index, index->type);
+	llvm_emit_panic_if_true(c, &result, "Array index out of bounds", loc, "Array index out of bounds (array had size %d, index was %d)", &max, index);
 }
 
 static inline void llvm_emit_subscript_addr_with_base(GenContext *c, BEValue *result, BEValue *parent, BEValue *index, SourceSpan loc)
@@ -1163,6 +1165,50 @@ void llvm_emit_array_to_vector_cast(GenContext *c, BEValue *value, Type *to_type
 	llvm_value_set(value, vector, to_type);
 }
 
+void llvm_emit_voidfail_err(GenContext *c, BEValue *value, Expr *expr)
+{
+	Expr *inner = exprptr(expr->cast_expr.expr);
+
+	if (inner->expr_kind == EXPR_IDENTIFIER)
+	{
+		Decl *decl = inner->identifier_expr.decl;
+		assert(IS_OPTIONAL(decl));
+		llvm_value_set_address_abi_aligned(value, decl_optional_ref(decl), expr->type);
+		return;
+	}
+
+	if (inner->expr_kind == EXPR_OPTIONAL)
+	{
+		llvm_emit_expr(c, value, inner->inner_expr);
+		value->type = type_lowering(expr->type);
+		return;
+	}
+
+	LLVMBasicBlockRef end_block = llvm_basic_block_new(c, "noerr_block");
+
+	// Store catch/error var
+	PUSH_OPT();
+
+	LLVMValueRef error_var = llvm_emit_alloca_aligned(c, expr->type, "error_var");
+	llvm_value_set_address_abi_aligned(value, error_var, expr->type);
+	llvm_store_raw(c, value, llvm_get_zero(c, expr->type));
+	c->opt_var = error_var;
+	c->catch_block = end_block;
+
+	BEValue expr_value;
+	llvm_emit_expr(c, &expr_value, inner);
+	llvm_value_fold_optional(c, &expr_value);
+
+	// Restore.
+	POP_OPT();
+
+	// Emit success and jump to end block.
+	llvm_emit_br(c, end_block);
+
+	llvm_emit_block(c, end_block);
+
+}
+
 void llvm_emit_num_to_vec_cast(GenContext *c, BEValue *value, Type *to_type, Type *from_type)
 {
 	llvm_value_rvalue(c, value);
@@ -1176,7 +1222,7 @@ void llvm_emit_num_to_vec_cast(GenContext *c, BEValue *value, Type *to_type, Typ
 	llvm_value_set(value, res, to_type);
 }
 
-void llvm_emit_bool_to_intvec_cast(GenContext *c, BEValue *value, Type *to_type, Type *from_type)
+static void llvm_emit_bool_to_intvec_cast(GenContext *c, BEValue *value, Type *to_type, Type *from_type)
 {
 	llvm_value_rvalue(c, value);
 	LLVMTypeRef type = llvm_get_type(c, to_type);
@@ -1184,30 +1230,95 @@ void llvm_emit_bool_to_intvec_cast(GenContext *c, BEValue *value, Type *to_type,
 	llvm_value_set(value, res, to_type);
 }
 
-void llvm_emit_void_cast(GenContext *c, Expr *expr, BEValue *value)
+// Prune the common occurrence where the optional is not used.
+static void llvm_prune_optional(GenContext *c, LLVMBasicBlockRef discard_fail)
 {
-	// Simple path
-	if (!IS_OPTIONAL(expr))
+	// Replace discard with the current block,
+	// this removes the jump in the case:
+	// br i1 %not_err, label %after_check, label %voiderr
+	//after_check:
+	// br label %voiderr
+	//voiderr:
+	// <insert point>
+	LLVMValueRef block_value = LLVMBasicBlockAsValue(c->current_block);
+	LLVMReplaceAllUsesWith(LLVMBasicBlockAsValue(discard_fail), block_value);
+
+	// We now have:
+	// br i1 %not_err, label %after_check, label %after_check
+	//after_check:
+	// <insert point>
+
+	// Find the use of this block.
+	LLVMUseRef use = LLVMGetFirstUse(block_value);
+	if (!use) return;
+
+	LLVMValueRef maybe_br = LLVMGetUser(use);
+	// Expect a br instruction.
+	if (!LLVMIsAInstruction(maybe_br) || LLVMGetInstructionOpcode(maybe_br) != LLVMBr) return;
+	if (LLVMGetNumOperands(maybe_br) != 3) return;
+	// We expect a single user.
+	LLVMUseRef other_use = LLVMGetNextUse(use);
+	while (other_use)
 	{
-		llvm_emit_expr_to_rvalue(c, expr);
-		llvm_value_set(value, NULL, type_void);
+		if (LLVMGetUser(other_use) != maybe_br) return;
+		other_use = LLVMGetNextUse(other_use);
+	}
+	// Both operands same block value
+	if (LLVMGetOperand(maybe_br, 1) != block_value || LLVMGetOperand(maybe_br, 2) != block_value) return;
+
+	// Grab the compared value
+	LLVMValueRef compared = LLVMGetOperand(maybe_br, 0);
+
+	// Remove the block and the br
+	LLVMBasicBlockRef prev_block = LLVMGetInstructionParent(maybe_br);
+	LLVMRemoveBasicBlockFromParent(c->current_block);
+	LLVMInstructionEraseFromParent(maybe_br);
+
+	// Optionally remove the comparison
+	if (!LLVMGetFirstUse(compared))
+	{
+		LLVMValueRef operand = NULL;
+		if (LLVMGetInstructionOpcode(compared) == LLVMCall)
+		{
+			operand = LLVMGetOperand(compared, 0);
+		}
+		LLVMInstructionEraseFromParent(compared);
+		if (operand) LLVMInstructionEraseFromParent(operand);
+	}
+	// Update the context
+	c->current_block = prev_block;
+	c->current_block_is_target = LLVMGetFirstBasicBlock(c->function) == prev_block;
+	LLVMPositionBuilderAtEnd(c->builder, prev_block);
+}
+
+void llvm_emit_ignored_expr(GenContext *c, Expr *expr)
+{
+	BEValue value;
+	// For a standalone catch, we can ignore storing the value.
+	if (IS_OPTIONAL(expr))
+	{
+		PUSH_OPT();
+		LLVMBasicBlockRef discard_fail = llvm_basic_block_new(c, "voiderr");
+		c->catch_block = discard_fail;
+		c->opt_var = NULL;
+		llvm_emit_expr(c, &value, expr);
+		llvm_value_fold_optional(c, &value);
+		EMIT_LOC(c, expr);
+		// We only optimize if there is no instruction the current block
+		if (!LLVMGetFirstInstruction(c->current_block))
+		{
+			llvm_prune_optional(c, discard_fail);
+		}
+		else
+		{
+			llvm_emit_br(c, discard_fail);
+			llvm_emit_block(c, discard_fail);
+		}
+		POP_OPT();
 		return;
 	}
+	llvm_emit_expr(c, &value, expr);
 
-	PUSH_OPT();
-	LLVMBasicBlockRef after_void = llvm_basic_block_new(c, "end_block");
-	c->opt_var = NULL;
-	c->catch_block = after_void;
-	llvm_emit_expr_to_rvalue(c, expr);
-	llvm_emit_br(c, after_void);
-	// Ensure we are on a branch that is non-empty.
-	if (llvm_emit_check_block_branch(c))
-	{
-		c->current_block = NULL;
-		c->current_block_is_target = false;
-	}
-	POP_OPT();
-	llvm_emit_block(c, after_void);
 }
 
 void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *value, Type *to_type, Type *from_type)
@@ -1218,6 +1329,8 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 
 	switch (cast_kind)
 	{
+		case CAST_VOIDFERR:
+			UNREACHABLE
 		case CAST_NUMVEC:
 			llvm_emit_num_to_vec_cast(c, value, to_type, from_type);
 			return;
@@ -1309,7 +1422,7 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 		case CAST_EUBOOL:
 		{
 			BEValue zero;
-			llvm_value_set_int(c, &zero, type_anyerr, 0);
+			llvm_value_set_int(c, &zero, type_anyfault, 0);
 			llvm_emit_int_comp(c, value, value, &zero, BINARYOP_NE);
 			break;
 		}
@@ -1387,15 +1500,16 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 				if (type_is_signed(value->type))
 				{
 					scratch_buffer_clear();
-					scratch_buffer_printf("Conversion to enum '%s' failed - tried to convert a negative value.", decl->name);
+					scratch_buffer_printf("Attempt to convert a negative value (%%d) to enum '%s' failed.", decl->name);
 					llvm_emit_int_comp_zero(c, &check, value, BINARYOP_LT);
-					llvm_emit_panic_on_true(c, check.value, scratch_buffer_to_string(), expr->span);
+					BEValue val;
+					llvm_emit_panic_on_true(c, check.value, "Attempt to convert negative value to enum failed.", expr->span, scratch_buffer_to_string(), value, NULL);
 				}
 				scratch_buffer_clear();
-				scratch_buffer_printf("Conversion to enum '%s' failed - the value was greater than %u.", decl->name, max - 1);
+				scratch_buffer_printf("Attempting to convert %%d to enum '%s' failed as the value exceeds the max ordinal (%u).", decl->name, max - 1);
 				LLVMValueRef val = llvm_const_int(c, value->type, max);
 				llvm_emit_int_comp_raw(c, &check, value->type, value->type, value->value, val, BINARYOP_GE);
-				llvm_emit_panic_on_true(c, check.value,scratch_buffer_to_string(), expr->span);
+				llvm_emit_panic_on_true(c, check.value, "Failed integer to enum conversion", expr->span, scratch_buffer_to_string(), value, NULL);
 			}
 			// We might need to extend or truncate.
 			if (type_size(to_type) != type_size(from_type))
@@ -1432,7 +1546,13 @@ static inline void llvm_emit_cast_expr(GenContext *context, BEValue *be_value, E
 {
 	if (expr->cast_expr.kind == CAST_VOID)
 	{
-		llvm_emit_void_cast(context, exprptr(expr->cast_expr.expr), be_value);
+		llvm_value_set(be_value, NULL, type_void);
+		llvm_emit_ignored_expr(context, exprptr(expr->cast_expr.expr));
+		return;
+	}
+	if (expr->cast_expr.kind == CAST_VOIDFERR)
+	{
+		llvm_emit_voidfail_err(context, be_value, expr);
 		return;
 	}
 	llvm_emit_exprid(context, be_value, expr->cast_expr.expr);
@@ -1506,7 +1626,6 @@ void llvm_emit_initialize_reference_temporary_const(GenContext *c, BEValue *ref,
 	assert(expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER);
 	LLVMValueRef value = llvm_emit_const_initializer(c, expr->const_expr.initializer);
 
-	LLVMTypeRef expected_type = llvm_get_type(c, canonical);
 	// Create a global const.
 	AlignSize alignment = type_alloca_alignment(expr->type);
 	LLVMTypeRef type = LLVMTypeOf(value);
@@ -2291,7 +2410,11 @@ static inline void llvm_emit_deref(GenContext *c, BEValue *value, Expr *inner, T
 	if (active_target.feature.safe_mode)
 	{
 		LLVMValueRef check = LLVMBuildICmp(c->builder, LLVMIntEQ, value->value, llvm_get_zero(c, inner->type), "checknull");
-		llvm_emit_panic_on_true(c, check, "Dereference of null pointer", inner->span);
+		scratch_buffer_clear();
+		scratch_buffer_append("Dereference of null pointer, '");
+		span_to_scratch(inner->span);
+		scratch_buffer_append("' was null.");
+		llvm_emit_panic_on_true(c, check, scratch_buffer_to_string(), inner->span, NULL, NULL, NULL);
 	}
 	// Load the pointer value.
 	llvm_value_rvalue(c, value);
@@ -2424,7 +2547,7 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 				                                                 &type_to_use, 1, args, 2);
 				value->value = llvm_emit_extract_value(c, call_res, 0);
 				LLVMValueRef ok = llvm_emit_extract_value(c, call_res, 1);
-				llvm_emit_panic_on_true(c, ok, "Signed negation overflow", expr->span);
+				llvm_emit_panic_on_true(c, ok, "Signed negation overflow", expr->span, NULL, NULL, NULL);
 				return;
 			}
 			value->value = LLVMBuildNeg(c->builder, value->value, "neg");
@@ -2483,14 +2606,15 @@ void llvm_emit_len_for_expr(GenContext *c, BEValue *be_value, BEValue *expr_to_l
 	}
 }
 
-static void llvm_emit_trap_negative(GenContext *c, Expr *expr, LLVMValueRef value, const char *error)
+static void llvm_emit_trap_negative(GenContext *c, Expr *expr, LLVMValueRef value, const char *error,
+                                    BEValue *index_val)
 {
 	if (!active_target.feature.safe_mode) return;
 	if (type_is_integer_unsigned(expr->type->canonical)) return;
 
 	LLVMValueRef zero = llvm_const_int(c, expr->type, 0);
 	LLVMValueRef ok = LLVMBuildICmp(c->builder, LLVMIntSLT, value, zero, "underflow");
-	llvm_emit_panic_on_true(c, ok, error, expr->span);
+	llvm_emit_panic_on_true(c, ok, "Negative value", expr->span, error, index_val, NULL);
 }
 
 static void llvm_emit_trap_zero(GenContext *c, Type *type, LLVMValueRef value, const char *error, SourceSpan loc)
@@ -2518,14 +2642,16 @@ static void llvm_emit_trap_zero(GenContext *c, Type *type, LLVMValueRef value, c
 
 	LLVMValueRef zero = llvm_get_zero(c, type);
 	LLVMValueRef ok = type_is_integer(type) ? LLVMBuildICmp(c->builder, LLVMIntEQ, value, zero, "zero") : LLVMBuildFCmp(c->builder, LLVMRealUEQ, value, zero, "zero");
-	llvm_emit_panic_on_true(c, ok, error, loc);
+	llvm_emit_panic_on_true(c, ok, error, loc, NULL, NULL, NULL);
 }
 
 
 static void llvm_emit_trap_invalid_shift(GenContext *c, LLVMValueRef value, Type *type, const char *error, SourceSpan loc)
 {
 	if (!active_target.feature.safe_mode) return;
+	BEValue val;
 	type = type_flatten(type);
+	llvm_value_set(&val, value, type);
 	if (type_flat_is_vector(type))
 	{
 		Type *vec_base = type->array.base;
@@ -2536,16 +2662,16 @@ static void llvm_emit_trap_invalid_shift(GenContext *c, LLVMValueRef value, Type
 		{
 			LLVMValueRef flat_max = llvm_emit_call_intrinsic(c, intrinsic_id.vector_reduce_umax, &llvm_type, 1, &value, 1);
 			LLVMValueRef equal_or_greater = LLVMBuildICmp(c->builder, LLVMIntUGE, flat_max, max, "shift_exceeds");
-			llvm_emit_panic_on_true(c, equal_or_greater, error, loc);
+			llvm_emit_panic_on_true(c, equal_or_greater, "Invalid shift", loc, error, &val, NULL);
 			return;
 		}
 		LLVMValueRef flat_min = llvm_emit_call_intrinsic(c, intrinsic_id.vector_reduce_smin, &llvm_type, 1, &value, 1);
 		LLVMValueRef zero = llvm_const_int(c, vec_base, 0);
 		LLVMValueRef negative = LLVMBuildICmp(c->builder, LLVMIntSLT, flat_min, zero, "shift_underflow");
-		llvm_emit_panic_on_true(c, negative, error, loc);
+		llvm_emit_panic_on_true(c, negative, "Invalid shift", loc, error, &val, NULL);
 		LLVMValueRef flat_max = llvm_emit_call_intrinsic(c, intrinsic_id.vector_reduce_smax, &llvm_type, 1, &value, 1);
 		LLVMValueRef equal_or_greater = LLVMBuildICmp(c->builder, LLVMIntSGE, flat_max, max, "shift_exceeds");
-		llvm_emit_panic_on_true(c, equal_or_greater, error, loc);
+		llvm_emit_panic_on_true(c, equal_or_greater, "Invalid shift", loc, error, &val, NULL);
 		return;
 
 	}
@@ -2556,14 +2682,14 @@ static void llvm_emit_trap_invalid_shift(GenContext *c, LLVMValueRef value, Type
 		if (type_is_unsigned(type))
 		{
 			LLVMValueRef equal_or_greater = LLVMBuildICmp(c->builder, LLVMIntUGE, value, max, "shift_exceeds");
-			llvm_emit_panic_on_true(c, equal_or_greater, error, loc);
+			llvm_emit_panic_on_true(c, equal_or_greater, "Invalid shift", loc, error, &val, NULL);
 			return;
 		}
 		LLVMValueRef zero = llvm_const_int(c, type, 0);
 		LLVMValueRef negative = LLVMBuildICmp(c->builder, LLVMIntSLT, value, zero, "shift_underflow");
-		llvm_emit_panic_on_true(c, negative, error, loc);
+		llvm_emit_panic_on_true(c, negative, "Invalid shift", loc, error, &val, NULL);
 		LLVMValueRef equal_or_greater = LLVMBuildICmp(c->builder, LLVMIntSGE, value, max, "shift_exceeds");
-		llvm_emit_panic_on_true(c, equal_or_greater, error, loc);
+		llvm_emit_panic_on_true(c, equal_or_greater, "Invalid shift", loc, error, &val, NULL);
 	}
 }
 
@@ -2646,13 +2772,13 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 		assert(len.value);
 		BEValue exceeds_size;
 		llvm_emit_int_comp(c, &exceeds_size, &start_index, &len, BINARYOP_GT);
-		llvm_emit_panic_if_true(c, &exceeds_size, "Index exceeds array length.", slice->span);
+		llvm_emit_panic_if_true(c, &exceeds_size, "Index exceeds array len", slice->span, "Index exceeds array length (array had size %d, index was %d).", &len, &start_index);
 	}
 
 	// Insert trap for negative start offset for non pointers.
 	if (parent_type->type_kind != TYPE_POINTER)
 	{
-		llvm_emit_trap_negative(c, start, start_index.value, "Negative index");
+		llvm_emit_trap_negative(c, start, start_index.value, "Negative indexing (%d)", &start_index);
 	}
 
 	Type *end_type;
@@ -2681,12 +2807,12 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 		{
 			BEValue excess;
 			llvm_emit_int_comp(c, &excess, &start_index, &end_index, BINARYOP_GT);
-			llvm_emit_panic_if_true(c, &excess, "Negative size", slice->span);
+			llvm_emit_panic_if_true(c, &excess, "Negative size", slice->span, "Negative size (start %d is less than end %d)", &start_index, &end_index);
 
 			if (len.value)
 			{
 				llvm_emit_int_comp(c, &excess, &len, &end_index, BINARYOP_LT);
-				llvm_emit_panic_if_true(c, &excess, "Size exceeds index", slice->span);
+				llvm_emit_panic_if_true(c, &excess, "Size exceeds index", slice->span, "Size exceeds index (end index was %d, size was %d)", &end_index, &len);
 			}
 		}
 	}
@@ -2779,7 +2905,7 @@ static void llvm_emit_slice_copy(GenContext *c, BEValue *be_value, Expr *expr)
 		llvm_emit_subarray_len(c, &assigned_to, &to_len);
 		BEValue comp;
 		llvm_emit_int_comp(c, &comp, &to_len, &from_len, BINARYOP_NE);
-		llvm_emit_panic_if_true(c, &comp, "Subarray copy length mismatch.", expr->span);
+		llvm_emit_panic_if_true(c, &comp, "Length mismatch", expr->span, "Subarray copy length mismatch (%d != %d).", &to_len, &from_len);
 	}
 
 	Type *pointer_type = to_pointer.type->pointer;
@@ -3212,7 +3338,7 @@ static inline LLVMValueRef llvm_emit_mult_int(GenContext *c, Type *type, LLVMVal
 		                                                 2);
 		LLVMValueRef val = llvm_emit_extract_value(c, call_res, 0);
 		LLVMValueRef ok = llvm_emit_extract_value(c, call_res, 1);
-		llvm_emit_panic_on_true(c, ok, "Integer multiplication overflow", loc);
+		llvm_emit_panic_on_true(c, ok, "Integer multiplication overflow", loc, NULL, NULL, NULL);
 		return val;
 	}
 	return LLVMBuildMul(c->builder, left, right, "mul");
@@ -3433,7 +3559,6 @@ void llvm_emit_comp(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, 
 	assert(binary_op >= BINARYOP_GT && binary_op <= BINARYOP_EQ);
 	switch (lhs->type->type_kind)
 	{
-		case TYPE_POISONED:
 		case TYPE_VOID:
 			UNREACHABLE;
 		case TYPE_BOOL:
@@ -3452,26 +3577,20 @@ void llvm_emit_comp(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, 
 			llvm_emit_array_comp(c, result, lhs, rhs, binary_op);
 			return;
 		case TYPE_ANY:
-		case TYPE_ANYERR:
+		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
 		case TYPE_ENUM:
 		case TYPE_FAULTTYPE:
 		case TYPE_TYPEDEF:
 		case TYPE_DISTINCT:
-		case TYPE_INFERRED_ARRAY:
-		case TYPE_UNTYPED_LIST:
 		case TYPE_OPTIONAL:
-		case TYPE_OPTIONAL_ANY:
-		case TYPE_TYPEINFO:
-		case TYPE_MEMBER:
-		case TYPE_INFERRED_VECTOR:
+		case CT_TYPES:
 			UNREACHABLE
 		case TYPE_FUNC:
 			break;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
-		case TYPE_SCALED_VECTOR:
 		case TYPE_FLEXIBLE_ARRAY:
 			UNREACHABLE
 		case TYPE_SUBARRAY:
@@ -3517,7 +3636,7 @@ static void llvm_emit_else(GenContext *c, BEValue *be_value, Expr *expr)
 	LLVMBasicBlockRef success_end_block = llvm_get_current_block_if_in_use(c);
 
 	// Only jump to phi if we didn't have an immediate jump. That would
-	// for example happen on "{| defer foo(); return Foo.ERR! |} ?? 123"
+	// for example happen on "{| defer foo(); return Foo.ERR?; |} ?? 123"
 	if (success_end_block) llvm_emit_br(c, phi_block);
 
 	// Emit else
@@ -3811,7 +3930,7 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 			break;
 		case BINARYOP_SHR:
 			rhs_value = llvm_zext_trunc(c, rhs_value, LLVMTypeOf(lhs_value));
-			llvm_emit_trap_invalid_shift(c, rhs_value, lhs_type, "Shift amount out of range.", expr->span);
+			llvm_emit_trap_invalid_shift(c, rhs_value, lhs_type, "Shift amount out of range (was %s).", expr->span);
 			val = type_is_unsigned(lhs_type)
 			      ? LLVMBuildLShr(c->builder, lhs_value, rhs_value, "lshr")
 			      : LLVMBuildAShr(c->builder, lhs_value, rhs_value, "ashr");
@@ -3819,7 +3938,7 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 			break;
 		case BINARYOP_SHL:
 			rhs_value = llvm_zext_trunc(c, rhs_value, LLVMTypeOf(lhs_value));
-			llvm_emit_trap_invalid_shift(c, rhs_value, lhs_type, "Shift amount out of range.", expr->span);
+			llvm_emit_trap_invalid_shift(c, rhs_value, lhs_type, "Shift amount out of range (was %s).", expr->span);
 			val = LLVMBuildShl(c->builder, lhs_value, rhs_value, "shl");
 			val = LLVMBuildFreeze(c->builder, val, "");
 			break;
@@ -3950,92 +4069,6 @@ void llvm_emit_try_assign_try_catch(GenContext *c, bool is_try, BEValue *be_valu
 }
 
 
-static inline void llvm_emit_catch_expr(GenContext *c, BEValue *value, Expr *expr)
-{
-	Expr *inner = expr->inner_expr;
-
-	if (inner->expr_kind == EXPR_IDENTIFIER)
-	{
-		Decl *decl = inner->identifier_expr.decl;
-		assert(IS_OPTIONAL(decl));
-		llvm_value_set_address_abi_aligned(value, decl_optional_ref(decl), type_anyerr);
-		return;
-	}
-
-	if (inner->expr_kind == EXPR_OPTIONAL)
-	{
-		llvm_emit_expr(c, value, inner->inner_expr);
-		return;
-	}
-
-	LLVMBasicBlockRef end_block = llvm_basic_block_new(c, "noerr_block");
-
-	// Store catch/error var
-	PUSH_OPT();
-
-	LLVMValueRef error_var = llvm_emit_alloca_aligned(c, type_anyerr, "error_var");
-	llvm_value_set_address_abi_aligned(value, error_var, type_anyerr);
-	llvm_store_raw(c, value, llvm_get_zero(c, type_anyerr));
-	c->opt_var = error_var;
-	c->catch_block = end_block;
-
-	BEValue expr_value;
-	llvm_emit_expr(c, &expr_value, inner);
-	llvm_value_fold_optional(c, &expr_value);
-
-	// Restore.
-	POP_OPT();
-
-	// Emit success and jump to end block.
-	llvm_emit_br(c, end_block);
-
-	llvm_emit_block(c, end_block);
-
-}
-void llvm_emit_try_expr(GenContext *c, BEValue *value, Expr *expr)
-{
-
-	LLVMBasicBlockRef error_block = llvm_basic_block_new(c, "error_block");
-	LLVMBasicBlockRef no_err_block = llvm_basic_block_new(c, "noerr_block");
-	LLVMBasicBlockRef phi_block = llvm_basic_block_new(c, "phi_trycatch_block");
-
-	// Store catch/error var
-	PUSH_OPT();
-
-	// Set the catch/error var
-	c->opt_var = NULL;
-	c->catch_block = error_block;
-
-	llvm_emit_expr(c, value, expr->inner_expr);
-	llvm_value_fold_optional(c, value);
-
-	// Restore.
-	POP_OPT();
-
-	// Emit success and jump to phi.
-	llvm_emit_br(c, no_err_block);
-	llvm_emit_block(c, no_err_block);
-	llvm_emit_br(c, phi_block);
-
-	// Emit error and jump to phi
-	llvm_emit_block(c, error_block);
-	llvm_emit_br(c, phi_block);
-
-	llvm_emit_block(c, phi_block);
-
-	LLVMValueRef	phi = LLVMBuildPhi(c->builder, llvm_get_type(c, expr->type), "val");
-	LLVMValueRef	lhs = llvm_const_int(c, type_bool, 1);
-	LLVMValueRef	rhs = llvm_const_int(c, type_bool, 0);
-
-	LLVMValueRef logic_values[2] = { lhs, rhs };
-	LLVMBasicBlockRef blocks[2] = { no_err_block, error_block };
-	LLVMAddIncoming(phi, logic_values, blocks, 2);
-
-	llvm_value_set(value, phi, expr->type);
-}
-
-
-
 /**
  * This is the foo? instruction.
  */
@@ -4048,7 +4081,7 @@ static inline void llvm_emit_rethrow_expr(GenContext *c, BEValue *be_value, Expr
 	PUSH_OPT();
 
 	// Set the catch/error var
-	LLVMValueRef error_var = llvm_emit_alloca_aligned(c, type_anyerr, "error_var");
+	LLVMValueRef error_var = llvm_emit_alloca_aligned(c, type_anyfault, "error_var");
 
 	c->opt_var = error_var;
 	c->catch_block = guard_block;
@@ -4071,7 +4104,7 @@ static inline void llvm_emit_rethrow_expr(GenContext *c, BEValue *be_value, Expr
 	{
 		llvm_emit_statement_chain(c, expr->rethrow_expr.cleanup);
 		BEValue value;
-		llvm_value_set_address_abi_aligned(&value, error_var, type_anyerr);
+		llvm_value_set_address_abi_aligned(&value, error_var, type_anyfault);
 		llvm_emit_return_abi(c, NULL, &value);
 		c->current_block = NULL;
 		c->current_block_is_target = false;
@@ -4094,7 +4127,7 @@ static inline void llvm_emit_force_unwrap_expr(GenContext *c, BEValue *be_value,
 	PUSH_OPT();
 
 	// Set the catch/error var
-	LLVMValueRef error_var = llvm_emit_alloca_aligned(c, type_anyerr, "error_var");
+	LLVMValueRef error_var = llvm_emit_alloca_aligned(c, type_anyfault, "error_var");
 
 	c->opt_var = error_var;
 	c->catch_block = panic_block;
@@ -4118,12 +4151,16 @@ static inline void llvm_emit_force_unwrap_expr(GenContext *c, BEValue *be_value,
 	{
 		// TODO, we should add info about the error.
 		SourceSpan loc = expr->span;
-		llvm_emit_panic(c, "Runtime error force unwrap!", loc);
+		BEValue *varargs = NULL;
+		BEValue fault_arg;
+		llvm_value_set_address(&fault_arg, error_var, type_anyfault, type_abi_alignment(type_anyfault));
+		llvm_emit_any_from_value(c, &fault_arg, type_anyfault);
+		vec_add(varargs, fault_arg);
+		llvm_emit_panic(c, "Force unwrap failed!", loc, "Unexpected fault '%s' was unwrapped!", varargs);
 		LLVMBuildUnreachable(c->builder);
 		c->current_block = NULL;
 		c->current_block_is_target = false;
 	}
-
 	llvm_emit_block(c, no_err_block);
 
 }
@@ -4548,13 +4585,13 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 			LLVMValueRef value;
 			if (decl)
 			{
-				value = LLVMBuildPtrToInt(c->builder, llvm_get_ref(c, decl), llvm_get_type(c, type_anyerr), "");
+				value = LLVMBuildPtrToInt(c->builder, llvm_get_ref(c, decl), llvm_get_type(c, type_anyfault), "");
 			}
 			else
 			{
-				value = llvm_get_zero(c, type_anyerr);
+				value = llvm_get_zero(c, type_anyfault);
 			}
-			llvm_value_set(be_value, value, type_anyerr);
+			llvm_value_set(be_value, value, type_anyfault);
 			return;
 		}
 		case CONST_ENUM:
@@ -4609,13 +4646,11 @@ static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVM
 		case TYPE_DISTINCT:
 		case TYPE_ENUM:
 		case TYPE_FAULTTYPE:
-		case TYPE_ANYERR:
+		case TYPE_ANYFAULT:
 		case TYPE_BITSTRUCT:
 		case TYPE_OPTIONAL:
 		case CT_TYPES:
-		case TYPE_OPTIONAL_ANY:
 		case TYPE_FLEXIBLE_ARRAY:
-		case TYPE_SCALED_VECTOR:
 			UNREACHABLE
 			break;
 		case TYPE_BOOL:
@@ -4975,7 +5010,7 @@ void llvm_add_abi_call_attributes(GenContext *c, LLVMValueRef call_value, int co
 
 }
 
-static inline void llvm_emit_vararg_parameter(GenContext *c, BEValue *value, Type *vararg_type, ABIArgInfo *abi_info, Expr **varargs, Expr *vararg_splat)
+void llvm_emit_vararg_parameter(GenContext *c, BEValue *value, Type *vararg_type, ABIArgInfo *abi_info, Expr **varargs, Expr *vararg_splat)
 {
 	REMINDER("All varargs should be called with non-alias!");
 
@@ -5175,7 +5210,7 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 		BEValue error_holder = *result_value;
 		if (error_var)
 		{
-			llvm_value_set_address_abi_aligned(&error_holder, c->opt_var, type_anyerr);
+			llvm_value_set_address_abi_aligned(&error_holder, c->opt_var, type_anyfault);
 		}
 
 		LLVMValueRef stored_error;
@@ -5280,19 +5315,16 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 	Expr **args = expr->call_expr.arguments;
 	Expr **varargs = NULL;
 	Expr *vararg_splat = NULL;
-	if (prototype->variadic != VARIADIC_NONE)
+	if (expr->call_expr.splat_vararg)
 	{
-		if (expr->call_expr.splat_vararg)
-		{
-			vararg_splat = expr->call_expr.splat;
-		}
-		else
-		{
-			varargs = expr->call_expr.varargs;
-		}
+		vararg_splat = expr->call_expr.splat;
+	}
+	else
+	{
+		varargs = expr->call_expr.varargs;
 	}
 	FunctionPrototype copy;
-	if (prototype->variadic == VARIADIC_RAW)
+	if (prototype->raw_variadic)
 	{
 		if (varargs || vararg_splat)
 		{
@@ -5394,7 +5426,6 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 		}
 		else
 		{
-			assert(prototype->variadic == VARIADIC_TYPED || prototype->variadic == VARIADIC_ANY);
 			llvm_emit_vararg_parameter(c, &temp_value, param, info, varargs, vararg_splat);
 		}
 
@@ -5404,7 +5435,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 
 	// 9. Typed varargs
 
-	if (prototype->variadic == VARIADIC_RAW)
+	if (prototype->raw_variadic)
 	{
 		if (prototype->abi_varargs)
 		{
@@ -5481,8 +5512,22 @@ static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type
 		return;
 	}
 
-	LLVMValueRef old_ret_out = c->return_out;
+	Ast *value = ast_next(&current);
 
+	// Just a return statement, in this case we can just do the expression.
+	if (value->ast_kind == AST_BLOCK_EXIT_STMT && !value->return_stmt.cleanup && !value->return_stmt.cleanup_fail)
+	{
+		Expr *expr = value->return_stmt.expr;
+		if (!expr)
+		{
+			llvm_value_set(be_value, NULL, type_void);
+			return;
+		}
+		llvm_emit_expr(c, be_value, expr);
+		return;
+	}
+
+	LLVMValueRef old_ret_out = c->return_out;
 	LLVMValueRef error_out = c->opt_var;
 	LLVMBasicBlockRef error_block = c->catch_block;
 	LLVMValueRef return_out = NULL;
@@ -5505,7 +5550,6 @@ static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type
 	c->catch_block = NULL;
 
 	// Process all but the last statement.
-	Ast *value = ast_next(&current);
 	while (value->next)
 	{
 		llvm_emit_stmt(c, value);
@@ -5535,14 +5579,16 @@ static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type
 			goto DONE;
 		}
 
-		// Optional? Then we use the normal path
-		if (IS_OPTIONAL(ret_expr)) break;
-
-		// Optimization, emit directly to value
-		llvm_emit_expr(c, be_value, ret_expr);
-		// And remove the alloca
 		LLVMInstructionEraseFromParent(exit.block_return_out);
-		goto DONE;
+
+		// Restore
+		c->return_out = old_ret_out;
+		c->catch_block = error_block;
+		c->opt_var = error_out;
+
+		// Output directly to a value
+		llvm_emit_expr(c, be_value, ret_expr);
+		return;
 
 	} while (0);
 
@@ -5660,8 +5706,8 @@ static inline void llvm_emit_optional(GenContext *c, BEValue *be_value, Expr *ex
 
 	// Finally we need to replace the result with something undefined here.
 	// It will be optimized away.
-	Type *type = type_no_optional(expr->type);
-	if (type->canonical == type_void)
+	Type *type = type_lowering(expr->type);
+	if (type == type_void)
 	{
 		llvm_value_set(be_value, NULL, type_void);
 		return;
@@ -5772,8 +5818,8 @@ static inline void llvm_emit_try_unwrap(GenContext *c, BEValue *value, Expr *exp
 	if (!expr->try_unwrap_expr.optional)
 	{
 		LLVMValueRef fail_ref = decl_optional_ref(expr->try_unwrap_expr.decl);
-		LLVMValueRef errv = llvm_load(c, llvm_get_type(c, type_anyerr), fail_ref, type_abi_alignment(type_anyerr), "load.err");
-		LLVMValueRef result = LLVMBuildICmp(c->builder, LLVMIntEQ, errv, llvm_get_zero(c, type_anyerr), "result");
+		LLVMValueRef errv = llvm_load(c, llvm_get_type(c, type_anyfault), fail_ref, type_abi_alignment(type_anyfault), "load.err");
+		LLVMValueRef result = LLVMBuildICmp(c->builder, LLVMIntEQ, errv, llvm_get_zero(c, type_anyfault), "result");
 		llvm_value_set(value, result, type_bool);
 		return;
 	}
@@ -5805,8 +5851,8 @@ void llvm_emit_catch_unwrap(GenContext *c, BEValue *value, Expr *expr)
 	}
 	else
 	{
-		LLVMValueRef temp_err = llvm_emit_alloca_aligned(c, type_anyerr, "temp_err");
-		llvm_value_set_address_abi_aligned(&addr, temp_err, type_anyerr);
+		LLVMValueRef temp_err = llvm_emit_alloca_aligned(c, type_anyfault, "temp_err");
+		llvm_value_set_address_abi_aligned(&addr, temp_err, type_anyfault);
 	}
 
 	PUSH_OPT();
@@ -5828,11 +5874,11 @@ void llvm_emit_catch_unwrap(GenContext *c, BEValue *value, Expr *expr)
 
 	POP_OPT();
 
-	llvm_store_raw(c, &addr, llvm_get_zero(c, type_anyerr));
+	llvm_store_raw(c, &addr, llvm_get_zero(c, type_anyfault));
 	llvm_emit_br(c, catch_block);
 	llvm_emit_block(c, catch_block);
 	llvm_value_rvalue(c, &addr);
-	llvm_value_set(value, addr.value, type_anyerr);
+	llvm_value_set(value, addr.value, type_anyfault);
 }
 
 
@@ -5877,7 +5923,7 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 					llvm_emit_cond_br(c, &check, exit, next);
 					llvm_emit_block(c, next);
 				}
-				llvm_emit_panic(c, "Attempted to access 'inner' on non composite type", expr->span);
+				llvm_emit_panic(c, "Attempted to access 'inner' on non composite type", expr->span, NULL, NULL);
 				c->current_block = NULL;
 				c->current_block_is_target = false;
 				LLVMBuildUnreachable(c->builder);
@@ -5908,7 +5954,7 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 					llvm_emit_cond_br(c, &check, exit, next);
 					llvm_emit_block(c, next);
 				}
-				llvm_emit_panic(c, "Attempted to access 'names' on non enum/fault type.", expr->span);
+				llvm_emit_panic(c, "Attempted to access 'names' on non enum/fault type.", expr->span, NULL, NULL);
 				c->current_block = NULL;
 				c->current_block_is_target = false;
 				LLVMBuildUnreachable(c->builder);
@@ -5943,7 +5989,7 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 					llvm_emit_cond_br(c, &check, exit, next);
 					llvm_emit_block(c, next);
 				}
-				llvm_emit_panic(c, "Attempted to access 'len' on non array type", expr->span);
+				llvm_emit_panic(c, "Attempted to access 'len' on non array type", expr->span, NULL, NULL);
 				c->current_block = NULL;
 				c->current_block_is_target = false;
 				LLVMBuildUnreachable(c->builder);
@@ -6016,13 +6062,30 @@ void llvm_emit_try_unwrap_chain(GenContext *c, BEValue *value, Expr *expr)
 
 }
 
-static inline void llvm_emit_variant(GenContext *c, BEValue *value, Expr *expr)
+void llvm_emit_any_from_value(GenContext *c, BEValue *value, Type *type)
 {
+	llvm_value_addr(c, value);
+	BEValue typeid;
+	llvm_emit_typeid(c, &typeid, type);
+	llvm_value_rvalue(c, &typeid);
+	LLVMValueRef var = llvm_get_undef(c, type_any);
+	var = llvm_emit_insert_value(c, var, value->value, 0);
+	var = llvm_emit_insert_value(c, var, typeid.value, 1);
+	llvm_value_set(value, var, type_any);
+}
+
+static inline void llvm_emit_any(GenContext *c, BEValue *value, Expr *expr)
+{
+	if (!expr->any_expr.ptr && !expr->any_expr.type_id)
+	{
+		llvm_value_set(value, llvm_get_zero(c, type_any), type_any);
+		return;
+	}
 	BEValue ptr;
-	llvm_emit_exprid(c, &ptr, expr->variant_expr.ptr);
+	llvm_emit_exprid(c, &ptr, expr->any_expr.ptr);
 	llvm_value_rvalue(c, &ptr);
 	BEValue typeid;
-	llvm_emit_exprid(c, &typeid, expr->variant_expr.type_id);
+	llvm_emit_exprid(c, &typeid, expr->any_expr.type_id);
 	llvm_value_rvalue(c, &typeid);
 	LLVMValueRef var = llvm_get_undef(c, type_any);
 	var = llvm_emit_insert_value(c, var, ptr.value, 0);
@@ -6084,7 +6147,7 @@ static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Ex
 		case ACCESS_FAULTNAME:
 		{
 			Type *inner_type = type_no_optional(inner->type)->canonical;
-			assert(inner_type->type_kind == TYPE_FAULTTYPE || inner_type->type_kind == TYPE_ANYERR);
+			assert(inner_type->type_kind == TYPE_FAULTTYPE || inner_type->type_kind == TYPE_ANYFAULT);
 			llvm_value_rvalue(c, be_value);
 			LLVMValueRef val = llvm_emit_alloca_aligned(c, type_chars, "faultname_zero");
 			BEValue zero;
@@ -6124,6 +6187,13 @@ static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Ex
 			LLVMValueRef val = llvm_zext_trunc(c, be_value->value, c->size_type);
 			llvm_value_set_address(be_value, llvm_emit_pointer_gep_raw(c, subarray, ptr, val),
 			                       type_chars, llvm_abi_alignment(c, subarray));
+			return;
+		}
+		case ACCESS_TYPEOFANYFAULT:
+		{
+			llvm_value_addr(c, be_value);
+			LLVMValueRef value = llvm_load(c, c->ptr_type, be_value->value, be_value->alignment, "");
+			llvm_value_set_address(be_value, value, type_typeid, type_alloca_alignment(type_typeid));
 			return;
 		}
 		case ACCESS_TYPEOFANY:
@@ -6226,8 +6296,8 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_RETVAL:
 			*value = c->retval;
 			return;
-		case EXPR_VARIANT:
-			llvm_emit_variant(c, value, expr);
+		case EXPR_ANY:
+			llvm_emit_any(c, value, expr);
 			return;
 		case EXPR_TRY_UNWRAP_CHAIN:
 			llvm_emit_try_unwrap_chain(c, value, expr);
@@ -6260,12 +6330,6 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			return;
 		case EXPR_OPTIONAL:
 			llvm_emit_optional(c, value, expr);
-			return;
-		case EXPR_TRY:
-			llvm_emit_try_expr(c, value, expr);
-			return;
-		case EXPR_CATCH:
-			llvm_emit_catch_expr(c, value, expr);
 			return;
 		case EXPR_NOP:
 			llvm_value_set(value, NULL, type_void);

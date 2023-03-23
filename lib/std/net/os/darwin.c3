@@ -1,7 +1,7 @@
 module std::net::os;
 import libc;
 
-$if (env::OS_TYPE == OsType.MACOSX)
+$if (env::OS_TYPE == OsType.MACOS)
 
 const AI_NUMERICSERV = 0x1000;
 const AI_ALL = 0x100;

@@ -26,7 +26,7 @@ static inline void copy_reg_ref(CopyStruct *c, void *original, void *result)
 	c->current_fixup++;
 	if (c->current_fixup == &c->fixups[MAX_FIXUPS])
 	{
-		error_exit("Too many fixups for macros.");
+		error_exit("Too many fix-ups for macros.");
 	}
 }
 
@@ -139,6 +139,7 @@ static DesignatorElement **macro_copy_designator_list(CopyStruct *c, DesignatorE
 		switch (to_copy->kind)
 		{
 			case DESIGNATOR_FIELD:
+				MACRO_COPY_EXPR(element->field_expr);
 				// Nothing needed
 				break;
 			case DESIGNATOR_RANGE:
@@ -293,7 +294,7 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 	Expr *expr = expr_copy(source_expr);
 	switch (source_expr->expr_kind)
 	{
-		case EXPR_VARIANTSWITCH:
+		case EXPR_ANYSWITCH:
 			UNREACHABLE
 		case EXPR_MACRO_BODY_EXPANSION:
 			MACRO_COPY_EXPR_LIST(expr->body_expansion_expr.values);
@@ -309,7 +310,6 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_SWIZZLE:
 			MACRO_COPY_EXPRID(expr->swizzle_expr.parent);
 			return expr;
-		case EXPR_FLATPATH:
 		case EXPR_NOP:
 		case EXPR_BUILTIN:
 		case EXPR_RETVAL:
@@ -331,9 +331,9 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_DECL:
 			MACRO_COPY_DECL(expr->decl_expr);
 			return expr;
-		case EXPR_VARIANT:
-			MACRO_COPY_EXPRID(expr->variant_expr.ptr);
-			MACRO_COPY_EXPRID(expr->variant_expr.type_id);
+		case EXPR_ANY:
+			MACRO_COPY_EXPRID(expr->any_expr.ptr);
+			MACRO_COPY_EXPRID(expr->any_expr.type_id);
 			return expr;
 		case EXPR_CT_CALL:
 			MACRO_COPY_EXPR(expr->ct_call_expr.main_var);
@@ -413,8 +413,6 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			}
 			UNREACHABLE
 		case EXPR_FORCE_UNWRAP:
-		case EXPR_TRY:
-		case EXPR_CATCH:
 		case EXPR_OPTIONAL:
 		case EXPR_GROUP:
 		case EXPR_STRINGIFY:
@@ -526,8 +524,10 @@ void doc_ast_copy(CopyStruct *c, AstContractStmt *doc)
 		case CONTRACT_CHECKED:
 			MACRO_COPY_EXPR(doc->contract.decl_exprs);
 			break;
+		case CONTRACT_OPTIONALS:
+			MACRO_COPY_AST_LIST(doc->faults);
+			break;
 		case CONTRACT_PARAM:
-		case CONTRACT_ERRORS:
 		case CONTRACT_PURE:
 		case CONTRACT_UNKNOWN:
 			break;
@@ -552,6 +552,16 @@ RETRY:
 			break;
 		case AST_DECLS_STMT:
 			MACRO_COPY_DECL_LIST(ast->decls_stmt);
+			break;
+		case AST_CONTRACT_FAULT:
+			if (ast->contract_fault.resolved)
+			{
+				MACRO_COPY_DECL(ast->contract_fault.decl);
+			}
+			else
+			{
+				MACRO_COPY_TYPE(ast->contract_fault.type);
+			}
 			break;
 		case AST_CONTRACT:
 			doc_ast_copy(c, &source->contract);
@@ -653,7 +663,7 @@ RETRY:
 			MACRO_COPY_ASTID(ast->if_stmt.else_body);
 			MACRO_COPY_ASTID(ast->if_stmt.then_body);
 			break;
-		case AST_NEXT_STMT:
+		case AST_NEXTCASE_STMT:
 			MACRO_COPY_EXPR(ast->nextcase_stmt.expr);
 			break;
 		case AST_NOP_STMT:
@@ -802,7 +812,6 @@ TypeInfo *copy_type_info(CopyStruct *c, TypeInfo *source)
 		case TYPE_INFO_INFERRED_ARRAY:
 		case TYPE_INFO_SUBARRAY:
 		case TYPE_INFO_INFERRED_VECTOR:
-		case TYPE_INFO_SCALED_VECTOR:
 			assert(source->resolve_status == RESOLVE_NOT_DONE);
 			copy->array.base = copy_type_info(c, source->array.base);
 			return copy;

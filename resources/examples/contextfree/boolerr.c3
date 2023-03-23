@@ -3,11 +3,11 @@ import libc;
 import std::io;
 
 struct Doc { Head *head; }
-struct Head { VarString* title; }
+struct Head { DString* title; }
 
 struct Summary
 {
-	VarString* title;
+	DString* title;
 	bool ok;
 }
 
@@ -44,7 +44,7 @@ fn bool contains(String haystack, String needle)
 
 macro @dupe(value)
 {
-	$typeof(&value) temp = malloc_checked($typeof(value))?;
+	$typeof(&value) temp = malloc_checked($typeof(value))!;
 	*temp = value;
 	return temp;
 }
@@ -56,11 +56,11 @@ fault ReadError
 
 fn Doc! readDoc(String url)
 {
-	if (contains(url, "fail")) return ReadError.BAD_READ!;
+	if (contains(url, "fail")) return ReadError.BAD_READ?;
 	if (contains(url, "head-missing")) return { .head = null };
 	if (contains(url, "title-missing")) return { @dupe(Head { .title = null }) };
-	if (contains(url, "title-empty")) return { @dupe(Head { .title = @dupe((VarString)null) }) };
-	VarString str;
+	if (contains(url, "title-empty")) return { @dupe(Head { .title = @dupe((DString)null) }) };
+	DString str;
 	str.printf("Title of %s", url);
 	return { @dupe(Head { .title = @dupe(str) }) };
 }
@@ -96,9 +96,9 @@ fault TitleResult
 
 fn bool! isTitleNonEmpty(Doc doc)
 {
-	if (!doc.head) return TitleResult.TITLE_MISSING!;
-	VarString* head = doc.head.title;
-	if (!head) return TitleResult.TITLE_MISSING!;
+	if (!doc.head) return TitleResult.TITLE_MISSING?;
+	DString* head = doc.head.title;
+	if (!head) return TitleResult.TITLE_MISSING?;
 	return head.len() > 0;
 }
 
@@ -133,7 +133,7 @@ fn void main()
             bool! has_title = readWhetherTitleNonEmpty(url);
             // This looks a bit less than elegant, but as you see it's mostly due to having to
             // use printf here.
-            io::printf("  Has title: %s vs %s\n", bool_to_string(has_title) ?? (catch? has_title).nameof, has_title ?? false);
+            io::printf("  Has title: %s vs %s\n", bool_to_string(has_title) ?? (@catchof(has_title)).nameof, has_title ?? false);
         };
         dynamic_arena.reset();
     }

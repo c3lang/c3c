@@ -51,9 +51,9 @@ fn void*! simple_heap_allocator_function(Allocator* this, usz size, usz alignmen
             if (!old_pointer) nextcase CALLOC;
             return heap._realloc(old_pointer, size);
         case RESET:
-            return AllocationFailure.UNSUPPORTED_OPERATION!;
+            return AllocationFailure.UNSUPPORTED_OPERATION?;
         case ALIGNED_FREE:
-            @aligned_free(heap._free, old_pointer)?;
+            @aligned_free(heap._free, old_pointer)!;
             return null;
         case FREE:
             heap._free(old_pointer);
@@ -71,7 +71,7 @@ fn void*! SimpleHeapAllocator._realloc(SimpleHeapAllocator* this, void* old_poin
 	// Find the block header.
 	Header* block = (Header*)old_pointer - 1;
 	if (block.size >= bytes) return old_pointer;
-	void* new = this._alloc(bytes)?;
+	void* new = this._alloc(bytes)!;
 	usz max_to_copy = math::min(block.size, bytes);
 	mem::copy(new, old_pointer, max_to_copy);
 	this._free(old_pointer);
@@ -80,7 +80,7 @@ fn void*! SimpleHeapAllocator._realloc(SimpleHeapAllocator* this, void* old_poin
 
 fn void*! SimpleHeapAllocator._calloc(SimpleHeapAllocator* this, usz bytes) @local
 {
-	void* data = this._alloc(bytes)?;
+	void* data = this._alloc(bytes)!;
 	mem::clear(data, bytes, mem::DEFAULT_MEM_ALIGNMENT);
 	return data;
 }
@@ -90,7 +90,7 @@ fn void*! SimpleHeapAllocator._alloc(SimpleHeapAllocator* this, usz bytes) @loca
 	usz aligned_bytes = mem::aligned_offset(bytes, mem::DEFAULT_MEM_ALIGNMENT);
     if (!this.free_list)
     {
-		this.add_block(aligned_bytes)?;
+		this.add_block(aligned_bytes)!;
     }
 
 	Header* current = this.free_list;
@@ -130,14 +130,14 @@ fn void*! SimpleHeapAllocator._alloc(SimpleHeapAllocator* this, usz bytes) @loca
 				current = current.next;
 		}
 	}
-	this.add_block(aligned_bytes)?;
+	this.add_block(aligned_bytes)!;
 	return this.alloc(aligned_bytes);
 }
 
 fn void! SimpleHeapAllocator.add_block(SimpleHeapAllocator* this, usz aligned_bytes) @local
 {
 	assert(mem::aligned_offset(aligned_bytes, mem::DEFAULT_MEM_ALIGNMENT) == aligned_bytes);
-	char[] result = this.alloc_fn(aligned_bytes + Header.sizeof)?;
+	char[] result = this.alloc_fn(aligned_bytes + Header.sizeof)!;
 	Header* new_block = (Header*)result.ptr;
 	new_block.size = result.len - Header.sizeof;
 	new_block.next = null;

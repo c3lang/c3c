@@ -27,10 +27,10 @@ fn void main()
 {
 	var $i = int[4] { 1, 2, 3, 4 };
 	var $b = Abc[2] { Abc {}, Abc { 11, 22, 33, 44 }};
-	var $c = variant[4] {};
+	var $c = any[4] {};
 	check_type(int);
 	check_type(Abc);
-	check_type(anyerr);
+	check_type(anyfault);
 	check_type(Blurb);
 	check_type(int*);
 	check_type(bool);
@@ -56,7 +56,7 @@ fn void main()
   %z9 = alloca [2 x i32], align 4
   %z10 = alloca %"int[]", align 8
   %retparam = alloca i64, align 8
-  %varargslots = alloca [1 x %variant], align 16
+  %varargslots = alloca [1 x %any], align 16
   %literal = alloca %Abc, align 4
   store i32 0, ptr %z, align 4
   %0 = getelementptr inbounds %Abc, ptr %z1, i32 0, i32 0
@@ -94,10 +94,10 @@ fn void main()
   store float 0.000000e+00, ptr %12, align 4
   %13 = getelementptr inbounds %Abc, ptr %literal, i32 0, i32 3
   store float 0.000000e+00, ptr %13, align 4
-  %14 = insertvalue %variant undef, ptr %literal, 0
-  %15 = insertvalue %variant %14, i64 ptrtoint (ptr @"$ct.test.Abc" to i64), 1
-  %16 = getelementptr inbounds [1 x %variant], ptr %varargslots, i64 0, i64 0
-  store %variant %15, ptr %16, align 16
+  %14 = insertvalue %any undef, ptr %literal, 0
+  %15 = insertvalue %any %14, i64 ptrtoint (ptr @"$ct.test.Abc" to i64), 1
+  %16 = getelementptr inbounds [1 x %any], ptr %varargslots, i64 0, i64 0
+  store %any %15, ptr %16, align 16
   %17 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 2, ptr %varargslots, i64 1)
   ret void
 }

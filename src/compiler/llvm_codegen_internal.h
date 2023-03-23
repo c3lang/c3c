@@ -69,6 +69,12 @@ typedef struct
 
 
 
+typedef struct ReusableConstant_
+{
+	const char *string;
+	const char *name;
+	LLVMValueRef value;
+} ReusableConstant;
 typedef struct GenContext_
 {
 	bool shared_context;
@@ -84,6 +90,7 @@ typedef struct GenContext_
 	LLVMBasicBlockRef catch_block;
 	LLVMValueRef *constructors;
 	LLVMValueRef *destructors;
+	ReusableConstant *reusable_constants;
 	const char *ir_filename;
 	const char *object_filename;
 	const char *asm_filename;
@@ -99,6 +106,7 @@ typedef struct GenContext_
 	LLVMTypeRef ptr_type;
 	LLVMTypeRef chars_type;
 	Decl *panic_var;
+	Decl *panicf;
 	struct
 	{
 		const char *name;
@@ -443,13 +451,19 @@ INLINE bool call_supports_variadic(CallABI abi);
 static inline LLVMCallConv llvm_call_convention_from_call(CallABI abi);
 void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype *prototype, LLVMTypeRef func_type, LLVMValueRef func, LLVMValueRef *args, unsigned arg_count, int inline_flag, LLVMValueRef error_var, bool sret_return, BEValue *synthetic_return_param);
 void llvm_emit_parameter(GenContext *c, LLVMValueRef *args, unsigned *arg_count_ref, ABIArgInfo *info, BEValue *be_value, Type *type);
+void llvm_emit_vararg_parameter(GenContext *c, BEValue *value, Type *vararg_type, ABIArgInfo *abi_info, Expr **varargs, Expr *vararg_splat);
 
 // -- C3 Lowering --
 void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr);
+void llvm_emit_ignored_expr(GenContext *c, Expr *expr);
 void llvm_emit_stmt(GenContext *c, Ast *ast);
-void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *panic_name, SourceSpan loc);
-void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_name, SourceSpan loc);
-void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc);
+void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *panic_name, SourceSpan loc,
+                             const char *fmt, BEValue *value_1, BEValue *value_2);
+void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_name, SourceSpan loc, const char *fmt, BEValue *value_1,
+                             BEValue *value_2);
+void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const char *fmt, BEValue *args);
+
+void llvm_emit_any_from_value(GenContext *c, BEValue *value, Type *type);
 void llvm_emit_subarray_len(GenContext *context, BEValue *subarray, BEValue *len);
 void llvm_emit_subarray_pointer(GenContext *context, BEValue *subarray, BEValue *pointer);
 void llvm_emit_compound_stmt(GenContext *c, Ast *ast);

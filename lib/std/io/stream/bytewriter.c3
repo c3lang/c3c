@@ -52,16 +52,16 @@ fn String ByteWriter.as_str(ByteWriter* writer)
 fn void! ByteWriter.ensure_capacity(ByteWriter* writer, usz len) @inline
 {
 	if (writer.bytes.len > len) return;
-	if (!writer.allocator) return IoError.OUT_OF_SPACE!;
+	if (!writer.allocator) return IoError.OUT_OF_SPACE?;
 	if (len < 16) len = 16;
 	usz new_capacity = math::next_power_of_2(len);
-	char* new_ptr = realloc_checked(writer.bytes.ptr, new_capacity, .using = writer.allocator)?;
+	char* new_ptr = realloc_checked(writer.bytes.ptr, new_capacity, .using = writer.allocator)!;
 	writer.bytes = new_ptr[:new_capacity];
 }
 
 fn usz! ByteWriter.write(ByteWriter* writer, char[] bytes)
 {
-	writer.ensure_capacity(writer.index + bytes.len)?;
+	writer.ensure_capacity(writer.index + bytes.len)!;
 	mem::copy(&writer.bytes[writer.index], bytes.ptr, bytes.len);
 	writer.index += bytes.len;
 	return bytes.len;
@@ -69,7 +69,7 @@ fn usz! ByteWriter.write(ByteWriter* writer, char[] bytes)
 
 fn void! ByteWriter.write_byte(ByteWriter* writer, char c)
 {
-	writer.ensure_capacity(writer.index + 1)?;
+	writer.ensure_capacity(writer.index + 1)!;
 	writer.bytes[writer.index++] = c;
 }
 
@@ -82,10 +82,10 @@ fn usz! ByteWriter.read_from(ByteWriter* writer, Stream* reader)
 	if (reader.supports_available())
 	{
 		usz total_read = 0;
-		while (usz available = reader.available()?)
+		while (usz available = reader.available()!)
 		{
-			writer.ensure_capacity(writer.index + available)?;
-			usz len = reader.read(writer.bytes[writer.index..])?;
+			writer.ensure_capacity(writer.index + available)!;
+			usz len = reader.read(writer.bytes[writer.index..])!;
 			total_read += len;
 			writer.index += len;
 		}
@@ -99,10 +99,10 @@ fn usz! ByteWriter.read_from(ByteWriter* writer, Stream* reader)
 		// Less than 16 bytes? Double the capacity
 		if (len_to_read < 16)
 		{
-			writer.ensure_capacity(writer.bytes.len * 2)?;
+			writer.ensure_capacity(writer.bytes.len * 2)!;
 		}
 		// Read into the rest of the buffer
-		usz read = reader.read(writer.bytes[writer.index..])?;
+		usz read = reader.read(writer.bytes[writer.index..])!;
 		writer.index += read;
 		// Ok, we reached the end.
 		if (read < len_to_read) return total_read;

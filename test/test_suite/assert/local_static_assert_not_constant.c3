@@ -12,7 +12,7 @@ fn void test2()
     $assert(i == 0); // #error: Compile time evaluation requires a compile time constant value.
 }
 
-fn int foo();
+extern fn int foo();
 fn void test3()
 {
     int i = 0;

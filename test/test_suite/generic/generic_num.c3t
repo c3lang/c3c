@@ -22,14 +22,14 @@ fn void main()
 define void @test.main() #0 {
 entry:
   %retparam = alloca i64, align 8
-  %varargslots = alloca [1 x %variant], align 16
+  %varargslots = alloca [1 x %any], align 16
   %taddr = alloca i32, align 4
   %0 = call i32 @"hello$int$_123$.x"(i32 4)
   store i32 %0, ptr %taddr, align 4
-  %1 = insertvalue %variant undef, ptr %taddr, 0
-  %2 = insertvalue %variant %1, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  %3 = getelementptr inbounds [1 x %variant], ptr %varargslots, i64 0, i64 0
-  store %variant %2, ptr %3, align 16
+  %1 = insertvalue %any undef, ptr %taddr, 0
+  %2 = insertvalue %any %1, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  %3 = getelementptr inbounds [1 x %any], ptr %varargslots, i64 0, i64 0
+  store %any %2, ptr %3, align 16
   %4 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 2, ptr %varargslots, i64 1)
   ret void
 }

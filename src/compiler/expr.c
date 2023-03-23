@@ -89,7 +89,6 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_BUILTIN_ACCESS:
 		case EXPR_CALL:
 		case EXPR_CAST:
-		case EXPR_CATCH:
 		case EXPR_CATCH_UNWRAP:
 		case EXPR_COMPILER_CONST:
 		case EXPR_COMPOUND_LITERAL:
@@ -106,7 +105,6 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_EXPRESSION_LIST:
 		case EXPR_EXPR_BLOCK:
 		case EXPR_OPTIONAL:
-		case EXPR_FLATPATH:
 		case EXPR_FORCE_UNWRAP:
 		case EXPR_HASH_IDENT:
 		case EXPR_INITIALIZER_LIST:
@@ -125,14 +123,13 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_SUBSCRIPT_ADDR:
 		case EXPR_SUBSCRIPT_ASSIGN:
 		case EXPR_TERNARY:
-		case EXPR_TRY:
 		case EXPR_TRY_UNWRAP:
 		case EXPR_TRY_UNWRAP_CHAIN:
 		case EXPR_TYPEID:
 		case EXPR_TYPEID_INFO:
 		case EXPR_TYPEINFO:
-		case EXPR_VARIANT:
-		case EXPR_VARIANTSWITCH:
+		case EXPR_ANY:
+		case EXPR_ANYSWITCH:
 		case EXPR_VASPLAT:
 		case EXPR_SWIZZLE:
 		case EXPR_LAMBDA:
@@ -174,7 +171,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_ACCESS:
 			expr = expr->access_expr.parent;
 			goto RETRY;
-		case EXPR_VARIANTSWITCH:
+		case EXPR_ANYSWITCH:
 			return false;
 		case EXPR_BITASSIGN:
 			return false;
@@ -187,18 +184,20 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 				case ACCESS_PTR:
 				case ACCESS_FAULTORDINAL:
 					break;
+				case ACCESS_TYPEOFANYFAULT:
 				case ACCESS_TYPEOFANY:
 					if (eval_kind != CONSTANT_EVAL_NO_SIDE_EFFECTS) return false;
 					break;
 			}
 			return exprid_is_constant_eval(expr->builtin_access_expr.inner, eval_kind);
-		case EXPR_VARIANT:
-			return exprid_is_constant_eval(expr->variant_expr.type_id, eval_kind) && exprid_is_constant_eval(expr->variant_expr.ptr, eval_kind);
+		case EXPR_ANY:
+			return exprid_is_constant_eval(expr->any_expr.type_id, eval_kind) && exprid_is_constant_eval(expr->any_expr.ptr, eval_kind);
 		case EXPR_BINARY:
 			return expr_binary_is_constant_eval(expr, eval_kind);
 		case EXPR_CAST:
 			return expr_cast_is_constant_eval(expr, eval_kind);
 		case EXPR_CONST:
+			return true;
 		case EXPR_OPERATOR_CHARS:
 		case EXPR_STRINGIFY:
 		case EXPR_CT_CHECKS:
@@ -289,10 +288,6 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 			assert(!exprid_is_constant_eval(expr->ternary_expr.cond, eval_kind));
 			return false;
 		case EXPR_FORCE_UNWRAP:
-		case EXPR_TRY:
-		case EXPR_CATCH:
-			expr = expr->inner_expr;
-			goto RETRY;
 		case EXPR_TYPEID:
 			return eval_kind != CONSTANT_EVAL_CONSTANT_VALUE;
 		case EXPR_UNARY:
@@ -325,7 +320,6 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_TYPEINFO:
 		case EXPR_HASH_IDENT:
 		case EXPR_CT_IDENT:
-		case EXPR_FLATPATH:
 		case EXPR_COMPOUND_LITERAL:
 		case EXPR_POISONED:
 		case EXPR_CT_ARG:
@@ -344,6 +338,8 @@ static inline bool expr_cast_is_constant_eval(Expr *expr, ConstantEvalKind eval_
 	{
 		case CAST_ERROR:
 			UNREACHABLE
+		case CAST_VOIDFERR:
+			return false;
 		case CAST_BSINT:
 		case CAST_BSARRY:
 			return true;
@@ -554,6 +550,7 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 		case TYPE_POISONED:
 		case TYPE_VOID:
 		case TYPE_INFERRED_VECTOR:
+		case TYPE_WILDCARD:
 			UNREACHABLE
 		case ALL_INTS:
 			expr_rewrite_const_int(expr, type, 0);
@@ -567,7 +564,7 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 		case TYPE_POINTER:
 		case TYPE_FAULTTYPE:
 		case TYPE_ANY:
-		case TYPE_ANYERR:
+		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
 			expr_rewrite_const_null(expr, type);
 			return;
@@ -577,7 +574,6 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 			break;
 		case TYPE_FUNC:
 		case TYPE_TYPEDEF:
-		case TYPE_OPTIONAL_ANY:
 		case TYPE_OPTIONAL:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
@@ -590,7 +586,6 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_UNTYPED_LIST:
-		case TYPE_SCALED_VECTOR:
 		case TYPE_VECTOR:
 		{
 			ConstInitializer *init = CALLOCS(ConstInitializer);
@@ -642,8 +637,8 @@ bool expr_is_pure(Expr *expr)
 			return exprid_is_pure(expr->swizzle_expr.parent);
 		case EXPR_BUILTIN_ACCESS:
 			return exprid_is_pure(expr->builtin_access_expr.inner);
-		case EXPR_VARIANT:
-			return exprid_is_pure(expr->variant_expr.type_id) && exprid_is_pure(expr->variant_expr.ptr);
+		case EXPR_ANY:
+			return exprid_is_pure(expr->any_expr.type_id) && exprid_is_pure(expr->any_expr.ptr);
 		case EXPR_POINTER_OFFSET:
 			return exprid_is_pure(expr->pointer_offset_expr.ptr) && exprid_is_pure(expr->pointer_offset_expr.offset);
 		case EXPR_COMPILER_CONST:
@@ -666,7 +661,7 @@ bool expr_is_pure(Expr *expr)
 			return true;
 		case EXPR_BITASSIGN:
 			return false;
-		case EXPR_VARIANTSWITCH:
+		case EXPR_ANYSWITCH:
 			return false;
 		case EXPR_BINARY:
 			// Anything with assignment is impure, otherwise true if sub expr are pure.
@@ -708,7 +703,6 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_RETHROW:
 		case EXPR_HASH_IDENT:
 		case EXPR_MACRO_BLOCK:
-		case EXPR_FLATPATH:
 		case EXPR_INITIALIZER_LIST:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 		case EXPR_POST_UNARY:
@@ -743,9 +737,7 @@ bool expr_is_pure(Expr *expr)
 			       && exprid_is_pure(expr->ternary_expr.then_expr);
 		case EXPR_ASM:
 			return false;
-		case EXPR_TRY:
 		case EXPR_GROUP:
-		case EXPR_CATCH:
 			return expr_is_pure(expr->inner_expr);
 	}
 	UNREACHABLE

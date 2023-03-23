@@ -9,42 +9,42 @@ fault Foo
 
 fn int! test(int i)
 {
-	return i ?: Foo.X!;
+	return i ?: Foo.X?;
 }
 
 fn int! test2(int i)
 {
-	return i ? Foo.X! : Foo.X!;
+	return i ? Foo.X? : Foo.X?;
 }
 
 
 fn int! test3(int i)
 {
-	return i ? 2 : Foo.X!;
+	return i ? 2 : Foo.X?;
 }
 
 
 fn int! test4(int i)
 {
 	int! y = i;
-	return (y?) ?: Foo.X!;
+	return (y!) ?: Foo.X?;
 }
 fn int! test5(int i)
 {
 	int! y = i;
-	return (y?) ? Foo.X! : Foo.X!;
+	return (y!) ? Foo.X? : Foo.X?;
 }
 
 fn int! test6(int i)
 {
 	int! y = i;
-	return (y?) ? 2 : Foo.X!;
+	return (y!) ? 2 : Foo.X?;
 }
 
 fn int! test7(int i)
 {
 	int! y = i;
-    return (y?) ? Foo.X! : 2;
+    return (y!) ? Foo.X? : 2;
 }
 
 fn void main()

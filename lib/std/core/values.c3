@@ -20,3 +20,4 @@ macro promote_int(x)
 }
 
 macro TypeKind @inner_kind(#value) => types::inner_kind($typeof(#value));
+

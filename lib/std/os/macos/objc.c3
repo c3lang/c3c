@@ -1,6 +1,6 @@
 module std::os::macos::objc;
 
-$if (env::OS_TYPE == OsType.MACOSX)
+$if (env::OS_TYPE == OsType.MACOS)
 
 typedef Class = distinct void*;
 typedef Method = distinct void*;
@@ -24,7 +24,7 @@ macro Selector selector_register(char* c) => _macos_sel_registerName(c);
 macro Class! class_by_name(char* c)
 {
 	Class cls = _macos_objc_lookUpClass(c);
-	if (!cls) return ObjcFailure.CLASS_NOT_FOUND!;
+	if (!cls) return ObjcFailure.CLASS_NOT_FOUND?;
 	return cls;
 }
 

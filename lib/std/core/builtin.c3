@@ -5,17 +5,26 @@ module std::core::builtin;
 import libc;
 import std::hash;
 
+/**
+ * Use `IteratorResult` when reading the end of an iterator, or accessing a result out of bounds.
+ **/
 fault IteratorResult
 {
 	NO_MORE_ELEMENT
 }
 
+/**
+ * Use `SearchResult` when trying to return a value from some collection but the element is missing.
+ **/
 fault SearchResult
 {
 	MISSING
 }
 
-fault VarCastResult
+/**
+ * Use `CastResult` when an attempt at conversion fails.
+ **/
+fault CastResult
 {
 	TYPE_MISMATCH
 }
@@ -33,6 +42,9 @@ macro void @scope(&variable; @body) @builtin
 	@body();
 }
 
+/**
+ * Swap two variables
+ **/
 macro void @swap(&a, &b) @builtin
 {
 	var temp = a;
@@ -41,15 +53,17 @@ macro void @swap(&a, &b) @builtin
 }
 
 /**
- * Convert a variant type to a type, returning an failure if there is a type mismatch.
+ * Convert an `any` type to a type, returning an failure if there is a type mismatch.
  *
- * @param v `the variant to convert to the given type.`
+ * @param v `the any to convert to the given type.`
  * @param $Type `the type to convert to`
- * @return `The variant.ptr converted to its type.`
+ * @return `The any.ptr converted to its type.`
+ * @ensure @typeis(return, $Type*)
+ * @return! CastResult.TYPE_MISMATCH
  **/
-macro varcast(variant v, $Type) @builtin
+macro anycast(any v, $Type) @builtin
 {
-	if (v.type != $Type.typeid) return VarCastResult.TYPE_MISMATCH!;
+	if (v.type != $Type.typeid) return CastResult.TYPE_MISMATCH?;
 	return ($Type*)v.ptr;
 }
 
@@ -64,22 +78,24 @@ struct CallstackElement
 fn void default_panic(String message, String file, String function, uint line)
 {
 	CallstackElement* stack = $$stacktrace();
-	$if ($defined(libc::stderr) && $defined(libc::fprintf))
+	$if ($defined(io::stderr) && $defined(File.printf))
 
 	if (stack) stack = stack.prev;
 	if (stack)
 	{
-		libc::fprintf(libc::stderr(), "\nERROR: '%.*s'\n", (int)message.len, message.ptr);
+		(void)io::stderr().print("\nERROR: '");
+		(void)io::stderr().print(message);
+		(void)io::stderr().printn("'");
 	}
 	else
 	{
-		libc::fprintf(libc::stderr(), "\nERROR: '%.*s', function %.*s (%.*s:%d)\n",
-			(int)message.len, message.ptr, (int)function.len, function.ptr, (int)file.len, file.ptr, line);
+		(void)io::stderr().print("\nERROR: '");
+		(void)io::stderr().print(message);
+		(void)io::stderr().printfn("', in function %s (%s:%d)", function, file, line);
 	}
 	while (stack)
 	{
-		libc::fprintf(libc::stderr(), "  at function %.*s (%.*s:%u)\n", (int)stack.function.len, stack.function.ptr,
-		    (int)stack.file.len, stack.file.ptr, stack.line);
+		(void)io::stderr().printfn("  in function %s (%s:%d)", stack.function, stack.file, stack.line);
 		if (stack == stack.prev) break;
 		stack = stack.prev;
 	}
@@ -92,62 +108,103 @@ typedef PanicFn = fn void(String message, String file, String function, uint lin
 
 PanicFn panic = &default_panic;
 
-macro void unreachable($string = "Unreachable statement reached.") @builtin @noreturn
+fn void panicf(String fmt, String file, String function, uint line, args...)
 {
-	panic($string, $$FILE, $$FUNC, $$LINE);
+	@stack_mem(512; Allocator* mem)
+	{
+		DString s;
+		s.init(.using = mem);
+		s.printf(fmt, ...args);
+		panic(s.str(), file, function, line);
+	};
+}
+
+/**
+ * Marks the path as unreachable. This will panic in safe mode, and in fast will simply be assumed
+ * never happens.
+ * @param [in] string "The panic message"
+ **/
+macro void unreachable(String string = "Unreachable statement reached.", ...) @builtin @noreturn
+{
+	panicf(string, $$FILE, $$FUNC, $$LINE, $vasplat());
 	$$unreachable();
 }
 
+/**
+ * @param expr "the expression to cast"
+ * @param $Type "the type to cast to"
+ *
+ * @require $sizeof(expr) == $Type.sizeof  "Cannot bitcast between types of different size."
+ * @ensure @typeis(result, $Type)
+ **/
 macro bitcast(expr, $Type) @builtin
 {
-	var $size = (usz)($sizeof(expr));
-	$assert($size == $Type.sizeof, "Cannot bitcast between types of different size.");
+	usz $size = $sizeof(expr);
 	$Type x @noinit;
 	mem::copy(&x, &expr, $size, $Type.alignof, $alignof(expr));
 	return x;
 }
 
 /**
- * @require $Type.kindof == TypeKind.ENUM `Only enums may be used`
+ * @param $Type `The type of the enum`
+ * @param [in] enum_name `The name of the enum to search for`
+ * @require $Type.kindof == ENUM `Only enums may be used`
+ * @ensure @typeis(return, $Type)
+ * @return! SearchResult.MISSING
  **/
 macro enum_by_name($Type, String enum_name) @builtin
 {
 	typeid x = $Type.typeid;
 	foreach (i, name : x.names)
 	{
-		if (str::compare(name, enum_name)) return ($Type)i;
+		if (name == enum_name) return ($Type)i;
 	}
-	return SearchResult.MISSING!;
-}
-
-macro bool @likely(bool value, $probability = 1.0) @builtin
-{
-    $if ($probability == 1.0)
-	return $$expect(value, true);
-    $else
-	return $$expect_with_probability(value, true, $probability);
-    $endif
-}
-
-macro bool @unlikely(bool value, $probability = 1.0) @builtin
-{
-    $if ($probability == 1.0)
-	return $$expect(value, false);
-    $else
-	return $$expect_with_probability(value, false, $probability);
-    $endif
+	return SearchResult.MISSING?;
 }
 
 /**
- * @require values::@is_int(value) || values::@is_bool(value)
- * @checked $typeof(value) a = expected
+ * Mark an expression as likely to be true
+ *
+ * @param #value "expression to be marked likely"
+ * @param $probability "in the range 0 - 1"
+ * @require $probability >= 0 && $probability <= 1.0
  **/
-macro @expect(value, expected, $probability = 1.0) @builtin
+macro bool @likely(bool #value, $probability = 1.0) @builtin
+{
+$if ($probability == 1.0)
+	return $$expect(#value, true);
+$else
+	return $$expect_with_probability(#value, true, $probability);
+$endif
+}
+
+/**
+ * Mark an expression as unlikely to be true
+ *
+ * @param #value "expression to be marked unlikely"
+ * @param $probability "in the range 0 - 1"
+ * @require $probability >= 0 && $probability <= 1.0
+ **/
+macro bool @unlikely(bool #value, $probability = 1.0) @builtin
+{
+$if ($probability == 1.0)
+	return $$expect(#value, false);
+$else
+	return $$expect_with_probability(#value, false, $probability);
+$endif
+}
+
+/**
+ * @require values::@is_int(#value) || values::@is_bool(#value)
+ * @checked $typeof(#value) a = expected
+ * @require $probability >= 0 && $probability <= 1.0
+ **/
+macro @expect(#value, expected, $probability = 1.0) @builtin
 {
     $if ($probability == 1.0)
-	return $$expect(value, ($typeof(value))expected);
+	return $$expect(#value, ($typeof(#value))expected);
     $else
-	return $$expect_with_probability(value, expected, $probability);
+	return $$expect_with_probability(#value, expected, $probability);
     $endif
 }
 
@@ -195,6 +252,18 @@ macro bool @convertible(#expr, $To) @builtin
 	return $checks($To x = #expr);
 }
 
+macro anyfault @catchof(#expr) @builtin
+{
+	if (catch f = #expr) return f;
+    return anyfault {};
+}
+
+macro bool @ok(#expr) @builtin
+{
+	if (catch #expr) return false;
+    return true;
+}
+
 macro uint int.hash(int i) => i;
 macro uint uint.hash(uint i) => i;
 macro uint short.hash(short s) => s;
@@ -203,7 +272,9 @@ macro uint char.hash(char c) => c;
 macro uint ichar.hash(ichar c) => c;
 macro uint long.hash(long i) => (uint)((i >> 32) ^ i);
 macro uint ulong.hash(ulong i) => (uint)((i >> 32) ^ i);
+macro uint int128.hash(int128 i) => (uint)((i >> 96) ^ (i >> 64) ^ (i >> 32) ^ i);
+macro uint uint128.hash(uint128 i) => (uint)((i >> 96) ^ (i >> 64) ^ (i >> 32) ^ i);
 macro uint bool.hash(bool b) => (uint)b;
-macro uint typeid.hash(typeid t) => (uint)(((uptr)t >> 32) ^ (uptr)t);
+macro uint typeid.hash(typeid t) => ((ulong)(uptr)t).hash();
 macro uint String.hash(String c) => (uint)fnv32a::encode(c);
 macro uint char[].hash(char[] c) => (uint)fnv32a::encode(c);

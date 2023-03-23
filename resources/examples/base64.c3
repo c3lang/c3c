@@ -89,7 +89,7 @@ fn int! decode(String in, char* out, int* invalid_char_index = null)
 		if (c == ERR)
 		{
 			if (invalid_char_index) *invalid_char_index = i;
-			return DecodingError.INVALID_CHARACTER!;
+			return DecodingError.INVALID_CHARACTER?;
 		}
 
 
@@ -128,7 +128,7 @@ fn void! main()
 	printf("Result: %s\n", &buffer);
 	char *to_decode = "aGVsbG8gd29ybGRcMA==";
 	char[*] result = b64"aGVsbG8gd29ybGRcMA==";
-	decode((String)to_decode[0..19], &buffer)?;
+	decode((String)to_decode[0..19], &buffer)!;
 	printf("Result: %s\n", &buffer);
 	printf("Result direct: %.*s\n", 13, &result);
 }

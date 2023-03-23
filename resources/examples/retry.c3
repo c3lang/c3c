@@ -9,14 +9,14 @@ fault TestErr
 fn int! eventually_succeed()
 {
 	static int i = 0;
-	if (i++ < 3) return TestErr.NOPE!;
+	if (i++ < 3) return TestErr.NOPE?;
 	return i * 3;
 }
 
 macro @retry(#function, int retries = 3)
 {
 	var $Type = $typeof(#function);
-    anyerr e;
+    anyfault e;
     do
     {
         $Type! result = #function;

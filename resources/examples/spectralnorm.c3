@@ -43,7 +43,7 @@ fn void eval_AtA_times_u(double[] u, double[] atau, double[] x)
 
 fn void main(String[] args)
 {
-	int n = args.len == 2 ? str::to_int(args[1])!! : 2000;
+	int n = args.len == 2 ? args[1].to_int()!! : 2000;
 	temparr = malloc(double, n);
 	double[] u = malloc(double, n);
 	double[] v = malloc(double, n);

@@ -39,7 +39,7 @@ macro bool TempAllocatorPage.is_aligned(TempAllocatorPage* page) => page.size & 
  **/
 fn TempAllocator*! new_temp(usz size, Allocator* backing_allocator)
 {
-	TempAllocator* allocator = malloc_checked(TempAllocator, .using = backing_allocator, .end_padding = size)?;
+	TempAllocator* allocator = malloc_checked(TempAllocator, .using = backing_allocator, .end_padding = size)!;
 	allocator.last_page = null;
 	allocator.function = &temp_allocator_function;
 	allocator.backing_allocator = backing_allocator;
@@ -75,12 +75,12 @@ fn void*! temp_allocator_function(Allocator* data, usz size, usz alignment, usz 
 		case FREE:
 		case ALIGNED_FREE:
 			if (!old_pointer) return null;
-			arena._free(old_pointer)?;
+			arena._free(old_pointer)!;
         	return null;
         case MARK:
             return (void*)(uptr)arena.used;
 		case RESET:
-			arena._reset(size)?;
+			arena._reset(size)!;
 			return null;
 	}
 	unreachable();
@@ -103,7 +103,7 @@ fn void! TempAllocator._reset(TempAllocator* this, usz mark) @local
 	{
 		TempAllocatorPage *to_free = last_page;
 		last_page = last_page.prev_page;
-		this._free_page(to_free)?;
+		this._free_page(to_free)!;
 	}
 	this.last_page = last_page;
 	this.used = mark;
@@ -131,15 +131,15 @@ fn void*! TempAllocator._realloc_page(TempAllocator* this, TempAllocatorPage* pa
 	*pointer_to_prev = page.prev_page;
 	usz page_size = page.pagesize();
 	// Clear on size > original size.
-	void* data = this._alloc(size, alignment, offset, false)?;
+	void* data = this._alloc(size, alignment, offset, false)!;
 	mem::copy(data, &page.data[0], page_size, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
 	if (page.is_aligned())
 	{
-		this.backing_allocator.free_aligned(real_pointer)?;
+		this.backing_allocator.free_aligned(real_pointer)!;
 	}
 	else
 	{
-		this.backing_allocator.free(real_pointer)?;
+		this.backing_allocator.free(real_pointer)!;
 	}
 	return data;
 }
@@ -156,7 +156,7 @@ fn void*! TempAllocator._realloc(TempAllocator* this, void* pointer, usz size, u
 	}
 
 	// TODO optimize last allocation
-	TempAllocatorChunk* data = this._alloc(size, alignment, offset, size > chunk.size)?;
+	TempAllocatorChunk* data = this._alloc(size, alignment, offset, size > chunk.size)!;
 	mem::copy(data, pointer, chunk.size, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
 
 	return data;
@@ -200,11 +200,11 @@ fn void*! TempAllocator._alloc(TempAllocator* this, usz size, usz alignment, usz
 		usz total_alloc_size = TempAllocatorPage.sizeof + size;
     	if (clear)
 		{
-			page = this.backing_allocator.calloc_aligned(total_alloc_size, alignment, TempAllocatorPage.sizeof + offset)?;
+			page = this.backing_allocator.calloc_aligned(total_alloc_size, alignment, TempAllocatorPage.sizeof + offset)!;
 		}
 		else
 		{
-			page = this.backing_allocator.alloc_aligned(total_alloc_size, alignment, TempAllocatorPage.sizeof + offset)?;
+			page = this.backing_allocator.alloc_aligned(total_alloc_size, alignment, TempAllocatorPage.sizeof + offset)!;
 		}
 		page.start = page;
 		page.size = size | PAGE_IS_ALIGNED;
@@ -214,7 +214,7 @@ fn void*! TempAllocator._alloc(TempAllocator* this, usz size, usz alignment, usz
 		// Here we might need to pad
 		usz padded_header_size = mem::aligned_offset(TempAllocatorPage.sizeof, mem::DEFAULT_MEM_ALIGNMENT);
 		usz total_alloc_size = padded_header_size + size;
-		void* alloc = (clear ? this.backing_allocator.calloc(total_alloc_size) : this.backing_allocator.alloc(total_alloc_size))?;
+		void* alloc = (clear ? this.backing_allocator.calloc(total_alloc_size) : this.backing_allocator.alloc(total_alloc_size))!;
 
 		// Find the page.
 		page = alloc + padded_header_size - TempAllocatorPage.sizeof;

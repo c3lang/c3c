@@ -1,4 +1,170 @@
-Release Notes
+# C3C Release Notes
+
+## 0.5.0 Change List
+
+### Changes / improvements
+- Dropped support for LLVM 13-14.
+- Updated grammar and lexer definition.
+- Removal of `$elif`.
+- Empty fault definitions is now an error.
+- Better errors on incorrect bitstruct syntax.
+- Internal use wildcard type rather than optional wildcard.
+- Experimental scaled vector type removed.
+- Disallow parameterize attributes without parameters eg `define @Foo() = { @inline }`.
+- Handle `@optreturn` contract, renamed `@return!`.
+- Restrict interface style functions.
+- Optional propagation and assignment '!' and '?' are flipped.
+- Add `l` suffix (alias for i64).
+- Allow getting the underlying type of anyfault.
+- De-duplicate string constants.
+- Change @extname => @extern.
+- `define Type = int` is replaced by `typedef Type = int`.
+- LLVM "wrapper" library compilation is exception free.
+- `private` is replaced by attribute `@private`. 
+- Addition of `@local` for file local visibility.
+- Addition of `@public` for overriding default visibility.
+- Default visibility can be overridden per module compile unit. Eg `module foo @private`.
+- Addition of unary `+`.
+- Remove the `:` and `;` used in $if, $switch etc.
+- Faults have an ordinal.
+- Generic module contracts.
+- Type inference on enum comparisons, e.g `foo_enum == ABC`.
+- Allow {} to initialize basic types.
+- String literals default to `String`.
+- More const modification detection.
+- C3L zip support.
+- Support printing object files.
+- Downloading of libraries using vendor "fetch".
+- Structural casts removed.
+- Added "native" option for vector capability.
+- `$$shufflevector` replaced with `$$swizzle` and `$$swizzle2`.
+- Builtin swizzle accessors.
+- Lambdas, e.g `a = int(x, y) => x + y`.
+- $$FILEPATH builtin constant.
+- `variant` renamed `any`.
+- `anyerr` renamed `anyfault`.
+- Added `$$wasm_memory_size` and `$$wasm_memory_grow` builtins.
+- Add "link-args" for project.
+- Possible to suppress entry points using `--no-entry`.
+- Added `memory-env` option.
+- Use the .wasm extension on WASM binaries.
+- Update precedence clarification rules for ^|&.
+- Support for casting any expression to `void`.
+- Win 32-bit processor target removed.
+- Insert null-check for contracts declaring & params.
+- Support user defined attributes in generic modules.
+- `--strip-unused` directive for small binaries.
+- `$$atomic_store` and `$$atomic_load` added.
+- `usz`/`isz` replaces `usize` and `isize`.
+- `@export` attribute to determine what is visible in precompiled libraries.
+- Disallow obviously wrong code returning a pointer to a stack variable.
+- Add &^| operations for bitstructs.
+- `@noinit` replaces `= void` to opt-out of implicit zeroing.
+- Multiple declarations are now allowed in most places, eg `int a, b;`.
+- Allow simplified (boolean) bitstruct definitions.
+- Allow `@test` to be placed on module declarations.
+- Updated name mangling for non-exports.
+- `defer catch` and `defer try` statements added.
+- Better errors from `$assert`.
+- `@deprecated` attribute added.
+- Allow complex array length inference, eg `int[*][2][*] a = ...`.
+- Cleanup of cast code.
+- Removal of `generic` keyword.
+- Remove implicit cast enum <-> int.
+- Allow enums to use a distinct type as the backing type.
+- Update addition and subtraction on enums.
+- `@ensure` checks only non-optional results.
+ 
+### Stdlib changes
+- Stdlib updates to string.
+- Additions to `List`
+- Added dstringwriter.
+- Improved printf formatting.
+- is_finite/is_nam/is_inf added.
+- OnStack allocator to easily allocate a stack buffer.
+- File enhancements: mkdir, rmdir, chdir.
+- Path type for file path handling.
+- Distinct `String` type.
+- VarString replaced by DString.
+- Removal of std::core::str.
+- JSON parser and general Object type.
+- Addition of `EnumMap`.
+- RC4 crypto.
+- Matrix identity macros.
+- compare_exchange added.
+- `printfln` and `println` renamed `printfn` and `printn`.
+- Support of roundeven.
+- Added easings.
+- Updated complex/matrix, added quaternion maths.
+- Improved support for freestanding.
+- Improved windows main support, with @winmain annotations.
+- `SimpleHeapAllocator` added.
+- Added win32 standard types.
+- Added `saturated` math.
+- Added `@expect`, `@unlikely` and `@likely` macros.
+- Temp allocator uses memory-env to determine starting size.
+- Temp allocator is now accessed using `mem::temp()`, heap allocator using `mem::heap()`.
+- Float parsing added.
+- Additions to std::net, ipv4/ipv6 parsing.
+- Stream api.
+- Random api.
+- Sha1 hash function.
+- Extended enumset functionality.
+- Updated malloc/calloc/realloc/free removing old helper functions.
+- Added TrackingAllocator.
+- Add checks to prevent incorrect alignment on malloc.
+- Updated clamp.
+- Added `Clock` and `DateTime`.
+
+### Fixes
+- Fixes to the x64 ABI.
+- Updates to how variadics are implemented.
+- Fixes to shift checks.
+- Fixes to string parsing.
+- Disallow trailing ',' in function parameter list.
+- Fixed errors on flexible array slices.
+- Fix of `readdir` issues on macOS.
+- Fix to slice assignment of distinct types.
+- Fix of issue casting subarrays to distinct types.
+- Fixes to `split`, `rindex_of`.
+- List no longer uses the temp allocator by default.
+- Remove test global when not in test mode.
+- Fix sum/product on floats.
+- Fix error on void! return of macros.
+- Removed too permissive casts on subarrays.
+- Using C files correctly places objects in the build folder.
+- Fix of overaligned deref.
+- Fix negating a float vector.
+- Fix where $typeof(x) { ... } would not be a valid compound literal.
+- Fix so that using `var` in `if (var x = ...)` works correctly.
+- Fix int[] -> void* casts.
+- Fix in utf8to16 conversions.
+- Updated builtin checking.
+- Reduce formatter register memory usage.
+- Fixes to the "any" type.
+- Fix bug in associated values.
+- More RISC-V tests and fixes to the ABI.
+- Fix issue with hex floats assumed being double despite `f` suffix.
+- Fix of the `tan` function.
+- Fixes to the aarch64 ABI when passing invalid vectors.
+- Fix creating typed compile time variables.
+- Fix bug in !floatval codegen.
+- Fix of visibility issues for generic methods.
+- Fixes to `$include`.
+- Fix of LLVM codegen for optionals in certain cases.
+- Fix of `$vasplat` when invoked repeatedly.
+- Fix to `$$DATE`.
+- Fix of attributes on nested bitstructs.
+- Fix comparing const values > 64 bits.
+- Defer now correctly invoked in expressions like `return a > 0 ? Foo.ABC! : 1`.
+- Fix conversion in `if (int x = foo())`.
+- Delay C ABI lowering until requested to prevent circular dependencies.
+- Fix issue with decls accidentally invalidated during `$checked` eval.
+- Fold optional when casting slice to pointer.
+- Fixed issue when using named arguments after varargs.
+- Fix bug initializing nested struct/unions.
+- Fix of bool -> vector cast.
+- Correctly widen C style varargs for distinct types and optionals.
 
 ## 0.4.0 Change List
 

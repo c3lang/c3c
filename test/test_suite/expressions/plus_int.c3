@@ -1,20 +1,20 @@
 fn void test1()
 {
     short! a = 1;
-    try? +a;
+    @ok(+a);
     short b = +a; // #error: 'int!' to 'short'.
 }
 
 fn void test2()
 {
     int! a = 1;
-    try? +a;
+    @ok(+a);
     int b = +a; // #error: 'int!' to 'int'
 }
 
 fn void test3()
 {
     long! a = 1;
-    try? +a;
+    @ok(+a);
     long b = +a; // #error: 'long!' to 'long'
 }

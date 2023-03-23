@@ -10,7 +10,7 @@ import foo;
 
 fn int! abc()
 {
-	return Baz.TEST!;
+	return Baz.TEST?;
 }
 
 module baz;
@@ -18,5 +18,5 @@ import foo;
 
 fn int! abc()
 {
-	return Baz.TEST!;
+	return Baz.TEST?;
 }

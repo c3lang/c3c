@@ -87,13 +87,13 @@ fn Type! peek_last(LinkedList* list) => list.last() @inline;
 
 fn Type! LinkedList.first(LinkedList *list)
 {
-	if (!list._first) return IteratorResult.NO_MORE_ELEMENT!;
+	if (!list._first) return IteratorResult.NO_MORE_ELEMENT?;
 	return list._first.value;
 }
 
 fn Type! LinkedList.last(LinkedList* list)
 {
-	if (!list._last) return IteratorResult.NO_MORE_ELEMENT!;
+	if (!list._last) return IteratorResult.NO_MORE_ELEMENT?;
 	return list._last.value;
 }
 
@@ -240,7 +240,7 @@ fn bool LinkedList.remove_last_value(LinkedList* list, Type t)
  **/
 fn Type! LinkedList.pop(LinkedList* list)
 {
-	if (!list._first) return IteratorResult.NO_MORE_ELEMENT!;
+	if (!list._first) return IteratorResult.NO_MORE_ELEMENT?;
 	defer list.unlink_first();
 	return list._first.value;
 }
@@ -250,7 +250,7 @@ fn Type! LinkedList.pop(LinkedList* list)
  **/
 fn void! LinkedList.remove_last(LinkedList* list)
 {
-	if (!list._first) return IteratorResult.NO_MORE_ELEMENT!;
+	if (!list._first) return IteratorResult.NO_MORE_ELEMENT?;
 	list.unlink_last();
 }
 
@@ -259,7 +259,7 @@ fn void! LinkedList.remove_last(LinkedList* list)
  **/
 fn void! LinkedList.remove_first(LinkedList* list)
 {
-	if (!list._first) return IteratorResult.NO_MORE_ELEMENT!;
+	if (!list._first) return IteratorResult.NO_MORE_ELEMENT?;
 	list.unlink_first();
 }
 

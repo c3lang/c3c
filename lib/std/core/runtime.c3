@@ -9,23 +9,10 @@ struct VirtualAny
     typeid type_id;
 }
 
-struct VirtualContainer
-{
-    void* ptr;
-    void* impl_ptr;
-}
-
 struct SubArrayContainer
 {
     void* ptr;
     usz len;
-}
-
-struct VarArrayHeader
-{
-    usz size;
-    usz capacity;
-    void *allocator;
 }
 
 typedef TestFn = fn void!();
@@ -48,10 +35,13 @@ fn TestRunner test_runner_create()
 import libc;
 
 TestRunner* current_runner @private;
+
 fn void test_panic(String message, String file, String function, uint line)
 {
 	io::printn("[error]");
-	io::printfn("\n Error: %s", message);
+	io::print("\n Error: ");
+	io::print(message);
+	io::printn();
 	io::printfn("  - in %s %s:%s.\n", function, file, line);
 	libc::longjmp(&current_runner.buf, 1);
 }

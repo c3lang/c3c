@@ -2,7 +2,7 @@ module test;
 
 fn char* foo()
 {
-  return "*** Word \"%s\" on line %d is not";
+  return "*** Word \"%s\" on line %d is not" "" "";
 }
 
 // #expect: test.ll

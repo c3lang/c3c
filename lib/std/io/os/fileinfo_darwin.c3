@@ -44,26 +44,26 @@ const S_IFSOCK = 0o140000; // socket
 fn usz! native_file_size(String path)
 {
 	Darwin64Stat stat;
-	read_stat(&stat, path)?;
+	read_stat(&stat, path)!;
 	return stat.st_size;
 }
 
 fn bool native_file_or_dir_exists(String path)
 {
 	Darwin64Stat stat;
-	return try? read_stat(&stat, path);
+	return @ok(read_stat(&stat, path));
 }
 
 fn bool native_is_file(String path)
 {
 	Darwin64Stat stat;
-	return try? read_stat(&stat, path) && (stat.st_mode & S_IFREG);
+	return @ok(read_stat(&stat, path)) && stat.st_mode & S_IFREG;
 }
 
 fn bool native_is_dir(String path)
 {
 	Darwin64Stat stat;
-	return try? read_stat(&stat, path) && (stat.st_mode & S_IFDIR);
+	return @ok(read_stat(&stat, path)) && stat.st_mode & S_IFDIR;
 }
 
 fn void! read_stat(Darwin64Stat* stat, String path) @local
@@ -76,25 +76,25 @@ fn void! read_stat(Darwin64Stat* stat, String path) @local
 			switch (libc::errno())
 			{
 				case errno::EBADF:
-					return IoError.FILE_NOT_VALID!;
+					return IoError.FILE_NOT_VALID?;
 				case errno::EFAULT:
 					unreachable("Invalid stat");
 				case errno::EIO:
-					return IoError.GENERAL_ERROR!;
+					return IoError.GENERAL_ERROR?;
 				case errno::EACCES:
-					return IoError.NO_PERMISSION!;
+					return IoError.NO_PERMISSION?;
 				case errno::ELOOP:
-					return IoError.NO_PERMISSION!;
+					return IoError.NO_PERMISSION?;
 				case errno::ENAMETOOLONG:
-					return IoError.NAME_TOO_LONG!;
+					return IoError.NAME_TOO_LONG?;
 				case errno::ENOENT:
-					return IoError.FILE_NOT_FOUND!;
+					return IoError.FILE_NOT_FOUND?;
 				case errno::ENOTDIR:
-					return IoError.FILE_NOT_DIR!;
+					return IoError.FILE_NOT_DIR?;
 				case errno::EOVERFLOW:
-					return IoError.GENERAL_ERROR!;
+					return IoError.GENERAL_ERROR?;
 				default:
-					return IoError.UNKNOWN_ERROR!;
+					return IoError.UNKNOWN_ERROR?;
 			}
 		}
 	};

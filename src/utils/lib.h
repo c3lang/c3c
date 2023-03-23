@@ -159,7 +159,7 @@ static inline bool char_is_whitespace(char c);
 static inline signed char char_is_valid_escape(char c);
 // Hex to nibble, -1 if invalid
 static inline int char_hex_to_nibble(char c);
-static inline char char_nibble_to_hex(int c);
+INLINE char char_nibble_to_hex(int c);
 
 static inline uint32_t fnv1a(const char *key, uint32_t len);
 
@@ -520,10 +520,15 @@ static inline bool char_is_hex(char c)
 	return hex_conv[(unsigned char)c] != 0;
 }
 
-static inline char char_nibble_to_hex(int c)
+INLINE char char_nibble_to_hex(int c)
 {
 	static const char *conv = "0123456789ABCDEF";
 	return conv[c];
+}
+
+INLINE bool is_space(char c)
+{
+	return c == ' ' || c == '\t';
 }
 
 static inline bool char_is_whitespace(char c)

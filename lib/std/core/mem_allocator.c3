@@ -83,12 +83,12 @@ fn void*! Allocator.calloc_aligned(Allocator* allocator, usz size, usz alignment
 
 fn void! Allocator.free(Allocator* allocator, void* old_pointer) @inline
 {
-	allocator.function(allocator, 0, 0, 0, old_pointer, FREE)?;
+	allocator.function(allocator, 0, 0, 0, old_pointer, FREE)!;
 }
 
 fn void! Allocator.free_aligned(Allocator* allocator, void* old_pointer) @inline
 {
-	allocator.function(allocator, 0, 0, 0, old_pointer, ALIGNED_FREE)?;
+	allocator.function(allocator, 0, 0, 0, old_pointer, ALIGNED_FREE)!;
 }
 
 fn void Allocator.reset(Allocator* allocator, usz mark = 0)

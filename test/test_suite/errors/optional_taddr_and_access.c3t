@@ -18,7 +18,7 @@ fn void main()
     int! z = 2;
     Foo*! w = &&Foo{ z, 0 };
     printf("%d\n", w.x);
-    z = MyErr.FOO!;
+    z = MyErr.FOO?;
     w = &&Foo{ z, 0 };
     printf("Not visible: %d\n", w.x);
 }

@@ -15,7 +15,7 @@ fault ByeErr
 
 fn void test()
 {
-    int! x = ByeErr.BAR!;
+    int! x = ByeErr.BAR?;
 
     typeid z = int.typeid;
     if (catch err = x)

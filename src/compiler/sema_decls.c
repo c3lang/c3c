@@ -204,11 +204,6 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl, Decl **
 			SEMA_ERROR(member, "Flexible array members not allowed in unions.");
 			return false;
 		}
-		if (member->type->type_kind == TYPE_SCALED_VECTOR)
-		{
-			SEMA_ERROR(member, "Scaled vector members not allowed in unions / structs.");
-			return false;
-		}
 		AlignSize member_alignment;
 		if (!sema_set_abi_alignment(context, member->type, &member_alignment)) return false;
 		ByteSize member_size = type_size(member->type);
@@ -240,7 +235,7 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl, Decl **
 	// 1. If packed, then the alignment is zero, unless previously given
 	if (decl->is_packed && !decl->alignment) decl->alignment = 1;
 
-	// 2. Otherwise pick the highest of the natural alignment and the given alignment.
+	// 2. otherwise pick the highest of the natural alignment and the given alignment.
 	if (!decl->is_packed && decl->alignment < max_alignment) decl->alignment = max_alignment;
 
 	// We're only packed if the max alignment is > 1
@@ -312,11 +307,6 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl, Decl *
 				return false;
 			}
 			decl->has_variable_array = true;
-		}
-		if (member_type->type_kind == TYPE_SCALED_VECTOR)
-		{
-			SEMA_ERROR(member, "Scaled vectors may not be used in structs and unions.");
-			return false;
 		}
 		if (member_type->type_kind == TYPE_INFERRED_ARRAY)
 		{
@@ -393,7 +383,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl, Decl *
 	// 1. If packed, use the alignment given, otherwise set to 1.
 	if (decl->is_packed && !decl->alignment) decl->alignment = 1;
 
-	// 2. Otherwise pick the highest of the natural alignment and the given alignment.
+	// 2. otherwise pick the highest of the natural alignment and the given alignment.
 	if (!decl->is_packed && decl->alignment < natural_alignment) decl->alignment = natural_alignment;
 
 	// We must now possibly add the end padding.
@@ -529,7 +519,7 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *dec
 			SEMA_ERROR(member, "This element would overflow the bitstruct size (%d bits).", bits);
 			return false;
 		}
-		goto AFTER_BITCHECK;
+		goto AFTER_BIT_CHECK;
 	}
 
 	Expr *start = member->var.start;
@@ -606,7 +596,7 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *dec
 	member->var.start_bit = start_bit;
 	member->var.end_bit = end_bit;
 
-AFTER_BITCHECK:
+AFTER_BIT_CHECK:
 	// Check for duplicate members.
 	for (unsigned i = 0; i < index; i++)
 	{
@@ -891,7 +881,7 @@ static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl)
 	}
 	if (!sema_resolve_type_info(context, decl->typedef_decl.type_info)) return false;
 	Type *type = decl->typedef_decl.type_info->type->canonical;
-	if (type == type_anyerr || type == type_any)
+	if (type == type_anyfault || type == type_any)
 	{
 		SEMA_ERROR(decl->typedef_decl.type_info, "%s may not be aliased.", type_quoted_error_string(type));
 		return false;
@@ -928,13 +918,12 @@ static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl)
 		case TYPE_FLEXIBLE_ARRAY:
 			UNREACHABLE
 			return false;
-		case TYPE_OPTIONAL_ANY:
 		case TYPE_OPTIONAL:
 			UNREACHABLE
 		case TYPE_FAULTTYPE:
 			SEMA_ERROR(decl, "You cannot create a distinct type from a fault type.");
 			return false;
-		case TYPE_ANYERR:
+		case TYPE_ANYFAULT:
 			SEMA_ERROR(decl, "You cannot create a distinct type from an error union.");
 			return false;
 			case TYPE_ANY:
@@ -952,7 +941,6 @@ static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl)
 		case TYPE_ARRAY:
 		case TYPE_SUBARRAY:
 		case TYPE_VECTOR:
-		case TYPE_SCALED_VECTOR:
 			break;
 	}
 	// Do we need anything else?
@@ -1396,7 +1384,7 @@ static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type
 			vec_add(parent->methods, method_like);
 			break;
 		case VISIBLE_PRIVATE:
-			if (parent->unit->module == unit->module && parent->visibility >= VISIBLE_PRIVATE)
+			if (parent->unit && parent->unit->module == unit->module && parent->visibility >= VISIBLE_PRIVATE)
 			{
 				vec_add(parent->methods, method_like);
 				break;
@@ -1705,7 +1693,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 					decl->section = expr->const_expr.string.chars;
 					break;
 				case ATTRIBUTE_EXTNAME:
-					sema_warning_at(attr->span, "'@extname' is deprecated, plase use '@extern' instead.");
+					sema_warning_at(attr->span, "'@extname' is deprecated, please use '@extern' instead.");
 					FALLTHROUGH;
 				case ATTRIBUTE_EXTERN:
 					decl->has_extname = true;
@@ -2205,7 +2193,6 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	Type *rtype = rtype_info->type;
 	bool is_int_return = true;
 	bool is_err_return = false;
-	if (rtype->type_kind == TYPE_OPTIONAL_ANY) is_err_return = true;
 	if (!is_err_return && type_is_optional(rtype))
 	{
 		if (rtype->optional->type_kind != TYPE_VOID)
@@ -2547,10 +2534,10 @@ bool sema_analyse_decl_type(SemaContext *context, Type *type, SourceSpan span)
 			break;
 	}
 	if (!type_is_optional(type)) return true;
-	if (type_is_optional_any(type) || type->optional == type_void)
+	if (type == type_wildcard_optional || type->optional == type_void)
 	{
 		sema_error_at(span, "The use of 'void!' as a variable type is not permitted, use %s instead.",
-		                 type_quoted_error_string(type_anyerr));
+		                 type_quoted_error_string(type_anyfault));
 		return false;
 	}
 	return true;
@@ -2687,6 +2674,11 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 			decl->type = init_expr->type;
 			if (type_is_invalid_storage_type(init_expr->type))
 			{
+				if (init_expr->type == type_wildcard_optional || init_expr->type == type_wildcard)
+				{
+					SEMA_ERROR(init_expr, "No type can be inferred from the optional result.");
+					return false;
+				}
 				if (init_expr->type == type_untypedlist)
 				{
 					SEMA_ERROR(init_expr, "The type of an untyped list cannot be inferred, you can try adding an explicit type to solve this.");
@@ -3157,7 +3149,9 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 	DEBUG_LOG(">>> Analysing %s.", decl->name ? decl->name : ".anon");
 	if (decl->resolve_status == RESOLVE_RUNNING)
 	{
-		SEMA_ERROR(decl, "Recursive definition of '%s'.", decl->name ? decl->name : ".anon");
+		SEMA_ERROR(decl, decl->name
+			? "Recursive definition of '%s'."
+			: "Recursive definition of anonymous declaration.", decl->name);
 		goto FAILED;
 	}
 	decl->resolve_status = RESOLVE_RUNNING;
@@ -3238,6 +3232,7 @@ FAILED:
 void sema_display_deprecated_warning_on_use(SemaContext *context, Decl *decl, SourceSpan span)
 {
 	if (!decl->is_deprecated) return;
+	// Prevent multiple reports
 	decl->is_deprecated = false;
 	FOREACH_BEGIN(Attr *attr, decl->attributes)
 		if (attr->attr_kind == ATTRIBUTE_DEPRECATED)

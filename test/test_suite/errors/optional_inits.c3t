@@ -15,14 +15,14 @@ struct Bar
 
 fn void! test1() @maydiscard
 {
-    Bar! x = Foo.MY_VAL1!;
-    Bar y = x?;
+    Bar! x = Foo.MY_VAL1?;
+    Bar y = x!;
 }
 
 fn void! test2() @maydiscard
 {
     Bar! x = {};
-    Bar y = x?;
+    Bar y = x!;
 }
 
 fn void main()

@@ -2,53 +2,50 @@ module std::io::os;
 import libc;
 
 $switch
-$case !env::COMPILER_LIBC_AVAILABLE:
 
-fn String! getcwd(Allocator* using = mem::heap())
-{
-	unreachable("'getcwd' not available");
-}
-
-$case env::os_is_win32():
-
-extern fn Char16* _wgetcwd(Char16* buffer, int maxlen);
-extern fn usz wcslen(Char16* str);
+$case env::COMPILER_LIBC_AVAILABLE && env::os_is_win32():
 
 macro String! getcwd(Allocator* using = mem::heap())
 {
 	const DEFAULT_BUFFER = 256;
 	Char16[DEFAULT_BUFFER] buffer;
-	Char16 *res = _wgetcwd(&buffer, DEFAULT_BUFFER);
+	Char16 *res = win32::_wgetcwd(&buffer, DEFAULT_BUFFER);
 	bool free = false;
 	defer if (free) libc::free(res);
 	if (!res)
 	{
-	    if (libc::errno() != errno::ERANGE) return IoError.GENERAL_ERROR!;
-		res = _wgetcwd(null, 0);
+	    if (libc::errno() != errno::ERANGE) return IoError.GENERAL_ERROR?;
+		res = win32::_wgetcwd(null, 0);
 		free = true;
 	}
-	Char16[] str16 = res[:wcslen(res)];
-	return str::utf16to8(str16, using);
+	Char16[] str16 = res[:win32::wcslen(res)];
+	return string::from_utf16(str16, using);
 }
 
-$default:
+$case env::COMPILER_LIBC_AVAILABLE && env::os_is_posix():
 
-extern fn ZString _getcwd(char* pwd, usz len) @extern("getcwd");
 macro String! getcwd(Allocator* using = mem::heap())
 {
 	const usz DEFAULT_BUFFER = 256;
 	char[DEFAULT_BUFFER] buffer;
-	ZString res = _getcwd(&buffer, DEFAULT_BUFFER);
+	ZString res = posix::getcwd(&buffer, DEFAULT_BUFFER);
 	bool free = false;
 	if (!res)
 	{
 		// Improve error
-		if (libc::errno() != errno::ERANGE) return IoError.GENERAL_ERROR!;
-		res = _getcwd(null, 0);
+		if (libc::errno() != errno::ERANGE) return IoError.GENERAL_ERROR?;
+		res = posix::getcwd(null, 0);
 		free = true;
 	}
 	defer if (free) libc::free((void*)res);
 	return res.copy(using);
+}
+
+$default:
+
+fn String! getcwd(Allocator* using = mem::heap())
+{
+	unreachable("'getcwd' not available");
 }
 
 $endswitch

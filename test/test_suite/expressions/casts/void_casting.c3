@@ -8,7 +8,7 @@ fault Abc { AAA }
 
 macro int! bar()
 {
-	return Abc.AAA!;
+	return Abc.AAA?;
 }
 
 fn int! baz()

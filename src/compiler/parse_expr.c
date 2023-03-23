@@ -5,8 +5,6 @@
 #include "compiler_internal.h"
 #include "parser_internal.h"
 
-
-#define IF_TRY_CATCH_PREC (PREC_AND + 1)
 typedef Expr *(*ParseFn)(ParseContext *context, Expr *);
 
 typedef struct
@@ -18,6 +16,11 @@ typedef struct
 
 extern ParseRule rules[TOKEN_EOF + 1];
 
+
+bool parse_current_is_expr(ParseContext *c)
+{
+	return rules[c->tok].prefix != NULL;
+}
 
 /**
  * maybe_range ::= range | ('^'? INTEGER)
@@ -50,17 +53,32 @@ bool parse_range(ParseContext *c, Range *range)
 	}
 	range->is_range = true;
 
-	// ] ) are the possible ways to end a range.
-	if (tok_is(c, TOKEN_RBRACKET) || tok_is(c, TOKEN_RPAREN))
+	// Is there an expression next?
+	range->end_from_end = try_consume(c, TOKEN_BIT_XOR);
+	if (range->end_from_end || parse_current_is_expr(c))
 	{
-		// So here we have [1..] or [3:]
-		range->end_from_end = false;
-		range->end = 0;
+		ASSIGN_EXPRID_OR_RET(range->end, parse_expr(c), false);
 		return true;
 	}
-	range->end_from_end = try_consume(c, TOKEN_BIT_XOR);
-	ASSIGN_EXPRID_OR_RET(range->end, parse_expr(c), false);
+
+	// Otherwise we have [1..] or [3:]
+	range->end_from_end = false;
+	range->end = 0;
 	return true;
+}
+
+/**
+ * rethrow_expr ::= call_expr '!'
+ */
+static Expr *parse_rethrow_expr(ParseContext *c, Expr *left_side)
+{
+	assert(expr_ok(left_side));
+	advance_and_verify(c, TOKEN_BANG);
+	Expr *expr_ternary = expr_new_expr(EXPR_RETHROW, left_side);
+	expr_ternary->rethrow_expr.inner = left_side;
+	RANGE_EXTEND_PREV(expr_ternary);
+
+	return expr_ternary;
 }
 
 /**
@@ -72,6 +90,7 @@ inline Expr *parse_precedence_with_left_side(ParseContext *c, Expr *left_side, P
 	while (1)
 	{
 		TokenType tok = c->tok;
+
 		Precedence token_precedence = rules[tok].precedence;
 		// See if the operator precedence is greater than the last, if so exit.
 		// Note that if the token is not an operator then token_precedence = 0
@@ -91,7 +110,6 @@ inline Expr *parse_precedence_with_left_side(ParseContext *c, Expr *left_side, P
 	}
 	return left_side;
 }
-
 
 /**
  * Parse an expression in any position.
@@ -124,72 +142,96 @@ Expr *parse_generic_parameter(ParseContext *c)
 	return parse_precedence(c, PREC_ADDITIVE);
 }
 
-static inline Expr *parse_for_try_expr(ParseContext *c)
+/*
+ * Parse anything with higher precedence than &&, that means <= >= etc are ok.
+ */
+static inline Expr *parse_relational_expr(ParseContext *c)
 {
-	return parse_precedence(c, PREC_AND + 1);
+	return parse_precedence(c, PREC_RELATIONAL);
 }
 
+
+
 /**
- * catch_unwrap ::= CATCH IDENT | (type? IDENT '=' (expr | '(' expr (',' expr) ')'))
+ * catch_unwrap ::= CATCH (IDENT | type? IDENT '=' catch_chain) | catch_chain
+ * catch_chain ::= try_rhs_expr (',' try_rhs_expr)*
  */
 static inline Expr *parse_catch_unwrap(ParseContext *c)
 {
 	Expr *expr = expr_new(EXPR_CATCH_UNWRAP, c->span);
 	advance_and_verify(c, TOKEN_CATCH);
-	TypeInfo *type = NULL;
-	ASSIGN_EXPR_OR_RET(Expr * lhs, parse_precedence(c, IF_TRY_CATCH_PREC), poisoned_expr);
-	if (lhs->expr_kind == EXPR_TYPEINFO)
+	Expr **exprs = NULL;
+
+	// First, try parsing as single expression
+	ASSIGN_EXPR_OR_RET(Expr *sub_expr, parse_relational_expr(c), poisoned_expr);
+
+	// Check if we have a chain.
+	if (try_consume(c, TOKEN_COMMA))
 	{
-		expr->catch_unwrap_expr.type = lhs->type_expr;
-		ASSIGN_EXPR_OR_RET(expr->catch_unwrap_expr.variable, parse_precedence(c, IF_TRY_CATCH_PREC), poisoned_expr);
+		// Create the chain.
+		vec_add(exprs, sub_expr);
+		do
+		{
+			ASSIGN_EXPR_OR_RET(sub_expr, parse_relational_expr(c), poisoned_expr);
+			vec_add(exprs, sub_expr);
+		} while (try_consume(c, TOKEN_COMMA));
+		// We're done.
+		expr->catch_unwrap_expr.exprs = exprs;
+		return expr;
+	}
+
+	// We don't have a chain, so it's either "anyfault f" or "f" or an expression.
+	if (sub_expr->expr_kind == EXPR_TYPEINFO)
+	{
+		// Assign the type
+		expr->catch_unwrap_expr.type = sub_expr->type_expr;
+		// Assign the variable
+		ASSIGN_EXPR_OR_RET(expr->catch_unwrap_expr.variable, parse_relational_expr(c), poisoned_expr);
 	}
 	else
 	{
+		// Here we assume it's either "f" or an expression.
 		expr->catch_unwrap_expr.type = NULL;
-		expr->catch_unwrap_expr.variable = lhs;
+		expr->catch_unwrap_expr.variable = sub_expr;
 	}
+	// If we don't have an '=', we check whether
 	if (!try_consume(c, TOKEN_EQ))
 	{
+		// If we had "anyfault f", then we MUST have '='
 		if (expr->catch_unwrap_expr.type)
 		{
 			SEMA_ERROR_HERE("Expected a '=' here.");
 			return poisoned_expr;
 		}
+		// We just have `catch foo`, so we add the "variable" as an expression
 		vec_add(expr->catch_unwrap_expr.exprs, expr->catch_unwrap_expr.variable);
 		expr->catch_unwrap_expr.variable = NULL;
 		RANGE_EXTEND_PREV(expr);
 		return expr;
 	}
-	if (try_consume(c, TOKEN_LPAREN))
+	// After '=' we have a chain of expressions.
+	do
 	{
-		do
-		{
-			ASSIGN_EXPR_OR_RET(Expr * init_expr, parse_expr(c), poisoned_expr);
-			vec_add(expr->catch_unwrap_expr.exprs, init_expr);
-		} while (try_consume(c, TOKEN_COMMA));
-		CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
-	}
-	else
-	{
-		ASSIGN_EXPR_OR_RET(Expr * init_expr, parse_expr(c), poisoned_expr);
-		vec_add(expr->catch_unwrap_expr.exprs, init_expr);
-	}
+		ASSIGN_EXPR_OR_RET(sub_expr, parse_relational_expr(c), poisoned_expr);
+		vec_add(exprs, sub_expr);
+	} while (try_consume(c, TOKEN_COMMA));
+	expr->catch_unwrap_expr.exprs = exprs;
 	RANGE_EXTEND_PREV(expr);
 	return expr;
 }
 
 /**
- * try_unwrap ::= TRY (IDENT | type? IDENT '=' non_and_expr)
+ * try_unwrap ::= TRY ((type? IDENT '=' try_rhs_expr) | try_rhs_expr)
  */
 static inline Expr *parse_try_unwrap(ParseContext *c)
 {
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_TRY_UNWRAP);
 	advance_and_verify(c, TOKEN_TRY);
-	ASSIGN_EXPR_OR_RET(Expr *lhs, parse_precedence(c, IF_TRY_CATCH_PREC), poisoned_expr);
+	ASSIGN_EXPR_OR_RET(Expr *lhs, parse_relational_expr(c), poisoned_expr);
 	if (lhs->expr_kind == EXPR_TYPEINFO)
 	{
 		expr->try_unwrap_expr.type = lhs->type_expr;
-		ASSIGN_EXPR_OR_RET(expr->try_unwrap_expr.variable, parse_precedence(c, IF_TRY_CATCH_PREC), poisoned_expr);
+		ASSIGN_EXPR_OR_RET(expr->try_unwrap_expr.variable, parse_relational_expr(c), poisoned_expr);
 	}
 	else
 	{
@@ -202,15 +244,14 @@ static inline Expr *parse_try_unwrap(ParseContext *c)
 	}
 	if (try_consume(c, TOKEN_EQ))
 	{
-		ASSIGN_EXPR_OR_RET(expr->try_unwrap_expr.init, parse_precedence(c, PREC_AND + 1), poisoned_expr);
+		ASSIGN_EXPR_OR_RET(expr->try_unwrap_expr.init, parse_relational_expr(c), poisoned_expr);
 	}
 	RANGE_EXTEND_PREV(expr);
 	return expr;
 }
 
 /**
- * try_unwrap_chain ::= try_unwrap ('&&' (try_unwrap | non_and_expr))*
- * try_unwrap ::= TRY (IDENT | type? IDENT '=' non_and_expr)
+ * try_unwrap_chain ::= try_unwrap ('&&' (try_unwrap | try_rhs_expr))*
  */
 static inline Expr *parse_try_unwrap_chain(ParseContext *c)
 {
@@ -225,7 +266,7 @@ static inline Expr *parse_try_unwrap_chain(ParseContext *c)
 			vec_add(unwraps, expr);
 			continue;
 		}
-		ASSIGN_EXPR_OR_RET(Expr * next_unwrap, parse_for_try_expr(c), poisoned_expr);
+		ASSIGN_EXPR_OR_RET(Expr * next_unwrap, parse_relational_expr(c), poisoned_expr);
 		vec_add(unwraps, next_unwrap);
 	}
 	Expr *try_unwrap_chain = expr_new_expr(EXPR_TRY_UNWRAP_CHAIN, first_unwrap);
@@ -234,6 +275,9 @@ static inline Expr *parse_try_unwrap_chain(ParseContext *c)
 	return try_unwrap_chain;
 }
 
+/**
+ * assert_expr ::= try_unwrap_chain | expr
+ */
 Expr *parse_assert_expr(ParseContext *c)
 {
 	if (tok_is(c, TOKEN_TRY))
@@ -301,11 +345,11 @@ Expr* parse_expr(ParseContext *c)
 
 Expr* parse_constant_expr(ParseContext *c)
 {
-	return parse_precedence(c, PREC_TERNARY);
+	return parse_precedence(c, PREC_ASSIGNMENT + 1);
 }
 
 /**
- * param_path : ('[' expression ']' | '.' IDENT)*
+ * param_path ::= ('[' expr ']' | '.' IDENT)*
  *
  * @param c
  * @param path reference to the path to return
@@ -340,9 +384,7 @@ static bool parse_param_path(ParseContext *c, DesignatorElement ***path)
 			advance(c);
 			DesignatorElement *element = CALLOCS(DesignatorElement);
 			element->kind = DESIGNATOR_FIELD;
-			element->field = symstr(c);
-			EXPECT_OR_RET(TOKEN_IDENT, false);
-			advance(c);
+			ASSIGN_EXPR_OR_RET(element->field_expr, parse_precedence(c, PREC_PRIMARY), false);
 			vec_add(*path, element);
 			continue;
 		}
@@ -394,6 +436,10 @@ static Expr *parse_lambda(ParseContext *c, Expr *left)
 	expr->lambda_expr = func;
 	return expr;
 }
+
+/**
+ * vasplat ::= CT_VASPLAT '(' range_expr ')'
+ */
 Expr *parse_vasplat(ParseContext *c)
 {
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_VASPLAT);
@@ -408,11 +454,12 @@ Expr *parse_vasplat(ParseContext *c)
 	return expr;
 }
 /**
- * param_list ::= ('...' parameter | parameter (',' parameter)*)?
+ * param_list ::= ('...' arg | arg (',' arg)*)?
  *
  * parameter ::= (param_path '=')? expr
  */
-bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *splat, bool vasplat)
+bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *splat, bool vasplat,
+                    bool allow_trailing_comma)
 {
 	*result = NULL;
 	if (splat) *splat = false;
@@ -453,7 +500,15 @@ bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *
 		{
 			return true;
 		}
-		if (tok_is(c, param_end)) return true;
+		if (tok_is(c, param_end))
+		{
+			if (!allow_trailing_comma)
+			{
+				sema_error_at(c->prev_span, "Trailing commas are not allowed.");
+				return false;
+			}
+			return true;
+		}
 		if (splat && *splat)
 		{
 			SEMA_ERROR_HERE("'...' is only allowed on the last argument in a call.");
@@ -462,14 +517,8 @@ bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *
 	}
 }
 
-
-
 /**
- * expression_list
- *	: expression
- *	| expression_list ',' expression
- *	;
- * @return Ast *
+ * expression_list ::= decl_or_expr+
  */
 Expr *parse_expression_list(ParseContext *c, bool allow_decl)
 {
@@ -531,6 +580,9 @@ static Expr *parse_type_identifier(ParseContext *context, Expr *left)
 	return parse_type_expression_with_path(context, NULL);
 }
 
+/**
+ * type_expr ::= type initializer_list?
+ */
 static Expr *parse_type_expr(ParseContext *c, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
@@ -577,7 +629,9 @@ static Expr *parse_ct_stringify(ParseContext *c, Expr *left)
 	return expr;
 }
 
-
+/**
+ * unary_expr ::= unary_op unary_prec_expr
+ */
 static Expr *parse_unary_expr(ParseContext *c, Expr *left)
 {
 	assert(!left && "Did not expect a left hand side!");
@@ -594,6 +648,9 @@ static Expr *parse_unary_expr(ParseContext *c, Expr *left)
 	return unary;
 }
 
+/**
+ * post_unary_expr ::= <expr> unary_op
+ */
 static Expr *parse_post_unary(ParseContext *c, Expr *left)
 {
 	assert(expr_ok(left));
@@ -605,46 +662,65 @@ static Expr *parse_post_unary(ParseContext *c, Expr *left)
 	return unary;
 }
 
-
-
-
-static Expr *parse_ternary_expr(ParseContext *c, Expr *left_side)
+/**
+ * elvis_expr := <left> ?: ternary_prec_expr
+ */
+static Expr *parse_elvis_expr(ParseContext *c, Expr *left_side)
 {
 	assert(expr_ok(left_side));
 
 	Expr *expr_ternary = expr_new_expr(EXPR_TERNARY, left_side);
 	expr_ternary->ternary_expr.cond = exprid(left_side);
-
-
-	// Check for elvis
-	if (try_consume(c, TOKEN_ELVIS))
-	{
-		expr_ternary->ternary_expr.then_expr = 0;
-	}
-	else
-	{
-		advance_and_verify(c, TOKEN_QUESTION);
-		if (!rules[c->tok].prefix)
-		{
-			expr_ternary->expr_kind = EXPR_RETHROW;
-			expr_ternary->rethrow_expr.inner = left_side;
-			RANGE_EXTEND_PREV(expr_ternary);
-			return expr_ternary;
-		}
-		ASSIGN_EXPR_OR_RET(Expr * true_expr, parse_expr(c), poisoned_expr);
-		expr_ternary->ternary_expr.then_expr = exprid(true_expr);
-		CONSUME_OR_RET(TOKEN_COLON, poisoned_expr);
-	}
-
+	advance_and_verify(c, TOKEN_ELVIS);
+	expr_ternary->ternary_expr.then_expr = 0;
 	ASSIGN_EXPRID_OR_RET(expr_ternary->ternary_expr.else_expr, parse_precedence(c, PREC_TERNARY), poisoned_expr);
 	RANGE_EXTEND_PREV(expr_ternary);
 	return expr_ternary;
 }
 
 /**
- * grouping_expr
- * 	: '(' expression ')' ('(' expression ')')?
- * 	;
+ * ternary_optional_expr ::= optional_expr | ternary_expr
+ * optional_expr ::= <left> '?' '!'?
+ * ternary_expr ::= <left> '?' expr ':' ternary_prec_expr
+ */
+static Expr *parse_ternary_expr(ParseContext *c, Expr *left_side)
+{
+	assert(expr_ok(left_side));
+
+	Expr *expr = expr_new_expr(EXPR_TERNARY, left_side);
+	advance_and_verify(c, TOKEN_QUESTION);
+
+	// If we have no expression following *or* it is a '!' followed by no expression
+	// in this case it's an optional expression.
+	if (!rules[c->tok].prefix || (c->tok == TOKEN_BANG && !rules[peek(c)].prefix))
+	{
+		expr->expr_kind = EXPR_OPTIONAL;
+		expr->inner_expr = left_side;
+		RANGE_EXTEND_PREV(expr);
+		return expr;
+	}
+
+	// Otherwise we have a ternary
+	expr->ternary_expr.cond = exprid(left_side);
+	// LHS is a plain expression
+	ASSIGN_EXPR_OR_RET(Expr *true_expr, parse_expr(c), poisoned_expr);
+	expr->ternary_expr.then_expr = exprid(true_expr);
+	CONSUME_OR_RET(TOKEN_COLON, poisoned_expr);
+
+	// RHS is ternary prec, to get right -> left associativity
+	ASSIGN_EXPRID_OR_RET(expr->ternary_expr.else_expr, parse_precedence(c, PREC_TERNARY), poisoned_expr);
+	RANGE_EXTEND_PREV(expr);
+	return expr;
+}
+
+/**
+ * grouping_expr ::= cast_expr | group_expr
+ *
+ * cast_expr ::= '(' type ')' expr
+ * group_expr ::= '(' expr ')'
+ *
+ * When parsing we retain EXPR_GROUP in order to require explicit parentheses later
+ * as needed.
  */
 static Expr *parse_grouping_expr(ParseContext *c, Expr *left)
 {
@@ -662,6 +738,7 @@ static Expr *parse_grouping_expr(ParseContext *c, Expr *left)
 			SEMA_ERROR_HERE("Unexpected start of a block '{' here. If you intended a compound literal, remove the () around the type.");
 			return poisoned_expr;
 		}
+		// Create a cast expr
 		if (rules[c->tok].prefix)
 		{
 			ASSIGN_EXPRID_OR_RET(expr->cast_expr.expr, parse_precedence(c, PREC_CALL), poisoned_expr);
@@ -696,7 +773,7 @@ Expr *parse_initializer_list(ParseContext *c, Expr *left)
 	if (!try_consume(c, TOKEN_RBRACE))
 	{
 		Expr **exprs = NULL;
-		if (!parse_arg_list(c, &exprs, TOKEN_RBRACE, NULL, true)) return poisoned_expr;
+		if (!parse_arg_list(c, &exprs, TOKEN_RBRACE, NULL, true, true)) return poisoned_expr;
 		int designated = -1;
 		VECEACH(exprs, i)
 		{
@@ -734,16 +811,24 @@ Expr *parse_initializer_list(ParseContext *c, Expr *left)
 	return initializer_list;
 }
 
-static Expr *parse_optional(ParseContext *c, Expr *left_side)
+static Expr *parse_orelse(ParseContext *c, Expr *left_side)
 {
-	Expr *optional = expr_new(EXPR_OPTIONAL, left_side->span);
-	advance_and_verify(c, TOKEN_BANG);
-	optional->inner_expr = left_side;
-	RANGE_EXTEND_PREV(optional);
-	return optional;
+	assert(left_side && expr_ok(left_side));
+
+	advance_and_verify(c, TOKEN_QUESTQUEST);
+
+	Expr *right_side;
+	// Assignment operators have precedence right -> left.
+	ASSIGN_EXPR_OR_RET(right_side, parse_precedence(c, PREC_TERNARY), poisoned_expr);
+
+	Expr *expr = expr_new_expr(EXPR_BINARY, left_side);
+	expr->binary_expr.operator = BINARYOP_ELSE;
+	expr->binary_expr.left = exprid(left_side);
+	expr->binary_expr.right = exprid(right_side);
+
+	RANGE_EXTEND_PREV(expr);
+	return expr;
 }
-
-
 
 static Expr *parse_binary(ParseContext *c, Expr *left_side)
 {
@@ -786,7 +871,7 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left)
 	{
 		// Pick a modest guess.
 		params = VECNEW(Expr*, 4);
-		if (!parse_arg_list(c, &params, TOKEN_RPAREN, &splat, true)) return poisoned_expr;
+		if (!parse_arg_list(c, &params, TOKEN_RPAREN, &splat, true, false)) return poisoned_expr;
 	}
 	if (try_consume(c, TOKEN_EOS))
 	{
@@ -865,8 +950,9 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left)
 	return call;
 }
 
-
-
+/**
+ * subscript ::= '[' range_expr ']'
+ */
 static Expr *parse_subscript_expr(ParseContext *c, Expr *left)
 {
 	assert(left && expr_ok(left));
@@ -884,19 +970,19 @@ static Expr *parse_subscript_expr(ParseContext *c, Expr *left)
 	return subs_expr;
 }
 
-
+/**
+ * access_expr ::= '.' primary_expr
+ */
 static Expr *parse_access_expr(ParseContext *c, Expr *left)
 {
 	assert(left && expr_ok(left));
 	advance_and_verify(c, TOKEN_DOT);
 	Expr *access_expr = expr_new_expr(EXPR_ACCESS, left);
 	access_expr->access_expr.parent = left;
-	ASSIGN_EXPR_OR_RET(access_expr->access_expr.child, parse_precedence(c, PREC_CALL + 1), poisoned_expr);
+	ASSIGN_EXPR_OR_RET(access_expr->access_expr.child, parse_precedence(c, PREC_PRIMARY), poisoned_expr);
 	RANGE_EXTEND_PREV(access_expr);
 	return access_expr;
 }
-
-
 
 static Expr *parse_ct_ident(ParseContext *c, Expr *left)
 {
@@ -908,20 +994,23 @@ static Expr *parse_ct_ident(ParseContext *c, Expr *left)
 	}
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_IDENT);
 	expr->ct_ident_expr.identifier = symstr(c);
-	advance(c);
+	advance_and_verify(c, TOKEN_CT_IDENT);
 	return expr;
 }
+
 
 static Expr *parse_hash_ident(ParseContext *c, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_HASH_IDENT);
 	expr->ct_ident_expr.identifier = symstr(c);
-
-	advance(c);
+	advance_and_verify(c, TOKEN_HASH_IDENT);
 	return expr;
 }
 
+/**
+ * ct_eval ::= CT_EVAL '(' expr ')'
+ */
 static Expr *parse_ct_eval(ParseContext *c, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
@@ -934,6 +1023,11 @@ static Expr *parse_ct_eval(ParseContext *c, Expr *left)
 	return expr;
 }
 
+/**
+ * ct_sizeof ::= CT_SIZEOF '(' expr ')'
+ *
+ * Note that this is tranformed to $typeof(expr).sizeof.
+ */
 static Expr *parse_ct_sizeof(ParseContext *c, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
@@ -955,6 +1049,9 @@ static Expr *parse_ct_sizeof(ParseContext *c, Expr *left)
 	return access;
 }
 
+/**
+ * ct_checks ::= CT_CHECKS '(' expression_list ')'
+ */
 static Expr *parse_ct_checks(ParseContext *c, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
@@ -967,6 +1064,10 @@ static Expr *parse_ct_checks(ParseContext *c, Expr *left)
 	return checks;
 }
 
+/**
+ * ct_call ::= (ALIGNOF | DEFINED | EXTNAMEOF | OFFSETOF | NAMEOF | QNAMEOF) '(' flat_path ')'
+ * flat_path ::= expr ('.' primary) | '[' expr ']')*
+ */
 static Expr *parse_ct_call(ParseContext *c, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
@@ -975,42 +1076,18 @@ static Expr *parse_ct_call(ParseContext *c, Expr *left)
 	advance(c);
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
 	ASSIGN_EXPR_OR_RET(Expr* internal, parse_precedence(c, PREC_FIRST + 1), poisoned_expr);
-	ExprFlatElement *flat_path = NULL;
-	TokenType tok = c->tok;
-	if (tok == TOKEN_DOT || tok == TOKEN_LBRACKET)
-	{
-		while (1)
-		{
-			ExprFlatElement flat_element;
-			if (try_consume(c, TOKEN_LBRACKET))
-			{
-				ASSIGN_EXPR_OR_RET(flat_element.inner, parse_expr(c), poisoned_expr);
-				TRY_CONSUME_OR_RET(TOKEN_RBRACKET, "Expected a ']' after the index.", poisoned_expr);
-				flat_element.array = true;
-			}
-			else if (try_consume(c, TOKEN_DOT))
-			{
-				ASSIGN_EXPR_OR_RET(flat_element.inner, parse_precedence(c, PREC_FIRST), poisoned_expr);
-				flat_element.array = false;
-			}
-			else
-			{
-				SEMA_ERROR_HERE("Expected '.' or '[' here.");
-				return poisoned_expr;
-			}
-			vec_add(flat_path, flat_element);
-			if (tok_is(c, TOKEN_RPAREN)) break;
-		}
-		RANGE_EXTEND_PREV(internal);
-	}
+	DesignatorElement **elements = NULL;
+	if (!parse_param_path(c, &elements)) return poisoned_expr;
 	expr->ct_call_expr.main_var = internal;
-	expr->ct_call_expr.flat_path = flat_path;
+	expr->ct_call_expr.flat_path = elements;
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 	RANGE_EXTEND_PREV(expr);
 	return expr;
 }
 
-
+/**
+ * ct_arg ::= VACOUNT | (VAARG | VAREF | VAEXPR | VACONST) '(' expr ')'
+ */
 static Expr *parse_ct_arg(ParseContext *c, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
@@ -1028,6 +1105,10 @@ static Expr *parse_ct_arg(ParseContext *c, Expr *left)
 	return expr;
 }
 
+/**
+ * identifier ::= CONST_IDENT | IDENT
+ * Note: if the identifier is "return" (only possible in doc lexing "mode"), create an EXPR_RETVAL instead.
+ */
 static Expr *parse_identifier(ParseContext *c, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
@@ -1070,19 +1151,9 @@ static Expr *parse_identifier_starting_expression(ParseContext *c, Expr *left)
 }
 
 
-
-static Expr *parse_try_expr(ParseContext *c, Expr *left)
-{
-	assert(!left && "Unexpected left hand side");
-	bool is_try = tok_is(c, TOKEN_TRY_QUESTION);
-	Expr *try_expr = EXPR_NEW_TOKEN(is_try ? EXPR_TRY : EXPR_CATCH);
-	advance(c);
-	ASSIGN_EXPR_OR_RET(try_expr->inner_expr, parse_precedence(c, PREC_UNARY), poisoned_expr);
-	RANGE_EXTEND_PREV(try_expr);
-	return try_expr;
-}
-
-
+/**
+ * force_unwrap ::= expr '!!'
+ */
 static Expr *parse_force_unwrap_expr(ParseContext *c, Expr *left)
 {
 	Expr *force_unwrap_expr = expr_new_expr(EXPR_FORCE_UNWRAP, left);
@@ -1093,26 +1164,30 @@ static Expr *parse_force_unwrap_expr(ParseContext *c, Expr *left)
 }
 
 
+/**
+ * builtin ::= '$$' IDENT
+ * compiler_const ::= '$$' CONST_IDENT
+ *
+ * Note this code accepts any ident as builtin, and relies on the lexer to prevent space between tokens.
+ */
 static Expr *parse_builtin(ParseContext *c, Expr *left)
 {
 	assert(!left && "Had left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_BUILTIN);
-	advance_and_verify(c, TOKEN_BUILTIN);
-	if (!token_is_some_ident(c->tok))
+	if (!token_is_some_ident(peek(c)))
 	{
-		SEMA_ERROR_HERE("Expected a name here.");
+		SEMA_ERROR_HERE("Unexpected '$$', did you mean to write a builtin?");
 		return poisoned_expr;
 	}
+	advance_and_verify(c, TOKEN_BUILTIN);
 	expr->builtin_expr.ident = symstr(c);
+	expr->span = extend_span_with_token(expr->span, c->span);
 	if (try_consume(c, TOKEN_CONST_IDENT))
 	{
 		expr->expr_kind = EXPR_COMPILER_CONST;
+		return expr;
 	}
-	else
-	{
-		CONSUME_OR_RET(TOKEN_IDENT, poisoned_expr);
-	}
-	RANGE_EXTEND_PREV(expr);
+	advance(c);
 	return expr;
 }
 
@@ -1130,6 +1205,23 @@ static int read_num_type(const char *string, size_t loc, size_t len)
 	return i;
 }
 
+int read_int_suffix(const char *string, int loc, int len, char c)
+{
+	switch (c | 32)
+	{
+		case 'i':
+			return read_num_type(string, loc, len);
+		case 'l':
+			if (loc != len - 1) return -1;
+			return 64;
+		case 'u':
+			if (loc == len - 2 && (string[loc + 1] | 32) == 'l') return 64;
+			return read_num_type(string, loc, len);
+		default:
+			return -1;
+	}
+}
+
 Expr *parse_integer(ParseContext *c, Expr *left)
 {
 	assert(!left && "Had left hand side");
@@ -1144,7 +1236,7 @@ Expr *parse_integer(ParseContext *c, Expr *left)
 	int binary_characters = 0;
 	bool wrapped = false;
 	uint64_t max;
-	switch (len > 2 ? string[1] : '0')
+	switch (len > 2 ? (string[1] | 32) : '0')
 	{
 		case 'x':
 			is_unsigned = true;
@@ -1152,18 +1244,22 @@ Expr *parse_integer(ParseContext *c, Expr *left)
 			for (size_t loc = 2; loc < len; loc++)
 			{
 				char ch = string[loc];
-				if (ch == 'u' || ch == 'U')
+				switch (ch | 32)
 				{
-					type_bits = read_num_type(string, loc, len);
-					break;
+					case 'u':
+						type_bits = read_int_suffix(string, loc, len, ch);
+						is_unsigned = true;
+						goto EXIT;
+					case 'l':
+					case 'i':
+						type_bits = read_int_suffix(string, loc, len, ch);
+						is_unsigned = false;
+						goto EXIT;
+					case '_' | 32:
+						continue;
+					default:
+						break;
 				}
-				if (ch == 'i' || ch == 'I')
-				{
-					is_unsigned = false;
-					type_bits = read_num_type(string, loc, len);
-					break;
-				}
-				if (ch == '_') continue;
 				if (i.high > max) wrapped = true;
 				i = i128_shl64(i, 4);
 				i = i128_add64(i, (uint64_t) char_hex_to_nibble(ch));
@@ -1176,18 +1272,22 @@ Expr *parse_integer(ParseContext *c, Expr *left)
 			for (size_t loc = 2; loc < len; loc++)
 			{
 				char ch = string[loc];
-				if (ch == 'i' || ch == 'I')
+				switch (ch | 32)
 				{
-					is_unsigned = false;
-					type_bits = read_num_type(string, loc, len);
-					break;
+					case 'u':
+						type_bits = read_int_suffix(string, loc, len, ch);
+						is_unsigned = true;
+						goto EXIT;
+					case 'l':
+					case 'i':
+						type_bits = read_int_suffix(string, loc, len, ch);
+						is_unsigned = false;
+						goto EXIT;
+					case '_' | 32:
+						continue;
+					default:
+						break;
 				}
-				if (ch == 'u' || ch == 'U')
-				{
-					type_bits = read_num_type(string, loc, len);
-					break;
-				}
-				if (ch == '_') continue;
 				if (i.high > max) wrapped = true;
 				i = i128_shl64(i, 3);
 				i = i128_add64(i, (uint64_t)(ch - '0'));
@@ -1200,7 +1300,22 @@ Expr *parse_integer(ParseContext *c, Expr *left)
 			for (size_t loc = 2; loc < len; loc++)
 			{
 				char ch = string[loc];
-				if (ch == '_') continue;
+				switch (ch | 32)
+				{
+					case 'u':
+						type_bits = read_int_suffix(string, loc, len, ch);
+						is_unsigned = true;
+						goto EXIT;
+					case 'l':
+					case 'i':
+						type_bits = read_int_suffix(string, loc, len, ch);
+						is_unsigned = false;
+						goto EXIT;
+					case '_' | 32:
+						continue;
+					default:
+						break;
+				}
 				binary_characters++;
 				if (i.high > max) wrapped = true;
 				i = i128_shl64(i, 1);
@@ -1211,35 +1326,30 @@ Expr *parse_integer(ParseContext *c, Expr *left)
 			for (size_t loc = 0; loc < len; loc++)
 			{
 				char ch = string[loc];
-				switch (ch)
+				switch (ch | 32)
 				{
-					case 'i':
-					case 'I':
-						is_unsigned = false;
-						type_bits = read_num_type(string, loc, len);
-						goto EXIT;
 					case 'u':
-					case 'U':
+						type_bits = read_int_suffix(string, loc, len, ch);
 						is_unsigned = true;
-						type_bits = read_num_type(string, loc, len);
 						goto EXIT;
-					case '_':
+					case 'l':
+					case 'i':
+						type_bits = read_int_suffix(string, loc, len, ch);
+						is_unsigned = false;
+						goto EXIT;
+					case '_' | 32:
 						continue;
-					case NUMBER_CHAR_CASE:
-					{
-						uint64_t old_top = i.high;
-						i = i128_mult64(i, 10);
-						i = i128_add64(i, (uint64_t)(ch - '0'));
-						if (!wrapped && old_top > i.high) wrapped = true;
-						break;
-					}
 					default:
-						UNREACHABLE
+						break;
 				}
+				uint64_t old_top = i.high;
+				i = i128_mult64(i, 10);
+				i = i128_add64(i, (uint64_t)(ch - '0'));
+				if (!wrapped && old_top > i.high) wrapped = true;
 			}
-		EXIT:
 			break;
 	}
+EXIT:
 	if (wrapped)
 	{
 		SEMA_ERROR_HERE("Integer size exceeded 128 bits, max 128 bits are supported.");
@@ -1348,14 +1458,11 @@ static void parse_hex(char *result_pointer, const char *data, const char *end)
 	assert(data_current);
 	while (data < end)
 	{
-		int val;
-		int val2;
-		while ((val = char_hex_to_nibble(*(data++))) < 0) if (data == end) goto DONE;
+		int val, val2;
+		while ((val = char_hex_to_nibble(*(data++))) < 0) if (data == end) return;
 		while ((val2 = char_hex_to_nibble(*(data++))) < 0);
-
 		*(data_current++) = (char)((val << 4) | val2);
 	}
-	DONE:;
 }
 
 /**
@@ -1383,10 +1490,7 @@ static void parse_base64(char *result_pointer, char *result_pointer_end, const c
 	assert(data_current);
 	while (data < end)
 	{
-		int val;
-		int val2;
-		int val3;
-		int val4;
+		int val, val2, val3, val4;
 		while ((val = base64_to_sextet(*(data++))) < 0) if (data == end) goto DONE;
 		while ((val2 = base64_to_sextet(*(data++))) < 0);
 		while ((val3 = base64_to_sextet(*(data++))) < 0);
@@ -1443,6 +1547,9 @@ static Expr *parse_bytes_expr(ParseContext *c, Expr *left)
 	return expr_bytes;
 }
 
+/**
+ * Char literals may be 1, 2, 4, 8 or 16 bytes. They are always unsigned.
+ */
 static Expr *parse_char_lit(ParseContext *c, Expr *left)
 {
 	assert(!left && "Had left hand side");
@@ -1481,7 +1588,9 @@ static Expr *parse_char_lit(ParseContext *c, Expr *left)
 	return expr_int;
 }
 
-
+/**
+ * Parse a double from the underlying string into a constant.
+ */
 static Expr *parse_double(ParseContext *c, Expr *left)
 {
 	assert(!left && "Had left hand side");
@@ -1489,6 +1598,8 @@ static Expr *parse_double(ParseContext *c, Expr *left)
 	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST);
 	const char *original = symstr(c);
 	bool is_hex = original[0] == '0' && original[1] == 'x';
+	// This is set to try to print in a similar manner as the input.
+	number->const_expr.is_hex = is_hex;
 	Float f = is_hex ? float_from_hex(original, &err) : float_from_string(original, &err);
 	if (f.type == TYPE_POISONED)
 	{
@@ -1510,87 +1621,20 @@ static Expr *parse_double(ParseContext *c, Expr *left)
 		case TYPE_F16:
 			number->type = type_float16;
 			break;
+		case TYPE_BF16:
+			TODO
 		default:
 			UNREACHABLE
 	}
 	number->const_expr.const_kind = CONST_FLOAT;
+	number->resolve_status = RESOLVE_DONE;
 	advance(c);
 	return number;
 }
 
-static int append_esc_string_token(char *restrict dest, const char *restrict src, size_t *pos)
-{
-	int scanned;
-	uint64_t unicode_char;
-	signed char scanned_char = char_is_valid_escape(src[0]);
-	if (scanned_char < 0) return -1;
-	switch (scanned_char)
-	{
-		case 'x':
-		{
-			int h = char_hex_to_nibble(src[1]);
-			int l = char_hex_to_nibble(src[2]);
-			if (h < 0 || l < 0) return -1;
-			unicode_char = ((unsigned) h << 4U) + (unsigned)l;
-			scanned = 3;
-			break;
-		}
-		case 'u':
-		{
-			int x1 = char_hex_to_nibble(src[1]);
-			int x2 = char_hex_to_nibble(src[2]);
-			int x3 = char_hex_to_nibble(src[3]);
-			int x4 = char_hex_to_nibble(src[4]);
-			if (x1 < 0 || x2 < 0 || x3 < 0 || x4 < 0) return -1;
-			unicode_char = ((unsigned) x1 << 12U) + ((unsigned) x2 << 8U) + ((unsigned) x3 << 4U) + (unsigned)x4;
-			scanned = 5;
-			break;
-		}
-		case 'U':
-		{
-			int x1 = char_hex_to_nibble(src[1]);
-			int x2 = char_hex_to_nibble(src[2]);
-			int x3 = char_hex_to_nibble(src[3]);
-			int x4 = char_hex_to_nibble(src[4]);
-			int x5 = char_hex_to_nibble(src[5]);
-			int x6 = char_hex_to_nibble(src[6]);
-			int x7 = char_hex_to_nibble(src[7]);
-			int x8 = char_hex_to_nibble(src[8]);
-			if (x1 < 0 || x2 < 0 || x3 < 0 || x4 < 0 || x5 < 0 || x6 < 0 || x7 < 0 || x8 < 0) return -1;
-			unicode_char = ((unsigned) x1 << 28U) + ((unsigned) x2 << 24U) + ((unsigned) x3 << 20U) + ((unsigned) x4 << 16U) +
-			               ((unsigned) x5 << 12U) + ((unsigned) x6 << 8U) + ((unsigned) x7 << 4U) + (unsigned)x8;
-			scanned = 9;
-			break;
-		}
-		default:
-			dest[(*pos)++] = scanned_char;
-			return 1;
-	}
-	if (unicode_char < 0x80U)
-	{
-		dest[(*pos)++] = (char)unicode_char;
-	}
-	else if (unicode_char < 0x800U)
-	{
-		dest[(*pos)++] = (char)(0xC0U | (unicode_char >> 6U));
-		dest[(*pos)++] = (char)(0x80U | (unicode_char & 0x3FU));
-	}
-	else if (unicode_char < 0x10000U)
-	{
-		dest[(*pos)++] = (char)(0xE0U | (unicode_char >> 12U));
-		dest[(*pos)++] = (char)(0x80U | ((unicode_char >> 6U) & 0x3FU));
-		dest[(*pos)++] = (char)(0x80U | (unicode_char & 0x3FU));
-	}
-	else
-	{
-		dest[(*pos)++] = (char)(0xF0U | (unicode_char >> 18U));
-		dest[(*pos)++] = (char)(0x80U | ((unicode_char >> 12U) & 0x3FU));
-		dest[(*pos)++] = (char)(0x80U | ((unicode_char >> 6U) & 0x3FU));
-		dest[(*pos)++] = (char)(0x80U | (unicode_char & 0x3FU));
-	}
-	return scanned;
-}
-
+/**
+ * string_literal ::= STRING+
+ */
 static Expr *parse_string_literal(ParseContext *c, Expr *left)
 {
 	assert(!left && "Had left hand side");
@@ -1604,8 +1648,15 @@ static Expr *parse_string_literal(ParseContext *c, Expr *left)
 	// and can be optimized.
 	while (tok_is(c, TOKEN_STRING))
 	{
+		// Grab the token.
 		size_t next_len = c->data.strlen;
-		if (!next_len) continue;
+		if (!next_len)
+		{
+			// Zero length so just continue.
+			advance_and_verify(c, TOKEN_STRING);
+			continue;
+		}
+		// Create new string and copy.
 		char *buffer = malloc_string(len + next_len + 1);
 		memcpy(buffer, str, len);
 		memcpy(buffer + len, symstr(c), next_len);
@@ -1614,7 +1665,6 @@ static Expr *parse_string_literal(ParseContext *c, Expr *left)
 		str = buffer;
 		advance_and_verify(c, TOKEN_STRING);
 	}
-
 	if (len > UINT32_MAX)
 	{
 		SEMA_ERROR_HERE("String exceeded max size.");
@@ -1625,19 +1675,27 @@ static Expr *parse_string_literal(ParseContext *c, Expr *left)
 	expr_string->const_expr.string.len = (uint32_t)len;
 	expr_string->type = type_string;
 	expr_string->const_expr.const_kind = CONST_STRING;
+	expr_string->resolve_status = RESOLVE_DONE;
 	return expr_string;
 }
 
+/*
+ * bool ::= 'true' | 'false'
+ */
 static Expr *parse_bool(ParseContext *c, Expr *left)
 {
 	assert(!left && "Had left hand side");
 	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST);
 	number->const_expr = (ExprConst) { .b = tok_is(c, TOKEN_TRUE), .const_kind = CONST_BOOL };
 	number->type = type_bool;
+	number->resolve_status = RESOLVE_DONE;
 	advance(c);
 	return number;
 }
 
+/**
+ * Parse 'null', creating a const void* with zero address.
+ */
 static Expr *parse_null(ParseContext *c, Expr *left)
 {
 	assert(!left && "Had left hand side");
@@ -1645,10 +1703,14 @@ static Expr *parse_null(ParseContext *c, Expr *left)
 	number->const_expr.const_kind = CONST_POINTER;
 	number->const_expr.ptr = 0;
 	number->type = type_voidptr;
+	number->resolve_status = RESOLVE_DONE;
 	advance(c);
 	return number;
 }
 
+/**
+ * Expects an initializer list, then appends the type making it a compound expr rather than initializer list.
+ */
 Expr *parse_type_compound_literal_expr_after_type(ParseContext *c, TypeInfo *type_info)
 {
 	Expr *expr = expr_new(EXPR_COMPOUND_LITERAL, type_info->span);
@@ -1659,22 +1721,8 @@ Expr *parse_type_compound_literal_expr_after_type(ParseContext *c, TypeInfo *typ
 	return expr;
 }
 
-
-Expr *parse_any_expression(ParseContext *c, TypeInfo *type)
-{
-	Expr *expr = expr_new(EXPR_VARIANT, type->span);
-	advance_and_verify(c, TOKEN_LBRACE);
-	ASSIGN_EXPRID_OR_RET(expr->variant_expr.ptr, parse_expr(c), poisoned_expr);
-	TRY_CONSUME_OR_RET(TOKEN_COMMA, "Expected a ','", poisoned_expr);
-	ASSIGN_EXPRID_OR_RET(expr->variant_expr.type_id, parse_expr(c), poisoned_expr);
-	TRY_CONSUME_OR_RET(TOKEN_RBRACE, "Missing end '}'", poisoned_expr);
-	return expr;
-}
 /**
- * type_identifier ::= TYPE_IDENT initializer_list?
- *
- * @param left must be null.
- * @return Expr*
+ * type_expression_with_path ::= TYPE_IDENT initializer_list?
  */
 Expr *parse_type_expression_with_path(ParseContext *c, Path *path)
 {
@@ -1695,10 +1743,6 @@ Expr *parse_type_expression_with_path(ParseContext *c, Path *path)
 	}
 	if (tok_is(c, TOKEN_LBRACE))
 	{
-		if (type->resolve_status == RESOLVE_DONE && type->type == type_any)
-		{
-			return parse_any_expression(c, type);
-		}
 		return parse_type_compound_literal_expr_after_type(c, type);
 	}
 	Expr *expr = expr_new(EXPR_TYPEINFO, type->span);
@@ -1714,8 +1758,7 @@ Expr *parse_type_expression_with_path(ParseContext *c, Path *path)
 
 
 /**
- * function_block
- *  : '{|' stmt_list '|}'
+ * expr_block ::= '{|' opt_stmt_list '|}'
  */
 static Expr* parse_expr_block(ParseContext *c, Expr *left)
 {
@@ -1755,18 +1798,16 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_FLOAT128] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_VOID] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_TYPEID] = { parse_type_identifier, NULL, PREC_NONE },
-		[TOKEN_ANYERR] = { parse_type_identifier, NULL, PREC_NONE },
-		[TOKEN_VARIANT] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_ANYFAULT] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_ANY] = { parse_type_identifier, NULL, PREC_NONE },
 
 		[TOKEN_QUESTION] = { NULL, parse_ternary_expr, PREC_TERNARY },
-		[TOKEN_QUESTQUEST] = { NULL, parse_binary, PREC_TERNARY},
-		[TOKEN_ELVIS] = { NULL, parse_ternary_expr, PREC_TERNARY },
+		[TOKEN_QUESTQUEST] = { NULL, parse_orelse, PREC_TERNARY },
+		[TOKEN_ELVIS] = { NULL, parse_elvis_expr, PREC_TERNARY },
 		[TOKEN_PLUSPLUS] = { parse_unary_expr, parse_post_unary, PREC_CALL },
 		[TOKEN_MINUSMINUS] = { parse_unary_expr, parse_post_unary, PREC_CALL },
 		[TOKEN_LPAREN] = { parse_grouping_expr, parse_call_expr, PREC_CALL },
 		[TOKEN_LBRAPIPE] = { parse_expr_block, NULL, PREC_NONE },
-		[TOKEN_TRY_QUESTION] = { parse_try_expr, NULL, PREC_NONE },
-		[TOKEN_CATCH_QUESTION] = { parse_try_expr, NULL, PREC_NONE },
 		[TOKEN_BANGBANG] = { NULL, parse_force_unwrap_expr, PREC_CALL },
 		[TOKEN_LBRACKET] = { NULL, parse_subscript_expr, PREC_CALL },
 		[TOKEN_MINUS] = { parse_unary_expr, parse_binary, PREC_ADDITIVE },
@@ -1775,7 +1816,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_MOD] = { NULL, parse_binary, PREC_MULTIPLICATIVE },
 		[TOKEN_STAR] = { parse_unary_expr, parse_binary, PREC_MULTIPLICATIVE },
 		[TOKEN_DOT] = { NULL, parse_access_expr, PREC_CALL },
-		[TOKEN_BANG] = { parse_unary_expr, parse_optional, PREC_CALL },
+		[TOKEN_BANG] = { parse_unary_expr, parse_rethrow_expr, PREC_CALL },
 		[TOKEN_BYTES] = { parse_bytes_expr, NULL, PREC_NONE },
 		[TOKEN_BIT_NOT] = { parse_unary_expr, NULL, PREC_UNARY },
 		[TOKEN_BIT_XOR] = { NULL, parse_binary, PREC_BIT },

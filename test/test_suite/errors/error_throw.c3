@@ -7,6 +7,6 @@ fault Blurg
 
 fn void main()
 {
-    int! i = Blurg.Z!;
-    int! j = Blurg.Z!;
+    int! i = Blurg.Z?;
+    int! j = Blurg.Z?;
 }

@@ -7,7 +7,7 @@ fault Tester { FOO }
 macro test()
 {
 	defer libc::printf("Test2\n");
-	return Tester.FOO!;
+	return Tester.FOO?;
 }
 
 fn void main()

@@ -54,6 +54,7 @@ fn void Stack.push(Stack* this, Type element)
     if (this.capacity == this.size)
     {
         this.capacity *= 2;
+		if (this.capacity < 16) this.capacity = 16;
         this.elems = mem::realloc(this.elems, Type.sizeof * this.capacity);
     }
     this.elems[this.size++] = element;
@@ -78,9 +79,9 @@ import stack;
 
 // Define our new types, the first will implicitly create 
 // a complete copy of the entire Stack module with "Type" set to "int"
-define IntStack = Stack<int>;
+typedef IntStack = Stack<int>;
 // The second creates another copy with "Type" set to "double"
-define DoubleStack = Stack<double>;
+typedef DoubleStack = Stack<double>;
 
 // If we had added "define IntStack2 = Stack<int>"
 // no additional copy would have been made (since we already

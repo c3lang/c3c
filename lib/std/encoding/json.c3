@@ -32,7 +32,7 @@ struct JsonParser
 	DString last_string;
 	double last_number;
 	char current;
-	anyerr current_err;
+	anyfault current_err;
 	bool skip_comments;
 	bool reached_end;
 }
@@ -61,13 +61,13 @@ fn Object*! JsonParser.parse_from_token(JsonParser* this, JsonTokenType token)
 		case COMMA:
 		case RBRACE:
 		case RBRACKET:
-		case COLON: return JsonParsingError.UNEXPECTED_CHARACTER!;
+		case COLON: return JsonParsingError.UNEXPECTED_CHARACTER?;
 		case STRING: return object::new_string(this.last_string.str(), this.allocator);
 		case NUMBER: return object::new_float(this.last_number, this.allocator);
 		case TRUE: return object::new_bool(true);
 		case FALSE: return object::new_bool(false);
 		case NULL: return object::new_null();
-		case EOF: return JsonParsingError.EOF!;
+		case EOF: return JsonParsingError.EOF?;
 	}
 	unreachable();
 }
@@ -85,17 +85,17 @@ fn JsonTokenType! JsonParser.lex_number(JsonParser* this, char c)
 		if (negate)
 		{
 			t.append(c);
-			c = this.read_next()?;
+			c = this.read_next()!;
 		}
 		while (c >= '0' && c <= '9')
 		{
 			t.append(c);
-			c = this.read_next()?;
+			c = this.read_next()!;
 		}
 		if (c == '.')
 		{
 			t.append(c);
-			while (c = this.read_next()?, c >= '0' && c <= '9')
+			while (c = this.read_next()!, c >= '0' && c <= '9')
 			{
 				t.append(c);
 			}
@@ -103,24 +103,24 @@ fn JsonTokenType! JsonParser.lex_number(JsonParser* this, char c)
 		if ((c | 32) == 'e')
 		{
 			t.append(c);
-			c = this.read_next()?;
+			c = this.read_next()!;
 			switch (c)
 			{
 				case '-':
 				case '+':
 					t.append(c);
-					c = this.read_next()?;
+					c = this.read_next()!;
 			}
-			if (c < '0' || c > '9') return JsonParsingError.INVALID_NUMBER!;
+			if (c < '0' || c > '9') return JsonParsingError.INVALID_NUMBER?;
 			while (c >= '0' && c <= '9')
 			{
 				t.append(c);
-				c = this.read_next()?;
+				c = this.read_next()!;
 			}
 		}
 		this.pushback();
-		double! d = str::to_double(t.str()) ?? JsonParsingError.INVALID_NUMBER!;
-		this.last_number = d?;
+		double! d = t.str().to_double() ?? JsonParsingError.INVALID_NUMBER?;
+		this.last_number = d!;
 		return NUMBER;
 	};
 }
@@ -128,30 +128,30 @@ fn JsonTokenType! JsonParser.lex_number(JsonParser* this, char c)
 fn Object*! JsonParser.parse_map(JsonParser* this)
 {
 	Object* map = object::new_obj(this.allocator);
-	JsonTokenType token = this.advance()?;
+	JsonTokenType token = this.advance()!;
 	defer catch map.free();
 
 	DString temp_key = dstring::new_with_capacity(32, this.allocator);
 	defer temp_key.free();
 	while (token != JsonTokenType.RBRACE)
 	{
-		if (token != JsonTokenType.STRING) return JsonParsingError.UNEXPECTED_CHARACTER!;
+		if (token != JsonTokenType.STRING) return JsonParsingError.UNEXPECTED_CHARACTER?;
         DString string = this.last_string;
-        if (map.has_key(string.str())) return JsonParsingError.DUPLICATE_MEMBERS!;
+        if (map.has_key(string.str())) return JsonParsingError.DUPLICATE_MEMBERS?;
         // Copy the key to our temp holder. We do this to work around the issue
         // if the temp allocator should be used as the default allocator.
         temp_key.clear();
         temp_key.append(string);
-        this.parse_expected(COLON)?;
-        Object* element = this.parse_any()?;
+        this.parse_expected(COLON)!;
+        Object* element = this.parse_any()!;
 		map.set(temp_key.str(), element);
-        token = this.advance()?;
+        token = this.advance()!;
         if (token == JsonTokenType.COMMA)
         {
-            token = this.advance()?;
+            token = this.advance()!;
             continue;
         }
-        if (token != JsonTokenType.RBRACE) return JsonParsingError.UNEXPECTED_CHARACTER!;
+        if (token != JsonTokenType.RBRACE) return JsonParsingError.UNEXPECTED_CHARACTER?;
 	}
 	return map;
 }
@@ -160,18 +160,18 @@ fn Object*! JsonParser.parse_array(JsonParser* this)
 {
 	Object* list = object::new_obj(this.allocator);
 	defer catch list.free();
-	JsonTokenType token = this.advance()?;
+	JsonTokenType token = this.advance()!;
 	while (token != JsonTokenType.RBRACKET)
 	{
-		Object* element = this.parse_from_token(token)?;
+		Object* element = this.parse_from_token(token)!;
 		list.append(element);
-		token = this.advance()?;
+		token = this.advance()!;
 		if (token == JsonTokenType.COMMA)
 		{
-			token = this.advance()?;
+			token = this.advance()!;
 		    continue;
 		}
-		if (token != JsonTokenType.RBRACKET) return JsonParsingError.UNEXPECTED_CHARACTER!;
+		if (token != JsonTokenType.RBRACKET) return JsonParsingError.UNEXPECTED_CHARACTER?;
 	}
 	return list;
 }
@@ -191,7 +191,7 @@ fn char! JsonParser.read_next(JsonParser* this)
 			this.reached_end = true;
 			return '\0';
 		default:
-			return err!;
+			return err?;
 	}
 	if (c == 0)
 	{
@@ -204,7 +204,7 @@ fn JsonTokenType! JsonParser.advance(JsonParser* this)
 {
 	char c;
 	// Skip whitespace
-	while WS: (c = this.read_next()?)
+	while WS: (c = this.read_next()!)
 	{
 		switch (c)
 		{
@@ -218,7 +218,7 @@ fn JsonTokenType! JsonParser.advance(JsonParser* this)
 				continue;
 			case '/':
 				if (!this.skip_comments) break;
-				c = this.read_next()?;
+				c = this.read_next()!;
 				if (c != '*')
 				{
 					this.pushback();
@@ -227,12 +227,12 @@ fn JsonTokenType! JsonParser.advance(JsonParser* this)
 				while COMMENT: (1)
 				{
 					// Skip to */
-					while (c = this.read_next()?)
+					while (c = this.read_next()!)
 					{
 						if (c == '\n') this.line++;
 						if (c != '*') continue;
 						// Skip through all the '*'
-						while (c = this.read_next()?)
+						while (c = this.read_next()!)
 						{
 							if (c == '\n') this.line++;
 							if (c != '*') break;
@@ -248,7 +248,7 @@ fn JsonTokenType! JsonParser.advance(JsonParser* this)
 	switch (c)
 	{
 		case '\0':
-			return IoError.EOF!;
+			return IoError.EOF?;
 		case '{':
 			return LBRACE;
 		case '}':
@@ -267,16 +267,16 @@ fn JsonTokenType! JsonParser.advance(JsonParser* this)
 		case '0'..'9':
 			return this.lex_number(c);
 		case 't':
-			this.match("rue")?;
+			this.match("rue")!;
 			return TRUE;
 		case 'f':
-			this.match("alse")?;
+			this.match("alse")!;
 			return FALSE;
 		case 'n':
-			this.match("ull")?;
+			this.match("ull")!;
 			return NULL;
 		default:
-			return JsonParsingError.UNEXPECTED_CHARACTER!;
+			return JsonParsingError.UNEXPECTED_CHARACTER?;
 	}
 }
 
@@ -284,14 +284,14 @@ fn void! JsonParser.match(JsonParser* this, String str)
 {
 	foreach (c : str)
 	{
-		char l = this.read_next()?;
-		if (l != c) return JsonParsingError.UNEXPECTED_CHARACTER!;
+		char l = this.read_next()!;
+		if (l != c) return JsonParsingError.UNEXPECTED_CHARACTER?;
 	}
 }
 
 fn void! JsonParser.parse_expected(JsonParser* this, JsonTokenType token) @local
 {
-	if (this.advance()? != token) return JsonParsingError.UNEXPECTED_CHARACTER!;
+	if (this.advance()! != token) return JsonParsingError.UNEXPECTED_CHARACTER?;
 }
 
 fn JsonTokenType! JsonParser.lex_string(JsonParser *this)
@@ -299,13 +299,13 @@ fn JsonTokenType! JsonParser.lex_string(JsonParser *this)
 	this.last_string.clear();
 	while LOOP: (1)
 	{
-		char c = this.read_next()?;
+		char c = this.read_next()!;
 		switch (c)
 		{
 			case '\0':
-				return JsonParsingError.EOF!;
+				return JsonParsingError.EOF?;
 			case 1..31:
-				return JsonParsingError.UNEXPECTED_CHARACTER!;
+				return JsonParsingError.UNEXPECTED_CHARACTER?;
 			case '"':
 				break LOOP;
 			case '\\':
@@ -314,13 +314,13 @@ fn JsonTokenType! JsonParser.lex_string(JsonParser *this)
 				this.last_string.append(c);
 				continue;
 		}
-		c = this.read_next()?;
+		c = this.read_next()!;
 		switch (c)
 		{
 			case '\0':
-				return JsonParsingError.EOF!;
+				return JsonParsingError.EOF?;
 			case 1..31:
-				return JsonParsingError.UNEXPECTED_CHARACTER!;
+				return JsonParsingError.UNEXPECTED_CHARACTER?;
 			case '"':
 			case '\\':
 			case '/':
@@ -339,14 +339,14 @@ fn JsonTokenType! JsonParser.lex_string(JsonParser *this)
 				uint val;
 				for (int i = 0; i < 4; i++)
 				{
-					c = this.read_next()?;
-					if (!c.is_xdigit()) return JsonParsingError.INVALID_ESCAPE_SEQUENCE!;
+					c = this.read_next()!;
+					if (!c.is_xdigit()) return JsonParsingError.INVALID_ESCAPE_SEQUENCE?;
 					val = val << 4 + (c > '9' ? (c | 32) - 'a' + 10 : c - '0');
 				}
 				this.last_string.append_char32(val);
 				continue;
 			default:
-				 return JsonParsingError.INVALID_ESCAPE_SEQUENCE!;
+				 return JsonParsingError.INVALID_ESCAPE_SEQUENCE?;
 		}
 	}
 	return STRING;

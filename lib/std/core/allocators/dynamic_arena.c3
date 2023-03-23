@@ -106,7 +106,7 @@ fn void*! DynamicArenaAllocator._realloc(DynamicArenaAllocator* this, void* old_
 		current_page.used += add_size;
 		return old_pointer;
 	}
-	void* new_mem = this._alloc(size, alignment, offset)?;
+	void* new_mem = this._alloc(size, alignment, offset)!;
 	mem::copy(new_mem, old_pointer, old_size, mem::DEFAULT_MEM_ALIGNMENT);
 	return new_mem;
 }
@@ -137,12 +137,12 @@ fn void*! DynamicArenaAllocator._alloc_new(DynamicArenaAllocator* this, usz size
 	usz page_size = max(this.page_size, mem::aligned_offset(size + DynamicArenaChunk.sizeof + offset, alignment) - offset);
 
 	// Grab the page without alignment (we do it ourselves)
-	void* mem = this.backing_allocator.alloc(page_size)?;
+	void* mem = this.backing_allocator.alloc(page_size)!;
 	DynamicArenaPage*! page = malloc(DynamicArenaPage, .using = this.backing_allocator);
 	if (catch err = page)
 	{
 		free(mem, .using = this.backing_allocator);
-		return err!;
+		return err?;
 	}
     page.memory = mem;
     void* mem_start = mem::aligned_pointer(mem + offset + DynamicArenaChunk.sizeof, alignment) - offset;
@@ -213,7 +213,7 @@ fn void*! dynamic_arena_allocator_function(Allocator* data, usz size, usz alignm
 		case ALIGNED_CALLOC:
 			assert(!old_pointer, "Unexpected no old pointer for calloc.");
 			if (!size) return null;
-			void* mem = allocator._alloc(size, alignment, offset)?;
+			void* mem = allocator._alloc(size, alignment, offset)!;
 			mem::clear(mem, size, mem::DEFAULT_MEM_ALIGNMENT);
 			return mem;
 		case ALLOC:
@@ -230,7 +230,7 @@ fn void*! dynamic_arena_allocator_function(Allocator* data, usz size, usz alignm
 				return null;
 			}
 			if (!old_pointer) return allocator._alloc(size, alignment, offset);
-			void* mem = allocator._realloc(old_pointer, size, alignment, offset)?;
+			void* mem = allocator._realloc(old_pointer, size, alignment, offset)!;
 			return mem;
 		case ALIGNED_FREE:
 		case FREE:

@@ -51,7 +51,7 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 			scratch_buffer_clear();
 			scratch_buffer_append(decl->extname);
 			scratch_buffer_append("$f");
-			decl->var.optional_ref = llvm_add_global(c, scratch_buffer_to_string(), type_anyerr, 0);
+			decl->var.optional_ref = llvm_add_global(c, scratch_buffer_to_string(), type_anyfault, 0);
 		}
 		llvm_emit_global_variable_init(c, decl);
 		c->builder = builder;
@@ -67,7 +67,7 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 		scratch_buffer_clear();
 		scratch_buffer_append(decl->name);
 		scratch_buffer_append(".f");
-		decl->var.optional_ref = llvm_emit_alloca_aligned(c, type_anyerr, scratch_buffer_to_string());
+		decl->var.optional_ref = llvm_emit_alloca_aligned(c, type_anyfault, scratch_buffer_to_string());
 		// Only clear out the result if the assignment isn't an optional.
 	}
 
@@ -83,14 +83,14 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 		llvm_value_set(value, LLVMGetUndef(alloc_type), decl->type);
 		if (decl->var.optional_ref)
 		{
-			llvm_store_to_ptr_raw(c, decl->var.optional_ref, llvm_get_undef(c, type_anyerr), type_anyerr);
+			llvm_store_to_ptr_raw(c, decl->var.optional_ref, llvm_get_undef(c, type_anyfault), type_anyfault);
 		}
 	}
 	else
 	{
 		if (decl->var.optional_ref)
 		{
-			llvm_store_to_ptr_zero(c, decl->var.optional_ref, type_anyerr);
+			llvm_store_to_ptr_zero(c, decl->var.optional_ref, type_anyfault);
 		}
 
 		Type *type = type_lowering(decl->type);
@@ -184,7 +184,7 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 	if (c->cur_func.prototype && type_is_optional(c->cur_func.prototype->rtype))
 	{
 		error_return_block = llvm_basic_block_new(c, "err_retblock");
-		error_out = llvm_emit_alloca_aligned(c, type_anyerr, "reterr");
+		error_out = llvm_emit_alloca_aligned(c, type_anyfault, "reterr");
 		c->opt_var = error_out;
 		c->catch_block = error_return_block;
 	}
@@ -217,7 +217,7 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 		llvm_emit_block(c, error_return_block);
 		llvm_emit_statement_chain(c, ast->return_stmt.cleanup_fail);
 		BEValue value;
-		llvm_value_set_address_abi_aligned(&value, error_out, type_anyerr);
+		llvm_value_set_address_abi_aligned(&value, error_out, type_anyfault);
 		llvm_emit_return_abi(c, NULL, &value);
 		c->current_block = NULL;
 	}
@@ -469,7 +469,7 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 		{
 			SourceSpan loc = ast->span;
 
-			llvm_emit_panic(c, "Infinite loop found", loc);
+			llvm_emit_panic(c, "Infinite loop found", loc, NULL, NULL);
 			LLVMBuildUnreachable(c->builder);
 			LLVMBasicBlockRef block = llvm_basic_block_new(c, "unreachable_block");
 			c->current_block = NULL;
@@ -749,7 +749,7 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *switch_ast)
 {
 	bool is_if_chain = switch_ast->switch_stmt.flow.if_chain;
-	Type *switch_type = switch_ast->ast_kind == AST_IF_CATCH_SWITCH_STMT ? type_lowering(type_anyerr) : exprptr(switch_ast->switch_stmt.cond)->type;
+	Type *switch_type = switch_ast->ast_kind == AST_IF_CATCH_SWITCH_STMT ? type_lowering(type_anyfault) : switch_value->type;
 
 	Ast **cases = switch_ast->switch_stmt.cases;
 	ArraySize case_count = vec_size(cases);
@@ -865,11 +865,21 @@ static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *swi
 	llvm_emit_block(c, exit_block);
 }
 
-void gencontext_emit_switch(GenContext *context, Ast *ast)
+void llvm_emit_switch(GenContext *c, Ast *ast)
 {
 	BEValue switch_value;
-	llvm_emit_decl_expr_list(context, &switch_value, exprptrzero(ast->switch_stmt.cond), false);
-	llvm_emit_switch_body(context, &switch_value, ast);
+	Expr *expr = exprptrzero(ast->switch_stmt.cond);
+	if (expr)
+	{
+		// Regular switch
+		llvm_emit_decl_expr_list(c, &switch_value, expr, false);
+	}
+	else
+	{
+		// Match switch, so set the value to true
+		llvm_value_set(&switch_value, llvm_const_int(c, type_bool, 1), type_bool);
+	}
+	llvm_emit_switch_body(c, &switch_value, ast);
 }
 
 
@@ -1002,7 +1012,7 @@ static inline void llvm_emit_assert_stmt(GenContext *c, Ast *ast)
 		{
 			error = "Assert violation";
 		}
-		llvm_emit_panic(c, error, loc);
+		llvm_emit_panic(c, error, loc, NULL, NULL);
 		llvm_emit_br(c, on_ok);
 		llvm_emit_block(c, on_ok);
 	}
@@ -1215,99 +1225,10 @@ static inline void llvm_emit_asm_block_stmt(GenContext *c, Ast *ast)
 	}
 }
 
-// Prune the common occurrence where the optional is not used.
-static void llvm_prune_optional(GenContext *c, LLVMBasicBlockRef discard_fail)
-{
-	// Replace discard with the current block,
-	// this removes the jump in the case:
-	// br i1 %not_err, label %after_check, label %voiderr
-	//after_check:
-	// br label %voiderr
-	//voiderr:
-	// <insert point>
-	LLVMValueRef block_value = LLVMBasicBlockAsValue(c->current_block);
-	LLVMReplaceAllUsesWith(LLVMBasicBlockAsValue(discard_fail), block_value);
-
-	// We now have:
-	// br i1 %not_err, label %after_check, label %after_check
-	//after_check:
-	// <insert point>
-
-	// Find the use of this block.
-	LLVMUseRef use = LLVMGetFirstUse(block_value);
-	if (!use) return;
-
-	LLVMValueRef maybe_br = LLVMGetUser(use);
-	// Expect a br instruction.
-	if (!LLVMIsAInstruction(maybe_br) || LLVMGetInstructionOpcode(maybe_br) != LLVMBr) return;
-	if (LLVMGetNumOperands(maybe_br) != 3) return;
-	// We expect a single user.
-	LLVMUseRef other_use = LLVMGetNextUse(use);
-	while (other_use)
-	{
-		if (LLVMGetUser(other_use) != maybe_br) return;
-		other_use = LLVMGetNextUse(other_use);
-	}
-	// Both operands same block value
-	if (LLVMGetOperand(maybe_br, 1) != block_value || LLVMGetOperand(maybe_br, 2) != block_value) return;
-
-	// Grab the compared value
-	LLVMValueRef compared = LLVMGetOperand(maybe_br, 0);
-
-	// Remove the block and the br
-	LLVMBasicBlockRef prev_block = LLVMGetInstructionParent(maybe_br);
-	LLVMRemoveBasicBlockFromParent(c->current_block);
-	LLVMInstructionEraseFromParent(maybe_br);
-
-	// Optionally remove the comparison
-	if (!LLVMGetFirstUse(compared))
-	{
-		LLVMValueRef operand = NULL;
-		if (LLVMGetInstructionOpcode(compared) == LLVMCall)
-		{
-			operand = LLVMGetOperand(compared, 0);
-		}
-		LLVMInstructionEraseFromParent(compared);
-		if (operand) LLVMInstructionEraseFromParent(operand);
-	}
-	// Update the context
-	c->current_block = prev_block;
-	c->current_block_is_target = LLVMGetFirstBasicBlock(c->function) == prev_block;
-	LLVMPositionBuilderAtEnd(c->builder, prev_block);
-}
 
 static void llvm_emit_expr_stmt(GenContext *c, Ast *ast)
 {
-	BEValue value;
-	Expr *e = ast->expr_stmt;
-	// For a standalone catch, we can ignore storing the value.
-	if (e->expr_kind == EXPR_CATCH)
-	{
-		e = e->inner_expr;
-	}
-	if (IS_OPTIONAL(e))
-	{
-		PUSH_OPT();
-		LLVMBasicBlockRef discard_fail = llvm_basic_block_new(c, "voiderr");
-		c->catch_block = discard_fail;
-		c->opt_var = NULL;
-		llvm_emit_expr(c, &value, e);
-		llvm_value_fold_optional(c, &value);
-		EMIT_LOC(c, ast);
-		// We only optimize if there is no instruction the current block
-		if (!LLVMGetFirstInstruction(c->current_block))
-		{
-			llvm_prune_optional(c, discard_fail);
-		}
-		else
-		{
-			llvm_emit_br(c, discard_fail);
-			llvm_emit_block(c, discard_fail);
-		}
-		POP_OPT();
-		return;
-	}
-	llvm_emit_expr(c, &value, e);
+	llvm_emit_ignored_expr(c, ast->expr_stmt);
 }
 
 LLVMValueRef llvm_emit_string_const(GenContext *c, const char *str, const char *extname)
@@ -1332,6 +1253,14 @@ LLVMValueRef llvm_emit_zstring(GenContext *c, const char *str)
 
 LLVMValueRef llvm_emit_zstring_named(GenContext *c, const char *str, const char *extname)
 {
+	VECEACH(c->reusable_constants, i)
+	{
+		if (strcmp(str, c->reusable_constants[i].string) == 0 && strcmp(extname, c->reusable_constants[i].name) == 0)
+		{
+			return c->reusable_constants[i].value;
+		}
+	}
+
 	unsigned len = (unsigned)strlen(str);
 	LLVMTypeRef char_array_type = LLVMArrayType(c->byte_type, len + 1);
 	LLVMValueRef global_string = llvm_add_global_raw(c, extname, char_array_type, 0);
@@ -1340,14 +1269,14 @@ LLVMValueRef llvm_emit_zstring_named(GenContext *c, const char *str, const char 
 	LLVMSetInitializer(global_string, llvm_get_zstring(c, str, len));
 	AlignSize alignment;
 	LLVMValueRef string = llvm_emit_array_gep_raw(c, global_string, char_array_type, 0, 1, &alignment);
+	ReusableConstant reuse = { .string = str_copy(str, len), .name = str_copy(extname, strlen(extname)), .value = string };
+	vec_add(c->reusable_constants, reuse);
 	return string;
 }
 
 
-void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc)
+void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const char *fmt, BEValue *varargs)
 {
-	File  *file = source_file_by_id(loc.file_id);
-
 	if (c->debug.builder) llvm_emit_debug_location(c, loc);
 	if (c->debug.stack_slot_row)
 	{
@@ -1364,13 +1293,19 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc)
 		return;
 	}
 
-	LLVMValueRef args[4] = {
-			llvm_emit_string_const(c, message, ".panic_msg"),
+	File *file = source_file_by_id(loc.file_id);
+
+	Decl *panicf = fmt ? c->panicf : NULL;
+
+	LLVMValueRef panic_args[5] = {
+			llvm_emit_string_const(c, panicf ? fmt : message, ".panic_msg"),
 			llvm_emit_string_const(c, file->name, ".file"),
 			llvm_emit_string_const(c, c->cur_func.name, ".func"),
 			llvm_const_int(c, type_uint, loc.row)
 	};
-	FunctionPrototype *prototype = type_get_resolved_prototype(panic_var->type->canonical->pointer);
+	FunctionPrototype *prototype = panicf
+			? type_get_resolved_prototype(panicf->type)
+			: type_get_resolved_prototype(panic_var->type->canonical->pointer);
 	LLVMValueRef actual_args[16];
 	unsigned count = 0;
 	ABIArgInfo **abi_args = prototype->abi_args;
@@ -1378,8 +1313,39 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc)
 	for (unsigned i = 0; i < 4; i++)
 	{
 		Type *type = type_lowering(types[i]);
-		BEValue value = { .value = args[i], .type = type };
+		BEValue value = { .value = panic_args[i], .type = type };
 		llvm_emit_parameter(c, actual_args, &count, abi_args[i], &value, type);
+	}
+
+	if (panicf)
+	{
+		unsigned elements = vec_size(varargs);
+		Type *any_subarray = type_get_subarray(type_any);
+		Type *any_array = type_get_array(type_any, elements);
+		LLVMTypeRef llvm_array_type = llvm_get_type(c, any_array);
+		AlignSize alignment = type_alloca_alignment(any_array);
+		LLVMValueRef array_ref = llvm_emit_alloca(c, llvm_array_type, alignment, "varargslots");
+		VECEACH(varargs, i)
+		{
+			AlignSize store_alignment;
+			LLVMValueRef slot = llvm_emit_array_gep_raw(c,
+			                                            array_ref,
+			                                            llvm_array_type,
+			                                            i,
+			                                            alignment,
+			                                            &store_alignment);
+			llvm_store_to_ptr_aligned(c, slot, &varargs[i], store_alignment);
+		}
+		BEValue value;
+		llvm_value_aggregate_two(c, &value, any_subarray, array_ref, llvm_const_int(c, type_usz, elements));
+
+		llvm_emit_parameter(c, actual_args, &count, abi_args[4], &value, any_subarray);
+
+		BEValue res;
+		if (c->debug.builder) llvm_emit_debug_location(c, loc);
+		llvm_emit_raw_call(c, &res, prototype, llvm_func_type(c, prototype), llvm_get_ref(c, panicf), actual_args,
+		                   count, 0, NULL, false, NULL);
+		return;
 	}
 
 	BEValue val;
@@ -1392,7 +1358,8 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc)
 	                   count, 0, NULL, false, NULL);
 }
 
-void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_name, SourceSpan loc)
+void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_name, SourceSpan loc, const char *fmt, BEValue *value_1,
+                             BEValue *value_2)
 {
 	if (llvm_is_const(value->value))
 	{
@@ -1404,22 +1371,30 @@ void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_na
 	assert(llvm_value_is_bool(value));
 	llvm_emit_cond_br(c, value, panic_block, ok_block);
 	llvm_emit_block(c, panic_block);
-	llvm_emit_panic(c, panic_name, loc);
+	BEValue *values = NULL;
+	if (value_1)
+	{
+		BEValue var = *value_1;
+		llvm_emit_any_from_value(c, &var, var.type);
+		vec_add(values, var);
+		if (value_2)
+		{
+			var = *value_2;
+			llvm_emit_any_from_value(c, &var, var.type);
+			vec_add(values, var);
+		}
+	}
+	llvm_emit_panic(c, panic_name, loc, fmt, values);
 	llvm_emit_br(c, ok_block);
 	llvm_emit_block(c, ok_block);
 }
 
-void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *panic_name, SourceSpan loc)
+void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *panic_name, SourceSpan loc,
+                             const char *fmt, BEValue *value_1, BEValue *value_2)
 {
-	LLVMBasicBlockRef panic_block = llvm_basic_block_new(c, "panic");
-	LLVMBasicBlockRef ok_block = llvm_basic_block_new(c, "checkok");
 	BEValue be_value;
 	llvm_value_set(&be_value, value, type_bool);
-	llvm_emit_cond_br(c, &be_value, panic_block, ok_block);
-	llvm_emit_block(c, panic_block);
-	llvm_emit_panic(c, panic_name, loc);
-	llvm_emit_br(c, ok_block);
-	llvm_emit_block(c, ok_block);
+	llvm_emit_panic_if_true(c, &be_value, panic_name, loc, fmt, value_1, value_2);
 }
 
 
@@ -1433,6 +1408,7 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 		case AST_FOREACH_STMT:
 		case AST_CONTRACT:
 		case AST_ASM_STMT:
+		case AST_CONTRACT_FAULT:
 			UNREACHABLE
 		case AST_EXPR_STMT:
 			llvm_emit_expr_stmt(c, ast);
@@ -1472,7 +1448,7 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 		case AST_FOR_STMT:
 			llvm_emit_for_stmt(c, ast);
 			break;
-		case AST_NEXT_STMT:
+		case AST_NEXTCASE_STMT:
 			gencontext_emit_next_stmt(c, ast);
 			break;
 		case AST_DEFER_STMT:
@@ -1495,7 +1471,7 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 		case AST_CT_FOREACH_STMT:
 			UNREACHABLE
 		case AST_SWITCH_STMT:
-			gencontext_emit_switch(c, ast);
+			llvm_emit_switch(c, ast);
 			break;
 	}
 }

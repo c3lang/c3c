@@ -118,7 +118,7 @@ const char *decl_to_a_name(Decl *decl)
 	switch (decl->decl_kind)
 	{
 		case DECL_BODYPARAM:
-			return "a bodyparam";
+			return "a body parameter";
 		case DECL_DECLARRAY:
 			return "a declarray";
 		case DECL_BITSTRUCT:

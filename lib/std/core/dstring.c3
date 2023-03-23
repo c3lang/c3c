@@ -261,7 +261,7 @@ fn void DString.append_chars(DString* this, String str)
 
 fn Char32[] DString.copy_utf32(DString* this, Allocator* using = mem::heap())
 {
-	return str::utf8to32(this.str(), using) @inline!!;
+	return this.str().to_utf32(using) @inline!!;
 }
 
 fn void DString.append_string(DString* this, DString str)
@@ -325,7 +325,7 @@ fn usz! DString.printfn(DString* str, String format, args...) @maydiscard
 {
 	Formatter formatter;
 	formatter.init(&out_string_append_fn, str);
-	usz len = formatter.vprintf(format, args)?;
+	usz len = formatter.vprintf(format, args)!;
 	str.append('\n');
 	return len + 1;
 }
@@ -350,7 +350,7 @@ fn DString new_join(String[] s, String joiner, Allocator* using = mem::heap())
 
 fn void! out_string_append_fn(char c, void* data) @private
 {
-	DynString* s = data;
+	DString* s = data;
 	s.append_char(c);
 }
 
@@ -380,11 +380,11 @@ fn usz! DString.read_from_stream(DString* string, Stream* reader)
 	if (reader.supports_available())
 	{
 		usz total_read = 0;
-		while (usz available = reader.available()?)
+		while (usz available = reader.available()!)
 		{
 			string.reserve(available);
 			StringData* data = string.data();
-			usz len = reader.read(data.chars[data.len..(data.capacity - 1)])?;
+			usz len = reader.read(data.chars[data.len..(data.capacity - 1)])!;
 			total_read += len;
 			data.len += len;
 		}
@@ -397,7 +397,7 @@ fn usz! DString.read_from_stream(DString* string, Stream* reader)
 		string.reserve(16);
 		StringData* data = string.data();
 		// Read into the rest of the buffer
-		usz read = reader.read(data.chars[data.len..(data.capacity - 1)])?;
+		usz read = reader.read(data.chars[data.len..(data.capacity - 1)])!;
 		data.len += read;
 		// Ok, we reached the end.
 		if (read < 16) return total_read;

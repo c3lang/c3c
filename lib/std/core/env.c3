@@ -32,7 +32,7 @@ enum OsType
 	KFREEBSD,
 	LINUX,
 	PS3,
-	MACOSX,
+	MACOS,
 	NETBSD,
 	OPENBSD,
 	SOLARIS,
@@ -137,7 +137,7 @@ macro bool os_is_darwin()
 {
 	$switch (OS_TYPE)
 	$case IOS:
-	$case MACOSX:
+	$case MACOS:
 	$case TVOS:
 	$case WATCHOS:
 		return true;
@@ -150,7 +150,7 @@ macro bool os_is_posix()
 {
 	$switch (OS_TYPE)
 	$case IOS:
-	$case MACOSX:
+	$case MACOS:
 	$case NETBSD:
 	$case LINUX:
 	$case KFREEBSD:
@@ -181,7 +181,7 @@ $if (COMPILER_LIBC_AVAILABLE && OS_TYPE != OsType.WIN32)
 	@pool()
 	{
 		ZString val = libc::getenv(name.zstr_tcopy());
-		return val ? val.as_str() : SearchResult.MISSING!;
+		return val ? val.as_str() : SearchResult.MISSING?;
 	};
 $else
 	return "";

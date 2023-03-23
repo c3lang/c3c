@@ -336,7 +336,7 @@ Int128 i128_ashr(Int128 op1, Int128 op2)
 	return i128_ashr64(op1, op2.low);
 }
 
-Int128 i128_add_swrap64(Int128 op1, int64_t op2, bool *wrapped)
+UNUSED Int128 i128_add_swrap64(Int128 op1, int64_t op2, bool *wrapped)
 {
 	Int128 res = i128_add64(op1, (uint64_t) op2);
 	bool is_less = i128_scomp(res, op1) == CMP_LT;
@@ -344,7 +344,7 @@ Int128 i128_add_swrap64(Int128 op1, int64_t op2, bool *wrapped)
 	return res;
 }
 
-Int128 i128_add_uwrap64(Int128 op1, uint64_t op2, bool *wrapped)
+UNUSED Int128 i128_add_uwrap64(Int128 op1, uint64_t op2, bool *wrapped)
 {
 	Int128 res = i128_add64(op1, op2);
 	*wrapped = i128_ucomp(res, op1) == CMP_LT;
@@ -466,12 +466,12 @@ uint32_t i128_clz(const Int128 *op)
 	return op->high ? clz64(op->high) : clz64(op->low) + 64;
 }
 
-int i128_lsb(const Int128 *op)
+UNUSED int i128_lsb(const Int128 *op)
 {
 	return (int)(127 - i128_ctz(op));
 }
 
-int i128_msb(const Int128 *op)
+UNUSED int i128_msb(const Int128 *op)
 {
 	return (int)(127 - i128_clz(op));
 }
@@ -548,7 +548,7 @@ Int128 i128_from_signed(int64_t i)
 	return (Int128){ i < 0 ? UINT64_MAX : 0, (uint64_t)i };
 }
 
-Int128 i128_from_unsigned(uint64_t i)
+UNUSED Int128 i128_from_unsigned(uint64_t i)
 {
 	return (Int128){ 0, i };
 }
@@ -567,7 +567,7 @@ Int128 i128_sdiv(Int128 op1, Int128 op2)
 	return res;
 }
 
-static CmpRes int_icompare(Int op1, int64_t op2)
+static CmpRes int_signed_compare(Int op1, int64_t op2)
 {
 	if (type_kind_is_signed(op1.type))
 	{
@@ -600,7 +600,7 @@ bool binary_op_matches_res(BinaryOp op, CmpRes res)
 }
 
 
-static CmpRes int_ucompare(Int op1, uint64_t op2)
+static CmpRes int_unsigned_compare(Int op1, uint64_t op2)
 {
 	if (type_kind_is_signed(op1.type) && i128_is_neg(op1.i)) return CMP_LT;
 	if (op1.i.high || op1.i.low > op2) return CMP_GT;
@@ -627,12 +627,12 @@ bool int_comp(Int op1, Int op2, BinaryOp op)
 
 bool int_icomp(Int op1, int64_t op2, BinaryOp op)
 {
-	return binary_op_matches_res(op, int_icompare(op1, op2));
+	return binary_op_matches_res(op, int_signed_compare(op1, op2));
 }
 
 bool int_ucomp(Int op1, uint64_t op2, BinaryOp op)
 {
-	return binary_op_matches_res(op, int_ucompare(op1, op2));
+	return binary_op_matches_res(op, int_unsigned_compare(op1, op2));
 }
 
 bool int_fits(Int op1, TypeKind kind)
@@ -890,21 +890,21 @@ bool int_is_neg(Int op)
 }
 
 
-bool i128_can_convert_from_double(double x)
+UNUSED bool i128_can_convert_from_double(double x)
 {
 	return isfinite(x)
 	&& x > -1
 	&& x < ldexp(1, 128);
 }
 
-bool i128_can_convert_from_double_signed(double x)
+UNUSED bool i128_can_convert_from_double_signed(double x)
 {
 	return isfinite(x)
 	&& x >= -ldexp(1, 127)
 	&& x < ldexp(1, 127);
 }
 
-Int128 i128_from_double(double x)
+UNUSED Int128 i128_from_double(double x)
 {
 	if (x >= ldexp(1, 64))
 	{
@@ -915,7 +915,7 @@ Int128 i128_from_double(double x)
 	return i128_from_int((uint64_t)x);
 }
 
-Int128 i128_from_double_signed(double x)
+UNUSED Int128 i128_from_double_signed(double x)
 {
 	return x < 0 ? i128_neg(i128_from_signed((int64_t)-x)) : i128_from_int((uint64_t)x);
 }

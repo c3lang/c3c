@@ -36,46 +36,46 @@ fn void! Object.to_format(Object* o, Formatter* formatter)
 	switch (o.type)
 	{
 		case void:
-			formatter.printf("{}")?;
+			formatter.printf("{}")!;
 		case void*:
-			formatter.printf("null")?;
+			formatter.printf("null")!;
 		case String:
-			formatter.printf(`"%s"`, o.s)?;
+			formatter.printf(`"%s"`, o.s)!;
 		case bool:
-			formatter.printf(o.b ? "true" : "false")?;
+			formatter.printf(o.b ? "true" : "false")!;
 		case ObjectInternalList:
-			formatter.printf("[")?;
+			formatter.printf("[")!;
 			foreach (i, ol : o.array)
 			{
-				formatter.printf(i == 0 ? " " : ", ")?;
-				ol.to_format(formatter)?;
+				formatter.printf(i == 0 ? " " : ", ")!;
+				ol.to_format(formatter)!;
 			}
-			formatter.printf(" ]")?;
+			formatter.printf(" ]")!;
 		case ObjectInternalMap:
-			formatter.printf("{")?;
+			formatter.printf("{")!;
 			@pool()
 			{
 				foreach (i, key : o.map.key_tlist())
 				{
-					formatter.printf(i == 0 ? " " : ", ")?;
-					formatter.printf(`"%s": `, key)?;
-					o.map.get(key).to_format(formatter)?;
+					formatter.printf(i == 0 ? " " : ", ")!;
+					formatter.printf(`"%s": `, key)!;
+					o.map.get(key).to_format(formatter)!;
 				}
 			};
-			formatter.printf(" }")?;
+			formatter.printf(" }")!;
 		default:
 			switch (o.type.kindof)
 			{
 				case SIGNED_INT:
-					formatter.printf("%d", o.i)?;
+					formatter.printf("%d", o.i)!;
 				case UNSIGNED_INT:
-					formatter.printf("%d", (uint128)o.i)?;
+					formatter.printf("%d", (uint128)o.i)!;
 				case FLOAT:
-					formatter.printf("%d", o.f)?;
+					formatter.printf("%d", o.f)!;
 				case ENUM:
-					formatter.printf("%d", o.i)?;
+					formatter.printf("%d", o.i)!;
 				default:
-					formatter.printf("<>")?;
+					formatter.printf("<>")!;
 			}
 	}
 }
@@ -266,7 +266,7 @@ macro Object* Object.append(Object* o, value)
 /**
  * @require o.is_keyable()
  **/
-fn Object*! Object.get(Object* o, String key) => o.is_empty() ? SearchResult.MISSING! : o.map.get(key);
+fn Object*! Object.get(Object* o, String key) => o.is_empty() ? SearchResult.MISSING? : o.map.get(key);
 
 
 fn bool Object.has_key(Object* o, String key) => o.is_map() && o.map.has_key(key);
@@ -316,12 +316,12 @@ macro get_integer_value(Object* value, $Type)
 	if (value.is_string())
 	{
 		$if ($Type.kindof == TypeKind.SIGNED_INT)
-			return ($Type)str::to_int128(value.s);
+			return ($Type)value.s.to_int128();
 		$else
-			return ($Type)str::to_uint128(value.s);
+			return ($Type)value.s.to_uint128();
 		$endif
 	}
-	if (!value.is_int()) return NumberConversion.MALFORMED_INTEGER!;
+	if (!value.is_int()) return NumberConversion.MALFORMED_INTEGER?;
 	return ($Type)value.i;
 }
 
@@ -370,7 +370,7 @@ fn uint128! Object.get_uint128_at(Object* o, usz index) => o.get_integer_at(uint
  **/
 fn String! Object.get_string(Object* o, String key)
 {
-	Object* value = o.get(key)?;
+	Object* value = o.get(key)!;
 	assert(value.is_string());
 	return value.s;
 }
@@ -390,7 +390,7 @@ fn String Object.get_string_at(Object* o, usz index)
  **/
 macro String! Object.get_enum(Object* o, $EnumType, String key)
 {
-	Object value = o.get(key)?;
+	Object value = o.get(key)!;
 	assert($EnumType.typeid == value.type);
 	return ($EnumType)value.i;
 }
@@ -410,7 +410,7 @@ macro String Object.get_enum_at(Object* o, $EnumType, usz index)
  **/
 fn bool! Object.get_bool(Object* o, String key)
 {
-	Object* value = o.get(key)?;
+	Object* value = o.get(key)!;
 	assert(value.is_bool());
 	return value.b;
 }
@@ -431,7 +431,7 @@ fn bool Object.get_bool_at(Object* o, usz index)
  **/
 fn double! Object.get_float(Object* o, String key)
 {
-	Object* value = o.get(key)?;
+	Object* value = o.get(key)!;
 	switch (value.type.kindof)
 	{
 		case SIGNED_INT:

@@ -58,7 +58,7 @@ static void tilde_emit_return_abi(TildeContext *c, TBEValue *return_value, TBEVa
 		return_out = c->optional_out;
 		if (!optional)
 		{
-			value_set(&no_fail, tilde_get_zero(c, type_anyerr), type_anyerr);
+			value_set(&no_fail, tilde_get_zero(c, type_anyfault), type_anyfault);
 			optional = &no_fail;
 		}
 		return_value = optional;
@@ -172,7 +172,7 @@ void tilde_emit_return_implicit(TildeContext *c)
 		return;
 	}
 	TBEValue value;
-	value_set(&value, tb_inst_ptr(c->f, 0), type_anyerr);
+	value_set(&value, tb_inst_ptr(c->f, 0), type_anyfault);
 	tilde_emit_return_abi(c, NULL, &value);
 }
 
@@ -231,7 +231,7 @@ INLINE void tilde_emit_return_stmt(TildeContext *c, Ast *ast)
 	if (c->cur_func.prototype && type_is_optional(c->cur_func.prototype->rtype))
 	{
 		error_return_block = tb_basic_block_create(c->f);
-		error_out = tilde_emit_alloca(c, type_anyerr, 0);
+		error_out = tilde_emit_alloca(c, type_anyfault, 0);
 		c->opt_var = error_out;
 		c->catch_block = error_return_block;
 	}
@@ -262,7 +262,7 @@ INLINE void tilde_emit_return_stmt(TildeContext *c, Ast *ast)
 	{
 		tilde_emit_block(c, error_return_block);
 		TBEValue value;
-		value_set_address_abi_aligned(&value, error_out, type_anyerr);
+		value_set_address_abi_aligned(&value, error_out, type_anyfault);
 		tilde_emit_return_abi(c, NULL, &value);
 	}
 }
@@ -292,7 +292,7 @@ void tilde_emit_local_decl(TildeContext *c, Decl *decl, TBEValue *value)
 			scratch_buffer_clear();
 			scratch_buffer_append(decl->extname);
 			scratch_buffer_append("$f");
-			decl->var.optional_ref = llvm_add_global(c, scratch_buffer_to_string(), type_anyerr, 0);
+			decl->var.optional_ref = llvm_add_global(c, scratch_buffer_to_string(), type_anyfault, 0);
 		}
 		llvm_emit_global_variable_init(c, decl);
 		c->builder = builder;
@@ -308,7 +308,7 @@ void tilde_emit_local_decl(TildeContext *c, Decl *decl, TBEValue *value)
 		scratch_buffer_clear();
 		scratch_buffer_append(decl->name);
 		scratch_buffer_append(".f");
-		decl->var.tb_optional_reg = tb_inst_local(c->f, type_size(type_anyerr), type_alloca_alignment(type_anyerr));
+		decl->var.tb_optional_reg = tb_inst_local(c->f, type_size(type_anyfault), type_alloca_alignment(type_anyfault));
 		// Only clear out the result if the assignment isn't an optional.
 	}
 
@@ -324,21 +324,21 @@ void tilde_emit_local_decl(TildeContext *c, Decl *decl, TBEValue *value)
 		value_set(value, tb_inst_poison(c->f), decl->type);
 		if (decl->var.tb_optional_reg)
 		{
-			tilde_store_to_ptr_raw(c, decl->var.tb_optional_reg, tb_inst_poison(c->f), type_anyerr);
+			tilde_store_to_ptr_raw(c, decl->var.tb_optional_reg, tb_inst_poison(c->f), type_anyfault);
 		}
 	}
 	else
 	{
 		if (decl->var.tb_optional_reg)
 		{
-			tilde_store_zero(c, type_anyerr, decl->var.tb_optional_reg, 0);
+			tilde_store_zero(c, type_anyfault, decl->var.tb_optional_reg, 0);
 		}
 
 		Type *type = type_lowering(decl->type);
 		// Normal case, zero init.
 		if (type_is_builtin(type->type_kind) || type->type_kind == TYPE_POINTER)
 		{
-			tilde_store_zero(c, type_anyerr, decl->tb_register, decl->alignment);
+			tilde_store_zero(c, type_anyfault, decl->tb_register, decl->alignment);
 		}
 		else
 		{
@@ -516,7 +516,7 @@ void tilde_emit_jump_to_optional_exit(TildeContext *c, TB_Reg opt_value)
 		tilde_emit_block(c, error_block);
 	}
 
-	tilde_store_to_ptr_raw(c, c->opt_var, opt_value, type_anyerr);
+	tilde_store_to_ptr_raw(c, c->opt_var, opt_value, type_anyfault);
 	tb_inst_goto(c->f, c->catch_block);
 	tilde_emit_block(c, after_block);
 

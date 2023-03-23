@@ -18,7 +18,7 @@ fn void*! null_allocator_fn(Allocator* this, usz bytes, usz alignment, usz offse
         case ALIGNED_ALLOC:
         case ALIGNED_REALLOC:
         case ALIGNED_CALLOC:
-			return AllocationFailure.OUT_OF_MEMORY!;
+			return AllocationFailure.OUT_OF_MEMORY?;
 		default:
 			return null;
 	}
@@ -37,8 +37,8 @@ struct AlignedBlock
 macro void*! @aligned_alloc(#alloc_fn, usz bytes, usz alignment, usz offset)
 {
 	usz header = mem::aligned_offset(AlignedBlock.sizeof + offset, alignment) - offset;
-	$if ($checks(#alloc_fn(bytes)?))
-		void* data = #alloc_fn(header + bytes)?;
+	$if ($checks(#alloc_fn(bytes)!))
+		void* data = #alloc_fn(header + bytes)!;
 	$else
 		void* data = #alloc_fn(header + bytes);
 	$endif
@@ -56,8 +56,8 @@ macro void*! @aligned_alloc(#alloc_fn, usz bytes, usz alignment, usz offset)
 macro void*! @aligned_calloc(#calloc_fn, usz bytes, usz alignment, usz offset)
 {
 	usz header = mem::aligned_offset(AlignedBlock.sizeof + offset, alignment) - offset;
-	$if ($checks(#calloc_fn(bytes)?))
-		void* data = #calloc_fn(header + bytes)?;
+	$if ($checks(#calloc_fn(bytes)!))
+		void* data = #calloc_fn(header + bytes)!;
 	$else
 		void* data = #calloc_fn(header + bytes);
 	$endif
@@ -76,10 +76,10 @@ macro void*! @aligned_realloc(#calloc_fn, #free_fn, void* old_pointer, usz bytes
 {
 	AlignedBlock* desc = (AlignedBlock*)old_pointer - 1;
 	void* data_start = desc.start;
-    void* new_data = @aligned_calloc(#calloc_fn, bytes, alignment, offset)?;
+    void* new_data = @aligned_calloc(#calloc_fn, bytes, alignment, offset)!;
 	mem::copy(new_data, old_pointer, desc.len > bytes ? desc.len : bytes, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
-	$if ($checks(#free_fn(data_start)?))
-	#free_fn(data_start)?;
+	$if ($checks(#free_fn(data_start)!))
+	#free_fn(data_start)!;
 	$else
 	#free_fn(data_start);
 	$endif
@@ -89,8 +89,8 @@ macro void*! @aligned_realloc(#calloc_fn, #free_fn, void* old_pointer, usz bytes
 macro void! @aligned_free(#free_fn, void* old_pointer)
 {
 	AlignedBlock* desc = (AlignedBlock*)old_pointer - 1;
-	$if ($checks(#free_fn(desc.start)?))
-	#free_fn(desc.start)?;
+	$if ($checks(#free_fn(desc.start)!))
+	#free_fn(desc.start)!;
 	$else
 	#free_fn(desc.start);
 	$endif
@@ -121,7 +121,7 @@ fn void*! libc_allocator_fn(Allocator* unused, usz bytes, usz alignment, usz off
             if (!old_pointer) nextcase CALLOC;
             data = libc::realloc(old_pointer, bytes);
         case RESET:
-            return AllocationFailure.UNSUPPORTED_OPERATION!;
+            return AllocationFailure.UNSUPPORTED_OPERATION?;
         case ALIGNED_FREE:
             @aligned_free(libc::free, old_pointer)!!;
             return null;
@@ -131,6 +131,6 @@ fn void*! libc_allocator_fn(Allocator* unused, usz bytes, usz alignment, usz off
         default:
             unreachable();
     }
-    if (!data) return AllocationFailure.OUT_OF_MEMORY!;
+    if (!data) return AllocationFailure.OUT_OF_MEMORY?;
     return data;
 }

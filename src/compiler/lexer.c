@@ -4,19 +4,6 @@
 
 #include "compiler_internal.h"
 
-#define LOWER_CASE \
-	'a': case 'b': case 'c': case 'd': case 'e': case 'f': case 'g': case 'h': case 'i': case 'j': \
-	case 'k': case 'l': case 'm': case 'n': case 'o': case 'p': case 'q': case 'r': case 's': case 't': \
-	case 'u': case 'v': case 'w': case 'x': case 'y': case 'z'
-#define UPPER_CASE \
-	'A': case 'B': case 'C': case 'D': case 'E': case 'F': case 'G': case 'H': case 'I': case 'J': \
-	case 'K': case 'L': case 'M': case 'N': case 'O': case 'P': case 'Q': case 'R': case 'S': case 'T': \
-	case 'U': case 'V': case 'W': case 'X': case 'Y': case 'Z'
-#define NUM_CASE \
-	'0': case '1': case '2': case '3': case '4': \
-	case '5': case '6': case '7': case '8': case '9'
-
-
 static inline uint16_t check_col(intptr_t col, uint32_t row)
 {
 	if (col > 255) return 0;
@@ -71,9 +58,6 @@ static inline void backtrack(Lexer *lexer)
 	}
 }
 
-
-
-
 // Skip the x next characters.
 static inline void skip(Lexer *lexer, int steps)
 {
@@ -85,7 +69,6 @@ static inline void skip(Lexer *lexer, int steps)
 }
 
 // Match a single character – if successful, more one step forward.
-
 static inline bool match(Lexer *lexer, char expected)
 {
 	if (lexer->current[0] != expected) return false;
@@ -119,7 +102,9 @@ static inline void set_generic_token(Lexer *lexer, TokenType type)
 	}
 	else
 	{
+		// For multiline, we grab the diff from the starting line.
 		col = check_col(lexer->lexing_start - lexer->start_row_start + 1, line);
+		// But always set a single token length.
 		length = 1;
 	}
 	lexer->tok_span.length = length;
@@ -138,6 +123,7 @@ static bool add_error_token(Lexer *lexer, const char *message, ...)
 	return false;
 }
 
+// Error at the start of the lexing, with a single length.
 static bool add_error_token_at_start(Lexer *lexer, const char *message, ...)
 {
 	va_list list;
@@ -154,6 +140,8 @@ static bool add_error_token_at_start(Lexer *lexer, const char *message, ...)
 	return false;
 }
 
+// Create an error token at a particular place in the file.
+// used for pointing out errors in strings etc.
 static bool add_error_token_at(Lexer *lexer, const char *loc, uint32_t len, const char *message, ...)
 {
 	va_list list;
@@ -172,6 +160,7 @@ static bool add_error_token_at(Lexer *lexer, const char *loc, uint32_t len, cons
 	return false;
 }
 
+// Print an error at the current location.
 static bool add_error_token_at_current(Lexer *lexer, const char *message, ...)
 {
 	va_list list;
@@ -202,27 +191,20 @@ static inline bool return_token(Lexer *lexer, TokenType type, const char *string
 // --- Comment parsing
 
 /**
- * Parsing of the "//" line comment,
- * also handling "///" doc comments that we probably don't need,
- * but let's keep it for now.
+ * Parsing of the "//" line comment - skipping past the end.
  */
-static inline bool parse_line_comment(Lexer *lexer)
+static inline void parse_line_comment(Lexer *lexer)
 {
 	while (!reached_end(lexer) && peek(lexer) != '\n')
 	{
 		next(lexer);
 	}
 	// If we found EOL, then walk past '\n'
-	if (!reached_end(lexer))
-	{
-		next(lexer);
-	}
-	return true;
+	if (peek(lexer) == '\n') next(lexer);
 }
 
-
 /**
- * Parse the common / *  * / style multiline comments
+ * Parse the common / *  * / style multiline comments, allowing nesting.
  **/
 static inline void parse_multiline_comment(Lexer *lexer)
 {
@@ -248,9 +230,8 @@ static inline void parse_multiline_comment(Lexer *lexer)
 					continue;
 				}
 				break;
-			case '\n':
-				break;
 			case '\0':
+				// Reached eof - end.
 				return;
 			default:
 				break;
@@ -271,12 +252,14 @@ static void skip_whitespace(Lexer *lexer)
 		{
 			case '/':
 				if (lexer->mode == LEX_DOCS) return;
+				// The '//' case
 				if (peek_next(lexer) == '/')
 				{
 					skip(lexer, 2);
 					parse_line_comment(lexer);
 					continue;
 				}
+				// '/*' but not '/**'
 				if (peek_next(lexer) == '*' && lexer->current[2] != '*')
 				{
 					skip(lexer, 2);
@@ -285,6 +268,7 @@ static void skip_whitespace(Lexer *lexer)
 				}
 				return;
 			case '\n':
+				// Doc lexing sees '\n' as a token.
 				if (lexer->mode == LEX_DOCS) return;
 				FALLTHROUGH;
 			case ' ':
@@ -293,6 +277,7 @@ static void skip_whitespace(Lexer *lexer)
 				next(lexer);
 				break;
 			case '\r':
+				// Already filtered out.
 				UNREACHABLE
 			default:
 				return;
@@ -300,10 +285,7 @@ static void skip_whitespace(Lexer *lexer)
 	}
 }
 
-
-
 // --- Identifier scanning
-
 
 // Parses identifiers. Note that this is a bit complicated here since
 // we split identifiers into 2 types + find keywords.
@@ -326,7 +308,7 @@ static inline bool scan_ident(Lexer *lexer, TokenType normal, TokenType const_to
 		c = peek(lexer);
 		switch (c)
 		{
-			case LOWER_CASE:
+			case LOWER_CHAR_CASE:
 				if (!type)
 				{
 					type = normal;
@@ -336,10 +318,10 @@ static inline bool scan_ident(Lexer *lexer, TokenType normal, TokenType const_to
 					type = type_token;
 				}
 				break;
-			case UPPER_CASE:
+			case UPPER_CHAR_CASE:
 				if (!type) type = const_token;
 				break;
-			case NUM_CASE:
+			case NUMBER_CHAR_CASE:
 				if (!type) return add_error_token(lexer, "A letter must precede any digit");
 			case '_':
 				break;
@@ -372,19 +354,6 @@ static inline bool scan_ident(Lexer *lexer, TokenType normal, TokenType const_to
 		case TOKEN_RETURN:
 			if (lexer->mode == LEX_DOCS) type = TOKEN_IDENT;
 			break;
-		case TOKEN_TRY:
-			if (peek(lexer) == '?')
-			{
-				next(lexer);
-				return return_token(lexer, TOKEN_TRY_QUESTION, kw_try_question);
-			}
-			break;
-		case TOKEN_CATCH:
-			if (peek(lexer) == '?')
-			{
-				next(lexer);
-				return return_token(lexer, TOKEN_CATCH_QUESTION, kw_catch_question);
-			}
 		default:
 			break;
 	}
@@ -403,11 +372,28 @@ static bool scan_number_suffix(Lexer *lexer, bool *is_float)
 {
 	char c = peek(lexer);
 	if (!char_is_alphanum_(c)) return true;
-	switch (c)
+	switch (c | 32)
 	{
+		case 'l':
+			c = next(lexer);
+			if (*is_float)
+			{
+				return add_error_token_at_current(lexer, "Integer suffix '%c' is not valid for a floating point literal.", c);
+			}
+			break;
 		case 'u':
-		case 'U':
-		case 'I':
+			if (*is_float)
+			{
+				return add_error_token_at_current(lexer, "Integer suffix '%c' is not valid for a floating point literal.", c);
+			}
+			c = next(lexer);
+			if ((c | 32) == 'l')
+			{
+				c = next(lexer);
+				break;
+			}
+			while (char_is_digit(c = peek(lexer))) next(lexer);
+			break;
 		case 'i':
 			if (*is_float)
 			{
@@ -510,7 +496,7 @@ static inline bool scan_exponent(Lexer *lexer)
 		if (c < 31 || c > 127) add_error_token(lexer, "An unexpected character was found while parsing the exponent.");
 		return add_error_token(lexer, "Parsing the floating point exponent failed, because '%c' is not a number.", c);
 	}
-	// Walk through all of the digits.
+	// Step through all the digits.
 	while (char_is_digit(peek(lexer))) next(lexer);
 	return true;
 }
@@ -814,7 +800,7 @@ static inline bool scan_char(Lexer *lexer)
 					                                  "Character literals with '\\%c' can only contain one character, please remove this one.",
 					                                  escape);
 				}
-				// Assign the value and go to DONE.
+				// Assign the value and go to "DONE".
 				b.low = (uint64_t) hex;
 				width = bytes;
 				goto DONE;
@@ -832,10 +818,6 @@ static inline bool scan_char(Lexer *lexer)
 		b = i128_add64(b, (unsigned char)c);
 	}
 	assert(width > 0 && width <= 16);
-	if (width > 8 && !platform_target.int128)
-	{
-		return add_error_token(lexer, "Character literal exceeded 8 characters.");
-	}
 DONE:
 	set_generic_token(lexer, TOKEN_CHAR_LITERAL);
 	lexer->data.char_value = b;
@@ -1087,6 +1069,7 @@ static inline bool scan_hex_array(Lexer *lexer)
 	return true;
 }
 
+// Scan b64"abc=" and b64'abc='
 static inline bool scan_base64(Lexer *lexer)
 {
 	next(lexer); // Step past 6
@@ -1288,10 +1271,7 @@ static bool lexer_scan_token_inner(Lexer *lexer)
 	// Point start to the first non-whitespace character.
 	begin_new_token(lexer);
 
-	if (reached_end(lexer))
-	{
-		return return_token(lexer, TOKEN_EOF, "\n") && false;
-	}
+	if (reached_end(lexer)) return return_token(lexer, TOKEN_EOF, "\n") && false;
 
 	char c = peek(lexer);
 	next(lexer);
@@ -1447,22 +1427,17 @@ static bool lexer_scan_token_inner(Lexer *lexer)
 	}
 }
 
-
-void lexer_init(Lexer *lexer)
+INLINE void check_bidirectional_markers(Lexer *lexer)
 {
-	lexer->file_begin = lexer->file->contents;
-	lexer->current = lexer->file_begin;
-	lexer->line_start = lexer->current;
-	lexer->current_row = 1;
-	lexer->tok_span.file_id = lexer->file->file_id;
-	lexer->mode = LEX_NORMAL;
-	begin_new_token(lexer);
+	// First we check for bidirectional markers.
 	const unsigned char *check = (const unsigned char *)lexer->current;
 	unsigned c;
 	int balance = 0;
+	// Loop until end.
 	while ((c = *(check++)) != '\0')
 	{
 		if (c != 0xE2) continue;
+		// Possible marker.
 		unsigned char next = check[0];
 		if (next == 0) break;
 		unsigned char type = check[1];
@@ -1479,22 +1454,23 @@ void lexer_init(Lexer *lexer)
 					balance++;
 				}
 				break;
-				case 0x81:
-					if (type >= 0xA6 && type <= 0xA8)
-					{
-						balance++;
-					}
-					else if (type == 0xA9)
-					{
-						balance--;
-						if (balance < 0) goto DONE;
-					}
-					break;
-					default:
-						break;
+			case 0x81:
+				if (type >= 0xA6 && type <= 0xA8)
+				{
+					balance++;
+				}
+				else if (type == 0xA9)
+				{
+					balance--;
+					if (balance < 0) goto DONE;
+				}
+				break;
+			default:
+				break;
 		}
 	}
 	DONE:
+	// Check for unbalanced result
 	if (balance != 0)
 	{
 		add_error_token_at_start(lexer, "Invalid encoding - Unbalanced bidirectional markers.");
@@ -1502,20 +1478,46 @@ void lexer_init(Lexer *lexer)
 	}
 }
 
+// Initialize a file
+void lexer_init(Lexer *lexer)
+{
+	// Set the current file.
+	lexer->file_begin = lexer->file->contents;
+	// Set current to beginning.
+	lexer->current = lexer->file_begin;
+	// Line start is current.
+	lexer->line_start = lexer->current;
+	// Row number starts at 1
+	lexer->current_row = 1;
+	// File id is the current file.
+	lexer->tok_span.file_id = lexer->file->file_id;
+	// Mode is NORMAL
+	lexer->mode = LEX_NORMAL;
+	// Set up lexing for a new token.
+	begin_new_token(lexer);
+	// Check for bidirectional markers.
+	check_bidirectional_markers(lexer);
+}
+
 bool lexer_next_token(Lexer *lexer)
 {
+	// Scan for a token.
 	if (lexer_scan_token_inner(lexer)) return true;
+	// Failed, so check if we're at end:
 	if (reached_end(lexer)) return true;
+	// Scan through the rest of the text for other invalid tokens:
 	bool token_is_ok = false;
 	do
 	{
 		if (!token_is_ok)
 		{
+			// Scan to the end of the line if we have an error.
 			while (!reached_end(lexer) && peek(lexer) != '\n') next(lexer);
 		}
 		token_is_ok = lexer_scan_token_inner(lexer);
 	}
 	while (!reached_end(lexer));
+	// Done.
 	return false;
 }
 

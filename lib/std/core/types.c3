@@ -1,3 +1,4 @@
+
 module std::core::types;
 import libc;
 
@@ -10,63 +11,63 @@ fault ConversionResult
 /**
  * @require $Type.kindof.is_int() || $Type.kindof == TypeKind.ENUM "Argument was not an integer"
  **/
-macro variant_to_int(variant v, $Type)
+macro any_to_int(any v, $Type)
 {
-	typeid variant_type = v.type;
-	TypeKind kind = variant_type.kindof;
+	typeid any_type = v.type;
+	TypeKind kind = any_type.kindof;
 	if (kind == TypeKind.ENUM)
 	{
-		variant_type = variant_type.inner;
-		kind = variant_type.kindof;
+		any_type = any_type.inner;
+		kind = any_type.kindof;
 	}
-	bool is_mixed_signed = $Type.kindof != variant_type.kindof;
+	bool is_mixed_signed = $Type.kindof != any_type.kindof;
 	$Type max = $Type.max;
 	$Type min = $Type.min;
-	switch (variant_type)
+	switch (any_type)
 	{
 		case ichar:
 			ichar c = *(char*)v.ptr;
-			if (is_mixed_signed && c < 0) return ConversionResult.VALUE_OUT_OF_UNSIGNED_RANGE!;
+			if (is_mixed_signed && c < 0) return ConversionResult.VALUE_OUT_OF_UNSIGNED_RANGE?;
 			return ($Type)c;
 		case short:
 			short s = *(short*)v.ptr;
-			if (is_mixed_signed && s < 0) return ConversionResult.VALUE_OUT_OF_UNSIGNED_RANGE!;
-			if (s > max || s < min) return ConversionResult.VALUE_OUT_OF_RANGE!;
+			if (is_mixed_signed && s < 0) return ConversionResult.VALUE_OUT_OF_UNSIGNED_RANGE?;
+			if (s > max || s < min) return ConversionResult.VALUE_OUT_OF_RANGE?;
 			return ($Type)s;
 		case int:
 			int i = *(int*)v.ptr;
-			if (is_mixed_signed && i < 0) return ConversionResult.VALUE_OUT_OF_UNSIGNED_RANGE!;
-			if (i > max || i < min) return ConversionResult.VALUE_OUT_OF_RANGE!;
+			if (is_mixed_signed && i < 0) return ConversionResult.VALUE_OUT_OF_UNSIGNED_RANGE?;
+			if (i > max || i < min) return ConversionResult.VALUE_OUT_OF_RANGE?;
 			return ($Type)i;
 		case long:
 			long l = *(long*)v.ptr;
-			if (is_mixed_signed && l < 0) return ConversionResult.VALUE_OUT_OF_UNSIGNED_RANGE!;
-			if (l > max || l < min) return ConversionResult.VALUE_OUT_OF_RANGE!;
+			if (is_mixed_signed && l < 0) return ConversionResult.VALUE_OUT_OF_UNSIGNED_RANGE?;
+			if (l > max || l < min) return ConversionResult.VALUE_OUT_OF_RANGE?;
 			return ($Type)l;
 		case int128:
 			int128 i = *(int128*)v.ptr;
-			if (is_mixed_signed && i < 0) return ConversionResult.VALUE_OUT_OF_UNSIGNED_RANGE!;
-			if (i > max || i < min) return ConversionResult.VALUE_OUT_OF_RANGE!;
+			if (is_mixed_signed && i < 0) return ConversionResult.VALUE_OUT_OF_UNSIGNED_RANGE?;
+			if (i > max || i < min) return ConversionResult.VALUE_OUT_OF_RANGE?;
 			return ($Type)i;
 		case char:
 			char c = *(char*)v.ptr;
-			if (c > max) return ConversionResult.VALUE_OUT_OF_RANGE!;
+			if (c > max) return ConversionResult.VALUE_OUT_OF_RANGE?;
 			return ($Type)c;
 		case ushort:
 			ushort s = *(ushort*)v.ptr;
-			if (s > max || s < min) return ConversionResult.VALUE_OUT_OF_RANGE!;
+			if (s > max || s < min) return ConversionResult.VALUE_OUT_OF_RANGE?;
 			return ($Type)s;
 		case uint:
 			uint i = *(uint*)v.ptr;
-			if (i > max || i < min) return ConversionResult.VALUE_OUT_OF_RANGE!;
+			if (i > max || i < min) return ConversionResult.VALUE_OUT_OF_RANGE?;
 			return ($Type)i;
 		case ulong:
 			ulong l = *(ulong*)v.ptr;
-			if (l > max || l < min) return ConversionResult.VALUE_OUT_OF_RANGE!;
+			if (l > max || l < min) return ConversionResult.VALUE_OUT_OF_RANGE?;
 			return ($Type)l;
 		case uint128:
 			uint128 i = *(uint128*)v.ptr;
-			if (i > max || i < min) return ConversionResult.VALUE_OUT_OF_RANGE!;
+			if (i > max || i < min) return ConversionResult.VALUE_OUT_OF_RANGE?;
 			return ($Type)i;
 		default:
 			unreachable();
@@ -219,13 +220,18 @@ macro bool is_same_vector_type($Type1, $Type2)
 	$endif
 }
 
-macro bool is_equatable_value(value)
+macro bool is_equatable_type($Type)
 {
-	$if ($defined(value.less) || $defined(value.compare_to) || $defined(value.equals))
+	$if ($defined($Type.less) || $defined($Type.compare_to) || $defined($Type.equals))
 		return true;
 	$else
-		return is_equatable($typeof(value));
+		return is_equatable($Type);
 	$endif
+}
+
+macro bool is_equatable_value(value)
+{
+	return is_equatable_type($typeof(value));
 }
 
 macro bool is_comparable_value(value)
@@ -245,8 +251,8 @@ enum TypeKind : char
     UNSIGNED_INT,
     FLOAT,
     TYPEID,
-    ANYERR,
-    VARIANT,
+    ANYFAULT,
+    ANY,
     ENUM,
     FAULT,
     STRUCT,

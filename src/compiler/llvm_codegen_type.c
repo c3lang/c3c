@@ -121,7 +121,7 @@ static void param_expand(GenContext *context, LLVMTypeRef** params_ref, Type *ty
 			return;
 		}
 		case TYPE_ENUM:
-		case TYPE_ANYERR:
+		case TYPE_ANYFAULT:
 		case TYPE_FAULTTYPE:
 			param_expand(context, params_ref, type_lowering(type));
 			return;
@@ -274,7 +274,7 @@ LLVMTypeRef llvm_func_type(GenContext *context, FunctionPrototype *prototype)
 {
 	LLVMTypeRef *params = NULL;
 	LLVMTypeRef ret = llvm_update_prototype_abi(context, prototype, &params);
-	return LLVMFunctionType(ret, params, vec_size(params), prototype->variadic == VARIADIC_RAW);
+	return LLVMFunctionType(ret, params, vec_size(params), prototype->raw_variadic);
 }
 
 
@@ -317,14 +317,13 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 		case CT_TYPES:
 			UNREACHABLE
 		case TYPE_OPTIONAL:
-		case TYPE_OPTIONAL_ANY:
 		case TYPE_TYPEDEF:
 		case TYPE_DISTINCT:
 		case TYPE_ENUM:
 			// If this is reachable, then we're not doing the proper lowering.
 			UNREACHABLE
 		case TYPE_TYPEID:
-		case TYPE_ANYERR:
+		case TYPE_ANYFAULT:
 		case TYPE_FAULTTYPE:
 			return any_type->backend_type = llvm_get_type(c, type_iptr->canonical);
 		case TYPE_STRUCT:
@@ -339,6 +338,8 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 			return any_type->backend_type = LLVMDoubleTypeInContext(c->context);
 		case TYPE_F16:
 			return any_type->backend_type = LLVMHalfTypeInContext(c->context);
+		case TYPE_BF16:
+			return any_type->backend_type = LLVMBFloatTypeInContext(c->context);
 		case TYPE_F32:
 			return any_type->backend_type = LLVMFloatTypeInContext(c->context);
 		case TYPE_F128:
@@ -368,8 +369,6 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 			LLVMStructSetBody(virtual_type, types, 2, false);
 			return any_type->backend_type = virtual_type;
 		}
-		case TYPE_SCALED_VECTOR:
-			return any_type->backend_type = LLVMScalableVectorType(llvm_get_type(c, any_type->array.base), any_type->array.len);
 		case TYPE_VECTOR:
 			return any_type->backend_type = LLVMVectorType(llvm_get_type(c, any_type->array.base), any_type->array.len);
 	}
@@ -660,12 +659,7 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 		}
 		case TYPE_TYPEDEF:
 			return llvm_get_typeid(c, type->canonical);
-		case TYPE_INFERRED_ARRAY:
-		case TYPE_INFERRED_VECTOR:
-		case TYPE_UNTYPED_LIST:
-		case TYPE_OPTIONAL_ANY:
-		case TYPE_TYPEINFO:
-		case TYPE_MEMBER:
+		case CT_TYPES:
 			UNREACHABLE
 		case TYPE_VOID:
 			return llvm_get_introspection_for_builtin_type(c, type, INTROSPECT_TYPE_VOID, 0);
@@ -684,16 +678,12 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 			                                               type,
 			                                               INTROSPECT_TYPE_FLOAT,
 			                                               type_kind_bitsize(type->type_kind));
-		case TYPE_ANYERR:
-			return llvm_get_introspection_for_builtin_type(c, type, INTROSPECT_TYPE_ANYERR, 0);
+		case TYPE_ANYFAULT:
+			return llvm_get_introspection_for_builtin_type(c, type, INTROSPECT_TYPE_ANYFAULT, 0);
 		case TYPE_ANY:
-			return llvm_get_introspection_for_builtin_type(c, type, INTROSPECT_TYPE_VARIANT, 0);
+			return llvm_get_introspection_for_builtin_type(c, type, INTROSPECT_TYPE_ANY, 0);
 		case TYPE_TYPEID:
 			return llvm_get_introspection_for_builtin_type(c, type, INTROSPECT_TYPE_TYPEID, 0);
-		case TYPE_POISONED:
-			UNREACHABLE
-		case TYPE_SCALED_VECTOR:
-			UNSUPPORTED;
 	}
 	UNREACHABLE
 }

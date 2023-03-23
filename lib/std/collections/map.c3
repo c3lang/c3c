@@ -63,24 +63,24 @@ fn bool HashMap.is_empty(HashMap* map) @inline
 
 fn Value*! HashMap.get_ref(HashMap* map, Key key)
 {
-	if (!map.count) return SearchResult.MISSING!;
+	if (!map.count) return SearchResult.MISSING?;
 	uint hash = rehash(key.hash());
 	for (Entry *e = map.table[index_for(hash, map.table.len)]; e != null; e = e.next)
 	{
 		if (e.hash == hash && equals(key, e.key)) return &e.value;
 	}
-	return SearchResult.MISSING!;
+	return SearchResult.MISSING?;
 }
 
 fn Entry*! HashMap.get_entry(HashMap* map, Key key)
 {
-	if (!map.count) return SearchResult.MISSING!;
+	if (!map.count) return SearchResult.MISSING?;
 	uint hash = rehash(key.hash());
 	for (Entry *e = map.table[index_for(hash, map.table.len)]; e != null; e = e.next)
 	{
 		if (e.hash == hash && equals(key, e.key)) return e;
 	}
-	return SearchResult.MISSING!;
+	return SearchResult.MISSING?;
 }
 
 /**
@@ -112,7 +112,7 @@ fn Value! HashMap.get(HashMap* map, Key key) @operator([])
 
 fn bool HashMap.has_key(HashMap* map, Key key)
 {
-	return try? map.get_ref(key);
+	return @ok(map.get_ref(key));
 }
 
 fn bool HashMap.set(HashMap* map, Key key, Value value) @operator([]=)
@@ -138,7 +138,7 @@ fn bool HashMap.set(HashMap* map, Key key, Value value) @operator([]=)
 
 fn void! HashMap.remove(HashMap* map, Key key) @maydiscard
 {
-	if (!map.remove_entry_for_key(key)) return SearchResult.MISSING!;
+	if (!map.remove_entry_for_key(key)) return SearchResult.MISSING?;
 }
 
 fn void HashMap.clear(HashMap* map)

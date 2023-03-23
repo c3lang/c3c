@@ -26,7 +26,7 @@ fn void foo2()
 fn void foo3()
 {
 	int a;
-	$switch ({ 1, 3 }): // #error: Only types, strings, enums, integers, floats and booleans
+	$switch ({ 1, 3 }) // #error: Only types, strings, enums, integers, floats and booleans
 		$case 1:
 			io::printn("Hello");
 		$default:

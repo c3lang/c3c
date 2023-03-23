@@ -19,13 +19,13 @@ fn uint! ipv4toint(String s)
 	{
 		if (c == '.')
 		{
-			if (current < 0) return NetError.INVALID_IP_STRING!;
+			if (current < 0) return NetError.INVALID_IP_STRING?;
 			out = out << 8 + current;
 			current = -1;
 			element++;
 			continue;
 		}
-		if (element > 3 || c < '0' || c > '9') return NetError.INVALID_IP_STRING!;
+		if (element > 3 || c < '0' || c > '9') return NetError.INVALID_IP_STRING?;
 		if (current < 0)
 		{
 			current = c - '0';
@@ -33,7 +33,7 @@ fn uint! ipv4toint(String s)
 		}
 		current = current * 10 + c - '0';
 	}
-	if (element != 3 || current < 0) return NetError.INVALID_IP_STRING!;
+	if (element != 3 || current < 0) return NetError.INVALID_IP_STRING?;
 	out = out << 8 + current;
 	return out;
 }
@@ -41,6 +41,6 @@ fn uint! ipv4toint(String s)
 fn String! inttoipv4(uint val, Allocator* using = mem::heap())
 {
 	char[3 * 4 + 3 + 1] buffer;
-	String res = (String)io::bprintf(&buffer, "%d.%d.%d.%d", val >> 24, (val >> 16) & 0xFF, (val >> 8) & 0xFF, val & 0xFF)?;
+	String res = (String)io::bprintf(&buffer, "%d.%d.%d.%d", val >> 24, (val >> 16) & 0xFF, (val >> 8) & 0xFF, val & 0xFF)!;
 	return res.copy(using);
 }
