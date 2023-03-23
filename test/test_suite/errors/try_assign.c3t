@@ -18,7 +18,7 @@ fn void main()
     {
        printf("Test\n");
     }
-    anyerr e;
+    anyfault e;
     if (catch e = z)
     {
         printf("Oh noes!\n");

@@ -32,8 +32,8 @@ extern fn void printf(char *s);
 
 fn void test_signedunsigned()
 {
-    char a = 0 - 1;
-    byte b = (byte)(a);
+    ichar a = 0 - 1;
+    char b = (char)(a);
 
     printf("Signed-unsigned -1 0xFF \n");
     if (a > b) printf("a > b\n");

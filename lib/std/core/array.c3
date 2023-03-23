@@ -1,33 +1,34 @@
 module std::core::array;
 
-macro tconcat(arr1, arr2)
-{
-	var $Type = $typeof(arr1[0]);
-	$Type[] result = array::talloc($Type, arr1.len + arr2.len);
-	if (arr1.len > 0)
-	{
-		mem::copy(result.ptr, &arr1[0], arr1.len * $Type.sizeof, $Type.alignof, $Type.alignof);
-	}
-	if (arr2.len > 0)
-	{
-		mem::copy(&result[arr1.len], &arr2[0], arr2.len * $Type.sizeof, $Type.alignof, $Type.alignof);
-	}
-	return result;
-}
-
+/**
+ * @param [in] array
+ * @param [in] element
+ * @return "the index of the element"
+ * @return! SearchResult.MISSING
+ **/
 macro index_of(array, element)
 {
 	foreach (i, &e : array)
 	{
 		if (*e == element) return i;
 	}
-	return SearchResult.MISSING!;
+	return SearchResult.MISSING?;
 }
 
-macro concat(arr1, arr2)
+/**
+ * Concatenate two arrays or subarrays, returning a subarray containing the concatenation of them.
+ *
+ * @param [in] arr1
+ * @param [in] arr2
+ * @require @typekind(arr1) == SUBARRAY || @typekind(arr1) == ARRAY
+ * @require @typekind(arr2) == SUBARRAY || @typekind(arr2) == ARRAY
+ * @require @typeis(arr1[0], $typeof(arr2[0])) "Arrays must have the same type"
+ * @ensure result.len == arr1.len + arr2.len
+ **/
+macro concat(arr1, arr2, Allocator* using = mem::heap())
 {
 	var $Type = $typeof(arr1[0]);
-	$Type[] result = array::alloc($Type, arr1.len + arr2.len);
+	$Type[] result = malloc($Type, arr1.len + arr2.len, .using = using);
 	if (arr1.len > 0)
 	{
 		mem::copy(result.ptr, &arr1[0], arr1.len * $Type.sizeof, $Type.alignof, $Type.alignof);
@@ -38,3 +39,5 @@ macro concat(arr1, arr2)
 	}
 	return result;
 }
+
+macro tconcat(arr1, arr2) => concat(arr1, arr2, mem::temp());

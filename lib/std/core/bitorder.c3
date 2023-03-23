@@ -1,4 +1,11 @@
+// Copyright (c) 2023 Christoffer Lerno and contributors. All rights reserved.
+// Use of this source code is governed by the MIT license
+// a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::bitorder;
+
+// This module contains types of different endianness.
+// *BE types represent big-endian types
+// *LE types represent little-endian types.
 
 bitstruct ShortBE : short @bigendian
 {

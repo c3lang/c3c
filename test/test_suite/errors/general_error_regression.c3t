@@ -45,7 +45,7 @@ fn void main()
 {
     Foo f = Foo.X;
     Foo ef = Foo.Y;
-    anyerr x = f;
+    anyfault x = f;
     ulong z = (ulong)(x);
     libc::printf("1: %p\n", z);
     x = ef;

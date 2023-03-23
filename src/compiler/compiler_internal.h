@@ -560,6 +560,7 @@ typedef struct
 			bool attr_naked : 1;
 			bool attr_test : 1;
 			bool attr_winmain : 1;
+			bool has_faults : 1;
 			Decl** generated_lambda;
 		};
 		struct
@@ -831,7 +832,7 @@ typedef struct
 {
 	ExprId ptr;
 	ExprId type_id;
-} ExprVariant;
+} ExprAny;
 
 typedef struct
 {
@@ -845,6 +846,7 @@ typedef enum
 	ACCESS_LEN,
 	ACCESS_PTR,
 	ACCESS_TYPEOFANY,
+	ACCESS_TYPEOFANYFAULT,
 	ACCESS_ENUMNAME,
 	ACCESS_FAULTNAME,
 	ACCESS_FAULTORDINAL,
@@ -870,7 +872,7 @@ typedef struct DesignatorElement_
 	DesignatorType kind : 4;
 	union
 	{
-		const char *field;
+		Expr *field_expr;
 		struct
 		{
 			Expr *index_expr;
@@ -910,11 +912,7 @@ typedef struct
 	Decl *decl;
 } ExprIdentifierRaw;
 
-typedef struct
-{
-	bool array : 1;
-	Expr *inner;
-} ExprFlatElement;
+
 
 typedef struct
 {
@@ -924,7 +922,7 @@ typedef struct
 		struct
 		{
 			Expr *main_var;
-			ExprFlatElement *flat_path;
+			DesignatorElement **flat_path;
 		};
 		struct
 		{
@@ -1103,11 +1101,11 @@ typedef struct
 		{
 			const char *new_ident;
 			SourceSpan span;
-			Expr *variant_expr;
+			Expr *any_expr;
 		};
 		Decl *variable;
 	};
-} ExprVariantSwitch;
+} ExprAnySwitch;
 
 typedef struct
 {
@@ -1121,11 +1119,6 @@ typedef struct
 	const char *swizzle;
 } ExprSwizzle;
 
-typedef struct
-{
-	Decl *argc;
-	Decl *argv;
-} ExprArgv;
 
 
 struct Expr_
@@ -1137,15 +1130,14 @@ struct Expr_
 	union {
 		Range vasplat_expr;
 		ExprTypeidInfo typeid_info_expr;
-		ExprVariantSwitch variant_switch;           // 32
+		ExprAnySwitch any_switch;           // 32
 		ExprCast cast_expr;                         // 12
-		ExprVariant variant_expr;
+		ExprAny any_expr;
 		ExprPointerOffset pointer_offset_expr;
 		ExprAsmArg expr_asm_arg;
 		OperatorOverload overload_expr;
 		TypeInfo *type_expr;                        // 8
 		ExprConst const_expr;                       // 32
-		ExprArgv argv_expr;                         // 16
 		ExprGuard rethrow_expr;                     // 16
 		Decl *decl_expr;                            // 8
 		Decl *lambda_expr;
@@ -1404,17 +1396,17 @@ typedef struct
 
 typedef struct
 {
+	bool resolved;
 	union
 	{
 		struct
 		{
-			SourceSpan span;
 			TypeInfo *type;
 			const char *ident;
 		};
 		Decl *decl;
 	};
-} DocOptReturn;
+} AstDocFault;
 
 typedef struct AstDocDirective_
 {
@@ -1429,7 +1421,7 @@ typedef struct AstDocDirective_
 			InOutModifier modifier : 4;
 			bool by_ref : 1;
 		} param;
-		DocOptReturn *optreturns;
+		Ast **faults;
 		struct
 		{
 			Expr *decl_exprs;
@@ -1474,6 +1466,7 @@ typedef struct Ast_
 		AstCtForeachStmt ct_foreach_stmt;   // 40
 		AstAssertStmt assert_stmt;          // 16
 		AstContractStmt contract;
+		AstDocFault contract_fault;
 	};
 } Ast;
 
@@ -1588,6 +1581,7 @@ struct CompilationUnit_
 	Decl **faulttypes;
 	Visibility default_visibility;
 	bool export_by_default;
+	bool is_interface_file;
 	bool test_by_default;
 	Decl **generic_defines;
 	Decl **ct_ifs;
@@ -1635,6 +1629,7 @@ typedef struct
 	CallEnvKind kind : 8;
 	bool ensures : 1;
 	bool pure : 1;
+	Decl **opt_returns;
 	union
 	{
 		Decl *attr_declaration;
@@ -1708,6 +1703,7 @@ typedef struct
 	Path std_module_path;
 	Type *string_type;
 	Decl *panic_var;
+	Decl *panicf;
 	Decl *main;
 	Decl *test_func;
 	Decl *decl_stack[MAX_GLOBAL_DECL_STACK];
@@ -1782,7 +1778,7 @@ typedef struct ABIArgInfo_
 typedef struct FunctionPrototype_
 {
 	CallABI call_abi : 4;
-	Variadic variadic : 3;
+	bool raw_variadic : 1;
 	bool use_win64 : 1;
 	bool is_optional : 1;
 	bool ret_by_ref : 1;
@@ -1845,13 +1841,14 @@ extern Type *type_ichar, *type_short, *type_int, *type_long, *type_isz;
 extern Type *type_char, *type_ushort, *type_uint, *type_ulong, *type_usz;
 extern Type *type_iptr, *type_uptr;
 extern Type *type_u128, *type_i128;
-extern Type *type_typeid, *type_anyerr, *type_typeinfo, *type_member;
+extern Type *type_typeid, *type_anyfault, *type_typeinfo, *type_member;
 extern Type *type_any;
 extern Type *type_untypedlist;
-extern Type *type_anyfail;
+extern Type *type_wildcard;
 extern Type *type_cint;
 extern Type *type_cuint;
 extern Type *type_chars;
+extern Type *type_wildcard_optional;
 extern Type *type_string;
 
 
@@ -1869,12 +1866,10 @@ extern const char *kw_argv;
 extern const char *kw_at_checked;
 extern const char *kw_at_deprecated;
 extern const char *kw_at_ensure;
-extern const char *kw_at_optreturn;
 extern const char *kw_at_param;
 extern const char *kw_at_pure;
 extern const char *kw_at_require;
 extern const char *kw_at_return;
-extern const char *kw_catch_question;
 extern const char *kw_check_assign;
 extern const char *kw_deprecated;
 extern const char *kw_distinct;
@@ -1898,7 +1893,6 @@ extern const char *kw_ptr;
 extern const char *kw_pure;
 extern const char *kw_return;
 extern const char *kw_std;
-extern const char *kw_try_question;
 extern const char *kw_type;
 extern const char *kw_winmain;
 extern const char *kw_wmain;
@@ -2343,7 +2337,7 @@ Type *type_get_subarray(Type *arr_type);
 Type *type_get_inferred_array(Type *arr_type);
 Type *type_get_inferred_vector(Type *arr_type);
 Type *type_get_flexible_array(Type *arr_type);
-Type *type_get_scaled_vector(Type *arr_type);
+
 Type *type_get_optional(Type *optional_type);
 Type *type_get_vector(Type *vector_type, unsigned len);
 Type *type_get_vector_bool(Type *original_type);
@@ -2387,8 +2381,7 @@ INLINE const char *type_invalid_storage_type_name(Type *type);
 INLINE bool type_is_float(Type *type);
 INLINE bool type_is_floatlike(Type *type);
 INLINE bool type_is_optional(Type *type);
-INLINE bool type_is_optional_type(Type *type);
-INLINE bool type_is_optional_any(Type *type);
+INLINE bool type_is_wildcard(Type *type);
 INLINE bool type_is_void(Type *type);
 INLINE bool type_is_integer(Type *type);
 INLINE bool type_is_integer_unsigned(Type *type);
@@ -2445,7 +2438,6 @@ INLINE Type *type_no_optional(Type *type)
 {
 	if (!type) return NULL;
 	if (type->type_kind == TYPE_OPTIONAL) return type->optional;
-	if (type->type_kind == TYPE_OPTIONAL_ANY) return type_void;
 	return type;
 }
 
@@ -2466,7 +2458,7 @@ INLINE bool type_is_pointer_sized(Type *type)
 
 INLINE Type *type_add_optional(Type *type, bool make_optional)
 {
-	if (!make_optional || type->type_kind == TYPE_OPTIONAL || type->type_kind == TYPE_OPTIONAL_ANY) return type;
+	if (!make_optional || type->type_kind == TYPE_OPTIONAL) return type;
 	return type_get_optional(type);
 }
 
@@ -2510,7 +2502,6 @@ INLINE bool type_len_is_inferred(Type *type)
 			case TYPE_SUBARRAY:
 			case TYPE_FLEXIBLE_ARRAY:
 			case TYPE_VECTOR:
-			case TYPE_SCALED_VECTOR:
 				type = type->array.base;
 				continue;
 			case TYPE_INFERRED_ARRAY:
@@ -2526,22 +2517,17 @@ INLINE bool type_len_is_inferred(Type *type)
 	}
 }
 
-INLINE bool type_is_optional(Type *type)
+INLINE bool type_is_wildcard(Type *type)
 {
-	DECL_TYPE_KIND_REAL(kind, type);
-	return kind == TYPE_OPTIONAL || kind == TYPE_OPTIONAL_ANY;
+	return type == type_wildcard || type == type_wildcard_optional;
 }
 
-INLINE bool type_is_optional_type(Type *type)
+INLINE bool type_is_optional(Type *type)
 {
 	DECL_TYPE_KIND_REAL(kind, type);
 	return kind == TYPE_OPTIONAL;
 }
 
-INLINE bool type_is_optional_any(Type *type)
-{
-	return type->canonical == type_anyfail;
-}
 INLINE bool type_is_void(Type *type)
 {
 	return type->canonical == type_void;
@@ -2581,15 +2567,13 @@ INLINE bool type_info_poison(TypeInfo *type)
 INLINE bool type_is_arraylike(Type *type)
 {
 	DECL_TYPE_KIND_REAL(kind, type);
-	return kind == TYPE_ARRAY || kind == TYPE_VECTOR || kind == TYPE_FLEXIBLE_ARRAY || kind == TYPE_SCALED_VECTOR;
+	return kind == TYPE_ARRAY || kind == TYPE_VECTOR || kind == TYPE_FLEXIBLE_ARRAY;
 }
 
 INLINE bool type_is_any_arraylike(Type *type)
 {
 	DECL_TYPE_KIND_REAL(kind, type);
-	return kind == TYPE_ARRAY || kind == TYPE_VECTOR
-		|| kind == TYPE_FLEXIBLE_ARRAY || kind == TYPE_SCALED_VECTOR
-		|| kind == TYPE_INFERRED_VECTOR || kind == TYPE_INFERRED_ARRAY;
+	return kind >= TYPE_FIRST_ARRAYLIKE && kind <= TYPE_LAST_ARRAYLIKE;
 }
 
 INLINE CanonicalType *type_pointer_type(Type *type)
@@ -2648,6 +2632,12 @@ INLINE bool type_is_float(Type *type)
 	return kind >= TYPE_FLOAT_FIRST && kind <= TYPE_FLOAT_LAST;
 }
 
+INLINE bool type_is_16bit_float(Type *type)
+{
+	DECL_TYPE_KIND_REAL(kind, type);
+	return kind == TYPE_BF16 || kind == TYPE_F16;
+}
+
 INLINE bool type_is_floatlike(Type *type)
 {
 	type = type->canonical;
@@ -2674,13 +2664,16 @@ INLINE const char *type_invalid_storage_type_name(Type *type)
 INLINE bool type_is_invalid_storage_type(Type *type)
 {
 	if (!type) return false;
+	if (type == type_wildcard_optional) return true;
 	switch (type->type_kind)
 	{
 		case TYPE_MEMBER:
 		case TYPE_UNTYPED_LIST:
 		case TYPE_TYPEINFO:
+		case TYPE_WILDCARD:
 			return true;
 		default:
+
 			return false;
 	}
 }
@@ -2764,8 +2757,6 @@ static inline Type *type_base(Type *type)
 			case TYPE_OPTIONAL:
 				type = type->optional;
 				break;
-			case TYPE_OPTIONAL_ANY:
-				return type_void;
 			case TYPE_TYPEDEF:
 				UNREACHABLE
 			default:
@@ -2787,8 +2778,6 @@ static inline Type *type_flatten(Type *type)
 			case TYPE_OPTIONAL:
 				type = type->optional;
 				break;
-			case TYPE_OPTIONAL_ANY:
-				return type_void;
 			case TYPE_TYPEDEF:
 				UNREACHABLE
 			default:
@@ -2879,7 +2868,7 @@ INLINE bool type_flat_is_vector_bitstruct(Type *type)
 
 INLINE bool type_kind_is_any_vector(TypeKind kind)
 {
-	return kind == TYPE_VECTOR || kind == TYPE_INFERRED_VECTOR || kind == TYPE_SCALED_VECTOR;
+	return kind == TYPE_VECTOR || kind == TYPE_INFERRED_VECTOR;
 }
 
 INLINE bool type_flat_is_bool_vector(Type *type)

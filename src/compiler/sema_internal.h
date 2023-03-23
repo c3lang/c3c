@@ -64,6 +64,7 @@ void sema_analysis_pass_lambda(Module *module);
 void sema_analyze_stage(Module *module, AnalysisStage stage);
 void sema_trace_liveness(void);
 
+Expr *sema_expr_resolve_access_child(SemaContext *context, Expr *child, bool *missing);
 bool sema_analyse_expr_lvalue(SemaContext *context, Expr *expr);
 bool sema_analyse_expr_lvalue_fold_const(SemaContext *context, Expr *expr);
 Expr *expr_access_inline_member(Expr *parent, Decl *parent_decl);

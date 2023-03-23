@@ -25,6 +25,7 @@ fault IoError
     FILE_IS_PIPE,
     FILE_EOF,
     INCOMPLETE_WRITE,
+    BUSY,
     NO_PERMISSION,
     OUT_OF_SPACE,
     INVALID_PUSHBACK,
@@ -39,6 +40,7 @@ fault IoError
     NOT_SEEKABLE,
     NAME_TOO_LONG,
     WOULD_BLOCK,
+    DIR_NOT_EMPTY,
     INTERRUPTED,
     GENERAL_ERROR,
     UNKNOWN_ERROR,
@@ -55,18 +57,16 @@ macro void print(x)
 	var $Type = $typeof(x);
 	$switch ($Type)
 	$case String:
-		catch? stdout().print(x);
+		(void)stdout().print(x);
 	$case ZString:
-		catch? stdout().print(x.as_str());
+		(void)stdout().print(x.as_str());
 	$case DString:
-		catch? stdout().print(x.str());
-	$case VarString:
-		catch? stdout().print(x.str());
+		(void)stdout().print(x.str());
 	$default:
 		$if (@convertible(x, String))
-			catch? stdout().print((String)x);
+			(void)stdout().print((String)x);
 		$else
-			catch? stdout().printf("%s", x);
+			(void)stdout().printf("%s", x);
 		$endif
 	$endswitch
 }
@@ -76,23 +76,19 @@ macro void printn(x = "")
 	var $Type = $typeof(x);
 	$switch ($Type)
 	$case String:
-		catch? stdout().printn(x);
+		(void)stdout().printn(x);
 	$case ZString:
-		catch? stdout().printn(x.as_str());
+		(void)stdout().printn(x.as_str());
 	$case DString:
-		catch? stdout().printn(x.str());
-	$case VarString:
-		catch? stdout().printn(x.str());
+		(void)stdout().printn(x.str());
 	$default:
 		$if (@convertible(x, String))
-			catch? stdout().printn((String)x);
+			(void)stdout().printn((String)x);
 		$else
-			catch? stdout().printfn("%s", x);
+			(void)stdout().printfn("%s", x);
 		$endif
 	$endswitch
 }
-
-macro void println(x = "") @deprecated => printn(x);
 
 fn File stdout()
 {

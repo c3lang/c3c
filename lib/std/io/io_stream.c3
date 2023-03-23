@@ -60,7 +60,7 @@ fn void! Stream.close(Stream* s) @inline @maydiscard
 fn usz! Stream.seek(Stream* s, isz offset, Seek seek) @inline
 {
 	if (SeekStreamFn func = s.fns.seek_fn) return func(s, offset, seek);
-	return IoError.NOT_SEEKABLE!;
+	return IoError.NOT_SEEKABLE?;
 }
 
 fn usz! Stream.available(Stream* s) @inline
@@ -68,12 +68,12 @@ fn usz! Stream.available(Stream* s) @inline
 	if (AvailableStreamFn func = s.fns.available_fn) return func(s);
 	if (SeekStreamFn func = s.fns.seek_fn)
 	{
-		usz curr = func(s, 0, Seek.CURSOR)?;
-		usz len = func(s, 0, Seek.END)?;
-		func(s, curr, Seek.SET)?;
+		usz curr = func(s, 0, Seek.CURSOR)!;
+		usz len = func(s, 0, Seek.END)!;
+		func(s, curr, Seek.SET)!;
 		return len - curr;
 	}
-	return IoError.NOT_SEEKABLE!;
+	return IoError.NOT_SEEKABLE?;
 }
 
 fn usz! Stream.read(Stream* s, char[] buffer)
@@ -88,19 +88,19 @@ fn usz! Stream.read(Stream* s, char[] buffer)
 			if (catch err = c)
 			{
 				case IoError.EOF: return len;
-				default: return err!;
+				default: return err?;
 			}
 			*cptr = c;
 			len++;
 		}
 	}
-	return IoError.UNSUPPORTED_OPERATION!;
+	return IoError.UNSUPPORTED_OPERATION?;
 }
 
 fn char! Stream.read_byte(Stream* s) @inline
 {
 	if (ReadByteStreamFn func = s.fns.read_byte_fn) return func(s);
-	return IoError.UNSUPPORTED_OPERATION!;
+	return IoError.UNSUPPORTED_OPERATION?;
 }
 
 fn usz! Stream.write(Stream* s, char[] bytes) @inline
@@ -108,34 +108,34 @@ fn usz! Stream.write(Stream* s, char[] bytes) @inline
 	if (WriteStreamFn func = s.fns.write_fn) return func(s, bytes);
 	if (WriteByteStreamFn func = s.fns.write_byte_fn)
 	{
-		foreach (c : bytes) func(s, c)?;
+		foreach (c : bytes) func(s, c)!;
 		return bytes.len;
 	}
-	return IoError.UNSUPPORTED_OPERATION!;
+	return IoError.UNSUPPORTED_OPERATION?;
 }
 
 fn void! Stream.write_byte(Stream* s, char b) @inline
 {
 	if (WriteByteStreamFn func = s.fns.write_byte_fn) return func(s, b);
-	return IoError.UNSUPPORTED_OPERATION!;
+	return IoError.UNSUPPORTED_OPERATION?;
 }
 
 fn usz! Stream.write_to(Stream* s, Stream* to) @inline
 {
 	if (WriteToStreamFn func = s.fns.write_stream_fn) return func(s, to);
-	return IoError.UNSUPPORTED_OPERATION!;
+	return IoError.UNSUPPORTED_OPERATION?;
 }
 
 fn usz! Stream.read_from(Stream* s, Stream* from) @inline
 {
 	if (ReadFromStreamFn func = s.fns.read_stream_fn) return func(s, from);
-	return IoError.UNSUPPORTED_OPERATION!;
+	return IoError.UNSUPPORTED_OPERATION?;
 }
 
 fn void! Stream.flush(Stream* s) @inline @maydiscard
 {
 	if (FlushStreamFn func = s.fns.flush_fn) return func(s);
-	return IoError.UNSUPPORTED_OPERATION!;
+	return IoError.UNSUPPORTED_OPERATION?;
 }
 
 fn usz! Stream.len(Stream* s) @inline
@@ -143,12 +143,12 @@ fn usz! Stream.len(Stream* s) @inline
 	if (LenStreamFn func = s.fns.len_fn) return func(s);
 	if (SeekStreamFn func = s.fns.seek_fn)
 	{
-		usz curr = func(s, 0, Seek.CURSOR)?;
-		usz len = func(s, 0, Seek.END)?;
-		func(s, curr, Seek.SET)?;
+		usz curr = func(s, 0, Seek.CURSOR)!;
+		usz len = func(s, 0, Seek.END)!;
+		func(s, curr, Seek.SET)!;
 		return len;
 	}
-	return IoError.NOT_SEEKABLE!;
+	return IoError.NOT_SEEKABLE?;
 }
 
 fn void! Stream.pushback_byte(Stream* s) @inline
@@ -156,13 +156,13 @@ fn void! Stream.pushback_byte(Stream* s) @inline
 	if (PushbackByteStreamFn func = s.fns.pushback_byte_fn) return func(s);
 	if (SeekStreamFn func = s.fns.seek_fn)
 	{
-		func(s, -1, CURSOR)?;
+		func(s, -1, CURSOR)!;
 		return;
 	}
-	return IoError.UNSUPPORTED_OPERATION!;
+	return IoError.UNSUPPORTED_OPERATION?;
 }
 
-fn void! Stream.write_string(Stream* s, String str) @inline => (void)(s.write((char[])str)?);
+fn void! Stream.write_string(Stream* s, String str) @inline => (void)(s.write((char[])str)!);
 
 fn usz! Stream.copy_to(Stream* s, Stream* dst, char[] buffer = {})
 {
@@ -195,11 +195,11 @@ macro usz! copy_through_buffer(Stream* s, Stream* dst, char[] buffer) @local
 		if (catch err = len)
 		{
 			case IoError.EOF: return total_copied;
-			default: return err!;
+			default: return err?;
 		}
 		if (!len) return total_copied;
-		usz written = dst.write(buffer[:len])?;
+		usz written = dst.write(buffer[:len])!;
 		total_copied += len;
-		if (written != len) return IoError.INCOMPLETE_WRITE!;
+		if (written != len) return IoError.INCOMPLETE_WRITE?;
 	}
 }

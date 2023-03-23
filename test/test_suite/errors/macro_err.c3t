@@ -7,7 +7,7 @@ fn int! abc()
 }
 macro test()
 {
-	return abc()?;
+	return abc()!;
 }
 
 fn void main()

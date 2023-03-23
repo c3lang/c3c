@@ -4,10 +4,10 @@ fn int! abc()
 }
 macro test()
 {
-	abc()?;
+	abc()!;
 }
 
 fn void main()
 {
-	test() ?? 2; // #error: Cannot find a common type for 'void' and 'int'
+	test() ?? 2; // No longer an error!
 }

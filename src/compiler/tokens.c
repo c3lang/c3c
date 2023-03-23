@@ -185,10 +185,8 @@ const char *token_type_to_string(TokenType type)
 		// Keywords
 		case TOKEN_ALIAS:
 			return "alias";
-		case TOKEN_ANYERR:
-			return "anyerr";
-		case TOKEN_AS:
-			return "as";
+		case TOKEN_ANYFAULT:
+			return "anyfault";
 		case TOKEN_ASM:
 			return "asm";
 		case TOKEN_ASSERT:
@@ -201,8 +199,6 @@ const char *token_type_to_string(TokenType type)
 			return "case";
 		case TOKEN_CATCH:
 			return "catch";
-		case TOKEN_CATCH_QUESTION:
-			return "catch?";
 		case TOKEN_CONST:
 			return "const";
 		case TOKEN_CONTINUE:
@@ -245,8 +241,6 @@ const char *token_type_to_string(TokenType type)
 			return "nextcase";
 		case TOKEN_NULL:
 			return "null";
-		case TOKEN_PRIVATE:
-			return "private";
 		case TOKEN_RETURN:
 			return "return";
 		case TOKEN_STATIC:
@@ -261,8 +255,6 @@ const char *token_type_to_string(TokenType type)
 			return "true";
 		case TOKEN_TRY:
 			return "try";
-		case TOKEN_TRY_QUESTION:
-			return "try?";
 		case TOKEN_TYPEDEF:
 			return "typedef";
 		case TOKEN_TYPEID:
@@ -277,8 +269,8 @@ const char *token_type_to_string(TokenType type)
 		// Named types
 		case TOKEN_VOID:
 			return "void";
-		case TOKEN_VARIANT:
-			return "variant";
+		case TOKEN_ANY:
+			return "any";
 		case TOKEN_BOOL:
 			return "bool";
 		case TOKEN_FLOAT128:
@@ -346,8 +338,6 @@ const char *token_type_to_string(TokenType type)
 			return "$foreach";
 		case TOKEN_CT_ELSE:
 			return "$else";
-		case TOKEN_CT_ELIF:
-			return "$elif";
 		case TOKEN_CT_ENDIF:
 			return "$endif";
 		case TOKEN_CT_ENDSWITCH:

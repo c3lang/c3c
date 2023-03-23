@@ -13,7 +13,7 @@ struct Foo
 fn Foo createFoo(int a, int b = 10)
 {
     // Compound initializer
-    return Foo({a, b});
+    return Foo {a, b};
 }
 
 struct Bar
@@ -37,8 +37,7 @@ fn void testStruct()
     foo = createFoo(.b = 13, .a = 14);
     printf("Foo a:%d b:%d\n", foo.a, foo.b);
 
-    // Structural copy
-    Bar bar = (Bar)(foo);
+    Bar bar = bitcast(foo, Bar);
     printf("Bar x:%d y:%d\n", bar.x, bar.y);
 
     // Type functions

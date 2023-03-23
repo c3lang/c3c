@@ -45,11 +45,11 @@ $else
 	@pool()
 	{
 	$if (env::os_is_win32())
-		void* file = (CFile)_wfopen(filename.to_temp_utf16(), filename.to_temp_utf16())?;
+		void* file = (CFile)_wfopen(filename.to_temp_utf16(), filename.to_temp_utf16())!;
 	$else
 		void* file = libc::fopen(filename.zstr_tcopy(), mode.zstr_tcopy());
 	$endif
-		return file ?: file_open_errno()!;
+		return file ?: file_open_errno()?;
 	};
 $endif
 }
@@ -67,11 +67,11 @@ $else
 	@pool()
 	{
 	$if (env::os_is_win32())
-		file = _wfreopen(filename.to_temp_utf16(), mode.to_temp_utf16(), file)?;
+		file = _wfreopen(filename.to_temp_utf16(), mode.to_temp_utf16(), file)!;
 	$else
 		file = libc::freopen(filename.zstr_tcopy(), mode.zstr_tcopy(), file);
 	$endif
-		return file ?: file_open_errno()!;
+		return file ?: file_open_errno()?;
 	};
 $endif
 }
@@ -87,7 +87,7 @@ $else
 	$else
 		bool success = libc::fseek(file, (SeekIndex)offset, (CInt)seek_mode) == 0;
 	$endif
-		if (!success) return file_seek_errno()!;
+		if (!success) return file_seek_errno()?;
 $endif
 }
 
@@ -99,10 +99,10 @@ $if (!env::COMPILER_LIBC_AVAILABLE)
 $else
 	$if (env::os_is_win32())
 		long index = _ftelli64(file);
-		return index >= 0 ? index : file_seek_errno()!;
+		return index >= 0 ? index : file_seek_errno()?;
 	$else
 		SeekIndex index = libc::ftell(file);
-		return index >= 0 ? index : file_seek_errno()!;
+		return index >= 0 ? index : file_seek_errno()?;
 	$endif
 $endif
 }
@@ -127,7 +127,7 @@ $else
 $endif
 }
 
-macro anyerr file_open_errno() @local
+macro anyfault file_open_errno() @local
 {
 	switch (libc::errno())
 	{
@@ -155,7 +155,7 @@ macro anyerr file_open_errno() @local
 	}
 }
 
-macro anyerr file_seek_errno() @local
+macro anyfault file_seek_errno() @local
 {
 	switch (libc::errno())
 	{

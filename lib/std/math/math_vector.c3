@@ -138,8 +138,9 @@ macro cross3(v1, v2) @private
 
 macro transform2(v, mat) @private
 {
-	return $typeof(v) { mat.m00 * v[0] + mat.m10 * v[1] + mat.30,
-		     mat.m01 * v[0] + mar.m11 * v[1] + mat.31 };
+	return $typeof(v) {
+		mat.m00 * v[0] + mat.m10 * v[1] + mat.m30 ,
+		mat.m01 * v[0] + mat.m11 * v[1] + mat.m31 };
 }
 
 macro transform3(v, mat) @private

@@ -78,17 +78,17 @@ fn void test_split()
 fn void! test_index_of()
 {
 	String test = "hello world hello";
-	assert(test.index_of("o")? == 4);
-	assert(test.index_of("ll")? == 2);
-	assert(catch? test.index_of("wi"));
+	assert(test.index_of("o")! == 4);
+	assert(test.index_of("ll")! == 2);
+	assert(@catchof(test.index_of("wi")));
 }
 
 fn void! test_rindex_of()
 {
 	String test = "hello world hello";
-	assert(test.rindex_of("o")? == 16);
-	assert(test.rindex_of("ll")? == 14);
-	assert(test.rindex_of("he")? == 12);
-	assert(test.rindex_of("world")? == 6);
-	assert(catch? test.rindex_of("wi"));
+	assert(test.rindex_of("o")! == 16);
+	assert(test.rindex_of("ll")! == 14);
+	assert(test.rindex_of("he")! == 12);
+	assert(test.rindex_of("world")! == 6);
+	assert(@catchof(test.rindex_of("wi")));
 }

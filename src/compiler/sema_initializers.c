@@ -14,10 +14,10 @@ static inline void sema_not_enough_elements_error(Expr *initializer, int element
 static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *assigned_type, Type *flattened, Expr *expr);
 static void sema_create_const_initializer_value(ConstInitializer *const_init, Expr *value);
 static void sema_create_const_initializer_from_designated_init(ConstInitializer *const_init, Expr *initializer);
-static Decl *sema_resolve_element_for_name(Decl** decls, DesignatorElement **elements, unsigned *index);
+static Decl *sema_resolve_element_for_name(SemaContext *context, Decl **decls, DesignatorElement ***elements_ref, unsigned *index);
 static Type *sema_expr_analyse_designator(SemaContext *context, Type *current, Expr *expr, MemberIndex *max_index, Decl **member_ptr);
 INLINE bool sema_initializer_list_is_empty(Expr *value);
-static Type *sema_find_type_of_element(SemaContext *context, Type *type, DesignatorElement **elements, unsigned *curr_index, bool *is_constant, bool *did_report_error, MemberIndex *max_index, Decl **member_ptr);
+static Type *sema_find_type_of_element(SemaContext *context, Type *type, DesignatorElement ***elements_ref, unsigned *curr_index, bool *is_constant, bool *did_report_error, MemberIndex *max_index, Decl **member_ptr);
 MemberIndex sema_get_initializer_const_array_size(SemaContext *context, Expr *initializer, bool *may_be_array, bool *is_const_size);
 static MemberIndex sema_analyse_designator_index(SemaContext *context, Expr *index);
 static void sema_update_const_initializer_with_designator(ConstInitializer *const_init,
@@ -523,6 +523,42 @@ static void sema_create_const_initializer_from_designated_init(ConstInitializer 
 	}
 }
 
+static bool sema_analyse_variant_init(SemaContext *context, Expr *expr)
+{
+	unsigned elements = expr->expr_kind == EXPR_INITIALIZER_LIST ? vec_size(expr->initializer_list) : (unsigned)-1;
+	if (elements != 2 && elements != 0)
+	{
+		SEMA_ERROR(expr, "Expected an initializer with arguments '{ ptr, typeid }'.");
+		return false;
+	}
+	if (elements == 0)
+	{
+		expr->expr_kind = EXPR_ANY;
+		expr->any_expr = (ExprAny) { 0, 0 };
+		expr->type = type_any;
+		return true;
+	}
+	Expr *ptr = expr->initializer_list[0];
+	Expr *typeid = expr->initializer_list[1];
+	if (!sema_analyse_expr(context, ptr)) return false;
+	if (!sema_analyse_expr(context, typeid)) return false;
+	if (!type_is_pointer(ptr->type))
+	{
+		SEMA_ERROR(ptr, "Expected a pointer, but was %s.", type_quoted_error_string(ptr->type));
+		return false;
+	}
+	if (typeid->type != type_typeid)
+	{
+		SEMA_ERROR(ptr, "Expected a 'typeid', but was %s.", type_quoted_error_string(ptr->type));
+		return false;
+	}
+	expr->expr_kind = EXPR_ANY;
+	expr->any_expr.ptr = exprid(ptr);
+	expr->any_expr.type_id = exprid(typeid);
+	expr->type = type_any;
+	return true;
+}
+
 bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *expr)
 {
 	if (!to) to = type_untypedlist;
@@ -558,9 +594,6 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 			if (!sema_analyse_expr(context, expr)) return false;
 			return cast(expr, to);
 		}
-		case TYPE_SCALED_VECTOR:
-			SEMA_ERROR(expr, "Scaled vectors cannot be initialized using an initializer list, since the length is not known at compile time.");
-			return false;
 		case TYPE_POINTER:
 			if (is_zero_init)
 			{
@@ -573,11 +606,12 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 		case TYPE_POISONED:
 		case TYPE_FUNC:
 		case TYPE_TYPEDEF:
-		case TYPE_OPTIONAL_ANY:
 		case TYPE_OPTIONAL:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
 			break;
+		case TYPE_ANY:
+			return sema_analyse_variant_init(context, expr);
 		default:
 			if (is_zero_init)
 			{
@@ -860,7 +894,7 @@ static Type *sema_expr_analyse_designator(SemaContext *context, Type *current, E
 	for (unsigned i = 0; i < vec_size(path); i++)
 	{
 		Decl *member_found;
-		Type *new_current = sema_find_type_of_element(context, current, path, &i, &is_constant, &did_report_error, i == 0 ? max_index : NULL, &member_found);
+		Type *new_current = sema_find_type_of_element(context, current, &path, &i, &is_constant, &did_report_error, i == 0 ? max_index : NULL, &member_found);
 		if (!new_current)
 		{
 			if (!did_report_error) SEMA_ERROR(expr, "This is not a valid member of '%s'.", type_to_error_string(current));
@@ -878,10 +912,10 @@ INLINE bool sema_initializer_list_is_empty(Expr *value)
 	       && value->const_expr.initializer->kind == CONST_INIT_ZERO;
 }
 
-static Type *sema_find_type_of_element(SemaContext *context, Type *type, DesignatorElement **elements, unsigned *curr_index, bool *is_constant, bool *did_report_error, MemberIndex *max_index, Decl **member_ptr)
+static Type *sema_find_type_of_element(SemaContext *context, Type *type, DesignatorElement ***elements_ref, unsigned *curr_index, bool *is_constant, bool *did_report_error, MemberIndex *max_index, Decl **member_ptr)
 {
 	Type *type_flattened = type_flatten(type);
-	DesignatorElement *element = elements[*curr_index];
+	DesignatorElement *element = (*elements_ref)[*curr_index];
 	if (element->kind == DESIGNATOR_ARRAY || element->kind == DESIGNATOR_RANGE)
 	{
 		*member_ptr = NULL;
@@ -947,7 +981,10 @@ static Type *sema_find_type_of_element(SemaContext *context, Type *type, Designa
 	{
 		return NULL;
 	}
-	Decl *member = sema_resolve_element_for_name(type_flattened->decl->strukt.members, elements, curr_index);
+	Decl *member = sema_resolve_element_for_name(context,
+	                                             type_flattened->decl->strukt.members,
+	                                             elements_ref,
+	                                             curr_index);
 	*member_ptr = member;
 	if (!member) return NULL;
 	return member->type;
@@ -1078,10 +1115,20 @@ static MemberIndex sema_analyse_designator_index(SemaContext *context, Expr *ind
 	return (MemberIndex)index_val;
 }
 
-static Decl *sema_resolve_element_for_name(Decl** decls, DesignatorElement **elements, unsigned *index)
+
+static Decl *sema_resolve_element_for_name(SemaContext *context, Decl **decls, DesignatorElement ***elements_ref, unsigned *index)
 {
-	DesignatorElement *element = elements[*index];
-	const char *name = element->field;
+	DesignatorElement *element = (*elements_ref)[*index];
+
+	Expr *field = sema_expr_resolve_access_child(context, element->field_expr, NULL);
+	if (!field) return poisoned_decl;
+
+	if (field->expr_kind != EXPR_IDENTIFIER)
+	{
+		SEMA_ERROR(field, "An identifier was expected.");
+		return poisoned_decl;
+	}
+	const char *name = field->identifier_expr.ident;
 	unsigned old_index = *index;
 	VECEACH(decls, i)
 	{
@@ -1096,24 +1143,15 @@ static Decl *sema_resolve_element_for_name(Decl** decls, DesignatorElement **ele
 		{
 			assert(type_is_union_or_strukt(decl->type) || decl->decl_kind == DECL_BITSTRUCT);
 			// Anonymous struct
-			Decl *found = sema_resolve_element_for_name(decl->strukt.members, elements, index);
+			Decl *found = sema_resolve_element_for_name(context, decl->strukt.members, elements_ref, index);
 			// No match, continue...
 			if (!found) continue;
 
-			// Special handling, we now need to patch the elements
-			unsigned current_size = vec_size(elements);
-			// Add an element at the end.
-			vec_add(elements, NULL);
-			// Shift all elements
-			for (unsigned j = current_size; j > old_index; j--)
-			{
-				elements[j] = elements[j - 1];
-			}
 			// Create our anon field.
 			DesignatorElement *anon_element = CALLOCS(DesignatorElement);
 			anon_element->kind = DESIGNATOR_FIELD;
 			anon_element->index = (MemberIndex)i;
-			elements[old_index] = anon_element;
+			vec_insert_at(*elements_ref, old_index, anon_element);
 			// Advance
 			(*index)++;
 			return found;

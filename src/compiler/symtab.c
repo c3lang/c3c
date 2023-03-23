@@ -45,12 +45,10 @@ const char *kw_argv;
 const char *kw_at_checked;
 const char *kw_at_deprecated;
 const char *kw_at_ensure;
-const char *kw_at_optreturn;
 const char *kw_at_param;
 const char *kw_at_pure;
 const char *kw_at_require;
 const char *kw_at_return;
-const char *kw_catch_question;
 const char *kw_check_assign;
 const char *kw_deprecated;
 const char *kw_distinct;
@@ -77,7 +75,6 @@ const char *kw_std;
 const char *kw_std__core;
 const char *kw_std__core__types;
 const char *kw___run_default_test_runner;
-const char *kw_try_question;
 const char *kw_type;
 const char *kw_typekind;
 const char *kw_winmain;
@@ -113,12 +110,6 @@ void symtab_init(uint32_t capacity)
 		{
 			case TOKEN_RETURN:
 				kw_return = interned;
-				break;
-			case TOKEN_TRY_QUESTION:
-				kw_try_question = interned;
-				break;
-			case TOKEN_CATCH_QUESTION:
-				kw_catch_question = interned;
 				break;
 			default:
 				break;
@@ -167,6 +158,7 @@ void symtab_init(uint32_t capacity)
 	kw_out = KW_DEF("out");
 	kw_ptr = KW_DEF("ptr");
 	kw_pure = KW_DEF("pure");
+	KW_DEF("returns");
 	kw_std = KW_DEF("std");
 	kw_std__core = KW_DEF("std::core");
 	kw_std__core__types = KW_DEF("std::core::types");
@@ -181,6 +173,7 @@ void symtab_init(uint32_t capacity)
 	type_property_list[TYPE_PROPERTY_LEN] = kw_len = KW_DEF("len");
 
 	type_property_list[TYPE_PROPERTY_ALIGNOF] = KW_DEF("alignof");
+	type_property_list[TYPE_PROPERTY_ASSOCIATED] = KW_DEF("associated");
 	type_property_list[TYPE_PROPERTY_ELEMENTS] = KW_DEF("elements");
 	type_property_list[TYPE_PROPERTY_EXTNAMEOF] = KW_DEF("extnameof");
 	type_property_list[TYPE_PROPERTY_INF] = KW_DEF("inf");
@@ -297,7 +290,6 @@ void symtab_init(uint32_t capacity)
 
 	kw_at_checked = KW_DEF("@checked");
 	kw_at_ensure = KW_DEF("@ensure");
-	kw_at_optreturn = KW_DEF("@optreturn");
 	kw_at_deprecated = KW_DEF("@deprecated");
 	kw_at_param = KW_DEF("@param");
 	kw_at_pure = KW_DEF("@pure");

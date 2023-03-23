@@ -4,9 +4,6 @@
 
 #include "compiler_internal.h"
 #include <compiler_tests/benchmark.h>
-#ifndef _MSC_VER
-#include <unistd.h>
-#endif
 
 #define MAX_OUTPUT_FILES 1000000
 #define MAX_MODULES 100000
@@ -289,7 +286,7 @@ void compiler_compile(void)
 		return;
 	}
 
-	void **gen_contexts = VECNEW(void*, module_count);
+	void **gen_contexts;
 	void (*task)(void *);
 
 	if (active_target.asm_file_dir || active_target.ir_file_dir || active_target.emit_object_files)
@@ -407,9 +404,16 @@ void compiler_compile(void)
 #if USE_PTHREAD
 	INFO_LOG("Will use %d thread(s).", active_target.build_threads);
 #endif
-
-	TaskQueueRef queue = taskqueue_create(active_target.build_threads, tasks);
-	taskqueue_wait_for_completion(queue);
+	unsigned task_count = vec_size(tasks);
+	if (task_count == 1)
+	{
+		tasks[0]->task(tasks[0]->arg);
+	}
+	else if (task_count > 1)
+	{
+		TaskQueueRef queue = taskqueue_create(active_target.build_threads > task_count ? task_count : active_target.build_threads, tasks);
+		taskqueue_wait_for_completion(queue);
+	}
 
 	if (active_target.print_output)
 	{
@@ -685,8 +689,8 @@ void print_syntax(BuildOptions *options)
 		puts("precedence     | operators");
 		puts("---------------+----------");
 		puts(" 1. Macro      | @        ");
-		puts(" 2. Call       | . () [] postfix ++/-- postfix !");
-		puts(" 3. Unary      | ! - + ~ * & prefix ++/-- try catch (cast)");
+		puts(" 2. Call       | . () [] !! postfix ++/-- postfix !");
+		puts(" 3. Unary      | ! - + ~ * & prefix ++/-- (cast)");
 		puts(" 4. Mult       | * / %");
 		puts(" 5. Shift      | << >>");
 		puts(" 6. Bitwise    | ^ | &");
@@ -738,7 +742,7 @@ static int jump_buffer_size()
 			// Based on Godbolt
 			return 24;
 		case MACOS_AARCH64:
-			// Based on MacOS headers
+			// Based on macOS headers
 			return 25;
 		case LINUX_X86:
 		case MCU_X86:

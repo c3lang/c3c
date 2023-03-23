@@ -41,6 +41,7 @@ void gencontext_begin_module(GenContext *c)
 	codegen_setup_object_names(c->code_module, &c->ir_filename, &c->asm_filename, &c->object_filename);
 
 	c->panic_var = global_context.panic_var;
+	c->panicf = global_context.panicf;
 	c->module = LLVMModuleCreateWithNameInContext(c->code_module->name->module, c->context);
 	c->machine = llvm_target_machine_create();
 	c->target_data = LLVMCreateTargetDataLayout(c->machine);
@@ -116,6 +117,7 @@ void gencontext_begin_module(GenContext *c)
 	c->introspect_type = create_introspection_type(c);
 	c->fault_type = create_fault_type(c);
 	if (c->panic_var) c->panic_var->backend_ref = NULL;
+	if (c->panicf) c->panicf->backend_ref = NULL;
 
 	if (active_target.debug_info != DEBUG_INFO_NONE)
 	{

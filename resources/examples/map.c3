@@ -35,17 +35,17 @@ fn void Map.init(Map *map, uint capacity = 128)
 
 fn Type! Map.valueForKey(Map *map, Key key)
 {
-    if (!map.map) return MapResult.KEY_NOT_FOUND!;
+    if (!map.map) return MapResult.KEY_NOT_FOUND?;
     uint hash = key.hash();
     usz pos = hash & map.mod;
     Entry* entry = &map.map[pos];
-    if (!entry) return MapResult.KEY_NOT_FOUND!;
+    if (!entry) return MapResult.KEY_NOT_FOUND?;
     while (entry)
     {
         if (entry.hash == hash && entry.key == key) return entry.value;
         entry = entry.next;
     }
-    return MapResult.KEY_NOT_FOUND!;
+    return MapResult.KEY_NOT_FOUND?;
 }
 
 fn Type! Map.set(Map *map, Key key, Type value) @maydiscard
@@ -67,7 +67,7 @@ fn Type! Map.set(Map *map, Key key, Type value) @maydiscard
             entry.value = value;
             entry.hash = hash;
             entry.key = key;
-            return MapResult.KEY_NOT_FOUND!;
+            return MapResult.KEY_NOT_FOUND?;
         }
         if (entry.hash == hash && entry.key == key)
         {
@@ -87,7 +87,7 @@ fn Type! Map.set(Map *map, Key key, Type value) @maydiscard
         new.next = null;
         new.used = true;
         entry.next = new;
-        return MapResult.KEY_NOT_FOUND!;
+        return MapResult.KEY_NOT_FOUND?;
     }
 }
 

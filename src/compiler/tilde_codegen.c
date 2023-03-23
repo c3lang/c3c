@@ -568,7 +568,7 @@ static void param_expand(TB_DataType **params_ref, Type *type)
 			return;
 		}
 		case TYPE_ENUM:
-		case TYPE_ANYERR:
+		case TYPE_ANYFAULT:
 		case TYPE_FAULTTYPE:
 			param_expand(params_ref, type_lowering(type));
 			return;

@@ -6,9 +6,9 @@ fn int! bar()
 {
 	defer {
 		{|
-			foo()?;
+			foo()!;
 		|};
 	}
-	defer foo()?; // #error: Returns are not allowed inside of defers.
+	defer foo()!; // #error: Returns are not allowed inside of defers.
 	return 1;
 }

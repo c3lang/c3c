@@ -276,7 +276,7 @@ fn Matrix4x4 Matrix4x4.adjoint(Matrix4x4* mat)
 fn Matrix2x2! Matrix2x2.inverse(Matrix2x2* m)
 {
 	Real det = m.determinant();
-	if (det == 0) return MatrixError.MATRIX_INVERSE_DOESNT_EXIST!;
+	if (det == 0) return MatrixError.MATRIX_INVERSE_DOESNT_EXIST?;
 	Matrix2x2 adj = m.adjoint();
 	return adj.component_mul(1 / det).transpose();
 }
@@ -284,7 +284,7 @@ fn Matrix2x2! Matrix2x2.inverse(Matrix2x2* m)
 fn Matrix3x3! Matrix3x3.inverse(Matrix3x3* m)
 {
 	Real det = m.determinant();
-	if (det == 0) return MatrixError.MATRIX_INVERSE_DOESNT_EXIST!;
+	if (det == 0) return MatrixError.MATRIX_INVERSE_DOESNT_EXIST?;
 	Matrix3x3 adj = m.adjoint();
 	return adj.component_mul(1 / det).transpose();
 }
@@ -292,7 +292,7 @@ fn Matrix3x3! Matrix3x3.inverse(Matrix3x3* m)
 fn Matrix4x4! Matrix4x4.inverse(Matrix4x4* m)
 {
 	Real det = m.determinant();
-	if (det == 0) return MatrixError.MATRIX_INVERSE_DOESNT_EXIST!;
+	if (det == 0) return MatrixError.MATRIX_INVERSE_DOESNT_EXIST?;
 	Matrix4x4 adj = m.adjoint();
 	return adj.component_mul(1 / det).transpose();
 }

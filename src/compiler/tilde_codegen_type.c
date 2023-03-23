@@ -112,7 +112,7 @@ static void param_expand(TildeContext *context, TB_DataType** params_ref, Type *
 			return;
 		}
 		case TYPE_ENUM:
-		case TYPE_ANYERR:
+		case TYPE_ANYFAULT:
 		case TYPE_FAULTTYPE:
 			param_expand(context, params_ref, type_lowering(type));
 			return;
@@ -448,7 +448,7 @@ TB_DataType tildetype(Type *type)
 	switch (type->type_kind)
 	{
 		case TYPE_TYPEID:
-		case TYPE_ANYERR:
+		case TYPE_ANYFAULT:
 			UNREACHABLE;
 		case TYPE_FUNC:
 			TODO

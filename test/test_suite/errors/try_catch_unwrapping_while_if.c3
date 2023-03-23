@@ -12,7 +12,7 @@ fn void test1()
     {
         int y = z;
         z = 12;
-        z = FooErr.X!; // #error: The variable is unwrapped in this context
+        z = FooErr.X?; // #error: The variable is unwrapped in this context
     }
 }
 
@@ -87,7 +87,7 @@ fn void test9()
 {
     int! z = 234;
     int! w = 123;
-    anyerr e;
+    anyfault e;
     if (catch e = z)
     {
     }

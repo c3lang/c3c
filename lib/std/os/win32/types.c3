@@ -168,6 +168,8 @@ typedef Win32_WCHAR = Char16;
 typedef Win32_WORD = ushort;
 typedef Win32_WPARAM = Win32_UINT_PTR;
 
+const INVALID_HANDLE_VALUE = (Win32_HANDLE)(uptr)-1;
+
 struct Win32_UNICODE_STRING
 {
 	Win32_USHORT length;
@@ -229,6 +231,12 @@ struct Win32_STARTUPINFOEXW
 
 typedef Win32_LPPROC_THREAD_ATTRIBUTE_LIST = void*;
 typedef Win32_LPSTARTUPINFOEXW = Win32_STARTUPINFOEXW*;
+
+struct Win32_FILETIME
+{
+	Win32_DWORD dwLowDateTime;
+	Win32_DWORD dwHighDateTime;
+}
 
 struct Win32_PROCESS_INFORMATION
 {

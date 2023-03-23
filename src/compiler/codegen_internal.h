@@ -34,13 +34,15 @@ static inline Type *type_lowering(Type *type)
 			case TYPE_ENUM:
 				type = type->decl->enums.type_info->type;
 				continue;
-			case TYPE_ANYERR:
+			case TYPE_ANYFAULT:
 			case TYPE_TYPEID:
 			case TYPE_FAULTTYPE:
 				return type_iptr->canonical;
 			case TYPE_BITSTRUCT:
 				type = type->decl->bitstruct.base_type->type;
 				continue;
+			case TYPE_WILDCARD:
+				type = type_void;
 			default:
 				return type;
 		}
@@ -85,5 +87,4 @@ static inline bool expr_is_vector_index(Expr *expr)
 const char *codegen_create_asm(Ast *ast);
 
 extern const char *test_fns_var_name;
-extern const char *test_count_var_name;
 extern const char *test_names_var_name;

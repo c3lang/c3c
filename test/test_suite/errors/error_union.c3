@@ -7,5 +7,5 @@ fault Blurg
 
 fn void main()
 {
-    anyerr foo;
+    anyfault foo;
 }

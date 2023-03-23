@@ -19,7 +19,7 @@ fn Stream ByteReader.as_stream(ByteReader* reader)
 
 fn usz! ByteReader.read(ByteReader* reader, char[] bytes)
 {
-	if (reader.index >= reader.bytes.len) return IoError.EOF!;
+	if (reader.index >= reader.bytes.len) return IoError.EOF?;
 	usz len = math::min(reader.bytes.len - reader.index, bytes.len);
 	if (len == 0) return 0;
 	mem::copy(bytes.ptr, &reader.bytes[reader.index], len);
@@ -29,13 +29,13 @@ fn usz! ByteReader.read(ByteReader* reader, char[] bytes)
 
 fn char! ByteReader.read_byte(ByteReader* reader)
 {
-	if (reader.index >= reader.bytes.len) return IoError.EOF!;
+	if (reader.index >= reader.bytes.len) return IoError.EOF?;
 	return reader.bytes[reader.index++];
 }
 
 fn void! ByteReader.pushback_byte(ByteReader* reader)
 {
-	if (!reader.index) return IoError.INVALID_PUSHBACK!;
+	if (!reader.index) return IoError.INVALID_PUSHBACK?;
 	reader.index--;
 }
 
@@ -48,7 +48,7 @@ fn usz! ByteReader.seek(ByteReader* reader, isz offset, Seek seek)
 		case CURSOR: new_index = reader.index + offset;
 		case END: new_index = reader.bytes.len + offset;
 	}
-	if (new_index < 0) return IoError.INVALID_POSITION!;
+	if (new_index < 0) return IoError.INVALID_POSITION?;
 	reader.index = new_index;
 	return new_index;
 }
@@ -56,7 +56,7 @@ fn usz! ByteReader.seek(ByteReader* reader, isz offset, Seek seek)
 fn usz! ByteReader.write_stream(ByteReader* reader, Stream* writer)
 {
 	if (reader.index >= reader.bytes.len) return 0;
-	usz written = writer.write(reader.bytes[reader.index..])?;
+	usz written = writer.write(reader.bytes[reader.index..])!;
 	reader.index += written;
 	assert(reader.index <= reader.bytes.len);
 	return written;

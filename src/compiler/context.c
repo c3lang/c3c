@@ -9,6 +9,7 @@ CompilationUnit *unit_create(File *file)
 {
 	CompilationUnit *unit = CALLOCS(CompilationUnit);
     unit->file = file;
+	unit->is_interface_file = str_has_suffix(file->name, ".c3i");
 	htable_init(&unit->local_symbols, 64 * 1024);
     return unit;
 }

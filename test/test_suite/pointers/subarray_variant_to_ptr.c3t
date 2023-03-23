@@ -3,7 +3,7 @@ module foo;
 
 extern fn void printf(char*, ...);
 
-fn void test1(variant z)
+fn void test1(any z)
 {
     int* w = z.ptr;
     printf("%d\n", *w);
@@ -26,19 +26,19 @@ fn void main()
 
 /* #expect: foo.ll
 
-%variant = type { ptr, i64 }
+%any = type { ptr, i64 }
 %"int[]" = type { ptr, i64 }
 
 @"$ct.int" = linkonce constant %.introspect { i8 2, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
 
 define void @foo.test1(i64 %0, ptr %1) #0 {
 entry:
-  %z = alloca %variant, align 8
+  %z = alloca %any, align 8
   %w = alloca ptr, align 8
   store i64 %0, ptr %z, align 8
   %ptroffset = getelementptr inbounds ptr, ptr %z, i64 1
   store ptr %1, ptr %ptroffset, align 8
-  %2 = getelementptr inbounds %variant, ptr %z, i32 0, i32 0
+  %2 = getelementptr inbounds %any, ptr %z, i32 0, i32 0
   %3 = load ptr, ptr %2, align 8
   store ptr %3, ptr %w, align 8
   %4 = load ptr, ptr %w, align 8
@@ -68,13 +68,13 @@ entry:
   %x = alloca i32, align 4
   %y = alloca i32, align 4
   %w = alloca [2 x i32], align 4
-  %taddr = alloca %variant, align 8
+  %taddr = alloca %any, align 8
   store i32 123, ptr %x, align 4
   store i32 293483, ptr %y, align 4
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %w, ptr align 4 @.__const, i32 8, i1 false)
-  %0 = insertvalue %variant undef, ptr %x, 0
-  %1 = insertvalue %variant %0, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %variant %1, ptr %taddr, align 8
+  %0 = insertvalue %any undef, ptr %x, 0
+  %1 = insertvalue %any %0, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %1, ptr %taddr, align 8
   %2 = getelementptr inbounds { i64, ptr }, ptr %taddr, i32 0, i32 0
   %lo = load i64, ptr %2, align 8
   %3 = getelementptr inbounds { i64, ptr }, ptr %taddr, i32 0, i32 1

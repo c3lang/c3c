@@ -158,7 +158,7 @@ void value_fold_optional(TildeContext *c, TBEValue *value)
 	if (value->kind == TBE_ADDRESS_OPTIONAL)
 	{
 		TODO
-		//tilde_emit_jump_to_optional_exit(c, tilde_load_natural_alignment(c, type_anyerr, value->optional, "optval"));
+		//tilde_emit_jump_to_optional_exit(c, tilde_load_natural_alignment(c, type_anyfault, value->optional, "optval"));
 		value->kind = TBE_ADDRESS;
 	}
 }

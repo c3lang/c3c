@@ -171,12 +171,8 @@ if (${LLVM_PACKAGE_VERSION} VERSION_GREATER_EQUAL 16)
         ${LLD_WASM}
         ${LLD_MINGW}
         ${LLD_ELF}
-        ${LLD_DRIVER}
-        ${LLD_READER_WRITER}
         ${LLD_LOONG}
         ${LLD_MACHO}
-        ${LLD_YAML}
-        ${LLD_CORE}
         )
 else()
     set(lld_libs
@@ -185,11 +181,7 @@ else()
         ${LLD_WASM}
         ${LLD_MINGW}
         ${LLD_ELF}
-        ${LLD_DRIVER}
-        ${LLD_READER_WRITER}
         ${LLD_MACHO}
-        ${LLD_YAML}
-        ${LLD_CORE}
         )
 endif()
 

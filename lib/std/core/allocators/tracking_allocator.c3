@@ -43,7 +43,7 @@ fn void TrackingAllocator.free(TrackingAllocator* this)
 fn void*! tracking_allocator_fn(Allocator* data, usz size, usz alignment, usz offset, void* old_pointer, AllocationKind kind) @private
 {
 	TrackingAllocator* this = (TrackingAllocator*)data;
-	void* result = this.inner_allocator.function(this.inner_allocator, size, alignment, offset, old_pointer, kind)?;
+	void* result = this.inner_allocator.function(this.inner_allocator, size, alignment, offset, old_pointer, kind)!;
 	switch (kind)
 	{
 		case CALLOC:

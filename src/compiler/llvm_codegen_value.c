@@ -135,7 +135,7 @@ void llvm_emit_jump_to_optional_exit(GenContext *c, LLVMValueRef opt_value)
 		llvm_emit_block(c, error_block);
 	}
 
-	llvm_store_to_ptr_raw(c, c->opt_var, opt_value, type_anyerr);
+	llvm_store_to_ptr_raw(c, c->opt_var, opt_value, type_anyfault);
 	llvm_emit_br(c, c->catch_block);
 	llvm_emit_block(c, after_block);
 }
@@ -144,7 +144,7 @@ void llvm_value_fold_optional(GenContext *c, BEValue *value)
 {
 	if (value->kind == BE_ADDRESS_OPTIONAL)
 	{
-		llvm_emit_jump_to_optional_exit(c, llvm_load_abi_alignment(c, type_anyerr, value->optional, "optval"));
+		llvm_emit_jump_to_optional_exit(c, llvm_load_abi_alignment(c, type_anyfault, value->optional, "optval"));
 		value->kind = BE_ADDRESS;
 	}
 }

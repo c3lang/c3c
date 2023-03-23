@@ -111,16 +111,16 @@ fn void*! on_stack_allocator_function(Allocator* data, usz size, usz alignment, 
 			on_stack_allocator_remove_chunk(allocator, old_pointer);
 			if (kind == AllocationKind.ALIGNED_FREE)
 			{
-				allocator.backing_allocator.free_aligned(old_pointer)?;
+				allocator.backing_allocator.free_aligned(old_pointer)!;
 			}
 			else
 			{
-				allocator.backing_allocator.free(old_pointer)?;
+				allocator.backing_allocator.free(old_pointer)!;
 			}
         	return null;
         case MARK:
 		case RESET:
-			return AllocationFailure.UNSUPPORTED_OPERATION!;
+			return AllocationFailure.UNSUPPORTED_OPERATION?;
 	}
 	unreachable();
 }
@@ -175,14 +175,14 @@ fn void*! on_stack_allocator_realloc(OnStackAllocator* a, void* old_pointer, usz
 		assert(chunk, "Tried to realloc pointer not belonging to the allocator");
 		if (aligned)
 		{
-			return chunk.data = a.backing_allocator.realloc_aligned(old_pointer, size, alignment, offset)?;
+			return chunk.data = a.backing_allocator.realloc_aligned(old_pointer, size, alignment, offset)!;
 		}
-		return chunk.data = a.backing_allocator.realloc(old_pointer, size)?;
+		return chunk.data = a.backing_allocator.realloc(old_pointer, size)!;
 	}
 
 	OnStackAllocatorHeader* header = old_pointer - OnStackAllocatorHeader.sizeof;
 	usz old_size = header.size;
-	void* mem = on_stack_allocator_alloc(a, size, alignment, offset, true, aligned)?;
+	void* mem = on_stack_allocator_alloc(a, size, alignment, offset, true, aligned)!;
 	mem::copy(mem, old_pointer, old_size, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
 	return mem;
 }
@@ -209,7 +209,7 @@ fn void*! on_stack_allocator_alloc(OnStackAllocator* a, usz size, usz alignment,
 
 	if (end > total_len)
 	{
-		OnStackAllocatorExtraChunk* chunk = backing_allocator.alloc(OnStackAllocatorExtraChunk.sizeof)?;
+		OnStackAllocatorExtraChunk* chunk = backing_allocator.alloc(OnStackAllocatorExtraChunk.sizeof)!;
 		defer catch backing_allocator.free(chunk)!!;
 		defer try a.chunk = chunk;
 		*chunk = { .prev = a.chunk, .is_aligned = aligned };
@@ -217,13 +217,13 @@ fn void*! on_stack_allocator_alloc(OnStackAllocator* a, usz size, usz alignment,
 		switch
 		{
 			case !aligned && !clear:
-				data = backing_allocator.alloc(size)?;
+				data = backing_allocator.alloc(size)!;
 			case aligned && !clear:
-				data = backing_allocator.alloc_aligned(size, alignment, offset)?;
+				data = backing_allocator.alloc_aligned(size, alignment, offset)!;
 			case !aligned && clear:
-				data = backing_allocator.calloc(size)?;
+				data = backing_allocator.calloc(size)!;
 			case aligned && clear:
-				data = backing_allocator.calloc_aligned(size, alignment, offset)?;
+				data = backing_allocator.calloc_aligned(size, alignment, offset)!;
 		}
 		return chunk.data = data;
 	}

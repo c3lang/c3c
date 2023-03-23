@@ -47,7 +47,6 @@ static void header_print_type(FILE *file, Type *type)
 	{
 		case CT_TYPES:
 		case TYPE_OPTIONAL:
-		case TYPE_OPTIONAL_ANY:
 			UNREACHABLE
 		case TYPE_VOID:
 			OUTPUT("void");
@@ -85,6 +84,9 @@ static void header_print_type(FILE *file, Type *type)
 		case TYPE_U128:
 			OUTPUT("unsigned __int128");
 			return;
+		case TYPE_BF16:
+			OUTPUT("__bf16");
+			return;
 		case TYPE_F16:
 			OUTPUT("__fp16");
 			return;
@@ -104,8 +106,6 @@ static void header_print_type(FILE *file, Type *type)
 			header_print_type(file, type->pointer);
 			OUTPUT("*");
 			return;
-		case TYPE_SCALED_VECTOR:
-			error_exit("Scaled vectors are not supported yet.");
 		case TYPE_FUNC:
 			OUTPUT("%s", decl_get_extname(type->decl));
 			return;
@@ -117,7 +117,7 @@ static void header_print_type(FILE *file, Type *type)
 		case TYPE_BITSTRUCT:
 			header_print_type(file, type->decl->bitstruct.base_type->type);
 			return;
-		case TYPE_ANYERR:
+		case TYPE_ANYFAULT:
 		case TYPE_FAULTTYPE:
 			OUTPUT("c3fault_t");
 			return;
@@ -134,7 +134,8 @@ static void header_print_type(FILE *file, Type *type)
 			OUTPUT(" arr[%d]; }", type->array.len);
 			return;
 		case TYPE_ANY:
-			TODO
+			OUTPUT("c3any_t");
+			return;
 		case TYPE_SUBARRAY:
 			OUTPUT("c3slice_t");
 			return;
@@ -168,7 +169,7 @@ static void header_gen_function_ptr(FILE *file, HTable *table, Type *type)
 	{
 		extra_ret = rtype->optional;
 		header_gen_maybe_generate_type(file, table, extra_ret);
-		rtype = type_anyerr;
+		rtype = type_anyfault;
 	}
 	header_gen_maybe_generate_type(file, table, rtype);
 	FOREACH_BEGIN_IDX(i, Decl *param, sig->params)
@@ -207,7 +208,7 @@ static void header_gen_function(FILE *file, FILE *file_types, HTable *table, Dec
 	{
 		extra_ret = rtype->optional;
 		header_gen_maybe_generate_type(file_types, table, extra_ret);
-		rtype = type_anyerr;
+		rtype = type_anyfault;
 	}
 	header_gen_maybe_generate_type(file_types, table, rtype);
 	header_print_type(file, rtype);
@@ -367,14 +368,14 @@ RETRY:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
 		case TYPE_INFERRED_VECTOR:
+		case TYPE_WILDCARD:
 			UNREACHABLE
-		case TYPE_OPTIONAL_ANY:
 		case TYPE_VOID:
 		case TYPE_BOOL:
 		case ALL_FLOATS:
 		case ALL_INTS:
 		case TYPE_ANY:
-		case TYPE_ANYERR:
+		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
 		case TYPE_BITSTRUCT:
 		case TYPE_FAULTTYPE:
@@ -447,8 +448,6 @@ RETRY:
 			type = type->optional;
 			goto RETRY;
 			break;
-		case TYPE_SCALED_VECTOR:
-			error_exit("Scaled vectors are not supported yet.");
 		case TYPE_VECTOR:
 			if (htable_get(table, type)) return;
 			OUTPUT("typedef ");
@@ -548,9 +547,9 @@ void header_gen(Module **modules, unsigned module_count)
 	OUT(file_types, "#ifndef __c3__\n");
 	OUT(file_types, "#define __c3__\n\n");
 	OUT(file_types, "typedef void* c3typeid_t;\n");
-	OUT(file_types, "typedef void* c3typeid_t;\n");
 	OUT(file_types, "typedef void* c3fault_t;\n");
 	OUT(file_types, "typedef struct { void* ptr; size_t len; } c3slice_t;\n");
+	OUT(file_types, "typedef struct { void* ptr; c3typeid_t type; } c3any_t;\n");
 	OUT(file_types, "\n#endif\n\n");
 	OUTPUT("#include \"foo_types.h\"\n");
 

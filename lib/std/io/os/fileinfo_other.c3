@@ -17,6 +17,7 @@ $if (env::COMPILER_LIBC_AVAILABLE)
 
 extern fn void* opendir(ZString);
 extern fn void closedir(void*);
+extern fn int remove(ZString);
 
 const DT_UNKNOWN =  0;
 const DT_FIFO    =  1;
@@ -34,7 +35,7 @@ fn PathList! native_readdir(Path dir, bool no_dirs, bool no_symlinks, String mas
 	list.init(.using = using);
 	void* directory = opendir(dir.as_str() ? dir.as_zstr() : (ZString)".");
 	defer if (directory) closedir(directory);
-	if (!directory) return (path::is_dir(dir) ? IoError.CANNOT_READ_DIR : IoError.FILE_NOT_DIR)!;
+	if (!directory) return (path::is_dir(dir) ? IoError.CANNOT_READ_DIR : IoError.FILE_NOT_DIR)?;
 	NativeDirentry* entry;
 	while ((entry = readdir(directory)))
 	{
@@ -48,6 +49,37 @@ fn PathList! native_readdir(Path dir, bool no_dirs, bool no_symlinks, String mas
 	return list;
 }
 
+/**
+ * @require dir.as_str()
+ **/
+fn void! native_rmtree(Path dir)
+{
+	void* directory = opendir(dir.as_zstr());
+	defer if (directory) closedir(directory);
+	if (!directory) return path::is_dir(dir) ? IoError.CANNOT_READ_DIR? : IoError.FILE_NOT_DIR?;
+	NativeDirentry* entry;
+	while ((entry = readdir(directory)))
+	{
+		@pool()
+		{
+			String name = ((ZString)&entry.name).as_str();
+            if (!name || name == "." || name == "..") continue;
+            Path new_path = dir.tappend(name)!;
+            if (entry.type == DT_DIR)
+            {
+            	native_rmtree(new_path)!;
+            	continue;
+            }
+            if (remove(new_path.as_zstr()))
+            {
+            	// TODO improve
+            	return IoError.GENERAL_ERROR?;
+            }
+		};
+	}
+	os::native_rmdir(dir)!;
+}
+
 $endif
 
 $endif
@@ -56,9 +88,9 @@ $if (!env::os_is_darwin() && !env::os_is_win32())
 
 fn usz! native_file_size(String path)
 {
-	File f = file::open(path, "r")?;
+	File f = file::open(path, "r")!;
 	defer (void)f.close();
-	return f.seek(0, Seek.END)?;
+	return f.seek(0, Seek.END)!;
 }
 
 $if (env::os_is_posix() && env::COMPILER_LIBC_AVAILABLE)
@@ -75,7 +107,7 @@ fn bool native_is_file(String path)
 {
 	File! f = file::open(path, "r");
 	defer (void)f.close();
-	return try? f;
+	return @ok(f);
 }
 
 fn bool native_is_dir(String path)
@@ -106,7 +138,7 @@ $endif
 
 $switch (env::OS_TYPE)
 $case IOS:
-$case MACOSX:
+$case MACOS:
 $case TVOS:
 $case WATCHOS:
 

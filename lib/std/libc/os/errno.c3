@@ -9,7 +9,7 @@ extern fn int* __errno_location();
 macro int errno() => *__errno_location();
 macro void errno_set(int err) => *(__errno_location()) = err;
 
-$case env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == MACOSX:
+$case env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == MACOS:
 
 extern fn int* __error();
 macro int errno() => *__error();

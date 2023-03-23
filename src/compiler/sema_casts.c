@@ -145,7 +145,7 @@ Type *type_infer_len_from_actual_type(Type *to_infer, Type *actual_type)
  */
 INLINE bool insert_runtime_cast_unless_const(Expr *expr, CastKind kind, Type *type)
 {
-	if (expr->expr_kind == EXPR_CONST) return false;
+	if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind != CONST_TYPEID) return false;
 	return insert_cast(expr, kind, type);
 }
 
@@ -228,16 +228,12 @@ static bool bool_to_float(Expr *expr, Type *canonical, Type *type)
 }
 
 /**
- * Insert a cast from `void!` to some fault type by inserting a `catch`,
- * so "anyerr a = returns_voidfail()" => "anyerr a = catch? returns_voidfail()"
+ * Insert a cast from `void!` to some fault type
  */
 static bool voidfail_to_error(Expr *expr, Type *type)
 {
-	assert(type->canonical->type_kind == TYPE_FAULTTYPE || type == type_anyerr);
-	Expr *inner = expr_copy(expr);
-	expr->expr_kind = EXPR_CATCH;
-	expr->inner_expr = inner;
-	expr->type = type;
+	assert(type->canonical->type_kind == TYPE_FAULTTYPE || type == type_anyfault);
+	insert_cast(expr, CAST_VOIDFERR, type);
 	return true;
 }
 
@@ -311,6 +307,7 @@ static bool integer_to_enum(Expr *expr, Type *canonical, Type *type)
 	assert(canonical->type_kind == TYPE_ENUM);
 	Decl *enum_decl = canonical->decl;
 
+	assert(type_flatten(type)->type_kind == TYPE_ENUM);
 	if (insert_runtime_cast_unless_const(expr, CAST_INTENUM, type)) return true;
 
 	// Check that the type is within limits.
@@ -445,6 +442,11 @@ static void enum_to_int_lowering(Expr* expr)
 		assert(expr->const_expr.const_kind == CONST_ENUM);
 		expr_rewrite_const_int(expr, underlying_type, expr->const_expr.enum_err_val->enum_constant.ordinal);
 
+	}
+	if (expr->expr_kind == EXPR_CAST && expr->cast_expr.kind == CAST_INTENUM)
+	{
+		*expr = *exprptr(expr->cast_expr.expr);
+		return;
 	}
 	expr->type = type_add_optional(underlying_type, IS_OPTIONAL(expr));
 }
@@ -667,9 +669,10 @@ CastKind cast_to_bool_kind(Type *type)
 {
 	switch (type_flatten(type)->type_kind)
 	{
+		case TYPE_WILDCARD:
 		case TYPE_BOOL:
 			return CAST_BOOLBOOL;
-		case TYPE_ANYERR:
+		case TYPE_ANYFAULT:
 			return CAST_EUBOOL;
 		case TYPE_SUBARRAY:
 			return CAST_SABOOL;
@@ -684,7 +687,6 @@ CastKind cast_to_bool_kind(Type *type)
 		case TYPE_TYPEDEF:
 		case TYPE_DISTINCT:
 		case TYPE_OPTIONAL:
-		case TYPE_OPTIONAL_ANY:
 		case TYPE_ENUM:
 			// These are not possible due to flattening.
 			UNREACHABLE
@@ -705,7 +707,6 @@ CastKind cast_to_bool_kind(Type *type)
 		case TYPE_UNTYPED_LIST:
 		case TYPE_ANY:
 		case TYPE_FLEXIBLE_ARRAY:
-		case TYPE_SCALED_VECTOR:
 		case TYPE_MEMBER:
 			// Everything else is an error
 			return CAST_ERROR;
@@ -784,6 +785,7 @@ RETRY:
 					if (type_size(type) < type_size(type_cint)) return expr;
 					return NULL;
 				case ACCESS_PTR:
+				case ACCESS_TYPEOFANYFAULT:
 				case ACCESS_TYPEOFANY:
 				case ACCESS_ENUMNAME:
 				case ACCESS_FAULTNAME:
@@ -931,7 +933,7 @@ static bool cast_from_subarray(SemaContext *context, Expr *expr, Type *from, Typ
 
 /**
  * Try casting to a pointer.
- * 1. Any pointer -> variant, any pointer -> void*, void* -> any pointer - always works.
+ * 1. Any pointer -> any, any pointer -> void*, void* -> any pointer - always works.
  * 2. Pointer -> integer must be explicit and type size >= uptr
  * 3. Pointer -> subarray if the pointer points to a vector or array, allow void*[2]* -> int*[2]* (pointer equivalence).
  * 4. Pointer -> bool must be explicit (conditionals are treated as a special case.
@@ -1005,7 +1007,6 @@ static bool cast_from_pointer(SemaContext *context, Expr *expr, Type *from, Type
 				return cast_with_optional(expr, to_type, add_optional);
 			}
 			return sema_error_cannot_convert(expr, to_type, true, silent);
-		case TYPE_OPTIONAL_ANY:
 		case TYPE_OPTIONAL:
 			UNREACHABLE
 		default:
@@ -1017,7 +1018,7 @@ static bool cast_from_pointer(SemaContext *context, Expr *expr, Type *from, Type
 static void sema_error_const_int_out_of_range(Expr *expr, Expr *problem, Type *to_type)
 {
 	assert(expr->expr_kind == EXPR_CONST);
-	if (expr->const_expr.is_character)
+	if (expr->const_expr.is_character && expr->type->type_kind != TYPE_U128)
 	{
 		SEMA_ERROR(problem, "The unicode character U+%04x cannot fit in a %s.", (uint32_t)expr->const_expr.ixx.i.low, type_quoted_error_string(to_type));
 		return;
@@ -1515,12 +1516,14 @@ static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, boo
 	// Step one, cast from optional.
 	// This handles:
 	// 1. *! -> any type
-	// 2. void! -> anyerr
+	// 2. void! -> anyfault
 	// 3. void! -> SomeFault (explicit)
 	if (type_is_optional(from_type))
 	{
+		Type *opt = from_type->optional;
+
 		// *! -> int => ok, gives int!
-		if (from_type == type_anyfail)
+		if (opt == type_wildcard)
 		{
 			if (may_not_be_optional)
 			{
@@ -1533,14 +1536,11 @@ static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, boo
 			return true;
 		}
 
-		// Here we have something like int!
-		assert(from_type->type_kind == TYPE_OPTIONAL);
-
 		// If it is void!, then there are special rules:
-		if (from_type->optional == type_void)
+		if (opt == type_void)
 		{
-			// void! x; anyerr y = x;
-			if (!type_is_optional(to_type) && to == type_anyerr)
+			// void! x; anyfault y = x;
+			if (!type_is_optional(to_type) && to == type_anyfault)
 			{
 				cast(expr, to_type);
 				return true;
@@ -1585,7 +1585,7 @@ static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, boo
 	}
 
 	// We may already be done.
-	if (from == to)
+	if (from == to || from == type_wildcard)
 	{
 		expr->type = type_add_optional(to_type, add_optional);
 		return true;
@@ -1611,10 +1611,10 @@ static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, boo
 			return true;
 		case TYPE_FAULTTYPE:
 			// Allow MyError.A -> error, to an integer or to bool
-			if (to == type_anyerr) return cast(expr, to_type);
+			if (to == type_anyfault) return cast(expr, to_type);
 			if (type_is_integer(to) || to == type_bool) goto CAST_IF_EXPLICIT;
 			goto CAST_FAILED;
-		case TYPE_ANYERR:
+		case TYPE_ANYFAULT:
 			if (to_type == type_bool || to->type_kind == TYPE_FAULTTYPE || type_is_integer(to))
 			{
 				goto CAST_IF_EXPLICIT;
@@ -1629,7 +1629,6 @@ static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, boo
 			if (type_is_integer(to) || type_is_float(to)) goto CAST_IF_EXPLICIT;
 			goto CAST_FAILED;
 		case TYPE_VECTOR:
-		case TYPE_SCALED_VECTOR:
 			return cast_from_vector(context, expr, from, to, to_type, add_optional, is_explicit, silent);
 		case TYPE_ARRAY:
 			return cast_from_array(context, expr, from, to, to_type, add_optional, is_explicit, silent);
@@ -1641,6 +1640,8 @@ static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, boo
 			return cast_from_float(context, expr, from, to, to_type, add_optional, is_explicit, silent);
 		case TYPE_POISONED:
 			return false;
+		case TYPE_WILDCARD:
+			UNREACHABLE
 		case TYPE_VOID:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_TYPEINFO:
@@ -1651,9 +1652,8 @@ static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, boo
 			goto CAST_FAILED;
 		case TYPE_TYPEID:
 			if (!type_is_pointer_sized_or_more(to_type)) goto CAST_FAILED;
-			goto CAST_IF_EXPLICIT;
+    		goto CAST_IF_EXPLICIT;
 		case TYPE_OPTIONAL:
-		case TYPE_OPTIONAL_ANY:
 		case TYPE_TYPEDEF:
 			UNREACHABLE;
 		case TYPE_ANY:
@@ -1771,7 +1771,7 @@ static void vector_const_initializer_convert_to_type(ConstInitializer *initializ
 }
 
 
-static bool err_to_anyerr(Expr *expr, Type *to_type)
+static bool err_to_anyfault(Expr *expr, Type *to_type)
 {
 	expr->type = to_type;
 	return true;
@@ -1817,7 +1817,6 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 {
 	switch (from_type->type_kind)
 	{
-		case TYPE_OPTIONAL_ANY:
 		case TYPE_OPTIONAL:
 		case TYPE_VOID:
 			UNREACHABLE
@@ -1833,11 +1832,11 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 			if (type_is_integer(to)) return bool_to_int(expr, to, to_type);
 			if (type_is_float(to)) return bool_to_float(expr, to, to_type);
 			break;
-		case TYPE_ANYERR:
+		case TYPE_ANYFAULT:
 			if (to->type_kind == TYPE_BOOL) return insert_cast(expr, CAST_EUBOOL, to_type);
 			if (to->type_kind == TYPE_FAULTTYPE)
 			{
-				REMINDER("Improve anyerr -> fault conversion.");
+				REMINDER("Improve anyfault -> fault conversion.");
 				return insert_cast(expr, CAST_EUER, to_type);
 			}
 			if (type_is_integer(to)) return insert_cast(expr, CAST_EUINT, to_type);
@@ -1884,12 +1883,11 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 			if (to->type_kind == TYPE_ENUM) return integer_to_enum(expr, to, to_type);
 			break;
 		case TYPE_FAULTTYPE:
-			if (to->type_kind == TYPE_ANYERR) return err_to_anyerr(expr, to_type);
+			if (to->type_kind == TYPE_ANYFAULT) return err_to_anyfault(expr, to_type);
 			if (to == type_bool) return err_to_bool(expr, to_type);
 			if (type_is_integer(to)) return insert_cast(expr, CAST_ERINT, to_type);
 			break;
 		case TYPE_FLEXIBLE_ARRAY:
-		case TYPE_SCALED_VECTOR:
 			return false;
 		case TYPE_ARRAY:
 			if (to->type_kind == TYPE_VECTOR) return array_to_vector(expr, to_type);
@@ -1930,22 +1928,23 @@ bool cast(Expr *expr, Type *to_type)
 	Type *to = type_flatten(to_type);
 
 	// Special case *! => error
-	if (to == type_anyerr || to->type_kind == TYPE_FAULTTYPE)
+	if (to == type_anyfault || to->type_kind == TYPE_FAULTTYPE)
 	{
 		if (type_is_optional(from_type)) return voidfail_to_error(expr, to_type);
 	}
 
-	if (type_is_optional_any(from_type))
-	{
-		expr->type = type_get_optional(to_type);
-		return true;
-	}
-
-	if (type_is_optional_type(from_type))
+	if (type_is_optional(from_type))
 	{
 		from_type = from_type->optional;
 		from_is_optional = true;
 	}
+
+	if (from_type == type_wildcard)
+	{
+		expr->type = type_add_optional(to_type, from_is_optional);
+		return true;
+	}
+
 	from_type = type_flatten(from_type);
 	if (type_len_is_inferred(to_type))
 	{

@@ -55,7 +55,7 @@ fn Type! PriorityQueue.pop(PriorityQueue* pq)
 {
 	usz i = 0;
 	usz len = pq.heap.len() @inline;
-	if (!len) return IteratorResult.NO_MORE_ELEMENT!;
+	if (!len) return IteratorResult.NO_MORE_ELEMENT?;
 	usz newCount = len - 1;
 	pq.heap.swap(0, newCount);
 	while ((2 * i + 1) < newCount)
@@ -84,7 +84,7 @@ fn Type! PriorityQueue.pop(PriorityQueue* pq)
  */
 fn Type! PriorityQueue.peek(PriorityQueue* pq)
 {
-	if (!pq.len()) return IteratorResult.NO_MORE_ELEMENT!;
+	if (!pq.len()) return IteratorResult.NO_MORE_ELEMENT?;
 	return pq.heap.get(0);
 }
 

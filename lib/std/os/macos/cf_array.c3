@@ -1,6 +1,6 @@
 module std::os::macos::cf;
 
-$if (env::OS_TYPE == OsType.MACOSX)
+$if (env::OS_TYPE == OsType.MACOS)
 
 typedef CFArrayRef = distinct void*;
 typedef CFArrayCallBacksRef = distinct void*;

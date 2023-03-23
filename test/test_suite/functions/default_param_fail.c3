@@ -8,4 +8,4 @@ fault MyError
 
 fn void test(int a = z) {}
 
-fn void test2(int b = MyError.FOO!) {}
+fn void test2(int b = MyError.FOO?) {}

@@ -1,19 +1,20 @@
 module bigint;
+import libc;
 
-macro max(a, b)
+macro @max(a, b)
 {
 	return a > b ? a : b;
 }
 
 // Horribly bad implementation of BigInt with add/sub.
-public struct BigInt
+struct BigInt
 {
-	byte* number;
+	char* number;
 	uint length;
-	char sign;
+	ichar sign;
 }
 
-public fn void BigInt.init(BigInt* bigInt)
+fn void BigInt.init(BigInt* bigInt)
 {
 	bigInt.number = malloc(1);
 	bigInt.number[0] = 0;
@@ -21,9 +22,9 @@ public fn void BigInt.init(BigInt* bigInt)
 	bigInt.sign = 1;
 }
 
-public fn void BigInt.initFromString(BigInt* bigInt, char* str)
+fn void BigInt.initFromString(BigInt* bigInt, char* str)
 {
-	uint size = strlen(str);
+	uint size = (uint)libc::strlen(str);
 	bigInt.sign = 1;
 	switch (str[0])
 	{
@@ -46,7 +47,7 @@ public fn void BigInt.initFromString(BigInt* bigInt, char* str)
 	bigInt.length = size;
 }
 
-public fn void BigInt.copyTo(BigInt* source, BigInt* target)
+fn void BigInt.copyTo(BigInt* source, BigInt* target)
 {
 	target.number = realloc(target.number, source.length);
 	target.sign = source.sign;
@@ -54,7 +55,7 @@ public fn void BigInt.copyTo(BigInt* source, BigInt* target)
 	for (uint i = 0; i < target.length; i++) target.number[i] = source.number[i];
 }
 
-public fn void BigInt.destroy(BigInt* bigInt)
+fn void BigInt.destroy(BigInt* bigInt)
 {
 	free(bigInt.number);
 }
@@ -62,8 +63,8 @@ public fn void BigInt.destroy(BigInt* bigInt)
 fn void BigInt.addIgnoreSign(BigInt* a, BigInt* b, BigInt* result)
 {
 	uint length = @max(a.length, b.length) + 1;
-	byte* res = malloc(length);
-	char carry = 0;
+	char* res = malloc(length);
+	ichar carry = 0;
 	BigInt* x;
 	BigInt* y;
 	if (a.length > b.length)
@@ -98,7 +99,7 @@ fn void BigInt.addIgnoreSign(BigInt* a, BigInt* b, BigInt* result)
 	result.length = length;
 }
 
-public fn void BigInt.getMaxVal(BigInt* bigInt, uint* pos, int* val)
+fn void BigInt.getMaxVal(BigInt* bigInt, uint* pos, int* val)
 {
 	for (uint i = bigInt.length; i > 0; i++)
 	{
@@ -113,14 +114,14 @@ public fn void BigInt.getMaxVal(BigInt* bigInt, uint* pos, int* val)
 	*val = 0;
 }
 
-public fn char BigInt.compare(BigInt* a, BigInt* b)
+fn ichar BigInt.compare(BigInt* a, BigInt* b)
 {
 	if (a.sign != b.sign) return a.sign;
-	byte aMax;
+	int aMax;
 	uint aMaxPos;
 	a.getMaxVal(&aMaxPos, &aMax);
 	if (aMaxPos >= b.length) return a.sign;
-	byte bMax;
+	int bMax;
 	uint bMaxPos;
 	b.getMaxVal(&bMaxPos, &bMax);
 	if (aMaxPos > bMaxPos) return a.sign;
@@ -130,13 +131,13 @@ public fn char BigInt.compare(BigInt* a, BigInt* b)
 	return 0;
 }
 
-public fn char BigInt.compareNoSign(BigInt* a, BigInt* b)
+fn ichar BigInt.compareNoSign(BigInt* a, BigInt* b)
 {
-	byte aMax;
+	int aMax;
 	uint aMaxPos;
 	a.getMaxVal(&aMaxPos, &aMax);
 	if (aMaxPos >= b.length) return 1;
-	byte bMax;
+	int bMax;
 	uint bMaxPos;
 	b.getMaxVal(&bMaxPos, &bMax);
 	if (aMaxPos > bMaxPos) return 1;
@@ -149,7 +150,7 @@ public fn char BigInt.compareNoSign(BigInt* a, BigInt* b)
 fn void BigInt.subIgnoreSign(BigInt* a, BigInt* b, BigInt* result)
 {
 	uint length = @max(a.length, b.length);
-	byte* res = malloc(length);
+	char* res = malloc(length);
 
 	BigInt* x;
 	BigInt* y;
@@ -166,11 +167,11 @@ fn void BigInt.subIgnoreSign(BigInt* a, BigInt* b, BigInt* result)
 		y = b;
 	}
 
-	byte borrow = 0;
+	char borrow = 0;
 	for (uint i = 0; i < length; i++)
 	{
-		byte aValue = i >= x.length ? 0 : x.number[i];
-		byte bValue = borrow + (i >= y.length ? 0 : y.number[i]);
+		char aValue = i >= x.length ? 0 : x.number[i];
+		char bValue = borrow + (i >= y.length ? 0 : y.number[i]);
 		if (bValue > aValue)
 		{
 			borrow = 1;
@@ -187,7 +188,7 @@ fn void BigInt.subIgnoreSign(BigInt* a, BigInt* b, BigInt* result)
 	result.length = length;
 }
 
-public fn void BigInt.add(BigInt* a, BigInt* b, BigInt* result)
+fn void BigInt.add(BigInt* a, BigInt* b, BigInt* result)
 {
     if (a.sign == b.sign)
     {
@@ -205,12 +206,12 @@ public fn void BigInt.add(BigInt* a, BigInt* b, BigInt* result)
     }
 }
 
-public fn char* BigInt.toCharArray(BigInt* bigInt)
+fn char* BigInt.toCharArray(BigInt* bigInt)
 {
-	uint charLen = bigInt.length + 1 + (bigInt.sign < 0 ? 1 : 0);
-	byte* out = malloc(charLen);
-	out[charLen - 1] = '\0';
-	byte* start = out;
+	uint icharLen = bigInt.length + 1 + (bigInt.sign < 0 ? 1 : 0);
+	char* out = malloc(icharLen);
+	out[icharLen - 1] = '\0';
+	char* start = out;
 	if (bigInt.sign < 0)
 	{
 		out[0] = '-';
@@ -219,7 +220,7 @@ public fn char* BigInt.toCharArray(BigInt* bigInt)
 	bool nonZeroFound = false;
 	for (uint i = bigInt.length; i > 0; i--)
 	{
-		byte digit = bigInt.number[i - 1];
+		char digit = bigInt.number[i - 1];
 		if (i > 1 && !nonZeroFound && digit == 0) continue;
 		nonZeroFound = true;
 		*(start++) = digit + '0';
@@ -227,24 +228,24 @@ public fn char* BigInt.toCharArray(BigInt* bigInt)
 	return out;
 }
 
-public fn void BigInt.print(BigInt* bigInt)
+fn void BigInt.print(BigInt* bigInt)
 {
 	char* chars = bigInt.toCharArray();
-	puts(chars);
+	libc::puts(chars);
 	free(chars);
 }
 
 /*
-public fn void BigInt.fprint(BigInt* bigInt, FILE* file)
+fn void BigInt.fprint(BigInt* bigInt, FILE* file)
 {
-   char* chars = bigInt.toCharArray();
-   fputs(chars, file);
+   ichar* ichars = bigInt.toicharArray();
+   fputs(ichars, file);
    putc('\n', file);
-   free(chars);
+   free(ichars);
 }*/
 
 
-public fn int main(int size, char** args)
+fn int main(int size, char** args)
 {
 	BigInt minus2;
 	BigInt minus1;
@@ -257,7 +258,7 @@ public fn int main(int size, char** args)
 	for (int i = 1; i <= 500; i++)
 	{
 		minus1.add(&minus2, &current);
-		printf("%d : ", i);
+		libc::printf("%d : ", i);
 		current.print();
 		minus1.copyTo(&minus2);
 		current.copyTo(&minus1);

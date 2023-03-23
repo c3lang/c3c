@@ -242,7 +242,7 @@ fn int arrayToSum() {
 }
 
 
-fn int externFunc(long, uint*, short, char);
+extern fn int externFunc(long, uint*, short, char);
 
 fn int main(int argc, char **argv) {
   uint i @noinit;
@@ -800,7 +800,7 @@ entry:
   %i = alloca i32, align 4
   %2 = call i32 @puts(ptr @.str.10)
   %trunc = trunc i32 %0 to i16
-  %3 = call i32 @foo.externFunc(i64 -1, ptr null, i16 signext %trunc, i8 zeroext 2)
+  %3 = call i32 @externFunc(i64 -1, ptr null, i16 signext %trunc, i8 zeroext 2)
   store i32 0, ptr %i, align 4
   br label %loop.cond
 loop.cond:                                        ; preds = %loop.body, %entry

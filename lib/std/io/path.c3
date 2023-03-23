@@ -58,6 +58,51 @@ macro bool is_win32_separator(char c)
 	return c == '/' || c == '\\';
 }
 
+fn Path[]! ls(Path path)
+{
+	unreachable();
+}
+
+enum MkdirPermissions
+{
+	NORMAL,
+	USER_ONLY,
+	USER_AND_ADMIN
+}
+
+
+
+fn bool! mkdir(Path path, bool recursive = false, MkdirPermissions permissions = NORMAL)
+{
+	if (!path.path_string.len) return PathResult.INVALID_PATH?;
+	if (is_dir(path)) return false;
+	if (exists(path)) return IoError.FILE_NOT_DIR?;
+
+	if (recursive)
+	{
+		if (try parent = path.parent()) mkdir(parent, true, permissions)!;
+	}
+	if (!is_dir(path.parent()) ?? false) return IoError.CANNOT_READ_DIR?;
+
+	return os::native_mkdir(path, permissions);
+}
+
+fn bool! rmdir(Path path)
+{
+	if (!path.path_string.len) return PathResult.INVALID_PATH?;
+	return os::native_rmdir(path);
+}
+
+fn void! rmtree(Path path)
+{
+	if (!path.path_string.len) return PathResult.INVALID_PATH?;
+$if ($defined(os::native_rmtree))
+	return os::native_rmtree(path);
+$else
+	assert(false, "rmtree is not available");
+$endif
+}
+
 fn Path! new(String path, Allocator* using = mem::heap(), PathEnv path_env = DEFAULT_PATH_ENV)
 {
 	return { normalize(path.copy(using), path_env), path_env };
@@ -87,7 +132,7 @@ fn bool Path.equals(Path p1, Path p2)
  **/
 fn Path! Path.append(Path path, String filename, Allocator* using = mem::heap())
 {
-	if (!path.path_string.len) return new(filename, using, path.env)?;
+	if (!path.path_string.len) return new(filename, using, path.env)!;
 	assert(!is_separator(path.path_string[^1], path.env));
 
 	@stack_mem(256; Allocator* mem)
@@ -134,9 +179,9 @@ fn String Path.dirname(Path path)
 fn String! Path.extension(Path path)
 {
 	String basename = path.basename();
-	usz index = basename.rindex_of(".")?;
+	usz index = basename.rindex_of(".")!;
 	// Plain ".foo" does not have an
-	if (index == 0) return SearchResult.MISSING!;
+	if (index == 0) return SearchResult.MISSING?;
 	if (index == basename.len) return "";
 	return basename[index + 1..];
 }
@@ -166,9 +211,9 @@ fn usz! volume_name_len(String path, PathEnv path_env) @local
     		{
     		    char c = path[i];
     			if (is_win32_separator(c)) return i;
-    			if (is_reserved_win32_path_char(c)) return PathResult.INVALID_PATH!;
+    			if (is_reserved_win32_path_char(c)) return PathResult.INVALID_PATH?;
     		}
-    		return PathResult.INVALID_PATH!;
+    		return PathResult.INVALID_PATH?;
     	case 'A'..'Z':
     	case 'a'..'z':
     	    return path[1] == ':' ? 2 : 0;
@@ -179,7 +224,7 @@ fn usz! volume_name_len(String path, PathEnv path_env) @local
 
 fn Path! Path.parent(Path path)
 {
-	if (path.path_string.len == 1 && is_separator(path.path_string[0], path.env)) return PathResult.NO_PARENT!;
+	if (path.path_string.len == 1 && is_separator(path.path_string[0], path.env)) return PathResult.NO_PARENT?;
 	foreach_r(i, c : path.path_string)
 	{
 		if (is_separator(c, path.env))
@@ -187,13 +232,13 @@ fn Path! Path.parent(Path path)
 			return { path.path_string[:i], path.env };
 		}
 	}
-	return PathResult.NO_PARENT!;
+	return PathResult.NO_PARENT?;
 }
 
 fn String! normalize(String path_str, PathEnv path_env = DEFAULT_PATH_ENV)
 {
 	if (!path_str.len) return path_str;
-    usz path_start = volume_name_len(path_str, path_env)?;
+    usz path_start = volume_name_len(path_str, path_env)!;
 	usz path_len = path_str.len;
 	if (path_start == path_len) return path_str;
 	char path_separator = path_env == PathEnv.WIN32 ? PREFERRED_SEPARATOR_WIN32 : PREFERRED_SEPARATOR_POSIX;
@@ -225,7 +270,7 @@ fn String! normalize(String path_str, PathEnv path_env = DEFAULT_PATH_ENV)
 
 		// The rest are names of the path elements, so check that the
 		// characters are valid.
-		if (is_reserved_path_char(c, path_env)) return PathResult.INVALID_PATH!;
+		if (is_reserved_path_char(c, path_env)) return PathResult.INVALID_PATH?;
 
 		// If we have '.' after a separator
 		if (c == '.' && previous_was_separator)
@@ -251,7 +296,7 @@ fn String! normalize(String path_str, PathEnv path_env = DEFAULT_PATH_ENV)
 					continue;
 				case 2:
 					// This is an error: /a/../..
-					if (len == path_start && has_root) return PathResult.INVALID_PATH!;
+					if (len == path_start && has_root) return PathResult.INVALID_PATH?;
 
 					// If this .. at the start, or after ../? If so, we just copy ..
 					if (len == path_start ||

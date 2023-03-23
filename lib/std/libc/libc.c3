@@ -162,7 +162,7 @@ $case env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == OsType.LINUX:
     macro CFile stdin() { return __stdin; }
     macro CFile stdout() { return __stdout; }
     macro CFile stderr() { return __stderr; }
-$case env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == OsType.MACOSX:
+$case env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == OsType.MACOS:
     extern CFile __stdinp;
     extern CFile __stdoutp;
     extern CFile __stderrp;
@@ -187,7 +187,7 @@ $endswitch
 const HAS_MALLOC_SIZE =
 	env::OS_TYPE == OsType.LINUX
 	|| env::OS_TYPE == OsType.WIN32
-	|| env::OS_TYPE == OsType.MACOSX;
+	|| env::OS_TYPE == OsType.MACOS;
 
 // The following needs to be set per arch+os
 // For now I have simply pulled the defaults from MacOS
@@ -320,9 +320,7 @@ $endif
 
 // time.h
 
-typedef TimeOffset = CLong;
-
-struct Tm
+struct TmCommon @private
 {
 	int	tm_sec;		/* seconds after the minute [0-60] */
 	int	tm_min;		/* minutes after the hour [0-59] */
@@ -333,18 +331,70 @@ struct Tm
 	int	tm_wday;	/* days since Sunday [0-6] */
 	int	tm_yday;	/* days since January 1 [0-365] */
 	int	tm_isdst;	/* Daylight Savings Time flag */
+}
+
+
+$switch (env::OS_TYPE)
+
+$case WIN32:
+
+typedef Tm = TmCommon;
+
+$case WASI:
+
+typedef TimeOffset = int;
+struct Tm
+{
+	inline TmCommon common;
+	TimeOffset tm_gmtoff;	/* offset from UTC in seconds */
+    char *tm_zone;	/* timezone abbreviation */
+    int tm_nsec;
+}
+
+$case MACOS:
+$case IOS:
+$case TVOS:
+$case WATCHOS:
+$case OPENBSD:
+$case FREEBSD:
+$default:
+
+typedef TimeOffset = CLong;
+struct Tm
+{
+	inline TmCommon common;
 	TimeOffset tm_gmtoff;	/* offset from UTC in seconds */
     char *tm_zone;	/* timezone abbreviation */
 }
 
+$endswitch
+
+
+$if (env::os_is_win32())
+
 struct TimeSpec
 {
-	Time s;
+	Time_t s;
 	ulong ns;
 }
 
-const int TIME_UTC = 1;
+typedef Time_t = long;
+typedef Clock_t = ulong;
 
+$else
+
+struct TimeSpec
+{
+	Time_t s;
+	CLong ns;
+}
+
+typedef Time_t = CLong;
+typedef Clock_t = CULong;
+
+$endif
+
+const int TIME_UTC = 1;
 
 extern fn int timespec_get(TimeSpec* ts, int base);
 extern fn int nanosleep(TimeSpec* req, TimeSpec* remaining);
@@ -352,19 +402,34 @@ extern fn int nanosleep(TimeSpec* req, TimeSpec* remaining);
 // Likely wrong, must be per platform.
 const CLOCKS_PER_SEC = 1000000;
 
-// Time also needs to be per platform
-typedef Time = long;
-typedef Clock = ulong;
 
 extern fn ZString asctime(Tm *timeptr);
-extern fn Clock clock();
-extern fn ZString ctime(Time *timer);
-extern fn double difftime(Time time1, Time time2);
-extern fn Tm* gmtime(Time *timer);
-extern fn Tm* localtime(Time *timer);
-extern fn Time mktime(Tm *timeptr);
+extern fn Clock_t clock();
+extern fn ZString ctime(Time_t *timer);
+extern fn double difftime(Time_t time1, Time_t time2);
+extern fn Tm* gmtime(Time_t *timer);
+
+extern fn Tm* localtime(Time_t *timer);
+
+$if (env::os_is_win32())
+extern fn Tm* _gmtime64_s(Tm* buf, Time_t *timer);
+extern fn Tm* _localtime64_s(Tm* buf, Time_t *timer);
+extern fn void _get_timezone(CLong *timezone);
+
+macro Tm* gmtime_r(Time_t *timer, Tm* buf) => _gmtime64_s(buf, timer);
+macro Tm* localtime_r(Time_t *timer, Tm* buf) => _localtime64_s(buf, timer);
+
+extern fn Time_t mktime(Tm *timeptr) @extern("_mktime64");
+extern fn Time_t timegm(Tm *timeptr) @extern("_mkgmtime64");
+$else
+extern fn Tm* gmtime_r(Time_t *timer, Tm* buf);
+extern fn Tm* localtime_r(Time_t *timer, Tm* buf);
+extern fn Time_t mktime(Tm *timeptr);
+extern fn Time_t timegm(Tm *timeptr);
+$endif
+
 extern fn usz strftime(char* str, usz maxsize, char* format, Tm *timeptr);
-extern fn Time time(Time *timer);
+extern fn Time_t time(Time_t *timer);
 
 // signal
 typedef SignalFunction = fn void(int);
@@ -386,7 +451,7 @@ const Errno ENOEXEC = 8;    // Exec format error
 const Errno EBADF = 9;      // Bad file number
 const Errno ECHILD = 10;    // No child processes
 
-$if (env::OS_TYPE == MACOSX)
+$if (env::OS_TYPE == MACOS)
 const Errno EAGAIN = 35;    // Try again Macos
 $else
 const Errno EAGAIN = 11;    // Try again
@@ -418,7 +483,7 @@ const Errno ERANGE = 34;    // Math result not representable
 
 $switch (env::OS_TYPE)
 
-$case MACOSX:
+$case MACOS:
 const Errno EDEADLK = 11;       // Resource deadlock would occur MacOS
 const Errno ENAMETOOLONG = 63;  // File name too long MacOS
 const Errno ELOOP = 62;         // Too many symbolic links encountered
@@ -428,6 +493,7 @@ const Errno ENETDOWN = 50;      // Network is down MacOS
 const Errno ENETUNREACH = 51;   // Network is unreachable MacOS
 const Errno ENETRESET = 52;     // Network dropped connection because of reset MacOS
 const Errno EOPNOTSUPP = 45;    // Operation not supported on transport endpoint
+const Errno ENOTEMPTY = 66;     // Directory not empty
 
 $case WIN32:
 const Errno EDEADLK = 36;       // Resource deadlock would occur Win32
@@ -439,6 +505,7 @@ const Errno ECONNRESET = 108;   // Connection reset by peer
 const Errno ENETUNREACH = 118;  // Network is unreachable
 const Errno ENETRESET = 117;    // Network dropped connection because of reset
 const Errno EOPNOTSUPP = 130;   // Operation not supported on transport endpoint
+const Errno ENOTEMPTY = 41;     // Directory not empty
 
 $default:
 const Errno EDEADLK = 35;       // Resource deadlock would occur Linux (others?)
@@ -450,6 +517,7 @@ const Errno ECONNRESET = 104;   // Connection reset by peer
 const Errno ENETUNREACH = 101;  // Network is unreachable
 const Errno ENETRESET = 102;    // Network dropped connection because of reset
 const Errno EOPNOTSUPP = 95;    // Operation not supported on transport endpoint
+const Errno ENOTEMPTY = 39;     // Directory not empty
 
 $endswitch
 
@@ -458,7 +526,6 @@ $endswitch
 /*
 const Errno ENOLCK = 37;  /* No record locks available */
 const Errno ENOSYS = 38;  /* Function not implemented */
-const Errno ENOTEMPTY = 39;  /* Directory not empty */
 
 const Errno ENOMSG = 42;  /* No message of desired type */
 const Errno EIDRM = 43;  /* Identifier removed */
@@ -529,7 +596,7 @@ const Errno EHOSTUNREACH = 113; /* No route to host */
 
 $switch (env::OS_TYPE)
 
-$case MACOSX:
+$case MACOS:
 const Errno ETIMEDOUT = 60;     // Connection timed out
 const Errno EINPROGRESS = 36;   // Operation now in progress MacOS
 const Errno EALREADY = 37;      // Operation already in progress MacOS

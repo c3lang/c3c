@@ -61,23 +61,23 @@ extern fn int sched_yield();
 fn void! NativeMutex.init(NativeMutex* mutex, MutexType type)
 {
 	PthreadMutexAttribute attr;
-	if (pthread_mutexattr_init(&attr)) return ThreadFault.INIT_FAILED!;
+	if (pthread_mutexattr_init(&attr)) return ThreadFault.INIT_FAILED?;
 	defer pthread_mutexattr_destroy(&attr);
     if (type & thread::MUTEX_RECURSIVE)
     {
-        if (pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE)) return ThreadFault.INIT_FAILED!;
+        if (pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE)) return ThreadFault.INIT_FAILED?;
     }
-    if (pthread_mutex_init(mutex, &attr)) return ThreadFault.INIT_FAILED!;
+    if (pthread_mutex_init(mutex, &attr)) return ThreadFault.INIT_FAILED?;
 }
 
 fn void! NativeMutex.destroy(NativeMutex* mtx)
 {
-	if (pthread_mutex_destroy(mtx)) return ThreadFault.DESTROY_FAILED!;
+	if (pthread_mutex_destroy(mtx)) return ThreadFault.DESTROY_FAILED?;
 }
 
 fn void! NativeMutex.lock(NativeMutex* mtx)
 {
-	if (pthread_mutex_lock(mtx)) return ThreadFault.LOCK_FAILED!;
+	if (pthread_mutex_lock(mtx)) return ThreadFault.LOCK_FAILED?;
 }
 
 fn void! NativeMutex.lock_timeoutout(NativeMutex* mtx, ulong ms)
@@ -88,7 +88,7 @@ fn void! NativeMutex.lock_timeoutout(NativeMutex* mtx, ulong ms)
     {
         if (!ms) break;
         ulong sleep = min(5, ms);
-        if (!libc::nanosleep(&& TimeSpec { .s = 0, .ns = sleep * 1000_000 }, null)) return ThreadFault.LOCK_FAILED!;
+        if (!libc::nanosleep(&& TimeSpec { .s = 0, .ns = (CLong)sleep * 1000_000 }, null)) return ThreadFault.LOCK_FAILED?;
         ms -= sleep;
     }
     switch (result)
@@ -97,9 +97,9 @@ fn void! NativeMutex.lock_timeoutout(NativeMutex* mtx, ulong ms)
             return;
         case errno::EBUSY:
         case errno::ETIMEDOUT:
-            return ThreadFault.LOCK_TIMEOUT!;
+            return ThreadFault.LOCK_TIMEOUT?;
         default:
-            return ThreadFault.LOCK_FAILED!;
+            return ThreadFault.LOCK_FAILED?;
     }
 }
 
@@ -110,48 +110,48 @@ fn bool NativeMutex.try_lock(NativeMutex* mtx)
 
 fn void! NativeMutex.unlock(NativeMutex* mtx)
 {
-	if (pthread_mutex_unlock(mtx)) return ThreadFault.UNLOCK_FAILED!;
+	if (pthread_mutex_unlock(mtx)) return ThreadFault.UNLOCK_FAILED?;
 }
 
 fn void! NativeConditionVariable.init(NativeConditionVariable* cond)
 {
-	if (pthread_cond_init(cond, null)) return ThreadFault.INIT_FAILED!;
+	if (pthread_cond_init(cond, null)) return ThreadFault.INIT_FAILED?;
 }
 
 fn void! NativeConditionVariable.destroy(NativeConditionVariable* cond)
 {
-	if (pthread_cond_destroy(cond)) return ThreadFault.DESTROY_FAILED!;
+	if (pthread_cond_destroy(cond)) return ThreadFault.DESTROY_FAILED?;
 }
 
 fn void! NativeConditionVariable.signal(NativeConditionVariable* cond)
 {
-	if (pthread_cond_signal(cond)) return ThreadFault.SIGNAL_FAILED!;
+	if (pthread_cond_signal(cond)) return ThreadFault.SIGNAL_FAILED?;
 }
 
 fn void! NativeConditionVariable.broadcast(NativeConditionVariable* cond)
 {
-	if (pthread_cond_broadcast(cond)) return ThreadFault.SIGNAL_FAILED!;
+	if (pthread_cond_broadcast(cond)) return ThreadFault.SIGNAL_FAILED?;
 }
 
 fn void! NativeConditionVariable.wait(NativeConditionVariable* cond, NativeMutex* mtx)
 {
-    if (pthread_cond_wait(cond, mtx)) return ThreadFault.WAIT_FAILED!;
+    if (pthread_cond_wait(cond, mtx)) return ThreadFault.WAIT_FAILED?;
 }
 
 fn void! NativeConditionVariable.wait_timeout(NativeConditionVariable* cond, NativeMutex* mtx, ulong ms)
 {
 	TimeSpec now;
-	if (libc::timespec_get(&now, libc::TIME_UTC) != libc::TIME_UTC) return ThreadFault.WAIT_FAILED!;
-	now.s += ms / 1000;
-	now.ns += (ms % 1000) * 1000_000;
+	if (libc::timespec_get(&now, libc::TIME_UTC) != libc::TIME_UTC) return ThreadFault.WAIT_FAILED?;
+	now.s += (Time_t)(ms / 1000);
+	now.ns += (CLong)((ms % 1000) * 1000_000);
 	switch (pthread_cond_timedwait(cond, mtx, &now))
 	{
 		case errno::ETIMEDOUT:
-			return ThreadFault.WAIT_TIMEOUT!;
+			return ThreadFault.WAIT_TIMEOUT?;
 		case errno::OK:
 			return;
 		default:
-			return ThreadFault.WAIT_FAILED!;
+			return ThreadFault.WAIT_FAILED?;
 	}
 }
 
@@ -170,13 +170,13 @@ fn void! NativeThread.create(NativeThread* thread, ThreadFn thread_fn, void* arg
     {
         *thread = null;
         free(thread_data);
-        return ThreadFault.INIT_FAILED!;
+        return ThreadFault.INIT_FAILED?;
     }
 }
 
 fn void! NativeThread.detach(NativeThread thread)
 {
-	if (!pthread_detach(thread)) return ThreadFault.DETACH_FAILED!;
+	if (!pthread_detach(thread)) return ThreadFault.DETACH_FAILED?;
 }
 
 fn void native_thread_exit(int result)
@@ -197,7 +197,7 @@ fn bool NativeThread.equals(NativeThread this, NativeThread other)
 fn int! NativeThread.join(NativeThread thread)
 {
 	void *pres;
-	if (pthread_join(thread, &pres)) return ThreadFault.JOIN_FAILED!;
+	if (pthread_join(thread, &pres)) return ThreadFault.JOIN_FAILED?;
 	return (int)(iptr)pres;
 }
 
@@ -219,21 +219,21 @@ struct PosixThreadData @private
 
 fn void! native_sleep_nano(ulong nano)
 {
-	TimeSpec to = { .s = 0, .ns = nano };
-	if (libc::nanosleep(&to, null)) return ThreadFault.INTERRUPTED!;
+	TimeSpec to = { .s = 0, .ns = (CLong)nano };
+	if (libc::nanosleep(&to, null)) return ThreadFault.INTERRUPTED?;
 }
 
 fn void! native_sleep_ms(ulong ms)
 {
-	TimeSpec to = { .s = ms / 1000, .ns = (ms % 1000) * 1000_000 };
-	if (libc::nanosleep(&to, null)) return ThreadFault.INTERRUPTED!;
+	TimeSpec to = { .s = (Time_t)(ms / 1000), .ns = (CLong)((ms % 1000) * 1000_000) };
+	if (libc::nanosleep(&to, null)) return ThreadFault.INTERRUPTED?;
 }
 
 fn void! native_sleep(double s)
 {
-	ulong si = (ulong)s;
-	TimeSpec to = { .s = si, .ns = (ulong)((s - si) * 1000_000_000) };
-	if (libc::nanosleep(&to, null)) return ThreadFault.INTERRUPTED!;
+	Time_t si = (Time_t)s;
+	TimeSpec to = { .s = si, .ns = (CLong)((s - si) * 1000_000_000) };
+	if (libc::nanosleep(&to, null)) return ThreadFault.INTERRUPTED?;
 }
 
 $endif

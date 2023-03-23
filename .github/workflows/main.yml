@@ -34,6 +34,7 @@ jobs:
         run: |
           cd resources
           ..\build\${{ matrix.build_type }}\c3c.exe compile-run examples\hello_world_many.c3
+          ..\build\${{ matrix.build_type }}\c3c.exe compile-run examples\time.c3
           ..\build\${{ matrix.build_type }}\c3c.exe compile-run examples\fannkuch-redux.c3
           ..\build\${{ matrix.build_type }}\c3c.exe compile-run examples\contextfree\boolerr.c3
           ..\build\${{ matrix.build_type }}\c3c.exe compile-run examples\load_world.c3
@@ -101,6 +102,7 @@ jobs:
         run: |
           cd resources
           ../build/c3c compile-run examples/hello_world_many.c3
+          ../build/c3c compile-run examples/time.c3
           ../build/c3c compile-run examples/fannkuch-redux.c3
           ../build/c3c compile-run examples/contextfree/boolerr.c3
           ../build/c3c compile-run examples/load_world.c3
@@ -127,7 +129,7 @@ jobs:
 
   build-msys2-clang:
     runs-on: windows-latest
-    if: ${{ false }}
+    #if: ${{ false }}
     strategy:
       # Don't abort runners if a single one fails
       fail-fast: false
@@ -155,6 +157,7 @@ jobs:
         run: |
           cd resources
           ../build/c3c compile-run examples/hello_world_many.c3
+          ../build/c3c compile-run examples/time.c3
           ../build/c3c compile-run examples/fannkuch-redux.c3
           ../build/c3c compile-run examples/contextfree/boolerr.c3
           ../build/c3c compile-run examples/load_world.c3
@@ -181,7 +184,7 @@ jobs:
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
-        llvm_version: [15, 16, 17]
+        llvm_version: [16, 17]
 
     steps:
       - uses: actions/checkout@v3
@@ -218,7 +221,28 @@ jobs:
       - name: Compile and run some examples
         run: |
           cd resources
+          ../build/c3c compile examples/base64.c3
+          ../build/c3c compile examples/binarydigits.c3
+          ../build/c3c compile examples/brainfk.c3
+          ../build/c3c compile examples/factorial_macro.c3
+          ../build/c3c compile examples/fasta.c3
+          ../build/c3c compile examples/gameoflife.c3
+          ../build/c3c compile examples/hash.c3
+          ../build/c3c compile examples/levenshtein.c3
+          ../build/c3c compile examples/load_world.c3
+          ../build/c3c compile examples/map.c3
+          ../build/c3c compile examples/mandelbrot.c3
+          ../build/c3c compile examples/plus_minus.c3
+          ../build/c3c compile examples/nbodies.c3
+          ../build/c3c compile examples/spectralnorm.c3
+          ../build/c3c compile examples/swap.c3
+          ../build/c3c compile examples/contextfree/boolerr.c3
+          ../build/c3c compile examples/contextfree/dynscope.c3
+          ../build/c3c compile examples/contextfree/guess_number.c3
+          ../build/c3c compile examples/contextfree/multi.c3          
+          ../build/c3c compile examples/contextfree/cleanup.c3          
           ../build/c3c compile-run examples/hello_world_many.c3
+          ../build/c3c compile-run examples/time.c3
           ../build/c3c compile-run examples/fannkuch-redux.c3
           ../build/c3c compile-run examples/contextfree/boolerr.c3
           ../build/c3c compile-run examples/load_world.c3
@@ -272,7 +296,6 @@ jobs:
       - uses: actions/checkout@v3
       - name: Download LLVM
         run: |
-          brew update 
           brew install llvm@${{ matrix.llvm_version }} ninja curl
           echo "/usr/local/opt/llvm@${{ matrix.llvm_version }}/bin" >> $GITHUB_PATH
           TMP_PATH=$(xcrun --show-sdk-path)/user/include
@@ -291,6 +314,7 @@ jobs:
         run: |
           cd resources
           ../build/c3c compile-run examples/hello_world_many.c3
+          ../build/c3c compile-run examples/time.c3
           ../build/c3c compile-run examples/fannkuch-redux.c3
           ../build/c3c compile-run examples/contextfree/boolerr.c3
           ../build/c3c compile-run examples/load_world.c3

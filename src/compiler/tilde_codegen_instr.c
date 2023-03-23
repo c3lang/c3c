@@ -41,6 +41,6 @@ TB_Reg tilde_emit_alloca(TildeContext *c, Type *type, AlignSize alignment)
 
 TB_Reg tilde_emit_is_no_opt(TildeContext *c, TB_Reg error_value)
 {
-	return tb_inst_cmp_eq(c->f, error_value, tilde_get_zero(c, type_anyerr));
+	return tb_inst_cmp_eq(c->f, error_value, tilde_get_zero(c, type_anyfault));
 }
 

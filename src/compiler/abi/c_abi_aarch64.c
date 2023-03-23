@@ -6,7 +6,11 @@
 
 INLINE bool is_aarch64_illegal_vector(Type *type)
 {
-	if (type->type_kind != TYPE_VECTOR) return type->type_kind == TYPE_SCALED_VECTOR;
+	if (type->type_kind != TYPE_VECTOR)
+	{
+		// Return true if scaled vector
+		return false;
+	}
 	ArraySize len = type->array.len;
 	if (!is_power_of_two(len)) return true;
 	switch (type_size(type))
@@ -22,7 +26,7 @@ INLINE bool is_aarch64_illegal_vector(Type *type)
 
 ABIArgInfo *aarch64_coerce_illegal_vector(Type *type)
 {
-	if (type->type_kind == TYPE_SCALED_VECTOR)
+	if (false /*type->type_kind == TYPE_SCALED_VECTOR*/)
 	{
 		/*
 		Type *base_type = type->array.base;
@@ -61,7 +65,7 @@ ABIArgInfo *aarch64_coerce_illegal_vector(Type *type)
 	{
 		return abi_arg_new_direct_coerce_type(type_ushort);
 	}
-	// 32 bits or less? Put in int.
+	// 32 bits or fewer? Put in int.
 	if (size <= 4) return abi_arg_new_direct_coerce_type(type_uint);
 
 	// 64 bits or less? Put in uint[<2>]
@@ -212,7 +216,7 @@ ABIArgInfo *aarch64_classify_return_type(Type *type, bool variadic)
 void c_abi_func_create_aarch64(FunctionPrototype *prototype)
 {
 
-	prototype->ret_abi_info = aarch64_classify_return_type(prototype->abi_ret_type, prototype->variadic == VARIADIC_RAW);
+	prototype->ret_abi_info = aarch64_classify_return_type(prototype->abi_ret_type, prototype->raw_variadic);
 	if (prototype->ret_by_ref)
 	{
 		prototype->ret_by_ref_abi_info = aarch64_classify_argument_type(type_get_ptr(type_flatten(prototype->ret_by_ref_type)));

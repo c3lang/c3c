@@ -13,9 +13,9 @@ fault TokenResult
 fn void main(String[] args)
 {
 	// Grab a string from stdin
-	VarString s = io::stdin().getline();
+	DString s = io::stdin().getline();
 	// Delete it at scope end [defer]
-	defer s.destroy();
+	defer s.free();
 
 	// Grab the string as a slice.
 	String numbers = s.str();
@@ -77,8 +77,8 @@ fn String! read_next(String* remaining)
 	}
 
 	// If it's a zero length token, return an optional result.
-	if (!len) return TokenResult.NO_MORE_TOKENS!;
+	if (!len) return TokenResult.NO_MORE_TOKENS?;
 
 	// Otherwise create a slice from the pointer start and length.
-	return ptr_start[:len];
+	return (String)ptr_start[:len];
 }

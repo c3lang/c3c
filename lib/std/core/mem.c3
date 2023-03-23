@@ -241,10 +241,6 @@ macro malloc_aligned(..., usz alignment = 0, usz end_padding = 0, Allocator* usi
 	$endif
 }
 
-macro alloc($Type) @deprecated => malloc($Type);
-
-macro char[] alloc_bytes(usz bytes) @deprecated => malloc(char, bytes);
-
 /**
  * @require $vacount > 0 && $vacount < 3 "Expected size, type, or type + len"
  * @require $vacount != 2 || $checks($vatype(0).sizeof) "Expected 'malloc(Foo, 12)'"
@@ -328,8 +324,6 @@ macro void @scoped(Allocator* using; @body())
 	defer thread_allocator = old_allocator;
 	@body();
 }
-
-macro talloc($Type) @builtin @deprecated => tmalloc($Type);
 
 /**
  * @require $vacount > 0 && $vacount < 3 "Expected size, type, or type + len"

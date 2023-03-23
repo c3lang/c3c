@@ -2,7 +2,7 @@ module load_world;
 import std::io;
 fn void! main()
 {
-	File f = file::open("examples/hello_world.txt", "rb")?;
+	File f = file::open("examples/hello_world.txt", "rb")!;
 	defer f.close()!!;
 	while (!f.eof())
 	{

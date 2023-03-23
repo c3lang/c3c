@@ -12,7 +12,7 @@ fault InterpretError
 fn void! print_error(usz pos, String err)
 {
 	io::printfn("Error at %s: %s", pos, err);
-	return InterpretError.INTEPRET_FAILED!;
+	return InterpretError.INTEPRET_FAILED?;
 }
 
 fn void! brainf(String program)
@@ -81,5 +81,5 @@ fn void! main()
         >>>+[[-]++++++>>>]<<<[[<++++++++<++>>-]+<.<[>----<-]<]
         <<[>>>>>[>>>[-]+++++++++<[>-<-]+++++++++>[-[<->-]+[<<<]]<[>+<-]>]<<-]<<-
     ]`;
-    brainf(program)?;
+    brainf(program)!;
 }

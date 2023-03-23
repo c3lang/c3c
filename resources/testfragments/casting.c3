@@ -12,9 +12,9 @@ fn void readpgm(char* name, Pixmap* p)
     pnm_readpaminit(fp, &inpam);
     p.x = inpam.width;
     p.y = inpam.height;
-    if (!(p.p = malloc(@safe(p.x + p.y)))
+    if (!(p.p = malloc(@safe(p.x + p.y))))
     {
-        @F1("Error at malloc");
+        @f1("Error at malloc");
     }
     for (int i = 0; i < inpam.height; i++)
     {
@@ -24,7 +24,7 @@ fn void readpgm(char* name, Pixmap* p)
             {
                 p.p[@nowrap(i * inpam.width + j)] = sample;
             }
-        }
+        };
     }
 }
 

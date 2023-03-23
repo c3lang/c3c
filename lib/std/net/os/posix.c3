@@ -19,8 +19,8 @@ macro void! NativeSocket.close(NativeSocket this)
 {
 	if (close(this))
 	{
-		if (libc::errno() == errno::EBADF) return NetError.INVALID_SOCKET!;
-		return NetError.GENERAL_ERROR!;
+		if (libc::errno() == errno::EBADF) return NetError.INVALID_SOCKET?;
+		return NetError.GENERAL_ERROR?;
 	}
 }
 
@@ -29,8 +29,8 @@ macro void! NativeSocket.set_non_blocking(NativeSocket this)
 	int flags = fcntl(this, F_GETFL, 0);
     if (fcntl(this, F_SETFL, flags | O_NONBLOCK) == -1)
 	{
-		if (libc::errno() == errno::EBADF) return NetError.INVALID_SOCKET!;
-		return NetError.GENERAL_ERROR!;
+		if (libc::errno() == errno::EBADF) return NetError.INVALID_SOCKET?;
+		return NetError.GENERAL_ERROR?;
 	}
 }
 

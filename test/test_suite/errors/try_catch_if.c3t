@@ -20,7 +20,7 @@ fault Foo
 fn void test1()
 {
     int! a = 123;
-    if (catch err = (a, tester()))
+    if (catch err = a, tester())
     {
         printf("Err\n");
     }

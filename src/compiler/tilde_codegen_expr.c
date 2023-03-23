@@ -148,13 +148,13 @@ static void tilde_emit_const_expr(TildeContext *c, TBEValue *value, Expr *expr)
 			LLVMValueRef value;
 			if (decl)
 			{
-				value = LLVMBuildPtrToInt(c->builder, llvm_get_ref(c, decl), llvm_get_type(c, type_anyerr), "");
+				value = LLVMBuildPtrToInt(c->builder, llvm_get_ref(c, decl), llvm_get_type(c, type_anyfault), "");
 			}
 			else
 			{
-				value = llvm_get_zero(c, type_anyerr);
+				value = llvm_get_zero(c, type_anyfault);
 			}
-			llvm_value_set(be_value, value, type_anyerr);*/
+			llvm_value_set(be_value, value, type_anyfault);*/
 			return;
 		}
 		case CONST_ENUM:
@@ -536,7 +536,7 @@ void tilde_emit_raw_call(TildeContext *c, TBEValue *result_value, FunctionProtot
 		TBEValue error_holder = *result_value;
 		if (error_var)
 		{
-			value_set_address_abi_aligned(&error_holder, c->opt_var, type_anyerr);
+			value_set_address_abi_aligned(&error_holder, c->opt_var, type_anyfault);
 		}
 
 		TB_Reg stored_error;
@@ -910,7 +910,7 @@ TBEValue tilde_emit_assign_expr(TildeContext *c, TBEValue *ref, Expr *expr, TB_R
 
 	if (optional)
 	{
-		tilde_store_to_ptr_raw(c, optional, tilde_get_zero(c, type_anyerr), type_anyerr);
+		tilde_store_to_ptr_raw(c, optional, tilde_get_zero(c, type_anyfault), type_anyfault);
 	}
 	POP_OPT();
 
@@ -920,8 +920,8 @@ TBEValue tilde_emit_assign_expr(TildeContext *c, TBEValue *ref, Expr *expr, TB_R
 		if (rejump_block)
 		{
 			tilde_emit_block(c, rejump_block);
-			TB_Reg error = tilde_load_abi_alignment(c, type_anyerr, optional);
-			tilde_store_to_ptr_raw(c, c->opt_var, error, type_anyerr);
+			TB_Reg error = tilde_load_abi_alignment(c, type_anyfault, optional);
+			tilde_store_to_ptr_raw(c, c->opt_var, error, type_anyfault);
 			tb_inst_goto(c->f, c->catch_block);
 		}
 		tilde_emit_block(c, assign_block);
@@ -1567,7 +1567,7 @@ void tilde_emit_cast(TildeContext *c, CastKind cast_kind, Expr *expr, TBEValue *
 		case CAST_EUBOOL:
 		{
 			BEValue zero;
-			llvm_value_set_int(c, &zero, type_anyerr, 0);
+			llvm_value_set_int(c, &zero, type_anyfault, 0);
 			llvm_emit_int_comp(c, value, value, &zero, BINARYOP_NE);
 			break;
 		}

@@ -9,32 +9,32 @@ fn void blurb() { io::printn("Blurb");}
 macro int! tester()
 {
 	defer blurb();
-	return Foo.ABC!;
+	return Foo.ABC?;
 }
 fn void! test(int x)
 {
 	io::printfn("test(%d)", x);
-	if (x || (tester()?)) io::printn("Ok1");
+	if (x || (tester()!)) io::printn("Ok1");
 	io::printn("Test next");
-	if (tester()? || x) io::printn("Ok?");
+	if (tester()! || x) io::printn("Ok?");
 	io::printn("Test ok");
 }
 
 fn void! test2(int x)
 {
 	io::printfn("test2(%d)", x);
-	if (x && (tester()?)) io::printn("Ok1");
+	if (x && (tester()!)) io::printn("Ok1");
 	io::printn("Test next");
-	if ((tester()?) && x) io::printn("Ok?");
+	if ((tester()!) && x) io::printn("Ok?");
 	io::printn("Test ok");
 }
 
 fn void main()
 {
-	anyerr a = test(0);
-	anyerr b = test(1);
-	anyerr c = test2(0);
-	anyerr d = test2(1);
+	anyfault a = test(0);
+	anyfault b = test(1);
+	anyfault c = test2(0);
+	anyfault d = test2(1);
 }
 
 /* #expect: foo.ll
@@ -42,7 +42,7 @@ fn void main()
 define i64 @foo.test(i32 %0) #0 {
 entry:
   %retparam = alloca i64, align 8
-  %varargslots = alloca [1 x %variant], align 16
+  %varargslots = alloca [1 x %any], align 16
   %taddr = alloca i32, align 4
   %error_var = alloca i64, align 8
   %blockret = alloca i32, align 4
@@ -62,10 +62,10 @@ entry:
   %result20 = alloca %File, align 8
   %reterr = alloca i64, align 8
   store i32 %0, ptr %taddr, align 4
-  %1 = insertvalue %variant undef, ptr %taddr, 0
-  %2 = insertvalue %variant %1, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  %3 = getelementptr inbounds [1 x %variant], ptr %varargslots, i64 0, i64 0
-  store %variant %2, ptr %3, align 16
+  %1 = insertvalue %any undef, ptr %taddr, 0
+  %2 = insertvalue %any %1, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  %3 = getelementptr inbounds [1 x %any], ptr %varargslots, i64 0, i64 0
+  store %any %2, ptr %3, align 16
   %4 = call i64 @std.io.printfn(ptr %retparam, ptr @.str.1, i64 8, ptr %varargslots, i64 1)
   %intbool = icmp ne i32 %0, 0
   br i1 %intbool, label %or.phi, label %or.rhs
@@ -135,7 +135,7 @@ if.exit17:                                        ; No predecessors!
 define i64 @foo.test2(i32 %0) #0 {
 entry:
   %retparam = alloca i64, align 8
-  %varargslots = alloca [1 x %variant], align 16
+  %varargslots = alloca [1 x %any], align 16
   %taddr = alloca i32, align 4
   %error_var = alloca i64, align 8
   %blockret = alloca i32, align 4
@@ -149,10 +149,10 @@ entry:
   %result9 = alloca %File, align 8
   %reterr = alloca i64, align 8
   store i32 %0, ptr %taddr, align 4
-  %1 = insertvalue %variant undef, ptr %taddr, 0
-  %2 = insertvalue %variant %1, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  %3 = getelementptr inbounds [1 x %variant], ptr %varargslots, i64 0, i64 0
-  store %variant %2, ptr %3, align 16
+  %1 = insertvalue %any undef, ptr %taddr, 0
+  %2 = insertvalue %any %1, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  %3 = getelementptr inbounds [1 x %any], ptr %varargslots, i64 0, i64 0
+  store %any %2, ptr %3, align 16
   %4 = call i64 @std.io.printfn(ptr %retparam, ptr @.str.6, i64 9, ptr %varargslots, i64 1)
   %intbool = icmp ne i32 %0, 0
   br i1 %intbool, label %and.rhs, label %and.phi

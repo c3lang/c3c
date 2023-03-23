@@ -2,7 +2,7 @@ module string_test;
 
 fn void! test_clear() @test
 {
-	DynString s = string::new_with_capacity(32);
+	DString s = dstring::new_with_capacity(32);
 	assert(s.len() == 0);
 	assert(s.capacity() == 32);
 	s.append_repeat('x', 63);

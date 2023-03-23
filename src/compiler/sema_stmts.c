@@ -23,6 +23,7 @@ static inline bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *stateme
 static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement);
 static inline bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement);
 
+static inline bool sema_return_optional_check_is_valid_in_scope(SemaContext *context, Expr *ret_expr);
 static inline bool sema_defer_by_result(AstId defer_top, AstId defer_bottom);
 static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *statement);
 static inline bool sema_analyse_defer_stmt_body(SemaContext *context, Ast *statement, Ast *body);
@@ -43,12 +44,12 @@ static inline bool sema_analyse_catch_unwrap(SemaContext *context, Expr *expr);
 static inline bool sema_analyse_compound_statement_no_scope(SemaContext *context, Ast *compound_statement);
 static inline bool sema_check_type_case(SemaContext *context, Type *switch_type, Ast *case_stmt, Ast **cases, unsigned index);
 static inline bool sema_check_value_case(SemaContext *context, Type *switch_type, Ast *case_stmt, Ast **cases, unsigned index, bool *if_chained, bool *max_ranged);
-static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, SourceSpan expr_span, Type *switch_type, Ast **cases, ExprVariantSwitch *variant, Decl *var_holder);
+static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, SourceSpan expr_span, Type *switch_type, Ast **cases, ExprAnySwitch *any_switch, Decl *var_holder);
 
 static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *statement);
 static bool sema_analyse_require(SemaContext *context, Ast *directive, AstId **asserts);
 static bool sema_analyse_ensure(SemaContext *context, Ast *directive);
-static bool sema_analyse_errors(SemaContext *context, Ast *directive);
+static bool sema_analyse_optional_returns(SemaContext *context, Ast *directive);
 
 static inline bool sema_analyse_asm_stmt(SemaContext *context, Ast *stmt)
 {
@@ -341,6 +342,25 @@ static inline void sema_inline_return_defers(SemaContext *context, Ast *stmt, As
 	}
 }
 
+static inline bool sema_return_optional_check_is_valid_in_scope(SemaContext *context, Expr *ret_expr)
+{
+	if (!IS_OPTIONAL(ret_expr) || !context->call_env.opt_returns) return true;
+	if (ret_expr->expr_kind != EXPR_OPTIONAL) return true;
+	Expr *inner = ret_expr->inner_expr;
+	if (!expr_is_const(inner)) return true;
+	assert(ret_expr->inner_expr->const_expr.const_kind == CONST_ERR);
+	Decl *fault = ret_expr->inner_expr->const_expr.enum_err_val;
+	FOREACH_BEGIN(Decl *opt, context->call_env.opt_returns)
+		if (opt->decl_kind == DECL_FAULT)
+		{
+			if (fault->type->decl == opt) return true;
+			continue;
+		}
+		if (opt == fault) return true;
+	FOREACH_END();
+	SEMA_ERROR(ret_expr, "This value does not match declared optional returns, it needs to be declared with the other optional returns.");
+	return false;
+}
 /**
  * Handle exit in a macro or in an expression block.
  * @param context
@@ -353,16 +373,20 @@ static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *state
 	statement->ast_kind = AST_BLOCK_EXIT_STMT;
 	context->active_scope.jump_end = true;
 	Type *block_type = context->expected_block_type;
-	if (statement->return_stmt.expr)
+	Expr *ret_expr = statement->return_stmt.expr;
+	if (ret_expr)
 	{
 		if (block_type)
 		{
-			if (!sema_analyse_expr_rhs(context, block_type, statement->return_stmt.expr, type_is_optional(block_type))) return false;
+			if (!sema_analyse_expr_rhs(context, block_type, ret_expr, type_is_optional(block_type))) return false;
 		}
 		else
 		{
-			if (!sema_analyse_expr(context, statement->return_stmt.expr)) return false;
+			if (!sema_analyse_expr(context, ret_expr)) return false;
 		}
+		if ((context->active_scope.flags & SCOPE_MACRO)
+			&& !sema_return_optional_check_is_valid_in_scope(context, ret_expr)) return false;
+
 	}
 	else
 	{
@@ -455,6 +479,7 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 	{
 		if (!sema_analyse_expr_rhs(context, expected_rtype, return_expr, type_is_optional(expected_rtype))) return false;
 		if (!sema_check_not_stack_variable_escape(context, return_expr)) return false;
+		if (!sema_return_optional_check_is_valid_in_scope(context, return_expr)) return false;
 	}
 	else
 	{
@@ -706,9 +731,9 @@ static inline bool sema_analyse_catch_unwrap(SemaContext *context, Expr *expr)
 
 		if (!sema_expr_check_assign(context, ident)) return false;
 
-		if (ident->type->canonical != type_anyerr)
+		if (ident->type->canonical != type_anyfault)
 		{
-			SEMA_ERROR(ident, "Expected the variable to have the type %s, not %s.", type_quoted_error_string(type_anyerr),
+			SEMA_ERROR(ident, "Expected the variable to have the type %s, not %s.", type_quoted_error_string(type_anyfault),
 			           type_quoted_error_string(ident->type));
 			return false;
 		}
@@ -718,13 +743,13 @@ static inline bool sema_analyse_catch_unwrap(SemaContext *context, Expr *expr)
 	}
 	else
 	{
-		type = type ? type : type_info_new_base(type_anyerr, expr->span);
+		type = type ? type : type_info_new_base(type_anyfault, expr->span);
 
 		if (!sema_resolve_type_info(context, type)) return false;
 
-		if (type->type->canonical != type_anyerr)
+		if (type->type->canonical != type_anyfault)
 		{
-			SEMA_ERROR(type, "Expected the type to be %s, not %s.", type_quoted_error_string(type_anyerr),
+			SEMA_ERROR(type, "Expected the type to be %s, not %s.", type_quoted_error_string(type_anyfault),
 			           type_quoted_error_string(type->type));
 			return false;
 		}
@@ -769,7 +794,7 @@ RESOLVE_EXPRS:;
 			return false;
 		}
 	}
-	expr->type = type_anyerr;
+	expr->type = type_anyfault;
 	expr->resolve_status = RESOLVE_DONE;
 	return true;
 }
@@ -810,7 +835,7 @@ static inline bool sema_analyse_last_cond(SemaContext *context, Expr *expr, Cond
 		case EXPR_CATCH_UNWRAP:
 			if (cond_type != COND_TYPE_UNWRAP_BOOL && cond_type != COND_TYPE_UNWRAP)
 			{
-				SEMA_ERROR(expr, "Catch unwrapping is only allowed inside of a 'while' or 'if' conditional, maybe catch? <expr> will do what you need?");
+				SEMA_ERROR(expr, "Catch unwrapping is only allowed inside of a 'while' or 'if' conditional, maybe '@catchof(<expr>)' will do what you need?");
 				return false;
 			}
 			return sema_analyse_catch_unwrap(context, expr);
@@ -824,12 +849,12 @@ static inline bool sema_analyse_last_cond(SemaContext *context, Expr *expr, Cond
 	// Case 1: switch (var = variant_expr)
 	if (expr->expr_kind == EXPR_BINARY && expr->binary_expr.operator == BINARYOP_ASSIGN)
 	{
-		// No variable on the lhs? Then it can't be a variant unwrap.
+		// No variable on the lhs? Then it can't be an any unwrap.
 		Expr *left = exprptr(expr->binary_expr.left);
 		if (left->resolve_status ==  RESOLVE_DONE || left->expr_kind != EXPR_IDENTIFIER || left->identifier_expr.path) goto NORMAL_EXPR;
 
 		// Does the identifier exist in the parent scope?
-		// then again it can't be a variant unwrap.
+		// then again it can't be an any unwrap.
 		if (sema_symbol_is_defined_in_scope(context, left->identifier_expr.ident)) goto NORMAL_EXPR;
 
 		Expr *right = exprptr(expr->binary_expr.right);
@@ -844,12 +869,12 @@ static inline bool sema_analyse_last_cond(SemaContext *context, Expr *expr, Cond
 		}
 		if (right->type != type_any) goto NORMAL_EXPR;
 		// Found an expansion here
-		expr->expr_kind = EXPR_VARIANTSWITCH;
-		expr->variant_switch.new_ident = left->identifier_expr.ident;
-		expr->variant_switch.span = left->span;
-		expr->variant_switch.variant_expr = right;
-		expr->variant_switch.is_deref = is_deref;
-		expr->variant_switch.is_assign = true;
+		expr->expr_kind = EXPR_ANYSWITCH;
+		expr->any_switch.new_ident = left->identifier_expr.ident;
+		expr->any_switch.span = left->span;
+		expr->any_switch.any_expr = right;
+		expr->any_switch.is_deref = is_deref;
+		expr->any_switch.is_assign = true;
 		expr->resolve_status = RESOLVE_DONE;
 		expr->type = type_typeid;
 		return true;
@@ -859,10 +884,10 @@ static inline bool sema_analyse_last_cond(SemaContext *context, Expr *expr, Cond
 	if (expr->expr_kind == EXPR_IDENTIFIER)
 	{
 		Decl *decl = expr->identifier_expr.decl;
-		expr->expr_kind = EXPR_VARIANTSWITCH;
-		expr->variant_switch.is_deref = false;
-		expr->variant_switch.is_assign = false;
-		expr->variant_switch.variable = decl;
+		expr->expr_kind = EXPR_ANYSWITCH;
+		expr->any_switch.is_deref = false;
+		expr->any_switch.is_assign = false;
+		expr->any_switch.variable = decl;
 		expr->type = type_typeid;
 		expr->resolve_status = RESOLVE_DONE;
 		return true;
@@ -971,17 +996,8 @@ static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType 
 	{
 		if (type_no_optional(last->type) == type_void && cast_to_bool)
 		{
-			Expr *catch = expr_new_expr(EXPR_CATCH, last);
-			catch->expr_kind = EXPR_CATCH;
-			catch->inner_expr = expr_copy(last);
-			catch->type = type_anyerr;
-			catch->resolve_status = RESOLVE_DONE;
-			catch->inner_expr->resolve_status = RESOLVE_DONE;
-			last->expr_kind = EXPR_UNARY;
-			last->unary_expr.operator = UNARYOP_NOT;
-			last->unary_expr.expr = catch;
-			last->type = type_bool;
-			return true;
+			SEMA_ERROR(last, "Use '@ok(<expr>)' or '@catchof(<expr>)' to explicitly convert a 'void!' to a boolean.");
+			return false;
 		}
 		SEMA_ERROR(last, "The expression may not be an optional, but was %s.", type_quoted_error_string(last->type));
 		return false;
@@ -1205,6 +1221,12 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 	return success;
 }
 
+/**
+ * foreach_stmt ::= foreach
+ * @param context
+ * @param statement
+ * @return
+ */
 static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statement)
 {
 	// Pull out the relevant data.
@@ -1678,7 +1700,7 @@ static bool sema_analyse_asm_string_stmt(SemaContext *context, Ast *stmt)
  */
 static inline Decl *sema_analyse_label(SemaContext *context, Ast *stmt)
 {
-	Label *label = stmt->ast_kind == AST_NEXT_STMT ? &stmt->nextcase_stmt.label : &stmt->contbreak_stmt.label;
+	Label *label = stmt->ast_kind == AST_NEXTCASE_STMT ? &stmt->nextcase_stmt.label : &stmt->contbreak_stmt.label;
 	const char *name = label->name;
 	Decl *target = sema_find_label_symbol(context, name);
 	if (!target)
@@ -1696,7 +1718,7 @@ static inline Decl *sema_analyse_label(SemaContext *context, Ast *stmt)
 					case AST_CONTINUE_STMT:
 						SEMA_ERROR(stmt, "You cannot use continue out of an expression block.");
 						return poisoned_decl;
-					case AST_NEXT_STMT:
+					case AST_NEXTCASE_STMT:
 						SEMA_ERROR(stmt, "You cannot use nextcase to exit an expression block.");
 						return poisoned_decl;
 					default:
@@ -1713,7 +1735,7 @@ static inline Decl *sema_analyse_label(SemaContext *context, Ast *stmt)
 					case AST_CONTINUE_STMT:
 						SEMA_ERROR(stmt, "You cannot use continue out of a defer.");
 						return poisoned_decl;
-					case AST_NEXT_STMT:
+					case AST_NEXTCASE_STMT:
 						SEMA_ERROR(stmt, "You cannot use nextcase out of a defer.");
 						return poisoned_decl;
 					default:
@@ -1743,7 +1765,7 @@ static inline Decl *sema_analyse_label(SemaContext *context, Ast *stmt)
 				case AST_CONTINUE_STMT:
 					SEMA_ERROR(stmt, "You cannot use continue out of a defer.");
 					return poisoned_decl;
-				case AST_NEXT_STMT:
+				case AST_NEXTCASE_STMT:
 					SEMA_ERROR(stmt, "You cannot use nextcase out of a defer.");
 					return poisoned_decl;
 				default:
@@ -1853,7 +1875,7 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 
 	Expr *target = statement->nextcase_stmt.expr;
 
-	Type *expected_type = parent->ast_kind == AST_SWITCH_STMT ? cond->type : type_anyerr;
+	Type *expected_type = parent->ast_kind == AST_SWITCH_STMT ? cond->type : type_anyfault;
 
 	if (!sema_analyse_expr_rhs(context, expected_type, target, false)) return false;
 
@@ -2071,7 +2093,7 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 	return true;
 }
 
-static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, SourceSpan expr_span, Type *switch_type, Ast **cases, ExprVariantSwitch *variant, Decl *var_holder)
+static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, SourceSpan expr_span, Type *switch_type, Ast **cases, ExprAnySwitch *any_switch, Decl *var_holder)
 {
 	bool use_type_id = false;
 	if (!type_is_comparable(switch_type))
@@ -2144,16 +2166,16 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 			Ast *body = stmt->case_stmt.body;
 			if (stmt->ast_kind == AST_CASE_STMT && body && type_switch && var_holder && stmt->case_stmt.expr->expr_kind == EXPR_CONST)
 			{
-				if (variant->is_assign)
+				if (any_switch->is_assign)
 				{
 					Type *real_type = type_get_ptr(stmt->case_stmt.expr->const_expr.typeid);
-					Decl *new_var = decl_new_var(variant->new_ident, variant->span,
-												 type_info_new_base(variant->is_deref
-					                             ? real_type->pointer : real_type, variant->span),
+					Decl *new_var = decl_new_var(any_switch->new_ident, any_switch->span,
+					                             type_info_new_base(any_switch->is_deref
+					                             ? real_type->pointer : real_type, any_switch->span),
 					                             VARDECL_LOCAL);
 					Expr *var_result = expr_variable(var_holder);
 					if (!cast(var_result, real_type)) return false;
-					if (variant->is_deref)
+					if (any_switch->is_deref)
 					{
 						expr_rewrite_insert_deref(var_result);
 					}
@@ -2441,35 +2463,33 @@ static inline bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement
 
 	SCOPE_START_WITH_LABEL(statement->switch_stmt.flow.label);
 
-		Expr *cond = exprptr(statement->switch_stmt.cond);
+		Expr *cond = exprptrzero(statement->switch_stmt.cond);
 		Type *switch_type;
 
-		ExprVariantSwitch var_switch;
-		Decl *variant_decl = NULL;
+		ExprAnySwitch var_switch;
+		Decl *any_decl = NULL;
 		if (statement->ast_kind == AST_SWITCH_STMT)
 		{
-			if (!sema_analyse_cond(context, cond, COND_TYPE_EVALTYPE_VALUE)) return false;
-			Expr *last = VECLAST(cond->cond_expr);
-			switch_type = last->type->canonical;
-			if (last->expr_kind == EXPR_VARIANTSWITCH)
+			if (cond && !sema_analyse_cond(context, cond, COND_TYPE_EVALTYPE_VALUE)) return false;
+			Expr *last = cond ? VECLAST(cond->cond_expr) : NULL;
+			switch_type = last ? last->type->canonical : type_bool;
+			if (last && last->expr_kind == EXPR_ANYSWITCH)
 			{
-				var_switch = last->variant_switch;
-
-
+				var_switch = last->any_switch;
 				Expr *inner;
 				if (var_switch.is_assign)
 				{
 					inner = expr_new(EXPR_DECL, last->span);
-					variant_decl = decl_new_generated_var(type_any, VARDECL_LOCAL, last->span);
-					variant_decl->var.init_expr = var_switch.variant_expr;
-					inner->decl_expr = variant_decl;
+					any_decl = decl_new_generated_var(type_any, VARDECL_LOCAL, last->span);
+					any_decl->var.init_expr = var_switch.any_expr;
+					inner->decl_expr = any_decl;
 					if (!sema_analyse_expr(context, inner)) return false;
 				}
 				else
 				{
 					inner = expr_new(EXPR_IDENTIFIER, last->span);
-					variant_decl = var_switch.variable;
-					inner->identifier_expr.decl = variant_decl;
+					any_decl = var_switch.variable;
+					inner->identifier_expr.decl = any_decl;
 					inner->type = type_any;
 					inner->resolve_status = RESOLVE_DONE;
 				}
@@ -2481,13 +2501,13 @@ static inline bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement
 		}
 		else
 		{
-			switch_type = type_anyerr;
+			switch_type = type_anyfault;
 		}
 
 		statement->switch_stmt.defer = context->active_scope.defer_last;
 		if (!sema_analyse_switch_body(context, statement, cond ? cond->span : statement->span,
 		                              switch_type->canonical,
-		                              statement->switch_stmt.cases, variant_decl ? &var_switch : NULL, variant_decl))
+		                              statement->switch_stmt.cases, any_decl ? &var_switch : NULL, any_decl))
 		{
 			return SCOPE_POP_ERROR();
 		}
@@ -2696,6 +2716,7 @@ static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *state
 		case AST_IF_CATCH_SWITCH_STMT:
 		case AST_CONTRACT:
 		case AST_ASM_STMT:
+		case AST_CONTRACT_FAULT:
 			UNREACHABLE
 		case AST_DECLS_STMT:
 			return sema_analyse_decls_stmt(context, statement);
@@ -2741,7 +2762,7 @@ static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *state
 			return sema_analyse_return_stmt(context, statement);
 		case AST_SWITCH_STMT:
 			return sema_analyse_switch_stmt(context, statement);
-		case AST_NEXT_STMT:
+		case AST_NEXTCASE_STMT:
 			return sema_analyse_nextcase_stmt(context, statement);
 		case AST_CT_SWITCH_STMT:
 			return sema_analyse_ct_switch_stmt(context, statement);
@@ -2786,28 +2807,22 @@ static bool sema_analyse_ensure(SemaContext *context, Ast *directive)
 	return true;
 }
 
-static bool sema_analyse_errors(SemaContext *context, Ast *directive)
+static bool sema_analyse_optional_returns(SemaContext *context, Ast *directive)
 {
-	DocOptReturn *returns = directive->contract.optreturns;
-	VECEACH(returns, i)
-	{
-		TypeInfo *type_info = returns[i].type;
-		const char *ident = returns[i].ident;
-		if (type_info->kind != TYPE_INFO_IDENTIFIER)
-		{
-			SEMA_ERROR(type_info, "Expected a fault name here.");
-			return false;
-		}
+	Ast **returns = NULL;
+	context->call_env.opt_returns = NULL;
+	FOREACH_BEGIN(Ast *ret, directive->contract.faults)
+		if (ret->contract_fault.resolved) continue;
+		TypeInfo *type_info = ret->contract_fault.type;
+		const char *ident = ret->contract_fault.ident;
+		if (type_info->kind != TYPE_INFO_IDENTIFIER) RETURN_SEMA_ERROR(type_info, "Expected a fault name here.");
 		if (!sema_resolve_type_info(context, type_info)) return false;
 		Type *type = type_info->type;
-		if (type->type_kind != TYPE_FAULTTYPE)
-		{
-			SEMA_ERROR(type_info, "A fault type is required.");
-			return false;
-		}
+		if (type->type_kind != TYPE_FAULTTYPE) RETURN_SEMA_ERROR(type_info, "A fault type is required.");
 		if (!ident)
 		{
-			returns[i].decl = type->decl;
+			ret->contract_fault.decl = type->decl;
+			ret->contract_fault.resolved = true;
 			goto NEXT;
 		}
 		Decl *decl = type->decl;
@@ -2817,14 +2832,15 @@ static bool sema_analyse_errors(SemaContext *context, Ast *directive)
 			Decl *opt_value = enums[j];
 			if (opt_value->name == ident)
 			{
-				returns[i].decl = opt_value;
+				ret->contract_fault.decl = opt_value;
+				ret->contract_fault.resolved = true;
 				goto NEXT;
 			}
 		}
-		sema_error_at(returns[i].span, "No fault value '%s' found.", ident);
-		return false;
+		RETURN_SEMA_ERROR(ret, "No fault value '%s' found.", ident);
 NEXT:;
-	}
+		vec_add(context->call_env.opt_returns, ret->contract_fault.decl);
+	FOREACH_END();
 	return true;
 }
 
@@ -2882,8 +2898,8 @@ bool sema_analyse_contracts(SemaContext *context, AstId doc, AstId **asserts, So
 				break;
 			case CONTRACT_PARAM:
 				break;
-			case CONTRACT_ERRORS:
-				if (!sema_analyse_errors(context, directive)) return false;
+			case CONTRACT_OPTIONALS:
+				if (!sema_analyse_optional_returns(context, directive)) return false;
 				break;
 			case CONTRACT_ENSURE:
 				if (!sema_analyse_ensure(context, directive)) return false;

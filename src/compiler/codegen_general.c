@@ -2,7 +2,6 @@
 
 
 const char *test_fns_var_name = "__$C3_TEST_FN_LIST";
-const char *test_count_var_name = "__$C3_TEST_COUNT";
 const char *test_names_var_name = "__$C3_TEST_NAMES_LIST";
 /**
  * Based on isSingleElementStruct in Clang
@@ -184,13 +183,12 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 		case TYPE_FUNC:
 		case TYPE_SUBARRAY:
 		case CT_TYPES:
-		case TYPE_OPTIONAL_ANY:
 			return false;
 		case TYPE_ANY:
 			*base = type_iptr->canonical;
 			*elements = 2;
 			return true;
-		case TYPE_ANYERR:
+		case TYPE_ANYFAULT:
 		case TYPE_FAULTTYPE:
 			type = type_iptr;
 			goto RETRY;
@@ -238,7 +236,7 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 			}
 			goto TYPECHECK;
 		case TYPE_FLEXIBLE_ARRAY:
-		case TYPE_SCALED_VECTOR:
+			// Same with scaled vectors
 			return false;
 		case TYPE_ARRAY:
 			// Empty arrays? Not homogenous.
