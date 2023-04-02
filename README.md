@@ -116,7 +116,7 @@ fn void test()
 }
 ```
 
-### In what ways do C3 differ from C?
+### In what ways does C3 differ from C?
 
 - No mandatory header files
 - New semantic macro system
