@@ -116,7 +116,7 @@ fn void test()
 }
 ```
 
-### In what ways do C3 differ from C?
+### In what ways does C3 differ from C?
 
 - No mandatory header files
 - New semantic macro system
@@ -138,7 +138,7 @@ fn void test()
 
 The current version of the compiler is alpha release 0.4.
 
-Design work on C3 complete aside from fleshing out details, such as
+Design work on C3 is complete aside from fleshing out details, such as
 inline asm. As the standard library work progresses, changes and improvements
 to the language will happen continuously.
 Follow the issues [here](https://github.com/c3lang/c3c/issues).
