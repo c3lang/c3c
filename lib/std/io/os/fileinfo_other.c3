@@ -109,7 +109,13 @@ $case IOS:
 $case MACOSX:
 $case TVOS:
 $case WATCHOS:
+
+$if (env::ARCH_TYPE == X86_64)
 extern fn NativeDirentry* readdir(void*) @extern("readdir$INODE64");
+$else
+extern fn NativeDirentry* readdir(void*) @extern("readdir");
+$endif
+
 struct NativeDirentry
 {
 	usz ino;
