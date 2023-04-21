@@ -13,10 +13,10 @@ fn void main()
 {
 	var $x = { { 1, 2 } };
 	Foo[1] abc = (Foo[1])$x;
-	Foo def = (Foo)$x[0];
+	Foo defg = (Foo)$x[0];
 	int[2][1] y = (int[2][1])$x;
 	double[2][1] y2 = $x;
-	io::printfn("%s %s {%s, %s}", y, y2, def.a, def.b);
+	io::printfn("%s %s {%s, %s}", y, y2, defg.a, defg.b);
 	test({ 1, 2 }, { 3, 4}, { 5, 6 });
 	var $a = { 2, 7 };
 	test($a, $a, $a);
@@ -78,7 +78,7 @@ entry:
 define void @test.main() #0 {
 entry:
   %abc = alloca [1 x %Foo], align 4
-  %def = alloca %Foo, align 4
+  %defg = alloca %Foo, align 4
   %y = alloca [1 x [2 x i32]], align 4
   %y2 = alloca [1 x [2 x double]], align 16
   %retparam = alloca i64, align 8
@@ -90,7 +90,7 @@ entry:
   %literal3 = alloca [2 x i32], align 4
   %taddr4 = alloca <2 x i32>, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %abc, ptr align 4 @.__const, i32 8, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %def, ptr align 4 @.__const.1, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %defg, ptr align 4 @.__const.1, i32 8, i1 false)
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %y, ptr align 4 @.__const.2, i32 8, i1 false)
   call void @llvm.memcpy.p0.p0.i32(ptr align 16 %y2, ptr align 16 @.__const.3, i32 16, i1 false)
   %0 = insertvalue %any undef, ptr %y, 0
@@ -101,12 +101,12 @@ entry:
   %4 = insertvalue %any %3, i64 ptrtoint (ptr @"$ct.a1$a2$double" to i64), 1
   %5 = getelementptr inbounds [4 x %any], ptr %varargslots, i64 0, i64 1
   store %any %4, ptr %5, align 16
-  %6 = getelementptr inbounds %Foo, ptr %def, i32 0, i32 0
+  %6 = getelementptr inbounds %Foo, ptr %defg, i32 0, i32 0
   %7 = insertvalue %any undef, ptr %6, 0
   %8 = insertvalue %any %7, i64 ptrtoint (ptr @"$ct.int" to i64), 1
   %9 = getelementptr inbounds [4 x %any], ptr %varargslots, i64 0, i64 2
   store %any %8, ptr %9, align 16
-  %10 = getelementptr inbounds %Foo, ptr %def, i32 0, i32 1
+  %10 = getelementptr inbounds %Foo, ptr %defg, i32 0, i32 1
   %11 = insertvalue %any undef, ptr %10, 0
   %12 = insertvalue %any %11, i64 ptrtoint (ptr @"$ct.int" to i64), 1
   %13 = getelementptr inbounds [4 x %any], ptr %varargslots, i64 0, i64 3

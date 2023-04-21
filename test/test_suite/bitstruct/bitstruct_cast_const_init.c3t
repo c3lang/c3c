@@ -3,13 +3,13 @@ module test;
 bitstruct Foo : int
 {
 	int abc : 0..4;
-	int def : 23..26;
+	int defg : 23..26;
 }
 
 fn void main()
 {
 	Foo f;
-	int z = (int) Foo { .abc = 2, .def = 1 };
+	int z = (int) Foo { .abc = 2, .defg = 1 };
 }
 
 /* #expect: test.ll

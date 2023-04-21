@@ -28,7 +28,7 @@ entry:
   store i8 %ternary, ptr %c, align 1
   %2 = load i32, ptr %b, align 4
   %intbool = icmp ne i32 %2, 0
-  %ternary1 = select i1 %intbool, i32 %2, i32 1
-  store i32 %ternary1, ptr %d, align 4
+  %elvis = select i1 %intbool, i32 %2, i32 1
+  store i32 %elvis, ptr %d, align 4
   ret void
 }

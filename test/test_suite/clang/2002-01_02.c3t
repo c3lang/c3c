@@ -81,7 +81,7 @@ fn int test(int x) {
 }
 
 extern fn void abc(int *x);
-fn int def(int y, int z) {
+fn int deff(int y, int z) {
   abc(&z);
   return y;
 }
@@ -234,7 +234,7 @@ entry:
 
 declare void @abc(ptr) #0
 
-define i32 @test.def(i32 %0, i32 %1) #0 {
+define i32 @test.deff(i32 %0, i32 %1) #0 {
 entry:
   %z = alloca i32, align 4
   store i32 %1, ptr %z, align 4

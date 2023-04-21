@@ -17,7 +17,6 @@ static inline void llvm_emit_expression_list_expr(GenContext *c, BEValue *be_val
 static inline void llvm_emit_bitassign_array(GenContext *c, BEValue *result, BEValue parent, Decl *parent_decl, Decl *member);
 static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Expr *expr);
 static inline void llvm_emit_const_initialize_reference(GenContext *c, BEValue *ref, Expr *expr);
-static inline void llvm_emit_elvis_expr(GenContext *c, BEValue *value, Expr *expr);
 static inline void llvm_emit_expr_block(GenContext *context, BEValue *be_value, Expr *expr);
 static inline void llvm_emit_optional(GenContext *c, BEValue *be_value, Expr *expr);
 static inline void llvm_emit_inc_dec_change(GenContext *c, BEValue *addr, BEValue *after, BEValue *before, Expr *expr,
@@ -4238,84 +4237,85 @@ static void llvm_emit_binary_expr(GenContext *c, BEValue *be_value, Expr *expr)
 
 static inline void llvm_emit_elvis_expr(GenContext *c, BEValue *value, Expr *expr)
 {
+	// Set up basic blocks, following Cone
 	LLVMBasicBlockRef phi_block = llvm_basic_block_new(c, "cond.phi");
 	LLVMBasicBlockRef rhs_block = llvm_basic_block_new(c, "cond.rhs");
 
 	// Generate condition and conditional branch
 	Expr *cond = exprptr(expr->ternary_expr.cond);
 	llvm_emit_expr(c, value, cond);
-
-	if (value->type == type_void) return;
-
-	// Get the Rvalue version (in case we have an address)
 	llvm_value_rvalue(c, value);
 
-	LLVMValueRef lhs = value->value;
-	Type *cond_type = cond->type;
+	LLVMValueRef lhs_value = value->value;
 
-	// If the cond is not a boolean, we need to do the cast.
 	if (value->kind != BE_BOOLEAN)
 	{
-		CastKind cast = cast_to_bool_kind(cond_type);
-		llvm_emit_cast(c, cast, cond, value, type_bool, cond_type);
-		assert(value->kind == BE_BOOLEAN);
+		CastKind cast = cast_to_bool_kind(value->type);
+		llvm_emit_cast(c, cast, cond, value, type_bool, value->type);
 	}
 
 	Expr *else_expr = exprptr(expr->ternary_expr.else_expr);
-	if (!IS_OPTIONAL(expr) && expr_is_constant_eval(else_expr, CONSTANT_EVAL_NO_SIDE_EFFECTS))
+	if (!IS_OPTIONAL(expr) && expr_is_const(else_expr))
 	{
 		BEValue right;
 		llvm_emit_expr(c, &right, else_expr);
 		llvm_value_rvalue(c, &right);
-		LLVMValueRef val = LLVMBuildSelect(c->builder, value->value, lhs, right.value, "elvis");
+		LLVMValueRef val = LLVMBuildSelect(c->builder, value->value, lhs_value, right.value, "elvis");
 		llvm_value_set(value, val, right.type);
 		return;
 	}
 
 	LLVMBasicBlockRef lhs_exit = llvm_get_current_block_if_in_use(c);
-	assert(lhs_exit);
+	if (!lhs_exit) return;
+
 	llvm_emit_cond_br(c, value, phi_block, rhs_block);
-
 	llvm_emit_block(c, rhs_block);
-	// Emit right side:
-	llvm_emit_expr(c, value, else_expr);
-	// Lower to value.
-	llvm_value_rvalue(c, value);
-
-	LLVMBasicBlockRef rhs_exit = llvm_get_current_block_if_in_use(c);
-
-	// RHS may be a jump, in that case just emit the "phi" block.
-	if (!rhs_exit)
+	BEValue rhs;
+	llvm_emit_expr(c, &rhs, else_expr);
+	llvm_value_rvalue(c, &rhs);
+	LLVMValueRef rhs_value = rhs.value;
+	if (rhs.type == type_bool && LLVMTypeOf(rhs_value) != c->bool_type)
 	{
-		llvm_emit_block(c, phi_block);
-		return;
+		llvm_emit_trunc_bool(c, rhs_value);
 	}
-
-	llvm_emit_br(c, phi_block);
+	LLVMBasicBlockRef rhs_exit = llvm_get_current_block_if_in_use(c);
+	if (rhs_exit) llvm_emit_br(c, phi_block);
 
 	// Generate phi
 	llvm_emit_block(c, phi_block);
+	if (!rhs_exit)
+	{
+		if (!lhs_value) lhs_value = LLVMGetUndef(llvm_get_type(c, expr->type));
+		llvm_value_set(value, lhs_value, expr->type);
+		return;
+	}
 
-	// If both sides are bool we produce a bool as well.
-	LLVMTypeRef phi_type = expr->type->canonical->type_kind == TYPE_BOOL ? c->bool_type : llvm_get_type(c, expr->type);
-	LLVMValueRef phi = LLVMBuildPhi(c->builder, phi_type, "val");
+	if (!lhs_exit)
+	{
+		if (!rhs_value) rhs_value = LLVMGetUndef(llvm_get_type(c, expr->type));
+		llvm_value_set(value, rhs_value, expr->type);
+		return;
+	}
 
-	LLVMValueRef logic_values[2] = { lhs, value->value };
+	Type *expr_type = type_flatten(expr->type);
+	LLVMTypeRef type = expr_type == type_bool ? c->bool_type : llvm_get_type(c, expr_type);
+	LLVMValueRef phi = LLVMBuildPhi(c->builder, type, "val");
+	LLVMValueRef logic_values[2] = { lhs_value, rhs_value };
 	LLVMBasicBlockRef blocks[2] = { lhs_exit, rhs_exit };
 	LLVMAddIncoming(phi, logic_values, blocks, 2);
-
-	// The rest of value should now be set to the right value.
-	value->value = phi;
+	llvm_value_set(value, phi, expr_type);
 }
 
 void gencontext_emit_ternary_expr(GenContext *c, BEValue *value, Expr *expr)
 {
-	bool is_elvis = !expr->ternary_expr.then_expr;
+	if (!expr->ternary_expr.then_expr) return llvm_emit_elvis_expr(c, value, expr);
 
 	// Set up basic blocks, following Cone
 	LLVMBasicBlockRef phi_block = llvm_basic_block_new(c, "cond.phi");
 	LLVMBasicBlockRef lhs_block = llvm_basic_block_new(c, "cond.lhs");
 	LLVMBasicBlockRef rhs_block = llvm_basic_block_new(c, "cond.rhs");
+
+	bool is_elvis = false;
 
 	// Generate condition and conditional branch
 	Expr *cond = exprptr(expr->ternary_expr.cond);
@@ -4345,8 +4345,8 @@ void gencontext_emit_ternary_expr(GenContext *c, BEValue *value, Expr *expr)
 
 	}
 
-	if (!IS_OPTIONAL(expr) && expr_is_constant_eval(else_expr, CONSTANT_EVAL_NO_SIDE_EFFECTS)
-		&& (is_elvis || expr_is_constant_eval(then_expr, CONSTANT_EVAL_NO_SIDE_EFFECTS)))
+	if (!IS_OPTIONAL(expr) && expr_is_const(else_expr)
+		&& (is_elvis || expr_is_const(then_expr)))
 	{
 		if (!lhs_value)
 		{

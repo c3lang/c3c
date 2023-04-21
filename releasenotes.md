@@ -165,6 +165,7 @@
 - Fix bug initializing nested struct/unions.
 - Fix of bool -> vector cast.
 - Correctly widen C style varargs for distinct types and optionals.
+- Fix of too aggressive codegen in ternary codegen with array indexing.
 
 ## 0.4.0 Change List
 
