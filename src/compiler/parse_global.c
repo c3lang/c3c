@@ -46,6 +46,7 @@ void recover_top_level(ParseContext *c)
 			case TOKEN_EXTERN:
 			case TOKEN_ENUM:
 			case TOKEN_DEFINE:
+			case TOKEN_DEF:
 			case TOKEN_TYPEDEF:
 			case TOKEN_FAULT:
 				return;
@@ -1734,7 +1735,7 @@ static inline void decl_add_type(Decl *decl, TypeKind kind)
  */
 static inline Decl *parse_typedef_declaration(ParseContext *c)
 {
-	advance_and_verify(c, TOKEN_TYPEDEF);
+	if (!try_consume(c, TOKEN_DEF)) advance_and_verify(c, TOKEN_TYPEDEF);
 
 	Decl *decl = decl_new(DECL_POISONED, symstr(c), c->span);
 	DEBUG_LOG("Parse typedef %s", decl->name);
@@ -1846,7 +1847,7 @@ static inline Decl *parse_typedef_declaration(ParseContext *c)
 static inline Decl *parse_define_ident(ParseContext *c)
 {
 	// 1. Store the beginning of the "define".
-	advance_and_verify(c, TOKEN_DEFINE);
+	if (!try_consume(c, TOKEN_DEF)) advance_and_verify(c, TOKEN_DEFINE);
 
 	// 2. At this point we expect an ident or a const token.
 	//    since the Type is handled.
@@ -1937,7 +1938,7 @@ static inline Decl *parse_define_ident(ParseContext *c)
 static inline Decl *parse_define_attribute(ParseContext *c)
 {
 	// 1. Store the beginning of the "define".
-	advance_and_verify(c, TOKEN_DEFINE);
+	if (!try_consume(c, TOKEN_DEF)) advance_and_verify(c, TOKEN_DEFINE);
 
 	Decl *decl = decl_new(DECL_ATTRIBUTE, symstr(c), c->span);
 
@@ -1974,6 +1975,23 @@ static inline Decl *parse_define(ParseContext *c)
 {
 	switch (peek(c))
 	{
+		case TOKEN_AT_TYPE_IDENT:
+			// define @Foo = @inline, @noreturn
+			return parse_define_attribute(c);
+		default:
+			return parse_define_ident(c);
+	}
+}
+
+/**
+ * define_decl ::= DEFINE define_type_body |
+ */
+static inline Decl *parse_def(ParseContext *c)
+{
+	switch (peek(c))
+	{
+		case TOKEN_TYPE_IDENT:
+			return parse_typedef_declaration(c);
 		case TOKEN_AT_TYPE_IDENT:
 			// define @Foo = @inline, @noreturn
 			return parse_define_attribute(c);
@@ -2781,6 +2799,10 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 		case TOKEN_TYPEDEF:
 			if (contracts) goto CONTRACT_NOT_ALLOWED;
 			decl = parse_typedef_declaration(c);
+			break;
+		case TOKEN_DEF:
+			if (contracts) goto CONTRACT_NOT_ALLOWED;
+			decl = parse_def(c);
 			break;
 		case TOKEN_DEFINE:
 			if (contracts) goto CONTRACT_NOT_ALLOWED;

@@ -1303,6 +1303,7 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_FAULT:
 		case TOKEN_UNION:
 		case TOKEN_DEFINE:
+		case TOKEN_DEF:
 		case TOKEN_TYPEDEF:
 		case TOKEN_DOCS_START:
 		case TOKEN_DOCS_END:

@@ -1,12 +1,27 @@
 module test;
 import std::time;
+import std::io;
 
-public macro timeit(#call)
+def foo = write;
+
+def Int = int;
+
+macro @timeit(#call)
 {
-    Time t = time::current();
-    typeof(#call) result = #call;
-    TimeDiff diff = time::current() - t;
-    libc::printf("'%s' took %f ms\n", $stringify(#call), diff * 1000);
+    Clock t = clock::now();
+    var result = #call;
+    io::printfn("'%s' took %d ns", $stringify(#call), t.mark());
     return result;
 }
 
+fn int write()
+{
+	for (int i = 0; i < 1000; i++) io::printf("%d", i);
+	io::printn();
+	return 0;
+}
+
+fn void main()
+{
+	@timeit(write());
+}
