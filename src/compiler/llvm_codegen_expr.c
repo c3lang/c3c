@@ -4308,7 +4308,11 @@ static inline void llvm_emit_elvis_expr(GenContext *c, BEValue *value, Expr *exp
 
 void gencontext_emit_ternary_expr(GenContext *c, BEValue *value, Expr *expr)
 {
-	if (!expr->ternary_expr.then_expr) return llvm_emit_elvis_expr(c, value, expr);
+	if (!expr->ternary_expr.then_expr)
+	{
+		llvm_emit_elvis_expr(c, value, expr);
+		return;
+	}
 
 	// Set up basic blocks, following Cone
 	LLVMBasicBlockRef phi_block = llvm_basic_block_new(c, "cond.phi");
