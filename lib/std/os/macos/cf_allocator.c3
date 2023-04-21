@@ -1,6 +1,6 @@
 module std::os::macos::cf;
 
-$if (env::OS_TYPE == OsType.MACOS)
+$if (env::os_is_darwin())
 
 typedef CFAllocatorRef = distinct void*;
 typedef CFAllocatorContextRef = distinct void*;

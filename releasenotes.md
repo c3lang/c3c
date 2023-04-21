@@ -77,7 +77,7 @@
  
 ### Stdlib changes
 - Stdlib updates to string.
-- Additions to `List`
+- Many additions to `List`: `delete`, `array_view`, `add_all`, `compact` etc
 - Added dstringwriter.
 - Improved printf formatting.
 - is_finite/is_nam/is_inf added.

@@ -59,7 +59,7 @@ extern fn int rand();
 extern fn void srand(uint seed);
 
 extern fn void longjmp(JmpBuf* buffer, CInt value);
-$if (env::OS_TYPE == OsType.WIN32)
+$if (env::os_is_win32())
 // TODO win32 aarch64
 extern fn CInt _setjmp(void* frameptr, JmpBuf* buffer);
 macro CInt setjmp(JmpBuf* buffer) => _setjmp($$frameaddress(), buffer);
@@ -152,7 +152,7 @@ typedef Fpos = long;
 typedef CFile = void*;
 
 $switch
-$case env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == OsType.LINUX:
+$case env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == LINUX:
     extern CFile __stdin @extern("stdin");
     extern CFile __stdout @extern("stdout");
     extern CFile __stderr @extern("stderr");
@@ -162,7 +162,7 @@ $case env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == OsType.LINUX:
     macro CFile stdin() { return __stdin; }
     macro CFile stdout() { return __stdout; }
     macro CFile stderr() { return __stderr; }
-$case env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == OsType.MACOS:
+$case env::COMPILER_LIBC_AVAILABLE && env::os_is_darwin():
     extern CFile __stdinp;
     extern CFile __stdoutp;
     extern CFile __stderrp;
@@ -171,7 +171,7 @@ $case env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == OsType.MACOS:
 	macro CFile stdin() { return __stdinp; }
     macro CFile stdout() { return __stdoutp; }
     macro CFile stderr() { return __stderrp; }
-$case env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == OsType.WIN32:
+$case env::COMPILER_LIBC_AVAILABLE && env::os_is_win32():
     extern fn CFile __acrt_iob_func(CInt c);
     extern fn usz _msize(void* ptr);
     macro usz malloc_size(void* ptr) { return _msize(ptr); }
@@ -185,9 +185,9 @@ $default:
 $endswitch
 
 const HAS_MALLOC_SIZE =
-	env::OS_TYPE == OsType.LINUX
-	|| env::OS_TYPE == OsType.WIN32
-	|| env::OS_TYPE == OsType.MACOS;
+	env::OS_TYPE == LINUX
+	|| env::os_is_win32()
+	|| env::os_is_darwin();
 
 // The following needs to be set per arch+os
 // For now I have simply pulled the defaults from MacOS

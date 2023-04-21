@@ -3,7 +3,7 @@ module std::core::array;
 /**
  * @param [in] array
  * @param [in] element
- * @return "the index of the element"
+ * @return "the first index of the element"
  * @return! SearchResult.MISSING
  **/
 macro index_of(array, element)
@@ -16,10 +16,26 @@ macro index_of(array, element)
 }
 
 /**
+ * @param [in] array
+ * @param [in] element
+ * @return "the last index of the element"
+ * @return! SearchResult.MISSING
+ **/
+macro rindex_of(array, element)
+{
+	foreach_r (i, &e : array)
+	{
+		if (*e == element) return i;
+	}
+	return SearchResult.MISSING?;
+}
+
+/**
  * Concatenate two arrays or subarrays, returning a subarray containing the concatenation of them.
  *
  * @param [in] arr1
  * @param [in] arr2
+ * @param [&inout] using "The allocator to use, default is the heap allocator"
  * @require @typekind(arr1) == SUBARRAY || @typekind(arr1) == ARRAY
  * @require @typekind(arr2) == SUBARRAY || @typekind(arr2) == ARRAY
  * @require @typeis(arr1[0], $typeof(arr2[0])) "Arrays must have the same type"
@@ -40,4 +56,15 @@ macro concat(arr1, arr2, Allocator* using = mem::heap())
 	return result;
 }
 
+/**
+ * Concatenate two arrays or subarrays, returning a subarray containing the concatenation of them,
+ * allocated using the temp allocator.
+ *
+ * @param [in] arr1
+ * @param [in] arr2
+ * @require @typekind(arr1) == SUBARRAY || @typekind(arr1) == ARRAY
+ * @require @typekind(arr2) == SUBARRAY || @typekind(arr2) == ARRAY
+ * @require @typeis(arr1[0], $typeof(arr2[0])) "Arrays must have the same type"
+ * @ensure result.len == arr1.len + arr2.len
+ **/
 macro tconcat(arr1, arr2) => concat(arr1, arr2, mem::temp());

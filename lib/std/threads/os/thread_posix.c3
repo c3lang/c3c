@@ -14,7 +14,7 @@ typedef NativeOnceFlag = PthreadOnce;
 
 typedef Pthread = distinct void*;
 
-$if (env::OS_TYPE == OsType.LINUX)
+$if (env::OS_TYPE == LINUX)
 typedef PthreadMutex = distinct ulong[5];
 typedef PthreadAttribute = distinct ulong[7];
 typedef PthreadMutexAttribute = distinct uint;

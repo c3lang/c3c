@@ -157,7 +157,7 @@ static inline Expr *sema_ct_checks_exprlist_compiles(SemaContext *context, Expr 
 static inline bool sema_cast_ct_ident_rvalue(SemaContext *context, Expr *expr);
 static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *expr, Expr *typeid, const char *kw);
 static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr, Type *type, TypeProperty property,
-                                               AlignSize alignment, AlignSize offset);
+                                               Type *parent_type);
 static bool sema_expr_rewrite_typeid_call(Expr *expr, Expr *typeid, TypeIdInfoKind kind, Type *result_type);
 static inline void sema_expr_rewrite_typeid_kind(Expr *expr, Expr *parent);
 static inline void sema_expr_replace_with_enum_array(Expr *enum_array_expr, Decl *enum_decl);
@@ -177,8 +177,8 @@ static inline int64_t expr_get_index_max(Expr *expr);
 static inline bool expr_both_any_integer_or_integer_vector(Expr *left, Expr *right);
 static inline bool expr_both_any_integer_or_integer_bool_vector(Expr *left, Expr *right);
 static inline bool expr_both_const(Expr *left, Expr *right);
-static inline bool sema_identifier_find_possible_inferred(Type *to, Expr *expr);
-static inline bool sema_expr_analyse_enum_constant(Expr *expr, const char *name, Decl *decl);
+static inline bool sema_identifier_find_possible_inferred(SemaContext *context, Type *to, Expr *expr);
+static inline bool sema_expr_analyse_enum_constant(SemaContext *context, Expr *expr, const char *name, Decl *decl);
 
 static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr);
 static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr);
@@ -712,9 +712,11 @@ static inline bool sema_expr_analyse_ternary(SemaContext *context, Expr *expr)
 	return true;
 }
 
-static inline bool sema_expr_analyse_enum_constant(Expr *expr, const char *name, Decl *decl)
+static inline bool sema_expr_analyse_enum_constant(SemaContext *context, Expr *expr, const char *name, Decl *decl)
 {
 	Decl *enum_constant = decl_find_enum_constant(decl, name);
+
+	if (!sema_resolve_type_decl(context, decl->type)) return false;
 	if (!enum_constant) return false;
 
 	assert(enum_constant->resolve_status == RESOLVE_DONE);
@@ -726,7 +728,7 @@ static inline bool sema_expr_analyse_enum_constant(Expr *expr, const char *name,
 }
 
 
-static inline bool sema_identifier_find_possible_inferred(Type *to, Expr *expr)
+static inline bool sema_identifier_find_possible_inferred(SemaContext *context, Type *to, Expr *expr)
 {
 	if (to->canonical->type_kind != TYPE_ENUM && to->canonical->type_kind != TYPE_FAULTTYPE) return false;
 	Decl *parent_decl = to->canonical->decl;
@@ -734,7 +736,7 @@ static inline bool sema_identifier_find_possible_inferred(Type *to, Expr *expr)
 	{
 		case DECL_ENUM:
 		case DECL_FAULT:
-			return sema_expr_analyse_enum_constant(expr, expr->identifier_expr.ident, parent_decl);
+			return sema_expr_analyse_enum_constant(context, expr, expr->identifier_expr.ident, parent_decl);
 		case DECL_UNION:
 		case DECL_STRUCT:
 		case DECL_BITSTRUCT:
@@ -770,7 +772,7 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 	// Just start with inference
 	if (!expr->identifier_expr.path && to)
 	{
-		if (sema_identifier_find_possible_inferred(to, expr)) return true;
+		if (sema_identifier_find_possible_inferred(context, to, expr)) return true;
 	}
 
 	Decl *decl = sema_find_path_symbol(context, expr->identifier_expr.ident, expr->identifier_expr.path);
@@ -2760,6 +2762,7 @@ static inline void sema_expr_replace_with_enum_array(Expr *enum_array_expr, Decl
 
 static inline void sema_expr_replace_with_enum_name_array(Expr *enum_array_expr, Decl *enum_decl)
 {
+
 	Decl **values = enum_decl->enums.values;
 	SourceSpan span = enum_array_expr->span;
 	Expr *initializer = expr_new(EXPR_INITIALIZER_LIST, span);
@@ -2789,10 +2792,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 
 	if (!is_const)
 	{
-		AlignSize align;
-		if (!sema_set_abi_alignment(context, parent_type, &align)) return false;
-		if (sema_expr_rewrite_to_type_property(context, expr, canonical, type_property_by_name(name),
-		                                       align, 0)) return true;
+		if (sema_expr_rewrite_to_type_property(context, expr, canonical, type_property_by_name(name), parent_type)) return true;
 	}
 
 	if (!type_may_have_sub_elements(canonical))
@@ -2810,7 +2810,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 		case DECL_ENUM:
 			if (is_const)
 			{
-				if (!sema_expr_analyse_enum_constant(expr, name, decl))
+				if (!sema_expr_analyse_enum_constant(context, expr, name, decl))
 				{
 					SEMA_ERROR(expr, "'%s' has no enumeration value '%s'.", decl->name, name);
 					return false;
@@ -2822,7 +2822,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 			unit_register_external_symbol(context->compilation_unit, decl);
 			if (is_const)
 			{
-				if (!sema_expr_analyse_enum_constant(expr, name, decl))
+				if (!sema_expr_analyse_enum_constant(context, expr, name, decl))
 				{
 					SEMA_ERROR(expr, "'%s' has no error value '%s'.", decl->name, name);
 					return false;
@@ -2924,9 +2924,7 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 			return true;
 		case TYPE_PROPERTY_KINDOF:
 		case TYPE_PROPERTY_SIZEOF:
-			if (sema_expr_rewrite_to_type_property(context, expr, decl->type, type_property,
-												   parent->const_expr.member.align,
-												   parent->const_expr.member.offset)) return true;
+			if (sema_expr_rewrite_to_type_property(context, expr, decl->type, type_property, decl->type)) return true;
 			return true;
 		case TYPE_PROPERTY_ELEMENTS:
 		case TYPE_PROPERTY_EXTNAMEOF:
@@ -3008,6 +3006,7 @@ static inline bool sema_create_const_kind(Expr *expr, Type *type)
 static inline bool sema_create_const_len(SemaContext *context, Expr *expr, Type *type)
 {
 	assert(type == type_flatten(type) && "Should be flattened already.");
+
 	size_t len;
 	switch (type->type_kind)
 	{
@@ -3031,6 +3030,7 @@ static inline bool sema_create_const_len(SemaContext *context, Expr *expr, Type 
 
 static inline bool sema_create_const_inner(SemaContext *context, Expr *expr, Type *type)
 {
+	if (!sema_resolve_type_decl(context, type)) return false;
 	Type *inner = NULL;
 	switch (type->type_kind)
 	{
@@ -3283,9 +3283,7 @@ static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *exp
 	if (typeid->expr_kind == EXPR_CONST)
 	{
 		Type *type = typeid->const_expr.typeid;
-		AlignSize align;
-		if (!sema_set_abi_alignment(context, type, &align)) return false;
-		return sema_expr_rewrite_to_type_property(context, expr, type, property, align, 0);
+		return sema_expr_rewrite_to_type_property(context, expr, type, property, type);
 	}
 	switch (property)
 	{
@@ -3379,7 +3377,7 @@ EVAL:
 }
 
 static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr, Type *type, TypeProperty property,
-                                               AlignSize alignment, AlignSize offset)
+                                               Type *parent_type)
 {
 	assert(type == type->canonical);
 	if (property == TYPE_PROPERTY_NONE) return false;
@@ -3407,16 +3405,19 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			return sema_create_const_max(context, expr, type, flat);
 		case TYPE_PROPERTY_NAMES:
 			if (!type_kind_is_enumlike(flat->type_kind)) return false;
+			if (!sema_resolve_type_decl(context, type)) return false;
 			sema_expr_replace_with_enum_name_array(expr, flat->decl);
 			return sema_analyse_expr(context, expr);
 		case TYPE_PROPERTY_ASSOCIATED:
 			return sema_create_const_associated(context, expr, flat);
 		case TYPE_PROPERTY_ELEMENTS:
 			if (!type_kind_is_enumlike(flat->type_kind)) return false;
+			if (!sema_resolve_type_decl(context, type)) return false;
 			expr_rewrite_const_int(expr, type_isz, vec_size(flat->decl->enums.values));
 			return true;
 		case TYPE_PROPERTY_VALUES:
 			if (!type_kind_is_enumlike(flat->type_kind)) return false;
+			if (!sema_resolve_type_decl(context, type)) return false;
 			sema_expr_replace_with_enum_array(expr, flat->decl);
 			return sema_analyse_expr(context, expr);
 		case TYPE_PROPERTY_NAN:
@@ -3428,8 +3429,12 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			expr->resolve_status = RESOLVE_DONE;
 			return true;
 		case TYPE_PROPERTY_MEMBERSOF:
-			sema_create_const_membersof(context, expr, flat, alignment, offset);
+		{
+			AlignSize align;
+			if (!sema_set_abi_alignment(context, parent_type, &align)) return false;
+			sema_create_const_membersof(context, expr, flat, align, 0);
 			return true;
+		}
 		case TYPE_PROPERTY_PARAMS:
 			if (flat->type_kind == TYPE_POINTER && flat->pointer->type_kind == TYPE_FUNC) flat = flat->pointer;
 			return sema_create_const_params(context, expr, flat);
@@ -3439,12 +3444,15 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			expr_rewrite_const_typeid(expr, type_infoptr(flat->function.signature->rtype)->type);
 			return true;
 		case TYPE_PROPERTY_SIZEOF:
+			if (!sema_resolve_type_decl(context, type)) return false;
 			expr_rewrite_const_int(expr, type_usz, type_size(type));
 			return true;
 		case TYPE_PROPERTY_NAMEOF:
+			if (!sema_resolve_type_decl(context, type)) return false;
 			sema_expr_rewrite_to_type_nameof(expr, type, TOKEN_CT_NAMEOF);
 			return true;
 		case TYPE_PROPERTY_QNAMEOF:
+			if (!sema_resolve_type_decl(context, type)) return false;
 			sema_expr_rewrite_to_type_nameof(expr, type, TOKEN_CT_QNAMEOF);
 			return true;
 		case TYPE_PROPERTY_ALIGNOF:
@@ -3456,6 +3464,7 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 		}
 		case TYPE_PROPERTY_EXTNAMEOF:
 			if (type_is_builtin(type->type_kind)) return false;
+			if (!sema_resolve_type_decl(context, type)) return false;
 			sema_expr_rewrite_to_type_nameof(expr, type, TOKEN_CT_EXTNAMEOF);
 			return true;
 		case TYPE_PROPERTY_NONE:

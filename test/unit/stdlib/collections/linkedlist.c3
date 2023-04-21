@@ -1,9 +1,9 @@
-module linkedlist_test;
+module linkedlist_test @test;
 import std::collections::linkedlist;
 
 typedef IntList = LinkedList<int>;
 
-fn void! test_push() @test
+fn void! test_push()
 {
 	IntList list;
 	list.push(23);
@@ -16,7 +16,7 @@ fn void! test_push() @test
 	assert(list.first()! == 55);
 }
 
-fn void! test_push_last() @test
+fn void! test_push_last()
 {
 	IntList list;
 	list.push_last(23);
@@ -29,7 +29,7 @@ fn void! test_push_last() @test
 	assert(list.first()! == 23);
 }
 
-fn void! test_get() @test
+fn void! test_get()
 {
 	IntList list;
 	list.push(23);
@@ -40,7 +40,7 @@ fn void! test_get() @test
 	assert(list.get(2) == 23);
 }
 
-fn void! test_insert() @test
+fn void! test_insert()
 {
 	IntList list;
 	list.push(23);
@@ -59,7 +59,7 @@ fn void! test_insert() @test
 	assert(list.get(6) == 1111);
 }
 
-fn void! test_set() @test
+fn void! test_set()
 {
 	IntList list;
 	list.push(23);
@@ -71,7 +71,7 @@ fn void! test_set() @test
 	assert(list.get(2) == 24);
 }
 
-fn void! test_remove() @test
+fn void! test_remove()
 {
 	IntList list;
 	for (int i = 0; i < 10; i++) list.push(i);
@@ -84,7 +84,7 @@ fn void! test_remove() @test
 	assert(list.get(5) == 1);
 	assert(list.get(4) == 3);
 }
-fn void! test_remove_value() @test
+fn void! test_remove_value()
 {
 	IntList list;
 	list.push(23);
@@ -112,7 +112,7 @@ fn void! test_remove_value() @test
 	assert(!list.len());
 }
 
-fn void! test_remove_last_value() @test
+fn void! test_remove_last_value()
 {
 	IntList list;
 	list.push(23);
@@ -140,7 +140,7 @@ fn void! test_remove_last_value() @test
 	assert(!list.len());
 }
 
-fn void! test_pop() @test
+fn void! test_pop()
 {
 	IntList list;
 	list.push(23);
@@ -164,7 +164,7 @@ fn void! test_pop() @test
 	assert(list.len() == 1);
 }
 
-fn void! test_remove_first() @test
+fn void! test_remove_first()
 {
 	IntList list;
 	list.push(23);
@@ -188,7 +188,7 @@ fn void! test_remove_first() @test
 	assert(list.len() == 1);
 }
 
-fn void! test_remove_last() @test
+fn void! test_remove_last()
 {
 	IntList list;
 	list.push(23);

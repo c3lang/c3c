@@ -8,7 +8,7 @@ enum ThreadModel
 }
 
 const ThreadModel THREAD_MODEL =  env::COMPILER_LIBC_AVAILABLE
-	? (env::OS_TYPE == OsType.WIN32 ? ThreadModel.WIN32 : ThreadModel.POSIX)
+	? (env::os_is_win32() ? ThreadModel.WIN32 : ThreadModel.POSIX)
 	: ThreadModel.NONE;
 
 typedef MutexType = distinct int;

@@ -130,7 +130,7 @@ const MemoryEnvironment MEMORY_ENV = (MemoryEnvironment)$$MEMORY_ENVIRONMENT;
 
 macro bool os_is_win32()
 {
-	return OS_TYPE == OsType.WIN32;
+	return OS_TYPE == WIN32;
 }
 
 macro bool os_is_darwin()
@@ -177,7 +177,7 @@ macro bool os_is_posix()
  **/
 fn String! get_var(String name)
 {
-$if (COMPILER_LIBC_AVAILABLE && OS_TYPE != OsType.WIN32)
+$if (COMPILER_LIBC_AVAILABLE && !os_is_win32())
 	@pool()
 	{
 		ZString val = libc::getenv(name.zstr_tcopy());
@@ -196,7 +196,7 @@ $endif
  **/
 fn void set_var(String name, String value, bool overwrite = true)
 {
-$if (COMPILER_LIBC_AVAILABLE && OS_TYPE != OsType.WIN32)
+$if (COMPILER_LIBC_AVAILABLE && !os_is_win32())
 	@pool()
 	{
 		if (libc::setenv(name.zstr_tcopy(), value.zstr_copy(), (int)overwrite))
@@ -213,7 +213,7 @@ $endif
  **/
 fn void clear_var(String name)
 {
-$if (COMPILER_LIBC_AVAILABLE && OS_TYPE != OsType.WIN32)
+$if (COMPILER_LIBC_AVAILABLE && !os_is_win32())
 	@pool()
 	{
 		if (libc::unsetenv(name.zstr_tcopy()))

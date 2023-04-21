@@ -1,6 +1,6 @@
 module std::os::macos::objc;
 
-$if (env::OS_TYPE == OsType.MACOS)
+$if (env::os_is_darwin())
 
 typedef Class = distinct void*;
 typedef Method = distinct void*;

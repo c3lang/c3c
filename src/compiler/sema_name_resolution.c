@@ -622,6 +622,7 @@ Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_
 	return sema_resolve_type_method(unit, type->type, method_name, ambiguous_ref, private_ref);
 }
 
+
 bool sema_resolve_type_decl(SemaContext *context, Type *type)
 {
 	switch (type->type_kind)

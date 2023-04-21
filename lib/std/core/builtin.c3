@@ -122,9 +122,19 @@ fn void panicf(String fmt, String file, String function, uint line, args...)
 /**
  * Marks the path as unreachable. This will panic in safe mode, and in fast will simply be assumed
  * never happens.
- * @param [in] string "The panic message"
+ * @param [in] string "The panic message or format string"
  **/
 macro void unreachable(String string = "Unreachable statement reached.", ...) @builtin @noreturn
+{
+	panicf(string, $$FILE, $$FUNC, $$LINE, $vasplat());
+	$$unreachable();
+}
+
+/**
+ * Marks the path as unsupported, this is similar to unreachable.
+ * @param [in] string "The error message"
+ **/
+macro void unsupported(String string = "Unsupported function invoked") @builtin @noreturn
 {
 	panicf(string, $$FILE, $$FUNC, $$LINE, $vasplat());
 	$$unreachable();

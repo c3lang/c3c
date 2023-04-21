@@ -4,6 +4,8 @@
 module std::collections::list<Type>;
 import std::math;
 
+typedef ElementPredicate = fn bool(Type *type);
+
 struct List
 {
     usz size;
@@ -197,6 +199,47 @@ fn void List.swap(List* list, usz i, usz j)
 }
 
 /**
+ * @param [&inout] list "The list to remove elements from"
+ * @param filter "The function to determine if it should be removed or not"
+ * @return "the number of deleted elements"
+ **/
+fn usz List.delete_if(List* list, ElementPredicate filter)
+{
+	usz size = list.size;
+	for (usz i = size; i > 0; i--)
+	{
+		if (filter(&list.entries[i - 1])) continue;
+		for (usz j = i; j < size; j++)
+		{
+			list.entries[j - 1] = list.entries[j];
+		}
+		list.size--;
+	}
+	return size - list.size;
+}
+
+/**
+ * @param [&inout] list "The list to remove elements from"
+ * @param selection "The function to determine if it should be kept or not"
+ * @return "the number of deleted elements"
+ **/
+fn usz List.retain_if(List* list, ElementPredicate selection)
+{
+	usz size = list.size;
+	for (usz i = size; i > 0; i--)
+	{
+		if (!selection(&list.entries[i - 1])) continue;
+		for (usz j = i; j < size; j++)
+		{
+			list.entries[j - 1] = list.entries[j];
+		}
+		list.size--;
+	}
+	return size - list.size;
+}
+
+
+/**
  * Reserve at least min_capacity
  **/
 fn void List.reserve(List* list, usz min_capacity)
@@ -219,11 +262,33 @@ fn Type* List.get_ref(List* list, usz index) @operator(&[]) @inline
     return &list.entries[index];
 }
 
+fn void List.ensure_capacity(List* list, usz added = 1) @inline @private
+{
+	usz new_size = list.size + added;
+    if (list.capacity > new_size) return;
+
+	assert(new_size < usz.max / 2U);
+	usz new_capacity = list.capacity ? 2U * list.capacity : 16U;
+	while (new_size >= new_capacity) new_capacity *= 2U;
+	list.reserve(new_capacity);
+}
+
+// Functions for equatable types
+
 $if (types::is_equatable_type(Type))
 
 fn usz! List.index_of(List* list, Type type)
 {
 	foreach (i, v : list)
+	{
+		if (v == type) return i;
+	}
+	return SearchResult.MISSING?;
+}
+
+fn usz! List.rindex_of(List* list, Type type)
+{
+	foreach_r (i, v : list)
 	{
 		if (v == type) return i;
 	}
@@ -240,24 +305,70 @@ fn bool List.equals(List* list, List other_list)
 	return true;
 }
 
-fn bool List.contains(List* list, Type type)
+/**
+ * Check for presence of a value in a list.
+ *
+ * @param [&in] list "the list to find elements in"
+ * @param value "The value to search for"
+ * @return "True if the value is found, false otherwise"
+ **/
+fn bool List.contains(List* list, Type value)
 {
 	foreach (i, v : list)
 	{
-		if (v == type) return true;
+		if (v == value) return true;
 	}
 	return false;
 }
 
+/**
+ * @param [&inout] list "The list to remove elements from"
+ * @param value "The value to remove"
+ * @return "the number of deleted elements."
+ **/
+fn usz List.delete(List* list, Type value)
+{
+	usz size = list.size;
+	for (usz i = size; i > 0; i--)
+	{
+		if (list.entries[i - 1] != value) continue;
+		for (usz j = i; j < size; j++)
+		{
+			list.entries[j - 1] = list.entries[j];
+		}
+		list.size--;
+	}
+	return size - list.size;
+}
+
 $endif
 
-fn void List.ensure_capacity(List* list, usz added = 1) @inline @private
-{
-	usz new_size = list.size + added;
-    if (list.capacity > new_size) return;
+$if (Type.kindof == POINTER)
 
-	assert(new_size < usz.max / 2U);
-	usz new_capacity = list.capacity ? 2U * list.capacity : 16U;
-	while (new_size >= new_capacity) new_capacity *= 2U;
-	list.reserve(new_capacity);
+/**
+ * @param [&in] list
+ * @return "The number non-null values in the list"
+ **/
+fn usz List.compact_count(List* list)
+{
+	usz vals = 0;
+	foreach (v : list) if (v) vals++;
+	return vals;
 }
+
+fn usz List.compact(List* list)
+{
+	usz size = list.size;
+	for (usz i = size; i > 0; i--)
+	{
+		if (list.entries[i - 1]) continue;
+		for (usz j = i; j < size; j++)
+		{
+			list.entries[j - 1] = list.entries[j];
+		}
+		list.size--;
+	}
+	return size - list.size;
+}
+
+$endif

@@ -133,6 +133,11 @@ static inline bool sema_check_param_uniqueness_and_type(Decl **decls, Decl *curr
 
 static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent, Decl *decl)
 {
+	if (decl->resolve_status == RESOLVE_DONE) return decl_ok(decl);
+	if (decl->resolve_status == RESOLVE_RUNNING)
+	{
+		RETURN_SEMA_ERROR(decl, "Circular dependency resolving member.");
+	}
 	assert(!decl->unit || decl->unit->module->is_generic);
 	decl->unit = parent->unit;
 	if (decl->name)

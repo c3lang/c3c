@@ -1,7 +1,7 @@
 module hello_world;
 import std;
 import bar;
-$if (env::OS_TYPE == OsType.WIN32)
+$if (env::os_is_win32())
 fn int test_doubler(int x)
 {
 	return x * x;
