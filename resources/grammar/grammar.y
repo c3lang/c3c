@@ -104,6 +104,10 @@ bytes_expr
 	| bytes_expr BYTES
 	;
 
+expr_block
+	: LBRAPIPE opt_stmt_list RBRAPIPE
+	;
+
 primary_expression
 	: string_expr
 	| INTEGER
@@ -125,7 +129,7 @@ primary_expression
 	| '(' type ')' '.' IDENT
 	| '(' type ')' '.' TYPEID
 	| '(' expr ')'
-	| LBRAPIPE opt_stmt_list RBRAPIPE
+	| expr_block
 	| ct_call '(' flat_path ')'
 	| ct_arg '(' expr ')'
 	| ct_analyse '(' expr ')'
@@ -156,10 +160,16 @@ call_inline_attributes
 	;
 
 call_invocation
-	: '(' call_arg_list ')' compound_statement
-	| '(' call_arg_list ')' call_inline_attributes compound_statement
-	| '(' call_arg_list ')'
+	: '(' call_arg_list ')'
 	| '(' call_arg_list ')' call_inline_attributes
+	;
+
+access_ident
+	: IDENT
+	| AT_IDENT
+	| HASH_IDENT
+	| CT_EVAL '(' expr ')'
+	| TYPEID
 	;
 
 call_expr
@@ -167,8 +177,8 @@ call_expr
 	| call_expr '[' range_loc ']'
 	| call_expr '[' range_expr ']'
 	| call_expr call_invocation
-	| call_expr '.' IDENT
-	| call_expr '.' AT_IDENT
+	| call_expr call_invocation compound_statement
+	| call_expr '.' access_ident
 	| call_expr INC_OP
 	| call_expr DEC_OP
 	| call_expr '!'

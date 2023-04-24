@@ -90,7 +90,6 @@ inline Expr *parse_precedence_with_left_side(ParseContext *c, Expr *left_side, P
 	while (1)
 	{
 		TokenType tok = c->tok;
-
 		Precedence token_precedence = rules[tok].precedence;
 		// See if the operator precedence is greater than the last, if so exit.
 		// Note that if the token is not an operator then token_precedence = 0
@@ -900,10 +899,6 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left)
 		SEMA_ERROR_HERE("Expected a macro body here.");
 		return poisoned_expr;
 	}
-	if (tok_is(c, TOKEN_LBRACE))
-	{
-		ASSIGN_ASTID_OR_RET(call->call_expr.body, parse_compound_stmt(c), poisoned_expr);
-	}
 	Attr *attr;
 	int force_inline = -1;
 	while (1)
@@ -946,6 +941,10 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left)
 	{
 		call->call_expr.attr_force_inline = force_inline == 1;
 		call->call_expr.attr_force_noinline = force_inline == 0;
+	}
+	if (tok_is(c, TOKEN_LBRACE))
+	{
+		ASSIGN_ASTID_OR_RET(call->call_expr.body, parse_compound_stmt(c), poisoned_expr);
 	}
 	return call;
 }

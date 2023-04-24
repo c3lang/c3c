@@ -91,6 +91,7 @@ fn void List.add_all(List* list, List* other_list)
 	}
 }
 
+
 fn Type[] List.to_array(List* list, Allocator* using = mem::heap())
 {
 	if (!list.size) return Type[] {};
@@ -99,6 +100,11 @@ fn Type[] List.to_array(List* list, Allocator* using = mem::heap())
 	return result;
 }
 
+/**
+ * Reverse the elements in a list.
+ *
+ * @param [&inout] list "The list to reverse"
+ **/
 fn void List.reverse(List* list)
 {
 	if (list.size < 2) return;
@@ -203,7 +209,7 @@ fn void List.swap(List* list, usz i, usz j)
  * @param filter "The function to determine if it should be removed or not"
  * @return "the number of deleted elements"
  **/
-fn usz List.delete_if(List* list, ElementPredicate filter)
+fn usz List.remove_if(List* list, ElementPredicate filter)
 {
 	usz size = list.size;
 	for (usz i = size; i > 0; i--)
@@ -321,12 +327,13 @@ fn bool List.contains(List* list, Type value)
 	return false;
 }
 
+
 /**
  * @param [&inout] list "The list to remove elements from"
  * @param value "The value to remove"
  * @return "the number of deleted elements."
  **/
-fn usz List.delete(List* list, Type value)
+fn usz List.remove(List* list, Type value)
 {
 	usz size = list.size;
 	for (usz i = size; i > 0; i--)
@@ -340,6 +347,13 @@ fn usz List.delete(List* list, Type value)
 	}
 	return size - list.size;
 }
+
+fn void List.remove_all(List* list, List* other_list)
+{
+	if (!other_list.size) return;
+	foreach (v : other_list) list.remove(v);
+}
+
 
 $endif
 

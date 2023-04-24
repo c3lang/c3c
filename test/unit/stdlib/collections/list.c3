@@ -16,7 +16,7 @@ fn void! test_delete_contains_index()
 	test.push(3);
 	assert(test.array_view() == int[]{ 1, 2, 3 });
 	assert(test.contains(3));
-	test.delete(1);
+	test.remove(1);
 	assert(test.array_view() == int[]{ 2, 3 });
 	assert(!test.contains(1));
 	assert(test.contains(2));
@@ -26,7 +26,7 @@ fn void! test_delete_contains_index()
 	assert(test.array_view() == int[]{ 0, 2, 3, 0 });
 	assert(test.index_of(0)! == 0);
 	assert(test.rindex_of(0)! == 3);
-	test.delete(0);
+	test.remove(0);
 	assert(test.len() == 2);
 	assert(test.array_view() == int[]{ 2, 3 });
 }
@@ -42,4 +42,19 @@ fn void! test_compact()
 	assert(test.compact() == 2);
 	assert(test.len() == 1);
 	assert(test.compact() == 0);
+}
+
+fn void! test_reverse()
+{
+	IntList test;
+	test.reverse();
+	test.add_array({ 1, 2 });
+	test.push(3);
+	assert(test.array_view() == int[] { 1, 2, 3});
+	test.reverse();
+	assert(test.array_view() == int[] { 3, 2, 1 });
+	test.push(10);
+	assert(test.array_view() == int[] { 3, 2, 1, 10 });
+	test.reverse();
+	assert(test.array_view() == int[] { 10, 1, 2, 3 });
 }
