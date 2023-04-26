@@ -11,7 +11,7 @@ void yyerror(char *s);
 
 %token IDENT HASH_IDENT CT_IDENT CONST_IDENT
 %token TYPE_IDENT CT_TYPE_IDENT
-%token AT_TYPE_IDENT AT_IDENT
+%token AT_TYPE_IDENT AT_IDENT CT_INCLUDE
 %token STRING_LITERAL INTEGER
 %token INC_OP DEC_OP SHL_OP SHR_OP LE_OP GE_OP EQ_OP NE_OP
 %token AND_OP OR_OP MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN ADD_ASSIGN
@@ -51,6 +51,11 @@ path_ident
 	| IDENT
 	;
 
+path_at_ident
+	: path AT_IDENT
+	| AT_IDENT
+	;
+
 ident_expr
 	: CONST_IDENT
 	| IDENT
@@ -85,8 +90,9 @@ ct_arg
 	;
 
 flat_path
-	: primary_expression param_path
-	| primary_expression
+	: primary_expr param_path
+	| type
+	| primary_expr
 	;
 
 maybe_optional_type
@@ -108,7 +114,7 @@ expr_block
 	: LBRAPIPE opt_stmt_list RBRAPIPE
 	;
 
-primary_expression
+primary_expr
 	: string_expr
 	| INTEGER
 	| bytes_expr
@@ -123,11 +129,8 @@ primary_expression
 	| ident_expr
 	| local_ident_expr
 	| type initializer_list
-	| type '.' IDENT
+	| type '.' access_ident
 	| type '.' CONST_IDENT
-	| type '.' TYPEID
-	| '(' type ')' '.' IDENT
-	| '(' type ')' '.' TYPEID
 	| '(' expr ')'
 	| expr_block
 	| ct_call '(' flat_path ')'
@@ -173,7 +176,7 @@ access_ident
 	;
 
 call_expr
-	: primary_expression
+	: primary_expr
 	| call_expr '[' range_loc ']'
 	| call_expr '[' range_expr ']'
 	| call_expr call_invocation
@@ -187,10 +190,7 @@ call_expr
 
 unary_expr
 	: call_expr
-	| INC_OP unary_expr
-	| DEC_OP unary_expr
 	| unary_op unary_expr
-	| '(' type ')' unary_expr
 	;
 
 unary_op
@@ -201,6 +201,9 @@ unary_op
 	| '-'
 	| '~'
 	| '!'
+	| INC_OP
+	| DEC_OP
+	| '(' type ')'
 	;
 
 mult_op
@@ -209,9 +212,9 @@ mult_op
 	| '%'
     	;
 
-multiplicative_expr
+mult_expr
 	: unary_expr
-	| multiplicative_expr mult_op unary_expr
+	| mult_expr mult_op unary_expr
 	;
 
 shift_op
@@ -220,8 +223,8 @@ shift_op
 	;
 
 shift_expr
-	: multiplicative_expr
-	| shift_expr shift_op multiplicative_expr
+	: mult_expr
+	| shift_expr shift_op mult_expr
 	;
 
 bit_op
@@ -277,15 +280,17 @@ or_expr
 	| or_expr OR_OP and_expr
 	;
 
+ternary_op
+	: '?' expr ':'
+	| ELVIS
+	| OPTELSE
+	;
+
 ternary_expr
 	: or_expr
-	| or_expr '?' expr ':' ternary_expr
-	| or_expr '?' expr ':' initializer_list
-	| or_expr ELVIS ternary_expr
+	| or_expr ternary_op ternary_expr
 	| or_expr '?'
 	| or_expr '?' '!'
-	| or_expr OPTELSE ternary_expr
-	| or_expr OPTELSE initializer_list
 	| lambda_decl implies_body
 	;
 
@@ -342,7 +347,7 @@ const_paren_expr
 
 param_path_element
 	: '[' expr ']'
-	| '[' range_expr ']'
+	| '[' expr DOTDOT expr ']'
 	| '.' IDENT
 	;
 
@@ -486,19 +491,19 @@ initializer_list
 	: '{' opt_arg_list_trailing '}'
 	;
 
-ct_case_statement
+ct_case_stmt
     	: CT_CASE constant_expr ':' opt_stmt_list
     	| CT_CASE type ':' opt_stmt_list
     	| CT_DEFAULT ':' opt_stmt_list
     	;
 
 ct_switch_body
-	: ct_case_statement
-    	| ct_switch_body ct_case_statement
+	: ct_case_stmt
+    	| ct_switch_body ct_case_stmt
     	;
 
 ct_for_stmt
-    	: CT_FOR '(' expression_list ';' expr ';' expression_list ')' opt_stmt_list CT_ENDFOR
+    	: CT_FOR '(' for_cond ')' opt_stmt_list CT_ENDFOR
 	;
 
 ct_foreach_stmt
@@ -523,7 +528,7 @@ decl_stmt_after_type
 	;
 
 declaration_stmt
-	: const_declaration ';'
+	: const_declaration
 	| local_decl_storage optional_type decl_stmt_after_type ';'
 	| optional_type decl_stmt_after_type ';'
 	;
@@ -556,20 +561,14 @@ try_unwrap_chain
 	| try_unwrap_chain AND_OP rel_expr_or_list
 	;
 
-
-case_stmts
-	: statement_list
-	| empty
-	;
-
 default_stmt
-	: DEFAULT ':' case_stmts
+	: DEFAULT ':' opt_stmt_list
 	;
 
 case_stmt
-	: CASE expr ':' case_stmts
-	| CASE expr DOTDOT expr ':' case_stmts
-	| CASE type ':' case_stmts
+	: CASE expr ':' opt_stmt_list
+	| CASE expr DOTDOT expr ':' opt_stmt_list
+	| CASE type ':' opt_stmt_list
 	;
 
 switch_body
@@ -598,10 +597,10 @@ else_part
 	;
 
 if_stmt
-	: IF optional_label '(' cond ')' '{' switch_body '}'
-	| IF optional_label '(' cond ')' '{' switch_body '}' else_part
-	| IF optional_label '(' cond ')' statement
-	| IF optional_label '(' cond ')' compound_statement else_part
+	: IF optional_label paren_cond '{' switch_body '}'
+	| IF optional_label paren_cond '{' switch_body '}' else_part
+	| IF optional_label paren_cond statement
+	| IF optional_label paren_cond compound_statement else_part
 	;
 
 expr_list_eos
@@ -614,13 +613,21 @@ cond_eos
 	| ';'
 	;
 
+for_cond
+	: expr_list_eos cond_eos expression_list
+	| expr_list_eos cond_eos
+	;
+
 for_stmt
-	: FOR optional_label '(' expr_list_eos cond_eos expression_list ')' statement
-	| FOR optional_label '(' expr_list_eos cond_eos ')' statement
+	: FOR optional_label '(' for_cond ')' statement
+	;
+
+paren_cond
+	: '(' cond ')'
 	;
 
 while_stmt
-	: WHILE optional_label '(' cond ')' statement
+	: WHILE optional_label paren_cond statement
 	;
 
 do_stmt
@@ -779,8 +786,8 @@ opt_stmt_list
 switch_stmt
 	: SWITCH optional_label '{' switch_body '}'
 	| SWITCH optional_label '{' '}'
-	| SWITCH optional_label '(' cond ')' '{' switch_body '}'
-	| SWITCH optional_label '(' cond ')' '{' '}'
+	| SWITCH optional_label paren_cond '{' switch_body '}'
+	| SWITCH optional_label paren_cond '{' '}'
 	;
 
 expression_list
@@ -796,6 +803,10 @@ optional_label
 ct_assert_stmt
 	: CT_ASSERT '(' constant_expr ',' constant_expr ')' ';'
 	| CT_ASSERT '(' constant_expr ')' ';'
+	;
+
+ct_include_stmt
+	: CT_INCLUDE '(' string_expr ')' ';'
 	;
 
 ct_echo_stmt
@@ -944,25 +955,25 @@ faults
     ;
 
 fault_declaration
-    : FAULT TYPE_IDENT opt_attributes '{' faults '}'
-    | FAULT TYPE_IDENT opt_attributes '{' faults ',' '}'
+    	: FAULT TYPE_IDENT opt_attributes '{' faults '}'
+    	| FAULT TYPE_IDENT opt_attributes '{' faults ',' '}'
     	;
 
-func_header
-	: optional_type type '.' IDENT
-	| optional_type IDENT
-	;
-
-macro_name
+func_macro_name
 	: IDENT
 	| AT_IDENT
 	;
 
+func_header
+	: optional_type type '.' func_macro_name
+	| optional_type func_macro_name
+	;
+
+
 macro_header
-	: optional_type type '.' macro_name
-	| optional_type macro_name
-	| type '.' macro_name
-	| macro_name
+	: func_header
+	| type '.' func_macro_name
+	| func_macro_name
 	;
 
 fn_parameter_list
@@ -979,29 +990,30 @@ parameters
 
 parameter
 	: type IDENT opt_attributes
-	| ELLIPSIS
-	| IDENT
 	| type ELLIPSIS IDENT opt_attributes
 	| type ELLIPSIS CT_IDENT
-	| IDENT ELLIPSIS
-	| type '&' IDENT opt_attributes
-	| '&' IDENT opt_attributes
-	| type HASH_IDENT opt_attributes
-	| HASH_IDENT opt_attributes
 	| type CT_IDENT
+        | type ELLIPSIS opt_attributes
+	| type HASH_IDENT opt_attributes
+	| type '&' IDENT opt_attributes
+	| type opt_attributes
+	| '&' IDENT opt_attributes
+	| HASH_IDENT opt_attributes
+	| ELLIPSIS
+	| IDENT opt_attributes
+	| IDENT ELLIPSIS opt_attributes
 	| CT_IDENT
 	| CT_IDENT ELLIPSIS
-	| type opt_attributes
 	;
 
-function_definition
+func_definition
 	: FN func_header fn_parameter_list opt_attributes ';'
 	| FN func_header fn_parameter_list opt_attributes macro_func_body
 	;
 
 const_declaration
-	: CONST CONST_IDENT opt_attributes '=' expr_or_list
-	| CONST type CONST_IDENT opt_attributes '=' expr_or_list
+	: CONST CONST_IDENT opt_attributes '=' expr_or_list ';'
+	| CONST type CONST_IDENT opt_attributes '=' expr_or_list ';'
 	;
 
 func_typedef
@@ -1066,8 +1078,8 @@ tl_ct_switch_body
     	;
 
 define_attribute
-	: DEFINE AT_TYPE_IDENT '(' parameters ')' opt_attributes '=' '{' opt_attributes '}' ';'
-	| DEFINE AT_TYPE_IDENT opt_attributes '=' '{' opt_attributes '}' ';'
+	: AT_TYPE_IDENT '(' parameters ')' opt_attributes '=' '{' opt_attributes '}'
+	| AT_TYPE_IDENT opt_attributes '=' '{' opt_attributes '}'
 	;
 
 opt_generic_parameters
@@ -1078,15 +1090,14 @@ opt_generic_parameters
 
 
 define_ident
-	: DEFINE IDENT '=' path_ident opt_generic_parameters ';'
-	| DEFINE CONST_IDENT '=' path_const opt_generic_parameters ';'
-	| DEFINE AT_IDENT '=' path AT_IDENT opt_generic_parameters ';'
-	| DEFINE AT_IDENT '=' AT_IDENT opt_generic_parameters ';'
+	: IDENT '=' path_ident opt_generic_parameters
+	| CONST_IDENT '=' path_const opt_generic_parameters
+	| AT_IDENT '=' path_at_ident opt_generic_parameters
         ;
 
 define_declaration
-	: define_ident
-	| define_attribute
+	: DEFINE define_ident ';'
+	| DEFINE define_attribute ';'
 	;
 
 tl_ct_if
@@ -1138,18 +1149,19 @@ opt_extern
 	;
 
 top_level
-	: opt_extern function_definition
-	| module
+	: module
 	| import_decl
+	| opt_extern func_definition
+	| opt_extern const_declaration
+	| opt_extern global_declaration
 	| ct_assert_stmt
 	| ct_echo_stmt
+	| ct_include_stmt
 	| tl_ct_if
 	| tl_ct_switch
 	| struct_declaration
 	| fault_declaration
 	| enum_declaration
-	| opt_extern const_declaration ';'
-	| opt_extern global_declaration
 	| macro_declaration
 	| typedef_declaration
 	| define_declaration

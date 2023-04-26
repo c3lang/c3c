@@ -330,6 +330,8 @@ const char *token_type_to_string(TokenType type)
 			return "$default";
 		case TOKEN_CT_DEFINED:
 			return "$defined";
+		case TOKEN_CT_ELSE:
+			return "$else";
 		case TOKEN_CT_EVAL:
 			return "$eval";
 		case TOKEN_CT_EVALTYPE:
@@ -338,8 +340,6 @@ const char *token_type_to_string(TokenType type)
 			return "$for";
 		case TOKEN_CT_FOREACH:
 			return "$foreach";
-		case TOKEN_CT_ELSE:
-			return "$else";
 		case TOKEN_CT_ENDIF:
 			return "$endif";
 		case TOKEN_CT_ENDSWITCH:
