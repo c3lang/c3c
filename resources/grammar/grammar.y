@@ -667,8 +667,8 @@ foreach_vars
 	;
 
 foreach_stmt
-	: FOREACH optional_label '(' foreach_vars ':' expr ')' statement
-	: FOREACH_R optional_label '(' foreach_vars ':' expr ')' statement
+	: FOREACH optional_label '(' foreach_vars ':' expr_or_list ')' statement
+	: FOREACH_R optional_label '(' foreach_vars ':' expr_or_list ')' statement
 	;
 
 defer_stmt
