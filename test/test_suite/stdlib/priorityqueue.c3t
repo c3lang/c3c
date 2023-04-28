@@ -27,6 +27,6 @@ fn bool Foo.less(Foo* x, Foo y) @inline
 	return x.x < y.x;
 }
 
-// #expect: test.ll
+/* #expect: test.ll
 
 %PriorityQueue = type { %List, i8 }

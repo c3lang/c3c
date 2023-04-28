@@ -8,7 +8,7 @@ fn int main()
     return 1;
 }
 
-// #expect: check.ll
+/* #expect: check.ll
 
 entry:
   %a = alloca i32, align 4

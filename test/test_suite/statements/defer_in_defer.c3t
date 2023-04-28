@@ -20,7 +20,7 @@ fn void test_line()
     defer { defer test1(); }
 }
 
-// #expect: defer_in_defer.ll
+/* #expect: defer_in_defer.ll
 
 define void @defer_in_defer.test() #0 {
 entry:

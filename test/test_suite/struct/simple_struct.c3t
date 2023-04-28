@@ -8,7 +8,7 @@ struct Foo
     double a;
 }
 
-// #expect: test.ll
+/* #expect: test.ll
 
 %Foo = type { i32, double }
 @test.a = protected unnamed_addr global %Foo zeroinitializer, align 8

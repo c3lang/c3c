@@ -32,7 +32,7 @@ fn void main()
     return;
 }
 
-// #expect: test.ll
+/* #expect: test.ll
 
   %1 = call double @llvm.ceil.f64(double %0)
   %3 = call double @llvm.floor.f64(double %2)

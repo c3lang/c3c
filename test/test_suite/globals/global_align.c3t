@@ -9,7 +9,7 @@ fn void test()
 	int x = foo;
 }
 
-// #expect: abc.ll
+/* #expect: abc.ll
 
 @abc.foo = local_unnamed_addr global i32 0, align 32
 

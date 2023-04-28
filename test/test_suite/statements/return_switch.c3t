@@ -14,7 +14,7 @@ fn int testReturnSwitch()
     }
 }
 
-// #expect: return_switch.ll
+/* #expect: return_switch.ll
 
 switch.entry:
   %1 = load i32, ptr %switch

@@ -15,7 +15,7 @@ fn bool elvis3(bool x, bool y)
 }
 
 
-// #expect: elvis.ll
+/* #expect: elvis.ll
 
 define ptr @elvis.elvis(ptr %0, ptr %1) #0 {
 entry:

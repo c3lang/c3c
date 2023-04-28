@@ -5,6 +5,6 @@ fn char* foo()
   return "*** Word \"%s\" on line %d is not" "" "";
 }
 
-// #expect: test.ll
+/* #expect: test.ll
 
 @.str = private unnamed_addr constant [32 x i8] c"*** Word \22%s\22 on line %d is not\00"

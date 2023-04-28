@@ -114,7 +114,7 @@ expr_block
 	: LBRAPIPE opt_stmt_list RBRAPIPE
 	;
 
-primary_expr
+base_expr
 	: string_expr
 	| INTEGER
 	| bytes_expr
@@ -139,6 +139,11 @@ primary_expr
 	| CT_VACOUNT
 	| CT_CHECKS '(' expression_list ')'
 	| lambda_decl compound_statement
+	;
+
+primary_expr
+	: base_expr
+	| initializer_list
 	;
 
 range_loc
@@ -175,21 +180,35 @@ access_ident
 	| TYPEID
 	;
 
+call_trailing
+	: '[' range_loc ']'
+	| '[' range_expr ']'
+	| call_invocation
+	| call_invocation compound_statement
+	| '.' access_ident
+	| INC_OP
+	| DEC_OP
+	| '!'
+	| BANGBANG
+	;
+
+call_stmt_expr
+	: base_expr
+	| call_stmt_expr call_trailing
+	;
+
 call_expr
 	: primary_expr
-	| call_expr '[' range_loc ']'
-	| call_expr '[' range_expr ']'
-	| call_expr call_invocation
-	| call_expr call_invocation compound_statement
-	| call_expr '.' access_ident
-	| call_expr INC_OP
-	| call_expr DEC_OP
-	| call_expr '!'
-	| call_expr BANGBANG
+	| call_expr call_trailing
 	;
 
 unary_expr
 	: call_expr
+	| unary_op unary_expr
+	;
+
+unary_stmt_expr
+	: call_stmt_expr
 	| unary_op unary_expr
 	;
 
@@ -217,6 +236,11 @@ mult_expr
 	| mult_expr mult_op unary_expr
 	;
 
+mult_stmt_expr
+	: unary_stmt_expr
+	| mult_stmt_expr mult_op unary_expr
+	;
+
 shift_op
 	: SHL_OP
 	| SHR_OP
@@ -226,6 +250,12 @@ shift_expr
 	: mult_expr
 	| shift_expr shift_op mult_expr
 	;
+
+shift_stmt_expr
+	: mult_stmt_expr
+	| shift_stmt_expr shift_op mult_expr
+	;
+
 
 bit_op
     	: '&'
@@ -238,6 +268,11 @@ bit_expr
 	| bit_expr bit_op shift_expr
 	;
 
+bit_stmt_expr
+	: shift_stmt_expr
+	| bit_stmt_expr bit_op shift_expr
+	;
+
 additive_op
 	: '+'
 	| '-'
@@ -246,7 +281,11 @@ additive_op
 additive_expr
 	: bit_expr
 	| additive_expr additive_op bit_expr
-	| additive_expr additive_op initializer_list
+	;
+
+additive_stmt_expr
+	: bit_stmt_expr
+	| additive_stmt_expr additive_op bit_expr
 	;
 
 relational_op
@@ -261,13 +300,16 @@ relational_op
 relational_expr
 	: additive_expr
 	| relational_expr relational_op additive_expr
-	| relational_expr relational_op initializer_list
 	;
 
-rel_expr_or_list
+relational_stmt_expr
+	: additive_stmt_expr
+	| relational_stmt_expr relational_op additive_expr
+	;
+
+rel_or_lambda_expr
 	: relational_expr
 	| lambda_decl IMPLIES relational_expr
-	| initializer_list
 	;
 
 and_expr
@@ -275,22 +317,46 @@ and_expr
 	| and_expr AND_OP relational_expr
 	;
 
+and_stmt_expr
+	: relational_stmt_expr
+	| and_stmt_expr AND_OP relational_expr
+	;
+
 or_expr
 	: and_expr
 	| or_expr OR_OP and_expr
 	;
 
-ternary_op
-	: '?' expr ':'
-	| ELVIS
-	| OPTELSE
+or_stmt_expr
+	: and_stmt_expr
+	| or_stmt_expr OR_OP and_expr
+	;
+
+or_expr_with_suffix
+	: or_expr
+	| or_expr '?'
+	| or_expr '?' '!'
+	;
+
+or_stmt_expr_with_suffix
+	: or_stmt_expr
+	| or_stmt_expr '?'
+	| or_stmt_expr '?' '!'
 	;
 
 ternary_expr
-	: or_expr
-	| or_expr ternary_op ternary_expr
-	| or_expr '?'
-	| or_expr '?' '!'
+	: or_expr_with_suffix
+	| or_expr '?' expr ':' ternary_expr
+	| or_expr_with_suffix ELVIS ternary_expr
+	| or_expr_with_suffix OPTELSE ternary_expr
+	| lambda_decl implies_body
+	;
+
+ternary_stmt_expr
+	: or_stmt_expr_with_suffix
+	| or_stmt_expr '?' expr ':' ternary_expr
+	| or_stmt_expr_with_suffix ELVIS ternary_expr
+	| or_stmt_expr_with_suffix OPTELSE ternary_expr
 	| lambda_decl implies_body
 	;
 
@@ -316,29 +382,32 @@ assignment_expr
     	: ternary_expr
     	| CT_TYPE_IDENT '=' type
     	| unary_expr assignment_op assignment_expr
-    	| unary_expr assignment_op initializer_list
+    	;
+assignment_stmt_expr
+    	: ternary_stmt_expr
+    	| CT_TYPE_IDENT '=' type
+    	| unary_stmt_expr assignment_op assignment_expr
     	;
 
 implies_body
-	: IMPLIES expr_or_list
+	: IMPLIES expr
 	;
 
 lambda_decl
 	: FN maybe_optional_type fn_parameter_list opt_attributes
 	;
 
+expr_no_list
+	: assignment_stmt_expr
+	;
+
 expr
 	: assignment_expr
 	;
 
-expr_or_list
-	: expr
-	| initializer_list
-	;
 
 constant_expr
 	: ternary_expr
-	| initializer_list
 	;
 
 const_paren_expr
@@ -356,11 +425,11 @@ param_path
 	| param_path param_path_element
 	;
 
-arg	: param_path '=' expr_or_list
+arg	: param_path '=' expr
 	| type
 	| param_path '=' type
-	| expr_or_list
-	| CT_VASPLAT '(' constant_expr ')'
+	| expr
+	| CT_VASPLAT '(' range_expr ')'
 	| CT_VASPLAT '(' ')'
 	| ELLIPSIS expr
 	;
@@ -409,7 +478,7 @@ identifier_list
 enum_param_decl
 	: type
 	| type IDENT
-	| type IDENT '=' expr_or_list
+	| type IDENT '=' expr
 	;
 
 base_type
@@ -465,7 +534,7 @@ local_decl_after_type
 	: CT_IDENT
 	| CT_IDENT '=' constant_expr
 	| IDENT opt_attributes
-	| IDENT opt_attributes '=' expr_or_list
+	| IDENT opt_attributes '=' expr
 	;
 
 local_decl_storage
@@ -480,8 +549,8 @@ decl_or_expr
 	;
 
 var_decl
-	: VAR IDENT '=' expr_or_list
-	| VAR CT_IDENT '=' expr_or_list
+	: VAR IDENT '=' expr
+	| VAR CT_IDENT '=' expr
 	| VAR CT_IDENT
 	| VAR CT_TYPE_IDENT '=' type
 	| VAR CT_TYPE_IDENT
@@ -507,8 +576,9 @@ ct_for_stmt
 	;
 
 ct_foreach_stmt
-	: CT_FOREACH '(' CT_IDENT ':' expr_or_list ')' opt_stmt_list CT_ENDFOREACH
-
+	: CT_FOREACH '(' CT_IDENT ':' expr ')' opt_stmt_list CT_ENDFOREACH
+	| CT_FOREACH '(' CT_IDENT ',' CT_IDENT ':' expr ')' opt_stmt_list CT_ENDFOREACH
+	;
 ct_switch
     	: CT_SWITCH '(' constant_expr ')'
     	| CT_SWITCH '(' type ')'
@@ -524,7 +594,7 @@ var_stmt
 
 decl_stmt_after_type
 	: local_decl_after_type
-	| local_decl_after_type ',' identifier_list
+	| decl_stmt_after_type ',' local_decl_after_type
 	;
 
 declaration_stmt
@@ -534,13 +604,13 @@ declaration_stmt
 	;
 
 return_stmt
-	: RETURN expr_or_list ';'
+	: RETURN expr ';'
 	| RETURN ';'
 	;
 
 catch_unwrap_list
-	: rel_expr_or_list
-	| catch_unwrap_list ',' rel_expr_or_list
+	: relational_expr
+	| catch_unwrap_list ',' relational_expr
 	;
 
 catch_unwrap
@@ -550,15 +620,15 @@ catch_unwrap
 	;
 
 try_unwrap
-	: TRY rel_expr_or_list
-	| TRY IDENT '=' rel_expr_or_list
-	| TRY type IDENT '=' rel_expr_or_list
+	: TRY rel_or_lambda_expr
+	| TRY IDENT '=' rel_or_lambda_expr
+	| TRY type IDENT '=' rel_or_lambda_expr
 	;
 
 try_unwrap_chain
 	: try_unwrap
 	| try_unwrap_chain AND_OP try_unwrap
-	| try_unwrap_chain AND_OP rel_expr_or_list
+	| try_unwrap_chain AND_OP rel_or_lambda_expr
 	;
 
 default_stmt
@@ -651,6 +721,8 @@ break_stmt
 nextcase_stmt
 	: NEXTCASE CONST_IDENT ':' expr ';'
 	| NEXTCASE expr ';'
+	| NEXTCASE CONST_IDENT ':' type ';'
+	| NEXTCASE type ';'
 	| NEXTCASE ';'
 	;
 
@@ -667,8 +739,8 @@ foreach_vars
 	;
 
 foreach_stmt
-	: FOREACH optional_label '(' foreach_vars ':' expr_or_list ')' statement
-	: FOREACH_R optional_label '(' foreach_vars ':' expr_or_list ')' statement
+	: FOREACH optional_label '(' foreach_vars ':' expr ')' statement
+	: FOREACH_R optional_label '(' foreach_vars ':' expr ')' statement
 	;
 
 defer_stmt
@@ -764,7 +836,7 @@ statement
         | ct_switch_stmt
         | ct_foreach_stmt
         | ct_for_stmt
-    	| expr ';'
+    	| expr_no_list ';'
         | assert_stmt
         | ';'
 	;
@@ -982,10 +1054,10 @@ fn_parameter_list
 	;
 
 parameters
-	: parameter '=' expr_or_list
+	: parameter '=' expr
 	| parameter
 	| parameters ',' parameter
-	| parameters ',' parameter '=' expr_or_list
+	| parameters ',' parameter '=' expr
 	;
 
 parameter
@@ -1012,8 +1084,8 @@ func_definition
 	;
 
 const_declaration
-	: CONST CONST_IDENT opt_attributes '=' expr_or_list ';'
-	| CONST type CONST_IDENT opt_attributes '=' expr_or_list ';'
+	: CONST CONST_IDENT opt_attributes '=' expr ';'
+	| CONST type CONST_IDENT opt_attributes '=' expr ';'
 	;
 
 func_typedef
@@ -1058,7 +1130,7 @@ global_storage
 global_declaration
     : global_storage optional_type IDENT opt_attributes ';'
     | global_storage optional_type IDENT multi_declaration opt_attributes ';'
-    | global_storage optional_type IDENT opt_attributes '=' expr_or_list ';'
+    | global_storage optional_type IDENT opt_attributes '=' expr ';'
     ;
 
 opt_tl_stmts

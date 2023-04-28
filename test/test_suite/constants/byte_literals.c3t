@@ -4,7 +4,7 @@ char[*] fooy = x'dead beef';
 char[*] foow = x"4549234d e d";
 char[*] foo64 = b64"SGVsbG8gV29ybGQ=";
 
-// #expect: byte_literals.ll
+/* #expect: byte_literals.ll
 
 @byte_literals.foob = local_unnamed_addr global [1 x i8] c"\A0", align 1
 @byte_literals.fooz = local_unnamed_addr global [7 x i8] c"\00\AA\BB\CC\DD\EE\FF", align 1

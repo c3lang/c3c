@@ -8,7 +8,7 @@ fn void test()
     $Foo hello;
 }
 
-// #expect: reassign.ll
+/* #expect: reassign.ll
 
   %hello = alloca i32, align 4
   store i32 0, ptr %hello, align 4

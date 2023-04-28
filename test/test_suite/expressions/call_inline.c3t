@@ -29,7 +29,7 @@ fn void main()
     test2();
     test3();
 }
-// #expect: inlineme.ll
+/* #expect: inlineme.ll
 
 entry:
   call void @inlineme.test1() #3

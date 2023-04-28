@@ -8,7 +8,7 @@ fn void test()
     int l = i = j = k;
 }
 
-// #expect: prec.ll
+/* #expect: prec.ll
 
   %i = alloca i32, align 4
   %j = alloca i32, align 4

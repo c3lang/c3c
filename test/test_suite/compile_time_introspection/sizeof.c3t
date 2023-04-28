@@ -46,7 +46,7 @@ struct Foo
     char x;
 }
 
-// #expect: foo.ll
+/* #expect: foo.ll
 
 @foo.x = local_unnamed_addr global i64 64, align 8
 @foo.y = local_unnamed_addr global i16 64, align 2

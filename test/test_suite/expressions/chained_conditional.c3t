@@ -21,7 +21,7 @@ fn void test()
     }
 }
 
-// #expect: chained.ll
+/* #expect: chained.ll
 
 entry:
   %x = alloca i32, align 4

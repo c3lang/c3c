@@ -4,7 +4,7 @@ fn void test1()
     if (x == 0) return;
     return test1();
 }
-// #expect: returning_void.ll
+/* #expect: returning_void.ll
 
   %x = alloca i32, align 4
   store i32 0, ptr %x, align 4

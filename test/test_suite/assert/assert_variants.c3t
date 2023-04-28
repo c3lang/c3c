@@ -19,7 +19,7 @@ fn void test()
 }
 
 
-// #expect: assert_variants.ll
+/* #expect: assert_variants.ll
 
  %x = alloca i32, align 4
   %y = alloca i32, align 4

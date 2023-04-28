@@ -5,7 +5,7 @@ fn double test(double a, double b, double c, double d)
   return -(a-b) - (c-d);
 }
 
-// #expect: simple_float_sub_neg.ll
+/* #expect: simple_float_sub_neg.ll
 
 define double @simple_float_sub_neg.test(double %0, double %1, double %2, double %3) #0 {
 entry:

@@ -6,7 +6,7 @@ fn int test(bool pos, bool color)
   return (int)(pos && color);
 }
 
-// #expect: double_return.ll
+/* #expect: double_return.ll
 
 entry:
   ret i32 0

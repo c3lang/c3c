@@ -26,7 +26,7 @@ fn void test3(int x)
     else { x += 1; }
 }
 
-// #expect: iftest.ll
+/* #expect: iftest.ll
 
 define void @iftest.test1(i32 %0) #0 {
 entry:

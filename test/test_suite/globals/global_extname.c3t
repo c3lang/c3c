@@ -2,6 +2,6 @@ module foo;
 
 int baz @extern("foobar") = 123;
 
-// #expect: foo.ll
+/* #expect: foo.ll
 
 @foobar = local_unnamed_addr global i32 123, align 4

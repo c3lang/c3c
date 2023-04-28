@@ -18,7 +18,7 @@ fn int foo()
 }
 
 
-// #expect: test.ll
+/* #expect: test.ll
 
   %x = alloca i32, align 4
   %y = alloca i32, align 4

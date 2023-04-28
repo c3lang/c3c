@@ -22,7 +22,7 @@ fn void test3(long* x)
     long c = x[1];
 }
 
-// #expect: pointer_index.ll
+/* #expect: pointer_index.ll
 
 define void @pointer_index.test1(ptr %0) #0 {
 entry:

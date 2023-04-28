@@ -59,7 +59,7 @@ $default:
 $assert(false);
 $endswitch
 
-// #expect: ct_if.ll
+/* #expect: ct_if.ll
 
 @ct_if.d = local_unnamed_addr global i32 5, align 4
 @ct_if.c = local_unnamed_addr global i32 5, align 4

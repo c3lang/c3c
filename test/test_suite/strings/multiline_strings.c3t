@@ -10,7 +10,7 @@ char *message3 = "Hfo\u0044ke";
 char *message4 = "\x64\x6f\x63\x75\x6d\x65\x6e\x74";
 
 
-// #expect: multiline_strings.ll
+/* #expect: multiline_strings.ll
 
 
 @.str = private unnamed_addr constant [41 x i8] c"\0A  `oh` superman\0A    where are you now?\0A\00", align 1

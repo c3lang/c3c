@@ -9,7 +9,7 @@ fn int main(int argc, char** argv)
     return 0;
 }
 
-// #expect: cast_expr.ll
+/* #expect: cast_expr.ll
 
 define i32 @main
 
