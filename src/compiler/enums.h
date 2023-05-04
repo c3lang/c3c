@@ -508,7 +508,6 @@ typedef enum
 	TOKEN_TYPEID,
 
 	// Keywords
-	TOKEN_ALIAS,            // Reserved
 	TOKEN_ASSERT,
 	TOKEN_ASM,
 	TOKEN_BITSTRUCT,
@@ -521,6 +520,7 @@ typedef enum
 	TOKEN_DEFINE,
 	TOKEN_DEFAULT,
 	TOKEN_DEFER,
+	TOKEN_DISTINCT,
 	TOKEN_DO,
 	TOKEN_ELSE,
 	TOKEN_ENUM,
@@ -533,6 +533,7 @@ typedef enum
 	TOKEN_FN,
 	TOKEN_TLOCAL,
 	TOKEN_IF,
+	TOKEN_INLINE,
 	TOKEN_IMPORT,
 	TOKEN_MACRO,
 	TOKEN_MODULE,
@@ -548,6 +549,7 @@ typedef enum
 	TOKEN_UNION,
 	TOKEN_VAR,
 	TOKEN_WHILE,
+	TOKEN_LAST_NON_CT_KEYWORD = TOKEN_WHILE,
 
 	TOKEN_CT_ALIGNOF,           // $alignof
 	TOKEN_CT_ASSERT,            // $assert

@@ -183,8 +183,6 @@ const char *token_type_to_string(TokenType type)
 			return "DOC_COMMENT";
 
 		// Keywords
-		case TOKEN_ALIAS:
-			return "alias";
 		case TOKEN_ANYFAULT:
 			return "anyfault";
 		case TOKEN_ASM:
@@ -211,6 +209,8 @@ const char *token_type_to_string(TokenType type)
 			return "defer";
 		case TOKEN_DEFINE:
 			return "define";
+		case TOKEN_DISTINCT:
+			return "distinct";
 		case TOKEN_DO:
 			return "do";
 		case TOKEN_ELSE:
@@ -233,6 +233,8 @@ const char *token_type_to_string(TokenType type)
 			return "fn";
 		case TOKEN_IF:
 			return "if";
+		case TOKEN_INLINE:
+			return "inline";
 		case TOKEN_IMPORT:
 			return "import";
 		case TOKEN_MACRO:

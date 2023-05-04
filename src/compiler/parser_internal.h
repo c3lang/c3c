@@ -130,9 +130,12 @@ INLINE bool token_is_some_ident(TokenType token_type)
 
 INLINE bool token_is_keyword(TokenType token_type)
 {
-	if (token_type >= TOKEN_VOID && token_type <= TOKEN_TYPEID) return true;
-	if (token_type >= TOKEN_ALIAS && token_type <= TOKEN_WHILE) return true;
-	return false;
+	return token_type >= TOKEN_FIRST_KEYWORD && token_type <= TOKEN_LAST_KEYWORD;
+}
+
+INLINE bool token_is_keyword_ident(TokenType token_type)
+{
+	return token_type >= TOKEN_FIRST_KEYWORD && token_type <= TOKEN_LAST_NON_CT_KEYWORD;
 }
 
 static inline bool expect_ident(ParseContext *c, const char* name)

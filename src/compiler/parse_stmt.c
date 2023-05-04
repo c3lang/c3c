@@ -1290,7 +1290,6 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_SHL:
 		case TOKEN_SHR_ASSIGN:
 		case TOKEN_SHL_ASSIGN:
-		case TOKEN_ALIAS:
 		case TOKEN_ELSE:
 		case TOKEN_QUESTQUEST:
 		case TOKEN_ENUM:
@@ -1323,6 +1322,8 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_CT_ENDFOREACH:
 		case TOKEN_CT_VASPLAT:
 		case TOKEN_IMPLIES:
+		case TOKEN_INLINE:
+		case TOKEN_DISTINCT:
 		case TOKEN_CT_INCLUDE:
 			SEMA_ERROR_HERE("Unexpected '%s' found when expecting a statement.",
 			                token_type_to_string(c->tok));

@@ -203,7 +203,7 @@ static inline Path *parse_module_path(ParseContext *c)
 		const char *string = symstr(c);
 		if (!try_consume(c, TOKEN_IDENT))
 		{
-			if (token_is_keyword(c->tok))
+			if (token_is_keyword_ident(c->tok))
 			{
 				SEMA_ERROR_HERE("The module path cannot contain a reserved keyword, try another name.");
 				return NULL;
@@ -290,7 +290,7 @@ bool parse_module(ParseContext *c, AstId contracts)
 
 	if (!tok_is(c, TOKEN_IDENT))
 	{
-		if (token_is_keyword(c->tok))
+		if (token_is_keyword_ident(c->tok))
 		{
 			RETURN_SEMA_ERROR_HERE("The module name cannot contain a reserved keyword, try another name.");
 		}
@@ -400,7 +400,7 @@ bool parse_module(ParseContext *c, AstId contracts)
 
 static bool consume_type_name(ParseContext *c, const char* type)
 {
-	if (tok_is(c, TOKEN_IDENT) || token_is_keyword(c->tok))
+	if (tok_is(c, TOKEN_IDENT) || token_is_keyword_ident(c->tok))
 	{
 		RETURN_SEMA_ERROR_HERE("Names of %ss must start with an uppercase letter.", type);
 	}
@@ -413,7 +413,7 @@ static bool consume_type_name(ParseContext *c, const char* type)
 
 bool consume_const_name(ParseContext *c, const char* type)
 {
-	if (tok_is(c, TOKEN_IDENT) || tok_is(c, TOKEN_TYPE_IDENT) || token_is_keyword(c->tok))
+	if (tok_is(c, TOKEN_IDENT) || tok_is(c, TOKEN_TYPE_IDENT) || token_is_keyword_ident(c->tok))
 	{
 		RETURN_SEMA_ERROR_HERE("Names of %ss must be all uppercase.", type);
 	}
@@ -1164,7 +1164,7 @@ static inline bool parse_enum_param_decl(ParseContext *c, Decl*** parameters)
 	Decl *param = decl_new_var_current(c, type, VARDECL_PARAM);
 	if (!try_consume(c, TOKEN_IDENT))
 	{
-		if (token_is_keyword(c->tok)) RETURN_SEMA_ERROR_HERE("Keywords cannot be used as member names.");
+		if (token_is_keyword_ident(c->tok)) RETURN_SEMA_ERROR_HERE("Keywords cannot be used as member names.");
 		if (token_is_some_ident(c->tok)) RETURN_SEMA_ERROR_HERE("Expected a name starting with a lower-case letter.");
 		RETURN_SEMA_ERROR_HERE("Expected a member name here.");
 	}
@@ -1501,7 +1501,7 @@ bool parse_struct_body(ParseContext *c, Decl *parent)
 			continue;
 		}
 		bool was_inline = false;
-		if (token_type == TOKEN_IDENT && symstr(c) == kw_inline)
+		if (tok_is(c, TOKEN_INLINE))
 		{
 			if (parent->decl_kind != DECL_STRUCT)
 			{
@@ -1761,23 +1761,15 @@ static inline Decl *parse_typedef_declaration(ParseContext *c)
 	CONSUME_OR_RET(TOKEN_EQ, poisoned_decl);
 	bool distinct = false;
 	bool is_inline = false;
-	if (tok_is(c, TOKEN_IDENT))
+	if (tok_is(c, TOKEN_INLINE))
 	{
-		if (symstr(c) == kw_inline)
-		{
-			SEMA_ERROR_HERE("'inline' must always follow 'distinct'.");
-			return poisoned_decl;
-		}
-		if (symstr(c) == kw_distinct)
-		{
-			distinct = true;
-			advance(c);
-			if (tok_is(c, TOKEN_IDENT) && symstr(c) == kw_inline)
-			{
-				is_inline = true;
-				advance(c);
-			}
-		}
+		SEMA_ERROR_HERE("'inline' must always follow 'distinct'.");
+		return poisoned_decl;
+	}
+	if (try_consume(c, TOKEN_DISTINCT))
+	{
+		distinct = true;
+		is_inline = try_consume(c, TOKEN_INLINE);
 	}
 
 	// 1. Did we have `fn`? In that case it's a function pointer.
