@@ -1,7 +1,7 @@
 module std::math::nolibc;
 import std::math;
 
-$if (!env::COMPILER_LIBC_AVAILABLE)
+$if !env::COMPILER_LIBC_AVAILABLE:
 
 /* origin: FreeBSD /usr/src/lib/msun/src/e_rem_pio2f.c */
 /*

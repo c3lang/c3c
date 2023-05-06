@@ -11,7 +11,7 @@ macro checker(int x, $i)
     {
         for (int i = 0; i < $indent; i++) printf(" ");
         printf("Helo %d\n", x);
-        $if ($i > 0)
+        $if $i > 0:
             checker(x, $i - 1);
         $endif
         if (x % 2 == 0) break FOO;

@@ -1,7 +1,7 @@
 module std::net::os;
 import libc;
 
-$if (env::OS_TYPE == LINUX)
+$if env::OS_TYPE == LINUX:
 
 struct AddrInfo
 {

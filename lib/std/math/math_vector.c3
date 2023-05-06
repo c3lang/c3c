@@ -217,7 +217,7 @@ return v;
 	var view_proj = m1.mul(m2);
 	var invert = view_proj.invert();
     // Create quaternion from source point
-	$if ($typeof(v[0]).typeid == float.typeid)
+	$if $typeof(v[0]).typeid == float.typeid:
 	    Quaternionf quat = { v.x, v.y, v.z, 1 };
 	$else
 	    Quaternion quat = { v.x, v.y, v.z, 1 };

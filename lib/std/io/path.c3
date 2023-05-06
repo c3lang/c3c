@@ -96,7 +96,7 @@ fn bool! rmdir(Path path)
 fn void! rmtree(Path path)
 {
 	if (!path.path_string.len) return PathResult.INVALID_PATH?;
-$if ($defined(os::native_rmtree))
+$if $defined(os::native_rmtree):
 	return os::native_rmtree(path);
 $else
 	assert(false, "rmtree is not available");

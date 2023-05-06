@@ -23,6 +23,7 @@ void yyerror(char *s);
 %token TYPEID BITSTRUCT STATIC BANGBANG AT_CONST_IDENT HASH_TYPE_IDENT
 %token STRUCT UNION ENUM ELLIPSIS DOTDOT BYTES
 
+%token CT_ERROR
 %token CASE DEFAULT IF ELSE SWITCH WHILE DO FOR CONTINUE BREAK RETURN FOREACH_R FOREACH
 %token FN FAULT MACRO CT_IF CT_ENDIF CT_ELSE CT_SWITCH CT_CASE CT_DEFAULT CT_FOR CT_FOREACH CT_ENDFOREACH
 %token CT_ENDFOR CT_ENDSWITCH BUILTIN IMPLIES INITIALIZE FINALIZE CT_ECHO CT_ASSERT CT_EVALTYPE CT_VATYPE
@@ -410,10 +411,6 @@ constant_expr
 	: ternary_expr
 	;
 
-const_paren_expr
-	: '(' constant_expr ')'
-	;
-
 param_path_element
 	: '[' expr ']'
 	| '[' expr DOTDOT expr ']'
@@ -750,8 +747,8 @@ defer_stmt
 	;
 
 ct_if_stmt
-	: CT_IF const_paren_expr opt_stmt_list CT_ENDIF
-	| CT_IF const_paren_expr opt_stmt_list CT_ELSE opt_stmt_list CT_ENDIF
+	: CT_IF constant_expr ':' opt_stmt_list CT_ENDIF
+	| CT_IF constant_expr ':' opt_stmt_list CT_ELSE opt_stmt_list CT_ENDIF
 	;
 
 assert_expr
@@ -873,16 +870,17 @@ optional_label
 	;
 
 ct_assert_stmt
-	: CT_ASSERT '(' constant_expr ',' constant_expr ')' ';'
-	| CT_ASSERT '(' constant_expr ')' ';'
+	: CT_ASSERT constant_expr ':' constant_expr ';'
+	| CT_ASSERT constant_expr ';'
+	| CT_ERROR constant_expr ';'
 	;
 
 ct_include_stmt
-	: CT_INCLUDE '(' string_expr ')' ';'
+	: CT_INCLUDE string_expr ';'
 	;
 
 ct_echo_stmt
-	: CT_ECHO '(' constant_expr ')' ';'
+	: CT_ECHO constant_expr ';'
 
 bitstruct_declaration
 	: BITSTRUCT TYPE_IDENT ':' type opt_attributes bitstruct_body
@@ -1173,8 +1171,8 @@ define_declaration
 	;
 
 tl_ct_if
-	: CT_IF const_paren_expr opt_tl_stmts CT_ENDIF
-	| CT_IF const_paren_expr opt_tl_stmts CT_ELSE opt_tl_stmts CT_ENDIF
+	: CT_IF constant_expr ':' opt_tl_stmts CT_ENDIF
+	| CT_IF constant_expr ':' opt_tl_stmts CT_ELSE opt_tl_stmts CT_ENDIF
 	;
 
 tl_ct_switch

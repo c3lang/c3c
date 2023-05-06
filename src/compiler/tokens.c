@@ -338,6 +338,8 @@ const char *token_type_to_string(TokenType type)
 			return "$eval";
 		case TOKEN_CT_EVALTYPE:
 			return "$evaltype";
+		case TOKEN_CT_ERROR:
+			return "$error";
 		case TOKEN_CT_FOR:
 			return "$for";
 		case TOKEN_CT_FOREACH:

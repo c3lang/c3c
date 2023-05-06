@@ -91,7 +91,7 @@ fn bool ptr_is_aligned(void* ptr, usz alignment) @inline
 
 macro void clear(void* dst, usz len, usz $dst_align = 0, bool $is_volatile = false, bool $inlined = false)
 {
-	$if ($inlined)
+	$if $inlined:
 		$$memset_inline(dst, (char)0, len, $is_volatile, $dst_align);
 	$else
 		$$memset(dst, (char)0, len, $is_volatile, $dst_align);
@@ -100,7 +100,7 @@ macro void clear(void* dst, usz len, usz $dst_align = 0, bool $is_volatile = fal
 
 macro void copy(void* dst, void* src, usz len, usz $dst_align = 0, usz $src_align = 0, bool $is_volatile = false, bool $inlined = false)
 {
-	$if ($inlined)
+	$if $inlined:
 		$$memcpy_inline(dst, src, len, $is_volatile, $dst_align, $src_align);
 	$else
 		$$memcpy(dst, src, len, $is_volatile, $dst_align, $src_align);
@@ -114,7 +114,7 @@ macro void move(void* dst, void* src, usz len, usz $dst_align = 0, usz $src_alig
 
 macro void set(void* dst, char val, usz len, usz $dst_align = 0, bool $is_volatile = false, bool $inlined = false)
 {
-	$if ($inlined)
+	$if $inlined:
 		$$memset_inline(dst, val, len, $is_volatile, $dst_align);
 	$else
 		$$memset(dst, val, len, $is_volatile, $dst_align);
@@ -130,12 +130,12 @@ macro void set(void* dst, char val, usz len, usz $dst_align = 0, bool $is_volati
  **/
 macro bool equals(a, b, isz len = -1, usz $align = 0)
 {
-	$if (!$align)
+	$if !$align:
 		$align = $typeof(a[0]).alignof;
 	$endif
 	void* x @noinit;
 	void* y @noinit;
-	$if (values::@inner_kind(a) == TypeKind.SUBARRAY)
+	$if values::@inner_kind(a) == TypeKind.SUBARRAY:
 		len = a.len;
 		if (len != b.len) return false;
 		x = a.ptr;
@@ -206,10 +206,10 @@ macro malloc(..., Allocator* using = mem::heap(), usz end_padding = 0) @builtin
  **/
 macro malloc_checked(..., Allocator* using = mem::heap(), usz end_padding = 0) @builtin
 {
-	$if ($checks($vatype(0).sizeof))
+	$if $checks($vatype(0).sizeof):
 		var $Type = $vatype(0);
-		$assert(!type_alloc_must_be_aligned($vatype(0)),  "Type must be allocated with malloc_aligned");
-		$if ($vacount == 2)
+		$assert !type_alloc_must_be_aligned($vatype(0)) :  "Type must be allocated with malloc_aligned";
+		$if $vacount == 2:
 			usz size = $vaarg(1);
 			return (($Type*)using.alloc($Type.sizeof * size + end_padding))[:size];
 		$else
@@ -228,9 +228,9 @@ macro malloc_checked(..., Allocator* using = mem::heap(), usz end_padding = 0) @
  **/
 macro malloc_aligned(..., usz alignment = 0, usz end_padding = 0, Allocator* using = mem::heap()) @builtin
 {
-	$if ($checks($vatype(0).sizeof))
+	$if $checks($vatype(0).sizeof):
 		var $Type = $vatype(0);
-		$if ($vacount == 2)
+		$if $vacount == 2:
 			usz size = $vaarg(1);
 			return (($Type*)using.alloc_aligned($Type.sizeof * size + end_padding, alignment))[:size];
 		$else
@@ -256,10 +256,10 @@ macro calloc(..., Allocator* using = mem::heap(), usz end_padding = 0) @builtin
  **/
 macro calloc_checked(..., Allocator* using = mem::heap(), usz end_padding = 0) @builtin
 {
-	$if ($checks($vatype(0).sizeof))
+	$if $checks($vatype(0).sizeof):
 		var $Type = $vatype(0);
-		$assert(!type_alloc_must_be_aligned($vatype(0)),  "Type must be allocated with calloc_aligned");
-		$if ($vacount == 2)
+		$assert !type_alloc_must_be_aligned($vatype(0)) : "Type must be allocated with calloc_aligned";
+		$if $vacount == 2:
 			usz size = $vaarg(1);
 			return (($Type*)using.calloc($Type.sizeof * size + end_padding))[:size];
 		$else
@@ -278,9 +278,9 @@ macro calloc_checked(..., Allocator* using = mem::heap(), usz end_padding = 0) @
  **/
 macro calloc_aligned(..., usz alignment = 0, Allocator* using = mem::heap(), usz end_padding = 0) @builtin
 {
-	$if ($checks($vatype(0).sizeof))
+	$if $checks($vatype(0).sizeof):
 		var $Type = $vatype(0);
-		$if ($vacount == 2)
+		$if $vacount == 2:
 			usz size = $vaarg(1);
 			return (($Type*)using.calloc_aligned($Type.sizeof * size + end_padding, alignment))[:size];
 		$else
@@ -331,9 +331,9 @@ macro void @scoped(Allocator* using; @body())
  **/
 macro tmalloc(..., usz end_padding = 0, usz alignment = DEFAULT_MEM_ALIGNMENT) @builtin
 {
-	$if ($checks($vatype(0).sizeof))
+	$if $checks($vatype(0).sizeof):
 		var $Type = $vatype(0);
-		$if ($vacount == 2)
+		$if $vacount == 2:
 			usz size = $vaarg(1);
 			return (($Type*)temp().alloc_aligned($Type.sizeof * size + end_padding, alignment))[:size]!!;
 		$else
@@ -350,9 +350,9 @@ macro tmalloc(..., usz end_padding = 0, usz alignment = DEFAULT_MEM_ALIGNMENT) @
  **/
 macro tcalloc(..., usz end_padding = 0, usz alignment = mem::DEFAULT_MEM_ALIGNMENT) @builtin
 {
-	$if ($checks($vatype(0).sizeof))
+	$if $checks($vatype(0).sizeof):
 		var $Type = $vatype(0);
-		$if ($vacount == 2)
+		$if $vacount == 2:
 			usz size = $vaarg(1);
 			return (($Type*)temp().calloc_aligned($Type.sizeof * size + end_padding, alignment))[:size]!!;
 		$else
@@ -411,7 +411,7 @@ macro TempAllocator* temp()
 macro Allocator* current_allocator() => thread_allocator;
 macro Allocator* heap() => thread_allocator;
 
-$if (!env::COMPILER_LIBC_AVAILABLE && env::ARCH_TYPE == ArchType.WASM32 || env::ARCH_TYPE == ArchType.WASM64)
+$if !env::COMPILER_LIBC_AVAILABLE && env::ARCH_TYPE == ArchType.WASM32 || env::ARCH_TYPE == ArchType.WASM64:
 
 SimpleHeapAllocator wasm_allocator @private;
 

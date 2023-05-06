@@ -308,7 +308,7 @@ macro void DString.append(DString* str, value)
 				$case @convertible(value, String):
 					str.append_chars(value);
 				$default:
-					$assert(false, "Unsupported type for append – use printf instead.");
+					$error "Unsupported type for append – use printf instead.";
 			$endswitch
 	$endswitch
 }

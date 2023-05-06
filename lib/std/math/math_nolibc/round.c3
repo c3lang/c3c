@@ -1,6 +1,6 @@
 module std::math::nolibc;
 
-$if (!env::COMPILER_LIBC_AVAILABLE)
+$if !env::COMPILER_LIBC_AVAILABLE:
 
 fn double _round(double x) @extern("round") @weak @nostrip
 {

@@ -1,6 +1,6 @@
 module std::thread::os;
 
-$if (thread::THREAD_MODEL == ThreadModel.WIN32)
+$if thread::THREAD_MODEL == ThreadModel.WIN32:
 
 typedef NativeThread = Win32_HANDLE;
 

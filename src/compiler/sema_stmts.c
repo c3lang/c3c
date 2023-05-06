@@ -2523,7 +2523,7 @@ static inline bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement
 
 bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement)
 {
-	Expr *expr = exprptr(statement->assert_stmt.expr);
+	Expr *expr = exprptrzero(statement->assert_stmt.expr);
 	ExprId message = statement->assert_stmt.message;
 	const char *msg = NULL;
 	Expr *message_expr = message ? exprptr(message) : NULL;
@@ -2535,9 +2535,10 @@ bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement)
 			SEMA_ERROR(message_expr, "Expected a string as the error message.");
 		}
 	}
-	int res = sema_check_comp_time_bool(context, expr);
+	int res = expr ? sema_check_comp_time_bool(context, expr) : 0;
 
 	if (res == -1) return false;
+	SourceSpan span = expr ? expr->span : statement->span;
 	if (!res)
 	{
 		if (context->current_macro)
@@ -2550,16 +2551,16 @@ bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement)
 			{
 				sema_error_at(context->inlining_span, "Compile time assert", EXPAND_EXPR_STRING(message_expr));
 			}
-			sema_error_prev_at(expr->span, "$assert was defined here.");
+			sema_error_prev_at(span, expr ? "$error was defined here" : "$assert was defined here.");
 			return false;
 		}
 		if (message_expr)
 		{
-			SEMA_ERROR(expr, "%.*s", EXPAND_EXPR_STRING(message_expr));
+			sema_error_at(span, "%.*s", EXPAND_EXPR_STRING(message_expr));
 		}
 		else
 		{
-			SEMA_ERROR(expr, "Compile time assert failed.");
+			sema_error_at(span, "Compile time assert failed.");
 		}
 		return false;
 	}

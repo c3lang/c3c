@@ -1,8 +1,7 @@
 module std::io::file::os;
 import libc;
 
-$if (env::os_is_darwin())
-
+$if env::os_is_darwin():
 
 struct DarwinTimespec @private
 {

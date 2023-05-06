@@ -1,8 +1,8 @@
 module std::net::os;
 
-$if ($defined(PLATFORM_AF_INET))
+$if $defined(PLATFORM_AF_INET):
 
-$if (!$defined(PLATFORM_O_NONBLOCK))
+$if !$defined(PLATFORM_O_NONBLOCK):
 	const PLATFORM_O_NONBLOCK = 0;
 $endif
 

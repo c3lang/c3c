@@ -1,6 +1,6 @@
 module std::math::nolibc;
 
-$if (!env::COMPILER_LIBC_AVAILABLE)
+$if !env::COMPILER_LIBC_AVAILABLE:
 
 fn double _ceil(double x) @weak @extern("ceil") @nostrip
 {

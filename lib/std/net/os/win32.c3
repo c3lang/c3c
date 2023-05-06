@@ -1,6 +1,6 @@
 module std::net::os;
 
-$if (env::os_is_win32())
+$if env::os_is_win32():
 
 const int PLATFORM_AF_INET = 1;
 const int PLATFORM_AF_IPX = 6;

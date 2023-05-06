@@ -82,7 +82,7 @@ $endswitch
 
 macro min(x, ...) @builtin
 {
-    $if ($vacount == 1)
+    $if $vacount == 1:
         return less(x, $vaarg(0)) ? x : $vaarg(0);
     $else
         var result = x;
@@ -98,7 +98,7 @@ macro min(x, ...) @builtin
 
 macro max(x, ...) @builtin
 {
-    $if ($vacount == 1)
+    $if $vacount == 1:
         return greater(x, $vaarg(0)) ? x : $vaarg(0);
     $else
         var result = x;

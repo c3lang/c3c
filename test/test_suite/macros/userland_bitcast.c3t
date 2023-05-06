@@ -2,7 +2,7 @@
 
 macro testbitcast(expr, $Type)
 {
-    $assert($sizeof(expr) == $Type.sizeof, "Cannot bitcast between types of different size.");
+    $assert $sizeof(expr) == $Type.sizeof : "Cannot bitcast between types of different size.";
     $Type x @noinit;
     var $size = (usz)($sizeof(expr));
 

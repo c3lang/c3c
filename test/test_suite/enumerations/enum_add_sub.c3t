@@ -14,17 +14,17 @@ fn int main()
 {
 	Foo a;
 	a += 1;
-	$assert($typeof(a++).typeid == Foo.typeid);
-	$assert($typeof(a += 1).typeid == Foo.typeid);
+	$assert $typeof(a++).typeid == Foo.typeid;
+	$assert $typeof(a += 1).typeid == Foo.typeid;
 	Abc b;
 	b += 1;
-	$assert($typeof(b++).typeid == Abc.typeid);
-	$assert($typeof(b += 1).typeid == Abc.typeid);
-	$assert(!$checks(a += Foo.ABC));
+	$assert $typeof(b++).typeid == Abc.typeid;
+	$assert $typeof(b += 1).typeid == Abc.typeid;
+	$assert !$checks(a += Foo.ABC);
 	Bar c;
 	c += 1;
-	$assert($typeof(c++).typeid == Bar.typeid);
-	$assert($typeof(c += 1).typeid == Bar.typeid);
+	$assert $typeof(c++).typeid == Bar.typeid;
+	$assert $typeof(c += 1).typeid == Bar.typeid;
 	return 0;
 }
 

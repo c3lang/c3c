@@ -900,7 +900,7 @@ static inline bool parse_ct_compound_stmt(ParseContext *c, AstId *start)
 
 /**
  * ct_if_stmt
- * 	: CT_IF '(' expression ')' ct_compound_stmt (ct_elif_stmt | ct_else_stmt) CT_ENDIF EOS
+ * 	: CT_IF expression ':' ct_compound_stmt (ct_elif_stmt | ct_else_stmt) CT_ENDIF EOS
  * 	;
  */
 static inline Ast *parse_ct_if_stmt(ParseContext *c)
@@ -908,7 +908,8 @@ static inline Ast *parse_ct_if_stmt(ParseContext *c)
 	Ast *ast = ast_new_curr(c, AST_CT_IF_STMT);
 	advance_and_verify(c, TOKEN_CT_IF);
 
-	ASSIGN_EXPR_OR_RET(ast->ct_if_stmt.expr, parse_const_paren_expr(c), poisoned_ast);
+	ASSIGN_EXPR_OR_RET(ast->ct_if_stmt.expr, parse_expr(c), poisoned_ast);
+	CONSUME_OR_RET(TOKEN_COLON, poisoned_ast);
 	if (!parse_ct_compound_stmt(c, &ast->ct_if_stmt.then)) return poisoned_ast;
 
 	if (tok_is(c, TOKEN_CT_ELSE))
@@ -942,11 +943,6 @@ static inline Ast *parse_return_stmt(ParseContext *c)
 	CONSUME_EOS_OR_RET(poisoned_ast);
 	return ast;
 }
-
-
-
-
-
 
 
 /**
@@ -1062,6 +1058,16 @@ static inline Ast* parse_ct_switch_stmt(ParseContext *c)
 	return ast;
 }
 
+static inline Ast *consume_eos(ParseContext *c, Ast *ast)
+{
+	if (!try_consume(c, TOKEN_EOS))
+	{
+		sema_error_at_after(c->prev_span, "Expected ';'");
+		advance(c);
+		return poisoned_ast;
+	}
+	return ast;
+}
 /**
  * assert_stmt ::= ASSERT '(' assert_expr (',' expr)? ')' ';'
  */
@@ -1077,23 +1083,13 @@ static inline Ast *parse_assert_stmt(ParseContext *c)
 		ASSIGN_EXPRID_OR_RET(ast->assert_stmt.message, parse_expr(c), poisoned_ast);
 	}
 	TRY_CONSUME_OR_RET(TOKEN_RPAREN, "The ending ')' was expected here.", poisoned_ast);
-	do
-	{
-		if (!tok_is(c, TOKEN_EOS))
-		{
-			sema_error_at_after(c->prev_span, "Expected ';'");
-			return poisoned_ast;
-		}
-		advance(c);
-	}
-	while (0);
-	return ast;
+	return consume_eos(c, ast);
 }
 
 // --- External functions
 
 /**
- * ct_assert_stmt ::= CT_ASSERT '(' constant_expression (',' constant_expression) ')' ';'
+ * ct_assert_stmt ::= CT_ASSERT constant_expression (':' constant_expression) ';'
  * @param c
  * @return
  */
@@ -1101,46 +1097,34 @@ Ast *parse_ct_assert_stmt(ParseContext *c)
 {
 	Ast *ast = ast_new_curr(c, AST_CT_ASSERT);
 	advance_and_verify(c, TOKEN_CT_ASSERT);
-	TRY_CONSUME_OR_RET(TOKEN_LPAREN, "'$assert' needs a '(' here, did you forget it?", poisoned_ast);
 	ASSIGN_EXPRID_OR_RET(ast->assert_stmt.expr, parse_constant_expr(c), poisoned_ast);
-
-	if (try_consume(c, TOKEN_COMMA))
+	if (try_consume(c, TOKEN_COLON))
 	{
 		ASSIGN_EXPRID_OR_RET(ast->assert_stmt.message, parse_constant_expr(c), poisoned_ast);
 	}
-	TRY_CONSUME_OR_RET(TOKEN_RPAREN, "The ending ')' was expected here.", poisoned_ast);
-	do
-	{
-		if (!tok_is(c, TOKEN_EOS))
-		{
-			sema_error_at_after(c->prev_span, "Expected ';'");
-			return poisoned_ast;
-		}
-		advance(c);
-	}
-	while (0);
-	return ast;
+	return consume_eos(c, ast);
+}
+
+/**
+ * ct_error_stmt ::= CT_ERROR constant_expression) ';'
+ * @param c
+ * @return
+ */
+Ast *parse_ct_error_stmt(ParseContext *c)
+{
+	Ast *ast = ast_new_curr(c, AST_CT_ASSERT);
+	advance_and_verify(c, TOKEN_CT_ERROR);
+	ast->assert_stmt.expr = 0;
+	ASSIGN_EXPRID_OR_RET(ast->assert_stmt.message, parse_constant_expr(c), poisoned_ast);
+	return consume_eos(c, ast);
 }
 
 Ast *parse_ct_echo_stmt(ParseContext *c)
 {
 	Ast *ast = ast_new_curr(c, AST_CT_ECHO_STMT);
 	advance_and_verify(c, TOKEN_CT_ECHO);
-	TRY_CONSUME_OR_RET(TOKEN_LPAREN, "'$echo' needs a '(' here, did you forget it?", poisoned_ast);
 	ASSIGN_EXPR_OR_RET(ast->expr_stmt, parse_constant_expr(c), poisoned_ast);
-
-	TRY_CONSUME_OR_RET(TOKEN_RPAREN, "The ending ')' was expected here.", poisoned_ast);
-	do
-	{
-		if (!tok_is(c, TOKEN_EOS))
-		{
-			sema_error_at_after(c->prev_span, "Expected ';'");
-			return poisoned_ast;
-		}
-		advance(c);
-	}
-	while (0);
-	return ast;
+	return consume_eos(c, ast);
 }
 
 Ast *parse_stmt(ParseContext *c)
@@ -1199,6 +1183,8 @@ Ast *parse_stmt(ParseContext *c)
 			return parse_ct_echo_stmt(c);
 		case TOKEN_CT_ASSERT:
 			return parse_ct_assert_stmt(c);
+		case TOKEN_CT_ERROR:
+			return parse_ct_error_stmt(c);
 		case TOKEN_CT_IF:
 			return parse_ct_if_stmt(c);
 		case TOKEN_CT_SWITCH:

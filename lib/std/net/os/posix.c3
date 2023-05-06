@@ -1,7 +1,7 @@
 module std::net::os;
 import libc;
 
-$if (env::os_is_win32() && $defined(AddrInfo))
+$if env::os_is_win32() && $defined(AddrInfo):
 
 const int F_GETFL = 3;
 const int F_SETFL = 4;

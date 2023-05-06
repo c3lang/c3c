@@ -77,7 +77,7 @@ macro any_to_int(any v, $Type)
 macro bool is_numerical($Type)
 {
 	var $kind = $Type.kindof;
-	$if ($kind == TypeKind.DISTINCT)
+	$if $kind == TypeKind.DISTINCT:
 		return is_numerical($Type.inner);
 	$else
 		return $kind == TypeKind.SIGNED_INT || $kind == TypeKind.UNSIGNED_INT || $kind == TypeKind.FLOAT
@@ -98,7 +98,7 @@ macro bool is_indexable($Type)
 macro bool is_comparable($Type)
 {
 	var $kind = $Type.kindof;
-	$if ($kind == TypeKind.DISTINCT)
+	$if $kind == TypeKind.DISTINCT:
 		return is_comparable($Type.inner);
 	$else
 		return $kind == TypeKind.SIGNED_INT || $kind == TypeKind.UNSIGNED_INT || $kind == TypeKind.FLOAT
@@ -162,7 +162,7 @@ macro bool is_vector($Type)
 
 macro TypeKind inner_kind($Type)
 {
-	$if ($Type.kindof == TypeKind.DISTINCT)
+	$if $Type.kindof == TypeKind.DISTINCT:
 		return inner_kind($typefrom($Type.inner));
 	$else
 		return $Type.kindof;
@@ -182,11 +182,11 @@ macro bool is_same($TypeA, $TypeB)
 macro bool @has_same(#a, #b, ...)
 {
 	var $type_a = $typeof(#a).typeid;
-	$if ($type_a != $typeof(#b).typeid)
+	$if $type_a != $typeof(#b).typeid:
 	    return false;
 	$endif
 	$for (var $i = 0; $i < $vacount; $i++)
-		$if ($typeof($vaexpr($i)).typeid != $type_a)
+		$if $typeof($vaexpr($i)).typeid != $type_a:
 			return false;
 		$endif
 	$endfor
@@ -213,7 +213,7 @@ macro bool is_promotable_to_float($Type) => types::is_float($Type) || types::is_
 
 macro bool is_same_vector_type($Type1, $Type2)
 {
-	$if ($Type1.kindof != TypeKind.VECTOR)
+	$if $Type1.kindof != TypeKind.VECTOR:
 		return $Type2.kindof != TypeKind.VECTOR;
 	$else
 		return $Type1.inner == $Type2.inner && $Type1.len == $Type2.len;
@@ -222,7 +222,7 @@ macro bool is_same_vector_type($Type1, $Type2)
 
 macro bool is_equatable_type($Type)
 {
-	$if ($defined($Type.less) || $defined($Type.compare_to) || $defined($Type.equals))
+	$if $defined($Type.less) || $defined($Type.compare_to) || $defined($Type.equals):
 		return true;
 	$else
 		return is_equatable($Type);
@@ -236,7 +236,7 @@ macro bool is_equatable_value(value)
 
 macro bool is_comparable_value(value)
 {
-	$if ($defined(value.less) || $defined(value.compare_to))
+	$if $defined(value.less) || $defined(value.compare_to):
 		return true;
 	$else
 		return is_comparable($typeof(value));

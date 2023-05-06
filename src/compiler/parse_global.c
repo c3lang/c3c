@@ -54,6 +54,7 @@ void recover_top_level(ParseContext *c)
 			case TOKEN_CONST:
 			case TOKEN_ASM:
 			case TOKEN_CT_ASSERT:
+			case TOKEN_CT_ERROR:
 			case TOKEN_DOCS_START:
 			case TOKEN_CT_IDENT:
 			case TOKEN_CT_IF:
@@ -113,8 +114,8 @@ static inline Decl *parse_ct_if_top_level(ParseContext *c)
 {
 	Decl *ct = decl_new_ct(DECL_CT_IF, c->span);
 	advance_and_verify(c, TOKEN_CT_IF);
-	ASSIGN_EXPR_OR_RET(ct->ct_if_decl.expr, parse_const_paren_expr(c), poisoned_decl);
-
+	ASSIGN_EXPR_OR_RET(ct->ct_if_decl.expr, parse_expr(c), poisoned_decl);
+	CONSUME_OR_RET(TOKEN_COLON, poisoned_decl);
 	if (!parse_top_level_block(c, &ct->ct_if_decl.then, TOKEN_CT_ENDIF, TOKEN_CT_ENDIF, TOKEN_CT_ELSE)) return poisoned_decl;
 	CtIfDecl *ct_if_decl = &ct->ct_if_decl;
 
@@ -2815,6 +2816,14 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 				decl->ct_assert_decl = ast;
 				return decl;
 			}
+		case TOKEN_CT_ERROR:
+		{
+			if (contracts) goto CONTRACT_NOT_ALLOWED;
+			ASSIGN_AST_OR_RET(Ast *ast, parse_ct_error_stmt(c), poisoned_decl);
+			decl = decl_new_ct(DECL_CT_ASSERT, ast->span);
+			decl->ct_assert_decl = ast;
+			return decl;
+		}
 		case TOKEN_CT_ECHO:
 			{
 				if (contracts) goto CONTRACT_NOT_ALLOWED;

@@ -565,6 +565,7 @@ typedef enum
 	TOKEN_CT_ENDSWITCH,         // $endswitch
 	TOKEN_CT_EVAL,              // $eval
 	TOKEN_CT_EVALTYPE,          // $evaltype
+	TOKEN_CT_ERROR,             // $error
 	TOKEN_CT_EXTNAMEOF,         // $extnameof
 	TOKEN_CT_FOR,               // $for
 	TOKEN_CT_FOREACH,           // $foreach

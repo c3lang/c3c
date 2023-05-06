@@ -17,41 +17,41 @@ fn void main()
 {
     int x = 0;
     var $counter = 0;
-    $if ($defined(x))
+    $if $defined(x):
         x++;
         $counter++;
     $endif
-    $if ($defined(Foo.ab))
+    $if $defined(Foo.ab):
         int y = 10;
         $counter++;
         x++;
     $endif
-    $if ($defined(Foo.ab.x))
+    $if $defined(Foo.ab.x):
         x = 0;
         $counter = 0;
     $endif
-    $if ($defined(Foo.bob))
+    $if $defined(Foo.bob):
         x++;
         $counter++;
     $endif
-    $if ($defined($eval("x")))
+    $if $defined($eval("x")):
         x++;
         $counter++;
     $endif
-    $if ($defined($evaltype("Foo").$eval("ab")))
+    $if $defined($evaltype("Foo").$eval("ab")):
         x++;
         $counter++;
     $endif
-    $if ($defined($evaltype("mymodule::Foo").$eval("bob")))
+    $if $defined($evaltype("mymodule::Foo").$eval("bob")):
         x++;
         $counter++;
     $endif
-    $if ($defined(y))
+    $if $defined(y):
         x++;
         $counter++;
         y = 1;
     $endif
-    $if ($defined(z))
+    $if $defined(z):
         $counter = 0;
         x = 0;
     $endif

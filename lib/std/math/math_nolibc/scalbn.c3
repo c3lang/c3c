@@ -1,6 +1,6 @@
 module std::math::nolibc;
 
-$if (!env::COMPILER_LIBC_AVAILABLE)
+$if !env::COMPILER_LIBC_AVAILABLE:
 
 fn double _scalbn(double x, int n) @weak @extern("scalbn") @nostrip
 {

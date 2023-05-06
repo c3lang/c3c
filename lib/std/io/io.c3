@@ -63,7 +63,7 @@ macro void print(x)
 	$case DString:
 		(void)stdout().print(x.str());
 	$default:
-		$if (@convertible(x, String))
+		$if @convertible(x, String):
 			(void)stdout().print((String)x);
 		$else
 			(void)stdout().printf("%s", x);
@@ -82,7 +82,7 @@ macro void printn(x = "")
 	$case DString:
 		(void)stdout().printn(x.str());
 	$default:
-		$if (@convertible(x, String))
+		$if @convertible(x, String):
 			(void)stdout().printn((String)x);
 		$else
 			(void)stdout().printfn("%s", x);

@@ -27,6 +27,7 @@ typedef enum
 
 Decl *parse_top_level_statement(ParseContext *c, ParseContext **new_context);
 Ast *parse_ct_assert_stmt(ParseContext *c);
+Ast *parse_ct_error_stmt(ParseContext *c);
 Ast *parse_ct_echo_stmt(ParseContext *c);
 Ast *parse_stmt(ParseContext *c);
 bool parse_path_prefix(ParseContext *c, Path** path_ref);

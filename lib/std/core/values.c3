@@ -12,7 +12,7 @@ macro bool @is_promotable_to_float(#value) => types::is_promotable_to_float($typ
 macro bool @is_same_vector_type(#value1, #value2) => types::is_same_vector_type($typeof(#value1), $typeof(#value2));
 macro promote_int(x)
 {
-	$if (@is_int(x))
+	$if @is_int(x):
 		return (double)x;
 	$else
 		return x;

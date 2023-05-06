@@ -1,7 +1,7 @@
 module std::time::os;
 import libc;
 
-$if (env::os_is_posix() && env::COMPILER_LIBC_AVAILABLE)
+$if env::os_is_posix() && env::COMPILER_LIBC_AVAILABLE:
 
 $switch (env::OS_TYPE)
 $case OPENBSD:
@@ -76,7 +76,7 @@ fn Time native_timestamp()
 	return (Time)(ts.s * 1_000_000i64 + ts.ns / 1_000i64);
 }
 
-$if (!env::os_is_darwin())
+$if !env::os_is_darwin():
 fn Clock native_clock()
 {
 	TimeSpec ts;

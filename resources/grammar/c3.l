@@ -50,6 +50,7 @@ int comment_level = 0;
 "$endforeach"   { count(); return(CT_ENDFOREACH); }
 "$endif"        { count(); return(CT_ENDIF); }
 "$endswitch"    { count(); return(CT_ENDSWITCH); }
+"$error"        { count(); return(CT_ERROR); }
 "$eval"         { count(); return(CT_EVAL); }
 "$evaltype"     { count(); return(CT_EVALTYPE); }
 "$extnameof"    { count(); return(CT_EXTNAMEOF); }

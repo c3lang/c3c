@@ -1,6 +1,6 @@
 module std::os::macos::cf;
 
-$if (env::os_is_darwin())
+$if env::os_is_darwin():
 
 typedef CFArrayRef = distinct void*;
 typedef CFArrayCallBacksRef = distinct void*;

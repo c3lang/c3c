@@ -1,4 +1,4 @@
-$if (0)
+$if 0:
 $else
 	$switch
 	$case false:
@@ -11,52 +11,52 @@ $endif
 
 $switch
 $case false:
-$assert(false);
+$assert false;
 $case false:
-$assert(false);
+$assert false;
 $default:
-$assert(true);
+$assert true;
 $endswitch
 
-$if (1)
-$assert(true);
+$if 1:
+$assert true;
 int d = 5;
 $else
-$assert(false);
+$assert false;
 $endif
 
 $switch
 $case false:
-$assert(true);
+$assert true;
 $case true:
-$assert(true);
+$assert true;
 int c = 5;
 $default:
-$assert(false);
+$assert false;
 $endswitch
 
 $switch
 $case false:
-$assert(true);
+$assert true;
 $case true:
-$assert(true);
+$assert true;
 int b = 4;
 $case false:
-$assert(false);
+$assert false;
 $default:
-$assert(false);
+$assert false;
 $endswitch
 
 $switch
 $case false:
-$assert(true);
+$assert true;
 $case false:
-$assert(false);
+$assert false;
 $case true:
-$assert(true);
+$assert true;
 int a = 3;
 $default:
-$assert(false);
+$assert false;
 $endswitch
 
 /* #expect: ct_if.ll

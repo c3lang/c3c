@@ -88,7 +88,7 @@ fn bool __run_default_test_runner()
 	return test_runner_create().run();
 }
 
-$if (!env::COMPILER_LIBC_AVAILABLE && env::ARCH_TYPE == ArchType.WASM32 || env::ARCH_TYPE == ArchType.WASM64)
+$if !env::COMPILER_LIBC_AVAILABLE && env::ARCH_TYPE == ArchType.WASM32 || env::ARCH_TYPE == ArchType.WASM64:
 
 extern fn void __wasm_call_ctors();
 fn void wasm_initialize() @extern("_initialize") @wasm

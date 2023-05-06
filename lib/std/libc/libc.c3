@@ -35,7 +35,7 @@ typedef TerminateFunction = fn void();
 typedef CompareFunction = fn int(void*, void*);
 typedef JmpBuf = uptr[$$JMP_BUF_SIZE];
 
-$if (env::COMPILER_LIBC_AVAILABLE)
+$if env::COMPILER_LIBC_AVAILABLE:
 
 extern fn double atof(char* str);
 extern fn int atoi(char* str);
@@ -59,7 +59,7 @@ extern fn int rand();
 extern fn void srand(uint seed);
 
 extern fn void longjmp(JmpBuf* buffer, CInt value);
-$if (env::os_is_win32())
+$if env::os_is_win32():
 // TODO win32 aarch64
 extern fn CInt _setjmp(void* frameptr, JmpBuf* buffer);
 macro CInt setjmp(JmpBuf* buffer) => _setjmp($$frameaddress(), buffer);
@@ -205,7 +205,7 @@ const int FILENAME_MAX = 1024;
 typedef Errno = distinct CInt;
 typedef SeekIndex = CLong;
 
-$if (env::COMPILER_LIBC_AVAILABLE)
+$if env::COMPILER_LIBC_AVAILABLE:
 
 extern fn int fclose(CFile stream);
 extern fn void clearerr(CFile stream);
@@ -370,7 +370,7 @@ struct Tm
 $endswitch
 
 
-$if (env::os_is_win32())
+$if env::os_is_win32():
 
 struct TimeSpec
 {
@@ -411,7 +411,7 @@ extern fn Tm* gmtime(Time_t *timer);
 
 extern fn Tm* localtime(Time_t *timer);
 
-$if (env::os_is_win32())
+$if env::os_is_win32():
 extern fn Tm* _gmtime64_s(Tm* buf, Time_t *timer);
 extern fn Tm* _localtime64_s(Tm* buf, Time_t *timer);
 extern fn void _get_timezone(CLong *timezone);
@@ -451,7 +451,7 @@ const Errno ENOEXEC = 8;    // Exec format error
 const Errno EBADF = 9;      // Bad file number
 const Errno ECHILD = 10;    // No child processes
 
-$if (env::OS_TYPE == MACOS)
+$if env::os_is_darwin():
 const Errno EAGAIN = 35;    // Try again Macos
 $else
 const Errno EAGAIN = 11;    // Try again

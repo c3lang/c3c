@@ -15,7 +15,7 @@ macro @goo(i, $e)
 
 struct Foo
 {
-    $if ($use_bar > 0)
+    $if $use_bar > 0:
     {
         int bar;
     }
@@ -125,12 +125,12 @@ $default:
 }
 $endswitch
 
-$if ($e > 0)
+$if $e > 0:
 {
     fn void foo() {}
 }
 
-$if ($b > 0)
+$if $b > 0:
 {
 }
 $else

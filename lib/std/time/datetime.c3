@@ -36,10 +36,10 @@ fn TzDateTime DateTime.to_local(DateTime* this)
 	dt.weekday = !tm.tm_wday ? Weekday.SUNDAY : (Weekday)tm.tm_wday + 1;
 	dt.year_day = (ushort)tm.tm_yday;
 	dt.time = this.time;
-$if ($defined(tm.tm_gmtoff))
+$if $defined(tm.tm_gmtoff):
 	dt.gmt_offset = (int)tm.tm_gmtoff;
 $else
-	$assert($defined(libc::_get_timezone));
+	$assert $defined(libc::_get_timezone);
 	CLong timezone;
 	libc::_get_timezone(&timezone);
 	dt.gmt_offset = (int)-timezone;

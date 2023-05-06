@@ -78,7 +78,7 @@ struct CallstackElement
 fn void default_panic(String message, String file, String function, uint line)
 {
 	CallstackElement* stack = $$stacktrace();
-	$if ($defined(io::stderr) && $defined(File.printf))
+	$if $defined(io::stderr) && $defined(File.printf):
 
 	if (stack) stack = stack.prev;
 	if (stack)
@@ -181,7 +181,7 @@ macro enum_by_name($Type, String enum_name) @builtin
  **/
 macro bool @likely(bool #value, $probability = 1.0) @builtin
 {
-$if ($probability == 1.0)
+$if $probability == 1.0:
 	return $$expect(#value, true);
 $else
 	return $$expect_with_probability(#value, true, $probability);
@@ -197,7 +197,7 @@ $endif
  **/
 macro bool @unlikely(bool #value, $probability = 1.0) @builtin
 {
-$if ($probability == 1.0)
+$if $probability == 1.0:
 	return $$expect(#value, false);
 $else
 	return $$expect_with_probability(#value, false, $probability);
@@ -211,7 +211,7 @@ $endif
  **/
 macro @expect(#value, expected, $probability = 1.0) @builtin
 {
-    $if ($probability == 1.0)
+    $if $probability == 1.0:
 	return $$expect(#value, ($typeof(#value))expected);
     $else
 	return $$expect_with_probability(#value, expected, $probability);

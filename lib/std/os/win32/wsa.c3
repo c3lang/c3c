@@ -2,7 +2,7 @@ module std::os::win32;
 
 typedef WSAError = distinct int;
 
-$if (env::os_is_win32())
+$if env::os_is_win32():
 
 extern fn WSAError win32_WSAGetLastError() @extern("WSAGetLastError");
 extern fn void win32_WSASetLastError(WSAError error) @extern("WSASetLastError");
@@ -10,7 +10,7 @@ $endif
 
 module std::os::win32::wsa;
 
-$if (env::os_is_win32())
+$if env::os_is_win32():
 const WSAError INVALID_HANDLE = 6;
 const WSAError NOT_ENOUGHT_MEMORY = 8;
 const WSAError INVALID_PARAMETER = 87;

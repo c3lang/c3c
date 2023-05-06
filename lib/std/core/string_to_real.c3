@@ -460,9 +460,9 @@ macro String.to_real(String chars, $Type) @private
 		const int BITS = math::DOUBLE_MANT_DIG;
 		const int EMIN = math::DOUBLE_MIN_EXP - BITS;
 	$case float128:
-		$assert(false, "Not yet supported");
+		$error "Not yet supported";
 	$default:
-		$assert(false, "Unexpected type");
+		$error "Unexpected type";
 	$endswitch
 
  	while (chars.len && chars[0] == ' ') chars = chars[1..];

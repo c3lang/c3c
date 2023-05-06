@@ -230,7 +230,7 @@ $switch
 	$case $checks(String s = value):
 		return new_string(value);
 	$default:
-		$assert(false, "Unsupported object type.");
+		$error "Unsupported object type.";
 $endswitch
 
 }
@@ -315,7 +315,7 @@ macro get_integer_value(Object* value, $Type)
 	}
 	if (value.is_string())
 	{
-		$if ($Type.kindof == TypeKind.SIGNED_INT)
+		$if $Type.kindof == TypeKind.SIGNED_INT:
 			return ($Type)value.s.to_int128();
 		$else
 			return ($Type)value.s.to_uint128();

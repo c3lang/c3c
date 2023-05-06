@@ -1,6 +1,6 @@
 module std::os::win32;
 
-$if (env::os_is_win32())
+$if env::os_is_win32():
 
 extern fn Win32_DWORD win32_GetLastError() @extern("GetLastError");
 

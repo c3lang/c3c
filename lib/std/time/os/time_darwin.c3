@@ -1,6 +1,6 @@
 module std::time::os;
 
-$if (env::os_is_darwin())
+$if env::os_is_darwin():
 
 struct Darwin_mach_timebase_info
 {

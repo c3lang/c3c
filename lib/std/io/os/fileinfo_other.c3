@@ -1,7 +1,7 @@
 module std::io::file::os;
 
 // native_temp_directory, for non Win32
-$if (!env::os_is_win32())
+$if !env::os_is_win32():
 
 fn Path! native_temp_directory(Allocator* using = mem::heap())
 {
@@ -13,7 +13,7 @@ fn Path! native_temp_directory(Allocator* using = mem::heap())
 	return path::new("/tmp", using);
 }
 
-$if (env::COMPILER_LIBC_AVAILABLE)
+$if env::COMPILER_LIBC_AVAILABLE:
 
 extern fn void* opendir(ZString);
 extern fn void closedir(void*);
@@ -84,7 +84,7 @@ $endif
 
 $endif
 
-$if (!env::os_is_darwin() && !env::os_is_win32())
+$if !env::os_is_darwin() && !env::os_is_win32():
 
 fn usz! native_file_size(String path)
 {
@@ -93,7 +93,7 @@ fn usz! native_file_size(String path)
 	return f.seek(0, Seek.END)!;
 }
 
-$if (env::os_is_posix() && env::COMPILER_LIBC_AVAILABLE)
+$if env::os_is_posix() && env::COMPILER_LIBC_AVAILABLE:
 
 fn bool native_file_or_dir_exists(String path)
 {
@@ -142,7 +142,7 @@ $case MACOS:
 $case TVOS:
 $case WATCHOS:
 
-$if (env::ARCH_TYPE == X86_64)
+$if env::ARCH_TYPE == X86_64:
 extern fn NativeDirentry* readdir(void*) @extern("readdir$INODE64");
 $else
 extern fn NativeDirentry* readdir(void*) @extern("readdir");

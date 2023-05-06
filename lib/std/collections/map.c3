@@ -205,7 +205,7 @@ fn Value[] HashMap.value_list(HashMap* map, Allocator* using = mem::heap())
 	return list;
 }
 
-$if (types::is_equatable(Value))
+$if types::is_equatable(Value):
 fn bool HashMap.has_value(HashMap* map, Value v)
 {
 	if (!map.count) return false;

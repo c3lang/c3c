@@ -1,7 +1,7 @@
 module std::net::os;
 import libc;
 
-$if (env::os_is_darwin())
+$if env::os_is_darwin():
 
 const AI_NUMERICSERV = 0x1000;
 const AI_ALL = 0x100;

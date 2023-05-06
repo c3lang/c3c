@@ -1,7 +1,7 @@
 module std::thread::os;
 import libc;
 
-$if (thread::THREAD_MODEL == ThreadModel.POSIX)
+$if thread::THREAD_MODEL == ThreadModel.POSIX:
 
 const PTHREAD_MUTEX_NORMAL = 0;
 const PTHREAD_MUTEX_ERRORCHECK = 1;
@@ -14,7 +14,7 @@ typedef NativeOnceFlag = PthreadOnce;
 
 typedef Pthread = distinct void*;
 
-$if (env::OS_TYPE == LINUX)
+$if env::OS_TYPE == LINUX:
 typedef PthreadMutex = distinct ulong[5];
 typedef PthreadAttribute = distinct ulong[7];
 typedef PthreadMutexAttribute = distinct uint;

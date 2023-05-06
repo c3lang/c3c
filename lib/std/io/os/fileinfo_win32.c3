@@ -1,7 +1,7 @@
 module std::io::file::os;
 import std::os::win32;
 
-$if (env::os_is_win32())
+$if env::os_is_win32():
 
 const Win32_DWORD FILE_ATTRIBUTE_READONLY = 0x01;
 const Win32_DWORD FILE_ATTRIBUTE_HIDDEN = 0x02;

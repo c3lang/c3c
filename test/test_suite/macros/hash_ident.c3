@@ -19,7 +19,7 @@ fn void main()
     @cofefe(x += 1);
     @cofefe(xx());
     @cofefe($x += 1);
-    $assert($x == 2);
+    $assert $x == 2;
     @cofefe(y += 1); // #error: 'y' could not be found
 }
 

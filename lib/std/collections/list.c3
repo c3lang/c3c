@@ -281,7 +281,7 @@ fn void List.ensure_capacity(List* list, usz added = 1) @inline @private
 
 // Functions for equatable types
 
-$if (types::is_equatable_type(Type))
+$if types::is_equatable_type(Type):
 
 fn usz! List.index_of(List* list, Type type)
 {
@@ -357,7 +357,7 @@ fn void List.remove_all(List* list, List* other_list)
 
 $endif
 
-$if (Type.kindof == POINTER)
+$if Type.kindof == POINTER:
 
 /**
  * @param [&in] list

@@ -2,7 +2,7 @@ module std::time::clock;
 
 fn Clock now()
 {
-$if ($defined(native_clock))
+$if $defined(native_clock):
 	return os::native_clock();
 $else
 	return 0;

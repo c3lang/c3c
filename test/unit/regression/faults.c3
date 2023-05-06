@@ -10,9 +10,9 @@ fn void ordinals()
 {
 	Foo z = {};
 	assert(z.ordinal == 0);
-	$assert(Foo.ABC.ordinal == 1);
-	$assert(Foo.CDE.ordinal == 2);
-	$assert((Foo{}).ordinal == 0);
+	$assert Foo.ABC.ordinal == 1;
+	$assert Foo.CDE.ordinal == 2;
+	$assert (Foo{}).ordinal == 0;
 	Foo x = Foo.CDE;
 	assert(x.ordinal == 2);
 	x = Foo.ABC;

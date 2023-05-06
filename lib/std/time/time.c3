@@ -61,7 +61,7 @@ enum Month : char
 
 fn Time now()
 {
-$if ($defined(native_timestamp))
+$if $defined(native_timestamp):
 	return os::native_timestamp();
 $else
 	return 0;

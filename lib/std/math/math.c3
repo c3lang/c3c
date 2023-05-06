@@ -120,7 +120,7 @@ macro abs(x) => $$abs(x);
 macro sign(x)
 {
 	var $Type = $typeof(x);
-	$if ($Type.kindof == TypeKind.UNSIGNED_INT)
+	$if $Type.kindof == TypeKind.UNSIGNED_INT:
 		return ($Type)(x > 0);
 	$else
 		return ($Type)(x > 0) - ($Type)(x < 0);
@@ -134,7 +134,7 @@ macro sign(x)
  **/
 macro atan2(x, y)
 {
-	$if (@typeis(x, float) && @typeis(y, float))
+	$if @typeis(x, float) && @typeis(y, float):
 		return _atan2f(x, y);
 	$else
 		return _atan2(x, y);
@@ -148,7 +148,7 @@ macro atan2(x, y)
  **/
 macro @sincos(x, y)
 {
-	$if ($typeof(y[0]).typeid == float.typeid)
+	$if $typeof(y[0]).typeid == float.typeid:
 		return _sincosf(x, y);
 	$else
 		return _sincos(x, y);
@@ -161,7 +161,7 @@ macro @sincos(x, y)
  **/
 macro atan(x)
 {
-	$if ($typeof(x).typeid == float.typeid)
+	$if $typeof(x).typeid == float.typeid:
 		return _atanf(x);
 	$else
 		return _atan(x);
@@ -276,7 +276,7 @@ macro log10(x) => $$log10(values::promote_int(x));
  **/
 macro max(x, y, ...)
 {
-	$if ($vacount == 0)
+	$if $vacount == 0:
 		return $$max(x, y);
 	$else
 		var m = $$max(x, y);
@@ -293,7 +293,7 @@ macro max(x, y, ...)
  **/
 macro min(x, y, ...)
 {
-	$if ($vacount == 0)
+	$if $vacount == 0:
 		return $$min(x, y);
     $else
     	var m = $$min(x, y);
@@ -321,7 +321,7 @@ macro nearbyint(x) => $$nearbyint(x);
  **/
 macro pow(x, exp)
 {
-    $if (types::is_floatlike($typeof(exp)))
+    $if types::is_floatlike($typeof(exp)):
 		return $$pow(x, ($typeof(x))exp);
     $else
 		return $$pow_int(x, exp);
@@ -333,7 +333,7 @@ macro pow(x, exp)
  **/
 macro frexp(x, int* e)
 {
-	$switch($typeof(x))
+	$switch ($typeof(x))
 	$case float:
 	$case float16:
 		return _frexpf((float)x, e);
@@ -347,7 +347,7 @@ macro frexp(x, int* e)
  **/
 macro int signbit(x)
 {
-	$switch($typeof(x))
+	$switch ($typeof(x))
 	$case float:
 	$case float16:
 		return bitcast((float)x, uint) >> 31;
@@ -422,7 +422,7 @@ $endswitch
  **/
 macro bool is_finite(x)
 {
-	$switch($typeof(x))
+	$switch ($typeof(x))
 	$case float:
 	$case float16:
 		return bitcast((float)x, uint) & 0x7fffffff < 0x7f800000;

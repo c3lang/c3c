@@ -1,7 +1,7 @@
 module std::time::os;
 import std::os::win32;
 
-$if (env::os_is_win32() && env::COMPILER_LIBC_AVAILABLE)
+$if env::os_is_win32() && env::COMPILER_LIBC_AVAILABLE:
 
 extern fn void win32_GetSystemTimeAsFileTime(Win32_FILETIME* time) @extern("GetSystemTimeAsFileTime");
 extern fn Win32_BOOL win32_QueryPerformanceFrequency(Win32_LARGE_INTEGER* lpFrequency) @extern("QueryPerformanceFrequency");

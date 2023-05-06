@@ -16,7 +16,7 @@ const uint MaxDepth = 8;
 
 //#define DEBUG_NODES
 
-$if (DEBUG_NODES)
+$if DEBUG_NODES:
 
 fn void Blocks.dump(Blocks* b)
 {
@@ -418,7 +418,7 @@ public fn void! TomlReader.parse(TomlReader* r, string filename)
     Parser parser;
     parser.parse(file.data(), r.message, r.blocks);
 
-$if (DEBUG_NODES)
+$if DEBUG_NODES:
     r.blocks.dump();
 $endif
     return status;

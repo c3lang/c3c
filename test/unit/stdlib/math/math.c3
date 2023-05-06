@@ -9,7 +9,7 @@ fn void! test_abs() @test
 	assert(math::abs(y) == 123.0);
 	float z = -21.0f;
 	assert(math::abs(z) == 21.0f);
-	$assert(@typeis(math::abs(z), float));
+	$assert @typeis(math::abs(z), float);
 	int[<3>] xx = { -1, -1000, 1000 };
 	assert(math::abs(xx) == int[<3>] { 1, 1000, 1000 });
 	double[<3>] yy = { -1, -0.5, 1000 };
@@ -71,7 +71,7 @@ fn void! test_ceil() @test
 	assert(math::ceil(d) == 1);
 	d = -0.9;
 	assert(math::ceil(d) == 0);
-	$assert(@typeis(math::ceil(d), double));
+	$assert @typeis(math::ceil(d), double);
 	float f = -123.1f;
 	assert(math::ceil(f) == -123.0f);
 	f = 123.1f;
@@ -80,7 +80,7 @@ fn void! test_ceil() @test
 	assert(math::ceil(f) == 1.0f);
 	f = -0.9f;
 	assert(math::ceil(f) == 0.0f);
-	$assert(@typeis(math::ceil(f), float));
+	$assert @typeis(math::ceil(f), float);
 	double[<5>] vec = { -123.1, 123.1, 0.1, -0.9, 0 };
 	assert(math::ceil(vec) == double[<5>] { -123, 124, 1, 0, 0 });
 }
@@ -95,7 +95,7 @@ fn void! test_floor() @test
 	assert(math::floor(d) == 0);
 	d = -0.1;
 	assert(math::floor(d) == -1);
-	$assert(@typeis(math::floor(d), double));
+	$assert @typeis(math::floor(d), double);
 	float f = -123.1f;
 	assert(math::floor(f) == -124.0f);
 	f = 123.1f;
@@ -104,7 +104,7 @@ fn void! test_floor() @test
 	assert(math::floor(f) == 0.0f);
 	f = -0.1f;
 	assert(math::floor(f) == -1.0f);
-	$assert(@typeis(math::floor(f), float));
+	$assert @typeis(math::floor(f), float);
 	double[<5>] vec = { -123.1, 123.1, 0.9, -0.1, 0 };
 	assert(math::floor(vec) == double[<5>] { -124, 123, 0, -1, 0 });
 }
@@ -119,7 +119,7 @@ fn void! test_trunc() @test
 	assert(math::trunc(d) == 0);
 	d = -0.9;
 	assert(math::trunc(d) == 0);
-	$assert(@typeis(math::trunc(d), double));
+	$assert @typeis(math::trunc(d), double);
 	float f = -123.9f;
 	assert(math::trunc(f) == -123.0f);
 	f = 123.9f;
@@ -128,7 +128,7 @@ fn void! test_trunc() @test
 	assert(math::trunc(f) == 0.0f);
 	f = -0.9f;
 	assert(math::trunc(f) == -0.0f);
-	$assert(@typeis(math::trunc(f), float));
+	$assert @typeis(math::trunc(f), float);
 	double[<5>] vec = { -123.9, 123.9, 0.9, -0.9, 0 };
 	assert(math::trunc(vec) == double[<5>] { -123, 123, 0, 0, 0 });
 }

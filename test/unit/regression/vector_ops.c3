@@ -18,9 +18,9 @@ fn void! test_conv() @test
 	assert(gh == { -1, 0 });
 	var $k = bool[<2>] { true, false };
 	var $gh = (int[<2>])$k;
-	$assert($gh[0] == -1);
+	$assert $gh[0] == -1;
 	var $gh2 = (char[<2>])$gh;
-	$assert($gh2[0] == 255);
+	$assert $gh2[0] == 255;
 	b = (bool[<2>])gh;
 	assert(b == { true, false });
 }
