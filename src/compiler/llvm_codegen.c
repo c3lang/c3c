@@ -194,7 +194,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 					vec_add(parts, llvm_emit_const_array_padding(element_type_llvm, diff, &was_modified));
 				}
 				LLVMValueRef value = llvm_emit_const_initializer(c, element->init_array_value.element);
-				if (LLVMTypeOf(value) == element_type_llvm) was_modified = true;
+				if (LLVMTypeOf(value) != element_type_llvm) was_modified = true;
 				vec_add(parts, value);
 				current_index = element_index + 1;
 			}
@@ -207,6 +207,10 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 			if (was_modified)
 			{
 				return llvm_get_unnamed_struct(c, parts, pack);
+			}
+			if (type_flat_is_vector(array_type))
+			{
+				return LLVMConstVector(parts, vec_size(parts));
 			}
 			return llvm_get_array(element_type_llvm, parts, vec_size(parts));
 		}

@@ -568,6 +568,13 @@ macro bool[<*>] double[<*>].comp_gt(double[<*>] x, double[<*>] y) => $$veccompgt
 macro bool[<*>] double[<*>].comp_ge(double[<*>] x, double[<*>] y) => $$veccompge(x, y);
 macro bool[<*>] double[<*>].comp_ne(double[<*>] x, double[<*>] y) => $$veccompne(x, y);
 
+macro bool[<*>] ichar[<*>].comp_lt(ichar[<*>] x, ichar[<*>] y) => $$veccomplt(x, y);
+macro bool[<*>] ichar[<*>].comp_le(ichar[<*>] x, ichar[<*>] y) => $$veccomple(x, y);
+macro bool[<*>] ichar[<*>].comp_eq(ichar[<*>] x, ichar[<*>] y) => $$veccompeq(x, y);
+macro bool[<*>] ichar[<*>].comp_gt(ichar[<*>] x, ichar[<*>] y) => $$veccompgt(x, y);
+macro bool[<*>] ichar[<*>].comp_ge(ichar[<*>] x, ichar[<*>] y) => $$veccompge(x, y);
+macro bool[<*>] ichar[<*>].comp_ne(ichar[<*>] x, ichar[<*>] y) => $$veccompne(x, y);
+
 macro ichar ichar[<*>].sum(ichar[<*>] x) => $$reduce_add(x);
 macro ichar ichar[<*>].product(ichar[<*>] x) => $$reduce_mul(x);
 macro ichar ichar[<*>].and(ichar[<*>] x) => $$reduce_and(x);
@@ -575,6 +582,13 @@ macro ichar ichar[<*>].or(ichar[<*>] x) => $$reduce_or(x);
 macro ichar ichar[<*>].xor(ichar[<*>] x) => $$reduce_xor(x);
 macro ichar ichar[<*>].max(ichar[<*>] x) => $$reduce_max(x);
 macro ichar ichar[<*>].min(ichar[<*>] x) => $$reduce_min(x);
+
+macro bool[<*>] short[<*>].comp_lt(short[<*>] x, short[<*>] y) => $$veccomplt(x, y);
+macro bool[<*>] short[<*>].comp_le(short[<*>] x, short[<*>] y) => $$veccomple(x, y);
+macro bool[<*>] short[<*>].comp_eq(short[<*>] x, short[<*>] y) => $$veccompeq(x, y);
+macro bool[<*>] short[<*>].comp_gt(short[<*>] x, short[<*>] y) => $$veccompgt(x, y);
+macro bool[<*>] short[<*>].comp_ge(short[<*>] x, short[<*>] y) => $$veccompge(x, y);
+macro bool[<*>] short[<*>].comp_ne(short[<*>] x, short[<*>] y) => $$veccompne(x, y);
 
 macro short short[<*>].sum(short[<*>] x) => $$reduce_add(x);
 macro short short[<*>].product(short[<*>] x) => $$reduce_mul(x);
@@ -599,6 +613,12 @@ macro int int[<*>].xor(int[<*>] x) => $$reduce_xor(x);
 macro int int[<*>].max(int[<*>] x) => $$reduce_max(x);
 macro int int[<*>].min(int[<*>] x) => $$reduce_min(x);
 
+macro bool[<*>] long[<*>].comp_lt(long[<*>] x, long[<*>] y) => $$veccomplt(x, y);
+macro bool[<*>] long[<*>].comp_le(long[<*>] x, long[<*>] y) => $$veccomple(x, y);
+macro bool[<*>] long[<*>].comp_eq(long[<*>] x, long[<*>] y) => $$veccompeq(x, y);
+macro bool[<*>] long[<*>].comp_gt(long[<*>] x, long[<*>] y) => $$veccompgt(x, y);
+macro bool[<*>] long[<*>].comp_ge(long[<*>] x, long[<*>] y) => $$veccompge(x, y);
+macro bool[<*>] long[<*>].comp_ne(long[<*>] x, long[<*>] y) => $$veccompne(x, y);
 macro long long[<*>].sum(long[<*>] x) => $$reduce_add(x);
 macro long long[<*>].product(long[<*>] x) => $$reduce_mul(x);
 macro long long[<*>].and(long[<*>] x) => $$reduce_and(x);
@@ -607,6 +627,12 @@ macro long long[<*>].xor(long[<*>] x) => $$reduce_xor(x);
 macro long long[<*>].max(long[<*>] x) => $$reduce_max(x);
 macro long long[<*>].min(long[<*>] x) => $$reduce_min(x);
 
+macro bool[<*>] int128[<*>].comp_lt(int128[<*>] x, int128[<*>] y) => $$veccomplt(x, y);
+macro bool[<*>] int128[<*>].comp_le(int128[<*>] x, int128[<*>] y) => $$veccomple(x, y);
+macro bool[<*>] int128[<*>].comp_eq(int128[<*>] x, int128[<*>] y) => $$veccompeq(x, y);
+macro bool[<*>] int128[<*>].comp_gt(int128[<*>] x, int128[<*>] y) => $$veccompgt(x, y);
+macro bool[<*>] int128[<*>].comp_ge(int128[<*>] x, int128[<*>] y) => $$veccompge(x, y);
+macro bool[<*>] int128[<*>].comp_ne(int128[<*>] x, int128[<*>] y) => $$veccompne(x, y);
 macro int128 int128[<*>].sum(int128[<*>] x) => $$reduce_add(x);
 macro int128 int128[<*>].product(int128[<*>] x) => $$reduce_mul(x);
 macro int128 int128[<*>].and(int128[<*>] x) => $$reduce_and(x);
@@ -630,6 +656,13 @@ macro bool bool[<*>].xor(bool[<*>] x) => $$reduce_xor(x);
 macro bool bool[<*>].max(bool[<*>] x) => $$reduce_max(x);
 macro bool bool[<*>].min(bool[<*>] x) => $$reduce_min(x);
 
+macro bool[<*>] char[<*>].comp_lt(char[<*>] x, char[<*>] y) => $$veccomplt(x, y);
+macro bool[<*>] char[<*>].comp_le(char[<*>] x, char[<*>] y) => $$veccomple(x, y);
+macro bool[<*>] char[<*>].comp_eq(char[<*>] x, char[<*>] y) => $$veccompeq(x, y);
+macro bool[<*>] char[<*>].comp_gt(char[<*>] x, char[<*>] y) => $$veccompgt(x, y);
+macro bool[<*>] char[<*>].comp_ge(char[<*>] x, char[<*>] y) => $$veccompge(x, y);
+macro bool[<*>] char[<*>].comp_ne(char[<*>] x, char[<*>] y) => $$veccompne(x, y);
+
 macro char char[<*>].sum(char[<*>] x) => $$reduce_add(x);
 macro char char[<*>].product(char[<*>] x) => $$reduce_mul(x);
 macro char char[<*>].and(char[<*>] x) => $$reduce_and(x);
@@ -638,6 +671,12 @@ macro char char[<*>].xor(char[<*>] x) => $$reduce_xor(x);
 macro char char[<*>].max(char[<*>] x) => $$reduce_max(x);
 macro char char[<*>].min(char[<*>] x) => $$reduce_min(x);
 
+macro bool[<*>] ushort[<*>].comp_lt(ushort[<*>] x, ushort[<*>] y) => $$veccomplt(x, y);
+macro bool[<*>] ushort[<*>].comp_le(ushort[<*>] x, ushort[<*>] y) => $$veccomple(x, y);
+macro bool[<*>] ushort[<*>].comp_eq(ushort[<*>] x, ushort[<*>] y) => $$veccompeq(x, y);
+macro bool[<*>] ushort[<*>].comp_gt(ushort[<*>] x, ushort[<*>] y) => $$veccompgt(x, y);
+macro bool[<*>] ushort[<*>].comp_ge(ushort[<*>] x, ushort[<*>] y) => $$veccompge(x, y);
+macro bool[<*>] ushort[<*>].comp_ne(ushort[<*>] x, ushort[<*>] y) => $$veccompne(x, y);
 
 macro ushort ushort[<*>].sum(ushort[<*>] x) => $$reduce_add(x);
 macro ushort ushort[<*>].product(ushort[<*>] x) => $$reduce_mul(x);
@@ -647,6 +686,13 @@ macro ushort ushort[<*>].xor(ushort[<*>] x) => $$reduce_xor(x);
 macro ushort ushort[<*>].max(ushort[<*>] x) => $$reduce_max(x);
 macro ushort ushort[<*>].min(ushort[<*>] x) => $$reduce_min(x);
 
+macro bool[<*>] uint[<*>].comp_lt(uint[<*>] x, uint[<*>] y) => $$veccomplt(x, y);
+macro bool[<*>] uint[<*>].comp_le(uint[<*>] x, uint[<*>] y) => $$veccomple(x, y);
+macro bool[<*>] uint[<*>].comp_eq(uint[<*>] x, uint[<*>] y) => $$veccompeq(x, y);
+macro bool[<*>] uint[<*>].comp_gt(uint[<*>] x, uint[<*>] y) => $$veccompgt(x, y);
+macro bool[<*>] uint[<*>].comp_ge(uint[<*>] x, uint[<*>] y) => $$veccompge(x, y);
+macro bool[<*>] uint[<*>].comp_ne(uint[<*>] x, uint[<*>] y) => $$veccompne(x, y);
+
 macro uint uint[<*>].sum(uint[<*>] x) => $$reduce_add(x);
 macro uint uint[<*>].product(uint[<*>] x) => $$reduce_mul(x);
 macro uint uint[<*>].and(uint[<*>] x) => $$reduce_and(x);
@@ -655,6 +701,13 @@ macro uint uint[<*>].xor(uint[<*>] x) => $$reduce_xor(x);
 macro uint uint[<*>].max(uint[<*>] x) => $$reduce_max(x);
 macro uint uint[<*>].min(uint[<*>] x) => $$reduce_min(x);
 
+macro bool[<*>] ulong[<*>].comp_lt(ulong[<*>] x, ulong[<*>] y) => $$veccomplt(x, y);
+macro bool[<*>] ulong[<*>].comp_le(ulong[<*>] x, ulong[<*>] y) => $$veccomple(x, y);
+macro bool[<*>] ulong[<*>].comp_eq(ulong[<*>] x, ulong[<*>] y) => $$veccompeq(x, y);
+macro bool[<*>] ulong[<*>].comp_gt(ulong[<*>] x, ulong[<*>] y) => $$veccompgt(x, y);
+macro bool[<*>] ulong[<*>].comp_ge(ulong[<*>] x, ulong[<*>] y) => $$veccompge(x, y);
+macro bool[<*>] ulong[<*>].comp_ne(ulong[<*>] x, ulong[<*>] y) => $$veccompne(x, y);
+
 macro ulong ulong[<*>].sum(ulong[<*>] x) => $$reduce_add(x);
 macro ulong ulong[<*>].product(ulong[<*>] x) => $$reduce_mul(x);
 macro ulong ulong[<*>].and(ulong[<*>] x) => $$reduce_and(x);
@@ -662,6 +715,13 @@ macro ulong ulong[<*>].or(ulong[<*>] x) => $$reduce_or(x);
 macro ulong ulong[<*>].xor(ulong[<*>] x) => $$reduce_xor(x);
 macro ulong ulong[<*>].max(ulong[<*>] x) => $$reduce_max(x);
 macro ulong ulong[<*>].min(ulong[<*>] x) => $$reduce_min(x);
+
+macro bool[<*>] uint128[<*>].comp_lt(uint128[<*>] x, uint128[<*>] y) => $$veccomplt(x, y);
+macro bool[<*>] uint128[<*>].comp_le(uint128[<*>] x, uint128[<*>] y) => $$veccomple(x, y);
+macro bool[<*>] uint128[<*>].comp_eq(uint128[<*>] x, uint128[<*>] y) => $$veccompeq(x, y);
+macro bool[<*>] uint128[<*>].comp_gt(uint128[<*>] x, uint128[<*>] y) => $$veccompgt(x, y);
+macro bool[<*>] uint128[<*>].comp_ge(uint128[<*>] x, uint128[<*>] y) => $$veccompge(x, y);
+macro bool[<*>] uint128[<*>].comp_ne(uint128[<*>] x, uint128[<*>] y) => $$veccompne(x, y);
 
 macro uint128 uint128[<*>].sum(uint128[<*>] x) => $$reduce_add(x);
 macro uint128 uint128[<*>].product(uint128[<*>] x) => $$reduce_mul(x);
