@@ -5891,7 +5891,7 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 	llvm_emit_exprid(c, value, expr->typeid_info_expr.parent);
 	llvm_value_rvalue(c, value);
 
-	LLVMValueRef kind;
+	LLVMValueRef kind = NULL;
 	LLVMValueRef ref = LLVMBuildIntToPtr(c->builder, value->value, c->ptr_type, "introspect*");
 	AlignSize align = llvm_abi_alignment(c, c->introspect_type);
 	AlignSize alignment;
