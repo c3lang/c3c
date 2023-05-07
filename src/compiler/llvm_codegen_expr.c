@@ -5895,7 +5895,8 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 	LLVMValueRef ref = LLVMBuildIntToPtr(c->builder, value->value, c->ptr_type, "introspect*");
 	AlignSize align = llvm_abi_alignment(c, c->introspect_type);
 	AlignSize alignment;
-	if (active_target.feature.safe_mode || expr->typeid_info_expr.kind == TYPEID_INFO_KIND)
+	bool safe_mode = active_target.feature.safe_mode;
+	if (safe_mode || expr->typeid_info_expr.kind == TYPEID_INFO_KIND)
 	{
 		kind = llvm_emit_struct_gep_raw(c, ref, c->introspect_type, INTROSPECT_INDEX_KIND, align, &alignment);
 		kind = llvm_load(c, c->byte_type, kind, alignment, "typeid.kind");
@@ -5906,7 +5907,7 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 			llvm_value_set(value, kind, expr->type);
 			return;
 		case TYPEID_INFO_INNER:
-			if (active_target.feature.safe_mode)
+			if (safe_mode)
 			{
 				BEValue check;
 				LLVMBasicBlockRef exit = llvm_basic_block_new(c, "check_type_ok");
@@ -5940,7 +5941,7 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 			}
 			break;
 		case TYPEID_INFO_NAMES:
-			if (active_target.feature.safe_mode)
+			if (safe_mode)
 			{
 				BEValue check;
 				LLVMBasicBlockRef exit = llvm_basic_block_new(c, "check_type_ok");
@@ -5973,7 +5974,7 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 			}
 			break;
 		case TYPEID_INFO_LEN:
-			if (active_target.feature.safe_mode)
+			if (safe_mode)
 			{
 				BEValue check;
 				LLVMBasicBlockRef exit = llvm_basic_block_new(c, "check_type_ok");
