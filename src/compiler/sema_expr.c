@@ -7337,7 +7337,7 @@ bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allo
 		Type *flat = type_flatten(to);
 		if (flat != type_anyfault && flat->type_kind != TYPE_FAULTTYPE && expr->expr_kind == EXPR_CONST)
 		{
-			sema_error_at_after(expr->span, "You need to add a trailing '!' here to make this an optional.");
+			sema_error_at_after(expr->span, "You need to add a trailing '?' here to make this an optional.");
 			return false;
 		}
 	}
