@@ -146,7 +146,7 @@ macro atan2(x, y)
  * @checked (*y)[0] = x, y.len
  * @require y.len == 2
  **/
-macro @sincos(x, y)
+macro sincos(x, y)
 {
 	$if $typeof(y[0]).typeid == float.typeid:
 		return _sincosf(x, y);
@@ -165,6 +165,66 @@ macro atan(x)
 		return _atanf(x);
 	$else
 		return _atan(x);
+	$endif
+}
+
+/**
+ * @require values::@is_int(x) || values::@is_float(x) "Expected an integer or floating point value"
+ **/
+macro atanh(x)
+{
+	$if $typeof(x).typeid == float.typeid:
+		return _atanhf(x);
+	$else
+		return _atanh(x);
+	$endif
+}
+
+/**
+ * @require values::@is_int(x) || values::@is_float(x) "Expected an integer or floating point value"
+ **/
+macro acos(x)
+{
+	$if $typeof(x).typeid == float.typeid:
+		return _acosf(x);
+	$else
+		return _acos(x);
+	$endif
+}
+
+/**
+ * @require values::@is_int(x) || values::@is_float(x) "Expected an integer or floating point value"
+ **/
+macro acosh(x)
+{
+	$if $typeof(x).typeid == float.typeid:
+		return _acoshf(x);
+	$else
+		return _acosh(x);
+	$endif
+}
+
+/**
+ * @require values::@is_int(x) || values::@is_float(x) "Expected an integer or floating point value"
+ **/
+macro asin(x)
+{
+	$if $typeof(x).typeid == float.typeid:
+		return _asinf(x);
+	$else
+		return _asin(x);
+	$endif
+}
+
+/**
+ * @require values::@is_int(x) || values::@is_float(x) "Expected an integer or floating point value"
+ **/
+macro asinh(x)
+{
+	$if $typeof(x).typeid == float.typeid:
+		return _asinhf(x);
+	$else
+		return _asinh(x);
 	$endif
 }
 
@@ -813,7 +873,6 @@ macro uint float.word(float d) => bitcast(d, uint);
 
 macro double scalbn(double x, int n) => _scalbn(x, n);
 
-
 extern fn double _atan(double x) @extern("atan");
 extern fn float _atanf(float x) @extern("atanf");
 extern fn double _atan2(double, double) @extern("atan2");
@@ -823,6 +882,17 @@ extern fn void _sincosf(float, float*) @extern("sincosf");
 extern fn double _tan(double x) @extern("tan");
 extern fn float _tanf(float x) @extern("tanf");
 extern fn double _scalbn(double x, int n) @extern("scalbn");
+extern fn double _acos(double x) @extern("acos");
+extern fn double _asin(double x) @extern("asin");
+extern fn double _acosh(double x) @extern("acosh");
+extern fn double _asinh(double x) @extern("asinh");
+extern fn double _atanh(double x) @extern("atanh");
+extern fn float _acosf(float x) @extern("acosf");
+extern fn float _asinf(float x) @extern("asinf");
+extern fn float _acoshf(float x) @extern("acoshf");
+extern fn float _asinhf(float x) @extern("asinhf");
+extern fn float _atanhf(float x) @extern("atanhf");
+
 
 fn double _frexp(double x, int* e)
 {
