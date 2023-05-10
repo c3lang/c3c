@@ -42,6 +42,10 @@ struct Matrix4x4
 	}
 }
 
+macro Matrix2x2 identity_2x2() => { .m = { [0] = 1, [3] = 1 } };
+macro Matrix3x3 identity_3x3() => { .m = { [0] = 1, [4] = 1, [8] = 1 } };
+macro Matrix4x4 identity_4x4() => { .m = { [0] = 1, [5] = 1, [10] = 1, [15] = 1 } };
+
 fn Real[<2>] Matrix2x2.apply(Matrix2x2* mat, Real[<2>] vec)
 {
 	return Real[<2>] {
@@ -375,6 +379,17 @@ fn Real Matrix3x3.trace(Matrix3x3* m) => m.m00 + m.m11 + m.m22;
 fn Real Matrix4x4.trace(Matrix4x4* m) => m.m00 + m.m11 + m.m22 + m.m33;
 
 fn Matrix4x4 Matrix4x4.scale(Matrix4x4* m, Real[<3>] v)
+{
+	return m.mul(Matrix4x4 {
+		v[0], 0, 0, 0,
+		0, v[1], 0, 0,
+		0, 0, v[2], 0,
+		0, 0, 0, 1,
+	});
+}
+
+
+fn Matrix4x4 Matrix4x4.rotate(Matrix4x4* m, Real[<4>] v)
 {
 	return m.mul(Matrix4x4 {
 		v[0], 0, 0, 0,
