@@ -109,7 +109,7 @@ fn usz! File.write(File file, char[] buffer)
  * @param [&in] file
  * @require file.file `File must be initialized`
  */
-fn usz! File.printn(File file, String string)
+fn usz! File.printn(File file, String string = "")
 {
 	usz len = file.print(string)!;
 	if (!libc::putc('\n', file.file)) return IoError.UNKNOWN_ERROR?;

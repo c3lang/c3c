@@ -329,7 +329,7 @@ struct Type_
 	void *backend_debug_type;
 	union
 	{
-		// Error, Struct, Union, Typedef, Member
+		// Error, Struct, Union, Typedef, Member, Bitstruct
 		Decl *decl;
 		// int, float, bool
 		TypeBuiltin builtin;
@@ -341,8 +341,6 @@ struct Type_
 		Type *pointer;
 		// Optional
 		Type *optional;
-		// Bitstruct
-		Type *bitstruct;
 	};
 };
 

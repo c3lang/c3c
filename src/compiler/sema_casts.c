@@ -1162,6 +1162,9 @@ static bool cast_from_array(SemaContext *context, Expr *expr, Type *from, Type *
 			// Len must be checked.
 			if (to->array.len != from->array.len) return sema_error_cannot_convert(expr, to_type, false, silent);
 			break;
+		case TYPE_BITSTRUCT:
+			if (to->decl->bitstruct.base_type->type->canonical == from) return cast_with_optional(expr, to_type, add_optional);
+			FALLTHROUGH;
 		default:
 			// No other conversions are allowed.
 			return sema_error_cannot_convert(expr, to_type, false, silent);
@@ -1891,6 +1894,11 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 			return false;
 		case TYPE_ARRAY:
 			if (to->type_kind == TYPE_VECTOR) return array_to_vector(expr, to_type);
+			if (to->type_kind == TYPE_BITSTRUCT)
+			{
+				expr->type = to_type;
+				return true;
+			}
 			FALLTHROUGH;
 		case TYPE_STRUCT:
 		case TYPE_UNION:

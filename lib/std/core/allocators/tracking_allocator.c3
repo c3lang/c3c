@@ -24,10 +24,10 @@ struct TrackingAllocator
  *
  * @require this != null
  **/
-fn void TrackingAllocator.init(TrackingAllocator* this, Allocator* allocator)
+fn void TrackingAllocator.init(TrackingAllocator* this, Allocator* using)
 {
-	*this = { .inner_allocator = allocator, .allocator.function = &tracking_allocator_fn };
-	this.map.init(.using = allocator);
+	*this = { .inner_allocator = using, .allocator.function = &tracking_allocator_fn };
+	this.map.init(.using = using);
 }
 
 fn void TrackingAllocator.free(TrackingAllocator* this)

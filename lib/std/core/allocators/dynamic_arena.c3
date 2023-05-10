@@ -17,19 +17,19 @@ struct DynamicArenaAllocator
  * @require page_size >= 128
  * @require this != null
  **/
-fn void DynamicArenaAllocator.init(DynamicArenaAllocator* this, usz page_size, Allocator* backing_allocator = mem::heap())
+fn void DynamicArenaAllocator.init(DynamicArenaAllocator* this, usz page_size, Allocator* using = mem::heap())
 {
 	this.function = &dynamic_arena_allocator_function;
 	this.page = null;
 	this.unused_page = null;
 	this.page_size = page_size;
-	this.backing_allocator = backing_allocator;
+	this.backing_allocator = using;
 }
 
 /**
  * @require this != null
  **/
-fn void DynamicArenaAllocator.destroy(DynamicArenaAllocator* this)
+fn void DynamicArenaAllocator.free(DynamicArenaAllocator* this)
 {
 	DynamicArenaPage* page = this.page;
 	while (page)
@@ -67,7 +67,7 @@ struct DynamicArenaChunk @local
  * @require ptr && this
  * @require this.page `tried to free pointer on invalid allocator`
  */
-fn void DynamicArenaAllocator.free(DynamicArenaAllocator* this, void* ptr) @private
+fn void DynamicArenaAllocator.free_ptr(DynamicArenaAllocator* this, void* ptr) @private
 {
 	DynamicArenaPage* current_page = this.page;
 	if (ptr == current_page.last_ptr)
@@ -226,7 +226,7 @@ fn void*! dynamic_arena_allocator_function(Allocator* data, usz size, usz alignm
 			if (!size)
 			{
 				if (!old_pointer) return null;
-				allocator.free(old_pointer);
+				allocator.free_ptr(old_pointer);
 				return null;
 			}
 			if (!old_pointer) return allocator._alloc(size, alignment, offset);
@@ -235,7 +235,7 @@ fn void*! dynamic_arena_allocator_function(Allocator* data, usz size, usz alignm
 		case ALIGNED_FREE:
 		case FREE:
 			if (!old_pointer) return null;
-			allocator.free(old_pointer);
+			allocator.free_ptr(old_pointer);
 			return null;
 		case MARK:
 			unreachable("Tried to mark a dynamic arena");

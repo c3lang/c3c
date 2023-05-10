@@ -37,12 +37,12 @@ macro bool TempAllocatorPage.is_aligned(TempAllocatorPage* page) => page.size & 
 /**
  * @require size >= 16
  **/
-fn TempAllocator*! new_temp(usz size, Allocator* backing_allocator)
+fn TempAllocator*! new_temp(usz size, Allocator* using)
 {
-	TempAllocator* allocator = malloc_checked(TempAllocator, .using = backing_allocator, .end_padding = size)!;
+	TempAllocator* allocator = malloc_checked(TempAllocator, .using = using, .end_padding = size)!;
 	allocator.last_page = null;
 	allocator.function = &temp_allocator_function;
-	allocator.backing_allocator = backing_allocator;
+	allocator.backing_allocator = using;
 	allocator.used = 0;
 	allocator.capacity = size;
 	return allocator;
