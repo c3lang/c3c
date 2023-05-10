@@ -4,7 +4,7 @@ import std::math;
 fn void test_mat4()
 {
 	{|
-		Matrix4 mat = math::matrix4_indentity();
+		Matrix4 mat = math::matrix4_identity();
 		Matrix4 mat2 = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
 		Matrix4 calc = mat.mul(mat2);
 		assert(calc.m == mat.m);
@@ -48,3 +48,13 @@ fn void test_vec3()
 	Vec3 cross = Vec3{2,3,4}.cross(Vec3{5,6,7});
 	assert(cross == Vec3{-3,6,-3});
 }
+
+
+// Todo: how to assert when result has long decimal value
+// fn void quaternion_to_matrix()
+// {
+// 	Quaternion rotation = { 0.259, 0.0, 0.0, 0.966 };
+// 	Matrix4 result = rotation.to_matrix();
+// 	Matrix4 correct = {1.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.865870, 0.500269, 0.000000, 0.000000, -0.500269, 0.865870, 0.000000, 0.000000, 0.000000, 0.000000, 1.000000};
+// 	assert(result.m == correct.m);
+// }
