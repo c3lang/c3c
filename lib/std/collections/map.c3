@@ -45,6 +45,17 @@ fn void HashMap.tinit(HashMap* map, uint capacity = DEFAULT_INITIAL_CAPACITY, fl
 	map.init(capacity, load_factor, mem::temp());
 }
 
+/**
+ * Has this hash map been initialized yet?
+ *
+ * @param [&in] map "The hash map we are testing"
+ * @return "Returns true if it has been initialized, false otherwise"
+ **/
+fn bool HashMap.is_initialized(HashMap* map)
+{
+	return map.allocator != null;
+}
+
 fn void HashMap.init_from_map(HashMap* map, HashMap* other_map, Allocator* using = mem::heap())
 {
 	map.init(other_map.table.len, other_map.load_factor, using);
