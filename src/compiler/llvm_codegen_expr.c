@@ -1347,12 +1347,14 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 			llvm_value_aggregate_two(c, value, to_type, value->value, typeid.value);
 			return;
 		}
+		case CAST_ARRBS:
 		case CAST_BSARRY:
 			llvm_value_addr(c, value);
 			llvm_value_bitcast(c, value, to_type);
 			llvm_value_rvalue(c, value);
 			return;
 		case CAST_BSINT:
+		case CAST_INTBS:
 			llvm_value_addr(c, value);
 			llvm_value_bitcast(c, value, to_type);
 			llvm_value_rvalue(c, value);

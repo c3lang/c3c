@@ -137,5 +137,5 @@ fn void main()
         };
         dynamic_arena.reset();
     }
-    dynamic_arena.destroy();
+    dynamic_arena.free();
 }

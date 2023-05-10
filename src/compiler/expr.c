@@ -342,6 +342,8 @@ static inline bool expr_cast_is_constant_eval(Expr *expr, ConstantEvalKind eval_
 			return false;
 		case CAST_BSINT:
 		case CAST_BSARRY:
+		case CAST_INTBS:
+		case CAST_ARRBS:
 			return true;
 		case CAST_INTENUM:
 		case CAST_ANYPTR:

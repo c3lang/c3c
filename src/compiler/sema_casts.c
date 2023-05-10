@@ -1337,6 +1337,10 @@ RETRY:
 		case TYPE_ENUM:
 			if (is_explicit) goto CAST;
 			goto REQUIRE_CAST;
+		case TYPE_BITSTRUCT:
+			if (type_flatten(to->decl->bitstruct.base_type->type) != type_flatten(from)) break;
+			if (is_explicit) goto CAST;
+			goto REQUIRE_CAST;
 		case ALL_INTS:
 		{
 			// All explicit casts work.
@@ -1850,6 +1854,7 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 			if (to == type_bool) return integer_to_bool(expr, to_type);
 			if (to->type_kind == TYPE_POINTER) return integer_to_pointer(expr, to_type);
 			if (to->type_kind == TYPE_ENUM) return integer_to_enum(expr, to, to_type);
+			if (to->type_kind == TYPE_BITSTRUCT) return insert_cast(expr, CAST_INTBS, to_type);
 			if (type_kind_is_any_vector(to->type_kind)) return integer_expand_to_vector_conversion(expr, to, to_type);
 			break;
 		case ALL_UNSIGNED_INTS:
@@ -1859,6 +1864,7 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 			if (to->type_kind == TYPE_POINTER) return integer_to_pointer(expr, to_type);
 			if (to->type_kind == TYPE_ENUM) return integer_to_enum(expr, to, to_type);
 			if (type_kind_is_any_vector(to->type_kind)) return integer_expand_to_vector_conversion(expr, to, to_type);
+			if (to->type_kind == TYPE_BITSTRUCT) return insert_cast(expr, CAST_INTBS, to_type);
 			break;
 		case ALL_FLOATS:
 			if (type_is_integer(to)) return float_to_integer(expr, to, to_type);
@@ -1894,11 +1900,7 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 			return false;
 		case TYPE_ARRAY:
 			if (to->type_kind == TYPE_VECTOR) return array_to_vector(expr, to_type);
-			if (to->type_kind == TYPE_BITSTRUCT)
-			{
-				expr->type = to_type;
-				return true;
-			}
+			if (to->type_kind == TYPE_BITSTRUCT) return insert_cast(expr, CAST_ARRBS, to_type);
 			FALLTHROUGH;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
