@@ -500,8 +500,6 @@ static inline signed char char_is_valid_escape(char c)
 			return '\\';
 		case '0':
 			return '\0';
-		case 's':
-			return ' ';
 		default:
 			return -1;
 	}
