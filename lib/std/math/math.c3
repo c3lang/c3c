@@ -105,9 +105,12 @@ define matrix4_ortho = matrix::ortho<double>;
 define matrix4_perspective = matrix::perspective<double>;
 define matrix4f_ortho = matrix::ortho<float>;
 define matrix4f_perspective = matrix::perspective<float>;
-macro Matrix4 matrix4_indentity() => { .m = { [0] = 1, [5] = 1, [10] = 1, [15] = 1 } };
-macro Matrix3 matrix3_indentity() => { .m = { [0] = 1, [4] = 1, [8] = 1 } };
-macro Matrix2 matrix2_indentity() => { .m = { [0] = 1, [3] = 1 } };
+define matrix2_identity = matrix::identity_2x2<double>;
+define matrix2f_identity = matrix::identity_2x2<float>;
+define matrix3_identity = matrix::identity_3x3<double>;
+define matrix3f_identity = matrix::identity_3x3<float>;
+define matrix4_identity = matrix::identity_4x4<double>;
+define matrix4f_identity = matrix::identity_4x4<float>;
 
 /**
  * @require types::is_numerical($typeof(x)) `The input must be a numerical value or numerical vector`
