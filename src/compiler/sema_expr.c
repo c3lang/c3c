@@ -776,9 +776,9 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 	}
 
 	Decl *decl = sema_find_path_symbol(context, expr->identifier_expr.ident, expr->identifier_expr.path);
+
 	// Is this a broken decl?
 	if (!decl_ok(decl)) return false;
-
 
 	// Rerun if we can't do inference.
 	if (!decl)
@@ -7177,6 +7177,7 @@ static inline bool sema_expr_analyse_compound_literal(SemaContext *context, Expr
 {
 	if (!sema_resolve_type_info(context, expr->expr_compound_literal.type_info)) return false;
 	Type *type = expr->expr_compound_literal.type_info->type;
+	if (!sema_resolve_type_decl(context, type)) return false;
 	if (type_is_optional(type))
 	{
 		SEMA_ERROR(expr->expr_compound_literal.type_info,
@@ -7652,7 +7653,7 @@ TokenType sema_splitpathref(const char *string, ArraySize len, Path **path_ref, 
 		if (!char_is_alphanum_(c)) return TOKEN_INVALID_TOKEN;
 		hash = FNV1a(c, hash);
 	}
-	TokenType type;
+	TokenType type = TOKEN_INVALID_TOKEN;
 	*ident_ref = symtab_find(string, len, hash, &type);
 	if (!*ident_ref) return TOKEN_IDENT;
 	switch (type)

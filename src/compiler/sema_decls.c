@@ -3068,11 +3068,13 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 		}
 	}
 	assert(symbol);
+	if (!sema_analyse_decl(c, symbol)) return false;
 	unit_register_external_symbol(c->compilation_unit, symbol);
 	switch (decl->define_decl.define_kind)
 	{
 		case DEFINE_IDENT_GENERIC:
 			decl->define_decl.alias = symbol;
+			decl->type = symbol->type;
 			return true;
 		case DEFINE_TYPE_GENERIC:
 		{
@@ -3135,7 +3137,7 @@ static inline bool sema_analyse_define(SemaContext *c, Decl *decl)
 	if (decl->define_decl.define_kind == DEFINE_IDENT_ALIAS)
 	{
 		Decl *symbol = sema_resolve_symbol(c, decl->define_decl.ident, decl->define_decl.path, decl->define_decl.span);
-		if (!decl_ok(symbol)) return false;
+		if (!sema_analyse_decl(c, symbol)) return false;
 		decl->type = symbol->type;
 		decl->define_decl.alias = symbol;
 		return true;
