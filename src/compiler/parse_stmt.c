@@ -1062,7 +1062,7 @@ static inline Ast *consume_eos(ParseContext *c, Ast *ast)
 {
 	if (!try_consume(c, TOKEN_EOS))
 	{
-		sema_error_at_after(c->prev_span, "Expected ';'");
+		sema_error_at_after(c->prev_span, "Expected a ';' here.");
 		advance(c);
 		return poisoned_ast;
 	}
