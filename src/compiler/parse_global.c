@@ -923,8 +923,9 @@ Decl *parse_var_decl(ParseContext *c)
  * attr_params ::= '(' attr_param (',' attr_param)* ')'
  * attr_param ::= const_expr | '&' '[' ']' || '[' ']' '='?
  */
-bool parse_attribute(ParseContext *c, Attr **attribute_ref)
+bool parse_attribute(ParseContext *c, Attr **attribute_ref, bool expect_eos)
 {
+	SourceSpan start_span = c->prev_span;
 	bool had_error;
 	Path *path;
 	if (!parse_path_prefix(c, &path)) return false;
@@ -933,7 +934,15 @@ bool parse_attribute(ParseContext *c, Attr **attribute_ref)
 	if (!tok_is(c, TOKEN_AT_IDENT) && !tok_is(c, TOKEN_AT_TYPE_IDENT))
 	{
 		// Started a path? If so hard error
-		if (path) RETURN_SEMA_ERROR_HERE("Expected an attribute name.");
+		if (path)
+		{
+			if (expect_eos)
+			{
+				sema_error_at_after(start_span, "Expected a ';' here.");
+				return false;
+			}
+			RETURN_SEMA_ERROR_HERE("Expected an attribute name.");
+		}
 
 		// Otherwise assume no attributes
 		*attribute_ref = NULL;
@@ -1033,7 +1042,7 @@ bool parse_attributes(ParseContext *c, Attr ***attributes_ref, Visibility *visib
 	while (1)
 	{
 		Attr *attr;
-		if (!parse_attribute(c, &attr)) return false;
+		if (!parse_attribute(c, &attr, false)) return false;
 		if (!attr) return true;
 		Visibility parsed_visibility = -1;
 		if (!attr->is_custom)

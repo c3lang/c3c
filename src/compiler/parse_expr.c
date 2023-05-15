@@ -903,7 +903,7 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left)
 	int force_inline = -1;
 	while (1)
 	{
-		if (!parse_attribute(c, &attr)) return poisoned_expr;
+		if (!parse_attribute(c, &attr, true)) return poisoned_expr;
 		if (!attr) break;
 
 		AttributeType attr_type = attribute_by_name(attr->name);

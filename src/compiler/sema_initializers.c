@@ -66,6 +66,7 @@ static inline void sema_not_enough_elements_error(Expr *initializer, int element
  */
 static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *context, Decl *assigned, Expr *initializer)
 {
+	assert(assigned->resolve_status == RESOLVE_DONE);
 	Expr **elements = initializer->initializer_list;
 	Decl **members = assigned->strukt.members;
 	MemberIndex size = (MemberIndex)vec_size(elements);
