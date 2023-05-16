@@ -18,6 +18,8 @@ macro Quaternion Quaternion.scale(Quaternion a, Real s) => Quaternion { .v = a.v
 macro Quaternion Quaternion.normalize(Quaternion q) => { .v = q.v.normalize() };
 macro Real Quaternion.length(Quaternion q) => q.v.length();
 macro Quaternion Quaternion.lerp(Quaternion q1, Quaternion q2, Real amount) => { .v = q1.v.lerp(q2.v, amount) };
+macro Matrix4f Quaternion.to_matrixf(Quaternion* q) => into_matrix(q, Matrix4f);
+macro Matrix4 Quaternion.to_matrix(Quaternion* q) => into_matrix(q, Matrix4);
 fn Quaternion Quaternion.nlerp(Quaternion q1, Quaternion q2, Real amount) => { .v = q1.v.lerp(q2.v, amount).normalize() };
 
 fn Quaternion Quaternion.invert(Quaternion q)
@@ -65,4 +67,32 @@ fn Quaternion Quaternion.mul(Quaternion a, Quaternion b)
 	         a.l * b.l - a.i * b.i - a.j * a.j - a.k * a.k };
 }
 
+macro into_matrix(Quaternion* q, $Type) @private
+{
+    $Type result = { .m = { [0] = 1, [5] = 1, [10] = 1, [15] = 1 } };
+    Quaternion norm = q.normalize();
 
+    var ii = norm.i*norm.i;
+    var jj = norm.j*norm.j;
+    var kk = norm.k*norm.k;
+    var ik = norm.i*norm.k;
+    var ij = norm.i*q.j;
+    var jk = norm.j*norm.k;
+    var li = norm.l*norm.i;
+    var lj = norm.l*norm.j;
+    var lk = norm.l*norm.k;
+
+	result.m00 = 1 - 2*(jj + kk);
+    result.m01 = 2*(ik + lk);
+    result.m02 = 2*(ij - lj);
+
+    result.m10 = 2*(ij - lk);
+    result.m11 = 1 - 2*(ii + kk);
+    result.m12 = 2*(jk + li);
+
+    result.m20 = 2*(ik + lj);
+    result.m21 = 2*(jk - li);
+    result.m22 = 1 - 2*(ii + jj);
+
+    return result;
+}

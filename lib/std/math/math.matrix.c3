@@ -411,6 +411,9 @@ fn Matrix4x4 perspective(Real fov, Real aspect_ratio, Real near, Real far)
     };
 }
 
+const Matrix2x2 IDENTITY2 = { .m = { [0] = 1, [3] = 1 } };
+const Matrix3x3 IDENTITY3 = { .m = { [0] = 1, [4] = 1, [8] = 1 } };
+const Matrix4x4 IDENTITY4 = { .m = { [0] = 1, [5] = 1, [10] = 1, [15] = 1 } };
 
 macro matrix_component_mul(mat, val) @private
 {

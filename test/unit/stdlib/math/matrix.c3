@@ -1,10 +1,12 @@
 module math_matrix @test;
 import std::math;
 
+
+
 fn void test_mat4()
 {
 	{|
-		Matrix4 mat = math::matrix4_indentity();
+		Matrix4 mat = MATRIX4_IDENTITY;
 		Matrix4 mat2 = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
 		Matrix4 calc = mat.mul(mat2);
 		assert(calc.m == mat.m);
