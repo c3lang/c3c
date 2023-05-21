@@ -1,13 +1,13 @@
 module std::math::vector;
 import std::math;
 
-typedef Vec2f = float[<2>];
-typedef Vec3f = float[<3>];
-typedef Vec4f = float[<4>];
+def Vec2f = float[<2>];
+def Vec3f = float[<3>];
+def Vec4f = float[<4>];
 
-typedef Vec2 = double[<2>];
-typedef Vec3 = double[<3>];
-typedef Vec4 = double[<4>];
+def Vec2 = double[<2>];
+def Vec3 = double[<3>];
+def Vec4 = double[<4>];
 
 macro Vec2f.length_sq(Vec2f v) => v.dot(v);
 macro Vec3f.length_sq(Vec3f v) => v.dot(v);

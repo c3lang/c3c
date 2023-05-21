@@ -18,70 +18,70 @@ $assert C_LONG_SIZE <= C_LONG_LONG_SIZE;
 
 $switch ($$C_INT_SIZE)
 $case 64:
-    typedef CInt = long;
-    typedef CUInt = ulong;
+    def CInt = long;
+    def CUInt = ulong;
 $case 32:
-    typedef CInt = int;
-    typedef CUInt = uint;
+    def CInt = int;
+    def CUInt = uint;
 $case 16:
-    typedef CInt = short;
-    typedef CUInt = ushort;
+    def CInt = short;
+    def CUInt = ushort;
 $default:
     $error "Invalid C int size";
 $endswitch
 
 $switch ($$C_LONG_SIZE)
 $case 64:
-    typedef CLong = long;
-    typedef CULong = ulong;
+    def CLong = long;
+    def CULong = ulong;
 $case 32:
-    typedef CLong = int;
-    typedef CULong = uint;
+    def CLong = int;
+    def CULong = uint;
 $case 16:
-    typedef CLong = short;
-    typedef CULong = ushort;
+    def CLong = short;
+    def CULong = ushort;
 $default:
     $error "Invalid C long size";
 $endswitch
 
 $switch ($$C_SHORT_SIZE)
 $case 32:
-    typedef CShort = int;
-    typedef CUShort = uint;
+    def CShort = int;
+    def CUShort = uint;
 $case 16:
-    typedef CShort = short;
-    typedef CUShort = ushort;
+    def CShort = short;
+    def CUShort = ushort;
 $case 8:
-    typedef CShort = ichar;
-    typedef CUShort = char;
+    def CShort = ichar;
+    def CUShort = char;
 $default:
     $error "Invalid C short size";
 $endswitch
 
 $switch ($$C_LONG_LONG_SIZE)
 $case 128:
-    typedef CLongLong = int128;
-    typedef CULongLong = uint128;
+    def CLongLong = int128;
+    def CULongLong = uint128;
 $case 64:
-    typedef CLongLong = long;
-    typedef CULongLong = ulong;
+    def CLongLong = long;
+    def CULongLong = ulong;
 $case 32:
-    typedef CLongLong = int;
-    typedef CULongLong = uint;
+    def CLongLong = int;
+    def CULongLong = uint;
 $case 16:
-    typedef CLongLong = short;
-    typedef CULongLong = ushort;
+    def CLongLong = short;
+    def CULongLong = ushort;
 $default:
     $error "Invalid C long long size";
 $endswitch
 
 
 
-typedef CSChar = ichar;
-typedef CUChar = char;
+def CSChar = ichar;
+def CUChar = char;
 
 $if $$C_CHAR_IS_SIGNED:
-    typedef CChar = ichar;
+    def CChar = ichar;
 $else
-    typedef CChar = char;
+    def CChar = char;
 $endif

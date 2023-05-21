@@ -18,11 +18,9 @@ fn void test(int x)
 
 /* #expect: test.ll
 
-%"Foo[]" = type { ptr, i64 }
-
 @test.zfok = local_unnamed_addr global i32 0, align 4
 @.taddr = private global [2 x i32] [i32 0, i32 1], align 4
-@test.zw = local_unnamed_addr global %"Foo[]" { ptr @.taddr, i64 2 }, align 8
+@test.zw = local_unnamed_addr global %"int[]" { ptr @.taddr, i64 2 }, align 8
 
 define void @test.test(i32 %0) #0 {
 entry:

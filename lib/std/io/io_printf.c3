@@ -21,10 +21,10 @@ fault FormattingFault
 	INVALID_FORMAT_TYPE,
 }
 
-typedef OutputFn = fn void!(char c, void* buffer);
-typedef ToStringFunction = fn String(void* value, Allocator *using);
-typedef ToFormatFunction = fn void!(void* value, Formatter* formatter);
-typedef FloatType = double;
+def OutputFn = fn void!(char c, void* buffer);
+def ToStringFunction = fn String(void* value, Allocator *using);
+def ToFormatFunction = fn void!(void* value, Formatter* formatter);
+def FloatType = double;
 
 fn usz! printf(String format, args...) @maydiscard
 {
@@ -472,8 +472,8 @@ fn usz! Formatter.vprintf(Formatter* this, String format, any[] anys)
 	return this.idx;
 }
 
-typedef StringFunctionMap @private = HashMap<typeid, ToStringFunction>;
-typedef FormatterFunctionMap @private = HashMap<typeid, ToFormatFunction>;
+def StringFunctionMap @private = HashMap<typeid, ToStringFunction>;
+def FormatterFunctionMap @private = HashMap<typeid, ToFormatFunction>;
 
 FormatterFunctionMap toformat_functions @private;
 StringFunctionMap tostring_functions @private;

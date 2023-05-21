@@ -1,9 +1,9 @@
 module std::core::string;
 import std::ascii;
 
-typedef ZString = distinct inline char*;
-typedef Char32 = uint;
-typedef Char16 = ushort;
+def ZString = distinct inline char*;
+def Char32 = uint;
+def Char16 = ushort;
 
 fault UnicodeResult
 {
@@ -359,6 +359,30 @@ fn Char32[]! String.to_utf32(String s, Allocator* using = mem::heap())
 	conv::utf8to32_unsafe(s, data)!;
 	data[codepoints] = 0;
 	return data[:codepoints];
+}
+
+fn void String.convert_ascii_to_lower(String s)
+{
+	foreach (&c : s) if (*c >= 'A' && *c <= 'Z') *c += 'a' - 'A';
+}
+
+fn String String.ascii_to_lower(String s, Allocator* using = mem::heap())
+{
+	String copy = s.copy(using);
+	copy.convert_ascii_to_lower();
+	return copy;
+}
+
+fn void String.convert_ascii_to_upper(String s)
+{
+	foreach (&c : s) if (*c >= 'a' && *c <= 'z') *c -= 'a' - 'A';
+}
+
+fn String String.ascii_to_upper(String s, Allocator* using = mem::heap())
+{
+	String copy = s.copy(using);
+	copy.convert_ascii_to_upper();
+	return copy;
 }
 
 fn String! from_utf32(Char32[] utf32, Allocator* using = mem::heap())

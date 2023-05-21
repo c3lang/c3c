@@ -1,6 +1,6 @@
 module std::os::win32;
 
-typedef WSAError = distinct int;
+def WSAError = distinct int;
 
 $if env::os_is_win32():
 

@@ -2,10 +2,10 @@ module std::os::macos::objc;
 
 $if env::os_is_darwin():
 
-typedef Class = distinct void*;
-typedef Method = distinct void*;
-typedef Ivar = distinct void*;
-typedef Selector = distinct void*;
+def Class = distinct void*;
+def Method = distinct void*;
+def Ivar = distinct void*;
+def Selector = distinct void*;
 
 fault ObjcFailure
 {

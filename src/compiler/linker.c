@@ -461,20 +461,38 @@ static void linker_setup_freebsd(const char ***args_ref, LinkerType linker_type)
 static bool linker_setup(const char ***args_ref, const char **files_to_link, unsigned file_count,
                          const char *output_file, LinkerType linker_type)
 {
+	bool is_dylib = active_target.type == TARGET_TYPE_DYNAMIC_LIB;
 	bool use_win = linker_type == LINKER_LINK_EXE;
-	if (use_win)
+	if (!use_win)
 	{
-		add_arg2("/OUT:", output_file);
-		if (active_target.no_entry) add_arg("/NOENTRY");
-	}
-	else
-	{
-		if (linker_type == LINKER_WASM)
-		{
-			if (active_target.no_entry) add_arg("--no-entry");
-		}
 		add_arg("-o");
 		add_arg(output_file);
+	}
+	switch (linker_type)
+	{
+		case LINKER_WASM:
+			if (!is_dylib && active_target.no_entry) add_arg("--no-entry");
+			break;
+		case LINKER_LD64:
+			if (is_dylib) vec_add(*args_ref, "-dylib");
+			break;
+		case LINKER_LD:
+			if (is_dylib) vec_add(*args_ref, "-shared");
+			break;
+		case LINKER_LINK_EXE:
+			add_arg2("/OUT:", output_file);
+			if (is_dylib)
+			{
+				add_arg("/DLL");
+			}
+			else
+			{
+				if (active_target.no_entry) add_arg("/NOENTRY");
+			}
+		case LINKER_CC:
+			break;
+		default:
+			UNREACHABLE
 	}
 	const char *lib_path_opt = use_win ? "/LIBPATH:" : "-L";
 
@@ -792,6 +810,46 @@ const char *platform_compiler(const char *file, const char *flags)
 
 bool dynamic_lib_linker(const char *output_file, const char **files, unsigned file_count)
 {
+	DEBUG_LOG("Using linker directly.");
+	const char **args = NULL;
+	LinkerType linker_type = linker_find_linker_type();
+	linker_setup(&args, files, file_count, output_file, linker_type);
+
+	const char *error = NULL;
+	// This isn't used in most cases, but its contents should get freed after linking.
+
+	bool success;
+	const char *arg_list = "";
+	VECEACH(args, i)
+	{
+		arg_list = str_cat(arg_list, " ");
+		arg_list = str_cat(arg_list, args[i]);
+	}
+	DEBUG_LOG("Linker arguments: %s to %d", arg_list, platform_target.object_format);
+	switch (platform_target.object_format)
+	{
+		case OBJ_FORMAT_COFF:
+			success = llvm_link_coff(args, (int)vec_size(args), &error);
+			break;
+		case OBJ_FORMAT_ELF:
+			success = llvm_link_elf(args, (int)vec_size(args), &error);
+			break;
+		case OBJ_FORMAT_MACHO:
+			success = llvm_link_macho(args, (int)vec_size(args), &error);
+			break;
+		case OBJ_FORMAT_WASM:
+			success = llvm_link_wasm(args, (int)vec_size(args), &error);
+			break;
+		default:
+			UNREACHABLE
+	}
+	if (!success)
+	{
+		error_exit("Failed to create an executable: %s", error);
+	}
+	DEBUG_LOG("Linking complete.");
+	return true;
+
 	error_exit("Apologies, dynamic libs are still not supported.");
 }
 

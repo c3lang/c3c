@@ -48,7 +48,7 @@ struct Foo
     int y;
 }
 
-define heh = he;
+def heh = he;
 
 fn void test6()
 {

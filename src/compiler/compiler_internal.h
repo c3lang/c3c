@@ -792,6 +792,7 @@ typedef struct
 	bool is_func_ref : 1;
 	bool attr_pure : 1;
 	bool result_unused : 1;
+	bool no_return : 1;
 	AstId body;
 	union
 	{
@@ -2576,7 +2577,7 @@ INLINE CanonicalType *type_pointer_type(Type *type)
 {
 	CanonicalType *res = type->canonical;
 	if (res->type_kind != TYPE_POINTER) return NULL;
-	return res->pointer ;
+	return res->pointer;
 }
 
 INLINE bool type_is_pointer(Type *type)

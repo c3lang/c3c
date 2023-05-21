@@ -2,9 +2,9 @@ module std::os::macos::cf;
 
 $if env::os_is_darwin():
 
-typedef CFArrayRef = distinct void*;
-typedef CFArrayCallBacksRef = distinct void*;
-typedef CFMutableArrayRef = distinct void*;
+def CFArrayRef = distinct void*;
+def CFArrayCallBacksRef = distinct void*;
+def CFMutableArrayRef = distinct void*;
 extern fn CFArrayRef _macos_CFArrayCreate(CFAllocatorRef allocator, void** values, CFIndex num_values, CFArrayCallBacksRef callBacks) @extern("CFArrayCreate");
 extern fn CFArrayRef _macos_CFArrayCopy(CFAllocatorRef allocator, CFArrayRef array) @extern("CFArrayCopy");
 extern fn CFIndex _macos_CFArrayGetCount(CFArrayRef array) @extern("CFArrayGetCount");

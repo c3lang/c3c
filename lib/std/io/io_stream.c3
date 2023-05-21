@@ -1,18 +1,18 @@
 module std::io;
 
-typedef CloseStreamFn = fn void!(Stream*);
-typedef FlushStreamFn = fn void!(Stream*);
-typedef SeekStreamFn = fn usz!(Stream*, isz offset, Seek seek);
-typedef LenStreamFn = fn usz(Stream*);
-typedef AvailableStreamFn = fn usz(Stream*);
-typedef ReadStreamFn = fn usz!(Stream*, char[] bytes);
-typedef ReadFromStreamFn = fn usz!(Stream*, Stream*);
-typedef ReadByteStreamFn = fn char!(Stream*);
-typedef PushbackByteStreamFn = fn void!(Stream*);
-typedef WriteStreamFn = fn usz!(Stream*, char[] bytes);
-typedef WriteToStreamFn = fn usz!(Stream*, Stream* out);
-typedef WriteByteStreamFn = fn void!(Stream*, char c);
-typedef DestroyStreamFn = fn void!(Stream*);
+def CloseStreamFn = fn void!(Stream*);
+def FlushStreamFn = fn void!(Stream*);
+def SeekStreamFn = fn usz!(Stream*, isz offset, Seek seek);
+def LenStreamFn = fn usz(Stream*);
+def AvailableStreamFn = fn usz(Stream*);
+def ReadStreamFn = fn usz!(Stream*, char[] bytes);
+def ReadFromStreamFn = fn usz!(Stream*, Stream*);
+def ReadByteStreamFn = fn char!(Stream*);
+def PushbackByteStreamFn = fn void!(Stream*);
+def WriteStreamFn = fn usz!(Stream*, char[] bytes);
+def WriteToStreamFn = fn usz!(Stream*, Stream* out);
+def WriteByteStreamFn = fn void!(Stream*, char c);
+def DestroyStreamFn = fn void!(Stream*);
 
 struct StreamInterface
 {
