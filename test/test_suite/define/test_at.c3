@@ -9,8 +9,8 @@ module bar;
 
 import foo @public;
 
-define intHello = foo::@hello<int>; // #error: cannot be aliased
-define @intHello = foo::hello<int>; // #error: cannot use
+def intHello = foo::@hello<int>; // #error: cannot be aliased
+def @intHello = foo::hello<int>; // #error: cannot use
 
 fn void main(String[] args) {
     @intHello(42);

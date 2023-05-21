@@ -1,13 +1,13 @@
 module std::io::os;
 import libc;
 
-typedef FopenFn = fn void*!(String, String);
-typedef FreopenFn = fn void*!(void*, String, String);
-typedef FcloseFn = fn void!(void*);
-typedef FseekFn = fn void!(void*, isz, Seek);
-typedef FtellFn = fn usz!(void*);
-typedef FwriteFn = fn usz!(void*, char[] buffer);
-typedef FreadFn = fn usz!(void*, char[] buffer);
+def FopenFn = fn void*!(String, String);
+def FreopenFn = fn void*!(void*, String, String);
+def FcloseFn = fn void!(void*);
+def FseekFn = fn void!(void*, isz, Seek);
+def FtellFn = fn usz!(void*);
+def FwriteFn = fn usz!(void*, char[] buffer);
+def FreadFn = fn usz!(void*, char[] buffer);
 
 $if !$defined(native_fopen_fn):
 FopenFn native_fopen_fn @weak;

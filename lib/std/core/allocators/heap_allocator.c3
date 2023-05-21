@@ -4,7 +4,7 @@
 
 module std::core::mem::allocator;
 
-typedef MemoryAllocFn = fn char[]!(usz);
+def MemoryAllocFn = fn char[]!(usz);
 
 struct SimpleHeapAllocator
 {

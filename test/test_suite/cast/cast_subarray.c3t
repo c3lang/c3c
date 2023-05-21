@@ -17,8 +17,8 @@ entry:
   %abc = alloca %"int*[]", align 8
   %bcd = alloca %"void*[]", align 8
   %cde = alloca %"int[]", align 8
-  %xyz = alloca %"Foo[]", align 8
-  %xyz2 = alloca %"Foo[]", align 8
+  %xyz = alloca %"int[]", align 8
+  %xyz2 = alloca %"int[]", align 8
   %literal = alloca [2 x i32], align 4
   store %"int*[]" zeroinitializer, ptr %abc, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %bcd, ptr align 8 %abc, i32 16, i1 false)
@@ -28,8 +28,8 @@ entry:
   store i32 1, ptr %0, align 4
   %1 = getelementptr inbounds [2 x i32], ptr %literal, i64 0, i64 1
   store i32 2, ptr %1, align 4
-  %2 = insertvalue %"Foo[]" undef, ptr %literal, 0
-  %3 = insertvalue %"Foo[]" %2, i64 2, 1
-  store %"Foo[]" %3, ptr %xyz2, align 8
+  %2 = insertvalue %"int[]" undef, ptr %literal, 0
+  %3 = insertvalue %"int[]" %2, i64 2, 1
+  store %"int[]" %3, ptr %xyz2, align 8
   ret void
 }

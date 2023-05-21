@@ -52,7 +52,7 @@ enum Foo : int(String val)
 
 define void @test.main(ptr %0, i64 %1) #0 {
 entry:
-  %args = alloca %"String[]", align 8
+  %args = alloca %"char[][]", align 8
   %y = alloca i64, align 8
   %x = alloca ptr, align 8
   %a = alloca i32, align 4

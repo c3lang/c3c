@@ -6,9 +6,9 @@ struct Random
 	void* state;
 }
 
-typedef RandomSeedFn = fn void(Random*, char[] seed);
-typedef RandomNextBytesFn = fn void(Random*, char[] buffer);
-typedef RandomNextFn = fn uint(Random*, int bits);
+def RandomSeedFn = fn void(Random*, char[] seed);
+def RandomNextBytesFn = fn void(Random*, char[] buffer);
+def RandomNextFn = fn uint(Random*, int bits);
 
 struct RandomInterface
 {

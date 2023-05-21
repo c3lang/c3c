@@ -103,7 +103,7 @@ fn void*! ArenaAllocator._alloc(ArenaAllocator* this, usz size, usz alignment, u
 	usz end = (usz)(aligned_pointer_to_offset - this.data.ptr) + size - offset;
 	if (end > total_len) return AllocationFailure.OUT_OF_MEMORY?;
 	this.used = end;
-	void *mem = aligned_pointer_to_offset - offset;
+	void* mem = aligned_pointer_to_offset - offset;
 	ArenaAllocatorHeader* header = mem - ArenaAllocatorHeader.sizeof;
 	header.size = size;
 	return mem;

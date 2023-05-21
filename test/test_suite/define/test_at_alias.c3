@@ -9,7 +9,7 @@ module bar;
 
 import foo @public;
 
-define @intHello = foo::@hello<int>;
+def @intHello = foo::@hello<int>;
 
 fn void main(String[] args) {
     @intHello(42);

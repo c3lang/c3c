@@ -144,6 +144,31 @@ void **tilde_gen(Module** modules, unsigned module_count)
 
 #endif
 
+static const char *build_base_name(void)
+{
+	const char *name;
+	if (active_target.name)
+	{
+		name = active_target.name;
+	}
+	else
+	{
+		assert(vec_size(global_context.module_list));
+		Path *path = global_context.module_list[0]->name;
+		size_t first = 0;
+		for (size_t i = path->len; i > 0; i--)
+		{
+			if (path->module[i - 1] == ':')
+			{
+				first = i;
+				break;
+			}
+		}
+		name = &path->module[first];
+	}
+	return name;
+}
+
 static const char *exe_name(void)
 {
 	assert(global_context.main || active_target.no_entry);
@@ -178,30 +203,26 @@ static const char *exe_name(void)
 	}
 }
 
-static const char *dynamic_lib_name(void) { return NULL; }
+static const char *dynamic_lib_name(void)
+{
+	const char *name = build_base_name();
+	switch (active_target.arch_os_target)
+	{
+		case WINDOWS_AARCH64:
+		case WINDOWS_X64:
+		case MINGW_X64:
+			return str_cat(name, ".dll");
+		case MACOS_X64:
+		case MACOS_AARCH64:
+			return str_cat(name, ".dylib");
+		default:
+			return str_cat(name, ".a");
+	}
+}
 
 static const char *static_lib_name(void)
 {
-	const char *name;
-	if (active_target.name)
-	{
-		name = active_target.name;
-	}
-	else
-	{
-		assert(vec_size(global_context.module_list));
-		Path *path = global_context.module_list[0]->name;
-		size_t first = 0;
-		for (size_t i = path->len; i > 0; i--)
-		{
-			if (path->module[i - 1] == ':')
-			{
-				first = i;
-				break;
-			}
-		}
-		name = &path->module[first];
-	}
+	const char *name = build_base_name();
 	switch (active_target.arch_os_target)
 	{
 		case WINDOWS_AARCH64:

@@ -15,7 +15,7 @@ struct SubArrayContainer
     usz len;
 }
 
-typedef TestFn = fn void!();
+def TestFn = fn void!();
 
 struct TestRunner
 {

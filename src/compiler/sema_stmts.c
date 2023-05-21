@@ -1047,6 +1047,7 @@ static inline bool sema_analyse_expr_stmt(SemaContext *context, Ast *statement)
 		expr->call_expr.result_unused = true;
 	}
 	if (!sema_analyse_expr(context, expr)) return false;
+	if (expr->expr_kind == EXPR_CALL && expr->call_expr.no_return) context->active_scope.jump_end = true;
 	// Remove all const statements.
 	if (expr_is_const(expr))
 	{

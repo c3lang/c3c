@@ -4,7 +4,7 @@
 module std::collections::list<Type>;
 import std::math;
 
-typedef ElementPredicate = fn bool(Type *type);
+def ElementPredicate = fn bool(Type *type);
 
 struct List
 {

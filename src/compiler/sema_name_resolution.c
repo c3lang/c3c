@@ -356,6 +356,7 @@ static Decl *sema_resolve_path_symbol(SemaContext *context, NameResolve *name_re
 	// 0. std module special handling.
 	if (path->module == global_context.std_module_path.module)
 	{
+		name_resolve->path_found = true;
 		return module_find_symbol(&global_context.std_module, symbol);
 	}
 
@@ -366,6 +367,7 @@ static Decl *sema_resolve_path_symbol(SemaContext *context, NameResolve *name_re
 	{
 		// 2. If so try to locally get the symbol.
 		if ((decl = module_find_symbol(unit->module, symbol))) return decl;
+		name_resolve->path_found = true;
 	}
 
 	// 3. Loop over imports.
@@ -539,7 +541,33 @@ INLINE Decl *sema_resolve_symbol_common(SemaContext *context, NameResolve *name_
 		if (!decl && !name_resolve->maybe_decl && !name_resolve->path_found)
 		{
 			if (name_resolve->suppress_error) return NULL;
-			SEMA_ERROR(name_resolve->path, "Unknown module '%.*s', did you type it right?", name_resolve->path->len, name_resolve->path->module);
+			bool path_found = false;
+			Module *module_with_path = NULL;
+			FOREACH_BEGIN(Module *module, global_context.module_list)
+				if (matches_subpath(module->name, name_resolve->path))
+				{
+					module_with_path = module;
+					break;
+				}
+			FOREACH_END();
+			if (!module_with_path)
+			{
+				FOREACH_BEGIN(Module *module, global_context.generic_module_list)
+					if (matches_subpath(module->name, name_resolve->path))
+					{
+						module_with_path = module;
+						break;
+					}
+				FOREACH_END();
+			}
+			if (module_with_path)
+			{
+				sema_error_at(name_resolve->span, "'%s' could be found in %s.", name_resolve->symbol, module_with_path->name->module);
+			}
+			else
+			{
+				SEMA_ERROR(name_resolve->path, "Unknown module '%.*s', did you type it right?", name_resolve->path->len, name_resolve->path->module);
+			}
 			return poisoned_decl;
 		}
 	}

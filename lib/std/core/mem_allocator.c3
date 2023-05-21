@@ -6,7 +6,7 @@ const DEFAULT_SIZE_PREFIX_ALIGNMENT = usz.alignof;
 const Allocator* NULL_ALLOCATOR = &_NULL_ALLOCATOR;
 const Allocator* LIBC_ALLOCATOR = &_SYSTEM_ALLOCATOR;
 
-typedef AllocatorFunction = fn void*!(Allocator* allocator, usz new_size, usz alignment, usz offset, void* old_pointer, AllocationKind kind);
+def AllocatorFunction = fn void*!(Allocator* allocator, usz new_size, usz alignment, usz offset, void* old_pointer, AllocationKind kind);
 
 struct Allocator
 {

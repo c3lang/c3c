@@ -1532,6 +1532,8 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Type 
 
 	bool is_unused = expr->call_expr.result_unused;
 
+	if (sig->attrs.noreturn) expr->call_expr.no_return = true;
+
 	if (!sema_call_analyse_invocation(context, expr, callee, &optional)) return false;
 
 	Type *rtype = type->function.prototype->rtype;

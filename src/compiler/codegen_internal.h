@@ -43,6 +43,36 @@ static inline Type *type_lowering(Type *type)
 				continue;
 			case TYPE_WILDCARD:
 				type = type_void;
+				break;
+			case TYPE_POINTER:
+			{
+				Type *pointer = type->pointer;
+				Type *flat = type_lowering(pointer);
+				if (flat == pointer) return type;
+				return type_get_ptr(flat);
+			}
+			case TYPE_SUBARRAY:
+			case TYPE_ARRAY:
+			case TYPE_VECTOR:
+			case TYPE_FLEXIBLE_ARRAY:
+			{
+				Type *arr_type = type->array.base;
+				Type *flat = type_lowering(arr_type);
+				if (flat == arr_type) return type;
+				switch (type->type_kind)
+				{
+					case TYPE_SUBARRAY:
+						return type_get_subarray(flat);
+					case TYPE_ARRAY:
+						return type_get_array(flat, type->array.len);
+					case TYPE_VECTOR:
+						return type_get_vector(flat, type->array.len);
+					case TYPE_FLEXIBLE_ARRAY:
+						return type_get_flexible_array(flat);
+					default:
+						UNREACHABLE
+				}
+			}
 			default:
 				return type;
 		}

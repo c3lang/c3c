@@ -31,9 +31,9 @@ fn void errno_set(Errno e)
 	os::errno_set((int)e);
 }
 
-typedef TerminateFunction = fn void();
-typedef CompareFunction = fn int(void*, void*);
-typedef JmpBuf = uptr[$$JMP_BUF_SIZE];
+def TerminateFunction = fn void();
+def CompareFunction = fn int(void*, void*);
+def JmpBuf = uptr[$$JMP_BUF_SIZE];
 
 $if env::COMPILER_LIBC_AVAILABLE:
 
@@ -148,8 +148,8 @@ $endif
 
 // stdio
 
-typedef Fpos = long;
-typedef CFile = void*;
+def Fpos = long;
+def CFile = void*;
 
 $switch
 $case env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == LINUX:
@@ -202,8 +202,8 @@ const int EOF = -1;
 const int FOPEN_MAX = 20;
 const int FILENAME_MAX = 1024;
 
-typedef Errno = distinct CInt;
-typedef SeekIndex = CLong;
+def Errno = distinct CInt;
+def SeekIndex = CLong;
 
 $if env::COMPILER_LIBC_AVAILABLE:
 
@@ -338,11 +338,11 @@ $switch (env::OS_TYPE)
 
 $case WIN32:
 
-typedef Tm = TmCommon;
+def Tm = TmCommon;
 
 $case WASI:
 
-typedef TimeOffset = int;
+def TimeOffset = int;
 struct Tm
 {
 	inline TmCommon common;
@@ -359,7 +359,7 @@ $case OPENBSD:
 $case FREEBSD:
 $default:
 
-typedef TimeOffset = CLong;
+def TimeOffset = CLong;
 struct Tm
 {
 	inline TmCommon common;
@@ -378,8 +378,8 @@ struct TimeSpec
 	ulong ns;
 }
 
-typedef Time_t = long;
-typedef Clock_t = ulong;
+def Time_t = long;
+def Clock_t = ulong;
 
 $else
 
@@ -389,8 +389,8 @@ struct TimeSpec
 	CLong ns;
 }
 
-typedef Time_t = CLong;
-typedef Clock_t = CULong;
+def Time_t = CLong;
+def Clock_t = CULong;
 
 $endif
 
@@ -432,7 +432,7 @@ extern fn usz strftime(char* str, usz maxsize, char* format, Tm *timeptr);
 extern fn Time_t time(Time_t *timer);
 
 // signal
-typedef SignalFunction = fn void(int);
+def SignalFunction = fn void(int);
 extern fn SignalFunction signal(int sig, SignalFunction function);
 // Incomplete
 

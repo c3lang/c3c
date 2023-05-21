@@ -6,7 +6,7 @@ $if !env::os_is_win32() && $defined(AddrInfo):
 const int F_GETFL = 3;
 const int F_SETFL = 4;
 
-typedef NativeSocket = distinct int;
+def NativeSocket = distinct int;
 
 extern fn NativeSocket socket(int af, int type, int protocol) @extern("socket");
 extern fn int getaddrinfo(ZString nodename, ZString servname, AddrInfo* hints, AddrInfo** res);

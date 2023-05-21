@@ -7,30 +7,30 @@ const PTHREAD_MUTEX_NORMAL = 0;
 const PTHREAD_MUTEX_ERRORCHECK = 1;
 const PTHREAD_MUTEX_RECURSIVE = 2;
 
-typedef NativeMutex = PthreadMutex;
-typedef NativeConditionVariable = PthreadCond;
-typedef NativeThread = Pthread;
-typedef NativeOnceFlag = PthreadOnce;
+def NativeMutex = PthreadMutex;
+def NativeConditionVariable = PthreadCond;
+def NativeThread = Pthread;
+def NativeOnceFlag = PthreadOnce;
 
-typedef Pthread = distinct void*;
+def Pthread = distinct void*;
 
 $if env::OS_TYPE == LINUX:
-typedef PthreadMutex = distinct ulong[5];
-typedef PthreadAttribute = distinct ulong[7];
-typedef PthreadMutexAttribute = distinct uint;
-typedef PthreadCondAttribute = distinct uint;
-typedef PthreadCond = distinct ulong[6];
-typedef PthreadOnce = distinct uint;
+def PthreadMutex = distinct ulong[5];
+def PthreadAttribute = distinct ulong[7];
+def PthreadMutexAttribute = distinct uint;
+def PthreadCondAttribute = distinct uint;
+def PthreadCond = distinct ulong[6];
+def PthreadOnce = distinct uint;
 $else
-typedef PthreadMutex = distinct ulong[8];
-typedef PthreadMutexAttribute = distinct ulong[2];
-typedef PthreadAttribute = distinct ulong[8];
-typedef PthreadCond = distinct ulong[6];
-typedef PthreadCondAttribute = distinct ulong[8];
-typedef PthreadOnce = distinct ulong[2];
+def PthreadMutex = distinct ulong[8];
+def PthreadMutexAttribute = distinct ulong[2];
+def PthreadAttribute = distinct ulong[8];
+def PthreadCond = distinct ulong[6];
+def PthreadCondAttribute = distinct ulong[8];
+def PthreadOnce = distinct ulong[2];
 $endif
 
-typedef PosixThreadFn = fn void*(void*);
+def PosixThreadFn = fn void*(void*);
 
 extern fn int pthread_attr_destroy(PthreadAttribute*);
 extern fn int pthread_attr_getdetachstate(PthreadAttribute*, int*);

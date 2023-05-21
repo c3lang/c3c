@@ -1535,12 +1535,12 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 			{
 				value->value = llvm_emit_extract_value(c, value->value, 1);
 			}
-			value->type = type_usz->canonical;
+			value->type = type_lowering(type_usz);
 			llvm_value_rvalue(c, value);
 			llvm_emit_int_comp_zero(c, value, value, BINARYOP_NE);
 			break;
 	}
-	value->type = to_type;
+	value->type = type_lowering(to_type);
 }
 
 static inline void llvm_emit_cast_expr(GenContext *context, BEValue *be_value, Expr *expr)

@@ -1,6 +1,6 @@
 module std::math;
 
-typedef SimpleRandom = distinct ulong;
+def SimpleRandom = distinct ulong;
 
 const long SIMPLE_RANDOM_MULTIPLIER @local = 0x5DEECE66D;
 const long SIMPLE_RANDOM_ADDEND @local = 0xB;
