@@ -79,9 +79,9 @@ import stack;
 
 // Define our new types, the first will implicitly create 
 // a complete copy of the entire Stack module with "Type" set to "int"
-typedef IntStack = Stack<int>;
+def IntStack = Stack<int>;
 // The second creates another copy with "Type" set to "double"
-typedef DoubleStack = Stack<double>;
+def DoubleStack = Stack<double>;
 
 // If we had added "define IntStack2 = Stack<int>"
 // no additional copy would have been made (since we already
@@ -92,7 +92,7 @@ typedef DoubleStack = Stack<double>;
 // here is an example of importing libc's printf:
 extern fn int printf(char* format, ...);
 
-fn void test()
+fn void main()
 {
     IntStack stack;
     // Note that C3 uses zero initialization by default
@@ -112,7 +112,7 @@ fn void test()
     dstack.push(2.3);
     dstack.push(3.141);
     dstack.push(1.1235);
-    // Prints pop: 1.1235
+    // Prints pop: 1.123500
     printf("pop: %f\n", dstack.pop());
 }
 ```
