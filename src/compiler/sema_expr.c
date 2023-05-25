@@ -1660,6 +1660,9 @@ static inline bool sema_expr_analyse_func_call(SemaContext *context, Expr *expr,
 	}
 	sema_display_deprecated_warning_on_use(context, decl, expr->span);
 
+	// Tag dynamic dispatch.
+	if (struct_var && decl->func_decl.attr_interface) expr->call_expr.is_dynamic_dispatch = true;
+
 	return sema_call_analyse_func_invocation(context,
 	                                         decl->type,
 	                                         expr,
@@ -5466,11 +5469,15 @@ static const char *sema_addr_check_may_take(Expr *inner)
 			if (inner->unary_expr.operator == UNARYOP_DEREF) return NULL;
 			break;
 		case EXPR_ACCESS:
-			if (inner->access_expr.ref->decl_kind == DECL_FUNC)
+		{
+			Decl *decl = inner->access_expr.ref;
+			if (decl->decl_kind == DECL_FUNC)
 			{
+				if (decl->func_decl.attr_interface) return NULL;
 				return "Taking the address of a method should be done through the type e.g. '&Foo.method' not through the value.";
 			}
 			return sema_addr_check_may_take(inner->access_expr.parent);
+		}
 		case EXPR_GROUP:
 			return sema_addr_check_may_take(inner->inner_expr);
 		case EXPR_SUBSCRIPT:

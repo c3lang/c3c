@@ -558,8 +558,10 @@ typedef struct
 			bool attr_naked : 1;
 			bool attr_test : 1;
 			bool attr_winmain : 1;
-			bool has_faults : 1;
-			Decl** generated_lambda;
+			bool attr_dynamic : 1;
+			bool attr_interface : 1;
+			DeclId any_prototype;
+			Decl **generated_lambda;
 		};
 		struct
 		{
@@ -648,7 +650,6 @@ typedef struct
 	unsigned priority;
 	AstId init;
 } InitializerDecl;
-
 
 
 typedef struct Decl_
@@ -793,6 +794,7 @@ typedef struct
 	bool attr_pure : 1;
 	bool result_unused : 1;
 	bool no_return : 1;
+	bool is_dynamic_dispatch : 1;
 	AstId body;
 	union
 	{

@@ -29,7 +29,7 @@ fn void main()
 %any = type { ptr, i64 }
 %"int[]" = type { ptr, i64 }
 
-@"$ct.int" = linkonce constant %.introspect { i8 2, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
+@"$ct.int" = linkonce global %.introspect { i8 2, ptr null, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
 
 define void @foo.test1(i64 %0, ptr %1) #0 {
 entry:

@@ -5,6 +5,7 @@
 
 #include "llvm_codegen_internal.h"
 
+static LLVMValueRef llvm_add_xxlizer(GenContext *c, unsigned priority, bool is_finalizer);
 static void llvm_emit_param_attributes(GenContext *c, LLVMValueRef function, ABIArgInfo *info, bool is_return, int index, int last_index);
 static inline void llvm_emit_return_value(GenContext *context, LLVMValueRef value);
 static void llvm_expand_from_args(GenContext *c, Type *type, LLVMValueRef ref, unsigned *index, AlignSize alignment);
@@ -404,6 +405,7 @@ void llvm_emit_return_implicit(GenContext *c)
 void llvm_emit_function_body(GenContext *c, Decl *decl)
 {
 	DEBUG_LOG("Generating function %s.", decl->extname);
+	if (decl->func_decl.attr_dynamic) vec_add(c->dynamic_functions, decl);
 	assert(decl->backend_ref);
 	llvm_emit_body(c,
 	               decl->backend_ref,
@@ -568,6 +570,18 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, const char *module_nam
 	c->function = prev_function;
 }
 
+static LLVMValueRef llvm_add_xxlizer(GenContext *c, unsigned priority, bool is_initializer)
+{
+	LLVMTypeRef initializer_type = LLVMFunctionType(LLVMVoidTypeInContext(c->context), NULL, 0, false);
+	LLVMValueRef **array_ref = is_initializer ? &c->constructors : &c->destructors;
+	scratch_buffer_clear();
+	scratch_buffer_printf(is_initializer ? ".static_initialize.%u" : ".static_finalize.%u", vec_size(*array_ref));
+	LLVMValueRef function = LLVMAddFunction(c->module, scratch_buffer_to_string(), initializer_type);
+	LLVMSetLinkage(function, LLVMInternalLinkage);
+	LLVMValueRef vals[3] = { llvm_const_int(c, type_int, priority), function, llvm_get_zero(c, type_voidptr) };
+	vec_add(*array_ref, LLVMConstStructInContext(c->context, vals, 3, false));
+	return function;
+}
 
 void llvm_emit_xxlizer(GenContext *c, Decl *decl)
 {
@@ -577,13 +591,8 @@ void llvm_emit_xxlizer(GenContext *c, Decl *decl)
 		// Skip if it doesn't have a body.
 		return;
 	}
-	LLVMTypeRef initializer_type = LLVMFunctionType(LLVMVoidTypeInContext(c->context), NULL, 0, false);
-	bool is_finalizer = decl->decl_kind == DECL_FINALIZE;
-	LLVMValueRef **array_ref = is_finalizer ? &c->destructors : &c->constructors;
-	scratch_buffer_clear();
-	scratch_buffer_printf(is_finalizer ? ".static_finalize.%u" : ".static_initialize.%u", vec_size(*array_ref));
-	LLVMValueRef function = LLVMAddFunction(c->module, scratch_buffer_to_string(), initializer_type);
-	LLVMSetLinkage(function, LLVMInternalLinkage);
+	bool is_initializer = decl->decl_kind == DECL_INITIALIZE;
+	LLVMValueRef function = llvm_add_xxlizer(c, decl->xxlizer.priority, is_initializer);
 	if (llvm_use_debug(c))
 	{
 		uint32_t row = decl->span.row;
@@ -607,16 +616,67 @@ void llvm_emit_xxlizer(GenContext *c, Decl *decl)
 	llvm_emit_body(c,
 	               function,
 	               decl->unit->module->name->module,
-	               is_finalizer ? "[static finalizer]" : "[static initializer]",
+	               is_initializer ? "[static initializer]" : "[static finalizer]",
 	               decl->span.file_id,
 	               NULL,
 	               NULL,
 	               body);
-	unsigned priority = decl->xxlizer.priority;
-	LLVMValueRef vals[3] = { llvm_const_int(c, type_int, priority), function, llvm_get_zero(c, type_voidptr) };
-	vec_add(*array_ref, LLVMConstStructInContext(c->context, vals, 3, false));
 }
 
+static void llvm_generate_dyn_proto(GenContext *c, LLVMValueRef proto_ref)
+{
+	LLVMBuilderRef builder = LLVMCreateBuilderInContext(c->context);
+	LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(c->context, proto_ref, "never");
+	LLVMPositionBuilderAtEnd(builder, entry);
+	LLVMBuildUnreachable(builder);
+	LLVMDisposeBuilder(builder);
+}
+
+void llvm_emit_dynamic_functions(GenContext *c, Decl **funcs)
+{
+	if (!vec_size(funcs)) return;
+	LLVMValueRef initializer = llvm_add_xxlizer(c, 1, true);
+	LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(c->context, initializer, "entry");
+	LLVMBuilderRef builder = LLVMCreateBuilderInContext(c->context);
+	LLVMPositionBuilderAtEnd(builder, entry);
+	LLVMBasicBlockRef last_block = entry;
+	FOREACH_BEGIN(Decl *decl, funcs)
+		Type *type = typeinfotype(decl->func_decl.type_parent);
+		scratch_buffer_clear();
+		scratch_buffer_append("$ct.dyn.");
+		scratch_buffer_append(decl_get_extname(decl));
+		LLVMValueRef global = llvm_add_global_raw(c, scratch_buffer_to_string(), c->dtable_type, 0);
+		Decl *proto = declptr(decl->func_decl.any_prototype);
+		LLVMValueRef proto_ref = llvm_get_ref(c, proto);
+		LLVMValueRef vals[3] = { llvm_get_ref(c, decl), proto_ref, LLVMConstNull(c->ptr_type) };
+		LLVMSetInitializer(global, LLVMConstNamedStruct(c->dtable_type, vals, 3));
+		LLVMValueRef type_id_ptr = LLVMBuildIntToPtr(builder, llvm_get_typeid(c, type), c->ptr_type, "");
+		LLVMValueRef dtable_ref = LLVMBuildStructGEP2(builder, c->introspect_type, type_id_ptr, INTROSPECT_INDEX_DTABLE, "");
+		LLVMBasicBlockRef check = LLVMAppendBasicBlockInContext(c->context, initializer, "dtable_check");
+		LLVMBuildBr(builder, check);
+		LLVMPositionBuilderAtEnd(builder, check);
+		LLVMValueRef phi = LLVMBuildPhi(builder, c->ptr_type, "dtable_ref");
+		LLVMValueRef load_dtable = LLVMBuildLoad2(builder, c->ptr_type, phi, "dtable_ptr");
+		LLVMValueRef is_not_null = LLVMBuildICmp(builder, LLVMIntEQ, load_dtable, LLVMConstNull(c->ptr_type), "");
+		LLVMBasicBlockRef after_check = llvm_basic_block_new(c, "dtable_found");
+		LLVMBasicBlockRef next = llvm_basic_block_new(c, "dtable_next");
+		LLVMBuildCondBr(builder, is_not_null, after_check, next);
+		LLVMAppendExistingBasicBlock(initializer, next);
+		LLVMPositionBuilderAtEnd(builder, next);
+		LLVMValueRef next_ptr = LLVMBuildStructGEP2(builder, c->dtable_type, load_dtable, 2, "next_dtable_ref");
+		LLVMValueRef phi_in[2] = { dtable_ref, next_ptr };
+		LLVMBasicBlockRef phi_in_block[2] = { last_block, next };
+		LLVMAddIncoming(phi, phi_in, phi_in_block, 2);
+		LLVMBuildBr(builder, check);
+		LLVMAppendExistingBasicBlock(initializer, after_check);
+		LLVMPositionBuilderAtEnd(builder, after_check);
+		LLVMBuildStore(builder, global, phi);
+		last_block = after_check;
+	FOREACH_END();
+
+	LLVMBuildRet(builder, NULL);
+	LLVMDisposeBuilder(builder);
+}
 void llvm_emit_function_decl(GenContext *c, Decl *decl)
 {
 	assert(decl->decl_kind == DECL_FUNC);

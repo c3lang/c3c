@@ -3,6 +3,7 @@
 ## 0.5.0 Change List
 
 ### Changes / improvements
+- `@dynamic` and `@interface` for dynamic dispatch.
 - `$if` now uses `$if <expr>:` syntax.
 - `$assert` now uses `$assert <expr> : <optional message>`
 - `$error` is syntax sugar for `$assert false : "Some message"`
@@ -22,7 +23,7 @@
 - Allow getting the underlying type of anyfault.
 - De-duplicate string constants.
 - Change @extname => @extern.
-- `define Type = int` is replaced by `typedef Type = int`.
+- `define` is replaced by `def`.
 - LLVM "wrapper" library compilation is exception free.
 - `private` is replaced by attribute `@private`. 
 - Addition of `@local` for file local visibility.

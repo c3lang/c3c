@@ -102,6 +102,7 @@ typedef struct GenContext_
 	LLVMTypeRef fault_type;
 	LLVMTypeRef size_type;
 	LLVMTypeRef typeid_type;
+	LLVMTypeRef dtable_type;
 	LLVMTypeRef char_ptr_type;
 	LLVMTypeRef ptr_type;
 	LLVMTypeRef chars_type;
@@ -128,6 +129,9 @@ typedef struct GenContext_
 	bool current_block_is_target : 1;
 	LLVMTypeRef type_data_definitions[TYPE_KINDS];
 	SourceSpan last_emitted_loc;
+	Decl **dynamic_functions;
+	LLVMValueRef dyn_find_function;
+	LLVMTypeRef dyn_find_function_type;
 } GenContext;
 
 // LLVM Intrinsics
@@ -462,6 +466,7 @@ void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *pani
 void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_name, SourceSpan loc, const char *fmt, BEValue *value_1,
                              BEValue *value_2);
 void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const char *fmt, BEValue *args);
+void llvm_emit_unreachable(GenContext *c);
 
 void llvm_emit_any_from_value(GenContext *c, BEValue *value, Type *type);
 void llvm_emit_subarray_len(GenContext *context, BEValue *subarray, BEValue *len);
@@ -469,6 +474,7 @@ void llvm_emit_subarray_pointer(GenContext *context, BEValue *subarray, BEValue 
 void llvm_emit_compound_stmt(GenContext *c, Ast *ast);
 LLVMValueRef llvm_emit_const_bitstruct(GenContext *c, ConstInitializer *initializer);
 void llvm_emit_function_body(GenContext *context, Decl *decl);
+void llvm_emit_dynamic_functions(GenContext *context, Decl **funcs);
 BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValueRef optional);
 INLINE void llvm_emit_exprid(GenContext *c, BEValue *value, ExprId expr);
 INLINE void llvm_emit_statement_chain(GenContext *c, AstId current);

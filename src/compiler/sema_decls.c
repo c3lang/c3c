@@ -13,7 +13,7 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl);
 static inline bool sema_check_param_uniqueness_and_type(Decl **decls, Decl *current, unsigned current_index, unsigned count);
 
 static inline bool sema_analyse_method(SemaContext *context, Decl *decl);
-static inline bool sema_is_valid_method_param(SemaContext *context, Decl *param, Type *parent_type);
+static inline bool sema_is_valid_method_param(SemaContext *context, Decl *param, Type *parent_type, bool is_dynamic, bool is_interface);
 static inline bool sema_analyse_macro_method(SemaContext *context, Decl *decl);
 static inline bool unit_add_base_extension_method(CompilationUnit *unit, Type *parent_type, Decl *method_like);
 static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type, Decl *method_like);
@@ -700,6 +700,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig)
 		SEMA_ERROR(params[MAX_PARAMS], "The number of params exceeded the max of %d. To accept more arguments, consider using varargs.", MAX_PARAMS);
 		return false;
 	}
+
 
 	// Check parameters
 	for (unsigned i = 0; i < param_count; i++)
@@ -1417,13 +1418,15 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 	if (!sema_resolve_type_info(context, parent_type)) return false;
 	Type *type = parent_type->type->canonical;
 	Decl **params = decl->func_decl.signature.params;
-	if (!vec_size(params))
+	bool is_dynamic = decl->func_decl.attr_dynamic;
+	bool is_interface = decl->func_decl.attr_interface;
+	if (is_interface && type != type_any) RETURN_SEMA_ERROR(decl, "Only 'any' methods may use '@interface'.");
+	if (!sema_is_valid_method_param(context, params[0], type, is_dynamic, is_interface)) return false;
+	if (is_dynamic)
 	{
-		SEMA_ERROR(decl, "A method must start with a parameter of type %s or %s.",
-		           type_quoted_error_string(parent_type->type), type_quoted_error_string(type_get_ptr(parent_type->type)));
-		return false;
+		if (is_interface) RETURN_SEMA_ERROR(decl, "An interface method cannot be '@dynamic'.");
 	}
-	if (!sema_is_valid_method_param(context, params[0], type)) return false;
+
 	return unit_add_method_like(context->unit, type, decl);
 }
 
@@ -1484,6 +1487,8 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_BUILTIN] = ATTR_MACRO | ATTR_FUNC,
 			[ATTRIBUTE_CDECL] = ATTR_FUNC,
 			[ATTRIBUTE_DEPRECATED] = USER_DEFINED_TYPES | ATTR_FUNC | ATTR_MACRO | ATTR_CONST | ATTR_GLOBAL | ATTR_MEMBER,
+			[ATTRIBUTE_DYNAMIC] = ATTR_FUNC,
+			[ATTRIBUTE_INTERFACE] = ATTR_FUNC,
 			[ATTRIBUTE_EXPORT] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | EXPORTED_USER_DEFINED_TYPES,
 			[ATTRIBUTE_NOSTRIP] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | EXPORTED_USER_DEFINED_TYPES,
 			[ATTRIBUTE_EXTNAME] = (AttributeDomain)~(ATTR_CALL | ATTR_BITSTRUCT | ATTR_DEFINE | ATTR_MACRO | ATTR_XXLIZER),
@@ -1578,6 +1583,12 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			break;
 		case ATTRIBUTE_TEST:
 			decl->func_decl.attr_test = true;
+			break;
+		case ATTRIBUTE_INTERFACE:
+			decl->func_decl.attr_interface = true;
+			break;
+		case ATTRIBUTE_DYNAMIC:
+			decl->func_decl.attr_dynamic = true;
 			break;
 		case ATTRIBUTE_STDCALL:
 			assert(decl->decl_kind == DECL_FUNC);
@@ -2377,12 +2388,31 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl)
 	}
 	else
 	{
+		if (decl->func_decl.attr_dynamic)
+		{
+			SEMA_ERROR(decl, "Only methods may be annotated '@dynamic'.");
+			return decl_poison(decl);
+		}
+		if (decl->func_decl.attr_interface)
+		{
+			SEMA_ERROR(decl, "Only methods to 'any' may be annotated '@interface'.");
+			return decl_poison(decl);
+		}
 		if (decl->name == kw_main)
 		{
 			if (is_test) SEMA_ERROR(decl, "Main functions may not be annotated @test.");
 			if (!sema_analyse_main_function(context, decl)) return decl_poison(decl);
 		}
 		decl_set_external_name(decl);
+	}
+
+	bool is_any_interface = decl->func_decl.attr_interface && decl->func_decl.type_parent && typeinfotype(decl->func_decl.type_parent) == type_any;
+	// Do we have fn void any.foo(void*) { ... }?
+	if (decl->func_decl.body && is_any_interface) RETURN_SEMA_ERROR(decl, "Interface methods declarations may not have a body.");
+	if (!decl->func_decl.body && !decl->is_extern && !decl->unit->is_interface_file && !is_any_interface)
+	{
+		SEMA_ERROR(decl, "Expected a function body, if you want to declare an extern function use 'extern' or place it in an .c3i file.");
+		return false;
 	}
 
 	bool pure = false;
@@ -2393,15 +2423,32 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl)
 	return true;
 }
 
-static inline bool sema_is_valid_method_param(SemaContext *context, Decl *param, Type *parent_type)
+static inline bool sema_is_valid_method_param(SemaContext *context, Decl *param, Type *parent_type, bool is_dynamic, bool is_interface)
 {
 	assert(parent_type->canonical == parent_type && "Expected already the canonical version.");
 	Type *param_type = param->type;
 
 	if (!param_type) goto ERROR;
 	param_type = param_type->canonical;
+
+	if (is_interface)
+	{
+		if (param_type != type_voidptr) RETURN_SEMA_ERROR(param, "The first parameter of an interface must be of type 'void*'.");
+		return true;
+	}
+
+	if (is_dynamic)
+	{
+		if (param_type->type_kind != TYPE_POINTER || param_type->pointer != parent_type)
+		{
+			RETURN_SEMA_ERROR(param, "The fist parameter must be of type %s", type_quoted_error_string(type_get_ptr(parent_type)));
+		}
+		return true;
+	}
+
 	// 1. Same type ok!
 	if (param_type == parent_type) return true;
+
 	// 2. A pointer is ok!
 	if (param_type->type_kind == TYPE_POINTER && param_type->pointer == parent_type) return true;
 ERROR:
@@ -2433,7 +2480,7 @@ static bool sema_analyse_macro_method(SemaContext *context, Decl *decl)
 		SEMA_ERROR(decl, "The first parameter to this method must be of type '%s'.", type_to_error_string(parent_type));
 		return false;
 	}
-	if (!sema_is_valid_method_param(context, first_param, parent_type->canonical)) return false;
+	if (!sema_is_valid_method_param(context, first_param, parent_type->canonical, false, false)) return false;
 
 	if (first_param->var.kind != VARDECL_PARAM_REF && first_param->var.kind != VARDECL_PARAM)
 	{

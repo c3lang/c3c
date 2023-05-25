@@ -116,7 +116,7 @@ INLINE void llvm_emit_compare_exchange(GenContext *c, BEValue *result_value, Exp
 	llvm_value_set(result_value, llvm_emit_extract_value(c, result, 0), type);
 }
 
-INLINE void llvm_emit_unreachable(GenContext *c, BEValue *result_value, Expr *expr)
+INLINE void llvm_emit_unreachable_stmt(GenContext *c, BEValue *result_value, Expr *expr)
 {
 	llvm_value_set(result_value, LLVMBuildUnreachable(c->builder), type_void);
 	c->current_block = NULL;
@@ -622,7 +622,7 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 	switch (func)
 	{
 		case BUILTIN_UNREACHABLE:
-			llvm_emit_unreachable(c, result_value, expr);
+			llvm_emit_unreachable_stmt(c, result_value, expr);
 			return;
 		case BUILTIN_SWIZZLE:
 			llvm_emit_swizzle(c, result_value, expr, false);

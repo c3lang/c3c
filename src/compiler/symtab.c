@@ -297,10 +297,12 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_BUILTIN] = KW_DEF("@builtin");
 	attribute_list[ATTRIBUTE_CDECL] = KW_DEF("@cdecl");
 	attribute_list[ATTRIBUTE_DEPRECATED] = KW_DEF("@deprecated");
+	attribute_list[ATTRIBUTE_DYNAMIC] = KW_DEF("@dynamic");
 	attribute_list[ATTRIBUTE_EXPORT] = KW_DEF("@export");
 	attribute_list[ATTRIBUTE_EXTERN] = KW_DEF("@extern");
 	attribute_list[ATTRIBUTE_EXTNAME] = KW_DEF("@extname");
 	attribute_list[ATTRIBUTE_INLINE] = KW_DEF("@inline");
+	attribute_list[ATTRIBUTE_INTERFACE] = KW_DEF("@interface");
 	attribute_list[ATTRIBUTE_LITTLEENDIAN] = KW_DEF("@littleendian");
 	attribute_list[ATTRIBUTE_LOCAL] = KW_DEF("@local");
 	attribute_list[ATTRIBUTE_MAYDISCARD] = KW_DEF("@maydiscard");

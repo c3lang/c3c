@@ -58,9 +58,9 @@ fn int main()
 
 /* #expect: foo.ll
 
-@"$ct.int" = linkonce constant %.introspect { i8 2, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
-@"$ct.double" = linkonce constant %.introspect { i8 4, i64 8, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
-@"$ct.bool" = linkonce constant %.introspect { i8 1, i64 1, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
+@"$ct.int" = linkonce global %.introspect { i8 2, ptr null, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
+@"$ct.double" = linkonce global %.introspect { i8 4, ptr null, i64 8, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
+@"$ct.bool" = linkonce global %.introspect { i8 1, ptr null, i64 1, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
 
 define void @foo.test(i64 %0, ptr %1) #0 {
 entry:

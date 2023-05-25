@@ -470,10 +470,8 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 			SourceSpan loc = ast->span;
 
 			llvm_emit_panic(c, "Infinite loop found", loc, NULL, NULL);
-			LLVMBuildUnreachable(c->builder);
+			llvm_emit_unreachable(c);
 			LLVMBasicBlockRef block = llvm_basic_block_new(c, "unreachable_block");
-			c->current_block = NULL;
-			c->current_block_is_target = false;
 			llvm_emit_block(c, block);
 			return;
 		}
@@ -1274,6 +1272,12 @@ LLVMValueRef llvm_emit_zstring_named(GenContext *c, const char *str, const char 
 	return string;
 }
 
+void llvm_emit_unreachable(GenContext *c)
+{
+	LLVMBuildUnreachable(c->builder);
+	c->current_block = NULL;
+	c->current_block_is_target = false;
+}
 
 void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const char *fmt, BEValue *varargs)
 {
