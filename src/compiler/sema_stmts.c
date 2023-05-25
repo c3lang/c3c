@@ -2916,6 +2916,19 @@ bool sema_analyse_contracts(SemaContext *context, AstId doc, AstId **asserts, So
 bool sema_analyse_function_body(SemaContext *context, Decl *func)
 {
 	if (!decl_ok(func)) return false;
+	if (func->func_decl.attr_dynamic)
+	{
+		Decl *ambiguous = NULL;
+		Decl *private = NULL;
+		Decl *any = sema_resolve_type_method(context->unit, type_any, func->name, &ambiguous, &private);
+		if (!any)
+		{
+			SEMA_ERROR(func, "To define a '@dynamic' method, the prototype method 'any.%s(...)' must exist. Did you spell the method name right?",
+			           func->name);
+			return false;
+		}
+		func->func_decl.any_prototype = declid(any);
+	}
 	Signature *signature = &func->func_decl.signature;
 	FunctionPrototype *prototype = func->type->function.prototype;
 	context->call_env = (CallEnv) {

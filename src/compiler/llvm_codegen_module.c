@@ -11,6 +11,7 @@ static inline LLVMTypeRef create_introspection_type(GenContext *c)
 	LLVMTypeRef type = LLVMStructCreateNamed(c->context, ".introspect");
 	LLVMTypeRef introspect_type[INTROSPECT_INDEX_TOTAL] = {
 			[INTROSPECT_INDEX_KIND] = c->byte_type,
+			[INTROSPECT_INDEX_DTABLE] = c->ptr_type,
 			[INTROSPECT_INDEX_SIZEOF] = c->size_type,
 			[INTROSPECT_INDEX_INNER] = c->typeid_type,
 			[INTROSPECT_INDEX_LEN] = c->size_type,
@@ -113,6 +114,8 @@ void gencontext_begin_module(GenContext *c)
 	c->ptr_type = LLVMPointerType(c->byte_type, 0);
 	c->size_type = llvm_get_type(c, type_usz);
 	c->typeid_type = llvm_get_type(c, type_typeid);
+	LLVMTypeRef dtable_type[3] = { c->ptr_type, c->ptr_type, c->ptr_type };
+	c->dtable_type = LLVMStructTypeInContext(c->context, dtable_type, 3, false);
 	c->chars_type = llvm_get_type(c, type_chars);
 	c->introspect_type = create_introspection_type(c);
 	c->fault_type = create_fault_type(c);

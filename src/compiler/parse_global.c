@@ -2306,10 +2306,9 @@ static inline Decl *parse_func_definition(ParseContext *c, AstId contracts, bool
 		return func;
 	}
 
-	if (tok_is(c, TOKEN_EOS))
+	if (try_consume(c, TOKEN_EOS))
 	{
-		SEMA_ERROR_HERE("Expected a function body, if you want to declare an extern function use 'extern' or place it in an .c3i file.");
-		return poisoned_decl;
+		return func;
 	}
 
 	if (tok_is(c, TOKEN_IMPLIES))

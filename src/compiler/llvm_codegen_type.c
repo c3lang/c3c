@@ -439,6 +439,7 @@ static inline LLVMValueRef llvm_generate_introspection_global(GenContext *c, LLV
 	}
 	LLVMValueRef values[INTROSPECT_INDEX_TOTAL] = {
 			[INTROSPECT_INDEX_KIND] = LLVMConstInt(c->byte_type, introspect_type, false),
+			[INTROSPECT_INDEX_DTABLE] = LLVMConstNull(c->ptr_type),
 			[INTROSPECT_INDEX_SIZEOF] = LLVMConstInt(c->size_type, type_size(type), false),
 			[INTROSPECT_INDEX_INNER] = inner ? llvm_get_typeid(c, inner) : llvm_get_zero(c, type_typeid),
 			[INTROSPECT_INDEX_LEN] = LLVMConstInt(c->size_type,len, false),
@@ -461,7 +462,7 @@ static inline LLVMValueRef llvm_generate_introspection_global(GenContext *c, LLV
 		LLVMSetInitializer(global_name, strukt);
 	}
 	LLVMSetAlignment(global_name, llvm_abi_alignment(c, c->introspect_type));
-	LLVMSetGlobalConstant(global_name, 1);
+	LLVMSetGlobalConstant(global_name, 0);
 	if (is_external)
 	{
 		LLVMSetLinkage(global_name, LLVMExternalLinkage);

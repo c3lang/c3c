@@ -22,9 +22,10 @@ fault FormattingFault
 }
 
 def OutputFn = fn void!(char c, void* buffer);
-def ToStringFunction = fn String(void* value, Allocator *using);
-def ToFormatFunction = fn void!(void* value, Formatter* formatter);
 def FloatType = double;
+
+fn String any.to_string(void* value, Allocator *using) @interface;
+fn void! any.to_format(void* value, Formatter* formatter) @interface;
 
 fn usz! printf(String format, args...) @maydiscard
 {
@@ -102,41 +103,6 @@ fn void Formatter.init(Formatter* this, OutputFn out_fn, void* data = null)
 	*this = { .data = data, .out_fn = out_fn};
 }
 
-/**
- * @require $checks($Type a, a.to_string()) || $checks($Type a, a.to_format(&&Formatter{}))  "Expected a type with 'to_string' or 'to_format' defined"
- * @require !$checks($Type a, a.to_string()) || $checks($Type a, a.to_string(&&Allocator{})) "Expected 'to_string' to take an allocator as argument."
- * @require !$checks($Type a, a.to_format(&&Formatter{})) || $checks($Type a, Formatter b, a.to_format(&b)) "Expected 'to_format' to take a Formatter as argument."
- */
-macro void formatter_register_type($Type)
-{
-	$if $checks($Type a, a.to_format(&&Formatter {})):
-		if (!toformat_functions.table.len)
-		{
-			toformat_functions.init(64);
-		}
-		toformat_functions.set($Type.typeid, (ToFormatFunction)&$Type.to_format);
-	$else
-		if (!tostring_functions.table.len)
-		{
-			tostring_functions.init(64);
-		}
-		tostring_functions.set($Type.typeid, (ToStringFunction)&$Type.to_string);
-	$endif
-}
-
-
-static initialize @priority(101)
-{
-	if (!toformat_functions.table.len)
-	{
-		toformat_functions.init(64);
-	}
-	if (!tostring_functions.table.len)
-	{
-		tostring_functions.init(64);
-	}
-}
-
 fn void! Formatter.out(Formatter* this, char c) @private
 {
 	this.out_fn(c, this.data)!;
@@ -144,7 +110,7 @@ fn void! Formatter.out(Formatter* this, char c) @private
 
 macro bool! Formatter.print_with_function(Formatter* this, any arg)
 {
-	if (try to_format = toformat_functions.get(arg.type))
+	if (&arg.to_format)
 	{
 		PrintFlags old = this.flags;
 		uint old_width = this.width;
@@ -155,10 +121,10 @@ macro bool! Formatter.print_with_function(Formatter* this, any arg)
 			this.width = old_width;
 			this.prec = old_prec;
 		}
-		to_format(arg.ptr, this)!;
+		arg.to_format(this)!;
 		return true;
-    }
-    if (try to_string = tostring_functions.get(arg.type))
+	}
+    if (&arg.to_string)
     {
 		PrintFlags old = this.flags;
 		uint old_width = this.width;
@@ -171,7 +137,7 @@ macro bool! Formatter.print_with_function(Formatter* this, any arg)
 		}
 		@pool()
 		{
-			this.out_substr(to_string(arg.ptr, mem::temp()))!;
+			this.out_substr(arg.to_string(mem::temp()))!;
 			return true;
 		};
     }
@@ -277,21 +243,8 @@ fn void! Formatter.out_str(Formatter* this, any arg) @private
 			}
 			this.out(']')!;
 		case BOOL:
-			if (*(bool*)arg.ptr)
-			{
-				return this.out_substr("true");
-			}
-			else
-			{
-				return this.out_substr("false");
-			}
+			return this.out_substr(*(bool*)arg.ptr ? "true" : "false");
 		default:
-			switch (arg)
-			{
-				case Object:
-					arg.to_format(this)!;
-					return;
-			}
 			if (this.print_with_function(arg)!) return;
 			return this.out_substr("Invalid type");
 	}
@@ -472,8 +425,3 @@ fn usz! Formatter.vprintf(Formatter* this, String format, any[] anys)
 	return this.idx;
 }
 
-def StringFunctionMap @private = HashMap<typeid, ToStringFunction>;
-def FormatterFunctionMap @private = HashMap<typeid, ToFormatFunction>;
-
-FormatterFunctionMap toformat_functions @private;
-StringFunctionMap tostring_functions @private;

@@ -13,7 +13,7 @@ static inline LLVMValueRef llvm_emit_expr_to_rvalue(GenContext *c, Expr *expr);
 static inline LLVMValueRef llvm_emit_exprid_to_rvalue(GenContext *c, ExprId expr_id);
 static inline LLVMValueRef llvm_update_vector(GenContext *c, LLVMValueRef vector, LLVMValueRef value, MemberIndex index);
 static inline void llvm_emit_expression_list_expr(GenContext *c, BEValue *be_value, Expr *expr);
-
+static LLVMValueRef llvm_emit_dynamic_search(GenContext *c, LLVMValueRef type_id_ptr, LLVMValueRef selector);
 static inline void llvm_emit_bitassign_array(GenContext *c, BEValue *result, BEValue parent, Decl *parent_decl, Decl *member);
 static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Expr *expr);
 static inline void llvm_emit_const_initialize_reference(GenContext *c, BEValue *ref, Expr *expr);
@@ -35,6 +35,7 @@ static inline void llvm_emit_try_unwrap(GenContext *c, BEValue *value, Expr *exp
 static inline void llvm_emit_any(GenContext *c, BEValue *value, Expr *expr);
 static inline void llvm_emit_vector_initializer_list(GenContext *c, BEValue *value, Expr *expr);
 static inline void llvm_extract_bitvalue_from_array(GenContext *c, BEValue *be_value, Decl *member, Decl *parent_decl);
+static inline void llvm_emit_type_from_any(GenContext *c, BEValue *be_value);
 static void llvm_convert_vector_comparison(GenContext *c, BEValue *be_value, LLVMValueRef val, Type *vector_type,
                                            bool is_equals);
 static void llvm_emit_any_pointer(GenContext *c, BEValue *any, BEValue *pointer);
@@ -2446,6 +2447,19 @@ static inline void llvm_emit_post_inc_dec(GenContext *c, BEValue *value, Expr *e
 	llvm_emit_inc_dec_change(c, &addr, NULL, value, expr, diff);
 }
 
+static void llvm_emit_dynamic_method_addr(GenContext *c, BEValue *value, Expr *expr)
+{
+	llvm_emit_expr(c, value, expr->access_expr.parent);
+	llvm_emit_type_from_any(c, value);
+	llvm_value_rvalue(c, value);
+	LLVMValueRef introspect = LLVMBuildIntToPtr(c->builder, value->value, c->ptr_type, "");
+
+	AlignSize align;
+	Decl *dyn_fn = expr->access_expr.ref;
+	LLVMValueRef func = llvm_emit_dynamic_search(c, introspect, llvm_get_ref(c, dyn_fn));
+
+	llvm_value_set(value, func, type_get_ptr(dyn_fn->type));
+}
 
 static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 {
@@ -2553,8 +2567,14 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 			}
 			value->value = LLVMBuildNeg(c->builder, value->value, "neg");
 			return;
-		case UNARYOP_TADDR:
 		case UNARYOP_ADDR:
+			if (inner->expr_kind == EXPR_ACCESS && inner->access_expr.ref->decl_kind == DECL_FUNC)
+			{
+				llvm_emit_dynamic_method_addr(c, value, inner);
+				return;
+			}
+			FALLTHROUGH;
+		case UNARYOP_TADDR:
 			llvm_emit_expr(c, value, inner);
 			// Create an addr
 			llvm_value_addr(c, value);
@@ -4158,9 +4178,7 @@ static inline void llvm_emit_force_unwrap_expr(GenContext *c, BEValue *be_value,
 		llvm_emit_any_from_value(c, &fault_arg, type_anyfault);
 		vec_add(varargs, fault_arg);
 		llvm_emit_panic(c, "Force unwrap failed!", loc, "Unexpected fault '%s' was unwrapped!", varargs);
-		LLVMBuildUnreachable(c->builder);
-		c->current_block = NULL;
-		c->current_block_is_target = false;
+		llvm_emit_unreachable(c);
 	}
 	llvm_emit_block(c, no_err_block);
 
@@ -5255,6 +5273,107 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 	// 17i. The simple case here is where there is a normal return.
 	//      In this case be_value already holds the result
 }
+
+static LLVMValueRef llvm_emit_dynamic_search(GenContext *c, LLVMValueRef type_id_ptr, LLVMValueRef selector)
+{
+	LLVMTypeRef type = c->dyn_find_function_type;
+	LLVMValueRef func = c->dyn_find_function;
+	if (!c->dyn_find_function)
+	{
+		LLVMTypeRef types[2] = { c->ptr_type, c->ptr_type };
+		type = c->dyn_find_function_type = LLVMFunctionType(c->ptr_type, types, 2, false);
+		func = c->dyn_find_function = LLVMAddFunction(c->module, ".dyn_seach", c->dyn_find_function_type);
+
+		LLVMSetUnnamedAddress(func, LLVMGlobalUnnamedAddr);
+		LLVMSetFunctionCallConv(func, LLVMFastCallConv);
+		LLVMSetLinkage(func, LLVMWeakODRLinkage);
+
+		LLVMBuilderRef builder = LLVMCreateBuilderInContext(c->context);
+
+		LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(c->context, func, "entry");
+		LLVMPositionBuilderAtEnd(builder, entry);
+
+		AlignSize align;
+		LLVMValueRef dtable_ptr_in = LLVMGetParam(func, 0);
+		LLVMValueRef func_ref = LLVMGetParam(func, 1);
+
+		LLVMBasicBlockRef check = llvm_basic_block_new(c, "check");
+		LLVMBasicBlockRef missing_function = llvm_basic_block_new(c, "missing_function");
+		LLVMBasicBlockRef compare = llvm_basic_block_new(c, "compare");
+		LLVMBasicBlockRef match = llvm_basic_block_new(c, "match");
+		LLVMBasicBlockRef no_match = llvm_basic_block_new(c, "no_match");
+
+		LLVMBuildBr(builder, check);
+
+		// check: dtable_ptr = phi
+		LLVMAppendExistingBasicBlock(func, check);
+		LLVMPositionBuilderAtEnd(builder, check);
+		LLVMValueRef dtable_ptr = LLVMBuildPhi(builder, c->ptr_type, "");
+
+		// dtable_ptr == null
+		LLVMValueRef cmp = LLVMBuildICmp(builder, LLVMIntEQ, dtable_ptr, LLVMConstNull(c->ptr_type), "");
+
+		// if (cmp) goto missing_function else compare
+		LLVMBuildCondBr(builder, cmp, missing_function, compare);
+
+		// missing_function: return null
+		LLVMAppendExistingBasicBlock(func, missing_function);
+		LLVMPositionBuilderAtEnd(builder, missing_function);
+		LLVMBuildRet(builder, LLVMConstNull(c->ptr_type));
+
+		// function_type = dtable_ptr.function_type
+		LLVMAppendExistingBasicBlock(func, compare);
+		LLVMPositionBuilderAtEnd(builder, compare);
+
+		LLVMValueRef function_type = LLVMBuildStructGEP2(builder, c->dtable_type, dtable_ptr, 1, "");
+		function_type = LLVMBuildLoad2(builder, c->ptr_type, function_type, "");
+		LLVMSetAlignment(function_type, llvm_abi_alignment(c, c->ptr_type));
+
+		// function_type == func_ref
+		cmp = LLVMBuildICmp(builder, LLVMIntEQ, function_type, func_ref, "");
+
+		// if (cmp) goto match else no_match
+		LLVMBuildCondBr(builder, cmp, match, no_match);
+
+		// match: function_ptr = dtable_ptr.function_ptr
+		LLVMAppendExistingBasicBlock(func, match);
+		LLVMPositionBuilderAtEnd(builder, match);
+
+		// Offset = 0
+		LLVMValueRef function_ptr = LLVMBuildLoad2(builder, c->ptr_type, dtable_ptr, "");
+		LLVMSetAlignment(function_ptr, llvm_abi_alignment(c, c->ptr_type));
+		LLVMBuildRet(builder, function_ptr);
+
+		// no match: next = dtable_ptr.next
+		LLVMAppendExistingBasicBlock(func, no_match);
+		LLVMPositionBuilderAtEnd(builder, no_match);
+		LLVMValueRef next = LLVMBuildStructGEP2(builder, c->dtable_type, dtable_ptr, 2, "");
+		next = LLVMBuildLoad2(builder, c->ptr_type, next, "");
+		LLVMSetAlignment(next, llvm_abi_alignment(c, c->ptr_type));
+
+		// goto check
+		LLVMBuildBr(builder, check);
+
+		LLVMBasicBlockRef block_in[2] = { entry, no_match };
+		LLVMValueRef value_in[2] = { dtable_ptr_in, next };
+		LLVMAddIncoming(dtable_ptr, value_in, block_in, 2);
+
+		LLVMDisposeBuilder(builder);
+	}
+	AlignSize align;
+	LLVMValueRef dtable_ref = llvm_emit_struct_gep_raw(c,
+	                                                   type_id_ptr,
+	                                                   c->introspect_type,
+	                                                   INTROSPECT_INDEX_DTABLE,
+	                                                   llvm_abi_alignment(c, c->introspect_type),
+	                                                   &align);
+	LLVMValueRef dtable_ptr = llvm_load(c, c->ptr_type, dtable_ref, align, "");
+	LLVMValueRef params[2] = { dtable_ptr, selector };
+	LLVMValueRef call = LLVMBuildCall2(c->builder, type, func, params, 2, "");
+	LLVMSetFunctionCallConv(call, LLVMFastCallConv);
+	return call;
+}
+
 static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr, BEValue *target)
 {
 	if (expr->call_expr.is_builtin)
@@ -5278,9 +5397,46 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 	bool always_inline = false;
 
 	FunctionPrototype *prototype;
-	// 1. Call through a pointer.
-	if (!expr->call_expr.is_func_ref)
+	Expr **args = expr->call_expr.arguments;
+
+	BEValue arg0_pointer = { .value = NULL };
+
+	// 1. Dynamic dispatch.
+	if (expr->call_expr.is_dynamic_dispatch)
 	{
+		assert(vec_size(args));
+		Expr *any_val = args[0];
+		assert(any_val->expr_kind == EXPR_CAST);
+		any_val = exprptr(any_val->cast_expr.expr)->unary_expr.expr;
+		BEValue result;
+		llvm_emit_expr(c, &result, any_val);
+		BEValue typeid = result;
+		llvm_emit_type_from_any(c, &typeid);
+		llvm_value_rvalue(c, &typeid);
+		llvm_emit_any_pointer(c, &result, &arg0_pointer);
+		LLVMValueRef introspect = LLVMBuildIntToPtr(c->builder, typeid.value, c->ptr_type, "");
+
+		LLVMBasicBlockRef missing_function = llvm_basic_block_new(c, "missing_function");
+		LLVMBasicBlockRef match = llvm_basic_block_new(c, "match");
+
+		AlignSize align;
+		Decl *dyn_fn = declptr(expr->call_expr.func_ref);
+		func = llvm_emit_dynamic_search(c, introspect, llvm_get_ref(c, dyn_fn));
+		LLVMValueRef cmp = LLVMBuildICmp(c->builder, LLVMIntEQ, func, LLVMConstNull(c->ptr_type), "");
+		llvm_emit_cond_br_raw(c, cmp, missing_function, match);
+		llvm_emit_block(c, missing_function);
+		scratch_buffer_clear();
+		scratch_buffer_printf("No method '%s' could be found on target", dyn_fn->name);
+		llvm_emit_panic(c, scratch_buffer_to_string(), expr->span, NULL, NULL);
+		llvm_emit_unreachable(c);
+		llvm_emit_block(c, match);
+
+		prototype = type_get_resolved_prototype(dyn_fn->type);
+		func_type = llvm_get_type(c, dyn_fn->type);
+	}
+	else if (!expr->call_expr.is_func_ref)
+	{
+		// Call through a pointer.
 		Expr *function = exprptr(expr->call_expr.function);
 
 		// 1a. Find the pointee type for the function pointer:
@@ -5312,13 +5468,11 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 		assert(func);
 		func_type = llvm_get_type(c, function_decl->type);
 	}
-
 	LLVMValueRef arg_values[512];
 	unsigned arg_count = 0;
 	Type **params = prototype->param_types;
 	ABIArgInfo **abi_args = prototype->abi_args;
 	unsigned param_count = vec_size(params);
-	Expr **args = expr->call_expr.arguments;
 	Expr **varargs = NULL;
 	Expr *vararg_splat = NULL;
 	if (expr->call_expr.splat_vararg)
@@ -5428,7 +5582,14 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 
 		if (arg_expr)
 		{
-			llvm_emit_expr(c, &temp_value, arg_expr);
+			if (i == 0 && arg0_pointer.value)
+			{
+				temp_value = arg0_pointer;
+			}
+			else
+			{
+				llvm_emit_expr(c, &temp_value, arg_expr);
+			}
 		}
 		else
 		{
@@ -5931,9 +6092,7 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 					llvm_emit_block(c, next);
 				}
 				llvm_emit_panic(c, "Attempted to access 'inner' on non composite type", expr->span, NULL, NULL);
-				c->current_block = NULL;
-				c->current_block_is_target = false;
-				LLVMBuildUnreachable(c->builder);
+				llvm_emit_unreachable(c);
 				llvm_emit_block(c, exit);
 			}
 			{
@@ -5962,9 +6121,7 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 					llvm_emit_block(c, next);
 				}
 				llvm_emit_panic(c, "Attempted to access 'names' on non enum/fault type.", expr->span, NULL, NULL);
-				c->current_block = NULL;
-				c->current_block_is_target = false;
-				LLVMBuildUnreachable(c->builder);
+				llvm_emit_unreachable(c);
 				llvm_emit_block(c, exit);
 			}
 			{
@@ -5997,9 +6154,7 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 					llvm_emit_block(c, next);
 				}
 				llvm_emit_panic(c, "Attempted to access 'len' on non array type", expr->span, NULL, NULL);
-				c->current_block = NULL;
-				c->current_block_is_target = false;
-				LLVMBuildUnreachable(c->builder);
+				llvm_emit_unreachable(c);
 				llvm_emit_block(c, exit);
 			}
 			{
@@ -6099,6 +6254,25 @@ static inline void llvm_emit_any(GenContext *c, BEValue *value, Expr *expr)
 	var = llvm_emit_insert_value(c, var, typeid.value, 1);
 	assert(!LLVMIsConstant(ptr.value) || !LLVMIsConstant(typeid.value) || LLVMIsConstant(var));
 	llvm_value_set(value, var, type_any);
+}
+
+static inline void llvm_emit_type_from_any(GenContext *c, BEValue *be_value)
+{
+	if (llvm_value_is_addr(be_value))
+	{
+		AlignSize alignment = 0;
+		LLVMValueRef pointer_addr = llvm_emit_struct_gep_raw(c,
+		                                                     be_value->value,
+		                                                     llvm_get_type(c, type_any),
+		                                                     1,
+		                                                     be_value->alignment,
+		                                                     &alignment);
+		llvm_value_set_address(be_value, pointer_addr, type_typeid, alignment);
+	}
+	else
+	{
+		llvm_value_set(be_value, llvm_emit_extract_value(c, be_value->value, 1), type_typeid);
+	}
 }
 
 static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Expr *expr)
@@ -6204,21 +6378,7 @@ static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Ex
 			return;
 		}
 		case ACCESS_TYPEOFANY:
-			if (llvm_value_is_addr(be_value))
-			{
-				AlignSize alignment = 0;
-				LLVMValueRef pointer_addr = llvm_emit_struct_gep_raw(c,
-				                                                     be_value->value,
-				                                                     llvm_get_type(c, type_any),
-				                                                     1,
-				                                                     be_value->alignment,
-				                                                     &alignment);
-				llvm_value_set_address(be_value, pointer_addr, type_typeid, alignment);
-			}
-			else
-			{
-				llvm_value_set(be_value, llvm_emit_extract_value(c, be_value->value, 1), type_typeid);
-			}
+			llvm_emit_type_from_any(c, be_value);
 			return;
 	}
 	UNREACHABLE

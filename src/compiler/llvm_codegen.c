@@ -1044,6 +1044,17 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 			llvm_add_global_decl(c, decl);
 			return decl->backend_ref;
 		case DECL_FUNC:
+			if (decl->func_decl.attr_interface)
+			{
+				size_t name_len = strlen(decl->name);
+				LLVMTypeRef char_array_type = LLVMArrayType(c->byte_type, name_len + 1);
+				LLVMValueRef selector = llvm_add_global_raw(c, decl_get_extname(decl), char_array_type, 0);
+				LLVMSetGlobalConstant(selector, 1);
+				LLVMSetInitializer(selector, llvm_get_zstring(c, decl->name, name_len));
+				LLVMSetLinkage(selector, LLVMLinkOnceODRLinkage);
+				llvm_set_comdat(c, selector);
+				return decl->backend_ref = selector;
+			}
 			backend_ref = decl->backend_ref = LLVMAddFunction(c->module, decl_get_extname(decl), llvm_get_type(c, decl->type));
 			llvm_append_function_attributes(c, decl);
 			if (decl_is_local(decl))
@@ -1301,6 +1312,7 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 			llvm_emit_function_decl(gen_context, func);
 		FOREACH_END();
 
+
 		FOREACH_BEGIN(Decl *func, unit->lambdas)
 			if (only_used && !func->is_live) continue;
 			has_elements = true;
@@ -1366,6 +1378,8 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 		gencontext_end_file_emit(gen_context, unit);
 
 	FOREACH_END();
+
+	llvm_emit_dynamic_functions(gen_context, gen_context->dynamic_functions);
 
 	llvm_emit_constructors_and_destructors(gen_context);
 

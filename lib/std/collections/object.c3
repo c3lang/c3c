@@ -26,12 +26,8 @@ struct Object
 	}
 }
 
-static initialize
-{
-	io::formatter_register_type(Object);
-}
 
-fn void! Object.to_format(Object* o, Formatter* formatter)
+fn void! Object.to_format(Object* o, Formatter* formatter) @dynamic
 {
 	switch (o.type)
 	{
