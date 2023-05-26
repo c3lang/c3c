@@ -5285,7 +5285,6 @@ static LLVMValueRef llvm_emit_dynamic_search(GenContext *c, LLVMValueRef type_id
 		func = c->dyn_find_function = LLVMAddFunction(c->module, ".dyn_seach", c->dyn_find_function_type);
 
 		LLVMSetUnnamedAddress(func, LLVMGlobalUnnamedAddr);
-		LLVMSetFunctionCallConv(func, LLVMFastCallConv);
 		LLVMSetLinkage(func, LLVMWeakODRLinkage);
 
 		LLVMBuilderRef builder = LLVMCreateBuilderInContext(c->context);
@@ -5370,7 +5369,6 @@ static LLVMValueRef llvm_emit_dynamic_search(GenContext *c, LLVMValueRef type_id
 	LLVMValueRef dtable_ptr = llvm_load(c, c->ptr_type, dtable_ref, align, "");
 	LLVMValueRef params[2] = { dtable_ptr, selector };
 	LLVMValueRef call = LLVMBuildCall2(c->builder, type, func, params, 2, "");
-	LLVMSetFunctionCallConv(call, LLVMFastCallConv);
 	return call;
 }
 
