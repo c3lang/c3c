@@ -1839,12 +1839,8 @@ static bool sema_analyse_attributes_inner(SemaContext *context, Decl *decl, Attr
 
 		// Custom attributes.
 		// First find it.
-		Decl *attr_decl = sema_find_symbol(context, attr->name);
-		if (!attr_decl || attr_decl->decl_kind != DECL_ATTRIBUTE)
-		{
-			SEMA_ERROR(attr, "The attribute '%s' could not be found.", attr->name);
-			return false;
-		}
+		Decl *attr_decl = sema_resolve_symbol(context, attr->name, attr->path, attr->span);
+		if (!attr_decl) return false;
 
 		// Detect direct cycles @Foo = @Bar @Bar = @Foo
 		if (attr_decl == top)
