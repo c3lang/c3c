@@ -1061,7 +1061,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 			}
 			backend_ref = decl->backend_ref = LLVMAddFunction(c->module, decl_get_extname(decl), llvm_get_type(c, decl->type));
 			llvm_append_function_attributes(c, decl);
-			if (decl->is_export && platform_target.os == OS_TYPE_WIN32)
+			if (decl->is_export && platform_target.os == OS_TYPE_WIN32 && decl->name != kw_main && decl->name != kw_mainstub)
 			{
 				LLVMSetDLLStorageClass(backend_ref, LLVMDLLExportStorageClass);
 			}

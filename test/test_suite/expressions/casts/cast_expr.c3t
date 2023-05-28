@@ -1,3 +1,4 @@
+// #target: macos-x64
 module cast_expr;
 
 fn int main(int argc, char** argv)
