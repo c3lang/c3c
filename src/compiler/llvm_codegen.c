@@ -1042,6 +1042,10 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 			}
 			assert(decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST);
 			llvm_add_global_decl(c, decl);
+			if (decl->is_export && platform_target.os == OS_TYPE_WIN32)
+			{
+				LLVMSetDLLStorageClass(decl->backend_ref, LLVMDLLExportStorageClass);
+			}
 			return decl->backend_ref;
 		case DECL_FUNC:
 			if (decl->func_decl.attr_interface)
@@ -1057,6 +1061,10 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 			}
 			backend_ref = decl->backend_ref = LLVMAddFunction(c->module, decl_get_extname(decl), llvm_get_type(c, decl->type));
 			llvm_append_function_attributes(c, decl);
+			if (decl->is_export && platform_target.os == OS_TYPE_WIN32)
+			{
+				LLVMSetDLLStorageClass(backend_ref, LLVMDLLExportStorageClass);
+			}
 			if (decl_is_local(decl))
 			{
 				assert(decl->unit->module == c->code_module);
