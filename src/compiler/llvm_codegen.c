@@ -724,6 +724,7 @@ static void llvm_codegen_setup()
 	attribute_id.uwtable = lookup_attribute("uwtable");
 	attribute_id.writeonly = lookup_attribute("writeonly");
 	attribute_id.zext = lookup_attribute("zeroext");
+	attribute_id.target_features = lookup_attribute("target-features");
 	intrinsics_setup = true;
 }
 
@@ -755,13 +756,10 @@ void llvm_value_set_int(GenContext *c, BEValue *value, Type *type, uint64_t i)
 	llvm_value_set(value, llvm_const_int(c, type, i), type);
 }
 
-
-
 bool llvm_value_is_const(BEValue *value)
 {
 	return LLVMIsConstant(value->value);
 }
-
 
 void llvm_value_set_decl(GenContext *c, BEValue *value, Decl *decl)
 {
@@ -773,11 +771,6 @@ void llvm_value_set_decl(GenContext *c, BEValue *value, Decl *decl)
 	}
 	llvm_value_set_decl_address(c, value, decl);
 }
-
-
-
-
-
 
 
 LLVMBasicBlockRef llvm_basic_block_new(GenContext *c, const char *name)

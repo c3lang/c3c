@@ -45,6 +45,7 @@ void gencontext_begin_module(GenContext *c)
 	c->panicf = global_context.panicf;
 	c->module = LLVMModuleCreateWithNameInContext(c->code_module->name->module, c->context);
 	c->machine = llvm_target_machine_create();
+
 	c->target_data = LLVMCreateTargetDataLayout(c->machine);
 
 	LLVMSetModuleDataLayout(c->module, c->target_data);
@@ -103,7 +104,7 @@ void gencontext_begin_module(GenContext *c)
 				type->decl->backend_ref = NULL;
 				break;
 			case TYPE_FUNC:
-				REMINDER("Clear func when it has reflection");
+				//REMINDER("Clear func when it has reflection");
 				break;
 			default:
 				break;
