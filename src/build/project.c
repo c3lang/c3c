@@ -351,8 +351,12 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	if (wincrt > -1) target->win.crt_linking = (WinCrtLinking)wincrt;
 
 	// x86vec
-	int x86vec = get_valid_string_setting(json, "x86vec", type, vector_capability, 0, 6, "none, native, mmx, sse, avx or avx512");
+	int x86vec = get_valid_string_setting(json, "x86vec", type, x86_vector_capability, 0, 6, "none, native, mmx, sse, avx or avx512");
 	if (x86vec > -1) target->feature.x86_vector_capability = x86vec;
+
+	// x86vec
+	int x86cpu = get_valid_string_setting(json, "x86cpu", type, x86_cpu_set, 0, 8, "baseline, ssse3, sse4, avx1, avx2-v1, avx2-v2, avx512 or native");
+	if (x86cpu > -1) target->feature.x86_cpu_set = x86cpu;
 
 	// riscvfloat
 	int riscv_float = get_valid_string_setting(json, "riscvfloat", type, riscv_capability, 0, 3, "none, float or double");
@@ -450,6 +454,7 @@ static void project_add_targets(Project *project, JSONObject *project_data)
 			.feature.soft_float = SOFT_FLOAT_DEFAULT,
 			.feature.trap_on_wrap = false,
 			.feature.x86_vector_capability = X86VECTOR_DEFAULT,
+			.feature.x86_cpu_set = X86CPU_DEFAULT,
 			.feature.safe_mode = true,
 			.win.crt_linking = WIN_CRT_DEFAULT,
 	};

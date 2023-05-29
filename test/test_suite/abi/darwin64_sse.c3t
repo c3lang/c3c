@@ -1,5 +1,5 @@
 // #target: macos-x64
-// #opt: --x86vec=sse
+// #opt: --x86cpu=sse4
 module test;
 
 typedef Mm256 = float[<8>];

@@ -141,6 +141,18 @@ typedef enum
 	X86VECTOR_NATIVE = 5,
 } X86VectorCapability;
 
+typedef enum
+{
+	X86CPU_DEFAULT = -1,
+	X86CPU_BASELINE = 0,
+	X86CPU_SSSE3 = 1,
+	X86CPU_SSE4 = 2,
+	X86CPU_AVX1 = 3,
+	X86CPU_AVX2_V1 = 4,
+	X86CPU_AVX2_V2 = 5,
+	X86CPU_AVX512 = 6,
+	X86CPU_NATIVE = 7,
+} X86CpuSet;
 
 typedef enum
 {
@@ -151,13 +163,24 @@ typedef enum
 } RiscvFloatCapability;
 
 
-static const char *vector_capability[6] = {
+static const char *x86_vector_capability[6] = {
 		[X86VECTOR_NONE] = "none",
 		[X86VECTOR_MMX] = "mmx",
 		[X86VECTOR_SSE] = "sse",
 		[X86VECTOR_AVX] = "avx",
 		[X86VECTOR_AVX512] = "avx512",
 		[X86VECTOR_NATIVE] = "native"
+};
+
+static const char *x86_cpu_set[8] = {
+		[X86CPU_BASELINE] = "baseline",
+		[X86CPU_SSSE3] = "ssse3",
+		[X86CPU_SSE4] = "sse4",
+		[X86CPU_AVX1] = "avx1",
+		[X86CPU_AVX2_V1] = "avx2-v1",
+		[X86CPU_AVX2_V2] = "avx2-v2",
+		[X86CPU_AVX512] = "avx512",
+		[X86CPU_NATIVE] = "native"
 };
 
 static const char *riscv_capability[3] = {
@@ -310,6 +333,7 @@ typedef struct BuildOptions_
 	const char *obj_out;
 	RelocModel reloc_model;
 	X86VectorCapability x86_vector_capability;
+	X86CpuSet x86_cpu_set;
 	RiscvFloatCapability riscv_float_capability;
 	MemoryEnvironment memory_environment;
 	bool strip_unused;
@@ -353,6 +377,7 @@ typedef struct
 	LibraryTarget *target_used;
 	LibraryTarget **targets;
 } Library;
+
 
 typedef struct
 {
@@ -417,6 +442,7 @@ typedef struct
 		RiscvFloatCapability riscv_float_capability : 4;
 		bool trap_on_wrap : 1;
 		bool safe_mode : 1;
+		X86CpuSet x86_cpu_set;
 	} feature;
 	struct
 	{

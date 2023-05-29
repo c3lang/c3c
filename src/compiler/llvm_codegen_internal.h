@@ -248,6 +248,7 @@ typedef struct
 	unsigned uwtable;
 	unsigned writeonly; // No writes on pointer
 	unsigned zext; // zero extend
+	unsigned target_features; // target-features for function compilation
 } LLVMAttributes;
 
 extern LLVMAttributes attribute_id;

@@ -1,5 +1,5 @@
 // #target: macos-x64
-// #opt: --x86vec=avx
+// #opt: --x86cpu=avx1
 module test;
 
 typedef Mm256 = float[<8>];

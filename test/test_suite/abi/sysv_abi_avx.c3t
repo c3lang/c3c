@@ -1,5 +1,5 @@
 // #target: linux-x64
-// #opt: --x86vec=avx512
+// #opt: --x86cpu=avx512
 module foo;
 
 struct StringRef

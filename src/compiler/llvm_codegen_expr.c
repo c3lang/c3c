@@ -4996,11 +4996,6 @@ static void llvm_emit_splatted_variadic_arg(GenContext *c, Expr *expr, Type *var
 	}
 }
 
-
-
-
-
-
 void llvm_add_abi_call_attributes(GenContext *c, LLVMValueRef call_value, int count, ABIArgInfo **infos)
 {
 	for (unsigned i = 0; i < count; i++)

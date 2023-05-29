@@ -130,7 +130,8 @@ static void usage(void)
 	OUTPUT("  --forcelinker             - Force built in linker usage when doing non-cross linking.");
 	OUTPUT("");
 	OUTPUT("  --reloc=<option>          - Relocation model: none, pic, PIC, pie, PIE.");
-	OUTPUT("  --x86vec=<option>         - Set max level of vector instructions: none, native, mmx, sse, avx, avx512.");
+	OUTPUT("  --x86cpu=<option>         - Set general level of x64 cpu: baseline, ssse3, sse4, avx1, avx2-v1, avx2-v2 (Skylake/Zen1+), avx512 (Icelake/Zen4+), native.");
+	OUTPUT("  --x86vec=<option>         - Set max type of vector use: none, mmx, sse, avx, avx512, native.");
 	OUTPUT("  --riscvfloat=<option>     - Set type of RISC-V float support: none, float, double");
 	OUTPUT("  --memory-env=<option>     - Set the memory environment: normal, small, tiny, none.");
 	OUTPUT("  --strip-unused            - Strip unused code and globals from the output (experimental)");
@@ -551,7 +552,12 @@ static void parse_option(BuildOptions *options)
 			}
 			if ((argopt = match_argopt("x86vec")))
 			{
-				options->x86_vector_capability = (X86VectorCapability)parse_multi_option(argopt, 6, vector_capability);
+				options->x86_vector_capability = (X86VectorCapability)parse_multi_option(argopt, 6, x86_vector_capability);
+				return;
+			}
+			if ((argopt = match_argopt("x86cpu")))
+			{
+				options->x86_cpu_set = (X86CpuSet)parse_multi_option(argopt, 8, x86_cpu_set);
 				return;
 			}
 			if ((argopt = match_argopt("riscvfloat")))
@@ -858,6 +864,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.reloc_model = RELOC_DEFAULT,
 		.backend = BACKEND_LLVM,
 		.x86_vector_capability = X86VECTOR_DEFAULT,
+		.x86_cpu_set = X86CPU_DEFAULT,
 		.riscv_float_capability = RISCVFLOAT_DEFAULT,
 		.memory_environment = MEMORY_ENV_NOT_SET,
 		.win.crt_linking = WIN_CRT_DEFAULT,
