@@ -8,6 +8,7 @@
 - `$assert` now uses `$assert <expr> : <optional message>`
 - `$error` is syntax sugar for `$assert false : "Some message"`
 - `$include`, `$echo` no longer has mandatory `()` around the arguments.
+- Updated cpu arguments for x86
 - Dropped support for LLVM 13-14.
 - Updated grammar and lexer definition.
 - Removal of `$elif`.
