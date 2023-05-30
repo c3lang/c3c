@@ -286,6 +286,11 @@ static void linker_setup_macos(const char ***args_ref, LinkerType linker_type)
 	}
 	add_arg("-arch");
 	add_arg(arch_to_linker_arch(platform_target.arch));
+	if (active_target.strip_unused && active_target.type == TARGET_TYPE_EXECUTABLE)
+	{
+		add_arg("-no_exported_symbols");
+		add_arg("-dead_strip");
+	}
 
 	// Skip if no libc.
 	if (active_target.no_libc) return;
@@ -386,6 +391,12 @@ static void linker_setup_linux(const char ***args_ref, LinkerType linker_type)
 	if (active_target.no_libc) return;
 	const char *crt_begin_dir = find_linux_crt_begin();
 	const char *crt_dir = find_linux_crt();
+
+	if (active_target.strip_unused && active_target.type == TARGET_TYPE_EXECUTABLE)
+	{
+		add_arg("-dead_strip");
+	}
+
 	if (!crt_begin_dir || !crt_dir)
 	{
 		error_exit("Failed to find the C runtime at link time.");
@@ -431,6 +442,11 @@ static void linker_setup_freebsd(const char ***args_ref, LinkerType linker_type)
 	{
 		error_exit("Failed to find the C runtime at link time.");
 	}
+	if (active_target.strip_unused && active_target.type == TARGET_TYPE_EXECUTABLE)
+	{
+		add_arg("-dead_strip");
+	}
+
 	if (is_pie_pic(platform_target.reloc_model))
 	{
 		add_arg("-pie");
