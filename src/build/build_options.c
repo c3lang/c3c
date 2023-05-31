@@ -159,7 +159,11 @@ static void usage(void)
 	OUTPUT("  --wincrt=<option>         - Windows CRT linking: none, static, dynamic (default).");
 	OUTPUT("");
 	OUTPUT("  --macossdk <dir>          - Set the directory for the MacOS SDK for cross compilation.");
-
+	OUTPUT("  --macos-min-version <ver> - Set the minimum MacOS version to compile for.");
+	OUTPUT("  --macos-sdk-version <ver> - Set the MacOS SDK compiled for.");
+	OUTPUT("");
+	OUTPUT("  --linux-crt <dir>         - Set the directory to use for finding crt1.o and related files.");
+	OUTPUT("  --linux-crtbegin <dir>    - Set the directory to use for finding crtbegin.o and related files.");
 }
 
 
@@ -805,6 +809,18 @@ static void parse_option(BuildOptions *options)
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --path needs a directory.");
 				options->path = check_dir(next_arg());
+				return;
+			}
+			if (match_longopt("linux-crt"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --linux-crt needs a directory.");
+				options->linuxpaths.crt = check_dir(next_arg());
+				return;
+			}
+			if (match_longopt("linux-crtbegin"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --linux-crtbegin needs a directory.");
+				options->linuxpaths.crtbegin = check_dir(next_arg());
 				return;
 			}
 			if (match_longopt("safe"))

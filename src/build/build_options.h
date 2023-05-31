@@ -297,6 +297,10 @@ typedef struct BuildOptions_
 		const char *min_version;
 		const char *sdk_version;
 	} macos;
+	struct {
+		const char *crt;
+		const char *crtbegin;
+	} linuxpaths;
 	int build_threads;
 	const char** libraries_to_fetch;
 	const char** files;
@@ -456,6 +460,11 @@ typedef struct
 		WinCrtLinking crt_linking;
 		bool use_win_subsystem;
 	} win;
+	struct
+	{
+		const char *crt;
+		const char *crtbegin;
+	} linuxpaths;
 } BuildTarget;
 
 
