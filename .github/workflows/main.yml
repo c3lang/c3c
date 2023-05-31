@@ -283,6 +283,111 @@ jobs:
           name: c3-linux-${{matrix.build_type}}
           path: c3-linux-${{matrix.build_type}}.tar.gz
 
+  build-linux-ubuntu20:
+    runs-on: ubuntu-20.04
+    strategy:
+      # Don't abort runners if a single one fails
+      fail-fast: false
+      matrix:
+        build_type: [Release, Debug]
+        llvm_version: [16]
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install common deps
+        run: |
+          sudo apt-get install zlib1g zlib1g-dev python3 ninja-build curl
+
+      - name: Install Clang ${{matrix.llvm_version}}
+        run: |
+          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+          if [[ "${{matrix.llvm_version}}" < 17 ]]; then
+            sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-${{matrix.llvm_version}} main"
+          else
+            sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal main"
+          fi
+          sudo apt-get update      
+          sudo apt-get install -y clang-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}}-dev lld-${{matrix.llvm_version}} liblld-${{matrix.llvm_version}}-dev
+          sudo apt-get install -y libmlir-${{matrix.llvm_version}} libmlir-${{matrix.llvm_version}}-dev mlir-${{matrix.llvm_version}}-tools 
+          sudo apt-get install -y libpolly-${{matrix.llvm_version}}-dev
+      - name: CMake
+        run: |
+          cmake -B build \
+                -G Ninja \
+                -DCMAKE_BUILD_TYPE=${{matrix.build_type}} \
+                -DCMAKE_C_COMPILER=clang-${{matrix.llvm_version}} \
+                -DCMAKE_CXX_COMPILER=clang++-${{matrix.llvm_version}} \
+                -DCMAKE_LINKER=lld-link-${{matrix.llvm_version}} \
+                -DCMAKE_OBJCOPY=llvm-objcopy-${{matrix.llvm_version}} \
+                -DCMAKE_STRIP=llvm-strip-${{matrix.llvm_version}} \
+                -DCMAKE_DLLTOOL=llvm-dlltool-${{matrix.llvm_version}} \
+                -DC3_LLVM_VERSION=${{matrix.llvm_version}}
+          cmake --build build
+
+      - name: Compile and run some examples
+        run: |
+          cd resources
+          ../build/c3c compile examples/base64.c3
+          ../build/c3c compile examples/binarydigits.c3
+          ../build/c3c compile examples/brainfk.c3
+          ../build/c3c compile examples/factorial_macro.c3
+          ../build/c3c compile examples/fasta.c3
+          ../build/c3c compile examples/gameoflife.c3
+          ../build/c3c compile examples/hash.c3
+          ../build/c3c compile examples/levenshtein.c3
+          ../build/c3c compile examples/load_world.c3
+          ../build/c3c compile examples/map.c3
+          ../build/c3c compile examples/mandelbrot.c3
+          ../build/c3c compile examples/plus_minus.c3
+          ../build/c3c compile examples/nbodies.c3
+          ../build/c3c compile examples/spectralnorm.c3
+          ../build/c3c compile examples/swap.c3
+          ../build/c3c compile examples/contextfree/boolerr.c3
+          ../build/c3c compile examples/contextfree/dynscope.c3
+          ../build/c3c compile examples/contextfree/guess_number.c3
+          ../build/c3c compile examples/contextfree/multi.c3          
+          ../build/c3c compile examples/contextfree/cleanup.c3          
+          ../build/c3c compile-run examples/hello_world_many.c3
+          ../build/c3c compile-run examples/time.c3
+          ../build/c3c compile-run examples/fannkuch-redux.c3
+          ../build/c3c compile-run examples/contextfree/boolerr.c3
+          ../build/c3c compile-run examples/load_world.c3
+
+      - name: Compile run unit tests
+        run: |
+          cd test
+          ../build/c3c compile-test unit -g1 --safe
+
+      - name: Build testproject
+        run: |
+          cd resources/testproject
+          ../../build/c3c run --debug-log
+
+      - name: Build testproject direct linker
+        run: |
+          cd resources/testproject
+          ../../build/c3c run --debug-log --forcelinker
+
+      - name: run compiler tests
+        run: |
+          cd test
+          python3 src/tester.py ../build/c3c test_suite/
+
+      - name: bundle_output
+        if: matrix.llvm_version == 16
+        run: |
+          mkdir linux
+          cp -r lib linux
+          cp msvc_build_libraries.py linux
+          cp build/c3c linux
+          tar czf c3-ubuntu-20-${{matrix.build_type}}.tar.gz linux
+
+      - name: upload artifacts
+        if: matrix.llvm_version == 16
+        uses: actions/upload-artifact@v3
+        with:
+          name: c3-ubuntu-20-${{matrix.build_type}}
+          path: c3-ubuntu-20-${{matrix.build_type}}.tar.gz
 
   build-mac:
     runs-on: macos-latest
@@ -448,6 +553,27 @@ jobs:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: c3-linux-Debug/c3-linux-Debug.tar.gz
           asset_name: c3-linux-debug.tar.gz
+          asset_content_type: application/gzip
+
+      - name: upload ubuntu 20
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+
+          asset_path: c3-ubuntu-20-Release/c3-ubuntu-20-Release.tar.gz
+          asset_name: c3-ubuntu-20.tar.gz
+          asset_content_type: application/gzip
+
+      - name: upload ubuntu 20 debug
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: c3-ubuntu-20-Debug/c3-ubuntu-20-Debug.tar.gz
+          asset_name: c3-ubuntu-20-debug.tar.gz
           asset_content_type: application/gzip
 
       - name: upload macos
