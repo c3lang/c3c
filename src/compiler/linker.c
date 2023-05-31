@@ -384,7 +384,11 @@ static const char *find_linux_crt_begin(void)
 
 static void linker_setup_linux(const char ***args_ref, LinkerType linker_type)
 {
-	if (linker_type == LINKER_CC) return;
+	if (linker_type == LINKER_CC)
+	{
+		add_arg("-pthread");
+		return;
+	}
 	if (is_no_pie(platform_target.reloc_model)) add_arg("-no-pie");
 	if (is_pie(platform_target.reloc_model)) add_arg("-pie");
 	if (platform_target.arch == ARCH_TYPE_X86_64) add_arg("--eh-frame-hdr");
@@ -419,9 +423,9 @@ static void linker_setup_linux(const char ***args_ref, LinkerType linker_type)
 	add_arg2(crt_dir, "crtn.o");
 	add_arg2("-L", crt_dir);
 	add_arg("--dynamic-linker=/lib64/ld-linux-x86-64.so.2");
-	add_arg("-lc");
 	add_arg("-lm");
 	add_arg("-lpthread");
+	add_arg("-lc");
 	add_arg("-L/usr/lib/");
 	add_arg("-L/lib/");
 	add_arg("-m");
