@@ -340,6 +340,7 @@ static const char *find_freebsd_crt(void)
 
 static const char *find_linux_crt(void)
 {
+	if (active_target.linuxpaths.crt) return active_target.linuxpaths.crt;
 #if PLATFORM_POSIX
 	glob_t globbuf;
 	if (!glob("/usr/lib/*/crt1.o", 0, NULL, &globbuf) && globbuf.gl_pathc)
@@ -362,6 +363,7 @@ static const char *find_linux_crt(void)
 
 static const char *find_linux_crt_begin(void)
 {
+	if (active_target.linuxpaths.crtbegin) return active_target.linuxpaths.crtbegin;
 #if PLATFORM_POSIX
 	glob_t globbuf;
 	if (!glob("/usr/lib/gcc/*/*/crtbegin.o", 0, NULL, &globbuf) && globbuf.gl_pathc)

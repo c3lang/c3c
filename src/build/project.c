@@ -374,6 +374,12 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	// macos-sdk-version
 	target->macos.sdk_version = get_valid_string(json, "macos-sdk-version", type, false);
 
+	// Linux crt
+	target->linuxpaths.crt = get_valid_string(json, "linux-crt", type, false);
+
+	// Linux crtbegin
+	target->linuxpaths.crtbegin = get_valid_string(json, "linux-crtbegin", type, false);
+
 	// version
 	const char *version = get_valid_string(json, "version", type, false);
 	if (version) target->version = version;

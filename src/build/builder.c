@@ -243,6 +243,8 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	if (options->macos.min_version) target->macos.min_version = options->macos.min_version;
 	if (options->macos.sdk_version) target->macos.sdk_version = options->macos.sdk_version;
 	if (options->win.crt_linking != WIN_CRT_DEFAULT) target->win.crt_linking = options->win.crt_linking;
+	if (options->linuxpaths.crt) target->linuxpaths.crt = options->linuxpaths.crt;
+	if (options->linuxpaths.crtbegin) target->linuxpaths.crtbegin = options->linuxpaths.crtbegin;
 	if (options->x86_vector_capability != X86VECTOR_DEFAULT)
 	{
 		target->feature.x86_vector_capability = options->x86_vector_capability;
