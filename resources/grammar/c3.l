@@ -95,9 +95,9 @@ int comment_level = 0;
 "char"			{ count(); return(CHAR); }
 "const"			{ count(); return(CONST); }
 "continue"		{ count(); return(CONTINUE); }
+"def"           { count(); return(DEF); }
 "default"		{ count(); return(DEFAULT); }
 "defer"         { count(); return(DEFER); }
-"define"        { count(); return(DEFINE); }
 "distinct"      { count(); return(DISTINCT); }
 "do"			{ count(); return(DO); }
 "double"		{ count(); return(DOUBLE); }
@@ -137,7 +137,6 @@ int comment_level = 0;
 "tlocal"        { count(); return(TLOCAL); }
 "true"          { count(); return(TRUE); }
 "try"           { count(); return(TRY); }
-"typedef"		{ count(); return(TYPEDEF); }
 "typeid"        { count(); return(TYPEID); }
 "uint"			{ count(); return(UINT); }
 "uint128"		{ count(); return(UINT128); }

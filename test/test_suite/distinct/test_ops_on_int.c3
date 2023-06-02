@@ -1,6 +1,6 @@
 module test;
 
-typedef Foo = distinct int;
+def Foo = distinct int;
 
 fn int test1()
 {

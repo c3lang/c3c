@@ -22,8 +22,8 @@ fn void test1()
     $endswitch
 }
 
-typedef Foo = int;
-typedef Bar = double;
+def Foo = int;
+def Bar = double;
 fn void test2()
 {
     $switch (int.typeid)

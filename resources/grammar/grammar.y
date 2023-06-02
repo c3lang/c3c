@@ -17,7 +17,7 @@ void yyerror(char *s);
 %token AND_OP OR_OP MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN ADD_ASSIGN
 %token SUB_ASSIGN SHL_ASSIGN SHR_ASSIGN AND_ASSIGN
 %token XOR_ASSIGN OR_ASSIGN VAR NUL ELVIS NEXTCASE ANYFAULT
-%token TYPEDEF MODULE IMPORT DEFINE EXTERN
+%token MODULE IMPORT DEF EXTERN
 %token CHAR SHORT INT LONG FLOAT DOUBLE CONST VOID USZ ISZ UPTR IPTR ANY
 %token ICHAR USHORT UINT ULONG BOOL INT128 UINT128 FLOAT16 FLOAT128 BFLOAT16
 %token TYPEID BITSTRUCT STATIC BANGBANG AT_CONST_IDENT HASH_TYPE_IDENT
@@ -1110,9 +1110,6 @@ typedef_type
 	| type opt_generic_parameters
 	;
 
-typedef_declaration
-    : TYPEDEF TYPE_IDENT opt_attributes '=' opt_distinct_inline typedef_type ';'
-    ;
 
 
 multi_declaration
@@ -1166,8 +1163,9 @@ define_ident
         ;
 
 define_declaration
-	: DEFINE define_ident ';'
-	| DEFINE define_attribute ';'
+	: DEF define_ident ';'
+	| DEF define_attribute ';'
+	| DEF TYPE_IDENT opt_attributes '=' opt_distinct_inline typedef_type ';'
 	;
 
 tl_ct_if
@@ -1233,7 +1231,6 @@ top_level
 	| fault_declaration
 	| enum_declaration
 	| macro_declaration
-	| typedef_declaration
 	| define_declaration
 	| static_declaration
 	| bitstruct_declaration

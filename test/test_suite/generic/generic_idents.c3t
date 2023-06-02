@@ -13,8 +13,8 @@ fn Type addMult(Type x, Type a, Type b)
 module test;
 import gen;
 
-define intMult = gen::mult<int>;
-define doubleAddMult = gen::addMult<double>;
+def intMult = gen::mult<int>;
+def doubleAddMult = gen::addMult<double>;
 
 fn int getIt(int i)
 {

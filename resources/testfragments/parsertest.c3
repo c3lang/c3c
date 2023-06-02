@@ -231,8 +231,8 @@ fn void hello() throws Errors
 	return;
 }
 
-typedef Foo* as Bar;
-typedef fn void(int, Foo*) as Zoo;
+def Foo* as Bar;
+def fn void(int, Foo*) as Zoo;
 
 
 

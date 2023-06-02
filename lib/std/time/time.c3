@@ -1,9 +1,9 @@
 module std::time;
 
-typedef Time @inline = distinct long;
-typedef TimeDuration @inline = distinct long;
-typedef Clock @inline = distinct ulong;
-typedef NanoDuration @inline = distinct long;
+def Time @inline = distinct long;
+def TimeDuration @inline = distinct long;
+def Clock @inline = distinct ulong;
+def NanoDuration @inline = distinct long;
 
 const TimeDuration MICROSECONDS_PER_SECOND = 1_000_000;
 const TimeDuration MICROSECONDS_PER_MINUTE = MICROSECONDS_PER_SECOND * 60;

@@ -1,9 +1,9 @@
 
-typedef int = int; // #error: 'int' is the name of a built-in type and can't be used as an alias.
+def int = int; // #error: 'int' is a reserved keyword, try another name
 def main = foo; // #error: 'main' is reserved and cannot be used as an alias.
 
-typedef hello = int; // #error: uppercase letter
-typedef hello = Foo; // #error: uppercase letter
+def hello = int; // #error: uppercase letter
+def hello = Foo; // #error: uppercase letter
 
-typedef HELLO = int; // #error: uppercase letter
-typedef HELLO = Foo; // #error: uppercase letter
+def HELLO = int; // #error: uppercase letter
+def HELLO = Foo; // #error: uppercase letter

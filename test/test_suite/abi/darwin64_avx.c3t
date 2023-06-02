@@ -2,7 +2,7 @@
 // #opt: --x86cpu=avx1
 module test;
 
-typedef Mm256 = float[<8>];
+def Mm256 = float[<8>];
 struct St256 {
   Mm256 m;
 }
@@ -19,7 +19,7 @@ fn void f39() { f38(x38); f37(x37); }
 
 // CHECK: declare void @func40(%struct.t128* byval(%struct.t128) align 16)
 
-typedef Mm128 = float[<4>];
+def Mm128 = float[<4>];
 struct Two128 {
   Mm128 m;
   Mm128 n;
@@ -44,7 +44,7 @@ fn void func43(Sa s) {
 }
 
 
-typedef Vec46 = float[<2>];
+def Vec46 = float[<2>];
 extern fn void f46(Vec46,Vec46,Vec46,Vec46,Vec46,Vec46,Vec46,Vec46,Vec46,Vec46);
 fn void test46() { Vec46 x = {1,2}; f46(x,x,x,x,x,x,x,x,x,x); }
 
@@ -69,7 +69,7 @@ fn void test54() {
   test54_helper(x54, x54, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, Complex { 0, 1.0 });
 }
 
-typedef Mm512 = float[<16>];
+def Mm512 = float[<16>];
 struct St512 {
   Mm512 m;
 }
