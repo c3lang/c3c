@@ -1,6 +1,6 @@
 module abc;
 
-define @Foo = { @inline };
+def @Foo = { @inline };
 
 module bar;
 

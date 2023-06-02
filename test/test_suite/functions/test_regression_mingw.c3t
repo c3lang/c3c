@@ -67,8 +67,8 @@ fn int Foo2.mutate(Foo2 *foo)
 
 
 
-define oopsInt = test2::argh<int>;
-define oopsDouble = test2::argh<int>;
+def oopsInt = test2::argh<int>;
+def oopsDouble = test2::argh<int>;
 typedef Argh = fn int(double, Bobo);
 typedef Argh2 = fn int(double, Bobo);
 
@@ -97,12 +97,12 @@ struct Foo
     int b;
 }
 
-define getValueInt = test2::getValue<int>;
-define getValueDouble = test2::getValue<double>;
+def getValueInt = test2::getValue<int>;
+def getValueDouble = test2::getValue<double>;
 typedef IntBlob = test2::Blob<int>;
 typedef DoubleBlob = Blob<double>;
-define getMultInt = test2::getMult<int>;
-define getMultDouble = test2::getMult<double>;
+def getMultInt = test2::getMult<int>;
+def getMultDouble = test2::getMult<double>;
 
 typedef IntArray = List<int>;
 typedef IntList = LinkedList<int>;
@@ -175,7 +175,7 @@ module hello_world;
 import foo;
 
 extern fn int printf(char *, ...);
-define doubleMult = foo::check<double>;
+def doubleMult = foo::check<double>;
 
 fn void hello()
 {
@@ -221,8 +221,8 @@ macro Hello wut()
 }
 
 typedef Bye = Hello;
-define wat = wut;
-define byebye = hello;
+def wat = wut;
+def byebye = hello;
 
 fn int hello()
 {

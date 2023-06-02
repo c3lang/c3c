@@ -4,7 +4,7 @@ enum EnumTest : long
     VALUE2
 }
 
-typedef Frob = long;
+def Frob = long;
 
 enum EnumTestAlias : Frob
 {

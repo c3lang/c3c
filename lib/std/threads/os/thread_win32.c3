@@ -2,7 +2,7 @@ module std::thread::os;
 
 $if thread::THREAD_MODEL == ThreadModel.WIN32:
 
-typedef NativeThread = Win32_HANDLE;
+def NativeThread = Win32_HANDLE;
 
 struct NativeMutex
 {

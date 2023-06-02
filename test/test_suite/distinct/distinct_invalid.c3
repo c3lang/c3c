@@ -3,8 +3,8 @@ fault Error
 	ABC
 }
 
-typedef Foo1 = distinct Error; // #error: You cannot create a distinct type
+def Foo1 = distinct Error; // #error: You cannot create a distinct type
 
-typedef Foo3 = distinct void; // #error: create a distinct type from 'void'
+def Foo3 = distinct void; // #error: create a distinct type from 'void'
 
-typedef Foo4 = distinct typeid; // #error: create a distinct type from 'typeid'
+def Foo4 = distinct typeid; // #error: create a distinct type from 'typeid'

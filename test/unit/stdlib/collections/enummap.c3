@@ -8,7 +8,7 @@ enum FooEnum
     THREE,
 }
 
-typedef FooEnumMap = EnumMap<FooEnum, uint>;
+def FooEnumMap = EnumMap<FooEnum, uint>;
 
 fn void! enums()
 {

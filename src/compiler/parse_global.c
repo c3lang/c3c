@@ -1745,7 +1745,11 @@ static inline void decl_add_type(Decl *decl, TypeKind kind)
  */
 static inline Decl *parse_typedef_declaration(ParseContext *c)
 {
-	if (!try_consume(c, TOKEN_DEF)) advance_and_verify(c, TOKEN_TYPEDEF);
+	if (!try_consume(c, TOKEN_DEF))
+	{
+		sema_warning_at(c->span, "The use of 'typedef' is deprecated, please use 'def'.");
+		advance_and_verify(c, TOKEN_TYPEDEF);
+	}
 
 	Decl *decl = decl_new(DECL_POISONED, symstr(c), c->span);
 	DEBUG_LOG("Parse typedef %s", decl->name);
@@ -1849,20 +1853,28 @@ static inline Decl *parse_typedef_declaration(ParseContext *c)
 static inline Decl *parse_define_ident(ParseContext *c)
 {
 	// 1. Store the beginning of the "define".
-	if (!try_consume(c, TOKEN_DEF)) advance_and_verify(c, TOKEN_DEFINE);
+	if (!try_consume(c, TOKEN_DEF))
+	{
+		sema_warning_at(c->span, "The use of 'define' is deprecated, please use 'def'.");
+		advance_and_verify(c, TOKEN_DEFINE);
+	}
 
 	// 2. At this point we expect an ident or a const token.
 	//    since the Type is handled.
 	TokenType alias_type = c->tok;
 	if (alias_type != TOKEN_IDENT && alias_type != TOKEN_CONST_IDENT && alias_type != TOKEN_AT_IDENT)
 	{
-		if (alias_type == TOKEN_TYPE_IDENT)
+		if (token_is_keyword_ident(alias_type) && alias_type != TOKEN_FN)
+		{
+			SEMA_ERROR_HERE("'%s' is a reserved keyword, try another name.", token_type_to_string(alias_type));
+		}
+		else if (alias_type == TOKEN_TYPE_IDENT)
 		{
 			SEMA_ERROR_HERE("A variable, constant or attribute name was expected here. If you want to define a new type, use 'typedef' instead.");
 		}
 		else
 		{
-			SEMA_ERROR_HERE("A variable, constant or attribute name was expected here.");
+			SEMA_ERROR_HERE("A type, variable, constant or attribute name was expected here.");
 		}
 		return poisoned_decl;
 	}
