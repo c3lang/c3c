@@ -432,8 +432,7 @@ void compiler_compile(void)
 	}
 	else if (task_count > 1)
 	{
-		TaskQueueRef queue = taskqueue_create(active_target.build_threads > task_count ? task_count : active_target.build_threads, tasks);
-		taskqueue_wait_for_completion(queue);
+		taskqueue_run(active_target.build_threads > task_count ? task_count : active_target.build_threads, tasks);
 	}
 
 	if (active_target.print_output)

@@ -9,8 +9,6 @@
 
 typedef struct TaskQueue_
 {
-	pthread_t *threads;
-	int thread_count;
 	pthread_mutex_t lock;
 	Task **queue;
 } TaskQueue;
@@ -35,48 +33,30 @@ SHUTDOWN:
 	return NULL;
 }
 
-TaskQueueRef taskqueue_create(int threads, Task **task_list)
+void taskqueue_run(int threads, Task **task_list)
 {
 	assert(threads > 0);
-	TaskQueue *queue = CALLOCS(TaskQueue);
-	queue->threads = MALLOC(sizeof(pthread_t) * (unsigned)threads);
-	queue->thread_count = threads;
-	queue->queue = task_list;
-	if (pthread_mutex_init(&queue->lock, NULL)) error_exit("Failed to set up mutex");
+	pthread_t *pthreads = malloc(sizeof(pthread_t) * (unsigned)threads);
+	TaskQueue queue = { .queue = task_list };
+	if (pthread_mutex_init(&queue.lock, NULL)) error_exit("Failed to set up mutex");
 	for (int i = 0; i < threads; i++)
 	{
-		if (pthread_create(queue->threads + i, NULL, taskqueue_thread, queue)) error_exit("Fail to set up thread pool");
+		if (pthread_create(&pthreads[i], NULL, taskqueue_thread, &queue)) error_exit("Fail to set up thread pool");
 	}
-	return queue;
-}
-
-void taskqueue_wait_for_completion(TaskQueueRef queue_ref)
-{
-	assert(queue_ref);
-	TaskQueue *queue = queue_ref;
-	for (int i = 0; i < queue->thread_count; i++)
+	for (int i = 0; i < threads; i++)
 	{
-		if (pthread_join(queue->threads[i], NULL) != 0) error_exit("Failed to join thread.");
+		if (pthread_join(pthreads[i], NULL) != 0) error_exit("Failed to join thread.");
 	}
-	pthread_mutex_destroy(&queue->lock);
+	free(pthreads);
+	pthread_mutex_destroy(&queue.lock);
 }
-
 
 #else
 
-void taskqueue_add(TaskQueueRef queue_ref, Task *task)
-{
-}
 
-TaskQueueRef taskqueue_create(int threads, Task **tasks)
+void taskqueue_run(int threads, Task **task_list)
 {
-	return tasks;
-}
-
-void taskqueue_wait_for_completion(TaskQueueRef queue)
-{
-	Task **tasks = queue;
-	FOREACH_BEGIN(Task *task, tasks)
+	FOREACH_BEGIN(Task *task, task_list)
 	task->task(task->arg);
 	FOREACH_END();
 }

@@ -57,8 +57,6 @@ typedef struct Task_
 	void *arg;
 } Task;
 
-typedef void *TaskQueueRef;
-
 uint16_t *win_utf8to16(const char *name);
 char *win_utf16to8(const uint16_t *name);
 // Use as if it was mkdir(..., 0755) == 0
@@ -98,8 +96,7 @@ char *calloc_string(size_t len);
 void free_arena(void);
 void print_arena_status(void);
 void run_arena_allocator_tests(void);
-TaskQueueRef taskqueue_create(int threads, Task **task_list);
-void taskqueue_wait_for_completion(TaskQueueRef queue);
+void taskqueue_run(int threads, Task **task_list);
 int cpus(void);
 const char *date_get(void);
 const char *time_get(void);
