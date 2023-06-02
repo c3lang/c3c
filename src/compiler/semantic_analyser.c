@@ -261,6 +261,8 @@ static void assign_panicfn(void)
 		error_exit("Expected panic function to have the signature fn void(String, String, String, uint).");
 	}
 	global_context.panic_var = decl;
+	decl->no_strip = true;
+
 	if (active_target.no_stdlib) return;
 
 	const char *panicf = "std::core::builtin::panicf";
@@ -274,6 +276,8 @@ static void assign_panicfn(void)
 		global_context.panicf = NULL;
 		return;
 	}
+
+	panicf_decl->no_strip = true;
 
 	Type *panicf_fn_type = panicf_decl->type->canonical;
 	if (panicf_decl->decl_kind != DECL_FUNC)
