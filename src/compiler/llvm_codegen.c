@@ -1384,8 +1384,6 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 
 	llvm_emit_constructors_and_destructors(gen_context);
 
-	// EmitDeferred()
-
 	if (llvm_use_debug(gen_context))
 	{
 		LLVMDIBuilderFinalize(gen_context->debug.builder);
