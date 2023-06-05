@@ -340,7 +340,7 @@ typedef struct BuildOptions_
 	X86CpuSet x86_cpu_set;
 	RiscvFloatCapability riscv_float_capability;
 	MemoryEnvironment memory_environment;
-	bool strip_unused;
+	bool no_strip_unused;
 	bool print_keywords;
 	bool print_attributes;
 	bool print_builtins;
@@ -414,7 +414,7 @@ typedef struct
 	bool emit_asm;
 	bool no_stdlib;
 	bool no_libc;
-	bool strip_unused;
+	bool no_strip_unused;
 	bool emit_object_files;
 	bool force_linker;
 	bool benchmarking;

@@ -2927,6 +2927,49 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 			           func->name);
 			return false;
 		}
+
+		Signature any_sig = any->func_decl.signature;
+		Signature this_sig = func->func_decl.signature;
+		Type *any_rtype = typeinfotype(any_sig.rtype);
+		Type *this_rtype = typeinfotype(this_sig.rtype);
+		if (any_rtype->canonical != this_rtype->canonical)
+		{
+			SEMA_ERROR(type_infoptr(this_sig.rtype), "The prototype method has a return type %s, but this function returns %s, they need to match.",
+			           type_quoted_error_string(any_rtype), type_quoted_error_string(this_rtype));
+			SEMA_NOTE(type_infoptr(any_sig.rtype), "The interface definition is here.");
+			return false;
+		}
+		Decl **any_params = any_sig.params;
+		Decl **this_params = this_sig.params;
+		unsigned any_param_count = vec_size(any_params);
+		unsigned this_param_count = vec_size(this_params);
+		if (any_param_count != this_param_count)
+		{
+			if (any_param_count > this_param_count)
+			{
+				SEMA_ERROR(func, "This function is missing parameters, %d parameters were expected.", any_param_count);
+				SEMA_NOTE(any_params[this_param_count], "Compare with the interface definition.");
+				return false;
+			}
+			else
+			{
+				SEMA_ERROR(this_params[any_param_count], "This function has too many parameters (%d).", this_param_count);
+				SEMA_NOTE(any, "Compare with the interface, which has only %d parameter%s.",
+						  any_param_count, any_param_count == 1 ? "" : "s");
+			}
+			return false;
+		}
+		FOREACH_BEGIN_IDX(i, Decl *param, this_params)
+			if (i == 0) continue;
+			if (param->type->canonical != any_params[i]->type->canonical)
+			{
+				SEMA_ERROR(param->var.type_info, "The prototype argument has type %s, but in this function it has type %s. Please make them match.",
+				           type_quoted_error_string(any_params[i]->type), type_quoted_error_string(param->type));
+				SEMA_NOTE(any_params[i]->var.type_info, "The interface definition is here.");
+				return false;
+			}
+
+		FOREACH_END();
 		func->func_decl.any_prototype = declid(any);
 	}
 	Signature *signature = &func->func_decl.signature;

@@ -2332,6 +2332,7 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl)
 			return false;
 		}
 		global_context.test_func = decl;
+		if (active_target.testing) decl->no_strip = true;
 	}
 	bool is_test = decl->func_decl.attr_test;
 	Signature *sig = &decl->func_decl.signature;

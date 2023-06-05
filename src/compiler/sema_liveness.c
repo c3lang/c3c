@@ -178,12 +178,14 @@ static void sema_trace_stmt_liveness(Ast *ast)
 
 static void sema_trace_const_initializer_liveness(ConstInitializer *const_init)
 {
+	RETRY:
 	switch (const_init->kind)
 	{
 		case CONST_INIT_ZERO:
 			return;
 		case CONST_INIT_ARRAY_VALUE:
-			UNREACHABLE
+			const_init = const_init->init_array_value.element;
+			goto RETRY;
 		case CONST_INIT_ARRAY_FULL:
 		{
 			bool was_modified = false;
@@ -204,8 +206,8 @@ static void sema_trace_const_initializer_liveness(ConstInitializer *const_init)
 			return;
 		}
 		case CONST_INIT_UNION:
-			sema_trace_const_initializer_liveness(const_init->init_union.element);
-			return;
+			const_init = const_init->init_union.element;
+			goto RETRY;
 		case CONST_INIT_STRUCT:
 		{
 			Decl *decl = const_init->type->decl;
@@ -353,8 +355,16 @@ RETRY:
 			sema_trace_expr_list_liveness(expr->designated_init_list);
 			return;
 		case EXPR_EXPR_BLOCK:
-			sema_trace_stmt_liveness(astptr(expr->expr_block.first_stmt));
+		{
+			AstId current = expr->expr_block.first_stmt;
+			if (!current) return;
+			do
+			{
+				Ast *value = ast_next(&current);
+				sema_trace_stmt_liveness(value);
+			} while (current);
 			return;
+		}
 		case EXPR_IDENTIFIER:
 			sema_trace_decl_liveness(expr->identifier_expr.decl);
 			return;
@@ -452,10 +462,15 @@ void sema_trace_liveness(void)
 	{
 		sema_trace_decl_liveness(global_context.main);
 	}
+	bool keep_tests = active_target.testing;
+	FOREACH_BEGIN(Decl *function, global_context.method_extensions)
+		if (function->func_decl.attr_dynamic) function->no_strip = true;
+		if (function->is_export || function->no_strip) sema_trace_decl_liveness(function);
+	FOREACH_END();
 	FOREACH_BEGIN(Module *module, global_context.module_list)
 		FOREACH_BEGIN(CompilationUnit *unit, module->units)
 			FOREACH_BEGIN(Decl *function, unit->functions)
-				if (function->is_export || function->no_strip) sema_trace_decl_liveness(function);
+				if (function->is_export || function->no_strip || (function->func_decl.attr_test && keep_tests)) sema_trace_decl_liveness(function);
 			FOREACH_END();
 			FOREACH_BEGIN(Decl *method, unit->methods)
 				if (method->is_export || method->no_strip) sema_trace_decl_liveness(method);
@@ -463,26 +478,67 @@ void sema_trace_liveness(void)
 			FOREACH_BEGIN(Decl *var, unit->vars)
 				if (var->is_export || var->no_strip) sema_trace_decl_liveness(var);
 			FOREACH_END();
+			FOREACH_BEGIN(Decl *method, unit->local_method_extensions)
+				if (method->is_export || method->no_strip) sema_trace_decl_liveness(method);
+			FOREACH_END();
 			FOREACH_BEGIN(Decl *xxlizer, unit->xxlizers)
 				sema_trace_decl_liveness(xxlizer);
 			FOREACH_END();
 		FOREACH_END();
 	FOREACH_END();
 }
+
+INLINE void sema_trace_type_liveness(Type *type)
+{
+	if (!type || !type_is_user_defined(type)) return;
+	sema_trace_decl_liveness(type->decl);
+}
+
+INLINE void sema_trace_decl_dynamic_methods(Decl *decl)
+{
+	Decl **methods = decl->methods;
+	unsigned method_count = vec_size(methods);
+	if (!method_count) return;
+	for (unsigned i = 0; i < method_count; i++)
+	{
+		Decl *method = methods[i];
+		if (!method->func_decl.attr_dynamic) continue;
+		sema_trace_decl_liveness(method);
+	}
+}
+
 static void sema_trace_decl_liveness(Decl *decl)
 {
+RETRY:
 	if (!decl || decl->is_live) return;
 	decl->is_live = true;
 	switch (decl->decl_kind)
 	{
-		case DECL_POISONED:
-		case DECL_ATTRIBUTE:
-		case DECL_BITSTRUCT:
+		case DECL_TYPEDEF:
+			if (!decl->typedef_decl.is_func)
+			{
+				sema_trace_type_liveness(decl->typedef_decl.type_info->type);
+				return;
+			}
+			FOREACH_BEGIN(Decl *param, decl->typedef_decl.function_signature.params)
+				sema_trace_decl_liveness(param);
+			FOREACH_END();
+			sema_trace_type_liveness(typeinfotype(decl->typedef_decl.function_signature.rtype));
+			return;
 		case DECL_DEFINE:
+			decl = decl->define_decl.alias;
+			goto RETRY;
 		case DECL_DISTINCT:
 		case DECL_ENUM:
-		case DECL_ENUM_CONSTANT:
+		case DECL_BITSTRUCT:
 		case DECL_FAULT:
+		case DECL_STRUCT:
+		case DECL_UNION:
+			sema_trace_decl_dynamic_methods(decl);
+			return;
+		case DECL_POISONED:
+		case DECL_ATTRIBUTE:
+		case DECL_ENUM_CONSTANT:
 		case DECL_FAULTVALUE:
 			return;
 		case DECL_CT_CASE:
@@ -508,19 +564,26 @@ static void sema_trace_decl_liveness(Decl *decl)
 			{
 				case VARDECL_REWRAPPED:
 				case VARDECL_UNWRAPPED:
-					return;
+					break;
+				case VARDECL_PARAM_EXPR:
+				case VARDECL_PARAM_CT:
+				case VARDECL_PARAM_REF:
+				case VARDECL_PARAM:
+					sema_trace_type_liveness(decl->type);
+					if (decl->var.init_expr && decl->var.init_expr->resolve_status == RESOLVE_DONE)
+					{
+						sema_trace_expr_liveness(decl->var.init_expr);
+					}
+					break;
 				default:
+					sema_trace_type_liveness(decl->type);
+					sema_trace_expr_liveness(decl->var.init_expr);
 					break;
 			}
-			sema_trace_expr_liveness(decl->var.init_expr);
 			return;
 		case DECL_INITIALIZE:
 		case DECL_FINALIZE:
 			sema_trace_stmt_liveness(astptrzero(decl->xxlizer.init));
-			return;
-		case DECL_STRUCT:
-		case DECL_TYPEDEF:
-		case DECL_UNION:
 			return;
 		case DECL_DECLARRAY:
 			UNREACHABLE

@@ -38,6 +38,26 @@ fn void List.tinit(List* list, usz initial_capacity = 16)
 	list.init(initial_capacity, mem::temp()) @inline;
 }
 
+fn String List.to_string(List* list, Allocator* using = mem::heap()) @dynamic
+{
+	if (!list.size) return "[]".copy(using);
+	if (list.size == 1) return string::printf("[%s]", list.entries[0], .using = using);
+
+	@stack_mem(512 + 128; Allocator* mem)
+	{
+		DString str;
+		str.init(512, mem);
+		str.append("[");
+		foreach (i, element : list.entries[:list.size])
+		{
+			if (i != 0) str.append(", ");
+			str.printf("%s", element);
+		}
+		str.printf("]");
+		return str.copy_str(using);
+	};
+}
+
 fn void List.push(List* list, Type element) @inline
 {
     list.append(element);

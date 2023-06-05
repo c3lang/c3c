@@ -373,12 +373,13 @@ RESOLVE_LAMBDA:;
 	if (found_lambda) goto RESOLVE_LAMBDA;
 	halt_on_error();
 
-	if (active_target.strip_unused && !active_target.testing)
+	assign_panicfn();
+
+	if (!active_target.no_strip_unused)
 	{
 		sema_trace_liveness();
 	}
 
-	assign_panicfn();
 
 	compiler_sema_time = bench_mark();
 
