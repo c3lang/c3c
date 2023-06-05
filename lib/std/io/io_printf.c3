@@ -135,9 +135,9 @@ macro bool! Formatter.print_with_function(Formatter* this, any arg)
 			this.width = old_width;
 			this.prec = old_prec;
 		}
-		@pool()
+		@stack_mem(512; Allocator* mem)
 		{
-			this.out_substr(arg.to_string(mem::temp()))!;
+			this.out_substr(arg.to_string(mem))!;
 			return true;
 		};
     }

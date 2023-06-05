@@ -25,6 +25,15 @@ static void cleanup()
 
 int main_real(int argc, const char *argv[])
 {
+	printf("------------------------------------------------------------\n"
+		   " PLEASE NOTE, this version of the compiler has enabled dead\n"
+		   " code stripping by default. This functionality has not been\n"
+		   " completely audited, so if you run into any linking error, \n"
+		   " please use --no-strip-unused to disable the feature.      \n"
+		   " If possible, file an error here: \n"
+		   " https://github.com/c3lang/c3c/issues\n"
+		   " Thank you!\n"
+		   "------------------------------------------------------------\n");
 	bench_begin();
 
 	// Setjmp will allow us to add things like fuzzing with

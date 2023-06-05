@@ -1275,7 +1275,7 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 	gencontext_init(gen_context, module, shared_context);
 	gencontext_begin_module(gen_context);
 
-	bool only_used = active_target.strip_unused && !active_target.testing;
+	bool only_used = !active_target.no_strip_unused;
 
 	FOREACH_BEGIN(CompilationUnit *unit, module->units)
 
@@ -1296,10 +1296,12 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 		FOREACH_END();
 
 		FOREACH_BEGIN(Decl *type_decl, unit->types)
+			if (only_used && !type_decl->is_live) continue;
 			llvm_emit_type_decls(gen_context, type_decl);
 		FOREACH_END();
 
 		FOREACH_BEGIN(Decl *enum_decl, unit->enums)
+			if (only_used && !enum_decl->is_live) continue;
 			llvm_emit_type_decls(gen_context, enum_decl);
 		FOREACH_END();
 
