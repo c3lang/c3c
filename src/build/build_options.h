@@ -321,11 +321,12 @@ typedef struct BuildOptions_
 	int safe_mode;
 	bool emit_llvm;
 	bool emit_asm;
-	bool emit_bitcode;
 	bool test_mode;
 	bool no_stdlib;
 	bool no_entry;
 	bool no_libc;
+	bool no_obj;
+	bool no_stdlib_gen;
 	bool force_linker;
 	bool read_stdin;
 	bool print_output;
@@ -422,6 +423,7 @@ typedef struct
 	bool read_stdin;
 	bool print_output;
 	bool no_entry;
+	bool no_stdlibgen;
 	int build_threads;
 	OptimizationLevel optimization_level;
 	MemoryEnvironment memory_environment;

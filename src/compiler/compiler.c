@@ -484,21 +484,29 @@ void compiler_compile(void)
 			printf("Program finished with exit code %d.\n", ret);
 		}
 	}
-	if (output_static)
+	else if (output_static)
 	{
 		if (!static_lib_linker(output_static, obj_files, output_file_count))
 		{
 			error_exit("Failed to produce static library '%s'.", output_static);
 		}
+		compiler_link_time = bench_mark();
+		compiler_print_bench();
 		printf("Static library '%s' created.", output_static);
 	}
-	if (output_dynamic)
+	else if (output_dynamic)
 	{
 		if (!dynamic_lib_linker(output_dynamic, obj_files, output_file_count))
 		{
 			error_exit("Failed to produce static library '%s'.", output_dynamic);
 		}
 		printf("Dynamic library '%s' created.", output_dynamic);
+		compiler_link_time = bench_mark();
+		compiler_print_bench();
+	}
+	else
+	{
+		compiler_print_bench();
 	}
 	free(obj_files);
 }

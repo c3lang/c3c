@@ -1265,9 +1265,21 @@ LLVMMetadataRef llvm_get_debug_file(GenContext *c, FileId file_id)
 	return file;
 }
 
+static bool module_is_stdlib(Module *module)
+{
+	if (module->name->len < 3) return false;
+	if (module->name->len == 3 && strcmp(module->name->module, "std") == 0) return true;
+	if (module->name->len > 5 && memcmp(module->name->module, "std::", 5) == 0) return true;
+	if (module->name->len == 4 && strcmp(module->name->module, "libc") == 0) return true;
+	if (module->name->len > 6 && memcmp(module->name->module, "libc::", 6) == 0) return true;
+	return false;
+}
+
 static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context)
 {
 	if (!vec_size(module->units)) return NULL;
+	if (active_target.no_stdlibgen && module_is_stdlib(module)) return NULL;
+
 	assert(intrinsics_setup);
 
 	bool has_elements = false;
