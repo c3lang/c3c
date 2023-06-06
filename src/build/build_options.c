@@ -115,7 +115,7 @@ static void usage(void)
 	OUTPUT("  --asm-out <dir>           - Override asm output directory for '--emit-asm'.");
 	OUTPUT("  --emit-asm                - Emit asm as a .s file per module.");
 	OUTPUT("  --no-obj                  - Do not output object files, this is only valid for `compile-only`.");
-	OUTPUT("  --no-stdlib-codegen       - Do not output object files (nor asm or ir) for the standard library.");
+	OUTPUT("  --no-emit-stdlib       - Do not output object files (nor asm or ir) for the standard library.");
 	OUTPUT("  --target <target>         - Compile for a particular architecture + OS target.");
 	OUTPUT("  --threads <number>        - Set the number of threads to use for compilation.");
 	OUTPUT("  --safe                    - Set mode to 'safe', generating runtime traps on overflows and contract violations.");
@@ -592,9 +592,9 @@ static void parse_option(BuildOptions *options)
 				options->no_obj = true;
 				return;
 			}
-			if (match_longopt("no-stdlib-codegen"))
+			if (match_longopt("no-emit-stdlib"))
 			{
-				options->no_stdlib_gen = true;
+				options->no_emit_stdlib = true;
 				return;
 			}
 			if (match_longopt("debug-log"))

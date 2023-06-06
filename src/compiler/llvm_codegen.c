@@ -1278,7 +1278,7 @@ static bool module_is_stdlib(Module *module)
 static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context)
 {
 	if (!vec_size(module->units)) return NULL;
-	if (active_target.no_stdlibgen && module_is_stdlib(module)) return NULL;
+	if (active_target.no_emit_stdlib && module_is_stdlib(module)) return NULL;
 
 	assert(intrinsics_setup);
 

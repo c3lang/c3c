@@ -326,7 +326,7 @@ typedef struct BuildOptions_
 	bool no_entry;
 	bool no_libc;
 	bool no_obj;
-	bool no_stdlib_gen;
+	bool no_emit_stdlib;
 	bool force_linker;
 	bool read_stdin;
 	bool print_output;
@@ -423,7 +423,7 @@ typedef struct
 	bool read_stdin;
 	bool print_output;
 	bool no_entry;
-	bool no_stdlibgen;
+	bool no_emit_stdlib;
 	int build_threads;
 	OptimizationLevel optimization_level;
 	MemoryEnvironment memory_environment;

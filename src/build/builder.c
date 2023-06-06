@@ -306,7 +306,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	{
 		target->emit_object_files = false;
 	}
-	target->no_stdlibgen = options->no_stdlib_gen;
+	target->no_emit_stdlib = options->no_emit_stdlib;
 	for (int i = 0; i < options->lib_dir_count; i++)
 	{
 		vec_add(target->libdirs, options->lib_dir[i]);
