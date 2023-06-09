@@ -114,8 +114,10 @@ static void usage(void)
 	OUTPUT("  --emit-llvm               - Emit LLVM IR as a .ll file per module.");
 	OUTPUT("  --asm-out <dir>           - Override asm output directory for '--emit-asm'.");
 	OUTPUT("  --emit-asm                - Emit asm as a .s file per module.");
+	OUTPUT("  --obj                     - Emit object files. (Enabled by default)");
 	OUTPUT("  --no-obj                  - Do not output object files, this is only valid for `compile-only`.");
-	OUTPUT("  --no-emit-stdlib       - Do not output object files (nor asm or ir) for the standard library.");
+	OUTPUT("  --emit-stdlib             - Output files for the standard library. (Enabled by default)");
+	OUTPUT("  --no-emit-stdlib          - Do not output object files (nor asm or ir) for the standard library.");
 	OUTPUT("  --target <target>         - Compile for a particular architecture + OS target.");
 	OUTPUT("  --threads <number>        - Set the number of threads to use for compilation.");
 	OUTPUT("  --safe                    - Set mode to 'safe', generating runtime traps on overflows and contract violations.");
@@ -136,6 +138,7 @@ static void usage(void)
 	OUTPUT("  --x86vec=<option>         - Set max type of vector use: none, mmx, sse, avx, avx512, native.");
 	OUTPUT("  --riscvfloat=<option>     - Set type of RISC-V float support: none, float, double");
 	OUTPUT("  --memory-env=<option>     - Set the memory environment: normal, small, tiny, none.");
+	OUTPUT("  --strip-unused            - Strip unused code and globals from the output. (Enabled by default)");
 	OUTPUT("  --no-strip-unused         - Do not strip unused code and globals from the output.");
 	OUTPUT("");
 	OUTPUT("  --debug-stats             - Print debug statistics.");
@@ -556,6 +559,11 @@ static void parse_option(BuildOptions *options)
 				options->no_strip_unused = true;
 				return;
 			}
+			if (match_longopt("strip-unused"))
+			{
+				options->no_strip_unused = false;
+				return;
+			}
 			if ((argopt = match_argopt("x86vec")))
 			{
 				options->x86_vector_capability = (X86VectorCapability)parse_multi_option(argopt, 6, x86_vector_capability);
@@ -592,9 +600,19 @@ static void parse_option(BuildOptions *options)
 				options->no_obj = true;
 				return;
 			}
+			if (match_longopt("obj"))
+			{
+				options->no_obj = false;
+				return;
+			}
 			if (match_longopt("no-emit-stdlib"))
 			{
 				options->no_emit_stdlib = true;
+				return;
+			}
+			if (match_longopt("emit-stdlib"))
+			{
+				options->no_emit_stdlib = false;
 				return;
 			}
 			if (match_longopt("debug-log"))
