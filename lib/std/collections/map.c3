@@ -7,7 +7,7 @@ import std::math;
 const uint DEFAULT_INITIAL_CAPACITY = 16;
 const uint MAXIMUM_CAPACITY = 1u << 31;
 const float DEFAULT_LOAD_FACTOR = 0.75;
-
+const VALUE_IS_EQUATABLE = types::is_equatable(Value);
 
 struct HashMap
 {
@@ -216,8 +216,7 @@ fn Value[] HashMap.value_list(HashMap* map, Allocator* using = mem::heap())
 	return list;
 }
 
-$if types::is_equatable(Value):
-fn bool HashMap.has_value(HashMap* map, Value v)
+fn bool HashMap.has_value(HashMap* map, Value v) @if(VALUE_IS_EQUATABLE)
 {
 	if (!map.count) return false;
 	foreach (Entry* entry : map.table)
@@ -230,7 +229,6 @@ fn bool HashMap.has_value(HashMap* map, Value v)
 	}
 	return false;
 }
-$endif
 
 // --- private methods
 

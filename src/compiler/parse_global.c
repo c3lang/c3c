@@ -360,11 +360,16 @@ bool parse_module(ParseContext *c, AstId contracts)
 	}
 	Visibility visibility = VISIBLE_PUBLIC;
 	Attr** attrs = NULL;
-	if (!parse_attributes(c, &attrs, &visibility)) return false;
+	bool is_cond;
+	if (!parse_attributes(c, &attrs, &visibility, &is_cond)) return false;
 	FOREACH_BEGIN(Attr *attr, attrs)
 		if (attr->is_custom) RETURN_SEMA_ERROR(attr, "Custom attributes cannot be used with 'module'.");
 		switch (attr->attr_kind)
 		{
+			case ATTRIBUTE_IF:
+				if (c->unit->if_attr) RETURN_SEMA_ERROR(attr, "'@if' appeared more than once.");
+				c->unit->if_attr = attr;
+				continue;
 			case ATTRIBUTE_TEST:
 				c->unit->test_by_default = true;
 				continue;
@@ -791,7 +796,7 @@ Decl *parse_local_decl_after_type(ParseContext *c, TypeInfo *type)
 	Decl *decl = decl_new_var_current(c, type, VARDECL_LOCAL);
 	advance(c);
 
-	if (!parse_attributes(c, &decl->attributes, NULL)) return poisoned_decl;
+	if (!parse_attributes(c, &decl->attributes, NULL, NULL)) return poisoned_decl;
 	if (tok_is(c, TOKEN_EQ))
 	{
 		if (!decl)
@@ -855,7 +860,7 @@ Decl *parse_const_declaration(ParseContext *c, bool is_global)
 	}
 	else
 	{
-		if (!parse_attributes(c, &decl->attributes, NULL)) return poisoned_decl;
+		if (!parse_attributes(c, &decl->attributes, NULL, NULL)) return poisoned_decl;
 	}
 
 	// Required initializer
@@ -1024,7 +1029,9 @@ static bool parse_attributes_for_global(ParseContext *c, Decl *decl)
 	Visibility visibility = c->unit->default_visibility;
 	if (decl->decl_kind == DECL_FUNC) decl->func_decl.attr_test = c->unit->test_by_default;
 	decl->is_export = c->unit->export_by_default;
-	if (!parse_attributes(c, &decl->attributes, &visibility)) return false;
+	bool is_cond;
+	if (!parse_attributes(c, &decl->attributes, &visibility, &is_cond)) return false;
+	decl->is_cond = is_cond;
 	decl->visibility = visibility;
 	return true;
 }
@@ -1036,9 +1043,10 @@ static bool parse_attributes_for_global(ParseContext *c, Decl *decl)
  *
  * @return true if parsing succeeded, false if recovery is needed
  */
-bool parse_attributes(ParseContext *c, Attr ***attributes_ref, Visibility *visibility_ref)
+bool parse_attributes(ParseContext *c, Attr ***attributes_ref, Visibility *visibility_ref, bool *cond_ref)
 {
 	Visibility visibility = -1;
+	if (cond_ref) *cond_ref = false;
 	while (1)
 	{
 		Attr *attr;
@@ -1061,12 +1069,16 @@ bool parse_attributes(ParseContext *c, Attr ***attributes_ref, Visibility *visib
 				case ATTRIBUTE_LOCAL:
 					parsed_visibility = VISIBLE_LOCAL;
 					break;
+				case ATTRIBUTE_IF:
+					if (!cond_ref) RETURN_SEMA_ERROR(attr, "'%s' cannot be used here.", attr->name);
+					*cond_ref = true;
+					break;
 				default:
 					break;
 			}
 			if (parsed_visibility != -1)
 			{
-				if (!visibility_ref) RETURN_SEMA_ERROR(attr, "'%s' cannot be used here.");
+				if (!visibility_ref) RETURN_SEMA_ERROR(attr, "'%s' cannot be used here.", attr->name);
 				if (visibility != -1) RETURN_SEMA_ERROR(attr, "Only a single visibility attribute may be added.");
 				*visibility_ref = visibility = parsed_visibility;
 				continue;
@@ -1407,7 +1419,7 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 		}
 		Decl *param = decl_new_var(name, span, type, param_kind);
 		param->var.type_info = type;
-		if (!parse_attributes(c, &param->attributes, NULL)) return false;
+		if (!parse_attributes(c, &param->attributes, NULL, NULL)) return false;
 		if (!no_name)
 		{
 			if (try_consume(c, TOKEN_EQ))
@@ -1499,7 +1511,9 @@ bool parse_struct_body(ParseContext *c, Decl *parent)
 			}
 			else
 			{
-				if (!parse_attributes(c, &member->attributes, NULL)) return false;
+				bool is_cond;
+				if (!parse_attributes(c, &member->attributes, NULL, &is_cond)) return false;
+				member->is_cond = true;
 				if (!parse_struct_body(c, member)) return decl_poison(parent);
 			}
 			vec_add(parent->strukt.members, member);
@@ -1539,7 +1553,9 @@ bool parse_struct_body(ParseContext *c, Decl *parent)
 				RETURN_SEMA_ERROR(member, "Can't add another member: the count would exceed maximum of %d elements.", MAX_MEMBERS);
 			}
 			advance(c);
-			if (!parse_attributes(c, &member->attributes, NULL)) return false;
+			bool is_cond;
+			if (!parse_attributes(c, &member->attributes, NULL, &is_cond)) return false;
+			member->is_cond = true;
 			if (!try_consume(c, TOKEN_COMMA)) break;
 			if (was_inline)
 			{
@@ -1770,8 +1786,6 @@ static inline Decl *parse_typedef_declaration(ParseContext *c)
 		return poisoned_decl;
 	}
 
-	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
-
 	CONSUME_OR_RET(TOKEN_EQ, poisoned_decl);
 	bool distinct = false;
 	bool is_inline = false;
@@ -1800,6 +1814,8 @@ static inline Decl *parse_typedef_declaration(ParseContext *c)
 		{
 			return poisoned_decl;
 		}
+		if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
+
 		RANGE_EXTEND_PREV(decl);
 		CONSUME_EOS_OR_RET(poisoned_decl);
 		return decl;
@@ -1818,6 +1834,8 @@ static inline Decl *parse_typedef_declaration(ParseContext *c)
 		decl->define_decl.define_kind = DEFINE_TYPE_GENERIC;
 		decl->define_decl.type_info = type_info;
 		decl->define_decl.generic_params = params;
+		if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
+
 		RANGE_EXTEND_PREV(decl);
 		CONSUME_EOS_OR_RET(poisoned_decl);
 		return decl;
@@ -1840,6 +1858,8 @@ static inline Decl *parse_typedef_declaration(ParseContext *c)
 		decl->decl_kind = DECL_TYPEDEF;
 		decl_add_type(decl, TYPE_TYPEDEF);
 	}
+	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
+
 	RANGE_EXTEND_PREV(decl);
 	CONSUME_EOS_OR_RET(poisoned_decl);
 	return decl;
@@ -1941,6 +1961,8 @@ static inline Decl *parse_define_ident(ParseContext *c)
 		if (!params) return poisoned_decl;
 		decl->define_decl.generic_params = params;
 	}
+	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
+
 	RANGE_EXTEND_PREV(decl);
 	CONSUME_EOS_OR_RET(poisoned_decl);
 	return decl;
@@ -1969,15 +1991,17 @@ static inline Decl *parse_define_attribute(ParseContext *c)
 		CONSUME_OR_RET(TOKEN_RPAREN, poisoned_decl);
 	}
 
-	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 	Attr **attributes = NULL;
 
 	CONSUME_OR_RET(TOKEN_EQ, poisoned_decl);
 	CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
 
-	if (!parse_attributes(c, &attributes, NULL)) return poisoned_decl;
+	bool is_cond;
+	if (!parse_attributes(c, &attributes, NULL, &is_cond)) return poisoned_decl;
 	CONSUME_OR_RET(TOKEN_RBRACE, poisoned_decl);
 	decl->attr_decl.attrs = attributes;
+	decl->is_cond = is_cond;
+	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 	CONSUME_EOS_OR_RET(poisoned_decl);
 	return decl;
 }
@@ -2367,7 +2391,9 @@ static inline Decl *parse_static_top_level(ParseContext *c)
 	}
 	advance(c);
 	Attr *attr = NULL;
-	if (!parse_attributes(c, &init->attributes, NULL)) return poisoned_decl;
+	bool is_cond;
+	if (!parse_attributes(c, &init->attributes, NULL, &is_cond)) return poisoned_decl;
+	init->is_cond = is_cond;
 	ASSIGN_ASTID_OR_RET(init->xxlizer.init, parse_compound_stmt(c), poisoned_decl);
 	RANGE_EXTEND_PREV(init);
 	return init;

@@ -1,6 +1,4 @@
-module std::os::macos::cf;
-
-$if env::os_is_darwin():
+module std::os::macos::cf @if(DARWIN_LIBC);
 
 def CFArrayRef = distinct void*;
 def CFArrayCallBacksRef = distinct void*;
@@ -11,4 +9,3 @@ extern fn CFIndex _macos_CFArrayGetCount(CFArrayRef array) @extern("CFArrayGetCo
 extern fn void _macos_CFArrayAppendArray(CFMutableArrayRef theArray, CFArrayRef otherArray, CFRange otherRange) @extern("CFArrayAppendArray");
 extern fn CFMutableArrayRef _macos_CFArrayCreateMutable(CFAllocatorRef allocator, CFIndex capacity, CFArrayCallBacksRef callBacks) @extern("CFArrayCreateMutable");
 extern fn void _macos_CFArrayAppendValue(CFMutableArrayRef theArray, void *value) @extern("CFArrayAppendValue");
-$endif

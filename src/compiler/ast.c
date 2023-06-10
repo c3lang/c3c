@@ -97,6 +97,7 @@ Decl *decl_new_with_type(const char *name, SourceSpan loc, DeclKind decl_type)
 		case DECL_CT_ECHO:
 		case DECL_CT_INCLUDE:
 		case DECL_GLOBALS:
+		case DECL_ERASED:
 			UNREACHABLE
 	}
 	Type *type = type_new(kind, name ? name : "$anon");
@@ -117,6 +118,8 @@ const char *decl_to_a_name(Decl *decl)
 {
 	switch (decl->decl_kind)
 	{
+		case DECL_ERASED:
+			return "an erased declaration";
 		case DECL_BODYPARAM:
 			return "a body parameter";
 		case DECL_DECLARRAY:
@@ -215,6 +218,8 @@ const char *decl_to_a_name(Decl *decl)
 // Set the external name of a declaration
 void decl_set_external_name(Decl *decl)
 {
+	if (decl->decl_kind == DECL_ERASED) return;
+
 	// Already has the extname set using an attribute?
 	// if so we're done.
 	if (decl->has_extname) return;

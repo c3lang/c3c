@@ -308,6 +308,8 @@ static void header_gen_type_decl(FILE *file, int indent, Decl *decl)
 		case DECL_BODYPARAM:
 		case DECL_FUNC:
 			UNREACHABLE
+		case DECL_ERASED:
+			return;
 		case DECL_BITSTRUCT:
 			header_print_type(file, decl->bitstruct.base_type->type);
 			return;

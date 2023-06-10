@@ -183,6 +183,8 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 	decl = decl_flatten(decl);
 	switch (decl->decl_kind)
 	{
+		case DECL_ERASED:
+			UNREACHABLE
 		case DECL_STRUCT:
 		case DECL_BITSTRUCT:
 		case DECL_UNION:

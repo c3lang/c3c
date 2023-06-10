@@ -1,6 +1,4 @@
-module std::os::win32;
-
-$if env::os_is_win32():
+module std::os::win32 @if(WIN32_LIBC);
 
 extern fn Win32_DWORD win32_GetLastError() @extern("GetLastError");
 
@@ -224,4 +222,3 @@ const Win32_DWORD ERROR_MR_MID_NOT_FOUND = 0x13D;
 const Win32_DWORD ERROR_SCOPE_NOT_FOUND = 0x13E;
 const Win32_DWORD ERROR_UNDEFINED_SCOPE = 0x13F;
 
-$endif

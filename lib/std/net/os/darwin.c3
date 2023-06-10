@@ -1,7 +1,5 @@
-module std::net::os;
+module std::net::os @if(env::DARWIN);
 import libc;
-
-$if env::os_is_darwin():
 
 const AI_NUMERICSERV = 0x1000;
 const AI_ALL = 0x100;
@@ -10,18 +8,6 @@ const AI_ADDRCONFIG = 0x400;
 const AI_V4MAPPED = 0x800;
 const AI_UNUSABLE = 0x10000000;
 const AI_DEFAULT = AI_V4MAPPED_CFG | AI_ADDRCONFIG;
-
-struct AddrInfo
-{
-	int ai_flags;
-	int ai_family;
-	int ai_socktype;
-	int ai_protocol;
-	usz ai_addrlen;
-    void* ai_addr;
-	char* ai_canonname;
-	AddrInfo* ai_next;
-}
 
 const int PLATFORM_AF_UNIX = 1;
 const int PLATFORM_AF_INET = 2;
@@ -61,7 +47,4 @@ const int PLATFORM_AF_IEEE80211 = 37;
 const int PLATFORM_AF_UTUN = 38;
 const int PLATFORM_AF_VSOCK = 40;
 const int PLATFORM_AF_MAX = 41;
-
 const int PLATFORM_O_NONBLOCK = 0x30;
-
-$endif

@@ -53,7 +53,9 @@ void sema_append_contract_asserts(AstId assert_first, Ast* compound_stmt);
 void sema_analyse_pass_top(Module *module);
 void sema_analyse_pass_module_hierarchy(Module *module);
 void sema_analysis_pass_process_imports(Module *module);
-void sema_analysis_pass_register_globals(Module *module);
+void sema_analysis_pass_register_global_declarations(Module *module);
+void sema_analysis_pass_register_conditional_units(Module *module);
+void sema_analysis_pass_register_conditional_declarations(Module *module);
 void sema_analysis_pass_conditional_compilation(Module *module);
 void sema_analysis_pass_decls(Module *module);
 void sema_analysis_pass_ct_assert(Module *module);
@@ -84,6 +86,7 @@ bool cast_widen_top_down(SemaContext *context, Expr *expr, Type *type);
 bool cast_promote_vararg(Expr *arg);
 Type *cast_numeric_arithmetic_promotion(Type *type);
 void cast_to_int_to_max_bit_size(SemaContext *context, Expr *lhs, Expr *rhs, Type *left_type, Type *right_type);
+bool sema_decl_if_cond(SemaContext *context, Decl *decl);
 
 bool sema_analyse_checked(SemaContext *context, Ast *directive, SourceSpan span);
 

@@ -1,6 +1,4 @@
-module std::math::nolibc;
-
-$if !env::COMPILER_LIBC_AVAILABLE:
+module std::math::nolibc @if(env::NO_LIBC);
 
 fn float _cosf(float x) @extern("cosf") @weak @nostrip
 {
@@ -54,7 +52,7 @@ fn float _cosf(float x) @extern("cosf") @weak @nostrip
  * ====================================================
  */
 
-fn double _cos(double x) @extern("cos") @weak @nostrip
+fn double _cos(double x) @weak @nostrip
 {
 	// High word of x.
 	uint ix = (uint)(bitcast(x, ulong) >> 32);
@@ -87,5 +85,3 @@ fn double _cos(double x) @extern("cos") @weak @nostrip
 			}
 	}
 }
-
-$endif

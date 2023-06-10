@@ -144,6 +144,7 @@ macro bool! Formatter.print_with_function(Formatter* this, any arg)
     return false;
 }
 
+
 fn void! Formatter.out_str(Formatter* this, any arg) @private
 {
 	switch (arg.type.kindof)
@@ -425,3 +426,18 @@ fn usz! Formatter.vprintf(Formatter* this, String format, any[] anys)
 	return this.idx;
 }
 
+
+fn usz! Formatter.print(Formatter* this, String str)
+{
+	if (!this.out_fn)
+	{
+		// use null output function
+		this.out_fn = &out_null_fn;
+	}
+	usz len = str.len;
+	for (usz i = 0; i < len; i++)
+	{
+		this.out(str[i])!;
+	}
+	return this.idx;
+}

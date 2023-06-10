@@ -471,14 +471,14 @@ macro sqrt(x) => $$sqrt(values::promote_int(x));
 macro tan(x)
 {
 	var $Type = $typeof(x);
-$switch
-	$case types::is_vector($Type):
-		return $$sin(x) / $$cos(x);
-	$case $Type.typeid == float.typeid:
-		return _tanf(x);
-	$default:
-		return _tan(x);
-$endswitch
+	$switch
+		$case types::is_vector($Type):
+			return $$sin(x) / $$cos(x);
+		$case $Type.typeid == float.typeid:
+			return _tanf(x);
+		$default:
+			return _tan(x);
+	$endswitch
 }
 
 /**
@@ -487,11 +487,11 @@ $endswitch
 macro bool is_finite(x)
 {
 	$switch ($typeof(x))
-	$case float:
-	$case float16:
-		return bitcast((float)x, uint) & 0x7fffffff < 0x7f800000;
-	$default:
-		return bitcast((double)x, ulong) & (~0u64 >> 1) < 0x7ffu64 << 52;
+		$case float:
+		$case float16:
+			return bitcast((float)x, uint) & 0x7fffffff < 0x7f800000;
+		$default:
+			return bitcast((double)x, ulong) & (~0u64 >> 1) < 0x7ffu64 << 52;
 	$endswitch
 }
 

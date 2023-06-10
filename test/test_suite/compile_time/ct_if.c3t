@@ -1,68 +1,7 @@
-$if 0:
-$else
-	$switch
-	$case false:
-	$case false:
-	$case false:
-	$default:
-        int x = 1;
-    $endswitch
-$endif
+int x @if(false) = 1;
 
-$switch
-$case false:
-$assert false;
-$case false:
-$assert false;
-$default:
-$assert true;
-$endswitch
-
-$if 1:
-$assert true;
-int d = 5;
-$else
-$assert false;
-$endif
-
-$switch
-$case false:
-$assert true;
-$case true:
-$assert true;
-int c = 5;
-$default:
-$assert false;
-$endswitch
-
-$switch
-$case false:
-$assert true;
-$case true:
-$assert true;
-int b = 4;
-$case false:
-$assert false;
-$default:
-$assert false;
-$endswitch
-
-$switch
-$case false:
-$assert true;
-$case false:
-$assert false;
-$case true:
-$assert true;
-int a = 3;
-$default:
-$assert false;
-$endswitch
+int d @if(true) = 5;
 
 /* #expect: ct_if.ll
 
 @ct_if.d = local_unnamed_addr global i32 5, align 4
-@ct_if.c = local_unnamed_addr global i32 5, align 4
-@ct_if.b = local_unnamed_addr global i32 4, align 4
-@ct_if.a = local_unnamed_addr global i32 3, align 4
-@ct_if.x = local_unnamed_addr global i32 1, align 4

@@ -120,6 +120,8 @@ void decl_register(Decl *decl)
 	if (decl->visibility > VISIBLE_PUBLIC) return;
 	switch (decl->decl_kind)
 	{
+		case DECL_ERASED:
+			return;
 		case DECL_INITIALIZE:
 		case DECL_FINALIZE:
 		case DECL_POISONED:
@@ -163,6 +165,8 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 
 	switch (decl->decl_kind)
 	{
+		case DECL_ERASED:
+			return;
 		case DECL_POISONED:
 			break;
 		case DECL_MACRO:

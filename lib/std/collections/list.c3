@@ -5,6 +5,8 @@ module std::collections::list<Type>;
 import std::math;
 
 def ElementPredicate = fn bool(Type *type);
+const ELEMENT_IS_EQUATABLE = types::is_equatable_type(Type);
+const ELEMENT_IS_POINTER = Type.kindof == POINTER;
 
 struct List
 {
@@ -38,24 +40,28 @@ fn void List.tinit(List* list, usz initial_capacity = 16)
 	list.init(initial_capacity, mem::temp()) @inline;
 }
 
+fn void! List.to_format(List* list, Formatter* formatter) @dynamic
+{
+	switch (list.size)
+	{
+		case 0:
+			formatter.print("[]")!;
+		case 1:
+			formatter.printf("[%s]", list.entries[0])!;
+		default:
+			formatter.print("[")!;
+			foreach (i, element : list.entries[:list.size])
+			{
+				if (i != 0) formatter.print(", ")!;
+				formatter.printf("%s", element)!;
+			}
+			formatter.print("]")!;
+	}
+}
+
 fn String List.to_string(List* list, Allocator* using = mem::heap()) @dynamic
 {
-	if (!list.size) return "[]".copy(using);
-	if (list.size == 1) return string::printf("[%s]", list.entries[0], .using = using);
-
-	@stack_mem(512 + 128; Allocator* mem)
-	{
-		DString str;
-		str.init(512, mem);
-		str.append("[");
-		foreach (i, element : list.entries[:list.size])
-		{
-			if (i != 0) str.append(", ");
-			str.printf("%s", element);
-		}
-		str.printf("]");
-		return str.copy_str(using);
-	};
+	return string::printf("%s", *list);
 }
 
 fn void List.push(List* list, Type element) @inline
@@ -301,9 +307,8 @@ fn void List.ensure_capacity(List* list, usz added = 1) @inline @private
 
 // Functions for equatable types
 
-$if types::is_equatable_type(Type):
 
-fn usz! List.index_of(List* list, Type type)
+fn usz! List.index_of(List* list, Type type) @if(ELEMENT_IS_EQUATABLE)
 {
 	foreach (i, v : list)
 	{
@@ -312,7 +317,7 @@ fn usz! List.index_of(List* list, Type type)
 	return SearchResult.MISSING?;
 }
 
-fn usz! List.rindex_of(List* list, Type type)
+fn usz! List.rindex_of(List* list, Type type) @if(ELEMENT_IS_EQUATABLE)
 {
 	foreach_r (i, v : list)
 	{
@@ -321,7 +326,7 @@ fn usz! List.rindex_of(List* list, Type type)
 	return SearchResult.MISSING?;
 }
 
-fn bool List.equals(List* list, List other_list)
+fn bool List.equals(List* list, List other_list) @if(ELEMENT_IS_EQUATABLE)
 {
 	if (list.size != other_list.size) return false;
 	foreach (i, v : list)
@@ -338,7 +343,7 @@ fn bool List.equals(List* list, List other_list)
  * @param value "The value to search for"
  * @return "True if the value is found, false otherwise"
  **/
-fn bool List.contains(List* list, Type value)
+fn bool List.contains(List* list, Type value) @if(ELEMENT_IS_EQUATABLE)
 {
 	foreach (i, v : list)
 	{
@@ -353,7 +358,7 @@ fn bool List.contains(List* list, Type value)
  * @param value "The value to remove"
  * @return "the number of deleted elements."
  **/
-fn usz List.remove(List* list, Type value)
+fn usz List.remove(List* list, Type value) @if(ELEMENT_IS_EQUATABLE)
 {
 	usz size = list.size;
 	for (usz i = size; i > 0; i--)
@@ -368,29 +373,24 @@ fn usz List.remove(List* list, Type value)
 	return size - list.size;
 }
 
-fn void List.remove_all(List* list, List* other_list)
+fn void List.remove_all(List* list, List* other_list) @if(ELEMENT_IS_EQUATABLE)
 {
 	if (!other_list.size) return;
 	foreach (v : other_list) list.remove(v);
 }
 
-
-$endif
-
-$if Type.kindof == POINTER:
-
 /**
  * @param [&in] list
  * @return "The number non-null values in the list"
  **/
-fn usz List.compact_count(List* list)
+fn usz List.compact_count(List* list) @if(ELEMENT_IS_POINTER)
 {
 	usz vals = 0;
 	foreach (v : list) if (v) vals++;
 	return vals;
 }
 
-fn usz List.compact(List* list)
+fn usz List.compact(List* list) @if(ELEMENT_IS_POINTER)
 {
 	usz size = list.size;
 	for (usz i = size; i > 0; i--)
@@ -404,5 +404,3 @@ fn usz List.compact(List* list)
 	}
 	return size - list.size;
 }
-
-$endif

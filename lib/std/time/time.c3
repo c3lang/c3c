@@ -1,9 +1,9 @@
 module std::time;
 
-def Time @inline = distinct long;
-def TimeDuration @inline = distinct long;
-def Clock @inline = distinct ulong;
-def NanoDuration @inline = distinct long;
+def Time = distinct long @inline;
+def TimeDuration = distinct long @inline;
+def Clock = distinct ulong @inline;
+def NanoDuration = distinct long @inline;
 
 const TimeDuration MICROSECONDS_PER_SECOND = 1_000_000;
 const TimeDuration MICROSECONDS_PER_MINUTE = MICROSECONDS_PER_SECOND * 60;
@@ -61,11 +61,11 @@ enum Month : char
 
 fn Time now()
 {
-$if $defined(native_timestamp):
-	return os::native_timestamp();
-$else
-	return 0;
-$endif
+	$if $defined(native_timestamp):
+		return os::native_timestamp();
+	$else
+		return 0;
+	$endif
 }
 
 fn Time Time.add_seconds(Time time, long seconds) => time + (Time)(seconds * (long)MICROSECONDS_PER_SECOND);

@@ -1,6 +1,4 @@
-module std::math::nolibc;
-
-$if !env::COMPILER_LIBC_AVAILABLE:
+module std::math::nolibc @if(env::NO_LIBC);
 
 fn double _trunc(double x) @weak @extern("trunc") @nostrip
 {
@@ -28,4 +26,3 @@ fn float _truncf(float x) @weak @extern("truncf") @nostrip
 	return bitcast(i, float);
 }
 
-$endif

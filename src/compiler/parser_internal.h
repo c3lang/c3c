@@ -49,7 +49,8 @@ Ast* parse_compound_stmt(ParseContext *c);
 Ast *parse_short_body(ParseContext *c, TypeInfoId return_type, bool require_eos);
 
 bool parse_attribute(ParseContext *c, Attr **attribute_ref, bool expect_eos);
-bool parse_attributes(ParseContext *c, Attr ***attributes_ref, Visibility *visibility_ref);
+
+bool parse_attributes(ParseContext *c, Attr ***attributes_ref, Visibility *visibility_ref, bool *cond_ref);
 
 bool parse_switch_body(ParseContext *c, Ast ***cases, TokenType case_type, TokenType default_type);
 Expr *parse_ct_expression_list(ParseContext *c, bool allow_decl);

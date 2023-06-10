@@ -859,6 +859,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 	{
 		case DECL_POISONED:
 			break;
+		case DECL_ERASED:
 		case DECL_CT_INCLUDE:
 			break;
 		case DECL_INITIALIZE:

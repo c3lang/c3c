@@ -11,9 +11,7 @@ const int* BOB = (int*)16 - 1;
 const int* BAB = (int*)16 + 1;
 const isz AO = BAB - BOB;
 
-$if ZAB > 100:
-int abc = 123;
-$endif
+int abc @if(ZAB > 100) = 123;
 
 fn void test()
 {

@@ -1,7 +1,5 @@
-module std::io::file::os;
+module std::io::file::os @if(env::os_is_win32());
 import std::os::win32;
-
-$if env::os_is_win32():
 
 const Win32_DWORD FILE_ATTRIBUTE_READONLY = 0x01;
 const Win32_DWORD FILE_ATTRIBUTE_HIDDEN = 0x02;
@@ -110,4 +108,3 @@ fn Path! native_temp_directory(Allocator* using = mem::heap())
 		}
 	}
 */
-$endif

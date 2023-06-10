@@ -96,11 +96,11 @@ fn bool! rmdir(Path path)
 fn void! rmtree(Path path)
 {
 	if (!path.path_string.len) return PathResult.INVALID_PATH?;
-$if $defined(os::native_rmtree):
-	return os::native_rmtree(path);
-$else
-	assert(false, "rmtree is not available");
-$endif
+	$if $defined(os::native_rmtree):
+		return os::native_rmtree(path);
+	$else
+		assert(false, "rmtree is not available");
+	$endif
 }
 
 fn Path! new(String path, Allocator* using = mem::heap(), PathEnv path_env = DEFAULT_PATH_ENV)

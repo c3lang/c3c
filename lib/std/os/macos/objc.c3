@@ -1,6 +1,4 @@
-module std::os::macos::objc;
-
-$if env::os_is_darwin():
+module std::os::macos::objc @if(DARWIN_LIBC);
 
 def Class = distinct void*;
 def Method = distinct void*;
@@ -45,5 +43,5 @@ extern fn Method _macos_class_getClassMethod(Class cls, Selector name) @extern("
 extern fn bool _macos_class_respondsToSelector(Class cls, Selector name) @extern("class_respondsToSelector");
 extern fn Selector _macos_sel_registerName(char* str) @extern("sel_registerName");
 extern fn Class _macos_objc_lookUpClass(char* name) @extern("objc_lookUpClass");
-$endif
+
 

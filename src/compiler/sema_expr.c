@@ -563,6 +563,7 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 		case DECL_FINALIZE:
 		case DECL_CT_INCLUDE:
 		case DECL_GLOBALS:
+		case DECL_ERASED:
 			UNREACHABLE
 		case DECL_POISONED:
 			return expr_poison(expr);
@@ -791,6 +792,7 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 
 	if (decl->decl_kind == DECL_VAR || decl->decl_kind == DECL_FUNC || decl->decl_kind == DECL_MACRO)
 	{
+		if (!sema_analyse_decl(context, decl)) return false;
 		if (decl->unit->module != context->unit->module && !decl->is_autoimport && !expr->identifier_expr.path)
 		{
 			const char *message;

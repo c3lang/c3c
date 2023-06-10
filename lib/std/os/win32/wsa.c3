@@ -1,16 +1,12 @@
-module std::os::win32;
+module std::os::win32 @if(WIN32_LIBC);
 
 def WSAError = distinct int;
 
-$if env::os_is_win32():
-
 extern fn WSAError win32_WSAGetLastError() @extern("WSAGetLastError");
 extern fn void win32_WSASetLastError(WSAError error) @extern("WSASetLastError");
-$endif
 
-module std::os::win32::wsa;
+module std::os::win32::wsa @if(env::WIN32);
 
-$if env::os_is_win32():
 const WSAError INVALID_HANDLE = 6;
 const WSAError NOT_ENOUGHT_MEMORY = 8;
 const WSAError INVALID_PARAMETER = 87;
@@ -33,4 +29,3 @@ const WSAError EPROTOTYPE = 10041;
 const WSAError ENOPROTOOPT = 10042;
 const WSAError EPROTONOSUPPORT = 10043;
 const WSAError ESOCKTNOSUPPORT = 10044;
-$endif

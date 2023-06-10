@@ -138,8 +138,14 @@ void sema_analyze_stage(Module *module, AnalysisStage stage)
 			case ANALYSIS_IMPORTS:
 				sema_analysis_pass_process_imports(module);
 				break;
-			case ANALYSIS_REGISTER_GLOBALS:
-				sema_analysis_pass_register_globals(module);
+			case ANALYSIS_REGISTER_GLOBAL_DECLARATIONS:
+				sema_analysis_pass_register_global_declarations(module);
+				break;
+			case ANALYSIS_REGISTER_CONDITIONAL_UNITS:
+				sema_analysis_pass_register_conditional_units(module);
+				break;
+			case ANALYSIS_REGISTER_CONDITIONAL_DECLARATIONS:
+				sema_analysis_pass_register_conditional_declarations(module);
 				break;
 			case ANALYSIS_CONDITIONAL_COMPILATION:
 				sema_analysis_pass_conditional_compilation(module);
@@ -181,6 +187,7 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 			case DECL_FINALIZE:
 			case DECL_CT_IF:
 			case DECL_CT_SWITCH:
+			case DECL_ERASED:
 				continue;
 			case DECL_ATTRIBUTE:
 				break;
@@ -217,6 +224,7 @@ static void analyze_generic_module(Module *module)
 	{
 		CompilationUnit *unit = module->units[index];
 		register_generic_decls(unit, unit->global_decls);
+		register_generic_decls(unit, unit->global_cond_decls);
 	}
 	sema_analyze_stage(module, ANALYSIS_MODULE_HIERARCHY);
 }

@@ -1,19 +1,5 @@
-module std::net::os;
+module std::net::os @if(env::LINUX);
 import libc;
-
-$if env::OS_TYPE == LINUX:
-
-struct AddrInfo
-{
-	int ai_flags;
-	int ai_family;
-	int ai_socktype;
-	int ai_protocol;
-	usz ai_addrlen;
-    void* ai_addr;
-	char* ai_canonname;
-	AddrInfo* ai_next;
-}
 
 const int PLATFORM_AF_UNIX = 1;
 const int PLATFORM_AF_INET = 2;
@@ -27,5 +13,3 @@ const int PLATFORM_AF_X25 = 9;
 const int PLATFORM_AF_INET6 = 10;
 
 const PLATFORM_O_NONBLOCK = 0o4000;
-
-$endif
