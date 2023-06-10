@@ -184,7 +184,7 @@ jobs:
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
-        llvm_version: [16, 17]
+        llvm_version: [15, 16, 17]
 
     steps:
       - uses: actions/checkout@v3
