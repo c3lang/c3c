@@ -5,9 +5,9 @@
 #include "sema_internal.h"
 
 
-static inline bool sema_analyse_func_macro(SemaContext *context, Decl *decl, bool is_func);
-static inline bool sema_analyse_func(SemaContext *context, Decl *decl);
-static inline bool sema_analyse_macro(SemaContext *context, Decl *decl);
+static inline bool sema_analyse_func_macro(SemaContext *context, Decl *decl, bool is_func, bool *erase_decl);
+static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *erase_decl);
+static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_signature(SemaContext *context, Signature *sig);
 static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl);
 static inline bool sema_check_param_uniqueness_and_type(Decl **decls, Decl *current, unsigned current_index, unsigned count);
@@ -26,27 +26,28 @@ static inline bool sema_analyse_operator_len(Decl *method);
 static bool sema_check_operator_method_validity(Decl *method);
 static inline const char *method_name_by_decl(Decl *method_like);
 
-static bool sema_analyse_struct_union(SemaContext *context, Decl *decl);
-static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl);
+static bool sema_analyse_struct_union(SemaContext *context, Decl *decl, bool *erase_decl);
+static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl, bool *erase_decl);
 static bool sema_analyse_union_members(SemaContext *context, Decl *decl, Decl **members);
 static bool sema_analyse_struct_members(SemaContext *context, Decl *decl, Decl **members);
-static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent, Decl *decl);
+static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *decl, unsigned index, bool allow_overlap);
 
 static inline bool sema_analyse_doc_header(AstId doc, Decl **params, Decl **extra_params, bool *pure_ref);
 
 static const char *attribute_domain_to_string(AttributeDomain domain);
-static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr, AttributeDomain domain);
+static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr, AttributeDomain domain, bool *erase_decl);
 static bool sema_analyse_attributes_inner(SemaContext *context, Decl *decl, Attr **attrs, AttributeDomain domain,
-                                          Decl *top);
-static bool sema_analyse_attributes(SemaContext *context, Decl *decl, Attr** attrs, AttributeDomain domain);
-static bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl);
+                                          Decl *top, bool *erase_decl);
+static bool sema_analyse_attributes(SemaContext *context, Decl *decl, Attr **attrs, AttributeDomain domain,
+                                    bool *erase_decl);
+static bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl, bool *erase_decl);
 static bool sema_check_section(SemaContext *context, Attr *attr);
 static inline bool sema_analyse_attribute_decl(SemaContext *c, Decl *decl);
 
-static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl);
+static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *erase_decl);
 bool sema_analyse_decl_type(SemaContext *context, Type *type, SourceSpan span);
-static inline bool sema_analyse_define(SemaContext *c, Decl *decl);
+static inline bool sema_analyse_define(SemaContext *c, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl);
 
 static CompilationUnit *unit_copy(Module *module, CompilationUnit *unit);
@@ -55,7 +56,7 @@ static Module *module_instantiate_generic(SemaContext *context, Module *module, 
                                           SourceSpan from);
 
 static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param, bool *has_default);
-static inline bool sema_analyse_enum(SemaContext *context, Decl *decl);
+static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_error(SemaContext *context, Decl *decl);
 
 
@@ -131,7 +132,7 @@ static inline bool sema_check_param_uniqueness_and_type(Decl **decls, Decl *curr
 	return true;
 }
 
-static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent, Decl *decl)
+static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent, Decl *decl, bool *erase_decl)
 {
 	if (decl->resolve_status == RESOLVE_DONE) return decl_ok(decl);
 	if (decl->resolve_status == RESOLVE_RUNNING)
@@ -140,6 +141,27 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 	}
 	assert(!decl->unit || decl->unit->module->is_generic);
 	decl->unit = parent->unit;
+
+	AttributeDomain domain = ATTR_MEMBER;
+	switch (decl->decl_kind)
+	{
+		case DECL_BITSTRUCT:
+			domain = ATTR_BITSTRUCT;
+			break;
+		case DECL_UNION:
+			domain = ATTR_UNION;
+			break;
+		case DECL_STRUCT:
+			domain = ATTR_STRUCT;
+			break;
+		case DECL_VAR:
+			break;
+		default:
+			UNREACHABLE
+	}
+	if (!sema_analyse_attributes(context, decl, decl->attributes, domain, erase_decl)) return decl_poison(decl);
+	if (*erase_decl) return true;
+
 	if (decl->name)
 	{
 		Decl *other = sema_decl_stack_resolve_symbol(decl->name);
@@ -187,15 +209,18 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl, Decl **
 	AlignSize max_alignment = 0;
 
 	bool has_named_parameter = false;
-	VECEACH(members, i)
+	unsigned member_count = vec_size(members);
+	for (unsigned i = 0; i < member_count; i++)
 	{
+		AGAIN:;
 		Decl *member = members[i];
 		if (!decl_ok(member))
 		{
 			decl_poison(decl);
 			continue;
 		}
-		if (!sema_analyse_struct_member(context, decl, member))
+		bool erase_decl = false;
+		if (!sema_analyse_struct_member(context, decl, member, &erase_decl))
 		{
 			if (decl_ok(decl))
 			{
@@ -203,6 +228,13 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl, Decl **
 				continue;
 			}
 			continue;
+		}
+		if (erase_decl)
+		{
+			vec_erase_ptr_at(members, i);
+			member_count--;
+			if (i < member_count) goto AGAIN;
+			break;
 		}
 		if (member->type->type_kind == TYPE_INFERRED_ARRAY)
 		{
@@ -286,15 +318,18 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl, Decl *
 	AlignSize offset = 0;
 	bool is_packed = decl->is_packed;
 	unsigned member_count = vec_size(members);
+	Decl **struct_members = decl->strukt.members;
 	for (unsigned i = 0; i < member_count; i++)
 	{
-		Decl *member = decl->strukt.members[i];
+	AGAIN:;
+		Decl *member = struct_members[i];
 		if (!decl_ok(member))
 		{
 			decl_poison(decl);
 			continue;
 		}
-		if (!sema_analyse_struct_member(context, decl, member))
+		bool erase_decl = false;
+		if (!sema_analyse_struct_member(context, decl, member, &erase_decl))
 		{
 			if (decl_ok(decl))
 			{
@@ -302,6 +337,13 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl, Decl *
 				continue;
 			}
 			continue;
+		}
+		if (erase_decl)
+		{
+			vec_erase_ptr_at(struct_members, i);
+			member_count--;
+			if (i < member_count) goto AGAIN;
+			break;
 		}
 		Type *member_type = type_flatten(member->type);
 		if (member_type->type_kind == TYPE_STRUCT && member_type->decl->has_variable_array)
@@ -334,9 +376,6 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl, Decl *
 		AlignSize member_natural_alignment;
 		if (!sema_set_abi_alignment(context, member->type, &member_natural_alignment)) return decl_poison(decl);
 		AlignSize member_alignment = is_packed ? 1 : member_natural_alignment;
-		Attr **attributes = member->attributes;
-
-		if (!sema_analyse_attributes(context, member, attributes, ATTR_MEMBER)) return decl_poison(decl);
 
 		if (member->alignment)
 		{
@@ -417,7 +456,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl, Decl *
 	return true;
 }
 
-static bool sema_analyse_struct_union(SemaContext *context, Decl *decl)
+static bool sema_analyse_struct_union(SemaContext *context, Decl *decl, bool *erase_decl)
 {
 	AttributeDomain domain;
 	switch (decl->decl_kind)
@@ -435,8 +474,8 @@ static bool sema_analyse_struct_union(SemaContext *context, Decl *decl)
 			UNREACHABLE
 	}
 
-	if (!sema_analyse_attributes(context, decl, decl->attributes, domain)) return decl_poison(decl);
-
+	if (!sema_analyse_attributes(context, decl, decl->attributes, domain, erase_decl)) return decl_poison(decl);
+	if (*erase_decl) return true;
 
 	DEBUG_LOG("Beginning analysis of %s.", decl->name ? decl->name : ".anon");
 	bool success;
@@ -628,10 +667,10 @@ AFTER_BIT_CHECK:
 	return true;
 }
 
-static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl)
+static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl, bool *erase_decl)
 {
-	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_BITSTRUCT)) return decl_poison(decl);
-
+	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_BITSTRUCT, erase_decl)) return decl_poison(decl);
+	if (*erase_decl) return true;
 	DEBUG_LOG("Beginning analysis of %s.", decl->name ? decl->name : ".anon");
 	if (!sema_resolve_type_info(context, decl->bitstruct.base_type)) return false;
 	Type *type = decl->bitstruct.base_type->type->canonical;
@@ -767,7 +806,9 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig)
 					SEMA_ERROR(param, "Only typed parameters are allowed for functions.");
 					return false;
 				}
-				if (!sema_analyse_attributes_for_var(context, param)) return false;
+				bool erase_decl = false;
+				if (!sema_analyse_attributes_for_var(context, param, &erase_decl)) return false;
+				assert(!erase_decl);
 				break;
 			case VARDECL_PARAM_CT_TYPE:
 				if (!is_macro)
@@ -874,9 +915,10 @@ Type *sema_analyse_function_signature(SemaContext *context, Decl *parent, CallAB
 	return type;
 }
 
-static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl)
+static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *erase_decl)
 {
-	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_DEFINE)) return decl_poison(decl);
+	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_DEFINE, erase_decl)) return decl_poison(decl);
+	if (*erase_decl) return true;
 
 	if (decl->typedef_decl.is_func)
 	{
@@ -1007,8 +1049,11 @@ static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param, bo
 	return sema_set_abi_alignment(context, param->type, &param->alignment);
 }
 
-static inline bool sema_analyse_enum(SemaContext *context, Decl *decl)
+static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *erase_decl)
 {
+	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_ENUM, erase_decl)) return decl_poison(decl);
+	if (*erase_decl) return true;
+
 	// Resolve the type of the enum.
 	if (!sema_resolve_type_info(context, decl->enums.type_info)) return false;
 
@@ -1025,7 +1070,6 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl)
 
 	DEBUG_LOG("* Enum type resolved to %s.", type->name);
 
-	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_ENUM)) return decl_poison(decl);
 
 	Decl **associated_values = decl->enums.parameters;
 	unsigned associated_value_count = vec_size(associated_values);
@@ -1335,6 +1379,27 @@ INLINE void sema_set_method_ext_name(CompilationUnit *unit, const char *parent_n
 	}
 	method_like->extname = scratch_buffer_copy();
 }
+
+bool sema_decl_if_cond(SemaContext *context, Decl *decl)
+{
+	FOREACH_BEGIN(Attr *attr, decl->attributes)
+		if (attr->attr_kind != ATTRIBUTE_IF) continue;
+		if (vec_size(attr->exprs) != 1)
+		{
+			RETURN_SEMA_ERROR(attr, "Expected an argument to '@if'.");
+		}
+		Expr *expr = attr->exprs[0];
+		if (!sema_analyse_ct_expr(context, expr)) return false;
+		if (expr->type->canonical != type_bool)
+		{
+			RETURN_SEMA_ERROR(expr, "Expected a boolean value not %s.", type_quoted_error_string(expr->type));
+		}
+		if (expr->const_expr.b) return true;
+		decl->decl_kind = DECL_ERASED;
+		return false;
+	FOREACH_END();
+	UNREACHABLE
+}
 static inline bool unit_add_base_extension_method(CompilationUnit *unit, Type *parent_type, Decl *method_like)
 {
 	sema_set_method_ext_name(unit, parent_type->name, method_like);
@@ -1477,17 +1542,18 @@ static const char *attribute_domain_to_string(AttributeDomain domain)
 
 #define EXPORTED_USER_DEFINED_TYPES ATTR_ENUM | ATTR_UNION | ATTR_STRUCT
 #define USER_DEFINED_TYPES EXPORTED_USER_DEFINED_TYPES | ATTR_BITSTRUCT
-static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr, AttributeDomain domain)
+static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr, AttributeDomain domain, bool *erase_decl)
 {
 	AttributeType type = attr->attr_kind;
 	assert(type >= 0 && type < NUMBER_OF_ATTRIBUTES);
 	static AttributeDomain attribute_domain[NUMBER_OF_ATTRIBUTES] = {
-			[ATTRIBUTE_ALIGN] = ATTR_FUNC | ATTR_CONST | ATTR_LOCAL | ATTR_GLOBAL | ATTR_STRUCT | ATTR_UNION | ATTR_MEMBER,
+			[ATTRIBUTE_ALIGN] = ATTR_FUNC | ATTR_CONST | ATTR_LOCAL | ATTR_GLOBAL | ATTR_BITSTRUCT | ATTR_STRUCT | ATTR_UNION | ATTR_MEMBER,
 			[ATTRIBUTE_BIGENDIAN] = ATTR_BITSTRUCT,
-			[ATTRIBUTE_BUILTIN] = ATTR_MACRO | ATTR_FUNC,
+			[ATTRIBUTE_BUILTIN] = ATTR_MACRO | ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST,
 			[ATTRIBUTE_CDECL] = ATTR_FUNC,
 			[ATTRIBUTE_DEPRECATED] = USER_DEFINED_TYPES | ATTR_FUNC | ATTR_MACRO | ATTR_CONST | ATTR_GLOBAL | ATTR_MEMBER,
 			[ATTRIBUTE_DYNAMIC] = ATTR_FUNC,
+			[ATTRIBUTE_IF] = (AttributeDomain)~(ATTR_CALL | ATTR_LOCAL),
 			[ATTRIBUTE_INTERFACE] = ATTR_FUNC,
 			[ATTRIBUTE_EXPORT] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | EXPORTED_USER_DEFINED_TYPES,
 			[ATTRIBUTE_NOSTRIP] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | EXPORTED_USER_DEFINED_TYPES,
@@ -1683,6 +1749,15 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 		case ATTRIBUTE_NOSTRIP:
 			decl->no_strip = true;
 			return true;
+		case ATTRIBUTE_IF:
+			if (!expr) RETURN_SEMA_ERROR(attr, "'@if' requires a boolean argument.");
+			if (!sema_analyse_expr(context, expr)) return false;
+			if (expr->type->canonical != type_bool || !expr_is_const(expr))
+			{
+				RETURN_SEMA_ERROR(expr, "Expected a boolean compile time constant value.");
+			}
+			if (!expr->const_expr.b) *erase_decl = true;
+			return true;
 		case ATTRIBUTE_EXTNAME:
 		case ATTRIBUTE_SECTION:
 		case ATTRIBUTE_EXTERN:
@@ -1816,7 +1891,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 
 // TODO consider doing this evaluation early, it should be possible.
 static bool sema_analyse_attributes_inner(SemaContext *context, Decl *decl, Attr **attrs, AttributeDomain domain,
-                                          Decl *top)
+                                          Decl *top, bool *erase_decl)
 {
 	// Detect cycles of the type @Foo = @BarCyclic, @BarCyclic = @BarCyclic
 	if (context->macro_call_depth > 1024)
@@ -1833,7 +1908,8 @@ static bool sema_analyse_attributes_inner(SemaContext *context, Decl *decl, Attr
 		if (!attr->is_custom)
 		{
 			// Analyse it and move on.
-			if (!sema_analyse_attribute(context, decl, attr, domain)) return false;
+			if (!sema_analyse_attribute(context, decl, attr, domain, erase_decl)) return false;
+			if (*erase_decl) return true;
 			continue;
 		}
 
@@ -1892,9 +1968,11 @@ static bool sema_analyse_attributes_inner(SemaContext *context, Decl *decl, Attr
 		}
 		// Now we've added everything to the evaluation context, so we can (recursively)
 		// apply it to the contained attributes, which in turn may be derived attributes.
-		if (!sema_analyse_attributes_inner(&eval_context, decl, attributes, domain, top ? top : attr_decl)) goto ERR;
+		if (!sema_analyse_attributes_inner(&eval_context, decl, attributes, domain, top ? top : attr_decl, erase_decl)) goto ERR;
 		// Then destroy the eval context.
 		sema_context_destroy(&eval_context);
+		// Stop evaluating on erase.
+		if (*erase_decl) return true;
 		continue;
 ERR:
 		sema_context_destroy(&eval_context);
@@ -1903,9 +1981,10 @@ ERR:
 	return true;
 }
 
-static bool sema_analyse_attributes(SemaContext *context, Decl *decl, Attr** attrs, AttributeDomain domain)
+static bool sema_analyse_attributes(SemaContext *context, Decl *decl, Attr **attrs, AttributeDomain domain,
+                                    bool *erase_decl)
 {
-	return sema_analyse_attributes_inner(context, decl, attrs, domain, NULL);
+	return sema_analyse_attributes_inner(context, decl, attrs, domain, NULL, erase_decl);
 }
 
 static inline bool sema_analyse_doc_header(AstId doc, Decl **params, Decl **extra_params, bool *pure_ref)
@@ -2269,15 +2348,24 @@ REGISTER_MAIN:
 	return true;
 }
 
-static inline bool sema_analyse_func_macro(SemaContext *context, Decl *decl, bool is_func)
+static inline bool sema_analyse_func_macro(SemaContext *context, Decl *decl, bool is_func, bool *erase_decl)
 {
-	if (!sema_analyse_attributes(context, decl, decl->attributes, is_func ? ATTR_FUNC : ATTR_MACRO)) return decl_poison(decl);
+	if (!sema_analyse_attributes(context,
+	                             decl,
+	                             decl->attributes,
+	                             is_func ? ATTR_FUNC : ATTR_MACRO,
+	                             erase_decl)) return decl_poison(decl);
 	return true;
 }
 
-static inline bool sema_analyse_xxlizer(SemaContext *context, Decl *decl)
+static inline bool sema_analyse_xxlizer(SemaContext *context, Decl *decl, bool *erase_decl)
 {
-	if (!sema_analyse_attributes(context, decl, decl->attributes, decl->decl_kind == DECL_INITIALIZE ? ATTR_INITIALIZER : ATTR_FINALIZER)) return decl_poison(decl);
+	if (!sema_analyse_attributes(context,
+	                             decl,
+	                             decl->attributes,
+	                             decl->decl_kind == DECL_INITIALIZE ? ATTR_INITIALIZER : ATTR_FINALIZER,
+	                             erase_decl)) return decl_poison(decl);
+	if (*erase_decl) return true;
 	if (decl->xxlizer.priority == 0) decl->xxlizer.priority = MAX_PRIORITY;
 	context->call_env = (CallEnv) { .kind = decl->decl_kind == DECL_INITIALIZE ? CALL_ENV_INITIALIZER : CALL_ENV_FINALIZER };
 	context->rtype = type_void;
@@ -2318,11 +2406,13 @@ SKIP_NEW_RETURN:
 	return sema_analyse_statement(context, body);
 }
 
-static inline bool sema_analyse_func(SemaContext *context, Decl *decl)
+static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *erase_decl)
 {
 	DEBUG_LOG("----Analysing function %s", decl->name);
 
-	if (!sema_analyse_func_macro(context, decl, true)) return false;
+	if (!sema_analyse_func_macro(context, decl, true, erase_decl)) return false;
+
+	if (*erase_decl) return true;
 
 	if (decl->name == kw___run_default_test_runner)
 	{
@@ -2487,11 +2577,12 @@ static bool sema_analyse_macro_method(SemaContext *context, Decl *decl)
 	return unit_add_method_like(context->unit, parent_type->canonical, decl);
 }
 
-static inline bool sema_analyse_macro(SemaContext *context, Decl *decl)
+static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *erase_decl)
 {
 	decl->func_decl.unit = context->unit;
 
-	if (!sema_analyse_func_macro(context, decl, false)) return false;
+	if (!sema_analyse_func_macro(context, decl, false, erase_decl)) return false;
+	if (*erase_decl) return true;
 	if (!sema_analyse_signature(context, &decl->func_decl.signature)) return decl_poison(decl);
 
 	if (!decl->func_decl.signature.is_at_macro && decl->func_decl.body_param)
@@ -2547,7 +2638,7 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl)
 }
 
 
-static bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl)
+static bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl, bool *erase_decl)
 {
 	AttributeDomain domain;
 	switch (decl->var.kind)
@@ -2562,7 +2653,7 @@ static bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl)
 			domain = ATTR_LOCAL;
 			break;
 	}
-	if (!sema_analyse_attributes(context, decl, decl->attributes, domain)) return decl_poison(decl);
+	if (!sema_analyse_attributes(context, decl, decl->attributes, domain, erase_decl)) return decl_poison(decl);
 	return true;
 }
 
@@ -2693,8 +2784,15 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 		if (!sema_add_local(context, decl)) return decl_poison(decl);
 	}
 
-	if (!sema_analyse_attributes_for_var(context, decl)) return decl_poison(decl);
+	bool erase_decl = false;
+	if (!sema_analyse_attributes_for_var(context, decl, &erase_decl)) return decl_poison(decl);
 
+	if (erase_decl)
+	{
+		decl->decl_kind = DECL_ERASED;
+		decl->resolve_status = RESOLVE_DONE;
+		return true;
+	}
 	// 1. Local or global constants: const int FOO = 123.
 	if (!decl->var.type_info)
 	{
@@ -2852,6 +2950,7 @@ static CompilationUnit *unit_copy(Module *module, CompilationUnit *unit)
 	CompilationUnit *copy = unit_create(unit->file);
 	copy->imports = copy_decl_list_single(unit->imports);
 	copy->global_decls = copy_decl_list_single(unit->global_decls);
+	copy->global_cond_decls = copy_decl_list_single(unit->global_cond_decls);
 	copy->module = module;
 	assert(!unit->functions && !unit->macro_methods && !unit->methods && !unit->enums && !unit->ct_ifs && !unit->types);
 	return copy;
@@ -3103,6 +3202,11 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 	}
 	if (global_context.errors_found) return decl_poison(decl);
 	Decl *symbol = module_find_symbol(instantiated_module, name);
+	if (!symbol)
+	{
+		SEMA_ERROR(decl, "The generic module '%s' does not have '%s' for this parameterization.", module->name->module, name);
+		return decl_poison(decl);
+	}
 	if (was_initiated && instantiated_module->contracts)
 	{
 		SourceSpan error_span = extend_span_with_token(params[0]->span, params[parameter_count - 1]->span);
@@ -3111,7 +3215,6 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 			return decl_poison(decl);
 		}
 	}
-	assert(symbol);
 	if (!sema_analyse_decl(c, symbol)) return false;
 	unit_register_external_symbol(c->compilation_unit, symbol);
 	switch (decl->define_decl.define_kind)
@@ -3173,9 +3276,9 @@ static inline bool sema_analyse_attribute_decl(SemaContext *c, Decl *decl)
 	return true;
 }
 
-static inline bool sema_analyse_define(SemaContext *c, Decl *decl)
+static inline bool sema_analyse_define(SemaContext *c, Decl *decl, bool *erase_decl)
 {
-	if (!sema_analyse_attributes(c, decl, decl->attributes, ATTR_DEFINE)) return decl_poison(decl);
+	if (!sema_analyse_attributes(c, decl, decl->attributes, ATTR_DEFINE, erase_decl)) return decl_poison(decl);
 
 	// 1. The plain define
 	if (decl->define_decl.define_kind == DEFINE_IDENT_ALIAS)
@@ -3207,51 +3310,55 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 	}
 	decl->resolve_status = RESOLVE_RUNNING;
 	assert(decl->unit);
+	bool erase_decl = false;
+	bool set_external_name = false;
 	switch (decl->decl_kind)
 	{
+		case DECL_ERASED:
+			break;
 		case DECL_BITSTRUCT:
-			if (!sema_analyse_bitstruct(context, decl)) goto FAILED;
-			decl_set_external_name(decl);
+			if (!sema_analyse_bitstruct(context, decl, &erase_decl)) goto FAILED;
+			set_external_name = true;
 			break;
 		case DECL_STRUCT:
 		case DECL_UNION:
-			if (!sema_analyse_struct_union(context, decl)) goto FAILED;
-			decl_set_external_name(decl);
+			if (!sema_analyse_struct_union(context, decl, &erase_decl)) goto FAILED;
+			set_external_name = true;
 			break;
 		case DECL_FUNC:
-			if (!sema_analyse_func(context, decl)) goto FAILED;
+			if (!sema_analyse_func(context, decl, &erase_decl)) goto FAILED;
 			break;
 		case DECL_MACRO:
-			if (!sema_analyse_macro(context, decl)) goto FAILED;
+			if (!sema_analyse_macro(context, decl, &erase_decl)) goto FAILED;
 			break;
 		case DECL_VAR:
 			if (!sema_analyse_var_decl(context, decl, false)) goto FAILED;
-			decl_set_external_name(decl);
+			set_external_name = true;
 			break;
 		case DECL_ATTRIBUTE:
 			if (!sema_analyse_attribute_decl(context, decl)) goto FAILED;
 			break;
 		case DECL_DISTINCT:
 			if (!sema_analyse_distinct(context, decl)) goto FAILED;
-			decl_set_external_name(decl);
+			set_external_name = true;
 			break;
 		case DECL_TYPEDEF:
-			if (!sema_analyse_typedef(context, decl)) goto FAILED;
+			if (!sema_analyse_typedef(context, decl, &erase_decl)) goto FAILED;
 			break;
 		case DECL_ENUM:
-			if (!sema_analyse_enum(context, decl)) goto FAILED;
-			decl_set_external_name(decl);
+			if (!sema_analyse_enum(context, decl, &erase_decl)) goto FAILED;
+			set_external_name = true;
 			break;
 		case DECL_FAULT:
 			if (!sema_analyse_error(context, decl)) goto FAILED;
-			decl_set_external_name(decl);
+			set_external_name = true;
 			break;
 		case DECL_DEFINE:
-			if (!sema_analyse_define(context, decl)) goto FAILED;
+			if (!sema_analyse_define(context, decl, &erase_decl)) goto FAILED;
 			break;
 		case DECL_INITIALIZE:
 		case DECL_FINALIZE:
-			if (!sema_analyse_xxlizer(context, decl)) goto FAILED;
+			if (!sema_analyse_xxlizer(context, decl, &erase_decl)) goto FAILED;
 			break;
 		case DECL_POISONED:
 		case DECL_IMPORT:
@@ -3271,6 +3378,12 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 		case DECL_GLOBALS:
 			UNREACHABLE
 	}
+	if (erase_decl)
+	{
+		decl->decl_kind = DECL_ERASED;
+		set_external_name = false;
+	}
+	if (set_external_name) decl_set_external_name(decl);
 	decl->resolve_status = RESOLVE_DONE;
 	sema_context_destroy(&temp_context);
 

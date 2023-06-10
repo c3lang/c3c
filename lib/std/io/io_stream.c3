@@ -169,21 +169,21 @@ fn usz! Stream.copy_to(Stream* s, Stream* dst, char[] buffer = {})
 	if (buffer.len) return copy_through_buffer(s, dst, buffer);
 	if (WriteToStreamFn func = s.fns.write_stream_fn) return func(s, dst);
 	if (ReadFromStreamFn func = dst.fns.read_stream_fn) return func(dst, s);
-$switch (env::MEMORY_ENV)
-$case NORMAL:
-	@pool()
-	{
-		return copy_through_buffer(s, dst, tmalloc(char, 4096));
-	};
-$case SMALL:
-	@pool()
-	{
-		return copy_through_buffer(s, dst, tmalloc(char, 1024));
-	};
-$case TINY:
-$case NONE:
-	return copy_through_buffer(s, dst, &&(char[256]{}));
-$endswitch
+	$switch (env::MEMORY_ENV)
+		$case NORMAL:
+			@pool()
+			{
+				return copy_through_buffer(s, dst, tmalloc(char, 4096));
+			};
+		$case SMALL:
+			@pool()
+			{
+				return copy_through_buffer(s, dst, tmalloc(char, 1024));
+			};
+		$case TINY:
+		$case NONE:
+			return copy_through_buffer(s, dst, &&(char[256]{}));
+	$endswitch
 }
 
 macro usz! copy_through_buffer(Stream* s, Stream* dst, char[] buffer) @local

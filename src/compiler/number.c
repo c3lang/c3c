@@ -130,7 +130,7 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 			UNREACHABLE
 	}
 	assert((op == BINARYOP_EQ) || (op == BINARYOP_NE));
-	return (op == BINARYOP_EQ) && is_eq;
+	return op == BINARYOP_EQ ? is_eq : !is_eq;
 }
 
 bool expr_const_in_range(const ExprConst *left, const ExprConst *right, const ExprConst *right_to)

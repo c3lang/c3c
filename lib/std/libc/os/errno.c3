@@ -1,38 +1,28 @@
 module libc::os;
 
+// Linux
+extern fn int* __errno_location() @if(LINUX_LIBC);
+macro int errno() @if(LINUX_LIBC) => *__errno_location();
+macro void errno_set(int err) @if(LINUX_LIBC) => *(__errno_location()) = err;
 
-$switch
+// Darwin
+extern fn int* __error() @if(DARWIN_LIBC);
+macro int errno() @if(DARWIN_LIBC) => *__error();
+macro void errno_set(int err) @if(DARWIN_LIBC) => *(__error()) = err;
 
-$case env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == LINUX:
-
-extern fn int* __errno_location();
-macro int errno() => *__errno_location();
-macro void errno_set(int err) => *(__errno_location()) = err;
-
-$case env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == MACOS:
-
-extern fn int* __error();
-macro int errno() => *__error();
-macro void errno_set(int err) => *(__error()) = err;
-
-$case env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == WIN32:
-
-macro int errno()
+// Win32
+macro int errno() @if(WIN32_LIBC)
 {
 	int holder;
 	_get_errno(&holder);
 	return holder;
 }
+macro void errno_set(int err) @if(WIN32_LIBC) => _set_errno(err);
+extern fn void _get_errno(int* result) @if(WIN32_LIBC);
+extern fn void _set_errno(int err) @if(WIN32_LIBC);
 
-macro void errno_set(int err) => _set_errno(err);
-
-extern fn void _get_errno(int* result);
-extern fn void _set_errno(int err);
-
-$default:
-
-tlocal int _errno_c3 = 0;
-fn void errno_set(int err) => _errno_c3 = err;
-fn int errno() => _errno_c3;
-
-$endswitch
+// Default
+const ERRNO_DEFAULT @local = !LINUX_LIBC && !DARWIN_LIBC && !WIN32_LIBC;
+tlocal int _errno_c3 @if(ERRNO_DEFAULT) = 0;
+fn void errno_set(int err) @if(ERRNO_DEFAULT) => _errno_c3 = err;
+fn int errno() @if(ERRNO_DEFAULT) => _errno_c3;

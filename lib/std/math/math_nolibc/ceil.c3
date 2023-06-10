@@ -1,6 +1,4 @@
-module std::math::nolibc;
-
-$if !env::COMPILER_LIBC_AVAILABLE:
+module std::math::nolibc @if(env::NO_LIBC);
 
 fn double _ceil(double x) @weak @extern("ceil") @nostrip
 {
@@ -42,4 +40,3 @@ fn float _ceilf(float x) @weak @extern("ceilf") @nostrip
 	return bitcast(u, float);
 }
 
-$endif

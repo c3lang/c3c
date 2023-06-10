@@ -411,10 +411,10 @@ macro TempAllocator* temp()
 macro Allocator* current_allocator() => thread_allocator;
 macro Allocator* heap() => thread_allocator;
 
-$if !env::COMPILER_LIBC_AVAILABLE && env::ARCH_TYPE == ArchType.WASM32 || env::ARCH_TYPE == ArchType.WASM64:
+
+module std::core::mem @if(WASM_NOLIBC);
 
 SimpleHeapAllocator wasm_allocator @private;
-
 extern int __heap_base;
 
 static initialize @priority(1)
@@ -426,6 +426,3 @@ static initialize @priority(1)
 	wasm_allocator.init(fn (x) => allocator::wasm_memory.allocate_block(x));
 	thread_allocator = &wasm_allocator;
 }
-$endif
-
-

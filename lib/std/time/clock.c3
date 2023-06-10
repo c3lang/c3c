@@ -2,11 +2,11 @@ module std::time::clock;
 
 fn Clock now()
 {
-$if $defined(native_clock):
-	return os::native_clock();
-$else
-	return 0;
-$endif
+	$if $defined(native_clock):
+		return os::native_clock();
+	$else
+		return 0;
+	$endif
 }
 
 fn NanoDuration Clock.mark(Clock* this)

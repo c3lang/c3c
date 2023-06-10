@@ -88,7 +88,8 @@ fn bool __run_default_test_runner()
 	return test_runner_create().run();
 }
 
-$if !env::COMPILER_LIBC_AVAILABLE && env::ARCH_TYPE == ArchType.WASM32 || env::ARCH_TYPE == ArchType.WASM64:
+
+module std::core::runtime @if(WASM_NOLIBC);
 
 extern fn void __wasm_call_ctors();
 fn void wasm_initialize() @extern("_initialize") @wasm
@@ -96,4 +97,3 @@ fn void wasm_initialize() @extern("_initialize") @wasm
 	// The linker synthesizes this to call constructors.
 	__wasm_call_ctors();
 }
-$endif

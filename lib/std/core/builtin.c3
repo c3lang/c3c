@@ -181,11 +181,11 @@ macro enum_by_name($Type, String enum_name) @builtin
  **/
 macro bool @likely(bool #value, $probability = 1.0) @builtin
 {
-$if $probability == 1.0:
-	return $$expect(#value, true);
-$else
-	return $$expect_with_probability(#value, true, $probability);
-$endif
+	$if $probability == 1.0:
+		return $$expect(#value, true);
+	$else
+		return $$expect_with_probability(#value, true, $probability);
+	$endif
 }
 
 /**
@@ -197,11 +197,11 @@ $endif
  **/
 macro bool @unlikely(bool #value, $probability = 1.0) @builtin
 {
-$if $probability == 1.0:
-	return $$expect(#value, false);
-$else
-	return $$expect_with_probability(#value, false, $probability);
-$endif
+	$if $probability == 1.0:
+		return $$expect(#value, false);
+	$else
+		return $$expect_with_probability(#value, false, $probability);
+	$endif
 }
 
 /**
@@ -212,9 +212,9 @@ $endif
 macro @expect(#value, expected, $probability = 1.0) @builtin
 {
     $if $probability == 1.0:
-	return $$expect(#value, ($typeof(#value))expected);
+		return $$expect(#value, ($typeof(#value))expected);
     $else
-	return $$expect_with_probability(#value, expected, $probability);
+		return $$expect_with_probability(#value, expected, $probability);
     $endif
 }
 

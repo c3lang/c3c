@@ -1,6 +1,4 @@
-module std::time::os;
-
-$if env::os_is_darwin():
+module std::time::os @if(DARWIN_LIBC);
 
 struct Darwin_mach_timebase_info
 {
@@ -23,6 +21,3 @@ fn Clock native_clock()
 	}
 	return (Clock)(mach_absolute_time() * timebase.numer / timebase.denom);
 }
-
-
-$endif

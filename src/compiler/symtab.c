@@ -301,6 +301,7 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_EXPORT] = KW_DEF("@export");
 	attribute_list[ATTRIBUTE_EXTERN] = KW_DEF("@extern");
 	attribute_list[ATTRIBUTE_EXTNAME] = KW_DEF("@extname");
+	attribute_list[ATTRIBUTE_IF] = KW_DEF("@if");
 	attribute_list[ATTRIBUTE_INLINE] = KW_DEF("@inline");
 	attribute_list[ATTRIBUTE_INTERFACE] = KW_DEF("@interface");
 	attribute_list[ATTRIBUTE_LITTLEENDIAN] = KW_DEF("@littleendian");

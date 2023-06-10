@@ -35,7 +35,7 @@ def TerminateFunction = fn void();
 def CompareFunction = fn int(void*, void*);
 def JmpBuf = uptr[$$JMP_BUF_SIZE];
 
-$if env::COMPILER_LIBC_AVAILABLE:
+module libc @if(env::COMPILER_LIBC_AVAILABLE);
 
 extern fn double atof(char* str);
 extern fn int atoi(char* str);
@@ -59,13 +59,12 @@ extern fn int rand();
 extern fn void srand(uint seed);
 
 extern fn void longjmp(JmpBuf* buffer, CInt value);
-$if env::os_is_win32():
+
 // TODO win32 aarch64
-extern fn CInt _setjmp(void* frameptr, JmpBuf* buffer);
-macro CInt setjmp(JmpBuf* buffer) => _setjmp($$frameaddress(), buffer);
-$else
-extern fn CInt setjmp(JmpBuf* buffer);
-$endif
+extern fn CInt _setjmp(void* frameptr, JmpBuf* buffer) @if(env::WIN32);
+macro CInt setjmp(JmpBuf* buffer) @if(env::WIN32) => _setjmp($$frameaddress(), buffer);
+
+extern fn CInt setjmp(JmpBuf* buffer) @if(!env::WIN32);
 // MB functions omitted
 
 // string
@@ -97,7 +96,110 @@ extern fn void* calloc(usz count, usz size);
 extern fn void* free(void*);
 extern fn void* realloc(void* ptr, usz size);
 
-$else
+extern fn int fclose(CFile stream);
+extern fn void clearerr(CFile stream);
+extern fn int feof(CFile stream);
+extern fn int ferror(CFile stream);
+extern fn int fflush(CFile stream);
+extern fn int fgetpos(CFile stream, Fpos* pos);
+extern fn CFile fopen(ZString filename, ZString mode);
+extern fn usz fread(void* ptr, usz size, usz nmemb, CFile stream);
+extern fn CFile freopen(ZString filename, ZString mode, CFile stream);
+extern fn CFile fmemopen(void* ptr, usz size, ZString mode);
+extern fn int fseek(CFile stream, SeekIndex offset, int whence);
+extern fn int fsetpos(CFile stream, Fpos* pos);
+extern fn SeekIndex ftell(CFile stream);
+extern fn usz fwrite(void* ptr, usz size, usz nmemb, CFile stream);
+extern fn int remove(char* filename);
+extern fn int rename(char* old_name, char* new_name);
+extern fn void rewind(CFile stream);
+extern fn void setbuf(CFile stream, char* buffer);
+extern fn void setvbuf(CFile stream, char* buffer, int mode, usz size);
+extern fn CFile tmpnam(char* str);
+extern fn int fprintf(CFile stream, char* format, ...);
+extern fn int printf(char* format, ...);
+extern fn int sprintf(char* str, char* format, ...);
+extern fn int snprintf(char* str, usz size, char* format, ...);
+extern fn int fscanf(CFile stream, char* format, ...);
+extern fn int scanf(char* format, ...);
+extern fn int sscanf(char* str, char* format, ...);
+extern fn int fgetc(CFile stream);
+extern fn char* fgets(char* str, int n, CFile stream);
+extern fn int fputc(int c, CFile stream);
+extern fn int getc(CFile stream);
+extern fn int getchar();
+extern fn int putc(int c, CFile stream);
+extern fn int putchar(int c);
+extern fn int puts(char* str);
+extern fn int ungetc(int c, CFile stream);
+extern fn void perror(char* str);
+extern fn isz getline(char** linep, usz* linecapp, CFile stream);
+
+extern fn int timespec_get(TimeSpec* ts, int base);
+extern fn int nanosleep(TimeSpec* req, TimeSpec* remaining);
+
+extern fn ZString asctime(Tm *timeptr);
+extern fn Clock_t clock();
+extern fn ZString ctime(Time_t *timer);
+extern fn double difftime(Time_t time1, Time_t time2);
+extern fn Tm* gmtime(Time_t *timer);
+extern fn Tm* localtime(Time_t *timer);
+extern fn usz strftime(char* str, usz maxsize, char* format, Tm *timeptr);
+extern fn Time_t time(Time_t *timer);
+
+// signal
+def SignalFunction = fn void(int);
+extern fn SignalFunction signal(int sig, SignalFunction function);
+// Incomplete
+
+module libc @if(LINUX_LIBC);
+extern CFile __stdin @extern("stdin");
+extern CFile __stdout @extern("stdout");
+extern CFile __stderr @extern("stderr");
+extern fn usz malloc_usable_size(void* ptr);
+macro usz malloc_size(void* ptr) => malloc_usable_size(ptr);
+extern fn void* aligned_alloc(usz align, usz size);
+macro CFile stdin() => __stdin;
+macro CFile stdout() => __stdout;
+macro CFile stderr() => __stderr;
+
+module libc @if(DARWIN_LIBC);
+extern CFile __stdinp;
+extern CFile __stdoutp;
+extern CFile __stderrp;
+extern fn usz malloc_size(void* ptr);
+extern fn void* aligned_alloc(usz align, usz size);
+macro CFile stdin() => __stdinp;
+macro CFile stdout() => __stdoutp;
+macro CFile stderr() => __stderrp;
+
+module libc @if(WIN32_LIBC);
+extern fn CFile __acrt_iob_func(CInt c);
+extern fn usz _msize(void* ptr);
+macro usz malloc_size(void* ptr) => _msize(ptr);
+macro CFile stdin() => __acrt_iob_func(0);
+macro CFile stdout() => __acrt_iob_func(1);
+macro CFile stderr() => __acrt_iob_func(2);
+extern fn Tm* _gmtime64_s(Tm* buf, Time_t *timer);
+extern fn Tm* _localtime64_s(Tm* buf, Time_t *timer);
+extern fn void _get_timezone(CLong *timezone);
+macro Tm* gmtime_r(Time_t *timer, Tm* buf) => _gmtime64_s(buf, timer);
+macro Tm* localtime_r(Time_t *timer, Tm* buf) => _localtime64_s(buf, timer);
+extern fn Time_t mktime(Tm *timeptr) @extern("_mktime64");
+extern fn Time_t timegm(Tm *timeptr) @extern("_mkgmtime64");
+
+module libc @if(env::COMPILER_LIBC_AVAILABLE && !env::WIN32 && !env::LINUX && !env::DARWIN);
+macro CFile stdin() { return (CFile*)(uptr)0; }
+macro CFile stdout() { return (CFile*)(uptr)1; }
+macro CFile stderr() { return (CFile*)(uptr)2; }
+
+module libc @if(env::COMPILER_LIBC_AVAILABLE && !env::WIN32);
+extern fn Tm* gmtime_r(Time_t *timer, Tm* buf);
+extern fn Tm* localtime_r(Time_t *timer, Tm* buf);
+extern fn Time_t mktime(Tm *timeptr);
+extern fn Time_t timegm(Tm *timeptr);
+
+module libc @if(!env::COMPILER_LIBC_AVAILABLE);
 
 fn void longjmp(JmpBuf* buffer, CInt value) @weak @extern("longjmp") @nostrip
 {
@@ -143,110 +245,6 @@ fn void* memset(void* dest, CInt value, usz n) @weak @extern("memset") @nostrip
 	for (usz i = 0; i < n; i++) ((char*)dest)[i] = (char)value;
 	return dest;
 }
-
-$endif
-
-// stdio
-
-def Fpos = long;
-def CFile = void*;
-
-$switch
-$case env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == LINUX:
-    extern CFile __stdin @extern("stdin");
-    extern CFile __stdout @extern("stdout");
-    extern CFile __stderr @extern("stderr");
-    extern fn usz malloc_usable_size(void* ptr);
-    macro usz malloc_size(void* ptr) { return malloc_usable_size(ptr); }
-	extern fn void* aligned_alloc(usz align, usz size);
-    macro CFile stdin() { return __stdin; }
-    macro CFile stdout() { return __stdout; }
-    macro CFile stderr() { return __stderr; }
-$case env::COMPILER_LIBC_AVAILABLE && env::os_is_darwin():
-    extern CFile __stdinp;
-    extern CFile __stdoutp;
-    extern CFile __stderrp;
-    extern fn usz malloc_size(void* ptr);
-    extern fn void* aligned_alloc(usz align, usz size);
-	macro CFile stdin() { return __stdinp; }
-    macro CFile stdout() { return __stdoutp; }
-    macro CFile stderr() { return __stderrp; }
-$case env::COMPILER_LIBC_AVAILABLE && env::os_is_win32():
-    extern fn CFile __acrt_iob_func(CInt c);
-    extern fn usz _msize(void* ptr);
-    macro usz malloc_size(void* ptr) { return _msize(ptr); }
-    macro CFile stdin() { return __acrt_iob_func(0); }
-    macro CFile stdout() { return __acrt_iob_func(1); }
-    macro CFile stderr() { return __acrt_iob_func(2); }
-$default:
-    macro CFile stdin() { return (CFile*)(uptr)0; }
-    macro CFile stdout() { return (CFile*)(uptr)1; }
-    macro CFile stderr() { return (CFile*)(uptr)2; }
-$endswitch
-
-const HAS_MALLOC_SIZE =
-	env::OS_TYPE == LINUX
-	|| env::os_is_win32()
-	|| env::os_is_darwin();
-
-// The following needs to be set per arch+os
-// For now I have simply pulled the defaults from MacOS
-const int SEEK_SET = 0;
-const int SEEK_CUR = 1;
-const int SEEK_END = 2;
-const int _IOFBF = 0; // Fully buffered
-const int _IOLBF = 1; // Line buffered
-const int _IONBF = 2; // Unbuffered
-const int BUFSIZ = 1024;
-const int EOF = -1;
-const int FOPEN_MAX = 20;
-const int FILENAME_MAX = 1024;
-
-def Errno = distinct CInt;
-def SeekIndex = CLong;
-
-$if env::COMPILER_LIBC_AVAILABLE:
-
-extern fn int fclose(CFile stream);
-extern fn void clearerr(CFile stream);
-extern fn int feof(CFile stream);
-extern fn int ferror(CFile stream);
-extern fn int fflush(CFile stream);
-extern fn int fgetpos(CFile stream, Fpos* pos);
-extern fn CFile fopen(ZString filename, ZString mode);
-extern fn usz fread(void* ptr, usz size, usz nmemb, CFile stream);
-extern fn CFile freopen(ZString filename, ZString mode, CFile stream);
-extern fn CFile fmemopen(void* ptr, usz size, ZString mode);
-extern fn int fseek(CFile stream, SeekIndex offset, int whence);
-extern fn int fsetpos(CFile stream, Fpos* pos);
-extern fn SeekIndex ftell(CFile stream);
-extern fn usz fwrite(void* ptr, usz size, usz nmemb, CFile stream);
-extern fn int remove(char* filename);
-extern fn int rename(char* old_name, char* new_name);
-extern fn void rewind(CFile stream);
-extern fn void setbuf(CFile stream, char* buffer);
-extern fn void setvbuf(CFile stream, char* buffer, int mode, usz size);
-extern fn CFile tmpnam(char* str);
-extern fn int fprintf(CFile stream, char* format, ...);
-extern fn int printf(char* format, ...);
-extern fn int sprintf(char* str, char* format, ...);
-extern fn int snprintf(char* str, usz size, char* format, ...);
-extern fn int fscanf(CFile stream, char* format, ...);
-extern fn int scanf(char* format, ...);
-extern fn int sscanf(char* str, char* format, ...);
-extern fn int fgetc(CFile stream);
-extern fn char* fgets(char* str, int n, CFile stream);
-extern fn int fputc(int c, CFile stream);
-extern fn int getc(CFile stream);
-extern fn int getchar();
-extern fn int putc(int c, CFile stream);
-extern fn int putchar(int c);
-extern fn int puts(char* str);
-extern fn int ungetc(int c, CFile stream);
-extern fn void perror(char* str);
-extern fn isz getline(char** linep, usz* linecapp, CFile stream);
-
-$else
 
 fn int fseek(CFile stream, SeekIndex offset, int whence) @weak @extern("fseek") @nostrip
 {
@@ -315,12 +313,40 @@ fn int puts(ZString str) @weak @extern("puts") @nostrip
 	unreachable("'puts' not available.");
 }
 
-$endif
+module libc;
+
+// stdio
+
+def Fpos = long;
+def CFile = void*;
+
+
+const HAS_MALLOC_SIZE =
+	env::OS_TYPE == LINUX
+	|| env::os_is_win32()
+	|| env::os_is_darwin();
+
+// The following needs to be set per arch+os
+// For now I have simply pulled the defaults from MacOS
+const int SEEK_SET = 0;
+const int SEEK_CUR = 1;
+const int SEEK_END = 2;
+const int _IOFBF = 0; // Fully buffered
+const int _IOLBF = 1; // Line buffered
+const int _IONBF = 2; // Unbuffered
+const int BUFSIZ = 1024;
+const int EOF = -1;
+const int FOPEN_MAX = 20;
+const int FILENAME_MAX = 1024;
+
+def Errno = distinct CInt;
+def SeekIndex = CLong;
+
 // vsprintf vprintf not supported
 
 // time.h
 
-struct TmCommon @private
+struct Tm
 {
 	int	tm_sec;		/* seconds after the minute [0-60] */
 	int	tm_min;		/* minutes after the hour [0-59] */
@@ -331,111 +357,32 @@ struct TmCommon @private
 	int	tm_wday;	/* days since Sunday [0-6] */
 	int	tm_yday;	/* days since January 1 [0-365] */
 	int	tm_isdst;	/* Daylight Savings Time flag */
+	TimeOffset tm_gmtoff @if(!env::WIN32);	/* offset from UTC in seconds */
+    char *tm_zone @if(!env::WIN32);	/* timezone abbreviation */
+    int tm_nsec @if(env::WASI);
+
 }
-
-
-$switch (env::OS_TYPE)
-
-$case WIN32:
-
-def Tm = TmCommon;
-
-$case WASI:
-
-def TimeOffset = int;
-struct Tm
-{
-	inline TmCommon common;
-	TimeOffset tm_gmtoff;	/* offset from UTC in seconds */
-    char *tm_zone;	/* timezone abbreviation */
-    int tm_nsec;
-}
-
-$case MACOS:
-$case IOS:
-$case TVOS:
-$case WATCHOS:
-$case OPENBSD:
-$case FREEBSD:
-$default:
-
-def TimeOffset = CLong;
-struct Tm
-{
-	inline TmCommon common;
-	TimeOffset tm_gmtoff;	/* offset from UTC in seconds */
-    char *tm_zone;	/* timezone abbreviation */
-}
-
-$endswitch
-
-
-$if env::os_is_win32():
 
 struct TimeSpec
 {
 	Time_t s;
-	ulong ns;
+	ulong ns @if(env::WIN32);
+	CLong ns @if(!env::WIN32);
 }
 
-def Time_t = long;
-def Clock_t = ulong;
+def Time_t = long @if(env::WIN32);
+def Time_t = CLong @if(!env::WIN32);
+def Clock_t = ulong @if(env::WIN32);
+def Clock_t = CULong @if(!env::WIN32);
 
-$else
-
-struct TimeSpec
-{
-	Time_t s;
-	CLong ns;
-}
-
-def Time_t = CLong;
-def Clock_t = CULong;
-
-$endif
+def TimeOffset = int @if(env::WASI) ;
+def TimeOffset = CLong @if(!env::WASI) ;
 
 const int TIME_UTC = 1;
 
-extern fn int timespec_get(TimeSpec* ts, int base);
-extern fn int nanosleep(TimeSpec* req, TimeSpec* remaining);
 
 // Likely wrong, must be per platform.
 const CLOCKS_PER_SEC = 1000000;
-
-
-extern fn ZString asctime(Tm *timeptr);
-extern fn Clock_t clock();
-extern fn ZString ctime(Time_t *timer);
-extern fn double difftime(Time_t time1, Time_t time2);
-extern fn Tm* gmtime(Time_t *timer);
-
-extern fn Tm* localtime(Time_t *timer);
-
-$if env::os_is_win32():
-extern fn Tm* _gmtime64_s(Tm* buf, Time_t *timer);
-extern fn Tm* _localtime64_s(Tm* buf, Time_t *timer);
-extern fn void _get_timezone(CLong *timezone);
-
-macro Tm* gmtime_r(Time_t *timer, Tm* buf) => _gmtime64_s(buf, timer);
-macro Tm* localtime_r(Time_t *timer, Tm* buf) => _localtime64_s(buf, timer);
-
-extern fn Time_t mktime(Tm *timeptr) @extern("_mktime64");
-extern fn Time_t timegm(Tm *timeptr) @extern("_mkgmtime64");
-$else
-extern fn Tm* gmtime_r(Time_t *timer, Tm* buf);
-extern fn Tm* localtime_r(Time_t *timer, Tm* buf);
-extern fn Time_t mktime(Tm *timeptr);
-extern fn Time_t timegm(Tm *timeptr);
-$endif
-
-extern fn usz strftime(char* str, usz maxsize, char* format, Tm *timeptr);
-extern fn Time_t time(Time_t *timer);
-
-// signal
-def SignalFunction = fn void(int);
-extern fn SignalFunction signal(int sig, SignalFunction function);
-// Incomplete
-
 
 module libc::errno;
 
@@ -451,11 +398,9 @@ const Errno ENOEXEC = 8;    // Exec format error
 const Errno EBADF = 9;      // Bad file number
 const Errno ECHILD = 10;    // No child processes
 
-$if env::os_is_darwin():
-const Errno EAGAIN = 35;    // Try again Macos
-$else
-const Errno EAGAIN = 11;    // Try again
-$endif
+
+const Errno EAGAIN @if(env::DARWIN) = 35;    // Try again Macos
+const Errno EAGAIN @if(!env::DARWIN) = 11;    // Try again
 
 const Errno ENOMEM = 12;    // Out of memory
 const Errno EACCES = 13;    // Permission denied
@@ -481,9 +426,7 @@ const Errno EPIPE = 32;     // Broken pipe
 const Errno EDOM = 33;      // Math argument out of domain of func
 const Errno ERANGE = 34;    // Math result not representable
 
-$switch (env::OS_TYPE)
-
-$case MACOS:
+module libc::errno @if(env::DARWIN);
 const Errno EDEADLK = 11;       // Resource deadlock would occur MacOS
 const Errno ENAMETOOLONG = 63;  // File name too long MacOS
 const Errno ELOOP = 62;         // Too many symbolic links encountered
@@ -494,8 +437,13 @@ const Errno ENETUNREACH = 51;   // Network is unreachable MacOS
 const Errno ENETRESET = 52;     // Network dropped connection because of reset MacOS
 const Errno EOPNOTSUPP = 45;    // Operation not supported on transport endpoint
 const Errno ENOTEMPTY = 66;     // Directory not empty
+const Errno ETIMEDOUT = 60;     // Connection timed out
+const Errno EINPROGRESS = 36;   // Operation now in progress MacOS
+const Errno EALREADY = 37;      // Operation already in progress MacOS
+const Errno EDQUOT = 69;        // Quota exceeded, MacOS
+const Errno EWOULDBLOCK = 35;   // Operation would block
 
-$case WIN32:
+module libc::errno @if(env::WIN32);
 const Errno EDEADLK = 36;       // Resource deadlock would occur Win32
 const Errno ENAMETOOLONG = 38;  // File name too long Win32
 const Errno ELOOP = 114;        // Too many symbolic links encountered
@@ -506,8 +454,13 @@ const Errno ENETUNREACH = 118;  // Network is unreachable
 const Errno ENETRESET = 117;    // Network dropped connection because of reset
 const Errno EOPNOTSUPP = 130;   // Operation not supported on transport endpoint
 const Errno ENOTEMPTY = 41;     // Directory not empty
+const Errno ETIMEDOUT = 138;    // Connection timed out
+const Errno EALREADY = 103;     // Operation already in progress
+const Errno EINPROGRESS = 112;  // Operation now in progress Win32
+const Errno EDQUOT = -122;      // Quota exceeded, not in Win32
+const Errno EWOULDBLOCK = 140;  // Operation would block
 
-$default:
+module libc::errno @if(!env::WIN32 && !env::DARWIN);
 const Errno EDEADLK = 35;       // Resource deadlock would occur Linux (others?)
 const Errno ENAMETOOLONG = 36;  // File name too long Linux (others?)
 const Errno ELOOP = 40;         // Too many symbolic links encountered
@@ -518,9 +471,11 @@ const Errno ENETUNREACH = 101;  // Network is unreachable
 const Errno ENETRESET = 102;    // Network dropped connection because of reset
 const Errno EOPNOTSUPP = 95;    // Operation not supported on transport endpoint
 const Errno ENOTEMPTY = 39;     // Directory not empty
-
-$endswitch
-
+const Errno ETIMEDOUT = 110;    // Connection timed out
+const Errno EALREADY = 114;     // Operation already in progress
+const Errno EINPROGRESS = 115;  // Operation now in progress
+const Errno EDQUOT = 122;       // Quota exceeded
+const Errno EWOULDBLOCK = 41;   // Operation would block
 
 
 /*
@@ -594,29 +549,6 @@ const Errno EHOSTDOWN = 112; /* Host is down */
 const Errno EHOSTUNREACH = 113; /* No route to host */
 */
 
-$switch (env::OS_TYPE)
-
-$case MACOS:
-const Errno ETIMEDOUT = 60;     // Connection timed out
-const Errno EINPROGRESS = 36;   // Operation now in progress MacOS
-const Errno EALREADY = 37;      // Operation already in progress MacOS
-const Errno EDQUOT = 69;        // Quota exceeded, MacOS
-const Errno EWOULDBLOCK = 35;   // Operation would block
-
-$case WIN32:
-const Errno ETIMEDOUT = 138;    // Connection timed out
-const Errno EALREADY = 103;     // Operation already in progress
-const Errno EINPROGRESS = 112;  // Operation now in progress Win32
-const Errno EDQUOT = -122;      // Quota exceeded, not in Win32
-const Errno EWOULDBLOCK = 140;  // Operation would block
-
-$default:
-const Errno ETIMEDOUT = 110;    // Connection timed out
-const Errno EALREADY = 114;     // Operation already in progress
-const Errno EINPROGRESS = 115;  // Operation now in progress
-const Errno EDQUOT = 122;       // Quota exceeded
-const Errno EWOULDBLOCK = 41;   // Operation would block
-$endswitch
 
 /*
 const Errno ESTALE = 116; /* Stale NFS file handle */

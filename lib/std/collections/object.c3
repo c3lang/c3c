@@ -209,25 +209,25 @@ macro Object* object_from_value(value) @private
 {
 	var $Type = $typeof(value);
 
-$switch
-	$case types::is_int($Type):
-		return new_int(value);
-	$case types::is_float($Type):
-		return new_float(value);
-	$case $Type.typeid == String.typeid:
-		return new_string(value);
-	$case $Type.typeid == bool.typeid:
-		return new_bool(value);
-	$case $Type.typeid == Object*.typeid:
-		return value;
-	$case $Type.typeid == void*.typeid:
-		assert(value == null);
-		return &NULL_OBJECT;
-	$case $checks(String s = value):
-		return new_string(value);
-	$default:
-		$error "Unsupported object type.";
-$endswitch
+	$switch
+		$case types::is_int($Type):
+			return new_int(value);
+		$case types::is_float($Type):
+			return new_float(value);
+		$case $Type.typeid == String.typeid:
+			return new_string(value);
+		$case $Type.typeid == bool.typeid:
+			return new_bool(value);
+		$case $Type.typeid == Object*.typeid:
+			return value;
+		$case $Type.typeid == void*.typeid:
+			assert(value == null);
+			return &NULL_OBJECT;
+		$case $checks(String s = value):
+			return new_string(value);
+		$default:
+			$error "Unsupported object type.";
+	$endswitch
 
 }
 
@@ -468,7 +468,7 @@ fn Object* Object.get_or_create_obj(Object* o, String key)
 	return container;
 }
 
-def ObjectInternalMap @private = HashMap<String, Object*>;
-def ObjectInternalList @private = List<Object*>;
-def ObjectInternalMapEntry @private = Entry<String, Object*>;
+def ObjectInternalMap = HashMap<String, Object*> @private;
+def ObjectInternalList = List<Object*> @private;
+def ObjectInternalMapEntry = Entry<String, Object*> @private;
 

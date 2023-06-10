@@ -15,12 +15,10 @@ macro tester()
     $endswitch
 
 }
-$switch (bool.typeid)
-$case int:
-    int oefke = 23;
-$default:
-    int oeoekgokege = 343432;
-$endswitch
+
+const BOOL_TYPEID = bool.typeid;
+int oefke @if(BOOL_TYPEID == int.typeid) = 23;
+int oeoekgokege @if(BOOL_TYPEID != int.typeid) = 343432;
 
 fn int main()
 {
@@ -38,7 +36,7 @@ target triple = "x86_64-apple-darwin"
 
 @test.oeoekgokege = local_unnamed_addr global i32 343432, align 4
 @.str = private unnamed_addr constant [7 x i8] c"Hello\0A\00", align 1
-@.str.1 = private unnamed_addr constant [7 x i8] c"Hello\0A\00", align 1
+@.str.2 = private unnamed_addr constant [7 x i8] c"Hello\0A\00", align 1
 
 define i32 @main() #0 {
 entry:
@@ -47,7 +45,7 @@ entry:
   %i = alloca i32, align 4
   call void (ptr, ...) @printf(ptr @.str)
   store i32 0, ptr %z, align 4
-  call void (ptr, ...) @printf(ptr @.str.1)
+  call void (ptr, ...) @printf(ptr @.str.2)
   store i32 0, ptr %z1, align 4
   store i32 1, ptr %i, align 4
   ret i32 1

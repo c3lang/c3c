@@ -1,7 +1,5 @@
-module std::io::file::os;
+module std::io::file::os @if(DARWIN_LIBC);
 import libc;
-
-$if env::os_is_darwin():
 
 struct DarwinTimespec @private
 {
@@ -98,4 +96,3 @@ fn void! read_stat(Darwin64Stat* stat, String path) @local
 		}
 	};
 }
-$endif

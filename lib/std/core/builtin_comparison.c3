@@ -8,14 +8,14 @@ module std::core::builtin;
  **/
 macro less(a, b) @builtin
 {
-$switch
+	$switch
 	$case $defined(a.less):
 		return a.less(b);
 	$case $defined(a.compare_to):
 		return a.compare_to(b) < 0;
 	$default:
 		return a < b;
-$endswitch
+	$endswitch
 }
 
 /**
@@ -23,14 +23,14 @@ $endswitch
  **/
 macro less_eq(a, b) @builtin
 {
-$switch
+	$switch
 	$case $defined(a.less):
 		return !b.less(a);
 	$case $defined(a.compare_to):
 		return a.compare_to(b) <= 0;
 	$default:
 		return a <= b;
-$endswitch
+	$endswitch
 }
 
 /**
@@ -38,14 +38,14 @@ $endswitch
  **/
 macro greater(a, b) @builtin
 {
-$switch
+	$switch
 	$case $defined(a.less):
 		return b.less(a);
 	$case $defined(a.compare_to):
 		return a.compare_to(b) > 0;
 	$default:
 		return a > b;
-$endswitch
+	$endswitch
 }
 
 /**
@@ -53,14 +53,14 @@ $endswitch
  **/
 macro greater_eq(a, b) @builtin
 {
-$switch
+	$switch
 	$case $defined(a.less):
 		return !a.less(b);
 	$case $defined(a.compare_to):
 		return a.compare_to(b) >= 0;
 	$default:
 		return a >= b;
-$endswitch
+	$endswitch
 }
 
 /**
@@ -68,7 +68,7 @@ $endswitch
  **/
 macro bool equals(a, b) @builtin
 {
-$switch
+	$switch
 	$case $defined(a.equals):
 		return a.equals(b);
 	$case $defined(a.compare_to):
@@ -77,7 +77,7 @@ $switch
 		return !a.less(b) && !b.less(a);
 	$default:
 		return a == b;
-$endswitch
+	$endswitch
 }
 
 macro min(x, ...) @builtin

@@ -72,7 +72,14 @@ static inline void parse_translation_unit(ParseContext *c)
 		if (!decl) continue;
 		if (decl_ok(decl))
 		{
-			add_decl_to_list(&c->unit->global_decls, decl);
+			if (decl->is_cond)
+			{
+				add_decl_to_list(&c->unit->global_cond_decls, decl);
+			}
+			else
+			{
+				add_decl_to_list(&c->unit->global_decls, decl);
+			}
 		}
 		else
 		{

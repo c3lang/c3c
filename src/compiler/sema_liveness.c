@@ -514,6 +514,8 @@ RETRY:
 	decl->is_live = true;
 	switch (decl->decl_kind)
 	{
+		case DECL_ERASED:
+			return;
 		case DECL_TYPEDEF:
 			if (!decl->typedef_decl.is_func)
 			{

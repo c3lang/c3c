@@ -1,6 +1,4 @@
-module std::os::win32;
-
-$if env::os_is_win32():
+module std::os::win32 @if(WIN32_LIBC);
 
 enum Win32_GET_FILEEX_INFO_LEVELS
 {
@@ -63,4 +61,3 @@ extern bool _win32_CreateSymbolicLinkW(Char16* symlink_file, Char16* target_file
 extern bool _win32_CopyFileW(Char16* from_file, Char16* to_file, bool no_overwrite) @extern("CopyFileW");
 extern ulong _win32_GetFullPathNameW(Char16* file_name, ulong buffer_len, Char16* buffer, Char16** file_part) @extern("GetFullPathNameW");
 */
-$endif

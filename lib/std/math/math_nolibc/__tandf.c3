@@ -1,6 +1,4 @@
-module std::math::nolibc;
-
-$if !env::COMPILER_LIBC_AVAILABLE:
+module std::math::nolibc @if(env::NO_LIBC);
 
 /* origin: FreeBSD /usr/src/lib/msun/src/k_tanf.c */
 /*
@@ -52,5 +50,3 @@ fn float __tandf(double x, int odd) @extern("__tandf") @weak @nostrip
 	r = (x + s * u) + (s * w) * (t + w * r);
 	return (float)(odd ? -1.0 / r : r);
 }
-
-$endif

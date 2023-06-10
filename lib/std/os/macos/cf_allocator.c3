@@ -1,6 +1,4 @@
-module std::os::macos::cf;
-
-$if env::os_is_darwin():
+module std::os::macos::cf @if(DARWIN_LIBC);
 
 def CFAllocatorRef = distinct void*;
 def CFAllocatorContextRef = distinct void*;
@@ -18,4 +16,3 @@ extern fn CFAllocatorRef _macos_CFAllocatorGetDefault() @extern("CFAllocatorGetD
 extern fn void _macos_CFAllocatorSetDefault(CFAllocatorRef allocator) @extern("CFAllocatorSetDefault");
 extern fn void* _macos_CFAllocatorAllocate(CFAllocatorRef allocator, CFIndex size, CFOptionFlags hint) @extern("CFAllocatorAllocate");
 extern fn CFIndex _macos_CFAllocatorGetPreferredSizeForSize(CFAllocatorRef allocator, CFIndex size, CFOptionFlags hint) @extern("CFAllocatorGetPreferredSizeForSize");
-$endif

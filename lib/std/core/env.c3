@@ -128,6 +128,22 @@ const bool BENCHMARKING = $$BENCHMARKING;
 const bool TESTING = $$TESTING;
 const MemoryEnvironment MEMORY_ENV = (MemoryEnvironment)$$MEMORY_ENVIRONMENT;
 
+const LINUX_LIBC @builtin = env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == LINUX;
+const DARWIN_LIBC @builtin = env::COMPILER_LIBC_AVAILABLE && env::os_is_darwin();
+const WIN32_LIBC @builtin = env::COMPILER_LIBC_AVAILABLE && env::os_is_win32();
+const POSIX_LIBC @builtin = env::COMPILER_LIBC_AVAILABLE && env::os_is_posix();
+const OPENBSD_LIBC @builtin = env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == OPENBSD;
+const FREEBSD_LIBC @builtin = env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == FREEBSD;
+const NETBSD_LIBC @builtin = env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == NETBSD;
+const WASI_LIBC @builtin = env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == WASI;
+const WASM_NOLIBC @builtin = !env::COMPILER_LIBC_AVAILABLE && env::ARCH_TYPE == ArchType.WASM32 || env::ARCH_TYPE == ArchType.WASM64;
+const bool NO_LIBC = !env::COMPILER_LIBC_AVAILABLE;
+const bool WIN32 = OS_TYPE == WIN32;
+const bool DARWIN = OS_TYPE == IOS || OS_TYPE == MACOS || OS_TYPE == TVOS || OS_TYPE == WATCHOS;
+const bool LINUX = OS_TYPE == LINUX;
+const bool POSIX = os_is_posix();
+const bool WASI = OS_TYPE == WASI;
+
 macro bool os_is_win32()
 {
 	return OS_TYPE == WIN32;
@@ -177,15 +193,15 @@ macro bool os_is_posix()
  **/
 fn String! get_var(String name)
 {
-$if COMPILER_LIBC_AVAILABLE && !os_is_win32():
+	$if COMPILER_LIBC_AVAILABLE && !WIN32_LIBC:
 	@pool()
 	{
 		ZString val = libc::getenv(name.zstr_tcopy());
 		return val ? val.as_str() : SearchResult.MISSING?;
 	};
-$else
+	$else
 	return "";
-$endif
+	$endif
 }
 
 
@@ -196,7 +212,7 @@ $endif
  **/
 fn void set_var(String name, String value, bool overwrite = true)
 {
-$if COMPILER_LIBC_AVAILABLE && !os_is_win32():
+	$if COMPILER_LIBC_AVAILABLE && !WIN32_LIBC:
 	@pool()
 	{
 		if (libc::setenv(name.zstr_tcopy(), value.zstr_copy(), (int)overwrite))
@@ -204,7 +220,7 @@ $if COMPILER_LIBC_AVAILABLE && !os_is_win32():
 			unreachable();
 		}
 	};
-$endif
+	$endif
 }
 
 /**
@@ -213,7 +229,7 @@ $endif
  **/
 fn void clear_var(String name)
 {
-$if COMPILER_LIBC_AVAILABLE && !os_is_win32():
+	$if COMPILER_LIBC_AVAILABLE && !WIN32_LIBC:
 	@pool()
 	{
 		if (libc::unsetenv(name.zstr_tcopy()))
@@ -221,6 +237,6 @@ $if COMPILER_LIBC_AVAILABLE && !os_is_win32():
 			unreachable();
 		}
 	};
-$endif
+	$endif
 }
 

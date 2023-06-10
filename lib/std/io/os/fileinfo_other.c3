@@ -1,7 +1,25 @@
 module std::io::file::os;
 
+const USE_DARWIN_INODE64 = env::os_is_darwin() && env::ARCH_TYPE == X86_64;
+
+extern fn NativeDirentry* readdir(void*) @extern("readdir") @if(!USE_DARWIN_INODE64) ;
+extern fn NativeDirentry* readdir(void*) @extern("readdir$INODE64") @if(USE_DARWIN_INODE64);
+
+struct NativeDirentry
+{
+	usz ino;
+	usz seekoff @if(env::os_is_darwin());
+	isz seekoff @if(!env::os_is_darwin());
+	ushort reclen;
+	ushort namelen @if(env::os_is_darwin());
+	char type;
+	char[1024] name @if(env::os_is_darwin());
+	char[*] name @if(!env::os_is_darwin());
+}
+
+module std::io::file::os @if(!env::os_is_win32());
+
 // native_temp_directory, for non Win32
-$if !env::os_is_win32():
 
 fn Path! native_temp_directory(Allocator* using = mem::heap())
 {
@@ -13,7 +31,7 @@ fn Path! native_temp_directory(Allocator* using = mem::heap())
 	return path::new("/tmp", using);
 }
 
-$if env::COMPILER_LIBC_AVAILABLE:
+module std::io::file::os @if(env::COMPILER_LIBC_AVAILABLE && !env::os_is_win32());
 
 extern fn void* opendir(ZString);
 extern fn void closedir(void*);
@@ -80,11 +98,7 @@ fn void! native_rmtree(Path dir)
 	os::native_rmdir(dir)!;
 }
 
-$endif
-
-$endif
-
-$if !env::os_is_darwin() && !env::os_is_win32():
+module std::io::file::os @if(!env::os_is_darwin() && !env::os_is_win32());
 
 fn usz! native_file_size(String path)
 {
@@ -93,89 +107,38 @@ fn usz! native_file_size(String path)
 	return f.seek(0, Seek.END)!;
 }
 
-$if env::os_is_posix() && env::COMPILER_LIBC_AVAILABLE:
-
 fn bool native_file_or_dir_exists(String path)
 {
-	@pool()
-	{
-		return os::access(path.zstr_tcopy(), 0 /* F_OK */) != -1;
-	};
+	$if POSIX_LIBC:
+		@pool()
+		{
+			return os::access(path.zstr_tcopy(), 0 /* F_OK */) != -1;
+		};
+	$else
+		unreachable("Tried to call file_or_dir_exists without support.");
+		return false;
+	$endif
 }
 
 fn bool native_is_file(String path)
 {
-	File! f = file::open(path, "r");
-	defer (void)f.close();
-	return @ok(f);
+	$if POSIX_LIBC:
+		File! f = file::open(path, "r");
+		defer (void)f.close();
+		return @ok(f);
+	$else
+		unreachable("Tried to call is_file without support.");
+		return false;
+	$endif
 }
 
 fn bool native_is_dir(String path)
 {
-	return native_file_or_dir_exists(path) && !native_is_file(path);
+	$if POSIX_LIBC:
+		return native_file_or_dir_exists(path) && !native_is_file(path);
+	$else
+		unreachable("Tried to call is_dir without support.");
+		return false;
+	$endif
 }
 
-$else
-
-fn bool native_file_or_dir_exists(String path)
-{
-	unreachable("Tried to call file_or_dir_exists without support.");
-}
-
-fn bool native_is_dir(String path)
-{
-	unreachable("Tried to call is_dir without support.");
-}
-
-fn bool native_is_file(String path)
-{
-	unreachable("Tried to call is_file without support.");
-}
-
-$endif
-
-$endif
-
-$switch (env::OS_TYPE)
-$case IOS:
-$case MACOS:
-$case TVOS:
-$case WATCHOS:
-
-$if env::ARCH_TYPE == X86_64:
-extern fn NativeDirentry* readdir(void*) @extern("readdir$INODE64");
-$else
-extern fn NativeDirentry* readdir(void*) @extern("readdir");
-$endif
-
-struct NativeDirentry
-{
-	usz ino;
-	usz seekoff;
-	ushort reclen;
-	ushort namelen;
-	char type;
-	char[1024] name;
-}
-$case LINUX:
-extern fn NativeDirentry* readdir(void*);
-struct NativeDirentry
-{
-	usz ino;
-	isz seekoff;
-	ushort reclen;
-	char type;
-	char[*] name;
-}
-$default:
-// Fix this as we go along.
-extern fn NativeDirentry* readdir(void*);
-struct NativeDirentry
-{
-	usz ino;
-	isz seekoff;
-	ushort reclen;
-	char type;
-	char[*] name;
-}
-$endswitch

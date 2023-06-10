@@ -12,9 +12,7 @@ macro foo()
 
 const Z = foo();
 
-$if !$defined(A) && Z == 1:
-    const A = 222;
-$endif
+const A @if(!$defined(A) && Z == 1) = 222;
 
 const B = foo();
 

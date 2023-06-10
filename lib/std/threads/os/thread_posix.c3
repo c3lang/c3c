@@ -1,7 +1,5 @@
-module std::thread::os;
+module std::thread::os @if(thread::THREAD_MODEL == ThreadModel.POSIX);
 import libc;
-
-$if thread::THREAD_MODEL == ThreadModel.POSIX:
 
 const PTHREAD_MUTEX_NORMAL = 0;
 const PTHREAD_MUTEX_ERRORCHECK = 1;
@@ -13,23 +11,6 @@ def NativeThread = Pthread;
 def NativeOnceFlag = PthreadOnce;
 
 def Pthread = distinct void*;
-
-$if env::OS_TYPE == LINUX:
-def PthreadMutex = distinct ulong[5];
-def PthreadAttribute = distinct ulong[7];
-def PthreadMutexAttribute = distinct uint;
-def PthreadCondAttribute = distinct uint;
-def PthreadCond = distinct ulong[6];
-def PthreadOnce = distinct uint;
-$else
-def PthreadMutex = distinct ulong[8];
-def PthreadMutexAttribute = distinct ulong[2];
-def PthreadAttribute = distinct ulong[8];
-def PthreadCond = distinct ulong[6];
-def PthreadCondAttribute = distinct ulong[8];
-def PthreadOnce = distinct ulong[2];
-$endif
-
 def PosixThreadFn = fn void*(void*);
 
 extern fn int pthread_attr_destroy(PthreadAttribute*);
@@ -236,4 +217,18 @@ fn void! native_sleep(double s)
 	if (libc::nanosleep(&to, null)) return ThreadFault.INTERRUPTED?;
 }
 
-$endif
+module std::thread::os @if(thread::THREAD_MODEL == ThreadModel.POSIX && !env::LINUX);
+def PthreadMutex = distinct ulong[8];
+def PthreadMutexAttribute = distinct ulong[2];
+def PthreadAttribute = distinct ulong[8];
+def PthreadCond = distinct ulong[6];
+def PthreadCondAttribute = distinct ulong[8];
+def PthreadOnce = distinct ulong[2];
+
+module std::thread::os @if(thread::THREAD_MODEL == ThreadModel.POSIX && env::LINUX);
+def PthreadMutex = distinct ulong[5];
+def PthreadAttribute = distinct ulong[7];
+def PthreadMutexAttribute = distinct uint;
+def PthreadCondAttribute = distinct uint;
+def PthreadCond = distinct ulong[6];
+def PthreadOnce = distinct uint;

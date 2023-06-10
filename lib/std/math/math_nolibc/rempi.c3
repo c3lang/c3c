@@ -1,7 +1,5 @@
-module std::math::nolibc;
+module std::math::nolibc @if(env::NO_LIBC);
 import std::math;
-
-$if !env::COMPILER_LIBC_AVAILABLE:
 
 /* origin: FreeBSD /usr/src/lib/msun/src/e_rem_pio2f.c */
 /*
@@ -537,4 +535,3 @@ fn int __rem_pio2(double x, double *y)
 
 
 }
-$endif

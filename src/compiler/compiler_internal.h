@@ -679,6 +679,7 @@ typedef struct Decl_
 	bool is_live : 1;
 	bool no_strip : 1;
 	bool is_deprecated : 1;
+	bool is_cond : 1;
 	OperatorOverload operator : 4;
 	union
 	{
@@ -1581,6 +1582,7 @@ struct CompilationUnit_
 	Decl **attributes;
 	Decl **faulttypes;
 	Visibility default_visibility;
+	Attr *if_attr;
 	bool export_by_default;
 	bool is_interface_file;
 	bool test_by_default;
@@ -1594,6 +1596,7 @@ struct CompilationUnit_
 	Decl **methods;
 	Decl **macro_methods;
 	Decl **global_decls;
+	Decl **global_cond_decls;
 	Decl *main_function;
 	HTable local_symbols;
 	int lambda_count;

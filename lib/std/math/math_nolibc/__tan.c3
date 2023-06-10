@@ -1,6 +1,4 @@
-module std::math::nolibc;
-
-$if !env::COMPILER_LIBC_AVAILABLE:
+module std::math::nolibc @if(env::NO_LIBC);
 
 /* origin: FreeBSD /usr/src/lib/msun/src/k_tan.c */
 /*
@@ -79,5 +77,3 @@ fn double __tan(double x, double y, int odd) @extern("__tan") @weak @nostrip
 	double a0 = bitcast(d, double);
 	return a0 + a * (1.0 + a0 * w0 + a0 * v);
 }
-
-$endif

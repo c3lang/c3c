@@ -110,23 +110,87 @@ void sema_analysis_pass_process_imports(Module *module)
 	DEBUG_LOG("Pass finished processing %d import(s) with %d error(s).", import_count, global_context.errors_found);
 }
 
-void sema_analysis_pass_register_globals(Module *module)
+INLINE void register_global_decls(CompilationUnit *unit, Decl **decls)
+{
+	VECEACH(decls, i)
+	{
+		unit_register_global_decl(unit, decls[i]);
+	}
+	vec_resize(decls, 0);
+}
+
+void sema_analysis_pass_register_global_declarations(Module *module)
 {
 	DEBUG_LOG("Pass: Register globals for module '%s'.", module->name->module);
+	VECEACH(module->units, index)
+	{
+		CompilationUnit *unit = module->units[index];
+		if (unit->if_attr) continue;
+		unit->module = module;
+		DEBUG_LOG("Processing %s.", unit->file->name);
+		register_global_decls(unit, unit->global_decls);
+	}
 
+	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);
+}
+
+void sema_analysis_pass_register_conditional_units(Module *module)
+{
+	DEBUG_LOG("Pass: Register conditional units for %s", module->name->module);
+	VECEACH(module->units, index)
+	{
+		CompilationUnit *unit = module->units[index];
+		Attr *if_attr = unit->if_attr;
+		if (!if_attr) continue;
+		if (vec_size(if_attr->exprs) != 1)
+		{
+			SEMA_ERROR(if_attr, "Expected one parameter.");
+			break;
+		}
+		Expr *expr = if_attr->exprs[0];
+		SemaContext context;
+		sema_context_init(&context, unit);
+		bool success = sema_analyse_ct_expr(&context, expr);
+		sema_context_destroy(&context);
+		if (!success) continue;
+		if (!expr_is_const(expr) || expr->type->canonical != type_bool)
+		{
+			SEMA_ERROR(expr, "Expected a constant boolean expression.");
+			break;
+		}
+		if (!expr->const_expr.b)
+		{
+			vec_resize(unit->global_decls, 0);
+			vec_resize(unit->global_cond_decls, 0);
+			continue;
+		}
+		register_global_decls(unit, unit->global_decls);
+	}
+	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);
+}
+
+void sema_analysis_pass_register_conditional_declarations(Module *module)
+{
+	DEBUG_LOG("Pass: Register conditional declarations for module '%s'.", module->name->module);
 	VECEACH(module->units, index)
 	{
 		CompilationUnit *unit = module->units[index];
 		unit->module = module;
 		DEBUG_LOG("Processing %s.", unit->file->name);
-		Decl **decls = unit->global_decls;
+		Decl **decls = unit->global_cond_decls;
 		VECEACH(decls, i)
 		{
-			unit_register_global_decl(unit, decls[i]);
+			Decl *decl = decls[i];
+			SemaContext context;
+			sema_context_init(&context, unit);
+			if (sema_decl_if_cond(&context, decl))
+			{
+				unit_register_global_decl(unit, decl);
+			}
+			sema_context_destroy(&context);
 		}
-		vec_resize(unit->global_decls, 0);
+		vec_resize(decls, 0);
 	}
-
 	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);
 }
 

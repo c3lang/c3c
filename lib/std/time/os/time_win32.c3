@@ -1,7 +1,5 @@
-module std::time::os;
+module std::time::os @if(WIN32_LIBC);
 import std::os::win32;
-
-$if env::os_is_win32() && env::COMPILER_LIBC_AVAILABLE:
 
 extern fn void win32_GetSystemTimeAsFileTime(Win32_FILETIME* time) @extern("GetSystemTimeAsFileTime");
 extern fn Win32_BOOL win32_QueryPerformanceFrequency(Win32_LARGE_INTEGER* lpFrequency) @extern("QueryPerformanceFrequency");
@@ -29,5 +27,3 @@ fn Time native_timestamp()
 	ulong result = (ulong)ft.dwHighDateTime << 32 | ft.dwLowDateTime;
 	return (Time)(result / WINDOWS_TICK_US - WIN_TO_UNIX_EPOCH_US);
 }
-
-$endif

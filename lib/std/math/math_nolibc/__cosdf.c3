@@ -1,6 +1,4 @@
-module std::math::nolibc;
-
-$if !env::COMPILER_LIBC_AVAILABLE:
+module std::math::nolibc @if(env::NO_LIBC);
 
 /* origin: FreeBSD /usr/src/lib/msun/src/k_cosf.c */
 /*
@@ -32,5 +30,3 @@ fn float __cosdf(double x) @extern("__cosdf") @weak @nostrip
 	double r = C2 + z * C3;
 	return (float)(((1.0f + z * C0) + w * C1) + (w * z) * r);
 }
-
-$endif

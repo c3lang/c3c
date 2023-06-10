@@ -1,6 +1,4 @@
-module std::math::nolibc::trig;
-
-$if !env::COMPILER_LIBC_AVAILABLE:
+module std::math::nolibc @if(env::NO_LIBC);
 
 fn double sincos_broken(double x) @extern("sincos") @weak @nostrip
 {
@@ -8,4 +6,3 @@ fn double sincos_broken(double x) @extern("sincos") @weak @nostrip
 }
 
 
-$endif
