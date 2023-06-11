@@ -184,7 +184,7 @@ jobs:
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
-        llvm_version: [16, 17]
+        llvm_version: [15, 16, 17]
 
     steps:
       - uses: actions/checkout@v3
@@ -195,15 +195,23 @@ jobs:
       - name: Install Clang ${{matrix.llvm_version}}
         run: |
           wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+          if [[ "${{matrix.llvm_version}}" < 16 ]]; then
+            sudo apt remove libllvm15
+          fi
           if [[ "${{matrix.llvm_version}}" < 17 ]]; then
             sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-${{matrix.llvm_version}} main"
+            sudo apt-get update
+            sudo apt-get install -y -t llvm-toolchain-focal-${{matrix.llvm_version}} libpolly-${{matrix.llvm_version}}-dev \
+              clang-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}}-dev \
+              lld-${{matrix.llvm_version}} liblld-${{matrix.llvm_version}}-dev libmlir-${{matrix.llvm_version}} \
+              libmlir-${{matrix.llvm_version}}-dev mlir-${{matrix.llvm_version}}-tools 
           else
             sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal main"
+            sudo apt-get install -y -t llvm-toolchain-focal libpolly-${{matrix.llvm_version}}-dev \
+              clang-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}}-dev \
+              lld-${{matrix.llvm_version}} liblld-${{matrix.llvm_version}}-dev libmlir-${{matrix.llvm_version}} \
+              libmlir-${{matrix.llvm_version}}-dev mlir-${{matrix.llvm_version}}-tools 
           fi
-          sudo apt-get update
-          sudo apt-get install -y clang-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}}-dev lld-${{matrix.llvm_version}} liblld-${{matrix.llvm_version}}-dev
-          sudo apt-get install -y libmlir-${{matrix.llvm_version}} libmlir-${{matrix.llvm_version}}-dev mlir-${{matrix.llvm_version}}-tools 
-          sudo apt-get install -y libpolly-${{matrix.llvm_version}}-dev
       - name: CMake
         run: |
           cmake -B build \
