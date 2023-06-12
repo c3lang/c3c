@@ -119,6 +119,82 @@ INLINE void register_global_decls(CompilationUnit *unit, Decl **decls)
 	vec_resize(decls, 0);
 }
 
+Decl **sema_load_include(CompilationUnit *unit, Decl *decl)
+{
+	SemaContext context;
+	sema_context_init(&context, unit);
+	FOREACH_BEGIN(Attr *attr, decl->attributes)
+		if (attr->attr_kind != ATTRIBUTE_IF)
+		{
+			SEMA_ERROR(attr, "Invalid attribute for '$include'.");
+			return NULL;
+		}
+	FOREACH_END();
+	Expr *filename = decl->include.filename;
+	bool success = sema_analyse_ct_expr(&context, filename);
+	sema_context_destroy(&context);
+	if (!success) return NULL;
+	if (!expr_is_const_string(filename))
+	{
+		SEMA_ERROR(decl->include.filename, "A compile time string was expected.");
+		return NULL;
+	}
+	const char *string = filename->const_expr.string.chars;
+	bool loaded;
+	const char *error;
+	char *path;
+	char *name;
+	if (file_namesplit(unit->file->full_path, &name, &path))
+	{
+		string = file_append_path(path, string);
+	}
+	File *file = source_file_load(string, &loaded, &error);
+	if (!file)
+	{
+		SEMA_ERROR(decl, "Failed to load file %s: %s", string, error);
+		return NULL;
+	}
+	if (global_context.errors_found) return NULL;
+	if (global_context.includes_used++ > MAX_INCLUDES)
+	{
+		SEMA_ERROR(decl, "This $include would cause the maximum number of includes (%d) to be exceeded.", MAX_INCLUDES);
+		return NULL;
+	}
+
+	return parse_include_file(file, unit);
+}
+
+INLINE void register_includes(CompilationUnit *unit, Decl **decls)
+{
+	FOREACH_BEGIN(Decl *include, decls)
+		Decl **include_decls = sema_load_include(unit, include);
+		VECEACH(include_decls, i)
+		{
+			Decl *decl = include_decls[i];
+			if (decl->is_cond)
+			{
+				vec_add(unit->global_cond_decls, decl);
+			}
+			else
+			{
+				unit_register_global_decl(unit, decl);
+			}
+		}
+	FOREACH_END();
+}
+
+void sema_process_includes(CompilationUnit *unit)
+{
+	while (1)
+	{
+		Decl **includes = unit->ct_includes;
+		if (!includes) break;
+		DEBUG_LOG("Processing includes in %s.", unit->file->name);
+		unit->ct_includes = NULL;
+		register_includes(unit, includes);
+	}
+}
+
 void sema_analysis_pass_register_global_declarations(Module *module)
 {
 	DEBUG_LOG("Pass: Register globals for module '%s'.", module->name->module);
@@ -126,9 +202,14 @@ void sema_analysis_pass_register_global_declarations(Module *module)
 	{
 		CompilationUnit *unit = module->units[index];
 		if (unit->if_attr) continue;
+		assert(!unit->ct_includes);
 		unit->module = module;
 		DEBUG_LOG("Processing %s.", unit->file->name);
 		register_global_decls(unit, unit->global_decls);
+
+		// Process all includes
+		sema_process_includes(unit);
+		assert(vec_size(unit->ct_includes) == 0);
 	}
 
 	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);
@@ -140,6 +221,9 @@ void sema_analysis_pass_register_conditional_units(Module *module)
 	VECEACH(module->units, index)
 	{
 		CompilationUnit *unit = module->units[index];
+		// All ct_includes should already be registered.
+		assert(!unit->ct_includes);
+
 		Attr *if_attr = unit->if_attr;
 		if (!if_attr) continue;
 		if (vec_size(if_attr->exprs) != 1)
@@ -165,6 +249,8 @@ void sema_analysis_pass_register_conditional_units(Module *module)
 			continue;
 		}
 		register_global_decls(unit, unit->global_decls);
+		// There may be includes, add those.
+		sema_process_includes(unit);
 	}
 	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);
 }
@@ -177,6 +263,7 @@ void sema_analysis_pass_register_conditional_declarations(Module *module)
 		CompilationUnit *unit = module->units[index];
 		unit->module = module;
 		DEBUG_LOG("Processing %s.", unit->file->name);
+RETRY:;
 		Decl **decls = unit->global_cond_decls;
 		VECEACH(decls, i)
 		{
@@ -190,194 +277,15 @@ void sema_analysis_pass_register_conditional_declarations(Module *module)
 			sema_context_destroy(&context);
 		}
 		vec_resize(decls, 0);
+RETRY_INCLUDES:
+		decls = unit->ct_includes;
+		unit->ct_includes = NULL;
+		register_includes(unit, decls);
+		if (unit->ct_includes) goto RETRY_INCLUDES;
+
+		// We might have gotten more declarations.
+		if (vec_size(unit->global_cond_decls) > 0) goto RETRY;
 	}
-	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);
-}
-
-static inline void sema_append_decls(CompilationUnit *unit, Decl **decls)
-{
-	VECEACH(decls, i)
-	{
-		unit_register_global_decl(unit, decls[i]);
-	}
-}
-
-static inline bool sema_analyse_top_level_if(SemaContext *context, Decl *ct_if)
-{
-	int res = sema_check_comp_time_bool(context, ct_if->ct_if_decl.expr);
-	if (res == -1) return false;
-	if (res)
-	{
-		// Append declarations
-		sema_append_decls(context->unit, ct_if->ct_if_decl.then);
-		return true;
-	}
-
-	// False, so check elifs
-	Decl *ct_elif = ct_if->ct_if_decl.elif;
-	while (ct_elif)
-	{
-		if (ct_elif->decl_kind == DECL_CT_ELIF)
-		{
-			res = sema_check_comp_time_bool(context, ct_elif->ct_elif_decl.expr);
-			if (res == -1) return false;
-			if (res)
-			{
-				sema_append_decls(context->unit, ct_elif->ct_elif_decl.then);
-				return true;
-			}
-			ct_elif = ct_elif->ct_elif_decl.elif;
-		}
-		else
-		{
-			assert(ct_elif->decl_kind == DECL_CT_ELSE);
-			sema_append_decls(context->unit, ct_elif->ct_else_decl);
-			return true;
-		}
-	}
-	return true;
-}
-
-
-static inline bool sema_analyse_top_level_switch(SemaContext *context, Decl *ct_switch)
-{
-	Expr *cond = ct_switch->ct_switch_decl.expr;
-	if (cond && !sema_analyse_ct_expr(context, cond)) return false;
-	Type *type = cond ? cond->type : type_bool;
-	bool is_type = type == type_typeid;
-	ExprConst *switch_expr_const = cond ? &cond->const_expr : NULL;
-	Decl **cases = ct_switch->ct_switch_decl.cases;
-
-	unsigned case_count = vec_size(cases);
-	int matched_case = (int)case_count;
-	int default_case = (int)case_count;
-	for (unsigned i = 0; i < case_count; i++)
-	{
-		Decl *kase = cases[i];
-		Expr *expr = kase->ct_case_decl.expr;
-		Expr *to_expr = kase->ct_case_decl.to_expr;
-		if (expr)
-		{
-			if (is_type)
-			{
-				if (!sema_analyse_ct_expr(context, expr)) return false;
-				if (expr->type != type_typeid)
-				{
-					SEMA_ERROR(expr, "A type was expected here not %s.", type_quoted_error_string(expr->type));
-					return false;
-				}
-			}
-			else
-			{
-				if (!sema_analyse_expr_rhs(context, type, expr, false)) return false;
-				if (to_expr && !sema_analyse_expr_rhs(context, type, to_expr, false)) return false;
-			}
-			if (expr->expr_kind != EXPR_CONST)
-			{
-				SEMA_ERROR(expr, "The $case must have a constant expression.");
-				return false;
-			}
-			if (!cond)
-			{
-				if (!expr->const_expr.b) continue;
-				if (matched_case == case_count) matched_case = (int)i;
-				continue;
-			}
-			if (to_expr && to_expr->expr_kind != EXPR_CONST)
-			{
-				SEMA_ERROR(to_expr, "The $case must have a constant expression.");
-				return false;
-			}
-			ExprConst *const_expr = &expr->const_expr;
-			ExprConst *const_to_expr = to_expr ? &to_expr->const_expr : const_expr;
-			if (to_expr && expr_const_compare(const_expr, const_to_expr, BINARYOP_GT))
-			{
-				SEMA_ERROR(to_expr, "The end of a range must be less or equal to the beginning.");
-				return false;
-			}
-			// Check that it is unique.
-			for (unsigned j = 0; j < i; j++)
-			{
-				Decl *other_case = cases[j];
-
-				// Default.
-				if (!other_case->ct_case_decl.expr) continue;
-				ExprConst *other_const = &other_case->ct_case_decl.expr->const_expr;
-				ExprConst *other_const_to = other_case->ct_case_decl.to_expr
-						? &other_case->ct_case_decl.to_expr->const_expr : other_const;
-				if (expr_const_in_range(const_expr, other_const, other_const_to))
-				{
-					SEMA_ERROR(kase, "'%s' appears more than once.", expr_const_to_error_string(const_expr));
-					SEMA_NOTE(cases[j]->ct_case_decl.expr, "The previous $case was here.");
-					return false;
-				}
-			}
-			if (expr_const_in_range(switch_expr_const, const_expr, const_to_expr))
-			{
-				matched_case = (int)i;
-			}
-		}
-		else
-		{
-			if (default_case < case_count)
-			{
-				SEMA_ERROR(kase, "More than one $default is not allowed.");
-				SEMA_NOTE(cases[default_case], "The previous $default was here.");
-				return false;
-			}
-			default_case = (int)i;
-			continue;
-		}
-	}
-
-	if (matched_case == case_count) matched_case = default_case;
-
-	for (int i = matched_case; i < case_count; i++)
-	{
-		Decl **body = cases[i]->ct_case_decl.body;
-		if (body)
-		{
-			sema_append_decls(context->unit, body);
-			break;
-		}
-	}
-	return true;
-}
-
-void sema_analysis_pass_conditional_compilation(Module *module)
-{
-
-	DEBUG_LOG("Pass: Top level conditionals %s", module->name->module);
-	VECEACH(module->units, index)
-	{
-		CompilationUnit *unit = module->units[index];
-		for (unsigned i = 0; i < vec_size(unit->ct_ifs); i++)
-		{
-			// Also handle switch!
-			SemaContext context;
-			sema_context_init(&context, unit);
-			Decl *decl = unit->ct_ifs[i];
-			bool success;
-			switch (decl->decl_kind)
-			{
-				case DECL_CT_IF:
-					success = sema_analyse_top_level_if(&context, decl);
-					break;
-				case DECL_CT_SWITCH:
-					success = sema_analyse_top_level_switch(&context, decl);
-					break;
-				case DECL_CT_INCLUDE:
-					sema_append_decls(context.unit, decl->include.decls);
-					success = true;
-					break;
-				default:
-					UNREACHABLE
-			}
-			sema_context_destroy(&context);
-			if (!success) goto END;
-		}
-	}
-END:
 	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);
 }
 

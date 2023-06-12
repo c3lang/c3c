@@ -3,6 +3,7 @@
 ## 0.5.0 Change List
 
 ### Changes / improvements
+- `@if` introduced, other top level conditional compilation removed.
 - `@dynamic` and `@interface` for dynamic dispatch.
 - `$if` now uses `$if <expr>:` syntax.
 - `$assert` now uses `$assert <expr> : <optional message>`
@@ -24,6 +25,7 @@
 - Allow getting the underlying type of anyfault.
 - De-duplicate string constants.
 - Change @extname => @extern.
+- `define` and `typedef` removed.
 - `define` is replaced by `def`.
 - LLVM "wrapper" library compilation is exception free.
 - `private` is replaced by attribute `@private`. 

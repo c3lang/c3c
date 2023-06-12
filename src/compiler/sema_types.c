@@ -228,11 +228,6 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 			return type_info_poison(type_info);
 		case DECL_INITIALIZE:
 		case DECL_FINALIZE:
-		case DECL_CT_ELSE:
-		case DECL_CT_IF:
-		case DECL_CT_ELIF:
-		case DECL_CT_SWITCH:
-		case DECL_CT_CASE:
 		case DECL_CT_ASSERT:
 		case DECL_CT_ECHO:
 		case DECL_DECLARRAY:

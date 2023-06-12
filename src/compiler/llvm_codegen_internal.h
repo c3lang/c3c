@@ -114,7 +114,6 @@ typedef struct GenContext_
 		FunctionPrototype *prototype;
 		Type *rtype;
 	} cur_func;
-	TypeInfo *current_return_type;
 	int block_global_unique_count;
 	int ast_alloca_addr_space;
 	BreakContinue return_block;

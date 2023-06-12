@@ -400,8 +400,7 @@ typedef struct
 
 typedef struct
 {
-	File *file;
-	Decl **decls;
+	Expr *filename;
 } IncludeDecl;
 
 typedef struct
@@ -483,25 +482,6 @@ typedef struct VarDecl_
 } VarDecl;
 
 
-typedef struct
-{
-	Expr *expr;
-	Decl **then;
-	Decl *elif;
-} CtIfDecl;
-
-typedef struct
-{
-	Expr *expr;
-	Decl **cases;
-} CtSwitchDecl;
-
-typedef struct
-{
-	Expr *expr;
-	Expr *to_expr;
-	Decl **body;
-} CtCaseDecl;
 
 typedef struct
 {
@@ -734,10 +714,6 @@ typedef struct Decl_
 		Decl** decls;
 		TypedefDecl typedef_decl;
 		DefineDecl define_decl;
-		CtIfDecl ct_if_decl;
-		CtIfDecl ct_elif_decl;
-		CtSwitchDecl ct_switch_decl;
-		CtCaseDecl ct_case_decl;
 		Ast *ct_assert_decl;
 		Ast *ct_echo_decl;
 		Decl** ct_else_decl;
@@ -1587,9 +1563,9 @@ struct CompilationUnit_
 	bool is_interface_file;
 	bool test_by_default;
 	Decl **generic_defines;
-	Decl **ct_ifs;
 	Decl **ct_asserts;
 	Decl **ct_echos;
+	Decl **ct_includes;
 	Decl **xxlizers;
 	Decl **vars;
 	Decl **macros;
@@ -1698,6 +1674,7 @@ typedef struct
 	bool in_test_mode : 1;
 	unsigned errors_found;
 	unsigned warnings_found;
+	unsigned includes_used;
 	bool suppress_errors;
 	Decl ***locals_list;
 	HTable compiler_defines;
@@ -2202,6 +2179,7 @@ Decl *module_find_symbol(Module *module, const char *symbol);
 const char *module_create_object_file_name(Module *module);
 
 bool parse_file(File *file);
+Decl **parse_include_file(File *file, CompilationUnit *unit);
 bool parse_stdin(void);
 Path *path_create_from_string(const char *string, uint32_t len, SourceSpan span);
 

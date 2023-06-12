@@ -147,9 +147,6 @@ void sema_analyze_stage(Module *module, AnalysisStage stage)
 			case ANALYSIS_REGISTER_CONDITIONAL_DECLARATIONS:
 				sema_analysis_pass_register_conditional_declarations(module);
 				break;
-			case ANALYSIS_CONDITIONAL_COMPILATION:
-				sema_analysis_pass_conditional_compilation(module);
-				break;
 			case ANALYSIS_DECLS:
 				sema_analysis_pass_decls(module);
 				break;
@@ -185,15 +182,10 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 			case DECL_DECLARRAY:
 			case DECL_INITIALIZE:
 			case DECL_FINALIZE:
-			case DECL_CT_IF:
-			case DECL_CT_SWITCH:
 			case DECL_ERASED:
 				continue;
 			case DECL_ATTRIBUTE:
 				break;
-			case DECL_CT_CASE:
-			case DECL_CT_ELIF:
-			case DECL_CT_ELSE:
 			case DECL_BODYPARAM:
 			case DECL_CT_INCLUDE:
 			case DECL_GLOBALS:

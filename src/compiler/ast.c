@@ -81,13 +81,8 @@ Decl *decl_new_with_type(const char *name, SourceSpan loc, DeclKind decl_type)
 		case DECL_FAULTVALUE:
 		case DECL_IMPORT:
 		case DECL_MACRO:
-		case DECL_CT_IF:
-		case DECL_CT_ELSE:
-		case DECL_CT_ELIF:
 		case DECL_ATTRIBUTE:
 		case DECL_LABEL:
-		case DECL_CT_SWITCH:
-		case DECL_CT_CASE:
 		case DECL_DEFINE:
 		case DECL_CT_ASSERT:
 		case DECL_DECLARRAY:
@@ -132,16 +127,6 @@ const char *decl_to_a_name(Decl *decl)
 			return "a compile time assert";
 		case DECL_CT_ECHO:
 			return "a compile time echo";
-		case DECL_CT_CASE:
-			return "a compile time case";
-		case DECL_CT_ELIF:
-			return "a compile time else if";
-		case DECL_CT_ELSE:
-			return "a compile time else";
-		case DECL_CT_IF:
-			return "a compile time if";
-		case DECL_CT_SWITCH:
-			return "a compile time switch";
 		case DECL_IMPORT:
 			return "an import";
 		case DECL_LABEL:

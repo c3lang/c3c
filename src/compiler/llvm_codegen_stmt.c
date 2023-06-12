@@ -111,15 +111,7 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 	}
 }
 
-void llvm_emit_decl_expr_list_ignore_result(GenContext *context, Expr *expr)
-{
-	assert(expr->expr_kind == EXPR_COND);
-	VECEACH(expr->cond_expr, i)
-	{
-		BEValue value;
-		llvm_emit_expr(context, &value, expr->cond_expr[i]);
-	}
-}
+
 
 static void llvm_emit_decl_expr_list(GenContext *context, BEValue *be_value, Expr *expr, bool bool_cast)
 {

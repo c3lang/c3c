@@ -125,11 +125,6 @@ void decl_register(Decl *decl)
 		case DECL_INITIALIZE:
 		case DECL_FINALIZE:
 		case DECL_POISONED:
-		case DECL_CT_CASE:
-		case DECL_CT_ELIF:
-		case DECL_CT_ELSE:
-		case DECL_CT_IF:
-		case DECL_CT_SWITCH:
 		case DECL_CT_ASSERT:
 		case DECL_CT_ECHO:
 		case DECL_ENUM_CONSTANT:
@@ -232,18 +227,13 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 		case DECL_FAULTVALUE:
 		case DECL_ENUM_CONSTANT:
 		case DECL_IMPORT:
-		case DECL_CT_ELSE:
-		case DECL_CT_ELIF:
 		case DECL_LABEL:
-		case DECL_CT_CASE:
 		case DECL_DECLARRAY:
 		case DECL_BODYPARAM:
 		case DECL_GLOBALS:
 			UNREACHABLE
-		case DECL_CT_IF:
-		case DECL_CT_SWITCH:
 		case DECL_CT_INCLUDE:
-			vec_add(unit->ct_ifs, decl);
+			vec_add(unit->ct_includes, decl);
 			return;
 		case DECL_CT_ECHO:
 			vec_add(unit->ct_echos, decl);

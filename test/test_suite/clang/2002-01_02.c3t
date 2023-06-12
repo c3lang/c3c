@@ -52,7 +52,7 @@ struct Edge_rec
   int more_data;
 }
 
-typedef QuadEdge = Edge_rec*;
+def QuadEdge = Edge_rec*;
 
 struct EdgePair {
   QuadEdge left, right;

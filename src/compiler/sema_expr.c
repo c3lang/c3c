@@ -692,11 +692,6 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 			SEMA_ERROR(expr, "Expected fault name followed by '.' and a fault value.");
 			return expr_poison(expr);
 		case DECL_IMPORT:
-		case DECL_CT_IF:
-		case DECL_CT_ELSE:
-		case DECL_CT_ELIF:
-		case DECL_CT_SWITCH:
-		case DECL_CT_CASE:
 		case DECL_ATTRIBUTE:
 		case DECL_CT_ASSERT:
 		case DECL_DEFINE:
@@ -7596,16 +7591,6 @@ bool sema_analyse_expr(SemaContext *context, Expr *expr)
 	return sema_analyse_expr_lvalue(context, expr) && sema_cast_rvalue(context, expr);
 }
 
-bool sema_analyse_expr_require_const(SemaContext *context, Expr *expr)
-{
-	if (!sema_analyse_expr(context, expr)) return false;
-	if (!expr_is_const(expr))
-	{
-		SEMA_ERROR(expr, "Expected a constant expression.");
-		return false;
-	}
-	return true;
-}
 
 static inline int64_t expr_get_index_max(Expr *expr)
 {

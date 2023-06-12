@@ -860,7 +860,9 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 		case DECL_POISONED:
 			break;
 		case DECL_ERASED:
+			break;
 		case DECL_CT_INCLUDE:
+			MACRO_COPY_EXPR(copy->include.filename);
 			break;
 		case DECL_INITIALIZE:
 		case DECL_FINALIZE:
@@ -938,24 +940,11 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			}
 			MACRO_COPY_TYPE(copy->distinct_decl.typedef_decl.type_info);
 			break;
-		case DECL_CT_IF:
-			MACRO_COPY_EXPR(decl->ct_if_decl.expr);
-			MACRO_COPY_DECL(decl->ct_if_decl.elif);
-			MACRO_COPY_DECL_LIST(decl->ct_if_decl.then);
-			break;
 		case DECL_CT_ECHO:
 			MACRO_COPY_AST(decl->ct_echo_decl);
 			break;
 		case DECL_CT_ASSERT:
 			MACRO_COPY_AST(decl->ct_assert_decl);
-			break;
-		case DECL_CT_ELSE:
-			MACRO_COPY_DECL_LIST(decl->ct_else_decl);
-			break;
-		case DECL_CT_ELIF:
-			MACRO_COPY_EXPR(decl->ct_elif_decl.expr);
-			MACRO_COPY_DECL(decl->ct_elif_decl.elif);
-			MACRO_COPY_DECL_LIST(decl->ct_elif_decl.then);
 			break;
 		case DECL_IMPORT:
 			break;
@@ -965,15 +954,6 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			copy_signature_deep(c, &copy->func_decl.signature);
 			MACRO_COPY_ASTID(decl->func_decl.body);
 			MACRO_COPY_DECLID(decl->func_decl.body_param);
-			break;
-		case DECL_CT_SWITCH:
-			MACRO_COPY_DECL_LIST(decl->ct_switch_decl.cases);
-			MACRO_COPY_EXPR(decl->ct_switch_decl.expr);
-			break;
-		case DECL_CT_CASE:
-			MACRO_COPY_EXPR(decl->ct_case_decl.expr);
-			MACRO_COPY_EXPR(decl->ct_case_decl.to_expr);
-			MACRO_COPY_DECL_LIST(decl->ct_case_decl.body);
 			break;
 		case DECL_ATTRIBUTE:
 			MACRO_COPY_DECL_LIST(decl->attr_decl.params);
