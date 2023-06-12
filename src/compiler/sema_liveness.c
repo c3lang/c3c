@@ -543,11 +543,6 @@ RETRY:
 		case DECL_ENUM_CONSTANT:
 		case DECL_FAULTVALUE:
 			return;
-		case DECL_CT_CASE:
-		case DECL_CT_ELIF:
-		case DECL_CT_ELSE:
-		case DECL_CT_IF:
-		case DECL_CT_SWITCH:
 		case DECL_CT_ASSERT:
 		case DECL_CT_ECHO:
 		case DECL_IMPORT:

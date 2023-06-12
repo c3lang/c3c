@@ -1,9 +1,9 @@
 // #target: macos-x64
 module test;
 import std::io;
-typedef Func = fn int(int y);
-typedef FuncOther = fn bool(char*);
-typedef FuncSame = fn int(int z = 444);
+def Func = fn int(int y);
+def FuncOther = fn bool(char*);
+def FuncSame = fn int(int z = 444);
 
 fn int test(int a) { return a; }
 fn int test2(int b = 3) { return b; }

@@ -1,10 +1,10 @@
 // #target: macos-x64
 module test;
 
-typedef Callback = fn void();
-typedef Callback2 = fn void();
+def Callback = fn void();
+def Callback2 = fn void();
 
-typedef GetCallback = fn Callback2**[][123]*();
+def GetCallback = fn Callback2**[][123]*();
 
 fn Callback**[][123]* tester()
 {
@@ -14,7 +14,7 @@ fn Callback**[][123]* tester()
 GetCallback x = &tester;
 
 
-typedef GetCallbackOpt = fn Callback2!();
+def GetCallbackOpt = fn Callback2!();
 
 fn Callback2! tester2() => null;
 

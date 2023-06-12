@@ -19,7 +19,7 @@ fault Foob
     Y2
 }
 
-typedef Bar = distinct int;
+def Bar = distinct int;
 
 enum MyEnum
 {

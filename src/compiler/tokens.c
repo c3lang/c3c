@@ -207,8 +207,6 @@ const char *token_type_to_string(TokenType type)
 			return "default";
 		case TOKEN_DEFER:
 			return "defer";
-		case TOKEN_DEFINE:
-			return "define";
 		case TOKEN_DISTINCT:
 			return "distinct";
 		case TOKEN_DO:
@@ -259,8 +257,6 @@ const char *token_type_to_string(TokenType type)
 			return "true";
 		case TOKEN_TRY:
 			return "try";
-		case TOKEN_TYPEDEF:
-			return "typedef";
 		case TOKEN_TYPEID:
 			return "typeid";
 		case TOKEN_UNION:

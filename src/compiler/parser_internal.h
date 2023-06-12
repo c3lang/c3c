@@ -131,11 +131,6 @@ INLINE bool token_is_some_ident(TokenType token_type)
 	}
 }
 
-INLINE bool token_is_keyword(TokenType token_type)
-{
-	return token_type >= TOKEN_FIRST_KEYWORD && token_type <= TOKEN_LAST_KEYWORD;
-}
-
 INLINE bool token_is_keyword_ident(TokenType token_type)
 {
 	return token_type >= TOKEN_FIRST_KEYWORD && token_type <= TOKEN_LAST_NON_CT_KEYWORD;
@@ -163,18 +158,6 @@ static inline Expr *parse_const_paren_expr(ParseContext *c)
 	ASSIGN_EXPR_OR_RET(Expr *expr, parse_constant_expr(c), poisoned_expr);
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 	return expr;
-}
-
-INLINE bool parse_next_may_be_type(ParseContext *c)
-{
-	switch (c->tok)
-	{
-		case TOKEN_IDENT:
-		case TYPELIKE_TOKENS:
-			return true;
-		default:
-			return false;
-	}
 }
 
 static inline bool parse_next_may_be_type_or_ident(ParseContext *c)

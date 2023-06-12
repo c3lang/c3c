@@ -3,7 +3,7 @@
 module test;
 import std::collections::map;
 
-typedef IntMap = HashMap<char[], int>;
+def IntMap = HashMap<char[], int>;
 
 fn void main()
 {

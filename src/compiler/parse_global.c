@@ -45,9 +45,7 @@ void recover_top_level(ParseContext *c)
 			case TOKEN_IMPORT:
 			case TOKEN_EXTERN:
 			case TOKEN_ENUM:
-			case TOKEN_DEFINE:
 			case TOKEN_DEF:
-			case TOKEN_TYPEDEF:
 			case TOKEN_FAULT:
 				return;
 			case TOKEN_IDENT: // Incr arrays only
@@ -81,108 +79,6 @@ INLINE bool parse_decl_initializer(ParseContext *c, Decl *decl)
 {
 	ASSIGN_EXPR_OR_RET(decl->var.init_expr, parse_expr(c), false);
 	return true;
-}
-
-// --- Parse CT conditional code
-
-/**
- * A general CT block contains 0 - n number of declarations, and may be terminated
- * by 1-3 different tokens. We don't accept imports or modules inside.
- */
-static inline bool parse_top_level_block(ParseContext *c, Decl ***decls, TokenType end1, TokenType end2, TokenType end3)
-{
-	// Check whether we reached a terminating token or EOF
-	while (!tok_is(c, end1) && !tok_is(c, end2) && !tok_is(c, end3) && !tok_is(c, TOKEN_EOF))
-	{
-		// Otherwise, try to parse it, passing in NULL ensures modules/imports are prohibited.
-		Decl *decl = parse_top_level_statement(c, NULL);
-		// Decl may be null only on import/module, which we prohibit
-		assert(decl && "Should never happen.");
-		// Bad decl?
-		if (!decl_ok(decl)) return false;
-		// Otherwise add it to the list.
-		add_decl_to_list(decls, decl);
-	}
-	return true;
-}
-
-/**
- * ct_if_top_level ::= CT_IF const_paren_expr top_level_block (CT_ELSE top_level_block)? CT_ENDIF
- * @return the declaration if successfully parsed, poisoned_decl otherwise.
- */
-static inline Decl *parse_ct_if_top_level(ParseContext *c)
-{
-	Decl *ct = decl_new_ct(DECL_CT_IF, c->span);
-	advance_and_verify(c, TOKEN_CT_IF);
-	ASSIGN_EXPR_OR_RET(ct->ct_if_decl.expr, parse_expr(c), poisoned_decl);
-	CONSUME_OR_RET(TOKEN_COLON, poisoned_decl);
-	if (!parse_top_level_block(c, &ct->ct_if_decl.then, TOKEN_CT_ENDIF, TOKEN_CT_ENDIF, TOKEN_CT_ELSE)) return poisoned_decl;
-	CtIfDecl *ct_if_decl = &ct->ct_if_decl;
-
-	// final else
-	if (tok_is(c, TOKEN_CT_ELSE))
-	{
-		Decl *ct_else = decl_new_ct(DECL_CT_ELSE, c->span);
-		advance_and_verify(c, TOKEN_CT_ELSE);
-		ct_if_decl->elif = ct_else;
-		if (!parse_top_level_block(c, &ct_else->ct_else_decl, TOKEN_CT_ENDIF, TOKEN_CT_ENDIF, TOKEN_CT_ENDIF)) return poisoned_decl;
-	}
-	CONSUME_OR_RET(TOKEN_CT_ENDIF, poisoned_decl);
-	return ct;
-}
-
-/**
- * ct_case ::= (CT_DEFAULT | CT_CASE constant_expr) ':' top_level_statement*
- *
- * @return poisoned decl if parsing fails.
- */
-static inline Decl *parse_ct_case(ParseContext *c)
-{
-	Decl *decl;
-	// Parse the $case expr / $default
-	switch (c->tok)
-	{
-		case TOKEN_CT_DEFAULT:
-			decl = decl_new_ct(DECL_CT_CASE, c->span);
-			advance(c);
-			break;
-		case TOKEN_CT_CASE:
-			decl = decl_new_ct(DECL_CT_CASE, c->span);
-			advance(c);
-			ASSIGN_EXPR_OR_RET(decl->ct_case_decl.expr, parse_constant_expr(c), poisoned_decl);
-			break;
-		default:
-			SEMA_ERROR_HERE("Expected a $case or $default statement here.");
-			return poisoned_decl;
-	}
-	// Parse the body
-	if (!try_consume(c, TOKEN_COLON))
-	{
-		sema_error_at_after(c->prev_span, "Expected a ':' here.");
-		return poisoned_decl;
-	}
-	if (!parse_top_level_block(c, &decl->ct_case_decl.body, TOKEN_CT_DEFAULT, TOKEN_CT_CASE, TOKEN_CT_ENDSWITCH)) return poisoned_decl;
-	return decl;
-}
-
-/**
- * ct_switch_top_level ::= CT_SWITCH const_paren_expr? ct_case* CT_ENDSWITCH
- * @return the declaration if successfully parsed, NULL otherwise.
- */
-static inline Decl *parse_ct_switch_top_level(ParseContext *c)
-{
-	Decl *ct = decl_new_ct(DECL_CT_SWITCH, c->span);
-	advance_and_verify(c, TOKEN_CT_SWITCH);
-	if (!tok_is(c, TOKEN_CT_CASE) && !tok_is(c, TOKEN_CT_DEFAULT) && !tok_is(c, TOKEN_CT_ENDSWITCH))
-	{
-		ASSIGN_EXPR_OR_RET(ct->ct_switch_decl.expr, parse_const_paren_expr(c), poisoned_decl);
-	}
-	while (!try_consume(c, TOKEN_CT_ENDSWITCH))
-	{
-		ASSIGN_DECL_OR_RET(Decl *result, parse_ct_case(c), poisoned_decl);
-		vec_add(ct->ct_switch_decl.cases, result);
-	}
-	return ct;
 }
 
 
@@ -1754,21 +1650,17 @@ static inline void decl_add_type(Decl *decl, TypeKind kind)
 	decl->type = type;
 }
 /**
- * typedef_declaration ::= TYPEDEF TYPE_IDENT '=' 'distinct'? typedef_type ';'
+ * typedef_declaration ::= DEF TYPE_IDENT '=' 'distinct'? typedef_type ';'
  *
  * typedef_type ::= func_typedef | type generic_params?
  * func_typedef ::= 'fn' optional_type parameter_type_list
  */
-static inline Decl *parse_typedef_declaration(ParseContext *c)
+static inline Decl *parse_def_type(ParseContext *c)
 {
-	if (!try_consume(c, TOKEN_DEF))
-	{
-		sema_warning_at(c->span, "The use of 'typedef' is deprecated, please use 'def'.");
-		advance_and_verify(c, TOKEN_TYPEDEF);
-	}
+	advance_and_verify(c, TOKEN_DEF);
 
 	Decl *decl = decl_new(DECL_POISONED, symstr(c), c->span);
-	DEBUG_LOG("Parse typedef %s", decl->name);
+	DEBUG_LOG("Parse def %s", decl->name);
 	if (!try_consume(c, TOKEN_TYPE_IDENT))
 	{
 		if (token_is_any_type(c->tok))
@@ -1870,14 +1762,10 @@ static inline Decl *parse_typedef_declaration(ParseContext *c)
  *
  * identifier_alias ::= path? (IDENT | CONST_IDENT | AT_IDENT)
  */
-static inline Decl *parse_define_ident(ParseContext *c)
+static inline Decl *parse_def_ident(ParseContext *c)
 {
 	// 1. Store the beginning of the "define".
-	if (!try_consume(c, TOKEN_DEF))
-	{
-		sema_warning_at(c->span, "The use of 'define' is deprecated, please use 'def'.");
-		advance_and_verify(c, TOKEN_DEFINE);
-	}
+	advance_and_verify(c, TOKEN_DEF);
 
 	// 2. At this point we expect an ident or a const token.
 	//    since the Type is handled.
@@ -1969,12 +1857,12 @@ static inline Decl *parse_define_ident(ParseContext *c)
 }
 
 /**
- * define_attribute ::= 'define' AT_TYPE_IDENT '(' parameter_list ')' opt_attributes '=' '{' attributes? '}' ';'
+ * define_attribute ::= 'def' AT_TYPE_IDENT '(' parameter_list ')' opt_attributes '=' '{' attributes? '}' ';'
  */
-static inline Decl *parse_define_attribute(ParseContext *c)
+static inline Decl *parse_def_attribute(ParseContext *c)
 {
-	// 1. Store the beginning of the "define".
-	if (!try_consume(c, TOKEN_DEF)) advance_and_verify(c, TOKEN_DEFINE);
+	// 1. Store the beginning of the "def".
+	advance_and_verify(c, TOKEN_DEF);
 
 	Decl *decl = decl_new(DECL_ATTRIBUTE, symstr(c), c->span);
 
@@ -2007,34 +1895,19 @@ static inline Decl *parse_define_attribute(ParseContext *c)
 }
 
 /**
- * define_decl ::= DEFINE define_type_body |
- */
-static inline Decl *parse_define(ParseContext *c)
-{
-	switch (peek(c))
-	{
-		case TOKEN_AT_TYPE_IDENT:
-			// define @Foo = @inline, @noreturn
-			return parse_define_attribute(c);
-		default:
-			return parse_define_ident(c);
-	}
-}
-
-/**
- * define_decl ::= DEFINE define_type_body |
+ * define_decl ::= DEF define_type_body |
  */
 static inline Decl *parse_def(ParseContext *c)
 {
 	switch (peek(c))
 	{
 		case TOKEN_TYPE_IDENT:
-			return parse_typedef_declaration(c);
+			return parse_def_type(c);
 		case TOKEN_AT_TYPE_IDENT:
 			// define @Foo = @inline, @noreturn
-			return parse_define_attribute(c);
+			return parse_def_attribute(c);
 		default:
-			return parse_define_ident(c);
+			return parse_def_ident(c);
 	}
 }
 
@@ -2709,60 +2582,9 @@ static Decl *parse_include(ParseContext *c)
 	SourceSpan loc = c->span;
 	Decl *decl = decl_new(DECL_CT_INCLUDE, NULL, loc);
 	advance_and_verify(c, TOKEN_CT_INCLUDE);
-	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_decl);
-	const char *str = symstr(c);
-	CONSUME_OR_RET(TOKEN_STRING, poisoned_decl);
-	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_decl);
+	ASSIGN_EXPR_OR_RET(decl->include.filename, parse_constant_expr(c), poisoned_decl);
+	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 	CONSUME_EOS_OR_RET(poisoned_decl);
-	bool loaded;
-	const char *error;
-	char *path;
-	char *name;
-	if (file_namesplit(c->unit->file->full_path, &name, &path))
-	{
-		str = file_append_path(path, str);
-	}
-	File *file = source_file_load(str, &loaded, &error);
-	if (!file)
-	{
-		sema_error_at(loc, "Failed to load file %s: %s", str, error);
-		return poisoned_decl;
-	}
-	decl->include.file = file;
-	if (global_context.errors_found) return poisoned_decl;
-
-	Lexer current_lexer = c->lexer;
-	File *current_file = c->unit->file;
-	TokenType old_tok = c->tok;
-	TokenData old_data = c->data;
-	SourceSpan old_prev = c->prev_span;
-	SourceSpan old_span = c->span;
-	c->tok = TOKEN_INVALID_TOKEN;
-	c->lexer = (Lexer){ .file = decl->include.file, .context =  c };
-	lexer_init(&c->lexer);
-	// Prime everything
-	advance(c);
-	advance(c);
-	Decl **list = NULL;
-	while (!tok_is(c, TOKEN_EOF))
-	{
-		Decl *inner = parse_top_level_statement(c, &c);
-		if (!inner) continue;
-		if (!decl_ok(inner))
-		{
-			decl_poison(inner);
-			goto END;
-		}
-		add_decl_to_list(&list, inner);
-	}
-	decl->include.decls = list;
-END:
-	c->lexer = current_lexer;
-	c->tok = old_tok;
-	c->data = old_data;
-	c->prev_span = old_prev;
-	c->span = old_span;
-	c->unit->file = current_file;
 	return decl;
 }
 
@@ -2818,7 +2640,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 		case TOKEN_MODULE:
 			if (!c_ref)
 			{
-				SEMA_ERROR_HERE("'module' cannot appear inside of conditional compilation.");
+				SEMA_ERROR_HERE("'module' is not valid inside an include.");
 				return poisoned_decl;
 			}
 			advance(c);
@@ -2835,17 +2657,9 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 		case TOKEN_DOCS_START:
 			SEMA_ERROR_HERE("There are more than one doc comment in a row, that is not allowed.");
 			return poisoned_decl;
-		case TOKEN_TYPEDEF:
-			if (contracts) goto CONTRACT_NOT_ALLOWED;
-			decl = parse_typedef_declaration(c);
-			break;
 		case TOKEN_DEF:
 			if (contracts) goto CONTRACT_NOT_ALLOWED;
 			decl = parse_def(c);
-			break;
-		case TOKEN_DEFINE:
-			if (contracts) goto CONTRACT_NOT_ALLOWED;
-			decl = parse_define(c);
 			break;
 		case TOKEN_FN:
 			decl = parse_func_definition(c, contracts, c->unit->is_interface_file);
@@ -2878,10 +2692,6 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 				decl->ct_echo_decl = ast;
 				break;
 			}
-		case TOKEN_CT_IF:
-			if (contracts) goto CONTRACT_NOT_ALLOWED;
-			decl = parse_ct_if_top_level(c);
-			break;
 		case TOKEN_IMPORT:
 			if (contracts) goto CONTRACT_NOT_ALLOWED;
 			if (!c_ref)
@@ -2891,10 +2701,6 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 			}
 			if (!parse_import(c)) return poisoned_decl;
 			return NULL;
-		case TOKEN_CT_SWITCH:
-			if (contracts) goto CONTRACT_NOT_ALLOWED;
-			decl = parse_ct_switch_top_level(c);
-			break;
 		case TOKEN_CT_INCLUDE:
 			if (contracts) goto CONTRACT_NOT_ALLOWED;
 			decl = parse_include(c);

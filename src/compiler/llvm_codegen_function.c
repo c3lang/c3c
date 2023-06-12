@@ -623,14 +623,6 @@ void llvm_emit_xxlizer(GenContext *c, Decl *decl)
 	               body);
 }
 
-static void llvm_generate_dyn_proto(GenContext *c, LLVMValueRef proto_ref)
-{
-	LLVMBuilderRef builder = LLVMCreateBuilderInContext(c->context);
-	LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(c->context, proto_ref, "never");
-	LLVMPositionBuilderAtEnd(builder, entry);
-	LLVMBuildUnreachable(builder);
-	LLVMDisposeBuilder(builder);
-}
 
 void llvm_emit_dynamic_functions(GenContext *c, Decl **funcs)
 {

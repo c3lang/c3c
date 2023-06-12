@@ -22,8 +22,6 @@ static bool bitstruct_cast(Expr *expr, Type *from_type, Type *to, Type *to_type)
 static void sema_error_const_int_out_of_range(Expr *expr, Expr *problem, Type *to_type);
 static Expr *recursive_may_narrow(Expr *expr, Type *type);
 static void expr_recursively_rewrite_untyped_list(Expr *expr, Expr **list);
-static inline bool cast_may_implicit_ptr(Type *from_pointee, Type *to_pointee);
-static inline bool cast_to_array_is_valid(Type *from, Type *to);
 static inline bool insert_cast(Expr *expr, CastKind kind, Type *type);
 static bool pointer_to_integer(Expr *expr, Type *type);
 static bool pointer_to_bool(Expr *expr, Type *type);

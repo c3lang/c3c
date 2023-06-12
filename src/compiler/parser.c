@@ -107,6 +107,31 @@ bool parse_file(File *file)
 	return !global_context.errors_found;
 }
 
+Decl **parse_include_file(File *file, CompilationUnit *unit)
+{
+	ParseContext parse_context = { .tok = TOKEN_INVALID_TOKEN };
+	ParseContext *c = &parse_context;
+	c->unit = unit;
+	parse_context.lexer = (Lexer){ .file = file, .context =  c };
+	lexer_init(&parse_context.lexer);
+	// Prime everything
+	advance(c);
+	advance(c);
+	Decl **list = NULL;
+	while (!tok_is(c, TOKEN_EOF))
+	{
+		Decl *inner = parse_top_level_statement(c, NULL);
+		if (!inner) continue;
+		if (!decl_ok(inner))
+		{
+			decl_poison(inner);
+			return NULL;
+		}
+		add_decl_to_list(&list, inner);
+	}
+	return list;
+}
+
 File stdin_file;
 
 /**

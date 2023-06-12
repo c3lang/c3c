@@ -1,7 +1,7 @@
 // #target: macos-x64
 
 module demo;
-typedef Callback = fn int(char* text, int value);
+def Callback = fn int(char* text, int value);
 
 fn int my_callback(char* text, int value)
 {

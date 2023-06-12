@@ -1557,7 +1557,6 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_DYNAMIC] = ATTR_FUNC,
 			[ATTRIBUTE_EXPORT] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | EXPORTED_USER_DEFINED_TYPES,
 			[ATTRIBUTE_EXTERN] = (AttributeDomain)~(ATTR_CALL | ATTR_BITSTRUCT | ATTR_DEFINE | ATTR_MACRO | ATTR_XXLIZER),
-			[ATTRIBUTE_EXTNAME] = (AttributeDomain)~(ATTR_CALL | ATTR_BITSTRUCT | ATTR_DEFINE | ATTR_MACRO | ATTR_XXLIZER),
 			[ATTRIBUTE_IF] = (AttributeDomain)~(ATTR_CALL | ATTR_LOCAL),
 			[ATTRIBUTE_INLINE] = ATTR_FUNC | ATTR_CALL,
 			[ATTRIBUTE_INTERFACE] = ATTR_FUNC,
@@ -1760,7 +1759,6 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			}
 			if (!expr->const_expr.b) *erase_decl = true;
 			return true;
-		case ATTRIBUTE_EXTNAME:
 		case ATTRIBUTE_SECTION:
 		case ATTRIBUTE_EXTERN:
 			if (context->unit->module->is_generic)
@@ -1785,9 +1783,6 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 					if (!sema_check_section(context, attr)) return false;
 					decl->section = expr->const_expr.string.chars;
 					break;
-				case ATTRIBUTE_EXTNAME:
-					sema_warning_at(attr->span, "'@extname' is deprecated, please use '@extern' instead.");
-					FALLTHROUGH;
 				case ATTRIBUTE_EXTERN:
 					decl->has_extname = true;
 					decl->extname = expr->const_expr.string.chars;
@@ -2957,7 +2952,7 @@ static CompilationUnit *unit_copy(Module *module, CompilationUnit *unit)
 	copy->global_decls = copy_decl_list_single(unit->global_decls);
 	copy->global_cond_decls = copy_decl_list_single(unit->global_cond_decls);
 	copy->module = module;
-	assert(!unit->functions && !unit->macro_methods && !unit->methods && !unit->enums && !unit->ct_ifs && !unit->types);
+	assert(!unit->functions && !unit->macro_methods && !unit->methods && !unit->enums && !unit->ct_includes && !unit->types);
 	return copy;
 }
 
@@ -3374,12 +3369,7 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 		case DECL_POISONED:
 		case DECL_IMPORT:
 		case DECL_ENUM_CONSTANT:
-		case DECL_CT_ELSE:
-		case DECL_CT_ELIF:
 		case DECL_LABEL:
-		case DECL_CT_SWITCH:
-		case DECL_CT_CASE:
-		case DECL_CT_IF:
 		case DECL_CT_ASSERT:
 		case DECL_CT_ECHO:
 		case DECL_FAULTVALUE:

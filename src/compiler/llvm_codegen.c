@@ -1080,11 +1080,6 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 		case DECL_POISONED:
 		case DECL_ATTRIBUTE:
 		case DECL_BITSTRUCT:
-		case DECL_CT_CASE:
-		case DECL_CT_ELIF:
-		case DECL_CT_ELSE:
-		case DECL_CT_IF:
-		case DECL_CT_SWITCH:
 		case DECL_CT_ASSERT:
 		case DECL_DISTINCT:
 		case DECL_ENUM:

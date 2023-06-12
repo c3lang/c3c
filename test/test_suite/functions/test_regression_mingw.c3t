@@ -69,8 +69,8 @@ fn int Foo2.mutate(Foo2 *foo)
 
 def oopsInt = test2::argh<int>;
 def oopsDouble = test2::argh<int>;
-typedef Argh = fn int(double, Bobo);
-typedef Argh2 = fn int(double, Bobo);
+def Argh = fn int(double, Bobo);
+def Argh2 = fn int(double, Bobo);
 
 
 
@@ -82,7 +82,7 @@ fn int sum_us(int... x)
     return sum;
 }
 
-typedef Frob = long;
+def Frob = long;
 
 fn int sumd(int[] x)
 {
@@ -99,13 +99,13 @@ struct Foo
 
 def getValueInt = test2::getValue<int>;
 def getValueDouble = test2::getValue<double>;
-typedef IntBlob = test2::Blob<int>;
-typedef DoubleBlob = Blob<double>;
+def IntBlob = test2::Blob<int>;
+def DoubleBlob = Blob<double>;
 def getMultInt = test2::getMult<int>;
 def getMultDouble = test2::getMult<double>;
 
-typedef IntArray = List<int>;
-typedef IntList = LinkedList<int>;
+def IntArray = List<int>;
+def IntList = LinkedList<int>;
 
 enum MyEnum : int
 {
@@ -220,7 +220,7 @@ macro Hello wut()
     return Hello.FOO;
 }
 
-typedef Bye = Hello;
+def Bye = Hello;
 def wat = wut;
 def byebye = hello;
 

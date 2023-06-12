@@ -4,8 +4,8 @@ enum Foo
 {
 	ABC
 }
-typedef Abc = distinct Foo;
-typedef BarInt = distinct int;
+def Abc = distinct Foo;
+def BarInt = distinct int;
 enum Bar : BarInt
 {
 	ABC

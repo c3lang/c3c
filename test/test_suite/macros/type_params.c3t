@@ -5,7 +5,7 @@ macro foo($Foo)
     return a;
 }
 
-typedef Bar = short;
+def Bar = short;
 fn void test()
 {
     int x = foo(int);

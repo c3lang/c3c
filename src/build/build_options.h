@@ -9,6 +9,7 @@
 
 #define MAX_LIB_DIRS 1024
 #define MAX_FILES 2048
+#define MAX_INCLUDES 2048
 #define MAX_THREADS 0xFFFF
 
 
