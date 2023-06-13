@@ -2675,7 +2675,6 @@ INLINE bool type_is_invalid_storage_type(Type *type)
 		case TYPE_WILDCARD:
 			return true;
 		default:
-
 			return false;
 	}
 }

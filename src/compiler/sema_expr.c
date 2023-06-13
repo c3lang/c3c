@@ -515,6 +515,112 @@ ERR:
 	return false;
 }
 
+static bool expr_may_ref(Expr *expr)
+{
+
+	switch (expr->expr_kind)
+	{
+		case EXPR_SWIZZLE:
+		case EXPR_LAMBDA:
+		case EXPR_CT_IDENT:
+			return false;
+		case EXPR_SUBSCRIPT_ASSIGN:
+			return true;
+		case EXPR_IDENTIFIER:
+		{
+			Decl *decl = expr->identifier_expr.decl;
+			if (decl->decl_kind != DECL_VAR) return false;
+			if (decl->var.kind == VARDECL_CONST) return false;
+			decl = decl_raw(decl);
+			switch (decl->var.kind)
+			{
+				case VARDECL_LOCAL_CT:
+				case VARDECL_LOCAL_CT_TYPE:
+				case VARDECL_LOCAL:
+				case VARDECL_GLOBAL:
+				case VARDECL_PARAM:
+				case VARDECL_PARAM_REF:
+				case VARDECL_PARAM_CT:
+				case VARDECL_PARAM_CT_TYPE:
+					return true;
+				case VARDECL_CONST:
+				case VARDECL_PARAM_EXPR:
+				case VARDECL_MEMBER:
+				case VARDECL_BITMEMBER:
+					return false;
+				case VARDECL_UNWRAPPED:
+				case VARDECL_ERASE:
+				case VARDECL_REWRAPPED:
+					UNREACHABLE
+			}
+			UNREACHABLE
+		}
+		case EXPR_UNARY:
+			return expr->unary_expr.operator == UNARYOP_DEREF;
+		case EXPR_BITACCESS:
+		case EXPR_ACCESS:
+			return expr_may_ref(expr->access_expr.parent);
+		case EXPR_GROUP:
+			return expr_may_ref(expr->inner_expr);
+		case EXPR_SUBSCRIPT:
+		case EXPR_SLICE:
+		case EXPR_SUBSCRIPT_ADDR:
+			return true;
+		case EXPR_HASH_IDENT:
+			return false;
+		case EXPR_EXPRESSION_LIST:
+			if (!vec_size(expr->expression_list)) return false;
+			return expr_may_ref(VECLAST(expr->expression_list));
+		case EXPR_POISONED:
+		case EXPR_ASM:
+		case EXPR_BINARY:
+		case EXPR_BITASSIGN:
+		case EXPR_BUILTIN:
+		case EXPR_BUILTIN_ACCESS:
+		case EXPR_CALL:
+		case EXPR_CAST:
+		case EXPR_CATCH_UNWRAP:
+		case EXPR_COMPILER_CONST:
+		case EXPR_COMPOUND_LITERAL:
+		case EXPR_COND:
+		case EXPR_CONST:
+		case EXPR_CT_ARG:
+		case EXPR_CT_CALL:
+		case EXPR_CT_CHECKS:
+		case EXPR_CT_EVAL:
+		case EXPR_DECL:
+		case EXPR_DESIGNATED_INITIALIZER_LIST:
+		case EXPR_DESIGNATOR:
+		case EXPR_EXPR_BLOCK:
+		case EXPR_OPTIONAL:
+		case EXPR_FORCE_UNWRAP:
+		case EXPR_INITIALIZER_LIST:
+		case EXPR_MACRO_BLOCK:
+		case EXPR_MACRO_BODY_EXPANSION:
+		case EXPR_NOP:
+		case EXPR_OPERATOR_CHARS:
+		case EXPR_POINTER_OFFSET:
+		case EXPR_POST_UNARY:
+		case EXPR_RETHROW:
+		case EXPR_RETVAL:
+		case EXPR_SLICE_ASSIGN:
+		case EXPR_SLICE_COPY:
+		case EXPR_STRINGIFY:
+		case EXPR_TERNARY:
+		case EXPR_TRY_UNWRAP:
+		case EXPR_TRY_UNWRAP_CHAIN:
+		case EXPR_TYPEID:
+		case EXPR_TYPEID_INFO:
+		case EXPR_TYPEINFO:
+		case EXPR_ANY:
+		case EXPR_ANYSWITCH:
+		case EXPR_VASPLAT:
+		case EXPR_TEST_HOOK:
+			return false;
+	}
+	UNREACHABLE
+}
+
 bool sema_expr_check_assign(SemaContext *c, Expr *expr)
 {
 	if (!sema_binary_is_expr_lvalue(expr, expr)) return false;
@@ -7693,7 +7799,9 @@ bool sema_insert_method_call(SemaContext *context, Expr *method_call, Decl *meth
 			.call_expr.is_func_ref = true,
 			.call_expr.is_type_method = true };
 	Type *type = parent->type->canonical;
-	Type *first = method_decl->func_decl.signature.params[0]->type;
+	Decl *first_param = method_decl->func_decl.signature.params[0];
+	Type *first = first_param->type;
+	// Deref / addr as needed.
 	if (type != first)
 	{
 		if (first->type_kind == TYPE_POINTER && first->pointer == type)
@@ -7704,6 +7812,19 @@ bool sema_insert_method_call(SemaContext *context, Expr *method_call, Decl *meth
 		{
 			expr_rewrite_insert_deref(parent);
 		}
+	}
+	else if (first_param->var.kind == VARDECL_PARAM_REF || !expr_may_ref(parent))
+	{
+		Expr *inner = expr_copy(parent);
+		parent->expr_kind = EXPR_UNARY;
+		Type *inner_type = inner->type;
+		bool optional = type_is_optional(inner->type);
+		parent->type = type_add_optional(type_get_ptr(type_no_optional(inner_type)), optional);
+		parent->unary_expr.operator = UNARYOP_TADDR;
+		parent->unary_expr.expr = inner;
+		parent->resolve_status = RESOLVE_NOT_DONE;
+		if (!sema_analyse_expr(context, parent)) return false;
+		expr_rewrite_insert_deref(parent);
 	}
 	assert(parent && parent->type && first == parent->type->canonical);
 	if (!sema_expr_analyse_general_call(context, method_call, method_decl, parent, false)) return expr_poison(method_call);
