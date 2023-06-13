@@ -3,6 +3,8 @@
 ## 0.5.0 Change List
 
 ### Changes / improvements
+- Temporary objects may now invoke methods using ref parameters.
+- Delete object files after successful linking.
 - `@if` introduced, other top level conditional compilation removed.
 - `@dynamic` and `@interface` for dynamic dispatch.
 - `$if` now uses `$if <expr>:` syntax.

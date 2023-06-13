@@ -281,6 +281,14 @@ static void compiler_print_bench(void)
 	}
 }
 
+void delete_object_files(const char **files, size_t count)
+{
+	for (size_t i = 0; i < count; i++)
+	{
+		file_delete_file(files[i]);
+	}
+}
+
 void compiler_compile(void)
 {
 	sema_analysis_run();
@@ -464,6 +472,7 @@ void compiler_compile(void)
 			platform_linker(output_exe, obj_files, output_file_count);
 			compiler_link_time = bench_mark();
 			compiler_print_bench();
+			delete_object_files(obj_files, output_file_count);
 		}
 		else
 		{
@@ -473,6 +482,10 @@ void compiler_compile(void)
 			{
 				printf("No linking is performed due to missing linker support.\n");
 				active_target.run_after_compile = false;
+			}
+			else
+			{
+				delete_object_files(obj_files, output_file_count);
 			}
 		}
 
@@ -490,6 +503,7 @@ void compiler_compile(void)
 		{
 			error_exit("Failed to produce static library '%s'.", output_static);
 		}
+		delete_object_files(obj_files, output_file_count);
 		compiler_link_time = bench_mark();
 		compiler_print_bench();
 		printf("Static library '%s' created.", output_static);
@@ -500,6 +514,7 @@ void compiler_compile(void)
 		{
 			error_exit("Failed to produce static library '%s'.", output_dynamic);
 		}
+		delete_object_files(obj_files, output_file_count);
 		printf("Dynamic library '%s' created.", output_dynamic);
 		compiler_link_time = bench_mark();
 		compiler_print_bench();

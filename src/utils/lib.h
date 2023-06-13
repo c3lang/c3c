@@ -70,6 +70,7 @@ const char* file_expand_path(const char* path);
 const char* find_lib_dir(void);
 const char *find_rel_exe_dir(const char *dir);
 bool file_delete_all_files_in_dir_with_suffix(const char *dir, const char *suffix);
+bool file_delete_file(const char *path);
 bool file_is_dir(const char *file);
 bool file_exists(const char *path);
 FILE *file_open_read(const char *path);

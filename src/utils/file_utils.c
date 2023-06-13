@@ -419,10 +419,20 @@ extern int _getdrive(void);
 extern int _chdrive(int drive);
 #endif
 
+bool file_delete_file(const char *path)
+{
+	assert(path);
+#if (_MSC_VER)
+	return DeleteFileW(win_utf8to16(path));
+#else
+	return !unlink(path);
+#endif
+}
+
 bool file_delete_all_files_in_dir_with_suffix(const char *path, const char *suffix)
 {
 	assert(path);
-#if PLATFORM_WINDOWS
+#if (_MSC_VER)
 	const char *cmd = "del /q";
 #else
 	const char *cmd = "rm -f";
@@ -508,30 +518,37 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 
 #endif
 
-#if PLATFORM_WINDOWS
-const char *execute_cmd(const char *cmd)
-{
-	FATAL_ERROR("Not implemented");
-}
-#else
 #define BUFSIZE 1024
 const char *execute_cmd(const char *cmd)
 {
 	char buffer[BUFSIZE];
 	char *output = "";
 	FILE *process = NULL;
+#if (_MSC_VER)
+	if (!(process = _wpopen(win_utf8to16(cmd), L"r")))
+	{
+		error_exit("Failed to open a pipe for command '%s'.", cmd);
+	}
+#else
 	if (!(process = popen(cmd, "r")))
 	{
 		error_exit("Failed to open a pipe for command '%s'.", cmd);
 	}
+#endif
 	while (fgets(buffer, BUFSIZE - 1, process))
 	{
 		output = str_cat(output, buffer);
 	}
-	if (pclose(process))
+#if PLATFORM_WINDOWS
+	int err = _pclose(process);
+#else
+	int err = pclose(process);
+#endif
+	if (err)
 	{
 		error_exit("Failed to execute '%s'.", cmd);
 	}
+
 	while (output[0] != 0)
 	{
 		switch (output[0])
@@ -549,7 +566,6 @@ const char *execute_cmd(const char *cmd)
 	}
 	return str_trim(output);
 }
-#endif
 
 #if PLATFORM_WINDOWS
 
