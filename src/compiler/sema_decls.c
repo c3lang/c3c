@@ -1486,6 +1486,8 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 	bool is_dynamic = decl->func_decl.attr_dynamic;
 	bool is_interface = decl->func_decl.attr_interface;
 	if (is_interface && type != type_any) RETURN_SEMA_ERROR(decl, "Only 'any' methods may use '@interface'.");
+	if (!vec_size(params)) RETURN_SEMA_ERROR(decl, "A method must start with an argument of the type "
+												   "it is a method of, e.g. 'fn Foo.test(Foo* foo)'.");
 	if (!sema_is_valid_method_param(context, params[0], type, is_dynamic, is_interface)) return false;
 	if (is_dynamic)
 	{
