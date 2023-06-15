@@ -278,6 +278,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_TRAP:
 		case BUILTIN_UNREACHABLE:
 			expr->type = type_void;
+			expr->call_expr.no_return = true;
 			return true;
 		case BUILTIN_SYSCLOCK:
 			expr->type = type_ulong;
