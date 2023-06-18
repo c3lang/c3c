@@ -37,14 +37,18 @@ def JmpBuf = uptr[$$JMP_BUF_SIZE];
 
 module libc @if(env::COMPILER_LIBC_AVAILABLE);
 
+extern fn void abort();
 extern fn double atof(char* str);
 extern fn int atoi(char* str);
 extern fn CLongLong atoll(char* str);
+extern fn CInt close(CInt fd) @if(!env::WIN32);
+extern fn CFile fdopen(CInt fd, char* mode) @if(!env::WIN32);
+extern fn void atexit(TerminateFunction f);
 extern fn double strtod(char* str, char** endptr);
 extern fn CLong strtol(char* str, char** endptr, int base);
 extern fn CULong stroul(char* str, char** endptr, int base);
-extern fn void abort();
-extern fn void atexit(TerminateFunction f);
+extern fn long labs(long x);
+extern fn LongDivResult ldiv(long number, long denom);
 extern fn void exit(int status);
 extern fn ZString getenv(ZString name);
 extern fn int setenv(ZString name, ZString value, int overwrite);
@@ -53,8 +57,6 @@ extern fn int system(char* str);
 extern fn void bsearch(void* key, void *base, usz items, usz size, CompareFunction compare);
 extern fn void qsort(void* base, usz items, usz size, CompareFunction compare);
 extern fn DivResult div(int numer, int denom);
-extern fn long labs(long x);
-extern fn LongDivResult ldiv(long number, long denom);
 extern fn int rand();
 extern fn void srand(uint seed);
 
@@ -106,9 +108,9 @@ extern fn CFile fopen(ZString filename, ZString mode);
 extern fn usz fread(void* ptr, usz size, usz nmemb, CFile stream);
 extern fn CFile freopen(ZString filename, ZString mode, CFile stream);
 extern fn CFile fmemopen(void* ptr, usz size, ZString mode);
-extern fn int fseek(CFile stream, SeekIndex offset, int whence);
+extern fn int fseek(CFile stream, SeekIndex offset, int whence) @if(!env::WIN32);
 extern fn int fsetpos(CFile stream, Fpos* pos);
-extern fn SeekIndex ftell(CFile stream);
+extern fn SeekIndex ftell(CFile stream) @if(!env::WIN32);
 extern fn usz fwrite(void* ptr, usz size, usz nmemb, CFile stream);
 extern fn int remove(char* filename);
 extern fn int rename(char* old_name, char* new_name);
@@ -134,10 +136,10 @@ extern fn int puts(char* str);
 extern fn int ungetc(int c, CFile stream);
 extern fn void perror(char* str);
 extern fn isz getline(char** linep, usz* linecapp, CFile stream);
-
+extern fn CInt fileno(CFile strem) @if(!env::WIN32);
 extern fn int timespec_get(TimeSpec* ts, int base);
 extern fn int nanosleep(TimeSpec* req, TimeSpec* remaining);
-
+extern fn isz read(CInt fd, void* buf, usz nbyte);
 extern fn ZString asctime(Tm *timeptr);
 extern fn Clock_t clock();
 extern fn ZString ctime(Time_t *timer);
@@ -151,6 +153,10 @@ extern fn Time_t time(Time_t *timer);
 def SignalFunction = fn void(int);
 extern fn SignalFunction signal(int sig, SignalFunction function);
 // Incomplete
+
+const CInt STDIN_FD = 0;
+const CInt STDOUT_FD = 1;
+const CInt STDERR_FD = 2;
 
 module libc @if(LINUX_LIBC);
 extern CFile __stdin @extern("stdin");
@@ -177,9 +183,9 @@ module libc @if(WIN32_LIBC);
 extern fn CFile __acrt_iob_func(CInt c);
 extern fn usz _msize(void* ptr);
 macro usz malloc_size(void* ptr) => _msize(ptr);
-macro CFile stdin() => __acrt_iob_func(0);
-macro CFile stdout() => __acrt_iob_func(1);
-macro CFile stderr() => __acrt_iob_func(2);
+macro CFile stdin() => __acrt_iob_func(STDIN_FD);
+macro CFile stdout() => __acrt_iob_func(STDOUT_FD);
+macro CFile stderr() => __acrt_iob_func(STDERR_FD);
 extern fn Tm* _gmtime64_s(Tm* buf, Time_t *timer);
 extern fn Tm* _localtime64_s(Tm* buf, Time_t *timer);
 extern fn void _get_timezone(CLong *timezone);
@@ -189,9 +195,9 @@ extern fn Time_t mktime(Tm *timeptr) @extern("_mktime64");
 extern fn Time_t timegm(Tm *timeptr) @extern("_mkgmtime64");
 
 module libc @if(env::COMPILER_LIBC_AVAILABLE && !env::WIN32 && !env::LINUX && !env::DARWIN);
-macro CFile stdin() { return (CFile*)(uptr)0; }
-macro CFile stdout() { return (CFile*)(uptr)1; }
-macro CFile stderr() { return (CFile*)(uptr)2; }
+macro CFile stdin() { return (CFile*)(uptr)STDIN_FD; }
+macro CFile stdout() { return (CFile*)(uptr)STDOUT_FD; }
+macro CFile stderr() { return (CFile*)(uptr)STDERR_FD; }
 
 module libc @if(env::COMPILER_LIBC_AVAILABLE && !env::WIN32);
 extern fn Tm* gmtime_r(Time_t *timer, Tm* buf);

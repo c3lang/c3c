@@ -1,6 +1,6 @@
 module std::os::win32 @if(WIN32_LIBC);
 
-extern fn Win32_DWORD win32_GetLastError() @extern("GetLastError");
+extern fn Win32_DWORD getLastError() @extern("GetLastError");
 
 const Win32_DWORD ERROR_INVALID_FUNCTION = 0x1;
 const Win32_DWORD ERROR_FILE_NOT_FOUND = 0x2;
@@ -221,4 +221,5 @@ const Win32_DWORD ERROR_DEVICE_FEATURE_NOT_SUPPORTED = 0x13C;
 const Win32_DWORD ERROR_MR_MID_NOT_FOUND = 0x13D;
 const Win32_DWORD ERROR_SCOPE_NOT_FOUND = 0x13E;
 const Win32_DWORD ERROR_UNDEFINED_SCOPE = 0x13F;
-
+const Win32_DWORD ERROR_IO_INCOMPLETE = 0x3E4;
+const Win32_DWORD ERROR_IO_PENDING = 0x3E5;

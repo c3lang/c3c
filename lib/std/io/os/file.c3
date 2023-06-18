@@ -29,8 +29,8 @@ fn void*! native_fopen(String filename, String mode) @inline
 	$else
 		@pool()
 		{
-		$if env::os_is_win32():
-			void* file = (CFile)_wfopen(filename.to_temp_utf16(), filename.to_temp_utf16())!;
+		$if env::WIN32:
+			void* file = libc::_wfopen(filename.to_temp_utf16(), filename.to_temp_utf16())!;
 		$else
 			void* file = libc::fopen(filename.zstr_tcopy(), mode.zstr_tcopy());
 		$endif
@@ -52,7 +52,7 @@ fn void*! native_freopen(void* file, String filename, String mode) @inline
 		@pool()
 		{
 		$if env::os_is_win32():
-			file = _wfreopen(filename.to_temp_utf16(), mode.to_temp_utf16(), file)!;
+			file = libc::_wfreopen(filename.to_temp_utf16(), mode.to_temp_utf16(), file)!;
 		$else
 			file = libc::freopen(filename.zstr_tcopy(), mode.zstr_tcopy(), file);
 		$endif
@@ -67,12 +67,7 @@ fn void! native_fseek(void* file, isz offset, Seek seek_mode) @inline
 		if (native_fseek_fn) return native_fseek_fn(file, offset, seek_mode);
 		unreachable("Tried to call fseek without support.");
 	$else
-		$if env::os_is_win32():
-			bool success = _fseeki64(file, (long)offset, (int)seek_mode) == 0;
-		$else
-			bool success = libc::fseek(file, (SeekIndex)offset, (CInt)seek_mode) == 0;
-		$endif
-			if (!success) return file_seek_errno()?;
+		if (libc::fseek(file, (SeekIndex)offset, (CInt)seek_mode)) return file_seek_errno()?;
 	$endif
 }
 
@@ -82,13 +77,8 @@ fn usz! native_ftell(CFile file) @inline
 		if (native_ftell_fn) return native_ftell_fn(file);
 		unreachable("Tried to call ftell without support.");
 	$else
-		$if env::os_is_win32():
-			long index = _ftelli64(file);
-			return index >= 0 ? index : file_seek_errno()?;
-		$else
-			SeekIndex index = libc::ftell(file);
-			return index >= 0 ? index : file_seek_errno()?;
-		$endif
+		long index = libc::ftell(file);
+		return index >= 0 ? (usz)index : file_seek_errno()?;
 	$endif
 }
 
@@ -158,12 +148,6 @@ macro anyfault file_seek_errno() @local
 	    default: return IoError.UNKNOWN_ERROR;
 	}
 }
-
-// Win functions
-extern fn void* _wfopen(Char16*, Char16*) @local @if(WIN32_LIBC);
-extern fn void* _wfreopen(Char16*, Char16*, CFile) @local @if(WIN32_LIBC);
-extern fn int _fseeki64(CFile, long, int) @local @if(WIN32_LIBC);
-extern fn long _ftelli64(CFile) @local @if(WIN32_LIBC);
 
 // Posix functions
 extern fn CInt access(ZString path, CInt mode) @if(POSIX_LIBC);

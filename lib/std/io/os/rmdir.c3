@@ -26,8 +26,8 @@ macro bool! native_rmdir(Path path)
 		$case WIN32_LIBC:
 			@pool()
 		    {
-				if (win32::win32_RemoveDirectoryW(path.as_str().to_temp_utf16()!!)) return true;
-				switch (win32::win32_GetLastError())
+				if (win32::removeDirectoryW(path.as_str().to_temp_utf16()!!)) return true;
+				switch (win32::getLastError())
 				{
 					case win32::ERROR_ACCESS_DENIED:
 						return IoError.NO_PERMISSION?;

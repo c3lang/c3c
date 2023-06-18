@@ -38,6 +38,7 @@ jobs:
           ..\build\${{ matrix.build_type }}\c3c.exe compile-run examples\fannkuch-redux.c3
           ..\build\${{ matrix.build_type }}\c3c.exe compile-run examples\contextfree\boolerr.c3
           ..\build\${{ matrix.build_type }}\c3c.exe compile-run examples\load_world.c3
+          ..\build\${{ matrix.build_type }}\c3c.exe compile-run examples\process.c3
           
 
       - name: Build testproject
@@ -254,6 +255,7 @@ jobs:
           ../build/c3c compile-run examples/fannkuch-redux.c3
           ../build/c3c compile-run examples/contextfree/boolerr.c3
           ../build/c3c compile-run examples/load_world.c3
+          ../build/c3c compile-run examples/process.c3
 
       - name: Compile run unit tests
         run: |
@@ -360,6 +362,7 @@ jobs:
           ../build/c3c compile-run examples/fannkuch-redux.c3
           ../build/c3c compile-run examples/contextfree/boolerr.c3
           ../build/c3c compile-run examples/load_world.c3
+          ../build/c3c compile-run examples/process.c3
 
       - name: Compile run unit tests
         run: |
@@ -430,6 +433,7 @@ jobs:
           ../build/c3c compile-run examples/time.c3
           ../build/c3c compile-run examples/fannkuch-redux.c3
           ../build/c3c compile-run examples/contextfree/boolerr.c3
+          ../build/c3c compile-run examples/process.c3
           ../build/c3c compile-run examples/load_world.c3
 
       - name: Compile run unit tests

@@ -21,7 +21,7 @@ macro void! native_chdir(Path path)
 			@pool()
 			{
 				// TODO improve with better error handling.
-				if (win32::win32_SetCurrentDirectoryW(path.as_str().to_temp_utf16()!!)) return;
+				if (win32::setCurrentDirectoryW(path.as_str().to_temp_utf16()!!)) return;
 			};
 			return IoError.GENERAL_ERROR?;
 		$default:
