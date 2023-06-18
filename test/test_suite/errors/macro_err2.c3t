@@ -36,9 +36,9 @@ entry:
   br i1 %1, label %after_check, label %opt_block_cleanup
 
 after_check:                                      ; preds = %entry
-  %2 = call i32 (ptr, ...) @printf(ptr @.str.1)
-  %3 = load i32, ptr %retparam, align 4
-  store i32 %3, ptr %blockret, align 4
+  %2 = load i32, ptr %retparam, align 4
+  store i32 %2, ptr %blockret, align 4
+  %3 = call i32 (ptr, ...) @printf(ptr @.str.1)
   br label %expr_block.exit
 
 opt_block_cleanup:                                ; preds = %entry

@@ -123,6 +123,7 @@
 - Added `Clock` and `DateTime`.
 
 ### Fixes
+- Fixed defer/return value ordering in certain cases.
 - Fixes to the x64 ABI.
 - Updates to how variadics are implemented.
 - Fixes to shift checks.

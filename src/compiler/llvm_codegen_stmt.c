@@ -174,7 +174,11 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 	{
 		BEValue be_value;
 		llvm_emit_expr(c, &be_value, expr->inner_expr);
-		llvm_emit_statement_chain(c, ast->return_stmt.cleanup_fail);
+		if (ast->return_stmt.cleanup_fail)
+		{
+			llvm_value_rvalue(c, &be_value);
+			llvm_emit_statement_chain(c, ast->return_stmt.cleanup_fail);
+		}
 		llvm_emit_return_abi(c, NULL, &be_value);
 		return;
 	}
@@ -200,7 +204,11 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 
 	POP_OPT();
 
-	llvm_emit_statement_chain(c, ast->return_stmt.cleanup);
+	if (ast->return_stmt.cleanup || ast->return_stmt.cleanup_fail)
+	{
+		if (has_return_value) llvm_value_rvalue(c, &return_value);
+		llvm_emit_statement_chain(c, ast->return_stmt.cleanup);
+	}
 
 	// Are we in an expression block?
 	if (!has_return_value)
@@ -257,11 +265,11 @@ static inline void llvm_emit_block_exit_return(GenContext *c, Ast *ast)
 	AstId cleanup = ast->return_stmt.cleanup;
 	AstId cleanup_fail = ast->return_stmt.cleanup_fail;
 	AstId err_cleanup = err_cleanup_block && cleanup_fail ? astid(copy_ast_defer(astptr(cleanup_fail))) : 0;
-	llvm_emit_statement_chain(c, cleanup);
 	if (exit->block_return_out && return_value.value)
 	{
 		llvm_store_to_ptr_aligned(c, exit->block_return_out, &return_value, type_alloca_alignment(return_value.type));
 	}
+	llvm_emit_statement_chain(c, cleanup);
 
 	if (err_cleanup_block)
 	{

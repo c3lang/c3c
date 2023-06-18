@@ -24,13 +24,11 @@ define void @foo.main() #0 {
 entry:
   %blockret = alloca i32, align 4
   br label %if.then
-
 if.then:                                          ; preds = %entry
+  store i32 12, ptr %blockret, align 4
   call void (ptr, ...) @printf(ptr @.str)
   call void (ptr, ...) @printf(ptr @.str.1)
-  store i32 12, ptr %blockret, align 4
   br label %expr_block.exit
-
 expr_block.exit:                                  ; preds = %if.then
   call void (ptr, ...) @printf(ptr @.str.5)
   call void (ptr, ...) @printf(ptr @.str.6)

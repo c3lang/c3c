@@ -33,24 +33,21 @@ entry:
   %1 = load i32, ptr %x, align 4
   %gt = icmp sgt i32 %1, 100
   br i1 %gt, label %if.then, label %if.exit
-
 if.then:                                          ; preds = %entry
   %2 = load i32, ptr %x, align 4
   %sub = sub i32 %2, 100
   store i32 %sub, ptr %x, align 4
+  store i32 %sub, ptr %blockret, align 4
   %3 = load i32, ptr %x, align 4
   call void (ptr, ...) @printf(ptr @.str, i32 %3)
-  store i32 %sub, ptr %blockret, align 4
   br label %expr_block.exit
-
 if.exit:                                          ; preds = %entry
   call void (ptr, ...) @printf(ptr @.str.1)
   %4 = load i32, ptr %x, align 4
-  call void (ptr, ...) @printf(ptr @.str.2, i32 %4)
+  store i32 %4, ptr %blockret, align 4
   %5 = load i32, ptr %x, align 4
-  store i32 %5, ptr %blockret, align 4
+  call void (ptr, ...) @printf(ptr @.str.2, i32 %5)
   br label %expr_block.exit
-
 expr_block.exit:                                  ; preds = %if.exit, %if.then
   store i32 3, ptr %x1, align 4
   %6 = load i32, ptr %x1, align 4
@@ -59,24 +56,21 @@ expr_block.exit:                                  ; preds = %if.exit, %if.then
   %7 = load i32, ptr %x1, align 4
   %gt4 = icmp sgt i32 %7, 100
   br i1 %gt4, label %if.then5, label %if.exit7
-
 if.then5:                                         ; preds = %expr_block.exit
   %8 = load i32, ptr %x1, align 4
   %sub6 = sub i32 %8, 100
   store i32 %sub6, ptr %x1, align 4
+  store i32 %sub6, ptr %blockret2, align 4
   %9 = load i32, ptr %x1, align 4
   call void (ptr, ...) @printf(ptr @.str.3, i32 %9)
-  store i32 %sub6, ptr %blockret2, align 4
   br label %expr_block.exit8
-
 if.exit7:                                         ; preds = %expr_block.exit
   call void (ptr, ...) @printf(ptr @.str.4)
   %10 = load i32, ptr %x1, align 4
-  call void (ptr, ...) @printf(ptr @.str.5, i32 %10)
+  store i32 %10, ptr %blockret2, align 4
   %11 = load i32, ptr %x1, align 4
-  store i32 %11, ptr %blockret2, align 4
+  call void (ptr, ...) @printf(ptr @.str.5, i32 %11)
   br label %expr_block.exit8
-
 expr_block.exit8:                                 ; preds = %if.exit7, %if.then5
   call void (ptr, ...) @printf(ptr @.str.6)
   ret void

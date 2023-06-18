@@ -32,10 +32,9 @@ entry:
   %add2 = add i32 %1, 1
   store i32 %add2, ptr %x, align 4
   %add3 = add i32 %add, %add2
-  %2 = call i32 (ptr, ...) @printf(ptr @.str)
   store i32 %add3, ptr %blockret, align 4
+  %2 = call i32 (ptr, ...) @printf(ptr @.str)
   br label %expr_block.exit
-
 expr_block.exit:                                  ; preds = %entry
   %3 = load i32, ptr %x, align 4
   %4 = call i32 (ptr, ...) @printf(ptr @.str.1, i32 %3)
