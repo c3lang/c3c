@@ -30,7 +30,7 @@ fn usz! native_file_size(String path)
 	{
 		Char16[] path16 = path.to_temp_utf16()!;
 		Win32_FILE_ATTRIBUTE_DATA data;
-		win32::win32_GetFileAttributesExW(path16, Win32_GET_FILEEX_INFO_LEVELS.STANDARD, &data);
+		win32::getFileAttributesExW(path16, Win32_GET_FILEEX_INFO_LEVELS.STANDARD, &data);
 		Win32_LARGE_INTEGER size;
 		size.lowPart = data.nFileSizeLow;
 		size.highPart = data.nFileSizeHigh;
@@ -42,7 +42,7 @@ fn bool native_file_or_dir_exists(String path)
 {
 	@pool()
 	{
-		return (bool)win32::win32_PathFileExistsW(path.to_temp_utf16()) ?? false;
+		return (bool)win32::pathFileExistsW(path.to_temp_utf16()) ?? false;
 	};
 }
 
@@ -64,11 +64,11 @@ fn void! native_rmtree(Path path)
     Win32_WIN32_FIND_DATAW find_data;
 
 	String s = path.as_str().tconcat("\\*");
-	Win32_HANDLE find = win32::win32_FindFirstFileW(s.to_utf16(mem::temp()), &find_data)!;
+	Win32_HANDLE find = win32::findFirstFileW(s.to_utf16(mem::temp()), &find_data)!;
 
 	if (find == win32::INVALID_HANDLE_VALUE) return IoError.CANNOT_READ_DIR?;
 
-    defer win32::win32_FindClose(find);
+    defer win32::findClose(find);
 	do
 	{
 		String filename = string::from_zutf16(&find_data.cFileName, mem::temp())!;
@@ -80,9 +80,9 @@ fn void! native_rmtree(Path path)
 		}
 		else
 		{
-			win32::win32_DeleteFileW(file_path.as_str().to_utf16(mem::temp()));
+			win32::deleteFileW(file_path.as_str().to_utf16(mem::temp()));
 		}
-	} while (win32::win32_FindNextFileW(find, &find_data) != 0);
+	} while (win32::findNextFileW(find, &find_data) != 0);
     os::native_rmdir(path)!;
 }
 
@@ -90,10 +90,10 @@ fn Path! native_temp_directory(Allocator* using = mem::heap())
 {
 	@stack_mem(256; Allocator* mem)
 	{
-	    Win32_DWORD len = win32::win32_GetTempPathW(0, null);
+	    Win32_DWORD len = win32::getTempPathW(0, null);
 		if (!len) return IoError.GENERAL_ERROR?;
 		Char16[] buff = malloc(Char16, len + 1, .using = mem);
-		if (!win32::win32_GetTempPathW(len, buff)) return IoError.GENERAL_ERROR?;
+		if (!win32::getTempPathW(len, buff)) return IoError.GENERAL_ERROR?;
 		return path::new(string::from_utf16(buff[:len], .using = mem), using);
 	};
 }

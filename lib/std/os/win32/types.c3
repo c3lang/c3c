@@ -196,6 +196,8 @@ struct Win32_SECURITY_ATTRIBUTES
 	Win32_BOOL   bInheritHandle;
 }
 
+
+
 def Win32_LPSECURITY_ATTRIBUTES = Win32_SECURITY_ATTRIBUTES*;
 def Win32_PSECURITY_ATTRIBUTES = Win32_SECURITY_ATTRIBUTES*;
 
@@ -221,6 +223,21 @@ struct Win32_STARTUPINFOW
 	Win32_HANDLE hStdError;
 }
 
+struct Win32_OVERLAPPED
+{
+	Win32_ULONG_PTR internal;
+    Win32_ULONG_PTR internalHigh;
+    union {
+        struct {
+            Win32_DWORD offset;
+            Win32_DWORD offsetHigh;
+        }
+        Win32_PVOID pointer;
+    }
+    Win32_HANDLE hEvent;
+}
+
+def Win32_LPOVERLAPPED = Win32_OVERLAPPED*;
 def Win32_LPSTARTUPINFOW = Win32_STARTUPINFOW*;
 
 struct Win32_STARTUPINFOEXW

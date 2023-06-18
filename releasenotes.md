@@ -3,6 +3,7 @@
 ## 0.5.0 Change List
 
 ### Changes / improvements
+- Fix to void expression blocks
 - Temporary objects may now invoke methods using ref parameters.
 - Delete object files after successful linking.
 - `@if` introduced, other top level conditional compilation removed.
@@ -86,6 +87,8 @@
 - `@ensure` checks only non-optional results.
  
 ### Stdlib changes
+- Updated posix/win32 stdlib namespacing
+- `process` stdlib
 - Stdlib updates to string.
 - Many additions to `List`: `remove`, `array_view`, `add_all`, `compact` etc
 - Added dstringwriter.

@@ -138,6 +138,7 @@ const NETBSD_LIBC @builtin = env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == NET
 const WASI_LIBC @builtin = env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == WASI;
 const WASM_NOLIBC @builtin = !env::COMPILER_LIBC_AVAILABLE && env::ARCH_TYPE == ArchType.WASM32 || env::ARCH_TYPE == ArchType.WASM64;
 const bool NO_LIBC = !env::COMPILER_LIBC_AVAILABLE;
+const bool LIBC = env::COMPILER_LIBC_AVAILABLE;
 const bool WIN32 = OS_TYPE == WIN32;
 const bool DARWIN = OS_TYPE == IOS || OS_TYPE == MACOS || OS_TYPE == TVOS || OS_TYPE == WATCHOS;
 const bool LINUX = OS_TYPE == LINUX;

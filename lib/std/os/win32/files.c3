@@ -1,5 +1,5 @@
 module std::os::win32 @if(WIN32_LIBC);
-
+import libc;
 enum Win32_GET_FILEEX_INFO_LEVELS
 {
 	STANDARD,
@@ -39,21 +39,43 @@ struct Win32_WIN32_FIND_DATAW
 
 def Win32_LPWIN32_FIND_DATAW = Win32_WIN32_FIND_DATAW*;
 
-extern fn Win32_BOOL win32_CloseHandle(Win32_HANDLE) @extern("CloseHandle");
-extern fn Win32_BOOL win32_CreatePipe(Win32_PHANDLE hReadPipe, Win32_PHANDLE hWritePipe, Win32_LPSECURITY_ATTRIBUTES lpPipeAttributes, Win32_DWORD nSize) @extern("CreatePipe");
-extern fn Win32_BOOL win32_GetFileAttributesExW(Win32_LPCWSTR, Win32_GET_FILEEX_INFO_LEVELS, Win32_LPVOID) @extern("GetFileAttributesExW");
-extern fn Win32_BOOL win32_PathFileExistsW(Win32_LPCWSTR) @extern("PathFileExistsW");
-extern fn Win32_DWORD win32_GetTempPathW(Win32_DWORD nBufferLength, Win32_LPWSTR lpBuffer) @extern("GetTempPathW");
-extern fn Win32_BOOL win32_SetCurrentDirectoryW(Win32_LPCTSTR buffer) @extern("SetCurrentDirectoryW");
-extern fn Win32_BOOL win32_RemoveDirectoryW(Win32_LPCWSTR lpPathName) @extern("RemoveDirectoryW");
-extern fn Win32_BOOL win32_CreateDirectoryW(Win32_LPCWSTR lpPathName, Win32_LPSECURITY_ATTRIBUTES lpPipeAttributes) @extern("CreateDirectoryW");
-extern fn Win32_BOOL win32_DeleteFileW(Win32_LPCWSTR lpFileName) @extern("DeleteFileW");
-extern fn Win32_HANDLE win32_FindFirstFileW(Win32_LPCWSTR lpFileName, Win32_LPWIN32_FIND_DATAW lpFindFileData) @extern("FindFirstFileW");
-extern fn Win32_BOOL win32_FindNextFileW(Win32_HANDLE hFindFile, Win32_LPWIN32_FIND_DATAW lpFindFileData) @extern("FindNextFileW");
-extern fn Win32_BOOL win32_FindClose(Win32_HANDLE hFindFile) @extern("FindClose");
+extern fn Win32_BOOL closeHandle(Win32_HANDLE) @extern("CloseHandle");
+extern fn Win32_BOOL createPipe(Win32_PHANDLE hReadPipe, Win32_PHANDLE hWritePipe, Win32_LPSECURITY_ATTRIBUTES lpPipeAttributes, Win32_DWORD nSize) @extern("CreatePipe");
+extern fn Win32_BOOL getFileAttributesExW(Win32_LPCWSTR, Win32_GET_FILEEX_INFO_LEVELS, Win32_LPVOID) @extern("GetFileAttributesExW");
+extern fn Win32_BOOL pathFileExistsW(Win32_LPCWSTR) @extern("PathFileExistsW");
+extern fn Win32_DWORD getTempPathW(Win32_DWORD nBufferLength, Win32_LPWSTR lpBuffer) @extern("GetTempPathW");
+extern fn Win32_BOOL setCurrentDirectoryW(Win32_LPCTSTR buffer) @extern("SetCurrentDirectoryW");
+extern fn Win32_BOOL removeDirectoryW(Win32_LPCWSTR lpPathName) @extern("RemoveDirectoryW");
+extern fn Win32_BOOL createDirectoryW(Win32_LPCWSTR lpPathName, Win32_LPSECURITY_ATTRIBUTES lpPipeAttributes) @extern("CreateDirectoryW");
+extern fn Win32_BOOL deleteFileW(Win32_LPCWSTR lpFileName) @extern("DeleteFileW");
+extern fn Win32_HANDLE findFirstFileW(Win32_LPCWSTR lpFileName, Win32_LPWIN32_FIND_DATAW lpFindFileData) @extern("FindFirstFileW");
+extern fn Win32_BOOL findNextFileW(Win32_HANDLE hFindFile, Win32_LPWIN32_FIND_DATAW lpFindFileData) @extern("FindNextFileW");
+extern fn Win32_BOOL findClose(Win32_HANDLE hFindFile) @extern("FindClose");
+
+const Win32_DWORD GENERIC_WRITE = 0x40000000;
+const Win32_DWORD OPEN_EXISTING = 3;
+const Win32_DWORD FILE_ATTRIBUTE_NORMAL = 0x00000080;
+
+extern fn Win32_HANDLE createFileA(
+	Win32_LPCSTR lpFileName,
+	Win32_DWORD dwDesiredAccess,
+	Win32_DWORD dwShareMode,
+	Win32_LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+	Win32_DWORD dwCreationDisposition,
+	Win32_DWORD dwFlagsAndAttributes,
+	Win32_HANDLE hTemplateFile
+) @extern("CreateFileA");
+extern fn Win32_BOOL readFile(Win32_HANDLE hFile, Win32_LPVOID lpBuffer, Win32_DWORD nNumberOfBytesToRead,
+  Win32_LPDWORD lpNumberOfBytesRead, Win32_LPOVERLAPPED lpOverlapped
+) @extern("ReadFile");
 
 extern fn Char16* _wgetcwd(Char16* buffer, int maxlen);
 extern fn usz wcslen(Char16* str);
+
+extern fn int _open_osfhandle(iptr osfhandle, int flags);
+extern fn iptr _get_osfhandle(int fd);
+extern fn CFile _fdopen(int fd, ZString mode);
+
 
 /*
 extern ulong _win32_GetCurrentDirectoryW(ulong, Char16* buffer) @extern("GetCurrentDirectoryW");

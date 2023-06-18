@@ -1712,7 +1712,7 @@ static inline Type *context_unify_returns(SemaContext *context)
 		}
 
 		// 3. Same type -> we're done.
-		if (common_type == rtype) continue;
+		if (common_type == rtype || (common_type == type_void && rtype == type_wildcard)) continue;
 
 		// 4. Find the max of the old and new.
 		Type *max = type_find_max_type(common_type, rtype);
@@ -1744,6 +1744,10 @@ static inline Type *context_unify_returns(SemaContext *context)
 			Ast *return_stmt = context->returns[i];
 			if (!return_stmt) continue;
 			Expr *ret_expr = return_stmt->return_stmt.expr;
+			if (!ret_expr)
+			{
+				context_unify_returns(context);
+			}
 			// 8. All casts should work.
 			if (!cast_implicit(context, ret_expr, common_type))
 			{
