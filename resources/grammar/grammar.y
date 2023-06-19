@@ -414,7 +414,7 @@ constant_expr
 param_path_element
 	: '[' expr ']'
 	| '[' expr DOTDOT expr ']'
-	| '.' IDENT
+	| '.' primary_expr
 	;
 
 param_path
