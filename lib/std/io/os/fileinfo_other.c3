@@ -17,7 +17,7 @@ struct NativeDirentry
 	char[*] name @if(!env::os_is_darwin());
 }
 
-module std::io::file::os @if(!env::os_is_win32());
+module std::io::file::os @if(!env::WIN32);
 
 // native_temp_directory, for non Win32
 
@@ -47,7 +47,7 @@ const DT_LNK     = 10;
 const DT_SOCK    = 12;
 const DT_WHT     = 14;
 
-fn PathList! native_readdir(Path dir, bool no_dirs, bool no_symlinks, String mask, Allocator* using)
+fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Allocator* using)
 {
 	PathList list;
 	list.init(.using = using);
