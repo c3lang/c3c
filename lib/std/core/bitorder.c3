@@ -87,3 +87,91 @@ bitstruct UInt128LE : uint128 @littleendian
 	uint128 val : 0..127;
 }
 
+/**
+ * @require is_array_or_sub_of_char(bytes) "argument must be an array, a pointer to an array or a subarray of char"
+ * @require is_bitorder($Type) "type must be a bitorder integer"
+ **/
+macro read(bytes, $Type)
+{
+    char[] s;
+    $switch ($typeof(bytes).kindof)
+    $case POINTER:
+        s = (*bytes)[:$Type.sizeof];
+    $default:
+        s = bytes[:$Type.sizeof];
+    $endswitch
+    return bitcast(*(char[$Type.sizeof]*)s.ptr, $Type).val;
+}
+
+/**
+ * @require is_arrayptr_or_sub_of_char(bytes) "argument must be a pointer to an array or a subarray of char"
+ * @require is_bitorder($Type) "type must be a bitorder integer"
+ **/
+macro write(x, bytes, $Type)
+{
+    char[] s;
+    $switch ($typeof(bytes).kindof)
+    $case POINTER:
+        s = (*bytes)[:$Type.sizeof];
+    $default:
+        s = bytes[:$Type.sizeof];
+    $endswitch
+    *($typeof(x)*)s.ptr = bitcast(x, $Type).val;
+}
+
+macro is_bitorder($Type)
+{
+    $switch ($Type)
+    $case UShortLE:
+    $case ShortLE:
+    $case UIntLE:
+    $case IntLE:
+    $case ULongLE:
+    $case LongLE:
+    $case UInt128LE:
+    $case Int128LE:
+    $case UShortBE:
+    $case ShortBE:
+    $case UIntBE:
+    $case IntBE:
+    $case ULongBE:
+    $case LongBE:
+    $case UInt128BE:
+    $case Int128BE:
+        return true;
+    $endswitch
+    return false;
+}
+
+macro bool is_array_or_sub_of_char(bytes)
+{
+    $switch ($typeof(bytes).kindof)
+    $case POINTER:
+        var $Inner = $typefrom($typeof(bytes).inner);
+        $if $Inner.kindof == ARRAY:
+            var $Inner2 = $typefrom($Inner.inner);
+            return $Inner2.typeid == char.typeid;
+        $endif
+    $case ARRAY:
+    $case SUBARRAY:
+        var $Inner = $typefrom($typeof(bytes).inner);
+        return $Inner.typeid == char.typeid;
+    $endswitch
+    return false;
+}
+
+macro bool is_arrayptr_or_sub_of_char(bytes)
+{
+    $switch ($typeof(bytes).kindof)
+    $case POINTER:
+        var $Inner = $typefrom($typeof(bytes).inner);
+        $if $Inner.kindof == ARRAY:
+            var $Inner2 = $typefrom($Inner.inner);
+            return $Inner2.typeid == char.typeid;
+        $endif
+    $case SUBARRAY:
+        var $Inner = $typefrom($typeof(bytes).inner);
+        return $Inner.typeid == char.typeid;
+    $endswitch
+    return false;
+}
