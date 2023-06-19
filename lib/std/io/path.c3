@@ -58,9 +58,9 @@ macro bool is_win32_separator(char c)
 	return c == '/' || c == '\\';
 }
 
-fn Path[]! ls(Path path)
+fn PathList! ls(Path dir, bool no_dirs = false, bool no_symlinks = false, String mask = "", Allocator* using = mem::heap())
 {
-	unreachable();
+	return os::native_ls(dir, no_dirs, no_symlinks, mask, using);
 }
 
 enum MkdirPermissions
@@ -69,8 +69,6 @@ enum MkdirPermissions
 	USER_ONLY,
 	USER_AND_ADMIN
 }
-
-
 
 fn bool! mkdir(Path path, bool recursive = false, MkdirPermissions permissions = NORMAL)
 {
@@ -106,6 +104,14 @@ fn void! rmtree(Path path)
 fn Path! new(String path, Allocator* using = mem::heap(), PathEnv path_env = DEFAULT_PATH_ENV)
 {
 	return { normalize(path.copy(using), path_env), path_env };
+}
+
+fn Path! new_win32_zutf16(Char16* path, Allocator* using = mem::heap())
+{
+	@stack_mem(480; Allocator* mem)
+	{
+		return path::new(string::from_zutf16(path, .using = mem)!, .using = using);
+	};
 }
 
 fn Path! new_windows(String path, Allocator* using = mem::heap())

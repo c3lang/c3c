@@ -1,28 +1,6 @@
-module std::io::file::os @if(env::os_is_win32());
+module std::io::file::os @if(env::WIN32);
 import std::os::win32;
 
-const Win32_DWORD FILE_ATTRIBUTE_READONLY = 0x01;
-const Win32_DWORD FILE_ATTRIBUTE_HIDDEN = 0x02;
-const Win32_DWORD FILE_ATTRIBUTE_SYSTEM = 0x04;
-const Win32_DWORD FILE_ATTRIBUTE_DIRECTORY = 0x10;
-const Win32_DWORD FILE_ATTRIBUTE_ARCHIVE = 0x20;
-const Win32_DWORD FILE_ATTRIBUTE_DEVICE = 0x40;
-const Win32_DWORD FILE_ATTRIBUTE_NORMAL = 0x80;
-const Win32_DWORD FILE_ATTRIBUTE_TEMPORARY = 0x100;
-const Win32_DWORD FILE_ATTRIBUTE_SPARSE_FILE = 0x200;
-const Win32_DWORD FILE_ATTRIBUTE_REPARSE_POINT = 0x400;
-const Win32_DWORD FILE_ATTRIBUTE_COMPRESSED = 0x800;
-const Win32_DWORD FILE_ATTRIBUTE_OFFLINE = 0x1000;
-const Win32_DWORD FILE_ATTRIBUTE_NOT_CONTENT_INDEXED = 0x2000;
-const Win32_DWORD FILE_ATTRIBUTE_ENCRYPTED = 0x4000;
-const Win32_DWORD FILE_ATTRIBUTE_INTEGRITY_STREAM = 0x8000;
-const Win32_DWORD FILE_ATTRIBUTE_VIRTUAL = 0x10000;
-const Win32_DWORD FILE_ATTRIBUTE_NO_SCRUB_DATA = 0x20000;
-const Win32_DWORD FILE_ATTRIBUTE_EA = 0x40000;
-const Win32_DWORD FILE_ATTRIBUTE_PINNED = 0x80000;
-const Win32_DWORD FILE_ATTRIBUTE_UNPINNED = 0x100000;
-const Win32_DWORD FILE_ATTRIBUTE_RECALL_ON_OPEN = 0x40000;
-const Win32_DWORD FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS = 0x400000;
 
 fn usz! native_file_size(String path)
 {
@@ -74,7 +52,7 @@ fn void! native_rmtree(Path path)
 		String filename = string::from_zutf16(&find_data.cFileName, mem::temp())!;
 		if (filename == "." || filename == "..") continue;
 		Path file_path = path.tappend(filename)!;
-		if (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+		if (find_data.dwFileAttributes & win32::FILE_ATTRIBUTE_DIRECTORY)
 		{
 			native_rmtree(file_path)!;
 		}
@@ -98,13 +76,28 @@ fn Path! native_temp_directory(Allocator* using = mem::heap())
 	};
 }
 
-/*
-
-	}else if(method == file_size_methods::get_attributes){
-		WIN32_FILE_ATTRIBUTE_DATA file_attr_data;
-		if(GetFileAttributesEx(path, GetFileExInfoStandard, &file_attr_data)){
-			file_size.LowPart = file_attr_data.nFileSizeLow;
-			file_size.HighPart = file_attr_data.nFileSizeHigh;
-		}
-	}
-*/
+fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Allocator* using)
+{
+	PathList list;
+	list.init(.using = using);
+    @stack_mem(1024; Allocator* mem)
+    {
+	    Char16* result = dir.as_str().concat(`\*`).to_utf16(.using = mem)!!;
+	    list.append(path::new("test"));
+	    Win32_WIN32_FIND_DATAW find_data;
+        Win32_HANDLE find = win32::findFirstFileW(result, &find_data);
+        if (find == win32::INVALID_HANDLE_VALUE) return IoError.CANNOT_READ_DIR?;
+        defer win32::findClose(find);
+        do
+        {
+            if (no_dirs && (find_data.dwFileAttributes & win32::FILE_ATTRIBUTE_DIRECTORY)) continue;
+            @stack_mem(480; Allocator* mem2)
+            {
+				String filename = string::from_zutf16(&find_data.cFileName, mem2)!;
+                if (filename == ".." || filename == ".") continue;
+	            list.append(path::new(filename, using));
+            };
+        } while (win32::findNextFileW(find, &find_data));
+        return list;
+    };
+}
