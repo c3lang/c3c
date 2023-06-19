@@ -1257,10 +1257,11 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
 			else if (variadic == VARIADIC_ANY)
 			{
 				if (!sema_analyse_expr(context, arg)) return false;
-				if (type_is_invalid_storage_type(arg->type))
+				Type *type = arg->type;
+				if (type_is_invalid_storage_type(type) || type == type_void)
 				{
 					SEMA_ERROR(arg, "A value of type %s cannot be passed as a variadic argument.",
-					           type_quoted_error_string(arg->type));
+					           type_quoted_error_string(type));
 					return false;
 				}
 				expr_insert_addr(arg);
@@ -1471,7 +1472,7 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 				else
 				{
 					if (!sema_analyse_expr(context, val)) return false;
-					if (type_is_invalid_storage_type(val->type))
+					if (type_is_invalid_storage_type(val->type) || val->type == type_void)
 					{
 						SEMA_ERROR(val, "A value of type %s cannot be passed as a variadic argument.",
 						           type_quoted_error_string(val->type));
@@ -1538,7 +1539,7 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 				if (!sema_expr_check_assign(context, arg)) return false;
 				*optional |= IS_OPTIONAL(arg);
 				if (!sema_call_check_contract_param_match(context, param, arg)) return false;
-				if (type_is_invalid_storage_type(type))
+				if (type_is_invalid_storage_type(type) || type == type_void)
 				{
 					SEMA_ERROR(arg, "A value of type %s cannot be passed by reference.", type_quoted_error_string(type));
 					return false;
@@ -1563,6 +1564,7 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 			case VARDECL_PARAM:
 				// foo
 				if (!sema_analyse_expr_rhs(context, type, arg, true)) return false;
+				if (type_no_optional(arg->type) == type_void) RETURN_SEMA_ERROR(arg, "A 'void' value cannot be passed as a parameter.");
 				if (IS_OPTIONAL(arg)) *optional = true;
 				if (type_is_invalid_storage_type(arg->type))
 				{
@@ -5892,10 +5894,11 @@ static inline bool sema_expr_analyse_taddr(SemaContext *context, Expr *expr)
 	Expr *inner = expr->unary_expr.expr;
 	if (!sema_analyse_expr(context, inner)) return false;
 
-	if (type_is_invalid_storage_type(inner->type))
+	Type *type = inner->type;
+	if (type_is_invalid_storage_type(type) || type == type_void)
 	{
-		SEMA_ERROR(expr, "It is not possible to take the address from a value of the type %s.",
-		           type_quoted_error_string(inner->type));
+		SEMA_ERROR(expr, "It is not possible to take the address from a value of type %s.",
+		           type_quoted_error_string(type));
 		return false;
 	}
 	// 2. The type is the resulting type of the expression.
@@ -6584,7 +6587,7 @@ static inline bool sema_expr_analyse_ct_alignof(SemaContext *context, Expr *expr
 	Decl *decl = sema_expr_analyse_var_path(context, main_var);
 	if (!decl) return false;
 	Type *type = decl->type;
-	if (type_is_invalid_storage_type(type))
+	if (type_is_invalid_storage_type(type) || type == type_void)
 	{
 		SEMA_ERROR(main_var, "Cannot use '$alignof' on type %s.", type_quoted_error_string(type));
 		return false;

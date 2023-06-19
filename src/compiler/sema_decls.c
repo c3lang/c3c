@@ -2826,9 +2826,12 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 				if (init_expr->type == type_wildcard_optional || init_expr->type == type_wildcard)
 				{
 					SEMA_ERROR(init_expr, "No type can be inferred from the optional result.");
-					return false;
 				}
-				if (init_expr->type == type_untypedlist)
+				else if (init_expr->type == type_void)
+				{
+					SEMA_ERROR(init_expr, "You cannot initialize a value to 'void'.");
+				}
+				else if (init_expr->type == type_untypedlist)
 				{
 					SEMA_ERROR(init_expr, "The type of an untyped list cannot be inferred, you can try adding an explicit type to solve this.");
 				}
@@ -3018,25 +3021,31 @@ static bool sema_append_generate_parameterized_name(SemaContext *c, Module *modu
 		}
 		if (param->expr_kind == EXPR_TYPEINFO)
 		{
-			TypeInfo *type = param->type_expr;
-			if (!sema_resolve_type_info(c, type)) return decl_poison(decl);
-			if (type->type->type_kind == TYPE_OPTIONAL)
+			TypeInfo *type_info = param->type_expr;
+			if (!sema_resolve_type_info(c, type_info)) return decl_poison(decl);
+			Type *type = type_info->type->canonical;
+			if (type->type_kind == TYPE_OPTIONAL)
 			{
-				SEMA_ERROR(type, "Expected a non-optional type.");
+				SEMA_ERROR(type_info, "Expected a non-optional type.");
 				return poisoned_decl;
 			}
-			if (type_is_invalid_storage_type(type->type))
+			if (type == type_void)
 			{
-				SEMA_ERROR(type, "Expected a runtime type.");
+				SEMA_ERROR(type_info, "A 'void' type cannot be used as a parameter type.");
+				return poisoned_decl;
+			}
+			if (type_is_invalid_storage_type(type))
+			{
+				SEMA_ERROR(type_info, "Expected a runtime type.");
 				return poisoned_decl;
 			}
 			if (mangled)
 			{
-				type_mangle_introspect_name_to_buffer(type->type->canonical);
+				type_mangle_introspect_name_to_buffer(type);
 			}
 			else
 			{
-				scratch_buffer_append(type->type->name);
+				scratch_buffer_append(type_info->type->name);
 			}
 		}
 		else

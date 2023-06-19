@@ -637,6 +637,14 @@ static void sema_create_const_initializer_value(ConstInitializer *const_init, Ex
 		value->const_expr.initializer = const_init;
 		return;
 	}
+	if (value->expr_kind == EXPR_IDENTIFIER)
+	{
+		Decl *ident = value->identifier_expr.decl;
+		assert(ident->decl_kind == DECL_VAR);
+		assert(ident->var.kind == VARDECL_CONST);
+		sema_create_const_initializer_value(const_init, expr_copy(ident->var.init_expr));
+		return;
+	}
 	const_init->init_value = value;
 	const_init->type = type_flatten(value->type);
 	const_init->kind = CONST_INIT_VALUE;
