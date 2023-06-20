@@ -47,7 +47,7 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, SourceSpan expr_span, Type *switch_type, Ast **cases, ExprAnySwitch *any_switch, Decl *var_holder);
 
 static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *statement);
-static bool sema_analyse_require(SemaContext *context, Ast *directive, AstId **asserts);
+static bool sema_analyse_require(SemaContext *context, Ast *directive, AstId **asserts, SourceSpan source);
 static bool sema_analyse_ensure(SemaContext *context, Ast *directive);
 static bool sema_analyse_optional_returns(SemaContext *context, Ast *directive);
 
@@ -2787,9 +2787,9 @@ bool sema_analyse_statement(SemaContext *context, Ast *statement)
 }
 
 
-static bool sema_analyse_require(SemaContext *context, Ast *directive, AstId **asserts)
+static bool sema_analyse_require(SemaContext *context, Ast *directive, AstId **asserts, SourceSpan span)
 {
-	return assert_create_from_contract(context, directive, asserts, INVALID_SPAN);
+	return assert_create_from_contract(context, directive, asserts, span);
 }
 
 static bool sema_analyse_ensure(SemaContext *context, Ast *directive)
@@ -2893,7 +2893,7 @@ bool sema_analyse_contracts(SemaContext *context, AstId doc, AstId **asserts, So
 			case CONTRACT_PURE:
 				break;
 			case CONTRACT_REQUIRE:
-				if (!sema_analyse_require(context, directive, asserts)) return false;
+				if (!sema_analyse_require(context, directive, asserts, call_span)) return false;
 				break;
 			case CONTRACT_CHECKED:
 				if (!sema_analyse_checked(context, directive, call_span)) return false;
