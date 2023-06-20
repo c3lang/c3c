@@ -7,20 +7,15 @@
 #include "llvm/Object/SymbolicFile.h"
 #include "llvm-c/TargetMachine.h"
 #include "llvm/Target/TargetMachine.h"
+#include "lld/Common/CommonLinkerContext.h"
 
-#if LLVM_VERSION_MAJOR > 13
 #define LINK_SIG \
 bool link(llvm::ArrayRef<const char *> args, llvm::raw_ostream &stdoutOS, \
 		  llvm::raw_ostream &stderrOS, bool exitEarly, bool disableOutput);
 #define CALL_ARGS arg_vector, output, output_err, false, false
-#else
-#define LINK_SIG \
-bool link(llvm::ArrayRef<const char *> args, bool canExitEarly, \
-llvm::raw_ostream &stdoutOS, llvm::raw_ostream &stderrOS);
-#define CALL_ARGS arg_vector, false, output, output_err
-#endif
 
 namespace lld {
+
 	namespace coff {
 		LINK_SIG
 	}
@@ -96,29 +91,35 @@ static bool llvm_link(ObjFormat format, const char **args, int arg_count, const 
 	llvm::raw_string_ostream output_err { output_err_string };*/
 	llvm::raw_ostream &output = llvm::outs();
 	llvm::raw_ostream &output_err = llvm::errs();
+	bool success;
 	switch (format)
 	{
 		case ELF:
-			if (lld::elf::link(CALL_ARGS)) return true;
+			success = lld::elf::link(CALL_ARGS);
 			break;
 		case MACHO:
-			if (lld::macho::link(CALL_ARGS)) return true;
+			success = lld::macho::link(CALL_ARGS);
 			break;
 		case WASM:
-			if (lld::wasm::link(CALL_ARGS)) return true;
+			success = lld::wasm::link(CALL_ARGS);
 			break;
 		case COFF:
-			if (lld::coff::link(CALL_ARGS)) return true;
+			success = lld::coff::link(CALL_ARGS);
 			break;
 		case MINGW:
-			exit(-1);
-			if (lld::mingw::link(CALL_ARGS)) return true;
+			printf("Mingw not enabled");
+			exit(1);
 			break;
 		default:
+			printf("Unsupported linker");
 			exit(-1);
 	}
+	if (success)
+	{
+		lld::CommonLinkerContext::destroy();
+	}
 	//*error_string = strdup(output_err_string.c_str());
-	return false;
+	return success;
 }
 
 
