@@ -1,0 +1,36 @@
+// #target: macos-x64
+module test;
+fn void main()
+{
+    @foo(x);
+}
+
+struct Point { float x; float y; }
+
+macro @foo(#x)
+{
+    @bar(#x);
+}
+
+macro @bar(#x)
+{
+    Point pt;
+    var z = pt.#x;
+}
+
+/* #expect: test.ll
+
+define void @test.main() #0 {
+entry:
+  %pt = alloca %Point, align 4
+  %z = alloca float, align 4
+  %0 = getelementptr inbounds %Point, ptr %pt, i32 0, i32 0
+  store float 0.000000e+00, ptr %0, align 4
+  %1 = getelementptr inbounds %Point, ptr %pt, i32 0, i32 1
+  store float 0.000000e+00, ptr %1, align 4
+  %2 = getelementptr inbounds %Point, ptr %pt, i32 0, i32 0
+  %3 = load float, ptr %2, align 4
+  store float %3, ptr %z, align 4
+  ret void
+}
+

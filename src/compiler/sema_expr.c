@@ -2824,7 +2824,8 @@ RETRY:
 		{
 			Decl *decl = sema_resolve_symbol(context, child->hash_ident_expr.identifier, NULL, child->span);
 			if (!decl_ok(decl)) return NULL;
-			return sema_expr_resolve_access_child(context, decl->var.init_expr, missing);
+			Expr *expr = copy_expr_single(decl->var.init_expr);
+			return sema_expr_resolve_access_child(decl->var.hash_var.context, expr, missing);
 		}
 		case EXPR_CT_EVAL:
 		{
