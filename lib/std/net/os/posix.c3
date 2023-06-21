@@ -4,18 +4,17 @@ import libc;
 const int F_GETFL = 3;
 const int F_SETFL = 4;
 
-def NativeSocket = distinct int;
+def NativeSocket = distinct inline Fd;
 
 extern fn NativeSocket socket(int af, int type, int protocol) @extern("socket");
 extern fn int getaddrinfo(ZString nodename, ZString servname, AddrInfo* hints, AddrInfo** res);
 extern fn void freeaddrinfo(AddrInfo* addr);
 extern fn int connect(NativeSocket, void*, usz);
 extern fn int fcntl(NativeSocket socket, int cmd, ...) @extern("fcntl");
-extern fn int close(NativeSocket);
 
 macro void! NativeSocket.close(NativeSocket this)
 {
-	if (close(this))
+	if (libc::close(this))
 	{
 		if (libc::errno() == errno::EBADF) return NetError.INVALID_SOCKET?;
 		return NetError.GENERAL_ERROR?;
