@@ -11,14 +11,14 @@ const int RAND_MAX = 0x7fffffff;
 
 struct DivResult
 {
-    int quot;
-    int rem;
+    CInt quot;
+    CInt rem;
 }
 
 struct LongDivResult
 {
-    long quot;
-    long rem;
+    CLong quot;
+    CLong rem;
 }
 
 fn Errno errno()
@@ -34,125 +34,131 @@ fn void errno_set(Errno e)
 def TerminateFunction = fn void();
 def CompareFunction = fn int(void*, void*);
 def JmpBuf = uptr[$$JMP_BUF_SIZE];
+def Fd = CInt;
+def Fpos_t = long; // TODO make sure fpos is correct on all targets.
+def Error_t = CInt;
+def SignalFunction = fn void(int);
 
 module libc @if(env::COMPILER_LIBC_AVAILABLE);
 
+
 extern fn void abort();
+extern fn CInt abs(CInt n);
+extern fn ZString asctime(Tm* timeptr);
+extern fn ZString asctime_r(Tm* timeptr, char* buf);
+extern fn CInt atexit(TerminateFunction func);
 extern fn double atof(char* str);
 extern fn int atoi(char* str);
 extern fn CLongLong atoll(char* str);
-extern fn CInt close(CInt fd) @if(!env::WIN32);
-extern fn CFile fdopen(CInt fd, char* mode) @if(!env::WIN32);
-extern fn void atexit(TerminateFunction f);
-extern fn double strtod(char* str, char** endptr);
-extern fn CLong strtol(char* str, char** endptr, int base);
-extern fn CULong stroul(char* str, char** endptr, int base);
-extern fn long labs(long x);
-extern fn LongDivResult ldiv(long number, long denom);
-extern fn void exit(int status);
-extern fn ZString getenv(ZString name);
-extern fn int setenv(ZString name, ZString value, int overwrite);
-extern fn int unsetenv(ZString name);
-extern fn int system(char* str);
 extern fn void bsearch(void* key, void *base, usz items, usz size, CompareFunction compare);
-extern fn void qsort(void* base, usz items, usz size, CompareFunction compare);
-extern fn DivResult div(int numer, int denom);
-extern fn int rand();
-extern fn void srand(uint seed);
+extern fn void* calloc(usz count, usz size);
+extern fn void clearerr(CFile stream);
+extern fn Clock_t clock();
+extern fn CInt close(CInt fd) @if(!env::WIN32);
+extern fn double difftime(Time_t time1, Time_t time2) @if(!env::WIN32);
+extern fn DivResult div(CInt numer, CInt denom);
+extern fn void exit(CInt status);
+extern fn CInt fclose(CFile stream);
+extern fn CFile fdopen(CInt fd, ZString mode) @if(!env::WIN32);
+extern fn CInt feof(CFile stream);
+extern fn CInt ferror(CFile stream);
+extern fn CInt fflush(CFile stream);
+extern fn CInt fgetc(CFile stream);
+extern fn ZString fgets(char* string, CInt n, CFile stream);
+extern fn CInt fgetpos(CFile stream, Fpos_t* pos);
+extern fn Fd fileno(CFile stream) @if(!env::WIN32);
+extern fn CFile fopen(ZString filename, ZString mode);
+extern fn CInt fprintf(CFile stream, ZString format, ...);
+extern fn CInt fputc(CInt c, CFile stream);
+extern fn CInt fputs(ZString string, CFile stream);
+extern fn usz fread(void* ptr, usz size, usz nmemb, CFile stream);
+extern fn void* free(void*);
+extern fn CFile freopen(ZString filename, ZString mode, CFile stream);
+extern fn CInt fscanf(CFile stream, ZString format, ...);
+extern fn CInt fseek(CFile stream, SeekIndex offset, CInt whence) @if(!env::WIN32);
+extern fn CInt fsetpos(CFile stream, Fpos_t* pos);
+extern fn SeekIndex ftell(CFile stream) @if(!env::WIN32);
+extern fn usz fwrite(void* ptr, usz size, usz nmemb, CFile stream);
+extern fn CInt getc(CFile stream);
+extern fn CInt getchar();
+extern fn ZString getenv(ZString name);
+extern fn ZString gets(char* buffer);
+extern fn Tm* gmtime(Time_t* timer);
+extern fn Tm* gmtime_r(Time_t *timer, Tm* buf) @if(!env::WIN32);
 
+extern fn CLong labs(CLong x);
+extern fn LongDivResult ldiv(CLong number, CLong denom);
+extern fn Tm* localtime(Time_t* timer);
+extern fn Tm* localtime_r(Time_t* timer, Tm* result) @if(!env::WIN32);
 extern fn void longjmp(JmpBuf* buffer, CInt value);
-
-// TODO win32 aarch64
-extern fn CInt _setjmp(void* frameptr, JmpBuf* buffer) @if(env::WIN32);
-macro CInt setjmp(JmpBuf* buffer) @if(env::WIN32) => _setjmp($$frameaddress(), buffer);
-
-extern fn CInt setjmp(JmpBuf* buffer) @if(!env::WIN32);
-// MB functions omitted
-
-// string
-extern fn void* memchr(void* str, int c, usz n);
-extern fn int memcmp(void* str1, void* str2, usz n);
+extern fn void* malloc(usz size);
+extern fn void* memchr(void* str, CInt c, usz n);
+extern fn CInt memcmp(void* buf1, void* buf2, usz count);
 extern fn void* memcpy(void* dest, void* src, usz n);
 extern fn void* memmove(void* dest, void* src, usz n);
 extern fn void* memset(void* dest, CInt value, usz n);
-extern fn char* strcat(char* dest, char* src);
-extern fn char* strncat(char* dest, char* src, usz n);
-extern fn char* strchr(char* str, int c);
-extern fn int strcmp(char* str1, char* str2);
-extern fn int strncmp(char* str1, char* str2, usz n);
-extern fn int strcoll(char* str1, char* str2);
-extern fn char* strcpy(char* dst, char* src);
-extern fn char* strncpy(char* dst, char* src, usz n);
-extern fn usz strcspn(char* str1, char* str2);
-extern fn char* strerror(int errn);
-extern fn usz strlen(char* str);
-extern fn char* strpbrk(char* str1, char* str2);
-extern fn usz strspn(char* str1, char* str2);
-extern fn char* strstr(char* haystack, char* needle);
-extern fn char* strtok(char* str, char* delim);
-extern fn usz strxfrm(char* dest, char* src, usz n);
-
-// malloc
-extern fn void* malloc(usz size);
-extern fn void* calloc(usz count, usz size);
-extern fn void* free(void*);
+extern fn Time_t* mktime(Tm* time) @if(!env::WIN32);
+extern fn void perror(ZString string);
+extern fn CInt printf(ZString format, ...);
+extern fn CInt putc(CInt c, CFile stream);
+extern fn CInt putchar(CInt c);
+extern fn CInt puts(ZString str);
+extern fn void qsort(void* base, usz items, usz size, CompareFunction compare);
+extern fn CInt raise(CInt signal);
+extern fn CInt rand();
+extern fn isz read(Fd fd, void* buf, usz nbyte) @if(!env::WIN32);
 extern fn void* realloc(void* ptr, usz size);
-
-extern fn int fclose(CFile stream);
-extern fn void clearerr(CFile stream);
-extern fn int feof(CFile stream);
-extern fn int ferror(CFile stream);
-extern fn int fflush(CFile stream);
-extern fn int fgetpos(CFile stream, Fpos* pos);
-extern fn CFile fopen(ZString filename, ZString mode);
-extern fn usz fread(void* ptr, usz size, usz nmemb, CFile stream);
-extern fn CFile freopen(ZString filename, ZString mode, CFile stream);
-extern fn CFile fmemopen(void* ptr, usz size, ZString mode);
-extern fn int fseek(CFile stream, SeekIndex offset, int whence) @if(!env::WIN32);
-extern fn int fsetpos(CFile stream, Fpos* pos);
-extern fn SeekIndex ftell(CFile stream) @if(!env::WIN32);
-extern fn usz fwrite(void* ptr, usz size, usz nmemb, CFile stream);
-extern fn int remove(char* filename);
-extern fn int rename(char* old_name, char* new_name);
+extern fn CInt remove(ZString filename);
+extern fn CInt rename(ZString old_name, ZString new_name);
 extern fn void rewind(CFile stream);
+extern fn CInt scanf(ZString format, ...);
 extern fn void setbuf(CFile stream, char* buffer);
-extern fn void setvbuf(CFile stream, char* buffer, int mode, usz size);
-extern fn CFile tmpnam(char* str);
-extern fn int fprintf(CFile stream, char* format, ...);
-extern fn int printf(char* format, ...);
-extern fn int sprintf(char* str, char* format, ...);
-extern fn int snprintf(char* str, usz size, char* format, ...);
-extern fn int fscanf(CFile stream, char* format, ...);
-extern fn int scanf(char* format, ...);
-extern fn int sscanf(char* str, char* format, ...);
-extern fn int fgetc(CFile stream);
-extern fn char* fgets(char* str, int n, CFile stream);
-extern fn int fputc(int c, CFile stream);
-extern fn int getc(CFile stream);
-extern fn int getchar();
-extern fn int putc(int c, CFile stream);
-extern fn int putchar(int c);
-extern fn int puts(char* str);
-extern fn int ungetc(int c, CFile stream);
-extern fn void perror(char* str);
+extern fn int setenv(ZString name, ZString value, CInt overwrite);
+extern fn CInt setjmp(JmpBuf* buffer) @if(!env::WIN32);
+extern fn void setvbuf(CFile stream, char* buf, CInt type, usz size);
+extern fn SignalFunction signal(CInt sig, SignalFunction function);
+extern fn CInt snprintf(char* buffer, usz size, ZString format, ...);
+extern fn CInt sprintf(char* buffer, ZString format, ...);
+extern fn void srand(uint seed);
+extern fn CInt sscanf(char* buffer, ZString format, ...);
+extern fn ZString strcat(ZString dest, ZString src);
+extern fn char* strchr(char* str, CInt c);
+extern fn CInt strcmp(ZString str1, ZString str2);
+extern fn CInt strcoll(ZString str1, ZString str2);
+extern fn usz strcspn(ZString str1, ZString str2);
+extern fn ZString strcpy(ZString dst, ZString src);
+extern fn ZString strerror(CInt errn);
+extern fn usz strftime(char* dest, usz maxsize, ZString format, Tm* timeptr);
+extern fn usz strlen(ZString str);
+extern fn ZString strncat(char* dest, char* src, usz n);
+extern fn CInt strncmp(char* str1, char* str2, usz n);
+extern fn char* strncpy(char* dst, char* src, usz n);
+extern fn CULong stroul(char* str, char** endptr, int base);
+extern fn char* strpbrk(ZString str1, ZString str2);
+extern fn usz strspn(ZString str1, ZString str2);
+extern fn ZString strptime(char* buf, ZString format, Tm* tm);
+extern fn char* strrchr(ZString str, CInt c);
+extern fn char* strstr(ZString haystack, ZString needle);
+extern fn double strtod(char* str, char** endptr);
+extern fn float strtof(char* str, char** endptr);
+extern fn ZString strtok(ZString str, ZString delim);
+extern fn CLong strtol(char* str, char** endptr, CInt base);
+extern fn CULong strtul(char* str, char** endptr, CInt base);
+extern fn usz strxfrm(char* dest, ZString src, usz n);
+extern fn CInt system(ZString str);
+extern fn Time_t timegm(Tm *timeptr) @if(!env::WIN32);
+extern fn ZString tmpnam(ZString str);
+extern fn CInt ungetc(CInt c, CFile stream);
+extern fn CInt unsetenv(ZString name);
+extern fn isz write(Fd fd, void* buffer, usz count) @if(!env::WIN32);
+
+
+extern fn CFile fmemopen(void* ptr, usz size, ZString mode);
 extern fn isz getline(char** linep, usz* linecapp, CFile stream);
-extern fn CInt fileno(CFile strem) @if(!env::WIN32);
 extern fn int timespec_get(TimeSpec* ts, int base);
 extern fn int nanosleep(TimeSpec* req, TimeSpec* remaining);
-extern fn isz read(CInt fd, void* buf, usz nbyte);
-extern fn ZString asctime(Tm *timeptr);
-extern fn Clock_t clock();
 extern fn ZString ctime(Time_t *timer);
-extern fn double difftime(Time_t time1, Time_t time2);
-extern fn Tm* gmtime(Time_t *timer);
-extern fn Tm* localtime(Time_t *timer);
-extern fn usz strftime(char* str, usz maxsize, char* format, Tm *timeptr);
 extern fn Time_t time(Time_t *timer);
-
-// signal
-def SignalFunction = fn void(int);
-extern fn SignalFunction signal(int sig, SignalFunction function);
-// Incomplete
 
 const CInt STDIN_FD = 0;
 const CInt STDOUT_FD = 1;
@@ -180,30 +186,15 @@ macro CFile stdout() => __stdoutp;
 macro CFile stderr() => __stderrp;
 
 module libc @if(WIN32_LIBC);
-extern fn CFile __acrt_iob_func(CInt c);
-extern fn usz _msize(void* ptr);
 macro usz malloc_size(void* ptr) => _msize(ptr);
 macro CFile stdin() => __acrt_iob_func(STDIN_FD);
 macro CFile stdout() => __acrt_iob_func(STDOUT_FD);
 macro CFile stderr() => __acrt_iob_func(STDERR_FD);
-extern fn Tm* _gmtime64_s(Tm* buf, Time_t *timer);
-extern fn Tm* _localtime64_s(Tm* buf, Time_t *timer);
-extern fn void _get_timezone(CLong *timezone);
-macro Tm* gmtime_r(Time_t *timer, Tm* buf) => _gmtime64_s(buf, timer);
-macro Tm* localtime_r(Time_t *timer, Tm* buf) => _localtime64_s(buf, timer);
-extern fn Time_t mktime(Tm *timeptr) @extern("_mktime64");
-extern fn Time_t timegm(Tm *timeptr) @extern("_mkgmtime64");
 
 module libc @if(env::COMPILER_LIBC_AVAILABLE && !env::WIN32 && !env::LINUX && !env::DARWIN);
 macro CFile stdin() { return (CFile*)(uptr)STDIN_FD; }
 macro CFile stdout() { return (CFile*)(uptr)STDOUT_FD; }
 macro CFile stderr() { return (CFile*)(uptr)STDERR_FD; }
-
-module libc @if(env::COMPILER_LIBC_AVAILABLE && !env::WIN32);
-extern fn Tm* gmtime_r(Time_t *timer, Tm* buf);
-extern fn Tm* localtime_r(Time_t *timer, Tm* buf);
-extern fn Time_t mktime(Tm *timeptr);
-extern fn Time_t timegm(Tm *timeptr);
 
 module libc @if(!env::COMPILER_LIBC_AVAILABLE);
 
@@ -323,7 +314,6 @@ module libc;
 
 // stdio
 
-def Fpos = long;
 def CFile = void*;
 
 
