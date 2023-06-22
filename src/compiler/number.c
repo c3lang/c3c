@@ -109,7 +109,7 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 				case BINARYOP_EQ:
 					return left_decl->enum_constant.ordinal == right_ordinal;
 				default:
-					goto RETURN;
+					return false;
 			}
 		}
 		case CONST_BYTES:
