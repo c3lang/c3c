@@ -2998,12 +2998,21 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 	context->break_target = 0;
 	assert(func->func_decl.body);
 	Ast *body = astptr(func->func_decl.body);
+	Decl **lambda_params = NULL;
 	SCOPE_START
 		assert(context->active_scope.depth == 1);
 		Decl **params = signature->params;
 		VECEACH(params, i)
 		{
 			if (!sema_add_local(context, params[i])) return false;
+		}
+		if (func->func_decl.is_lambda)
+		{
+			lambda_params = copy_decl_list_single(func->func_decl.lambda_ct_parameters);
+			FOREACH_BEGIN(Decl *ct_param, lambda_params)
+				ct_param->var.is_read = false;
+				if (!sema_add_local(context, ct_param)) return false;
+			FOREACH_END();
 		}
 		AstId assert_first = 0;
 		AstId *next = &assert_first;
@@ -3052,6 +3061,12 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 			}
 		}
 	SCOPE_END;
+	if (lambda_params)
+	{
+		FOREACH_BEGIN_IDX(i, Decl *ct_param, lambda_params)
+			func->func_decl.lambda_ct_parameters[i]->var.is_read = ct_param->var.is_read;
+		FOREACH_END();
+	}
 	return true;
 }
 

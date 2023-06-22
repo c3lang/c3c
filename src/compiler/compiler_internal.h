@@ -540,8 +540,13 @@ typedef struct
 			bool attr_winmain : 1;
 			bool attr_dynamic : 1;
 			bool attr_interface : 1;
-			DeclId any_prototype;
-			Decl **generated_lambda;
+			bool is_lambda : 1;
+			union
+			{
+				DeclId any_prototype;
+				Decl **generated_lambda;
+				Decl **lambda_ct_parameters;
+			};
 		};
 		struct
 		{

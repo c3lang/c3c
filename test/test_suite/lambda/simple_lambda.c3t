@@ -25,5 +25,9 @@ entry:
   %0 = call i32 @simple_lambda.xy(ptr @"simple_lambda.main$lambda1")
   %5 = call i32 @simple_lambda.xy(ptr @"simple_lambda.main$lambda2")
 
-define internal i32 @"simple_lambda.main$lambda2"() #0 {
 define internal i32 @"simple_lambda.main$lambda1"() #0 {
+
+define internal i32 @"simple_lambda.main$lambda2"() #0 {
+entry:
+  ret i32 3
+}

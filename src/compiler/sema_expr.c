@@ -979,6 +979,7 @@ static inline bool sema_expr_analyse_ct_identifier(SemaContext *context, Expr *e
 	assert(decl->decl_kind == DECL_VAR);
 	assert(decl->resolve_status == RESOLVE_DONE);
 
+	decl->var.is_read = true;
 	expr->ct_ident_expr.decl = decl;
 	expr->type = decl->type;
 	return true;
@@ -4260,6 +4261,7 @@ static inline bool sema_binary_analyse_ct_identifier_lvalue(SemaContext *context
 		return expr_poison(expr);
 	}
 
+	decl->var.is_read = true;
 	expr->ct_ident_expr.decl = decl;
 	expr->resolve_status = RESOLVE_DONE;
 	return true;
@@ -6842,7 +6844,38 @@ static inline Type *sema_evaluate_type_copy(SemaContext *context, TypeInfo *type
 	return type_info->type;
 }
 
-static inline Decl *sema_find_cached_lambda(SemaContext *context, Type *func_type, Decl *original)
+INLINE bool lambda_parameter_match(Decl **ct_lambda_params, Decl *candidate)
+{
+	unsigned param_count = vec_size(ct_lambda_params);
+	assert(vec_size(candidate->func_decl.lambda_ct_parameters) == param_count);
+	if (!param_count) return true;
+	FOREACH_BEGIN_IDX(i, Decl *param, candidate->func_decl.lambda_ct_parameters)
+		Decl *ct_param = ct_lambda_params[i];
+		if (!param->var.is_read) continue;
+		assert(ct_param->resolve_status == RESOLVE_DONE || param->resolve_status == RESOLVE_DONE);
+		assert(ct_param->var.kind == param->var.kind);
+		switch (ct_param->var.kind)
+		{
+			case VARDECL_LOCAL_CT_TYPE:
+			case VARDECL_PARAM_CT_TYPE:
+				if (ct_param->var.init_expr->type_expr->type->canonical !=
+					param->var.init_expr->type_expr->type->canonical) return false;
+				break;
+			case VARDECL_LOCAL_CT:
+			case VARDECL_PARAM_CT:
+				assert(expr_is_const(ct_param->var.init_expr));
+				assert(expr_is_const(param->var.init_expr));
+				if (!expr_const_compare(&ct_param->var.init_expr->const_expr,
+										&param->var.init_expr->const_expr, BINARYOP_EQ)) return false;
+				break;
+			default:
+				UNREACHABLE
+		}
+	FOREACH_END();
+	return true;
+}
+
+static inline Decl *sema_find_cached_lambda(SemaContext *context, Type *func_type, Decl *original, Decl **ct_lambda_parameters)
 {
 	unsigned cached = vec_size(original->func_decl.generated_lambda);
 	if (!cached) return NULL;
@@ -6851,7 +6884,8 @@ static inline Decl *sema_find_cached_lambda(SemaContext *context, Type *func_typ
 	{
 		Type *raw = func_type->canonical->pointer->function.prototype->raw_type;
 		FOREACH_BEGIN(Decl *candidate, original->func_decl.generated_lambda)
-			if (raw == candidate->type->function.prototype->raw_type) return candidate;
+			if (raw == candidate->type->function.prototype->raw_type &&
+					lambda_parameter_match(ct_lambda_parameters, candidate)) return candidate;
 		FOREACH_END();
 		return NULL;
 	}
@@ -6871,7 +6905,7 @@ static inline Decl *sema_find_cached_lambda(SemaContext *context, Type *func_typ
 	FOREACH_END();
 
 	FOREACH_BEGIN(Decl *candidate, original->func_decl.generated_lambda)
-		if (sema_may_reuse_lambda(context, candidate, types)) return candidate;
+		if (sema_may_reuse_lambda(context, candidate, types) && lambda_parameter_match(ct_lambda_parameters, candidate)) return candidate;
 	FOREACH_END();
 	return NULL;
 }
@@ -6885,10 +6919,14 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *func_typ
 		expr->type = type_get_ptr(decl->type);
 		return true;
 	}
-	bool in_macro = context->current_macro;
-	if (in_macro && decl->resolve_status != RESOLVE_DONE)
+	bool multiple = context->current_macro || context->ct_locals;
+
+	// Capture CT variables
+	Decl **ct_lambda_parameters = copy_decl_list_single(context->ct_locals);
+
+	if (multiple && decl->resolve_status != RESOLVE_DONE)
 	{
-		Decl *decl_cached = sema_find_cached_lambda(context, func_type, decl);
+		Decl *decl_cached = sema_find_cached_lambda(context, func_type, decl, ct_lambda_parameters);
 		if (decl_cached)
 		{
 			expr->type = type_get_ptr(decl_cached->type);
@@ -6897,7 +6935,7 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *func_typ
 		}
 	}
 	Decl *original = decl;
-	if (in_macro) decl = expr->lambda_expr = copy_lambda_deep(decl);
+	if (multiple) decl = expr->lambda_expr = copy_lambda_deep(decl);
 	Signature *sig = &decl->func_decl.signature;
 	Signature *to_sig = func_type ? func_type->canonical->pointer->function.signature : NULL;
 	if (!sig->rtype)
@@ -6958,15 +6996,35 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *func_typ
 	decl->extname = decl->name = scratch_buffer_copy();
 	Type *lambda_type = sema_analyse_function_signature(context, decl, sig->abi, sig, true);
 	if (!lambda_type) return false;
-	if (lambda_type)
+	decl->func_decl.lambda_ct_parameters = ct_lambda_parameters;
 	decl->type = lambda_type;
+	decl->func_decl.is_lambda = true;
 	decl->alignment = type_alloca_alignment(decl->type);
 	// We will actually compile this into any module using it (from a macro) by necessity,
 	// so we'll declare it as weak and externally visible.
 	if (context->compilation_unit != decl->unit) decl->is_external_visible = true;
-	vec_add(unit->module->lambdas_to_evaluate, decl);
+
+	// Before function analysis, lambda evaluation is deferred
+	if (unit->module->stage < ANALYSIS_FUNCTIONS)
+	{
+		vec_add(unit->module->lambdas_to_evaluate, decl);
+	}
+	else
+	{
+		SemaContext lambda_context;
+		sema_context_init(&lambda_context, context->unit);
+		if (sema_analyse_function_body(&lambda_context, decl))
+		{
+			vec_add(unit->lambdas, decl);
+		}
+		sema_context_destroy(&lambda_context);
+	}
+
 	expr->type = type_get_ptr(lambda_type);
-	if (in_macro) vec_add(original->func_decl.generated_lambda, decl);
+	if (multiple)
+	{
+		vec_add(original->func_decl.generated_lambda, decl);
+	}
 	decl->resolve_status = RESOLVE_DONE;
 	return true;
 FAIL_NO_INFER:

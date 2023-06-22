@@ -53,7 +53,6 @@ static inline bool compare_fps(Real left, Real right, BinaryOp op)
 bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp op)
 {
 	bool is_eq;
-
 	switch (left->const_kind)
 	{
 		case CONST_BOOL:
@@ -73,18 +72,18 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 			if (left->string.len != right->string.len)
 			{
 				is_eq = false;
-				break;
+				goto RETURN;
 			}
 			if (right->string.chars == left->string.chars)
 			{
 				is_eq = true;
-				break;
+				goto RETURN;
 			}
 			is_eq = !strncmp(left->string.chars, right->string.chars, left->string.len);
-			break;
+			goto RETURN;
 		case CONST_TYPEID:
 			is_eq = left->typeid == right->typeid;
-			break;
+			goto RETURN;
 		case CONST_ERR:
 		case CONST_ENUM:
 		{
@@ -110,25 +109,32 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 				case BINARYOP_EQ:
 					return left_decl->enum_constant.ordinal == right_ordinal;
 				default:
-					UNREACHABLE
+					goto RETURN;
 			}
 		}
 		case CONST_BYTES:
 			if (left->bytes.len != right->bytes.len)
 			{
 				is_eq = false;
-				break;
+				goto RETURN;
 			}
 			if (right->bytes.ptr == left->bytes.ptr)
 			{
 				is_eq = true;
-				break;
+				goto RETURN;
 			}
 			is_eq = !memcmp(left->bytes.ptr, right->bytes.ptr, left->bytes.len);
-			break;
-		default:
-			UNREACHABLE
+			goto RETURN;
+		case CONST_INITIALIZER:
+			return false;
+		case CONST_UNTYPED_LIST:
+			return false;
+		case CONST_MEMBER:
+			is_eq = left->member.decl == right->member.decl;
+			goto RETURN;
 	}
+	UNREACHABLE
+RETURN:
 	assert((op == BINARYOP_EQ) || (op == BINARYOP_NE));
 	return op == BINARYOP_EQ ? is_eq : !is_eq;
 }

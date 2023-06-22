@@ -206,6 +206,7 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 		case DECL_VAR:
 			if (decl->var.kind == VARDECL_PARAM_CT_TYPE || decl->var.kind == VARDECL_LOCAL_CT_TYPE)
 			{
+				decl->var.is_read = true;
 				if (!decl->var.init_expr)
 				{
 					SEMA_ERROR(type_info, "You need to assign a type to '%s' before using it.", decl->name);
