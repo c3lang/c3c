@@ -9,8 +9,6 @@ const AI_V4MAPPED = 0x800;
 const AI_UNUSABLE = 0x10000000;
 const AI_DEFAULT = AI_V4MAPPED_CFG | AI_ADDRCONFIG;
 
-const int PLATFORM_AF_UNIX = 1;
-const int PLATFORM_AF_INET = 2;
 const int PLATFORM_AF_IMPLINK = 3;
 const int PLATFORM_AF_PUP = 4;
 const int PLATFORM_AF_CHAOS = 5;
@@ -37,7 +35,6 @@ const int PLATFORM_PSEUDO_AF_PIP = 25;
 const int PLATFORM_AF_NDRV = 27;
 const int PLATFORM_AF_ISDN = 28;
 const int PLATFORM_PSEUDO_AF_KEY = 29;
-const int PLATFORM_AF_INET6 = 30;
 const int PLATFORM_AF_NATM = 31;
 const int PLATFORM_AF_SYSTEM = 32;
 const int PLATFORM_AF_NETBIOS = 33;

@@ -31,12 +31,12 @@ fn void errno_set(Errno e)
 	os::errno_set((int)e);
 }
 
+def Errno = distinct inline CInt;
 def TerminateFunction = fn void();
 def CompareFunction = fn int(void*, void*);
 def JmpBuf = uptr[$$JMP_BUF_SIZE];
 def Fd = CInt;
 def Fpos_t = long; // TODO make sure fpos is correct on all targets.
-def Error_t = CInt;
 def SignalFunction = fn void(int);
 
 module libc @if(env::COMPILER_LIBC_AVAILABLE);
@@ -335,7 +335,6 @@ const int EOF = -1;
 const int FOPEN_MAX = 20;
 const int FILENAME_MAX = 1024;
 
-def Errno = distinct CInt;
 def SeekIndex = CLong;
 
 // vsprintf vprintf not supported

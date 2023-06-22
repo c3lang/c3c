@@ -6,10 +6,8 @@ const int F_SETFL = 4;
 
 def NativeSocket = distinct inline Fd;
 
-extern fn NativeSocket socket(int af, int type, int protocol) @extern("socket");
-extern fn int getaddrinfo(ZString nodename, ZString servname, AddrInfo* hints, AddrInfo** res);
-extern fn void freeaddrinfo(AddrInfo* addr);
-extern fn int connect(NativeSocket, void*, usz);
+extern fn CInt connect(NativeSocket socket, SockAddrPtr address, Socklen_t address_len);
+extern fn NativeSocket socket(CInt af, CInt type, CInt protocol) @extern("socket");
 extern fn int fcntl(NativeSocket socket, int cmd, ...) @extern("fcntl");
 
 macro void! NativeSocket.close(NativeSocket this)
