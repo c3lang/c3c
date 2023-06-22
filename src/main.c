@@ -21,17 +21,10 @@ static void cleanup()
 	symtab_destroy();
 	memory_release();
 }
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <netdb.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
+
+
 int main_real(int argc, const char *argv[])
 {
-	struct addrinfo;
-	AI_CANONNAME;
 	printf("------------------------------------------------------------\n"
 		   " PLEASE NOTE, this version of the compiler has enabled dead\n"
 		   " code stripping by default. This functionality has not been\n"
