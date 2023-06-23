@@ -1,6 +1,6 @@
-module std::io @test;
+module std::io;
 
-fn void! bytestream()
+fn void! bytestream() @test
 {
 	ByteReader r;
 	r.init("abc");
@@ -23,7 +23,7 @@ fn void! bytestream()
 	assert(w.as_str() == "helloworldabcbc");
 }
 
-fn void! bytewriter_buffer()
+fn void! bytewriter_buffer() @test
 {
 	ByteWriter writer;
 	char[8] z;
@@ -34,4 +34,44 @@ fn void! bytewriter_buffer()
 	String o = ((ZString)&z).as_str();
 	assert(o == "hello");
 	assert(@catchof(s.write("xxxx")));
+}
+
+// TestReader only has the read method to trigger the path
+// in ByteWriter.read_from that does not rely on the available method.
+struct TestReader
+{
+    char[] bytes;
+    usz index;
+}
+
+fn Stream TestReader.as_stream(TestReader *r)
+{
+    return { .fns = &testReader_interface, .data = r };
+}
+
+fn usz! TestReader.read(TestReader *r, char[] bytes)
+{
+    usz left = r.bytes.len - r.index;
+    if (left == 0) return 0;
+    usz n = min(left, bytes.len);
+    mem::copy(bytes.ptr, &r.bytes[r.index], n);
+    r.index += n;
+    return n;
+}
+
+StreamInterface testReader_interface = {
+    .read_fn = fn(s, char[] bytes) => ((TestReader*)s.data).read(bytes),
+};
+
+fn void! bytewriter_read_from() @test
+{
+    char[] data = "Lorem ipsum dolor sit amet biam.";
+    TestReader r = { .bytes = data };
+    Stream s = r.as_stream();
+
+    ByteWriter bw;
+    bw.tinit();
+    bw.read_from(&s)!;
+
+    assert(bw.as_str() == data);
 }
