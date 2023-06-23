@@ -1,4 +1,4 @@
-module std::os::macos::cf @if(DARWIN_LIBC);
+module std::os::macos::cf @if(env::DARWIN);
 
 def CFArrayRef = distinct void*;
 def CFArrayCallBacksRef = distinct void*;

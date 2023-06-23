@@ -1,4 +1,4 @@
-module std::os::macos::cf @if(DARWIN_LIBC);
+module std::os::macos::cf @if(env::DARWIN);
 
 def CFAllocatorRef = distinct void*;
 def CFAllocatorContextRef = distinct void*;

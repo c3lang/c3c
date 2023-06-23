@@ -1,4 +1,4 @@
-module std::os::win32 @if(WIN32_LIBC);
+module std::os::win32 @if(env::WIN32);
 import libc;
 enum Win32_GET_FILEEX_INFO_LEVELS
 {
@@ -96,7 +96,8 @@ extern fn usz wcslen(Char16* str);
 extern fn int _open_osfhandle(iptr osfhandle, int flags);
 extern fn iptr _get_osfhandle(int fd);
 extern fn CFile _fdopen(int fd, ZString mode);
-
+extern fn CInt _access(ZString path, CInt mode);
+extern fn CInt _waccess(Char16* path, CInt mode);
 
 /*
 extern ulong _win32_GetCurrentDirectoryW(ulong, Char16* buffer) @extern("GetCurrentDirectoryW");

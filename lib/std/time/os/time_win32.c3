@@ -1,4 +1,4 @@
-module std::time::os @if(WIN32_LIBC);
+module std::time::os @if(env::WIN32);
 import std::os::win32;
 
 extern fn void win32_GetSystemTimeAsFileTime(Win32_FILETIME* time) @extern("GetSystemTimeAsFileTime");

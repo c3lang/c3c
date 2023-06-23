@@ -1,4 +1,4 @@
-module std::os::macos::objc @if(DARWIN_LIBC);
+module std::os::macos::objc @if(env::DARWIN);
 
 def Class = distinct void*;
 def Method = distinct void*;

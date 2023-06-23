@@ -7,7 +7,7 @@ import std::os::posix;
 macro bool! native_rmdir(Path path)
 {
 	$switch
-		$case POSIX_LIBC:
+		$case env::POSIX:
 			if (!posix::rmdir(path.as_zstr())) return true;
 			switch (libc::errno())
 			{
@@ -23,7 +23,7 @@ macro bool! native_rmdir(Path path)
 				case errno::ELOOP: return IoError.SYMLINK_FAILED?;
 				default: return IoError.GENERAL_ERROR?;
 			}
-		$case WIN32_LIBC:
+		$case env::WIN32:
 			@pool()
 		    {
 				if (win32::removeDirectoryW(path.as_str().to_temp_utf16()!!)) return true;

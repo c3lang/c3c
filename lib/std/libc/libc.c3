@@ -38,9 +38,16 @@ def JmpBuf = uptr[$$JMP_BUF_SIZE];
 def Fd = CInt;
 def Fpos_t = long; // TODO make sure fpos is correct on all targets.
 def SignalFunction = fn void(int);
+def Time_t = $typefrom(env::WIN32 ? long.typeid : CLong.typeid);
+def Off_t = $typefrom(env::WIN32 ? int.typeid : usz.typeid);
 
-module libc @if(env::COMPILER_LIBC_AVAILABLE);
+struct Timespec
+{
+	Time_t tv_sec;
+	CLong tv_nsec;
+}
 
+module libc @if(env::LIBC);
 
 extern fn void abort();
 extern fn CInt abs(CInt n);
@@ -85,7 +92,6 @@ extern fn ZString getenv(ZString name);
 extern fn ZString gets(char* buffer);
 extern fn Tm* gmtime(Time_t* timer);
 extern fn Tm* gmtime_r(Time_t *timer, Tm* buf) @if(!env::WIN32);
-
 extern fn CLong labs(CLong x);
 extern fn LongDivResult ldiv(CLong number, CLong denom);
 extern fn Tm* localtime(Time_t* timer);
@@ -152,7 +158,6 @@ extern fn CInt ungetc(CInt c, CFile stream);
 extern fn CInt unsetenv(ZString name);
 extern fn isz write(Fd fd, void* buffer, usz count) @if(!env::WIN32);
 
-
 extern fn CFile fmemopen(void* ptr, usz size, ZString mode);
 extern fn isz getline(char** linep, usz* linecapp, CFile stream);
 extern fn int timespec_get(TimeSpec* ts, int base);
@@ -164,7 +169,7 @@ const CInt STDIN_FD = 0;
 const CInt STDOUT_FD = 1;
 const CInt STDERR_FD = 2;
 
-module libc @if(LINUX_LIBC);
+module libc @if(env::LINUX);
 extern CFile __stdin @extern("stdin");
 extern CFile __stdout @extern("stdout");
 extern CFile __stderr @extern("stderr");
@@ -175,7 +180,7 @@ macro CFile stdin() => __stdin;
 macro CFile stdout() => __stdout;
 macro CFile stderr() => __stderr;
 
-module libc @if(DARWIN_LIBC);
+module libc @if(env::DARWIN);
 extern CFile __stdinp;
 extern CFile __stdoutp;
 extern CFile __stderrp;
@@ -185,18 +190,18 @@ macro CFile stdin() => __stdinp;
 macro CFile stdout() => __stdoutp;
 macro CFile stderr() => __stderrp;
 
-module libc @if(WIN32_LIBC);
+module libc @if(env::WIN32);
 macro usz malloc_size(void* ptr) => _msize(ptr);
 macro CFile stdin() => __acrt_iob_func(STDIN_FD);
 macro CFile stdout() => __acrt_iob_func(STDOUT_FD);
 macro CFile stderr() => __acrt_iob_func(STDERR_FD);
 
-module libc @if(env::COMPILER_LIBC_AVAILABLE && !env::WIN32 && !env::LINUX && !env::DARWIN);
+module libc @if(env::LIBC && !env::WIN32 && !env::LINUX && !env::DARWIN);
 macro CFile stdin() { return (CFile*)(uptr)STDIN_FD; }
 macro CFile stdout() { return (CFile*)(uptr)STDOUT_FD; }
 macro CFile stderr() { return (CFile*)(uptr)STDERR_FD; }
 
-module libc @if(!env::COMPILER_LIBC_AVAILABLE);
+module libc @if(!env::LIBC);
 
 fn void longjmp(JmpBuf* buffer, CInt value) @weak @extern("longjmp") @nostrip
 {
@@ -317,10 +322,7 @@ module libc;
 def CFile = void*;
 
 
-const HAS_MALLOC_SIZE =
-	env::OS_TYPE == LINUX
-	|| env::os_is_win32()
-	|| env::os_is_darwin();
+const HAS_MALLOC_SIZE = env::LINUX || env::WIN32 || env::DARWIN;
 
 // The following needs to be set per arch+os
 // For now I have simply pulled the defaults from MacOS
@@ -335,6 +337,21 @@ const int EOF = -1;
 const int FOPEN_MAX = 20;
 const int FILENAME_MAX = 1024;
 
+const S_IFMT   = 0o170000; // type of file mask
+const S_IFIFO  = 0o010000; // named pipe (fifo)
+const S_IFCHR  = 0o020000; // character special
+const S_IFDIR  = 0o040000; // directory
+const S_IFBLK  = 0o060000; // block special
+const S_IFREG  = 0o100000; // regular
+const S_IFLNK  = 0o120000; // symbolic link
+const S_IFSOCK = 0o140000; // socket
+const S_ISUID  = 0o004000; // Set user id on execution
+const S_ISGID  = 0o002000; // Set group id on execution
+const S_ISVTX  = 0o001000; // Save swapped text even after use
+const S_IRUSR  = 0o000400; // Read permission, owner
+const S_IWUSR  = 0o000200; // Write permission, owner
+const S_IXUSR  = 0o000100; // Execute/search permission, owner
+
 def SeekIndex = CLong;
 
 // vsprintf vprintf not supported
@@ -343,19 +360,18 @@ def SeekIndex = CLong;
 
 struct Tm
 {
-	int	tm_sec;		/* seconds after the minute [0-60] */
-	int	tm_min;		/* minutes after the hour [0-59] */
-	int	tm_hour;	/* hours since midnight [0-23] */
-	int	tm_mday;	/* day of the month [1-31] */
-	int	tm_mon;		/* months since January [0-11] */
-	int	tm_year;	/* years since 1900 */
-	int	tm_wday;	/* days since Sunday [0-6] */
-	int	tm_yday;	/* days since January 1 [0-365] */
-	int	tm_isdst;	/* Daylight Savings Time flag */
+	CInt	tm_sec;		// seconds after the minute [0-60]
+	CInt	tm_min;		// minutes after the hour [0-59]
+	CInt	tm_hour;	// hours since midnight [0-23]
+	CInt	tm_mday;	// day of the month [1-31]
+	CInt	tm_mon;		// months since January [0-11]
+	CInt	tm_year;	// years since 1900
+	CInt	tm_wday;	// days since Sunday [0-6]
+	CInt	tm_yday;	// days since January 1 [0-365]
+	CInt	tm_isdst;	// Daylight Savings Time flag
 	TimeOffset tm_gmtoff @if(!env::WIN32);	/* offset from UTC in seconds */
     char *tm_zone @if(!env::WIN32);	/* timezone abbreviation */
-    int tm_nsec @if(env::WASI);
-
+    CInt tm_nsec @if(env::WASI);
 }
 
 struct TimeSpec
@@ -365,9 +381,8 @@ struct TimeSpec
 	CLong ns @if(!env::WIN32);
 }
 
-def Time_t = long @if(env::WIN32);
-def Time_t = CLong @if(!env::WIN32);
-def Clock_t = ulong @if(env::WIN32);
+
+def Clock_t = int @if(env::WIN32);
 def Clock_t = CULong @if(!env::WIN32);
 
 def TimeOffset = int @if(env::WASI) ;

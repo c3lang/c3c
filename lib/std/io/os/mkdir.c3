@@ -8,7 +8,7 @@ import std::os::posix;
 macro bool! native_mkdir(Path path, MkdirPermissions permissions)
 {
 	$switch
-		$case POSIX_LIBC:
+		$case env::POSIX:
 			if (!posix::mkdir(path.as_zstr(), permissions == NORMAL ? 0o777 : 0o700)) return true;
 			switch (libc::errno())
 			{
@@ -25,7 +25,7 @@ macro bool! native_mkdir(Path path, MkdirPermissions permissions)
 				case errno::ENOTDIR: return IoError.FILE_NOT_FOUND?;
 				default: return IoError.GENERAL_ERROR?;
 			}
-		$case WIN32_LIBC:
+		$case env::WIN32:
 			@pool()
 	        {
 	            // TODO security attributes

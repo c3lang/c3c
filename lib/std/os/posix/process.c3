@@ -1,5 +1,5 @@
-module std::os::posix @if(POSIX_LIBC);
-
+module std::os::posix @if(env::POSIX);
+import libc;
 struct Posix_spawn_file_actions_t
 {
 	int __allocated;
