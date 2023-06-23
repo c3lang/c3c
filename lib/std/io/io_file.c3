@@ -6,6 +6,8 @@ fn File! open(String filename, String mode)
 	return { .file = os::native_fopen(filename, mode) };
 }
 
+fn void! delete(String filename) => os::native_remove(filename) @inline;
+
 fn File! open_path(Path path, String mode)
 {
 	return { .file = os::native_fopen(path.as_str(), mode) };

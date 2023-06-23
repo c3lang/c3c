@@ -8,6 +8,69 @@ const Allocator* LIBC_ALLOCATOR = &_SYSTEM_ALLOCATOR;
 
 def AllocatorFunction = fn void*!(Allocator* allocator, usz new_size, usz alignment, usz offset, void* old_pointer, AllocationKind kind);
 
+
+macro AllocatorFunction allocator_fn($AllocatorType)
+{
+	return fn void*!(Allocator* data, usz size, usz alignment, usz offset, void* old_pointer, AllocationKind kind)
+	{
+		$AllocatorType* allocator = ($AllocatorType*)data;
+		bool $supports_aligned = $defined(allocator.aligned_alloc);
+		switch (kind)
+		{
+			case CALLOC:
+				return allocator.calloc(size) @inline;
+			case ALIGNED_CALLOC:
+				$if $supports_aligned:
+					return allocator.aligned_calloc(size, alignment, offset) @inline;
+				$else
+				    return @aligned_calloc(allocator.calloc, size, alignment, offset);
+				$endif
+			case ALLOC:
+				return allocator.alloc(size);
+			case ALIGNED_ALLOC:
+				$if $supports_aligned:
+					return allocator.aligned_alloc(size, alignment, offset) @inline;
+				$else
+				    return @aligned_alloc(allocator.alloc, size, alignment, offset);
+				$endif
+			case REALLOC:
+				return allocator.realloc(old_pointer, size) @inline;
+			case ALIGNED_REALLOC:
+				$if $supports_aligned:
+					return allocator.aligned_realloc(old_pointer, size, alignment, offset) @inline;
+				$else
+			        return @aligned_realloc(allocator.alloc, allocator.free, old_pointer, size, alignment, offset);
+				$endif
+			case ALIGNED_FREE:
+				$if $supports_aligned:
+					allocator.aligned_free(old_pointer, alignment, offset) @inline!;
+					return null;
+				$else
+					@aligned_free(allocator.free, old_pointer) @inline!;
+					return null;
+				$endif
+			case FREE:
+				allocator.free(old_pointer)!;
+				return null;
+			case MARK:
+				$if $defined(allocator.mark):
+					allocator.mark() @inline;
+					return null;
+				$else
+					return AllocationFailure.UNSUPPORTED_OPERATION?;
+				$endif
+			case RESET:
+				$if $defined(allocator.reset):
+					allocator.reset() @inline;
+					return null;
+				$else
+					return AllocationFailure.UNSUPPORTED_OPERATION?;
+				$endif
+		}
+		unreachable();
+	};
+}
+
 struct Allocator
 {
     AllocatorFunction function;

@@ -1,10 +1,10 @@
 module std::io::path;
 import std::collections::list;
 
-const PathEnv DEFAULT_PATH_ENV = env::os_is_win32() ? PathEnv.WIN32 : PathEnv.POSIX;
+const PathEnv DEFAULT_PATH_ENV = env::WIN32 ? PathEnv.WIN32 : PathEnv.POSIX;
 const char PREFERRED_SEPARATOR_WIN32 = '\\';
 const char PREFERRED_SEPARATOR_POSIX = '/';
-const char PREFERRED_SEPARATOR = env::os_is_win32() ? PREFERRED_SEPARATOR_WIN32 : PREFERRED_SEPARATOR_POSIX;
+const char PREFERRED_SEPARATOR = env::WIN32 ? PREFERRED_SEPARATOR_WIN32 : PREFERRED_SEPARATOR_POSIX;
 
 def PathList = List<Path>;
 
@@ -42,6 +42,7 @@ fn bool exists(Path path) => os::native_file_or_dir_exists(path.as_str());
 fn Path! tgetcwd() => getcwd(mem::temp()) @inline;
 fn void! chdir(Path path) => os::native_chdir(path) @inline;
 fn Path! temp_directory(Allocator* using = mem::heap()) => os::native_temp_directory(using);
+fn void! delete(Path path) => os::native_remove(path.as_str()) @inline;
 
 macro bool is_separator(char c, PathEnv path_env = DEFAULT_PATH_ENV)
 {
@@ -60,7 +61,11 @@ macro bool is_win32_separator(char c)
 
 fn PathList! ls(Path dir, bool no_dirs = false, bool no_symlinks = false, String mask = "", Allocator* using = mem::heap())
 {
-	return os::native_ls(dir, no_dirs, no_symlinks, mask, using);
+	$if $defined(os::native_ls):
+		return os::native_ls(dir, no_dirs, no_symlinks, mask, using);
+	$else
+		unreachable("'ls' is not available.");
+	$endif
 }
 
 enum MkdirPermissions

@@ -1,4 +1,4 @@
-module std::time::datetime;
+module std::time::datetime @if(env::LIBC);
 import libc;
 
 fn DateTime now()

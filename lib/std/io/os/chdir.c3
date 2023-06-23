@@ -4,7 +4,7 @@ import libc;
 macro void! native_chdir(Path path)
 {
 	$switch
-		$case POSIX_LIBC:
+		$case env::POSIX:
 			if (posix::chdir(path.as_zstr()))
 			{
 				switch (libc::errno())
@@ -17,7 +17,7 @@ macro void! native_chdir(Path path)
 					default: return IoError.GENERAL_ERROR?;
 				}
 			}
-		$case WIN32_LIBC:
+		$case env::WIN32:
 			@pool()
 			{
 				// TODO improve with better error handling.

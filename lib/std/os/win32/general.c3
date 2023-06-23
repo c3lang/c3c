@@ -1,4 +1,4 @@
-module std::os::win32 @if(WIN32_LIBC);
+module std::os::win32 @if(env::WIN32);
 
 extern fn Win32_DWORD getLastError() @extern("GetLastError");
 

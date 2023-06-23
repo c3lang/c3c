@@ -116,7 +116,8 @@ enum ArchType
 
 const OsType OS_TYPE = (OsType)$$OS_TYPE;
 const ArchType ARCH_TYPE = (ArchType)$$ARCH_TYPE;
-const bool COMPILER_LIBC_AVAILABLE = $$COMPILER_LIBC_AVAILABLE;
+const bool LIBC = $$COMPILER_LIBC_AVAILABLE;
+const bool NO_LIBC = !$$COMPILER_LIBC_AVAILABLE;
 const CompilerOptLevel COMPILER_OPT_LEVEL = (CompilerOptLevel)$$COMPILER_OPT_LEVEL;
 const bool BIG_ENDIAN = $$PLATFORM_BIG_ENDIAN;
 const bool I128_NATIVE_SUPPORT = $$PLATFORM_I128_SUPPORTED;
@@ -128,27 +129,18 @@ const bool BENCHMARKING = $$BENCHMARKING;
 const bool TESTING = $$TESTING;
 const MemoryEnvironment MEMORY_ENV = (MemoryEnvironment)$$MEMORY_ENVIRONMENT;
 
-const LINUX_LIBC @builtin = env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == LINUX;
-const DARWIN_LIBC @builtin = env::COMPILER_LIBC_AVAILABLE && env::os_is_darwin();
-const WIN32_LIBC @builtin = env::COMPILER_LIBC_AVAILABLE && env::os_is_win32();
-const POSIX_LIBC @builtin = env::COMPILER_LIBC_AVAILABLE && env::os_is_posix();
-const OPENBSD_LIBC @builtin = env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == OPENBSD;
-const FREEBSD_LIBC @builtin = env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == FREEBSD;
-const NETBSD_LIBC @builtin = env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == NETBSD;
-const WASI_LIBC @builtin = env::COMPILER_LIBC_AVAILABLE && env::OS_TYPE == WASI;
-const WASM_NOLIBC @builtin = !env::COMPILER_LIBC_AVAILABLE && env::ARCH_TYPE == ArchType.WASM32 || env::ARCH_TYPE == ArchType.WASM64;
-const bool NO_LIBC = !env::COMPILER_LIBC_AVAILABLE;
-const bool LIBC = env::COMPILER_LIBC_AVAILABLE;
-const bool WIN32 = OS_TYPE == WIN32;
-const bool DARWIN = OS_TYPE == IOS || OS_TYPE == MACOS || OS_TYPE == TVOS || OS_TYPE == WATCHOS;
-const bool LINUX = OS_TYPE == LINUX;
-const bool POSIX = os_is_posix();
-const bool WASI = OS_TYPE == WASI;
+const bool X86_64 = ARCH_TYPE == X86_64;
+const bool AARCH64 = ARCH_TYPE == AARCH64;
 
-macro bool os_is_win32()
-{
-	return OS_TYPE == WIN32;
-}
+const bool LINUX = LIBC && OS_TYPE == LINUX;
+const bool DARWIN = LIBC && os_is_darwin();
+const bool WIN32 = LIBC && OS_TYPE == WIN32;
+const bool POSIX = LIBC && os_is_posix();
+const bool OPENBSD = LIBC && OS_TYPE == OPENBSD;
+const bool FREEBSD = LIBC && OS_TYPE == FREEBSD;
+const bool NETBSD = LIBC && OS_TYPE == NETBSD;
+const bool WASI = LIBC && OS_TYPE == WASI;
+const bool WASM_NOLIBC @builtin = !LIBC && ARCH_TYPE == ArchType.WASM32 || ARCH_TYPE == ArchType.WASM64;
 
 macro bool os_is_darwin()
 {
@@ -194,7 +186,7 @@ macro bool os_is_posix()
  **/
 fn String! get_var(String name)
 {
-	$if COMPILER_LIBC_AVAILABLE && !WIN32_LIBC:
+	$if LIBC && !WIN32:
 	@pool()
 	{
 		ZString val = libc::getenv(name.zstr_tcopy());
@@ -213,7 +205,7 @@ fn String! get_var(String name)
  **/
 fn void set_var(String name, String value, bool overwrite = true)
 {
-	$if COMPILER_LIBC_AVAILABLE && !WIN32_LIBC:
+	$if LIBC && !WIN32:
 	@pool()
 	{
 		if (libc::setenv(name.zstr_tcopy(), value.zstr_copy(), (int)overwrite))
@@ -230,7 +222,7 @@ fn void set_var(String name, String value, bool overwrite = true)
  **/
 fn void clear_var(String name)
 {
-	$if COMPILER_LIBC_AVAILABLE && !WIN32_LIBC:
+	$if LIBC && !WIN32:
 	@pool()
 	{
 		if (libc::unsetenv(name.zstr_tcopy()))

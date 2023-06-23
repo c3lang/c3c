@@ -45,12 +45,9 @@ fault IoError
     GENERAL_ERROR,
     UNKNOWN_ERROR,
     UNSUPPORTED_OPERATION,
+    FILE_CANNOT_DELETE,
 }
 
-fn void putchar(char c) @inline
-{
-    libc::putchar(c);
-}
 
 macro void print(x)
 {
@@ -90,6 +87,14 @@ macro void printn(x = "")
 	$endswitch
 }
 
+module std::io @if (env::LIBC);
+import libc;
+
+fn void putchar(char c) @inline
+{
+	libc::putchar(c);
+}
+
 fn File stdout()
 {
 	return { libc::stdout() };
@@ -104,6 +109,33 @@ fn File stdin()
 {
 	return { libc::stdin() };
 }
+
+module std::io @if(!env::LIBC);
+
+File stdin_file;
+File stdout_file;
+File stderr_file;
+
+fn void putchar(char c) @inline
+{
+	(void)stdout_file.putc(c);
+}
+
+fn File stdout()
+{
+	return stdout_file;
+}
+
+fn File stderr()
+{
+	return stderr_file;
+}
+
+fn File stdin()
+{
+	return stdin_file;
+}
+
 
 /*
 

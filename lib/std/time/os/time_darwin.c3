@@ -1,4 +1,4 @@
-module std::time::os @if(DARWIN_LIBC);
+module std::time::os @if(env::DARWIN);
 
 struct Darwin_mach_timebase_info
 {

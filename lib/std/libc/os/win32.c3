@@ -1,5 +1,6 @@
 module libc @if(env::WIN32);
 
+
 extern fn CFile __acrt_iob_func(CInt c);
 extern fn CInt _close(Fd fd); def close = _close;
 extern fn double _difftime64(Time_t time1, Time_t time2); def difftime = _difftime64;
@@ -18,10 +19,11 @@ extern fn CInt _setjmp(void* frameptr, JmpBuf* buffer) @if(env::WIN32);
 extern fn CFile _wfopen(Char16*, Char16*);
 extern fn CFile _wfreopen(Char16*, Char16*, CFile);
 extern fn CInt _write(Fd fd, void* buffer, CUInt count);
+extern fn CInt _wremove(Char16*);
 
 // Aliases to simplify libc use
 macro Tm* localtime_r(Time_t* timer, Tm* buf) => _localtime64_s(buf, timer);
-macro CInt setjmp(JmpBuf* buffer) @if(env::WIN32) => _setjmp($$frameaddress(), buffer);
+macro CInt setjmp(JmpBuf* buffer) => _setjmp($$frameaddress(), buffer);
 macro Tm* gmtime_r(Time_t* timer, Tm* buf) => _gmtime64_s(buf, timer);
 macro isz read(Fd fd, void* buffer, usz buffer_size) => _read(fd, buffer, buffer_size);
 macro isz write(Fd fd, void* buffer, usz count) => _write(fd, buffer, count);

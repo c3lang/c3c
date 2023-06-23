@@ -4,7 +4,7 @@ import libc;
 macro String! getcwd(Allocator* using = mem::heap())
 {
 	$switch
-		$case WIN32_LIBC:
+		$case env::WIN32:
 			const DEFAULT_BUFFER = 256;
 			Char16[DEFAULT_BUFFER] buffer;
 			Char16 *res = win32::_wgetcwd(&buffer, DEFAULT_BUFFER);
@@ -19,7 +19,7 @@ macro String! getcwd(Allocator* using = mem::heap())
 			Char16[] str16 = res[:win32::wcslen(res)];
 			return string::from_utf16(str16, using);
 
-		$case POSIX_LIBC:
+		$case env::POSIX:
 			const usz DEFAULT_BUFFER = 256;
 			char[DEFAULT_BUFFER] buffer;
 			ZString res = posix::getcwd(&buffer, DEFAULT_BUFFER);
