@@ -79,19 +79,21 @@ fn void! ByteWriter.write_byte(ByteWriter* writer, char c)
  **/
 fn usz! ByteWriter.read_from(ByteWriter* writer, Stream* reader)
 {
+	usz start_index = writer.index;
 	if (reader.supports_available())
 	{
-		usz total_read = 0;
 		while (usz available = reader.available()!)
 		{
 			writer.ensure_capacity(writer.index + available)!;
-			usz len = reader.read(writer.bytes[writer.index..])!;
-			total_read += len;
-			writer.index += len;
+			usz read = reader.read(writer.bytes[writer.index..])!;
+			writer.index += read;
 		}
-		return total_read;
+		return writer.index - start_index;
 	}
-	usz total_read = 0;
+	if (writer.bytes.len == 0)
+	{
+		writer.ensure_capacity(16)!;
+	}
 	while (true)
 	{
 		// See how much we can read.
@@ -100,12 +102,13 @@ fn usz! ByteWriter.read_from(ByteWriter* writer, Stream* reader)
 		if (len_to_read < 16)
 		{
 			writer.ensure_capacity(writer.bytes.len * 2)!;
+			len_to_read = writer.bytes.len - writer.index;
 		}
 		// Read into the rest of the buffer
 		usz read = reader.read(writer.bytes[writer.index..])!;
 		writer.index += read;
 		// Ok, we reached the end.
-		if (read < len_to_read) return total_read;
+		if (read < len_to_read) return writer.index - start_index;
 		// Otherwise go another round
 	}
 }

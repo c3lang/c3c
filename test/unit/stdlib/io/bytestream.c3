@@ -35,3 +35,44 @@ fn void! bytewriter_buffer()
 	assert(o == "hello");
 	assert(@catchof(s.write("xxxx")));
 }
+
+fn void! bytewriter_read_from()
+{
+    char[] data = "Lorem ipsum dolor sit amet biam.";
+    TestReader r = { .bytes = data };
+    Stream s = r.as_stream();
+
+    ByteWriter bw;
+    bw.tinit();
+    bw.read_from(&s)!;
+
+    assert(bw.as_str() == data);
+}
+
+module std::io;
+// TestReader only has the read method to trigger the path
+// in ByteWriter.read_from that does not rely on the available method.
+struct TestReader
+{
+    char[] bytes;
+    usz index;
+}
+
+fn Stream TestReader.as_stream(TestReader *r)
+{
+    return { .fns = &testReader_interface, .data = r };
+}
+
+fn usz! TestReader.read(TestReader *r, char[] bytes)
+{
+    usz left = r.bytes.len - r.index;
+    if (left == 0) return 0;
+    usz n = min(left, bytes.len);
+    mem::copy(bytes.ptr, &r.bytes[r.index], n);
+    r.index += n;
+    return n;
+}
+
+StreamInterface testReader_interface = {
+    .read_fn = fn(s, char[] bytes) => ((TestReader*)s.data).read(bytes),
+};
