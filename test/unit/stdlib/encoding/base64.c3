@@ -22,7 +22,7 @@ fn void encode()
     };
     foreach (tc : tcases)
     {
-        Encoder b;
+        Base64Encoder b;
         b.init(base64::STD_ALPHABET)!;
         usz n = b.encode_len(tc.in.len);
         char[64] buf;
@@ -44,7 +44,7 @@ fn void encode_nopadding()
     };
     foreach (tc : tcases)
     {
-        Encoder b;
+        Base64Encoder b;
         b.init(base64::STD_ALPHABET, -1)!;
         usz n = b.encode_len(tc.in.len);
         char[64] buf;
@@ -66,7 +66,7 @@ fn void decode()
     };
     foreach (tc : tcases)
     {
-        Decoder b;
+        Base64Decoder b;
         b.init(base64::STD_ALPHABET)!;
         usz n = b.decode_len(tc.in.len)!;
         char[64] buf;
@@ -88,7 +88,7 @@ fn void decode_nopadding()
     };
     foreach (tc : tcases)
     {
-        Decoder b;
+        Base64Decoder b;
         b.init(base64::STD_ALPHABET, -1)!;
         usz n = b.decode_len(tc.in.len)!;
         char[64] buf;

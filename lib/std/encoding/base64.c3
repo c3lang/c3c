@@ -10,7 +10,7 @@ const URL_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012345
 
 const MASK @private = 0b111111;
 
-struct Encoder
+struct Base64Encoder
 {
     int padding;
     String alphabet;
@@ -32,7 +32,7 @@ fault Base64Error
  * @require padding < 256
  * @return! Base64Error.DUPLICATE_IN_ALPHABET, Base64Error.PADDING_IN_ALPHABET
  **/
-fn void! Encoder.init(Encoder* b, String alphabet, int padding = '=')
+fn void! Base64Encoder.init(Base64Encoder* b, String alphabet, int padding = '=')
 {
     check_alphabet(alphabet, padding)!;
     *b = { .padding = padding, .alphabet = alphabet };
@@ -43,7 +43,7 @@ fn void! Encoder.init(Encoder* b, String alphabet, int padding = '=')
  * @param n "Size of the input to be encoded."
  * @return "The size of the input once encoded."
  **/
-fn usz Encoder.encode_len(Encoder *b, usz n)
+fn usz Base64Encoder.encode_len(Base64Encoder *b, usz n)
 {
     if (b.padding >= 0) return (n + 2) / 3 * 4;
     usz trailing = n % 3;
@@ -57,54 +57,54 @@ fn usz Encoder.encode_len(Encoder *b, usz n)
  * @return "The encoded size."
  * @return! Base64Error.DESTINATION_TOO_SMALL
  **/
-fn usz! Encoder.encode(Encoder *b, char[] src, char[] dst)
+fn usz! Base64Encoder.encode(Base64Encoder *b, char[] src, char[] dst)
 {
     if (src.len == 0) return 0;
     usz dn = b.encode_len(src.len);
     if (dst.len < dn) return Base64Error.DESTINATION_TOO_SMALL?;
     usz trailing = src.len % 3;
-    char[] src3 = src[:src.len - trailing];
+    char[] src3 = src[:^trailing];
 
     while (src3.len > 0)
     {
-        uint group = (uint)src3[0]<<16 | (uint)src3[1]<<8 | (uint)src3[2];
-        dst[0] = b.alphabet[group>>18 & MASK];
-        dst[1] = b.alphabet[group>>12 & MASK];
-        dst[2] = b.alphabet[group>>6 & MASK];
+        uint group = (uint)src3[0] << 16 | (uint)src3[1] << 8 | (uint)src3[2];
+        dst[0] = b.alphabet[group >> 18 & MASK];
+        dst[1] = b.alphabet[group >> 12 & MASK];
+        dst[2] = b.alphabet[group >> 6 & MASK];
         dst[3] = b.alphabet[group & MASK];
-        dst = dst[4:];
-        src3 = src3[3:];
+        dst = dst[4..];
+        src3 = src3[3..];
     }
 
     // Encode the remaining bytes according to:
     // https://www.rfc-editor.org/rfc/rfc4648#section-3.5
     switch (trailing)
     {
-    case 1:
-        uint group = (uint)src[src.len-1]<<16;
-        dst[0] = b.alphabet[group>>18 & MASK];
-        dst[1] = b.alphabet[group>>12 & MASK];
-        if (b.padding >= 0)
-        {
-            char pad = (char)b.padding;
-            dst[2] = pad;
-            dst[3] = pad;
-        }
-    case 2:
-        uint group = (uint)src[src.len-2]<<16 | (uint)src[src.len-1]<<8;
-        dst[0] = b.alphabet[group>>18 & MASK];
-        dst[1] = b.alphabet[group>>12 & MASK];
-        dst[2] = b.alphabet[group>>6 & MASK];
-        if (b.padding >= 0)
-        {
-            char pad = (char)b.padding;
-            dst[3] = pad;
-        }
+        case 1:
+            uint group = (uint)src[^1] << 16;
+            dst[0] = b.alphabet[group >> 18 & MASK];
+            dst[1] = b.alphabet[group >> 12 & MASK];
+            if (b.padding >= 0)
+            {
+                char pad = (char)b.padding;
+                dst[2] = pad;
+                dst[3] = pad;
+            }
+        case 2:
+            uint group = (uint)src[^2] << 16 | (uint)src[^1] << 8;
+            dst[0] = b.alphabet[group >> 18 & MASK];
+            dst[1] = b.alphabet[group >> 12 & MASK];
+            dst[2] = b.alphabet[group >> 6 & MASK];
+            if (b.padding >= 0)
+            {
+                char pad = (char)b.padding;
+                dst[3] = pad;
+            }
     }
     return dn;
 }
 
-struct Decoder
+struct Base64Decoder
 {
     int padding;
     String alphabet;
@@ -119,7 +119,7 @@ struct Decoder
  * @require padding < 256
  * @return! Base64Error.DUPLICATE_IN_ALPHABET, Base64Error.PADDING_IN_ALPHABET
  **/
-fn void! Decoder.init(Decoder* b, String alphabet, int padding = '=')
+fn void! Base64Decoder.init(Base64Decoder* b, String alphabet, int padding = '=')
 {
     check_alphabet(alphabet, padding)!;
     *b = { .padding = padding, .alphabet = alphabet };
@@ -153,7 +153,7 @@ fn void! Decoder.init(Decoder* b, String alphabet, int padding = '=')
  * @return "The size of the input once decoded."
  * @return! Base64Error.INVALID_PADDING
  **/
-fn usz! Decoder.decode_len(Decoder *b, usz n)
+fn usz! Base64Decoder.decode_len(Base64Decoder *b, usz n)
 {
     usz dn = n / 4 * 3;
     usz trailing = n % 4;
@@ -177,7 +177,7 @@ fn usz! Decoder.decode_len(Decoder *b, usz n)
  * @return "The decoded size."
  * @return! Base64Error.DESTINATION_TOO_SMALL, Base64Error.INVALID_PADDING, Base64Error.INVALID_CHARACTER
  **/
-fn usz! Decoder.decode(Decoder *b, char[] src, char[] dst)
+fn usz! Base64Decoder.decode(Base64Decoder *b, char[] src, char[] dst)
 {
     if (src.len == 0) return 0;
     usz dn = b.decode_len(src.len)!;
@@ -187,14 +187,14 @@ fn usz! Decoder.decode(Decoder *b, char[] src, char[] dst)
     char[] src4 = src;
     switch
     {
-    case b.padding < 0:
-        src4 = src[:src.len - trailing];
-    default:
-        // If there is padding, keep the last 4 bytes for later.
-        // NB. src.len >= 4 as decode_len passed
-        trailing = 4;
-        char pad = (char)b.padding;
-        if (src[src.len - 1] == pad) src4 = src[:src.len - 4];
+	    case b.padding < 0:
+	        src4 = src[:^trailing];
+	    default:
+	        // If there is padding, keep the last 4 bytes for later.
+	        // NB. src.len >= 4 as decode_len passed
+	        trailing = 4;
+	        char pad = (char)b.padding;
+	        if (src[^1] == pad) src4 = src[:^4];
     }
     while (src4.len > 0)
     {
@@ -204,23 +204,23 @@ fn usz! Decoder.decode(Decoder *b, char[] src, char[] dst)
         char c3 = b.reverse[src4[3]];
         switch (b.invalid)
         {
-        case c0:
-        case c1:
-        case c2:
-        case c3:
-            return Base64Error.INVALID_CHARACTER?;
+            case c0:
+            case c1:
+            case c2:
+            case c3:
+                return Base64Error.INVALID_CHARACTER?;
         }
-        uint group = (uint)c0<<18 | (uint)c1<<12 | (uint)c2<<6 | (uint)c3;
+        uint group = (uint)c0 << 18 | (uint)c1 << 12 | (uint)c2 << 6 | (uint)c3;
         dst[0] = (char)(group >> 16);
         dst[1] = (char)(group >> 8);
         dst[2] = (char)group;
-        dst = dst[3:];
-        src4 = src4[4:];
+        dst = dst[3..];
+        src4 = src4[4..];
     }
 
     if (trailing == 0) return dn;
 
-    src = src[src.len - trailing:];
+    src = src[^trailing:];
     char c0 = b.reverse[src[0]];
     char c1 = b.reverse[src[1]];
     if (c0 == b.invalid || c1 == b.invalid) return Base64Error.INVALID_PADDING?;
@@ -228,15 +228,15 @@ fn usz! Decoder.decode(Decoder *b, char[] src, char[] dst)
     {
         switch (src.len)
         {
-        case 2:
-            uint group = (uint)c0<<18 | (uint)c1<<12;
-            dst[0] = (char)(group >> 16);
-        case 3:
-            char c2 = b.reverse[src[2]];
-            if (c2 == b.invalid) return Base64Error.INVALID_CHARACTER?;
-            uint group = (uint)c0<<18 | (uint)c1<<12 | (uint)c2<<6;
-            dst[0] = (char)(group >> 16);
-            dst[1] = (char)(group >> 8);
+            case 2:
+                uint group = (uint)c0 << 18 | (uint)c1 << 12;
+                dst[0] = (char)(group >> 16);
+            case 3:
+                char c2 = b.reverse[src[2]];
+                if (c2 == b.invalid) return Base64Error.INVALID_CHARACTER?;
+                uint group = (uint)c0 << 18 | (uint)c1 << 12 | (uint)c2 << 6;
+                dst[0] = (char)(group >> 16);
+                dst[1] = (char)(group >> 8);
         }
     }
     else
@@ -247,21 +247,20 @@ fn usz! Decoder.decode(Decoder *b, char[] src, char[] dst)
         char pad = (char)b.padding;
         switch (pad)
         {
-        case src[2]:
-            if (src[3] != pad) return Base64Error.INVALID_PADDING?;
-            uint group = (uint)c0<<18 | (uint)c1<<12;
-            dst[0] = (char)(group >> 16);
-            dn -= 2;
-        case src[3]:
-            char c2 = b.reverse[src[2]];
-            if (c2 == b.invalid) return Base64Error.INVALID_CHARACTER?;
-            uint group = (uint)c0<<18 | (uint)c1<<12 | (uint)c2<<6;
-            dst[0] = (char)(group >> 16);
-            dst[1] = (char)(group >> 8);
-            dn -= 1;
+            case src[2]:
+                if (src[3] != pad) return Base64Error.INVALID_PADDING?;
+                uint group = (uint)c0 << 18 | (uint)c1 << 12;
+                dst[0] = (char)(group >> 16);
+                dn -= 2;
+            case src[3]:
+                char c2 = b.reverse[src[2]];
+                if (c2 == b.invalid) return Base64Error.INVALID_CHARACTER?;
+                uint group = (uint)c0 << 18 | (uint)c1 << 12 | (uint)c2 << 6;
+                dst[0] = (char)(group >> 16);
+                dst[1] = (char)(group >> 8);
+                dn -= 1;
         }
     }
-
     return dn;
 }
 
