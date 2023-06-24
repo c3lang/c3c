@@ -756,9 +756,14 @@ assert_expr
 	| expr
 	;
 
+assert_expr_list
+	: ',' expr
+	| ',' expr ',' assert_expr_list
+	;
+
 assert_stmt
 	: ASSERT '(' assert_expr ')' ';'
-	| ASSERT '(' assert_expr ',' expr ')' ';'
+	| ASSERT '(' assert_expr assert_expr_list ';'
 	;
 
 asm_stmts
