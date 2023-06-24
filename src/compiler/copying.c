@@ -586,6 +586,7 @@ RETRY:
 		case AST_CT_ASSERT:
 			MACRO_COPY_EXPRID(ast->assert_stmt.expr);
 			MACRO_COPY_EXPRID(ast->assert_stmt.message);
+			MACRO_COPY_EXPR_LIST(ast->assert_stmt.args);
 			break;
 		case AST_BREAK_STMT:
 		case AST_CONTINUE_STMT:

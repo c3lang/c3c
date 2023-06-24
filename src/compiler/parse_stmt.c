@@ -1080,7 +1080,14 @@ static inline Ast *parse_assert_stmt(ParseContext *c)
 
 	if (try_consume(c, TOKEN_COMMA))
 	{
-		ASSIGN_EXPRID_OR_RET(ast->assert_stmt.message, parse_expr(c), poisoned_ast);
+		Expr **args = NULL;
+		ASSIGN_EXPRID_OR_RET(ast->assert_stmt.message, parse_constant_expr(c), poisoned_ast);
+		while (try_consume(c, TOKEN_COMMA))
+		{
+			ASSIGN_EXPR_OR_RET(Expr *expr, parse_expr(c), poisoned_ast);
+			vec_add(args, expr);
+		}
+		ast->assert_stmt.args = args;
 	}
 	TRY_CONSUME_OR_RET(TOKEN_RPAREN, "The ending ')' was expected here.", poisoned_ast);
 	return consume_eos(c, ast);

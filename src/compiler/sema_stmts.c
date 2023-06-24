@@ -82,13 +82,11 @@ static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement
 	if (message_expr)
 	{
 		if (!sema_analyse_expr(context, message_expr)) return false;
-		if (!expr_is_const_string(message_expr))
-		{
-			SEMA_ERROR(message_expr, "Expected a string as the error message.");
-			return false;
-		}
+		if (!expr_is_const_string(message_expr)) RETURN_SEMA_ERROR(message_expr, "Expected a string as the error message.");
+		FOREACH_BEGIN(Expr *e, statement->assert_stmt.args)
+			if (!sema_analyse_expr(context, e)) return false;
+		FOREACH_END();
 	}
-
 
 	// Handle force unwrapping using assert, e.g. assert(try x)
 	if (expr->expr_kind == EXPR_TRY_UNWRAP_CHAIN)
@@ -111,7 +109,7 @@ static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement
 		// If it's ensure (and an error) we print an error.
 		if (statement->assert_stmt.is_ensure)
 		{
-			if (message_expr)
+			if (message_expr && expr_is_const(message_expr) && vec_size(statement->assert_stmt.args))
 			{
 				SEMA_ERROR(expr, "%.*s", EXPAND_EXPR_STRING(message_expr));
 			}

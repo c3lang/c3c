@@ -1374,6 +1374,7 @@ typedef struct
 	bool is_ensure;
 	ExprId message;
 	ExprId expr;
+	Expr **args;
 } AstAssertStmt;
 
 

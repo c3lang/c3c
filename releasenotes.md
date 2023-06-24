@@ -85,6 +85,7 @@
 - Allow enums to use a distinct type as the backing type.
 - Update addition and subtraction on enums.
 - `@ensure` checks only non-optional results.
+- `assert` may now take varargs for formatting.
  
 ### Stdlib changes
 - Updated posix/win32 stdlib namespacing
