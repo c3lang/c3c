@@ -1,47 +1,14 @@
-module std::thread::os @if(thread::THREAD_MODEL == ThreadModel.POSIX);
+module std::os::posix @if(env::POSIX);
 import libc;
 
-const PTHREAD_MUTEX_NORMAL = 0;
-const PTHREAD_MUTEX_ERRORCHECK = 1;
-const PTHREAD_MUTEX_RECURSIVE = 2;
-
-def NativeMutex = PthreadMutex;
-def NativeConditionVariable = PthreadCond;
-def NativeThread = Pthread;
-def NativeOnceFlag = PthreadOnce;
-
-def Pthread = distinct void*;
-def PosixThreadFn = fn void*(void*);
-
-extern fn int pthread_attr_destroy(PthreadAttribute*);
-extern fn int pthread_attr_getdetachstate(PthreadAttribute*, int*);
-extern fn int pthread_attr_init(PthreadAttribute*);
-extern fn int pthread_mutex_init(PthreadMutex*, PthreadMutexAttribute*);
-extern fn int pthread_mutex_destroy(PthreadMutex*);
-extern fn int pthread_mutex_lock(PthreadMutex*);
-extern fn int pthread_mutexattr_init(PthreadMutexAttribute*);
-extern fn int pthread_mutexattr_destroy(PthreadMutexAttribute*);
-extern fn int pthread_mutexattr_settype(PthreadMutexAttribute*, int);
-extern fn int pthread_cond_init(PthreadCond*, PthreadCondAttribute*);
-extern fn int pthread_cond_destroy(PthreadCond*);
-extern fn int pthread_detach(Pthread);
-extern fn int pthread_join(Pthread, void**);
-extern fn int pthread_create(Pthread*, PthreadAttribute*, PosixThreadFn, void*);
-extern fn Pthread pthread_self();
-extern fn Errno pthread_mutex_trylock(PthreadMutex*);
-extern fn Errno pthread_mutex_unlock(PthreadMutex*);
-extern fn Errno pthread_cond_signal(PthreadCond*);
-extern fn Errno pthread_cond_broadcast(PthreadCond*);
-extern fn Errno pthread_cond_wait(PthreadCond*, PthreadMutex*);
-extern fn Errno pthread_cond_timedwait(PthreadCond*, PthreadMutex*, TimeSpec*);
-extern fn void pthread_exit(void*);
-extern fn void pthread_once(PthreadOnce*, OnceFn);
-extern fn int pthread_equal(Pthread this, Pthread other);
-extern fn int sched_yield();
+def NativeMutex = Pthread_mutex_t;
+def NativeConditionVariable = Pthread_cond_t;
+def NativeThread = Pthread_t;
+def NativeOnceFlag = Pthread_once_t;
 
 fn void! NativeMutex.init(NativeMutex* mutex, MutexType type)
 {
-	PthreadMutexAttribute attr;
+	Pthread_mutexattr_t attr;
 	if (pthread_mutexattr_init(&attr)) return ThreadFault.INIT_FAILED?;
 	defer pthread_mutexattr_destroy(&attr);
     if (type & thread::MUTEX_RECURSIVE)
@@ -217,18 +184,3 @@ fn void! native_sleep(double s)
 	if (libc::nanosleep(&to, null)) return ThreadFault.INTERRUPTED?;
 }
 
-module std::thread::os @if(thread::THREAD_MODEL == ThreadModel.POSIX && !env::LINUX);
-def PthreadMutex = distinct ulong[8];
-def PthreadMutexAttribute = distinct ulong[2];
-def PthreadAttribute = distinct ulong[8];
-def PthreadCond = distinct ulong[6];
-def PthreadCondAttribute = distinct ulong[8];
-def PthreadOnce = distinct ulong[2];
-
-module std::thread::os @if(thread::THREAD_MODEL == ThreadModel.POSIX && env::LINUX);
-def PthreadMutex = distinct ulong[5];
-def PthreadAttribute = distinct ulong[7];
-def PthreadMutexAttribute = distinct uint;
-def PthreadCondAttribute = distinct uint;
-def PthreadCond = distinct ulong[6];
-def PthreadOnce = distinct uint;

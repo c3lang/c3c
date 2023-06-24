@@ -4,34 +4,6 @@ import libc;
 def Mode_t = uint;
 def DIRPtr = distinct void*;
 
-struct DarwinTimespec @private
-{
-	long tv_sec;
-	long tv_nsec;
-}
-
-struct Darwin64Stat @private
-{
-	int st_dev;
-	ushort st_mode;
-	ushort st_nlink;
-	ulong st_ino;
-	uint st_uid;
-	uint st_gid;
-	int st_rdev;
-	DarwinTimespec st_atimespec; // time of last access
-    DarwinTimespec st_mtimespec; // time of last data modification
-    DarwinTimespec st_ctimespec; // time of last status change
-    DarwinTimespec st_birthtimespec; // time of file creation(birth)
-    long st_size;
-    long st_blocks;
-    int st_blocksize;
-    uint st_flags;
-    uint st_gen;
-    int st_lspare;
-    long[2] st_qspare;
-}
-
 struct Posix_dirent
 {
 	Ino_t d_fileno;
@@ -67,6 +39,6 @@ const DT_LNK     = 10;
 const DT_SOCK    = 12;
 const DT_WHT     = 14;
 
-const USE_DARWIN_INODE64 = env::DARWIN && env::ARCH_TYPE == X86_64;
+const USE_DARWIN_INODE64 = env::DARWIN && env::X86_64;
 extern fn Posix_dirent* readdir(DIRPtr) @extern("readdir$INODE64") @if(USE_DARWIN_INODE64);
 
