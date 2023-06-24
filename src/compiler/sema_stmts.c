@@ -82,7 +82,7 @@ static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement
 	if (message_expr)
 	{
 		if (!sema_analyse_expr(context, message_expr)) return false;
-		if (!expr_is_const_string(message_expr)) RETURN_SEMA_ERROR(message_expr, "Expected a string as the error message.");
+		if (!expr_is_const_string(message_expr)) RETURN_SEMA_ERROR(message_expr, "Expected a constant string as the error message.");
 		FOREACH_BEGIN(Expr *e, statement->assert_stmt.args)
 			if (!sema_analyse_expr(context, e)) return false;
 		FOREACH_END();

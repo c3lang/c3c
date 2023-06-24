@@ -1252,8 +1252,7 @@ LLVMValueRef llvm_emit_string_const(GenContext *c, const char *str, const char *
 
 LLVMValueRef llvm_emit_empty_string_const(GenContext *c)
 {
-	LLVMValueRef data[2] = { LLVMConstNull(c->char_ptr_type), llvm_const_int(c, type_usz, 0) };
-	return llvm_get_struct_named(c->chars_type, data, 2);
+	return LLVMConstNull(c->chars_type);
 }
 
 LLVMValueRef llvm_emit_zstring(GenContext *c, const char *str)
