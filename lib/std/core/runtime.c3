@@ -62,7 +62,7 @@ fn bool TestRunner.run(TestRunner* runner)
 		{
 			if (catch err = runner.test_fns[i]())
 			{
-				io::printn("[failed]");
+				io::printfn("[failed] Failed due to: %s", err);
 				continue;
 			}
 			io::printn("[ok]");
