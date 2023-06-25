@@ -1936,7 +1936,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	AstId assert_first = 0;
 	AstId* next = &assert_first;
 
-	if (!sema_analyse_contracts(&macro_context, docs, &next, call_expr->span)) return false;
+	if (!sema_analyse_contracts(&macro_context, docs, &next, call_expr->span)) goto EXIT_FAIL;
 	sema_append_contract_asserts(assert_first, body);
 
 	if (!sema_analyse_statement(&macro_context, body)) goto EXIT_FAIL;
@@ -1951,13 +1951,13 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 			SEMA_ERROR(decl,
 					   "Missing return in macro that should evaluate to %s.",
 					   type_quoted_error_string(rtype));
-			return SCOPE_POP_ERROR();
+			goto EXIT_FAIL;
 		}
 	}
 	else if (is_no_return)
 	{
 		SEMA_ERROR(context->returns[0], "Return used despite macro being marked '@noreturn'.");
-		return SCOPE_POP_ERROR();
+		goto EXIT_FAIL;
 	}
 
 	if (rtype)
@@ -1976,7 +1976,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 			{
 				if (rtype == type_void) continue;
 				SEMA_ERROR(return_stmt, "Expected returning a value of type %s.", type_quoted_error_string(rtype));
-				return SCOPE_POP_ERROR();
+				goto EXIT_FAIL;
 			}
 			Type *type = ret_expr->type;
 			if (inferred_len)
@@ -1998,7 +1998,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 			{
 				SEMA_ERROR(ret_expr, "Expected %s, not %s.", type_quoted_error_string(rtype),
 						   type_quoted_error_string(type));
-				return SCOPE_POP_ERROR();
+				goto EXIT_FAIL;
 			}
 			if (may_be_optional) ret_expr->type = type_add_optional(ret_expr->type, may_be_optional);
 		}
@@ -2007,7 +2007,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	else
 	{
 		Type *sum_returns = context_unify_returns(&macro_context);
-		if (!sum_returns) return SCOPE_POP_ERROR();
+		if (!sum_returns) goto EXIT_FAIL;
 		call_expr->type = type_add_optional(sum_returns, optional);
 	}
 
@@ -2020,12 +2020,12 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 			if (decl->func_decl.signature.attrs.nodiscard)
 			{
 				SEMA_ERROR(call_expr, "The result of the macro must be used.");
-				return SCOPE_POP_ERROR();
+				goto EXIT_FAIL;
 			}
 			if (type_is_optional(type) && !decl->func_decl.signature.attrs.maydiscard)
 			{
 				SEMA_ERROR(call_expr, "The optional result of the macro must be used.");
-				return SCOPE_POP_ERROR();
+				goto EXIT_FAIL;
 			}
 		}
 	}
@@ -2057,8 +2057,10 @@ EXIT:
 	assert(context->active_scope.defer_last == context->active_scope.defer_start);
 	context->active_scope = old_scope;
 	if (is_no_return) context->active_scope.jump_end = true;
+	sema_context_destroy(&macro_context);
 	return true;
 EXIT_FAIL:
+	sema_context_destroy(&macro_context);
 	return SCOPE_POP_ERROR();
 }
 
