@@ -90,6 +90,8 @@ static void sema_trace_stmt_liveness(Ast *ast)
 			sema_trace_expr_list_liveness(ast->asm_stmt.args);
 			return;
 		case AST_DEFER_STMT:
+			sema_trace_stmt_liveness(astptr(ast->defer_stmt.body));
+			return;
 		case AST_NOP_STMT:
 			return;
 		case AST_COMPOUND_STMT:
