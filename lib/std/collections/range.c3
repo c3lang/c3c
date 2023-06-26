@@ -13,7 +13,7 @@ struct Range
 fn usz Range.len(Range* range) @operator(len)
 {
 	if (range.end < range.start) return 0;
-	return (usz)(range.end - range.start);
+	return (usz)(range.end - range.start + (Type)1);
 }
 
 /**
@@ -24,3 +24,22 @@ fn Type Range.get(Range* range, usz index) @operator([])
     return range.start + (Type)index;
 }
 
+struct ExclusiveRange
+{
+	Type start;
+	Type end;
+}
+
+fn usz ExclusiveRange.len(ExclusiveRange* range) @operator(len)
+{
+	if (range.end < range.start) return 0;
+	return (usz)(range.end - range.start);
+}
+
+/**
+ * @require index < range.len() : "Can't index into an empty range"
+ **/
+fn Type ExclusiveRange.get(ExclusiveRange* range, usz index) @operator([])
+{
+    return range.start + (Type)index;
+}
