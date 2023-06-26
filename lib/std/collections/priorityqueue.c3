@@ -119,5 +119,5 @@ fn void! PriorityQueue.to_format(PriorityQueue* list, Formatter* formatter) @dyn
 
 fn String PriorityQueue.to_string(PriorityQueue* list, Allocator* using = mem::heap()) @dynamic
 {
-	return list.heap.to_string(formatter);
+	return list.heap.to_string(using);
 }
