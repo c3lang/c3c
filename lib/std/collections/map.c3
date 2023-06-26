@@ -195,6 +195,8 @@ fn Key[] HashMap.key_list(HashMap* map, Allocator* using = mem::heap())
 	return list;
 }
 
+
+
 fn Value[] HashMap.value_tlist(HashMap* map)
 {
 	return map.value_list(mem::temp()) @inline;

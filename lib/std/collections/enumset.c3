@@ -12,7 +12,6 @@ def EnumSetType = $typefrom(private::type_for_enum_elements(Enum.elements)) @pri
 const IS_CHAR_ARRAY = Enum.elements > 128;
 def EnumSet = distinct EnumSetType;
 
-
 fn void EnumSet.add(EnumSet* this, Enum v)
 {
 	$if IS_CHAR_ARRAY:
@@ -124,6 +123,25 @@ fn EnumSet EnumSet.xor_of(EnumSet* this, EnumSet s)
 	$else
         return (EnumSet)((EnumSetType)*this ^ (EnumSetType)s);
 	$endif
+}
+
+fn void! EnumSet.to_format(EnumSet* set, Formatter* formatter) @dynamic
+{
+	formatter.print("[")!;
+	bool found = false;
+	foreach (value : Enum.values)
+	{
+		if (!set.has(value)) continue;
+		if (found) formatter.print(", ")!;
+		found = true;
+		formatter.printf("%s", value)!;
+	}
+	formatter.print("]")!;
+}
+
+fn String EnumSet.to_string(EnumSet* set, Allocator* using = mem::heap()) @dynamic
+{
+	return string::printf("%s", *set);
 }
 
 module std::collections::enumset::private;

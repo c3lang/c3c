@@ -27,3 +27,4 @@ fn void! test_range()
 	}
 	assert(sum == 35);
 }
+
