@@ -8,20 +8,48 @@ const Allocator* LIBC_ALLOCATOR = &_SYSTEM_ALLOCATOR;
 
 def AllocatorFunction = fn void*!(Allocator* allocator, usz new_size, usz alignment, usz offset, void* old_pointer, AllocationKind kind);
 
+macro bool is_allocator($Type)
+{
+	return $checks(
+		$Type mem,
+		usz sz = 1,
+		void*! x = mem.alloc(sz),
+		void*! y = mem.calloc(sz),
+		void*! z = mem.realloc(x, sz),
+		(void)mem.free(x)
+	);
+}
 
+macro bool is_valid_aligned_allocator($Type)
+{
+	return !$checks($Type.alloc_aligned) ||
+		$checks(
+			$Type mem,
+			usz sz = 1,
+			void*! x = mem.alloc_aligned(sz, sz, az),
+			void*! y = mem.calloc_aligned(sz, sz, sz),
+			void*! z = mem.realloc_aligned(x, sz, sz, sz),
+			(void)mem.free_aligned(x, sz, sz)
+		);
+}
+
+/**
+ * @require is_allocator($AllocatorType) : "Type does not implement all allocator methods"
+ * @require is_valid_aligned_allocator($AllocatorType) : "Type does not implement all aligned methods"
+ **/
 macro AllocatorFunction allocator_fn($AllocatorType)
 {
 	return fn void*!(Allocator* data, usz size, usz alignment, usz offset, void* old_pointer, AllocationKind kind)
 	{
 		$AllocatorType* allocator = ($AllocatorType*)data;
-		bool $supports_aligned = $defined(allocator.aligned_alloc);
+		bool $supports_aligned = $defined(allocator.alloc_aligned);
 		switch (kind)
 		{
 			case CALLOC:
 				return allocator.calloc(size) @inline;
 			case ALIGNED_CALLOC:
 				$if $supports_aligned:
-					return allocator.aligned_calloc(size, alignment, offset) @inline;
+					return allocator.calloc_aligned(size, alignment, offset) @inline;
 				$else
 				    return @aligned_calloc(allocator.calloc, size, alignment, offset);
 				$endif
@@ -29,7 +57,7 @@ macro AllocatorFunction allocator_fn($AllocatorType)
 				return allocator.alloc(size);
 			case ALIGNED_ALLOC:
 				$if $supports_aligned:
-					return allocator.aligned_alloc(size, alignment, offset) @inline;
+					return allocator.alloc_aligned(size, alignment, offset) @inline;
 				$else
 				    return @aligned_alloc(allocator.alloc, size, alignment, offset);
 				$endif
@@ -37,13 +65,13 @@ macro AllocatorFunction allocator_fn($AllocatorType)
 				return allocator.realloc(old_pointer, size) @inline;
 			case ALIGNED_REALLOC:
 				$if $supports_aligned:
-					return allocator.aligned_realloc(old_pointer, size, alignment, offset) @inline;
+					return allocator.realloc_aligned(old_pointer, size, alignment, offset) @inline;
 				$else
 			        return @aligned_realloc(allocator.alloc, allocator.free, old_pointer, size, alignment, offset);
 				$endif
 			case ALIGNED_FREE:
 				$if $supports_aligned:
-					allocator.aligned_free(old_pointer, alignment, offset) @inline!;
+					allocator.free_aligned(old_pointer, alignment, offset) @inline!;
 					return null;
 				$else
 					@aligned_free(allocator.free, old_pointer) @inline!;

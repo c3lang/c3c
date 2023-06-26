@@ -38,18 +38,18 @@ fn void*! SimpleHeapAllocator.realloc(SimpleHeapAllocator* this, void* old_point
 	void* new = this.alloc(bytes)!;
 	usz max_to_copy = math::min(block.size, bytes);
 	mem::copy(new, old_pointer, max_to_copy);
-	this.free(old_pointer);
+	(void)this.free(old_pointer);
 	return new;
 }
 
-fn void*! SimpleHeapAllocator.calloc(SimpleHeapAllocator* this, usz bytes) @local
+fn void*! SimpleHeapAllocator.calloc(SimpleHeapAllocator* this, usz bytes)
 {
 	void* data = this.alloc(bytes)!;
 	mem::clear(data, bytes, mem::DEFAULT_MEM_ALIGNMENT);
 	return data;
 }
 
-fn void*! SimpleHeapAllocator.alloc(SimpleHeapAllocator* this, usz bytes) @local
+fn void*! SimpleHeapAllocator.alloc(SimpleHeapAllocator* this, usz bytes)
 {
 	usz aligned_bytes = mem::aligned_offset(bytes, mem::DEFAULT_MEM_ALIGNMENT);
     if (!this.free_list)
@@ -105,11 +105,11 @@ fn void! SimpleHeapAllocator.add_block(SimpleHeapAllocator* this, usz aligned_by
 	Header* new_block = (Header*)result.ptr;
 	new_block.size = result.len - Header.sizeof;
 	new_block.next = null;
-	this.free(new_block + 1);
+	(void)this.free(new_block + 1);
 }
 
 
-fn void SimpleHeapAllocator.free(SimpleHeapAllocator* this, void* ptr) @local
+fn void! SimpleHeapAllocator.free(SimpleHeapAllocator* this, void* ptr)
 {
 	// Empty ptr -> do nothing.
 	if (!ptr) return;
