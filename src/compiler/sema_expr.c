@@ -1922,7 +1922,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	macro_context.macro_varargs = call_expr->call_expr.varargs;
 	macro_context.original_inline_line = context->original_inline_line ? context->original_inline_line : call_expr->span.row;
 	macro_context.macro_params = params;
-	BlockExit** block_exit_ref = MALLOCS(BlockExit*);
+	BlockExit** block_exit_ref = CALLOCS(BlockExit*);
 	macro_context.block_exit_ref = block_exit_ref;
 
 	VECEACH(params, i)
@@ -1936,7 +1936,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	AstId assert_first = 0;
 	AstId* next = &assert_first;
 
-	if (!sema_analyse_contracts(&macro_context, docs, &next, call_expr->span)) return false;
+	if (!sema_analyse_contracts(&macro_context, docs, &next, call_expr->span)) goto EXIT_FAIL;
 	sema_append_contract_asserts(assert_first, body);
 
 	if (!sema_analyse_statement(&macro_context, body)) goto EXIT_FAIL;
@@ -1951,13 +1951,13 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 			SEMA_ERROR(decl,
 					   "Missing return in macro that should evaluate to %s.",
 					   type_quoted_error_string(rtype));
-			return SCOPE_POP_ERROR();
+			goto EXIT_FAIL;
 		}
 	}
 	else if (is_no_return)
 	{
 		SEMA_ERROR(context->returns[0], "Return used despite macro being marked '@noreturn'.");
-		return SCOPE_POP_ERROR();
+		goto EXIT_FAIL;
 	}
 
 	if (rtype)
@@ -1976,7 +1976,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 			{
 				if (rtype == type_void) continue;
 				SEMA_ERROR(return_stmt, "Expected returning a value of type %s.", type_quoted_error_string(rtype));
-				return SCOPE_POP_ERROR();
+				goto EXIT_FAIL;
 			}
 			Type *type = ret_expr->type;
 			if (inferred_len)
@@ -1998,7 +1998,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 			{
 				SEMA_ERROR(ret_expr, "Expected %s, not %s.", type_quoted_error_string(rtype),
 						   type_quoted_error_string(type));
-				return SCOPE_POP_ERROR();
+				goto EXIT_FAIL;
 			}
 			if (may_be_optional) ret_expr->type = type_add_optional(ret_expr->type, may_be_optional);
 		}
@@ -2007,7 +2007,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	else
 	{
 		Type *sum_returns = context_unify_returns(&macro_context);
-		if (!sum_returns) return SCOPE_POP_ERROR();
+		if (!sum_returns) goto EXIT_FAIL;
 		call_expr->type = type_add_optional(sum_returns, optional);
 	}
 
@@ -2020,12 +2020,12 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 			if (decl->func_decl.signature.attrs.nodiscard)
 			{
 				SEMA_ERROR(call_expr, "The result of the macro must be used.");
-				return SCOPE_POP_ERROR();
+				goto EXIT_FAIL;
 			}
 			if (type_is_optional(type) && !decl->func_decl.signature.attrs.maydiscard)
 			{
 				SEMA_ERROR(call_expr, "The optional result of the macro must be used.");
-				return SCOPE_POP_ERROR();
+				goto EXIT_FAIL;
 			}
 		}
 	}
@@ -2057,8 +2057,10 @@ EXIT:
 	assert(context->active_scope.defer_last == context->active_scope.defer_start);
 	context->active_scope = old_scope;
 	if (is_no_return) context->active_scope.jump_end = true;
+	sema_context_destroy(&macro_context);
 	return true;
 EXIT_FAIL:
+	sema_context_destroy(&macro_context);
 	return SCOPE_POP_ERROR();
 }
 
@@ -6116,6 +6118,7 @@ static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr)
 		SEMA_ERROR(expr, "Rethrow cannot be used outside of a function.");
 		return false;
 	}
+
 	Expr *inner = expr->rethrow_expr.inner;
 	if (!sema_analyse_expr(context, inner)) return false;
 
@@ -6124,7 +6127,6 @@ static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr)
 		SEMA_ERROR(expr, "Returns are not allowed inside of defers.");
 		return false;
 	}
-	expr->rethrow_expr.cleanup = context_get_defers(context, context->active_scope.defer_last, 0, false);
 
 	expr->type = type_no_optional(inner->type);
 
@@ -6137,9 +6139,13 @@ static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr)
 	if (context->active_scope.flags & (SCOPE_EXPR_BLOCK | SCOPE_MACRO))
 	{
 		vec_add(context->returns, NULL);
+		expr->rethrow_expr.in_block = context->block_exit_ref;
+		expr->rethrow_expr.cleanup = context_get_defers(context, context->active_scope.defer_last, context->block_return_defer, false);
 	}
 	else
 	{
+		expr->rethrow_expr.cleanup = context_get_defers(context, context->active_scope.defer_last, 0, false);
+		expr->rethrow_expr.in_block = NULL;
 		if (context->rtype && context->rtype->type_kind != TYPE_OPTIONAL)
 		{
 			SEMA_ERROR(expr, "This expression implicitly returns with an optional result, but the function does not allow optional results. Did you mean to use '!!' instead?");
@@ -6182,7 +6188,7 @@ static inline bool sema_expr_analyse_expr_block(SemaContext *context, Type *infe
 	Ast **saved_returns = context_push_returns(context);
 	Type *stored_block_type = context->expected_block_type;
 	context->expected_block_type = infer_type;
-	BlockExit **ref = MALLOCS(BlockExit*);
+	BlockExit **ref = CALLOCS(BlockExit*);
 	BlockExit **stored_block_exit = context->block_exit_ref;
 	context->block_exit_ref = ref;
 	expr->expr_block.block_exit_ref = ref;

@@ -917,7 +917,7 @@ Module *compiler_find_or_create_module(Path *module_name, const char **parameter
 	module->stage = ANALYSIS_NOT_BEGUN;
 	module->parameters = parameters;
 	module->is_generic = vec_size(parameters) > 0;
-	htable_init(&module->symbols, 0x10000);
+	htable_init(&module->symbols, 0x1000);
 	htable_set(&global_context.modules, (void *)module_name->module, module);
 	if (parameters)
 	{

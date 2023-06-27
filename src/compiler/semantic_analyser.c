@@ -332,7 +332,7 @@ void sema_analysis_run(void)
 	global_context.locals_list = NULL;
 
 	// Set a maximum of symbols in the std_module and test module
-	htable_init(&global_context.std_module.symbols, 0x10000);
+	htable_init(&global_context.std_module.symbols, 0x1000);
 
 	// Setup the func prototype hash map
 	type_func_prototype_init(0x10000);

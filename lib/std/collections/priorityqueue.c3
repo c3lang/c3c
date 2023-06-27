@@ -111,3 +111,13 @@ fn Type PriorityQueue.peek_at(PriorityQueue* pq, usz index) @operator([])
 {
 	return pq.heap[index];
 }
+
+fn void! PriorityQueue.to_format(PriorityQueue* list, Formatter* formatter) @dynamic
+{
+	return list.heap.to_format(formatter);
+}
+
+fn String PriorityQueue.to_string(PriorityQueue* list, Allocator* using = mem::heap()) @dynamic
+{
+	return list.heap.to_string(using);
+}

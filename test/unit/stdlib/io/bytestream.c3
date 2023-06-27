@@ -17,9 +17,9 @@ fn void! bytestream()
 	ws.write("helloworld")!;
 	assert(w.as_str() == "helloworld");
 	s.seek(0, SET)!;
-	ws.read_from(&s)!;
+	ws.read_from(s)!;
 	s.seek(1, SET)!;
-	s.write_to(&ws)!;
+	s.write_to(ws)!;
 	assert(w.as_str() == "helloworldabcbc");
 }
 
@@ -44,7 +44,7 @@ fn void! bytewriter_read_from()
 
     ByteWriter bw;
     bw.tinit();
-    bw.read_from(&s)!;
+    bw.read_from(s)!;
 
     assert(bw.as_str() == data);
 }
