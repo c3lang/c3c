@@ -53,7 +53,7 @@ fn usz! ByteReader.seek(ByteReader* reader, isz offset, Seek seek)
 	return new_index;
 }
 
-fn usz! ByteReader.write_stream(ByteReader* reader, Stream* writer)
+fn usz! ByteReader.write_stream(ByteReader* reader, Stream writer)
 {
 	if (reader.index >= reader.bytes.len) return 0;
 	usz written = writer.write(reader.bytes[reader.index..])!;

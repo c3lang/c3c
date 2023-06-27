@@ -32,6 +32,7 @@ def spawn = posix_spawn;
 
 extern fn CInt kill(Pid_t pid, CInt sig);
 extern fn Pid_t waitpid(Pid_t pid, CInt* stat_loc, int options);
+extern fn CInt raise(CInt sig);
 
 macro CInt wEXITSTATUS(CInt status) => (status & 0xff00) >> 8;
 macro CInt wTERMSIG(CInt status) => status & 0x7f;

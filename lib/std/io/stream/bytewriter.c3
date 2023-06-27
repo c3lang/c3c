@@ -75,9 +75,9 @@ fn void! ByteWriter.write_byte(ByteWriter* writer, char c)
 
 /**
  * @param [&inout] writer
- * @param [&inout] reader
+ * @param reader
  **/
-fn usz! ByteWriter.read_from(ByteWriter* writer, Stream* reader)
+fn usz! ByteWriter.read_from(ByteWriter* writer, Stream reader)
 {
 	usz start_index = writer.index;
 	if (reader.supports_available())

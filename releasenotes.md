@@ -88,6 +88,7 @@
 - `assert` may now take varargs for formatting.
  
 ### Stdlib changes
+- `csv` package.
 - Updated posix/win32 stdlib namespacing
 - `process` stdlib
 - Stdlib updates to string.
