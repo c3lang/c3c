@@ -464,7 +464,14 @@ static inline TypeInfo *parse_base_type(ParseContext *c)
 			type_found = type_from_token(c->tok);
 			break;
 		default:
-			SEMA_ERROR_HERE("A type name was expected here.");
+			if (c->tok == TOKEN_IDENT)
+			{
+				SEMA_ERROR_HERE("A type name was expected, but this looks a variable or function name (as it doesn't start with an uppercase letter).");
+			}
+			else
+			{
+				SEMA_ERROR_HERE("A type name was expected here.");
+			}
 			return poisoned_type_info;
 	}
 	if (type_found)
