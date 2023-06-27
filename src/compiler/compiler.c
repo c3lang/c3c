@@ -506,7 +506,7 @@ void compiler_compile(void)
 		delete_object_files(obj_files, output_file_count);
 		compiler_link_time = bench_mark();
 		compiler_print_bench();
-		printf("Static library '%s' created.", output_static);
+		printf("Static library '%s' created.\n", output_static);
 	}
 	else if (output_dynamic)
 	{
@@ -515,7 +515,7 @@ void compiler_compile(void)
 			error_exit("Failed to produce static library '%s'.", output_dynamic);
 		}
 		delete_object_files(obj_files, output_file_count);
-		printf("Dynamic library '%s' created.", output_dynamic);
+		printf("Dynamic library '%s' created.\n", output_dynamic);
 		compiler_link_time = bench_mark();
 		compiler_print_bench();
 	}
