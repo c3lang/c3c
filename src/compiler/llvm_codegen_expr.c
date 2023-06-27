@@ -4091,7 +4091,7 @@ void llvm_emit_try_assign_try_catch(GenContext *c, bool is_try, BEValue *be_valu
 
 
 /**
- * This is the foo? instruction.
+ * This is the foo! instruction.
  */
 static inline void llvm_emit_rethrow_expr(GenContext *c, BEValue *be_value, Expr *expr)
 {
@@ -4108,6 +4108,7 @@ static inline void llvm_emit_rethrow_expr(GenContext *c, BEValue *be_value, Expr
 	c->catch_block = guard_block;
 
 	llvm_emit_expr(c, be_value, expr->rethrow_expr.inner);
+
 	// Fold the optional.
 	llvm_value_fold_optional(c, be_value);
 
@@ -4126,9 +4127,23 @@ static inline void llvm_emit_rethrow_expr(GenContext *c, BEValue *be_value, Expr
 		llvm_emit_statement_chain(c, expr->rethrow_expr.cleanup);
 		BEValue value;
 		llvm_value_set_address_abi_aligned(&value, error_var, type_anyfault);
-		llvm_emit_return_abi(c, NULL, &value);
-		c->current_block = NULL;
-		c->current_block_is_target = false;
+		if (expr->rethrow_expr.in_block)
+		{
+			BlockExit *exit = *expr->rethrow_expr.in_block;
+			if (exit->block_error_var)
+			{
+				llvm_store_to_ptr(c, exit->block_error_var, &value);
+			}
+			llvm_emit_br(c, exit->block_optional_exit);
+			c->current_block = NULL;
+			c->current_block_is_target = false;
+		}
+		else
+		{
+			llvm_emit_return_abi(c, NULL, &value);
+			c->current_block = NULL;
+			c->current_block_is_target = false;
+		}
 	}
 
 	llvm_emit_block(c, no_err_block);
@@ -5683,8 +5698,12 @@ static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type
 			llvm_value_set(be_value, NULL, type_void);
 			return;
 		}
-		llvm_emit_expr(c, be_value, expr);
-		return;
+		// We can only do this if there is no potential optional
+		if (!type_is_optional(type))
+		{
+			llvm_emit_expr(c, be_value, expr);
+			return;
+		}
 	}
 
 	LLVMValueRef old_ret_out = c->return_out;

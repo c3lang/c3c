@@ -1023,6 +1023,7 @@ typedef struct
 {
 	Expr *inner;
 	AstId cleanup;
+	BlockExit **in_block;
 } ExprGuard;
 
 

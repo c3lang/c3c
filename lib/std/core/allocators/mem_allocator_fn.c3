@@ -121,7 +121,7 @@ fn void*! libc_allocator_fn(Allocator* unused, usz bytes, usz alignment, usz off
             if (!old_pointer) nextcase CALLOC;
             data = libc::realloc(old_pointer, bytes);
         case RESET:
-            return AllocationFailure.UNSUPPORTED_OPERATION?;
+			unreachable("Reset unsupported");
         case ALIGNED_FREE:
             @aligned_free(libc::free, old_pointer)!!;
             return null;

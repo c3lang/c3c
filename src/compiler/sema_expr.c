@@ -1922,7 +1922,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	macro_context.macro_varargs = call_expr->call_expr.varargs;
 	macro_context.original_inline_line = context->original_inline_line ? context->original_inline_line : call_expr->span.row;
 	macro_context.macro_params = params;
-	BlockExit** block_exit_ref = MALLOCS(BlockExit*);
+	BlockExit** block_exit_ref = CALLOCS(BlockExit*);
 	macro_context.block_exit_ref = block_exit_ref;
 
 	VECEACH(params, i)
@@ -6118,6 +6118,7 @@ static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr)
 		SEMA_ERROR(expr, "Rethrow cannot be used outside of a function.");
 		return false;
 	}
+
 	Expr *inner = expr->rethrow_expr.inner;
 	if (!sema_analyse_expr(context, inner)) return false;
 
@@ -6126,7 +6127,6 @@ static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr)
 		SEMA_ERROR(expr, "Returns are not allowed inside of defers.");
 		return false;
 	}
-	expr->rethrow_expr.cleanup = context_get_defers(context, context->active_scope.defer_last, 0, false);
 
 	expr->type = type_no_optional(inner->type);
 
@@ -6139,9 +6139,13 @@ static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr)
 	if (context->active_scope.flags & (SCOPE_EXPR_BLOCK | SCOPE_MACRO))
 	{
 		vec_add(context->returns, NULL);
+		expr->rethrow_expr.in_block = context->block_exit_ref;
+		expr->rethrow_expr.cleanup = context_get_defers(context, context->active_scope.defer_last, context->block_return_defer, false);
 	}
 	else
 	{
+		expr->rethrow_expr.cleanup = context_get_defers(context, context->active_scope.defer_last, 0, false);
+		expr->rethrow_expr.in_block = NULL;
 		if (context->rtype && context->rtype->type_kind != TYPE_OPTIONAL)
 		{
 			SEMA_ERROR(expr, "This expression implicitly returns with an optional result, but the function does not allow optional results. Did you mean to use '!!' instead?");
@@ -6184,7 +6188,7 @@ static inline bool sema_expr_analyse_expr_block(SemaContext *context, Type *infe
 	Ast **saved_returns = context_push_returns(context);
 	Type *stored_block_type = context->expected_block_type;
 	context->expected_block_type = infer_type;
-	BlockExit **ref = MALLOCS(BlockExit*);
+	BlockExit **ref = CALLOCS(BlockExit*);
 	BlockExit **stored_block_exit = context->block_exit_ref;
 	context->block_exit_ref = ref;
 	expr->expr_block.block_exit_ref = ref;

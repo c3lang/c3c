@@ -131,7 +131,8 @@
 - Added `Clock` and `DateTime`.
 
 ### Fixes
-- Fixes bug initializing a const struct with a const struct value
+- Fix to bug when a macro is using rethrow.
+- Fixes bug initializing a const struct with a const struct value.
 - Fixes bug when `void` is passed to an "any"-vararg.
 - Fixed defer/return value ordering in certain cases.
 - Fixes to the x64 ABI.

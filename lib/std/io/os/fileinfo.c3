@@ -1,4 +1,4 @@
-module std::io::os @if(env::LIBC);
+module std::io::os;
 import libc;
 
 fn void! native_stat(Stat* stat, String path) @if(env::DARWIN || env::LINUX)
@@ -113,3 +113,5 @@ fn bool native_is_dir(String path)
 		return native_file_or_dir_exists(path) && !native_is_file(path);
 	$endif
 }
+
+

@@ -17,7 +17,6 @@ fn void main()
 
 /* #expect: test.ll
 
-
 define i64 @test.abc(ptr %0) #0 {
 entry:
   %reterr = alloca i64, align 8
@@ -43,13 +42,17 @@ after_check:                                      ; preds = %entry
   br label %noerr_block
 
 guard_block:                                      ; preds = %assign_optional
-  ret void
+  br label %else_block
 
 noerr_block:                                      ; preds = %after_check
   %2 = load i32, ptr %retparam, align 4
   br label %phi_block
 
-phi_block:                                        ; preds = %noerr_block
-  %3 = call i32 (ptr, ...) @printf(ptr @.str, i32 %2)
+else_block:                                       ; preds = %guard_block
+  br label %phi_block
+
+phi_block:                                        ; preds = %else_block, %noerr_block
+  %val = phi i32 [ %2, %noerr_block ], [ 2, %else_block ]
+  %3 = call i32 (ptr, ...) @printf(ptr @.str, i32 %val)
   ret void
 }

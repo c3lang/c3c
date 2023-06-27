@@ -120,7 +120,7 @@ fn void*! on_stack_allocator_function(Allocator* data, usz size, usz alignment, 
         	return null;
         case MARK:
 		case RESET:
-			return AllocationFailure.UNSUPPORTED_OPERATION?;
+			unreachable("Reset unsupported");
 	}
 	unreachable();
 }
