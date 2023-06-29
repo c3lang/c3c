@@ -30,11 +30,43 @@ fn void TrackingAllocator.init(TrackingAllocator* this, Allocator* using)
 	this.map.init(.using = using);
 }
 
+/**
+ * Free this tracking allocator.
+ * @param [&inout] this "The allocator to modify"
+ **/
 fn void TrackingAllocator.free(TrackingAllocator* this)
 {
 	this.map.free();
 	*this = {};
 }
+
+/**
+ * @return "the total allocated memory not yet freed."
+ **/
+fn usz TrackingAllocator.allocated(TrackingAllocator* this)
+{
+	usz allocated = 0;
+	@pool()
+	{
+		foreach (usz allocation : this.map.value_tlist()) allocated += allocation;
+	};
+	return allocated;
+}
+
+/**
+ * @return "the total memory allocated (freed or not)."
+ **/
+fn usz TrackingAllocator.total_allocated(TrackingAllocator* this) => this.mem_total;
+
+/**
+ * @return "the total number of allocations (freed or not)."
+ **/
+fn usz TrackingAllocator.total_allocation_count(TrackingAllocator* this) => this.allocs_total;
+
+/**
+ * @return "the number of non-freed allocations."
+ **/
+fn usz TrackingAllocator.allocation_count(TrackingAllocator* this) => this.map.count;
 
 /**
  * @param [inout] data
@@ -74,32 +106,4 @@ fn void*! tracking_allocator_fn(Allocator* data, usz size, usz alignment, usz of
 			return null;
 	}
 	unreachable();
-}
-
-fn usz TrackingAllocator.allocated(TrackingAllocator* this)
-{
-	usz allocated = 0;
-	@pool()
-	{
-		foreach (usz allocation : this.map.value_tlist())
-		{
-			allocated += allocation;
-		}
-	};
-	return allocated;
-}
-
-fn usz TrackingAllocator.total_allocated(TrackingAllocator* this)
-{
-	return this.mem_total;
-}
-
-fn usz TrackingAllocator.total_allocation_count(TrackingAllocator* this)
-{
-	return this.allocs_total;
-}
-
-fn usz TrackingAllocator.allocation_count(TrackingAllocator* this)
-{
-	return this.map.count;
 }

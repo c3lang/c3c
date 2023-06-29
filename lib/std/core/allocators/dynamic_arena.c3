@@ -1,7 +1,6 @@
 // Copyright (c) 2021 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
-
 module std::core::mem::allocator;
 
 struct DynamicArenaAllocator
@@ -27,7 +26,7 @@ fn void DynamicArenaAllocator.init(DynamicArenaAllocator* this, usz page_size, A
 }
 
 /**
- * @require this != null
+ * @param [&inout] this "The allocator to free"
  **/
 fn void DynamicArenaAllocator.free(DynamicArenaAllocator* this)
 {
@@ -49,13 +48,13 @@ fn void DynamicArenaAllocator.free(DynamicArenaAllocator* this)
 	this.unused_page = null;
 }
 
-struct DynamicArenaPage
+struct DynamicArenaPage @local
 {
 	void* memory;
 	void* prev_arena;
 	usz total;
 	usz used;
-	void* last_ptr;
+	void* current_stack_ptr;
 }
 
 struct DynamicArenaChunk @local
@@ -67,14 +66,14 @@ struct DynamicArenaChunk @local
  * @require ptr && this
  * @require this.page `tried to free pointer on invalid allocator`
  */
-fn void DynamicArenaAllocator.free_ptr(DynamicArenaAllocator* this, void* ptr) @private
+fn void DynamicArenaAllocator.free_ptr(DynamicArenaAllocator* this, void* ptr) @local
 {
 	DynamicArenaPage* current_page = this.page;
-	if (ptr == current_page.last_ptr)
+	if (ptr == current_page.current_stack_ptr)
 	{
 		current_page.used = (usz)((ptr - DEFAULT_SIZE_PREFIX) - current_page.memory);
 	}
-	current_page.last_ptr = null;
+	current_page.current_stack_ptr = null;
 }
 
 /**
@@ -91,13 +90,13 @@ fn void*! DynamicArenaAllocator._realloc(DynamicArenaAllocator* this, void* old_
 	if (old_size >= size && mem::ptr_is_aligned(old_pointer, alignment))
 	{
 		*old_size_ptr = size;
-		if (current_page.last_ptr == old_pointer)
+		if (current_page.current_stack_ptr == old_pointer)
 		{
 			current_page.used = (usz)((old_pointer - DEFAULT_SIZE_PREFIX) - current_page.memory);
 		}
 		return old_pointer;
 	}
-	if REUSE: (current_page.last_ptr == old_pointer && mem::ptr_is_aligned(old_pointer, alignment))
+	if REUSE: (current_page.current_stack_ptr == old_pointer && mem::ptr_is_aligned(old_pointer, alignment))
 	{
 		assert(size > old_size);
 		usz add_size = size - old_size;
@@ -153,7 +152,7 @@ fn void*! DynamicArenaAllocator._alloc_new(DynamicArenaAllocator* this, usz size
 	page.total = page_size;
 	page.used = mem_start + size - page.memory;
 	this.page = page;
-	page.last_ptr = mem_start;
+	page.current_stack_ptr = mem_start;
 	return mem_start;
 }
 

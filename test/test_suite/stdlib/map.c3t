@@ -173,6 +173,7 @@ entry:
   %not_err = icmp eq i64 %26, 0
   %27 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
   br i1 %27, label %after_check, label %after_check12
+
 after_check:                                      ; preds = %entry
   %28 = getelementptr inbounds %Foo, ptr %retparam10, i32 0, i32 0
   %29 = insertvalue %any undef, ptr %28, 0
@@ -183,6 +184,7 @@ after_check:                                      ; preds = %entry
   %not_err11 = icmp eq i64 %32, 0
   %33 = call i1 @llvm.expect.i1(i1 %not_err11, i1 true)
   br i1 %33, label %after_check12, label %after_check12
+
 after_check12:                                    ; preds = %entry, %after_check, %after_check
   %34 = call i8 @"std.collections.map$int$test.Foo$.HashMap.has_key"(ptr %map, i32 1)
   store i8 %34, ptr %taddr, align 1
@@ -253,18 +255,22 @@ after_check12:                                    ; preds = %entry, %after_check
   %80 = load ptr, ptr @std.core.mem.thread_temp_allocator, align 8
   %not = icmp eq ptr %80, null
   br i1 %not, label %if.then, label %if.exit
+
 if.then:                                          ; preds = %after_check12
   %81 = load ptr, ptr @std.core.mem.thread_allocator, align 8
   %82 = call i64 @std.core.mem.allocator.new_temp(ptr %retparam49, i64 262144, ptr %81)
   %not_err50 = icmp eq i64 %82, 0
   %83 = call i1 @llvm.expect.i1(i1 %not_err50, i1 true)
   br i1 %83, label %after_check51, label %assign_optional
+
 assign_optional:                                  ; preds = %if.then
   store i64 %82, ptr %error_var, align 8
   br label %panic_block
+
 after_check51:                                    ; preds = %if.then
   %84 = load ptr, ptr %retparam49, align 8
   br label %noerr_block
+
 panic_block:                                      ; preds = %assign_optional
   %85 = insertvalue %any undef, ptr %error_var, 0
   %86 = insertvalue %any %85, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
@@ -273,11 +279,13 @@ panic_block:                                      ; preds = %assign_optional
   %88 = insertvalue %"any[]" undef, ptr %varargslots52, 0
   %89 = insertvalue %"any[]" %88, i64 1, 1
   store %"any[]" %89, ptr %indirectarg, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func, i64 4, i32 399, ptr byval(%"any[]") align 8 %indirectarg)
+  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func, i64 4, i32 420, ptr byval(%"any[]") align 8 %indirectarg)
   unreachable
+
 noerr_block:                                      ; preds = %after_check51
   store ptr %84, ptr @std.core.mem.thread_temp_allocator, align 8
   br label %if.exit
+
 if.exit:                                          ; preds = %noerr_block, %after_check12
   %90 = load ptr, ptr @std.core.mem.thread_temp_allocator, align 8
   store ptr %90, ptr %allocator, align 8
@@ -314,14 +322,17 @@ if.exit:                                          ; preds = %noerr_block, %after
 define internal void @.static_initialize.0() {
 entry:
   br label %dtable_check
+
 dtable_check:                                     ; preds = %dtable_next, %entry
   %dtable_ref = phi ptr [ getelementptr inbounds (%.introspect, ptr @"$ct.test.Foo", i32 0, i32 1), %entry ], [ %next_dtable_ref, %dtable_next ]
   %dtable_ptr = load ptr, ptr %dtable_ref, align 8
   %0 = icmp eq ptr %dtable_ptr, null
   br i1 %0, label %dtable_found, label %dtable_next
+
 dtable_next:                                      ; preds = %dtable_check
   %next_dtable_ref = getelementptr inbounds { ptr, ptr, ptr }, ptr %dtable_ptr, i32 0, i32 2
   br label %dtable_check
+
 dtable_found:                                     ; preds = %dtable_check
   store ptr @"$ct.dyn.test.Foo.to_string", ptr %dtable_ref, align 8
   ret void

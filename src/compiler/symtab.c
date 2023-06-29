@@ -145,7 +145,7 @@ void symtab_init(uint32_t capacity)
 	kw_incr = KW_DEF("incr");
 	kw_inout = KW_DEF("inout");
 	kw_libc = KW_DEF("libc");
-	kw_mainstub = KW_DEF("_$start");
+	kw_mainstub = KW_DEF("_$main");
 	kw_main = KW_DEF("main");
 	kw_nameof = KW_DEF("nameof");
 	kw_noinline = KW_DEF("noinline");
