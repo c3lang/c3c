@@ -267,6 +267,7 @@ typedef struct
 	ABI abi;
 	AlignData integers[BITSIZES_LEN];
 	AlignData floats[BITSIZES_LEN];
+	AlignData floats_pref[BITSIZES_LEN];
 	RelocModel reloc_model;
 	bool pic_required : 1;
 	bool signed_c_char : 1;

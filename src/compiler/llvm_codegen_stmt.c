@@ -1001,15 +1001,17 @@ static inline void llvm_emit_assert_stmt(GenContext *c, Ast *ast)
 		llvm_emit_cond_br(c, &value, on_ok, on_fail);
 		llvm_emit_block(c, on_fail);
 		SourceSpan loc = assert_expr->span;
-		const char *error = NULL;
+		const char *error = "Assert violation";
+		const char *fmt = NULL;
 		Expr *message_expr = exprptrzero(ast->assert_stmt.message);
 		BEValue *values = NULL;
 		if (message_expr)
 		{
-			error = exprptr(ast->assert_stmt.message)->const_expr.string.chars;
+			const char *err_msg = exprptr(ast->assert_stmt.message)->const_expr.string.chars;
 			Expr **args = ast->assert_stmt.args;
 			if (vec_size(args))
 			{
+				fmt = err_msg;
 				FOREACH_BEGIN(Expr *arg, args)
 					BEValue var;
 					llvm_emit_expr(c, &var, arg);
@@ -1017,12 +1019,12 @@ static inline void llvm_emit_assert_stmt(GenContext *c, Ast *ast)
 					vec_add(values, var);
 				FOREACH_END();
 			}
+			else
+			{
+				error = err_msg;
+			}
 		}
-		else
-		{
-			error = "Assert violation";
-		}
-		llvm_emit_panic(c, values ? NULL : error, loc, values ? error : NULL, values);
+		llvm_emit_panic(c, error, loc, fmt, values);
 		llvm_emit_br(c, on_ok);
 		llvm_emit_block(c, on_ok);
 	}

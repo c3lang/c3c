@@ -16,9 +16,14 @@ static inline void llvm_emit_body(GenContext *c, LLVMValueRef function, const ch
                                   FileId file_id, FunctionPrototype *prototype, Signature *signature, Ast *body);
 
 
-bool llvm_emit_check_block_branch(GenContext *context)
+/**
+ * Erases the current block if it is empty.
+ * @param c the context to use.
+ * @return true if the block was erased.
+ */
+bool llvm_emit_check_block_branch(GenContext *c)
 {
-	if (!context->current_block) return false;
+	if (!c->current_block) return false;
 	// If it's not used, we can delete the previous block and skip the branch.
 	// Unless it is the entry block or a label target for jumps
 	// These empty blocks will occur when doing branches.
@@ -41,13 +46,13 @@ bool llvm_emit_check_block_branch(GenContext *context)
 	// br label %for.cond
 	//
 	// But this leaves us with blocks that have no parent.
-	// Consequently we will delete those and realize that
+	// Consequently, we will delete those and realize that
 	// we then have no need for emitting a br.
-	if (!context->current_block_is_target
-	    && !LLVMGetFirstUse(LLVMBasicBlockAsValue(context->current_block)))
+	if (!c->current_block_is_target
+	    && !LLVMGetFirstUse(LLVMBasicBlockAsValue(c->current_block)))
 	{
-		LLVMDeleteBasicBlock(context->current_block);
-		context->current_block = NULL;
+		LLVMDeleteBasicBlock(c->current_block);
+		c->current_block = NULL;
 		return false;
 	}
 	return true;

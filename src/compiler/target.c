@@ -19,7 +19,6 @@ static unsigned os_target_supports_int128(OsType os, ArchType arch);
 static unsigned os_target_supports_float16(OsType os, ArchType arch);
 static unsigned os_target_supports_float128(OsType os, ArchType arch);
 static unsigned os_target_supports_vec(OsType os, ArchType arch, int bits, bool is_int);
-static bool os_requires_libc(OsType os);
 static void x86_features_from_host(X86Features *cpu_features);
 static void x86_features_add_feature(X86Features *cpu_features, X86Feature feature);
 static const char *x86features_as_string(X86Features *cpu_features);
@@ -1460,15 +1459,6 @@ static unsigned os_target_c_type_bits(OsType os, ArchType arch, CType type)
 
 }
 
-typedef enum {
-	MACHO_MANGLING,
-	ELF_MANGLING,
-	MIPS_MANGLING,
-	WIN86_MANGLING,
-	WIN_MANGLING,
-	XCOFF_MANGLING
-} Mangling;
-
 
 static AlignData os_target_alignment_of_int(OsType os, ArchType arch, uint32_t bits)
 {
@@ -1660,36 +1650,6 @@ static bool arch_os_pic_default_forced(ArchType arch, OsType os)
 }
 
 
-static AlignSize os_target_pref_alignment_of_float(OsType os, ArchType arch, uint32_t bits)
-{
-	switch (arch)
-	{
-		case ARCH_TYPE_UNKNOWN:
-		case ARCH_UNSUPPORTED:
-			UNREACHABLE
-		case ARCH_TYPE_X86:
-			if (os == OS_TYPE_ELFIAMCU && bits >= 32) return 4;
-			return bits / 8;
-		case ARCH_TYPE_AARCH64:
-		case ARCH_TYPE_AARCH64_BE:
-		case ARCH_TYPE_PPC64:
-		case ARCH_TYPE_PPC64LE:
-		case ARCH_TYPE_PPC:
-		case ARCH_TYPE_RISCV32:
-		case ARCH_TYPE_RISCV64:
-		case ARCH_TYPE_WASM32:
-		case ARCH_TYPE_WASM64:
-		case ARCH_TYPE_ARM:
-		case ARCH_TYPE_THUMB:
-		case ARCH_TYPE_THUMBEB:
-		case ARCH_TYPE_ARMB:
-			return bits / 8;
-		case ARCH_TYPE_X86_64:
-			if (bits == 128 && os == OS_TYPE_ELFIAMCU) return 4;
-			return bits / 8;
-	}
-	UNREACHABLE
-}
 
 
 #define INITIALIZE_TARGET(X) do { \

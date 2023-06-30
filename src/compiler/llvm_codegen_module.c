@@ -5,7 +5,12 @@
 #include "llvm_codegen_internal.h"
 
 
-
+/**
+ * Create the introspection type { byte kind, void* dtable, usz sizeof, typeid inner, usz len, [0xtypeid] additional }
+ *
+ * @param c the context
+ * @return the generated introspection type.
+ */
 static inline LLVMTypeRef create_introspection_type(GenContext *c)
 {
 	LLVMTypeRef type = LLVMStructCreateNamed(c->context, ".introspect");
@@ -21,6 +26,11 @@ static inline LLVMTypeRef create_introspection_type(GenContext *c)
 	return type;
 }
 
+/**
+ * Create the fault type { typeid parent, String[] name, usz ordinal }
+ * @param c the context to use.
+ * @return the resulting LLVM type.
+ */
 static inline LLVMTypeRef create_fault_type(GenContext *c)
 {
 	LLVMTypeRef type = LLVMStructCreateNamed(c->context, ".fault");
@@ -29,6 +39,15 @@ static inline LLVMTypeRef create_fault_type(GenContext *c)
 	return type;
 }
 
+/**
+ * Set a module flag.
+ *
+ * @param c the context to use
+ * @param flag_behavior how the flag should be merged
+ * @param flag the flag name
+ * @param value the flag value
+ * @param type the type of the flag value
+ */
 static void llvm_set_module_flag(GenContext *c, LLVMModuleFlagBehavior flag_behavior, const char *flag, uint64_t value, Type *type)
 {
 	LLVMMetadataRef val = LLVMValueAsMetadata(LLVMConstInt(LLVMIntTypeInContext(c->context, type_bit_size(type)), value, false));

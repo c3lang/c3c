@@ -54,6 +54,12 @@ INLINE void llvm_emit_initialize_reference_bitstruct_array(GenContext *c, BEValu
 
 #define MAX_AGG 16
 
+/**
+ * Emit an expression into a value (as opposed to the address)
+ * @param c the current context
+ * @param expr the expression to emit
+ * @return the LLVM value.
+ */
 static inline LLVMValueRef llvm_emit_expr_to_rvalue(GenContext *c, Expr *expr)
 {
 	BEValue value;
@@ -206,6 +212,16 @@ static LLVMValueRef llvm_emit_coerce_alignment(GenContext *c, BEValue *be_value,
 	return be_value->value;
 }
 
+/**
+ * Emit a two value aggregate { value1, value2 }. If the values are constant, emit this
+ * as a constant, otherwise generate two inserts.
+ *
+ * @param c the context
+ * @param type the type of the aggregate
+ * @param value1 the first value
+ * @param value2 the second value
+ * @return the resulting aggregate
+ */
 LLVMValueRef llvm_emit_aggregate_two(GenContext *c, Type *type, LLVMValueRef value1, LLVMValueRef value2)
 {
 	bool is_constant = llvm_is_const(value1) && llvm_is_const(value2);
@@ -219,6 +235,15 @@ LLVMValueRef llvm_emit_aggregate_two(GenContext *c, Type *type, LLVMValueRef val
 	return llvm_emit_insert_value(c, result, value2, 1);
 }
 
+/**
+ * Return a value as an aggregate,
+ * @param c the context
+ * @param value the BEValue to set.
+ * @param type the type of the aggregate
+ * @param value1 the first value
+ * @param value2 the second value
+ * @return the resulting aggregate
+ */
 void llvm_value_aggregate_two(GenContext *c, BEValue *value, Type *type, LLVMValueRef value1, LLVMValueRef value2)
 {
 	llvm_value_set(value, llvm_emit_aggregate_two(c, type, value1, value2), type);
@@ -238,7 +263,16 @@ static inline LLVMValueRef llvm_const_high_bitmask(GenContext *c, LLVMTypeRef ty
 	return LLVMBuildNot(c->builder, llvm_emit_lshr_fixed(c, llvm_get_ones_raw(type), high_bits), "");
 }
 
-LLVMValueRef llvm_mask_low_bits(GenContext *c, LLVMValueRef value, unsigned low_bits)
+/**
+ * Given an integer value, return the n lowest bits. This function is
+ * valid even for low_bits == 0.
+ *
+ * @param c the context
+ * @param value the value to mask
+ * @param low_bits the number of bits to retain
+ * @return the resulting masked value.
+ */
+static inline LLVMValueRef llvm_mask_low_bits(GenContext *c, LLVMValueRef value, unsigned low_bits)
 {
 	LLVMTypeRef type = LLVMTypeOf(value);
 	if (low_bits < 1) return llvm_get_zero_raw(type);
@@ -248,6 +282,15 @@ LLVMValueRef llvm_mask_low_bits(GenContext *c, LLVMValueRef value, unsigned low_
 	return llvm_emit_and_raw(c, mask, value);
 }
 
+/**
+ * Return the desired padding type for n number of bytes, returning an i8 for size = 1
+ * otherwise returning [i8 x size] for
+ * larger padding. The size must be at least 1.
+ *
+ * @param c the context
+ * @param size the size of the padding 1 or higher
+ * @return the resulting padding type
+ */
 LLVMTypeRef llvm_const_padding_type(GenContext *c, AlignSize size)
 {
 	assert(size > 0);
@@ -255,6 +298,13 @@ LLVMTypeRef llvm_const_padding_type(GenContext *c, AlignSize size)
 	return LLVMArrayType(c->byte_type, (unsigned)size);
 }
 
+/**
+ * Return an undefined constant with a given padding.
+ *
+ * @param c the context
+ * @param size the size of the padding, must be 1 or more.
+ * @return the resulting padding.
+ */
 LLVMValueRef llvm_emit_const_padding(GenContext *c, AlignSize size)
 {
 	return llvm_get_undef_raw(llvm_const_padding_type(c, size));
@@ -285,19 +335,32 @@ static inline LLVMValueRef llvm_emit_add_int(GenContext *c, Type *type, LLVMValu
 	return LLVMBuildAdd(c->builder, left, right, "add");
 }
 
+/**
+ * Recursively find the largest, non-trivial inner type that is the dest_size or smaller.
+ *
+ * @param c context
+ * @param type the LLVM type to step into
+ * @param dest_size the min size
+ * @return the type containing this inner type.
+ */
 static LLVMTypeRef llvm_find_inner_struct_type_for_coerce(GenContext *c, LLVMTypeRef type, ByteSize dest_size)
 {
+	ByteSize container_size = llvm_store_size(c, type);
 	while (1)
 	{
 		if (LLVMGetTypeKind(type) != LLVMStructTypeKind) break;
+		// This should strictly speaking never happen because we don't have zero size elements.
 		if (!LLVMCountStructElementTypes(type)) break;
+
 		LLVMTypeRef first_element = LLVMStructGetTypeAtIndex(type, 0);
 		ByteSize first_element_size = llvm_store_size(c, first_element);
-		// If the size is smaller than the total size and smaller than the destination size
-		// then we're done.
-		if (first_element_size < dest_size && first_element_size < llvm_store_size(c, type)) break;
-		AlignSize dummy;
+		// If the size is smaller than the desired size, the previous type is what we wanted.
+		// then we're done if this type is actually smaller than our previous.
+		// The reason for the second check is to avoid the case when one isn't stepping into the sub
+		// structs, e.g. struct { struct { int } }. Here, even if dest_size > 4, we want struct { int }.
+		if (first_element_size < dest_size && first_element_size < container_size) break;
 		type = first_element;
+		container_size = first_element_size;
 	}
 	return type;
 }
@@ -1034,6 +1097,7 @@ INLINE LLVMValueRef llvm_emit_bitstruct_value_update(GenContext *c, LLVMValueRef
 	current_val = llvm_emit_or_raw(c, current_val, val);
 	return current_val;
 }
+
 static inline void llvm_emit_bitassign_expr(GenContext *c, BEValue *be_value, Expr *expr)
 {
 	Expr *lhs = exprptr(expr->binary_expr.left);

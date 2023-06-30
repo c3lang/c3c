@@ -226,7 +226,6 @@ INLINE bool llvm_is_local_eval(GenContext *c)
 	return c->builder != c->global_builder;
 }
 
-
 INLINE LLVMValueRef llvm_emit_and_raw(GenContext *c, LLVMValueRef lhs, LLVMValueRef rhs)
 {
 	if (llvm_is_const_null(lhs)) return lhs;
