@@ -4,7 +4,7 @@ def CloseStreamFn = fn void!(Stream);
 def FlushStreamFn = fn void!(Stream);
 def SeekStreamFn = fn usz!(Stream, isz offset, Seek seek);
 def LenStreamFn = fn usz(Stream);
-def AvailableStreamFn = fn usz(Stream);
+def AvailableStreamFn = fn usz!(Stream);
 def ReadStreamFn = fn usz!(Stream, char[] bytes);
 def ReadFromStreamFn = fn usz!(Stream, Stream);
 def ReadByteStreamFn = fn char!(Stream);
@@ -37,6 +37,7 @@ struct Stream
 	void* data;
 }
 
+fn bool Stream.supports_flush(Stream s) @inline => (bool)s.fns.flush_fn;
 fn bool Stream.supports_seek(Stream s) @inline => (bool)s.fns.seek_fn;
 fn bool Stream.supports_available(Stream s) @inline => s.fns.available_fn || s.fns.seek_fn;
 fn bool Stream.supports_len(Stream s) @inline => s.fns.len_fn || s.fns.seek_fn;
