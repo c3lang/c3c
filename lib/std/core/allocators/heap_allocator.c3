@@ -4,7 +4,6 @@
 
 module std::core::mem::allocator;
 
-def MemoryAllocFn = fn char[]!(usz);
 
 struct SimpleHeapAllocator
 {
@@ -147,7 +146,7 @@ fn void! SimpleHeapAllocator.add_block(SimpleHeapAllocator* this, usz aligned_by
 }
 
 
-fn void SimpleHeapAllocator._free(SimpleHeapAllocator* this, void* ptr)
+fn void SimpleHeapAllocator._free(SimpleHeapAllocator* this, void* ptr) @local
 {
 	// Empty ptr -> do nothing.
 	if (!ptr) return;
@@ -214,7 +213,7 @@ fn void SimpleHeapAllocator._free(SimpleHeapAllocator* this, void* ptr)
 	}
 }
 
-union Header @private
+union Header @local
 {
 	struct
 	{

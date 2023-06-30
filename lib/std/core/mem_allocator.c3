@@ -7,6 +7,7 @@ const Allocator* NULL_ALLOCATOR = &_NULL_ALLOCATOR;
 const Allocator* LIBC_ALLOCATOR = &_SYSTEM_ALLOCATOR;
 
 def AllocatorFunction = fn void*!(Allocator* allocator, usz new_size, usz alignment, usz offset, void* old_pointer, AllocationKind kind);
+def MemoryAllocFn = fn char[]!(usz);
 
 macro bool is_allocator($Type)
 {

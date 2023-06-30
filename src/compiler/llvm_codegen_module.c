@@ -144,7 +144,7 @@ void gencontext_begin_module(GenContext *c)
 									 c->chars_type,
 									 llvm_get_type(c, type_uint) };
 			LLVMStructSetBody(c->debug.stack_type, types, 4, false);
-			c->debug.last_ptr = NULL;
+			c->debug.current_stack_ptr = NULL;
 			c->debug.enable_stacktrace = true;
 		}
 	}

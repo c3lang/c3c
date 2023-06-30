@@ -9,26 +9,6 @@ struct OnStackAllocator
 	OnStackAllocatorExtraChunk* chunk;
 }
 
-macro void @stack_mem(usz $size; @body(Allocator* mem)) @builtin
-{
-	char[$size] buffer;
-	OnStackAllocator allocator;
-	allocator.init(&buffer, mem::heap());
-	defer allocator.free();
-	@body(&allocator);
-}
-
-macro void @stack_pool(usz $size; @body) @builtin
-{
-	char[$size] buffer;
-	OnStackAllocator allocator;
-	allocator.init(&buffer, mem::heap());
-	defer allocator.free();
-	mem::@scoped(&allocator)
-	{
-		@body();
-	};
-}
 
 struct OnStackAllocatorExtraChunk @local
 {

@@ -368,6 +368,27 @@ fn void* trealloc(void* ptr, usz size, usz alignment = mem::DEFAULT_MEM_ALIGNMEN
 	return temp().realloc_aligned(ptr, size, alignment)!!;
 }
 
+macro void @stack_mem(usz $size; @body(Allocator* mem)) @builtin
+{
+	char[$size] buffer;
+	OnStackAllocator allocator;
+	allocator.init(&buffer, mem::heap());
+	defer allocator.free();
+	@body(&allocator);
+}
+
+macro void @stack_pool(usz $size; @body) @builtin
+{
+	char[$size] buffer;
+	OnStackAllocator allocator;
+	allocator.init(&buffer, mem::heap());
+	defer allocator.free();
+	mem::@scoped(&allocator)
+	{
+		@body();
+	};
+}
+
 macro void @pool(;@body) @builtin
 {
 	TempAllocator* allocator = temp();

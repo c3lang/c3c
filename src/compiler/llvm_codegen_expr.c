@@ -5233,9 +5233,9 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 		BEValue no_err;
 
 		// Emit the current stack into the thread local or things will get messed up.
-		if (c->debug.last_ptr)
+		if (c->debug.current_stack_ptr)
 			llvm_store_to_ptr_raw_aligned(c,
-			                              c->debug.last_ptr,
+			                              c->debug.current_stack_ptr,
 			                              c->debug.stack_slot,
 			                              type_alloca_alignment(type_voidptr));
 
@@ -5274,9 +5274,9 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 	}
 
 	// Emit the current stack into the thread local or things will get messed up.
-	if (c->debug.last_ptr)
+	if (c->debug.current_stack_ptr)
 		llvm_store_to_ptr_raw_aligned(c,
-		                              c->debug.last_ptr,
+		                              c->debug.current_stack_ptr,
 		                              c->debug.stack_slot,
 		                              type_alloca_alignment(type_voidptr));
 
@@ -5652,10 +5652,10 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 	llvm_emit_raw_call(c, result_value, prototype, func_type, func, arg_values, arg_count, inline_flag, error_var, sret_return, &synthetic_return_param);
 
 	// Emit the current stack into the thread local or things will get messed up.
-	if (c->debug.last_ptr)
+	if (c->debug.current_stack_ptr)
 	{
 		llvm_store_to_ptr_raw_aligned(c,
-		                              c->debug.last_ptr,
+		                              c->debug.current_stack_ptr,
 		                              c->debug.stack_slot,
 		                              type_alloca_alignment(type_voidptr));
 	}

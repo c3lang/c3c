@@ -61,7 +61,9 @@ typedef struct
 	LLVMMetadataRef inlined_at;
 	LLVMValueRef func_name;
 	LLVMValueRef file_name;
-	LLVMValueRef last_ptr;
+	LLVMValueRef current_stack_ptr;
+	LLVMValueRef stack_init_fn;
+	LLVMTypeRef stack_init_fn_type;
 	LLVMTypeRef stack_type;
 	LLVMValueRef stack_slot;
 	LLVMValueRef stack_slot_row;

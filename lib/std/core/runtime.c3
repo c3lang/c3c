@@ -3,6 +3,14 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::runtime;
 
+struct StackTrace
+{
+	StackTrace* prev;
+	String file;
+	String function;
+	uint line;
+}
+
 struct VirtualAny
 {
     void* ptr;
