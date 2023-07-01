@@ -1,0 +1,40 @@
+// #target: macos-x64
+module test;
+struct Abc
+{
+	int a;
+	int b;
+}
+
+const Abc X = { 2, 3 };
+
+const int Y = X.b;
+const int* Z = &X.b;
+
+fn void main()
+{
+	Abc x = X;
+	int y = Y;
+	int* yy = &Y;
+	int* z = Z;
+}
+
+/* #expect: test.ll
+
+@test.X = constant %Abc { i32 2, i32 3 }, align 4
+@test.Y = constant i32 3, align 4
+@test.Z = local_unnamed_addr constant ptr getelementptr inbounds (%Abc, ptr @test.X, i32 0, i32 1), align 8
+
+define void @test.main() #0 {
+entry:
+  %x = alloca %Abc, align 4
+  %y = alloca i32, align 4
+  %yy = alloca ptr, align 8
+  %z = alloca ptr, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 4 @test.X, i32 8, i1 false)
+  store i32 3, ptr %y, align 4
+  store ptr @test.Y, ptr %yy, align 8
+  store ptr getelementptr inbounds (%Abc, ptr @test.X, i32 0, i32 1), ptr %z, align 8
+  ret void
+}
+

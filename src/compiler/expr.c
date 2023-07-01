@@ -406,6 +406,8 @@ static inline bool expr_unary_addr_is_constant_eval(Expr *expr, ConstantEvalKind
 	Expr *inner = expr->unary_expr.expr;
 	switch (inner->expr_kind)
 	{
+		case EXPR_ACCESS:
+			return expr_is_constant_eval(inner, eval_kind);
 		case EXPR_CONST:
 		case EXPR_INITIALIZER_LIST:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:

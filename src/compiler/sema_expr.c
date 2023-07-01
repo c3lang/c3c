@@ -138,7 +138,7 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
 static inline int sema_call_find_index_of_named_parameter(SemaContext *context, Decl **func_params, Expr *expr);
 static inline bool sema_call_check_contract_param_match(SemaContext *context, Decl *param, Expr *expr);
 static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *call);
-
+static bool sema_flattened_expr_is_const_initializer(SemaContext *context, Expr *expr);
 
 static bool sema_slice_len_is_in_range(SemaContext *context, Type *type, Expr *len_expr, bool from_end, bool *remove_from_end);
 static bool sema_slice_index_is_in_range(SemaContext *context, Type *type, Expr *index_expr, bool end_index, bool from_end, bool *remove_from_end);
@@ -2628,7 +2628,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	}
 	else
 	{
-		if (expr_is_const_initializer(current_expr) && expr_is_const(index))
+		if (sema_flattened_expr_is_const(context, index) && sema_flattened_expr_is_const_initializer(context, current_expr))
 		{
 			if (sema_subscript_rewrite_index_const_list(current_expr, index, expr)) return true;
 		}
@@ -3398,7 +3398,8 @@ static bool sema_expr_rewrite_typeid_call(Expr *expr, Expr *typeid, TypeIdInfoKi
 static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *expr, Expr *typeid, const char *kw)
 {
 	TypeProperty property = type_property_by_name(kw);
-	if (typeid->expr_kind == EXPR_CONST)
+
+	if (sema_flattened_expr_is_const(context, typeid))
 	{
 		Type *type = typeid->const_expr.typeid;
 		return sema_expr_rewrite_to_type_property(context, expr, type, property, type);
@@ -3625,6 +3626,52 @@ static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, E
 	return true;
 }
 
+static inline void sema_expr_flatten_const(SemaContext *context, Expr *expr)
+{
+	if (expr->expr_kind != EXPR_IDENTIFIER) return;
+	Decl *ident = expr->identifier_expr.decl;
+	if (ident->decl_kind != DECL_VAR) return;
+	switch (ident->var.kind)
+	{
+		case VARDECL_CONST:
+		case VARDECL_LOCAL_CT:
+		case VARDECL_PARAM_CT:
+			break;
+		case VARDECL_GLOBAL:
+		case VARDECL_LOCAL:
+		case VARDECL_PARAM:
+		case VARDECL_MEMBER:
+		case VARDECL_BITMEMBER:
+		case VARDECL_PARAM_REF:
+		case VARDECL_PARAM_EXPR:
+		case VARDECL_UNWRAPPED:
+		case VARDECL_ERASE:
+		case VARDECL_REWRAPPED:
+		case VARDECL_PARAM_CT_TYPE:
+		case VARDECL_LOCAL_CT_TYPE:
+			return;
+	}
+	Expr *init_expr = ident->var.init_expr;
+	if (!init_expr) return;
+	sema_expr_flatten_const(context, init_expr);
+	if (expr_is_const(init_expr))
+	{
+		expr_replace(expr, expr_copy(init_expr));
+	}
+}
+
+bool sema_flattened_expr_is_const(SemaContext *context, Expr *expr)
+{
+	sema_expr_flatten_const(context, expr);
+	return expr_is_const(expr);
+}
+
+static bool sema_flattened_expr_is_const_initializer(SemaContext *context, Expr *expr)
+{
+	sema_expr_flatten_const(context, expr);
+	return expr_is_const_initializer(expr);
+}
+
 /**
  * Analyse "x.y"
  */
@@ -3741,6 +3788,7 @@ CHECK_DEEPER:
 		if (flat_type->type_kind == TYPE_SUBARRAY)
 		{
 			// Handle literal "foo".len which is now a subarray.
+			sema_expr_flatten_const(context, parent);
 			if (expr_is_const_string(parent))
 			{
 				expr_rewrite_const_int(expr, type_isz, parent->const_expr.string.len);
@@ -3802,7 +3850,7 @@ CHECK_DEEPER:
 		}
 		if (flat_type->type_kind == TYPE_FAULTTYPE)
 		{
-			if (expr_is_const(current_parent))
+			if (sema_flattened_expr_is_const(context, current_parent))
 			{
 				if (current_parent->const_expr.const_kind == CONST_POINTER)
 				{
@@ -3821,7 +3869,7 @@ CHECK_DEEPER:
 	{
 		if (flat_type->type_kind == TYPE_ENUM)
 		{
-			if (expr_is_const(current_parent))
+			if (sema_flattened_expr_is_const(context, current_parent))
 			{
 				expr_rewrite_to_string(expr, current_parent->const_expr.enum_err_val->name);
 				return true;
@@ -6474,7 +6522,7 @@ static inline bool sema_expr_analyse_decl_element(SemaContext *context, Designat
 			SEMA_ERROR(inner, "Expected an integer index.");
 			return false;
 		}
-		if (!expr_is_const(inner))
+		if (!sema_flattened_expr_is_const(context, inner))
 		{
 			SEMA_ERROR(inner, "Expected a constant index.");
 			return false;
@@ -7337,7 +7385,7 @@ static inline bool sema_expr_analyse_retval(SemaContext *c, Expr *expr)
 	}
 	Expr *return_value = c->return_expr;
 	assert(return_value);
-	if (expr_is_const(return_value))
+	if (sema_flattened_expr_is_const(c, return_value))
 	{
 		expr_replace(expr, return_value);
 	}
@@ -7576,6 +7624,11 @@ static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr)
 				SEMA_ERROR(expr, "A macro name must be followed by '('.");
 				return false;
 			}
+			// We may have kept FOO.x.y as a reference, fold it now if y is not an aggregate.
+			if (!type_is_abi_aggregate(expr->type) && sema_flattened_expr_is_const(context, expr->access_expr.parent))
+			{
+				return sema_expr_fold_to_member(expr, expr->access_expr.parent, expr->access_expr.ref);
+			}
 			break;
 		case EXPR_TYPEINFO:
 			SEMA_ERROR(expr, "A type must be followed by either (...) or '.'.");
@@ -7615,7 +7668,7 @@ bool sema_analyse_ct_expr(SemaContext *context, Expr *expr)
 		expr->type = type_typeid;
 	}
 	if (!sema_cast_rvalue(context, expr)) return false;
-	if (!expr_is_const(expr))
+	if (!sema_flattened_expr_is_const(context, expr))
 	{
 		SEMA_ERROR(expr, "Expected a compile time expression.");
 		return false;

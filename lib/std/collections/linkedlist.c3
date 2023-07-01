@@ -82,8 +82,8 @@ fn void LinkedList.link_last(LinkedList* list, Type value) @private
     list.size++;
 }
 
-fn Type! peek(LinkedList* list) => list.first() @inline;
-fn Type! peek_last(LinkedList* list) => list.last() @inline;
+fn Type! LinkedList.peek(LinkedList* list) => list.first() @inline;
+fn Type! LinkedList.peek_last(LinkedList* list) => list.last() @inline;
 
 fn Type! LinkedList.first(LinkedList *list)
 {

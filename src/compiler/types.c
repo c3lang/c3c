@@ -400,7 +400,7 @@ bool type_is_abi_aggregate(Type *type)
 			return true;
 		case CT_TYPES:
 		case TYPE_FLEXIBLE_ARRAY:
-			UNREACHABLE
+			return false;
 	}
 	UNREACHABLE
 }
