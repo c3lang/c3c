@@ -3,6 +3,7 @@
 ## 0.5.0 Change List
 
 ### Changes / improvements
+- Allow inferred type on method first argument.
 - Fix to void expression blocks
 - Temporary objects may now invoke methods using ref parameters.
 - Delete object files after successful linking.

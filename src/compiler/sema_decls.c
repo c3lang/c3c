@@ -8,7 +8,7 @@
 static inline bool sema_analyse_func_macro(SemaContext *context, Decl *decl, bool is_func, bool *erase_decl);
 static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *erase_decl);
-static inline bool sema_analyse_signature(SemaContext *context, Signature *sig);
+static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfoId type_parent);
 static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl);
 static inline bool sema_check_param_uniqueness_and_type(Decl **decls, Decl *current, unsigned current_index, unsigned count);
 
@@ -693,7 +693,7 @@ static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl, bool *erase
 }
 
 
-static inline bool sema_analyse_signature(SemaContext *context, Signature *sig)
+static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfoId type_parent)
 {
 	Variadic variadic_type = sig->variadic;
 	Decl **params = sig->params;
@@ -740,6 +740,33 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig)
 		return false;
 	}
 
+	// Fill in the type if the first parameter is lacking a type.
+	if (type_parent && params && params[0] && !params[0]->var.type_info)
+	{
+		TypeInfo *method_parent = type_infoptr(type_parent);
+		if (!sema_resolve_type_info(context, method_parent)) return false;
+		Decl *param = params[0];
+		Type *inferred_type = NULL;
+		switch (param->var.kind)
+		{
+			case VARDECL_PARAM_REF:
+				if (!is_macro)
+				{
+					inferred_type = type_get_ptr(method_parent->type);
+					param->var.kind = VARDECL_PARAM;
+					break;
+				}
+				FALLTHROUGH;
+			case VARDECL_PARAM:
+				inferred_type = method_parent->type;
+				break;
+			default:
+				goto CHECK_PARAMS;
+		}
+		param->var.type_info = type_info_new_base(inferred_type, param->span);
+	}
+
+	CHECK_PARAMS:
 
 	// Check parameters
 	for (unsigned i = 0; i < param_count; i++)
@@ -782,8 +809,9 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig)
 					SEMA_ERROR(param, "Only regular parameters are allowed for functions.");
 					return decl_poison(param);
 				}
-				if (!is_macro_at_name)
+				if (!is_macro_at_name && (!type_parent || i != 0 || var_kind != VARDECL_PARAM_REF))
 				{
+
 					SEMA_ERROR(param, "Ref and expression parameters are not allowed in function-like macros. Prefix the macro name with '@'.");
 					return decl_poison(param);
 				}
@@ -878,18 +906,18 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig)
 }
 
 
-Type *sema_analyse_function_signature(SemaContext *context, Decl *parent, CallABI abi, Signature *signature, bool is_real_function)
+Type *sema_analyse_function_signature(SemaContext *context, Decl *func_decl, CallABI abi, Signature *signature, bool is_real_function)
 {
 	// Get param count and variadic type
 	Decl **params = signature->params;
 
-	if (!sema_analyse_signature(context, signature)) return NULL;
+	if (!sema_analyse_signature(context, signature, func_decl->func_decl.type_parent)) return NULL;
 
 	Variadic variadic_type = signature->variadic;
 	// Remove the last empty value.
 	if (variadic_type == VARIADIC_RAW)
 	{
-		assert(!params[signature->vararg_index] && "The last parameter must have been a raw variadic.");
+		assert(params && !params[signature->vararg_index] && "The last parameter must have been a raw variadic.");
 		assert(signature->vararg_index == vec_size(params) - 1);
 		vec_pop(params);
 	}
@@ -907,10 +935,10 @@ Type *sema_analyse_function_signature(SemaContext *context, Decl *parent, CallAB
 
 	if (!all_ok) return NULL;
 	Type *raw_type = type_get_func(signature, abi);
-	Type *type = type_new(TYPE_FUNC, parent->name);
+	Type *type = type_new(TYPE_FUNC, func_decl->name);
 	type->canonical = type;
 	type->function.signature = signature;
-	type->function.module = parent->unit->module;
+	type->function.module = func_decl->unit->module;
 	type->function.prototype = raw_type->function.prototype;
 	return type;
 }
@@ -2580,7 +2608,7 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *er
 
 	if (!sema_analyse_func_macro(context, decl, false, erase_decl)) return false;
 	if (*erase_decl) return true;
-	if (!sema_analyse_signature(context, &decl->func_decl.signature)) return decl_poison(decl);
+	if (!sema_analyse_signature(context, &decl->func_decl.signature, decl->func_decl.type_parent)) return decl_poison(decl);
 
 	if (!decl->func_decl.signature.is_at_macro && decl->func_decl.body_param)
 	{
@@ -2594,6 +2622,7 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *er
 	unsigned body_param_count = vec_size(body_parameters);
 	for (unsigned i = 0; i < body_param_count; i++)
 	{
+		assert(body_parameters);
 		Decl *param = body_parameters[i];
 		param->resolve_status = RESOLVE_RUNNING;
 		assert(param->decl_kind == DECL_VAR);
