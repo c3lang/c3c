@@ -1,5 +1,5 @@
 // Copyright (c) 2021 Christoffer Lerno. All rights reserved.
-// Use of this source code is governed by the MIT license
+// Use of self source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::collections::list<Type>;
 import std::math;
@@ -19,38 +19,38 @@ struct List
 /**
  * @require using != null "A valid allocator must be provided"
  **/
-fn void List.init(List* list, usz initial_capacity = 16, Allocator* using = mem::heap())
+fn void List.init(&self, usz initial_capacity = 16, Allocator* using = mem::heap())
 {
-	list.allocator = using;
-	list.size = 0;
+	self.allocator = using;
+	self.size = 0;
 	if (initial_capacity > 0)
 	{
 		initial_capacity = math::next_power_of_2(initial_capacity);
-		list.entries = malloc_aligned(Type, initial_capacity, .alignment = Type[1].alignof, .using = using)!!;
+		self.entries = malloc_aligned(Type, initial_capacity, .alignment = Type[1].alignof, .using = using)!!;
 	}
 	else
 	{
-		list.entries = null;
+		self.entries = null;
 	}
-	list.capacity = initial_capacity;
+	self.capacity = initial_capacity;
 }
 
-fn void List.tinit(List* list, usz initial_capacity = 16)
+fn void List.tinit(&self, usz initial_capacity = 16)
 {
-	list.init(initial_capacity, mem::temp()) @inline;
+	self.init(initial_capacity, mem::temp()) @inline;
 }
 
-fn void! List.to_format(List* list, Formatter* formatter) @dynamic
+fn void! List.to_format(&self, Formatter* formatter) @dynamic
 {
-	switch (list.size)
+	switch (self.size)
 	{
 		case 0:
 			formatter.print("[]")!;
 		case 1:
-			formatter.printf("[%s]", list.entries[0])!;
+			formatter.printf("[%s]", self.entries[0])!;
 		default:
 			formatter.print("[")!;
-			foreach (i, element : list.entries[:list.size])
+			foreach (i, element : self.entries[:self.size])
 			{
 				if (i != 0) formatter.print(", ")!;
 				formatter.printf("%s", element)!;
@@ -59,277 +59,273 @@ fn void! List.to_format(List* list, Formatter* formatter) @dynamic
 	}
 }
 
-fn String List.to_string(List* list, Allocator* using = mem::heap()) @dynamic
+fn String List.to_string(&self, Allocator* using = mem::heap()) @dynamic
 {
-	return string::printf("%s", *list);
+	return string::printf("%s", *self);
 }
 
-fn void List.push(List* list, Type element) @inline
+fn void List.push(&self, Type element) @inline
 {
-    list.append(element);
+    self.append(element);
 }
 
-fn void List.append(List* list, Type element)
+fn void List.append(&self, Type element)
 {
-    list.ensure_capacity();
-    list.entries[list.size++] = element;
-}
-
-/**
- * @require list.size > 0
- */
-fn Type List.pop(List* list)
-{
-    return list.entries[--list.size];
-}
-
-fn void List.clear(List* list)
-{
-    list.size = 0;
+    self.ensure_capacity();
+    self.entries[self.size++] = element;
 }
 
 /**
- * @require list.size > 0
+ * @require self.size > 0
  */
-fn Type List.pop_first(List* list)
+fn Type List.pop(&self)
 {
-    Type value = list.entries[0];
-    list.remove_at(0);
+    return self.entries[--self.size];
+}
+
+fn void List.clear(&self)
+{
+    self.size = 0;
+}
+
+/**
+ * @require self.size > 0
+ */
+fn Type List.pop_first(&self)
+{
+    Type value = self.entries[0];
+    self.remove_at(0);
     return value;
 }
 
-fn void List.remove_at(List* list, usz index)
+fn void List.remove_at(&self, usz index)
 {
-    for (usz i = index + 1; i < list.size; i++)
+    for (usz i = index + 1; i < self.size; i++)
     {
-        list.entries[i - 1] = list.entries[i];
+        self.entries[i - 1] = self.entries[i];
     }
-    list.size--;
+    self.size--;
 }
 
-fn void List.add_all(List* list, List* other_list)
+fn void List.add_all(&self, List* other_list)
 {
 	if (!other_list.size) return;
-	list.reserve(other_list.size);
+	self.reserve(other_list.size);
 	foreach (&value : other_list)
 	{
-	    list.entries[list.size++] = *value;
+	    self.entries[self.size++] = *value;
 	}
 }
 
 
-fn Type[] List.to_array(List* list, Allocator* using = mem::heap())
+fn Type[] List.to_array(&self, Allocator* using = mem::heap())
 {
-	if (!list.size) return Type[] {};
-	Type[] result = malloc(Type, list.size, .using = using);
-	result[..] = list.entries[:list.size];
+	if (!self.size) return Type[] {};
+	Type[] result = malloc(Type, self.size, .using = using);
+	result[..] = self.entries[:self.size];
 	return result;
 }
 
 /**
  * Reverse the elements in a list.
- *
- * @param [&inout] list "The list to reverse"
  **/
-fn void List.reverse(List* list)
+fn void List.reverse(&self)
 {
-	if (list.size < 2) return;
-	usz half = list.size / 2U;
-	usz end = list.size - 1;
+	if (self.size < 2) return;
+	usz half = self.size / 2U;
+	usz end = self.size - 1;
 	for (usz i = 0; i < half; i++)
 	{
-		@swap(list.entries[i], list.entries[end - i]);
+		@swap(self.entries[i], self.entries[end - i]);
 	}
 }
 
-fn Type[] List.array_view(List* list)
+fn Type[] List.array_view(&self)
 {
-	return list.entries[:list.size];
+	return self.entries[:self.size];
 }
 
-fn void List.add_array(List* list, Type[] array)
+fn void List.add_array(&self, Type[] array)
 {
 	if (!array.len) return;
-	list.reserve(array.len);
+	self.reserve(array.len);
 	foreach (&value : array)
 	{
-	    list.entries[list.size++] = *value;
+	    self.entries[self.size++] = *value;
 	}
 }
 
-fn void List.push_front(List* list, Type type) @inline
+fn void List.push_front(&self, Type type) @inline
 {
-    list.insert_at(0, type);
+    self.insert_at(0, type);
 }
 
-fn void List.insert_at(List* list, usz index, Type type)
+fn void List.insert_at(&self, usz index, Type type)
 {
-    list.ensure_capacity();
-    for (usz i = list.size; i > index; i--)
+    self.ensure_capacity();
+    for (usz i = self.size; i > index; i--)
     {
-        list.entries[i] = list.entries[i - 1];
+        self.entries[i] = self.entries[i - 1];
     }
-    list.size++;
-    list.entries[index] = type;
+    self.size++;
+    self.entries[index] = type;
 }
 
 /**
- * @require index < list.size
+ * @require index < self.size
  **/
-fn void List.set_at(List* list, usz index, Type type)
+fn void List.set_at(&self, usz index, Type type)
 {
-    list.entries[index] = type;
+    self.entries[index] = type;
 }
 
-fn void List.remove_last(List* list)
+fn void List.remove_last(&self)
 {
-    list.size--;
+    self.size--;
 }
 
-fn void List.remove_first(List* list)
+fn void List.remove_first(&self)
 {
-    list.remove_at(0);
+    self.remove_at(0);
 }
 
-fn Type* List.first(List* list)
+fn Type* List.first(&self)
 {
-    return list.size ? &list.entries[0] : null;
+    return self.size ? &self.entries[0] : null;
 }
 
-fn Type* List.last(List* list)
+fn Type* List.last(&self)
 {
-    return list.size ? &list.entries[list.size - 1] : null;
+    return self.size ? &self.entries[self.size - 1] : null;
 }
 
-fn bool List.is_empty(List* list)
+fn bool List.is_empty(&self)
 {
-    return !list.size;
+    return !self.size;
 }
 
-fn usz List.len(List* list) @operator(len)
+fn usz List.len(&self) @operator(len)
 {
-    return list.size;
+    return self.size;
 }
 
-fn Type List.get(List* list, usz index)
+fn Type List.get(&self, usz index)
 {
-    return list.entries[index];
+    return self.entries[index];
 }
 
-fn void List.free(List* list)
+fn void List.free(&self)
 {
-	if (!list.allocator) return;
-    free_aligned(list.entries, .using = list.allocator);
-    list.capacity = 0;
-    list.size = 0;
-    list.entries = null;
+	if (!self.allocator) return;
+    free_aligned(self.entries, .using = self.allocator);
+    self.capacity = 0;
+    self.size = 0;
+    self.entries = null;
 }
 
-fn void List.swap(List* list, usz i, usz j)
+fn void List.swap(&self, usz i, usz j)
 {
-	@swap(list.entries[i], list.entries[j]);
+	@swap(self.entries[i], self.entries[j]);
 }
 
 /**
- * @param [&inout] list "The list to remove elements from"
  * @param filter "The function to determine if it should be removed or not"
  * @return "the number of deleted elements"
  **/
-fn usz List.remove_if(List* list, ElementPredicate filter)
+fn usz List.remove_if(&self, ElementPredicate filter)
 {
-	usz size = list.size;
+	usz size = self.size;
 	for (usz i = size; i > 0; i--)
 	{
-		if (filter(&list.entries[i - 1])) continue;
+		if (filter(&self.entries[i - 1])) continue;
 		for (usz j = i; j < size; j++)
 		{
-			list.entries[j - 1] = list.entries[j];
+			self.entries[j - 1] = self.entries[j];
 		}
-		list.size--;
+		self.size--;
 	}
-	return size - list.size;
+	return size - self.size;
 }
 
 /**
- * @param [&inout] list "The list to remove elements from"
  * @param selection "The function to determine if it should be kept or not"
  * @return "the number of deleted elements"
  **/
-fn usz List.retain_if(List* list, ElementPredicate selection)
+fn usz List.retain_if(&self, ElementPredicate selection)
 {
-	usz size = list.size;
+	usz size = self.size;
 	for (usz i = size; i > 0; i--)
 	{
-		if (!selection(&list.entries[i - 1])) continue;
+		if (!selection(&self.entries[i - 1])) continue;
 		for (usz j = i; j < size; j++)
 		{
-			list.entries[j - 1] = list.entries[j];
+			self.entries[j - 1] = self.entries[j];
 		}
-		list.size--;
+		self.size--;
 	}
-	return size - list.size;
+	return size - self.size;
 }
 
 
 /**
  * Reserve at least min_capacity
  **/
-fn void List.reserve(List* list, usz min_capacity)
+fn void List.reserve(&self, usz min_capacity)
 {
 	if (!min_capacity) return;
-	if (list.capacity >= min_capacity) return;
-	if (!list.allocator) list.allocator = mem::heap();
+	if (self.capacity >= min_capacity) return;
+	if (!self.allocator) self.allocator = mem::heap();
 	min_capacity = math::next_power_of_2(min_capacity);
-    list.entries = realloc_aligned(list.entries, Type.sizeof * min_capacity, .alignment = Type[1].alignof, .using = list.allocator) ?? null;
-	list.capacity = min_capacity;
+    self.entries = realloc_aligned(self.entries, Type.sizeof * min_capacity, .alignment = Type[1].alignof, .using = self.allocator) ?? null;
+	self.capacity = min_capacity;
 }
 
-macro Type List.@item_at(List &list, usz index) @operator([])
+macro Type List.@item_at(&self, usz index) @operator([])
 {
-    return list.entries[index];
+    return self.entries[index];
 }
 
-fn Type* List.get_ref(List* list, usz index) @operator(&[]) @inline
+fn Type* List.get_ref(&self, usz index) @operator(&[]) @inline
 {
-    return &list.entries[index];
+    return &self.entries[index];
 }
 
-fn void List.ensure_capacity(List* list, usz added = 1) @inline @private
+fn void List.ensure_capacity(&self, usz added = 1) @inline @private
 {
-	usz new_size = list.size + added;
-    if (list.capacity > new_size) return;
+	usz new_size = self.size + added;
+    if (self.capacity > new_size) return;
 
 	assert(new_size < usz.max / 2U);
-	usz new_capacity = list.capacity ? 2U * list.capacity : 16U;
+	usz new_capacity = self.capacity ? 2U * self.capacity : 16U;
 	while (new_size >= new_capacity) new_capacity *= 2U;
-	list.reserve(new_capacity);
+	self.reserve(new_capacity);
 }
 
 // Functions for equatable types
 
 
-fn usz! List.index_of(List* list, Type type) @if(ELEMENT_IS_EQUATABLE)
+fn usz! List.index_of(&self, Type type) @if(ELEMENT_IS_EQUATABLE)
 {
-	foreach (i, v : list)
+	foreach (i, v : self)
 	{
 		if (v == type) return i;
 	}
 	return SearchResult.MISSING?;
 }
 
-fn usz! List.rindex_of(List* list, Type type) @if(ELEMENT_IS_EQUATABLE)
+fn usz! List.rindex_of(&self, Type type) @if(ELEMENT_IS_EQUATABLE)
 {
-	foreach_r (i, v : list)
+	foreach_r (i, v : self)
 	{
 		if (v == type) return i;
 	}
 	return SearchResult.MISSING?;
 }
 
-fn bool List.equals(List* list, List other_list) @if(ELEMENT_IS_EQUATABLE)
+fn bool List.equals(&self, List other_list) @if(ELEMENT_IS_EQUATABLE)
 {
-	if (list.size != other_list.size) return false;
-	foreach (i, v : list)
+	if (self.size != other_list.size) return false;
+	foreach (i, v : self)
 	{
 		if (v != other_list.entries[i]) return false;
 	}
@@ -339,13 +335,13 @@ fn bool List.equals(List* list, List other_list) @if(ELEMENT_IS_EQUATABLE)
 /**
  * Check for presence of a value in a list.
  *
- * @param [&in] list "the list to find elements in"
+ * @param [&in] self "the list to find elements in"
  * @param value "The value to search for"
  * @return "True if the value is found, false otherwise"
  **/
-fn bool List.contains(List* list, Type value) @if(ELEMENT_IS_EQUATABLE)
+fn bool List.contains(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
 {
-	foreach (i, v : list)
+	foreach (i, v : self)
 	{
 		if (v == value) return true;
 	}
@@ -354,53 +350,53 @@ fn bool List.contains(List* list, Type value) @if(ELEMENT_IS_EQUATABLE)
 
 
 /**
- * @param [&inout] list "The list to remove elements from"
+ * @param [&inout] self "The list to remove elements from"
  * @param value "The value to remove"
  * @return "the number of deleted elements."
  **/
-fn usz List.remove(List* list, Type value) @if(ELEMENT_IS_EQUATABLE)
+fn usz List.remove(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
 {
-	usz size = list.size;
+	usz size = self.size;
 	for (usz i = size; i > 0; i--)
 	{
-		if (list.entries[i - 1] != value) continue;
+		if (self.entries[i - 1] != value) continue;
 		for (usz j = i; j < size; j++)
 		{
-			list.entries[j - 1] = list.entries[j];
+			self.entries[j - 1] = self.entries[j];
 		}
-		list.size--;
+		self.size--;
 	}
-	return size - list.size;
+	return size - self.size;
 }
 
-fn void List.remove_all(List* list, List* other_list) @if(ELEMENT_IS_EQUATABLE)
+fn void List.remove_all(&self, List* other_list) @if(ELEMENT_IS_EQUATABLE)
 {
 	if (!other_list.size) return;
-	foreach (v : other_list) list.remove(v);
+	foreach (v : other_list) self.remove(v);
 }
 
 /**
- * @param [&in] list
+ * @param [&in] self
  * @return "The number non-null values in the list"
  **/
-fn usz List.compact_count(List* list) @if(ELEMENT_IS_POINTER)
+fn usz List.compact_count(&self) @if(ELEMENT_IS_POINTER)
 {
 	usz vals = 0;
-	foreach (v : list) if (v) vals++;
+	foreach (v : self) if (v) vals++;
 	return vals;
 }
 
-fn usz List.compact(List* list) @if(ELEMENT_IS_POINTER)
+fn usz List.compact(&self) @if(ELEMENT_IS_POINTER)
 {
-	usz size = list.size;
+	usz size = self.size;
 	for (usz i = size; i > 0; i--)
 	{
-		if (list.entries[i - 1]) continue;
+		if (self.entries[i - 1]) continue;
 		for (usz j = i; j < size; j++)
 		{
-			list.entries[j - 1] = list.entries[j];
+			self.entries[j - 1] = self.entries[j];
 		}
-		list.size--;
+		self.size--;
 	}
-	return size - list.size;
+	return size - self.size;
 }

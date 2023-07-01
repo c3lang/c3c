@@ -1,5 +1,5 @@
 // Copyright (c) 2021 Christoffer Lerno. All rights reserved.
-// Use of this source code is governed by the MIT license
+// Use of self source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 
 /**
@@ -12,120 +12,120 @@ def EnumSetType = $typefrom(private::type_for_enum_elements(Enum.elements)) @pri
 const IS_CHAR_ARRAY = Enum.elements > 128;
 def EnumSet = distinct EnumSetType;
 
-fn void EnumSet.add(EnumSet* this, Enum v)
+fn void EnumSet.add(&self, Enum v)
 {
 	$if IS_CHAR_ARRAY:
-		(*this)[(usz)v / 8] |= (char)(1u << ((usz)v % 8));
+		(*self)[(usz)v / 8] |= (char)(1u << ((usz)v % 8));
 	$else
-        *this = (EnumSet)((EnumSetType)*this | 1u << (EnumSetType)v);
+        *self = (EnumSet)((EnumSetType)*self | 1u << (EnumSetType)v);
 	$endif
 }
 
-fn void EnumSet.clear(EnumSet* this)
+fn void EnumSet.clear(&self)
 {
 	$if IS_CHAR_ARRAY:
-		*this = {};
+		*self = {};
 	$else
-        *this = 0;
+        *self = 0;
 	$endif
 }
 
-fn bool EnumSet.remove(EnumSet* this, Enum v)
+fn bool EnumSet.remove(&self, Enum v)
 {
 	$if IS_CHAR_ARRAY:
-		if (!this.has(v) @inline) return false;
-		(*this)[(usz)v / 8] &= (char)~(1u << ((usz)v % 8));
+		if (!self.has(v) @inline) return false;
+		(*self)[(usz)v / 8] &= (char)~(1u << ((usz)v % 8));
 		return true;
 	$else
-        EnumSetType old = (EnumSetType)*this;
+        EnumSetType old = (EnumSetType)*self;
         EnumSetType new = old & ~(1u << (EnumSetType)v);
-        *this = (EnumSet)new;
+        *self = (EnumSet)new;
         return old != new;
 	$endif
 }
 
-fn bool EnumSet.has(EnumSet* this, Enum v)
+fn bool EnumSet.has(&self, Enum v)
 {
 	$if IS_CHAR_ARRAY:
-		return (bool)(((*this)[(usz)v / 8] << ((usz)v % 8)) & 0x01);
+		return (bool)(((*self)[(usz)v / 8] << ((usz)v % 8)) & 0x01);
 	$else
-        return ((EnumSetType)*this & (1u << (EnumSetType)v)) != 0;
+        return ((EnumSetType)*self & (1u << (EnumSetType)v)) != 0;
 	$endif
 }
 
-fn void EnumSet.add_all(EnumSet* this, EnumSet s)
+fn void EnumSet.add_all(&self, EnumSet s)
 {
 	$if IS_CHAR_ARRAY:
-		foreach (i, c : s) (*this)[i] |= c;
+		foreach (i, c : s) (*self)[i] |= c;
 	$else
-        *this = (EnumSet)((EnumSetType)*this | (EnumSetType)s);
+        *self = (EnumSet)((EnumSetType)*self | (EnumSetType)s);
 	$endif
 }
 
-fn void EnumSet.retain_all(EnumSet* this, EnumSet s)
+fn void EnumSet.retain_all(&self, EnumSet s)
 {
 	$if IS_CHAR_ARRAY:
-		foreach (i, c : s) (*this)[i] &= c;
+		foreach (i, c : s) (*self)[i] &= c;
 	$else
-        *this = (EnumSet)((EnumSetType)*this & (EnumSetType)s);
+        *self = (EnumSet)((EnumSetType)*self & (EnumSetType)s);
 	$endif
 }
 
-fn void EnumSet.remove_all(EnumSet* this, EnumSet s)
+fn void EnumSet.remove_all(&self, EnumSet s)
 {
 	$if IS_CHAR_ARRAY:
-		foreach (i, c : s) (*this)[i] &= ~c;
+		foreach (i, c : s) (*self)[i] &= ~c;
 	$else
-        *this = (EnumSet)((EnumSetType)*this & ~(EnumSetType)s);
+        *self = (EnumSet)((EnumSetType)*self & ~(EnumSetType)s);
 	$endif
 }
 
-fn EnumSet EnumSet.and_of(EnumSet* this, EnumSet s)
+fn EnumSet EnumSet.and_of(&self, EnumSet s)
 {
 	$if IS_CHAR_ARRAY:
-		EnumSet copy = *this;
+		EnumSet copy = *self;
 		copy.retain_all(s);
 		return copy;
 	$else
-        return (EnumSet)((EnumSetType)*this & (EnumSetType)s);
+        return (EnumSet)((EnumSetType)*self & (EnumSetType)s);
 	$endif
 }
 
-fn EnumSet EnumSet.or_of(EnumSet* this, EnumSet s)
+fn EnumSet EnumSet.or_of(&self, EnumSet s)
 {
 	$if IS_CHAR_ARRAY:
-		EnumSet copy = *this;
+		EnumSet copy = *self;
 		copy.add_all(s);
 		return copy;
 	$else
-        return (EnumSet)((EnumSetType)*this | (EnumSetType)s);
+        return (EnumSet)((EnumSetType)*self | (EnumSetType)s);
 	$endif
 }
 
 
-fn EnumSet EnumSet.diff_of(EnumSet* this, EnumSet s)
+fn EnumSet EnumSet.diff_of(&self, EnumSet s)
 {
 	$if IS_CHAR_ARRAY:
-		EnumSet copy = *this;
+		EnumSet copy = *self;
 		copy.remove_all(s);
 		return copy;
 	$else
-        return (EnumSet)((EnumSetType)*this & ~(EnumSetType)s);
+        return (EnumSet)((EnumSetType)*self & ~(EnumSetType)s);
 	$endif
 }
 
-fn EnumSet EnumSet.xor_of(EnumSet* this, EnumSet s)
+fn EnumSet EnumSet.xor_of(&self, EnumSet s)
 {
 	$if IS_CHAR_ARRAY:
-		EnumSet copy = *this;
+		EnumSet copy = *self;
 		foreach (i, c : s) copy[i] ^= c;
 		return copy;
 	$else
-        return (EnumSet)((EnumSetType)*this ^ (EnumSetType)s);
+        return (EnumSet)((EnumSetType)*self ^ (EnumSetType)s);
 	$endif
 }
 
-fn void! EnumSet.to_format(EnumSet* set, Formatter* formatter) @dynamic
+fn void! EnumSet.to_format(&set, Formatter* formatter) @dynamic
 {
 	formatter.print("[")!;
 	bool found = false;
@@ -139,7 +139,7 @@ fn void! EnumSet.to_format(EnumSet* set, Formatter* formatter) @dynamic
 	formatter.print("]")!;
 }
 
-fn String EnumSet.to_string(EnumSet* set, Allocator* using = mem::heap()) @dynamic
+fn String EnumSet.to_string(&set, Allocator* using = mem::heap()) @dynamic
 {
 	return string::printf("%s", *set);
 }

@@ -3005,15 +3005,26 @@ static Module *module_instantiate_generic(SemaContext *context, Module *module, 
 	VECEACH(module->parameters, i)
 	{
 		const char *param_name = module->parameters[i];
+		bool is_value = str_is_valid_constant(param_name);
 		Expr *param = params[i];
 		if (param->expr_kind != EXPR_TYPEINFO)
 		{
+			if (!is_value)
+			{
+				SEMA_ERROR(param, "Expected a type, not a value.");
+				return NULL;
+			}
 			Decl *decl = decl_new_var(param_name, param->span, NULL, VARDECL_CONST);
 			decl->var.init_expr = param;
 			decl->type = param->type;
 			decl->resolve_status = RESOLVE_NOT_DONE;
 			vec_add(first_context->global_decls, decl);
 			continue;
+		}
+		if (is_value)
+		{
+			SEMA_ERROR(param, "Expected a value, not a type.");
+			return NULL;
 		}
 		Decl *decl = decl_new_with_type(param_name, params[i]->span, DECL_TYPEDEF);
 		decl->resolve_status = RESOLVE_DONE;
@@ -3233,6 +3244,7 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 		path->len = scratch_buffer.len;
 		instantiated_module = module_instantiate_generic(c, module, path,
 														 decl->define_decl.generic_params, decl->span);
+		if (!instantiated_module) return decl_poison(decl);
 		sema_analyze_stage(instantiated_module, c->unit->module->stage - 1);
 	}
 	if (global_context.errors_found) return decl_poison(decl);

@@ -43,6 +43,18 @@ bool str_is_valid_lowercase_name(const char *string)
 	return true;
 }
 
+bool str_is_valid_constant(const char *string)
+{
+	char c;
+	// Must start with a lower case
+	int length = 0;
+	while ((c = *(string++)) != '\0')
+	{
+		if (!char_is_upper(c) && c != '_') return false;
+	}
+	return true;
+}
+
 void str_ellide_in_place(char *string, size_t max_size_shown)
 {
 	size_t len = strlen(string);

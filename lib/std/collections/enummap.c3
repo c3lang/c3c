@@ -5,19 +5,19 @@ struct EnumMap
     ValueType[Enum.len] values;
 }
 
-fn void EnumMap.init(EnumMap* this, ValueType init_value)
+fn void EnumMap.init(&self, ValueType init_value)
 {
-    foreach(&a : this.values)
+    foreach(&a : self.values)
     {
         *a = init_value;
     }
 }
 
 
-fn void! EnumMap.to_format(EnumMap* map, Formatter* formatter) @dynamic
+fn void! EnumMap.to_format(&self, Formatter* formatter) @dynamic
 {
 	formatter.print("{ ")!;
-	foreach (i, &value : map.values)
+	foreach (i, &value : self.values)
 	{
 		if (i != 0) formatter.print(", ")!;
 		formatter.printf("%s: %s", (Enum)i, *value)!;
@@ -25,11 +25,11 @@ fn void! EnumMap.to_format(EnumMap* map, Formatter* formatter) @dynamic
 	formatter.print(" }")!;
 }
 
-fn String EnumMap.to_string(EnumMap* map, Allocator* using = mem::heap()) @dynamic
+fn String EnumMap.to_string(&self, Allocator* using = mem::heap()) @dynamic
 {
-	return string::printf("%s", *map);
+	return string::printf("%s", *self);
 }
 
-fn uint EnumMap.len(EnumMap* this) @operator(len) => this.values.len;
-fn ValueType EnumMap.get(EnumMap* this, Enum key) @operator([]) => this.values[key.ordinal];
-fn void EnumMap.set(EnumMap* this, Enum key, ValueType value) @operator([]=) => this.values[key.ordinal] = value;
+fn uint EnumMap.len(&self) @operator(len) => self.values.len;
+fn ValueType EnumMap.get(&self, Enum key) @operator([]) => self.values[key.ordinal];
+fn void EnumMap.set(&self, Enum key, ValueType value) @operator([]=) => self.values[key.ordinal] = value;

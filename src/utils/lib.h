@@ -115,6 +115,7 @@ char *str_printf(const char *var, ...) __printflike(1, 2);
 char *str_vprintf(const char *var, va_list list);
 void str_ellide_in_place(char *string, size_t max_size_shown);
 bool str_is_valid_lowercase_name(const char *string);
+bool str_is_valid_constant(const char *string);
 bool str_has_no_uppercase(const char *string);
 char *str_copy(const char *start, size_t str_len);
 
