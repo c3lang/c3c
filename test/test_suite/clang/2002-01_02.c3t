@@ -73,7 +73,6 @@ fn int do_merge(QuadEdge ldo, QuadEdge rdo) {
       return (int)((iptr)(basel.next));
     }
   }
-  return 1;
 }
 
 fn int test(int x) {
@@ -223,8 +222,6 @@ if.then:                                          ; preds = %loop.body
   ret i32 %ptrxi
 if.exit:                                          ; preds = %loop.body
   br label %loop.body
-loop.exit:                                        ; No predecessors!
-  ret i32 1
 }
 
 define i32 @test.test(i32 %0) #0 {

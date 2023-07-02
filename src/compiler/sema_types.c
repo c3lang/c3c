@@ -35,8 +35,6 @@ bool sema_resolve_type_info_maybe_inferred(SemaContext *context, TypeInfo *type_
 	return sema_resolve_type(context, type_info, allow_inferred_type, false);
 }
 
-
-
 bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, ArraySize *len_ref)
 {
 	// Get the expression describing the length.

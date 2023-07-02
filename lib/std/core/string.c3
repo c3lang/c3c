@@ -413,7 +413,7 @@ fn String! from_zutf16(Char16* utf16_pointer, Allocator* using = mem::heap())
 	return from_utf16(utf16, using);
 }
 
-fn usz String.utf8_codepoints(String s)
+fn usz String.utf8_codepoints(s)
 {
 	usz len = 0;
 	foreach (char c : s)
@@ -424,7 +424,7 @@ fn usz String.utf8_codepoints(String s)
 }
 
 
-macro String.to_integer(String string, $Type)
+macro String.to_integer(string, $Type)
 {
 	usz len = string.len;
 	usz index = 0;
@@ -496,19 +496,19 @@ macro String.to_integer(String string, $Type)
 }
 
 
-fn Char16[]! String.to_temp_utf16(String s) => s.to_utf16(mem::temp());
+fn Char16[]! String.to_temp_utf16(s) => s.to_utf16(mem::temp());
 
-fn int128! String.to_int128(String s) => s.to_integer(int128);
-fn long! String.to_long(String s) => s.to_integer(long);
-fn int! String.to_int(String s) => s.to_integer(int);
-fn short! String.to_short(String s) => s.to_integer(short);
-fn ichar! String.to_ichar(String s) => s.to_integer(ichar);
+fn int128! String.to_int128(s) => s.to_integer(int128);
+fn long! String.to_long(s) => s.to_integer(long);
+fn int! String.to_int(s) => s.to_integer(int);
+fn short! String.to_short(s) => s.to_integer(short);
+fn ichar! String.to_ichar(s) => s.to_integer(ichar);
 
-fn uint128! String.to_uint128(String s) => s.to_integer(uint128);
-fn ulong! String.to_ulong(String s) => s.to_integer(ulong);
-fn uint! String.to_uint(String s) => s.to_integer(uint);
-fn ushort! String.to_ushort(String s) => s.to_integer(ushort);
-fn char! String.to_uchar(String s) => s.to_integer(char);
+fn uint128! String.to_uint128(s) => s.to_integer(uint128);
+fn ulong! String.to_ulong(s) => s.to_integer(ulong);
+fn uint! String.to_uint(s) => s.to_integer(uint);
+fn ushort! String.to_ushort(s) => s.to_integer(ushort);
+fn char! String.to_uchar(s) => s.to_integer(char);
 
-fn double! String.to_double(String s) => s.to_real(double);
-fn float! String.to_float(String s) => s.to_real(float);
+fn double! String.to_double(s) => s.to_real(double);
+fn float! String.to_float(s) => s.to_real(float);

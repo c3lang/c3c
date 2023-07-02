@@ -144,7 +144,7 @@ void **tilde_gen(Module** modules, unsigned module_count)
 
 #endif
 
-static const char *build_base_name(void)
+const char *build_base_name(void)
 {
 	const char *name;
 	if (active_target.name)

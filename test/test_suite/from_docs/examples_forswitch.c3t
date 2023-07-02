@@ -112,9 +112,6 @@ loop.exit:                                        ; preds = %loop.cond
   %4 = load ptr, ptr @std.core.builtin.panic, align 8
   call void %4(ptr @.panic_msg, i64 19, ptr @.file, i64 21, ptr @.func, i64 11, i32 14)
   unreachable
-
-unreachable_block:                                ; No predecessors!
-  ret void
 }
 
 ; Function Attrs: nounwind

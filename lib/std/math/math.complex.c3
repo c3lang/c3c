@@ -11,14 +11,14 @@ union Complex
 
 
 macro Complex identity() => { 1, 0 };
-macro Complex Complex.add(Complex a, Complex b) => Complex { .v = a.v + b.v };
-macro Complex Complex.add_each(Complex a, Real b) => Complex { .v = a.v + b };
-macro Complex Complex.sub(Complex a, Complex b) => Complex { .v = a.v - b.v };
-macro Complex Complex.sub_each(Complex a, Real b) => Complex { .v = a.v - b };
-macro Complex Complex.scale(Complex a, Real s) => Complex { .v = a.v * s };
-macro Complex Complex.mul(Complex a, Complex b) => { a.r * b.r - a.c * b.c, a.r * b.c + b.r * a.c };
-macro Complex Complex.div(Complex a, Complex b)
+macro Complex Complex.add(self, Complex b) => Complex { .v = self.v + b.v };
+macro Complex Complex.add_each(self, Real b) => Complex { .v = self.v + b };
+macro Complex Complex.sub(self, Complex b) => Complex { .v = self.v - b.v };
+macro Complex Complex.sub_each(self, Real b) => Complex { .v = self.v - b };
+macro Complex Complex.scale(self, Real s) => Complex { .v = self.v * s };
+macro Complex Complex.mul(self, Complex b) => { self.r * b.r - self.c * b.c, self.r * b.c + b.r * self.c };
+macro Complex Complex.div(self, Complex b)
 {
 	Real div = b.v.dot(b.v);
-	return Complex{ (a.r * b.r + a.c * b.c) / div, (a.c * b.r - a.r * b.c) / div };
+	return Complex{ (self.r * b.r + self.c * b.c) / div, (self.c * b.r - self.r * b.c) / div };
 }

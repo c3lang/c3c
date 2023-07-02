@@ -46,6 +46,5 @@ macro bool! native_mkdir(Path path, MkdirPermissions permissions)
 	        };
 		$default:
 			unreachable("'mkdir' not available");
-			return false;
 	$endswitch
 }

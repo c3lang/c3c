@@ -12,22 +12,17 @@ struct ArenaAllocator
 
 /**
  * Initialize a memory arena for use using the provided bytes.
- *
- * @require this != null
  **/
-fn void ArenaAllocator.init(ArenaAllocator* this, char[] data)
+fn void ArenaAllocator.init(&self, char[] data)
 {
-	this.function = &arena_allocator_function;
-	this.data = data;
-	this.used = 0;
+	self.function = &arena_allocator_function;
+	self.data = data;
+	self.used = 0;
 }
 
-/**
- * @require this != null
- **/
-fn void ArenaAllocator.reset(ArenaAllocator* this)
+fn void ArenaAllocator.reset(&self)
 {
-	this.used = 0;
+	self.used = 0;
 }
 
 
@@ -95,18 +90,17 @@ fn void*! arena_allocator_function(Allocator* data, usz size, usz alignment, usz
  * @require offset <= mem::MAX_MEMORY_ALIGNMENT `offset too big`
  * @require offset <= size && offset >= 0
  * @require mem::aligned_offset(offset, ArenaAllocatorHeader.alignof) == offset
- * @require this != null
  **/
-fn void*! ArenaAllocator._alloc(ArenaAllocator* this, usz size, usz alignment, usz offset)
+fn void*! ArenaAllocator._alloc(&self, usz size, usz alignment, usz offset)
 {
-	usz total_len = this.data.len;
+	usz total_len = self.data.len;
 	if (size > total_len) return AllocationFailure.CHUNK_TOO_LARGE?;
-    void* start_mem = this.data.ptr;
-	void* unaligned_pointer_to_offset = start_mem + this.used + ArenaAllocatorHeader.sizeof + offset;
+    void* start_mem = self.data.ptr;
+	void* unaligned_pointer_to_offset = start_mem + self.used + ArenaAllocatorHeader.sizeof + offset;
 	void* aligned_pointer_to_offset = mem::aligned_pointer(unaligned_pointer_to_offset, alignment);
-	usz end = (usz)(aligned_pointer_to_offset - this.data.ptr) + size - offset;
+	usz end = (usz)(aligned_pointer_to_offset - self.data.ptr) + size - offset;
 	if (end > total_len) return AllocationFailure.OUT_OF_MEMORY?;
-	this.used = end;
+	self.used = end;
 	void* mem = aligned_pointer_to_offset - offset;
 	ArenaAllocatorHeader* header = mem - ArenaAllocatorHeader.sizeof;
 	header.size = size;
@@ -121,33 +115,32 @@ fn void*! ArenaAllocator._alloc(ArenaAllocator* this, usz size, usz alignment, u
  * @require offset <= mem::MAX_MEMORY_ALIGNMENT `offset too big`
  * @require offset <= size && offset >= 0
  * @require mem::aligned_offset(offset, ArenaAllocatorHeader.alignof) == offset
- * @require this != null
  **/
-fn void*! ArenaAllocator._realloc(ArenaAllocator* this, void *old_pointer, usz size, usz alignment, usz offset)
+fn void*! ArenaAllocator._realloc(&self, void *old_pointer, usz size, usz alignment, usz offset)
 {
-	assert(old_pointer >= this.data.ptr, "Pointer originates from a different allocator.");
-	usz total_len = this.data.len;
+	assert(old_pointer >= self.data.ptr, "Pointer originates from a different allocator.");
+	usz total_len = self.data.len;
 	if (size > total_len) return AllocationFailure.CHUNK_TOO_LARGE?;
 	ArenaAllocatorHeader* header = old_pointer - ArenaAllocatorHeader.sizeof;
 	usz old_size = header.size;
 	// Do last allocation and alignment match?
-	if (&this.data[this.used] == old_pointer + old_size && mem::ptr_is_aligned(old_pointer + offset, alignment))
+	if (&self.data[self.used] == old_pointer + old_size && mem::ptr_is_aligned(old_pointer + offset, alignment))
 	{
 		if (old_size >= size)
         {
-        	this.used -= old_size - size;
+        	self.used -= old_size - size;
         }
         else
         {
-	        usz new_used = this.used + size - old_size;
+	        usz new_used = self.used + size - old_size;
             if (new_used > total_len) return AllocationFailure.OUT_OF_MEMORY?;
-            this.used = new_used;
+            self.used = new_used;
         }
         header.size = size;
         return old_pointer;
 	}
 	// Otherwise just allocate new memory.
-	void* mem = this._alloc(size, alignment, offset)!;
+	void* mem = self._alloc(size, alignment, offset)!;
 	mem::copy(mem, old_pointer, old_size, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
 	return mem;
 }

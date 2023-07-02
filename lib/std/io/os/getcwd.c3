@@ -36,7 +36,6 @@ macro String! getcwd(Allocator* using = mem::heap())
 
 		$default:
 			unreachable("'getcwd' not available");
-			return "";
 	$endswitch
 }
 

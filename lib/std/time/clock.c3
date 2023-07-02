@@ -9,15 +9,15 @@ fn Clock now()
 	$endif
 }
 
-fn NanoDuration Clock.mark(Clock* this)
+fn NanoDuration Clock.mark(&self)
 {
 	Clock mark = now();
-	NanoDuration diff = (NanoDuration)(mark - *this);
-	*this = mark;
+	NanoDuration diff = (NanoDuration)(mark - *self);
+	*self = mark;
 	return diff;
 }
 
-fn NanoDuration Clock.to_now(Clock this)
+fn NanoDuration Clock.to_now(self)
 {
-	return (NanoDuration)(now() - this);
+	return (NanoDuration)(now() - self);
 }

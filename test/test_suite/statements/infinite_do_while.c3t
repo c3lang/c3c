@@ -27,9 +27,6 @@ entry:
 loop.body:                                        ; preds = %loop.body, %entry
   call void @test.testx()
   br label %loop.body
-
-loop.exit:                                        ; No predecessors!
-  ret void
 }
 
 define void @test.test2() #0 {
@@ -40,6 +37,4 @@ loop.body:                                        ; preds = %loop.body, %entry
   call void @test.testx()
   br label %loop.body
 
-loop.exit:                                        ; No predecessors!
-  ret void
 }

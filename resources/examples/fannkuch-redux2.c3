@@ -61,7 +61,6 @@ fn int fannkuchredux(int n)
 		}
 		perm_count++;
 	}
-	return 0;
 }
 
 fn void! main(String[] argv)

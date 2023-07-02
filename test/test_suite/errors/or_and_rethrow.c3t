@@ -60,7 +60,6 @@ entry:
   %x18 = alloca %"char[]", align 8
   %retparam19 = alloca i64, align 8
   %result20 = alloca %File, align 8
-  %reterr = alloca i64, align 8
   store i32 %0, ptr %taddr, align 4
   %1 = insertvalue %any undef, ptr %taddr, 0
   %2 = insertvalue %any %1, i64 ptrtoint (ptr @"$ct.int" to i64), 1
@@ -147,7 +146,6 @@ entry:
   %x7 = alloca %"char[]", align 8
   %retparam8 = alloca i64, align 8
   %result9 = alloca %File, align 8
-  %reterr = alloca i64, align 8
   store i32 %0, ptr %taddr, align 4
   %1 = insertvalue %any undef, ptr %taddr, 0
   %2 = insertvalue %any %1, i64 ptrtoint (ptr @"$ct.int" to i64), 1

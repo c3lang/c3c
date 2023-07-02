@@ -139,8 +139,9 @@ macro is_bitorder($Type)
     $case UInt128BE:
     $case Int128BE:
         return true;
+    $default:
+        return false;
     $endswitch
-    return false;
 }
 
 macro bool is_array_or_sub_of_char(bytes)
@@ -156,8 +157,9 @@ macro bool is_array_or_sub_of_char(bytes)
     $case SUBARRAY:
         var $Inner = $typefrom($typeof(bytes).inner);
         return $Inner.typeid == char.typeid;
+    $default:
+	    return false;
     $endswitch
-    return false;
 }
 
 macro bool is_arrayptr_or_sub_of_char(bytes)
@@ -172,6 +174,7 @@ macro bool is_arrayptr_or_sub_of_char(bytes)
     $case SUBARRAY:
         var $Inner = $typefrom($typeof(bytes).inner);
         return $Inner.typeid == char.typeid;
+    $default:
+	    return false;
     $endswitch
-    return false;
 }

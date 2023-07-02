@@ -64,7 +64,6 @@ fn int fannkuchredux(int n)
 		}
 		perm_count++;
 	}
-	return 0;
 }
 
 fn int main(int argc, char** argv)
