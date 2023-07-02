@@ -40,7 +40,6 @@ fn int main(int argc, char** argv)
         defer defer9();
         defer10();
 		break;
-		defer11();
     }
     return 0;
 }

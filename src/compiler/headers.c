@@ -540,8 +540,9 @@ void header_gen(Module **modules, unsigned module_count)
 {
 	HTable table;
 	htable_init(&table, 1024);
-	const char *filename = str_printf("foo_fn.h");
-	const char *filename_types = str_printf("foo_types.h");
+	const char *name = build_base_name();
+	const char *filename = str_printf("%s_fn.h", name);
+	const char *filename_types = str_printf("%s_types.h", name);
 	FILE *file = fopen(filename, "w");
 	FILE *file_types = fopen(filename_types, "w");
 	OUT(file_types, "#include <stdint.h>\n");
@@ -553,7 +554,7 @@ void header_gen(Module **modules, unsigned module_count)
 	OUT(file_types, "typedef struct { void* ptr; size_t len; } c3slice_t;\n");
 	OUT(file_types, "typedef struct { void* ptr; c3typeid_t type; } c3any_t;\n");
 	OUT(file_types, "\n#endif\n\n");
-	OUTPUT("#include \"foo_types.h\"\n");
+	OUTPUT("#include \"%s_types.h\"\n", name);
 
 	for (unsigned i = 0; i < module_count; i++)
 	{
@@ -595,7 +596,6 @@ void header_gen(Module **modules, unsigned module_count)
 	}
 
 	OUTPUT("\n/* Functions */\n");
-
 	for (unsigned i = 0; i < module_count; i++)
 	{
 		Module *module = modules[i];

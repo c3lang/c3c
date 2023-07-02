@@ -15,7 +15,6 @@ entry:
   %i = alloca i32, align 4
   %i.f = alloca i64, align 8
   %error_var = alloca i64, align 8
-  %reterr = alloca i64, align 8
   store i64 0, ptr %i.f, align 8
   store i32 0, ptr %i, align 4
   %optval = load i64, ptr %i.f, align 8

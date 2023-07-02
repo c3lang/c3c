@@ -20,35 +20,34 @@ struct TrackingAllocator
 }
 
 /**
- * Initialize a memory arena for use using the provided bytes.
+ * Initialize a tracking allocator to wrap (and track) another allocator.
  *
- * @require this != null
+ * @param [&inout] using "The allocator to track"
  **/
-fn void TrackingAllocator.init(TrackingAllocator* this, Allocator* using)
+fn void TrackingAllocator.init(&self, Allocator* using)
 {
-	*this = { .inner_allocator = using, .allocator.function = &tracking_allocator_fn };
-	this.map.init(.using = using);
+	*self = { .inner_allocator = using, .allocator.function = &tracking_allocator_fn };
+	self.map.init(.using = using);
 }
 
 /**
  * Free this tracking allocator.
- * @param [&inout] this "The allocator to modify"
  **/
-fn void TrackingAllocator.free(TrackingAllocator* this)
+fn void TrackingAllocator.free(&self)
 {
-	this.map.free();
-	*this = {};
+	self.map.free();
+	*self = {};
 }
 
 /**
  * @return "the total allocated memory not yet freed."
  **/
-fn usz TrackingAllocator.allocated(TrackingAllocator* this)
+fn usz TrackingAllocator.allocated(&self)
 {
 	usz allocated = 0;
 	@pool()
 	{
-		foreach (usz allocation : this.map.value_tlist()) allocated += allocation;
+		foreach (usz allocation : self.map.value_tlist()) allocated += allocation;
 	};
 	return allocated;
 }
@@ -56,17 +55,17 @@ fn usz TrackingAllocator.allocated(TrackingAllocator* this)
 /**
  * @return "the total memory allocated (freed or not)."
  **/
-fn usz TrackingAllocator.total_allocated(TrackingAllocator* this) => this.mem_total;
+fn usz TrackingAllocator.total_allocated(&self) => self.mem_total;
 
 /**
  * @return "the total number of allocations (freed or not)."
  **/
-fn usz TrackingAllocator.total_allocation_count(TrackingAllocator* this) => this.allocs_total;
+fn usz TrackingAllocator.total_allocation_count(&self) => self.allocs_total;
 
 /**
  * @return "the number of non-freed allocations."
  **/
-fn usz TrackingAllocator.allocation_count(TrackingAllocator* this) => this.map.count;
+fn usz TrackingAllocator.allocation_count(&self) => self.map.count;
 
 /**
  * @param [inout] data

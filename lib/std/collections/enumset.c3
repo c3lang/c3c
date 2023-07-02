@@ -161,5 +161,5 @@ macro typeid type_for_enum_elements(usz $elements)
 			return ushort.typeid;
 		$default:
 			return char.typeid;
-	$endswitch;
+	$endswitch
 }

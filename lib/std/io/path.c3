@@ -129,9 +129,9 @@ fn Path! new_posix(String path, Allocator* using = mem::heap())
 	return new(path, using, POSIX);
 }
 
-fn bool Path.equals(Path p1, Path p2)
+fn bool Path.equals(self, Path p2)
 {
-	return p1.env == p2.env && p1.path_string == p2.path_string;
+	return self.env == p2.env && self.path_string == p2.path_string;
 }
 
 /**
@@ -139,57 +139,57 @@ fn bool Path.equals(Path p1, Path p2)
  *
  * @param [in] path
  * @param [in] filename
- * @ensure return.path_string.len >= path.path_string.len
+ * @ensure return.path_string.len >= self.path_string.len
  **/
-fn Path! Path.append(Path path, String filename, Allocator* using = mem::heap())
+fn Path! Path.append(self, String filename, Allocator* using = mem::heap())
 {
-	if (!path.path_string.len) return new(filename, using, path.env)!;
-	assert(!is_separator(path.path_string[^1], path.env));
+	if (!self.path_string.len) return new(filename, using, self.env)!;
+	assert(!is_separator(self.path_string[^1], self.env));
 
 	@stack_mem(256; Allocator* mem)
 	{
-		DString dstr = dstring::new_with_capacity(path.path_string.len + 1 + filename.len, .using = mem);
-		dstr.append(path.path_string);
+		DString dstr = dstring::new_with_capacity(self.path_string.len + 1 + filename.len, .using = mem);
+		dstr.append(self.path_string);
 		dstr.append(PREFERRED_SEPARATOR);
 		dstr.append(filename);
-		return { normalize(dstr.copy_str(using), path.env), path.env };
+		return { normalize(dstr.copy_str(using), self.env), self.env };
 	};
 }
 
-fn Path! Path.tappend(Path path, String filename) => path.append(filename, mem::temp());
+fn Path! Path.tappend(self, String filename) => self.append(filename, mem::temp());
 
-fn usz Path.start_of_base_name(Path path) @local
+fn usz Path.start_of_base_name(self) @local
 {
-	String path_str = path.path_string;
+	String path_str = self.path_string;
 	if (!path_str.len) return 0;
-	if (path.env == PathEnv.WIN32)
+	if (self.env == PathEnv.WIN32)
 	{
-		return path_str.rindex_of(`\`) + 1 ?? volume_name_len(path_str, path.env)!!;
+		return path_str.rindex_of(`\`) + 1 ?? volume_name_len(path_str, self.env)!!;
 	}
 	return path_str.rindex_of("/") + 1 ?? 0;
 }
 
-fn String Path.basename(Path path)
+fn String Path.basename(self)
 {
-	usz basename_start = path.start_of_base_name();
-	String path_str = path.path_string;
+	usz basename_start = self.start_of_base_name();
+	String path_str = self.path_string;
 	if (basename_start == path_str.len) return "";
 	return path_str[basename_start..];
 }
 
-fn String Path.dirname(Path path)
+fn String Path.dirname(self)
 {
-	usz basename_start = path.start_of_base_name();
-	String path_str = path.path_string;
+	usz basename_start = self.start_of_base_name();
+	String path_str = self.path_string;
 	if (basename_start == 0) return "";
-	usz start = volume_name_len(path_str, path.env)!!;
+	usz start = volume_name_len(path_str, self.env)!!;
 	if (basename_start <= start + 1) return path_str[:basename_start];
 	return path_str[:basename_start - 1];
 }
 
-fn String! Path.extension(Path path)
+fn String! Path.extension(self)
 {
-	String basename = path.basename();
+	String basename = self.basename();
 	usz index = basename.rindex_of(".")!;
 	// Plain ".foo" does not have an
 	if (index == 0) return SearchResult.MISSING?;
@@ -197,11 +197,11 @@ fn String! Path.extension(Path path)
 	return basename[index + 1..];
 }
 
-fn String Path.volume_name(Path path)
+fn String Path.volume_name(self)
 {
-	usz len = volume_name_len(path.as_str(), path.env)!!;
+	usz len = volume_name_len(self.as_str(), self.env)!!;
 	if (!len) return "";
-	return path.path_string[:len];
+	return self.path_string[:len];
 }
 
 fn usz! volume_name_len(String path, PathEnv path_env) @local
@@ -233,14 +233,14 @@ fn usz! volume_name_len(String path, PathEnv path_env) @local
     }
 }
 
-fn Path! Path.parent(Path path)
+fn Path! Path.parent(self)
 {
-	if (path.path_string.len == 1 && is_separator(path.path_string[0], path.env)) return PathResult.NO_PARENT?;
-	foreach_r(i, c : path.path_string)
+	if (self.path_string.len == 1 && is_separator(self.path_string[0], self.env)) return PathResult.NO_PARENT?;
+	foreach_r(i, c : self.path_string)
 	{
-		if (is_separator(c, path.env))
+		if (is_separator(c, self.env))
 		{
-			return { path.path_string[:i], path.env };
+			return { self.path_string[:i], self.env };
 		}
 	}
 	return PathResult.NO_PARENT?;
@@ -350,16 +350,16 @@ fn String! normalize(String path_str, PathEnv path_env = DEFAULT_PATH_ENV)
 	return path_str[:len];
 }
 
-fn ZString Path.as_zstr(Path path) => (ZString)path.path_string.ptr;
+fn ZString Path.as_zstr(self) => (ZString)self.path_string.ptr;
 
-fn String Path.root_directory(Path path)
+fn String Path.root_directory(self)
 {
-	String path_str = path.as_str();
+	String path_str = self.as_str();
 	usz len = path_str.len;
 	if (!len) return "";
-	if (path.env == PathEnv.WIN32)
+	if (self.env == PathEnv.WIN32)
 	{
-		usz root_len = volume_name_len(path_str, path.env)!!;
+		usz root_len = volume_name_len(path_str, self.env)!!;
 		if (root_len == len || !is_win32_separator(path_str[root_len])) return "";
 		return path_str[root_len..root_len];
 	}
@@ -375,21 +375,21 @@ fn String Path.root_directory(Path path)
 }
 
 
-fn String Path.as_str(Path path)
+fn String Path.as_str(self)
 {
-	return path.path_string;
+	return self.path_string;
 }
 
 
-fn bool Path.has_suffix(Path path, String str)
+fn bool Path.has_suffix(self, String str)
 {
-	return path.as_str().ends_with(str);
+	return self.as_str().ends_with(str);
 }
 
 
-fn void Path.free(Path path)
+fn void Path.free(self)
 {
-	free(path.path_string.ptr);
+	free(self.path_string.ptr);
 }
 
 

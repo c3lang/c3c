@@ -1001,6 +1001,7 @@ typedef struct
 typedef struct
 {
 	AstId first_stmt;
+	bool is_noreturn;
 	Decl **params;
 	BlockExit **block_exit;
 } ExprMacroBlock;
@@ -2069,6 +2070,7 @@ void **llvm_gen(Module** modules, unsigned module_count);
 void **tilde_gen(Module** modules, unsigned module_count);
 
 void header_gen(Module **modules, unsigned module_count);
+const char *build_base_name(void);
 
 void global_context_clear_errors(void);
 void global_context_add_type(Type *type);

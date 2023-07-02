@@ -13,16 +13,15 @@ struct SimpleHeapAllocator
 }
 
 /**
- * @require this "Unexpectedly missing the allocator"
  * @require allocator "An underlying memory provider must be given"
- * @require !this.free_list "The allocator may not be already initialized"
+ * @require !self.free_list "The allocator may not be already initialized"
  **/
-fn void SimpleHeapAllocator.init(SimpleHeapAllocator* this, MemoryAllocFn allocator)
+fn void SimpleHeapAllocator.init(&self, MemoryAllocFn allocator)
 {
-	this.alloc_fn = allocator;
+	self.alloc_fn = allocator;
 	static AllocatorFunction alloc_fn = &simple_heap_allocator_function;
-	this.allocator = { alloc_fn };
-	this.free_list = null;
+	self.allocator = { alloc_fn };
+	self.free_list = null;
 }
 
 /**
@@ -65,36 +64,36 @@ fn void*! simple_heap_allocator_function(Allocator* this, usz size, usz alignmen
 }
 
 /**
- * @require this && old_pointer && bytes > 0
+ * @require old_pointer && bytes > 0
  **/
-fn void*! SimpleHeapAllocator._realloc(SimpleHeapAllocator* this, void* old_pointer, usz bytes) @local
+fn void*! SimpleHeapAllocator._realloc(&self, void* old_pointer, usz bytes) @local
 {
 	// Find the block header.
 	Header* block = (Header*)old_pointer - 1;
 	if (block.size >= bytes) return old_pointer;
-	void* new = this._alloc(bytes)!;
+	void* new = self._alloc(bytes)!;
 	usz max_to_copy = math::min(block.size, bytes);
 	mem::copy(new, old_pointer, max_to_copy);
-	this._free(old_pointer);
+	self._free(old_pointer);
 	return new;
 }
 
-fn void*! SimpleHeapAllocator._calloc(SimpleHeapAllocator* this, usz bytes) @local
+fn void*! SimpleHeapAllocator._calloc(&self, usz bytes) @local
 {
-	void* data = this._alloc(bytes)!;
+	void* data = self._alloc(bytes)!;
 	mem::clear(data, bytes, mem::DEFAULT_MEM_ALIGNMENT);
 	return data;
 }
 
-fn void*! SimpleHeapAllocator._alloc(SimpleHeapAllocator* this, usz bytes) @local
+fn void*! SimpleHeapAllocator._alloc(&self, usz bytes) @local
 {
 	usz aligned_bytes = mem::aligned_offset(bytes, mem::DEFAULT_MEM_ALIGNMENT);
-    if (!this.free_list)
+    if (!self.free_list)
     {
-		this.add_block(aligned_bytes)!;
+		self.add_block(aligned_bytes)!;
     }
 
-	Header* current = this.free_list;
+	Header* current = self.free_list;
 	Header* previous = current;
 	while (current)
 	{
@@ -103,7 +102,7 @@ fn void*! SimpleHeapAllocator._alloc(SimpleHeapAllocator* this, usz bytes) @loca
 			case current.size >= aligned_bytes && current.size <= aligned_bytes + Header.sizeof + 64:
 				if (current == previous)
 				{
-					this.free_list = current.next;
+					self.free_list = current.next;
 				}
 				else
 				{
@@ -115,9 +114,9 @@ fn void*! SimpleHeapAllocator._alloc(SimpleHeapAllocator* this, usz bytes) @loca
 				Header* unallocated = (Header*)((char*)current + aligned_bytes + Header.sizeof);
 				unallocated.size = current.size - aligned_bytes;
 				unallocated.next = current.next;
-				if (current == this.free_list)
+				if (current == self.free_list)
 				{
-					this.free_list = unallocated;
+					self.free_list = unallocated;
 				}
 				else
 				{
@@ -131,22 +130,22 @@ fn void*! SimpleHeapAllocator._alloc(SimpleHeapAllocator* this, usz bytes) @loca
 				current = current.next;
 		}
 	}
-	this.add_block(aligned_bytes)!;
-	return this.alloc(aligned_bytes);
+	self.add_block(aligned_bytes)!;
+	return self.alloc(aligned_bytes);
 }
 
-fn void! SimpleHeapAllocator.add_block(SimpleHeapAllocator* this, usz aligned_bytes) @local
+fn void! SimpleHeapAllocator.add_block(&self, usz aligned_bytes) @local
 {
 	assert(mem::aligned_offset(aligned_bytes, mem::DEFAULT_MEM_ALIGNMENT) == aligned_bytes);
-	char[] result = this.alloc_fn(aligned_bytes + Header.sizeof)!;
+	char[] result = self.alloc_fn(aligned_bytes + Header.sizeof)!;
 	Header* new_block = (Header*)result.ptr;
 	new_block.size = result.len - Header.sizeof;
 	new_block.next = null;
-	this._free(new_block + 1);
+	self._free(new_block + 1);
 }
 
 
-fn void SimpleHeapAllocator._free(SimpleHeapAllocator* this, void* ptr) @local
+fn void SimpleHeapAllocator._free(&self, void* ptr) @local
 {
 	// Empty ptr -> do nothing.
 	if (!ptr) return;
@@ -154,15 +153,15 @@ fn void SimpleHeapAllocator._free(SimpleHeapAllocator* this, void* ptr) @local
 	// Find the block header.
 	Header* block = (Header*)ptr - 1;
 
-	// No free list? Then just return this.
-	if (!this.free_list)
+	// No free list? Then just return self.
+	if (!self.free_list)
 	{
-		this.free_list = block;
+		self.free_list = block;
 		return;
 	}
 
 	// Find where in the list it should be inserted.
-	Header* current = this.free_list;
+	Header* current = self.free_list;
 	Header* prev = current;
 	while (current)
 	{
@@ -195,7 +194,7 @@ fn void SimpleHeapAllocator._free(SimpleHeapAllocator* this, void* ptr) @local
 	if (prev == current)
 	{
 		// Swap new start of free list
-		this.free_list = block;
+		self.free_list = block;
 	}
 	else
 	{

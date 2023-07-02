@@ -44,6 +44,5 @@ macro bool! native_rmdir(Path path)
 		    };
 		$default:
 			unreachable("'rmdir' not available");
-			return false;
 	$endswitch
 }

@@ -1944,9 +1944,9 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	params = macro_context.macro_params;
 	bool is_no_return = decl->func_decl.signature.attrs.noreturn;
 
-	if (!vec_size(macro_context.returns) || !macro_context.active_scope.jump_end)
+	if (!vec_size(macro_context.returns))
 	{
-		if (rtype && rtype != type_void)
+		if (rtype && rtype != type_void && !macro_context.active_scope.jump_end)
 		{
 			SEMA_ERROR(decl,
 					   "Missing return in macro that should evaluate to %s.",
@@ -2053,6 +2053,7 @@ NOT_CT:
 	call_expr->macro_block.first_stmt = body->compound_stmt.first_stmt;
 	call_expr->macro_block.params = params;
 	call_expr->macro_block.block_exit = block_exit_ref;
+	call_expr->macro_block.is_noreturn = is_no_return;
 EXIT:
 	assert(context->active_scope.defer_last == context->active_scope.defer_start);
 	context->active_scope = old_scope;

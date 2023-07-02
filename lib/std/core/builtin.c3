@@ -79,7 +79,6 @@ fn void default_panic(String message, String file, String function, uint line)
 {
 	CallstackElement* stack = $$stacktrace();
 	$if $defined(io::stderr) && $defined(File.printf):
-
 	if (stack) stack = stack.prev;
 	if (stack)
 	{
@@ -99,7 +98,6 @@ fn void default_panic(String message, String file, String function, uint line)
 		if (stack == stack.prev) break;
 		stack = stack.prev;
 	}
-
 	$endif
 	$$trap();
 }

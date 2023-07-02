@@ -19,39 +19,34 @@ struct OnStackAllocatorExtraChunk @local
 
 /**
  * Initialize a memory arena for use using the provided bytes.
- *
- * @require this != null
  **/
-fn void OnStackAllocator.init(OnStackAllocator* this, char[] data, Allocator* using = mem::heap())
+fn void OnStackAllocator.init(&self, char[] data, Allocator* using = mem::heap())
 {
-	this.function = &on_stack_allocator_function;
-	this.data = data;
-	this.backing_allocator = using;
-	this.used = 0;
+	self.function = &on_stack_allocator_function;
+	self.data = data;
+	self.backing_allocator = using;
+	self.used = 0;
 }
 
-/**
- * @require this != null
- **/
-fn void OnStackAllocator.free(OnStackAllocator* this)
+fn void OnStackAllocator.free(&self)
 {
-	OnStackAllocatorExtraChunk* chunk = this.chunk;
+	OnStackAllocatorExtraChunk* chunk = self.chunk;
 	while (chunk)
 	{
 		if (chunk.is_aligned)
 		{
-			this.backing_allocator.free_aligned(chunk.data)!!;
+			self.backing_allocator.free_aligned(chunk.data)!!;
 		}
 		else
 		{
-			this.backing_allocator.free(chunk.data)!!;
+			self.backing_allocator.free(chunk.data)!!;
 		}
 		void* old = chunk;
 		chunk = chunk.prev;
-		this.backing_allocator.free(old)!!;
+		self.backing_allocator.free(old)!!;
 	}
-	this.chunk = null;
-	this.used = 0;
+	self.chunk = null;
+	self.used = 0;
 }
 
 struct OnStackAllocatorHeader

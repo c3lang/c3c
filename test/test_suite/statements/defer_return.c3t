@@ -29,7 +29,6 @@ fn int main(int argc, char **argv)
         defer test7();
 		test8();
 		return 2 + 2;
-        defer test9();
     }
     return 0 + argc;
 }

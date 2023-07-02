@@ -1045,11 +1045,20 @@ static inline bool sema_analyse_expr_stmt(SemaContext *context, Ast *statement)
 		expr->call_expr.result_unused = true;
 	}
 	if (!sema_analyse_expr(context, expr)) return false;
-	if (expr->expr_kind == EXPR_CALL && expr->call_expr.no_return) context->active_scope.jump_end = true;
-	// Remove all const statements.
-	if (expr_is_const(expr))
+	switch (expr->expr_kind)
 	{
-		statement->ast_kind = AST_NOP_STMT;
+		case EXPR_CALL:
+			if (expr->call_expr.no_return) context->active_scope.jump_end = true;
+			break;
+		case EXPR_MACRO_BLOCK:
+			if (expr->macro_block.is_noreturn) context->active_scope.jump_end = true;
+			break;
+		case EXPR_CONST:
+			// Remove all const statements.
+			statement->ast_kind = AST_NOP_STMT;
+			break;
+		default:
+			break;
 	}
 	return true;
 }
@@ -1213,7 +1222,7 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 
 	SCOPE_OUTER_END;
 
-	if (statement->for_stmt.flow.no_exit || (is_infinite && !statement->for_stmt.flow.has_break))
+	if (is_infinite && !statement->for_stmt.flow.has_break)
 	{
 		context->active_scope.jump_end = true;
 	}
@@ -2201,12 +2210,12 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 			success = success && (!body || sema_analyse_compound_statement_no_scope(context, body));
 			POP_BREAK();
 			POP_NEXT();
-			all_jump_end &= (!body | context->active_scope.jump_end);
+			if (!body && i < case_count - 1) continue;
+			all_jump_end &= context->active_scope.jump_end;
 		SCOPE_END;
 	}
 	statement->flow.no_exit = all_jump_end;
 	statement->switch_stmt.flow.if_chain = if_chain || max_ranged;
-	if (!success) return false;
 	return success;
 }
 
@@ -2695,21 +2704,6 @@ FAILED:
 
 static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *statement)
 {
-	if (statement->ast_kind == AST_POISONED)
-	{
-		return false;
-	}
-	if (context->active_scope.jump_end && !context->active_scope.allow_dead_code)
-	{
-		if (statement->ast_kind == AST_ASSERT_STMT)
-		{
-			context->active_scope.allow_dead_code = true;
-			return true;
-		}
-		//ERROR_NODE(statement, "This code will never execute.");
-		context->active_scope.allow_dead_code = true;
-		//return false;
-	}
 	switch (statement->ast_kind)
 	{
 		case AST_POISONED:
@@ -2780,8 +2774,25 @@ static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *state
 
 bool sema_analyse_statement(SemaContext *context, Ast *statement)
 {
-	if (sema_analyse_statement_inner(context, statement)) return true;
-	return ast_poison(statement);
+	if (statement->ast_kind == AST_POISONED) return false;
+	bool dead_code = context->active_scope.jump_end;
+	if (!sema_analyse_statement_inner(context, statement)) return ast_poison(statement);
+	if (dead_code)
+	{
+		if (!context->active_scope.allow_dead_code)
+		{
+			context->active_scope.allow_dead_code = true;
+			// If we start with an don't start with an assert AND the scope is a macro, then it's bad.
+			if (statement->ast_kind != AST_ASSERT_STMT && statement->ast_kind != AST_NOP_STMT && !(context->active_scope.flags & SCOPE_MACRO))
+			{
+				SEMA_ERROR(statement, "This code will never execute.");
+				return ast_poison(statement);
+			}
+			// Remove it
+			statement->ast_kind = AST_NOP_STMT;
+		}
+	}
+	return true;
 }
 
 
@@ -3033,26 +3044,9 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 		{
 			sema_append_contract_asserts(assert_first, body);
 			Type *canonical_rtype = type_no_optional(prototype->rtype)->canonical;
-			// Insert an implicit return
-			if (canonical_rtype == type_void)
-			{
-				AstId *next_id = &body->compound_stmt.first_stmt;
-				SourceSpan span = body->span;
-				if (*next_id)
-				{
-					Ast *last = ast_last(astptr(*next_id));
-					// Cleanup later
-					if (last->ast_kind == AST_RETURN_STMT) goto SKIP_NEW_RETURN;
-					span = last->span;
-					next_id = &last->next;
-				}
-				Ast *ret = new_ast(AST_RETURN_STMT, span);
-				ast_append(&next_id, ret);
-				SKIP_NEW_RETURN:;
-			}
 			if (!sema_analyse_compound_statement_no_scope(context, body)) return false;
 			assert(context->active_scope.depth == 1);
-			if (!context->active_scope.jump_end)
+			if (!context->active_scope.jump_end && canonical_rtype != type_void)
 			{
 				SEMA_ERROR(func, "Missing return statement at the end of the function.");
 				return false;

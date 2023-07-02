@@ -18,7 +18,6 @@ entry:
   %taddr = alloca i64, align 8
   %varargslots = alloca [2 x %any], align 16
   %indirectarg = alloca %"any[]", align 8
-  %reterr = alloca i64, align 8
   store i64 0, ptr %i, align 8
   br label %loop.cond
 

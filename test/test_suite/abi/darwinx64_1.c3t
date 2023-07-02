@@ -32,7 +32,7 @@ struct Struct8
   int b;
 }
 
-fn Struct8 f8_1() { while (1) {} return Struct8 {}; }
+fn Struct8 f8_1() { while (0) {} return Struct8 {}; }
 fn void f8_2(Struct8 a0) {}
 
 /* #expect: test.ll

@@ -744,7 +744,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 	if (type_parent && params && params[0] && !params[0]->var.type_info)
 	{
 		TypeInfo *method_parent = type_infoptr(type_parent);
-		if (!sema_resolve_type_info(context, method_parent)) return false;
+		if (!sema_resolve_type_info_maybe_inferred(context, method_parent, true)) return false;
 		Decl *param = params[0];
 		Type *inferred_type = NULL;
 		switch (param->var.kind)

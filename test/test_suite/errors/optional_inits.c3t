@@ -39,7 +39,6 @@ entry:
   %x.f = alloca i64, align 8
   %y = alloca %Bar, align 4
   %error_var = alloca i64, align 8
-  %reterr = alloca i64, align 8
   store i64 ptrtoint (ptr @"test.Foo$MY_VAL1" to i64), ptr %x.f, align 8
   %optval = load i64, ptr %x.f, align 8
   %not_err = icmp eq i64 %optval, 0
@@ -69,7 +68,6 @@ entry:
   %x.f = alloca i64, align 8
   %y = alloca %Bar, align 4
   %error_var = alloca i64, align 8
-  %reterr = alloca i64, align 8
   store i32 0, ptr %x, align 4
   store i64 0, ptr %x.f, align 8
   %optval = load i64, ptr %x.f, align 8

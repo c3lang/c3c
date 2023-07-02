@@ -52,7 +52,6 @@ fn int! askGuessMulti(int high)
 		}
 		return result;
 	}
-	unreachable();
 }
 
 fn void! Game.play(Game *game)

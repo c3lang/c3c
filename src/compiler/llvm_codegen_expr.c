@@ -5917,6 +5917,10 @@ static inline void llvm_emit_macro_block(GenContext *context, BEValue *be_value,
 		llvm_debug_push_lexical_scope(context, astptr(expr->macro_block.first_stmt)->span);
 	}
 	llvm_emit_return_block(context, be_value, expr->type, expr->macro_block.first_stmt, expr->macro_block.block_exit);
+	if (expr->macro_block.is_noreturn && context->current_block && context->current_block_is_target)
+	{
+		llvm_emit_unreachable(context);
+	}
 	if (llvm_use_debug(context))
 	{
 		llvm_debug_scope_pop(context);
