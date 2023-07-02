@@ -400,14 +400,14 @@ fn Matrix4x4 ortho(Real left, Real right, Real top, Real bottom, Real near, Real
 // fov in radians
 fn Matrix4x4 perspective(Real fov, Real aspect_ratio, Real near, Real far)
 {
-    Real top = (math::sin(fov / 2) / math::cos(fov / 2)) * near;
-    Real right = top * aspect_ratio;
-    Real depth = far - near;
+ 	Real f = (Real)math::tan(math::PI * 0.5 - 0.5 * fov);
+	Real rangeInv = (Real)1.0 / (near - far);
+	
     return Matrix4x4 {
-        1 / right, 0, 0, 0,
-        0, 1 / top, 0, 0,
-        0, 0, -2 / depth, 0,
-        0, 0, -(far + near) / depth, 1,
+        f / aspect_ratio, 0, 0, 0,
+        0, f, 0, 0,
+        0, 0, (near + far) * rangeInv, -1,
+        0, 0, near * far * rangeInv * 2, 0,
     };
 }
 
