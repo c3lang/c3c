@@ -31,16 +31,16 @@ struct PriorityQueue
 	bool max;  // true if max-heap, false if min-heap
 }
 
-fn void PriorityQueue.push(PriorityQueue* pq, Type element)
+fn void PriorityQueue.push(&self, Type element)
 {
-	pq.heap.push(element);
-	usz i = pq.heap.len() - 1;
+	self.heap.push(element);
+	usz i = self.heap.len() - 1;
 	while (i > 0)
 	{
 		usz parent = (i - 1) / 2;
-		if ((pq.max && greater(pq.heap.get(i), pq.heap.get(parent))) || (!pq.max && less(pq.heap.get(i), pq.heap.get(parent))))
+		if ((self.max && greater(self.heap.get(i), self.heap.get(parent))) || (!self.max && less(self.heap.get(i), self.heap.get(parent))))
 		{
-			pq.heap.swap(i, parent);
+			self.heap.swap(i, parent);
 			i = parent;
 			continue;
 		}
@@ -49,75 +49,66 @@ fn void PriorityQueue.push(PriorityQueue* pq, Type element)
 }
 
 /**
-* @require pq != null
+* @require self != null
 */
-fn Type! PriorityQueue.pop(PriorityQueue* pq)
+fn Type! PriorityQueue.pop(&self)
 {
 	usz i = 0;
-	usz len = pq.heap.len() @inline;
+	usz len = self.heap.len() @inline;
 	if (!len) return IteratorResult.NO_MORE_ELEMENT?;
 	usz newCount = len - 1;
-	pq.heap.swap(0, newCount);
+	self.heap.swap(0, newCount);
 	while ((2 * i + 1) < newCount)
 	{
 		usz j = 2 * i + 1;
 		if (((j + 1) < newCount) &&
-			((pq.max && greater(pq.heap.get(j + 1), pq.heap[j]))
-				|| (!pq.max && less(pq.heap.get(j + 1), pq.heap.get(j)))))
+			((self.max && greater(self.heap.get(j + 1), self.heap[j]))
+				|| (!self.max && less(self.heap.get(j + 1), self.heap.get(j)))))
 		{
 			j++;
 		}
-		if ((pq.max && less(pq.heap.get(i), pq.heap.get(j))) || (!pq.max && greater(pq.heap.get(i), pq.heap.get(j))))
+		if ((self.max && less(self.heap.get(i), self.heap.get(j))) || (!self.max && greater(self.heap.get(i), self.heap.get(j))))
 		{
-			pq.heap.swap(i, j);
+			self.heap.swap(i, j);
 			i = j;
 			continue;
 		}
 		break;
 	}
 
-	return pq.heap.pop();
+	return self.heap.pop();
+}
+
+fn Type! PriorityQueue.peek(&self)
+{
+	if (!self.len()) return IteratorResult.NO_MORE_ELEMENT?;
+	return self.heap.get(0);
+}
+
+fn void PriorityQueue.free(&self)
+{
+	self.heap.free();
+}
+
+fn usz PriorityQueue.len(&self) @operator(len)
+{
+	return self.heap.len();
 }
 
 /**
- * @require pq != null
+ * @require index < self.len()
  */
-fn Type! PriorityQueue.peek(PriorityQueue* pq)
+fn Type PriorityQueue.peek_at(&self, usz index) @operator([])
 {
-	if (!pq.len()) return IteratorResult.NO_MORE_ELEMENT?;
-	return pq.heap.get(0);
+	return self.heap[index];
 }
 
-/**
- * @require pq != null
- */
-fn void PriorityQueue.free(PriorityQueue* pq)
+fn void! PriorityQueue.to_format(&self, Formatter* formatter) @dynamic
 {
-	pq.heap.free();
+	return self.heap.to_format(formatter);
 }
 
-/**
- * @require pq != null
- */
-fn usz PriorityQueue.len(PriorityQueue* pq) @operator(len)
+fn String PriorityQueue.to_string(&self, Allocator* using = mem::heap()) @dynamic
 {
-	return pq.heap.len();
-}
-
-/**
- * @require pq != null, index < pq.len()
- */
-fn Type PriorityQueue.peek_at(PriorityQueue* pq, usz index) @operator([])
-{
-	return pq.heap[index];
-}
-
-fn void! PriorityQueue.to_format(PriorityQueue* list, Formatter* formatter) @dynamic
-{
-	return list.heap.to_format(formatter);
-}
-
-fn String PriorityQueue.to_string(PriorityQueue* list, Allocator* using = mem::heap()) @dynamic
-{
-	return list.heap.to_string(using);
+	return self.heap.to_string(using);
 }

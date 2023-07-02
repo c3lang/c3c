@@ -27,21 +27,21 @@ struct Object
 }
 
 
-fn void! Object.to_format(Object* o, Formatter* formatter) @dynamic
+fn void! Object.to_format(&self, Formatter* formatter) @dynamic
 {
-	switch (o.type)
+	switch (self.type)
 	{
 		case void:
 			formatter.printf("{}")!;
 		case void*:
 			formatter.printf("null")!;
 		case String:
-			formatter.printf(`"%s"`, o.s)!;
+			formatter.printf(`"%s"`, self.s)!;
 		case bool:
-			formatter.printf(o.b ? "true" : "false")!;
+			formatter.printf(self.b ? "true" : "false")!;
 		case ObjectInternalList:
 			formatter.printf("[")!;
-			foreach (i, ol : o.array)
+			foreach (i, ol : self.array)
 			{
 				formatter.printf(i == 0 ? " " : ", ")!;
 				ol.to_format(formatter)!;
@@ -51,25 +51,25 @@ fn void! Object.to_format(Object* o, Formatter* formatter) @dynamic
 			formatter.printf("{")!;
 			@pool()
 			{
-				foreach (i, key : o.map.key_tlist())
+				foreach (i, key : self.map.key_tlist())
 				{
 					formatter.printf(i == 0 ? " " : ", ")!;
 					formatter.printf(`"%s": `, key)!;
-					o.map.get(key).to_format(formatter)!;
+					self.map.get(key).to_format(formatter)!;
 				}
 			};
 			formatter.printf(" }")!;
 		default:
-			switch (o.type.kindof)
+			switch (self.type.kindof)
 			{
 				case SIGNED_INT:
-					formatter.printf("%d", o.i)!;
+					formatter.printf("%d", self.i)!;
 				case UNSIGNED_INT:
-					formatter.printf("%d", (uint128)o.i)!;
+					formatter.printf("%d", (uint128)self.i)!;
 				case FLOAT:
-					formatter.printf("%d", o.f)!;
+					formatter.printf("%d", self.f)!;
 				case ENUM:
-					formatter.printf("%d", o.i)!;
+					formatter.printf("%d", self.i)!;
 				default:
 					formatter.printf("<>")!;
 			}
@@ -122,87 +122,84 @@ fn Object* new_bool(bool b)
 	return b ? &TRUE_OBJECT : &FALSE_OBJECT;
 }
 
-/**
- * @param [&inout] o
- **/
-fn void Object.free(Object* o)
+fn void Object.free(&self)
 {
-	switch (o.type)
+	switch (self.type)
 	{
 		case void:
 			break;
 		case String:
-			free(o.s, .using = o.allocator);
+			free(self.s, .using = self.allocator);
 		case ObjectInternalList:
-			foreach (ol : o.array)
+			foreach (ol : self.array)
 			{
 				ol.free();
 			}
-			o.array.free();
+			self.array.free();
 		case ObjectInternalMap:
 			@pool()
 			{
-				foreach (key : o.map.key_tlist())
+				foreach (key : self.map.key_tlist())
 				{
-					o.map.get(key).free();
-					free(key, .using = o.allocator);
+					self.map.get(key).free();
+					free(key, .using = self.allocator);
 				}
-				o.map.free();
+				self.map.free();
 			};
 		default:
 			break;
 	}
-	if (o.allocator) free(o, .using = o.allocator);
+	if (self.allocator) free(self, .using = self.allocator);
 }
 
-fn bool Object.is_null(Object* this) @inline => this == &NULL_OBJECT;
-fn bool Object.is_empty(Object* this) @inline => this.type == void.typeid;
-fn bool Object.is_map(Object* this) @inline => this.type == ObjectInternalMap.typeid;
-fn bool Object.is_array(Object* this) @inline => this.type == ObjectInternalList.typeid;
-fn bool Object.is_bool(Object* this) @inline => this.type == bool.typeid;
-fn bool Object.is_string(Object* this) @inline => this.type == String.typeid;
-fn bool Object.is_float(Object* this) @inline => this.type == double.typeid;
-fn bool Object.is_int(Object* this) @inline => this.type == int128.typeid;
-fn bool Object.is_keyable(Object* this) => this.is_empty() || this.is_map();
-fn bool Object.is_indexable(Object* this) => this.is_empty() || this.is_array();
+fn bool Object.is_null(&self) @inline => self == &NULL_OBJECT;
+fn bool Object.is_empty(&self) @inline => self.type == void.typeid;
+fn bool Object.is_map(&self) @inline => self.type == ObjectInternalMap.typeid;
+fn bool Object.is_array(&self) @inline => self.type == ObjectInternalList.typeid;
+fn bool Object.is_bool(&self) @inline => self.type == bool.typeid;
+fn bool Object.is_string(&self) @inline => self.type == String.typeid;
+fn bool Object.is_float(&self) @inline => self.type == double.typeid;
+fn bool Object.is_int(&self) @inline => self.type == int128.typeid;
+fn bool Object.is_keyable(&self) => self.is_empty() || self.is_map();
+fn bool Object.is_indexable(&self) => self.is_empty() || self.is_array();
 
 /**
- * @require o.is_keyable()
+ * @require self.is_keyable()
  **/
-fn void Object.init_map_if_needed(Object* o) @private
+fn void Object.init_map_if_needed(&self) @private
 {
-	if (o.is_empty())
+	if (self.is_empty())
 	{
-		o.type = ObjectInternalMap.typeid;
-		o.map.init(.using = o.allocator);
+		self.type = ObjectInternalMap.typeid;
+		self.map.init(.using = self.allocator);
 	}
 }
 
 /**
- * @require o.is_indexable()
+ * @require self.is_indexable()
  **/
-fn void Object.init_array_if_needed(Object* o) @private
+fn void Object.init_array_if_needed(&self) @private
 {
-	if (o.is_empty())
+	if (self.is_empty())
 	{
-		o.type = ObjectInternalList.typeid;
-		o.array.init(.using = o.allocator);
+		self.type = ObjectInternalList.typeid;
+		self.array.init(.using = self.allocator);
 	}
 }
 
 /**
- * @require o.is_keyable()
+ * @require self.is_keyable()
  **/
-fn void Object.set_object(Object* o, String key, Object* new_object) @private
+fn void Object.set_object(&self, String key, Object* new_object) @private
 {
-	o.init_map_if_needed();
-	ObjectInternalMapEntry*! entry = o.map.get_entry(key);
+	self.init_map_if_needed();
+	ObjectInternalMapEntry*! entry = self.map.get_entry(key);
 	defer
 	{
-		(void)free(entry.key, .using = o.allocator);
+		(void)free(entry.key, .using = self.allocator);
 		entry.value.free();
 	}
-	o.map.set(key.copy(o.map.allocator), new_object);
+	self.map.set(key.copy(self.map.allocator), new_object);
 }
 
 macro Object* object_from_value(value) @private
@@ -231,76 +228,76 @@ macro Object* object_from_value(value) @private
 
 }
 
-macro Object* Object.set(Object* o, String key, value)
+macro Object* Object.set(&self, String key, value)
 {
 	Object* val = object_from_value(value);
-	o.set_object(key, val);
+	self.set_object(key, val);
 	return val;
 }
 
 /**
- * @require o.is_indexable()
+ * @require self.is_indexable()
  **/
-macro Object* Object.set_at(Object* o, usz index, String key, value)
+macro Object* Object.set_at(&self, usz index, String key, value)
 {
 	Object* val = object_from_value(value);
-	o.set_object_at(key, index, val);
+	self.set_object_at(key, index, val);
 	return val;
 }
 
 /**
- * @require o.is_indexable()
+ * @require self.is_indexable()
  * @ensure return != null
  **/
-macro Object* Object.append(Object* o, value)
+macro Object* Object.append(&self, value)
 {
 	Object* val = object_from_value(value);
-	o.append_object(val);
+	self.append_object(val);
 	return val;
 }
 
 /**
- * @require o.is_keyable()
+ * @require self.is_keyable()
  **/
-fn Object*! Object.get(Object* o, String key) => o.is_empty() ? SearchResult.MISSING? : o.map.get(key);
+fn Object*! Object.get(&self, String key) => self.is_empty() ? SearchResult.MISSING? : self.map.get(key);
 
 
-fn bool Object.has_key(Object* o, String key) => o.is_map() && o.map.has_key(key);
+fn bool Object.has_key(&self, String key) => self.is_map() && self.map.has_key(key);
 
 /**
- * @require o.is_indexable()
+ * @require self.is_indexable()
  **/
-fn Object* Object.get_at(Object* o, usz index)
+fn Object* Object.get_at(&self, usz index)
 {
-	return o.array.get(index);
+	return self.array.get(index);
 }
 
 /**
- * @require o.is_indexable()
+ * @require self.is_indexable()
  **/
-fn void Object.append_object(Object* o, Object* to_append)
+fn void Object.append_object(&self, Object* to_append)
 {
-	o.init_array_if_needed();
-	o.array.append(to_append);
+	self.init_array_if_needed();
+	self.array.append(to_append);
 }
 
 /**
- * @require o.is_indexable()
+ * @require self.is_indexable()
  **/
-fn void Object.set_object_at(Object* o, usz index, Object* to_set)
+fn void Object.set_object_at(&self, usz index, Object* to_set)
 {
-	o.init_array_if_needed();
-	while (o.array.len() < index)
+	self.init_array_if_needed();
+	while (self.array.len() < index)
 	{
-		o.array.append(&NULL_OBJECT);
+		self.array.append(&NULL_OBJECT);
 	}
-	if (o.array.len() == index)
+	if (self.array.len() == index)
 	{
-		o.array.append(to_set);
+		self.array.append(to_set);
 		return;
 	}
-	o.array.get(index).free();
-	o.array.set_at(index, to_set);
+	self.array.get(index).free();
+	self.array.set_at(index, to_set);
 }
 
 macro get_integer_value(Object* value, $Type)
@@ -322,112 +319,112 @@ macro get_integer_value(Object* value, $Type)
 }
 
 /**
- * @require o.is_indexable()
+ * @require self.is_indexable()
  **/
-macro Object.get_integer_at(Object* o, $Type, usz index) @private
+macro Object.get_integer_at(&self, $Type, usz index) @private
 {
-	return get_integer_value(o.get_at(index), $Type);
+	return get_integer_value(self.get_at(index), $Type);
 }
 
 /**
- * @require o.is_keyable()
+ * @require self.is_keyable()
  **/
-macro Object.get_integer(Object* o, $Type, String key) @private
+macro Object.get_integer(&self, $Type, String key) @private
 {
-	return get_integer_value(o.get(key), $Type);
+	return get_integer_value(self.get(key), $Type);
 }
 
-fn ichar! Object.get_ichar(Object* o, String key) => o.get_integer(ichar, key);
-fn short! Object.get_short(Object* o, String key) => o.get_integer(short, key);
-fn int! Object.get_int(Object* o, String key) => o.get_integer(int, key);
-fn long! Object.get_long(Object* o, String key) => o.get_integer(long, key);
-fn int128! Object.get_int128(Object* o, String key) => o.get_integer(int128, key);
+fn ichar! Object.get_ichar(&self, String key) => self.get_integer(ichar, key);
+fn short! Object.get_short(&self, String key) => self.get_integer(short, key);
+fn int! Object.get_int(&self, String key) => self.get_integer(int, key);
+fn long! Object.get_long(&self, String key) => self.get_integer(long, key);
+fn int128! Object.get_int128(&self, String key) => self.get_integer(int128, key);
 
-fn ichar! Object.get_ichar_at(Object* o, usz index) => o.get_integer_at(ichar, index);
-fn short! Object.get_short_at(Object* o, usz index) => o.get_integer_at(short, index);
-fn int! Object.get_int_at(Object* o, usz index) => o.get_integer_at(int, index);
-fn long! Object.get_long_at(Object* o, usz index) => o.get_integer_at(long, index);
-fn int128! Object.get_int128_at(Object* o, usz index) => o.get_integer_at(int128, index);
+fn ichar! Object.get_ichar_at(&self, usz index) => self.get_integer_at(ichar, index);
+fn short! Object.get_short_at(&self, usz index) => self.get_integer_at(short, index);
+fn int! Object.get_int_at(&self, usz index) => self.get_integer_at(int, index);
+fn long! Object.get_long_at(&self, usz index) => self.get_integer_at(long, index);
+fn int128! Object.get_int128_at(&self, usz index) => self.get_integer_at(int128, index);
 
-fn char! Object.get_char(Object* o, String key) => o.get_integer(ichar, key);
-fn short! Object.get_ushort(Object* o, String key) => o.get_integer(ushort, key);
-fn uint! Object.get_uint(Object* o, String key) => o.get_integer(uint, key);
-fn ulong! Object.get_ulong(Object* o, String key) => o.get_integer(ulong, key);
-fn uint128! Object.get_uint128(Object* o, String key) => o.get_integer(uint128, key);
+fn char! Object.get_char(&self, String key) => self.get_integer(ichar, key);
+fn short! Object.get_ushort(&self, String key) => self.get_integer(ushort, key);
+fn uint! Object.get_uint(&self, String key) => self.get_integer(uint, key);
+fn ulong! Object.get_ulong(&self, String key) => self.get_integer(ulong, key);
+fn uint128! Object.get_uint128(&self, String key) => self.get_integer(uint128, key);
 
-fn char! Object.get_char_at(Object* o, usz index) => o.get_integer_at(char, index);
-fn ushort! Object.get_ushort_at(Object* o, usz index) => o.get_integer_at(ushort, index);
-fn uint! Object.get_uint_at(Object* o, usz index) => o.get_integer_at(uint, index);
-fn ulong! Object.get_ulong_at(Object* o, usz index) => o.get_integer_at(ulong, index);
-fn uint128! Object.get_uint128_at(Object* o, usz index) => o.get_integer_at(uint128, index);
+fn char! Object.get_char_at(&self, usz index) => self.get_integer_at(char, index);
+fn ushort! Object.get_ushort_at(&self, usz index) => self.get_integer_at(ushort, index);
+fn uint! Object.get_uint_at(&self, usz index) => self.get_integer_at(uint, index);
+fn ulong! Object.get_ulong_at(&self, usz index) => self.get_integer_at(ulong, index);
+fn uint128! Object.get_uint128_at(&self, usz index) => self.get_integer_at(uint128, index);
 
 /**
- * @require o.is_keyable()
+ * @require self.is_keyable()
  **/
-fn String! Object.get_string(Object* o, String key)
+fn String! Object.get_string(&self, String key)
 {
-	Object* value = o.get(key)!;
+	Object* value = self.get(key)!;
 	assert(value.is_string());
 	return value.s;
 }
 
 /**
- * @require o.is_indexable()
+ * @require self.is_indexable()
  **/
-fn String Object.get_string_at(Object* o, usz index)
+fn String Object.get_string_at(&self, usz index)
 {
-	Object* value = o.get_at(index);
+	Object* value = self.get_at(index);
 	assert(value.is_string());
 	return value.s;
 }
 
 /**
- * @require o.is_keyable()
+ * @require self.is_keyable()
  **/
-macro String! Object.get_enum(Object* o, $EnumType, String key)
+macro String! Object.get_enum(&self, $EnumType, String key)
 {
-	Object value = o.get(key)!;
+	Object value = self.get(key)!;
 	assert($EnumType.typeid == value.type);
 	return ($EnumType)value.i;
 }
 
 /**
- * @require o.is_indexable()
+ * @require self.is_indexable()
  **/
-macro String Object.get_enum_at(Object* o, $EnumType, usz index)
+macro String Object.get_enum_at(&self, $EnumType, usz index)
 {
-	Object value = o.get_at(index);
+	Object value = self.get_at(index);
 	assert($EnumType.typeid == value.type);
 	return ($EnumType)value.i;
 }
 
 /**
- * @require o.is_keyable()
+ * @require self.is_keyable()
  **/
-fn bool! Object.get_bool(Object* o, String key)
+fn bool! Object.get_bool(&self, String key)
 {
-	Object* value = o.get(key)!;
+	Object* value = self.get(key)!;
 	assert(value.is_bool());
 	return value.b;
 }
 
 
 /**
- * @require o.is_indexable()
+ * @require self.is_indexable()
  **/
-fn bool Object.get_bool_at(Object* o, usz index)
+fn bool Object.get_bool_at(&self, usz index)
 {
-	Object* value = o.get_at(index);
+	Object* value = self.get_at(index);
 	assert(value.is_bool());
 	return value.b;
 }
 
 /**
- * @require o.is_keyable()
+ * @require self.is_keyable()
  **/
-fn double! Object.get_float(Object* o, String key)
+fn double! Object.get_float(&self, String key)
 {
-	Object* value = o.get(key)!;
+	Object* value = self.get(key)!;
 	switch (value.type.kindof)
 	{
 		case SIGNED_INT:
@@ -442,11 +439,11 @@ fn double! Object.get_float(Object* o, String key)
 }
 
 /**
- * @require o.is_indexable()
+ * @require self.is_indexable()
  **/
-fn double Object.get_float_at(Object* o, usz index)
+fn double Object.get_float_at(&self, usz index)
 {
-	Object* value = o.get_at(index);
+	Object* value = self.get_at(index);
 	switch (value.type.kindof)
 	{
 		case SIGNED_INT:
@@ -460,11 +457,11 @@ fn double Object.get_float_at(Object* o, usz index)
 	}
 }
 
-fn Object* Object.get_or_create_obj(Object* o, String key)
+fn Object* Object.get_or_create_obj(&self, String key)
 {
-	if (try obj = o.get(key) && !obj.is_null()) return obj;
+	if (try obj = self.get(key) && !obj.is_null()) return obj;
 	Object* container = new_obj();
-	o.set(key, container);
+	self.set(key, container);
 	return container;
 }
 

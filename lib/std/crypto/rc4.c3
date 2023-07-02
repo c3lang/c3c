@@ -12,36 +12,34 @@ struct Rc4
 /**
  * Initialize the RC4 state.
  *
- * @param [inout] this "The RC4 state"
  * @param [in] key "The key to use"
  * @require key.len > 0 "The key must be at least 1 byte long"
  **/
-fn void Rc4.init(Rc4* this, char[] key)
+fn void Rc4.init(&self, char[] key)
 {
 	// Init the state matrix
-	foreach (char i, &c : this.state) *c = i;
+	foreach (char i, &c : self.state) *c = i;
 	for (int i = 0, int j = 0; i < 256; i++)
 	{
-		j = (j + this.state[i] + key[i % key.len]) & 0xFF;
-		@swap(this.state[i], this.state[j]);
+		j = (j + self.state[i] + key[i % key.len]) & 0xFF;
+		@swap(self.state[i], self.state[j]);
 	}
-	this.i = 0;
-	this.j = 0;
+	self.i = 0;
+	self.j = 0;
 }
 
 /**
  * Encrypt or decrypt a sequence of bytes.
  *
- * @param [inout] this "The RC4 State"
  * @param [in] in "The input"
  * @param [out] out "The output"
  * @require in.len <= out.len "Output would overflow"
  **/
-fn void Rc4.crypt(Rc4* this, char[] in, char[] out)
+fn void Rc4.crypt(&self, char[] in, char[] out)
 {
-	uint i = this.i;
-	uint j = this.j;
-	char* state = &this.state;
+	uint i = self.i;
+	uint j = self.j;
+	char* state = &self.state;
 	isz len = in.len;
 	foreach (idx, c : in)
 	{
@@ -50,16 +48,16 @@ fn void Rc4.crypt(Rc4* this, char[] in, char[] out)
 		@swap(state[i], state[j]);
 		out[idx] = in[idx] ^ state[(state[i] + state[j]) & 0xFF];
 	}
-	this.i = i;
-	this.j = j;
+	self.i = i;
+	self.j = j;
 }
 
 /**
  * Clear the rc4 state.
  *
- * @param [out] this "The RC4 State"
+ * @param [&out] self "The RC4 State"
  **/
-fn void Rc4.destroy(Rc4* this)
+fn void Rc4.destroy(&self)
 {
-	*this = {};
+	*self = {};
 }

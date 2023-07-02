@@ -12,32 +12,32 @@ struct Adler32
     uint b;
 }
 
-fn void Adler32.init(Adler32 *this)
+fn void Adler32.init(&self)
 {
-    *this = { 1, 0 };
+    *self = { 1, 0 };
 }
 
-fn void Adler32.updatec(Adler32* this, char c)
+fn void Adler32.updatec(&self, char c)
 {
-    this.a = (this.a + c) % ADLER_CONST;
-    this.b = (this.b + this.a) % ADLER_CONST;
+    self.a = (self.a + c) % ADLER_CONST;
+    self.b = (self.b + self.a) % ADLER_CONST;
 }
 
-fn void Adler32.update(Adler32* this, char[] data)
+fn void Adler32.update(&self, char[] data)
 {
-    uint a = this.a;
-    uint b = this.b;
+    uint a = self.a;
+    uint b = self.b;
     foreach (char x : data)
     {
         a = (a + x) % ADLER_CONST;
         b = (b + a) % ADLER_CONST;
     }
-    *this = { a, b };
+    *self = { a, b };
 }
 
-fn uint Adler32.final(Adler32* this)
+fn uint Adler32.final(&self)
 {
-    return (this.b << 16) | this.a;
+    return (self.b << 16) | self.a;
 }
 
 fn uint encode(char[] data)

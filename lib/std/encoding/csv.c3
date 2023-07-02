@@ -7,43 +7,43 @@ struct CsvReader
 	String separator;
 }
 
-fn void CsvReader.init_file(CsvReader* csv, File* file, String separator = ",")
+fn void CsvReader.init_file(&self, File* file, String separator = ",")
 {
-	csv.stream = file.as_stream();
-	csv.separator = separator;
+	self.stream = file.as_stream();
+	self.separator = separator;
 }
 
-fn void CsvReader.init(CsvReader* csv, Stream stream, String separator = ",")
+fn void CsvReader.init(&self, Stream stream, String separator = ",")
 {
-	csv.stream = stream;
-	csv.separator = separator;
+	self.stream = stream;
+	self.separator = separator;
 }
 
-fn String[]! CsvReader.read_row(CsvReader csv, Allocator* using = mem::heap())
+fn String[]! CsvReader.read_row(self, Allocator* using = mem::heap())
 {
 	@stack_mem(512; Allocator* mem)
 	{
-		return csv.stream.readline(mem).split(csv.separator, .using = using);
+		return self.stream.readline(mem).split(self.separator, .using = using);
 	};
 }
 
-fn String[]! CsvReader.tread_row(CsvReader csv)
+fn String[]! CsvReader.tread_row(self)
 {
-	return csv.read_row(mem::temp()) @inline;
+	return self.read_row(mem::temp()) @inline;
 }
 
-fn void! CsvReader.skip_row(CsvReader csv) @maydiscard
+fn void! CsvReader.skip_row(self) @maydiscard
 {
 	@pool()
 	{
-		csv.stream.readline(mem::temp())!;
+		self.stream.readline(mem::temp())!;
 	};
 }
 
-macro CsvReader.@each_row(CsvReader csv, int rows = int.max; @body(String[] row))
+macro CsvReader.@each_row(self, int rows = int.max; @body(String[] row))
 {
-	Stream stream = csv.stream;
-	String sep = csv.separator;
+	Stream stream = self.stream;
+	String sep = self.separator;
 	while (rows--)
 	{
 		@stack_mem(512; Allocator* mem)

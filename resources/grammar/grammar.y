@@ -1104,7 +1104,7 @@ opt_distinct_inline
 	;
 
 generic_parameters
-	: bit_expr
+	: additive_expr
 	| type
 	| generic_parameters ',' bit_expr
 	| generic_parameters ',' type

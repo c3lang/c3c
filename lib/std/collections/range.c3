@@ -10,28 +10,28 @@ struct Range
 	Type end;
 }
 
-fn usz Range.len(Range* range) @operator(len)
+fn usz Range.len(&self) @operator(len)
 {
-	if (range.end < range.start) return 0;
-	return (usz)(range.end - range.start + (Type)1);
+	if (self.end < self.start) return 0;
+	return (usz)(self.end - self.start + (Type)1);
 }
 
 /**
- * @require index < range.len() : "Can't index into an empty range"
+ * @require index < self.len() : "Can't index into an empty range"
  **/
-fn Type Range.get(Range* range, usz index) @operator([])
+fn Type Range.get(&self, usz index) @operator([])
 {
-    return range.start + (Type)index;
+    return self.start + (Type)index;
 }
 
-fn String Range.to_string(Range* list, Allocator* using = mem::heap()) @dynamic
+fn String Range.to_string(&self, Allocator* using = mem::heap()) @dynamic
 {
-	return string::printf("[%s..%s]", list.start, list.end);
+	return string::printf("[%s..%s]", self.start, self.end);
 }
 
-fn void! Range.to_format(Range* list, Formatter* formatter) @dynamic
+fn void! Range.to_format(&self, Formatter* formatter) @dynamic
 {
-	formatter.printf("[%s..%s]", list.start, list.end)!;
+	formatter.printf("[%s..%s]", self.start, self.end)!;
 }
 
 struct ExclusiveRange
@@ -40,26 +40,26 @@ struct ExclusiveRange
 	Type end;
 }
 
-fn usz ExclusiveRange.len(ExclusiveRange* range) @operator(len)
+fn usz ExclusiveRange.len(&self) @operator(len)
 {
-	if (range.end < range.start) return 0;
-	return (usz)(range.end - range.start);
+	if (self.end < self.start) return 0;
+	return (usz)(self.end - self.start);
 }
 
-fn void! ExclusiveRange.to_format(ExclusiveRange* list, Formatter* formatter) @dynamic
+fn void! ExclusiveRange.to_format(&self, Formatter* formatter) @dynamic
 {
-	formatter.printf("[%s..<%s]", list.start, list.end)!;
+	formatter.printf("[%s..<%s]", self.start, self.end)!;
 }
 
-fn String ExclusiveRange.to_string(ExclusiveRange* list, Allocator* using = mem::heap()) @dynamic
+fn String ExclusiveRange.to_string(&self, Allocator* using = mem::heap()) @dynamic
 {
-	return string::printf("[%s..<%s]", list.start, list.end);
+	return string::printf("[%s..<%s]", self.start, self.end);
 }
 
 /**
- * @require index < range.len() : "Can't index into an empty range"
+ * @require index < self.len() : "Can't index into an empty range"
  **/
-fn Type ExclusiveRange.get(ExclusiveRange* range, usz index) @operator([])
+fn Type ExclusiveRange.get(&self, usz index) @operator([])
 {
-    return range.start + (Type)index;
+    return self.start + (Type)index;
 }
