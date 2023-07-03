@@ -5230,9 +5230,9 @@ static bool sema_expr_analyse_shift(SemaContext *context, Expr *expr, Expr *left
 	{
 		// 4a. Make sure the value does not exceed the bitsize of
 		//     the left hand side. We ignore this check for lhs being a constant.
-		Type *left_type_no_fail = type_no_optional(left->type)->canonical;
-		assert(type_kind_is_any_integer(left_type_no_fail->type_kind));
-		if (int_ucomp(right->const_expr.ixx, left_type_no_fail->builtin.bitsize, BINARYOP_GE))
+		Type *left_type_flat = type_flatten(left->type);
+		assert(type_kind_is_any_integer(left_type_flat->type_kind));
+		if (int_ucomp(right->const_expr.ixx, left_type_flat->builtin.bitsize, BINARYOP_GE))
 		{
 			SEMA_ERROR(right, "The shift is not less than the bitsize of %s.", type_quoted_error_string(type_no_optional(left->type)));
 			return false;
