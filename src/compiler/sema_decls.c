@@ -2900,7 +2900,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 	{
 		scratch_buffer_clear();
 		scratch_buffer_append(context->call_env.kind == CALL_ENV_FUNCTION ? context->call_env.current_function->name : ".global");
-		scratch_buffer_append_char('$');
+		scratch_buffer_append_char('.');
 		scratch_buffer_append(decl->name);
 		decl->extname = scratch_buffer_copy();
 	}

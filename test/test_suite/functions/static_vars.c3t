@@ -10,14 +10,14 @@ fn int test()
 
 /* #expect: foo.ll
 
-@"test$x" = internal unnamed_addr global i32 1, align 4
-@"test$y" = internal thread_local(localdynamic) unnamed_addr global i32 2, align 4
+@test.x = internal unnamed_addr global i32 1, align 4
+@test.y = internal thread_local(localdynamic) unnamed_addr global i32 2, align 4
 
 define i32 @foo.test() #0 {
 entry:
-  %0 = load i32, ptr @"test$x", align 4
+  %0 = load i32, ptr @test.x, align 4
   %add = add i32 %0, 1
-  store i32 %add, ptr @"test$x", align 4
-  %1 = load i32, ptr @"test$x", align 4
+  store i32 %add, ptr @test.x, align 4
+  %1 = load i32, ptr @test.x, align 4
   ret i32 %1
 }

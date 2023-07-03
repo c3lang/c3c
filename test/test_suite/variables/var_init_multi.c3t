@@ -11,10 +11,10 @@ fn int main()
 
 /* #expect: test.ll
 
-@"main$sx" = internal unnamed_addr global i32 0, align 4
-@"main$sy" = internal unnamed_addr global i32 0, align 4
-@"main$tx" = internal thread_local(localdynamic) unnamed_addr global i32 0, align 4
-@"main$ty" = internal thread_local(localdynamic) unnamed_addr global i32 0, align 4
+@main.sx = internal unnamed_addr global i32 0, align 4
+@main.sy = internal unnamed_addr global i32 0, align 4
+@main.tx = internal thread_local(localdynamic) unnamed_addr global i32 0, align 4
+@main.ty = internal thread_local(localdynamic) unnamed_addr global i32 0, align 4
 
 entry:
   %x = alloca i32, align 4

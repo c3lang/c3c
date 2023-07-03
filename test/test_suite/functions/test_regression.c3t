@@ -247,10 +247,9 @@ fn Type getValue(Blob blob)
 @"$ct.test.Blob" = linkonce global %.introspect { i8 10, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @"$ct.test.Foor" = linkonce global %.introspect { i8 11, ptr null, i64 16, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @"$ct.test.Foo2" = linkonce global %.introspect { i8 10, ptr null, i64 4, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
-
 @"$ct.int" = linkonce global %.introspect { i8 2, ptr null, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
 @"$ct.test.MyEnum" = linkonce global { i8, ptr, i64, i64, i64, [3 x %"char[]"] } { i8 8, ptr null, i64 4, i64 ptrtoint (ptr @"$ct.int" to i64), i64 3, [3 x %"char[]"] [%"char[]" { ptr @.enum.0, i64 4 }, %"char[]" { ptr @.enum.1, i64 5 }, %"char[]" { ptr @.enum.2, i64 3 }] }, align 8
-@"test_static$x" = internal unnamed_addr global i32 1, align 4
+@test_static.x = internal unnamed_addr global i32 1, align 4
 
 define void @test.Foo2.printme(ptr %0) #0 {
 entry:
@@ -284,12 +283,12 @@ entry:
 ; Function Attrs: nounwind
 define i32 @test.test_static() #0 {
 entry:
-  %0 = load i32, ptr @"test_static$x", align 4
+  %0 = load i32, ptr @test_static.x, align 4
   %add = add i32 %0, 1
-  store i32 %add, ptr @"test_static$x", align 4
-  %1 = load i32, ptr @"test_static$x", align 4
+  store i32 %add, ptr @test_static.x, align 4
+  %1 = load i32, ptr @test_static.x, align 4
   %2 = call i32 (ptr, ...) @printf(ptr @.str.1, i32 %1)
-  %3 = load i32, ptr @"test_static$x", align 4
+  %3 = load i32, ptr @test_static.x, align 4
   ret i32 %3
 }
 

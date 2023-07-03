@@ -30,7 +30,7 @@ void llvm_emit_compound_stmt(GenContext *c, Ast *ast)
 void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 {
 	// 1. Get the declaration and the LLVM type.
-	Type *var_type = type_lowering(type_no_optional(decl->type));
+	Type *var_type = type_lowering(decl->type);
 	LLVMTypeRef alloc_type = llvm_get_type(c, var_type);
 
 	// 2. In the case we have a static variable,
@@ -45,12 +45,12 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 		}
 		void *builder = c->builder;
 		c->builder = c->global_builder;
-		decl->backend_ref = llvm_add_global(c, "tempglobal", var_type, decl->alignment);
+		decl->backend_ref = llvm_add_global(c, "temp", var_type, decl->alignment);
 		if (IS_OPTIONAL(decl))
 		{
 			scratch_buffer_clear();
-			scratch_buffer_append(decl->extname);
-			scratch_buffer_append("$f");
+			scratch_buffer_append(decl_get_extname(decl));
+			scratch_buffer_append(".f");
 			decl->var.optional_ref = llvm_add_global(c, scratch_buffer_to_string(), type_anyfault, 0);
 		}
 		llvm_emit_global_variable_init(c, decl);

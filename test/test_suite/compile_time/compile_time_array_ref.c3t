@@ -14,5 +14,5 @@ fn void test()
 
 @foo.stack = local_unnamed_addr global [8192 x i8] zeroinitializer, align 16
 @foo.x = local_unnamed_addr global ptr getelementptr (i8, ptr @foo.stack, i64 1000), align 8
-@"test$y" = internal unnamed_addr global [2 x i8] zeroinitializer, align 1
-@"test$z" = internal unnamed_addr global ptr getelementptr inbounds ([2 x i8], ptr @"test$y", i64 0, i64 1), align 8
+@test.y = internal unnamed_addr global [2 x i8] zeroinitializer, align 1
+@test.z = internal unnamed_addr global ptr getelementptr inbounds ([2 x i8], ptr @test.y, i64 0, i64 1), align 8

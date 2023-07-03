@@ -486,8 +486,11 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	}
 
 	decl->backend_ref = global_ref;
-	LLVMReplaceAllUsesWith(old, global_ref);
-	LLVMDeleteGlobal(old);
+	if (old)
+	{
+		LLVMReplaceAllUsesWith(old, global_ref);
+		LLVMDeleteGlobal(old);
+	}
 
 	// Should we set linkage here?
 	if (llvm_use_debug(c))
