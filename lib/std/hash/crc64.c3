@@ -8,29 +8,29 @@ struct Crc64
     ulong result;
 }
 
-fn void Crc64.init(&this, uint seed = 0)
+fn void Crc64.init(&self, uint seed = 0)
 {
-    this.result = seed;
+    self.result = seed;
 }
 
-fn void Crc64.updatec(&this, char c)
+fn void Crc64.updatec(&self, char c)
 {
-    this.result = (this.result << 8) ^ CRC64_TABLE[(char)((this.result >> 56) ^ c)];
+    self.result = (self.result << 8) ^ CRC64_TABLE[(char)((self.result >> 56) ^ c)];
 }
 
-fn void Crc64.update(&this, char[] data)
+fn void Crc64.update(&self, char[] data)
 {
-    ulong result = this.result;
+    ulong result = self.result;
     foreach (char x : data)
     {
         result = (result << 8) ^ CRC64_TABLE[(char)((result >> 56) ^ x)];
     }
-    this.result = result;
+    self.result = result;
 }
 
-fn ulong Crc64.final(&this)
+fn ulong Crc64.final(&self)
 {
-    return this.result;
+    return self.result;
 }
 
 fn ulong encode(char[] data)

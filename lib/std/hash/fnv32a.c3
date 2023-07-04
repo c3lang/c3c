@@ -10,24 +10,24 @@ const FNV32A_MUL @private = 0x01000193;
 
 macro void @update(uint &h, char x) @private => h = (h * FNV32A_MUL) ^ x;
 
-fn void Fnv32a.init(&this)
+fn void Fnv32a.init(&self)
 {
-    *this = FNV32A_START;
+    *self = FNV32A_START;
 }
 
-fn void Fnv32a.update(&this, char[] data)
+fn void Fnv32a.update(&self, char[] data)
 {
-	uint h = (uint)*this;
+	uint h = (uint)*self;
 	foreach (char x : data)
     {
         @update(h, x);
     }
-    *this = (Fnv32a)h;
+    *self = (Fnv32a)h;
 }
 
-macro void Fnv32a.update_char(&this, char c)
+macro void Fnv32a.update_char(&self, char c)
 {
-	@update(*this, x);
+	@update(*self, x);
 }
 
 fn uint encode(char[] data)
