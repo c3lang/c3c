@@ -1,16 +1,16 @@
-module binarysearch_test @test;
-import std::sort::binarysearch;
+module sort_test @test;
+import std::sort;
 
-struct SearchTest
+struct BinarySearchTest
 {
     int[] data;
     int x;
     int index;
 }
 
-fn void search()
+fn void binarysearch()
 {
-    SearchTest[] tcases = {
+    BinarySearchTest[] tcases = {
         { {}, 0, 0 },
         { {1, 2, 3}, 1, 0 },
         { {1, 2, 3}, 2, 1 },
@@ -22,28 +22,17 @@ fn void search()
 
     foreach (tc : tcases)
     {
-        usz idx = binarysearch::search(tc.data, tc.x);
+        usz idx = sort::binarysearch(tc.data, tc.x);
         assert(idx == tc.index, "%s: got %d; want %d", tc.data, idx, tc.index);
 
-        usz cmp_idx = binarysearch::cmp_search(tc.data, tc.x, &cmp_int);
+        usz cmp_idx = sort::binarysearch_with(tc.data, tc.x, &sort::cmp_int);
         assert(cmp_idx == tc.index, "%s: got %d; want %d", tc.data, cmp_idx, tc.index);
 
-        usz cmp_idx2 = binarysearch::cmp_search(tc.data, tc.x, &cmp_int2);
+        usz cmp_idx2 = sort::binarysearch_with(tc.data, tc.x, &sort::cmp_int2);
         assert(cmp_idx2 == tc.index, "%s: got %d; want %d", tc.data, cmp_idx2, tc.index);
 
-        usz cmp_idx3 = binarysearch::cmp_search(tc.data, tc.x, fn int(int a, int b) => a - b);
+        usz cmp_idx3 = sort::binarysearch_with(tc.data, tc.x, fn int(int a, int b) => a - b);
         assert(cmp_idx3 == tc.index, "%s: got %d; want %d", tc.data, cmp_idx2, tc.index);
     }
 
 }
-
-module binarysearch_test;
-
-fn int cmp_int(void* x, void* y) {
-    return *(int*)x - *(int*)y;
-}
-
-fn int cmp_int2(int x, int y) {
-    return x - y;
-}
-
