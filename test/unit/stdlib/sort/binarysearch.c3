@@ -27,7 +27,14 @@ fn void search()
 
         usz cmp_idx = binarysearch::cmp_search(tc.data, tc.x, &cmp_int);
         assert(cmp_idx == tc.index, "%s: got %d; want %d", tc.data, cmp_idx, tc.index);
+
+        usz cmp_idx2 = binarysearch::cmp_search(tc.data, tc.x, &cmp_int2);
+        assert(cmp_idx2 == tc.index, "%s: got %d; want %d", tc.data, cmp_idx2, tc.index);
+
+        usz cmp_idx3 = binarysearch::cmp_search(tc.data, tc.x, fn int(int a, int b) => a - b);
+        assert(cmp_idx3 == tc.index, "%s: got %d; want %d", tc.data, cmp_idx2, tc.index);
     }
+
 }
 
 module binarysearch_test;
@@ -35,3 +42,8 @@ module binarysearch_test;
 fn int cmp_int(void* x, void* y) {
     return *(int*)x - *(int*)y;
 }
+
+fn int cmp_int2(int x, int y) {
+    return x - y;
+}
+

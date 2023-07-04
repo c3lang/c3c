@@ -14,10 +14,10 @@ struct Sha1
 	char[64] buffer;
 }
 
-fn void Sha1.init(Sha1* this)
+fn void Sha1.init(&self)
 {
     // SHA1 initialization constants
-    *this = {
+    *self = {
         .state = {
             0x67452301,
             0xEFCDAB89,
@@ -29,55 +29,54 @@ fn void Sha1.init(Sha1* this)
 }
 
 /**
- * @param [&inout] this
  * @param [in] data
  * @require data.len <= uint.max
  **/
-fn void Sha1.update(Sha1* this, char[] data)
+fn void Sha1.update(&self, char[] data)
 {
-	uint j = this.count[0];
+	uint j = self.count[0];
 	uint len = data.len;
-	if ((this.count[0] += len << 3) < j) this.count[1]++;
-	this.count[1] += len >> 29;
+	if ((self.count[0] += len << 3) < j) self.count[1]++;
+	self.count[1] += len >> 29;
 	j = (j >> 3) & 63;
 	uint i;
 	if (j + len > 63)
 	{
 		i = 64 - j;
-		this.buffer[j..] = data[:i];
-		sha1_transform(&this.state, &this.buffer);
+		self.buffer[j..] = data[:i];
+		sha1_transform(&self.state, &self.buffer);
 		for (; i + 63 < len; i += 64)
 		{
-			sha1_transform(&this.state, &data[i]);
+			sha1_transform(&self.state, &data[i]);
 		}
 		j = 0;
 	}
-	this.buffer[j:len - i] = data[i..];
+	self.buffer[j:len - i] = data[i..];
 }
 
 
-fn char[20] Sha1.final(Sha1* this)
+fn char[20] Sha1.final(&self)
 {
 	char[8] finalcount;
 	for (uint i = 0; i < 8; i++)
 	{
-		finalcount[i] = (char)((this.count[(i >= 4 ? 0 : 1)] >> ((3 - (i & 3)) * 8)) & 0xFF);
+		finalcount[i] = (char)((self.count[(i >= 4 ? 0 : 1)] >> ((3 - (i & 3)) * 8)) & 0xFF);
 	}
-	this.update(char[] { 0o200 });
-	while ((this.count[0] & 504) != 448)
+	self.update(char[] { 0o200 });
+	while ((self.count[0] & 504) != 448)
 	{
-		this.update(char[] { 0 });
+		self.update(char[] { 0 });
 	}
 
-	this.update(&finalcount);
+	self.update(&finalcount);
 	char[20] digest;
 	for (uint i = 0; i < 20; i++)
 	{
-		digest[i] = (char)((this.state[i >> 2] >> ((3 - (i & 3)) * 8)) & 0xFF);
+		digest[i] = (char)((self.state[i >> 2] >> ((3 - (i & 3)) * 8)) & 0xFF);
 	}
 
 	// Clear mem
-	mem::clear(this, Sha1.sizeof);
+	mem::clear(self, Sha1.sizeof);
 	finalcount = {};
 	return digest;
 }

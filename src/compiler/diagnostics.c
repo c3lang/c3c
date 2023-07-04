@@ -190,6 +190,7 @@ void sema_error_at_after(SourceSpan loc, const char *message, ...)
 
 void sema_error_prev_at(SourceSpan loc, const char *message, ...)
 {
+	if (global_context.suppress_errors) return;
 	va_list args;
 	va_start(args, message);
 #define MAX_ERROR_LEN 4096
