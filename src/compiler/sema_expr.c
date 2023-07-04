@@ -1789,7 +1789,8 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	assert(decl->decl_kind == DECL_MACRO);
 	if (context->macro_call_depth > 1024)
 	{
-		SEMA_ERROR(call_expr, "Failure evaluating macro, max call depth reached.");
+		SEMA_ERROR(call_expr, "Failure evaluating macro, max call depth reached, possibly due non-terminating macro recursion.");
+		decl->decl_kind = DECL_POISONED;
 		return false;
 	}
 	sema_display_deprecated_warning_on_use(context, decl, call_expr->span);
