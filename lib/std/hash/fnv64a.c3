@@ -10,24 +10,24 @@ const FNV64A_MUL @private = 0x00000100000001b3;
 
 macro void @update(ulong &h, char x) @private => h = (h * FNV64A_MUL) ^ x;
 
-fn void Fnv64a.init(&this)
+fn void Fnv64a.init(&self)
 {
-    *this = FNV64A_START;
+    *self = FNV64A_START;
 }
 
-fn void Fnv64a.update(&this, char[] data)
+fn void Fnv64a.update(&self, char[] data)
 {
-	ulong h = (ulong)*this;
+	ulong h = (ulong)*self;
 	foreach (char x : data)
     {
         @update(h, x);
     }
-    *this = (Fnv64a)h;
+    *self = (Fnv64a)h;
 }
 
-macro void Fnv64a.update_char(&this, char c)
+macro void Fnv64a.update_char(&self, char c)
 {
-	@update(*this, x);
+	@update(*self, x);
 }
 
 fn ulong encode(char[] data)

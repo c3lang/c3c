@@ -8,29 +8,29 @@ struct Crc32
     uint result;
 }
 
-fn void Crc32.init(&this, uint seed = 0)
+fn void Crc32.init(&self, uint seed = 0)
 {
-    this.result = ~seed;
+    self.result = ~seed;
 }
 
-fn void Crc32.updatec(&this, char c)
+fn void Crc32.updatec(&self, char c)
 {
-    this.result = (this.result >> 8) ^ CRC32_TABLE[(this.result ^ c) & 0xFF];
+    self.result = (self.result >> 8) ^ CRC32_TABLE[(self.result ^ c) & 0xFF];
 }
 
-fn void Crc32.update(&this, char[] data)
+fn void Crc32.update(&self, char[] data)
 {
-    uint result = this.result;
+    uint result = self.result;
     foreach (char x : data)
     {
         result = (result >> 8) ^ CRC32_TABLE[(result ^ x) & 0xFF];
     }
-    this.result = result;
+    self.result = result;
 }
 
-fn uint Crc32.final(&this)
+fn uint Crc32.final(&self)
 {
-    return ~this.result;
+    return ~self.result;
 }
 
 fn uint encode(char[] data)
