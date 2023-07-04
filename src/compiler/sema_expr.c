@@ -1787,17 +1787,23 @@ static inline bool sema_expr_analyse_func_call(SemaContext *context, Expr *expr,
 bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *struct_var, Decl *decl, bool optional)
 {
 	assert(decl->decl_kind == DECL_MACRO);
+
+	AstId macro_body = decl->func_decl.body;
+	// Invalid but we can't poison.
+	if (!macro_body) return false;
+
 	if (context->macro_call_depth > 1024)
 	{
 		SEMA_ERROR(call_expr, "Failure evaluating macro, max call depth reached, possibly due non-terminating macro recursion.");
-		decl->decl_kind = DECL_POISONED;
+		decl->func_decl.body = 0;
 		return false;
 	}
+
 	sema_display_deprecated_warning_on_use(context, decl, call_expr->span);
 
 	copy_begin();
 	Decl **params = copy_decl_list_macro(decl->func_decl.signature.params);
-	Ast *body = copy_ast_macro(astptr(decl->func_decl.body));
+	Ast *body = copy_ast_macro(astptr(macro_body));
 	AstId docs = decl->func_decl.docs;
 	if (docs) docs = astid(copy_ast_macro(astptr(docs)));
 	copy_end();
