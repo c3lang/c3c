@@ -2,7 +2,7 @@ module sort_test @test;
 import std::sort;
 import std::sort::quicksort;
 
-def QSInt = quicksort::Quicksort<int, void*>;
+def qs_int = quicksort::sort<int[]>;
 
 fn void quicksort()
 {
@@ -16,13 +16,13 @@ fn void quicksort()
 
     foreach (tc : tcases)
     {
-        sort::quicksort(tc, QSInt);
+        qs_int(tc);
         assert(sort::check_int_sort(tc));
     }
 }
 
-def Cmp = fn int (void*, void*);
-def QSIntCmp = quicksort::Quicksort<int, Cmp>;
+def Cmp = fn int(int*, int*);
+def qs_int_ref = quicksort::sort_ref_fn<int[]>;
 
 fn void quicksort_with()
 {
@@ -36,13 +36,12 @@ fn void quicksort_with()
 
     foreach (tc : tcases)
     {
-        sort::quicksort_with(tc, QSIntCmp, &sort::cmp_int);
+        qs_int_ref(tc, (Cmp)&sort::cmp_int);
         assert(sort::check_int_sort(tc));
     }
 }
 
-def Cmp2 = fn int (int, int);
-def QSIntCmp2 = quicksort::Quicksort<int, Cmp2>;
+def qs_int_fn = quicksort::sort_fn<int[]>;
 
 fn void quicksort_with2()
 {
@@ -56,7 +55,7 @@ fn void quicksort_with2()
 
     foreach (tc : tcases)
     {
-        sort::quicksort_with(tc, QSIntCmp2, &sort::cmp_int2);
+        qs_int_fn(tc, &sort::cmp_int2);
         assert(sort::check_int_sort(tc));
     }
 }
@@ -73,7 +72,7 @@ fn void quicksort_with_lambda()
 
     foreach (tc : tcases)
     {
-        sort::quicksort_with(tc, QSIntCmp2, fn int(int a, int b) => a - b);
+        qs_int_fn(tc, fn int(int a, int b) => a - b);
         assert(sort::check_int_sort(tc));
     }
 }
