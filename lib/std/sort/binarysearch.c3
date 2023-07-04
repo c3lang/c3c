@@ -1,12 +1,12 @@
-module std::sort::binarysearch;
+module std::sort;
 
 /**
  * Perform a binary search over the sorted array and return the smallest index
  * in [0, array.len) where cmp(i) is true and cmp(j) is true for j in [i, array.len).
  * @require is_searchable(list) "The list must be indexable and support .len or .len()"
- * @require is_comparer(cmp, list) "Expeced a comparison function which compares values"
+ * @require is_comparer(cmp, list) "Expected a comparison function which compares values"
  **/
-macro usz cmp_search(list, x, cmp)
+macro usz binarysearch_with(list, x, cmp)
 {
     usz i;
     usz len = @len_from_list(list);
@@ -34,7 +34,7 @@ macro usz cmp_search(list, x, cmp)
  * @require is_searchable(list) "The list must be indexable and support .len or .len()"
  * @checked less(list[0], x) "The values must be comparable"
  **/
-macro usz search(list, x)
+macro usz binarysearch(list, x)
 {
     usz i;
     usz len = @len_from_list(list);
@@ -48,24 +48,4 @@ macro usz search(list, x)
         }
     }
     return i;
-}
-
-macro bool is_searchable(list) @local
-{
-	return $checks(list[0]) && ($checks(list.len) || $checks(list.len()));
-}
-
-macro usz @len_from_list(&list) @local
-{
-	$if $checks(list.len()):
-		return list.len();
-	$else
-		return list.len;
-	$endif
-}
-
-macro bool is_comparer(cmp, list)
-{
-	return $checks(int i = cmp(list[0], list[0]))
-		|| $checks(int i = cmp(&list[0], &list[0]));
 }

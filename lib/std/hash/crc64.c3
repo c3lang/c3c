@@ -8,17 +8,17 @@ struct Crc64
     ulong result;
 }
 
-fn void Crc64.init(Crc64* this, uint seed = 0)
+fn void Crc64.init(&this, uint seed = 0)
 {
     this.result = seed;
 }
 
-fn void Crc64.updatec(Crc64* this, char c)
+fn void Crc64.updatec(&this, char c)
 {
     this.result = (this.result << 8) ^ CRC64_TABLE[(char)((this.result >> 56) ^ c)];
 }
 
-fn void Crc64.update(Crc64* this, char[] data)
+fn void Crc64.update(&this, char[] data)
 {
     ulong result = this.result;
     foreach (char x : data)
@@ -28,7 +28,7 @@ fn void Crc64.update(Crc64* this, char[] data)
     this.result = result;
 }
 
-fn ulong Crc64.final(Crc64* this)
+fn ulong Crc64.final(&this)
 {
     return this.result;
 }
