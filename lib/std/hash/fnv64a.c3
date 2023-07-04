@@ -1,0 +1,41 @@
+// Copyright (c) 2021 Christoffer Lerno. All rights reserved.
+// Use of this source code is governed by the MIT license
+// a copy of which can be found in the LICENSE_STDLIB file.
+module std::hash::fnv64a;
+
+def Fnv64a = distinct ulong;
+
+const FNV64A_START @private = 0xcbf29ce484222325;
+const FNV64A_MUL @private = 0x00000100000001b3;
+
+macro void @update(ulong &h, char x) @private => h = (h * FNV64A_MUL) ^ x;
+
+fn void Fnv64a.init(&this)
+{
+    *this = FNV64A_START;
+}
+
+fn void Fnv64a.update(&this, char[] data)
+{
+	ulong h = (ulong)*this;
+	foreach (char x : data)
+    {
+        @update(h, x);
+    }
+    *this = (Fnv64a)h;
+}
+
+macro void Fnv64a.update_char(&this, char c)
+{
+	@update(*this, x);
+}
+
+fn ulong encode(char[] data)
+{
+	ulong h = FNV64A_START;
+	foreach (char x : data)
+    {
+		@update(h, x);
+    }
+    return h;
+}
