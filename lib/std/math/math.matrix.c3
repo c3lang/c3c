@@ -1,4 +1,4 @@
-module std::math::matrix<Real>;
+module std::math::matrix(<Real>);
 
 struct Matrix2x2
 {

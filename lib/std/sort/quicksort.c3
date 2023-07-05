@@ -1,4 +1,4 @@
-module std::sort::quicksort<Type>;
+module std::sort::quicksort(<Type>);
 import std::sort;
 
 def ElementType = $typeof(Type{}[0]);

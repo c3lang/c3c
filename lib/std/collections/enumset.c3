@@ -5,7 +5,7 @@
 /**
  * @require Enum.kindof == TypeKind.ENUM : "Only enums maybe be used with an enumset"
  **/
-module std::collections::enumset<Enum>;
+module std::collections::enumset(<Enum>);
 
 def EnumSetType = $typefrom(private::type_for_enum_elements(Enum.elements)) @private ;
 

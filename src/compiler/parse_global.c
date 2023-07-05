@@ -144,9 +144,13 @@ static inline bool parse_optional_module_params(ParseContext *c, const char ***t
 
 	*tokens_ref = NULL;
 
-	if (!try_consume(c, TOKEN_LESS)) return true;
+	SourceSpan span = c->span;
+	bool is_old_style = try_consume(c, TOKEN_LESS);
+	if (!is_old_style && !try_consume(c, TOKEN_LGENPAR)) return true;
 
-	if (try_consume(c, TOKEN_GREATER)) RETURN_SEMA_ERROR_HERE("Generic parameter list cannot be empty.");
+	// TODO remove after deprecation time
+	TokenType end_token = is_old_style ? TOKEN_GREATER : TOKEN_RGENPAR;
+	if (try_consume(c, end_token)) RETURN_SEMA_ERROR_HERE("Generic parameter list cannot be empty.");
 
 	// No params
 	while (1)
@@ -170,13 +174,18 @@ static inline bool parse_optional_module_params(ParseContext *c, const char ***t
 		advance(c);
 		if (!try_consume(c, TOKEN_COMMA))
 		{
-			return consume(c, TOKEN_GREATER, "Expected '>'.");
+			if (!consume(c, end_token, "Expected '>)'.")) return false;
+			if (is_old_style)
+			{
+				span = extend_span_with_token(span, c->prev_span);
+				sema_warning_at(span, "Generics with <...> syntax is deprecated, use (<...>) instead.");
+			}
+			return true;
 		}
 	}
-
 }
 /**
- * module ::= MODULE module_path ('<' module_params '>')? (@public|@private|@local|@test|@export|@extern) EOS
+ * module ::= MODULE module_path ('(<' module_params '>)')? (@public|@private|@local|@test|@export|@extern) EOS
  */
 bool parse_module(ParseContext *c, AstId contracts)
 {
@@ -487,6 +496,24 @@ static inline TypeInfo *parse_base_type(ParseContext *c)
 	return type_info;
 }
 
+static inline TypeInfo *parse_generic_type(ParseContext *c, TypeInfo *type)
+{
+	assert(type_info_ok(type));
+
+	advance_and_verify(c, TOKEN_LGENPAR);
+	Expr **exprs = NULL;
+	do
+	{
+		ASSIGN_EXPR_OR_RET(Expr *param, parse_expr(c), poisoned_type_info);
+		vec_add(exprs, param);
+	} while (try_consume(c, TOKEN_COMMA));
+	CONSUME_OR_RET(TOKEN_RGENPAR, poisoned_type_info);
+	TypeInfo *generic_type = type_info_new(TYPE_INFO_GENERIC, type->span);
+	generic_type->generic.params = exprs;
+	generic_type->generic.base = type;
+	return generic_type;
+}
+
 /**
  * array_type_index
  *		: '[' constant_expression ']'
@@ -596,6 +623,9 @@ TypeInfo *parse_type_with_base(ParseContext *c, TypeInfo *type_info)
 				break;
 			case TOKEN_LBRACKET:
 				type_info = parse_array_type_index(c, type_info);
+				break;
+			case TOKEN_LGENPAR:
+				type_info = parse_generic_type(c, type_info);
 				break;
 			case TOKEN_STAR:
 				advance(c);
@@ -1629,21 +1659,23 @@ static bool parse_macro_params(ParseContext *c, Decl *macro)
 }
 
 /**
- * define_parameters ::= expr (',' expr)* '>'
+ * define_parameters ::= expr (<',' expr)* '>)'
  *
  * @return NULL if parsing failed, otherwise a list of Type*
  */
-static inline Expr **parse_generic_parameters(ParseContext *c)
+static inline Expr **parse_generic_parameters(ParseContext *c, bool old_style)
 {
 	Expr **params = NULL;
-	while (!try_consume(c, TOKEN_GREATER))
+	// TODO remove deprecation
+	TokenType end_token = old_style ? TOKEN_GREATER : TOKEN_RGENPAR;
+	while (!try_consume(c, end_token))
 	{
-		ASSIGN_EXPR_OR_RET(Expr *arg, parse_generic_parameter(c), NULL);
+		ASSIGN_EXPR_OR_RET(Expr *arg, old_style ? parse_generic_parameter(c) : parse_expr(c), NULL);
 		vec_add(params, arg);
 		TokenType tok = c->tok;
-		if (tok != TOKEN_RPAREN && tok != TOKEN_GREATER)
+		if (tok != end_token)
 		{
-			TRY_CONSUME_OR_RET(TOKEN_COMMA, "Expected ',' after argument.", NULL);
+			TRY_CONSUME_OR_RET(TOKEN_COMMA, "Expected ',' after the argument.", NULL);
 		}
 	}
 	return params;
@@ -1723,10 +1755,12 @@ static inline Decl *parse_def_type(ParseContext *c)
 	// 2. Now parse the type which we know is here.
 	ASSIGN_TYPE_OR_RET(TypeInfo *type_info, parse_type(c), poisoned_decl);
 
-	// 3. Do we have '<' if so it's a parameterized type e.g. foo::bar::Type<int, double>.
-	if (try_consume(c, TOKEN_LESS))
+	bool old_style_encountered = try_consume(c, TOKEN_LESS);
+
+	// 3. Do we have '(<' if so it's a parameterized type e.g. foo::bar::Type(<int, double>).
+	if (old_style_encountered || try_consume(c, TOKEN_LGENPAR))
 	{
-		Expr **params = parse_generic_parameters(c);
+		Expr **params = parse_generic_parameters(c, old_style_encountered);
 		if (!params) return poisoned_decl;
 		decl->decl_kind = DECL_DEFINE;
 		decl_add_type(decl, TYPE_TYPEDEF);
@@ -1736,6 +1770,10 @@ static inline Decl *parse_def_type(ParseContext *c)
 		if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 
 		RANGE_EXTEND_PREV(decl);
+		if (old_style_encountered)
+		{
+			sema_warning_at(decl->span, "Use of <...> for generics is deprecated, please use (<...>) instead.");
+		}
 		CONSUME_EOS_OR_RET(poisoned_decl);
 		return decl;
 	}
@@ -1849,16 +1887,22 @@ static inline Decl *parse_def_ident(ParseContext *c)
 	decl->define_decl.span = c->span;
 	advance(c);
 
-	if (try_consume(c, TOKEN_LESS))
+	bool old_style_encountered = try_consume(c, TOKEN_LESS);
+
+	if (old_style_encountered || try_consume(c, TOKEN_LGENPAR) )
 	{
 		decl->define_decl.define_kind = DEFINE_IDENT_GENERIC;
-		Expr **params = parse_generic_parameters(c);
+		Expr **params = parse_generic_parameters(c, old_style_encountered);
 		if (!params) return poisoned_decl;
 		decl->define_decl.generic_params = params;
 	}
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 
 	RANGE_EXTEND_PREV(decl);
+	if (old_style_encountered)
+	{
+		sema_warning_at(decl->span, "Use of <...> for generics is deprecated, please use (<...>) instead.");
+	}
 	CONSUME_EOS_OR_RET(poisoned_decl);
 	return decl;
 }

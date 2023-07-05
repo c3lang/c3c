@@ -296,6 +296,10 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 	{
 		case EXPR_ANYSWITCH:
 			UNREACHABLE
+		case EXPR_GENERIC_IDENT:
+			MACRO_COPY_EXPRID(expr->generic_ident_expr.parent);
+			MACRO_COPY_EXPR_LIST(expr->generic_ident_expr.parmeters);
+			return expr;
 		case EXPR_MACRO_BODY_EXPANSION:
 			MACRO_COPY_EXPR_LIST(expr->body_expansion_expr.values);
 			MACRO_COPY_DECL_LIST(expr->body_expansion_expr.declarations);
@@ -796,6 +800,10 @@ TypeInfo *copy_type_info(CopyStruct *c, TypeInfo *source)
 			return copy;
 		case TYPE_INFO_CT_IDENTIFIER:
 		case TYPE_INFO_IDENTIFIER:
+			return copy;
+		case TYPE_INFO_GENERIC:
+			copy->generic.base = copy_type_info(c, copy->generic.base);
+			copy->generic.params = copy_expr_list(c, copy->generic.params);
 			return copy;
 		case TYPE_INFO_TYPEFROM:
 		case TYPE_INFO_EVALTYPE:

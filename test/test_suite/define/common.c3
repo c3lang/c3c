@@ -2,11 +2,11 @@ module foo;
 
 // def <name> = <name>
 def standard_foo = __stdin;
-def someFunctionIntBool = someFunction<int, bool>;
-def FooInt = Foo<int>;
-def A_CONST_INT = A_CONST<int>;
+def someFunctionIntBool = someFunction(<int, bool>);
+def FooInt = Foo(<int>);
+def A_CONST_INT = A_CONST(<int>);
 
-def standard_foo<int> = ofke; // #error: Expected '='
+def standard_foo(<int>) = ofke; // #error: Expected '='
 def fn foo = fef; // #error: A type, variable, constant or attribute name was expected here
 def feokfe = fn void(int); // #error: Expected a function or variable name here
 def AOFKE = ofek; // #error: Expected a constant name here

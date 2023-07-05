@@ -216,6 +216,8 @@ b64\`{B64}+\` { count(); return(BYTES); }
 "=>"            { count(); return(IMPLIES); }
 "[<"            { count(); return(LVEC); }
 ">]"            { count(); return(RVEC); }
+"(<"            { count(); return(LGENPAR); }
+">)"            { count(); return(RGENPAR); }
 "$$"            { count(); return(BUILTIN); }
 ";"			{ count(); return(';'); }
 ("{")		{ count(); return('{'); }

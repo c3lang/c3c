@@ -228,6 +228,7 @@ typedef enum
 	EXPR_EXPR_BLOCK,
 	EXPR_OPTIONAL,
 	EXPR_FORCE_UNWRAP,
+	EXPR_GENERIC_IDENT,
 	EXPR_GROUP,
 	EXPR_HASH_IDENT,
 	EXPR_IDENTIFIER,
@@ -375,6 +376,7 @@ typedef enum
 	TYPE_INFO_INFERRED_VECTOR,
 	TYPE_INFO_SUBARRAY,
 	TYPE_INFO_POINTER,
+	TYPE_INFO_GENERIC,
 } TypeInfoKind;
 
 typedef enum
@@ -427,6 +429,7 @@ typedef enum
 	TOKEN_IMPLIES,          // =>
 	TOKEN_LESS_EQ,          // <=
 	TOKEN_LBRAPIPE,         // {|
+	TOKEN_LGENPAR,          // (<
 	TOKEN_LVEC,             // [<
 	TOKEN_MINUS_ASSIGN,     // -=
 	TOKEN_MINUSMINUS,       // --
@@ -437,6 +440,7 @@ typedef enum
 	TOKEN_PLUS_ASSIGN,      // +=
 	TOKEN_PLUSPLUS,         // ++
 	TOKEN_RBRAPIPE,         // |}
+	TOKEN_RGENPAR,          // >)
 	TOKEN_RVEC,             // >]
 	TOKEN_QUESTQUEST,       // ??
 	TOKEN_SCOPE,            // ::
@@ -812,7 +816,8 @@ typedef enum
 	ANALYSIS_CT_ECHO,
 	ANALYSIS_CT_ASSERT,
 	ANALYSIS_FUNCTIONS,
-	ANALYSIS_LAST = ANALYSIS_FUNCTIONS
+	ANALYSIS_FINALIZE,
+	ANALYSIS_LAST = ANALYSIS_FINALIZE
 } AnalysisStage;
 
 typedef enum

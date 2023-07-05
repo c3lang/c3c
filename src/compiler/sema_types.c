@@ -311,6 +311,23 @@ INLINE bool sema_resolve_vatype(SemaContext *context, TypeInfo *type_info)
 	return true;
 }
 
+// Foo(<...>)
+INLINE bool sema_resolve_generic_type(SemaContext *context, TypeInfo *type_info)
+{
+	TypeInfo *inner = type_info->generic.base;
+	if (inner->kind != TYPE_INFO_IDENTIFIER && inner->subtype != TYPE_COMPRESSED_NONE && !inner->optional)
+	{
+		SEMA_ERROR(inner, "Parameterization required a concrete type name here.");
+		return false;
+	}
+	assert(inner->resolve_status == RESOLVE_NOT_DONE);
+
+	Decl *type = sema_analyse_parameterized_identifier(context, inner->unresolved.path, inner->unresolved.name, inner->span, type_info->generic.params);
+	if (!decl_ok(type)) return false;
+	type_info->type = type->type;
+	return true;
+}
+
 static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, bool allow_inferred_type, bool is_pointee)
 {
 	// Ok, already resolved.
@@ -338,6 +355,9 @@ static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, 
 	{
 		case TYPE_INFO_POISON:
 			UNREACHABLE
+		case TYPE_INFO_GENERIC:
+			if (!sema_resolve_generic_type(context, type_info)) return type_info_poison(type_info);
+			goto APPEND_QUALIFIERS;
 		case TYPE_INFO_VATYPE:
 			if (!sema_resolve_vatype(context, type_info)) return type_info_poison(type_info);
 			goto APPEND_QUALIFIERS;

@@ -1316,6 +1316,7 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_INLINE:
 		case TOKEN_DISTINCT:
 		case TOKEN_CT_INCLUDE:
+		case TOKEN_LGENPAR:
 			SEMA_ERROR_HERE("Unexpected '%s' found when expecting a statement.",
 			                token_type_to_string(c->tok));
 			advance(c);
@@ -1323,6 +1324,7 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_RPAREN:
 		case TOKEN_RBRACE:
 		case TOKEN_RBRACKET:
+		case TOKEN_RGENPAR:
 			SEMA_ERROR_HERE("Mismatched '%s' found.", token_type_to_string(c->tok));
 			advance(c);
 			return poisoned_ast;

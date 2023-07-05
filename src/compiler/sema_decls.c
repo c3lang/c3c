@@ -139,7 +139,7 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 	{
 		RETURN_SEMA_ERROR(decl, "Circular dependency resolving member.");
 	}
-	assert(!decl->unit || decl->unit->module->is_generic);
+	assert(!decl->unit || decl->unit->module->is_generic || decl->unit == parent->unit);
 	decl->unit = parent->unit;
 
 	AttributeDomain domain = ATTR_MEMBER;
@@ -319,6 +319,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl, Decl *
 	bool is_packed = decl->is_packed;
 	unsigned member_count = vec_size(members);
 	Decl **struct_members = decl->strukt.members;
+
 	for (unsigned i = 0; i < member_count; i++)
 	{
 	AGAIN:;
@@ -331,12 +332,8 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl, Decl *
 		bool erase_decl = false;
 		if (!sema_analyse_struct_member(context, decl, member, &erase_decl))
 		{
-			if (decl_ok(decl))
-			{
-				decl_poison(decl);
-				continue;
-			}
-			continue;
+			decl_poison(member);
+			return decl_poison(decl);
 		}
 		if (erase_decl)
 		{
@@ -2988,20 +2985,8 @@ static CompilationUnit *unit_copy(Module *module, CompilationUnit *unit)
 static Module *module_instantiate_generic(SemaContext *context, Module *module, Path *path, Expr **params,
                                           SourceSpan from)
 {
-	Module *new_module = compiler_find_or_create_module(path, NULL);
-	new_module->is_generic = false;
-	CompilationUnit **units = module->units;
-	VECEACH(units, i)
-	{
-		vec_add(new_module->units, unit_copy(new_module, units[i]));
-	}
-	CompilationUnit *first_context = new_module->units[0];
-	if (module->contracts)
-	{
-		copy_begin();
-		new_module->contracts = astid(copy_ast_macro(astptr(module->contracts)));
-		copy_end();
-	}
+	unsigned decls = 0;
+	Decl* params_decls[MAX_PARAMS];
 	VECEACH(module->parameters, i)
 	{
 		const char *param_name = module->parameters[i];
@@ -3018,7 +3003,7 @@ static Module *module_instantiate_generic(SemaContext *context, Module *module, 
 			decl->var.init_expr = param;
 			decl->type = param->type;
 			decl->resolve_status = RESOLVE_NOT_DONE;
-			vec_add(first_context->global_decls, decl);
+			params_decls[decls++] = decl;
 			continue;
 		}
 		if (is_value)
@@ -3033,12 +3018,34 @@ static Module *module_instantiate_generic(SemaContext *context, Module *module, 
 		decl->typedef_decl.type_info = type_info;
 		decl->type->name = decl->name;
 		decl->type->canonical = type_info->type->canonical;
-		vec_add(first_context->global_decls, decl);
+		params_decls[decls++] = decl;
 	}
+
+
+	Module *new_module = compiler_find_or_create_module(path, NULL);
+	new_module->is_generic = false;
+	CompilationUnit **units = module->units;
+	VECEACH(units, i)
+	{
+		vec_add(new_module->units, unit_copy(new_module, units[i]));
+	}
+	CompilationUnit *first_context = new_module->units[0];
+	for (unsigned  i = 0; i < decls; i++)
+	{
+		vec_add(first_context->global_decls, params_decls[i]);
+	}
+
+	if (module->contracts)
+	{
+		copy_begin();
+		new_module->contracts = astid(copy_ast_macro(astptr(module->contracts)));
+		copy_end();
+	}
+
 	return new_module;
 }
 
-static bool sema_append_generate_parameterized_name(SemaContext *c, Module *module, Decl *decl, bool mangled)
+static bool sema_append_generate_parameterized_name(SemaContext *c, Module *module, Expr **params, bool mangled)
 {
 	if (mangled)
 	{
@@ -3047,9 +3054,9 @@ static bool sema_append_generate_parameterized_name(SemaContext *c, Module *modu
 	}
 	else
 	{
-		scratch_buffer_append_char('<');
+		scratch_buffer_append("(<");
 	}
-	FOREACH_BEGIN_IDX(i, Expr *param, decl->define_decl.generic_params)
+	FOREACH_BEGIN_IDX(i, Expr *param, params)
 		if (i != 0)
 		{
 			scratch_buffer_append(mangled ? "$" : ", ");
@@ -3057,23 +3064,11 @@ static bool sema_append_generate_parameterized_name(SemaContext *c, Module *modu
 		if (param->expr_kind == EXPR_TYPEINFO)
 		{
 			TypeInfo *type_info = param->type_expr;
-			if (!sema_resolve_type_info(c, type_info)) return decl_poison(decl);
+			if (!sema_resolve_type_info(c, type_info)) return false;
 			Type *type = type_info->type->canonical;
-			if (type->type_kind == TYPE_OPTIONAL)
-			{
-				SEMA_ERROR(type_info, "Expected a non-optional type.");
-				return poisoned_decl;
-			}
-			if (type == type_void)
-			{
-				SEMA_ERROR(type_info, "A 'void' type cannot be used as a parameter type.");
-				return poisoned_decl;
-			}
-			if (type_is_invalid_storage_type(type))
-			{
-				SEMA_ERROR(type_info, "Expected a runtime type.");
-				return poisoned_decl;
-			}
+			if (type->type_kind == TYPE_OPTIONAL) RETURN_SEMA_ERROR(type_info, "Expected a non-optional type.");
+			if (type == type_void) RETURN_SEMA_ERROR(type_info, "A 'void' type cannot be used as a parameter type.");
+			if (type_is_invalid_storage_type(type)) RETURN_SEMA_ERROR(type_info, "Expected a runtime type.");
 			if (mangled)
 			{
 				type_mangle_introspect_name_to_buffer(type);
@@ -3085,7 +3080,7 @@ static bool sema_append_generate_parameterized_name(SemaContext *c, Module *modu
 		}
 		else
 		{
-			if (!sema_analyse_ct_expr(c, param)) return decl_poison(decl);
+			if (!sema_analyse_ct_expr(c, param)) return false;
 			Type *type = param->type->canonical;
 			if (!type_is_integer_or_bool_kind(type))
 			{
@@ -3110,7 +3105,6 @@ static bool sema_append_generate_parameterized_name(SemaContext *c, Module *modu
 				if (type->type_kind == TYPE_I128 || type->type_kind == TYPE_U128)
 				{
 					char *str = int_to_str(param->const_expr.ixx, 10);
-
 					scratch_buffer_append(str);
 				}
 				else
@@ -3121,7 +3115,7 @@ static bool sema_append_generate_parameterized_name(SemaContext *c, Module *modu
 					}
 					else
 					{
-						scratch_buffer_append_unsigned_int(param->const_expr.ixx.i.high);
+						scratch_buffer_append_unsigned_int(param->const_expr.ixx.i.low);
 					}
 				}
 				if (mangled)
@@ -3132,7 +3126,7 @@ static bool sema_append_generate_parameterized_name(SemaContext *c, Module *modu
 			}
 		}
 	FOREACH_END();
-	scratch_buffer_append_char(mangled ? '$' : '>');
+	scratch_buffer_append(mangled ? "$" : ">)");
 	return true;
 }
 
@@ -3176,6 +3170,8 @@ static bool sema_analyse_generic_module_contracts(SemaContext *c, Module *module
 	}
 	return true;
 }
+
+
 static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 {
 	Path *decl_path;
@@ -3204,19 +3200,40 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 		default:
 			UNREACHABLE
 	}
+	Expr **params = decl->define_decl.generic_params;
+	Decl *symbol = sema_analyse_parameterized_identifier(c, decl_path, name, span, params);
+	if (!decl_ok(symbol)) return decl_poison(decl);
+	switch (decl->define_decl.define_kind)
+	{
+		case DEFINE_IDENT_GENERIC:
+			decl->define_decl.alias = symbol;
+			decl->type = symbol->type;
+			return true;
+		case DEFINE_TYPE_GENERIC:
+		{
+			Type *type = type_new(TYPE_TYPEDEF, decl->name);
+			decl->type = type;
+			type->decl = symbol;
+			decl->decl_kind = DECL_TYPEDEF;
+			type->canonical = symbol->type->canonical;
+			return true;
+		}
+		default:
+			UNREACHABLE
+	}
+}
+
+Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, const char *name, SourceSpan span, Expr **params)
+{
 	NameResolve name_resolve = {
 			.path = decl_path,
 			.span = span,
 			.symbol = name
 	};
 	Decl *alias = unit_resolve_parameterized_symbol(c->unit, &name_resolve);
-	if (!decl_ok(alias))
-	{
-		return decl_poison(decl);
-	}
+	if (!decl_ok(alias)) return poisoned_decl;
 
 	Module *module = alias->unit->module;
-	Expr **params = decl->define_decl.generic_params;
 	unsigned parameter_count = vec_size(module->parameters);
 	assert(parameter_count > 0);
 	if (parameter_count != vec_size(params))
@@ -3225,11 +3242,11 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 		sema_error_at(extend_span_with_token(params[0]->span, vectail(params)->span),
 		              "The generic module expected %d arguments, but you supplied %d, did you make a mistake?",
 		              parameter_count,
-		              vec_size(decl->define_decl.generic_params));
-		return decl_poison(decl);
+		              vec_size(params));
+		return poisoned_decl;
 	}
 	scratch_buffer_clear();
-	if (!sema_append_generate_parameterized_name(c, module, decl, true)) return decl_poison(decl);
+	if (!sema_append_generate_parameterized_name(c, module, params, true)) return poisoned_decl;
 	TokenType ident_type = TOKEN_IDENT;
 	const char *path_string = scratch_buffer_interned();
 	Module *instantiated_module = global_context_find_module(path_string);
@@ -3242,50 +3259,31 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 		path->module = path_string;
 		path->span = module->name->span;
 		path->len = scratch_buffer.len;
-		instantiated_module = module_instantiate_generic(c, module, path,
-														 decl->define_decl.generic_params, decl->span);
-		if (!instantiated_module) return decl_poison(decl);
+		instantiated_module = module_instantiate_generic(c, module, path, params, span);
+		scratch_buffer_clear();
+		if (!sema_append_generate_parameterized_name(c, module, params, false)) return poisoned_decl;
+		if (!instantiated_module) return poisoned_decl;
+		instantiated_module->generic_suffix = scratch_buffer_copy();
 		sema_analyze_stage(instantiated_module, c->unit->module->stage - 1);
 	}
-	if (global_context.errors_found) return decl_poison(decl);
+	if (global_context.errors_found) return poisoned_decl;
 	Decl *symbol = module_find_symbol(instantiated_module, name);
 	if (!symbol)
 	{
-		SEMA_ERROR(decl, "The generic module '%s' does not have '%s' for this parameterization.", module->name->module, name);
-		return decl_poison(decl);
+		sema_error_at(span, "The generic module '%s' does not have '%s' for this parameterization.", module->name->module, name);
+		return poisoned_decl;
 	}
 	if (was_initiated && instantiated_module->contracts)
 	{
 		SourceSpan error_span = extend_span_with_token(params[0]->span, params[parameter_count - 1]->span);
 		if (!sema_analyse_generic_module_contracts(c, instantiated_module, error_span))
 		{
-			return decl_poison(decl);
+			return poisoned_decl;
 		}
 	}
-	if (!sema_analyse_decl(c, symbol)) return false;
+	if (!sema_analyse_decl(c, symbol)) return poisoned_decl;
 	unit_register_external_symbol(c->compilation_unit, symbol);
-	switch (decl->define_decl.define_kind)
-	{
-		case DEFINE_IDENT_GENERIC:
-			decl->define_decl.alias = symbol;
-			decl->type = symbol->type;
-			return true;
-		case DEFINE_TYPE_GENERIC:
-		{
-			scratch_buffer_clear();
-			scratch_buffer_append(symbol->name);
-			sema_append_generate_parameterized_name(c, module, decl, false);
-			symbol->type->name = scratch_buffer_interned();
-			Type *type = type_new(TYPE_TYPEDEF, decl->name);
-			decl->type = type;
-			type->decl = symbol;
-			decl->decl_kind = DECL_TYPEDEF;
-			type->canonical = symbol->type->canonical;
-			return true;
-		}
-		default:
-			UNREACHABLE
-	}
+	return symbol;
 }
 
 static inline bool sema_analyse_attribute_decl(SemaContext *c, Decl *decl)

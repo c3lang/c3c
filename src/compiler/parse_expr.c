@@ -525,7 +525,7 @@ Expr *parse_expression_list(ParseContext *c, bool allow_decl)
 	while (1)
 	{
 		Decl *decl;
-		ASSIGN_EXPR_OR_RET(Expr * expr, parse_decl_or_expr(c, &decl), poisoned_expr);
+		ASSIGN_EXPR_OR_RET(Expr *expr, parse_decl_or_expr(c, &decl), poisoned_expr);
 		if (!expr)
 		{
 			if (!allow_decl)
@@ -965,6 +965,28 @@ static Expr *parse_subscript_expr(ParseContext *c, Expr *left)
 	{
 		subs_expr->expr_kind = EXPR_SLICE;
 	}
+	RANGE_EXTEND_PREV(subs_expr);
+	return subs_expr;
+}
+
+/**
+ * generic_expr ::= '(<' generic_parameters '>)'
+ */
+static Expr *parse_generic_expr(ParseContext *c, Expr *left)
+{
+	assert(left && expr_ok(left));
+	advance_and_verify(c, TOKEN_LGENPAR);
+
+	Expr *subs_expr = expr_new_expr(EXPR_GENERIC_IDENT, left);
+	subs_expr->generic_ident_expr.parent = exprid(left);
+	Expr **exprs = NULL;
+	do
+	{
+			ASSIGN_EXPR_OR_RET(Expr *param, parse_expr(c), poisoned_expr);
+			vec_add(exprs, param);
+	} while (try_consume(c, TOKEN_COMMA));
+	CONSUME_OR_RET(TOKEN_RGENPAR, poisoned_expr);
+	subs_expr->generic_ident_expr.parmeters = exprs;
 	RANGE_EXTEND_PREV(subs_expr);
 	return subs_expr;
 }
@@ -1809,6 +1831,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_LBRAPIPE] = { parse_expr_block, NULL, PREC_NONE },
 		[TOKEN_BANGBANG] = { NULL, parse_force_unwrap_expr, PREC_CALL },
 		[TOKEN_LBRACKET] = { NULL, parse_subscript_expr, PREC_CALL },
+		[TOKEN_LGENPAR] = { NULL, parse_generic_expr, PREC_CALL },
 		[TOKEN_MINUS] = { parse_unary_expr, parse_binary, PREC_ADDITIVE },
 		[TOKEN_PLUS] = { parse_unary_expr, parse_binary, PREC_ADDITIVE },
 		[TOKEN_DIV] = { NULL, parse_binary, PREC_MULTIPLICATIVE },

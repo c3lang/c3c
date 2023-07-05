@@ -1,4 +1,4 @@
-module std::collections::enummap<Enum, ValueType>;
+module std::collections::enummap(<Enum, ValueType>);
 
 struct EnumMap
 {

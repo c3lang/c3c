@@ -2,7 +2,7 @@
  * @checked Type{} < Type{} : "The type must be comparable"
  * @checked Type{} + (Type)1 : "The type must be possible to add to"
  **/
-module std::collections::range<Type>;
+module std::collections::range(<Type>);
 
 struct Range
 {

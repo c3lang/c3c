@@ -1,4 +1,4 @@
-module std::container::map <Key, Type>;
+module std::container::map(<Key, Type>);
 import std::core::builtin;
 import std::io;
 fault MapResult

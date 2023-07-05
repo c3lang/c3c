@@ -2,7 +2,7 @@ module sort_test @test;
 import std::sort;
 import std::sort::quicksort;
 
-def qs_int = quicksort::sort<int[]>;
+def qs_int = quicksort::sort(<int[]>);
 
 fn void quicksort()
 {
@@ -22,7 +22,8 @@ fn void quicksort()
 }
 
 def Cmp = fn int(int*, int*);
-def qs_int_ref = quicksort::sort_ref_fn<int[]>;
+
+def qs_int_ref = quicksort::sort_ref_fn(<int[]>);
 
 fn void quicksort_with()
 {
@@ -41,7 +42,7 @@ fn void quicksort_with()
     }
 }
 
-def qs_int_fn = quicksort::sort_fn<int[]>;
+def qs_int_fn = quicksort::sort_fn(<int[]>);
 
 fn void quicksort_with2()
 {

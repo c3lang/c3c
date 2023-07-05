@@ -1,7 +1,7 @@
 // Copyright (c) 2023 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
-module std::collections::map<Key, Value>;
+module std::collections::map(<Key, Value>);
 import std::math;
 
 const uint DEFAULT_INITIAL_CAPACITY = 16;
