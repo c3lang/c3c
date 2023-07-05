@@ -201,27 +201,36 @@ const char *type_to_error_string(Type *type)
 	{
 		case TYPE_POISONED:
 			return "poisoned";
-		case TYPE_ENUM:
-		case TYPE_FAULTTYPE:
-		case TYPE_TYPEDEF:
-		case TYPE_STRUCT:
 		case TYPE_VOID:
 		case TYPE_BOOL:
 		case ALL_INTS:
 		case ALL_FLOATS:
-		case TYPE_UNION:
-		case TYPE_DISTINCT:
-		case TYPE_BITSTRUCT:
 		case TYPE_ANYFAULT:
 		case TYPE_UNTYPED_LIST:
 		case TYPE_ANY:
 		case TYPE_MEMBER:
 		case TYPE_WILDCARD:
 			return type->name;
+		case TYPE_ENUM:
+		case TYPE_FAULTTYPE:
+		case TYPE_TYPEDEF:
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		case TYPE_DISTINCT:
+		case TYPE_BITSTRUCT:
+		{
+			Decl *decl = type->decl;
+			if (!decl || !decl->unit || !decl->unit->module->generic_suffix) return type->name;
+			scratch_buffer_clear();
+			scratch_buffer_append(decl->name);
+			scratch_buffer_append(decl->unit->module->generic_suffix);
+			return scratch_buffer_copy();
+		}
 		case TYPE_FUNC:
 			scratch_buffer_clear();
+			scratch_buffer_append("fn ");
 			type_append_func_to_scratch(type->function.prototype);
-			return str_printf("fn %s", scratch_buffer_to_string());
+			return scratch_buffer_copy();
 		case TYPE_INFERRED_VECTOR:
 			return str_printf("%s[<*>]", type_to_error_string(type->array.base));
 		case TYPE_VECTOR:

@@ -1,4 +1,4 @@
-module foo<Type>;
+module foo(<Type>);
 
 fn void abc()
 {
@@ -9,4 +9,4 @@ fn void abc()
 module tester;
 import foo;
 
-def abc_my = foo::abc<int>;
+def abc_my = foo::abc(<int>);

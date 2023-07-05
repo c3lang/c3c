@@ -87,6 +87,7 @@ Type *cast_numeric_arithmetic_promotion(Type *type);
 void cast_to_int_to_max_bit_size(SemaContext *context, Expr *lhs, Expr *rhs, Type *left_type, Type *right_type);
 bool sema_decl_if_cond(SemaContext *context, Decl *decl);
 bool sema_flattened_expr_is_const(SemaContext *context, Expr *expr);
+Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, const char *name, SourceSpan span, Expr **params);
 
 bool sema_analyse_checked(SemaContext *context, Ast *directive, SourceSpan span);
 

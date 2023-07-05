@@ -377,6 +377,11 @@ struct TypeInfo_
 			Expr *len;
 		} array;
 		TypeInfo *pointer;
+		struct
+		{
+			TypeInfo *base;
+			Expr **params;
+		} generic;
 	};
 };
 
@@ -840,6 +845,13 @@ typedef struct
 	BuiltinAccessKind kind : 8;
 	ExprId inner;
 } ExprBuiltinAccess;
+
+typedef struct
+{
+	ExprId parent;
+	Expr **parmeters;
+} ExprGenericIdent;
+
 typedef struct
 {
 	Expr *parent;
@@ -1135,6 +1147,7 @@ struct Expr_
 		ExprCall call_expr;                         // 32
 		Expr *inner_expr;                           // 8
 		ExprBuiltinAccess builtin_access_expr;
+		ExprGenericIdent generic_ident_expr;
 		ExprCatchUnwrap catch_unwrap_expr;          // 24
 		ExprSubscript subscript_expr;               // 12
 		ExprSubscriptAssign subscript_assign_expr;
@@ -1482,6 +1495,7 @@ typedef struct Module_
 	Module **sub_modules;
 	Decl **tests;
 	Decl **lambdas_to_evaluate;
+	const char *generic_suffix;
 } Module;
 
 
@@ -2548,6 +2562,11 @@ INLINE bool type_is_integer_unsigned(Type *type)
 
 INLINE bool type_info_poison(TypeInfo *type)
 {
+	if (global_context.suppress_errors)
+	{
+		type->resolve_status = RESOLVE_NOT_DONE;
+		return false;
+	}
 	type->type = poisoned_type;
 	type->resolve_status = RESOLVE_DONE;
 	return false;

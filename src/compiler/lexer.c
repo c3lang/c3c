@@ -1312,7 +1312,7 @@ static bool lexer_scan_token_inner(Lexer *lexer)
 		case '}':
 			return return_token(lexer, TOKEN_RBRACE, "}");
 		case '(':
-			return return_token(lexer, TOKEN_LPAREN, "(");
+			return match(lexer, '<') ? return_token(lexer, TOKEN_LGENPAR, "(<") : return_token(lexer, TOKEN_LPAREN, "(");
 		case ')':
 			return return_token(lexer, TOKEN_RPAREN, ")");
 		case '[':
@@ -1368,6 +1368,7 @@ static bool lexer_scan_token_inner(Lexer *lexer)
 				if (match(lexer, '=')) return return_token(lexer, TOKEN_SHR_ASSIGN, ">>=");
 				return return_token(lexer, TOKEN_SHR, ">>");
 			}
+			if (match(lexer, ')')) return return_token(lexer, TOKEN_RGENPAR, ">)");
 			if (match(lexer, ']')) return return_token(lexer, TOKEN_RVEC, ">]");
 			return match(lexer, '=') ? return_token(lexer, TOKEN_GREATER_EQ, ">=") : return_token(lexer,
 			                                                                                      TOKEN_GREATER,

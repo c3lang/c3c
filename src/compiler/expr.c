@@ -133,6 +133,7 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_VASPLAT:
 		case EXPR_SWIZZLE:
 		case EXPR_LAMBDA:
+		case EXPR_GENERIC_IDENT:
 			return false;
 	}
 	UNREACHABLE
@@ -325,6 +326,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_CT_ARG:
 		case EXPR_ASM:
 		case EXPR_SUBSCRIPT_ASSIGN:
+		case EXPR_GENERIC_IDENT:
 			UNREACHABLE
 		case EXPR_NOP:
 			return true;
@@ -689,6 +691,8 @@ bool expr_is_pure(Expr *expr)
 					return expr_is_pure(expr->unary_expr.expr);
 			}
 			UNREACHABLE
+		case EXPR_GENERIC_IDENT:
+			return exprid_is_pure(expr->generic_ident_expr.parent);
 		case EXPR_BITACCESS:
 		case EXPR_ACCESS:
 			// All access is pure if the parent is pure.

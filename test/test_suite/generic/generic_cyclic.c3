@@ -2,14 +2,14 @@
 module test;
 import bar;
 
-def BazTest = Baz<Test>;
+def BazTest = Baz(<Test>); // #error: Recursive definition of 'BazTest'
 
-struct Test // #error: Recursive definition of 'Test'
+struct Test
 {
 	BazTest t;
 }
 
-module bar<Test>;
+module bar(<Test>);
 
 struct Baz
 {

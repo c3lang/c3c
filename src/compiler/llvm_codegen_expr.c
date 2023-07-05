@@ -6543,6 +6543,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_COND:
 		case EXPR_ASM:
 		case EXPR_VASPLAT:
+		case EXPR_GENERIC_IDENT:
 			UNREACHABLE
 		case EXPR_LAMBDA:
 			llvm_emit_lambda(c, value, expr);

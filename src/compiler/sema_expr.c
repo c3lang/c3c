@@ -507,6 +507,7 @@ static bool sema_binary_is_expr_lvalue(Expr *top_expr, Expr *expr)
 		case EXPR_ANYSWITCH:
 		case EXPR_VASPLAT:
 		case EXPR_TEST_HOOK:
+		case EXPR_GENERIC_IDENT:
 			goto ERR;
 	}
 	UNREACHABLE
@@ -616,6 +617,7 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_ANYSWITCH:
 		case EXPR_VASPLAT:
 		case EXPR_TEST_HOOK:
+		case EXPR_GENERIC_IDENT:
 			return false;
 	}
 	UNREACHABLE
@@ -6764,6 +6766,8 @@ RETRY:
 	{
 		case TYPE_INFO_POISON:
 			return poisoned_type;
+		case TYPE_INFO_GENERIC:
+			TODO
 		case TYPE_INFO_VECTOR:
 		{
 			ArraySize size;
@@ -6966,6 +6970,23 @@ static inline Decl *sema_find_cached_lambda(SemaContext *context, Type *func_typ
 		if (sema_may_reuse_lambda(context, candidate, types) && lambda_parameter_match(ct_lambda_parameters, candidate)) return candidate;
 	FOREACH_END();
 	return NULL;
+}
+
+static inline bool sema_expr_analyse_generic_ident(SemaContext *context, Expr *expr)
+{
+	Expr *parent = exprptr(expr->generic_ident_expr.parent);
+	if (parent->expr_kind != EXPR_IDENTIFIER)
+	{
+		SEMA_ERROR(parent, "Expected an identifier to parameterize.");
+		return false;
+	}
+	Decl *symbol = sema_analyse_parameterized_identifier(context, parent->identifier_expr.path, parent->identifier_expr.ident, parent->span, expr->generic_ident_expr.parmeters);
+	if (!decl_ok(symbol)) return false;
+	expr->expr_kind = EXPR_IDENTIFIER;
+	expr->identifier_expr.decl = symbol;
+	expr->resolve_status = RESOLVE_DONE;
+	expr->type = symbol->type;
+	return true;
 }
 
 static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *func_type, Expr *expr)
@@ -7447,6 +7468,8 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 		case EXPR_VASPLAT:
 			SEMA_ERROR(expr, "'$vasplat' can only be used inside of macros.");
 			return false;
+		case EXPR_GENERIC_IDENT:
+			return sema_expr_analyse_generic_ident(context, expr);
 		case EXPR_LAMBDA:
 			return sema_expr_analyse_lambda(context, NULL, expr);
 		case EXPR_CT_CHECKS:

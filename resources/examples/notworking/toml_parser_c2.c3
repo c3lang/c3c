@@ -751,7 +751,7 @@ fn u32 addKind(u32 value, NodeKind k) @(inline) {
 }
 
 fn NodeKind getKind(u32 value) @(inline) {
-    return cast<NodeKind>(value >> NodeKindOffset);
+    return cast(<NodeKind>)(value >> NodeKindOffset);
 }
 
 fn u32 getValue(u32 value) @(inline) {

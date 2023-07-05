@@ -15,6 +15,7 @@ void yyerror(char *s);
 %token STRING_LITERAL INTEGER
 %token INC_OP DEC_OP SHL_OP SHR_OP LE_OP GE_OP EQ_OP NE_OP
 %token AND_OP OR_OP MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN ADD_ASSIGN
+%token LGENPAR RGENPAR
 %token SUB_ASSIGN SHL_ASSIGN SHR_ASSIGN AND_ASSIGN
 %token XOR_ASSIGN OR_ASSIGN VAR NUL ELVIS NEXTCASE ANYFAULT
 %token MODULE IMPORT DEF EXTERN
@@ -187,6 +188,7 @@ call_trailing
 	| call_invocation
 	| call_invocation compound_statement
 	| '.' access_ident
+	| generic_expr
 	| INC_OP
 	| DEC_OP
 	| '!'
@@ -1104,9 +1106,9 @@ opt_distinct_inline
 	;
 
 generic_parameters
-	: additive_expr
+	: expr
 	| type
-	| generic_parameters ',' bit_expr
+	| generic_parameters ',' expr
 	| generic_parameters ',' type
 	;
 
@@ -1154,8 +1156,12 @@ define_attribute
 	| AT_TYPE_IDENT opt_attributes '=' '{' opt_attributes '}'
 	;
 
+generic_expr
+	: LGENPAR generic_parameters RGENPAR
+	;
+
 opt_generic_parameters
-	: '<' generic_parameters '>'
+	: generic_expr
 	| empty
 	;
 
@@ -1194,7 +1200,7 @@ module_params
 
 module
 	: MODULE path_ident opt_attributes ';'
-	| MODULE path_ident '<' module_params '>' opt_attributes ';'
+	| MODULE path_ident LGENPAR module_params RGENPAR opt_attributes ';'
 	;
 
 import_paths

@@ -1,8 +1,8 @@
 module listtests @test;
 import std::collections::list;
 
-def IntList = List<int>;
-def PtrList = List<void*>;
+def IntList = List(<int>);
+def PtrList = List(<void*>);
 
 fn void! test_delete_contains_index()
 {

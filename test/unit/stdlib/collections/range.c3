@@ -1,8 +1,8 @@
 module range_test @test;
 import std::collections::range;
 
-def IntRange = Range<int>;
-def IntExRange = ExclusiveRange<int>;
+def IntRange = Range(<int>);
+def IntExRange = ExclusiveRange(<int>);
 
 fn void! test_exrange()
 {
