@@ -3509,13 +3509,25 @@ static void llvm_emit_subarray_comp(GenContext *c, BEValue *be_value, BEValue *l
 
 }
 
+INLINE bool should_inline_array_comp(ArraySize len, Type *base_type_lowered)
+{
+	switch (base_type_lowered->type_kind)
+	{
+		case TYPE_ARRAY:
+			return should_inline_array_comp(base_type_lowered->array.len * len, type_lowering(base_type_lowered->array.base));
+		case TYPE_SUBARRAY:
+			return len <= 4;
+		default:
+			return len <= 16;
+	}
+}
 static void llvm_emit_array_comp(GenContext *c, BEValue *be_value, BEValue *lhs, BEValue *rhs, BinaryOp binary_op)
 {
 	bool want_match = binary_op == BINARYOP_EQ;
 	ArraySize len = lhs->type->array.len;
 	Type *array_base_type = type_lowering(lhs->type->array.base);
 	LLVMTypeRef array_type = llvm_get_type(c, lhs->type);
-	if (len <= 16)
+	if (should_inline_array_comp(len, array_base_type))
 	{
 		LLVMBasicBlockRef blocks[17];
 		LLVMValueRef value_block[17];
@@ -3525,7 +3537,7 @@ static void llvm_emit_array_comp(GenContext *c, BEValue *be_value, BEValue *lhs,
 		llvm_value_addr(c, rhs);
 		LLVMValueRef success = LLVMConstInt(c->bool_type, want_match ? 1 : 0, false);
 		LLVMValueRef failure = LLVMConstInt(c->bool_type, want_match ? 0 : 1, false);
-		blocks[0] = c->current_block;
+
 		for (unsigned i = 0; i < len; i++)
 		{
 			value_block[i] = failure;
@@ -3539,11 +3551,9 @@ static void llvm_emit_array_comp(GenContext *c, BEValue *be_value, BEValue *lhs,
 			llvm_value_set_address(&rhs_v, rhs_ptr, array_base_type, align_rhs);
 			BEValue comp;
 			llvm_emit_comp(c, &comp, &lhs_v, &rhs_v, BINARYOP_EQ);
+			blocks[i] = c->current_block;
 			LLVMBasicBlockRef block = ok_block;
-			if (i < len - 1)
-			{
-				block = blocks[i + 1] = llvm_basic_block_new(c, "next_check");
-			}
+			block = i < len - 1 ? llvm_basic_block_new(c, "next_check") : block;
 			llvm_emit_cond_br(c, &comp, block, exit_block);
 			llvm_emit_block(c, block);
 		}
@@ -3560,7 +3570,8 @@ static void llvm_emit_array_comp(GenContext *c, BEValue *be_value, BEValue *lhs,
 	LLVMBasicBlockRef exit = llvm_basic_block_new(c, "array_cmp_exit");
 	LLVMBasicBlockRef loop_begin = llvm_basic_block_new(c, "array_loop_start");
 	LLVMBasicBlockRef comparison = llvm_basic_block_new(c, "array_loop_comparison");
-
+	LLVMBasicBlockRef comparison_phi;
+	LLVMBasicBlockRef loop_begin_phi;
 	LLVMValueRef len_val = llvm_const_int(c, type_usz, len);
 	LLVMValueRef one = llvm_const_int(c, type_usz, 1);
 	BEValue index_var;
@@ -3581,12 +3592,14 @@ static void llvm_emit_array_comp(GenContext *c, BEValue *be_value, BEValue *lhs,
 	llvm_value_set_address(&rhs_v, rhs_ptr, array_base_type, align_rhs);
 	BEValue comp;
 	llvm_emit_comp(c, &comp, &lhs_v, &rhs_v, BINARYOP_EQ);
+	loop_begin_phi = c->current_block;
 	llvm_emit_cond_br(c, &comp, comparison, exit);
 	llvm_emit_block(c, comparison);
 
 	LLVMValueRef new_index = LLVMBuildAdd(c->builder, index, one, "inc");
 	llvm_store_raw(c, &index_var, new_index);
 	llvm_emit_int_comp_raw(c, &comp, type_usz, type_usz, new_index, len_val, BINARYOP_LT);
+	comparison_phi = c->current_block;
 	llvm_emit_cond_br(c, &comp, loop_begin, exit);
 	llvm_emit_block(c, exit);
 	LLVMValueRef phi = LLVMBuildPhi(c->builder, c->bool_type, "array_cmp_phi");
@@ -3594,7 +3607,7 @@ static void llvm_emit_array_comp(GenContext *c, BEValue *be_value, BEValue *lhs,
 	LLVMValueRef success = LLVMConstInt(c->bool_type, want_match ? 1 : 0, false);
 	LLVMValueRef failure = LLVMConstInt(c->bool_type, want_match ? 0 : 1, false);
 	LLVMValueRef logic_values[3] = { success, failure };
-	LLVMBasicBlockRef blocks[3] = { comparison, loop_begin };
+	LLVMBasicBlockRef blocks[3] = { comparison_phi, loop_begin_phi };
 	LLVMAddIncoming(phi, logic_values, blocks, 2);
 	llvm_value_set(be_value, phi, type_bool);
 }

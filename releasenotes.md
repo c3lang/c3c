@@ -131,8 +131,10 @@
 - Add checks to prevent incorrect alignment on malloc.
 - Updated clamp.
 - Added `Clock` and `DateTime`.
+- Added posix socket functions.
 
 ### Fixes
+- Fix to bug when comparing nested arrays.
 - Fix to bug when a macro is using rethrow.
 - Fixes bug initializing a const struct with a const struct value.
 - Fixes bug when `void` is passed to an "any"-vararg.
