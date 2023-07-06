@@ -9,6 +9,9 @@ def NativeSocket = distinct inline Fd;
 extern fn CInt connect(NativeSocket socket, SockAddrPtr address, Socklen_t address_len);
 extern fn NativeSocket socket(CInt af, CInt type, CInt protocol) @extern("socket");
 extern fn int fcntl(NativeSocket socket, int cmd, ...) @extern("fcntl");
+extern fn CInt bind(NativeSocket socket, SockAddrPtr address, Socklen_t address_len) @extern("bind");
+extern fn CInt listen(NativeSocket socket, CInt backlog) @extern("listen");
+extern fn NativeSocket accept(NativeSocket socket, SockAddrPtr address, Socklen_t* address_len) @extern("accept");
 
 macro void! NativeSocket.close(NativeSocket this)
 {
