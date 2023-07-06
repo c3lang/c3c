@@ -3511,10 +3511,13 @@ static void llvm_emit_subarray_comp(GenContext *c, BEValue *be_value, BEValue *l
 
 INLINE bool should_inline_array_comp(ArraySize len, Type *base_type_lowered)
 {
+	RETRY:
 	switch (base_type_lowered->type_kind)
 	{
 		case TYPE_ARRAY:
-			return should_inline_array_comp(base_type_lowered->array.len * len, type_lowering(base_type_lowered->array.base));
+			len *= base_type_lowered->array.len;
+			base_type_lowered = type_lowering(base_type_lowered->array.base);
+			goto RETRY;
 		case TYPE_SUBARRAY:
 			return len <= 4;
 		default:
