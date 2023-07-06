@@ -504,7 +504,7 @@ INLINE void sema_trace_decl_dynamic_methods(Decl *decl)
 	for (unsigned i = 0; i < method_count; i++)
 	{
 		Decl *method = methods[i];
-		if (!method->func_decl.attr_dynamic) continue;
+		if (method->decl_kind == DECL_MACRO || !method->func_decl.attr_dynamic) continue;
 		sema_trace_decl_liveness(method);
 	}
 }
