@@ -58,7 +58,7 @@ macro void print(x)
 	$case ZString:
 		(void)stdout().print(x.as_str());
 	$case DString:
-		(void)stdout().print(x.str());
+		(void)stdout().print(x.as_str());
 	$default:
 		$if @convertible(x, String):
 			(void)stdout().print((String)x);
@@ -77,7 +77,7 @@ macro void printn(x = "")
 	$case ZString:
 		(void)stdout().printn(x.as_str());
 	$case DString:
-		(void)stdout().printn(x.str());
+		(void)stdout().printn(x.as_str());
 	$default:
 		$if @convertible(x, String):
 			(void)stdout().printn((String)x);

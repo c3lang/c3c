@@ -12,6 +12,6 @@ fn void! test_writing()
 	String test_str = "2134";
 	r.init(test_str);
 	s.read_from(r.as_stream())!;
-	String o = foo.str();
+	String o = foo.as_str();
 	assert(o == "hello-what?2134");
 }

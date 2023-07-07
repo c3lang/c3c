@@ -21,7 +21,7 @@ struct StringData @private
 
 fn void Summary.print(Summary *s, File out)
 {
-	String title = s.title ? s.title.str() : "missing";
+	String title = s.title ? s.title.as_str() : "missing";
 	out.printf("Summary({ .title = %s, .ok = %s})", title, s.ok);
 }
 
@@ -128,7 +128,7 @@ fn void main()
             io::printf("  Summary: ");
             summary.print(io::stdout());
             io::printn("");
-            String title_sure = summary.title ? summary.title.str() : "";
+            String title_sure = summary.title ? summary.title.as_str() : "";
             io::printf("  Title: %s\n", title_sure);
             bool! has_title = readWhetherTitleNonEmpty(url);
             // This looks a bit less than elegant, but as you see it's mostly due to having to

@@ -93,7 +93,7 @@ fn void DString.chop(self, usz new_size)
 	self.data().len = new_size;
 }
 
-fn String DString.str(self)
+fn String DString.as_str(self)
 {
 	StringData* data = (StringData*)self;
 	if (!data) return "";
@@ -261,14 +261,14 @@ fn void DString.append_chars(&self, String str)
 
 fn Char32[] DString.copy_utf32(&self, Allocator* using = mem::heap())
 {
-	return self.str().to_utf32(using) @inline!!;
+	return self.as_str().to_utf32(using) @inline!!;
 }
 
 fn void DString.append_string(&self, DString str)
 {
 	StringData* other = (StringData*)str;
 	if (!other) return;
-	self.append(str.str());
+	self.append(str.as_str());
 }
 
 fn void DString.clear(self)
