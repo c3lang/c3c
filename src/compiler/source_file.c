@@ -55,6 +55,7 @@ File *source_file_load(const char *filename, bool *already_loaded, const char **
 	file->file_id = vec_size(global_context.loaded_sources);
 	file->full_path = full_path;
 	file->contents = source_text;
+	file->content_len = size;
 	file_get_dir_and_filename_from_full(file->full_path, &file->name, &file->dir_path);
 	vec_add(global_context.loaded_sources, file);
 	return file;

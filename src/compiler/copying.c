@@ -296,6 +296,10 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 	{
 		case EXPR_ANYSWITCH:
 			UNREACHABLE
+		case EXPR_EMBED:
+			MACRO_COPY_EXPR(expr->embed_expr.len);
+			MACRO_COPY_EXPR(expr->embed_expr.filename);
+			return expr;
 		case EXPR_GENERIC_IDENT:
 			MACRO_COPY_EXPRID(expr->generic_ident_expr.parent);
 			MACRO_COPY_EXPR_LIST(expr->generic_ident_expr.parmeters);
@@ -971,7 +975,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 		case DECL_DEFINE:
 			switch (decl->define_decl.define_kind)
 			{
-				case DEFINE_TYPE_GENERIC:
+				case DEFINE_TYPE_GENERIC_OLD:
 				case DEFINE_IDENT_GENERIC:
 					MACRO_COPY_EXPR_LIST(decl->define_decl.generic_params);
 					break;

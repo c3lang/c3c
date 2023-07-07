@@ -182,7 +182,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 		{
 			Expr *expr = elements[0];
 			const_init->init_union.index = 0;
-			if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER)
+			if (expr_is_const_initializer(expr))
 			{
 				const_init->init_union.element = expr->const_expr.initializer;
 			}
@@ -199,7 +199,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 		VECEACH(elements, i)
 		{
 			Expr *expr = elements[i];
-			if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER)
+			if (expr_is_const_initializer(expr))
 			{
 				inits[i] = expr->const_expr.initializer;
 				continue;
@@ -361,7 +361,7 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 		VECEACH(elements, i)
 		{
 			Expr *expr = elements[i];
-			if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER)
+			if (expr_is_const_initializer(expr))
 			{
 				vec_add(inits, expr->const_expr.initializer);
 				continue;
@@ -631,7 +631,7 @@ static void sema_create_const_initializer_value(ConstInitializer *const_init, Ex
 {
 	// Possibly this is already a const initializers, in that case
 	// overwrite what is inside, eg [1] = { .a = 1 }
-	if (value->expr_kind == EXPR_CONST && value->const_expr.const_kind == CONST_INITIALIZER)
+	if (expr_is_const_initializer(value))
 	{
 		*const_init = *value->const_expr.initializer;
 		value->const_expr.initializer = const_init;
@@ -917,8 +917,7 @@ static Type *sema_expr_analyse_designator(SemaContext *context, Type *current, E
 
 INLINE bool sema_initializer_list_is_empty(Expr *value)
 {
-	return value->expr_kind == EXPR_CONST && value->const_expr.const_kind == CONST_INITIALIZER
-	       && value->const_expr.initializer->kind == CONST_INIT_ZERO;
+	return expr_is_const_initializer(value) && value->const_expr.initializer->kind == CONST_INIT_ZERO;
 }
 
 static Type *sema_find_type_of_element(SemaContext *context, Type *type, DesignatorElement ***elements_ref, unsigned *curr_index, bool *is_constant, bool *did_report_error, MemberIndex *max_index, Decl **member_ptr)
@@ -1001,7 +1000,7 @@ static Type *sema_find_type_of_element(SemaContext *context, Type *type, Designa
 
 MemberIndex sema_get_initializer_const_array_size(SemaContext *context, Expr *initializer, bool *may_be_array, bool *is_const_size)
 {
-	if (initializer->expr_kind == EXPR_CONST)
+	if (expr_is_const(initializer))
 	{
 		assert(initializer->const_expr.const_kind == CONST_INITIALIZER);
 		ConstInitializer *init = initializer->const_expr.initializer;

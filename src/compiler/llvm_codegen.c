@@ -393,9 +393,9 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	{
 		init_expr = init_expr->identifier_expr.decl->var.init_expr;
 	}
-	if (init_expr)
+	if (init_expr && init_expr->expr_kind != EXPR_OPTIONAL)
 	{
-		if (init_expr->expr_kind == EXPR_CONST && init_expr->const_expr.const_kind == CONST_INITIALIZER)
+		if (expr_is_const_initializer(init_expr))
 		{
 			ConstInitializer *list = init_expr->const_expr.initializer;
 			init_value = llvm_emit_const_initializer(c, list);
@@ -403,15 +403,8 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 		else
 		{
 			BEValue value;
-			if (init_expr->expr_kind == EXPR_CONST && init_expr->const_expr.const_kind == CONST_BYTES)
-			{
-				init_value = llvm_get_bytes(c, init_expr->const_expr.bytes.ptr, init_expr->const_expr.bytes.len);
-			}
-			else
-			{
-				llvm_emit_expr(c, &value, decl->var.init_expr);
-				init_value = llvm_load_value_store(c, &value);
-			}
+			llvm_emit_expr(c, &value, decl->var.init_expr);
+			init_value = llvm_load_value_store(c, &value);
 		}
 	}
 	else
@@ -446,16 +439,21 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 		llvm_set_alignment(optional_ref, type_alloca_alignment(type_anyfault));
 		LLVMSetUnnamedAddress(optional_ref, LLVMGlobalUnnamedAddr);
 	}
+	LLVMValueRef optional_value = NULL;
 	if (init_expr && IS_OPTIONAL(init_expr) && init_expr->expr_kind == EXPR_OPTIONAL)
 	{
-		UNREACHABLE
+		Expr *inner = init_expr->inner_expr;
+		assert(expr_is_const(inner) && inner->const_expr.const_kind == CONST_ERR);
+		BEValue value;
+		llvm_emit_expr(c, &value, inner);
+		optional_value = llvm_load_value_store(c, &value);
 	}
 	if (!decl->is_extern)
 	{
 		LLVMSetInitializer(decl->backend_ref, init_value);
 		if (optional_ref)
 		{
-			LLVMSetInitializer(optional_ref, llvm_get_zero(c, type_anyfault));
+			LLVMSetInitializer(optional_ref, optional_value ? optional_value : llvm_get_zero(c, type_anyfault));
 		}
 	}
 
@@ -1071,7 +1069,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 			}
 			return backend_ref;
 		case DECL_DEFINE:
-			if (decl->define_decl.define_kind != DEFINE_TYPE_GENERIC) return llvm_get_ref(c, decl->define_decl.alias);
+			if (decl->define_decl.define_kind != DEFINE_TYPE_GENERIC_OLD) return llvm_get_ref(c, decl->define_decl.alias);
 			UNREACHABLE
 		case DECL_FAULTVALUE:
 			if (!decl->backend_ref)

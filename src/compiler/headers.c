@@ -481,7 +481,7 @@ static void header_gen_global_var(FILE *file, FILE *file_type, HTable *table, De
 		Expr *init = decl->var.init_expr;
 		if (type_is_arraylike(type) || type_is_user_defined(type) || !init) return;
 		OUTPUT("#define %s ", decl_get_extname(decl));
-		assert(init->expr_kind == EXPR_CONST);
+		assert(expr_is_const(init));
 		switch (init->const_expr.const_kind)
 		{
 			case CONST_INTEGER:
@@ -503,9 +503,9 @@ static void header_gen_global_var(FILE *file, FILE *file_type, HTable *table, De
 				return;
 			case CONST_STRING:
 				putc('\"', file);
-				for (unsigned i = 0; i < init->const_expr.string.len; i++)
+				for (unsigned i = 0; i < init->const_expr.bytes.len; i++)
 				{
-					char ch = init->const_expr.string.chars[i];
+					char ch = init->const_expr.bytes.ptr[i];
 					if (ch >= ' ' && ch <= 127 && ch != '"')
 					{
 						fputc(ch, file);

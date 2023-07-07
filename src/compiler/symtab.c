@@ -72,11 +72,14 @@ const char *kw_return;
 const char *kw_std;
 const char *kw_std__core;
 const char *kw_std__core__types;
+const char *kw_std__io;
 const char *kw___run_default_test_runner;
 const char *kw_type;
 const char *kw_typekind;
 const char *kw_winmain;
 const char *kw_wmain;
+const char *kw_FILE_NOT_FOUND;
+const char *kw_IoError;
 
 void symtab_destroy()
 {
@@ -130,9 +133,11 @@ void symtab_init(uint32_t capacity)
 	builtin_defines[BUILTIN_DEF_TIME] = KW_DEF("TIME");
 	builtin_defines[BUILTIN_DEF_TEST_NAMES] = KW_DEF("TEST_NAMES");
 	builtin_defines[BUILTIN_DEF_TEST_FNS] = KW_DEF("TEST_FNS");
+	kw_FILE_NOT_FOUND = KW_DEF("FILE_NOT_FOUND");
 
 	type = TOKEN_TYPE_IDENT;
 	kw_typekind = KW_DEF("TypeKind");
+	kw_IoError = KW_DEF("IoError");
 
 	type = TOKEN_IDENT;
 	kw_argc = KW_DEF("_$argc");
@@ -158,6 +163,7 @@ void symtab_init(uint32_t capacity)
 	kw_std = KW_DEF("std");
 	kw_std__core = KW_DEF("std::core");
 	kw_std__core__types = KW_DEF("std::core::types");
+	kw_std__io = KW_DEF("std::io");
 	kw___run_default_test_runner = KW_DEF("__run_default_test_runner");
 	kw_type = KW_DEF("type");
 	kw_winmain = KW_DEF("wWinMain");

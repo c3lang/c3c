@@ -143,7 +143,7 @@ Type *type_infer_len_from_actual_type(Type *to_infer, Type *actual_type)
  */
 INLINE bool insert_runtime_cast_unless_const(Expr *expr, CastKind kind, Type *type)
 {
-	if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind != CONST_TYPEID) return false;
+	if (expr_is_const(expr) && expr->const_expr.const_kind != CONST_TYPEID) return false;
 	return insert_cast(expr, kind, type);
 }
 
@@ -409,7 +409,7 @@ static bool integer_to_pointer(Expr *expr, Type *type)
 	assert(type_bit_size(type_uptr) <= 64 && "For > 64 bit pointers, this code needs updating.");
 
 	// Handle const:
-	if (expr->expr_kind == EXPR_CONST)
+	if (expr_is_const(expr))
 	{
 		// For if the type doesn't fit, insert an error.
 		if (!int_fits(expr->const_expr.ixx, type_uptr->canonical->type_kind))
@@ -435,7 +435,7 @@ static void enum_to_int_lowering(Expr* expr)
 {
 	assert(type_flatten(expr->type)->type_kind == TYPE_ENUM);
 	Type *underlying_type = type_base(expr->type);
-	if (expr->expr_kind == EXPR_CONST)
+	if (expr_is_const(expr))
 	{
 		assert(expr->const_expr.const_kind == CONST_ENUM);
 		expr_rewrite_const_int(expr, underlying_type, expr->const_expr.enum_err_val->enum_constant.ordinal);
@@ -541,7 +541,7 @@ static bool vector_to_array(Expr *expr, Type *to_type)
 static bool vector_to_vector(Expr *expr, Type *to_type)
 {
 	//
-	if (expr->expr_kind != EXPR_CONST)
+	if (!expr_is_const(expr))
 	{
 		// Extract indexed types.
 		Type *from_type = type_flatten(expr->type);
@@ -1015,7 +1015,7 @@ static bool cast_from_pointer(SemaContext *context, Expr *expr, Type *from, Type
 
 static void sema_error_const_int_out_of_range(Expr *expr, Expr *problem, Type *to_type)
 {
-	assert(expr->expr_kind == EXPR_CONST);
+	assert(expr_is_const(expr));
 	if (expr->const_expr.is_character && expr->type->type_kind != TYPE_U128)
 	{
 		SEMA_ERROR(problem, "The unicode character U+%04x cannot fit in a %s.", (uint32_t)expr->const_expr.ixx.i.low, type_quoted_error_string(to_type));
@@ -1034,27 +1034,40 @@ static void sema_error_const_int_out_of_range(Expr *expr, Expr *problem, Type *t
 }
 
 
-static inline bool cast_maybe_string_lit(Expr *expr, Type *to_canonical, Type *to_original)
+static inline bool cast_maybe_string_byte_lit(Expr *expr, Type *to_canonical, Type *to_original)
 {
-	if (expr->expr_kind != EXPR_CONST || expr->const_expr.const_kind != CONST_STRING || expr->type != type_string) return false;
+	if (!expr_is_const(expr)) return false;
+	bool is_bytes = false;
+	switch (expr->const_expr.const_kind)
+	{
+		case CONST_BYTES:
+			if (expr->type->type_kind != TYPE_ARRAY) return false;
+			is_bytes = true;
+			break;
+		case CONST_STRING:
+			if (expr->type != type_string) return false;
+			break;
+		default:
+			return false;
+	}
 	Type *flat = type_flatten(to_canonical);
 	Type *indexed_type = type_get_indexed_type(flat);
 	if (indexed_type) indexed_type = type_flatten(indexed_type);
+	size_t len = is_bytes ? expr->const_expr.bytes.len : expr->const_expr.bytes.len;
 	switch (flat->type_kind)
 	{
 		case TYPE_SUBARRAY:
 		case TYPE_POINTER:
 			if (indexed_type != type_char && indexed_type != type_ichar) return false;
 			expr->type = to_original;
+			return true;
 		case TYPE_INFERRED_ARRAY:
 			if (indexed_type != type_char && indexed_type != type_ichar) return false;
-			expr->type = type_infer_len_from_actual_type(to_original, type_get_array(indexed_type, expr->const_expr.string.len));
+			expr->type = type_infer_len_from_actual_type(to_original, type_get_array(indexed_type, len));
 			return true;
-			break;
 		case TYPE_ARRAY:
 			if (indexed_type != type_char && indexed_type != type_ichar) return false;
 			{
-				ArraySize len = expr->const_expr.string.len;
 				ArraySize to_len = flat->array.len;
 				if (len > to_len) return false;
 				expr->type = to_original;
@@ -1599,7 +1612,7 @@ static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, boo
 
 	// Handle strings, these don't actually mess with the underlying data,
 	// just the type.
-	if (cast_maybe_string_lit(expr, to, to_type)) return true;
+	if (cast_maybe_string_byte_lit(expr, to, to_type)) return true;
 
 	// For constant pointers cast into anything pointer-like:
 	if (expr_is_const_pointer(expr) && from == type_voidptr && type_flatten(to)->type_kind == TYPE_POINTER)
@@ -1794,7 +1807,7 @@ static bool err_to_bool(Expr *expr, Type *to_type)
 
 static inline bool subarray_to_bool(Expr *expr, Type *type)
 {
-	if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER)
+	if (expr_is_const_initializer(expr))
 	{
 		ConstInitializer *list = expr->const_expr.initializer;
 		switch (list->kind)
@@ -1962,7 +1975,7 @@ bool cast(Expr *expr, Type *to_type)
 	if (from_type == to)
 	{
 		expr->type = type_add_optional(to_type, from_is_optional);
-		if (expr->expr_kind == EXPR_CONST)
+		if (expr_is_const(expr))
 		{
 			expr->const_expr.is_hex = false;
 		}

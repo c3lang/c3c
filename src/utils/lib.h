@@ -75,6 +75,7 @@ bool file_is_dir(const char *file);
 bool file_exists(const char *path);
 FILE *file_open_read(const char *path);
 bool file_touch(const char *path);
+char *file_read_binary(const char *path, size_t *size);
 char *file_read_all(const char *path, size_t *return_size);
 void file_get_dir_and_filename_from_full(const char *full_path, char **filename, char **dir_path);
 void file_find_top_dir();

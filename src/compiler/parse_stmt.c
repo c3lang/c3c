@@ -1243,6 +1243,7 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_AT_CONST_IDENT:
 		case TOKEN_AT:
 		case TOKEN_AT_IDENT:
+		case TOKEN_CT_EMBED:
 			return parse_expr_stmt(c);
 		case TOKEN_ASSERT:
 			return parse_assert_stmt(c);

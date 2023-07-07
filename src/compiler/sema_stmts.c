@@ -1126,7 +1126,7 @@ static inline bool sema_analyse_for_cond(SemaContext *context, ExprId *cond_ref,
 	// If this is const true, then set this to infinite and remove the expression.
 	Expr *cond_last = cond->expr_kind == EXPR_COND ? VECLAST(cond->cond_expr) : cond;
 	assert(cond_last);
-	if (cond_last->expr_kind == EXPR_CONST && cond_last->const_expr.b)
+	if (expr_is_const(cond_last) && cond_last->const_expr.b)
 	{
 		if (cond->expr_kind != EXPR_COND || vec_size(cond->cond_expr) == 1)
 		{
@@ -1263,7 +1263,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		Type *inferred_type = NULL;
 
 		// We may have an initializer list, in this case we rely on an inferred type.
-		if (expr_is_init_list(enumerator) || (enumerator->expr_kind == EXPR_CONST && enumerator->const_expr.const_kind == CONST_INITIALIZER))
+		if (expr_is_init_list(enumerator) || expr_is_const_initializer(enumerator))
 		{
 			bool may_be_array;
 			bool is_const_size;
@@ -1866,7 +1866,7 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 				break;
 			}
 			Expr *expr = case_stmt->case_stmt.expr;
-			if (expr->expr_kind == EXPR_CONST && expr->const_expr.typeid == type)
+			if (expr_is_const(expr) && expr->const_expr.typeid == type)
 			{
 				statement->nextcase_stmt.case_switch_stmt = astid(case_stmt);
 				return true;
@@ -1889,7 +1889,7 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 
 	statement->nextcase_stmt.defer_id = context_get_defers(context, context->active_scope.defer_last, parent->switch_stmt.defer, true);
 
-	if (target->expr_kind == EXPR_CONST)
+	if (expr_is_const(target))
 	{
 		Ast *default_stmt = NULL;
 		VECEACH(parent->switch_stmt.cases, i)
@@ -2016,7 +2016,7 @@ static inline bool sema_check_type_case(SemaContext *context, Type *switch_type,
 	Expr *expr = case_stmt->case_stmt.expr;
 	if (!sema_analyse_expr_rhs(context, type_typeid, expr, false)) return false;
 
-	if (expr->expr_kind == EXPR_CONST)
+	if (expr_is_const(expr))
 	{
 		Type *my_type = expr->const_expr.typeid;
 		for (unsigned i = 0; i < index; i++)
@@ -2024,7 +2024,7 @@ static inline bool sema_check_type_case(SemaContext *context, Type *switch_type,
 			Ast *other = cases[i];
 			if (other->ast_kind != AST_CASE_STMT) continue;
 			Expr *other_expr = other->case_stmt.expr;
-			if (other_expr->expr_kind == EXPR_CONST && other_expr->const_expr.typeid == my_type)
+			if (expr_is_const(other_expr) && other_expr->const_expr.typeid == my_type)
 			{
 				SEMA_ERROR(case_stmt, "The same type appears more than once.");
 				SEMA_NOTE(other, "Here is the case with that type.");
@@ -2172,7 +2172,7 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 			Ast *next = (i < case_count - 1) ? cases[i + 1] : NULL;
 			PUSH_NEXT(next, statement);
 			Ast *body = stmt->case_stmt.body;
-			if (stmt->ast_kind == AST_CASE_STMT && body && type_switch && var_holder && stmt->case_stmt.expr->expr_kind == EXPR_CONST)
+			if (stmt->ast_kind == AST_CASE_STMT && body && type_switch && var_holder && expr_is_const(stmt->case_stmt.expr))
 			{
 				if (any_switch->is_assign)
 				{

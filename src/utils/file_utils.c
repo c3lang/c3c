@@ -267,6 +267,49 @@ char *file_read_all(const char *path, size_t *return_size)
 	return buffer;
 }
 
+static bool file_read(FILE *file, char *buffer, size_t *read)
+{
+	size_t to_read = *read;
+	size_t total_read = 0;
+	while (to_read > 0)
+	{
+		size_t bytes_read = fread(buffer, sizeof(char), to_read, file);
+		total_read += bytes_read;
+		to_read -= bytes_read;
+		buffer += bytes_read;
+		if (bytes_read < to_read)
+		{
+			if (feof(file)) goto DONE;
+			if (ferror(file)) return false;
+		}
+	}
+DONE:
+	*read = total_read;
+	return true;
+}
+
+char *file_read_binary(const char *path, size_t *size)
+{
+	size_t max_read = *size;
+	FILE *file = file_open_read(path);
+
+	if (file == NULL) return NULL;
+
+	fseek(file, 0L, SEEK_END);
+	size_t file_size = (size_t)ftell(file);
+	if (file_size > max_read) file_size = max_read;
+	rewind(file);
+	char *buffer = (char *)MALLOC(file_size);
+	if (buffer == NULL)
+	{
+		error_exit("Not enough memory to read \"%s\".\n", path);
+	}
+	*size = file_size;
+	bool success = file_read(file, buffer, size);
+	fclose(file);
+	return success ? buffer : NULL;
+}
+
 static inline const char *lib_find(const char *exe_path, const char *rel_path)
 {
 	struct stat info;

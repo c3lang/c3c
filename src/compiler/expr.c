@@ -134,6 +134,7 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_SWIZZLE:
 		case EXPR_LAMBDA:
 		case EXPR_GENERIC_IDENT:
+		case EXPR_EMBED:
 			return false;
 	}
 	UNREACHABLE
@@ -203,6 +204,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_STRINGIFY:
 		case EXPR_CT_CHECKS:
 		case EXPR_LAMBDA:
+		case EXPR_EMBED:
 			return true;
 		case EXPR_COND:
 			return expr_list_is_constant_eval(expr->cond_expr, eval_kind);
@@ -406,6 +408,7 @@ static inline bool expr_unary_addr_is_constant_eval(Expr *expr, ConstantEvalKind
 	// An address is never a constant value.
 	if (eval_kind == CONSTANT_EVAL_CONSTANT_VALUE) return false;
 	Expr *inner = expr->unary_expr.expr;
+	if (eval_kind == CONSTANT_EVAL_GLOBAL_INIT && IS_OPTIONAL(inner)) return false;
 	switch (inner->expr_kind)
 	{
 		case EXPR_ACCESS:
@@ -662,6 +665,7 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_OPERATOR_CHARS:
 		case EXPR_CT_CHECKS:
 		case EXPR_LAMBDA:
+		case EXPR_EMBED:
 			return true;
 		case EXPR_VASPLAT:
 			return true;
@@ -932,9 +936,9 @@ void expr_rewrite_to_string(Expr *expr_to_rewrite, const char *string)
 {
 	expr_to_rewrite->expr_kind = EXPR_CONST;
 	expr_to_rewrite->const_expr.const_kind = CONST_STRING;
-	expr_to_rewrite->const_expr.string.chars = (char *)string;
+	expr_to_rewrite->const_expr.bytes.ptr = (char *)string;
 	ArraySize len = (ArraySize)strlen(string);
-	expr_to_rewrite->const_expr.string.len = len;
+	expr_to_rewrite->const_expr.bytes.len = len;
 	expr_to_rewrite->resolve_status = RESOLVE_DONE;
 	expr_to_rewrite->type = type_string;
 }

@@ -119,27 +119,14 @@ INLINE void register_global_decls(CompilationUnit *unit, Decl **decls)
 	vec_resize(decls, 0);
 }
 
-Decl **sema_load_include(CompilationUnit *unit, Decl *decl)
+INLINE File *sema_load_file(CompilationUnit *unit, SourceSpan span, Expr *filename, const char *type, File *no_file)
 {
-	SemaContext context;
-	sema_context_init(&context, unit);
-	FOREACH_BEGIN(Attr *attr, decl->attributes)
-		if (attr->attr_kind != ATTRIBUTE_IF)
-		{
-			SEMA_ERROR(attr, "Invalid attribute for '$include'.");
-			return NULL;
-		}
-	FOREACH_END();
-	Expr *filename = decl->include.filename;
-	bool success = sema_analyse_ct_expr(&context, filename);
-	sema_context_destroy(&context);
-	if (!success) return NULL;
 	if (!expr_is_const_string(filename))
 	{
-		SEMA_ERROR(decl->include.filename, "A compile time string was expected.");
+		SEMA_ERROR(filename, "A compile time string was expected.");
 		return NULL;
 	}
-	const char *string = filename->const_expr.string.chars;
+	const char *string = filename->const_expr.bytes.ptr;
 	bool loaded;
 	const char *error;
 	char *path;
@@ -151,16 +138,35 @@ Decl **sema_load_include(CompilationUnit *unit, Decl *decl)
 	File *file = source_file_load(string, &loaded, &error);
 	if (!file)
 	{
-		SEMA_ERROR(decl, "Failed to load file %s: %s", string, error);
+		if (no_file) return no_file;
+		sema_error_at(span, "Failed to load file %s: %s", string, error);
 		return NULL;
 	}
 	if (global_context.errors_found) return NULL;
+	return file;
+}
+
+Decl **sema_load_include(CompilationUnit *unit, Decl *decl)
+{
+	SemaContext context;
+	sema_context_init(&context, unit);
+	FOREACH_BEGIN(Attr *attr, decl->attributes)
+		if (attr->attr_kind != ATTRIBUTE_IF)
+		{
+			SEMA_ERROR(attr, "Invalid attribute for '%include'.");
+			return NULL;
+		}
+	FOREACH_END();
+	bool success = sema_analyse_ct_expr(&context, decl->include.filename);
+	sema_context_destroy(&context);
+	if (success) return NULL;
+	File *file = sema_load_file(unit, decl->span,  decl->include.filename, "$include", NULL);
+	if (!file) return NULL;
 	if (global_context.includes_used++ > MAX_INCLUDES)
 	{
 		SEMA_ERROR(decl, "This $include would cause the maximum number of includes (%d) to be exceeded.", MAX_INCLUDES);
 		return NULL;
 	}
-
 	return parse_include_file(file, unit);
 }
 

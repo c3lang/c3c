@@ -622,8 +622,8 @@ static Expr *parse_ct_stringify(ParseContext *c, Expr *left)
 	const char *content = str_copy(start, len);
 	Expr *expr = expr_new(EXPR_CONST, start_span);
 	expr->const_expr.const_kind = CONST_STRING;
-	expr->const_expr.string.chars = content;
-	expr->const_expr.string.len = len;
+	expr->const_expr.bytes.ptr = content;
+	expr->const_expr.bytes.len = len;
 	expr->type = type_string;
 	return expr;
 }
@@ -1083,6 +1083,25 @@ static Expr *parse_ct_checks(ParseContext *c, Expr *left)
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 	RANGE_EXTEND_PREV(checks);
 	return checks;
+}
+
+/**
+ * ct_checks ::= CT_EMBED '(' constant_expr (',' constant_expr)? ')'
+ */
+static Expr *parse_ct_embed(ParseContext *c, Expr *left)
+{
+	assert(!left && "Unexpected left hand side");
+	Expr *embed = expr_new(EXPR_EMBED, c->span);
+	advance_and_verify(c, TOKEN_CT_EMBED);
+	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
+	ASSIGN_EXPR_OR_RET(embed->embed_expr.filename, parse_constant_expr(c), poisoned_expr);
+	if (try_consume(c, TOKEN_COMMA))
+	{
+		ASSIGN_EXPR_OR_RET(embed->embed_expr.len, parse_constant_expr(c), poisoned_expr);
+	}
+	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
+	RANGE_EXTEND_PREV(embed);
+	return embed;
 }
 
 /**
@@ -1692,8 +1711,8 @@ static Expr *parse_string_literal(ParseContext *c, Expr *left)
 		return poisoned_expr;
 	}
 	assert(str);
-	expr_string->const_expr.string.chars = str;
-	expr_string->const_expr.string.len = (uint32_t)len;
+	expr_string->const_expr.bytes.ptr = str;
+	expr_string->const_expr.bytes.len = (uint32_t)len;
 	expr_string->type = type_string;
 	expr_string->const_expr.const_kind = CONST_STRING;
 	expr_string->resolve_status = RESOLVE_DONE;
@@ -1889,6 +1908,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_CT_ALIGNOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_DEFINED] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_CHECKS] = { parse_ct_checks, NULL, PREC_NONE },
+		[TOKEN_CT_EMBED] = { parse_ct_embed, NULL, PREC_NONE },
 		[TOKEN_CT_EVAL] = { parse_ct_eval, NULL, PREC_NONE },
 		[TOKEN_CT_EXTNAMEOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_OFFSETOF] = { parse_ct_call, NULL, PREC_NONE },

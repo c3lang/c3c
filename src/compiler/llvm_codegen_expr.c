@@ -138,7 +138,7 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 		llvm_emit_expr(c, &value, expr);
 		llvm_store(c, ref, &value);
 	}
-	else if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER)
+	else if (expr_is_const_initializer(expr))
 	{
 		llvm_emit_const_initialize_reference(c, ref, expr);
 		value = *ref;
@@ -675,8 +675,8 @@ static inline void gencontext_emit_subscript(GenContext *c, BEValue *value, Expr
 	else if (parent_type_kind == TYPE_ARRAY)
 	{
 		// From back should always be folded.
-		assert(expr->expr_kind != EXPR_CONST || !expr->subscript_expr.range.start_from_end);
-		needs_len = (active_target.feature.safe_mode && expr->expr_kind != EXPR_CONST) || expr->subscript_expr.range.start_from_end;
+		assert(!expr_is_const(expr) || !expr->subscript_expr.range.start_from_end);
+		needs_len = (active_target.feature.safe_mode && expr_is_const(expr)) || expr->subscript_expr.range.start_from_end;
 	}
 	if (needs_len)
 	{
@@ -1689,7 +1689,7 @@ void llvm_emit_initialize_reference_temporary_const(GenContext *c, BEValue *ref,
 
 	Type *canonical = expr->type->canonical;
 
-	assert(expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER);
+	assert(expr_is_const_initializer(expr));
 	LLVMValueRef value = llvm_emit_const_initializer(c, expr->const_expr.initializer);
 
 	// Create a global const.
@@ -1804,7 +1804,7 @@ static void llvm_emit_inititialize_reference_const(GenContext *c, BEValue *ref, 
 }
 static inline void llvm_emit_initialize_reference_const(GenContext *c, BEValue *ref, Expr *expr)
 {
-	assert(expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER);
+	assert(expr_is_const_initializer(expr));
 	ConstInitializer *initializer = expr->const_expr.initializer;
 
 	// Make sure we have an address.
@@ -1918,7 +1918,7 @@ static inline void llvm_emit_initialize_reference_list(GenContext *c, BEValue *r
 			llvm_value_set_address(&pointer, value, element->type, ref->alignment);
 		}
 		// If this is an initializer, we want to actually run the initialization recursively.
-		if (element->expr_kind == EXPR_CONST && element->const_expr.const_kind == CONST_INITIALIZER)
+		if (expr_is_const_initializer(element))
 		{
 			llvm_emit_const_initialize_reference(c, &pointer, element);
 			continue;
@@ -1969,7 +1969,7 @@ static void llvm_emit_initialize_designated(GenContext *c, BEValue *ref, AlignSi
 			llvm_store(c, ref, emitted_value);
 			return;
 		}
-		if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER)
+		if (expr_is_const_initializer(expr))
 		{
 			llvm_emit_const_initialize_reference(c, ref, expr);
 			return;
@@ -2141,7 +2141,7 @@ LLVMValueRef llvm_emit_const_bitstruct_array(GenContext *c, ConstInitializer *in
 		// Special case for bool
 		if (member_type == type_bool)
 		{
-			assert(expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_BOOL);
+			assert(expr_is_const_bool(expr));
 			assert(start_bit == end_bit);
 
 			// Completely skip zero.
@@ -2262,7 +2262,7 @@ static inline void llvm_emit_const_initialize_bitstruct_ref(GenContext *c, BEVal
  */
 static inline void llvm_emit_const_initialize_reference(GenContext *c, BEValue *ref, Expr *expr)
 {
-	assert(expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER);
+	assert(expr_is_const_initializer(expr));
 	ConstInitializer *initializer = expr->const_expr.initializer;
 	if (initializer->type->type_kind == TYPE_VECTOR)
 	{
@@ -4571,23 +4571,9 @@ static inline void llvm_emit_const_initializer_list_expr(GenContext *c, BEValue 
 static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 {
 	Type *type = type_reduced_from_expr(expr)->canonical;
+	bool is_bytes = false;
 	switch (expr->const_expr.const_kind)
 	{
-		case CONST_BYTES:
-			assert(type->array.base == type_char);
-			{
-				LLVMValueRef global_name = llvm_add_global_raw(c,
-				                                               ".bytes",
-				                                               LLVMArrayType(llvm_get_type(c, type_char),
-				                                                             expr->const_expr.bytes.len),
-				                                               1);
-				llvm_set_private_linkage(global_name);
-				LLVMSetGlobalConstant(global_name, 1);
-
-				LLVMSetInitializer(global_name, llvm_get_bytes(c, expr->const_expr.bytes.ptr, expr->const_expr.bytes.len));
-				llvm_value_set_address_abi_aligned(be_value, global_name, type);
-				return;
-			}
 		case CONST_INTEGER:
 		{
 			LLVMValueRef value;
@@ -4627,6 +4613,9 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		case CONST_BOOL:
 			llvm_value_set(be_value, LLVMConstInt(c->bool_type, expr->const_expr.b ? 1 : 0, 0), type_bool);
 			return;
+		case CONST_BYTES:
+			is_bytes = true;
+			FALLTHROUGH;
 		case CONST_STRING:
 		{
 			Type *str_type = type_lowering(expr->type);
@@ -4635,20 +4624,23 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 			{
 				// In the global alloc case, create the byte array.
 				ArraySize array_len = str_type->array.len;
-				ArraySize size = expr->const_expr.string.len + 1;
+				ArraySize size = expr->const_expr.bytes.len;
+				if (!is_bytes) size += 1;
 				LLVMValueRef string;
 				if (array_len == size)
 				{
-					string = llvm_get_zstring(c, expr->const_expr.string.chars, expr->const_expr.string.len);
+					string = is_bytes
+							? llvm_get_bytes(c, expr->const_expr.bytes.ptr, size)
+							: llvm_get_zstring(c, expr->const_expr.bytes.ptr, expr->const_expr.bytes.len);
 				}
 				else if (array_len < size)
 				{
-					string = llvm_get_bytes(c, expr->const_expr.string.chars, array_len);
+					string = llvm_get_bytes(c, expr->const_expr.bytes.ptr, array_len);
 				}
 				else
 				{
 					char *buffer = ccalloc(1, array_len);
-					memcpy(buffer, expr->const_expr.string.chars, expr->const_expr.string.len);
+					memcpy(buffer, expr->const_expr.bytes.ptr, expr->const_expr.bytes.len);
 					string = llvm_get_bytes(c, buffer, array_len);
 				}
 				llvm_value_set(be_value, string, type);
@@ -4656,26 +4648,40 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 			}
 			// local case or creating a pointer / subarray.
 			// In this case we first create the constant.
-			ArraySize strlen = expr->const_expr.string.len;
-			if (strlen == 0 && str_type->type_kind == TYPE_SUBARRAY)
+			ArraySize len = expr->const_expr.bytes.len;
+			if (len == 0 && str_type->type_kind == TYPE_SUBARRAY)
 			{
 				llvm_value_set(be_value, llvm_get_zero(c, expr->type), expr->type);
 				return;
 			}
-			ArraySize size = expr->const_expr.string.len + 1;
+			ArraySize size = expr->const_expr.bytes.len;
+			if (!is_bytes) size++;
 			if (is_array && type->array.len > size) size = type->array.len;
-			LLVMValueRef global_name = llvm_add_global_raw(c, ".str", LLVMArrayType(llvm_get_type(c, type_char), size), 1);
+			LLVMValueRef global_name = llvm_add_global_raw(c, is_bytes ? ".bytes" : ".str", LLVMArrayType(llvm_get_type(c, type_char), size), 1);
 			llvm_set_private_linkage(global_name);
 			LLVMSetUnnamedAddress(global_name, LLVMGlobalUnnamedAddr);
 			LLVMSetGlobalConstant(global_name, 1);
-			LLVMValueRef string = llvm_get_zstring(c, expr->const_expr.string.chars, expr->const_expr.string.len);
-			if (size > strlen + 1)
+			LLVMValueRef data = is_bytes
+					? llvm_get_bytes(c, expr->const_expr.bytes.ptr, expr->const_expr.bytes.len)
+					: llvm_get_zstring(c, expr->const_expr.bytes.ptr, expr->const_expr.bytes.len);
+			LLVMValueRef trailing_zeros = NULL;
+			if (is_bytes)
 			{
-				LLVMValueRef trailing_zeros = llvm_get_zero_raw(LLVMArrayType(c->byte_type, size - strlen - 1));
-				LLVMValueRef values[2] = { string, trailing_zeros };
-				string = llvm_get_packed_struct(c, values, 2);
+				if (size > len)
+				{
+					trailing_zeros = llvm_get_zero_raw(LLVMArrayType(c->byte_type, size - len));
+				}
 			}
-			LLVMSetInitializer(global_name, string);
+			else if (size > len + 1)
+			{
+				trailing_zeros = llvm_get_zero_raw(LLVMArrayType(c->byte_type, size - len - 1));
+			}
+			if (trailing_zeros)
+			{
+				LLVMValueRef values[2] = { data, trailing_zeros };
+				data = llvm_get_packed_struct(c, values, 2);
+			}
+			LLVMSetInitializer(global_name, data);
 			if (is_array)
 			{
 				llvm_value_set_address(be_value, global_name, type, 1);
@@ -4684,8 +4690,8 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 			{
 				if (str_type->type_kind == TYPE_SUBARRAY)
 				{
-					LLVMValueRef len = llvm_const_int(c, type_usz, strlen);
-					llvm_value_aggregate_two(c, be_value, str_type, global_name, len);
+					LLVMValueRef len_value = llvm_const_int(c, type_usz, len);
+					llvm_value_aggregate_two(c, be_value, str_type, global_name, len_value);
 				}
 				else
 				{
@@ -6544,6 +6550,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_ASM:
 		case EXPR_VASPLAT:
 		case EXPR_GENERIC_IDENT:
+		case EXPR_EMBED:
 			UNREACHABLE
 		case EXPR_LAMBDA:
 			llvm_emit_lambda(c, value, expr);

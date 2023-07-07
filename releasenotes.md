@@ -3,7 +3,9 @@
 ## 0.5.0 Change List
 
 ### Changes / improvements
+- Globals may now be initialized with optional values.
 - New generic syntax.
+- Added `$embed` to embed binary data.
 - Ad hoc generics are now allowed.
 - Allow inferred type on method first argument.
 - Fix to void expression blocks

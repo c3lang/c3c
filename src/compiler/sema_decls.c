@@ -62,7 +62,7 @@ static inline bool sema_analyse_error(SemaContext *context, Decl *decl);
 
 static bool sema_check_section(SemaContext *context, Attr *attr)
 {
-	const char *section_string = attr->exprs[0]->const_expr.string.chars;
+	const char *section_string = attr->exprs[0]->const_expr.bytes.ptr;
 	// No restrictions except for MACH-O
 	if (platform_target.object_format != OBJ_FORMAT_MACHO)
 	{
@@ -567,7 +567,7 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *dec
 	if (!sema_analyse_expr(context, start)) return false;
 
 	// Check for negative, non integer or non const values.
-	if (start->expr_kind != EXPR_CONST || !type_is_integer(start->type) || int_is_neg(start->const_expr.ixx))
+	if (!expr_is_const(start) || !type_is_integer(start->type) || int_is_neg(start->const_expr.ixx))
 	{
 		SEMA_ERROR(start, "This must be a constant non-negative integer value.");
 		return false;
@@ -588,7 +588,7 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *dec
 	{
 		// Analyse the end
 		if (!sema_analyse_expr(context, start)) return false;
-		if (end->expr_kind != EXPR_CONST || !type_is_integer(end->type) || int_is_neg(end->const_expr.ixx))
+		if (!expr_is_const(end) || !type_is_integer(end->type) || int_is_neg(end->const_expr.ixx))
 		{
 			SEMA_ERROR(end, "This must be a constant non-negative integer value.");
 			return false;
@@ -891,7 +891,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		if (param->var.init_expr)
 		{
 			Expr *expr = param->var.init_expr;
-			if (expr->expr_kind == EXPR_CONST)
+			if (expr_is_const(expr))
 			{
 				if (!sema_analyse_expr_rhs(context, param->type, expr, true)) return decl_poison(param);
 			}
@@ -1768,7 +1768,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 					return false;
 				}
 				decl->has_extname = true;
-				decl->extname = expr->const_expr.string.chars;
+				decl->extname = expr->const_expr.bytes.ptr;
 			}
 			decl->is_export = true;
 			return true;
@@ -1806,11 +1806,11 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			{
 				case ATTRIBUTE_SECTION:
 					if (!sema_check_section(context, attr)) return false;
-					decl->section = expr->const_expr.string.chars;
+					decl->section = expr->const_expr.bytes.ptr;
 					break;
 				case ATTRIBUTE_EXTERN:
 					decl->has_extname = true;
-					decl->extname = expr->const_expr.string.chars;
+					decl->extname = expr->const_expr.bytes.ptr;
 					break;
 				default:
 					UNREACHABLE;
@@ -2957,7 +2957,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 				return decl_poison(decl);
 			}
 		}
-		if (init_expr->expr_kind == EXPR_CONST)
+		if (expr_is_const(init_expr))
 		{
 			init_expr->const_expr.is_hex = false;
 		}
@@ -3184,7 +3184,7 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 			name = decl->define_decl.ident;
 			span = decl->define_decl.span;
 			break;
-		case DEFINE_TYPE_GENERIC:
+		case DEFINE_TYPE_GENERIC_OLD:
 		{
 			TypeInfo *define_type = decl->define_decl.type_info;
 			if (define_type->resolve_status == RESOLVE_DONE && type_is_user_defined(define_type->type))
@@ -3209,7 +3209,7 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 			decl->define_decl.alias = symbol;
 			decl->type = symbol->type;
 			return true;
-		case DEFINE_TYPE_GENERIC:
+		case DEFINE_TYPE_GENERIC_OLD:
 		{
 			Type *type = type_new(TYPE_TYPEDEF, decl->name);
 			decl->type = type;
@@ -3443,7 +3443,7 @@ void sema_display_deprecated_warning_on_use(SemaContext *context, Decl *decl, So
 		{
 			if (attr->exprs)
 			{
-				const char *comment_string = attr->exprs[0]->const_expr.string.chars;
+				const char *comment_string = attr->exprs[0]->const_expr.bytes.ptr;
 				sema_warning_at(span, "'%s' is deprecated: %s.", decl->name, comment_string);
 				return;
 			}
