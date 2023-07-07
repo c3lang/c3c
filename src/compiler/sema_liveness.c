@@ -8,6 +8,12 @@ static void sema_trace_expr_liveness(Expr *expr);
 static void sema_trace_stmt_liveness(Ast *ast);
 static void sema_trace_decl_liveness(Decl *decl);
 
+INLINE void sema_trace_type_liveness(Type *type)
+{
+	if (!type || !type_is_user_defined(type)) return;
+	sema_trace_decl_liveness(type->decl);
+}
+
 INLINE void sema_trace_exprid_liveness(ExprId expr)
 {
 	if (expr) sema_trace_expr_liveness(exprptr(expr));
@@ -234,6 +240,7 @@ static void sema_trace_expr_liveness(Expr *expr)
 {
 RETRY:
 	if (!expr) return;
+	sema_trace_type_liveness(expr->type);
 	switch (expr->expr_kind)
 	{
 		case EXPR_SUBSCRIPT_ASSIGN:
@@ -491,11 +498,6 @@ void sema_trace_liveness(void)
 	FOREACH_END();
 }
 
-INLINE void sema_trace_type_liveness(Type *type)
-{
-	if (!type || !type_is_user_defined(type)) return;
-	sema_trace_decl_liveness(type->decl);
-}
 
 INLINE void sema_trace_decl_dynamic_methods(Decl *decl)
 {
