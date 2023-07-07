@@ -3968,6 +3968,14 @@ CHECK_DEEPER:
 			goto CHECK_DEEPER;
 		}
 
+		if (type->type_kind == TYPE_DISTINCT && decl->is_substruct)
+		{
+			Expr *inner_expr = expr_copy(current_parent);
+			type = type->decl->distinct_decl.base_type;
+			inner_expr->type = type;
+			current_parent = inner_expr;
+			goto CHECK_DEEPER;
+		}
 		// 11b. Otherwise we give up.
 		if (private)
 		{
