@@ -1,8 +1,8 @@
 module std::io;
 
-fn Stream DString.as_stream(DString* dstring)
+fn Stream DString.as_stream(&self)
 {
-	return { .fns = &dstring_interface, .data = dstring };
+	return { .fns = &dstring_interface, .data = self };
 }
 
 StreamInterface dstring_interface = {

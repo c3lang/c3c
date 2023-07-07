@@ -8,107 +8,107 @@ struct ByteWriter
 }
 
 /**
- * @param [&inout] writer
+ * @param [&inout] self
  * @param [&in] using
- * @require writer.bytes.len == 0 "Init may not run on on already initialized data"
+ * @require self.bytes.len == 0 "Init may not run on on already initialized data"
  * @ensure using != null, index == 0
  **/
-fn void ByteWriter.init(ByteWriter* writer, Allocator* using = mem::heap())
+fn void ByteWriter.init(&self, Allocator* using = mem::heap())
 {
-	*writer = { .bytes = {}, .allocator = using };
+	*self = { .bytes = {}, .allocator = using };
 }
 
-fn void ByteWriter.init_buffer(ByteWriter* writer, char[] data)
+fn void ByteWriter.init_buffer(&self, char[] data)
 {
-	*writer = { .bytes = data, .allocator = null };
+	*self = { .bytes = data, .allocator = null };
 }
 
 /**
- * @param [&inout] writer
- * @require writer.bytes.len == 0 "Init may not run on on already initialized data"
+ * @param [&inout] self
+ * @require self.bytes.len == 0 "Init may not run on on already initialized data"
  **/
-fn void ByteWriter.tinit(ByteWriter* writer)
+fn void ByteWriter.tinit(&self)
 {
-	*writer = { .bytes = {}, .allocator = mem::temp() };
+	*self = { .bytes = {}, .allocator = mem::temp() };
 }
 
-fn Stream ByteWriter.as_stream(ByteWriter* writer)
+fn Stream ByteWriter.as_stream(&self)
 {
-	return { .fns = &bytewriter_interface, .data = writer };
+	return { .fns = &bytewriter_interface, .data = self };
 }
 
-fn void ByteWriter.destroy(ByteWriter* writer)
+fn void ByteWriter.destroy(&self)
 {
-	if (!writer.allocator) return;
-	if (void* ptr = writer.bytes.ptr) free(ptr, .using = writer.allocator);
-	*writer = { };
+	if (!self.allocator) return;
+	if (void* ptr = self.bytes.ptr) free(ptr, .using = self.allocator);
+	*self = { };
 }
 
-fn String ByteWriter.as_str(ByteWriter* writer)
+fn String ByteWriter.as_str(&self)
 {
-	return (String)writer.bytes[:writer.index];
+	return (String)self.bytes[:self.index];
 }
 
-fn void! ByteWriter.ensure_capacity(ByteWriter* writer, usz len) @inline
+fn void! ByteWriter.ensure_capacity(&self, usz len) @inline
 {
-	if (writer.bytes.len > len) return;
-	if (!writer.allocator) return IoError.OUT_OF_SPACE?;
+	if (self.bytes.len > len) return;
+	if (!self.allocator) return IoError.OUT_OF_SPACE?;
 	if (len < 16) len = 16;
 	usz new_capacity = math::next_power_of_2(len);
-	char* new_ptr = realloc_checked(writer.bytes.ptr, new_capacity, .using = writer.allocator)!;
-	writer.bytes = new_ptr[:new_capacity];
+	char* new_ptr = realloc_checked(self.bytes.ptr, new_capacity, .using = self.allocator)!;
+	self.bytes = new_ptr[:new_capacity];
 }
 
-fn usz! ByteWriter.write(ByteWriter* writer, char[] bytes)
+fn usz! ByteWriter.write(&self, char[] bytes)
 {
-	writer.ensure_capacity(writer.index + bytes.len)!;
-	mem::copy(&writer.bytes[writer.index], bytes.ptr, bytes.len);
-	writer.index += bytes.len;
+	self.ensure_capacity(self.index + bytes.len)!;
+	mem::copy(&self.bytes[self.index], bytes.ptr, bytes.len);
+	self.index += bytes.len;
 	return bytes.len;
 }
 
-fn void! ByteWriter.write_byte(ByteWriter* writer, char c)
+fn void! ByteWriter.write_byte(&self, char c)
 {
-	writer.ensure_capacity(writer.index + 1)!;
-	writer.bytes[writer.index++] = c;
+	self.ensure_capacity(self.index + 1)!;
+	self.bytes[self.index++] = c;
 }
 
 /**
- * @param [&inout] writer
+ * @param [&inout] self
  * @param reader
  **/
-fn usz! ByteWriter.read_from(ByteWriter* writer, Stream reader)
+fn usz! ByteWriter.read_from(&self, Stream reader)
 {
-	usz start_index = writer.index;
+	usz start_index = self.index;
 	if (reader.supports_available())
 	{
 		while (usz available = reader.available()!)
 		{
-			writer.ensure_capacity(writer.index + available)!;
-			usz read = reader.read(writer.bytes[writer.index..])!;
-			writer.index += read;
+			self.ensure_capacity(self.index + available)!;
+			usz read = reader.read(self.bytes[self.index..])!;
+			self.index += read;
 		}
-		return writer.index - start_index;
+		return self.index - start_index;
 	}
-	if (writer.bytes.len == 0)
+	if (self.bytes.len == 0)
 	{
-		writer.ensure_capacity(16)!;
+		self.ensure_capacity(16)!;
 	}
 	while (true)
 	{
 		// See how much we can read.
-		usz len_to_read = writer.bytes.len - writer.index;
+		usz len_to_read = self.bytes.len - self.index;
 		// Less than 16 bytes? Double the capacity
 		if (len_to_read < 16)
 		{
-			writer.ensure_capacity(writer.bytes.len * 2)!;
-			len_to_read = writer.bytes.len - writer.index;
+			self.ensure_capacity(self.bytes.len * 2)!;
+			len_to_read = self.bytes.len - self.index;
 		}
 		// Read into the rest of the buffer
-		usz read = reader.read(writer.bytes[writer.index..])!;
-		writer.index += read;
+		usz read = reader.read(self.bytes[self.index..])!;
+		self.index += read;
 		// Ok, we reached the end.
-		if (read < len_to_read) return writer.index - start_index;
+		if (read < len_to_read) return self.index - start_index;
 		// Otherwise go another round
 	}
 }

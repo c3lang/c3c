@@ -19,27 +19,27 @@ fn File from_libc(CFile file)
 }
 
 /**
- * @require file.file != null
+ * @require self.file != null
  **/
-fn void! File.reopen(File* file, String filename, String mode)
+fn void! File.reopen(&self, String filename, String mode)
 {
-	file.file = os::native_freopen(file.file, filename, mode)!;
+	self.file = os::native_freopen(self.file, filename, mode)!;
 }
 
 /**
- * @require file.file != null
+ * @require self.file != null
  **/
-fn usz! File.seek(File file, isz offset, Seek seek_mode = Seek.SET)
+fn usz! File.seek(self, isz offset, Seek seek_mode = Seek.SET)
 {
-	os::native_fseek(file.file, offset, seek_mode)!;
-	return os::native_ftell(file.file);
+	os::native_fseek(self.file, offset, seek_mode)!;
+	return os::native_ftell(self.file);
 }
 
 
 /*
 Implement later
 /**
- * @require file.file == null
+ * @require self.file == null
  **/
 fn void! File.memopen(File* file, char[] data, String mode)
 {

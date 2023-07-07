@@ -7,64 +7,64 @@ struct ByteReader
 	usz index;
 }
 
-fn void ByteReader.init(ByteReader* reader, char[] bytes)
+fn void ByteReader.init(&self, char[] bytes)
 {
-	*reader = { .bytes = bytes };
+	*self = { .bytes = bytes };
 }
 
-fn Stream ByteReader.as_stream(ByteReader* reader)
+fn Stream ByteReader.as_stream(&self)
 {
-	return { .fns = &bytereader_interface, .data = reader };
+	return { .fns = &bytereader_interface, .data = self };
 }
 
-fn usz! ByteReader.read(ByteReader* reader, char[] bytes)
+fn usz! ByteReader.read(&self, char[] bytes)
 {
-	if (reader.index >= reader.bytes.len) return IoError.EOF?;
-	usz len = math::min(reader.bytes.len - reader.index, bytes.len);
+	if (self.index >= self.bytes.len) return IoError.EOF?;
+	usz len = math::min(self.bytes.len - self.index, bytes.len);
 	if (len == 0) return 0;
-	mem::copy(bytes.ptr, &reader.bytes[reader.index], len);
-	reader.index += len;
+	mem::copy(bytes.ptr, &self.bytes[self.index], len);
+	self.index += len;
 	return len;
 }
 
-fn char! ByteReader.read_byte(ByteReader* reader)
+fn char! ByteReader.read_byte(&self)
 {
-	if (reader.index >= reader.bytes.len) return IoError.EOF?;
-	return reader.bytes[reader.index++];
+	if (self.index >= self.bytes.len) return IoError.EOF?;
+	return self.bytes[self.index++];
 }
 
-fn void! ByteReader.pushback_byte(ByteReader* reader)
+fn void! ByteReader.pushback_byte(&self)
 {
-	if (!reader.index) return IoError.INVALID_PUSHBACK?;
-	reader.index--;
+	if (!self.index) return IoError.INVALID_PUSHBACK?;
+	self.index--;
 }
 
-fn usz! ByteReader.seek(ByteReader* reader, isz offset, Seek seek)
+fn usz! ByteReader.seek(&self, isz offset, Seek seek)
 {
 	isz new_index;
 	switch (seek)
 	{
 		case SET: new_index = offset;
-		case CURSOR: new_index = reader.index + offset;
-		case END: new_index = reader.bytes.len + offset;
+		case CURSOR: new_index = self.index + offset;
+		case END: new_index = self.bytes.len + offset;
 	}
 	if (new_index < 0) return IoError.INVALID_POSITION?;
-	reader.index = new_index;
+	self.index = new_index;
 	return new_index;
 }
 
-fn usz! ByteReader.write_stream(ByteReader* reader, Stream writer)
+fn usz! ByteReader.write_stream(&self, Stream writer)
 {
-	if (reader.index >= reader.bytes.len) return 0;
-	usz written = writer.write(reader.bytes[reader.index..])!;
-	reader.index += written;
-	assert(reader.index <= reader.bytes.len);
+	if (self.index >= self.bytes.len) return 0;
+	usz written = writer.write(self.bytes[self.index..])!;
+	self.index += written;
+	assert(self.index <= self.bytes.len);
 	return written;
 }
 
-fn usz ByteReader.available(ByteReader* reader)
+fn usz ByteReader.available(&self)
 {
-	return math::max((isz)0, (isz)reader.bytes.len - reader.index);
+	return math::max((isz)0, (isz)self.bytes.len - self.index);
 }
 
 StreamInterface bytereader_interface = {
