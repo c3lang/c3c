@@ -1,8 +1,8 @@
 module std::io;
 
-fn Stream File.as_stream(File* file)
+fn Stream File.as_stream(&self)
 {
-	return { .fns = &filestream_interface, .data = file };
+	return { .fns = &filestream_interface, .data = self };
 }
 
 StreamInterface filestream_interface = {

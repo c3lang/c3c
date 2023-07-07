@@ -52,26 +52,26 @@ fn char[]! bprintf(char[] buffer, String format, args...) @maydiscard
     return buffer[:data.written];
 }
 
-fn usz! File.printf(File file, String format, args...) @maydiscard
+fn usz! File.printf(self, String format, args...) @maydiscard
 {
 	Formatter formatter;
-    formatter.init(&out_fputchar_fn, &file);
+    formatter.init(&out_fputchar_fn, &self);
     return formatter.vprintf(format, args)!;
 }
 
-fn usz! File.printfn(File file, String format, args...) @maydiscard
+fn usz! File.printfn(self, String format, args...) @maydiscard
 {
 	Formatter formatter;
-    formatter.init(&out_fputchar_fn, &file);
+    formatter.init(&out_fputchar_fn, &self);
     usz len = formatter.vprintf(format, args)!;
-	file.putc('\n')!;
-	file.flush();
+	self.putc('\n')!;
+	self.flush();
 	return len + 1;
 }
 
-fn usz! Formatter.printf(Formatter* this, String format, args...)
+fn usz! Formatter.printf(&self, String format, args...)
 {
-	return this.vprintf(format, args) @inline;
+	return self.vprintf(format, args) @inline;
 }
 
 struct Formatter
@@ -98,46 +98,46 @@ bitstruct PrintFlags : uint
 	bool precision : 6;
 }
 
-fn void Formatter.init(Formatter* this, OutputFn out_fn, void* data = null)
+fn void Formatter.init(&self, OutputFn out_fn, void* data = null)
 {
-	*this = { .data = data, .out_fn = out_fn};
+	*self = { .data = data, .out_fn = out_fn};
 }
 
-fn void! Formatter.out(Formatter* this, char c) @private
+fn void! Formatter.out(&self, char c) @private
 {
-	this.out_fn(c, this.data)!;
+	self.out_fn(c, self.data)!;
 }
 
-macro bool! Formatter.print_with_function(Formatter* this, any arg)
+macro bool! Formatter.print_with_function(&self, any arg)
 {
 	if (&arg.to_format)
 	{
-		PrintFlags old = this.flags;
-		uint old_width = this.width;
-		uint old_prec = this.prec;
+		PrintFlags old = self.flags;
+		uint old_width = self.width;
+		uint old_prec = self.prec;
 		defer
 		{
-			this.flags = old;
-			this.width = old_width;
-			this.prec = old_prec;
+			self.flags = old;
+			self.width = old_width;
+			self.prec = old_prec;
 		}
-		arg.to_format(this)!;
+		arg.to_format(&self)!; // TODO should be self
 		return true;
 	}
     if (&arg.to_string)
     {
-		PrintFlags old = this.flags;
-		uint old_width = this.width;
-		uint old_prec = this.prec;
+		PrintFlags old = self.flags;
+		uint old_width = self.width;
+		uint old_prec = self.prec;
 		defer
 		{
-			this.flags = old;
-			this.width = old_width;
-			this.prec = old_prec;
+			self.flags = old;
+			self.width = old_width;
+			self.prec = old_prec;
 		}
 		@stack_mem(512; Allocator* mem)
 		{
-			this.out_substr(arg.to_string(mem))!;
+			self.out_substr(arg.to_string(mem))!;
 			return true;
 		};
     }
@@ -145,109 +145,109 @@ macro bool! Formatter.print_with_function(Formatter* this, any arg)
 }
 
 
-fn void! Formatter.out_str(Formatter* this, any arg) @private
+fn void! Formatter.out_str(&self, any arg) @private
 {
 	switch (arg.type.kindof)
 	{
 		case TYPEID:
-			return this.out_substr("typeid");
+			return self.out_substr("typeid");
 		case VOID:
-        	return this.out_substr("void");
+        	return self.out_substr("void");
 		case ANYFAULT:
 		case FAULT:
-        	return this.out_substr((*(anyfault*)arg.ptr).nameof);
+        	return self.out_substr((*(anyfault*)arg.ptr).nameof);
 		case ANY:
-			return this.out_str(*(any*)arg);
+			return self.out_str(*(any*)arg);
 		case ENUM:
-			if (this.print_with_function(arg)!) return;
-        	return this.out_substr(arg.type.names[types::any_to_int(arg, usz)!!]);
+			if (self.print_with_function(arg)!) return;
+        	return self.out_substr(arg.type.names[types::any_to_int(arg, usz)!!]);
 		case STRUCT:
-			if (this.print_with_function(arg)!) return;
-			return this.out_substr("<struct>");
+			if (self.print_with_function(arg)!) return;
+			return self.out_substr("<struct>");
 		case UNION:
-			if (this.print_with_function(arg)!) return;
-			return this.out_substr("<union>");
+			if (self.print_with_function(arg)!) return;
+			return self.out_substr("<union>");
 		case BITSTRUCT:
-			if (this.print_with_function(arg)!) return;
-			return this.out_substr("<bitstruct>");
+			if (self.print_with_function(arg)!) return;
+			return self.out_substr("<bitstruct>");
 		case FUNC:
-			if (this.print_with_function(arg)!) return;
-			return this.out_substr("<function>");
+			if (self.print_with_function(arg)!) return;
+			return self.out_substr("<function>");
 		case OPTIONAL:
 			unreachable();
 		case DISTINCT:
-			if (this.print_with_function(arg)!) return;
+			if (self.print_with_function(arg)!) return;
 			if (arg.type == DString.typeid)
 			{
-				return this.out_substr(((DString*)arg).str());
+				return self.out_substr(((DString*)arg).str());
 			}
-        	return this.out_str(any { arg.ptr, arg.type.inner });
+        	return self.out_str(any { arg.ptr, arg.type.inner });
 		case POINTER:
-			if (this.print_with_function(arg)!) return;
-			return this.ntoa_any(arg, 16);
+			if (self.print_with_function(arg)!) return;
+			return self.ntoa_any(arg, 16);
 		case SIGNED_INT:
 		case UNSIGNED_INT:
-			return this.ntoa_any(arg, 10);
+			return self.ntoa_any(arg, 10);
 		case FLOAT:
-			return this.ftoa(float_from_any(arg)!!);
+			return self.ftoa(float_from_any(arg)!!);
 		case ARRAY:
-			if (this.print_with_function(arg)!) return;
+			if (self.print_with_function(arg)!) return;
 			// this is SomeType[*] so grab the "SomeType"
 			typeid inner = arg.type.inner;
 			usz size = inner.sizeof;
 			usz len = arg.type.len;
 			// Pretend this is a String
 			void* ptr = (void*)arg.ptr;
-			this.out('[')!;
+			self.out('[')!;
 			for (usz i = 0; i < len; i++)
 			{
-				if (i != 0) this.out_substr(", ")!;
-				this.out_str(any { ptr, inner })!;
+				if (i != 0) self.out_substr(", ")!;
+				self.out_str(any { ptr, inner })!;
 				ptr += size;
 			}
-			return this.out(']');
+			return self.out(']');
 		case VECTOR:
-			if (this.print_with_function(arg)!) return;
+			if (self.print_with_function(arg)!) return;
 			// this is SomeType[*] so grab the "SomeType"
 			typeid inner = arg.type.inner;
 			usz size = inner.sizeof;
 			usz len = arg.type.len;
 			// Pretend this is a String
 			void* ptr = (void*)arg.ptr;
-			this.out_substr("[<")!;
+			self.out_substr("[<")!;
 			for (usz i = 0; i < len; i++)
 			{
-				if (i != 0) this.out_substr(", ")!;
-				this.out_str(any { ptr, inner })!;
+				if (i != 0) self.out_substr(", ")!;
+				self.out_str(any { ptr, inner })!;
 				ptr += size;
 			}
-			return this.out_substr(">]");
+			return self.out_substr(">]");
 		case SUBARRAY:
-			if (this.print_with_function(arg)!) return;
+			if (self.print_with_function(arg)!) return;
 			// this is SomeType[] so grab the "SomeType"
 			typeid inner = arg.type.inner;
 			if (inner == char.typeid)
 			{
-				return this.out_substr(*(String*)arg);
+				return self.out_substr(*(String*)arg);
 			}
 			usz size = inner.sizeof;
             // Pretend this is a String
 			String* temp = (void*)arg.ptr;
 			void* ptr = (void*)temp.ptr;
 			usz len = temp.len;
-			this.out('[')!;
+			self.out('[')!;
 			for (usz i = 0; i < len; i++)
 			{
-				if (i != 0) this.out_substr(", ")!;
-				this.out_str(any { ptr, inner })!;
+				if (i != 0) self.out_substr(", ")!;
+				self.out_str(any { ptr, inner })!;
 				ptr += size;
 			}
-			this.out(']')!;
+			self.out(']')!;
 		case BOOL:
-			return this.out_substr(*(bool*)arg.ptr ? "true" : "false");
+			return self.out_substr(*(bool*)arg.ptr ? "true" : "false");
 		default:
-			if (this.print_with_function(arg)!) return;
-			return this.out_substr("Invalid type");
+			if (self.print_with_function(arg)!) return;
+			return self.out_substr("Invalid type");
 	}
 }
 
@@ -282,12 +282,12 @@ struct BufferData @private
 }
 
 
-fn usz! Formatter.vprintf(Formatter* this, String format, any[] anys)
+fn usz! Formatter.vprintf(&self, String format, any[] anys)
 {
-	if (!this.out_fn)
+	if (!self.out_fn)
 	{
 		// use null output function
-		this.out_fn = &out_null_fn;
+		self.out_fn = &out_null_fn;
 	}
 	usz format_len = format.len;
 	usz variant_index = 0;
@@ -298,7 +298,7 @@ fn usz! Formatter.vprintf(Formatter* this, String format, any[] anys)
 		if (c != '%')
 		{
 			// no
-			this.out(c)!;
+			self.out(c)!;
 			continue;
 		}
 		i++;
@@ -306,20 +306,20 @@ fn usz! Formatter.vprintf(Formatter* this, String format, any[] anys)
 		c = format[i];
 		if (c == '%')
 		{
-			this.out(c)!;
+			self.out(c)!;
 			continue;
 		}
 		// evaluate flags
-		this.flags = {};
+		self.flags = {};
 		while FLAG_EVAL: (true)
 		{
 			switch (c)
 			{
-				case '0': this.flags.zeropad = true;
-				case '-': this.flags.left = true;
-				case '+': this.flags.plus = true;
-				case ' ': this.flags.space = true;
-				case '#': this.flags.hash = true;
+				case '0': self.flags.zeropad = true;
+				case '-': self.flags.left = true;
+				case '+': self.flags.plus = true;
+				case ' ': self.flags.space = true;
+				case '#': self.flags.hash = true;
 				default: break FLAG_EVAL;
 			}
 			if (++i >= format_len) return PrintFault.INVALID_FORMAT_STRING?;
@@ -330,18 +330,18 @@ fn usz! Formatter.vprintf(Formatter* this, String format, any[] anys)
 		c = format[i];
 		if (w < 0)
 		{
-			this.flags.left = true;
+			self.flags.left = true;
 			w = -w;
 		}
-		this.width = w;
+		self.width = w;
 		// evaluate precision field
-		this.prec = 0;
+		self.prec = 0;
 		if (c == '.')
 		{
-			this.flags.precision = true;
+			self.flags.precision = true;
 			if (++i >= format_len) return PrintFault.INVALID_FORMAT_STRING?;
 			int prec = printf_parse_format_field(anys.ptr, anys.len, &variant_index, format.ptr, format.len, &i)!;
-			this.prec = prec < 0 ? 0 : prec;
+			self.prec = prec < 0 ? 0 : prec;
 			c = format[i];
 		}
 
@@ -353,91 +353,91 @@ fn usz! Formatter.vprintf(Formatter* this, String format, any[] anys)
 		{
 			case 'd':
 				base = 10;
-				this.flags.hash = false;
+				self.flags.hash = false;
 			case 'X' :
-				this.flags.uppercase = true;
+				self.flags.uppercase = true;
 				nextcase;
 			case 'x' :
 				base = 16;
 			case 'O':
-				this.flags.uppercase = true;
+				self.flags.uppercase = true;
 				nextcase;
 			case 'o' :
 				base = 8;
 			case 'B':
-				this.flags.uppercase = true;
+				self.flags.uppercase = true;
 				nextcase;
 			case 'b' :
 				base = 2;
 			case 'A':
-				this.flags.uppercase = true;
+				self.flags.uppercase = true;
 				nextcase;
 			case 'a':
-				this.atoa(float_from_any(current)!!)!;
+				self.atoa(float_from_any(current)!!)!;
 				continue;
 		    case 'F' :
-		        this.flags.uppercase = true;
+		        self.flags.uppercase = true;
 		        nextcase;
 		    case 'f':
-		        this.ftoa(float_from_any(current)!!)!;
+		        self.ftoa(float_from_any(current)!!)!;
 				continue;
 			case 'E':
-		        this.flags.uppercase = true;
+		        self.flags.uppercase = true;
 		        nextcase;
             case 'e':
-                this.etoa(float_from_any(current)!!)!;
+                self.etoa(float_from_any(current)!!)!;
 				continue;
 			case 'G':
-				this.flags.uppercase = true;
+				self.flags.uppercase = true;
 				nextcase;
 			case 'g':
-				this.gtoa(float_from_any(current)!!)!;
+				self.gtoa(float_from_any(current)!!)!;
 				continue;
 			case 'c':
-				this.out_char(current)!;
+				self.out_char(current)!;
 				continue;
 			case 's':
-				this.out_str(current)!;
+				self.out_str(current)!;
 				continue;
 			case 'p':
-				this.flags.zeropad = true;
-				this.flags.hash = true;
+				self.flags.zeropad = true;
+				self.flags.hash = true;
 				base = 16;
 			default:
 				return PrintFault.INVALID_FORMAT_STRING?;
 		}
 		if (base != 10)
 		{
-			this.flags.plus = false;
-			this.flags.space = false;
+			self.flags.plus = false;
+			self.flags.space = false;
 		}
 		// ignore '0' flag when precision is given
-		if (this.flags.precision) this.flags.zeropad = false;
+		if (self.flags.precision) self.flags.zeropad = false;
 
 		bool is_neg;
 		uint128 v = int_from_any(current, &is_neg)!!;
 
-		this.ntoa(v, is_neg, base)!;
+		self.ntoa(v, is_neg, base)!;
 	}
 	// termination
 	//	out((char)0, buffer, idx < maxlen ? idx : maxlen - 1U, maxlen);
 
 	// return written chars without terminating \0
-	return this.idx;
+	return self.idx;
 }
 
 
-fn usz! Formatter.print(Formatter* this, String str)
+fn usz! Formatter.print(&self, String str)
 {
-	if (!this.out_fn)
+	if (!self.out_fn)
 	{
 		// use null output function
-		this.out_fn = &out_null_fn;
+		self.out_fn = &out_null_fn;
 	}
 	usz len = str.len;
 	for (usz i = 0; i < len; i++)
 	{
-		this.out(str[i])!;
+		self.out(str[i])!;
 	}
-	return this.idx;
+	return self.idx;
 }

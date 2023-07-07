@@ -290,6 +290,11 @@ fn Type* List.get_ref(&self, usz index) @operator(&[]) @inline
     return &self.entries[index];
 }
 
+fn void List.set(&self, usz index, Type value) @operator([]=)
+{
+    self.entries[index] = value;
+}
+
 fn void List.ensure_capacity(&self, usz added = 1) @inline @private
 {
 	usz new_size = self.size + added;

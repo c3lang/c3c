@@ -10,18 +10,18 @@ struct ReadBuffer
 
 /**
  * Buffer reads from a stream.
- * @param [inout] b
+ * @param [inout] self
  * @require bytes.len > 0
- * @require b.bytes.len == 0 "Init may not run on already initialized data"
+ * @require self.bytes.len == 0 "Init may not run on already initialized data"
  **/
-fn void ReadBuffer.init(ReadBuffer *b, Stream stream, char[] bytes)
+fn void ReadBuffer.init(&self, Stream stream, char[] bytes)
 {
-    *b = { .stream = stream, .bytes = bytes };
+    *self = { .stream = stream, .bytes = bytes };
 }
 
-fn Stream ReadBuffer.as_stream(ReadBuffer *b)
+fn Stream ReadBuffer.as_stream(&self)
 {
-    return { .fns = &readbuffer_interface, .data = b };
+    return { .fns = &readbuffer_interface, .data = self };
 }
 
 StreamInterface readbuffer_interface = {
@@ -29,36 +29,41 @@ StreamInterface readbuffer_interface = {
     .read_byte_fn = fn(s) => ((ReadBuffer*)s.data).read_byte(),
 };
 
-fn usz! ReadBuffer.read(ReadBuffer *b, char[] bytes)
+fn String ReadBuffer.as_str(&self)
 {
-    if (b.read_idx == b.write_idx)
+    return (String)self.bytes[self.read_idx:self.write_idx - self.read_idx];
+}
+
+fn usz! ReadBuffer.read(&self, char[] bytes)
+{
+    if (self.read_idx == self.write_idx)
     {
-        if (b.read_idx == 0 && bytes.len >= b.bytes.len)
+        if (self.read_idx == 0 && bytes.len >= self.bytes.len)
         {
             // Read directly into the input buffer.
-            return b.stream.read(bytes)!;
+            return self.stream.read(bytes)!;
         }
-        b.refill()!;
+        self.refill()!;
     }
-    usz n = min(b.write_idx - b.read_idx, bytes.len);
-    bytes[:n] = b.bytes[b.read_idx:n];
-    b.read_idx += n;
+    usz n = min(self.write_idx - self.read_idx, bytes.len);
+    bytes[:n] = self.bytes[self.read_idx:n];
+    self.read_idx += n;
     return n;
 }
 
-fn char! ReadBuffer.read_byte(ReadBuffer *b)
+fn char! ReadBuffer.read_byte(&self)
 {
-    if (b.read_idx == b.write_idx) b.refill()!;
-    if (b.read_idx == b.write_idx) return IoError.EOF?;
-    char c = b.bytes[b.read_idx];
-    b.read_idx++;
+    if (self.read_idx == self.write_idx) self.refill()!;
+    if (self.read_idx == self.write_idx) return IoError.EOF?;
+    char c = self.bytes[self.read_idx];
+    self.read_idx++;
     return c;
 }
 
-fn void! ReadBuffer.refill(ReadBuffer* b) @local
+fn void! ReadBuffer.refill(&self) @local
 {
-    b.read_idx = 0;
-    b.write_idx = b.stream.read(b.bytes)!;
+    self.read_idx = 0;
+    self.write_idx = self.stream.read(self.bytes)!;
 }
 
 struct WriteBuffer
@@ -70,18 +75,18 @@ struct WriteBuffer
 
 /**
  * Buffer writes to a stream. Call `flush` when done writing to the buffer.
- * @param [inout] b
+ * @param [inout] self
  * @require bytes.len > 0 "Non-empty buffer required"
- * @require b.bytes.len == 0 "Init may not run on already initialized data"
+ * @require self.bytes.len == 0 "Init may not run on already initialized data"
  **/
-fn void WriteBuffer.init(WriteBuffer *b, Stream stream, char[] bytes)
+fn void WriteBuffer.init(&self, Stream stream, char[] bytes)
 {
-    *b = { .stream = stream, .bytes = bytes };
+    *self = { .stream = stream, .bytes = bytes };
 }
 
-fn Stream WriteBuffer.as_stream(WriteBuffer *b)
+fn Stream WriteBuffer.as_stream(&self)
 {
-    return { .fns = &writebuffer_interface, .data = b };
+    return { .fns = &writebuffer_interface, .data = self };
 }
 
 StreamInterface writebuffer_interface = {
@@ -90,49 +95,49 @@ StreamInterface writebuffer_interface = {
     .write_byte_fn = fn(s, char c) => ((WriteBuffer*)s.data).write_byte(c),
 };
 
-fn String WriteBuffer.as_str(WriteBuffer* b)
+fn String WriteBuffer.as_str(&self)
 {
-    return (String)b.bytes[:b.index];
+    return (String)self.bytes[:self.index];
 }
 
-fn void! WriteBuffer.flush(WriteBuffer* b)
+fn void! WriteBuffer.flush(&self)
 {
-    b.write_pending()!;
-    if (b.stream.supports_flush()) b.stream.flush()!;
+    self.write_pending()!;
+    if (self.stream.supports_flush()) self.stream.flush()!;
 }
 
-fn usz! WriteBuffer.write(WriteBuffer* b, char[] bytes)
+fn usz! WriteBuffer.write(&self, char[] bytes)
 {
-    usz n = b.bytes.len - b.index;
+    usz n = self.bytes.len - self.index;
     if (bytes.len < n)
     {
         // Enough room in the buffer.
-        b.bytes[b.index:bytes.len] = bytes[..];
-        b.index += bytes.len;
+        self.bytes[self.index:bytes.len] = bytes[..];
+        self.index += bytes.len;
         return bytes.len;
     }
-    b.write_pending()!;
-    if (bytes.len >= b.bytes.len)
+    self.write_pending()!;
+    if (bytes.len >= self.bytes.len)
     {
         // Write directly to the stream.
-        return b.stream.write(bytes);
+        return self.stream.write(bytes);
     }
     // Buffer the data.
-    b.bytes[:bytes.len] = bytes[..];
-    b.index = bytes.len;
+    self.bytes[:bytes.len] = bytes[..];
+    self.index = bytes.len;
     return bytes.len;
 }
 
-fn void! WriteBuffer.write_byte(WriteBuffer* b, char c)
+fn void! WriteBuffer.write_byte(&self, char c)
 {
-    usz n = b.bytes.len - b.index;
-    if (n == 0) b.write_pending()!;
-    b.bytes[0] = c;
-    b.index = 1;
+    usz n = self.bytes.len - self.index;
+    if (n == 0) self.write_pending()!;
+    self.bytes[0] = c;
+    self.index = 1;
 }
 
-fn void! WriteBuffer.write_pending(WriteBuffer* b) @local
+fn void! WriteBuffer.write_pending(&self) @local
 {
-    b.index -= b.stream.write(b.bytes[:b.index])!;
-    if (b.index != 0) return IoError.INCOMPLETE_WRITE?;
+    self.index -= self.stream.write(self.bytes[:self.index])!;
+    if (self.index != 0) return IoError.INCOMPLETE_WRITE?;
 }

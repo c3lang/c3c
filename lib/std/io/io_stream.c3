@@ -37,55 +37,55 @@ struct Stream
 	void* data;
 }
 
-fn bool Stream.supports_flush(Stream s) @inline => (bool)s.fns.flush_fn;
-fn bool Stream.supports_seek(Stream s) @inline => (bool)s.fns.seek_fn;
-fn bool Stream.supports_available(Stream s) @inline => s.fns.available_fn || s.fns.seek_fn;
-fn bool Stream.supports_len(Stream s) @inline => s.fns.len_fn || s.fns.seek_fn;
-fn bool Stream.supports_read(Stream s) @inline => s.fns.read_fn || s.fns.read_byte_fn;
-fn bool Stream.supports_read_from(Stream s) @inline => (bool)s.fns.read_stream_fn;
-fn bool Stream.supports_write_to(Stream s) @inline => (bool)s.fns.write_stream_fn;
-fn bool Stream.supports_pushback_byte(Stream s) @inline => s.fns.pushback_byte_fn || s.fns.seek_fn;
-fn bool Stream.supports_write(Stream s) @inline => s.fns.write_fn || s.fns.write_byte_fn;
+fn bool Stream.supports_flush(s) @inline => (bool)s.fns.flush_fn;
+fn bool Stream.supports_seek(s) @inline => (bool)s.fns.seek_fn;
+fn bool Stream.supports_available(s) @inline => s.fns.available_fn || s.fns.seek_fn;
+fn bool Stream.supports_len(s) @inline => s.fns.len_fn || s.fns.seek_fn;
+fn bool Stream.supports_read(s) @inline => s.fns.read_fn || s.fns.read_byte_fn;
+fn bool Stream.supports_read_from(s) @inline => (bool)s.fns.read_stream_fn;
+fn bool Stream.supports_write_to(s) @inline => (bool)s.fns.write_stream_fn;
+fn bool Stream.supports_pushback_byte(s) @inline => s.fns.pushback_byte_fn || s.fns.seek_fn;
+fn bool Stream.supports_write(s) @inline => s.fns.write_fn || s.fns.write_byte_fn;
 
-fn void! Stream.destroy(Stream s) @inline @maydiscard
+fn void! Stream.destroy(self) @inline @maydiscard
 {
-	if (s.fns.destroy_fn) return s.fns.destroy_fn(s);
-	return s.close();
+	if (self.fns.destroy_fn) return self.fns.destroy_fn(self);
+	return self.close();
 }
 
-fn void! Stream.close(Stream s) @inline @maydiscard
+fn void! Stream.close(self) @inline @maydiscard
 {
-	if (CloseStreamFn func = s.fns.close_fn) return func(s);
+	if (CloseStreamFn func = self.fns.close_fn) return func(self);
 }
 
-fn usz! Stream.seek(Stream s, isz offset, Seek seek) @inline
+fn usz! Stream.seek(self, isz offset, Seek seek) @inline
 {
-	if (SeekStreamFn func = s.fns.seek_fn) return func(s, offset, seek);
+	if (SeekStreamFn func = self.fns.seek_fn) return func(self, offset, seek);
 	return IoError.NOT_SEEKABLE?;
 }
 
-fn usz! Stream.available(Stream s) @inline
+fn usz! Stream.available(self) @inline
 {
-	if (AvailableStreamFn func = s.fns.available_fn) return func(s);
-	if (SeekStreamFn func = s.fns.seek_fn)
+	if (AvailableStreamFn func = self.fns.available_fn) return func(self);
+	if (SeekStreamFn func = self.fns.seek_fn)
 	{
-		usz curr = func(s, 0, Seek.CURSOR)!;
-		usz len = func(s, 0, Seek.END)!;
-		func(s, curr, Seek.SET)!;
+		usz curr = func(self, 0, Seek.CURSOR)!;
+		usz len = func(self, 0, Seek.END)!;
+		func(self, curr, Seek.SET)!;
 		return len - curr;
 	}
 	return IoError.NOT_SEEKABLE?;
 }
 
-fn usz! Stream.read(Stream s, char[] buffer)
+fn usz! Stream.read(self, char[] buffer)
 {
-	if (ReadStreamFn func = s.fns.read_fn) return func(s, buffer);
-	if (ReadByteStreamFn func = s.fns.read_byte_fn)
+	if (ReadStreamFn func = self.fns.read_fn) return func(self, buffer);
+	if (ReadByteStreamFn func = self.fns.read_byte_fn)
 	{
 		usz len = 0;
 		foreach (&cptr : buffer)
 		{
-			char! c = func(s);
+			char! c = func(self);
 			if (catch err = c)
 			{
 				case IoError.EOF: return len;
@@ -98,18 +98,18 @@ fn usz! Stream.read(Stream s, char[] buffer)
 	return IoError.UNSUPPORTED_OPERATION?;
 }
 
-fn char! Stream.read_byte(Stream s) @inline
+fn char! Stream.read_byte(self) @inline
 {
-	if (ReadByteStreamFn func = s.fns.read_byte_fn) return func(s);
+	if (ReadByteStreamFn func = self.fns.read_byte_fn) return func(self);
 	return IoError.UNSUPPORTED_OPERATION?;
 }
 
-fn String! Stream.readline(Stream s, Allocator* using = mem::heap())
+fn String! Stream.readline(self, Allocator* using = mem::heap())
 {
 	ReadByteStreamFn func;
-	if (func = s.fns.read_byte_fn, !func) return IoError.UNSUPPORTED_OPERATION?;
+	if (func = self.fns.read_byte_fn, !func) return IoError.UNSUPPORTED_OPERATION?;
 	bool read = false;
-    char val = func(s)!;
+    char val = func(self)!;
     if (val == '\n') return "";
     @stack_mem(256 + 64; Allocator* mem)
     {
@@ -117,7 +117,7 @@ fn String! Stream.readline(Stream s, Allocator* using = mem::heap())
     	if (val != '\r') str.append(val);
     	while (1)
         {
-            char! c = func(s);
+            char! c = func(self);
             if (catch err = c)
             {
                 if (err == IoError.EOF) break;
@@ -131,95 +131,95 @@ fn String! Stream.readline(Stream s, Allocator* using = mem::heap())
     };
 }
 
-fn usz! Stream.write(Stream s, char[] bytes) @inline
+fn usz! Stream.write(self, char[] bytes) @inline
 {
-	if (WriteStreamFn func = s.fns.write_fn) return func(s, bytes);
-	if (WriteByteStreamFn func = s.fns.write_byte_fn)
+	if (WriteStreamFn func = self.fns.write_fn) return func(self, bytes);
+	if (WriteByteStreamFn func = self.fns.write_byte_fn)
 	{
-		foreach (c : bytes) func(s, c)!;
+		foreach (c : bytes) func(self, c)!;
 		return bytes.len;
 	}
 	return IoError.UNSUPPORTED_OPERATION?;
 }
 
-fn void! Stream.write_byte(Stream s, char b) @inline
+fn void! Stream.write_byte(self, char b) @inline
 {
-	if (WriteByteStreamFn func = s.fns.write_byte_fn) return func(s, b);
+	if (WriteByteStreamFn func = self.fns.write_byte_fn) return func(self, b);
 	return IoError.UNSUPPORTED_OPERATION?;
 }
 
-fn usz! Stream.write_to(Stream s, Stream to) @inline
+fn usz! Stream.write_to(self, Stream to) @inline
 {
-	if (WriteToStreamFn func = s.fns.write_stream_fn) return func(s, to);
+	if (WriteToStreamFn func = self.fns.write_stream_fn) return func(self, to);
 	return IoError.UNSUPPORTED_OPERATION?;
 }
 
-fn usz! Stream.read_from(Stream s, Stream from) @inline
+fn usz! Stream.read_from(self, Stream from) @inline
 {
-	if (ReadFromStreamFn func = s.fns.read_stream_fn) return func(s, from);
+	if (ReadFromStreamFn func = self.fns.read_stream_fn) return func(self, from);
 	return IoError.UNSUPPORTED_OPERATION?;
 }
 
-fn void! Stream.flush(Stream s) @inline @maydiscard
+fn void! Stream.flush(self) @inline @maydiscard
 {
-	if (FlushStreamFn func = s.fns.flush_fn) return func(s);
+	if (FlushStreamFn func = self.fns.flush_fn) return func(self);
 	return IoError.UNSUPPORTED_OPERATION?;
 }
 
-fn usz! Stream.len(Stream s) @inline
+fn usz! Stream.len(self) @inline
 {
-	if (LenStreamFn func = s.fns.len_fn) return func(s);
-	if (SeekStreamFn func = s.fns.seek_fn)
+	if (LenStreamFn func = self.fns.len_fn) return func(self);
+	if (SeekStreamFn func = self.fns.seek_fn)
 	{
-		usz curr = func(s, 0, Seek.CURSOR)!;
-		usz len = func(s, 0, Seek.END)!;
-		func(s, curr, Seek.SET)!;
+		usz curr = func(self, 0, Seek.CURSOR)!;
+		usz len = func(self, 0, Seek.END)!;
+		func(self, curr, Seek.SET)!;
 		return len;
 	}
 	return IoError.NOT_SEEKABLE?;
 }
 
-fn void! Stream.pushback_byte(Stream s) @inline
+fn void! Stream.pushback_byte(self) @inline
 {
-	if (PushbackByteStreamFn func = s.fns.pushback_byte_fn) return func(s);
-	if (SeekStreamFn func = s.fns.seek_fn)
+	if (PushbackByteStreamFn func = self.fns.pushback_byte_fn) return func(self);
+	if (SeekStreamFn func = self.fns.seek_fn)
 	{
-		func(s, -1, CURSOR)!;
+		func(self, -1, CURSOR)!;
 		return;
 	}
 	return IoError.UNSUPPORTED_OPERATION?;
 }
 
-fn void! Stream.write_string(Stream s, String str) @inline => (void)(s.write((char[])str)!);
+fn void! Stream.write_string(self, String str) @inline => (void)(self.write((char[])str)!);
 
-fn usz! Stream.copy_to(Stream s, Stream dst, char[] buffer = {})
+fn usz! Stream.copy_to(self, Stream dst, char[] buffer = {})
 {
-	if (buffer.len) return copy_through_buffer(s, dst, buffer);
-	if (WriteToStreamFn func = s.fns.write_stream_fn) return func(s, dst);
-	if (ReadFromStreamFn func = dst.fns.read_stream_fn) return func(dst, s);
+	if (buffer.len) return copy_through_buffer(self, dst, buffer);
+	if (WriteToStreamFn func = self.fns.write_stream_fn) return func(self, dst);
+	if (ReadFromStreamFn func = dst.fns.read_stream_fn) return func(dst, self);
 	$switch (env::MEMORY_ENV)
 		$case NORMAL:
 			@pool()
 			{
-				return copy_through_buffer(s, dst, tmalloc(char, 4096));
+				return copy_through_buffer(self, dst, tmalloc(char, 4096));
 			};
 		$case SMALL:
 			@pool()
 			{
-				return copy_through_buffer(s, dst, tmalloc(char, 1024));
+				return copy_through_buffer(self, dst, tmalloc(char, 1024));
 			};
 		$case TINY:
 		$case NONE:
-			return copy_through_buffer(s, dst, &&(char[256]{}));
+			return copy_through_buffer(self, dst, &&(char[256]{}));
 	$endswitch
 }
 
-macro usz! copy_through_buffer(Stream s, Stream dst, char[] buffer) @local
+macro usz! copy_through_buffer(self, Stream dst, char[] buffer) @local
 {
 	usz total_copied;
 	while (true)
 	{
-		usz! len = s.read(buffer);
+		usz! len = self.read(buffer);
 		if (catch err = len)
 		{
 			case IoError.EOF: return total_copied;
