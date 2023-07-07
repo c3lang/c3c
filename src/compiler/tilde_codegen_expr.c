@@ -81,8 +81,8 @@ static void tilde_emit_const_expr(TildeContext *c, TBEValue *value, Expr *expr)
 			bool is_array = type_flat_is_char_array(str_type);
 			if (llvm_is_local_eval(c) || !is_array)
 			{
-				ArraySize strlen = expr->const_expr.string.len;
-				ArraySize size = expr->const_expr.string.len + 1;
+				ArraySize strlen = expr->const_expr.bytes.len;
+				ArraySize size = expr->const_expr.bytes.len + 1;
 				if (type_flat_is_char_array(expr->type) && type->array.len > size) size = type->array.len;
 				LLVMValueRef global_name = llvm_add_global_raw(c,
 				                                               ".str",
@@ -91,7 +91,7 @@ static void tilde_emit_const_expr(TildeContext *c, TBEValue *value, Expr *expr)
 				llvm_set_private_linkage(global_name);
 				LLVMSetUnnamedAddress(global_name, LLVMGlobalUnnamedAddr);
 				LLVMSetGlobalConstant(global_name, 1);
-				LLVMValueRef string = llvm_get_zstring(c, expr->const_expr.string.chars, expr->const_expr.string.len);
+				LLVMValueRef string = llvm_get_zstring(c, expr->const_expr.bytes.ptr, expr->const_expr.bytes.len);
 				if (size > strlen + 1)
 				{
 					LLVMValueRef trailing_zeros = llvm_get_zero_raw(LLVMArrayType(c->byte_type, size - strlen - 1));
@@ -112,24 +112,24 @@ static void tilde_emit_const_expr(TildeContext *c, TBEValue *value, Expr *expr)
 				return;
 			}
 			ArraySize array_len = type->array.len;
-			ArraySize size = expr->const_expr.string.len + 1;
+			ArraySize size = expr->const_expr.bytes.len + 1;
 			bool zero_terminate = array_len == size;
 			LLVMValueRef string;
 			if (array_len <= size)
 			{
 				if (zero_terminate)
 				{
-					string = llvm_get_zstring(c, expr->const_expr.string.chars, expr->const_expr.string.len);
+					string = llvm_get_zstring(c, expr->const_expr.bytes.ptr, expr->const_expr.bytes.len);
 				}
 				else
 				{
-					string = llvm_get_bytes(c, expr->const_expr.string.chars, array_len);
+					string = llvm_get_bytes(c, expr->const_expr.bytes.ptr, array_len);
 				}
 			}
 			else
 			{
 				char *buffer = ccalloc(1, array_len);
-				memcpy(buffer, expr->const_expr.string.chars, expr->const_expr.string.len);
+				memcpy(buffer, expr->const_expr.bytes.ptr, expr->const_expr.bytes.len);
 				string = llvm_get_bytes(c, buffer, array_len);
 			}
 			llvm_value_set(be_value, string, type);*/
@@ -883,7 +883,7 @@ TBEValue tilde_emit_assign_expr(TildeContext *c, TBEValue *ref, Expr *expr, TB_R
 		tilde_emit_expr(c, &value, expr);
 		tilde_store(c, ref, &value);
 	}
-	else if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER)
+	else if (expr_is_const_initializer(expr))
 	{
 		TODO
 		//llvm_emit_const_initialize_reference(c, ref, expr);

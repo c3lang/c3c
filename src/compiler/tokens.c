@@ -334,6 +334,8 @@ const char *token_type_to_string(TokenType type)
 			return "$defined";
 		case TOKEN_CT_ELSE:
 			return "$else";
+		case TOKEN_CT_EMBED:
+			return "$embed";
 		case TOKEN_CT_EVAL:
 			return "$eval";
 		case TOKEN_CT_EVALTYPE:

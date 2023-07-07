@@ -420,7 +420,7 @@ static inline LoopType loop_type_for_cond(Expr *cond, bool do_while)
 	}
 
 	// Do we have a constant cond?
-	if (cond->expr_kind == EXPR_CONST)
+	if (expr_is_const(cond))
 	{
 		assert(cond->const_expr.const_kind == CONST_BOOL);
 		// The result is either infinite or no loop
@@ -686,7 +686,7 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 		Ast *case_ast = cases[i];
 		Expr *from = case_ast->case_stmt.expr;
 		Expr *to = case_ast->case_stmt.to_expr;
-		assert(type_is_integer(from->type) && from->expr_kind == EXPR_CONST);
+		assert(type_is_integer(from->type) && expr_is_const(from));
 		Int value = from->const_expr.ixx;
 		Int to_value = to ? to->const_expr.ixx : value;
 		if (min.type == TYPE_VOID)
@@ -828,7 +828,7 @@ static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *swi
 			LLVMValueRef case_value;
 			BEValue be_value;
 			Expr *from = case_stmt->case_stmt.expr;
-			assert(from->expr_kind == EXPR_CONST);
+			assert(expr_is_const(from));
 			llvm_emit_expr(c, &be_value, case_stmt->case_stmt.expr);
 			llvm_value_rvalue(c, &be_value);
 			case_value = be_value.value;
@@ -1007,7 +1007,7 @@ static inline void llvm_emit_assert_stmt(GenContext *c, Ast *ast)
 		BEValue *values = NULL;
 		if (message_expr)
 		{
-			const char *err_msg = exprptr(ast->assert_stmt.message)->const_expr.string.chars;
+			const char *err_msg = exprptr(ast->assert_stmt.message)->const_expr.bytes.ptr;
 			Expr **args = ast->assert_stmt.args;
 			if (vec_size(args))
 			{
@@ -1086,7 +1086,7 @@ static inline void llvm_emit_asm_block_stmt(GenContext *c, Ast *ast)
 	AsmInlineBlock *block = ast->asm_block_stmt.block;
 	if (ast->asm_block_stmt.is_string)
 	{
-		data = exprptr(ast->asm_block_stmt.asm_string)->const_expr.string.chars;
+		data = exprptr(ast->asm_block_stmt.asm_string)->const_expr.bytes.ptr;
 	}
 	else
 	{

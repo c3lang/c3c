@@ -295,7 +295,7 @@ bool parse_module(ParseContext *c, AstId contracts)
 				{
 					RETURN_SEMA_ERROR(attr, "External name for the module may only be declared in one location.");
 				}
-				c->unit->module->extname = expr->const_expr.string.chars;
+				c->unit->module->extname = expr->const_expr.bytes.ptr;
 				continue;
 			}
 			default:
@@ -777,7 +777,7 @@ Decl *parse_const_declaration(ParseContext *c, bool is_global)
 	// If not a const ident, assume we want the type
 	if (c->tok != TOKEN_CONST_IDENT)
 	{
-		ASSIGN_TYPE_OR_RET(type_info, parse_type(c), poisoned_decl);
+		ASSIGN_TYPE_OR_RET(type_info, parse_optional_type(c), poisoned_decl);
 	}
 
 	// Create the decl
@@ -1755,25 +1755,22 @@ static inline Decl *parse_def_type(ParseContext *c)
 	// 2. Now parse the type which we know is here.
 	ASSIGN_TYPE_OR_RET(TypeInfo *type_info, parse_type(c), poisoned_decl);
 
-	bool old_style_encountered = try_consume(c, TOKEN_LESS);
+	assert(!tok_is(c, TOKEN_LGENPAR));
 
-	// 3. Do we have '(<' if so it's a parameterized type e.g. foo::bar::Type(<int, double>).
-	if (old_style_encountered || try_consume(c, TOKEN_LGENPAR))
+	// 3. Do we have '<' if so it's an old style parameterized type e.g. foo::bar::Type<int, double>.
+	if (try_consume(c, TOKEN_LESS))
 	{
-		Expr **params = parse_generic_parameters(c, old_style_encountered);
+		Expr **params = parse_generic_parameters(c, true);
 		if (!params) return poisoned_decl;
 		decl->decl_kind = DECL_DEFINE;
 		decl_add_type(decl, TYPE_TYPEDEF);
-		decl->define_decl.define_kind = DEFINE_TYPE_GENERIC;
+		decl->define_decl.define_kind = DEFINE_TYPE_GENERIC_OLD;
 		decl->define_decl.type_info = type_info;
 		decl->define_decl.generic_params = params;
 		if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 
 		RANGE_EXTEND_PREV(decl);
-		if (old_style_encountered)
-		{
-			sema_warning_at(decl->span, "Use of <...> for generics is deprecated, please use (<...>) instead.");
-		}
+		sema_warning_at(decl->span, "Use of <...> for generics is deprecated, please use (<...>) instead.");
 		CONSUME_EOS_OR_RET(poisoned_decl);
 		return decl;
 	}

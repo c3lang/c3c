@@ -1,3 +1,4 @@
+// #target: macos-x64
 module foo;
 
 int baz @extern("foobar") = 123;

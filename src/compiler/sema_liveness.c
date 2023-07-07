@@ -257,6 +257,7 @@ RETRY:
 		case EXPR_CT_IDENT:
 		case EXPR_ANYSWITCH:
 		case EXPR_GENERIC_IDENT:
+		case EXPR_EMBED:
 			UNREACHABLE
 		case EXPR_DESIGNATOR:
 			sema_trace_expr_liveness(expr->designator_expr.value);

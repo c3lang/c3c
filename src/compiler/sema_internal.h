@@ -25,7 +25,6 @@
 #define POP_NEXT() POP_X(next); context->next_switch = _old_next_switch
 #define PUSH_BREAKCONT(ast) PUSH_CONTINUE(ast); PUSH_BREAK(ast)
 #define POP_BREAKCONT() POP_CONTINUE(); POP_BREAK()
-#define IS_CONST(_x) ((_x)->expr_kind == EXPR_CONST)
 
 extern const char *ct_eval_error;
 
@@ -88,7 +87,6 @@ void cast_to_int_to_max_bit_size(SemaContext *context, Expr *lhs, Expr *rhs, Typ
 bool sema_decl_if_cond(SemaContext *context, Decl *decl);
 bool sema_flattened_expr_is_const(SemaContext *context, Expr *expr);
 Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, const char *name, SourceSpan span, Expr **params);
-
 bool sema_analyse_checked(SemaContext *context, Ast *directive, SourceSpan span);
 
 INLINE bool sema_set_abi_alignment(SemaContext *context, Type *type, AlignSize *result);

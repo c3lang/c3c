@@ -44,7 +44,7 @@ bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, Arra
 	if (!sema_analyse_expr(context, len_expr)) return type_info_poison(type_info);
 
 	// A constant expression is assumed.
-	if (len_expr->expr_kind != EXPR_CONST)
+	if (!expr_is_const(len_expr))
 	{
 		SEMA_ERROR(len_expr, "Expected a constant value as length.");
 		return type_info_poison(type_info);
@@ -155,7 +155,7 @@ static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type,
 		default:
 			UNREACHABLE
 	}
-	assert(!type->array.len || type->array.len->expr_kind == EXPR_CONST);
+	assert(!type->array.len || expr_is_const(type->array.len));
 	type->resolve_status = RESOLVE_DONE;
 	return true;
 }

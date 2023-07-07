@@ -69,17 +69,17 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 			return int_comp(a, b, op);
 		}
 		case CONST_STRING:
-			if (left->string.len != right->string.len)
+			if (left->bytes.len != right->bytes.len)
 			{
 				is_eq = false;
 				goto RETURN;
 			}
-			if (right->string.chars == left->string.chars)
+			if (right->bytes.ptr == left->bytes.ptr)
 			{
 				is_eq = true;
 				goto RETURN;
 			}
-			is_eq = !strncmp(left->string.chars, right->string.chars, left->string.len);
+			is_eq = !strncmp(left->bytes.ptr, right->bytes.ptr, left->bytes.len);
 			goto RETURN;
 		case CONST_TYPEID:
 			is_eq = left->typeid == right->typeid;
@@ -219,7 +219,7 @@ const char *expr_const_to_error_string(const ExprConst *expr)
 		case CONST_FLOAT:
 			return str_printf("%g", expr->fxx.f);
 		case CONST_STRING:
-			return str_printf("\"%*.s\"", expr->string.len, expr->string.chars);
+			return str_printf("\"%*.s\"", expr->bytes.len, expr->bytes.ptr);
 		case CONST_BYTES:
 			return "<binary data>";
 		case CONST_ENUM:

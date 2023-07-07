@@ -195,15 +195,10 @@ typedef struct
 		bool b;
 		struct
 		{
-			const char *chars;
-			ArraySize len;
-		} string;
-		Decl *enum_err_val;
-		struct
-		{
 			const char *ptr;
-			TypeSize len;
+			ArraySize len;
 		} bytes;
+		Decl *enum_err_val;
 		Type *typeid;
 		ConstInitializer *initializer;
 		Expr **untyped_list;
@@ -218,10 +213,12 @@ typedef struct
 
 
 typedef uint16_t FileId;
+
 typedef struct
 {
 	FileId file_id;
 	const char *contents;
+	size_t content_len;
 	char *name;
 	char *dir_path;
 	const char *full_path;
@@ -593,7 +590,7 @@ typedef struct
 
 typedef enum
 {
-	DEFINE_TYPE_GENERIC,
+	DEFINE_TYPE_GENERIC_OLD,
 	DEFINE_IDENT_ALIAS,
 	DEFINE_IDENT_GENERIC,
 } DefineType;
@@ -846,6 +843,11 @@ typedef struct
 	ExprId inner;
 } ExprBuiltinAccess;
 
+typedef struct
+{
+	Expr *filename;
+	Expr *len;
+} ExprEmbedExpr;
 typedef struct
 {
 	ExprId parent;
@@ -1146,6 +1148,7 @@ struct Expr_
 		ExprTryUnwrap try_unwrap_expr;              // 24
 		ExprCall call_expr;                         // 32
 		Expr *inner_expr;                           // 8
+		ExprEmbedExpr embed_expr;
 		ExprBuiltinAccess builtin_access_expr;
 		ExprGenericIdent generic_ident_expr;
 		ExprCatchUnwrap catch_unwrap_expr;          // 24
@@ -1707,6 +1710,7 @@ typedef struct
 	Type *string_type;
 	Decl *panic_var;
 	Decl *panicf;
+	Decl *io_error_file_not_found;
 	Decl *main;
 	Decl *test_func;
 	Decl *decl_stack[MAX_GLOBAL_DECL_STACK];
@@ -1861,8 +1865,11 @@ extern const char *builtin_defines[NUMBER_OF_BUILTIN_DEFINES];
 extern const char *type_property_list[NUMBER_OF_TYPE_PROPERTIES];
 extern const char *kw_std__core;
 extern const char *kw_std__core__types;
+extern const char *kw_std__io;
 extern const char *kw___run_default_test_runner;
 extern const char *kw_typekind;
+extern const char *kw_FILE_NOT_FOUND;
+extern const char *kw_IoError;
 
 extern const char *kw_argc;
 extern const char *kw_argv;
@@ -2213,7 +2220,7 @@ Path *path_create_from_string(const char *string, uint32_t len, SourceSpan span)
 #define SEMA_ERROR(_node, ...) sema_error_at((_node)->span, __VA_ARGS__)
 #define RETURN_SEMA_ERROR(_node, ...) do { sema_error_at((_node)->span, __VA_ARGS__); return false; } while (0)
 #define SEMA_NOTE(_node, ...) sema_error_prev_at((_node)->span, __VA_ARGS__)
-#define EXPAND_EXPR_STRING(str_) (str_)->const_expr.string.len, (str_)->const_expr.string.chars
+#define EXPAND_EXPR_STRING(str_) (str_)->const_expr.bytes.len, (str_)->const_expr.bytes.ptr
 #define TABLE_MAX_LOAD 0.5
 
 void sema_analysis_run(void);
@@ -2941,7 +2948,7 @@ INLINE bool decl_is_user_defined_type(Decl *decl)
 
 INLINE Decl *decl_flatten(Decl *decl)
 {
-	if (decl->decl_kind == DECL_DEFINE && decl->define_decl.define_kind != DEFINE_TYPE_GENERIC)
+	if (decl->decl_kind == DECL_DEFINE && decl->define_decl.define_kind != DEFINE_TYPE_GENERIC_OLD)
 	{
 		return decl->define_decl.alias;
 	}
@@ -3320,9 +3327,19 @@ INLINE bool expr_is_const_pointer(Expr *expr)
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_POINTER;
 }
 
+INLINE bool expr_is_const_bool(Expr *expr)
+{
+	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_BOOL;
+}
+
 INLINE bool expr_is_const_initializer(Expr *expr)
 {
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER;
+}
+
+INLINE bool expr_is_const_bytes(Expr *expr)
+{
+	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_BYTES;
 }
 
 INLINE bool expr_is_const_untyped_list(Expr *expr)

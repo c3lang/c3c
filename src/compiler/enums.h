@@ -224,6 +224,7 @@ typedef enum
 	EXPR_DECL,
 	EXPR_DESIGNATED_INITIALIZER_LIST,
 	EXPR_DESIGNATOR,
+	EXPR_EMBED,
 	EXPR_EXPRESSION_LIST,
 	EXPR_EXPR_BLOCK,
 	EXPR_OPTIONAL,
@@ -556,6 +557,7 @@ typedef enum
 	TOKEN_CT_DEFINED,           // $defined
 	TOKEN_CT_ECHO,              // $echo
 	TOKEN_CT_ELSE,              // $else
+	TOKEN_CT_EMBED,             // $embed
 	TOKEN_CT_ENDFOR,            // $endfor
 	TOKEN_CT_ENDFOREACH,        // $endforeach
 	TOKEN_CT_ENDIF,             // $endif

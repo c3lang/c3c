@@ -44,6 +44,7 @@ static inline bool sema_expr_analyse_ternary(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_cast(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_unary(SemaContext *context, Expr *expr);
+static inline bool sema_expr_analyse_embed(SemaContext *context, Expr *expr, bool allow_fail);
 
 static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_force_unwrap(SemaContext *context, Expr *expr);
@@ -191,7 +192,7 @@ static inline bool sema_expr_fold_to_member(Expr *expr, Expr *parent, Decl *memb
 
 static inline bool sema_constant_fold_ops(Expr *expr)
 {
-	if (expr->expr_kind != EXPR_CONST) return false;
+	if (!expr_is_const(expr)) return false;
 	switch (expr->const_expr.const_kind)
 	{
 		case CONST_INTEGER:
@@ -253,7 +254,7 @@ Expr *sema_ct_eval_expr(SemaContext *c, bool is_type_eval, Expr *inner, bool rep
 		return NULL;
 	}
 	const char *interned_version = NULL;
-	TokenType token = sema_splitpathref(inner->const_expr.string.chars, inner->const_expr.string.len, &path, &interned_version);
+	TokenType token = sema_splitpathref(inner->const_expr.bytes.ptr, inner->const_expr.bytes.len, &path, &interned_version);
 	switch (token)
 	{
 		case TOKEN_CONST_IDENT:
@@ -264,7 +265,7 @@ Expr *sema_ct_eval_expr(SemaContext *c, bool is_type_eval, Expr *inner, bool rep
 			{
 				if (report_missing)
 				{
-					SEMA_ERROR(inner, "'%.*s' could not be found, did you spell it right?", (int)inner->const_expr.string.len, inner->const_expr.string.chars);
+					SEMA_ERROR(inner, "'%.*s' could not be found, did you spell it right?", (int)inner->const_expr.bytes.len, inner->const_expr.bytes.ptr);
 				}
 				return NULL;
 			}
@@ -319,7 +320,7 @@ Expr *expr_access_inline_member(Expr *parent, Decl *parent_decl)
 
 static inline bool expr_both_const(Expr *left, Expr *right)
 {
-	return left->expr_kind == EXPR_CONST && right->expr_kind == EXPR_CONST;
+	return expr_is_const(left) && expr_is_const(right);
 }
 
 static inline bool expr_both_any_integer_or_integer_vector(Expr *left, Expr *right)
@@ -392,6 +393,7 @@ static bool sema_binary_is_expr_lvalue(Expr *top_expr, Expr *expr)
 	{
 		case EXPR_SWIZZLE:
 		case EXPR_LAMBDA:
+		case EXPR_EMBED:
 			return false;
 		case EXPR_SUBSCRIPT_ASSIGN:
 		case EXPR_CT_IDENT:
@@ -524,6 +526,7 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_SWIZZLE:
 		case EXPR_LAMBDA:
 		case EXPR_CT_IDENT:
+		case EXPR_EMBED:
 			return false;
 		case EXPR_SUBSCRIPT_ASSIGN:
 			return true;
@@ -762,7 +765,7 @@ static inline bool sema_expr_analyse_ternary(SemaContext *context, Expr *expr)
 	{
 		if (!sema_analyse_cond_expr(context, cond)) return expr_poison(expr);
 		if (!sema_analyse_expr(context, left)) return expr_poison(expr);
-		if (cond->expr_kind == EXPR_CONST)
+		if (expr_is_const(cond))
 		{
 			path = cond->const_expr.b ? 1 : 0;
 		}
@@ -781,7 +784,7 @@ static inline bool sema_expr_analyse_ternary(SemaContext *context, Expr *expr)
 		{
 			Expr *copy = copy_expr_single(cond);
 			cast(copy, type_bool);
-			assert(cond->expr_kind == EXPR_CONST);
+			assert(expr_is_const(cond));
 			path = cond->const_expr.b ? 1 : 0;
 		}
 		left = cond;
@@ -941,11 +944,6 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 					}
 					expr_replace(expr, copy);
 					return true;
-				}
-				if (IS_OPTIONAL(decl))
-				{
-					SEMA_ERROR(expr, "Constants may never be 'optional', please remove the '!'.");
-					return false;
 				}
 				break;
 			case VARDECL_GLOBAL:
@@ -2251,7 +2249,7 @@ static inline bool sema_expr_analyse_call(SemaContext *context, Expr *expr)
 static bool sema_slice_len_is_in_range(SemaContext *context, Type *type, Expr *len_expr, bool from_end, bool *remove_from_end)
 {
 	assert(type == type->canonical);
-	if (len_expr->expr_kind != EXPR_CONST) return true;
+	if (!expr_is_const(len_expr)) return true;
 
 	Int const_len = len_expr->const_expr.ixx;
 	if (!int_fits(const_len, TYPE_I64))
@@ -2309,7 +2307,7 @@ static bool sema_slice_len_is_in_range(SemaContext *context, Type *type, Expr *l
 static bool sema_slice_index_is_in_range(SemaContext *context, Type *type, Expr *index_expr, bool end_index, bool from_end, bool *remove_from_end)
 {
 	assert(type == type->canonical);
-	if (index_expr->expr_kind != EXPR_CONST) return true;
+	if (!expr_is_const(index_expr)) return true;
 
 	Int index = index_expr->const_expr.ixx;
 	if (!int_fits(index, TYPE_I64))
@@ -2401,7 +2399,7 @@ static Type *sema_subscript_find_indexable_type_recursively(Type **type, Expr **
 
 static bool sema_subscript_rewrite_index_const_list(Expr *const_list, Expr *index, Expr *result)
 {
-	assert(index->expr_kind == EXPR_CONST && index->const_expr.const_kind == CONST_INTEGER);
+	assert(expr_is_const_int(index));
 	if (!int_fits(index->const_expr.ixx, TYPE_U32)) return false;
 
 	uint32_t idx = index->const_expr.ixx.i.low;
@@ -2759,7 +2757,7 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr)
 		end_from_end = expr->subscript_expr.range.end_from_end = false;
 	}
 
-	if (start && end && start->expr_kind == EXPR_CONST && end->expr_kind == EXPR_CONST)
+	if (start && end && expr_is_const(start) && expr_is_const(end))
 	{
 		if (!is_lenrange && start_from_end && end_from_end)
 		{
@@ -3797,7 +3795,7 @@ CHECK_DEEPER:
 			sema_expr_flatten_const(context, parent);
 			if (expr_is_const_string(parent))
 			{
-				expr_rewrite_const_int(expr, type_isz, parent->const_expr.string.len);
+				expr_rewrite_const_int(expr, type_isz, parent->const_expr.bytes.len);
 				return true;
 			}
 			expr_rewrite_to_builtin_access(expr, current_parent, ACCESS_LEN, type_usz);
@@ -3888,7 +3886,7 @@ CHECK_DEEPER:
 		}
 		if (flat_type->type_kind == TYPE_FAULTTYPE || flat_type->type_kind == TYPE_ANYFAULT)
 		{
-			if (current_parent->expr_kind == EXPR_CONST)
+			if (expr_is_const(current_parent))
 			{
 				expr_rewrite_to_string(expr, current_parent->const_expr.enum_err_val->name);
 				return true;
@@ -3931,7 +3929,7 @@ CHECK_DEEPER:
 	Decl *decl = type->decl;
 	Decl *member = sema_decl_stack_find_decl_member(decl, kw);
 
-	if (member && decl_is_enum_kind(decl) && member->decl_kind == DECL_VAR && parent->expr_kind == EXPR_CONST)
+	if (member && decl_is_enum_kind(decl) && member->decl_kind == DECL_VAR && expr_is_const(parent))
 	{
 		assert(parent->const_expr.const_kind == CONST_ENUM);
 		Expr *copy_init = copy_expr_single(current_parent->const_expr.enum_err_val->enum_constant.args[member->var.index]);
@@ -4455,7 +4453,7 @@ static bool sema_binary_analyse_ct_common_assign(SemaContext *context, Expr *exp
 
 	if (!sema_expr_analyse_binary(context, expr)) return false;
 
-	if (expr->expr_kind != EXPR_CONST)
+	if (!expr_is_const(expr))
 	{
 		SEMA_ERROR(exprptr(expr->binary_expr.right), "Expected a constant expression.");
 		return false;
@@ -4507,7 +4505,7 @@ BITSTRUCT_OK:
 	if (!sema_analyse_expr(context, right)) return false;
 	if (!cast_implicit_maybe_optional(context, right, no_fail, IS_OPTIONAL(left))) return false;
 	// 6. Check for zero in case of div or mod.
-	if (right->expr_kind == EXPR_CONST)
+	if (expr_is_const(right))
 	{
 		if (expr->binary_expr.operator == BINARYOP_DIV_ASSIGN)
 		{
@@ -5080,7 +5078,7 @@ static bool sema_expr_analyse_div(SemaContext *context, Expr *expr, Expr *left, 
 	if (!sema_binary_analyse_arithmetic_subexpr(context, expr, "Cannot divide %s by %s.", false)) return false;
 
 	// 2. Check for a constant 0 on the rhs.
-	if (IS_CONST(right))
+	if (expr_is_const(right))
 	{
 		switch (right->const_expr.const_kind)
 		{
@@ -5135,7 +5133,7 @@ static bool sema_expr_analyse_mod(SemaContext *context, Expr *expr, Expr *left, 
 	if (!sema_binary_analyse_arithmetic_subexpr(context, expr, NULL, false)) return false;
 
 	// 3. a % 0 is not valid, so detect it.
-	if (IS_CONST(right) && int_is_zero(right->const_expr.ixx))
+	if (expr_is_const(right) && int_is_zero(right->const_expr.ixx))
 	{
 		SEMA_ERROR(right, "Cannot perform %% with a constant zero.");
 		return false;
@@ -5239,7 +5237,7 @@ static bool sema_expr_analyse_shift(SemaContext *context, Expr *expr, Expr *left
 	if (!cast_implicit(context, left, cast_numeric_arithmetic_promotion(type_no_optional(left->type)))) return false;
 
 	// 4. For a constant rhs side we will make a series of checks.
-	if (IS_CONST(right))
+	if (expr_is_const(right))
 	{
 		// 4a. Make sure the value does not exceed the bitsize of
 		//     the left hand side. We ignore this check for lhs being a constant.
@@ -5259,7 +5257,7 @@ static bool sema_expr_analyse_shift(SemaContext *context, Expr *expr, Expr *left
 		}
 
 		// 5. Fold constant expressions.
-		if (IS_CONST(left))
+		if (expr_is_const(left))
 		{
 			bool shr = expr->binary_expr.operator == BINARYOP_SHR;
 			expr_replace(expr, left);
@@ -5302,7 +5300,7 @@ static bool sema_expr_analyse_shift_assign(SemaContext *context, Expr *expr, Exp
 	if (!expr_both_any_integer_or_integer_vector(left, right)) return sema_type_error_on_binop(expr);
 
 	// 4. For a constant right hand side we will make a series of checks.
-	if (IS_CONST(right))
+	if (expr_is_const(right))
 	{
 		// 4a. Make sure the value does not exceed the bitsize of
 		//     the left hand side.
@@ -5553,7 +5551,7 @@ static inline bool sema_expr_analyse_deref(SemaContext *context, Expr *expr)
 	}
 
 	// 3. This could be a constant, in which case it is a null which is an error.
-	if (inner->expr_kind == EXPR_CONST)
+	if (expr_is_const(inner))
 	{
 		SEMA_ERROR(inner, "Dereferencing null is not allowed, did you do it by mistake?");
 		return false;
@@ -5864,7 +5862,7 @@ static inline bool sema_expr_analyse_not(SemaContext *context, Expr *expr)
 
 	expr->type = type_add_optional(type_bool, IS_OPTIONAL(inner));
 
-	if (inner->expr_kind == EXPR_CONST)
+	if (expr_is_const(inner))
 	{
 		bool success = cast_explicit(context, inner, expr->type);
 		assert(success);
@@ -5884,7 +5882,7 @@ static inline bool sema_expr_analyse_ct_incdec(SemaContext *context, Expr *expr,
 
 	Decl *var = inner->ct_ident_expr.decl;
 	Expr *start_value = var->var.init_expr;
-	assert(start_value->expr_kind == EXPR_CONST);
+	assert(expr_is_const(start_value));
 
 	switch (start_value->const_expr.const_kind)
 	{
@@ -6021,19 +6019,32 @@ static bool sema_binary_check_unclear_op_precedence(Expr *left_side, Expr * main
 static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr)
 {
 	Expr *lhs = exprptr(expr->binary_expr.left);
+	bool lhs_is_embed = lhs->expr_kind == EXPR_EMBED;
 	Expr *rhs = exprptr(expr->binary_expr.right);
 	if (lhs->expr_kind == EXPR_TERNARY || rhs->expr_kind == EXPR_TERNARY)
 	{
 		SEMA_ERROR(expr, "Unclear precedence using ternary with ??, please use () to remove ambiguity.");
 		return false;
 	}
-	if (!sema_analyse_expr(context, lhs)) return false;
+	if (lhs_is_embed)
+	{
+		if (!sema_expr_analyse_embed(context, lhs, true)) return false;
+	}
+	else
+	{
+		if (!sema_analyse_expr(context, lhs)) return false;
+	}
 
 	if (expr->binary_expr.widen && !cast_widen_top_down(context, lhs, expr->type)) return false;
 
 	Type *type = lhs->type;
 	if (!type_is_optional(type))
 	{
+		if (lhs_is_embed)
+		{
+			expr_replace(expr, lhs);
+			return true;
+		}
 		SEMA_ERROR(lhs, "No optional to use '\?\?' with, please remove the '\?\?'.");
 		return false;
 	}
@@ -6980,6 +6991,83 @@ static inline Decl *sema_find_cached_lambda(SemaContext *context, Type *func_typ
 	return NULL;
 }
 
+static inline bool sema_expr_analyse_embed(SemaContext *context, Expr *expr, bool allow_fail)
+{
+	static File no_file;
+	Expr *filename = expr->embed_expr.filename;
+	if (!sema_analyse_ct_expr(context, filename)) return false;
+	Expr *len_expr = expr->embed_expr.len;
+	size_t len = ~((size_t)0);
+	if (len_expr)
+	{
+		if (!sema_analyse_ct_expr(context, len_expr)) return false;
+		if (!expr_is_const_int(len_expr)) RETURN_SEMA_ERROR(len_expr, "Expected an integer value.");
+		Int i = len_expr->const_expr.ixx;
+		if (int_is_neg(i) || int_is_zero(i)) RETURN_SEMA_ERROR(len_expr, "Expected a positive value for the limit.");
+		Int max = { .i.low = len, .type = TYPE_U64 };
+		if (int_comp(i, max, BINARYOP_LT))
+		{
+			len = int_to_u64(i);
+		}
+	}
+	if (!expr_is_const_string(filename)) RETURN_SEMA_ERROR(filename, "A compile time string was expected.");
+
+	CompilationUnit *unit = context->unit;
+	const char *string = filename->const_expr.bytes.ptr;
+	bool loaded;
+	const char *error;
+	char *path;
+	char *name;
+	if (file_namesplit(unit->file->full_path, &name, &path))
+	{
+		string = file_append_path(path, string);
+	}
+	char *content = file_read_binary(string, &len);
+	if (!content)
+	{
+		if (!allow_fail) RETURN_SEMA_ERROR(expr, "Failed to load '%s'.", string);
+		if (!global_context.io_error_file_not_found)
+		{
+			Module *module = global_context_find_module(kw_std__io);
+			Decl *io_error = module ? module_find_symbol(module, kw_IoError) : NULL;
+			Decl *fault = poisoned_decl;
+			if (io_error && io_error->decl_kind == DECL_FAULT)
+			{
+				FOREACH_BEGIN(Decl *f, io_error->enums.values)
+					if (f->name == kw_FILE_NOT_FOUND)
+					{
+						fault = f;
+						break;
+					}
+				FOREACH_END();
+			}
+			global_context.io_error_file_not_found = fault;
+		}
+		if (!decl_ok(global_context.io_error_file_not_found))
+		{
+			RETURN_SEMA_ERROR(expr, "Cannot generate an optional result, no IoError.FILE_NOT_FOUND could be located.");
+		}
+		expr->expr_kind = EXPR_OPTIONAL;
+		expr->inner_expr = filename;
+		filename->expr_kind = EXPR_CONST;
+		filename->const_expr.const_kind = CONST_ERR;
+		expr->type = type_wildcard_optional;
+		filename->const_expr.enum_err_val = global_context.io_error_file_not_found;
+		filename->resolve_status = RESOLVE_DONE;
+		expr->resolve_status = RESOLVE_DONE;
+		return true;
+	}
+	expr->const_expr = (ExprConst){
+			.const_kind = CONST_BYTES,
+			.bytes.ptr = content,
+			.bytes.len = len,
+	};
+	expr->expr_kind = EXPR_CONST;
+	Type *type = type_get_array(type_char, len);
+	expr->type = type;
+	return true;
+}
+
 static inline bool sema_expr_analyse_generic_ident(SemaContext *context, Expr *expr)
 {
 	Expr *parent = exprptr(expr->generic_ident_expr.parent);
@@ -7473,6 +7561,8 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 		case EXPR_TEST_HOOK:
 		case EXPR_SWIZZLE:
 			UNREACHABLE
+		case EXPR_EMBED:
+			return sema_expr_analyse_embed(context, expr, false);
 		case EXPR_VASPLAT:
 			SEMA_ERROR(expr, "'$vasplat' can only be used inside of macros.");
 			return false;
@@ -7599,11 +7689,18 @@ bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allo
 		to = to->optional;
 		assert(allow_optional);
 	}
-	if (!sema_analyse_inferred_expr(context, to, expr)) return false;
+	if (expr->expr_kind == EXPR_EMBED && allow_optional)
+	{
+		if (!sema_expr_analyse_embed(context, expr, true)) return false;
+	}
+	else
+	{
+		if (!sema_analyse_inferred_expr(context, to, expr)) return false;
+	}
 	if (to && allow_optional && to->canonical != expr->type->canonical && expr->type->canonical->type_kind == TYPE_FAULTTYPE)
 	{
 		Type *flat = type_flatten(to);
-		if (flat != type_anyfault && flat->type_kind != TYPE_FAULTTYPE && expr->expr_kind == EXPR_CONST)
+		if (flat != type_anyfault && flat->type_kind != TYPE_FAULTTYPE && expr_is_const(expr))
 		{
 			sema_error_at_after(expr->span, "You need to add a trailing '?' here to make this an optional.");
 			return false;
@@ -7981,7 +8078,7 @@ bool sema_insert_method_call(SemaContext *context, Expr *method_call, Decl *meth
 bool sema_bit_assignment_check(Expr *right, Decl *member)
 {
 	// Don't check non-consts and non integers.
-	if (!IS_CONST(right) || !type_is_integer(right->type)) return true;
+	if (!expr_is_const(right) || !type_is_integer(right->type)) return true;
 
 	unsigned bits = member->var.end_bit - member->var.start_bit + 1;
 
