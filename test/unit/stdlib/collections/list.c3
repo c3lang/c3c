@@ -16,7 +16,9 @@ fn void! test_delete_contains_index()
 	test.push(3);
 	assert(test.array_view() == int[]{ 1, 2, 3 });
 	assert(test.contains(3));
-	test.remove(1);
+	test[0] = 10;
+	assert(test.contains(10));
+	test.remove(10);
 	assert(test.array_view() == int[]{ 2, 3 });
 	assert(!test.contains(1));
 	assert(test.contains(2));
