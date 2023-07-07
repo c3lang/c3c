@@ -13,7 +13,7 @@ fn String Foo.to_string(Foo* foo, Allocator* allocator = mem::heap()) @dynamic
 {
 	DString s = dstring::new_with_capacity(128, allocator);
 	s.printf("{%s, %p}", foo.x, foo.bar);
-	return s.str();
+	return s.as_str();
 }
 
 
@@ -74,7 +74,7 @@ entry:
   store %any %9, ptr %10, align 16
   %11 = call i64 @std.core.dstring.DString.printf(ptr %retparam, ptr %s, ptr @.str.12, i64 8, ptr %varargslots, i64 2)
   %12 = load ptr, ptr %s, align 8
-  %13 = call { ptr, i64 } @std.core.dstring.DString.str(ptr %12)
+  %13 = call { ptr, i64 } @std.core.dstring.DString.as_str(ptr %12)
   store { ptr, i64 } %13, ptr %result, align 8
   %14 = load { ptr, i64 }, ptr %result, align 8
   ret { ptr, i64 } %14

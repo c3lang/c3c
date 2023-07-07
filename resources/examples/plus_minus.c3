@@ -18,7 +18,7 @@ fn void main(String[] args)
 	defer s.free();
 
 	// Grab the string as a slice.
-	String numbers = s.str();
+	String numbers = s.as_str();
 
 	// Track our current value
 	int val = 0;

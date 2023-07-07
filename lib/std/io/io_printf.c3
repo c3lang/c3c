@@ -179,7 +179,7 @@ fn void! Formatter.out_str(&self, any arg) @private
 			if (self.print_with_function(arg)!) return;
 			if (arg.type == DString.typeid)
 			{
-				return self.out_substr(((DString*)arg).str());
+				return self.out_substr(((DString*)arg).as_str());
 			}
         	return self.out_str(any { arg.ptr, arg.type.inner });
 		case POINTER:

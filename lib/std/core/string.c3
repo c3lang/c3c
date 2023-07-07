@@ -46,7 +46,7 @@ macro String tprintf(String fmt, ...)
 	DString str;
 	str.tinit();
 	str.printf(fmt, $vasplat());
-	return str.str();
+	return str.as_str();
 }
 
 macro bool char_in_set(char c, String set)

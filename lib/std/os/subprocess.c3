@@ -113,7 +113,7 @@ fn Char16* convert_command_line_win32(String[] command_line) @inline @if(env::WI
 		str.append('"');
 	}
 	str.append('\0');
-	return str.str().to_utf16(.using = mem::temp())!!;
+	return str.as_str().to_utf16(.using = mem::temp())!!;
 }
 
 /**
@@ -154,7 +154,7 @@ fn SubProcess! create(String[] command_line, SubProcessOptions options = {}, Str
 				env.append("\0");
 			}
 			env.append("\0");
-			used_environment = env.str().to_utf16(.using = mem::temp()).ptr!;
+			used_environment = env.as_str().to_utf16(.using = mem::temp()).ptr!;
 		}
 		int fd = win32::_open_osfhandle((iptr)wr, 0);
     	if (fd != -1)
