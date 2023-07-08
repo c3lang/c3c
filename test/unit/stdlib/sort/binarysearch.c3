@@ -25,10 +25,10 @@ fn void binarysearch()
         usz idx = sort::binarysearch(tc.data, tc.x);
         assert(idx == tc.index, "%s: got %d; want %d", tc.data, idx, tc.index);
 
-        usz cmp_idx = sort::binarysearch_with(tc.data, tc.x, &sort::cmp_int);
+        usz cmp_idx = sort::binarysearch_with(tc.data, tc.x, &sort::cmp_int_ref);
         assert(cmp_idx == tc.index, "%s: got %d; want %d", tc.data, cmp_idx, tc.index);
 
-        usz cmp_idx2 = sort::binarysearch_with(tc.data, tc.x, &sort::cmp_int2);
+        usz cmp_idx2 = sort::binarysearch_with(tc.data, tc.x, &sort::cmp_int_value);
         assert(cmp_idx2 == tc.index, "%s: got %d; want %d", tc.data, cmp_idx2, tc.index);
 
         usz cmp_idx3 = sort::binarysearch_with(tc.data, tc.x, fn int(int a, int b) => a - b);
