@@ -97,7 +97,6 @@ fn void*! on_stack_allocator_function(Allocator* data, usz size, usz alignment, 
 		case RESET:
 			unreachable("Reset unsupported");
 	}
-	unreachable();
 }
 
 fn bool allocation_in_stack_mem(OnStackAllocator* a, void* ptr) @local

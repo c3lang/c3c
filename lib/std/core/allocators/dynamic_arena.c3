@@ -237,5 +237,4 @@ fn void*! dynamic_arena_allocator_function(Allocator* data, usz size, usz alignm
 			allocator.reset();
 			return null;
 	}
-	unreachable();
 }

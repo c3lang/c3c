@@ -104,5 +104,4 @@ fn void*! tracking_allocator_fn(Allocator* data, usz size, usz alignment, usz of
 			this.map.clear();
 			return null;
 	}
-	unreachable();
 }

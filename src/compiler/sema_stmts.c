@@ -2110,8 +2110,10 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 		return false;
 	}
 	// We need an if-chain if this isn't an enum/integer type.
-	TypeKind flat_switch_type_kind = type_flatten(switch_type)->type_kind;
-	bool if_chain = flat_switch_type_kind != TYPE_ENUM && !type_kind_is_any_integer(flat_switch_type_kind);
+	Type *flat = type_flatten(switch_type);
+	TypeKind flat_switch_type_kind = flat->type_kind;
+	bool is_enum_switch = flat_switch_type_kind == TYPE_ENUM;
+	bool if_chain = !is_enum_switch && !type_kind_is_any_integer(flat_switch_type_kind);
 
 	Ast *default_case = NULL;
 	assert(context->active_scope.defer_start == context->active_scope.defer_last);
@@ -2163,6 +2165,7 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 		POP_NEXT();
 	}
 
+	if (!exhaustive && is_enum_switch && case_count == vec_size(flat->decl->enums.values)) exhaustive = true;
 	bool all_jump_end = exhaustive;
 	for (unsigned i = 0; i < case_count; i++)
 	{
