@@ -29,21 +29,16 @@ fn isz partition(Type list, isz low, isz high, Comparer cmp) @inline @local
     isz i = low - 1;
     for (isz j = low; j < high; j++)
     {
-        $if $checks(cmp(list[0], list[0])):
-            int res = cmp(list[j], pivot);
-        $else
-            $if $checks(cmp(&list[0], &list[0])):
-                int res = cmp(&list[j], &pivot);
-            $else
-                int res;
+        $switch
+            $case $checks(cmp(list[0], list[0])):
+                if (cmp(list[j], pivot) > 0) continue;
+            $case $checks(cmp(&list[0], &list[0])):
+                if (cmp(&list[j], &pivot) > 0) continue;
+            $default:
                 if (greater(list[j], pivot)) continue;
-            $endif
-        $endif
-        if (res <= 0)
-        {
-            i++;
-            @swap(list[i], list[j]);
-        }
+        $endswitch
+        i++;
+        @swap(list[i], list[j]);
     }
     i++;
     @swap(list[i], list[high]);
