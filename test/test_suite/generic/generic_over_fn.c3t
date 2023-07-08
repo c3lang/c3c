@@ -1,0 +1,258 @@
+// #target: macos-x64
+module test_generic(<Type, Func>);
+
+fn void sort(Type list, isz, isz, Func cmp)
+{}
+
+module sort_test;
+import std::sort;
+import test_generic;
+
+macro quicksort(list, cmp = null)
+{
+    var $Type = $typeof(list);
+    var $CmpType = $typeof(cmp);
+    usz len = sort::@len_from_list(list);
+    test_generic::sort(<$Type, $CmpType>)(list, 0, (isz)len - 1, cmp);
+}
+
+fn void quicksort_with_value() @nostrip
+{
+    int[][] tcases = {
+        {},
+        {10, 3},
+        {3, 2, 1},
+        {1, 2, 3},
+        {2, 1, 3},
+    };
+
+    foreach (tc : tcases)
+    {
+        quicksort(tc, &cmp_int_value);
+    }
+}
+
+fn void quicksort_with_value2() @nostrip
+{
+    int[][] tcases = {
+        {},
+        {10, 3},
+        {3, 2, 1},
+        {1, 2, 3},
+        {2, 1, 3},
+    };
+
+    foreach (tc : tcases)
+    {
+        quicksort(tc, &cmp_int_value2);
+    }
+}
+
+fn int cmp_int_value(int x, int y) {
+    return x - y;
+}
+
+fn int cmp_int_value2(int x, int y) {
+    return x - y;
+}
+
+/* #expect: sort_test.ll
+
+define void @sort_test.quicksort_with_value() #0 {
+entry:
+  %tcases = alloca %"int[][]", align 8
+  %literal = alloca [5 x %"int[]"], align 16
+  %literal1 = alloca [2 x i32], align 4
+  %literal2 = alloca [3 x i32], align 4
+  %literal3 = alloca [3 x i32], align 4
+  %literal4 = alloca [3 x i32], align 4
+  %.anon = alloca i64, align 8
+  %.anon5 = alloca i64, align 8
+  %tc = alloca %"int[]", align 8
+  %list = alloca %"int[]", align 8
+  %cmp = alloca ptr, align 8
+  %len = alloca i64, align 8
+  %0 = getelementptr inbounds [5 x %"int[]"], ptr %literal, i64 0, i64 0
+  store %"int[]" zeroinitializer, ptr %0, align 8
+  %1 = getelementptr inbounds [5 x %"int[]"], ptr %literal, i64 0, i64 1
+  %2 = getelementptr inbounds [2 x i32], ptr %literal1, i64 0, i64 0
+  store i32 10, ptr %2, align 4
+  %3 = getelementptr inbounds [2 x i32], ptr %literal1, i64 0, i64 1
+  store i32 3, ptr %3, align 4
+  %4 = insertvalue %"int[]" undef, ptr %literal1, 0
+  %5 = insertvalue %"int[]" %4, i64 2, 1
+  store %"int[]" %5, ptr %1, align 8
+  %6 = getelementptr inbounds [5 x %"int[]"], ptr %literal, i64 0, i64 2
+  %7 = getelementptr inbounds [3 x i32], ptr %literal2, i64 0, i64 0
+  store i32 3, ptr %7, align 4
+  %8 = getelementptr inbounds [3 x i32], ptr %literal2, i64 0, i64 1
+  store i32 2, ptr %8, align 4
+  %9 = getelementptr inbounds [3 x i32], ptr %literal2, i64 0, i64 2
+  store i32 1, ptr %9, align 4
+  %10 = insertvalue %"int[]" undef, ptr %literal2, 0
+  %11 = insertvalue %"int[]" %10, i64 3, 1
+  store %"int[]" %11, ptr %6, align 8
+  %12 = getelementptr inbounds [5 x %"int[]"], ptr %literal, i64 0, i64 3
+  %13 = getelementptr inbounds [3 x i32], ptr %literal3, i64 0, i64 0
+  store i32 1, ptr %13, align 4
+  %14 = getelementptr inbounds [3 x i32], ptr %literal3, i64 0, i64 1
+  store i32 2, ptr %14, align 4
+  %15 = getelementptr inbounds [3 x i32], ptr %literal3, i64 0, i64 2
+  store i32 3, ptr %15, align 4
+  %16 = insertvalue %"int[]" undef, ptr %literal3, 0
+  %17 = insertvalue %"int[]" %16, i64 3, 1
+  store %"int[]" %17, ptr %12, align 8
+  %18 = getelementptr inbounds [5 x %"int[]"], ptr %literal, i64 0, i64 4
+  %19 = getelementptr inbounds [3 x i32], ptr %literal4, i64 0, i64 0
+  store i32 2, ptr %19, align 4
+  %20 = getelementptr inbounds [3 x i32], ptr %literal4, i64 0, i64 1
+  store i32 1, ptr %20, align 4
+  %21 = getelementptr inbounds [3 x i32], ptr %literal4, i64 0, i64 2
+  store i32 3, ptr %21, align 4
+  %22 = insertvalue %"int[]" undef, ptr %literal4, 0
+  %23 = insertvalue %"int[]" %22, i64 3, 1
+  store %"int[]" %23, ptr %18, align 8
+  %24 = insertvalue %"int[][]" undef, ptr %literal, 0
+  %25 = insertvalue %"int[][]" %24, i64 5, 1
+  store %"int[][]" %25, ptr %tcases, align 8
+  %26 = getelementptr inbounds %"int[][]", ptr %tcases, i32 0, i32 1
+  %27 = load i64, ptr %26, align 8
+  store i64 %27, ptr %.anon, align 8
+  store i64 0, ptr %.anon5, align 8
+  br label %loop.cond
+
+loop.cond:                                        ; preds = %loop.body, %entry
+  %28 = load i64, ptr %.anon5, align 8
+  %29 = load i64, ptr %.anon, align 8
+  %lt = icmp ult i64 %28, %29
+  br i1 %lt, label %loop.body, label %loop.exit
+
+loop.body:                                        ; preds = %loop.cond
+  %30 = getelementptr inbounds %"int[][]", ptr %tcases, i32 0, i32 0
+  %31 = load ptr, ptr %30, align 8
+  %32 = load i64, ptr %.anon5, align 8
+  %ptroffset = getelementptr inbounds %"int[]", ptr %31, i64 %32
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %tc, ptr align 8 %ptroffset, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %list, ptr align 8 %tc, i32 16, i1 false)
+  store ptr @sort_test.cmp_int_value, ptr %cmp, align 8
+  %33 = getelementptr inbounds %"int[]", ptr %list, i32 0, i32 1
+  %34 = load i64, ptr %33, align 8
+  store i64 %34, ptr %len, align 8
+  %35 = getelementptr inbounds %"int[]", ptr %list, i32 0, i32 0
+  %lo = load ptr, ptr %35, align 8
+  %36 = getelementptr inbounds %"int[]", ptr %list, i32 0, i32 1
+  %hi = load i64, ptr %36, align 8
+  %37 = load i64, ptr %len, align 8
+  %sub = sub i64 %37, 1
+  %38 = load ptr, ptr %cmp, align 8
+  call void @"test_generic$sa$int$p$fn$int$int$$int$$.sort"(ptr %lo, i64 %hi, i64 0, i64 %sub, ptr %38)
+  %39 = load i64, ptr %.anon5, align 8
+  %add = add i64 %39, 1
+  store i64 %add, ptr %.anon5, align 8
+  br label %loop.cond
+
+loop.exit:                                        ; preds = %loop.cond
+  ret void
+}
+
+; Function Attrs: nounwind
+define void @sort_test.quicksort_with_value2() #0 {
+entry:
+  %tcases = alloca %"int[][]", align 8
+  %literal = alloca [5 x %"int[]"], align 16
+  %literal1 = alloca [2 x i32], align 4
+  %literal2 = alloca [3 x i32], align 4
+  %literal3 = alloca [3 x i32], align 4
+  %literal4 = alloca [3 x i32], align 4
+  %.anon = alloca i64, align 8
+  %.anon5 = alloca i64, align 8
+  %tc = alloca %"int[]", align 8
+  %list = alloca %"int[]", align 8
+  %cmp = alloca ptr, align 8
+  %len = alloca i64, align 8
+  %0 = getelementptr inbounds [5 x %"int[]"], ptr %literal, i64 0, i64 0
+  store %"int[]" zeroinitializer, ptr %0, align 8
+  %1 = getelementptr inbounds [5 x %"int[]"], ptr %literal, i64 0, i64 1
+  %2 = getelementptr inbounds [2 x i32], ptr %literal1, i64 0, i64 0
+  store i32 10, ptr %2, align 4
+  %3 = getelementptr inbounds [2 x i32], ptr %literal1, i64 0, i64 1
+  store i32 3, ptr %3, align 4
+  %4 = insertvalue %"int[]" undef, ptr %literal1, 0
+  %5 = insertvalue %"int[]" %4, i64 2, 1
+  store %"int[]" %5, ptr %1, align 8
+  %6 = getelementptr inbounds [5 x %"int[]"], ptr %literal, i64 0, i64 2
+  %7 = getelementptr inbounds [3 x i32], ptr %literal2, i64 0, i64 0
+  store i32 3, ptr %7, align 4
+  %8 = getelementptr inbounds [3 x i32], ptr %literal2, i64 0, i64 1
+  store i32 2, ptr %8, align 4
+  %9 = getelementptr inbounds [3 x i32], ptr %literal2, i64 0, i64 2
+  store i32 1, ptr %9, align 4
+  %10 = insertvalue %"int[]" undef, ptr %literal2, 0
+  %11 = insertvalue %"int[]" %10, i64 3, 1
+  store %"int[]" %11, ptr %6, align 8
+  %12 = getelementptr inbounds [5 x %"int[]"], ptr %literal, i64 0, i64 3
+  %13 = getelementptr inbounds [3 x i32], ptr %literal3, i64 0, i64 0
+  store i32 1, ptr %13, align 4
+  %14 = getelementptr inbounds [3 x i32], ptr %literal3, i64 0, i64 1
+  store i32 2, ptr %14, align 4
+  %15 = getelementptr inbounds [3 x i32], ptr %literal3, i64 0, i64 2
+  store i32 3, ptr %15, align 4
+  %16 = insertvalue %"int[]" undef, ptr %literal3, 0
+  %17 = insertvalue %"int[]" %16, i64 3, 1
+  store %"int[]" %17, ptr %12, align 8
+  %18 = getelementptr inbounds [5 x %"int[]"], ptr %literal, i64 0, i64 4
+  %19 = getelementptr inbounds [3 x i32], ptr %literal4, i64 0, i64 0
+  store i32 2, ptr %19, align 4
+  %20 = getelementptr inbounds [3 x i32], ptr %literal4, i64 0, i64 1
+  store i32 1, ptr %20, align 4
+  %21 = getelementptr inbounds [3 x i32], ptr %literal4, i64 0, i64 2
+  store i32 3, ptr %21, align 4
+  %22 = insertvalue %"int[]" undef, ptr %literal4, 0
+  %23 = insertvalue %"int[]" %22, i64 3, 1
+  store %"int[]" %23, ptr %18, align 8
+  %24 = insertvalue %"int[][]" undef, ptr %literal, 0
+  %25 = insertvalue %"int[][]" %24, i64 5, 1
+  store %"int[][]" %25, ptr %tcases, align 8
+  %26 = getelementptr inbounds %"int[][]", ptr %tcases, i32 0, i32 1
+  %27 = load i64, ptr %26, align 8
+  store i64 %27, ptr %.anon, align 8
+  store i64 0, ptr %.anon5, align 8
+  br label %loop.cond
+
+loop.cond:                                        ; preds = %loop.body, %entry
+  %28 = load i64, ptr %.anon5, align 8
+  %29 = load i64, ptr %.anon, align 8
+  %lt = icmp ult i64 %28, %29
+  br i1 %lt, label %loop.body, label %loop.exit
+
+loop.body:                                        ; preds = %loop.cond
+  %30 = getelementptr inbounds %"int[][]", ptr %tcases, i32 0, i32 0
+  %31 = load ptr, ptr %30, align 8
+  %32 = load i64, ptr %.anon5, align 8
+  %ptroffset = getelementptr inbounds %"int[]", ptr %31, i64 %32
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %tc, ptr align 8 %ptroffset, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %list, ptr align 8 %tc, i32 16, i1 false)
+  store ptr @sort_test.cmp_int_value2, ptr %cmp, align 8
+  %33 = getelementptr inbounds %"int[]", ptr %list, i32 0, i32 1
+  %34 = load i64, ptr %33, align 8
+  store i64 %34, ptr %len, align 8
+  %35 = getelementptr inbounds %"int[]", ptr %list, i32 0, i32 0
+  %lo = load ptr, ptr %35, align 8
+  %36 = getelementptr inbounds %"int[]", ptr %list, i32 0, i32 1
+  %hi = load i64, ptr %36, align 8
+  %37 = load i64, ptr %len, align 8
+  %sub = sub i64 %37, 1
+  %38 = load ptr, ptr %cmp, align 8
+  call void @"test_generic$sa$int$p$fn$int$int$$int$$.sort"(ptr %lo, i64 %hi, i64 0, i64 %sub, ptr %38)
+  %39 = load i64, ptr %.anon5, align 8
+  %add = add i64 %39, 1
+  store i64 %add, ptr %.anon5, align 8
+  br label %loop.cond
+
+loop.exit:                                        ; preds = %loop.cond
+  ret void
+}
+
+; Function Attrs: nounwind
+declare void @"test_generic$sa$int$p$fn$int$int$$int$$.sort"(ptr, i64, i64, i64, ptr) #0
+

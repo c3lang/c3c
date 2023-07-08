@@ -1,3 +1,4 @@
+// #target: macos-x64
 module simple_float_sub_neg;
 
 fn double test(double a, double b, double c, double d)

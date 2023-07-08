@@ -2908,7 +2908,9 @@ INLINE bool decl_poison(Decl *decl)
 
 static inline Decl *decl_raw(Decl *decl)
 {
-	while (decl->decl_kind == DECL_DEFINE && decl->define_decl.define_kind == DEFINE_IDENT_ALIAS)
+	while (decl->decl_kind == DECL_DEFINE
+		&& (decl->define_decl.define_kind == DEFINE_IDENT_ALIAS
+		|| decl->define_decl.define_kind == DEFINE_IDENT_GENERIC))
 	{
 		decl = decl->define_decl.alias;
 	}

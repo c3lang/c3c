@@ -547,6 +547,7 @@ void type_mangle_introspect_name_to_buffer(Type *type)
 			type_mangle_introspect_name_to_buffer(type->array.base);
 			return;
 		case TYPE_FUNC:
+			type = type->function.prototype->raw_type;
 			if (type->function.module)
 			{
 				Module *module = type->function.module;
