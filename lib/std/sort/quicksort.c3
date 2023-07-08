@@ -1,7 +1,7 @@
 module std::sort;
 import std::sort::qs;
 
-macro quicksort(list, cmp = null)
+macro quicksort(list, cmp = null) @builtin
 {
     var $Type = $typeof(list);
     var $CmpType = $typeof(cmp);

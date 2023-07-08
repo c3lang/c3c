@@ -34,14 +34,15 @@ macro usz binarysearch_with(list, x, cmp)
  * @require is_searchable(list) "The list must be indexable and support .len or .len()"
  * @checked less(list[0], x) "The values must be comparable"
  **/
-macro usz binarysearch(list, x)
+macro usz binarysearch(list, x) @builtin
 {
     usz i;
     usz len = @len_from_list(list);
     for (usz j = len; i < j;)
     {
         usz half = (i + j) / 2;
-        switch {
+        switch
+        {
             case greater(list[half], x): j = half;
             case less(list[half], x): i = half + 1;
             default: return half;
