@@ -69,7 +69,6 @@ fn Object*! JsonParser.parse_from_token(&self, JsonTokenType token)
 		case NULL: return object::new_null();
 		case EOF: return JsonParsingError.EOF?;
 	}
-	unreachable();
 }
 fn Object*! JsonParser.parse_any(&self)
 {

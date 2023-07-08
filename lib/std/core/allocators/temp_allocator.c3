@@ -83,7 +83,6 @@ fn void*! temp_allocator_function(Allocator* data, usz size, usz alignment, usz 
 			arena._reset(size)!;
 			return null;
 	}
-	unreachable();
 }
 
 fn void! TempAllocator._free(&self, void* old_pointer) @local

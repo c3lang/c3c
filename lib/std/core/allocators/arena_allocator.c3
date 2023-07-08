@@ -79,7 +79,6 @@ fn void*! arena_allocator_function(Allocator* data, usz size, usz alignment, usz
 			arena.used = size;
 			return null;
 	}
-	unreachable();
 }
 
 /**
