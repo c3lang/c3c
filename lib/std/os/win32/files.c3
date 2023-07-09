@@ -90,18 +90,18 @@ extern fn Win32_BOOL readFile(Win32_HANDLE hFile, Win32_LPVOID lpBuffer, Win32_D
   Win32_LPDWORD lpNumberOfBytesRead, Win32_LPOVERLAPPED lpOverlapped
 ) @extern("ReadFile");
 
-extern fn Char16* _wgetcwd(Char16* buffer, int maxlen);
-extern fn usz wcslen(Char16* str);
+extern fn WString _wgetcwd(Char16* buffer, int maxlen);
+extern fn usz wcslen(WString str);
 
 extern fn int _open_osfhandle(iptr osfhandle, int flags);
 extern fn iptr _get_osfhandle(int fd);
 extern fn CFile _fdopen(int fd, ZString mode);
 extern fn CInt _access(ZString path, CInt mode);
-extern fn CInt _waccess(Char16* path, CInt mode);
+extern fn CInt _waccess(WString path, CInt mode);
 
 /*
 extern ulong _win32_GetCurrentDirectoryW(ulong, Char16* buffer) @extern("GetCurrentDirectoryW");
-extern bool _win32_CreateSymbolicLinkW(Char16* symlink_file, Char16* target_file, ulong flags) @extern("CreateSymbolicLinkW");
-extern bool _win32_CopyFileW(Char16* from_file, Char16* to_file, bool no_overwrite) @extern("CopyFileW");
-extern ulong _win32_GetFullPathNameW(Char16* file_name, ulong buffer_len, Char16* buffer, Char16** file_part) @extern("GetFullPathNameW");
+extern bool _win32_CreateSymbolicLinkW(WString symlink_file, WString target_file, ulong flags) @extern("CreateSymbolicLinkW");
+extern bool _win32_CopyFileW(WString from_file, WString to_file, bool no_overwrite) @extern("CopyFileW");
+extern ulong _win32_GetFullPathNameW(WString file_name, ulong buffer_len, Char16* buffer, WString* file_part) @extern("GetFullPathNameW");
 */

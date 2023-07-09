@@ -44,9 +44,8 @@ fn usz! native_file_size(String path) @if(env::WIN32)
 {
 	@pool()
 	{
-		Char16[] path16 = path.to_temp_utf16()!;
 		Win32_FILE_ATTRIBUTE_DATA data;
-		win32::getFileAttributesExW(path16, Win32_GET_FILEEX_INFO_LEVELS.STANDARD, &data);
+		win32::getFileAttributesExW(path.to_temp_wstring()!, Win32_GET_FILEEX_INFO_LEVELS.STANDARD, &data);
 		Win32_LARGE_INTEGER size;
 		size.lowPart = data.nFileSizeLow;
 		size.highPart = data.nFileSizeHigh;

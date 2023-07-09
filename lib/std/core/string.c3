@@ -2,6 +2,7 @@ module std::core::string;
 import std::ascii;
 
 def ZString = distinct inline char*;
+def WString = distinct inline Char16*;
 def Char32 = uint;
 def Char16 = ushort;
 
@@ -352,6 +353,8 @@ fn Char16[]! String.to_utf16(String s, Allocator* using = mem::heap())
 	return data[:len16];
 }
 
+fn WString! String.to_wstring(String s, Allocator* using = mem::heap()) => (WString)s.to_utf16(using).ptr;
+
 fn Char32[]! String.to_utf32(String s, Allocator* using = mem::heap())
 {
 	usz codepoints = conv::utf8_codepoints(s);
@@ -405,11 +408,11 @@ fn String! from_utf16(Char16[] utf16, Allocator* using = mem::heap())
 	return (String)data[:len];
 }
 
-fn String! from_zutf16(Char16* utf16_pointer, Allocator* using = mem::heap())
+fn String! from_wstring(WString wstring, Allocator* using = mem::heap())
 {
 	usz utf16_len;
-	while (utf16_pointer[utf16_len] != 0) utf16_len++;
-	Char16[] utf16 = utf16_pointer[:utf16_len];
+	while (wstring[utf16_len] != 0) utf16_len++;
+	Char16[] utf16 = wstring[:utf16_len];
 	return from_utf16(utf16, using);
 }
 
@@ -497,6 +500,7 @@ macro String.to_integer(string, $Type)
 
 
 fn Char16[]! String.to_temp_utf16(s) => s.to_utf16(mem::temp());
+fn WString! String.to_temp_wstring(s) => s.to_wstring(mem::temp());
 
 fn int128! String.to_int128(s) => s.to_integer(int128);
 fn long! String.to_long(s) => s.to_integer(long);

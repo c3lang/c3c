@@ -111,11 +111,11 @@ fn Path! new(String path, Allocator* using = mem::heap(), PathEnv path_env = DEF
 	return { normalize(path.copy(using), path_env), path_env };
 }
 
-fn Path! new_win32_zutf16(Char16* path, Allocator* using = mem::heap())
+fn Path! new_win32_wstring(WString path, Allocator* using = mem::heap())
 {
 	@stack_mem(480; Allocator* mem)
 	{
-		return path::new(string::from_zutf16(path, .using = mem)!, .using = using);
+		return path::new(string::from_wstring(path, .using = mem)!, .using = using);
 	};
 }
 
