@@ -16,10 +16,10 @@ extern fn Time_t _mktime64(Tm *timeptr); def mktime = _mktime64;
 extern fn usz _msize(void* ptr);
 extern fn CInt _read(Fd fd, void* buffer, CUInt buffer_size);
 extern fn CInt _setjmp(void* frameptr, JmpBuf* buffer) @if(env::WIN32);
-extern fn CFile _wfopen(Char16*, Char16*);
-extern fn CFile _wfreopen(Char16*, Char16*, CFile);
+extern fn CFile _wfopen(WString, WString);
+extern fn CFile _wfreopen(WString, WString, CFile);
 extern fn CInt _write(Fd fd, void* buffer, CUInt count);
-extern fn CInt _wremove(Char16*);
+extern fn CInt _wremove(WString);
 
 // Aliases to simplify libc use
 macro Tm* localtime_r(Time_t* timer, Tm* buf) => _localtime64_s(buf, timer);

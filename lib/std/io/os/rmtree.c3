@@ -44,17 +44,20 @@ fn void! native_rmtree(Path path)
     defer win32::findClose(find);
 	do
 	{
-		String filename = string::from_zutf16(&find_data.cFileName, mem::temp())!;
-		if (filename == "." || filename == "..") continue;
-		Path file_path = path.tappend(filename)!;
-		if (find_data.dwFileAttributes & win32::FILE_ATTRIBUTE_DIRECTORY)
+		@pool()
 		{
-			native_rmtree(file_path)!;
-		}
-		else
-		{
-			win32::deleteFileW(file_path.as_str().to_utf16(mem::temp()));
-		}
+			String filename = string::from_wstring((WString)&find_data.cFileName, mem::temp())!;
+			if (filename == "." || filename == "..") continue;
+			Path file_path = path.tappend(filename)!;
+			if (find_data.dwFileAttributes & win32::FILE_ATTRIBUTE_DIRECTORY)
+			{
+				native_rmtree(file_path)!;
+			}
+			else
+			{
+				win32::deleteFileW(file_path.as_str().to_temp_wstring()!!);
+			}
+		};
 	} while (win32::findNextFileW(find, &find_data) != 0);
     os::native_rmdir(path)!;
 }

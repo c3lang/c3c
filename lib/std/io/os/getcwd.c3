@@ -7,7 +7,7 @@ macro String! getcwd(Allocator* using = mem::heap())
 		$case env::WIN32:
 			const DEFAULT_BUFFER = 256;
 			Char16[DEFAULT_BUFFER] buffer;
-			Char16 *res = win32::_wgetcwd(&buffer, DEFAULT_BUFFER);
+			WString res = win32::_wgetcwd(&buffer, DEFAULT_BUFFER);
 			bool free = false;
 			defer if (free) libc::free(res);
 			if (!res)

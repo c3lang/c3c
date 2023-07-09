@@ -10,7 +10,7 @@ fn void*! native_fopen(String filename, String mode) @inline
 	@pool()
 	{
 		$if env::WIN32:
-			void* file = libc::_wfopen(filename.to_temp_utf16(), filename.to_temp_utf16())!;
+			void* file = libc::_wfopen(filename.to_temp_wstring(), filename.to_temp_wstring())!;
 		$else
 			void* file = libc::fopen(filename.zstr_tcopy(), mode.zstr_tcopy());
 		$endif
@@ -23,7 +23,7 @@ fn void! native_remove(String filename)
 	@pool()
 	{
 		$if env::WIN32:
-			CInt result = libc::_wremove(filename.to_temp_utf16())!;
+			CInt result = libc::_wremove(filename.to_temp_wstring())!;
 		$else
 			CInt result = libc::remove(filename.zstr_tcopy());
 		$endif
@@ -50,7 +50,7 @@ fn void*! native_freopen(void* file, String filename, String mode) @inline
 	@pool()
 	{
 		$if env::WIN32:
-			file = libc::_wfreopen(filename.to_temp_utf16(), mode.to_temp_utf16(), file)!;
+			file = libc::_wfreopen(filename.to_temp_wstring(), mode.to_temp_wstring(), file)!;
 		$else
 			file = libc::freopen(filename.zstr_tcopy(), mode.zstr_tcopy(), file);
 		$endif
