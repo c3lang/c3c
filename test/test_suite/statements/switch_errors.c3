@@ -91,14 +91,14 @@ enum Baz
 
 fn void test_missing_all_cases(Baz x)
 {
-    switch (x) // -error: 4 enumeration values not handled in switch: A, B, C, ...
+    switch (x) // #error: not handled in the switch: A, B, C, ...
     {
     }
 }
 
 fn void test_missing_some_cases(Baz x)
 {
-    switch (x) // -error: 4 enumeration B, C and D not handled in switch
+    switch (x) // #error: not handled in the switch: B, C and D
     {
         case A:
             break;
@@ -107,7 +107,7 @@ fn void test_missing_some_cases(Baz x)
 
 fn void test_missing_some_cases2(Baz x)
 {
-    switch (x) // -error: 4 enumeration B and D not handled in switch
+    switch (x) // #error: B and D
     {
         case C:
         case A:
@@ -117,7 +117,7 @@ fn void test_missing_some_cases2(Baz x)
 
 fn void test_missing_some_cases3(Baz x)
 {
-    switch (x) // -error: 4 enumeration B and D not handled in switch
+    switch (x) // #error: Enum value D was not handled in the switch
     {
         case B:
         case C:

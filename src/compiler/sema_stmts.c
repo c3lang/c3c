@@ -2101,6 +2101,48 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 	return true;
 }
 
+INLINE const char *create_missing_enums_in_switch_error(Ast **cases, unsigned case_count, Decl **enums)
+{
+	unsigned missing = vec_size(enums) - case_count;
+	scratch_buffer_clear();
+	if (missing == 1)
+	{
+		scratch_buffer_append("Enum value ");
+	}
+	else
+	{
+		scratch_buffer_printf("%u enum values were not handled in the switch: ", missing);
+	}
+	unsigned printed = 0;
+	FOREACH_BEGIN(Decl *decl, enums)
+		for (unsigned i = 0; i < case_count; i++)
+		{
+			Expr *e = cases[i]->case_stmt.expr;
+			assert(expr_is_const_enum(e));
+			if (e->const_expr.enum_err_val == decl) goto CONTINUE;
+		}
+		if (++printed != 1)
+		{
+			scratch_buffer_append(printed == missing ? " and " : ", ");
+		}
+		scratch_buffer_append(decl->name);
+		if (printed > 2 && missing > 3)
+		{
+			scratch_buffer_append(", ...");
+			goto DONE;
+		}
+		if (printed == missing) goto DONE;
+CONTINUE:;
+	FOREACH_END();
+DONE:;
+	if (missing == 1)
+	{
+		scratch_buffer_append(" was not handled in the switch - either add it or add 'default'.");
+		return scratch_buffer_to_string();
+	}
+	scratch_buffer_append(" - either add them or use 'default'.");
+	return scratch_buffer_to_string();
+}
 static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, SourceSpan expr_span, Type *switch_type, Ast **cases, ExprAnySwitch *any_switch, Decl *var_holder)
 {
 	bool use_type_id = false;
@@ -2165,7 +2207,7 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 		POP_NEXT();
 	}
 
-	if (!exhaustive && is_enum_switch && case_count == vec_size(flat->decl->enums.values)) exhaustive = true;
+	if (!exhaustive && is_enum_switch) exhaustive = case_count >= vec_size(flat->decl->enums.values);
 	bool all_jump_end = exhaustive;
 	for (unsigned i = 0; i < case_count; i++)
 	{
@@ -2216,6 +2258,11 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 			if (!body && i < case_count - 1) continue;
 			all_jump_end &= context->active_scope.jump_end;
 		SCOPE_END;
+	}
+	if (is_enum_switch && !exhaustive && success)
+	{
+		SEMA_ERROR(statement, create_missing_enums_in_switch_error(cases, case_count, flat->decl->enums.values));
+		success = false;
 	}
 	statement->flow.no_exit = all_jump_end;
 	statement->switch_stmt.flow.if_chain = if_chain || max_ranged;

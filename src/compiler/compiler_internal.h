@@ -3322,6 +3322,11 @@ INLINE bool expr_is_const_string(Expr *expr)
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_STRING;
 }
 
+INLINE bool expr_is_const_enum(Expr *expr)
+{
+	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_ENUM;
+}
+
 INLINE bool expr_is_const_pointer(Expr *expr)
 {
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_POINTER;
