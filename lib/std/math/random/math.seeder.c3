@@ -42,9 +42,9 @@ fn char[] seeder(usz outChars, char[] input)
     }
 
     // Mix within words
-    for (isz i = words.len * 2 - 1; i >= 0; i--)
+    for (usz i = 0; i < 2; i++)
     {
-        isz j = i % words.len;
+        usz j = i % words.len;
         words[j] *= MUL_MCG64;
         words[j] ^= words[j] >> 25;
     }
