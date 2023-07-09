@@ -72,6 +72,6 @@ fn char Mcg16_8.next(Mcg16_8* mcg)
 {
     ushort* s = (ushort*)mcg;
     char result = (char)(*s >> 8);
-    *s *= MUL_MCG32;
+    *s *= MUL_MCG16;
     return result;
 }
