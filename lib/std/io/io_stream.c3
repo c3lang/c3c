@@ -104,6 +104,13 @@ fn char! Stream.read_byte(self) @inline
 	return IoError.UNSUPPORTED_OPERATION?;
 }
 
+fn usz! Stream.read_all(self, char[] buffer) @inline
+{
+    usz n = self.read(buffer)!;
+    if (n != buffer.len) return IoError.UNEXPECTED_EOF?;
+    return n;
+}
+
 fn String! Stream.readline(self, Allocator* using = mem::heap())
 {
 	ReadByteStreamFn func;
