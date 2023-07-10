@@ -88,12 +88,6 @@ static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement
 		FOREACH_END();
 	}
 
-	// Handle force unwrapping using assert, e.g. assert(try x)
-	if (expr->expr_kind == EXPR_TRY_UNWRAP_CHAIN)
-	{
-		return sema_analyse_try_unwrap_chain(context, expr, COND_TYPE_UNWRAP_BOOL);
-	}
-
 	// Check the conditional inside
 	if (!sema_analyse_cond_expr(context, expr)) return false;
 
@@ -1011,15 +1005,19 @@ static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType 
 
 static inline bool sema_analyse_decls_stmt(SemaContext *context, Ast *statement)
 {
-	bool should_nop = false;
-	FOREACH_BEGIN(Decl *decl, statement->decls_stmt)
+	bool should_nop = true;
+	FOREACH_BEGIN_IDX(i, Decl *decl, statement->decls_stmt)
 		VarDeclKind kind = decl->var.kind;
 		if (kind == VARDECL_LOCAL_CT_TYPE || kind == VARDECL_LOCAL_CT)
 		{
 			if (!sema_analyse_var_decl_ct(context, decl)) return false;
+			statement->decls_stmt[i] = NULL;
 		}
-		assert(!should_nop);
-		if (!sema_analyse_var_decl(context, decl, true)) return false;
+		else
+		{
+			if (!sema_analyse_var_decl(context, decl, true)) return false;
+			should_nop = false;
+		}
 	FOREACH_END();
 	if (should_nop) statement->ast_kind = AST_NOP_STMT;
 	return true;
@@ -1238,10 +1236,8 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statement)
 {
 	// Pull out the relevant data.
-	DeclId index_id = statement->foreach_stmt.index;
-	DeclId var_id = statement->foreach_stmt.variable;
-	Decl *var = var_id ? declptr(var_id) : NULL;
-	Decl *index = index_id ? declptr(index_id) : NULL;
+	Decl *var = declptr(statement->foreach_stmt.variable);
+	Decl *index = declptrzero(statement->foreach_stmt.index);
 	Expr *enumerator = exprptr(statement->foreach_stmt.enumeration);
 	AstId body = statement->foreach_stmt.body;
 	AstId first_stmt = 0;
@@ -1798,7 +1794,7 @@ static bool context_labels_exist_in_scope(SemaContext *context)
 static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 {
 	context->active_scope.jump_end = true;
-	if (!context->next_target && !statement->nextcase_stmt.label.name && !statement->nextcase_stmt.expr)
+	if (!context->next_target && !statement->nextcase_stmt.label.name && !statement->nextcase_stmt.expr && !statement->nextcase_stmt.is_default)
 	{
 		if (context->next_switch)
 		{
@@ -1831,8 +1827,28 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 		return false;
 	}
 
-	// Plain next.
-	if (!statement->nextcase_stmt.expr)
+	// Handle jump to default.
+	Ast **cases = parent->switch_stmt.cases;
+	if (statement->nextcase_stmt.is_default)
+	{
+		Ast *default_ast = NULL;
+		FOREACH_BEGIN(Ast *cs, cases)
+			if (cs->ast_kind == AST_DEFAULT_STMT)
+			{
+				default_ast = cs;
+				break;
+			}
+		FOREACH_END();
+		if (!default_ast) RETURN_SEMA_ERROR(statement, "There is no 'default' in the switch to jump to.");
+		statement->nextcase_stmt.defer_id = context_get_defers(context, context->active_scope.defer_last, parent->switch_stmt.defer, true);
+		statement->nextcase_stmt.case_switch_stmt = astid(default_ast);
+		statement->nextcase_stmt.switch_expr = NULL;
+		return true;
+	}
+
+	Expr *value = exprptrzero(statement->nextcase_stmt.expr);
+	statement->nextcase_stmt.switch_expr = NULL;
+	if (!value)
 	{
 		assert(context->next_target);
 		statement->nextcase_stmt.defer_id = context_get_defers(context, context->active_scope.defer_last, parent->switch_stmt.defer, true);
@@ -1840,12 +1856,17 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 		return true;
 	}
 
-	Expr *cond = exprptr(parent->switch_stmt.cond);
-	if (statement->nextcase_stmt.expr->expr_kind == EXPR_TYPEINFO)
+	Expr *cond = exprptrzero(parent->switch_stmt.cond);
+
+	if (!cond)
 	{
-		TypeInfo *type_info = statement->nextcase_stmt.expr->type_expr;
+		RETURN_SEMA_ERROR(statement, "'nextcase' cannot be used with an expressionless switch.");
+	}
+
+	if (value->expr_kind == EXPR_TYPEINFO)
+	{
+		TypeInfo *type_info = value->type_expr;
 		if (!sema_resolve_type_info(context, type_info)) return false;
-		Ast **cases;
 		statement->nextcase_stmt.defer_id = context_get_defers(context, context->active_scope.defer_last, parent->switch_stmt.defer, true);
 		if (cond->type->canonical != type_typeid)
 		{
@@ -1855,70 +1876,50 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 		}
 		cases = parent->switch_stmt.cases;
 
-		Ast *default_stmt = NULL;
 		Type *type = type_info->type->canonical;
 		VECEACH(cases, i)
 		{
 			Ast *case_stmt = cases[i];
-			if (case_stmt->ast_kind == AST_DEFAULT_STMT)
-			{
-				default_stmt = case_stmt;
-				break;
-			}
-			Expr *expr = case_stmt->case_stmt.expr;
+			if (case_stmt->ast_kind == AST_DEFAULT_STMT) continue;
+			Expr *expr = exprptr(case_stmt->case_stmt.expr);
 			if (expr_is_const(expr) && expr->const_expr.typeid == type)
 			{
 				statement->nextcase_stmt.case_switch_stmt = astid(case_stmt);
 				return true;
 			}
 		}
-		if (default_stmt)
-		{
-			statement->nextcase_stmt.case_switch_stmt = astid(default_stmt);
-			return true;
-		}
 		SEMA_ERROR(type_info, "There is no case for type '%s'.", type_to_error_string(type_info->type));
 		return false;
 	}
 
-	Expr *target = statement->nextcase_stmt.expr;
-
 	Type *expected_type = parent->ast_kind == AST_SWITCH_STMT ? cond->type : type_anyfault;
 
-	if (!sema_analyse_expr_rhs(context, expected_type, target, false)) return false;
+	if (!sema_analyse_expr_rhs(context, expected_type, value, false)) return false;
 
 	statement->nextcase_stmt.defer_id = context_get_defers(context, context->active_scope.defer_last, parent->switch_stmt.defer, true);
 
-	if (expr_is_const(target))
+	if (expr_is_const(value))
 	{
-		Ast *default_stmt = NULL;
 		VECEACH(parent->switch_stmt.cases, i)
 		{
 			Ast *case_stmt = parent->switch_stmt.cases[i];
-			if (case_stmt->ast_kind == AST_DEFAULT_STMT)
-			{
-				default_stmt = case_stmt;
-				break;
-			}
-			ExprConst *const_expr = &case_stmt->case_stmt.expr->const_expr;
-			ExprConst *to_const_expr = case_stmt->case_stmt.to_expr ? &case_stmt->case_stmt.to_expr->const_expr : const_expr;
-			if (expr_const_in_range(&target->const_expr, const_expr, to_const_expr))
+			Expr *from = exprptr(case_stmt->case_stmt.expr);
+			if (case_stmt->ast_kind == AST_DEFAULT_STMT) continue;
+			if (!expr_is_const(from)) goto VARIABLE_JUMP;
+			ExprConst *const_expr = &from->const_expr;
+			ExprConst *to_const_expr = case_stmt->case_stmt.to_expr ? &exprptr(case_stmt->case_stmt.to_expr)->const_expr : const_expr;
+			if (expr_const_in_range(&value->const_expr, const_expr, to_const_expr))
 			{
 				statement->nextcase_stmt.case_switch_stmt = astid(case_stmt);
 				return true;
 			}
 		}
-		if (default_stmt)
-		{
-			statement->nextcase_stmt.case_switch_stmt = astid(default_stmt);
-			return true;
-		}
-		SEMA_ERROR(statement, "'nextcase' needs to jump to an exact case statement.");
+		SEMA_ERROR(value, "There is no 'case %s' in the switch, please check if a case is missing or if this value is incorrect.", expr_const_to_error_string(&value->const_expr));
 		return false;
 	}
-
+VARIABLE_JUMP:
 	statement->nextcase_stmt.case_switch_stmt = astid(parent);
-	statement->nextcase_stmt.switch_expr = target;
+	statement->nextcase_stmt.switch_expr = value;
 	return true;
 }
 
@@ -2013,7 +2014,7 @@ static inline bool sema_analyse_compound_statement_no_scope(SemaContext *context
 
 static inline bool sema_check_type_case(SemaContext *context, Type *switch_type, Ast *case_stmt, Ast **cases, unsigned index)
 {
-	Expr *expr = case_stmt->case_stmt.expr;
+	Expr *expr = exprptr(case_stmt->case_stmt.expr);
 	if (!sema_analyse_expr_rhs(context, type_typeid, expr, false)) return false;
 
 	if (expr_is_const(expr))
@@ -2023,7 +2024,7 @@ static inline bool sema_check_type_case(SemaContext *context, Type *switch_type,
 		{
 			Ast *other = cases[i];
 			if (other->ast_kind != AST_CASE_STMT) continue;
-			Expr *other_expr = other->case_stmt.expr;
+			Expr *other_expr = exprptr(other->case_stmt.expr);
 			if (expr_is_const(other_expr) && other_expr->const_expr.typeid == my_type)
 			{
 				SEMA_ERROR(case_stmt, "The same type appears more than once.");
@@ -2038,59 +2039,52 @@ static inline bool sema_check_type_case(SemaContext *context, Type *switch_type,
 static inline bool sema_check_value_case(SemaContext *context, Type *switch_type, Ast *case_stmt, Ast **cases, unsigned index, bool *if_chained, bool *max_ranged)
 {
 	assert(switch_type);
-	Expr *expr = case_stmt->case_stmt.expr;
-	Expr *to_expr = case_stmt->case_stmt.to_expr;
+	Expr *expr = exprptr(case_stmt->case_stmt.expr);
+	Expr *to_expr = exprptrzero(case_stmt->case_stmt.to_expr);
 
 	// 1. Try to do implicit conversion to the correct type.
 	if (!sema_analyse_expr_rhs(context, switch_type, expr, false)) return false;
 	if (to_expr && !sema_analyse_expr_rhs(context, switch_type, to_expr, false)) return false;
 
-	if (expr->expr_kind != EXPR_CONST || (to_expr && to_expr->expr_kind != EXPR_CONST))
+	bool is_range = to_expr != NULL;
+	bool first_is_const = expr_is_const(expr);
+	if (!is_range && !first_is_const)
 	{
 		*if_chained = true;
 		return true;
 	}
+	if (is_range && (!expr_is_const_int(expr) || !expr_is_const(to_expr)))
+	{
+		sema_error_at(extend_span_with_token(expr->span, to_expr->span), "Ranges must be constant integers.");
+		return false;
+	}
 	ExprConst *const_expr = &expr->const_expr;
 	ExprConst *to_const_expr = to_expr ? &to_expr->const_expr : const_expr;
 
-	if (!*max_ranged && to_const_expr != const_expr)
+	if (!*max_ranged && is_range)
 	{
-		if (const_expr->const_kind == CONST_ENUM)
+		if (int_comp(const_expr->ixx, to_const_expr->ixx, BINARYOP_GT))
 		{
-			assert(to_const_expr->const_kind == CONST_ENUM);
-			if (to_const_expr->enum_err_val->enum_constant.ordinal < const_expr->enum_err_val->enum_constant.ordinal)
-			{
-				sema_error_at(extend_span_with_token(expr->span, to_expr->span),
-				              "A enum range must be have the enum with a lower ordinal followed by the one with a higher ordinal. "
-				              "It would work if you swapped their order.");
-				return false;
-			}
+			sema_error_at(extend_span_with_token(expr->span, to_expr->span),
+			              "The range is not valid because the first value (%s) is greater than the second (%s). "
+			              "It would work if you swapped their order.",
+			              int_to_str(const_expr->ixx, 10),
+			              int_to_str(to_const_expr->ixx, 10));
+			return false;
 		}
-		else if (type_is_integer(expr->type))
+		Int128 range = int_sub(to_const_expr->ixx, const_expr->ixx).i;
+		Int128 max_range = { .low = active_target.switchrange_max_size };
+		if (i128_comp(range, max_range, type_i128) == CMP_GT)
 		{
-			if (int_comp(const_expr->ixx, to_const_expr->ixx, BINARYOP_GT))
-			{
-				sema_error_at(extend_span_with_token(expr->span, to_expr->span),
-				              "The range is not valid because the first value (%s) is greater than the second (%s). "
-				              "It would work if you swapped their order.",
-				              int_to_str(const_expr->ixx, 10),
-				              int_to_str(to_const_expr->ixx, 10));
-				return false;
-			}
-			Int128 range = int_sub(to_const_expr->ixx, const_expr->ixx).i;
-			Int128 max_range = { .low = active_target.switchrange_max_size };
-			if (i128_comp(range, max_range, type_i128) == CMP_GT)
-			{
-				*max_ranged = true;
-			}
+			*max_ranged = true;
 		}
 	}
 	for (unsigned i = 0; i < index; i++)
 	{
 		Ast *other = cases[i];
 		if (other->ast_kind != AST_CASE_STMT) continue;
-		ExprConst *other_const = &other->case_stmt.expr->const_expr;
-		ExprConst *other_to_const = other->case_stmt.to_expr ? &other->case_stmt.to_expr->const_expr : other_const;
+		ExprConst *other_const = &exprptr(other->case_stmt.expr)->const_expr;
+		ExprConst *other_to_const = other->case_stmt.to_expr ? &exprptr(other->case_stmt.to_expr)->const_expr : other_const;
 		if (expr_const_in_range(const_expr, other_const, other_to_const))
 		{
 			SEMA_ERROR(case_stmt, "The same case value appears more than once.");
@@ -2117,7 +2111,7 @@ INLINE const char *create_missing_enums_in_switch_error(Ast **cases, unsigned ca
 	FOREACH_BEGIN(Decl *decl, enums)
 		for (unsigned i = 0; i < case_count; i++)
 		{
-			Expr *e = cases[i]->case_stmt.expr;
+			Expr *e = exprptr(cases[i]->case_stmt.expr);
 			assert(expr_is_const_enum(e));
 			if (e->const_expr.enum_err_val == decl) goto CONTINUE;
 		}
@@ -2217,11 +2211,11 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 			Ast *next = (i < case_count - 1) ? cases[i + 1] : NULL;
 			PUSH_NEXT(next, statement);
 			Ast *body = stmt->case_stmt.body;
-			if (stmt->ast_kind == AST_CASE_STMT && body && type_switch && var_holder && expr_is_const(stmt->case_stmt.expr))
+			if (stmt->ast_kind == AST_CASE_STMT && body && type_switch && var_holder && expr_is_const(exprptr(stmt->case_stmt.expr)))
 			{
 				if (any_switch->is_assign)
 				{
-					Type *real_type = type_get_ptr(stmt->case_stmt.expr->const_expr.typeid);
+					Type *real_type = type_get_ptr(exprptr(stmt->case_stmt.expr)->const_expr.typeid);
 					Decl *new_var = decl_new_var(any_switch->new_ident, any_switch->span,
 					                             type_info_new_base(any_switch->is_deref
 					                             ? real_type->pointer : real_type, any_switch->span),
@@ -2239,9 +2233,10 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 				}
 				else
 				{
-					Type *type = type_get_ptr(stmt->case_stmt.expr->const_expr.typeid);
+					Expr *expr = exprptr(stmt->case_stmt.expr);
+					Type *type = type_get_ptr(expr->const_expr.typeid);
 					Decl *alias = decl_new_var(var_holder->name, var_holder->span,
-											   type_info_new_base(type, stmt->case_stmt.expr->span),
+											   type_info_new_base(type, expr->span),
 											   VARDECL_LOCAL);
 					Expr *ident_converted = expr_variable(var_holder);
 					if (!cast(ident_converted, type)) return false;
@@ -2315,15 +2310,12 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 		{
 			case AST_CASE_STMT:
 			{
-				Expr *expr = stmt->case_stmt.expr;
-				Expr *to_expr = stmt->case_stmt.to_expr;
-				if (to_expr)
+				Expr *expr = exprptr(stmt->case_stmt.expr);
+				Expr *to_expr = exprptrzero(stmt->case_stmt.to_expr);
+				if (to_expr && !type_is_integer(type))
 				{
-					if (!type_is_integer(type) && !type_is_float(type))
-					{
-						SEMA_ERROR(to_expr, "$case ranges are only allowed for floats and integers.");
-						goto FAILED;
-					}
+					SEMA_ERROR(to_expr, "$case ranges are only allowed for integers.");
+					goto FAILED;
 				}
 				if (is_type)
 				{
@@ -2367,12 +2359,12 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 				{
 					Ast *other_stmt = cases[j];
 					if (other_stmt->ast_kind == AST_DEFAULT_STMT) continue;
-					ExprConst *other_const = &other_stmt->case_stmt.expr->const_expr;
-					ExprConst *other_const_to = other_stmt->case_stmt.to_expr ? &other_stmt->case_stmt.to_expr->const_expr : other_const;
+					ExprConst *other_const = &exprptr(other_stmt->case_stmt.expr)->const_expr;
+					ExprConst *other_const_to = other_stmt->case_stmt.to_expr ? &exprptr(other_stmt->case_stmt.to_expr)->const_expr : other_const;
 					if (expr_const_in_range(const_expr, other_const, other_const_to))
 					{
 						SEMA_ERROR(stmt, "'%s' appears more than once.", expr_const_to_error_string(const_expr));
-						SEMA_NOTE(cases[j]->case_stmt.expr, "The previous $case was here.");
+						SEMA_NOTE(exprptr(cases[j]->case_stmt.expr), "The previous $case was here.");
 						goto FAILED;
 					}
 				}

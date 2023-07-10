@@ -563,15 +563,16 @@ static inline Ast *parse_case_stmt(ParseContext *c, TokenType case_type, TokenTy
 {
 	Ast *ast = new_ast(AST_CASE_STMT, c->span);
 	advance(c);
-	ASSIGN_EXPR_OR_RET(ast->case_stmt.expr, parse_expr(c), poisoned_ast);
+	ASSIGN_EXPR_OR_RET(Expr *expr, parse_expr(c), poisoned_ast);
+	ast->case_stmt.expr = exprid(expr);
 	// Change type -> type.typeid
-	if (ast->case_stmt.expr->expr_kind == EXPR_TYPEINFO)
+	if (expr->expr_kind == EXPR_TYPEINFO)
 	{
-		ast->case_stmt.expr->expr_kind = EXPR_TYPEID;
+		expr->expr_kind = EXPR_TYPEID;
 	}
 	if (try_consume(c, TOKEN_DOTDOT))
 	{
-		ASSIGN_EXPR_OR_RET(ast->case_stmt.to_expr, parse_expr(c), poisoned_ast);
+		ASSIGN_EXPRID_OR_RET(ast->case_stmt.to_expr, parse_expr(c), poisoned_ast);
 	}
 	if (!try_consume(c, TOKEN_COLON))
 	{
@@ -594,7 +595,7 @@ static inline Ast *parse_default_stmt(ParseContext *c, TokenType case_type, Toke
 	TRY_CONSUME_OR_RET(TOKEN_COLON, "Expected ':' after 'default'.", poisoned_ast);
 	RANGE_EXTEND_PREV(ast);
 	ASSIGN_AST_OR_RET(ast->case_stmt.body, parse_case_stmts(c, case_type, default_type), poisoned_ast);
-	ast->case_stmt.expr = NULL;
+	ast->case_stmt.expr = 0;
 	return ast;
 }
 
@@ -806,7 +807,14 @@ static inline Ast* parse_nextcase_stmt(ParseContext *c)
 		parse_optional_label_target(c, &ast->nextcase_stmt.label);
 		advance_and_verify(c, TOKEN_COLON);
 	}
-	ASSIGN_EXPR_OR_RET(ast->nextcase_stmt.expr, parse_expr(c), poisoned_ast);
+	if (try_consume(c, TOKEN_DEFAULT))
+	{
+		ast->nextcase_stmt.is_default = true;
+	}
+	else
+	{
+		ASSIGN_EXPRID_OR_RET(ast->nextcase_stmt.expr, parse_expr(c), poisoned_ast);
+	}
 	CONSUME_EOS_OR_RET(poisoned_ast);
 	return ast;
 }
@@ -1076,7 +1084,7 @@ static inline Ast *parse_assert_stmt(ParseContext *c)
 	Ast *ast = ast_new_curr(c, AST_ASSERT_STMT);
 	advance_and_verify(c, TOKEN_ASSERT);
 	TRY_CONSUME_OR_RET(TOKEN_LPAREN, "'assert' needs a '(' here, did you forget it?", poisoned_ast);
-	ASSIGN_EXPRID_OR_RET(ast->assert_stmt.expr, parse_assert_expr(c), poisoned_ast);
+	ASSIGN_EXPRID_OR_RET(ast->assert_stmt.expr, parse_expr(c), poisoned_ast);
 
 	if (try_consume(c, TOKEN_COMMA))
 	{

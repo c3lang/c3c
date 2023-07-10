@@ -6,6 +6,7 @@
 - Exhaustive switches with enums has better analysis.
 - Globals may now be initialized with optional values.
 - New generic syntax.
+- Added `nextcase default`.
 - Added `$embed` to embed binary data.
 - Ad hoc generics are now allowed.
 - Allow inferred type on method first argument.
@@ -18,7 +19,10 @@
 - `$assert` now uses `$assert <expr> : <optional message>`
 - `$error` is syntax sugar for `$assert false : "Some message"`
 - `$include`, `$echo` no longer has mandatory `()` around the arguments.
+- `assert` no longer allows "try unwrap"
 - Updated cpu arguments for x86
+- Removed support for ranged case statements that were floats or enums, or non-constant.
+- `nextcase` with a constant expression that does not match any case is an error.
 - Dropped support for LLVM 13-14.
 - Updated grammar and lexer definition.
 - Removal of `$elif`.
@@ -148,6 +152,7 @@
 - Updates to how variadics are implemented.
 - Fixes to shift checks.
 - Fixes to string parsing.
+- Fixed issues with ranged cases.
 - Disallow trailing ',' in function parameter list.
 - Fixed errors on flexible array slices.
 - Fix of `readdir` issues on macOS.

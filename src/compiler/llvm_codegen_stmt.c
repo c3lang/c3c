@@ -624,10 +624,10 @@ static void llvm_emit_switch_body_if_chain(GenContext *c,
 		LLVMBasicBlockRef block = case_stmt->case_stmt.backend_block;
 		if (case_stmt == default_case) continue;
 		BEValue be_value;
-		llvm_emit_expr(c, &be_value, case_stmt->case_stmt.expr);
+		llvm_emit_exprid(c, &be_value, case_stmt->case_stmt.expr);
 		llvm_value_rvalue(c, &be_value);
 		BEValue equals;
-		Expr *to_expr = case_stmt->case_stmt.to_expr;
+		Expr *to_expr = exprptrzero(case_stmt->case_stmt.to_expr);
 		if (to_expr)
 		{
 			BEValue to_value;
@@ -827,13 +827,13 @@ static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *swi
 		{
 			LLVMValueRef case_value;
 			BEValue be_value;
-			Expr *from = case_stmt->case_stmt.expr;
+			Expr *from = exprptr(case_stmt->case_stmt.expr);
 			assert(expr_is_const(from));
-			llvm_emit_expr(c, &be_value, case_stmt->case_stmt.expr);
+			llvm_emit_expr(c, &be_value, from);
 			llvm_value_rvalue(c, &be_value);
 			case_value = be_value.value;
 			LLVMAddCase(switch_stmt, case_value, block);
-			Expr *to_expr =case_stmt->case_stmt.to_expr;
+			Expr *to_expr = exprptrzero(case_stmt->case_stmt.to_expr);
 			if (to_expr)
 			{
 				BEValue to_value;
@@ -1440,6 +1440,7 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 		{
 			BEValue value;
 			FOREACH_BEGIN(Decl *decl, ast->decls_stmt)
+				if (!decl) continue;
 				llvm_emit_local_decl(c, decl, &value);
 			FOREACH_END();
 			break;

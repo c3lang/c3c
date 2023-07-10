@@ -722,6 +722,8 @@ nextcase_stmt
 	| NEXTCASE expr ';'
 	| NEXTCASE CONST_IDENT ':' type ';'
 	| NEXTCASE type ';'
+	| NEXTCASE CONST_IDENT ':' DEFAULT ';'
+	| NEXTCASE DEFAULT ';'
 	| NEXTCASE ';'
 	;
 
@@ -753,19 +755,14 @@ ct_if_stmt
 	| CT_IF constant_expr ':' opt_stmt_list CT_ELSE opt_stmt_list CT_ENDIF
 	;
 
-assert_expr
-	: try_unwrap_chain
-	| expr
-	;
-
 assert_expr_list
-	: ',' expr
-	| ',' expr ',' assert_expr_list
+	: expr
+	| expr ',' assert_expr_list
 	;
 
 assert_stmt
-	: ASSERT '(' assert_expr ')' ';'
-	| ASSERT '(' assert_expr assert_expr_list ';'
+	: ASSERT '(' expr ')' ';'
+	| ASSERT '(' expr ',' assert_expr_list ')' ';'
 	;
 
 asm_stmts
@@ -811,7 +808,7 @@ asm_stmt
 	;
 
 asm_block_stmt
-	: ASM '(' expr ')'
+	: ASM '(' constant_expr ')'
 	| ASM '{' asm_stmts '}'
 	| ASM '{' '}'
 	;

@@ -44,7 +44,6 @@ Expr *parse_integer(ParseContext *c, Expr *left);
 Expr *parse_decl_or_expr(ParseContext *c, Decl **decl_ref);
 void recover_top_level(ParseContext *c);
 Expr *parse_cond(ParseContext *c);
-Expr *parse_assert_expr(ParseContext *c);
 Ast* parse_compound_stmt(ParseContext *c);
 Ast *parse_short_body(ParseContext *c, TypeInfoId return_type, bool require_eos);
 
