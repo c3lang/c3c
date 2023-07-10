@@ -62,64 +62,64 @@ fault AllocationFailure
 
 
 
-macro void*! Allocator.alloc(Allocator* allocator, usz size)
+macro void*! Allocator.alloc(&allocator, usz size)
 {
-	return allocator.function(allocator, size, 0, 0, null, ALLOC);
+	return allocator.function(&allocator, size, 0, 0, null, ALLOC);
 }
 
 /**
  * @require alignment && math::is_power_of_2(alignment)
  */
-macro void*! Allocator.alloc_aligned(Allocator* allocator, usz size, usz alignment, usz offset = 0)
+macro void*! Allocator.alloc_aligned(&allocator, usz size, usz alignment, usz offset = 0)
 {
-	return allocator.function(allocator, size, alignment, offset, null, ALIGNED_ALLOC);
+	return allocator.function(&allocator, size, alignment, offset, null, ALIGNED_ALLOC);
 }
 
-macro void*! Allocator.realloc(Allocator* allocator, void* old_pointer, usz size)
+macro void*! Allocator.realloc(&allocator, void* old_pointer, usz size)
 {
-	return allocator.function(allocator, size, 0, 0, old_pointer, REALLOC);
-}
-
-/**
- * @require alignment && math::is_power_of_2(alignment)
- */
-macro void*! Allocator.realloc_aligned(Allocator* allocator, void* old_pointer, usz size, usz alignment, usz offset = 0)
-{
-	return allocator.function(allocator, size, alignment, offset, old_pointer, ALIGNED_REALLOC);
-}
-
-macro usz Allocator.mark(Allocator* allocator)
-{
-	return (usz)(uptr)allocator.function(allocator, 0, 0, 0, null, MARK) ?? 0;
-}
-
-
-macro void*! Allocator.calloc(Allocator* allocator, usz size)
-{
-	return allocator.function(allocator, size, 0, 0, null, CALLOC);
+	return allocator.function(&allocator, size, 0, 0, old_pointer, REALLOC);
 }
 
 /**
  * @require alignment && math::is_power_of_2(alignment)
  */
-macro void*! Allocator.calloc_aligned(Allocator* allocator, usz size, usz alignment, usz offset = 0)
+macro void*! Allocator.realloc_aligned(&allocator, void* old_pointer, usz size, usz alignment, usz offset = 0)
 {
-	return allocator.function(allocator, size, alignment, offset, null, ALIGNED_CALLOC);
+	return allocator.function(&allocator, size, alignment, offset, old_pointer, ALIGNED_REALLOC);
 }
 
-macro void! Allocator.free(Allocator* allocator, void* old_pointer)
+macro usz Allocator.mark(&allocator)
 {
-	allocator.function(allocator, 0, 0, 0, old_pointer, FREE)!;
+	return (usz)(uptr)allocator.function(&allocator, 0, 0, 0, null, MARK) ?? 0;
 }
 
-macro void! Allocator.free_aligned(Allocator* allocator, void* old_pointer)
+
+macro void*! Allocator.calloc(&allocator, usz size)
 {
-	allocator.function(allocator, 0, 0, 0, old_pointer, ALIGNED_FREE)!;
+	return allocator.function(&allocator, size, 0, 0, null, CALLOC);
 }
 
-macro void Allocator.reset(Allocator* allocator, usz mark = 0)
+/**
+ * @require alignment && math::is_power_of_2(alignment)
+ */
+macro void*! Allocator.calloc_aligned(&allocator, usz size, usz alignment, usz offset = 0)
 {
-	(void)allocator.function(allocator, mark, 0, 0, null, RESET);
+	return allocator.function(&allocator, size, alignment, offset, null, ALIGNED_CALLOC);
+}
+
+macro void! Allocator.free(&allocator, void* old_pointer)
+{
+	allocator.function(&allocator, 0, 0, 0, old_pointer, FREE)!;
+}
+
+macro void! Allocator.free_aligned(&allocator, void* old_pointer)
+{
+	allocator.function(&allocator, 0, 0, 0, old_pointer, ALIGNED_FREE)!;
+}
+
+macro void Allocator.reset(&allocator, usz mark = 0)
+{
+	(void)allocator.function(&allocator, mark, 0, 0, null, RESET);
 }
 
 fn usz alignment_for_allocation(usz alignment) @inline @private

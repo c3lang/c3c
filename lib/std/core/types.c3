@@ -85,7 +85,7 @@ macro bool is_numerical($Type)
 	$endif
 }
 
-fn bool TypeKind.is_int(TypeKind kind) @inline
+fn bool TypeKind.is_int(kind) @inline
 {
 	return kind == TypeKind.SIGNED_INT || kind == TypeKind.UNSIGNED_INT;
 }
