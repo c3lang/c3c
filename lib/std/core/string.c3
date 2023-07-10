@@ -85,7 +85,7 @@ fn String join(String[] s, String joiner, Allocator* using = mem::heap())
  * @param [in] string
  * @param [in] to_trim
  **/
-fn String String.trim(String string, String to_trim = "\t\n\r ")
+fn String String.trim(string, String to_trim = "\t\n\r ")
 {
 	usz start = 0;
 	usz len = string.len;
@@ -100,7 +100,7 @@ fn String String.trim(String string, String to_trim = "\t\n\r ")
  * @param [in] string
  * @param [in] needle
  **/
-fn bool String.starts_with(String string, String needle)
+fn bool String.starts_with(string, String needle)
 {
 	if (needle.len > string.len) return false;
 	if (!needle.len) return true;
@@ -111,7 +111,7 @@ fn bool String.starts_with(String string, String needle)
  * @param [in] string
  * @param [in] needle
  **/
-fn bool String.ends_with(String string, String needle)
+fn bool String.ends_with(string, String needle)
 {
 	if (needle.len > string.len) return false;
 	if (!needle.len) return true;
@@ -124,7 +124,7 @@ fn bool String.ends_with(String string, String needle)
  * @param [in] string
  * @param [in] needle
  **/
-fn String String.strip(String string, String needle)
+fn String String.strip(string, String needle)
 {
 	if (!needle.len || !string.starts_with(needle)) return string;
 	return string[needle.len..];
@@ -136,7 +136,7 @@ fn String String.strip(String string, String needle)
  * @param [in] string
  * @param [in] needle
  **/
-fn String String.strip_end(String string, String needle)
+fn String String.strip_end(string, String needle)
 {
 	if (!needle.len || !string.ends_with(needle)) return string;
 	// Note that this is the safe way if we want to support zero length.
@@ -154,7 +154,7 @@ fn String String.strip_end(String string, String needle)
  * @require needle.len > 0 "The needle must be at least 1 character long"
  * @ensure return.len > 0
  **/
-fn String[] String.split(String s, String needle, usz max = 0, Allocator* using = mem::heap())
+fn String[] String.split(s, String needle, usz max = 0, Allocator* using = mem::heap())
 {
 	usz capacity = 16;
 	usz i = 0;
@@ -192,12 +192,12 @@ fn String[] String.split(String s, String needle, usz max = 0, Allocator* using 
  * @param [in] needle
  * @param max "Max number of elements, 0 means no limit, defaults to 0"
  **/
-fn String[] String.tsplit(String s, String needle, usz max = 0)
+fn String[] String.tsplit(s, String needle, usz max = 0)
 {
 	return s.split(needle, max, mem::temp()) @inline;
 }
 
-fn bool String.contains(String s, String needle)
+fn bool String.contains(s, String needle)
 {
 	return @ok(s.index_of(needle));
 }
@@ -213,7 +213,7 @@ fn bool String.contains(String s, String needle)
  * @return "the index of the needle"
  * @return! SearchResult.MISSING "if the needle cannot be found"
  **/
-fn usz! String.index_of(String s, String needle)
+fn usz! String.index_of(s, String needle)
 {
 	usz match = 0;
 	usz needed = needle.len;
@@ -249,7 +249,7 @@ fn usz! String.index_of(String s, String needle)
  * @return "the index of the needle"
  * @return! SearchResult.MISSING "if the needle cannot be found"
  **/
-fn usz! String.rindex_of(String s, String needle)
+fn usz! String.rindex_of(s, String needle)
 {
 	usz match = 0;
 	usz needed = needle.len;
@@ -274,12 +274,12 @@ fn usz! String.rindex_of(String s, String needle)
 	return SearchResult.MISSING?;
 }
 
-fn String ZString.as_str(ZString str)
+fn String ZString.as_str(str)
 {
 	return (String)((char*)str)[:str.len()];
 }
 
-fn usz ZString.char_len(ZString str)
+fn usz ZString.char_len(str)
 {
 	usz len = 0;
 	char* ptr = (char*)str;
@@ -290,7 +290,7 @@ fn usz ZString.char_len(ZString str)
 	return len;
 }
 
-fn usz ZString.len(ZString str)
+fn usz ZString.len(str)
 {
 	usz len = 0;
     char* ptr = (char*)str;
@@ -299,7 +299,7 @@ fn usz ZString.len(ZString str)
 }
 
 
-fn ZString String.zstr_copy(String s, Allocator* using = mem::heap())
+fn ZString String.zstr_copy(s, Allocator* using = mem::heap())
 {
     usz len = s.len;
     char* str = malloc(len + 1, .using = using);
@@ -308,7 +308,7 @@ fn ZString String.zstr_copy(String s, Allocator* using = mem::heap())
     return (ZString)str;
 }
 
-fn String String.concat(String s1, String s2, Allocator* using = mem::heap())
+fn String String.concat(s1, String s2, Allocator* using = mem::heap())
 {
     usz full_len = s1.len + s2.len;
     char* str = malloc(full_len + 1, .using = using);
@@ -319,12 +319,12 @@ fn String String.concat(String s1, String s2, Allocator* using = mem::heap())
     return (String)str[:full_len];
 }
 
-fn String String.tconcat(String s1, String s2) => s1.concat(s2, mem::temp());
+fn String String.tconcat(s1, String s2) => s1.concat(s2, mem::temp());
 
 
-fn ZString String.zstr_tcopy(String s) => s.zstr_copy(mem::temp()) @inline;
+fn ZString String.zstr_tcopy(s) => s.zstr_copy(mem::temp()) @inline;
 
-fn String String.copy(String s, Allocator* using = mem::heap())
+fn String String.copy(s, Allocator* using = mem::heap())
 {
     usz len = s.len;
     char* str = malloc(len + 1, .using = using);
@@ -333,10 +333,10 @@ fn String String.copy(String s, Allocator* using = mem::heap())
     return (String)str[:len];
 }
 
-fn String String.tcopy(String s) => s.copy(mem::temp()) @inline;
+fn String String.tcopy(s) => s.copy(mem::temp()) @inline;
 
-fn String ZString.copy(ZString z, Allocator* using = mem::heap()) => z.as_str().copy(using) @inline;
-fn String ZString.tcopy(ZString z) => z.as_str().copy(mem::temp()) @inline;
+fn String ZString.copy(z, Allocator* using = mem::heap()) => z.as_str().copy(using) @inline;
+fn String ZString.tcopy(z) => z.as_str().copy(mem::temp()) @inline;
 
 /**
  * Convert an UTF-8 string to UTF-16
@@ -344,7 +344,7 @@ fn String ZString.tcopy(ZString z) => z.as_str().copy(mem::temp()) @inline;
  * @return! UnicodeResult.INVALID_UTF8 "If the string contained an invalid UTF-8 sequence"
  * @return! AllocationFailure "If allocation of the string fails"
  **/
-fn Char16[]! String.to_utf16(String s, Allocator* using = mem::heap())
+fn Char16[]! String.to_utf16(s, Allocator* using = mem::heap())
 {
 	usz len16 = conv::utf16len_for_utf8(s);
 	Char16* data = malloc_checked(Char16, len16 + 1, .using = using)!;
@@ -353,9 +353,9 @@ fn Char16[]! String.to_utf16(String s, Allocator* using = mem::heap())
 	return data[:len16];
 }
 
-fn WString! String.to_wstring(String s, Allocator* using = mem::heap()) => (WString)s.to_utf16(using).ptr;
+fn WString! String.to_wstring(s, Allocator* using = mem::heap()) => (WString)s.to_utf16(using).ptr;
 
-fn Char32[]! String.to_utf32(String s, Allocator* using = mem::heap())
+fn Char32[]! String.to_utf32(s, Allocator* using = mem::heap())
 {
 	usz codepoints = conv::utf8_codepoints(s);
 	Char32* data = malloc_checked(Char32, codepoints + 1, .using = using)!;
@@ -364,24 +364,24 @@ fn Char32[]! String.to_utf32(String s, Allocator* using = mem::heap())
 	return data[:codepoints];
 }
 
-fn void String.convert_ascii_to_lower(String s)
+fn void String.convert_ascii_to_lower(s)
 {
 	foreach (&c : s) if (*c >= 'A' && *c <= 'Z') *c += 'a' - 'A';
 }
 
-fn String String.ascii_to_lower(String s, Allocator* using = mem::heap())
+fn String String.ascii_to_lower(s, Allocator* using = mem::heap())
 {
 	String copy = s.copy(using);
 	copy.convert_ascii_to_lower();
 	return copy;
 }
 
-fn void String.convert_ascii_to_upper(String s)
+fn void String.convert_ascii_to_upper(s)
 {
 	foreach (&c : s) if (*c >= 'a' && *c <= 'z') *c -= 'a' - 'A';
 }
 
-fn String String.ascii_to_upper(String s, Allocator* using = mem::heap())
+fn String String.ascii_to_upper(s, Allocator* using = mem::heap())
 {
 	String copy = s.copy(using);
 	copy.convert_ascii_to_upper();
