@@ -1229,8 +1229,8 @@ typedef struct
 
 typedef struct
 {
-	Expr *expr;
-	Expr *to_expr;
+	ExprId expr;
+	ExprId to_expr;
 	Ast *body;
 	void *backend_block;
 } AstCaseStmt;
@@ -1347,7 +1347,8 @@ typedef struct
 		struct
 		{
 			Label label;
-			Expr *expr;
+			ExprId expr;
+			bool is_default;
 		};
 		struct
 		{

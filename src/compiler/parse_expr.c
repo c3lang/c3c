@@ -275,18 +275,6 @@ static inline Expr *parse_try_unwrap_chain(ParseContext *c)
 }
 
 /**
- * assert_expr ::= try_unwrap_chain | expr
- */
-Expr *parse_assert_expr(ParseContext *c)
-{
-	if (tok_is(c, TOKEN_TRY))
-	{
-		return parse_try_unwrap_chain(c);
-	}
-	return parse_expr(c);
-}
-
-/**
  * cond_list ::= ((expr | decl-expr) COMMA)* (expr | decl-expr | try_unwrap_chain | catch_unwrap )
  *
  * @return bool

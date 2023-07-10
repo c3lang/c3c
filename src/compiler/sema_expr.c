@@ -6188,25 +6188,19 @@ static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr)
 {
 	if (context->call_env.kind != CALL_ENV_FUNCTION && context->call_env.kind != CALL_ENV_CHECKS)
 	{
-		SEMA_ERROR(expr, "Rethrow cannot be used outside of a function.");
-		return false;
+		RETURN_SEMA_ERROR(expr, "Rethrow cannot be used outside of a function.");
 	}
 
 	Expr *inner = expr->rethrow_expr.inner;
 	if (!sema_analyse_expr(context, inner)) return false;
 
-	if (context->active_scope.in_defer)
-	{
-		SEMA_ERROR(expr, "Returns are not allowed inside of defers.");
-		return false;
-	}
+	if (context->active_scope.in_defer) RETURN_SEMA_ERROR(expr, "Rethrows are not allowed inside of defers.");
 
 	expr->type = type_no_optional(inner->type);
 
 	if (!IS_OPTIONAL(inner))
 	{
-		SEMA_ERROR(expr, "No optional to rethrow before '!' in the expression, please remove '!'.");
-		return false;
+		RETURN_SEMA_ERROR(expr, "No optional to rethrow before '!' in the expression, please remove '!'.");
 	}
 
 	if (context->active_scope.flags & (SCOPE_EXPR_BLOCK | SCOPE_MACRO))
@@ -6221,8 +6215,8 @@ static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr)
 		expr->rethrow_expr.in_block = NULL;
 		if (context->rtype && context->rtype->type_kind != TYPE_OPTIONAL)
 		{
-			SEMA_ERROR(expr, "This expression implicitly returns with an optional result, but the function does not allow optional results. Did you mean to use '!!' instead?");
-			return false;
+			RETURN_SEMA_ERROR(expr, "This expression implicitly returns with an optional result, "
+									"but the function does not allow optional results. Did you mean to use '!!' instead?");
 		}
 	}
 

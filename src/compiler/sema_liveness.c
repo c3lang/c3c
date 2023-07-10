@@ -165,8 +165,8 @@ static void sema_trace_stmt_liveness(Ast *ast)
 			}
 			return;
 		case AST_CASE_STMT:
-			sema_trace_expr_liveness(ast->case_stmt.expr);
-			sema_trace_expr_liveness(ast->case_stmt.to_expr);
+			sema_trace_exprid_liveness(ast->case_stmt.expr);
+			sema_trace_exprid_liveness(ast->case_stmt.to_expr);
 			sema_trace_stmt_liveness(ast->case_stmt.body);
 			return;
 		case AST_DEFAULT_STMT:

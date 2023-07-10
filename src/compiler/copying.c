@@ -606,8 +606,8 @@ RETRY:
 		case AST_CASE_STMT:
 			copy_reg_ref(c, source, ast);
 			MACRO_COPY_AST(ast->case_stmt.body);
-			MACRO_COPY_EXPR(ast->case_stmt.expr);
-			MACRO_COPY_EXPR(ast->case_stmt.to_expr);
+			MACRO_COPY_EXPRID(ast->case_stmt.expr);
+			MACRO_COPY_EXPRID(ast->case_stmt.to_expr);
 			break;
 		case AST_COMPOUND_STMT:
 			MACRO_COPY_ASTID(ast->compound_stmt.first_stmt);
@@ -673,7 +673,7 @@ RETRY:
 			MACRO_COPY_ASTID(ast->if_stmt.then_body);
 			break;
 		case AST_NEXTCASE_STMT:
-			MACRO_COPY_EXPR(ast->nextcase_stmt.expr);
+			MACRO_COPY_EXPRID(ast->nextcase_stmt.expr);
 			break;
 		case AST_NOP_STMT:
 			break;

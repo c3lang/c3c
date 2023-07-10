@@ -134,10 +134,7 @@ static inline Path *parse_module_path(ParseContext *c)
  *		| CONST_IDENT
  *		;
  *
- * module_params
- * 		: module_param
- * 		| module_params ',' module_param
- *		;
+ * module_params ::= '(<' module_param (',' module_param)* '>)'
  */
 static inline bool parse_optional_module_params(ParseContext *c, const char ***tokens_ref)
 {

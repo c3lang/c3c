@@ -5,7 +5,7 @@ fn void foo()
 {
 	int a;
 	$switch ($typeof(a))
-		$case int..float: // #error: $case ranges are only allowed for floats
+		$case int..float: // #error: $case ranges are only allowed for integers
 			io::printn("Hello");
 		$default:
 			io::printn("World");
