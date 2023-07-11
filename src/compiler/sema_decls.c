@@ -2271,9 +2271,7 @@ NEXT:;
 		return poisoned_decl;
 	}
 	Expr *invoker = expr_new(EXPR_IDENTIFIER, decl->span);
-	invoker->identifier_expr.decl = d;
-	invoker->resolve_status = RESOLVE_DONE;
-	invoker->type = decl->type;
+	expr_resolve_ident(invoker, d);
 	Expr *call = expr_new(EXPR_CALL, decl->span);
 	Expr *fn_ref = expr_variable(decl);
 	vec_add(call->call_expr.arguments, fn_ref);

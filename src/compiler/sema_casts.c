@@ -1523,6 +1523,13 @@ static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, boo
 
 	assert(!type_is_optional(to_type) || may_not_be_optional);
 
+	if (to_type->canonical->type_kind == TYPE_POINTER && from_type->canonical->type_kind != TYPE_POINTER
+	    && to_type->canonical->pointer == from_type->canonical && expr->expr_kind == EXPR_IDENTIFIER
+		&& expr->identifier_expr.was_ref)
+	{
+		RETURN_SEMA_ERROR(expr, "A macro ref parameter is a dereferenced pointer ('*&foo'). You can prefix it"
+								" with '&' to pass it as a pointer.");
+	}
 	// Allow (void)foo
 	if (is_explicit && to_type == type_void)
 	{

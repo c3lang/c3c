@@ -741,6 +741,10 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 			UNREACHABLE
 		case VARDECL_PARAM_REF:
 			expr_replace(expr, copy_expr_single(decl->var.init_expr));
+			if (expr->expr_kind == EXPR_IDENTIFIER)
+			{
+				expr->identifier_expr.was_ref = true;
+			}
 			return sema_cast_rvalue(context, expr);
 		case VARDECL_PARAM:
 		case VARDECL_GLOBAL:
@@ -957,7 +961,7 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 		}
 	}
 	if (!decl->type) decl->type = type_void;
-	expr->identifier_expr.decl = decl;
+	expr->identifier_expr = (ExprIdentifier) { .decl = decl };
 	expr->type = decl->type;
 	return true;
 }
@@ -3000,10 +3004,8 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 		return true;
 	}
 
-	expr->identifier_expr.ident = name;
 	expr->expr_kind = EXPR_IDENTIFIER;
-	expr->identifier_expr.decl = member;
-	expr->type = member->type;
+	expr_resolve_ident(expr, member);
 	return true;
 }
 
@@ -6400,9 +6402,7 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 					return false;
 				case CALL_ENV_FUNCTION:
 					expr->expr_kind = EXPR_IDENTIFIER;
-					expr->resolve_status = RESOLVE_DONE;
-					expr->identifier_expr.decl = context->call_env.current_function;
-					expr->type = expr->identifier_expr.decl->type;
+					expr_resolve_ident(expr, context->call_env.current_function);
 					return true;
 			}
 			UNREACHABLE
@@ -7073,9 +7073,7 @@ static inline bool sema_expr_analyse_generic_ident(SemaContext *context, Expr *e
 	Decl *symbol = sema_analyse_parameterized_identifier(context, parent->identifier_expr.path, parent->identifier_expr.ident, parent->span, expr->generic_ident_expr.parmeters);
 	if (!decl_ok(symbol)) return false;
 	expr->expr_kind = EXPR_IDENTIFIER;
-	expr->identifier_expr.decl = symbol;
-	expr->resolve_status = RESOLVE_DONE;
-	expr->type = symbol->type;
+	expr_resolve_ident(expr, symbol);
 	return true;
 }
 
@@ -7309,9 +7307,7 @@ static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Expr *expr)
 			}
 			// Replace with the identifier.
 			expr->expr_kind = EXPR_IDENTIFIER;
-			expr->identifier_expr = (ExprIdentifier) { .decl = decl };
-			expr->resolve_status = RESOLVE_DONE;
-			expr->type = decl->type;
+			expr_resolve_ident(expr, decl);
 			return true;
 		}
 		case TOKEN_CT_VAEXPR:
@@ -7361,9 +7357,7 @@ static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Expr *expr)
 			}
 			// Replace with the identifier.
 			expr->expr_kind = EXPR_IDENTIFIER;
-			expr->identifier_expr = (ExprIdentifier) { .decl = decl };
-			expr->resolve_status = RESOLVE_DONE;
-			expr->type = decl->type;
+			expr_resolve_ident(expr, decl);
 			return true;
 		}
 		case TOKEN_CT_VATYPE:

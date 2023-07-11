@@ -874,14 +874,13 @@ void expr_rewrite_to_builtin_access(Expr *expr, Expr *parent, BuiltinAccessKind 
 	expr->resolve_status = RESOLVE_DONE;
 }
 
+
 Expr *expr_variable(Decl *decl)
 {
 	if (decl->resolve_status == RESOLVE_DONE)
 	{
 		Expr *expr = expr_new(EXPR_IDENTIFIER, decl->span);
-		expr->identifier_expr.decl = decl;
-		expr->resolve_status = RESOLVE_DONE;
-		expr->type = decl->type;
+		expr_resolve_ident(expr, decl);
 		return expr;
 	}
 	Expr *expr = expr_new(EXPR_IDENTIFIER, decl->span);
@@ -895,9 +894,7 @@ void expr_rewrite_to_variable(Expr *expr, Decl *decl)
 	expr->expr_kind = EXPR_IDENTIFIER;
 	if (decl->resolve_status == RESOLVE_DONE)
 	{
-		expr->identifier_expr.decl = decl;
-		expr->resolve_status = RESOLVE_DONE;
-		expr->type = decl->type;
+		expr_resolve_ident(expr, decl);
 		return;
 	}
 	expr->identifier_expr.ident = decl->name;

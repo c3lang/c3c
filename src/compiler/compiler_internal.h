@@ -896,7 +896,11 @@ typedef struct
 			const char *ident;
 			bool is_const;
 		};
-		Decl *decl;
+		struct
+		{
+			Decl *decl;
+			bool was_ref;
+		};
 	};
 } ExprIdentifier;
 
@@ -2161,6 +2165,7 @@ bool expr_is_unwrapped_ident(Expr *expr);
 bool expr_may_splat_as_vararg(Expr *expr, Type *variadic_base_type);
 INLINE Expr *expr_new_expr(ExprKind kind, Expr *expr);
 INLINE bool expr_ok(Expr *expr);
+INLINE void expr_resolve_ident(Expr *expr, Decl *decl);
 INLINE bool exprid_is_simple(ExprId expr_id);
 INLINE bool exprid_is_pure(ExprId expr_id);
 INLINE Type *exprtype(ExprId expr_id);
@@ -3002,6 +3007,13 @@ INLINE void expr_replace(Expr *expr, Expr *replacement)
 INLINE bool expr_ok(Expr *expr) { return expr == NULL || expr->expr_kind != EXPR_POISONED; }
 
 INLINE bool exprid_is_simple(ExprId expr_id) { return expr_is_simple(exprptr(expr_id)); }
+
+INLINE void expr_resolve_ident(Expr *expr, Decl *decl)
+{
+	expr->identifier_expr = (ExprIdentifier) { .decl = decl };
+	expr->type = decl->type;
+	expr->resolve_status = RESOLVE_DONE;
+}
 
 INLINE Type *exprtype(ExprId expr_id)
 {

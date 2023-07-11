@@ -2539,9 +2539,8 @@ static inline bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement
 				{
 					inner = expr_new(EXPR_IDENTIFIER, last->span);
 					any_decl = var_switch.variable;
-					inner->identifier_expr.decl = any_decl;
+					expr_resolve_ident(inner, any_decl);
 					inner->type = type_any;
-					inner->resolve_status = RESOLVE_DONE;
 				}
 				expr_rewrite_to_builtin_access(last, inner, ACCESS_TYPEOFANY, type_typeid);
 				switch_type = type_typeid;
