@@ -12,7 +12,7 @@ macro usz binarysearch_with(list, x, cmp)
     usz len = @len_from_list(list);
     for (usz j = len; i < j;)
     {
-        usz half = (i + j) / 2;
+        usz half = i + (j - i) / 2;
         $if $checks(cmp(list[0], list[0])):
             int res = cmp(list[half], x);
         $else
