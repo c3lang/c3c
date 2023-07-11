@@ -15,32 +15,45 @@ def ElementType = $typeof(Type{}[0]);
 
 fn void qsort(Type list, isz low, isz high, Comparer cmp)
 {
-    if (low < high)
+    if (low >= 0 && high >= 0 && low < high)
     {
         isz p = partition(list, low, high, cmp);
-        qsort(list, low, p - 1, cmp);
+        qsort(list, low, p, cmp);
         qsort(list, p + 1, high, cmp);
     }
 }
 
 fn isz partition(Type list, isz low, isz high, Comparer cmp) @inline @local
 {
-    ElementType pivot = list[high];
+    ElementType pivot = list[low + (high - low) / 2];
     isz i = low - 1;
-    for (isz j = low; j < high; j++)
+    isz j = high + 1;
+    bool ok;
+    while (true)
     {
-        $switch
-            $case $checks(cmp(list[0], list[0])):
-                if (cmp(list[j], pivot) > 0) continue;
-            $case $checks(cmp(&list[0], &list[0])):
-                if (cmp(&list[j], &pivot) > 0) continue;
-            $default:
-                if (greater(list[j], pivot)) continue;
-        $endswitch
-        i++;
+        do {
+            i++;
+            $switch
+                $case $checks(cmp(list[0], list[0])):
+                    ok = cmp(list[i], pivot) < 0;
+                $case $checks(cmp(&list[0], &list[0])):
+                    ok = cmp(&list[i], &pivot) < 0;
+                $default:
+                    ok = less(list[i], pivot);
+            $endswitch
+        } while (ok);
+        do {
+            j--;
+            $switch
+                $case $checks(cmp(list[0], list[0])):
+                    ok = cmp(list[j], pivot) > 0;
+                $case $checks(cmp(&list[0], &list[0])):
+                    ok = cmp(&list[j], &pivot) > 0;
+                $default:
+                    ok = greater(list[j], pivot);
+            $endswitch
+        } while (ok);
+        if (i >= j) return j;
         @swap(list[i], list[j]);
     }
-    i++;
-    @swap(list[i], list[high]);
-    return i;
 }
