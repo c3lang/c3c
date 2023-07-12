@@ -286,3 +286,53 @@ macro uint bool.hash(bool b) => (uint)b;
 macro uint typeid.hash(typeid t) => ((ulong)(uptr)t).hash();
 macro uint String.hash(String c) => (uint)fnv32a::encode(c);
 macro uint char[].hash(char[] c) => (uint)fnv32a::encode(c);
+
+module std::core::builtin @if((env::LINUX || env::DARWIN) && env::COMPILER_SAFE_MODE && env::DEBUG_SYMBOLS);
+import libc;
+
+fn void sig_panic(String message)
+{
+	$if $defined(io::stderr) && $defined(File.printf):
+	CallstackElement* stack = $$stacktrace();
+	if (stack) stack = stack.prev;
+	if (stack) stack = stack.prev;
+	(void)io::stderr().print("\nERROR: '");
+	(void)io::stderr().print(message);
+	(void)io::stderr().printn("'");
+	while (stack)
+	{
+		(void)io::stderr().printfn("  in function %s (%s:%s)", stack.function, stack.file, stack.line);
+		if (stack == stack.prev) break;
+		stack = stack.prev;
+	}
+	$endif
+}
+
+SignalFunction old_bus_error;
+SignalFunction old_segmentation_fault;
+
+fn void sig_bus_error(CInt i)
+{
+	sig_panic("Illegal memory access.");
+	$$trap();
+}
+
+fn void sig_segmentation_fault(CInt i)
+{
+	sig_panic("Out of bounds memory access.");
+	$$trap();
+}
+
+fn void install_signal_handler(CInt signal, SignalFunction func) @local
+{
+	SignalFunction old = libc::signal(signal, func);
+	// Restore
+	if ((iptr)old > 1024) libc::signal(signal, old);
+}
+
+// Clean this up
+static initialize @priority(101)
+{
+	install_signal_handler(libc::SIGBUS, &sig_bus_error);
+	install_signal_handler(libc::SIGSEGV, &sig_segmentation_fault);
+}

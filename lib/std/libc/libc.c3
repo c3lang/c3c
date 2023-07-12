@@ -38,6 +38,30 @@ def JmpBuf = uptr[$$JMP_BUF_SIZE];
 def Fd = CInt;
 def Fpos_t = long; // TODO make sure fpos is correct on all targets.
 def SignalFunction = fn void(int);
+
+
+const CInt SIGHUP = 1;
+const CInt SIGINT = 2;
+const CInt SIGQUIT = 3;
+const CInt SIGILL = 4;
+const CInt SIGTRAP = 5;
+const CInt SIGABTR = 6;
+const CInt SIGBUS = BSD_FLAVOR_SIG ? 10 : 7; // Or Mips
+const CInt SIGFPE = 8;
+const CInt SIGKILL = 9;
+const CInt SIGSEGV = 11;
+const CInt SIGSYS = BSD_FLAVOR_SIG ? 12 : 31;
+const CInt SIGPIPE = 13;
+const CInt SIGALRM = 14;
+const CInt SIGTERM = 15;
+const CInt SIGURG = BSD_FLAVOR_SIG ? 16 : 23;
+const CInt SIGSTOP = BSD_FLAVOR_SIG ? 17 : 19;
+const CInt SIGTSTP = BSD_FLAVOR_SIG ? 18 : 20;
+const CInt SIGCONT = BSD_FLAVOR_SIG ? 19 : 18;
+const CInt SIGCHLD = BSD_FLAVOR_SIG ? 20 : 17;
+
+const bool BSD_FLAVOR_SIG @local = env::OPENBSD || env::DARWIN || env::FREEBSD || env::NETBSD;
+
 def Time_t = $typefrom(env::WIN32 ? long.typeid : CLong.typeid);
 def Off_t = $typefrom(env::WIN32 ? int.typeid : usz.typeid);
 

@@ -315,6 +315,16 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	{
 		vec_add(target->libs, options->libs[i]);
 	}
+	switch (target->arch_os_target)
+	{
+		case WINDOWS_AARCH64:
+		case WINDOWS_X64:
+			if (target->debug_info == DEBUG_INFO_NOT_SET) target->debug_info = DEBUG_INFO_NONE;
+			break;
+		default:
+			if (target->debug_info == DEBUG_INFO_NOT_SET) target->debug_info = DEBUG_INFO_FULL;
+			break;
+	}
 }
 
 void init_default_build_target(BuildTarget *target, BuildOptions *options)
@@ -329,7 +339,7 @@ void init_default_build_target(BuildTarget *target, BuildOptions *options)
 		.size_optimization_level = SIZE_OPTIMIZATION_NONE,
 		.symtab_size = options->symtab_size ? options->symtab_size : DEFAULT_SYMTAB_SIZE,
 		.switchrange_max_size = DEFAULT_SWITCHRANGE_MAX_SIZE,
-		.debug_info = DEBUG_INFO_NONE,
+		.debug_info = DEBUG_INFO_NOT_SET,
 		.arch_os_target = ARCH_OS_TARGET_DEFAULT,
 		.reloc_model = RELOC_DEFAULT,
 		.feature.x86_vector_capability = X86VECTOR_DEFAULT,

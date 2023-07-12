@@ -26,6 +26,7 @@
 - Dropped support for LLVM 13-14.
 - Updated grammar and lexer definition.
 - Removal of `$elif`.
+- `@stdcall` etc removed in favor of `@callconv`
 - Empty fault definitions is now an error.
 - Better errors on incorrect bitstruct syntax.
 - Internal use wildcard type rather than optional wildcard.

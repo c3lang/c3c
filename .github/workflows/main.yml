@@ -37,9 +37,9 @@ jobs:
           ..\build\${{ matrix.build_type }}\c3c.exe compile-run examples\time.c3
           ..\build\${{ matrix.build_type }}\c3c.exe compile-run examples\fannkuch-redux.c3
           ..\build\${{ matrix.build_type }}\c3c.exe compile-run examples\contextfree\boolerr.c3
+          ..\build\${{ matrix.build_type }}\c3c.exe compile-run examples\ls.c3
           ..\build\${{ matrix.build_type }}\c3c.exe compile-run examples\load_world.c3
           ..\build\${{ matrix.build_type }}\c3c.exe compile-run examples\process.c3
-          ..\build\${{ matrix.build_type }}\c3c.exe compile-run examples\ls.c3
           
 
       - name: Build testproject
@@ -107,6 +107,7 @@ jobs:
           ../build/c3c compile-run examples/time.c3
           ../build/c3c compile-run examples/fannkuch-redux.c3
           ../build/c3c compile-run examples/contextfree/boolerr.c3
+          ../build/c3c compile-run examples/load_world.c3
           ../build/c3c compile-run examples/load_world.c3
 
       - name: Build testproject
@@ -339,31 +340,29 @@ jobs:
       - name: Compile and run some examples
         run: |
           cd resources
-          ../build/c3c compile examples/base64.c3
-          ../build/c3c compile examples/binarydigits.c3
-          ../build/c3c compile examples/brainfk.c3
-          ../build/c3c compile examples/factorial_macro.c3
-          ../build/c3c compile examples/fasta.c3
           ../build/c3c compile examples/gameoflife.c3
-          ../build/c3c compile examples/hash.c3
           ../build/c3c compile examples/levenshtein.c3
-          ../build/c3c compile examples/load_world.c3
           ../build/c3c compile examples/map.c3
           ../build/c3c compile examples/mandelbrot.c3
           ../build/c3c compile examples/plus_minus.c3
-          ../build/c3c compile examples/nbodies.c3
           ../build/c3c compile examples/spectralnorm.c3
           ../build/c3c compile examples/swap.c3
-          ../build/c3c compile examples/contextfree/boolerr.c3
-          ../build/c3c compile examples/contextfree/dynscope.c3
           ../build/c3c compile examples/contextfree/guess_number.c3
-          ../build/c3c compile examples/contextfree/multi.c3          
-          ../build/c3c compile examples/contextfree/cleanup.c3          
+          ../build/c3c compile-run examples/hash.c3
+          ../build/c3c compile-run examples/nbodies.c3
+          ../build/c3c compile-run examples/contextfree/boolerr.c3
+          ../build/c3c compile-run examples/contextfree/dynscope.c3
+          ../build/c3c compile-run examples/contextfree/multi.c3          
+          ../build/c3c compile-run examples/contextfree/cleanup.c3          
           ../build/c3c compile-run examples/hello_world_many.c3
           ../build/c3c compile-run examples/time.c3
           ../build/c3c compile-run examples/fannkuch-redux.c3
-          ../build/c3c compile-run examples/contextfree/boolerr.c3
           ../build/c3c compile-run examples/load_world.c3
+          ../build/c3c compile-run examples/base64.c3
+          ../build/c3c compile-run examples/binarydigits.c3
+          ../build/c3c compile-run examples/brainfk.c3
+          ../build/c3c compile-run examples/factorial_macro.c3
+          ../build/c3c compile-run examples/fasta.c3
           ../build/c3c compile-run examples/process.c3
 
       - name: Compile run unit tests
