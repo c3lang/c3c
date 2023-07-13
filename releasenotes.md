@@ -152,6 +152,7 @@
 - Updates to how variadics are implemented.
 - Fixes to shift checks.
 - Fixes to string parsing.
+- Bug when rethrowing an optional from a macro which didn't return an optional.
 - Fixed issues with ranged cases.
 - Disallow trailing ',' in function parameter list.
 - Fixed errors on flexible array slices.

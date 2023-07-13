@@ -6207,6 +6207,12 @@ static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr)
 
 	if (context->active_scope.flags & (SCOPE_EXPR_BLOCK | SCOPE_MACRO))
 	{
+		TypeInfoId rtype = context->active_scope.flags & SCOPE_MACRO ? context->current_macro->func_decl.signature.rtype : 0;
+		if (rtype && !type_is_optional(typeinfotype(rtype)))
+		{
+			RETURN_SEMA_ERROR(expr, "Rethrow is only allowed in macros with an optional or inferred return type. "
+									"Did you mean to use '!!' instead?");
+		}
 		vec_add(context->returns, NULL);
 		expr->rethrow_expr.in_block = context->block_exit_ref;
 		expr->rethrow_expr.cleanup = context_get_defers(context, context->active_scope.defer_last, context->block_return_defer, false);
