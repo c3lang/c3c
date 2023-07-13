@@ -315,16 +315,6 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	{
 		vec_add(target->libs, options->libs[i]);
 	}
-	switch (target->arch_os_target)
-	{
-		case WINDOWS_AARCH64:
-		case WINDOWS_X64:
-			if (target->debug_info == DEBUG_INFO_NOT_SET) target->debug_info = DEBUG_INFO_NONE;
-			break;
-		default:
-			if (target->debug_info == DEBUG_INFO_NOT_SET) target->debug_info = DEBUG_INFO_FULL;
-			break;
-	}
 }
 
 void init_default_build_target(BuildTarget *target, BuildOptions *options)

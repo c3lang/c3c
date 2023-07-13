@@ -1765,6 +1765,18 @@ void target_setup(BuildTarget *target)
 	platform_target.os = os_from_llvm_string(slice_next_token(&target_triple_string, '-'));
 	platform_target.environment_type = environment_type_from_llvm_string(target_triple_string);
 
+	if (target->debug_info == DEBUG_INFO_NOT_SET)
+	{
+		if (platform_target.os == OS_TYPE_WIN32)
+		{
+			target->debug_info = DEBUG_INFO_NONE;
+		}
+		else
+		{
+			target->debug_info = DEBUG_INFO_FULL;
+		}
+	}
+
 	platform_target.float_abi = false;
 	// TLS should not be supported for:
 	// ARM Cygwin
