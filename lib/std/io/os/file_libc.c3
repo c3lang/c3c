@@ -10,7 +10,7 @@ fn void*! native_fopen(String filename, String mode) @inline
 	@pool()
 	{
 		$if env::WIN32:
-			void* file = libc::_wfopen(filename.to_temp_wstring(), filename.to_temp_wstring())!;
+			void* file = libc::_wfopen(filename.to_temp_wstring(), mode.to_temp_wstring())!;
 		$else
 			void* file = libc::fopen(filename.zstr_tcopy(), mode.zstr_tcopy());
 		$endif

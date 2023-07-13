@@ -1767,14 +1767,7 @@ void target_setup(BuildTarget *target)
 
 	if (target->debug_info == DEBUG_INFO_NOT_SET)
 	{
-		if (platform_target.os == OS_TYPE_WIN32)
-		{
-			target->debug_info = DEBUG_INFO_NONE;
-		}
-		else
-		{
-			target->debug_info = DEBUG_INFO_FULL;
-		}
+		target->debug_info = DEBUG_INFO_FULL;
 	}
 
 	platform_target.float_abi = false;
