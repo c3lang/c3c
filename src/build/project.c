@@ -450,7 +450,7 @@ static void project_add_targets(Project *project, JSONObject *project_data)
 			.memory_environment = MEMORY_ENV_NORMAL,
 			.size_optimization_level = SIZE_OPTIMIZATION_NONE,
 			.arch_os_target = ARCH_OS_TARGET_DEFAULT,
-			.debug_info = DEBUG_INFO_NONE,
+			.debug_info = DEBUG_INFO_NOT_SET,
 			.symtab_size = DEFAULT_SYMTAB_SIZE,
 			.cc = "cc",
 			.version = "1.0.0",

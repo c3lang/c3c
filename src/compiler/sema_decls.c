@@ -1567,6 +1567,47 @@ static const char *attribute_domain_to_string(AttributeDomain domain)
 	UNREACHABLE
 }
 
+INLINE bool update_abi(Decl *decl, CallABI abi)
+{
+	decl->func_decl.signature.abi = abi;
+	return true;
+}
+static bool update_call_abi_from_string(Decl *decl, Expr *expr)
+{
+	const char *str = expr->const_expr.bytes.ptr;
+	CallABI abi;
+	if (strcmp(str, "cdecl") == 0) return update_abi(decl, CALL_C);
+	if (strcmp(str, "veccall") == 0)
+	{
+		switch (platform_target.arch)
+		{
+			case ARCH_TYPE_X86_64:
+				return update_abi(decl, CALL_X64_VECTOR);
+			case ARCH_TYPE_ARM:
+			case ARCH_TYPE_ARMB:
+			case ARCH_TYPE_AARCH64:
+			case ARCH_TYPE_AARCH64_32:
+			case ARCH_TYPE_AARCH64_BE:
+				return update_abi(decl, CALL_AAPCS_VFP);
+			case ARCH_TYPE_X86:
+				// Unsupported
+				FALLTHROUGH;
+			default:
+				return true;
+		}
+	}
+	if (strcmp(str, "stdcall") == 0)
+	{
+		if (platform_target.arch == ARCH_TYPE_ARM || platform_target.arch == ARCH_TYPE_ARMB)
+		{
+			return update_abi(decl, CALL_AAPCS);
+		}
+		return true;
+	}
+	SEMA_ERROR(expr, "Unknown call convention, only 'cdecl', 'stdcall' and 'veccall' are supported");
+	return false;
+}
+
 #define EXPORTED_USER_DEFINED_TYPES ATTR_ENUM | ATTR_UNION | ATTR_STRUCT | ATTR_FAULT
 #define USER_DEFINED_TYPES EXPORTED_USER_DEFINED_TYPES | ATTR_BITSTRUCT
 static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr, AttributeDomain domain, bool *erase_decl)
@@ -1577,11 +1618,11 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_ALIGN] = ATTR_FUNC | ATTR_CONST | ATTR_LOCAL | ATTR_GLOBAL | ATTR_BITSTRUCT | ATTR_STRUCT | ATTR_UNION | ATTR_MEMBER,
 			[ATTRIBUTE_BIGENDIAN] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_BUILTIN] = ATTR_MACRO | ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST,
-			[ATTRIBUTE_CDECL] = ATTR_FUNC,
+			[ATTRIBUTE_CALLCONV] = ATTR_FUNC,
 			[ATTRIBUTE_DEPRECATED] = USER_DEFINED_TYPES | ATTR_FUNC | ATTR_MACRO | ATTR_CONST | ATTR_GLOBAL | ATTR_MEMBER,
 			[ATTRIBUTE_DYNAMIC] = ATTR_FUNC,
 			[ATTRIBUTE_EXPORT] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | EXPORTED_USER_DEFINED_TYPES,
-			[ATTRIBUTE_EXTERN] = (AttributeDomain)~(ATTR_CALL | ATTR_BITSTRUCT | ATTR_DEFINE | ATTR_MACRO | ATTR_XXLIZER),
+			[ATTRIBUTE_EXTERN] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES,
 			[ATTRIBUTE_IF] = (AttributeDomain)~(ATTR_CALL | ATTR_LOCAL),
 			[ATTRIBUTE_INLINE] = ATTR_FUNC | ATTR_CALL,
 			[ATTRIBUTE_INTERFACE] = ATTR_FUNC,
@@ -1600,14 +1641,13 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_PACKED] = ATTR_STRUCT | ATTR_UNION,
 			[ATTRIBUTE_PRIORITY] = ATTR_XXLIZER,
 			[ATTRIBUTE_PRIVATE] = ATTR_FUNC | ATTR_MACRO | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES | ATTR_DEFINE,
+			[ATTRIBUTE_PUBLIC] = ATTR_FUNC | ATTR_MACRO | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES | ATTR_DEFINE,
 			[ATTRIBUTE_PURE] = ATTR_CALL,
-			[ATTRIBUTE_REFLECT] = ATTR_ENUM,
+			[ATTRIBUTE_REFLECT] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES,
 			[ATTRIBUTE_SECTION] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
-			[ATTRIBUTE_STDCALL] = ATTR_FUNC,
 			[ATTRIBUTE_TEST] = ATTR_FUNC,
 			[ATTRIBUTE_UNUSED] = (AttributeDomain)~(ATTR_CALL | ATTR_XXLIZER),
 			[ATTRIBUTE_USED] = (AttributeDomain)~(ATTR_CALL | ATTR_XXLIZER ),
-			[ATTRIBUTE_VECCALL] = ATTR_FUNC,
 			[ATTRIBUTE_WASM] = ATTR_FUNC,
 			[ATTRIBUTE_WEAK] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
 			[ATTRIBUTE_WINMAIN] = ATTR_FUNC,
@@ -1652,25 +1692,16 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			}
 			decl->func_decl.attr_winmain = true;
 			break;
-		case ATTRIBUTE_CDECL:
-			decl->func_decl.signature.abi = CALL_C;
-			break;
-		case ATTRIBUTE_VECCALL:
-			switch (platform_target.arch)
+		case ATTRIBUTE_CALLCONV:
+			if (expr && !sema_analyse_expr(context, expr)) return false;
+			if (!expr || !expr_is_const_string(expr))
 			{
-				case ARCH_TYPE_X86_64:
-					decl->func_decl.signature.abi = CALL_X64_VECTOR;
-					break;
-				case ARCH_TYPE_X86:
-				case ARCH_TYPE_ARM:
-				case ARCH_TYPE_ARMB:
-				case ARCH_TYPE_AARCH64:
-				case ARCH_TYPE_AARCH64_32:
-				case ARCH_TYPE_AARCH64_BE:
-					decl->func_decl.signature.abi = CALL_AAPCS_VFP;
-					break;
-				default:
-					break;
+				SEMA_ERROR(expr, "Expected a constant string value as argument.");
+				return false;
+			}
+			else
+			{
+				if (!update_call_abi_from_string(decl, expr)) return false;
 			}
 			break;
 		case ATTRIBUTE_TEST:
@@ -1682,13 +1713,6 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 		case ATTRIBUTE_DYNAMIC:
 			decl->func_decl.attr_dynamic = true;
 			break;
-		case ATTRIBUTE_STDCALL:
-			assert(decl->decl_kind == DECL_FUNC);
-			if (platform_target.arch == ARCH_TYPE_ARM || platform_target.arch == ARCH_TYPE_ARMB)
-			{
-				decl->func_decl.signature.abi = CALL_AAPCS;
-			}
-			break; // Check args
 		case ATTRIBUTE_OPERATOR:
 		{
 			assert(decl->decl_kind == DECL_FUNC || decl->decl_kind == DECL_MACRO);

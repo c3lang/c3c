@@ -106,7 +106,7 @@ class Issues:
     def compile(self, args):
         os.chdir(TEST_DIR)
         target = ""
-        debug = ""
+        debug = "-g0 "
         if (self.arch):
             target = " --target " + self.arch
         if (self.debuginfo):

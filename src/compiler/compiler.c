@@ -835,6 +835,7 @@ void compile()
 	setup_int_define("OS_TYPE", (uint64_t)platform_target.os, type_int);
 	setup_int_define("COMPILER_SIZE_OPT_LEVEL", (uint64_t)active_target.size_optimization_level, type_int);
 	setup_bool_define("COMPILER_SAFE_MODE", active_target.feature.safe_mode);
+	setup_bool_define("DEBUG_SYMBOLS", active_target.debug_info == DEBUG_INFO_FULL);
 	setup_int_define("LLVM_VERSION", llvm_version_major, type_int);
 	setup_bool_define("BENCHMARKING", active_target.benchmarking);
 	setup_int_define("JMP_BUF_SIZE", jump_buffer_size(), type_int);

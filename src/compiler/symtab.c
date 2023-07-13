@@ -301,7 +301,7 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_ALIGN] = KW_DEF("@align");
 	attribute_list[ATTRIBUTE_BIGENDIAN] = KW_DEF("@bigendian");
 	attribute_list[ATTRIBUTE_BUILTIN] = KW_DEF("@builtin");
-	attribute_list[ATTRIBUTE_CDECL] = KW_DEF("@cdecl");
+	attribute_list[ATTRIBUTE_CALLCONV] = KW_DEF("@callconv");
 	attribute_list[ATTRIBUTE_DEPRECATED] = KW_DEF("@deprecated");
 	attribute_list[ATTRIBUTE_DYNAMIC] = KW_DEF("@dynamic");
 	attribute_list[ATTRIBUTE_EXPORT] = KW_DEF("@export");
@@ -328,11 +328,9 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_PUBLIC] = KW_DEF("@public");
 	attribute_list[ATTRIBUTE_REFLECT] = KW_DEF("@reflect");
 	attribute_list[ATTRIBUTE_SECTION] = KW_DEF("@section");
-	attribute_list[ATTRIBUTE_STDCALL] = KW_DEF("@stdcall");
 	attribute_list[ATTRIBUTE_TEST] = KW_DEF("@test");
 	attribute_list[ATTRIBUTE_UNUSED] = KW_DEF("@unused");
 	attribute_list[ATTRIBUTE_USED] = KW_DEF("@used");
-	attribute_list[ATTRIBUTE_VECCALL] = KW_DEF("@veccall");
 	attribute_list[ATTRIBUTE_WASM] = KW_DEF("@wasm");
 	attribute_list[ATTRIBUTE_WEAK] = KW_DEF("@weak");
 	attribute_list[ATTRIBUTE_WINMAIN] = KW_DEF("@winmain");

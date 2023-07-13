@@ -335,31 +335,31 @@ or_stmt_expr
 	| or_stmt_expr OR_OP and_expr
 	;
 
-or_expr_with_suffix
+suffix_expr
 	: or_expr
 	| or_expr '?'
 	| or_expr '?' '!'
 	;
 
-or_stmt_expr_with_suffix
+suffix_stmt_expr
 	: or_stmt_expr
 	| or_stmt_expr '?'
 	| or_stmt_expr '?' '!'
 	;
 
 ternary_expr
-	: or_expr_with_suffix
+	: suffix_expr
 	| or_expr '?' expr ':' ternary_expr
-	| or_expr_with_suffix ELVIS ternary_expr
-	| or_expr_with_suffix OPTELSE ternary_expr
+	| suffix_expr ELVIS ternary_expr
+	| suffix_expr OPTELSE ternary_expr
 	| lambda_decl implies_body
 	;
 
 ternary_stmt_expr
-	: or_stmt_expr_with_suffix
+	: suffix_stmt_expr
 	| or_stmt_expr '?' expr ':' ternary_expr
-	| or_stmt_expr_with_suffix ELVIS ternary_expr
-	| or_stmt_expr_with_suffix OPTELSE ternary_expr
+	| suffix_stmt_expr ELVIS ternary_expr
+	| suffix_stmt_expr OPTELSE ternary_expr
 	| lambda_decl implies_body
 	;
 

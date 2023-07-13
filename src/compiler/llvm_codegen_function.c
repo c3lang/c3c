@@ -429,8 +429,9 @@ void llvm_emit_stacktrace_definitions(GenContext *c)
 	LLVMSetThreadLocal(current_stack, true);
 	LLVMSetInitializer(current_stack, llvm_get_zero_raw(c->ptr_type));
 	llvm_set_weak(c, current_stack);
-	LLVMTypeRef args[5] = { c->ptr_type, c->ptr_type, c->size_type, c->ptr_type, c->size_type };
-	LLVMTypeRef func_type = c->debug.stack_init_fn_type = LLVMFunctionType(LLVMVoidTypeInContext(c->context), args, 5, false);
+	LLVMTypeRef uint_type = llvm_get_type(c, type_uint);
+	LLVMTypeRef args[6] = { c->ptr_type, c->ptr_type, c->size_type, c->ptr_type, c->size_type, uint_type };
+	LLVMTypeRef func_type = c->debug.stack_init_fn_type = LLVMFunctionType(LLVMVoidTypeInContext(c->context), args, 6, false);
 	LLVMValueRef func = c->debug.stack_init_fn = LLVMAddFunction(c->module, ".stacktrace_init", func_type);
 	llvm_set_weak(c, func);
 	LLVMBuilderRef builder = LLVMCreateBuilderInContext(c->context);
@@ -460,6 +461,8 @@ void llvm_emit_stacktrace_definitions(GenContext *c)
 	                              c->debug.current_stack_ptr,
 	                              stacktrace,
 	                              type_alloca_alignment(type_voidptr));
+	LLVMValueRef line = llvm_emit_struct_gep_raw(c, stacktrace, slot_type, 3, alignment, &align_to_use);
+	llvm_store_to_ptr_raw_aligned(c, line, LLVMGetParam(func, 5), align_to_use);
 	LLVMBuildRetVoid(c->builder);
 	LLVMDisposeBuilder(c->builder);
 	c->builder = NULL;
@@ -526,8 +529,9 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, const char *module_nam
 			AlignSize alignment = llvm_abi_alignment(c, slot_type);
 			LLVMValueRef stacktrace = c->debug.stack_slot = llvm_emit_alloca(c, slot_type, alignment, ".$stacktrace");
 			LLVMValueRef args[] = { stacktrace, c->debug.func_name, llvm_const_int(c, type_usz, func_name_len),
-									c->debug.file_name, llvm_const_int(c, type_usz, file_name_len) };
-			LLVMBuildCall2(c->builder, c->debug.stack_init_fn_type, c->debug.stack_init_fn, args, 5, "");
+									c->debug.file_name, llvm_const_int(c, type_usz, file_name_len),
+									llvm_const_int(c, type_uint, body->span.row) };
+			LLVMBuildCall2(c->builder, c->debug.stack_init_fn_type, c->debug.stack_init_fn, args, 6, "");
 			c->debug.stack_slot_row = LLVMBuildStructGEP2(c->builder, slot_type, c->debug.stack_slot, 3, ".$row");
 			if (function_name == kw_main || function_name == kw_mainstub)
 			{
