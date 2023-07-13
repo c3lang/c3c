@@ -66,6 +66,8 @@ fn bool TestRunner.run(TestRunner* runner)
 	foreach(i, String name : runner.test_names)
 	{
 		io::printf("Testing %s ... ", name);
+		CallstackElement* stack = $$stacktrace();
+		if (stack) stack.prev = null;
 		if (libc::setjmp(&runner.buf) == 0)
 		{
 			if (catch err = runner.test_fns[i]())
