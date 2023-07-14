@@ -1,6 +1,11 @@
 module std::sort;
 import std::sort::qs;
 
+/**
+ * Sort list using the quick sort algorithm.
+ * @require is_searchable(list) "The list must be indexable and support .len or .len()"
+ * @require !cmp || is_comparer(cmp, list) "Expected a comparison function which compares values"
+ **/
 macro quicksort(list, cmp = null) @builtin
 {
     var $Type = $typeof(list);
