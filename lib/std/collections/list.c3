@@ -199,17 +199,17 @@ fn Type* List.last(&self)
     return self.size ? &self.entries[self.size - 1] : null;
 }
 
-fn bool List.is_empty(&self)
+fn bool List.is_empty(&self) @inline
 {
     return !self.size;
 }
 
-fn usz List.len(&self) @operator(len)
+fn usz List.len(&self) @operator(len) @inline
 {
     return self.size;
 }
 
-fn Type List.get(&self, usz index)
+fn Type List.get(&self, usz index) @inline
 {
     return self.entries[index];
 }
