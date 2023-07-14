@@ -4,13 +4,12 @@ import std::io;
 import std::math;
 import std::collections::priorityqueue;
 
-def FooPriorityQueue = PriorityQueue(<Foo>);
+def FooPriorityQueue = PriorityQueueMax(<Foo>);
 
 fn void main()
 {
 
 	FooPriorityQueue agh;
-	agh.max = true;
 	agh.push(Foo { 3 });
 	agh.push(Foo { 101 });
 	agh.push(Foo { 10 });
@@ -29,4 +28,4 @@ fn bool Foo.less(Foo* x, Foo y) @inline
 
 /* #expect: test.ll
 
-%PriorityQueue = type { %List, i8 }
+%PrivatePriorityQueue = type { %List }
