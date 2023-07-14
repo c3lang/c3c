@@ -21,7 +21,6 @@ if type podman 2>/dev/null >/dev/null; then
 fi
 
 if [ $config == "Debug" ]; then
-echo "debug???"
     CMAKE_BUILD_TYPE=Debug
 else
     CMAKE_BUILD_TYPE="$config"
