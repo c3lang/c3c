@@ -6,6 +6,7 @@
 - Exhaustive switches with enums has better analysis.
 - Globals may now be initialized with optional values.
 - New generic syntax.
+- Slice initialization.
 - Macro ref parameters are now of pointer type and ref parameters are not assignable.
 - Added `nextcase default`.
 - Added `$embed` to embed binary data.

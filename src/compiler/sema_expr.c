@@ -4278,6 +4278,7 @@ bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type 
 		return sema_expr_analyse_slice_assign(context, expr, left_type, right, is_unwrapped);
 	}
 
+
 	// 1. Evaluate right side to required type.
 	bool to_optional = left_type && type_is_optional(left_type);
 	if (!sema_analyse_expr_rhs(context, left_type, right, is_unwrapped || to_optional)) return false;
@@ -7702,7 +7703,10 @@ bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allo
 	{
 		if (!sema_analyse_inferred_expr(context, to, expr)) return false;
 	}
-	if (to && allow_optional && to->canonical != expr->type->canonical && expr->type->canonical->type_kind == TYPE_FAULTTYPE)
+	Type *to_canonical = to ? to->canonical : NULL;
+	Type *rhs_type = expr->type;
+	Type *rhs_type_canonical = rhs_type->canonical;
+	if (to && allow_optional && to_canonical != rhs_type_canonical && rhs_type_canonical->type_kind == TYPE_FAULTTYPE)
 	{
 		Type *flat = type_flatten(to);
 		if (flat != type_anyfault && flat->type_kind != TYPE_FAULTTYPE && expr_is_const(expr))
@@ -7711,6 +7715,26 @@ bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allo
 			return false;
 		}
 	}
+	// Let's see if we have a fixed subarray.
+
+	if (to && type_is_arraylike(to_canonical) && expr->expr_kind == EXPR_SLICE && rhs_type_canonical->type_kind == TYPE_SUBARRAY)
+	{
+		Type *element = type_get_indexed_type(rhs_type_canonical)->canonical;
+		if (element != type_get_indexed_type(to_canonical)->canonical) goto NO_SLICE;
+		IndexDiff len = range_const_len(&expr->subscript_expr.range);
+		if (len < 1) goto NO_SLICE;
+		if (len != to_canonical->array.len)
+		{
+			RETURN_SEMA_ERROR(expr, "Slice length mismatch, expected %u but got %u.", to_canonical->array.len, len);
+		}
+		// Given x[3..7] -> (int[5]*)x[3..7]
+		cast(expr, type_get_ptr(type_get_array(element, len)));
+		// Deref
+		expr_rewrite_insert_deref(expr);
+		cast(expr, to);
+		return true;
+	}
+	NO_SLICE:;
 	if (to && !cast_implicit_maybe_optional(context, expr, to, allow_optional)) return false;
 	if (!allow_optional && IS_OPTIONAL(expr))
 	{

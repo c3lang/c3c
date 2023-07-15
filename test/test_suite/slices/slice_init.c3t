@@ -1,0 +1,45 @@
+// #target: macos-x64
+module foo;
+fn float[20] get()
+{
+    float[20] y;
+    for (int i = 0; i < 20; i++) y[i] = i * i + 1;
+    return y;
+}
+fn void main()
+{
+	float[<4>] x = get()[1..^16];
+	float[4] y = get()[2..^15];
+}
+
+/* #expect: foo.ll
+
+define void @foo.main() #0 {
+entry:
+  %x = alloca <4 x float>, align 16
+  %sretparam = alloca [20 x float], align 4
+  %y = alloca [4 x float], align 16
+  %sretparam1 = alloca [20 x float], align 4
+  call void @foo.get(ptr sret([20 x float]) align 4 %sretparam)
+  %0 = getelementptr inbounds [20 x float], ptr %sretparam, i64 0, i64 1
+  %1 = insertvalue %"float[]" undef, ptr %0, 0
+  %2 = insertvalue %"float[]" %1, i64 4, 1
+  %3 = extractvalue %"float[]" %2, 0
+  %4 = load [4 x float], ptr %3, align 4
+  %5 = extractvalue [4 x float] %4, 0
+  %6 = insertelement <4 x float> undef, float %5, i64 0
+  %7 = extractvalue [4 x float] %4, 1
+  %8 = insertelement <4 x float> %6, float %7, i64 1
+  %9 = extractvalue [4 x float] %4, 2
+  %10 = insertelement <4 x float> %8, float %9, i64 2
+  %11 = extractvalue [4 x float] %4, 3
+  %12 = insertelement <4 x float> %10, float %11, i64 3
+  store <4 x float> %12, ptr %x, align 16
+  call void @foo.get(ptr sret([20 x float]) align 4 %sretparam1)
+  %13 = getelementptr inbounds [20 x float], ptr %sretparam1, i64 0, i64 2
+  %14 = insertvalue %"float[]" undef, ptr %13, 0
+  %15 = insertvalue %"float[]" %14, i64 4, 1
+  %16 = extractvalue %"float[]" %15, 0
+  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %y, ptr align 4 %16, i32 16, i1 false)
+  ret void
+}
