@@ -3104,9 +3104,10 @@ static bool sema_append_generate_parameterized_name(SemaContext *c, Module *modu
 		{
 			if (!sema_analyse_ct_expr(c, param)) return false;
 			Type *type = param->type->canonical;
-			if (!type_is_integer_or_bool_kind(type))
+            bool is_enum_like = type_kind_is_enumlike(type->type_kind);
+			if (!type_is_integer_or_bool_kind(type) && !is_enum_like)
 			{
-				SEMA_ERROR(param, "Only integer and boolean types may be generic arguments.");
+				SEMA_ERROR(param, "Only integer, bool, fault and enum values may be generic arguments.");
 				return poisoned_decl;
 			}
 			assert(expr_is_const(param));
@@ -3121,7 +3122,14 @@ static bool sema_append_generate_parameterized_name(SemaContext *c, Module *modu
 					scratch_buffer_append(param->const_expr.b ? "true" : "false");
 				}
 			}
-			else
+			else if (is_enum_like)
+            {
+                Decl *enum_like = param->const_expr.enum_err_val;
+                type_mangle_introspect_name_to_buffer(enum_like->type->canonical);
+                scratch_buffer_append(mangled ? "_" : ":");
+                scratch_buffer_append(enum_like->name);
+            }
+            else
 			{
 				char *maybe_neg = &scratch_buffer.str[scratch_buffer.len];
 				if (type->type_kind == TYPE_I128 || type->type_kind == TYPE_U128)
