@@ -13,3 +13,9 @@ extern fn int ioctlsocket(NativeSocket, long cmd, ulong *argp);
 extern fn int closesocket(NativeSocket);
 
 macro NativeSocket.close(NativeSocket this) => closesocket(this);
+
+// https://github.com/wine-mirror/wine/blob/master/include/winsock.h
+const int SOL_SOCKET = 0xffff;
+const int SO_REUSEADDR = 0x0004;
+const int SO_KEEPALIVE = 0x0008;
+const int SO_BROADCAST = 0x0200;

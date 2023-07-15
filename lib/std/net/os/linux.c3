@@ -10,3 +10,10 @@ const int PLATFORM_AF_AAL5 = 8;
 const int PLATFORM_AF_X25 = 9;
 
 const PLATFORM_O_NONBLOCK = 0o4000;
+
+// https://git.sr.ht/~sircmpwn/hare/tree/master/item/rt/+linux/socket.ha
+const int SOL_SOCKET = 1;
+const int SO_REUSEADDR = 2;
+const int SO_BROADCAST = 6;
+const int SO_KEEPALIVE = 9;
+const int SO_REUSEPORT = 15;

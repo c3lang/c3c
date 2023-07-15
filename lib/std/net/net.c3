@@ -1,6 +1,8 @@
 module std::net;
 import std::net::os;
 
+// TODO provide descriptive error messages for NetError.*_FAILED
+
 fault NetError
 {
 	INVALID_URL,
@@ -14,6 +16,7 @@ fault NetError
 	ACCEPT_FAILED,
     WRITE_FAILED,
     READ_FAILED,
+    SOCKOPT_FAILED,
 }
 
 fn uint! ipv4toint(String s)
@@ -59,10 +62,11 @@ enum Network : char (int domain, int type)
     UDP6 (os::AF_INET6, SOCK_DGRAM),
 }
 
-fn Socket! Network.connect(&self, String host, String port)
+fn Socket! Network.connect(&self, String host, String port, SocketOption... options)
 {
     @network_loop_over_ai(self, host, port; NativeSocket sockfd, AddrInfo* ai)
     {
+        apply_sockoptions(sockfd, options)!;
         int errcode = os::connect(sockfd, ai.ai_addr, ai.ai_addrlen);
         // Keep the first successful connection.
         if (errcode == 0) return network_socket(sockfd, ai);
@@ -70,10 +74,11 @@ fn Socket! Network.connect(&self, String host, String port)
     return NetError.CONNECT_FAILED?;
 }
 
-fn Socket! Network.listen(&self, String host, String port, int backlog)
+fn Socket! Network.listen(&self, String host, String port, int backlog, SocketOption... options)
 {
     @network_loop_over_ai(self, host, port; NativeSocket sockfd, AddrInfo* ai)
     {
+        apply_sockoptions(sockfd, options)!;
         int errcode = os::bind(sockfd, ai.ai_addr, ai.ai_addrlen);
         if (errcode == 0)
         {
@@ -94,6 +99,12 @@ fn AddrInfo*! Network.addrinfo(&self, String host, String port) @private
     int errcode = os::getaddrinfo(zhost, zport, &hints, &ai);
     if (errcode != 0) return NetError.ADDRINFO_FAILED?;
     return ai;
+}
+
+macro apply_sockoptions(sockfd, options) @private
+{
+    Socket sock = { .sock = sockfd };
+    foreach (o : options) sock.set_option(o)!;
 }
 
 macro @network_loop_over_ai(network, host, port; @body(fd, ai)) @private

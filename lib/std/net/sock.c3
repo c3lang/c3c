@@ -8,6 +8,20 @@ const int SOCK_RAW = 3;         // Raw
 const int SOCK_RDM = 4;         // Reliably delivered
 const int SOCK_SEQPACKET = 5;   // Sequential packet
 
+enum SocketOption : char (CInt value) @if(!env::WIN32)
+{
+    REUSEADDR (os::SO_REUSEADDR),
+    REUSEPORT (os::SO_REUSEPORT),
+    KEEPALIVE (os::SO_KEEPALIVE),
+    BROADCAST (os::SO_BROADCAST),
+}
+enum SocketOption : char (CInt value) @if(env::WIN32)
+{
+    REUSEADDR (os::SO_REUSEADDR),
+    KEEPALIVE (os::SO_KEEPALIVE),
+    BROADCAST (os::SO_BROADCAST),
+}
+
 struct Socket
 {
     NativeSocket sock;
@@ -27,6 +41,20 @@ StreamInterface socketstream_interface = {
     .write_fn = fn(s, char[] bytes) => ((Socket*)s.data).write(bytes) @inline,
     .close_fn = fn(s) => ((Socket*)s.data).close(),
 };
+
+fn void! Socket.set_option(&self, SocketOption option)
+{
+    CInt flag = 1;
+    int errcode = os::setsockopt(self.sock, os::SOL_SOCKET, option.value, &flag, CInt.sizeof);
+    if (errcode != 0) return NetError.SOCKOPT_FAILED?;
+}
+
+fn void! Socket.unset_option(&self, SocketOption option)
+{
+    CInt flag = 0;
+    int errcode = os::setsockopt(self.sock, os::SOL_SOCKET, option.value, &flag, CInt.sizeof);
+    if (errcode != 0) return NetError.SOCKOPT_FAILED?;
+}
 
 fn usz! Socket.read(&self, char[] bytes)
 {
@@ -52,9 +80,9 @@ struct Listener
     Socket socket;
 }
 
-fn void! Listener.init(&self, Network network, String host, String port, int backlog = 10)
+fn void! Listener.init(&self, Network network, String host, String port, int backlog = 10, SocketOption... options)
 {
-    *self = { .socket = network.listen(host, port, backlog)! };
+    *self = { .socket = network.listen(host, port, backlog, ...options)! };
 }
 
 fn Socket! Listener.accept(&self)

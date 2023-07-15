@@ -45,3 +45,10 @@ const int PLATFORM_AF_UTUN = 38;
 const int PLATFORM_AF_VSOCK = 40;
 const int PLATFORM_AF_MAX = 41;
 const int PLATFORM_O_NONBLOCK = 0x30;
+
+// https://opensource.apple.com/source/xnu/xnu-4570.41.2/bsd/sys/socket.h.auto.html
+const int SOL_SOCKET = 0xffff;
+const int SO_REUSEADDR = 0x0004;
+const int SO_KEEPALIVE = 0x0008;
+const int SO_BROADCAST = 0x0020;
+const int SO_REUSEPORT = 0x0200;
