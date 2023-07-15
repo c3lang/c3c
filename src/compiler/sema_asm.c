@@ -344,7 +344,7 @@ static inline bool sema_check_asm_var(SemaContext *context, AsmInlineBlock *bloc
 			unsigned bits = arg_bits_max(arg_type.ireg_bits, 0);
 			assert(bits);
 			SEMA_ERROR(expr, "%s is not supported in this position, convert it to a valid type, like %s.",
-			           type_quoted_error_string(decl->type), type_quoted_error_string(type_int_signed_by_bitsize(bits)));
+					   type_quoted_error_string(decl->type), type_quoted_error_string(type_int_signed_by_bitsize(bits)));
 			return false;
 		}
 		return true;
@@ -364,7 +364,7 @@ static inline bool sema_check_asm_var(SemaContext *context, AsmInlineBlock *bloc
 		if (!sema_reg_float_suported_type(arg_type, type))
 		{
 			SEMA_ERROR(expr, "%s is not supported in this position, convert it to a valid type.",
-			           type_quoted_error_string(decl->type));
+					   type_quoted_error_string(decl->type));
 			return false;
 		}
 		return true;

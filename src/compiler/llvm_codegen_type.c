@@ -432,7 +432,7 @@ static inline LLVMValueRef llvm_generate_temp_introspection_global(GenContext *c
 }
 
 static inline LLVMValueRef llvm_generate_introspection_global(GenContext *c, LLVMValueRef original_global, Type *type, IntrospectType introspect_type,
-                                                              Type *inner, size_t len, LLVMValueRef additional, bool is_external)
+															  Type *inner, size_t len, LLVMValueRef additional, bool is_external)
 {
 	if (original_global)
 	{
@@ -538,7 +538,7 @@ static LLVMValueRef llvm_get_introspection_for_enum(GenContext *c, Type *type)
 			llvm_emit_expr(c, &value, enum_vals[i]->enum_constant.args[ai]);
 			assert(!llvm_value_is_addr(&value));
 			LLVMValueRef llvm_value = llvm_value_is_bool(&value) ? LLVMBuildZExt(c->builder, value.value, c->byte_type, "")
-			                                                     : value.value;
+																 : value.value;
 			values[i] = llvm_value;
 			if (!val_type)
 			{
@@ -555,9 +555,9 @@ static LLVMValueRef llvm_get_introspection_for_enum(GenContext *c, Type *type)
 		scratch_buffer_append("$");
 		scratch_buffer_append(associated_value->name);
 		LLVMValueRef global_ref = llvm_add_global_raw(c,
-		                                              scratch_buffer_to_string(),
-		                                              LLVMTypeOf(associated_value_arr),
-		                                              0);
+													  scratch_buffer_to_string(),
+													  LLVMTypeOf(associated_value_arr),
+													  0);
 		llvm_set_linkonce(c, global_ref);
 		LLVMSetInitializer(global_ref, associated_value_arr);
 		LLVMSetGlobalConstant(global_ref, true);
@@ -604,8 +604,8 @@ static LLVMValueRef llvm_get_introspection_for_fault(GenContext *c, Type *type)
 		LLVMSetGlobalConstant(global_name, 1);
 
 		LLVMValueRef vals[3] = { LLVMBuildPtrToInt(c->builder, ref, c->typeid_type, ""),
-		                         llvm_emit_string_const(c, val->name, ".fault"),
-		                         llvm_const_int(c, type_usz, val->enum_constant.ordinal + 1 )};
+								 llvm_emit_string_const(c, val->name, ".fault"),
+								 llvm_const_int(c, type_usz, val->enum_constant.ordinal + 1 )};
 
 		LLVMSetInitializer(global_name, llvm_get_struct_named(c->fault_type, vals, 3));
 		llvm_set_linkonce(c, global_name);
@@ -669,17 +669,17 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 			return llvm_get_introspection_for_builtin_type(c, type, INTROSPECT_TYPE_BOOL, 0);
 		case ALL_SIGNED_INTS:
 			return llvm_get_introspection_for_builtin_type(c, type, INTROSPECT_TYPE_SIGNED_INT,
-			                                               type_kind_bitsize(type->type_kind));
+														   type_kind_bitsize(type->type_kind));
 		case ALL_UNSIGNED_INTS:
 			return llvm_get_introspection_for_builtin_type(c,
-			                                               type,
-			                                               INTROSPECT_TYPE_UNSIGNED_INT,
-			                                               type_kind_bitsize(type->type_kind));
+														   type,
+														   INTROSPECT_TYPE_UNSIGNED_INT,
+														   type_kind_bitsize(type->type_kind));
 		case ALL_FLOATS:
 			return llvm_get_introspection_for_builtin_type(c,
-			                                               type,
-			                                               INTROSPECT_TYPE_FLOAT,
-			                                               type_kind_bitsize(type->type_kind));
+														   type,
+														   INTROSPECT_TYPE_FLOAT,
+														   type_kind_bitsize(type->type_kind));
 		case TYPE_ANYFAULT:
 			return llvm_get_introspection_for_builtin_type(c, type, INTROSPECT_TYPE_ANYFAULT, 0);
 		case TYPE_ANY:

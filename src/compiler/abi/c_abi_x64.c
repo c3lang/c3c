@@ -311,7 +311,7 @@ void x64_classify_array(Type *type, ByteSize offset_base, X64Class *current, X64
 }
 
 void x64_classify_vector(Type *type, ByteSize offset_base, X64Class *current, X64Class *lo_class, X64Class *hi_class,
-                         NamedArgument named_arg)
+						 NamedArgument named_arg)
 {
 	unsigned size = type_size(type);
 	// Pass as int
@@ -582,8 +582,8 @@ AbiType x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_typ
 		case TYPE_I32:
 			if (offset) break;
 			if (x64_bits_contain_no_user_data(source_type,
-			                                  source_offset + type_size(type),
-			                                  source_offset + 8))
+											  source_offset + type_size(type),
+											  source_offset + 8))
 			{
 				return abi_type_get(type);
 			}
@@ -919,8 +919,8 @@ void c_abi_func_create_x64(FunctionPrototype *prototype)
 	if (prototype->ret_by_ref)
 	{
 		prototype->ret_by_ref_abi_info = x64_classify_parameter(type_get_ptr(type_lowering(prototype->ret_by_ref_type)),
-		                                                        &available_registers,
-		                                                        NAMED);
+																&available_registers,
+																NAMED);
 	}
 
 	Type **params = prototype->param_types;

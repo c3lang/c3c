@@ -1162,7 +1162,7 @@ INLINE bool is_end_of_param_list(ParseContext *c)
  *             | ELLIPSIS (CT_TYPE_IDENT | non_type_ident ('=' expr)?)?
  */
 bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
-                      Variadic *variadic, int *vararg_index_ref, ParameterParseKind parse_kind)
+					  Variadic *variadic, int *vararg_index_ref, ParameterParseKind parse_kind)
 {
 	Decl** params = NULL;
 	bool var_arg_found = false;
@@ -1702,7 +1702,7 @@ static inline Decl *parse_def_type(ParseContext *c)
 		if (token_is_any_type(c->tok))
 		{
 			SEMA_ERROR_HERE("'%s' is the name of a built-in type and can't be used as an alias.",
-			                token_type_to_string(c->tok));
+							token_type_to_string(c->tok));
 			return poisoned_decl;
 		}
 		if (token_is_some_ident(c->tok))
@@ -2050,7 +2050,7 @@ static inline Decl *parse_macro_declaration(ParseContext *c, AstId docs)
 	if (tok_is(c, TOKEN_IMPLIES))
 	{
 		ASSIGN_ASTID_OR_RET(decl->func_decl.body,
-		                    parse_short_body(c, decl->func_decl.signature.rtype, true), poisoned_decl);
+							parse_short_body(c, decl->func_decl.signature.rtype, true), poisoned_decl);
 		return decl;
 	}
 	ASSIGN_ASTID_OR_RET(decl->func_decl.body, parse_compound_stmt(c), poisoned_decl);
@@ -2268,7 +2268,7 @@ static inline Decl *parse_func_definition(ParseContext *c, AstId contracts, bool
 	if (tok_is(c, TOKEN_IMPLIES))
 	{
 		ASSIGN_ASTID_OR_RET(func->func_decl.body,
-		                    parse_short_body(c, func->func_decl.signature.rtype, true), poisoned_decl);
+							parse_short_body(c, func->func_decl.signature.rtype, true), poisoned_decl);
 	}
 	else if (tok_is(c, TOKEN_LBRACE))
 	{

@@ -303,7 +303,7 @@ INLINE bool sema_resolve_vatype(SemaContext *context, TypeInfo *type_info)
 		RETURN_SEMA_ERROR(type_info, "'%s' can only be used inside of a macro.", token_type_to_string(TOKEN_CT_VATYPE));
 	}
 	ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, type_info->unresolved_type_expr, NULL),
-	                   false);
+					   false);
 	if (arg_expr->expr_kind != EXPR_TYPEINFO) RETURN_SEMA_ERROR(arg_expr, "The argument was not a type.");
 
 	assert(arg_expr->resolve_status == RESOLVE_DONE);
@@ -337,8 +337,8 @@ static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, 
 	if (type_info->resolve_status == RESOLVE_RUNNING)
 	{
 		SEMA_ERROR(type_info,
-		           "Circular dependency resolving type '%s'.",
-		           type_info->unresolved.name);
+				   "Circular dependency resolving type '%s'.",
+				   type_info->unresolved.name);
 		return type_info_poison(type_info);
 	}
 
@@ -380,7 +380,7 @@ static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, 
 			if (!allow_inferred_type)
 			{
 				SEMA_ERROR(type_info, "Inferred %s types can only be used in declarations with initializers and as macro parameters.",
-				           type_info->kind == TYPE_INFO_INFERRED_VECTOR ? "vector" : "array");
+						   type_info->kind == TYPE_INFO_INFERRED_VECTOR ? "vector" : "array");
 				return type_info_poison(type_info);
 			}
 			FALLTHROUGH;

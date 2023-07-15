@@ -182,7 +182,7 @@ ABIArgInfo *aarch64_classify_return_type(Type *type, bool variadic)
 	Type *base = NULL;
 	unsigned members = 0;
 	if (type_is_homogenous_aggregate(type, &base, &members) &&
-	    !(platform_target.arch == ARCH_TYPE_AARCH64_32 && variadic))
+		!(platform_target.arch == ARCH_TYPE_AARCH64_32 && variadic))
 	{
 		return abi_arg_new_direct();
 	}

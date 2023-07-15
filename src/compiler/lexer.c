@@ -737,7 +737,7 @@ static inline bool scan_char(Lexer *lexer)
 				if (peek(lexer) == '\0') continue;
 				backtrack(lexer);
 				return add_error_token_at_current(lexer, "Unicode character literals may only contain one character, "
-				                                         "please remove the additional ones or use all ASCII.");
+														 "please remove the additional ones or use all ASCII.");
 			}
 			b.low = (uint64_t) utf8;
 			width = utf8 > 0xffff ? 4 : 2;
@@ -788,8 +788,8 @@ static inline bool scan_char(Lexer *lexer)
 				{
 					begin_new_token(lexer);
 					return add_error_token_at(lexer, escape_begin, lexer->current - escape_begin,
-					                          "Expected %s character hex value after \\%c.",
-					                          escape == 'u' ? "a four" : "an eight", escape);
+											  "Expected %s character hex value after \\%c.",
+											  escape == 'u' ? "a four" : "an eight", escape);
 				}
 				// If we don't see the end here, then something is wrong.
 				if (!match(lexer, '\''))
@@ -797,8 +797,8 @@ static inline bool scan_char(Lexer *lexer)
 					// It may be the end of the line, if so use the default handling by invoking "continue"
 					if (peek(lexer) == '\0') continue;
 					return add_error_token_at_current(lexer,
-					                                  "Character literals with '\\%c' can only contain one character, please remove this one.",
-					                                  escape);
+													  "Character literals with '\\%c' can only contain one character, please remove this one.",
+													  escape);
 				}
 				// Assign the value and go to "DONE".
 				b.low = (uint64_t) hex;
@@ -951,8 +951,8 @@ static inline bool scan_string(Lexer *lexer)
 		{
 			if (c == '\0') backtrack(lexer);
 			add_error_token_at_start(lexer, "The end of the file was reached "
-			                                "while parsing the string. "
-			                                "Did you forget (or accidentally add) a '\"' somewhere?");
+											"while parsing the string. "
+											"Did you forget (or accidentally add) a '\"' somewhere?");
 			consume_to_end_quote(lexer);
 			return false;
 		}
@@ -961,8 +961,8 @@ static inline bool scan_string(Lexer *lexer)
 
 			backtrack(lexer);
 			add_error_token_at_start(lexer, "The end of the line was reached "
-			                                "while parsing the string. "
-			                                "Did you forget (or accidentally add) a '\"' somewhere?");
+											"while parsing the string. "
+											"Did you forget (or accidentally add) a '\"' somewhere?");
 			consume_to_end_quote(lexer);
 			return false;
 		}
@@ -999,8 +999,8 @@ static inline bool scan_raw_string(Lexer *lexer)
 		if (c == '\0')
 		{
 			return add_error_token_at_start(lexer, "Reached the end of the file looking for "
-			                                       "the end of the raw string that starts "
-			                                       "here. Did you forget a '`' somewhere?");
+												   "the end of the raw string that starts "
+												   "here. Did you forget a '`' somewhere?");
 		}
 		if (c == '`') next(lexer);
 	}
@@ -1140,7 +1140,7 @@ static inline bool scan_base64(Lexer *lexer)
 	if ((len + end_len) % 4 != 0)
 	{
 		return add_error_token_at_start(lexer, "Base64 strings must either be padded to multiple of 4, or if unpadded "
-		                                       "- only need 1 or 2 bytes of extra padding.");
+											   "- only need 1 or 2 bytes of extra padding.");
 	}
 	uint64_t decoded_len = (3 * len - end_len) / 4;
 	if (!return_token(lexer, TOKEN_BYTES, lexer->lexing_start)) return false;
@@ -1350,8 +1350,8 @@ static bool lexer_scan_token_inner(Lexer *lexer)
 			return match(lexer, '=') ? return_token(lexer, TOKEN_EQEQ, "==") : return_token(lexer, TOKEN_EQ, "=");
 		case '^':
 			return match(lexer, '=') ? return_token(lexer, TOKEN_BIT_XOR_ASSIGN, "^=") : return_token(lexer,
-			                                                                                          TOKEN_BIT_XOR,
-			                                                                                          "^");
+																									  TOKEN_BIT_XOR,
+																									  "^");
 		case '?':
 			if (match(lexer, '?')) return return_token(lexer, TOKEN_QUESTQUEST, "??");
 			return match(lexer, ':') ? return_token(lexer, TOKEN_ELVIS, "?:") : return_token(lexer, TOKEN_QUESTION, "?");
@@ -1371,21 +1371,21 @@ static bool lexer_scan_token_inner(Lexer *lexer)
 			if (match(lexer, ')')) return return_token(lexer, TOKEN_RGENPAR, ">)");
 			if (match(lexer, ']')) return return_token(lexer, TOKEN_RVEC, ">]");
 			return match(lexer, '=') ? return_token(lexer, TOKEN_GREATER_EQ, ">=") : return_token(lexer,
-			                                                                                      TOKEN_GREATER,
-			                                                                                      ">");
+																								  TOKEN_GREATER,
+																								  ">");
 		case '%':
 			return match(lexer, '=') ? return_token(lexer, TOKEN_MOD_ASSIGN, "%=") : return_token(lexer, TOKEN_MOD, "%");
 		case '&':
 			if (match(lexer, '&')) return return_token(lexer, TOKEN_AND, "&&");
 			return match(lexer, '=') ? return_token(lexer, TOKEN_BIT_AND_ASSIGN, "&=") : return_token(lexer,
-			                                                                                          TOKEN_AMP,
-			                                                                                          "&");
+																									  TOKEN_AMP,
+																									  "&");
 		case '|':
 			if (match(lexer, '}')) return return_token(lexer, TOKEN_RBRAPIPE, "|}");
 			if (match(lexer, '|')) return return_token(lexer, TOKEN_OR, "||");
 			return match(lexer, '=') ? return_token(lexer, TOKEN_BIT_OR_ASSIGN, "|=") : return_token(lexer,
-			                                                                                         TOKEN_BIT_OR,
-			                                                                                         "|");
+																									 TOKEN_BIT_OR,
+																									 "|");
 		case '+':
 			if (match(lexer, '+')) return return_token(lexer, TOKEN_PLUSPLUS, "++");
 			if (match(lexer, '=')) return return_token(lexer, TOKEN_PLUS_ASSIGN, "+=");

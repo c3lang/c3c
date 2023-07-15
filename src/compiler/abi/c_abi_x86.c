@@ -412,7 +412,7 @@ static inline ABIArgInfo *x86_classify_aggregate(CallABI call, Regs *regs, Type 
 	// Don't do this for the MCU if there are still free integer registers
 	// (see X86_64 ABI for full explanation).
 	if (size <= 16 && (!platform_target.x86.is_mcu_api || !regs->int_regs) &&
-	    x86_can_expand_indirect_aggregate_arg(type))
+		x86_can_expand_indirect_aggregate_arg(type))
 	{
 		return abi_arg_new_expand();
 	}
@@ -532,12 +532,12 @@ void c_abi_func_create_x86(FunctionPrototype *prototype)
 	/*
 	 * // The chain argument effectively gives us another free register.
   if (FI.isChainCall())
-    ++State.FreeRegs;
+	++State.FreeRegs;
 
   // For vectorcall, do a first pass over the arguments, assigning FP and vector
   // arguments to XMM registers as available.
   if (State.CC == llvm::CallingConv::X86_VectorCall)
-    runVectorCallFirstPass(FI, State);
+	runVectorCallFirstPass(FI, State);
 	 */
 
 	prototype->abi_args = x86_create_params(prototype->call_abi, prototype->param_types, &regs);

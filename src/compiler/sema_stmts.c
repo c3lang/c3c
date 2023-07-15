@@ -726,7 +726,7 @@ static inline bool sema_analyse_catch_unwrap(SemaContext *context, Expr *expr)
 		if (ident->type->canonical != type_anyfault)
 		{
 			SEMA_ERROR(ident, "Expected the variable to have the type %s, not %s.", type_quoted_error_string(type_anyfault),
-			           type_quoted_error_string(ident->type));
+					   type_quoted_error_string(ident->type));
 			return false;
 		}
 
@@ -742,7 +742,7 @@ static inline bool sema_analyse_catch_unwrap(SemaContext *context, Expr *expr)
 		if (type->type->canonical != type_anyfault)
 		{
 			SEMA_ERROR(type, "Expected the type to be %s, not %s.", type_quoted_error_string(type_anyfault),
-			           type_quoted_error_string(type->type));
+					   type_quoted_error_string(type->type));
 			return false;
 		}
 		if (ident->expr_kind != EXPR_IDENTIFIER)
@@ -1267,7 +1267,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 			if (!may_be_array)
 			{
 				SEMA_ERROR(enumerator,
-				           "This initializer appears to be a struct initializer when, an array initializer was expected.");
+						   "This initializer appears to be a struct initializer when, an array initializer was expected.");
 				return SCOPE_POP_ERROR();
 			}
 			if (!is_const_size)
@@ -1400,8 +1400,8 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		if (!type_is_integer(type_flatten(index_var_type)))
 		{
 			SEMA_ERROR(index->var.type_info,
-			           "Index must be an integer type, '%s' is not valid.",
-			           type_to_error_string(index_var_type));
+					   "Index must be an integer type, '%s' is not valid.",
+					   type_to_error_string(index_var_type));
 			return false;
 		}
 	}
@@ -1604,13 +1604,13 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 	Ast *else_body = else_id ? astptr(else_id) : NULL;
 	SCOPE_OUTER_START
 		CondType cond_type = then->ast_kind == AST_IF_CATCH_SWITCH_STMT
-		                     ? COND_TYPE_UNWRAP : COND_TYPE_UNWRAP_BOOL;
+							 ? COND_TYPE_UNWRAP : COND_TYPE_UNWRAP_BOOL;
 		success = sema_analyse_cond(context, cond, cond_type);
 
 		if (success && !ast_ok(then))
 		{
 			SEMA_ERROR(then,
-			           "The 'then' part of a single line if-statement must start on the same line as the 'if' or use '{ }'");
+					   "The 'then' part of a single line if-statement must start on the same line as the 'if' or use '{ }'");
 			success = false;
 		}
 
@@ -1623,10 +1623,10 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 				success = false;
 			}
 			if (success && else_body->ast_kind != AST_COMPOUND_STMT &&
-			    else_body->ast_kind != AST_IF_STMT)
+				else_body->ast_kind != AST_IF_STMT)
 			{
 				SEMA_ERROR(else_body,
-				           "An 'else' must use '{ }' even around a single statement.");
+						   "An 'else' must use '{ }' even around a single statement.");
 				success = false;
 			}
 		}
@@ -2066,10 +2066,10 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 		if (int_comp(const_expr->ixx, to_const_expr->ixx, BINARYOP_GT))
 		{
 			sema_error_at(extend_span_with_token(expr->span, to_expr->span),
-			              "The range is not valid because the first value (%s) is greater than the second (%s). "
-			              "It would work if you swapped their order.",
-			              int_to_str(const_expr->ixx, 10),
-			              int_to_str(to_const_expr->ixx, 10));
+						  "The range is not valid because the first value (%s) is greater than the second (%s). "
+						  "It would work if you swapped their order.",
+						  int_to_str(const_expr->ixx, 10),
+						  int_to_str(to_const_expr->ixx, 10));
 			return false;
 		}
 		Int128 range = int_sub(to_const_expr->ixx, const_expr->ixx).i;
@@ -2217,9 +2217,9 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 				{
 					Type *real_type = type_get_ptr(exprptr(stmt->case_stmt.expr)->const_expr.typeid);
 					Decl *new_var = decl_new_var(any_switch->new_ident, any_switch->span,
-					                             type_info_new_base(any_switch->is_deref
-					                             ? real_type->pointer : real_type, any_switch->span),
-					                             VARDECL_LOCAL);
+												 type_info_new_base(any_switch->is_deref
+												 ? real_type->pointer : real_type, any_switch->span),
+												 VARDECL_LOCAL);
 					Expr *var_result = expr_variable(var_holder);
 					if (!cast(var_result, real_type)) return false;
 					if (any_switch->is_deref)
@@ -2555,8 +2555,8 @@ static inline bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement
 
 		statement->switch_stmt.defer = context->active_scope.defer_last;
 		if (!sema_analyse_switch_body(context, statement, cond ? cond->span : statement->span,
-		                              switch_type->canonical,
-		                              statement->switch_stmt.cases, any_decl ? &var_switch : NULL, any_decl))
+									  switch_type->canonical,
+									  statement->switch_stmt.cases, any_decl ? &var_switch : NULL, any_decl))
 		{
 			return SCOPE_POP_ERROR();
 		}
@@ -2974,7 +2974,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 		if (!any)
 		{
 			SEMA_ERROR(func, "To define a '@dynamic' method, the prototype method 'any.%s(...)' must exist. Did you spell the method name right?",
-			           func->name);
+					   func->name);
 			return false;
 		}
 
@@ -2985,7 +2985,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 		if (any_rtype->canonical != this_rtype->canonical)
 		{
 			SEMA_ERROR(type_infoptr(this_sig.rtype), "The prototype method has a return type %s, but this function returns %s, they need to match.",
-			           type_quoted_error_string(any_rtype), type_quoted_error_string(this_rtype));
+					   type_quoted_error_string(any_rtype), type_quoted_error_string(this_rtype));
 			SEMA_NOTE(type_infoptr(any_sig.rtype), "The interface definition is here.");
 			return false;
 		}
@@ -3014,7 +3014,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 			if (param->type->canonical != any_params[i]->type->canonical)
 			{
 				SEMA_ERROR(param->var.type_info, "The prototype argument has type %s, but in this function it has type %s. Please make them match.",
-				           type_quoted_error_string(any_params[i]->type), type_quoted_error_string(param->type));
+						   type_quoted_error_string(any_params[i]->type), type_quoted_error_string(param->type));
 				SEMA_NOTE(any_params[i]->var.type_info, "The interface definition is here.");
 				return false;
 			}

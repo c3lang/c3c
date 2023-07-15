@@ -23,7 +23,7 @@ ABIArgInfo *win64_classify(Regs *regs, Type *type, bool is_return, bool is_vecto
 	{
 		// Enough registers AND return / builtin / vector
 		if (regs->float_regs >= elements &&
-		    (is_return || type_is_builtin(type->type_kind) || type->type_kind == TYPE_VECTOR))
+			(is_return || type_is_builtin(type->type_kind) || type->type_kind == TYPE_VECTOR))
 		{
 			regs->float_regs -= elements;
 			return abi_arg_new_direct();
@@ -155,9 +155,9 @@ void c_abi_func_create_win64(FunctionPrototype *prototype)
 	if (prototype->ret_by_ref)
 	{
 		prototype->ret_by_ref_abi_info = win64_classify(&regs,
-		                                                type_get_ptr(type_lowering(prototype->ret_by_ref_type)),
-		                                                false,
-		                                                is_vector_call);
+														type_get_ptr(type_lowering(prototype->ret_by_ref_type)),
+														false,
+														is_vector_call);
 	}
 
 	// Set up parameter registers.

@@ -87,7 +87,7 @@ static bool sema_check_builtin_args(Expr **args, BuiltinArg *arg_type, size_t ar
 			case BA_FLOATLIKE:
 				if (type_flat_is_floatlike(type)) continue;
 				RETURN_SEMA_ERROR(arg, "Expected a floating point or floating point vector, but was %s.",
-					           type_quoted_error_string(type));
+							   type_quoted_error_string(type));
 			case BA_VEC:
 				if (type->type_kind == TYPE_VECTOR) continue;
 				RETURN_SEMA_ERROR(arg, "Expected a vector.");
@@ -203,8 +203,8 @@ static bool sema_expr_analyse_compare_exchange(SemaContext *context, Expr *expr)
 	Expr *align = args[7];
 	if (!sema_analyse_expr_rhs(context, type_usz, align, false)) return false;
 	if (!expr_is_const_int(align)
-	    || !int_fits(align->const_expr.ixx, TYPE_U64)
-	    || (!is_power_of_two(align->const_expr.ixx.i.low) && align->const_expr.ixx.i.low))
+		|| !int_fits(align->const_expr.ixx, TYPE_U64)
+		|| (!is_power_of_two(align->const_expr.ixx.i.low) && align->const_expr.ixx.i.low))
 	{
 		RETURN_SEMA_ERROR(args[7], "Expected a constant power-of-two alignment or zero.");
 	}
@@ -332,8 +332,8 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_OVERFLOW_SUB:
 			assert(arg_count == 3);
 			if (!sema_check_builtin_args(args,
-			                             (BuiltinArg[]) { BA_INTEGER, BA_INTEGER, BA_POINTER },
-			                             3)) return false;
+										 (BuiltinArg[]) { BA_INTEGER, BA_INTEGER, BA_POINTER },
+										 3)) return false;
 			if (!sema_check_builtin_args_match(args, 2)) return false;
 			if (type_no_optional(args[0]->type->canonical) != type_no_optional(args[2]->type->canonical->pointer))
 			{
@@ -543,7 +543,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_FSHR:
 			assert(arg_count == 3);
 			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_INTLIKE, BA_INTLIKE, BA_INTLIKE },
-			                             3)) return false;
+										 3)) return false;
 			if (!sema_check_builtin_args_match(args, 3)) return false;
 			rtype = args[0]->type;
 			break;

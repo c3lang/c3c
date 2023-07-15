@@ -63,11 +63,11 @@ static bool riscv_detect_fpcc_struct_internal(Type *type, unsigned current_offse
 		for (ByteSize i = 0; i < array_len; i++)
 		{
 			if (!riscv_detect_fpcc_struct_internal(element_type,
-			                                       current_offset,
-			                                       field1_ref,
-			                                       field1_offset,
-			                                       field2_ref,
-			                                       field2_offset)) return false;
+												   current_offset,
+												   field1_ref,
+												   field1_offset,
+												   field2_ref,
+												   field2_offset)) return false;
 			current_offset += (unsigned)element_size;
 		}
 		return true;
@@ -82,11 +82,11 @@ static bool riscv_detect_fpcc_struct_internal(Type *type, unsigned current_offse
 		{
 			Decl *member = members[i];
 			if (!riscv_detect_fpcc_struct_internal(member->type,
-			                                       (unsigned)(current_offset + member->offset),
-			                                       field1_ref,
-			                                       field1_offset,
-			                                       field2_ref,
-			                                       field2_offset)) return false;
+												   (unsigned)(current_offset + member->offset),
+												   field1_ref,
+												   field1_offset,
+												   field2_ref,
+												   field2_offset)) return false;
 
 		}
 		return abi_type_is_valid(*field1_ref);
@@ -156,12 +156,12 @@ static ABIArgInfo *riscv_classify_argument_type(Type *type, bool is_fixed, unsig
 		unsigned needed_gprs;
 		unsigned needed_fprs;
 		bool is_candidate = riscv_detect_fpcc_struct(type,
-		                                             &field1,
-		                                             &offset1,
-		                                             &field2,
-		                                             &offset2,
-		                                             &needed_gprs,
-		                                             &needed_fprs);
+													 &field1,
+													 &offset1,
+													 &field2,
+													 &offset2,
+													 &needed_gprs,
+													 &needed_fprs);
 		if (is_candidate && needed_gprs <= *gprs && needed_fprs <= *fprs)
 		{
 			*gprs -= needed_gprs;
@@ -282,7 +282,7 @@ void c_abi_func_create_riscv(FunctionPrototype *prototype)
 	if (prototype->ret_by_ref)
 	{
 		prototype->ret_by_ref_abi_info = riscv_classify_argument_type(type_get_ptr(type_lowering(prototype->ret_by_ref_type)),
-		                                                              true, &arg_gprs_left, &arg_fprs_left);
+																	  true, &arg_gprs_left, &arg_fprs_left);
 	}
 
 	prototype->abi_args = riscv_create_params(prototype->param_types, true, &arg_gprs_left, &arg_fprs_left);

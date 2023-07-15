@@ -410,7 +410,7 @@ static Expr *parse_lambda(ParseContext *c, Expr *left)
 	if (tok_is(c, TOKEN_IMPLIES))
 	{
 		ASSIGN_ASTID_OR_RET(func->func_decl.body,
-		                    parse_short_body(c, func->func_decl.signature.rtype, false), poisoned_expr);
+							parse_short_body(c, func->func_decl.signature.rtype, false), poisoned_expr);
 	}
 	else if (tok_is(c, TOKEN_LBRACE))
 	{
@@ -446,7 +446,7 @@ Expr *parse_vasplat(ParseContext *c)
  * parameter ::= (param_path '=')? expr
  */
 bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *splat, bool vasplat,
-                    bool allow_trailing_comma)
+					bool allow_trailing_comma)
 {
 	*result = NULL;
 	if (splat) *splat = false;
@@ -1430,7 +1430,7 @@ EXIT:
 	if (type_bits)
 	{
 		type_base = is_unsigned ? type_int_unsigned_by_bitsize((unsigned)type_bits)
-		                        : type_int_signed_by_bitsize((unsigned)type_bits);
+								: type_int_signed_by_bitsize((unsigned)type_bits);
 	}
 	else
 	{
@@ -1460,12 +1460,12 @@ EXIT:
 		if (type_bits)
 		{
 			SEMA_ERROR_HERE("'%s' does not fit in a '%c%d' literal.",
-			                i128_to_string(i, radix, true), is_unsigned ? 'u' : 'i', type_bits);
+							i128_to_string(i, radix, true), is_unsigned ? 'u' : 'i', type_bits);
 		}
 		else
 		{
 			SEMA_ERROR_HERE("'%s' does not fit in an %s literal.",
-			                i128_to_string(i, radix, true), is_unsigned ? "unsigned int" : "int");
+							i128_to_string(i, radix, true), is_unsigned ? "unsigned int" : "int");
 		}
 		return poisoned_expr;
 	}

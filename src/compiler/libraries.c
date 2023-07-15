@@ -58,7 +58,7 @@ static inline void parse_provides(Library *library, JSONObject *object)
 static inline void parse_depends(Library *library, JSONObject *object)
 {
 	JSONObject *depends = get_optional_string_array(library, object, "depends");
- 	if (!depends) return;
+	if (!depends) return;
 	 TODO
 }
 
@@ -137,8 +137,8 @@ static void add_library_dependency(Library *library, Library **library_list, siz
 	VECEACH(target_found->depends, i)
 	{
 		add_library_dependency(find_library(library_list, lib_count, target_found->depends[i]),
-		                       library_list,
-		                       lib_count);
+							   library_list,
+							   lib_count);
 	}
 }
 

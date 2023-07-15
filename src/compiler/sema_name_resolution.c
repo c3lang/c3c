@@ -466,13 +466,13 @@ static void sema_report_error_on_decl(Decl *found, NameResolve *name_resolve)
 		if (path_name)
 		{
 			sema_error_at(span, "The %s '%s::%s' is not visible from this module.",
-			              private_name, path_name,
-			              symbol);
+						  private_name, path_name,
+						  symbol);
 		}
 		else
 		{
 			sema_error_at(span, "The %s '%s' is not visible from this module.",
-			              private_name, symbol);
+						  private_name, symbol);
 		}
 		return;
 	}
@@ -489,7 +489,7 @@ static void sema_report_error_on_decl(Decl *found, NameResolve *name_resolve)
 		else
 		{
 			sema_error_at(span, "Did you mean the %s '%s' in module %s? If so please add 'import %s'.",
-			              maybe_name, symbol, module_name, module_name);
+						  maybe_name, symbol, module_name, module_name);
 		}
 		return;
 	}
@@ -503,18 +503,18 @@ static void sema_report_error_on_decl(Decl *found, NameResolve *name_resolve)
 		if (path_name)
 		{
 			sema_error_at(span,
-			              "The %s '%s::%s' is defined in both '%s' and '%s', "
+						  "The %s '%s::%s' is defined in both '%s' and '%s', "
 						  "please use either %s::%s or %s::%s to resolve the ambiguity.",
-			              symbol_type, path_name, symbol, found_path, other_path,
-			              found_path, symbol, other_path, symbol);
+						  symbol_type, path_name, symbol, found_path, other_path,
+						  found_path, symbol, other_path, symbol);
 		}
 		else
 		{
 			sema_error_at(span,
-			              "The %s '%s' is defined in both '%s' and '%s', please use either "
+						  "The %s '%s' is defined in both '%s' and '%s', please use either "
 						  "%s::%s or %s::%s to resolve the ambiguity.",
-			              symbol_type, symbol, found_path, other_path,
-			              found_path, symbol, other_path, symbol);
+						  symbol_type, symbol, found_path, other_path,
+						  found_path, symbol, other_path, symbol);
 		}
 		return;
 	}
@@ -718,10 +718,10 @@ Decl *sema_resolve_type_method(CompilationUnit *unit, Type *type, const char *me
 		if (import->import.module->is_generic) continue;
 
 		Decl *new_found = sema_resolve_method_in_module(import->import.module, type, method_name,
-		                                                &private, &ambiguous,
-		                                                import->import.import_private_as_public
-		                                                ? METHOD_SEARCH_PRIVATE_IMPORTED
-		                                                : METHOD_SEARCH_IMPORTED);
+														&private, &ambiguous,
+														import->import.import_private_as_public
+														? METHOD_SEARCH_PRIVATE_IMPORTED
+														: METHOD_SEARCH_IMPORTED);
 		if (!new_found) continue;
 		if (found)
 		{
@@ -779,8 +779,8 @@ Decl *unit_resolve_parameterized_symbol(CompilationUnit *unit, NameResolve *name
 	if (!decl)
 	{
 		decl = sema_find_decl_in_global_new(unit, &global_context.generic_symbols,
-		                                    global_context.generic_module_list,
-		                                    name_resolve, true);
+											global_context.generic_module_list,
+											name_resolve, true);
 	}
 	// 14. Error report
 	if (!decl || name_resolve->ambiguous_other_decl)

@@ -346,7 +346,7 @@ static bool integer_to_integer(Expr *expr, Type *canonical, Type *type)
 	// Fold pointer casts if narrowing
 	// So (int)(uptr)&x => (int)&x in the backend.
 	if (expr->expr_kind == EXPR_CAST && expr->cast_expr.kind == CAST_PTRINT
-	    && type_size(type) <= type_size(expr->type))
+		&& type_size(type) <= type_size(expr->type))
 	{
 		expr->type = type;
 		return true;
@@ -644,8 +644,8 @@ void cast_to_int_to_max_bit_size(SemaContext *context, Expr *lhs, Expr *rhs, Typ
 	if (bit_size_left < bit_size_right)
 	{
 		Type *to = lhs->type->type_kind < TYPE_U8
-		           ? type_int_signed_by_bitsize(bit_size_right)
-		           : type_int_unsigned_by_bitsize(bit_size_right);
+				   ? type_int_signed_by_bitsize(bit_size_right)
+				   : type_int_unsigned_by_bitsize(bit_size_right);
 		bool success = cast(lhs, to);
 		assert(success);
 		return;
@@ -653,8 +653,8 @@ void cast_to_int_to_max_bit_size(SemaContext *context, Expr *lhs, Expr *rhs, Typ
 
 	// Rhs is smaller, do the same thing as above but with the rhs.
 	Type *to = rhs->type->type_kind < TYPE_U8
-	           ? type_int_signed_by_bitsize(bit_size_left)
-	           : type_int_unsigned_by_bitsize(bit_size_left);
+			   ? type_int_signed_by_bitsize(bit_size_left)
+			   : type_int_unsigned_by_bitsize(bit_size_left);
 	bool success = cast(rhs, to);
 	assert(success);
 }
@@ -954,9 +954,9 @@ static bool cast_from_pointer(SemaContext *context, Expr *expr, Type *from, Type
 			if (type_size(to_type) < type_size(type_uptr))
 			{
 				SEMA_ERROR(expr, "Casting %s to %s is not allowed because '%s' is smaller than a pointer. "
-				                 "Use (%s)(iptr) if you want this lossy cast.",
-				           type_quoted_error_string(expr->type), type_quoted_error_string(to_type),
-				           type_to_error_string(to_type), type_to_error_string(to_type));
+								 "Use (%s)(iptr) if you want this lossy cast.",
+						   type_quoted_error_string(expr->type), type_quoted_error_string(to_type),
+						   type_to_error_string(to_type), type_to_error_string(to_type));
 				return false;
 			}
 			return cast_with_optional(expr, to_type, add_optional);
@@ -986,7 +986,7 @@ static bool cast_from_pointer(SemaContext *context, Expr *expr, Type *from, Type
 				if (!is_explicit)
 				{
 					would_work_explicit = cast_from_pointer(context, expr_copy(expr),
-					                                        from, to, to_type, add_optional, true, true);
+															from, to, to_type, add_optional, true, true);
 				}
 				return sema_error_cannot_convert(expr, to_type, would_work_explicit, false);
 			}
@@ -1025,12 +1025,12 @@ static void sema_error_const_int_out_of_range(Expr *expr, Expr *problem, Type *t
 	{
 		SEMA_ERROR(problem, "The ordinal '%d' is out of range for %s, so you need an explicit cast to truncate the value.",
 				   expr->const_expr.enum_err_val->var.index,
-		           type_quoted_error_string(to_type));
+				   type_quoted_error_string(to_type));
 		return;
 	}
 	const char *error_value = expr->const_expr.is_hex ? int_to_str(expr->const_expr.ixx, 16) : expr_const_to_error_string(&expr->const_expr);
 	SEMA_ERROR(problem, "The value '%s' is out of range for %s, so you need an explicit cast to truncate the value.", error_value,
-	           type_quoted_error_string(to_type));
+			   type_quoted_error_string(to_type));
 }
 
 
@@ -1138,15 +1138,15 @@ static inline bool sema_error_cannot_convert(Expr *expr, Type *to, bool may_cast
 	if (may_cast_explicit)
 	{
 		SEMA_ERROR(expr,
-		           "Implicitly casting %s to %s is not permitted, but you can do an explicit cast by placing '(%s)' before the expression.",
-		           type_quoted_error_string(type_no_optional(expr->type)),
-		           type_quoted_error_string(to),
-		           type_to_error_string(type_no_optional(to)));
+				   "Implicitly casting %s to %s is not permitted, but you can do an explicit cast by placing '(%s)' before the expression.",
+				   type_quoted_error_string(type_no_optional(expr->type)),
+				   type_quoted_error_string(to),
+				   type_to_error_string(type_no_optional(to)));
 	}
 	else
 	{
 		SEMA_ERROR(expr,
-		           "It is not possible to convert %s to %s.",
+				   "It is not possible to convert %s to %s.",
 				   type_quoted_error_string(type_no_optional(expr->type)), type_quoted_error_string(to));
 	}
 	return false;
@@ -1406,7 +1406,7 @@ RETRY:
 			{
 				if (silent) return false;
 				SEMA_ERROR(expr, "You cannot cast from a type smaller than %s.",
-				           type_quoted_error_string(type_iptr));
+						   type_quoted_error_string(type_iptr));
 				return false;
 			}
 			goto CAST;
@@ -1464,7 +1464,7 @@ RETRY:
 			{
 				if (silent) return false;
 				SEMA_ERROR(expr, "The value '%s' is out of range for %s, so you need an explicit cast to truncate the value.", expr_const_to_error_string(&expr->const_expr),
-					           type_quoted_error_string(to_type));
+							   type_quoted_error_string(to_type));
 				return false;
 			}
 			// Otherwise, check if the underlying code may narrow.
@@ -1517,14 +1517,14 @@ CAST:
  * 3. Constant pointer conversions
  */
 static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, bool is_explicit, bool silent,
-                            bool may_not_be_optional)
+							bool may_not_be_optional)
 {
 	Type *from_type = expr->type;
 
 	assert(!type_is_optional(to_type) || may_not_be_optional);
 
 	if (to_type->canonical->type_kind == TYPE_POINTER && from_type->canonical->type_kind != TYPE_POINTER
-	    && to_type->canonical->pointer == from_type->canonical && expr->expr_kind == EXPR_IDENTIFIER
+		&& to_type->canonical->pointer == from_type->canonical && expr->expr_kind == EXPR_IDENTIFIER
 		&& expr->identifier_expr.was_ref)
 	{
 		RETURN_SEMA_ERROR(expr, "A macro ref parameter is a dereferenced pointer ('*&foo'). You can prefix it"
@@ -1579,7 +1579,7 @@ static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, boo
 				{
 					if (silent) return false;
 					SEMA_ERROR(expr, "A 'void!' can only be cast into %s using an explicit cast. You can try using (%s)",
-					           type_quoted_error_string(to_type), type_to_error_string(to_type));
+							   type_quoted_error_string(to_type), type_to_error_string(to_type));
 					return false;
 				}
 				cast(expr, to_type);
@@ -1677,7 +1677,7 @@ static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, boo
 			goto CAST_FAILED;
 		case TYPE_TYPEID:
 			if (!type_is_pointer_sized_or_more(to_type)) goto CAST_FAILED;
-    		goto CAST_IF_EXPLICIT;
+			goto CAST_IF_EXPLICIT;
 		case TYPE_OPTIONAL:
 		case TYPE_TYPEDEF:
 			UNREACHABLE;
@@ -1725,10 +1725,10 @@ CAST_IF_EXPLICIT:
 	{
 		if (silent) return false;
 		SEMA_ERROR(expr,
-		           "Implicitly casting %s to %s is not permitted, but you can do an explicit cast by placing '(%s)' before the expression.",
-		           type_quoted_error_string(type_no_optional(from_type)),
-		           type_quoted_error_string(type_no_optional(to_type)),
-		           type_to_error_string(to_type));
+				   "Implicitly casting %s to %s is not permitted, but you can do an explicit cast by placing '(%s)' before the expression.",
+				   type_quoted_error_string(type_no_optional(from_type)),
+				   type_quoted_error_string(type_no_optional(to_type)),
+				   type_to_error_string(to_type));
 		return false;
 	}
 	return cast(expr, to_type);

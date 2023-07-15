@@ -8,16 +8,16 @@
 CompilationUnit *unit_create(File *file)
 {
 	CompilationUnit *unit = CALLOCS(CompilationUnit);
-    unit->file = file;
+	unit->file = file;
 	unit->is_interface_file = str_has_suffix(file->name, ".c3i");
 	htable_init(&unit->local_symbols, 1024);
-    return unit;
+	return unit;
 }
 
 
 static inline bool create_module_or_check_name(CompilationUnit *unit, Path *module_name, const char **parameters)
 {
-    Module *module = unit->module;
+	Module *module = unit->module;
 	if (!module)
 	{
 		module = unit->module = compiler_find_or_create_module(module_name, parameters);
@@ -27,9 +27,9 @@ static inline bool create_module_or_check_name(CompilationUnit *unit, Path *modu
 		if (unit->module->name->module != module_name->module)
 		{
 			SEMA_ERROR(module_name,
-			           "Module name here '%s' did not match actual module '%s'.",
-			           module_name->module,
-			           module->name->module);
+					   "Module name here '%s' did not match actual module '%s'.",
+					   module_name->module,
+					   module->name->module);
 			return false;
 		}
 	}
@@ -71,40 +71,40 @@ bool context_set_module_from_filename(ParseContext *context)
 {
 	File *file = context->unit->file;
 	if (!filename_to_module_in_buffer(file->full_path))
-    {
+	{
 		sema_error(context, "The filename '%s' could not be converted to a valid module name, try using an explicit module name.", file->full_path);
-        return false;
-    }
+		return false;
+	}
 
-    TokenType type = TOKEN_IDENT;
+	TokenType type = TOKEN_IDENT;
 	const char *module_name = symtab_add(scratch_buffer.str,
-	                                     scratch_buffer.len,
-	                                     fnv1a(scratch_buffer.str, (uint32_t) scratch_buffer.len),
-	                                     &type);
+										 scratch_buffer.len,
+										 fnv1a(scratch_buffer.str, (uint32_t) scratch_buffer.len),
+										 &type);
 
-    if (type != TOKEN_IDENT)
-    {
-	    sema_error(context, "Generating a filename from the file '%s' resulted in a name that is a reserved keyword, "
-	                        "try using an explicit module name.", file->full_path);
-        return false;
-    }
-    Path *path = CALLOCS(Path);
-    path->span = INVALID_SPAN;
-    path->module = module_name;
-    path->len = scratch_buffer.len;
-    return create_module_or_check_name(context->unit, path, NULL);
+	if (type != TOKEN_IDENT)
+	{
+		sema_error(context, "Generating a filename from the file '%s' resulted in a name that is a reserved keyword, "
+							"try using an explicit module name.", file->full_path);
+		return false;
+	}
+	Path *path = CALLOCS(Path);
+	path->span = INVALID_SPAN;
+	path->module = module_name;
+	path->len = scratch_buffer.len;
+	return create_module_or_check_name(context->unit, path, NULL);
 }
 
 bool context_set_module(ParseContext *context, Path *path, const char **generic_parameters)
 {
-    // Note that we allow the illegal name for now, to be able to parse further.
-    if (!str_has_no_uppercase(path->module))
-    {
-    	SEMA_ERROR(path, "A module name may not have any uppercase characters.");
-        return false;
-    }
+	// Note that we allow the illegal name for now, to be able to parse further.
+	if (!str_has_no_uppercase(path->module))
+	{
+		SEMA_ERROR(path, "A module name may not have any uppercase characters.");
+		return false;
+	}
 
-    return create_module_or_check_name(context->unit, path, generic_parameters);
+	return create_module_or_check_name(context->unit, path, generic_parameters);
 }
 
 
@@ -264,7 +264,7 @@ ERR:
 
 bool unit_add_import(CompilationUnit *unit, Path *path, bool private_import)
 {
-    DEBUG_LOG("SEMA: Add import of '%s'.", path->module);
+	DEBUG_LOG("SEMA: Add import of '%s'.", path->module);
 
 	if (!str_has_no_uppercase(path->module))
 	{
@@ -278,8 +278,8 @@ bool unit_add_import(CompilationUnit *unit, Path *path, bool private_import)
 	import->import.path = path;
 	import->import.import_private_as_public = private_import;
 
-    vec_add(unit->imports, import);
+	vec_add(unit->imports, import);
 	DEBUG_LOG("Added import %s", path->module);
-    return true;
+	return true;
 }
 

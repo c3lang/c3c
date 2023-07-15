@@ -49,7 +49,7 @@ void compiler_init(const char *std_lib_dir)
 	global_context.module_list = NULL;
 	global_context.generic_module_list = NULL;
 	global_context.method_extensions = NULL;
-    global_context.section_list = NULL;
+	global_context.section_list = NULL;
 	vmem_init(&ast_arena, 512);
 	ast_calloc();
 	vmem_init(&expr_arena, 512);
@@ -246,7 +246,7 @@ static void free_arenas(void)
 		printf(" * TypeInfo size: %u bytes\n", (unsigned)sizeof(TypeInfo));
 		printf(" * Ast memory use: %llukb (%u elements)\n",
 			   (unsigned long long)ast_arena.allocated / 1024,
-		       (unsigned)(ast_arena.allocated / sizeof(Ast)));
+			   (unsigned)(ast_arena.allocated / sizeof(Ast)));
 		printf(" * Decl memory use: %llukb (%u elements)\n",
 			   (unsigned long long)decl_arena.allocated / 1024,
 			   (unsigned)(decl_arena.allocated / sizeof(Decl)));
@@ -479,7 +479,7 @@ void compiler_compile(void)
 		{
 			compiler_print_bench();
 			if (!obj_format_linking_supported(platform_target.object_format) || !linker(output_exe, obj_files,
-			                                                                            output_file_count))
+																						output_file_count))
 			{
 				printf("No linking is performed due to missing linker support.\n");
 				active_target.run_after_compile = false;
@@ -877,21 +877,21 @@ void global_context_add_generic_decl(Decl *decl)
 
 SectionId global_context_register_section(const char *section)
 {
-    scratch_buffer_clear();
-    scratch_buffer_append("SECTION#");
-    scratch_buffer_append(section);
-    TokenType type = TOKEN_INVALID_TOKEN;
-    const char *result = scratch_buffer_interned();
-    FOREACH_BEGIN_IDX(i, const char *candidate, global_context.section_list)
-        if (result == candidate) return i + 1;
-    FOREACH_END();
-    unsigned len = vec_size(global_context.section_list);
-    if (len >= MAX_SECTIONS)
-    {
-        error_exit("Too many sections in source, max %d allowed.", MAX_SECTIONS);
-    }
-    vec_add(global_context.section_list, result);
-    return len + 1;
+	scratch_buffer_clear();
+	scratch_buffer_append("SECTION#");
+	scratch_buffer_append(section);
+	TokenType type = TOKEN_INVALID_TOKEN;
+	const char *result = scratch_buffer_interned();
+	FOREACH_BEGIN_IDX(i, const char *candidate, global_context.section_list)
+		if (result == candidate) return i + 1;
+	FOREACH_END();
+	unsigned len = vec_size(global_context.section_list);
+	if (len >= MAX_SECTIONS)
+	{
+		error_exit("Too many sections in source, max %d allowed.", MAX_SECTIONS);
+	}
+	vec_add(global_context.section_list, result);
+	return len + 1;
 }
 
 void global_context_clear_errors(void)
@@ -957,6 +957,6 @@ const char *scratch_buffer_interned(void)
 {
 	TokenType type = TOKEN_INVALID_TOKEN;
 	return symtab_add(scratch_buffer.str, scratch_buffer.len,
-	                  fnv1a(scratch_buffer.str, scratch_buffer.len), &type);
+					  fnv1a(scratch_buffer.str, scratch_buffer.len), &type);
 }
 

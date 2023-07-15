@@ -74,7 +74,7 @@ char *int_to_str(Int i, int radix)
 Int int_from_real(Real d, TypeKind type)
 {
 	return (Int){ type_kind_is_unsigned(type) ? i128_from_float_unsigned(d) : i128_from_float_signed(d),
-	              type };
+				  type };
 }
 
 Int128 i128_from_int(uint64_t i)

@@ -671,10 +671,10 @@ static void llvm_emit_switch_body_if_chain(GenContext *c,
 }
 
 static void llvm_emit_switch_jump_table(GenContext *c,
-                                        Ast **cases,
-                                        Ast *default_case,
-                                        BEValue *switch_value,
-                                        LLVMBasicBlockRef exit_block)
+										Ast **cases,
+										Ast *default_case,
+										BEValue *switch_value,
+										LLVMBasicBlockRef exit_block)
 {
 #ifdef jump_table_done
 	c->current_block = NULL;
@@ -1205,15 +1205,15 @@ static inline void llvm_emit_asm_block_stmt(GenContext *c, Ast *ast)
 	}
 	LLVMTypeRef asm_fn_type = LLVMFunctionType(result_type, param_types, param_count, 0);
 	LLVMValueRef asm_fn = LLVMGetInlineAsm(asm_fn_type,
-	                                       (char*)data,
-	                                       strlen(data),
+										   (char*)data,
+										   strlen(data),
 										   clobbers,
 										   strlen(clobbers),
-	                                       ast->asm_block_stmt.is_volatile,
-	                                       true,
-	                                       ast->asm_block_stmt.is_string ? LLVMInlineAsmDialectIntel : LLVMInlineAsmDialectATT,
+										   ast->asm_block_stmt.is_volatile,
+										   true,
+										   ast->asm_block_stmt.is_string ? LLVMInlineAsmDialectIntel : LLVMInlineAsmDialectATT,
 										   /* can throw */ false
-	                                       );
+										   );
 	LLVMValueRef res = LLVMBuildCall2(c->builder, asm_fn_type, asm_fn, args, param_count, "");
 	for (unsigned i = 0; i < param_count; i++)
 	{
@@ -1298,9 +1298,9 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const c
 	if (c->debug.stack_slot_row)
 	{
 		llvm_store_to_ptr_raw_aligned(c,
-		                              c->debug.stack_slot_row,
-		                              llvm_const_int(c, type_uint, loc.row ? loc.row : 1),
-		                              type_abi_alignment(type_uint));
+									  c->debug.stack_slot_row,
+									  llvm_const_int(c, type_uint, loc.row ? loc.row : 1),
+									  type_abi_alignment(type_uint));
 	}
 
 	Decl *panic_var = c->panic_var;
@@ -1346,11 +1346,11 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const c
 		{
 			AlignSize store_alignment;
 			LLVMValueRef slot = llvm_emit_array_gep_raw(c,
-			                                            array_ref,
-			                                            llvm_array_type,
-			                                            i,
-			                                            alignment,
-			                                            &store_alignment);
+														array_ref,
+														llvm_array_type,
+														i,
+														alignment,
+														&store_alignment);
 			llvm_store_to_ptr_aligned(c, slot, &varargs[i], store_alignment);
 		}
 		BEValue value;
@@ -1361,7 +1361,7 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const c
 		BEValue res;
 		if (c->debug.builder) llvm_emit_debug_location(c, loc);
 		llvm_emit_raw_call(c, &res, prototype, llvm_func_type(c, prototype), llvm_get_ref(c, panicf), actual_args,
-		                   count, 0, NULL, false, NULL);
+						   count, 0, NULL, false, NULL);
 		return;
 	}
 
@@ -1372,11 +1372,11 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const c
 	BEValue res;
 	if (c->debug.builder) llvm_emit_debug_location(c, loc);
 	llvm_emit_raw_call(c, &res, prototype, llvm_func_type(c, prototype), val.value, actual_args,
-	                   count, 0, NULL, false, NULL);
+					   count, 0, NULL, false, NULL);
 }
 
 void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_name, SourceSpan loc, const char *fmt, BEValue *value_1,
-                             BEValue *value_2)
+							 BEValue *value_2)
 {
 	if (llvm_is_const(value->value))
 	{
@@ -1407,7 +1407,7 @@ void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_na
 }
 
 void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *panic_name, SourceSpan loc,
-                             const char *fmt, BEValue *value_1, BEValue *value_2)
+							 const char *fmt, BEValue *value_1, BEValue *value_2)
 {
 	BEValue be_value;
 	llvm_value_set(&be_value, value, type_bool);

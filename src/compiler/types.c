@@ -1108,7 +1108,7 @@ Type *type_get_vector(Type *vector_type, unsigned len)
 }
 
 static void type_create(const char *name, Type *location, TypeKind kind, unsigned bitsize,
-                        unsigned align, unsigned pref_align)
+						unsigned align, unsigned pref_align)
 {
 	assert(align);
 	unsigned byte_size = (bitsize + 7) / 8;

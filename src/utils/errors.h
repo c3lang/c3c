@@ -10,8 +10,8 @@
 
 #define INFO_LOG(_string, ...) \
   do {                          \
-    if (!debug_log) break; \
-    printf("-- INFO: "); printf(_string, ##__VA_ARGS__); printf("\n"); \
+	if (!debug_log) break; \
+	printf("-- INFO: "); printf(_string, ##__VA_ARGS__); printf("\n"); \
   } while (0)
 #ifdef NDEBUG
 #define REMINDER(_string, ...) do {} while (0)
@@ -20,8 +20,8 @@
 #define REMINDER(_string, ...) do { if (!debug_log) break; printf("TODO: %s -> in %s @ %s:%d\n", _string, __func__, __FILE__, __LINE__ , ##__VA_ARGS__); } while(0)
 #define DEBUG_LOG(_string, ...) \
   do {                          \
-    if (!debug_log) break; \
-    printf("-- DEBUG: "); printf(_string, ##__VA_ARGS__); printf("\n"); \
+	if (!debug_log) break; \
+	printf("-- DEBUG: "); printf(_string, ##__VA_ARGS__); printf("\n"); \
   } while (0)
 #endif
 
@@ -58,7 +58,7 @@
 
 #define EXPECT(_string, _value, _expected) \
  do { long long __tempval1 = _value; long long __tempval2 = _expected; \
-    TEST_ASSERT(__tempval1 == __tempval2, "Checking " _string ": expected %lld but was %lld.", __tempval2, __tempval1); } while(0)
+	TEST_ASSERT(__tempval1 == __tempval2, "Checking " _string ": expected %lld but was %lld.", __tempval2, __tempval1); } while(0)
 
 void evprintf(const char *format, va_list list);
 void eprintf(const char *format, ...);

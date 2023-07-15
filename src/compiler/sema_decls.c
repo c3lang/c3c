@@ -38,9 +38,9 @@ static inline bool sema_analyse_doc_header(AstId doc, Decl **params, Decl **extr
 static const char *attribute_domain_to_string(AttributeDomain domain);
 static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr, AttributeDomain domain, bool *erase_decl);
 static bool sema_analyse_attributes_inner(SemaContext *context, Decl *decl, Attr **attrs, AttributeDomain domain,
-                                          Decl *top, bool *erase_decl);
+										  Decl *top, bool *erase_decl);
 static bool sema_analyse_attributes(SemaContext *context, Decl *decl, Attr **attrs, AttributeDomain domain,
-                                    bool *erase_decl);
+									bool *erase_decl);
 static bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl, bool *erase_decl);
 static bool sema_check_section(SemaContext *context, Attr *attr);
 static inline bool sema_analyse_attribute_decl(SemaContext *c, Decl *decl);
@@ -53,7 +53,7 @@ static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl);
 static CompilationUnit *unit_copy(Module *module, CompilationUnit *unit);
 static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl);
 static Module *module_instantiate_generic(SemaContext *context, Module *module, Path *path, Expr **params,
-                                          SourceSpan from);
+										  SourceSpan from);
 
 static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param, bool *has_default);
 static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *erase_decl);
@@ -529,7 +529,7 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *dec
 	if (!type_is_integer(member_type) && member_type != type_bool)
 	{
 		SEMA_ERROR(member->var.type_info, "%s is not supported in a bitstruct, only enums, integer and boolean values may be used.",
-		           type_quoted_error_string(member->type));
+				   type_quoted_error_string(member->type));
 		return false;
 	}
 
@@ -629,7 +629,7 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *dec
 	if (bitsize_type < bits_available)
 	{
 		SEMA_ERROR(member, "The bit width of %s (%d) is less than the assigned bits (%d), try reducing the range.",
-		           type_quoted_error_string(member->type), (int)bitsize_type, (int)bits_available);
+				   type_quoted_error_string(member->type), (int)bitsize_type, (int)bits_available);
 		return false;
 	}
 
@@ -675,7 +675,7 @@ static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl, bool *erase
 	if (!type_is_integer(base_type))
 	{
 		SEMA_ERROR(decl->bitstruct.base_type, "The type of the bitstruct cannot be %s but must be an integer or an array of integers.",
-		           type_quoted_error_string(decl->bitstruct.base_type->type));
+				   type_quoted_error_string(decl->bitstruct.base_type->type));
 		return false;
 	}
 	Decl **members = decl->bitstruct.members;
@@ -748,7 +748,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 			case VARDECL_PARAM_REF:
 				inferred_type = type_get_ptr(method_parent->type);
 				if (!is_macro) param->var.kind = VARDECL_PARAM;
-                break;
+				break;
 			case VARDECL_PARAM:
 				inferred_type = method_parent->type;
 				break;
@@ -803,7 +803,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 				if (param->var.type_info && !type_is_pointer(param->type))
 				{
 					SEMA_ERROR(param->var.type_info, "A pointer type was expected for a ref argument, did you mean %s?",
-					           type_quoted_error_string(type_get_ptr(param->type)));
+							   type_quoted_error_string(type_get_ptr(param->type)));
 					return decl_poison(param);
 				}
 				FALLTHROUGH;
@@ -1157,9 +1157,9 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 		if (!int_fits(val, flat_underlying_type->type_kind))
 		{
 			SEMA_ERROR(enum_value,
-			           "The enum value would implicitly be %s which does not fit in %s.",
-			           i128_to_string(value, 10, type_is_signed(flat_underlying_type)),
-			           type_quoted_error_string(type));
+					   "The enum value would implicitly be %s which does not fit in %s.",
+					   i128_to_string(value, 10, type_is_signed(flat_underlying_type)),
+					   type_quoted_error_string(type));
 			return false;
 		}
 		enum_value->enum_constant.ordinal = value.low;
@@ -1466,7 +1466,7 @@ static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type
 	if (method)
 	{
 		SEMA_ERROR(method_like, "This %s is already defined for '%s'.",
-		           method_name_by_decl(method_like), parent_type->name);
+				   method_name_by_decl(method_like), parent_type->name);
 		SEMA_NOTE(method, "The previous definition was here.");
 		return false;
 	}
@@ -1937,7 +1937,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 
 // TODO consider doing this evaluation early, it should be possible.
 static bool sema_analyse_attributes_inner(SemaContext *context, Decl *decl, Attr **attrs, AttributeDomain domain,
-                                          Decl *top, bool *erase_decl)
+										  Decl *top, bool *erase_decl)
 {
 	// Detect cycles of the type @Foo = @BarCyclic, @BarCyclic = @BarCyclic
 	if (context->macro_call_depth > 1024)
@@ -2028,7 +2028,7 @@ ERR:
 }
 
 static bool sema_analyse_attributes(SemaContext *context, Decl *decl, Attr **attrs, AttributeDomain domain,
-                                    bool *erase_decl)
+									bool *erase_decl)
 {
 	return sema_analyse_attributes_inner(context, decl, attrs, domain, NULL, erase_decl);
 }
@@ -2124,8 +2124,8 @@ static inline MainType sema_find_main_type(SemaContext *context, Signature *sig,
 			if (arg_type != type_cint)
 			{
 				SEMA_ERROR(params[0],
-				           "Expected a parameter of type %s for a C-style main.",
-				           type_quoted_error_string(type_cint));
+						   "Expected a parameter of type %s for a C-style main.",
+						   type_quoted_error_string(type_cint));
 				return MAIN_TYPE_ERROR;
 			}
 			if (arg_type2 != type_get_ptr(type_get_ptr(type_char)))
@@ -2156,7 +2156,7 @@ static inline MainType sema_find_main_type(SemaContext *context, Signature *sig,
 			if (type_flatten(params[2]->type) != type_cint)
 			{
 				SEMA_ERROR(params[2], "Expected a parameter of type %s for the 'showCmd' parameter.",
-				           type_quoted_error_string(type_cint));
+						   type_quoted_error_string(type_cint));
 				return MAIN_TYPE_ERROR;
 			}
 			if (!is_win32)
@@ -2395,20 +2395,20 @@ REGISTER_MAIN:
 static inline bool sema_analyse_func_macro(SemaContext *context, Decl *decl, bool is_func, bool *erase_decl)
 {
 	if (!sema_analyse_attributes(context,
-	                             decl,
-	                             decl->attributes,
-	                             is_func ? ATTR_FUNC : ATTR_MACRO,
-	                             erase_decl)) return decl_poison(decl);
+								 decl,
+								 decl->attributes,
+								 is_func ? ATTR_FUNC : ATTR_MACRO,
+								 erase_decl)) return decl_poison(decl);
 	return true;
 }
 
 static inline bool sema_analyse_xxlizer(SemaContext *context, Decl *decl, bool *erase_decl)
 {
 	if (!sema_analyse_attributes(context,
-	                             decl,
-	                             decl->attributes,
-	                             decl->decl_kind == DECL_INITIALIZE ? ATTR_INITIALIZER : ATTR_FINALIZER,
-	                             erase_decl)) return decl_poison(decl);
+								 decl,
+								 decl->attributes,
+								 decl->decl_kind == DECL_INITIALIZE ? ATTR_INITIALIZER : ATTR_FINALIZER,
+								 erase_decl)) return decl_poison(decl);
 	if (*erase_decl) return true;
 	if (decl->xxlizer.priority == 0) decl->xxlizer.priority = MAX_PRIORITY;
 	context->call_env = (CallEnv) { .kind = decl->decl_kind == DECL_INITIALIZE ? CALL_ENV_INITIALIZER : CALL_ENV_FINALIZER };
@@ -2584,7 +2584,7 @@ static inline bool sema_is_valid_method_param(SemaContext *context, Decl *param,
 	if (param_type->type_kind == TYPE_POINTER && param_type->pointer == parent_type) return true;
 ERROR:
 	SEMA_ERROR(param, "The first parameter must be of type %s or %s.", type_quoted_error_string(parent_type),
-	           type_quoted_error_string(type_get_ptr(parent_type)));
+			   type_quoted_error_string(type_get_ptr(parent_type)));
 	return false;
 }
 
@@ -2596,8 +2596,8 @@ static bool sema_analyse_macro_method(SemaContext *context, Decl *decl)
 	if (!type_may_have_method(parent_type))
 	{
 		SEMA_ERROR(parent_type_info,
-		           "Methods can not be associated with '%s'",
-		           type_to_error_string(parent_type));
+				   "Methods can not be associated with '%s'",
+				   type_to_error_string(parent_type));
 		return false;
 	}
 	if (!vec_size(decl->func_decl.signature.params))
@@ -2713,7 +2713,7 @@ bool sema_analyse_decl_type(SemaContext *context, Type *type, SourceSpan span)
 		case TYPE_MEMBER:
 		case TYPE_TYPEINFO:
 			sema_error_at(span, "The variable cannot have an compile time %s type.",
-			              type_quoted_error_string(type));
+						  type_quoted_error_string(type));
 			return false;
 		default:
 			break;
@@ -2722,7 +2722,7 @@ bool sema_analyse_decl_type(SemaContext *context, Type *type, SourceSpan span)
 	if (type == type_wildcard_optional || type->optional == type_void)
 	{
 		sema_error_at(span, "The use of 'void!' as a variable type is not permitted, use %s instead.",
-		                 type_quoted_error_string(type_anyfault));
+						 type_quoted_error_string(type_anyfault));
 		return false;
 	}
 	return true;
@@ -3005,7 +3005,7 @@ static CompilationUnit *unit_copy(Module *module, CompilationUnit *unit)
 }
 
 static Module *module_instantiate_generic(SemaContext *context, Module *module, Path *path, Expr **params,
-                                          SourceSpan from)
+										  SourceSpan from)
 {
 	unsigned decls = 0;
 	Decl* params_decls[MAX_PARAMS];
@@ -3104,7 +3104,7 @@ static bool sema_append_generate_parameterized_name(SemaContext *c, Module *modu
 		{
 			if (!sema_analyse_ct_expr(c, param)) return false;
 			Type *type = param->type->canonical;
-            bool is_enum_like = type_kind_is_enumlike(type->type_kind);
+			bool is_enum_like = type_kind_is_enumlike(type->type_kind);
 			if (!type_is_integer_or_bool_kind(type) && !is_enum_like)
 			{
 				SEMA_ERROR(param, "Only integer, bool, fault and enum values may be generic arguments.");
@@ -3123,13 +3123,13 @@ static bool sema_append_generate_parameterized_name(SemaContext *c, Module *modu
 				}
 			}
 			else if (is_enum_like)
-            {
-                Decl *enum_like = param->const_expr.enum_err_val;
-                type_mangle_introspect_name_to_buffer(enum_like->type->canonical);
-                scratch_buffer_append(mangled ? "_" : ":");
-                scratch_buffer_append(enum_like->name);
-            }
-            else
+			{
+				Decl *enum_like = param->const_expr.enum_err_val;
+				type_mangle_introspect_name_to_buffer(enum_like->type->canonical);
+				scratch_buffer_append(mangled ? "_" : ":");
+				scratch_buffer_append(enum_like->name);
+			}
+			else
 			{
 				char *maybe_neg = &scratch_buffer.str[scratch_buffer.len];
 				if (type->type_kind == TYPE_I128 || type->type_kind == TYPE_U128)
@@ -3186,8 +3186,8 @@ static bool sema_analyse_generic_module_contracts(SemaContext *c, Module *module
 				if (ast->contract.contract.comment)
 				{
 					sema_error_at(error_span,
-					              "Parameter(s) would violate constraint: %s.",
-					              ast->contract.contract.comment);
+								  "Parameter(s) would violate constraint: %s.",
+								  ast->contract.contract.comment);
 				}
 				else
 				{
@@ -3270,9 +3270,9 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 	{
 		assert(vec_size(params));
 		sema_error_at(extend_span_with_token(params[0]->span, vectail(params)->span),
-		              "The generic module expected %d arguments, but you supplied %d, did you make a mistake?",
-		              parameter_count,
-		              vec_size(params));
+					  "The generic module expected %d arguments, but you supplied %d, did you make a mistake?",
+					  parameter_count,
+					  vec_size(params));
 		return poisoned_decl;
 	}
 	scratch_buffer_clear();

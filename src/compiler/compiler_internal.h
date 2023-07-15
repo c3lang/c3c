@@ -679,11 +679,11 @@ typedef struct Decl_
 		void *tb_symbol;
 	};
 	AlignSize alignment;
-    union
-    {
-        SectionId section_id;
-        uint16_t va_index;
-    };
+	union
+	{
+		SectionId section_id;
+		uint16_t va_index;
+	};
 	AlignSize offset : 32;
 	AlignSize padding : 32;
 	struct CompilationUnit_ *unit;
@@ -1716,7 +1716,7 @@ typedef struct
 	Decl *decl_stack[MAX_GLOBAL_DECL_STACK];
 	Decl **decl_stack_bottom;
 	Decl **decl_stack_top;
-    const char **section_list;
+	const char **section_list;
 } GlobalContext;
 
 
@@ -3335,15 +3335,15 @@ static inline bool decl_is_var_local(Decl *decl)
 	if (decl->decl_kind != DECL_VAR) return false;
 	VarDeclKind kind = decl->var.kind;
 	return kind == VARDECL_PARAM_CT_TYPE
-	       || kind == VARDECL_PARAM
-	       || kind == VARDECL_PARAM_CT
-	       || kind == VARDECL_LOCAL
-	       || kind == VARDECL_LOCAL_CT_TYPE
-	       || kind == VARDECL_LOCAL_CT
-	       || kind == VARDECL_PARAM_REF
-	       || kind == VARDECL_PARAM_EXPR
-	       || kind == VARDECL_BITMEMBER
-	       || kind == VARDECL_MEMBER;
+		   || kind == VARDECL_PARAM
+		   || kind == VARDECL_PARAM_CT
+		   || kind == VARDECL_LOCAL
+		   || kind == VARDECL_LOCAL_CT_TYPE
+		   || kind == VARDECL_LOCAL_CT
+		   || kind == VARDECL_PARAM_REF
+		   || kind == VARDECL_PARAM_EXPR
+		   || kind == VARDECL_BITMEMBER
+		   || kind == VARDECL_MEMBER;
 }
 
 INLINE bool expr_is_const_string(Expr *expr)
@@ -3393,5 +3393,5 @@ INLINE bool expr_is_const_member(Expr *expr)
 
 INLINE const char *section_from_id(SectionId id)
 {
-    return id ? global_context.section_list[id - 1] + SECTION_PREFIX_LEN : NULL;
+	return id ? global_context.section_list[id - 1] + SECTION_PREFIX_LEN : NULL;
 }

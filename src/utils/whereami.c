@@ -340,7 +340,7 @@ static int get_executable_path_raw(char *out, int capacity, int *dirname_length)
 }
 
 #elif defined(__DragonFly__) || defined(__FreeBSD__) || \
-      defined(__FreeBSD_kernel__) || defined(__NetBSD__)
+	  defined(__FreeBSD_kernel__) || defined(__NetBSD__)
 
 #include <limits.h>
 #include <stdlib.h>

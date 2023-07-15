@@ -32,7 +32,7 @@ const char *download_file(const char *url, const char *resource, const char *fil
 
 	// Use WinHttpOpen to obtain a session handle.
 	HINTERNET session = WinHttpOpen(L"C3C/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
-	                                WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+									WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
 
 	if (!session) error_exit("Failed to create http session.");
 	// Specify an HTTP server.

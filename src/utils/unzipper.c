@@ -13,52 +13,52 @@ uint8_t file_out_buffer[FILE_OUTBUF_LEN];
 
 typedef PACK(struct
 {
-    uint32_t signature; // 0x04034B50
-    uint16_t version_needed_to_extract; // unsupported
-    uint16_t general_purpose_bit_flag; // unsupported
-    uint16_t compression_method;
-    uint16_t last_mod_file_time;
-    uint16_t last_mod_file_date;
-    uint32_t crc32;
-    uint32_t compressed_size;
-    uint32_t uncompressed_size;
-    uint16_t filename_len;
-    uint16_t extra_field_len; // unsupported
+	uint32_t signature; // 0x04034B50
+	uint16_t version_needed_to_extract; // unsupported
+	uint16_t general_purpose_bit_flag; // unsupported
+	uint16_t compression_method;
+	uint16_t last_mod_file_time;
+	uint16_t last_mod_file_date;
+	uint32_t crc32;
+	uint32_t compressed_size;
+	uint32_t uncompressed_size;
+	uint16_t filename_len;
+	uint16_t extra_field_len; // unsupported
 }) JZLocalFileHeader;
 
 typedef PACK(struct
 {
-    uint32_t signature; // 0x02014B50
-    uint16_t version_made_by; // unsupported
-    uint16_t version_needed_to_extract; // unsupported
-    uint16_t general_purpose_bit_flag; // unsupported
-    uint16_t compression_method;
-    uint16_t last_mod_file_time;
-    uint16_t last_mod_file_date;
-    uint32_t crc32;
-    uint32_t compressed_size;
-    uint32_t uncompressed_size;
-    uint16_t file_name_len;
-    uint16_t extra_field_len; // unsupported
-    uint16_t comment_len; // unsupported
-    uint16_t disk_number_start; // unsupported
-    uint16_t internal_file_attributes; // unsupported
-    uint32_t external_file_attributes; // unsupported
-    uint32_t relative_offset_of_local_header;
+	uint32_t signature; // 0x02014B50
+	uint16_t version_made_by; // unsupported
+	uint16_t version_needed_to_extract; // unsupported
+	uint16_t general_purpose_bit_flag; // unsupported
+	uint16_t compression_method;
+	uint16_t last_mod_file_time;
+	uint16_t last_mod_file_date;
+	uint32_t crc32;
+	uint32_t compressed_size;
+	uint32_t uncompressed_size;
+	uint16_t file_name_len;
+	uint16_t extra_field_len; // unsupported
+	uint16_t comment_len; // unsupported
+	uint16_t disk_number_start; // unsupported
+	uint16_t internal_file_attributes; // unsupported
+	uint32_t external_file_attributes; // unsupported
+	uint32_t relative_offset_of_local_header;
 }) ZipGlobalFileHeader;
 
 
 typedef PACK(struct
 {
-    uint32_t signature; // 0x06054b50
-    uint16_t disk_number; // unsupported
-    uint16_t central_dir_disk_number; // unsupported
-    uint16_t num_entries_this_disk; // unsupported
-    uint16_t num_entries;
-    uint32_t central_dir_size;
-    uint32_t central_dir_offset;
-    uint16_t zip_comment_len;
-    // Followed by .ZIP file comment (variable size)
+	uint32_t signature; // 0x06054b50
+	uint16_t disk_number; // unsupported
+	uint16_t central_dir_disk_number; // unsupported
+	uint16_t num_entries_this_disk; // unsupported
+	uint16_t num_entries;
+	uint32_t central_dir_size;
+	uint32_t central_dir_offset;
+	uint16_t zip_comment_len;
+	// Followed by .ZIP file comment (variable size)
 }) ZipEndRecord;
 
 INLINE bool read_all(FILE *file, void *buffer, size_t len)
@@ -144,7 +144,7 @@ const char *zip_dir_iterator_next(ZipDirIterator *iterator, ZipFile *file)
 		return str_printf("Illegal compression method '%s'", file->name);
 	}
 	if (file_header.compression_method == 0 &&
-	    (file_header.compressed_size != file_header.uncompressed_size))
+		(file_header.compressed_size != file_header.uncompressed_size))
 	{
 		return str_printf("Invalid compression '%s'", file->name);
 	}

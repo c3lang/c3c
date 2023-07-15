@@ -11,8 +11,8 @@
 
 typedef struct LLVMOpaquePassBuilderOptions *LLVMPassBuilderOptionsRef;
 LLVMErrorRef LLVMRunPasses(LLVMModuleRef M, const char *Passes,
-                           LLVMTargetMachineRef TM,
-                           LLVMPassBuilderOptionsRef Options);
+						   LLVMTargetMachineRef TM,
+						   LLVMPassBuilderOptionsRef Options);
 LLVMPassBuilderOptionsRef LLVMCreatePassBuilderOptions(void);
 void LLVMPassBuilderOptionsSetVerifyEach(LLVMPassBuilderOptionsRef Options, LLVMBool VerifyEach);
 void LLVMPassBuilderOptionsSetDebugLogging(LLVMPassBuilderOptionsRef Options, LLVMBool DebugLogging);
@@ -325,8 +325,8 @@ void llvm_emit_ptr_from_array(GenContext *c, BEValue *value)
 	switch (value->type->type_kind)
 	{
 		case TYPE_POINTER:
-            llvm_value_rvalue(c, value);
-            value->kind = BE_ADDRESS;
+			llvm_value_rvalue(c, value);
+			value->kind = BE_ADDRESS;
 			return;
 		case TYPE_ARRAY:
 		case TYPE_VECTOR:
@@ -338,9 +338,9 @@ void llvm_emit_ptr_from_array(GenContext *c, BEValue *value)
 			llvm_emit_subarray_pointer(c, value, &member);
 			llvm_value_rvalue(c, &member);
 			llvm_value_set_address(value,
-			                       member.value,
-			                       type_get_ptr(value->type->array.base),
-			                       type_abi_alignment(value->type->array.base));
+								   member.value,
+								   type_get_ptr(value->type->array.base),
+								   type_abi_alignment(value->type->array.base));
 			return;
 		}
 		default:
@@ -416,8 +416,8 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	LLVMValueRef old = decl->backend_ref;
 	LLVMValueRef global_ref = decl->backend_ref = llvm_add_global_raw(c,
 																	  decl_get_extname(decl),
-	                                                                  LLVMTypeOf(init_value),
-	                                                                  decl->alignment);
+																	  LLVMTypeOf(init_value),
+																	  decl->alignment);
 	if (decl->var.is_addr)
 	{
 		LLVMSetUnnamedAddress(global_ref, LLVMNoUnnamedAddr);
@@ -425,7 +425,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	else
 	{
 		LLVMSetUnnamedAddress(decl->backend_ref,
-		                      decl_is_local(decl) ? LLVMGlobalUnnamedAddr : LLVMLocalUnnamedAddr);
+							  decl_is_local(decl) ? LLVMGlobalUnnamedAddr : LLVMLocalUnnamedAddr);
 	}
 	if (decl->section_id)
 	{
@@ -924,9 +924,9 @@ LLVMValueRef llvm_get_opt_ref(GenContext *c, Decl *decl)
 static void llvm_emit_param_attributes(GenContext *c, LLVMValueRef function, ABIArgInfo *info, bool is_return, int index, int last_index)
 {
 	assert(last_index == index || info->kind == ABI_ARG_DIRECT_PAIR || info->kind == ABI_ARG_IGNORE
-	       || info->kind == ABI_ARG_EXPAND || info->kind == ABI_ARG_DIRECT || info->kind == ABI_ARG_DIRECT_COERCE
-	       || info->kind == ABI_ARG_DIRECT_COERCE_INT || info->kind == ABI_ARG_EXPAND_COERCE
-	       || info->kind == ABI_ARG_DIRECT_SPLIT_STRUCT_I32);
+		   || info->kind == ABI_ARG_EXPAND || info->kind == ABI_ARG_DIRECT || info->kind == ABI_ARG_DIRECT_COERCE
+		   || info->kind == ABI_ARG_DIRECT_COERCE_INT || info->kind == ABI_ARG_EXPAND_COERCE
+		   || info->kind == ABI_ARG_DIRECT_SPLIT_STRUCT_I32);
 
 	if (info->attributes.zeroext)
 	{
@@ -1125,7 +1125,7 @@ static void llvm_gen_test_main(GenContext *c)
 	LLVMPositionBuilderAtEnd(builder, entry);
 	LLVMValueRef val = LLVMBuildCall2(builder, runner_type, other_func, NULL, 0, "");
 	val = LLVMBuildSelect(builder, LLVMBuildTrunc(builder, val, c->bool_type, ""),
-	                      LLVMConstNull(cint), LLVMConstInt(cint, 1, false), "");
+						  LLVMConstNull(cint), LLVMConstInt(cint, 1, false), "");
 	LLVMBuildRet(builder, val);
 	LLVMDisposeBuilder(builder);
 	gencontext_print_llvm_ir(c);
@@ -1257,10 +1257,10 @@ LLVMMetadataRef llvm_get_debug_file(GenContext *c, FileId file_id)
 	}
 	File *f = source_file_by_id(file_id);
 	LLVMMetadataRef file = LLVMDIBuilderCreateFile(c->debug.builder,
-	                                               f->name,
-	                                               strlen(f->name),
-	                                               f->dir_path,
-	                                               strlen(f->dir_path));
+												   f->name,
+												   strlen(f->name),
+												   f->dir_path,
+												   strlen(f->dir_path));
 	DebugFile debug_file = { .file_id = file_id, .debug_file = file };
 	vec_add(c->debug.debug_files, debug_file);
 	return file;

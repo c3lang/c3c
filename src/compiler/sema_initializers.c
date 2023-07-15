@@ -6,10 +6,10 @@
 
 static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *context, Decl *assigned, Expr *initializer);
 static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *context, Type *assigned, Type *flattened,
-                                                             Expr *initializer);
+															 Expr *initializer);
 static inline bool sema_expr_analyse_untyped_initializer(SemaContext *context, Expr *initializer);
 static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type *assigned, Type *flattened,
-                                                     Expr *initializer);
+													 Expr *initializer);
 static inline void sema_not_enough_elements_error(Expr *initializer, int element);
 static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *assigned_type, Type *flattened, Expr *expr);
 static void sema_create_const_initializer_value(ConstInitializer *const_init, Expr *value);
@@ -21,21 +21,21 @@ static Type *sema_find_type_of_element(SemaContext *context, Type *type, Designa
 MemberIndex sema_get_initializer_const_array_size(SemaContext *context, Expr *initializer, bool *may_be_array, bool *is_const_size);
 static MemberIndex sema_analyse_designator_index(SemaContext *context, Expr *index);
 static void sema_update_const_initializer_with_designator(ConstInitializer *const_init,
-                                                          DesignatorElement **curr,
-                                                          DesignatorElement **end,
-                                                          Expr *value);
+														  DesignatorElement **curr,
+														  DesignatorElement **end,
+														  Expr *value);
 static inline void sema_update_const_initializer_with_designator_struct(ConstInitializer *const_init,
-                                                                        DesignatorElement **curr,
-                                                                        DesignatorElement **end,
-                                                                        Expr *value);
+																		DesignatorElement **curr,
+																		DesignatorElement **end,
+																		Expr *value);
 static inline void sema_update_const_initializer_with_designator_union(ConstInitializer *const_init,
-                                                                       DesignatorElement **curr,
-                                                                       DesignatorElement **end,
-                                                                       Expr *value);
+																	   DesignatorElement **curr,
+																	   DesignatorElement **end,
+																	   Expr *value);
 static inline void sema_update_const_initializer_with_designator_array(ConstInitializer *const_init,
-                                                                       DesignatorElement **curr,
-                                                                       DesignatorElement **end,
-                                                                       Expr *value);
+																	   DesignatorElement **curr,
+																	   DesignatorElement **end,
+																	   Expr *value);
 static inline void sema_update_const_initializer_with_designator(
 		ConstInitializer *const_init,
 		DesignatorElement **curr,
@@ -222,7 +222,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
  * @return true if analysis succeeds.
  */
 static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *context, Type *assigned, Type *flattened,
-                                                             Expr *initializer)
+															 Expr *initializer)
 {
 	Expr **elements = initializer->initializer_list;
 	bool inferred_len = type_len_is_inferred(flattened);
@@ -396,7 +396,7 @@ static inline bool sema_expr_analyse_untyped_initializer(SemaContext *context, E
 }
 
 static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type *assigned, Type *flattened,
-                                                     Expr *initializer)
+													 Expr *initializer)
 {
 	Expr **init_expressions = initializer->designated_init_list;
 	Type *original = flattened->canonical;
@@ -491,11 +491,11 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ass
 
 	// 5. If not, then we see if we have an array.
 	if (flattened->type_kind == TYPE_UNTYPED_LIST ||
-	    flattened->type_kind == TYPE_ARRAY ||
-	    flattened->type_kind == TYPE_INFERRED_ARRAY ||
-	    flattened->type_kind == TYPE_INFERRED_VECTOR ||
-	    flattened->type_kind == TYPE_SUBARRAY ||
-	    flattened->type_kind == TYPE_VECTOR)
+		flattened->type_kind == TYPE_ARRAY ||
+		flattened->type_kind == TYPE_INFERRED_ARRAY ||
+		flattened->type_kind == TYPE_INFERRED_VECTOR ||
+		flattened->type_kind == TYPE_SUBARRAY ||
+		flattened->type_kind == TYPE_VECTOR)
 	{
 		return sema_expr_analyse_array_plain_initializer(context, assigned_type, flattened, expr);
 	}
@@ -654,9 +654,9 @@ static void sema_create_const_initializer_value(ConstInitializer *const_init, Ex
  * Update a struct element, e.g. { .a = 1 } or { .a[12] = { .b } }
  */
 static inline void sema_update_const_initializer_with_designator_struct(ConstInitializer *const_init,
-                                                                        DesignatorElement **curr,
-                                                                        DesignatorElement **end,
-                                                                        Expr *value)
+																		DesignatorElement **curr,
+																		DesignatorElement **end,
+																		Expr *value)
 {
 	// Get the current path element that we're processing
 	DesignatorElement *element = curr[0];
@@ -716,9 +716,9 @@ static inline void sema_update_const_initializer_with_designator_struct(ConstIni
  * we are allowed to completely overwrite the "memory" of .b
  */
 static inline void sema_update_const_initializer_with_designator_union(ConstInitializer *const_init,
-                                                                       DesignatorElement **curr,
-                                                                       DesignatorElement **end,
-                                                                       Expr *value)
+																	   DesignatorElement **curr,
+																	   DesignatorElement **end,
+																	   Expr *value)
 {
 	DesignatorElement *element = curr[0];
 	assert(element->kind == DESIGNATOR_FIELD);
@@ -772,9 +772,9 @@ static inline void sema_update_const_initializer_with_designator_union(ConstInit
  * Update an array { [2] = 1 }
  */
 static inline void sema_update_const_initializer_with_designator_array(ConstInitializer *const_init,
-                                                                       DesignatorElement **curr,
-                                                                       DesignatorElement **end,
-                                                                       Expr *value)
+																	   DesignatorElement **curr,
+																	   DesignatorElement **end,
+																	   Expr *value)
 {
 	DesignatorElement *element = curr[0];
 	MemberIndex low_index = element->index;
@@ -990,9 +990,9 @@ static Type *sema_find_type_of_element(SemaContext *context, Type *type, Designa
 		return NULL;
 	}
 	Decl *member = sema_resolve_element_for_name(context,
-	                                             type_flattened->decl->strukt.members,
-	                                             elements_ref,
-	                                             curr_index);
+												 type_flattened->decl->strukt.members,
+												 elements_ref,
+												 curr_index);
 	*member_ptr = member;
 	if (!member) return NULL;
 	return member->type;

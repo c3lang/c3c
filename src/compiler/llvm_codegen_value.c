@@ -90,10 +90,10 @@ void llvm_value_rvalue(GenContext *c, BEValue *value)
 	}
 	llvm_value_fold_optional(c, value);
 	value->value = llvm_load(c,
-	                         llvm_get_type(c, value->type),
-	                         value->value,
-	                         value->alignment ? value->alignment : type_abi_alignment(value->type),
-	                         "");
+							 llvm_get_type(c, value->type),
+							 value->value,
+							 value->alignment ? value->alignment : type_abi_alignment(value->type),
+							 "");
 	if (value->type->type_kind == TYPE_BOOL)
 	{
 		value->value = llvm_emit_trunc_bool(c, value->value);

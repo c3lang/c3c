@@ -39,36 +39,36 @@ WindowsSDK get_windows_link_paths() {
 
   int um_len = wcslen(paths.windows_sdk_um_library_path);
   WideCharToMultiByte(
-    CP_UTF8,                          // UTF-8
-    0,                                // config flags- I don't think we need these
-    paths.windows_sdk_um_library_path,// in
-    um_len,                           // in len
-    out.windows_sdk_um_library_path,  // out
-    MAX_PATH,                         // out len
-    NULL,
-    NULL
+	CP_UTF8,                          // UTF-8
+	0,                                // config flags- I don't think we need these
+	paths.windows_sdk_um_library_path,// in
+	um_len,                           // in len
+	out.windows_sdk_um_library_path,  // out
+	MAX_PATH,                         // out len
+	NULL,
+	NULL
   );
   int ucrt_len = wcslen(paths.windows_sdk_ucrt_library_path);
   WideCharToMultiByte(
-    CP_UTF8,
-    0,
-    paths.windows_sdk_ucrt_library_path,
-    ucrt_len,
-    out.windows_sdk_ucrt_library_path,
-    MAX_PATH,
-    NULL,
-    NULL
+	CP_UTF8,
+	0,
+	paths.windows_sdk_ucrt_library_path,
+	ucrt_len,
+	out.windows_sdk_ucrt_library_path,
+	MAX_PATH,
+	NULL,
+	NULL
   );
   int vsl_len = wcslen(paths.vs_library_path);
   WideCharToMultiByte(
-    CP_UTF8,
-    0,
-    paths.vs_library_path,
-    vsl_len,
-    out.vs_library_path,
-    MAX_PATH,
-    NULL,
-    NULL
+	CP_UTF8,
+	0,
+	paths.vs_library_path,
+	vsl_len,
+	out.vs_library_path,
+	MAX_PATH,
+	NULL,
+	NULL
   );
 
   free_resources(&paths);
@@ -117,8 +117,8 @@ DECLARE_INTERFACE_(ISetupInstance, IUnknown)
 {
   BEGIN_INTERFACE
 
-    // IUnknown methods
-    STDMETHOD(QueryInterface)   (THIS_  REFIID, void**) PURE;
+	// IUnknown methods
+	STDMETHOD(QueryInterface)   (THIS_  REFIID, void**) PURE;
   STDMETHOD_(ULONG, AddRef)    (THIS) PURE;
   STDMETHOD_(ULONG, Release)   (THIS) PURE;
 
@@ -141,8 +141,8 @@ DECLARE_INTERFACE_(IEnumSetupInstances, IUnknown)
 {
   BEGIN_INTERFACE
 
-    // IUnknown methods
-    STDMETHOD(QueryInterface)   (THIS_  REFIID, void**) PURE;
+	// IUnknown methods
+	STDMETHOD(QueryInterface)   (THIS_  REFIID, void**) PURE;
   STDMETHOD_(ULONG, AddRef)    (THIS) PURE;
   STDMETHOD_(ULONG, Release)   (THIS) PURE;
 
@@ -161,8 +161,8 @@ DECLARE_INTERFACE_(ISetupConfiguration, IUnknown)
 {
   BEGIN_INTERFACE
 
-    // IUnknown methods
-    STDMETHOD(QueryInterface)   (THIS_  REFIID, void**) PURE;
+	// IUnknown methods
+	STDMETHOD(QueryInterface)   (THIS_  REFIID, void**) PURE;
   STDMETHOD_(ULONG, AddRef)    (THIS) PURE;
   STDMETHOD_(ULONG, Release)   (THIS) PURE;
 
@@ -237,14 +237,14 @@ bool visit_files_w(wchar_t* dir_name, Version_Data* data, Visit_Proc_W proc) {
   if (handle == INVALID_HANDLE_VALUE) return false;
 
   while (true) {
-    if ((find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && (find_data.cFileName[0] != '.')) {
-      wchar_t* full_name = concat3(dir_name, L"\\", find_data.cFileName);
-      proc(find_data.cFileName, full_name, data);
-      free(full_name);
-    }
+	if ((find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && (find_data.cFileName[0] != '.')) {
+	  wchar_t* full_name = concat3(dir_name, L"\\", find_data.cFileName);
+	  proc(find_data.cFileName, full_name, data);
+	  free(full_name);
+	}
 
-    BOOL success = FindNextFileW(handle, &find_data);
-    if (!success) break;
+	BOOL success = FindNextFileW(handle, &find_data);
+	if (!success) break;
   }
 
   FindClose(handle);
@@ -285,13 +285,13 @@ void win10_best(wchar_t* short_name, wchar_t* full_name, Version_Data* data) {
 
   if (i0 < data->best_version[0]) return;
   else if (i0 == data->best_version[0]) {
-    if (i1 < data->best_version[1]) return;
-    else if (i1 == data->best_version[1]) {
-      if (i2 < data->best_version[2]) return;
-      else if (i2 == data->best_version[2]) {
-        if (i3 < data->best_version[3]) return;
-      }
-    }
+	if (i1 < data->best_version[1]) return;
+	else if (i1 == data->best_version[1]) {
+	  if (i2 < data->best_version[2]) return;
+	  else if (i2 == data->best_version[2]) {
+		if (i3 < data->best_version[3]) return;
+	  }
+	}
   }
 
   // we have to copy_string and free here because visit_files free's the full_name string
@@ -300,10 +300,10 @@ void win10_best(wchar_t* short_name, wchar_t* full_name, Version_Data* data) {
   data->best_name = _wcsdup(full_name);
 
   if (data->best_name) {
-    data->best_version[0] = i0;
-    data->best_version[1] = i1;
-    data->best_version[2] = i2;
-    data->best_version[3] = i3;
+	data->best_version[0] = i0;
+	data->best_version[1] = i1;
+	data->best_version[2] = i2;
+	data->best_version[3] = i3;
   }
 }
 
@@ -316,7 +316,7 @@ void win8_best(wchar_t* short_name, wchar_t* full_name, Version_Data* data) {
 
   if (i0 < data->best_version[0]) return;
   else if (i0 == data->best_version[0]) {
-    if (i1 < data->best_version[1]) return;
+	if (i1 < data->best_version[1]) return;
   }
 
   // we have to copy_string and free here because visit_files free's the full_name string
@@ -325,8 +325,8 @@ void win8_best(wchar_t* short_name, wchar_t* full_name, Version_Data* data) {
   data->best_name = _wcsdup(full_name);
 
   if (data->best_name) {
-    data->best_version[0] = i0;
-    data->best_version[1] = i1;
+	data->best_version[0] = i0;
+	data->best_version[1] = i1;
   }
 }
 
@@ -339,45 +339,45 @@ void find_windows_kit_root(Find_Result* result) {
   HKEY main_key;
 
   LSTATUS rc = RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows Kits\\Installed Roots",
-    0, KEY_QUERY_VALUE | KEY_WOW64_32KEY | KEY_ENUMERATE_SUB_KEYS, &main_key);
+	0, KEY_QUERY_VALUE | KEY_WOW64_32KEY | KEY_ENUMERATE_SUB_KEYS, &main_key);
   if (rc != S_OK) return;
 
   // Look for a Windows 10 entry.
   wchar_t* windows10_root = find_windows_kit_root_with_key(main_key, L"KitsRoot10");
 
   if (windows10_root) {
-    wchar_t* windows10_lib = concat2(windows10_root, L"Lib");
-    free(windows10_root);
+	wchar_t* windows10_lib = concat2(windows10_root, L"Lib");
+	free(windows10_root);
 
-    Version_Data data = { 0 };
-    visit_files_w(windows10_lib, &data, win10_best);
-    free(windows10_lib);
+	Version_Data data = { 0 };
+	visit_files_w(windows10_lib, &data, win10_best);
+	free(windows10_lib);
 
-    if (data.best_name) {
-      result->windows_sdk_version = 10;
-      result->windows_sdk_root = data.best_name;
-      RegCloseKey(main_key);
-      return;
-    }
+	if (data.best_name) {
+	  result->windows_sdk_version = 10;
+	  result->windows_sdk_root = data.best_name;
+	  RegCloseKey(main_key);
+	  return;
+	}
   }
 
   // Look for a Windows 8 entry.
   wchar_t* windows8_root = find_windows_kit_root_with_key(main_key, L"KitsRoot81");
 
   if (windows8_root) {
-    wchar_t* windows8_lib = concat2(windows8_root, L"Lib");
-    free(windows8_root);
+	wchar_t* windows8_lib = concat2(windows8_root, L"Lib");
+	free(windows8_root);
 
-    Version_Data data = { 0 };
-    visit_files_w(windows8_lib, &data, win8_best);
-    free(windows8_lib);
+	Version_Data data = { 0 };
+	visit_files_w(windows8_lib, &data, win8_best);
+	free(windows8_lib);
 
-    if (data.best_name) {
-      result->windows_sdk_version = 8;
-      result->windows_sdk_root = data.best_name;
-      RegCloseKey(main_key);
-      return;
-    }
+	if (data.best_name) {
+	  result->windows_sdk_version = 8;
+	  result->windows_sdk_root = data.best_name;
+	  RegCloseKey(main_key);
+	  return;
+	}
   }
 
   // If we get here, we failed to find anything.
@@ -411,66 +411,66 @@ bool find_visual_studio_2017_by_fighting_through_microsoft_craziness(Find_Result
 
   bool found_visual_studio_2017 = false;
   while (1) {
-    ULONG found = 0;
-    ISetupInstance* instance = NULL;
-    HRESULT hr = CALL_STDMETHOD(instances, Next, 1, &instance, &found);
-    if (hr != S_OK) break;
+	ULONG found = 0;
+	ISetupInstance* instance = NULL;
+	HRESULT hr = CALL_STDMETHOD(instances, Next, 1, &instance, &found);
+	if (hr != S_OK) break;
 
-    BSTR bstr_inst_path;
-    hr = CALL_STDMETHOD(instance, GetInstallationPath, &bstr_inst_path);
-    CALL_STDMETHOD_(instance, Release);
-    if (hr != S_OK)  continue;
+	BSTR bstr_inst_path;
+	hr = CALL_STDMETHOD(instance, GetInstallationPath, &bstr_inst_path);
+	CALL_STDMETHOD_(instance, Release);
+	if (hr != S_OK)  continue;
 
-    wchar_t* tools_filename = concat2(bstr_inst_path, L"\\VC\\Auxiliary\\Build\\Microsoft.VCToolsVersion.default.txt");
-    SysFreeString(bstr_inst_path);
+	wchar_t* tools_filename = concat2(bstr_inst_path, L"\\VC\\Auxiliary\\Build\\Microsoft.VCToolsVersion.default.txt");
+	SysFreeString(bstr_inst_path);
 
-    FILE* f;
-    errno_t open_result = _wfopen_s(&f, tools_filename, L"rt");
-    free(tools_filename);
-    if (open_result != 0) continue;
-    if (!f) continue;
+	FILE* f;
+	errno_t open_result = _wfopen_s(&f, tools_filename, L"rt");
+	free(tools_filename);
+	if (open_result != 0) continue;
+	if (!f) continue;
 
-    LARGE_INTEGER tools_file_size;
-    HANDLE file_handle = (HANDLE)_get_osfhandle(_fileno(f));
-    BOOL success = GetFileSizeEx(file_handle, &tools_file_size);
-    if (!success) {
-      fclose(f);
-      continue;
-    }
+	LARGE_INTEGER tools_file_size;
+	HANDLE file_handle = (HANDLE)_get_osfhandle(_fileno(f));
+	BOOL success = GetFileSizeEx(file_handle, &tools_file_size);
+	if (!success) {
+	  fclose(f);
+	  continue;
+	}
 
-    size_t version_length = (size_t)(tools_file_size.QuadPart + 1);  // Warning: This multiplication by 2 presumes there is no variable-length encoding in the wchars (wacky characters in the file could betray this expectation).
-    wchar_t* version = (wchar_t*)cmalloc(version_length * 2);
+	size_t version_length = (size_t)(tools_file_size.QuadPart + 1);  // Warning: This multiplication by 2 presumes there is no variable-length encoding in the wchars (wacky characters in the file could betray this expectation).
+	wchar_t* version = (wchar_t*)cmalloc(version_length * 2);
 
-    wchar_t* read_result = fgetws(version, version_length, f);
-    fclose(f);
-    if (!read_result) continue;
+	wchar_t* read_result = fgetws(version, version_length, f);
+	fclose(f);
+	if (!read_result) continue;
 
-    wchar_t* version_tail = wcschr(version, '\n');
-    if (version_tail)  *version_tail = 0;  // Stomp the data, because nobody cares about it.
+	wchar_t* version_tail = wcschr(version, '\n');
+	if (version_tail)  *version_tail = 0;  // Stomp the data, because nobody cares about it.
 
-    wchar_t* library_path = concat4(bstr_inst_path, L"\\VC\\Tools\\MSVC\\", version, L"\\lib\\x64");
-    wchar_t* library_file = concat2(library_path, L"\\vcruntime.lib");  // @Speed: Could have library_path point to this string, with a smaller count, to save on memory flailing!
+	wchar_t* library_path = concat4(bstr_inst_path, L"\\VC\\Tools\\MSVC\\", version, L"\\lib\\x64");
+	wchar_t* library_file = concat2(library_path, L"\\vcruntime.lib");  // @Speed: Could have library_path point to this string, with a smaller count, to save on memory flailing!
 
-    if (os_file_exists(library_file)) {
-      wchar_t* link_exe_path = concat4(bstr_inst_path, L"\\VC\\Tools\\MSVC\\", version, L"\\bin\\Hostx64\\x64");
-      free(version);
+	if (os_file_exists(library_file)) {
+	  wchar_t* link_exe_path = concat4(bstr_inst_path, L"\\VC\\Tools\\MSVC\\", version, L"\\bin\\Hostx64\\x64");
+	  free(version);
 
-      result->vs_exe_path = link_exe_path;
-      result->vs_library_path = library_path;
-      result->is_vs_2017 = true;
-      found_visual_studio_2017 = true;
-      break;
-    }
+	  result->vs_exe_path = link_exe_path;
+	  result->vs_library_path = library_path;
+	  result->is_vs_2017 = true;
+	  found_visual_studio_2017 = true;
+	  break;
+	}
 
-    free(version);
+	free(version);
 
-    /*
-       Ryan Saunderson said:
-       "Clang uses the 'SetupInstance->GetInstallationVersion' / ISetupHelper->ParseVersion to find the newest version
-       and then reads the tools file to define the tools path - which is definitely better than what i did."
+	/*
+	   Ryan Saunderson said:
+	   "Clang uses the 'SetupInstance->GetInstallationVersion' / ISetupHelper->ParseVersion to find the newest version
+	   and then reads the tools file to define the tools path - which is definitely better than what i did."
 
-       So... @Incomplete: Should probably pick the newest version...
-    */
+	   So... @Incomplete: Should probably pick the newest version...
+	*/
   }
 
   CALL_STDMETHOD_(instances, Release);
@@ -508,42 +508,42 @@ void find_visual_studio_by_fighting_through_microsoft_craziness(Find_Result* res
   const int NUM_VERSIONS = sizeof(versions) / sizeof(versions[0]);
 
   for (int i = 0; i < NUM_VERSIONS; i++) {
-    wchar_t* v = versions[i];
+	wchar_t* v = versions[i];
 
-    DWORD dw_type;
-    DWORD cb_data;
+	DWORD dw_type;
+	DWORD cb_data;
 
-    LSTATUS rc = RegQueryValueExW(vs7_key, v, NULL, &dw_type, NULL, &cb_data);
-    if ((rc == ERROR_FILE_NOT_FOUND) || (dw_type != REG_SZ)) {
-      continue;
-    }
+	LSTATUS rc = RegQueryValueExW(vs7_key, v, NULL, &dw_type, NULL, &cb_data);
+	if ((rc == ERROR_FILE_NOT_FOUND) || (dw_type != REG_SZ)) {
+	  continue;
+	}
 
-    wchar_t* buffer = (wchar_t*)cmalloc(cb_data);
-    if (!buffer)  return;
+	wchar_t* buffer = (wchar_t*)cmalloc(cb_data);
+	if (!buffer)  return;
 
-    rc = RegQueryValueExW(vs7_key, v, NULL, NULL, (LPBYTE)buffer, &cb_data);
-    if (rc != 0)  continue;
+	rc = RegQueryValueExW(vs7_key, v, NULL, NULL, (LPBYTE)buffer, &cb_data);
+	if (rc != 0)  continue;
 
-    // @Robustness: Do the zero-termination thing suggested in the RegQueryValue docs?
+	// @Robustness: Do the zero-termination thing suggested in the RegQueryValue docs?
 
-    wchar_t* lib_path = concat2(buffer, L"VC\\Lib\\amd64");
+	wchar_t* lib_path = concat2(buffer, L"VC\\Lib\\amd64");
 
-    // Check to see whether a vcruntime.lib actually exists here.
-    wchar_t* vcruntime_filename = concat2(lib_path, L"\\vcruntime.lib");
-    bool vcruntime_exists = os_file_exists(vcruntime_filename);
-    free(vcruntime_filename);
+	// Check to see whether a vcruntime.lib actually exists here.
+	wchar_t* vcruntime_filename = concat2(lib_path, L"\\vcruntime.lib");
+	bool vcruntime_exists = os_file_exists(vcruntime_filename);
+	free(vcruntime_filename);
 
-    if (vcruntime_exists) {
-      result->vs_exe_path = concat2(buffer, L"VC\\bin\\amd64");
-      result->vs_library_path = lib_path;
+	if (vcruntime_exists) {
+	  result->vs_exe_path = concat2(buffer, L"VC\\bin\\amd64");
+	  result->vs_library_path = lib_path;
 
-      free(buffer);
-      RegCloseKey(vs7_key);
-      return;
-    }
+	  free(buffer);
+	  RegCloseKey(vs7_key);
+	  return;
+	}
 
-    free(lib_path);
-    free(buffer);
+	free(lib_path);
+	free(buffer);
   }
 
   RegCloseKey(vs7_key);
@@ -557,8 +557,8 @@ Find_Result find_visual_studio_and_windows_sdk() {
   find_windows_kit_root(&result);
 
   if (result.windows_sdk_root) {
-    result.windows_sdk_um_library_path = concat2(result.windows_sdk_root, L"\\um\\x64");
-    result.windows_sdk_ucrt_library_path = concat2(result.windows_sdk_root, L"\\ucrt\\x64");
+	result.windows_sdk_um_library_path = concat2(result.windows_sdk_root, L"\\um\\x64");
+	result.windows_sdk_ucrt_library_path = concat2(result.windows_sdk_root, L"\\ucrt\\x64");
   }
 
   find_visual_studio_by_fighting_through_microsoft_craziness(&result);

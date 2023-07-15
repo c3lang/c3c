@@ -146,6 +146,7 @@
 - Added posix socket functions.
 
 ### Fixes
+- @local declarations in generic modules available by accident.
 - Fixes missing checks to body arguments.
 - Do not create debug declaration for value-only parameter.
 - Bug in alignment for atomics.

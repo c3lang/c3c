@@ -62,7 +62,7 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 					  Variadic *variadic, int *vararg_index_ref, ParameterParseKind parse_kind);
 
 bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *splat, bool vasplat,
-                    bool allow_trailing_comma);
+					bool allow_trailing_comma);
 Expr *parse_type_compound_literal_expr_after_type(ParseContext *c, TypeInfo *type_info);
 
 INLINE void add_decl_to_list(Decl ***list, Decl *decl)

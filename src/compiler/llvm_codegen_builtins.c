@@ -99,7 +99,7 @@ INLINE void llvm_emit_compare_exchange(GenContext *c, BEValue *result_value, Exp
 	uint64_t failure_ordering = args[6]->const_expr.ixx.i.low;
 	uint64_t alignment = args[7]->const_expr.ixx.i.low;
 	LLVMValueRef result = LLVMBuildAtomicCmpXchg(c->builder, normal_args[0], normal_args[1], normal_args[2],
-	                                             ordering_to_llvm(success_ordering), ordering_to_llvm(failure_ordering), false);
+												 ordering_to_llvm(success_ordering), ordering_to_llvm(failure_ordering), false);
 	if (alignment && alignment >= type_abi_alignment(type))
 	{
 		LLVMSetAlignment(result, alignment);
@@ -181,8 +181,8 @@ INLINE void llvm_emit_atomic_load(GenContext *c, BEValue *result_value, Expr *ex
 static inline LLVMValueRef llvm_syscall_asm(GenContext *c, LLVMTypeRef func_type, char *call)
 {
 	return LLVMGetInlineAsm(func_type, call, strlen(call),
-	                        scratch_buffer_to_string(), scratch_buffer.len,
-	                        true, true, LLVMInlineAsmDialectATT, /* can throw */ false);
+							scratch_buffer_to_string(), scratch_buffer.len,
+							true, true, LLVMInlineAsmDialectATT, /* can throw */ false);
 }
 
 static inline void llvm_syscall_write_regs_to_scratch(const char** registers, unsigned args)

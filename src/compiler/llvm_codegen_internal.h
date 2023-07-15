@@ -264,7 +264,7 @@ void gencontext_end_module(GenContext *context);
 LLVMValueRef LLVMConstBswap(LLVMValueRef ConstantVal);
 #ifndef LLVMCreateTypeAttribute
 LLVMAttributeRef LLVMCreateTypeAttribute(LLVMContextRef C, unsigned KindID,
-                                         LLVMTypeRef type_ref);
+										 LLVMTypeRef type_ref);
 #endif
 
 static inline LLVMValueRef decl_optional_ref(Decl *decl)
@@ -418,7 +418,7 @@ TypeSize llvm_alloc_size(GenContext *c, LLVMTypeRef type);
 INLINE LLVMValueRef llvm_emit_insert_value(GenContext *c, LLVMValueRef agg, LLVMValueRef new_value, ArraySize index);
 LLVMValueRef llvm_emit_aggregate_two(GenContext *c, Type *type, LLVMValueRef value1, LLVMValueRef value2);
 LLVMValueRef llvm_emit_struct_gep_raw(GenContext *context, LLVMValueRef ptr, LLVMTypeRef struct_type, unsigned index,
-                                      unsigned struct_alignment, AlignSize *alignment);
+									  unsigned struct_alignment, AlignSize *alignment);
 LLVMValueRef llvm_emit_array_gep_raw(GenContext *c, LLVMValueRef ptr, LLVMTypeRef array_type, unsigned index, AlignSize array_alignment, AlignSize *alignment);
 LLVMValueRef llvm_emit_array_gep_raw_index(GenContext *c, LLVMValueRef ptr, LLVMTypeRef array_type, LLVMValueRef index, AlignSize array_alignment, AlignSize *alignment);
 LLVMValueRef llvm_emit_pointer_gep_raw(GenContext *c, LLVMTypeRef pointee_type, LLVMValueRef ptr, LLVMValueRef offset);
@@ -465,9 +465,9 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr);
 void llvm_emit_ignored_expr(GenContext *c, Expr *expr);
 void llvm_emit_stmt(GenContext *c, Ast *ast);
 void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *panic_name, SourceSpan loc,
-                             const char *fmt, BEValue *value_1, BEValue *value_2);
+							 const char *fmt, BEValue *value_1, BEValue *value_2);
 void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_name, SourceSpan loc, const char *fmt, BEValue *value_1,
-                             BEValue *value_2);
+							 BEValue *value_2);
 void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const char *fmt, BEValue *args);
 void llvm_emit_unreachable(GenContext *c);
 

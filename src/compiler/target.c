@@ -35,7 +35,7 @@ int target_alloca_addr_space()
 bool os_is_apple(OsType os_type)
 {
 	return os_type == OS_TYPE_TVOS || os_type == OS_TYPE_WATCHOS ||
-	       os_type == OS_TYPE_MACOSX || os_type == OS_TYPE_IOS;
+		   os_type == OS_TYPE_MACOSX || os_type == OS_TYPE_IOS;
 }
 
 bool arch_is_wasm(ArchType type)
@@ -164,7 +164,7 @@ static inline void target_setup_arm_abi(void)
 	if (platform_target.object_format == OBJ_FORMAT_MACHO)
 	{
 		if (platform_target.environment_type == ENV_TYPE_EABI
-		    || platform_target.os == OS_TYPE_UNKNOWN /* or is M */)
+			|| platform_target.os == OS_TYPE_UNKNOWN /* or is M */)
 		{
 			platform_target.arm.variant = ARM_AAPCS;
 			return;
@@ -221,10 +221,10 @@ static inline void target_setup_arm_abi(void)
 		case ARM_AAPCS:
 		case ARM_AAPCS_LINUX:
 			if (platform_target.float_abi == FLOAT_ABI_HARD ||
-			    (platform_target.float_abi != FLOAT_ABI_SOFT &&
-			     (platform_target.environment_type == ENV_TYPE_GNUEABIHF ||
-			      platform_target.environment_type == ENV_TYPE_MUSLEABIHF ||
-			      platform_target.environment_type == ENV_TYPE_EABIHF)))
+				(platform_target.float_abi != FLOAT_ABI_SOFT &&
+				 (platform_target.environment_type == ENV_TYPE_GNUEABIHF ||
+				  platform_target.environment_type == ENV_TYPE_MUSLEABIHF ||
+				  platform_target.environment_type == ENV_TYPE_EABIHF)))
 			{
 				platform_target.arm.abi_variant = ARM_ABI_AAPCS_VFP;
 				return;
@@ -1704,8 +1704,8 @@ void *llvm_target_machine_create(void)
 	DEBUG_LOG("Features: %s", platform_target.features);
 	void *result = LLVMCreateTargetMachine(target, platform_target.target_triple,
 										   platform_target.cpu ? platform_target.cpu : "", platform_target.features ? platform_target.features : "",
-	                                       (LLVMCodeGenOptLevel)platform_target.llvm_opt_level,
-	                                       reloc_mode, LLVMCodeModelDefault);
+										   (LLVMCodeGenOptLevel)platform_target.llvm_opt_level,
+										   reloc_mode, LLVMCodeModelDefault);
 	LLVMSetTargetMachineUseInitArray(result, true);
 	if (!result) error_exit("Failed to create target machine.");
 	LLVMSetTargetMachineAsmVerbosity(result, 1);
@@ -1887,8 +1887,8 @@ void target_setup(BuildTarget *target)
 	}
 	platform_target.align_max_vector = os_arch_max_alignment_of_vector(platform_target.os, platform_target.arch, platform_target.environment_type, platform_target.arm.variant);
 	platform_target.align_max_tls = os_arch_max_alignment_of_tls(platform_target.os,
-	                                                             platform_target.arch,
-	                                                             platform_target.environment_type);
+																 platform_target.arch,
+																 platform_target.environment_type);
 	platform_target.reloc_model = arch_os_reloc_default(platform_target.arch,
 														platform_target.os,
 														platform_target.environment_type,
