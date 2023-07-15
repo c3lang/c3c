@@ -24,7 +24,10 @@ typedef uint32_t AlignSize;
 typedef int32_t ScopeId;
 typedef uint32_t ArraySize;
 typedef uint64_t BitSize;
+typedef uint16_t SectionId;
 
+#define MAX_SECTIONS 0xFFFE
+#define SECTION_PREFIX_LEN 8
 #define MAX_FIXUPS 0xFFFFF
 #define MAX_HASH_SIZE (512 * 1024 * 1024)
 #define INVALID_SPAN ((SourceSpan){ .row = 0 })
@@ -678,24 +681,13 @@ typedef struct Decl_
 	AlignSize alignment;
     union
     {
-        const char *section;
-        ExprId varef_id;
+        SectionId section_id;
+        uint16_t va_index;
     };
 	AlignSize offset : 32;
 	AlignSize padding : 32;
-	/*	bool is_exported : 1;
-	bool is_used : 1;
-	bool is_used_public : 1;
-	bool has_cname : 1;
-	uint32_t alignment : 5;
-	union
-	{
-		uint32_t offset;
-		uint32_t counter;
-	};
-	uint32_t size;*/
 	struct CompilationUnit_ *unit;
-	Attr** attributes;
+	Attr **attributes;
 	Type *type;
 	union
 	{
@@ -731,7 +723,6 @@ typedef struct Decl_
 
 	};
 } Decl;
-
 
 
 
@@ -1725,6 +1716,7 @@ typedef struct
 	Decl *decl_stack[MAX_GLOBAL_DECL_STACK];
 	Decl **decl_stack_bottom;
 	Decl **decl_stack_top;
+    const char **section_list;
 } GlobalContext;
 
 
@@ -2106,6 +2098,8 @@ void global_context_clear_errors(void);
 void global_context_add_type(Type *type);
 void global_context_add_decl(Decl *type_decl);
 void global_context_add_generic_decl(Decl *decl);
+SectionId global_context_register_section(const char *section);
+INLINE const char *section_from_id(SectionId id);
 
 Module *compiler_find_or_create_module(Path *module_name, const char **parameters);
 Module *global_context_find_module(const char *name);
@@ -3397,3 +3391,7 @@ INLINE bool expr_is_const_member(Expr *expr)
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_MEMBER;
 }
 
+INLINE const char *section_from_id(SectionId id)
+{
+    return id ? global_context.section_list[id - 1] + SECTION_PREFIX_LEN : NULL;
+}

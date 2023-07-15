@@ -1830,7 +1830,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			{
 				case ATTRIBUTE_SECTION:
 					if (!sema_check_section(context, attr)) return false;
-					decl->section = expr->const_expr.bytes.ptr;
+					decl->section_id = global_context_register_section(expr->const_expr.bytes.ptr);
 					break;
 				case ATTRIBUTE_EXTERN:
 					decl->has_extname = true;

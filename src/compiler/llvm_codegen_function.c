@@ -716,9 +716,9 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 
 	LLVMValueRef function = llvm_get_ref(c, decl);
 	decl->backend_ref = function;
-	if (decl->section)
+	if (decl->section_id)
 	{
-		LLVMSetSection(function, decl->section);
+		LLVMSetSection(function, section_from_id(decl->section_id));
 	}
 	if (llvm_use_debug(c))
 	{

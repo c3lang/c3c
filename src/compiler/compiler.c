@@ -49,6 +49,7 @@ void compiler_init(const char *std_lib_dir)
 	global_context.module_list = NULL;
 	global_context.generic_module_list = NULL;
 	global_context.method_extensions = NULL;
+    global_context.section_list = NULL;
 	vmem_init(&ast_arena, 512);
 	ast_calloc();
 	vmem_init(&expr_arena, 512);
@@ -872,6 +873,25 @@ void global_context_add_decl(Decl *decl)
 void global_context_add_generic_decl(Decl *decl)
 {
 	decltable_set(&global_context.generic_symbols, decl);
+}
+
+SectionId global_context_register_section(const char *section)
+{
+    scratch_buffer_clear();
+    scratch_buffer_append("SECTION#");
+    scratch_buffer_append(section);
+    TokenType type = TOKEN_INVALID_TOKEN;
+    const char *result = scratch_buffer_interned();
+    FOREACH_BEGIN_IDX(i, const char *candidate, global_context.section_list)
+        if (result == candidate) return i + 1;
+    FOREACH_END();
+    unsigned len = vec_size(global_context.section_list);
+    if (len >= MAX_SECTIONS)
+    {
+        error_exit("Too many sections in source, max %d allowed.", MAX_SECTIONS);
+    }
+    vec_add(global_context.section_list, result);
+    return len + 1;
 }
 
 void global_context_clear_errors(void)

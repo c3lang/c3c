@@ -213,7 +213,7 @@ static inline bool sema_constant_fold_ops(Expr *expr)
 	UNREACHABLE
 }
 
-Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, Expr *index_expr)
+Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, Expr *index_expr, unsigned *index_ref)
 {
 	unsigned args = vec_size(context->macro_varargs);
 	uint64_t index;
@@ -241,6 +241,7 @@ Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, Expr *index_expr)
 		SEMA_ERROR(index_expr, "Only %u vararg%s exist.", args, args == 1 ? "" : "s");
 		return poisoned_expr;
 	}
+    if (index_ref) *index_ref = (unsigned)index_val.i.low;
 	return context->macro_varargs[(size_t)index_val.i.low];
 }
 
@@ -7292,14 +7293,17 @@ static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Expr *expr)
 			return true;
 		case TOKEN_CT_VAARG:
 		{
+            unsigned index;
 			// A normal argument, this means we only evaluate it once.
-			ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, exprptr(expr->ct_arg_expr.arg)), false);
+			ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, exprptr(expr->ct_arg_expr.arg), &index), false);
 
+            index++;
+            assert(index < 0x10000);
 			Decl *decl = NULL;
 			// Try to find the original param.
 			FOREACH_BEGIN(Decl *val, context->macro_params)
 				if (!val) continue;
-				if (val->var.init_expr == arg_expr)
+				if (val->va_index == index && val->var.kind == VARDECL_PARAM)
 				{
 					decl = val;
 					break;
@@ -7310,6 +7314,7 @@ static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Expr *expr)
 			{
 				decl = decl_new_generated_var(arg_expr->type, VARDECL_PARAM, arg_expr->span);
 				decl->var.init_expr = arg_expr;
+                decl->va_index = (uint16_t)index;
 				vec_add(context->macro_params, decl);
 			}
 			// Replace with the identifier.
@@ -7320,14 +7325,14 @@ static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Expr *expr)
 		case TOKEN_CT_VAEXPR:
 		{
 			// An expr argument, this means we copy and evaluate.
-			ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, exprptr(expr->ct_arg_expr.arg)), false);
+			ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, exprptr(expr->ct_arg_expr.arg), NULL), false);
 			expr_replace(expr, copy_expr_single(arg_expr));
 			return true;
 		}
 		case TOKEN_CT_VACONST:
 		{
 			// An expr argument, this means we copy and evaluate.
-			ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, exprptr(expr->ct_arg_expr.arg)), false);
+            ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, exprptr(expr->ct_arg_expr.arg), NULL), false);
 			arg_expr = copy_expr_single(arg_expr);
 			if (!expr_is_constant_eval(arg_expr, CONSTANT_EVAL_CONSTANT_VALUE))
 			{
@@ -7340,16 +7345,18 @@ static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Expr *expr)
 		case TOKEN_CT_VAREF:
 		{
 			// A normal argument, this means we only evaluate it once.
-			ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, exprptr(expr->ct_arg_expr.arg)), false);
+            unsigned index;
+			ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, exprptr(expr->ct_arg_expr.arg), &index), false);
 
 			if (!sema_binary_is_expr_lvalue(arg_expr, arg_expr)) return false;
+            index++;
+            assert(index < 0x10000);
 
-            ExprId va_ref_id = exprid(arg_expr);
 			Decl *decl = NULL;
 			// Try to find the original param.
 			FOREACH_BEGIN(Decl *val, context->macro_params)
 				if (!val) continue;
-				if (val->var.kind == VARDECL_PARAM_REF && val->varef_id == va_ref_id)
+				if (val->var.kind == VARDECL_PARAM_REF && val->va_index == index)
 				{
 					decl = val;
 					break;
@@ -7362,7 +7369,7 @@ static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Expr *expr)
                 expr_insert_addr(arg_expr);
                 decl = decl_new_generated_var(arg_expr->type, VARDECL_PARAM_REF, arg_expr->span);
                 decl->var.init_expr = arg_expr;
-                decl->varef_id = va_ref_id;
+                decl->va_index = (uint16_t)index;
 				vec_add(context->macro_params, decl);
 			}
 			// Replace with the identifier.
