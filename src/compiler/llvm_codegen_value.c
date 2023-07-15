@@ -1,5 +1,13 @@
 #include "llvm_codegen_internal.h"
 
+void llvm_value_deref(GenContext *c, BEValue *value)
+{
+	llvm_value_rvalue(c, value);
+	value->kind = BE_ADDRESS;
+	Type *type = value->type = type_lowering(type_get_indexed_type(value->type));
+	value->alignment = type_abi_alignment(type);
+}
+
 void llvm_value_set(BEValue *value, LLVMValueRef llvm_value, Type *type)
 {
 	type = type_lowering(type);
@@ -151,6 +159,7 @@ void llvm_value_fold_optional(GenContext *c, BEValue *value)
 
 void llvm_value_set_decl_address(GenContext *c, BEValue *value, Decl *decl)
 {
+	assert(!decl->is_value);
 	LLVMValueRef backend_ref = llvm_get_ref(c, decl);
 	llvm_value_set_address(value, backend_ref, decl->type, decl->alignment);
 

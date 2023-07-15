@@ -103,34 +103,39 @@ macro @blk0(&block, i) @local
 	$endif
 }
 
-macro @r0(&block, v, &w, x, y, &z, i) @local
+macro @r0(&block, v, &wref, x, y, &z, i) @local
 {
-	z += ((w & (x ^ y)) ^ y) + @blk0(block, i) + 0x5A827999 + v.rotl(5);
-	w = w.rotl(30);
+	var w = *wref;
+	*z += ((w & (x ^ y)) ^ y) + @blk0(*block, i) + 0x5A827999 + v.rotl(5);
+	*wref = w.rotl(30);
 }
 
-macro @r1(&block, v, &w, x, y, &z, i) @local
+macro @r1(&block, v, &wref, x, y, &z, i) @local
 {
-	z += ((w & (x ^ y)) ^ y) + @blk(block, i) + 0x5A827999 + v.rotl(5);
-	w = w.rotl(30);
+	var w = *wref;
+	*z += ((w & (x ^ y)) ^ y) + @blk(*block, i) + 0x5A827999 + v.rotl(5);
+	*wref = w.rotl(30);
 }
 
-macro @r2(&block, v, &w, x, y, &z, i) @local
+macro @r2(&block, v, &wref, x, y, &z, i) @local
 {
-	z += (w ^ x ^ y) + @blk(block, i) + 0x6ED9EBA1 + v.rotl(5);
-	w = w.rotl(30);
+	var w = *wref;
+	*z += (w ^ x ^ y) + @blk(*block, i) + 0x6ED9EBA1 + v.rotl(5);
+	*wref = w.rotl(30);
 }
 
-macro @r3(&block, v, &w, x, y, &z, i) @local
+macro @r3(&block, v, &wref, x, y, &z, i) @local
 {
-	z += (((w | x) &y) | (w & x)) + @blk(block, i) + 0x8F1BBCDC + v.rotl(5);
-	w = w.rotl(30);
+	var w = *wref;
+	*z += (((w | x) & y) | (w & x)) + @blk(*block, i) + 0x8F1BBCDC + v.rotl(5);
+	*wref = w.rotl(30);
 }
 
-macro @r4(&block, v, &w, x, y, &z, i) @local
+macro @r4(&block, v, &wref, x, y, &z, i) @local
 {
-	z += (w ^ x ^ y) + @blk(block, i) + 0xCA62C1D6 + v.rotl(5);
-	w = w.rotl(30);
+	var w = *wref;
+	*z += (w ^ x ^ y) + @blk(*block, i) + 0xCA62C1D6 + v.rotl(5);
+	*wref = w.rotl(30);
 }
 
 /**

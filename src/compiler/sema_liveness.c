@@ -398,8 +398,16 @@ RETRY:
 			return;
 		}
 		case EXPR_MACRO_BODY_EXPANSION:
+		{
+			FOREACH_BEGIN(Decl *arg, expr->body_expansion_expr.declarations)
+				sema_trace_decl_liveness(arg);
+			FOREACH_END();
+			FOREACH_BEGIN(Expr *arg, expr->body_expansion_expr.values)
+				sema_trace_expr_liveness(arg);
+			FOREACH_END();
 			sema_trace_stmt_liveness(astptrzero(expr->body_expansion_expr.first_stmt));
 			return;
+		}
 		case EXPR_NOP:
 			return;
 		case EXPR_POINTER_OFFSET:

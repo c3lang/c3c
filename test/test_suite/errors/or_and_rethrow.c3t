@@ -285,10 +285,6 @@ noerr_block15:                                    ; preds = %after_check14, %ass
 ; Function Attrs: nounwind
 define i32 @main(i32 %0, ptr %1) #0 {
 entry:
-  %.anon = alloca i32, align 4
-  %.anon1 = alloca ptr, align 8
-  store i32 %0, ptr %.anon, align 4
-  store ptr %1, ptr %.anon1, align 8
   call void @foo.main()
   ret i32 0
 }

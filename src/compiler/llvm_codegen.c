@@ -325,8 +325,8 @@ void llvm_emit_ptr_from_array(GenContext *c, BEValue *value)
 	switch (value->type->type_kind)
 	{
 		case TYPE_POINTER:
-			llvm_value_rvalue(c, value);
-			value->kind = BE_ADDRESS;
+            llvm_value_rvalue(c, value);
+            value->kind = BE_ADDRESS;
 			return;
 		case TYPE_ARRAY:
 		case TYPE_VECTOR:
@@ -585,6 +585,7 @@ void llvm_emit_and_set_decl_alloca(GenContext *c, Decl *decl)
 {
 	Type *type = type_lowering(decl->type);
 	if (type == type_void) return;
+	assert(!decl->backend_ref && !decl->is_value);
 	decl->backend_ref = llvm_emit_alloca(c, llvm_get_type(c, type), decl->alignment, decl->name ? decl->name : ".anon");
 }
 
@@ -1023,6 +1024,7 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 }
 LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 {
+	assert(!decl->is_value);
 	LLVMValueRef backend_ref = decl->backend_ref;
 	if (backend_ref)
 	{

@@ -3,7 +3,7 @@ module test;
 fn void test(int* a) {}
 macro @abc(&self)
 {
-	test(self); // #error: is a dereferenced pointer
+	test(self); // #error: Implicitly casting 'int**' to 'int*'
 }
 
 fn void! test1()

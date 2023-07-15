@@ -2,13 +2,13 @@ module test;
 import libc;
 
 /**
- * @checked a = b, b = a
+ * @checked *a = *b, *b = *a
  */
 macro void @swap(&a, &b)
 {
-    $typeof(a) temp = a;
-    a = b;
-    b = temp;
+    var temp = *a;
+    *a = *b;
+    *b = temp;
 }
 
 fn void main()
