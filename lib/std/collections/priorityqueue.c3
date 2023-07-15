@@ -21,94 +21,114 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 module std::collections::priorityqueue(<Type>);
+import std::collections::priorityqueue::private;
+
+def PriorityQueue = distinct inline PrivatePriorityQueue(<Type, false>);
+def PriorityQueueMax = distinct inline PrivatePriorityQueue(<Type, true>);
+
+module std::collections::priorityqueue::private(<Type, MAX>);
 import std::collections::list;
 
 def Heap = List(<Type>);
 
-struct PriorityQueue
+struct PrivatePriorityQueue
 {
 	Heap heap;
-	bool max;  // true if max-heap, false if min-heap
 }
 
-fn void PriorityQueue.push(&self, Type element)
+fn void PrivatePriorityQueue.push(&self, Type element)
 {
 	self.heap.push(element);
 	usz i = self.heap.len() - 1;
 	while (i > 0)
 	{
 		usz parent = (i - 1) / 2;
-		if ((self.max && greater(self.heap.get(i), self.heap.get(parent))) || (!self.max && less(self.heap.get(i), self.heap.get(parent))))
-		{
-			self.heap.swap(i, parent);
-			i = parent;
-			continue;
-		}
-		break;
+		Type item = self.heap[i];
+		Type parent_item = self.heap[parent];
+		$if MAX:
+		    bool ok = greater(item, parent_item);
+		$else
+		    bool ok = less(item, parent_item);
+		$endif
+		if (!ok) break;
+        self.heap.swap(i, parent);
+        i = parent;
 	}
 }
 
 /**
 * @require self != null
 */
-fn Type! PriorityQueue.pop(&self)
+fn Type! PrivatePriorityQueue.pop(&self)
 {
 	usz i = 0;
-	usz len = self.heap.len() @inline;
+	usz len = self.heap.len();
 	if (!len) return IteratorResult.NO_MORE_ELEMENT?;
 	usz newCount = len - 1;
 	self.heap.swap(0, newCount);
 	while ((2 * i + 1) < newCount)
 	{
 		usz j = 2 * i + 1;
-		if (((j + 1) < newCount) &&
-			((self.max && greater(self.heap.get(j + 1), self.heap[j]))
-				|| (!self.max && less(self.heap.get(j + 1), self.heap.get(j)))))
+        Type itemj = self.heap[j];
+		if ((j + 1) < newCount)
 		{
-			j++;
+		    Type nextj = self.heap[j + 1];
+		    $if MAX:
+                bool ok = greater(nextj, itemj);
+            $else
+                bool ok = less(nextj, itemj);
+            $endif
+            if (ok) j++;
 		}
-		if ((self.max && less(self.heap.get(i), self.heap.get(j))) || (!self.max && greater(self.heap.get(i), self.heap.get(j))))
-		{
-			self.heap.swap(i, j);
-			i = j;
-			continue;
-		}
-		break;
+		Type item = self.heap[i];
+        $if MAX:
+            bool ok = less(item, itemj);
+        $else
+            bool ok = greater(item, itemj);
+        $endif
+        if (!ok) break;
+        self.heap.swap(i, j);
+        i = j;
 	}
 
 	return self.heap.pop();
 }
 
-fn Type! PriorityQueue.peek(&self)
+fn Type! PrivatePriorityQueue.peek(&self)
 {
 	if (!self.len()) return IteratorResult.NO_MORE_ELEMENT?;
 	return self.heap.get(0);
 }
 
-fn void PriorityQueue.free(&self)
+fn void PrivatePriorityQueue.free(&self)
 {
 	self.heap.free();
 }
 
-fn usz PriorityQueue.len(&self) @operator(len)
+fn usz PrivatePriorityQueue.len(&self) @operator(len)
 {
 	return self.heap.len();
+}
+
+fn bool PrivatePriorityQueue.is_empty(&self)
+{
+	return self.heap.is_empty();
 }
 
 /**
  * @require index < self.len()
  */
-fn Type PriorityQueue.peek_at(&self, usz index) @operator([])
+fn Type PrivatePriorityQueue.peek_at(&self, usz index) @operator([])
 {
 	return self.heap[index];
 }
 
-fn void! PriorityQueue.to_format(&self, Formatter* formatter) @dynamic
+fn void! PrivatePriorityQueue.to_format(&self, Formatter* formatter) @dynamic
 {
 	return self.heap.to_format(formatter);
 }
 
-fn String PriorityQueue.to_string(&self, Allocator* using = mem::heap()) @dynamic
+fn String PrivatePriorityQueue.to_string(&self, Allocator* using = mem::heap()) @dynamic
 {
 	return self.heap.to_string(using);
 }
