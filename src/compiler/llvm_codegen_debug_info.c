@@ -161,6 +161,7 @@ void llvm_emit_debug_local_var(GenContext *c, Decl *decl)
 	decl->var.backend_debug_ref = var;
 
 	LLVMMetadataRef inline_at = NULL;
+	assert(!decl->is_value);
 	LLVMDIBuilderInsertDeclareAtEnd(c->debug.builder,
 	                                decl->backend_ref, var,
 	                                LLVMDIBuilderCreateExpression(c->debug.builder, NULL, 0),
@@ -186,7 +187,7 @@ void llvm_emit_debug_parameter(GenContext *c, Decl *parameter, unsigned index)
 	unsigned col = parameter->span.col;
 	if (col == 0) col = 1;
 
-			parameter->var.backend_debug_ref = LLVMDIBuilderCreateParameterVariable(
+	parameter->var.backend_debug_ref = LLVMDIBuilderCreateParameterVariable(
 			c->debug.builder,
 			c->debug.function,
 			name,
@@ -199,8 +200,9 @@ void llvm_emit_debug_parameter(GenContext *c, Decl *parameter, unsigned index)
 			LLVMDIFlagZero);
 	LLVMMetadataRef inline_at = NULL;
 
+	if (parameter->is_value) return;
 	LLVMDIBuilderInsertDeclareAtEnd(c->debug.builder,
-	                                parameter->backend_ref,
+	                                parameter->is_value ? NULL : parameter->backend_ref,
 	                                parameter->var.backend_debug_ref,
 	                                LLVMDIBuilderCreateExpression(c->debug.builder, NULL, 0),
 	                                LLVMDIBuilderCreateDebugLocation(c->context, row, col, c->debug.function,

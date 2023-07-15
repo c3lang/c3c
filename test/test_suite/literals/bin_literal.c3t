@@ -27,11 +27,9 @@ entry:
   %retparam1 = alloca i64, align 8
   %varargslots2 = alloca [3 x %any], align 16
   %i = alloca i8, align 1
-  %shift = alloca i8, align 1
   %taddr = alloca i8, align 1
   %i3 = alloca i8, align 1
-  %shift4 = alloca i8, align 1
-  %taddr5 = alloca i8, align 1
+  %taddr4 = alloca i8, align 1
   store i32 123, ptr %a, align 4
   store i32 -23, ptr %b, align 4
   %0 = load i32, ptr %a, align 4
@@ -58,28 +56,24 @@ entry:
   store %any %14, ptr %15, align 16
   %16 = load i8, ptr %z, align 1
   store i8 %16, ptr %i, align 1
-  store i8 1, ptr %shift, align 1
   %17 = load i8, ptr %i, align 1
   %18 = load i8, ptr %i, align 1
-  %19 = load i8, ptr %shift, align 1
-  %20 = call i8 @llvm.fshr.i8(i8 %17, i8 %18, i8 %19)
-  store i8 %20, ptr %taddr, align 1
-  %21 = insertvalue %any undef, ptr %taddr, 0
-  %22 = insertvalue %any %21, i64 ptrtoint (ptr @"$ct.char" to i64), 1
-  %23 = getelementptr inbounds [3 x %any], ptr %varargslots2, i64 0, i64 1
-  store %any %22, ptr %23, align 16
-  %24 = load i8, ptr %z, align 1
-  store i8 %24, ptr %i3, align 1
-  store i8 1, ptr %shift4, align 1
+  %19 = call i8 @llvm.fshr.i8(i8 %17, i8 %18, i8 1)
+  store i8 %19, ptr %taddr, align 1
+  %20 = insertvalue %any undef, ptr %taddr, 0
+  %21 = insertvalue %any %20, i64 ptrtoint (ptr @"$ct.char" to i64), 1
+  %22 = getelementptr inbounds [3 x %any], ptr %varargslots2, i64 0, i64 1
+  store %any %21, ptr %22, align 16
+  %23 = load i8, ptr %z, align 1
+  store i8 %23, ptr %i3, align 1
+  %24 = load i8, ptr %i3, align 1
   %25 = load i8, ptr %i3, align 1
-  %26 = load i8, ptr %i3, align 1
-  %27 = load i8, ptr %shift4, align 1
-  %28 = call i8 @llvm.fshl.i8(i8 %25, i8 %26, i8 %27)
-  store i8 %28, ptr %taddr5, align 1
-  %29 = insertvalue %any undef, ptr %taddr5, 0
-  %30 = insertvalue %any %29, i64 ptrtoint (ptr @"$ct.char" to i64), 1
-  %31 = getelementptr inbounds [3 x %any], ptr %varargslots2, i64 0, i64 2
-  store %any %30, ptr %31, align 16
-  %32 = call i64 @std.io.printfn(ptr %retparam1, ptr @.str.1, i64 8, ptr %varargslots2, i64 3)
+  %26 = call i8 @llvm.fshl.i8(i8 %24, i8 %25, i8 1)
+  store i8 %26, ptr %taddr4, align 1
+  %27 = insertvalue %any undef, ptr %taddr4, 0
+  %28 = insertvalue %any %27, i64 ptrtoint (ptr @"$ct.char" to i64), 1
+  %29 = getelementptr inbounds [3 x %any], ptr %varargslots2, i64 0, i64 2
+  store %any %28, ptr %29, align 16
+  %30 = call i64 @std.io.printfn(ptr %retparam1, ptr @.str.1, i64 8, ptr %varargslots2, i64 3)
   ret void
 }

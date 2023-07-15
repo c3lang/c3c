@@ -26,7 +26,7 @@ static inline void llvm_emit_initialize_reference_bitstruct(GenContext *c, BEVal
 static inline void llvm_emit_initialize_reference_list(GenContext *c, BEValue *ref, Expr *expr);
 static inline void llvm_emit_initialize_reference_vector(GenContext *c, BEValue *ref, Type *real_type, Expr **elements);
 static inline void llvm_emit_initializer_list_expr(GenContext *c, BEValue *value, Expr *expr);
-static inline void llvm_emit_macro_block(GenContext *context, BEValue *be_value, Expr *expr);
+static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr *expr);
 static inline void llvm_emit_post_inc_dec(GenContext *c, BEValue *value, Expr *expr, int diff);
 static inline void llvm_emit_pre_inc_dec(GenContext *c, BEValue *value, Expr *expr, int diff);
 static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type *type, AstId current, BlockExit **block_exit);
@@ -2471,6 +2471,21 @@ static inline void llvm_emit_pre_inc_dec(GenContext *c, BEValue *value, Expr *ex
 
 static inline void llvm_emit_deref(GenContext *c, BEValue *value, Expr *inner, Type *type)
 {
+	if (inner->expr_kind == EXPR_UNARY)
+	{
+		switch (inner->unary_expr.operator)
+		{
+			case UNARYOP_ADDR:
+				llvm_emit_expr(c, value, inner->unary_expr.expr);
+				return;
+			case UNARYOP_TADDR:
+				llvm_emit_expr(c, value, inner->unary_expr.expr);
+				llvm_value_addr(c, value);
+				return;
+			default:
+				break;
+		}
+	}
 	llvm_emit_expr(c, value, inner);
 	llvm_value_rvalue(c, value);
 	if (active_target.feature.safe_mode)
@@ -2482,8 +2497,6 @@ static inline void llvm_emit_deref(GenContext *c, BEValue *value, Expr *inner, T
 		scratch_buffer_append("' was null.");
 		llvm_emit_panic_on_true(c, check, scratch_buffer_to_string(), inner->span, NULL, NULL, NULL);
 	}
-	// Load the pointer value.
-	llvm_value_rvalue(c, value);
 	// Convert pointer to address
 	value->kind = BE_ADDRESS;
 	value->type = type;
@@ -5894,7 +5907,7 @@ static inline void llvm_emit_expr_block(GenContext *context, BEValue *be_value, 
 	llvm_emit_return_block(context, be_value, expr->type, expr->expr_block.first_stmt, expr->expr_block.block_exit_ref);
 }
 
-static inline void llvm_emit_macro_block(GenContext *context, BEValue *be_value, Expr *expr)
+static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr *expr)
 {
 	FOREACH_BEGIN(Decl *val, expr->macro_block.params)
 		// Skip vararg
@@ -5913,39 +5926,40 @@ static inline void llvm_emit_macro_block(GenContext *context, BEValue *be_value,
 			case VARDECL_ERASE:
 			case VARDECL_BITMEMBER:
 				UNREACHABLE
-			case VARDECL_PARAM_REF:
-			{
-				BEValue addr;
-				llvm_emit_expr(context, &addr, val->var.init_expr);
-				val->backend_ref = addr.value;
-				continue;
-			}
 			case VARDECL_PARAM_CT:
 			case VARDECL_PARAM_CT_TYPE:
 			case VARDECL_PARAM_EXPR:
 				continue;
+            case VARDECL_PARAM_REF:
 			case VARDECL_PARAM:
 				break;
 		}
-		llvm_emit_and_set_decl_alloca(context, val);
-		BEValue value;
 
-		llvm_emit_expr(context, &value, val->var.init_expr);
-		llvm_store_decl(context, val, &value);
+		Expr *init_expr = val->var.init_expr;
+		BEValue value;
+		llvm_emit_expr(c, &value, init_expr);
+		if (type_is_abi_aggregate(value.type) || llvm_value_is_addr(&value) || val->var.is_written || val->var.is_addr)
+		{
+			llvm_emit_and_set_decl_alloca(c, val);
+			llvm_store_decl(c, val, &value);
+			continue;
+		}
+		val->is_value = true;
+		val->backend_value = value.value;
 	FOREACH_END();
 
-	if (llvm_use_debug(context))
+	if (llvm_use_debug(c))
 	{
-		llvm_debug_push_lexical_scope(context, astptr(expr->macro_block.first_stmt)->span);
+		llvm_debug_push_lexical_scope(c, astptr(expr->macro_block.first_stmt)->span);
 	}
-	llvm_emit_return_block(context, be_value, expr->type, expr->macro_block.first_stmt, expr->macro_block.block_exit);
-	if (expr->macro_block.is_noreturn && context->current_block && context->current_block_is_target)
+	llvm_emit_return_block(c, be_value, expr->type, expr->macro_block.first_stmt, expr->macro_block.block_exit);
+	if (expr->macro_block.is_noreturn && c->current_block && c->current_block_is_target)
 	{
-		llvm_emit_unreachable(context);
+		llvm_emit_unreachable(c);
 	}
-	if (llvm_use_debug(context))
+	if (llvm_use_debug(c))
 	{
-		llvm_debug_scope_pop(context);
+		llvm_debug_scope_pop(c);
 	}
 }
 

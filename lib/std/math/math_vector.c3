@@ -9,10 +9,10 @@ def Vec2 = double[<2>];
 def Vec3 = double[<3>];
 def Vec4 = double[<4>];
 
-macro Vec2f.length_sq(&self) => self.dot(self);
-macro Vec3f.length_sq(&self) => self.dot(self);
-macro Vec4f.length_sq(&self) => self.dot(self);
-macro Vec2.length_sq(&self) => self.dot(self);
+macro Vec2f.length_sq(self) => self.dot(self);
+macro Vec3f.length_sq(self) => self.dot(self);
+macro Vec4f.length_sq(self) => self.dot(self);
+macro Vec2.length_sq(self) => self.dot(self);
 macro Vec3.length_sq(self) => self.dot(self);
 macro Vec4.length_sq(self) => self.dot(self);
 

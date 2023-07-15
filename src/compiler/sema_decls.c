@@ -734,7 +734,6 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 			return false;
 		}
 		SEMA_ERROR(params[MAX_PARAMS], "The number of params exceeded the max of %d. To accept more arguments, consider using varargs.", MAX_PARAMS);
-		return false;
 	}
 
 	// Fill in the type if the first parameter is lacking a type.
@@ -747,13 +746,9 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		switch (param->var.kind)
 		{
 			case VARDECL_PARAM_REF:
-				if (!is_macro)
-				{
-					inferred_type = type_get_ptr(method_parent->type);
-					param->var.kind = VARDECL_PARAM;
-					break;
-				}
-				FALLTHROUGH;
+				inferred_type = type_get_ptr(method_parent->type);
+				if (!is_macro) param->var.kind = VARDECL_PARAM;
+                break;
 			case VARDECL_PARAM:
 				inferred_type = method_parent->type;
 				break;
@@ -797,10 +792,22 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		param->unit = context->unit;
 		assert(param->decl_kind == DECL_VAR);
 		VarDeclKind var_kind = param->var.kind;
+		if (param->var.type_info)
+		{
+			if (!sema_resolve_type_info_maybe_inferred(context, param->var.type_info, is_macro)) return decl_poison(param);
+			param->type = param->var.type_info->type;
+		}
 		switch (var_kind)
 		{
-			case VARDECL_PARAM_EXPR:
 			case VARDECL_PARAM_REF:
+				if (param->var.type_info && !type_is_pointer(param->type))
+				{
+					SEMA_ERROR(param->var.type_info, "A pointer type was expected for a ref argument, did you mean %s?",
+					           type_quoted_error_string(type_get_ptr(param->type)));
+					return decl_poison(param);
+				}
+				FALLTHROUGH;
+			case VARDECL_PARAM_EXPR:
 				if (!is_macro)
 				{
 					SEMA_ERROR(param, "Only regular parameters are allowed for functions.");
@@ -808,7 +815,6 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 				}
 				if (!is_macro_at_name && (!type_parent || i != 0 || var_kind != VARDECL_PARAM_REF))
 				{
-
 					SEMA_ERROR(param, "Ref and expression parameters are not allowed in function-like macros. Prefix the macro name with '@'.");
 					return decl_poison(param);
 				}
@@ -821,29 +827,23 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 				}
 				FALLTHROUGH;
 			case VARDECL_PARAM:
-				if (param->var.type_info)
+				if (!param->type && !is_macro)
 				{
-					if (!sema_resolve_type_info_maybe_inferred(context, param->var.type_info, is_macro)) return decl_poison(param);
-					param->type = param->var.type_info->type;
-				}
-				else if (!is_macro)
-				{
-					SEMA_ERROR(param, "Only typed parameters are allowed for functions.");
-					return false;
+					RETURN_SEMA_ERROR(param, "Only typed parameters are allowed for functions.");
 				}
 				bool erase_decl = false;
 				if (!sema_analyse_attributes_for_var(context, param, &erase_decl)) return false;
 				assert(!erase_decl);
 				break;
 			case VARDECL_PARAM_CT_TYPE:
-				if (!is_macro)
-				{
-					SEMA_ERROR(param, "Only regular parameters are allowed for functions.");
-					return decl_poison(param);
-				}
 				if (param->var.type_info)
 				{
 					SEMA_ERROR(param->var.type_info, "A compile time type parameter cannot have a type itself.");
+					return decl_poison(param);
+				}
+				if (!is_macro)
+				{
+					SEMA_ERROR(param, "Only regular parameters are allowed for functions.");
 					return decl_poison(param);
 				}
 				break;

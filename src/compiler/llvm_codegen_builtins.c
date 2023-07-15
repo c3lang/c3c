@@ -140,8 +140,7 @@ INLINE void llvm_emit_volatile_store(GenContext *c, BEValue *result_value, Expr 
 	BEValue value;
 	llvm_emit_expr(c, &value, expr->call_expr.arguments[0]);
 	llvm_emit_expr(c, result_value, expr->call_expr.arguments[1]);
-	llvm_value_rvalue(c, &value);
-	value.kind = BE_ADDRESS;
+	llvm_value_deref(c, &value);
 	BEValue store_value = *result_value;
 	LLVMValueRef store = llvm_store(c, &value, &store_value);
 	if (store) LLVMSetVolatile(store, true);
@@ -150,9 +149,7 @@ INLINE void llvm_emit_volatile_store(GenContext *c, BEValue *result_value, Expr 
 INLINE void llvm_emit_volatile_load(GenContext *c, BEValue *result_value, Expr *expr)
 {
 	llvm_emit_expr(c, result_value, expr->call_expr.arguments[0]);
-	llvm_value_rvalue(c, result_value);
-	result_value->kind = BE_ADDRESS;
-	result_value->type = type_lowering(result_value->type->pointer);
+	llvm_value_deref(c, result_value);
 	llvm_value_rvalue(c, result_value);
 	LLVMSetVolatile(result_value->value, true);
 }
@@ -162,8 +159,7 @@ INLINE void llvm_emit_atomic_store(GenContext *c, BEValue *result_value, Expr *e
 	BEValue value;
 	llvm_emit_expr(c, &value, expr->call_expr.arguments[0]);
 	llvm_emit_expr(c, result_value, expr->call_expr.arguments[1]);
-	llvm_value_rvalue(c, &value);
-	value.kind = BE_ADDRESS;
+	llvm_value_deref(c, &value);
 	BEValue store_value = *result_value;
 	LLVMValueRef store = llvm_store(c, &value, &store_value);
 	if (store)
@@ -176,9 +172,7 @@ INLINE void llvm_emit_atomic_store(GenContext *c, BEValue *result_value, Expr *e
 INLINE void llvm_emit_atomic_load(GenContext *c, BEValue *result_value, Expr *expr)
 {
 	llvm_emit_expr(c, result_value, expr->call_expr.arguments[0]);
-	llvm_value_rvalue(c, result_value);
-	result_value->kind = BE_ADDRESS;
-	result_value->type = type_lowering(result_value->type->pointer);
+	llvm_value_deref(c, result_value);
 	llvm_value_rvalue(c, result_value);
 	if (expr->call_expr.arguments[1]->const_expr.b) LLVMSetVolatile(result_value->value, true);
 	LLVMSetOrdering(result_value->value,  llvm_atomic_ordering(expr->call_expr.arguments[2]->const_expr.ixx.i.low));

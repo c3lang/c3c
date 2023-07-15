@@ -121,7 +121,7 @@ macro bool! Formatter.print_with_function(&self, any arg)
 			self.width = old_width;
 			self.prec = old_prec;
 		}
-		arg.to_format(&self)!;
+		arg.to_format(self)!;
 		return true;
 	}
     if (&arg.to_string)

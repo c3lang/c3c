@@ -8,7 +8,7 @@ def Fnv64a = distinct ulong;
 const FNV64A_START @private = 0xcbf29ce484222325;
 const FNV64A_MUL @private = 0x00000100000001b3;
 
-macro void @update(ulong &h, char x) @private => h = (h * FNV64A_MUL) ^ x;
+macro void @update(ulong* &h, char x) @private => *h = (*h * FNV64A_MUL) ^ x;
 
 fn void Fnv64a.init(&self)
 {

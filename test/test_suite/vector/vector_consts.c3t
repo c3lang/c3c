@@ -16,7 +16,6 @@ entry:
   %z = alloca <8 x i8>, align 8
   %x = alloca <8 x i8>, align 1
   %y = alloca <8 x i8>, align 1
-  %x1 = alloca <8 x i8>, align 1
   store double %0, ptr %a, align 8
   store double %1, ptr %b, align 8
   %2 = load <8 x i8>, ptr %a, align 8
@@ -36,11 +35,9 @@ entry:
   %11 = trunc <8 x i8> %10 to <8 x i1>
   %12 = sext <8 x i1> %11 to <8 x i8>
   %bnot = xor <8 x i8> %12, <i8 -1, i8 -1, i8 -1, i8 -1, i8 -1, i8 -1, i8 -1, i8 -1>
-  %and2 = and <8 x i8> %bnot, <i8 0, i8 1, i8 2, i8 3, i8 4, i8 5, i8 6, i8 7>
-  %add = add <8 x i8> %and, %and2
-  store <8 x i8> %add, ptr %x1, align 1
-  %13 = load <8 x i8>, ptr %x1, align 1
-  %14 = call i8 @llvm.vector.reduce.umin.v8i8(<8 x i8> %13)
-  %zext = zext i8 %14 to i32
+  %and1 = and <8 x i8> %bnot, <i8 0, i8 1, i8 2, i8 3, i8 4, i8 5, i8 6, i8 7>
+  %add = add <8 x i8> %and, %and1
+  %13 = call i8 @llvm.vector.reduce.umin.v8i8(<8 x i8> %add)
+  %zext = zext i8 %13 to i32
   ret i32 %zext
 }

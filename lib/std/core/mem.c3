@@ -9,12 +9,15 @@ const DEFAULT_MEM_ALIGNMENT = (void*.alignof) * 2;
 
 macro @volatile_load(&x) @builtin
 {
-    return $$volatile_load(&x);
+    return $$volatile_load(x);
 }
 
+/**
+ * @checked *x == y : "The value doesn't match the variable"
+ **/
 macro @volatile_store(&x, y) @builtin
 {
-    return $$volatile_store(&x, ($typeof(x))y);
+    return $$volatile_store(x, ($typeof(*x))y);
 }
 
 enum AtomicOrdering : int
@@ -37,10 +40,11 @@ enum AtomicOrdering : int
  * @require $ordering != AtomicOrdering.RELEASE "Release ordering is not valid for load."
  * @require $ordering != AtomicOrdering.ACQUIRE_RELEASE "Acquire release is not valid for load."
  * @require types::may_load_atomic($typeof(x)) "Only integer, float and pointers may be used."
+ * @require @typekind(x) == POINTER "You can only load from a pointer"
  **/
 macro @atomic_load(&x, AtomicOrdering $ordering = SEQ_CONSISTENT, $volatile = false) @builtin
 {
-	return $$atomic_load(&x, $volatile, (int)$ordering);
+	return $$atomic_load(x, $volatile, (int)$ordering);
 }
 
 /**
@@ -55,7 +59,7 @@ macro @atomic_load(&x, AtomicOrdering $ordering = SEQ_CONSISTENT, $volatile = fa
  **/
 macro void @atomic_store(&x, value, AtomicOrdering $ordering = SEQ_CONSISTENT, $volatile = false) @builtin
 {
-	$$atomic_store(&x, value, $volatile, (int)$ordering);
+	$$atomic_store(x, value, $volatile, (int)$ordering);
 }
 
 macro compare_exchange(ptr, compare, value, AtomicOrdering $success = SEQ_CONSISTENT, AtomicOrdering $failure = SEQ_CONSISTENT, bool $volatile = true, bool $weak = false, usz $alignment = 0)

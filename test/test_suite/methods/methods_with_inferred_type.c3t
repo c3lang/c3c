@@ -16,7 +16,7 @@ fn void Foo.add(&f)
 
 macro void Foo.add_macro(&f)
 {
-	f++;
+	(*f)++;
 }
 
 fn int Abc.add(&a)

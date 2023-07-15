@@ -37,19 +37,20 @@ fault CastResult
  **/
 macro void @scope(&variable; @body) @builtin
 {
-	var temp = variable;
-	defer variable = temp;
+	var temp = *variable;
+	defer *variable = temp;
 	@body();
 }
 
 /**
  * Swap two variables
+ * @checked *a = *b, *b = *a
  **/
 macro void @swap(&a, &b) @builtin
 {
-	var temp = a;
-	a = b;
-	b = temp;
+	var temp = *a;
+	*a = *b;
+	*b = temp;
 }
 
 /**

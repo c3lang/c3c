@@ -676,7 +676,11 @@ typedef struct Decl_
 		void *tb_symbol;
 	};
 	AlignSize alignment;
-	const char *section;
+    union
+    {
+        const char *section;
+        ExprId varef_id;
+    };
 	AlignSize offset : 32;
 	AlignSize padding : 32;
 	/*	bool is_exported : 1;
@@ -2972,6 +2976,24 @@ static inline DeclKind decl_from_token(TokenType type)
 INLINE bool expr_is_deref(Expr *expr)
 {
 	return expr->expr_kind == EXPR_UNARY && expr->unary_expr.operator == UNARYOP_DEREF;
+}
+
+INLINE bool expr_is_addr(Expr *expr)
+{
+	return expr->expr_kind == EXPR_UNARY && expr->unary_expr.operator == UNARYOP_ADDR;
+}
+
+INLINE bool expr_is_any_addr(Expr *expr)
+{
+	if (expr->expr_kind != EXPR_UNARY) return false;
+	switch (expr->unary_expr.operator)
+	{
+		case UNARYOP_ADDR:
+		case UNARYOP_TADDR:
+			return true;
+		default:
+			return false;
+	}
 }
 
 INLINE bool expr_is_mult(Expr *expr)

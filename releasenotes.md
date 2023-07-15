@@ -6,6 +6,7 @@
 - Exhaustive switches with enums has better analysis.
 - Globals may now be initialized with optional values.
 - New generic syntax.
+- Macro ref parameters are now of pointer type and ref parameters are not assignable.
 - Added `nextcase default`.
 - Added `$embed` to embed binary data.
 - Ad hoc generics are now allowed.
@@ -46,6 +47,7 @@
 - Addition of `@local` for file local visibility.
 - Addition of `@public` for overriding default visibility.
 - Default visibility can be overridden per module compile unit. Eg `module foo @private`.
+- Optimized macro codegen for -O0.
 - Addition of unary `+`.
 - Remove the `:` and `;` used in $if, $switch etc.
 - Faults have an ordinal.
@@ -144,6 +146,9 @@
 - Added posix socket functions.
 
 ### Fixes
+- Fixes missing checks to body arguments.
+- Do not create debug declaration for value-only parameter.
+- Bug in alignment for atomics.
 - Fix to bug when comparing nested arrays.
 - Fix to bug when a macro is using rethrow.
 - Fixes bug initializing a const struct with a const struct value.

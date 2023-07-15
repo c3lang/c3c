@@ -414,12 +414,14 @@ static bool sema_binary_is_expr_lvalue(Expr *top_expr, Expr *expr)
 			decl = decl_raw(decl);
 			switch (decl->var.kind)
 			{
+				case VARDECL_PARAM_REF:
+					SEMA_ERROR(top_expr, "You cannot assign to a ref parameter.");
+					return false;
 				case VARDECL_LOCAL_CT:
 				case VARDECL_LOCAL_CT_TYPE:
 				case VARDECL_LOCAL:
 				case VARDECL_GLOBAL:
 				case VARDECL_PARAM:
-				case VARDECL_PARAM_REF:
 				case VARDECL_PARAM_CT:
 				case VARDECL_PARAM_CT_TYPE:
 					return true;
@@ -543,10 +545,10 @@ static bool expr_may_ref(Expr *expr)
 				case VARDECL_LOCAL:
 				case VARDECL_GLOBAL:
 				case VARDECL_PARAM:
-				case VARDECL_PARAM_REF:
 				case VARDECL_PARAM_CT:
 				case VARDECL_PARAM_CT_TYPE:
 					return true;
+				case VARDECL_PARAM_REF:
 				case VARDECL_CONST:
 				case VARDECL_PARAM_EXPR:
 				case VARDECL_MEMBER:
@@ -740,12 +742,6 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 			// Impossible to reach this, they are already unfolded
 			UNREACHABLE
 		case VARDECL_PARAM_REF:
-			expr_replace(expr, copy_expr_single(decl->var.init_expr));
-			if (expr->expr_kind == EXPR_IDENTIFIER)
-			{
-				expr->identifier_expr.was_ref = true;
-			}
-			return sema_cast_rvalue(context, expr);
 		case VARDECL_PARAM:
 		case VARDECL_GLOBAL:
 		case VARDECL_LOCAL:
@@ -1537,6 +1533,7 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 				// &foo
 				if (!sema_analyse_expr_lvalue(context, arg)) return false;
 				if (!sema_expr_check_assign(context, arg)) return false;
+				expr_insert_addr(arg);
 				*optional |= IS_OPTIONAL(arg);
 				if (!sema_call_check_contract_param_match(context, param, arg)) return false;
 				if (type_is_invalid_storage_type(type) || type == type_void)
@@ -1549,7 +1546,7 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 					SEMA_ERROR(arg, "'%s' cannot be implicitly cast to '%s'.", type_to_error_string(arg->type), type_to_error_string(type));
 					return false;
 				}
-				if (param && !param->alignment)
+				if (!param->alignment)
 				{
 					if (arg->expr_kind == EXPR_IDENTIFIER)
 					{
@@ -2100,17 +2097,17 @@ static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *c
 	}
 	Expr **args = call_expr->arguments;
 
+	Decl **params = macro_context->yield_params;
 	// Evaluate the expressions. TODO hash expressions
 	for (unsigned i = 0; i < expressions; i++)
 	{
 		Expr *expr = args[i];
-		if (!sema_analyse_expr(macro_context, expr)) return false;
+		if (!sema_analyse_expr_rhs(macro_context, params[i]->type, expr, false)) return false;
 	}
 
 	AstId macro_defer = macro_context->active_scope.defer_last;
 	Ast *first_defer = NULL;
 	SemaContext *context = macro_context->yield_context;
-	Decl **params = macro_context->yield_params;
 	Expr *func_expr = exprptr(call_expr->function);
 	assert(func_expr->expr_kind == EXPR_MACRO_BODY_EXPANSION);
 	expr_replace(call, func_expr);
@@ -2212,6 +2209,13 @@ static inline bool sema_expr_analyse_call(SemaContext *context, Expr *expr)
 			switch (decl->decl_kind)
 			{
 				case DECL_MACRO:
+					struct_var = func_expr->access_expr.parent;
+					if (decl->func_decl.signature.params[0]->var.kind == VARDECL_PARAM_REF) break;
+					if (decl->func_decl.signature.params[0]->type->type_kind == TYPE_POINTER)
+					{
+						expr_insert_addr(struct_var);
+					}
+					break;
 				case DECL_FUNC:
 					struct_var = func_expr->access_expr.parent;
 					if (decl->func_decl.signature.params[0]->type->type_kind == TYPE_POINTER)
@@ -5582,8 +5586,9 @@ static inline const char *sema_addr_may_take_of_var(Expr *expr, Decl *decl)
 		case VARDECL_LOCAL:
 			if (is_void) return "You cannot take the address of a variable of type 'void'";
 			return NULL;
-		case VARDECL_PARAM:
 		case VARDECL_PARAM_REF:
+			return "You may not take the address of a ref parameter";
+		case VARDECL_PARAM:
 			if (is_void) return "You cannot take the address of a parameter of type 'void'";
 			return NULL;
 		case VARDECL_CONST:
@@ -5694,11 +5699,7 @@ static inline bool sema_expr_analyse_addr(SemaContext *context, Expr *expr)
 		{
 			Expr *parent = inner->access_expr.parent;
 			if (parent->expr_kind == EXPR_TYPEINFO) break;
-			Expr *parent_copy = expr_copy(parent);
-			parent->expr_kind = EXPR_UNARY;
-			parent->unary_expr = (ExprUnary){ .expr = parent_copy, .operator = UNARYOP_ADDR };
-			if (!sema_analyse_expr_lvalue_fold_const(context, parent)) return false;
-			expr_rewrite_insert_deref(parent);
+            if (!sema_analyse_expr_lvalue_fold_const(context, parent)) return false;
 			break;
 		}
 		default:
@@ -7343,22 +7344,25 @@ static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Expr *expr)
 
 			if (!sema_binary_is_expr_lvalue(arg_expr, arg_expr)) return false;
 
+            ExprId va_ref_id = exprid(arg_expr);
 			Decl *decl = NULL;
 			// Try to find the original param.
 			FOREACH_BEGIN(Decl *val, context->macro_params)
 				if (!val) continue;
-				if (val->var.init_expr == arg_expr)
+				if (val->var.kind == VARDECL_PARAM_REF && val->varef_id == va_ref_id)
 				{
 					decl = val;
-					decl->var.kind = VARDECL_PARAM_REF;
 					break;
 				}
 			FOREACH_END();
 			// Not found, so generate a new.
 			if (!decl)
 			{
-				decl = decl_new_generated_var(arg_expr->type, VARDECL_PARAM_REF, arg_expr->span);
-				decl->var.init_expr = arg_expr;
+                arg_expr = copy_expr_single(arg_expr);
+                expr_insert_addr(arg_expr);
+                decl = decl_new_generated_var(arg_expr->type, VARDECL_PARAM_REF, arg_expr->span);
+                decl->var.init_expr = arg_expr;
+                decl->varef_id = va_ref_id;
 				vec_add(context->macro_params, decl);
 			}
 			// Replace with the identifier.
@@ -8038,6 +8042,11 @@ bool sema_insert_method_call(SemaContext *context, Expr *method_call, Decl *meth
 	Decl *first_param = method_decl->func_decl.signature.params[0];
 	Type *first = first_param->type;
 	// Deref / addr as needed.
+	if (first_param->var.kind == VARDECL_PARAM_REF)
+	{
+		assert(first->type_kind == TYPE_POINTER);
+		first = first->pointer;
+	}
 	if (type != first)
 	{
 		if (first->type_kind == TYPE_POINTER && first->pointer == type)
