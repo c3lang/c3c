@@ -1,4 +1,5 @@
 module std::net;
+import std::net::os;
 
 fault NetError
 {
@@ -7,8 +8,14 @@ fault NetError
 	INVALID_SOCKET,
 	GENERAL_ERROR,
 	INVALID_IP_STRING,
+    ADDRINFO_FAILED,
+	CONNECT_FAILED,
+	LISTEN_FAILED,
+	ACCEPT_FAILED,
+    WRITE_FAILED,
+    READ_FAILED,
+    SOCKOPT_FAILED,
 }
-
 
 fn uint! ipv4toint(String s)
 {

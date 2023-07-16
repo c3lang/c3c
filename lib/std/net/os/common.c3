@@ -48,3 +48,4 @@ const O_NONBLOCK = PLATFORM_O_NONBLOCK;
 
 extern fn CInt getaddrinfo(ZString nodename, ZString servname, AddrInfo* hints, AddrInfo** res) @if(SUPPORTS_INET);
 extern fn void freeaddrinfo(AddrInfo* res) @if(SUPPORTS_INET);
+extern fn CInt setsockopt(NativeSocket socket, CInt level, CInt optname, void* optval, Socklen_t optlen) @if(SUPPORTS_INET);

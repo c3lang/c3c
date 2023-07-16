@@ -1,4 +1,6 @@
 module std::net;
+import std::io;
+import libc;
 
 const int SOCK_STREAM = 1;      // Stream
 const int SOCK_DGRAM = 2;       // Datagram
