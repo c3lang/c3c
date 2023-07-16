@@ -504,6 +504,7 @@ static void gencontext_verify_ir(GenContext *context)
 	{
 		if (*error)
 		{
+			LLVMDumpModule(context->module);
 			error_exit("Could not verify IR: %s", error);
 		}
 		error_exit("Could not verify module IR.");

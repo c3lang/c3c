@@ -1772,6 +1772,7 @@ static void vector_const_initializer_convert_to_type(ConstInitializer *initializ
 			if (is_neg_conversion)
 			{
 				bool is_true = initializer->init_value->const_expr.b;
+				initializer->init_value->const_expr.const_kind = CONST_INTEGER;
 				initializer->init_value->const_expr.ixx = (Int)
 						{ .i = is_true ? (Int128) { UINT64_MAX, UINT64_MAX } : (Int128) { 0, 0 },
 						  .type = to_flat->type_kind };

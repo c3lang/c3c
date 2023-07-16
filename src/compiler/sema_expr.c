@@ -1022,7 +1022,7 @@ static inline bool sema_binary_promote_top_down(SemaContext *context, Expr *bina
 static inline bool sema_binary_analyse_subexpr(SemaContext *context, Expr *binary, Expr *left, Expr *right)
 {
 	// Special handling of f = FOO_BAR
-	if (right->expr_kind == EXPR_IDENTIFIER && right->identifier_expr.is_const)
+	if (right->resolve_status != RESOLVE_DONE && right->expr_kind == EXPR_IDENTIFIER && right->identifier_expr.is_const)
 	{
 		if (!sema_analyse_expr(context, left)) return false;
 		if (type_flatten(left->type)->type_kind == TYPE_ENUM)
@@ -1031,7 +1031,7 @@ static inline bool sema_binary_analyse_subexpr(SemaContext *context, Expr *binar
 		}
 	}
 	// Special handling of f = FOO_BAR
-	if (left->expr_kind == EXPR_IDENTIFIER && left->identifier_expr.is_const)
+	if (left->resolve_status != RESOLVE_DONE && left->expr_kind == EXPR_IDENTIFIER && left->identifier_expr.is_const)
 	{
 		if (!sema_analyse_expr(context, right)) return false;
 		if (type_flatten(right->type)->type_kind == TYPE_ENUM)

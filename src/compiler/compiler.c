@@ -267,7 +267,7 @@ static void free_arenas(void)
 	if (debug_stats) print_arena_status();
 }
 
-static void compiler_print_bench(void)
+void compiler_print_bench(void)
 {
 	if (debug_stats)
 	{
