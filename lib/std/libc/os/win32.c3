@@ -25,7 +25,5 @@ extern fn CInt _wremove(WString);
 macro Tm* localtime_r(Time_t* timer, Tm* buf) => _localtime64_s(buf, timer);
 macro CInt setjmp(JmpBuf* buffer) => _setjmp($$frameaddress(), buffer);
 macro Tm* gmtime_r(Time_t* timer, Tm* buf) => _gmtime64_s(buf, timer);
-macro isz read(Fd fd, void* buffer, usz buffer_size) => _read(fd, buffer, buffer_size);
-macro isz write(Fd fd, void* buffer, usz count) => _write(fd, buffer, count);
-
-
+macro isz read(Fd fd, void* buffer, usz buffer_size) => _read(fd, buffer, (CUInt)buffer_size);
+macro isz write(Fd fd, void* buffer, usz count) => _write(fd, buffer, (CUInt)count);
