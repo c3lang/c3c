@@ -36,7 +36,6 @@ int main_real(int argc, const char *argv[])
 		   "------------------------------------------------------------\n");
 	bench_begin();
 
-	install_stacktrace(argv[0]);
 	// Setjmp will allow us to add things like fuzzing with
 	// easy restarts.
 	int result = setjmp(on_error_jump);

@@ -62,7 +62,7 @@ typedef struct TaskQueue_
 	Task **queue;
 } TaskQueue;
 
-static DWORD WINAPI taskqueue_thread(LPVOID lpParam)
+static unsigned WINAPI taskqueue_thread(LPVOID lpParam)
 {
 	TaskQueue *task_queue = (TaskQueue *)lpParam;
 	bool is_active = false;

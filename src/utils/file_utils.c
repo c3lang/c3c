@@ -5,7 +5,6 @@
 #include <sys/stat.h>
 #include <limits.h>
 #include "common.h"
-#include "errors.h"
 #include "lib.h"
 
 #if PLATFORM_WINDOWS
