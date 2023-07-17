@@ -14,7 +14,6 @@ message("C3C version: ${CMAKE_PROJECT_VERSION}")
 include(FetchContent)
 include(FeatureSummary)
 
-
 set(CMAKE_FIND_PACKAGE_SORT_ORDER NATURAL)
 set(CMAKE_FIND_PACKAGE_SORT_DIRECTION DEC)
 

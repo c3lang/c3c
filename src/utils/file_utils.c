@@ -372,15 +372,17 @@ const char *find_lib_dir(void)
 	{
 		path[strlen_path - 1] = '\0';
 	}
-	const char *lib_path;
-	if ((lib_path = lib_find(path, "/../lib/"))) return lib_path;
-	if ((lib_path = lib_find(path, "/lib/"))) return lib_path;
-	if ((lib_path = lib_find(path, "/"))) return lib_path;
-	if ((lib_path = lib_find(path, "/../"))) return lib_path;
-	if ((lib_path = lib_find(path, "/../../lib/"))) return lib_path;
+	const char *lib_path = NULL;
+	if ((lib_path = lib_find(path, "/../lib/"))) goto DONE;
+	if ((lib_path = lib_find(path, "/lib/"))) goto DONE;
+	if ((lib_path = lib_find(path, "/"))) goto DONE;
+	if ((lib_path = lib_find(path, "/../"))) goto DONE;
+	if ((lib_path = lib_find(path, "/../../lib/"))) goto DONE;
 
 	DEBUG_LOG("Could not find the standard library /lib/std/");
-	return NULL;
+DONE:;
+	free(path);
+	return lib_path;
 }
 
 void file_get_dir_and_filename_from_full(const char *full_path, char **filename, char **dir_path)

@@ -4365,9 +4365,6 @@ static void llvm_emit_binary_expr(GenContext *c, BEValue *be_value, Expr *expr)
 
 static inline void llvm_emit_elvis_expr(GenContext *c, BEValue *value, Expr *expr)
 {
-	// Set up basic blocks, following Cone
-	LLVMBasicBlockRef phi_block = llvm_basic_block_new(c, "cond.phi");
-	LLVMBasicBlockRef rhs_block = llvm_basic_block_new(c, "cond.rhs");
 
 	// Generate condition and conditional branch
 	Expr *cond = exprptr(expr->ternary_expr.cond);
@@ -4395,6 +4392,10 @@ static inline void llvm_emit_elvis_expr(GenContext *c, BEValue *value, Expr *exp
 
 	LLVMBasicBlockRef lhs_exit = llvm_get_current_block_if_in_use(c);
 	if (!lhs_exit) return;
+
+	// Set up basic blocks, following Cone
+	LLVMBasicBlockRef phi_block = llvm_basic_block_new(c, "cond.phi");
+	LLVMBasicBlockRef rhs_block = llvm_basic_block_new(c, "cond.rhs");
 
 	llvm_emit_cond_br(c, value, phi_block, rhs_block);
 	llvm_emit_block(c, rhs_block);
@@ -4442,10 +4443,6 @@ void gencontext_emit_ternary_expr(GenContext *c, BEValue *value, Expr *expr)
 		return;
 	}
 
-	// Set up basic blocks, following Cone
-	LLVMBasicBlockRef phi_block = llvm_basic_block_new(c, "cond.phi");
-	LLVMBasicBlockRef lhs_block = llvm_basic_block_new(c, "cond.lhs");
-	LLVMBasicBlockRef rhs_block = llvm_basic_block_new(c, "cond.rhs");
 
 	bool is_elvis = false;
 
@@ -4495,6 +4492,10 @@ void gencontext_emit_ternary_expr(GenContext *c, BEValue *value, Expr *expr)
 		return;
 	}
 
+	// Set up basic blocks, following Cone
+	LLVMBasicBlockRef phi_block = llvm_basic_block_new(c, "cond.phi");
+	LLVMBasicBlockRef rhs_block = llvm_basic_block_new(c, "cond.rhs");
+
 	LLVMBasicBlockRef lhs_exit;
 	if (is_elvis)
 	{
@@ -4504,6 +4505,7 @@ void gencontext_emit_ternary_expr(GenContext *c, BEValue *value, Expr *expr)
 	}
 	else
 	{
+		LLVMBasicBlockRef lhs_block = llvm_basic_block_new(c, "cond.lhs");
 		llvm_emit_cond_br(c, value, lhs_block, rhs_block);
 		llvm_emit_block(c, lhs_block);
 		BEValue lhs;
