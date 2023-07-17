@@ -2083,7 +2083,9 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 	{
 		Ast *other = cases[i];
 		if (other->ast_kind != AST_CASE_STMT) continue;
-		ExprConst *other_const = &exprptr(other->case_stmt.expr)->const_expr;
+		Expr *other_expr = exprptr(other->case_stmt.expr);
+		if (!expr_is_const(other_expr)) continue;
+		ExprConst *other_const = &other_expr->const_expr;
 		ExprConst *other_to_const = other->case_stmt.to_expr ? &exprptr(other->case_stmt.to_expr)->const_expr : other_const;
 		if (expr_const_in_range(const_expr, other_const, other_to_const))
 		{

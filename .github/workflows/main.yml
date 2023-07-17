@@ -40,7 +40,7 @@ jobs:
           ..\build\${{ matrix.build_type }}\c3c.exe compile-run examples\ls.c3
           ..\build\${{ matrix.build_type }}\c3c.exe compile-run examples\load_world.c3
           ..\build\${{ matrix.build_type }}\c3c.exe compile-run examples\process.c3
-          
+          ..\build\${{ matrix.build_type }}\c3c.exe compile --test -g -O0 --threads 1 --target macos-x64 examples\constants.c3                  
 
       - name: Build testproject
         run: |
@@ -93,8 +93,8 @@ jobs:
           install: git binutils mingw-w64-x86_64-ninja mingw-w64-x86_64-cmake mingw-w64-x86_64-toolchain mingw-w64-x86_64-python
       - shell: msys2 {0}
         run: |
-            pacman --noconfirm -U https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-llvm-15.0.3-1-any.pkg.tar.zst
-            pacman --noconfirm -U https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-lld-15.0.3-1-any.pkg.tar.zst
+            pacman --noconfirm -U https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-llvm-16.0.5-1-any.pkg.tar.zst
+            pacman --noconfirm -U https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-lld-16.0.5-1-any.pkg.tar.zst
       - name: CMake
         run: |
           cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
@@ -108,7 +108,7 @@ jobs:
           ../build/c3c compile-run examples/fannkuch-redux.c3
           ../build/c3c compile-run examples/contextfree/boolerr.c3
           ../build/c3c compile-run examples/load_world.c3
-          ../build/c3c compile-run examples/load_world.c3
+          ../build/c3c compile --test -g -O0 --threads 1 --target macos-x64 examples/constants.c3
 
       - name: Build testproject
         run: |
@@ -164,7 +164,7 @@ jobs:
           ../build/c3c compile-run examples/fannkuch-redux.c3
           ../build/c3c compile-run examples/contextfree/boolerr.c3
           ../build/c3c compile-run examples/load_world.c3
-
+          ../build/c3c compile --test -g -O0 --threads 1 --target macos-x64 examples/constants.c3
       - name: Build testproject
         run: |
           cd resources/testproject

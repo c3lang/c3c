@@ -9,8 +9,8 @@
 #include <sys/mman.h>
 #endif
 
-#if defined(WIN32)
-#include <Windows.h>
+#if PLATFORM_WINDOWS
+#include <windows.h>
 #define COMMIT_PAGE_SIZE 0x10000
 #endif
 

@@ -3,7 +3,6 @@
 // a copy of which can be found in the LICENSE file.
 
 #include "../utils/common.h"
-#include "../utils/errors.h"
 #include "../utils/lib.h"
 #include "../build/build_options.h"
 #include "compiler.h"

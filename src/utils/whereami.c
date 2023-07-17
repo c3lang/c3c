@@ -4,11 +4,12 @@
 
 // Code based off Gregory Pakosz's whereami.
 
-#if defined(WIN32)
+#include "whereami.h"
+#include "common.h"
+
+#if PLATFORM_WINDOWS
 #include <windows.h>
 #endif
-
-#include "whereami.h"
 
 #include <stdlib.h>
 
@@ -30,7 +31,7 @@
 #error unsupported compiler
 #endif
 
-#if defined(_WIN32)
+#if PLATFORM_WINDOWS
 
 #if defined(_MSC_VER)
 #pragma warning(push, 3)

@@ -53,6 +53,7 @@ static inline bool compare_fps(Real left, Real right, BinaryOp op)
 bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp op)
 {
 	bool is_eq;
+	assert(left->const_kind == right->const_kind);
 	switch (left->const_kind)
 	{
 		case CONST_BOOL:
