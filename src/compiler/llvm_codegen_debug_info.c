@@ -54,6 +54,7 @@ static inline LLVMMetadataRef llvm_get_debug_struct(GenContext *c, Type *type, c
 
 static inline LLVMMetadataRef llvm_get_debug_member(GenContext *c, Type *type, const char *name, unsigned offset, SourceSpan *loc, LLVMMetadataRef scope, LLVMDIFlags flags)
 {
+	assert(name && scope);
 	return LLVMDIBuilderCreateMemberType(
 			c->debug.builder,
 			scope,
@@ -108,32 +109,29 @@ void llvm_emit_debug_function(GenContext *c, Decl *decl)
 {
 	LLVMDIFlags flags = LLVMDIFlagZero;
 	if (!decl->func_decl.body) return;
-	if (decl_is_externally_visible(decl))
-	{
-		flags |= LLVMDIFlagPublic;
-	}
-	else
-	{
-		flags |= LLVMDIFlagPrivate;
-	}
 	flags |= LLVMDIFlagPrototyped;
 	if (decl->func_decl.signature.attrs.noreturn) flags |= LLVMDIFlagNoReturn;
 
 	uint32_t row = decl->span.row;
 	if (!row) row = 1;
+	assert(decl->name);
+	assert(decl->extname);
+	assert(c->debug.file.debug_file);
+	LLVMMetadataRef debug_type = llvm_get_debug_type(c, decl->type);
 	c->debug.function = LLVMDIBuilderCreateFunction(c->debug.builder,
 													c->debug.file.debug_file,
 													decl->name, strlen(decl->name),
 													decl->extname, strlen(decl->extname),
 													c->debug.file.debug_file,
 													row,
-													llvm_get_debug_type(c, decl->type),
+													debug_type,
 													decl_is_local(decl),
 													true,
 													row,
 													flags,
 													active_target.optimization_level != OPTIMIZATION_NONE);
 	LLVMSetSubprogram(decl->backend_ref, c->debug.function);
+
 }
 
 void llvm_emit_debug_local_var(GenContext *c, Decl *decl)
@@ -513,6 +511,10 @@ static LLVMMetadataRef llvm_debug_func_type(GenContext *c, Type *type)
 	VECEACH(prototype->param_types, i)
 	{
 		vec_add(buffer, llvm_get_debug_type(c, prototype->param_types[i]));
+	}
+	if (prototype->raw_variadic)
+	{
+		vec_add(buffer, LLVMDIBuilderCreateUnspecifiedType(c->debug.builder, "", 0));
 	}
 	return LLVMDIBuilderCreateSubroutineType(c->debug.builder,
 											 c->debug.file.debug_file,

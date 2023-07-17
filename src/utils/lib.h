@@ -93,8 +93,23 @@ void memory_release();
 #define idptr(id_) ((void*)(((uintptr_t)id_) * 16 + arena_zero))
 void *calloc_arena(size_t mem);
 char *calloc_string(size_t len);
+#ifdef NDEBUG
 #define malloc_string calloc_string
 #define malloc_arena calloc_arena
+#else
+static inline void *malloc_string(size_t len)
+{
+	void *data = calloc_string(len);
+	memset(data, 0xaa, len);
+	return data;
+}
+static inline void *malloc_arena(size_t len)
+{
+	void *data = calloc_arena(len);
+	memset(data, 0xaa, len);
+	return data;
+}
+#endif
 void free_arena(void);
 void print_arena_status(void);
 void run_arena_allocator_tests(void);

@@ -604,6 +604,7 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, const char *module_nam
 	if (llvm_use_debug(c))
 	{
 		llvm_debug_scope_pop(c);
+		LLVMDIBuilderFinalizeSubprogram(c->debug.builder, c->debug.function);
 	}
 
 	c->builder = prev_builder;
@@ -649,7 +650,7 @@ void llvm_emit_xxlizer(GenContext *c, Decl *decl)
 														true,
 														true,
 														row,
-														LLVMDIFlagPrivate,
+														LLVMDIFlagZero,
 														active_target.optimization_level != OPTIMIZATION_NONE);
 		LLVMSetSubprogram(function, c->debug.function);
 	}

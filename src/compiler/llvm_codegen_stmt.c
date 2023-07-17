@@ -546,16 +546,16 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 				// so emit the block
 				llvm_emit_block(c, body_block);
 				break;
-				case LOOP_INFINITE:
-					// In this case we have no cond, so we need to emit the br and
-					// then the block
-					llvm_emit_br(c, body_block);
-					llvm_emit_block(c, body_block);
-					case LOOP_NONE:
-						// If there is no loop, then we will just fall through and the
-						// block is needed.
-						body_block = NULL;
-						break;
+			case LOOP_INFINITE:
+				// In this case we have no cond, so we need to emit the br and
+				// then the block
+				llvm_emit_br(c, body_block);
+				llvm_emit_block(c, body_block);
+			case LOOP_NONE:
+				// If there is no loop, then we will just fall through and the
+				// block is needed.
+				body_block = NULL;
+				break;
 		}
 		// Now emit the body
 		llvm_emit_stmt(c, body);

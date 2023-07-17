@@ -90,14 +90,14 @@ jobs:
         with:
           msystem: MINGW64
           update: true
-          install: git binutils mingw-w64-x86_64-ninja mingw-w64-x86_64-cmake mingw-w64-x86_64-toolchain mingw-w64-x86_64-python
+          install: git binutils mingw-w64-x86_64-clang mingw-w64-x86_64-ninja mingw-w64-x86_64-cmake mingw-w64-x86_64-toolchain mingw-w64-x86_64-python
       - shell: msys2 {0}
         run: |
             pacman --noconfirm -U https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-llvm-16.0.5-1-any.pkg.tar.zst
             pacman --noconfirm -U https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-lld-16.0.5-1-any.pkg.tar.zst
       - name: CMake
         run: |
-          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          cmake -B build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
           cmake --build build
 
       - name: Compile and run some examples

@@ -148,6 +148,7 @@ static void linker_setup_windows(const char ***args_ref, LinkerType linker_type)
 	add_arg("user32.lib");
 	add_arg("shell32.lib");
 	add_arg("Shlwapi.lib");
+	add_arg("Ws2_32.lib");
 	add_arg("legacy_stdio_definitions.lib");
 
 	if (active_target.win.crt_linking == WIN_CRT_STATIC)
