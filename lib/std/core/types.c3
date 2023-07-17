@@ -99,7 +99,7 @@ macro bool is_comparable($Type)
 {
 	var $kind = $Type.kindof;
 	$if $kind == TypeKind.DISTINCT:
-		return is_comparable($Type.inner);
+		return is_comparable($typefrom($Type.inner));
 	$else
 		return $kind == TypeKind.SIGNED_INT || $kind == TypeKind.UNSIGNED_INT || $kind == TypeKind.FLOAT
 			|| $kind == TypeKind.VECTOR || $kind == TypeKind.BOOL || $kind == TypeKind.POINTER
