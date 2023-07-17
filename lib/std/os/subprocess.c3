@@ -333,71 +333,71 @@ fn SubProcess! create(String[] command_line, SubProcessOptions options = {}, Str
 	};
 }
 
-fn CInt! SubProcess.join(SubProcess *this) @if(env::POSIX)
+fn CInt! SubProcess.join(&self) @if(env::POSIX)
 {
-	if (this.stdin_file)
+	if (self.stdin_file)
 	{
-		libc::fclose(this.stdin_file);
-		this.stdin_file = null;
+		libc::fclose(self.stdin_file);
+		self.stdin_file = null;
 	}
 	CInt status;
-	if (this.child && this.child != posix::waitpid(this.child, &status, 0)) return SubProcessResult.PROCESS_JOIN_FAILED?;
+	if (self.child && self.child != posix::waitpid(self.child, &status, 0)) return SubProcessResult.PROCESS_JOIN_FAILED?;
 
-    this.child = 0;
-    this.is_alive = false;
+    self.child = 0;
+    self.is_alive = false;
 
-	return this.return_status = posix::wIFEXITED(status) ? posix::wEXITSTATUS(status) : libc::EXIT_FAILURE;
+	return self.return_status = posix::wIFEXITED(status) ? posix::wEXITSTATUS(status) : libc::EXIT_FAILURE;
 }
 
-fn File SubProcess.stdout(SubProcess* this)
+fn File SubProcess.stdout(&self)
 {
-	return file::from_libc(this.stdout_file);
+	return file::from_libc(self.stdout_file);
 }
 
-fn CInt! SubProcess.join(SubProcess *this) @if(env::WIN32)
+fn CInt! SubProcess.join(&self) @if(env::WIN32)
 {
-	if (this.stdin_file)
+	if (self.stdin_file)
 	{
-		libc::fclose(this.stdin_file);
-		this.stdin_file = null;
+		libc::fclose(self.stdin_file);
+		self.stdin_file = null;
 	}
-	if (this.hStdInput)
+	if (self.hStdInput)
 	{
-		win32::closeHandle(this.hStdInput);
-		this.hStdInput = null;
+		win32::closeHandle(self.hStdInput);
+		self.hStdInput = null;
 	}
-	win32::waitForSingleObject(this.hProcess, win32::INFINITE);
+	win32::waitForSingleObject(self.hProcess, win32::INFINITE);
 	Win32_DWORD return_code @noinit;
-	if (!win32::getExitCodeProcess(this.hProcess, &return_code)) return SubProcessResult.PROCESS_JOIN_FAILED?;
-    this.is_alive = false;
+	if (!win32::getExitCodeProcess(self.hProcess, &return_code)) return SubProcessResult.PROCESS_JOIN_FAILED?;
+    self.is_alive = false;
     return return_code;
 }
 
-fn bool SubProcess.destroy(SubProcess* this)
+fn bool SubProcess.destroy(&self)
 {
-	if (this.stdin_file) libc::fclose(this.stdin_file);
-	if (this.stdout_file)
+	if (self.stdin_file) libc::fclose(self.stdin_file);
+	if (self.stdout_file)
 	{
-		libc::fclose(this.stdout_file);
-		if (this.stdout_file != this.stderr_file) libc::fclose(this.stderr_file);
+		libc::fclose(self.stdout_file);
+		if (self.stdout_file != self.stderr_file) libc::fclose(self.stderr_file);
 	}
-	this.stdin_file = this.stdout_file = this.stderr_file = null;
+	self.stdin_file = self.stdout_file = self.stderr_file = null;
 	$if env::WIN32:
-		if (this.hProcess) win32::closeHandle(this.hProcess);
-		if (this.hStdInput) win32::closeHandle(this.hStdInput);
-		if (this.hEventOutput) win32::closeHandle(this.hEventOutput);
-		if (this.hEventError) win32::closeHandle(this.hEventError);
-		this.hProcess = this.hStdInput = this.hEventOutput = this.hEventError = null;
+		if (self.hProcess) win32::closeHandle(self.hProcess);
+		if (self.hStdInput) win32::closeHandle(self.hStdInput);
+		if (self.hEventOutput) win32::closeHandle(self.hEventOutput);
+		if (self.hEventError) win32::closeHandle(self.hEventError);
+		self.hProcess = self.hStdInput = self.hEventOutput = self.hEventError = null;
 	$endif;
 	return true;
 }
 
-fn void! SubProcess.terminate(SubProcess* this)
+fn void! SubProcess.terminate(&self)
 {
 	$if env::WIN32:
-		if (!win32::terminateProcess(this.hProcess, 99)) return SubProcessResult.PROCESS_TERMINATION_FAILED?;
+		if (!win32::terminateProcess(self.hProcess, 99)) return SubProcessResult.PROCESS_TERMINATION_FAILED?;
 	$else
-		if (posix::kill(this.child, 9))	return SubProcessResult.PROCESS_TERMINATION_FAILED?;
+		if (posix::kill(self.child, 9)) return SubProcessResult.PROCESS_TERMINATION_FAILED?;
 	$endif
 }
 
@@ -437,39 +437,39 @@ fn usz! read_from_file_posix(CFile file, char* buffer, usz size) @if(env::POSIX)
     return bytes_read;
 }
 
-fn usz! SubProcess.read_stdout(SubProcess* this, char* buffer, usz size)
+fn usz! SubProcess.read_stdout(&self, char* buffer, usz size)
 {
 	$if env::WIN32:
-		return read_from_file_win32(this.stdout_file, this.hEventOutput, buffer, size);
+		return read_from_file_win32(self.stdout_file, self.hEventOutput, buffer, size);
 	$else
-		return read_from_file_posix(this.stdout_file, buffer, size);
+		return read_from_file_posix(self.stdout_file, buffer, size);
 	$endif
 }
 
-fn usz! SubProcess.read_stderr(SubProcess* this, char* buffer, usz size)
+fn usz! SubProcess.read_stderr(&self, char* buffer, usz size)
 {
 	$if env::WIN32:
-		return read_from_file_win32(this.stderr_file, this.hEventError, buffer, size);
+		return read_from_file_win32(self.stderr_file, self.hEventError, buffer, size);
 	$else
-		return read_from_file_posix(this.stderr_file, buffer, size);
+		return read_from_file_posix(self.stderr_file, buffer, size);
 	$endif
 }
 
-fn bool! SubProcess.is_alive(SubProcess* this)
+fn bool! SubProcess.is_alive(&self)
 {
-	if (!this.is_alive) return false;
+	if (!self.is_alive) return false;
 	$if env::WIN32:
-		bool is_alive = win32::waitForSingleObject(this.hProcess, 0) != win32::WAIT_OBJECT_0;
-		if (!is_alive) this.is_alive = false;
+		bool is_alive = win32::waitForSingleObject(self.hProcess, 0) != win32::WAIT_OBJECT_0;
+		if (!is_alive) self.is_alive = false;
 		return is_alive;
 	$else
 		CInt status;
-		bool is_alive = posix::waitpid(this.child, &status, posix::WNOHANG) == 0;
+		bool is_alive = posix::waitpid(self.child, &status, posix::WNOHANG) == 0;
 		if (is_alive) return true;
-		this.is_alive = false;
-		this.return_status = posix::wIFEXITED(status) ? posix::wEXITSTATUS(status) : libc::EXIT_FAILURE;
-		this.child = 0;
-		this.join()!;
+		self.is_alive = false;
+		self.return_status = posix::wIFEXITED(status) ? posix::wEXITSTATUS(status) : libc::EXIT_FAILURE;
+		self.child = 0;
+		self.join()!;
 		return false;
 	$endif
 }

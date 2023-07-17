@@ -12,12 +12,12 @@ const ODD_PHI8 @local = 0x9f;
 
 def Sfc128 = distinct uint128[4];
 
-fn void Sfc128.seed(Sfc128* sfc, char[16 * 4] seed)
+fn void Sfc128.seed(&sfc, char[16 * 4] seed)
 {
     *sfc = bitcast(seed, Sfc128);
 }
 
-fn uint128 Sfc128.next(Sfc128* sfc) // TODO: Find good constant
+fn uint128 Sfc128.next(&sfc) // TODO: Find good constant
 {
     uint128* s = (uint128[4]*)sfc;
     uint128 result = s[0] + s[1] + s[3];
@@ -33,12 +33,12 @@ fn uint128 Sfc128.next(Sfc128* sfc) // TODO: Find good constant
 
 def Sfc64 = distinct ulong[4];
 
-fn void Sfc64.seed(Sfc64* sfc, char[8 * 4] seed)
+fn void Sfc64.seed(&sfc, char[8 * 4] seed)
 {
     *sfc = bitcast(seed, Sfc64);
 }
 
-fn ulong Sfc64.next(Sfc64* sfc)
+fn ulong Sfc64.next(&sfc)
 {
     ulong* s = (ulong[4]*)sfc;
     ulong result = s[0] + s[1] + s[3];
@@ -54,12 +54,12 @@ fn ulong Sfc64.next(Sfc64* sfc)
 
 def Sfc32 = distinct uint[4];
 
-fn void Sfc32.seed(Sfc32* sfc, char[4 * 4] seed)
+fn void Sfc32.seed(&sfc, char[4 * 4] seed)
 {
     *sfc = bitcast(seed, Sfc32);
 }
 
-fn uint Sfc32.next(Sfc32* sfc)
+fn uint Sfc32.next(&sfc)
 {
     uint* s = (uint[4]*)sfc;
     uint result = s[0] + s[1] + s[3];
@@ -75,12 +75,12 @@ fn uint Sfc32.next(Sfc32* sfc)
 
 def Sfc16 = distinct ushort[4];
 
-fn void Sfc16.seed(Sfc16* sfc, char[2 * 4] seed)
+fn void Sfc16.seed(&sfc, char[2 * 4] seed)
 {
     *sfc = bitcast(seed, Sfc16);
 }
 
-fn ushort Sfc16.next(Sfc16* sfc)
+fn ushort Sfc16.next(&sfc)
 {
     ushort* s = (ushort[4]*)sfc;
     ushort result = s[0] + s[1] + s[3];
@@ -96,12 +96,12 @@ fn ushort Sfc16.next(Sfc16* sfc)
 
 def Sfc8 = distinct char[4];
 
-fn void Sfc8.seed(Sfc8* sfc, char[1 * 4] seed)
+fn void Sfc8.seed(&sfc, char[1 * 4] seed)
 {
     *sfc = bitcast(seed, Sfc8);
 }
 
-fn char Sfc8.next(Sfc8* sfc) // TODO: Find better constants
+fn char Sfc8.next(&sfc) // TODO: Find better constants
 {
     char* s = (char[4]*)sfc;
     char result = s[0] + s[1] + s[3];

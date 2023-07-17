@@ -9,12 +9,12 @@ const MUL_MCG16 @local = 0x93d5; // TODO: Find good constant
 
 def Mcg128_64 = distinct uint128;
 
-fn void Mcg128_64.seed(Mcg128_64* mcg, char[16] seed)
+fn void Mcg128_64.seed(&mcg, char[16] seed)
 {
     *mcg = bitcast(seed, Mcg128_64) | 1;
 }
 
-fn ulong Mcg128_64.next(Mcg128_64* mcg)
+fn ulong Mcg128_64.next(&mcg)
 {
     uint128* s = (uint128*)mcg;
     ulong result = (ulong)(*s >> 64);
@@ -27,12 +27,12 @@ fn ulong Mcg128_64.next(Mcg128_64* mcg)
 
 def Mcg64_32 = distinct ulong;
 
-fn void Mcg64_32.seed(Mcg64_32* mcg, char[8] seed)
+fn void Mcg64_32.seed(&mcg, char[8] seed)
 {
     *mcg = bitcast(seed, Mcg64_32) | 1;
 }
 
-fn uint Mcg64_32.next(Mcg64_32* mcg)
+fn uint Mcg64_32.next(&mcg)
 {
     ulong* s = (ulong*)mcg;
     uint result = (uint)(*s >> 32);
@@ -45,12 +45,12 @@ fn uint Mcg64_32.next(Mcg64_32* mcg)
 
 def Mcg32_16 = distinct uint;
 
-fn void Mcg32_16.seed(Mcg32_16* mcg, char[4] seed)
+fn void Mcg32_16.seed(&mcg, char[4] seed)
 {
     *mcg = bitcast(seed, Mcg32_16) | 1;
 }
 
-fn ushort Mcg32_16.next(Mcg32_16* mcg)
+fn ushort Mcg32_16.next(&mcg)
 {
     uint* s = (uint*)mcg;
     ushort result = (ushort)(*s >> 16);
@@ -63,12 +63,12 @@ fn ushort Mcg32_16.next(Mcg32_16* mcg)
 
 def Mcg16_8 = distinct ushort;
 
-fn void Mcg16_8.seed(Mcg16_8* mcg, char[2] seed)
+fn void Mcg16_8.seed(&mcg, char[2] seed)
 {
     *mcg = bitcast(seed, Mcg16_8) | 1;
 }
 
-fn char Mcg16_8.next(Mcg16_8* mcg)
+fn char Mcg16_8.next(&mcg)
 {
     ushort* s = (ushort*)mcg;
     char result = (char)(*s >> 8);

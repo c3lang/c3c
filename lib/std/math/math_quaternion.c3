@@ -22,7 +22,7 @@ macro Matrix4f Quaternion.to_matrixf(Quaternion* q) => into_matrix(q, Matrix4f);
 macro Matrix4 Quaternion.to_matrix(Quaternion* q) => into_matrix(q, Matrix4);
 fn Quaternion Quaternion.nlerp(Quaternion q1, Quaternion q2, Real amount) => { .v = q1.v.lerp(q2.v, amount).normalize() };
 
-fn Quaternion Quaternion.invert(Quaternion q)
+fn Quaternion Quaternion.invert(q)
 {
 	Real length_sq = q.v.dot(q.v);
 	if (length_sq <= 0) return q;
@@ -30,7 +30,7 @@ fn Quaternion Quaternion.invert(Quaternion q)
 	return { q.v[0] * -inv_length, q.v[1] * -inv_length, q.v[2] * -inv_length, q.v[3] * inv_length };
 }
 
-fn Quaternion Quaternion.slerp(Quaternion q1, Quaternion q2, Real amount)
+fn Quaternion Quaternion.slerp(q1, Quaternion q2, Real amount)
 {
     Quaternion result = {};
 
@@ -59,7 +59,7 @@ fn Quaternion Quaternion.slerp(Quaternion q1, Quaternion q2, Real amount)
 	return { .v = q1v * ratio_a + q2v * ratio_b };
 }
 
-fn Quaternion Quaternion.mul(Quaternion a, Quaternion b)
+fn Quaternion Quaternion.mul(a, Quaternion b)
 {
 	return { a.i * b.l + a.l * b.i + a.j * b.k - a.k * b.j,
 	         a.j * b.l + a.l * b.j + a.k * b.i - a.i * b.k,
