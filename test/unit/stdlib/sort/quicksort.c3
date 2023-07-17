@@ -1,6 +1,7 @@
 module sort_test @test;
 import std::sort;
 import sort::check;
+import std::collections::list;
 
 fn void quicksort()
 {
@@ -68,6 +69,17 @@ fn void quicksort_with_lambda()
         sort::quicksort(tc, fn int(int a, int b) => a - b);
         assert(check::int_sort(tc));
     }
+}
+
+def List = List(<int>);
+
+fn void quicksort_list()
+{
+    List list;
+    list.tinit();
+    list.add_array({ 2, 1, 3});
+    sort::quicksort(list, &sort::cmp_int_value);
+    assert(check::int_sort(list.array_view()));
 }
 
 module sort::check;

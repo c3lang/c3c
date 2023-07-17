@@ -59,6 +59,10 @@ fn isz partition(Type list, isz low, isz high, Comparer cmp) @inline @local
             $endswitch
         } while (ok);
         if (i >= j) return j;
-        @swap(list[i], list[j]);
+        $if $checks(list.swap(0, 0)):
+            list.swap(i, j);
+        $else
+            @swap(list[i], list[j]);
+        $endif
     }
 }
