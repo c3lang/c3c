@@ -21,7 +21,7 @@ struct RandomInterface
  * @param [&inout] random
  * @param [inout] buffer
  **/
-fn void Random.next_bytes(Random* random, char[] buffer)
+fn void Random.next_bytes(&random, char[] buffer)
 {
 	if (!buffer.len) return;
 	if (RandomNextBytesFn func = random.fns.next_bytes_fn)
@@ -50,7 +50,7 @@ fn void Random.next_bytes(Random* random, char[] buffer)
  * @param [&inout] random
  * @require bits >= 0 && bits <= 32
  **/
-fn uint Random.next(Random* random, int bits)
+fn uint Random.next(&random, int bits)
 {
 	if (bits == 0) return 0;
 	if (RandomNextFn func = random.fns.next_fn) return func(random, bits);
@@ -71,7 +71,7 @@ fn uint Random.next(Random* random, int bits)
 /**
  * @param [&inout] random
  **/
-fn ulong Random.next_long(Random* random)
+fn ulong Random.next_long(&random)
 {
 	char[8] buffer;
 	random.next_bytes(&buffer);
@@ -81,7 +81,7 @@ fn ulong Random.next_long(Random* random)
 /**
  * @param [&inout] random
  **/
-fn void Random.set_seed(Random* random, long seed)
+fn void Random.set_seed(&random, long seed)
 {
 	random.fns.seed_fn(random, &&bitcast(seed, char[8])) @inline;
 }
@@ -90,7 +90,7 @@ fn void Random.set_seed(Random* random, long seed)
  * @param [&inout] random
  * @param [in] seed
  **/
-fn void Random.set_seeds(Random* random, char[] seed)
+fn void Random.set_seeds(&random, char[] seed)
 {
 	random.fns.seed_fn(random, seed);
 }
@@ -98,22 +98,22 @@ fn void Random.set_seeds(Random* random, char[] seed)
 /**
  * @param [&inout] random
  **/
-fn bool Random.next_bool(Random* random)
+fn bool Random.next_bool(&random)
 {
     return random.next(1) != 0;
 }
 
-fn float Random.next_float(Random* r)
+fn float Random.next_float(&r)
 {
     return r.next(24) / (float)(1 << 24);
 }
 
-fn double Random.next_double(Random* r)
+fn double Random.next_double(&r)
 {
     return (((long)(r.next(26)) << 27) + r.next(27)) * 0x1.0p-53;
 }
 
-fn uint Random.next_int(Random* r)
+fn uint Random.next_int(&r)
 {
     return r.next(32) @inline;
 }

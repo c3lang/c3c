@@ -16,12 +16,12 @@ const MUL_LCG16 @local = 0x915d; // TODO: Find good constant
 
 def Pcg128_64 = distinct uint128;
 
-fn void Pcg128_64.seed(Pcg128_64* pcg, char[16] seed)
+fn void Pcg128_64.seed(&pcg, char[16] seed)
 {
     *pcg = bitcast(seed, Pcg128_64);
 }
 
-fn ulong Pcg128_64.next(Pcg128_64* pcg)
+fn ulong Pcg128_64.next(&pcg)
 {
     const ROT_SHIFT = 64 - 6;
     uint128* s = (uint128*)pcg;
@@ -36,12 +36,12 @@ fn ulong Pcg128_64.next(Pcg128_64* pcg)
 
 def Pcg64_32 = distinct ulong;
 
-fn void Pcg64_32.seed(Pcg64_32* pcg, char[8] seed)
+fn void Pcg64_32.seed(&pcg, char[8] seed)
 {
     *pcg = bitcast(seed, Pcg64_32);
 }
 
-fn uint Pcg64_32.next(Pcg64_32* pcg)
+fn uint Pcg64_32.next(&pcg)
 {
     const ROT_SHIFT = 32 - 5;
     ulong* s = (ulong*)pcg;
@@ -56,12 +56,12 @@ fn uint Pcg64_32.next(Pcg64_32* pcg)
 
 def Pcg32_16 = distinct uint;
 
-fn void Pcg32_16.seed(Pcg32_16* pcg, char[4] seed)
+fn void Pcg32_16.seed(&pcg, char[4] seed)
 {
     *pcg = bitcast(seed, Pcg32_16);
 }
 
-fn ushort Pcg32_16.next(Pcg32_16* pcg)
+fn ushort Pcg32_16.next(&pcg)
 {
     const ROT_SHIFT = 16 - 4;
     uint* s = (uint*)pcg;
@@ -76,12 +76,12 @@ fn ushort Pcg32_16.next(Pcg32_16* pcg)
 
 def Pcg16_8 = distinct ushort;
 
-fn void Pcg16_8.seed(Pcg16_8* pcg, char[2] seed)
+fn void Pcg16_8.seed(&pcg, char[2] seed)
 {
     *pcg = bitcast(seed, Pcg16_8);
 }
 
-fn char Pcg16_8.next(Pcg16_8* pcg)
+fn char Pcg16_8.next(&pcg)
 {
     const ROT_SHIFT = 8 - 3;
     ushort* s = (ushort*)pcg;

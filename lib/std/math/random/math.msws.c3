@@ -15,12 +15,12 @@ struct Msws128 {
     uint128 weyl0, weyl1;
 }
 
-fn void Msws128.seed(Msws128* msws, char[16 * 4] seed)
+fn void Msws128.seed(&msws, char[16 * 4] seed)
 {
     *msws = bitcast(seed, Msws128);
 }
 
-fn uint128 Msws128.next(Msws128* msws)
+fn uint128 Msws128.next(&msws)
 {
     uint128 s0 = msws.state0;
     msws.state0 = msws.state0 * msws.state0 + msws.weyl0;
@@ -43,12 +43,12 @@ struct Msws64 {
     ulong weyl0, weyl1;
 }
 
-fn void Msws64.seed(Msws64* msws, char[8 * 4] seed)
+fn void Msws64.seed(&msws, char[8 * 4] seed)
 {
     *msws = bitcast(seed, Msws64);
 }
 
-fn ulong Msws64.next(Msws64* msws)
+fn ulong Msws64.next(&msws)
 {
     ulong s0 = msws.state0;
     msws.state0 = msws.state0 * msws.state0 + msws.weyl0;
@@ -71,12 +71,12 @@ struct Msws32 {
     uint weyl0, weyl1;
 }
 
-fn void Msws32.seed(Msws32* msws, char[4 * 4] seed)
+fn void Msws32.seed(&msws, char[4 * 4] seed)
 {
     *msws = bitcast(seed, Msws32);
 }
 
-fn uint Msws32.next(Msws32* msws)
+fn uint Msws32.next(&msws)
 {
     uint s0 = msws.state0;
     msws.state0 = msws.state0 * msws.state0 + msws.weyl0;
@@ -99,12 +99,12 @@ struct Msws16 {
     ushort weyl0, weyl1;
 }
 
-fn void Msws16.seed(Msws16* msws, char[2 * 4] seed)
+fn void Msws16.seed(&msws, char[2 * 4] seed)
 {
     *msws = bitcast(seed, Msws16);
 }
 
-fn ushort Msws16.next(Msws16* msws)
+fn ushort Msws16.next(&msws)
 {
     ushort s0 = msws.state0;
     msws.state0 = msws.state0 * msws.state0 + msws.weyl0;
@@ -127,12 +127,12 @@ struct Msws8 {
     char weyl0, weyl1;
 }
 
-fn void Msws8.seed(Msws8* msws, char[1 * 4] seed)
+fn void Msws8.seed(&msws, char[1 * 4] seed)
 {
     *msws = bitcast(seed, Msws8);
 }
 
-fn char Msws8.next(Msws8* msws)
+fn char Msws8.next(&msws)
 {
     char s0 = msws.state0;
     msws.state0 = msws.state0 * msws.state0 + msws.weyl0;

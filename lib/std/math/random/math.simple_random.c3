@@ -11,23 +11,23 @@ RandomInterface simple_random_interface = {
 	.next_fn = fn (random, bits) => ((SimpleRandom*)random.state).next(bits)
 };
 
-fn Random SimpleRandom.as_random(SimpleRandom* random)
+fn Random SimpleRandom.as_random(&random)
 {
 	return { .fns = simple_random_interface, .state = random };
 }
 
-fn uint SimpleRandom.next(SimpleRandom* r, int bits)
+fn uint SimpleRandom.next(&r, int bits)
 {
     ulong nextseed = ((ulong)*r * SIMPLE_RANDOM_MULTIPLIER + SIMPLE_RANDOM_ADDEND) & SIMPLE_RANDOM_MASK;
     *r = (SimpleRandom)nextseed;
     return (uint)(nextseed >> (48 - bits));
 }
 
-fn void SimpleRandom.set_seed(SimpleRandom* r, ulong seed)
+fn void SimpleRandom.set_seed(&r, ulong seed)
 {
     *r = (SimpleRandom)((seed ^ SIMPLE_RANDOM_MULTIPLIER) & SIMPLE_RANDOM_MASK);
 }
-fn void SimpleRandom.set_seeds(SimpleRandom* r, char[] seed)
+fn void SimpleRandom.set_seeds(&r, char[] seed)
 {
 	char[8] full;
 	foreach (i, c : seed)

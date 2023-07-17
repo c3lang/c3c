@@ -6,7 +6,7 @@ def NativeConditionVariable = Pthread_cond_t;
 def NativeThread = Pthread_t;
 def NativeOnceFlag = Pthread_once_t;
 
-fn void! NativeMutex.init(NativeMutex* mutex, MutexType type)
+fn void! NativeMutex.init(&mtx, MutexType type)
 {
 	Pthread_mutexattr_t attr;
 	if (pthread_mutexattr_init(&attr)) return ThreadFault.INIT_FAILED?;
@@ -15,20 +15,20 @@ fn void! NativeMutex.init(NativeMutex* mutex, MutexType type)
     {
         if (pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE)) return ThreadFault.INIT_FAILED?;
     }
-    if (pthread_mutex_init(mutex, &attr)) return ThreadFault.INIT_FAILED?;
+    if (pthread_mutex_init(mtx, &attr)) return ThreadFault.INIT_FAILED?;
 }
 
-fn void! NativeMutex.destroy(NativeMutex* mtx)
+fn void! NativeMutex.destroy(&mtx)
 {
 	if (pthread_mutex_destroy(mtx)) return ThreadFault.DESTROY_FAILED?;
 }
 
-fn void! NativeMutex.lock(NativeMutex* mtx)
+fn void! NativeMutex.lock(&mtx)
 {
 	if (pthread_mutex_lock(mtx)) return ThreadFault.LOCK_FAILED?;
 }
 
-fn void! NativeMutex.lock_timeoutout(NativeMutex* mtx, ulong ms)
+fn void! NativeMutex.lock_timeoutout(&mtx, ulong ms)
 {
     /* Try to acquire the lock and, if we fail, sleep for 5ms. */
     Errno result;
@@ -51,42 +51,42 @@ fn void! NativeMutex.lock_timeoutout(NativeMutex* mtx, ulong ms)
     }
 }
 
-fn bool NativeMutex.try_lock(NativeMutex* mtx)
+fn bool NativeMutex.try_lock(&mtx)
 {
 	return !pthread_mutex_trylock(mtx);
 }
 
-fn void! NativeMutex.unlock(NativeMutex* mtx)
+fn void! NativeMutex.unlock(&mtx)
 {
 	if (pthread_mutex_unlock(mtx)) return ThreadFault.UNLOCK_FAILED?;
 }
 
-fn void! NativeConditionVariable.init(NativeConditionVariable* cond)
+fn void! NativeConditionVariable.init(&cond)
 {
 	if (pthread_cond_init(cond, null)) return ThreadFault.INIT_FAILED?;
 }
 
-fn void! NativeConditionVariable.destroy(NativeConditionVariable* cond)
+fn void! NativeConditionVariable.destroy(&cond)
 {
 	if (pthread_cond_destroy(cond)) return ThreadFault.DESTROY_FAILED?;
 }
 
-fn void! NativeConditionVariable.signal(NativeConditionVariable* cond)
+fn void! NativeConditionVariable.signal(&cond)
 {
 	if (pthread_cond_signal(cond)) return ThreadFault.SIGNAL_FAILED?;
 }
 
-fn void! NativeConditionVariable.broadcast(NativeConditionVariable* cond)
+fn void! NativeConditionVariable.broadcast(&cond)
 {
 	if (pthread_cond_broadcast(cond)) return ThreadFault.SIGNAL_FAILED?;
 }
 
-fn void! NativeConditionVariable.wait(NativeConditionVariable* cond, NativeMutex* mtx)
+fn void! NativeConditionVariable.wait(&cond, NativeMutex* mtx)
 {
     if (pthread_cond_wait(cond, mtx)) return ThreadFault.WAIT_FAILED?;
 }
 
-fn void! NativeConditionVariable.wait_timeout(NativeConditionVariable* cond, NativeMutex* mtx, ulong ms)
+fn void! NativeConditionVariable.wait_timeout(&cond, NativeMutex* mtx, ulong ms)
 {
 	TimeSpec now;
 	if (libc::timespec_get(&now, libc::TIME_UTC) != libc::TIME_UTC) return ThreadFault.WAIT_FAILED?;
@@ -110,7 +110,7 @@ fn void* callback(void* arg) @private
 	return (void*)(iptr)data.thread_fn(data.arg);
 }
 
-fn void! NativeThread.create(NativeThread* thread, ThreadFn thread_fn, void* arg)
+fn void! NativeThread.create(&thread, ThreadFn thread_fn, void* arg)
 {
 	PosixThreadData *thread_data = malloc(PosixThreadData);
 	*thread_data = { .thread_fn = thread_fn, .arg = arg };
@@ -122,7 +122,7 @@ fn void! NativeThread.create(NativeThread* thread, ThreadFn thread_fn, void* arg
     }
 }
 
-fn void! NativeThread.detach(NativeThread thread)
+fn void! NativeThread.detach(thread)
 {
 	if (!pthread_detach(thread)) return ThreadFault.DETACH_FAILED?;
 }
@@ -137,19 +137,19 @@ fn NativeThread native_thread_current()
 	return pthread_self();
 }
 
-fn bool NativeThread.equals(NativeThread this, NativeThread other)
+fn bool NativeThread.equals(thread, NativeThread other)
 {
-	return (bool)pthread_equal(this, other);
+	return (bool)pthread_equal(thread, other);
 }
 
-fn int! NativeThread.join(NativeThread thread)
+fn int! NativeThread.join(thread)
 {
 	void *pres;
 	if (pthread_join(thread, &pres)) return ThreadFault.JOIN_FAILED?;
 	return (int)(iptr)pres;
 }
 
-fn void NativeOnceFlag.call_once(NativeOnceFlag* flag, OnceFn func)
+fn void NativeOnceFlag.call_once(&flag, OnceFn func)
 {
 	pthread_once(flag, func);
 }
