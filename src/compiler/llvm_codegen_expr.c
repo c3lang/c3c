@@ -1162,7 +1162,7 @@ static inline void llvm_emit_access_addr(GenContext *c, BEValue *be_value, Expr 
 	if (flat_type->type_kind == TYPE_ENUM)
 	{
 		llvm_value_rvalue(c, be_value);
-		if (!member->backend_ref) llvm_get_typeid(c, parent->type);
+		if (!flat_type->decl->backend_ref) llvm_get_typeid(c, parent->type);
 		assert(member->backend_ref);
 		LLVMTypeRef value_type = llvm_get_type(c, type_get_array(member->type, vec_size(flat_type->decl->enums.values)));
 		AlignSize align = LLVMGetAlignment(member->backend_ref);

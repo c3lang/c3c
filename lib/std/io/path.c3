@@ -146,9 +146,9 @@ fn Path! Path.append(self, String filename, Allocator* using = mem::heap())
 	if (!self.path_string.len) return new(filename, using, self.env)!;
 	assert(!is_separator(self.path_string[^1], self.env));
 
-	@stack_mem(256; Allocator* mem)
+	@pool(using)
 	{
-		DString dstr = dstring::new_with_capacity(self.path_string.len + 1 + filename.len, .using = mem);
+		DString dstr = dstring::tnew_with_capacity(self.path_string.len + 1 + filename.len);
 		dstr.append(self.path_string);
 		dstr.append(PREFERRED_SEPARATOR);
 		dstr.append(filename);
