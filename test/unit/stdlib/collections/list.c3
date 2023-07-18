@@ -1,4 +1,4 @@
-module listtests @test;
+module list_test @test;
 import std::collections::list;
 
 def IntList = List(<int>);

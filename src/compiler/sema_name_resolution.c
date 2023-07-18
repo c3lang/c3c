@@ -562,7 +562,7 @@ INLINE Decl *sema_resolve_symbol_common(SemaContext *context, NameResolve *name_
 			}
 			if (module_with_path)
 			{
-				sema_error_at(name_resolve->span, "'%s' could be found in %s.", name_resolve->symbol, module_with_path->name->module);
+				sema_error_at(name_resolve->span, "'%s' could not be found in %s.", name_resolve->symbol, module_with_path->name->module);
 			}
 			else
 			{

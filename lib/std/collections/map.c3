@@ -72,6 +72,11 @@ fn bool HashMap.is_empty(&map) @inline
 	return !map.count;
 }
 
+fn usz HashMap.len(&map) @inline
+{
+    return map.count;
+}
+
 fn Value*! HashMap.get_ref(&map, Key key)
 {
 	if (!map.count) return SearchResult.MISSING?;
@@ -195,7 +200,20 @@ fn Key[] HashMap.key_list(&map, Allocator* using = mem::heap())
 	return list;
 }
 
-
+macro HashMap.@each(map; @body(key, value))
+{
+	if (map.count)
+	{
+        foreach (Entry* entry : map.table)
+        {
+            while (entry)
+            {
+                @body(entry.key, entry.value);
+                entry = entry.next;
+            }
+        }
+	}
+}
 
 fn Value[] HashMap.value_tlist(&map)
 {
