@@ -122,20 +122,24 @@ entry:
   store i32 3, ptr %18, align 4
   %19 = getelementptr inbounds [2 x i32], ptr %literal1, i64 0, i64 1
   store i32 4, ptr %19, align 4
+  %20 = insertvalue %"int[]" undef, ptr %literal1, 0
+  %21 = insertvalue %"int[]" %20, i64 2, 1
   store <2 x i32> <i32 5, i32 6>, ptr %taddr, align 8
-  %20 = load double, ptr %taddr, align 8
-  call void @test.test(i64 %17, ptr %literal1, i64 2, double %20)
-  %21 = getelementptr inbounds [2 x i32], ptr %literal2, i64 0, i64 0
-  store i32 2, ptr %21, align 4
-  %22 = getelementptr inbounds [2 x i32], ptr %literal2, i64 0, i64 1
-  store i32 7, ptr %22, align 4
-  %23 = load i64, ptr %literal2, align 4
-  %24 = getelementptr inbounds [2 x i32], ptr %literal3, i64 0, i64 0
-  store i32 2, ptr %24, align 4
-  %25 = getelementptr inbounds [2 x i32], ptr %literal3, i64 0, i64 1
-  store i32 7, ptr %25, align 4
+  %22 = load double, ptr %taddr, align 8
+  call void @test.test(i64 %17, ptr %literal1, i64 2, double %22)
+  %23 = getelementptr inbounds [2 x i32], ptr %literal2, i64 0, i64 0
+  store i32 2, ptr %23, align 4
+  %24 = getelementptr inbounds [2 x i32], ptr %literal2, i64 0, i64 1
+  store i32 7, ptr %24, align 4
+  %25 = load i64, ptr %literal2, align 4
+  %26 = getelementptr inbounds [2 x i32], ptr %literal3, i64 0, i64 0
+  store i32 2, ptr %26, align 4
+  %27 = getelementptr inbounds [2 x i32], ptr %literal3, i64 0, i64 1
+  store i32 7, ptr %27, align 4
+  %28 = insertvalue %"int[]" undef, ptr %literal3, 0
+  %29 = insertvalue %"int[]" %28, i64 2, 1
   store <2 x i32> <i32 2, i32 7>, ptr %taddr4, align 8
-  %26 = load double, ptr %taddr4, align 8
-  call void @test.test(i64 %23, ptr %literal3, i64 2, double %26)
+  %30 = load double, ptr %taddr4, align 8
+  call void @test.test(i64 %25, ptr %literal3, i64 2, double %30)
   ret void
 }

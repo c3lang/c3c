@@ -16,6 +16,8 @@
 
 #define SLICE_MAX_UNROLL 4
 
+extern const char *varargslots_name;
+extern const char *temp_name;
 typedef enum
 {
 	BE_VALUE,

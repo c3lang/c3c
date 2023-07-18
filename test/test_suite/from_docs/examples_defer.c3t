@@ -27,103 +27,53 @@ define void @defer1.test(i32 %0) #0 {
 entry:
   %eq = icmp eq i32 %0, 1
   br i1 %eq, label %if.then, label %if.exit
-
 if.then:                                          ; preds = %entry
-  store %"char[]" { ptr @.str, i64 1 }, ptr %x, align 8
   %1 = call ptr @std.io.stdout()
   store ptr %1, ptr %result, align 8
   %2 = load ptr, ptr %result, align 8
-  %3 = getelementptr inbounds %"char[]", ptr %x, i32 0, i32 0
-  %lo = load ptr, ptr %3, align 8
-  %4 = getelementptr inbounds %"char[]", ptr %x, i32 0, i32 1
-  %hi = load i64, ptr %4, align 8
-  %5 = call i64 @std.io.File.print(ptr %retparam, ptr %2, ptr %lo, i64 %hi)
-  store %"char[]" zeroinitializer, ptr %x1, align 8
-  %6 = call ptr @std.io.stdout()
-  store ptr %6, ptr %result3, align 8
-  %7 = load ptr, ptr %result3, align 8
-  %8 = getelementptr inbounds %"char[]", ptr %x1, i32 0, i32 0
-  %lo4 = load ptr, ptr %8, align 8
-  %9 = getelementptr inbounds %"char[]", ptr %x1, i32 0, i32 1
-  %hi5 = load i64, ptr %9, align 8
-  %10 = call i64 @std.io.File.printn(ptr %retparam2, ptr %7, ptr %lo4, i64 %hi5)
+  %3 = call i64 @std.io.File.print(ptr %retparam, ptr %2, ptr @.str, i64 1)
+  %4 = call ptr @std.io.stdout()
+  store ptr %4, ptr %result2, align 8
+  %5 = load ptr, ptr %result2, align 8
+  %6 = call i64 @std.io.File.printn(ptr %retparam1, ptr %5, ptr null, i64 0)
   ret void
-
 if.exit:                                          ; preds = %entry
-  %eq6 = icmp eq i32 %0, 0
-  br i1 %eq6, label %if.then7, label %if.exit23
-
-if.then7:                                         ; preds = %if.exit
-  store %"char[]" { ptr @.str.1, i64 1 }, ptr %x8, align 8
-  %11 = call ptr @std.io.stdout()
-  store ptr %11, ptr %result10, align 8
-  %12 = load ptr, ptr %result10, align 8
-  %13 = getelementptr inbounds %"char[]", ptr %x8, i32 0, i32 0
-  %lo11 = load ptr, ptr %13, align 8
-  %14 = getelementptr inbounds %"char[]", ptr %x8, i32 0, i32 1
-  %hi12 = load i64, ptr %14, align 8
-  %15 = call i64 @std.io.File.print(ptr %retparam9, ptr %12, ptr %lo11, i64 %hi12)
-  store %"char[]" { ptr @.str.2, i64 1 }, ptr %x13, align 8
-  %16 = call ptr @std.io.stdout()
-  store ptr %16, ptr %result15, align 8
-  %17 = load ptr, ptr %result15, align 8
-  %18 = getelementptr inbounds %"char[]", ptr %x13, i32 0, i32 0
-  %lo16 = load ptr, ptr %18, align 8
-  %19 = getelementptr inbounds %"char[]", ptr %x13, i32 0, i32 1
-  %hi17 = load i64, ptr %19, align 8
-  %20 = call i64 @std.io.File.print(ptr %retparam14, ptr %17, ptr %lo16, i64 %hi17)
-  store %"char[]" zeroinitializer, ptr %x18, align 8
-  %21 = call ptr @std.io.stdout()
-  store ptr %21, ptr %result20, align 8
-  %22 = load ptr, ptr %result20, align 8
-  %23 = getelementptr inbounds %"char[]", ptr %x18, i32 0, i32 0
-  %lo21 = load ptr, ptr %23, align 8
-  %24 = getelementptr inbounds %"char[]", ptr %x18, i32 0, i32 1
-  %hi22 = load i64, ptr %24, align 8
-  %25 = call i64 @std.io.File.printn(ptr %retparam19, ptr %22, ptr %lo21, i64 %hi22)
+  %eq3 = icmp eq i32 %0, 0
+  br i1 %eq3, label %if.then4, label %if.exit11
+if.then4:                                         ; preds = %if.exit
+  %7 = call ptr @std.io.stdout()
+  store ptr %7, ptr %result6, align 8
+  %8 = load ptr, ptr %result6, align 8
+  %9 = call i64 @std.io.File.print(ptr %retparam5, ptr %8, ptr @.str.1, i64 1)
+  %10 = call ptr @std.io.stdout()
+  store ptr %10, ptr %result8, align 8
+  %11 = load ptr, ptr %result8, align 8
+  %12 = call i64 @std.io.File.print(ptr %retparam7, ptr %11, ptr @.str.2, i64 1)
+  %13 = call ptr @std.io.stdout()
+  store ptr %13, ptr %result10, align 8
+  %14 = load ptr, ptr %result10, align 8
+  %15 = call i64 @std.io.File.printn(ptr %retparam9, ptr %14, ptr null, i64 0)
   ret void
-
-if.exit23:                                        ; preds = %if.exit
-  store %"char[]" { ptr @.str.3, i64 1 }, ptr %x24, align 8
-  %26 = call ptr @std.io.stdout()
-  store ptr %26, ptr %result26, align 8
-  %27 = load ptr, ptr %result26, align 8
-  %28 = getelementptr inbounds %"char[]", ptr %x24, i32 0, i32 0
-  %lo27 = load ptr, ptr %28, align 8
-  %29 = getelementptr inbounds %"char[]", ptr %x24, i32 0, i32 1
-  %hi28 = load i64, ptr %29, align 8
-  %30 = call i64 @std.io.File.print(ptr %retparam25, ptr %27, ptr %lo27, i64 %hi28)
-  store %"char[]" { ptr @.str.4, i64 1 }, ptr %x29, align 8
-  %31 = call ptr @std.io.stdout()
-  store ptr %31, ptr %result31, align 8
-  %32 = load ptr, ptr %result31, align 8
-  %33 = getelementptr inbounds %"char[]", ptr %x29, i32 0, i32 0
-  %lo32 = load ptr, ptr %33, align 8
-  %34 = getelementptr inbounds %"char[]", ptr %x29, i32 0, i32 1
-  %hi33 = load i64, ptr %34, align 8
-  %35 = call i64 @std.io.File.print(ptr %retparam30, ptr %32, ptr %lo32, i64 %hi33)
-  store %"char[]" { ptr @.str.5, i64 1 }, ptr %x34, align 8
-  %36 = call ptr @std.io.stdout()
-  store ptr %36, ptr %result36, align 8
-  %37 = load ptr, ptr %result36, align 8
-  %38 = getelementptr inbounds %"char[]", ptr %x34, i32 0, i32 0
-  %lo37 = load ptr, ptr %38, align 8
-  %39 = getelementptr inbounds %"char[]", ptr %x34, i32 0, i32 1
-  %hi38 = load i64, ptr %39, align 8
-  %40 = call i64 @std.io.File.print(ptr %retparam35, ptr %37, ptr %lo37, i64 %hi38)
-  store %"char[]" zeroinitializer, ptr %x39, align 8
-  %41 = call ptr @std.io.stdout()
-  store ptr %41, ptr %result41, align 8
-  %42 = load ptr, ptr %result41, align 8
-  %43 = getelementptr inbounds %"char[]", ptr %x39, i32 0, i32 0
-  %lo42 = load ptr, ptr %43, align 8
-  %44 = getelementptr inbounds %"char[]", ptr %x39, i32 0, i32 1
-  %hi43 = load i64, ptr %44, align 8
-  %45 = call i64 @std.io.File.printn(ptr %retparam40, ptr %42, ptr %lo42, i64 %hi43)
+if.exit11:                                        ; preds = %if.exit
+  %16 = call ptr @std.io.stdout()
+  store ptr %16, ptr %result13, align 8
+  %17 = load ptr, ptr %result13, align 8
+  %18 = call i64 @std.io.File.print(ptr %retparam12, ptr %17, ptr @.str.3, i64 1)
+  %19 = call ptr @std.io.stdout()
+  store ptr %19, ptr %result15, align 8
+  %20 = load ptr, ptr %result15, align 8
+  %21 = call i64 @std.io.File.print(ptr %retparam14, ptr %20, ptr @.str.4, i64 1)
+  %22 = call ptr @std.io.stdout()
+  store ptr %22, ptr %result17, align 8
+  %23 = load ptr, ptr %result17, align 8
+  %24 = call i64 @std.io.File.print(ptr %retparam16, ptr %23, ptr @.str.5, i64 1)
+  %25 = call ptr @std.io.stdout()
+  store ptr %25, ptr %result19, align 8
+  %26 = load ptr, ptr %result19, align 8
+  %27 = call i64 @std.io.File.printn(ptr %retparam18, ptr %26, ptr null, i64 0)
   ret void
 }
-
-
+; Function Attrs: nounwind
 define void @defer1.main() #0 {
 entry:
   call void @defer1.test(i32 1)

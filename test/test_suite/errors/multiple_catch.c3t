@@ -54,7 +54,6 @@ entry:
   %varargslots22 = alloca [1 x %any], align 16
   %temp_err = alloca i64, align 8
   %retparam27 = alloca i32, align 4
-  %x = alloca %"char[]", align 8
   %retparam38 = alloca i64, align 8
   %result = alloca %File, align 8
   %err42 = alloca i64, align 8
@@ -182,41 +181,36 @@ end_block35:                                      ; preds = %after_check34, %ass
   br i1 %neq36, label %if.then37, label %if.exit41
 
 if.then37:                                        ; preds = %end_block35
-  store %"char[]" { ptr @.str.5, i64 4 }, ptr %x, align 8
   %23 = call ptr @std.io.stdout()
   store ptr %23, ptr %result, align 8
   %24 = load ptr, ptr %result, align 8
-  %25 = getelementptr inbounds %"char[]", ptr %x, i32 0, i32 0
-  %lo = load ptr, ptr %25, align 8
-  %26 = getelementptr inbounds %"char[]", ptr %x, i32 0, i32 1
-  %hi = load i64, ptr %26, align 8
-  %27 = call i64 @std.io.File.printn(ptr %retparam38, ptr %24, ptr %lo, i64 %hi)
+  %25 = call i64 @std.io.File.printn(ptr %retparam38, ptr %24, ptr @.str.5, i64 4)
   br label %if.exit41
 
 if.exit41:                                        ; preds = %if.then37, %end_block35
   br label %testblock43
 
 testblock43:                                      ; preds = %if.exit41
-  %28 = call i64 @demo1.hello(ptr %retparam44, i32 0)
-  %not_err45 = icmp eq i64 %28, 0
-  %29 = call i1 @llvm.expect.i1(i1 %not_err45, i1 true)
-  br i1 %29, label %after_check47, label %assign_optional46
+  %26 = call i64 @demo1.hello(ptr %retparam44, i32 0)
+  %not_err45 = icmp eq i64 %26, 0
+  %27 = call i1 @llvm.expect.i1(i1 %not_err45, i1 true)
+  br i1 %27, label %after_check47, label %assign_optional46
 
 assign_optional46:                                ; preds = %testblock43
-  store i64 %28, ptr %err42, align 8
+  store i64 %26, ptr %err42, align 8
   br label %end_block52
 
 after_check47:                                    ; preds = %testblock43
   br label %testblock48
 
 testblock48:                                      ; preds = %after_check47
-  %30 = call i64 @demo1.bye()
-  %not_err49 = icmp eq i64 %30, 0
-  %31 = call i1 @llvm.expect.i1(i1 %not_err49, i1 true)
-  br i1 %31, label %after_check51, label %assign_optional50
+  %28 = call i64 @demo1.bye()
+  %not_err49 = icmp eq i64 %28, 0
+  %29 = call i1 @llvm.expect.i1(i1 %not_err49, i1 true)
+  br i1 %29, label %after_check51, label %assign_optional50
 
 assign_optional50:                                ; preds = %testblock48
-  store i64 %30, ptr %err42, align 8
+  store i64 %28, ptr %err42, align 8
   br label %end_block52
 
 after_check51:                                    ; preds = %testblock48
@@ -224,16 +218,16 @@ after_check51:                                    ; preds = %testblock48
   br label %end_block52
 
 end_block52:                                      ; preds = %after_check51, %assign_optional50, %assign_optional46
-  %32 = load i64, ptr %err42, align 8
-  %neq53 = icmp ne i64 %32, 0
+  %30 = load i64, ptr %err42, align 8
+  %neq53 = icmp ne i64 %30, 0
   br i1 %neq53, label %if.then54, label %if.exit59
 
 if.then54:                                        ; preds = %end_block52
-  %33 = insertvalue %any undef, ptr %err42, 0
-  %34 = insertvalue %any %33, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
-  %35 = getelementptr inbounds [1 x %any], ptr %varargslots56, i64 0, i64 0
-  store %any %34, ptr %35, align 16
-  %36 = call i64 @std.io.printfn(ptr %retparam55, ptr @.str.6, i64 8, ptr %varargslots56, i64 1)
+  %31 = insertvalue %any undef, ptr %err42, 0
+  %32 = insertvalue %any %31, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  %33 = getelementptr inbounds [1 x %any], ptr %varargslots56, i64 0, i64 0
+  store %any %32, ptr %33, align 16
+  %34 = call i64 @std.io.printfn(ptr %retparam55, ptr @.str.6, i64 8, ptr %varargslots56, i64 1)
   br label %if.exit59
 
 if.exit59:                                        ; preds = %if.then54, %end_block52

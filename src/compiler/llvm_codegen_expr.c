@@ -5037,8 +5037,12 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef *args, unsigned *arg_count_
 					// No, then we can replace the instructions with the values.
 					LLVMValueRef first_val = LLVMGetOperand(prev, 1);
 					LLVMValueRef second_val = LLVMGetOperand(val, 1);
-					LLVMInstructionEraseFromParent(val);
-					LLVMInstructionEraseFromParent(prev);
+					const char *name = LLVMGetValueName(val);
+					if (name && strncmp(name, temp_name, 6) == 0)
+					{
+						LLVMInstructionEraseFromParent(val);
+						LLVMInstructionEraseFromParent(prev);
+					}
 					args[(*arg_count_ref)++] = first_val;
 					args[(*arg_count_ref)++] = second_val;
 					return;
@@ -5169,7 +5173,7 @@ void llvm_emit_vararg_parameter(GenContext *c, BEValue *value, Type *vararg_type
 	Type *array = type_get_array(pointee_type, elements);
 	LLVMTypeRef llvm_array_type = llvm_get_type(c, array);
 	AlignSize alignment = type_alloca_alignment(array);
-	LLVMValueRef array_ref = llvm_emit_alloca(c, llvm_array_type, alignment, "varargslots");
+	LLVMValueRef array_ref = llvm_emit_alloca(c, llvm_array_type, alignment, varargslots_name);
 	foreach(Expr*, varargs)
 	{
 		llvm_emit_expr(c, &temp_value, val);
@@ -5183,6 +5187,7 @@ void llvm_emit_vararg_parameter(GenContext *c, BEValue *value, Type *vararg_type
 		llvm_store_to_ptr_aligned(c, slot, &temp_value, store_alignment);
 	}
 	llvm_value_aggregate_two(c, value, vararg_type, array_ref, llvm_const_int(c, type_usz, elements));
+	LLVMSetValueName2(value->value, temp_name, 6);
 }
 
 
@@ -5940,12 +5945,13 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 		Expr *init_expr = val->var.init_expr;
 		BEValue value;
 		llvm_emit_expr(c, &value, init_expr);
-		if (type_is_abi_aggregate(value.type) || llvm_value_is_addr(&value) || val->var.is_written || val->var.is_addr)
+		if (llvm_value_is_addr(&value) || val->var.is_written || val->var.is_addr)
 		{
 			llvm_emit_and_set_decl_alloca(c, val);
 			llvm_store_decl(c, val, &value);
 			continue;
 		}
+
 		val->is_value = true;
 		val->backend_value = value.value;
 	FOREACH_END();
