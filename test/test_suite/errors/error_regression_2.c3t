@@ -291,48 +291,48 @@ entry:
   %allocator33 = alloca ptr, align 8
   %retparam35 = alloca ptr, align 8
   %varargslots40 = alloca [1 x %any], align 16
-  %indirectarg41 = alloca %"any[]", align 8
-  %value48 = alloca %Head, align 8
-  %temp49 = alloca ptr, align 8
-  %using50 = alloca ptr, align 8
-  %error_var51 = alloca i64, align 8
-  %using52 = alloca ptr, align 8
-  %allocator54 = alloca ptr, align 8
-  %retparam56 = alloca ptr, align 8
-  %varargslots61 = alloca [1 x %any], align 16
-  %indirectarg62 = alloca %"any[]", align 8
+  %indirectarg42 = alloca %"any[]", align 8
+  %value49 = alloca %Head, align 8
+  %temp50 = alloca ptr, align 8
+  %using51 = alloca ptr, align 8
+  %error_var52 = alloca i64, align 8
+  %using53 = alloca ptr, align 8
+  %allocator55 = alloca ptr, align 8
+  %retparam57 = alloca ptr, align 8
+  %varargslots62 = alloca [1 x %any], align 16
+  %indirectarg64 = alloca %"any[]", align 8
   %len = alloca i32, align 4
   %str = alloca ptr, align 8
-  %using70 = alloca ptr, align 8
-  %error_var71 = alloca i64, align 8
   %using72 = alloca ptr, align 8
-  %allocator73 = alloca ptr, align 8
-  %retparam75 = alloca ptr, align 8
-  %varargslots80 = alloca [1 x %any], align 16
-  %indirectarg81 = alloca %"any[]", align 8
-  %reterr89 = alloca i64, align 8
-  %literal90 = alloca %Doc, align 8
-  %error_var91 = alloca i64, align 8
-  %literal92 = alloca %Head, align 8
-  %error_var93 = alloca i64, align 8
-  %value96 = alloca %"char[]", align 8
-  %temp97 = alloca ptr, align 8
-  %using98 = alloca ptr, align 8
-  %error_var99 = alloca i64, align 8
-  %using100 = alloca ptr, align 8
-  %allocator102 = alloca ptr, align 8
-  %retparam104 = alloca ptr, align 8
-  %varargslots109 = alloca [1 x %any], align 16
-  %indirectarg110 = alloca %"any[]", align 8
-  %value117 = alloca %Head, align 8
-  %temp118 = alloca ptr, align 8
-  %using119 = alloca ptr, align 8
-  %error_var120 = alloca i64, align 8
-  %using121 = alloca ptr, align 8
-  %allocator123 = alloca ptr, align 8
-  %retparam125 = alloca ptr, align 8
-  %varargslots130 = alloca [1 x %any], align 16
-  %indirectarg131 = alloca %"any[]", align 8
+  %error_var73 = alloca i64, align 8
+  %using74 = alloca ptr, align 8
+  %allocator75 = alloca ptr, align 8
+  %retparam77 = alloca ptr, align 8
+  %varargslots82 = alloca [1 x %any], align 16
+  %indirectarg84 = alloca %"any[]", align 8
+  %reterr92 = alloca i64, align 8
+  %literal93 = alloca %Doc, align 8
+  %error_var94 = alloca i64, align 8
+  %literal95 = alloca %Head, align 8
+  %error_var96 = alloca i64, align 8
+  %value99 = alloca %"char[]", align 8
+  %temp100 = alloca ptr, align 8
+  %using101 = alloca ptr, align 8
+  %error_var102 = alloca i64, align 8
+  %using103 = alloca ptr, align 8
+  %allocator105 = alloca ptr, align 8
+  %retparam107 = alloca ptr, align 8
+  %varargslots112 = alloca [1 x %any], align 16
+  %indirectarg114 = alloca %"any[]", align 8
+  %value121 = alloca %Head, align 8
+  %temp122 = alloca ptr, align 8
+  %using123 = alloca ptr, align 8
+  %error_var124 = alloca i64, align 8
+  %using125 = alloca ptr, align 8
+  %allocator127 = alloca ptr, align 8
+  %retparam129 = alloca ptr, align 8
+  %varargslots134 = alloca [1 x %any], align 16
+  %indirectarg136 = alloca %"any[]", align 8
   store ptr %1, ptr %url, align 8
   %ptroffset = getelementptr inbounds i64, ptr %url, i64 1
   store i64 %2, ptr %ptroffset, align 8
@@ -405,15 +405,15 @@ panic_block:                                      ; preds = %assign_optional
   %30 = getelementptr inbounds [1 x %any], ptr %varargslots, i64 0, i64 0
   store %any %29, ptr %30, align 16
   %31 = insertvalue %"any[]" undef, ptr %varargslots, 0
-  %32 = insertvalue %"any[]" %31, i64 1, 1
-  store %"any[]" %32, ptr %indirectarg, align 8
+  %"#temp#" = insertvalue %"any[]" %31, i64 1, 1
+  store %"any[]" %"#temp#", ptr %indirectarg, align 8
   call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func, i64 7, i32 204, ptr byval(%"any[]") align 8 %indirectarg)
   unreachable
 
 noerr_block:                                      ; preds = %after_check
   store ptr %27, ptr %temp, align 8
-  %33 = load ptr, ptr %temp, align 8
-  %not = icmp eq ptr %33, null
+  %32 = load ptr, ptr %temp, align 8
+  %not = icmp eq ptr %32, null
   br i1 %not, label %if.then15, label %if.exit16
 
 if.then15:                                        ; preds = %noerr_block
@@ -421,343 +421,343 @@ if.then15:                                        ; preds = %noerr_block
   br label %guard_block
 
 if.exit16:                                        ; preds = %noerr_block
-  %34 = load ptr, ptr %temp, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %34, ptr align 8 %value, i32 8, i1 false)
+  %33 = load ptr, ptr %temp, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %33, ptr align 8 %value, i32 8, i1 false)
   br label %noerr_block17
 
 guard_block:                                      ; preds = %if.then15
-  %35 = load i64, ptr %error_var, align 8
-  ret i64 %35
+  %34 = load i64, ptr %error_var, align 8
+  ret i64 %34
 
 noerr_block17:                                    ; preds = %if.exit16
-  %36 = load ptr, ptr %temp, align 8
-  store ptr %36, ptr %16, align 8
+  %35 = load ptr, ptr %temp, align 8
+  store ptr %35, ptr %16, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %0, ptr align 8 %literal9, i32 8, i1 false)
   ret i64 0
 
 if.exit18:                                        ; preds = %if.exit4
-  %37 = getelementptr inbounds %"char[]", ptr %url, i32 0, i32 0
-  %lo19 = load ptr, ptr %37, align 8
-  %38 = getelementptr inbounds %"char[]", ptr %url, i32 0, i32 1
-  %hi20 = load i64, ptr %38, align 8
-  %39 = call i8 @test.contains(ptr %lo19, i64 %hi20, ptr @.str.5, i64 11)
-  %40 = trunc i8 %39 to i1
-  br i1 %40, label %if.then21, label %if.exit69
+  %36 = getelementptr inbounds %"char[]", ptr %url, i32 0, i32 0
+  %lo19 = load ptr, ptr %36, align 8
+  %37 = getelementptr inbounds %"char[]", ptr %url, i32 0, i32 1
+  %hi20 = load i64, ptr %37, align 8
+  %38 = call i8 @test.contains(ptr %lo19, i64 %hi20, ptr @.str.5, i64 11)
+  %39 = trunc i8 %38 to i1
+  br i1 %39, label %if.then21, label %if.exit71
 
 if.then21:                                        ; preds = %if.exit18
-  %41 = getelementptr inbounds %Doc, ptr %literal23, i32 0, i32 0
+  %40 = getelementptr inbounds %Doc, ptr %literal23, i32 0, i32 0
   store ptr null, ptr %literal25, align 8
-  %42 = getelementptr inbounds %Head, ptr %literal25, i32 0, i32 0
+  %41 = getelementptr inbounds %Head, ptr %literal25, i32 0, i32 0
   store %"char[]" zeroinitializer, ptr %value27, align 8
-  %43 = load ptr, ptr @std.core.mem.thread_allocator, align 8
-  store ptr %43, ptr %using29, align 8
-  %44 = load ptr, ptr %using29, align 8
-  store ptr %44, ptr %using31, align 8
-  %45 = load ptr, ptr %using31, align 8
-  store ptr %45, ptr %allocator33, align 8
-  %46 = load ptr, ptr %allocator33, align 8
-  %47 = getelementptr inbounds %Allocator, ptr %46, i32 0, i32 0
-  %48 = load ptr, ptr %47, align 8
-  %49 = load ptr, ptr %allocator33, align 8
-  %50 = call i64 %48(ptr %retparam35, ptr %49, i64 16, i64 0, i64 0, ptr null, i32 0)
-  %not_err36 = icmp eq i64 %50, 0
-  %51 = call i1 @llvm.expect.i1(i1 %not_err36, i1 true)
-  br i1 %51, label %after_check38, label %assign_optional37
+  %42 = load ptr, ptr @std.core.mem.thread_allocator, align 8
+  store ptr %42, ptr %using29, align 8
+  %43 = load ptr, ptr %using29, align 8
+  store ptr %43, ptr %using31, align 8
+  %44 = load ptr, ptr %using31, align 8
+  store ptr %44, ptr %allocator33, align 8
+  %45 = load ptr, ptr %allocator33, align 8
+  %46 = getelementptr inbounds %Allocator, ptr %45, i32 0, i32 0
+  %47 = load ptr, ptr %46, align 8
+  %48 = load ptr, ptr %allocator33, align 8
+  %49 = call i64 %47(ptr %retparam35, ptr %48, i64 16, i64 0, i64 0, ptr null, i32 0)
+  %not_err36 = icmp eq i64 %49, 0
+  %50 = call i1 @llvm.expect.i1(i1 %not_err36, i1 true)
+  br i1 %50, label %after_check38, label %assign_optional37
 
 assign_optional37:                                ; preds = %if.then21
-  store i64 %50, ptr %error_var30, align 8
+  store i64 %49, ptr %error_var30, align 8
   br label %panic_block39
 
 after_check38:                                    ; preds = %if.then21
-  %52 = load ptr, ptr %retparam35, align 8
-  br label %noerr_block42
+  %51 = load ptr, ptr %retparam35, align 8
+  br label %noerr_block43
 
 panic_block39:                                    ; preds = %assign_optional37
-  %53 = insertvalue %any undef, ptr %error_var30, 0
-  %54 = insertvalue %any %53, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
-  %55 = getelementptr inbounds [1 x %any], ptr %varargslots40, i64 0, i64 0
-  store %any %54, ptr %55, align 16
-  %56 = insertvalue %"any[]" undef, ptr %varargslots40, 0
-  %57 = insertvalue %"any[]" %56, i64 1, 1
-  store %"any[]" %57, ptr %indirectarg41, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func, i64 7, i32 204, ptr byval(%"any[]") align 8 %indirectarg41)
+  %52 = insertvalue %any undef, ptr %error_var30, 0
+  %53 = insertvalue %any %52, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  %54 = getelementptr inbounds [1 x %any], ptr %varargslots40, i64 0, i64 0
+  store %any %53, ptr %54, align 16
+  %55 = insertvalue %"any[]" undef, ptr %varargslots40, 0
+  %"#temp#41" = insertvalue %"any[]" %55, i64 1, 1
+  store %"any[]" %"#temp#41", ptr %indirectarg42, align 8
+  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func, i64 7, i32 204, ptr byval(%"any[]") align 8 %indirectarg42)
   unreachable
 
-noerr_block42:                                    ; preds = %after_check38
-  store ptr %52, ptr %temp28, align 8
-  %58 = load ptr, ptr %temp28, align 8
-  %not43 = icmp eq ptr %58, null
-  br i1 %not43, label %if.then44, label %if.exit45
+noerr_block43:                                    ; preds = %after_check38
+  store ptr %51, ptr %temp28, align 8
+  %56 = load ptr, ptr %temp28, align 8
+  %not44 = icmp eq ptr %56, null
+  br i1 %not44, label %if.then45, label %if.exit46
 
-if.then44:                                        ; preds = %noerr_block42
+if.then45:                                        ; preds = %noerr_block43
   store i64 ptrtoint (ptr @"test.ReadError$OUT_OF_MEMORY" to i64), ptr %error_var26, align 8
-  br label %guard_block46
+  br label %guard_block47
 
-if.exit45:                                        ; preds = %noerr_block42
+if.exit46:                                        ; preds = %noerr_block43
+  %57 = load ptr, ptr %temp28, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %57, ptr align 8 %value27, i32 16, i1 false)
+  br label %noerr_block48
+
+guard_block47:                                    ; preds = %if.then45
+  %58 = load i64, ptr %error_var26, align 8
+  ret i64 %58
+
+noerr_block48:                                    ; preds = %if.exit46
   %59 = load ptr, ptr %temp28, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %59, ptr align 8 %value27, i32 16, i1 false)
-  br label %noerr_block47
+  store ptr %59, ptr %41, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %value49, ptr align 8 %literal25, i32 8, i1 false)
+  %60 = load ptr, ptr @std.core.mem.thread_allocator, align 8
+  store ptr %60, ptr %using51, align 8
+  %61 = load ptr, ptr %using51, align 8
+  store ptr %61, ptr %using53, align 8
+  %62 = load ptr, ptr %using53, align 8
+  store ptr %62, ptr %allocator55, align 8
+  %63 = load ptr, ptr %allocator55, align 8
+  %64 = getelementptr inbounds %Allocator, ptr %63, i32 0, i32 0
+  %65 = load ptr, ptr %64, align 8
+  %66 = load ptr, ptr %allocator55, align 8
+  %67 = call i64 %65(ptr %retparam57, ptr %66, i64 8, i64 0, i64 0, ptr null, i32 0)
+  %not_err58 = icmp eq i64 %67, 0
+  %68 = call i1 @llvm.expect.i1(i1 %not_err58, i1 true)
+  br i1 %68, label %after_check60, label %assign_optional59
 
-guard_block46:                                    ; preds = %if.then44
-  %60 = load i64, ptr %error_var26, align 8
-  ret i64 %60
+assign_optional59:                                ; preds = %noerr_block48
+  store i64 %67, ptr %error_var52, align 8
+  br label %panic_block61
 
-noerr_block47:                                    ; preds = %if.exit45
-  %61 = load ptr, ptr %temp28, align 8
-  store ptr %61, ptr %42, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %value48, ptr align 8 %literal25, i32 8, i1 false)
-  %62 = load ptr, ptr @std.core.mem.thread_allocator, align 8
-  store ptr %62, ptr %using50, align 8
-  %63 = load ptr, ptr %using50, align 8
-  store ptr %63, ptr %using52, align 8
-  %64 = load ptr, ptr %using52, align 8
-  store ptr %64, ptr %allocator54, align 8
-  %65 = load ptr, ptr %allocator54, align 8
-  %66 = getelementptr inbounds %Allocator, ptr %65, i32 0, i32 0
-  %67 = load ptr, ptr %66, align 8
-  %68 = load ptr, ptr %allocator54, align 8
-  %69 = call i64 %67(ptr %retparam56, ptr %68, i64 8, i64 0, i64 0, ptr null, i32 0)
-  %not_err57 = icmp eq i64 %69, 0
-  %70 = call i1 @llvm.expect.i1(i1 %not_err57, i1 true)
-  br i1 %70, label %after_check59, label %assign_optional58
+after_check60:                                    ; preds = %noerr_block48
+  %69 = load ptr, ptr %retparam57, align 8
+  br label %noerr_block65
 
-assign_optional58:                                ; preds = %noerr_block47
-  store i64 %69, ptr %error_var51, align 8
-  br label %panic_block60
-
-after_check59:                                    ; preds = %noerr_block47
-  %71 = load ptr, ptr %retparam56, align 8
-  br label %noerr_block63
-
-panic_block60:                                    ; preds = %assign_optional58
-  %72 = insertvalue %any undef, ptr %error_var51, 0
-  %73 = insertvalue %any %72, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
-  %74 = getelementptr inbounds [1 x %any], ptr %varargslots61, i64 0, i64 0
-  store %any %73, ptr %74, align 16
-  %75 = insertvalue %"any[]" undef, ptr %varargslots61, 0
-  %76 = insertvalue %"any[]" %75, i64 1, 1
-  store %"any[]" %76, ptr %indirectarg62, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func, i64 7, i32 204, ptr byval(%"any[]") align 8 %indirectarg62)
+panic_block61:                                    ; preds = %assign_optional59
+  %70 = insertvalue %any undef, ptr %error_var52, 0
+  %71 = insertvalue %any %70, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  %72 = getelementptr inbounds [1 x %any], ptr %varargslots62, i64 0, i64 0
+  store %any %71, ptr %72, align 16
+  %73 = insertvalue %"any[]" undef, ptr %varargslots62, 0
+  %"#temp#63" = insertvalue %"any[]" %73, i64 1, 1
+  store %"any[]" %"#temp#63", ptr %indirectarg64, align 8
+  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func, i64 7, i32 204, ptr byval(%"any[]") align 8 %indirectarg64)
   unreachable
 
-noerr_block63:                                    ; preds = %after_check59
-  store ptr %71, ptr %temp49, align 8
-  %77 = load ptr, ptr %temp49, align 8
-  %not64 = icmp eq ptr %77, null
-  br i1 %not64, label %if.then65, label %if.exit66
+noerr_block65:                                    ; preds = %after_check60
+  store ptr %69, ptr %temp50, align 8
+  %74 = load ptr, ptr %temp50, align 8
+  %not66 = icmp eq ptr %74, null
+  br i1 %not66, label %if.then67, label %if.exit68
 
-if.then65:                                        ; preds = %noerr_block63
+if.then67:                                        ; preds = %noerr_block65
   store i64 ptrtoint (ptr @"test.ReadError$OUT_OF_MEMORY" to i64), ptr %error_var24, align 8
-  br label %guard_block67
+  br label %guard_block69
 
-if.exit66:                                        ; preds = %noerr_block63
-  %78 = load ptr, ptr %temp49, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %78, ptr align 8 %value48, i32 8, i1 false)
-  br label %noerr_block68
+if.exit68:                                        ; preds = %noerr_block65
+  %75 = load ptr, ptr %temp50, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %75, ptr align 8 %value49, i32 8, i1 false)
+  br label %noerr_block70
 
-guard_block67:                                    ; preds = %if.then65
-  %79 = load i64, ptr %error_var24, align 8
-  ret i64 %79
+guard_block69:                                    ; preds = %if.then67
+  %76 = load i64, ptr %error_var24, align 8
+  ret i64 %76
 
-noerr_block68:                                    ; preds = %if.exit66
-  %80 = load ptr, ptr %temp49, align 8
-  store ptr %80, ptr %41, align 8
+noerr_block70:                                    ; preds = %if.exit68
+  %77 = load ptr, ptr %temp50, align 8
+  store ptr %77, ptr %40, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %0, ptr align 8 %literal23, i32 8, i1 false)
   ret i64 0
 
-if.exit69:                                        ; preds = %if.exit18
-  %81 = getelementptr inbounds %"char[]", ptr %url, i32 0, i32 1
-  %82 = load i64, ptr %81, align 8
-  %trunc = trunc i64 %82 to i32
-  %83 = getelementptr inbounds %"char[]", ptr %url, i32 0, i32 0
-  %84 = load ptr, ptr %83, align 8
-  %85 = call i32 (ptr, i64, ptr, ...) @snprintf(ptr null, i64 0, ptr @.str.6, i32 %trunc, ptr %84)
-  store i32 %85, ptr %len, align 4
-  %86 = load ptr, ptr @std.core.mem.thread_allocator, align 8
-  store ptr %86, ptr %using70, align 8
-  %87 = load ptr, ptr %using70, align 8
-  store ptr %87, ptr %using72, align 8
-  %88 = load i32, ptr %len, align 4
-  %add = add i32 %88, 1
-  %89 = load ptr, ptr %using72, align 8
-  store ptr %89, ptr %allocator73, align 8
+if.exit71:                                        ; preds = %if.exit18
+  %78 = getelementptr inbounds %"char[]", ptr %url, i32 0, i32 1
+  %79 = load i64, ptr %78, align 8
+  %trunc = trunc i64 %79 to i32
+  %80 = getelementptr inbounds %"char[]", ptr %url, i32 0, i32 0
+  %81 = load ptr, ptr %80, align 8
+  %82 = call i32 (ptr, i64, ptr, ...) @snprintf(ptr null, i64 0, ptr @.str.6, i32 %trunc, ptr %81)
+  store i32 %82, ptr %len, align 4
+  %83 = load ptr, ptr @std.core.mem.thread_allocator, align 8
+  store ptr %83, ptr %using72, align 8
+  %84 = load ptr, ptr %using72, align 8
+  store ptr %84, ptr %using74, align 8
+  %85 = load i32, ptr %len, align 4
+  %add = add i32 %85, 1
+  %86 = load ptr, ptr %using74, align 8
+  store ptr %86, ptr %allocator75, align 8
   %sext = sext i32 %add to i64
-  %add74 = add i64 %sext, 0
-  %90 = load ptr, ptr %allocator73, align 8
-  %91 = getelementptr inbounds %Allocator, ptr %90, i32 0, i32 0
-  %92 = load ptr, ptr %91, align 8
-  %93 = load ptr, ptr %allocator73, align 8
-  %94 = call i64 %92(ptr %retparam75, ptr %93, i64 %add74, i64 0, i64 0, ptr null, i32 0)
-  %not_err76 = icmp eq i64 %94, 0
-  %95 = call i1 @llvm.expect.i1(i1 %not_err76, i1 true)
-  br i1 %95, label %after_check78, label %assign_optional77
+  %add76 = add i64 %sext, 0
+  %87 = load ptr, ptr %allocator75, align 8
+  %88 = getelementptr inbounds %Allocator, ptr %87, i32 0, i32 0
+  %89 = load ptr, ptr %88, align 8
+  %90 = load ptr, ptr %allocator75, align 8
+  %91 = call i64 %89(ptr %retparam77, ptr %90, i64 %add76, i64 0, i64 0, ptr null, i32 0)
+  %not_err78 = icmp eq i64 %91, 0
+  %92 = call i1 @llvm.expect.i1(i1 %not_err78, i1 true)
+  br i1 %92, label %after_check80, label %assign_optional79
 
-assign_optional77:                                ; preds = %if.exit69
-  store i64 %94, ptr %error_var71, align 8
-  br label %panic_block79
+assign_optional79:                                ; preds = %if.exit71
+  store i64 %91, ptr %error_var73, align 8
+  br label %panic_block81
 
-after_check78:                                    ; preds = %if.exit69
-  %96 = load ptr, ptr %retparam75, align 8
-  br label %noerr_block82
+after_check80:                                    ; preds = %if.exit71
+  %93 = load ptr, ptr %retparam77, align 8
+  br label %noerr_block85
 
-panic_block79:                                    ; preds = %assign_optional77
-  %97 = insertvalue %any undef, ptr %error_var71, 0
-  %98 = insertvalue %any %97, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
-  %99 = getelementptr inbounds [1 x %any], ptr %varargslots80, i64 0, i64 0
-  store %any %98, ptr %99, align 16
-  %100 = insertvalue %"any[]" undef, ptr %varargslots80, 0
-  %101 = insertvalue %"any[]" %100, i64 1, 1
-  store %"any[]" %101, ptr %indirectarg81, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func, i64 7, i32 204, ptr byval(%"any[]") align 8 %indirectarg81)
+panic_block81:                                    ; preds = %assign_optional79
+  %94 = insertvalue %any undef, ptr %error_var73, 0
+  %95 = insertvalue %any %94, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  %96 = getelementptr inbounds [1 x %any], ptr %varargslots82, i64 0, i64 0
+  store %any %95, ptr %96, align 16
+  %97 = insertvalue %"any[]" undef, ptr %varargslots82, 0
+  %"#temp#83" = insertvalue %"any[]" %97, i64 1, 1
+  store %"any[]" %"#temp#83", ptr %indirectarg84, align 8
+  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func, i64 7, i32 204, ptr byval(%"any[]") align 8 %indirectarg84)
   unreachable
 
-noerr_block82:                                    ; preds = %after_check78
-  store ptr %96, ptr %str, align 8
-  %102 = load ptr, ptr %str, align 8
-  %not83 = icmp eq ptr %102, null
-  br i1 %not83, label %if.then84, label %if.exit85
+noerr_block85:                                    ; preds = %after_check80
+  store ptr %93, ptr %str, align 8
+  %98 = load ptr, ptr %str, align 8
+  %not86 = icmp eq ptr %98, null
+  br i1 %not86, label %if.then87, label %if.exit88
 
-if.then84:                                        ; preds = %noerr_block82
+if.then87:                                        ; preds = %noerr_block85
   ret i64 ptrtoint (ptr @"test.ReadError$OUT_OF_MEMORY" to i64)
 
-if.exit85:                                        ; preds = %noerr_block82
-  %103 = load ptr, ptr %str, align 8
-  %104 = load i32, ptr %len, align 4
-  %sext86 = sext i32 %104 to i64
-  %add87 = add i64 %sext86, 1
-  %105 = getelementptr inbounds %"char[]", ptr %url, i32 0, i32 1
-  %106 = load i64, ptr %105, align 8
-  %trunc88 = trunc i64 %106 to i32
-  %107 = getelementptr inbounds %"char[]", ptr %url, i32 0, i32 0
-  %108 = load ptr, ptr %107, align 8
-  %109 = call i32 (ptr, i64, ptr, ...) @snprintf(ptr %103, i64 %add87, ptr @.str.7, i32 %trunc88, ptr %108)
-  %110 = getelementptr inbounds %Doc, ptr %literal90, i32 0, i32 0
-  store ptr null, ptr %literal92, align 8
-  %111 = getelementptr inbounds %Head, ptr %literal92, i32 0, i32 0
-  %112 = load ptr, ptr %str, align 8
-  %113 = load i32, ptr %len, align 4
-  %sub = sub i32 %113, 1
-  %sext94 = sext i32 %sub to i64
-  %114 = add i64 %sext94, 1
-  %size = sub i64 %114, 0
-  %ptroffset95 = getelementptr inbounds i8, ptr %112, i64 0
-  %115 = insertvalue %"char[]" undef, ptr %ptroffset95, 0
-  %116 = insertvalue %"char[]" %115, i64 %size, 1
-  store %"char[]" %116, ptr %value96, align 8
-  %117 = load ptr, ptr @std.core.mem.thread_allocator, align 8
-  store ptr %117, ptr %using98, align 8
-  %118 = load ptr, ptr %using98, align 8
-  store ptr %118, ptr %using100, align 8
-  %119 = load ptr, ptr %using100, align 8
-  store ptr %119, ptr %allocator102, align 8
-  %120 = load ptr, ptr %allocator102, align 8
-  %121 = getelementptr inbounds %Allocator, ptr %120, i32 0, i32 0
-  %122 = load ptr, ptr %121, align 8
-  %123 = load ptr, ptr %allocator102, align 8
-  %124 = call i64 %122(ptr %retparam104, ptr %123, i64 16, i64 0, i64 0, ptr null, i32 0)
-  %not_err105 = icmp eq i64 %124, 0
-  %125 = call i1 @llvm.expect.i1(i1 %not_err105, i1 true)
-  br i1 %125, label %after_check107, label %assign_optional106
+if.exit88:                                        ; preds = %noerr_block85
+  %99 = load ptr, ptr %str, align 8
+  %100 = load i32, ptr %len, align 4
+  %sext89 = sext i32 %100 to i64
+  %add90 = add i64 %sext89, 1
+  %101 = getelementptr inbounds %"char[]", ptr %url, i32 0, i32 1
+  %102 = load i64, ptr %101, align 8
+  %trunc91 = trunc i64 %102 to i32
+  %103 = getelementptr inbounds %"char[]", ptr %url, i32 0, i32 0
+  %104 = load ptr, ptr %103, align 8
+  %105 = call i32 (ptr, i64, ptr, ...) @snprintf(ptr %99, i64 %add90, ptr @.str.7, i32 %trunc91, ptr %104)
+  %106 = getelementptr inbounds %Doc, ptr %literal93, i32 0, i32 0
+  store ptr null, ptr %literal95, align 8
+  %107 = getelementptr inbounds %Head, ptr %literal95, i32 0, i32 0
+  %108 = load ptr, ptr %str, align 8
+  %109 = load i32, ptr %len, align 4
+  %sub = sub i32 %109, 1
+  %sext97 = sext i32 %sub to i64
+  %110 = add i64 %sext97, 1
+  %size = sub i64 %110, 0
+  %ptroffset98 = getelementptr inbounds i8, ptr %108, i64 0
+  %111 = insertvalue %"char[]" undef, ptr %ptroffset98, 0
+  %112 = insertvalue %"char[]" %111, i64 %size, 1
+  store %"char[]" %112, ptr %value99, align 8
+  %113 = load ptr, ptr @std.core.mem.thread_allocator, align 8
+  store ptr %113, ptr %using101, align 8
+  %114 = load ptr, ptr %using101, align 8
+  store ptr %114, ptr %using103, align 8
+  %115 = load ptr, ptr %using103, align 8
+  store ptr %115, ptr %allocator105, align 8
+  %116 = load ptr, ptr %allocator105, align 8
+  %117 = getelementptr inbounds %Allocator, ptr %116, i32 0, i32 0
+  %118 = load ptr, ptr %117, align 8
+  %119 = load ptr, ptr %allocator105, align 8
+  %120 = call i64 %118(ptr %retparam107, ptr %119, i64 16, i64 0, i64 0, ptr null, i32 0)
+  %not_err108 = icmp eq i64 %120, 0
+  %121 = call i1 @llvm.expect.i1(i1 %not_err108, i1 true)
+  br i1 %121, label %after_check110, label %assign_optional109
 
-assign_optional106:                               ; preds = %if.exit85
-  store i64 %124, ptr %error_var99, align 8
-  br label %panic_block108
+assign_optional109:                               ; preds = %if.exit88
+  store i64 %120, ptr %error_var102, align 8
+  br label %panic_block111
 
-after_check107:                                   ; preds = %if.exit85
-  %126 = load ptr, ptr %retparam104, align 8
-  br label %noerr_block111
+after_check110:                                   ; preds = %if.exit88
+  %122 = load ptr, ptr %retparam107, align 8
+  br label %noerr_block115
 
-panic_block108:                                   ; preds = %assign_optional106
-  %127 = insertvalue %any undef, ptr %error_var99, 0
-  %128 = insertvalue %any %127, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
-  %129 = getelementptr inbounds [1 x %any], ptr %varargslots109, i64 0, i64 0
-  store %any %128, ptr %129, align 16
-  %130 = insertvalue %"any[]" undef, ptr %varargslots109, 0
-  %131 = insertvalue %"any[]" %130, i64 1, 1
-  store %"any[]" %131, ptr %indirectarg110, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func, i64 7, i32 204, ptr byval(%"any[]") align 8 %indirectarg110)
+panic_block111:                                   ; preds = %assign_optional109
+  %123 = insertvalue %any undef, ptr %error_var102, 0
+  %124 = insertvalue %any %123, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  %125 = getelementptr inbounds [1 x %any], ptr %varargslots112, i64 0, i64 0
+  store %any %124, ptr %125, align 16
+  %126 = insertvalue %"any[]" undef, ptr %varargslots112, 0
+  %"#temp#113" = insertvalue %"any[]" %126, i64 1, 1
+  store %"any[]" %"#temp#113", ptr %indirectarg114, align 8
+  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func, i64 7, i32 204, ptr byval(%"any[]") align 8 %indirectarg114)
   unreachable
 
-noerr_block111:                                   ; preds = %after_check107
-  store ptr %126, ptr %temp97, align 8
-  %132 = load ptr, ptr %temp97, align 8
-  %not112 = icmp eq ptr %132, null
-  br i1 %not112, label %if.then113, label %if.exit114
+noerr_block115:                                   ; preds = %after_check110
+  store ptr %122, ptr %temp100, align 8
+  %127 = load ptr, ptr %temp100, align 8
+  %not116 = icmp eq ptr %127, null
+  br i1 %not116, label %if.then117, label %if.exit118
 
-if.then113:                                       ; preds = %noerr_block111
-  store i64 ptrtoint (ptr @"test.ReadError$OUT_OF_MEMORY" to i64), ptr %error_var93, align 8
-  br label %guard_block115
+if.then117:                                       ; preds = %noerr_block115
+  store i64 ptrtoint (ptr @"test.ReadError$OUT_OF_MEMORY" to i64), ptr %error_var96, align 8
+  br label %guard_block119
 
-if.exit114:                                       ; preds = %noerr_block111
-  %133 = load ptr, ptr %temp97, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %133, ptr align 8 %value96, i32 16, i1 false)
-  br label %noerr_block116
+if.exit118:                                       ; preds = %noerr_block115
+  %128 = load ptr, ptr %temp100, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %128, ptr align 8 %value99, i32 16, i1 false)
+  br label %noerr_block120
 
-guard_block115:                                   ; preds = %if.then113
-  %134 = load i64, ptr %error_var93, align 8
-  ret i64 %134
+guard_block119:                                   ; preds = %if.then117
+  %129 = load i64, ptr %error_var96, align 8
+  ret i64 %129
 
-noerr_block116:                                   ; preds = %if.exit114
-  %135 = load ptr, ptr %temp97, align 8
-  store ptr %135, ptr %111, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %value117, ptr align 8 %literal92, i32 8, i1 false)
-  %136 = load ptr, ptr @std.core.mem.thread_allocator, align 8
-  store ptr %136, ptr %using119, align 8
-  %137 = load ptr, ptr %using119, align 8
-  store ptr %137, ptr %using121, align 8
-  %138 = load ptr, ptr %using121, align 8
-  store ptr %138, ptr %allocator123, align 8
-  %139 = load ptr, ptr %allocator123, align 8
-  %140 = getelementptr inbounds %Allocator, ptr %139, i32 0, i32 0
-  %141 = load ptr, ptr %140, align 8
-  %142 = load ptr, ptr %allocator123, align 8
-  %143 = call i64 %141(ptr %retparam125, ptr %142, i64 8, i64 0, i64 0, ptr null, i32 0)
-  %not_err126 = icmp eq i64 %143, 0
-  %144 = call i1 @llvm.expect.i1(i1 %not_err126, i1 true)
-  br i1 %144, label %after_check128, label %assign_optional127
+noerr_block120:                                   ; preds = %if.exit118
+  %130 = load ptr, ptr %temp100, align 8
+  store ptr %130, ptr %107, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %value121, ptr align 8 %literal95, i32 8, i1 false)
+  %131 = load ptr, ptr @std.core.mem.thread_allocator, align 8
+  store ptr %131, ptr %using123, align 8
+  %132 = load ptr, ptr %using123, align 8
+  store ptr %132, ptr %using125, align 8
+  %133 = load ptr, ptr %using125, align 8
+  store ptr %133, ptr %allocator127, align 8
+  %134 = load ptr, ptr %allocator127, align 8
+  %135 = getelementptr inbounds %Allocator, ptr %134, i32 0, i32 0
+  %136 = load ptr, ptr %135, align 8
+  %137 = load ptr, ptr %allocator127, align 8
+  %138 = call i64 %136(ptr %retparam129, ptr %137, i64 8, i64 0, i64 0, ptr null, i32 0)
+  %not_err130 = icmp eq i64 %138, 0
+  %139 = call i1 @llvm.expect.i1(i1 %not_err130, i1 true)
+  br i1 %139, label %after_check132, label %assign_optional131
 
-assign_optional127:                               ; preds = %noerr_block116
-  store i64 %143, ptr %error_var120, align 8
-  br label %panic_block129
+assign_optional131:                               ; preds = %noerr_block120
+  store i64 %138, ptr %error_var124, align 8
+  br label %panic_block133
 
-after_check128:                                   ; preds = %noerr_block116
-  %145 = load ptr, ptr %retparam125, align 8
-  br label %noerr_block132
-
-panic_block129:                                   ; preds = %assign_optional127
-  %146 = insertvalue %any undef, ptr %error_var120, 0
-  %147 = insertvalue %any %146, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
-  %148 = getelementptr inbounds [1 x %any], ptr %varargslots130, i64 0, i64 0
-  store %any %147, ptr %148, align 16
-  %149 = insertvalue %"any[]" undef, ptr %varargslots130, 0
-  %150 = insertvalue %"any[]" %149, i64 1, 1
-  store %"any[]" %150, ptr %indirectarg131, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func, i64 7, i32 204, ptr byval(%"any[]") align 8 %indirectarg131)
-  unreachable
-
-noerr_block132:                                   ; preds = %after_check128
-  store ptr %145, ptr %temp118, align 8
-  %151 = load ptr, ptr %temp118, align 8
-  %not133 = icmp eq ptr %151, null
-  br i1 %not133, label %if.then134, label %if.exit135
-
-if.then134:                                       ; preds = %noerr_block132
-  store i64 ptrtoint (ptr @"test.ReadError$OUT_OF_MEMORY" to i64), ptr %error_var91, align 8
-  br label %guard_block136
-
-if.exit135:                                       ; preds = %noerr_block132
-  %152 = load ptr, ptr %temp118, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %152, ptr align 8 %value117, i32 8, i1 false)
+after_check132:                                   ; preds = %noerr_block120
+  %140 = load ptr, ptr %retparam129, align 8
   br label %noerr_block137
 
-guard_block136:                                   ; preds = %if.then134
-  %153 = load i64, ptr %error_var91, align 8
-  ret i64 %153
+panic_block133:                                   ; preds = %assign_optional131
+  %141 = insertvalue %any undef, ptr %error_var124, 0
+  %142 = insertvalue %any %141, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  %143 = getelementptr inbounds [1 x %any], ptr %varargslots134, i64 0, i64 0
+  store %any %142, ptr %143, align 16
+  %144 = insertvalue %"any[]" undef, ptr %varargslots134, 0
+  %"#temp#135" = insertvalue %"any[]" %144, i64 1, 1
+  store %"any[]" %"#temp#135", ptr %indirectarg136, align 8
+  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func, i64 7, i32 204, ptr byval(%"any[]") align 8 %indirectarg136)
+  unreachable
 
-noerr_block137:                                   ; preds = %if.exit135
-  %154 = load ptr, ptr %temp118, align 8
-  store ptr %154, ptr %110, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %0, ptr align 8 %literal90, i32 8, i1 false)
+noerr_block137:                                   ; preds = %after_check132
+  store ptr %140, ptr %temp122, align 8
+  %145 = load ptr, ptr %temp122, align 8
+  %not138 = icmp eq ptr %145, null
+  br i1 %not138, label %if.then139, label %if.exit140
+
+if.then139:                                       ; preds = %noerr_block137
+  store i64 ptrtoint (ptr @"test.ReadError$OUT_OF_MEMORY" to i64), ptr %error_var94, align 8
+  br label %guard_block141
+
+if.exit140:                                       ; preds = %noerr_block137
+  %146 = load ptr, ptr %temp122, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %146, ptr align 8 %value121, i32 8, i1 false)
+  br label %noerr_block142
+
+guard_block141:                                   ; preds = %if.then139
+  %147 = load i64, ptr %error_var94, align 8
+  ret i64 %147
+
+noerr_block142:                                   ; preds = %if.exit140
+  %148 = load ptr, ptr %temp122, align 8
+  store ptr %148, ptr %106, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %0, ptr align 8 %literal93, i32 8, i1 false)
   ret i64 0
 }
 

@@ -1341,7 +1341,7 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const c
 		Type *any_array = type_get_array(type_any, elements);
 		LLVMTypeRef llvm_array_type = llvm_get_type(c, any_array);
 		AlignSize alignment = type_alloca_alignment(any_array);
-		LLVMValueRef array_ref = llvm_emit_alloca(c, llvm_array_type, alignment, "varargslots");
+		LLVMValueRef array_ref = llvm_emit_alloca(c, llvm_array_type, alignment, varargslots_name);
 		VECEACH(varargs, i)
 		{
 			AlignSize store_alignment;
@@ -1355,6 +1355,7 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const c
 		}
 		BEValue value;
 		llvm_value_aggregate_two(c, &value, any_subarray, array_ref, llvm_const_int(c, type_usz, elements));
+		LLVMSetValueName2(value.value, temp_name, 6);
 
 		llvm_emit_parameter(c, actual_args, &count, abi_args[4], &value, any_subarray);
 

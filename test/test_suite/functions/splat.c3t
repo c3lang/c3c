@@ -32,12 +32,14 @@ declare i32 @sum_us(ptr, i64) #0
   %4 = insertvalue %"int[]" undef, ptr %x, 0
   %5 = insertvalue %"int[]" %4, i64 3, 1
   store %"int[]" %5, ptr %z, align 8
-  %6 = call i32 @sum_us(ptr %x, i64 3)
-  %7 = getelementptr inbounds %"int[]", ptr %z, i32 0, i32 0
-  %lo = load ptr, ptr %7, align 8
-  %8 = getelementptr inbounds %"int[]", ptr %z, i32 0, i32 1
-  %hi = load i64, ptr %8, align 8
-  %9 = call i32 @sum_us(ptr %lo, i64 %hi)
-  %10 = call i32 @sum_us(ptr null, i64 0)
+  %6 = insertvalue %"int[]" undef, ptr %x, 0
+  %7 = insertvalue %"int[]" %6, i64 3, 1
+  %8 = call i32 @sum_us(ptr %x, i64 3)
+  %9 = getelementptr inbounds %"int[]", ptr %z, i32 0, i32 0
+  %lo = load ptr, ptr %9, align 8
+  %10 = getelementptr inbounds %"int[]", ptr %z, i32 0, i32 1
+  %hi = load i64, ptr %10, align 8
+  %11 = call i32 @sum_us(ptr %lo, i64 %hi)
+  %12 = call i32 @sum_us(ptr null, i64 0)
   ret void
 }
