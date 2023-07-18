@@ -43,18 +43,7 @@ LLVMValueRef llvm_store_to_ptr_aligned(GenContext *c, LLVMValueRef destination, 
 		case BE_ADDRESS_OPTIONAL:
 			UNREACHABLE
 		case BE_ADDRESS:
-		{
-			// Here we do an optimized(?) memcopy.
-			ByteSize size = type_size(value->type);
-			LLVMValueRef copy_size = llvm_const_int(c, size <= UINT32_MAX ? type_uint : type_usz, size);
-			LLVMValueRef copy = LLVMBuildMemCpy(c->builder,
-												destination,
-												alignment,
-												value->value,
-												value->alignment ? value->alignment : type_abi_alignment(value->type),
-												copy_size);
-			return copy;
-		}
+			return llvm_emit_memcpy(c, destination, alignment, value->value, value->alignment ? value->alignment : type_abi_alignment(value->type), type_size(value->type));
 	}
 	UNREACHABLE
 }

@@ -33,10 +33,10 @@ fault NumberConversion
 
 macro String printf(String fmt, ..., Allocator* using = mem::heap())
 {
-	@stack_mem(256; Allocator* mem)
+	@pool(using)
 	{
 		DString str;
-		str.init(.using = mem);
+		str.tinit();
 		str.printf(fmt, $vasplat());
 		return str.copy_str(using);
 	};

@@ -393,42 +393,69 @@ macro void @stack_pool(usz $size; @body) @builtin
 	};
 }
 
-macro void @pool(;@body) @builtin
+macro void @pool(...; @body) @builtin
 {
-	TempAllocator* allocator = temp();
-	usz mark = allocator.used;
-	defer allocator.reset(mark);
+    bool $has_arg = $vacount == 1;
+    assert($vacount <= 1);
+    TempAllocator* current = temp();
+    $if $has_arg:
+        TempAllocator* original = current;
+        if (current == $vaarg(0)) current = temp_allocator_next();
+    $endif
+    usz mark = current.used;
+    defer
+    {
+	    current.reset(mark);
+	    $if $has_arg:
+	        thread_temp_allocator = original;
+	    $endif;
+    }
 	@body();
-}
-
-macro void @allocating_pool(Allocator* using; @body(bool is_temp)) @builtin
-{
-	TempAllocator* allocator = temp();
-	usz mark = allocator.used;
-	bool is_temp = allocator == using;
-	defer if (!is_temp) allocator.reset(mark);
-	@body(is_temp);
 }
 
 tlocal Allocator* thread_allocator @private = allocator::LIBC_ALLOCATOR;
 tlocal TempAllocator* thread_temp_allocator @private = null;
+tlocal TempAllocator*[2] temp_allocator_pair @private;
 
-macro TempAllocator* temp_allocator() => temp();
+macro TempAllocator* create_default_sized_temp_allocator() @local
+{
+	$switch (env::MEMORY_ENV)
+	$case NORMAL:
+		return allocator::new_temp(1024 * 256, thread_allocator)!!;
+	$case SMALL:
+		return allocator::new_temp(1024 * 16, thread_allocator)!!;
+	$case TINY:
+		return allocator::new_temp(1024 * 2, thread_allocator)!!;
+	$case NONE:
+		unreachable("Temp allocator must explicitly created when memory-env is set to 'none'.");
+	$endswitch
+}
+
+fn TempAllocator *temp_allocator_next() @private
+{
+	if (!thread_temp_allocator)
+	{
+	    init_default_temp_allocators();
+	    return thread_temp_allocator;
+	}
+    usz index = thread_temp_allocator == temp_allocator_pair[0] ? 1 : 0;
+    return thread_temp_allocator = temp_allocator_pair[index];
+}
+
+import libc;
+
+fn void init_default_temp_allocators() @private
+{
+    temp_allocator_pair[0] = create_default_sized_temp_allocator();
+    temp_allocator_pair[1] = create_default_sized_temp_allocator();
+    thread_temp_allocator = temp_allocator_pair[0];
+}
 
 macro TempAllocator* temp()
 {
 	if (!thread_temp_allocator)
 	{
-		$switch (env::MEMORY_ENV)
-		$case NORMAL:
-			thread_temp_allocator = allocator::new_temp(1024 * 256, thread_allocator)!!;
-		$case SMALL:
-			thread_temp_allocator = allocator::new_temp(1024 * 16, thread_allocator)!!;
-		$case TINY:
-			thread_temp_allocator = allocator::new_temp(1024 * 2, thread_allocator)!!;
-		$case NONE:
-			unreachable("Temp allocator must explicitly created when memory-env is set to 'none'.");
-		$endswitch
+	    init_default_temp_allocators();
 	}
 	return thread_temp_allocator;
 }
