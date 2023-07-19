@@ -29,9 +29,9 @@ enum PathEnv
 
 fn Path! getcwd(Allocator* using = mem::heap())
 {
-	@stack_mem(256; Allocator* mem)
+	@pool(using)
 	{
-		return new(os::getcwd(mem), using);
+		return new(os::getcwd(mem::temp()), using);
 	};
 }
 
@@ -113,9 +113,9 @@ fn Path! new(String path, Allocator* using = mem::heap(), PathEnv path_env = DEF
 
 fn Path! new_win32_wstring(WString path, Allocator* using = mem::heap())
 {
-	@stack_mem(480; Allocator* mem)
+	@pool(using)
 	{
-		return path::new(string::from_wstring(path, .using = mem)!, .using = using);
+		return path::new(string::temp_from_wstring(path)!, .using = using);
 	};
 }
 

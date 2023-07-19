@@ -135,9 +135,9 @@ macro bool! Formatter.print_with_function(&self, any arg)
 			self.width = old_width;
 			self.prec = old_prec;
 		}
-		@stack_mem(512; Allocator* mem)
+		@pool()
 		{
-			self.out_substr(arg.to_string(mem))!;
+			self.out_substr(arg.to_string(mem::temp()))!;
 			return true;
 		};
     }

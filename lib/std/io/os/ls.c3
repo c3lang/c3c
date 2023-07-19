@@ -26,9 +26,10 @@ fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Al
 {
 	PathList list;
 	list.init(.using = using);
-    @stack_mem(1024; Allocator* mem)
+
+    @pool(using)
     {
-	    WString result = dir.as_str().concat(`\*`).to_wstring(.using = mem)!!;
+	    WString result = dir.as_str().tconcat(`\*`).to_temp_wstring()!!;
 	    Win32_WIN32_FIND_DATAW find_data;
         Win32_HANDLE find = win32::findFirstFileW(result, &find_data);
         if (find == win32::INVALID_HANDLE_VALUE) return IoError.CANNOT_READ_DIR?;
@@ -36,9 +37,9 @@ fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Al
         do
         {
             if (no_dirs && (find_data.dwFileAttributes & win32::FILE_ATTRIBUTE_DIRECTORY)) continue;
-            @stack_mem(480; Allocator* mem2)
+            @pool(using)
             {
-				String filename = string::from_wstring((WString)&find_data.cFileName, mem2)!;
+				String filename = string::temp_from_wstring((WString)&find_data.cFileName)!;
                 if (filename == ".." || filename == ".") continue;
 	            list.append(path::new(filename, using));
             };

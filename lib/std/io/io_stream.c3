@@ -111,6 +111,8 @@ fn usz! Stream.read_all(self, char[] buffer) @inline
     return n;
 }
 
+fn String! Stream.treadline(self) => self.readline(mem::temp()) @inline;
+
 fn String! Stream.readline(self, Allocator* using = mem::heap())
 {
 	ReadByteStreamFn func;
@@ -118,9 +120,9 @@ fn String! Stream.readline(self, Allocator* using = mem::heap())
 	bool read = false;
     char val = func(self)!;
     if (val == '\n') return "";
-    @stack_mem(256 + 64; Allocator* mem)
+    @pool(using)
     {
-        DString str = dstring::new_with_capacity(256, .using = mem);
+        DString str = dstring::tnew_with_capacity(256);
     	if (val != '\r') str.append(val);
     	while (1)
         {

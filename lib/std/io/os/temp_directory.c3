@@ -12,13 +12,13 @@ fn Path! native_temp_directory(Allocator* using = mem::heap()) @if(!env::WIN32)
 
 fn Path! native_temp_directory(Allocator* using = mem::heap()) @if(env::WIN32)
 {
-	@stack_mem(256; Allocator* mem)
+	@pool(using)
 	{
 	    Win32_DWORD len = win32::getTempPathW(0, null);
 		if (!len) return IoError.GENERAL_ERROR?;
-		Char16[] buff = malloc(Char16, len + 1, .using = mem);
+		Char16[] buff = tmalloc(Char16, len + 1);
 		if (!win32::getTempPathW(len, buff)) return IoError.GENERAL_ERROR?;
-		return path::new(string::from_utf16(buff[:len], .using = mem), using);
+		return path::new(string::temp_from_utf16(buff[:len]), using);
 	};
 }
 

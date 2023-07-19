@@ -21,9 +21,9 @@ fn void CsvReader.init(&self, Stream stream, String separator = ",")
 
 fn String[]! CsvReader.read_row(self, Allocator* using = mem::heap())
 {
-	@stack_mem(512; Allocator* mem)
+	@pool()
 	{
-		return self.stream.readline(mem).split(self.separator, .using = using);
+		return self.stream.treadline().split(self.separator, .using = using);
 	};
 }
 

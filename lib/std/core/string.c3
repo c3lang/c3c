@@ -68,9 +68,9 @@ fn String join(String[] s, String joiner, Allocator* using = mem::heap())
 	{
 		total_size += str.len;
 	}
-	@stack_mem(256; Allocator* mem)
+	@pool(using)
 	{
-		DString res = dstring::new_with_capacity(total_size, .using = mem);
+		DString res = dstring::tnew_with_capacity(total_size);
 		res.append(s[0]);
 		foreach (String* &str : s[1..])
 		{
@@ -415,6 +415,9 @@ fn String! from_wstring(WString wstring, Allocator* using = mem::heap())
 	Char16[] utf16 = wstring[:utf16_len];
 	return from_utf16(utf16, using);
 }
+
+fn String! temp_from_wstring(WString wstring) => from_wstring(wstring) @inline;
+fn String! temp_from_utf16(Char16[] utf16) => temp_from_utf16(utf16) @inline;
 
 fn usz String.utf8_codepoints(s)
 {
