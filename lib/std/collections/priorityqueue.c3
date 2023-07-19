@@ -36,6 +36,16 @@ struct PrivatePriorityQueue
 	Heap heap;
 }
 
+fn void PrivatePriorityQueue.init(&self, usz initial_capacity = 16, Allocator* using = mem::heap()) @inline
+{
+    self.heap.init(initial_capacity, using);
+}
+
+fn void PrivatePriorityQueue.tinit(&self, usz initial_capacity = 16) @inline
+{
+    self.init(initial_capacity, mem::temp());
+}
+
 fn void PrivatePriorityQueue.push(&self, Type element)
 {
 	self.heap.push(element);
