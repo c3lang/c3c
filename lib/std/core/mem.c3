@@ -393,14 +393,13 @@ macro void @stack_pool(usz $size; @body) @builtin
 	};
 }
 
-macro void @pool(...; @body) @builtin
+macro void @pool(TempAllocator* #other_temp = null; @body) @builtin
 {
-    bool $has_arg = $vacount == 1;
-    assert($vacount <= 1);
     TempAllocator* current = temp();
+    var $has_arg = !$checks(var $x = #other_temp);
     $if $has_arg:
         TempAllocator* original = current;
-        if (current == $vaarg(0)) current = temp_allocator_next();
+        if (current == #other_temp) current = temp_allocator_next();
     $endif
     usz mark = current.used;
     defer

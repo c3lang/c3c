@@ -685,6 +685,7 @@ RETRY:
 			break;
 		case AST_SWITCH_STMT:
 		case AST_IF_CATCH_SWITCH_STMT:
+			copy_reg_ref(c, source, ast);
 			SCOPE_FIXUP_START
 				copy_flow(c, ast);
 				MACRO_COPY_EXPRID(ast->switch_stmt.cond);
