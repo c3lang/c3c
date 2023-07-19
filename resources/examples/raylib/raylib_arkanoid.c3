@@ -1,5 +1,5 @@
 module arkanoid;
-
+import raylib;
 /**
  *
  *   raylib - classic game: arkanoid

@@ -248,6 +248,7 @@ void resolve_libraries(void)
 
 		file_add_wildcard_files(&active_target.sources, library->dir, false, c3_suffix_list, 3);
 		vec_add(active_target.library_list, library);
-		vec_add(active_target.linker_libdirs, file_append_path(library->dir, arch_os_target[active_target.arch_os_target]));
+		const char *libdir = file_append_path(library->dir, arch_os_target[active_target.arch_os_target]);
+		if (file_is_dir(libdir)) vec_add(active_target.linker_libdirs, libdir);
 	}
 }
