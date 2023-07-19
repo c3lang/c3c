@@ -16,6 +16,11 @@ fn usz Range.len(&self) @operator(len)
 	return (usz)(self.end - self.start + (Type)1);
 }
 
+fn bool Range.has(&self, Type value) @inline
+{
+	return value >= self.start && value <= self.end;
+}
+
 /**
  * @require index < self.len() : "Can't index into an empty range"
  **/
@@ -44,6 +49,11 @@ fn usz ExclusiveRange.len(&self) @operator(len)
 {
 	if (self.end < self.start) return 0;
 	return (usz)(self.end - self.start);
+}
+
+fn bool ExclusiveRange.has(&self, Type value) @inline
+{
+	return value >= self.start && value < self.end;
 }
 
 fn void! ExclusiveRange.to_format(&self, Formatter* formatter) @dynamic
