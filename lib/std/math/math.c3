@@ -846,6 +846,46 @@ macro int128 int128.sat_mul(int128 x, int128 y) => $$sat_mul(x, y);
 macro int128 int128.sat_shl(int128 x, int128 y) => $$sat_shl(x, y);
 
 /**
+ * @require values::@is_int(x) `The input must be an integer`
+ **/
+macro bool is_odd(x) => (bool)(x & 1);
+
+/**
+ * @require values::@is_int(x) `The input must be an integer`
+ **/
+macro bool is_even(x) => !is_odd(x);
+
+macro bool char.is_even(char x) => is_even(x);
+macro bool char.is_odd(char x) => is_odd(x);
+
+macro bool ichar.is_even(ichar x) => is_even(x);
+macro bool ichar.is_odd(ichar x) => is_odd(x);
+
+macro bool ushort.is_even(ushort x) => is_even(x);
+macro bool ushort.is_odd(ushort x) => is_odd(x);
+
+macro bool short.is_even(short x) => is_even(x);
+macro bool short.is_odd(short x) => is_odd(x);
+
+macro bool uint.is_even(uint x) => is_even(x);
+macro bool uint.is_odd(uint x) => is_odd(x);
+
+macro bool int.is_even(int x) => is_even(x);
+macro bool int.is_odd(int x) => is_odd(x);
+
+macro bool ulong.is_even(ulong x) => is_even(x);
+macro bool ulong.is_odd(ulong x) => is_odd(x);
+
+macro bool long.is_even(long x) => is_even(x);
+macro bool long.is_odd(long x) => is_odd(x);
+
+macro bool uint128.is_even(uint128 x) => is_even(x);
+macro bool uint128.is_odd(uint128 x) => is_odd(x);
+
+macro bool int128.is_even(int128 x) => is_even(x);
+macro bool int128.is_odd(int128 x) => is_odd(x);
+
+/**
  * @checked x & 1
  */
 macro bool is_power_of_2(x)
