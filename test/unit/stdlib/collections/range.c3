@@ -14,9 +14,9 @@ fn void! test_range()
 		sum += z * z;
 	}
 	assert(sum == 35);
-	assert(range.has(-4));
-	assert(range.has(2));
-	assert(!range.has(3));
+	assert(range.contains(-4));
+	assert(range.contains(2));
+	assert(!range.contains(3));
 }
 
 fn void! test_exrange()
@@ -29,8 +29,8 @@ fn void! test_exrange()
 		sum += z * z;
 	}
 	assert(sum == 31);
-	assert(range.has(-4));
-	assert(range.has(1));
-	assert(!range.has(2));
+	assert(range.contains(-4));
+	assert(range.contains(1));
+	assert(!range.contains(2));
 }
 

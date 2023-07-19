@@ -16,7 +16,7 @@ fn usz Range.len(&self) @operator(len)
 	return (usz)(self.end - self.start + (Type)1);
 }
 
-fn bool Range.has(&self, Type value) @inline
+fn bool Range.contains(&self, Type value) @inline
 {
 	return value >= self.start && value <= self.end;
 }
@@ -51,7 +51,7 @@ fn usz ExclusiveRange.len(&self) @operator(len)
 	return (usz)(self.end - self.start);
 }
 
-fn bool ExclusiveRange.has(&self, Type value) @inline
+fn bool ExclusiveRange.contains(&self, Type value) @inline
 {
 	return value >= self.start && value < self.end;
 }
