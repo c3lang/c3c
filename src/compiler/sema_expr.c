@@ -3032,6 +3032,8 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 		expr_rewrite_const_int(expr, type_usz, parent->const_expr.member.offset);
 		return true;
 	}
+	if (!sema_analyse_decl(context, decl)) return false;
+
 	TypeProperty type_property = type_property_by_name(name);
 	switch (type_property)
 	{
@@ -3510,7 +3512,6 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 {
 	assert(type == type->canonical);
 	if (property == TYPE_PROPERTY_NONE) return false;
-
 	Type *flat = type_flatten(type);
 	switch (property)
 	{
@@ -3538,6 +3539,7 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			sema_expr_replace_with_enum_name_array(expr, flat->decl);
 			return sema_analyse_expr(context, expr);
 		case TYPE_PROPERTY_ASSOCIATED:
+			if (!sema_resolve_type_decl(context, flat)) return false;
 			return sema_create_const_associated(context, expr, flat);
 		case TYPE_PROPERTY_ELEMENTS:
 			if (!type_kind_is_enumlike(flat->type_kind)) return false;
@@ -3775,7 +3777,6 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr)
 	Type *type = type_no_optional(parent->type)->canonical;
 	Type *flat_type = type_flatten(type);
 	const char *kw = identifier->identifier_expr.ident;
-
 	if (kw_type == kw)
 	{
 		if (flat_type->type_kind == TYPE_ANY)
@@ -3937,9 +3938,11 @@ CHECK_DEEPER:
 
 	if (member && decl_is_enum_kind(decl) && member->decl_kind == DECL_VAR && expr_is_const(parent))
 	{
+		if (!sema_analyse_decl(context, decl)) return false;
 		assert(parent->const_expr.const_kind == CONST_ENUM);
 		Expr *copy_init = copy_expr_single(current_parent->const_expr.enum_err_val->enum_constant.args[member->var.index]);
 		expr_replace(expr, copy_init);
+		assert(copy_init->resolve_status == RESOLVE_DONE);
 		return true;
 	}
 	Decl *private = NULL;

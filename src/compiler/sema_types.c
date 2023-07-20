@@ -336,9 +336,16 @@ static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, 
 	// We might have the resolve already running, if so then that's bad.
 	if (type_info->resolve_status == RESOLVE_RUNNING)
 	{
-		SEMA_ERROR(type_info,
-				   "Circular dependency resolving type '%s'.",
-				   type_info->unresolved.name);
+		if (type_info->kind == TYPE_INFO_GENERIC)
+		{
+			SEMA_ERROR(type_info, "Circular dependency resolving generic type.");
+		}
+		else
+		{
+			SEMA_ERROR(type_info,
+					   "Circular dependency resolving type '%s'.",
+					   type_info->unresolved.name);
+		}
 		return type_info_poison(type_info);
 	}
 
