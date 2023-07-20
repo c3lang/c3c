@@ -227,6 +227,7 @@ const char *type_to_error_string(Type *type)
 			return scratch_buffer_copy();
 		}
 		case TYPE_FUNC:
+			if (!type->function.prototype) return type->name;
 			scratch_buffer_clear();
 			scratch_buffer_append("fn ");
 			type_append_func_to_scratch(type->function.prototype);
@@ -1366,6 +1367,15 @@ static inline Type *func_create_new_func_proto(Signature *sig, CallABI abi, uint
 		}
 		map.entries = new_map;
 	}
+	return type;
+}
+
+Type *type_get_func_alias(const char *name, Signature *signature, Module *module)
+{
+	Type *type = type_new(TYPE_FUNC, name);
+	type->canonical = type;
+	type->function.signature = signature;
+	type->function.module = module;
 	return type;
 }
 

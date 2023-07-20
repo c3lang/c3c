@@ -2362,6 +2362,7 @@ void type_func_prototype_init(uint32_t capacity);
 bool type_is_subtype(Type *type, Type *possible_subtype);
 bool type_is_abi_aggregate(Type *type);
 bool type_is_int128(Type *type);
+Type *type_get_func_alias(const char *name, Signature *signature, Module *module);
 Type *type_get_func(Signature *signature, CallABI abi);
 Type *type_from_token(TokenType type);
 bool type_is_user_defined(Type *type);

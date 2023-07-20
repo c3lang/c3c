@@ -1,0 +1,1 @@
+def BlahFn = fn int(BlahFn f); // #error: 'BlahFn' has a circular definition

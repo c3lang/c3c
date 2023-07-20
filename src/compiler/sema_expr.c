@@ -1644,19 +1644,18 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Type 
 
 	if (!sema_call_analyse_invocation(context, expr, callee, &optional)) return false;
 
+	if (!type->function.prototype)
+	{
+		RETURN_SEMA_ERROR(expr, "Circular definition of %s.", type_quoted_error_string(type));
+	}
 	Type *rtype = type->function.prototype->rtype;
 
 	if (is_unused && rtype != type_void)
 	{
-		if (sig->attrs.nodiscard)
-		{
-			SEMA_ERROR(expr, "The result of the function must be used.");
-			return false;
-		}
+		if (sig->attrs.nodiscard) RETURN_SEMA_ERROR(expr, "The result of the function must be used.");
 		if (type_is_optional(rtype) && !sig->attrs.maydiscard)
 		{
-			SEMA_ERROR(expr, "The optional result of the function must be used.");
-			return false;
+			RETURN_SEMA_ERROR(expr, "The optional result of the function must be used.");
 		}
 	}
 
@@ -6961,12 +6960,20 @@ INLINE bool lambda_parameter_match(Decl **ct_lambda_params, Decl *candidate)
 
 static inline Decl *sema_find_cached_lambda(SemaContext *context, Type *func_type, Decl *original, Decl **ct_lambda_parameters)
 {
+
 	unsigned cached = vec_size(original->func_decl.generated_lambda);
 	if (!cached) return NULL;
 	// If it has a function type, then we just use that for comparison.
 	if (func_type)
 	{
-		Type *raw = func_type->canonical->pointer->function.prototype->raw_type;
+		FunctionPrototype *prototype = func_type->canonical->pointer->function.prototype;
+		if (!prototype)
+		{
+			SEMA_ERROR(original, "Circular definition of %s.", type_quoted_error_string(func_type));
+			return NULL;
+		}
+
+		Type *raw = prototype->raw_type;
 		FOREACH_BEGIN(Decl *candidate, original->func_decl.generated_lambda)
 			if (raw == candidate->type->function.prototype->raw_type &&
 					lambda_parameter_match(ct_lambda_parameters, candidate)) return candidate;
@@ -6974,16 +6981,16 @@ static inline Decl *sema_find_cached_lambda(SemaContext *context, Type *func_typ
 		return NULL;
 	}
 	Signature *sig = &original->func_decl.signature;
-	if (!sig->rtype) return false;
+	if (!sig->rtype) return NULL;
 	Type *rtype = sema_evaluate_type_copy(context, type_infoptr(sig->rtype));
-	if (!rtype) return false;
+	if (!rtype) return NULL;
 	Type *types[200];
 	types[0] = rtype;
 	FOREACH_BEGIN_IDX(i, Decl *param, sig->params)
 		TypeInfo *info = param->var.type_info;
-		if (!info) return false;
+		if (!info) return NULL;
 		Type *type = sema_evaluate_type_copy(context, param->var.type_info);
-		if (!type) return false;
+		if (!type) return NULL;
 		assert(i < 198);
 		types[i + 1] = type;
 	FOREACH_END();
@@ -7169,9 +7176,12 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *func_typ
 	}
 	scratch_buffer_append("$lambda");
 	scratch_buffer_append_unsigned_int(++unit->lambda_count);
-	decl->extname = decl->name = scratch_buffer_copy();
-	Type *lambda_type = sema_analyse_function_signature(context, decl, sig->abi, sig, true);
-	if (!lambda_type) return false;
+	const char *name = decl->extname = decl->name = scratch_buffer_copy();
+
+	Type *lambda_type = type_get_func_alias(name, sig, decl->unit->module);
+	decl->type = lambda_type;
+	if (!sema_analyse_function_signature(context, decl, sig->abi, lambda_type, true)) return false;
+
 	decl->func_decl.lambda_ct_parameters = ct_lambda_parameters;
 	decl->type = lambda_type;
 	decl->func_decl.is_lambda = true;
