@@ -21,6 +21,7 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 		case DECL_POISONED:
 		case DECL_BODYPARAM:
 		case NON_TYPE_DECLS:
+		case DECL_FNTYPE:
 			UNREACHABLE
 		case DECL_BITSTRUCT:
 			return llvm_get_type(c, decl->bitstruct.base_type->type);

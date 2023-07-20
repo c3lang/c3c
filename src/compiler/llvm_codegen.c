@@ -793,6 +793,7 @@ static void llvm_emit_type_decls(GenContext *context, Decl *decl)
 		case DECL_ENUM_CONSTANT:
 		case DECL_FAULTVALUE:
 		case DECL_ERASED:
+		case DECL_FNTYPE:
 			UNREACHABLE;
 		case DECL_TYPEDEF:
 			if (decl->typedef_decl.is_func)
@@ -1037,6 +1038,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 	switch (decl->decl_kind)
 	{
 		case DECL_ERASED:
+		case DECL_FNTYPE:
 			UNREACHABLE
 		case DECL_VAR:
 			if (decl->var.kind == VARDECL_UNWRAPPED)

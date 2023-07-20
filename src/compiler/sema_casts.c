@@ -907,18 +907,23 @@ static bool cast_from_subarray(SemaContext *context, Expr *expr, Type *from, Typ
 	{
 		case TYPE_SUBARRAY:
 			// Casting to another subarray works if the elements are equivalent.
-			if (!type_array_element_is_equivalent(from->array.base, to->array.base, is_explicit))
+			switch (type_array_element_is_equivalent(context, from->array.base, to->array.base, is_explicit))
 			{
-				return sema_error_cannot_convert(expr, to, !is_explicit && type_array_element_is_equivalent(from->array.base, to->array.base, true), silent);
+				case TYPE_ERROR: return false;
+				case TYPE_MISMATCH: return sema_error_cannot_convert(expr, to, !is_explicit && type_array_element_is_equivalent(context, from->array.base, to->array.base, true) == TYPE_SAME, silent);
+				case TYPE_SAME: return cast_with_optional(expr, to_type, add_optional);
 			}
-			return cast_with_optional(expr, to_type, add_optional);
+			UNREACHABLE;
 		case TYPE_POINTER:
 			// Casting to another pointer works if either the pointer is void* or the element and pointee are equivalent.
-			if (to != type_voidptr && !type_array_element_is_equivalent(from->array.base, to->pointer, is_explicit))
+			if (to == type_voidptr) return cast_with_optional(expr, to_type, add_optional);
+			switch (type_array_element_is_equivalent(context, from->array.base, to->pointer, is_explicit))
 			{
-				return sema_error_cannot_convert(expr, to, !is_explicit && type_array_element_is_equivalent(from->array.base, to->pointer, true), silent);
+				case TYPE_MISMATCH: return sema_error_cannot_convert(expr, to, !is_explicit && type_array_element_is_equivalent(context, from->array.base, to->pointer, true), silent);
+				case TYPE_ERROR: return false;
+				case TYPE_SAME: return cast_with_optional(expr, to_type, add_optional);
 			}
-			return cast_with_optional(expr, to_type, add_optional);
+			UNREACHABLE
 		case TYPE_BOOL:
 			// Only explicit bool casts are allowed.
 			if (!is_explicit) return sema_error_cannot_convert(expr, to_type, true, silent);
@@ -977,7 +982,12 @@ static bool cast_from_pointer(SemaContext *context, Expr *expr, Type *from, Type
 				// Otherwise we might have int*[2]* -> void*[], use pointer equivalence.
 				if (subarray_base->type_kind == TYPE_POINTER && from_base->type_kind == TYPE_POINTER)
 				{
-					if (type_is_pointer_equivalent(subarray_base, from_base, is_explicit)) return cast_with_optional(expr, to_type, add_optional);
+					switch (type_is_pointer_equivalent(context, subarray_base, from_base, is_explicit))
+					{
+						case TYPE_SAME: return cast_with_optional(expr, to_type, add_optional);
+						case TYPE_ERROR: return false;
+						default: break;
+					}
 				}
 				// Silent? Then we're done.
 				if (silent) return false;
@@ -1000,11 +1010,12 @@ static bool cast_from_pointer(SemaContext *context, Expr *expr, Type *from, Type
 			// Explicit conversion always works.
 			if (is_explicit) return cast_with_optional(expr, to_type, add_optional);
 			// See if the pointee is equivalent.
-			if (type_is_pointer_equivalent(from, to, false))
+			switch (type_is_pointer_equivalent(context, from, to, false))
 			{
-				return cast_with_optional(expr, to_type, add_optional);
+				case TYPE_SAME: return cast_with_optional(expr, to_type, add_optional);
+				case TYPE_ERROR: return false;
+				default: return sema_error_cannot_convert(expr, to_type, true, silent);
 			}
-			return sema_error_cannot_convert(expr, to_type, true, silent);
 		case TYPE_OPTIONAL:
 			UNREACHABLE
 		default:
@@ -1181,15 +1192,20 @@ static bool cast_from_array(SemaContext *context, Expr *expr, Type *from, Type *
 			return sema_error_cannot_convert(expr, to_type, false, silent);
 	}
 	// Check array element equivalence.
-	if (!type_array_element_is_equivalent(from->array.base, to->array.base, is_explicit))
-	{
-		if (silent) return false;
-		// Create a good error message, so we can give a hint that maybe you can do an explicit cast.
-		bool explicit_would_work = !is_explicit && type_array_element_is_equivalent(from->array.base, to->array.base, true);
-		return sema_error_cannot_convert(expr, to_type, explicit_would_work, silent);
+	switch (type_array_element_is_equivalent(context, from->array.base, to->array.base, is_explicit)) {
+		case TYPE_ERROR:
+			return false;
+		case TYPE_SAME:
+			// Insert the cast.
+			return cast_with_optional(expr, to_type, add_optional);
+		default:
+			break;
 	}
-	// Insert the cast.
-	return cast_with_optional(expr, to_type, add_optional);
+
+	if (silent) return false;
+	// Create a good error message, so we can give a hint that maybe you can do an explicit cast.
+	bool explicit_would_work = !is_explicit && type_array_element_is_equivalent(context, from->array.base, to->array.base, true);
+	return sema_error_cannot_convert(expr, to_type, explicit_would_work, silent);
 }
 
 /**
@@ -1278,14 +1294,16 @@ static bool cast_from_vector(SemaContext *context, Expr *expr, Type *from, Type 
 	if (not_to_vector)
 	{
 		// Here we do simple array element equivalence, that is int[<2>] -> int[2] is ok, but not int[<2>] -> float[2]
-		if (!type_array_element_is_equivalent(from_base, to_base, is_explicit))
+		switch (type_array_element_is_equivalent(context, from_base, to_base, is_explicit))
 		{
-			// Give us a nice hint in case an explicit conversion would work.
-			if (silent) return false;
-			bool may_explicit = !is_explicit && type_array_element_is_equivalent(from_base, to_base, true);
-			return sema_error_cannot_convert(expr, to, may_explicit, true);
+			case TYPE_SAME: return cast_with_optional(expr, to_type, add_optional);
+			case TYPE_ERROR: return false;
+			default:
+				// Give us a nice hint in case an explicit conversion would work.
+				if (silent) return false;
+				bool may_explicit = !is_explicit && type_array_element_is_equivalent(context, from_base, to_base, true);
+				return sema_error_cannot_convert(expr, to, may_explicit, true);
 		}
-		return cast_with_optional(expr, to_type, add_optional);
 	}
 	// Vector -> vector cast
 	// This allows for things like int[<2>] -> float[<2>] conversions.

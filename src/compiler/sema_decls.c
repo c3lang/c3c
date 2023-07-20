@@ -689,15 +689,6 @@ static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl, bool *erase
 	return true;
 }
 
-static bool check_safe_param(TypeInfo *type_info)
-{
-	Type *type = type_info->type->canonical;
-	if (type->type_kind != TYPE_POINTER) return true;
-	Type *pointee = type->pointer;
-	if (pointee->type_kind != TYPE_FUNC) return true;
-	if (pointee->function.prototype) return true;
-	RETURN_SEMA_ERROR(type_info, "%s has a circular definition.", type_quoted_error_string(type));
-}
 
 static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfoId type_parent)
 {
@@ -732,7 +723,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 				return false;
 			}
 		}
-		if (!check_safe_param(rtype_info)) return false;
+		if (!sema_type_resolve_fn_ptr(context, rtype_info)) return false;
 	}
 
 	// We don't support more than MAX_PARAMS number of params. This makes everything sane.
@@ -744,6 +735,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 			return false;
 		}
 		SEMA_ERROR(params[MAX_PARAMS], "The number of params exceeded the max of %d. To accept more arguments, consider using varargs.", MAX_PARAMS);
+		return false;
 	}
 
 	// Fill in the type if the first parameter is lacking a type.
@@ -765,8 +757,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 			default:
 				goto CHECK_PARAMS;
 		}
-		TypeInfo *type_info = type_info_new_base(inferred_type, param->span);
-		param->var.type_info = type_info;
+		param->var.type_info = type_info_new_base(inferred_type, param->span);
 	}
 
 	CHECK_PARAMS:
@@ -897,7 +888,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		if (param->var.type_info)
 		{
 			TypeInfo *type_info = param->var.type_info;
-			if (!check_safe_param(type_info)) return false;
+			if (!sema_type_resolve_fn_ptr(context, type_info)) return false;
 
 			param->type = type_info->type;
 			if (!sema_set_abi_alignment(context, param->type, &param->alignment)) return false;
@@ -917,10 +908,9 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 }
 
 
-bool sema_analyse_function_signature(SemaContext *context, Decl *func_decl, CallABI abi, Type *type, bool is_real_function)
+bool sema_analyse_function_signature(SemaContext *context, Decl *func_decl, CallABI abi, Signature *signature, bool is_real_function)
 {
 	// Get param count and variadic type
-	Signature *signature = type->function.signature;
 	Decl **params = signature->params;
 
 	if (!sema_analyse_signature(context, signature, func_decl->func_decl.type_parent)) return false;
@@ -947,8 +937,18 @@ bool sema_analyse_function_signature(SemaContext *context, Decl *func_decl, Call
 
 	if (!all_ok) return false;
 	Type *raw_type = type_get_func(signature, abi);
-	type->function.prototype = raw_type->function.prototype;
+	assert(func_decl->type->type_kind == TYPE_FUNC);
+	assert(raw_type->function.prototype);
+	func_decl->type->function.prototype = raw_type->function.prototype;
 	return true;
+}
+
+static inline bool sema_analyse_fntype(SemaContext *context, Decl *decl, bool *erase_decl)
+{
+	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_DEFINE, erase_decl)) return decl_poison(decl);
+	if (*erase_decl) return true;
+	Signature *sig = &decl->fntype_decl;
+	return sema_analyse_function_signature(context, decl, sig->abi, sig, false);
 }
 
 static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *erase_decl)
@@ -958,10 +958,11 @@ static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *
 
 	if (decl->typedef_decl.is_func)
 	{
-		Type *func_type = type_get_func_alias(decl->name, &decl->typedef_decl.function_signature, decl->unit->module);
-		decl->type->canonical = type_get_ptr(func_type);
-		decl->resolve_status = RESOLVE_DONE;
-		return sema_analyse_function_signature(context, decl, CALL_C, func_type, false);
+		Decl *fn_decl = decl->typedef_decl.decl;
+		fn_decl->unit = decl->unit;
+		fn_decl->type = type_new_func(fn_decl, &fn_decl->fntype_decl);
+		decl->type->canonical = type_get_ptr(fn_decl->type);
+		return true;
 	}
 	if (!sema_resolve_type_info(context, decl->typedef_decl.type_info)) return false;
 	Type *type = decl->typedef_decl.type_info->type->canonical;
@@ -979,10 +980,11 @@ static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl)
 {
 	if (decl->distinct_decl.typedef_decl.is_func)
 	{
-		Type *func_type = type_get_func_alias(decl->name, &decl->distinct_decl.typedef_decl.function_signature, decl->unit->module);
-		decl->distinct_decl.base_type = type_get_ptr(func_type);
-		decl->resolve_status = RESOLVE_DONE;
-		return sema_analyse_function_signature(context, decl, CALL_C, func_type, false);
+		Decl *fn_decl = decl->distinct_decl.typedef_decl.decl;
+		fn_decl->unit = decl->unit;
+		fn_decl->type = type_new_func(fn_decl, &fn_decl->fntype_decl);
+		decl->distinct_decl.base_type = type_get_ptr(fn_decl->type);
+		return true;
 	}
 	TypeInfo *info = decl->distinct_decl.typedef_decl.type_info;
 	if (!sema_resolve_type_info(context, info)) return false;
@@ -2501,9 +2503,8 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 		}
 	}
 
-	Type *func_type = decl->type = type_get_func_alias(decl->name, sig, decl->unit->module);
-	if (!sema_analyse_function_signature(context, decl, sig->abi, func_type, true)) return decl_poison(decl);
-
+	decl->type = type_new_func(decl, sig);
+	if (!sema_analyse_function_signature(context, decl, sig->abi, sig, true)) return decl_poison(decl);
 	TypeInfo *rtype_info = type_infoptr(sig->rtype);
 	assert(rtype_info);
 	Type *rtype = rtype_info->type->canonical;
@@ -3410,6 +3411,9 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 		case DECL_UNION:
 			if (!sema_analyse_struct_union(context, decl, &erase_decl)) goto FAILED;
 			set_external_name = true;
+			break;
+		case DECL_FNTYPE:
+			if (!sema_analyse_fntype(context, decl, &erase_decl)) goto FAILED;
 			break;
 		case DECL_FUNC:
 			if (!sema_analyse_func(context, decl, &erase_decl)) goto FAILED;

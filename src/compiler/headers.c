@@ -107,7 +107,7 @@ static void header_print_type(FILE *file, Type *type)
 			OUTPUT("*");
 			return;
 		case TYPE_FUNC:
-			OUTPUT("%s", decl_get_extname(type->decl));
+			OUTPUT("%s", decl_get_extname(type->function.decl));
 			return;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
@@ -307,6 +307,7 @@ static void header_gen_type_decl(FILE *file, int indent, Decl *decl)
 		case DECL_VAR:
 		case DECL_BODYPARAM:
 		case DECL_FUNC:
+		case DECL_FNTYPE:
 			UNREACHABLE
 		case DECL_ERASED:
 			return;

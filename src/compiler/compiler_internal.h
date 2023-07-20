@@ -304,7 +304,7 @@ typedef struct
 
 typedef struct
 {
-	Module *module;
+	Decl *decl;
 	Signature *signature;
 	struct FunctionPrototype_ *prototype;
 } TypeFunction;
@@ -573,7 +573,7 @@ typedef struct
 	bool is_distinct : 1;
 	union
 	{
-		Signature function_signature;
+		Decl *decl;
 		TypeInfo *type_info;
 	};
 } TypedefDecl;
@@ -712,6 +712,7 @@ typedef struct Decl_
 		LabelDecl label;
 		EnumConstantDecl enum_constant;
 		FuncDecl func_decl;
+		Signature fntype_decl;
 		AttrDecl attr_decl;
 		Decl** decls;
 		TypedefDecl typedef_decl;
@@ -2358,11 +2359,12 @@ Type *type_int_signed_by_bitsize(BitSize bitsize);
 Type *type_int_unsigned_by_bitsize(BitSize bit_size);
 TypeSize type_size(Type *type); // Only call after all types are resolved.
 void type_init_cint(void);
+Type *type_new_func(Decl *decl, Signature *sig);
 void type_func_prototype_init(uint32_t capacity);
 bool type_is_subtype(Type *type, Type *possible_subtype);
 bool type_is_abi_aggregate(Type *type);
 bool type_is_int128(Type *type);
-Type *type_get_func_alias(const char *name, Signature *signature, Module *module);
+
 Type *type_get_func(Signature *signature, CallABI abi);
 Type *type_from_token(TokenType type);
 bool type_is_user_defined(Type *type);
@@ -2374,8 +2376,15 @@ bool type_flat_is_numlike(Type *type);
 bool type_may_have_sub_elements(Type *type);
 bool type_may_have_method(Type *type);
 
-bool type_is_pointer_equivalent(Type *pointer1, Type *pointer2, bool flatten_distinct);
-bool type_array_element_is_equivalent(Type *element1, Type *element2, bool is_explicit);
+typedef enum
+{
+	TYPE_MISMATCH = 0,
+	TYPE_SAME = 1,
+	TYPE_ERROR = -1,
+} TypeCmpResult;
+
+TypeCmpResult type_is_pointer_equivalent(SemaContext *context, Type *pointer1, Type *pointer2, bool flatten_distinct);
+TypeCmpResult type_array_element_is_equivalent(SemaContext *context, Type *element1, Type *element2, bool is_explicit);
 FunctionPrototype *type_get_resolved_prototype(Type *type);
 const char *type_to_error_string(Type *type);
 const char *type_quoted_error_string(Type *type);

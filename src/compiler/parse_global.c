@@ -1736,14 +1736,15 @@ static inline Decl *parse_def_type(ParseContext *c)
 		decl->typedef_decl.is_func = true;
 		decl->typedef_decl.is_distinct = distinct;
 		decl->is_substruct = is_inline;
+		Decl *decl_type = decl_new(DECL_FNTYPE, decl->name, c->prev_span);
+		decl->typedef_decl.decl = decl_type;
 		ASSIGN_TYPE_OR_RET(TypeInfo *type_info, parse_optional_type(c), poisoned_decl);
-		decl->typedef_decl.function_signature.rtype = type_infoid(type_info);
-		if (!parse_fn_parameter_list(c, &(decl->typedef_decl.function_signature), true))
+		decl_type->fntype_decl.rtype = type_infoid(type_info);
+		if (!parse_fn_parameter_list(c, &(decl_type->fntype_decl), true))
 		{
 			return poisoned_decl;
 		}
 		if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
-
 		RANGE_EXTEND_PREV(decl);
 		CONSUME_EOS_OR_RET(poisoned_decl);
 		return decl;

@@ -549,9 +549,9 @@ void type_mangle_introspect_name_to_buffer(Type *type)
 			return;
 		case TYPE_FUNC:
 			type = type->function.prototype->raw_type;
-			if (type->function.module)
+			if (type->function.decl)
 			{
-				Module *module = type->function.module;
+				Module *module = type->function.decl->unit->module;
 				scratch_buffer_append(module->extname ? module->extname : module->name->module);
 				scratch_buffer_append_char('$');
 				scratch_buffer_append(type->name);
@@ -1238,6 +1238,15 @@ static int compare_function(Signature *sig, FunctionPrototype *proto)
 	return 0;
 }
 
+Type *type_new_func(Decl *decl, Signature *sig)
+{
+	Type *type = type_new(TYPE_FUNC, decl->name);
+	type->canonical = type;
+	type->function.signature = sig;
+	type->function.decl = decl;
+	return type;
+}
+
 static Type *flatten_raw_function_type(Type *type)
 {
 	Type *other;
@@ -1333,7 +1342,7 @@ static inline Type *func_create_new_func_proto(Signature *sig, CallABI abi, uint
 	copy_sig->params = proto->param_copy;
 	proto->raw_type = type;
 	type->function.prototype = proto;
-	type->function.module = NULL;
+	type->function.decl = NULL;
 	type->function.signature = copy_sig;
 	type->canonical = type;
 	entry->key = hash;
@@ -1367,15 +1376,6 @@ static inline Type *func_create_new_func_proto(Signature *sig, CallABI abi, uint
 		}
 		map.entries = new_map;
 	}
-	return type;
-}
-
-Type *type_get_func_alias(const char *name, Signature *signature, Module *module)
-{
-	Type *type = type_new(TYPE_FUNC, name);
-	type->canonical = type;
-	type->function.signature = signature;
-	type->function.module = module;
 	return type;
 }
 
@@ -1621,32 +1621,34 @@ Type *type_from_token(TokenType type)
 	}
 }
 
-bool type_array_is_equivalent(Type *from, Type *to, bool is_explicit)
+static TypeCmpResult type_array_is_equivalent(SemaContext *context, Type *from, Type *to, bool is_explicit)
 {
 	TypeKind to_kind = to->type_kind;
 	switch (from->type_kind)
 	{
 		case TYPE_INFERRED_ARRAY:
 			assert(to_kind != TYPE_INFERRED_ARRAY);
-			if (to_kind != TYPE_ARRAY) return false;
-			return type_array_element_is_equivalent(from->array.base, to->array.base, is_explicit);
+			if (to_kind != TYPE_ARRAY) return TYPE_MISMATCH;
+			return type_array_element_is_equivalent(context, from->array.base, to->array.base, is_explicit);
 		case TYPE_ARRAY:
-			if (to_kind != TYPE_ARRAY && to_kind != TYPE_INFERRED_ARRAY) return false;
-			if (to->type_kind == TYPE_ARRAY && from->array.len != to->array.len) return false;
-			return type_array_element_is_equivalent(from->array.base, to->array.base, is_explicit);
+			if (to_kind != TYPE_ARRAY && to_kind != TYPE_INFERRED_ARRAY) return TYPE_MISMATCH;
+			if (to->type_kind == TYPE_ARRAY && from->array.len != to->array.len) return TYPE_MISMATCH;
+			return type_array_element_is_equivalent(context, from->array.base, to->array.base, is_explicit);
 		case TYPE_INFERRED_VECTOR:
 			assert(to_kind != TYPE_INFERRED_VECTOR);
-			if (to->type_kind != TYPE_VECTOR) return false;
-			return type_array_element_is_equivalent(from->array.base, to->array.base, is_explicit);
+			if (to->type_kind != TYPE_VECTOR) return TYPE_MISMATCH;
+			return type_array_element_is_equivalent(context, from->array.base, to->array.base, is_explicit);
 		case TYPE_VECTOR:
-			if (to_kind != TYPE_VECTOR && to_kind != TYPE_INFERRED_VECTOR) return false;
-			if (to->type_kind == TYPE_VECTOR && from->array.len != to->array.len) return false;
-			return type_array_element_is_equivalent(from->array.base, to->array.base, is_explicit);
+			if (to_kind != TYPE_VECTOR && to_kind != TYPE_INFERRED_VECTOR) return TYPE_MISMATCH;
+			if (to->type_kind == TYPE_VECTOR && from->array.len != to->array.len) return TYPE_MISMATCH;
+			return type_array_element_is_equivalent(context, from->array.base, to->array.base, is_explicit);
 		default:
-			return false;
+			return TYPE_MISMATCH;
 	}
 }
-bool type_array_element_is_equivalent(Type *element1, Type *element2, bool is_explicit)
+
+
+TypeCmpResult type_array_element_is_equivalent(SemaContext *context, Type *element1, Type *element2, bool is_explicit)
 {
 	if (is_explicit)
 	{
@@ -1658,26 +1660,26 @@ bool type_array_element_is_equivalent(Type *element1, Type *element2, bool is_ex
 		element1 = element1->canonical;
 		element2 = element2->canonical;
 	}
-	if (element1 == element2) return true;
+	if (element1 == element2) return TYPE_SAME;
 	switch (element1->type_kind)
 	{
 		case TYPE_POINTER:
-			if (element2->type_kind != TYPE_POINTER) return false;
-			return type_is_pointer_equivalent(element1, element2, is_explicit);
+			if (element2->type_kind != TYPE_POINTER) return TYPE_MISMATCH;
+			return type_is_pointer_equivalent(context, element1, element2, is_explicit);
 		case TYPE_STRUCT:
-			if (is_explicit) return type_is_structurally_equivalent(element1, element2);
-			return false;
+			if (is_explicit) return type_is_structurally_equivalent(element1, element2) ? TYPE_SAME : TYPE_MISMATCH;
+			return TYPE_MISMATCH;
 		case TYPE_VECTOR:
 		case TYPE_ARRAY:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
-			return type_array_is_equivalent(element1, element2, is_explicit);
+			return type_array_is_equivalent(context, element1, element2, is_explicit);
 		default:
-			return false;
+			return TYPE_MISMATCH;
 	}
 }
 
-bool type_is_pointer_equivalent(Type *pointer1, Type *pointer2, bool flatten_distinct)
+TypeCmpResult type_is_pointer_equivalent(SemaContext *context, Type *pointer1, Type *pointer2, bool flatten_distinct)
 {
 RETRY:
 	if (flatten_distinct)
@@ -1685,8 +1687,8 @@ RETRY:
 		pointer1 = type_flatten(pointer1);
 		pointer2 = type_flatten(pointer2);
 	}
-	if (pointer1 == pointer2) return true;
-	if (pointer1 == type_voidptr || pointer2 == type_voidptr) return true;
+	if (pointer1 == pointer2) return TYPE_SAME;
+	if (pointer1 == type_voidptr || pointer2 == type_voidptr) return TYPE_SAME;
 	Type *pointee1 = pointer1->pointer->canonical;
 	Type *pointee2 = pointer2->pointer->canonical;
 	if (flatten_distinct)
@@ -1694,8 +1696,8 @@ RETRY:
 		pointee1 = type_flatten(pointee1);
 		pointee2 = type_flatten(pointee2);
 	}
-	if (pointee1 == pointee2) return true;
-	if (type_is_subtype(pointee2, pointee1)) return true;
+	if (pointee1 == pointee2) return TYPE_SAME;
+	if (type_is_subtype(pointee2, pointee1)) return TYPE_SAME;
 
 	if (pointee1->type_kind != pointee2->type_kind)
 	{
@@ -1704,18 +1706,20 @@ RETRY:
 			// Try array equivalence.
 			if (type_is_any_arraylike(pointee2))
 			{
-				if (type_array_is_equivalent(pointee1, pointee2, flatten_distinct)) return true;
-
+				TypeCmpResult res = type_array_is_equivalent(context, pointee1, pointee2, flatten_distinct);
+				if (res != TYPE_MISMATCH) return res;
 			}
 			// A possible int[4]* -> int* decay?
-			return type_is_pointer_equivalent(type_get_ptr(pointee1->array.base), pointer2, flatten_distinct);
+			return type_is_pointer_equivalent(context, type_get_ptr(pointee1->array.base), pointer2, flatten_distinct);
 		}
 		// Not arraylike and no array decay. Failure.
-		return false;
+		return TYPE_MISMATCH;
 	}
 
 	if (pointee1->type_kind == TYPE_FUNC && pointee2->type_kind == TYPE_FUNC)
 	{
+		if (!sema_resolve_type_decl(context, pointee1)) return TYPE_ERROR;
+		if (!sema_resolve_type_decl(context, pointee2)) return TYPE_ERROR;
 		return pointee1->function.prototype->raw_type == pointee2->function.prototype->raw_type;
 	}
 	if (pointee1->type_kind == TYPE_POINTER)
@@ -2168,7 +2172,7 @@ Module *type_base_module(Type *type)
 			type = type->pointer;
 			goto RETRY;
 		case TYPE_FUNC:
-			return type->function.module;
+			return type->function.decl ? type->function.decl->unit->module : NULL;
 		case TYPE_ENUM:
 		case TYPE_STRUCT:
 		case TYPE_UNION:

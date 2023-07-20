@@ -682,6 +682,7 @@ bool sema_resolve_type_decl(SemaContext *context, Type *type)
 			if (!sema_analyse_decl(context, type->decl)) return false;
 			return sema_resolve_type_decl(context, type->decl->distinct_decl.base_type);
 		case TYPE_FUNC:
+			if (!type->function.prototype && type->function.decl->decl_kind == DECL_FNTYPE) return sema_analyse_decl(context, type->function.decl);
 			return true;
 		case TYPE_ENUM:
 		case TYPE_STRUCT:

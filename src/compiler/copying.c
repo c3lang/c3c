@@ -909,6 +909,9 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			MACRO_COPY_TYPE(copy->enums.type_info);
 			MACRO_COPY_DECL_LIST(copy->enums.values);
 			break;
+		case DECL_FNTYPE:
+			copy_signature_deep(c, &copy->fntype_decl);
+			break;
 		case DECL_FUNC:
 			copy_decl_type(copy);
 			MACRO_COPY_TYPEID(copy->func_decl.type_parent);
@@ -939,7 +942,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			copy_decl_type(copy);
 			if (copy->typedef_decl.is_func)
 			{
-				copy_signature_deep(c, &copy->typedef_decl.function_signature);
+				MACRO_COPY_DECL(copy->typedef_decl.decl);
 				break;
 			}
 			MACRO_COPY_TYPE(copy->typedef_decl.type_info);
@@ -949,7 +952,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			MACRO_COPY_DECL_LIST(copy->methods);
 			if (copy->distinct_decl.typedef_decl.is_func)
 			{
-				copy_signature_deep(c, &copy->distinct_decl.typedef_decl.function_signature);
+				MACRO_COPY_DECL(copy->distinct_decl.typedef_decl.decl);
 				break;
 			}
 			MACRO_COPY_TYPE(copy->distinct_decl.typedef_decl.type_info);

@@ -356,6 +356,25 @@ static inline bool analyse_func_body(SemaContext *context, Decl *decl)
 	return true;
 }
 
+INLINE void sema_analyse_inner_func_ptr(SemaContext *c, Decl *decl)
+{
+	Type *inner;
+	switch (decl->decl_kind)
+	{
+		case DECL_DISTINCT:
+			inner = decl->distinct_decl.base_type;
+			break;
+		case DECL_TYPEDEF:
+			inner = decl->type->canonical;
+			break;
+		default:
+			return;
+	}
+	if (inner->type_kind != TYPE_POINTER) return;
+	Type *pointer = inner->pointer;
+	if (pointer->type_kind == TYPE_FUNC && !sema_resolve_type_decl(c, pointer)) decl_poison(decl);
+}
+
 void sema_analysis_pass_decls(Module *module)
 {
 	DEBUG_LOG("Pass: Decl analysis %s", module->name->module);
@@ -382,7 +401,9 @@ void sema_analysis_pass_decls(Module *module)
 		}
 		VECEACH(unit->types, i)
 		{
-			sema_analyse_decl(&context, unit->types[i]);
+			Decl *decl = unit->types[i];
+			sema_analyse_decl(&context, decl);
+			sema_analyse_inner_func_ptr(&context, decl);
 		}
 		VECEACH(unit->macros, i)
 		{

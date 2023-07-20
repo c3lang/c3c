@@ -79,7 +79,7 @@ bool sema_analyse_asm(SemaContext *context, AsmInlineBlock *block, Ast *asm_stmt
 bool sema_bit_assignment_check(Expr *right, Decl *member);
 int sema_check_comp_time_bool(SemaContext *context, Expr *expr);
 bool sema_expr_check_assign(SemaContext *c, Expr *expr);
-bool sema_analyse_function_signature(SemaContext *context, Decl *func_decl, CallABI abi, Type *type, bool is_real_function);
+bool sema_analyse_function_signature(SemaContext *context, Decl *func_decl, CallABI abi, Signature *signature, bool is_real_function);
 bool cast_widen_top_down(SemaContext *context, Expr *expr, Type *type);
 bool cast_promote_vararg(Expr *arg);
 Type *cast_numeric_arithmetic_promotion(Type *type);
@@ -88,6 +88,7 @@ bool sema_decl_if_cond(SemaContext *context, Decl *decl);
 bool sema_flattened_expr_is_const(SemaContext *context, Expr *expr);
 Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, const char *name, SourceSpan span, Expr **params);
 bool sema_analyse_checked(SemaContext *context, Ast *directive, SourceSpan span);
+bool sema_type_resolve_fn_ptr(SemaContext *context, TypeInfo *type_info);
 
 INLINE bool sema_set_abi_alignment(SemaContext *context, Type *type, AlignSize *result);
 INLINE bool sema_set_alloca_alignment(SemaContext *context, Type *type, AlignSize *result);

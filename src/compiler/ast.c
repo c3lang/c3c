@@ -51,8 +51,9 @@ Decl *decl_new_with_type(const char *name, SourceSpan loc, DeclKind decl_type)
 	TypeKind kind = TYPE_POISONED;
 	switch (decl_type)
 	{
+		case DECL_FNTYPE:
 		case DECL_FUNC:
-			kind = TYPE_FUNC;
+			UNREACHABLE
 			break;
 		case DECL_UNION:
 			kind = TYPE_UNION;
@@ -146,6 +147,8 @@ const char *decl_to_a_name(Decl *decl)
 			return "a fault value";
 		case DECL_FAULT:
 			return "a fault";
+		case DECL_FNTYPE:
+			return "a function type";
 		case DECL_FUNC:
 			return "a function";
 		case DECL_MACRO:

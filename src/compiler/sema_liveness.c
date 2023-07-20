@@ -520,6 +520,13 @@ INLINE void sema_trace_decl_dynamic_methods(Decl *decl)
 		sema_trace_decl_liveness(method);
 	}
 }
+static void sema_trace_func_liveness(Signature *sig)
+{
+	FOREACH_BEGIN(Decl *param, sig->params)
+		sema_trace_decl_liveness(param);
+	FOREACH_END();
+	sema_trace_type_liveness(typeinfotype(sig->rtype));
+}
 
 static void sema_trace_decl_liveness(Decl *decl)
 {
@@ -531,20 +538,14 @@ RETRY:
 		case DECL_ERASED:
 			return;
 		case DECL_TYPEDEF:
-			if (!decl->typedef_decl.is_func)
-			{
-				sema_trace_type_liveness(decl->typedef_decl.type_info->type);
-				return;
-			}
-			FOREACH_BEGIN(Decl *param, decl->typedef_decl.function_signature.params)
-				sema_trace_decl_liveness(param);
-			FOREACH_END();
-			sema_trace_type_liveness(typeinfotype(decl->typedef_decl.function_signature.rtype));
+			sema_trace_type_liveness(decl->type);
 			return;
 		case DECL_DEFINE:
 			decl = decl->define_decl.alias;
 			goto RETRY;
 		case DECL_DISTINCT:
+			sema_trace_type_liveness(decl->distinct_decl.base_type);
+			FALLTHROUGH;
 		case DECL_ENUM:
 		case DECL_BITSTRUCT:
 		case DECL_FAULT:
@@ -567,7 +568,11 @@ RETRY:
 		case DECL_GLOBALS:
 			UNREACHABLE
 			return;
-		case DECL_FUNC:
+		case DECL_FNTYPE:;
+			sema_trace_func_liveness(&decl->fntype_decl);
+			return;
+		case DECL_FUNC:;
+			sema_trace_func_liveness(&decl->func_decl.signature);
 			sema_trace_stmt_liveness(astptrzero(decl->func_decl.body));
 			return;
 		case DECL_VAR:

@@ -186,6 +186,7 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 			case DECL_INITIALIZE:
 			case DECL_FINALIZE:
 			case DECL_ERASED:
+			case DECL_FNTYPE:
 				continue;
 			case DECL_ATTRIBUTE:
 				break;

@@ -148,6 +148,7 @@ void decl_register(Decl *decl)
 		case DECL_FUNC:
 		case DECL_MACRO:
 		case DECL_VAR:
+		case DECL_FNTYPE:
 			global_context_add_decl(decl);
 			break;
 	}
@@ -224,6 +225,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			vec_add(unit->attributes, decl);
 			decl_register(decl);
 			break;
+
 		case DECL_FAULTVALUE:
 		case DECL_ENUM_CONSTANT:
 		case DECL_IMPORT:
@@ -231,6 +233,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 		case DECL_DECLARRAY:
 		case DECL_BODYPARAM:
 		case DECL_GLOBALS:
+		case DECL_FNTYPE:
 			UNREACHABLE
 		case DECL_CT_INCLUDE:
 			vec_add(unit->ct_includes, decl);

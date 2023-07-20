@@ -192,6 +192,11 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 			type_info->resolve_status = RESOLVE_DONE;
 			DEBUG_LOG("Resolved %s.", type_info->unresolved.name);
 			return true;
+		case DECL_FNTYPE:
+			if (!sema_analyse_decl(context, decl)) return type_info_poison(type_info);
+			type_info->type = decl->type;
+			type_info->resolve_status = RESOLVE_DONE;
+			return true;
 		case DECL_TYPEDEF:
 		case DECL_DISTINCT:
 		case DECL_DEFINE:
@@ -238,6 +243,7 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 	UNREACHABLE
 
 }
+
 
 // $evaltype("Foo")
 INLINE bool sema_resolve_evaltype(SemaContext *context, TypeInfo *type_info, bool is_pointee)
@@ -436,3 +442,18 @@ APPEND_QUALIFIERS:
 	return true;
 }
 
+bool sema_type_resolve_fn_ptr(SemaContext *context, TypeInfo *type_info)
+{
+	Type *type = type_info->type->canonical;
+RETRY:
+	if (type->type_kind != TYPE_POINTER) return true;
+	Type *pointee = type->pointer->canonical;
+	if (pointee->type_kind == TYPE_POINTER)
+	{
+		type = pointee;
+		goto RETRY;
+	}
+	if (pointee->type_kind != TYPE_FUNC) return true;
+	if (pointee->function.prototype) return true;
+	return sema_resolve_type_decl(context, pointee);
+}
