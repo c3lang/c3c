@@ -1,6 +1,5 @@
 module std::bits;
 
-
 /**
  * @require types::is_intlike($typeof(i)) `The input must be an integer or integer vector`
  **/
@@ -10,7 +9,6 @@ macro reverse(i) => $$bitreverse(i);
  * @require types::is_intlike($typeof(i)) `The input must be an integer or integer vector`
  **/
 macro bswap(i) @builtin => $$bswap(i);
-
 
 macro uint[<*>].popcount(self) => $$popcount(self);
 macro uint[<*>].ctz(self) => $$ctz(self);
@@ -28,133 +26,133 @@ macro int[<*>] int[<*>].fshr(int[<*>] hi, int[<*>] lo, int[<*>] shift) => $$fshr
 macro int[<*>] int[<*>].rotl(self, int[<*>] shift) => $$fshl(self, self, shift);
 macro int[<*>] int[<*>].rotr(self, int[<*>] shift) => $$fshr(self, self, shift);
 
-macro ushort[<*>].popcount(ushort[<*>] i) => $$popcount(i);
-macro ushort[<*>].ctz(ushort[<*>] i) => $$ctz(i);
-macro ushort[<*>].clz(ushort[<*>] i) => $$clz(i);
+macro ushort[<*>].popcount(ushort[<*>] self) => $$popcount(self);
+macro ushort[<*>].ctz(ushort[<*>] self) => $$ctz(self);
+macro ushort[<*>].clz(ushort[<*>] self) => $$clz(self);
 macro ushort[<*>] ushort[<*>].fshl(ushort[<*>] hi, ushort[<*>] lo, ushort[<*>] shift) => $$fshl(hi, lo, shift);
 macro ushort[<*>] ushort[<*>].fshr(ushort[<*>] hi, ushort[<*>] lo, ushort[<*>] shift) => $$fshr(hi, lo, shift);
-macro ushort[<*>] ushort[<*>].rotl(ushort[<*>] i, ushort[<*>] shift) => $$fshl(i, i, shift);
-macro ushort[<*>] ushort[<*>].rotr(ushort[<*>] i, ushort[<*>] shift) => $$fshr(i, i, shift);
+macro ushort[<*>] ushort[<*>].rotl(ushort[<*>] self, ushort[<*>] shift) => $$fshl(self, self, shift);
+macro ushort[<*>] ushort[<*>].rotr(ushort[<*>] self, ushort[<*>] shift) => $$fshr(self, self, shift);
 
-macro short[<*>].popcount(short[<*>] i) => $$popcount(i);
-macro short[<*>].ctz(short[<*>] i) => $$ctz(i);
-macro short[<*>].clz(short[<*>] i) => $$clz(i);
+macro short[<*>].popcount(short[<*>] self) => $$popcount(self);
+macro short[<*>].ctz(short[<*>] self) => $$ctz(self);
+macro short[<*>].clz(short[<*>] self) => $$clz(self);
 macro short[<*>] short[<*>].fshl(short[<*>] hi, short[<*>] lo, short[<*>] shift) => $$fshl(hi, lo, shift);
 macro short[<*>] short[<*>].fshr(short[<*>] hi, short[<*>] lo, short[<*>] shift) => $$fshr(hi, lo, shift);
-macro short[<*>] short[<*>].rotl(short[<*>] i, short[<*>] shift) => $$fshl(i, i, shift);
-macro short[<*>] short[<*>].rotr(short[<*>] i, short[<*>] shift) => $$fshr(i, i, shift);
+macro short[<*>] short[<*>].rotl(short[<*>] self, short[<*>] shift) => $$fshl(self, self, shift);
+macro short[<*>] short[<*>].rotr(short[<*>] self, short[<*>] shift) => $$fshr(self, self, shift);
 
-macro char[<*>].popcount(char[<*>] i) => $$popcount(i);
-macro char[<*>].ctz(char[<*>] i) => $$ctz(i);
-macro char[<*>].clz(char[<*>] i) => $$clz(i);
+macro char[<*>].popcount(char[<*>] self) => $$popcount(self);
+macro char[<*>].ctz(char[<*>] self) => $$ctz(self);
+macro char[<*>].clz(char[<*>] self) => $$clz(self);
 macro char[<*>] char[<*>].fshl(char[<*>] hi, char[<*>] lo, char[<*>] shift) => $$fshl(hi, lo, shift);
 macro char[<*>] char[<*>].fshr(char[<*>] hi, char[<*>] lo, char[<*>] shift) => $$fshr(hi, lo, shift);
-macro char[<*>] char[<*>].rotl(char[<*>] i, char[<*>] shift) => $$fshl(i, i, shift);
-macro char[<*>] char[<*>].rotr(char[<*>] i, char[<*>] shift) => $$fshr(i, i, shift);
+macro char[<*>] char[<*>].rotl(char[<*>] self, char[<*>] shift) => $$fshl(self, self, shift);
+macro char[<*>] char[<*>].rotr(char[<*>] self, char[<*>] shift) => $$fshr(self, self, shift);
 
-macro ichar[<*>].popcount(ichar[<*>] i) => $$popcount(i);
-macro ichar[<*>].ctz(ichar[<*>] i) => $$ctz(i);
-macro ichar[<*>].clz(ichar[<*>] i) => $$clz(i);
+macro ichar[<*>].popcount(ichar[<*>] self) => $$popcount(self);
+macro ichar[<*>].ctz(ichar[<*>] self) => $$ctz(self);
+macro ichar[<*>].clz(ichar[<*>] self) => $$clz(self);
 macro ichar[<*>] ichar[<*>].fshl(ichar[<*>] hi, ichar[<*>] lo, ichar[<*>] shift) => $$fshl(hi, lo, shift);
 macro ichar[<*>] ichar[<*>].fshr(ichar[<*>] hi, ichar[<*>] lo, ichar[<*>] shift) => $$fshr(hi, lo, shift);
-macro ichar[<*>] ichar[<*>].rotl(ichar[<*>] i, ichar[<*>] shift) => $$fshl(i, i, shift);
-macro ichar[<*>] ichar[<*>].rotr(ichar[<*>] i, ichar[<*>] shift) => $$fshr(i, i, shift);
+macro ichar[<*>] ichar[<*>].rotl(ichar[<*>] self, ichar[<*>] shift) => $$fshl(self, self, shift);
+macro ichar[<*>] ichar[<*>].rotr(ichar[<*>] self, ichar[<*>] shift) => $$fshr(self, self, shift);
 
-macro ulong[<*>].popcount(ulong[<*>] i) => $$popcount(i);
-macro ulong[<*>].ctz(ulong[<*>] i) => $$ctz(i);
-macro ulong[<*>].clz(ulong[<*>] i) => $$clz(i);
+macro ulong[<*>].popcount(ulong[<*>] self) => $$popcount(self);
+macro ulong[<*>].ctz(ulong[<*>] self) => $$ctz(self);
+macro ulong[<*>].clz(ulong[<*>] self) => $$clz(self);
 macro ulong[<*>] ulong[<*>].fshl(ulong[<*>] hi, ulong[<*>] lo, ulong[<*>] shift) => $$fshl(hi, lo, shift);
 macro ulong[<*>] ulong[<*>].fshr(ulong[<*>] hi, ulong[<*>] lo, ulong[<*>] shift) => $$fshr(hi, lo, shift);
-macro ulong[<*>] ulong[<*>].rotl(ulong[<*>] i, ulong[<*>] shift) => $$fshl(i, i, shift);
-macro ulong[<*>] ulong[<*>].rotr(ulong[<*>] i, ulong[<*>] shift) => $$fshr(i, i, shift);
+macro ulong[<*>] ulong[<*>].rotl(ulong[<*>] self, ulong[<*>] shift) => $$fshl(self, self, shift);
+macro ulong[<*>] ulong[<*>].rotr(ulong[<*>] self, ulong[<*>] shift) => $$fshr(self, self, shift);
 
-macro long[<*>].popcount(long[<*>] i) => $$popcount(i);
-macro long[<*>].ctz(long[<*>] i) => $$ctz(i);
-macro long[<*>].clz(long[<*>] i) => $$clz(i);
+macro long[<*>].popcount(long[<*>] self) => $$popcount(self);
+macro long[<*>].ctz(long[<*>] self) => $$ctz(self);
+macro long[<*>].clz(long[<*>] self) => $$clz(self);
 macro long[<*>] long[<*>].fshl(long[<*>] hi, long[<*>] lo, long[<*>] shift) => $$fshl(hi, lo, shift);
 macro long[<*>] long[<*>].fshr(long[<*>] hi, long[<*>] lo, long[<*>] shift) => $$fshr(hi, lo, shift);
-macro long[<*>] long[<*>].rotl(long[<*>] i, long[<*>] shift) => $$fshl(i, i, shift);
-macro long[<*>] long[<*>].rotr(long[<*>] i, long[<*>] shift) => $$fshr(i, i, shift);
+macro long[<*>] long[<*>].rotl(long[<*>] self, long[<*>] shift) => $$fshl(self, self, shift);
+macro long[<*>] long[<*>].rotr(long[<*>] self, long[<*>] shift) => $$fshr(self, self, shift);
 
-macro uint128[<*>].popcount(uint128[<*>] i) => $$popcount(i);
-macro uint128[<*>].ctz(uint128[<*>] i) => $$ctz(i);
-macro uint128[<*>].clz(uint128[<*>] i) => $$clz(i);
+macro uint128[<*>].popcount(uint128[<*>] self) => $$popcount(self);
+macro uint128[<*>].ctz(uint128[<*>] self) => $$ctz(self);
+macro uint128[<*>].clz(uint128[<*>] self) => $$clz(self);
 macro uint128[<*>] uint128[<*>].fshl(uint128[<*>] hi, uint128[<*>] lo, uint128[<*>] shift) => $$fshl(hi, lo, shift);
 macro uint128[<*>] uint128[<*>].fshr(uint128[<*>] hi, uint128[<*>] lo, uint128[<*>] shift) => $$fshr(hi, lo, shift);
-macro uint128[<*>] uint128[<*>].rotl(uint128[<*>] i, uint128[<*>] shift) => $$fshl(i, i, shift);
-macro uint128[<*>] uint128[<*>].rotr(uint128[<*>] i, uint128[<*>] shift) => $$fshr(i, i, shift);
+macro uint128[<*>] uint128[<*>].rotl(uint128[<*>] self, uint128[<*>] shift) => $$fshl(self, self, shift);
+macro uint128[<*>] uint128[<*>].rotr(uint128[<*>] self, uint128[<*>] shift) => $$fshr(self, self, shift);
 
-macro int128[<*>].popcount(int128[<*>] i) => $$popcount(i);
-macro int128[<*>].ctz(int128[<*>] i) => $$ctz(i);
-macro int128[<*>].clz(int128[<*>] i) => $$clz(i);
+macro int128[<*>].popcount(int128[<*>] self) => $$popcount(self);
+macro int128[<*>].ctz(int128[<*>] self) => $$ctz(self);
+macro int128[<*>].clz(int128[<*>] self) => $$clz(self);
 macro int128[<*>] int128[<*>].fshl(int128[<*>] hi, int128[<*>] lo, int128[<*>] shift) => $$fshl(hi, lo, shift);
 macro int128[<*>] int128[<*>].fshr(int128[<*>] hi, int128[<*>] lo, int128[<*>] shift) => $$fshr(hi, lo, shift);
-macro int128[<*>] int128[<*>].rotl(int128[<*>] i, int128[<*>] shift) => $$fshl(i, i, shift);
-macro int128[<*>] int128[<*>].rotr(int128[<*>] i, int128[<*>] shift) => $$fshr(i, i, shift);
+macro int128[<*>] int128[<*>].rotl(int128[<*>] self, int128[<*>] shift) => $$fshl(self, self, shift);
+macro int128[<*>] int128[<*>].rotr(int128[<*>] self, int128[<*>] shift) => $$fshr(self, self, shift);
 
-macro uint.popcount(self) => $$popcount(i);
-macro uint.ctz(self) => $$ctz(i);
-macro uint.clz(self) => $$clz(i);
+macro uint.popcount(self) => $$popcount(self);
+macro uint.ctz(self) => $$ctz(self);
+macro uint.clz(self) => $$clz(self);
 macro uint uint.fshl(uint hi, uint lo, uint shift) => $$fshl(hi, lo, shift);
 macro uint uint.fshr(uint hi, uint lo, uint shift) => $$fshr(hi, lo, shift);
-macro uint uint.rotl(uint i, uint shift) => $$fshl(i, i, shift);
-macro uint uint.rotr(uint i, uint shift) => $$fshr(i, i, shift);
+macro uint uint.rotl(uint self, uint shift) => $$fshl(self, self, shift);
+macro uint uint.rotr(uint self, uint shift) => $$fshr(self, self, shift);
 
-macro int.popcount(self) => $$popcount(i);
-macro int.ctz(self) => $$ctz(i);
-macro int.clz(self) => $$clz(i);
+macro int.popcount(self) => $$popcount(self);
+macro int.ctz(self) => $$ctz(self);
+macro int.clz(self) => $$clz(self);
 macro int int.fshl(int hi, int lo, int shift) => $$fshl(hi, lo, shift);
 macro int int.fshr(int hi, int lo, int shift) => $$fshr(hi, lo, shift);
-macro int int.rotl(int i, int shift) => $$fshl(i, i, shift);
-macro int int.rotr(int i, int shift) => $$fshr(i, i, shift);
+macro int int.rotl(int self, int shift) => $$fshl(self, self, shift);
+macro int int.rotr(int self, int shift) => $$fshr(self, self, shift);
 
-macro ushort.popcount(self) => $$popcount(i);
-macro ushort.ctz(self) => $$ctz(i);
-macro ushort.clz(self) => $$clz(i);
+macro ushort.popcount(self) => $$popcount(self);
+macro ushort.ctz(self) => $$ctz(self);
+macro ushort.clz(self) => $$clz(self);
 macro ushort ushort.fshl(ushort hi, ushort lo, ushort shift) => $$fshl(hi, lo, shift);
 macro ushort ushort.fshr(ushort hi, ushort lo, ushort shift) => $$fshr(hi, lo, shift);
-macro ushort ushort.rotl(ushort i, ushort shift) => $$fshl(i, i, shift);
-macro ushort ushort.rotr(ushort i, ushort shift) => $$fshr(i, i, shift);
+macro ushort ushort.rotl(ushort self, ushort shift) => $$fshl(self, self, shift);
+macro ushort ushort.rotr(ushort self, ushort shift) => $$fshr(self, self, shift);
 
-macro short.popcount(self) => $$popcount(i);
-macro short.ctz(self) => $$ctz(i);
-macro short.clz(self) => $$clz(i);
+macro short.popcount(self) => $$popcount(self);
+macro short.ctz(self) => $$ctz(self);
+macro short.clz(self) => $$clz(self);
 macro short short.fshl(short hi, short lo, short shift) => $$fshl(hi, lo, shift);
 macro short short.fshr(short hi, short lo, short shift) => $$fshr(hi, lo, shift);
-macro short short.rotl(short i, short shift) => $$fshl(i, i, shift);
-macro short short.rotr(short i, short shift) => $$fshr(i, i, shift);
+macro short short.rotl(short self, short shift) => $$fshl(self, self, shift);
+macro short short.rotr(short self, short shift) => $$fshr(self, self, shift);
 
-macro char.popcount(self) => $$popcount(i);
-macro char.ctz(self) => $$ctz(i);
-macro char.clz(self) => $$clz(i);
+macro char.popcount(self) => $$popcount(self);
+macro char.ctz(self) => $$ctz(self);
+macro char.clz(self) => $$clz(self);
 macro char char.fshl(char hi, char lo, char shift) => $$fshl(hi, lo, shift);
 macro char char.fshr(char hi, char lo, char shift) => $$fshr(hi, lo, shift);
-macro char char.rotl(char i, char shift) => $$fshl(i, i, shift);
-macro char char.rotr(char i, char shift) => $$fshr(i, i, shift);
+macro char char.rotl(char self, char shift) => $$fshl(self, self, shift);
+macro char char.rotr(char self, char shift) => $$fshr(self, self, shift);
 
-macro ichar.popcount(self) => $$popcount(i);
-macro ichar.ctz(self) => $$ctz(i);
-macro ichar.clz(self) => $$clz(i);
+macro ichar.popcount(self) => $$popcount(self);
+macro ichar.ctz(self) => $$ctz(self);
+macro ichar.clz(self) => $$clz(self);
 macro ichar ichar.fshl(ichar hi, ichar lo, ichar shift) => $$fshl(hi, lo, shift);
 macro ichar ichar.fshr(ichar hi, ichar lo, ichar shift) => $$fshr(hi, lo, shift);
-macro ichar ichar.rotl(ichar i, ichar shift) => $$fshl(i, i, shift);
-macro ichar ichar.rotr(ichar i, ichar shift) => $$fshr(i, i, shift);
+macro ichar ichar.rotl(ichar self, ichar shift) => $$fshl(self, self, shift);
+macro ichar ichar.rotr(ichar self, ichar shift) => $$fshr(self, self, shift);
 
-macro ulong.popcount(self) => $$popcount(i);
-macro ulong.ctz(self) => $$ctz(i);
-macro ulong.clz(self) => $$clz(i);
+macro ulong.popcount(self) => $$popcount(self);
+macro ulong.ctz(self) => $$ctz(self);
+macro ulong.clz(self) => $$clz(self);
 macro ulong ulong.fshl(ulong hi, ulong lo, ulong shift) => $$fshl(hi, lo, shift);
 macro ulong ulong.fshr(ulong hi, ulong lo, ulong shift) => $$fshr(hi, lo, shift);
-macro ulong ulong.rotl(ulong i, ulong shift) => $$fshl(i, i, shift);
-macro ulong ulong.rotr(ulong i, ulong shift) => $$fshr(i, i, shift);
+macro ulong ulong.rotl(ulong self, ulong shift) => $$fshl(self, self, shift);
+macro ulong ulong.rotr(ulong self, ulong shift) => $$fshr(self, self, shift);
 
-macro long.popcount(self) => $$popcount(i);
-macro long.ctz(self) => $$ctz(i);
-macro long.clz(self) => $$clz(i);
+macro long.popcount(self) => $$popcount(self);
+macro long.ctz(self) => $$ctz(self);
+macro long.clz(self) => $$clz(self);
 macro long long.fshl(long hi, long lo, long shift) => $$fshl(hi, lo, shift);
 macro long long.fshr(long hi, long lo, long shift) => $$fshr(hi, lo, shift);
-macro long long.rotl(long i, long shift) => $$fshl(i, i, shift);
-macro long long.rotr(long i, long shift) => $$fshr(i, i, shift);
+macro long long.rotl(long self, long shift) => $$fshl(self, self, shift);
+macro long long.rotr(long self, long shift) => $$fshr(self, self, shift);
 
 macro uint128.popcount(self) => $$popcount(self);
 macro uint128.ctz(self) => $$ctz(self);

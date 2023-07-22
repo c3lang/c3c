@@ -26,9 +26,9 @@ entry:
   %z = alloca i8, align 1
   %retparam1 = alloca i64, align 8
   %varargslots2 = alloca [3 x %any], align 16
-  %i = alloca i8, align 1
+  %self = alloca i8, align 1
   %taddr = alloca i8, align 1
-  %i3 = alloca i8, align 1
+  %self3 = alloca i8, align 1
   %taddr4 = alloca i8, align 1
   store i32 123, ptr %a, align 4
   store i32 -23, ptr %b, align 4
@@ -55,9 +55,9 @@ entry:
   %15 = getelementptr inbounds [3 x %any], ptr %varargslots2, i64 0, i64 0
   store %any %14, ptr %15, align 16
   %16 = load i8, ptr %z, align 1
-  store i8 %16, ptr %i, align 1
-  %17 = load i8, ptr %i, align 1
-  %18 = load i8, ptr %i, align 1
+  store i8 %16, ptr %self, align 1
+  %17 = load i8, ptr %self, align 1
+  %18 = load i8, ptr %self, align 1
   %19 = call i8 @llvm.fshr.i8(i8 %17, i8 %18, i8 1)
   store i8 %19, ptr %taddr, align 1
   %20 = insertvalue %any undef, ptr %taddr, 0
@@ -65,9 +65,9 @@ entry:
   %22 = getelementptr inbounds [3 x %any], ptr %varargslots2, i64 0, i64 1
   store %any %21, ptr %22, align 16
   %23 = load i8, ptr %z, align 1
-  store i8 %23, ptr %i3, align 1
-  %24 = load i8, ptr %i3, align 1
-  %25 = load i8, ptr %i3, align 1
+  store i8 %23, ptr %self3, align 1
+  %24 = load i8, ptr %self3, align 1
+  %25 = load i8, ptr %self3, align 1
   %26 = call i8 @llvm.fshl.i8(i8 %24, i8 %25, i8 1)
   store i8 %26, ptr %taddr4, align 1
   %27 = insertvalue %any undef, ptr %taddr4, 0

@@ -1,0 +1,30 @@
+// #target: macos-x64
+module test;
+
+const char C = 0b1000_0000;
+const ichar IC = 0b0100_0000;
+
+const ushort US = 0b1000_0000_0000_0000;
+const short S = 0b0100_0000_0000_0000;
+
+const uint UI = 0b1000_0000_0000_0000_0000_0000_0000_0000;
+const int I = 0b0100_0000_0000_0000_0000_0000_0000_0000;
+
+const ulong UL = 0b1000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000;
+const long L = 0b0100_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000;
+
+const uint128 UI128 = 0b1000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000;
+const int128 I128 = 0b0100_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000;
+
+/* #expect: test.ll
+
+@test.C = local_unnamed_addr constant i8 -128, align 1
+@test.IC = local_unnamed_addr constant i8 64, align 1
+@test.US = local_unnamed_addr constant i16 -32768, align 2
+@test.S = local_unnamed_addr constant i16 16384, align 2
+@test.UI = local_unnamed_addr constant i32 -2147483648, align 4
+@test.I = local_unnamed_addr constant i32 1073741824, align 4
+@test.UL = local_unnamed_addr constant i64 -9223372036854775808, align 8
+@test.L = local_unnamed_addr constant i64 4611686018427387904, align 8
+@test.UI128 = local_unnamed_addr constant i128 -170141183460469231731687303715884105728, align 8
+@test.I128 = local_unnamed_addr constant i128 85070591730234615865843651857942052864, align 8
