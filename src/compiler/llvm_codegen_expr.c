@@ -1687,8 +1687,6 @@ void llvm_emit_initialize_reference_temporary_const(GenContext *c, BEValue *ref,
 	bool modified = false;
 	// First create the constant value.
 
-	Type *canonical = expr->type->canonical;
-
 	assert(expr_is_const_initializer(expr));
 	LLVMValueRef value = llvm_emit_const_initializer(c, expr->const_expr.initializer);
 
@@ -1710,7 +1708,7 @@ void llvm_emit_initialize_reference_temporary_const(GenContext *c, BEValue *ref,
 	llvm_emit_memcpy(c, ref->value, ref->alignment, global_copy, alignment, type_size(expr->type));
 }
 
-static void llvm_emit_inititialize_reference_const(GenContext *c, BEValue *ref, ConstInitializer *const_init)
+static void llvm_emit_const_init_ref(GenContext *c, BEValue *ref, ConstInitializer *const_init)
 {
 	switch (const_init->kind)
 	{
@@ -1738,7 +1736,7 @@ static void llvm_emit_inititialize_reference_const(GenContext *c, BEValue *ref, 
 				LLVMValueRef array_pointer = llvm_emit_array_gep_raw(c, array_ref, array_type_llvm, (unsigned)i, ref->alignment, &alignment);
 				BEValue value;
 				llvm_value_set_address(&value, array_pointer, element_type, alignment);
-				llvm_emit_inititialize_reference_const(c, &value, const_init->init_array_full[i]);
+				llvm_emit_const_init_ref(c, &value, const_init->init_array_full[i]);
 			}
 			return;
 		}
@@ -1761,7 +1759,7 @@ static void llvm_emit_inititialize_reference_const(GenContext *c, BEValue *ref, 
 				LLVMValueRef array_pointer = llvm_emit_array_gep_raw(c, array_ref, array_type_llvm, (unsigned)element_index, ref->alignment, &alignment);
 				BEValue value;
 				llvm_value_set_address(&value, array_pointer, element_type, alignment);
-				llvm_emit_inititialize_reference_const(c, &value, element->init_array_value.element);
+				llvm_emit_const_init_ref(c, &value, element->init_array_value.element);
 			}
 			return;
 		}
@@ -1775,7 +1773,7 @@ static void llvm_emit_inititialize_reference_const(GenContext *c, BEValue *ref, 
 			llvm_value_bitcast(c, &value, type);
 //			llvm_value_set_address_abi_aligned(&value, llvm_emit_bitcast_ptr(c, ref->value, type), type);
 			// Emit our value.
-			llvm_emit_inititialize_reference_const(c, &value, const_init->init_union.element);
+			llvm_emit_const_init_ref(c, &value, const_init->init_union.element);
 			return;
 		}
 		case CONST_INIT_STRUCT:
@@ -1787,7 +1785,7 @@ static void llvm_emit_inititialize_reference_const(GenContext *c, BEValue *ref, 
 			{
 				BEValue value;
 				llvm_value_struct_gep(c, &value, ref, (unsigned)i);
-				llvm_emit_inititialize_reference_const(c, &value, const_init->init_struct[i]);
+				llvm_emit_const_init_ref(c, &value, const_init->init_struct[i]);
 			}
 			return;
 		}
@@ -1800,16 +1798,16 @@ static void llvm_emit_inititialize_reference_const(GenContext *c, BEValue *ref, 
 		}
 	}
 	UNREACHABLE
-
 }
-static inline void llvm_emit_initialize_reference_const(GenContext *c, BEValue *ref, Expr *expr)
+
+static inline void llvm_emit_const_initialize_struct_union_array(GenContext *c, BEValue *ref, Expr *expr)
 {
 	assert(expr_is_const_initializer(expr));
 	ConstInitializer *initializer = expr->const_expr.initializer;
 
 	// Make sure we have an address.
 	llvm_value_addr(c, ref);
-	llvm_emit_inititialize_reference_const(c, ref, initializer);
+	llvm_emit_const_init_ref(c, ref, initializer);
 
 }
 static inline void llvm_emit_initialize_reference_vector(GenContext *c, BEValue *ref, Type *real_type, Expr **elements)
@@ -2287,7 +2285,7 @@ static inline void llvm_emit_const_initialize_reference(GenContext *c, BEValue *
 		llvm_emit_initialize_reference_temporary_const(c, ref, expr);
 		return;
 	}
-	llvm_emit_initialize_reference_const(c, ref, expr);
+	llvm_emit_const_initialize_struct_union_array(c, ref, expr);
 	return;
 }
 
@@ -4580,7 +4578,7 @@ static inline void llvm_emit_const_initializer_list_expr(GenContext *c, BEValue 
 		return;
 	}
 	llvm_value_set_address_abi_aligned(value, llvm_emit_alloca_aligned(c, expr->type, "literal"), expr->type);
-	llvm_emit_initialize_reference_const(c, value, expr);
+	llvm_emit_const_initialize_reference(c, value, expr);
 }
 
 static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)

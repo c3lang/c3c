@@ -31,23 +31,16 @@ fn void main()
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %y, ptr align 8 @.__const.1, i32 8, i1 false)
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %z, ptr align 8 %y, i32 8, i1 false)
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %w, ptr align 8 %z, i32 8, i1 false)
-  %0 = getelementptr inbounds [1 x <2 x i32>], ptr %literal, i64 0, i64 0
-  %1 = getelementptr inbounds <2 x i32>, ptr %0, i64 0, i64 0
-  store i32 1, ptr %1, align 4
-  %2 = getelementptr inbounds <2 x i32>, ptr %0, i64 0, i64 1
-  store i32 3, ptr %2, align 4
-  %3 = insertvalue %"int[<2>][]" undef, ptr %literal, 0
-  %4 = insertvalue %"int[<2>][]" %3, i64 1, 1
-  store %"int[<2>][]" %4, ptr %aa, align 8
-  %5 = getelementptr inbounds [1 x %"int[]"], ptr %bb, i64 0, i64 0
-  %6 = getelementptr inbounds [2 x i32], ptr %literal1, i64 0, i64 0
-  store i32 1, ptr %6, align 4
-  %7 = getelementptr inbounds [2 x i32], ptr %literal1, i64 0, i64 1
-  store i32 3, ptr %7, align 4
-  %8 = insertvalue %"int[]" undef, ptr %literal1, 0
-  %9 = insertvalue %"int[]" %8, i64 2, 1
-  store %"int[]" %9, ptr %5, align 16
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const.2, i32 8, i1 false)
+  %0 = insertvalue %"int[<2>][]" undef, ptr %literal, 0
+  %1 = insertvalue %"int[<2>][]" %0, i64 1, 1
+  store %"int[<2>][]" %1, ptr %aa, align 8
+  %2 = getelementptr inbounds [1 x %"int[]"], ptr %bb, i64 0, i64 0
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal1, ptr align 4 @.__const.3, i32 8, i1 false)
+  %3 = insertvalue %"int[]" undef, ptr %literal1, 0
+  %4 = insertvalue %"int[]" %3, i64 2, 1
+  store %"int[]" %4, ptr %2, align 16
   call void @llvm.memcpy.p0.p0.i32(ptr align 16 %z2, ptr align 4 %x, i32 16, i1 false)
-  %10 = getelementptr inbounds [2 x [2 x i32]], ptr %z2, i64 0, i64 1
-  %11 = getelementptr inbounds [2 x i32], ptr %10, i64 0, i64 1
+  %5 = getelementptr inbounds [2 x [2 x i32]], ptr %z2, i64 0, i64 1
+  %6 = getelementptr inbounds [2 x i32], ptr %5, i64 0, i64 1
   ret void

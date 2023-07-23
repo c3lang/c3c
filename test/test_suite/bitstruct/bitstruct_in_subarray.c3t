@@ -1,0 +1,25 @@
+// #target: macos-x64
+module test;
+bitstruct StructFieldKind : char
+{
+    bool is_inline : 0;
+    bool is_union : 1;
+}
+
+fn void! main()
+{
+    StructFieldKind[] xx = { { .is_union = true } };
+}
+
+/* #expect: test.ll
+
+define i64 @test.main() #0 {
+entry:
+  %xx = alloca %"char[]", align 8
+  %literal = alloca [1 x i8], align 1
+  call void @llvm.memcpy.p0.p0.i32(ptr align 1 %literal, ptr align 1 @.__const, i32 1, i1 false)
+  %0 = insertvalue %"char[]" undef, ptr %literal, 0
+  %1 = insertvalue %"char[]" %0, i64 1, 1
+  store %"char[]" %1, ptr %xx, align 8
+  ret i64 0
+}

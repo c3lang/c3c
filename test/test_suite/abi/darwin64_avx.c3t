@@ -108,34 +108,132 @@ fn void f61(SAtwo256 s) {
 
 /* #expect: test.ll
 
-declare void @f38(<8 x float>)
-declare void @f37(<8 x float>)
 
-declare void @func40(ptr byval(%Two128) align 16)
-define void @test.func41(ptr byval(%Two128) align 16 %0)
-
-declare void @func42(ptr byval(%Sa) align 16)
-define void @test.func43(ptr byval(%Sa) align 16 %0)
-
-declare void @f46(double, double, double, double, double, double, double, double, ptr byval(<2 x float>) align 8, ptr byval(<2 x float>) align 8)
-declare void @f47(i32, i32, i32, i32, i32, i32, i32)
-
-declare void @test49_helper(double, ...)
-define void @test.test49(double %0, double %1)
+declare void @f38(<8 x float>) #0
+; Function Attrs: nounwind
+declare void @f37(<8 x float>) #0
+; Function Attrs: nounwind
+define void @test.f39() #0 {
+entry:
+  %0 = load <8 x float>, ptr @test.x38, align 32
+  call void @f38(<8 x float> %0)
+  %1 = load <8 x float>, ptr @test.x37, align 32
+  call void @f37(<8 x float> %1)
+  ret void
+}
+; Function Attrs: nounwind
+declare void @func40(ptr byval(%Two128) align 16) #0
+; Function Attrs: nounwind
+define void @test.func41(ptr byval(%Two128) align 16 %0) #0 {
+entry:
+  call void @func40(ptr byval(%Two128) align 16 %0)
+  ret void
+}
+; Function Attrs: nounwind
+declare void @func42(ptr byval(%Sa) align 16) #0
+; Function Attrs: nounwind
+define void @test.func43(ptr byval(%Sa) align 16 %0) #0 {
+entry:
+  call void @func42(ptr byval(%Sa) align 16 %0)
+  ret void
+}
+; Function Attrs: nounwind
+declare void @f46(double, double, double, double, double, double, double, double, ptr byval(<2 x float>) align 8, ptr byval(<2 x float>) align 8) #0
+; Function Attrs: nounwind
+define void @test.test46() #0 {
+entry:
+  %x = alloca <2 x float>, align 8
+  store <2 x float> <float 1.000000e+00, float 2.000000e+00>, ptr %x, align 8
+  %0 = load double, ptr %x, align 8
+  %1 = load double, ptr %x, align 8
+  %2 = load double, ptr %x, align 8
+  %3 = load double, ptr %x, align 8
+  %4 = load double, ptr %x, align 8
+  %5 = load double, ptr %x, align 8
+  %6 = load double, ptr %x, align 8
+  %7 = load double, ptr %x, align 8
+  call void @f46(double %0, double %1, double %2, double %3, double %4, double %5, double %6, double %7, ptr byval(<2 x float>) align 8 %x, ptr byval(<2 x float>) align 8 %x)
+  ret void
+}
+; Function Attrs: nounwind
+declare void @f47(i32, i32, i32, i32, i32, i32, i32) #0
+; Function Attrs: nounwind
+define void @test.test47(i32 %0, i32 %1) #0 {
+entry:
+  %b = alloca %Vec47, align 4
+  store i32 %1, ptr %b, align 4
+  %2 = load i32, ptr %b, align 4
+  call void @f47(i32 %0, i32 %0, i32 %0, i32 %0, i32 %0, i32 %0, i32 %2)
+  ret void
+}
+; Function Attrs: nounwind
+declare void @test49_helper(double, ...) #0
+; Function Attrs: nounwind
+define void @test.test49(double %0, double %1) #0 {
 entry:
   call void (double, ...) @test49_helper(double %0, double %1)
   ret void
-
+}
+; Function Attrs: nounwind
+declare void @test52_helper(i32, ...) #0
+; Function Attrs: nounwind
+define void @test.test52() #0 {
+entry:
+  %literal = alloca %Complex, align 8
+  %0 = load <8 x float>, ptr @test.x52, align 32
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const, i32 16, i1 false)
+  %1 = getelementptr inbounds %Complex, ptr %literal, i32 0, i32 0
+  %lo = load double, ptr %1, align 8
+  %2 = getelementptr inbounds %Complex, ptr %literal, i32 0, i32 1
+  %hi = load double, ptr %2, align 8
   call void (i32, ...) @test52_helper(i32 0, <8 x float> %0, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double %lo, double %hi)
+  ret void
+}
+; Function Attrs: nounwind
+declare void @test54_helper(<8 x float>, ...) #0
+; Function Attrs: nounwind
+define void @test.test54() #0 {
+entry:
+  %literal = alloca %Complex, align 8
+  %literal1 = alloca %Complex, align 8
+  %0 = load <8 x float>, ptr @test.x54, align 32
+  %1 = load <8 x float>, ptr @test.x54, align 32
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const.6, i32 16, i1 false)
+  %2 = getelementptr inbounds %Complex, ptr %literal, i32 0, i32 0
+  %lo = load double, ptr %2, align 8
+  %3 = getelementptr inbounds %Complex, ptr %literal, i32 0, i32 1
+  %hi = load double, ptr %3, align 8
   call void (<8 x float>, ...) @test54_helper(<8 x float> %0, <8 x float> %1, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double %lo, double %hi)
-  call void (<8 x float>, ...) @test54_helper(<8 x float> %6, <8 x float> %7, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, ptr byval(%Complex) align 8 %literal1)
-
-declare void @f55(ptr byval(%St512) align 64)
-declare void @f56(ptr byval(<16 x float>) align 64)
-
-declare void @f58(ptr byval(%Two256) align 32)
-define void @test.f59(ptr byval(%Two256) align 32 %0)
-
-declare void @f60(ptr byval(%SAtwo256) align 32)
-
-define void @test.f61(ptr byval(%SAtwo256) align 32 %0)
+  %4 = load <8 x float>, ptr @test.x54, align 32
+  %5 = load <8 x float>, ptr @test.x54, align 32
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal1, ptr align 8 @.__const.7, i32 16, i1 false)
+  call void (<8 x float>, ...) @test54_helper(<8 x float> %4, <8 x float> %5, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, ptr byval(%Complex) align 8 %literal1)
+  ret void
+}
+; Function Attrs: nounwind
+declare void @f55(ptr byval(%St512) align 64) #0
+; Function Attrs: nounwind
+declare void @f56(ptr byval(<16 x float>) align 64) #0
+; Function Attrs: nounwind
+define void @test.f57() #0 {
+entry:
+  call void @f55(ptr byval(%St512) align 64 @test.x55)
+  call void @f56(ptr byval(<16 x float>) align 64 @test.x56)
+  ret void
+}
+; Function Attrs: nounwind
+declare void @f58(ptr byval(%Two256) align 32) #0
+; Function Attrs: nounwind
+define void @test.f59(ptr byval(%Two256) align 32 %0) #0 {
+entry:
+  call void @f58(ptr byval(%Two256) align 32 %0)
+  ret void
+}
+; Function Attrs: nounwind
+declare void @f60(ptr byval(%SAtwo256) align 32) #0
+; Function Attrs: nounwind
+define void @test.f61(ptr byval(%SAtwo256) align 32 %0) #0 {
+entry:
+  call void @f60(ptr byval(%SAtwo256) align 32 %0)
+  ret void
+}

@@ -72,13 +72,14 @@ entry:
   %9 = insertvalue %any %8, i64 ptrtoint (ptr @"$ct.p$void" to i64), 1
   %10 = getelementptr inbounds [2 x %any], ptr %varargslots, i64 0, i64 1
   store %any %9, ptr %10, align 16
-  %11 = call i64 @std.core.dstring.DString.printf(ptr %retparam, ptr %s, ptr @.str.12, i64 8, ptr %varargslots, i64 2)
+  %11 = call i64 @std.core.dstring.DString.printf(ptr %retparam, ptr %s, ptr @.str.14, i64 8, ptr %varargslots, i64 2)
   %12 = load ptr, ptr %s, align 8
   %13 = call { ptr, i64 } @std.core.dstring.DString.as_str(ptr %12)
   store { ptr, i64 } %13, ptr %result, align 8
   %14 = load { ptr, i64 }, ptr %result, align 8
   ret { ptr, i64 } %14
 }
+
 ; Function Attrs: nounwind
 define void @test.main() #0 {
 entry:
@@ -134,164 +135,162 @@ entry:
   %4 = getelementptr inbounds [1 x %any], ptr %varargslots, i64 0, i64 0
   store %any %3, ptr %4, align 16
   %5 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 12, ptr %varargslots, i64 1)
-  %6 = getelementptr inbounds %Foo, ptr %literal, i32 0, i32 0
-  store i32 1, ptr %6, align 8
-  %7 = getelementptr inbounds %Foo, ptr %literal, i32 0, i32 1
-  store ptr null, ptr %7, align 8
-  %8 = getelementptr inbounds { i64, ptr }, ptr %literal, i32 0, i32 0
-  %lo = load i64, ptr %8, align 8
-  %9 = getelementptr inbounds { i64, ptr }, ptr %literal, i32 0, i32 1
-  %hi = load ptr, ptr %9, align 8
-  %10 = call i8 @"std.collections.map$int$test.Foo$.HashMap.set"(ptr %map, i32 1, i64 %lo, ptr %hi)
-  %11 = getelementptr inbounds %HashMap, ptr %map, i32 0, i32 2
-  %12 = insertvalue %any undef, ptr %11, 0
-  %13 = insertvalue %any %12, i64 ptrtoint (ptr @"$ct.uint" to i64), 1
-  %14 = getelementptr inbounds [1 x %any], ptr %varargslots2, i64 0, i64 0
-  store %any %13, ptr %14, align 16
-  %15 = call i64 @std.io.printfn(ptr %retparam1, ptr @.str.1, i64 12, ptr %varargslots2, i64 1)
-  %16 = getelementptr inbounds %Foo, ptr %literal3, i32 0, i32 0
-  store i32 2, ptr %16, align 8
-  %17 = getelementptr inbounds %Foo, ptr %literal3, i32 0, i32 1
-  store ptr null, ptr %17, align 8
-  %18 = getelementptr inbounds { i64, ptr }, ptr %literal3, i32 0, i32 0
-  %lo4 = load i64, ptr %18, align 8
-  %19 = getelementptr inbounds { i64, ptr }, ptr %literal3, i32 0, i32 1
-  %hi5 = load ptr, ptr %19, align 8
-  %20 = call i8 @"std.collections.map$int$test.Foo$.HashMap.set"(ptr %map, i32 1, i64 %lo4, ptr %hi5)
-  %21 = getelementptr inbounds %HashMap, ptr %map, i32 0, i32 2
-  %22 = insertvalue %any undef, ptr %21, 0
-  %23 = insertvalue %any %22, i64 ptrtoint (ptr @"$ct.uint" to i64), 1
-  %24 = getelementptr inbounds [1 x %any], ptr %varargslots7, i64 0, i64 0
-  store %any %23, ptr %24, align 16
-  %25 = call i64 @std.io.printfn(ptr %retparam6, ptr @.str.2, i64 12, ptr %varargslots7, i64 1)
-  %26 = call i64 @"std.collections.map$int$test.Foo$.HashMap.get"(ptr %retparam10, ptr %map, i32 1)
-  %not_err = icmp eq i64 %26, 0
-  %27 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
-  br i1 %27, label %after_check, label %after_check12
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const, i32 16, i1 false)
+  %6 = getelementptr inbounds { i64, ptr }, ptr %literal, i32 0, i32 0
+  %lo = load i64, ptr %6, align 8
+  %7 = getelementptr inbounds { i64, ptr }, ptr %literal, i32 0, i32 1
+  %hi = load ptr, ptr %7, align 8
+  %8 = call i8 @"std.collections.map$int$test.Foo$.HashMap.set"(ptr %map, i32 1, i64 %lo, ptr %hi)
+  %9 = getelementptr inbounds %HashMap, ptr %map, i32 0, i32 2
+  %10 = insertvalue %any undef, ptr %9, 0
+  %11 = insertvalue %any %10, i64 ptrtoint (ptr @"$ct.uint" to i64), 1
+  %12 = getelementptr inbounds [1 x %any], ptr %varargslots2, i64 0, i64 0
+  store %any %11, ptr %12, align 16
+  %13 = call i64 @std.io.printfn(ptr %retparam1, ptr @.str.1, i64 12, ptr %varargslots2, i64 1)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal3, ptr align 8 @.__const.2, i32 16, i1 false)
+  %14 = getelementptr inbounds { i64, ptr }, ptr %literal3, i32 0, i32 0
+  %lo4 = load i64, ptr %14, align 8
+  %15 = getelementptr inbounds { i64, ptr }, ptr %literal3, i32 0, i32 1
+  %hi5 = load ptr, ptr %15, align 8
+  %16 = call i8 @"std.collections.map$int$test.Foo$.HashMap.set"(ptr %map, i32 1, i64 %lo4, ptr %hi5)
+  %17 = getelementptr inbounds %HashMap, ptr %map, i32 0, i32 2
+  %18 = insertvalue %any undef, ptr %17, 0
+  %19 = insertvalue %any %18, i64 ptrtoint (ptr @"$ct.uint" to i64), 1
+  %20 = getelementptr inbounds [1 x %any], ptr %varargslots7, i64 0, i64 0
+  store %any %19, ptr %20, align 16
+  %21 = call i64 @std.io.printfn(ptr %retparam6, ptr @.str.3, i64 12, ptr %varargslots7, i64 1)
+  %22 = call i64 @"std.collections.map$int$test.Foo$.HashMap.get"(ptr %retparam10, ptr %map, i32 1)
+  %not_err = icmp eq i64 %22, 0
+  %23 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %23, label %after_check, label %after_check12
+
 after_check:                                      ; preds = %entry
-  %28 = getelementptr inbounds %Foo, ptr %retparam10, i32 0, i32 0
-  %29 = insertvalue %any undef, ptr %28, 0
-  %30 = insertvalue %any %29, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  %31 = getelementptr inbounds [1 x %any], ptr %varargslots9, i64 0, i64 0
-  store %any %30, ptr %31, align 16
-  %32 = call i64 @std.io.printfn(ptr %retparam8, ptr @.str.3, i64 7, ptr %varargslots9, i64 1)
-  %not_err11 = icmp eq i64 %32, 0
-  %33 = call i1 @llvm.expect.i1(i1 %not_err11, i1 true)
-  br i1 %33, label %after_check12, label %after_check12
+  %24 = getelementptr inbounds %Foo, ptr %retparam10, i32 0, i32 0
+  %25 = insertvalue %any undef, ptr %24, 0
+  %26 = insertvalue %any %25, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  %27 = getelementptr inbounds [1 x %any], ptr %varargslots9, i64 0, i64 0
+  store %any %26, ptr %27, align 16
+  %28 = call i64 @std.io.printfn(ptr %retparam8, ptr @.str.4, i64 7, ptr %varargslots9, i64 1)
+  %not_err11 = icmp eq i64 %28, 0
+  %29 = call i1 @llvm.expect.i1(i1 %not_err11, i1 true)
+  br i1 %29, label %after_check12, label %after_check12
+
 after_check12:                                    ; preds = %entry, %after_check, %after_check
-  %34 = call i8 @"std.collections.map$int$test.Foo$.HashMap.has_key"(ptr %map, i32 1)
-  store i8 %34, ptr %taddr, align 1
-  %35 = insertvalue %any undef, ptr %taddr, 0
-  %36 = insertvalue %any %35, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
-  %37 = getelementptr inbounds [1 x %any], ptr %varargslots14, i64 0, i64 0
-  store %any %36, ptr %37, align 16
-  %38 = call i64 @std.io.printfn(ptr %retparam13, ptr @.str.4, i64 9, ptr %varargslots14, i64 1)
-  %39 = call i8 @"std.collections.map$int$test.Foo$.HashMap.has_key"(ptr %map, i32 2)
-  store i8 %39, ptr %taddr19, align 1
-  %40 = insertvalue %any undef, ptr %taddr19, 0
-  %41 = insertvalue %any %40, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
-  %42 = getelementptr inbounds [1 x %any], ptr %varargslots18, i64 0, i64 0
-  store %any %41, ptr %42, align 16
-  %43 = call i64 @std.io.printfn(ptr %retparam17, ptr @.str.5, i64 9, ptr %varargslots18, i64 1)
-  %44 = getelementptr inbounds %Foo, ptr %literal22, i32 0, i32 0
-  store i32 4, ptr %44, align 8
-  %45 = getelementptr inbounds %Foo, ptr %literal22, i32 0, i32 1
-  store ptr null, ptr %45, align 8
-  %46 = getelementptr inbounds { i64, ptr }, ptr %literal22, i32 0, i32 0
-  %lo23 = load i64, ptr %46, align 8
-  %47 = getelementptr inbounds { i64, ptr }, ptr %literal22, i32 0, i32 1
-  %hi24 = load ptr, ptr %47, align 8
-  %48 = call i8 @"std.collections.map$int$test.Foo$.HashMap.set"(ptr %map, i32 7, i64 %lo23, ptr %hi24)
-  %49 = load ptr, ptr @std.core.mem.thread_allocator, align 8
-  %50 = call { ptr, i64 } @"std.collections.map$int$test.Foo$.HashMap.value_list"(ptr %map, ptr %49)
-  store { ptr, i64 } %50, ptr %result, align 8
-  %51 = insertvalue %any undef, ptr %result, 0
-  %52 = insertvalue %any %51, i64 ptrtoint (ptr @"$ct.sa$test.Foo" to i64), 1
-  %53 = getelementptr inbounds [1 x %any], ptr %varargslots26, i64 0, i64 0
-  store %any %52, ptr %53, align 16
-  %54 = call i64 @std.io.printfn(ptr %retparam25, ptr @.str.6, i64 10, ptr %varargslots26, i64 1)
+  %30 = call i8 @"std.collections.map$int$test.Foo$.HashMap.has_key"(ptr %map, i32 1)
+  store i8 %30, ptr %taddr, align 1
+  %31 = insertvalue %any undef, ptr %taddr, 0
+  %32 = insertvalue %any %31, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
+  %33 = getelementptr inbounds [1 x %any], ptr %varargslots14, i64 0, i64 0
+  store %any %32, ptr %33, align 16
+  %34 = call i64 @std.io.printfn(ptr %retparam13, ptr @.str.5, i64 9, ptr %varargslots14, i64 1)
+  %35 = call i8 @"std.collections.map$int$test.Foo$.HashMap.has_key"(ptr %map, i32 2)
+  store i8 %35, ptr %taddr19, align 1
+  %36 = insertvalue %any undef, ptr %taddr19, 0
+  %37 = insertvalue %any %36, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
+  %38 = getelementptr inbounds [1 x %any], ptr %varargslots18, i64 0, i64 0
+  store %any %37, ptr %38, align 16
+  %39 = call i64 @std.io.printfn(ptr %retparam17, ptr @.str.6, i64 9, ptr %varargslots18, i64 1)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal22, ptr align 8 @.__const.7, i32 16, i1 false)
+  %40 = getelementptr inbounds { i64, ptr }, ptr %literal22, i32 0, i32 0
+  %lo23 = load i64, ptr %40, align 8
+  %41 = getelementptr inbounds { i64, ptr }, ptr %literal22, i32 0, i32 1
+  %hi24 = load ptr, ptr %41, align 8
+  %42 = call i8 @"std.collections.map$int$test.Foo$.HashMap.set"(ptr %map, i32 7, i64 %lo23, ptr %hi24)
+  %43 = load ptr, ptr @std.core.mem.thread_allocator, align 8
+  %44 = call { ptr, i64 } @"std.collections.map$int$test.Foo$.HashMap.value_list"(ptr %map, ptr %43)
+  store { ptr, i64 } %44, ptr %result, align 8
+  %45 = insertvalue %any undef, ptr %result, 0
+  %46 = insertvalue %any %45, i64 ptrtoint (ptr @"$ct.sa$test.Foo" to i64), 1
+  %47 = getelementptr inbounds [1 x %any], ptr %varargslots26, i64 0, i64 0
+  store %any %46, ptr %47, align 16
+  %48 = call i64 @std.io.printfn(ptr %retparam25, ptr @.str.8, i64 10, ptr %varargslots26, i64 1)
   call void @llvm.memset.p0.i64(ptr align 8 %map2, i8 0, i64 40, i1 false)
-  %55 = load ptr, ptr @std.core.mem.thread_allocator, align 8
-  call void @"std.collections.map$int$double$.HashMap.init"(ptr %map2, i32 16, float 7.500000e-01, ptr %55)
-  %56 = call i8 @"std.collections.map$int$double$.HashMap.set"(ptr %map2, i32 4, double 1.300000e+00)
-  %57 = call i8 @"std.collections.map$int$double$.HashMap.has_value"(ptr %map2, double 1.300000e+00)
-  store i8 %57, ptr %taddr31, align 1
-  %58 = insertvalue %any undef, ptr %taddr31, 0
-  %59 = insertvalue %any %58, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
-  %60 = getelementptr inbounds [1 x %any], ptr %varargslots30, i64 0, i64 0
-  store %any %59, ptr %60, align 16
-  %61 = call i64 @std.io.printfn(ptr %retparam29, ptr @.str.7, i64 12, ptr %varargslots30, i64 1)
-  %62 = call i8 @"std.collections.map$int$double$.HashMap.has_value"(ptr %map2, double 1.200000e+00)
-  store i8 %62, ptr %taddr36, align 1
-  %63 = insertvalue %any undef, ptr %taddr36, 0
-  %64 = insertvalue %any %63, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
-  %65 = getelementptr inbounds [1 x %any], ptr %varargslots35, i64 0, i64 0
-  store %any %64, ptr %65, align 16
-  %66 = call i64 @std.io.printfn(ptr %retparam34, ptr @.str.8, i64 12, ptr %varargslots35, i64 1)
-  %67 = call i8 @"std.collections.map$int$double$.HashMap.set"(ptr %map2, i32 100, double 3.400000e+00)
+  %49 = load ptr, ptr @std.core.mem.thread_allocator, align 8
+  call void @"std.collections.map$int$double$.HashMap.init"(ptr %map2, i32 16, float 7.500000e-01, ptr %49)
+  %50 = call i8 @"std.collections.map$int$double$.HashMap.set"(ptr %map2, i32 4, double 1.300000e+00)
+  %51 = call i8 @"std.collections.map$int$double$.HashMap.has_value"(ptr %map2, double 1.300000e+00)
+  store i8 %51, ptr %taddr31, align 1
+  %52 = insertvalue %any undef, ptr %taddr31, 0
+  %53 = insertvalue %any %52, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
+  %54 = getelementptr inbounds [1 x %any], ptr %varargslots30, i64 0, i64 0
+  store %any %53, ptr %54, align 16
+  %55 = call i64 @std.io.printfn(ptr %retparam29, ptr @.str.9, i64 12, ptr %varargslots30, i64 1)
+  %56 = call i8 @"std.collections.map$int$double$.HashMap.has_value"(ptr %map2, double 1.200000e+00)
+  store i8 %56, ptr %taddr36, align 1
+  %57 = insertvalue %any undef, ptr %taddr36, 0
+  %58 = insertvalue %any %57, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
+  %59 = getelementptr inbounds [1 x %any], ptr %varargslots35, i64 0, i64 0
+  store %any %58, ptr %59, align 16
+  %60 = call i64 @std.io.printfn(ptr %retparam34, ptr @.str.10, i64 12, ptr %varargslots35, i64 1)
+  %61 = call i8 @"std.collections.map$int$double$.HashMap.set"(ptr %map2, i32 100, double 3.400000e+00)
+  %62 = load ptr, ptr @std.core.mem.thread_allocator, align 8
+  %63 = call { ptr, i64 } @"std.collections.map$int$double$.HashMap.key_list"(ptr %map2, ptr %62)
+  store { ptr, i64 } %63, ptr %result41, align 8
+  %64 = insertvalue %any undef, ptr %result41, 0
+  %65 = insertvalue %any %64, i64 ptrtoint (ptr @"$ct.sa$int" to i64), 1
+  %66 = getelementptr inbounds [1 x %any], ptr %varargslots40, i64 0, i64 0
+  store %any %65, ptr %66, align 16
+  %67 = call i64 @std.io.printfn(ptr %retparam39, ptr @.str.11, i64 2, ptr %varargslots40, i64 1)
   %68 = load ptr, ptr @std.core.mem.thread_allocator, align 8
-  %69 = call { ptr, i64 } @"std.collections.map$int$double$.HashMap.key_list"(ptr %map2, ptr %68)
-  store { ptr, i64 } %69, ptr %result41, align 8
-  %70 = insertvalue %any undef, ptr %result41, 0
-  %71 = insertvalue %any %70, i64 ptrtoint (ptr @"$ct.sa$int" to i64), 1
-  %72 = getelementptr inbounds [1 x %any], ptr %varargslots40, i64 0, i64 0
+  %69 = call { ptr, i64 } @"std.collections.map$int$double$.HashMap.value_list"(ptr %map2, ptr %68)
+  store { ptr, i64 } %69, ptr %result46, align 8
+  %70 = insertvalue %any undef, ptr %result46, 0
+  %71 = insertvalue %any %70, i64 ptrtoint (ptr @"$ct.sa$double" to i64), 1
+  %72 = getelementptr inbounds [1 x %any], ptr %varargslots45, i64 0, i64 0
   store %any %71, ptr %72, align 16
-  %73 = call i64 @std.io.printfn(ptr %retparam39, ptr @.str.9, i64 2, ptr %varargslots40, i64 1)
-  %74 = load ptr, ptr @std.core.mem.thread_allocator, align 8
-  %75 = call { ptr, i64 } @"std.collections.map$int$double$.HashMap.value_list"(ptr %map2, ptr %74)
-  store { ptr, i64 } %75, ptr %result46, align 8
-  %76 = insertvalue %any undef, ptr %result46, 0
-  %77 = insertvalue %any %76, i64 ptrtoint (ptr @"$ct.sa$double" to i64), 1
-  %78 = getelementptr inbounds [1 x %any], ptr %varargslots45, i64 0, i64 0
-  store %any %77, ptr %78, align 16
-  %79 = call i64 @std.io.printfn(ptr %retparam44, ptr @.str.10, i64 2, ptr %varargslots45, i64 1)
-  %80 = load ptr, ptr @std.core.mem.thread_temp_allocator, align 8
-  %not = icmp eq ptr %80, null
+  %73 = call i64 @std.io.printfn(ptr %retparam44, ptr @.str.12, i64 2, ptr %varargslots45, i64 1)
+  %74 = load ptr, ptr @std.core.mem.thread_temp_allocator, align 8
+  %not = icmp eq ptr %74, null
   br i1 %not, label %if.then, label %if.exit
+
 if.then:                                          ; preds = %after_check12
   call void @std.core.mem.init_default_temp_allocators()
   br label %if.exit
+
 if.exit:                                          ; preds = %if.then, %after_check12
-  %81 = load ptr, ptr @std.core.mem.thread_temp_allocator, align 8
-  store ptr %81, ptr %current, align 8
-  %82 = load ptr, ptr %current, align 8
-  %83 = getelementptr inbounds %TempAllocator, ptr %82, i32 0, i32 3
-  %84 = load i64, ptr %83, align 8
-  store i64 %84, ptr %mark, align 8
+  %75 = load ptr, ptr @std.core.mem.thread_temp_allocator, align 8
+  store ptr %75, ptr %current, align 8
+  %76 = load ptr, ptr %current, align 8
+  %77 = getelementptr inbounds %TempAllocator, ptr %76, i32 0, i32 3
+  %78 = load i64, ptr %77, align 8
+  store i64 %78, ptr %mark, align 8
   call void @llvm.memset.p0.i64(ptr align 8 %map3, i8 0, i64 40, i1 false)
-  %85 = load ptr, ptr @std.core.mem.thread_allocator, align 8
-  call void @"std.collections.map$int$double$.HashMap.init"(ptr %map3, i32 16, float 7.500000e-01, ptr %85)
-  %86 = call i8 @"std.collections.map$int$double$.HashMap.set"(ptr %map3, i32 5, double 3.200000e+00)
-  %87 = call i8 @"std.collections.map$int$double$.HashMap.set"(ptr %map3, i32 7, double 5.200000e+00)
-  %88 = load ptr, ptr @std.core.mem.thread_allocator, align 8
-  %89 = call { ptr, i64 } @"std.collections.map$int$double$.HashMap.key_list"(ptr %map3, ptr %88)
-  store { ptr, i64 } %89, ptr %result51, align 8
-  %90 = insertvalue %any undef, ptr %result51, 0
-  %91 = insertvalue %any %90, i64 ptrtoint (ptr @"$ct.sa$int" to i64), 1
-  %92 = getelementptr inbounds [1 x %any], ptr %varargslots50, i64 0, i64 0
-  store %any %91, ptr %92, align 16
-  %93 = call i64 @std.io.printfn(ptr %retparam49, ptr @.str.11, i64 2, ptr %varargslots50, i64 1)
-  %94 = load ptr, ptr %current, align 8
-  %95 = getelementptr inbounds %TempAllocator, ptr %94, i32 0, i32 0
-  %96 = load i64, ptr %mark, align 8
-  store i64 %96, ptr %mark54, align 8
-  %97 = getelementptr inbounds %Allocator, ptr %95, i32 0, i32 0
-  %98 = load ptr, ptr %97, align 8
-  %99 = load i64, ptr %mark54, align 8
-  %100 = call i64 %98(ptr %retparam55, ptr %95, i64 %99, i64 0, i64 0, ptr null, i32 8)
+  %79 = load ptr, ptr @std.core.mem.thread_allocator, align 8
+  call void @"std.collections.map$int$double$.HashMap.init"(ptr %map3, i32 16, float 7.500000e-01, ptr %79)
+  %80 = call i8 @"std.collections.map$int$double$.HashMap.set"(ptr %map3, i32 5, double 3.200000e+00)
+  %81 = call i8 @"std.collections.map$int$double$.HashMap.set"(ptr %map3, i32 7, double 5.200000e+00)
+  %82 = load ptr, ptr @std.core.mem.thread_allocator, align 8
+  %83 = call { ptr, i64 } @"std.collections.map$int$double$.HashMap.key_list"(ptr %map3, ptr %82)
+  store { ptr, i64 } %83, ptr %result51, align 8
+  %84 = insertvalue %any undef, ptr %result51, 0
+  %85 = insertvalue %any %84, i64 ptrtoint (ptr @"$ct.sa$int" to i64), 1
+  %86 = getelementptr inbounds [1 x %any], ptr %varargslots50, i64 0, i64 0
+  store %any %85, ptr %86, align 16
+  %87 = call i64 @std.io.printfn(ptr %retparam49, ptr @.str.13, i64 2, ptr %varargslots50, i64 1)
+  %88 = load ptr, ptr %current, align 8
+  %89 = getelementptr inbounds %TempAllocator, ptr %88, i32 0, i32 0
+  %90 = load i64, ptr %mark, align 8
+  store i64 %90, ptr %mark54, align 8
+  %91 = getelementptr inbounds %Allocator, ptr %89, i32 0, i32 0
+  %92 = load ptr, ptr %91, align 8
+  %93 = load i64, ptr %mark54, align 8
+  %94 = call i64 %92(ptr %retparam55, ptr %89, i64 %93, i64 0, i64 0, ptr null, i32 8)
   ret void
 }
 define internal void @.static_initialize.0() {
 entry:
   br label %dtable_check
+
 dtable_check:                                     ; preds = %dtable_next, %entry
   %dtable_ref = phi ptr [ getelementptr inbounds (%.introspect, ptr @"$ct.test.Foo", i32 0, i32 1), %entry ], [ %next_dtable_ref, %dtable_next ]
   %dtable_ptr = load ptr, ptr %dtable_ref, align 8
   %0 = icmp eq ptr %dtable_ptr, null
   br i1 %0, label %dtable_found, label %dtable_next
+
 dtable_next:                                      ; preds = %dtable_check
   %next_dtable_ref = getelementptr inbounds { ptr, ptr, ptr }, ptr %dtable_ptr, i32 0, i32 2
   br label %dtable_check
+
 dtable_found:                                     ; preds = %dtable_check
   store ptr @"$ct.dyn.test.Foo.to_string", ptr %dtable_ref, align 8
   ret void

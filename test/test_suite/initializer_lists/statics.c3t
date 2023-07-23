@@ -37,7 +37,7 @@ fn int main()
 
 @"$ct.statics.Baz" = linkonce global %.introspect { i8 11, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @"$ct.statics.Bar" = linkonce global %.introspect { i8 10, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
-@.taddr = private global [1 x %Bar] [%Bar { i32 1, i32 2 }], align 8
+@.__const = private unnamed_addr constant [1 x %Bar] [%Bar { i32 1, i32 2 }], align 4
 @test.c = internal unnamed_addr global %"Bar[]" { ptr @.taddr, i64 1 }, align 8
 @.str = private unnamed_addr constant [7 x i8] c"%d %d\0A\00", align 1
 
@@ -45,46 +45,32 @@ define void @statics.test() #0 {
 entry:
   %b = alloca %"Bar[]", align 8
   %literal = alloca [1 x %Bar], align 4
-  %0 = getelementptr inbounds [1 x %Bar], ptr %literal, i64 0, i64 0
-  %1 = getelementptr inbounds %Bar, ptr %0, i32 0, i32 0
-  store i32 1, ptr %1, align 4
-  %2 = getelementptr inbounds %Bar, ptr %0, i32 0, i32 1
-  store i32 2, ptr %2, align 4
-  %3 = insertvalue %"Bar[]" undef, ptr %literal, 0
-  %4 = insertvalue %"Bar[]" %3, i64 1, 1
-  store %"Bar[]" %4, ptr %b, align 8
-  %5 = getelementptr inbounds %"Bar[]", ptr %b, i32 0, i32 0
-  %6 = load ptr, ptr %5, align 8
-  %ptroffset = getelementptr inbounds %Bar, ptr %6, i64 0
-  %7 = getelementptr inbounds %Bar, ptr %ptroffset, i32 0, i32 1
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal, ptr align 4 @.__const, i32 8, i1 false)
+  %0 = insertvalue %"Bar[]" undef, ptr %literal, 0
+  %1 = insertvalue %"Bar[]" %0, i64 1, 1
+  store %"Bar[]" %1, ptr %b, align 8
+  %2 = getelementptr inbounds %"Bar[]", ptr %b, i32 0, i32 0
+  %3 = load ptr, ptr %2, align 8
+  %ptroffset = getelementptr inbounds %Bar, ptr %3, i64 0
+  %4 = getelementptr inbounds %Bar, ptr %ptroffset, i32 0, i32 1
+  %5 = load i32, ptr %4, align 4
+  %6 = load ptr, ptr @test.c, align 8
+  %ptroffset1 = getelementptr inbounds %Bar, ptr %6, i64 0
+  %7 = getelementptr inbounds %Bar, ptr %ptroffset1, i32 0, i32 1
   %8 = load i32, ptr %7, align 4
-  %9 = load ptr, ptr @test.c, align 8
-  %ptroffset1 = getelementptr inbounds %Bar, ptr %9, i64 0
-  %10 = getelementptr inbounds %Bar, ptr %ptroffset1, i32 0, i32 1
-  %11 = load i32, ptr %10, align 4
-  %12 = call i32 (ptr, ...) @printf(ptr @.str, i32 %8, i32 %11)
-  %13 = getelementptr inbounds %"Bar[]", ptr %b, i32 0, i32 0
-  %14 = load ptr, ptr %13, align 8
-  %ptroffset2 = getelementptr inbounds %Bar, ptr %14, i64 0
-  %15 = getelementptr inbounds %Bar, ptr %ptroffset2, i32 0, i32 1
+  %9 = call i32 (ptr, ...) @printf(ptr @.str, i32 %5, i32 %8)
+  %10 = getelementptr inbounds %"Bar[]", ptr %b, i32 0, i32 0
+  %11 = load ptr, ptr %10, align 8
+  %ptroffset2 = getelementptr inbounds %Bar, ptr %11, i64 0
+  %12 = getelementptr inbounds %Bar, ptr %ptroffset2, i32 0, i32 1
+  %13 = load i32, ptr %12, align 4
+  %add = add i32 %13, 1
+  store i32 %add, ptr %12, align 4
+  %14 = load ptr, ptr @test.c, align 8
+  %ptroffset3 = getelementptr inbounds %Bar, ptr %14, i64 0
+  %15 = getelementptr inbounds %Bar, ptr %ptroffset3, i32 0, i32 1
   %16 = load i32, ptr %15, align 4
-  %add = add i32 %16, 1
-  store i32 %add, ptr %15, align 4
-  %17 = load ptr, ptr @test.c, align 8
-  %ptroffset3 = getelementptr inbounds %Bar, ptr %17, i64 0
-  %18 = getelementptr inbounds %Bar, ptr %ptroffset3, i32 0, i32 1
-  %19 = load i32, ptr %18, align 4
-  %add4 = add i32 %19, 1
-  store i32 %add4, ptr %18, align 4
+  %add4 = add i32 %16, 1
+  store i32 %add4, ptr %15, align 4
   ret void
 }
-
-define i32 @main() #0 {
-entry:
-  call void @statics.test()
-  call void @statics.test()
-  call void @statics.test()
-  ret i32 1
-}
-
-declare i32 @printf(ptr, ...)

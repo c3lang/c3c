@@ -26,13 +26,10 @@ define void @test.test(i32 %0) #0 {
 entry:
   %zonk = alloca i32, align 4
   %literal = alloca [2 x i32], align 4
-  %1 = getelementptr inbounds [2 x i32], ptr %literal, i64 0, i64 0
-  store i32 0, ptr %1, align 4
-  %2 = getelementptr inbounds [2 x i32], ptr %literal, i64 0, i64 1
-  store i32 1, ptr %2, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal, ptr align 4 @.__const, i32 8, i1 false)
   %sext = sext i32 %0 to i64
-  %3 = getelementptr inbounds [2 x i32], ptr %literal, i64 0, i64 %sext
-  %4 = load i32, ptr %3, align 4
-  store i32 %4, ptr %zonk, align 4
+  %1 = getelementptr inbounds [2 x i32], ptr %literal, i64 0, i64 %sext
+  %2 = load i32, ptr %1, align 4
+  store i32 %2, ptr %zonk, align 4
   ret void
 }
