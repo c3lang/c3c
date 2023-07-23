@@ -85,6 +85,8 @@ static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement
 		if (!expr_is_const_string(message_expr)) RETURN_SEMA_ERROR(message_expr, "Expected a constant string as the error message.");
 		FOREACH_BEGIN(Expr *e, statement->assert_stmt.args)
 			if (!sema_analyse_expr(context, e)) return false;
+			if (IS_OPTIONAL(e)) RETURN_SEMA_ERROR(e, "Optionals cannot be used as assert arguments, use '?" "?', '!' or '!!' to fix this.");
+			if (type_is_void(e->type)) RETURN_SEMA_ERROR(e, "This expression is of type 'void', did you make a mistake?");
 		FOREACH_END();
 	}
 
