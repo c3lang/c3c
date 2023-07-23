@@ -253,6 +253,7 @@ RETRY:
 		case EXPR_CT_ARG:
 		case EXPR_CT_CALL:
 		case EXPR_CT_CHECKS:
+		case EXPR_CT_DEFINED:
 		case EXPR_CT_EVAL:
 		case EXPR_CT_IDENT:
 		case EXPR_ANYSWITCH:

@@ -426,6 +426,7 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_STRINGIFY:
 		case EXPR_CT_EVAL:
 		case EXPR_CT_CHECKS:
+		case EXPR_CT_DEFINED:
 			MACRO_COPY_EXPR(expr->inner_expr);
 			return expr;
 		case EXPR_TYPEID_INFO:

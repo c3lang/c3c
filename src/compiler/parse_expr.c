@@ -1032,6 +1032,17 @@ static Expr *parse_ct_eval(ParseContext *c, Expr *left)
 	return expr;
 }
 
+static Expr *parse_ct_defined(ParseContext *c, Expr *left)
+{
+	assert(!left && "Unexpected left hand side");
+	Expr *defined = expr_new(EXPR_CT_DEFINED, c->span);
+	advance(c);
+	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
+	ASSIGN_EXPR_OR_RET(defined->inner_expr, parse_expr(c), poisoned_expr);
+	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
+	return defined;
+
+}
 /**
  * ct_sizeof ::= CT_SIZEOF '(' expr ')'
  *
@@ -1093,7 +1104,7 @@ static Expr *parse_ct_embed(ParseContext *c, Expr *left)
 }
 
 /**
- * ct_call ::= (ALIGNOF | DEFINED | EXTNAMEOF | OFFSETOF | NAMEOF | QNAMEOF) '(' flat_path ')'
+ * ct_call ::= (ALIGNOF | EXTNAMEOF | OFFSETOF | NAMEOF | QNAMEOF) '(' flat_path ')'
  * flat_path ::= expr ('.' primary) | '[' expr ']')*
  */
 static Expr *parse_ct_call(ParseContext *c, Expr *left)
@@ -1894,7 +1905,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_FN] = { parse_lambda, NULL, PREC_NONE },
 		[TOKEN_CT_SIZEOF] = { parse_ct_sizeof, NULL, PREC_NONE },
 		[TOKEN_CT_ALIGNOF] = { parse_ct_call, NULL, PREC_NONE },
-		[TOKEN_CT_DEFINED] = { parse_ct_call, NULL, PREC_NONE },
+		[TOKEN_CT_DEFINED] = { parse_ct_defined, NULL, PREC_NONE },
 		[TOKEN_CT_CHECKS] = { parse_ct_checks, NULL, PREC_NONE },
 		[TOKEN_CT_EMBED] = { parse_ct_embed, NULL, PREC_NONE },
 		[TOKEN_CT_EVAL] = { parse_ct_eval, NULL, PREC_NONE },

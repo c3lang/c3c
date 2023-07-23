@@ -483,6 +483,7 @@ static bool sema_binary_is_expr_lvalue(Expr *top_expr, Expr *expr)
 		case EXPR_CT_ARG:
 		case EXPR_CT_CALL:
 		case EXPR_CT_CHECKS:
+		case EXPR_CT_DEFINED:
 		case EXPR_CT_EVAL:
 		case EXPR_DECL:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
@@ -594,6 +595,7 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_CT_ARG:
 		case EXPR_CT_CALL:
 		case EXPR_CT_CHECKS:
+		case EXPR_CT_DEFINED:
 		case EXPR_CT_EVAL:
 		case EXPR_DECL:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
@@ -6788,7 +6790,7 @@ RETRY:
 		case TYPE_INFO_POISON:
 			return poisoned_type;
 		case TYPE_INFO_GENERIC:
-			TODO
+			return poisoned_type;
 		case TYPE_INFO_VECTOR:
 		{
 			ArraySize size;
@@ -6820,6 +6822,7 @@ RETRY:
 			Decl *decl = sema_find_path_symbol(context, type_info->unresolved.name, type_info->unresolved.path);
 			if (!decl) return NULL;
 			if (!decl_ok(decl)) return poisoned_type;
+			if (type_info->kind == TYPE_INFO_CT_IDENTIFIER) return decl->var.init_expr->type_expr->type->canonical;
 			return decl->type->canonical;
 		}
 		case TYPE_INFO_VATYPE:
@@ -7224,9 +7227,15 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 {
 	if (expr->resolve_status == RESOLVE_DONE) return expr_ok(expr);
 
-	Expr *main_var = expr->ct_call_expr.main_var;
-	Type *type = NULL;
-	Decl *decl = NULL;
+	Expr *inner = expr->inner_expr;
+
+	Expr *main_var = inner;
+	while (main_var->expr_kind == EXPR_ACCESS)
+	{
+		main_var = main_var->access_expr.parent;
+	}
+
+	Decl *decl;
 RETRY:
 	switch (main_var->expr_kind)
 	{
@@ -7237,51 +7246,46 @@ RETRY:
 			if (!decl_ok(decl)) return false;
 			// 2b. If it's missing, goto not defined
 			if (!decl) goto NOT_DEFINED;
-			type = decl->type;
 			break;
 		case EXPR_COMPILER_CONST:
 			if (!sema_expr_analyse_compiler_const(context, main_var, false)) goto NOT_DEFINED;
 			break;
 		case EXPR_TYPEINFO:
 		{
-			type = sema_expr_check_type_exists(context, main_var->type_expr);
+			Type *type = sema_expr_check_type_exists(context, main_var->type_expr);
 			if (!type) goto NOT_DEFINED;
 			if (!type_ok(type)) return false;
+            main_var->type_expr = type_info_new_base(type, main_var->span);
 			break;
 		}
 		case EXPR_BUILTIN:
 			if (!sema_expr_analyse_builtin(context, main_var, false)) goto NOT_DEFINED;
 			break;
 		case EXPR_CT_EVAL:
-			main_var = sema_ct_eval_expr(context, "$eval", main_var->inner_expr, false);
-			if (!main_var) goto NOT_DEFINED;
+		{
+			Expr *eval = sema_ct_eval_expr(context, "$eval", main_var->inner_expr, false);
+			if (!eval) goto NOT_DEFINED;
+			expr_replace(main_var, eval);
 			goto RETRY;
+		}
 		default:
 			SEMA_ERROR(main_var, "Expected an identifier here.");
 			return false;
 	}
-
-	FOREACH_BEGIN_IDX(i, DesignatorElement *element, expr->ct_call_expr.flat_path)
-		Decl *member = NULL;
-		ArraySize index;
-		Type *ret_type;
-		bool missing = false;
-		if (!sema_expr_analyse_decl_element(context,
-											element,
-											type,
-											&member,
-											&index,
-											&ret_type,
-											i,
-											i == 0 ? main_var->span : expr->span,
-											&missing))
-		{
-			if (missing) goto NOT_DEFINED;
-			return false;
-		}
-		type = ret_type;
-	FOREACH_END();
-
+	if (main_var != inner)
+	{
+		bool suppress_error = global_context.suppress_errors;
+		global_context.suppress_errors = true;
+		CallEnvKind eval_kind = context->call_env.kind;
+		context->call_env.kind = CALL_ENV_CHECKS;
+		bool success;
+		SCOPE_START_WITH_FLAGS(SCOPE_CHECKS);
+			success = sema_analyse_expr_lvalue(context, inner);
+		SCOPE_END;
+		context->call_env.kind = eval_kind;
+		global_context.suppress_errors = suppress_error;
+		if (!success) goto NOT_DEFINED;
+	}
 	expr_rewrite_const_bool(expr, type_bool, true);
 	return true;
 
@@ -7588,6 +7592,8 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 			return sema_expr_analyse_generic_ident(context, expr);
 		case EXPR_LAMBDA:
 			return sema_expr_analyse_lambda(context, NULL, expr);
+		case EXPR_CT_DEFINED:
+			return sema_expr_analyse_ct_defined(context, expr);
 		case EXPR_CT_CHECKS:
 			return sema_expr_analyse_ct_checks(context, expr);
 		case EXPR_CT_ARG:

@@ -82,6 +82,7 @@ bool expr_may_addr(Expr *expr)
 			return true;
 		case EXPR_TEST_HOOK:
 			return false;
+		case NON_RUNTIME_EXPR:
 		case EXPR_ASM:
 		case EXPR_BINARY:
 		case EXPR_BITASSIGN:
@@ -90,36 +91,26 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_CALL:
 		case EXPR_CAST:
 		case EXPR_CATCH_UNWRAP:
-		case EXPR_COMPILER_CONST:
 		case EXPR_COMPOUND_LITERAL:
 		case EXPR_COND:
 		case EXPR_CONST:
-		case EXPR_CT_ARG:
-		case EXPR_CT_CALL:
-		case EXPR_CT_CHECKS:
-		case EXPR_CT_EVAL:
-		case EXPR_CT_IDENT:
 		case EXPR_DECL:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
-		case EXPR_DESIGNATOR:
 		case EXPR_EXPRESSION_LIST:
+		case EXPR_INITIALIZER_LIST:
 		case EXPR_EXPR_BLOCK:
 		case EXPR_OPTIONAL:
 		case EXPR_FORCE_UNWRAP:
-		case EXPR_HASH_IDENT:
-		case EXPR_INITIALIZER_LIST:
 		case EXPR_MACRO_BLOCK:
 		case EXPR_MACRO_BODY_EXPANSION:
 		case EXPR_NOP:
 		case EXPR_OPERATOR_CHARS:
 		case EXPR_POINTER_OFFSET:
-		case EXPR_POISONED:
 		case EXPR_POST_UNARY:
 		case EXPR_RETHROW:
 		case EXPR_RETVAL:
 		case EXPR_SLICE_ASSIGN:
 		case EXPR_SLICE_COPY:
-		case EXPR_STRINGIFY:
 		case EXPR_SUBSCRIPT_ADDR:
 		case EXPR_SUBSCRIPT_ASSIGN:
 		case EXPR_TERNARY:
@@ -127,9 +118,7 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_TRY_UNWRAP_CHAIN:
 		case EXPR_TYPEID:
 		case EXPR_TYPEID_INFO:
-		case EXPR_TYPEINFO:
 		case EXPR_ANY:
-		case EXPR_ANYSWITCH:
 		case EXPR_VASPLAT:
 		case EXPR_SWIZZLE:
 		case EXPR_LAMBDA:
@@ -203,6 +192,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_OPERATOR_CHARS:
 		case EXPR_STRINGIFY:
 		case EXPR_CT_CHECKS:
+		case EXPR_CT_DEFINED:
 		case EXPR_LAMBDA:
 		case EXPR_EMBED:
 			return true;
@@ -664,6 +654,7 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_CT_ARG:
 		case EXPR_OPERATOR_CHARS:
 		case EXPR_CT_CHECKS:
+		case EXPR_CT_DEFINED:
 		case EXPR_LAMBDA:
 		case EXPR_EMBED:
 			return true;

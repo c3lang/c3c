@@ -313,7 +313,7 @@ fn usz! List.index_of(&self, Type type) @if(ELEMENT_IS_EQUATABLE)
 {
 	foreach (i, v : self)
 	{
-		if (v == type) return i;
+		if (equals(v, type)) return i;
 	}
 	return SearchResult.MISSING?;
 }
@@ -322,7 +322,7 @@ fn usz! List.rindex_of(&self, Type type) @if(ELEMENT_IS_EQUATABLE)
 {
 	foreach_r (i, v : self)
 	{
-		if (v == type) return i;
+		if (equals(v, type)) return i;
 	}
 	return SearchResult.MISSING?;
 }
@@ -332,7 +332,7 @@ fn bool List.equals(&self, List other_list) @if(ELEMENT_IS_EQUATABLE)
 	if (self.size != other_list.size) return false;
 	foreach (i, v : self)
 	{
-		if (v != other_list.entries[i]) return false;
+		if (!equals(v, other_list.entries[i])) return false;
 	}
 	return true;
 }
@@ -348,7 +348,7 @@ fn bool List.contains(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
 {
 	foreach (i, v : self)
 	{
-		if (v == value) return true;
+		if (equals(v, value)) return true;
 	}
 	return false;
 }
@@ -364,7 +364,7 @@ fn usz List.remove(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
 	usz size = self.size;
 	for (usz i = size; i > 0; i--)
 	{
-		if (self.entries[i - 1] != value) continue;
+		if (!equals(self.entries[i - 1], value)) continue;
 		for (usz j = i; j < size; j++)
 		{
 			self.entries[j - 1] = self.entries[j];
