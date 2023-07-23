@@ -2600,9 +2600,9 @@ bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement)
 			}
 			else
 			{
-				sema_error_at(context->inlining_span, "Compile time assert", EXPAND_EXPR_STRING(message_expr));
+				sema_error_at(context->inlining_span, "Compile time assert failed.");
 			}
-			sema_error_prev_at(span, expr ? "$error was defined here" : "$assert was defined here.");
+			sema_error_prev_at(span, expr ? "$assert was defined here." : "$error was defined here");
 			return false;
 		}
 		if (message_expr)
