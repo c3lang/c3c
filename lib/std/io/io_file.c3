@@ -53,19 +53,19 @@ fn void! File.memopen(File* file, char[] data, String mode)
 
 
 /**
- * @require file && file.file != null
+ * @require self.file != null
  */
-fn void! File.putc(File *file, char c)
+fn void! File.putc(self, char c)
 {
-    if (!libc::fputc(c, file.file)) return IoError.EOF?;
+    if (!libc::fputc(c, self.file)) return IoError.EOF?;
 }
 
 /**
- * @require file != null
+ * @param [&inout] self
  */
-fn void! File.close(File *file) @inline
+fn void! File.close(&self) @inline
 {
-    if (file.file && libc::fclose(file.file))
+    if (self.file && libc::fclose(self.file))
     {
         switch (libc::errno())
         {
@@ -83,67 +83,63 @@ fn void! File.close(File *file) @inline
             default: return IoError.UNKNOWN_ERROR?;
         }
     }
-    file.file = null;
+    self.file = null;
 }
 
 /**
- * @require file && file.file
+ * @require self.file
  */
-fn bool File.eof(File* file) @inline
+fn bool File.eof(self) @inline
 {
-    return libc::feof(file.file) != 0;
+    return libc::feof(self.file) != 0;
 }
 
 /**
  * @param [in] buffer
  */
-fn usz! File.read(File* file, char[] buffer)
+fn usz! File.read(self, char[] buffer)
 {
-	return os::native_fread(file.file, buffer);
+	return os::native_fread(self.file, buffer);
 }
 
 /**
- * @param [&in] file
- * @param [&out] buffer
- * @require file.file `File must be initialized`
+ * @param [out] buffer
+ * @require self.file `File must be initialized`
  */
-fn usz! File.write(File file, char[] buffer)
+fn usz! File.write(self, char[] buffer)
 {
-	return os::native_fwrite(file.file, buffer);
+	return os::native_fwrite(self.file, buffer);
 }
 
 /**
- * @param [&in] file
- * @require file.file `File must be initialized`
+ * @require self.file `File must be initialized`
  */
-fn usz! File.printn(File file, String string = "")
+fn usz! File.printn(self, String string = "")
 {
-	usz len = file.print(string)!;
-	if (!libc::putc('\n', file.file)) return IoError.UNKNOWN_ERROR?;
+	usz len = self.print(string)!;
+	if (!libc::putc('\n', self.file)) return IoError.UNKNOWN_ERROR?;
     return len + 1;
 }
 
 /**
- * @param [&in] file
- * @require file.file `File must be initialized`
+ * @require self.file `File must be initialized`
  */
-fn usz! File.print(File file, String string)
+fn usz! File.print(self, String string)
 {
     usz len = string.len;
-    if (len != file.write((char[])string)!) return IoError.UNKNOWN_ERROR?;
+    if (len != self.write((char[])string)!) return IoError.UNKNOWN_ERROR?;
     return len;
 }
 
 /**
- * @param [&in] file
- * @require file.file `File must be initialized`
+ * @require self.file `File must be initialized`
  */
-fn DString File.getline(File* file, Allocator* using = mem::heap())
+fn DString File.getline(self, Allocator* using = mem::heap())
 {
 	DString s = dstring::new_with_capacity(120, using);
-	while (!file.eof())
+	while (!self.eof())
 	{
-		int c = libc::fgetc(file.file);
+		int c = libc::fgetc(self.file);
 		if (c == -1) break;
 		if (c == '\n') break;
 		s.append_char((char)c);
@@ -152,27 +148,25 @@ fn DString File.getline(File* file, Allocator* using = mem::heap())
 }
 
 /**
- * @param [&in] file
- * @require file.file `File must be initialized`
+ * @require self.file `File must be initialized`
  * @return "a zero terminated String (the pointer may be safely cast into a ZString)"
  */
-fn String File.tgetline(File* file)
+fn String File.tgetline(self)
 {
-	return file.getline(mem::temp()).zstr().as_str();
+	return self.getline(mem::temp()).zstr().as_str();
 }
 
-fn char! File.getc(File* file)
+fn char! File.getc(self)
 {
-	int c = libc::fgetc(file.file);
+	int c = libc::fgetc(self.file);
 	if (c == -1) return IoError.EOF?;
 	return (char)c;
 }
 
 /**
- * @param [&in] file
- * @require file.file `File must be initialized`
+ * @require self.file `File must be initialized`
  */
-fn void File.flush(File* file)
+fn void File.flush(self)
 {
-	libc::fflush(file.file);
+	libc::fflush(self.file);
 }

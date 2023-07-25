@@ -2375,11 +2375,20 @@ static inline bool parse_import(ParseContext *c)
 }
 
 
+INLINE void append_docs(AstId **next, AstId *first, Ast *new_doc)
+{
+	if (!*first)
+	{
+		*first = astid(new_doc);
+	}
+	**next = astid(new_doc);
+	*next = &new_doc->next;
+}
 
 /**
  * contract ::= expression_list (':'? STRING)?
  */
-static inline bool parse_doc_contract(ParseContext *c, AstId **docs_ref, ContractKind kind)
+static inline bool parse_doc_contract(ParseContext *c, AstId *docs, AstId **docs_next, ContractKind kind)
 {
 	Ast *ast = ast_new_curr(c, AST_CONTRACT);
 	ast->contract.kind = kind;
@@ -2426,8 +2435,7 @@ static inline bool parse_doc_contract(ParseContext *c, AstId **docs_ref, Contrac
 		scratch_buffer_append(".");
 		ast->contract.contract.expr_string = scratch_buffer_copy();
 	}
-	**docs_ref = astid(ast);
-	*docs_ref = &ast->next;
+	append_docs(docs_next, docs, ast);
 	return true;
 }
 
@@ -2435,7 +2443,7 @@ static inline bool parse_doc_contract(ParseContext *c, AstId **docs_ref, Contrac
  * param_contract ::= '@param' inout_attribute? any_identifier ( (':' STRING) | STRING )?
  * inout_attribute ::= '[' '&'? ('in' | 'inout' | 'out') ']'
  */
-static inline bool parse_contract_param(ParseContext *c, AstId **docs_ref)
+static inline bool parse_contract_param(ParseContext *c, AstId *docs, AstId **docs_next)
 {
 	Ast *ast = ast_new_curr(c, AST_CONTRACT);
 	ast->contract.kind = CONTRACT_PARAM;
@@ -2497,12 +2505,11 @@ static inline bool parse_contract_param(ParseContext *c, AstId **docs_ref)
 	{
 		try_consume(c, TOKEN_STRING);
 	}
-	**docs_ref = astid(ast);
-	*docs_ref = &ast->next;
+	append_docs(docs_next, docs, ast);
 	return true;
 }
 
-static inline bool parse_doc_optreturn(ParseContext *c, AstId **docs_ref)
+static inline bool parse_doc_optreturn(ParseContext *c, AstId *docs, AstId **docs_next)
 {
 	Ast **returns = NULL;
 	Ast *ast = ast_new_curr(c, AST_CONTRACT);
@@ -2531,8 +2538,7 @@ static inline bool parse_doc_optreturn(ParseContext *c, AstId **docs_ref)
 	// Just ignore our potential string:
 	(void)try_consume(c, TOKEN_STRING);
 	ast->contract.faults = returns;
-	**docs_ref = astid(ast);
-	*docs_ref = &ast->next;
+	append_docs(docs_next, docs, ast);
 	return true;
 }
 
@@ -2542,7 +2548,7 @@ static bool parse_contracts(ParseContext *c, AstId *contracts_ref)
 	*contracts_ref = 0;
 	if (!try_consume(c, TOKEN_DOCS_START)) return true;
 
-	AstId *last = contracts_ref;
+	AstId **next = &contracts_ref;
 	uint32_t row_last_row = c->span.row;
 	while (1)
 	{
@@ -2555,7 +2561,7 @@ static bool parse_contracts(ParseContext *c, AstId *contracts_ref)
 				const char *name = symstr(c);
 				if (name == kw_at_param)
 				{
-					if (!parse_contract_param(c, &last)) return false;
+					if (!parse_contract_param(c, contracts_ref, next)) return false;
 					break;
 				}
 				else if (name == kw_at_return)
@@ -2563,7 +2569,7 @@ static bool parse_contracts(ParseContext *c, AstId *contracts_ref)
 					advance(c);
 					if (tok_is(c, TOKEN_BANG))
 					{
-						if (!parse_doc_optreturn(c, &contracts_ref)) return false;
+						if (!parse_doc_optreturn(c, contracts_ref, next)) return false;
 						break;
 					}
 					if (!consume(c, TOKEN_STRING, "Expected a string description.")) return false;
@@ -2578,25 +2584,24 @@ static bool parse_contracts(ParseContext *c, AstId *contracts_ref)
 				}
 				else if (name == kw_at_require)
 				{
-					if (!parse_doc_contract(c, &contracts_ref, CONTRACT_REQUIRE)) return false;
+					if (!parse_doc_contract(c, contracts_ref, next, CONTRACT_REQUIRE)) return false;
 					break;
 				}
 				else if (name == kw_at_checked)
 				{
-					if (!parse_doc_contract(c, &contracts_ref, CONTRACT_CHECKED)) return false;
+					if (!parse_doc_contract(c, contracts_ref, next, CONTRACT_CHECKED)) return false;
 					break;
 				}
 				else if (name == kw_at_ensure)
 				{
-					if (!parse_doc_contract(c, &contracts_ref, CONTRACT_ENSURE)) return false;
+					if (!parse_doc_contract(c, contracts_ref, next, CONTRACT_ENSURE)) return false;
 					break;
 				}
 				else if (name == kw_at_pure)
 				{
 					Ast *ast = ast_new_curr(c, AST_CONTRACT);
 					ast->contract.kind = CONTRACT_PURE;
-					*contracts_ref = astid(ast);
-					contracts_ref = &ast->next;
+					append_docs(next, contracts_ref, ast);
 					advance(c);
 					break;
 				}
