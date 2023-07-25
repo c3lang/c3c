@@ -178,6 +178,11 @@ fn Path! Path.absolute(self, Allocator* using = mem::heap())
 {
 	String path_str = self.as_str();
 	if (!path_str.len) path_str = ".";
+	if (path_str == ".")
+	{
+	    String cwd = os::getcwd(mem::temp())!;
+	    return new(cwd, using, self.env);
+	}
 	switch (self.env)
 	{
 	    case WIN32:
@@ -186,9 +191,8 @@ fn Path! Path.absolute(self, Allocator* using = mem::heap())
 	    case POSIX:
 	        if (path_str[0] == PREFERRED_SEPARATOR_POSIX) return self;
 	}
-	Path p = getcwd(mem::temp())!;
-	if (path_str != ".") p = p.append(path_str, using)!;
-	return { normalize(p.as_str(), self.env)!, self.env };
+	String cwd = os::getcwd(mem::temp())!;
+	return Path{ cwd, self.env }.append(path_str, using)!;
 }
 
 fn String Path.basename(self)
@@ -311,13 +315,20 @@ fn String! normalize(String path_str, PathEnv path_env = DEFAULT_PATH_ENV)
 			// Get the number of dots until next separator, expecting 1 or 2
 			bool is_last = i == path_len - 1;
 			int dots = 1;
-			if (!is_last && path_str[i + 1] == '.')
+			if (!is_last)
 			{
-				dots = 2;
-				is_last = i == path_len - 2;
-				if (!is_last && !is_separator(path_str[i + 2], path_env))
+				char next = path_str[i + 1];
+				switch
 				{
-					dots = 0;
+					case next == '.':
+						dots = 2;
+						is_last = i == path_len - 2;
+						if (!is_last && !is_separator(path_str[i + 2], path_env))
+						{
+							dots = 0;
+						}
+					case !is_separator(next, path_env):
+						dots = 0;
 				}
 			}
 			switch (dots)
@@ -394,6 +405,23 @@ fn String Path.root_directory(self)
 		}
 	}
 	return path_str;
+}
+
+def PathWalker = fn bool(Path);
+
+fn bool! Path.walk(self, PathWalker w, Allocator* using = mem::heap())
+{
+    Path abs = self.absolute(using)!;
+    defer abs.free();
+    PathList files = ls(abs, .using = using)!;
+    foreach (f : files)
+    {
+        if (f.as_str() == "." || f.as_str() == "..") continue;
+        f = abs.append(f.as_str(), using)!;
+        if (w(f)) return true;
+        if (is_dir(f) && f.walk(w, using)!) return true;
+    }
+    return false;
 }
 
 fn String Path.as_str(self) @inline

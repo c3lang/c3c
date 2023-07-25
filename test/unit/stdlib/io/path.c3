@@ -41,6 +41,8 @@ fn void! test_path_normalized()
 	assert(path::new("/foo/bar/../", .path_env = PathEnv.POSIX).as_str()! == "/foo");
 	assert(path::new("/foo//bar", .path_env = PathEnv.POSIX).as_str()! == "/foo/bar");
 	assert(path::new("/foo//bar/../", .path_env = PathEnv.POSIX).as_str()! == "/foo");
+	assert(path::new("/foo/.bar", .path_env = PathEnv.POSIX).as_str()! == "/foo/.bar");
+	assert(path::new(`\foo\.bar`, .path_env = PathEnv.WIN32).as_str()! == `\foo\.bar`);
 	assert(path::new("a\\b/c.txt", .path_env = PathEnv.WIN32).as_str()! == `a\b\c.txt`);
 	assert(path::new("a\\b/c.txt", .path_env = PathEnv.POSIX).as_str()! == "a\\b/c.txt");
 	assert(path::new("C:\\a\\b/c.txt", .path_env = PathEnv.WIN32).as_str()! == `C:\a\b\c.txt`);
