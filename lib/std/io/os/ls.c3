@@ -14,7 +14,7 @@ fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Al
 		if (!name || name == "." || name == "..") continue;
 		if (entry.d_type == posix::DT_LNK && no_symlinks) continue;
 		if (entry.d_type == posix::DT_DIR && no_dirs) continue;
-		Path path = path::new(name.copy(using), using)!!;
+		Path path = path::new(name, using)!!;
 		list.append(path);
 	}
 	return list;
