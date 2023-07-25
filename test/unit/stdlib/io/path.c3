@@ -300,3 +300,11 @@ fn void! test_path_is_absolute()
 	assert(path::new_windows(`\\server\`).is_absolute()!);
 	assert(path::new_windows(`\\server\abc`).is_absolute()!);
 }
+
+fn void! test_path_absolute()
+{
+    assert(path::new_posix("/").absolute()!.as_str() == "/");
+    assert(path::new_posix(".").absolute()!.as_str() == path::getcwd(mem::temp())!!.as_str());
+
+	assert(path::new_windows(`C:\abs`).absolute()!.as_str() == `C:\abs`);
+}

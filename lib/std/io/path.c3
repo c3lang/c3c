@@ -137,7 +137,6 @@ fn bool Path.equals(self, Path p2)
  * Append the string to the current path.
  *
  * @param [in] filename
- * @ensure return.path_string.len >= self.path_string.len
  **/
 fn Path! Path.append(self, String filename, Allocator* using = mem::heap())
 {
@@ -173,6 +172,23 @@ fn bool! Path.is_absolute(self)
     if (!path_str.len) return false;
     usz path_start = volume_name_len(path_str, self.env)!;
 	return path_start < path_str.len && is_separator(path_str[path_start], self.env);
+}
+
+fn Path! Path.absolute(self, Allocator* using = mem::heap())
+{
+	String path_str = self.as_str();
+	if (!path_str.len) path_str = ".";
+	switch (self.env)
+	{
+	    case WIN32:
+            usz path_start = volume_name_len(path_str, self.env)!;
+            if (path_start > 0) return self;
+	    case POSIX:
+	        if (path_str[0] == PREFERRED_SEPARATOR_POSIX) return self;
+	}
+	Path p = getcwd(mem::temp())!;
+	if (path_str != ".") p = p.append(path_str, using)!;
+	return { normalize(p.as_str(), self.env)!, self.env };
 }
 
 fn String Path.basename(self)
