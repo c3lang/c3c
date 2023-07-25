@@ -1,6 +1,5 @@
 module std::io::path @test;
 
-
 fn void! test_parent()
 {
 	Path p = path::new("")!;
@@ -223,7 +222,6 @@ fn void! test_extension()
 
 fn void! test_basename()
 {
-
 	assert(path::new_windows("file.txt").basename()! == "file.txt");
 	assert(path::new_posix("file.txt").basename()! == "file.txt");
 
@@ -251,7 +249,6 @@ fn void! test_basename()
 
 fn void! test_dirname()
 {
-
 	assert(path::new_windows("file.txt").dirname()! == "");
 	assert(path::new_posix("file.txt").dirname()! == "");
 
@@ -288,4 +285,18 @@ fn void! test_path_volume()
 	assert(path::new_posix(`C:abs`).volume_name()! == ``);
 	assert(path::new_windows(`\\server\`).volume_name()! == `\\server`);
     assert(path::new_windows(`\\server\abc`).volume_name()! == `\\server`);
+}
+
+fn void! test_path_is_absolute()
+{
+    assert(!path::new_posix("").is_absolute()!);
+    assert(path::new_posix("/").is_absolute()!);
+    assert(path::new_posix("/a/b").is_absolute()!);
+    assert(!path::new_posix("a/b").is_absolute()!);
+
+	assert(!path::new_windows(`C:`).is_absolute()!);
+	assert(path::new_windows(`C:\abs`).is_absolute()!);
+	assert(!path::new_windows(`C:abs`).is_absolute()!);
+	assert(path::new_windows(`\\server\`).is_absolute()!);
+	assert(path::new_windows(`\\server\abc`).is_absolute()!);
 }

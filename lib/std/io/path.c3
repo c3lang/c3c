@@ -167,6 +167,14 @@ fn usz Path.start_of_base_name(self) @local
 	return path_str.rindex_of_char('/') + 1 ?? 0;
 }
 
+fn bool! Path.is_absolute(self)
+{
+    String path_str = self.as_str();
+    if (!path_str.len) return false;
+    usz path_start = volume_name_len(path_str, self.env)!;
+	return path_start < path_str.len && is_separator(path_str[path_start], self.env);
+}
+
 fn String Path.basename(self)
 {
 	usz basename_start = self.start_of_base_name();
@@ -246,7 +254,7 @@ fn Path! Path.parent(self)
 
 fn String! normalize(String path_str, PathEnv path_env = DEFAULT_PATH_ENV)
 {
-	if (!path_str.len) return path_str;
+	if (!path_str.len) return "";
     usz path_start = volume_name_len(path_str, path_env)!;
 	usz path_len = path_str.len;
 	if (path_start == path_len) return path_str;
@@ -372,7 +380,7 @@ fn String Path.root_directory(self)
 	return path_str;
 }
 
-fn String Path.as_str(self)
+fn String Path.as_str(self) @inline
 {
 	return self.path_string;
 }
