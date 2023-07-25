@@ -206,6 +206,42 @@ fn bool String.contains(s, String needle)
  * Find the index of the first incidence of a string.
  *
  * @param [in] s
+ * @pure
+ * @ensure return < s.len
+ * @return "the index of the needle"
+ * @return! SearchResult.MISSING "if the needle cannot be found"
+ **/
+fn usz! String.index_of_char(s, char needle)
+{
+    foreach (i, c : s)
+    {
+        if (c == needle) return i;
+    }
+    return SearchResult.MISSING?;
+}
+
+/**
+ * Find the index of the first incidence of a string.
+ *
+ * @param [in] s
+ * @pure
+ * @ensure return < s.len
+ * @return "the index of the needle"
+ * @return! SearchResult.MISSING "if the needle cannot be found"
+ **/
+fn usz! String.rindex_of_char(s, char needle)
+{
+    foreach_r (i, c : s)
+    {
+        if (c == needle) return i;
+    }
+    return SearchResult.MISSING?;
+}
+
+/**
+ * Find the index of the first incidence of a string.
+ *
+ * @param [in] s
  * @param [in] needle
  * @pure
  * @ensure return < s.len
@@ -215,10 +251,11 @@ fn bool String.contains(s, String needle)
  **/
 fn usz! String.index_of(s, String needle)
 {
-	usz match = 0;
 	usz needed = needle.len;
-	usz index_start = 0;
 	char search = needle[0];
+	if (needed == 1) return s.index_of_char(search);
+	usz match = 0;
+	usz index_start = 0;
 	foreach (usz i, char c : s)
 	{
 		if (c == search)
@@ -251,10 +288,11 @@ fn usz! String.index_of(s, String needle)
  **/
 fn usz! String.rindex_of(s, String needle)
 {
-	usz match = 0;
 	usz needed = needle.len;
-	usz index_start = 0;
 	char search = needle[^1];
+	if (needed == 1) return s.rindex_of_char(search);
+	usz match;
+	usz index_start;
 	foreach_r (usz i, char c : s)
 	{
 		if (c == search)

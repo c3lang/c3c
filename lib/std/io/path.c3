@@ -26,7 +26,6 @@ enum PathEnv
 	POSIX
 }
 
-
 fn Path! getcwd(Allocator* using = mem::heap())
 {
 	@pool(using)
@@ -138,7 +137,6 @@ fn bool Path.equals(self, Path p2)
  * Append the string to the current path.
  *
  * @param [in] filename
- * @ensure return.path_string.len >= self.path_string.len
  **/
 fn Path! Path.append(self, String filename, Allocator* using = mem::heap())
 {
@@ -163,9 +161,38 @@ fn usz Path.start_of_base_name(self) @local
 	if (!path_str.len) return 0;
 	if (self.env == PathEnv.WIN32)
 	{
-		return path_str.rindex_of(`\`) + 1 ?? volume_name_len(path_str, self.env)!!;
+		return path_str.rindex_of_char('\\') + 1 ?? volume_name_len(path_str, self.env)!!;
 	}
-	return path_str.rindex_of("/") + 1 ?? 0;
+	return path_str.rindex_of_char('/') + 1 ?? 0;
+}
+
+fn bool! Path.is_absolute(self)
+{
+    String path_str = self.as_str();
+    if (!path_str.len) return false;
+    usz path_start = volume_name_len(path_str, self.env)!;
+	return path_start < path_str.len && is_separator(path_str[path_start], self.env);
+}
+
+fn Path! Path.absolute(self, Allocator* using = mem::heap())
+{
+	String path_str = self.as_str();
+	if (!path_str.len) path_str = ".";
+	if (path_str == ".")
+	{
+	    String cwd = os::getcwd(mem::temp())!;
+	    return new(cwd, using, self.env);
+	}
+	switch (self.env)
+	{
+	    case WIN32:
+            usz path_start = volume_name_len(path_str, self.env)!;
+            if (path_start > 0) return self;
+	    case POSIX:
+	        if (path_str[0] == PREFERRED_SEPARATOR_POSIX) return self;
+	}
+	String cwd = os::getcwd(mem::temp())!;
+	return Path{ cwd, self.env }.append(path_str, using)!;
 }
 
 fn String Path.basename(self)
@@ -247,7 +274,7 @@ fn Path! Path.parent(self)
 
 fn String! normalize(String path_str, PathEnv path_env = DEFAULT_PATH_ENV)
 {
-	if (!path_str.len) return path_str;
+	if (!path_str.len) return "";
     usz path_start = volume_name_len(path_str, path_env)!;
 	usz path_len = path_str.len;
 	if (path_start == path_len) return path_str;
@@ -288,13 +315,20 @@ fn String! normalize(String path_str, PathEnv path_env = DEFAULT_PATH_ENV)
 			// Get the number of dots until next separator, expecting 1 or 2
 			bool is_last = i == path_len - 1;
 			int dots = 1;
-			if (!is_last && path_str[i + 1] == '.')
+			if (!is_last)
 			{
-				dots = 2;
-				is_last = i == path_len - 2;
-				if (!is_last && !is_separator(path_str[i + 2], path_env))
+				char next = path_str[i + 1];
+				switch
 				{
-					dots = 0;
+					case next == '.':
+						dots = 2;
+						is_last = i == path_len - 2;
+						if (!is_last && !is_separator(path_str[i + 2], path_env))
+						{
+							dots = 0;
+						}
+					case !is_separator(next, path_env):
+						dots = 0;
 				}
 			}
 			switch (dots)
@@ -373,8 +407,24 @@ fn String Path.root_directory(self)
 	return path_str;
 }
 
+def PathWalker = fn bool(Path);
 
-fn String Path.as_str(self)
+fn bool! Path.walk(self, PathWalker w, Allocator* using = mem::heap())
+{
+    Path abs = self.absolute(using)!;
+    defer abs.free();
+    PathList files = ls(abs, .using = using)!;
+    foreach (f : files)
+    {
+        if (f.as_str() == "." || f.as_str() == "..") continue;
+        f = abs.append(f.as_str(), using)!;
+        if (w(f)) return true;
+        if (is_dir(f) && f.walk(w, using)!) return true;
+    }
+    return false;
+}
+
+fn String Path.as_str(self) @inline
 {
 	return self.path_string;
 }
@@ -385,12 +435,10 @@ fn bool Path.has_suffix(self, String str)
 	return self.as_str().ends_with(str);
 }
 
-
 fn void Path.free(self)
 {
 	free(self.path_string.ptr);
 }
-
 
 const bool[256] RESERVED_PATH_CHAR_POSIX = {
 	[0] = true,
@@ -420,4 +468,3 @@ macro bool is_reserved_path_char(char c, PathEnv path_env = DEFAULT_PATH_ENV)
 		? RESERVED_PATH_CHAR_WIN32[c]
 		: RESERVED_PATH_CHAR_POSIX[c];
 }
-

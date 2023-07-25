@@ -1,6 +1,5 @@
 module std::io::path @test;
 
-
 fn void! test_parent()
 {
 	Path p = path::new("")!;
@@ -42,6 +41,8 @@ fn void! test_path_normalized()
 	assert(path::new("/foo/bar/../", .path_env = PathEnv.POSIX).as_str()! == "/foo");
 	assert(path::new("/foo//bar", .path_env = PathEnv.POSIX).as_str()! == "/foo/bar");
 	assert(path::new("/foo//bar/../", .path_env = PathEnv.POSIX).as_str()! == "/foo");
+	assert(path::new("/foo/.bar", .path_env = PathEnv.POSIX).as_str()! == "/foo/.bar");
+	assert(path::new(`\foo\.bar`, .path_env = PathEnv.WIN32).as_str()! == `\foo\.bar`);
 	assert(path::new("a\\b/c.txt", .path_env = PathEnv.WIN32).as_str()! == `a\b\c.txt`);
 	assert(path::new("a\\b/c.txt", .path_env = PathEnv.POSIX).as_str()! == "a\\b/c.txt");
 	assert(path::new("C:\\a\\b/c.txt", .path_env = PathEnv.WIN32).as_str()! == `C:\a\b\c.txt`);
@@ -223,7 +224,6 @@ fn void! test_extension()
 
 fn void! test_basename()
 {
-
 	assert(path::new_windows("file.txt").basename()! == "file.txt");
 	assert(path::new_posix("file.txt").basename()! == "file.txt");
 
@@ -251,7 +251,6 @@ fn void! test_basename()
 
 fn void! test_dirname()
 {
-
 	assert(path::new_windows("file.txt").dirname()! == "");
 	assert(path::new_posix("file.txt").dirname()! == "");
 
@@ -288,4 +287,26 @@ fn void! test_path_volume()
 	assert(path::new_posix(`C:abs`).volume_name()! == ``);
 	assert(path::new_windows(`\\server\`).volume_name()! == `\\server`);
     assert(path::new_windows(`\\server\abc`).volume_name()! == `\\server`);
+}
+
+fn void! test_path_is_absolute()
+{
+    assert(!path::new_posix("").is_absolute()!);
+    assert(path::new_posix("/").is_absolute()!);
+    assert(path::new_posix("/a/b").is_absolute()!);
+    assert(!path::new_posix("a/b").is_absolute()!);
+
+	assert(!path::new_windows(`C:`).is_absolute()!);
+	assert(path::new_windows(`C:\abs`).is_absolute()!);
+	assert(!path::new_windows(`C:abs`).is_absolute()!);
+	assert(path::new_windows(`\\server\`).is_absolute()!);
+	assert(path::new_windows(`\\server\abc`).is_absolute()!);
+}
+
+fn void! test_path_absolute()
+{
+    assert(path::new_posix("/").absolute()!.as_str() == "/");
+    assert(path::new_posix(".").absolute()!.as_str() == path::getcwd(mem::temp())!!.as_str());
+
+	assert(path::new_windows(`C:\abs`).absolute()!.as_str() == `C:\abs`);
 }
