@@ -92,3 +92,19 @@ fn void! test_rindex_of()
 	assert(test.rindex_of("world")! == 6);
 	assert(@catchof(test.rindex_of("wi")));
 }
+
+fn void! test_index_of_char()
+{
+	String test = "hello world hello";
+	assert(test.index_of_char('o')! == 4);
+	assert(test.index_of_char('l')! == 2);
+	assert(@catchof(test.index_of_char('x')));
+}
+
+fn void! test_rindex_of_char()
+{
+	String test = "hello world hello";
+	assert(test.rindex_of_char('o')! == 16);
+	assert(test.rindex_of_char('l')! == 15);
+	assert(@catchof(test.index_of_char('x')));
+}

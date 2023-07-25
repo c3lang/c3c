@@ -26,7 +26,6 @@ enum PathEnv
 	POSIX
 }
 
-
 fn Path! getcwd(Allocator* using = mem::heap())
 {
 	@pool(using)
@@ -163,9 +162,9 @@ fn usz Path.start_of_base_name(self) @local
 	if (!path_str.len) return 0;
 	if (self.env == PathEnv.WIN32)
 	{
-		return path_str.rindex_of(`\`) + 1 ?? volume_name_len(path_str, self.env)!!;
+		return path_str.rindex_of_char('\\') + 1 ?? volume_name_len(path_str, self.env)!!;
 	}
-	return path_str.rindex_of("/") + 1 ?? 0;
+	return path_str.rindex_of_char('/') + 1 ?? 0;
 }
 
 fn String Path.basename(self)
@@ -373,7 +372,6 @@ fn String Path.root_directory(self)
 	return path_str;
 }
 
-
 fn String Path.as_str(self)
 {
 	return self.path_string;
@@ -385,12 +383,10 @@ fn bool Path.has_suffix(self, String str)
 	return self.as_str().ends_with(str);
 }
 
-
 fn void Path.free(self)
 {
 	free(self.path_string.ptr);
 }
-
 
 const bool[256] RESERVED_PATH_CHAR_POSIX = {
 	[0] = true,
@@ -420,4 +416,3 @@ macro bool is_reserved_path_char(char c, PathEnv path_env = DEFAULT_PATH_ENV)
 		? RESERVED_PATH_CHAR_WIN32[c]
 		: RESERVED_PATH_CHAR_POSIX[c];
 }
-
