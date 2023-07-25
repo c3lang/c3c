@@ -1,3 +1,5 @@
+// #target: macos-x64
+
 module testing;
 import std::io;
 
