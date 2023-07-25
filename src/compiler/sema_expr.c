@@ -5343,6 +5343,7 @@ static bool sema_expr_analyse_and_or(SemaContext *context, Expr *expr, Expr *lef
 	if (!sema_binary_analyse_subexpr(context, expr, left, right)) return false;
 	if (!cast_explicit(context, left, type_bool) || !cast_explicit(context, right, type_bool)) return false;
 
+
 	if (expr_both_const(left, right) && sema_constant_fold_ops(left))
 	{
 		if (expr->binary_expr.operator == BINARYOP_AND)
@@ -5356,7 +5357,7 @@ static bool sema_expr_analyse_and_or(SemaContext *context, Expr *expr, Expr *lef
 			expr->const_expr.b |= right->const_expr.b;
 		}
 	}
-	expr->type = type_bool;
+	expr->type = type_add_optional(type_bool, IS_OPTIONAL(left) || IS_OPTIONAL(right));
 	return true;
 }
 
