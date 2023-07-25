@@ -182,7 +182,7 @@ macro bool os_is_posix()
 
 
 /**
- * @param [&in] name
+ * @param [in] name
  * @require name.len > 0
  **/
 fn String! get_var(String name)
@@ -200,8 +200,8 @@ fn String! get_var(String name)
 
 
 /**
- * @param [&in] name
- * @param [&in] value
+ * @param [in] name
+ * @param [in] value
  * @require name.len > 0
  **/
 fn void set_var(String name, String value, bool overwrite = true)
@@ -218,7 +218,7 @@ fn void set_var(String name, String value, bool overwrite = true)
 }
 
 /**
- * @param [&in] name
+ * @param [in] name
  * @require name.len > 0
  **/
 fn void clear_var(String name)

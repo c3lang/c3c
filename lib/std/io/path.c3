@@ -137,7 +137,6 @@ fn bool Path.equals(self, Path p2)
 /**
  * Append the string to the current path.
  *
- * @param [in] path
  * @param [in] filename
  * @ensure return.path_string.len >= self.path_string.len
  **/
