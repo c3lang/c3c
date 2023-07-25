@@ -187,7 +187,7 @@ jobs:
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
-        llvm_version: [15, 16, 17]
+        llvm_version: [15, 16, 17, 18]
 
     steps:
       - uses: actions/checkout@v3
@@ -201,7 +201,7 @@ jobs:
           if [[ "${{matrix.llvm_version}}" < 16 ]]; then
             sudo apt remove libllvm15
           fi
-          if [[ "${{matrix.llvm_version}}" < 17 ]]; then
+          if [[ "${{matrix.llvm_version}}" < 18 ]]; then
             sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-${{matrix.llvm_version}} main"
             sudo apt-get update
             sudo apt-get install -y -t llvm-toolchain-focal-${{matrix.llvm_version}} libpolly-${{matrix.llvm_version}}-dev \
