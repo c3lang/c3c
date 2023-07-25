@@ -23,7 +23,6 @@ fault IoError
     INVALID_POSITION,
     OVERFLOW,
     FILE_IS_PIPE,
-    FILE_EOF,
     INCOMPLETE_WRITE,
     BUSY,
     NO_PERMISSION,

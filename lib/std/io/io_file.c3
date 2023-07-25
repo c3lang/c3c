@@ -57,7 +57,7 @@ fn void! File.memopen(File* file, char[] data, String mode)
  */
 fn void! File.putc(File *file, char c)
 {
-    if (!libc::fputc(c, file.file)) return IoError.FILE_EOF?;
+    if (!libc::fputc(c, file.file)) return IoError.EOF?;
 }
 
 /**
@@ -164,7 +164,7 @@ fn String File.tgetline(File* file)
 fn char! File.getc(File* file)
 {
 	int c = libc::fgetc(file.file);
-	if (c == -1) return IoError.FILE_EOF?;
+	if (c == -1) return IoError.EOF?;
 	return (char)c;
 }
 
