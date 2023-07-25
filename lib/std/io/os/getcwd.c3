@@ -35,7 +35,7 @@ macro String! getcwd(Allocator* using = mem::heap())
 			return res.copy(using);
 
 		$default:
-			unreachable("'getcwd' not available");
+		    return IoError.UNSUPPORTED_OPERATION?;
 	$endswitch
 }
 

@@ -70,7 +70,6 @@ fn float _sinf(float x) @weak @extern("sinf") @nostrip
 		case 2: return  __sindf(-y);
 		default: return -__cosdf(y);
 	}
-	unreachable();
 }
 
 /* origin: FreeBSD /usr/src/lib/msun/src/s_sin.c */

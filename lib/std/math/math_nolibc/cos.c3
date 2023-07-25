@@ -37,7 +37,6 @@ fn float _cosf(float x) @extern("cosf") @weak @nostrip
 		case 2: return  -__cosdf(y);
 		default: return __sindf(y);
 	}
-	unreachable();
 }
 
 /* origin: FreeBSD /usr/src/lib/msun/src/s_cos.c */
