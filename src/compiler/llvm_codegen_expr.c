@@ -1682,16 +1682,15 @@ static LLVMValueRef llvm_recursive_set_value(GenContext *c, DesignatorElement **
 }
 
 
-void llvm_emit_initialize_reference_temporary_const(GenContext *c, BEValue *ref, Expr *expr)
+void llvm_emit_initialize_reference_temporary_const(GenContext *c, BEValue *ref, ConstInitializer *initializer)
 {
 	bool modified = false;
 	// First create the constant value.
 
-	assert(expr_is_const_initializer(expr));
-	LLVMValueRef value = llvm_emit_const_initializer(c, expr->const_expr.initializer);
+	LLVMValueRef value = llvm_emit_const_initializer(c, initializer);
 
 	// Create a global const.
-	AlignSize alignment = type_alloca_alignment(expr->type);
+	AlignSize alignment = type_alloca_alignment(initializer->type);
 	LLVMTypeRef type = LLVMTypeOf(value);
 	LLVMValueRef global_copy = llvm_add_global_raw(c, ".__const", type, alignment);
 	llvm_set_private_linkage(global_copy);
@@ -1705,11 +1704,49 @@ void llvm_emit_initialize_reference_temporary_const(GenContext *c, BEValue *ref,
 	llvm_value_addr(c, ref);
 
 	// Perform the memcpy.
-	llvm_emit_memcpy(c, ref->value, ref->alignment, global_copy, alignment, type_size(expr->type));
+	llvm_emit_memcpy(c, ref->value, ref->alignment, global_copy, alignment, type_size(initializer->type));
+}
+
+static inline void llvm_emit_const_initialize_bitstruct_ref(GenContext *c, BEValue *ref, ConstInitializer *initializer)
+{
+	if (initializer->kind == CONST_INIT_ZERO)
+	{
+		llvm_store_zero(c, ref);
+		return;
+	}
+	assert(initializer->kind == CONST_INIT_STRUCT);
+	llvm_store_raw(c, ref, llvm_emit_const_bitstruct(c, initializer));
 }
 
 static void llvm_emit_const_init_ref(GenContext *c, BEValue *ref, ConstInitializer *const_init)
 {
+	if (const_init->type->type_kind == TYPE_VECTOR)
+	{
+		LLVMValueRef val = llvm_emit_const_initializer(c, const_init);
+		llvm_store_raw(c, ref, val);
+		return;
+	}
+	if (const_init->type->type_kind == TYPE_BITSTRUCT)
+	{
+		llvm_emit_const_initialize_bitstruct_ref(c, ref, const_init);
+		return;
+	}
+	if (const_init->kind == CONST_INIT_ZERO)
+	{
+		// In case of a zero, optimize.
+		llvm_store_zero(c, ref);
+		return;
+	}
+	// In case of small const initializers, or full arrays - use copy.
+	if (const_init->kind == CONST_INIT_ARRAY_FULL || type_size(const_init->type) <= 32)
+	{
+		llvm_emit_initialize_reference_temporary_const(c, ref, const_init);
+		return;
+	}
+
+	// Make sure we have an address.
+	llvm_value_addr(c, ref);
+
 	switch (const_init->kind)
 	{
 		case CONST_INIT_ZERO:
@@ -1800,16 +1837,6 @@ static void llvm_emit_const_init_ref(GenContext *c, BEValue *ref, ConstInitializ
 	UNREACHABLE
 }
 
-static inline void llvm_emit_const_initialize_struct_union_array(GenContext *c, BEValue *ref, Expr *expr)
-{
-	assert(expr_is_const_initializer(expr));
-	ConstInitializer *initializer = expr->const_expr.initializer;
-
-	// Make sure we have an address.
-	llvm_value_addr(c, ref);
-	llvm_emit_const_init_ref(c, ref, initializer);
-
-}
 static inline void llvm_emit_initialize_reference_vector(GenContext *c, BEValue *ref, Type *real_type, Expr **elements)
 {
 	llvm_value_addr(c, ref);
@@ -2244,16 +2271,6 @@ LLVMValueRef llvm_emit_const_bitstruct(GenContext *c, ConstInitializer *initiali
 	return result;
 }
 
-static inline void llvm_emit_const_initialize_bitstruct_ref(GenContext *c, BEValue *ref, ConstInitializer *initializer)
-{
-	if (initializer->kind == CONST_INIT_ZERO)
-	{
-		llvm_store_zero(c, ref);
-		return;
-	}
-	assert(initializer->kind == CONST_INIT_STRUCT);
-	llvm_store_raw(c, ref, llvm_emit_const_bitstruct(c, initializer));
-}
 
 /**
  * Initialize a constant aggregate type.
@@ -2261,31 +2278,7 @@ static inline void llvm_emit_const_initialize_bitstruct_ref(GenContext *c, BEVal
 static inline void llvm_emit_const_initialize_reference(GenContext *c, BEValue *ref, Expr *expr)
 {
 	assert(expr_is_const_initializer(expr));
-	ConstInitializer *initializer = expr->const_expr.initializer;
-	if (initializer->type->type_kind == TYPE_VECTOR)
-	{
-		LLVMValueRef val = llvm_emit_const_initializer(c, initializer);
-		llvm_store_raw(c, ref, val);
-		return;
-	}
-	if (initializer->type->type_kind == TYPE_BITSTRUCT)
-	{
-		llvm_emit_const_initialize_bitstruct_ref(c, ref, initializer);
-		return;
-	}
-	if (initializer->kind == CONST_INIT_ZERO)
-	{
-		// In case of a zero, optimize.
-		llvm_store_zero(c, ref);
-		return;
-	}
-	// In case of small const initializers, or full arrays - use copy.
-	if (initializer->kind == CONST_INIT_ARRAY_FULL || type_size(expr->type) <= 32)
-	{
-		llvm_emit_initialize_reference_temporary_const(c, ref, expr);
-		return;
-	}
-	llvm_emit_const_initialize_struct_union_array(c, ref, expr);
+	llvm_emit_const_init_ref(c, ref, expr->const_expr.initializer);
 	return;
 }
 

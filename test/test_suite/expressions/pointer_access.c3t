@@ -65,7 +65,7 @@ entry:
   %6 = getelementptr inbounds %c, ptr %2, i32 0, i32 3
   store double 0.000000e+00, ptr %6, align 8
   %7 = getelementptr inbounds %c, ptr %2, i32 0, i32 4
-  store double 3.300000e+00, ptr %7, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %7, ptr align 8 @.__const, i32 8, i1 false)
   %8 = getelementptr inbounds %ExtraSimple, ptr %a, i32 0, i32 3
   %9 = getelementptr inbounds %.anon, ptr %8, i32 0, i32 0
   store i32 0, ptr %9, align 8
