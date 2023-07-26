@@ -43,6 +43,6 @@ macro bool! native_rmdir(Path path)
 				}
 		    };
 		$default:
-			unreachable("'rmdir' not available");
+			return IoError.UNSUPPORTED_OPERATION?;
 	$endswitch
 }

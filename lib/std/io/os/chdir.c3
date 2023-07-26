@@ -25,6 +25,6 @@ macro void! native_chdir(Path path)
 			};
 			return IoError.GENERAL_ERROR?;
 		$default:
-			unreachable("'getcwd' not available");
+			return IoError.UNSUPPORTED_OPERATION?;
 	$endswitch
 }
