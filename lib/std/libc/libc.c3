@@ -462,6 +462,7 @@ const Errno ERANGE = 34;    // Math result not representable
 
 // https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/intro.2.html
 module libc::errno @if(env::DARWIN);
+const Errno EWOULDBLOCK = EAGAIN; // Operation would block
 const Errno EDEADLK = 11;         // Resource deadlock would occur
 const Errno EINPROGRESS = 36;     // Operation now in progress
 const Errno EALREADY = 37;        // Operation already in progress
@@ -545,24 +546,34 @@ const Errno EALREADY = 103;     // Operation already in progress
 const Errno EINPROGRESS = 112;  // Operation now in progress Win32
 const Errno EDQUOT = -122;      // Quota exceeded, not in Win32
 const Errno EWOULDBLOCK = 140;  // Operation would block
-const Errno EADDRINUSE = 10048; // Address already in use
+// https://learn.microsoft.com/en-us/windows/win32/winsock/windows-sockets-error-codes-2
+const Errno ENOTSOCK = 10038;  // Network is unreachable
+//const Errno EOPNOTSUPP = 10045;   // Operation not supported on transport endpoint
+const Errno EADDRINUSE = 10048;   // Address already in use
+const Errno EISCONN = 10056;      // Socket is already connected
+const Errno ECONNREFUSED = 10061; // Connection refused
+//const Errno ENETUNREACH = 10065;  // Network is unreachable
 
 module libc::errno @if(!env::WIN32 && !env::DARWIN);
-const Errno EDEADLK = 35;       // Resource deadlock would occur Linux (others?)
-const Errno ENAMETOOLONG = 36;  // File name too long Linux (others?)
-const Errno ELOOP = 40;         // Too many symbolic links encountered
-const Errno EOVERFLOW = 75;     // Value too large for defined data type
-const Errno ENETDOWN = 100;     // Network is down
-const Errno ECONNRESET = 104;   // Connection reset by peer
-const Errno ENETUNREACH = 101;  // Network is unreachable
-const Errno ENETRESET = 102;    // Network dropped connection because of reset
-const Errno EOPNOTSUPP = 95;    // Operation not supported on transport endpoint
-const Errno ENOTEMPTY = 39;     // Directory not empty
-const Errno ETIMEDOUT = 110;    // Connection timed out
-const Errno EALREADY = 114;     // Operation already in progress
-const Errno EINPROGRESS = 115;  // Operation now in progress
-const Errno EDQUOT = 122;       // Quota exceeded
-const Errno EADDRINUSE = 98;  // Address already in use
+const Errno EDEADLK = 35;         // Resource deadlock would occur Linux (others?)
+const Errno ENAMETOOLONG = 36;    // File name too long Linux (others?)
+const Errno ENOTEMPTY = 39;       // Directory not empty
+const Errno ELOOP = 40;           // Too many symbolic links encountered
+const Errno EWOULDBLOCK = EAGAIN; // Operation would block
+const Errno EOVERFLOW = 75;       // Value too large for defined data type
+const Errno ENOTSOCK = 88;        // Socket operation on non-socket
+const Errno EOPNOTSUPP = 95;      // Operation not supported on transport endpoint
+const Errno EADDRINUSE = 98;      // Address already in use
+const Errno ENETDOWN = 100;       // Network is down
+const Errno ENETUNREACH = 101;    // Network is unreachable
+const Errno ENETRESET = 102;      // Network dropped connection because of reset
+const Errno ECONNRESET = 104;     // Connection reset by peer
+const Errno EISCONN = 106;        // Socket is already connected
+const Errno ETIMEDOUT = 110;      // Connection timed out
+const Errno ECONNREFUSED = 111;   // Connection refused
+const Errno EALREADY = 114;       // Operation already in progress
+const Errno EINPROGRESS = 115;    // Operation now in progress
+const Errno EDQUOT = 122;         // Quota exceeded
 
 
 /*
