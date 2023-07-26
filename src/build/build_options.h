@@ -12,6 +12,7 @@
 #define MAX_INCLUDES 2048
 #define MAX_THREADS 0xFFFF
 
+void update_feature_flags(const char ***flags, const char ***removed_flag, const char *arg, bool add);
 
 typedef enum
 {
@@ -303,12 +304,14 @@ typedef struct BuildOptions_
 		const char *crtbegin;
 	} linuxpaths;
 	int build_threads;
-	const char** libraries_to_fetch;
-	const char** files;
-	const char* output_name;
-	const char* project_name;
-	const char* target_select;
-	const char* path;
+	const char **libraries_to_fetch;
+	const char **files;
+	const char **feature_names;
+	const char **removed_feature_names;
+	const char *output_name;
+	const char *project_name;
+	const char *target_select;
+	const char *path;
 	const char *template;
 	uint32_t symtab_size;
 	unsigned version;
@@ -441,6 +444,7 @@ typedef struct
 	const char *cflags;
 	const char **csource_dirs;
 	const char **csources;
+	const char **feature_list;
 	struct
 	{
 		SoftFloat soft_float : 3;

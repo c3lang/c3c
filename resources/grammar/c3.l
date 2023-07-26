@@ -54,6 +54,7 @@ int comment_level = 0;
 "$eval"         { count(); return(CT_EVAL); }
 "$evaltype"     { count(); return(CT_EVALTYPE); }
 "$extnameof"    { count(); return(CT_EXTNAMEOF); }
+"$feature"      { count(); return(CT_FEATURE); }
 "$for"          { count(); return(CT_FOR); }
 "$foreach"      { count(); return(CT_FOREACH); }
 "$if"           { count(); return(CT_IF); }

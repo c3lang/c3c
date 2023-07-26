@@ -43,16 +43,91 @@ bool str_is_valid_lowercase_name(const char *string)
 	return true;
 }
 
+static const char *scan_past_underscore(const char *string)
+{
+    while (string[0] == '_') string++;
+    if (string[0] == '\0') return NULL;
+    return string;
+}
+
+const char *str_unescape(char *string)
+{
+    assert(string[0] == '"');
+    char c;
+    size_t index = 0;
+    while ((c = string++[0]) != '"')
+    {
+	    if (c == 0) return NULL;
+	    if (c == '\\')
+	    {
+		    c = string++[0];
+	    }
+	    string[index++] = c;
+    }
+	string[index] = '\0';
+	return string;
+}
+
+bool str_is_type(const char *string)
+{
+    string = scan_past_underscore(string);
+    if (!string) return false;
+    char c = string++[0];
+    if (!char_is_upper(c)) return false;
+    bool found_lower = false;
+    while ((c = *(string++)) != '\0')
+    {
+        if (char_is_lower(c))
+        {
+            found_lower = true;
+            continue;
+        }
+        if (!char_is_alphanum_(c)) return false;
+    }
+    return found_lower;
+}
+
+bool str_is_identifier(const char *string)
+{
+    string = scan_past_underscore(string);
+    if (!string) return false;
+    char c = string++[0];
+    if (!char_is_lower(c)) return false;
+    while ((c = *(string++)) != '\0')
+    {
+        if (!char_is_alphanum_(c)) return false;
+    }
+    return true;
+}
+
+bool str_eq(const char *str1, const char *str2)
+{
+	return str1 == str2 || strcmp(str1, str2) == 0;
+}
+
+bool str_is_integer(const char *string)
+{
+	if (string[0] == '-') string++;
+    if (!string[0]) return false;
+    char c;
+    // Must start with a lower case
+    while ((c = *(string++)) != '\0')
+    {
+        if (!char_is_digit(c)) return false;
+    }
+    return true;
+}
+
 bool str_is_valid_constant(const char *string)
 {
-	char c;
-	// Must start with a lower case
-	int length = 0;
-	while ((c = *(string++)) != '\0')
-	{
-		if (!char_is_upper(c) && c != '_') return false;
-	}
-	return true;
+    string = scan_past_underscore(string);
+    if (!string) return false;
+    char c = string++[0];
+    if (!char_is_upper(c)) return false;
+    while ((c = *(string++)) != '\0') {
+        if (!char_is_upper_alphanum_(c)) return false;
+    }
+    return true;
 }
 
 void str_ellide_in_place(char *string, size_t max_size_shown)

@@ -1017,6 +1017,7 @@ static Expr *parse_hash_ident(ParseContext *c, Expr *left)
 	return expr;
 }
 
+
 /**
  * ct_eval ::= CT_EVAL '(' expr ')'
  */
@@ -1104,7 +1105,7 @@ static Expr *parse_ct_embed(ParseContext *c, Expr *left)
 }
 
 /**
- * ct_call ::= (ALIGNOF | EXTNAMEOF | OFFSETOF | NAMEOF | QNAMEOF) '(' flat_path ')'
+ * ct_call ::= (CT_ALIGNOF | CT_FEATURE | CT_EXTNAMEOF | CT_OFFSETOF | CT_NAMEOF | CT_QNAMEOF) '(' flat_path ')'
  * flat_path ::= expr ('.' primary) | '[' expr ']')*
  */
 static Expr *parse_ct_call(ParseContext *c, Expr *left)
@@ -1909,6 +1910,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_CT_CHECKS] = { parse_ct_checks, NULL, PREC_NONE },
 		[TOKEN_CT_EMBED] = { parse_ct_embed, NULL, PREC_NONE },
 		[TOKEN_CT_EVAL] = { parse_ct_eval, NULL, PREC_NONE },
+		[TOKEN_CT_FEATURE] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_EXTNAMEOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_OFFSETOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_NAMEOF] = { parse_ct_call, NULL, PREC_NONE },

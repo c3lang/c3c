@@ -108,6 +108,8 @@ static void usage(void)
 	OUTPUT("  -O3+                      - Aggressive optimization, single module.");
 	OUTPUT("  -Os+                      - Optimize for size, single module.");
 	OUTPUT("  -Oz+                      - Optimize for tiny size, single module.");
+	OUTPUT("  -D <name>                 - Add feature flag <name>.");
+	OUTPUT("  -U <name>                 - Remove feature flag <name>.");
 	OUTPUT("  --build-dir <dir>         - Override build output directory.");
 	OUTPUT("  --obj-out <dir>           - Override object file output directory.");
 	OUTPUT("  --llvm-out <dir>          - Override llvm output directory for '--emit-llvm'.");
@@ -203,9 +205,9 @@ static inline bool next_is_opt()
 	return args[arg_index + 1][0] == '-';
 }
 
-static inline bool match_longopt(const char* name)
+INLINE bool match_longopt(const char* name)
 {
-	return strcmp(&current_arg[2], name) == 0;
+	return str_eq(&current_arg[2], name);
 }
 
 static inline const char *match_argopt(const char* name)
@@ -385,6 +387,29 @@ static void add_linker_arg(BuildOptions *options, const char *arg)
 	options->linker_args[options->linker_arg_count++] = arg;
 }
 
+void update_feature_flags(const char ***flags, const char ***removed_flags, const char *arg, bool add)
+{
+	const char **to_remove_from = add ? *removed_flags : *flags;
+	unsigned len = vec_size(to_remove_from);
+	// Remove if it's in there.
+	for (unsigned i = 0; i < len; i++)
+	{
+		if (str_eq(to_remove_from[i], arg))
+		{
+			vec_erase_ptr_at(to_remove_from, i);
+			break;
+		}
+	}
+	const char ***to_add_to_ref = add ? flags : removed_flags;
+	unsigned add_len = vec_size(*to_add_to_ref);
+	for (unsigned i = 0; i < add_len; i++)
+	{
+		if (str_eq((*to_add_to_ref)[i], arg)) return;
+	}
+	vec_add(*to_add_to_ref, arg);
+}
+
+
 static int parse_multi_option(const char *start, unsigned count, const char** elements)
 {
 	const char *arg = current_arg;
@@ -435,18 +460,42 @@ static void parse_option(BuildOptions *options)
 		case 'h':
 			break;
 		case 'z':
-			if (at_end()) error_exit("error: -z needs a value");
-			add_linker_arg(options, next_arg());
-			return;
-		case 'o':
-			if (at_end()) error_exit("error: -o needs a name");
-			options->output_name = next_arg();
-			return;
-		case 'O':
-			if (options->optimization_setting_override != OPT_SETTING_NOT_SET)
+			if (match_shortopt("U"))
 			{
-				FAIL_WITH_ERR("Multiple optimization levels were set.");
+				if (at_end()) error_exit("error: -z needs a value.");
+				add_linker_arg(options, next_arg());
+				return;
 			}
+			break;
+		case 'o':
+			if (match_shortopt("o"))
+			{
+				if (at_end()) error_exit("error: -o needs a name.");
+				options->output_name = next_arg();
+				return;
+			}
+			break;
+		case 'D':
+			if (match_shortopt("D"))
+			{
+				if (at_end()) error_exit("error: -D needs a feature name.");
+				const char *arg = next_arg();
+				if (!str_is_valid_constant(arg)) error_exit("Invalid feature name '%s', expected an all-uppercase constant name.", arg);
+				update_feature_flags(&options->feature_names, &options->removed_feature_names, arg, true);
+				return;
+			}
+			break;
+		case 'U':
+			if (match_shortopt("U"))
+			{
+				if (at_end()) error_exit("error: -U needs a feature name.");
+				const char *arg = next_arg();
+				if (!str_is_valid_constant(arg)) error_exit("Invalid feature name '%s', expected an all-uppercase constant name.", arg);
+				update_feature_flags(&options->feature_names, &options->removed_feature_names, arg, false);
+				return;
+			}
+			break;
+		case 'O':
 			if (match_shortopt("O0+"))
 			{
 				options->optimization_setting_override = OPT_SETTING_O0_PLUS;
@@ -501,34 +550,54 @@ static void parse_option(BuildOptions *options)
 			}
 			return;
 		case 'E':
-			if (options->compile_option != COMPILE_NORMAL)
+			if (match_shortopt("E"))
 			{
-				FAIL_WITH_ERR("Illegal combination of compile options.");
+				if (options->compile_option != COMPILE_NORMAL)
+				{
+					FAIL_WITH_ERR("Illegal combination of compile options.");
+				}
+				options->compile_option = COMPILE_LEX_ONLY;
+				return;
 			}
-			options->compile_option = COMPILE_LEX_ONLY;
-			return;
+			break;
 		case 'L':
-			if (at_end() || next_is_opt()) error_exit("error: -L needs a directory.");
-			options->linker_lib_dir[options->linker_lib_dir_count++] = check_dir(next_arg());
-			return;
+			if (match_shortopt("L"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: -L needs a directory.");
+				options->linker_lib_dir[options->linker_lib_dir_count++] = check_dir(next_arg());
+				return;
+			}
+			break;
 		case 'l':
-			if (at_end() || next_is_opt()) error_exit("error: -l needs a library name.");
-			options->linker_libs[options->linker_lib_count++] = next_arg();
-			return;
+			if (match_shortopt("l"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: -l needs a library name.");
+				options->linker_libs[options->linker_lib_count++] = next_arg();
+				return;
+			}
+			break;
 		case 'P':
-			if (options->compile_option != COMPILE_NORMAL)
+			if (match_shortopt("P"))
 			{
-				FAIL_WITH_ERR("Illegal combination of compile options.");
+				if (options->compile_option != COMPILE_NORMAL)
+				{
+					FAIL_WITH_ERR("Illegal combination of compile options.");
+				}
+				options->compile_option = COMPILE_LEX_PARSE_ONLY;
+				return;
 			}
-			options->compile_option = COMPILE_LEX_PARSE_ONLY;
-			return;
+			break;
 		case 'C':
-			if (options->compile_option != COMPILE_NORMAL)
+			if (match_shortopt("C"))
 			{
-				FAIL_WITH_ERR("Illegal combination of compile options.");
+				if (options->compile_option != COMPILE_NORMAL)
+				{
+					FAIL_WITH_ERR("Illegal combination of compile options.");
+				}
+				options->compile_option = COMPILE_LEX_PARSE_CHECK_ONLY;
+				return;
 			}
-			options->compile_option = COMPILE_LEX_PARSE_CHECK_ONLY;
-			return;
+			break;
 		case '-':
 			if (match_longopt("tb"))
 			{

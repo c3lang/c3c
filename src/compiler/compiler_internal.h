@@ -1703,6 +1703,7 @@ typedef struct
 	bool suppress_errors;
 	Decl ***locals_list;
 	HTable compiler_defines;
+	HTable features;
 	Module std_module;
 	DeclTable symbols;
 	DeclTable generic_symbols;

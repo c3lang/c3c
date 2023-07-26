@@ -1208,50 +1208,51 @@ Ast *parse_stmt(ParseContext *c)
 			return parse_ct_foreach_stmt(c);
 		case TOKEN_CT_FOR:
 			return parse_ct_for_stmt(c);
-		case TOKEN_STAR:
 		case TOKEN_AMP:
-		case TOKEN_INTEGER:
-		case TOKEN_CHAR_LITERAL:
+		case TOKEN_AT:
+		case TOKEN_AT_CONST_IDENT:
+		case TOKEN_AT_IDENT:
+		case TOKEN_AT_TYPE_IDENT:
+		case TOKEN_BANG:
 		case TOKEN_BIT_NOT:
 		case TOKEN_BIT_OR:
 		case TOKEN_BIT_XOR:
+		case TOKEN_BUILTIN:
+		case TOKEN_BYTES:
+		case TOKEN_CHAR_LITERAL:
+		case TOKEN_CT_ALIGNOF:
+		case TOKEN_CT_CHECKS:
+		case TOKEN_CT_CONST_IDENT:
+		case TOKEN_CT_DEFINED:
+		case TOKEN_CT_EMBED:
+		case TOKEN_CT_EVAL:
+		case TOKEN_CT_EXTNAMEOF:
+		case TOKEN_CT_FEATURE:
+		case TOKEN_CT_IDENT:
+		case TOKEN_CT_NAMEOF:
+		case TOKEN_CT_OFFSETOF:
+		case TOKEN_CT_QNAMEOF:
+		case TOKEN_CT_SIZEOF:
+		case TOKEN_CT_STRINGIFY:
+		case TOKEN_CT_VAARG:
+		case TOKEN_CT_VACONST:
+		case TOKEN_CT_VACOUNT:
+		case TOKEN_CT_VAEXPR:
+		case TOKEN_CT_VAREF:
+		case TOKEN_FALSE:
+		case TOKEN_INTEGER:
+		case TOKEN_LBRAPIPE:
 		case TOKEN_LPAREN:
 		case TOKEN_MINUS:
-		case TOKEN_BANG:
+		case TOKEN_MINUSMINUS:
+		case TOKEN_NULL:
 		case TOKEN_OR:
 		case TOKEN_PLUS:
-		case TOKEN_MINUSMINUS:
 		case TOKEN_PLUSPLUS:
-		case TOKEN_CT_CONST_IDENT:
-		case TOKEN_CT_IDENT:
-		case TOKEN_STRING:
 		case TOKEN_REAL:
-		case TOKEN_FALSE:
-		case TOKEN_NULL:
+		case TOKEN_STAR:
+		case TOKEN_STRING:
 		case TOKEN_TRUE:
-		case TOKEN_LBRAPIPE:
-		case TOKEN_CT_OFFSETOF:
-		case TOKEN_CT_ALIGNOF:
-		case TOKEN_CT_EXTNAMEOF:
-		case TOKEN_CT_SIZEOF:
-		case TOKEN_CT_QNAMEOF:
-		case TOKEN_CT_NAMEOF:
-		case TOKEN_CT_DEFINED:
-		case TOKEN_CT_CHECKS:
-		case TOKEN_CT_STRINGIFY:
-		case TOKEN_CT_EVAL:
-		case TOKEN_BYTES:
-		case TOKEN_BUILTIN:
-		case TOKEN_CT_VACOUNT:
-		case TOKEN_CT_VAARG:
-		case TOKEN_CT_VAEXPR:
-		case TOKEN_CT_VACONST:
-		case TOKEN_CT_VAREF:
-		case TOKEN_AT_TYPE_IDENT:
-		case TOKEN_AT_CONST_IDENT:
-		case TOKEN_AT:
-		case TOKEN_AT_IDENT:
-		case TOKEN_CT_EMBED:
 			return parse_expr_stmt(c);
 		case TOKEN_ASSERT:
 			return parse_assert_stmt(c);

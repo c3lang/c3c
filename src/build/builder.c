@@ -192,6 +192,27 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 
 	target->backend = options->backend;
 
+	// Remove feature flags
+	FOREACH_BEGIN(const char *remove_feature, options->removed_feature_names)
+		FOREACH_BEGIN_IDX(i, const char *feature, target->feature_list)
+			if (str_eq(feature, remove_feature))
+			{
+				vec_erase_ptr_at(target->feature_list, i);
+				break;
+			}
+		FOREACH_END();
+	FOREACH_END();
+
+	// Add feature flags
+	FOREACH_BEGIN(const char *add_feature, options->feature_names)
+		FOREACH_BEGIN_IDX(i, const char *feature, target->feature_list)
+			if (str_eq(feature, add_feature)) goto NEXT;
+		FOREACH_END();
+		vec_add(target->feature_list, add_feature);
+	NEXT:;
+	FOREACH_END();
+
+
 	update_build_target_with_opt_level(target, options->optimization_setting_override);
 
 	if (options->cc) target->cc = options->cc;

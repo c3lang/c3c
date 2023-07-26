@@ -7224,6 +7224,25 @@ FAIL_NO_INFER:
 	return false;
 }
 
+static inline bool sema_expr_analyse_ct_feature(SemaContext *context, Expr *expr)
+{
+	if (expr->resolve_status == RESOLVE_DONE) return expr_ok(expr);
+
+	Expr *inner = expr->ct_call_expr.main_var;
+	if (expr->ct_call_expr.flat_path) goto ERROR;
+	if (inner->expr_kind != EXPR_IDENTIFIER) goto ERROR;
+	if (inner->resolve_status != RESOLVE_NOT_DONE) goto ERROR;
+	if (!inner->identifier_expr.is_const) goto ERROR;
+
+	const char *name = inner->identifier_expr.ident;
+	void *value = htable_get(&global_context.features, (void *)name);
+	assert(!value || value == name);
+	expr_rewrite_const_bool(expr, type_bool, value != NULL);
+	return true;
+ERROR:
+	RETURN_SEMA_ERROR(inner, "Expected a feature name here, e.g. $feature(MY_FEATURE).");
+}
+
 static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr)
 {
 	if (expr->resolve_status == RESOLVE_DONE) return expr_ok(expr);
@@ -7491,6 +7510,8 @@ static inline bool sema_expr_analyse_ct_call(SemaContext *context, Expr *expr)
 		case TOKEN_CT_NAMEOF:
 		case TOKEN_CT_EXTNAMEOF:
 			return sema_expr_analyse_ct_nameof(context, expr);
+		case TOKEN_CT_FEATURE:
+			return sema_expr_analyse_ct_feature(context, expr);
 		default:
 			UNREACHABLE
 	}

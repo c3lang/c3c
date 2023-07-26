@@ -45,6 +45,7 @@ void compiler_init(const char *std_lib_dir)
 	decltable_init(&global_context.symbols, INITIAL_SYMBOL_MAP);
 	decltable_init(&global_context.generic_symbols, INITIAL_GENERIC_SYMBOL_MAP);
 
+	htable_init(&global_context.features, 1024);
 	htable_init(&global_context.compiler_defines, 16 * 1024);
 	global_context.module_list = NULL;
 	global_context.generic_module_list = NULL;
@@ -819,6 +820,12 @@ void compile()
 	asm_target.initialized = false;
 	target_setup(&active_target);
 	resolve_libraries();
+
+	TokenType type = TOKEN_CONST_IDENT;
+	FOREACH_BEGIN(const char *feature_flag, active_target.feature_list)
+		feature_flag = symtab_preset(feature_flag, TOKEN_CONST_IDENT);
+		htable_set(&global_context.features, (void *)feature_flag, (void *)feature_flag);
+	FOREACH_END();
 
 	setup_int_define("C_SHORT_SIZE", platform_target.width_c_short, type_long);
 	setup_int_define("C_INT_SIZE", platform_target.width_c_int, type_long);

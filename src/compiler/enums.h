@@ -568,6 +568,7 @@ typedef enum
 	TOKEN_CT_EVALTYPE,          // $evaltype
 	TOKEN_CT_ERROR,             // $error
 	TOKEN_CT_EXTNAMEOF,         // $extnameof
+	TOKEN_CT_FEATURE,           // $feature
 	TOKEN_CT_FOR,               // $for
 	TOKEN_CT_FOREACH,           // $foreach
 	TOKEN_CT_IF,                // $if

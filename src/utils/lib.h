@@ -132,6 +132,11 @@ char *str_vprintf(const char *var, va_list list);
 void str_ellide_in_place(char *string, size_t max_size_shown);
 bool str_is_valid_lowercase_name(const char *string);
 bool str_is_valid_constant(const char *string);
+const char *str_unescape(char *string);
+bool str_is_identifier(const char *string);
+bool str_eq(const char *str1, const char *str2);
+bool str_is_type(const char *string);
+bool str_is_integer(const char *string);
 bool str_has_no_uppercase(const char *string);
 char *str_copy(const char *start, size_t str_len);
 
@@ -599,6 +604,19 @@ static inline bool char_is_lower_alphanum_(char c)
 		default:
 			return false;
 	}
+}
+
+static inline bool char_is_upper_alphanum_(char c)
+{
+    switch (c)
+    {
+        case UPPER_CHAR_CASE:
+        case NUMBER_CHAR_CASE:
+        case '_':
+            return true;
+        default:
+            return false;
+    }
 }
 
 static inline bool char_is_letter(char c)
