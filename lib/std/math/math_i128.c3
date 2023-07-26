@@ -13,51 +13,51 @@ fn int128 __divti3(int128 a, int128 b) @extern("__divti3") @weak @nostrip
 fn uint128 __umodti3(uint128 n, uint128 d) @extern("__umodti3") @weak @nostrip
 {
 	// Ignore d = 0
-    uint128 sr = (d ? $$clz(d) : 128) - (n ? $$clz(n) : 128);
-    // If n < d then sr is wrapping.
-    // which means we can just return n.
-    if (sr > 127) return n;
-    // If d == 1 and n = MAX
-    if (sr == 127) return 0;
-    sr++;
-    uint128 r = n >> sr;
-    // Follow known algorithm:
-    n <<= 128 - sr;
-    for (uint128 carry = 0; sr > 0; sr--)
-    {
-        r = (r << 1) | (n >> 127);
-        n = (n << 1) | carry;
-        int128 sign = (int128)(d - r - 1) >> 127;
-        carry = sign & 1;
-        r -= d & sign;
-    }
-    return r;
+	uint128 sr = (d ? $$clz(d) : 128) - (n ? $$clz(n) : 128);
+	// If n < d then sr is wrapping.
+	// which means we can just return n.
+	if (sr > 127) return n;
+	// If d == 1 and n = MAX
+	if (sr == 127) return 0;
+	sr++;
+	uint128 r = n >> sr;
+	// Follow known algorithm:
+	n <<= 128 - sr;
+	for (uint128 carry = 0; sr > 0; sr--)
+	{
+		r = (r << 1) | (n >> 127);
+		n = (n << 1) | carry;
+		int128 sign = (int128)(d - r - 1) >> 127;
+		carry = sign & 1;
+		r -= d & sign;
+	}
+	return r;
 }
 
 fn uint128 __udivti3(uint128 n, uint128 d) @extern("__udivti3") @weak @nostrip
 {
 	// Ignore d = 0
-    uint128 sr = (d ? $$clz(d) : 128) - (n ? $$clz(n) : 128);
-    // If n < d then sr is wrapping.
-    // which means we can just return 0.
-    if (sr > 127) return 0;
-    // If d == 1 and n = MAX
-    if (sr == 127) return n;
-    sr++;
-    uint128 r = n >> sr;
-    // Follow known algorithm:
-    n <<= 128 - sr;
-    uint128 carry = 0;
-    for (; sr > 0; sr--)
-    {
-        r = (r << 1) | (n >> 127);
-        n = (n << 1) | carry;
-        int128 sign = (int128)(d - r - 1) >> 127;
-        carry = sign & 1;
-        r -= d & sign;
-    }
+	uint128 sr = (d ? $$clz(d) : 128) - (n ? $$clz(n) : 128);
+	// If n < d then sr is wrapping.
+	// which means we can just return 0.
+	if (sr > 127) return 0;
+	// If d == 1 and n = MAX
+	if (sr == 127) return n;
+	sr++;
+	uint128 r = n >> sr;
+	// Follow known algorithm:
+	n <<= 128 - sr;
+	uint128 carry = 0;
+	for (; sr > 0; sr--)
+	{
+		r = (r << 1) | (n >> 127);
+		n = (n << 1) | carry;
+		int128 sign = (int128)(d - r - 1) >> 127;
+		carry = sign & 1;
+		r -= d & sign;
+	}
 	n = (n << 1) | carry;
-    return n;
+	return n;
 }
 
 fn int128 __modti3(int128 a, int128 b) @extern("__modti3") @weak @nostrip
@@ -85,56 +85,56 @@ union Int128bits @private
 
 fn uint128 __lshrti3(uint128 a, uint b) @extern("__lshrti3") @weak @nostrip
 {
-    Int128bits result;
-    result.all = a;
-    if (b >= 64)
-    {
-        result.ulow = result.uhigh >> (b - 64);
-        result.uhigh = 0;
-    }
-    else
-    {
-        if (b == 0) return a;
-        result.ulow = (result.uhigh << (64 - b)) | (result.ulow >> b);
-        result.uhigh  = result.uhigh >> b;
-    }
-    return result.all;
+	Int128bits result;
+	result.all = a;
+	if (b >= 64)
+	{
+		result.ulow = result.uhigh >> (b - 64);
+		result.uhigh = 0;
+	}
+	else
+	{
+		if (b == 0) return a;
+		result.ulow = (result.uhigh << (64 - b)) | (result.ulow >> b);
+		result.uhigh  = result.uhigh >> b;
+	}
+	return result.all;
 }
 
 fn int128 __ashrti3(int128 a, uint b) @extern("__ashrti3") @weak @nostrip
 {
-    Int128bits result;
-    result.all = a;
-    if (b >= 64)
-    {
-        result.ilow = result.ihigh >> (b - 64);
-        result.ihigh = result.ihigh >> 63;
-    }
-    else
-    {
-        if (b == 0) return a;
-        result.ilow = result.ihigh << (64 - b) | (result.ilow >> b);
-        result.ihigh  = result.ihigh >> b;
-    }
-    return result.all;
+	Int128bits result;
+	result.all = a;
+	if (b >= 64)
+	{
+		result.ilow = result.ihigh >> (b - 64);
+		result.ihigh = result.ihigh >> 63;
+	}
+	else
+	{
+		if (b == 0) return a;
+		result.ilow = result.ihigh << (64 - b) | (result.ilow >> b);
+		result.ihigh  = result.ihigh >> b;
+	}
+	return result.all;
 }
 
 fn int128 __ashlti3(int128 a, uint b) @extern("__ashlti3") @weak @nostrip
 {
-    Int128bits result;
-    result.all = a;
-    if (b >= 64)
-    {
-        result.ulow = 0;
-        result.uhigh = result.ulow << (b - 64);
-    }
-    else
-    {
-        if (b == 0) return a;
-        result.uhigh = (result.uhigh << b) | (result.ulow >> (64 - b));
-        result.ulow  = result.ulow << b;
-    }
-    return result.all;
+	Int128bits result;
+	result.all = a;
+	if (b >= 64)
+	{
+		result.ulow = 0;
+		result.uhigh = result.ulow << (b - 64);
+	}
+	else
+	{
+		if (b == 0) return a;
+		result.uhigh = (result.uhigh << b) | (result.ulow >> (64 - b));
+		result.ulow  = result.ulow << b;
+	}
+	return result.all;
 }
 
 // Returns: a * b
@@ -143,7 +143,7 @@ fn int128 __mulddi3(ulong a, ulong b) @private
 {
 	Int128bits r;
 	const ulong LOWER_MASK = 0xffff_ffff;
-    r.ulow = (a & LOWER_MASK) * (b & LOWER_MASK);
+	r.ulow = (a & LOWER_MASK) * (b & LOWER_MASK);
 	ulong t = r.ulow >> 32;
 	r.ulow &= LOWER_MASK;
 	t += (a >> 32) * (b & LOWER_MASK);
@@ -204,36 +204,36 @@ macro float_from_i128($Type, a) @private
 	$endswitch
 	if (a == 0) return ($Type)0;
 	// Grab and remove sign.
-    int128 sign = a >> 127;
-    a = (a ^ sign) - sign;
+	int128 sign = a >> 127;
+	a = (a ^ sign) - sign;
 	int sd = 128 - (int)$$clz(a); // digits
 	int e = sd - 1; // exponent
 	if (sd > MANT_DIG)
 	{
-	    switch (sd)
-	    {
-            case MANT_DIG + 1:
-                a <<= 1;
-            case MANT_DIG + 2:
-                break;
-            default:
-                a = (a >> (sd - (MANT_DIG + 2)))
-                    | (uint128)((a & ((uint128)(-1) >> ((128 + MANT_DIG + 2) - sd))) != 0);
-        }
+		switch (sd)
+		{
+			case MANT_DIG + 1:
+				a <<= 1;
+			case MANT_DIG + 2:
+				break;
+			default:
+				a = (a >> (sd - (MANT_DIG + 2)))
+					| (uint128)((a & ((uint128)(-1) >> ((128 + MANT_DIG + 2) - sd))) != 0);
+		}
 		a |= (uint128)((a & 4) != 0);
-        a++;
-        a >>= 2;
-        if (a & (1i128 << MANT_DIG))
-        {
-            a >>= 1;
-            e++;
-        }
-    }
-    else
-    {
-        a <<= (MANT_DIG - sd);
-    }
-    return bitcast((($Rep)sign & SIGN_BIT) | ((($Rep)e + ($Rep)EXP_BIAS) << SIGNIFICANT_BITS) | (($Rep)a & ($Rep)MANTISSA_MASK), $Type);
+		a++;
+		a >>= 2;
+		if (a & (1i128 << MANT_DIG))
+		{
+			a >>= 1;
+			e++;
+		}
+	}
+	else
+	{
+		a <<= (MANT_DIG - sd);
+	}
+	return bitcast((($Rep)sign & SIGN_BIT) | ((($Rep)e + ($Rep)EXP_BIAS) << SIGNIFICANT_BITS) | (($Rep)a & ($Rep)MANTISSA_MASK), $Type);
 }
 
 macro float_from_u128($Type, a) @private
@@ -264,30 +264,30 @@ macro float_from_u128($Type, a) @private
 	int e = sd - 1; // exponent
 	if (sd > MANT_DIG)
 	{
-	    switch (sd)
-	    {
-            case MANT_DIG + 1:
-                a <<= 1;
-            case MANT_DIG + 2:
-                break;
-            default:
-                a = (a >> (sd - (MANT_DIG + 2)))
-                    | (uint128)((a & ((uint128)(-1) >> ((128 + MANT_DIG + 2) - sd))) != 0);
-        }
+		switch (sd)
+		{
+			case MANT_DIG + 1:
+				a <<= 1;
+			case MANT_DIG + 2:
+				break;
+			default:
+				a = (a >> (sd - (MANT_DIG + 2)))
+					| (uint128)((a & ((uint128)(-1) >> ((128 + MANT_DIG + 2) - sd))) != 0);
+		}
 		a |= (uint128)((a & 4) != 0);
-        a++;
-        a >>= 2;
-        if (a & (1i128 << MANT_DIG))
-        {
-            a >>= 1;
-            e++;
-        }
-    }
-    else
-    {
-        a <<= (MANT_DIG - sd);
-    }
-    return bitcast(((($Rep)e + ($Rep)EXP_BIAS) << SIGNIFICANT_BITS) | (($Rep)a & ($Rep)MANTISSA_MASK), $Type);
+		a++;
+		a >>= 2;
+		if (a & (1i128 << MANT_DIG))
+		{
+			a >>= 1;
+			e++;
+		}
+	}
+	else
+	{
+		a <<= (MANT_DIG - sd);
+	}
+	return bitcast(((($Rep)e + ($Rep)EXP_BIAS) << SIGNIFICANT_BITS) | (($Rep)a & ($Rep)MANTISSA_MASK), $Type);
 }
 
 
@@ -332,7 +332,7 @@ macro fixuint(a) @private
 	if (sign == -1 || exponent < 0) return 0u128;
 	if ((uint)exponent >= uint128.sizeof * 8) return ~0u128;
 	if (exponent < SIGNIFICANT_BITS) return (uint128)significand >> (SIGNIFICANT_BITS - exponent);
-    return (uint128)significand << (exponent - SIGNIFICANT_BITS);
+	return (uint128)significand << (exponent - SIGNIFICANT_BITS);
 }
 
 macro fixint(a) @private
@@ -377,5 +377,5 @@ macro fixint(a) @private
 	if ((uint)exponent >= uint128.sizeof * 8) return sign == 1 ? int128.max : int128.min;
 
 	if (exponent < SIGNIFICANT_BITS) return sign * ((int128)significand >> (SIGNIFICANT_BITS - exponent));
-    return sign * ((int128)significand << (exponent - SIGNIFICANT_BITS));
+	return sign * ((int128)significand << (exponent - SIGNIFICANT_BITS));
 }

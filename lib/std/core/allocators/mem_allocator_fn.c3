@@ -13,11 +13,11 @@ fn void*! null_allocator_fn(Allocator* this, usz bytes, usz alignment, usz offse
 	switch (kind)
 	{
 		case ALLOC:
-        case CALLOC:
-        case REALLOC:
-        case ALIGNED_ALLOC:
-        case ALIGNED_REALLOC:
-        case ALIGNED_CALLOC:
+		case CALLOC:
+		case REALLOC:
+		case ALIGNED_ALLOC:
+		case ALIGNED_REALLOC:
+		case ALIGNED_CALLOC:
 			return AllocationFailure.OUT_OF_MEMORY?;
 		default:
 			return null;
@@ -42,7 +42,7 @@ macro void*! @aligned_alloc(#alloc_fn, usz bytes, usz alignment, usz offset)
 	$else
 		void* data = #alloc_fn(header + bytes);
 	$endif
-    void* mem = mem::aligned_pointer(data + header + offset, alignment) - offset;
+	void* mem = mem::aligned_pointer(data + header + offset, alignment) - offset;
 	assert(mem > data);
 	AlignedBlock* desc = (AlignedBlock*)mem - 1;
 	*desc = { bytes, data };
@@ -76,7 +76,7 @@ macro void*! @aligned_realloc(#calloc_fn, #free_fn, void* old_pointer, usz bytes
 {
 	AlignedBlock* desc = (AlignedBlock*)old_pointer - 1;
 	void* data_start = desc.start;
-    void* new_data = @aligned_calloc(#calloc_fn, bytes, alignment, offset)!;
+	void* new_data = @aligned_calloc(#calloc_fn, bytes, alignment, offset)!;
 	mem::copy(new_data, old_pointer, desc.len > bytes ? desc.len : bytes, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
 	$if $checks(#free_fn(data_start)!):
 	#free_fn(data_start)!;
@@ -101,36 +101,36 @@ fn void*! libc_allocator_fn(Allocator* unused, usz bytes, usz alignment, usz off
 	if (!alignment) alignment = mem::DEFAULT_MEM_ALIGNMENT;
 	assert(math::is_power_of_2(alignment), "Alignment was not a power of 2");
 
-    void* data;
-    switch (kind)
-    {
-        case ALIGNED_ALLOC:
-            data = @aligned_alloc(libc::malloc, bytes, alignment, offset)!!;
-        case ALLOC:
-            data = libc::malloc(bytes);
-        case ALIGNED_CALLOC:
-            data = @aligned_calloc(fn void*(usz bytes) => libc::calloc(bytes, 1), bytes, alignment, offset)!!;
+	void* data;
+	switch (kind)
+	{
+		case ALIGNED_ALLOC:
+			data = @aligned_alloc(libc::malloc, bytes, alignment, offset)!!;
+		case ALLOC:
+			data = libc::malloc(bytes);
+		case ALIGNED_CALLOC:
+			data = @aligned_calloc(fn void*(usz bytes) => libc::calloc(bytes, 1), bytes, alignment, offset)!!;
 		case CALLOC:
-            data = libc::calloc(bytes, 1);
-        case ALIGNED_REALLOC:
-            if (!bytes) nextcase ALIGNED_FREE;
-            if (!old_pointer) nextcase ALIGNED_CALLOC;
-            data = @aligned_realloc(fn void*(usz bytes) => libc::calloc(bytes, 1), libc::free, old_pointer, bytes, alignment, offset)!!;
-        case REALLOC:
-            if (!bytes) nextcase FREE;
-            if (!old_pointer) nextcase CALLOC;
-            data = libc::realloc(old_pointer, bytes);
-        case RESET:
+			data = libc::calloc(bytes, 1);
+		case ALIGNED_REALLOC:
+			if (!bytes) nextcase ALIGNED_FREE;
+			if (!old_pointer) nextcase ALIGNED_CALLOC;
+			data = @aligned_realloc(fn void*(usz bytes) => libc::calloc(bytes, 1), libc::free, old_pointer, bytes, alignment, offset)!!;
+		case REALLOC:
+			if (!bytes) nextcase FREE;
+			if (!old_pointer) nextcase CALLOC;
+			data = libc::realloc(old_pointer, bytes);
+		case RESET:
 			unreachable("Reset unsupported");
-        case ALIGNED_FREE:
-            @aligned_free(libc::free, old_pointer)!!;
-            return null;
-        case FREE:
-            libc::free(old_pointer);
-            return null;
-        default:
-            unreachable();
-    }
-    if (!data) return AllocationFailure.OUT_OF_MEMORY?;
-    return data;
+		case ALIGNED_FREE:
+			@aligned_free(libc::free, old_pointer)!!;
+			return null;
+		case FREE:
+			libc::free(old_pointer);
+			return null;
+		default:
+			unreachable();
+	}
+	if (!data) return AllocationFailure.OUT_OF_MEMORY?;
+	return data;
 }

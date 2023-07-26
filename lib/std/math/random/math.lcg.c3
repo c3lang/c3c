@@ -18,15 +18,15 @@ def Lcg128_64 = distinct uint128;
 
 fn void Lcg128_64.seed(&lcg, char[16] seed)
 {
-    *lcg = bitcast(seed, Lcg128_64);
+	*lcg = bitcast(seed, Lcg128_64);
 }
 
 fn ulong Lcg128_64.next(&lcg)
 {
-    uint128* s = (uint128*)lcg;
-    ulong result = (ulong)(*s >> 64);
-    *s = *s * MUL_LCG128 + ODD_PHI128;
-    return result;
+	uint128* s = (uint128*)lcg;
+	ulong result = (ulong)(*s >> 64);
+	*s = *s * MUL_LCG128 + ODD_PHI128;
+	return result;
 }
 
 
@@ -36,15 +36,15 @@ def Lcg64_32 = distinct ulong;
 
 fn void Lcg64_32.seed(&lcg, char[8] seed)
 {
-    *lcg = bitcast(seed, Lcg64_32);
+	*lcg = bitcast(seed, Lcg64_32);
 }
 
 fn uint Lcg64_32.next(&lcg)
 {
-    ulong* s = (ulong*)lcg;
-    uint result = (uint)(*s >> 32);
-    *s = *s * MUL_LCG64 + ODD_PHI64;
-    return result;
+	ulong* s = (ulong*)lcg;
+	uint result = (uint)(*s >> 32);
+	*s = *s * MUL_LCG64 + ODD_PHI64;
+	return result;
 }
 
 
@@ -54,15 +54,15 @@ def Lcg32_16 = distinct uint;
 
 fn void Lcg32_16.seed(&lcg, char[4] seed)
 {
-    *lcg = bitcast(seed, Lcg32_16);
+	*lcg = bitcast(seed, Lcg32_16);
 }
 
 fn ushort Lcg32_16.next(&lcg)
 {
-    uint* s = (uint*)lcg;
-    ushort result = (ushort)(*s >> 16);
-    *s = *s * MUL_LCG32 + ODD_PHI32;
-    return result;
+	uint* s = (uint*)lcg;
+	ushort result = (ushort)(*s >> 16);
+	*s = *s * MUL_LCG32 + ODD_PHI32;
+	return result;
 }
 
 
@@ -72,13 +72,13 @@ def Lcg16_8 = distinct ushort;
 
 fn void Lcg16_8.seed(&lcg, char[2] seed)
 {
-    *lcg = bitcast(seed, Lcg16_8);
+	*lcg = bitcast(seed, Lcg16_8);
 }
 
 fn char Lcg16_8.next(&lcg)
 {
-    ushort* s = (ushort*)lcg;
-    char result = (char)(*s >> 8);
-    *s = *s * MUL_LCG16 + ODD_PHI16;
-    return result;
+	ushort* s = (ushort*)lcg;
+	char result = (char)(*s >> 8);
+	*s = *s * MUL_LCG16 + ODD_PHI16;
+	return result;
 }

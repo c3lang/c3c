@@ -210,11 +210,11 @@ macro bool @unlikely(bool #value, $probability = 1.0) @builtin
  **/
 macro @expect(#value, expected, $probability = 1.0) @builtin
 {
-    $if $probability == 1.0:
+	$if $probability == 1.0:
 		return $$expect(#value, ($typeof(#value))expected);
-    $else
+	$else
 		return $$expect_with_probability(#value, expected, $probability);
-    $endif
+	$endif
 }
 
 /**
@@ -264,13 +264,13 @@ macro bool @convertible(#expr, $To) @builtin
 macro anyfault @catchof(#expr) @builtin
 {
 	if (catch f = #expr) return f;
-    return anyfault {};
+	return anyfault {};
 }
 
 macro bool @ok(#expr) @builtin
 {
 	if (catch #expr) return false;
-    return true;
+	return true;
 }
 
 macro uint int.hash(int i) => i;

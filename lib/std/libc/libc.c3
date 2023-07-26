@@ -11,14 +11,14 @@ const int RAND_MAX = 0x7fffffff;
 
 struct DivResult
 {
-    CInt quot;
-    CInt rem;
+	CInt quot;
+	CInt rem;
 }
 
 struct LongDivResult
 {
-    CLong quot;
-    CLong rem;
+	CLong quot;
+	CLong rem;
 }
 
 fn Errno errno()
@@ -394,8 +394,8 @@ struct Tm
 	CInt	tm_yday;	// days since January 1 [0-365]
 	CInt	tm_isdst;	// Daylight Savings Time flag
 	TimeOffset tm_gmtoff @if(!env::WIN32);	/* offset from UTC in seconds */
-    char *tm_zone @if(!env::WIN32);	/* timezone abbreviation */
-    CInt tm_nsec @if(env::WASI);
+	char *tm_zone @if(!env::WIN32);	/* timezone abbreviation */
+	CInt tm_nsec @if(env::WASI);
 }
 
 struct TimeSpec

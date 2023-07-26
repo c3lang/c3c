@@ -102,6 +102,7 @@
 - `assert` may now take varargs for formatting.
  
 ### Stdlib changes
+- Socket handling.
 - `csv` package.
 - Updated posix/win32 stdlib namespacing
 - `process` stdlib

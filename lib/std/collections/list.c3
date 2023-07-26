@@ -10,10 +10,10 @@ const ELEMENT_IS_POINTER = Type.kindof == POINTER;
 
 struct List
 {
-    usz size;
-    usz capacity;
-    Allocator *allocator;
-    Type *entries;
+	usz size;
+	usz capacity;
+	Allocator *allocator;
+	Type *entries;
 }
 
 /**
@@ -66,13 +66,13 @@ fn String List.to_string(&self, Allocator* using = mem::heap()) @dynamic
 
 fn void List.push(&self, Type element) @inline
 {
-    self.append(element);
+	self.append(element);
 }
 
 fn void List.append(&self, Type element)
 {
-    self.ensure_capacity();
-    self.entries[self.size++] = element;
+	self.ensure_capacity();
+	self.entries[self.size++] = element;
 }
 
 /**
@@ -80,12 +80,12 @@ fn void List.append(&self, Type element)
  */
 fn Type List.pop(&self)
 {
-    return self.entries[--self.size];
+	return self.entries[--self.size];
 }
 
 fn void List.clear(&self)
 {
-    self.size = 0;
+	self.size = 0;
 }
 
 /**
@@ -93,18 +93,18 @@ fn void List.clear(&self)
  */
 fn Type List.pop_first(&self)
 {
-    Type value = self.entries[0];
-    self.remove_at(0);
-    return value;
+	Type value = self.entries[0];
+	self.remove_at(0);
+	return value;
 }
 
 fn void List.remove_at(&self, usz index)
 {
-    for (usz i = index + 1; i < self.size; i++)
-    {
-        self.entries[i - 1] = self.entries[i];
-    }
-    self.size--;
+	for (usz i = index + 1; i < self.size; i++)
+	{
+		self.entries[i - 1] = self.entries[i];
+	}
+	self.size--;
 }
 
 fn void List.add_all(&self, List* other_list)
@@ -113,7 +113,7 @@ fn void List.add_all(&self, List* other_list)
 	self.reserve(other_list.size);
 	foreach (&value : other_list)
 	{
-	    self.entries[self.size++] = *value;
+		self.entries[self.size++] = *value;
 	}
 }
 
@@ -151,24 +151,24 @@ fn void List.add_array(&self, Type[] array)
 	self.reserve(array.len);
 	foreach (&value : array)
 	{
-	    self.entries[self.size++] = *value;
+		self.entries[self.size++] = *value;
 	}
 }
 
 fn void List.push_front(&self, Type type) @inline
 {
-    self.insert_at(0, type);
+	self.insert_at(0, type);
 }
 
 fn void List.insert_at(&self, usz index, Type type)
 {
-    self.ensure_capacity();
-    for (usz i = self.size; i > index; i--)
-    {
-        self.entries[i] = self.entries[i - 1];
-    }
-    self.size++;
-    self.entries[index] = type;
+	self.ensure_capacity();
+	for (usz i = self.size; i > index; i--)
+	{
+		self.entries[i] = self.entries[i - 1];
+	}
+	self.size++;
+	self.entries[index] = type;
 }
 
 /**
@@ -176,51 +176,51 @@ fn void List.insert_at(&self, usz index, Type type)
  **/
 fn void List.set_at(&self, usz index, Type type)
 {
-    self.entries[index] = type;
+	self.entries[index] = type;
 }
 
 fn void List.remove_last(&self)
 {
-    self.size--;
+	self.size--;
 }
 
 fn void List.remove_first(&self)
 {
-    self.remove_at(0);
+	self.remove_at(0);
 }
 
 fn Type* List.first(&self)
 {
-    return self.size ? &self.entries[0] : null;
+	return self.size ? &self.entries[0] : null;
 }
 
 fn Type* List.last(&self)
 {
-    return self.size ? &self.entries[self.size - 1] : null;
+	return self.size ? &self.entries[self.size - 1] : null;
 }
 
 fn bool List.is_empty(&self) @inline
 {
-    return !self.size;
+	return !self.size;
 }
 
 fn usz List.len(&self) @operator(len) @inline
 {
-    return self.size;
+	return self.size;
 }
 
 fn Type List.get(&self, usz index) @inline
 {
-    return self.entries[index];
+	return self.entries[index];
 }
 
 fn void List.free(&self)
 {
 	if (!self.allocator) return;
-    free_aligned(self.entries, .using = self.allocator);
-    self.capacity = 0;
-    self.size = 0;
-    self.entries = null;
+	free_aligned(self.entries, .using = self.allocator);
+	self.capacity = 0;
+	self.size = 0;
+	self.entries = null;
 }
 
 fn void List.swap(&self, usz i, usz j)
@@ -276,29 +276,29 @@ fn void List.reserve(&self, usz min_capacity)
 	if (self.capacity >= min_capacity) return;
 	if (!self.allocator) self.allocator = mem::heap();
 	min_capacity = math::next_power_of_2(min_capacity);
-    self.entries = realloc_aligned(self.entries, Type.sizeof * min_capacity, .alignment = Type[1].alignof, .using = self.allocator) ?? null;
+	self.entries = realloc_aligned(self.entries, Type.sizeof * min_capacity, .alignment = Type[1].alignof, .using = self.allocator) ?? null;
 	self.capacity = min_capacity;
 }
 
 macro Type List.@item_at(&self, usz index) @operator([])
 {
-    return self.entries[index];
+	return self.entries[index];
 }
 
 fn Type* List.get_ref(&self, usz index) @operator(&[]) @inline
 {
-    return &self.entries[index];
+	return &self.entries[index];
 }
 
 fn void List.set(&self, usz index, Type value) @operator([]=)
 {
-    self.entries[index] = value;
+	self.entries[index] = value;
 }
 
 fn void List.ensure_capacity(&self, usz added = 1) @inline @private
 {
 	usz new_size = self.size + added;
-    if (self.capacity > new_size) return;
+	if (self.capacity > new_size) return;
 
 	assert(new_size < usz.max / 2U);
 	usz new_capacity = self.capacity ? 2U * self.capacity : 16U;

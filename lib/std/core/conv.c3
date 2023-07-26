@@ -23,26 +23,26 @@ fn usz! char32_to_utf8(Char32 c, char* output, usz available)
 			output[0] = (char)c;
 			return 1;
 		case c <= 0x7ff:
-	        if (available < 2) return UnicodeResult.CONVERSION_FAILED?;
+			if (available < 2) return UnicodeResult.CONVERSION_FAILED?;
 			output[0] = (char)(0xC0 | c >> 6);
-            output[1] = (char)(0x80 | (c & 0x3F));
-            return 2;
-        case c <= 0xffff:
-	        if (available < 3) return UnicodeResult.CONVERSION_FAILED?;
-            output[0] = (char)(0xE0 | c >> 12);
-            output[1] = (char)(0x80 | (c >> 6 & 0x3F));
-            output[2] = (char)(0x80 | (c & 0x3F));
-            return 3;
-        case c <= 0x10ffff:
-	        if (available < 4) return UnicodeResult.CONVERSION_FAILED?;
-		    output[0] = (char)(0xF0 | c >> 18);
-            output[1] = (char)(0x80 | (c >> 12 & 0x3F));
-            output[2] = (char)(0x80 | (c >> 6 & 0x3F));
-            output[3] = (char)(0x80 | (c & 0x3F));
-            return 4;
-        default:
-            // 0x10FFFF and above is not defined.
-            return UnicodeResult.CONVERSION_FAILED?;
+			output[1] = (char)(0x80 | (c & 0x3F));
+			return 2;
+		case c <= 0xffff:
+			if (available < 3) return UnicodeResult.CONVERSION_FAILED?;
+			output[0] = (char)(0xE0 | c >> 12);
+			output[1] = (char)(0x80 | (c >> 6 & 0x3F));
+			output[2] = (char)(0x80 | (c & 0x3F));
+			return 3;
+		case c <= 0x10ffff:
+			if (available < 4) return UnicodeResult.CONVERSION_FAILED?;
+			output[0] = (char)(0xF0 | c >> 18);
+			output[1] = (char)(0x80 | (c >> 12 & 0x3F));
+			output[2] = (char)(0x80 | (c >> 6 & 0x3F));
+			output[3] = (char)(0x80 | (c & 0x3F));
+			return 4;
+		default:
+			// 0x10FFFF and above is not defined.
+			return UnicodeResult.CONVERSION_FAILED?;
 	}
 }
 
@@ -83,7 +83,7 @@ fn void! char16_to_utf8_unsafe(Char16 *ptr, usz *available, char** output)
 		*available = 1;
 		return;
 	}
-    // Low surrogate first is an error
+	// Low surrogate first is an error
 	if (high & UTF16_SURROGATE_MASK != UTF16_SURROGATE_HIGH_VALUE) return UnicodeResult.INVALID_UTF16?;
 
 	// Unmatched high surrogate is an error
@@ -94,10 +94,10 @@ fn void! char16_to_utf8_unsafe(Char16 *ptr, usz *available, char** output)
 	// Unmatched high surrogate, invalid
 	if (low & UTF16_SURROGATE_MASK != UTF16_SURROGATE_LOW_VALUE) return UnicodeResult.INVALID_UTF16?;
 
-    // The high bits of the codepoint are the value bits of the high surrogate
-    // The low bits of the codepoint are the value bits of the low surrogate
-    Char32 uc = (high & UTF16_SURROGATE_CODEPOINT_MASK) << UTF16_SURROGATE_BITS
-                | (low & UTF16_SURROGATE_CODEPOINT_MASK) + UTF16_SURROGATE_OFFSET;
+	// The high bits of the codepoint are the value bits of the high surrogate
+	// The low bits of the codepoint are the value bits of the low surrogate
+	Char32 uc = (high & UTF16_SURROGATE_CODEPOINT_MASK) << UTF16_SURROGATE_BITS
+				| (low & UTF16_SURROGATE_CODEPOINT_MASK) + UTF16_SURROGATE_OFFSET;
 	char32_to_utf8_unsafe(uc, output);
 	*available = 2;
 }
@@ -113,16 +113,16 @@ fn void char32_to_utf8_unsafe(Char32 c, char** output)
 			(*output)++[0] = (char)c;
 		case c < 0x7ff:
 			(*output)++[0] = (char)(0xC0 | c >> 6);
-            (*output)++[0] = (char)(0x80 | (c & 0x3F));
-        case c < 0xffff:
-	        (*output)++[0] = (char)(0xE0 | c >> 12);
-            (*output)++[0] = (char)(0x80 | (c >> 6 & 0x3F));
-            (*output)++[0] = (char)(0x80 | (c & 0x3F));
-        default:
-	 	    (*output)++[0] = (char)(0xF0 | c >> 18);
-            (*output)++[0] = (char)(0x80 | (c >> 12 & 0x3F));
-            (*output)++[0] = (char)(0x80 | (c >> 6 & 0x3F));
-            (*output)++[0] = (char)(0x80 | (c & 0x3F));
+			(*output)++[0] = (char)(0x80 | (c & 0x3F));
+		case c < 0xffff:
+			(*output)++[0] = (char)(0xE0 | c >> 12);
+			(*output)++[0] = (char)(0x80 | (c >> 6 & 0x3F));
+			(*output)++[0] = (char)(0x80 | (c & 0x3F));
+		default:
+			(*output)++[0] = (char)(0xF0 | c >> 18);
+			(*output)++[0] = (char)(0x80 | (c >> 12 & 0x3F));
+			(*output)++[0] = (char)(0x80 | (c >> 6 & 0x3F));
+			(*output)++[0] = (char)(0x80 | (c & 0x3F));
 	}
 }
 
@@ -137,26 +137,26 @@ fn Char32! utf8_to_char32(char* ptr, usz* size)
 	if (max_size < 1) return UnicodeResult.INVALID_UTF8?;
 	char c = (ptr++)[0];
 
-    if ((c & 0x80) == 0)
-    {
-        *size = 1;
-        return c;
-    }
-    if ((c & 0xE0) == 0xC0)
-    {
+	if ((c & 0x80) == 0)
+	{
+		*size = 1;
+		return c;
+	}
+	if ((c & 0xE0) == 0xC0)
+	{
 		if (max_size < 2) return UnicodeResult.INVALID_UTF8?;
-        *size = 2;
-        Char32 uc = (c & 0x1F) << 6;
-        c = *ptr;
-        // Overlong sequence or invalid second.
+		*size = 2;
+		Char32 uc = (c & 0x1F) << 6;
+		c = *ptr;
+		// Overlong sequence or invalid second.
 		if (!uc || c & 0xC0 != 0x80) return UnicodeResult.INVALID_UTF8?;
 		return uc + c & 0x3F;
-    }
-    if ((c & 0xF0) == 0xE0)
-    {
+	}
+	if ((c & 0xF0) == 0xE0)
+	{
 		if (max_size < 3) return UnicodeResult.INVALID_UTF8?;
-        *size = 3;
-        Char32 uc = (c & 0x0F) << 12;
+		*size = 3;
+		Char32 uc = (c & 0x0F) << 12;
 		c = ptr++[0];
 		if (c & 0xC0 != 0x80) return UnicodeResult.INVALID_UTF8?;
 		uc += (c & 0x3F) << 6;
@@ -164,11 +164,11 @@ fn Char32! utf8_to_char32(char* ptr, usz* size)
 		// Overlong sequence or invalid last
 		if (!uc || c & 0xC0 != 0x80) return UnicodeResult.INVALID_UTF8?;
 		return uc + c & 0x3F;
-    }
-    if (max_size < 4) return UnicodeResult.INVALID_UTF8?;
-    if ((c & 0xF8) != 0xF0) return UnicodeResult.INVALID_UTF8?;
-    *size = 4;
-    Char32 uc = (c & 0x07) << 18;
+	}
+	if (max_size < 4) return UnicodeResult.INVALID_UTF8?;
+	if ((c & 0xF8) != 0xF0) return UnicodeResult.INVALID_UTF8?;
+	*size = 4;
+	Char32 uc = (c & 0x07) << 18;
 	c = ptr++[0];
 	if (c & 0xC0 != 0x80) return UnicodeResult.INVALID_UTF8?;
 	uc += (c & 0x3F) << 12;
@@ -272,8 +272,8 @@ fn usz utf16len_for_utf8(String utf8)
 		if (c & 0xF0 == 0xE0) continue;
 		i++;
 		len16++;
-    }
-    return len16;
+	}
+	return len16;
 }
 
 /**
@@ -308,7 +308,7 @@ fn usz! utf32to8(Char32[] utf32, String utf8_buffer)
 		ptr += used;
 	}
 	// Zero terminate if there is space.
-    if (len > 0) ptr[0] = 0;
+	if (len > 0) ptr[0] = 0;
 	return utf8_buffer.len - len;
 }
 
@@ -323,19 +323,19 @@ fn usz! utf8to32(String utf8, Char32[] utf32_buffer)
 {
 	usz len = utf8.len;
 	Char32* ptr = utf32_buffer.ptr;
-    usz len32 = 0;
-    usz buf_len = utf32_buffer.len;
-    for (usz i = 0; i < len;)
-    {
-        if (len32 == buf_len) return UnicodeResult.CONVERSION_FAILED?;
-        usz width = len - i;
-    	Char32 uc = utf8_to_char32(&utf8[i], &width) @inline!;
-    	i += width;
-    	ptr[len32++] = uc;
-    }
-    // Zero terminate if possible
-    if (len32 + 1 < buf_len) ptr[len32] = 0;
-    return len32;
+	usz len32 = 0;
+	usz buf_len = utf32_buffer.len;
+	for (usz i = 0; i < len;)
+	{
+		if (len32 == buf_len) return UnicodeResult.CONVERSION_FAILED?;
+		usz width = len - i;
+		Char32 uc = utf8_to_char32(&utf8[i], &width) @inline!;
+		i += width;
+		ptr[len32++] = uc;
+	}
+	// Zero terminate if possible
+	if (len32 + 1 < buf_len) ptr[len32] = 0;
+	return len32;
 }
 
 /**
@@ -369,12 +369,12 @@ fn void! utf8to32_unsafe(String utf8, Char32* utf32_buffer)
 {
 	usz len = utf8.len;
 	for (usz i = 0; i < len;)
-    {
-        usz width = len - i;
-    	Char32 uc = utf8_to_char32(&utf8[i], &width) @inline!;
-    	i += width;
-    	(utf32_buffer++)[0] = uc;
-    }
+	{
+		usz width = len - i;
+		Char32 uc = utf8_to_char32(&utf8[i], &width) @inline!;
+		i += width;
+		(utf32_buffer++)[0] = uc;
+	}
 }
 
 /**
@@ -388,13 +388,13 @@ fn void! utf8to32_unsafe(String utf8, Char32* utf32_buffer)
 fn void! utf8to16_unsafe(String utf8, Char16* utf16_buffer)
 {
 	usz len = utf8.len;
-    for (usz i = 0; i < len;)
-    {
-        usz width = len - i;
-    	Char32 uc = utf8_to_char32(&utf8[i], &width) @inline!;
-        char32_to_utf16_unsafe(uc, &utf16_buffer) @inline;
-        i += width;
-    }
+	for (usz i = 0; i < len;)
+	{
+		usz width = len - i;
+		Char32 uc = utf8_to_char32(&utf8[i], &width) @inline!;
+		char32_to_utf16_unsafe(uc, &utf16_buffer) @inline;
+		i += width;
+	}
 }
 
 /**

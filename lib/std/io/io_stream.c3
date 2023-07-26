@@ -106,9 +106,9 @@ fn char! Stream.read_byte(self) @inline
 
 fn usz! Stream.read_all(self, char[] buffer) @inline
 {
-    usz n = self.read(buffer)!;
-    if (n != buffer.len) return IoError.UNEXPECTED_EOF?;
-    return n;
+	usz n = self.read(buffer)!;
+	if (n != buffer.len) return IoError.UNEXPECTED_EOF?;
+	return n;
 }
 
 fn String! Stream.treadline(self) => self.readline(mem::temp()) @inline;
@@ -118,26 +118,26 @@ fn String! Stream.readline(self, Allocator* using = mem::heap())
 	ReadByteStreamFn func;
 	if (func = self.fns.read_byte_fn, !func) return IoError.UNSUPPORTED_OPERATION?;
 	bool read = false;
-    char val = func(self)!;
-    if (val == '\n') return "";
-    @pool(using)
-    {
-        DString str = dstring::tnew_with_capacity(256);
-    	if (val != '\r') str.append(val);
-    	while (1)
-        {
-            char! c = func(self);
-            if (catch err = c)
-            {
-                if (err == IoError.EOF) break;
-                return err?;
-            }
-            if (c == '\r') continue;
-            if (c == '\n') break;
-            str.append_char(c);
-        }
-        return str.copy_str(using);
-    };
+	char val = func(self)!;
+	if (val == '\n') return "";
+	@pool(using)
+	{
+		DString str = dstring::tnew_with_capacity(256);
+		if (val != '\r') str.append(val);
+		while (1)
+		{
+			char! c = func(self);
+			if (catch err = c)
+			{
+				if (err == IoError.EOF) break;
+				return err?;
+			}
+			if (c == '\r') continue;
+			if (c == '\n') break;
+			str.append_char(c);
+		}
+		return str.copy_str(using);
+	};
 }
 
 fn usz! Stream.write(self, char[] bytes) @inline

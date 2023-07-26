@@ -17,7 +17,7 @@ fn void EnumSet.add(&self, Enum v)
 	$if IS_CHAR_ARRAY:
 		(*self)[(usz)v / 8] |= (char)(1u << ((usz)v % 8));
 	$else
-        *self = (EnumSet)((EnumSetType)*self | 1u << (EnumSetType)v);
+		*self = (EnumSet)((EnumSetType)*self | 1u << (EnumSetType)v);
 	$endif
 }
 
@@ -26,7 +26,7 @@ fn void EnumSet.clear(&self)
 	$if IS_CHAR_ARRAY:
 		*self = {};
 	$else
-        *self = 0;
+		*self = 0;
 	$endif
 }
 
@@ -37,10 +37,10 @@ fn bool EnumSet.remove(&self, Enum v)
 		(*self)[(usz)v / 8] &= (char)~(1u << ((usz)v % 8));
 		return true;
 	$else
-        EnumSetType old = (EnumSetType)*self;
-        EnumSetType new = old & ~(1u << (EnumSetType)v);
-        *self = (EnumSet)new;
-        return old != new;
+		EnumSetType old = (EnumSetType)*self;
+		EnumSetType new = old & ~(1u << (EnumSetType)v);
+		*self = (EnumSet)new;
+		return old != new;
 	$endif
 }
 
@@ -49,7 +49,7 @@ fn bool EnumSet.has(&self, Enum v)
 	$if IS_CHAR_ARRAY:
 		return (bool)(((*self)[(usz)v / 8] << ((usz)v % 8)) & 0x01);
 	$else
-        return ((EnumSetType)*self & (1u << (EnumSetType)v)) != 0;
+		return ((EnumSetType)*self & (1u << (EnumSetType)v)) != 0;
 	$endif
 }
 
@@ -58,7 +58,7 @@ fn void EnumSet.add_all(&self, EnumSet s)
 	$if IS_CHAR_ARRAY:
 		foreach (i, c : s) (*self)[i] |= c;
 	$else
-        *self = (EnumSet)((EnumSetType)*self | (EnumSetType)s);
+		*self = (EnumSet)((EnumSetType)*self | (EnumSetType)s);
 	$endif
 }
 
@@ -67,7 +67,7 @@ fn void EnumSet.retain_all(&self, EnumSet s)
 	$if IS_CHAR_ARRAY:
 		foreach (i, c : s) (*self)[i] &= c;
 	$else
-        *self = (EnumSet)((EnumSetType)*self & (EnumSetType)s);
+		*self = (EnumSet)((EnumSetType)*self & (EnumSetType)s);
 	$endif
 }
 
@@ -76,7 +76,7 @@ fn void EnumSet.remove_all(&self, EnumSet s)
 	$if IS_CHAR_ARRAY:
 		foreach (i, c : s) (*self)[i] &= ~c;
 	$else
-        *self = (EnumSet)((EnumSetType)*self & ~(EnumSetType)s);
+		*self = (EnumSet)((EnumSetType)*self & ~(EnumSetType)s);
 	$endif
 }
 
@@ -87,7 +87,7 @@ fn EnumSet EnumSet.and_of(&self, EnumSet s)
 		copy.retain_all(s);
 		return copy;
 	$else
-        return (EnumSet)((EnumSetType)*self & (EnumSetType)s);
+		return (EnumSet)((EnumSetType)*self & (EnumSetType)s);
 	$endif
 }
 
@@ -98,7 +98,7 @@ fn EnumSet EnumSet.or_of(&self, EnumSet s)
 		copy.add_all(s);
 		return copy;
 	$else
-        return (EnumSet)((EnumSetType)*self | (EnumSetType)s);
+		return (EnumSet)((EnumSetType)*self | (EnumSetType)s);
 	$endif
 }
 
@@ -110,7 +110,7 @@ fn EnumSet EnumSet.diff_of(&self, EnumSet s)
 		copy.remove_all(s);
 		return copy;
 	$else
-        return (EnumSet)((EnumSetType)*self & ~(EnumSetType)s);
+		return (EnumSet)((EnumSetType)*self & ~(EnumSetType)s);
 	$endif
 }
 
@@ -121,7 +121,7 @@ fn EnumSet EnumSet.xor_of(&self, EnumSet s)
 		foreach (i, c : s) copy[i] ^= c;
 		return copy;
 	$else
-        return (EnumSet)((EnumSetType)*self ^ (EnumSetType)s);
+		return (EnumSet)((EnumSetType)*self ^ (EnumSetType)s);
 	$endif
 }
 

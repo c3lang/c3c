@@ -386,29 +386,29 @@ fn Matrix4x4 Matrix4x4.scale(&self, Real[<3>] v)
 
 fn Matrix4x4 ortho(Real left, Real right, Real top, Real bottom, Real near, Real far)
 {
-    Real width = right - left;
-    Real height = top - bottom;
-    Real depth = far - near;
-    return {
-        2 / width, 0, 0, 0,
-        0, 2 / height, 0, 0,
-        0, 0, -2 / depth, 0,
-        -(right + left) / width, -(top + bottom) / height, -(far + near) / depth, 1
-    };
+	Real width = right - left;
+	Real height = top - bottom;
+	Real depth = far - near;
+	return {
+		2 / width, 0, 0, 0,
+		0, 2 / height, 0, 0,
+		0, 0, -2 / depth, 0,
+		-(right + left) / width, -(top + bottom) / height, -(far + near) / depth, 1
+	};
 }
 
 // fov in radians
 fn Matrix4x4 perspective(Real fov, Real aspect_ratio, Real near, Real far)
 {
- 	Real f = (Real)math::tan(math::PI * 0.5 - 0.5 * fov);
+	Real f = (Real)math::tan(math::PI * 0.5 - 0.5 * fov);
 	Real rangeInv = (Real)1.0 / (near - far);
 	
-    return {
-        f / aspect_ratio, 0, 0, 0,
-        0, f, 0, 0,
-        0, 0, (near + far) * rangeInv, -1,
-        0, 0, near * far * rangeInv * 2, 0,
-    };
+	return {
+		f / aspect_ratio, 0, 0, 0,
+		0, f, 0, 0,
+		0, 0, (near + far) * rangeInv, -1,
+		0, 0, near * far * rangeInv * 2, 0,
+	};
 }
 
 const Matrix2x2 IDENTITY2 = { .m = { [0] = 1, [3] = 1 } };

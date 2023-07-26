@@ -192,7 +192,7 @@ def Win32_CRITICAL_SECTION = distinct ulong[5];
 struct Win32_SECURITY_ATTRIBUTES
 {
 	Win32_DWORD  nLength;
-    Win32_LPVOID lpSecurityDescriptor;
+	Win32_LPVOID lpSecurityDescriptor;
 	Win32_BOOL   bInheritHandle;
 }
 
@@ -226,15 +226,15 @@ struct Win32_STARTUPINFOW
 struct Win32_OVERLAPPED
 {
 	Win32_ULONG_PTR internal;
-    Win32_ULONG_PTR internalHigh;
-    union {
-        struct {
-            Win32_DWORD offset;
-            Win32_DWORD offsetHigh;
-        }
-        Win32_PVOID pointer;
-    }
-    Win32_HANDLE hEvent;
+	Win32_ULONG_PTR internalHigh;
+	union {
+		struct {
+			Win32_DWORD offset;
+			Win32_DWORD offsetHigh;
+		}
+		Win32_PVOID pointer;
+	}
+	Win32_HANDLE hEvent;
 }
 
 def Win32_LPOVERLAPPED = Win32_OVERLAPPED*;
@@ -243,7 +243,7 @@ def Win32_LPSTARTUPINFOW = Win32_STARTUPINFOW*;
 struct Win32_STARTUPINFOEXW
 {
 	inline Win32_STARTUPINFOW win32_StartupInfo;
-    Win32_LPPROC_THREAD_ATTRIBUTE_LIST lpAttributeList;
+	Win32_LPPROC_THREAD_ATTRIBUTE_LIST lpAttributeList;
 }
 
 def Win32_LPPROC_THREAD_ATTRIBUTE_LIST = void*;

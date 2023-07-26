@@ -213,11 +213,11 @@ fn bool String.contains(s, String needle)
  **/
 fn usz! String.index_of_char(s, char needle)
 {
-    foreach (i, c : s)
-    {
-        if (c == needle) return i;
-    }
-    return SearchResult.MISSING?;
+	foreach (i, c : s)
+	{
+		if (c == needle) return i;
+	}
+	return SearchResult.MISSING?;
 }
 
 /**
@@ -231,11 +231,11 @@ fn usz! String.index_of_char(s, char needle)
  **/
 fn usz! String.rindex_of_char(s, char needle)
 {
-    foreach_r (i, c : s)
-    {
-        if (c == needle) return i;
-    }
-    return SearchResult.MISSING?;
+	foreach_r (i, c : s)
+	{
+		if (c == needle) return i;
+	}
+	return SearchResult.MISSING?;
 }
 
 /**
@@ -331,30 +331,30 @@ fn usz ZString.char_len(str)
 fn usz ZString.len(str)
 {
 	usz len = 0;
-    char* ptr = (char*)str;
-    while (char c = ptr++[0]) len++;
-    return len;
+	char* ptr = (char*)str;
+	while (char c = ptr++[0]) len++;
+	return len;
 }
 
 
 fn ZString String.zstr_copy(s, Allocator* using = mem::heap())
 {
-    usz len = s.len;
-    char* str = malloc(len + 1, .using = using);
-    mem::copy(str, s.ptr, len);
-    str[len] = 0;
-    return (ZString)str;
+	usz len = s.len;
+	char* str = malloc(len + 1, .using = using);
+	mem::copy(str, s.ptr, len);
+	str[len] = 0;
+	return (ZString)str;
 }
 
 fn String String.concat(s1, String s2, Allocator* using = mem::heap())
 {
-    usz full_len = s1.len + s2.len;
-    char* str = malloc(full_len + 1, .using = using);
-    usz s1_len = s1.len;
-    mem::copy(str, s1.ptr, s1_len);
-    mem::copy(str + s1_len, s2.ptr, s2.len);
-    str[full_len] = 0;
-    return (String)str[:full_len];
+	usz full_len = s1.len + s2.len;
+	char* str = malloc(full_len + 1, .using = using);
+	usz s1_len = s1.len;
+	mem::copy(str, s1.ptr, s1_len);
+	mem::copy(str + s1_len, s2.ptr, s2.len);
+	str[full_len] = 0;
+	return (String)str[:full_len];
 }
 
 fn String String.tconcat(s1, String s2) => s1.concat(s2, mem::temp());
@@ -364,11 +364,11 @@ fn ZString String.zstr_tcopy(s) => s.zstr_copy(mem::temp()) @inline;
 
 fn String String.copy(s, Allocator* using = mem::heap())
 {
-    usz len = s.len;
-    char* str = malloc(len + 1, .using = using);
-    mem::copy(str, s.ptr, len);
-    str[len] = 0;
-    return (String)str[:len];
+	usz len = s.len;
+	char* str = malloc(len + 1, .using = using);
+	mem::copy(str, s.ptr, len);
+	str[len] = 0;
+	return (String)str[:len];
 }
 
 fn String String.tcopy(s) => s.copy(mem::temp()) @inline;

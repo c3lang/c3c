@@ -11,11 +11,11 @@ fn void! NativeMutex.init(&mtx, MutexType type)
 	Pthread_mutexattr_t attr;
 	if (pthread_mutexattr_init(&attr)) return ThreadFault.INIT_FAILED?;
 	defer pthread_mutexattr_destroy(&attr);
-    if (type & thread::MUTEX_RECURSIVE)
-    {
-        if (pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE)) return ThreadFault.INIT_FAILED?;
-    }
-    if (pthread_mutex_init(mtx, &attr)) return ThreadFault.INIT_FAILED?;
+	if (type & thread::MUTEX_RECURSIVE)
+	{
+		if (pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE)) return ThreadFault.INIT_FAILED?;
+	}
+	if (pthread_mutex_init(mtx, &attr)) return ThreadFault.INIT_FAILED?;
 }
 
 fn void! NativeMutex.destroy(&mtx)
@@ -30,25 +30,25 @@ fn void! NativeMutex.lock(&mtx)
 
 fn void! NativeMutex.lock_timeoutout(&mtx, ulong ms)
 {
-    /* Try to acquire the lock and, if we fail, sleep for 5ms. */
-    Errno result;
-    while ((result = pthread_mutex_trylock(mtx)) == errno::EBUSY)
-    {
-        if (!ms) break;
-        ulong sleep = min(5, ms);
-        if (!libc::nanosleep(&& TimeSpec { .s = 0, .ns = (CLong)sleep * 1000_000 }, null)) return ThreadFault.LOCK_FAILED?;
-        ms -= sleep;
-    }
-    switch (result)
-    {
-        case errno::OK:
-            return;
-        case errno::EBUSY:
-        case errno::ETIMEDOUT:
-            return ThreadFault.LOCK_TIMEOUT?;
-        default:
-            return ThreadFault.LOCK_FAILED?;
-    }
+	/* Try to acquire the lock and, if we fail, sleep for 5ms. */
+	Errno result;
+	while ((result = pthread_mutex_trylock(mtx)) == errno::EBUSY)
+	{
+		if (!ms) break;
+		ulong sleep = min(5, ms);
+		if (!libc::nanosleep(&& TimeSpec { .s = 0, .ns = (CLong)sleep * 1000_000 }, null)) return ThreadFault.LOCK_FAILED?;
+		ms -= sleep;
+	}
+	switch (result)
+	{
+		case errno::OK:
+			return;
+		case errno::EBUSY:
+		case errno::ETIMEDOUT:
+			return ThreadFault.LOCK_TIMEOUT?;
+		default:
+			return ThreadFault.LOCK_FAILED?;
+	}
 }
 
 fn bool NativeMutex.try_lock(&mtx)
@@ -83,7 +83,7 @@ fn void! NativeConditionVariable.broadcast(&cond)
 
 fn void! NativeConditionVariable.wait(&cond, NativeMutex* mtx)
 {
-    if (pthread_cond_wait(cond, mtx)) return ThreadFault.WAIT_FAILED?;
+	if (pthread_cond_wait(cond, mtx)) return ThreadFault.WAIT_FAILED?;
 }
 
 fn void! NativeConditionVariable.wait_timeout(&cond, NativeMutex* mtx, ulong ms)
@@ -115,11 +115,11 @@ fn void! NativeThread.create(&thread, ThreadFn thread_fn, void* arg)
 	PosixThreadData *thread_data = malloc(PosixThreadData);
 	*thread_data = { .thread_fn = thread_fn, .arg = arg };
 	if (pthread_create(thread, null, &callback, thread_data) != 0)
-    {
-        *thread = null;
-        free(thread_data);
-        return ThreadFault.INIT_FAILED?;
-    }
+	{
+		*thread = null;
+		free(thread_data);
+		return ThreadFault.INIT_FAILED?;
+	}
 }
 
 fn void! NativeThread.detach(thread)

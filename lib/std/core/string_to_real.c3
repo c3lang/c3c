@@ -105,7 +105,7 @@ macro double! decfloat(char[] chars, int $bits, int $emin, int sign)
 				got_digit = true;
 			default:
 				dc++;
-        		if (c != '0') x[KMAX - 4] |= 1;
+				if (c != '0') x[KMAX - 4] |= 1;
 
 		}
 		if (index == last_char) break;
@@ -235,7 +235,7 @@ macro double! decfloat(char[] chars, int $bits, int $emin, int sign)
 			carry = (1000000000 >> sh) * tmp;
 			if (k == a && !x[k])
 			{
-			 	a = (a + 1) & MASK;
+				a = (a + 1) & MASK;
 				i--;
 				rp -= 9;
 			}
@@ -404,7 +404,7 @@ macro double! hexfloat(char[] chars, int $bits, int $emin, int sign)
 	if ((c | 32) == 'p')
 	{
 		long e2val = String.to_long((String)chars[index + 1..]) ?? (NumberConversion.MALFORMED_FLOAT?)!;
-    	e2 = e2val;
+		e2 = e2val;
 	}
 	e2 += 4 * rp - 32;
 	if (!x) return sign * 0.0;
@@ -465,18 +465,18 @@ macro String.to_real(chars, $Type) @private
 		$error "Unexpected type";
 	$endswitch
 
- 	while (chars.len && chars[0] == ' ') chars = chars[1..];
- 	if (!chars.len) return NumberConversion.MALFORMED_FLOAT?;
- 	switch (chars[0])
- 	{
- 	    case '-':
- 	        sign = -1;
- 	        nextcase;
- 	    case '+':
- 	        chars = chars[1..];
- 	}
- 	if (chars == "infinity" || chars == "INFINITY") return sign * $Type.inf;
- 	if (chars == "NAN" || chars == "nan") return $Type.nan;
+	while (chars.len && chars[0] == ' ') chars = chars[1..];
+	if (!chars.len) return NumberConversion.MALFORMED_FLOAT?;
+	switch (chars[0])
+	{
+		case '-':
+			sign = -1;
+			nextcase;
+		case '+':
+			chars = chars[1..];
+	}
+	if (chars == "infinity" || chars == "INFINITY") return sign * $Type.inf;
+	if (chars == "NAN" || chars == "nan") return $Type.nan;
 
 	if (chars.len > 2 && chars[0] == '0' && (chars[1] | 32) == 'x')
 	{

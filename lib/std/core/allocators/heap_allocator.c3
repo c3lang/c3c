@@ -33,33 +33,33 @@ fn void*! simple_heap_allocator_function(Allocator* this, usz size, usz alignmen
 {
 	SimpleHeapAllocator* heap = (SimpleHeapAllocator*)this;
 	switch (kind)
-    {
-        case ALIGNED_ALLOC:
-            return @aligned_alloc(heap._alloc, size, alignment, offset);
+	{
+		case ALIGNED_ALLOC:
+			return @aligned_alloc(heap._alloc, size, alignment, offset);
 		case ALLOC:
-            return heap._alloc(size);
-        case ALIGNED_CALLOC:
-            return @aligned_calloc(heap._calloc, size, alignment, offset);
-    	case CALLOC:
-            return heap._calloc(size);
-        case ALIGNED_REALLOC:
-            if (!size) nextcase ALIGNED_FREE;
-            if (!old_pointer) nextcase ALIGNED_CALLOC;
-            return @aligned_realloc(heap._calloc, heap._free, old_pointer, size, alignment, offset);
-        case REALLOC:
-            if (!size) nextcase FREE;
-            if (!old_pointer) nextcase CALLOC;
-            return heap._realloc(old_pointer, size);
-        case RESET:
-            unreachable("Reset unsupported");
-        case ALIGNED_FREE:
-            @aligned_free(heap._free, old_pointer)!;
-            return null;
-        case FREE:
-            heap._free(old_pointer);
-            return null;
-        default:
-            unreachable();
+			return heap._alloc(size);
+		case ALIGNED_CALLOC:
+			return @aligned_calloc(heap._calloc, size, alignment, offset);
+		case CALLOC:
+			return heap._calloc(size);
+		case ALIGNED_REALLOC:
+			if (!size) nextcase ALIGNED_FREE;
+			if (!old_pointer) nextcase ALIGNED_CALLOC;
+			return @aligned_realloc(heap._calloc, heap._free, old_pointer, size, alignment, offset);
+		case REALLOC:
+			if (!size) nextcase FREE;
+			if (!old_pointer) nextcase CALLOC;
+			return heap._realloc(old_pointer, size);
+		case RESET:
+			unreachable("Reset unsupported");
+		case ALIGNED_FREE:
+			@aligned_free(heap._free, old_pointer)!;
+			return null;
+		case FREE:
+			heap._free(old_pointer);
+			return null;
+		default:
+			unreachable();
 	}
 }
 
@@ -88,10 +88,10 @@ fn void*! SimpleHeapAllocator._calloc(&self, usz bytes) @local
 fn void*! SimpleHeapAllocator._alloc(&self, usz bytes) @local
 {
 	usz aligned_bytes = mem::aligned_offset(bytes, mem::DEFAULT_MEM_ALIGNMENT);
-    if (!self.free_list)
-    {
+	if (!self.free_list)
+	{
 		self.add_block(aligned_bytes)!;
-    }
+	}
 
 	Header* current = self.free_list;
 	Header* previous = current;
@@ -107,10 +107,10 @@ fn void*! SimpleHeapAllocator._alloc(&self, usz bytes) @local
 				else
 				{
 					previous.next = current.next;
-                }
-                current.next = null;
-                return current + 1;
-            case current.size > aligned_bytes:
+				}
+				current.next = null;
+				return current + 1;
+			case current.size > aligned_bytes:
 				Header* unallocated = (Header*)((char*)current + aligned_bytes + Header.sizeof);
 				unallocated.size = current.size - aligned_bytes;
 				unallocated.next = current.next;
@@ -178,18 +178,18 @@ fn void SimpleHeapAllocator._free(&self, void* ptr) @local
 	if (current)
 	{
 		// Insert after the current block.
-        // Are the blocks adjacent?
-        if (current == (Header*)((char*)(block + 1) + block.size))
-        {
-            // Merge
-    		block.size += current.size + Header.sizeof;
-            block.next = current.next;
-        }
-        else
-        {
-            // Chain to current
-            block.next = current;
-        }
+		// Are the blocks adjacent?
+		if (current == (Header*)((char*)(block + 1) + block.size))
+		{
+			// Merge
+			block.size += current.size + Header.sizeof;
+			block.next = current.next;
+		}
+		else
+		{
+			// Chain to current
+			block.next = current;
+		}
 	}
 	if (prev == current)
 	{
@@ -201,13 +201,13 @@ fn void SimpleHeapAllocator._free(&self, void* ptr) @local
 		// Prev adjacent?
 		if (block == (Header*)((char*)(prev + 1) + prev.size))
 		{
-    		prev.size += block.size + Header.sizeof;
+			prev.size += block.size + Header.sizeof;
 			prev.next = block.next;
 		}
 		else
 		{
-	        // Link prev to block
-	        prev.next = block;
+			// Link prev to block
+			prev.next = block;
 		}
 	}
 }
@@ -217,7 +217,7 @@ union Header @local
 	struct
 	{
 		Header* next;
-  	    usz size;
-    }
-    usz align;
+		usz size;
+	}
+	usz align;
 }

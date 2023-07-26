@@ -135,22 +135,22 @@ fn Object*! JsonParser.parse_map(&self)
 	while (token != JsonTokenType.RBRACE)
 	{
 		if (token != JsonTokenType.STRING) return JsonParsingError.UNEXPECTED_CHARACTER?;
-        DString string = self.last_string;
-        if (map.has_key(string.as_str())) return JsonParsingError.DUPLICATE_MEMBERS?;
-        // Copy the key to our temp holder. We do this to work around the issue
-        // if the temp allocator should be used as the default allocator.
-        temp_key.clear();
-        temp_key.append(string);
-        self.parse_expected(COLON)!;
-        Object* element = self.parse_any()!;
+		DString string = self.last_string;
+		if (map.has_key(string.as_str())) return JsonParsingError.DUPLICATE_MEMBERS?;
+		// Copy the key to our temp holder. We do this to work around the issue
+		// if the temp allocator should be used as the default allocator.
+		temp_key.clear();
+		temp_key.append(string);
+		self.parse_expected(COLON)!;
+		Object* element = self.parse_any()!;
 		map.set(temp_key.as_str(), element);
-        token = self.advance()!;
-        if (token == JsonTokenType.COMMA)
-        {
-            token = self.advance()!;
-            continue;
-        }
-        if (token != JsonTokenType.RBRACE) return JsonParsingError.UNEXPECTED_CHARACTER?;
+		token = self.advance()!;
+		if (token == JsonTokenType.COMMA)
+		{
+			token = self.advance()!;
+			continue;
+		}
+		if (token != JsonTokenType.RBRACE) return JsonParsingError.UNEXPECTED_CHARACTER?;
 	}
 	return map;
 }
@@ -168,7 +168,7 @@ fn Object*! JsonParser.parse_array(&self)
 		if (token == JsonTokenType.COMMA)
 		{
 			token = self.advance()!;
-		    continue;
+			continue;
 		}
 		if (token != JsonTokenType.RBRACKET) return JsonParsingError.UNEXPECTED_CHARACTER?;
 	}

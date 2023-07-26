@@ -25,14 +25,14 @@ macro bool! native_rmdir(Path path)
 			}
 		$case env::WIN32:
 			@pool()
-		    {
+			{
 				if (win32::removeDirectoryW(path.as_str().to_temp_utf16()!!)) return true;
 				switch (win32::getLastError())
 				{
 					case win32::ERROR_ACCESS_DENIED:
 						return IoError.NO_PERMISSION?;
 					case win32::ERROR_CURRENT_DIRECTORY:
-				        return IoError.BUSY?;
+						return IoError.BUSY?;
 					case win32::ERROR_DIR_NOT_EMPTY:
 						return IoError.DIR_NOT_EMPTY?;
 					case win32::ERROR_DIRECTORY:
@@ -41,7 +41,7 @@ macro bool! native_rmdir(Path path)
 					default:
 						return IoError.GENERAL_ERROR?;
 				}
-		    };
+			};
 		$default:
 			return IoError.UNSUPPORTED_OPERATION?;
 	$endswitch

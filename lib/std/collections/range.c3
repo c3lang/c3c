@@ -26,7 +26,7 @@ fn bool Range.contains(&self, Type value) @inline
  **/
 fn Type Range.get(&self, usz index) @operator([])
 {
-    return self.start + (Type)index;
+	return self.start + (Type)index;
 }
 
 fn String Range.to_string(&self, Allocator* using = mem::heap()) @dynamic
@@ -71,5 +71,5 @@ fn String ExclusiveRange.to_string(&self, Allocator* using = mem::heap()) @dynam
  **/
 fn Type ExclusiveRange.get(&self, usz index) @operator([])
 {
-    return self.start + (Type)index;
+	return self.start + (Type)index;
 }

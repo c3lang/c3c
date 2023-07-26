@@ -13,14 +13,14 @@ struct StackTrace
 
 struct VirtualAny
 {
-    void* ptr;
-    typeid type_id;
+	void* ptr;
+	typeid type_id;
 }
 
 struct SubArrayContainer
 {
-    void* ptr;
-    usz len;
+	void* ptr;
+	usz len;
 }
 
 def TestFn = fn void!();

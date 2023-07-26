@@ -5,41 +5,41 @@ module std::hash::crc32;
 
 struct Crc32
 {
-    uint result;
+	uint result;
 }
 
 fn void Crc32.init(&self, uint seed = 0)
 {
-    self.result = ~seed;
+	self.result = ~seed;
 }
 
 fn void Crc32.updatec(&self, char c)
 {
-    self.result = (self.result >> 8) ^ CRC32_TABLE[(self.result ^ c) & 0xFF];
+	self.result = (self.result >> 8) ^ CRC32_TABLE[(self.result ^ c) & 0xFF];
 }
 
 fn void Crc32.update(&self, char[] data)
 {
-    uint result = self.result;
-    foreach (char x : data)
-    {
-        result = (result >> 8) ^ CRC32_TABLE[(result ^ x) & 0xFF];
-    }
-    self.result = result;
+	uint result = self.result;
+	foreach (char x : data)
+	{
+		result = (result >> 8) ^ CRC32_TABLE[(result ^ x) & 0xFF];
+	}
+	self.result = result;
 }
 
 fn uint Crc32.final(&self)
 {
-    return ~self.result;
+	return ~self.result;
 }
 
 fn uint encode(char[] data)
 {
-    uint result = ~(uint)(0);
-    foreach (char x : data)
-    {
-        result = (result >> 8) ^ CRC32_TABLE[(result ^ x) & 0xFF];
-    }
+	uint result = ~(uint)(0);
+	foreach (char x : data)
+	{
+		result = (result >> 8) ^ CRC32_TABLE[(result ^ x) & 0xFF];
+	}
 	return ~result;
 }
 

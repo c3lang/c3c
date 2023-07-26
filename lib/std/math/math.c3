@@ -82,7 +82,7 @@ enum RoundingMode : int
 
 fault MatrixError
 {
-    MATRIX_INVERSE_DOESNT_EXIST,
+	MATRIX_INVERSE_DOESNT_EXIST,
 }
 
 def Complexf = Complex(<float>);
@@ -359,13 +359,13 @@ macro min(x, y, ...)
 {
 	$if $vacount == 0:
 		return $$min(x, y);
-    $else
-    	var m = $$min(x, y);
-    	$for (var $i = 0; $i < $vacount; $i++)
-    		m = $$min(m, $vaarg($i));
-    	$endfor
-    	return m;
-    $endif
+	$else
+		var m = $$min(x, y);
+		$for (var $i = 0; $i < $vacount; $i++)
+			m = $$min(m, $vaarg($i));
+		$endfor
+		return m;
+	$endif
 }
 
 /**
@@ -385,11 +385,11 @@ macro nearbyint(x) => $$nearbyint(x);
  **/
 macro pow(x, exp)
 {
-    $if types::is_floatlike($typeof(exp)):
+	$if types::is_floatlike($typeof(exp)):
 		return $$pow(x, ($typeof(x))exp);
-    $else
+	$else
 		return $$pow_int(x, exp);
-    $endif
+	$endif
 }
 
 /**
@@ -906,7 +906,7 @@ macro equals_vec(v1, v2) @private
 	var abs_diff = math::abs(v1 - v2);
 	var abs_v1 = math::abs(v1);
 	var abs_v2 = math::abs(v2);
-    $typeof(abs_v2) eps = 1;
+	$typeof(abs_v2) eps = 1;
 	return abs_diff.comp_le(FLOAT_EPSILON * math::max(abs_v1, abs_v2, eps)).and();
 }
 

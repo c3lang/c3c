@@ -168,9 +168,9 @@ fn usz Path.start_of_base_name(self) @local
 
 fn bool! Path.is_absolute(self)
 {
-    String path_str = self.as_str();
-    if (!path_str.len) return false;
-    usz path_start = volume_name_len(path_str, self.env)!;
+	String path_str = self.as_str();
+	if (!path_str.len) return false;
+	usz path_start = volume_name_len(path_str, self.env)!;
 	return path_start < path_str.len && is_separator(path_str[path_start], self.env);
 }
 
@@ -180,16 +180,16 @@ fn Path! Path.absolute(self, Allocator* using = mem::heap())
 	if (!path_str.len) path_str = ".";
 	if (path_str == ".")
 	{
-	    String cwd = os::getcwd(mem::temp())!;
-	    return new(cwd, using, self.env);
+		String cwd = os::getcwd(mem::temp())!;
+		return new(cwd, using, self.env);
 	}
 	switch (self.env)
 	{
-	    case WIN32:
-            usz path_start = volume_name_len(path_str, self.env)!;
-            if (path_start > 0) return self;
-	    case POSIX:
-	        if (path_str[0] == PREFERRED_SEPARATOR_POSIX) return self;
+		case WIN32:
+			usz path_start = volume_name_len(path_str, self.env)!;
+			if (path_start > 0) return self;
+		case POSIX:
+			if (path_str[0] == PREFERRED_SEPARATOR_POSIX) return self;
 	}
 	String cwd = os::getcwd(mem::temp())!;
 	return Path{ cwd, self.env }.append(path_str, using)!;
@@ -235,28 +235,28 @@ fn usz! volume_name_len(String path, PathEnv path_env) @local
 	usz len = path.len;
 	if (len < 2 || path_env != PathEnv.WIN32) return 0;
 	switch (path[0])
-    {
-    	case '\\':
-    	    // "\\" paths.. must be longer than 2
-    	    if (len == 2) return 0;
+	{
+		case '\\':
+			// "\\" paths.. must be longer than 2
+			if (len == 2) return 0;
 			int count = 1;
 			while (count < len && path[count] == '\\') count++;
 			// Not 2 => folded paths
 			if (count != 2) return 0;
 			// Check that we have a name followed by '/'
 			for (usz i = 2; i < len; i++)
-    		{
-    		    char c = path[i];
-    			if (is_win32_separator(c)) return i;
-    			if (is_reserved_win32_path_char(c)) return PathResult.INVALID_PATH?;
-    		}
-    		return PathResult.INVALID_PATH?;
-    	case 'A'..'Z':
-    	case 'a'..'z':
-    	    return path[1] == ':' ? 2 : 0;
-    	default:
-    	    return 0;
-    }
+			{
+				char c = path[i];
+				if (is_win32_separator(c)) return i;
+				if (is_reserved_win32_path_char(c)) return PathResult.INVALID_PATH?;
+			}
+			return PathResult.INVALID_PATH?;
+		case 'A'..'Z':
+		case 'a'..'z':
+			return path[1] == ':' ? 2 : 0;
+		default:
+			return 0;
+	}
 }
 
 fn Path! Path.parent(self)
@@ -275,7 +275,7 @@ fn Path! Path.parent(self)
 fn String! normalize(String path_str, PathEnv path_env = DEFAULT_PATH_ENV)
 {
 	if (!path_str.len) return "";
-    usz path_start = volume_name_len(path_str, path_env)!;
+	usz path_start = volume_name_len(path_str, path_env)!;
 	usz path_len = path_str.len;
 	if (path_start == path_len) return path_str;
 	char path_separator = path_env == PathEnv.WIN32 ? PREFERRED_SEPARATOR_WIN32 : PREFERRED_SEPARATOR_POSIX;
@@ -367,7 +367,7 @@ fn String! normalize(String path_str, PathEnv path_env = DEFAULT_PATH_ENV)
 					}
 					// Reading, we go from /../abc to /../abc
 					//                      ^            ^
- 					i += 2;
+					i += 2;
 					continue;
 				default:
 					break;
@@ -411,18 +411,18 @@ def PathWalker = fn bool(Path, bool is_dir, void*);
 
 fn bool! Path.walk(self, PathWalker w, void* data, Allocator* using = mem::heap())
 {
-    Path abs = self.absolute(using)!;
-    defer abs.free();
-    PathList files = ls(abs, .using = using)!;
-    foreach (f : files)
-    {
-        if (f.as_str() == "." || f.as_str() == "..") continue;
-        f = abs.append(f.as_str(), using)!;
-        bool is_directory = is_dir(f);
-        if (w(f, is_directory, data)) return true;
-        if (is_directory && f.walk(w, data, using)!) return true;
-    }
-    return false;
+	Path abs = self.absolute(using)!;
+	defer abs.free();
+	PathList files = ls(abs, .using = using)!;
+	foreach (f : files)
+	{
+		if (f.as_str() == "." || f.as_str() == "..") continue;
+		f = abs.append(f.as_str(), using)!;
+		bool is_directory = is_dir(f);
+		if (w(f, is_directory, data)) return true;
+		if (is_directory && f.walk(w, data, using)!) return true;
+	}
+	return false;
 }
 
 fn String Path.as_str(self) @inline

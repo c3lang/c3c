@@ -5,10 +5,10 @@ module std::core::env;
 import libc;
 enum CompilerOptLevel
 {
-    O0,
-    O1,
-    O2,
-    O3
+	O0,
+	O1,
+	O2,
+	O3
 }
 
 enum MemoryEnvironment

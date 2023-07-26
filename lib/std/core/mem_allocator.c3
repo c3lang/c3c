@@ -37,27 +37,27 @@ macro bool is_valid_aligned_allocator($Type)
 
 struct Allocator
 {
-    AllocatorFunction function;
+	AllocatorFunction function;
 }
 
 enum AllocationKind
 {
-    ALLOC,
-    CALLOC,
-    REALLOC,
-    FREE,
-    ALIGNED_ALLOC,
-    ALIGNED_CALLOC,
-    ALIGNED_REALLOC,
-    ALIGNED_FREE,
-    RESET,
-    MARK,
+	ALLOC,
+	CALLOC,
+	REALLOC,
+	FREE,
+	ALIGNED_ALLOC,
+	ALIGNED_CALLOC,
+	ALIGNED_REALLOC,
+	ALIGNED_FREE,
+	RESET,
+	MARK,
 }
 
 fault AllocationFailure
 {
-    OUT_OF_MEMORY,
-    CHUNK_TOO_LARGE,
+	OUT_OF_MEMORY,
+	CHUNK_TOO_LARGE,
 }
 
 

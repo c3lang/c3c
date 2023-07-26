@@ -15,18 +15,18 @@ fn void! native_rmtree(Path dir)
 		@pool()
 		{
 			String name = ((ZString)&entry.name).as_str();
-            if (!name || name == "." || name == "..") continue;
-            Path new_path = dir.tappend(name)!;
-            if (entry.d_type == posix::DT_DIR)
-            {
-            	native_rmtree(new_path)!;
-            	continue;
-            }
-            if (libc::remove(new_path.as_zstr()))
-            {
-            	// TODO improve
-            	return IoError.GENERAL_ERROR?;
-            }
+			if (!name || name == "." || name == "..") continue;
+			Path new_path = dir.tappend(name)!;
+			if (entry.d_type == posix::DT_DIR)
+			{
+				native_rmtree(new_path)!;
+				continue;
+			}
+			if (libc::remove(new_path.as_zstr()))
+			{
+				// TODO improve
+				return IoError.GENERAL_ERROR?;
+			}
 		};
 	}
 	os::native_rmdir(dir)!;
@@ -36,12 +36,12 @@ module std::io::os @if(env::WIN32);
 
 fn void! native_rmtree(Path path)
 {
-    Win32_WIN32_FIND_DATAW find_data;
+	Win32_WIN32_FIND_DATAW find_data;
 	String s = path.as_str().tconcat("\\*");
 	Win32_HANDLE find = win32::findFirstFileW(s.to_utf16(mem::temp()), &find_data)!;
 
 	if (find == win32::INVALID_HANDLE_VALUE) return IoError.CANNOT_READ_DIR?;
-    defer win32::findClose(find);
+	defer win32::findClose(find);
 	do
 	{
 		@pool()
@@ -59,5 +59,5 @@ fn void! native_rmtree(Path path)
 			}
 		};
 	} while (win32::findNextFileW(find, &find_data) != 0);
-    os::native_rmdir(path)!;
+	os::native_rmdir(path)!;
 }

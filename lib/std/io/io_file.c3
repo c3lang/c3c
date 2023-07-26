@@ -57,7 +57,7 @@ fn void! File.memopen(File* file, char[] data, String mode)
  */
 fn void! File.putc(self, char c)
 {
-    if (!libc::fputc(c, self.file)) return IoError.EOF?;
+	if (!libc::fputc(c, self.file)) return IoError.EOF?;
 }
 
 /**
@@ -65,25 +65,25 @@ fn void! File.putc(self, char c)
  */
 fn void! File.close(&self) @inline
 {
-    if (self.file && libc::fclose(self.file))
-    {
-        switch (libc::errno())
-        {
-            case errno::ECONNRESET:
-            case errno::EBADF: return IoError.FILE_NOT_VALID?;
-            case errno::EINTR: return IoError.INTERRUPTED?;
-            case errno::EDQUOT:
-            case errno::EFAULT:
-            case errno::EAGAIN:
-            case errno::EFBIG:
-            case errno::ENETDOWN:
-            case errno::ENETUNREACH:
-            case errno::ENOSPC:
-            case errno::EIO: return IoError.INCOMPLETE_WRITE?;
-            default: return IoError.UNKNOWN_ERROR?;
-        }
-    }
-    self.file = null;
+	if (self.file && libc::fclose(self.file))
+	{
+		switch (libc::errno())
+		{
+			case errno::ECONNRESET:
+			case errno::EBADF: return IoError.FILE_NOT_VALID?;
+			case errno::EINTR: return IoError.INTERRUPTED?;
+			case errno::EDQUOT:
+			case errno::EFAULT:
+			case errno::EAGAIN:
+			case errno::EFBIG:
+			case errno::ENETDOWN:
+			case errno::ENETUNREACH:
+			case errno::ENOSPC:
+			case errno::EIO: return IoError.INCOMPLETE_WRITE?;
+			default: return IoError.UNKNOWN_ERROR?;
+		}
+	}
+	self.file = null;
 }
 
 /**
@@ -91,7 +91,7 @@ fn void! File.close(&self) @inline
  */
 fn bool File.eof(self) @inline
 {
-    return libc::feof(self.file) != 0;
+	return libc::feof(self.file) != 0;
 }
 
 /**
@@ -118,7 +118,7 @@ fn usz! File.printn(self, String string = "")
 {
 	usz len = self.print(string)!;
 	if (!libc::putc('\n', self.file)) return IoError.UNKNOWN_ERROR?;
-    return len + 1;
+	return len + 1;
 }
 
 /**
@@ -126,9 +126,9 @@ fn usz! File.printn(self, String string = "")
  */
 fn usz! File.print(self, String string)
 {
-    usz len = string.len;
-    if (len != self.write((char[])string)!) return IoError.UNKNOWN_ERROR?;
-    return len;
+	usz len = string.len;
+	if (len != self.write((char[])string)!) return IoError.UNKNOWN_ERROR?;
+	return len;
 }
 
 /**

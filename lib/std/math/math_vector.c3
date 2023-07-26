@@ -81,11 +81,11 @@ fn Vec3 Vec3.unproject(self, Matrix4 projection, Matrix4 view) => unproject3(sel
 macro towards(v, target, max_distance) @private
 {
 	var delta = target - v;
-    var square = delta.length_sq();
+	var square = delta.length_sq();
 
-    if (square == 0 || (max_distance >= 0 && (square <= max_distance * max_distance))) return target;
+	if (square == 0 || (max_distance >= 0 && (square <= max_distance * max_distance))) return target;
 
-    var dist = math::sqrt(square);
+	var dist = math::sqrt(square);
 
 	return v + delta * max_distance / dist;
 }
@@ -93,13 +93,13 @@ macro towards(v, target, max_distance) @private
 macro clamp_magnitude(v, min, max) @private
 {
 	var length = v.dot(v);
-    if (length > 0)
-    {
-        length = math::sqrt(length);
+	if (length > 0)
+	{
+		length = math::sqrt(length);
 
-        if (length < min) return v * (min / length);
-        if (length > max) return v * (max / length);
-    }
+		if (length < min) return v * (min / length);
+		if (length > max) return v * (max / length);
+	}
 	return v;
 }
 
@@ -112,19 +112,19 @@ macro rotate(v, angle) @private
 
 macro perpendicular3(v) @private
 {
-    var min = math::abs(v[0]);
-    $typeof(v) cardinal_axis = { 1, 0, 0 };
+	var min = math::abs(v[0]);
+	$typeof(v) cardinal_axis = { 1, 0, 0 };
 
-    if (var vy = math::abs(v[1]), vy < min)
-    {
-        min = vy;
-        cardinal_axis = { 0, 1, 0 };
-    }
+	if (var vy = math::abs(v[1]), vy < min)
+	{
+		min = vy;
+		cardinal_axis = { 0, 1, 0 };
+	}
 
-    if (var vz = math::abs(v[2]), vz < min)
-    {
-        cardinal_axis = { 0, 0, 1 };
-    }
+	if (var vz = math::abs(v[2]), vz < min)
+	{
+		cardinal_axis = { 0, 0, 1 };
+	}
 
 	return cross3(v, cardinal_axis);
 }
@@ -145,19 +145,19 @@ macro transform2(v, mat) @private
 
 macro transform3(v, mat) @private
 {
-    return $typeof(v) {
-        mat.m00 * v[0] + mat.m10 * v[1] + mat.m20 * v[2] + mat.m30,
-        mat.m01 * v[0] + mat.m11 * v[1] + mat.m21 * v[2] + mat.m31,
-        mat.m02 * v[0] + mat.m12 * v[1] + mat.m22 * v[2] + mat.m32
-    };
+	return $typeof(v) {
+		mat.m00 * v[0] + mat.m10 * v[1] + mat.m20 * v[2] + mat.m30,
+		mat.m01 * v[0] + mat.m11 * v[1] + mat.m21 * v[2] + mat.m31,
+		mat.m02 * v[0] + mat.m12 * v[1] + mat.m22 * v[2] + mat.m32
+	};
 }
 
 
 macro angle3(v1, v2) @private
 {
 	var len = v1.cross(v2).length();
-    var dot = v1.dot(v2);
-    return math::atan2(len, dot);
+	var dot = v1.dot(v2);
+	return math::atan2(len, dot);
 }
 
 macro void ortho_normalize3(v1, v2) @private
@@ -184,10 +184,10 @@ macro rotate_by_quat3(v, q) @private
 
 macro rotate_axis_angle(v, axis, angle) @private
 {
-    axis = axis.normalize();
+	axis = axis.normalize();
 
-    angle /= 2;
-    var w = axis * math::sin(angle);
+	angle /= 2;
+	var w = axis * math::sin(angle);
 	var wv = w.cross(v);
 	var wwv = w.cross(wv);
 	wv *= math::cos(angle) * 2;
@@ -198,7 +198,7 @@ macro rotate_axis_angle(v, axis, angle) @private
 
 macro matrix_look_at($Type, eye, target, up) @private
 {
-    var vz = (eye - target).normalize();
+	var vz = (eye - target).normalize();
 	var vx = up.cross(vz).normalize();
 	var vy = vz.cross(vx);
 
@@ -216,22 +216,22 @@ return v;
 /*
 	var view_proj = m1.mul(m2);
 	var invert = view_proj.invert();
-    // Create quaternion from source point
+	// Create quaternion from source point
 	$if $typeof(v[0]).typeid == float.typeid:
-	    Quaternionf quat = { v.x, v.y, v.z, 1 };
+		Quaternionf quat = { v.x, v.y, v.z, 1 };
 	$else
-	    Quaternion quat = { v.x, v.y, v.z, 1 };
+		Quaternion quat = { v.x, v.y, v.z, 1 };
 	$endif
 
-    // Multiply quat point by unproject matrix
-    var qtransformed = quat.transform(invert);
+	// Multiply quat point by unproject matrix
+	var qtransformed = quat.transform(invert);
 
-    // Normalized world points in vectors
-    return {
-        qtransformed.i / qtransformed.l,
-        qtransformed.j / qtransformed.l,
-        qtransformed.k  / qtransformed.l
-    };*/
+	// Normalized world points in vectors
+	return {
+		qtransformed.i / qtransformed.l,
+		qtransformed.j / qtransformed.l,
+		qtransformed.k  / qtransformed.l
+	};*/
 }
 
 macro barycenter3(p, a, b, c) @private
@@ -252,8 +252,8 @@ macro barycenter3(p, a, b, c) @private
 
 macro refract3(v, n, r) @private
 {
-    var dot = v.dot(n);
-    var d = 1 - r * r * (1 - dot * dot);
+	var dot = v.dot(n);
+	var d = 1 - r * r * (1 - dot * dot);
 
-    return d < 0 ? v : r * v - (r * dot + math::sqrt(d)) * n;
+	return d < 0 ? v : r * v - (r * dot + math::sqrt(d)) * n;
 }

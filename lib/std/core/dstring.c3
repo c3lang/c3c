@@ -124,7 +124,7 @@ fn void DString.append_repeat(&self, char c, usz times)
 	StringData* data = self.data();
 	for (usz i = 0; i < times; i++)
 	{
-        data.chars[data.len++] = c;
+		data.chars[data.len++] = c;
 	}
 }
 
@@ -137,32 +137,32 @@ fn void DString.append_char32(&self, Char32 c)
 	{
 		self.reserve(1);
 		StringData* data = self.data();
-        data.chars[data.len++] = (char)c;
-        return;
-    }
-    if (c < 0x7ff)
-    {
+		data.chars[data.len++] = (char)c;
+		return;
+	}
+	if (c < 0x7ff)
+	{
 		self.reserve(2);
 		StringData* data = self.data();
 		data.chars[data.len++] = (char)(0xC0 | c >> 6);
-        data.chars[data.len++] = (char)(0x80 | (c & 0x3F));
-        return;
-    }
-    if (c < 0xffff)
-    {
+		data.chars[data.len++] = (char)(0x80 | (c & 0x3F));
+		return;
+	}
+	if (c < 0xffff)
+	{
 		self.reserve(3);
 		StringData* data = self.data();
 		data.chars[data.len++] = (char)(0xE0 | c >> 12);
-        data.chars[data.len++] = (char)(0x80 | (c >> 6 & 0x3F));
-        data.chars[data.len++] = (char)(0x80 | (c & 0x3F));
-        return;
-    }
+		data.chars[data.len++] = (char)(0x80 | (c >> 6 & 0x3F));
+		data.chars[data.len++] = (char)(0x80 | (c & 0x3F));
+		return;
+	}
 	self.reserve(4);
 	StringData* data = self.data();
 	data.chars[data.len++] = (char)(0xF0 | c >> 18);
-    data.chars[data.len++] = (char)(0x80 | (c >> 12 & 0x3F));
-    data.chars[data.len++] = (char)(0x80 | (c >> 6 & 0x3F));
-    data.chars[data.len++] = (char)(0x80 | (c & 0x3F));
+	data.chars[data.len++] = (char)(0x80 | (c >> 12 & 0x3F));
+	data.chars[data.len++] = (char)(0x80 | (c >> 6 & 0x3F));
+	data.chars[data.len++] = (char)(0x80 | (c & 0x3F));
 }
 
 fn DString DString.tcopy(&self) => self.copy(mem::temp());

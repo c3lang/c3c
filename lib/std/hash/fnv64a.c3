@@ -12,17 +12,17 @@ macro void @update(ulong* &h, char x) @private => *h = (*h * FNV64A_MUL) ^ x;
 
 fn void Fnv64a.init(&self)
 {
-    *self = FNV64A_START;
+	*self = FNV64A_START;
 }
 
 fn void Fnv64a.update(&self, char[] data)
 {
 	ulong h = (ulong)*self;
 	foreach (char x : data)
-    {
-        @update(h, x);
-    }
-    *self = (Fnv64a)h;
+	{
+		@update(h, x);
+	}
+	*self = (Fnv64a)h;
 }
 
 macro void Fnv64a.update_char(&self, char c)
@@ -34,8 +34,8 @@ fn ulong encode(char[] data)
 {
 	ulong h = FNV64A_START;
 	foreach (char x : data)
-    {
+	{
 		@update(h, x);
-    }
-    return h;
+	}
+	return h;
 }

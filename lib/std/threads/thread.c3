@@ -53,11 +53,11 @@ macro void! ConditionVariable.signal(&cond) => NativeConditionVariable.signal((N
 macro void! ConditionVariable.broadcast(&cond) => NativeConditionVariable.broadcast((NativeConditionVariable*)cond);
 macro void! ConditionVariable.wait(&cond, Mutex* mutex)
 {
-    return NativeConditionVariable.wait((NativeConditionVariable*)cond, (NativeMutex*)mutex);
+	return NativeConditionVariable.wait((NativeConditionVariable*)cond, (NativeMutex*)mutex);
 }
 macro void! ConditionVariable.wait_timeout(&cond, Mutex* mutex, ulong timeout)
 {
-    return NativeConditionVariable.wait_timeout((NativeConditionVariable*)cond, (NativeMutex*)mutex, timeout);
+	return NativeConditionVariable.wait_timeout((NativeConditionVariable*)cond, (NativeMutex*)mutex, timeout);
 }
 
 

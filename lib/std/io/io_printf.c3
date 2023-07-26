@@ -31,14 +31,14 @@ fn usz! printf(String format, args...) @maydiscard
 {
 	Formatter formatter;
 	formatter.init(&out_putchar_fn);
-    return formatter.vprintf(format, args);
+	return formatter.vprintf(format, args);
 }
 
 fn usz! printfn(String format, args...) @maydiscard
 {
 	Formatter formatter;
 	formatter.init(&out_putchar_fn);
-    usz len = formatter.vprintf(format, args)!;
+	usz len = formatter.vprintf(format, args)!;
 	putchar('\n');
 	return len + 1;
 }
@@ -47,23 +47,23 @@ fn char[]! bprintf(char[] buffer, String format, args...) @maydiscard
 {
 	Formatter formatter;
 	BufferData data = { .buffer = buffer };
-    formatter.init(&out_buffer_fn, &data);
-    usz size = formatter.vprintf(format, args)!;
-    return buffer[:data.written];
+	formatter.init(&out_buffer_fn, &data);
+	usz size = formatter.vprintf(format, args)!;
+	return buffer[:data.written];
 }
 
 fn usz! File.printf(self, String format, args...) @maydiscard
 {
 	Formatter formatter;
-    formatter.init(&out_fputchar_fn, &self);
-    return formatter.vprintf(format, args)!;
+	formatter.init(&out_fputchar_fn, &self);
+	return formatter.vprintf(format, args)!;
 }
 
 fn usz! File.printfn(self, String format, args...) @maydiscard
 {
 	Formatter formatter;
-    formatter.init(&out_fputchar_fn, &self);
-    usz len = formatter.vprintf(format, args)!;
+	formatter.init(&out_fputchar_fn, &self);
+	usz len = formatter.vprintf(format, args)!;
 	self.putc('\n')!;
 	self.flush();
 	return len + 1;
@@ -81,9 +81,9 @@ struct Formatter
 	struct
 	{
 		PrintFlags flags;
-    	uint width;
-    	uint prec;
-    	usz idx;
+		uint width;
+		uint prec;
+		usz idx;
 	}
 }
 
@@ -124,8 +124,8 @@ macro bool! Formatter.print_with_function(&self, any arg)
 		arg.to_format(self)!;
 		return true;
 	}
-    if (&arg.to_string)
-    {
+	if (&arg.to_string)
+	{
 		PrintFlags old = self.flags;
 		uint old_width = self.width;
 		uint old_prec = self.prec;
@@ -140,8 +140,8 @@ macro bool! Formatter.print_with_function(&self, any arg)
 			self.out_substr(arg.to_string(mem::temp()))!;
 			return true;
 		};
-    }
-    return false;
+	}
+	return false;
 }
 
 
@@ -152,15 +152,15 @@ fn void! Formatter.out_str(&self, any arg) @private
 		case TYPEID:
 			return self.out_substr("typeid");
 		case VOID:
-        	return self.out_substr("void");
+			return self.out_substr("void");
 		case ANYFAULT:
 		case FAULT:
-        	return self.out_substr((*(anyfault*)arg.ptr).nameof);
+			return self.out_substr((*(anyfault*)arg.ptr).nameof);
 		case ANY:
 			return self.out_str(*(any*)arg);
 		case ENUM:
 			if (self.print_with_function(arg)!) return;
-        	return self.out_substr(arg.type.names[types::any_to_int(arg, usz)!!]);
+			return self.out_substr(arg.type.names[types::any_to_int(arg, usz)!!]);
 		case STRUCT:
 			if (self.print_with_function(arg)!) return;
 			return self.out_substr("<struct>");
@@ -181,7 +181,7 @@ fn void! Formatter.out_str(&self, any arg) @private
 			{
 				return self.out_substr(((DString*)arg).as_str());
 			}
-        	return self.out_str(any { arg.ptr, arg.type.inner });
+			return self.out_str(any { arg.ptr, arg.type.inner });
 		case POINTER:
 			if (self.print_with_function(arg)!) return;
 			return self.ntoa_any(arg, 16);
@@ -231,7 +231,7 @@ fn void! Formatter.out_str(&self, any arg) @private
 				return self.out_substr(*(String*)arg);
 			}
 			usz size = inner.sizeof;
-            // Pretend this is a String
+			// Pretend this is a String
 			String* temp = (void*)arg.ptr;
 			void* ptr = (void*)temp.ptr;
 			usz len = temp.len;
@@ -375,17 +375,17 @@ fn usz! Formatter.vprintf(&self, String format, any[] anys)
 			case 'a':
 				self.atoa(float_from_any(current)!!)!;
 				continue;
-		    case 'F' :
-		        self.flags.uppercase = true;
-		        nextcase;
-		    case 'f':
-		        self.ftoa(float_from_any(current)!!)!;
+			case 'F' :
+				self.flags.uppercase = true;
+				nextcase;
+			case 'f':
+				self.ftoa(float_from_any(current)!!)!;
 				continue;
 			case 'E':
-		        self.flags.uppercase = true;
-		        nextcase;
-            case 'e':
-                self.etoa(float_from_any(current)!!)!;
+				self.flags.uppercase = true;
+				nextcase;
+			case 'e':
+				self.etoa(float_from_any(current)!!)!;
 				continue;
 			case 'G':
 				self.flags.uppercase = true;

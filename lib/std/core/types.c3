@@ -183,7 +183,7 @@ macro bool @has_same(#a, #b, ...)
 {
 	var $type_a = $typeof(#a).typeid;
 	$if $type_a != $typeof(#b).typeid:
-	    return false;
+		return false;
 	$endif
 	$for (var $i = 0; $i < $vacount; $i++)
 		$if $typeof($vaexpr($i)).typeid != $type_a:
@@ -245,26 +245,26 @@ macro bool is_comparable_value(value)
 
 enum TypeKind : char
 {
-    VOID,
-    BOOL,
-    SIGNED_INT,
-    UNSIGNED_INT,
-    FLOAT,
-    TYPEID,
-    ANYFAULT,
-    ANY,
-    ENUM,
-    FAULT,
-    STRUCT,
-    UNION,
-    BITSTRUCT,
-    FUNC,
-    OPTIONAL,
-    ARRAY,
-    SUBARRAY,
-    VECTOR,
-    DISTINCT,
-    POINTER,
+	VOID,
+	BOOL,
+	SIGNED_INT,
+	UNSIGNED_INT,
+	FLOAT,
+	TYPEID,
+	ANYFAULT,
+	ANY,
+	ENUM,
+	FAULT,
+	STRUCT,
+	UNION,
+	BITSTRUCT,
+	FUNC,
+	OPTIONAL,
+	ARRAY,
+	SUBARRAY,
+	VECTOR,
+	DISTINCT,
+	POINTER,
 }
 
 struct TypeEnum

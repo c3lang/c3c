@@ -75,18 +75,18 @@ fn bool native_file_or_dir_exists(String path)
 			Stat stat;
 			return @ok(native_stat(&stat, path));
 		$case env::WIN32:
-    	    @pool()
-    	    {
-    		    return (bool)win32::pathFileExistsW(path.to_temp_utf16()) ?? false;
-    	    };
-    	$case env::POSIX:
-    	    @pool()
-            {
-                return posix::access(path.zstr_tcopy(), 0 /* F_OK */) != -1;
-            };
-        $default:
+			@pool()
+			{
+				return (bool)win32::pathFileExistsW(path.to_temp_utf16()) ?? false;
+			};
+		$case env::POSIX:
+			@pool()
+			{
+				return posix::access(path.zstr_tcopy(), 0 /* F_OK */) != -1;
+			};
+		$default:
 			unreachable("Not supported");
-    $endswitch
+	$endswitch
 }
 
 fn bool native_is_file(String path)

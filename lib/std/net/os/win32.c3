@@ -19,11 +19,11 @@ extern fn NativeSocket accept(NativeSocket, SockAddrPtr address, Socklen_t* addr
 
 macro NativeSocket.close(self)
 {
-    if (int err = closesocket(self))
-    {
-        if (err == WSAENOTSOCK) return NetError.INVALID_SOCKET?;
+	if (int err = closesocket(self))
+	{
+		if (err == WSAENOTSOCK) return NetError.INVALID_SOCKET?;
 		return NetError.GENERAL_ERROR?;
-    }
+	}
 }
 
 const int WSAENOTSOCK = 10038;

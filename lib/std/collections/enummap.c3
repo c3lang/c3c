@@ -2,15 +2,15 @@ module std::collections::enummap(<Enum, ValueType>);
 
 struct EnumMap
 {
-    ValueType[Enum.len] values;
+	ValueType[Enum.len] values;
 }
 
 fn void EnumMap.init(&self, ValueType init_value)
 {
-    foreach(&a : self.values)
-    {
-        *a = init_value;
-    }
+	foreach(&a : self.values)
+	{
+		*a = init_value;
+	}
 }
 
 

@@ -3,9 +3,9 @@ import std::math::vector;
 union Quaternion
 {
 	struct
-    {
-    	Real i, j, k, l;
-    }
+	{
+		Real i, j, k, l;
+	}
 	Real[<4>] v;
 }
 
@@ -26,22 +26,22 @@ fn Quaternion Quaternion.invert(q)
 {
 	Real length_sq = q.v.dot(q.v);
 	if (length_sq <= 0) return q;
-    Real inv_length = 1 / length_sq;
+	Real inv_length = 1 / length_sq;
 	return { q.v[0] * -inv_length, q.v[1] * -inv_length, q.v[2] * -inv_length, q.v[3] * inv_length };
 }
 
 fn Quaternion Quaternion.slerp(q1, Quaternion q2, Real amount)
 {
-    Quaternion result = {};
+	Quaternion result = {};
 
 	Real[<4>] q2v = q2.v;
-    Real cos_half_theta = q1.v.dot(q2v);
+	Real cos_half_theta = q1.v.dot(q2v);
 
-    if (cos_half_theta < 0)
-    {
-        q2v = -q2v;
-        cos_half_theta = -cos_half_theta;
-    }
+	if (cos_half_theta < 0)
+	{
+		q2v = -q2v;
+		cos_half_theta = -cos_half_theta;
+	}
 
 	if (cos_half_theta >= 1) return q1;
 
@@ -54,45 +54,45 @@ fn Quaternion Quaternion.slerp(q1, Quaternion q2, Real amount)
 	{
 		return { .v = (q1v + q2v) * 0.5f };
 	}
-    Real ratio_a = math::sin((1 - amount) * half_theta) / sin_half_theta;
-    Real ratio_b = math::sin(amount * half_theta) / sin_half_theta;
+	Real ratio_a = math::sin((1 - amount) * half_theta) / sin_half_theta;
+	Real ratio_b = math::sin(amount * half_theta) / sin_half_theta;
 	return { .v = q1v * ratio_a + q2v * ratio_b };
 }
 
 fn Quaternion Quaternion.mul(a, Quaternion b)
 {
 	return { a.i * b.l + a.l * b.i + a.j * b.k - a.k * b.j,
-	         a.j * b.l + a.l * b.j + a.k * b.i - a.i * b.k,
-	         a.k * b.l + a.l * b.k + a.i * b.j - a.j * b.i,
-	         a.l * b.l - a.i * b.i - a.j * a.j - a.k * a.k };
+			 a.j * b.l + a.l * b.j + a.k * b.i - a.i * b.k,
+			 a.k * b.l + a.l * b.k + a.i * b.j - a.j * b.i,
+			 a.l * b.l - a.i * b.i - a.j * a.j - a.k * a.k };
 }
 
 macro into_matrix(Quaternion* q, $Type) @private
 {
-    $Type result = { .m = { [0] = 1, [5] = 1, [10] = 1, [15] = 1 } };
-    Quaternion norm = q.normalize();
+	$Type result = { .m = { [0] = 1, [5] = 1, [10] = 1, [15] = 1 } };
+	Quaternion norm = q.normalize();
 
-    var ii = norm.i*norm.i;
-    var jj = norm.j*norm.j;
-    var kk = norm.k*norm.k;
-    var ik = norm.i*norm.k;
-    var ij = norm.i*q.j;
-    var jk = norm.j*norm.k;
-    var li = norm.l*norm.i;
-    var lj = norm.l*norm.j;
-    var lk = norm.l*norm.k;
+	var ii = norm.i*norm.i;
+	var jj = norm.j*norm.j;
+	var kk = norm.k*norm.k;
+	var ik = norm.i*norm.k;
+	var ij = norm.i*q.j;
+	var jk = norm.j*norm.k;
+	var li = norm.l*norm.i;
+	var lj = norm.l*norm.j;
+	var lk = norm.l*norm.k;
 
 	result.m00 = 1 - 2*(jj + kk);
-    result.m01 = 2*(ik + lk);
-    result.m02 = 2*(ij - lj);
+	result.m01 = 2*(ik + lk);
+	result.m02 = 2*(ij - lj);
 
-    result.m10 = 2*(ij - lk);
-    result.m11 = 1 - 2*(ii + kk);
-    result.m12 = 2*(jk + li);
+	result.m10 = 2*(ij - lk);
+	result.m11 = 1 - 2*(ii + kk);
+	result.m12 = 2*(jk + li);
 
-    result.m20 = 2*(ik + lj);
-    result.m21 = 2*(jk - li);
-    result.m22 = 1 - 2*(ii + jj);
+	result.m20 = 2*(ik + lj);
+	result.m21 = 2*(jk - li);
+	result.m22 = 1 - 2*(ii + jj);
 
-    return result;
+	return result;
 }

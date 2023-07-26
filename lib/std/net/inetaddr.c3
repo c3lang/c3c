@@ -77,81 +77,81 @@ fn InetAddress! ipv6_from_str(String s)
 	bool last_was_colon, found_zero;
 	int current = -1;
 	InetAddress addr = { .is_ipv6 = true };
-    foreach (i, c : s)
-    {
+	foreach (i, c : s)
+	{
 		if (c == ':')
-        {
-            if (!last_was_colon)
-            {
-                if (current == -1)
-                {
-		            last_was_colon = true;
-                    continue;
-                }
-                if (current < 0 || current > 65535) return NetError.INVALID_IP_STRING?;
-                addr.ipv6arr[index++].val = (ushort)current;
-                current = -1;
-	            last_was_colon = true;
-                continue;
-            }
-            assert(current == -1);
-            // Check that this is the first ::
-            if (found_zero) return NetError.INVALID_IP_STRING?;
-            // Also check that the zeroed section is at least 2
-            if (zero_segment_len < 2) return NetError.INVALID_IP_STRING?;
-            // Skip (will be zero by default
-            index += zero_segment_len;
-            found_zero = true;
-            last_was_colon = false;
-            continue;
-        }
-        last_was_colon = false;
-        if (index > 7 || !c.is_xdigit()) return NetError.INVALID_IP_STRING?;
-        if (current < 0) current = 0;
-        current = current * 16 + (c <= '9' ? c - '0' : (c | 32) - 'a' + 10);
-    }
-    // Ends with ::
-    if (index == 8 && current == -1) return addr;
+		{
+			if (!last_was_colon)
+			{
+				if (current == -1)
+				{
+					last_was_colon = true;
+					continue;
+				}
+				if (current < 0 || current > 65535) return NetError.INVALID_IP_STRING?;
+				addr.ipv6arr[index++].val = (ushort)current;
+				current = -1;
+				last_was_colon = true;
+				continue;
+			}
+			assert(current == -1);
+			// Check that this is the first ::
+			if (found_zero) return NetError.INVALID_IP_STRING?;
+			// Also check that the zeroed section is at least 2
+			if (zero_segment_len < 2) return NetError.INVALID_IP_STRING?;
+			// Skip (will be zero by default
+			index += zero_segment_len;
+			found_zero = true;
+			last_was_colon = false;
+			continue;
+		}
+		last_was_colon = false;
+		if (index > 7 || !c.is_xdigit()) return NetError.INVALID_IP_STRING?;
+		if (current < 0) current = 0;
+		current = current * 16 + (c <= '9' ? c - '0' : (c | 32) - 'a' + 10);
+	}
+	// Ends with ::
+	if (index == 8 && current == -1) return addr;
 
-    // Ends with number
-    if (index != 7 || current < 0 || current > 65535) return NetError.INVALID_IP_STRING?;
-    addr.ipv6arr[7].val = (ushort)current;
-    return addr;
+	// Ends with number
+	if (index != 7 || current < 0 || current > 65535) return NetError.INVALID_IP_STRING?;
+	addr.ipv6arr[7].val = (ushort)current;
+	return addr;
 }
 
 fn InetAddress! ipv4_from_str(String s)
 {
 	InetAddress addr;
 	int element;
-    int current = -1;
-    foreach (c : s)
-    {
+	int current = -1;
+	foreach (c : s)
+	{
 		if (c == '.')
-        {
-            if (current < 0) return NetError.INVALID_IP_STRING?;
-            if (current > 255) return NetError.INVALID_IP_STRING?;
-            switch (element)
-            {
-                case 0: addr.ipv4.a = (char)current;
-                case 1: addr.ipv4.b = (char)current;
-                case 2: addr.ipv4.c = (char)current;
-                default: return NetError.INVALID_IP_STRING?;
-            }
-            current = -1;
-            element++;
-            continue;
-        }
-        if (element > 3 || c < '0' || c > '9') return NetError.INVALID_IP_STRING?;
-        if (current < 0)
-        {
-            current = c - '0';
-            continue;
-        }
-        current = current * 10 + c - '0';
-    }
-    if (element != 3 || current < 0 || current > 255) return NetError.INVALID_IP_STRING?;
-    addr.ipv4.d = (char)current;
-    return addr;
+		{
+			if (current < 0) return NetError.INVALID_IP_STRING?;
+			if (current > 255) return NetError.INVALID_IP_STRING?;
+			switch (element)
+			{
+				case 0: addr.ipv4.a = (char)current;
+				case 1: addr.ipv4.b = (char)current;
+				case 2: addr.ipv4.c = (char)current;
+				default: return NetError.INVALID_IP_STRING?;
+			}
+			current = -1;
+			element++;
+			continue;
+		}
+		if (element > 3 || c < '0' || c > '9') return NetError.INVALID_IP_STRING?;
+		if (current < 0)
+		{
+			current = c - '0';
+			continue;
+		}
+		current = current * 10 + c - '0';
+	}
+	if (element != 3 || current < 0 || current > 255) return NetError.INVALID_IP_STRING?;
+	addr.ipv4.d = (char)current;
+	return addr;
 }
 
 fn bool InetAddress.is_loopback(InetAddress* addr)
@@ -195,7 +195,7 @@ fn bool InetAddress.is_site_local(InetAddress* addr)
 		case addr.ipv4.a == 192 && addr.ipv4.b == 168:
 			return true;
 		default:
-		    return false;
+			return false;
 	}
 }
 

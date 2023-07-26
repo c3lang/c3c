@@ -12,17 +12,17 @@ macro void @update(uint* &h, char x) @private => *h = (*h * FNV32A_MUL) ^ x;
 
 fn void Fnv32a.init(&self)
 {
-    *self = FNV32A_START;
+	*self = FNV32A_START;
 }
 
 fn void Fnv32a.update(&self, char[] data)
 {
 	uint h = (uint)*self;
 	foreach (char x : data)
-    {
-        @update(h, x);
-    }
-    *self = (Fnv32a)h;
+	{
+		@update(h, x);
+	}
+	*self = (Fnv32a)h;
 }
 
 macro void Fnv32a.update_char(&self, char c)
@@ -34,8 +34,8 @@ fn uint encode(char[] data)
 {
 	uint h = FNV32A_START;
 	foreach (char x : data)
-    {
+	{
 		@update(h, x);
-    }
-    return h;
+	}
+	return h;
 }

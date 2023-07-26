@@ -4,14 +4,14 @@ import std::os::win32;
 fn void! NativeMutex.init(&mtx, MutexType type)
 {
 	mtx.already_locked = false;
-    mtx.recursive = (bool)(type & thread::MUTEX_RECURSIVE);
-    mtx.timed = (bool)(type & thread::MUTEX_TIMED);
-    if (!mtx.timed)
-    {
-        win32::initializeCriticalSection(&(mtx.critical_section));
-        return;
-    }
-    if (!(mtx.handle = win32::createMutex(null, false, null))) return ThreadFault.INIT_FAILED?;
+	mtx.recursive = (bool)(type & thread::MUTEX_RECURSIVE);
+	mtx.timed = (bool)(type & thread::MUTEX_TIMED);
+	if (!mtx.timed)
+	{
+		win32::initializeCriticalSection(&(mtx.critical_section));
+		return;
+	}
+	if (!(mtx.handle = win32::createMutex(null, false, null))) return ThreadFault.INIT_FAILED?;
 }
 
 fn void! NativeMutex.destroy(&mtx)
@@ -21,27 +21,27 @@ fn void! NativeMutex.destroy(&mtx)
 		win32::deleteCriticalSection(&mtx.critical_section);
 		return;
 	}
-    if (!win32::closeHandle(mtx.handle)) return ThreadFault.DESTROY_FAILED?;
+	if (!win32::closeHandle(mtx.handle)) return ThreadFault.DESTROY_FAILED?;
 }
 
 fn void! NativeMutex.lock(&mtx)
 {
 	if (!mtx.timed)
-    {
-        win32::enterCriticalSection(&mtx.critical_section);
-    }
-    else
-    {
-        switch (win32::waitForSingleObject(mtx.handle, win32::INFINITE))
-        {
-            case win32::WAIT_OBJECT_0:
-                break;
+	{
+		win32::enterCriticalSection(&mtx.critical_section);
+	}
+	else
+	{
+		switch (win32::waitForSingleObject(mtx.handle, win32::INFINITE))
+		{
+			case win32::WAIT_OBJECT_0:
+				break;
 			case win32::WAIT_ABANDONED:
 			default:
 				return ThreadFault.LOCK_FAILED?;
 
-        }
-    }
+		}
+	}
 	if (!mtx.recursive)
 	{
 		while (mtx.already_locked) win32::sleep(1);
@@ -97,10 +97,10 @@ fn void! NativeMutex.unlock(&mtx)
 	mtx.already_locked = false;
 	if (!mtx.timed)
 	{
-	    win32::leaveCriticalSection(&mtx.critical_section);
-	    return;
+		win32::leaveCriticalSection(&mtx.critical_section);
+		return;
 	}
-    if (!win32::releaseMutex(mtx.handle)) return ThreadFault.UNLOCK_FAILED?;
+	if (!win32::releaseMutex(mtx.handle)) return ThreadFault.UNLOCK_FAILED?;
 }
 
 const int CONDITION_EVENT_ONE = 0;
@@ -151,23 +151,23 @@ fn void! NativeConditionVariable.broadcast(&cond)
 fn void! timedwait(NativeConditionVariable* cond, NativeMutex* mtx, uint timeout) @private
 {
 	win32::enterCriticalSection(&cond.waiters_count_lock);
-    cond.waiters_count++;
+	cond.waiters_count++;
 	win32::leaveCriticalSection(&cond.waiters_count_lock);
 
 	mtx.unlock()!;
 
-    uint result = win32::waitForMultipleObjects(2, &cond.events, false, timeout);
-    switch (result)
-    {
-        case win32::WAIT_TIMEOUT:
-            mtx.lock()!;
-            return ThreadFault.WAIT_TIMEOUT?;
-        case win32::WAIT_FAILED:
-            mtx.lock()!;
-            return ThreadFault.WAIT_FAILED?;
-        default:
-            break;
-    }
+	uint result = win32::waitForMultipleObjects(2, &cond.events, false, timeout);
+	switch (result)
+	{
+		case win32::WAIT_TIMEOUT:
+			mtx.lock()!;
+			return ThreadFault.WAIT_TIMEOUT?;
+		case win32::WAIT_FAILED:
+			mtx.lock()!;
+			return ThreadFault.WAIT_FAILED?;
+		default:
+			break;
+	}
 
 	win32::enterCriticalSection(&cond.waiters_count_lock);
 	cond.waiters_count--;
@@ -220,30 +220,30 @@ fn void native_thread_yield()
 
 fn void NativeOnceFlag.call_once(&flag, OnceFn func)
 {
-    while (@volatile_load(flag.status) < 3)
-    {
-        switch (@volatile_load(flag.status))
-        {
-            case 0:
-                if (mem::compare_exchange_volatile(&flag.status, 1, 0, AtomicOrdering.SEQ_CONSISTENT, AtomicOrdering.SEQ_CONSISTENT) == 0)
-                {
-                    win32::initializeCriticalSection(&flag.lock);
-                    win32::enterCriticalSection(&flag.lock);
-                    @volatile_store(flag.status, 2);
-                    func();
-                    @volatile_store(flag.status, 3);
-                    win32::leaveCriticalSection(&flag.lock);
-                    return;
-                }
-                break;
-            case 1:
-                break;
-            case 2:
-                win32::enterCriticalSection(&flag.lock);
-                win32::leaveCriticalSection(&flag.lock);
-                break;
-        }
-    }
+	while (@volatile_load(flag.status) < 3)
+	{
+		switch (@volatile_load(flag.status))
+		{
+			case 0:
+				if (mem::compare_exchange_volatile(&flag.status, 1, 0, AtomicOrdering.SEQ_CONSISTENT, AtomicOrdering.SEQ_CONSISTENT) == 0)
+				{
+					win32::initializeCriticalSection(&flag.lock);
+					win32::enterCriticalSection(&flag.lock);
+					@volatile_store(flag.status, 2);
+					func();
+					@volatile_store(flag.status, 3);
+					win32::leaveCriticalSection(&flag.lock);
+					return;
+				}
+				break;
+			case 1:
+				break;
+			case 2:
+				win32::enterCriticalSection(&flag.lock);
+				win32::leaveCriticalSection(&flag.lock);
+				break;
+		}
+	}
 }
 
 fn void! NativeThread.join(thread, int *res)

@@ -12,7 +12,7 @@ macro String! getcwd(Allocator* using = mem::heap())
 			defer if (free) libc::free(res);
 			if (!res)
 			{
-			    if (libc::errno() != errno::ERANGE) return IoError.GENERAL_ERROR?;
+				if (libc::errno() != errno::ERANGE) return IoError.GENERAL_ERROR?;
 				res = win32::_wgetcwd(null, 0);
 				free = true;
 			}
@@ -35,7 +35,7 @@ macro String! getcwd(Allocator* using = mem::heap())
 			return res.copy(using);
 
 		$default:
-		    return IoError.UNSUPPORTED_OPERATION?;
+			return IoError.UNSUPPORTED_OPERATION?;
 	$endswitch
 }
 

@@ -14,7 +14,7 @@ fn Path! native_temp_directory(Allocator* using = mem::heap()) @if(env::WIN32)
 {
 	@pool(using)
 	{
-	    Win32_DWORD len = win32::getTempPathW(0, null);
+		Win32_DWORD len = win32::getTempPathW(0, null);
 		if (!len) return IoError.GENERAL_ERROR?;
 		Char16[] buff = tmalloc(Char16, len + 1);
 		if (!win32::getTempPathW(len, buff)) return IoError.GENERAL_ERROR?;

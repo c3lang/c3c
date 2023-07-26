@@ -131,7 +131,7 @@ fn void main()
 - Value methods
 - Associated enum data
 - No preprocessor
-- Less undefined behaviour and runtime checks in "safe" mode
+- Less undefined behaviour and added runtime checks in "safe" mode
 - Limited operator overloading to enable userland dynamic arrays
 - Optional pre and post conditions
 

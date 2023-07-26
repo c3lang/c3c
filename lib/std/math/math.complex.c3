@@ -3,9 +3,9 @@ module std::math::complex(<Real>);
 union Complex
 {
 	struct
-    {
-    	Real r, c;
-    }
+	{
+		Real r, c;
+	}
 	Real[<2>] v;
 }
 

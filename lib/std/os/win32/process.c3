@@ -35,12 +35,12 @@ struct NativeMutex
 {
 	union
 	{
-        Win32_CRITICAL_SECTION critical_section;
-        Win32_HANDLE handle;
-    }
-    bool already_locked;
-    bool recursive;
-    bool timed;
+		Win32_CRITICAL_SECTION critical_section;
+		Win32_HANDLE handle;
+	}
+	bool already_locked;
+	bool recursive;
+	bool timed;
 }
 
 struct NativeOnceFlag

@@ -110,16 +110,16 @@ fn void DynamicArenaAllocator.reset(&self) @private
 {
 	DynamicArenaPage* page = self.page;
 	DynamicArenaPage** unused_page_ptr = &self.unused_page;
-    while (page)
-    {
-        DynamicArenaPage* next_page = page.prev_arena;
-        page.used = 0;
-        DynamicArenaPage* prev_unused = *unused_page_ptr;
-        *unused_page_ptr = page;
-        page.prev_arena = prev_unused;
-        page = next_page;
-    }
-    self.page = page;
+	while (page)
+	{
+		DynamicArenaPage* next_page = page.prev_arena;
+		page.used = 0;
+		DynamicArenaPage* prev_unused = *unused_page_ptr;
+		*unused_page_ptr = page;
+		page.prev_arena = prev_unused;
+		page = next_page;
+	}
+	self.page = page;
 }
 
 /**
@@ -139,11 +139,11 @@ fn void*! DynamicArenaAllocator._alloc_new(&self, usz size, usz alignment, usz o
 		free(mem, .using = self.backing_allocator);
 		return err?;
 	}
-    page.memory = mem;
-    void* mem_start = mem::aligned_pointer(mem + offset + DynamicArenaChunk.sizeof, alignment) - offset;
-    assert(mem_start + size < mem + page_size);
-    DynamicArenaChunk* chunk = (DynamicArenaChunk*)mem_start - 1;
-    chunk.size = size;
+	page.memory = mem;
+	void* mem_start = mem::aligned_pointer(mem + offset + DynamicArenaChunk.sizeof, alignment) - offset;
+	assert(mem_start + size < mem + page_size);
+	DynamicArenaChunk* chunk = (DynamicArenaChunk*)mem_start - 1;
+	chunk.size = size;
 	page.prev_arena = self.page;
 	page.total = page_size;
 	page.used = mem_start + size - page.memory;
@@ -166,32 +166,32 @@ fn void*! DynamicArenaAllocator._alloc(&self, usz size, usz alignment, usz offse
 		self.unused_page = page.prev_arena;
 		page.prev_arena = null;
 	}
-    if (!page) return self._alloc_new(size, alignment, offset);
-    void* start = mem::aligned_pointer(page.memory + page.used + DynamicArenaChunk.sizeof + offset, alignment) - offset;
-    usz new_used = start - page.memory + size;
-    if ALLOCATE_NEW: (new_used > page.total)
-    {
-        if ((page = self.unused_page))
-        {
-            start = mem::aligned_pointer(page.memory + page.used + DynamicArenaChunk.sizeof + offset, alignment) - offset;
-            new_used = start + size - page.memory;
-            if (page.total >= new_used)
-            {
-	    		self.unused_page = page.prev_arena;
-    	    	page.prev_arena = self.page;
-    		    self.page = page;
-    		    break ALLOCATE_NEW;
-            }
-        }
- 	    return self._alloc_new(size, alignment, offset);
-    }
+	if (!page) return self._alloc_new(size, alignment, offset);
+	void* start = mem::aligned_pointer(page.memory + page.used + DynamicArenaChunk.sizeof + offset, alignment) - offset;
+	usz new_used = start - page.memory + size;
+	if ALLOCATE_NEW: (new_used > page.total)
+	{
+		if ((page = self.unused_page))
+		{
+			start = mem::aligned_pointer(page.memory + page.used + DynamicArenaChunk.sizeof + offset, alignment) - offset;
+			new_used = start + size - page.memory;
+			if (page.total >= new_used)
+			{
+				self.unused_page = page.prev_arena;
+				page.prev_arena = self.page;
+				self.page = page;
+				break ALLOCATE_NEW;
+			}
+		}
+		return self._alloc_new(size, alignment, offset);
+	}
 
-    page.used = new_used;
+	page.used = new_used;
 	assert(start + size == page.memory + page.used);
-    void* mem = start;
-    DynamicArenaChunk* chunk = (DynamicArenaChunk*)mem - 1;
-    chunk.size = size;
-    return mem;
+	void* mem = start;
+	DynamicArenaChunk* chunk = (DynamicArenaChunk*)mem - 1;
+	chunk.size = size;
+	return mem;
 }
 
 /**

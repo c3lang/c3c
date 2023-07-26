@@ -9,7 +9,7 @@ const DEFAULT_MEM_ALIGNMENT = (void*.alignof) * 2;
 
 macro @volatile_load(&x) @builtin
 {
-    return $$volatile_load(x);
+	return $$volatile_load(x);
 }
 
 /**
@@ -17,7 +17,7 @@ macro @volatile_load(&x) @builtin
  **/
 macro @volatile_store(&x, y) @builtin
 {
-    return $$volatile_store(x, ($typeof(*x))y);
+	return $$volatile_store(x, ($typeof(*x))y);
 }
 
 enum AtomicOrdering : int
@@ -152,7 +152,7 @@ macro bool equals(a, b, isz len = -1, usz $align = 0)
 
 	if (!len) return true;
 	var $Type;
-    $switch ($align)
+	$switch ($align)
 		$case 1:
 			$Type = char;
 		$case 2:
@@ -395,20 +395,20 @@ macro void @stack_pool(usz $size; @body) @builtin
 
 macro void @pool(TempAllocator* #other_temp = null; @body) @builtin
 {
-    TempAllocator* current = temp();
-    var $has_arg = !$checks(var $x = #other_temp);
-    $if $has_arg:
-        TempAllocator* original = current;
-        if (current == #other_temp) current = temp_allocator_next();
-    $endif
-    usz mark = current.used;
-    defer
-    {
-	    current.reset(mark);
-	    $if $has_arg:
-	        thread_temp_allocator = original;
-	    $endif;
-    }
+	TempAllocator* current = temp();
+	var $has_arg = !$checks(var $x = #other_temp);
+	$if $has_arg:
+		TempAllocator* original = current;
+		if (current == #other_temp) current = temp_allocator_next();
+	$endif
+	usz mark = current.used;
+	defer
+	{
+		current.reset(mark);
+		$if $has_arg:
+			thread_temp_allocator = original;
+		$endif;
+	}
 	@body();
 }
 
@@ -434,27 +434,27 @@ fn TempAllocator *temp_allocator_next() @private
 {
 	if (!thread_temp_allocator)
 	{
-	    init_default_temp_allocators();
-	    return thread_temp_allocator;
+		init_default_temp_allocators();
+		return thread_temp_allocator;
 	}
-    usz index = thread_temp_allocator == temp_allocator_pair[0] ? 1 : 0;
-    return thread_temp_allocator = temp_allocator_pair[index];
+	usz index = thread_temp_allocator == temp_allocator_pair[0] ? 1 : 0;
+	return thread_temp_allocator = temp_allocator_pair[index];
 }
 
 import libc;
 
 fn void init_default_temp_allocators() @private
 {
-    temp_allocator_pair[0] = create_default_sized_temp_allocator();
-    temp_allocator_pair[1] = create_default_sized_temp_allocator();
-    thread_temp_allocator = temp_allocator_pair[0];
+	temp_allocator_pair[0] = create_default_sized_temp_allocator();
+	temp_allocator_pair[1] = create_default_sized_temp_allocator();
+	thread_temp_allocator = temp_allocator_pair[0];
 }
 
 macro TempAllocator* temp()
 {
 	if (!thread_temp_allocator)
 	{
-	    init_default_temp_allocators();
+		init_default_temp_allocators();
 	}
 	return thread_temp_allocator;
 }

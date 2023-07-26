@@ -16,15 +16,15 @@ struct Sha1
 
 fn void Sha1.init(&self)
 {
-    // SHA1 initialization constants
-    *self = {
-        .state = {
-            0x67452301,
-            0xEFCDAB89,
-            0x98BADCFE,
-            0x10325476,
-            0xC3D2E1F0
-        }
+	// SHA1 initialization constants
+	*self = {
+		.state = {
+			0x67452301,
+			0xEFCDAB89,
+			0x98BADCFE,
+			0x10325476,
+			0xC3D2E1F0
+		}
 	};
 }
 
@@ -99,7 +99,7 @@ macro @blk0(&block, i) @local
 		return block.l[i];
 	$else
 		return block.l[i] = (block.l[i].rotl(24) & 0xFF00FF00)
-            | (block.l[i].rotl(8) & 0x00FF00FF);
+			| (block.l[i].rotl(8) & 0x00FF00FF);
 	$endif
 }
 

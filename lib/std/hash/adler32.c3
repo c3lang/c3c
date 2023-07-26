@@ -8,46 +8,46 @@ const uint ADLER_CONST @private = 65521;
 
 struct Adler32
 {
-    uint a;
-    uint b;
+	uint a;
+	uint b;
 }
 
 fn void Adler32.init(&self)
 {
-    *self = { 1, 0 };
+	*self = { 1, 0 };
 }
 
 fn void Adler32.updatec(&self, char c)
 {
-    self.a = (self.a + c) % ADLER_CONST;
-    self.b = (self.b + self.a) % ADLER_CONST;
+	self.a = (self.a + c) % ADLER_CONST;
+	self.b = (self.b + self.a) % ADLER_CONST;
 }
 
 fn void Adler32.update(&self, char[] data)
 {
-    uint a = self.a;
-    uint b = self.b;
-    foreach (char x : data)
-    {
-        a = (a + x) % ADLER_CONST;
-        b = (b + a) % ADLER_CONST;
-    }
-    *self = { a, b };
+	uint a = self.a;
+	uint b = self.b;
+	foreach (char x : data)
+	{
+		a = (a + x) % ADLER_CONST;
+		b = (b + a) % ADLER_CONST;
+	}
+	*self = { a, b };
 }
 
 fn uint Adler32.final(&self)
 {
-    return (self.b << 16) | self.a;
+	return (self.b << 16) | self.a;
 }
 
 fn uint encode(char[] data)
 {
-    uint a = 1;
-    uint b = 0;
-    foreach (char x : data)
-    {
-        a = (a + x) % ADLER_CONST;
-        b = (b + a) % ADLER_CONST;
-    }
-    return (b << 16) | a;
+	uint a = 1;
+	uint b = 0;
+	foreach (char x : data)
+	{
+		a = (a + x) % ADLER_CONST;
+		b = (b + a) % ADLER_CONST;
+	}
+	return (b << 16) | a;
 }

@@ -74,7 +74,7 @@ fn bool HashMap.is_empty(&map) @inline
 
 fn usz HashMap.len(&map) @inline
 {
-    return map.count;
+	return map.count;
 }
 
 fn Value*! HashMap.get_ref(&map, Key key)
@@ -204,14 +204,14 @@ macro HashMap.@each(map; @body(key, value))
 {
 	if (map.count)
 	{
-        foreach (Entry* entry : map.table)
-        {
-            while (entry)
-            {
-                @body(entry.key, entry.value);
-                entry = entry.next;
-            }
-        }
+		foreach (Entry* entry : map.table)
+		{
+			while (entry)
+			{
+				@body(entry.key, entry.value);
+				entry = entry.next;
+			}
+		}
 	}
 }
 
@@ -260,7 +260,7 @@ fn void HashMap.add_entry(&map, uint hash, Key key, Value value, uint bucket_ind
 	if (map.count++ >= map.threshold)
 	{
 		map.resize(map.table.len * 2);
-    }
+	}
 }
 
 fn void HashMap.resize(&map, uint new_capacity) @private
@@ -281,8 +281,8 @@ fn void HashMap.resize(&map, uint new_capacity) @private
 
 fn uint rehash(uint hash) @inline @private
 {
-    hash ^= (hash >> 20) ^ (hash >> 12);
-    return hash ^ ((hash >> 7) ^ (hash >> 4));
+	hash ^= (hash >> 20) ^ (hash >> 12);
+	return hash ^ ((hash >> 7) ^ (hash >> 4));
 }
 
 macro uint index_for(uint hash, uint capacity) @private
@@ -293,36 +293,36 @@ macro uint index_for(uint hash, uint capacity) @private
 fn void HashMap.transfer(&map, Entry*[] new_table) @private
 {
 	Entry*[] src = map.table;
-    uint new_capacity = new_table.len;
-    foreach (uint j, Entry *e : src)
-    {
-        if (!e) continue;
-        do
-        {
-            Entry* next = e.next;
-            uint i = index_for(e.hash, new_capacity);
-            e.next = new_table[i];
-            new_table[i] = e;
-            e = next;
-        }
-        while (e);
-    }
+	uint new_capacity = new_table.len;
+	foreach (uint j, Entry *e : src)
+	{
+		if (!e) continue;
+		do
+		{
+			Entry* next = e.next;
+			uint i = index_for(e.hash, new_capacity);
+			e.next = new_table[i];
+			new_table[i] = e;
+			e = next;
+		}
+		while (e);
+	}
 }
 
 fn void HashMap.put_all_for_create(&map, HashMap* other_map) @private
 {
 	if (!other_map.count) return;
-    foreach (Entry *e : other_map.table)
-    {
-        if (!e) continue;
-        map.put_for_create(e.key, e.value);
-    }
+	foreach (Entry *e : other_map.table)
+	{
+		if (!e) continue;
+		map.put_for_create(e.key, e.value);
+	}
 }
 
 fn void HashMap.put_for_create(&map, Key key, Value value) @private
 {
-    uint hash = rehash(key.hash());
-    uint i = index_for(hash, map.table.len);
+	uint hash = rehash(key.hash());
+	uint i = index_for(hash, map.table.len);
 	for (Entry *e = map.table[i]; e != null; e = e.next)
 	{
 		if (e.hash == hash && equals(key, e.key))

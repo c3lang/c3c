@@ -24,9 +24,9 @@ fn uint128! int_from_any(any arg, bool *is_neg) @private
 		return (uint128)(uptr)*(void**)arg.ptr;
 	}
 	if (arg.type.kindof == TypeKind.DISTINCT)
-    {
-    	return int_from_any(any { arg.ptr, arg.type.inner }, is_neg);
-    }
+	{
+		return int_from_any(any { arg.ptr, arg.type.inner }, is_neg);
+	}
 	switch (arg)
 	{
 		case bool:
@@ -44,8 +44,8 @@ fn uint128! int_from_any(any arg, bool *is_neg) @private
 			long val = *arg;
 			return (*is_neg = val < 0) ? (~(uint128)val) + 1 : (uint128)val;
 		case int128:
-            int128 val = *arg;
-            return (*is_neg = val < 0) ? (~(uint128)val) + 1 : (uint128)val;
+			int128 val = *arg;
+			return (*is_neg = val < 0) ? (~(uint128)val) + 1 : (uint128)val;
 		case char:
 			return *arg;
 		case ushort:
@@ -92,7 +92,7 @@ fn FloatType! float_from_any(any arg) @private
 		case long:
 			return *arg;
 		case int128:
-    	    return *arg;
+			return *arg;
 		case char:
 			return *arg;
 		case ushort:
@@ -102,7 +102,7 @@ fn FloatType! float_from_any(any arg) @private
 		case ulong:
 			return *arg;
 		case uint128:
-            return *arg;
+			return *arg;
 		case float:
 			return (FloatType)*arg;
 		case double:
@@ -126,14 +126,14 @@ fn uint simple_atoi(char* buf, usz maxlen, usz* len_ptr) @inline @private
 	uint i = 0;
 	usz len = *len_ptr;
 	while (len < maxlen)
-    {
-        char c = buf[len];
-        if (c < '0' || c > '9') break;
-        i = i * 10 + c - '0';
-        len++;
-    }
-    *len_ptr = len;
-    return i;
+	{
+		char c = buf[len];
+		if (c < '0' || c > '9') break;
+		i = i * 10 + c - '0';
+		len++;
+	}
+	*len_ptr = len;
+	return i;
 }
 
 fn void! Formatter.out_substr(&self, String str) @private
@@ -151,7 +151,7 @@ fn void! Formatter.out_substr(&self, String str) @private
 		// Break if we have precision set and we ran out...
 		if (c & 0xC0 != 0x80 && self.flags.precision && !prec--) break;
 		self.out(c)!;
-        index++;
+		index++;
 	}
 	return self.left_adjust(l);
 }
@@ -192,14 +192,14 @@ fn void! Formatter.floatformat(&self, FloatFormatting formatting, double y) @pri
 	const BUF_SIZE = (math::DOUBLE_MANT_DIG + 28) / 29 + 1
 		+ (math::DOUBLE_MAX_EXP + math::DOUBLE_MANT_DIG + 28 + 8) / 9;
 	uint[BUF_SIZE] big;
-    bool is_neg = false;
-    if (math::signbit(y))
-    {
-        is_neg = true;
-        y = -y;
-    }
-    int pl = is_neg || self.flags.plus ? 1 : 0;
-    // Print inf/nan
+	bool is_neg = false;
+	if (math::signbit(y))
+	{
+		is_neg = true;
+		y = -y;
+	}
+	int pl = is_neg || self.flags.plus ? 1 : 0;
+	// Print inf/nan
 	if (!math::is_finite(y))
 	{
 		// Add padding
@@ -229,20 +229,20 @@ fn void! Formatter.floatformat(&self, FloatFormatting formatting, double y) @pri
 		if (p > 0 && p < math::DOUBLE_MANT_DIG / 4 - 1)
 		{
 			int re = math::DOUBLE_MANT_DIG / 4 - 1 - (int)p;
-    		round *= 1 << (math::DOUBLE_MANT_DIG % 4);
-    		while (re--) round *= 16;
-    		if (is_neg)
-    		{
-    		    y = -y;
+			round *= 1 << (math::DOUBLE_MANT_DIG % 4);
+			while (re--) round *= 16;
+			if (is_neg)
+			{
+				y = -y;
 				y -= round;
-    			y += round;
-    			y = -y;
-    		}
-    		else
-    		{
-    		    y += round;
-    			y -= round;
-    		}
+				y += round;
+				y = -y;
+			}
+			else
+			{
+				y += round;
+				y -= round;
+			}
 		}
 		// Reverse print
 		char* estr = fmt_u(e2 < 0 ? (int128)-e2 : (int128)e2, ebuf);
@@ -476,24 +476,24 @@ fn void! Formatter.floatformat(&self, FloatFormatting formatting, double y) @pri
 	else
 	{
 		if (z <= a) z = a + 1;
-    	for (uint* d = a; d < z && p >= 0; d++)
-    	{
+		for (uint* d = a; d < z && p >= 0; d++)
+		{
 			char* s = fmt_u(*d, buf + 9);
 			if (s == buf + 9) (--s)[0] = '0';
-    		if (d != a)
-    		{
-    		    while (s > buf) (--s)[0] = '0';
-    		}
-    		else
-    		{
-    		    self.out(s++[0])!;
-    		    if (p > 0 || self.flags.hash) self.out('.')!;
-    		}
-    		self.out_chars(s[:math::min(buf + 9 - s, p)])!;
-    		p -= buf + 9 - s;
-    	}
-    	self.pad('0', p + 18, 18)!;
-    	self.out_chars(estr[:ebuf - estr])!;
+			if (d != a)
+			{
+				while (s > buf) (--s)[0] = '0';
+			}
+			else
+			{
+				self.out(s++[0])!;
+				if (p > 0 || self.flags.hash) self.out('.')!;
+			}
+			self.out_chars(s[:math::min(buf + 9 - s, p)])!;
+			p -= buf + 9 - s;
+		}
+		self.pad('0', p + 18, 18)!;
+		self.out_chars(estr[:ebuf - estr])!;
 	}
 
 	if (self.flags.left) self.pad(' ', self.width, pl + l)!;
@@ -598,8 +598,8 @@ fn void! Formatter.out_char(&self, any arg) @private
 	uint l = 1;
 	// pre padding
 	self.right_adjust(l)!;
-    // char output
-    Char32 c = types::any_to_int(arg, uint) ?? 0xFFFD;
+	// char output
+	Char32 c = types::any_to_int(arg, uint) ?? 0xFFFD;
 	switch (true)
 	{
 		case c < 0x7f:
@@ -607,11 +607,11 @@ fn void! Formatter.out_char(&self, any arg) @private
 		case c < 0x7ff:
 			self.out((char)(0xC0 | c >> 6))!;
 			self.out((char)(0x80 | (c & 0x3F)))!;
-        case c < 0xffff:
+		case c < 0xffff:
 			self.out((char)(0xE0 | c >> 12))!;
 			self.out((char)(0x80 | (c >> 6 & 0x3F)))!;
 			self.out((char)(0x80 | (c & 0x3F)))!;
-        default:
+		default:
 			self.out((char)(0xF0 | c >> 18))!;
 			self.out((char)(0x80 | (c >> 12 & 0x3F)))!;
 			self.out((char)(0x80 | (c >> 6 & 0x3F)))!;
@@ -625,16 +625,16 @@ fn void! Formatter.out_reverse(&self, char[] buf) @private
 {
 	usz buffer_start_idx = self.idx;
 	usz len = buf.len;
-    // pad spaces up to given width
-    if (!self.flags.left && !self.flags.zeropad)
-    {
-        for (usz i = len; i < self.width; i++)
-        {
-            self.out(' ')!;
-        }
-    }
-    // reverse string
-    while (len) self.out(buf[--len])!;
+	// pad spaces up to given width
+	if (!self.flags.left && !self.flags.zeropad)
+	{
+		for (usz i = len; i < self.width; i++)
+		{
+			self.out(' ')!;
+		}
+	}
+	// reverse string
+	while (len) self.out(buf[--len])!;
 
 	// append pad spaces up to given width
 	return self.left_adjust(self.idx - buffer_start_idx);
@@ -661,7 +661,7 @@ fn int! printf_parse_format_field(
 	if (c != '*') return 0;
 	printf_advance_format(format_len, index_ptr)!;
 	any val = next_any(args_ptr, args_len, args_index_ptr)!;
-    if (!val.type.kindof.is_int()) return FormattingFault.INVALID_WIDTH_ARG?;
-    uint! intval = types::any_to_int(val, int);
+	if (!val.type.kindof.is_int()) return FormattingFault.INVALID_WIDTH_ARG?;
+	uint! intval = types::any_to_int(val, int);
 	return intval ?? FormattingFault.INVALID_WIDTH_ARG?;
 }

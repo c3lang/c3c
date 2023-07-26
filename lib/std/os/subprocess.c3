@@ -20,7 +20,7 @@ fault SubProcessResult
 struct SubProcess
 {
 	CFile stdin_file;
-    CFile stdout_file;
+	CFile stdout_file;
 	CFile stderr_file;
 
 	Win32_HANDLE hProcess @if(env::WIN32);
@@ -45,8 +45,8 @@ bitstruct SubProcessOptions : int
 	// Spawn child process without window if supported
 	bool no_window;
 	// Search for program names in the PATH variable. Always enabled on Windows.
-    // Note: this will **not** search for paths in any provided custom environment
-    // and instead uses the PATH of the spawning process.
+	// Note: this will **not** search for paths in any provided custom environment
+	// and instead uses the PATH of the spawning process.
 	bool search_user_path;
 }
 
@@ -122,14 +122,14 @@ fn WString convert_command_line_win32(String[] command_line) @inline @if(env::WI
 fn SubProcess! create(String[] command_line, SubProcessOptions options = {}, String[] environment = {}) @if(env::WIN32)
 {
 	void* rd, wr;
-    Win32_DWORD flags = win32::CREATE_UNICODE_ENVIRONMENT;
-    Win32_PROCESS_INFORMATION process_info;
-    Win32_SECURITY_ATTRIBUTES sa_attr = { Win32_SECURITY_ATTRIBUTES.sizeof, null, 1 };
-    Win32_STARTUPINFOW start_info = {
-        .cb = Win32_STARTUPINFOW.sizeof,
-        .dwFlags = win32::STARTF_USESTDHANDLES
-    };
-    if (options.no_window) flags |= win32::CREATE_NO_WINDOW;
+	Win32_DWORD flags = win32::CREATE_UNICODE_ENVIRONMENT;
+	Win32_PROCESS_INFORMATION process_info;
+	Win32_SECURITY_ATTRIBUTES sa_attr = { Win32_SECURITY_ATTRIBUTES.sizeof, null, 1 };
+	Win32_STARTUPINFOW start_info = {
+		.cb = Win32_STARTUPINFOW.sizeof,
+		.dwFlags = win32::STARTF_USESTDHANDLES
+	};
+	if (options.no_window) flags |= win32::CREATE_NO_WINDOW;
 	if (!win32::createPipe(&rd, &wr, &sa_attr, 0)) return SubProcessResult.FAILED_TO_CREATE_PIPE?;
 	// TODO defer catch
 	if (!win32::setHandleInformation(wr, win32::HANDLE_FLAG_INHERIT, 0)) return SubProcessResult.FAILED_TO_CREATE_PIPE?;
@@ -137,16 +137,16 @@ fn SubProcess! create(String[] command_line, SubProcessOptions options = {}, Str
 	CFile stdin;
 	CFile stdout;
 	CFile stderr;
-    @pool()
-    {
-        WString used_environment = null;
-        if (!options.inherit_environment)
-        {
-	        DString env;
-            env.tinit();
-            if (!environment.len)
-            {
-                env.append("\0");
+	@pool()
+	{
+		WString used_environment = null;
+		if (!options.inherit_environment)
+		{
+			DString env;
+			env.tinit();
+			if (!environment.len)
+			{
+				env.append("\0");
 			}
 			foreach (String s : environment)
 			{
@@ -157,63 +157,63 @@ fn SubProcess! create(String[] command_line, SubProcessOptions options = {}, Str
 			used_environment = env.as_str().to_temp_wstring()!;
 		}
 		int fd = win32::_open_osfhandle((iptr)wr, 0);
-    	if (fd != -1)
-    	{
-    		stdin = win32::_fdopen(fd, "wb");
-    		if (!stdin) return SubProcessResult.FAILED_TO_OPEN_STDIN?;
-    	}
-    	start_info.hStdInput = rd;
-    	if (options.read_async)
-    	{
-    		create_named_pipe_helper(&rd, &wr)!;
-    	}
-    	else
-    	{
-    		if (!win32::createPipe(&rd, &wr, &sa_attr, 0)) return SubProcessResult.FAILED_TO_CREATE_PIPE?;
-    	}
-    	if (!win32::setHandleInformation(rd, win32::HANDLE_FLAG_INHERIT, 0)) return SubProcessResult.FAILED_TO_CREATE_PIPE?;
-    	fd = win32::_open_osfhandle((iptr)rd, 0);
-    	if (fd != -1)
-    	{
-    		stdout = win32::_fdopen(fd, "rb");
-    		if (!stdout) return SubProcessResult.FAILED_TO_OPEN_STDOUT?;
-    	}
+		if (fd != -1)
+		{
+			stdin = win32::_fdopen(fd, "wb");
+			if (!stdin) return SubProcessResult.FAILED_TO_OPEN_STDIN?;
+		}
+		start_info.hStdInput = rd;
+		if (options.read_async)
+		{
+			create_named_pipe_helper(&rd, &wr)!;
+		}
+		else
+		{
+			if (!win32::createPipe(&rd, &wr, &sa_attr, 0)) return SubProcessResult.FAILED_TO_CREATE_PIPE?;
+		}
+		if (!win32::setHandleInformation(rd, win32::HANDLE_FLAG_INHERIT, 0)) return SubProcessResult.FAILED_TO_CREATE_PIPE?;
+		fd = win32::_open_osfhandle((iptr)rd, 0);
+		if (fd != -1)
+		{
+			stdout = win32::_fdopen(fd, "rb");
+			if (!stdout) return SubProcessResult.FAILED_TO_OPEN_STDOUT?;
+		}
 
-        start_info.hStdOutput = wr;
+		start_info.hStdOutput = wr;
 
-    	{|
-    		if (options.combined_stdout_stderr)
-    		{
-    			stderr = stdout;
-    			start_info.hStdError = start_info.hStdOutput;
-    			return;
-    		}
-    		if (options.read_async)
-    		{
-    			create_named_pipe_helper(&rd, &wr)!;
-    		}
-    		else
-    		{
-    			if (!win32::createPipe(&rd, &wr, &sa_attr, 0)) return SubProcessResult.FAILED_TO_CREATE_PIPE?;
-    		}
-    		if (!win32::setHandleInformation(rd, win32::HANDLE_FLAG_INHERIT, 0)) return SubProcessResult.FAILED_TO_CREATE_PIPE?;
+		{|
+			if (options.combined_stdout_stderr)
+			{
+				stderr = stdout;
+				start_info.hStdError = start_info.hStdOutput;
+				return;
+			}
+			if (options.read_async)
+			{
+				create_named_pipe_helper(&rd, &wr)!;
+			}
+			else
+			{
+				if (!win32::createPipe(&rd, &wr, &sa_attr, 0)) return SubProcessResult.FAILED_TO_CREATE_PIPE?;
+			}
+			if (!win32::setHandleInformation(rd, win32::HANDLE_FLAG_INHERIT, 0)) return SubProcessResult.FAILED_TO_CREATE_PIPE?;
 
-            fd = win32::_open_osfhandle((iptr)rd, 0);
-    		if (fd != -1)
-    		{
-    			stderr = win32::_fdopen(fd, "rb");
-    			if (!stderr) return SubProcessResult.FAILED_TO_OPEN_STDERR?;
-    		}
-    		start_info.hStdError = wr;
+			fd = win32::_open_osfhandle((iptr)rd, 0);
+			if (fd != -1)
+			{
+				stderr = win32::_fdopen(fd, "rb");
+				if (!stderr) return SubProcessResult.FAILED_TO_OPEN_STDERR?;
+			}
+			start_info.hStdError = wr;
 
-    	|};
-    	void *event_output;
-    	void *event_error;
-    	if (options.read_async)
-    	{
-    		event_output = win32::createEventA(&sa_attr, 1, 1, null);
-    		event_error = win32::createEventA(&sa_attr, 1, 1, null);
-        }
+		|};
+		void *event_output;
+		void *event_error;
+		if (options.read_async)
+		{
+			event_output = win32::createEventA(&sa_attr, 1, 1, null);
+			event_error = win32::createEventA(&sa_attr, 1, 1, null);
+		}
 		if (!win32::createProcessW(
 			null,
 			convert_command_line_win32(command_line),
@@ -225,7 +225,7 @@ fn SubProcess! create(String[] command_line, SubProcessOptions options = {}, Str
 			null,                   // use parent dir
 			&start_info,            // startup info ptr
 			&process_info)) return SubProcessResult.FAILED_TO_START_PROCESS?;
-    };
+	};
 	// We don't need the handle of the primary thread in the called process.
 	win32::closeHandle(process_info.hThread);
 	if (start_info.hStdOutput)
@@ -241,7 +241,7 @@ fn SubProcess! create(String[] command_line, SubProcessOptions options = {}, Str
 		.stdout_file = stdout,
 		.stderr_file = stderr,
 		.is_alive = true,
-    };
+	};
 }
 
 /**
@@ -278,14 +278,14 @@ fn ZString* tcopy_env(String[] environment) @local @inline @if(env::POSIX)
 fn SubProcess! create(String[] command_line, SubProcessOptions options = {}, String[] environment = {}) @if(env::POSIX)
 {
 	CInt[2] stdinfd;
-    CInt[2] stdoutfd;
-    CInt[2] stderrfd;
+	CInt[2] stdoutfd;
+	CInt[2] stderrfd;
 
 	if (posix::pipe(&stdinfd)) return SubProcessResult.FAILED_TO_OPEN_STDIN?;
 	if (posix::pipe(&stdoutfd)) return SubProcessResult.FAILED_TO_OPEN_STDOUT?;
 	if (!options.combined_stdout_stderr && posix::pipe(&stderrfd)) return SubProcessResult.FAILED_TO_OPEN_STDERR?;
 
-    Posix_spawn_file_actions_t actions;
+	Posix_spawn_file_actions_t actions;
 	if (posix::spawn_file_actions_init(&actions)) return SubProcessResult.FAILED_TO_INITIALIZE_ACTIONS?;
 	defer posix::spawn_file_actions_destroy(&actions);
 	if (posix::spawn_file_actions_addclose(&actions, stdinfd[1])) return SubProcessResult.FAILED_TO_OPEN_STDIN?;
@@ -301,7 +301,7 @@ fn SubProcess! create(String[] command_line, SubProcessOptions options = {}, Str
 		if (posix::spawn_file_actions_addclose(&actions, stderrfd[0])) return SubProcessResult.FAILED_TO_OPEN_STDERR?;
 		if (posix::spawn_file_actions_adddup2(&actions, stderrfd[1], libc::STDERR_FD)) return SubProcessResult.FAILED_TO_OPEN_STDERR?;
 	}
-    Pid_t child;
+	Pid_t child;
 	@pool()
 	{
 		ZString* command_line_copy = tcopy_command_line(command_line);
@@ -322,7 +322,7 @@ fn SubProcess! create(String[] command_line, SubProcessOptions options = {}, Str
 	CFile stderr = {|
 		if (options.combined_stdout_stderr) return stdout;
 		libc::close(stderrfd[1]);
-    	return libc::fdopen(stderrfd[0], "rb");
+		return libc::fdopen(stderrfd[0], "rb");
 	|};
 	return {
 		.stdin_file = stdin,
@@ -343,8 +343,8 @@ fn CInt! SubProcess.join(&self) @if(env::POSIX)
 	CInt status;
 	if (self.child && self.child != posix::waitpid(self.child, &status, 0)) return SubProcessResult.PROCESS_JOIN_FAILED?;
 
-    self.child = 0;
-    self.is_alive = false;
+	self.child = 0;
+	self.is_alive = false;
 
 	return self.return_status = posix::wIFEXITED(status) ? posix::wEXITSTATUS(status) : libc::EXIT_FAILURE;
 }
@@ -369,8 +369,8 @@ fn CInt! SubProcess.join(&self) @if(env::WIN32)
 	win32::waitForSingleObject(self.hProcess, win32::INFINITE);
 	Win32_DWORD return_code @noinit;
 	if (!win32::getExitCodeProcess(self.hProcess, &return_code)) return SubProcessResult.PROCESS_JOIN_FAILED?;
-    self.is_alive = false;
-    return return_code;
+	self.is_alive = false;
+	return return_code;
 }
 
 fn bool SubProcess.destroy(&self)
@@ -408,11 +408,11 @@ fn usz! read_from_file_win32(CFile file, Win32_HANDLE event_handle, char* buffer
 {
 	CInt fd = libc::fileno(file);
 	Win32_DWORD bytes_read = 0;
-    Win32_OVERLAPPED overlapped = { .hEvent = event_handle };
-    Win32_HANDLE handle = (Win32_HANDLE)win32::_get_osfhandle(fd);
+	Win32_OVERLAPPED overlapped = { .hEvent = event_handle };
+	Win32_HANDLE handle = (Win32_HANDLE)win32::_get_osfhandle(fd);
 	if (!win32::readFile(handle, buffer, (Win32_DWORD)size, &bytes_read, &overlapped))
 	{
-        // Means we've got an async read!
+		// Means we've got an async read!
 		if (win32::getLastError() == win32::ERROR_IO_PENDING)
 		{
 			if (!win32::getOverlappedResult(handle, &overlapped, &bytes_read, 1))
@@ -425,16 +425,16 @@ fn usz! read_from_file_win32(CFile file, Win32_HANDLE event_handle, char* buffer
 					default:
 						return SubProcessResult.READ_FAILED?;
 				}
-            }
-        }
-    }
-    return bytes_read;
+			}
+		}
+	}
+	return bytes_read;
 }
 fn usz! read_from_file_posix(CFile file, char* buffer, usz size) @if(env::POSIX) @local
 {
 	isz bytes_read = libc::read(libc::fileno(file), buffer, size);
-    if (bytes_read < 0) return SubProcessResult.READ_FAILED?;
-    return bytes_read;
+	if (bytes_read < 0) return SubProcessResult.READ_FAILED?;
+	return bytes_read;
 }
 
 fn usz! SubProcess.read_stdout(&self, char* buffer, usz size)

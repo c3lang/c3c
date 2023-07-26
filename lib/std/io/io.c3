@@ -6,46 +6,46 @@ import libc;
 
 struct File
 {
-    CFile file;
+	CFile file;
 }
 
 enum Seek
 {
-    SET,
-    CURSOR,
-    END
+	SET,
+	CURSOR,
+	END
 }
 
 fault IoError
 {
-    FILE_NOT_FOUND,
-    FILE_NOT_VALID,
-    INVALID_POSITION,
-    OVERFLOW,
-    FILE_IS_PIPE,
-    INCOMPLETE_WRITE,
-    BUSY,
-    NO_PERMISSION,
-    OUT_OF_SPACE,
-    INVALID_PUSHBACK,
-    EOF,
-    UNEXPECTED_EOF,
-    CANNOT_READ_DIR,
-    TOO_MANY_DESCRIPTORS,
-    FILE_IS_DIR,
-    READ_ONLY,
-    FILE_NOT_DIR,
-    SYMLINK_FAILED,
-    ALREADY_EXISTS,
-    NOT_SEEKABLE,
-    NAME_TOO_LONG,
-    WOULD_BLOCK,
-    DIR_NOT_EMPTY,
-    INTERRUPTED,
-    GENERAL_ERROR,
-    UNKNOWN_ERROR,
-    UNSUPPORTED_OPERATION,
-    FILE_CANNOT_DELETE,
+	FILE_NOT_FOUND,
+	FILE_NOT_VALID,
+	INVALID_POSITION,
+	OVERFLOW,
+	FILE_IS_PIPE,
+	INCOMPLETE_WRITE,
+	BUSY,
+	NO_PERMISSION,
+	OUT_OF_SPACE,
+	INVALID_PUSHBACK,
+	EOF,
+	UNEXPECTED_EOF,
+	CANNOT_READ_DIR,
+	TOO_MANY_DESCRIPTORS,
+	FILE_IS_DIR,
+	READ_ONLY,
+	FILE_NOT_DIR,
+	SYMLINK_FAILED,
+	ALREADY_EXISTS,
+	NOT_SEEKABLE,
+	NAME_TOO_LONG,
+	WOULD_BLOCK,
+	DIR_NOT_EMPTY,
+	INTERRUPTED,
+	GENERAL_ERROR,
+	UNKNOWN_ERROR,
+	UNSUPPORTED_OPERATION,
+	FILE_CANNOT_DELETE,
 }
 
 
@@ -142,12 +142,12 @@ fn File stdin()
 
 error FileError
 {
-    ulong errno;
+	ulong errno;
 }
 
 fn FileError errorFromErrno()
 {
-    return FileError { };
+	return FileError { };
 }
 
 
@@ -155,13 +155,13 @@ fn FileError errorFromErrno()
 
 pubic fn void! File.clearerr(File *file) @inline
 {
-    clearerr(file->file);
+	clearerr(file->file);
 }
 
 
 
 fn void File.error(File *file) @inline
 {
-    int err = ferror
+	int err = ferror
 }
 */

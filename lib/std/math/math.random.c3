@@ -100,20 +100,20 @@ fn void Random.set_seeds(&random, char[] seed)
  **/
 fn bool Random.next_bool(&random)
 {
-    return random.next(1) != 0;
+	return random.next(1) != 0;
 }
 
 fn float Random.next_float(&r)
 {
-    return r.next(24) / (float)(1 << 24);
+	return r.next(24) / (float)(1 << 24);
 }
 
 fn double Random.next_double(&r)
 {
-    return (((long)(r.next(26)) << 27) + r.next(27)) * 0x1.0p-53;
+	return (((long)(r.next(26)) << 27) + r.next(27)) * 0x1.0p-53;
 }
 
 fn uint Random.next_int(&r)
 {
-    return r.next(32) @inline;
+	return r.next(32) @inline;
 }

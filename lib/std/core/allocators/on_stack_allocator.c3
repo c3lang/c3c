@@ -92,8 +92,8 @@ fn void*! on_stack_allocator_function(Allocator* data, usz size, usz alignment, 
 			{
 				allocator.backing_allocator.free(old_pointer)!;
 			}
-        	return null;
-        case MARK:
+			return null;
+		case MARK:
 		case RESET:
 			unreachable("Reset unsupported");
 	}
@@ -174,7 +174,7 @@ fn void*! on_stack_allocator_alloc(OnStackAllocator* a, usz size, usz alignment,
 {
 	alignment = alignment_for_allocation(alignment);
 	usz total_len = a.data.len;
-    void* start_mem = a.data.ptr;
+	void* start_mem = a.data.ptr;
 	void* unaligned_pointer_to_offset = start_mem + a.used + OnStackAllocatorHeader.sizeof + offset;
 	void* aligned_pointer_to_offset = mem::aligned_pointer(unaligned_pointer_to_offset, alignment);
 	usz end = (usz)(aligned_pointer_to_offset - a.data.ptr) + size - offset;

@@ -25,7 +25,7 @@ macro void! NativeSocket.close(self)
 macro void! NativeSocket.set_non_blocking(self)
 {
 	int flags = fcntl(self, F_GETFL, 0);
-    if (fcntl(self, F_SETFL, flags | O_NONBLOCK) == -1)
+	if (fcntl(self, F_SETFL, flags | O_NONBLOCK) == -1)
 	{
 		if (libc::errno() == errno::EBADF) return NetError.INVALID_SOCKET?;
 		return NetError.GENERAL_ERROR?;

@@ -18,7 +18,7 @@ fn char[]! WasmMemory.allocate_block(&self, usz bytes)
 		self.allocation = $$wasm_memory_size(0) * WASM_BLOCK_SIZE;
 	}
 	isz bytes_required = bytes + self.use - self.allocation;
-    if (bytes_required <= 0)
+	if (bytes_required <= 0)
 	{
 		defer self.use += bytes;
 		return ((char*)self.use)[:bytes];

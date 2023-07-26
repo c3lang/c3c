@@ -16,11 +16,11 @@ struct AddrInfo
 	struct @if(env::WIN32 || env::DARWIN)
 	{
 		ZString ai_canonname;
-        SockAddrPtr ai_addr;
+		SockAddrPtr ai_addr;
 	}
 	struct @if(env::LINUX)
 	{
-        SockAddrPtr ai_addr;
+		SockAddrPtr ai_addr;
 		ZString ai_canonname;
 	}
 	AddrInfo* ai_next;

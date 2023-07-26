@@ -38,12 +38,12 @@ struct PrivatePriorityQueue
 
 fn void PrivatePriorityQueue.init(&self, usz initial_capacity = 16, Allocator* using = mem::heap()) @inline
 {
-    self.heap.init(initial_capacity, using);
+	self.heap.init(initial_capacity, using);
 }
 
 fn void PrivatePriorityQueue.tinit(&self, usz initial_capacity = 16) @inline
 {
-    self.init(initial_capacity, mem::temp());
+	self.init(initial_capacity, mem::temp());
 }
 
 fn void PrivatePriorityQueue.push(&self, Type element)
@@ -56,13 +56,13 @@ fn void PrivatePriorityQueue.push(&self, Type element)
 		Type item = self.heap[i];
 		Type parent_item = self.heap[parent];
 		$if MAX:
-		    bool ok = greater(item, parent_item);
+			bool ok = greater(item, parent_item);
 		$else
-		    bool ok = less(item, parent_item);
+			bool ok = less(item, parent_item);
 		$endif
 		if (!ok) break;
-        self.heap.swap(i, parent);
-        i = parent;
+		self.heap.swap(i, parent);
+		i = parent;
 	}
 }
 
@@ -79,26 +79,26 @@ fn Type! PrivatePriorityQueue.pop(&self)
 	while ((2 * i + 1) < newCount)
 	{
 		usz j = 2 * i + 1;
-        Type itemj = self.heap[j];
+		Type itemj = self.heap[j];
 		if ((j + 1) < newCount)
 		{
-		    Type nextj = self.heap[j + 1];
-		    $if MAX:
-                bool ok = greater(nextj, itemj);
-            $else
-                bool ok = less(nextj, itemj);
-            $endif
-            if (ok) j++;
+			Type nextj = self.heap[j + 1];
+			$if MAX:
+				bool ok = greater(nextj, itemj);
+			$else
+				bool ok = less(nextj, itemj);
+			$endif
+			if (ok) j++;
 		}
 		Type item = self.heap[i];
-        $if MAX:
-            bool ok = less(item, itemj);
-        $else
-            bool ok = greater(item, itemj);
-        $endif
-        if (!ok) break;
-        self.heap.swap(i, j);
-        i = j;
+		$if MAX:
+			bool ok = less(item, itemj);
+		$else
+			bool ok = greater(item, itemj);
+		$endif
+		if (!ok) break;
+		self.heap.swap(i, j);
+		i = j;
 	}
 
 	return self.heap.pop();

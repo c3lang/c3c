@@ -55,7 +55,7 @@ fn void*! arena_allocator_function(Allocator* data, usz size, usz alignment, usz
 			alignment = alignment_for_allocation(alignment);
 			void* mem = arena._alloc(size, alignment, offset)!;
 			if (clear) mem::clear(mem, size, mem::DEFAULT_MEM_ALIGNMENT);
-        	return mem;
+			return mem;
 		case ALIGNED_REALLOC:
 		case REALLOC:
 			if (!size) nextcase FREE;
@@ -69,12 +69,12 @@ fn void*! arena_allocator_function(Allocator* data, usz size, usz alignment, usz
 			ArenaAllocatorHeader* header = old_pointer - ArenaAllocatorHeader.sizeof;
 			// Reclaim memory if it's the last element.
 			if (old_pointer + header.size == &arena.data[arena.used])
-        	{
-        		arena.used -= header.size + ArenaAllocatorHeader.sizeof;
-        	}
-        	return null;
-        case MARK:
-            return (void*)(uptr)arena.used;
+			{
+				arena.used -= header.size + ArenaAllocatorHeader.sizeof;
+			}
+			return null;
+		case MARK:
+			return (void*)(uptr)arena.used;
 		case RESET:
 			arena.used = size;
 			return null;
@@ -94,7 +94,7 @@ fn void*! ArenaAllocator._alloc(&self, usz size, usz alignment, usz offset)
 {
 	usz total_len = self.data.len;
 	if (size > total_len) return AllocationFailure.CHUNK_TOO_LARGE?;
-    void* start_mem = self.data.ptr;
+	void* start_mem = self.data.ptr;
 	void* unaligned_pointer_to_offset = start_mem + self.used + ArenaAllocatorHeader.sizeof + offset;
 	void* aligned_pointer_to_offset = mem::aligned_pointer(unaligned_pointer_to_offset, alignment);
 	usz end = (usz)(aligned_pointer_to_offset - self.data.ptr) + size - offset;
@@ -126,17 +126,17 @@ fn void*! ArenaAllocator._realloc(&self, void *old_pointer, usz size, usz alignm
 	if (&self.data[self.used] == old_pointer + old_size && mem::ptr_is_aligned(old_pointer + offset, alignment))
 	{
 		if (old_size >= size)
-        {
-        	self.used -= old_size - size;
-        }
-        else
-        {
-	        usz new_used = self.used + size - old_size;
-            if (new_used > total_len) return AllocationFailure.OUT_OF_MEMORY?;
-            self.used = new_used;
-        }
-        header.size = size;
-        return old_pointer;
+		{
+			self.used -= old_size - size;
+		}
+		else
+		{
+			usz new_used = self.used + size - old_size;
+			if (new_used > total_len) return AllocationFailure.OUT_OF_MEMORY?;
+			self.used = new_used;
+		}
+		header.size = size;
+		return old_pointer;
 	}
 	// Otherwise just allocate new memory.
 	void* mem = self._alloc(size, alignment, offset)!;

@@ -65,7 +65,7 @@ fn float cubic_inout(float t, float b, float c, float d) @inline
 	t /= d / 2;
 	return t < 1
 		? (c / 2) * cube(t) + b
-        : c / 2 * (cube(t - 2) + 2) + b;
+		: c / 2 * (cube(t - 2) + 2) + b;
 }
 
 // Quadratic Easing functions
@@ -79,9 +79,9 @@ fn float quad_out(float t, float b, float c, float d) @inline
 fn float quad_inout(float t, float b, float c, float d) @inline
 {
 	t /= d / 2;
-    return t < 1
-        ? (c / 2) * sq(t) + b
-        : (-c / 2) * ((t - 1) * (t - 3) - 1) + b;
+	return t < 1
+		? (c / 2) * sq(t) + b
+		: (-c / 2) * ((t - 1) * (t - 3) - 1) + b;
 }
 
 // Exponential Easing functions
@@ -92,37 +92,37 @@ fn float expo_out(float t, float b, float c, float d) @inline
 }
 fn float expo_inout(float t, float b, float c, float d) @inline                                                                        // Ease: Exponential In Out
 {
-    if (t == 0) return b;
-    if (t == d) return b + c;
-    t /= d / 2;
-    return t < 1
-        ? (c / 2) * math::pow(2.0f, 10 * (t - 1)) + b
-        : (c / 2) * (-math::pow(2.0f, -10 * (t - 1)) + 2) + b;
+	if (t == 0) return b;
+	if (t == d) return b + c;
+	t /= d / 2;
+	return t < 1
+		? (c / 2) * math::pow(2.0f, 10 * (t - 1)) + b
+		: (c / 2) * (-math::pow(2.0f, -10 * (t - 1)) + 2) + b;
 }
 
 // Back Easing functions
 fn float back_in(float t, float b, float c, float d, float s = 1.70158f) @inline
 {
-    t /= d;
-    return c * sq(t) * ((s + 1) * t - s) + b;
+	t /= d;
+	return c * sq(t) * ((s + 1) * t - s) + b;
 }
 
 fn float back_out(float t, float b, float c, float d, float s = 1.70158f) @inline
 {
-    t = t / d - 1;
-    return c * (sq(t) * ((s + 1) * t + s) + 1) + b;
+	t = t / d - 1;
+	return c * (sq(t) * ((s + 1) * t + s) + 1) + b;
 }
 
 fn float back_inout(float t, float b, float c, float d, float s = 1.70158f) @inline
 {
-    s *= 1.525f;
-    t /= d / 2;
-    if (t < 1)
-    {
-        return (c / 2) * sq(t) * ((s + 1) * t - s) + b;
-    }
-    t -= 2.0f;
-    return (c / 2) * (sq(t) * ((s + 1) * t + s) + 2) + b;
+	s *= 1.525f;
+	t /= d / 2;
+	if (t < 1)
+	{
+		return (c / 2) * sq(t) * ((s + 1) * t - s) + b;
+	}
+	t -= 2.0f;
+	return (c / 2) * (sq(t) * ((s + 1) * t + s) + 2) + b;
 }
 
 // Bounce Easing functions
@@ -132,16 +132,16 @@ fn float bounce_out(float t, float b, float c, float d) @inline
 	switch
 	{
 		case t < 1 / 2.75f:
-	        return c * 7.5625f * sq(t) + b;
+			return c * 7.5625f * sq(t) + b;
 		case t < 2 / 2.75f:
-	        t -= 1.5f / 2.75f;
-            return c * (7.5625f * sq(t) + 0.75f) + b;
+			t -= 1.5f / 2.75f;
+			return c * (7.5625f * sq(t) + 0.75f) + b;
 		case t < 2.5f / 2.75f:
-            t -= 2.25f / 2.75f;
-            return c * (7.5625f * sq(t) + 0.9375f) + b;
+			t -= 2.25f / 2.75f;
+			return c * (7.5625f * sq(t) + 0.9375f) + b;
 		default:
-	        t -= 2.625f / 2.75f;
-            return c * (7.5625f * sq(t) + 0.984375f) + b;
+			t -= 2.625f / 2.75f;
+			return c * (7.5625f * sq(t) + 0.984375f) + b;
 	}
 }
 
@@ -156,44 +156,44 @@ fn float bounce_inout(float t, float b, float c, float d) @inline
 // Elastic Easing functions
 fn float elastic_in(float t, float b, float c, float d) @inline
 {
-    if (t == 0) return b;
-    t /= d;
-    if (t == 1) return b + c;
+	if (t == 0) return b;
+	t /= d;
+	if (t == 1) return b + c;
 
-    float p = d * 0.3f;
-    float a = c;
-    float s = p / 4;
-    t -= 1;
-    return -a * math::pow(2.0f, 10 * t) * math::sin((t * d - s) * (2 * (float)math::PI) / p) + b;
+	float p = d * 0.3f;
+	float a = c;
+	float s = p / 4;
+	t -= 1;
+	return -a * math::pow(2.0f, 10 * t) * math::sin((t * d - s) * (2 * (float)math::PI) / p) + b;
 }
 
 fn float elastic_out(float t, float b, float c, float d) @inline
 {
-    if (t == 0) return b;
-    t /= d;
-    if (t == 1) return b + c;
+	if (t == 0) return b;
+	t /= d;
+	if (t == 1) return b + c;
 
-    float p = d * 0.3f;
-    float a = c;
-    float s = p / 4;
+	float p = d * 0.3f;
+	float a = c;
+	float s = p / 4;
 
-    return a * math::pow(2.0f, -10 * t) * math::sin((t * d - s) * (2 * (float)math::PI) / p) + c + b;
+	return a * math::pow(2.0f, -10 * t) * math::sin((t * d - s) * (2 * (float)math::PI) / p) + c + b;
 }
 
 fn float elastic_inout(float t, float b, float c, float d) @inline
 {
-    if (t == 0) return b;
-    t /= d / 2;
-    if (t == 2) return b + c;
+	if (t == 0) return b;
+	t /= d / 2;
+	if (t == 2) return b + c;
 
-    float p = d * (0.3f * 1.5f);
-    float a = c;
-    float s = p / 4;
+	float p = d * (0.3f * 1.5f);
+	float a = c;
+	float s = p / 4;
 
-    t -= 1;
-    return t < 0
-        ? -0.5f * a * math::pow(2.0f, 10 * t) * math::sin((t * d - s) * (2 * (float)math::PI)/p) + b
-        :  a * math::pow(2.0f, -10 * t) * math::sin((t * d - s) * (2 * (float)math::PI) / p) * 0.5f + c + b;
+	t -= 1;
+	return t < 0
+		? -0.5f * a * math::pow(2.0f, 10 * t) * math::sin((t * d - s) * (2 * (float)math::PI)/p) + b
+		:  a * math::pow(2.0f, -10 * t) * math::sin((t * d - s) * (2 * (float)math::PI) / p) * 0.5f + c + b;
 }
 
 macro sq(x) @private => x * x;

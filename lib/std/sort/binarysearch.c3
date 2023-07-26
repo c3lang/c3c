@@ -8,32 +8,32 @@ module std::sort;
  **/
 macro usz binarysearch(list, x, cmp = null) @builtin
 {
-    usz i;
-    usz len = @len_from_list(list);
-    for (usz j = len; i < j;)
-    {
-        usz half = i + (j - i) / 2;
-        $if $checks(!cmp):
-            switch
-            {
-                case greater(list[half], x): j = half;
-                case less(list[half], x): i = half + 1;
-                default: return half;
-            }
-        $else
-            $switch
-                $case $checks(cmp(list[0], list[0])):
-                    int res = cmp(list[half], x);
-                $case $checks(cmp(&list[0], &list[0])):
-                    int res = cmp(&list[half], &x);
-            $endswitch
-            switch
-            {
-                case res > 0: j = half;
-                case res < 0: i = half + 1;
-                default: return half;
-            }
-        $endif
-    }
-    return i;
+	usz i;
+	usz len = @len_from_list(list);
+	for (usz j = len; i < j;)
+	{
+		usz half = i + (j - i) / 2;
+		$if $checks(!cmp):
+			switch
+			{
+				case greater(list[half], x): j = half;
+				case less(list[half], x): i = half + 1;
+				default: return half;
+			}
+		$else
+			$switch
+				$case $checks(cmp(list[0], list[0])):
+					int res = cmp(list[half], x);
+				$case $checks(cmp(&list[0], &list[0])):
+					int res = cmp(&list[half], &x);
+			$endswitch
+			switch
+			{
+				case res > 0: j = half;
+				case res < 0: i = half + 1;
+				default: return half;
+			}
+		$endif
+	}
+	return i;
 }

@@ -18,14 +18,14 @@ fn Random SimpleRandom.as_random(&random)
 
 fn uint SimpleRandom.next(&r, int bits)
 {
-    ulong nextseed = ((ulong)*r * SIMPLE_RANDOM_MULTIPLIER + SIMPLE_RANDOM_ADDEND) & SIMPLE_RANDOM_MASK;
-    *r = (SimpleRandom)nextseed;
-    return (uint)(nextseed >> (48 - bits));
+	ulong nextseed = ((ulong)*r * SIMPLE_RANDOM_MULTIPLIER + SIMPLE_RANDOM_ADDEND) & SIMPLE_RANDOM_MASK;
+	*r = (SimpleRandom)nextseed;
+	return (uint)(nextseed >> (48 - bits));
 }
 
 fn void SimpleRandom.set_seed(&r, ulong seed)
 {
-    *r = (SimpleRandom)((seed ^ SIMPLE_RANDOM_MULTIPLIER) & SIMPLE_RANDOM_MASK);
+	*r = (SimpleRandom)((seed ^ SIMPLE_RANDOM_MULTIPLIER) & SIMPLE_RANDOM_MASK);
 }
 fn void SimpleRandom.set_seeds(&r, char[] seed)
 {

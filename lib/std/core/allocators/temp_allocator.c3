@@ -76,9 +76,9 @@ fn void*! temp_allocator_function(Allocator* data, usz size, usz alignment, usz 
 		case ALIGNED_FREE:
 			if (!old_pointer) return null;
 			arena._free(old_pointer)!;
-        	return null;
-        case MARK:
-            return (void*)(uptr)arena.used;
+			return null;
+		case MARK:
+			return (void*)(uptr)arena.used;
 		case RESET:
 			arena._reset(size)!;
 			return null;
@@ -89,9 +89,9 @@ fn void! TempAllocator._free(&self, void* old_pointer) @local
 {
 	usz old_size = *(usz*)(old_pointer - DEFAULT_SIZE_PREFIX);
 	if (old_pointer + old_size == &self.data[self.used])
-    {
-        self.used -= old_size;
-    }
+	{
+		self.used -= old_size;
+	}
 }
 fn void! TempAllocator._reset(&self, usz mark) @local
 {
@@ -180,10 +180,10 @@ fn void*! TempAllocator._alloc(&self, usz size, usz alignment, usz offset, bool 
 	if (new_usage <= self.capacity)
 	{
 		TempAllocatorChunk* chunk_start = mem - TempAllocatorChunk.sizeof;
-    	chunk_start.size = size;
-    	self.used = new_usage;
-    	if (clear) mem::clear(mem, size, mem::DEFAULT_MEM_ALIGNMENT);
-    	return mem;
+		chunk_start.size = size;
+		self.used = new_usage;
+		if (clear) mem::clear(mem, size, mem::DEFAULT_MEM_ALIGNMENT);
+		return mem;
 	}
 
 	// Fallback to backing allocator
@@ -194,7 +194,7 @@ fn void*! TempAllocator._alloc(&self, usz size, usz alignment, usz offset, bool 
 	{
 		// This is actually simpler, since it will create the offset for us.
 		usz total_alloc_size = TempAllocatorPage.sizeof + size;
-    	if (clear)
+		if (clear)
 		{
 			page = self.backing_allocator.calloc_aligned(total_alloc_size, alignment, TempAllocatorPage.sizeof + offset)!;
 		}
