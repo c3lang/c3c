@@ -63,7 +63,7 @@ fn PathList! ls(Path dir, bool no_dirs = false, bool no_symlinks = false, String
 	$if $defined(os::native_ls):
 		return os::native_ls(dir, no_dirs, no_symlinks, mask, using);
 	$else
-		unreachable("'ls' is not available.");
+		return IoError.UNSUPPORTED_OPERATION?;
 	$endif
 }
 
@@ -101,7 +101,7 @@ fn void! rmtree(Path path)
 	$if $defined(os::native_rmtree):
 		return os::native_rmtree(path);
 	$else
-		assert(false, "rmtree is not available");
+		return IoError.UNSUPPORTED_OPERATION?;
 	$endif
 }
 
@@ -407,9 +407,9 @@ fn String Path.root_directory(self)
 	return path_str;
 }
 
-def PathWalker = fn bool(Path);
+def PathWalker = fn bool(Path, bool is_dir, void*);
 
-fn bool! Path.walk(self, PathWalker w, Allocator* using = mem::heap())
+fn bool! Path.walk(self, PathWalker w, void* data, Allocator* using = mem::heap())
 {
     Path abs = self.absolute(using)!;
     defer abs.free();
@@ -418,8 +418,9 @@ fn bool! Path.walk(self, PathWalker w, Allocator* using = mem::heap())
     {
         if (f.as_str() == "." || f.as_str() == "..") continue;
         f = abs.append(f.as_str(), using)!;
-        if (w(f)) return true;
-        if (is_dir(f) && f.walk(w, using)!) return true;
+        bool is_directory = is_dir(f);
+        if (w(f, is_directory, data)) return true;
+        if (is_directory && f.walk(w, data, using)!) return true;
     }
     return false;
 }

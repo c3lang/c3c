@@ -85,7 +85,7 @@ fn bool native_file_or_dir_exists(String path)
                 return posix::access(path.zstr_tcopy(), 0 /* F_OK */) != -1;
             };
         $default:
-            unreachable("Not supported");
+			unreachable("Not supported");
     $endswitch
 }
 

@@ -26,5 +26,5 @@ module std::io::os @if(env::NO_LIBC);
 
 macro Path! native_temp_directory(Allocator* using = mem::heap())
 {
-	unreachable("Not available");
+	return IoError.UNSUPPORTED_OPERATION?;
 }

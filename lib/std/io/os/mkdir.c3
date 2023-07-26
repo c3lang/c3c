@@ -45,6 +45,6 @@ macro bool! native_mkdir(Path path, MkdirPermissions permissions)
 				}
 	        };
 		$default:
-			unreachable("'mkdir' not available");
+			return IoError.UNSUPPORTED_OPERATION?;
 	$endswitch
 }
