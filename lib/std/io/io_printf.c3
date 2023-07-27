@@ -160,7 +160,9 @@ fn void! Formatter.out_str(&self, any arg) @private
 			return self.out_str(*(any*)arg);
 		case ENUM:
 			if (self.print_with_function(arg)!) return;
-			return self.out_substr(arg.type.names[types::any_to_int(arg, usz)!!]);
+			usz i = types::any_to_int(arg, usz)!!;
+			assert(i < arg.type.names.len, "Illegal enum value found, numerical value was %d.", i);
+			return self.out_substr(arg.type.names[i]);
 		case STRUCT:
 			if (self.print_with_function(arg)!) return;
 			return self.out_substr("<struct>");
