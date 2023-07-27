@@ -10,8 +10,8 @@ fn void test1()
 	int! b = a = Test.FOO?;
 	if (catch err = a) io::printfn("A err was: %s", err);
 	if (catch err = b) io::printfn("B err was: %s", err);
-	io::printfn("A was: %s", a);
-	io::printfn("B was: %s", b);
+	(void)io::printfn("A was: %s", a);
+	(void)io::printfn("B was: %s", b);
 }
 
 fn void test2()
@@ -21,8 +21,8 @@ fn void test2()
 	int! b = a = x;
 	if (catch err = a) io::printfn("A err was: %s", err);
 	if (catch err = b) io::printfn("B err was: %s", err);
-	io::printfn("A was: %s", a);
-	io::printfn("B was: %s", b);
+	(void)io::printfn("A was: %s", a);
+	(void)io::printfn("B was: %s", b);
 }
 
 
@@ -33,8 +33,8 @@ fn void test3()
 	int! b = a = x;
 	if (catch err = a) io::printfn("A err was: %s", err);
 	if (catch err = b) io::printfn("B err was: %s", err);
-	io::printfn("A was: %s", a);
-	io::printfn("B was: %s", b);
+	(void)io::printfn("A was: %s", a);
+	(void)io::printfn("B was: %s", b);
 }
 
 fn void main()

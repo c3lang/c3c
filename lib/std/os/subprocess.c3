@@ -206,7 +206,7 @@ fn SubProcess! create(String[] command_line, SubProcessOptions options = {}, Str
 			}
 			start_info.hStdError = wr;
 
-		|};
+		|}!;
 		void *event_output;
 		void *event_error;
 		if (options.read_async)

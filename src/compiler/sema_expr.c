@@ -1641,23 +1641,17 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Type 
 		return false;
 	}
 
-	bool is_unused = expr->call_expr.result_unused;
-
 	if (sig->attrs.noreturn) expr->call_expr.no_return = true;
 
 	if (!sema_call_analyse_invocation(context, expr, callee, &optional)) return false;
 
 	Type *rtype = type->function.prototype->rtype;
 
-	if (is_unused && rtype != type_void)
+	expr->call_expr.has_optional_arg = optional;
+	if (rtype != type_void)
 	{
-		if (sig->attrs.nodiscard) RETURN_SEMA_ERROR(expr, "The result of the function must be used.");
-		if (type_is_optional(rtype) && !sig->attrs.maydiscard)
-		{
-			RETURN_SEMA_ERROR(expr, "The optional result of the function must be used.");
-		}
+		expr->call_expr.must_use = sig->attrs.nodiscard || (type_is_optional(rtype) && !sig->attrs.maydiscard);
 	}
-
 	expr->type = type_add_optional(rtype, optional);
 
 	return true;
@@ -1784,7 +1778,7 @@ static inline bool sema_expr_analyse_func_call(SemaContext *context, Expr *expr,
 
 
 
-bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *struct_var, Decl *decl, bool optional)
+bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *struct_var, Decl *decl, bool call_var_optional)
 {
 	assert(decl->decl_kind == DECL_MACRO);
 
@@ -1802,19 +1796,21 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	Ast *body = copy_ast_macro(astptr(decl->func_decl.body));
 	AstId docs = decl->func_decl.docs;
 	if (docs) docs = astid(copy_ast_macro(astptr(docs)));
+	Signature *sig = &decl->func_decl.signature;
 	copy_end();
 	CalledDecl callee = {
 			.macro = true,
 			.name = decl->name,
 			.params = params,
 			.block_parameter = decl->func_decl.body_param ? declptr(decl->func_decl.body_param)->name : NULL,
-			.signature = &decl->func_decl.signature,
+			.signature = sig,
 			.struct_var = struct_var
 	};
 
-	if (!sema_call_analyse_invocation(context, call_expr, callee, &optional)) return false;
+	bool has_optional_arg = call_var_optional;
+	if (!sema_call_analyse_invocation(context, call_expr, callee, &has_optional_arg)) return false;
 
-	unsigned vararg_index = decl->func_decl.signature.vararg_index;
+	unsigned vararg_index = sig->vararg_index;
 	Expr **args = call_expr->call_expr.arguments;
 	VECEACH(params, i)
 	{
@@ -1825,7 +1821,6 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 			// Splat? That's the simple case.
 			if (call_expr->call_expr.splat_vararg)
 			{
-
 				if (!sema_analyse_expr(context, args[i] = call_expr->call_expr.splat)) return false;
 			}
 			else
@@ -1840,6 +1835,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 			}
 		}
 		param->var.init_expr = args[i];
+		has_optional_arg = has_optional_arg || IS_OPTIONAL(args[i]);
 	}
 
 	Decl **body_params = call_expr->call_expr.body_arguments;
@@ -1896,21 +1892,11 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	macro_context.compilation_unit = context->unit;
 	macro_context.macro_call_depth = context->macro_call_depth + 1;
 	macro_context.call_env = context->call_env;
-	rtype = decl->func_decl.signature.rtype ? type_infoptr(decl->func_decl.signature.rtype)->type : NULL;
+	rtype = typeinfotype(sig->rtype);
 	macro_context.expected_block_type = rtype;
-	bool may_be_optional = true;
-	if (rtype)
-	{
-		if (type_is_optional(rtype))
-		{
-			optional = true;
-			rtype = type_no_optional(rtype);
-		}
-		else
-		{
-			may_be_optional = false;
-		}
-	}
+	bool optional_return = rtype && type_is_optional(rtype);
+	bool may_be_optional = !rtype || optional_return;
+	if (rtype) rtype = type_no_optional(rtype);
 
 	context_change_scope_with_flags(&macro_context, SCOPE_MACRO);
 
@@ -1945,7 +1931,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	if (!sema_analyse_statement(&macro_context, body)) goto EXIT_FAIL;
 
 	params = macro_context.macro_params;
-	bool is_no_return = decl->func_decl.signature.attrs.noreturn;
+	bool is_no_return = sig->attrs.noreturn;
 
 	if (!vec_size(macro_context.returns))
 	{
@@ -2003,34 +1989,23 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 						   type_quoted_error_string(type));
 				goto EXIT_FAIL;
 			}
-			if (may_be_optional) ret_expr->type = type_add_optional(ret_expr->type, may_be_optional);
+			ret_expr->type = type_add_optional(ret_expr->type, optional_return);
 		}
-		call_expr->type = type_add_optional(rtype, optional);
+		call_expr->type = type_add_optional(rtype, optional_return || has_optional_arg);
 	}
 	else
 	{
 		Type *sum_returns = context_unify_returns(&macro_context);
 		if (!sum_returns) goto EXIT_FAIL;
-		call_expr->type = type_add_optional(sum_returns, optional);
+		optional_return = type_is_optional(sum_returns);
+		call_expr->type = type_add_optional(sum_returns, optional_return || has_optional_arg);
 	}
 
 	assert(call_expr->type);
-	if (call_expr->call_expr.result_unused)
+	bool must_use = false;
+	if (rtype != type_void)
 	{
-		Type *type = call_expr->type;
-		if (type != type_void)
-		{
-			if (decl->func_decl.signature.attrs.nodiscard)
-			{
-				SEMA_ERROR(call_expr, "The result of the macro must be used.");
-				goto EXIT_FAIL;
-			}
-			if (type_is_optional(type) && !decl->func_decl.signature.attrs.maydiscard)
-			{
-				SEMA_ERROR(call_expr, "The optional result of the macro must be used.");
-				goto EXIT_FAIL;
-			}
-		}
+		must_use = sig->attrs.nodiscard || (optional_return && !sig->attrs.maydiscard);
 	}
 	unsigned returns_found = vec_size(macro_context.returns);
 	// We may have zero normal macro returns but the active scope still has a "jump end".
@@ -2039,12 +2014,28 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	{
 		is_no_return = true;
 	}
-	if (returns_found)
+	if (returns_found == 1)
 	{
 		Ast *ret = macro_context.returns[0];
 		Expr *result = ret ? ret->return_stmt.expr : NULL;
 		if (!result) goto NOT_CT;
 		if (!expr_is_constant_eval(result, CONSTANT_EVAL_CONSTANT_VALUE)) goto NOT_CT;
+		bool only_ct_params = true;
+		VECEACH(params, i)
+		{
+			Decl *param = params[i];
+			// Skip raw vararg
+			if (!param) continue;
+			switch (param->var.kind)
+			{
+				case VARDECL_PARAM_CT:
+				case VARDECL_PARAM_CT_TYPE:
+				case VARDECL_PARAM_EXPR:
+					break;
+				default:
+					goto NOT_CT;
+			}
+		}
 		if (ast_is_compile_time(body))
 		{
 			expr_replace(call_expr, result);
@@ -2053,6 +2044,8 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	}
 NOT_CT:
 	call_expr->expr_kind = EXPR_MACRO_BLOCK;
+	call_expr->macro_block.had_optional_arg = has_optional_arg;
+	call_expr->macro_block.is_must_use = must_use;
 	call_expr->macro_block.first_stmt = body->compound_stmt.first_stmt;
 	call_expr->macro_block.params = params;
 	call_expr->macro_block.block_exit = block_exit_ref;
@@ -4193,7 +4186,8 @@ static inline bool sema_expr_analyse_expr_list(SemaContext *context, Expr *expr)
 	VECEACH(expr->expression_list, i)
 	{
 		Expr *checked_expr = expr->expression_list[i];
-		success &= sema_analyse_expr(context, checked_expr);
+		if (!sema_analyse_expr(context, checked_expr)) return false;
+		if (i != last && !sema_expr_check_discard(checked_expr)) return false;
 	}
 	expr->type = expr->expression_list[last]->type;
 	return success;
@@ -7907,6 +7901,27 @@ bool sema_analyse_expr_lvalue(SemaContext *context, Expr *expr)
 	}
 }
 
+bool sema_expr_check_discard(Expr *expr)
+{
+	if (!IS_OPTIONAL(expr)) return true;
+	if (expr->expr_kind == EXPR_SUBSCRIPT_ASSIGN || expr->expr_kind == EXPR_SLICE_ASSIGN) return true;
+	if (expr->expr_kind == EXPR_BINARY && expr->binary_expr.operator >= BINARYOP_ASSIGN) return true;
+	if (expr->expr_kind == EXPR_MACRO_BLOCK)
+	{
+		if (expr->macro_block.is_must_use) RETURN_SEMA_ERROR(expr, "The result of the macro must be used.");
+		if (expr->macro_block.had_optional_arg) goto ERROR_ARGS;
+		return true;
+	}
+	if (expr->expr_kind == EXPR_CALL)
+	{
+		if (expr->call_expr.must_use) RETURN_SEMA_ERROR(expr, "The result of the function must be used.");
+		if (expr->call_expr.has_optional_arg) goto ERROR_ARGS;
+		return true;
+	}
+	RETURN_SEMA_ERROR(expr, "An optional value may not be discarded, you can ignore it with a void cast '(void)', rethrow on optional with '!' or panic '!!' to avoid this error.");
+ERROR_ARGS:
+	RETURN_SEMA_ERROR(expr, "The result of this call is optional due to its argument(s). The optional result may not be implicitly discarded. Consider using '(void)', '!' or '!!' to handle this.");
+}
 
 bool sema_analyse_expr(SemaContext *context, Expr *expr)
 {

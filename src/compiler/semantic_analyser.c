@@ -301,33 +301,8 @@ static void assign_panicfn(void)
  */
 void sema_analysis_run(void)
 {
-	// Cleanup any errors (could there really be one here?!)
-	global_context_clear_errors();
 
-	// Add the standard library
-	if (global_context.lib_dir && !active_target.no_stdlib)
-	{
-		file_add_wildcard_files(&global_context.sources, global_context.lib_dir, true, c3_suffix_list, 3);
-	}
-
-	// Load and parse all files.
-	bool has_error = false;
-	VECEACH(global_context.sources, i)
-	{
-		bool loaded = false;
-		const char *error;
-		File *file = source_file_load(global_context.sources[i], &loaded, &error);
-		if (!file) error_exit(error);
-		if (loaded) continue;
-		if (!parse_file(file)) has_error = true;
-	}
-	if (active_target.read_stdin)
-	{
-		if (!parse_stdin()) has_error = true;
-	}
-
-	if (has_error) exit_compiler(EXIT_FAILURE);
-	compiler_parsing_time = bench_mark();
+	compiler_parse();
 
 	// All global defines are added to the std module
 	global_context.std_module_path = (Path) { .module = kw_std, .span = INVALID_SPAN, .len = (uint32_t) strlen(kw_std) };

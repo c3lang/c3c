@@ -1040,11 +1040,8 @@ static inline bool sema_analyse_declare_stmt(SemaContext *context, Ast *statemen
 static inline bool sema_analyse_expr_stmt(SemaContext *context, Ast *statement)
 {
 	Expr *expr = statement->expr_stmt;
-	if (expr->expr_kind == EXPR_CALL)
-	{
-		expr->call_expr.result_unused = true;
-	}
 	if (!sema_analyse_expr(context, expr)) return false;
+	if (!sema_expr_check_discard(expr)) return false;
 	switch (expr->expr_kind)
 	{
 		case EXPR_CALL:

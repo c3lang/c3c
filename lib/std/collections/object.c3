@@ -141,7 +141,7 @@ fn void Object.free(&self)
 			{
 				foreach (key : self.map.key_tlist())
 				{
-					self.map.get(key).free();
+					(void)self.map.get(key).free();
 					free(key, .using = self.allocator);
 				}
 				self.map.free();
@@ -197,7 +197,7 @@ fn void Object.set_object(&self, String key, Object* new_object) @private
 	defer
 	{
 		(void)free(entry.key, .using = self.allocator);
-		entry.value.free();
+		(void)entry.value.free();
 	}
 	self.map.set(key.copy(self.map.allocator), new_object);
 }

@@ -5855,6 +5855,9 @@ static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type
 			goto DONE;
 		}
 
+		// return foo() where foo() is a void!
+		if (type_no_optional(type_flatten(ret_expr->type)) == type_void) break;
+
 		LLVMInstructionEraseFromParent(exit.block_return_out);
 
 		// Restore
