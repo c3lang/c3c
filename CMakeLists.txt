@@ -205,17 +205,15 @@ add_executable(c3c
         src/build/project_creation.c
         src/compiler/ast.c
         src/compiler/bigint.c
-        src/compiler/c_abi_internal.h
         src/compiler/codegen_general.c
         src/compiler/compiler.c
         src/compiler/compiler.h
         src/compiler/context.c
         src/compiler/copying.c
         src/compiler/diagnostics.c
-        src/compiler/dwarf.h
-        src/compiler/enums.h
         src/compiler/float.c
         src/compiler/headers.c
+        src/compiler/json_output.c
         src/compiler/lexer.c
         src/compiler/libraries.c
         src/compiler/linker.c

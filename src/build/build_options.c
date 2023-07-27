@@ -92,7 +92,7 @@ static void usage(void)
 	OUTPUT("  --symtab <value>          - Sets the preferred symtab size.");
 	OUTPUT("  -V --version              - Print version information.");
 	OUTPUT("  -E                        - Lex only.");
-	OUTPUT("  -P                        - Only parse and output the AST as S-expressions.");
+	OUTPUT("  -P                        - Only parse and output the AST as JSON.");
 	OUTPUT("  -C                        - Only lex, parse and check.");
 	OUTPUT("  -                         - Read code from standard in.");
 	OUTPUT("  -o <file>                 - Write output to <file>.");

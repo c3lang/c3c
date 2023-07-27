@@ -771,9 +771,10 @@ typedef struct
 	bool is_builtin : 1;
 	bool is_func_ref : 1;
 	bool attr_pure : 1;
-	bool result_unused : 1;
 	bool no_return : 1;
 	bool is_dynamic_dispatch : 1;
+	bool has_optional_arg : 1;
+	bool must_use : 1;
 	AstId body;
 	union
 	{
@@ -1014,7 +1015,9 @@ typedef struct
 typedef struct
 {
 	AstId first_stmt;
-	bool is_noreturn;
+	bool is_noreturn : 1;
+	bool is_must_use : 1;
+	bool had_optional_arg : 1;
 	Decl **params;
 	BlockExit **block_exit;
 } ExprMacroBlock;
@@ -1917,7 +1920,7 @@ ARENA_DEF(type_info, TypeInfo)
 
 INLINE Type *typeinfotype(TypeInfoId id_)
 {
-	return type_infoptr(id_)->type;
+	return id_ ? type_infoptr(id_)->type : NULL;
 }
 
 bool ast_is_not_empty(Ast *ast);
@@ -2245,6 +2248,7 @@ bool sema_analyse_cond_expr(SemaContext *context, Expr *expr);
 bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allow_optional);
 MemberIndex sema_get_initializer_const_array_size(SemaContext *context, Expr *initializer, bool *may_be_array, bool *is_const_size);
 bool sema_analyse_expr(SemaContext *context, Expr *expr);
+bool sema_expr_check_discard(Expr *expr);
 bool sema_analyse_inferred_expr(SemaContext *context, Type *to, Expr *expr);
 bool sema_analyse_decl(SemaContext *context, Decl *decl);
 bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl);
@@ -2289,6 +2293,8 @@ bool sema_type_error_on_binop(Expr *expr);
 File *source_file_by_id(FileId file);
 File *source_file_load(const char *filename, bool *already_loaded, const char **error);
 
+void compiler_parse(void);
+void emit_json(void);
 
 #define RANGE_EXTEND_PREV(x)  do { (x)->span = extend_span_with_token((x)->span, c->prev_span); } while (0)
 
@@ -2548,6 +2554,7 @@ INLINE bool type_is_wildcard(Type *type)
 
 INLINE bool type_is_optional(Type *type)
 {
+	if (!type) return false;
 	DECL_TYPE_KIND_REAL(kind, type);
 	return kind == TYPE_OPTIONAL;
 }

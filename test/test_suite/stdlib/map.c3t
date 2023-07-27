@@ -27,7 +27,7 @@ fn void main()
 	io::printfn("Map size: %d", map.count);
 	map.set(1, Foo { 2, null });
 	io::printfn("Map size: %d", map.count);
-	io::printfn("Val: %d", map.get(1).x);
+	(void)io::printfn("Val: %d", map.get(1).x);
 	io::printfn("Has 1: %s", map.has_key(1));
 	io::printfn("Has 2: %s", map.has_key(2));
 	map.set(7, Foo { 4, null });

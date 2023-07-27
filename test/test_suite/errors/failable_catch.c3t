@@ -19,12 +19,12 @@ fn int main()
 
     int! b = foo((a + 3) ?? 2);
     int! c = foo(0);
-    printf("a = %d\n", a);
-    printf("b = %d\n", b);
-    printf("c = %d\n", c);
+    (void)printf("a = %d\n", a);
+    (void)printf("b = %d\n", b);
+    (void)printf("c = %d\n", c);
     if (@catchof(c)) printf("c had error\n");
     c = 3;
-    printf("c = %d\n", c);
+    (void)printf("c = %d\n", c);
     return 0;
 }
 

@@ -6,7 +6,7 @@ fn void main()
 {
 	Foo a = 12.3;
 	Foo! b = 33.5;
-	printf("%f %f %f", (float)a, a, b);
+	(void)printf("%f %f %f", (float)a, a, b);
 }
 
 /* #expect: test.ll

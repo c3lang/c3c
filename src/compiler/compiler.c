@@ -93,26 +93,6 @@ static void compiler_lex(void)
 	exit_compiler(COMPILER_SUCCESS_EXIT);
 }
 
-void compiler_parse(void)
-{
-	VECEACH(global_context.sources, i)
-	{
-		bool loaded = false;
-		const char *error;
-		File *file = source_file_load(global_context.sources[i], &loaded, &error);
-		if (!file) error_exit(error);
-		if (loaded) continue;
-
-		global_context_clear_errors();
-		parse_file(file);
-	}
-	if (active_target.read_stdin)
-	{
-		global_context_clear_errors();
-		parse_stdin();
-	}
-	exit_compiler(COMPILER_SUCCESS_EXIT);
-}
 
 
 typedef struct CompileData_
@@ -289,6 +269,37 @@ void delete_object_files(const char **files, size_t count)
 	{
 		file_delete_file(files[i]);
 	}
+}
+
+void compiler_parse(void)
+{
+	// Cleanup any errors (could there really be one here?!)
+	global_context_clear_errors();
+
+	// Add the standard library
+	if (global_context.lib_dir && !active_target.no_stdlib)
+	{
+		file_add_wildcard_files(&global_context.sources, global_context.lib_dir, true, c3_suffix_list, 3);
+	}
+
+	// Load and parse all files.
+	bool has_error = false;
+	VECEACH(global_context.sources, i)
+	{
+		bool loaded = false;
+		const char *error;
+		File *file = source_file_load(global_context.sources[i], &loaded, &error);
+		if (!file) error_exit(error);
+		if (loaded) continue;
+		if (!parse_file(file)) has_error = true;
+	}
+	if (active_target.read_stdin)
+	{
+		if (!parse_stdin()) has_error = true;
+	}
+
+	if (has_error) exit_compiler(EXIT_FAILURE);
+	compiler_parsing_time = bench_mark();
 }
 
 void compiler_compile(void)
@@ -864,6 +875,9 @@ void compile()
 	{
 		compiler_parse();
 		compiler_parsing_time = bench_mark();
+		emit_json();
+		exit_compiler(COMPILER_SUCCESS_EXIT);
+
 		return;
 	}
 	compiler_compile();

@@ -41,7 +41,7 @@ fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Al
 			{
 				String filename = string::temp_from_wstring((WString)&find_data.cFileName)!;
 				if (filename == ".." || filename == ".") continue;
-				list.append(path::new(filename, using));
+				list.append(path::new(filename, using)!);
 			};
 		} while (win32::findNextFileW(find, &find_data));
 		return list;

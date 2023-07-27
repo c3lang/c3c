@@ -17,10 +17,10 @@ fn void main()
 {
     int! z = 2;
     Foo*! w = &&Foo{ z, 0 };
-    printf("%d\n", w.x);
+    (void)printf("%d\n", w.x);
     z = MyErr.FOO?;
     w = &&Foo{ z, 0 };
-    printf("Not visible: %d\n", w.x);
+    (void)printf("Not visible: %d\n", w.x);
 }
 
 /* #expect: test.ll
