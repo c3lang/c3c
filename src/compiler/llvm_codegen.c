@@ -1134,7 +1134,6 @@ static void llvm_gen_test_main(GenContext *c)
 						  LLVMConstNull(cint), LLVMConstInt(cint, 1, false), "");
 	LLVMBuildRet(builder, val);
 	LLVMDisposeBuilder(builder);
-	gencontext_print_llvm_ir(c);
 }
 INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMContextRef shared_context)
 {
