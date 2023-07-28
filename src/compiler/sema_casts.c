@@ -330,6 +330,7 @@ static bool integer_to_enum(Expr *expr, Type *canonical, Type *type)
 
 	// Fold the const into the actual enum.
 	Decl *decl = enum_decl->enums.values[to_convert.i.low];
+	assert(decl->resolve_status == RESOLVE_DONE);
 	expr->const_expr = (ExprConst) {
 		.enum_err_val = decl,
 		.const_kind = CONST_ENUM

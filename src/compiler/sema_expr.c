@@ -165,7 +165,7 @@ static inline void sema_expr_replace_with_enum_array(Expr *enum_array_expr, Decl
 static inline void sema_expr_replace_with_enum_name_array(Expr *enum_array_expr, Decl *enum_decl);
 static inline void sema_expr_rewrite_to_type_nameof(Expr *expr, Type *type, TokenType name_type);
 
-static inline bool sema_create_const_kind(Expr *expr, Type *type);
+static inline bool sema_create_const_kind(SemaContext *contect, Expr *expr, Type *type);
 static inline bool sema_create_const_len(SemaContext *context, Expr *expr, Type *type);
 static inline bool sema_create_const_inner(SemaContext *context, Expr *expr, Type *type);
 static inline bool sema_create_const_min(SemaContext *context, Expr *expr, Type *type, Type *flat);
@@ -832,6 +832,7 @@ static inline bool sema_expr_analyse_enum_constant(SemaContext *context, Expr *e
 
 	assert(enum_constant->resolve_status == RESOLVE_DONE);
 	expr->type = decl->type;
+
 	expr->expr_kind = EXPR_CONST;
 	expr->const_expr.const_kind = enum_constant->decl_kind == DECL_ENUM_CONSTANT ? CONST_ENUM : CONST_ERR;
 	expr->const_expr.enum_err_val = enum_constant;
@@ -2869,6 +2870,7 @@ static inline void sema_expr_replace_with_enum_array(Expr *enum_array_expr, Decl
 		Decl *decl = values[i];
 		Expr *expr = expr_new(EXPR_CONST, span);
 		expr->const_expr.const_kind = const_kind;
+		assert(enum_decl->resolve_status == RESOLVE_DONE);
 		expr->const_expr.enum_err_val = decl;
 		assert(decl_ok(decl));
 		expr->type = kind;
@@ -2907,7 +2909,6 @@ static inline void sema_expr_replace_with_enum_name_array(Expr *enum_array_expr,
 static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *expr, Type *parent_type, bool was_group, Expr *identifier)
 {
 	assert(identifier->expr_kind == EXPR_IDENTIFIER);
-
 	Type *canonical = parent_type->canonical;
 	const char *name = identifier->identifier_expr.ident;
 	bool is_const = identifier->identifier_expr.is_const;
@@ -2923,7 +2924,6 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 		return false;
 	}
 	Decl *decl = canonical->decl;
-	if (!sema_analyse_decl(context, decl)) return false;
 
 	// TODO add more constants that can be inspected?
 	// e.g. SomeEnum.values, MyUnion.x.offset etc?
@@ -3103,7 +3103,7 @@ static inline void sema_expr_rewrite_typeid_kind(Expr *expr, Expr *parent)
 }
 
 
-static inline bool sema_create_const_kind(Expr *expr, Type *type)
+static inline bool sema_create_const_kind(SemaContext *context, Expr *expr, Type *type)
 {
 	Module *module = global_context_find_module(kw_std__core__types);
 	Decl *type_kind = module ? module_find_symbol(module, kw_typekind) : NULL;
@@ -3114,10 +3114,12 @@ static inline bool sema_create_const_kind(Expr *expr, Type *type)
 		expr_rewrite_const_int(expr, type_char, val);
 		return true;
 	}
+	if (type_kind->resolve_status == RESOLVE_NOT_DONE && !sema_analyse_decl(context, type_kind)) return false;
 	Decl **values = type_kind->enums.values;
 	assert(vec_size(values) > val);
 	expr->type = type_kind->type;
 	expr->expr_kind = EXPR_CONST;
+	assert(type_kind->resolve_status == RESOLVE_DONE);
 	expr->const_expr = (ExprConst) {
 		.const_kind = CONST_ENUM,
 		.enum_err_val = values[val]
@@ -3518,7 +3520,7 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 		case TYPE_PROPERTY_INNER:
 			return sema_create_const_inner(context, expr, type);
 		case TYPE_PROPERTY_KINDOF:
-			return sema_create_const_kind(expr, type);
+			return sema_create_const_kind(context, expr, type);
 		case TYPE_PROPERTY_LEN:
 			return sema_create_const_len(context, expr, flat);
 		case TYPE_PROPERTY_MIN:
@@ -3853,6 +3855,8 @@ CHECK_DEEPER:
 		}
 		if (flat_type->type_kind == TYPE_FAULTTYPE)
 		{
+			assert(flat_type->decl->resolve_status == RESOLVE_DONE);
+
 			if (sema_flattened_expr_is_const(context, current_parent))
 			{
 				if (current_parent->const_expr.const_kind == CONST_POINTER)
@@ -4744,6 +4748,7 @@ static bool sema_expr_analyse_enum_add_sub(SemaContext *context, Expr *expr, Exp
 					   is_sub ? "subtraction" : "addition");
 			return false;
 		}
+		assert(left_type->decl->resolve_status == RESOLVE_DONE);
 		expr->const_expr = (ExprConst) { .const_kind = CONST_ENUM, .enum_err_val = enums[int_to_i64(i)] };
 		expr->expr_kind = EXPR_CONST;
 	}
@@ -6341,11 +6346,13 @@ static inline bool sema_expr_analyse_optional(SemaContext *context, Expr *expr)
 	}
 
 	Type *type = inner->type->canonical;
+
 	if (type->type_kind != TYPE_FAULTTYPE && type->type_kind != TYPE_ANYFAULT)
 	{
 		SEMA_ERROR(inner, "You cannot use the '!' operator on expressions of type %s", type_quoted_error_string(type));
 		return false;
 	}
+	assert(type->type_kind == TYPE_ANYFAULT || type->decl->resolve_status == RESOLVE_DONE);
 	expr->type = type_wildcard_optional;
 	return true;
 }

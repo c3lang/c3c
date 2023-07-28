@@ -935,9 +935,11 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			// Note that the ast id should be patched by the parent.
 			return copy;
 		case DECL_ENUM_CONSTANT:
+			fixup_declid(c, &copy->enum_constant.parent);
 			MACRO_COPY_EXPR_LIST(copy->enum_constant.args);
 			break;
 		case DECL_FAULTVALUE:
+			fixup_declid(c, &copy->enum_constant.parent);
 			break;
 		case DECL_TYPEDEF:
 			copy_decl_type(copy);
