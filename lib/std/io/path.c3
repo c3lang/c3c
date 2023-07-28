@@ -409,19 +409,26 @@ fn String Path.root_directory(self)
 
 def PathWalker = fn bool(Path, bool is_dir, void*);
 
-fn bool! Path.walk(self, PathWalker w, void* data, Allocator* using = mem::heap())
+/*
+ * Walk the path recursively. PathWalker is run on every file and
+ * directory found. Return true to abort the walk.
+ */
+fn bool! Path.walk(self, PathWalker w, void* data)
 {
-	Path abs = self.absolute(using)!;
-	defer abs.free();
-	PathList files = ls(abs, .using = using)!;
-	foreach (f : files)
+	const PATH_MAX = 512;
+	@stack_mem(PATH_MAX; Allocator* using)
 	{
-		if (f.as_str() == "." || f.as_str() == "..") continue;
-		f = abs.append(f.as_str(), using)!;
-		bool is_directory = is_dir(f);
-		if (w(f, is_directory, data)) return true;
-		if (is_directory && f.walk(w, data, using)!) return true;
-	}
+		Path abs = self.absolute(using)!;
+		PathList files = ls(abs, .using = using)!;
+		foreach (f : files)
+		{
+			if (f.as_str() == "." || f.as_str() == "..") continue;
+			f = abs.append(f.as_str(), using)!;
+			bool is_directory = is_dir(f);
+			if (w(f, is_directory, data)) return true;
+			if (is_directory && f.walk(w, data)!) return true;
+		}
+	};
 	return false;
 }
 
