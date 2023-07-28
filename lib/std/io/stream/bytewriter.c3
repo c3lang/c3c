@@ -44,7 +44,7 @@ fn void ByteWriter.destroy(&self)
 	*self = { };
 }
 
-fn String ByteWriter.as_str(&self)
+fn String ByteWriter.as_str(&self) @inline
 {
 	return (String)self.bytes[:self.index];
 }

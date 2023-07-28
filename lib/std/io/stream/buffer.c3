@@ -29,7 +29,7 @@ StreamInterface readbuffer_interface = {
 	.read_byte_fn = fn(s) => ((ReadBuffer*)s.data).read_byte(),
 };
 
-fn String ReadBuffer.as_str(&self)
+fn String ReadBuffer.as_str(&self) @inline
 {
 	return (String)self.bytes[self.read_idx:self.write_idx - self.read_idx];
 }
@@ -60,7 +60,7 @@ fn char! ReadBuffer.read_byte(&self)
 	return c;
 }
 
-fn void! ReadBuffer.refill(&self) @local
+fn void! ReadBuffer.refill(&self) @local @inline
 {
 	self.read_idx = 0;
 	self.write_idx = self.stream.read(self.bytes)!;
@@ -95,7 +95,7 @@ StreamInterface writebuffer_interface = {
 	.write_byte_fn = fn(s, char c) => ((WriteBuffer*)s.data).write_byte(c),
 };
 
-fn String WriteBuffer.as_str(&self)
+fn String WriteBuffer.as_str(&self) @inline
 {
 	return (String)self.bytes[:self.index];
 }

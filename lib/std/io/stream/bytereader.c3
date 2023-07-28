@@ -1,5 +1,4 @@
 module std::io;
-import std::math;
 
 struct ByteReader
 {
@@ -20,7 +19,7 @@ fn Stream ByteReader.as_stream(&self)
 fn usz! ByteReader.read(&self, char[] bytes)
 {
 	if (self.index >= self.bytes.len) return IoError.EOF?;
-	usz len = math::min(self.bytes.len - self.index, bytes.len);
+	usz len = min(self.bytes.len - self.index, bytes.len);
 	if (len == 0) return 0;
 	mem::copy(bytes.ptr, &self.bytes[self.index], len);
 	self.index += len;
@@ -62,9 +61,9 @@ fn usz! ByteReader.write_stream(&self, Stream writer)
 	return written;
 }
 
-fn usz ByteReader.available(&self)
+fn usz ByteReader.available(&self) @inline
 {
-	return math::max((isz)0, (isz)self.bytes.len - self.index);
+	return max(0, self.bytes.len - self.index);
 }
 
 StreamInterface bytereader_interface = {
