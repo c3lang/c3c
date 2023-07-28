@@ -1556,6 +1556,8 @@ static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, boo
 	}
 
 	Type *to = is_explicit ? type_flatten(to_type) : type_no_optional(to_type)->canonical;
+	if (!sema_resolve_type_decl(context, to)) return false;
+	if (!sema_resolve_type_decl(context, from_type)) return false;
 
 	// Step one, cast from optional.
 	// This handles:
