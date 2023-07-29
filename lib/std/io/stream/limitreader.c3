@@ -25,7 +25,7 @@ fn Stream LimitReader.as_stream(&self)
 	return { .fns = &limitreader_interface, .data = self };
 }
 
-fn usz LimitReader.available(&self)
+fn usz LimitReader.available(&self) @inline
 {
 	return self.limit;
 }
