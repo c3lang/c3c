@@ -371,8 +371,10 @@ fn void DString.reserve(&self, usz addition)
 	}
 	usz len = data.len + addition;
 	if (data.capacity >= len) return;
-	usz new_capacity = data.capacity *= 2;
+	usz new_capacity = data.capacity * 2;
 	if (new_capacity < MIN_CAPACITY) new_capacity = MIN_CAPACITY;
+	while (new_capacity < len) new_capacity *= 2;
+	data.capacity = new_capacity;
 	*self = (DString)realloc(data, StringData.sizeof + new_capacity, .using = data.allocator);
 }
 
