@@ -312,7 +312,7 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_LAMBDA:
 			if (copy_struct.is_template)
 			{
-				MACRO_COPY_DECL(expr->decl_expr);
+				MACRO_COPY_DECL(expr->lambda_expr);
 			}
 			return expr;
 		case EXPR_SWIZZLE:

@@ -3011,8 +3011,8 @@ static CompilationUnit *unit_copy(Module *module, CompilationUnit *unit)
 {
 	CompilationUnit *copy = unit_create(unit->file);
 	copy->imports = copy_decl_list_single(unit->imports);
-	copy->global_decls = copy_decl_list_single(unit->global_decls);
-	copy->global_cond_decls = copy_decl_list_single(unit->global_cond_decls);
+	copy->global_decls = copy_decl_list_single_for_unit(unit->global_decls);
+	copy->global_cond_decls = copy_decl_list_single_for_unit(unit->global_cond_decls);
 	copy->module = module;
 	assert(!unit->functions && !unit->macro_methods && !unit->methods && !unit->enums && !unit->ct_includes && !unit->types);
 	return copy;
