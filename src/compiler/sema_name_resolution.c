@@ -650,6 +650,40 @@ Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_
 	return sema_resolve_type_method(unit, type->type, method_name, ambiguous_ref, private_ref);
 }
 
+bool sema_check_type_variable_array(SemaContext *context, TypeInfo *type_info)
+{
+	if (!type_info_ok(type_info)) return false;
+	Type *type = type_info->type;
+
+	while (1)
+	{
+		type = type_flatten(type);
+		switch (type->type_kind)
+		{
+			case TYPE_POINTER:
+				type = type->pointer;
+				continue;
+			case TYPE_SUBARRAY:
+			case TYPE_ARRAY:
+			case TYPE_FLEXIBLE_ARRAY:
+			case TYPE_INFERRED_ARRAY:
+				type = type->array.base;
+				continue;
+			case TYPE_STRUCT:
+				break;
+			default:
+				UNREACHABLE;
+		}
+		break;
+	}
+	assert(type->type_kind == TYPE_STRUCT);
+	if (type->decl->has_variable_array)
+	{
+		SEMA_ERROR(type_info, "Arrays of structs with flexible array members is not allowed.");
+		return type_info_poison(type_info);
+	}
+	return true;
+}
 
 bool sema_resolve_type_decl(SemaContext *context, Type *type)
 {

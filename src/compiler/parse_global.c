@@ -1755,23 +1755,6 @@ static inline Decl *parse_def_type(ParseContext *c)
 
 	assert(!tok_is(c, TOKEN_LGENPAR));
 
-	// 3. Do we have '<' if so it's an old style parameterized type e.g. foo::bar::Type<int, double>.
-	if (try_consume(c, TOKEN_LESS))
-	{
-		Expr **params = parse_generic_parameters(c, true);
-		if (!params) return poisoned_decl;
-		decl->decl_kind = DECL_DEFINE;
-		decl_add_type(decl, TYPE_TYPEDEF);
-		decl->define_decl.define_kind = DEFINE_TYPE_GENERIC_OLD;
-		decl->define_decl.type_info = type_info;
-		decl->define_decl.generic_params = params;
-		if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
-
-		RANGE_EXTEND_PREV(decl);
-		sema_warning_at(decl->span, "Use of <...> for generics is deprecated, please use (<...>) instead.");
-		CONSUME_EOS_OR_RET(poisoned_decl);
-		return decl;
-	}
 	REMINDER("Distinct fn??");
 	decl->typedef_decl.type_info = type_info;
 	decl->typedef_decl.is_func = false;

@@ -592,7 +592,6 @@ typedef struct
 
 typedef enum
 {
-	DEFINE_TYPE_GENERIC_OLD,
 	DEFINE_IDENT_ALIAS,
 	DEFINE_IDENT_GENERIC,
 } DefineType;
@@ -1605,6 +1604,7 @@ struct CompilationUnit_
 	HTable local_symbols;
 	int lambda_count;
 	Decl **local_method_extensions;
+	TypeInfo **check_type_variable_array;
 	struct
 	{
 		void *debug_file;
@@ -2251,6 +2251,7 @@ bool sema_analyse_expr(SemaContext *context, Expr *expr);
 bool sema_expr_check_discard(Expr *expr);
 bool sema_analyse_inferred_expr(SemaContext *context, Type *to, Expr *expr);
 bool sema_analyse_decl(SemaContext *context, Decl *decl);
+bool sema_resolve_type_structure(SemaContext *context, Type *type, SourceSpan span);
 bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl);
 bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local);
 bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement);
@@ -2268,6 +2269,7 @@ Decl *sema_resolve_type_method(CompilationUnit *unit, Type *type, const char *me
 Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref);
 Decl *sema_find_extension_method_in_list(Decl **extensions, Type *type, const char *method_name);
 bool sema_resolve_type_decl(SemaContext *context, Type *type);
+bool sema_check_type_variable_array(SemaContext *context, TypeInfo *type);
 
 Decl *sema_find_symbol(SemaContext *context, const char *symbol);
 Decl *sema_find_path_symbol(SemaContext *context, const char *symbol, Path *path);
@@ -2969,7 +2971,7 @@ INLINE bool decl_is_user_defined_type(Decl *decl)
 
 INLINE Decl *decl_flatten(Decl *decl)
 {
-	if (decl->decl_kind == DECL_DEFINE && decl->define_decl.define_kind != DEFINE_TYPE_GENERIC_OLD)
+	if (decl->decl_kind == DECL_DEFINE)
 	{
 		return decl->define_decl.alias;
 	}

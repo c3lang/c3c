@@ -1077,8 +1077,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 			}
 			return backend_ref;
 		case DECL_DEFINE:
-			if (decl->define_decl.define_kind != DEFINE_TYPE_GENERIC_OLD) return llvm_get_ref(c, decl->define_decl.alias);
-			UNREACHABLE
+			return llvm_get_ref(c, decl->define_decl.alias);
 		case DECL_FAULTVALUE:
 			if (!decl->backend_ref)
 			{

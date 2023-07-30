@@ -88,7 +88,6 @@ bool sema_decl_if_cond(SemaContext *context, Decl *decl);
 bool sema_flattened_expr_is_const(SemaContext *context, Expr *expr);
 Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, const char *name, SourceSpan span, Expr **params);
 bool sema_analyse_checked(SemaContext *context, Ast *directive, SourceSpan span);
-bool sema_type_resolve_fn_ptr(SemaContext *context, TypeInfo *type_info);
 
 INLINE bool sema_set_abi_alignment(SemaContext *context, Type *type, AlignSize *result);
 INLINE bool sema_set_alloca_alignment(SemaContext *context, Type *type, AlignSize *result);

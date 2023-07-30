@@ -121,10 +121,17 @@ static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type,
 	Type *distinct_base = type_flatten(type->array.base->type);
 	if (distinct_base->type_kind == TYPE_STRUCT)
 	{
-		if (distinct_base->decl->has_variable_array)
+		if (distinct_base->decl->resolve_status == RESOLVE_DONE)
 		{
-			SEMA_ERROR(type, "Arrays of structs with flexible array members is not allowed.");
-			return type_info_poison(type);
+			if (distinct_base->decl->has_variable_array)
+			{
+				SEMA_ERROR(type, "Arrays of structs with flexible array members is not allowed.");
+				return type_info_poison(type);
+			}
+		}
+		else
+		{
+			vec_add(context->unit->check_type_variable_array, type);
 		}
 	}
 	switch (type->kind)
@@ -193,13 +200,11 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 			DEBUG_LOG("Resolved %s.", type_info->unresolved.name);
 			return true;
 		case DECL_FNTYPE:
-			if (!sema_analyse_decl(context, decl)) return type_info_poison(type_info);
 			type_info->type = decl->type;
 			type_info->resolve_status = RESOLVE_DONE;
 			return true;
 		case DECL_TYPEDEF:
 		case DECL_DISTINCT:
-		case DECL_DEFINE:
 			if (!sema_analyse_decl(context, decl)) return type_info_poison(type_info);
 			type_info->type = decl->type;
 			type_info->resolve_status = RESOLVE_DONE;
@@ -221,6 +226,7 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 				return true;
 			}
 			FALLTHROUGH;
+		case DECL_DEFINE:
 		case DECL_FUNC:
 		case DECL_FAULTVALUE:
 		case DECL_ENUM_CONSTANT:
@@ -442,18 +448,3 @@ APPEND_QUALIFIERS:
 	return true;
 }
 
-bool sema_type_resolve_fn_ptr(SemaContext *context, TypeInfo *type_info)
-{
-	Type *type = type_info->type->canonical;
-RETRY:
-	if (type->type_kind != TYPE_POINTER) return true;
-	Type *pointee = type->pointer->canonical;
-	if (pointee->type_kind == TYPE_POINTER)
-	{
-		type = pointee;
-		goto RETRY;
-	}
-	if (pointee->type_kind != TYPE_FUNC) return true;
-	if (pointee->function.prototype) return true;
-	return sema_resolve_type_decl(context, pointee);
-}

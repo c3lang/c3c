@@ -982,7 +982,6 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 		case DECL_DEFINE:
 			switch (decl->define_decl.define_kind)
 			{
-				case DEFINE_TYPE_GENERIC_OLD:
 				case DEFINE_IDENT_GENERIC:
 					MACRO_COPY_EXPR_LIST(decl->define_decl.generic_params);
 					break;

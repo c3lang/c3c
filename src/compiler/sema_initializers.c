@@ -238,7 +238,6 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 	// Prefer the typedef index: define Bar = int; Bar[1] => Bar and not int
 	Type *inner_type = type_get_indexed_type(assigned);
 	assert(inner_type);
-
 	unsigned count = vec_size(elements);
 	unsigned expected_members = flattened->array.len;
 	assert(count > 0 && "We should already have handled the size == 0 case.");
@@ -254,6 +253,7 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 	bool is_vector = type_flat_is_vector(assigned);
 	bool inner_is_inferred = type_len_is_inferred(inner_type);
 	Type *inferred_element = NULL;
+	if (!sema_resolve_type_structure(context, inner_type, initializer->span)) return false;
 	for (unsigned i = 0; i < count; i++)
 	{
 		Expr *element = elements[i];

@@ -723,7 +723,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 				return false;
 			}
 		}
-		if (!sema_type_resolve_fn_ptr(context, rtype_info)) return false;
+		if (!sema_resolve_type_structure(context, rtype_info->type, rtype_info->span)) return false;
 	}
 
 	// We don't support more than MAX_PARAMS number of params. This makes everything sane.
@@ -888,7 +888,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		if (param->var.type_info)
 		{
 			TypeInfo *type_info = param->var.type_info;
-			if (!sema_type_resolve_fn_ptr(context, type_info)) return false;
+			if (!sema_resolve_type_structure(context, type_info->type, type_info->span)) return false;
 
 			param->type = type_info->type;
 			if (!sema_set_abi_alignment(context, param->type, &param->alignment)) return false;
@@ -3228,19 +3228,6 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 			name = decl->define_decl.ident;
 			span = decl->define_decl.span;
 			break;
-		case DEFINE_TYPE_GENERIC_OLD:
-		{
-			TypeInfo *define_type = decl->define_decl.type_info;
-			if (define_type->resolve_status == RESOLVE_DONE && type_is_user_defined(define_type->type))
-			{
-				SEMA_ERROR(define_type, "Expected a user defined type for parameterization.");
-				return decl_poison(decl);
-			}
-			decl_path = define_type->unresolved.path;
-			name = define_type->unresolved.name;
-			span = define_type->span;
-			break;
-		}
 		default:
 			UNREACHABLE
 	}
@@ -3253,15 +3240,6 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 			decl->define_decl.alias = symbol;
 			decl->type = symbol->type;
 			return true;
-		case DEFINE_TYPE_GENERIC_OLD:
-		{
-			Type *type = type_new(TYPE_TYPEDEF, decl->name);
-			decl->type = type;
-			type->decl = symbol;
-			decl->decl_kind = DECL_TYPEDEF;
-			type->canonical = symbol->type->canonical;
-			return true;
-		}
 		default:
 			UNREACHABLE
 	}
@@ -3383,6 +3361,55 @@ static inline bool sema_analyse_define(SemaContext *c, Decl *decl, bool *erase_d
 	return sema_analyse_parameterized_define(c, decl);
 }
 
+bool sema_resolve_type_structure(SemaContext *context, Type *type, SourceSpan span)
+{
+RETRY:
+	switch (type->type_kind)
+	{
+		case TYPE_POISONED:
+		case TYPE_VOID:
+		case TYPE_BOOL:
+		case ALL_INTS:
+		case ALL_FLOATS:
+		case TYPE_ANY:
+		case TYPE_ANYFAULT:
+		case TYPE_TYPEID:
+		case TYPE_UNTYPED_LIST:
+		case TYPE_WILDCARD:
+		case TYPE_TYPEINFO:
+		case TYPE_MEMBER:
+			return true;
+		case TYPE_ENUM:
+		case TYPE_FUNC:
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		case TYPE_BITSTRUCT:
+		case TYPE_FAULTTYPE:
+			return sema_analyse_decl(context, type->decl);
+		case TYPE_POINTER:
+			type = type->pointer;
+			goto RETRY;
+		case TYPE_TYPEDEF:
+			type = type->canonical;
+			goto RETRY;
+		case TYPE_DISTINCT:
+			if (!sema_analyse_decl(context, type->decl)) return false;
+			type = type->decl->distinct_decl.base_type;
+			goto RETRY;
+		case TYPE_ARRAY:
+		case TYPE_SUBARRAY:
+		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_INFERRED_ARRAY:
+		case TYPE_VECTOR:
+		case TYPE_INFERRED_VECTOR:
+			type = type->array.base;
+			goto RETRY;
+		case TYPE_OPTIONAL:
+			type = type->optional;
+			goto RETRY;
+	}
+	UNREACHABLE
+}
 bool sema_analyse_decl(SemaContext *context, Decl *decl)
 {
 	if (decl->resolve_status == RESOLVE_DONE) return decl_ok(decl);
