@@ -1981,7 +1981,7 @@ static bool sema_analyse_attributes_inner(SemaContext *context, Decl *decl, Attr
 		if (attr_decl == top)
 		{
 			SEMA_ERROR(top, "Recursive declaration of attribute '%s'.", top->name);
-			return false;
+			return decl_poison(attr_decl);
 		}
 
 		// Handle the case where the current function is the declaration itself.
@@ -1993,6 +1993,7 @@ static bool sema_analyse_attributes_inner(SemaContext *context, Decl *decl, Attr
 
 		// Grab all the parameters.
 		Decl **params = attr_decl->attr_decl.params;
+		params = copy_decl_list_single(params);
 		unsigned param_count = vec_size(params);
 		Expr **args = attr->exprs;
 
@@ -2019,6 +2020,7 @@ static bool sema_analyse_attributes_inner(SemaContext *context, Decl *decl, Attr
 		for (int j = 0; j < param_count; j++)
 		{
 			if (!sema_analyse_ct_expr(context, args[j])) goto ERR;
+
 			params[j]->var.init_expr = args[j];
 			params[j]->var.kind = VARDECL_CONST;
 			// Then add them to the evaluation context.
@@ -2035,7 +2037,7 @@ static bool sema_analyse_attributes_inner(SemaContext *context, Decl *decl, Attr
 		continue;
 ERR:
 		sema_context_destroy(&eval_context);
-		return false;
+		return decl_poison(decl);
 	}
 	return true;
 }
