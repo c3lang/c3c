@@ -550,7 +550,7 @@ llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *prototyp
 			function_name = "[static initializer]";
 			break;
 		case ST_FINALIZER:
-			function_name = "[static finalizer";
+			function_name = "[static finalizer]";
 			break;
 		default:
 			UNREACHABLE
