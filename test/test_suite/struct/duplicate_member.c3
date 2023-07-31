@@ -20,6 +20,11 @@ union Cc
 {
     int a;
     int a;    // #error: Duplicate member name 'a'
+}
+
+union Cc2
+{
+    int a;
 
     struct b
     {
@@ -27,7 +32,6 @@ union Cc
         int c;    // #error: Duplicate member name 'c'
     }
 }
-
 struct Dd
 {
     int b;
@@ -37,7 +41,6 @@ struct Dd
         union
         {
             short a;  // #error: Duplicate member name 'a'
-            int b;  // #error: Duplicate member name 'b'
         }
     }
 }

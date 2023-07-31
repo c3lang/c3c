@@ -826,9 +826,10 @@ static inline bool sema_expr_analyse_ternary(SemaContext *context, Expr *expr)
 static inline bool sema_expr_analyse_enum_constant(SemaContext *context, Expr *expr, const char *name, Decl *decl)
 {
 	Decl *enum_constant = decl_find_enum_constant(decl, name);
-
-	if (!sema_resolve_type_decl(context, decl->type)) return false;
 	if (!enum_constant) return false;
+
+	// Resolve the structure at this point, since we might want to use the enum_constant
+	if (!sema_resolve_type_structure(context, decl->type, decl->span)) return false;
 
 	assert(enum_constant->resolve_status == RESOLVE_DONE);
 	expr->type = decl->type;
@@ -2914,6 +2915,9 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 	const char *name = identifier->identifier_expr.ident;
 	bool is_const = identifier->identifier_expr.is_const;
 
+	// Make sure that we have the full type structure.
+	if (!sema_resolve_type_structure(context, parent_type, expr->span)) return false;
+
 	if (!is_const)
 	{
 		if (sema_expr_rewrite_to_type_property(context, expr, canonical, type_property_by_name(name), parent_type)) return true;
@@ -3508,6 +3512,7 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 	assert(type == type->canonical);
 	if (property == TYPE_PROPERTY_NONE) return false;
 	Type *flat = type_flatten(type);
+	if (!sema_resolve_type_structure(context, flat, expr->span)) return false;
 	switch (property)
 	{
 		case TYPE_PROPERTY_INF:
@@ -3931,6 +3936,7 @@ CHECK_DEEPER:
 
 	// 10. Dump all members and methods into the scope.
 	Decl *decl = type->decl;
+
 	Decl *member = sema_decl_stack_find_decl_member(decl, kw);
 
 	if (member && decl_is_enum_kind(decl) && member->decl_kind == DECL_VAR && expr_is_const(parent))
@@ -7576,7 +7582,6 @@ static inline bool sema_expr_analyse_compound_literal(SemaContext *context, Expr
 {
 	if (!sema_resolve_type_info(context, expr->expr_compound_literal.type_info)) return false;
 	Type *type = expr->expr_compound_literal.type_info->type;
-	if (!sema_resolve_type_decl(context, type)) return false;
 	if (type_is_optional(type))
 	{
 		SEMA_ERROR(expr->expr_compound_literal.type_info,

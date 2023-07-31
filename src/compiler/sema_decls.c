@@ -134,7 +134,12 @@ static inline bool sema_check_param_uniqueness_and_type(Decl **decls, Decl *curr
 
 static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent, Decl *decl, bool *erase_decl)
 {
-	if (decl->resolve_status == RESOLVE_DONE) return decl_ok(decl);
+	if (decl->resolve_status == RESOLVE_DONE)
+	{
+		if (!decl_ok(decl)) return false;
+		if (decl->name) sema_decl_stack_push(decl);
+		return true;
+	}
 	if (decl->resolve_status == RESOLVE_RUNNING)
 	{
 		RETURN_SEMA_ERROR(decl, "Circular dependency resolving member.");
@@ -216,18 +221,12 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl, Decl **
 		Decl *member = members[i];
 		if (!decl_ok(member))
 		{
-			decl_poison(decl);
-			continue;
+			return decl_poison(decl);
 		}
 		bool erase_decl = false;
 		if (!sema_analyse_struct_member(context, decl, member, &erase_decl))
 		{
-			if (decl_ok(decl))
-			{
-				decl_poison(decl);
-				continue;
-			}
-			continue;
+			return decl_poison(member) || decl_poison(decl);
 		}
 		if (erase_decl)
 		{
@@ -239,7 +238,7 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl, Decl **
 		if (member->type->type_kind == TYPE_INFERRED_ARRAY)
 		{
 			SEMA_ERROR(member, "Flexible array members not allowed in unions.");
-			return false;
+			return decl_poison(member) || decl_poison(decl);
 		}
 		AlignSize member_alignment;
 		if (!sema_set_abi_alignment(context, member->type, &member_alignment)) return false;
@@ -324,16 +323,11 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl, Decl *
 	{
 	AGAIN:;
 		Decl *member = struct_members[i];
-		if (!decl_ok(member))
-		{
-			decl_poison(decl);
-			continue;
-		}
+		if (!decl_ok(member)) return decl_poison(decl);
 		bool erase_decl = false;
 		if (!sema_analyse_struct_member(context, decl, member, &erase_decl))
 		{
-			decl_poison(member);
-			return decl_poison(decl);
+			return decl_poison(member) || decl_poison(decl);
 		}
 		if (erase_decl)
 		{
@@ -348,7 +342,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl, Decl *
 			if (i != member_count - 1)
 			{
 				SEMA_ERROR(member, "A struct member with a flexible array must be the last element.");
-				return false;
+				return decl_poison(member) || decl_poison(decl);
 			}
 			decl->has_variable_array = true;
 		}
@@ -357,12 +351,12 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl, Decl *
 			if (i != member_count - 1)
 			{
 				SEMA_ERROR(member, "The flexible array member must be the last element.");
-				return false;
+				return decl_poison(member) || decl_poison(decl);
 			}
 			if (i == 0)
 			{
 				SEMA_ERROR(member, "The flexible array member cannot be the only element.");
-				return false;
+				return decl_poison(member) || decl_poison(decl);
 			}
 			member->type = type_get_flexible_array(member->type->array.base);
 			decl->has_variable_array = true;
@@ -3379,8 +3373,10 @@ RETRY:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
 			return true;
-		case TYPE_ENUM:
 		case TYPE_FUNC:
+			if (!type->decl) return true;
+			FALLTHROUGH;
+		case TYPE_ENUM:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
@@ -3416,6 +3412,7 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 
 	SemaContext temp_context;
 	context = context_transform_for_eval(context, &temp_context, decl->unit);
+
 	DEBUG_LOG(">>> Analysing %s.", decl->name ? decl->name : ".anon");
 	if (decl->resolve_status == RESOLVE_RUNNING)
 	{
