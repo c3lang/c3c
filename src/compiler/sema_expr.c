@@ -829,8 +829,7 @@ static inline bool sema_expr_analyse_enum_constant(SemaContext *context, Expr *e
 	Decl *enum_constant = decl_find_enum_constant(decl, name);
 	if (!enum_constant) return false;
 
-	// Resolve the structure at this point, since we might want to use the enum_constant
-	if (!sema_resolve_type_structure(context, decl->type, decl->span)) return false;
+	if (!sema_analyse_decl(context, decl)) return false;
 
 	assert(enum_constant->resolve_status == RESOLVE_DONE);
 	expr->type = decl->type;
@@ -2918,9 +2917,6 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 	Type *canonical = parent_type->canonical;
 	const char *name = identifier->identifier_expr.ident;
 	bool is_const = identifier->identifier_expr.is_const;
-
-	// Make sure that we have the full type structure.
-	if (!sema_resolve_type_structure(context, parent_type, expr->span)) return false;
 
 	if (!is_const)
 	{
