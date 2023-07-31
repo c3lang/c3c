@@ -3557,9 +3557,6 @@ static bool sema_type_property_is_valid_for_type(Type *original_type, TypeProper
 				case TYPE_VECTOR:
 				case TYPE_ENUM:
 				case TYPE_FAULTTYPE:
-				case TYPE_INFERRED_ARRAY:
-				case TYPE_FLEXIBLE_ARRAY:
-				case TYPE_SUBARRAY:
 					return true;
 				default:
 					return false;
