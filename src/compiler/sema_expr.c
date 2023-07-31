@@ -156,13 +156,14 @@ static inline bool sema_expr_analyse_decl_element(SemaContext *context, Designat
 static Type *sema_expr_check_type_exists(SemaContext *context, TypeInfo *type_info);
 static inline Expr *sema_ct_checks_exprlist_compiles(SemaContext *context, Expr *exprlist);
 static inline bool sema_cast_ct_ident_rvalue(SemaContext *context, Expr *expr);
-static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *expr, Expr *typeid, const char *kw);
+static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *expr, Expr *typeid, const char *kw, bool *was_error);
 static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr, Type *type, TypeProperty property,
 											   Type *parent_type);
+static bool sema_type_property_is_valid_for_type(Type *original_type, TypeProperty property);
 static bool sema_expr_rewrite_typeid_call(Expr *expr, Expr *typeid, TypeIdInfoKind kind, Type *result_type);
 static inline void sema_expr_rewrite_typeid_kind(Expr *expr, Expr *parent);
-static inline void sema_expr_replace_with_enum_array(Expr *enum_array_expr, Decl *enum_decl);
-static inline void sema_expr_replace_with_enum_name_array(Expr *enum_array_expr, Decl *enum_decl);
+static inline bool sema_expr_replace_with_enum_array(SemaContext *context, Expr *enum_array_expr, Decl *enum_decl);
+static inline bool sema_expr_replace_with_enum_name_array(SemaContext *context, Expr *enum_array_expr, Decl *enum_decl);
 static inline void sema_expr_rewrite_to_type_nameof(Expr *expr, Type *type, TokenType name_type);
 
 static inline bool sema_create_const_kind(SemaContext *contect, Expr *expr, Type *type);
@@ -2858,8 +2859,9 @@ RETRY:
 	return NULL;
 }
 
-static inline void sema_expr_replace_with_enum_array(Expr *enum_array_expr, Decl *enum_decl)
+static inline bool sema_expr_replace_with_enum_array(SemaContext *context, Expr *enum_array_expr, Decl *enum_decl)
 {
+	if (!sema_analyse_decl(context, enum_decl)) return false;
 	Decl **values = enum_decl->enums.values;
 	SourceSpan span = enum_array_expr->span;
 	Expr *initializer = expr_new(EXPR_INITIALIZER_LIST, span);
@@ -2884,11 +2886,12 @@ static inline void sema_expr_replace_with_enum_array(Expr *enum_array_expr, Decl
 	enum_array_expr->expr_compound_literal.initializer = initializer;
 	enum_array_expr->expr_compound_literal.type_info = type_info_new_base(type_get_array(kind, elements), span);
 	enum_array_expr->resolve_status = RESOLVE_NOT_DONE;
+	return sema_analyse_expr(context, enum_array_expr);
 }
 
-static inline void sema_expr_replace_with_enum_name_array(Expr *enum_array_expr, Decl *enum_decl)
+static inline bool sema_expr_replace_with_enum_name_array(SemaContext *context, Expr *enum_array_expr, Decl *enum_decl)
 {
-
+	if (!sema_analyse_decl(context, enum_decl)) return false;
 	Decl **values = enum_decl->enums.values;
 	SourceSpan span = enum_array_expr->span;
 	Expr *initializer = expr_new(EXPR_INITIALIZER_LIST, span);
@@ -2906,6 +2909,7 @@ static inline void sema_expr_replace_with_enum_name_array(Expr *enum_array_expr,
 	enum_array_expr->expr_compound_literal.initializer = initializer;
 	enum_array_expr->expr_compound_literal.type_info = type_info_new_base(type_get_subarray(type_string), span);
 	enum_array_expr->resolve_status = RESOLVE_NOT_DONE;
+	return sema_analyse_expr(context, enum_array_expr);
 }
 
 static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *expr, Type *parent_type, bool was_group, Expr *identifier)
@@ -2920,9 +2924,12 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 
 	if (!is_const)
 	{
-		if (sema_expr_rewrite_to_type_property(context, expr, canonical, type_property_by_name(name), parent_type)) return true;
+		TypeProperty property = type_property_by_name(name);
+		if (sema_type_property_is_valid_for_type(canonical, property))
+		{
+			return sema_expr_rewrite_to_type_property(context, expr, canonical, type_property_by_name(name), parent_type);
+		}
 	}
-
 	if (!type_may_have_sub_elements(canonical))
 	{
 		SEMA_ERROR(expr, "'%s' does not have a property '%s'.", type_to_error_string(parent_type), name);
@@ -3051,8 +3058,7 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 			return true;
 		case TYPE_PROPERTY_KINDOF:
 		case TYPE_PROPERTY_SIZEOF:
-			if (sema_expr_rewrite_to_type_property(context, expr, decl->type, type_property, decl->type)) return true;
-			return true;
+			return sema_expr_rewrite_to_type_property(context, expr, decl->type, type_property, decl->type);
 		case TYPE_PROPERTY_ELEMENTS:
 		case TYPE_PROPERTY_EXTNAMEOF:
 		case TYPE_PROPERTY_PARAMS:
@@ -3151,7 +3157,7 @@ static inline bool sema_create_const_len(SemaContext *context, Expr *expr, Type 
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_SUBARRAY:
 		default:
-			return false;
+			UNREACHABLE
 	}
 	expr_rewrite_const_int(expr, type_usz, len);
 	return true;
@@ -3187,7 +3193,7 @@ static inline bool sema_create_const_inner(SemaContext *context, Expr *expr, Typ
 			inner = type->array.base;
 			break;
 		default:
-			return false;
+			UNREACHABLE
 	}
 	expr_rewrite_const_typeid(expr, inner);
 	return true;
@@ -3252,12 +3258,12 @@ static inline bool sema_create_const_min(SemaContext *context, Expr *expr, Type 
 		}
 		return true;
 	}
-	return false;
+	UNREACHABLE
 }
 
 static inline bool sema_create_const_params(SemaContext *context, Expr *expr, Type *type)
 {
-	if (type->type_kind != TYPE_FUNC) return false;
+	assert(type->type_kind == TYPE_FUNC);
 	Signature *sig = type->function.signature;
 	unsigned params = vec_size(sig->params);
 	Expr **param_exprs = params ? VECNEW(Expr*, params) : NULL;
@@ -3273,7 +3279,8 @@ static inline bool sema_create_const_params(SemaContext *context, Expr *expr, Ty
 
 static inline bool sema_create_const_associated(SemaContext *context, Expr *expr, Type *type)
 {
-	if (type->type_kind != TYPE_ENUM) return false;
+	assert(type->type_kind == TYPE_ENUM);
+	if (!sema_analyse_decl(context, type->decl)) return false;
 	Decl **associated = type->decl->enums.parameters;
 	unsigned count = vec_size(associated);
 	Expr **associated_exprs = count ? VECNEW(Expr*, count) : NULL;
@@ -3395,7 +3402,7 @@ static inline bool sema_create_const_max(SemaContext *context, Expr *expr, Type 
 		}
 		return true;
 	}
-	return false;
+	UNREACHABLE
 }
 
 static bool sema_expr_rewrite_typeid_call(Expr *expr, Expr *typeid, TypeIdInfoKind kind, Type *result_type)
@@ -3406,14 +3413,17 @@ static bool sema_expr_rewrite_typeid_call(Expr *expr, Expr *typeid, TypeIdInfoKi
 	expr->type = result_type;
 	return true;
 }
-static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *expr, Expr *typeid, const char *kw)
+
+static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *expr, Expr *typeid, const char *kw, bool *was_error)
 {
 	TypeProperty property = type_property_by_name(kw);
 
 	if (sema_flattened_expr_is_const(context, typeid))
 	{
 		Type *type = typeid->const_expr.typeid;
-		return sema_expr_rewrite_to_type_property(context, expr, type, property, type);
+		if (!sema_type_property_is_valid_for_type(type, property)) return false;
+		*was_error = !sema_expr_rewrite_to_type_property(context, expr, type, property, type);
+		return true;
 	}
 	switch (property)
 	{
@@ -3506,16 +3516,92 @@ EVAL:
 	return true;
 }
 
+static bool sema_type_property_is_valid_for_type(Type *original_type, TypeProperty property)
+{
+	Type *type = type_flatten(original_type);
+	switch (property)
+	{
+		case TYPE_PROPERTY_NONE:
+			return false;
+		case TYPE_PROPERTY_INF:
+		case TYPE_PROPERTY_NAN:
+			return type_is_float(type);
+		case TYPE_PROPERTY_INNER:
+			switch (original_type->type_kind)
+			{
+				case TYPE_POINTER:
+				case TYPE_OPTIONAL:
+				case TYPE_DISTINCT:
+				case TYPE_ENUM:
+				case TYPE_BITSTRUCT:
+				case TYPE_ARRAY:
+				case TYPE_FLEXIBLE_ARRAY:
+				case TYPE_SUBARRAY:
+				case TYPE_INFERRED_ARRAY:
+				case TYPE_INFERRED_VECTOR:
+				case TYPE_VECTOR:
+					return true;
+				default:
+					return false;
+			}
+		case TYPE_PROPERTY_KINDOF:
+		case TYPE_PROPERTY_SIZEOF:
+		case TYPE_PROPERTY_ALIGNOF:
+		case TYPE_PROPERTY_NAMEOF:
+		case TYPE_PROPERTY_QNAMEOF:
+			return true;
+		case TYPE_PROPERTY_LEN:
+			switch (type->type_kind)
+			{
+				case TYPE_ARRAY:
+				case TYPE_VECTOR:
+				case TYPE_ENUM:
+				case TYPE_FAULTTYPE:
+				case TYPE_INFERRED_ARRAY:
+				case TYPE_FLEXIBLE_ARRAY:
+				case TYPE_SUBARRAY:
+					return true;
+				default:
+					return false;
+			}
+		case TYPE_PROPERTY_MIN:
+		case TYPE_PROPERTY_MAX:
+			return type_is_float(type) || type_is_integer(type);
+		case TYPE_PROPERTY_ELEMENTS:
+		case TYPE_PROPERTY_NAMES:
+		case TYPE_PROPERTY_VALUES:
+			return type_kind_is_enumlike(type->type_kind);
+		case TYPE_PROPERTY_ASSOCIATED:
+			return type->type_kind == TYPE_ENUM;
+		case TYPE_PROPERTY_MEMBERSOF:
+			switch (type->type_kind)
+			{
+				case TYPE_STRUCT:
+				case TYPE_UNION:
+				case TYPE_BITSTRUCT:
+					return true;
+				default:
+					return false;
+			}
+		case TYPE_PROPERTY_PARAMS:
+		case TYPE_PROPERTY_RETURNS:
+			return type->type_kind == TYPE_FUNC || (type->type_kind == TYPE_POINTER && type->pointer->type_kind == TYPE_FUNC);
+		case TYPE_PROPERTY_EXTNAMEOF:
+			return !type_is_builtin(type->type_kind);
+	}
+	UNREACHABLE
+}
+
 static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr, Type *type, TypeProperty property,
 											   Type *parent_type)
 {
 	assert(type == type->canonical);
-	if (property == TYPE_PROPERTY_NONE) return false;
+	assert(sema_type_property_is_valid_for_type(type, property));
 	Type *flat = type_flatten(type);
 	switch (property)
 	{
 		case TYPE_PROPERTY_INF:
-			if (!type_is_float(flat)) return false;
+			assert(type_is_float(flat));
 			expr->expr_kind = EXPR_CONST;
 			expr->const_expr.const_kind = CONST_FLOAT;
 			expr->const_expr.fxx = (Float) { INFINITY, flat->type_kind };
@@ -3533,25 +3619,20 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 		case TYPE_PROPERTY_MAX:
 			return sema_create_const_max(context, expr, type, flat);
 		case TYPE_PROPERTY_NAMES:
-			if (!type_kind_is_enumlike(flat->type_kind)) return false;
-			if (!sema_resolve_type_decl(context, type)) return false;
-			sema_expr_replace_with_enum_name_array(expr, flat->decl);
-			return sema_analyse_expr(context, expr);
+			assert(type_kind_is_enumlike(flat->type_kind));
+			return sema_expr_replace_with_enum_name_array(context, expr, flat->decl);
 		case TYPE_PROPERTY_ASSOCIATED:
-			if (!sema_resolve_type_decl(context, flat)) return false;
 			return sema_create_const_associated(context, expr, flat);
 		case TYPE_PROPERTY_ELEMENTS:
-			if (!type_kind_is_enumlike(flat->type_kind)) return false;
-			if (!sema_resolve_type_decl(context, type)) return false;
+			assert(type_kind_is_enumlike(flat->type_kind));
+			if (!sema_analyse_decl(context, type->decl)) return false;
 			expr_rewrite_const_int(expr, type_isz, vec_size(flat->decl->enums.values));
 			return true;
 		case TYPE_PROPERTY_VALUES:
-			if (!type_kind_is_enumlike(flat->type_kind)) return false;
-			if (!sema_resolve_type_decl(context, type)) return false;
-			sema_expr_replace_with_enum_array(expr, flat->decl);
-			return sema_analyse_expr(context, expr);
+			assert(type_kind_is_enumlike(flat->type_kind));
+			return sema_expr_replace_with_enum_array(context, expr, flat->decl);
 		case TYPE_PROPERTY_NAN:
-			if (!type_is_float(flat)) return false;
+			assert(type_is_float(flat));
 			expr->expr_kind = EXPR_CONST;
 			expr->const_expr.const_kind = CONST_FLOAT;
 			expr->const_expr.fxx = (Float) { nan(""), flat->type_kind };
@@ -3570,7 +3651,7 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			return sema_create_const_params(context, expr, flat);
 		case TYPE_PROPERTY_RETURNS:
 			if (flat->type_kind == TYPE_POINTER && flat->pointer->type_kind == TYPE_FUNC) flat = flat->pointer;
-			if (flat->type_kind != TYPE_FUNC) return false;
+			assert(flat->type_kind == TYPE_FUNC);
 			expr_rewrite_const_typeid(expr, type_infoptr(flat->function.signature->rtype)->type);
 			return true;
 		case TYPE_PROPERTY_SIZEOF:
@@ -3593,7 +3674,7 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			return true;
 		}
 		case TYPE_PROPERTY_EXTNAMEOF:
-			if (type_is_builtin(type->type_kind)) return false;
+			assert(!type_is_builtin(type->type_kind));
 			if (!sema_resolve_type_decl(context, type)) return false;
 			sema_expr_rewrite_to_type_nameof(expr, type, TOKEN_CT_EXTNAMEOF);
 			return true;
@@ -3820,7 +3901,8 @@ CHECK_DEEPER:
 	}
 	if (flat_type->type_kind == TYPE_TYPEID)
 	{
-		if (sema_expr_rewrite_to_typeid_property(context, expr, parent, kw)) return true;
+		bool was_error = false;
+		if (sema_expr_rewrite_to_typeid_property(context, expr, parent, kw, &was_error)) return !was_error;
 	}
 	if (flat_type->type_kind == TYPE_VECTOR)
 	{
@@ -3912,19 +3994,17 @@ CHECK_DEEPER:
 		Decl *method = sema_resolve_type_method(context->unit, type, kw, &ambiguous, &private);
 		if (private)
 		{
-			SEMA_ERROR(expr, "The method '%s' has private visibility.", kw);
-			return false;
+			RETURN_SEMA_ERROR(expr, "The method '%s' has private visibility.", kw);
 		}
 		if (ambiguous)
 		{
-			SEMA_ERROR(expr, "'%s' is an ambiguous name and so cannot be resolved, it may refer to method defined in '%s' or one in '%s'",
-					   kw, method->unit->module->name->module, ambiguous->unit->module->name->module);
-			return false;
+			RETURN_SEMA_ERROR(expr, "'%s' is an ambiguous name and so cannot be resolved, "
+									"it may refer to method defined in '%s' or one in '%s'",
+									kw, method->unit->module->name->module, ambiguous->unit->module->name->module);
 		}
 		if (!method)
 		{
-			SEMA_ERROR(expr, "There is no member or method '%s' on '%s'", kw, type_to_error_string(type));
-			return false;
+			RETURN_SEMA_ERROR(expr, "There is no member or method '%s' on '%s'", kw, type_to_error_string(type));
 		}
 		expr->access_expr.parent = current_parent;
 		expr->type = method->type ? type_add_optional(method->type, optional) : NULL;
