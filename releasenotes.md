@@ -3,10 +3,14 @@
 ## 0.5.0 Change List
 
 ### Changes / improvements
+- Strong optional handling requirements.
+- Better dead code analysis, and added dead code errors.
 - Exhaustive switches with enums has better analysis.
 - Globals may now be initialized with optional values.
 - New generic syntax.
 - Slice initialization.
+- `$feature` for feature flags.
+- Improved stack trace.
 - Macro ref parameters are now of pointer type and ref parameters are not assignable.
 - Added `nextcase default`.
 - Added `$embed` to embed binary data.
@@ -148,6 +152,7 @@
 - Added posix socket functions.
 
 ### Fixes
+- Fix to DString reserve
 - @local declarations in generic modules available by accident.
 - Fixes missing checks to body arguments.
 - Do not create debug declaration for value-only parameter.
