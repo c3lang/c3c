@@ -3512,7 +3512,6 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 	assert(type == type->canonical);
 	if (property == TYPE_PROPERTY_NONE) return false;
 	Type *flat = type_flatten(type);
-	if (!sema_resolve_type_structure(context, flat, expr->span)) return false;
 	switch (property)
 	{
 		case TYPE_PROPERTY_INF:
