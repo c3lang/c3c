@@ -68,11 +68,24 @@ macro anycast(any v, $Type) @builtin
 	return ($Type*)v.ptr;
 }
 
+enum CallLocation : int(String name)
+{
+	UNKNOWN("???"),
+	FUNCTION("function"),
+	METHOD("method"),
+	MACRO("macro"),
+	LAMBDA("lambda"),
+	TEST("test"),
+	INITIALIZER("initializer"),
+	FINALIZER("finalizer")
+}
+
 struct CallstackElement
 {
 	CallstackElement* prev;
 	String function;
 	String file;
+	CallLocation location;
 	uint line;
 }
 
@@ -91,11 +104,11 @@ fn void default_panic(String message, String file, String function, uint line)
 	{
 		(void)io::stderr().print("\nERROR: '");
 		(void)io::stderr().print(message);
-		(void)io::stderr().printfn("', in function %s (%s:%d)", function, file, line);
+		(void)io::stderr().printfn("', in %s (%s:%d)", function, file, line);
 	}
 	while (stack)
 	{
-		(void)io::stderr().printfn("  in function %s (%s:%d)", stack.function, stack.file, stack.line);
+		(void)io::stderr().printfn("  in %s %s (%s:%d)", stack.location.name, stack.function, stack.file, stack.line);
 		if (stack == stack.prev) break;
 		stack = stack.prev;
 	}
@@ -297,12 +310,12 @@ fn void sig_panic(String message)
 	CallstackElement* stack = $$stacktrace();
 	if (stack) stack = stack.prev;
 	if (stack) stack = stack.prev;
-	(void)io::stderr().print("\nERROR: '");
+	(void)io::stderr().print("\nSYSTEM ERROR: '");
 	(void)io::stderr().print(message);
 	(void)io::stderr().printn("'");
 	while (stack)
 	{
-		(void)io::stderr().printfn("  in function %s (%s:%s)", stack.function, stack.file, stack.line);
+		(void)io::stderr().printfn("  in %s %s (%s:%s)", stack.location.name, stack.function, stack.file, stack.line);
 		if (stack == stack.prev) break;
 		stack = stack.prev;
 	}

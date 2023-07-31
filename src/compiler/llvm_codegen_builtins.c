@@ -132,7 +132,7 @@ INLINE void llvm_emit_stacktrace(GenContext *c, BEValue *result_value, Expr *exp
 		llvm_value_set(result_value, llvm_get_zero(c, type_voidptr), type_voidptr);
 		return;
 	}
-	llvm_value_set(result_value, c->debug.stack_slot, type_voidptr);
+	llvm_value_set(result_value, c->debug.stacktrace, type_voidptr);
 }
 
 INLINE void llvm_emit_volatile_store(GenContext *c, BEValue *result_value, Expr *expr)

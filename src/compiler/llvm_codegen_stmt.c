@@ -1295,13 +1295,7 @@ void llvm_emit_unreachable(GenContext *c)
 void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const char *fmt, BEValue *varargs)
 {
 	if (c->debug.builder) llvm_emit_debug_location(c, loc);
-	if (c->debug.stack_slot_row)
-	{
-		llvm_store_to_ptr_raw_aligned(c,
-									  c->debug.stack_slot_row,
-									  llvm_const_int(c, type_uint, loc.row ? loc.row : 1),
-									  type_abi_alignment(type_uint));
-	}
+	llvm_emit_update_stack_row(c, loc.row);
 
 	Decl *panic_var = c->panic_var;
 	if (!panic_var)

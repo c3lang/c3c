@@ -1018,6 +1018,7 @@ typedef struct
 	bool is_must_use : 1;
 	bool had_optional_arg : 1;
 	Decl **params;
+	Decl *macro;
 	BlockExit **block_exit;
 } ExprMacroBlock;
 
