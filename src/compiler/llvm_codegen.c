@@ -1372,27 +1372,27 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 			if (decl->func_decl.body)
 			{
 				has_elements = true;
-				llvm_emit_function_body(gen_context, decl);
+				llvm_emit_function_body(gen_context, decl, decl->func_decl.attr_test ? ST_TEST : ST_FUNCTION);
 			}
 		FOREACH_END();
 
 		FOREACH_BEGIN(Decl *func, unit->lambdas)
 			if (only_used && !func->is_live) continue;
 			has_elements = true;
-			llvm_emit_function_body(gen_context, func);
+			llvm_emit_function_body(gen_context, func, ST_LAMBDA);
 		FOREACH_END();
 
 		if (active_target.type != TARGET_TYPE_TEST && unit->main_function && unit->main_function->is_synthetic)
 		{
 			has_elements = true;
-			llvm_emit_function_body(gen_context, unit->main_function);
+			llvm_emit_function_body(gen_context, unit->main_function, ST_FUNCTION);
 		}
 
 		FOREACH_BEGIN(Decl *decl, unit->methods)
 			if (only_used && !decl->is_live) continue;
 			if (!decl->func_decl.body) continue;
 			has_elements = true;
-			llvm_emit_function_body(gen_context, decl);
+			llvm_emit_function_body(gen_context, decl, ST_METHOD);
 		FOREACH_END();
 
 		gencontext_end_file_emit(gen_context, unit);

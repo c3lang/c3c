@@ -49,6 +49,18 @@ typedef struct DebugFile_
 	LLVMMetadataRef debug_file;
 } DebugFile;
 
+typedef enum
+{
+	ST_UNKNOWN = 0,
+	ST_FUNCTION,
+	ST_METHOD,
+	ST_MACRO,
+	ST_LAMBDA,
+	ST_TEST,
+	ST_INITIALIZER,
+	ST_FINALIZER
+} StacktraceType;
+
 typedef struct
 {
 	unsigned runtime_version : 8;
@@ -61,14 +73,11 @@ typedef struct
 	SourceSpan current_range;
 	LLVMMetadataRef *lexical_block_stack;
 	LLVMMetadataRef inlined_at;
-	LLVMValueRef func_name;
-	LLVMValueRef file_name;
 	LLVMValueRef current_stack_ptr;
 	LLVMValueRef stack_init_fn;
 	LLVMTypeRef stack_init_fn_type;
 	LLVMTypeRef stack_type;
-	LLVMValueRef stack_slot;
-	LLVMValueRef stack_slot_row;
+	LLVMValueRef stacktrace;
 } DebugContext;
 
 
@@ -478,7 +487,7 @@ void llvm_emit_subarray_len(GenContext *context, BEValue *subarray, BEValue *len
 void llvm_emit_subarray_pointer(GenContext *context, BEValue *subarray, BEValue *pointer);
 void llvm_emit_compound_stmt(GenContext *c, Ast *ast);
 LLVMValueRef llvm_emit_const_bitstruct(GenContext *c, ConstInitializer *initializer);
-void llvm_emit_function_body(GenContext *context, Decl *decl);
+void llvm_emit_function_body(GenContext *context, Decl *decl, StacktraceType type);
 void llvm_emit_dynamic_functions(GenContext *context, Decl **funcs);
 BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValueRef optional);
 INLINE void llvm_emit_exprid(GenContext *c, BEValue *value, ExprId expr);
@@ -511,6 +520,11 @@ void llvm_emit_debug_location(GenContext *c, SourceSpan location);
 void llvm_emit_debug_parameter(GenContext *c, Decl *parameter, unsigned index);
 void llvm_emit_debug_local_var(GenContext *c, Decl *var);
 void llvm_emit_debug_global_var(GenContext *c, Decl *global);
+void llvm_emit_update_stack_row(GenContext *c, uint32_t row);
+void llvm_emit_pop_stacktrace(GenContext *c, LLVMValueRef *slot);
+void
+llvm_emit_push_stacktrace(GenContext *c, Decl *decl, const char *function_name, StacktraceType type);
+
 #define EMIT_LOC(c, x) do { if (c->debug.builder) llvm_emit_debug_location(c, x->span); } while (0);
 
 LLVMAtomicOrdering llvm_atomic_ordering(Atomicity atomicity);

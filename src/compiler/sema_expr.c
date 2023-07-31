@@ -2048,6 +2048,7 @@ NOT_CT:
 	call_expr->macro_block.had_optional_arg = has_optional_arg;
 	call_expr->macro_block.is_must_use = must_use;
 	call_expr->macro_block.first_stmt = body->compound_stmt.first_stmt;
+	call_expr->macro_block.macro = decl;
 	call_expr->macro_block.params = params;
 	call_expr->macro_block.block_exit = block_exit_ref;
 	call_expr->macro_block.is_noreturn = is_no_return;

@@ -11,9 +11,9 @@ static inline void llvm_emit_return_value(GenContext *context, LLVMValueRef valu
 static void llvm_expand_from_args(GenContext *c, Type *type, LLVMValueRef ref, unsigned *index, AlignSize alignment);
 static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIArgInfo *info, unsigned *index);
 static inline void llvm_emit_func_parameter(GenContext *context, Decl *decl, ABIArgInfo *abi_info, unsigned *index, unsigned real_index);
-static inline void llvm_emit_body(GenContext *c, LLVMValueRef function, const char *module_name,
-								  const char *function_name,
-								  FileId file_id, FunctionPrototype *prototype, Signature *signature, Ast *body);
+static inline void
+llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *prototype, Signature *signature, Ast *body,
+               Decl *decl, StacktraceType type);
 
 
 /**
@@ -407,22 +407,19 @@ void llvm_emit_return_implicit(GenContext *c)
 	llvm_emit_return_abi(c, NULL, &value);
 }
 
-void llvm_emit_function_body(GenContext *c, Decl *decl)
+void llvm_emit_function_body(GenContext *c, Decl *decl, StacktraceType type)
 {
 	DEBUG_LOG("Generating function %s.", decl->extname);
 	if (decl->func_decl.attr_dynamic) vec_add(c->dynamic_functions, decl);
 	assert(decl->backend_ref);
 	llvm_emit_body(c,
-				   decl->backend_ref,
-				   decl->unit->module->name->module,
-				   decl->name,
-				   decl->span.file_id,
-				   type_get_resolved_prototype(decl->type),
-				   decl->func_decl.attr_naked ? NULL : &decl->func_decl.signature,
-				   astptr(decl->func_decl.body));
+	               decl->backend_ref,
+	               type_get_resolved_prototype(decl->type),
+	               decl->func_decl.attr_naked ? NULL : &decl->func_decl.signature,
+	               astptr(decl->func_decl.body), decl, type);
 }
 
-void llvm_emit_stacktrace_definitions(GenContext *c)
+static void llvm_emit_stacktrace_definitions(GenContext *c)
 {
 	const char *name = ".stacktrace_current";
 	LLVMValueRef current_stack = c->debug.current_stack_ptr = llvm_add_global_raw(c, name, c->ptr_type, 0);
@@ -430,8 +427,8 @@ void llvm_emit_stacktrace_definitions(GenContext *c)
 	LLVMSetInitializer(current_stack, llvm_get_zero_raw(c->ptr_type));
 	llvm_set_weak(c, current_stack);
 	LLVMTypeRef uint_type = llvm_get_type(c, type_uint);
-	LLVMTypeRef args[6] = { c->ptr_type, c->ptr_type, c->size_type, c->ptr_type, c->size_type, uint_type };
-	LLVMTypeRef func_type = c->debug.stack_init_fn_type = LLVMFunctionType(LLVMVoidTypeInContext(c->context), args, 6, false);
+	LLVMTypeRef args[7] = { c->ptr_type, c->ptr_type, c->size_type, c->ptr_type, c->size_type, uint_type, uint_type };
+	LLVMTypeRef func_type = c->debug.stack_init_fn_type = LLVMFunctionType(LLVMVoidTypeInContext(c->context), args, 7, false);
 	LLVMValueRef func = c->debug.stack_init_fn = LLVMAddFunction(c->module, ".stacktrace_init", func_type);
 	llvm_set_weak(c, func);
 	LLVMBuilderRef builder = LLVMCreateBuilderInContext(c->context);
@@ -457,19 +454,65 @@ void llvm_emit_stacktrace_definitions(GenContext *c)
 	llvm_store_to_ptr_raw_aligned(c, file_name_ptr, LLVMGetParam(func, 3), align_to_use);
 	LLVMValueRef file_name_sz = llvm_emit_struct_gep_raw(c, file_name, c->chars_type, 1, align_to_use, &align_to_use);
 	llvm_store_to_ptr_raw_aligned(c, file_name_sz, LLVMGetParam(func, 4), align_to_use);
-	llvm_store_to_ptr_raw_aligned(c,
-								  c->debug.current_stack_ptr,
-								  stacktrace,
-								  type_alloca_alignment(type_voidptr));
-	LLVMValueRef line = llvm_emit_struct_gep_raw(c, stacktrace, slot_type, 3, alignment, &align_to_use);
-	llvm_store_to_ptr_raw_aligned(c, line, LLVMGetParam(func, 5), align_to_use);
+	llvm_store_to_ptr_raw_aligned(c, c->debug.current_stack_ptr, stacktrace, type_alloca_alignment(type_voidptr));
+	LLVMValueRef type = llvm_emit_struct_gep_raw(c, stacktrace, slot_type, 3, alignment, &align_to_use);
+	llvm_store_to_ptr_raw_aligned(c, type, LLVMGetParam(func, 5), align_to_use);
+	LLVMValueRef line = llvm_emit_struct_gep_raw(c, stacktrace, slot_type, 4, alignment, &align_to_use);
+	llvm_store_to_ptr_raw_aligned(c, line, LLVMGetParam(func, 6), align_to_use);
 	LLVMBuildRetVoid(c->builder);
 	LLVMDisposeBuilder(c->builder);
 	c->builder = NULL;
 }
 
-void llvm_emit_body(GenContext *c, LLVMValueRef function, const char *module_name, const char *function_name,
-					FileId file_id, FunctionPrototype *prototype, Signature *signature, Ast *body)
+void llvm_emit_pop_stacktrace(GenContext *c, LLVMValueRef *slot)
+{
+	if (!c->debug.enable_stacktrace) return;
+	if (slot)
+	{
+		c->debug.stacktrace = *slot;
+	}
+	llvm_store_to_ptr_raw_aligned(c, c->debug.current_stack_ptr, c->debug.stacktrace, type_alloca_alignment(type_voidptr));
+}
+void llvm_emit_update_stack_row(GenContext *c, uint32_t row)
+{
+	if (!c->debug.enable_stacktrace) return;
+	LLVMValueRef row_ptr = LLVMBuildStructGEP2(c->builder, c->debug.stack_type, c->debug.stacktrace, 4, ".$row");
+	llvm_store_to_ptr_raw_aligned(c, row_ptr, llvm_const_int(c, type_uint, row ? row : 1), type_abi_alignment(type_uint));
+
+}
+void llvm_emit_push_stacktrace(GenContext *c, Decl *decl, const char *function_name, StacktraceType type)
+{
+	LLVMTypeRef slot_type = c->debug.stack_type;
+	AlignSize alignment = llvm_abi_alignment(c, slot_type);
+	LLVMValueRef stacktrace = llvm_emit_alloca(c, slot_type, alignment, ".$stacktrace");
+	scratch_buffer_clear();
+	scratch_buffer_append(decl->unit->module->name->module);
+	scratch_buffer_append("::");
+	scratch_buffer_append(function_name);
+	size_t func_name_len = scratch_buffer.len;
+	LLVMValueRef func_name = llvm_emit_zstring_named(c, scratch_buffer_to_string(), ".callname");
+	File *file = decl->unit->file;
+	size_t file_name_len = strlen(file->full_path);
+	LLVMValueRef file_name = llvm_emit_zstring_named(c, file->full_path, ".filename");
+	LLVMValueRef args[] = {stacktrace, func_name, llvm_const_int(c, type_usz, func_name_len),
+	                       file_name, llvm_const_int(c, type_usz, file_name_len),
+	                       llvm_const_int(c, type_uint, type),
+	                       llvm_const_int(c, type_uint, decl->span.row)};
+	LLVMBuildCall2(c->builder, c->debug.stack_init_fn_type, c->debug.stack_init_fn, args, 7, "");
+
+	if (type == ST_FUNCTION && (function_name == kw_main || function_name == kw_mainstub))
+	{
+		AlignSize align_size;
+		LLVMValueRef last = llvm_emit_struct_gep_raw(c, stacktrace, slot_type, 0, alignment, &align_size);
+		llvm_store_to_ptr_raw_aligned(c, last, LLVMConstNull(c->ptr_type), align_size);
+	}
+	c->debug.stacktrace = stacktrace;
+}
+
+
+void
+llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *prototype, Signature *signature, Ast *body,
+               Decl *decl, StacktraceType type)
 {
 	bool emit_debug = llvm_use_debug(c);
 	LLVMValueRef prev_function = c->function;
@@ -484,25 +527,39 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, const char *module_nam
 	c->opt_var = NULL;
 	c->catch_block = NULL;
 
+	const char *function_name;
+	switch (type)
+	{
+		case ST_UNKNOWN:
+			UNREACHABLE
+		case ST_FUNCTION:
+		case ST_TEST:
+			assert(decl->name);
+			function_name = decl->name;
+			break;
+		case ST_METHOD:
+			function_name = decl->name;
+			break;
+		case ST_LAMBDA:
+			function_name = "[lambda]";
+			break;
+		case ST_MACRO:
+			function_name = decl->name;
+			break;
+		case ST_INITIALIZER:
+			function_name = "[static initializer]";
+			break;
+		case ST_FINALIZER:
+			function_name = "[static finalizer";
+			break;
+		default:
+			UNREACHABLE
+	}
+
 	c->function = function;
-	if (!function_name) function_name = "anonymous function";
-	size_t func_name_len = 0;
-	size_t file_name_len = 0;
 	if (emit_debug)
 	{
 		c->debug.function = LLVMGetSubprogram(function);
-		if (use_stacktrace)
-		{
-			scratch_buffer_clear();
-			scratch_buffer_append(module_name);
-			scratch_buffer_append("::");
-			scratch_buffer_append(function_name);
-			c->debug.func_name = llvm_emit_zstring_named(c, scratch_buffer_to_string(), ".funcname");
-			func_name_len = scratch_buffer.len;
-			File *file = source_file_by_id(file_id);
-			file_name_len = strlen(file->name);
-			c->debug.file_name = llvm_emit_zstring_named(c, file->name, ".filename");
-		}
 	}
 
 	c->cur_func.name = function_name;
@@ -518,27 +575,14 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, const char *module_nam
 
 	unsigned arg = 0;
 
+
 	if (emit_debug)
 	{
 		llvm_debug_scope_push(c, c->debug.function);
 		EMIT_LOC(c, body);
 		if (use_stacktrace)
 		{
-			LLVMTypeRef slot_type = c->debug.stack_type;
-			assert(c->debug.current_stack_ptr && c->debug.stack_init_fn);
-			AlignSize alignment = llvm_abi_alignment(c, slot_type);
-			LLVMValueRef stacktrace = c->debug.stack_slot = llvm_emit_alloca(c, slot_type, alignment, ".$stacktrace");
-			LLVMValueRef args[] = { stacktrace, c->debug.func_name, llvm_const_int(c, type_usz, func_name_len),
-									c->debug.file_name, llvm_const_int(c, type_usz, file_name_len),
-									llvm_const_int(c, type_uint, body->span.row) };
-			LLVMBuildCall2(c->builder, c->debug.stack_init_fn_type, c->debug.stack_init_fn, args, 6, "");
-			c->debug.stack_slot_row = LLVMBuildStructGEP2(c->builder, slot_type, c->debug.stack_slot, 3, ".$row");
-			if (function_name == kw_main || function_name == kw_mainstub)
-			{
-				AlignSize align_size;
-				LLVMValueRef last = llvm_emit_struct_gep_raw(c, c->debug.stack_slot, slot_type, 0, alignment, &align_size);
-				llvm_store_to_ptr_raw_aligned(c, last, LLVMConstNull(c->ptr_type), align_size);
-			}
+			llvm_emit_push_stacktrace(c, decl, function_name, type);
 		}
 	}
 
@@ -655,13 +699,10 @@ void llvm_emit_xxlizer(GenContext *c, Decl *decl)
 		LLVMSetSubprogram(function, c->debug.function);
 	}
 	llvm_emit_body(c,
-				   function,
-				   decl->unit->module->name->module,
-				   is_initializer ? "[static initializer]" : "[static finalizer]",
-				   decl->span.file_id,
-				   NULL,
-				   NULL,
-				   body);
+	               function,
+	               NULL,
+	               NULL,
+	               body, decl, is_initializer ? ST_INITIALIZER : ST_FINALIZER);
 }
 
 
