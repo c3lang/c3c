@@ -404,7 +404,7 @@ fn Char32[]! String.to_utf32(s, Allocator* using = mem::heap())
 
 fn void String.convert_ascii_to_lower(s)
 {
-	foreach (&c : s) if (*c >= 'A' && *c <= 'Z') *c += 'a' - 'A';
+	foreach (&c : s) if (c.is_upper()) *c += 'a' - 'A';
 }
 
 fn String String.ascii_to_lower(s, Allocator* using = mem::heap())
@@ -416,7 +416,7 @@ fn String String.ascii_to_lower(s, Allocator* using = mem::heap())
 
 fn void String.convert_ascii_to_upper(s)
 {
-	foreach (&c : s) if (*c >= 'a' && *c <= 'z') *c -= 'a' - 'A';
+	foreach (&c : s) if (c.is_lower()) *c -= 'a' - 'A';
 }
 
 fn String String.ascii_to_upper(s, Allocator* using = mem::heap())
