@@ -2598,6 +2598,7 @@ INLINE bool type_info_poison(TypeInfo *type)
 		type->resolve_status = RESOLVE_NOT_DONE;
 		return false;
 	}
+	type->kind = TYPE_INFO_POISON;
 	type->type = poisoned_type;
 	type->resolve_status = RESOLVE_DONE;
 	return false;
