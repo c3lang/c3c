@@ -252,24 +252,12 @@ fn usz! String.rindex_of_char(s, char needle)
 fn usz! String.index_of(s, String needle)
 {
 	usz needed = needle.len;
-	char search = needle[0];
-	if (needed == 1) return s.index_of_char(search);
-	usz match = 0;
-	usz index_start = 0;
-	foreach (usz i, char c : s)
+	if (needed > 0 && s.len >= needed)
 	{
-		if (c == search)
+		char first = needle[0];
+		foreach (i, c: s[..^needed])
 		{
-			if (!match) index_start = i;
-			match++;
-			if (match == needed) return index_start;
-			search = needle[match];
-			continue;
-		}
-		if (match)
-		{
-			match = 0;
-			search = needle[0];
+			if (c == first && s[i:needed] == needle) return i;
 		}
 	}
 	return SearchResult.MISSING?;
@@ -289,24 +277,12 @@ fn usz! String.index_of(s, String needle)
 fn usz! String.rindex_of(s, String needle)
 {
 	usz needed = needle.len;
-	char search = needle[^1];
-	if (needed == 1) return s.rindex_of_char(search);
-	usz match;
-	usz index_start;
-	foreach_r (usz i, char c : s)
+	if (needed > 0 && s.len >= needed)
 	{
-		if (c == search)
+		char first = needle[0];
+		foreach_r (i, c: s[..^needed])
 		{
-			if (!match) index_start = i;
-			match++;
-			if (match == needed) return index_start - needle.len + 1;
-			search = needle[^(match + 1)];
-			continue;
-		}
-		if (match)
-		{
-			match = 0;
-			search = needle[^1];
+			if (c == first && s[i:needed] == needle) return i;
 		}
 	}
 	return SearchResult.MISSING?;
