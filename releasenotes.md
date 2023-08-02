@@ -152,6 +152,7 @@
 - Added posix socket functions.
 
 ### Fixes
+- Fix casts on empty initializers.
 - Fix to DString reserve
 - @local declarations in generic modules available by accident.
 - Fixes missing checks to body arguments.

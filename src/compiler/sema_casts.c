@@ -1097,14 +1097,12 @@ static inline bool cast_maybe_string_byte_lit(Expr *expr, Type *to_canonical, Ty
  */
 static void expr_recursively_rewrite_untyped_list(Expr *expr, Expr **list)
 {
+	if (!expr_is_const_untyped_list(expr)) return;
 	expr->expr_kind = EXPR_INITIALIZER_LIST;
 	expr->initializer_list = list;
 	expr->resolve_status = RESOLVE_NOT_DONE;
 	FOREACH_BEGIN(Expr *inner, list)
-		if (expr_is_const_untyped_list(inner))
-		{
-			expr_recursively_rewrite_untyped_list(inner, inner->const_expr.untyped_list);
-		}
+		expr_recursively_rewrite_untyped_list(inner, inner->const_expr.untyped_list);
 	FOREACH_END();
 }
 
