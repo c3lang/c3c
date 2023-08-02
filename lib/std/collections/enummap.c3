@@ -7,7 +7,7 @@ struct EnumMap
 
 fn void EnumMap.init(&self, ValueType init_value)
 {
-	foreach(&a : self.values)
+	foreach (&a : self.values)
 	{
 		*a = init_value;
 	}
@@ -30,6 +30,22 @@ fn String EnumMap.to_string(&self, Allocator* using = mem::heap()) @dynamic
 	return string::printf("%s", *self);
 }
 
-fn uint EnumMap.len(&self) @operator(len) => self.values.len;
-fn ValueType EnumMap.get(&self, Enum key) @operator([]) => self.values[key.ordinal];
-fn void EnumMap.set(&self, Enum key, ValueType value) @operator([]=) => self.values[key.ordinal] = value;
+fn usz EnumMap.len(&self) @operator(len) @inline
+{
+	return self.values.len;
+}
+
+fn ValueType EnumMap.get(&self, Enum key) @operator([]) @inline
+{
+	return self.values[key.ordinal];
+}
+
+fn ValueType* EnumMap.get_ref(&self, Enum key) @operator(&[]) @inline
+{
+	return &self.values[key.ordinal];
+}
+
+fn void EnumMap.set(&self, Enum key, ValueType value) @operator([]=) @inline
+{
+	self.values[key.ordinal] = value;
+}
