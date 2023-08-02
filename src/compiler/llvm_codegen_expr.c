@@ -1105,9 +1105,9 @@ static inline void llvm_emit_bitassign_expr(GenContext *c, BEValue *be_value, Ex
 
 	// Grab the parent
 	BEValue parent;
-	llvm_emit_expr(c, &parent, parent_expr);
-
 	Decl *member = lhs->access_expr.ref;
+	llvm_emit_expr(c, &parent, parent_expr);
+	llvm_emit_bitstruct_member(c, &parent, type_flatten(parent_expr->type)->decl, member);
 
 	// If we have assign + op, load the current value, perform the operation.
 	if (expr->binary_expr.operator != BINARYOP_ASSIGN)

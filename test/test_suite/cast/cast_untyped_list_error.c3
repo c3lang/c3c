@@ -2,5 +2,5 @@ module testing;
 
 fn void main()
 {
-	(void){}; // #error: foekfoe
+	(void){}; // #error: cannot use compound literal initialization
 }

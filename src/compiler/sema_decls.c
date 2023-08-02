@@ -28,10 +28,10 @@ static inline const char *method_name_by_decl(Decl *method_like);
 
 static bool sema_analyse_struct_union(SemaContext *context, Decl *decl, bool *erase_decl);
 static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl, bool *erase_decl);
-static bool sema_analyse_union_members(SemaContext *context, Decl *decl, Decl **members);
-static bool sema_analyse_struct_members(SemaContext *context, Decl *decl, Decl **members);
+static bool sema_analyse_union_members(SemaContext *context, Decl *decl);
+static bool sema_analyse_struct_members(SemaContext *context, Decl *decl);
 static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent, Decl *decl, bool *erase_decl);
-static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *decl, unsigned index, bool allow_overlap);
+static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *parent, Decl *member, unsigned index, bool allow_overlap, bool *erase_decl);
 
 static inline bool sema_analyse_doc_header(AstId doc, Decl **params, Decl **extra_params, bool *pure_ref);
 
@@ -207,13 +207,14 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 	}
 }
 
-static bool sema_analyse_union_members(SemaContext *context, Decl *decl, Decl **members)
+static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
 {
 	AlignSize max_size = 0;
 	MemberIndex max_alignment_element = 0;
 	AlignSize max_alignment = 0;
 
 	bool has_named_parameter = false;
+	Decl **members = decl->strukt.members;
 	unsigned member_count = vec_size(members);
 	for (unsigned i = 0; i < member_count; i++)
 	{
@@ -308,7 +309,7 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl, Decl **
 	return true;
 }
 
-static bool sema_analyse_struct_members(SemaContext *context, Decl *decl, Decl **members)
+static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 {
 	// Default alignment is 1 even if it is empty.
 	AlignSize natural_alignment = 1;
@@ -316,8 +317,8 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl, Decl *
 	AlignSize size = 0;
 	AlignSize offset = 0;
 	bool is_packed = decl->is_packed;
-	unsigned member_count = vec_size(members);
 	Decl **struct_members = decl->strukt.members;
+	unsigned member_count = vec_size(struct_members);
 
 	for (unsigned i = 0; i < member_count; i++)
 	{
@@ -481,11 +482,11 @@ static bool sema_analyse_struct_union(SemaContext *context, Decl *decl, bool *er
 		Decl** state = sema_decl_stack_store();
 		if (decl->decl_kind == DECL_UNION)
 		{
-			success = sema_analyse_union_members(context, decl, decl->strukt.members);
+			success = sema_analyse_union_members(context, decl);
 		}
 		else
 		{
-			success = sema_analyse_struct_members(context, decl, decl->strukt.members);
+			success = sema_analyse_struct_members(context, decl);
 		}
 		sema_decl_stack_restore(state);
 	}
@@ -493,11 +494,11 @@ static bool sema_analyse_struct_union(SemaContext *context, Decl *decl, bool *er
 	{
 		if (decl->decl_kind == DECL_UNION)
 		{
-			success = sema_analyse_union_members(context, decl, decl->strukt.members);
+			success = sema_analyse_union_members(context, decl);
 		}
 		else
 		{
-			success = sema_analyse_struct_members(context, decl, decl->strukt.members);
+			success = sema_analyse_struct_members(context, decl);
 		}
 	}
 	DEBUG_LOG("Struct/union size %d, alignment %d.", (int)decl->strukt.size, (int)decl->alignment);
@@ -506,11 +507,38 @@ static bool sema_analyse_struct_union(SemaContext *context, Decl *decl, bool *er
 	return decl_ok(decl);
 }
 
-static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *decl, unsigned index, bool allow_overlap)
+static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *parent, Decl *member, unsigned index, bool allow_overlap, bool *erase_decl)
 {
-	bool is_consecutive = decl->bitstruct.consecutive;
-	Decl **members = decl->bitstruct.members;
-	Decl *member = members[index];
+
+	if (member->resolve_status == RESOLVE_DONE)
+	{
+		if (!decl_ok(member)) return false;
+		if (member->name) sema_decl_stack_push(member);
+		return true;
+	}
+
+	if (member->resolve_status == RESOLVE_RUNNING)
+	{
+		RETURN_SEMA_ERROR(member, "Circular dependency resolving member.");
+	}
+
+	bool ease_decl = false;
+	if (!sema_analyse_attributes(context, member, member->attributes, ATTR_BITSTRUCT_MEMBER, erase_decl)) return decl_poison(member);
+	if (*erase_decl) return true;
+
+	if (member->name)
+	{
+		Decl *other = sema_decl_stack_resolve_symbol(member->name);
+		if (other)
+		{
+			SEMA_ERROR(member, "Duplicate member name '%s'.", other->name);
+			SEMA_NOTE(other, "Previous declaration was here.");
+			return false;
+		}
+		if (member->name) sema_decl_stack_push(member);
+	}
+
+	bool is_consecutive = parent->bitstruct.consecutive;
 
 	// Resolve the type.
 	if (!sema_resolve_type_info(context, member->var.type_info)) return false;
@@ -528,11 +556,11 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *dec
 	}
 
 	// Grab the underlying bit type size.
-	BitSize bits = type_size(decl->bitstruct.base_type->type) * (BitSize)8;
+	BitSize bits = type_size(parent->bitstruct.base_type->type) * (BitSize)8;
 
 	if (bits > MAX_BITSTRUCT)
 	{
-		SEMA_ERROR(decl->bitstruct.base_type, "Bitstruct size may not exceed %d bits.", MAX_BITSTRUCT);
+		SEMA_ERROR(parent->bitstruct.base_type, "Bitstruct size may not exceed %d bits.", MAX_BITSTRUCT);
 		return false;
 	}
 	Int max_bits = (Int) { .type = TYPE_I64, .i = { .low =  bits } };
@@ -632,26 +660,21 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *dec
 	member->var.end_bit = end_bit;
 
 AFTER_BIT_CHECK:
-	// Check for duplicate members.
-	for (unsigned i = 0; i < index; i++)
+	// Check for overlap
+	if (!allow_overlap)
 	{
-		Decl *other_member = members[i];
-		if (member->name == other_member->name)
+		Decl **members = parent->bitstruct.members;
+		for (unsigned i = 0; i < index; i++)
 		{
-			SEMA_ERROR(member, "Duplicate members with the name '%s'.", member->name);
-			SEMA_NOTE(other_member, "The other member was declared here.");
-			return false;
-		}
-		// And possibly overlap.
-		if (allow_overlap) continue;
-
-		// Check for overlap.
-		if ((start_bit >= other_member->var.start_bit || end_bit >= other_member->var.start_bit)
-			&& start_bit <= other_member->var.end_bit)
-		{
-			SEMA_ERROR(member, "Overlapping members, please use '@overlap' if this is intended.");
-			SEMA_NOTE(other_member, "The other member was declared here.");
-			return false;
+			Decl *other_member = members[i];
+			// Check for overlap.
+			if ((start_bit >= other_member->var.start_bit || end_bit >= other_member->var.start_bit)
+			    && start_bit <= other_member->var.end_bit)
+			{
+				SEMA_ERROR(member, "Overlapping members, please use '@overlap' if this is intended.");
+				SEMA_NOTE(other_member, "The other member was declared here.");
+				return false;
+			}
 		}
 	}
 	member->resolve_status = RESOLVE_DONE;
@@ -673,14 +696,29 @@ static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl, bool *erase
 		return false;
 	}
 	Decl **members = decl->bitstruct.members;
-	VECEACH(members, i)
+	unsigned member_count = vec_size(members);
+
+	Decl **state = decl->name ? sema_decl_stack_store() : NULL;
+	for (unsigned i = 0; i < member_count; i++)
 	{
-		if (!sema_analyse_bitstruct_member(context, decl, i, decl->bitstruct.overlap))
+		AGAIN:;
+		Decl *member = members[i];
+		if (!decl_ok(member)) goto ERROR;
+		bool erase_decl_member = false;
+		if (!sema_analyse_bitstruct_member(context, decl, member, i, decl->bitstruct.overlap, &erase_decl_member)) goto ERROR;
+		if (erase_decl_member)
 		{
-			return decl_poison(decl);
+			vec_erase_ptr_at(members, i);
+			member_count--;
+			if (i < member_count) goto AGAIN;
+			break;
 		}
 	}
+	if (state) sema_decl_stack_restore(state);
 	return true;
+ERROR:
+	if (state) sema_decl_stack_restore(state);
+	return decl_poison(decl);
 }
 
 
@@ -1544,6 +1582,8 @@ static const char *attribute_domain_to_string(AttributeDomain domain)
 			return "interface";
 		case ATTR_MEMBER:
 			return "member";
+		case ATTR_BITSTRUCT_MEMBER:
+			return "bitstruct member";
 		case ATTR_FUNC:
 			return "function";
 		case ATTR_GLOBAL:
@@ -1626,7 +1666,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_BIGENDIAN] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_BUILTIN] = ATTR_MACRO | ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST,
 			[ATTRIBUTE_CALLCONV] = ATTR_FUNC,
-			[ATTRIBUTE_DEPRECATED] = USER_DEFINED_TYPES | ATTR_FUNC | ATTR_MACRO | ATTR_CONST | ATTR_GLOBAL | ATTR_MEMBER,
+			[ATTRIBUTE_DEPRECATED] = USER_DEFINED_TYPES | ATTR_FUNC | ATTR_MACRO | ATTR_CONST | ATTR_GLOBAL | ATTR_MEMBER | ATTR_BITSTRUCT_MEMBER,
 			[ATTRIBUTE_DYNAMIC] = ATTR_FUNC,
 			[ATTRIBUTE_EXPORT] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | EXPORTED_USER_DEFINED_TYPES,
 			[ATTRIBUTE_EXTERN] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES,

@@ -152,6 +152,8 @@
 - Added posix socket functions.
 
 ### Fixes
+- Anonymous bitstructs check of duplicate member names fixed.
+- Assignment to anonymous bitstruct members in structs.
 - Fix casts on empty initializers.
 - Fix to DString reserve
 - @local declarations in generic modules available by accident.
