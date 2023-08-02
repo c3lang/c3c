@@ -407,7 +407,7 @@ fn String Path.root_directory(self)
 	return path_str;
 }
 
-def PathWalker = fn bool(Path, bool is_dir, void*);
+def PathWalker = fn bool! (Path, bool is_dir, void*);
 
 /*
  * Walk the path recursively. PathWalker is run on every file and
@@ -425,7 +425,7 @@ fn bool! Path.walk(self, PathWalker w, void* data)
 			if (f.as_str() == "." || f.as_str() == "..") continue;
 			f = abs.append(f.as_str(), using)!;
 			bool is_directory = is_dir(f);
-			if (w(f, is_directory, data)) return true;
+			if (w(f, is_directory, data)!) return true;
 			if (is_directory && f.walk(w, data)!) return true;
 		}
 	};
