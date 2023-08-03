@@ -1166,8 +1166,10 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 {
 	Decl** params = NULL;
 	bool var_arg_found = false;
+	bool last_is_comma = false;
 	while (!is_end_of_param_list(c))
 	{
+		last_is_comma = false;
 		bool ellipsis = try_consume(c, TOKEN_ELLIPSIS);
 
 		// Check for "raw" variadic arguments. This is allowed on C functions and macros.
@@ -1365,6 +1367,12 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 		}
 		vec_add(params, param);
 		if (!try_consume(c, TOKEN_COMMA)) break;
+		last_is_comma = true;
+	}
+	if (last_is_comma)
+	{
+		sema_error_at_after(c->prev_span, "Expected another parameter after ','.");
+		return false;
 	}
 	*params_ref = params;
 	return true;
