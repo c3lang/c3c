@@ -95,11 +95,22 @@ fn bool File.eof(self) @inline
 }
 
 /**
+ * @require self.file `File must be initialized`
  * @param [in] buffer
  */
 fn usz! File.read(self, char[] buffer)
 {
-	return os::native_fread(self.file, buffer);
+	return os::native_fread(self.file, buffer, buffer.len);
+}
+
+/**
+ * @require self.file `File must be initialized`
+ * @param [in] buffer
+ */
+fn usz! File.readbytes(self, char[] buffer, usz size)
+{
+	if (size > buffer.len) return IoError.OVERFLOW?;
+	return os::native_fread(self.file, buffer, size);
 }
 
 /**
@@ -108,7 +119,17 @@ fn usz! File.read(self, char[] buffer)
  */
 fn usz! File.write(self, char[] buffer)
 {
-	return os::native_fwrite(self.file, buffer);
+	return os::native_fwrite(self.file, buffer, buffer.len);
+}
+
+/**
+ * @param [out] buffer
+ * @require self.file `File must be initialized`
+ */
+fn usz! File.writebytes(self, char[] buffer, usz size)
+{
+	if (size > buffer.len) return IoError.OVERFLOW?;
+	return os::native_fwrite(self.file, buffer, size);
 }
 
 /**

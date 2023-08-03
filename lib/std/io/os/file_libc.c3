@@ -70,14 +70,14 @@ fn usz! native_ftell(CFile file) @inline
 	return index >= 0 ? (usz)index : file_seek_errno()?;
 }
 
-fn usz! native_fwrite(CFile file, char[] buffer) @inline
+fn usz! native_fwrite(CFile file, char[] buffer, usz size) @inline
 {
-	return libc::fwrite(buffer.ptr, 1, buffer.len, file);
+	return libc::fwrite(buffer.ptr, 1, size, file);
 }
 
-fn usz! native_fread(CFile file, char[] buffer) @inline
+fn usz! native_fread(CFile file, char[] buffer, usz size) @inline
 {
-	return libc::fread(buffer.ptr, 1, buffer.len, file);
+	return libc::fread(buffer.ptr, 1, size, file);
 }
 
 macro anyfault file_open_errno() @local

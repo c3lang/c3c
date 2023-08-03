@@ -6,8 +6,8 @@ def FreopenFn = fn void*!(void*, String, String);
 def FcloseFn = fn void!(void*);
 def FseekFn = fn void!(void*, isz, Seek);
 def FtellFn = fn usz!(void*);
-def FwriteFn = fn usz!(void*, char[] buffer);
-def FreadFn = fn usz!(void*, char[] buffer);
+def FwriteFn = fn usz!(void*, char[] buffer, usz size);
+def FreadFn = fn usz!(void*, char[] buffer, usz size);
 def RemoveFn = fn void!(String);
 
 FopenFn native_fopen_fn @weak @if(!$defined(native_fopen_fn));
@@ -62,14 +62,14 @@ fn usz! native_ftell(CFile file) @inline
 	return IoError.UNSUPPORTED_OPERATION?;
 }
 
-fn usz! native_fwrite(CFile file, char[] buffer) @inline
+fn usz! native_fwrite(CFile file, char[] buffer, usz size) @inline
 {
-	if (native_fwrite_fn) return native_fwrite_fn(file, buffer);
+	if (native_fwrite_fn) return native_fwrite_fn(file, buffer, size);
 	return IoError.UNSUPPORTED_OPERATION?;
 }
 
-fn usz! native_fread(CFile file, char[] buffer) @inline
+fn usz! native_fread(CFile file, char[] buffer, usz size) @inline
 {
-	if (native_fread_fn) return native_fread_fn(file, buffer);
+	if (native_fread_fn) return native_fread_fn(file, buffer, size);
 	return IoError.UNSUPPORTED_OPERATION?;
 }
