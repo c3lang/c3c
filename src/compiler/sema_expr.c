@@ -2822,15 +2822,16 @@ static inline bool sema_expr_analyse_group(SemaContext *context, Expr *expr)
  Expr *sema_expr_resolve_access_child(SemaContext *context, Expr *child, bool *missing)
 {
 RETRY:
-	assert(child->resolve_status != RESOLVE_DONE);
 	switch (child->expr_kind)
 	{
 		case EXPR_IDENTIFIER:
 			// A path is not allowed.
+			assert(child->resolve_status != RESOLVE_DONE);
 			if (child->identifier_expr.path) break;
 			return child;
 		case EXPR_HASH_IDENT:
 		{
+			assert(child->resolve_status != RESOLVE_DONE);
 			Decl *decl = sema_resolve_symbol(context, child->hash_ident_expr.identifier, NULL, child->span);
 			if (!decl_ok(decl)) return NULL;
 			Expr *expr = copy_expr_single(decl->var.init_expr);
@@ -2838,6 +2839,7 @@ RETRY:
 		}
 		case EXPR_CT_EVAL:
 		{
+			assert(child->resolve_status != RESOLVE_DONE);
 			TokenType type;
 			// Only report missing if missing var is NULL
 			Path *path = NULL;
