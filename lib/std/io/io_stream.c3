@@ -77,6 +77,22 @@ fn usz! Stream.available(self) @inline
 	return IoError.NOT_SEEKABLE?;
 }
 
+fn usz! Stream.read_any(self, any ref)
+{
+	return self.read(((char*)ref.ptr)[:ref.type.sizeof]);
+}
+
+/**
+ * @param ref "the object to write."
+ * @require ref.ptr != null
+ * @ensure return == ref.type.sizeof
+ */
+fn usz! Stream.write_any(self, any ref)
+{
+	return self.write(((char*)ref.ptr)[:ref.type.sizeof]);
+}
+
+
 fn usz! Stream.read(self, char[] buffer)
 {
 	if (ReadStreamFn func = self.fns.read_fn) return func(self, buffer);

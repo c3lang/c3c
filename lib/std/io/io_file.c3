@@ -103,12 +103,32 @@ fn usz! File.read(self, char[] buffer)
 }
 
 /**
+ * @param ref "the object to read into."
+ * @require ref.ptr != null
+ * @ensure return == ref.type.sizeof
+ */
+fn usz! File.read_any(self, any ref)
+{
+	return self.read(((char*)ref.ptr)[:ref.type.sizeof]);
+}
+
+/**
  * @param [out] buffer
  * @require self.file `File must be initialized`
  */
 fn usz! File.write(self, char[] buffer)
 {
 	return os::native_fwrite(self.file, buffer);
+}
+
+/**
+ * @param ref "the object to write."
+ * @require ref.ptr != null
+ * @ensure return == ref.type.sizeof
+ */
+fn usz! File.write_any(self, any ref)
+{
+	return self.write(((char*)ref.ptr)[:ref.type.sizeof]);
 }
 
 /**
