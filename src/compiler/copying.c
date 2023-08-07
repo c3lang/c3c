@@ -877,6 +877,10 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			break;
 		case DECL_ERASED:
 			break;
+		case DECL_CT_EXEC:
+			MACRO_COPY_EXPR(copy->exec_decl.filename);
+			MACRO_COPY_EXPR_LIST(copy->exec_decl.args);
+			break;
 		case DECL_CT_INCLUDE:
 			MACRO_COPY_EXPR(copy->include.filename);
 			break;

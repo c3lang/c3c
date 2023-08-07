@@ -76,6 +76,12 @@ typedef enum
 
 typedef enum
 {
+	TRUST_NONE,
+	TRUST_INCLUDE,
+	TRUST_FULL
+} TrustLevel;
+typedef enum
+{
 	COMPILE_NORMAL,
 	COMPILE_LEX_ONLY,
 	COMPILE_LEX_PARSE_ONLY,
@@ -318,6 +324,7 @@ typedef struct BuildOptions_
 	CompilerBackend backend;
 	CompilerCommand command;
 	CompileOption compile_option;
+	TrustLevel trust_level;
 	DiagnosticsSeverity severity[DIAG_END_SENTINEL];
 	OptimizationSetting optimization_setting_override;
 	DebugInfo debug_info_override;
@@ -373,6 +380,7 @@ typedef enum
 typedef struct
 {
 	ArchOsTarget arch_os;
+	const char **execs;
 	const char **link_flags;
 	const char **linked_libs;
 	const char **depends;
@@ -383,6 +391,7 @@ typedef struct
 	const char *dir;
 	const char *provides;
 	const char **depends;
+	const char **execs;
 	LibraryTarget *target_used;
 	LibraryTarget **targets;
 } Library;
@@ -429,6 +438,7 @@ typedef struct
 	bool no_entry;
 	bool no_emit_stdlib;
 	int build_threads;
+	TrustLevel trust_level;
 	OptimizationLevel optimization_level;
 	MemoryEnvironment memory_environment;
 	SizeOptimizationLevel size_optimization_level;

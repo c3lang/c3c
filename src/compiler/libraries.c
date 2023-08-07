@@ -55,13 +55,19 @@ static inline void parse_provides(Library *library, JSONObject *object)
 	library->provides = provides;
 }
 
+static inline void parse_execs(Library *library, JSONObject *object)
+{
+	library->execs = get_optional_string_array_as_array(library, object, "execs");
+}
 static inline void parse_depends(Library *library, JSONObject *object)
 {
-	JSONObject *depends = get_optional_string_array(library, object, "depends");
-	if (!depends) return;
-	 TODO
+	library->depends = get_optional_string_array_as_array(library, object, "depends");
 }
 
+static inline void parse_library_run(Library *library, LibraryTarget *target, JSONObject *object)
+{
+	target->execs = get_optional_string_array_as_array(library, object, "execs");
+}
 static inline void parse_library_target(Library *library, LibraryTarget *target, JSONObject *object)
 {
 	target->link_flags = get_optional_string_array_as_array(library, object, "linkflags");
@@ -245,10 +251,23 @@ void resolve_libraries(void)
 		Library *library = libraries[i];
 		LibraryTarget *target = library->target_used;
 		if (!target) continue;
-
 		file_add_wildcard_files(&active_target.sources, library->dir, false, c3_suffix_list, 3);
 		vec_add(active_target.library_list, library);
 		const char *libdir = file_append_path(library->dir, arch_os_target[active_target.arch_os_target]);
 		if (file_is_dir(libdir)) vec_add(active_target.linker_libdirs, libdir);
+		if ((vec_size(library->execs) || vec_size(target->execs)) && active_target.trust_level < TRUST_FULL)
+		{
+			error_exit("Could not use library '%s' as it requires the 'exec' trust level (it "
+			           "is currently %d). Use the '-t' option to enable it.",
+					   library->provides, active_target.trust_level + 1);
+		}
+		FOREACH_BEGIN(const char *exec, library->execs)
+			printf("] Execute '%s' for library '%s':", exec, library->provides);
+			puts(execute_cmd(exec));
+		FOREACH_END();
+		FOREACH_BEGIN(const char *exec, target->execs)
+			printf("] Execute '%s' for library '%s':", exec, library->provides);
+			puts(execute_cmd(exec));
+		FOREACH_END();
 	}
 }

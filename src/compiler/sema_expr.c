@@ -680,6 +680,7 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 		case DECL_INITIALIZE:
 		case DECL_FINALIZE:
 		case DECL_CT_INCLUDE:
+		case DECL_CT_EXEC:
 		case DECL_GLOBALS:
 		case DECL_ERASED:
 			UNREACHABLE

@@ -788,10 +788,7 @@ static void llvm_emit_type_decls(GenContext *context, Decl *decl)
 {
 	switch (decl->decl_kind)
 	{
-		case DECL_POISONED:
-		case DECL_VAR:
-		case DECL_ENUM_CONSTANT:
-		case DECL_FAULTVALUE:
+		case NON_TYPE_DECLS:
 		case DECL_ERASED:
 		case DECL_FNTYPE:
 			UNREACHABLE;
@@ -812,9 +809,6 @@ static void llvm_emit_type_decls(GenContext *context, Decl *decl)
 		case DECL_BITSTRUCT:
 			llvm_get_typeid(context, decl->type);
 			break;
-		case DECL_BODYPARAM:
-		case NON_TYPE_DECLS:
-			UNREACHABLE
 	}
 }
 
@@ -1104,6 +1098,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 		case DECL_FINALIZE:
 		case DECL_BODYPARAM:
 		case DECL_CT_ECHO:
+		case DECL_CT_EXEC:
 		case DECL_CT_INCLUDE:
 		case DECL_GLOBALS:
 			UNREACHABLE;

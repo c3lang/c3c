@@ -22,6 +22,20 @@ File *source_file_by_id(FileId file)
 	return global_context.loaded_sources[file];
 }
 
+File *source_file_text_load(const char *filename, const char *content)
+{
+	File *file = CALLOCS(File);
+	file->file_id = vec_size(global_context.loaded_sources);
+	file->full_path = str_copy(filename, strlen(filename));
+	file->contents = content;
+	file->content_len = strlen(content);
+	file->name = (char *)file->full_path;
+	file->dir_path = str_copy("", 0);
+	vec_add(global_context.loaded_sources, file);
+	return file;
+
+}
+
 File *source_file_load(const char *filename, bool *already_loaded, const char **error)
 {
 	if (already_loaded) *already_loaded = false;

@@ -108,6 +108,9 @@ static void usage(void)
 	OUTPUT("  -O3+                      - Aggressive optimization, single module.");
 	OUTPUT("  -Os+                      - Optimize for size, single module.");
 	OUTPUT("  -Oz+                      - Optimize for tiny size, single module.");
+	OUTPUT("  -t1                       - Trust level 1 - don't allow $include nor $exec (default).");
+	OUTPUT("  -t2                       - Trust level 2 - allow $include but not $exec / exec directives.");
+	OUTPUT("  -t3                       - Trust level 3 - full trust, allow both include and exec.");
 	OUTPUT("  -D <name>                 - Add feature flag <name>.");
 	OUTPUT("  -U <name>                 - Remove feature flag <name>.");
 	OUTPUT("  --build-dir <dir>         - Override build output directory.");
@@ -472,6 +475,23 @@ static void parse_option(BuildOptions *options)
 			{
 				if (at_end()) error_exit("error: -o needs a name.");
 				options->output_name = next_arg();
+				return;
+			}
+			break;
+		case 't':
+			if (match_shortopt("t1"))
+			{
+				options->trust_level = TRUST_NONE;
+				return;
+			}
+			if (match_shortopt("t2"))
+			{
+				options->trust_level = TRUST_INCLUDE;
+				return;
+			}
+			if (match_shortopt("t3"))
+			{
+				options->trust_level = TRUST_FULL;
 				return;
 			}
 			break;

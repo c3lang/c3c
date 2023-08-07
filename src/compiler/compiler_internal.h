@@ -409,6 +409,12 @@ typedef struct
 
 typedef struct
 {
+	Expr *filename;
+	Expr **args;
+} ExecDecl;
+
+typedef struct
+{
 	TypeSize size;
 	Decl **members;
 	MemberIndex union_rep;
@@ -705,6 +711,7 @@ typedef struct Decl_
 			};
 		};
 		IncludeDecl include;
+		ExecDecl exec_decl;
 		Decl** body_params;
 		ImportDecl import;
 		VarDecl var;
@@ -1168,6 +1175,7 @@ struct Expr_
 		ExprBodyExpansion body_expansion_expr;      // 24
 		ExprCompoundLiteral expr_compound_literal;  // 16
 		Expr** expression_list;                     // 8
+		Expr** exec_expr;                           // 8
 		Expr** initializer_list;                    // 8
 		Expr** designated_init_list;                // 8
 		ExprFuncBlock expr_block;                   // 4
@@ -2295,6 +2303,7 @@ bool sema_type_error_on_binop(Expr *expr);
 
 File *source_file_by_id(FileId file);
 File *source_file_load(const char *filename, bool *already_loaded, const char **error);
+File *source_file_text_load(const char *filename, const char *content);
 
 void compiler_parse(void);
 void emit_json(void);

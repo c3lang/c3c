@@ -301,11 +301,6 @@ static void header_gen_type_decl(FILE *file, int indent, Decl *decl)
 	switch (decl->decl_kind)
 	{
 		case NON_TYPE_DECLS:
-		case DECL_ENUM_CONSTANT:
-		case DECL_FAULTVALUE:
-		case DECL_POISONED:
-		case DECL_VAR:
-		case DECL_BODYPARAM:
 		case DECL_FUNC:
 		case DECL_FNTYPE:
 			UNREACHABLE

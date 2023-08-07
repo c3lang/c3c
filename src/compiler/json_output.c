@@ -39,6 +39,7 @@ static inline const char *decl_type_to_string(Decl *type)
 		case DECL_BITSTRUCT: return "bitstruct";
 		case DECL_CT_ASSERT: return "$assert";
 		case DECL_CT_ECHO: return "$echo";
+		case DECL_CT_EXEC: return "$exec";
 		case DECL_DEFINE: return "def";
 		case DECL_DISTINCT: return "distinct";
 		case DECL_ENUM: return "enum";

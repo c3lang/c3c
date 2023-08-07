@@ -561,6 +561,7 @@ RETRY:
 			return;
 		case DECL_CT_ASSERT:
 		case DECL_CT_ECHO:
+		case DECL_CT_EXEC:
 		case DECL_IMPORT:
 		case DECL_CT_INCLUDE:
 		case DECL_LABEL:

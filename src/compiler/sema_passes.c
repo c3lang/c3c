@@ -146,14 +146,19 @@ INLINE File *sema_load_file(CompilationUnit *unit, SourceSpan span, Expr *filena
 	return file;
 }
 
-Decl **sema_load_include(CompilationUnit *unit, Decl *decl)
+static Decl **sema_load_include(CompilationUnit *unit, Decl *decl)
 {
+	if (active_target.trust_level < TRUST_INCLUDE)
+	{
+		SEMA_ERROR(decl, "'$include' not permitted, trust level must be set to '-t2' or '-t3' to permit it.");
+		return NULL;
+	}
 	SemaContext context;
 	sema_context_init(&context, unit);
 	FOREACH_BEGIN(Attr *attr, decl->attributes)
 		if (attr->attr_kind != ATTRIBUTE_IF)
 		{
-			SEMA_ERROR(attr, "Invalid attribute for '%include'.");
+			SEMA_ERROR(attr, "Invalid attribute for '$include'.");
 			return NULL;
 		}
 	FOREACH_END();
@@ -170,10 +175,91 @@ Decl **sema_load_include(CompilationUnit *unit, Decl *decl)
 	return parse_include_file(file, unit);
 }
 
+static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
+{
+	if (active_target.trust_level < TRUST_FULL)
+	{
+		SEMA_ERROR(decl, "'$exec' not permitted, trust level must be set to '-t3' to permit it.");
+		return NULL;
+	}
+	SemaContext context;
+	sema_context_init(&context, unit);
+	FOREACH_BEGIN(Attr *attr, decl->attributes)
+		if (attr->attr_kind != ATTRIBUTE_IF)
+		{
+			SEMA_ERROR(attr, "Invalid attribute for '$exec'.");
+			return NULL;
+		}
+	FOREACH_END();
+	Expr *filename = decl->exec_decl.filename;
+	bool success = sema_analyse_ct_expr(&context, filename);
+	FOREACH_BEGIN(Expr *arg, decl->exec_decl.args)
+		success &= sema_analyse_ct_expr(&context, arg);
+	FOREACH_END();
+	sema_context_destroy(&context);
+	if (!success) return NULL;
+	scratch_buffer_clear();
+	if (!expr_is_const_string(filename))
+	{
+		SEMA_ERROR(filename, "A filename was expected as the first argument to '$exec'.");
+		return NULL;
+	}
+	scratch_buffer_append(filename->const_expr.bytes.ptr);
+	FOREACH_BEGIN(Expr *arg, decl->exec_decl.args)
+		scratch_buffer_append(" ");
+		assert(expr_is_const(arg));
+		switch (arg->const_expr.const_kind)
+		{
+			case CONST_FLOAT:
+				scratch_buffer_append_double(arg->const_expr.fxx.f);
+				continue;
+			case CONST_INTEGER:
+				scratch_buffer_append(int_to_str(arg->const_expr.ixx, 10));
+				continue;
+			case CONST_BOOL:
+				scratch_buffer_append(arg->const_expr.b ? "true" : "false");
+				continue;
+			case CONST_ENUM:
+			case CONST_ERR:
+				scratch_buffer_append(arg->const_expr.enum_err_val->name);
+				continue;
+			case CONST_TYPEID:
+				if (!arg->const_expr.typeid->name)
+				{
+					SEMA_ERROR(arg, "The type '%s' has no trivial name.", type_quoted_error_string(arg->const_expr.typeid));
+					return NULL;
+				}
+				scratch_buffer_append(arg->const_expr.typeid->name);
+				continue;
+			case CONST_STRING:
+				scratch_buffer_append(arg->const_expr.bytes.ptr);
+				continue;
+			case CONST_POINTER:
+				scratch_buffer_append_unsigned_int(arg->const_expr.ptr);
+				continue;
+			case CONST_BYTES:
+			case CONST_INITIALIZER:
+			case CONST_UNTYPED_LIST:
+			case CONST_MEMBER:
+				SEMA_ERROR(arg, "Bytes, initializers and member references may not be used as arguments.");
+				return NULL;
+		}
+		UNREACHABLE
+	FOREACH_END();
+	const char *output = execute_cmd(scratch_buffer_to_string());
+	File *file = source_file_text_load(scratch_buffer_to_string(), output);
+	if (global_context.includes_used++ > MAX_INCLUDES)
+	{
+		SEMA_ERROR(decl, "This $include would cause the maximum number of includes (%d) to be exceeded.", MAX_INCLUDES);
+		return NULL;
+	}
+	return parse_include_file(file, unit);
+}
+
 INLINE void register_includes(CompilationUnit *unit, Decl **decls)
 {
 	FOREACH_BEGIN(Decl *include, decls)
-		Decl **include_decls = sema_load_include(unit, include);
+		Decl **include_decls = include->decl_kind == DECL_CT_EXEC ? sema_run_exec(unit, include) : sema_load_include(unit, include);
 		VECEACH(include_decls, i)
 		{
 			Decl *decl = include_decls[i];

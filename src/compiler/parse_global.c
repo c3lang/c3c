@@ -11,6 +11,7 @@ static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl);
 static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref);
 static inline Decl *parse_static_top_level(ParseContext *c);
 static Decl *parse_include(ParseContext *c);
+static Decl *parse_exec(ParseContext *c);
 static bool parse_attributes_for_global(ParseContext *c, Decl *decl);
 INLINE bool parse_decl_initializer(ParseContext *c, Decl *decl);
 INLINE Decl *decl_new_var_current(ParseContext *c, TypeInfo *type, VarDeclKind kind);
@@ -2630,6 +2631,24 @@ static Decl *parse_include(ParseContext *c)
 	return decl;
 }
 
+static Decl *parse_exec(ParseContext *c)
+{
+	SourceSpan loc = c->span;
+	Decl *decl = decl_new(DECL_CT_EXEC, NULL, loc);
+	advance_and_verify(c, TOKEN_CT_EXEC);
+	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_decl);
+	ASSIGN_EXPR_OR_RET(decl->exec_decl.filename, parse_constant_expr(c), poisoned_decl);
+	while (try_consume(c, TOKEN_COMMA))
+	{
+		ASSIGN_EXPR_OR_RET(Expr *expr, parse_constant_expr(c), poisoned_decl);
+		vec_add(decl->exec_decl.args, expr);
+	}
+	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_decl);
+	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
+	CONSUME_EOS_OR_RET(poisoned_decl);
+	return decl;
+}
+
 /**
  * top_level_statement ::= struct_declaration | enum_declaration | fault_declaration | const_declaration
  *                       | global_declaration | macro_declaration | func_definition | typedef_declaration
@@ -2746,6 +2765,10 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 		case TOKEN_CT_INCLUDE:
 			if (contracts) goto CONTRACT_NOT_ALLOWED;
 			decl = parse_include(c);
+			break;
+		case TOKEN_CT_EXEC:
+			if (contracts) goto CONTRACT_NOT_ALLOWED;
+			decl = parse_exec(c);
 			break;
 		case TOKEN_BITSTRUCT:
 			if (contracts) goto CONTRACT_NOT_ALLOWED;

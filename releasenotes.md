@@ -25,6 +25,7 @@
 - `$assert` now uses `$assert <expr> : <optional message>`
 - `$error` is syntax sugar for `$assert false : "Some message"`
 - `$include`, `$echo` no longer has mandatory `()` around the arguments.
+- `$exec` for including the output of files.
 - `assert` no longer allows "try unwrap"
 - Updated cpu arguments for x86
 - Removed support for ranged case statements that were floats or enums, or non-constant.

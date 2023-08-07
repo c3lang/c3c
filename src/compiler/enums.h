@@ -131,6 +131,8 @@ typedef enum
 	DECL_BITSTRUCT,
 	DECL_CT_ASSERT,
 	DECL_CT_ECHO,
+	DECL_CT_INCLUDE,
+	DECL_CT_EXEC,
 	DECL_DEFINE,
 	DECL_DISTINCT,
 	DECL_ENUM,
@@ -143,7 +145,6 @@ typedef enum
 	DECL_INITIALIZE,
 	DECL_FINALIZE,
 	DECL_IMPORT,
-	DECL_CT_INCLUDE,
 	DECL_LABEL,
 	DECL_MACRO,
 	DECL_STRUCT,
@@ -156,8 +157,10 @@ typedef enum
 
 #define NON_TYPE_DECLS DECL_IMPORT: case DECL_MACRO: \
 	case DECL_DECLARRAY: case DECL_ATTRIBUTE: case DECL_LABEL: \
-	case DECL_DEFINE: case DECL_CT_ASSERT: case DECL_INITIALIZE: \
-	case DECL_FINALIZE: case DECL_CT_ECHO: case DECL_CT_INCLUDE: case DECL_GLOBALS
+	case DECL_DEFINE: case DECL_CT_ASSERT: case DECL_INITIALIZE: case DECL_CT_EXEC: \
+	case DECL_FINALIZE: case DECL_CT_ECHO: case DECL_CT_INCLUDE: case DECL_GLOBALS: \
+	case DECL_BODYPARAM: case DECL_VAR: case DECL_ENUM_CONSTANT: case DECL_FAULTVALUE: \
+	case DECL_POISONED
 
 #define NON_RUNTIME_EXPR EXPR_DESIGNATOR: case EXPR_POISONED: \
 		case EXPR_CT_CHECKS: case EXPR_CT_DEFINED: \
@@ -567,6 +570,7 @@ typedef enum
 	TOKEN_CT_EVAL,              // $eval
 	TOKEN_CT_EVALTYPE,          // $evaltype
 	TOKEN_CT_ERROR,             // $error
+	TOKEN_CT_EXEC,              // $exec
 	TOKEN_CT_EXTNAMEOF,         // $extnameof
 	TOKEN_CT_FEATURE,           // $feature
 	TOKEN_CT_FOR,               // $for

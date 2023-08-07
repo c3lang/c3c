@@ -15,11 +15,6 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 	switch (decl->decl_kind)
 	{
 		case DECL_ERASED:
-		case DECL_VAR:
-		case DECL_ENUM_CONSTANT:
-		case DECL_FAULTVALUE:
-		case DECL_POISONED:
-		case DECL_BODYPARAM:
 		case NON_TYPE_DECLS:
 		case DECL_FNTYPE:
 			UNREACHABLE

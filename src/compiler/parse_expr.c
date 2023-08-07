@@ -1033,6 +1033,7 @@ static Expr *parse_ct_eval(ParseContext *c, Expr *left)
 	return expr;
 }
 
+
 static Expr *parse_ct_defined(ParseContext *c, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");

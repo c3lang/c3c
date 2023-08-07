@@ -76,23 +76,7 @@ Decl *decl_new_with_type(const char *name, SourceSpan loc, DeclKind decl_type)
 		case DECL_BITSTRUCT:
 			kind = TYPE_BITSTRUCT;
 			break;
-		case DECL_POISONED:
-		case DECL_VAR:
-		case DECL_ENUM_CONSTANT:
-		case DECL_FAULTVALUE:
-		case DECL_IMPORT:
-		case DECL_MACRO:
-		case DECL_ATTRIBUTE:
-		case DECL_LABEL:
-		case DECL_DEFINE:
-		case DECL_CT_ASSERT:
-		case DECL_DECLARRAY:
-		case DECL_BODYPARAM:
-		case DECL_INITIALIZE:
-		case DECL_FINALIZE:
-		case DECL_CT_ECHO:
-		case DECL_CT_INCLUDE:
-		case DECL_GLOBALS:
+		case NON_TYPE_DECLS:
 		case DECL_ERASED:
 			UNREACHABLE
 	}
@@ -128,6 +112,8 @@ const char *decl_to_a_name(Decl *decl)
 			return "a compile time assert";
 		case DECL_CT_ECHO:
 			return "a compile time echo";
+		case DECL_CT_EXEC:
+			return "compile time exec include";
 		case DECL_IMPORT:
 			return "an import";
 		case DECL_LABEL:

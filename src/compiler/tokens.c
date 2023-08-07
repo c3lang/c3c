@@ -336,18 +336,6 @@ const char *token_type_to_string(TokenType type)
 			return "$else";
 		case TOKEN_CT_EMBED:
 			return "$embed";
-		case TOKEN_CT_EVAL:
-			return "$eval";
-		case TOKEN_CT_EVALTYPE:
-			return "$evaltype";
-		case TOKEN_CT_ERROR:
-			return "$error";
-		case TOKEN_CT_FEATURE:
-			return "$feature";
-		case TOKEN_CT_FOR:
-			return "$for";
-		case TOKEN_CT_FOREACH:
-			return "$foreach";
 		case TOKEN_CT_ENDIF:
 			return "$endif";
 		case TOKEN_CT_ENDSWITCH:
@@ -356,8 +344,22 @@ const char *token_type_to_string(TokenType type)
 			return "$endfor";
 		case TOKEN_CT_ENDFOREACH:
 			return "$endforeach";
+		case TOKEN_CT_EVAL:
+			return "$eval";
+		case TOKEN_CT_EVALTYPE:
+			return "$evaltype";
+		case TOKEN_CT_ERROR:
+			return "$error";
+		case TOKEN_CT_EXEC:
+			return "$exec";
 		case TOKEN_CT_EXTNAMEOF:
 			return "$extnameof";
+		case TOKEN_CT_FEATURE:
+			return "$feature";
+		case TOKEN_CT_FOR:
+			return "$for";
+		case TOKEN_CT_FOREACH:
+			return "$foreach";
 		case TOKEN_CT_IF:
 			return "$if";
 		case TOKEN_CT_INCLUDE:

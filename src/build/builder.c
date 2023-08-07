@@ -248,6 +248,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	{
 		vec_add(target->linker_libs, options->linker_libs[i]);
 	}
+	target->trust_level = options->trust_level;
 	if (options->no_stdlib) target->no_stdlib = true;
 	if (options->no_libc) target->no_libc = true;
 	if (options->no_entry) target->no_entry = true;
