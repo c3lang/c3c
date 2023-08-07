@@ -1662,6 +1662,10 @@ TypeCmpResult type_array_element_is_equivalent(SemaContext *context, Type *eleme
 		element2 = element2->canonical;
 	}
 	if (element1 == element2) return TYPE_SAME;
+	if ((element1 == type_void && element2 == type_char) || (element1 == type_char && element2 == type_void))
+	{
+		return TYPE_SAME;
+	}
 	switch (element1->type_kind)
 	{
 		case TYPE_POINTER:

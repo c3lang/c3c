@@ -232,6 +232,7 @@ fn void! Formatter.out_str(&self, any arg) @private
 			{
 				return self.out_substr(*(String*)arg);
 			}
+			if (inner == void.typeid) inner = char.typeid;
 			usz size = inner.sizeof;
 			// Pretend this is a String
 			String* temp = (void*)arg.ptr;

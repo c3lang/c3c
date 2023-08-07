@@ -79,7 +79,7 @@ fn usz! Stream.available(self) @inline
 
 fn usz! Stream.read_any(self, any ref)
 {
-	return self.read(((char*)ref.ptr)[:ref.type.sizeof]);
+	return self.read(ref.ptr[:ref.type.sizeof]);
 }
 
 /**
@@ -89,7 +89,7 @@ fn usz! Stream.read_any(self, any ref)
  */
 fn usz! Stream.write_any(self, any ref)
 {
-	return self.write(((char*)ref.ptr)[:ref.type.sizeof]);
+	return self.write(ref.ptr[:ref.type.sizeof]);
 }
 
 

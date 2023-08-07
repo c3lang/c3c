@@ -109,7 +109,7 @@ fn usz! File.read(self, char[] buffer)
  */
 fn usz! File.read_any(self, any ref)
 {
-	return self.read(((char*)ref.ptr)[:ref.type.sizeof]);
+	return self.read(ref.ptr[:ref.type.sizeof]);
 }
 
 /**
@@ -128,7 +128,7 @@ fn usz! File.write(self, char[] buffer)
  */
 fn usz! File.write_any(self, any ref)
 {
-	return self.write(((char*)ref.ptr)[:ref.type.sizeof]);
+	return self.write(ref.ptr[:ref.type.sizeof]);
 }
 
 /**

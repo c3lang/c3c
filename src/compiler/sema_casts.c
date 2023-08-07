@@ -474,7 +474,9 @@ static bool array_to_vector(Expr *expr, Type *to_type)
  */
 INLINE bool subarray_to_subarray(Expr *expr, Type *to_type)
 {
-	if (expr_is_const(expr) || type_flatten(type_flatten(to_type)->array.base) == type_flatten(type_flatten(expr->type)->array.base))
+	Type *to_type_base = type_flatten(type_flatten(to_type)->array.base);
+	Type *from_type_base = type_flatten(type_flatten(expr->type)->array.base);
+	if (expr_is_const(expr) || to_type_base == from_type_base || (to_type_base == type_void || from_type_base == type_void))
 	{
 		// Here we assume int[] -> float[] can't happen.
 		expr->type = to_type;
