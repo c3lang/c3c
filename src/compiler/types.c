@@ -1108,8 +1108,8 @@ bool type_is_valid_for_array(Type *type)
 	switch (type->type_kind)
 	{
 		case TYPE_DISTINCT:
-			assert(type->decl->resolve_status == RESOLVE_DONE);
-			type = type->decl->define_decl.type_info->type;
+			assert(!type->decl || type->decl->resolve_status == RESOLVE_DONE);
+			type = type->decl->distinct_decl.base_type;
 			goto RETRY;
 		case TYPE_ANY:
 		case TYPE_ANYFAULT:
@@ -1129,6 +1129,7 @@ bool type_is_valid_for_array(Type *type)
 		case TYPE_VECTOR:
 			return true;
 		case TYPE_TYPEDEF:
+			assert(!type->decl || type->decl->resolve_status == RESOLVE_DONE);
 			type = type->canonical;
 			goto RETRY;
 		case TYPE_FLEXIBLE_ARRAY:
@@ -1145,6 +1146,7 @@ bool type_is_valid_for_array(Type *type)
 		case TYPE_VOID:
 			return false;
 	}
+	UNREACHABLE
 }
 
 Type *type_get_vector_bool(Type *original_type)

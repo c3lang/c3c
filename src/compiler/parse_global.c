@@ -537,6 +537,8 @@ static inline TypeInfo *parse_array_type_index(ParseContext *c, TypeInfo *type)
 	}
 	if (try_consume(c, TOKEN_RBRACKET))
 	{
+		bool is_resolved = type->resolve_status == RESOLVE_DONE;
+		if (is_resolved && !type_is_valid_for_array(type->type)) goto DIRECT_SUBARRAY;
 		switch (type->subtype)
 		{
 			case TYPE_COMPRESSED_NONE:
@@ -549,20 +551,20 @@ static inline TypeInfo *parse_array_type_index(ParseContext *c, TypeInfo *type)
 				type->subtype = TYPE_COMPRESSED_SUBSUB;
 				break;
 			default:
-			{
-				TypeInfo *subarray = type_info_new(TYPE_INFO_SUBARRAY, type->span);
-				subarray->array.base = type;
-				subarray->array.len = NULL;
-				RANGE_EXTEND_PREV(subarray);
-				return subarray;
-			}
+				goto DIRECT_SUBARRAY;
 		}
-		if (type->resolve_status == RESOLVE_DONE)
+		if (is_resolved)
 		{
 			type->type = type_get_subarray(type->type);
 		}
 		RANGE_EXTEND_PREV(type);
 		return type;
+DIRECT_SUBARRAY:;
+		TypeInfo *subarray = type_info_new(TYPE_INFO_SUBARRAY, type->span);
+		subarray->array.base = type;
+		subarray->array.len = NULL;
+		RANGE_EXTEND_PREV(subarray);
+		return subarray;
 	}
 	TypeInfo *array = type_info_new(TYPE_INFO_ARRAY, type->span);
 	array->array.base = type;
