@@ -184,8 +184,17 @@ The compiler is currently verified to compile on Linux, Windows and MacOS.
 4. Run `./c3c`.
 
 #### Installing on Arch Linux
-There is an AUR package for the c3c compiler : [c3c-git](https://aur.archlinux.org/packages/c3c-git)  
-You can use your AUR package manager or clone it manually:
+There is an AUR package for the c3c compiler : [c3c-git](https://aur.archlinux.org/packages/c3c-git)
+Due to some issues with the LLVM packaged for Arch Linux, the AUR package will download and use LLVM 16 for Ubuntu-23.04 to compile the c3c compiler.
+
+You can use your AUR package manager:
+```sh
+paru -S c3c-git
+# or yay -S c3c-git
+# or aura -A c3c-git
+```
+
+Or clone it manually:
 ```sh
 git clone https://aur.archlinux.org/c3c-git.git
 cd c3c-git
