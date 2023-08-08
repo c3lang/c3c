@@ -2362,6 +2362,7 @@ Type *type_find_max_type_may_fail(Type *type, Type *other);
 Type *type_abi_find_single_struct_element(Type *type);
 Module *type_base_module(Type *type);
 bool type_is_valid_for_vector(Type *type);
+bool type_is_valid_for_array(Type *type);
 Type *type_get_array(Type *arr_type, ArraySize len);
 Type *type_get_indexed_type(Type *type);
 Type *type_get_ptr(Type *ptr_type);

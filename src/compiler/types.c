@@ -873,21 +873,25 @@ Type *type_get_optional(Type *optional_type)
 
 Type *type_get_subarray(Type *arr_type)
 {
+	assert(type_is_valid_for_array(arr_type));
 	return type_generate_subarray(arr_type, false);
 }
 
 Type *type_get_inferred_array(Type *arr_type)
 {
+	assert(type_is_valid_for_array(arr_type));
 	return type_generate_inferred_array(arr_type, false);
 }
 
 Type *type_get_inferred_vector(Type *arr_type)
 {
+	assert(type_is_valid_for_array(arr_type));
 	return type_generate_inferred_vector(arr_type, false);
 }
 
 Type *type_get_flexible_array(Type *arr_type)
 {
+	assert(type_is_valid_for_array(arr_type));
 	return type_generate_flexible_array(arr_type, false);
 }
 
@@ -1006,14 +1010,14 @@ Type *type_get_indexed_type(Type *type)
 	switch (type->type_kind)
 	{
 		case TYPE_POINTER:
-			return type->pointer;
+			return type->pointer->canonical;
 		case TYPE_ARRAY:
 		case TYPE_SUBARRAY:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_VECTOR:
-			return type->array.base;
+			return type->array.base->canonical;
 		case TYPE_DISTINCT:
 			type = type->decl->distinct_decl.base_type;
 			goto RETRY;
@@ -1077,6 +1081,7 @@ static Type *type_create_array(Type *element_type, ArraySize len, bool vector, b
 
 Type *type_get_array(Type *arr_type, ArraySize len)
 {
+	assert(type_is_valid_for_array(arr_type));
 	return type_create_array(arr_type, len, false, false);
 }
 
@@ -1097,6 +1102,51 @@ bool type_is_valid_for_vector(Type *type)
 	}
 }
 
+bool type_is_valid_for_array(Type *type)
+{
+	RETRY:
+	switch (type->type_kind)
+	{
+		case TYPE_DISTINCT:
+			assert(type->decl->resolve_status == RESOLVE_DONE);
+			type = type->decl->define_decl.type_info->type;
+			goto RETRY;
+		case TYPE_ANY:
+		case TYPE_ANYFAULT:
+		case TYPE_TYPEID:
+		case TYPE_POINTER:
+		case TYPE_ENUM:
+		case TYPE_FUNC:
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		case TYPE_BITSTRUCT:
+		case TYPE_FAULTTYPE:
+		case ALL_INTS:
+		case ALL_FLOATS:
+		case TYPE_BOOL:
+		case TYPE_ARRAY:
+		case TYPE_SUBARRAY:
+		case TYPE_VECTOR:
+			return true;
+		case TYPE_TYPEDEF:
+			type = type->canonical;
+			goto RETRY;
+		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_INFERRED_ARRAY:
+		case TYPE_INFERRED_VECTOR:
+			type = type->array.base;
+			goto RETRY;
+		case TYPE_UNTYPED_LIST:
+		case TYPE_OPTIONAL:
+		case TYPE_WILDCARD:
+		case TYPE_TYPEINFO:
+		case TYPE_MEMBER:
+		case TYPE_POISONED:
+		case TYPE_VOID:
+			return false;
+	}
+}
+
 Type *type_get_vector_bool(Type *original_type)
 {
 	Type *type = type_flatten(original_type);
@@ -1106,6 +1156,7 @@ Type *type_get_vector_bool(Type *original_type)
 
 Type *type_get_vector(Type *vector_type, unsigned len)
 {
+	assert(type_is_valid_for_vector(vector_type));
 	return type_create_array(vector_type, len, true, false);
 }
 

@@ -2691,7 +2691,8 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr)
 	Expr *current_expr = subscripted;
 
 	Type *inner_type = sema_subscript_find_indexable_type_recursively(&type, &current_expr);
-	if (!inner_type)
+	if (type == type_voidptr) inner_type = type_char;
+	if (!inner_type || !type_is_valid_for_array(inner_type))
 	{
 		SEMA_ERROR(subscripted, "Cannot index '%s'.", type_to_error_string(subscripted->type));
 		return false;
@@ -6898,6 +6899,13 @@ RETRY:
 			Type *type = sema_expr_check_type_exists(context, type_info->array.base);
 			if (!type) return NULL;
 			if (!type_ok(type)) return type;
+			if (!type_is_valid_for_array(type))
+			{
+				SEMA_ERROR(type_info->array.base,
+				           "You cannot form an array with elements of type %s.",
+				           type_quoted_error_string(type));
+				return poisoned_type;
+			}
 			return type_get_array(type, size);
 		}
 		case TYPE_INFO_CT_IDENTIFIER:

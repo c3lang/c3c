@@ -134,26 +134,65 @@ static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type,
 			vec_add(context->unit->check_type_variable_array, type);
 		}
 	}
+	TypeInfo *base_info = type->array.base;
+	Type *base = base_info->type;
 	switch (type->kind)
 	{
 		case TYPE_INFO_SUBARRAY:
+			if (!type_is_valid_for_array(base))
+			{
+				SEMA_ERROR(base_info,
+				           "You cannot form a subarray with elements of type %s.",
+				           type_quoted_error_string(base));
+				return type_info_poison(type);
+			}
 			type->type = type_get_subarray(type->array.base->type);
 			break;
 		case TYPE_INFO_INFERRED_ARRAY:
+			if (!type_is_valid_for_array(base))
+			{
+				SEMA_ERROR(base_info,
+				           "You cannot form an array with elements of type %s.",
+				           type_quoted_error_string(base));
+				return type_info_poison(type);
+			}
 			type->type = type_get_inferred_array(type->array.base->type);
 			break;
 		case TYPE_INFO_INFERRED_VECTOR:
+			if (!type_is_valid_for_vector(base))
+			{
+				SEMA_ERROR(base_info,
+				           "You cannot form a vector with elements of type %s.",
+				           type_quoted_error_string(base));
+				return type_info_poison(type);
+
+			}
 			type->type = type_get_inferred_vector(type->array.base->type);
 			break;
 		case TYPE_INFO_VECTOR:
 		{
 			ArraySize width;
 			if (!sema_resolve_array_like_len(context, type, &width)) return type_info_poison(type);
+			if (!type_is_valid_for_vector(base))
+			{
+				SEMA_ERROR(base_info,
+				           "You cannot form a vector with elements of type %s.",
+				           type_quoted_error_string(base));
+				return type_info_poison(type);
+
+			}
 			type->type = type_get_vector(type->array.base->type, width);
 			break;
 		}
 		case TYPE_INFO_ARRAY:
 		{
+			if (!type_is_valid_for_array(base))
+			{
+				SEMA_ERROR(base_info,
+				           "You cannot form an array with elements of type %s.",
+				           type_quoted_error_string(base));
+				return type_info_poison(type);
+			}
 			ArraySize size;
 			if (!sema_resolve_array_like_len(context, type, &size)) return type_info_poison(type);
 			type->type = type_get_array(type->array.base->type, size);
