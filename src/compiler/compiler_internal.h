@@ -1585,8 +1585,8 @@ typedef struct
 struct CompilationUnit_
 {
 	Module *module;
-	File* file;
-	Decl** imports;
+	File *file;
+	Decl **imports;
 	Decl **types;
 	Decl **functions;
 	Decl **lambdas;

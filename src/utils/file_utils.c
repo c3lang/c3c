@@ -554,7 +554,7 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 			continue;
 		}
 		char *format = path_ends_with_slash ? "%s%s" : "%s/%s";
-		DEBUG_LOG("Added file");
+		DEBUG_LOG("Added file %s", ent->d_name);
 		vec_add(*files, str_printf(format, path, ent->d_name));
 	}
 	closedir(dir);

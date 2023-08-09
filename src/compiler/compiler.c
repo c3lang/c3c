@@ -825,12 +825,12 @@ void compile()
 		static const char* c_suffix_list[3] = { ".c" };
 		active_target.csources = target_expand_source_names(active_target.csource_dirs, c_suffix_list, 1, false);
 	}
-	global_context.sources = active_target.sources;
 	global_context.main = NULL;
 	global_context.string_type = NULL;
 	asm_target.initialized = false;
 	target_setup(&active_target);
 	resolve_libraries();
+	global_context.sources = active_target.sources;
 
 	TokenType type = TOKEN_CONST_IDENT;
 	FOREACH_BEGIN(const char *feature_flag, active_target.feature_list)
