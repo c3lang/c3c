@@ -1,3 +1,4 @@
+// #target: macos-x64
 module abc;
 def UInt8 = char;
 fn void! main()
@@ -8,9 +9,6 @@ fn void! main()
 }
 /* #expect: abc.ll
 
-target datalayout = "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-apple-darwin"
-; Function Attrs: nounwind
 define i64 @abc.main() #0 {
 entry:
   %x = alloca i8, align 1
