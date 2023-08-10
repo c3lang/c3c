@@ -229,6 +229,14 @@ macro bool is_equatable_type($Type)
 	$endif
 }
 
+/**
+ * Checks if a type implements the copy protocol.
+ **/
+macro bool implements_copy($Type)
+{
+	return $checks(Allocator *a, $Type x, $Type y = x.copy(a), $Type z = x.copy(), z.free(a), z.free());
+}
+
 macro bool is_equatable_value(value)
 {
 	return is_equatable_type($typeof(value));

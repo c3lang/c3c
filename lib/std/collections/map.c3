@@ -8,6 +8,7 @@ const uint DEFAULT_INITIAL_CAPACITY = 16;
 const uint MAXIMUM_CAPACITY = 1u << 31;
 const float DEFAULT_LOAD_FACTOR = 0.75;
 const VALUE_IS_EQUATABLE = types::is_equatable(Value);
+const bool COPY_KEYS = types::implements_copy(Key);
 
 struct HashMap
 {
@@ -164,7 +165,14 @@ fn void HashMap.clear(&map)
 	{
 		Entry* entry = *entry_ref;
 		if (!entry) continue;
-		map.free_internal(entry);
+		Entry *next = entry.next;
+		while (next)
+		{
+			Entry *to_delete = next;
+			next = next.next;
+			map.free_entry(to_delete);
+		}
+		map.free_entry(entry);
 		*entry_ref = null;
 	}
 	map.count = 0;
@@ -255,6 +263,9 @@ fn bool HashMap.has_value(&map, Value v) @if(VALUE_IS_EQUATABLE)
 fn void HashMap.add_entry(&map, uint hash, Key key, Value value, uint bucket_index) @private
 {
 	Entry* entry = malloc(Entry, .using = map.allocator);
+	$if COPY_KEYS:
+	key = key.copy(map.allocator);
+	$endif
 	*entry = { .hash = hash, .key = key, .value = value, .next = map.table[bucket_index] };
 	map.table[bucket_index] = entry;
 	if (map.count++ >= map.threshold)
@@ -359,7 +370,7 @@ fn bool HashMap.remove_entry_for_key(&map, Key key) @private
 			{
 				prev.next = next;
 			}
-			map.free_internal(e);
+			map.free_entry(e);
 			return true;
 		}
 		prev = e;
@@ -372,9 +383,20 @@ fn void HashMap.create_entry(&map, uint hash, Key key, Value value, int bucket_i
 {
 	Entry *e = map.table[bucket_index];
 	Entry* entry = malloc(Entry, .using = map.allocator);
+	$if COPY_KEYS:
+	key = key.copy(map.allocator);
+	$endif
 	*entry = { .hash = hash, .key = key, .value = value, .next = map.table[bucket_index] };
 	map.table[bucket_index] = entry;
 	map.count++;
+}
+
+fn void HashMap.free_entry(&self, Entry *entry) @local
+{
+	$if COPY_KEYS:
+	entry.key.free(self.allocator);
+	$endif
+	self.free_internal(entry);
 }
 
 struct Entry

@@ -346,6 +346,12 @@ fn String String.copy(s, Allocator* using = mem::heap())
 	str[len] = 0;
 	return (String)str[:len];
 }
+fn void String.free(&s, Allocator* using = mem::heap())
+{
+	if (!s.len) return;
+	mem::free(s.ptr, .using = using);
+	*s = "";
+}
 
 fn String String.tcopy(s) => s.copy(mem::temp()) @inline;
 

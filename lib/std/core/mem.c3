@@ -177,19 +177,14 @@ macro bool equals(a, b, isz len = -1, usz $align = 0)
 	return true;
 }
 
-macro @clone(&value) @builtin
+macro @clone(&value, Allocator *using = mem::heap()) @builtin
 {
-	$typeof(value)* x = malloc($typeof(value));
+	$typeof(value)* x = malloc($typeof(value), .using = using);
 	*x = value;
 	return x;
 }
 
-macro @tclone(&value) @builtin
-{
-	$typeof(value)* x = talloc($typeof(value));
-	*x = value;
-	return x;
-}
+macro @tclone(&value) @builtin => @clone(value, mem::temp());
 
 macro type_alloc_must_be_aligned($Type)
 {

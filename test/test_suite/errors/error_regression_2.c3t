@@ -405,7 +405,7 @@ panic_block:                                      ; preds = %assign_optional
   %29 = insertvalue %"any[]" undef, ptr %varargslots, 0
   %"#temp#" = insertvalue %"any[]" %29, i64 1, 1
   store %"any[]" %"#temp#", ptr %indirectarg, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func, i64 7, i32 204, ptr byval(%"any[]") align 8 %indirectarg)
+  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func, i64 7
   unreachable
 
 noerr_block:                                      ; preds = %after_check
@@ -478,7 +478,7 @@ panic_block39:                                    ; preds = %assign_optional37
   %53 = insertvalue %"any[]" undef, ptr %varargslots40, 0
   %"#temp#41" = insertvalue %"any[]" %53, i64 1, 1
   store %"any[]" %"#temp#41", ptr %indirectarg42, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func, i64 7, i32 204, ptr byval(%"any[]") align 8 %indirectarg42)
+  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func
   unreachable
 
 noerr_block43:                                    ; preds = %after_check38
@@ -535,7 +535,7 @@ panic_block61:                                    ; preds = %assign_optional59
   %71 = insertvalue %"any[]" undef, ptr %varargslots62, 0
   %"#temp#63" = insertvalue %"any[]" %71, i64 1, 1
   store %"any[]" %"#temp#63", ptr %indirectarg64, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func, i64 7, i32 204, ptr byval(%"any[]") align 8 %indirectarg64)
+  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func
   unreachable
 
 noerr_block65:                                    ; preds = %after_check60
@@ -606,7 +606,7 @@ panic_block81:                                    ; preds = %assign_optional79
   %95 = insertvalue %"any[]" undef, ptr %varargslots82, 0
   %"#temp#83" = insertvalue %"any[]" %95, i64 1, 1
   store %"any[]" %"#temp#83", ptr %indirectarg84, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func, i64 7, i32 204, ptr byval(%"any[]") align 8 %indirectarg84)
+  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func
   unreachable
 
 noerr_block85:                                    ; preds = %after_check80
@@ -673,7 +673,7 @@ panic_block111:                                   ; preds = %assign_optional109
   %124 = insertvalue %"any[]" undef, ptr %varargslots112, 0
   %"#temp#113" = insertvalue %"any[]" %124, i64 1, 1
   store %"any[]" %"#temp#113", ptr %indirectarg114, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func, i64 7, i32 204, ptr byval(%"any[]") align 8 %indirectarg114)
+  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func
   unreachable
 
 noerr_block115:                                   ; preds = %after_check110
@@ -730,7 +730,7 @@ panic_block133:                                   ; preds = %assign_optional131
   %142 = insertvalue %"any[]" undef, ptr %varargslots134, 0
   %"#temp#135" = insertvalue %"any[]" %142, i64 1, 1
   store %"any[]" %"#temp#135", ptr %indirectarg136, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func, i64 7, i32 204, ptr byval(%"any[]") align 8 %indirectarg136)
+  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func, i64 7
   unreachable
 
 noerr_block137:                                   ; preds = %after_check132

@@ -107,6 +107,7 @@
 - `assert` may now take varargs for formatting.
  
 ### Stdlib changes
+- Hashmap keys implicitly copied if copy/free are defined.
 - Socket handling.
 - `csv` package.
 - Updated posix/win32 stdlib namespacing
