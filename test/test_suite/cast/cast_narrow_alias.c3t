@@ -1,0 +1,31 @@
+module abc;
+def UInt8 = char;
+fn void! main()
+{
+	UInt8 x = 17;
+	UInt8 y = 5;
+	UInt8 z = (x >> y) & 0x1;
+}
+/* #expect: abc.ll
+
+target datalayout = "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-apple-darwin"
+; Function Attrs: nounwind
+define i64 @abc.main() #0 {
+entry:
+  %x = alloca i8, align 1
+  %y = alloca i8, align 1
+  %z = alloca i8, align 1
+  store i8 17, ptr %x, align 1
+  store i8 5, ptr %y, align 1
+  %0 = load i8, ptr %x, align 1
+  %zext = zext i8 %0 to i32
+  %1 = load i8, ptr %y, align 1
+  %zext1 = zext i8 %1 to i32
+  %lshr = lshr i32 %zext, %zext1
+  %2 = freeze i32 %lshr
+  %and = and i32 %2, 1
+  %trunc = trunc i32 %and to i8
+  store i8 %trunc, ptr %z, align 1
+  ret i64 0
+}

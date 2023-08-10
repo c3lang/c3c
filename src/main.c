@@ -22,9 +22,11 @@ static void cleanup()
 	memory_release();
 }
 
+const char *compiler_exe_name;
 
 int main_real(int argc, const char *argv[])
 {
+	compiler_exe_name = argv[0];
 	bench_begin();
 
 	// Setjmp will allow us to add things like fuzzing with

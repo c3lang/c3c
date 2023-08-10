@@ -198,15 +198,21 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 	FOREACH_END();
 	sema_context_destroy(&context);
 	if (!success) return NULL;
-	scratch_buffer_clear();
 	if (!expr_is_const_string(filename))
 	{
 		SEMA_ERROR(filename, "A filename was expected as the first argument to '$exec'.");
 		return NULL;
 	}
-	scratch_buffer_append(filename->const_expr.bytes.ptr);
-	FOREACH_BEGIN(Expr *arg, decl->exec_decl.args)
+	scratch_buffer_clear();
+	const char *file_str = filename->const_expr.bytes.ptr;
+	bool c3_script = str_has_suffix(file_str, ".c3");
+	if (!c3_script)
+	{
+		scratch_buffer_append(file_str);
 		scratch_buffer_append(" ");
+	}
+	FOREACH_BEGIN_IDX(i, Expr *arg, decl->exec_decl.args)
+		if (i) scratch_buffer_append(" ");
 		assert(expr_is_const(arg));
 		switch (arg->const_expr.const_kind)
 		{
@@ -246,8 +252,16 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 		}
 		UNREACHABLE
 	FOREACH_END();
-	const char *output = execute_cmd(scratch_buffer_to_string());
-	File *file = source_file_text_load(scratch_buffer_to_string(), output);
+	File *file;
+	if (c3_script)
+	{
+		file = compile_and_invoke(file_str, scratch_buffer_copy());
+	}
+	else
+	{
+		const char *output = execute_cmd(scratch_buffer_to_string());
+		file = source_file_text_load(scratch_buffer_to_string(), output);
+	}
 	if (global_context.includes_used++ > MAX_INCLUDES)
 	{
 		SEMA_ERROR(decl, "This $include would cause the maximum number of includes (%d) to be exceeded.", MAX_INCLUDES);

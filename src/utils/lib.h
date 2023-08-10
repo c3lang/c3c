@@ -15,6 +15,8 @@
 const char *download_file(const char *url, const char *resource, const char *file_path);
 #endif
 
+extern const char *compiler_exe_name;
+
 typedef struct StringSlice_
 {
 	const char *ptr;
@@ -84,6 +86,7 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 const char *file_append_path(const char *path, const char *name);
 
 const char *execute_cmd(const char *cmd);
+bool execute_cmd_failable(const char *cmd, const char **result);
 void *cmalloc(size_t size);
 void *ccalloc(size_t size, size_t elements);
 void memory_init(void);

@@ -4,6 +4,7 @@
 
 #include "compiler_internal.h"
 #include <compiler_tests/benchmark.h>
+#include "../utils/whereami.h"
 
 #define MAX_OUTPUT_FILES 1000000
 #define MAX_MODULES 100000
@@ -981,3 +982,38 @@ const char *scratch_buffer_interned(void)
 					  fnv1a(scratch_buffer.str, scratch_buffer.len), &type);
 }
 
+File *compile_and_invoke(const char *file, const char *args)
+{
+	char *name;
+	if (!file_namesplit(compiler_exe_name, &name, NULL))
+	{
+		error_exit("Failed to extract file name from '%s'", compiler_exe_name);
+	}
+	const char *compiler_path = file_append_path(find_executable_path(), name);
+	scratch_buffer_clear();
+	scratch_buffer_append(compiler_path);
+#if (_MSC_VER)
+	const char *output = "__c3_exec.exe";
+#else
+	const char *output = "__c3_exec";
+#endif
+	scratch_buffer_printf(" compile %s -o %s", file, output);
+	const char *out;
+	if (!execute_cmd_failable(scratch_buffer_to_string(), &out))
+	{
+		error_exit("Failed to compile script %s.", file);
+	}
+	DEBUG_LOG("EXEC OUT: %s", out);
+	scratch_buffer_clear();
+#if (!_MSC_VER)
+	scratch_buffer_append("./");
+#endif
+	scratch_buffer_append(output);
+	scratch_buffer_append(" ");
+	scratch_buffer_append(args);
+	if (!execute_cmd_failable(scratch_buffer_to_string(), &out))
+	{
+		error_exit("Error invoking script %s with arguments %s.", file, args);
+	}
+	return source_file_text_load(file, out);
+}

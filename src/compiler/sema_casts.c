@@ -2077,13 +2077,14 @@ bool cast_widen_top_down(SemaContext *context, Expr *expr, Type *type)
 Type *cast_numeric_arithmetic_promotion(Type *type)
 {
 	if (!type) return NULL;
-	switch (type->type_kind)
+	Type *canonical = type->canonical;
+	switch (canonical->type_kind)
 	{
 		case ALL_SIGNED_INTS:
-			if (type->builtin.bitsize < platform_target.width_c_int) return type_cint;
+			if (canonical->builtin.bitsize < platform_target.width_c_int) return type_cint;
 			return type;
 		case ALL_UNSIGNED_INTS:
-			if (type->builtin.bitsize < platform_target.width_c_int) return type_cuint;
+			if (canonical->builtin.bitsize < platform_target.width_c_int) return type_cuint;
 			return type;
 		case TYPE_F16:
 			// Promote F16 to a real type.

@@ -611,6 +611,46 @@ const char *execute_cmd(const char *cmd)
 	return str_trim(output);
 }
 
+bool execute_cmd_failable(const char *cmd, const char **result)
+{
+	char buffer[BUFSIZE];
+	char *output = "";
+	FILE *process = NULL;
+#if (_MSC_VER)
+	if (!(process = _wpopen(win_utf8to16(cmd), L"r"))) return false;
+#else
+	if (!(process = popen(cmd, "r"))) return false;
+#endif
+	while (fgets(buffer, BUFSIZE - 1, process))
+	{
+		output = str_cat(output, buffer);
+	}
+#if PLATFORM_WINDOWS
+	int err = _pclose(process);
+#else
+	int err = pclose(process);
+#endif
+	if (err) return false;
+
+	while (output[0] != 0)
+	{
+		switch (output[0])
+		{
+			case ' ':
+			case '\t':
+			case '\n':
+			case '\r':
+				output++;
+				continue;
+			default:
+				break;
+		}
+		break;
+	}
+	*result = str_trim(output);
+	return true;
+}
+
 #if PLATFORM_WINDOWS
 
 char *realpath(const char *path, char *const resolved_path)
