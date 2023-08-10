@@ -153,6 +153,7 @@
 - Added posix socket functions.
 
 ### Fixes
+- Fixed ++ and -- for bitstructs.
 - Fix to bug where library source files were sometimes ignored.
 - Types of arrays and vectors are consistently checked to be valid.
 - Anonymous bitstructs check of duplicate member names fixed.

@@ -14,7 +14,7 @@ static inline LLVMValueRef llvm_emit_exprid_to_rvalue(GenContext *c, ExprId expr
 static inline LLVMValueRef llvm_update_vector(GenContext *c, LLVMValueRef vector, LLVMValueRef value, MemberIndex index);
 static inline void llvm_emit_expression_list_expr(GenContext *c, BEValue *be_value, Expr *expr);
 static LLVMValueRef llvm_emit_dynamic_search(GenContext *c, LLVMValueRef type_id_ptr, LLVMValueRef selector);
-static inline void llvm_emit_bitassign_array(GenContext *c, BEValue *result, BEValue parent, Decl *parent_decl, Decl *member);
+static inline void llvm_emit_bitassign_array(GenContext *c, LLVMValueRef result, BEValue parent, Decl *parent_decl, Decl *member);
 static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Expr *expr);
 static inline void llvm_emit_const_initialize_reference(GenContext *c, BEValue *ref, Expr *expr);
 static inline void llvm_emit_expr_block(GenContext *context, BEValue *be_value, Expr *expr);
@@ -1065,11 +1065,11 @@ static inline void llvm_emit_update_bitstruct_array(GenContext *c,
 	}
 }
 
-static inline void llvm_emit_bitassign_array(GenContext *c, BEValue *result, BEValue parent, Decl *parent_decl, Decl *member)
+static inline void llvm_emit_bitassign_array(GenContext *c, LLVMValueRef result, BEValue parent, Decl *parent_decl, Decl *member)
 {
 	llvm_value_addr(c, &parent);
 	llvm_emit_update_bitstruct_array(c, parent.value, parent.alignment, llvm_get_type(c, parent.type),
-									 bitstruct_requires_bitswap(parent_decl), member, llvm_load_value_store(c, result));
+									 bitstruct_requires_bitswap(parent_decl), member, result);
 }
 
 INLINE LLVMValueRef llvm_emit_bitstruct_value_update(GenContext *c, LLVMValueRef current_val, TypeSize bits, LLVMTypeRef bitstruct_type, Decl *member, LLVMValueRef val)
@@ -1127,7 +1127,7 @@ static inline void llvm_emit_bitassign_expr(GenContext *c, BEValue *be_value, Ex
 	Type *parent_type = type_flatten(parent_expr->type);
 	if (type_lowering(parent_type)->type_kind == TYPE_ARRAY)
 	{
-		llvm_emit_bitassign_array(c, be_value, parent, parent_type->decl, member);
+		llvm_emit_bitassign_array(c, llvm_load_value_store(c, be_value), parent, parent_type->decl, member);
 		return;
 	}
 
@@ -2397,6 +2397,42 @@ static inline bool expr_is_vector_subscript(Expr *expr)
 }
 
 /**
+ * This method implements the common ++x and --x operators on bitstructs
+ */
+static inline void llvm_emit_pre_post_inc_dec_bitstruct(GenContext *c, BEValue *be_value, Expr *lhs, int diff, bool pre)
+{
+	Expr *parent_expr = lhs->access_expr.parent;
+
+	// Grab the parent
+	BEValue parent;
+	Decl *member = lhs->access_expr.ref;
+	llvm_emit_expr(c, &parent, parent_expr);
+	llvm_emit_bitstruct_member(c, &parent, type_flatten(parent_expr->type)->decl, member);
+
+	BEValue value = parent;
+	llvm_extract_bitvalue(c, &value, parent_expr, member);
+	LLVMValueRef value_start = llvm_load_value_store(c, &value);
+	LLVMValueRef result = llvm_emit_add_int(c, value.type, value_start, llvm_const_int(c, value.type, diff), lhs->span);
+
+	llvm_value_set(be_value, pre ? result : value_start, value.type);
+
+	Type *parent_type = type_flatten(parent_expr->type);
+	if (type_lowering(parent_type)->type_kind == TYPE_ARRAY)
+	{
+		llvm_emit_bitassign_array(c, result, parent, parent_type->decl, member);
+		return;
+	}
+
+	// To start the assign, pull out the current value.
+	LLVMValueRef current_value = llvm_load_value_store(c, &parent);
+	bool bswap = bitstruct_requires_bitswap(parent_type->decl);
+	if (bswap) current_value = llvm_emit_bswap(c, current_value);
+	current_value = llvm_emit_bitstruct_value_update(c, current_value, type_size(parent.type) * 8, LLVMTypeOf(current_value), member, result);
+	if (bswap) current_value = llvm_emit_bswap(c, current_value);
+	llvm_store_raw(c, &parent, current_value);
+}
+
+/**
  * This method implements the common ++x and --x operators on vector elements
  */
 static inline void llvm_emit_pre_post_inc_dec_vector(GenContext *c, BEValue *value, Expr *expr, int diff, bool pre)
@@ -2451,6 +2487,11 @@ static inline void llvm_emit_pre_inc_dec(GenContext *c, BEValue *value, Expr *ex
 		llvm_emit_pre_post_inc_dec_vector(c, value, expr, diff, true);
 		return;
 	}
+	if (expr->expr_kind == EXPR_BITACCESS)
+	{
+		llvm_emit_pre_post_inc_dec_bitstruct(c, value, expr, diff, true);
+		return;
+	}
 	// Pull out the address, also allowing temporaries.
 	BEValue addr;
 	llvm_emit_expr(c, &addr, expr);
@@ -2502,6 +2543,11 @@ static inline void llvm_emit_post_inc_dec(GenContext *c, BEValue *value, Expr *e
 	if (expr_is_vector_subscript(expr))
 	{
 		llvm_emit_pre_post_inc_dec_vector(c, value, expr, diff, false);
+		return;
+	}
+	if (expr->expr_kind == EXPR_BITACCESS)
+	{
+		llvm_emit_pre_post_inc_dec_bitstruct(c, value, expr, diff, false);
 		return;
 	}
 
