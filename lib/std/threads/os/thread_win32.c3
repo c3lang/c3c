@@ -1,6 +1,41 @@
 module std::thread::os @if(env::WIN32);
 import std::os::win32;
 
+def NativeThread = distinct inline Win32_HANDLE;
+
+struct NativeMutex
+{
+	union
+	{
+		Win32_CRITICAL_SECTION critical_section;
+		Win32_HANDLE handle;
+	}
+	bool already_locked;
+	bool recursive;
+	bool timed;
+}
+
+struct NativeOnceFlag
+{
+	int status;
+	Win32_CRITICAL_SECTION lock;
+}
+
+struct NativeConditionVariable
+{
+	union
+	{
+		struct
+		{
+			Win32_HANDLE event_one;
+			Win32_HANDLE event_all;
+		}
+		Win32_HANDLE[2] events;
+	}
+	uint waiters_count;
+	Win32_CRITICAL_SECTION waiters_count_lock;
+}
+
 fn void! NativeMutex.init(&mtx, MutexType type)
 {
 	mtx.already_locked = false;
@@ -199,7 +234,7 @@ fn void! NativeConditionVariable.wait_timeout(&cond, NativeMutex* mtx, uint time
 
 fn void! NativeThread.create(&thread, ThreadFn func, void* args)
 {
-	if (!(*thread = win32::createThread(null, 0, func, args, 0, null))) return ThreadFault.INIT_FAILED?;
+	if (!(*thread = (NativeThread)win32::createThread(null, 0, func, args, 0, null))) return ThreadFault.INIT_FAILED?;
 }
 
 fn void! NativeThread.detach(thread) @inline
@@ -246,16 +281,18 @@ fn void NativeOnceFlag.call_once(&flag, OnceFn func)
 	}
 }
 
-fn void! NativeThread.join(thread, int *res)
+fn int! NativeThread.join(thread)
 {
+	uint res;
 	if (win32::waitForSingleObject(thread, win32::INFINITE) == win32::WAIT_FAILED) return ThreadFault.JOIN_FAILED?;
-	if (!win32::getExitCodeThread(thread, (uint*)res)) return ThreadFault.JOIN_FAILED?;
+	if (!win32::getExitCodeThread(thread, &res)) return ThreadFault.JOIN_FAILED?;
 	defer win32::closeHandle(thread);
+	return res;
 }
 
 fn NativeThread native_thread_current()
 {
-	return win32::getCurrentThread();
+	return (NativeThread)win32::getCurrentThread();
 }
 
 fn bool NativeThread.equals(thread, NativeThread other)

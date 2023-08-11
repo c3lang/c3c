@@ -29,40 +29,6 @@ const Win32_DWORD PIPE_NOWAIT = 1;
 const Win32_DWORD PIPE_ACCEPT_REMOTE_CLIENTS = 0;
 const Win32_DWORD PIPE_REJECT_REMOTE_CLIENTS = 8;
 
-def NativeThread = Win32_HANDLE;
-
-struct NativeMutex
-{
-	union
-	{
-		Win32_CRITICAL_SECTION critical_section;
-		Win32_HANDLE handle;
-	}
-	bool already_locked;
-	bool recursive;
-	bool timed;
-}
-
-struct NativeOnceFlag
-{
-	int status;
-	Win32_CRITICAL_SECTION lock;
-}
-
-struct NativeConditionVariable
-{
-	union
-	{
-		struct
-		{
-			Win32_HANDLE event_one;
-			Win32_HANDLE event_all;
-		}
-		Win32_HANDLE[2] events;
-	}
-	uint waiters_count;
-	Win32_CRITICAL_SECTION waiters_count_lock;
-}
 
 extern fn void initializeCriticalSection(Win32_CRITICAL_SECTION* section) @extern("InitializeCriticalSection");
 extern fn void deleteCriticalSection(Win32_CRITICAL_SECTION* section) @extern("DeleteCriticalSection");
