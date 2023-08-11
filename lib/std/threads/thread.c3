@@ -1,15 +1,5 @@
 module std::thread;
-
-enum ThreadModel
-{
-	WIN32,
-	POSIX,
-	NONE
-}
-
-const ThreadModel THREAD_MODEL =  env::LIBC
-	? (env::WIN32 ? ThreadModel.WIN32 : ThreadModel.POSIX)
-	: ThreadModel.NONE;
+import std::thread::os;
 
 def MutexType = distinct int;
 
@@ -45,7 +35,7 @@ macro void! Mutex.destroy(&mutex) => NativeMutex.destroy((NativeMutex*)mutex);
 macro void! Mutex.lock(&mutex) => NativeMutex.lock((NativeMutex*)mutex);
 macro void! Mutex.lock_timeout(&mutex, ulong ms) => NativeMutex.lock((NativeMutex*)mutex, ms);
 macro bool Mutex.try_lock(&mutex) => NativeMutex.try_lock((NativeMutex*)mutex);
-macro bool Mutex.unlock(&mutex) => NativeMutex.unlock((NativeMutex*)mutex);
+macro void! Mutex.unlock(&mutex) => NativeMutex.unlock((NativeMutex*)mutex);
 
 macro void! ConditionVariable.init(&cond) => NativeConditionVariable.init((NativeConditionVariable*)cond);
 macro void! ConditionVariable.destroy(&cond) => NativeConditionVariable.destroy((NativeConditionVariable*)cond);

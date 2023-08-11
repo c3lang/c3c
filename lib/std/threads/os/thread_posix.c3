@@ -1,6 +1,6 @@
-module std::os::posix @if(env::POSIX);
+module std::threads::os @if(env::POSIX);
+import std::os::posix;
 import libc;
-
 def NativeMutex = Pthread_mutex_t;
 def NativeConditionVariable = Pthread_cond_t;
 def NativeThread = Pthread_t;
@@ -9,30 +9,30 @@ def NativeOnceFlag = Pthread_once_t;
 fn void! NativeMutex.init(&mtx, MutexType type)
 {
 	Pthread_mutexattr_t attr;
-	if (pthread_mutexattr_init(&attr)) return ThreadFault.INIT_FAILED?;
-	defer pthread_mutexattr_destroy(&attr);
+	if (posix::pthread_mutexattr_init(&attr)) return ThreadFault.INIT_FAILED?;
+	defer posix::pthread_mutexattr_destroy(&attr);
 	if (type & thread::MUTEX_RECURSIVE)
 	{
-		if (pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE)) return ThreadFault.INIT_FAILED?;
+		if (posix::pthread_mutexattr_settype(&attr, posix::PTHREAD_MUTEX_RECURSIVE)) return ThreadFault.INIT_FAILED?;
 	}
-	if (pthread_mutex_init(mtx, &attr)) return ThreadFault.INIT_FAILED?;
+	if (posix::pthread_mutex_init(mtx, &attr)) return ThreadFault.INIT_FAILED?;
 }
 
 fn void! NativeMutex.destroy(&mtx)
 {
-	if (pthread_mutex_destroy(mtx)) return ThreadFault.DESTROY_FAILED?;
+	if (posix::pthread_mutex_destroy(mtx)) return ThreadFault.DESTROY_FAILED?;
 }
 
 fn void! NativeMutex.lock(&mtx)
 {
-	if (pthread_mutex_lock(mtx)) return ThreadFault.LOCK_FAILED?;
+	if (posix::pthread_mutex_lock(mtx)) return ThreadFault.LOCK_FAILED?;
 }
 
 fn void! NativeMutex.lock_timeoutout(&mtx, ulong ms)
 {
 	/* Try to acquire the lock and, if we fail, sleep for 5ms. */
 	Errno result;
-	while ((result = pthread_mutex_trylock(mtx)) == errno::EBUSY)
+	while ((result = posix::pthread_mutex_trylock(mtx)) == errno::EBUSY)
 	{
 		if (!ms) break;
 		ulong sleep = min(5, ms);
@@ -53,37 +53,37 @@ fn void! NativeMutex.lock_timeoutout(&mtx, ulong ms)
 
 fn bool NativeMutex.try_lock(&mtx)
 {
-	return !pthread_mutex_trylock(mtx);
+	return !posix::pthread_mutex_trylock(mtx);
 }
 
 fn void! NativeMutex.unlock(&mtx)
 {
-	if (pthread_mutex_unlock(mtx)) return ThreadFault.UNLOCK_FAILED?;
+	if (posix::pthread_mutex_unlock(mtx)) return ThreadFault.UNLOCK_FAILED?;
 }
 
 fn void! NativeConditionVariable.init(&cond)
 {
-	if (pthread_cond_init(cond, null)) return ThreadFault.INIT_FAILED?;
+	if (posix::pthread_cond_init(cond, null)) return ThreadFault.INIT_FAILED?;
 }
 
 fn void! NativeConditionVariable.destroy(&cond)
 {
-	if (pthread_cond_destroy(cond)) return ThreadFault.DESTROY_FAILED?;
+	if (posix::pthread_cond_destroy(cond)) return ThreadFault.DESTROY_FAILED?;
 }
 
 fn void! NativeConditionVariable.signal(&cond)
 {
-	if (pthread_cond_signal(cond)) return ThreadFault.SIGNAL_FAILED?;
+	if (posix::pthread_cond_signal(cond)) return ThreadFault.SIGNAL_FAILED?;
 }
 
 fn void! NativeConditionVariable.broadcast(&cond)
 {
-	if (pthread_cond_broadcast(cond)) return ThreadFault.SIGNAL_FAILED?;
+	if (posix::pthread_cond_broadcast(cond)) return ThreadFault.SIGNAL_FAILED?;
 }
 
 fn void! NativeConditionVariable.wait(&cond, NativeMutex* mtx)
 {
-	if (pthread_cond_wait(cond, mtx)) return ThreadFault.WAIT_FAILED?;
+	if (posix::pthread_cond_wait(cond, mtx)) return ThreadFault.WAIT_FAILED?;
 }
 
 fn void! NativeConditionVariable.wait_timeout(&cond, NativeMutex* mtx, ulong ms)
@@ -92,7 +92,7 @@ fn void! NativeConditionVariable.wait_timeout(&cond, NativeMutex* mtx, ulong ms)
 	if (libc::timespec_get(&now, libc::TIME_UTC) != libc::TIME_UTC) return ThreadFault.WAIT_FAILED?;
 	now.s += (Time_t)(ms / 1000);
 	now.ns += (CLong)((ms % 1000) * 1000_000);
-	switch (pthread_cond_timedwait(cond, mtx, &now))
+	switch (posix::pthread_cond_timedwait(cond, mtx, &now))
 	{
 		case errno::ETIMEDOUT:
 			return ThreadFault.WAIT_TIMEOUT?;
@@ -114,7 +114,7 @@ fn void! NativeThread.create(&thread, ThreadFn thread_fn, void* arg)
 {
 	PosixThreadData *thread_data = malloc(PosixThreadData);
 	*thread_data = { .thread_fn = thread_fn, .arg = arg };
-	if (pthread_create(thread, null, &callback, thread_data) != 0)
+	if (posix::pthread_create(thread, null, &callback, thread_data) != 0)
 	{
 		*thread = null;
 		free(thread_data);
@@ -124,39 +124,39 @@ fn void! NativeThread.create(&thread, ThreadFn thread_fn, void* arg)
 
 fn void! NativeThread.detach(thread)
 {
-	if (!pthread_detach(thread)) return ThreadFault.DETACH_FAILED?;
+	if (!posix::pthread_detach(thread)) return ThreadFault.DETACH_FAILED?;
 }
 
 fn void native_thread_exit(int result)
 {
-	pthread_exit((void*)(iptr)result);
+	posix::pthread_exit((void*)(iptr)result);
 }
 
 fn NativeThread native_thread_current()
 {
-	return pthread_self();
+	return (NativeThread)posix::pthread_self();
 }
 
 fn bool NativeThread.equals(thread, NativeThread other)
 {
-	return (bool)pthread_equal(thread, other);
+	return (bool)posix::pthread_equal(thread, other);
 }
 
 fn int! NativeThread.join(thread)
 {
 	void *pres;
-	if (pthread_join(thread, &pres)) return ThreadFault.JOIN_FAILED?;
+	if (posix::pthread_join(thread, &pres)) return ThreadFault.JOIN_FAILED?;
 	return (int)(iptr)pres;
 }
 
 fn void NativeOnceFlag.call_once(&flag, OnceFn func)
 {
-	pthread_once(flag, func);
+	posix::pthread_once(flag, func);
 }
 
 fn void native_thread_yield()
 {
-	sched_yield();
+	posix::sched_yield();
 }
 
 struct PosixThreadData @private
