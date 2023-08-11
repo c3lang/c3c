@@ -7663,14 +7663,16 @@ static inline bool sema_expr_analyse_builtin(SemaContext *context, Expr *expr, b
 
 static inline bool sema_expr_analyse_compound_literal(SemaContext *context, Expr *expr)
 {
-	if (!sema_resolve_type_info(context, expr->expr_compound_literal.type_info)) return false;
-	Type *type = expr->expr_compound_literal.type_info->type;
+	TypeInfo *type_info = expr->expr_compound_literal.type_info;
+	if (!sema_resolve_type_info(context, type_info)) return false;
+	Type *type = type_info->type;
 	if (type_is_optional(type))
 	{
-		SEMA_ERROR(expr->expr_compound_literal.type_info,
+		SEMA_ERROR(type_info,
 				   "The type here should always be written as a plain type and not an optional, please remove the '!'.");
 		return false;
 	}
+	if (!sema_resolve_type_structure(context, type, type_info->span)) return false;
 	if (!sema_expr_analyse_initializer_list(context, type, expr->expr_compound_literal.initializer)) return false;
 	expr_replace(expr, expr->expr_compound_literal.initializer);
 	return true;
