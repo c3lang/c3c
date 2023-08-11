@@ -64,7 +64,7 @@ macro void! ConditionVariable.wait_timeout(&cond, Mutex* mutex, ulong timeout)
 macro void! Thread.create(&thread, ThreadFn thread_fn, void* arg) => NativeThread.create((NativeThread*)thread, thread_fn, arg);
 macro void! Thread.detach(thread) => NativeThread.detach((NativeThread)thread);
 macro int! Thread.join(thread) => NativeThread.join((NativeThread)thread);
-macro bool Thread.equals(thread, Thread other) => NativeThread.equals((NativeThread)this, (NativeThread)other);
+macro bool Thread.equals(thread, Thread other) => NativeThread.equals((NativeThread)thread, (NativeThread)other);
 
 macro void OnceFlag.call_once(&flag, OnceFn func) => NativeOnceFlag.call_once((NativeOnceFlag*)flag, func);
 
