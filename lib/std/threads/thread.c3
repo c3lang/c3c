@@ -30,7 +30,7 @@ fault ThreadFault
 	INTERRUPTED,
 }
 
-macro void! Mutex.init(&mutex, MutexType type) => NativeMutex.init((NativeMutex*)mutex, type);
+macro void! Mutex.init(&mutex, MutexType type = MUTEX_PLAIN) => NativeMutex.init((NativeMutex*)mutex, type);
 macro void! Mutex.destroy(&mutex) => NativeMutex.destroy((NativeMutex*)mutex);
 macro void! Mutex.lock(&mutex) => NativeMutex.lock((NativeMutex*)mutex);
 macro void! Mutex.lock_timeout(&mutex, ulong ms) => NativeMutex.lock((NativeMutex*)mutex, ms);

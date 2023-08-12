@@ -2006,7 +2006,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 
 	assert(call_expr->type);
 	bool must_use = false;
-	if (rtype != type_void)
+	if (rtype != type_void || optional_return)
 	{
 		must_use = sig->attrs.nodiscard || (optional_return && !sig->attrs.maydiscard);
 	}

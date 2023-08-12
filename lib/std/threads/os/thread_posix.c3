@@ -6,7 +6,11 @@ def NativeConditionVariable = Pthread_cond_t;
 def NativeThread = Pthread_t;
 def NativeOnceFlag = Pthread_once_t;
 
-fn void! NativeMutex.init(&mtx, MutexType type)
+/**
+ * @require !self.is_initialized() : "Mutex is already initialized"
+ * @ensure self.is_initialized()
+ **/
+fn void! NativeMutex.init(&self, MutexType type)
 {
 	Pthread_mutexattr_t attr;
 	if (posix::pthread_mutexattr_init(&attr)) return ThreadFault.INIT_FAILED?;
@@ -15,19 +19,35 @@ fn void! NativeMutex.init(&mtx, MutexType type)
 	{
 		if (posix::pthread_mutexattr_settype(&attr, posix::PTHREAD_MUTEX_RECURSIVE)) return ThreadFault.INIT_FAILED?;
 	}
-	if (posix::pthread_mutex_init(mtx, &attr)) return ThreadFault.INIT_FAILED?;
+	if (posix::pthread_mutex_init(self, &attr)) return ThreadFault.INIT_FAILED?;
 }
 
-fn void! NativeMutex.destroy(&mtx)
+fn bool NativeMutex.is_initialized(&self)
 {
-	if (posix::pthread_mutex_destroy(mtx)) return ThreadFault.DESTROY_FAILED?;
+	return *self != NativeMutex {};
 }
 
-fn void! NativeMutex.lock(&mtx)
+/**
+ * @require self.is_initialized() : "Mutex was not initialized"
+ * @ensure !self.is_initialized()
+ **/
+fn void! NativeMutex.destroy(&self)
 {
-	if (posix::pthread_mutex_lock(mtx)) return ThreadFault.LOCK_FAILED?;
+	if (posix::pthread_mutex_destroy(self)) return ThreadFault.DESTROY_FAILED?;
+	*self = NativeMutex {};
 }
 
+/**
+ * @require self.is_initialized() : "Mutex was not initialized"
+ **/
+fn void! NativeMutex.lock(&self)
+{
+	if (posix::pthread_mutex_lock(self)) return ThreadFault.LOCK_FAILED?;
+}
+
+/**
+ * @require mtx.is_initialized() : "Mutex was not initialized"
+ **/
 fn void! NativeMutex.lock_timeoutout(&mtx, ulong ms)
 {
 	/* Try to acquire the lock and, if we fail, sleep for 5ms. */
@@ -51,14 +71,20 @@ fn void! NativeMutex.lock_timeoutout(&mtx, ulong ms)
 	}
 }
 
-fn bool NativeMutex.try_lock(&mtx)
+/**
+ * @require self.is_initialized() : "Mutex was not initialized"
+ **/
+fn bool NativeMutex.try_lock(&self)
 {
-	return !posix::pthread_mutex_trylock(mtx);
+	return !posix::pthread_mutex_trylock(self);
 }
 
-fn void! NativeMutex.unlock(&mtx)
+/**
+ * @require self.is_initialized() : "Mutex was not initialized"
+ **/
+fn void! NativeMutex.unlock(&self)
 {
-	if (posix::pthread_mutex_unlock(mtx)) return ThreadFault.UNLOCK_FAILED?;
+	if (posix::pthread_mutex_unlock(self)) return ThreadFault.UNLOCK_FAILED?;
 }
 
 fn void! NativeConditionVariable.init(&cond)
