@@ -2,6 +2,7 @@
 // Use of self source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::collections::list(<Type>);
+import std::io;
 import std::math;
 
 def ElementPredicate = fn bool(Type *type);
