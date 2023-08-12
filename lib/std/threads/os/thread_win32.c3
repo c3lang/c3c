@@ -88,9 +88,9 @@ fn void! NativeMutex.lock(&mtx)
 /**
  * @require mtx.timed "Only available for timed locks"
  **/
-fn void! NativeMutex.lock_timeout(&mtx, uint ms)
+fn void! NativeMutex.lock_timeout(&mtx, usz ms)
 {
-	switch (win32::waitForSingleObject(mtx.handle, ms))
+	switch (win32::waitForSingleObject(mtx.handle, (uint)ms))
 	{
 		case win32::WAIT_OBJECT_0:
 			break;

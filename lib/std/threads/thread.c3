@@ -33,7 +33,7 @@ fault ThreadFault
 macro void! Mutex.init(&mutex, MutexType type = MUTEX_PLAIN) => NativeMutex.init((NativeMutex*)mutex, type);
 macro void! Mutex.destroy(&mutex) => NativeMutex.destroy((NativeMutex*)mutex);
 macro void! Mutex.lock(&mutex) => NativeMutex.lock((NativeMutex*)mutex);
-macro void! Mutex.lock_timeout(&mutex, ulong ms) => NativeMutex.lock((NativeMutex*)mutex, ms);
+macro void! Mutex.lock_timeout(&mutex, ulong ms) => NativeMutex.lock_timeout((NativeMutex*)mutex, ms);
 macro bool Mutex.try_lock(&mutex) => NativeMutex.try_lock((NativeMutex*)mutex);
 macro void! Mutex.unlock(&mutex) => NativeMutex.unlock((NativeMutex*)mutex);
 
@@ -56,7 +56,7 @@ macro void! Thread.detach(thread) => NativeThread.detach((NativeThread)thread);
 macro int! Thread.join(thread) => NativeThread.join((NativeThread)thread);
 macro bool Thread.equals(thread, Thread other) => NativeThread.equals((NativeThread)thread, (NativeThread)other);
 
-macro void OnceFlag.call_once(&flag, OnceFn func) => NativeOnceFlag.call_once((NativeOnceFlag*)flag, func);
+macro void OnceFlag.call(&flag, OnceFn func) => NativeOnceFlag.call_once((NativeOnceFlag*)flag, func);
 
 macro void yield() => os::native_thread_yield();
 macro Thread current() => os::native_thread_current();
