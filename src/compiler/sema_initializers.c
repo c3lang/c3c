@@ -426,14 +426,16 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 			continue;
 		}
 	}
+	Type *type;
 	if (!is_structlike && is_inferred)
 	{
-		initializer->type = type_from_inferred(flattened, type_get_indexed_type(assigned), (ArraySize)(max_index + 1));
+		 type = type_from_inferred(flattened, type_get_indexed_type(assigned), (ArraySize)(max_index + 1));
 	}
 	else
 	{
-		initializer->type = assigned;
+		type = assigned;
 	}
+	initializer->type = type_add_optional(type, optional);
 	initializer->resolve_status = RESOLVE_DONE;
 	if (expr_is_constant_eval(initializer, env_eval_type(context)))
 	{

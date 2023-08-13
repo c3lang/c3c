@@ -154,6 +154,7 @@
 - Added posix socket functions.
 
 ### Fixes
+- Fix issue of designated initializers that had optional arguments.
 - Fixed ++ and -- for bitstructs.
 - Fix to bug where library source files were sometimes ignored.
 - Types of arrays and vectors are consistently checked to be valid.
