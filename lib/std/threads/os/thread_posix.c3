@@ -48,7 +48,7 @@ fn void! NativeMutex.lock(&self)
 /**
  * @require mtx.is_initialized() : "Mutex was not initialized"
  **/
-fn void! NativeMutex.lock_timeoutout(&mtx, ulong ms)
+fn void! NativeMutex.lock_timeout(&mtx, ulong ms)
 {
 	/* Try to acquire the lock and, if we fail, sleep for 5ms. */
 	Errno result;

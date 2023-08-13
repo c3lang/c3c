@@ -1,6 +1,8 @@
 import std::thread;
 import std::io;
+
 int a;
+
 fn void! testrun() @test
 {
 	Thread t;
@@ -8,6 +10,9 @@ fn void! testrun() @test
 	t.create(fn int(void* arg) { a++; return 0; }, null)!;
 	assert(t.join()! == 0);
 	assert(a == 1);
+
+	t.create(fn int(void* arg) { return 10; }, null)!;
+	assert(t.join()! == 10);
 }
 
 Mutex m;
@@ -34,9 +39,54 @@ fn void! testrun_mutex() @test
 		    return 0;
 		}, null)!;
 	}
-	foreach (i, &t : ts)
+	foreach (&t : ts)
     {
         assert(t.join()! == 0);
     }
 	assert(a == 100);
+	m.destroy()!;
+}
+
+fn void! testrun_mutex_try() @test
+{
+	Mutex m;
+	m.init()!;
+	m.lock()!;
+	assert(m.try_lock() == false);
+	m.unlock()!;
+	assert(m.try_lock() == true);
+	m.unlock()!;
+}
+
+fn void! testrun_mutex_timeout() @test
+{
+	Mutex m;
+	m.init()!;
+	m.lock()!;
+	if (catch m.lock_timeout(100))
+	{
+	}
+	else
+	{
+		assert(false, "lock_timeout should fail");
+	}
+	m.unlock()!;
+	m.lock_timeout(100)!;
+	m.unlock()!;
+}
+
+int x_once = 100;
+
+fn void call_once()
+{
+	x_once += 100;
+}
+
+fn void! testrun_once() @test
+{
+	OnceFlag once;
+	once.call(&call_once);
+	assert(x_once == 200);
+	once.call(&call_once);
+	assert(x_once == 200);
 }
