@@ -2,9 +2,9 @@ module collections::ringbuffer(<Type, SIZE>);
 
 struct RingBuffer
 {
-    Type[SIZE] buf;
-    usz written;
-    usz head;
+	Type[SIZE] buf;
+	usz written;
+	usz head;
 }
 
 fn void RingBuffer.init(&self) @inline
@@ -14,16 +14,16 @@ fn void RingBuffer.init(&self) @inline
 
 fn void RingBuffer.putc(&self, Type c)
 {
-    if (self.written < SIZE)
-    {
-	    self.buf[self.written] = c;
-    	self.written++;
-    }
-    else
-    {
-	    self.buf[self.head] = c;
-    	self.head = (self.head + 1) % SIZE;
-    }
+	if (self.written < SIZE)
+	{
+		self.buf[self.written] = c;
+		self.written++;
+	}
+	else
+	{
+		self.buf[self.head] = c;
+		self.head = (self.head + 1) % SIZE;
+	}
 }
 
 fn Type RingBuffer.getc(&self, usz index)
@@ -32,15 +32,15 @@ fn Type RingBuffer.getc(&self, usz index)
 	usz avail = SIZE - self.head;
 	if (index < avail)
 	{
-    	return self.buf[self.head + index];
+		return self.buf[self.head + index];
 	}
-    return self.buf[index - avail];
+	return self.buf[index - avail];
 }
 
 fn usz RingBuffer.get(&self, usz index, Type[] buffer)
 {
 	index %= SIZE;
-    if (self.written < SIZE)
+	if (self.written < SIZE)
 	{
 		if (index >= self.written) return 0;
 		usz end = self.written - index;
