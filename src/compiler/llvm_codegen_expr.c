@@ -5851,8 +5851,7 @@ static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type
 
 	*block_exit= &exit;
 
-
-	if (type_no_optional(type_lowered) != type_void)
+	if (type_lowered != type_void)
 	{
 		exit.block_return_out = llvm_emit_alloca_aligned(c, type_lowered, "blockret");
 	}
@@ -5890,7 +5889,7 @@ static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type
 		}
 
 		// return foo() where foo() is a void!
-		if (type_no_optional(type_flatten(ret_expr->type)) == type_void) break;
+		if (type_lowering(ret_expr->type) == type_void) break;
 
 		LLVMInstructionEraseFromParent(exit.block_return_out);
 
