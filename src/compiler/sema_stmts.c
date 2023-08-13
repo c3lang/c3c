@@ -534,10 +534,14 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 	if (!optional)
 	{
 		if (!sema_analyse_expr(context, ident)) return false;
+		// The `try foo()` case.
 		if (ident->expr_kind != EXPR_IDENTIFIER)
 		{
-			SEMA_ERROR(ident, "Only single identifiers may be unwrapped using 'try var', maybe you wanted 'try (expr)' instead?");
-			return false;
+			expr->try_unwrap_expr.optional = ident;
+			expr->try_unwrap_expr.lhs = NULL;
+			expr->try_unwrap_expr.assign_existing = true;
+			expr->type = type_bool;
+			return true;
 		}
 		Decl *decl = ident->identifier_expr.decl;
 		if (decl->decl_kind != DECL_VAR)

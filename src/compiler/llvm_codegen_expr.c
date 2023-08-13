@@ -6168,7 +6168,16 @@ static inline void llvm_emit_try_unwrap(GenContext *c, BEValue *value, Expr *exp
 	BEValue addr;
 	if (expr->try_unwrap_expr.assign_existing)
 	{
-		llvm_emit_expr(c, &addr, expr->try_unwrap_expr.lhs);
+		Expr *lhs = expr->try_unwrap_expr.lhs;
+		if (lhs)
+		{
+			llvm_emit_expr(c, &addr, lhs);
+		}
+		else
+		{
+			llvm_emit_try_assign_try_catch(c, true, value, NULL, NULL, expr->try_unwrap_expr.optional);
+			return;
+		}
 	}
 	else
 	{
