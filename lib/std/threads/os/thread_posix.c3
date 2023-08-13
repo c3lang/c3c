@@ -150,7 +150,7 @@ fn void! NativeThread.create(&thread, ThreadFn thread_fn, void* arg)
 
 fn void! NativeThread.detach(thread)
 {
-	if (!posix::pthread_detach(thread)) return ThreadFault.DETACH_FAILED?;
+	if (posix::pthread_detach(thread)) return ThreadFault.DETACH_FAILED?;
 }
 
 fn void native_thread_exit(int result)

@@ -63,10 +63,7 @@ fn void! testrun_mutex_timeout() @test
 	Mutex m;
 	m.init()!;
 	m.lock()!;
-	if (catch m.lock_timeout(100))
-	{
-	}
-	else
+	if (try m.lock_timeout(100))
 	{
 		assert(false, "lock_timeout should fail");
 	}
