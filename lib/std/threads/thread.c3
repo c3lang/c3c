@@ -1,5 +1,4 @@
 module std::thread;
-import std::thread::cpu;
 import std::thread::os;
 
 def MutexType = distinct int;
@@ -65,5 +64,3 @@ macro void exit(int result) => os::native_thread_exit(result);
 macro void! sleep(double s) @maydiscard => os::native_sleep(s);
 macro void! sleep_ms(ulong ms) @maydiscard  => os::native_sleep_ms(ms);
 macro void! sleep_ns(ulong ns) @maydiscard  => os::native_sleep_nano(ns);
-
-macro uint num_cpu() => cpu::native_cpu();
