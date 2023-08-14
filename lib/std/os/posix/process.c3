@@ -1,5 +1,6 @@
 module std::os::posix @if(env::POSIX);
 import libc;
+
 struct Posix_spawn_file_actions_t
 {
 	int __allocated;
@@ -17,6 +18,9 @@ extern fn CInt posix_spawn_file_actions_init(Posix_spawn_file_actions_t *file_ac
 extern fn CInt posix_spawn_file_actions_destroy(Posix_spawn_file_actions_t *file_actions);
 extern fn CInt posix_spawn_file_actions_addclose(Posix_spawn_file_actions_t *file_actions, CInt fd);
 extern fn CInt posix_spawn_file_actions_adddup2(Posix_spawn_file_actions_t *file_actions, CInt fd, CInt newfd);
+
+extern fn CInt get_nprocs();
+extern fn CInt get_nprocs_conf();
 
 def spawn_file_actions_init = posix_spawn_file_actions_init;
 def spawn_file_actions_destroy = posix_spawn_file_actions_destroy;

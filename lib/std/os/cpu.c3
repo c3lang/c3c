@@ -1,7 +1,7 @@
 // https://www.cprogramming.com/snippets/source-code/find-the-number-of-cpu-cores-for-windows-mac-or-linux
 
-module std::thread::cpu @if(env::DARWIN);
-import libc;
+module std::os @if(env::DARWIN);
+import std::os::macos;
 
 const CTL_UNSPEC	= 0; /* unused */
 const CTL_KERN		= 1; /* "high kernel": proc, limits */
@@ -38,32 +38,32 @@ const HW_L3SETTINGS		= 21; /* int: L3 Cache Settings */
 const HW_L3CACHESIZE	= 22; /* int: L3 Cache Size in Bytes */
 const HW_MAXID			= 23; /* number of valid hw ids */
 
-fn uint native_cpu()
+fn uint num_cpu()
 {
 	int[2] nm;
 	usz len = 4;
 	uint count;
 
 	nm = { CTL_HW, HW_NCPU };
-	libc::sysctl(&nm, 2, &count, &len, null, 0);
+	macos::sysctl(&nm, 2, &count, &len, null, 0);
 	if (count < 1) count = 1;
 	return count;
 }
 
-module std::thread::cpu @if(env::LINUX);
-import libc;
+module std::os @if(env::LINUX);
+import std::os::posix;
 
-fn uint native_cpu()
+fn uint num_cpu()
 {
-	return libc::get_nprocs_conf();
+	return posix::get_nprocs_conf();
 }
 
-module std::thread::cpu @if(env::WIN32);
-import libc;
+module std::os @if(env::WIN32);
+import std::os::win32;
 
-fn uint native_cpu()
+fn uint num_cpu()
 {
 	SystemInfo info;
-	libc::get_system_info(&info);
+	win32::get_system_info(&info);
 	return info.dwNumberOfProcessors;
 }

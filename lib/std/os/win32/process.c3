@@ -84,3 +84,25 @@ extern fn Win32_BOOL getOverlappedResult(
 	Win32_BOOL         bWait
 ) @extern("GetOverlappedResult");
 
+
+struct SystemInfo
+{
+	union {
+		uint dwOemId;
+		struct {
+			ushort wProcessorArchitecture;
+			ushort wReserved;
+		}
+	}
+	uint     dwPageSize;
+	void*    lpMinimumApplicationAddress;
+	void*    lpMaximumApplicationAddress;
+	usz      dwActiveProcessorMask;
+	uint     dwNumberOfProcessors;
+	uint     dwProcessorType;
+	uint     dwAllocationGranularity;
+	ushort   wProcessorLevel;
+	ushort   wProcessorRevision;
+}
+
+extern fn CInt get_system_info(SystemInfo*) @extern("GetSystemInfo");
