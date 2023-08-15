@@ -2,6 +2,7 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::runtime;
+import libc;
 
 struct StackTrace
 {
@@ -40,7 +41,25 @@ fn TestRunner test_runner_create()
 	};
 }
 
-import libc;
+struct TestUnit
+{
+	String name;
+	TestFn func;
+}
+
+// Sort the tests by their name in ascending order.
+fn int cmp_unit(TestUnit a, TestUnit b)
+{
+	usz an = a.name.len;
+	usz bn = b.name.len;
+	if (an > bn) @swap(a, b);
+	foreach (i, ac : a.name)
+	{
+		char bc = b.name[i];
+		if (ac != bc) return an > bn ? bc - ac : ac - bc;
+	}
+	return (int)(an - bn);
+}
 
 TestRunner* current_runner @private;
 
@@ -54,23 +73,40 @@ fn void test_panic(String message, String file, String function, uint line)
 	libc::longjmp(&current_runner.buf, 1);
 }
 
-fn bool TestRunner.run(TestRunner* runner)
+fn bool TestRunner.run(&self)
 {
-	current_runner = runner;
+	assert(self.test_names.len == self.test_fns.len);
+	TestUnit[] units = malloc(TestUnit, self.test_names.len);
+	defer free(units);
+
+	usz max_name;
+	foreach (i, name: self.test_names)
+	{
+		units[i] = { name, self.test_fns[i] };
+		max_name = max(max_name, name.len);
+	}
+	quicksort(units, &cmp_unit);
+
+	current_runner = self;
 	PanicFn old_panic = builtin::panic;
 	defer builtin::panic = old_panic;
 	builtin::panic = &test_panic;
 	int tests_passed = 0;
-	int tests = runner.test_names.len;
+	int tests = units.len;
 	io::printn("----- TESTS -----");
-	foreach(i, String name : runner.test_names)
+	DString name;
+	name.tinit();
+	foreach(unit : units)
 	{
-		io::printf("Testing %s ... ", name);
+		defer name.clear();
+		name.printf("Testing %s ", unit.name);
+		name.append_repeat('.', max_name - unit.name.len + 2);
+		io::printf("%s ", name.as_str());
 		CallstackElement* stack = $$stacktrace();
 		if (stack) stack.prev = null;
-		if (libc::setjmp(&runner.buf) == 0)
+		if (libc::setjmp(&self.buf) == 0)
 		{
-			if (catch err = runner.test_fns[i]())
+			if (catch err = unit.func())
 			{
 				io::printfn("[failed] Failed due to: %s", err);
 				continue;
@@ -79,17 +115,9 @@ fn bool TestRunner.run(TestRunner* runner)
 			tests_passed++;
 		}
 	}
-	io::printfn("\n%d test(s) run.\n", tests);
-	io::print("Test Result: ");
-	if (tests_passed < tests)
-	{
-		io::print("FAILED");
-	}
-	else
-	{
-		io::print("ok");
-	}
-	io::printfn(". %d passed, %d failed.", tests_passed, tests - tests_passed);
+	io::printfn("\n%d test%s run.\n", tests, tests > 1 ? "s" : "");
+	io::printfn("Test Result: %s. %d passed, %d failed.",
+		tests_passed < tests ? "FAILED" : "ok", tests_passed, tests - tests_passed);
 	return tests == tests_passed;
 }
 
