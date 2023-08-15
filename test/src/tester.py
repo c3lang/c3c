@@ -1,7 +1,12 @@
 #!/usr/bin/python
-import os, sys, shutil, subprocess, tempfile
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
 
 TEST_DIR = tempfile.mkdtemp().replace('\\', '/') + '/c3test/'
+
 
 class Config:
     run_skipped = False
@@ -10,12 +15,14 @@ class Config:
     numsuccess = 0
     numskipped = 0
 
+
 class File:
     def __init__(self, filepath):
         with open(filepath, encoding='utf8') as reader:
             self.content = reader.read().splitlines()
         self.filepath = filepath
         self.filename = os.path.basename(filepath)
+
 
 class TargetFile:
     def __init__(self, filepath, is_target, line_offset):
@@ -30,7 +37,8 @@ class TargetFile:
         self.filename = os.path.basename(filepath)
 
     def close(self):
-        if self.file: self.file.close()
+        if self.file:
+            self.file.close()
         self.file = None
 
     def write(self, line):
@@ -39,6 +47,7 @@ class TargetFile:
             self.file.write(b"\n")
         else:
             self.expected_lines.append(line)
+
 
 class Issues:
     def __init__(self, conf, file, single):
@@ -66,22 +75,24 @@ class Issues:
         exit(-1)
 
     def set_failed(self):
-        if not self.has_errors: print(" Failed.")
+        if not self.has_errors:
+            print(" Failed.")
         self.has_errors = True
 
-    def check_line(self, type, file, line, message):
-        map = {}
-        if type == 'Error':
-            map = self.errors
-        elif type == 'Warning':
-            map = self.warnings
+    def check_line(self, typ, file, line, message):
+        map_ = {}
+        if typ == 'Error':
+            map_ = self.errors
+        elif typ == 'Warning':
+            map_ = self.warnings
         else:
-            self.exit_error("Unknown type: " + type)
+            self.exit_error("Unknown type: " + typ)
         key = file + ":" + line
-        value = map.get(key)
-        if value == None: return False
+        value = map_.get(key)
+        if value is None:
+            return False
         if value in message:
-            del map[key]
+            del map_[key]
             return True
         else:
             return False
@@ -89,7 +100,8 @@ class Issues:
     def parse_result(self, lines):
         for line in lines:
             parts = line.split('|', maxsplit=4)
-            if len(parts) != 4: self.exit_error("Illegal error result: " + line);
+            if len(parts) != 4:
+                self.exit_error("Illegal error result: " + line)
             if not self.check_line(parts[0], parts[1], parts[2], parts[3]):
                 self.set_failed()
                 print("Unexpected " + parts[0].lower() + " in " + parts[1] + " line " + parts[2] + ":", end="")
@@ -107,18 +119,19 @@ class Issues:
         os.chdir(TEST_DIR)
         target = ""
         debug = "-g0 "
-        if (self.arch):
+        if self.arch:
             target = " --target " + self.arch
-        if (self.debuginfo):
+        if self.debuginfo:
             debug = "-g "
         opts = ""
         for opt in self.opts:
             opts += ' ' + opt
-        if (self.safe):
+        if self.safe:
             opts += " --safe"
         else:
             opts += " --fast"
-        code = subprocess.run(self.conf.compiler + target + ' -O0 ' + opts + ' ' + debug + args, universal_newlines=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        code = subprocess.run(self.conf.compiler + target + ' -O0 ' + opts + ' ' + debug + args,
+                              universal_newlines=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         os.chdir(self.conf.cwd)
         if code.returncode != 0 and code.returncode != 1:
             self.set_failed()
@@ -126,7 +139,6 @@ class Issues:
             self.has_errors = True
             return
         self.parse_result(code.stderr.splitlines(keepends=False))
-
 
     def parse_single(self):
         self.current_file = TargetFile(TEST_DIR + self.sourcefile.filename, True, 1)
@@ -139,7 +151,8 @@ class Issues:
             self.line += 1
 
         self.current_file.close()
-        print("- " + str(self.conf.numtests) + "/" + str(self.conf.numtests - self.conf.numsuccess - 1) + " " + self.sourcefile.filepath + ":", end="")
+        print("- " + str(self.conf.numtests) + "/" + str(
+            self.conf.numtests - self.conf.numsuccess - 1) + " " + self.sourcefile.filepath + ":", end="")
         self.compile("--test compile " + self.current_file.filepath)
         if not self.has_errors:
             self.conf.numsuccess += 1
@@ -147,26 +160,26 @@ class Issues:
 
     def parse_header_directive(self, line):
         line = line[4:].strip()
-        if (line.startswith("safe:")):
+        if line.startswith("safe:"):
             self.safe = line[5:].strip() == "yes"
             return
-        if (line.startswith("debuginfo:")):
+        if line.startswith("debuginfo:"):
             self.debuginfo = line[10:].strip() == "yes"
             return
-        if (line.startswith("opt:")):
+        if line.startswith("opt:"):
             self.opts.append(line[4:].strip())
             return
-        if (line.startswith("target:")):
+        if line.startswith("target:"):
             self.arch = line[7:].strip()
             return
-        if (line.startswith("file:")):
+        if line.startswith("file:"):
             if self.current_file:
                 self.current_file.close()
             line = line[5:].strip()
             self.current_file = TargetFile(TEST_DIR + line, True, -self.line)
             self.files.append(self.current_file)
             return
-        elif (line.startswith("expect:")):
+        elif line.startswith("expect:"):
             line = line[7:].strip()
             if self.current_file:
                 self.current_file.close()
@@ -178,12 +191,12 @@ class Issues:
 
     def parse_trailing_directive(self, line):
         line = line.split('// #', 2)[1].strip()
-        if (line.startswith("warning:")):
+        if line.startswith("warning:"):
             print("TODO" + line)
             exit(-1)
-        elif (line.startswith("target:")):
+        elif line.startswith("target:"):
             self.arch = line[7:].strip()
-        elif (line.startswith("error:")):
+        elif line.startswith("error:"):
             line = line[6:].strip()
             self.errors[self.current_file.filename + ":%d" % (self.line + self.current_file.line_offset)] = line
         else:
@@ -209,15 +222,16 @@ class Issues:
             self.current_file.close()
             self.current_file = None
 
-        print("- " + str(self.conf.numtests) + "/" + str(self.conf.numtests - self.conf.numsuccess - 1) + " " + self.sourcefile.filepath + ":", end="")
+        print("- " + str(self.conf.numtests) + "/" + str(
+            self.conf.numtests - self.conf.numsuccess - 1) + " " + self.sourcefile.filepath + ":", end="")
         files_to_compile = ""
         for file in self.files:
             if file.is_target:
                 files_to_compile += " " + file.filepath
 
-
         self.compile("--test compile " + files_to_compile)
-        if self.has_errors: return
+        if self.has_errors:
+            return
 
         for file in self.files:
             if not file.is_target:
@@ -249,7 +263,7 @@ class Issues:
                         current_line += 1
                         searched_line += 1
                         continue
-                    if next_line != None and next_line in lines[current_line]:
+                    if next_line is not None and next_line in lines[current_line]:
                         current_line += 1
                         searched_line += 2
                         continue
@@ -259,13 +273,16 @@ class Issues:
             print(" Passed.")
 
     def parse(self):
-        if len(self.sourcefile.content) == 0: self.exit_error("File was empty")
+        if len(self.sourcefile.content) == 0:
+            self.exit_error("File was empty")
         is_skip = self.sourcefile.content[0].startswith("// #skip")
         if is_skip != self.skip:
-            print("- " + str(self.conf.numtests) + "/" + str(self.conf.numtests - self.conf.numsuccess - 1) + " " + self.sourcefile.filepath + ": *SKIPPED*")
+            print("- " + str(self.conf.numtests) + "/" + str(
+                self.conf.numtests - self.conf.numsuccess - 1) + " " + self.sourcefile.filepath + ": *SKIPPED*")
             self.conf.numskipped += 1
             return
-        if is_skip: self.line += 1
+        if is_skip:
+            self.line += 1
         if self.single:
             self.parse_single()
         else:
@@ -273,11 +290,12 @@ class Issues:
 
 
 def usage():
-    print("Usage: " + sys.argv[0] +  " <compiler path> <file/dir> [-s]")
+    print("Usage: " + sys.argv[0] + " <compiler path> <file/dir> [-s]")
     print('')
     print('Options:')
     print("  -s, --skipped       only run skipped tests")
     exit(-1)
+
 
 def handle_file(filepath, conf):
     if filepath.endswith('.c3'):
@@ -288,13 +306,12 @@ def handle_file(filepath, conf):
         return
 
     shutil.rmtree(TEST_DIR, ignore_errors=True)
-    os.mkdir(TEST_DIR, mode = 0o777)
+    os.mkdir(TEST_DIR, mode=0o777)
 
     conf.numtests += 1
 
     issues = Issues(conf, File(filepath), single)
     issues.parse()
-
 
 
 def handle_dir(filepath, conf):
@@ -305,19 +322,23 @@ def handle_dir(filepath, conf):
         elif os.path.isfile(file):
             handle_file(file, conf)
 
+
 def main():
     args = len(sys.argv)
     conf = Config()
-    if args < 3 or args > 4: usage()
+    if args < 3 or args > 4:
+        usage()
     conf.compiler = os.getcwd() + "/" + sys.argv[1]
     if not os.path.isfile(conf.compiler):
         print("Error: Invalid path to compiler: " + conf.compiler)
         usage()
     if args == 4:
-        if (sys.argv[3] != '-s' and sys.argv[3] != '--skipped'): usage()
+        if sys.argv[3] != '-s' and sys.argv[3] != '--skipped':
+            usage()
         conf.run_skipped = True
     filepath = sys.argv[2]
-    if filepath.endswith('/'): filepath = filepath[:-1]
+    if filepath.endswith('/'):
+        filepath = filepath[:-1]
     conf.cwd = os.getcwd()
     if os.path.isfile(filepath):
         handle_file(filepath, conf)
@@ -327,9 +348,12 @@ def main():
         print("Error: Invalid path to tests: " + filepath)
         usage()
 
-    print("Found %d tests: %.1f%% (%d / %d) passed (%d skipped)." % (conf.numtests, 100 * conf.numsuccess / max(1, conf.numtests - conf.numskipped), conf.numsuccess, conf.numtests - conf.numskipped, conf.numskipped))
-    if (conf.numsuccess != conf.numtests - conf.numskipped):
+    print("Found %d tests: %.1f%% (%d / %d) passed (%d skipped)." % (
+        conf.numtests, 100 * conf.numsuccess / max(1, conf.numtests - conf.numskipped), conf.numsuccess,
+        conf.numtests - conf.numskipped, conf.numskipped))
+    if conf.numsuccess != conf.numtests - conf.numskipped:
         exit(-1)
     exit(0)
+
 
 main()
