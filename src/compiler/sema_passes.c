@@ -63,7 +63,7 @@ void sema_analysis_pass_process_imports(Module *module)
 {
 	DEBUG_LOG("Pass: Importing dependencies for files in module '%s'.", module->name->module);
 
-	unsigned import_count = 0;
+	unsigned total_import_count = 0;
 	VECEACH(module->units, index)
 	{
 		// 1. Loop through each context in the module.
@@ -71,17 +71,29 @@ void sema_analysis_pass_process_imports(Module *module)
 		DEBUG_LOG("Checking imports for %s.", unit->file->name);
 
 		// 2. Loop through imports
-		unsigned imports = vec_size(unit->imports);
+		Decl **imports = unit->imports;
+		unsigned import_count = vec_size(imports);
 
-		for (unsigned i = 0; i < imports; i++)
+		for (unsigned i = 0; i < import_count; i++)
 		{
 			// 3. Begin analysis
-			Decl *import = unit->imports[i];
+			Decl *import = imports[i];
 			assert(import->resolve_status == RESOLVE_NOT_DONE);
 			import->resolve_status = RESOLVE_RUNNING;
-
 			// 4. Find the module.
 			Path *path = import->import.path;
+
+			for (unsigned j = 0; j < i; j++)
+			{
+				if (imports[j]->import.path->module == path->module)
+				{
+					SEMA_ERROR(import, "Module '%s' imported more than once, please remove one.", path->module);
+					SEMA_NOTE(imports[j], "The previous one was here.");
+					decl_poison(import);
+					goto NEXT;
+				}
+			}
+
 			Module *import_module = global_context_find_module(path->module);
 
 			// 5. Do we find it?
@@ -103,11 +115,12 @@ void sema_analysis_pass_process_imports(Module *module)
 			// 7. Assign the module.
 			DEBUG_LOG("* Import of %s.", path->module);
 			import->import.module = import_module;
+NEXT:;
 		}
-		import_count += imports;
+		total_import_count += import_count;
 	}
-	(void)import_count; // workaround for clang 13.0
-	DEBUG_LOG("Pass finished processing %d import(s) with %d error(s).", import_count, global_context.errors_found);
+	(void)total_import_count; // workaround for clang 13.0
+	DEBUG_LOG("Pass finished processing %d import(s) with %d error(s).", total_import_count, global_context.errors_found);
 }
 
 INLINE void register_global_decls(CompilationUnit *unit, Decl **decls)
