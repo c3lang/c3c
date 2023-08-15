@@ -133,24 +133,19 @@ fn Time DateTime.to_time(&self) @inline
 	return self.time;
 }
 
-fn bool DateTime.after(&self, DateTime compare)
+fn bool DateTime.after(&self, DateTime compare) @inline
 {
 	return self.time > compare.time;
 }
 
-fn bool DateTime.before(&self, DateTime compare)
+fn bool DateTime.before(&self, DateTime compare) @inline
 {
 	return self.time < compare.time;
 }
 
 fn int DateTime.compare_to(&self, DateTime compare)
 {
-	switch
-	{
-		case self.time > compare.time: return 1;
-		case self.time < compare.time: return -1;
-		default: return 0;
-	}
+	return compare_to(self.time, compare.time);
 }
 
 fn int DateTime.diff_years(&self, DateTime from)
