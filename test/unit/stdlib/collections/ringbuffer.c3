@@ -1,5 +1,5 @@
 module ringbuffer_test @test;
-import collections::ringbuffer;
+import std::collections::ringbuffer;
 import std::io;
 
 def Buffer = RingBuffer(<char, 4>);

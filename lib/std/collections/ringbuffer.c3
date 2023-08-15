@@ -1,4 +1,4 @@
-module collections::ringbuffer(<Type, SIZE>);
+module std::collections::ringbuffer(<Type, SIZE>);
 
 struct RingBuffer
 {
