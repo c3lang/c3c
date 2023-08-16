@@ -6,7 +6,7 @@ fn void! copy_map() @test
 {
 	TrackingAllocator alloc;
 	alloc.init(mem::heap());
-	io::printfn("Heap mem: %d", alloc.allocated());
+	assert(alloc.allocated() == 0);
     mem::@scoped(&alloc)
 	{
 		HashMap(<String, int>) x;

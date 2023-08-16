@@ -61,7 +61,7 @@ fn void! testrun_mutex_try() @test
 fn void! testrun_mutex_timeout() @test
 {
 	Mutex m;
-	m.init()!;
+	m.init(thread::MUTEX_TIMED)!;
 	m.lock()!;
 	if (try m.lock_timeout(100))
 	{

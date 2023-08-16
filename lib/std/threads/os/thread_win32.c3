@@ -102,7 +102,12 @@ fn void! NativeMutex.lock_timeout(&mtx, usz ms)
 	}
 	if (!mtx.recursive)
 	{
-		while (mtx.already_locked) win32::sleep(1);
+		usz left_timeout = ms - 1;
+		while (mtx.already_locked)
+		{
+			if (left_timeout-- == 0) return ThreadFault.LOCK_TIMEOUT?;
+			win32::sleep(1);
+		}
 		mtx.already_locked = true;
 	}
 }
