@@ -464,20 +464,22 @@ static void llvm_emit_stacktrace_definitions(GenContext *c)
 	c->builder = NULL;
 }
 
-void llvm_emit_pop_stacktrace(GenContext *c, LLVMValueRef *slot)
+void llvm_emit_pop_stacktrace(GenContext *c, Stacktrace *slot)
 {
 	if (!c->debug.enable_stacktrace) return;
 	if (slot)
 	{
 		c->debug.stacktrace = *slot;
 	}
-	llvm_store_to_ptr_raw_aligned(c, c->debug.current_stack_ptr, c->debug.stacktrace, type_alloca_alignment(type_voidptr));
+	llvm_store_to_ptr_raw_aligned(c, c->debug.current_stack_ptr, c->debug.stacktrace.ref, type_alloca_alignment(type_voidptr));
 }
 void llvm_emit_update_stack_row(GenContext *c, uint32_t row)
 {
 	if (!c->debug.enable_stacktrace) return;
-	LLVMValueRef row_ptr = LLVMBuildStructGEP2(c->builder, c->debug.stack_type, c->debug.stacktrace, 4, ".$row");
-	llvm_store_to_ptr_raw_aligned(c, row_ptr, llvm_const_int(c, type_uint, row ? row : 1), type_abi_alignment(type_uint));
+	if (row == 0) row = 1;
+	if (c->debug.stacktrace.last_row == row) return;
+	c->debug.stacktrace.last_row = row;
+	llvm_store_to_ptr_raw_aligned(c, c->debug.stacktrace.row, llvm_const_int(c, type_uint, row), type_abi_alignment(type_uint));
 
 }
 void llvm_emit_push_stacktrace(GenContext *c, Decl *decl, const char *function_name, StacktraceType type)
@@ -498,21 +500,21 @@ void llvm_emit_push_stacktrace(GenContext *c, Decl *decl, const char *function_n
 	                       file_name, llvm_const_int(c, type_usz, file_name_len),
 	                       llvm_const_int(c, type_uint, type),
 	                       llvm_const_int(c, type_uint, decl->span.row)};
-	LLVMBuildCall2(c->builder, c->debug.stack_init_fn_type, c->debug.stack_init_fn, args, 7, "");
-
+	LLVMValueRef call = LLVMBuildCall2(c->builder, c->debug.stack_init_fn_type, c->debug.stack_init_fn, args, 7, "");
+	llvm_attribute_add_call(c, call, attribute_id.alwaysinline, -1, 0);
 	if (type == ST_FUNCTION && (function_name == kw_main || function_name == kw_mainstub))
 	{
 		AlignSize align_size;
 		LLVMValueRef last = llvm_emit_struct_gep_raw(c, stacktrace, slot_type, 0, alignment, &align_size);
 		llvm_store_to_ptr_raw_aligned(c, last, LLVMConstNull(c->ptr_type), align_size);
 	}
-	c->debug.stacktrace = stacktrace;
+	LLVMValueRef row_ptr = LLVMBuildStructGEP2(c->builder, c->debug.stack_type, stacktrace, 4, ".$row");
+	c->debug.stacktrace = (Stacktrace) { .row = row_ptr, .ref = stacktrace, .last_row = ~(uint32_t)0 };
 }
 
 
-void
-llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *prototype, Signature *signature, Ast *body,
-               Decl *decl, StacktraceType type)
+void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *prototype,
+					Signature *signature, Ast *body, Decl *decl, StacktraceType type)
 {
 	bool emit_debug = llvm_use_debug(c);
 	LLVMValueRef prev_function = c->function;

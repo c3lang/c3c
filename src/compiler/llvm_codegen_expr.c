@@ -29,7 +29,7 @@ static inline void llvm_emit_initializer_list_expr(GenContext *c, BEValue *value
 static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr *expr);
 static inline void llvm_emit_post_inc_dec(GenContext *c, BEValue *value, Expr *expr, int diff);
 static inline void llvm_emit_pre_inc_dec(GenContext *c, BEValue *value, Expr *expr, int diff);
-static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type *type, AstId current, BlockExit **block_exit, LLVMValueRef *old_stack_trace);
+static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type *type, AstId current, BlockExit **block_exit, Stacktrace *old_stack_trace);
 static inline void llvm_emit_subscript_addr_with_base(GenContext *c, BEValue *result, BEValue *parent, BEValue *index, SourceSpan loc);
 static inline void llvm_emit_try_unwrap(GenContext *c, BEValue *value, Expr *expr);
 static inline void llvm_emit_any(GenContext *c, BEValue *value, Expr *expr);
@@ -5799,7 +5799,7 @@ static inline void llvm_emit_expression_list_expr(GenContext *c, BEValue *be_val
 	}
 }
 
-static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type *type, AstId current, BlockExit **block_exit, LLVMValueRef *old_stack_trace)
+static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type *type, AstId current, BlockExit **block_exit, Stacktrace *old_stack_trace)
 {
 	Type *type_lowered = type_lowering(type);
 
@@ -5994,7 +5994,7 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 	FOREACH_END();
 
 	bool restore_at_exit = false;
-	LLVMValueRef old_stack_trace;
+	Stacktrace old_stack_trace;
 	if (llvm_use_debug(c))
 	{
 		llvm_debug_push_lexical_scope(c, astptr(expr->macro_block.first_stmt)->span);
@@ -6003,7 +6003,6 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 			restore_at_exit = true;
 			llvm_emit_update_stack_row(c, expr->span.row);
 			Decl *macro = expr->macro_block.macro;
-			Module *macro_module = macro->unit->module;
 			old_stack_trace = c->debug.stacktrace;
 			llvm_emit_push_stacktrace(c, macro, macro->name, ST_MACRO);
 		}

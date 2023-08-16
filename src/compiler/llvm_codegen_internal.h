@@ -63,6 +63,13 @@ typedef enum
 
 typedef struct
 {
+	uint32_t last_row;
+	LLVMValueRef row;
+	LLVMValueRef ref;
+} Stacktrace;
+
+typedef struct
+{
 	unsigned runtime_version : 8;
 	bool enable_stacktrace : 1;
 	LLVMDIBuilderRef builder;
@@ -77,7 +84,7 @@ typedef struct
 	LLVMValueRef stack_init_fn;
 	LLVMTypeRef stack_init_fn_type;
 	LLVMTypeRef stack_type;
-	LLVMValueRef stacktrace;
+	Stacktrace stacktrace;
 } DebugContext;
 
 
@@ -521,9 +528,8 @@ void llvm_emit_debug_parameter(GenContext *c, Decl *parameter, unsigned index);
 void llvm_emit_debug_local_var(GenContext *c, Decl *var);
 void llvm_emit_debug_global_var(GenContext *c, Decl *global);
 void llvm_emit_update_stack_row(GenContext *c, uint32_t row);
-void llvm_emit_pop_stacktrace(GenContext *c, LLVMValueRef *slot);
-void
-llvm_emit_push_stacktrace(GenContext *c, Decl *decl, const char *function_name, StacktraceType type);
+void llvm_emit_pop_stacktrace(GenContext *c, Stacktrace *slot);
+void llvm_emit_push_stacktrace(GenContext *c, Decl *decl, const char *function_name, StacktraceType type);
 
 #define EMIT_LOC(c, x) do { if (c->debug.builder) llvm_emit_debug_location(c, x->span); } while (0);
 
