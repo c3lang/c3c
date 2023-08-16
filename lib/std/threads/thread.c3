@@ -8,6 +8,9 @@ const MutexType MUTEX_TIMED = 1;
 const MutexType MUTEX_RECURSIVE = 2;
 
 def Mutex = distinct NativeMutex;
+def TimedMutex = distinct inline Mutex;
+def RecursiveMutex = distinct inline Mutex;
+def TimedRecursiveMutex = distinct inline Mutex;
 def ConditionVariable = distinct NativeConditionVariable;
 def Thread = distinct NativeThread;
 def OnceFlag = distinct NativeOnceFlag;
@@ -30,10 +33,14 @@ fault ThreadFault
 	INTERRUPTED,
 }
 
-macro void! Mutex.init(&mutex, MutexType type = MUTEX_PLAIN) => NativeMutex.init((NativeMutex*)mutex, type);
+macro void! Mutex.init(&mutex) => NativeMutex.init((NativeMutex*)mutex, MUTEX_PLAIN);
+macro void! TimedMutex.init(&mutex) => NativeMutex.init((NativeMutex*)mutex, MUTEX_TIMED);
+macro void! RecursiveMutex.init(&mutex) => NativeMutex.init((NativeMutex*)mutex, MUTEX_RECURSIVE);
+macro void! TimedRecursiveMutex.init(&mutex) => NativeMutex.init((NativeMutex*)mutex, MUTEX_TIMED | MUTEX_RECURSIVE);
 macro void! Mutex.destroy(&mutex) => NativeMutex.destroy((NativeMutex*)mutex);
 macro void! Mutex.lock(&mutex) => NativeMutex.lock((NativeMutex*)mutex);
-macro void! Mutex.lock_timeout(&mutex, ulong ms) => NativeMutex.lock_timeout((NativeMutex*)mutex, ms);
+macro void! TimedMutex.lock_timeout(&mutex, ulong ms) => NativeMutex.lock_timeout((NativeMutex*)mutex, ms);
+macro void! TimedRecursiveMutex.lock_timeout(&mutex, ulong ms) => NativeMutex.lock_timeout((NativeMutex*)mutex, ms);
 macro bool Mutex.try_lock(&mutex) => NativeMutex.try_lock((NativeMutex*)mutex);
 macro void! Mutex.unlock(&mutex) => NativeMutex.unlock((NativeMutex*)mutex);
 

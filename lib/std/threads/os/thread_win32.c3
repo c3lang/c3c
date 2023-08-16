@@ -10,6 +10,8 @@ struct NativeMutex
 		Win32_CRITICAL_SECTION critical_section;
 		Win32_HANDLE handle;
 	}
+	// Size is less than a Win32_HANDLE so due to alignment
+	// there is no benefit to pack these into a bitstruct.
 	bool already_locked;
 	bool recursive;
 	bool timed;
@@ -102,7 +104,16 @@ fn void! NativeMutex.lock_timeout(&mtx, usz ms)
 	}
 	if (!mtx.recursive)
 	{
-		while (mtx.already_locked) win32::sleep(1);
+		usz left_timeout = ms - 1;
+		while (mtx.already_locked)
+		{
+			if (left_timeout-- == 0)
+			{
+				win32::releaseMutex(mtx.handle);
+				return ThreadFault.LOCK_TIMEOUT?;
+			}
+			win32::sleep(1);
+		}
 		mtx.already_locked = true;
 	}
 }
@@ -118,8 +129,14 @@ fn bool NativeMutex.try_lock(&mtx)
 	{
 		if (mtx.already_locked)
 		{
-			assert(!mtx.timed);
-			win32::leaveCriticalSection(&mtx.critical_section);
+			if (mtx.timed)
+			{
+				win32::releaseMutex(mtx.handle);
+			}
+			else
+			{
+				win32::leaveCriticalSection(&mtx.critical_section);
+			}
 			return false;
 		}
 		mtx.already_locked = true;
