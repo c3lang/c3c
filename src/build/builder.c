@@ -106,7 +106,7 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 			target->single_module = true;
 			FALLTHROUGH;
 		case OPT_SETTING_O1:
-			target->optimization_level = OPTIMIZATION_LESS;
+			target->optimization_level = OPTIMIZATION_DEFAULT;
 			target->size_optimization_level = SIZE_OPTIMIZATION_NONE;
 			target->feature.safe_mode = false;
 			break;
@@ -114,7 +114,7 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 			target->single_module = true;
 			FALLTHROUGH;
 		case OPT_SETTING_O2:
-			target->optimization_level = OPTIMIZATION_DEFAULT;
+			target->optimization_level = OPTIMIZATION_MORE;
 			target->size_optimization_level = SIZE_OPTIMIZATION_NONE;
 			target->feature.safe_mode = false;
 			break;
@@ -130,7 +130,7 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 			target->single_module = true;
 			FALLTHROUGH;
 		case OPT_SETTING_OSMALL:
-			target->optimization_level = OPTIMIZATION_DEFAULT;
+			target->optimization_level = OPTIMIZATION_MORE;
 			target->size_optimization_level = SIZE_OPTIMIZATION_SMALL;
 			target->feature.safe_mode = false;
 			break;
@@ -138,7 +138,7 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 			target->single_module = true;
 			FALLTHROUGH;
 		case OPT_SETTING_OTINY:
-			target->optimization_level = OPTIMIZATION_DEFAULT;
+			target->optimization_level = OPTIMIZATION_MORE;
 			target->size_optimization_level = SIZE_OPTIMIZATION_TINY;
 			target->feature.safe_mode = false;
 			break;

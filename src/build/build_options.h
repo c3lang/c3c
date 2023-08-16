@@ -111,8 +111,8 @@ typedef enum
 {
 	OPTIMIZATION_NOT_SET = -1,
 	OPTIMIZATION_NONE = 0,          // -O0
-	OPTIMIZATION_LESS = 1,          // -O1
-	OPTIMIZATION_DEFAULT = 2,       // -O2
+	OPTIMIZATION_DEFAULT = 1,       // -O1
+	OPTIMIZATION_MORE = 2,          // -O2
 	OPTIMIZATION_AGGRESSIVE = 3,    // -O3
 } OptimizationLevel;
 

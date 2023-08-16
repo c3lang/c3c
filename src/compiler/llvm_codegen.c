@@ -839,10 +839,10 @@ static inline void llvm_optimize(GenContext *c)
 			break;
 		case OPTIMIZATION_NOT_SET:
 		case OPTIMIZATION_DEFAULT:
-			if (!passes) passes = "default<O2>";
-			break;
-		case OPTIMIZATION_LESS:
 			if (!passes) passes = "default<O1>";
+			break;
+		case OPTIMIZATION_MORE:
+			if (!passes) passes = "default<O2>";
 			break;
 		case OPTIMIZATION_AGGRESSIVE:
 			if (!passes) passes = "default<O3>";

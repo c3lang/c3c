@@ -1739,10 +1739,8 @@ void target_setup(BuildTarget *target)
 			level = LLVMCodeGenLevelAggressive;
 			break;
 		case OPTIMIZATION_DEFAULT:
+		case OPTIMIZATION_MORE:
 			level = LLVMCodeGenLevelDefault;
-			break;
-		case OPTIMIZATION_LESS:
-			level = LLVMCodeGenLevelLess;
 			break;
 		case OPTIMIZATION_NONE:
 			level = LLVMCodeGenLevelNone;
