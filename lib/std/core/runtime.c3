@@ -26,26 +26,29 @@ struct SubArrayContainer
 
 def TestFn = fn void!();
 
-struct TestRunner
-{
-	String[] test_names;
-	TestFn[] test_fns;
-	JmpBuf buf;
-}
-
-fn TestRunner test_runner_create()
-{
-	return TestRunner {
-		.test_fns = $$TEST_FNS,
-		.test_names = $$TEST_NAMES,
-	};
-}
-
 struct TestUnit
 {
 	String name;
 	TestFn func;
 }
+
+fn TestUnit[] test_collection_create(Allocator* using = mem::heap())
+{
+	TestFn[] fns = $$TEST_FNS;
+	String[] names = $$TEST_NAMES;
+	TestUnit[] tests = malloc(TestUnit, names.len, .using = using);
+	foreach (i, test : fns)
+	{
+		tests[i] = { names[i], fns[i] };
+	}
+	return tests;
+}
+
+struct TestContext
+{
+	JmpBuf buf;
+}
+
 
 // Sort the tests by their name in ascending order.
 fn int cmp_unit(TestUnit a, TestUnit b)
@@ -61,7 +64,7 @@ fn int cmp_unit(TestUnit a, TestUnit b)
 	return (int)(an - bn);
 }
 
-TestRunner* current_runner @private;
+TestContext* test_context @private;
 
 fn void test_panic(String message, String file, String function, uint line)
 {
@@ -70,33 +73,35 @@ fn void test_panic(String message, String file, String function, uint line)
 	io::print(message);
 	io::printn();
 	io::printfn("  - in %s %s:%s.\n", function, file, line);
-	libc::longjmp(&current_runner.buf, 1);
+	libc::longjmp(&test_context.buf, 1);
 }
 
-fn bool TestRunner.run(&self)
+fn bool run_tests(TestUnit[] tests)
 {
-	assert(self.test_names.len == self.test_fns.len);
-	TestUnit[] units = malloc(TestUnit, self.test_names.len);
-	defer free(units);
-
 	usz max_name;
-	foreach (i, name: self.test_names)
+	foreach (&unit : tests)
 	{
-		units[i] = { name, self.test_fns[i] };
-		max_name = max(max_name, name.len);
+		if (max_name < unit.name.len) max_name = unit.name.len;
 	}
-	quicksort(units, &cmp_unit);
+	quicksort(tests, &cmp_unit);
 
-	current_runner = self;
+	TestContext context;
+	test_context = &context;
+
 	PanicFn old_panic = builtin::panic;
 	defer builtin::panic = old_panic;
 	builtin::panic = &test_panic;
 	int tests_passed = 0;
-	int tests = units.len;
-	io::printn("----- TESTS -----");
+	int test_count = tests.len;
 	DString name;
 	name.tinit();
-	foreach(unit : units)
+	usz len = max_name + 9;
+	name.append_repeat('-', len / 2);
+	name.append(" TESTS ");
+	name.append_repeat('-', len - len / 2);
+	io::printn(name);
+	name.clear();
+	foreach(unit : tests)
 	{
 		defer name.clear();
 		name.printf("Testing %s ", unit.name);
@@ -104,7 +109,7 @@ fn bool TestRunner.run(&self)
 		io::printf("%s ", name.as_str());
 		CallstackElement* stack = $$stacktrace();
 		if (stack) stack.prev = null;
-		if (libc::setjmp(&self.buf) == 0)
+		if (libc::setjmp(&context.buf) == 0)
 		{
 			if (catch err = unit.func())
 			{
@@ -115,15 +120,18 @@ fn bool TestRunner.run(&self)
 			tests_passed++;
 		}
 	}
-	io::printfn("\n%d test%s run.\n", tests, tests > 1 ? "s" : "");
+	io::printfn("\n%d test%s run.\n", test_count, test_count > 1 ? "s" : "");
 	io::printfn("Test Result: %s. %d passed, %d failed.",
-		tests_passed < tests ? "FAILED" : "ok", tests_passed, tests - tests_passed);
-	return tests == tests_passed;
+		tests_passed < test_count ? "FAILED" : "ok", tests_passed, test_count - tests_passed);
+	return test_count == tests_passed;
 }
 
 fn bool __run_default_test_runner()
 {
-	return test_runner_create().run();
+	@pool()
+	{
+		return run_tests(test_collection_create(mem::temp()));
+	};
 }
 
 
