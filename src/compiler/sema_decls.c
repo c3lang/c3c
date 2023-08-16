@@ -1025,13 +1025,12 @@ static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl)
 		SEMA_ERROR(decl, "You cannot create a distinct type from an optional.");
 		return false;
 	}
-	Type *base = type_flatten(info->type);
+	Type *base = info->type->canonical;
 	decl->distinct_decl.base_type = base;
 	switch (base->type_kind)
 	{
 		case TYPE_FUNC:
 		case TYPE_TYPEDEF:
-		case TYPE_DISTINCT:
 		case CT_TYPES:
 		case TYPE_FLEXIBLE_ARRAY:
 			UNREACHABLE
@@ -1059,6 +1058,7 @@ static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl)
 		case TYPE_ARRAY:
 		case TYPE_SUBARRAY:
 		case TYPE_VECTOR:
+		case TYPE_DISTINCT:
 			break;
 	}
 	// Do we need anything else?

@@ -21,7 +21,7 @@ fn void! testrun_mutex() @test
 {
 	Thread[100] ts;
 	a = 0;
-	m.init(thread::MUTEX_PLAIN)!;
+	m.init()!;
 	foreach (&t : ts)
 	{
 		t.create(fn int(void* arg) {
@@ -60,8 +60,8 @@ fn void! testrun_mutex_try() @test
 
 fn void! testrun_mutex_timeout() @test
 {
-	Mutex m;
-	m.init(thread::MUTEX_TIMED)!;
+	TimedMutex m;
+	m.init()!;
 	m.lock()!;
 	if (try m.lock_timeout(100))
 	{
