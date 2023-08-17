@@ -141,7 +141,7 @@ fn void! Formatter.out_substr(&self, String str) @private
 	usz l = conv::utf8_codepoints(str);
 	uint prec = self.prec;
 	if (self.flags.precision && l < prec) l = prec;
-	self.right_adjust(' ')!;
+	self.right_adjust(l)!;
 	usz index = 0;
 	usz chars = str.len;
 	char* ptr = str.ptr;

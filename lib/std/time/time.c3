@@ -85,3 +85,70 @@ fn double NanoDuration.to_sec(nd) => (double)nd / 1_000_000_000.0;
 fn long NanoDuration.to_ms(nd) => (long)nd / 1_000_000;
 fn TimeDuration NanoDuration.to_duration(nd) => (TimeDuration)nd / 1_000;
 fn NanoDuration TimeDuration.to_nano(td) => (NanoDuration)td * 1_000;
+
+fn void! NanoDuration.to_format(&self, Formatter* formatter) @dynamic
+{
+	NanoDuration nd = *self;
+	if (nd == 0)
+	{
+		formatter.printf("0s")!;
+		return;
+	}
+
+	bool neg = nd < 0;
+	if (neg) nd = -nd;
+
+	DString str;
+	str.tinit();
+	if (nd < 1_000_000_000)
+	{
+		// Less than 1s: print milliseconds, microseconds and nanoseconds.
+		NanoDuration ms = nd / 1_000_000;
+		if (ms > 0)
+		{
+			str.printf("%dms", ms);
+			nd -= ms * 1_000_000;
+		}
+		NanoDuration us = nd / 1000;
+		if (us > 0)
+		{
+			str.printf("%dµs", us);
+			nd -= us * 1000;
+		}
+		if (nd > 0)
+		{
+			str.printf("%dns", nd);
+		}
+	}
+	else
+	{
+		// More than 1s: print hours, minutes and seconds.
+		NanoDuration ms = (nd - nd / 1_000_000_000 * 1_000_000_000) / 1_000_000;
+
+		nd /= 1_000_000_000;
+		NanoDuration hour = nd / 3600;
+		if (hour > 0)
+		{
+			str.printf("%dh", hour);
+			nd -= hour * 3600;
+		}
+		NanoDuration min = nd / 60;
+		if (min > 0)
+		{
+			str.printf("%dm", min);
+			nd -= min * 60;
+		}
+		NanoDuration sec = nd;
+		if (ms > 0)
+		{
+			// Ignore trailing zeroes.
+			while (ms / 10 * 10 == ms) ms /= 10;
+			str.printf("%d.%ds", sec, ms);
+		}
+		else
+		{
+			str.printf("%ds", sec);
+		}
+	}
+	formatter.printf(str.as_str())!;
+}
