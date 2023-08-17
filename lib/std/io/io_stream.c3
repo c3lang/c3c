@@ -46,6 +46,8 @@ fn bool Stream.supports_read_from(s) @inline => (bool)s.fns.read_stream_fn;
 fn bool Stream.supports_write_to(s) @inline => (bool)s.fns.write_stream_fn;
 fn bool Stream.supports_pushback_byte(s) @inline => s.fns.pushback_byte_fn || s.fns.seek_fn;
 fn bool Stream.supports_write(s) @inline => s.fns.write_fn || s.fns.write_byte_fn;
+fn bool Stream.supports_read_byte(s) @inline => (bool)s.fns.read_byte_fn;
+fn bool Stream.supports_write_byte(s) @inline => (bool)s.fns.write_byte_fn;
 
 fn void! Stream.destroy(self) @inline @maydiscard
 {
@@ -124,6 +126,13 @@ fn usz! Stream.read_all(self, char[] buffer) @inline
 {
 	usz n = self.read(buffer)!;
 	if (n != buffer.len) return IoError.UNEXPECTED_EOF?;
+	return n;
+}
+
+fn usz! Stream.write_all(self, char[] buffer) @inline
+{
+	usz n = self.write(buffer)!;
+	if (n != buffer.len) return IoError.INCOMPLETE_WRITE?;
 	return n;
 }
 
