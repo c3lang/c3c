@@ -272,7 +272,7 @@ static void sema_unwrappable_from_catch_in_else(SemaContext *c, Expr *cond)
 
 static inline bool assert_create_from_contract(SemaContext *context, Ast *directive, AstId **asserts, SourceSpan evaluation_location)
 {
-	Expr *declexpr = directive->contract.contract.decl_exprs;
+	Expr *declexpr = directive->contract_stmt.contract.decl_exprs;
 	assert(declexpr->expr_kind == EXPR_EXPRESSION_LIST);
 
 	Expr **exprs = declexpr->expression_list;
@@ -286,8 +286,8 @@ static inline bool assert_create_from_contract(SemaContext *context, Ast *direct
 		}
 		if (!sema_analyse_cond_expr(context, expr)) return false;
 
-		const char *comment = directive->contract.contract.comment;
-		if (!comment) comment = directive->contract.contract.expr_string;
+		const char *comment = directive->contract_stmt.contract.comment;
+		if (!comment) comment = directive->contract_stmt.contract.expr_string;
 		if (expr_is_const(expr))
 		{
 			assert(expr->const_expr.const_kind == CONST_BOOL);
@@ -500,7 +500,7 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 		while (doc_directive)
 		{
 			Ast *directive = astptr(doc_directive);
-			if (directive->contract.kind == CONTRACT_ENSURE)
+			if (directive->contract_stmt.kind == CONTRACT_ENSURE)
 			{
 				if (!assert_create_from_contract(context, directive, &append_id, statement->span)) return false;
 			}
@@ -1641,11 +1641,12 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 
 		if (then->ast_kind == AST_IF_CATCH_SWITCH_STMT)
 		{
-			Decl *label = statement->if_stmt.flow.label;
-			then->switch_stmt.flow.label = label;
-			statement->if_stmt.flow.label = NULL;
+			DeclId label_id = statement->if_stmt.flow.label;
+			then->switch_stmt.flow.label = label_id;
+			statement->if_stmt.flow.label = 0;
+			Decl *label = declptrzero(label_id);
 			if (label) label->label.parent = astid(then);
-			SCOPE_START_WITH_LABEL(statement->if_stmt.flow.label);
+			SCOPE_START_WITH_LABEL(label_id);
 				success = success && sema_analyse_switch_stmt(context, then);
 				then_jump = context->active_scope.jump_end;
 			SCOPE_END;
@@ -2460,17 +2461,15 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 		expressions = collection->const_expr.untyped_list;
 		count = vec_size(expressions);
 	}
-	Decl *index = NULL;
-	const char *index_name = statement->ct_foreach_stmt.index_name;
+	Decl *index = declptrzero(statement->ct_foreach_stmt.index);
 
 	AstId start = 0;
-	if (index_name)
+	if (index)
 	{
-		index = decl_new_var(index_name, statement->ct_foreach_stmt.index_span, NULL, VARDECL_LOCAL_CT);
 		index->type = type_int;
 		if (!sema_add_local(context, index)) goto FAILED;
 	}
-	Decl *value = decl_new_var(statement->ct_foreach_stmt.value_name, statement->ct_foreach_stmt.value_span, NULL, VARDECL_LOCAL_CT);
+	Decl *value = declptr(statement->ct_foreach_stmt.value);
 	if (!sema_add_local(context, value)) goto FAILED;
 	// Get the body
 	Ast *body = astptr(statement->ct_foreach_stmt.body);
@@ -2849,7 +2848,7 @@ static bool sema_analyse_require(SemaContext *context, Ast *directive, AstId **a
 
 static bool sema_analyse_ensure(SemaContext *context, Ast *directive)
 {
-	Expr *declexpr = directive->contract.contract.decl_exprs;
+	Expr *declexpr = directive->contract_stmt.contract.decl_exprs;
 	assert(declexpr->expr_kind == EXPR_EXPRESSION_LIST);
 
 	VECEACH(declexpr->expression_list, j)
@@ -2868,7 +2867,7 @@ static bool sema_analyse_optional_returns(SemaContext *context, Ast *directive)
 {
 	Ast **returns = NULL;
 	context->call_env.opt_returns = NULL;
-	FOREACH_BEGIN(Ast *ret, directive->contract.faults)
+	FOREACH_BEGIN(Ast *ret, directive->contract_stmt.faults)
 		if (ret->contract_fault.resolved) continue;
 		TypeInfo *type_info = ret->contract_fault.type;
 		const char *ident = ret->contract_fault.ident;
@@ -2903,7 +2902,7 @@ NEXT:;
 
 bool sema_analyse_checked(SemaContext *context, Ast *directive, SourceSpan span)
 {
-	Expr *declexpr = directive->contract.contract.decl_exprs;
+	Expr *declexpr = directive->contract_stmt.contract.decl_exprs;
 	bool success = true;
 	bool suppress_error = global_context.suppress_errors;
 	global_context.suppress_errors = true;
@@ -2914,10 +2913,10 @@ bool sema_analyse_checked(SemaContext *context, Ast *directive, SourceSpan span)
 		{
 			Expr *expr = declexpr->cond_expr[j];
 			if (sema_analyse_expr(context, expr)) continue;
-			const char *comment = directive->contract.contract.comment;
+			const char *comment = directive->contract_stmt.contract.comment;
 			global_context.suppress_errors = suppress_error;
 			sema_error_at(span.row == 0 ? expr->span : span, "Contraint failed: %s",
-						  comment ? comment : directive->contract.contract.expr_string);
+						  comment ? comment : directive->contract_stmt.contract.expr_string);
 			success = false;
 			goto END;
 		}
@@ -2942,7 +2941,7 @@ bool sema_analyse_contracts(SemaContext *context, AstId doc, AstId **asserts, So
 	while (doc)
 	{
 		Ast *directive = astptr(doc);
-		switch (directive->contract.kind)
+		switch (directive->contract_stmt.kind)
 		{
 			case CONTRACT_UNKNOWN:
 			case CONTRACT_PURE:

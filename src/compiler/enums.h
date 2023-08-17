@@ -267,6 +267,7 @@ typedef enum
 	EXPR_ANY,
 	EXPR_ANYSWITCH,
 	EXPR_VASPLAT,
+	EXPR_MACRO_BODY,
 } ExprKind;
 
 typedef enum

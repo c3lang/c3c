@@ -79,18 +79,18 @@ Expr **copy_expr_list(CopyStruct *c, Expr **expr_list)
 	return result;
 }
 
-static inline Decl *decl_copy_label_from_macro(CopyStruct *c, Decl *to_copy, Ast *ast)
+static inline DeclId decl_copy_label_from_macro(CopyStruct *c, DeclId to_copy, Ast *ast)
 {
-	if (!to_copy) return NULL;
-	to_copy = copy_decl(c, to_copy);
-	to_copy->label.parent = astid(ast);
-	return to_copy;
+	if (!to_copy) return (DeclId)0;
+	Decl *copy = copy_decl(c, declptr(to_copy));
+	copy->label.parent = astid(ast);
+	return declid(copy);
 }
 
 
 static inline void copy_flow(CopyStruct *c, Ast *ast)
 {
-	ast->flow.label = decl_copy_label_from_macro(c, ast->flow.label, ast);
+	ast->flow.label = decl_copy_label_from_macro(c,ast->flow.label, ast);
 }
 
 static TypeInfo** type_info_copy_list_from_macro(CopyStruct *c, TypeInfo **to_copy)
@@ -309,6 +309,10 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			MACRO_COPY_DECL_LIST(expr->body_expansion_expr.declarations);
 			MACRO_COPY_ASTID(expr->body_expansion_expr.first_stmt);
 			return expr;
+		case EXPR_MACRO_BODY:
+			MACRO_COPY_AST(expr->macro_body_expr.body);
+			MACRO_COPY_DECL_LIST(expr->macro_body_expr.body_arguments);
+			return expr;
 		case EXPR_LAMBDA:
 			if (copy_struct.is_template)
 			{
@@ -481,8 +485,7 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 
 				MACRO_COPY_EXPRID(expr->call_expr.function);
 			}
-			MACRO_COPY_ASTID(expr->call_expr.body);
-			MACRO_COPY_DECL_LIST(expr->call_expr.body_arguments);
+			MACRO_COPY_EXPRID(expr->call_expr.macro_body);
 			MACRO_COPY_EXPR_LIST(expr->call_expr.arguments);
 			if (expr->call_expr.varargs)
 			{
@@ -574,7 +577,7 @@ RETRY:
 			}
 			break;
 		case AST_CONTRACT:
-			doc_ast_copy(c, &source->contract);
+			doc_ast_copy(c, &source->contract_stmt);
 			break;
 		case AST_ASM_BLOCK_STMT:
 			if (ast->asm_block_stmt.is_string)
@@ -623,6 +626,8 @@ RETRY:
 			MACRO_COPY_ASTID(ast->ct_else_stmt);
 			break;
 		case AST_CT_FOREACH_STMT:
+			MACRO_COPY_DECLID(ast->ct_foreach_stmt.index);
+			MACRO_COPY_DECLID(ast->ct_foreach_stmt.value);
 			MACRO_COPY_ASTID(ast->ct_foreach_stmt.body);
 			MACRO_COPY_EXPRID(ast->ct_foreach_stmt.expr);
 			break;

@@ -34,7 +34,7 @@ void generic_context_release_locals_list(Decl **);
 AstId context_get_defers(SemaContext *context, AstId defer_top, AstId defer_bottom, bool is_success);
 void context_pop_defers(SemaContext *context, AstId *next);
 void context_pop_defers_and_replace_ast(SemaContext *context, Ast *ast);
-void context_change_scope_for_label(SemaContext *context, Decl *label);
+void context_change_scope_for_label(SemaContext *context, DeclId label);
 void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags);
 SemaContext *context_transform_for_eval(SemaContext *context, SemaContext *temp_context, CompilationUnit *eval_unit);
 

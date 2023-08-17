@@ -36,7 +36,7 @@
 #endif
 
 
-uint16_t *win_utf8to16(const char *value)
+uint16_t *win_utf8to16(const char *value UNUSED)
 {
 #if (_MSC_VER)
 	size_t len = strlen(value);
@@ -57,7 +57,7 @@ uint16_t *win_utf8to16(const char *value)
 }
 
 #include <wchar.h>
-char *win_utf16to8(const uint16_t *wname)
+char *win_utf16to8(const uint16_t *wname UNUSED)
 {
 #if (_MSC_VER)
 	size_t len = wcslen(wname);

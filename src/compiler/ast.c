@@ -54,7 +54,6 @@ Decl *decl_new_with_type(const char *name, SourceSpan loc, DeclKind decl_type)
 		case DECL_FNTYPE:
 		case DECL_FUNC:
 			UNREACHABLE
-			break;
 		case DECL_UNION:
 			kind = TYPE_UNION;
 			break;

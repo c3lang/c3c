@@ -92,7 +92,7 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 			// The error case
 			assert(right->const_kind == left->const_kind);
 			Decl *right_decl = right->enum_err_val;
-			// Non matching cannot be compared.
+			// Non-matching cannot be compared.
 			if (right_decl->type != left_decl->type) return false;
 			int64_t right_ordinal = right->enum_err_val->enum_constant.ordinal;
 			switch (op)

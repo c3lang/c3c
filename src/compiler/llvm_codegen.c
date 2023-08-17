@@ -1471,9 +1471,6 @@ AlignSize llvm_abi_alignment(GenContext *c, LLVMTypeRef type)
 	return (AlignSize)LLVMABIAlignmentOfType(c->target_data, type);
 }
 
-
-
-
 LLVMValueRef llvm_emit_memcpy(GenContext *c, LLVMValueRef dest, unsigned dest_align, LLVMValueRef source, unsigned src_align, uint64_t len)
 {
 	assert(dest_align && src_align);
@@ -1490,8 +1487,6 @@ void llvm_emit_memcpy_to_decl(GenContext *c, Decl *decl, LLVMValueRef source, un
 	assert(!decl->is_value);
 	llvm_emit_memcpy(c, decl->backend_ref, decl->alignment, source, source_alignment, type_size(decl->type));
 }
-
-
 
 TypeSize llvm_store_size(GenContext *c, LLVMTypeRef type)
 {

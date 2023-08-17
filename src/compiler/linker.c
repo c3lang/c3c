@@ -20,7 +20,7 @@ extern bool llvm_link_elf(const char **args, int arg_count, const char **error_s
 extern bool llvm_link_macho(const char **args, int arg_count, const char **error_string);
 extern bool llvm_link_coff(const char **args, int arg_count, const char **error_string);
 extern bool llvm_link_wasm(const char **args, int arg_count, const char **error_string);
-extern bool llvm_link_mingw(const char **args, int arg_count, const char **error_string);
+extern UNUSED bool llvm_link_mingw(const char **args, int arg_count, const char **error_string);
 extern bool llvm_ar(const char *out_name, const char **args, size_t count, int ArFormat);
 
 

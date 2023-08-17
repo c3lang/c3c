@@ -211,9 +211,7 @@ static int get_executable_path_raw(char *out, int capacity, int *dirname_length)
 
 #include <mach-o/dyld.h>
 #include <limits.h>
-#include <stdlib.h>
 #include <string.h>
-#include <dlfcn.h>
 
 #include "lib.h"
 

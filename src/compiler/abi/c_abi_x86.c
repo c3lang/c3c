@@ -318,7 +318,7 @@ static bool x86_try_put_primitive_in_reg(CallABI call, Regs *regs, Type *type)
 /**
  * Handle the vector/regcalls with HVAs.
  */
-static inline ABIArgInfo *x86_classify_homogenous_aggregate(Regs *regs, Type *type, unsigned elements, bool is_vec_call)
+UNUSED static inline ABIArgInfo *x86_classify_homogenous_aggregate(Regs *regs, Type *type, unsigned elements, bool is_vec_call)
 {
 	// We now know it's a float/double or a vector,
 	// since only those are valid for x86
@@ -353,8 +353,6 @@ static inline ABIArgInfo *x86_classify_homogenous_aggregate(Regs *regs, Type *ty
 
 static inline ABIArgInfo *x86_classify_vector(Regs *regs, Type *type)
 {
-	ByteSize size = type_size(type);
-
 	// MMX passed as i64
 	if (x86_is_mmxtype(type))
 	{

@@ -48,12 +48,13 @@ void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags)
 	}
 }
 
-void context_change_scope_for_label(SemaContext *context, Decl *label)
+void context_change_scope_for_label(SemaContext *context, DeclId label_id)
 {
 	context_change_scope_with_flags(context, SCOPE_NONE);
 
-	if (label)
+	if (label_id)
 	{
+		Decl *label = declptr(label_id);
 		label->label.defer = context->active_scope.defer_last;
 		sema_add_local(context, label);
 		label->label.scope_defer = astid(context->active_scope.in_defer);
@@ -314,7 +315,7 @@ void sema_analysis_run(void)
 	// Set a maximum of symbols in the std_module and test module
 	htable_init(&global_context.std_module.symbols, 0x1000);
 
-	// Setup the func prototype hash map
+	// Set up the func prototype hash map
 	type_func_prototype_init(0x10000);
 
 	// Do we have zero modules?

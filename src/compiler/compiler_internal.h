@@ -769,6 +769,12 @@ typedef struct
 
 typedef struct
 {
+	union
+	{
+		ExprId function;
+		DeclId func_ref;
+	};
+	ExprId macro_body;
 	bool is_type_method : 1;
 	bool is_pointer_call : 1;
 	bool splat_vararg : 1;
@@ -781,20 +787,19 @@ typedef struct
 	bool is_dynamic_dispatch : 1;
 	bool has_optional_arg : 1;
 	bool must_use : 1;
-	AstId body;
-	union
-	{
-		ExprId function;
-		DeclId func_ref;
-	};
 	Expr **arguments;
 	union
 	{
 		Expr **varargs;
 		Expr *splat;
 	};
-	Decl **body_arguments;
 } ExprCall;
+
+typedef struct
+{
+	Ast *body;
+	Decl **body_arguments;
+} ExprMacroBody;
 
 typedef struct
 {
@@ -1137,28 +1142,28 @@ struct Expr_
 	ResolveStatus resolve_status : 4;
 	union {
 		Range vasplat_expr;
-		ExprTypeidInfo typeid_info_expr;
-		ExprAnySwitch any_switch;           // 32
+		ExprTypeidInfo typeid_info_expr;            // 8
+		ExprAnySwitch any_switch;                   // 32
 		ExprCast cast_expr;                         // 12
-		ExprAny any_expr;
+		ExprAny any_expr;                           // 8
 		ExprPointerOffset pointer_offset_expr;
-		ExprAsmArg expr_asm_arg;
-		OperatorOverload overload_expr;
+		ExprAsmArg expr_asm_arg;                    // 24
+		OperatorOverload overload_expr;             // 4
 		TypeInfo *type_expr;                        // 8
 		ExprConst const_expr;                       // 32
 		ExprGuard rethrow_expr;                     // 16
 		Decl *decl_expr;                            // 8
-		Decl *lambda_expr;
+		Decl *lambda_expr;                          // 8
 		ExprSliceAssign slice_assign_expr;          // 8
 		ExprBinary binary_expr;                     // 12
 		ExprTernary ternary_expr;                   // 16
 		ExprUnary unary_expr;                       // 16
 		Expr** try_unwrap_chain_expr;               // 8
 		ExprTryUnwrap try_unwrap_expr;              // 24
-		ExprCall call_expr;                         // 32
+		ExprCall call_expr;                         // 40
 		Expr *inner_expr;                           // 8
-		ExprEmbedExpr embed_expr;
-		ExprBuiltinAccess builtin_access_expr;
+		ExprEmbedExpr embed_expr;                   // 16
+		ExprBuiltinAccess builtin_access_expr;      // 8
 		ExprGenericIdent generic_ident_expr;
 		ExprCatchUnwrap catch_unwrap_expr;          // 24
 		ExprSubscript subscript_expr;               // 12
@@ -1183,11 +1188,12 @@ struct Expr_
 		Expr** cond_expr;                           // 8
 		ExprBuiltin builtin_expr;                   // 16
 		BuiltinDefine test_hook_expr;
+		ExprMacroBody macro_body_expr;              // 16;
 	};
 };
 //static_assert(sizeof(ExprConst) == 32, "Not expected size");
 
-//static_assert(sizeof(Expr) == 56, "Expr not expected size");
+static_assert(sizeof(Expr) == 56, "Expr not expected size");
 
 typedef struct
 {
@@ -1205,11 +1211,11 @@ typedef struct
 
 typedef struct
 {
+	DeclId label;
 	bool has_break : 1;
 	bool no_exit : 1;
 	bool skip_first : 1;
 	bool if_chain : 1;
-	Decl *label;
 } FlowCommon;
 
 
@@ -1328,10 +1334,8 @@ typedef struct
 
 typedef struct
 {
-	const char *index_name;
-	const char *value_name;
-	SourceSpan index_span;
-	SourceSpan value_span;
+	DeclId index;
+	DeclId value;
 	AstId body;
 	ExprId expr;
 } AstCtForeachStmt;
@@ -1423,7 +1427,6 @@ typedef struct
 
 typedef struct AstDocDirective_
 {
-	SourceSpan span;
 	ContractKind kind : 4;
 	union
 	{
@@ -1478,13 +1481,14 @@ typedef struct Ast_
 		AstId ct_else_stmt;                 // 4
 		AstCtForeachStmt ct_foreach_stmt;   // 40
 		AstAssertStmt assert_stmt;          // 16
-		AstContractStmt contract;
-		AstDocFault contract_fault;
+		AstContractStmt contract_stmt;      // 32
+		AstDocFault contract_fault;         // 24
 	};
 } Ast;
 
+
 //static_assert(sizeof(AstContinueBreakStmt) == 24, "Ooops");
-//static_assert(sizeof(Ast) == 56, "Not expected size on 64 bit");
+static_assert(sizeof(Ast) == 48, "Not expected size on 64 bit");
 
 typedef struct Module_
 {
@@ -3132,6 +3136,7 @@ const char *arch_to_linker_arch(ArchType arch);
 #define ASSIGN_TYPE_OR_RET(_assign, _type_stmt, _res) TypeInfo* TEMP(_type) = (_type_stmt); if (!type_info_ok(TEMP(_type))) return _res; _assign = TEMP(_type)
 #define ASSIGN_TYPEID_OR_RET(_assign, _type_stmt, _res) TypeInfo* TEMP(_type) = (_type_stmt); if (!type_info_ok(TEMP(_type))) return _res; _assign = type_infoid(TEMP(_type))
 #define ASSIGN_DECL_OR_RET(_assign, _decl_stmt, _res) Decl* TEMP(_decl) = (_decl_stmt); if (!decl_ok(TEMP(_decl))) return _res; _assign = TEMP(_decl)
+#define ASSIGN_DECLID_OR_RET(_assign, _decl_stmt, _res) Decl* TEMP(_decl) = (_decl_stmt); if (!decl_ok(TEMP(_decl))) return _res; _assign = TEMP(_decl) ? declid(TEMP(_decl)) : 0
 
 
 

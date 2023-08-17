@@ -515,6 +515,7 @@ static bool sema_binary_is_expr_lvalue(Expr *top_expr, Expr *expr)
 		case EXPR_VASPLAT:
 		case EXPR_TEST_HOOK:
 		case EXPR_GENERIC_IDENT:
+		case EXPR_MACRO_BODY:
 			goto ERR;
 	}
 	UNREACHABLE
@@ -627,6 +628,7 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_VASPLAT:
 		case EXPR_TEST_HOOK:
 		case EXPR_GENERIC_IDENT:
+		case EXPR_MACRO_BODY:
 			return false;
 	}
 	UNREACHABLE
@@ -1125,7 +1127,8 @@ static inline int sema_call_find_index_of_named_parameter(SemaContext *context, 
 
 static inline bool sema_call_check_invalid_body_arguments(SemaContext *context, Expr *call, CalledDecl *callee)
 {
-	Decl **body_arguments = call->call_expr.body_arguments;
+	Expr *macro_body = exprptrzero(call->call_expr.macro_body);
+	Decl **body_arguments = macro_body ? macro_body->macro_body_expr.body_arguments : NULL;
 	bool has_body_arguments = vec_size(body_arguments) > 0;
 
 	// 1. Check if there are body arguments but no actual block.
@@ -1143,7 +1146,7 @@ static inline bool sema_call_check_invalid_body_arguments(SemaContext *context, 
 	}
 
 	// 2. If there is a body then...
-	if (call->call_expr.body)
+	if (macro_body && macro_body->macro_body_expr.body)
 	{
 		// 2a. If not a macro then this is an error.
 		if (!callee->macro)
@@ -1170,7 +1173,7 @@ static inline bool sema_call_check_invalid_body_arguments(SemaContext *context, 
 		return false;
 	}
 
-	// 4. No body and no block parameter, this is fine.
+	// 4. No "body" and no block parameter, this is fine.
 	return true;
 }
 
@@ -1841,7 +1844,8 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		has_optional_arg = has_optional_arg || IS_OPTIONAL(args[i]);
 	}
 
-	Decl **body_params = call_expr->call_expr.body_arguments;
+	Expr *macro_body = exprptrzero(call_expr->call_expr.macro_body);
+	Decl **body_params = macro_body ? macro_body->macro_body_expr.body_arguments : NULL;
 	unsigned body_params_count = vec_size(body_params);
 	Decl **macro_body_params = decl->func_decl.body_param ? declptr(decl->func_decl.body_param)->body_params : NULL;
 	unsigned expected_body_params = vec_size(macro_body_params);
@@ -1859,7 +1863,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	{
 		Decl *body_param = macro_body_params[i];
 		assert(body_param->resolve_status == RESOLVE_DONE);
-		Decl *body_arg = call_expr->call_expr.body_arguments[i];
+		Decl *body_arg = body_params[i];
 		if (!body_arg->var.type_info)
 		{
 			SEMA_ERROR(body_arg, "Expected a type parameter before this variable name.");
@@ -1907,8 +1911,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 
 	macro_context.inlining_span = context->current_macro ? context->inlining_span : call_expr->span;
 	macro_context.current_macro = decl;
-	AstId body_id = call_expr->call_expr.body;
-	macro_context.yield_body = body_id ? astptr(body_id) : NULL;
+	macro_context.yield_body = macro_body ? macro_body->macro_body_expr.body : NULL;
 	macro_context.yield_params = body_params;
 	macro_context.yield_context = context;
 	macro_context.macro_varargs = call_expr->call_expr.varargs;
@@ -2073,7 +2076,8 @@ static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *c
 	assert(body_param);
 
 	ExprCall *call_expr = &call->call_expr;
-	if (vec_size(call_expr->body_arguments))
+	Expr *macro_body = exprptrzero(call_expr->macro_body);
+	if (macro_body && vec_size(macro_body->macro_body_expr.body_arguments))
 	{
 		SEMA_ERROR(call, "Nested expansion is not possible.");
 		return false;
@@ -7696,6 +7700,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 		case EXPR_OPERATOR_CHARS:
 		case EXPR_TEST_HOOK:
 		case EXPR_SWIZZLE:
+		case EXPR_MACRO_BODY:
 			UNREACHABLE
 		case EXPR_EMBED:
 			return sema_expr_analyse_embed(context, expr, false);

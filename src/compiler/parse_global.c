@@ -246,7 +246,7 @@ bool parse_module(ParseContext *c, AstId contracts)
 			Ast *current = astptr(contracts);
 			contracts = current->next;
 			assert(current->ast_kind == AST_CONTRACT);
-			switch (current->contract.kind)
+			switch (current->contract_stmt.kind)
 			{
 				case CONTRACT_UNKNOWN:
 				case CONTRACT_PURE:
@@ -2385,10 +2385,10 @@ INLINE void append_docs(AstId **next, AstId *first, Ast *new_doc)
 static inline bool parse_doc_contract(ParseContext *c, AstId *docs, AstId **docs_next, ContractKind kind)
 {
 	Ast *ast = ast_new_curr(c, AST_CONTRACT);
-	ast->contract.kind = kind;
+	ast->contract_stmt.kind = kind;
 	const char *start = c->lexer.data.lex_start;
 	advance(c);
-	ASSIGN_EXPR_OR_RET(ast->contract.contract.decl_exprs, parse_expression_list(c, kind == CONTRACT_CHECKED), false);
+	ASSIGN_EXPR_OR_RET(ast->contract_stmt.contract.decl_exprs, parse_expression_list(c, kind == CONTRACT_CHECKED), false);
 	const char *end = start + 1;
 	while (end[0] != '\n' && end[0] != '\0') end++;
 	if (end > c->data.lex_start) end = c->data.lex_start;
@@ -2421,13 +2421,13 @@ static inline bool parse_doc_contract(ParseContext *c, AstId *docs, AstId **docs
 		scratch_buffer_append(": '");
 		scratch_buffer_append(symstr(c));
 		scratch_buffer_append("'.");
-		ast->contract.contract.comment = scratch_buffer_copy();
+		ast->contract_stmt.contract.comment = scratch_buffer_copy();
 		advance(c);
 	}
 	else
 	{
 		scratch_buffer_append(".");
-		ast->contract.contract.expr_string = scratch_buffer_copy();
+		ast->contract_stmt.contract.expr_string = scratch_buffer_copy();
 	}
 	append_docs(docs_next, docs, ast);
 	return true;
@@ -2440,7 +2440,7 @@ static inline bool parse_doc_contract(ParseContext *c, AstId *docs, AstId **docs
 static inline bool parse_contract_param(ParseContext *c, AstId *docs, AstId **docs_next)
 {
 	Ast *ast = ast_new_curr(c, AST_CONTRACT);
-	ast->contract.kind = CONTRACT_PARAM;
+	ast->contract_stmt.kind = CONTRACT_PARAM;
 	advance(c);
 
 	// [inout] [in] [out]
@@ -2486,10 +2486,10 @@ static inline bool parse_contract_param(ParseContext *c, AstId *docs, AstId **do
 			SEMA_ERROR_HERE("Expected a parameter name here.");
 			return false;
 	}
-	ast->contract.param.name = symstr(c);
-	ast->contract.param.span = c->span;
-	ast->contract.param.modifier = mod;
-	ast->contract.param.by_ref = is_ref;
+	ast->contract_stmt.param.name = symstr(c);
+	ast->contract_stmt.param.span = c->span;
+	ast->contract_stmt.param.modifier = mod;
+	ast->contract_stmt.param.by_ref = is_ref;
 	advance(c);
 	if (try_consume(c, TOKEN_COLON))
 	{
@@ -2509,7 +2509,7 @@ static inline bool parse_doc_optreturn(ParseContext *c, AstId *docs, AstId **doc
 	Ast *ast = ast_new_curr(c, AST_CONTRACT);
 	ast->span = c->prev_span;
 	advance_and_verify(c, TOKEN_BANG);
-	ast->contract.kind = CONTRACT_OPTIONALS;
+	ast->contract_stmt.kind = CONTRACT_OPTIONALS;
 	while (1)
 	{
 		Ast *ret = ast_new_curr(c, AST_CONTRACT_FAULT);
@@ -2531,7 +2531,7 @@ static inline bool parse_doc_optreturn(ParseContext *c, AstId *docs, AstId **doc
 	RANGE_EXTEND_PREV(ast);
 	// Just ignore our potential string:
 	(void)try_consume(c, TOKEN_STRING);
-	ast->contract.faults = returns;
+	ast->contract_stmt.faults = returns;
 	append_docs(docs_next, docs, ast);
 	return true;
 }
@@ -2594,7 +2594,7 @@ static bool parse_contracts(ParseContext *c, AstId *contracts_ref)
 				else if (name == kw_at_pure)
 				{
 					Ast *ast = ast_new_curr(c, AST_CONTRACT);
-					ast->contract.kind = CONTRACT_PURE;
+					ast->contract_stmt.kind = CONTRACT_PURE;
 					append_docs(next, contracts_ref, ast);
 					advance(c);
 					break;

@@ -153,7 +153,7 @@ static Decl *sema_find_decl_in_imports(Decl **imports, NameResolve *name_resolve
 		{
 			if (!path)
 			{
-				// Prefer already found builtin over new found no builtin
+				// Prefer already found builtin over newly found non-builtin
 				if (decl->is_autoimport && !found->is_autoimport) continue;
 				// Prefer new builtin over non-builtin
 				if (found->is_autoimport && !decl->is_autoimport)

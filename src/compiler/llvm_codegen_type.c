@@ -506,7 +506,6 @@ static LLVMValueRef llvm_get_introspection_for_enum(GenContext *c, Type *type)
 	bool obfuscate = decl->obfuscate;
 	for (unsigned i = 0; i < elements; i++)
 	{
-		BEValue value;
 		const char *name = enum_vals[i]->name;
 		scratch_buffer_clear();
 		scratch_buffer_append(".enum.");
@@ -587,7 +586,6 @@ static LLVMValueRef llvm_get_introspection_for_fault(GenContext *c, Type *type)
 	Decl **fault_vals = decl->enums.values;
 	unsigned elements = vec_size(fault_vals);
 	LLVMValueRef ref = llvm_generate_temp_introspection_global(c, type);
-	AlignSize store_align;
 	for (unsigned i = 0; i < elements; i++)
 	{
 		scratch_buffer_clear();

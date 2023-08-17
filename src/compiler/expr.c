@@ -124,6 +124,7 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_LAMBDA:
 		case EXPR_GENERIC_IDENT:
 		case EXPR_EMBED:
+		case EXPR_MACRO_BODY:
 			return false;
 	}
 	UNREACHABLE
@@ -319,6 +320,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_ASM:
 		case EXPR_SUBSCRIPT_ASSIGN:
 		case EXPR_GENERIC_IDENT:
+		case EXPR_MACRO_BODY:
 			UNREACHABLE
 		case EXPR_NOP:
 			return true;
@@ -658,6 +660,7 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_CT_DEFINED:
 		case EXPR_LAMBDA:
 		case EXPR_EMBED:
+		case EXPR_MACRO_BODY:
 			return true;
 		case EXPR_VASPLAT:
 			return true;

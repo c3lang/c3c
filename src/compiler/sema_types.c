@@ -295,7 +295,6 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 INLINE bool sema_resolve_evaltype(SemaContext *context, TypeInfo *type_info, bool is_pointee)
 {
 	Expr *expr = type_info->unresolved_type_expr;
-	TokenType type;
 	Expr *inner = sema_ct_eval_expr(context, "$evaltype", expr, true);
 	if (!inner) return type_info_poison(type_info);
 	if (inner->expr_kind != EXPR_TYPEINFO)

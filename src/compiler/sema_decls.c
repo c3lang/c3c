@@ -2088,7 +2088,7 @@ static inline bool sema_analyse_doc_header(AstId doc, Decl **params, Decl **extr
 	{
 		Ast *directive = astptr(doc);
 		doc = directive->next;
-		ContractKind directive_kind = directive->contract.kind;
+		ContractKind directive_kind = directive->contract_stmt.kind;
 		if (directive_kind == CONTRACT_PURE)
 		{
 			if (*pure_ref)
@@ -2100,7 +2100,7 @@ static inline bool sema_analyse_doc_header(AstId doc, Decl **params, Decl **extr
 			continue;
 		}
 		if (directive_kind != CONTRACT_PARAM) continue;
-		const char *param_name = directive->contract.param.name;
+		const char *param_name = directive->contract_stmt.param.name;
 		Decl *extra_param = NULL;
 		Decl *param = NULL;
 		VECEACH(params, j)
@@ -2113,13 +2113,13 @@ static inline bool sema_analyse_doc_header(AstId doc, Decl **params, Decl **extr
 			param = extra_params[j];
 			if (param->name == param_name) goto NEXT;
 		}
-		SEMA_ERROR(&directive->contract.param, "There is no parameter '%s', did you misspell it?", param_name);
+		SEMA_ERROR(&directive->contract_stmt.param, "There is no parameter '%s', did you misspell it?", param_name);
 		return false;
 	NEXT:;
 		Type *type = param->type;
 		if (type) type = type_flatten(type);
 		bool may_be_pointer = !type || type_is_pointer(type);
-		if (directive->contract.param.by_ref)
+		if (directive->contract_stmt.param.by_ref)
 		{
 			if (!may_be_pointer)
 			{
@@ -2128,7 +2128,7 @@ static inline bool sema_analyse_doc_header(AstId doc, Decl **params, Decl **extr
 			}
 			param->var.not_null = true;
 		}
-		switch (directive->contract.param.modifier)
+		switch (directive->contract_stmt.param.modifier)
 		{
 			case PARAM_ANY:
 				goto ADDED;
@@ -3219,27 +3219,27 @@ static bool sema_analyse_generic_module_contracts(SemaContext *c, Module *module
 		assert(ast->ast_kind == AST_CONTRACT);
 		SemaContext temp_context;
 
-		assert(ast->contract.kind == CONTRACT_CHECKED || ast->contract.kind == CONTRACT_REQUIRE);
+		assert(ast->contract_stmt.kind == CONTRACT_CHECKED || ast->contract_stmt.kind == CONTRACT_REQUIRE);
 		SemaContext *new_context = context_transform_for_eval(c, &temp_context, module->units[0]);
-		if (ast->contract.kind == CONTRACT_CHECKED)
+		if (ast->contract_stmt.kind == CONTRACT_CHECKED)
 		{
 			if (!sema_analyse_checked(new_context, ast, error_span)) return false;
 		}
 		else
 		{
-			FOREACH_BEGIN(Expr *expr, ast->contract.contract.decl_exprs->expression_list)
+			FOREACH_BEGIN(Expr *expr, ast->contract_stmt.contract.decl_exprs->expression_list)
 				int res = sema_check_comp_time_bool(new_context, expr);
 				if (res == -1) return false;
 				if (res) continue;
-				if (ast->contract.contract.comment)
+				if (ast->contract_stmt.contract.comment)
 				{
 					sema_error_at(error_span,
 								  "Parameter(s) would violate constraint: %s.",
-								  ast->contract.contract.comment);
+								  ast->contract_stmt.contract.comment);
 				}
 				else
 				{
-					sema_error_at(error_span, "Parameter(s) failed validation: %s", ast->contract.contract.expr_string);
+					sema_error_at(error_span, "Parameter(s) failed validation: %s", ast->contract_stmt.contract.expr_string);
 				}
 				return false;
 			FOREACH_END();

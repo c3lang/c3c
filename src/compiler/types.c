@@ -1917,7 +1917,7 @@ static inline Type *type_find_max_ptr_type(Type *type, Type *other)
 		return type_get_ptr(max_type);
 	}
 
-	// Neither subarray, vararray or pointer? Then no max
+	// Neither subarray, vararray nor pointer? Then no max
 	if (other->type_kind != TYPE_POINTER) return NULL;
 
 	Type* other_pointer_type = other->pointer;

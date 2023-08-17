@@ -72,7 +72,6 @@ void gencontext_begin_module(GenContext *c)
 
 	static const char *pic_level = "PIC Level";
 	static const char *pie_level = "PIE Level";
-	LLVMMetadataRef setting;
 	switch (active_target.reloc_model)
 	{
 		case RELOC_BIG_PIE:
@@ -222,7 +221,7 @@ void gencontext_init_file_emit(GenContext *c, CompilationUnit *unit)
 }
 
 
-void gencontext_end_file_emit(GenContext *c, CompilationUnit *ast)
+void gencontext_end_file_emit(GenContext *c UNUSED, CompilationUnit *ast UNUSED)
 {
 }
 

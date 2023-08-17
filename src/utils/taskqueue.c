@@ -16,7 +16,6 @@ typedef struct TaskQueue_
 static void *taskqueue_thread(void *data)
 {
 	TaskQueue *task_queue = data;
-	bool is_active = false;
 	while (1)
 	{
 		pthread_mutex_lock(&task_queue->lock);

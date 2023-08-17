@@ -96,7 +96,7 @@ static inline bool abi_type_is_valid(AbiType type)
 }
 
 
-static inline bool abi_type_is_promotable_integer_or_bool(AbiType type)
+UNUSED static inline bool abi_type_is_promotable_integer_or_bool(AbiType type)
 {
 	if (abi_type_is_type(type))
 	{

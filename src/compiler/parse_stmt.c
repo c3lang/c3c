@@ -425,7 +425,7 @@ static inline Ast* parse_do_stmt(ParseContext *c)
 	advance_and_verify(c, TOKEN_DO);
 
 	do_ast->flow.skip_first = true;
-	ASSIGN_DECL_OR_RET(do_ast->for_stmt.flow.label, parse_optional_label(c, do_ast), poisoned_ast);
+	ASSIGN_DECLID_OR_RET(do_ast->for_stmt.flow.label, parse_optional_label(c, do_ast), poisoned_ast);
 	ASSIGN_ASTID_OR_RET(do_ast->for_stmt.body, parse_stmt(c), poisoned_ast);
 
 	if (try_consume(c, TOKEN_EOS))
@@ -492,7 +492,7 @@ static inline Ast* parse_while_stmt(ParseContext *c)
 	Ast *while_ast = new_ast(AST_FOR_STMT, c->span);
 	advance_and_verify(c, TOKEN_WHILE);
 
-	ASSIGN_DECL_OR_RET(while_ast->for_stmt.flow.label, parse_optional_label(c, while_ast), poisoned_ast);
+	ASSIGN_DECLID_OR_RET(while_ast->for_stmt.flow.label, parse_optional_label(c, while_ast), poisoned_ast);
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_ast);
 	ASSIGN_EXPRID_OR_RET(while_ast->for_stmt.cond, parse_cond(c), poisoned_ast);
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_ast);
@@ -518,7 +518,7 @@ static inline Ast* parse_if_stmt(ParseContext *c)
 {
 	Ast *if_ast = new_ast(AST_IF_STMT, c->span);
 	advance_and_verify(c, TOKEN_IF);
-	ASSIGN_DECL_OR_RET(if_ast->if_stmt.flow.label, parse_optional_label(c, if_ast), poisoned_ast);
+	ASSIGN_DECLID_OR_RET(if_ast->if_stmt.flow.label, parse_optional_label(c, if_ast), poisoned_ast);
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_ast);
 	ASSIGN_EXPRID_OR_RET(if_ast->if_stmt.cond, parse_cond(c), poisoned_ast);
 	unsigned row = c->span.row;
@@ -640,7 +640,7 @@ static inline Ast* parse_switch_stmt(ParseContext *c)
 {
 	Ast *switch_ast = new_ast(AST_SWITCH_STMT, c->span);
 	advance_and_verify(c, TOKEN_SWITCH);
-	ASSIGN_DECL_OR_RET(switch_ast->switch_stmt.flow.label, parse_optional_label(c, switch_ast), poisoned_ast);
+	ASSIGN_DECLID_OR_RET(switch_ast->switch_stmt.flow.label, parse_optional_label(c, switch_ast), poisoned_ast);
 	if (!try_consume(c, TOKEN_LPAREN))
 	{
 		switch_ast->switch_stmt.cond = 0;
@@ -665,7 +665,7 @@ static inline Ast* parse_for_stmt(ParseContext *c)
 	advance_and_verify(c, TOKEN_FOR);
 
 	// Label
-	ASSIGN_DECL_OR_RET(ast->for_stmt.flow.label, parse_optional_label(c, ast), poisoned_ast);
+	ASSIGN_DECLID_OR_RET(ast->for_stmt.flow.label, parse_optional_label(c, ast), poisoned_ast);
 
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_ast);
 	if (try_consume(c, TOKEN_EOS))
@@ -747,7 +747,7 @@ static inline Ast* parse_foreach_stmt(ParseContext *c)
 		advance_and_verify(c, TOKEN_FOREACH);
 	}
 
-	ASSIGN_DECL_OR_RET(ast->foreach_stmt.flow.label, parse_optional_label(c, ast), poisoned_ast);
+	ASSIGN_DECLID_OR_RET(ast->foreach_stmt.flow.label, parse_optional_label(c, ast), poisoned_ast);
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_ast);
 
 	// Parse the first variable.
@@ -963,13 +963,12 @@ static inline Ast* parse_ct_foreach_stmt(ParseContext *c)
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_ast);
 	if (peek(c) == TOKEN_COMMA)
 	{
-		ast->ct_foreach_stmt.index_name = symstr(c);
-		ast->ct_foreach_stmt.index_span = c->span;
+		Decl *index = decl_new_var(symstr(c), c->span, NULL, VARDECL_LOCAL_CT);
+		ast->ct_foreach_stmt.index = declid(index);
 		TRY_CONSUME_OR_RET(TOKEN_CT_IDENT, "Expected a compile time index variable", poisoned_ast);
 		advance_and_verify(c, TOKEN_COMMA);
 	}
-	ast->ct_foreach_stmt.value_name = symstr(c);
-	ast->ct_foreach_stmt.value_span = c->span;
+	ast->ct_foreach_stmt.value = declid(decl_new_var(symstr(c), c->span, NULL, VARDECL_LOCAL_CT));
 	TRY_CONSUME_OR_RET(TOKEN_CT_IDENT, "Expected a compile time variable", poisoned_ast);
 	TRY_CONSUME_OR_RET(TOKEN_COLON, "Expected ':'.", poisoned_ast);
 	ASSIGN_EXPRID_OR_RET(ast->ct_foreach_stmt.expr, parse_expr(c), poisoned_ast);

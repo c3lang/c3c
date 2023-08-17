@@ -109,7 +109,6 @@ static bool llvm_link(ObjFormat format, const char **args, int arg_count, const 
 		case MINGW:
 			printf("Mingw not enabled");
 			exit(1);
-			break;
 		default:
 			printf("Unsupported linker");
 			exit(-1);

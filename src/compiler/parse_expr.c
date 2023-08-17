@@ -880,7 +880,6 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left)
 	call->call_expr.function = exprid(left);
 	call->call_expr.arguments = params;
 	call->call_expr.splat_vararg = splat;
-	call->call_expr.body_arguments = body_args;
 	RANGE_EXTEND_PREV(call);
 	if (body_args && !tok_is(c, TOKEN_LBRACE))
 	{
@@ -930,10 +929,20 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left)
 		call->call_expr.attr_force_inline = force_inline == 1;
 		call->call_expr.attr_force_noinline = force_inline == 0;
 	}
+	Ast *body = NULL;
 	if (tok_is(c, TOKEN_LBRACE))
 	{
-		ASSIGN_ASTID_OR_RET(call->call_expr.body, parse_compound_stmt(c), poisoned_expr);
+		ASSIGN_AST_OR_RET(body, parse_compound_stmt(c), poisoned_expr);
 	}
+
+	if (body || body_args)
+	{
+		Expr *macro_body = expr_new(EXPR_MACRO_BODY, call->span);
+		macro_body->macro_body_expr.body = body;
+		macro_body->macro_body_expr.body_arguments = body_args;
+		call->call_expr.macro_body = exprid(macro_body);
+	}
+
 	return call;
 }
 

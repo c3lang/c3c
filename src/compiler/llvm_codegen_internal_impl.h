@@ -120,7 +120,7 @@ INLINE LLVMValueRef llvm_store_to_ptr_raw(GenContext *c, LLVMValueRef pointer, L
 	return llvm_store_to_ptr_raw_aligned(c, pointer, value, llvm_type_or_alloca_align(pointer, type));
 }
 
-INLINE void llvm_value_bitcast(GenContext *c, BEValue *value, Type *type)
+INLINE void llvm_value_bitcast(GenContext *c UNUSED, BEValue *value, Type *type)
 {
 	assert(llvm_value_is_addr(value));
 	type = type_lowering(type);
@@ -184,18 +184,6 @@ static inline LLVMBasicBlockRef llvm_get_current_block_if_in_use(GenContext *con
 		return NULL;
 	}
 	return block;
-}
-
-INLINE bool call_supports_variadic(CallABI abi)
-{
-	switch (abi)
-	{
-		case CALL_X64_VECTOR:
-			return false;
-		default:
-			return true;
-
-	}
 }
 
 static inline LLVMCallConv llvm_call_convention_from_call(CallABI abi)

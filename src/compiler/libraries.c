@@ -109,11 +109,7 @@ static Library *find_library(Library **libs, size_t lib_count, const char *name)
 {
 	for (size_t i = 0; i < lib_count; i++)
 	{
-		if (strcmp(libs[i]->provides, name) == 0)
-		{
-			return libs[i];
-			break;
-		}
+		if (str_eq(libs[i]->provides, name)) return libs[i];
 	}
 	error_exit("Required library '%s' could not be found.\n", name);
 }
@@ -170,7 +166,6 @@ static inline JSONObject *resolve_zip_library(const char *lib, const char **resu
 	FILE *f = fopen(lib, "rb");
 	if (!f) error_exit("Failed to open library '%s' for reading.", lib);
 	ZipDirIterator iterator;
-	const char *error;
 
 	// Find the manifest.
 	ZipFile file;
@@ -221,7 +216,6 @@ void resolve_libraries(void)
 	{
 		file_add_wildcard_files(&c3_libs, active_target.libdirs[i], false, &c3lib_suffix, 1);
 	}
-	JsonParser parser;
 	Library *libraries[MAX_LIB_DIRS * 2];
 	size_t lib_count = 0;
 	VECEACH(c3_libs, i)

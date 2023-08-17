@@ -329,7 +329,6 @@ void scratch_buffer_append_double(double d)
 	scratch_buffer.len += len_needed;
 
 	//removing unused zeroes and dot
-	size_t i = scratch_buffer.len;
 	while (scratch_buffer.len > 0)
 	{
 		if (scratch_buffer.str[scratch_buffer.len - 1] != '0' && scratch_buffer.str[scratch_buffer.len - 1] != '.')

@@ -1177,7 +1177,7 @@ static bool cast_from_array(SemaContext *context, Expr *expr, Type *from, Type *
 	{
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
-			// We infer the target type (note that to and to_type are now of different kinds.
+			// We infer the target type (note that to and to_type are now of different kinds).
 			to_type = type_infer_len_from_actual_type(to_type, from);
 			break;
 		case TYPE_VECTOR:

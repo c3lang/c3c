@@ -196,7 +196,6 @@ static void sema_trace_const_initializer_liveness(ConstInitializer *const_init)
 			goto RETRY;
 		case CONST_INIT_ARRAY_FULL:
 		{
-			bool was_modified = false;
 			Type *array_type = const_init->type;
 			ConstInitializer **elements = const_init->init_array_full;
 			ArraySize size = array_type->array.len;
@@ -259,6 +258,7 @@ RETRY:
 		case EXPR_ANYSWITCH:
 		case EXPR_GENERIC_IDENT:
 		case EXPR_EMBED:
+		case EXPR_MACRO_BODY:
 			UNREACHABLE
 		case EXPR_DESIGNATOR:
 			sema_trace_expr_liveness(expr->designator_expr.value);
@@ -569,7 +569,6 @@ RETRY:
 		case DECL_BODYPARAM:
 		case DECL_GLOBALS:
 			UNREACHABLE
-			return;
 		case DECL_FNTYPE:;
 			sema_trace_func_liveness(&decl->fntype_decl);
 			return;

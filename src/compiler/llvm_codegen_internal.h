@@ -123,7 +123,6 @@ typedef struct GenContext_
 	LLVMTypeRef size_type;
 	LLVMTypeRef typeid_type;
 	LLVMTypeRef dtable_type;
-	LLVMTypeRef char_ptr_type;
 	LLVMTypeRef ptr_type;
 	LLVMTypeRef chars_type;
 	Decl *panic_var;
@@ -137,16 +136,12 @@ typedef struct GenContext_
 	int block_global_unique_count;
 	int ast_alloca_addr_space;
 	BreakContinue return_block;
-	int simple_return_expressions;
-	unsigned pointer_alignment;
-	int return_expressions;
 	DebugContext debug;
 	Module *code_module;
 	LLVMValueRef return_out;
 	LLVMValueRef optional_out;
 	BEValue retval;
 	bool current_block_is_target : 1;
-	LLVMTypeRef type_data_definitions[TYPE_KINDS];
 	SourceSpan last_emitted_loc;
 	Decl **dynamic_functions;
 	LLVMValueRef dyn_find_function;
@@ -363,7 +358,7 @@ INLINE void llvm_set_alignment(LLVMValueRef alloca, AlignSize alignment);
 INLINE AlignSize llvm_type_or_alloca_align(LLVMValueRef dest, Type *type);
 
 INLINE LLVMValueRef llvm_zext_trunc(GenContext *c, LLVMValueRef data, LLVMTypeRef type);
-INLINE LLVMValueRef llvm_sext_trunc(GenContext *c, LLVMValueRef data, LLVMTypeRef type);
+INLINE UNUSED LLVMValueRef llvm_sext_trunc(GenContext *c, LLVMValueRef data, LLVMTypeRef type);
 INLINE void llvm_value_ext_trunc(GenContext *c, BEValue *value, Type *type);
 
 // -- Constants --
@@ -372,7 +367,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 LLVMValueRef llvm_emit_const_padding(GenContext *c, AlignSize size);
 LLVMValueRef llvm_emit_string_const(GenContext *c, const char *str, const char *extname);
 LLVMValueRef llvm_emit_empty_string_const(GenContext *c);
-LLVMValueRef llvm_emit_zstring(GenContext *c, const char *str);
+UNUSED LLVMValueRef llvm_emit_zstring(GenContext *c, const char *str);
 LLVMValueRef llvm_emit_zstring_named(GenContext *c, const char *str, const char *extname);
 INLINE LLVMValueRef llvm_const_int(GenContext *c, Type *type, uint64_t val);
 INLINE LLVMValueRef llvm_get_zero(GenContext *c, Type *type);
@@ -455,7 +450,7 @@ LLVMValueRef llvm_emit_ashr_fixed(GenContext *c, LLVMValueRef data, int shift);
 INLINE LLVMValueRef llvm_emit_ashr(GenContext *c, LLVMValueRef value, LLVMValueRef shift);
 INLINE LLVMValueRef llvm_emit_shl(GenContext *c, LLVMValueRef value, LLVMValueRef shift);
 INLINE LLVMValueRef llvm_emit_lshr(GenContext *c, LLVMValueRef value, LLVMValueRef shift);
-INLINE LLVMValueRef llvm_emit_trunc(GenContext *c, LLVMValueRef value, Type *type);
+INLINE UNUSED LLVMValueRef llvm_emit_trunc(GenContext *c, LLVMValueRef value, Type *type);
 INLINE LLVMValueRef llvm_emit_trunc_bool(GenContext *c, LLVMValueRef value);
 INLINE LLVMValueRef llvm_emit_and(GenContext *c, BEValue *lhs, BEValue *rhs);
 INLINE LLVMValueRef llvm_emit_and_raw(GenContext *c, LLVMValueRef lhs, LLVMValueRef rhs);
@@ -472,7 +467,7 @@ LLVMValueRef llvm_get_next_param(GenContext *context, unsigned *index);
 void llvm_emit_convert_value_from_coerced(GenContext *c, BEValue *result, LLVMTypeRef coerced, LLVMValueRef value, Type *original_type);
 void llvm_emit_coerce_store(GenContext *c, LLVMValueRef addr, AlignSize alignment, LLVMTypeRef coerced, LLVMValueRef value, LLVMTypeRef target_type);
 LLVMValueRef llvm_emit_coerce(GenContext *c, LLVMTypeRef coerced, BEValue *value, Type *original_type);
-INLINE bool call_supports_variadic(CallABI abi);
+
 static inline LLVMCallConv llvm_call_convention_from_call(CallABI abi);
 void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype *prototype, LLVMTypeRef func_type, LLVMValueRef func, LLVMValueRef *args, unsigned arg_count, int inline_flag, LLVMValueRef error_var, bool sret_return, BEValue *synthetic_return_param);
 void llvm_emit_parameter(GenContext *c, LLVMValueRef *args, unsigned *arg_count_ref, ABIArgInfo *info, BEValue *be_value, Type *type);

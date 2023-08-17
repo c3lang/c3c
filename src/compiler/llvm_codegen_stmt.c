@@ -313,7 +313,7 @@ static void llvm_emit_if_stmt(GenContext *c, Ast *ast)
 
 	// Output boolean value and switch.
 
-	Decl *label = ast->if_stmt.flow.label;
+	Decl *label = declptrzero(ast->if_stmt.flow.label);
 	if (label)
 	{
 		label->label.break_target = exit_block;
