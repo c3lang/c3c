@@ -51,6 +51,20 @@ macro greater(a, b) @builtin
 /**
  * @require types::is_comparable_value(a) && types::is_comparable_value(b)
  **/
+macro int compare_to(a, b) @builtin
+{
+	$switch
+	$case $defined(a.compare_to):
+		return a.compare_to(b);
+	$case $defined(a.less):
+		return (int)b.less(a) - (int)a.less(b);
+	$default:
+		return (int)(a > b) - (int)(a < b);
+	$endswitch
+}
+/**
+ * @require types::is_comparable_value(a) && types::is_comparable_value(b)
+ **/
 macro greater_eq(a, b) @builtin
 {
 	$switch

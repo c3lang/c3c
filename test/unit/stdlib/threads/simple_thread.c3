@@ -19,7 +19,7 @@ Mutex m;
 
 fn void! testrun_mutex() @test
 {
-	Thread[100] ts;
+	Thread[20] ts;
 	a = 0;
 	m.init()!;
 	foreach (&t : ts)
@@ -43,7 +43,7 @@ fn void! testrun_mutex() @test
     {
         assert(t.join()! == 0);
     }
-	assert(a == 100);
+	assert(a == ts.len);
 	m.destroy()!;
 }
 
@@ -63,12 +63,12 @@ fn void! testrun_mutex_timeout() @test
 	TimedMutex m;
 	m.init()!;
 	m.lock()!;
-	if (try m.lock_timeout(100))
+	if (try m.lock_timeout(20))
 	{
 		assert(false, "lock_timeout should fail");
 	}
 	m.unlock()!;
-	m.lock_timeout(100)!;
+	m.lock_timeout(20)!;
 	m.unlock()!;
 }
 

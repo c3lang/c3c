@@ -131,7 +131,6 @@ macro sign(x)
 	$endif
 }
 
-
 /**
  * @require values::@is_int(x) || values::@is_float(x) "Expected an integer or floating point value"
  * @checked x + y
