@@ -3,6 +3,7 @@
 ## 0.5.0 Change List
 
 ### Changes / improvements
+- Slice assignment is expanded.
 - Strong optional handling requirements.
 - Better dead code analysis, and added dead code errors.
 - Exhaustive switches with enums has better analysis.

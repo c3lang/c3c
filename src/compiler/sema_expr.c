@@ -4328,33 +4328,108 @@ static inline IndexDiff range_const_len(Range *range)
 static bool sema_expr_analyse_slice_assign(SemaContext *context, Expr *expr, Type *left_type, Expr *right, bool is_unwrapped)
 {
 	Expr *left = exprptr(expr->binary_expr.left);
-	Type *base = type_flatten(left_type)->array.base;
-	if (right->expr_kind == EXPR_SLICE)
+	if (!sema_analyse_expr(context, right)) return false;
+	if (IS_OPTIONAL(right))
 	{
-		Range *left_range = &left->subscript_expr.range;
-		Range *right_range = &right->subscript_expr.range;
-		if (!sema_analyse_expr(context, right)) return false;
-		if (!cast_implicit_silent(context, right, left_type)) goto ASSIGN;
-		IndexDiff left_len = range_const_len(left_range);
-		IndexDiff right_len = range_const_len(right_range);
-		if (left_len >= 0 && right_len >= 0 && left_len != right_len)
-		{
-			SEMA_ERROR(expr, "Length mismatch between subarrays.");
-			return false;
-		}
-		expr->expr_kind = EXPR_SLICE_COPY;
+		RETURN_SEMA_ERROR(right, "The right hand side may not be optional when using subarray assign.");
 	}
-	else
+	Type *base = type_flatten(left_type)->array.base;
+	Type *rhs_type = right->type->canonical;
+
+	switch (rhs_type->type_kind)
 	{
-ASSIGN:
-		if (!sema_analyse_expr_rhs(context, base, right, false)) return false;
-		expr->expr_kind = EXPR_SLICE_ASSIGN;
+		case TYPE_UNTYPED_LIST:
+			break;
+		case TYPE_VECTOR:
+		case TYPE_ARRAY:
+		case TYPE_SUBARRAY:
+			if (base == rhs_type->array.base) goto SLICE_COPY;
+			break;
+		default:
+			if (!cast_implicit(context, right, base)) return false;
+			goto SLICE_ASSIGN;
 	}
 
+	// By default we need to make a silent attempt.
+	bool suppress = global_context.suppress_errors;
+	global_context.suppress_errors = true;
+	Expr *right_copy = expr_copy(right);
+	bool could_cast = cast_implicit(context, right_copy, base);
+	global_context.suppress_errors = suppress;
+
+	// Failed, so let's go back to the original
+	if (!could_cast) goto SLICE_COPY;
+	// Use the copy
+	right = right_copy;
+
+SLICE_ASSIGN:
+	expr->expr_kind = EXPR_SLICE_ASSIGN;
 	expr->type = right->type;
 	expr->slice_assign_expr.left = exprid(left);
 	expr->slice_assign_expr.right = exprid(right);
 	return true;
+
+SLICE_COPY:;
+	Range *left_range = &left->subscript_expr.range;
+	IndexDiff left_len = range_const_len(left_range);
+	switch (rhs_type->type_kind)
+	{
+		case TYPE_ARRAY:
+		case TYPE_SUBARRAY:
+		case TYPE_VECTOR:
+			if (rhs_type->array.base != base) goto EXPECTED;
+			break;
+		case TYPE_UNTYPED_LIST:
+		{
+			assert(right->const_expr.const_kind == CONST_UNTYPED_LIST);
+			// Zero sized lists cannot be right.
+			unsigned count = vec_size(right->const_expr.untyped_list);
+			if (!count) goto EXPECTED;
+			// Cast to an array of the length.
+			rhs_type = type_get_array(base, count);
+			if (!cast_implicit(context, right, rhs_type)) return false;
+			break;
+		}
+		default:
+			goto EXPECTED;
+	}
+	assert(right->expr_kind != EXPR_SLICE || right->type->type_kind == TYPE_SUBARRAY);
+
+	// If we have a slice operation on the right hand side, check the ranges.
+	if (right->expr_kind == EXPR_SLICE)
+	{
+		Range *right_range = &right->subscript_expr.range;
+		IndexDiff right_len = range_const_len(right_range);
+		if (left_len >= 0 && right_len >= 0 && left_len != right_len)
+		{
+			RETURN_SEMA_ERROR(expr, "Length mismatch between subarrays.");
+		}
+	}
+	else
+	{
+		// Otherwise we want to make a slice.
+		ArraySize len = rhs_type->array.len;
+		if (len > 0 && left_len > 0 && left_len != len)
+		{
+			RETURN_SEMA_ERROR(left, "Length mismatch, expected left hand slice to be %d elements.", left_len);
+		}
+		Expr *inner = expr_copy(right);
+		right->expr_kind = EXPR_SLICE;
+		Expr *const_zero = expr_new_const_int(inner->span, type_uint, 0);
+		Range range = { .start = exprid(const_zero), .is_range = true, .is_len = true };
+		if (len > 0) range.end = exprid(expr_new_const_int(inner->span, type_uint, len));
+		right->subscript_expr = (ExprSubscript) { .range = range, .expr = exprid(inner) };
+		right->resolve_status = RESOLVE_NOT_DONE;
+		if (!sema_analyse_expr(context, right)) return false;
+	}
+	expr->expr_kind = EXPR_SLICE_COPY;
+	expr->type = rhs_type;
+	expr->slice_assign_expr.left = exprid(left);
+	expr->slice_assign_expr.right = exprid(right);
+	return true;
+EXPECTED:
+	RETURN_SEMA_ERROR(right, "Expected an array, vector or subarray with element type %s.",
+	                  type_quoted_error_string(base));
 }
 
 bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type *left_type, Expr *right, bool is_unwrapped)
@@ -4363,7 +4438,6 @@ bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type 
 	{
 		return sema_expr_analyse_slice_assign(context, expr, left_type, right, is_unwrapped);
 	}
-
 
 	// 1. Evaluate right side to required type.
 	bool to_optional = left_type && type_is_optional(left_type);
