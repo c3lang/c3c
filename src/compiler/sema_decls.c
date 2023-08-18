@@ -1740,16 +1740,10 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			decl->func_decl.attr_winmain = true;
 			break;
 		case ATTRIBUTE_CALLCONV:
+			if (!expr) RETURN_SEMA_ERROR(decl, "Expected a string argument.");
 			if (expr && !sema_analyse_expr(context, expr)) return false;
-			if (!expr || !expr_is_const_string(expr))
-			{
-				SEMA_ERROR(expr, "Expected a constant string value as argument.");
-				return false;
-			}
-			else
-			{
-				if (!update_call_abi_from_string(decl, expr)) return false;
-			}
+			if (!expr_is_const_string(expr)) RETURN_SEMA_ERROR(expr, "Expected a constant string value as argument.");
+			if (!update_call_abi_from_string(decl, expr)) return false;
 			break;
 		case ATTRIBUTE_TEST:
 			decl->func_decl.attr_test = true;
@@ -2110,6 +2104,7 @@ static inline bool sema_analyse_doc_header(AstId doc, Decl **params, Decl **extr
 		}
 		VECEACH(extra_params, j)
 		{
+			assert(extra_params);
 			param = extra_params[j];
 			if (param->name == param_name) goto NEXT;
 		}

@@ -685,8 +685,6 @@ case TYPE_U8: case TYPE_U16: case TYPE_U32: case TYPE_U64: case TYPE_U128
 #define ALL_UNSIGNED_INTS TYPE_U8: case TYPE_U16: case TYPE_U32: case TYPE_U64: case TYPE_U128
 #define ALL_FLOATS TYPE_BF16: case TYPE_F16: case TYPE_F32: case TYPE_F64: case TYPE_F128
 
-#define TYPE_KINDS (TYPE_LAST + 1)
-
 typedef enum
 {
 	UNARYOP_ERROR,

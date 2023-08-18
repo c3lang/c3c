@@ -135,7 +135,6 @@ typedef struct GenContext_
 	} cur_func;
 	int block_global_unique_count;
 	int ast_alloca_addr_space;
-	BreakContinue return_block;
 	DebugContext debug;
 	Module *code_module;
 	LLVMValueRef return_out;

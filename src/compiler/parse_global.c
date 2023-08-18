@@ -2147,11 +2147,11 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 	// Parse the spec
 	if (try_consume(c, TOKEN_COLON))
 	{
-		ASSIGN_TYPE_OR_RET(type, parse_optional_type(c), false);
+		ASSIGN_TYPE_OR_RET(type, parse_optional_type(c), poisoned_decl);
 		if (type->optional)
 		{
 			SEMA_ERROR(type, "An enum can't have an optional type.");
-			return false;
+			return poisoned_decl;
 		}
 		if (!parse_enum_param_list(c, &decl->enums.parameters)) return poisoned_decl;
 	}

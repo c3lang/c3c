@@ -11,7 +11,7 @@ void llvm_emit_compound_stmt(GenContext *c, Ast *ast)
 {
 	assert(ast->ast_kind == AST_COMPOUND_STMT);
 
-	// Push the lexical scope if debug.
+	// Push the lexical scope if in debug.
 	if (llvm_use_debug(c))
 	{
 		llvm_debug_push_lexical_scope(c, ast->span);

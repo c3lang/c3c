@@ -395,7 +395,7 @@ LLVMValueRef llvm_coerce_int_ptr(GenContext *c, LLVMValueRef value, LLVMTypeRef 
 		value = LLVMBuildPtrToInt(c->builder, value, from, "");
 	}
 
-	// 3. Find the to int type to convert to.
+	// 3. Find the "to" int type to convert to.
 	LLVMTypeRef to_int_type = to_is_pointer ? llvm_get_type(c, type_iptr) : to;
 
 	// 4. Are int types not matching?
@@ -2373,7 +2373,6 @@ static inline void llvm_emit_inc_dec_change(GenContext *c, BEValue *addr, BEValu
 											int diff)
 {
 	EMIT_LOC(c, expr);
-	Type *type = type_reduced_from_expr(expr);
 
 	// Copy the address and make it a value.
 	BEValue value = *addr;
@@ -2445,7 +2444,6 @@ static inline void llvm_emit_pre_post_inc_dec_vector(GenContext *c, BEValue *val
 
 	// But we also want the value (of the full vector)
 	llvm_value_rvalue(c, value);
-	LLVMValueRef vector_value = value->value;
 	Type *vec = value->type;
 	assert(vec->type_kind == TYPE_VECTOR);
 	Type *element = vec->array.base;
@@ -2895,7 +2893,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 		}
 	}
 
-	// Walk from end if it is slice from the back.
+	// Walk from end if it is a slice from the back.
 	if (start_from_end)
 	{
 		start_index.value = llvm_emit_sub_int(c, start_type, len.value, start_index.value, slice->span);
@@ -4175,7 +4173,7 @@ void llvm_emit_try_assign_try_catch(GenContext *c, bool is_try, BEValue *be_valu
 	// 3. If we have a catch *and* we want to store it, set the catch variable
 	c->opt_var = catch_addr ? catch_addr->value : NULL;
 
-	// 4. After catch we want to end up in the landing, because otherwise we don't know the value for the phi.
+	// 4. After catch, we want to end up in the landing, because otherwise we don't know the value for the phi.
 	c->catch_block = catch_block;
 
 	// 5. Emit the init part.
@@ -4251,7 +4249,7 @@ static inline void llvm_emit_rethrow_expr(GenContext *c, BEValue *be_value, Expr
 	// Emit else
 	llvm_emit_block(c, guard_block);
 
-	// Ensure we are on a branch that is non empty.
+	// Ensure we are on a branch that is non-empty.
 	if (llvm_emit_check_block_branch(c))
 	{
 		llvm_emit_statement_chain(c, expr->rethrow_expr.cleanup);
@@ -5204,7 +5202,7 @@ void llvm_emit_vararg_parameter(GenContext *c, BEValue *value, Type *vararg_type
 		return;
 	}
 	BEValue temp_value;
-	// 9b. Otherwise we also need to allocate memory for the arguments:
+	// 9b. Otherwise, we also need to allocate memory for the arguments:
 	Type *pointee_type = vararg_type->array.base;
 	unsigned elements = vec_size(varargs);
 	Type *array = type_get_array(pointee_type, elements);
@@ -5281,7 +5279,7 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 			// 13a. In the case of an already present error_var, we don't need to do a load here.
 			if (error_var || sret_return) break;
 
-			// 13b. If not it will be contained in a be_value that is an address
+			// 13b. If not it will be contained in a be_value that is an address,
 			//      so we don't need to do anything more.
 			assert(result_value->kind == BE_ADDRESS);
 

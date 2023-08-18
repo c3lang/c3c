@@ -19,10 +19,7 @@ typedef enum
 #define EXPECT_OR_RET(_tok, _res) do { if (!expect(c, _tok)) return _res; } while(0)
 #define CONSUME_OR_RET(_tok, _res) do { if (!expect(c, _tok)) return _res; advance(c); } while(0)
 #define CONSUME_EOS_OR_RET(_res) do { if (!tok_is(c, TOKEN_EOS)) { sema_error_at_after(c->prev_span, "Expected ';'"); return _res; } advance(c); } while(0)
-#define RETURN_AFTER_EOS(_ast) RANGE_EXTEND_PREV(ast); CONSUME_EOS_OR_RET(poisoned_ast); return _ast
 #define TRY_CONSUME_OR_RET(_tok, _message, _type) do { if (!consume(c, _tok, _message)) return _type; } while(0)
-#define TRY_CONSUME(_tok, _message) TRY_CONSUME_OR_RET(_tok, _message, poisoned_ast)
-#define TRY_CONSUME_AFTER(_tok, _message, _type) do { if (!try_consume(c, _tok)) { sema_error_at_after(c->prev_span, _message); return _type; } } while(0)
 #define CHECK_EXPR_OR_RET(_expr) do { if (!expr_ok(_expr)) return _expr; } while(0)
 
 Decl *parse_top_level_statement(ParseContext *c, ParseContext **new_context);

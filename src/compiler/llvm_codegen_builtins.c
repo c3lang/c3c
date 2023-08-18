@@ -60,8 +60,7 @@ INLINE void llvm_emit_swizzle(GenContext *c, BEValue *result_value, Expr *expr, 
 		llvm_value_rvalue(c, result_value);
 		mask_val[i - mask_start] = result_value->value;
 	}
-	LLVMValueRef mask_value = LLVMConstVector(mask_val, mask_len);
-	LLVMValueRef val = LLVMBuildShuffleVector(c->builder, arg1, arg2, mask_value, "shuffle");
+	LLVMValueRef val = LLVMBuildShuffleVector(c->builder, arg1, arg2, LLVMConstVector(mask_val, mask_len), "shuffle");
 	llvm_value_set(result_value, val, expr->type);
 	return;
 }

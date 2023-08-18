@@ -198,7 +198,7 @@ static ABIArgInfo *riscv_classify_argument_type(Type *type, bool is_fixed, unsig
 		// stack.
 		if (size < xlen && type_is_integer_or_bool_kind(type) && !must_use_stack)
 		{
-			// Clang: RV64 ABI requires unsigned 32 bit integers to be sign extended.
+			// Clang: RV64 ABI requires unsigned 32-bit integers to be sign extended.
 			if (xlen == 8 && type == type_uint)
 			{
 				return abi_arg_new_direct_int_ext(type_int);
