@@ -30,6 +30,7 @@ bool parse_current_is_expr(ParseContext *c)
  */
 bool parse_range(ParseContext *c, Range *range)
 {
+	SourceSpan start = c->span;
 	// Insert zero if missing
 	if (tok_is(c, TOKEN_DOTDOT) || tok_is(c, TOKEN_COLON))
 	{
@@ -62,6 +63,12 @@ bool parse_range(ParseContext *c, Range *range)
 	}
 
 	// Otherwise we have [1..] or [3:]
+	if (range->is_len)
+	{
+		sema_error_at(extend_span_with_token(start, c->prev_span), "Length-ranges using ':' may not elide the length.");
+		return false;
+	}
+
 	range->end_from_end = false;
 	range->end = 0;
 	return true;

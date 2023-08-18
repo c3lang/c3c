@@ -220,7 +220,7 @@ fn usz! Base64Decoder.decode(&self, char[] src, char[] dst)
 
 	if (trailing == 0) return dn;
 
-	src = src[^trailing:];
+	src = src[^trailing..];
 	char c0 = self.reverse[src[0]];
 	char c1 = self.reverse[src[1]];
 	if (c0 == self.invalid || c1 == self.invalid) return Base64Error.INVALID_PADDING?;

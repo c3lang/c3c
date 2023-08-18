@@ -56,6 +56,7 @@
 - Default visibility can be overridden per module compile unit. Eg `module foo @private`.
 - Optimized macro codegen for -O0.
 - Addition of unary `+`.
+- Remove possibility to elide length when using ':' for slices.
 - Remove the `:` and `;` used in $if, $switch etc.
 - Faults have an ordinal.
 - Generic module contracts.
