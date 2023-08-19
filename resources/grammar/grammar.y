@@ -465,9 +465,9 @@ enum_list
 	;
 
 enum_constant
-	: CONST_IDENT
-	| CONST_IDENT '(' arg_list ')'
-	| CONST_IDENT '(' arg_list ',' ')'
+	: CONST_IDENT opt_attributes
+	| CONST_IDENT '(' arg_list ')' opt_attributes
+	| CONST_IDENT '(' arg_list ',' ')' opt_attributes
 	;
 
 identifier_list

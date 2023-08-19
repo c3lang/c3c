@@ -2,6 +2,13 @@ module std::net;
 import std::io;
 import std::ascii;
 
+enum IpProtocol : char (AIFamily ai_family)
+{
+	UNSPECIFIED (os::AF_UNSPEC),
+	IPV4        (os::AF_INET),
+	IPV6        (os::AF_INET6),
+}
+
 struct InetAddress
 {
 	bool is_ipv6;
@@ -249,4 +256,19 @@ fn bool InetAddress.is_multicast_link_local(InetAddress* addr)
 		return addr.ipv6.a == 0xff && (addr.ipv6.b & 0x0f) == 0x02;
 	}
 	return addr.ipv4.a == 224 && addr.ipv4.b == 0 && addr.ipv4.c == 0;
+}
+
+fn AddrInfo*! addrinfo(String host, uint port, AIFamily ai_family, AISockType ai_socktype) @if(os::SUPPORTS_INET)
+{
+	@pool()
+	{
+		ZString zhost = host.zstr_tcopy();
+		DString str;
+		str.tinit();
+		str.printf("%d", port);
+		AddrInfo hints = { .ai_family = ai_family, .ai_socktype = ai_socktype };
+		AddrInfo* ai;
+		if (os::getaddrinfo(zhost, str.copy_zstr(mem::temp()), &hints, &ai)) return NetError.ADDRINFO_FAILED?;
+		return ai;
+	};
 }

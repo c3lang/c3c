@@ -2189,6 +2189,7 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 			enum_const->enum_constant.args = result;
 			CONSUME_OR_RET(TOKEN_RPAREN, poisoned_decl);
 		}
+		if (!parse_attributes_for_global(c, enum_const)) return poisoned_decl;
 		vec_add(decl->enums.values, enum_const);
 		// Allow trailing ','
 		if (!try_consume(c, TOKEN_COMMA))

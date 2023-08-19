@@ -1,5 +1,4 @@
 module std::net;
-import std::net::os;
 
 fault NetError
 {
@@ -16,6 +15,8 @@ fault NetError
 	READ_FAILED,
 	SOCKOPT_FAILED,
 
+	SOCKETS_NOT_INITIALIZED,
+	STILL_PROCESSING_CALLBACK,
 	BAD_SOCKET_DESCRIPTOR,
 	NOT_A_SOCKET,
 	CONNECTION_REFUSED,

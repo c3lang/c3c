@@ -1,0 +1,45 @@
+module std::net::tcp @if(os::SUPPORTS_INET);
+import libc;
+
+def TcpSocket = distinct inline Socket;
+def TcpServerSocket = distinct inline Socket;
+
+fn TcpSocket! connect(String host, uint port, SocketOption... options, IpProtocol protocol = UNSPECIFIED)
+{
+	AddrInfo* ai =  net::addrinfo(host, port, protocol.ai_family, os::SOCK_STREAM)!;
+	defer os::freeaddrinfo(ai);
+	return connect_to(ai, ...options);
+}
+
+fn TcpSocket! connect_to(AddrInfo* ai, SocketOption... options)
+{
+	return (TcpSocket)net::_connect(ai, options);
+}
+
+fn TcpServerSocket! listen(String host, uint port, uint backlog, SocketOption... options, IpProtocol protocol = UNSPECIFIED)
+{
+	AddrInfo* ai = net::addrinfo(host, port, protocol.ai_family, os::SOCK_STREAM)!;
+	defer os::freeaddrinfo(ai);
+	return listen_to(ai, backlog, ...options);
+}
+
+fn TcpSocket! accept(TcpServerSocket* server_socket)
+{
+	TcpSocket socket;
+	socket.sock = os::accept(server_socket.sock, (SockAddrPtr)&socket.ai_addr_storage, &socket.ai_addrlen);
+	if (socket.sock < 0) return NetError.ACCEPT_FAILED?;
+	return socket;
+}
+
+fn TcpServerSocket! listen_to(AddrInfo* ai, uint backlog, SocketOption... options)
+{
+	net::@loop_over_ai(ai; NativeSocket sockfd, AddrInfo* ai_candidate)
+	{
+		net::apply_sockoptions(sockfd, options)!;
+		bool err = os::bind(sockfd, ai_candidate.ai_addr, ai_candidate.ai_addrlen) || os::listen(sockfd, backlog);
+		if (!err) return (TcpServerSocket)net::network_socket(sockfd, ai_candidate);
+	};
+	return os::socket_error()?;
+}
+
+
