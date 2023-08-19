@@ -1,15 +1,15 @@
 module std::time;
 
 def Time = distinct long @inline;
-def TimeDuration = distinct long @inline;
+def Duration = distinct long @inline;
 def Clock = distinct ulong @inline;
 def NanoDuration = distinct long @inline;
 
-const TimeDuration MICROSECONDS_PER_SECOND = 1_000_000;
-const TimeDuration MICROSECONDS_PER_MINUTE = MICROSECONDS_PER_SECOND * 60;
-const TimeDuration MICROSECONDS_PER_HOUR = MICROSECONDS_PER_MINUTE * 60;
-const TimeDuration MICROSECONDS_PER_DAY = MICROSECONDS_PER_HOUR * 24;
-const TimeDuration MICROSECONDS_PER_WEEK = MICROSECONDS_PER_DAY * 7;
+const Duration MICROSECONDS_PER_SECOND = 1_000_000;
+const Duration MICROSECONDS_PER_MINUTE = MICROSECONDS_PER_SECOND * 60;
+const Duration MICROSECONDS_PER_HOUR = MICROSECONDS_PER_MINUTE * 60;
+const Duration MICROSECONDS_PER_DAY = MICROSECONDS_PER_HOUR * 24;
+const Duration MICROSECONDS_PER_WEEK = MICROSECONDS_PER_DAY * 7;
 
 struct DateTime
 {
@@ -74,7 +74,7 @@ fn Time Time.add_hours(time, long hours) => time + (Time)(hours * (long)MICROSEC
 fn Time Time.add_days(time, long days) => time + (Time)(days * (long)MICROSECONDS_PER_DAY);
 fn Time Time.add_weeks(time, long weeks) => time + (Time)(weeks * (long)MICROSECONDS_PER_WEEK);
 fn double Time.to_seconds(time) => (long)time / (double)MICROSECONDS_PER_SECOND;
-fn TimeDuration Time.diff_us(time, Time other) => (TimeDuration)(time - other);
+fn Duration Time.diff_us(time, Time other) => (Duration)(time - other);
 fn double Time.diff_sec(time, Time other) => (long)time.diff_us(other) / (double)MICROSECONDS_PER_SECOND;
 fn double Time.diff_min(time, Time other) => (long)time.diff_us(other) / (double)MICROSECONDS_PER_MINUTE;
 fn double Time.diff_hour(time, Time other) => (long)time.diff_us(other) / (double)MICROSECONDS_PER_HOUR;
@@ -83,8 +83,8 @@ fn double Time.diff_weeks(time, Time other) => (long)time.diff_us(other) / (doub
 
 fn double NanoDuration.to_sec(nd) => (double)nd / 1_000_000_000.0;
 fn long NanoDuration.to_ms(nd) => (long)nd / 1_000_000;
-fn TimeDuration NanoDuration.to_duration(nd) => (TimeDuration)nd / 1_000;
-fn NanoDuration TimeDuration.to_nano(td) => (NanoDuration)td * 1_000;
+fn Duration NanoDuration.to_duration(nd) => (Duration)nd / 1_000;
+fn NanoDuration Duration.to_nano(td) => (NanoDuration)td * 1_000;
 
 fn void! NanoDuration.to_format(&self, Formatter* formatter) @dynamic
 {

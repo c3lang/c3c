@@ -12,13 +12,13 @@ struct StackTrace
 	uint line;
 }
 
-struct VirtualAny
+struct AnyStruct
 {
 	void* ptr;
-	typeid type_id;
+	typeid type;
 }
 
-struct SubArrayContainer
+struct SubArrayStruct
 {
 	void* ptr;
 	usz len;

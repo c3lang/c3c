@@ -1184,7 +1184,24 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 
 	for (unsigned i = 0; i < enums; i++)
 	{
+
 		Decl *enum_value = enum_values[i];
+
+		bool erase_val = false;
+		if (!sema_analyse_attributes(context, decl, enum_value->attributes, ATTR_ENUM, &erase_val)) return decl_poison(decl);
+
+		if (erase_val)
+		{
+			if (enums == 1)
+			{
+				SEMA_ERROR(decl, "No enum values left in enum after @if resolution, there must be at least one.");
+				return decl_poison(decl);
+			}
+			vec_erase_ptr_at(enum_values, i);
+			enums--;
+			i--;
+			continue;
+		}
 		enum_value->type = decl->type;
 		DEBUG_LOG("* Checking enum constant %s.", enum_value->name);
 		enum_value->enum_constant.ordinal = i;
@@ -1586,6 +1603,8 @@ static const char *attribute_domain_to_string(AttributeDomain domain)
 			return "bitstruct member";
 		case ATTR_FUNC:
 			return "function";
+		case ATTR_ENUM_VALUE:
+			return "enum value";
 		case ATTR_GLOBAL:
 			return "global variable";
 		case ATTR_ENUM:

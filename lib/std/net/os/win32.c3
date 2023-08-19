@@ -1,35 +1,74 @@
 module std::net::os @if(env::WIN32);
+import std::os::win32;
+import libc;
 
-const int PLATFORM_AF_IPX = 6;
-const int PLATFORM_AF_APPLETALK = 16;
-const int PLATFORM_AF_NETBIOS = 17;
-const int PLATFORM_AF_IRDA = 26;
-const int PLATFORM_AF_BTH = 32;
+const AIFamily PLATFORM_AF_IPX          = 6;
+const AIFamily PLATFORM_AF_APPLETALK    = 16;
+const AIFamily PLATFORM_AF_NETBIOS      = 17;
+const AIFamily PLATFORM_AF_INET6        = 23;
+const AIFamily PLATFORM_AF_IRDA         = 26;
+const AIFamily PLATFORM_AF_BTH          = 32;
 
 def NativeSocket = distinct uptr;
 
-extern fn int wsa_startup(int, void*) @extern("WSAStartup");
 extern fn int ioctlsocket(NativeSocket, long cmd, ulong *argp);
-extern fn int closesocket(NativeSocket);
-extern fn NativeSocket socket(int af, int type, int protocol);
+extern fn WSAError closesocket(NativeSocket);
+extern fn NativeSocket socket(AIFamily af, AISockType type, AIProtocol protocol);
 extern fn int connect(NativeSocket, SockAddrPtr address, Socklen_t address_len);
 extern fn int bind(NativeSocket, SockAddrPtr address, Socklen_t address_len);
 extern fn int listen(NativeSocket, int backlog);
 extern fn NativeSocket accept(NativeSocket, SockAddrPtr address, Socklen_t* address_len);
 
-macro NativeSocket.close(self)
+macro void! NativeSocket.close(self)
 {
-	if (int err = closesocket(self))
-	{
-		if (err == WSAENOTSOCK) return NetError.INVALID_SOCKET?;
-		return NetError.GENERAL_ERROR?;
-	}
+	WSAError error = closesocket(self);
+	if (error) return convert_error(error)?;
 }
 
-const int WSAENOTSOCK = 10038;
-
 // https://github.com/wine-mirror/wine/blob/master/include/winsock.h
-const int SOL_SOCKET = 0xffff;
-const int SO_REUSEADDR = 0x0004;
-const int SO_KEEPALIVE = 0x0008;
-const int SO_BROADCAST = 0x0200;
+const int SOL_SOCKET              = 0xffff;
+const int SO_DEBUG                = 0x0001;
+const int SO_ACCEPTCONN           = 0x0002;
+const int SO_REUSEADDR            = 0x0004;
+const int SO_KEEPALIVE            = 0x0008;
+const int SO_DONTROUTE            = 0x0010;
+const int SO_BROADCAST            = 0x0020;
+const int SO_USELOOPBACK          = 0x0040;
+const int SO_LINGER               = 0x0080;
+const int SO_OOBINLINE            = 0x0100;
+const int SO_SNDBUF               = 0x1001;
+const int SO_RCVBUF               = 0x1002;
+const int SO_SNDLOWAT             = 0x1003;
+const int SO_RCVLOWAT             = 0x1004;
+const int SO_SNDTIMEO             = 0x1005;
+const int SO_RCVTIMEO             = 0x1006;
+const int SO_ERROR                = 0x1007;
+const int SO_TYPE                 = 0x1008;
+
+fn anyfault convert_error(WSAError error)
+{
+	switch (error)
+	{
+		case wsa::NOTINITIALISED: return NetError.SOCKETS_NOT_INITIALIZED;
+		case wsa::ENETDOWN: return NetError.NETWORK_UNREACHABLE;
+		case wsa::INVALID_HANDLE: return NetError.BAD_SOCKET_DESCRIPTOR;
+		case wsa::EACCESS: return IoError.NO_PERMISSION;
+		case wsa::EINPROGRESS: return NetError.STILL_PROCESSING_CALLBACK;
+		case wsa::EADDRINUSE: return NetError.ADDRESS_IN_USE;
+        case wsa::EALREADY: return NetError.CONNECTION_ALREADY_IN_PROGRESS;
+        case wsa::EBADF: return NetError.BAD_SOCKET_DESCRIPTOR;
+        case wsa::EINTR: return IoError.INTERRUPTED;
+        case wsa::EWOULDBLOCK: return IoError.WOULD_BLOCK;
+        case wsa::ECONNREFUSED: return NetError.CONNECTION_REFUSED;
+        case wsa::EISCONN: return NetError.ALREADY_CONNECTED;
+        case wsa::ENETUNREACH: return NetError.NETWORK_UNREACHABLE;
+        case wsa::ENOTSOCK: return NetError.NOT_A_SOCKET;
+        case wsa::EOPNOTSUPP: return NetError.OPERATION_NOT_SUPPORTED_ON_SOCKET;
+        case wsa::ETIMEDOUT: return NetError.CONNECTION_TIMED_OUT;
+		default: return IoError.GENERAL_ERROR;
+	}
+}
+fn anyfault socket_error()
+{
+	return convert_error(win32_WSAGetLastError());
+}

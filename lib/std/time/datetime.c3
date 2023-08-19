@@ -164,7 +164,7 @@ fn double DateTime.diff_sec(self, DateTime from)
 {
 	return (double)self.time.diff_us(from.time) / (double)time::MICROSECONDS_PER_SECOND;
 }
-fn TimeDuration DateTime.diff_us(self, DateTime from)
+fn Duration DateTime.diff_us(self, DateTime from)
 {
 	return self.time.diff_us(from.time);
 }

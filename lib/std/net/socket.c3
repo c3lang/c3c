@@ -2,13 +2,37 @@ module std::net @if(os::SUPPORTS_INET);
 import std::io;
 import libc;
 
-enum Network : char (int domain, int type)
+enum Network : char (AIFamily domain, AISockType type)
 {
-	TCP  (os::AF_INET, SOCK_STREAM),
-	TCP6 (os::AF_INET6, SOCK_STREAM),
-	UDP  (os::AF_INET, SOCK_DGRAM),
-	UDP6 (os::AF_INET6, SOCK_DGRAM),
+	TCP  (os::AF_INET, os::SOCK_STREAM),
+	TCP6 (os::AF_INET6, os::SOCK_STREAM),
+	UDP  (os::AF_INET, os::SOCK_DGRAM),
+	UDP6 (os::AF_INET6, os::SOCK_DGRAM),
 }
+
+
+
+struct Socket
+{
+	NativeSocket sock;
+	Socklen_t ai_addrlen;
+	// TODO proper way to get the size of sockaddr_storage
+	// https://learn.microsoft.com/en-us/previous-versions/windows/desktop/legacy/ms740504(v=vs.85)
+	char[128] ai_addr_storage;
+}
+
+fn Socket! _connect(AddrInfo* addrinfo, SocketOption[] options)
+{
+	@loop_over_ai(addrinfo; NativeSocket sockfd, AddrInfo* ai)
+	{
+		apply_sockoptions(sockfd, options)!;
+		int errcode = os::connect(sockfd, ai.ai_addr, ai.ai_addrlen);
+		// Keep the first successful connection.
+		if (!errcode) return network_socket(sockfd, ai);
+	};
+	return os::socket_error()?;
+}
+
 
 fn Socket! Network.connect(&self, String host, String port, SocketOption... options)
 {
@@ -19,20 +43,7 @@ fn Socket! Network.connect(&self, String host, String port, SocketOption... opti
 		// Keep the first successful connection.
 		if (errcode == 0) return network_socket(sockfd, ai);
 	}!;
-	switch (libc::errno())
-	{
-		case errno::EACCES: return IoError.NO_PERMISSION?;
-		case errno::EADDRINUSE: return NetError.ADDRESS_IN_USE?;
-		case errno::EALREADY: return NetError.CONNECTION_ALREADY_IN_PROGRESS?;
-		case errno::EBADF: return NetError.BAD_SOCKET_DESCRIPTOR?;
-		case errno::ECONNREFUSED: return NetError.CONNECTION_REFUSED?;
-		case errno::EISCONN: return NetError.ALREADY_CONNECTED?;
-		case errno::ENETUNREACH: return NetError.NETWORK_UNREACHABLE?;
-		case errno::ENOTSOCK: return NetError.NOT_A_SOCKET?;
-		case errno::EOPNOTSUPP: return NetError.OPERATION_NOT_SUPPORTED_ON_SOCKET?;
-		case errno::ETIMEDOUT: return NetError.CONNECTION_TIMED_OUT?;
-	}
-return	 NetError.CONNECT_FAILED?;
+	return os::socket_error()?;
 }
 
 fn Socket! Network.listen(&self, String host, String port, int backlog, SocketOption... options)
@@ -48,14 +59,7 @@ fn Socket! Network.listen(&self, String host, String port, int backlog, SocketOp
 			if (errcode == 0) return network_socket(sockfd, ai);
 		}
 	}!;
-	switch (libc::errno())
-	{
-		case errno::EADDRINUSE: return NetError.ADDRESS_IN_USE?;
-		case errno::EBADF: return NetError.BAD_SOCKET_DESCRIPTOR?;
-		case errno::ENOTSOCK: return NetError.NOT_A_SOCKET?;
-		case errno::EOPNOTSUPP: return NetError.OPERATION_NOT_SUPPORTED_ON_SOCKET?;
-	}
-	return NetError.LISTEN_FAILED?;
+	return os::socket_error()?;
 }
 
 fn AddrInfo*! Network.addrinfo(&self, String host, String port) @private
@@ -69,10 +73,23 @@ fn AddrInfo*! Network.addrinfo(&self, String host, String port) @private
 	return ai;
 }
 
-macro apply_sockoptions(sockfd, options) @private
+macro apply_sockoptions(sockfd, options)
 {
 	Socket sock = { .sock = sockfd };
-	foreach (o : options) sock.set_option(o)!;
+	foreach (o : options) sock.set_option(o, true)!;
+}
+
+macro void @loop_over_ai(AddrInfo* ai; @body(NativeSocket fd, AddrInfo* ai))
+{
+	while (ai)
+	{
+		NativeSocket sockfd = os::socket(ai.ai_family, ai.ai_socktype, ai.ai_protocol);
+		if (sockfd > 0)
+		{
+			@body(sockfd, ai);
+		}
+		ai = ai.ai_next;
+	}
 }
 
 macro @network_loop_over_ai(network, host, port; @body(fd, ai)) @private
@@ -91,7 +108,7 @@ macro @network_loop_over_ai(network, host, port; @body(fd, ai)) @private
 	}
 }
 
-macro Socket network_socket(fd, ai) @private
+macro Socket network_socket(fd, ai)
 {
 	Socket sock = { .sock = fd, .ai_addrlen = ai.ai_addrlen };
 	assert(sock.ai_addr_storage.len >= ai.ai_addrlen, "storage %d < addrlen %d", sock.ai_addr_storage.len, ai.ai_addrlen);
@@ -99,28 +116,17 @@ macro Socket network_socket(fd, ai) @private
 	return sock;
 }
 
-enum SocketOption : char (CInt value) @if(!env::WIN32)
+enum SocketOption : char (CInt value)
 {
 	REUSEADDR (os::SO_REUSEADDR),
-	REUSEPORT (os::SO_REUSEPORT),
+	REUSEPORT (os::SO_REUSEPORT) @if(!env::WIN32),
 	KEEPALIVE (os::SO_KEEPALIVE),
 	BROADCAST (os::SO_BROADCAST),
-}
-enum SocketOption : char (CInt value) @if(env::WIN32)
-{
-	REUSEADDR (os::SO_REUSEADDR),
-	KEEPALIVE (os::SO_KEEPALIVE),
-	BROADCAST (os::SO_BROADCAST),
+	OOBINLINE (os::SO_OOBINLINE),
+	DONTROUTE (os::SO_DONTROUTE),
 }
 
-struct Socket
-{
-	NativeSocket sock;
-	Socklen_t ai_addrlen;
-	// TODO proper way to get the size of sockaddr_storage
-	// https://learn.microsoft.com/en-us/previous-versions/windows/desktop/legacy/ms740504(v=vs.85)
-	char[128] ai_addr_storage;
-}
+
 
 fn Stream Socket.as_stream(&self)
 {
@@ -133,18 +139,37 @@ StreamInterface socketstream_interface = {
 	.close_fn = fn(s) => ((Socket*)s.data).close(),
 };
 
-fn void! Socket.set_option(&self, SocketOption option)
+fn bool! Socket.get_broadcast(&self) => self.get_option(BROADCAST);
+fn bool! Socket.get_keepalive(&self) => self.get_option(KEEPALIVE);
+fn bool! Socket.get_reuseaddr(&self) => self.get_option(REUSEADDR);
+fn bool! Socket.get_dontroute(&self) => self.get_option(DONTROUTE);
+fn bool! Socket.get_oobinline(&self) => self.get_option(OOBINLINE);
+
+fn void! Socket.set_broadcast(&self, bool value) => self.set_option(BROADCAST, value);
+fn void! Socket.set_keepalive(&self, bool value) => self.set_option(KEEPALIVE, value);
+fn void! Socket.set_reuseaddr(&self, bool value) => self.set_option(REUSEADDR, value);
+fn void! Socket.set_dontroute(&self, bool value) => self.set_option(DONTROUTE, value);
+fn void! Socket.set_oobinline(&self, bool value) => self.set_option(OOBINLINE, value);
+
+fn void! Socket.set_option(&self, SocketOption option, bool value)
 {
-	CInt flag = 1;
+	CInt flag = (CInt)value;
 	int errcode = os::setsockopt(self.sock, os::SOL_SOCKET, option.value, &flag, CInt.sizeof);
 	if (errcode != 0) return NetError.SOCKOPT_FAILED?;
 }
 
-fn void! Socket.unset_option(&self, SocketOption option)
+macro void! @set_option_value(NativeSocket sock, CInt option, value)
 {
-	CInt flag = 0;
+	var val = value;
+	if (os::setsockopt(sock, os::SOL_SOCKET, option, &val, $sizeof(val))) return NetError.SOCKOPT_FAILED?;
+}
+
+fn bool! Socket.get_option(&self, SocketOption option)
+{
+	CInt flag;
 	int errcode = os::setsockopt(self.sock, os::SOL_SOCKET, option.value, &flag, CInt.sizeof);
 	if (errcode != 0) return NetError.SOCKOPT_FAILED?;
+	return (bool)flag;
 }
 
 fn usz! Socket.read(&self, char[] bytes)
