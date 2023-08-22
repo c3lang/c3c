@@ -1174,7 +1174,12 @@ static inline void llvm_emit_access_addr(GenContext *c, BEValue *be_value, Expr 
 	llvm_emit_member_addr(c, be_value, type_lowering(parent->type)->decl, member);
 }
 
-
+static inline void llvm_set_phi(LLVMValueRef phi, LLVMValueRef val1, LLVMBasicBlockRef block1, LLVMValueRef val2, LLVMBasicBlockRef block2)
+{
+	LLVMValueRef vals[2] = { val1, val2 };
+	LLVMBasicBlockRef blocks[2] = { block1, block2 };
+	LLVMAddIncoming(phi, vals, blocks, 2);
+}
 
 static inline void llvm_emit_initialize_reference(GenContext *c, BEValue *value, Expr *expr);
 
@@ -5502,6 +5507,28 @@ static LLVMValueRef llvm_emit_dynamic_search(GenContext *c, LLVMValueRef type_id
 
 		LLVMDisposeBuilder(builder);
 	}
+	// Insert cache.
+	LLVMValueRef cache_fn_ptr = llvm_emit_alloca_aligned(c, type_voidptr, ".inlinecache");
+	LLVMValueRef cache_type_id_ptr = llvm_emit_alloca_aligned(c, type_voidptr, ".cachedtype");
+	LLVMBasicBlockRef current_block = LLVMGetInsertBlock(c->builder);
+	LLVMValueRef next_after_alloca = LLVMGetNextInstruction(c->alloca_point);
+	if (next_after_alloca)
+	{
+		LLVMPositionBuilderBefore(c->builder, next_after_alloca);
+	}
+	else
+	{
+		LLVMPositionBuilderAtEnd(c->builder, LLVMGetInstructionParent(c->alloca_point));
+	}
+	llvm_store_to_ptr_zero(c, cache_type_id_ptr, type_voidptr);
+	LLVMPositionBuilderAtEnd(c->builder, current_block);
+	LLVMBasicBlockRef cache_miss = llvm_basic_block_new(c, "cache_miss");
+	LLVMBasicBlockRef cache_hit = llvm_basic_block_new(c, "cache_hit");
+	LLVMBasicBlockRef exit = llvm_basic_block_new(c, "");
+	LLVMValueRef cached_type_id = llvm_load_abi_alignment(c, type_voidptr, cache_type_id_ptr, "type");
+	LLVMValueRef compare = LLVMBuildICmp(c->builder, LLVMIntEQ, type_id_ptr, cached_type_id, "");
+	llvm_emit_cond_br_raw(c, compare, cache_hit, cache_miss);
+	llvm_emit_block(c, cache_miss);
 	AlignSize align;
 	LLVMValueRef dtable_ref = llvm_emit_struct_gep_raw(c,
 													   type_id_ptr,
@@ -5512,7 +5539,17 @@ static LLVMValueRef llvm_emit_dynamic_search(GenContext *c, LLVMValueRef type_id
 	LLVMValueRef dtable_ptr = llvm_load(c, c->ptr_type, dtable_ref, align, "");
 	LLVMValueRef params[2] = { dtable_ptr, selector };
 	LLVMValueRef call = LLVMBuildCall2(c->builder, type, func, params, 2, "");
-	return call;
+	// Store in cache.
+	llvm_store_to_ptr_raw(c, cache_fn_ptr, call, type_voidptr);
+	llvm_store_to_ptr_raw(c, cache_type_id_ptr, type_id_ptr, type_voidptr);
+	llvm_emit_br(c, exit);
+	llvm_emit_block(c, cache_hit);
+	LLVMValueRef cached_val = llvm_load_abi_alignment(c, type_voidptr, cache_fn_ptr, "cache_hit_fn");
+	llvm_emit_br(c, exit);
+	llvm_emit_block(c, exit);
+	LLVMValueRef phi = LLVMBuildPhi(c->builder, c->ptr_type, "fn_phi");
+	llvm_set_phi(phi, cached_val, cache_hit, call, cache_miss);
+	return phi;
 }
 
 static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr, BEValue *target)

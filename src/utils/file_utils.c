@@ -287,6 +287,8 @@ DONE:
 	return true;
 }
 
+static char zero[1];
+
 char *file_read_binary(const char *path, size_t *size)
 {
 	size_t max_read = *size;
@@ -296,6 +298,12 @@ char *file_read_binary(const char *path, size_t *size)
 
 	fseek(file, 0L, SEEK_END);
 	size_t file_size = (size_t)ftell(file);
+
+	if (!file_size)
+	{
+		*size = 0;
+		return zero;
+	}
 	if (file_size > max_read) file_size = max_read;
 	rewind(file);
 	char *buffer = (char *)MALLOC(file_size);
