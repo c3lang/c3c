@@ -18,51 +18,68 @@ module std::sort::qs(<Type, Comparer>);
 
 def ElementType = $typeof(Type{}[0]);
 
+struct StackElementItem @private
+{
+	isz low;
+	isz high;
+}
+
+def Stack = StackElementItem[64] @private;
+
+// Based on https://alienryderflex.com/quicksort by Darel Rex Finley, Public Domain.
+
 fn void qsort(Type list, isz low, isz high, Comparer cmp)
 {
 	if (low >= 0 && high >= 0 && low < high)
 	{
-		isz p = partition(list, low, high, cmp);
-		qsort(list, low, p, cmp);
-		qsort(list, p + 1, high, cmp);
-	}
-}
+		Stack stack;
+		stack[0].low = low;
+		stack[0].high = high;
+		isz i;
+		isz l;
+		isz h;
+		while (i >= 0)
+		{
+		    l = stack[i].low;
+		    h = stack[i].high;
 
-fn isz partition(Type list, isz low, isz high, Comparer cmp) @inline @local
-{
-	ElementType pivot = list[low + (high - low) / 2];
-	isz i = low - 1;
-	isz j = high + 1;
-	bool ok;
-	while (true)
-	{
-		do {
-			i++;
-			$switch
-				$case $checks(cmp(list[0], list[0])):
-					ok = cmp(list[i], pivot) < 0;
-				$case $checks(cmp(&list[0], &list[0])):
-					ok = cmp(&list[i], &pivot) < 0;
-				$default:
-					ok = less(list[i], pivot);
-			$endswitch
-		} while (ok);
-		do {
-			j--;
-			$switch
-				$case $checks(cmp(list[0], list[0])):
-					ok = cmp(list[j], pivot) > 0;
-				$case $checks(cmp(&list[0], &list[0])):
-					ok = cmp(&list[j], &pivot) > 0;
-				$default:
-					ok = greater(list[j], pivot);
-			$endswitch
-		} while (ok);
-		if (i >= j) return j;
-		$if $checks(list.swap(0, 0)):
-			list.swap(i, j);
-		$else
-			@swap(list[i], list[j]);
-		$endif
+		    if (l < h)
+		    {
+			ElementType pivot = list[l];
+			while (l < h)
+			{
+				$switch
+					$case $checks(cmp(list[0], list[0])):
+						while (cmp(list[h], pivot) >= 0 && l < h) h--;
+					$case $checks(cmp(&list[0], &list[0])):
+						while (cmp(&list[h], &pivot) >= 0 && l < h) h--;
+					$default:
+						while (greater_eq(list[h], pivot) && l < h) h--;
+				$endswitch
+				if (l < h) list[l++] = list[h];
+				$switch
+					$case $checks(cmp(list[0], list[0])):
+						while (cmp(list[l], pivot) <= 0 && l < h) l++;
+					$case $checks(cmp(&list[0], &list[0])):
+						while (cmp(&list[l], &pivot) <= 0 && l < h) l++;
+					$default:
+						while (less_eq(list[l], pivot) && l < h) l++;
+				$endswitch
+				if (l < h) list[h--] = list[l];
+			}
+			list[l] = pivot;
+			stack[i + 1].low = l + 1;
+			stack[i + 1].high = stack[i].high;
+			stack[i++].high = l;
+			if (stack[i].high - stack[i].low > stack[i - 1].high - stack[i - 1].low)
+			{
+				@swap(stack[i], stack[i - 1]);
+			}
+		    }
+		    else
+		    {
+			i--;
+		    }
+		}
 	}
 }
