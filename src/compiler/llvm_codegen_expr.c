@@ -5430,11 +5430,11 @@ static LLVMValueRef llvm_emit_dynamic_search(GenContext *c, LLVMValueRef type_id
 	{
 		LLVMTypeRef types[2] = { c->ptr_type, c->ptr_type };
 		type = c->dyn_find_function_type = LLVMFunctionType(c->ptr_type, types, 2, false);
-		func = c->dyn_find_function = LLVMAddFunction(c->module, ".dyn_seach", c->dyn_find_function_type);
+		func = c->dyn_find_function = LLVMAddFunction(c->module, ".dyn_search", c->dyn_find_function_type);
 
 		LLVMSetUnnamedAddress(func, LLVMGlobalUnnamedAddr);
 		LLVMSetLinkage(func, LLVMWeakODRLinkage);
-
+		llvm_set_comdat(c, func);
 		LLVMBuilderRef builder = LLVMCreateBuilderInContext(c->context);
 
 		LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(c->context, func, "entry");
