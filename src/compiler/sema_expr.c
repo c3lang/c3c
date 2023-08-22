@@ -7418,68 +7418,70 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 
 	Expr *inner = expr->inner_expr;
 
-	Expr *main_var = inner;
-	while (main_var->expr_kind == EXPR_ACCESS)
+	bool success = true;
+	Expr *main = inner;
+RETRY:;
+	switch (inner->expr_kind)
 	{
-		main_var = main_var->access_expr.parent;
-	}
-
-	Decl *decl;
-RETRY:
-	switch (main_var->expr_kind)
-	{
-		case EXPR_IDENTIFIER:
-			// 2. An identifier does a lookup
-			decl = sema_find_path_symbol(context, main_var->identifier_expr.ident, main_var->identifier_expr.path);
-			// 2a. If it failed, then error
-			if (!decl_ok(decl)) return false;
-			// 2b. If it's missing, goto not defined
-			if (!decl) goto NOT_DEFINED;
+		case EXPR_ACCESS:
+		{
+			// Resolve the parent normally.
+			Expr *parent = main->access_expr.parent;
+			if (!sema_analyse_expr_lvalue_fold_const(context, parent)) return false;
+			bool suppress_error = global_context.suppress_errors;
+			global_context.suppress_errors = true;
+			CallEnvKind eval_kind = context->call_env.kind;
+			context->call_env.kind = CALL_ENV_CHECKS;
+			// Resolve the access using "checks" scope.
+			SCOPE_START_WITH_FLAGS(SCOPE_CHECKS);
+				success = sema_analyse_expr_lvalue(context, main);
+			SCOPE_END;
+			context->call_env.kind = eval_kind;
+			global_context.suppress_errors = suppress_error;
 			break;
+		}
+		case EXPR_IDENTIFIER:
+		{
+			Decl *decl = sema_find_path_symbol(context, main->identifier_expr.ident, main->identifier_expr.path);
+			if (!decl_ok(decl)) return false;
+			success = decl != NULL;
+			break;
+		}
 		case EXPR_COMPILER_CONST:
-			if (!sema_expr_analyse_compiler_const(context, main_var, false)) goto NOT_DEFINED;
+			success = sema_expr_analyse_compiler_const(context, main, false);
+			break;
+		case EXPR_BUILTIN:
+			success = sema_expr_analyse_builtin(context, main, false);
 			break;
 		case EXPR_TYPEINFO:
 		{
-			Type *type = sema_expr_check_type_exists(context, main_var->type_expr);
-			if (!type) goto NOT_DEFINED;
+			Type *type = sema_expr_check_type_exists(context, main->type_expr);
 			if (!type_ok(type)) return false;
-            main_var->type_expr = type_info_new_base(type, main_var->span);
+			success = type != NULL;
 			break;
 		}
-		case EXPR_BUILTIN:
-			if (!sema_expr_analyse_builtin(context, main_var, false)) goto NOT_DEFINED;
-			break;
 		case EXPR_CT_EVAL:
+			success = sema_ct_eval_expr(context, "$eval", main->inner_expr, false);
+			break;
+		case EXPR_HASH_IDENT:
 		{
-			Expr *eval = sema_ct_eval_expr(context, "$eval", main_var->inner_expr, false);
-			if (!eval) goto NOT_DEFINED;
-			expr_replace(main_var, eval);
+			Decl *decl = sema_resolve_symbol(context, main->hash_ident_expr.identifier, NULL, main->span);
+			if (!decl_ok(decl)) return false;
+			if (!decl) RETURN_SEMA_ERROR(inner, "No parameter '%s' found.", main->hash_ident_expr.identifier);
+			main = copy_expr_single(decl->var.init_expr);
 			goto RETRY;
 		}
+		case EXPR_CT_IDENT:
+		{
+			Decl *decl = sema_resolve_symbol(context, main->ct_ident_expr.identifier, NULL, main->span);
+			if (!decl_ok(decl)) return false;
+			success = decl != NULL;
+			break;
+		}
 		default:
-			SEMA_ERROR(main_var, "Expected an identifier here.");
-			return false;
+			RETURN_SEMA_ERROR(inner, "Expected an identifier or a field name.");
 	}
-	if (main_var != inner)
-	{
-		bool suppress_error = global_context.suppress_errors;
-		global_context.suppress_errors = true;
-		CallEnvKind eval_kind = context->call_env.kind;
-		context->call_env.kind = CALL_ENV_CHECKS;
-		bool success;
-		SCOPE_START_WITH_FLAGS(SCOPE_CHECKS);
-			success = sema_analyse_expr_lvalue(context, inner);
-		SCOPE_END;
-		context->call_env.kind = eval_kind;
-		global_context.suppress_errors = suppress_error;
-		if (!success) goto NOT_DEFINED;
-	}
-	expr_rewrite_const_bool(expr, type_bool, true);
-	return true;
-
-NOT_DEFINED:
-	expr_rewrite_const_bool(expr, type_bool, false);
+	expr_rewrite_const_bool(expr, type_bool, success);
 	return true;
 }
 

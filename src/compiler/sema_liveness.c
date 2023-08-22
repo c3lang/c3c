@@ -10,7 +10,26 @@ static void sema_trace_decl_liveness(Decl *decl);
 
 INLINE void sema_trace_type_liveness(Type *type)
 {
-	if (!type || !type_is_user_defined(type)) return;
+	if (!type) return;
+RETRY:
+	if (!type_is_user_defined(type))
+	{
+		type = type->canonical;
+		switch (type->type_kind)
+		{
+			case TYPE_POINTER:
+				type = type->pointer;
+				goto RETRY;
+			case TYPE_SUBARRAY:
+			case TYPE_ARRAY:
+			case TYPE_INFERRED_ARRAY:
+			case TYPE_FLEXIBLE_ARRAY:
+				type = type->array.base;
+				goto RETRY;
+			default:
+				return;
+		}
+	}
 	sema_trace_decl_liveness(type->decl);
 }
 
