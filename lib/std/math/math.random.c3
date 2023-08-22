@@ -6,6 +6,10 @@ struct Random
 	void* state;
 }
 
+fn uint any.next_random(void*, int bits) @interface;
+fn void any.next_random_bytes(void*, char[] buffer) @interface;
+fn void any.set_random_seed(void*, char[] seed) @interface;
+
 def RandomSeedFn = fn void(Random*, char[] seed);
 def RandomNextBytesFn = fn void(Random*, char[] buffer);
 def RandomNextFn = fn uint(Random*, int bits);

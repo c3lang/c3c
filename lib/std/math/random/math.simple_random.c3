@@ -7,8 +7,8 @@ const long SIMPLE_RANDOM_ADDEND @local = 0xB;
 const long SIMPLE_RANDOM_MASK @local = (1u64 << 48) - 1;
 
 RandomInterface simple_random_interface = {
-	.seed_fn = fn (random, seed) => ((SimpleRandom*)random.state).set_seeds(seed),
-	.next_fn = fn (random, bits) => ((SimpleRandom*)random.state).next(bits)
+	.seed_fn = fn (random, seed) => ((SimpleRandom*)random.state).set_random_seed(seed),
+	.next_fn = fn (random, bits) => ((SimpleRandom*)random.state).next_random(bits)
 };
 
 fn Random SimpleRandom.as_random(&random)
@@ -16,7 +16,7 @@ fn Random SimpleRandom.as_random(&random)
 	return { .fns = simple_random_interface, .state = random };
 }
 
-fn uint SimpleRandom.next(&r, int bits)
+fn uint SimpleRandom.next_random(&r, int bits) @dynamic
 {
 	ulong nextseed = ((ulong)*r * SIMPLE_RANDOM_MULTIPLIER + SIMPLE_RANDOM_ADDEND) & SIMPLE_RANDOM_MASK;
 	*r = (SimpleRandom)nextseed;
@@ -27,7 +27,7 @@ fn void SimpleRandom.set_seed(&r, ulong seed)
 {
 	*r = (SimpleRandom)((seed ^ SIMPLE_RANDOM_MULTIPLIER) & SIMPLE_RANDOM_MASK);
 }
-fn void SimpleRandom.set_seeds(&r, char[] seed)
+fn void SimpleRandom.set_random_seed(&r, char[] seed) @dynamic
 {
 	char[8] full;
 	foreach (i, c : seed)
