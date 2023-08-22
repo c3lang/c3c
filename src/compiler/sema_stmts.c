@@ -272,10 +272,12 @@ static void sema_unwrappable_from_catch_in_else(SemaContext *c, Expr *cond)
 
 static inline bool assert_create_from_contract(SemaContext *context, Ast *directive, AstId **asserts, SourceSpan evaluation_location)
 {
+	directive = copy_ast_single(directive);
 	Expr *declexpr = directive->contract_stmt.contract.decl_exprs;
 	assert(declexpr->expr_kind == EXPR_EXPRESSION_LIST);
 
 	Expr **exprs = declexpr->expression_list;
+
 	VECEACH(exprs, j)
 	{
 		Expr *expr = exprs[j];
@@ -355,6 +357,62 @@ static inline bool sema_return_optional_check_is_valid_in_scope(SemaContext *con
 	SEMA_ERROR(ret_expr, "This value does not match declared optional returns, it needs to be declared with the other optional returns.");
 	return false;
 }
+
+static bool sema_analyse_macro_constant_ensures(SemaContext *context, Expr *ret_expr)
+{
+	assert(context->current_macro);
+	// This is a per return check, so we don't do it if the return expression is missing,
+	// or if it is optional, or – obviously - if there are no '@ensure'.
+	if (!ret_expr || !context->macro_has_ensures || IS_OPTIONAL(ret_expr)) return true;
+
+	// If the return expression can't be flattened to a constant value, then
+	// we won't be able to do any constant ensure checks anyway, so skip.
+	if (!sema_flattened_expr_is_const(context, ret_expr)) return true;
+
+	AstId doc_directive = context->current_macro->func_decl.docs;
+	// We store the old return_expr for retval
+	Expr *return_expr_old = context->return_expr;
+	// And set our new one.
+	context->return_expr = ret_expr;
+	bool success = true;
+	SCOPE_START_WITH_FLAGS(SCOPE_ENSURE_MACRO);
+		while (doc_directive)
+		{
+			Ast *directive = astptr(doc_directive);
+			doc_directive = directive->next;
+			if (directive->contract_stmt.kind != CONTRACT_ENSURE) continue;
+			Expr *checks = copy_expr_single(directive->contract_stmt.contract.decl_exprs);
+			assert(checks->expr_kind == EXPR_EXPRESSION_LIST);
+			Expr **exprs = checks->expression_list;
+			FOREACH_BEGIN(Expr *expr, exprs)
+				if (expr->expr_kind == EXPR_DECL)
+				{
+					SEMA_ERROR(expr, "Only expressions are allowed.");
+					success = false;
+					goto END;
+				}
+				if (!sema_analyse_cond_expr(context, expr))
+				{
+					success = false;
+					goto END;
+				}
+				// Skipping non-const.
+				if (!expr_is_const(expr)) continue;
+				// It was ok.
+				assert(expr->const_expr.const_kind == CONST_BOOL);
+				if (expr->const_expr.b) continue;
+				const char *comment = directive->contract_stmt.contract.comment;
+				if (!comment) comment = directive->contract_stmt.contract.expr_string;
+				SEMA_ERROR(ret_expr, "%s", comment);
+				success = false;
+				goto END;
+			FOREACH_END();
+		}
+END:
+	SCOPE_END;
+	context->return_expr = return_expr_old;
+	return success;
+}
 /**
  * Handle exit in a macro or in an expression block.
  * @param context
@@ -363,6 +421,7 @@ static inline bool sema_return_optional_check_is_valid_in_scope(SemaContext *con
  */
 static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *statement)
 {
+	bool is_macro = (context->active_scope.flags & SCOPE_MACRO) != 0;
 	assert(context->active_scope.flags & (SCOPE_EXPR_BLOCK | SCOPE_MACRO));
 	statement->ast_kind = AST_BLOCK_EXIT_STMT;
 	context->active_scope.jump_end = true;
@@ -378,8 +437,7 @@ static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *state
 		{
 			if (!sema_analyse_expr(context, ret_expr)) return false;
 		}
-		if ((context->active_scope.flags & SCOPE_MACRO)
-			&& !sema_return_optional_check_is_valid_in_scope(context, ret_expr)) return false;
+		if (is_macro && !sema_return_optional_check_is_valid_in_scope(context, ret_expr)) return false;
 
 	}
 	else
@@ -392,6 +450,8 @@ static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *state
 	}
 	statement->return_stmt.block_exit_ref = context->block_exit_ref;
 	sema_inline_return_defers(context, statement, context->active_scope.defer_last, context->block_return_defer);
+
+	if (is_macro && !sema_analyse_macro_constant_ensures(context, ret_expr)) return false;
 	vec_add(context->returns, statement);
 	return true;
 }
@@ -502,7 +562,11 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 			Ast *directive = astptr(doc_directive);
 			if (directive->contract_stmt.kind == CONTRACT_ENSURE)
 			{
-				if (!assert_create_from_contract(context, directive, &append_id, statement->span)) return false;
+				bool success;
+				SCOPE_START_WITH_FLAGS(SCOPE_ENSURE);
+					success = assert_create_from_contract(context, directive, &append_id, statement->span);
+				SCOPE_END;
+				if (!success) return false;
 			}
 			doc_directive = directive->next;
 		}
@@ -2936,7 +3000,7 @@ void sema_append_contract_asserts(AstId assert_first, Ast* compound_stmt)
 	ast_prepend(&compound_stmt->compound_stmt.first_stmt, ast);
 }
 
-bool sema_analyse_contracts(SemaContext *context, AstId doc, AstId **asserts, SourceSpan call_span)
+bool sema_analyse_contracts(SemaContext *context, AstId doc, AstId **asserts, SourceSpan call_span, bool *has_ensures)
 {
 	while (doc)
 	{
@@ -2959,7 +3023,7 @@ bool sema_analyse_contracts(SemaContext *context, AstId doc, AstId **asserts, So
 				break;
 			case CONTRACT_ENSURE:
 				if (!sema_analyse_ensure(context, directive)) return false;
-				context->call_env.ensures = true;
+				*has_ensures = true;
 				break;
 		}
 		doc = directive->next;
@@ -3071,7 +3135,9 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 		}
 		AstId assert_first = 0;
 		AstId *next = &assert_first;
-		if (!sema_analyse_contracts(context, func->func_decl.docs, &next, INVALID_SPAN)) return false;
+		bool has_ensures = false;
+		if (!sema_analyse_contracts(context, func->func_decl.docs, &next, INVALID_SPAN, &has_ensures)) return false;
+		context->call_env.ensures = has_ensures;
 		if (func->func_decl.attr_naked)
 		{
 			AstId current = body->compound_stmt.first_stmt;

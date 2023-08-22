@@ -46,7 +46,7 @@ unsigned sema_context_push_ct_stack(SemaContext *context);
 void sema_context_pop_ct_stack(SemaContext *context, unsigned old_state);
 
 bool sema_analyse_function_body(SemaContext *context, Decl *func);
-bool sema_analyse_contracts(SemaContext *context, AstId doc, AstId **asserts, SourceSpan span);
+bool sema_analyse_contracts(SemaContext *context, AstId doc, AstId **asserts, SourceSpan span, bool *has_ensures);
 void sema_append_contract_asserts(AstId assert_first, Ast* compound_stmt);
 
 void sema_analyse_pass_top(Module *module);

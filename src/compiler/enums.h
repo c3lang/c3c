@@ -357,6 +357,8 @@ typedef enum
 {
 	SCOPE_NONE = 0,
 	SCOPE_CHECKS = 1 << 0,
+	SCOPE_ENSURE = 1 << 2,
+	SCOPE_ENSURE_MACRO = 1 << 3,
 	SCOPE_EXPR_BLOCK = 1 << 5,
 	SCOPE_MACRO = 1 << 6,
 } ScopeFlags;

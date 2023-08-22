@@ -16,7 +16,7 @@ fn char[] seeder(usz outChars, char[] input)
 	words[..] = ODD_PHI64;
 
 	// Add word at a time
-	for (usz i = 0; i <= input.len / 8; i++)
+	for (usz i = 0; i < input.len / 8; i++)
 	{
 		usz j = i % words.len;
 		words[j] -= bitcast(*(char[8]*)&input[i * 8], ulong) * MUL_LCG64;

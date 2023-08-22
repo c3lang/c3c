@@ -1025,7 +1025,7 @@ static inline void llvm_emit_assert_stmt(GenContext *c, Ast *ast)
 			}
 		}
 		llvm_emit_panic(c, error, loc, fmt, values);
-		llvm_emit_br(c, on_ok);
+		llvm_emit_unreachable(c);
 		llvm_emit_block(c, on_ok);
 	}
 	llvm_emit_assume(c, exprptr(ast->assert_stmt.expr));

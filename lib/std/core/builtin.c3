@@ -157,7 +157,7 @@ macro void unsupported(String string = "Unsupported function invoked") @builtin 
  * @param $Type "the type to cast to"
  *
  * @require $sizeof(expr) == $Type.sizeof  "Cannot bitcast between types of different size."
- * @ensure @typeis(result, $Type)
+ * @ensure @typeis(return, $Type)
  **/
 macro bitcast(expr, $Type) @builtin
 {

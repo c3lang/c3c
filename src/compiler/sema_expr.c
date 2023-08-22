@@ -1931,8 +1931,10 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	AstId assert_first = 0;
 	AstId* next = &assert_first;
 
-	if (!sema_analyse_contracts(&macro_context, docs, &next, call_expr->span)) goto EXIT_FAIL;
+	bool has_ensures = false;
+	if (!sema_analyse_contracts(&macro_context, docs, &next, call_expr->span, &has_ensures)) goto EXIT_FAIL;
 	sema_append_contract_asserts(assert_first, body);
+	macro_context.macro_has_ensures = has_ensures;
 
 	if (!sema_analyse_statement(&macro_context, body)) goto EXIT_FAIL;
 
@@ -7709,21 +7711,29 @@ static inline TypeProperty type_property_by_name(const char *name)
 
 static inline bool sema_expr_analyse_retval(SemaContext *c, Expr *expr)
 {
-	if (c->active_scope.flags & SCOPE_MACRO)
+	if ((c->active_scope.flags & (SCOPE_ENSURE | SCOPE_ENSURE_MACRO)) == 0)
 	{
-		TODO
-	}
-	expr->type = type_no_optional(c->rtype);
-	if (expr->type == type_void)
-	{
-		SEMA_ERROR(expr, "'return' cannot be used on void functions.");
-		return false;
+		RETURN_SEMA_ERROR(expr, "'return' as a value can only be used inside of an '@ensure'.");
 	}
 	Expr *return_value = c->return_expr;
+	bool is_macro_ensure = (c->active_scope.flags & SCOPE_ENSURE_MACRO) != 0;
+	if (is_macro_ensure)
+	{
+		expr->type = type_no_optional(return_value->type);
+	}
+	else
+	{
+		expr->type = type_no_optional(c->rtype);
+		if (expr->type == type_void)
+		{
+			SEMA_ERROR(expr, "'return' cannot be used on void functions.");
+			return false;
+		}
+	}
 	assert(return_value);
 	if (sema_flattened_expr_is_const(c, return_value))
 	{
-		expr_replace(expr, return_value);
+		expr_replace(expr, copy_expr_single(return_value));
 	}
 	return true;
 }

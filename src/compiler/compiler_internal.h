@@ -702,31 +702,30 @@ typedef struct Decl_
 			Decl **methods;
 			union
 			{
-				// Unions, Struct use strukt
-				StructDecl strukt;
+				BitStructDecl bitstruct;
 				// Enums and Fault
 				EnumDecl enums;
 				DistinctDecl distinct_decl;
-				BitStructDecl bitstruct;
+				// Unions, Struct use strukt
+				StructDecl strukt;
 			};
 		};
-		IncludeDecl include;
-		ExecDecl exec_decl;
-		Decl** body_params;
-		ImportDecl import;
-		VarDecl var;
-		LabelDecl label;
-		EnumConstantDecl enum_constant;
-		FuncDecl func_decl;
-		Signature fntype_decl;
 		AttrDecl attr_decl;
-		Decl** decls;
-		TypedefDecl typedef_decl;
-		DefineDecl define_decl;
+		Decl** body_params;
 		Ast *ct_assert_decl;
 		Ast *ct_echo_decl;
 		Decl** ct_else_decl;
-
+		Decl** decls;
+		DefineDecl define_decl;
+		EnumConstantDecl enum_constant;
+		ExecDecl exec_decl;
+		Signature fntype_decl;
+		FuncDecl func_decl;
+		ImportDecl import;
+		IncludeDecl include;
+		LabelDecl label;
+		TypedefDecl typedef_decl;
+		VarDecl var;
 	};
 } Decl;
 
@@ -1141,54 +1140,54 @@ struct Expr_
 	ExprKind expr_kind : 8;
 	ResolveStatus resolve_status : 4;
 	union {
-		Range vasplat_expr;
-		ExprTypeidInfo typeid_info_expr;            // 8
-		ExprAnySwitch any_switch;                   // 32
-		ExprCast cast_expr;                         // 12
-		ExprAny any_expr;                           // 8
-		ExprPointerOffset pointer_offset_expr;
-		ExprAsmArg expr_asm_arg;                    // 24
-		OperatorOverload overload_expr;             // 4
-		TypeInfo *type_expr;                        // 8
-		ExprConst const_expr;                       // 32
-		ExprGuard rethrow_expr;                     // 16
-		Decl *decl_expr;                            // 8
-		Decl *lambda_expr;                          // 8
-		ExprSliceAssign slice_assign_expr;          // 8
-		ExprBinary binary_expr;                     // 12
-		ExprTernary ternary_expr;                   // 16
-		ExprUnary unary_expr;                       // 16
-		Expr** try_unwrap_chain_expr;               // 8
-		ExprTryUnwrap try_unwrap_expr;              // 24
-		ExprCall call_expr;                         // 40
-		Expr *inner_expr;                           // 8
-		ExprEmbedExpr embed_expr;                   // 16
-		ExprBuiltinAccess builtin_access_expr;      // 8
-		ExprGenericIdent generic_ident_expr;
-		ExprCatchUnwrap catch_unwrap_expr;          // 24
-		ExprSubscript subscript_expr;               // 12
-		ExprSubscriptAssign subscript_assign_expr;
 		ExprAccess access_expr;                     // 16
-		ExprSwizzle swizzle_expr;
-		ExprDesignator designator_expr;             // 16
-		ExprIdentifier identifier_expr;             // 24
-		ExprIdentifierRaw ct_ident_expr;            // 24
-		ExprCtCall ct_call_expr;                    // 24
-		ExprCtArg ct_arg_expr;
-		ExprIdentifierRaw hash_ident_expr;          // 24
-		TypeInfo *typeid_expr;                      // 8
+		ExprAny any_expr;                           // 8
+		ExprAnySwitch any_switch;                   // 32
+		ExprBinary binary_expr;                     // 12
 		ExprBodyExpansion body_expansion_expr;      // 24
+		ExprBuiltinAccess builtin_access_expr;      // 8
+		ExprBuiltin builtin_expr;                   // 16
+		ExprCall call_expr;                         // 40
+		ExprCast cast_expr;                         // 12
+		ExprCatchUnwrap catch_unwrap_expr;          // 24
+		Expr** cond_expr;                           // 8
+		ExprConst const_expr;                       // 32
+		ExprCtArg ct_arg_expr;
+		ExprCtCall ct_call_expr;                    // 24
+		ExprIdentifierRaw ct_ident_expr;            // 24
+		Decl *decl_expr;                            // 8
+		Expr** designated_init_list;                // 8
+		ExprDesignator designator_expr;             // 16
+		ExprEmbedExpr embed_expr;                   // 16
+		Expr** exec_expr;                           // 8
+		ExprAsmArg expr_asm_arg;                    // 24
+		ExprFuncBlock expr_block;                   // 4
 		ExprCompoundLiteral expr_compound_literal;  // 16
 		Expr** expression_list;                     // 8
-		Expr** exec_expr;                           // 8
+		ExprGenericIdent generic_ident_expr;
+		ExprIdentifierRaw hash_ident_expr;          // 24
+		ExprIdentifier identifier_expr;             // 24
 		Expr** initializer_list;                    // 8
-		Expr** designated_init_list;                // 8
-		ExprFuncBlock expr_block;                   // 4
+		Expr *inner_expr;                           // 8
+		Decl *lambda_expr;                          // 8
 		ExprMacroBlock macro_block;                 // 24
-		Expr** cond_expr;                           // 8
-		ExprBuiltin builtin_expr;                   // 16
-		BuiltinDefine test_hook_expr;
 		ExprMacroBody macro_body_expr;              // 16;
+		OperatorOverload overload_expr;             // 4
+		ExprPointerOffset pointer_offset_expr;
+		ExprGuard rethrow_expr;                     // 16
+		ExprSliceAssign slice_assign_expr;          // 8
+		ExprSubscriptAssign subscript_assign_expr;
+		ExprSubscript subscript_expr;               // 12
+		ExprSwizzle swizzle_expr;
+		ExprTernary ternary_expr;                   // 16
+		BuiltinDefine test_hook_expr;
+		Expr** try_unwrap_chain_expr;               // 8
+		ExprTryUnwrap try_unwrap_expr;              // 24
+		TypeInfo *type_expr;                        // 8
+		TypeInfo *typeid_expr;                      // 8
+		ExprTypeidInfo typeid_info_expr;            // 8
+		ExprUnary unary_expr;                       // 16
+		Range vasplat_expr;
 	};
 };
 //static_assert(sizeof(ExprConst) == 32, "Not expected size");
@@ -1462,27 +1461,27 @@ typedef struct Ast_
 		FlowCommon flow;                    // Shared struct
 		AstAsmBlock asm_block_stmt;
 		AstAsmStmt asm_stmt;
-		AstCompoundStmt compound_stmt;      // 12
-		Decl *declare_stmt;                 // 8
-		Decl **decls_stmt;
-		Expr *expr_stmt;                    // 8
-		Decl *var_stmt;                     // 8
-		AstReturnStmt return_stmt;          // 16
-		AstIfStmt if_stmt;                  // 32
-		AstDeferStmt defer_stmt;            // 8
-		AstSwitchStmt switch_stmt;          // 40
-		AstCaseStmt case_stmt;              // 32
-		AstCtSwitchStmt ct_switch_stmt;     // 16
-		AstContinueBreakStmt contbreak_stmt;// 24
-		AstNextcaseStmt nextcase_stmt;      // 32
-		AstForStmt for_stmt;                // 32
-		AstForeachStmt foreach_stmt;        // 40
-		AstCtIfStmt ct_if_stmt;             // 24
-		AstId ct_else_stmt;                 // 4
-		AstCtForeachStmt ct_foreach_stmt;   // 40
 		AstAssertStmt assert_stmt;          // 16
+		AstCaseStmt case_stmt;              // 32
+		AstCompoundStmt compound_stmt;      // 12
+		AstContinueBreakStmt contbreak_stmt;// 24
 		AstContractStmt contract_stmt;      // 32
 		AstDocFault contract_fault;         // 24
+		AstId ct_else_stmt;                 // 4
+		AstCtForeachStmt ct_foreach_stmt;   // 40
+		AstCtIfStmt ct_if_stmt;             // 24
+		AstCtSwitchStmt ct_switch_stmt;     // 16
+		Decl *declare_stmt;                 // 8
+		Decl **decls_stmt;
+		AstDeferStmt defer_stmt;            // 8
+		Expr *expr_stmt;                    // 8
+		AstForStmt for_stmt;                // 32
+		AstForeachStmt foreach_stmt;        // 40
+		AstIfStmt if_stmt;                  // 32
+		AstNextcaseStmt nextcase_stmt;      // 32
+		AstReturnStmt return_stmt;          // 16
+		AstSwitchStmt switch_stmt;          // 40
+		Decl *var_stmt;                     // 8
 	};
 } Ast;
 
@@ -1690,6 +1689,7 @@ typedef struct SemaContext_
 		Ast **returns_cache;
 		Expr **macro_varargs;
 		Decl **macro_params;
+		bool macro_has_ensures;
 		Decl** ct_locals;
 	};
 	Type *rtype;

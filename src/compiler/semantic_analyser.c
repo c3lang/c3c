@@ -27,8 +27,11 @@ void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags)
 	bool new_label_scope = (flags & (SCOPE_EXPR_BLOCK | SCOPE_MACRO)) != 0;
 	if (!(flags & SCOPE_EXPR_BLOCK))
 	{
+		bool is_macro = (flags & SCOPE_MACRO) != 0;
 		flags = context->active_scope.flags | flags;
+		if (is_macro) flags &= ~(SCOPE_ENSURE | SCOPE_ENSURE_MACRO);
 	}
+
 	unsigned label_start = new_label_scope ? last_local : context->active_scope.label_start;
 	context->active_scope = (DynamicScope) {
 			.scope_id = ++context->scope_id,
