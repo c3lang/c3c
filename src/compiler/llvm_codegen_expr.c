@@ -676,7 +676,7 @@ static inline void gencontext_emit_subscript(GenContext *c, BEValue *value, Expr
 	{
 		// From back should always be folded.
 		assert(!expr_is_const(expr) || !expr->subscript_expr.range.start_from_end);
-		needs_len = (active_target.feature.safe_mode && expr_is_const(expr)) || expr->subscript_expr.range.start_from_end;
+		needs_len = (active_target.feature.safe_mode && !expr_is_const(expr)) || expr->subscript_expr.range.start_from_end;
 	}
 	if (needs_len)
 	{

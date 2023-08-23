@@ -1,0 +1,32 @@
+// #target: macos-x64
+// #safe: yes
+module testing;
+import std::io;
+
+const FOO = Foo[2]{ {11}, {22} };
+
+struct Foo
+{
+	int x;
+}
+
+fn void! main()
+{
+	for (usz i = 0; i < 20; i++)
+	{
+		int x = FOO[i].x;
+	}
+}
+
+/* #expect: testing.ll
+
+loop.cond:                                        ; preds = %checkok, %entry
+  %0 = load i64, ptr %i, align 8
+  %gt = icmp ugt i64 20, %0
+  br i1 %gt, label %loop.body, label %loop.exit
+loop.body:                                        ; preds = %loop.cond
+  %1 = load i64, ptr %i, align 8
+  %ge = icmp uge i64 %1, 2
+  br i1 %ge, label %panic, label %checkok
+panic:                                            ; preds = %loop.body
+  store i64 2, ptr %taddr, align 8
