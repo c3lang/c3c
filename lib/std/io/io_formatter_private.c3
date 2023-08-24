@@ -128,7 +128,7 @@ fn uint simple_atoi(char* buf, usz maxlen, usz* len_ptr) @inline @private
 	while (len < maxlen)
 	{
 		char c = buf[len];
-		if (c < '0' || c > '9') break;
+		if (!c.is_digit()) break;
 		i = i * 10 + c - '0';
 		len++;
 	}
@@ -657,7 +657,7 @@ fn int! printf_parse_format_field(
 	char* format_ptr, usz format_len, usz* index_ptr) @inline @private
 {
 	char c = format_ptr[*index_ptr];
-	if (c >= '0' && c <= '9') return simple_atoi(format_ptr, format_len, index_ptr);
+	if (c.is_digit()) return simple_atoi(format_ptr, format_len, index_ptr);
 	if (c != '*') return 0;
 	printf_advance_format(format_len, index_ptr)!;
 	any val = next_any(args_ptr, args_len, args_index_ptr)!;
