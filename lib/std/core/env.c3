@@ -179,3 +179,6 @@ macro bool os_is_posix()
 		return false;
 	$endswitch
 }
+
+const BUILTIN_EXPECT_IS_DISABLED = $feature(DISABLE_BUILTIN_EXPECT);
+const BUILTIN_PREFETCH_IS_DISABLED = $feature(DISABLE_BUILTIN_PREFETCH);

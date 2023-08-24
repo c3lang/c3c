@@ -57,7 +57,7 @@ int abc;
 
 fn void test_prefetch()
 {
-	prefetch(&abc);
+	@prefetch(&abc);
 }
 
 fn void test_hash()
