@@ -133,7 +133,7 @@ fn Type PrivatePriorityQueue.peek_at(&self, usz index) @operator([])
 	return self.heap[index];
 }
 
-fn void! PrivatePriorityQueue.to_format(&self, Formatter* formatter) @dynamic
+fn usz! PrivatePriorityQueue.to_format(&self, Formatter* formatter) @dynamic
 {
 	return self.heap.to_format(formatter);
 }

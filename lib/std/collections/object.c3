@@ -27,51 +27,53 @@ struct Object
 }
 
 
-fn void! Object.to_format(&self, Formatter* formatter) @dynamic
+fn usz! Object.to_format(&self, Formatter* formatter) @dynamic
 {
 	switch (self.type)
 	{
 		case void:
-			formatter.printf("{}")!;
+			return formatter.printf("{}")!;
 		case void*:
-			formatter.printf("null")!;
+			return formatter.printf("null")!;
 		case String:
-			formatter.printf(`"%s"`, self.s)!;
+			return formatter.printf(`"%s"`, self.s)!;
 		case bool:
-			formatter.printf(self.b ? "true" : "false")!;
+			return formatter.printf(self.b ? "true" : "false")!;
 		case ObjectInternalList:
-			formatter.printf("[")!;
+			usz n = formatter.printf("[")!;
 			foreach (i, ol : self.array)
 			{
-				formatter.printf(i == 0 ? " " : ", ")!;
-				ol.to_format(formatter)!;
+				n += formatter.printf(i == 0 ? " " : ", ")!;
+				n += ol.to_format(formatter)!;
 			}
-			formatter.printf(" ]")!;
+			n += formatter.printf(" ]")!;
+			return n;
 		case ObjectInternalMap:
-			formatter.printf("{")!;
+			usz n = formatter.printf("{")!;
 			@pool()
 			{
 				foreach (i, key : self.map.key_tlist())
 				{
-					formatter.printf(i == 0 ? " " : ", ")!;
-					formatter.printf(`"%s": `, key)!;
-					self.map.get(key).to_format(formatter)!;
+					n += formatter.printf(i == 0 ? " " : ", ")!;
+					n += formatter.printf(`"%s": `, key)!;
+					n += self.map.get(key).to_format(formatter)!;
 				}
 			};
-			formatter.printf(" }")!;
+			n += formatter.printf(" }")!;
+			return n;
 		default:
 			switch (self.type.kindof)
 			{
 				case SIGNED_INT:
-					formatter.printf("%d", self.i)!;
+					return formatter.printf("%d", self.i)!;
 				case UNSIGNED_INT:
-					formatter.printf("%d", (uint128)self.i)!;
+					return formatter.printf("%d", (uint128)self.i)!;
 				case FLOAT:
-					formatter.printf("%d", self.f)!;
+					return formatter.printf("%d", self.f)!;
 				case ENUM:
-					formatter.printf("%d", self.i)!;
+					return formatter.printf("%d", self.i)!;
 				default:
-					formatter.printf("<>")!;
+					return formatter.printf("<>")!;
 			}
 	}
 }

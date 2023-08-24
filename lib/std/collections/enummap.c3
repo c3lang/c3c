@@ -14,15 +14,16 @@ fn void EnumMap.init(&self, ValueType init_value)
 }
 
 
-fn void! EnumMap.to_format(&self, Formatter* formatter) @dynamic
+fn usz! EnumMap.to_format(&self, Formatter* formatter) @dynamic
 {
-	formatter.print("{ ")!;
+	usz n = formatter.print("{ ")!;
 	foreach (i, &value : self.values)
 	{
 		if (i != 0) formatter.print(", ")!;
-		formatter.printf("%s: %s", (Enum)i, *value)!;
+		n += formatter.printf("%s: %s", (Enum)i, *value)!;
 	}
-	formatter.print(" }")!;
+	n += formatter.print(" }")!;
+	return n;
 }
 
 fn String EnumMap.to_string(&self, Allocator* using = mem::heap()) @dynamic

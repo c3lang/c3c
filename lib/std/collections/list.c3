@@ -41,22 +41,23 @@ fn void List.tinit(&self, usz initial_capacity = 16)
 	self.init(initial_capacity, mem::temp()) @inline;
 }
 
-fn void! List.to_format(&self, Formatter* formatter) @dynamic
+fn usz! List.to_format(&self, Formatter* formatter) @dynamic
 {
 	switch (self.size)
 	{
 		case 0:
-			formatter.print("[]")!;
+			return formatter.print("[]")!;
 		case 1:
-			formatter.printf("[%s]", self.entries[0])!;
+			return formatter.printf("[%s]", self.entries[0])!;
 		default:
-			formatter.print("[")!;
+			usz n = formatter.print("[")!;
 			foreach (i, element : self.entries[:self.size])
 			{
 				if (i != 0) formatter.print(", ")!;
-				formatter.printf("%s", element)!;
+				n += formatter.printf("%s", element)!;
 			}
-			formatter.print("]")!;
+			n += formatter.print("]")!;
+			return n;
 	}
 }
 

@@ -34,9 +34,9 @@ fn String Range.to_string(&self, Allocator* using = mem::heap()) @dynamic
 	return string::printf("[%s..%s]", self.start, self.end);
 }
 
-fn void! Range.to_format(&self, Formatter* formatter) @dynamic
+fn usz! Range.to_format(&self, Formatter* formatter) @dynamic
 {
-	formatter.printf("[%s..%s]", self.start, self.end)!;
+	return formatter.printf("[%s..%s]", self.start, self.end)!;
 }
 
 struct ExclusiveRange
@@ -56,9 +56,9 @@ fn bool ExclusiveRange.contains(&self, Type value) @inline
 	return value >= self.start && value < self.end;
 }
 
-fn void! ExclusiveRange.to_format(&self, Formatter* formatter) @dynamic
+fn usz! ExclusiveRange.to_format(&self, Formatter* formatter) @dynamic
 {
-	formatter.printf("[%s..<%s]", self.start, self.end)!;
+	return formatter.printf("[%s..<%s]", self.start, self.end)!;
 }
 
 fn String ExclusiveRange.to_string(&self, Allocator* using = mem::heap()) @dynamic

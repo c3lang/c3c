@@ -45,16 +45,15 @@ struct InetAddress
 }
 
 
-fn void! InetAddress.to_format(InetAddress* addr, Formatter* formatter) @dynamic
+fn usz! InetAddress.to_format(InetAddress* addr, Formatter* formatter) @dynamic
 {
 	if (addr.is_ipv6)
 	{
-		formatter.printf("%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x",
+		return formatter.printf("%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x",
 			addr.ipv6.a, addr.ipv6.b, addr.ipv6.c, addr.ipv6.d,
 			addr.ipv6.e, addr.ipv6.f, addr.ipv6.g, addr.ipv6.h)!;
-		return;
 	}
-	formatter.printf("%d.%d.%d.%d", addr.ipv4.a, addr.ipv4.b, addr.ipv4.c, addr.ipv4.d)!;
+	return formatter.printf("%d.%d.%d.%d", addr.ipv4.a, addr.ipv4.b, addr.ipv4.c, addr.ipv4.d)!;
 }
 
 fn String InetAddress.to_string(InetAddress* addr, Allocator* using = mem::heap()) @dynamic
