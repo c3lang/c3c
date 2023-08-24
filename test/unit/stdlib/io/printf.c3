@@ -17,4 +17,33 @@ fn void printf_a()
 	assert(s == "hello world         ", "got '%s'; want 'hello world         '", s);
 	s = string::printf("%20s", "hello world");
 	assert(s == "         hello world", "got '%s'; want '         hello world'", s);
+
+	String str = "hello!";
+	s = string::printf("%-20s", str);
+	assert(s == "hello!              ", "got '%s'; want 'hello!              '", s);
+	s = string::printf("%20s", str);
+	assert(s == "              hello!", "got '%s'; want '              hello!'", s);
+
+	int[2] a = { 12, 23 };
+	s = string::printf("%-20s", a);
+	assert(s == "[12, 23]            ", "got '%s'; want '[12, 23]            '", s);
+	s = string::printf("%20s", a);
+	assert(s == "            [12, 23]", "got '%s'; want '            [12, 23]'", s);
+
+	s = string::printf("%-20s", a[..]);
+	assert(s == "[12, 23]            ", "got '%s'; want '[12, 23]            '", s);
+	s = string::printf("%20s", a[..]);
+	assert(s == "            [12, 23]", "got '%s'; want '            [12, 23]'", s);
+
+	float[2] f = { 12.0, 23.0 };
+	s = string::printf("%-24s", f);
+	assert(s == "[12.000000, 23.000000]  ", "got '%s'; want '[12.000000, 23.000000]  '", s);
+	s = string::printf("%24s", f);
+	assert(s == "  [12.000000, 23.000000]", "got '%s'; want '  [12.000000, 23.000000]'", s);
+
+	int[<2>] vec = { 12, 23 };
+	s = string::printf("%-20s", vec);
+	assert(s == "[<12, 23>]          ", "got '%s'; want '[<12, 23>]          '", s);
+	s = string::printf("%20s", vec);
+	assert(s == "          [<12, 23>]", "got '%s'; want '          [<12, 23>]'", s);
 }

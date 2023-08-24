@@ -86,13 +86,12 @@ fn long NanoDuration.to_ms(nd) => (long)nd / 1_000_000;
 fn Duration NanoDuration.to_duration(nd) => (Duration)nd / 1_000;
 fn NanoDuration Duration.to_nano(td) => (NanoDuration)td * 1_000;
 
-fn void! NanoDuration.to_format(&self, Formatter* formatter) @dynamic
+fn usz! NanoDuration.to_format(&self, Formatter* formatter) @dynamic
 {
 	NanoDuration nd = *self;
 	if (nd == 0)
 	{
-		formatter.printf("0s")!;
-		return;
+		return formatter.printf("0s")!;
 	}
 
 	bool neg = nd < 0;
@@ -150,5 +149,5 @@ fn void! NanoDuration.to_format(&self, Formatter* formatter) @dynamic
 			str.printf("%ds", sec);
 		}
 	}
-	formatter.printf(str.as_str())!;
+	return formatter.printf(str.as_str())!;
 }

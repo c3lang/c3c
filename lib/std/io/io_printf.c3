@@ -25,7 +25,7 @@ def OutputFn = fn void!(char c, void* buffer);
 def FloatType = double;
 
 fn String any.to_string(void* value, Allocator *using) @interface;
-fn void! any.to_format(void* value, Formatter* formatter) @interface;
+fn usz! any.to_format(void* value, Formatter* formatter) @interface;
 
 fn usz! printf(String format, args...) @maydiscard
 {
@@ -103,12 +103,13 @@ fn void Formatter.init(&self, OutputFn out_fn, void* data = null)
 	*self = { .data = data, .out_fn = out_fn};
 }
 
-fn void! Formatter.out(&self, char c) @private
+fn usz! Formatter.out(&self, char c) @private
 {
 	self.out_fn(c, self.data)!;
+	return 1;
 }
 
-macro bool! Formatter.print_with_function(&self, any arg)
+macro usz! Formatter.print_with_function(&self, any arg)
 {
 	if (&arg.to_format)
 	{
@@ -121,8 +122,7 @@ macro bool! Formatter.print_with_function(&self, any arg)
 			self.width = old_width;
 			self.prec = old_prec;
 		}
-		arg.to_format(self)!;
-		return true;
+		return arg.to_format(self);
 	}
 	if (&arg.to_string)
 	{
@@ -137,15 +137,14 @@ macro bool! Formatter.print_with_function(&self, any arg)
 		}
 		@pool()
 		{
-			self.out_substr(arg.to_string(mem::temp()))!;
-			return true;
+			return self.out_substr(arg.to_string(mem::temp()));
 		};
 	}
-	return false;
+	return SearchResult.MISSING?;
 }
 
 
-fn void! Formatter.out_str(&self, any arg) @private
+fn usz! Formatter.out_str(&self, any arg) @private
 {
 	switch (arg.type.kindof)
 	{
@@ -158,74 +157,82 @@ fn void! Formatter.out_str(&self, any arg) @private
 			return self.out_substr((*(anyfault*)arg.ptr).nameof);
 		case ANY:
 			return self.out_str(*(any*)arg);
+		case OPTIONAL:
+			unreachable();
+		case SIGNED_INT:
+		case UNSIGNED_INT:
+			return self.ntoa_any(arg, 10);
+		case FLOAT:
+			return self.ftoa(float_from_any(arg)!!);
+		case BOOL:
+			return self.out_substr(*(bool*)arg.ptr ? "true" : "false");
+		default:
+	}
+	usz! n = self.print_with_function(arg);
+	if (catch err = n)
+	{
+		case SearchResult.MISSING:
+			break;
+		default:
+			return err?;
+	} else {
+		return n;
+	}
+	switch (arg.type.kindof)
+	{
 		case ENUM:
-			if (self.print_with_function(arg)!) return;
 			usz i = types::any_to_int(arg, usz)!!;
 			assert(i < arg.type.names.len, "Illegal enum value found, numerical value was %d.", i);
 			return self.out_substr(arg.type.names[i]);
 		case STRUCT:
-			if (self.print_with_function(arg)!) return;
 			return self.out_substr("<struct>");
 		case UNION:
-			if (self.print_with_function(arg)!) return;
 			return self.out_substr("<union>");
 		case BITSTRUCT:
-			if (self.print_with_function(arg)!) return;
 			return self.out_substr("<bitstruct>");
 		case FUNC:
-			if (self.print_with_function(arg)!) return;
 			return self.out_substr("<function>");
-		case OPTIONAL:
-			unreachable();
 		case DISTINCT:
-			if (self.print_with_function(arg)!) return;
 			if (arg.type == DString.typeid)
 			{
 				return self.out_substr(((DString*)arg).as_str());
 			}
 			return self.out_str(any { arg.ptr, arg.type.inner });
 		case POINTER:
-			if (self.print_with_function(arg)!) return;
 			return self.ntoa_any(arg, 16);
-		case SIGNED_INT:
-		case UNSIGNED_INT:
-			return self.ntoa_any(arg, 10);
-		case FLOAT:
-			return self.ftoa(float_from_any(arg)!!);
 		case ARRAY:
-			if (self.print_with_function(arg)!) return;
 			// this is SomeType[*] so grab the "SomeType"
 			typeid inner = arg.type.inner;
 			usz size = inner.sizeof;
-			usz len = arg.type.len;
+			usz alen = arg.type.len;
 			// Pretend this is a String
 			void* ptr = (void*)arg.ptr;
-			self.out('[')!;
-			for (usz i = 0; i < len; i++)
+			usz len = self.out('[')!;
+			for (usz i = 0; i < alen; i++)
 			{
-				if (i != 0) self.out_substr(", ")!;
-				self.out_str(any { ptr, inner })!;
+				if (i != 0) len += self.out_substr(", ")!;
+				len += self.out_str(any { ptr, inner })!;
 				ptr += size;
 			}
-			return self.out(']');
+			len += self.out(']')!;
+			return len;
 		case VECTOR:
-			if (self.print_with_function(arg)!) return;
 			// this is SomeType[*] so grab the "SomeType"
 			typeid inner = arg.type.inner;
 			usz size = inner.sizeof;
-			usz len = arg.type.len;
+			usz vlen = arg.type.len;
 			// Pretend this is a String
 			void* ptr = (void*)arg.ptr;
-			self.out_substr("[<")!;
-			for (usz i = 0; i < len; i++)
+			usz len = self.out_substr("[<")!;
+			for (usz i = 0; i < vlen; i++)
 			{
-				if (i != 0) self.out_substr(", ")!;
-				self.out_str(any { ptr, inner })!;
+				if (i != 0) len += self.out_substr(", ")!;
+				len += self.out_str(any { ptr, inner })!;
 				ptr += size;
 			}
-			return self.out_substr(">]");
+			len += self.out_substr(">]")!;
+			return len;
 		case SUBARRAY:
-			if (self.print_with_function(arg)!) return;
 			// this is SomeType[] so grab the "SomeType"
 			typeid inner = arg.type.inner;
 			if (inner == char.typeid)
@@ -237,21 +244,19 @@ fn void! Formatter.out_str(&self, any arg) @private
 			// Pretend this is a String
 			String* temp = (void*)arg.ptr;
 			void* ptr = (void*)temp.ptr;
-			usz len = temp.len;
-			self.out('[')!;
-			for (usz i = 0; i < len; i++)
+			usz slen = temp.len;
+			usz len = self.out('[')!;
+			for (usz i = 0; i < slen; i++)
 			{
-				if (i != 0) self.out_substr(", ")!;
-				self.out_str(any { ptr, inner })!;
+				if (i != 0) len += self.out_substr(", ")!;
+				len += self.out_str(any { ptr, inner })!;
 				ptr += size;
 			}
-			self.out(']')!;
-		case BOOL:
-			return self.out_substr(*(bool*)arg.ptr ? "true" : "false");
+			len += self.out(']')!;
+			return len;
 		default:
-			if (self.print_with_function(arg)!) return;
-			return self.out_substr("Invalid type");
 	}
+	return self.out_substr("Invalid type");
 }
 
 
@@ -400,6 +405,25 @@ fn usz! Formatter.vprintf(&self, String format, any[] anys)
 				self.out_char(current)!;
 				continue;
 			case 's':
+				PrintFlags flags = self.flags;
+				uint width = self.width;
+				defer {
+					self.flags = flags;
+					self.width = width;
+				}
+				self.flags = {};
+				self.width = 0;
+				if (flags.left)
+				{
+					usz len = self.out_str(current)!;
+					self.pad(' ', width, len)!;
+					continue;
+				}
+				OutputFn out_fn = self.out_fn;
+				self.out_fn = (OutputFn)&out_null_fn;
+				usz len = self.out_str(current)!;
+				self.out_fn = out_fn;
+				self.pad(' ', width, len)!;
 				self.out_str(current)!;
 				continue;
 			case 'p':
@@ -437,10 +461,6 @@ fn usz! Formatter.print(&self, String str)
 		// use null output function
 		self.out_fn = &out_null_fn;
 	}
-	usz len = str.len;
-	for (usz i = 0; i < len; i++)
-	{
-		self.out(str[i])!;
-	}
+	foreach (c : str) self.out(c)!;
 	return self.idx;
 }
