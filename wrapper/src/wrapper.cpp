@@ -164,7 +164,11 @@ extern "C" {
 			}
 			new_members.push_back(std::move(*member));
 		}
+#if LLVM_VERSION_MAJOR > 17
+		return !llvm::writeArchive(std::string(out_name), std::move(new_members), llvm::SymtabWritingMode::NormalSymtab, kind, true, false, nullptr);
+#else
 		return !llvm::writeArchive(std::string(out_name), std::move(new_members), true, kind, true, false, nullptr);
+#endif
 	}
 
 	int llvm_version_major = LLVM_VERSION_MAJOR;
