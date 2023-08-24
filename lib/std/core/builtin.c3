@@ -193,11 +193,14 @@ macro enum_by_name($Type, String enum_name) @builtin
  **/
 macro bool @likely(bool #value, $probability = 1.0) @builtin
 {
-	$if $probability == 1.0:
-		return $$expect(#value, true);
-	$else
-		return $$expect_with_probability(#value, true, $probability);
-	$endif
+    $switch
+    $case env::BUILTIN_EXPECT_IS_DISABLED:
+	return #value;
+    $case $probability == 1.0:
+	return $$expect(#value, true);
+    $default:
+	return $$expect_with_probability(#value, true, $probability);
+    $endswitch
 }
 
 /**
@@ -209,11 +212,14 @@ macro bool @likely(bool #value, $probability = 1.0) @builtin
  **/
 macro bool @unlikely(bool #value, $probability = 1.0) @builtin
 {
-	$if $probability == 1.0:
-		return $$expect(#value, false);
-	$else
-		return $$expect_with_probability(#value, false, $probability);
-	$endif
+    $switch
+    $case env::BUILTIN_EXPECT_IS_DISABLED:
+	return #value;
+    $case $probability == 1.0:
+	return $$expect(#value, false);
+    $default:
+	return $$expect_with_probability(#value, false, $probability);
+    $endswitch
 }
 
 /**
@@ -223,11 +229,14 @@ macro bool @unlikely(bool #value, $probability = 1.0) @builtin
  **/
 macro @expect(#value, expected, $probability = 1.0) @builtin
 {
-	$if $probability == 1.0:
-		return $$expect(#value, ($typeof(#value))expected);
-	$else
-		return $$expect_with_probability(#value, expected, $probability);
-	$endif
+    $switch
+    $case env::BUILTIN_EXPECT_IS_DISABLED:
+	return #value == expected;
+    $case $probability == 1.0:
+	return $$expect(#value, ($typeof(#value))expected);
+    $default:
+	return $$expect_with_probability(#value, expected, $probability);
+    $endswitch
 }
 
 /**
@@ -249,9 +258,11 @@ enum PrefetchLocality
  * @param $locality `Locality ranging from none to extremely local`
  * @param $write `Prefetch for write, otherwise prefetch for read.`
  **/
-macro prefetch(void* ptr, PrefetchLocality $locality = VERY_NEAR, bool $write = false) @builtin
+macro @prefetch(void* ptr, PrefetchLocality $locality = VERY_NEAR, bool $write = false) @builtin
 {
-	$$prefetch(ptr, $write ? 1 : 0, $locality.ordinal);
+	$if !env::BUILTIN_PREFETCH_IS_DISABLED:
+		$$prefetch(ptr, $write ? 1 : 0, $locality.ordinal);
+	$endif
 }
 
 macro swizzle(v, ...) @builtin
