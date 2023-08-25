@@ -3730,21 +3730,12 @@ void llvm_emit_comp(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, 
 		case TYPE_ARRAY:
 			llvm_emit_array_comp(c, result, lhs, rhs, binary_op);
 			return;
-		case TYPE_ANY:
-		case TYPE_ANYFAULT:
-		case TYPE_TYPEID:
-		case TYPE_ENUM:
-		case TYPE_FAULTTYPE:
-		case TYPE_TYPEDEF:
-		case TYPE_DISTINCT:
-		case TYPE_OPTIONAL:
-		case CT_TYPES:
-			UNREACHABLE
 		case TYPE_FUNC:
 			break;
+		case LOWERED_TYPES:
+		case TYPE_ANY:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
-		case TYPE_BITSTRUCT:
 		case TYPE_FLEXIBLE_ARRAY:
 			UNREACHABLE
 		case TYPE_SUBARRAY:
@@ -4817,19 +4808,11 @@ static void llvm_expand_struct_to_args(GenContext *context, Type *param_type, LL
 
 static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVMValueRef expand_ptr, LLVMValueRef *args, unsigned *arg_count_ref, AlignSize alignment)
 {
-	REDO:
 	switch (type_lowering(param_type)->type_kind)
 	{
+		case LOWERED_TYPES:
 		case TYPE_VOID:
-		case TYPE_TYPEID:
 		case TYPE_FUNC:
-		case TYPE_DISTINCT:
-		case TYPE_ENUM:
-		case TYPE_FAULTTYPE:
-		case TYPE_ANYFAULT:
-		case TYPE_BITSTRUCT:
-		case TYPE_OPTIONAL:
-		case CT_TYPES:
 		case TYPE_FLEXIBLE_ARRAY:
 			UNREACHABLE
 			break;
@@ -4843,9 +4826,6 @@ static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVM
 												 alignment,
 												 "loadexpanded");
 			return;
-		case TYPE_TYPEDEF:
-			param_type = param_type->canonical;
-			goto REDO;
 		case TYPE_STRUCT:
 			llvm_expand_struct_to_args(context, param_type, expand_ptr, args, arg_count_ref, alignment);
 			break;

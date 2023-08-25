@@ -685,10 +685,8 @@ CastKind cast_to_bool_kind(Type *type)
 			return CAST_PTRBOOL;
 		case TYPE_FAULTTYPE:
 			return CAST_ERBOOL;
-		case TYPE_TYPEDEF:
-		case TYPE_DISTINCT:
-		case TYPE_OPTIONAL:
 		case TYPE_ENUM:
+		case FLATTENED_TYPES:
 			// These are not possible due to flattening.
 			UNREACHABLE
 		case TYPE_INFERRED_ARRAY:
@@ -1918,7 +1916,7 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 			if (to->type_kind == TYPE_BOOL) return pointer_to_bool(expr, to_type);
 			if (to->type_kind == TYPE_POINTER) return pointer_to_pointer(expr, to_type);
 			if (to->type_kind == TYPE_SUBARRAY) return insert_cast(expr, CAST_APTSA, to_type);
-			if (to->type_kind == TYPE_ANY) return insert_cast(expr, CAST_PTRANY, to_type);
+			if (to->type_kind == TYPE_ANY || to_type->type_kind == TYPE_ANY) return insert_cast(expr, CAST_PTRANY, to_type);
 			break;
 		case TYPE_ANY:
 			if (to->type_kind == TYPE_POINTER) return insert_cast(expr, CAST_ANYPTR, to_type);

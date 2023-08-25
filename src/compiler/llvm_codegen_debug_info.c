@@ -276,6 +276,16 @@ void llvm_debug_push_lexical_scope(GenContext *context, SourceSpan location)
 }
 
 
+static LLVMMetadataRef llvm_debug_typeid_type(GenContext *context, Type *type)
+{
+	return type->backend_debug_type = LLVMDIBuilderCreateBasicType(context->debug.builder,
+	                                                               "typeid",
+	                                                               strlen("typeid"),
+	                                                               type_bit_size(type_voidptr),
+	                                                               (LLVMDWARFTypeEncoding)DW_ATE_address,
+	                                                               LLVMDIFlagZero);
+
+}
 static LLVMMetadataRef llvm_debug_simple_type(GenContext *context, Type *type, int dwarf_code)
 {
 	return type->backend_debug_type = LLVMDIBuilderCreateBasicType(context->debug.builder,
@@ -507,7 +517,16 @@ static LLVMMetadataRef llvm_debug_func_type(GenContext *c, Type *type)
 	// 3. Otherwise generate:
 	static LLVMMetadataRef *buffer = NULL;
 	vec_resize(buffer, 0);
-	vec_add(buffer, llvm_get_debug_type(c, prototype->rtype));
+	Type *return_type = prototype->rtype;
+	if (!type_is_optional(return_type))
+	{
+		vec_add(buffer, llvm_get_debug_type(c, return_type));
+	}
+	else
+	{
+		vec_add(buffer, llvm_get_debug_type(c, type_anyfault));
+		vec_add(buffer, llvm_get_debug_type(c, type_get_ptr(type_no_optional(return_type))));
+	}
 	VECEACH(prototype->param_types, i)
 	{
 		vec_add(buffer, llvm_get_debug_type(c, prototype->param_types[i]));
@@ -526,20 +545,19 @@ static LLVMMetadataRef llvm_debug_func_type(GenContext *c, Type *type)
 static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *type, LLVMMetadataRef scope)
 {
 	if (type->backend_debug_type) return type->backend_debug_type;
-	Type *lowered = type_lowering(type);
-	if (lowered != type)
+	Type *canonical = type->canonical;
+	if (canonical != type)
 	{
-		return type->backend_debug_type = llvm_get_debug_type(c, lowered);
+		return type->backend_debug_type = llvm_get_debug_type(c, canonical);
 	}
 	// Consider special handling of UTF8 arrays.
 	switch (type->type_kind)
 	{
-		case TYPE_TYPEID:
 		case CT_TYPES:
 			UNREACHABLE
+		case TYPE_BITSTRUCT:
 		case TYPE_OPTIONAL:
-			// If this is reachable then we're not doing the proper lowering.
-			UNREACHABLE
+			return type->backend_debug_type = llvm_get_debug_type(c, type_lowering(type));
 		case TYPE_BOOL:
 			return llvm_debug_simple_type(c, type, DW_ATE_boolean);
 		case TYPE_I8:
@@ -566,6 +584,8 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 			return type->backend_debug_type = llvm_debug_vector_type(c, type);
 		case TYPE_VOID:
 			return NULL;
+		case TYPE_TYPEID:
+			return type->backend_debug_type = llvm_debug_typeid_type(c, type);
 		case TYPE_POINTER:
 			return type->backend_debug_type = llvm_debug_pointer_type(c, type);
 		case TYPE_ENUM:
@@ -574,8 +594,6 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 			return type->backend_debug_type = llvm_debug_enum_type(c, type, scope);
 		case TYPE_FUNC:
 			return type->backend_debug_type = llvm_debug_func_type(c, type);
-		case TYPE_BITSTRUCT:
-			UNREACHABLE
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 			return type->backend_debug_type = llvm_debug_structlike_type(c, type, scope);

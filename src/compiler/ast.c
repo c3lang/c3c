@@ -97,90 +97,50 @@ const char *decl_to_a_name(Decl *decl)
 {
 	switch (decl->decl_kind)
 	{
-		case DECL_ERASED:
-			return "an erased declaration";
-		case DECL_BODYPARAM:
-			return "a body parameter";
-		case DECL_DECLARRAY:
-			return "a declarray";
-		case DECL_BITSTRUCT:
-			return "a bitstruct";
-		case DECL_POISONED:
-			return "a poisoned decl";
-		case DECL_CT_ASSERT:
-			return "a compile time assert";
-		case DECL_CT_ECHO:
-			return "a compile time echo";
-		case DECL_CT_EXEC:
-			return "compile time exec include";
-		case DECL_IMPORT:
-			return "an import";
-		case DECL_LABEL:
-			return "a label";
-		case DECL_ATTRIBUTE:
-			return "an attribute";
-		case DECL_DEFINE:
-		case DECL_TYPEDEF:
-			return "a define";
-		case DECL_DISTINCT:
-			return "a distinct type";
-		case DECL_ENUM:
-			return "an enum";
-		case DECL_ENUM_CONSTANT:
-			return "an enum value";
-		case DECL_FAULTVALUE:
-			return "a fault value";
-		case DECL_FAULT:
-			return "a fault";
-		case DECL_FNTYPE:
-			return "a function type";
-		case DECL_FUNC:
-			return "a function";
-		case DECL_MACRO:
-			return "a macro";
-		case DECL_STRUCT:
-			return "a struct";
-		case DECL_UNION:
-			return "a union";
-		case DECL_INITIALIZE:
-			return "a static initializer";
-		case DECL_FINALIZE:
-			return "a static finalizer";
-		case DECL_CT_INCLUDE:
-			return "an include";
-		case DECL_GLOBALS:
-			return "globals";
+		case DECL_ATTRIBUTE: return "an attribute";
+		case DECL_BITSTRUCT: return "a bitstruct";
+		case DECL_BODYPARAM: return "a body parameter";
+		case DECL_CT_ASSERT: return "a compile time assert";
+		case DECL_CT_ECHO: return "a compile time echo";
+		case DECL_CT_EXEC: return "compile time exec include";
+		case DECL_CT_INCLUDE: return "an include";
+		case DECL_DECLARRAY: return "a declarray";
+		case DECL_DEFINE: case DECL_TYPEDEF: return "a define";
+		case DECL_DISTINCT: return "a distinct type";
+		case DECL_ENUM: return "an enum";
+		case DECL_ENUM_CONSTANT: return "an enum value";
+		case DECL_ERASED: return "an erased declaration";
+		case DECL_FAULT: return "a fault";
+		case DECL_FAULTVALUE: return "a fault value";
+		case DECL_FINALIZE: return "a static finalizer";
+		case DECL_FNTYPE: return "a function type";
+		case DECL_FUNC: return "a function";
+		case DECL_GLOBALS: return "globals";
+		case DECL_IMPORT: return "an import";
+		case DECL_INITIALIZE: return "a static initializer";
+		case DECL_LABEL: return "a label";
+		case DECL_MACRO: return "a macro";
+		case DECL_POISONED: return "a poisoned decl";
+		case DECL_STRUCT: return "a struct";
+		case DECL_UNION: return "a union";
 		case DECL_VAR:
 			switch (decl->var.kind)
 			{
-				case VARDECL_ERASE:
-				case VARDECL_REWRAPPED:
-					UNREACHABLE
-				case VARDECL_CONST:
-					return "a constant";
-				case VARDECL_GLOBAL:
-					return "a global variable";
-				case VARDECL_LOCAL:
-					return "a variable";
-				case VARDECL_PARAM:
-					return "a parameter";
-				case VARDECL_MEMBER:
-				case VARDECL_BITMEMBER:
-					return "a member";
-				case VARDECL_PARAM_CT:
-					return "a compile time parameter";
-				case VARDECL_PARAM_CT_TYPE:
-					return "a compile time type parameter";
-				case VARDECL_PARAM_REF:
-					return "a ref parameter";
-				case VARDECL_PARAM_EXPR:
-					return "a expression parameter";
-				case VARDECL_LOCAL_CT:
-					return "a compile time variable";
-				case VARDECL_LOCAL_CT_TYPE:
-					return "a compile time type variable";
-				case VARDECL_UNWRAPPED:
-					return "an unwrapped variable";
+				case VARDECL_BITMEMBER: return "a bitstruct member";
+				case VARDECL_CONST: return "a constant";
+				case VARDECL_ERASE: UNREACHABLE
+				case VARDECL_GLOBAL: return "a global variable";
+				case VARDECL_LOCAL: return "a variable";
+				case VARDECL_LOCAL_CT: return "a compile time variable";
+				case VARDECL_LOCAL_CT_TYPE: return "a compile time type variable";
+				case VARDECL_MEMBER: return "a member";
+				case VARDECL_PARAM: return "a parameter";
+				case VARDECL_PARAM_CT: return "a compile time parameter";
+				case VARDECL_PARAM_CT_TYPE: return "a compile time type parameter";
+				case VARDECL_PARAM_EXPR: return "a expression parameter";
+				case VARDECL_PARAM_REF: return "a ref parameter";
+				case VARDECL_REWRAPPED: UNREACHABLE
+				case VARDECL_UNWRAPPED: return "an unwrapped variable";
 			}
 			UNREACHABLE
 	}

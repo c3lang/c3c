@@ -40,29 +40,29 @@ static inline const char *decl_type_to_string(Decl *type)
 		case DECL_CT_ASSERT: return "$assert";
 		case DECL_CT_ECHO: return "$echo";
 		case DECL_CT_EXEC: return "$exec";
+		case DECL_CT_INCLUDE: return "$include";
 		case DECL_DEFINE: return "def";
 		case DECL_DISTINCT: return "distinct";
 		case DECL_ENUM: return "enum";
 		case DECL_ENUM_CONSTANT: return "enum_const";
 		case DECL_FAULT: return "fault";
 		case DECL_FAULTVALUE: return "fault_val";
-		case DECL_FUNC: return "function";
-		case DECL_FNTYPE: return "fntype";
-		case DECL_GLOBALS: return "global";
-		case DECL_INITIALIZE: return "initializer";
 		case DECL_FINALIZE: return "finalizer";
+		case DECL_FNTYPE: return "fntype";
+		case DECL_FUNC: return "function";
+		case DECL_GLOBALS: return "global";
 		case DECL_IMPORT: return "import";
-		case DECL_CT_INCLUDE: return "$include";
+		case DECL_INITIALIZE: return "initializer";
 		case DECL_MACRO: return "macro";
 		case DECL_STRUCT: return "struct";
- 		case DECL_TYPEDEF: return "typedef";
 		case DECL_UNION: return "union";
-		case DECL_VAR:
-		case DECL_LABEL:
-		case DECL_DECLARRAY:
+ 		case DECL_TYPEDEF: return "typedef";
 		case DECL_BODYPARAM:
-		case DECL_POISONED:
+		case DECL_DECLARRAY:
 		case DECL_ERASED:
+		case DECL_LABEL:
+		case DECL_POISONED:
+		case DECL_VAR:
 			UNREACHABLE
 	}
 	UNREACHABLE

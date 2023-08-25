@@ -15,7 +15,7 @@ static Decl *parse_exec(ParseContext *c);
 static bool parse_attributes_for_global(ParseContext *c, Decl *decl);
 INLINE bool parse_decl_initializer(ParseContext *c, Decl *decl);
 INLINE Decl *decl_new_var_current(ParseContext *c, TypeInfo *type, VarDeclKind kind);
-
+static bool parse_contracts(ParseContext *c, AstId *contracts_ref);
 
 INLINE Decl *decl_new_var_current(ParseContext *c, TypeInfo *type, VarDeclKind kind)
 {
@@ -1776,6 +1776,7 @@ static inline Decl *parse_def_type(ParseContext *c)
 		decl->is_substruct = is_inline;
 		TypedefDecl typedef_decl = decl->typedef_decl; // Ensure value semantics.
 		decl->distinct_decl.typedef_decl = typedef_decl;
+		decl->methods = NULL;
 		decl->type->type_kind = TYPE_DISTINCT;
 		decl->decl_kind = DECL_DISTINCT;
 	}

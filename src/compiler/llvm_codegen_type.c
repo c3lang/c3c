@@ -311,21 +311,11 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 	}
 	switch (any_type->type_kind)
 	{
-		case CT_TYPES:
-			UNREACHABLE
-		case TYPE_OPTIONAL:
-		case TYPE_TYPEDEF:
-		case TYPE_DISTINCT:
-		case TYPE_ENUM:
+		case LOWERED_TYPES:
 			// If this is reachable, then we're not doing the proper lowering.
 			UNREACHABLE
-		case TYPE_TYPEID:
-		case TYPE_ANYFAULT:
-		case TYPE_FAULTTYPE:
-			return any_type->backend_type = llvm_get_type(c, type_iptr->canonical);
 		case TYPE_STRUCT:
 		case TYPE_UNION:
-		case TYPE_BITSTRUCT:
 			return any_type->backend_type = llvm_type_from_decl(c, any_type->decl);
 		case TYPE_FUNC:
 			return any_type->backend_type = llvm_func_type(c, type_get_resolved_prototype(any_type));

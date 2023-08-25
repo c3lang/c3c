@@ -453,17 +453,9 @@ static ABIArgInfo *x86_classify_argument(CallABI call, Regs *regs, Type *type)
 
 	switch (type->type_kind)
 	{
-		case TYPE_TYPEDEF:
+		case LOWERED_TYPES:
 		case TYPE_VOID:
-		case TYPE_ENUM:
-		case TYPE_ANYFAULT:
-		case TYPE_FAULTTYPE:
-		case TYPE_DISTINCT:
 		case TYPE_FUNC:
-		case TYPE_TYPEID:
-		case TYPE_BITSTRUCT:
-		case TYPE_OPTIONAL:
-		case CT_TYPES:
 		case TYPE_FLEXIBLE_ARRAY:
 			UNREACHABLE
 		case ALL_FLOATS:
