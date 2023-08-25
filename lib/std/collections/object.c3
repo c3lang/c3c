@@ -277,6 +277,14 @@ fn Object* Object.get_at(&self, usz index)
 /**
  * @require self.is_indexable()
  **/
+fn usz Object.get_len(&self)
+{
+	return self.array.len();
+}
+
+/**
+ * @require self.is_indexable()
+ **/
 fn void Object.append_object(&self, Object* to_append)
 {
 	self.init_array_if_needed();
