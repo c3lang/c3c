@@ -220,7 +220,7 @@ macro Object* object_from_value(value) @private
 		$case $Type.typeid == Object*.typeid:
 			return value;
 		$case $Type.typeid == void*.typeid:
-			assert(value == null);
+			if (value != null) return CastResult.TYPE_MISMATCH?;
 			return &NULL_OBJECT;
 		$case $checks(String s = value):
 			return new_string(value);
@@ -366,17 +366,17 @@ fn uint128! Object.get_uint128_at(&self, usz index) => self.get_integer_at(uint1
 fn String! Object.get_string(&self, String key)
 {
 	Object* value = self.get(key)!;
-	assert(value.is_string());
+	if (!value.is_string()) return CastResult.TYPE_MISMATCH?;
 	return value.s;
 }
 
 /**
  * @require self.is_indexable()
  **/
-fn String Object.get_string_at(&self, usz index)
+fn String! Object.get_string_at(&self, usz index)
 {
 	Object* value = self.get_at(index);
-	assert(value.is_string());
+	if (!value.is_string()) return CastResult.TYPE_MISMATCH?;
 	return value.s;
 }
 
@@ -386,17 +386,17 @@ fn String Object.get_string_at(&self, usz index)
 macro String! Object.get_enum(&self, $EnumType, String key)
 {
 	Object value = self.get(key)!;
-	assert($EnumType.typeid == value.type);
+	if ($EnumType.typeid != value.type) return CastResult.TYPE_MISMATCH?;
 	return ($EnumType)value.i;
 }
 
 /**
  * @require self.is_indexable()
  **/
-macro String Object.get_enum_at(&self, $EnumType, usz index)
+macro String! Object.get_enum_at(&self, $EnumType, usz index)
 {
 	Object value = self.get_at(index);
-	assert($EnumType.typeid == value.type);
+	if ($EnumType.typeid != value.type) return CastResult.TYPE_MISMATCH?;
 	return ($EnumType)value.i;
 }
 
@@ -406,7 +406,7 @@ macro String Object.get_enum_at(&self, $EnumType, usz index)
 fn bool! Object.get_bool(&self, String key)
 {
 	Object* value = self.get(key)!;
-	assert(value.is_bool());
+	if (!value.is_bool()) return CastResult.TYPE_MISMATCH?;
 	return value.b;
 }
 
@@ -414,10 +414,10 @@ fn bool! Object.get_bool(&self, String key)
 /**
  * @require self.is_indexable()
  **/
-fn bool Object.get_bool_at(&self, usz index)
+fn bool! Object.get_bool_at(&self, usz index)
 {
 	Object* value = self.get_at(index);
-	assert(value.is_bool());
+	if (!value.is_bool()) return CastResult.TYPE_MISMATCH?;
 	return value.b;
 }
 
@@ -436,14 +436,14 @@ fn double! Object.get_float(&self, String key)
 		case FLOAT:
 			return value.f;
 		default:
-			unreachable();
+			return CastResult.TYPE_MISMATCH?;
 	}
 }
 
 /**
  * @require self.is_indexable()
  **/
-fn double Object.get_float_at(&self, usz index)
+fn double! Object.get_float_at(&self, usz index)
 {
 	Object* value = self.get_at(index);
 	switch (value.type.kindof)
@@ -455,7 +455,7 @@ fn double Object.get_float_at(&self, usz index)
 		case FLOAT:
 			return value.f;
 		default:
-			unreachable();
+			return CastResult.TYPE_MISMATCH?;
 	}
 }
 
