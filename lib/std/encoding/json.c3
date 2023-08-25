@@ -91,7 +91,7 @@ fn JsonTokenType! lex_number(JsonContext *context, char c) @local
 			t.append(c);
 			c = read_next(context)!;
 		}
-		while (c >= '0' && c <= '9')
+		while (c.is_digit())
 		{
 			t.append(c);
 			c = read_next(context)!;
@@ -99,7 +99,7 @@ fn JsonTokenType! lex_number(JsonContext *context, char c) @local
 		if (c == '.')
 		{
 			t.append(c);
-			while (c = read_next(context)!, c >= '0' && c <= '9')
+			while (c = read_next(context)!, c.is_digit())
 			{
 				t.append(c);
 			}
@@ -115,8 +115,8 @@ fn JsonTokenType! lex_number(JsonContext *context, char c) @local
 					t.append(c);
 					c = read_next(context)!;
 			}
-			if (c < '0' || c > '9') return JsonParsingError.INVALID_NUMBER?;
-			while (c >= '0' && c <= '9')
+			if (!c.is_digit()) return JsonParsingError.INVALID_NUMBER?;
+			while (c.is_digit())
 			{
 				t.append(c);
 				c = read_next(context)!;
@@ -228,7 +228,7 @@ fn JsonTokenType! advance(JsonContext* context) @local
 					pushback(context);
 					break WS;
 				}
-				while COMMENT: (1)
+				while COMMENT: (true)
 				{
 					// Skip to */
 					while (c = read_next(context)!)
@@ -301,7 +301,7 @@ fn void! parse_expected(JsonContext* context, JsonTokenType token) @local
 fn JsonTokenType! lex_string(JsonContext* context)
 {
 	context.last_string.clear();
-	while LOOP: (1)
+	while LOOP: (true)
 	{
 		char c = read_next(context)!;
 		switch (c)
