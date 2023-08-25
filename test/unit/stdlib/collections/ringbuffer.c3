@@ -4,7 +4,7 @@ import std::io;
 
 def Buffer = RingBuffer(<char, 4>);
 
-fn void putc_getc()
+fn void! putc_getc()
 {
 	Buffer rb;
 	rb.init();
@@ -23,4 +23,7 @@ fn void putc_getc()
 	assert(rb.getc(1) == 3);
 	assert(rb.getc(2) == 4);
 	assert(rb.getc(3) == 5);
+
+	char c = rb.popc()!;
+	assert(c == 5);
 }

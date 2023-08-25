@@ -37,6 +37,21 @@ fn Type RingBuffer.getc(&self, usz index)
 	return self.buf[index - avail];
 }
 
+fn Type! RingBuffer.popc(&self)
+{
+	switch
+	{
+		case self.written == 0:
+			return SearchResult.MISSING?;
+		case self.written < SIZE:
+			self.written--;
+			return self.buf[self.written];
+		default:
+			self.head = (self.head - 1) % SIZE;
+			return self.buf[self.head];
+	}
+}
+
 fn usz RingBuffer.get(&self, usz index, Type[] buffer)
 {
 	index %= SIZE;
