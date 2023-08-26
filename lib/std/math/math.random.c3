@@ -2,23 +2,16 @@ module std::math;
 
 struct Random
 {
-	RandomInterface fns;
-	void* state;
+	RandomInterface* fns;
 }
-
-fn uint any.next_random(void*, int bits) @interface;
-fn void any.next_random_bytes(void*, char[] buffer) @interface;
-fn void any.set_random_seed(void*, char[] seed) @interface;
 
 def RandomSeedFn = fn void(Random*, char[] seed);
 def RandomNextBytesFn = fn void(Random*, char[] buffer);
-def RandomNextFn = fn uint(Random*, int bits);
 
 struct RandomInterface
 {
 	RandomSeedFn seed_fn;
 	RandomNextBytesFn next_bytes_fn;
-	RandomNextFn next_fn;
 }
 
 /**
@@ -28,66 +21,65 @@ struct RandomInterface
 fn void Random.next_bytes(&random, char[] buffer)
 {
 	if (!buffer.len) return;
-	if (RandomNextBytesFn func = random.fns.next_bytes_fn)
-	{
-		func(random, buffer);
-		return;
-	}
-	if (RandomNextFn func = random.fns.next_fn)
-	{
-		usz current = 0;
-		while (current < buffer.len)
-		{
-			char[4] res = bitcast(func(random, 32), char[4]);
-			foreach (c : res)
-			{
-				buffer[current++] = c;
-				if (current == buffer.len) return;
-			}
-		}
-		return;
-	}
-	unreachable("Invalid Random type.");
+	random.fns.next_bytes_fn(random, buffer);
 }
 
 /**
- * @param [&inout] random
- * @require bits >= 0 && bits <= 32
+ * @param [&inout] self
  **/
-fn uint Random.next(&random, int bits)
+fn char Random.next_byte(&self)
 {
-	if (bits == 0) return 0;
-	if (RandomNextFn func = random.fns.next_fn) return func(random, bits);
-	int bytes = (bits + 7) / 8;
-	char[4] buffer;
-	char[] b = buffer[:bytes];
-	assert(random.fns.next_bytes_fn, "Invalid Random");
-	random.fns.next_bytes_fn(random, b) @inline;
-	uint next = 0;
-	foreach (char c : b)
-	{
-		next = next << 8 + c;
-	}
-	if (bits < 32) next >>= bytes * 8 - bits;
-	return next;
+	char result @noinit;
+	self.next_bytes(((char*)&result)[:1]);
+	return result;
 }
 
 /**
- * @param [&inout] random
+ * @param [&inout] self
  **/
-fn ulong Random.next_long(&random)
+fn uint Random.next_short(&self)
 {
-	char[8] buffer;
-	random.next_bytes(&buffer);
-	return bitcast(buffer, ulong);
+	ushort result @noinit;
+	self.next_bytes(((char*)&result)[:2]);
+	return result;
 }
 
 /**
- * @param [&inout] random
+ * @param [&inout] self
  **/
-fn void Random.set_seed(&random, long seed)
+fn uint Random.next_int(&self)
 {
-	random.fns.seed_fn(random, &&bitcast(seed, char[8])) @inline;
+	uint result @noinit;
+	self.next_bytes(((char*)&result)[:4]);
+	return result;
+}
+
+/**
+ * @param [&inout] self
+ **/
+fn ulong Random.next_long(&self)
+{
+	ulong result @noinit;
+	self.next_bytes(((char*)&result)[:8]);
+	return result;
+}
+
+/**
+ * @param [&inout] self
+ **/
+fn uint128 Random.next_uint128(&self)
+{
+	uint128 result @noinit;
+	self.next_bytes(((char*)&result)[:16]);
+	return result;
+}
+
+/**
+ * @param [&inout] self
+ **/
+fn void Random.set_seed(&self, long seed)
+{
+	self.fns.seed_fn(self, &&bitcast(seed, char[8])) @inline;
 }
 
 /**
@@ -100,24 +92,42 @@ fn void Random.set_seeds(&random, char[] seed)
 }
 
 /**
- * @param [&inout] random
+ * @param [&inout] self
  **/
-fn bool Random.next_bool(&random)
+fn bool Random.next_bool(&self)
 {
-	return random.next(1) != 0;
+	return self.next_byte() & 1 == 0;
 }
 
-fn float Random.next_float(&r)
+fn float Random.next_float(&self)
 {
-	return r.next(24) / (float)(1 << 24);
+	uint val = self.next_int() & (1 << 24 - 1);
+	return val / (float)(1 << 24);
 }
 
-fn double Random.next_double(&r)
+
+fn double Random.next_double(&self)
 {
-	return (((long)(r.next(26)) << 27) + r.next(27)) * 0x1.0p-53;
+	ulong val = self.next_long() & (1UL << 53 - 1);
+	return val * 0x1.0p-53;
 }
 
-fn uint Random.next_int(&r)
+macro @random_value_to_bytes(#function, char[] bytes)
 {
-	return r.next(32) @inline;
+	var $byte_size = $sizeof(#function());
+	usz len = bytes.len;
+	// Same size or smaller? Then just copy.
+	while (len > 0)
+	{
+		var value = #function();
+		if (len <= $byte_size)
+		{
+			bytes[..] = ((char*)&value)[:len];
+			return;
+		}
+		bytes[:$byte_size] = ((char*)&value)[:$byte_size];
+		len -= $byte_size;
+		bytes = bytes[$byte_size..];
+	}
+	unreachable();
 }

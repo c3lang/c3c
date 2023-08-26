@@ -297,6 +297,11 @@ macro bool @ok(#expr) @builtin
 	return true;
 }
 
+macro char[] @to_byte_view(&value) @builtin
+{
+	return ((char*)value)[:$sizeof(*value)];
+}
+
 macro uint int.hash(int i) => i;
 macro uint uint.hash(uint i) => i;
 macro uint short.hash(short s) => s;

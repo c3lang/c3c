@@ -7,70 +7,130 @@ const MUL_MCG16 @local = 0x93d5; // TODO: Find good constant
 
 // -------------------------------- Mcg128_64 --------------------------------
 
-def Mcg128_64 = distinct uint128;
-
-fn void Mcg128_64.seed(&mcg, char[16] seed)
+struct Mcg128Random
 {
-	*mcg = bitcast(seed, Mcg128_64) | 1;
+	inline Random random;
+	Mcg128RandomState state;
 }
 
-fn ulong Mcg128_64.next(&mcg)
+def Mcg128RandomState = distinct uint128;
+
+const RandomInterface MCG_128_RANDOM_INTERFACE @local = {
+	.seed_fn = (RandomSeedFn)&Mcg128Random.set_seed,
+	.next_bytes_fn = (RandomNextBytesFn)&Mcg128Random.next_bytes,
+};
+
+fn void Mcg128Random.init(&self)
 {
-	uint128* s = (uint128*)mcg;
+	self.random.fns = &MCG_64_RANDOM_INTERFACE;
+}
+
+fn void Mcg128Random.set_seed(&self, char[] seed)
+{
+	self.state.set_seed(random::make_seed(uint128, seed));
+}
+
+/**
+ * @require bytes.len > 0
+ **/
+fn void Mcg128Random.next_bytes(&self, char[] bytes)
+{
+	@random_value_to_bytes(self.state.next_long, bytes);
+}
+
+fn void Mcg128RandomState.set_seed(&self, uint128 seed)
+{
+	*self = (Mcg128RandomState)seed | 1;
+}
+
+fn ulong Mcg128RandomState.next_long(&self)
+{
+	uint128* s = (uint128*)self;
 	ulong result = (ulong)(*s >> 64);
 	*s *= MUL_MCG128;
 	return result;
 }
 
 
-// -------------------------------- Mcg64_32 --------------------------------
 
-def Mcg64_32 = distinct ulong;
 
-fn void Mcg64_32.seed(&mcg, char[8] seed)
+// -------------------------------- Mcg64RandomState --------------------------------
+
+struct Mcg64Random
 {
-	*mcg = bitcast(seed, Mcg64_32) | 1;
+	inline Random random;
+	Mcg64RandomState state;
 }
 
-fn uint Mcg64_32.next(&mcg)
+const RandomInterface MCG_64_RANDOM_INTERFACE @local = {
+	.seed_fn = (RandomSeedFn)&Mcg64Random.set_seed,
+	.next_bytes_fn = (RandomNextBytesFn)&Mcg64Random.next_bytes,
+};
+
+def Mcg64RandomState = distinct ulong;
+
+fn void Mcg64Random.init(&self)
 {
-	ulong* s = (ulong*)mcg;
+	self.random.fns = &MCG_64_RANDOM_INTERFACE;
+}
+
+fn void Mcg64Random.set_seed(&self, char[] seed)
+{
+	self.state.set_seed(random::make_seed(ulong, seed));
+}
+
+/**
+ * @require bytes.len > 0
+ **/
+fn void Mcg64Random.next_bytes(&self, char[] bytes)
+{
+	@random_value_to_bytes(self.state.next_int, bytes);
+}
+
+fn void Mcg64RandomState.set_seed(&self, ulong seed)
+{
+	*self = (Mcg64RandomState)self | 1;
+}
+
+fn uint Mcg64RandomState.next_int(&self)
+{
+	ulong* s = (ulong*)self;
 	uint result = (uint)(*s >> 32);
 	*s *= MUL_MCG64;
 	return result;
 }
 
 
-// -------------------------------- Mcg32_16 --------------------------------
+// -------------------------------- Mcg32RandomState --------------------------------
 
-def Mcg32_16 = distinct uint;
+def Mcg32RandomState = distinct uint;
 
-fn void Mcg32_16.seed(&mcg, char[4] seed)
+fn void Mcg32RandomState.set_seed(&self, uint seed)
 {
-	*mcg = bitcast(seed, Mcg32_16) | 1;
+	*self = (Mcg32RandomState)seed | 1;
 }
 
-fn ushort Mcg32_16.next(&mcg)
+fn ushort Mcg32RandomState.next_short(&self)
 {
-	uint* s = (uint*)mcg;
+	uint* s = (uint*)self;
 	ushort result = (ushort)(*s >> 16);
 	*s *= MUL_MCG32;
 	return result;
 }
 
 
-// -------------------------------- Mcg16_8 --------------------------------
+// -------------------------------- Mcg16RandomState --------------------------------
 
-def Mcg16_8 = distinct ushort;
+def Mcg16RandomState = distinct ushort;
 
-fn void Mcg16_8.seed(&mcg, char[2] seed)
+fn void Mcg16RandomState.set_seed(&self, ushort seed)
 {
-	*mcg = bitcast(seed, Mcg16_8) | 1;
+	*self = (Mcg16RandomState)seed | 1;
 }
 
-fn char Mcg16_8.next(&mcg)
+fn char Mcg16RandomState.next_byte(&self)
 {
-	ushort* s = (ushort*)mcg;
+	ushort* s = (ushort*)self;
 	char result = (char)(*s >> 8);
 	*s *= MUL_MCG16;
 	return result;

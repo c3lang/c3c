@@ -1,38 +1,49 @@
 module std::math;
 
-def SimpleRandom = distinct ulong;
+struct SimpleRandom
+{
+	inline Random random;
+	SimpleRandomState state;
+}
 
-const long SIMPLE_RANDOM_MULTIPLIER @local = 0x5DEECE66D;
-const long SIMPLE_RANDOM_ADDEND @local = 0xB;
-const long SIMPLE_RANDOM_MASK @local = (1u64 << 48) - 1;
+def SimpleRandomState = distinct ulong;
 
 RandomInterface simple_random_interface = {
-	.seed_fn = fn (random, seed) => ((SimpleRandom*)random.state).set_random_seed(seed),
-	.next_fn = fn (random, bits) => ((SimpleRandom*)random.state).next_random(bits)
+	.seed_fn = (RandomSeedFn)&SimpleRandom.set_seed,
+	.next_bytes_fn = (RandomNextBytesFn)&SimpleRandom.next_bytes
 };
 
-fn Random SimpleRandom.as_random(&random)
+
+/**
+ * @require bytes.len > 0
+ **/
+fn void SimpleRandom.next_bytes(&self, char[] bytes)
 {
-	return { .fns = simple_random_interface, .state = random };
+	@random_value_to_bytes(self.state.next_int, bytes);
 }
 
-fn uint SimpleRandom.next_random(&r, int bits) @dynamic
-{
-	ulong nextseed = ((ulong)*r * SIMPLE_RANDOM_MULTIPLIER + SIMPLE_RANDOM_ADDEND) & SIMPLE_RANDOM_MASK;
-	*r = (SimpleRandom)nextseed;
-	return (uint)(nextseed >> (48 - bits));
-}
-
-fn void SimpleRandom.set_seed(&r, ulong seed)
-{
-	*r = (SimpleRandom)((seed ^ SIMPLE_RANDOM_MULTIPLIER) & SIMPLE_RANDOM_MASK);
-}
-fn void SimpleRandom.set_random_seed(&r, char[] seed) @dynamic
+fn void SimpleRandom.set_seed(&self, char[] seed)
 {
 	char[8] full;
 	foreach (i, c : seed)
 	{
 		full[i % 8] ^= c;
 	}
-	r.set_seed(bitcast(full, ulong));
+	self.state.set_seed(bitcast(full, ulong));
 }
+
+fn void SimpleRandomState.set_seed(&self, ulong seed)
+{
+	*self = (SimpleRandomState)(seed ^ SIMPLE_RANDOM_MULTIPLIER) & SIMPLE_RANDOM_MASK;
+}
+
+fn uint SimpleRandomState.next_int(&self)
+{
+	ulong nextseed = ((ulong)*self * SIMPLE_RANDOM_MULTIPLIER + SIMPLE_RANDOM_ADDEND) & SIMPLE_RANDOM_MASK;
+	*self = (SimpleRandomState)nextseed;
+	return (uint)(nextseed >> (48 - 32));
+}
+
+const long SIMPLE_RANDOM_MULTIPLIER @local = 0x5DEECE66D;
+const long SIMPLE_RANDOM_ADDEND @local = 0xB;
+const long SIMPLE_RANDOM_MASK @local = (1u64 << 48) - 1;
