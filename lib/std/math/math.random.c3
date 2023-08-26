@@ -37,7 +37,7 @@ fn char Random.next_byte(&self)
 /**
  * @param [&inout] self
  **/
-fn uint Random.next_short(&self)
+fn ushort Random.next_short(&self)
 {
 	ushort result @noinit;
 	self.next_bytes(((char*)&result)[:2]);
