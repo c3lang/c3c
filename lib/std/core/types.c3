@@ -78,7 +78,7 @@ macro bool is_numerical($Type)
 {
 	var $kind = $Type.kindof;
 	$if $kind == TypeKind.DISTINCT:
-		return is_numerical($Type.inner);
+		return is_numerical($typefrom($Type.inner));
 	$else
 		return $kind == TypeKind.SIGNED_INT || $kind == TypeKind.UNSIGNED_INT || $kind == TypeKind.FLOAT
 			|| $kind == TypeKind.VECTOR;

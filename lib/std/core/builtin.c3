@@ -297,7 +297,7 @@ macro bool @ok(#expr) @builtin
 	return true;
 }
 
-macro char[] @to_byte_view(&value) @builtin
+macro char[] @as_char_view(&value) @builtin
 {
 	return ((char*)value)[:$sizeof(*value)];
 }

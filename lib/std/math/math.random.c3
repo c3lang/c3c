@@ -76,19 +76,25 @@ fn uint128 Random.next_uint128(&self)
 
 /**
  * @param [&inout] self
+ * @require types::is_numerical($typeof(seed))
  **/
-fn void Random.set_seed(&self, long seed)
+macro void Random.seed_random(&self, seed)
 {
-	self.fns.seed_fn(self, &&bitcast(seed, char[8])) @inline;
+	self.fns.seed_fn(self, @as_char_view(seed)) @inline;
 }
 
 /**
  * @param [&inout] random
  * @param [in] seed
  **/
-fn void Random.set_seeds(&random, char[] seed)
+fn void Random.set_seed(&random, char[] seed)
 {
 	random.fns.seed_fn(random, seed);
+}
+
+fn int Random.next(&random, int max)
+{
+	return (int)(random.next_double() * max);
 }
 
 /**
@@ -104,7 +110,6 @@ fn float Random.next_float(&self)
 	uint val = self.next_int() & (1 << 24 - 1);
 	return val / (float)(1 << 24);
 }
-
 
 fn double Random.next_double(&self)
 {

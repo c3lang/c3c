@@ -7,7 +7,7 @@ const MUL_LCG64 @local = 0xd1342543de82ef95;
 macro make_seed($Type, char[] input)
 {
 	$Type return_value;
-	seeder(input, @to_byte_view(return_value));
+	seeder(input, @as_char_view(return_value));
 	return return_value;
 }
 
