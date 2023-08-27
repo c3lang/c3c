@@ -208,14 +208,14 @@ macro bool may_load_atomic($Type)
 	$endswitch
 }
 
-macro get_atomic_compatible_type($Type) 
+macro lower_to_atomic_compatible_type($Type) 
 {
 	$switch ($Type.kindof)
     $case SIGNED_INT:
 	  $case UNSIGNED_INT:
       return $Type.typeid;
 		$case DISTINCT:
-			return get_atomic_compatible_type($Type.inner);
+			return lower_to_atomic_compatible_type($Type.inner);
 		$case FLOAT:
 			$switch ($Type)
 				$case float16: 

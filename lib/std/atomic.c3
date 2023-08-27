@@ -13,7 +13,7 @@ module std::atomic;
  **/
 macro fetch_add(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
-	var $StorageType = $typefrom(types::get_atomic_compatible_type($typeof(*ptr)));
+	var $StorageType = $typefrom(types::lower_to_atomic_compatible_type($typeof(*ptr)));
 
   $StorageType* storage_ptr = ($StorageType*)ptr;
 
@@ -43,7 +43,7 @@ macro fetch_add(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
  **/
 macro fetch_sub(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
-	var $StorageType = $typefrom(types::get_atomic_compatible_type($typeof(*ptr)));
+	var $StorageType = $typefrom(types::lower_to_atomic_compatible_type($typeof(*ptr)));
 
   $StorageType* storage_ptr = ($StorageType*)ptr;
 
@@ -216,7 +216,7 @@ macro flag_clear(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
  **/
 macro fetch_max(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
-	var $StorageType = $typefrom(types::get_atomic_compatible_type($typeof(*ptr)));
+	var $StorageType = $typefrom(types::lower_to_atomic_compatible_type($typeof(*ptr)));
 
   $StorageType* storage_ptr = ($StorageType*)ptr;
 
@@ -245,7 +245,7 @@ macro fetch_max(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
  **/
 macro fetch_min(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
-	var $StorageType = $typefrom(types::get_atomic_compatible_type($typeof(*ptr)));
+	var $StorageType = $typefrom(types::lower_to_atomic_compatible_type($typeof(*ptr)));
 
   $StorageType* storage_ptr = ($StorageType*)ptr;
 
@@ -274,7 +274,7 @@ macro fetch_min(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
  **/
 macro fetch_mul(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
-	var $StorageType = $typefrom(types::get_atomic_compatible_type($typeof(*ptr)));
+	var $StorageType = $typefrom(types::lower_to_atomic_compatible_type($typeof(*ptr)));
 
   $StorageType* storage_ptr = ($StorageType*)ptr;
 
@@ -304,7 +304,7 @@ macro fetch_mul(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
  **/
 macro fetch_div(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
-	var $StorageType = $typefrom(types::get_atomic_compatible_type($typeof(*ptr)));
+	var $StorageType = $typefrom(types::lower_to_atomic_compatible_type($typeof(*ptr)));
 
   $StorageType* storage_ptr = ($StorageType*)ptr;
 
