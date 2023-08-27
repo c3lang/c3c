@@ -17,7 +17,7 @@ macro fetch_add(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
   do {
     old_value = $$atomic_load(ptr, false, $ordering.ordinal);
     new_value = old_value + y;
-  } while (!mem::compare_exchange(ptr, old_value, new_value, $ordering, $ordering));
+  } while (mem::compare_exchange(ptr, old_value, new_value, $ordering, $ordering) != old_value);
 
   return old_value;
 }
@@ -36,7 +36,7 @@ macro fetch_sub(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
   do {
     old_value = $$atomic_load(ptr, false, $ordering.ordinal);
     new_value = old_value - y;
-  } while (!mem::compare_exchange(ptr, old_value, new_value, $ordering, $ordering));
+  } while (mem::compare_exchange(ptr, old_value, new_value, $ordering, $ordering) != old_value);
 
   return old_value;
 }
@@ -55,7 +55,7 @@ macro fetch_or(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
   do {
     old_value = $$atomic_load(ptr, false, $ordering.ordinal);
     new_value = old_value | y;
-  } while (!mem::compare_exchange(ptr, old_value, new_value, $ordering, $ordering));
+  } while (mem::compare_exchange(ptr, old_value, new_value, $ordering, $ordering) != old_value);
 
   return old_value;
 }
@@ -74,7 +74,7 @@ macro fetch_xor(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
   do {
     old_value = $$atomic_load(ptr, false, $ordering.ordinal);
     new_value = old_value ^ y;
-  } while (!mem::compare_exchange(ptr, old_value, new_value, $ordering, $ordering));
+  } while (mem::compare_exchange(ptr, old_value, new_value, $ordering, $ordering) != old_value);
 
   return old_value;
 }
@@ -93,7 +93,7 @@ macro fetch_and(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
   do {
     old_value = $$atomic_load(ptr, false, $ordering.ordinal);
     new_value = old_value & y;
-  } while (!mem::compare_exchange(ptr, old_value, new_value, $ordering, $ordering));
+  } while (mem::compare_exchange(ptr, old_value, new_value, $ordering, $ordering) != old_value);
 
   return old_value;
 }
@@ -111,7 +111,7 @@ macro flag_test_and_set(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
   
   do {
     old_value = $$atomic_load(ptr, false, $ordering.ordinal);
-  } while (!mem::compare_exchange(ptr, old_value, new_value, $ordering, $ordering));
+  } while (mem::compare_exchange(ptr, old_value, new_value, $ordering, $ordering) != old_value);
 
   return old_value;
 }
@@ -129,5 +129,5 @@ macro flag_clear(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
   
   do {
     old_value = $$atomic_load(ptr, false, $ordering.ordinal);
-  } while (!mem::compare_exchange(ptr, old_value, new_value, $ordering, $ordering));
+  } while (mem::compare_exchange(ptr, old_value, new_value, $ordering, $ordering) != old_value);
 }
