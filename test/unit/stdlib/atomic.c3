@@ -79,6 +79,78 @@ fn void! sub() @test
 	assert(a == 0, "Threads returned %d, expected %d", a, 0);
 }
 
+fn void! max() @test
+{
+	Thread[100] ts;
+	a = 0;
+	foreach (&t : ts)
+	{
+    t.create(fn int(void* arg) {
+      uint la = 0;
+      thread::sleep_ms(5);
+      atomic::fetch_max(&a, la);
+      la++;
+      thread::sleep_ms(5);
+      atomic::fetch_max(&a, la);
+      la++;
+      thread::sleep_ms(5);
+      atomic::fetch_max(&a, la);
+      la++;
+      thread::sleep_ms(5);
+      atomic::fetch_max(&a, la);
+      la++;
+      thread::sleep_ms(5);
+      atomic::fetch_max(&a, la);
+      la++;
+      thread::sleep_ms(5);
+      atomic::fetch_max(&a, la);
+      la++;
+        return 0;
+    }, null)!;
+	}
+	foreach (&t : ts)
+  {
+    assert(t.join()! == 0);
+  }
+	assert(a == 5, "Threads returned %d, expected %d", a, 5);
+}
+
+fn void! min() @test
+{
+	Thread[100] ts;
+	a = 10;
+	foreach (&t : ts)
+	{
+    t.create(fn int(void* arg) {
+      uint la = 5;
+      thread::sleep_ms(5);
+      atomic::fetch_min(&a, la);
+      la--;
+      thread::sleep_ms(5);
+      atomic::fetch_min(&a, la);
+      la--;
+      thread::sleep_ms(5);
+      atomic::fetch_min(&a, la);
+      la--;
+      thread::sleep_ms(5);
+      atomic::fetch_min(&a, la);
+      la--;
+      thread::sleep_ms(5);
+      atomic::fetch_min(&a, la);
+      la--;
+      thread::sleep_ms(5);
+      atomic::fetch_min(&a, la);
+      la--;
+        return 0;
+    }, null)!;
+	}
+	foreach (&t : ts)
+  {
+    assert(t.join()! == 0);
+  }
+	assert(a == 0, "Threads returned %d, expected %d", a, 0);
+}
+
 fn void! fadd() @test
 {
 	Thread[100] ts;
