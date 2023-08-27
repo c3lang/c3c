@@ -3064,7 +3064,7 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 			return true;
 		case TYPE_PROPERTY_KINDOF:
 		case TYPE_PROPERTY_SIZEOF:
-			return sema_expr_rewrite_to_type_property(context, expr, decl->type, type_property, decl->type);
+			return sema_expr_rewrite_to_type_property(context, expr, decl->type->canonical, type_property, decl->type->canonical);
 		case TYPE_PROPERTY_ELEMENTS:
 		case TYPE_PROPERTY_EXTNAMEOF:
 		case TYPE_PROPERTY_PARAMS:

@@ -310,6 +310,10 @@ fn void Object.set_object_at(&self, usz index, Object* to_set)
 	self.array.set_at(index, to_set);
 }
 
+/**
+ * @require $Type.kindof.is_int() "Expected an integer type."
+ * @checked ($Type)1.0 "Expected an integer type."
+ **/
 macro get_integer_value(Object* value, $Type)
 {
 	if (value.is_float())
@@ -328,8 +332,10 @@ macro get_integer_value(Object* value, $Type)
 	return ($Type)value.i;
 }
 
+
 /**
  * @require self.is_indexable()
+ * @require $Type.kindof.is_int() : "Expected an integer type"
  **/
 macro Object.get_integer_at(&self, $Type, usz index) @private
 {
@@ -338,6 +344,7 @@ macro Object.get_integer_at(&self, $Type, usz index) @private
 
 /**
  * @require self.is_keyable()
+ * @require $Type.kindof.is_int() : "Expected an integer type"
  **/
 macro Object.get_integer(&self, $Type, String key) @private
 {
