@@ -1,5 +1,4 @@
 // #target: macos-x64
-
 module foo;
 
 struct Bar

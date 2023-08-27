@@ -112,6 +112,7 @@
 - Hashmap keys implicitly copied if copy/free are defined.
 - Socket handling.
 - `csv` package.
+- Many random functions.
 - Updated posix/win32 stdlib namespacing
 - `process` stdlib
 - Stdlib updates to string.
@@ -156,6 +157,7 @@
 - Added posix socket functions.
 
 ### Fixes
+- Fix issue of designated initializers containing bitstructs.
 - Fix issue of designated initializers that had optional arguments.
 - Fixed ++ and -- for bitstructs.
 - Fix to bug where library source files were sometimes ignored.
