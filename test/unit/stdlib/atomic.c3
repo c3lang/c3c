@@ -79,6 +79,25 @@ fn void! sub() @test
 	assert(a == 0, "Threads returned %d, expected %d", a, 0);
 }
 
+fn void! div() @test
+{
+	Thread[8] ts;
+	a = 8 * 8 * 8 * 8 * 8 * 8 * 8 * 8 * 8;
+	foreach (&t : ts)
+	{
+    t.create(fn int(void* arg) {
+      thread::sleep_ms(5);
+      atomic::fetch_div(&a, 8);
+        return 0;
+    }, null)!;
+	}
+	foreach (&t : ts)
+  {
+    assert(t.join()! == 0);
+  }
+	assert(a == 8, "Threads returned %d, expected %d", a, 8);
+}
+
 fn void! max() @test
 {
 	Thread[100] ts;

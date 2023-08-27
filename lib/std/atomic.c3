@@ -69,26 +69,17 @@ macro fetch_sub(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
  * @param $ordering "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  * @return "returns the old value of ptr"
  * 
-* @require types::is_int($typeof(*ptr)) || types::is_float($typeof(*ptr)) "Only integer/float pointers may be used."
+ * @require types::is_int($typeof(*ptr)) "Only integer pointers may be used."
  **/
 macro fetch_or(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
-	var $StorageType = $typefrom(types::get_atomic_compatible_type($typeof(*ptr)));
-
-  $StorageType* storage_ptr = ($StorageType*)ptr;
-
 	$typeof(*ptr) old_value;
   $typeof(*ptr) new_value;
 
-  $StorageType storage_old_value;
-  $StorageType storage_new_value;
-  
   do {
-    storage_old_value = $$atomic_load(storage_ptr, false, $ordering.ordinal);
-    old_value = bitcast(storage_old_value, $typeof(*ptr));
+    old_value = $$atomic_load(ptr, false, $ordering.ordinal);
     new_value = old_value | y;
-    storage_new_value = bitcast(new_value, $StorageType);
-  } while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $ordering) != storage_old_value);
+  } while (mem::compare_exchange(ptr, old_value, new_value, $ordering, $ordering) != old_value);
 
   return old_value;
 }
@@ -99,26 +90,17 @@ macro fetch_or(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
  * @param $ordering "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  * @return "returns the old value of ptr"
  * 
-* @require types::is_int($typeof(*ptr)) || types::is_float($typeof(*ptr)) "Only integer/float pointers may be used."
+ * @require types::is_int($typeof(*ptr)) "Only integer pointers may be used."
  **/
 macro fetch_xor(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
-	var $StorageType = $typefrom(types::get_atomic_compatible_type($typeof(*ptr)));
-
-  $StorageType* storage_ptr = ($StorageType*)ptr;
-
 	$typeof(*ptr) old_value;
   $typeof(*ptr) new_value;
 
-  $StorageType storage_old_value;
-  $StorageType storage_new_value;
-  
   do {
-    storage_old_value = $$atomic_load(storage_ptr, false, $ordering.ordinal);
-    old_value = bitcast(storage_old_value, $typeof(*ptr));
+    old_value = $$atomic_load(ptr, false, $ordering.ordinal);
     new_value = old_value ^ y;
-    storage_new_value = bitcast(new_value, $StorageType);
-  } while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $ordering) != storage_old_value);
+  } while (mem::compare_exchange(ptr, old_value, new_value, $ordering, $ordering) != old_value);
 
   return old_value;
 }
@@ -129,26 +111,59 @@ macro fetch_xor(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
  * @param $ordering "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  * @return "returns the old value of ptr"
  * 
-* @require types::is_int($typeof(*ptr)) || types::is_float($typeof(*ptr)) "Only integer/float pointers may be used."
+ * @require types::is_int($typeof(*ptr)) "Only integer pointers may be used."
  **/
 macro fetch_and(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
-	var $StorageType = $typefrom(types::get_atomic_compatible_type($typeof(*ptr)));
-
-  $StorageType* storage_ptr = ($StorageType*)ptr;
-
 	$typeof(*ptr) old_value;
   $typeof(*ptr) new_value;
 
-  $StorageType storage_old_value;
-  $StorageType storage_new_value;
-  
   do {
-    storage_old_value = $$atomic_load(storage_ptr, false, $ordering.ordinal);
-    old_value = bitcast(storage_old_value, $typeof(*ptr));
+    old_value = $$atomic_load(ptr, false, $ordering.ordinal);
     new_value = old_value & y;
-    storage_new_value = bitcast(new_value, $StorageType);
-  } while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $ordering) != storage_old_value);
+  } while (mem::compare_exchange(ptr, old_value, new_value, $ordering, $ordering) != old_value);
+
+  return old_value;
+}
+
+/**
+ * @param [in] ptr "the variable or dereferenced pointer to the data."
+ * @param [in] y "the value to be added to ptr."
+ * @param $ordering "atomic ordering of the load, defaults to SEQ_CONSISTENT"
+ * @return "returns the old value of ptr"
+ * 
+ * @require types::is_int($typeof(*ptr)) "Only integer pointers may be used."
+ **/
+macro fetch_shift_right(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
+{
+	$typeof(*ptr) old_value;
+  $typeof(*ptr) new_value;
+
+  do {
+    old_value = $$atomic_load(ptr, false, $ordering.ordinal);
+    new_value = old_value >> y;
+  } while (mem::compare_exchange(ptr, old_value, new_value, $ordering, $ordering) != old_value);
+
+  return old_value;
+}
+
+/**
+ * @param [in] ptr "the variable or dereferenced pointer to the data."
+ * @param [in] y "the value to be added to ptr."
+ * @param $ordering "atomic ordering of the load, defaults to SEQ_CONSISTENT"
+ * @return "returns the old value of ptr"
+ * 
+ * @require types::is_int($typeof(*ptr)) "Only integer pointers may be used."
+ **/
+macro fetch_shift_left(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
+{
+	$typeof(*ptr) old_value;
+  $typeof(*ptr) new_value;
+
+  do {
+    old_value = $$atomic_load(ptr, false, $ordering.ordinal);
+    new_value = old_value << y;
+  } while (mem::compare_exchange(ptr, old_value, new_value, $ordering, $ordering) != old_value);
 
   return old_value;
 }
@@ -244,6 +259,66 @@ macro fetch_min(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
     storage_old_value = $$atomic_load(storage_ptr, false, $ordering.ordinal);
     old_value = bitcast(storage_old_value, $typeof(*ptr));
     if (old_value <= new_value) break;
+  } while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $ordering) != storage_old_value);
+
+  return old_value;
+}
+
+/**
+ * @param [in] ptr "the variable or dereferenced pointer to the data."
+ * @param [in] y "the value to be added to ptr."
+ * @param $ordering "atomic ordering of the load, defaults to SEQ_CONSISTENT"
+ * @return "returns the old value of ptr"
+ * 
+* @require types::is_int($typeof(*ptr)) || types::is_float($typeof(*ptr)) "Only integer/float pointers may be used."
+ **/
+macro fetch_mul(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
+{
+	var $StorageType = $typefrom(types::get_atomic_compatible_type($typeof(*ptr)));
+
+  $StorageType* storage_ptr = ($StorageType*)ptr;
+
+	$typeof(*ptr) old_value;
+  $typeof(*ptr) new_value;
+
+  $StorageType storage_old_value;
+  $StorageType storage_new_value;
+  
+  do {
+    storage_old_value = $$atomic_load(storage_ptr, false, $ordering.ordinal);
+    old_value = bitcast(storage_old_value, $typeof(*ptr));
+    new_value = old_value * y;
+    storage_new_value = bitcast(new_value, $StorageType);
+  } while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $ordering) != storage_old_value);
+
+  return old_value;
+}
+
+/**
+ * @param [in] ptr "the variable or dereferenced pointer to the data."
+ * @param [in] y "the value to be added to ptr."
+ * @param $ordering "atomic ordering of the load, defaults to SEQ_CONSISTENT"
+ * @return "returns the old value of ptr"
+ * 
+* @require types::is_int($typeof(*ptr)) || types::is_float($typeof(*ptr)) "Only integer/float pointers may be used."
+ **/
+macro fetch_div(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
+{
+	var $StorageType = $typefrom(types::get_atomic_compatible_type($typeof(*ptr)));
+
+  $StorageType* storage_ptr = ($StorageType*)ptr;
+
+	$typeof(*ptr) old_value;
+  $typeof(*ptr) new_value;
+
+  $StorageType storage_old_value;
+  $StorageType storage_new_value;
+  
+  do {
+    storage_old_value = $$atomic_load(storage_ptr, false, $ordering.ordinal);
+    old_value = bitcast(storage_old_value, $typeof(*ptr));
+    new_value = old_value / y;
+    storage_new_value = bitcast(new_value, $StorageType);
   } while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $ordering) != storage_old_value);
 
   return old_value;
