@@ -22,7 +22,7 @@ fn Type Atomic.load(&self, AtomicOrdering ordering = SEQ_CONSISTENT)
 
 		default:
 		case SEQ_CONSISTENT: return $$atomic_load(data, false, AtomicOrdering.SEQ_CONSISTENT.ordinal);
-  }
+	}
 }
 
 fn void Atomic.store(&self, Type value, AtomicOrdering ordering = SEQ_CONSISTENT)
@@ -39,194 +39,89 @@ fn void Atomic.store(&self, Type value, AtomicOrdering ordering = SEQ_CONSISTENT
 
 		default:
 		case SEQ_CONSISTENT: $$atomic_store(data, value, false, AtomicOrdering.SEQ_CONSISTENT.ordinal);
-  }
+	}
 }
 
 fn Type Atomic.add(&self, Type value, AtomicOrdering ordering = SEQ_CONSISTENT)
 {
 	Type* data = &self.data;
-	switch(ordering) 
-	{
-		case NOT_ATOMIC: return atomic::fetch_add(data, value, NOT_ATOMIC);
-		case UNORDERED: return atomic::fetch_add(data, value, UNORDERED);
-		case MONOTONIC: return atomic::fetch_add(data, value, MONOTONIC);
-		case ACQUIRE: return atomic::fetch_add(data, value, ACQUIRE);
-		case RELEASE: return atomic::fetch_add(data, value, RELEASE);
-		case ACQUIRE_RELEASE: return atomic::fetch_add(data, value, ACQUIRE_RELEASE);
-
-		default:
-		case SEQ_CONSISTENT: return atomic::fetch_add(data, value, SEQ_CONSISTENT);
-  }
+	return @atomic_exec(atomic::fetch_add, data, value, ordering);
 }
 
 fn Type Atomic.sub(&self, Type value, AtomicOrdering ordering = SEQ_CONSISTENT)
 {
 	Type* data = &self.data;
-	switch(ordering) 
-	{
-		case NOT_ATOMIC: return atomic::fetch_sub(data, value, NOT_ATOMIC);
-		case UNORDERED: return atomic::fetch_sub(data, value, UNORDERED);
-		case MONOTONIC: return atomic::fetch_sub(data, value, MONOTONIC);
-		case ACQUIRE: return atomic::fetch_sub(data, value, ACQUIRE);
-		case RELEASE: return atomic::fetch_sub(data, value, RELEASE);
-		case ACQUIRE_RELEASE: return atomic::fetch_sub(data, value, ACQUIRE_RELEASE);
-
-		default:
-		case SEQ_CONSISTENT: return atomic::fetch_sub(data, value, SEQ_CONSISTENT);
-  }
+	return @atomic_exec(atomic::fetch_sub, data, value, ordering);
 }
 
 fn Type Atomic.mul(&self, Type value, AtomicOrdering ordering = SEQ_CONSISTENT)
 {
 	Type* data = &self.data;
-	switch(ordering) 
-	{
-		case NOT_ATOMIC: return atomic::fetch_mul(data, value, NOT_ATOMIC);
-		case UNORDERED: return atomic::fetch_mul(data, value, UNORDERED);
-		case MONOTONIC: return atomic::fetch_mul(data, value, MONOTONIC);
-		case ACQUIRE: return atomic::fetch_mul(data, value, ACQUIRE);
-		case RELEASE: return atomic::fetch_mul(data, value, RELEASE);
-		case ACQUIRE_RELEASE: return atomic::fetch_mul(data, value, ACQUIRE_RELEASE);
-
-		default:
-		case SEQ_CONSISTENT: return atomic::fetch_mul(data, value, SEQ_CONSISTENT);
-  }
+	return @atomic_exec(atomic::fetch_mul, data, value, ordering);
 }
 
 fn Type Atomic.div(&self, Type value, AtomicOrdering ordering = SEQ_CONSISTENT)
 {
 	Type* data = &self.data;
-	switch(ordering) 
-	{
-		case NOT_ATOMIC: return atomic::fetch_div(data, value, NOT_ATOMIC);
-		case UNORDERED: return atomic::fetch_div(data, value, UNORDERED);
-		case MONOTONIC: return atomic::fetch_div(data, value, MONOTONIC);
-		case ACQUIRE: return atomic::fetch_div(data, value, ACQUIRE);
-		case RELEASE: return atomic::fetch_div(data, value, RELEASE);
-		case ACQUIRE_RELEASE: return atomic::fetch_div(data, value, ACQUIRE_RELEASE);
-
-		default:
-		case SEQ_CONSISTENT: return atomic::fetch_div(data, value, SEQ_CONSISTENT);
-  }
+	return @atomic_exec(atomic::fetch_div, data, value, ordering);
 }
 
 fn Type Atomic.max(&self, Type value, AtomicOrdering ordering = SEQ_CONSISTENT)
 {
 	Type* data = &self.data;
-	switch(ordering) 
-	{
-		case NOT_ATOMIC: return atomic::fetch_max(data, value, NOT_ATOMIC);
-		case UNORDERED: return atomic::fetch_max(data, value, UNORDERED);
-		case MONOTONIC: return atomic::fetch_max(data, value, MONOTONIC);
-		case ACQUIRE: return atomic::fetch_max(data, value, ACQUIRE);
-		case RELEASE: return atomic::fetch_max(data, value, RELEASE);
-		case ACQUIRE_RELEASE: return atomic::fetch_max(data, value, ACQUIRE_RELEASE);
-
-		default:
-		case SEQ_CONSISTENT: return atomic::fetch_max(data, value, SEQ_CONSISTENT);
-  }
+	return @atomic_exec(atomic::fetch_div, data, value, ordering);
 }
 
 fn Type Atomic.min(&self, Type value, AtomicOrdering ordering = SEQ_CONSISTENT)
 {
 	Type* data = &self.data;
-	switch(ordering) 
-	{
-		case NOT_ATOMIC: return atomic::fetch_min(data, value, NOT_ATOMIC);
-		case UNORDERED: return atomic::fetch_min(data, value, UNORDERED);
-		case MONOTONIC: return atomic::fetch_min(data, value, MONOTONIC);
-		case ACQUIRE: return atomic::fetch_min(data, value, ACQUIRE);
-		case RELEASE: return atomic::fetch_min(data, value, RELEASE);
-		case ACQUIRE_RELEASE: return atomic::fetch_min(data, value, ACQUIRE_RELEASE);
-
-		default:
-		case SEQ_CONSISTENT: return atomic::fetch_min(data, value, SEQ_CONSISTENT);
-  }
+	return @atomic_exec(atomic::fetch_min, data, value, ordering);
 }
 
 fn Type Atomic.or(&self, ulong value, AtomicOrdering ordering = SEQ_CONSISTENT) @if(!types::is_float(Type))
 {
 	Type* data = &self.data;
-	switch(ordering) 
-	{
-		case NOT_ATOMIC: return atomic::fetch_or(data, value, NOT_ATOMIC);
-		case UNORDERED: return atomic::fetch_or(data, value, UNORDERED);
-		case MONOTONIC: return atomic::fetch_or(data, value, MONOTONIC);
-		case ACQUIRE: return atomic::fetch_or(data, value, ACQUIRE);
-		case RELEASE: return atomic::fetch_or(data, value, RELEASE);
-		case ACQUIRE_RELEASE: return atomic::fetch_or(data, value, ACQUIRE_RELEASE);
-
-		default:
-		case SEQ_CONSISTENT: return atomic::fetch_or(data, value, SEQ_CONSISTENT);
-  }
+	return @atomic_exec(atomic::fetch_or, data, value, ordering);
 }
 
 fn Type Atomic.xor(&self, ulong value, AtomicOrdering ordering = SEQ_CONSISTENT) @if(!types::is_float(Type))
 {
 	Type* data = &self.data;
-	switch(ordering) 
-	{
-		case NOT_ATOMIC: return atomic::fetch_xor(data, value, NOT_ATOMIC);
-		case UNORDERED: return atomic::fetch_xor(data, value, UNORDERED);
-		case MONOTONIC: return atomic::fetch_xor(data, value, MONOTONIC);
-		case ACQUIRE: return atomic::fetch_xor(data, value, ACQUIRE);
-		case RELEASE: return atomic::fetch_xor(data, value, RELEASE);
-		case ACQUIRE_RELEASE: return atomic::fetch_xor(data, value, ACQUIRE_RELEASE);
-
-		default:
-		case SEQ_CONSISTENT: return atomic::fetch_xor(data, value, SEQ_CONSISTENT);
-  }
+	return @atomic_exec(atomic::fetch_xor, data, value, ordering);
 }
 
 fn Type Atomic.and(&self, ulong value, AtomicOrdering ordering = SEQ_CONSISTENT) @if(!types::is_float(Type))
 {
 	Type* data = &self.data;
-	switch(ordering) 
-	{
-		case NOT_ATOMIC: return atomic::fetch_and(data, value, NOT_ATOMIC);
-		case UNORDERED: return atomic::fetch_and(data, value, UNORDERED);
-		case MONOTONIC: return atomic::fetch_and(data, value, MONOTONIC);
-		case ACQUIRE: return atomic::fetch_and(data, value, ACQUIRE);
-		case RELEASE: return atomic::fetch_and(data, value, RELEASE);
-		case ACQUIRE_RELEASE: return atomic::fetch_and(data, value, ACQUIRE_RELEASE);
-
-		default:
-		case SEQ_CONSISTENT: return atomic::fetch_and(data, value, SEQ_CONSISTENT);
-  }
+	return @atomic_exec(atomic::fetch_and, data, value, ordering);
 }
 
 fn Type Atomic.shift_right(&self, ulong amount, AtomicOrdering ordering = SEQ_CONSISTENT) @if(!types::is_float(Type))
 {
 	Type* data = &self.data;
-	switch(ordering) 
-	{
-		case NOT_ATOMIC: return atomic::fetch_shift_right(data, amount, NOT_ATOMIC);
-		case UNORDERED: return atomic::fetch_shift_right(data, amount, UNORDERED);
-		case MONOTONIC: return atomic::fetch_shift_right(data, amount, MONOTONIC);
-		case ACQUIRE: return atomic::fetch_shift_right(data, amount, ACQUIRE);
-		case RELEASE: return atomic::fetch_shift_right(data, amount, RELEASE);
-		case ACQUIRE_RELEASE: return atomic::fetch_shift_right(data, amount, ACQUIRE_RELEASE);
-
-		default:
-		case SEQ_CONSISTENT: return atomic::fetch_shift_right(data, amount, SEQ_CONSISTENT);
-  }
+	return @atomic_exec(atomic::fetch_shift_right, data, amount, ordering);
 }
 
 fn Type Atomic.shift_left(&self, ulong amount, AtomicOrdering ordering = SEQ_CONSISTENT) @if(!types::is_float(Type))
 {
 	Type* data = &self.data;
+	return @atomic_exec(atomic::fetch_shift_left, data, amount, ordering);
+}
+
+macro @atomic_exec(#func, data, value, ordering) @local
+{
 	switch(ordering) 
 	{
-		case NOT_ATOMIC: return atomic::fetch_shift_left(data, amount, NOT_ATOMIC);
-		case UNORDERED: return atomic::fetch_shift_left(data, amount, UNORDERED);
-		case MONOTONIC: return atomic::fetch_shift_left(data, amount, MONOTONIC);
-		case ACQUIRE: return atomic::fetch_shift_left(data, amount, ACQUIRE);
-		case RELEASE: return atomic::fetch_shift_left(data, amount, RELEASE);
-		case ACQUIRE_RELEASE: return atomic::fetch_shift_left(data, amount, ACQUIRE_RELEASE);
+		case NOT_ATOMIC: return #func(data, value, NOT_ATOMIC);
+		case UNORDERED: return #func(data, value, UNORDERED);
+		case MONOTONIC: return #func(data, value, MONOTONIC);
+		case ACQUIRE: return #func(data, value, ACQUIRE);
+		case RELEASE: return #func(data, value, RELEASE);
+		case ACQUIRE_RELEASE: return #func(data, value, ACQUIRE_RELEASE);
 
 		default:
-		case SEQ_CONSISTENT: return atomic::fetch_shift_left(data, amount, SEQ_CONSISTENT);
-  }
+		case SEQ_CONSISTENT: return #func(data, value, SEQ_CONSISTENT);
+	}
 }
 
 module std::atomic;
