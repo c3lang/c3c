@@ -513,6 +513,7 @@ static bool sema_binary_is_expr_lvalue(Expr *top_expr, Expr *expr)
 		case EXPR_ANY:
 		case EXPR_ANYSWITCH:
 		case EXPR_VASPLAT:
+		case EXPR_BENCHMARK_HOOK:
 		case EXPR_TEST_HOOK:
 		case EXPR_GENERIC_IDENT:
 		case EXPR_MACRO_BODY:
@@ -626,6 +627,7 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_ANY:
 		case EXPR_ANYSWITCH:
 		case EXPR_VASPLAT:
+		case EXPR_BENCHMARK_HOOK:
 		case EXPR_TEST_HOOK:
 		case EXPR_GENERIC_IDENT:
 		case EXPR_MACRO_BODY:
@@ -1768,6 +1770,13 @@ static inline bool sema_expr_analyse_func_call(SemaContext *context, Expr *expr,
 		SEMA_ERROR(expr, "@test functions may not be directly called.");
 		return false;
 	}
+
+	if (decl->func_decl.attr_benchmark)
+	{
+		SEMA_ERROR(expr, "@benchmark functions may not be directly called.");
+		return false;
+	}
+
 	sema_display_deprecated_warning_on_use(context, decl, expr->span);
 
 	// Tag dynamic dispatch.
@@ -3064,7 +3073,7 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 			return true;
 		case TYPE_PROPERTY_KINDOF:
 		case TYPE_PROPERTY_SIZEOF:
-			return sema_expr_rewrite_to_type_property(context, expr, decl->type, type_property, decl->type);
+			return sema_expr_rewrite_to_type_property(context, expr, decl->type->canonical, type_property, decl->type->canonical);
 		case TYPE_PROPERTY_ELEMENTS:
 		case TYPE_PROPERTY_EXTNAMEOF:
 		case TYPE_PROPERTY_PARAMS:
@@ -5793,6 +5802,10 @@ static inline const char *sema_addr_may_take_of_ident(Expr *inner)
 			{
 				return "You may not take the address of a '@test' function.";
 			}
+			if (decl->func_decl.attr_benchmark)
+			{
+				return "You may not take the address of a '@benchmark' function.";
+			}
 			return NULL;
 		case DECL_VAR:
 			return sema_addr_may_take_of_var(inner, decl);
@@ -6631,6 +6644,35 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 			expr_replace(expr, value);
 			return true;
 		}
+
+		case BUILTIN_DEF_BENCHMARK_NAMES:
+			if (!active_target.benchmarking)
+			{
+				expr->const_expr.const_kind = CONST_INITIALIZER;
+				expr->expr_kind = EXPR_CONST;
+				ConstInitializer *init = expr->const_expr.initializer = CALLOCS(ConstInitializer);
+				init->kind = CONST_INIT_ZERO;
+				init->type = expr->type = type_get_subarray(type_string);
+				return true;
+			}
+			expr->type = type_get_subarray(type_string);
+			expr->benchmark_hook_expr = BUILTIN_DEF_BENCHMARK_NAMES;
+			expr->expr_kind = EXPR_BENCHMARK_HOOK;
+			return true;
+		case BUILTIN_DEF_BENCHMARK_FNS:
+			if (!active_target.benchmarking)
+			{
+				expr->const_expr.const_kind = CONST_INITIALIZER;
+				expr->expr_kind = EXPR_CONST;
+				ConstInitializer *init = expr->const_expr.initializer = CALLOCS(ConstInitializer);
+				init->kind = CONST_INIT_ZERO;
+				init->type = expr->type = type_get_subarray(type_voidptr);
+				return true;
+			}
+			expr->type = type_get_subarray(type_voidptr);
+			expr->benchmark_hook_expr = BUILTIN_DEF_BENCHMARK_FNS;
+			expr->expr_kind = EXPR_BENCHMARK_HOOK;
+			return true;
 		case BUILTIN_DEF_TEST_NAMES:
 			if (!active_target.testing)
 			{
@@ -7784,6 +7826,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 		case EXPR_TYPEID_INFO:
 		case EXPR_ASM:
 		case EXPR_OPERATOR_CHARS:
+		case EXPR_BENCHMARK_HOOK:
 		case EXPR_TEST_HOOK:
 		case EXPR_SWIZZLE:
 		case EXPR_MACRO_BODY:

@@ -535,6 +535,7 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 		case ST_UNKNOWN:
 			UNREACHABLE
 		case ST_FUNCTION:
+		case ST_BENCHMARK:
 		case ST_TEST:
 			assert(decl->name);
 			function_name = decl->name;

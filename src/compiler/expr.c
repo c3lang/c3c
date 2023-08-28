@@ -80,6 +80,7 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_SUBSCRIPT:
 		case EXPR_SLICE:
 			return true;
+		case EXPR_BENCHMARK_HOOK:
 		case EXPR_TEST_HOOK:
 			return false;
 		case NON_RUNTIME_EXPR:
@@ -157,6 +158,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_BUILTIN:
 		case EXPR_CT_EVAL:
 		case EXPR_VASPLAT:
+		case EXPR_BENCHMARK_HOOK:
 		case EXPR_TEST_HOOK:
 			return false;
 		case EXPR_BITACCESS:
@@ -633,6 +635,7 @@ bool expr_is_pure(Expr *expr)
 	switch (expr->expr_kind)
 	{
 		case EXPR_BUILTIN:
+		case EXPR_BENCHMARK_HOOK:
 		case EXPR_TEST_HOOK:
 			return false;
 		case EXPR_SWIZZLE:

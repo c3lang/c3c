@@ -73,6 +73,7 @@ const char *kw_std;
 const char *kw_std__core;
 const char *kw_std__core__types;
 const char *kw_std__io;
+const char *kw___run_default_benchmark_runner;
 const char *kw___run_default_test_runner;
 const char *kw_type;
 const char *kw_typekind;
@@ -131,6 +132,8 @@ void symtab_init(uint32_t capacity)
 	builtin_defines[BUILTIN_DEF_LINE_RAW] = KW_DEF("LINE_RAW");
 	builtin_defines[BUILTIN_DEF_MODULE] = KW_DEF("MODULE");
 	builtin_defines[BUILTIN_DEF_TIME] = KW_DEF("TIME");
+	builtin_defines[BUILTIN_DEF_BENCHMARK_NAMES] = KW_DEF("BENCHMARK_NAMES");
+	builtin_defines[BUILTIN_DEF_BENCHMARK_FNS] = KW_DEF("BENCHMARK_FNS");
 	builtin_defines[BUILTIN_DEF_TEST_NAMES] = KW_DEF("TEST_NAMES");
 	builtin_defines[BUILTIN_DEF_TEST_FNS] = KW_DEF("TEST_FNS");
 	kw_FILE_NOT_FOUND = KW_DEF("FILE_NOT_FOUND");
@@ -164,6 +167,7 @@ void symtab_init(uint32_t capacity)
 	kw_std__core = KW_DEF("std::core");
 	kw_std__core__types = KW_DEF("std::core::types");
 	kw_std__io = KW_DEF("std::io");
+	kw___run_default_benchmark_runner = KW_DEF("__run_default_benchmark_runner");
 	kw___run_default_test_runner = KW_DEF("__run_default_test_runner");
 	kw_type = KW_DEF("type");
 	kw_winmain = KW_DEF("wWinMain");
@@ -299,6 +303,7 @@ void symtab_init(uint32_t capacity)
 	kw_at_return = KW_DEF("@return");
 
 	attribute_list[ATTRIBUTE_ALIGN] = KW_DEF("@align");
+	attribute_list[ATTRIBUTE_BENCHMARK] = KW_DEF("@benchmark");
 	attribute_list[ATTRIBUTE_BIGENDIAN] = KW_DEF("@bigendian");
 	attribute_list[ATTRIBUTE_BUILTIN] = KW_DEF("@builtin");
 	attribute_list[ATTRIBUTE_CALLCONV] = KW_DEF("@callconv");

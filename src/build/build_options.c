@@ -60,23 +60,25 @@ static void usage(void)
 	OUTPUT("");
 	OUTPUT("Commands:");
 	OUTPUT("");
-	OUTPUT("  compile <file1> [<file2> ...]      Compile files without a project into an executable.");
-	OUTPUT("  init <project name>                Initialize a new project structure.");
-	OUTPUT("  build [<target>]                   Build the target in the current project.");
-	OUTPUT("  test                               Run the unit tests in the current project.");
-	OUTPUT("  clean                              Clean all build files.");
-	OUTPUT("  run [<target>]                     Run (and build if needed) the target in the current project.");
-	OUTPUT("  dist [<target>]                    Clean and build a target for distribution.");
-	OUTPUT("  directives [<target>]              Generate documentation for the target.");
-	OUTPUT("  bench [<target>]                   Benchmark a target.");
-	OUTPUT("  clean-run [<target>]               Clean, then run the target.");
-	OUTPUT("  compile-run <file1> [<file2> ...]  Compile files then immediately run the result.");
-	OUTPUT("  compile-only <file1> [<file2> ...] Compile files but do not perform linking.");
-	OUTPUT("  compile-test <file1> [<file2> ...] Compile files into an executable and run unit tests.");
-	OUTPUT("  static-lib <file1> [<file2> ...]   Compile files without a project into a static library.");
-	OUTPUT("  dynamic-lib <file1> [<file2> ...]  Compile files without a project into a dynamic library.");
-	OUTPUT("  headers <file1> [<file2> ...]      Analyse files and generate C headers for public methods.");
-	OUTPUT("  vendor-fetch <library> ...         Fetches one or more libraries from the vendor collection.");
+	OUTPUT("  compile <file1> [<file2> ...]           Compile files without a project into an executable.");
+	OUTPUT("  init <project name>                     Initialize a new project structure.");
+	OUTPUT("  build [<target>]                        Build the target in the current project.");
+	OUTPUT("  benchmark                               Run the benchmarks in the current project.");
+	OUTPUT("  test                                    Run the unit tests in the current project.");
+	OUTPUT("  clean                                   Clean all build files.");
+	OUTPUT("  run [<target>]                          Run (and build if needed) the target in the current project.");
+	OUTPUT("  dist [<target>]                         Clean and build a target for distribution.");
+	OUTPUT("  directives [<target>]                   Generate documentation for the target.");
+	OUTPUT("  bench [<target>]                        Benchmark a target.");
+	OUTPUT("  clean-run [<target>]                    Clean, then run the target.");
+	OUTPUT("  compile-run <file1> [<file2> ...]       Compile files then immediately run the result.");
+	OUTPUT("  compile-only <file1> [<file2> ...]      Compile files but do not perform linking.");
+	OUTPUT("  compile-benchmark <file1> [<file2> ...] Compile files into an executable and run benchmarks.");
+	OUTPUT("  compile-test <file1> [<file2> ...]      Compile files into an executable and run unit tests.");
+	OUTPUT("  static-lib <file1> [<file2> ...]        Compile files without a project into a static library.");
+	OUTPUT("  dynamic-lib <file1> [<file2> ...]       Compile files without a project into a dynamic library.");
+	OUTPUT("  headers <file1> [<file2> ...]           Analyse files and generate C headers for public methods.");
+	OUTPUT("  vendor-fetch <library> ...              Fetches one or more libraries from the vendor collection.");
 	OUTPUT("");
 	OUTPUT("Options:");
 	OUTPUT("  --tb                      - Use Tilde Backend for compilation.");
@@ -268,6 +270,12 @@ static void parse_command(BuildOptions *options)
 		options->command = COMMAND_UNIT_TEST;
 		return;
 	}
+	if (arg_match("compile-benchmark"))
+	{
+		options->command = COMMAND_COMPILE_BENCHMARK;
+		options->benchmarking = true;
+		return;
+	}
 	if (arg_match("compile-test"))
 	{
 		options->command = COMMAND_COMPILE_TEST;
@@ -314,6 +322,12 @@ static void parse_command(BuildOptions *options)
 	{
 		options->command = COMMAND_BUILD;
 		parse_optional_target(options);
+		return;
+	}
+	if (arg_match("benchmark"))
+	{
+		options->command = COMMAND_BENCHMARK;
+		options->benchmarking = true;
 		return;
 	}
 	if (arg_match("test"))
@@ -911,6 +925,11 @@ static void parse_option(BuildOptions *options)
 				if (at_end() || next_is_opt()) error_exit("error: --libdir needs a directory.");
 				if (options->lib_dir_count == MAX_LIB_DIRS) error_exit("Max %d library directories may be specified.", MAX_LIB_DIRS);
 				options->lib_dir[options->lib_dir_count++] = check_dir(next_arg());
+				return;
+			}
+			if (match_longopt("benchmark"))
+			{
+				options->benchmark_mode = true;
 				return;
 			}
 			if (match_longopt("test"))

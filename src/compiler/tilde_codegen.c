@@ -427,10 +427,15 @@ static TildeContext *tilde_gen_module(Module *module, TB_FeatureSet *feature_set
 				if (!active_target.testing) continue;
 				vec_add(module->tests, func);
 			}
+			if (func->func_decl.attr_benchmark)
+			{
+				if (!active_target.benchmarking) continue;
+				vec_add(module->benchmarks, func);
+			}
 			tilde_emit_function_decl(context, func);
 		FOREACH_END();
 
-		if (active_target.type != TARGET_TYPE_TEST && unit->main_function && unit->main_function->is_synthetic)
+		if (active_target.type != TARGET_TYPE_TEST && active_target.type != TARGET_TYPE_BENCHMARK && unit->main_function && unit->main_function->is_synthetic)
 		{
 			tilde_emit_function_decl(context, unit->main_function);
 		}
@@ -456,7 +461,7 @@ static TildeContext *tilde_gen_module(Module *module, TB_FeatureSet *feature_set
 			if (decl->func_decl.body) tilde_emit_function_body(context, decl);
 		FOREACH_END();
 
-		if (active_target.type != TARGET_TYPE_TEST && unit->main_function && unit->main_function->is_synthetic)
+		if (active_target.type != TARGET_TYPE_TEST && active_target.type != TARGET_TYPE_BENCHMARK && unit->main_function && unit->main_function->is_synthetic)
 		{
 			tilde_emit_function_body(context, unit->main_function);
 		}

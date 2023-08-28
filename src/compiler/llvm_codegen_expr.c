@@ -42,13 +42,13 @@ static void llvm_emit_any_pointer(GenContext *c, BEValue *any, BEValue *pointer)
 static void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs_loaded, BinaryOp binary_op);
 static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr, BEValue *target);
 static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr);
-static void llvm_emit_initialize_designated(GenContext *c, BEValue *ref, AlignSize offset, DesignatorElement** current, DesignatorElement **last, Expr *expr, BEValue *emitted_value);
+static void llvm_emit_initialize_designated_element(GenContext *c, BEValue *ref, AlignSize offset, DesignatorElement** current, DesignatorElement **last, Expr *expr, BEValue *emitted_value);
 static void llvm_emit_macro_body_expansion(GenContext *c, BEValue *value, Expr *body_expr);
 static void llvm_emit_post_unary_expr(GenContext *context, BEValue *be_value, Expr *expr);
 static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr);
 static LLVMTypeRef llvm_find_inner_struct_type_for_coerce(GenContext *c, LLVMTypeRef struct_type, ByteSize dest_size);
 static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVMValueRef expand_ptr, LLVMValueRef *args, unsigned *arg_count_ref, AlignSize alignment);
-
+static inline void llvm_emit_initialize_reference_designated_bitstruct(GenContext *c, BEValue *ref, Decl *bitstruct, Expr **elements);
 INLINE LLVMValueRef llvm_emit_bitstruct_value_update(GenContext *c, LLVMValueRef current_val, TypeSize bits, LLVMTypeRef bitstruct_type, Decl *member, LLVMValueRef val);
 INLINE void llvm_emit_initialize_reference_bitstruct_array(GenContext *c, BEValue *ref, Decl *bitstruct, Expr** elements);
 
@@ -1984,12 +1984,12 @@ static void llvm_emit_initialize_designated_const_range(GenContext *c, BEValue *
 		AlignSize alignment;
 		LLVMValueRef ptr = llvm_emit_array_gep_raw(c, ref->value, ref_type, (unsigned)i, ref->alignment, &alignment);
 		llvm_value_set_address(&new_ref, ptr, type_get_indexed_type(ref->type), alignment);
-		llvm_emit_initialize_designated(c, &new_ref, offset, current + 1, last, expr, emitted_value);
+		llvm_emit_initialize_designated_element(c, &new_ref, offset, current + 1, last, expr, emitted_value);
 	}
 }
 
-static void llvm_emit_initialize_designated(GenContext *c, BEValue *ref, AlignSize offset, DesignatorElement** current,
-											DesignatorElement **last, Expr *expr, BEValue *emitted_value)
+static void llvm_emit_initialize_designated_element(GenContext *c, BEValue *ref, AlignSize offset, DesignatorElement** current,
+                                                    DesignatorElement **last, Expr *expr, BEValue *emitted_value)
 {
 	BEValue value;
 	if (current > last)
@@ -2032,9 +2032,32 @@ static void llvm_emit_initialize_designated(GenContext *c, BEValue *ref, AlignSi
 			}
 			else
 			{
-				llvm_value_struct_gep(c, &value, ref, (unsigned)curr->index);
+				llvm_value_struct_gep(c, &value, ref, (unsigned) curr->index);
 			}
-			llvm_emit_initialize_designated(c, &value, offset, current + 1, last, expr, emitted_value);
+			if (decl->decl_kind == DECL_BITSTRUCT)
+			{
+				assert(llvm_value_is_addr(&value));
+				assert(last == current + 1);
+				Decl *member = decl->bitstruct.members[last[0]->index];
+				// Special handling of bitstructs.
+				Type *underlying_type = value.type;
+				assert(!emitted_value);
+				BEValue exprval;
+				llvm_emit_expr(c, &exprval, expr);
+				LLVMValueRef val = llvm_load_value_store(c, &exprval);
+				LLVMTypeRef bitstruct_type = llvm_get_type(c, underlying_type);
+				bool is_bitswap = bitstruct_requires_bitswap(decl);
+				if (underlying_type->type_kind == TYPE_ARRAY)
+				{
+					llvm_emit_update_bitstruct_array(c, value.value, value.alignment, bitstruct_type, is_bitswap, member, val);
+					break;
+				}
+				LLVMValueRef current_val = llvm_load_value(c, &value);
+				current_val = llvm_emit_bitstruct_value_update(c, current_val, type_bit_size(underlying_type), bitstruct_type, member, val);
+				llvm_store_raw(c, &value, current_val);
+				break;
+			}
+			llvm_emit_initialize_designated_element(c, &value, offset, current + 1, last, expr, emitted_value);
 			break;
 		}
 		case DESIGNATOR_ARRAY:
@@ -2044,7 +2067,7 @@ static void llvm_emit_initialize_designated(GenContext *c, BEValue *ref, AlignSi
 			AlignSize alignment;
 			LLVMValueRef ptr = llvm_emit_array_gep_raw(c, ref->value, llvm_get_type(c, ref->type), (unsigned)curr->index, ref->alignment, &alignment);
 			llvm_value_set_address(&value, ptr, type, alignment);
-			llvm_emit_initialize_designated(c, &value, offset, current + 1, last, expr, emitted_value);
+			llvm_emit_initialize_designated_element(c, &value, offset, current + 1, last, expr, emitted_value);
 			break;
 		}
 		case DESIGNATOR_RANGE:
@@ -2133,7 +2156,8 @@ static inline void llvm_emit_initialize_reference_designated(GenContext *c, BEVa
 	{
 		Expr *designator = elements[i];
 		DesignatorElement **last_element = designator->designator_expr.path + vec_size(designator->designator_expr.path) - 1;
-		llvm_emit_initialize_designated(c, ref, 0, designator->designator_expr.path, last_element, designator->designator_expr.value, NULL);
+		llvm_emit_initialize_designated_element(c, ref, 0, designator->designator_expr.path, last_element,
+		                                        designator->designator_expr.value, NULL);
 	}
 }
 
@@ -6581,6 +6605,34 @@ static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Ex
 	UNREACHABLE
 }
 
+static LLVMValueRef llvm_get_benchmark_hook_global(GenContext *c, Expr *expr)
+{
+	const char *name;
+	switch (expr->benchmark_hook_expr)
+	{
+		case BUILTIN_DEF_BENCHMARK_FNS:
+			name = benchmark_fns_var_name;
+			break;
+		case BUILTIN_DEF_BENCHMARK_NAMES:
+			name = benchmark_names_var_name;
+			break;
+		default:
+			UNREACHABLE
+	}
+	LLVMValueRef global = LLVMGetNamedGlobal(c->module, name);
+	if (global) return global;
+	global = LLVMAddGlobal(c->module, llvm_get_type(c, expr->type), name);
+	LLVMSetExternallyInitialized(global, true);
+	LLVMSetGlobalConstant(global, true);
+	return global;
+}
+
+static void llmv_emit_benchmark_hook(GenContext *c, BEValue *value, Expr *expr)
+{
+	LLVMValueRef get_global = llvm_get_benchmark_hook_global(c, expr);
+	llvm_value_set_address_abi_aligned(value, get_global, expr->type);
+}
+
 static LLVMValueRef llvm_get_test_hook_global(GenContext *c, Expr *expr)
 {
 	const char *name;
@@ -6653,6 +6705,9 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			return;
 		case EXPR_SWIZZLE:
 			llvm_emit_swizzle(c, value, expr);
+			return;
+		case EXPR_BENCHMARK_HOOK:
+			llmv_emit_benchmark_hook(c, value, expr);
 			return;
 		case EXPR_TEST_HOOK:
 			llmv_emit_test_hook(c, value, expr);

@@ -1682,6 +1682,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 	assert(type >= 0 && type < NUMBER_OF_ATTRIBUTES);
 	static AttributeDomain attribute_domain[NUMBER_OF_ATTRIBUTES] = {
 			[ATTRIBUTE_ALIGN] = ATTR_FUNC | ATTR_CONST | ATTR_LOCAL | ATTR_GLOBAL | ATTR_BITSTRUCT | ATTR_STRUCT | ATTR_UNION | ATTR_MEMBER,
+			[ATTRIBUTE_BENCHMARK] = ATTR_FUNC,
 			[ATTRIBUTE_BIGENDIAN] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_BUILTIN] = ATTR_MACRO | ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST,
 			[ATTRIBUTE_CALLCONV] = ATTR_FUNC,
@@ -1763,6 +1764,9 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			if (expr && !sema_analyse_expr(context, expr)) return false;
 			if (!expr_is_const_string(expr)) RETURN_SEMA_ERROR(expr, "Expected a constant string value as argument.");
 			if (!update_call_abi_from_string(decl, expr)) return false;
+			break;
+		case ATTRIBUTE_BENCHMARK:
+			decl->func_decl.attr_benchmark = true;
 			break;
 		case ATTRIBUTE_TEST:
 			decl->func_decl.attr_test = true;
@@ -2412,7 +2416,7 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	// At this point the style is either MAIN_INT_VOID, MAIN_VOID_VOID or MAIN_ERR_VOID
 	MainType type = sema_find_main_type(context, signature, is_winmain);
 	if (type == MAIN_TYPE_ERROR) return false;
-	if (active_target.type == TARGET_TYPE_TEST) return true;
+	if (active_target.type == TARGET_TYPE_TEST || active_target.type == TARGET_TYPE_BENCHMARK) return true;
 	Decl *function;
 	if (active_target.no_entry)
 	{
@@ -2521,6 +2525,16 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 
 	if (*erase_decl) return true;
 
+	if (decl->name == kw___run_default_benchmark_runner)
+	{
+		if (global_context.benchmark_func)
+		{
+			SEMA_ERROR(decl, "Multiple benchmark runners defined.");
+			return false;
+		}
+		global_context.benchmark_func = decl;
+		if (active_target.benchmarking) decl->no_strip = true;
+	}
 	if (decl->name == kw___run_default_test_runner)
 	{
 		if (global_context.test_func)
@@ -2532,19 +2546,20 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 		if (active_target.testing) decl->no_strip = true;
 	}
 	bool is_test = decl->func_decl.attr_test;
+	bool is_benchmark = decl->func_decl.attr_benchmark;
 	Signature *sig = &decl->func_decl.signature;
-	if (is_test)
+	if (is_test || is_benchmark)
 	{
 		if (vec_size(sig->params))
 		{
-			SEMA_ERROR(sig->params[0], "'@test' functions may not take any parameters.");
+			SEMA_ERROR(sig->params[0], "'@test' and '@benchmark' functions may not take any parameters.");
 			return false;
 		}
 		TypeInfo *rtype_info = type_infoptr(sig->rtype);
 		if (!sema_resolve_type_info(context, rtype_info)) return false;
 		if (type_no_optional(rtype_info->type) != type_void)
 		{
-			SEMA_ERROR(rtype_info, "'@test' functions may only return 'void' or 'void!'.");
+			SEMA_ERROR(rtype_info, "'@test' and '@benchmark' functions may only return 'void' or 'void!'.");
 			return false;
 		}
 		if (rtype_info->type == type_void)
@@ -2576,7 +2591,7 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 	}
 	if (decl->func_decl.type_parent)
 	{
-		if (is_test) SEMA_ERROR(decl, "Methods may not be annotated @test.");
+		if (is_test || is_benchmark) SEMA_ERROR(decl, "Methods may not be annotated @test or @benchmark.");
 		if (!sema_analyse_method(context, decl)) return decl_poison(decl);
 	}
 	else
@@ -2593,7 +2608,7 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 		}
 		if (decl->name == kw_main)
 		{
-			if (is_test) SEMA_ERROR(decl, "Main functions may not be annotated @test.");
+			if (is_test || is_benchmark) SEMA_ERROR(decl, "Main functions may not be annotated @test or @benchmark.");
 			if (!sema_analyse_main_function(context, decl)) return decl_poison(decl);
 		}
 		decl_set_external_name(decl);

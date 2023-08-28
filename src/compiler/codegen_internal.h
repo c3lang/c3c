@@ -117,5 +117,7 @@ static inline bool expr_is_vector_index(Expr *expr)
 
 const char *codegen_create_asm(Ast *ast);
 
+extern const char *benchmark_fns_var_name;
+extern const char *benchmark_names_var_name;
 extern const char *test_fns_var_name;
 extern const char *test_names_var_name;

@@ -466,6 +466,7 @@ RETRY:
 			expr = exprptr(expr->ternary_expr.else_expr);
 			goto RETRY;
 		}
+		case EXPR_BENCHMARK_HOOK:
 		case EXPR_TEST_HOOK:
 			return;
 		case EXPR_TYPEID_INFO:
@@ -502,6 +503,7 @@ void sema_trace_liveness(void)
 		sema_trace_decl_liveness(global_context.main);
 	}
 	bool keep_tests = active_target.testing;
+	bool keep_benchmarks = active_target.benchmarking;
 	FOREACH_BEGIN(Decl *function, global_context.method_extensions)
 		if (function->func_decl.attr_dynamic) function->no_strip = true;
 		if (function->is_export || function->no_strip) sema_trace_decl_liveness(function);
@@ -509,7 +511,9 @@ void sema_trace_liveness(void)
 	FOREACH_BEGIN(Module *module, global_context.module_list)
 		FOREACH_BEGIN(CompilationUnit *unit, module->units)
 			FOREACH_BEGIN(Decl *function, unit->functions)
-				if (function->is_export || function->no_strip || (function->func_decl.attr_test && keep_tests)) sema_trace_decl_liveness(function);
+				if (function->is_export || function->no_strip ||
+				   (function->func_decl.attr_test && keep_tests) ||
+				   (function->func_decl.attr_benchmark && keep_benchmarks)) sema_trace_decl_liveness(function);
 			FOREACH_END();
 			FOREACH_BEGIN(Decl *method, unit->methods)
 				if (method->is_export || method->no_strip) sema_trace_decl_liveness(method);

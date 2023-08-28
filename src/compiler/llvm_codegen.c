@@ -74,7 +74,7 @@ static void gencontext_init(GenContext *context, Module *module, LLVMContextRef 
 	{
 		LLVMContextSetDiagnosticHandler(context->context, &diagnostics_handler, context);
 	}
-	if (!active_target.emit_llvm && !active_target.test_output) LLVMContextSetDiscardValueNames(context->context, true);
+	if (!active_target.emit_llvm && !active_target.test_output && !active_target.benchmark_output ) LLVMContextSetDiscardValueNames(context->context, true);
 	context->code_module = module;
 }
 
@@ -1129,6 +1129,7 @@ static void llvm_gen_test_main(GenContext *c)
 	LLVMBuildRet(builder, val);
 	LLVMDisposeBuilder(builder);
 }
+
 INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMContextRef shared_context)
 {
 	Path *test_path = path_create_from_string("$test", 5, INVALID_SPAN);
@@ -1202,6 +1203,105 @@ INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMC
 	}
 	return c;
 }
+
+static void llvm_gen_benchmark_main(GenContext *c)
+{
+	Decl *benchmark_runner = global_context.benchmark_func;
+	if (!benchmark_runner)
+	{
+		error_exit("No benchmark runner found.");
+	}
+	assert(!global_context.main && "Main should not be set if a benchmark main is generated.");
+	global_context.main = benchmark_runner;
+	LLVMTypeRef cint = llvm_get_type(c, type_cint);
+	LLVMTypeRef main_type = LLVMFunctionType(cint, NULL, 0, true);
+	LLVMTypeRef runner_type = LLVMFunctionType(c->byte_type, NULL, 0, true);
+	LLVMValueRef func = LLVMAddFunction(c->module, kw_main, main_type);
+	LLVMValueRef other_func = LLVMAddFunction(c->module, benchmark_runner->extname, runner_type);
+	LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(c->context, func, "entry");
+	LLVMBuilderRef builder = LLVMCreateBuilderInContext(c->context);
+	LLVMPositionBuilderAtEnd(builder, entry);
+	LLVMValueRef val = LLVMBuildCall2(builder, runner_type, other_func, NULL, 0, "");
+	val = LLVMBuildSelect(builder, LLVMBuildTrunc(builder, val, c->bool_type, ""),
+						  LLVMConstNull(cint), LLVMConstInt(cint, 1, false), "");
+	LLVMBuildRet(builder, val);
+	LLVMDisposeBuilder(builder);
+}
+
+INLINE GenContext *llvm_gen_benchmarks(Module** modules, unsigned module_count, LLVMContextRef shared_context)
+{
+	Path *benchmark_path = path_create_from_string("$benchmark", 10, INVALID_SPAN);
+	Module *benchmark_module = compiler_find_or_create_module(benchmark_path, NULL);
+
+	GenContext *c = cmalloc(sizeof(GenContext));
+	active_target.debug_info = DEBUG_INFO_NONE;
+	gencontext_init(c, benchmark_module, shared_context);
+	gencontext_begin_module(c);
+
+	LLVMValueRef *names = NULL;
+	LLVMValueRef *decls = NULL;
+
+	LLVMTypeRef opt_benchmark = LLVMFunctionType(llvm_get_type(c, type_anyfault), NULL, 0, false);
+	for (unsigned i = 0; i < module_count; i++)
+	{
+		Module *module = modules[i];
+		FOREACH_BEGIN(Decl *benchmark, module->benchmarks)
+			LLVMValueRef ref;
+			LLVMTypeRef type = opt_benchmark;
+			ref = LLVMAddFunction(c->module, benchmark->extname, type);
+			scratch_buffer_clear();
+			scratch_buffer_printf("%s::%s", module->name->module, benchmark->name);
+			LLVMValueRef name = llvm_emit_string_const(c, scratch_buffer_to_string(), ".benchmark.name");
+			vec_add(names, name);
+			vec_add(decls, ref);
+		FOREACH_END();
+	}
+	unsigned benchmark_count = vec_size(decls);
+	LLVMValueRef name_ref;
+	LLVMValueRef decl_ref;
+
+	if (benchmark_count)
+	{
+		LLVMValueRef array_of_names = LLVMConstArray(c->chars_type, names, benchmark_count);
+		LLVMValueRef array_of_decls = LLVMConstArray(c->ptr_type, decls, benchmark_count);
+		LLVMTypeRef arr_type = LLVMTypeOf(array_of_names);
+		name_ref = llvm_add_global_raw(c, ".benchmark_names", arr_type, 0);
+		decl_ref = llvm_add_global_raw(c, ".benchmark_decls", LLVMTypeOf(array_of_decls), 0);
+		llvm_set_internal_linkage(name_ref);
+		llvm_set_internal_linkage(decl_ref);
+		LLVMSetGlobalConstant(name_ref, 1);
+		LLVMSetGlobalConstant(decl_ref, 1);
+		LLVMSetInitializer(name_ref, array_of_names);
+		LLVMSetInitializer(decl_ref, array_of_decls);
+	}
+	else
+	{
+		name_ref = LLVMConstNull(c->ptr_type);
+		decl_ref = LLVMConstNull(c->ptr_type);
+	}
+	LLVMValueRef count = llvm_const_int(c, type_usz, benchmark_count);
+	Type *chars_array = type_get_subarray(type_chars);
+	LLVMValueRef name_list = llvm_add_global(c, benchmark_names_var_name, chars_array, type_alloca_alignment(chars_array));
+	LLVMSetGlobalConstant(name_list, 1);
+	LLVMSetInitializer(name_list, llvm_emit_aggregate_two(c, chars_array, name_ref, count));
+	Type *decls_array_type = type_get_subarray(type_voidptr);
+	LLVMValueRef decl_list = llvm_add_global(c, benchmark_fns_var_name, decls_array_type, type_alloca_alignment(decls_array_type));
+	LLVMSetGlobalConstant(decl_list, 1);
+	LLVMSetInitializer(decl_list, llvm_emit_aggregate_two(c, decls_array_type, decl_ref, count));
+
+	if (active_target.type == TARGET_TYPE_BENCHMARK)
+	{
+		llvm_gen_benchmark_main(c);
+	}
+
+	if (llvm_use_debug(c))
+	{
+		LLVMDIBuilderFinalize(c->debug.builder);
+		LLVMDisposeDIBuilder(c->debug.builder);
+	}
+	return c;
+}
+
 void **llvm_gen(Module** modules, unsigned module_count)
 {
 	if (!module_count) return NULL;
@@ -1220,6 +1320,10 @@ void **llvm_gen(Module** modules, unsigned module_count)
 		}
 		if (!gen_contexts) return NULL;
 		GenContext *first = gen_contexts[0];
+		if (active_target.benchmarking)
+		{
+			vec_add(gen_contexts, llvm_gen_benchmarks(modules, module_count, context));
+		}
 		if (active_target.testing)
 		{
 			vec_add(gen_contexts, llvm_gen_tests(modules, module_count, context));
@@ -1239,6 +1343,10 @@ void **llvm_gen(Module** modules, unsigned module_count)
 			GenContext *result = llvm_gen_module(modules[i], NULL);
 			if (!result) continue;
 			vec_add(gen_contexts, result);
+	}
+	if (active_target.benchmarking)
+	{
+		vec_add(gen_contexts, llvm_gen_benchmarks(modules, module_count, NULL));
 	}
 	if (active_target.testing)
 	{
@@ -1324,6 +1432,11 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 				if (!active_target.testing) continue;
 				vec_add(module->tests, func);
 			}
+			if (func->func_decl.attr_benchmark)
+			{
+				if (!active_target.benchmarking) continue;
+				vec_add(module->benchmarks, func);
+			}
 			llvm_emit_function_decl(gen_context, func);
 		FOREACH_END();
 
@@ -1334,7 +1447,7 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 			llvm_emit_function_decl(gen_context, func);
 		FOREACH_END();
 
-		if (active_target.type != TARGET_TYPE_TEST && unit->main_function && unit->main_function->is_synthetic)
+		if (active_target.type != TARGET_TYPE_TEST && active_target.type != TARGET_TYPE_BENCHMARK && unit->main_function && unit->main_function->is_synthetic)
 		{
 			has_elements = true;
 			llvm_emit_function_decl(gen_context, unit->main_function);
@@ -1363,11 +1476,12 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 
 		FOREACH_BEGIN(Decl *decl, unit->functions)
 			if (decl->func_decl.attr_test && !active_target.testing) continue;
+			if (decl->func_decl.attr_benchmark && !active_target.benchmarking) continue;
 			if (only_used && !decl->is_live) continue;
 			if (decl->func_decl.body)
 			{
 				has_elements = true;
-				llvm_emit_function_body(gen_context, decl, decl->func_decl.attr_test ? ST_TEST : ST_FUNCTION);
+				llvm_emit_function_body(gen_context, decl, decl->func_decl.attr_test ? ST_TEST : decl->func_decl.attr_benchmark ? ST_BENCHMARK : ST_FUNCTION);
 			}
 		FOREACH_END();
 
@@ -1377,7 +1491,7 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 			llvm_emit_function_body(gen_context, func, ST_LAMBDA);
 		FOREACH_END();
 
-		if (active_target.type != TARGET_TYPE_TEST && unit->main_function && unit->main_function->is_synthetic)
+		if (active_target.type != TARGET_TYPE_TEST && active_target.type != TARGET_TYPE_BENCHMARK && unit->main_function && unit->main_function->is_synthetic)
 		{
 			has_elements = true;
 			llvm_emit_function_body(gen_context, unit->main_function, ST_FUNCTION);
@@ -1404,8 +1518,8 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 		LLVMDisposeDIBuilder(gen_context->debug.builder);
 	}
 
-	// If it's in test, then we want to serialize the IR before it is optimized.
-	if (active_target.test_output)
+	// If it's in test or benchmark, then we want to serialize the IR before it is optimized.
+	if (active_target.test_output || active_target.benchmark_output)
 	{
 		gencontext_print_llvm_ir(gen_context);
 		gencontext_verify_ir(gen_context);

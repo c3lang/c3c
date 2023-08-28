@@ -69,6 +69,7 @@ bool command_is_projectless(CompilerCommand command)
 		case COMMAND_COMPILE_RUN:
 		case COMMAND_DYNAMIC_LIB:
 		case COMMAND_STATIC_LIB:
+		case COMMAND_COMPILE_BENCHMARK:
 		case COMMAND_COMPILE_TEST:
 		case COMMAND_UNIT_TEST:
 			return true;
@@ -83,6 +84,7 @@ bool command_is_projectless(CompilerCommand command)
 		case COMMAND_DOCS:
 		case COMMAND_BENCH:
 		case COMMAND_PRINT_SYNTAX:
+		case COMMAND_BENCHMARK:
 		case COMMAND_TEST:
 		case COMMAND_VENDOR_FETCH:
 			return false;
@@ -152,6 +154,11 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 {
 	switch (options->command)
 	{
+		case COMMAND_COMPILE_BENCHMARK:
+		case COMMAND_BENCHMARK:
+			target->run_after_compile = true;
+			target->type = TARGET_TYPE_BENCHMARK;
+			break;
 		case COMMAND_COMPILE_TEST:
 		case COMMAND_TEST:
 			target->run_after_compile = true;
@@ -316,6 +323,13 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 			target->parse_only = true;
 			target->output_ast = true;
 			break;
+	}
+	if (options->benchmark_mode)
+	{
+		target->benchmark_output = true;
+		target->emit_llvm = false;
+		target->emit_asm = false;
+		target->emit_object_files = false;
 	}
 	if (options->test_mode)
 	{

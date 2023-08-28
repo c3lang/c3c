@@ -273,6 +273,9 @@ bool parse_module(ParseContext *c, AstId contracts)
 				if (c->unit->if_attr) RETURN_SEMA_ERROR(attr, "'@if' appeared more than once.");
 				c->unit->if_attr = attr;
 				continue;
+			case ATTRIBUTE_BENCHMARK:
+				c->unit->benchmark_by_default = true;
+				continue;
 			case ATTRIBUTE_TEST:
 				c->unit->test_by_default = true;
 				continue;
@@ -961,6 +964,7 @@ static bool parse_attributes_for_global(ParseContext *c, Decl *decl)
 {
 	Visibility visibility = c->unit->default_visibility;
 	if (decl->decl_kind == DECL_FUNC) decl->func_decl.attr_test = c->unit->test_by_default;
+	if (decl->decl_kind == DECL_FUNC) decl->func_decl.attr_benchmark = c->unit->benchmark_by_default;
 	decl->is_export = c->unit->export_by_default;
 	bool is_cond;
 	if (!parse_attributes(c, &decl->attributes, &visibility, &is_cond)) return false;
