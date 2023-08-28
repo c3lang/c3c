@@ -546,6 +546,7 @@ typedef struct
 			bool attr_noinline : 1;
 			bool attr_extname : 1;
 			bool attr_naked : 1;
+			bool attr_benchmark : 1;
 			bool attr_test : 1;
 			bool attr_winmain : 1;
 			bool attr_dynamic : 1;
@@ -1180,6 +1181,7 @@ struct Expr_
 		ExprSubscript subscript_expr;               // 12
 		ExprSwizzle swizzle_expr;
 		ExprTernary ternary_expr;                   // 16
+		BuiltinDefine benchmark_hook_expr;
 		BuiltinDefine test_hook_expr;
 		Expr** try_unwrap_chain_expr;               // 8
 		ExprTryUnwrap try_unwrap_expr;              // 24
@@ -1510,6 +1512,7 @@ typedef struct Module_
 	Module *parent_module;
 	Module *top_module;
 	Module **sub_modules;
+	Decl **benchmarks;
 	Decl **tests;
 	Decl **lambdas_to_evaluate;
 	const char *generic_suffix;
@@ -1600,6 +1603,7 @@ struct CompilationUnit_
 	Attr *if_attr;
 	bool export_by_default;
 	bool is_interface_file;
+	bool benchmark_by_default;
 	bool test_by_default;
 	Decl **generic_defines;
 	Decl **ct_asserts;
@@ -1712,7 +1716,6 @@ typedef struct
 	const char **sources;
 	File **loaded_sources;
 	bool in_panic_mode : 1;
-	bool in_test_mode : 1;
 	unsigned errors_found;
 	unsigned warnings_found;
 	unsigned includes_used;
@@ -1730,6 +1733,7 @@ typedef struct
 	Decl *io_error_file_not_found;
 	Decl *main;
 	Decl *test_func;
+	Decl *benchmark_func;
 	Decl *decl_stack[MAX_GLOBAL_DECL_STACK];
 	Decl **decl_stack_bottom;
 	Decl **decl_stack_top;
@@ -1884,6 +1888,7 @@ extern const char *type_property_list[NUMBER_OF_TYPE_PROPERTIES];
 extern const char *kw_std__core;
 extern const char *kw_std__core__types;
 extern const char *kw_std__io;
+extern const char *kw___run_default_benchmark_runner;
 extern const char *kw___run_default_test_runner;
 extern const char *kw_typekind;
 extern const char *kw_FILE_NOT_FOUND;

@@ -20,7 +20,7 @@ typedef enum
 static void print_error(SourceSpan location, const char *message, PrintType print_type)
 {
 	File *file = source_file_by_id(location.file_id);
-	if (active_target.test_output)
+	if (active_target.test_output || active_target.benchmark_output)
 	{
 		switch (print_type)
 		{

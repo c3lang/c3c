@@ -1,6 +1,8 @@
 #include "codegen_internal.h"
 
 
+const char *benchmark_fns_var_name = "__$C3_BENCHMARK_FN_LIST";
+const char *benchmark_names_var_name = "__$C3_BENCHMARK_NAMES_LIST";
 const char *test_fns_var_name = "__$C3_TEST_FN_LIST";
 const char *test_names_var_name = "__$C3_TEST_NAMES_LIST";
 /**

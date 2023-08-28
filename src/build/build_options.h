@@ -25,6 +25,7 @@ typedef enum
 	COMMAND_MISSING = 0,
 	COMMAND_COMPILE,
 	COMMAND_COMPILE_ONLY,
+	COMMAND_COMPILE_BENCHMARK,
 	COMMAND_COMPILE_TEST,
 	COMMAND_GENERATE_HEADERS,
 	COMMAND_INIT,
@@ -39,6 +40,7 @@ typedef enum
 	COMMAND_DIST,
 	COMMAND_DOCS,
 	COMMAND_BENCH,
+	COMMAND_BENCHMARK,
 	COMMAND_TEST,
 	COMMAND_UNIT_TEST,
 	COMMAND_PRINT_SYNTAX,
@@ -332,6 +334,7 @@ typedef struct BuildOptions_
 	int safe_mode;
 	bool emit_llvm;
 	bool emit_asm;
+	bool benchmark_mode;
 	bool test_mode;
 	bool no_stdlib;
 	bool no_entry;
@@ -374,6 +377,7 @@ typedef enum
 	TARGET_TYPE_STATIC_LIB,
 	TARGET_TYPE_DYNAMIC_LIB,
 	TARGET_TYPE_OBJECT_FILES,
+	TARGET_TYPE_BENCHMARK,
 	TARGET_TYPE_TEST,
 } TargetType;
 
@@ -417,7 +421,9 @@ typedef struct
 	const char *ir_file_dir;
 	const char *asm_file_dir;
 	bool run_after_compile;
+	bool generate_benchmark_runner;
 	bool generate_test_runner;
+	bool benchmark_output;
 	bool test_output;
 	bool output_headers;
 	bool output_ast;

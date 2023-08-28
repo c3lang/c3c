@@ -378,10 +378,14 @@ void compiler_compile(void)
 	const char *output_exe = NULL;
 	const char *output_static = NULL;
 	const char *output_dynamic = NULL;
-	if (!active_target.test_output)
+	if (!active_target.test_output && !active_target.benchmark_output)
 	{
 		switch (active_target.type)
 		{
+			case TARGET_TYPE_BENCHMARK:
+				active_target.name = "benchmarkrun";
+				output_exe = exe_name();
+				break;
 			case TARGET_TYPE_TEST:
 				active_target.name = "testrun";
 				output_exe = exe_name();

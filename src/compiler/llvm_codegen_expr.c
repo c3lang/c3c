@@ -6605,6 +6605,34 @@ static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Ex
 	UNREACHABLE
 }
 
+static LLVMValueRef llvm_get_benchmark_hook_global(GenContext *c, Expr *expr)
+{
+	const char *name;
+	switch (expr->benchmark_hook_expr)
+	{
+		case BUILTIN_DEF_BENCHMARK_FNS:
+			name = benchmark_fns_var_name;
+			break;
+		case BUILTIN_DEF_BENCHMARK_NAMES:
+			name = benchmark_names_var_name;
+			break;
+		default:
+			UNREACHABLE
+	}
+	LLVMValueRef global = LLVMGetNamedGlobal(c->module, name);
+	if (global) return global;
+	global = LLVMAddGlobal(c->module, llvm_get_type(c, expr->type), name);
+	LLVMSetExternallyInitialized(global, true);
+	LLVMSetGlobalConstant(global, true);
+	return global;
+}
+
+static void llmv_emit_benchmark_hook(GenContext *c, BEValue *value, Expr *expr)
+{
+	LLVMValueRef get_global = llvm_get_benchmark_hook_global(c, expr);
+	llvm_value_set_address_abi_aligned(value, get_global, expr->type);
+}
+
 static LLVMValueRef llvm_get_test_hook_global(GenContext *c, Expr *expr)
 {
 	const char *name;
@@ -6677,6 +6705,9 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			return;
 		case EXPR_SWIZZLE:
 			llvm_emit_swizzle(c, value, expr);
+			return;
+		case EXPR_BENCHMARK_HOOK:
+			llmv_emit_benchmark_hook(c, value, expr);
 			return;
 		case EXPR_TEST_HOOK:
 			llmv_emit_test_hook(c, value, expr);

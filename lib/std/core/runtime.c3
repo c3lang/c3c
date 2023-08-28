@@ -24,6 +24,7 @@ struct SubArrayStruct
 	usz len;
 }
 
+def BenchmarkFn = fn void!();
 def TestFn = fn void!();
 
 struct TestUnit
@@ -134,6 +135,16 @@ fn bool __run_default_test_runner()
 	};
 }
 
+fn bool __run_default_benchmark_runner()
+{
+	BenchmarkFn[] fns = $$BENCHMARK_FNS;
+	String[] names = $$BENCHMARK_NAMES;
+	foreach (i, benchmark : fns)
+	{
+		io::printfn("Benchmark: %s %x.", names[i], fns[i]);
+	}
+	return true;
+}
 
 module std::core::runtime @if(WASM_NOLIBC);
 

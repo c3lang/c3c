@@ -65,6 +65,7 @@ int main_real(int argc, const char *argv[])
 		case COMMAND_COMPILE_RUN:
 		case COMMAND_DYNAMIC_LIB:
 		case COMMAND_STATIC_LIB:
+		case COMMAND_COMPILE_BENCHMARK:
 		case COMMAND_COMPILE_TEST:
 			compile_target(&build_options);
 			break;
@@ -80,6 +81,7 @@ int main_real(int argc, const char *argv[])
 		case COMMAND_DIST:
 		case COMMAND_DOCS:
 		case COMMAND_BENCH:
+		case COMMAND_BENCHMARK:
 		case COMMAND_TEST:
 			compile_file_list(&build_options);
 			break;
