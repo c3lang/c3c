@@ -8,11 +8,15 @@ struct SimpleRandom
 
 def SimpleRandomState = distinct ulong;
 
-RandomInterface simple_random_interface = {
+const RandomInterface SIMPLE_RANDOM_INTERFACE @local = {
 	.seed_fn = (RandomSeedFn)&SimpleRandom.set_seed,
-	.next_bytes_fn = (RandomNextBytesFn)&SimpleRandom.next_bytes
+	.next_bytes_fn = (RandomNextBytesFn)&SimpleRandom.next_bytes,
 };
 
+fn void SimpleRandom.init(&self)
+{
+	self.random.fns = &SIMPLE_RANDOM_INTERFACE;
+}
 
 /**
  * @require bytes.len > 0

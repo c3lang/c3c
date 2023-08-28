@@ -32,7 +32,7 @@ fn void Lcg128Random.init(&self)
 	self.random.fns = &LCG_128_RANDOM_INTERFACE;
 }
 
-fn void  Lcg128Random.set_seed(&self, char[] input)
+fn void Lcg128Random.set_seed(&self, char[] input)
 {
 	self.state.set_seed(random::make_seed(uint128, input));
 }
