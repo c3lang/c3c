@@ -2591,7 +2591,11 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 	}
 	if (decl->func_decl.type_parent)
 	{
-		if (is_test || is_benchmark) SEMA_ERROR(decl, "Methods may not be annotated @test or @benchmark.");
+		if (is_test || is_benchmark)
+		{
+			SEMA_ERROR(decl, "Methods may not be annotated %s.", is_test ? "@test" : "@benchmark");
+			return decl_poison(decl);
+		}
 		if (!sema_analyse_method(context, decl)) return decl_poison(decl);
 	}
 	else
@@ -2608,7 +2612,11 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 		}
 		if (decl->name == kw_main)
 		{
-			if (is_test || is_benchmark) SEMA_ERROR(decl, "Main functions may not be annotated @test or @benchmark.");
+			if (is_test || is_benchmark)
+			{
+				SEMA_ERROR(decl, "The main function may not be annotated %s.", is_test ? "@test" : "@benchmark");
+				return decl_poison(decl);
+			}
 			if (!sema_analyse_main_function(context, decl)) return decl_poison(decl);
 		}
 		decl_set_external_name(decl);
