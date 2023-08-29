@@ -22,8 +22,7 @@ fn int main()
 
 /* #expect: test.ll
 
-
-@"$ct.int" = linkonce global %.introspect { i8 2, ptr null, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
+@"$ct.int" = linkonce global %.introspect { i8 2, i64 0, ptr null, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
 
 define void @test.retest(ptr %0, i64 %1) #0 {
 entry:

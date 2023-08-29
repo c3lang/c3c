@@ -79,7 +79,7 @@ fn void main()
 
 %Foo = type { i16, i8, i8, i16, i16 }
 
-@"$ct.userland_bitcast.Foo" = linkonce global %.introspect { i8 10, ptr null, i64 8, i64 0, i64 5, [0 x i64] zeroinitializer }, align 8
+@"$ct.userland_bitcast.Foo" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 8, i64 0, i64 5, [0 x i64] zeroinitializer }, align 8
 @.str = private unnamed_addr constant [16 x i8] c"%f => %d => %f\0A\00", align 1
 @.str.1 = private unnamed_addr constant [18 x i8] c"%e => %llu => %e\0A\00", align 1
 

@@ -400,6 +400,7 @@ INLINE bool llvm_basic_block_is_unused(LLVMBasicBlockRef block);
 bool llvm_emit_check_block_branch(GenContext *context);
 
 // -- Comparisons ---
+void llvm_emit_lhs_is_subtype(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs);
 void llvm_emit_comp(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, BinaryOp binary_op);
 void llvm_emit_int_comp(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, BinaryOp binary_op);
 void llvm_emit_int_comp_zero(GenContext *c, BEValue *result, BEValue *lhs, BinaryOp binary_op);

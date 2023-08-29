@@ -624,7 +624,8 @@ static void llvm_emit_switch_body_if_chain(GenContext *c,
 		LLVMBasicBlockRef block = case_stmt->case_stmt.backend_block;
 		if (case_stmt == default_case) continue;
 		BEValue be_value;
-		llvm_emit_exprid(c, &be_value, case_stmt->case_stmt.expr);
+		Expr *expr = exprptr(case_stmt->case_stmt.expr);
+		llvm_emit_expr(c, &be_value, expr);
 		llvm_value_rvalue(c, &be_value);
 		BEValue equals;
 		Expr *to_expr = exprptrzero(case_stmt->case_stmt.to_expr);
@@ -641,7 +642,14 @@ static void llvm_emit_switch_body_if_chain(GenContext *c,
 		}
 		else
 		{
-			llvm_emit_comp(c, &equals, &be_value, switch_value, BINARYOP_EQ);
+			/*if (expr->type == type_typeid)
+			{
+				llvm_emit_lhs_is_subtype(c, &equals, &be_value, switch_value);
+			}
+			else*/
+			{
+				llvm_emit_comp(c, &equals, &be_value, switch_value, BINARYOP_EQ);
+			}
 		}
 		next = llvm_basic_block_new(c, "next_if");
 		llvm_emit_cond_br(c, &equals, block, next);

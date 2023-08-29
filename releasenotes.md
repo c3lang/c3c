@@ -3,6 +3,7 @@
 ## 0.5.0 Change List
 
 ### Changes / improvements
+- Added parentof typeid property.
 - Slice assignment is expanded.
 - Strong optional handling requirements.
 - Better dead code analysis, and added dead code errors.

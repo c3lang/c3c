@@ -16,6 +16,7 @@ static inline LLVMTypeRef create_introspection_type(GenContext *c)
 	LLVMTypeRef type = LLVMStructCreateNamed(c->context, ".introspect");
 	LLVMTypeRef introspect_type[INTROSPECT_INDEX_TOTAL] = {
 			[INTROSPECT_INDEX_KIND] = c->byte_type,
+			[INTROSPECT_INDEX_PARENTOF] = c->typeid_type,
 			[INTROSPECT_INDEX_DTABLE] = c->ptr_type,
 			[INTROSPECT_INDEX_SIZEOF] = c->size_type,
 			[INTROSPECT_INDEX_INNER] = c->typeid_type,

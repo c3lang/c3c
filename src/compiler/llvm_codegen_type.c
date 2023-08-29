@@ -424,20 +424,32 @@ static inline LLVMValueRef llvm_generate_introspection_global(GenContext *c, LLV
 	{
 		assert(type->backend_typeid);
 	}
+	assert(type == type->canonical);
+	Type *parent_type = type_find_parent_type(type);
+	LLVMValueRef parent_typeid;
+	LLVMValueRef global_name = NULL;
+	if (!additional)
+	{
+		scratch_buffer_clear();
+		scratch_buffer_append("$ct.");
+		type_mangle_introspect_name_to_buffer(type);
+		global_name = LLVMAddGlobal(c->module, c->introspect_type, scratch_buffer_to_string());
+		type->backend_typeid = LLVMBuildPtrToInt(c->builder, global_name, c->typeid_type, "");
+	}
 	LLVMValueRef values[INTROSPECT_INDEX_TOTAL] = {
 			[INTROSPECT_INDEX_KIND] = LLVMConstInt(c->byte_type, introspect_type, false),
+			[INTROSPECT_INDEX_PARENTOF] = parent_type ? llvm_get_typeid(c, parent_type->canonical) : LLVMConstNull(c->typeid_type),
 			[INTROSPECT_INDEX_DTABLE] = LLVMConstNull(c->ptr_type),
 			[INTROSPECT_INDEX_SIZEOF] = LLVMConstInt(c->size_type, type_size(type), false),
 			[INTROSPECT_INDEX_INNER] = inner ? llvm_get_typeid(c, inner) : llvm_get_zero(c, type_typeid),
 			[INTROSPECT_INDEX_LEN] = LLVMConstInt(c->size_type,len, false),
 			[INTROSPECT_INDEX_ADDITIONAL] = additional ? additional : LLVMConstArray(c->size_type, NULL, 0)
 	};
-	LLVMValueRef global_name;
-	scratch_buffer_clear();
-	scratch_buffer_append("$ct.");
-	type_mangle_introspect_name_to_buffer(type);
 	if (additional)
 	{
+		scratch_buffer_clear();
+		scratch_buffer_append("$ct.");
+		type_mangle_introspect_name_to_buffer(type);
 		LLVMValueRef constant = llvm_get_struct(c, values, INTROSPECT_INDEX_TOTAL);
 		global_name = LLVMAddGlobal(c->module, LLVMTypeOf(constant), scratch_buffer_to_string());
 		LLVMSetInitializer(global_name, constant);
@@ -445,7 +457,6 @@ static inline LLVMValueRef llvm_generate_introspection_global(GenContext *c, LLV
 	else
 	{
 		LLVMValueRef strukt = llvm_get_struct_named(c->introspect_type, values, INTROSPECT_INDEX_TOTAL);
-		global_name = LLVMAddGlobal(c->module, c->introspect_type, scratch_buffer_to_string());
 		LLVMSetInitializer(global_name, strukt);
 	}
 	LLVMSetAlignment(global_name, llvm_abi_alignment(c, c->introspect_type));
@@ -499,7 +510,14 @@ static LLVMValueRef llvm_get_introspection_for_enum(GenContext *c, Type *type)
 		const char *name = enum_vals[i]->name;
 		scratch_buffer_clear();
 		scratch_buffer_append(".enum.");
-		scratch_buffer_append_unsigned_int(i);
+		if (!obfuscate)
+		{
+			scratch_buffer_append(name);
+		}
+		else
+		{
+			scratch_buffer_append_unsigned_int(i);
+		}
 		const char *name_desc = scratch_buffer_to_string();
 		if (obfuscate)
 		{
