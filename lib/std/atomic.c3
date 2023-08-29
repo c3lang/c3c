@@ -15,10 +15,8 @@ fn Type Atomic.load(&self, AtomicOrdering ordering = SEQ_CONSISTENT)
 	{
 		case NOT_ATOMIC: return $$atomic_load(data, false, AtomicOrdering.NOT_ATOMIC.ordinal);
 		case UNORDERED: return $$atomic_load(data, false, AtomicOrdering.UNORDERED.ordinal);
-		case MONOTONIC: return $$atomic_load(data, false, AtomicOrdering.MONOTONIC.ordinal);
+		case RELAXED: return $$atomic_load(data, false, AtomicOrdering.RELAXED.ordinal);
 		case ACQUIRE: return $$atomic_load(data, false, AtomicOrdering.ACQUIRE.ordinal);
-		case RELEASE: return $$atomic_load(data, false, AtomicOrdering.RELEASE.ordinal);
-		case ACQUIRE_RELEASE: return $$atomic_load(data, false, AtomicOrdering.ACQUIRE_RELEASE.ordinal);
 
 		default:
 		case SEQ_CONSISTENT: return $$atomic_load(data, false, AtomicOrdering.SEQ_CONSISTENT.ordinal);
@@ -32,10 +30,8 @@ fn void Atomic.store(&self, Type value, AtomicOrdering ordering = SEQ_CONSISTENT
 	{
 		case NOT_ATOMIC: $$atomic_store(data, value, false, AtomicOrdering.NOT_ATOMIC.ordinal);
 		case UNORDERED: $$atomic_store(data, value, false, AtomicOrdering.UNORDERED.ordinal);
-		case MONOTONIC: $$atomic_store(data, value, false, AtomicOrdering.MONOTONIC.ordinal);
-		case ACQUIRE: $$atomic_store(data, value, false, AtomicOrdering.ACQUIRE.ordinal);
+		case RELAXED: $$atomic_store(data, value, false, AtomicOrdering.RELAXED.ordinal);
 		case RELEASE: $$atomic_store(data, value, false, AtomicOrdering.RELEASE.ordinal);
-		case ACQUIRE_RELEASE: $$atomic_store(data, value, false, AtomicOrdering.ACQUIRE_RELEASE.ordinal);
 
 		default:
 		case SEQ_CONSISTENT: $$atomic_store(data, value, false, AtomicOrdering.SEQ_CONSISTENT.ordinal);
@@ -112,7 +108,7 @@ macro @atomic_exec(#func, data, value, ordering) @local
 {
 	switch(ordering) 
 	{
-		case MONOTONIC: return #func(data, value, MONOTONIC);
+		case RELAXED: return #func(data, value, RELAXED);
 		case ACQUIRE: return #func(data, value, ACQUIRE);
 		case RELEASE: return #func(data, value, RELEASE);
 		case ACQUIRE_RELEASE: return #func(data, value, ACQUIRE_RELEASE);
@@ -135,9 +131,9 @@ module std::atomic;
  **/
 macro fetch_add(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
-	var $failure_ordering = $ordering;
+	var $load_ordering = $ordering;
 	$if $ordering == RELEASE || $ordering == ACQUIRE_RELEASE:
-	    $failure_ordering = AtomicOrdering.SEQ_CONSISTENT;
+	    $load_ordering = AtomicOrdering.SEQ_CONSISTENT;
 	$endif
 	
 	var $StorageType = $typefrom(types::lower_to_atomic_compatible_type($typeof(*ptr)));
@@ -151,11 +147,11 @@ macro fetch_add(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 	$StorageType storage_new_value;
 	
 	do {
-		storage_old_value = $$atomic_load(storage_ptr, false, $ordering.ordinal);
+		storage_old_value = $$atomic_load(storage_ptr, false, $load_ordering.ordinal);
 		old_value = bitcast(storage_old_value, $typeof(*ptr));
 		new_value = old_value + y;
 		storage_new_value = bitcast(new_value, $StorageType);
-	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $failure_ordering) != storage_old_value);
+	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $load_ordering) != storage_old_value);
 
 	return old_value;
 }
@@ -171,9 +167,9 @@ macro fetch_add(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
  **/
 macro fetch_sub(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
-	var $failure_ordering = $ordering;
+	var $load_ordering = $ordering;
 	$if $ordering == RELEASE || $ordering == ACQUIRE_RELEASE:
-	    $failure_ordering = AtomicOrdering.SEQ_CONSISTENT;
+	    $load_ordering = AtomicOrdering.SEQ_CONSISTENT;
 	$endif
 	
 	var $StorageType = $typefrom(types::lower_to_atomic_compatible_type($typeof(*ptr)));
@@ -187,11 +183,11 @@ macro fetch_sub(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 	$StorageType storage_new_value;
 
 	do {
-		storage_old_value = $$atomic_load(storage_ptr, false, $ordering.ordinal);
+		storage_old_value = $$atomic_load(storage_ptr, false, $load_ordering.ordinal);
 		old_value = bitcast(storage_old_value, $typeof(*ptr));
 		new_value = old_value - y;
 		storage_new_value = bitcast(new_value, $StorageType);
-	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $failure_ordering) != storage_old_value);
+	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $load_ordering) != storage_old_value);
 
 	return old_value;
 }
@@ -207,9 +203,9 @@ macro fetch_sub(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
  **/
 macro fetch_mul(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
-	var $failure_ordering = $ordering;
+	var $load_ordering = $ordering;
 	$if $ordering == RELEASE || $ordering == ACQUIRE_RELEASE:
-	    $failure_ordering = AtomicOrdering.SEQ_CONSISTENT;
+	    $load_ordering = AtomicOrdering.SEQ_CONSISTENT;
 	$endif
 	
 	var $StorageType = $typefrom(types::lower_to_atomic_compatible_type($typeof(*ptr)));
@@ -224,11 +220,11 @@ macro fetch_mul(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 
 
 	do {
-		storage_old_value = $$atomic_load(storage_ptr, false, $ordering.ordinal);
+		storage_old_value = $$atomic_load(storage_ptr, false, $load_ordering.ordinal);
 		old_value = bitcast(storage_old_value, $typeof(*ptr));
 		new_value = old_value * y;
 		storage_new_value = bitcast(new_value, $StorageType);
-	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $failure_ordering) != storage_old_value);
+	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $load_ordering) != storage_old_value);
 
 	return old_value;
 }
@@ -244,9 +240,9 @@ macro fetch_mul(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
  **/
 macro fetch_div(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
-	var $failure_ordering = $ordering;
+	var $load_ordering = $ordering;
 	$if $ordering == RELEASE || $ordering == ACQUIRE_RELEASE:
-	    $failure_ordering = AtomicOrdering.SEQ_CONSISTENT;
+	    $load_ordering = AtomicOrdering.SEQ_CONSISTENT;
 	$endif
 	
 	var $StorageType = $typefrom(types::lower_to_atomic_compatible_type($typeof(*ptr)));
@@ -260,11 +256,11 @@ macro fetch_div(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 	$StorageType storage_new_value;
 	
 	do {
-		storage_old_value = $$atomic_load(storage_ptr, false, $ordering.ordinal);
+		storage_old_value = $$atomic_load(storage_ptr, false, $load_ordering.ordinal);
 		old_value = bitcast(storage_old_value, $typeof(*ptr));
 		new_value = old_value / y;
 		storage_new_value = bitcast(new_value, $StorageType);
-	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $failure_ordering) != storage_old_value);
+	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $load_ordering) != storage_old_value);
 
 	return old_value;
 }
@@ -281,9 +277,9 @@ macro fetch_div(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
  **/
 macro fetch_or(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
-	var $failure_ordering = $ordering;
+	var $load_ordering = $ordering;
 	$if $ordering == RELEASE || $ordering == ACQUIRE_RELEASE:
-	    $failure_ordering = AtomicOrdering.SEQ_CONSISTENT;
+	    $load_ordering = AtomicOrdering.SEQ_CONSISTENT;
 	$endif
 	
 	var $StorageType = $typefrom(types::lower_to_atomic_compatible_type($typeof(*ptr)));
@@ -298,11 +294,11 @@ macro fetch_or(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 	$StorageType storage_y = ($StorageType)y;
 	
 	do {
-		storage_old_value = $$atomic_load(storage_ptr, false, $ordering.ordinal);
+		storage_old_value = $$atomic_load(storage_ptr, false, $load_ordering.ordinal);
 		old_value = bitcast(storage_old_value, $typeof(*ptr));
 		new_value = storage_old_value | storage_y;
 		storage_new_value = bitcast(new_value, $StorageType);
-	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $failure_ordering) != storage_old_value);
+	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $load_ordering) != storage_old_value);
 
 	return old_value;
 }
@@ -319,9 +315,9 @@ macro fetch_or(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
  **/
 macro fetch_xor(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
-	var $failure_ordering = $ordering;
+	var $load_ordering = $ordering;
 	$if $ordering == RELEASE || $ordering == ACQUIRE_RELEASE:
-	    $failure_ordering = AtomicOrdering.SEQ_CONSISTENT;
+	    $load_ordering = AtomicOrdering.SEQ_CONSISTENT;
 	$endif
 	
 	var $StorageType = $typefrom(types::lower_to_atomic_compatible_type($typeof(*ptr)));
@@ -336,11 +332,11 @@ macro fetch_xor(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 	$StorageType storage_y = ($StorageType)y;
 	
 	do {
-		storage_old_value = $$atomic_load(storage_ptr, false, $ordering.ordinal);
+		storage_old_value = $$atomic_load(storage_ptr, false, $load_ordering.ordinal);
 		old_value = bitcast(storage_old_value, $typeof(*ptr));
 		new_value = storage_old_value ^ storage_y;
 		storage_new_value = bitcast(new_value, $StorageType);
-	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $failure_ordering) != storage_old_value);
+	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $load_ordering) != storage_old_value);
 
 	return old_value;
 }
@@ -357,9 +353,9 @@ macro fetch_xor(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
  **/
 macro fetch_and(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
-	var $failure_ordering = $ordering;
+	var $load_ordering = $ordering;
 	$if $ordering == RELEASE || $ordering == ACQUIRE_RELEASE:
-	    $failure_ordering = AtomicOrdering.SEQ_CONSISTENT;
+	    $load_ordering = AtomicOrdering.SEQ_CONSISTENT;
 	$endif
 	
 	var $StorageType = $typefrom(types::lower_to_atomic_compatible_type($typeof(*ptr)));
@@ -374,11 +370,11 @@ macro fetch_and(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 	$StorageType storage_y = ($StorageType)y;
 	
 	do {
-		storage_old_value = $$atomic_load(storage_ptr, false, $ordering.ordinal);
+		storage_old_value = $$atomic_load(storage_ptr, false, $load_ordering.ordinal);
 		old_value = bitcast(storage_old_value, $typeof(*ptr));
 		new_value = storage_old_value & storage_y;
 		storage_new_value = bitcast(new_value, $StorageType);
-	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $failure_ordering) != storage_old_value);
+	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $load_ordering) != storage_old_value);
 
 	return old_value;
 }
@@ -395,9 +391,9 @@ macro fetch_and(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
  **/
 macro fetch_shift_right(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
-	var $failure_ordering = $ordering;
+	var $load_ordering = $ordering;
 	$if $ordering == RELEASE || $ordering == ACQUIRE_RELEASE:
-	    $failure_ordering = AtomicOrdering.SEQ_CONSISTENT;
+	    $load_ordering = AtomicOrdering.SEQ_CONSISTENT;
 	$endif
 	
 	var $StorageType = $typefrom(types::lower_to_atomic_compatible_type($typeof(*ptr)));
@@ -412,11 +408,11 @@ macro fetch_shift_right(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 	$StorageType storage_y = ($StorageType)y;
 	
 	do {
-		storage_old_value = $$atomic_load(storage_ptr, false, $ordering.ordinal);
+		storage_old_value = $$atomic_load(storage_ptr, false, $load_ordering.ordinal);
 		old_value = bitcast(storage_old_value, $typeof(*ptr));
 		new_value = storage_old_value >> storage_y;
 		storage_new_value = bitcast(new_value, $StorageType);
-	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $failure_ordering) != storage_old_value);
+	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $load_ordering) != storage_old_value);
 
 	return old_value;
 }
@@ -433,9 +429,9 @@ macro fetch_shift_right(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
  **/
 macro fetch_shift_left(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
-	var $failure_ordering = $ordering;
+	var $load_ordering = $ordering;
 	$if $ordering == RELEASE || $ordering == ACQUIRE_RELEASE:
-	    $failure_ordering = AtomicOrdering.SEQ_CONSISTENT;
+	    $load_ordering = AtomicOrdering.SEQ_CONSISTENT;
 	$endif
 	
 	var $StorageType = $typefrom(types::lower_to_atomic_compatible_type($typeof(*ptr)));
@@ -450,11 +446,11 @@ macro fetch_shift_left(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 	$StorageType storage_y = ($StorageType)y;
 	
 	do {
-		storage_old_value = $$atomic_load(storage_ptr, false, $ordering.ordinal);
+		storage_old_value = $$atomic_load(storage_ptr, false, $load_ordering.ordinal);
 		old_value = bitcast(storage_old_value, $typeof(*ptr));
 		new_value = storage_old_value << storage_y;
 		storage_new_value = bitcast(new_value, $StorageType);
-	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $failure_ordering) != storage_old_value);
+	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $load_ordering) != storage_old_value);
 
 	return old_value;
 }
@@ -474,7 +470,7 @@ macro flag_set(ptr, AtomicOrdering $ordering = SEQ_CONSISTENT)
 
 	do {
 		old_value = $$atomic_load(ptr, false, $ordering.ordinal);
-	} while (mem::compare_exchange(ptr, old_value, new_value, $ordering, $failure_ordering) != old_value);
+	} while (mem::compare_exchange(ptr, old_value, new_value, $ordering, $load_ordering) != old_value);
 	
 	return old_value;
 }
@@ -494,7 +490,7 @@ macro flag_clear(ptr, AtomicOrdering $ordering = SEQ_CONSISTENT)
 
 	do {
 		old_value = $$atomic_load(ptr, false, $ordering.ordinal);
-	} while (mem::compare_exchange(ptr, old_value, new_value, $ordering, $failure_ordering) != old_value);
+	} while (mem::compare_exchange(ptr, old_value, new_value, $ordering, $load_ordering) != old_value);
 
 	return old_value;
 }
@@ -510,9 +506,9 @@ macro flag_clear(ptr, AtomicOrdering $ordering = SEQ_CONSISTENT)
  **/
 macro fetch_max(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
-	var $failure_ordering = $ordering;
+	var $load_ordering = $ordering;
 	$if $ordering == RELEASE || $ordering == ACQUIRE_RELEASE:
-	    $failure_ordering = AtomicOrdering.SEQ_CONSISTENT;
+	    $load_ordering = AtomicOrdering.SEQ_CONSISTENT;
 	$endif
 	
 	var $StorageType = $typefrom(types::lower_to_atomic_compatible_type($typeof(*ptr)));
@@ -526,10 +522,10 @@ macro fetch_max(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 	$StorageType storage_new_value = bitcast(new_value, $StorageType);
 	
 	do {
-		storage_old_value = $$atomic_load(storage_ptr, false, $ordering.ordinal);
+		storage_old_value = $$atomic_load(storage_ptr, false, $load_ordering.ordinal);
 		old_value = bitcast(storage_old_value, $typeof(*ptr));
 		if (old_value >= new_value) break;
-	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $failure_ordering) != storage_old_value);
+	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $load_ordering) != storage_old_value);
 
 	return old_value;
 }
@@ -545,9 +541,9 @@ macro fetch_max(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
  **/
 macro fetch_min(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
-	var $failure_ordering = $ordering;
+	var $load_ordering = $ordering;
 	$if $ordering == RELEASE || $ordering == ACQUIRE_RELEASE:
-	    $failure_ordering = AtomicOrdering.SEQ_CONSISTENT;
+	    $load_ordering = AtomicOrdering.SEQ_CONSISTENT;
 	$endif
 	
 	var $StorageType = $typefrom(types::lower_to_atomic_compatible_type($typeof(*ptr)));
@@ -561,10 +557,10 @@ macro fetch_min(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 	$StorageType storage_new_value = bitcast(new_value, $StorageType);
 	
 	do {
-		storage_old_value = $$atomic_load(storage_ptr, false, $ordering.ordinal);
+		storage_old_value = $$atomic_load(storage_ptr, false, $load_ordering.ordinal);
 		old_value = bitcast(storage_old_value, $typeof(*ptr));
 		if (old_value <= new_value) break;
-	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $failure_ordering) != storage_old_value);
+	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $load_ordering) != storage_old_value);
 
 	return old_value;
 }
