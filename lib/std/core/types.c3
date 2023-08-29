@@ -208,6 +208,32 @@ macro bool may_load_atomic($Type)
 	$endswitch
 }
 
+macro lower_to_atomic_compatible_type($Type) 
+{
+	$switch ($Type.kindof)
+    $case SIGNED_INT:
+	  $case UNSIGNED_INT:
+      return $Type.typeid;
+		$case DISTINCT:
+			return lower_to_atomic_compatible_type($Type.inner);
+		$case FLOAT:
+			$switch ($Type)
+				$case float16: 
+					return ushort.typeid;
+				$case float: 
+					return uint.typeid;
+				$case double:
+					return ulong.typeid;
+				$case float128:
+					return uint128.typeid;
+				$default: 
+					return void.typeid;
+			$endswitch
+		$default:
+			return void.typeid;
+  $endswitch
+}
+
 macro bool is_promotable_to_floatlike($Type) => types::is_floatlike($Type) || types::is_int($Type);
 macro bool is_promotable_to_float($Type) => types::is_float($Type) || types::is_int($Type);
 
