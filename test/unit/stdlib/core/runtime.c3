@@ -15,7 +15,7 @@ fn void! cmp_unit() @test
     	{ .name = "stringmap_test::test_map" },
     	{ .name = "text_test::test_render_template" },
 	};
-	quicksort(list, &runtime::cmp_unit);
+	quicksort(list, &runtime::cmp_test_unit);
 
 	String[] want = {
 		"http::header_test::header",
