@@ -3,6 +3,7 @@
 // a copy of which can be found in the LICENSE file.
 #include "sema_internal.h"
 
+
 typedef enum
 {
 	BA_POINTER,
@@ -164,7 +165,7 @@ static inline bool is_valid_atomicity(Expr* expr)
 {
 	if (!expr_is_const_int(expr) || !int_fits(expr->const_expr.ixx, TYPE_U8) || expr->const_expr.ixx.i.low > 6)
 	{
-		RETURN_SEMA_ERROR(expr, "Expected a constant integer value < 8.");
+		RETURN_SEMA_ERROR(expr, "Expected a constant integer value < 7.");
 	}
 	return true;
 }
@@ -199,6 +200,14 @@ static bool sema_expr_analyse_compare_exchange(SemaContext *context, Expr *expr)
 	{
 		if (!sema_analyse_expr_rhs(context, type_char, args[i], false)) return false;
 		if (!is_valid_atomicity(args[i])) return false;
+	}
+	unsigned success = args[5]->const_expr.ixx.i.low;
+	unsigned failure = args[6]->const_expr.ixx.i.low;
+	if (success < ATOMIC_RELAXED) RETURN_SEMA_ERROR(args[5], "Success ordering must be at least RELAXED.");
+	if (failure < ATOMIC_RELAXED) RETURN_SEMA_ERROR(args[6], "Failure ordering must be at least RELAXED.");
+	if (failure == ATOMIC_ACQUIRE_RELEASE || failure == ATOMIC_RELEASE)
+	{
+		RETURN_SEMA_ERROR(args[6], "Failure ordering may not be RELEASE / ACQUIRE_RELEASE.");
 	}
 	Expr *align = args[7];
 	if (!sema_analyse_expr_rhs(context, type_usz, align, false)) return false;
@@ -563,7 +572,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!expr_is_const(args[1])) RETURN_SEMA_ERROR(args[1], "'is_volatile' must be a compile time constant.");
 			if (!expr_is_const(args[2])) RETURN_SEMA_ERROR(args[2], "Ordering must be a compile time constant.");
 			if (!is_valid_atomicity(args[2])) return false;
-			switch (expr->const_expr.ixx.i.low)
+			switch (args[2]->const_expr.ixx.i.low)
 			{
 				case ATOMIC_ACQUIRE_RELEASE:
 				case ATOMIC_RELEASE:
@@ -606,11 +615,11 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!expr_is_const(args[2])) RETURN_SEMA_ERROR(args[2], "'is_volatile' must be a compile time constant.");
 			if (!expr_is_const(args[3])) RETURN_SEMA_ERROR(args[3], "Ordering must be a compile time constant.");
 			if (!is_valid_atomicity(args[3])) return false;
-			switch (expr->const_expr.ixx.i.low)
+			switch (args[3]->const_expr.ixx.i.low)
 			{
 				case ATOMIC_ACQUIRE_RELEASE:
 				case ATOMIC_ACQUIRE:
-					RETURN_SEMA_ERROR(args[2], "'acquire' and 'acquire release' are not valid for atomic stores.");
+					RETURN_SEMA_ERROR(args[3], "'acquire' and 'acquire release' are not valid for atomic stores.");
 			}
 			rtype = args[1]->type;
 			break;

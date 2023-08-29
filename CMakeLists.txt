@@ -119,6 +119,13 @@ endif()
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 message(STATUS "Libraries located in: ${LLVM_LIBRARY_DIRS}")
+
+if(LLVM_ENABLE_RTTI)
+    message(STATUS "LLVM was built with RTTI")
+else()
+    message(STATUS "LLVM was not built with RTTI")
+endif()
+
 include_directories(${LLVM_INCLUDE_DIRS})
 link_directories(${LLVM_LIBRARY_DIRS})
 add_definitions(${LLVM_DEFINITIONS})

@@ -13,9 +13,9 @@ fn void main()
 {
 	int a = 111;
 	int x = @atomic_load(a);
-	int y = @atomic_load(a, MONOTONIC, true);
+	int y = @atomic_load(a, RELAXED, true);
 	@atomic_store(a, 123 + x);
-	@atomic_store(a, 33 + y, MONOTONIC, true);
+	@atomic_store(a, 33 + y, RELAXED, true);
 	io::printfn("%d", a);
 }
 

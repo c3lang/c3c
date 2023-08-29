@@ -24,7 +24,7 @@ enum AtomicOrdering : int
 {
 	NOT_ATOMIC,         // Not atomic
 	UNORDERED,          // No lock
-	MONOTONIC,          // Consistent ordering
+	RELAXED,            // Consistent ordering
 	ACQUIRE,            // Barrier locking load/store
 	RELEASE,            // Barrier releasing load/store
 	ACQUIRE_RELEASE,    // Barrier fence to load/store
