@@ -27,10 +27,10 @@ fn void main()
 
 %Foo = type { i32, i32 }
 
-@"$ct.test.Foo" = linkonce global %.introspect { i8 10, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.test.Foo" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @"test.MyErr$FOO" = linkonce constant %.fault { i64 ptrtoint (ptr @"$ct.test.MyErr" to i64), %"char[]" { ptr @.fault, i64 3 }, i64 1 }, align 8
 @.fault = internal constant [4 x i8] c"FOO\00", align 1
-@"$ct.test.MyErr" = linkonce global %.introspect { i8 9, ptr null, i64 8, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
+@"$ct.test.MyErr" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 8, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
 @.str = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
 @.str.1 = private unnamed_addr constant [17 x i8] c"Not visible: %d\0A\00", align 1
 

@@ -29,7 +29,7 @@ fn void main()
 %any = type { ptr, i64 }
 %"int[]" = type { ptr, i64 }
 
-@"$ct.int" = linkonce global %.introspect { i8 2, ptr null, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
+@"$ct.int" = linkonce global %.introspect { i8 2, i64 0, ptr null, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
 
 define void @foo.test1(i64 %0, ptr %1) #0 {
 entry:
@@ -47,6 +47,7 @@ entry:
   ret void
 }
 
+; Function Attrs: nounwind
 define void @foo.test2(ptr %0, i64 %1) #0 {
 entry:
   %z = alloca %"int[]", align 8
@@ -81,6 +82,8 @@ entry:
   %hi = load ptr, ptr %3, align 8
   call void @foo.test1(i64 %lo, ptr %hi)
   %4 = getelementptr inbounds [2 x i32], ptr %w, i64 0, i64 0
+  %5 = insertvalue %"int[]" undef, ptr %4, 0
+  %6 = insertvalue %"int[]" %5, i64 2, 1
   call void @foo.test2(ptr %4, i64 2)
   ret void
 }

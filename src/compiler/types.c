@@ -1593,6 +1593,26 @@ bool type_is_scalar(Type *type)
 	}
 	UNREACHABLE
 }
+
+Type *type_find_parent_type(Type *type)
+{
+	assert(type->canonical);
+	switch (type->type_kind)
+	{
+		case TYPE_DISTINCT:
+		{
+			Decl *decl = type->decl;
+			return decl->is_substruct ? decl->distinct_decl.base_type : NULL;
+		}
+		case TYPE_STRUCT:
+		{
+			Decl *decl = type->decl;
+			return decl->is_substruct ? decl->strukt.members[0]->type : NULL;
+		}
+		default:
+			return NULL;
+	}
+}
 /**
  * Check if a type is contained in another type.
  *

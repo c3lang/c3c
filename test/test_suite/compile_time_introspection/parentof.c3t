@@ -1,0 +1,49 @@
+// #target: macos-x64
+module foo;
+struct Foo
+{
+	int a;
+}
+struct Bar
+{
+	inline Foo f;
+}
+fn void main()
+{
+	assert(Foo.parentof == void.typeid);
+	assert(Bar.parentof == Foo.typeid);
+	typeid x = Foo.typeid;
+	assert(x.parentof == void.typeid);
+	x = Bar.typeid;
+	assert(x.parentof == Foo.typeid);
+}
+
+/* #expect: foo.ll
+
+@"$ct.foo.Foo" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 4, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
+@"$ct.foo.Bar" = linkonce global %.introspect { i8 10, i64 ptrtoint (ptr @"$ct.foo.Foo" to i64), ptr null, i64 4, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
+@"$ct.void" = linkonce global %.introspect { i8 0, i64 0, ptr null, i64 1, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
+
+define void @foo.main() #0 {
+entry:
+  %x = alloca i64, align 8
+  store i64 ptrtoint (ptr @"$ct.foo.Foo" to i64), ptr %x, align 8
+  %0 = load i64, ptr %x, align 8
+  %"introspect*" = inttoptr i64 %0 to ptr
+  %1 = getelementptr inbounds %.introspect, ptr %"introspect*", i32 0, i32 1
+  %typeid.parent = load i64, ptr %1, align 8
+  %2 = icmp eq i64 %typeid.parent, 0
+  %3 = select i1 %2, i64 ptrtoint (ptr @"$ct.void" to i64), i64 %typeid.parent
+  %eq = icmp eq i64 %3, ptrtoint (ptr @"$ct.void" to i64)
+  call void @llvm.assume(i1 %eq)
+  store i64 ptrtoint (ptr @"$ct.foo.Bar" to i64), ptr %x, align 8
+  %4 = load i64, ptr %x, align 8
+  %"introspect*1" = inttoptr i64 %4 to ptr
+  %5 = getelementptr inbounds %.introspect, ptr %"introspect*1", i32 0, i32 1
+  %typeid.parent2 = load i64, ptr %5, align 8
+  %6 = icmp eq i64 %typeid.parent2, 0
+  %7 = select i1 %6, i64 ptrtoint (ptr @"$ct.void" to i64), i64 %typeid.parent2
+  %eq3 = icmp eq i64 %7, ptrtoint (ptr @"$ct.foo.Foo" to i64)
+  call void @llvm.assume(i1 %eq3)
+  ret void
+}

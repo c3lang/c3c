@@ -243,12 +243,13 @@ fn Type getValue(Blob blob)
 %List = type { i64, i64, ptr, ptr }
 %Foo = type { i32, i32 }
 
-@"$ct.test.Bobo" = linkonce global %.introspect { i8 10, ptr null, i64 20, i64 0, i64 6, [0 x i64] zeroinitializer }, align 8
-@"$ct.test.Blob" = linkonce global %.introspect { i8 10, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
-@"$ct.test.Foor" = linkonce global %.introspect { i8 11, ptr null, i64 16, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
-@"$ct.test.Foo2" = linkonce global %.introspect { i8 10, ptr null, i64 4, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
-@"$ct.int" = linkonce global %.introspect { i8 2, ptr null, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
-@"$ct.test.MyEnum" = linkonce global { i8, ptr, i64, i64, i64, [3 x %"char[]"] } { i8 8, ptr null, i64 4, i64 ptrtoint (ptr @"$ct.int" to i64), i64 3, [3 x %"char[]"] [%"char[]" { ptr @.enum.0, i64 4 }, %"char[]" { ptr @.enum.1, i64 5 }, %"char[]" { ptr @.enum.2, i64 3 }] }, align 8
+@"$ct.test.Bobo" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 20, i64 0, i64 6, [0 x i64] zeroinitializer }, align 8
+@"$ct.test.Blob" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.test.Foor" = linkonce global %.introspect { i8 11, i64 0, ptr null, i64 16, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.test.Foo2" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 4, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
+@"$ct.test.Foo" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.int" = linkonce global %.introspect { i8 2, i64 0, ptr null, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
+@"$ct.test.MyEnum" = linkonce global { i8, i64, ptr, i64, i64, i64, [3 x %"char[]"] } { i8 8, i64 0, ptr null, i64 4, i64 ptrtoint (ptr @"$ct.int" to i64), i64 3, [3 x %"char[]"] [%"char[]" { ptr @.enum.HELO, i64 4 }, %"char[]" { ptr @.enum.WORLD, i64 5 }, %"char[]" { ptr @.enum.BYE, i64 3 }] }, align 8
 @test_static.x = internal unnamed_addr global i32 1, align 4
 
 define void @test.Foo2.printme(ptr %0) #0 {

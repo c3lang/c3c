@@ -3732,6 +3732,17 @@ static void llvm_emit_float_comp(GenContext *c, BEValue *be_value, BEValue *lhs,
 	llvm_value_set(be_value, val, type_bool);
 }
 
+void llvm_emit_lhs_is_subtype(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs)
+{
+	llvm_value_rvalue(c, lhs);
+	llvm_value_rvalue(c, rhs);
+	LLVMBasicBlockRef retry_block = llvm_basic_block_new(c, "check_subtype");
+	llvm_emit_br(c, retry_block);
+	llvm_emit_comp(c, result, lhs, rhs, BINARYOP_EQ);
+	LLVMBasicBlockRef next_block = llvm_basic_block_new(c, "next_block");
+	TODO
+}
+
 void llvm_emit_comp(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, BinaryOp binary_op)
 {
 	assert(binary_op >= BINARYOP_GT && binary_op <= BINARYOP_EQ);
@@ -6279,13 +6290,23 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 	LLVMValueRef ref = LLVMBuildIntToPtr(c->builder, value->value, c->ptr_type, "introspect*");
 	AlignSize align = llvm_abi_alignment(c, c->introspect_type);
 	AlignSize alignment;
+	TypeIdInfoKind info_kind = expr->typeid_info_expr.kind;
+	if (info_kind == TYPEID_INFO_PARENTOF)
+	{
+		LLVMValueRef parent = llvm_emit_struct_gep_raw(c, ref, c->introspect_type, INTROSPECT_INDEX_PARENTOF, align, &alignment);
+		LLVMValueRef parent_value = llvm_load(c, c->typeid_type, parent, alignment, "typeid.parent");
+		LLVMValueRef is_zero = LLVMBuildICmp(c->builder, LLVMIntEQ, parent_value, LLVMConstNull(c->typeid_type), "");
+		parent_value = LLVMBuildSelect(c->builder, is_zero, llvm_get_typeid(c, type_void), parent_value, "");
+		llvm_value_set(value, parent_value, expr->type);
+		return;
+	}
 	bool safe_mode = active_target.feature.safe_mode;
-	if (safe_mode || expr->typeid_info_expr.kind == TYPEID_INFO_KIND)
+	if (safe_mode || info_kind == TYPEID_INFO_KIND)
 	{
 		kind = llvm_emit_struct_gep_raw(c, ref, c->introspect_type, INTROSPECT_INDEX_KIND, align, &alignment);
 		kind = llvm_load(c, c->byte_type, kind, alignment, "typeid.kind");
 	}
-	switch (expr->typeid_info_expr.kind)
+	switch (info_kind)
 	{
 		case TYPEID_INFO_KIND:
 			llvm_value_set(value, kind, expr->type);
@@ -6320,8 +6341,8 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 				LLVMValueRef val = llvm_emit_struct_gep_raw(c, ref, c->introspect_type, INTROSPECT_INDEX_INNER, align, &alignment);
 				val = llvm_load(c, c->typeid_type, val, alignment, "typeid.inner");
 				llvm_value_set(value, val, expr->type);
+				return;
 			}
-			break;
 		case TYPEID_INFO_NAMES:
 			if (safe_mode)
 			{
@@ -6351,8 +6372,8 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 				LLVMValueRef val = llvm_emit_struct_gep_raw(c, ref, c->introspect_type, INTROSPECT_INDEX_ADDITIONAL, align, &alignment);
 				Type *subarray = type_get_subarray(type_chars);
 				llvm_value_set(value, llvm_emit_aggregate_two(c, subarray, val, len), subarray);
+				return;
 			}
-			break;
 		case TYPEID_INFO_LEN:
 			if (safe_mode)
 			{
@@ -6382,18 +6403,19 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 				LLVMValueRef val = llvm_emit_struct_gep_raw(c, ref, c->introspect_type, INTROSPECT_INDEX_LEN, align, &alignment);
 				val = llvm_load(c, c->size_type, val, alignment, "typeid.len");
 				llvm_value_set(value, val, expr->type);
+				return;
 			}
-			break;
 		case TYPEID_INFO_SIZEOF:
 			{
 				LLVMValueRef val = llvm_emit_struct_gep_raw(c, ref, c->introspect_type, INTROSPECT_INDEX_SIZEOF, align, &alignment);
 				val = llvm_load(c, c->size_type, val, alignment, "typeid.size");
 				llvm_value_set(value, val, expr->type);
+				return;
 			}
-			break;
-		default:
+		case TYPEID_INFO_PARENTOF:
 			UNREACHABLE
 	}
+	UNREACHABLE
 }
 
 void llvm_emit_try_unwrap_chain(GenContext *c, BEValue *value, Expr *expr)

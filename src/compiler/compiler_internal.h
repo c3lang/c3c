@@ -2391,6 +2391,7 @@ TypeSize type_size(Type *type); // Only call after all types are resolved.
 void type_init_cint(void);
 Type *type_new_func(Decl *decl, Signature *sig);
 void type_func_prototype_init(uint32_t capacity);
+Type *type_find_parent_type(Type *type);
 bool type_is_subtype(Type *type, Type *possible_subtype);
 bool type_is_abi_aggregate(Type *type);
 bool type_is_int128(Type *type);

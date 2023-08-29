@@ -3087,6 +3087,7 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 		case TYPE_PROPERTY_NAMES:
 		case TYPE_PROPERTY_VALUES:
 		case TYPE_PROPERTY_ASSOCIATED:
+		case TYPE_PROPERTY_PARENTOF:
 			break;
 	}
 
@@ -3211,6 +3212,15 @@ static inline bool sema_create_const_inner(SemaContext *context, Expr *expr, Typ
 			UNREACHABLE
 	}
 	expr_rewrite_const_typeid(expr, inner);
+	return true;
+}
+
+static inline bool sema_create_const_parent(SemaContext *context, Expr *expr, Type *type)
+{
+	if (!sema_resolve_type_decl(context, type)) return false;
+	Type *parent = type_find_parent_type(type->canonical);
+	if (!parent) parent = type_void;
+	expr_rewrite_const_typeid(expr, parent);
 	return true;
 }
 
@@ -3451,6 +3461,8 @@ static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *exp
 		case TYPE_PROPERTY_KINDOF:
 			sema_expr_rewrite_typeid_kind(expr, typeid);
 			return true;
+		case TYPE_PROPERTY_PARENTOF:
+			return sema_expr_rewrite_typeid_call(expr, typeid, TYPEID_INFO_PARENTOF, type_typeid);
 		case TYPE_PROPERTY_NAMES:
 			return sema_expr_rewrite_typeid_call(expr, typeid, TYPEID_INFO_NAMES, type_get_subarray(type_string));
 		case TYPE_PROPERTY_ALIGNOF:
@@ -3564,6 +3576,7 @@ static bool sema_type_property_is_valid_for_type(Type *original_type, TypeProper
 		case TYPE_PROPERTY_ALIGNOF:
 		case TYPE_PROPERTY_NAMEOF:
 		case TYPE_PROPERTY_QNAMEOF:
+		case TYPE_PROPERTY_PARENTOF:
 			return true;
 		case TYPE_PROPERTY_LEN:
 			switch (type->type_kind)
@@ -3622,6 +3635,8 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			return true;
 		case TYPE_PROPERTY_INNER:
 			return sema_create_const_inner(context, expr, type);
+		case TYPE_PROPERTY_PARENTOF:
+			return sema_create_const_parent(context, expr, type);
 		case TYPE_PROPERTY_KINDOF:
 			return sema_create_const_kind(context, expr, type);
 		case TYPE_PROPERTY_LEN:
