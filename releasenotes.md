@@ -3,6 +3,7 @@
 ## 0.5.0 Change List
 
 ### Changes / improvements
+- Subtype matching in type switches.
 - Added parentof typeid property.
 - Slice assignment is expanded.
 - Strong optional handling requirements.

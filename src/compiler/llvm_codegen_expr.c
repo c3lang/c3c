@@ -3734,13 +3734,33 @@ static void llvm_emit_float_comp(GenContext *c, BEValue *be_value, BEValue *lhs,
 
 void llvm_emit_lhs_is_subtype(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs)
 {
+	Type *canonical_typeid = type_lowering(type_typeid);
 	llvm_value_rvalue(c, lhs);
 	llvm_value_rvalue(c, rhs);
+	LLVMValueRef switch_val = lhs->value;
+	LLVMBasicBlockRef start_block = c->current_block;
 	LLVMBasicBlockRef retry_block = llvm_basic_block_new(c, "check_subtype");
+	LLVMBasicBlockRef result_block = llvm_basic_block_new(c, "result_block");
+	LLVMBasicBlockRef parent_type_block = llvm_basic_block_new(c, "parent_type_block");
 	llvm_emit_br(c, retry_block);
-	llvm_emit_comp(c, result, lhs, rhs, BINARYOP_EQ);
-	LLVMBasicBlockRef next_block = llvm_basic_block_new(c, "next_block");
-	TODO
+	llvm_emit_block(c, retry_block);
+	LLVMValueRef phi = LLVMBuildPhi(c->builder, c->typeid_type, "");
+	BEValue cond;
+	llvm_emit_int_comp_raw(c, &cond, canonical_typeid, canonical_typeid, switch_val, phi, BINARYOP_EQ);
+	llvm_emit_cond_br(c, &cond, result_block, parent_type_block);
+	llvm_emit_block(c, parent_type_block);
+	LLVMValueRef introspect_ptr = LLVMBuildIntToPtr(c->builder, phi, c->ptr_type, "");
+	AlignSize alignment;
+	LLVMValueRef parent = llvm_emit_struct_gep_raw(c, introspect_ptr, c->introspect_type, INTROSPECT_INDEX_PARENTOF,
+	                                               type_abi_alignment(type_voidptr), &alignment);
+	LLVMValueRef parent_value = llvm_load(c, c->typeid_type, parent, alignment, "typeid.parent");
+	LLVMValueRef is_zero = LLVMBuildICmp(c->builder, LLVMIntEQ, parent_value, LLVMConstNull(c->typeid_type), "");
+	llvm_emit_cond_br_raw(c, is_zero, result_block, retry_block);
+	llvm_set_phi(phi, rhs->value, start_block, parent_value, parent_type_block);
+	llvm_emit_block(c, result_block);
+	LLVMValueRef phi2 = LLVMBuildPhi(c->builder, c->bool_type, "");
+	llvm_set_phi(phi2, LLVMConstNull(c->bool_type), parent_type_block, LLVMConstAllOnes(c->bool_type), retry_block);
+	llvm_value_set(result, phi2, type_bool);
 }
 
 void llvm_emit_comp(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, BinaryOp binary_op)

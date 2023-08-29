@@ -86,45 +86,105 @@ entry:
 
 switch.entry:                                     ; preds = %entry
   %4 = load i64, ptr %switch, align 8
-  %eq = icmp eq i64 ptrtoint (ptr @"$ct.int" to i64), %4
-  br i1 %eq, label %switch.case, label %next_if
+  br label %check_subtype
 
-switch.case:                                      ; preds = %switch.entry
+check_subtype:                                    ; preds = %parent_type_block, %switch.entry
+  %5 = phi i64 [ %4, %switch.entry ], [ %typeid.parent, %parent_type_block ]
+  %eq = icmp eq i64 ptrtoint (ptr @"$ct.int" to i64), %5
+  br i1 %eq, label %result_block, label %parent_type_block
+
+parent_type_block:                                ; preds = %check_subtype
+  %6 = inttoptr i64 %5 to ptr
+  %7 = getelementptr inbounds %.introspect, ptr %6, i32 0, i32 1
+  %typeid.parent = load i64, ptr %7, align 8
+  %8 = icmp eq i64 %typeid.parent, 0
+  br i1 %8, label %result_block, label %check_subtype
+
+result_block:                                     ; preds = %parent_type_block, %check_subtype
+  %9 = phi i1 [ false, %parent_type_block ], [ true, %check_subtype ]
+  br i1 %9, label %switch.case, label %next_if
+
+switch.case:                                      ; preds = %result_block
   call void (ptr, ...) @printf(ptr @.str)
   br label %switch.exit
 
-next_if:                                          ; preds = %switch.entry
-  %eq1 = icmp eq i64 ptrtoint (ptr @"$ct.double" to i64), %4
-  br i1 %eq1, label %switch.case2, label %next_if3
+next_if:                                          ; preds = %result_block
+  br label %check_subtype1
 
-switch.case2:                                     ; preds = %next_if
+check_subtype1:                                   ; preds = %parent_type_block3, %next_if
+  %10 = phi i64 [ %4, %next_if ], [ %typeid.parent4, %parent_type_block3 ]
+  %eq2 = icmp eq i64 ptrtoint (ptr @"$ct.double" to i64), %10
+  br i1 %eq2, label %result_block5, label %parent_type_block3
+
+parent_type_block3:                               ; preds = %check_subtype1
+  %11 = inttoptr i64 %10 to ptr
+  %12 = getelementptr inbounds %.introspect, ptr %11, i32 0, i32 1
+  %typeid.parent4 = load i64, ptr %12, align 8
+  %13 = icmp eq i64 %typeid.parent4, 0
+  br i1 %13, label %result_block5, label %check_subtype1
+
+result_block5:                                    ; preds = %parent_type_block3, %check_subtype1
+  %14 = phi i1 [ false, %parent_type_block3 ], [ true, %check_subtype1 ]
+  br i1 %14, label %switch.case6, label %next_if7
+
+switch.case6:                                     ; preds = %result_block5
   call void (ptr, ...) @printf(ptr @.str.1)
   br label %switch.exit
 
-next_if3:                                         ; preds = %next_if
-  %eq4 = icmp eq i64 ptrtoint (ptr @"$ct.any" to i64), %4
-  br i1 %eq4, label %switch.case5, label %next_if6
+next_if7:                                         ; preds = %result_block5
+  br label %check_subtype8
 
-switch.case5:                                     ; preds = %next_if3
+check_subtype8:                                   ; preds = %parent_type_block10, %next_if7
+  %15 = phi i64 [ %4, %next_if7 ], [ %typeid.parent11, %parent_type_block10 ]
+  %eq9 = icmp eq i64 ptrtoint (ptr @"$ct.any" to i64), %15
+  br i1 %eq9, label %result_block12, label %parent_type_block10
+
+parent_type_block10:                              ; preds = %check_subtype8
+  %16 = inttoptr i64 %15 to ptr
+  %17 = getelementptr inbounds %.introspect, ptr %16, i32 0, i32 1
+  %typeid.parent11 = load i64, ptr %17, align 8
+  %18 = icmp eq i64 %typeid.parent11, 0
+  br i1 %18, label %result_block12, label %check_subtype8
+
+result_block12:                                   ; preds = %parent_type_block10, %check_subtype8
+  %19 = phi i1 [ false, %parent_type_block10 ], [ true, %check_subtype8 ]
+  br i1 %19, label %switch.case13, label %next_if14
+
+switch.case13:                                    ; preds = %result_block12
   call void (ptr, ...) @printf(ptr @.str.2)
   br label %switch.exit
 
-next_if6:                                         ; preds = %next_if3
-  %eq7 = icmp eq i64 ptrtoint (ptr @"$ct.p$int" to i64), %4
-  br i1 %eq7, label %switch.case8, label %next_if9
+next_if14:                                        ; preds = %result_block12
+  br label %check_subtype15
 
-switch.case8:                                     ; preds = %next_if6
+check_subtype15:                                  ; preds = %parent_type_block17, %next_if14
+  %20 = phi i64 [ %4, %next_if14 ], [ %typeid.parent18, %parent_type_block17 ]
+  %eq16 = icmp eq i64 ptrtoint (ptr @"$ct.p$int" to i64), %20
+  br i1 %eq16, label %result_block19, label %parent_type_block17
+
+parent_type_block17:                              ; preds = %check_subtype15
+  %21 = inttoptr i64 %20 to ptr
+  %22 = getelementptr inbounds %.introspect, ptr %21, i32 0, i32 1
+  %typeid.parent18 = load i64, ptr %22, align 8
+  %23 = icmp eq i64 %typeid.parent18, 0
+  br i1 %23, label %result_block19, label %check_subtype15
+
+result_block19:                                   ; preds = %parent_type_block17, %check_subtype15
+  %24 = phi i1 [ false, %parent_type_block17 ], [ true, %check_subtype15 ]
+  br i1 %24, label %switch.case20, label %next_if21
+
+switch.case20:                                    ; preds = %result_block19
   call void (ptr, ...) @printf(ptr @.str.3)
   br label %switch.exit
 
-next_if9:                                         ; preds = %next_if6
+next_if21:                                        ; preds = %result_block19
   br label %switch.default
 
-switch.default:                                   ; preds = %next_if9
+switch.default:                                   ; preds = %next_if21
   call void (ptr, ...) @printf(ptr @.str.4)
   br label %switch.exit
 
-switch.exit:                                      ; preds = %switch.default, %switch.case8, %switch.case5, %switch.case2, %switch.case
+switch.exit:                                      ; preds = %switch.default, %switch.case20, %switch.case13, %switch.case6, %switch.case
   ret void
 }
 

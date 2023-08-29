@@ -2438,7 +2438,17 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 						goto FAILED;
 					}
 				}
-				if (expr_const_in_range(switch_expr_const, const_expr, const_to_expr))
+				if (is_type)
+				{
+					assert(const_expr == const_to_expr);
+					Type *switch_type = switch_expr_const->typeid;
+					Type *case_type = const_expr->typeid;
+					if (matched_case > i && type_is_subtype(case_type->canonical, switch_type->canonical))
+					{
+						matched_case = (int)i;
+					}
+				}
+				else if (expr_const_in_range(switch_expr_const, const_expr, const_to_expr))
 				{
 					matched_case = (int)i;
 				}

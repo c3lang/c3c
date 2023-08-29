@@ -1617,27 +1617,19 @@ Type *type_find_parent_type(Type *type)
  * Check if a type is contained in another type.
  *
  * @param type canonical type
- * @param possible_subtype canonical type
+ * @param possible_subtype is this a subtype of the former, i.e. type is the parent.
  * @return true if it is a subtype
  */
 bool type_is_subtype(Type *type, Type *possible_subtype)
 {
-	assert(type == type->canonical && possible_subtype == possible_subtype->canonical);
-	while (1)
+	assert(type == type->canonical);
+	while (possible_subtype)
 	{
+		possible_subtype = possible_subtype->canonical;
 		if (type == possible_subtype) return true;
-		if (type->type_kind != possible_subtype->type_kind) return false;
-		if (type->type_kind != TYPE_STRUCT) return false;
-
-		if (!possible_subtype->decl->strukt.members) return false;
-
-		Decl *first_element = possible_subtype->decl->strukt.members[0];
-
-		if (first_element->decl_kind != DECL_VAR) return false;
-
-		possible_subtype = first_element->type->canonical;
+		possible_subtype = type_find_parent_type(possible_subtype);
 	}
-
+	return false;
 }
 
 Type *type_from_token(TokenType type)
