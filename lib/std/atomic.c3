@@ -112,8 +112,6 @@ macro @atomic_exec(#func, data, value, ordering) @local
 {
 	switch(ordering) 
 	{
-		case NOT_ATOMIC: return #func(data, value, NOT_ATOMIC);
-		case UNORDERED: return #func(data, value, UNORDERED);
 		case MONOTONIC: return #func(data, value, MONOTONIC);
 		case ACQUIRE: return #func(data, value, ACQUIRE);
 		case RELEASE: return #func(data, value, RELEASE);
@@ -133,9 +131,15 @@ module std::atomic;
  * @return "returns the old value of ptr"
  * 
  * @require types::is_int($typeof(*ptr)) || types::is_float($typeof(*ptr)) "Only integer/float pointers may be used."
+ * @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED "Acquire ordering is not valid."
  **/
 macro fetch_add(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
+	var $failure_ordering = $ordering;
+	$if $ordering == RELEASE || $ordering == ACQUIRE_RELEASE:
+	    $failure_ordering = AtomicOrdering.SEQ_CONSISTENT;
+	$endif
+	
 	var $StorageType = $typefrom(types::lower_to_atomic_compatible_type($typeof(*ptr)));
 
 	$StorageType* storage_ptr = ($StorageType*)ptr;
@@ -151,7 +155,7 @@ macro fetch_add(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 		old_value = bitcast(storage_old_value, $typeof(*ptr));
 		new_value = old_value + y;
 		storage_new_value = bitcast(new_value, $StorageType);
-	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $ordering) != storage_old_value);
+	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $failure_ordering) != storage_old_value);
 
 	return old_value;
 }
@@ -163,9 +167,15 @@ macro fetch_add(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
  * @return "returns the old value of ptr"
  * 
  * @require types::is_int($typeof(*ptr)) || types::is_float($typeof(*ptr)) "Only integer/float pointers may be used."
+ * @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED "Acquire ordering is not valid."
  **/
 macro fetch_sub(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
+	var $failure_ordering = $ordering;
+	$if $ordering == RELEASE || $ordering == ACQUIRE_RELEASE:
+	    $failure_ordering = AtomicOrdering.SEQ_CONSISTENT;
+	$endif
+	
 	var $StorageType = $typefrom(types::lower_to_atomic_compatible_type($typeof(*ptr)));
 
 	$StorageType* storage_ptr = ($StorageType*)ptr;
@@ -181,7 +191,7 @@ macro fetch_sub(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 		old_value = bitcast(storage_old_value, $typeof(*ptr));
 		new_value = old_value - y;
 		storage_new_value = bitcast(new_value, $StorageType);
-	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $ordering) != storage_old_value);
+	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $failure_ordering) != storage_old_value);
 
 	return old_value;
 }
@@ -193,9 +203,15 @@ macro fetch_sub(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
  * @return "returns the old value of ptr"
  * 
 * @require types::is_int($typeof(*ptr)) || types::is_float($typeof(*ptr)) "Only integer/float pointers may be used."
+* @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED "Acquire ordering is not valid."
  **/
 macro fetch_mul(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
+	var $failure_ordering = $ordering;
+	$if $ordering == RELEASE || $ordering == ACQUIRE_RELEASE:
+	    $failure_ordering = AtomicOrdering.SEQ_CONSISTENT;
+	$endif
+	
 	var $StorageType = $typefrom(types::lower_to_atomic_compatible_type($typeof(*ptr)));
 
 	$StorageType* storage_ptr = ($StorageType*)ptr;
@@ -212,7 +228,7 @@ macro fetch_mul(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 		old_value = bitcast(storage_old_value, $typeof(*ptr));
 		new_value = old_value * y;
 		storage_new_value = bitcast(new_value, $StorageType);
-	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $ordering) != storage_old_value);
+	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $failure_ordering) != storage_old_value);
 
 	return old_value;
 }
@@ -224,9 +240,15 @@ macro fetch_mul(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
  * @return "returns the old value of ptr"
  * 
 * @require types::is_int($typeof(*ptr)) || types::is_float($typeof(*ptr)) "Only integer/float pointers may be used."
+* @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED "Acquire ordering is not valid."
  **/
 macro fetch_div(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
+	var $failure_ordering = $ordering;
+	$if $ordering == RELEASE || $ordering == ACQUIRE_RELEASE:
+	    $failure_ordering = AtomicOrdering.SEQ_CONSISTENT;
+	$endif
+	
 	var $StorageType = $typefrom(types::lower_to_atomic_compatible_type($typeof(*ptr)));
 
 	$StorageType* storage_ptr = ($StorageType*)ptr;
@@ -242,7 +264,7 @@ macro fetch_div(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 		old_value = bitcast(storage_old_value, $typeof(*ptr));
 		new_value = old_value / y;
 		storage_new_value = bitcast(new_value, $StorageType);
-	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $ordering) != storage_old_value);
+	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $failure_ordering) != storage_old_value);
 
 	return old_value;
 }
@@ -255,9 +277,15 @@ macro fetch_div(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
  * 
  * @require types::is_int($typeof(*ptr)) "Only intege pointers may be used."
  * @require types::is_int($typeof(y)) "The value for or must be an int"
+ * @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED "Acquire ordering is not valid."
  **/
 macro fetch_or(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
+	var $failure_ordering = $ordering;
+	$if $ordering == RELEASE || $ordering == ACQUIRE_RELEASE:
+	    $failure_ordering = AtomicOrdering.SEQ_CONSISTENT;
+	$endif
+	
 	var $StorageType = $typefrom(types::lower_to_atomic_compatible_type($typeof(*ptr)));
 
 	$StorageType* storage_ptr = ($StorageType*)ptr;
@@ -274,7 +302,7 @@ macro fetch_or(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 		old_value = bitcast(storage_old_value, $typeof(*ptr));
 		new_value = storage_old_value | storage_y;
 		storage_new_value = bitcast(new_value, $StorageType);
-	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $ordering) != storage_old_value);
+	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $failure_ordering) != storage_old_value);
 
 	return old_value;
 }
@@ -287,9 +315,15 @@ macro fetch_or(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
  * 
  * @require types::is_int($typeof(*ptr)) "Only integer pointers may be used."
  * @require types::is_int($typeof(y)) "The value for or must be an int"
+ * @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED "Acquire ordering is not valid."
  **/
 macro fetch_xor(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
+	var $failure_ordering = $ordering;
+	$if $ordering == RELEASE || $ordering == ACQUIRE_RELEASE:
+	    $failure_ordering = AtomicOrdering.SEQ_CONSISTENT;
+	$endif
+	
 	var $StorageType = $typefrom(types::lower_to_atomic_compatible_type($typeof(*ptr)));
 
 	$StorageType* storage_ptr = ($StorageType*)ptr;
@@ -306,7 +340,7 @@ macro fetch_xor(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 		old_value = bitcast(storage_old_value, $typeof(*ptr));
 		new_value = storage_old_value ^ storage_y;
 		storage_new_value = bitcast(new_value, $StorageType);
-	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $ordering) != storage_old_value);
+	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $failure_ordering) != storage_old_value);
 
 	return old_value;
 }
@@ -319,9 +353,15 @@ macro fetch_xor(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
  * 
  * @require types::is_int($typeof(*ptr)) "Only integer pointers may be used."
  * @require types::is_int($typeof(y)) "The value for or must be an int"
+ * @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED "Acquire ordering is not valid."
  **/
 macro fetch_and(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
+	var $failure_ordering = $ordering;
+	$if $ordering == RELEASE || $ordering == ACQUIRE_RELEASE:
+	    $failure_ordering = AtomicOrdering.SEQ_CONSISTENT;
+	$endif
+	
 	var $StorageType = $typefrom(types::lower_to_atomic_compatible_type($typeof(*ptr)));
 
 	$StorageType* storage_ptr = ($StorageType*)ptr;
@@ -338,7 +378,7 @@ macro fetch_and(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 		old_value = bitcast(storage_old_value, $typeof(*ptr));
 		new_value = storage_old_value & storage_y;
 		storage_new_value = bitcast(new_value, $StorageType);
-	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $ordering) != storage_old_value);
+	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $failure_ordering) != storage_old_value);
 
 	return old_value;
 }
@@ -351,9 +391,15 @@ macro fetch_and(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
  * 
  * @require types::is_int($typeof(*ptr)) "Only integer pointers may be used."
  * @require types::is_int($typeof(y)) "The value for or must be an int"
+ * @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED "Acquire ordering is not valid."
  **/
 macro fetch_shift_right(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
+	var $failure_ordering = $ordering;
+	$if $ordering == RELEASE || $ordering == ACQUIRE_RELEASE:
+	    $failure_ordering = AtomicOrdering.SEQ_CONSISTENT;
+	$endif
+	
 	var $StorageType = $typefrom(types::lower_to_atomic_compatible_type($typeof(*ptr)));
 
 	$StorageType* storage_ptr = ($StorageType*)ptr;
@@ -370,7 +416,7 @@ macro fetch_shift_right(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 		old_value = bitcast(storage_old_value, $typeof(*ptr));
 		new_value = storage_old_value >> storage_y;
 		storage_new_value = bitcast(new_value, $StorageType);
-	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $ordering) != storage_old_value);
+	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $failure_ordering) != storage_old_value);
 
 	return old_value;
 }
@@ -383,9 +429,15 @@ macro fetch_shift_right(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
  * 
  * @require types::is_int($typeof(*ptr)) "Only integer pointers may be used."
  * @require types::is_int($typeof(y)) "The value for or must be an int"
+ * @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED "Acquire ordering is not valid."
  **/
 macro fetch_shift_left(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
+	var $failure_ordering = $ordering;
+	$if $ordering == RELEASE || $ordering == ACQUIRE_RELEASE:
+	    $failure_ordering = AtomicOrdering.SEQ_CONSISTENT;
+	$endif
+	
 	var $StorageType = $typefrom(types::lower_to_atomic_compatible_type($typeof(*ptr)));
 
 	$StorageType* storage_ptr = ($StorageType*)ptr;
@@ -402,7 +454,7 @@ macro fetch_shift_left(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 		old_value = bitcast(storage_old_value, $typeof(*ptr));
 		new_value = storage_old_value << storage_y;
 		storage_new_value = bitcast(new_value, $StorageType);
-	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $ordering) != storage_old_value);
+	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $failure_ordering) != storage_old_value);
 
 	return old_value;
 }
@@ -413,6 +465,7 @@ macro fetch_shift_left(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
  * @return "returns the old value of ptr"
  * 
  * @require types::is_int($typeof(*ptr)) "Only integer pointers may be used."
+ * @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED "Acquire ordering is not valid."
  **/
 macro flag_set(ptr, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
@@ -421,7 +474,7 @@ macro flag_set(ptr, AtomicOrdering $ordering = SEQ_CONSISTENT)
 
 	do {
 		old_value = $$atomic_load(ptr, false, $ordering.ordinal);
-	} while (mem::compare_exchange(ptr, old_value, new_value, $ordering, $ordering) != old_value);
+	} while (mem::compare_exchange(ptr, old_value, new_value, $ordering, $failure_ordering) != old_value);
 	
 	return old_value;
 }
@@ -432,6 +485,7 @@ macro flag_set(ptr, AtomicOrdering $ordering = SEQ_CONSISTENT)
  * @return "returns the old value of ptr"
  * 
  * @require types::is_int($typeof(*ptr)) "Only integer pointers may be used."
+ * @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED "Acquire ordering is not valid."
  **/
 macro flag_clear(ptr, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
@@ -440,7 +494,7 @@ macro flag_clear(ptr, AtomicOrdering $ordering = SEQ_CONSISTENT)
 
 	do {
 		old_value = $$atomic_load(ptr, false, $ordering.ordinal);
-	} while (mem::compare_exchange(ptr, old_value, new_value, $ordering, $ordering) != old_value);
+	} while (mem::compare_exchange(ptr, old_value, new_value, $ordering, $failure_ordering) != old_value);
 
 	return old_value;
 }
@@ -451,10 +505,16 @@ macro flag_clear(ptr, AtomicOrdering $ordering = SEQ_CONSISTENT)
  * @param $ordering "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  * @return "returns the old value of ptr"
  * 
-* @require types::is_int($typeof(*ptr)) || types::is_float($typeof(*ptr)) "Only integer/float pointers may be used."
+ * @require types::is_int($typeof(*ptr)) || types::is_float($typeof(*ptr)) "Only integer/float pointers may be used."
+ * @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED "Acquire ordering is not valid."
  **/
 macro fetch_max(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
+	var $failure_ordering = $ordering;
+	$if $ordering == RELEASE || $ordering == ACQUIRE_RELEASE:
+	    $failure_ordering = AtomicOrdering.SEQ_CONSISTENT;
+	$endif
+	
 	var $StorageType = $typefrom(types::lower_to_atomic_compatible_type($typeof(*ptr)));
 
 	$StorageType* storage_ptr = ($StorageType*)ptr;
@@ -469,7 +529,7 @@ macro fetch_max(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 		storage_old_value = $$atomic_load(storage_ptr, false, $ordering.ordinal);
 		old_value = bitcast(storage_old_value, $typeof(*ptr));
 		if (old_value >= new_value) break;
-	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $ordering) != storage_old_value);
+	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $failure_ordering) != storage_old_value);
 
 	return old_value;
 }
@@ -480,10 +540,16 @@ macro fetch_max(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
  * @param $ordering "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  * @return "returns the old value of ptr"
  * 
-* @require types::is_int($typeof(*ptr)) || types::is_float($typeof(*ptr)) "Only integer/float pointers may be used."
+ * @require types::is_int($typeof(*ptr)) || types::is_float($typeof(*ptr)) "Only integer/float pointers may be used."
+ * @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED "Acquire ordering is not valid."
  **/
 macro fetch_min(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
+	var $failure_ordering = $ordering;
+	$if $ordering == RELEASE || $ordering == ACQUIRE_RELEASE:
+	    $failure_ordering = AtomicOrdering.SEQ_CONSISTENT;
+	$endif
+	
 	var $StorageType = $typefrom(types::lower_to_atomic_compatible_type($typeof(*ptr)));
 
 	$StorageType* storage_ptr = ($StorageType*)ptr;
@@ -498,7 +564,7 @@ macro fetch_min(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 		storage_old_value = $$atomic_load(storage_ptr, false, $ordering.ordinal);
 		old_value = bitcast(storage_old_value, $typeof(*ptr));
 		if (old_value <= new_value) break;
-	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $ordering) != storage_old_value);
+	} while (mem::compare_exchange(storage_ptr, storage_old_value, storage_new_value, $ordering, $failure_ordering) != storage_old_value);
 
 	return old_value;
 }
