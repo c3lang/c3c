@@ -25,6 +25,123 @@ struct SubArrayStruct
 }
 
 def BenchmarkFn = fn void!();
+
+struct BenchmarkUnit
+{
+	String name;
+	BenchmarkFn func;
+}
+
+fn BenchmarkUnit[] benchmark_collection_create(Allocator* using = mem::heap())
+{
+	BenchmarkFn[] fns = $$BENCHMARK_FNS;
+	String[] names = $$BENCHMARK_NAMES;
+	BenchmarkUnit[] benchmarks = malloc(BenchmarkUnit, names.len, .using = using);
+	foreach (i, benchmark : fns)
+	{
+		benchmarks[i] = { names[i], fns[i] };
+	}
+	return benchmarks;
+}
+
+const DEFAULT_BENCHMARK_WARMUP_ITERATIONS = 3;
+const DEFAULT_BENCHMARK_MAX_ITERATIONS = 10000;
+
+uint benchmark_warmup_iterations @private = DEFAULT_BENCHMARK_WARMUP_ITERATIONS;
+uint benchmark_max_iterations @private = DEFAULT_BENCHMARK_MAX_ITERATIONS;
+
+fn void set_benchmark_warmup_iterations(uint value) @builtin
+{
+    benchmark_warmup_iterations = value;
+}
+
+fn void set_benchmark_max_iterations(uint value) @builtin
+{
+    assert(value > 0);
+    benchmark_max_iterations = value;
+}
+
+fn bool run_benchmarks(BenchmarkUnit[] benchmarks)
+{
+	int benchmarks_passed = 0;
+	int benchmark_count = benchmarks.len;
+	usz max_name;
+
+	foreach (&unit : benchmarks)
+	{
+		if (max_name < unit.name.len) max_name = unit.name.len;
+	}
+
+	usz len = max_name + 9;
+
+	DString name;
+
+	name.tinit();
+	name.append_repeat('-', len / 2);
+	name.append(" BENCHMARKS ");
+	name.append_repeat('-', len - len / 2);
+
+	io::printn(name);
+
+	name.clear();
+
+	long sys_clock_started;
+	long sys_clock_finished;
+	long sys_clocks;
+	Clock clock;
+	anyfault err;
+
+	foreach(unit : benchmarks)
+	{
+		defer name.clear();
+		name.printf("Benchmarking %s ", unit.name);
+		name.append_repeat('.', max_name - unit.name.len + 2);
+		io::printf("%s ", name.as_str());
+
+		for(uint i = 0; i < benchmark_warmup_iterations; i++)
+		{
+			err = unit.func() @inline;
+			@volatile_load(err);
+		}
+
+		clock = std::time::clock::now();
+		sys_clock_started = $$sysclock();
+
+		for(uint i = 0; i < benchmark_max_iterations; i++)
+		{
+			err = unit.func() @inline;
+			@volatile_load(err);
+		}
+
+		sys_clock_finished = $$sysclock();
+		NanoDuration nano_seconds = clock.mark();
+		sys_clocks = sys_clock_finished - sys_clock_started;
+
+		if (err)
+		{
+			io::printfn("[failed] Failed due to: %s", err);
+			continue;
+		}
+
+		io::printfn("[ok] %.2f ns, %.2f CPU's clocks", (float)nano_seconds / benchmark_max_iterations, (float)sys_clocks / benchmark_max_iterations);
+		benchmarks_passed++;
+	}
+
+	io::printfn("\n%d benchmark%s run.\n", benchmark_count, benchmark_count > 1 ? "s" : "");
+	io::printfn("Benchmarks Result: %s. %d passed, %d failed.",
+		benchmarks_passed < benchmark_count ? "FAILED" : "ok", benchmarks_passed, benchmark_count - benchmarks_passed);
+
+	return benchmark_count == benchmarks_passed;
+}
+
+fn bool __run_default_benchmark_runner()
+{
+	@pool()
+	{
+		return run_benchmarks(benchmark_collection_create(mem::temp()));
+	};
+}
+
 def TestFn = fn void!();
 
 struct TestUnit
@@ -50,9 +167,8 @@ struct TestContext
 	JmpBuf buf;
 }
 
-
 // Sort the tests by their name in ascending order.
-fn int cmp_unit(TestUnit a, TestUnit b)
+fn int cmp_test_unit(TestUnit a, TestUnit b)
 {
 	usz an = a.name.len;
 	usz bn = b.name.len;
@@ -84,7 +200,7 @@ fn bool run_tests(TestUnit[] tests)
 	{
 		if (max_name < unit.name.len) max_name = unit.name.len;
 	}
-	quicksort(tests, &cmp_unit);
+	quicksort(tests, &cmp_test_unit);
 
 	TestContext context;
 	test_context = &context;
@@ -133,17 +249,6 @@ fn bool __run_default_test_runner()
 	{
 		return run_tests(test_collection_create(mem::temp()));
 	};
-}
-
-fn bool __run_default_benchmark_runner()
-{
-	BenchmarkFn[] fns = $$BENCHMARK_FNS;
-	String[] names = $$BENCHMARK_NAMES;
-	foreach (i, benchmark : fns)
-	{
-		io::printfn("Benchmark: %s %x.", names[i], fns[i]);
-	}
-	return true;
 }
 
 module std::core::runtime @if(WASM_NOLIBC);
