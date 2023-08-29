@@ -4,7 +4,7 @@
 
 #include "llvm_codegen_internal.h"
 
-static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *switch_ast);
+static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *switch_ast, bool is_typeid);
 
 // Emit a regular compound statement.
 void llvm_emit_compound_stmt(GenContext *c, Ast *ast)
@@ -332,7 +332,7 @@ static void llvm_emit_if_stmt(GenContext *c, Ast *ast)
 		llvm_emit_cond_br(c, &comp, then_block, else_block);
 		llvm_emit_br(c, then_block);
 		llvm_emit_block(c, then_block);
-		llvm_emit_switch_body(c, &be_value, then_body);
+		llvm_emit_switch_body(c, &be_value, then_body, false);
 		llvm_emit_br(c, exit_block);
 		goto EMIT_ELSE;
 	}
@@ -615,7 +615,8 @@ static void llvm_emit_switch_body_if_chain(GenContext *c,
 										   Ast **cases,
 										   Ast *default_case,
 										   BEValue *switch_value,
-										   LLVMBasicBlockRef exit_block)
+										   LLVMBasicBlockRef exit_block,
+										   bool is_type_switch)
 {
 	LLVMBasicBlockRef next = NULL;
 	VECEACH(cases, i)
@@ -631,6 +632,7 @@ static void llvm_emit_switch_body_if_chain(GenContext *c,
 		Expr *to_expr = exprptrzero(case_stmt->case_stmt.to_expr);
 		if (to_expr)
 		{
+			assert(!is_type_switch);
 			BEValue to_value;
 			llvm_emit_expr(c, &to_value, to_expr);
 			llvm_value_rvalue(c, &to_value);
@@ -642,11 +644,11 @@ static void llvm_emit_switch_body_if_chain(GenContext *c,
 		}
 		else
 		{
-			/*if (expr->type == type_typeid)
+			if (is_type_switch)
 			{
 				llvm_emit_lhs_is_subtype(c, &equals, &be_value, switch_value);
 			}
-			else*/
+			else
 			{
 				llvm_emit_comp(c, &equals, &be_value, switch_value, BINARYOP_EQ);
 			}
@@ -752,11 +754,10 @@ static void llvm_emit_switch_jump_table(GenContext *c,
  #endif
 }
 
-static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *switch_ast)
+static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *switch_ast, bool is_typeid)
 {
 	bool is_if_chain = switch_ast->switch_stmt.flow.if_chain;
 	Type *switch_type = switch_ast->ast_kind == AST_IF_CATCH_SWITCH_STMT ? type_lowering(type_anyfault) : switch_value->type;
-
 	Ast **cases = switch_ast->switch_stmt.cases;
 	ArraySize case_count = vec_size(cases);
 	if (!case_count)
@@ -821,9 +822,10 @@ static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *swi
 
 	if (is_if_chain)
 	{
-		llvm_emit_switch_body_if_chain(c, cases, default_case, &switch_current_val, exit_block);
+		llvm_emit_switch_body_if_chain(c, cases, default_case, &switch_current_val, exit_block, is_typeid);
 		return;
 	}
+	assert(!is_typeid);
 
 	c->current_block = NULL;
 	LLVMValueRef switch_stmt = LLVMBuildSwitch(c->builder, switch_current_val.value, default_case ? default_case->case_stmt.backend_block : exit_block, case_count);
@@ -875,6 +877,7 @@ void llvm_emit_switch(GenContext *c, Ast *ast)
 {
 	BEValue switch_value;
 	Expr *expr = exprptrzero(ast->switch_stmt.cond);
+	bool is_typeid = expr && expr->type->canonical == type_typeid;
 	if (expr)
 	{
 		// Regular switch
@@ -885,7 +888,7 @@ void llvm_emit_switch(GenContext *c, Ast *ast)
 		// Match switch, so set the value to true
 		llvm_value_set(&switch_value, llvm_const_int(c, type_bool, 1), type_bool);
 	}
-	llvm_emit_switch_body(c, &switch_value, ast);
+	llvm_emit_switch_body(c, &switch_value, ast, is_typeid);
 }
 
 

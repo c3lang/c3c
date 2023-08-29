@@ -74,6 +74,24 @@ macro any_to_int(any v, $Type)
 	}
 }
 
+fn bool typeid.is_subtype_of(self, typeid other)
+{
+	while (self != void.typeid)
+	{
+		if (self == other) return true;
+		self = self.parentof;
+	}
+	return false;
+}
+
+macro bool is_subtype_of($Type, $OtherType)
+{
+	var $typeid = $Type.typeid;
+	$switch ($Type)
+		$case $OtherType: return true;
+		$default: return false;
+	$endswitch
+}
 macro bool is_numerical($Type)
 {
 	var $kind = $Type.kindof;

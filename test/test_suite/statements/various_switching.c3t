@@ -79,8 +79,8 @@ entry:
   %a = alloca i32, align 4
   %b = alloca i32, align 4
   %zy = alloca i32, align 4
-  %switch17 = alloca i32, align 4
-  %switch27 = alloca i8, align 1
+  %switch25 = alloca i32, align 4
+  %switch35 = alloca i8, align 1
   store i64 ptrtoint (ptr @"mymodule.ByeErr$BAR" to i64), ptr %x.f, align 8
   store i64 ptrtoint (ptr @"$ct.int" to i64), ptr %z, align 8
   br label %testblock
@@ -142,104 +142,157 @@ if.exit:                                          ; preds = %switch.exit, %end_b
 
 switch.entry5:                                    ; preds = %if.exit
   %4 = load i64, ptr %switch4, align 8
-  %eq6 = icmp eq i64 ptrtoint (ptr @"$ct.int" to i64), %4
-  br i1 %eq6, label %switch.case7, label %next_if8
+  br label %check_subtype
 
-switch.case7:                                     ; preds = %switch.entry5
+check_subtype:                                    ; preds = %parent_type_block, %switch.entry5
+  %5 = phi i64 [ %4, %switch.entry5 ], [ %typeid.parent, %parent_type_block ]
+  %eq6 = icmp eq i64 ptrtoint (ptr @"$ct.int" to i64), %5
+  br i1 %eq6, label %result_block, label %parent_type_block
+
+parent_type_block:                                ; preds = %check_subtype
+  %6 = inttoptr i64 %5 to ptr
+  %7 = getelementptr inbounds %.introspect, ptr %6, i32 0, i32 1
+  %typeid.parent = load i64, ptr %7, align 8
+  %8 = icmp eq i64 %typeid.parent, 0
+  br i1 %8, label %result_block, label %check_subtype
+
+result_block:                                     ; preds = %parent_type_block, %check_subtype
+  %9 = phi i1 [ false, %parent_type_block ], [ true, %check_subtype ]
+  br i1 %9, label %switch.case7, label %next_if8
+
+switch.case7:                                     ; preds = %result_block
   call void (ptr, ...) @printf(ptr @.str.5)
-  br label %switch.exit16
+  br label %switch.exit24
 
-next_if8:                                         ; preds = %switch.entry5
-  %eq9 = icmp eq i64 ptrtoint (ptr @"$ct.bool" to i64), %4
-  br i1 %eq9, label %switch.case10, label %next_if11
+next_if8:                                         ; preds = %result_block
+  br label %check_subtype9
 
-switch.case10:                                    ; preds = %next_if8
-  br label %switch.case13
+check_subtype9:                                   ; preds = %parent_type_block11, %next_if8
+  %10 = phi i64 [ %4, %next_if8 ], [ %typeid.parent12, %parent_type_block11 ]
+  %eq10 = icmp eq i64 ptrtoint (ptr @"$ct.bool" to i64), %10
+  br i1 %eq10, label %result_block13, label %parent_type_block11
 
-next_if11:                                        ; preds = %next_if8
-  %eq12 = icmp eq i64 ptrtoint (ptr @"$ct.double" to i64), %4
-  br i1 %eq12, label %switch.case13, label %next_if14
+parent_type_block11:                              ; preds = %check_subtype9
+  %11 = inttoptr i64 %10 to ptr
+  %12 = getelementptr inbounds %.introspect, ptr %11, i32 0, i32 1
+  %typeid.parent12 = load i64, ptr %12, align 8
+  %13 = icmp eq i64 %typeid.parent12, 0
+  br i1 %13, label %result_block13, label %check_subtype9
 
-switch.case13:                                    ; preds = %next_if11, %switch.case10
-  br label %switch.default15
+result_block13:                                   ; preds = %parent_type_block11, %check_subtype9
+  %14 = phi i1 [ false, %parent_type_block11 ], [ true, %check_subtype9 ]
+  br i1 %14, label %switch.case14, label %next_if15
 
-next_if14:                                        ; preds = %next_if11
-  br label %switch.default15
+switch.case14:                                    ; preds = %result_block13
+  br label %switch.case21
 
-switch.default15:                                 ; preds = %next_if14, %switch.case13
+next_if15:                                        ; preds = %result_block13
+  br label %check_subtype16
+
+check_subtype16:                                  ; preds = %parent_type_block18, %next_if15
+  %15 = phi i64 [ %4, %next_if15 ], [ %typeid.parent19, %parent_type_block18 ]
+  %eq17 = icmp eq i64 ptrtoint (ptr @"$ct.double" to i64), %15
+  br i1 %eq17, label %result_block20, label %parent_type_block18
+
+parent_type_block18:                              ; preds = %check_subtype16
+  %16 = inttoptr i64 %15 to ptr
+  %17 = getelementptr inbounds %.introspect, ptr %16, i32 0, i32 1
+  %typeid.parent19 = load i64, ptr %17, align 8
+  %18 = icmp eq i64 %typeid.parent19, 0
+  br i1 %18, label %result_block20, label %check_subtype16
+
+result_block20:                                   ; preds = %parent_type_block18, %check_subtype16
+  %19 = phi i1 [ false, %parent_type_block18 ], [ true, %check_subtype16 ]
+  br i1 %19, label %switch.case21, label %next_if22
+
+switch.case21:                                    ; preds = %result_block20, %switch.case14
+  br label %switch.default23
+
+next_if22:                                        ; preds = %result_block20
+  br label %switch.default23
+
+switch.default23:                                 ; preds = %next_if22, %switch.case21
   call void (ptr, ...) @printf(ptr @.str.6)
-  br label %switch.exit16
+  br label %switch.exit24
 
-switch.exit16:                                    ; preds = %switch.default15, %switch.case7
+switch.exit24:                                    ; preds = %switch.default23, %switch.case7
   store i32 1, ptr %a, align 4
   store i32 2, ptr %b, align 4
-  %5 = load i32, ptr %b, align 4
-  %6 = load i32, ptr %a, align 4
-  %add = add i32 %5, %6
+  %20 = load i32, ptr %b, align 4
+  %21 = load i32, ptr %a, align 4
+  %add = add i32 %20, %21
   store i32 %add, ptr %zy, align 4
-  %7 = load i32, ptr %zy, align 4
-  store i32 %7, ptr %switch17, align 4
-  br label %switch.entry18
+  %22 = load i32, ptr %zy, align 4
+  store i32 %22, ptr %switch25, align 4
+  br label %switch.entry26
 
-switch.entry18:                                   ; preds = %switch.exit16
-  %8 = load i32, ptr %switch17, align 4
-  %9 = load i32, ptr %a, align 4
-  %eq19 = icmp eq i32 %9, %8
-  br i1 %eq19, label %switch.case20, label %next_if21
+switch.entry26:                                   ; preds = %switch.exit24
+  %23 = load i32, ptr %switch25, align 4
+  %24 = load i32, ptr %a, align 4
+  %eq27 = icmp eq i32 %24, %23
+  br i1 %eq27, label %switch.case28, label %next_if29
 
-switch.case20:                                    ; preds = %switch.entry18
+switch.case28:                                    ; preds = %switch.entry26
   call void (ptr, ...) @printf(ptr @.str.7)
-  br label %switch.exit26
+  br label %switch.exit34
 
-next_if21:                                        ; preds = %switch.entry18
-  %10 = load i32, ptr %b, align 4
-  %eq22 = icmp eq i32 %10, %8
-  br i1 %eq22, label %switch.case23, label %next_if24
+next_if29:                                        ; preds = %switch.entry26
+  %25 = load i32, ptr %b, align 4
+  %eq30 = icmp eq i32 %25, %23
+  br i1 %eq30, label %switch.case31, label %next_if32
 
-switch.case23:                                    ; preds = %next_if21
+switch.case31:                                    ; preds = %next_if29
   call void (ptr, ...) @printf(ptr @.str.8)
-  br label %switch.exit26
+  br label %switch.exit34
 
-next_if24:                                        ; preds = %next_if21
-  br label %switch.default25
+next_if32:                                        ; preds = %next_if29
+  br label %switch.default33
 
-switch.default25:                                 ; preds = %next_if24
+switch.default33:                                 ; preds = %next_if32
   call void (ptr, ...) @printf(ptr @.str.9)
-  br label %switch.exit26
+  br label %switch.exit34
 
-switch.exit26:                                    ; preds = %switch.default25, %switch.case23, %switch.case20
-  store i8 1, ptr %switch27, align 1
-  br label %switch.entry28
+switch.exit34:                                    ; preds = %switch.default33, %switch.case31, %switch.case28
+  store i8 1, ptr %switch35, align 1
+  br label %switch.entry36
 
-switch.entry28:                                   ; preds = %switch.exit26
-  %11 = load i8, ptr %switch27, align 1
-  %12 = trunc i8 %11 to i1
-  %13 = load i32, ptr %a, align 4
-  %lt = icmp slt i32 %13, 0
-  %eq29 = icmp eq i1 %lt, %12
-  br i1 %eq29, label %switch.case30, label %next_if31
+switch.entry36:                                   ; preds = %switch.exit34
+  %26 = load i8, ptr %switch35, align 1
+  %27 = trunc i8 %26 to i1
+  %28 = load i32, ptr %a, align 4
+  %lt = icmp slt i32 %28, 0
+  %eq37 = icmp eq i1 %lt, %27
+  br i1 %eq37, label %switch.case38, label %next_if39
 
-switch.case30:                                    ; preds = %switch.entry28
+switch.case38:                                    ; preds = %switch.entry36
   call void (ptr, ...) @printf(ptr @.str.10)
-  br label %switch.exit37
+  br label %switch.exit45
 
-next_if31:                                        ; preds = %switch.entry28
-  %14 = load i32, ptr %a, align 4
-  %eq32 = icmp eq i32 %14, 1
-  %eq33 = icmp eq i1 %eq32, %12
-  br i1 %eq33, label %switch.case34, label %next_if35
+next_if39:                                        ; preds = %switch.entry36
+  %29 = load i32, ptr %a, align 4
+  %eq40 = icmp eq i32 %29, 1
+  %eq41 = icmp eq i1 %eq40, %27
+  br i1 %eq41, label %switch.case42, label %next_if43
 
-switch.case34:                                    ; preds = %next_if31
+switch.case42:                                    ; preds = %next_if39
   call void (ptr, ...) @printf(ptr @.str.11)
-  br label %switch.exit37
+  br label %switch.exit45
 
-next_if35:                                        ; preds = %next_if31
-  br label %switch.default36
+next_if43:                                        ; preds = %next_if39
+  br label %switch.default44
 
-switch.default36:                                 ; preds = %next_if35
+switch.default44:                                 ; preds = %next_if43
   call void (ptr, ...) @printf(ptr @.str.12)
-  br label %switch.exit37
+  br label %switch.exit45
 
-switch.exit37:                                    ; preds = %switch.default36, %switch.case34, %switch.case30
+switch.exit45:                                    ; preds = %switch.default44, %switch.case42, %switch.case38
+  ret void
+}
+
+; Function Attrs: nounwind
+define void @mymodule.main() #0 {
+entry:
+  call void @mymodule.test()
+  call void (ptr, ...) @printf(ptr @.str.13)
   ret void
 }
