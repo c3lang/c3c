@@ -8,7 +8,7 @@ static inline bool expr_binary_is_constant_eval(Expr *expr, ConstantEvalKind eva
 static inline bool expr_cast_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind);
 static inline bool expr_list_is_constant_eval(Expr **exprs, ConstantEvalKind eval_kind);
 static inline bool expr_unary_addr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind);
-static inline ConstInitializer *initializer_for_index(ConstInitializer *initializer, uint32_t index);
+static inline ConstInitializer *initializer_for_index(ConstInitializer *initializer, ArraySize index, bool from_back);
 
 Expr *expr_negate_expr(Expr *expr)
 {
@@ -517,7 +517,7 @@ bool expr_is_compile_time(Expr *expr)
 	UNREACHABLE
 }
 
-static inline ConstInitializer *initializer_for_index(ConstInitializer *initializer, uint32_t index)
+static inline ConstInitializer *initializer_for_index(ConstInitializer *initializer, ArraySize index, bool from_back)
 {
 	switch (initializer->kind)
 	{
@@ -527,9 +527,23 @@ static inline ConstInitializer *initializer_for_index(ConstInitializer *initiali
 		case CONST_INIT_VALUE:
 			return initializer;
 		case CONST_INIT_ARRAY_FULL:
+		{
+			unsigned len = vec_size(initializer->init_array_full);
+			if (from_back)
+			{
+				if (index > len || !index) return NULL;
+				index = len - index;
+			}
 			return initializer->init_array_full[index];
+		}
 		case CONST_INIT_ARRAY:
 		{
+			if (from_back)
+			{
+				ArraySize len = initializer->type->array.len;
+				if (index > len || !index) return NULL;
+				index = len - index;
+			}
 			ConstInitializer **sub_values = initializer->init_array.elements;
 			VECEACH(sub_values, i)
 			{
@@ -605,15 +619,19 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 	expr->type = type;
 }
 
-bool expr_rewrite_to_const_initializer_index(Type *list_type, ConstInitializer *list, Expr *result, unsigned index)
+bool expr_rewrite_to_const_initializer_index(Type *list_type, ConstInitializer *list, Expr *result, unsigned index, bool from_back)
 {
-	ConstInitializer *initializer = initializer_for_index(list, index);
+	ConstInitializer *initializer = initializer_for_index(list, index, from_back);
 	ConstInitType kind = initializer ? initializer->kind : CONST_INIT_ZERO;
 	switch (kind)
 	{
 		case CONST_INIT_ZERO:
-			expr_rewrite_to_const_zero(result, type_get_indexed_type(list_type));
+		{
+			Type *indexed_type = type_get_indexed_type(list_type);
+			if (!indexed_type) return false;
+			expr_rewrite_to_const_zero(result, indexed_type);
 			return true;
+		}
 		case CONST_INIT_STRUCT:
 		case CONST_INIT_UNION:
 		case CONST_INIT_ARRAY:

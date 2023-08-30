@@ -2562,7 +2562,7 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 		else
 		{
 			Expr *expr = expr_new(EXPR_CONST, collection->span);
-			if (!expr_rewrite_to_const_initializer_index(const_list_type, initializer, expr, i))
+			if (!expr_rewrite_to_const_initializer_index(const_list_type, initializer, expr, i, false))
 			{
 				SEMA_ERROR(collection, "Complex expressions are not allowed.");
 				goto FAILED;

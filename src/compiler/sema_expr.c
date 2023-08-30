@@ -108,7 +108,7 @@ static inline const char *sema_addr_may_take_of_var(Expr *expr, Decl *decl);
 static inline const char *sema_addr_may_take_of_ident(Expr *inner);
 
 // -- subscript helpers
-static bool sema_subscript_rewrite_index_const_list(Expr *const_list, Expr *index, Expr *result);
+static bool sema_subscript_rewrite_index_const_list(Expr *const_list, ArraySize index, bool from_back, Expr *result);
 static Type *sema_subscript_find_indexable_type_recursively(Type **type, Expr **parent);
 
 // -- binary helper functions
@@ -188,6 +188,7 @@ static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *expr, Type *parent_type, bool was_group, Expr *identifier);
 static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *expr, Expr *parent, bool was_group, Expr *identifier);
 static inline bool sema_expr_fold_to_member(Expr *expr, Expr *parent, Decl *member);
+static inline void sema_expr_flatten_const(SemaContext *context, Expr *expr);
 
 // -- implementations
 
@@ -2416,15 +2417,10 @@ static Type *sema_subscript_find_indexable_type_recursively(Type **type, Expr **
 	}
 }
 
-static bool sema_subscript_rewrite_index_const_list(Expr *const_list, Expr *index, Expr *result)
+static bool sema_subscript_rewrite_index_const_list(Expr *const_list, ArraySize index, bool from_back, Expr *result)
 {
-	assert(expr_is_const_int(index));
-	if (!int_fits(index->const_expr.ixx, TYPE_U32)) return false;
-
-	uint32_t idx = index->const_expr.ixx.i.low;
 	assert(const_list->const_expr.const_kind == CONST_INITIALIZER);
-
-	return expr_rewrite_to_const_initializer_index(const_list->type, const_list->const_expr.initializer, result, idx);
+	return expr_rewrite_to_const_initializer_index(const_list->type, const_list->const_expr.initializer, result, index, from_back);
 }
 
 /**
@@ -2642,7 +2638,6 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	if (remove_from_back)
 	{
 		start_from_end = expr->subscript_expr.range.start_from_end = false;
-		(void)start_from_end;
 	}
 
 	if (eval_type == SUBSCRIPT_EVAL_REF)
@@ -2651,9 +2646,37 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	}
 	else
 	{
-		if (sema_flattened_expr_is_const(context, index) && sema_flattened_expr_is_const_initializer(context, current_expr))
+		if (sema_flattened_expr_is_const(context, index))
 		{
-			if (sema_subscript_rewrite_index_const_list(current_expr, index, expr)) return true;
+			assert(expr_is_const_int(index));
+			sema_expr_flatten_const(context, current_expr);
+			bool is_const_initializer = expr_is_const_initializer(current_expr);
+			if (is_const_initializer || expr_is_const_string(current_expr) || expr_is_const_bytes(current_expr))
+			{
+				if (!int_fits(index->const_expr.ixx, TYPE_U32))
+				{
+					RETURN_SEMA_ERROR(index, "Index is out of range.");
+				}
+				ArraySize idx = index->const_expr.ixx.i.low;
+				if (!is_const_initializer)
+				{
+					// Handle bytes / String
+					ArraySize len = current_expr->const_expr.bytes.len;
+					if (idx > len || (idx == len && !start_from_end) || (idx == 0 && start_from_end))
+					{
+						RETURN_SEMA_ERROR(index, "The index (%s%llu) is out of range, the length is just %llu.",
+						                  start_from_end ? "^" : "",
+						                  (unsigned long long)idx,
+						                  (unsigned long long)current_expr->const_expr.bytes.len);
+					}
+					if (start_from_end) idx = len - idx;
+					unsigned char c = current_expr->const_expr.bytes.ptr[idx];
+					expr_rewrite_const_int(expr, type_char, c);
+					expr->type = type_char;
+					return true;
+				}
+				if (sema_subscript_rewrite_index_const_list(current_expr, idx, start_from_end, expr)) return true;
+			}
 		}
 	}
 	expr->subscript_expr.expr = exprid(current_expr);

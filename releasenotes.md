@@ -22,6 +22,7 @@
 - Fix to void expression blocks
 - Temporary objects may now invoke methods using ref parameters.
 - Delete object files after successful linking.
+- Compile time subscript of constant strings and bytes.
 - `@if` introduced, other top level conditional compilation removed.
 - `@dynamic` and `@interface` for dynamic dispatch.
 - `$if` now uses `$if <expr>:` syntax.

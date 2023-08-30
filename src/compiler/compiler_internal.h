@@ -2214,7 +2214,7 @@ INLINE void expr_rewrite_const_untyped_list(Expr *expr, Expr **elements);
 void expr_rewrite_to_builtin_access(Expr *expr, Expr *parent, BuiltinAccessKind kind, Type *type);
 void expr_rewrite_to_string(Expr *expr_to_rewrite, const char *string);
 void expr_rewrite_to_const_zero(Expr *expr, Type *type);
-bool expr_rewrite_to_const_initializer_index(Type *list_type, ConstInitializer *list, Expr *result, unsigned index);
+bool expr_rewrite_to_const_initializer_index(Type *list_type, ConstInitializer *list, Expr *result, unsigned index, bool from_back);
 void expr_rewrite_to_variable(Expr *expr, Decl *decl);
 void expr_rewrite_to_binary(Expr *expr_to_rewrite, Expr *left, Expr *right, BinaryOp op);
 
