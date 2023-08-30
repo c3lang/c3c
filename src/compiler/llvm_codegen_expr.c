@@ -3483,6 +3483,42 @@ static void llvm_emit_ptr_comparison(GenContext *c, BEValue *result, BEValue *lh
 	llvm_value_set(result, val, type_bool);
 }
 
+static void llvm_emit_any_comparison(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, BinaryOp binary_op)
+{
+	BEValue pointer_lhs;
+	BEValue pointer_rhs;
+	llvm_emit_any_pointer(c, lhs, &pointer_lhs);
+	llvm_emit_type_from_any(c, lhs);
+	llvm_value_rvalue(c, &pointer_lhs);
+	llvm_value_rvalue(c, lhs);
+	llvm_emit_any_pointer(c, rhs, &pointer_rhs);
+	llvm_emit_type_from_any(c, rhs);
+	llvm_value_rvalue(c, &pointer_rhs);
+	llvm_value_rvalue(c, rhs);
+
+	LLVMValueRef val;
+	LLVMValueRef val2;
+	LLVMValueRef res;
+	LLVMIntPredicate comparison;
+	const char *desc;
+	switch (binary_op)
+	{
+		case BINARYOP_EQ:
+			val = LLVMBuildICmp(c->builder, LLVMIntEQ, pointer_lhs.value, pointer_rhs.value, "ptr_eq");
+			val2 = LLVMBuildICmp(c->builder, LLVMIntEQ, lhs->value, rhs->value, "type_eq");
+			res = LLVMBuildAnd(c->builder, val, val2, "any_eq");
+			break;
+		case BINARYOP_NE:
+			val = LLVMBuildICmp(c->builder, LLVMIntNE, pointer_lhs.value, pointer_rhs.value, "ptr_ne");
+			val2 = LLVMBuildICmp(c->builder, LLVMIntNE, lhs->value, rhs->value, "type_ne");
+			res = LLVMBuildOr(c->builder, val, val2, "any_ne");
+			break;
+		default:
+			UNREACHABLE
+	}
+	llvm_value_set(result, res, type_bool);
+}
+
 static inline LLVMValueRef llvm_emit_mult_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef right, SourceSpan loc)
 {
 	if (active_target.feature.trap_on_wrap)
@@ -3787,8 +3823,10 @@ void llvm_emit_comp(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, 
 			return;
 		case TYPE_FUNC:
 			break;
-		case LOWERED_TYPES:
 		case TYPE_ANY:
+			llvm_emit_any_comparison(c, result, lhs, rhs, binary_op);
+			return;
+		case LOWERED_TYPES:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_FLEXIBLE_ARRAY:
@@ -6549,7 +6587,7 @@ static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Ex
 			llvm_emit_len_for_expr(c, be_value, be_value);
 			return;
 		case ACCESS_PTR:
-			if (be_value->type == type_any)
+			if (type_is_any(be_value->type))
 			{
 				llvm_emit_any_pointer(c, be_value, be_value);
 				return;

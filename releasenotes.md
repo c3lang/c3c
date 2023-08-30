@@ -36,6 +36,7 @@
 - Dropped support for LLVM 13-14.
 - Updated grammar and lexer definition.
 - Removal of `$elif`.
+- any / anyfault may now be aliased.
 - `@stdcall` etc removed in favor of `@callconv`
 - Empty fault definitions is now an error.
 - Better errors on incorrect bitstruct syntax.
@@ -159,6 +160,7 @@
 - Added posix socket functions.
 
 ### Fixes
+- Fix missing comparison between `any`.
 - Fix issue of designated initializers containing bitstructs.
 - Fix issue of designated initializers that had optional arguments.
 - Fixed ++ and -- for bitstructs.

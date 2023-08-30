@@ -998,11 +998,6 @@ static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *
 	}
 	if (!sema_resolve_type_info(context, decl->typedef_decl.type_info)) return false;
 	Type *type = decl->typedef_decl.type_info->type->canonical;
-	if (type == type_anyfault || type == type_any)
-	{
-		SEMA_ERROR(decl->typedef_decl.type_info, "%s may not be aliased.", type_quoted_error_string(type));
-		return false;
-	}
 	decl->type->canonical = type;
 	// Do we need anything else?
 	return true;
@@ -2622,7 +2617,7 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 		decl_set_external_name(decl);
 	}
 
-	bool is_any_interface = decl->func_decl.attr_interface && decl->func_decl.type_parent && typeinfotype(decl->func_decl.type_parent) == type_any;
+	bool is_any_interface = decl->func_decl.attr_interface && decl->func_decl.type_parent && type_is_any(typeinfotype(decl->func_decl.type_parent));
 	// Do we have fn void any.foo(void*) { ... }?
 	if (decl->func_decl.body && is_any_interface) RETURN_SEMA_ERROR(decl, "Interface methods declarations may not have a body.");
 	if (!decl->func_decl.body && !decl->is_extern && !decl->unit->is_interface_file && !is_any_interface)

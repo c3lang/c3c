@@ -2576,6 +2576,16 @@ INLINE bool type_is_wildcard(Type *type)
 	return type == type_wildcard || type == type_wildcard_optional;
 }
 
+INLINE bool type_is_any(Type *type)
+{
+	return type->canonical == type_any;
+}
+
+INLINE bool type_is_anyfault(Type *type)
+{
+	return type->canonical == type_anyfault;
+}
+
 INLINE bool type_is_optional(Type *type)
 {
 	if (!type) return false;

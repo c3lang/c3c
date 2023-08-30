@@ -923,13 +923,14 @@ static inline bool sema_analyse_last_cond(SemaContext *context, Expr *expr, Cond
 		bool is_deref = right->expr_kind == EXPR_UNARY && right->unary_expr.operator == UNARYOP_DEREF;
 		if (is_deref) right = right->unary_expr.expr;
 		if (!sema_analyse_expr_rhs(context, NULL, right, false)) return false;
-		if (right->type == type_get_ptr(type_any) && is_deref)
+		Type *type = right->type->canonical;
+		if (type == type_get_ptr(type_any) && is_deref)
 		{
 			is_deref = false;
 			right = exprptr(expr->binary_expr.right);
 			if (!sema_analyse_expr_rhs(context, NULL, right, false)) return false;
 		}
-		if (right->type != type_any) goto NORMAL_EXPR;
+		if (type != type_any) goto NORMAL_EXPR;
 		// Found an expansion here
 		expr->expr_kind = EXPR_ANYSWITCH;
 		expr->any_switch.new_ident = left->identifier_expr.ident;
@@ -942,7 +943,8 @@ static inline bool sema_analyse_last_cond(SemaContext *context, Expr *expr, Cond
 		return true;
 	}
 	if (!sema_analyse_expr(context, expr)) return false;
-	if (expr->type != type_any) return true;
+	Type *type = expr->type->canonical;
+	if (type != type_any) return true;
 	if (expr->expr_kind == EXPR_IDENTIFIER)
 	{
 		Decl *decl = expr->identifier_expr.decl;

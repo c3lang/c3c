@@ -230,7 +230,7 @@ static bool bool_to_float(Expr *expr, Type *canonical, Type *type)
  */
 static bool voidfail_to_error(Expr *expr, Type *type)
 {
-	assert(type->canonical->type_kind == TYPE_FAULTTYPE || type == type_anyfault);
+	assert(type->canonical->type_kind == TYPE_FAULTTYPE || type_is_anyfault(type));
 	insert_cast(expr, CAST_VOIDFERR, type);
 	return true;
 }
@@ -946,7 +946,7 @@ static bool cast_from_subarray(SemaContext *context, Expr *expr, Type *from, Typ
 static bool cast_from_pointer(SemaContext *context, Expr *expr, Type *from, Type *to, Type *to_type, bool add_optional, bool is_explicit, bool silent)
 {
 	// pointer -> any, void* -> pointer pointer -> void*
-	if (to == type_any || to == type_voidptr || (from == type_voidptr && type_is_pointer(to))) return cast_with_optional(expr, to_type, add_optional);
+	if (type_is_any(to) || to == type_voidptr || (from == type_voidptr && type_is_pointer(to))) return cast_with_optional(expr, to_type, add_optional);
 
 	Type *pointee = from->pointer;
 	pointee = is_explicit ? type_flatten(pointee) : pointee->canonical;
@@ -1584,7 +1584,7 @@ static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, boo
 		if (opt == type_void)
 		{
 			// void! x; anyfault y = x;
-			if (!type_is_optional(to_type) && to == type_anyfault)
+			if (!type_is_optional(to_type) && type_is_anyfault(to))
 			{
 				cast(expr, to_type);
 				return true;
@@ -1655,7 +1655,7 @@ static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, boo
 			return true;
 		case TYPE_FAULTTYPE:
 			// Allow MyError.A -> error, to an integer or to bool
-			if (to == type_anyfault) return cast(expr, to_type);
+			if (type_is_anyfault(to)) return cast(expr, to_type);
 			if (type_is_integer(to) || to == type_bool) goto CAST_IF_EXPLICIT;
 			goto CAST_FAILED;
 		case TYPE_ANYFAULT:
@@ -1976,7 +1976,7 @@ bool cast(Expr *expr, Type *to_type)
 	Type *to = type_flatten(to_type);
 
 	// Special case *! => error
-	if (to == type_anyfault || to->type_kind == TYPE_FAULTTYPE)
+	if (type_is_anyfault(to) || to->type_kind == TYPE_FAULTTYPE)
 	{
 		if (type_is_optional(from_type)) return voidfail_to_error(expr, to_type);
 	}
