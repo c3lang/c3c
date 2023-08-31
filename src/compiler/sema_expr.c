@@ -4383,7 +4383,7 @@ static bool sema_expr_analyse_slice_assign(SemaContext *context, Expr *expr, Typ
 		RETURN_SEMA_ERROR(right, "The right hand side may not be optional when using subarray assign.");
 	}
 	Type *base = type_flatten(left_type)->array.base;
-	Type *rhs_type = right->type->canonical;
+	Type *rhs_type = type_flatten(right->type);
 
 	switch (rhs_type->type_kind)
 	{
@@ -4442,7 +4442,7 @@ SLICE_COPY:;
 		default:
 			goto EXPECTED;
 	}
-	assert(right->expr_kind != EXPR_SLICE || right->type->type_kind == TYPE_SUBARRAY);
+	assert(right->expr_kind != EXPR_SLICE || rhs_type->type_kind == TYPE_SUBARRAY);
 
 	// If we have a slice operation on the right hand side, check the ranges.
 	if (right->expr_kind == EXPR_SLICE)
@@ -4472,7 +4472,7 @@ SLICE_COPY:;
 		if (!sema_analyse_expr(context, right)) return false;
 	}
 	expr->expr_kind = EXPR_SLICE_COPY;
-	expr->type = rhs_type;
+	expr->type = left->type;
 	expr->slice_assign_expr.left = exprid(left);
 	expr->slice_assign_expr.right = exprid(right);
 	return true;
