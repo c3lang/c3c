@@ -4,7 +4,7 @@ import std::collections::list;
 def IntList = List(<int>);
 def PtrList = List(<void*>);
 
-fn void! test_delete_contains_index()
+fn void! delete_contains_index()
 {
 	IntList test;
 	test.add_array({ 1, 2 });
@@ -33,7 +33,7 @@ fn void! test_delete_contains_index()
 	assert(test.array_view() == int[]{ 2, 3 });
 }
 
-fn void! test_compact()
+fn void! compact()
 {
 	PtrList test;
 	test.add_array({ null, &test });
@@ -46,7 +46,7 @@ fn void! test_compact()
 	assert(test.compact() == 0);
 }
 
-fn void! test_reverse()
+fn void! reverse()
 {
 	IntList test;
 	test.reverse();
@@ -59,4 +59,50 @@ fn void! test_reverse()
 	assert(test.array_view() == int[] { 3, 2, 1, 10 });
 	test.reverse();
 	assert(test.array_view() == int[] { 10, 1, 2, 3 });
+}
+
+fn void! remove_if()
+{
+	IntList test;
+	usz removed;
+
+	test.add_array({ 1, 11, 2, 10, 20 });
+	removed = test.remove_if(&filter);
+	assert(removed == 3);
+	assert(test.array_view() == int[]{1, 2});
+
+	test.clear();
+	test.add_array({ 1, 11, 2, 10, 20 });
+	removed = test.remove_if(&select);
+	assert(removed == 2);
+	assert(test.array_view() == int[]{11, 10, 20});
+}
+
+fn void! retain_if()
+{
+	IntList test;
+	usz removed;
+
+	test.add_array({ 1, 11, 2, 10, 20 });
+	removed = test.retain_if(&select);
+	assert(removed == 3);
+	assert(test.array_view() == int[]{1, 2});
+
+	test.clear();
+	test.add_array({ 1, 11, 2, 10, 20 });
+	removed = test.retain_if(&filter);
+	assert(removed == 2);
+	assert(test.array_view() == int[]{11, 10, 20});
+}
+
+module list_test;
+
+fn bool filter(int* i)
+{
+	return *i >= 10;
+}
+
+fn bool select(int* i)
+{
+	return *i < 10;
 }
