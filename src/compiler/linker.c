@@ -75,7 +75,7 @@ static const char *string_esc(const char *str)
 	}
 	return strdup(scratch_buffer_to_string());
 }
-static void linker_setup_windows(const char ***args_ref, LinkerType linker_type)
+static void linker_setup_windows(const char ***args_ref, LinkerType linker_type, const char ***additional_linked_ref)
 {
 	add_arg(active_target.win.use_win_subsystem ? "/SUBSYSTEM:WINDOWS" : "/SUBSYSTEM:CONSOLE");
 	if (linker_type == LINKER_CC) return;
@@ -143,46 +143,46 @@ static void linker_setup_windows(const char ***args_ref, LinkerType linker_type)
 	// Do not link any.
 	if (active_target.win.crt_linking == WIN_CRT_NONE) return;
 
-	add_arg("kernel32.lib");
-	add_arg("ntdll.lib");
-	add_arg("user32.lib");
-	add_arg("shell32.lib");
-	add_arg("Shlwapi.lib");
-	add_arg("Ws2_32.lib");
-	add_arg("legacy_stdio_definitions.lib");
+	vec_add(*additional_linked_ref, "kernel32");
+	vec_add(*additional_linked_ref, "ntdll");
+	vec_add(*additional_linked_ref, "user32");
+	vec_add(*additional_linked_ref, "shell32");
+	vec_add(*additional_linked_ref, "Shlwapi");
+	vec_add(*additional_linked_ref, "Ws2_32");
+	vec_add(*additional_linked_ref, "legacy_stdio_definitions");
 
 	if (active_target.win.crt_linking == WIN_CRT_STATIC)
 	{
 		if (is_debug)
 		{
-			add_arg("libucrtd.lib");
-			add_arg("libvcruntimed.lib");
-			add_arg("libcmtd.lib");
-			add_arg("libcpmtd.lib");
+			vec_add(*additional_linked_ref, "libucrtd");
+			vec_add(*additional_linked_ref, "libvcruntimed");
+			vec_add(*additional_linked_ref, "libcmtd");
+			vec_add(*additional_linked_ref, "libcpmtd");
 		}
 		else
 		{
-			add_arg("libucrt.lib");
-			add_arg("libvcruntime.lib");
-			add_arg("libcmt.lib");
-			add_arg("libcpmt.lib");
+			vec_add(*additional_linked_ref, "libucrt");
+			vec_add(*additional_linked_ref, "libvcruntime");
+			vec_add(*additional_linked_ref, "libcmt");
+			vec_add(*additional_linked_ref, "libcpmt");
 		}
 	}
 	else
 	{
 		if (is_debug)
 		{
-			add_arg("ucrtd.lib");
-			add_arg("vcruntimed.lib");
-			add_arg("msvcrtd.lib");
-			add_arg("msvcprtd.lib");
+			vec_add(*additional_linked_ref, "ucrtd");
+			vec_add(*additional_linked_ref, "vcruntimed");
+			vec_add(*additional_linked_ref, "msvcrtd");
+			vec_add(*additional_linked_ref, "msvcprtd");
 		}
 		else
 		{
-			add_arg("ucrt.lib");
-			add_arg("vcruntime.lib");
-			add_arg("msvcrt.lib");
-			add_arg("msvcprt.lib");
+			vec_add(*additional_linked_ref, "ucrt");
+			vec_add(*additional_linked_ref, "vcruntime");
+			vec_add(*additional_linked_ref, "msvcrt");
+			vec_add(*additional_linked_ref, "msvcprt");
 		}
 	}
 	add_arg("/NOLOGO");
@@ -481,6 +481,34 @@ static void linker_setup_freebsd(const char ***args_ref, LinkerType linker_type)
 	add_arg(ld_target(platform_target.arch));
 }
 
+static void add_linked_libs(const char ***args_ref, const char **libs, bool is_win)
+{
+	FOREACH_BEGIN(const char *lib, libs)
+		const char *framework = str_remove_suffix(lib, ".framework");
+		if (framework)
+		{
+			add_arg("-framework");
+			add_arg(framework);
+			continue;
+		}
+		if (is_win)
+		{
+			if (str_has_suffix(lib, ".lib"))
+			{
+				add_arg(lib);
+			}
+			else
+			{
+				add_arg2(lib, ".lib");
+			}
+		}
+		else
+		{
+			add_arg2("-l", lib);
+		}
+	FOREACH_END();
+}
+
 static bool linker_setup(const char ***args_ref, const char **files_to_link, unsigned file_count,
 						 const char *output_file, LinkerType linker_type)
 {
@@ -519,12 +547,13 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 	}
 	const char *lib_path_opt = use_win ? "/LIBPATH:" : "-L";
 
+	const char **additional_linked = NULL;
 	switch (platform_target.os)
 	{
 		case OS_UNSUPPORTED:
 			UNREACHABLE
 		case OS_TYPE_WIN32:
-			linker_setup_windows(args_ref, linker_type);
+			linker_setup_windows(args_ref, linker_type, &additional_linked);
 			break;
 		case OS_TYPE_MACOSX:
 			linker_setup_macos(args_ref, linker_type);
@@ -564,32 +593,7 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 	{
 		add_arg(active_target.link_args[i]);
 	}
-	VECEACH(active_target.linker_libs, i)
-	{
-		const char *lib = active_target.linker_libs[i];
-		const char *framework = str_remove_suffix(lib, ".framework");
-		if (framework)
-		{
-			add_arg("-framework");
-			add_arg(framework);
-			continue;
-		}
-		if (use_win)
-		{
-			if (str_has_suffix(lib, ".lib"))
-			{
-				add_arg(lib);
-			}
-			else
-			{
-				add_arg2(lib, ".lib");
-			}
-		}
-		else
-		{
-			add_arg2("-l", lib);
-		}
-	}
+	add_linked_libs(args_ref, active_target.linker_libs, use_win);
 	VECEACH(active_target.library_list, i)
 	{
 		Library *library = active_target.library_list[i];
@@ -598,26 +602,9 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 		{
 			add_arg(target->link_flags[j]);
 		}
-		VECEACH(target->linked_libs, j)
-		{
-			const char *lib = target->linked_libs[j];
-			const char *framework = str_remove_suffix(lib, ".framework");
-			if (framework)
-			{
-				add_arg("-framework");
-				add_arg(framework);
-				continue;
-			}
-			if (use_win)
-			{
-				add_arg2(lib, ".lib");
-			}
-			else
-			{
-				add_arg2("-l", lib);
-			}
-		}
+		add_linked_libs(args_ref, target->linked_libs, use_win);
 	}
+	add_linked_libs(args_ref, additional_linked, use_win);
 	return true;
 }
 #undef add_arg2
