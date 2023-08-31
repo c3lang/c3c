@@ -248,25 +248,31 @@ fn void List.swap(&self, usz i, usz j)
  **/
 fn usz List.remove_if(&self, ElementPredicate filter)
 {
-	return self._remove_if({ filter }, &Filter.same);
+	return self._remove_if(filter, false);
 }
 
-macro usz List._remove_if(&self, Filter o, m) @private
+macro usz List._remove_if(&self, ElementPredicate filter, bool $invert) @local
 {
 	usz size = self.size;
-	usz i = size;
-	usz k = i;
-	while (k > 0)
+	for (usz i = size, usz k = size; k > 0; k = i)
 	{
 		// Find last index of item to be deleted.
-		while (i > 0 && m(o, &self.entries[i - 1])) i--;
+		$if $invert:
+			while (i > 0 && !filter(&self.entries[i - 1])) i--;
+		$else
+			while (i > 0 && filter(&self.entries[i - 1])) i--;
+		$endif
 		// Remove the items from this index up to the one not to be deleted.
 		usz n = self.size - k;
-		self.entries[i:n] = self.entries[k:n];
+		// Do explicit copy - copying between the same slice is not well defined.
+		for (usz j = 0; j < n; j++) self.entries[i + j] = self.entries[k + j];
 		self.size -= k - i;
 		// Find last index of item not to be deleted.
-		while (i > 0 && !m(o, &self.entries[i - 1])) i--;
-		k = i;
+		$if $invert:
+			while (i > 0 && filter(&self.entries[i - 1])) i--;
+		$else
+			while (i > 0 && !filter(&self.entries[i - 1])) i--;
+		$endif
 	}
 	return size - self.size;
 }
@@ -277,15 +283,8 @@ macro usz List._remove_if(&self, Filter o, m) @private
  **/
 fn usz List.retain_if(&self, ElementPredicate selection)
 {
-	return self._remove_if({ selection }, &Filter.opposite);
+	return self._remove_if(selection, true);
 }
-
-struct Filter @private
-{
-	ElementPredicate p;
-}
-fn bool Filter.same(self, Type* type) => self.p(type) @inline;
-fn bool Filter.opposite(self, Type* type) => !self.p(type) @inline;
 
 /**
  * Reserve at least min_capacity
