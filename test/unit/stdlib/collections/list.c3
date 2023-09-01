@@ -78,6 +78,23 @@ fn void! remove_if()
 	assert(test.array_view() == int[]{11, 10, 20});
 }
 
+fn void! remove_using_test()
+{
+	IntList test;
+	usz removed;
+
+	test.add_array({ 1, 11, 2, 10, 20 });
+	removed = test.remove_using_test(fn bool(i, ctx) => *i >= *(int*)ctx, &&10);
+	assert(removed == 3);
+	assert(test.array_view() == int[]{1, 2});
+
+	test.clear();
+	test.add_array({ 1, 11, 2, 10, 20 });
+	removed = test.remove_using_test(fn bool(i, ctx) => *i < *(int*)ctx, &&10);
+	assert(removed == 2);
+	assert(test.array_view() == int[]{11, 10, 20});
+}
+
 fn void! retain_if()
 {
 	IntList test;
@@ -91,6 +108,23 @@ fn void! retain_if()
 	test.clear();
 	test.add_array({ 1, 11, 2, 10, 20 });
 	removed = test.retain_if(&filter);
+	assert(removed == 2);
+	assert(test.array_view() == int[]{11, 10, 20});
+}
+
+fn void! retain_using_test()
+{
+	IntList test;
+	usz removed;
+
+	test.add_array({ 1, 11, 2, 10, 20 });
+	removed = test.remove_using_test(fn bool(i, ctx) => *i >= *(int*)ctx, &&10);
+	assert(removed == 3);
+	assert(test.array_view() == int[]{1, 2});
+
+	test.clear();
+	test.add_array({ 1, 11, 2, 10, 20 });
+	removed = test.remove_using_test(fn bool(i, ctx) => *i < *(int*)ctx, &&10);
 	assert(removed == 2);
 	assert(test.array_view() == int[]{11, 10, 20});
 }
