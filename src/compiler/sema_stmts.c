@@ -1098,13 +1098,10 @@ static inline bool sema_analyse_decls_stmt(SemaContext *context, Ast *statement)
 static inline bool sema_analyse_declare_stmt(SemaContext *context, Ast *statement)
 {
 	VarDeclKind kind = statement->declare_stmt->var.kind;
-	if (kind == VARDECL_LOCAL_CT_TYPE || kind == VARDECL_LOCAL_CT)
-	{
-		if (!sema_analyse_var_decl_ct(context, statement->declare_stmt)) return false;
-		statement->ast_kind = AST_NOP_STMT;
-		return true;
-	}
-	return sema_analyse_var_decl(context, statement->declare_stmt, true);
+	bool erase = kind == VARDECL_LOCAL_CT_TYPE || kind == VARDECL_LOCAL_CT;
+	if (!sema_analyse_var_decl(context, statement->declare_stmt, true)) return false;
+	if (erase) statement->ast_kind = AST_NOP_STMT;
+	return true;
 }
 
 static inline bool sema_analyse_expr_stmt(SemaContext *context, Ast *statement)

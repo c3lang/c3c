@@ -2883,11 +2883,24 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 {
 	assert(decl->decl_kind == DECL_VAR && "Unexpected declaration type");
 
+	VarDeclKind kind = decl->var.kind;
+
+	bool is_global = !local;
+	switch (kind)
+	{
+		case VARDECL_LOCAL_CT:
+		case VARDECL_LOCAL_CT_TYPE:
+			return sema_analyse_var_decl_ct(context, decl);
+		case VARDECL_GLOBAL:
+			is_global = true;
+			break;
+		default:
+			break;
+	}
+
 	// We expect a constant to actually be parsed correctly so that it has a value, so
 	// this should always be true.
 	assert(decl->var.type_info || decl->var.init_expr);
-
-	bool is_global = decl->var.kind == VARDECL_GLOBAL || !local;
 
 	if (is_global)
 	{
@@ -2925,11 +2938,11 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 		// 1a. We require an init expression.
 		if (!init_expr)
 		{
-			assert(decl->var.kind == VARDECL_CONST);
+			assert(kind == VARDECL_CONST);
 			SEMA_ERROR(decl, "Constants need to have an initial value.");
 			return decl_poison(decl);
 		}
-		if (decl->var.kind == VARDECL_LOCAL && !context->current_macro)
+		if (kind == VARDECL_LOCAL && !context->current_macro)
 		{
 			SEMA_ERROR(decl, "Defining a variable using 'var %s = ...' is only allowed inside a macro.", decl->name);
 			return decl_poison(decl);
