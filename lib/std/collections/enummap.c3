@@ -13,7 +13,6 @@ fn void EnumMap.init(&self, ValueType init_value)
 	}
 }
 
-
 fn usz! EnumMap.to_format(&self, Formatter* formatter) @dynamic
 {
 	usz n = formatter.print("{ ")!;
@@ -31,11 +30,18 @@ fn String EnumMap.to_string(&self, Allocator* using = mem::heap()) @dynamic
 	return string::printf("%s", *self);
 }
 
+/**
+ * @return "The total size of this map, which is the same as the number of enum values"
+ * @pure
+ **/
 fn usz EnumMap.len(&self) @operator(len) @inline
 {
 	return self.values.len;
 }
 
+/**
+ * @return "Retrieve a value given the underlying enum, if there is no entry, then the zero value for the value is returned."
+ **/
 fn ValueType EnumMap.get(&self, Enum key) @operator([]) @inline
 {
 	return self.values[key.ordinal];
