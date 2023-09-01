@@ -949,6 +949,7 @@ const char *get_object_extension(void)
 
 Module *global_context_find_module(const char *name)
 {
+	assert(name);
 	return htable_get(&global_context.modules, (void *)name);
 }
 

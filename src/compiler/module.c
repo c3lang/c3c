@@ -36,6 +36,7 @@ const char *module_create_object_file_name(Module *module)
 
 Path *path_create_from_string(const char *string, uint32_t len, SourceSpan span)
 {
+	assert(string);
 	Path *path = CALLOCS(Path);
 	path->span = span;
 	TokenType type = TOKEN_IDENT;
