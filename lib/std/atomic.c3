@@ -8,22 +8,33 @@ struct Atomic
 	Type data;
 }
 
-fn Type Atomic.load(&self, AtomicOrdering ordering = SEQ_CONSISTENT)
+/**
+ * Loads data atomically, by default this uses SEQ_CONSISTENT ordering.
+ *
+ * @param ordering "The ordering, cannot be release or acquire-release."
+ * @require ordering != RELEASE && ordering != ACQUIRE_RELEASE : "Release and acquire-release are not valid for load"
+ **/
+macro Type Atomic.load(&self, AtomicOrdering ordering = SEQ_CONSISTENT)
 {
 	Type* data = &self.data;
-	switch(ordering) 
+	switch(ordering)
 	{
 		case NOT_ATOMIC: return $$atomic_load(data, false, AtomicOrdering.NOT_ATOMIC.ordinal);
 		case UNORDERED: return $$atomic_load(data, false, AtomicOrdering.UNORDERED.ordinal);
 		case RELAXED: return $$atomic_load(data, false, AtomicOrdering.RELAXED.ordinal);
 		case ACQUIRE: return $$atomic_load(data, false, AtomicOrdering.ACQUIRE.ordinal);
-
-		default:
 		case SEQ_CONSISTENT: return $$atomic_load(data, false, AtomicOrdering.SEQ_CONSISTENT.ordinal);
+		case ACQUIRE_RELEASE:
+		case RELEASE: unreachable("Invalid ordering.");
 	}
 }
-
-fn void Atomic.store(&self, Type value, AtomicOrdering ordering = SEQ_CONSISTENT)
+/**
+ * Stores data atomically, by default this uses SEQ_CONSISTENT ordering.
+ *
+ * @param ordering "The ordering, cannot be acquire or acquire-release."
+ * @require ordering != ACQUIRE && ordering != ACQUIRE_RELEASE : "Acquire and acquire-release are not valid for store"
+ **/
+macro void Atomic.store(&self, Type value, AtomicOrdering ordering = SEQ_CONSISTENT)
 {
 	Type* data = &self.data;
 	switch(ordering) 
@@ -32,49 +43,49 @@ fn void Atomic.store(&self, Type value, AtomicOrdering ordering = SEQ_CONSISTENT
 		case UNORDERED: $$atomic_store(data, value, false, AtomicOrdering.UNORDERED.ordinal);
 		case RELAXED: $$atomic_store(data, value, false, AtomicOrdering.RELAXED.ordinal);
 		case RELEASE: $$atomic_store(data, value, false, AtomicOrdering.RELEASE.ordinal);
-
-		default:
 		case SEQ_CONSISTENT: $$atomic_store(data, value, false, AtomicOrdering.SEQ_CONSISTENT.ordinal);
+		case ACQUIRE_RELEASE:
+		case ACQUIRE: unreachable("Invalid ordering.");
 	}
 }
 
-fn Type Atomic.add(&self, Type value, AtomicOrdering ordering = SEQ_CONSISTENT)
+macro Type Atomic.add(&self, Type value, AtomicOrdering ordering = SEQ_CONSISTENT)
 {
 	Type* data = &self.data;
 	return @atomic_exec(atomic::fetch_add, data, value, ordering);
 }
 
-fn Type Atomic.sub(&self, Type value, AtomicOrdering ordering = SEQ_CONSISTENT)
+macro Type Atomic.sub(&self, Type value, AtomicOrdering ordering = SEQ_CONSISTENT)
 {
 	Type* data = &self.data;
 	return @atomic_exec(atomic::fetch_sub, data, value, ordering);
 }
 
-fn Type Atomic.mul(&self, Type value, AtomicOrdering ordering = SEQ_CONSISTENT)
+macro Type Atomic.mul(&self, Type value, AtomicOrdering ordering = SEQ_CONSISTENT)
 {
 	Type* data = &self.data;
 	return @atomic_exec(atomic::fetch_mul, data, value, ordering);
 }
 
-fn Type Atomic.div(&self, Type value, AtomicOrdering ordering = SEQ_CONSISTENT)
+macro Type Atomic.div(&self, Type value, AtomicOrdering ordering = SEQ_CONSISTENT)
 {
 	Type* data = &self.data;
 	return @atomic_exec(atomic::fetch_div, data, value, ordering);
 }
 
-fn Type Atomic.max(&self, Type value, AtomicOrdering ordering = SEQ_CONSISTENT)
+macro Type Atomic.max(&self, Type value, AtomicOrdering ordering = SEQ_CONSISTENT)
 {
 	Type* data = &self.data;
 	return @atomic_exec(atomic::fetch_div, data, value, ordering);
 }
 
-fn Type Atomic.min(&self, Type value, AtomicOrdering ordering = SEQ_CONSISTENT)
+macro Type Atomic.min(&self, Type value, AtomicOrdering ordering = SEQ_CONSISTENT)
 {
 	Type* data = &self.data;
 	return @atomic_exec(atomic::fetch_min, data, value, ordering);
 }
 
-fn Type Atomic.or(&self, ulong value, AtomicOrdering ordering = SEQ_CONSISTENT) @if(!types::is_float(Type))
+macro Type Atomic.or(&self, ulong value, AtomicOrdering ordering = SEQ_CONSISTENT) @if(!types::is_float(Type))
 {
 	Type* data = &self.data;
 	return @atomic_exec(atomic::fetch_or, data, value, ordering);
@@ -86,19 +97,19 @@ fn Type Atomic.xor(&self, ulong value, AtomicOrdering ordering = SEQ_CONSISTENT)
 	return @atomic_exec(atomic::fetch_xor, data, value, ordering);
 }
 
-fn Type Atomic.and(&self, ulong value, AtomicOrdering ordering = SEQ_CONSISTENT) @if(!types::is_float(Type))
+macro Type Atomic.and(&self, ulong value, AtomicOrdering ordering = SEQ_CONSISTENT) @if(!types::is_float(Type))
 {
 	Type* data = &self.data;
 	return @atomic_exec(atomic::fetch_and, data, value, ordering);
 }
 
-fn Type Atomic.shift_right(&self, ulong amount, AtomicOrdering ordering = SEQ_CONSISTENT) @if(!types::is_float(Type))
+macro Type Atomic.shift_right(&self, ulong amount, AtomicOrdering ordering = SEQ_CONSISTENT) @if(!types::is_float(Type))
 {
 	Type* data = &self.data;
 	return @atomic_exec(atomic::fetch_shift_right, data, amount, ordering);
 }
 
-fn Type Atomic.shift_left(&self, ulong amount, AtomicOrdering ordering = SEQ_CONSISTENT) @if(!types::is_float(Type))
+macro Type Atomic.shift_left(&self, ulong amount, AtomicOrdering ordering = SEQ_CONSISTENT) @if(!types::is_float(Type))
 {
 	Type* data = &self.data;
 	return @atomic_exec(atomic::fetch_shift_left, data, amount, ordering);
@@ -112,9 +123,8 @@ macro @atomic_exec(#func, data, value, ordering) @local
 		case ACQUIRE: return #func(data, value, ACQUIRE);
 		case RELEASE: return #func(data, value, RELEASE);
 		case ACQUIRE_RELEASE: return #func(data, value, ACQUIRE_RELEASE);
-
-		default:
 		case SEQ_CONSISTENT: return #func(data, value, SEQ_CONSISTENT);
+		default: assert(false, "Ordering may not be non-atomic or unordered.");
 	}
 }
 
