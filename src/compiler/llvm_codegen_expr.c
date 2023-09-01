@@ -3070,10 +3070,11 @@ static void llvm_emit_slice_copy(GenContext *c, BEValue *be_value, Expr *expr)
 		llvm_emit_panic_if_true(c, &comp, "Length mismatch", expr->span, "Subarray copy length mismatch (%d != %d).", &to_len, &from_len);
 	}
 
+
 	Type *pointer_type = to_pointer.type->pointer;
 	unsigned alignment = type_abi_alignment(pointer_type);
 	LLVMValueRef bytes = LLVMBuildMul(c->builder, from_len.value, llvm_const_int(c, from_len.type, type_size(pointer_type)), "");
-	LLVMBuildMemCpy(c->builder, to_pointer.value, alignment, from_pointer.value, alignment, bytes);
+	LLVMBuildMemMove(c->builder, to_pointer.value, alignment, from_pointer.value, alignment, bytes);
 }
 
 
@@ -3087,6 +3088,20 @@ static void llvm_emit_slice_assign(GenContext *c, BEValue *be_value, Expr *expr)
 	// First, find the value assigned.
 	Expr *assigned_value = exprptr(expr->slice_assign_expr.right);
 	llvm_emit_expr(c, be_value, assigned_value);
+	assert(!IS_OPTIONAL(assigned_value));
+	// If this is copying a big value, then first store it in a variable, this is to
+	// ensure value semantics even in special cases.
+	if (llvm_value_is_addr(be_value) && type_size(assigned_value->type) > 16)
+	{
+		LLVMValueRef address = llvm_emit_alloca(c, llvm_get_type(c, be_value->type), be_value->alignment, "tempval");
+		llvm_store_to_ptr(c, address, be_value);
+		// Replace the old value with this temp
+		llvm_value_set_address(be_value, address, be_value->type, be_value->alignment);
+	}
+	else
+	{
+		llvm_value_rvalue(c, be_value);
+	}
 
 	BEValue parent;
 	BEValue start;

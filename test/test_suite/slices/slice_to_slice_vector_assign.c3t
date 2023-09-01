@@ -58,7 +58,7 @@ entry:
   %8 = getelementptr inbounds %"int[]", ptr %taddr, i32 0, i32 1
   %9 = load i64, ptr %8, align 8
   %10 = mul i64 %9, 4
-  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %6, ptr align 4 %7, i64 %10, i1 false)
+  call void @llvm.memmove.p0.p0.i64(ptr align 4 %6, ptr align 4 %7, i64 %10, i1 false)
   %11 = insertvalue %any undef, ptr %y, 0
   %12 = insertvalue %any %11, i64 ptrtoint (ptr @"$ct.v6$int" to i64), 1
   %13 = getelementptr inbounds [2 x %any], ptr %varargslots, i64 0, i64 0
@@ -80,7 +80,7 @@ entry:
   %26 = getelementptr inbounds %"int[]", ptr %taddr1, i32 0, i32 1
   %27 = load i64, ptr %26, align 8
   %28 = mul i64 %27, 4
-  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %24, ptr align 4 %25, i64 %28, i1 false)
+  call void @llvm.memmove.p0.p0.i64(ptr align 4 %24, ptr align 4 %25, i64 %28, i1 false)
   %29 = insertvalue %any undef, ptr %y, 0
   %30 = insertvalue %any %29, i64 ptrtoint (ptr @"$ct.v6$int" to i64), 1
   %31 = getelementptr inbounds [2 x %any], ptr %varargslots3, i64 0, i64 0
@@ -127,7 +127,7 @@ entry:
   %60 = getelementptr inbounds %"int[][]", ptr %taddr10, i32 0, i32 1
   %61 = load i64, ptr %60, align 8
   %62 = mul i64 %61, 16
-  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %58, ptr align 8 %59, i64 %62, i1 false)
+  call void @llvm.memmove.p0.p0.i64(ptr align 8 %58, ptr align 8 %59, i64 %62, i1 false)
   %63 = insertvalue %any undef, ptr %a, 0
   %64 = insertvalue %any %63, i64 ptrtoint (ptr @"$ct.sa$sa$int" to i64), 1
   %65 = getelementptr inbounds [1 x %any], ptr %varargslots12, i64 0, i64 0
