@@ -415,17 +415,7 @@ fn bool List.contains(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
  **/
 fn usz List.remove(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
 {
-	usz size = self.size;
-	for (usz i = size; i > 0; i--)
-	{
-		if (!equals(self.entries[i - 1], value)) continue;
-		for (usz j = i; j < size; j++)
-		{
-			self.entries[j - 1] = self.entries[j];
-		}
-		self.size--;
-	}
-	return size - self.size;
+	return self.remove_using_test(fn bool(v, w) => equals(*v, *(Type*)w), &value);
 }
 
 fn void List.remove_all(&self, List* other_list) @if(ELEMENT_IS_EQUATABLE)
@@ -436,7 +426,7 @@ fn void List.remove_all(&self, List* other_list) @if(ELEMENT_IS_EQUATABLE)
 
 /**
  * @param [&in] self
- * @return "The number non-null values in the list"
+ * @return "The number of non-null values in the list"
  **/
 fn usz List.compact_count(&self) @if(ELEMENT_IS_POINTER)
 {
@@ -445,17 +435,11 @@ fn usz List.compact_count(&self) @if(ELEMENT_IS_POINTER)
 	return vals;
 }
 
+/**
+ * @param [&inout] self "The list to remove elements from"
+ * @return "The number of deleted null values in the list"
+ **/
 fn usz List.compact(&self) @if(ELEMENT_IS_POINTER)
 {
-	usz size = self.size;
-	for (usz i = size; i > 0; i--)
-	{
-		if (self.entries[i - 1]) continue;
-		for (usz j = i; j < size; j++)
-		{
-			self.entries[j - 1] = self.entries[j];
-		}
-		self.size--;
-	}
-	return size - self.size;
+	return self.remove_if(fn bool(p) => *p == null);
 }

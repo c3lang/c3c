@@ -8,6 +8,12 @@ fn void! delete_contains_index()
 {
 	IntList test;
 	test.add_array({ 1, 2 });
+	assert(!test.is_empty());
+	assert(test.get(0) == 1);
+	assert(test.get(1) == 2);
+	assert(*test.first() == 1);
+	assert(*test.last() == 2);
+
 	assert(test.contains(1));
 	assert(test.contains(2));
 	assert(!test.contains(0));
@@ -31,6 +37,9 @@ fn void! delete_contains_index()
 	test.remove(0);
 	assert(test.len() == 2);
 	assert(test.array_view() == int[]{ 2, 3 });
+
+	test.swap(0, 1);
+	assert(test.array_view() == int[]{ 3, 2 });
 }
 
 fn void! compact()
