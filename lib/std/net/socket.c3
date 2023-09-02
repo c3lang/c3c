@@ -2,16 +2,6 @@ module std::net @if(os::SUPPORTS_INET);
 import std::io;
 import libc;
 
-enum Network : char (AIFamily domain, AISockType type)
-{
-	TCP  (os::AF_INET, os::SOCK_STREAM),
-	TCP6 (os::AF_INET6, os::SOCK_STREAM),
-	UDP  (os::AF_INET, os::SOCK_DGRAM),
-	UDP6 (os::AF_INET6, os::SOCK_DGRAM),
-}
-
-
-
 struct Socket
 {
 	NativeSocket sock;
@@ -21,82 +11,8 @@ struct Socket
 	char[128] ai_addr_storage;
 }
 
-fn Socket! _connect(AddrInfo* addrinfo, SocketOption[] options)
-{
-	@loop_over_ai(addrinfo; NativeSocket sockfd, AddrInfo* ai)
-	{
-		apply_sockoptions(sockfd, options)!;
-		int errcode = os::connect(sockfd, ai.ai_addr, ai.ai_addrlen);
-		// Keep the first successful connection.
-		if (!errcode) return network_socket(sockfd, ai);
-	};
-	return os::socket_error()?;
-}
-
-
-fn Socket! Network.connect(&self, String host, String port, SocketOption... options)
-{
-	@network_loop_over_ai(self, host, port; NativeSocket sockfd, AddrInfo* ai)
-	{
-		apply_sockoptions(sockfd, options)!;
-		int errcode = os::connect(sockfd, ai.ai_addr, ai.ai_addrlen);
-		// Keep the first successful connection.
-		if (errcode == 0) return network_socket(sockfd, ai);
-	}!;
-	return os::socket_error()?;
-}
-
-fn Socket! Network.listen(&self, String host, String port, int backlog, SocketOption... options)
-{
-	@network_loop_over_ai(self, host, port; NativeSocket sockfd, AddrInfo* ai)
-	{
-		apply_sockoptions(sockfd, options)!;
-		int errcode = os::bind(sockfd, ai.ai_addr, ai.ai_addrlen);
-		if (errcode == 0)
-		{
-			errcode = os::listen(sockfd, backlog);
-			// Keep the first successful connection.
-			if (errcode == 0) return network_socket(sockfd, ai);
-		}
-	}!;
-	return os::socket_error()?;
-}
-
-fn AddrInfo*! Network.addrinfo(&self, String host, String port) @private
-{
-	ZString zhost = host.zstr_tcopy();
-	ZString zport = port.zstr_tcopy();
-	AddrInfo hints = { .ai_family = self.domain, .ai_socktype = self.type };
-	AddrInfo* ai;
-	int errcode = os::getaddrinfo(zhost, zport, &hints, &ai);
-	if (errcode != 0) return NetError.ADDRINFO_FAILED?;
-	return ai;
-}
-
-macro apply_sockoptions(sockfd, options)
-{
-	Socket sock = { .sock = sockfd };
-	foreach (o : options) sock.set_option(o, true)!;
-}
-
 macro void @loop_over_ai(AddrInfo* ai; @body(NativeSocket fd, AddrInfo* ai))
 {
-	while (ai)
-	{
-		NativeSocket sockfd = os::socket(ai.ai_family, ai.ai_socktype, ai.ai_protocol);
-		if (sockfd > 0)
-		{
-			@body(sockfd, ai);
-		}
-		ai = ai.ai_next;
-	}
-}
-
-macro @network_loop_over_ai(network, host, port; @body(fd, ai)) @private
-{
-	AddrInfo* ai = network.addrinfo(host, port)!;
-	AddrInfo* first = ai;
-	defer os::freeaddrinfo(first);
 	while (ai)
 	{
 		NativeSocket sockfd = os::socket(ai.ai_family, ai.ai_socktype, ai.ai_protocol);
@@ -125,8 +41,6 @@ enum SocketOption : char (CInt value)
 	OOBINLINE (os::SO_OOBINLINE),
 	DONTROUTE (os::SO_DONTROUTE),
 }
-
-
 
 fn Stream Socket.as_stream(&self)
 {
@@ -158,12 +72,6 @@ fn void! Socket.set_option(&self, SocketOption option, bool value)
 	if (errcode != 0) return NetError.SOCKOPT_FAILED?;
 }
 
-macro void! @set_option_value(NativeSocket sock, CInt option, value)
-{
-	var val = value;
-	if (os::setsockopt(sock, os::SOL_SOCKET, option, &val, $sizeof(val))) return NetError.SOCKOPT_FAILED?;
-}
-
 fn bool! Socket.get_option(&self, SocketOption option)
 {
 	CInt flag;
@@ -189,27 +97,4 @@ fn usz! Socket.write(&self, char[] bytes)
 fn void! Socket.close(&self) @inline
 {
 	self.sock.close()!;
-}
-
-struct Listener
-{
-	Socket socket;
-}
-
-fn void! Listener.init(&self, Network network, String host, String port, int backlog = 10, SocketOption... options)
-{
-	*self = { .socket = network.listen(host, port, backlog, ...options)! };
-}
-
-fn Socket! Listener.accept(&self)
-{
-	Socket sock = self.socket;
-	sock.sock = os::accept(sock.sock, (SockAddrPtr)&sock.ai_addr_storage, &sock.ai_addrlen);
-	if (sock.sock < 0) return NetError.ACCEPT_FAILED?;
-	return sock;
-}
-
-fn void! Listener.close(&self) @inline
-{
-	self.socket.close()!;
 }

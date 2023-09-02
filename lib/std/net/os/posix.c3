@@ -43,10 +43,20 @@ macro void! NativeSocket.close(self)
 	}
 }
 
-macro void! NativeSocket.set_non_blocking(self)
+macro void! NativeSocket.set_non_blocking(self, bool non_blocking)
 {
 	int flags = fcntl(self, F_GETFL, 0);
-	if (fcntl(self, F_SETFL, flags | O_NONBLOCK) == -1)
+	if (non_blocking)
+	{
+		if (flags & O_NONBLOCK) return;
+		flags |= O_NONBLOCK;
+	}
+	else
+	{
+		if (!(flags & O_NONBLOCK)) return;
+		flags &= ~(int)O_NONBLOCK;
+	}
+	if (fcntl(self, F_SETFL, flags) == -1)
 	{
 		if (libc::errno() == errno::EBADF) return NetError.INVALID_SOCKET?;
 		return NetError.GENERAL_ERROR?;

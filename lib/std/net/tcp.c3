@@ -1,4 +1,5 @@
 module std::net::tcp @if(os::SUPPORTS_INET);
+import std::net @public;
 import libc;
 
 def TcpSocket = distinct inline Socket;
@@ -11,9 +12,21 @@ fn TcpSocket! connect(String host, uint port, SocketOption... options, IpProtoco
 	return connect_to(ai, ...options);
 }
 
+fn TcpSocket! connect_async(String host, uint port, SocketOption... options, IpProtocol protocol = UNSPECIFIED)
+{
+	AddrInfo* ai =  net::addrinfo(host, port, protocol.ai_family, os::SOCK_STREAM)!;
+	defer os::freeaddrinfo(ai);
+	return connect_async_to(ai, ...options);
+}
+
 fn TcpSocket! connect_to(AddrInfo* ai, SocketOption... options)
 {
-	return (TcpSocket)net::_connect(ai, options);
+	return (TcpSocket)net::connect_from_addrinfo(ai, options);
+}
+
+fn TcpSocket! connect_async_to(AddrInfo* ai, SocketOption... options)
+{
+	return (TcpSocket)net::connect_async_from_addrinfo(ai, options);
 }
 
 fn TcpServerSocket! listen(String host, uint port, uint backlog, SocketOption... options, IpProtocol protocol = UNSPECIFIED)

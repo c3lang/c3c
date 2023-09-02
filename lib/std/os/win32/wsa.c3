@@ -6,6 +6,10 @@ extern fn WSAError win32_WSAGetLastError() @extern("WSAGetLastError") @builtin;
 extern fn void win32_WSASetLastError(WSAError error) @extern("WSASetLastError") @builtin;
 extern fn CInt win32_WSAStartup(Win32_WORD, void*) @extern("WSAStartup") @builtin;
 
+const int FIONBIO = -2147195266;
+const int FIONREAD = 1074030207;
+const int SIOCATMARK = 1074033415;
+
 module std::os::win32::wsa @if(env::WIN32);
 
 const WSAError NO_ERROR                     = 0;

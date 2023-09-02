@@ -19,6 +19,14 @@ extern fn int bind(NativeSocket, SockAddrPtr address, Socklen_t address_len);
 extern fn int listen(NativeSocket, int backlog);
 extern fn NativeSocket accept(NativeSocket, SockAddrPtr address, Socklen_t* address_len);
 
+fn void! NativeSocket.set_non_blocking(self, bool non_blocking)
+{
+	if (ioctlsocket(self, win32::FIONBIO, &&(ulong)non_blocking))
+	{
+		return socket_error()?;
+	}
+}
+
 macro void! NativeSocket.close(self)
 {
 	WSAError error = closesocket(self);
