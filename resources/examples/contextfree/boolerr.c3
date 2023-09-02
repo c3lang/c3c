@@ -19,7 +19,7 @@ struct StringData @private
 	char[*] chars;
 }
 
-fn void Summary.print(Summary *s, File out)
+fn void Summary.print(Summary *s, File* out)
 {
 	String title = s.title ? s.title.as_str() : "missing";
 	out.printf("Summary({ .title = %s, .ok = %s})", title, s.ok);

@@ -351,7 +351,7 @@ fn CInt! SubProcess.join(&self) @if(env::POSIX)
 
 fn File SubProcess.stdout(&self)
 {
-	return file::from_libc(self.stdout_file);
+	return file::from_handle(self.stdout_file);
 }
 
 fn CInt! SubProcess.join(&self) @if(env::WIN32)

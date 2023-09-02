@@ -38,7 +38,7 @@ fn void! brainf(String program)
 				io::putchar(memory[mem]);
 				io::stdout().flush();
 			case ',':
-				memory[mem] = io::stdin().getc()!!;
+				memory[mem] = io::stdin().read_byte()!!;
 			case '[':
 				usz indent = 1;
 				if (memory[mem]) continue;

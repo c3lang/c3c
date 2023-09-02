@@ -8,7 +8,7 @@ fn void! limitreader()
     src.init(DATA);
     const LIMIT = 5;
     LimitReader lmr;
-    lmr.init(src.as_stream(), LIMIT);
+    lmr.init(&src, LIMIT);
 
     char[DATA.len] bytes;
     usz n = lmr.read(bytes[..])!;

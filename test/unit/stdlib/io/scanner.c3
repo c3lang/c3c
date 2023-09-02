@@ -25,7 +25,7 @@ fn void! test_scanner()
         br.init(tc.in);
         Scanner sc;
         char[4] buffer; // max match (2) + pattern length (2)
-        sc.init(br.as_stream(), buffer[..]);
+        sc.init(&br, buffer[..]);
 
         Results results;
         while LOOP: (true)

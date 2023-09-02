@@ -14,7 +14,7 @@ fn Socket! connect_from_addrinfo(AddrInfo* addrinfo, SocketOption[] options) @pr
 		apply_sockoptions(sockfd, options)!;
 		int errcode = os::connect(sockfd, ai.ai_addr, ai.ai_addrlen);
 		// Keep the first successful connection.
-		if (!errcode) return network_socket(sockfd, ai);
+		if (!errcode) return new_socket(sockfd, ai);
 	};
 	return os::socket_error()?;
 }
@@ -44,7 +44,7 @@ fn Socket! connect_async_from_addrinfo(AddrInfo* addrinfo, SocketOption[] option
 		if (!errcode || last_error_is_delayed_connect())
 		{
 			// Keep the first successful connection.
-			return network_socket(sockfd, ai);
+			return new_socket(sockfd, ai);
 		}
 	};
 	return os::socket_error()?;

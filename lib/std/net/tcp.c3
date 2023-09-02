@@ -50,7 +50,7 @@ fn TcpServerSocket! listen_to(AddrInfo* ai, uint backlog, SocketOption... option
 	{
 		net::apply_sockoptions(sockfd, options)!;
 		bool err = os::bind(sockfd, ai_candidate.ai_addr, ai_candidate.ai_addrlen) || os::listen(sockfd, backlog);
-		if (!err) return (TcpServerSocket)net::network_socket(sockfd, ai_candidate);
+		if (!err) return (TcpServerSocket)net::new_socket(sockfd, ai_candidate);
 	};
 	return os::socket_error()?;
 }

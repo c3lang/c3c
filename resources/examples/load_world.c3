@@ -6,6 +6,6 @@ fn void! main()
 	defer f.close()!!;
 	while (!f.eof())
 	{
-		@pool() { io::printn(f.tgetline()); };
+		@pool() { io::printn(f.treadline()!); };
 	}
 }

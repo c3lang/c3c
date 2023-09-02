@@ -2,27 +2,35 @@ module std::io::stream;
 
 struct LimitReader
 {
-	Stream reader;
+	inline Stream stream;
+	Stream* wrapped_stream;
 	usz limit;
 }
 
-fn void LimitReader.init(&self, Stream reader, usz limit)
+/**
+ * @param [&inout] wrapped_stream "The stream to read from"
+ * @param limit "The max limit to read"
+ **/
+fn LimitReader* LimitReader.init(&self, Stream* wrapped_stream, usz limit)
 {
-	*self = { .reader = reader, .limit = limit };
+	*self = { .stream.fns = &LIMITREADER_INTERFACE, .wrapped_stream = wrapped_stream, .limit = limit };
+	return self;
 }
 
 fn usz! LimitReader.read(&self, char[] bytes)
 {
 	if (self.limit == 0) return IoError.EOF?;
 	usz m = min(bytes.len, self.limit);
-	usz n = self.reader.read(bytes[:m])!;
+	usz n = self.wrapped_stream.read(bytes[:m])!;
 	self.limit -= n;
 	return n;
 }
 
-fn Stream LimitReader.as_stream(&self)
+fn char! LimitReader.read_byte(&self)
 {
-	return { .fns = &limitreader_interface, .data = self };
+	if (self.limit == 0) return IoError.EOF?;
+	defer try self.limit--;
+	return self.wrapped_stream.read_byte();
 }
 
 fn usz LimitReader.available(&self) @inline
@@ -30,7 +38,8 @@ fn usz LimitReader.available(&self) @inline
 	return self.limit;
 }
 
-StreamInterface limitreader_interface = {
-	.read_fn = fn(s, char[] bytes) => ((LimitReader*)s.data).read(bytes),
-	.available_fn = fn(s) => ((LimitReader*)s.data).available(),
+const StreamInterface LIMITREADER_INTERFACE = {
+	.read_fn = (ReadStreamFn)&LimitReader.read,
+	.read_byte_fn = (ReadByteStreamFn)&LimitReader.read_byte,
+	.available_fn = fn(s) => ((LimitReader*)s).available(),
 };

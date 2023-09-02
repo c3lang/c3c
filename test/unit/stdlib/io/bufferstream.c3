@@ -8,7 +8,7 @@ fn void! readbuffer_large()
     src.init(DATA);
     char[DATA.len] buf;
     ReadBuffer reader_buf;
-    reader_buf.init(src.as_stream(), buf[..]);
+    reader_buf.init(&src, buf[..]);
 
     char[DATA.len] bytes;
     usz n = reader_buf.read(bytes[..])!;
@@ -24,12 +24,12 @@ fn void! readbuffer()
     src.init(DATA);
     char[3] buf;
     ReadBuffer reader_buf;
-    reader_buf.init(src.as_stream(), buf[..]);
+    reader_buf.init(&src, buf[..]);
 
     ByteWriter bw;
     bw.tinit();
 
-    usz n = reader_buf.as_stream().copy_to(bw.as_stream())!;
+    usz n = reader_buf.copy_to(&bw)!;
 
     assert(n == DATA.len, "got %d; want %d", n, DATA.len);
     String got = bw.as_str();
@@ -42,7 +42,7 @@ fn void! writebuffer_large()
     out.tinit();
     char[16] buf;
     WriteBuffer write_buf;
-    write_buf.init(out.as_stream(), buf[..]);
+    write_buf.init(&out, buf[..]);
 
     usz n = write_buf.write(DATA)!;
 
@@ -59,9 +59,9 @@ fn void! writebuffer()
     out.tinit();
     char[3] buf;
     WriteBuffer write_buf;
-    write_buf.init(out.as_stream(), buf[..]);
+    write_buf.init(&out, buf[..]);
 
-    usz n = br.as_stream().copy_to(write_buf.as_stream())!;
+    usz n = br.copy_to(&write_buf)!;
 
     assert(n == DATA.len, "got %d; want %d", n, DATA.len);
     String got = out.as_str();

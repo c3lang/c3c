@@ -486,6 +486,8 @@ CHECK_ACCESS:
 	switch (decl->var.kind)
 	{
 		case VARDECL_LOCAL:
+			if (decl->var.is_static) return true;
+			FALLTHROUGH;
 		case VARDECL_PARAM:
 			break;
 		default:

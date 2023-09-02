@@ -6,6 +6,7 @@ import libc;
 
 struct File
 {
+	inline Stream stream;
 	CFile file;
 }
 
@@ -95,19 +96,25 @@ fn void putchar(char c) @inline
 	libc::putchar(c);
 }
 
-fn File stdout()
+fn File* stdout()
 {
-	return { libc::stdout() };
+	static File file;
+	if (!file.fns) file = file::from_handle(libc::stdout());
+	return &file;
 }
 
-fn File stderr()
+fn File* stderr()
 {
-	return { libc::stderr() };
+	static File file;
+	if (!file.fns) file = file::from_handle(libc::stderr());
+	return &file;
 }
 
-fn File stdin()
+fn File* stdin()
 {
-	return { libc::stdin() };
+	static File file;
+	if (!file.fns) file = file::from_handle(libc::stdin());
+	return &file;
 }
 
 module std::io @if(!env::LIBC);

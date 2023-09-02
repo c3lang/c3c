@@ -378,7 +378,7 @@ fn void DString.reserve(&self, usz addition)
 	*self = (DString)realloc(data, StringData.sizeof + new_capacity, .using = data.allocator);
 }
 
-fn usz! DString.read_from_stream(&self, Stream reader)
+fn usz! DString.read_from_stream(&self, Stream* reader)
 {
 	if (reader.supports_available())
 	{

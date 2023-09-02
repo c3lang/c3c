@@ -2,7 +2,8 @@ module std::io;
 
 struct ReadBuffer
 {
-	Stream stream;
+	inline Stream stream;
+	Stream* wrapped_stream;
 	char[] bytes;
 	usz read_idx;
 	usz write_idx;
@@ -14,19 +15,16 @@ struct ReadBuffer
  * @require bytes.len > 0
  * @require self.bytes.len == 0 "Init may not run on already initialized data"
  **/
-fn void ReadBuffer.init(&self, Stream stream, char[] bytes)
+fn ReadBuffer* ReadBuffer.init(&self, Stream* wrapped_stream, char[] bytes)
 {
-	*self = { .stream = stream, .bytes = bytes };
+	*self = { .stream.fns = &READBUFFER_INTERFACE, .wrapped_stream = wrapped_stream, .bytes = bytes };
+	return self;
 }
 
-fn Stream ReadBuffer.as_stream(&self)
-{
-	return { .fns = &readbuffer_interface, .data = self };
-}
 
-StreamInterface readbuffer_interface = {
-	.read_fn = fn(s, char[] bytes) => ((ReadBuffer*)s.data).read(bytes),
-	.read_byte_fn = fn(s) => ((ReadBuffer*)s.data).read_byte(),
+const StreamInterface READBUFFER_INTERFACE = {
+	.read_fn = (ReadStreamFn)&ReadBuffer.read,
+	.read_byte_fn = (ReadByteStreamFn)&ReadBuffer.read_byte,
 };
 
 fn String ReadBuffer.as_str(&self) @inline
@@ -41,7 +39,7 @@ fn usz! ReadBuffer.read(&self, char[] bytes)
 		if (self.read_idx == 0 && bytes.len >= self.bytes.len)
 		{
 			// Read directly into the input buffer.
-			return self.stream.read(bytes)!;
+			return self.wrapped_stream.read(bytes)!;
 		}
 		self.refill()!;
 	}
@@ -63,12 +61,13 @@ fn char! ReadBuffer.read_byte(&self)
 fn void! ReadBuffer.refill(&self) @local @inline
 {
 	self.read_idx = 0;
-	self.write_idx = self.stream.read(self.bytes)!;
+	self.write_idx = self.wrapped_stream.read(self.bytes)!;
 }
 
 struct WriteBuffer
 {
-	Stream stream;
+	inline Stream stream;
+	Stream* wrapped_stream;
 	char[] bytes;
 	usz index;
 }
@@ -79,20 +78,16 @@ struct WriteBuffer
  * @require bytes.len > 0 "Non-empty buffer required"
  * @require self.bytes.len == 0 "Init may not run on already initialized data"
  **/
-fn void WriteBuffer.init(&self, Stream stream, char[] bytes)
+fn WriteBuffer* WriteBuffer.init(&self, Stream* wrapped_stream, char[] bytes)
 {
-	*self = { .stream = stream, .bytes = bytes };
+	*self = { .stream.fns = &WRITEBUFFER_INTERFACE, .wrapped_stream = wrapped_stream, .bytes = bytes };
+	return self;
 }
 
-fn Stream WriteBuffer.as_stream(&self)
-{
-	return { .fns = &writebuffer_interface, .data = self };
-}
-
-StreamInterface writebuffer_interface = {
-	.flush_fn = fn(s) => ((WriteBuffer*)s.data).flush(),
-	.write_fn = fn(s, char[] bytes) => ((WriteBuffer*)s.data).write(bytes),
-	.write_byte_fn = fn(s, char c) => ((WriteBuffer*)s.data).write_byte(c),
+const StreamInterface WRITEBUFFER_INTERFACE = {
+	.flush_fn = (FlushStreamFn)&WriteBuffer.flush,
+	.write_fn = (WriteStreamFn)&WriteBuffer.write,
+	.write_byte_fn = (WriteByteStreamFn)&WriteBuffer.write_byte,
 };
 
 fn String WriteBuffer.as_str(&self) @inline
@@ -103,7 +98,7 @@ fn String WriteBuffer.as_str(&self) @inline
 fn void! WriteBuffer.flush(&self)
 {
 	self.write_pending()!;
-	if (self.stream.supports_flush()) self.stream.flush()!;
+	if (self.wrapped_stream.supports_flush()) self.wrapped_stream.flush()!;
 }
 
 fn usz! WriteBuffer.write(&self, char[] bytes)
@@ -120,7 +115,7 @@ fn usz! WriteBuffer.write(&self, char[] bytes)
 	if (bytes.len >= self.bytes.len)
 	{
 		// Write directly to the stream.
-		return self.stream.write(bytes);
+		return self.wrapped_stream.write(bytes);
 	}
 	// Buffer the data.
 	self.bytes[:bytes.len] = bytes[..];
@@ -138,6 +133,6 @@ fn void! WriteBuffer.write_byte(&self, char c)
 
 fn void! WriteBuffer.write_pending(&self) @local
 {
-	self.index -= self.stream.write(self.bytes[:self.index])!;
+	self.index -= self.wrapped_stream.write(self.bytes[:self.index])!;
 	if (self.index != 0) return IoError.INCOMPLETE_WRITE?;
 }

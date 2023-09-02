@@ -115,27 +115,19 @@ define void @examples.demo_enum(i32 %0) #0 {
 entry:
   %switch = alloca i32, align 4
   %retparam = alloca i64, align 8
-  %result = alloca %File, align 8
   %retparam2 = alloca i64, align 8
-  %result3 = alloca %File, align 8
-  %switch4 = alloca i32, align 4
-  %retparam7 = alloca i64, align 8
-  %result8 = alloca %File, align 8
-  %retparam10 = alloca i64, align 8
-  %result11 = alloca %File, align 8
-  %switch13 = alloca i32, align 4
-  %retparam17 = alloca i64, align 8
-  %result18 = alloca %File, align 8
+  %switch3 = alloca i32, align 4
+  %retparam6 = alloca i64, align 8
+  %retparam8 = alloca i64, align 8
+  %switch10 = alloca i32, align 4
+  %retparam14 = alloca i64, align 8
+  %switch17 = alloca i32, align 4
   %switch21 = alloca i32, align 4
-  %switch25 = alloca i32, align 4
   %a = alloca i32, align 4
-  %retparam28 = alloca i64, align 8
-  %result29 = alloca %File, align 8
-  %a31 = alloca i32, align 4
-  %retparam32 = alloca i64, align 8
-  %result33 = alloca %File, align 8
-  %retparam35 = alloca i64, align 8
-  %result36 = alloca %File, align 8
+  %retparam24 = alloca i64, align 8
+  %a26 = alloca i32, align 4
+  %retparam27 = alloca i64, align 8
+  %retparam29 = alloca i64, align 8
   store i32 %0, ptr %switch, align 4
   br label %switch.entry
 switch.entry:                                     ; preds = %entry
@@ -147,102 +139,86 @@ switch.entry:                                     ; preds = %entry
   ]
 switch.case:                                      ; preds = %switch.entry, %switch.entry
   %2 = call ptr @std.io.stdout()
-  store ptr %2, ptr %result, align 8
-  %3 = load ptr, ptr %result, align 8
-  %4 = call i64 @std.io.File.printn(ptr %retparam, ptr %3, ptr @.str.1, i64 8)
+  %3 = call i64 @std.io.File.printn(ptr %retparam, ptr %2, ptr @.str.1, i64 8)
   br label %switch.exit
 switch.case1:                                     ; preds = %switch.entry
-  %5 = call ptr @std.io.stdout()
-  store ptr %5, ptr %result3, align 8
-  %6 = load ptr, ptr %result3, align 8
-  %7 = call i64 @std.io.File.printn(ptr %retparam2, ptr %6, ptr @.str.2, i64 4)
+  %4 = call ptr @std.io.stdout()
+  %5 = call i64 @std.io.File.printn(ptr %retparam2, ptr %4, ptr @.str.2, i64 4)
   br label %switch.exit
 switch.exit:                                      ; preds = %switch.case1, %switch.case, %switch.entry
-  store i32 %0, ptr %switch4, align 4
-  br label %switch.entry5
-switch.entry5:                                    ; preds = %switch.exit
-  %8 = load i32, ptr %switch4, align 4
-  switch i32 %8, label %switch.exit12 [
-    i32 0, label %switch.case6
-    i32 1, label %switch.case6
-    i32 2, label %switch.case9
+  store i32 %0, ptr %switch3, align 4
+  br label %switch.entry4
+switch.entry4:                                    ; preds = %switch.exit
+  %6 = load i32, ptr %switch3, align 4
+  switch i32 %6, label %switch.exit9 [
+    i32 0, label %switch.case5
+    i32 1, label %switch.case5
+    i32 2, label %switch.case7
   ]
-switch.case6:                                     ; preds = %switch.entry5, %switch.entry5
+switch.case5:                                     ; preds = %switch.entry4, %switch.entry4
+  %7 = call ptr @std.io.stdout()
+  %8 = call i64 @std.io.File.printn(ptr %retparam6, ptr %7, ptr @.str.3, i64 8)
+  br label %switch.exit9
+switch.case7:                                     ; preds = %switch.entry4
   %9 = call ptr @std.io.stdout()
-  store ptr %9, ptr %result8, align 8
-  %10 = load ptr, ptr %result8, align 8
-  %11 = call i64 @std.io.File.printn(ptr %retparam7, ptr %10, ptr @.str.3, i64 8)
-  br label %switch.exit12
-switch.case9:                                     ; preds = %switch.entry5
+  %10 = call i64 @std.io.File.printn(ptr %retparam8, ptr %9, ptr @.str.4, i64 4)
+  br label %switch.exit9
+switch.exit9:                                     ; preds = %switch.case7, %switch.case5, %switch.entry4
+  store i32 %0, ptr %switch10, align 4
+  br label %switch.entry11
+switch.entry11:                                   ; preds = %switch.exit9
+  %11 = load i32, ptr %switch10, align 4
+  switch i32 %11, label %switch.exit16 [
+    i32 0, label %switch.case12
+    i32 1, label %switch.case13
+    i32 2, label %switch.case15
+  ]
+switch.case12:                                    ; preds = %switch.entry11
+  br label %switch.exit16
+switch.case13:                                    ; preds = %switch.entry11
   %12 = call ptr @std.io.stdout()
-  store ptr %12, ptr %result11, align 8
-  %13 = load ptr, ptr %result11, align 8
-  %14 = call i64 @std.io.File.printn(ptr %retparam10, ptr %13, ptr @.str.4, i64 4)
-  br label %switch.exit12
-switch.exit12:                                    ; preds = %switch.case9, %switch.case6, %switch.entry5
-  store i32 %0, ptr %switch13, align 4
-  br label %switch.entry14
-switch.entry14:                                   ; preds = %switch.exit12
-  %15 = load i32, ptr %switch13, align 4
-  switch i32 %15, label %switch.exit20 [
-    i32 0, label %switch.case15
-    i32 1, label %switch.case16
+  %13 = call i64 @std.io.File.printn(ptr %retparam14, ptr %12, ptr @.str.5, i64 6)
+  br label %switch.exit16
+switch.case15:                                    ; preds = %switch.entry11
+  br label %switch.exit16
+switch.exit16:                                    ; preds = %switch.case15, %switch.case13, %switch.case12, %switch.entry11
+  store i32 %0, ptr %switch17, align 4
+  br label %switch.entry18
+switch.entry18:                                   ; preds = %switch.exit16
+  %14 = load i32, ptr %switch17, align 4
+  switch i32 %14, label %switch.default [
+    i32 0, label %switch.case19
+    i32 1, label %switch.case19
     i32 2, label %switch.case19
   ]
-switch.case15:                                    ; preds = %switch.entry14
+switch.case19:                                    ; preds = %switch.entry18, %switch.entry18, %switch.entry18
   br label %switch.exit20
-switch.case16:                                    ; preds = %switch.entry14
-  %16 = call ptr @std.io.stdout()
-  store ptr %16, ptr %result18, align 8
-  %17 = load ptr, ptr %result18, align 8
-  %18 = call i64 @std.io.File.printn(ptr %retparam17, ptr %17, ptr @.str.5, i64 6)
+switch.default:                                   ; preds = %switch.entry18
   br label %switch.exit20
-switch.case19:                                    ; preds = %switch.entry14
-  br label %switch.exit20
-switch.exit20:                                    ; preds = %switch.case19, %switch.case16, %switch.case15, %switch.entry14
+switch.exit20:                                    ; preds = %switch.default, %switch.case19
   store i32 %0, ptr %switch21, align 4
   br label %switch.entry22
 switch.entry22:                                   ; preds = %switch.exit20
-  %19 = load i32, ptr %switch21, align 4
-  switch i32 %19, label %switch.default [
+  %15 = load i32, ptr %switch21, align 4
+  switch i32 %15, label %switch.exit30 [
     i32 0, label %switch.case23
-    i32 1, label %switch.case23
-    i32 2, label %switch.case23
+    i32 1, label %switch.case25
+    i32 2, label %switch.case28
   ]
-switch.case23:                                    ; preds = %switch.entry22, %switch.entry22, %switch.entry22
-  br label %switch.exit24
-switch.default:                                   ; preds = %switch.entry22
-  br label %switch.exit24
-switch.exit24:                                    ; preds = %switch.default, %switch.case23
-  store i32 %0, ptr %switch25, align 4
-  br label %switch.entry26
-switch.entry26:                                   ; preds = %switch.exit24
-  %20 = load i32, ptr %switch25, align 4
-  switch i32 %20, label %switch.exit37 [
-    i32 0, label %switch.case27
-    i32 1, label %switch.case30
-    i32 2, label %switch.case34
-  ]
-switch.case27:                                    ; preds = %switch.entry26
+switch.case23:                                    ; preds = %switch.entry22
   store i32 1, ptr %a, align 4
-  %21 = call ptr @std.io.stdout()
-  store ptr %21, ptr %result29, align 8
-  %22 = load ptr, ptr %result29, align 8
-  %23 = call i64 @std.io.File.printn(ptr %retparam28, ptr %22, ptr @.str.6, i64 1)
-  br label %switch.case30
-switch.case30:                                    ; preds = %switch.entry26, %switch.case27
-  store i32 2, ptr %a31, align 4
-  %24 = call ptr @std.io.stdout()
-  store ptr %24, ptr %result33, align 8
-  %25 = load ptr, ptr %result33, align 8
-  %26 = call i64 @std.io.File.printn(ptr %retparam32, ptr %25, ptr @.str.7, i64 1)
-  br label %switch.case34
-switch.case34:                                    ; preds = %switch.entry26, %switch.case30
-  %27 = call ptr @std.io.stdout()
-  store ptr %27, ptr %result36, align 8
-  %28 = load ptr, ptr %result36, align 8
-  %29 = call i64 @std.io.File.printn(ptr %retparam35, ptr %28, ptr @.str.8, i64 1)
-  br label %switch.exit37
-switch.exit37:                                    ; preds = %switch.case34, %switch.entry26
+  %16 = call ptr @std.io.stdout()
+  %17 = call i64 @std.io.File.printn(ptr %retparam24, ptr %16, ptr @.str.6, i64 1)
+  br label %switch.case25
+switch.case25:                                    ; preds = %switch.entry22, %switch.case23
+  store i32 2, ptr %a26, align 4
+  %18 = call ptr @std.io.stdout()
+  %19 = call i64 @std.io.File.printn(ptr %retparam27, ptr %18, ptr @.str.7, i64 1)
+  br label %switch.case28
+switch.case28:                                    ; preds = %switch.entry22, %switch.case25
+  %20 = call ptr @std.io.stdout()
+  %21 = call i64 @std.io.File.printn(ptr %retparam29, ptr %20, ptr @.str.8, i64 1)
+  br label %switch.exit30
+switch.exit30:                                    ; preds = %switch.case28, %switch.entry22
   ret void
 }

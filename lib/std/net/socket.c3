@@ -4,6 +4,7 @@ import libc;
 
 struct Socket
 {
+	inline Stream stream;
 	NativeSocket sock;
 	Socklen_t ai_addrlen;
 	// TODO proper way to get the size of sockaddr_storage
@@ -24,9 +25,9 @@ macro void @loop_over_ai(AddrInfo* ai; @body(NativeSocket fd, AddrInfo* ai))
 	}
 }
 
-macro Socket network_socket(fd, ai)
+macro Socket new_socket(fd, ai)
 {
-	Socket sock = { .sock = fd, .ai_addrlen = ai.ai_addrlen };
+	Socket sock = { .stream.fns = &SOCKETSTREAM_INTERFACE, .sock = fd, .ai_addrlen = ai.ai_addrlen };
 	assert(sock.ai_addr_storage.len >= ai.ai_addrlen, "storage %d < addrlen %d", sock.ai_addr_storage.len, ai.ai_addrlen);
 	mem::copy(&sock.ai_addr_storage, (void*)ai.ai_addr, ai.ai_addrlen);
 	return sock;
@@ -42,15 +43,10 @@ enum SocketOption : char (CInt value)
 	DONTROUTE (os::SO_DONTROUTE),
 }
 
-fn Stream Socket.as_stream(&self)
-{
-	return { .fns = &socketstream_interface, .data = self };
-}
-
-StreamInterface socketstream_interface = {
-	.read_fn = fn(s, char[] bytes) => ((Socket*)s.data).read(bytes) @inline,
-	.write_fn = fn(s, char[] bytes) => ((Socket*)s.data).write(bytes) @inline,
-	.close_fn = fn(s) => ((Socket*)s.data).close(),
+const StreamInterface SOCKETSTREAM_INTERFACE = {
+	.read_fn = (ReadStreamFn)&Socket.read,
+	.write_fn = (WriteStreamFn)&Socket.write,
+	.close_fn = (CloseStreamFn)&Socket.close,
 };
 
 fn bool! Socket.get_broadcast(&self) => self.get_option(BROADCAST);

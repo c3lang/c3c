@@ -10,5 +10,5 @@ macro char[] read(src, allocator, n)
 fn void main()
 {
     ByteReader br;
-    read(br.as_stream(), mem::temp(), 10);
+    read(&br, mem::temp(), 10);
 }

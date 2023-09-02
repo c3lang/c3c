@@ -75,11 +75,8 @@ fn void main()
 define void @foo.Foo.hello(ptr %0) #0 {
 entry:
   %retparam = alloca i64, align 8
-  %result = alloca %File, align 8
   %1 = call ptr @std.io.stdout()
-  store ptr %1, ptr %result, align 8
-  %2 = load ptr, ptr %result, align 8
-  %3 = call i64 @std.io.File.printn(ptr %retparam, ptr %2, ptr @.str.12, i64 14)
+  %2 = call i64 @std.io.File.printn(ptr %retparam, ptr %1, ptr @.str.12, i64 14)
   ret void
 }
 
@@ -87,11 +84,8 @@ entry:
 define void @foo.Bar.hello(ptr %0) #0 {
 entry:
   %retparam = alloca i64, align 8
-  %result = alloca %File, align 8
   %1 = call ptr @std.io.stdout()
-  store ptr %1, ptr %result, align 8
-  %2 = load ptr, ptr %result, align 8
-  %3 = call i64 @std.io.File.printn(ptr %retparam, ptr %2, ptr @.str.13, i64 14)
+  %2 = call i64 @std.io.File.printn(ptr %retparam, ptr %1, ptr @.str.13, i64 14)
   ret void
 }
 
@@ -99,11 +93,8 @@ entry:
 define void @foo.MyEnum.hello(ptr %0) #0 {
 entry:
   %retparam = alloca i64, align 8
-  %result = alloca %File, align 8
   %1 = call ptr @std.io.stdout()
-  store ptr %1, ptr %result, align 8
-  %2 = load ptr, ptr %result, align 8
-  %3 = call i64 @std.io.File.printn(ptr %retparam, ptr %2, ptr @.str.14, i64 17)
+  %2 = call i64 @std.io.File.printn(ptr %retparam, ptr %1, ptr @.str.14, i64 17)
   ret void
 }
 
