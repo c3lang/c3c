@@ -3,6 +3,7 @@ import std::math;
 
 struct ByteBuffer
 {
+	inline Stream stream;
 	Allocator* allocator;
 	usz max_read;
 	char[] bytes;
@@ -16,16 +17,17 @@ struct ByteBuffer
  * max_read defines how many bytes might be kept before its internal buffer is shrinked.
  * @require self.bytes.len == 0 "Buffer already initialized."
  **/
-fn void! ByteBuffer.init(&self, usz max_read, usz initial_capacity = 16, Allocator* using = mem::heap())
+fn ByteBuffer*! ByteBuffer.init(&self, usz max_read, usz initial_capacity = 16, Allocator* using = mem::heap())
 {
-	*self = { .allocator = using, .max_read = max_read };
+	*self = { .stream.fns = &BYTEBUFFER_INTERFACE, .allocator = using, .max_read = max_read };
 	initial_capacity = max(initial_capacity, 16);
 	self.grow(initial_capacity)!;
+	return self;
 }
 
-fn void! ByteBuffer.tinit(&self, usz max_read, usz initial_capacity = 16)
+fn ByteBuffer*! ByteBuffer.tinit(&self, usz max_read, usz initial_capacity = 16)
 {
-	self.init(max_read, initial_capacity, mem::temp())!;
+	return self.init(max_read, initial_capacity, mem::temp())!;
 }
 
 fn void! ByteBuffer.free(&self)
@@ -34,18 +36,13 @@ fn void! ByteBuffer.free(&self)
 	*self = {};
 }
 
-fn Stream ByteBuffer.as_stream(&self)
-{
-	return { .fns = &bytebuffer_interface, .data = self };
-}
-
-StreamInterface bytebuffer_interface = {
-	.write_fn = fn(s, char[] bytes) => ((ByteBuffer*)s.data).write(bytes),
-	.write_byte_fn = fn(s, c) => ((ByteBuffer*)s.data).write_byte(c),
-	.read_fn = fn(s, char[] bytes) => ((ByteBuffer*)s.data).read(bytes),
-	.read_byte_fn = fn(s) => ((ByteBuffer*)s.data).read_byte(),
-	.pushback_byte_fn = fn(s) => ((ByteBuffer*)s.data).pushback_byte(),
-	.available_fn = fn(s) => ((ByteBuffer*)s.data).available(),
+const StreamInterface BYTEBUFFER_INTERFACE = {
+	.write_fn = (WriteStreamFn)&ByteBuffer.write,
+	.write_byte_fn = (WriteByteStreamFn)&ByteBuffer.write_byte,
+	.read_fn = (ReadStreamFn)&ByteBuffer.read,
+	.read_byte_fn = (ReadByteStreamFn)&ByteBuffer.read_byte,
+	.pushback_byte_fn = (PushbackByteStreamFn)&ByteBuffer.pushback_byte,
+	.available_fn = (AvailableStreamFn)&ByteBuffer.available
 };
 
 fn usz! ByteBuffer.write(&self, char[] bytes)

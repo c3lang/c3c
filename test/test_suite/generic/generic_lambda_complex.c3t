@@ -102,16 +102,16 @@ fn void! TextTemplate.free(&self)
 	*self = {};
 }
 
-fn Stream TextTemplate.as_stream(&self)
+fn StreamWrapper TextTemplate.as_stream(&self)
 {
-    return { .fns = &texttemplate_interface, .data = self };
+    return { .stream.fns = &texttemplate_interface, .data = self };
 }
 
 StreamInterface texttemplate_interface @private = {
-    .write_stream_fn = fn (s, out) => ((TextTemplate*)s.data).write_to(out),
+    .write_stream_fn = fn (s, out) => ((TextTemplate*)(((StreamWrapper*)s).data)).write_to(out),
 };
 
-fn usz! TextTemplate.write_to(&self, Stream writer)
+fn usz! TextTemplate.write_to(&self, Stream* writer)
 {
 	usz n;
 	usz pos;
@@ -125,7 +125,7 @@ fn usz! TextTemplate.write_to(&self, Stream writer)
 	return n;
 }
 
-fn usz! TextTag.write(&self, Stream writer)
+fn usz! TextTag.write(&self, Stream* writer)
 {
 	switch (self.kind)
 	{

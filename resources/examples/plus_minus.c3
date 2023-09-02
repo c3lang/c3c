@@ -10,15 +10,15 @@ fault TokenResult
 
 // While we could have written this with libc
 // the C way, let's showcase some features added to C3.
-fn void main(String[] args)
+fn void! main(String[] args)
 {
 	// Grab a string from stdin
-	DString s = io::stdin().getline();
+	String s = io::stdin().readline()!;
 	// Delete it at scope end [defer]
 	defer s.free();
 
-	// Grab the string as a slice.
-	String numbers = s.as_str();
+	// Copy the slice, which doesn't change the underlying data.
+	String numbers = s;
 
 	// Track our current value
 	int val = 0;

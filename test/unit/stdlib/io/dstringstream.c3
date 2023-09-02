@@ -4,14 +4,13 @@ fn void! test_writing()
 {
 	DString foo;
 	foo.init();
-	Stream s = foo.as_stream();
+	Stream* s = DStringStream{}.init(&foo);
 	s.write("hello")!!;
 	s.write_byte('-')!!;
-	s.write("what?")!!;
+	s.write("what?-------------------------------------------------------")!!;
 	ByteReader r;
 	String test_str = "2134";
-	r.init(test_str);
-	s.read_from(r.as_stream())!;
+	s.read_from(r.init(test_str))!;
 	String o = foo.as_str();
-	assert(o == "hello-what?2134");
+	assert(o == "hello-what?-------------------------------------------------------2134");
 }

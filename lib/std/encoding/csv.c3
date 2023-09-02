@@ -3,17 +3,11 @@ import std::io;
 
 struct CsvReader
 {
-	Stream stream;
+	Stream* stream;
 	String separator;
 }
 
-fn void CsvReader.init_file(&self, File* file, String separator = ",")
-{
-	self.stream = file.as_stream();
-	self.separator = separator;
-}
-
-fn void CsvReader.init(&self, Stream stream, String separator = ",")
+fn void CsvReader.init(&self, Stream* stream, String separator = ",")
 {
 	self.stream = stream;
 	self.separator = separator;
@@ -42,7 +36,7 @@ fn void! CsvReader.skip_row(self) @maydiscard
 
 macro CsvReader.@each_row(self, int rows = int.max; @body(String[] row))
 {
-	Stream stream = self.stream;
+	Stream* stream = self.stream;
 	String sep = self.separator;
 	while (rows--)
 	{

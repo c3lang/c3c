@@ -2,18 +2,15 @@ module std::io;
 
 struct ByteReader
 {
+	inline Stream stream;
 	char[] bytes;
 	usz index;
 }
 
-fn void ByteReader.init(&self, char[] bytes)
+fn ByteReader* ByteReader.init(&self, char[] bytes)
 {
-	*self = { .bytes = bytes };
-}
-
-fn Stream ByteReader.as_stream(&self)
-{
-	return { .fns = &bytereader_interface, .data = self };
+	*self = { .stream = { &BYTEREADER_INTERFACE }, .bytes = bytes };
+	return self;
 }
 
 fn usz! ByteReader.read(&self, char[] bytes)
@@ -52,7 +49,7 @@ fn usz! ByteReader.seek(&self, isz offset, Seek seek)
 	return new_index;
 }
 
-fn usz! ByteReader.write_stream(&self, Stream writer)
+fn usz! ByteReader.write_stream(&self, Stream* writer)
 {
 	if (self.index >= self.bytes.len) return 0;
 	usz written = writer.write(self.bytes[self.index..])!;
@@ -66,14 +63,14 @@ fn usz ByteReader.available(&self) @inline
 	return max(0, self.bytes.len - self.index);
 }
 
-StreamInterface bytereader_interface = {
-	.len_fn = fn (s) => ((ByteReader*)s.data).bytes.len,
-	.read_fn = fn (s, char[] bytes) => ((ByteReader*)s.data).read(bytes) @inline,
-	.read_byte_fn = fn (s) => ((ByteReader*)s.data).read_byte() @inline,
-	.pushback_byte_fn = fn (s) => ((ByteReader*)s.data).pushback_byte() @inline,
-	.seek_fn = fn (s, offset, seek) => ((ByteReader*)s.data).seek(offset, seek) @inline,
-	.write_stream_fn = fn (s, writer) => ((ByteReader*)s.data).write_stream(writer) @inline,
-	.available_fn = fn (s) => ((ByteReader*)s.data).available() @inline,
+const StreamInterface BYTEREADER_INTERFACE = {
+	.len_fn = fn (Stream* self) => ((ByteReader*)self).bytes.len,
+	.read_fn = (ReadStreamFn)&ByteReader.read,
+	.read_byte_fn = (ReadByteStreamFn)&ByteReader.read_byte,
+	.pushback_byte_fn = (PushbackByteStreamFn)&ByteReader.pushback_byte,
+	.seek_fn = (SeekStreamFn)&ByteReader.seek,
+	.write_stream_fn = (WriteToStreamFn)&ByteReader.write_stream,
+	.available_fn = fn (Stream* self) => ((ByteReader*)self).available(),
 };
 
 

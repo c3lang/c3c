@@ -64,7 +64,7 @@ fn usz! File.printfn(self, String format, args...) @maydiscard
 	Formatter formatter;
 	formatter.init(&out_fputchar_fn, &self);
 	usz len = formatter.vprintf(format, args)!;
-	self.putc('\n')!;
+	self.write_byte('\n')!;
 	self.flush();
 	return len + 1;
 }
@@ -280,7 +280,7 @@ fn void! out_putchar_fn(char c, void* data @unused) @private
 fn void! out_fputchar_fn(char c, void* data) @private
 {
 	File* f = data;
-	f.putc(c)!;
+	f.write_byte(c)!;
 }
 
 struct BufferData @private

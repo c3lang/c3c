@@ -7,7 +7,7 @@ fn void! simple_test()
 {
 	ByteReader reader;
 	reader.init(`{ "b": 123, "c": [ { "d": 66 }, null, "hello", false, { "id": "xyz" } ] }`);
-	Object* o = json::parse(reader.as_stream())!;
+	Object* o = json::parse(&reader)!;
 	assert(o.get_int("b")! == 123);
 	assert(o.get("c").get_len()! == 5);
 	assert(o.get("c").get_at(0).get_int("d")! == 66);

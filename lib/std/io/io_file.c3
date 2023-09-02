@@ -3,20 +3,21 @@ import libc;
 
 fn File! open(String filename, String mode)
 {
-	return { .file = os::native_fopen(filename, mode) };
+	return from_handle(os::native_fopen(filename, mode));
+}
+
+fn File! open_path(Path path, String mode)
+{
+	return from_handle(os::native_fopen(path.as_str(), mode));
+}
+
+fn File from_handle(CFile file)
+{
+	return { .stream.fns = &FILESTREAM_INTERFACE, .file = file };
 }
 
 fn void! delete(String filename) => os::native_remove(filename) @inline;
 
-fn File! open_path(Path path, String mode)
-{
-	return { .file = os::native_fopen(path.as_str(), mode) };
-}
-
-fn File from_libc(CFile file)
-{
-	return { .file = file };
-}
 
 /**
  * @require self.file != null
@@ -29,7 +30,7 @@ fn void! File.reopen(&self, String filename, String mode)
 /**
  * @require self.file != null
  **/
-fn usz! File.seek(self, isz offset, Seek seek_mode = Seek.SET)
+fn usz! File.seek(&self, isz offset, Seek seek_mode = Seek.SET)
 {
 	os::native_fseek(self.file, offset, seek_mode)!;
 	return os::native_ftell(self.file);
@@ -55,7 +56,7 @@ fn void! File.memopen(File* file, char[] data, String mode)
 /**
  * @require self.file != null
  */
-fn void! File.putc(self, char c)
+fn void! File.write_byte(&self, char c)
 {
 	if (!libc::fputc(c, self.file)) return IoError.EOF?;
 }
@@ -89,7 +90,7 @@ fn void! File.close(&self) @inline
 /**
  * @require self.file
  */
-fn bool File.eof(self) @inline
+fn bool File.eof(&self) @inline
 {
 	return libc::feof(self.file) != 0;
 }
@@ -97,44 +98,24 @@ fn bool File.eof(self) @inline
 /**
  * @param [in] buffer
  */
-fn usz! File.read(self, char[] buffer)
+fn usz! File.read(&self, char[] buffer)
 {
 	return os::native_fread(self.file, buffer);
-}
-
-/**
- * @param ref "the object to read into."
- * @require ref.ptr != null
- * @ensure return == ref.type.sizeof
- */
-fn usz! File.read_any(self, any ref)
-{
-	return self.read(ref.ptr[:ref.type.sizeof]);
 }
 
 /**
  * @param [out] buffer
  * @require self.file `File must be initialized`
  */
-fn usz! File.write(self, char[] buffer)
+fn usz! File.write(&self, char[] buffer)
 {
 	return os::native_fwrite(self.file, buffer);
 }
 
 /**
- * @param ref "the object to write."
- * @require ref.ptr != null
- * @ensure return == ref.type.sizeof
- */
-fn usz! File.write_any(self, any ref)
-{
-	return self.write(ref.ptr[:ref.type.sizeof]);
-}
-
-/**
  * @require self.file `File must be initialized`
  */
-fn usz! File.printn(self, String string = "")
+fn usz! File.printn(&self, String string = "")
 {
 	usz len = self.print(string)!;
 	if (!libc::putc('\n', self.file)) return IoError.UNKNOWN_ERROR?;
@@ -144,39 +125,14 @@ fn usz! File.printn(self, String string = "")
 /**
  * @require self.file `File must be initialized`
  */
-fn usz! File.print(self, String string)
+fn usz! File.print(&self, String string)
 {
 	usz len = string.len;
 	if (len != self.write((char[])string)!) return IoError.UNKNOWN_ERROR?;
 	return len;
 }
 
-/**
- * @require self.file `File must be initialized`
- */
-fn DString File.getline(self, Allocator* using = mem::heap())
-{
-	DString s = dstring::new_with_capacity(120, using);
-	while (!self.eof())
-	{
-		int c = libc::fgetc(self.file);
-		if (c == -1) break;
-		if (c == '\n') break;
-		s.append_char((char)c);
-	}
-	return s;
-}
-
-/**
- * @require self.file `File must be initialized`
- * @return "a zero terminated String (the pointer may be safely cast into a ZString)"
- */
-fn String File.tgetline(self)
-{
-	return self.getline(mem::temp()).zstr().as_str();
-}
-
-fn char! File.getc(self)
+fn char! File.read_byte(&self)
 {
 	int c = libc::fgetc(self.file);
 	if (c == -1) return IoError.EOF?;
@@ -186,7 +142,17 @@ fn char! File.getc(self)
 /**
  * @require self.file `File must be initialized`
  */
-fn void File.flush(self)
+fn void File.flush(&self)
 {
 	libc::fflush(self.file);
 }
+
+const StreamInterface FILESTREAM_INTERFACE = {
+	.close_fn = (CloseStreamFn)&File.close,
+	.seek_fn = (SeekStreamFn)&File.seek,
+	.read_fn = (ReadStreamFn)&File.read,
+	.read_byte_fn = (ReadByteStreamFn)&File.read_byte,
+	.write_fn = (WriteStreamFn)&File.write,
+	.write_byte_fn = (WriteByteStreamFn)&File.write_byte,
+	.flush_fn = (FlushStreamFn)&File.flush
+};

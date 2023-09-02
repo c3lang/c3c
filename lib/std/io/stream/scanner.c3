@@ -2,7 +2,7 @@ module std::io;
 
 struct Scanner
 {
-	Stream reader;
+	Stream* stream;
 	char[] buf;
 	usz pattern_idx;
 	usz read_idx;
@@ -12,11 +12,15 @@ struct Scanner
  * Scanner provides a way to read delimited data (with newlines as the default).
  * The supplied buffer must be at least as large as the expected data length
  * including its pattern.
+ *
+ * @param [&in] stream "The stream to read data from."
  * @require buffer.len > 0 "Non-empty buffer required."
+ * @require stream.supports_read() "The stream must support read."
+ *
  **/
-fn void Scanner.init(&self, Stream reader, char[] buffer)
+fn void Scanner.init(&self, Stream* stream, char[] buffer)
 {
-	*self = { .reader = reader, .buf = buffer };
+	*self = { .stream = stream, .buf = buffer };
 }
 
 /**
@@ -81,7 +85,7 @@ macro usz! Scanner.find(&self, buf, pattern) @private
 
 macro usz! Scanner.refill(&self, buf) @private
 {
-	usz! n = self.reader.read(buf);
+	usz! n = self.stream.read(buf);
 	if (catch err = n)
 	{
 		case IoError.EOF:

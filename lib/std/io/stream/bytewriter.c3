@@ -2,6 +2,7 @@ module std::io;
 
 struct ByteWriter
 {
+	inline Stream stream;
 	char[] bytes;
 	usz index;
 	Allocator* allocator;
@@ -11,30 +12,27 @@ struct ByteWriter
  * @param [&inout] self
  * @param [&in] using
  * @require self.bytes.len == 0 "Init may not run on on already initialized data"
- * @ensure using != null, index == 0
+ * @ensure using != null, self.index == 0
  **/
-fn void ByteWriter.init(&self, Allocator* using = mem::heap())
+fn ByteWriter* ByteWriter.init(&self, Allocator* using = mem::heap())
 {
-	*self = { .bytes = {}, .allocator = using };
+	*self = { .stream.fns = &BYTEWRITER_INTERFACE, .bytes = {}, .allocator = using };
+	return self;
 }
 
-fn void ByteWriter.init_buffer(&self, char[] data)
+fn ByteWriter* ByteWriter.init_buffer(&self, char[] data)
 {
-	*self = { .bytes = data, .allocator = null };
+	*self = { .stream.fns = &BYTEWRITER_INTERFACE, .bytes = data, .allocator = null };
+	return self;
 }
 
 /**
  * @param [&inout] self
  * @require self.bytes.len == 0 "Init may not run on on already initialized data"
  **/
-fn void ByteWriter.tinit(&self)
+fn ByteWriter* ByteWriter.tinit(&self)
 {
-	*self = { .bytes = {}, .allocator = mem::temp() };
-}
-
-fn Stream ByteWriter.as_stream(&self)
-{
-	return { .fns = &bytewriter_interface, .data = self };
+	return self.init(mem::temp());
 }
 
 fn void ByteWriter.destroy(&self)
@@ -77,7 +75,7 @@ fn void! ByteWriter.write_byte(&self, char c)
  * @param [&inout] self
  * @param reader
  **/
-fn usz! ByteWriter.read_from(&self, Stream reader)
+fn usz! ByteWriter.read_from(&self, Stream* reader)
 {
 	usz start_index = self.index;
 	if (reader.supports_available())
@@ -113,10 +111,10 @@ fn usz! ByteWriter.read_from(&self, Stream reader)
 	}
 }
 
-StreamInterface bytewriter_interface = {
-	.destroy_fn = fn (s) => ((ByteWriter*)s.data).destroy(),
-	.len_fn = fn (s) => ((ByteWriter*)s.data).bytes.len,
-	.write_fn = fn (s, char[] bytes) => ((ByteWriter*)s.data).write(bytes),
-	.write_byte_fn = fn (s, char c) => ((ByteWriter*)s.data).write_byte(c),
-	.read_stream_fn = fn (s, reader) => ((ByteWriter*)s.data).read_from(reader),
+const StreamInterface BYTEWRITER_INTERFACE = {
+	.destroy_fn = fn (s) => ((ByteWriter*)s).destroy(),
+	.len_fn = fn (s) => ((ByteWriter*)s).bytes.len,
+	.write_fn = (WriteStreamFn)&ByteWriter.write,
+	.write_byte_fn = (WriteByteStreamFn)&ByteWriter.write_byte,
+	.read_stream_fn = (ReadFromStreamFn)&ByteWriter.read_from,
 };
