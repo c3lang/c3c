@@ -1,3 +1,12 @@
+module std::io;
+import libc;
+
+struct File
+{
+	inline Stream stream;
+	CFile file;
+}
+
 module std::io::file;
 import libc;
 
@@ -14,6 +23,16 @@ fn File! open_path(Path path, String mode)
 fn File from_handle(CFile file)
 {
 	return { .stream.fns = &FILESTREAM_INTERFACE, .file = file };
+}
+
+fn bool is_file(String path)
+{
+	return os::native_is_file(path);
+}
+
+fn usz! get_size(String path)
+{
+	return os::native_file_size(path);
 }
 
 fn void! delete(String filename) => os::native_remove(filename) @inline;
@@ -112,25 +131,6 @@ fn usz! File.write(&self, char[] buffer)
 	return os::native_fwrite(self.file, buffer);
 }
 
-/**
- * @require self.file `File must be initialized`
- */
-fn usz! File.printn(&self, String string = "")
-{
-	usz len = self.print(string)!;
-	if (!libc::putc('\n', self.file)) return IoError.UNKNOWN_ERROR?;
-	return len + 1;
-}
-
-/**
- * @require self.file `File must be initialized`
- */
-fn usz! File.print(&self, String string)
-{
-	usz len = string.len;
-	if (len != self.write((char[])string)!) return IoError.UNKNOWN_ERROR?;
-	return len;
-}
 
 fn char! File.read_byte(&self)
 {
@@ -142,7 +142,7 @@ fn char! File.read_byte(&self)
 /**
  * @require self.file `File must be initialized`
  */
-fn void File.flush(&self)
+fn void! File.flush(&self)
 {
 	libc::fflush(self.file);
 }

@@ -4,12 +4,6 @@
 module std::io;
 import libc;
 
-struct File
-{
-	inline Stream stream;
-	CFile file;
-}
-
 enum Seek
 {
 	SET,
@@ -52,41 +46,59 @@ fault IoError
 
 macro void print(x)
 {
-	var $Type = $typeof(x);
-	$switch ($Type)
-	$case String:
-		(void)stdout().print(x);
-	$case ZString:
-		(void)stdout().print(x.as_str());
-	$case DString:
-		(void)stdout().print(x.as_str());
-	$default:
-		$if @convertible(x, String):
-			(void)stdout().print((String)x);
-		$else
-			(void)stdout().printf("%s", x);
-		$endif
-	$endswitch
+	(void)print_gen(stdout(), x);
 }
 
 macro void printn(x = "")
 {
-	var $Type = $typeof(x);
-	$switch ($Type)
-	$case String:
-		(void)stdout().printn(x);
-	$case ZString:
-		(void)stdout().printn(x.as_str());
-	$case DString:
-		(void)stdout().printn(x.as_str());
-	$default:
-		$if @convertible(x, String):
-			(void)stdout().printn((String)x);
-		$else
-			(void)stdout().printfn("%s", x);
-		$endif
-	$endswitch
+	(void)printn_gen(stdout(), x);
 }
+
+fn void! out_putchar_fn(void* data @unused, char c) @private
+{
+	libc::putchar(c);
+}
+
+
+fn usz! printf(String format, args...) @maydiscard
+{
+	Formatter formatter;
+	formatter.init(&out_putchar_fn);
+	return formatter.vprintf(format, args);
+}
+
+fn usz! printfn(String format, args...) @maydiscard
+{
+	Formatter formatter;
+	formatter.init(&out_putchar_fn);
+	usz len = formatter.vprintf(format, args)!;
+	putchar('\n');
+	return len + 1;
+}
+
+fn char[]! bprintf(char[] buffer, String format, args...) @maydiscard
+{
+	Formatter formatter;
+	BufferData data = { .buffer = buffer };
+	formatter.init(&out_buffer_fn, &data);
+	usz size = formatter.vprintf(format, args)!;
+	return buffer[:data.written];
+}
+
+fn void! out_buffer_fn(void *data, char c) @private
+{
+	BufferData *buffer_data = data;
+	if (buffer_data.written >= buffer_data.buffer.len) return PrintFault.BUFFER_EXCEEDED?;
+	buffer_data.buffer[buffer_data.written++] = c;
+}
+
+
+struct BufferData @private
+{
+	char[] buffer;
+	usz written;
+}
+
 
 module std::io @if (env::LIBC);
 import libc;
@@ -142,33 +154,3 @@ fn File stdin()
 {
 	return stdin_file;
 }
-
-
-/*
-
-
-error FileError
-{
-	ulong errno;
-}
-
-fn FileError errorFromErrno()
-{
-	return FileError { };
-}
-
-
-
-
-pubic fn void! File.clearerr(File *file) @inline
-{
-	clearerr(file->file);
-}
-
-
-
-fn void File.error(File *file) @inline
-{
-	int err = ferror
-}
-*/

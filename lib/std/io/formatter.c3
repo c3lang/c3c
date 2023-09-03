@@ -4,6 +4,9 @@ import libc;
 
 const int PRINTF_NTOA_BUFFER_SIZE = 256;
 
+fn String any.to_string(void* value, Allocator *using) @interface;
+fn usz! any.to_format(void* value, Formatter* formatter) @interface;
+
 fault PrintFault
 {
 	BUFFER_EXCEEDED,
@@ -21,53 +24,10 @@ fault FormattingFault
 	INVALID_FORMAT_TYPE,
 }
 
-def OutputFn = fn void!(char c, void* buffer);
+def OutputFn = fn void!(void* buffer, char c);
 def FloatType = double;
 
-fn String any.to_string(void* value, Allocator *using) @interface;
-fn usz! any.to_format(void* value, Formatter* formatter) @interface;
 
-fn usz! printf(String format, args...) @maydiscard
-{
-	Formatter formatter;
-	formatter.init(&out_putchar_fn);
-	return formatter.vprintf(format, args);
-}
-
-fn usz! printfn(String format, args...) @maydiscard
-{
-	Formatter formatter;
-	formatter.init(&out_putchar_fn);
-	usz len = formatter.vprintf(format, args)!;
-	putchar('\n');
-	return len + 1;
-}
-
-fn char[]! bprintf(char[] buffer, String format, args...) @maydiscard
-{
-	Formatter formatter;
-	BufferData data = { .buffer = buffer };
-	formatter.init(&out_buffer_fn, &data);
-	usz size = formatter.vprintf(format, args)!;
-	return buffer[:data.written];
-}
-
-fn usz! File.printf(self, String format, args...) @maydiscard
-{
-	Formatter formatter;
-	formatter.init(&out_fputchar_fn, &self);
-	return formatter.vprintf(format, args)!;
-}
-
-fn usz! File.printfn(self, String format, args...) @maydiscard
-{
-	Formatter formatter;
-	formatter.init(&out_fputchar_fn, &self);
-	usz len = formatter.vprintf(format, args)!;
-	self.write_byte('\n')!;
-	self.flush();
-	return len + 1;
-}
 
 fn usz! Formatter.printf(&self, String format, args...)
 {
@@ -105,7 +65,7 @@ fn void Formatter.init(&self, OutputFn out_fn, void* data = null)
 
 fn usz! Formatter.out(&self, char c) @private
 {
-	self.out_fn(c, self.data)!;
+	self.out_fn(self.data, c)!;
 	return 1;
 }
 
@@ -261,33 +221,11 @@ fn usz! Formatter.out_str(&self, any arg) @private
 
 
 
-fn void! out_buffer_fn(char c, void *data) @private
-{
-	BufferData *buffer_data = data;
-	if (buffer_data.written >= buffer_data.buffer.len) return PrintFault.BUFFER_EXCEEDED?;
-	buffer_data.buffer[buffer_data.written++] = c;
-}
 
-fn void! out_null_fn(char c @unused, void* data @unused) @private
+fn void! out_null_fn(void* data @unused, char c @unused) @private
 {
 }
 
-fn void! out_putchar_fn(char c, void* data @unused) @private
-{
-	libc::putchar(c);
-}
-
-fn void! out_fputchar_fn(char c, void* data) @private
-{
-	File* f = data;
-	f.write_byte(c)!;
-}
-
-struct BufferData @private
-{
-	char[] buffer;
-	usz written;
-}
 
 
 fn usz! Formatter.vprintf(&self, String format, any[] anys)

@@ -349,7 +349,7 @@ fn DString new_join(String[] s, String joiner, Allocator* using = mem::heap())
 	return res;
 }
 
-fn void! out_string_append_fn(char c, void* data) @private
+fn void! out_string_append_fn(void* data, char c) @private
 {
 	DString* s = data;
 	s.append_char(c);
