@@ -46,7 +46,7 @@ const AIFamily PLATFORM_AF_UTUN            = 38;
 const AIFamily PLATFORM_AF_VSOCK           = 40;
 const AIFamily PLATFORM_AF_MAX             = 41;
 
-const int PLATFORM_O_NONBLOCK = 0x30;
+const int PLATFORM_O_NONBLOCK = 0x04;
 
 // https://opensource.apple.com/source/xnu/xnu-4570.41.2/bsd/sys/socket.h.auto.html
 const int SOL_SOCKET             = 0xffff;
@@ -83,3 +83,14 @@ const int SO_NOADDRERR           = 0x1023; // Apple: Returns EADDRNOTAVAIL when 
 const int SO_NWRITE              = 0x1024; // Apple: Get number of bytes currently in send socket buffer
 const int SO_REUSESHAREUID       = 0x1025; // Apple: Allow reuse of port/socket by different userids
 const int SO_LINGER_SEC          = 0x1080; // linger on close if data present (in seconds)
+
+
+const CShort POLLRDNORM          = 0x0040;
+const CShort POLLRDBAND          = 0x0080;
+const CShort POLLWRNORM          = POLLOUT;
+const CShort POLLWRBAND          = 0x0100;
+const CShort POLLEXTEND          = 0x0200; // file may have been extended
+const CShort POLLATTRIB          = 0x0400; // file attributes may have changed
+const CShort POLLNLINK           = 0x0800; // (un)link/rename may have happened
+const CShort POLLWRITE           = 0x1000; // file's contents may have changed
+

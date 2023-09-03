@@ -5,16 +5,20 @@ import libc;
 def TcpSocket = distinct inline Socket;
 def TcpServerSocket = distinct inline Socket;
 
-fn TcpSocket! connect(String host, uint port, SocketOption... options, IpProtocol protocol = UNSPECIFIED)
+fn TcpSocket! connect(String host, uint port, Duration timeout = 0, SocketOption... options, IpProtocol protocol = UNSPECIFIED)
 {
 	AddrInfo* ai =  net::addrinfo(host, port, protocol.ai_family, os::SOCK_STREAM)!;
 	defer os::freeaddrinfo(ai);
-	return connect_to(ai, ...options);
+	if (timeout > 0)
+	{
+		return connect_to(ai, ...options);
+	}
+	return (TcpSocket)net::connect_with_timeout_from_addrinfo(ai, options, timeout)!;
 }
 
 fn TcpSocket! connect_async(String host, uint port, SocketOption... options, IpProtocol protocol = UNSPECIFIED)
 {
-	AddrInfo* ai =  net::addrinfo(host, port, protocol.ai_family, os::SOCK_STREAM)!;
+	AddrInfo* ai = net::addrinfo(host, port, protocol.ai_family, os::SOCK_STREAM)!;
 	defer os::freeaddrinfo(ai);
 	return connect_async_to(ai, ...options);
 }

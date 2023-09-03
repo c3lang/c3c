@@ -78,3 +78,13 @@ const int SO_TXREHASH                = 74;
 const int SO_RCVMARK                 = 75;
 const int SO_PASSPIDFD               = 76;
 const int SO_PEERPIDFD               = 77;
+
+const CUShort POLLRDNORM              = 0x0040;
+const CUShort POLLRDBAND              = 0x0080;
+const CUShort POLLWRNORM              = 0x0100;
+const CUShort POLLWRBAND              = 0x0200;
+const CUShort POLLMSG                 = 0x0400;
+const CUShort POLLREMOVE              = 0x1000;
+const CUShort POLLRDHUP               = 0x2000;
+const CUShort POLLFREE                = 0x4000;
+const CUShort POLL_BUSY_LOOP          = 0x8000;

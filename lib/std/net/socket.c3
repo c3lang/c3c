@@ -25,6 +25,53 @@ macro void @loop_over_ai(AddrInfo* ai; @body(NativeSocket fd, AddrInfo* ai))
 	}
 }
 
+const Duration POLL_FOREVER = -1;
+
+def PollSubscribes = distinct ushort;
+def PollEvents = distinct ushort;
+
+const PollSubscribes SUBSCRIBE_ANY_READ     = os::POLLIN;
+const PollSubscribes SUBSCRIBE_PRIO_READ    = os::POLLPRI;
+const PollSubscribes SUBSCRIBE_OOB_READ     = os::POLLRDBAND;
+const PollSubscribes SUBSCRIBE_READ         = os::POLLRDNORM;
+const PollSubscribes SUBSCRIBE_ANY_WRITE    = os::POLLOUT;
+const PollSubscribes SUBSCRIBE_OOB_WRITE    = os::POLLWRBAND;
+const PollSubscribes SUBSCRIBE_WRITE        = os::POLLWRNORM;
+
+const PollEvents POLL_EVENT_READ_PRIO  = os::POLLPRI;
+const PollEvents POLL_EVENT_READ_OOB   = os::POLLRDBAND;
+const PollEvents POLL_EVENT_READ       = os::POLLRDNORM;
+const PollEvents POLL_EVENT_WRITE_OOB  = os::POLLWRBAND;
+const PollEvents POLL_EVENT_WRITE      = os::POLLWRNORM;
+const PollEvents POLL_EVENT_DISCONNECT = os::POLLHUP;
+const PollEvents POLL_EVENT_ERROR      = os::POLLERR;
+const PollEvents POLL_EVENT_INVALID    = os::POLLNVAL;
+
+struct Poll
+{
+	NativeSocket socket;
+	PollSubscribes events;
+	PollEvents revents;
+}
+
+/**
+ * @param [inout] polls
+ * @param timeout "duration to poll."
+ **/
+fn ulong! poll(Poll[] polls, Duration timeout)
+{
+	long time_ms = timeout.to_ms();
+	if (time_ms > CInt.max) time_ms = CInt.max;
+	$if env::WIN32:
+		CInt result = win32_WSAPoll((Win32_LPWSAPOLLFD)polls.ptr, (Win32_ULONG)polls.len, (CInt)time_ms);
+	$else
+		CInt result = os::poll((Posix_pollfd*)polls.ptr, (Posix_nfds_t)polls.len, (CInt)time_ms);
+	$endif
+	if (result == 0) return 0;
+    if (result > 0) return (ulong)result;
+	return os::socket_error()?;
+}
+
 macro Socket new_socket(fd, ai)
 {
 	Socket sock = { .stream.fns = &SOCKETSTREAM_INTERFACE, .sock = fd, .ai_addrlen = ai.ai_addrlen };

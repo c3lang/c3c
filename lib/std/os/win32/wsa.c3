@@ -1,11 +1,37 @@
 module std::os::win32 @if(env::WIN32);
 
-def WSAError = distinct int;
+// See https://github.com/wine-mirror/wine/blob/master/include/winsock2.h
 
+def WSAError = distinct int;
+struct Win32_pollfd
+{
+	Win32_SOCKET fd;
+	Win32_SHORT events;
+	Win32_SHORT revents;
+}
+def Win32_WSAPOLLFD = Win32_pollfd;
+def Win32_PWSAPOLLFD = Win32_WSAPOLLFD*;
+def Win32_LPWSAPOLLFD = Win32_WSAPOLLFD*;
+
+const Win32_SHORT POLLERR    = 0x0001;
+const Win32_SHORT POLLHUP    = 0x0002;
+const Win32_SHORT POLLNVAL   = 0x0004;
+const Win32_SHORT POLLWRNORM = 0x0010;
+const Win32_SHORT POLLWRBAND = 0x0020;
+const Win32_SHORT POLLRDNORM = 0x0100;
+const Win32_SHORT POLLRDBAND = 0x0200;
+const Win32_SHORT POLLPRI    = 0x0400;
+const Win32_SHORT POLLIN     = POLLRDNORM | POLLRDBAND;
+const Win32_SHORT POLLOUT    = POLLWRNORM;
+
+const SD_RECEIVE = 0x00;
+const SD_SEND    = 0x01;
+const SD_BOTH    = 0x02;
+
+extern fn CInt win32_WSAPoll(Win32_LPWSAPOLLFD fdArray, Win32_ULONG fds, Win32_INT timeout) @extern("WSAPoll") @builtin;
 extern fn WSAError win32_WSAGetLastError() @extern("WSAGetLastError") @builtin;
 extern fn void win32_WSASetLastError(WSAError error) @extern("WSASetLastError") @builtin;
 extern fn CInt win32_WSAStartup(Win32_WORD, void*) @extern("WSAStartup") @builtin;
-
 const int FIONBIO = -2147195266;
 const int FIONREAD = 1074030207;
 const int SIOCATMARK = 1074033415;

@@ -5,6 +5,11 @@ def Duration = distinct long @inline;
 def Clock = distinct ulong @inline;
 def NanoDuration = distinct long @inline;
 
+fn Duration ms(long l) @inline => (Duration)l * 1000;
+fn Duration sec(long l) @inline => (Duration)l * MICROSECONDS_PER_SECOND;
+fn Duration min(long l) @inline => (Duration)l * MICROSECONDS_PER_MINUTE;
+fn Duration hour(long l) @inline => (Duration)l * MICROSECONDS_PER_HOUR;
+
 const Duration MICROSECONDS_PER_SECOND = 1_000_000;
 const Duration MICROSECONDS_PER_MINUTE = MICROSECONDS_PER_SECOND * 60;
 const Duration MICROSECONDS_PER_HOUR = MICROSECONDS_PER_MINUTE * 60;
@@ -85,6 +90,7 @@ fn double NanoDuration.to_sec(nd) => (double)nd / 1_000_000_000.0;
 fn long NanoDuration.to_ms(nd) => (long)nd / 1_000_000;
 fn Duration NanoDuration.to_duration(nd) => (Duration)nd / 1_000;
 fn NanoDuration Duration.to_nano(td) => (NanoDuration)td * 1_000;
+fn long Duration.to_ms(td) => (long)td / 1_000;
 
 fn usz! NanoDuration.to_format(&self, Formatter* formatter) @dynamic
 {

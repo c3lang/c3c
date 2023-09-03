@@ -6,6 +6,14 @@ const int F_SETFL = 4;
 
 def NativeSocket = distinct inline Fd;
 
+struct Posix_pollfd
+{
+	CInt fd;
+	CUShort events;
+	CUShort revents;
+}
+
+def Posix_nfds_t = CUInt;
 
 extern fn CInt connect(NativeSocket socket, SockAddrPtr address, Socklen_t address_len);
 extern fn NativeSocket socket(AIFamily af, AISockType type, AIProtocol protocol) @extern("socket");
@@ -13,10 +21,18 @@ extern fn int fcntl(NativeSocket socket, int cmd, ...) @extern("fcntl");
 extern fn CInt bind(NativeSocket socket, SockAddrPtr address, Socklen_t address_len) @extern("bind");
 extern fn CInt listen(NativeSocket socket, CInt backlog) @extern("listen");
 extern fn NativeSocket accept(NativeSocket socket, SockAddrPtr address, Socklen_t* address_len) @extern("accept");
+extern fn CInt poll(Posix_pollfd* fds, Posix_nfds_t nfds, CInt timeout);
 
-fn anyfault socket_error()
+const CUShort POLLIN      = 0x0001;
+const CUShort POLLPRI     = 0x0002;
+const CUShort POLLOUT     = 0x0004;
+const CUShort POLLERR     = 0x0008;
+const CUShort POLLHUP     = 0x0010;
+const CUShort POLLNVAL    = 0x0020;
+
+fn anyfault convert_error(Errno error)
 {
-	switch (libc::errno())
+	switch (error)
 	{
 		case errno::EACCES: return IoError.NO_PERMISSION;
 		case errno::EADDRINUSE: return NetError.ADDRESS_IN_USE;
@@ -32,6 +48,11 @@ fn anyfault socket_error()
 		case errno::ETIMEDOUT: return NetError.CONNECTION_TIMED_OUT;
 		default: return IoError.GENERAL_ERROR;
 	}
+}
+
+fn anyfault socket_error()
+{
+	return convert_error(libc::errno());
 }
 
 macro void! NativeSocket.close(self)
@@ -65,5 +86,5 @@ macro void! NativeSocket.set_non_blocking(self, bool non_blocking)
 
 macro bool NativeSocket.is_non_blocking(self)
 {
-	return fcntl(self, F_GETFL, 0) & O_NONBLOCK == O_NONBLOCK;
+	return fcntl(self, F_GETFL, 0) & O_NONBLOCK != 0;
 }

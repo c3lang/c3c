@@ -1,5 +1,6 @@
 module std::net @if(os::SUPPORTS_INET);
 import libc;
+
 macro apply_sockoptions(sockfd, options) @private
 {
 	Socket sock = { .sock = sockfd };
@@ -8,7 +9,6 @@ macro apply_sockoptions(sockfd, options) @private
 
 fn Socket! connect_from_addrinfo(AddrInfo* addrinfo, SocketOption[] options) @private
 {
-
 	@loop_over_ai(addrinfo; NativeSocket sockfd, AddrInfo* ai)
 	{
 		apply_sockoptions(sockfd, options)!;
@@ -34,6 +34,52 @@ fn bool last_error_is_delayed_connect()
     	return err == errno::EINPROGRESS || err == errno::EAGAIN || err == errno::EWOULDBLOCK;
 	$endswitch
 }
+
+fn Socket! connect_with_timeout_from_addrinfo(AddrInfo* addrinfo, SocketOption[] options, Duration timeout) @private
+{
+	Clock c = 0;
+	@loop_over_ai(addrinfo; NativeSocket sockfd, AddrInfo* ai)
+	{
+		apply_sockoptions(sockfd, options)!;
+		sockfd.set_non_blocking(true)!;
+		int errcode = os::connect(sockfd, ai.ai_addr, ai.ai_addrlen);
+		if (!errcode)
+		{
+			// It worked, restore blocking.
+			sockfd.set_non_blocking(false)!;
+			return new_socket(sockfd, ai);
+		}
+		if (last_error_is_delayed_connect())
+		{
+			Duration timeout_left = timeout;
+			if (c)
+			{
+				Duration to_remove = c.to_now().to_duration();
+				if (to_remove >= timeout_left)
+				{
+					return NetError.CONNECTION_TIMED_OUT?;
+				}
+				timeout_left -= to_remove;
+			}
+			else
+			{
+				c = clock::now();
+			}
+			Poll poll_request = { sockfd, SUBSCRIBE_ANY_WRITE, 0 };
+			if (!poll((&poll_request)[:1], timeout_left)!)
+			{
+				return NetError.CONNECTION_TIMED_OUT?;
+			}
+			if (poll_request.revents & POLL_EVENT_WRITE)
+			{
+				sockfd.set_non_blocking(false)!;
+				return new_socket(sockfd, ai);
+			}
+		}
+	};
+	return os::socket_error()?;
+}
+
 fn Socket! connect_async_from_addrinfo(AddrInfo* addrinfo, SocketOption[] options) @private
 {
 	@loop_over_ai(addrinfo; NativeSocket sockfd, AddrInfo* ai)
@@ -48,7 +94,6 @@ fn Socket! connect_async_from_addrinfo(AddrInfo* addrinfo, SocketOption[] option
 		}
 	};
 	return os::socket_error()?;
-
 }
 
 macro @network_loop_over_ai(network, host, port; @body(fd, ai)) @private

@@ -146,6 +146,7 @@ def Win32_SC_LOCK = Win32_LPVOID;
 def Win32_SERVICE_STATUS_HANDLE = Win32_HANDLE;
 def Win32_SHORT = short;
 def Win32_SIZE_T = usz;
+def Win32_SOCKET = Win32_HANDLE;
 def Win32_SSIZE_T = isz;
 def Win32_TBYTE = Win32_WCHAR;
 def Win32_TCHAR = Win32_WCHAR;

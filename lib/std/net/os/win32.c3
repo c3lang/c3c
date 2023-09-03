@@ -9,9 +9,13 @@ const AIFamily PLATFORM_AF_INET6        = 23;
 const AIFamily PLATFORM_AF_IRDA         = 26;
 const AIFamily PLATFORM_AF_BTH          = 32;
 
+const int FIONREAD = 1074030207;
+const int FIONBIO = -2147195266;
+const int FIOASYNC = -2147195267;
+
 def NativeSocket = distinct uptr;
 
-extern fn int ioctlsocket(NativeSocket, long cmd, ulong *argp);
+extern fn CInt ioctlsocket(NativeSocket, CLong cmd, CULong *argp);
 extern fn WSAError closesocket(NativeSocket);
 extern fn NativeSocket socket(AIFamily af, AISockType type, AIProtocol protocol);
 extern fn int connect(NativeSocket, SockAddrPtr address, Socklen_t address_len);
@@ -21,7 +25,7 @@ extern fn NativeSocket accept(NativeSocket, SockAddrPtr address, Socklen_t* addr
 
 fn void! NativeSocket.set_non_blocking(self, bool non_blocking)
 {
-	if (ioctlsocket(self, win32::FIONBIO, &&(ulong)non_blocking))
+	if (ioctlsocket(self, win32::FIONBIO, &&(CULong)non_blocking))
 	{
 		return socket_error()?;
 	}
@@ -76,7 +80,19 @@ fn anyfault convert_error(WSAError error)
 		default: return IoError.GENERAL_ERROR;
 	}
 }
+
 fn anyfault socket_error()
 {
 	return convert_error(win32_WSAGetLastError());
 }
+
+const CUShort POLLIN      = win32::POLLIN;
+const CUShort POLLPRI     = win32::POLLPRI;
+const CUShort POLLOUT     = win32::POLLOUT;
+const CUShort POLLERR     = win32::POLLERR;
+const CUShort POLLHUP     = win32::POLLHUP;
+const CUShort POLLNVAL    = win32::POLLNVAL;
+const CUShort POLLRDNORM  = win32::POLLRDNORM;
+const CUShort POLLRDBAND  = win32::POLLRDBAND;
+const CUShort POLLWRNORM  = win32::POLLWRNORM;
+const CUShort POLLWRBAND  = win32::POLLWRBAND;
