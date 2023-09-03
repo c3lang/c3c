@@ -120,6 +120,82 @@ fn usz! Stream.read(&self, char[] buffer)
 	return IoError.UNSUPPORTED_OPERATION?;
 }
 
+macro usz! Stream.print(&self, x) @maydiscard
+{
+	return print_gen(self, x);
+}
+
+macro usz! print_gen(self, x)
+{
+	var $Type = $typeof(x);
+	$switch ($Type)
+	$case String:
+		return self.write(x);
+	$case ZString:
+		return self.write(x.as_str());
+	$case DString:
+		return self.write(x.as_str());
+	$default:
+		$if @convertible(x, String):
+			return self.write((String)x);
+		$else
+			return printf("%s", x);
+		$endif
+	$endswitch
+}
+
+macro usz! printn_gen(self, x)
+{
+	usz len = print_gen(self, x)!;
+	self.write_byte('\n')!;
+	self.flush()!;
+	return len + 1;
+}
+
+macro usz! Stream.printn(&self, x) @maydiscard
+{
+	return printn_gen(self, x);
+}
+
+fn usz! Stream.printf(&self, String format, args...) @maydiscard
+{
+	Formatter formatter;
+	if (WriteByteStreamFn func_byte = self.fns.write_byte_fn)
+	{
+		formatter.init((OutputFn)func_byte, self);
+	}
+	else if (WriteStreamFn func = self.fns.write_fn)
+	{
+		formatter.init((OutputFn)&Stream.write_byte, self);
+	}
+	else
+	{
+		return IoError.UNSUPPORTED_OPERATION?;
+	}
+	return formatter.vprintf(format, args)!;
+}
+
+fn usz! Stream.printfn(&self, String format, args...) @maydiscard @inline
+{
+	Formatter formatter;
+	if (WriteByteStreamFn func_byte = self.fns.write_byte_fn)
+	{
+		formatter.init((OutputFn)func_byte, self);
+	}
+	else if (WriteStreamFn func = self.fns.write_fn)
+	{
+		formatter.init((OutputFn)&Stream.write_byte, self);
+	}
+	else
+	{
+		return IoError.UNSUPPORTED_OPERATION?;
+	}
+	usz len = formatter.vprintf(format, args)!;
+	self.write_byte('\n')!;
+	self.flush()!;
+	return len + 1;
+}
+
 fn char! Stream.read_byte(&self) @inline
 {
 	if (ReadByteStreamFn func = self.fns.read_byte_fn) return func(self);

@@ -58,7 +58,7 @@ fn void! read_write_any()
     File file = file::open("__file_read_write_any_test_file", "wb")!!;
 
     file.write_any(&data)!!;
-    file.flush();
+    file.flush()!;
     file.close()!!;
 
     file = file::open("__file_read_write_any_test_file", "rb")!!;

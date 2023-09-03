@@ -36,7 +36,7 @@ fn void! brainf(String program)
 				memory[mem]--;
 			case '.':
 				io::putchar(memory[mem]);
-				io::stdout().flush();
+				io::stdout().flush()!;
 			case ',':
 				memory[mem] = io::stdin().read_byte()!!;
 			case '[':

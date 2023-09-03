@@ -46,25 +46,160 @@ fn int main()
 
 define void @foo.Foo.hello(ptr %0) #0 {
 entry:
+  %len = alloca i64, align 8
+  %error_var = alloca i64, align 8
   %retparam = alloca i64, align 8
+  %error_var2 = alloca i64, align 8
+  %error_var8 = alloca i64, align 8
   %1 = call ptr @std.io.stdout()
-  %2 = call i64 @std.io.File.printn(ptr %retparam, ptr %1, ptr @.str, i64 14)
+  %2 = call i64 @std.io.File.write(ptr %retparam, ptr %1, ptr @.str, i64 14)
+  %not_err = icmp eq i64 %2, 0
+  %3 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %3, label %after_check, label %assign_optional
+assign_optional:                                  ; preds = %entry
+  store i64 %2, ptr %error_var, align 8
+  br label %guard_block
+after_check:                                      ; preds = %entry
+  br label %noerr_block
+guard_block:                                      ; preds = %assign_optional
+  br label %voiderr
+noerr_block:                                      ; preds = %after_check
+  %4 = load i64, ptr %retparam, align 8
+  store i64 %4, ptr %len, align 8
+  %5 = call i64 @std.io.File.write_byte(ptr %1, i8 zeroext 10)
+  %not_err3 = icmp eq i64 %5, 0
+  %6 = call i1 @llvm.expect.i1(i1 %not_err3, i1 true)
+  br i1 %6, label %after_check5, label %assign_optional4
+assign_optional4:                                 ; preds = %noerr_block
+  store i64 %5, ptr %error_var2, align 8
+  br label %guard_block6
+after_check5:                                     ; preds = %noerr_block
+  br label %noerr_block7
+guard_block6:                                     ; preds = %assign_optional4
+  br label %voiderr
+noerr_block7:                                     ; preds = %after_check5
+  %7 = call i64 @std.io.File.flush(ptr %1)
+  %not_err9 = icmp eq i64 %7, 0
+  %8 = call i1 @llvm.expect.i1(i1 %not_err9, i1 true)
+  br i1 %8, label %after_check11, label %assign_optional10
+assign_optional10:                                ; preds = %noerr_block7
+  store i64 %7, ptr %error_var8, align 8
+  br label %guard_block12
+after_check11:                                    ; preds = %noerr_block7
+  br label %noerr_block13
+guard_block12:                                    ; preds = %assign_optional10
+  br label %voiderr
+noerr_block13:                                    ; preds = %after_check11
+  %9 = load i64, ptr %len, align 8
+  %add = add i64 %9, 1
+  br label %voiderr
+voiderr:                                          ; preds = %noerr_block13, %guard_block12, %guard_block6, %guard_block
   ret void
 }
 ; Function Attrs: nounwind
 define void @foo.Bar.hello(ptr %0) #0 {
 entry:
+  %len = alloca i64, align 8
+  %error_var = alloca i64, align 8
   %retparam = alloca i64, align 8
+  %error_var2 = alloca i64, align 8
+  %error_var8 = alloca i64, align 8
   %1 = call ptr @std.io.stdout()
-  %2 = call i64 @std.io.File.printn(ptr %retparam, ptr %1, ptr @.str.1, i64 14)
+  %2 = call i64 @std.io.File.write(ptr %retparam, ptr %1, ptr @.str.1, i64 14)
+  %not_err = icmp eq i64 %2, 0
+  %3 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %3, label %after_check, label %assign_optional
+assign_optional:                                  ; preds = %entry
+  store i64 %2, ptr %error_var, align 8
+  br label %guard_block
+after_check:                                      ; preds = %entry
+  br label %noerr_block
+guard_block:                                      ; preds = %assign_optional
+  br label %voiderr
+noerr_block:                                      ; preds = %after_check
+  %4 = load i64, ptr %retparam, align 8
+  store i64 %4, ptr %len, align 8
+  %5 = call i64 @std.io.File.write_byte(ptr %1, i8 zeroext 10)
+  %not_err3 = icmp eq i64 %5, 0
+  %6 = call i1 @llvm.expect.i1(i1 %not_err3, i1 true)
+  br i1 %6, label %after_check5, label %assign_optional4
+assign_optional4:                                 ; preds = %noerr_block
+  store i64 %5, ptr %error_var2, align 8
+  br label %guard_block6
+after_check5:                                     ; preds = %noerr_block
+  br label %noerr_block7
+guard_block6:                                     ; preds = %assign_optional4
+  br label %voiderr
+noerr_block7:                                     ; preds = %after_check5
+  %7 = call i64 @std.io.File.flush(ptr %1)
+  %not_err9 = icmp eq i64 %7, 0
+  %8 = call i1 @llvm.expect.i1(i1 %not_err9, i1 true)
+  br i1 %8, label %after_check11, label %assign_optional10
+assign_optional10:                                ; preds = %noerr_block7
+  store i64 %7, ptr %error_var8, align 8
+  br label %guard_block12
+after_check11:                                    ; preds = %noerr_block7
+  br label %noerr_block13
+guard_block12:                                    ; preds = %assign_optional10
+  br label %voiderr
+noerr_block13:                                    ; preds = %after_check11
+  %9 = load i64, ptr %len, align 8
+  %add = add i64 %9, 1
+  br label %voiderr
+voiderr:                                          ; preds = %noerr_block13, %guard_block12, %guard_block6, %guard_block
   ret void
 }
 ; Function Attrs: nounwind
 define void @foo.MyEnum.hello(ptr %0) #0 {
 entry:
+  %len = alloca i64, align 8
+  %error_var = alloca i64, align 8
   %retparam = alloca i64, align 8
+  %error_var2 = alloca i64, align 8
+  %error_var8 = alloca i64, align 8
   %1 = call ptr @std.io.stdout()
-  %2 = call i64 @std.io.File.printn(ptr %retparam, ptr %1, ptr @.str.2, i64 17)
+  %2 = call i64 @std.io.File.write(ptr %retparam, ptr %1, ptr @.str.2, i64 17)
+  %not_err = icmp eq i64 %2, 0
+  %3 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %3, label %after_check, label %assign_optional
+assign_optional:                                  ; preds = %entry
+  store i64 %2, ptr %error_var, align 8
+  br label %guard_block
+after_check:                                      ; preds = %entry
+  br label %noerr_block
+guard_block:                                      ; preds = %assign_optional
+  br label %voiderr
+noerr_block:                                      ; preds = %after_check
+  %4 = load i64, ptr %retparam, align 8
+  store i64 %4, ptr %len, align 8
+  %5 = call i64 @std.io.File.write_byte(ptr %1, i8 zeroext 10)
+  %not_err3 = icmp eq i64 %5, 0
+  %6 = call i1 @llvm.expect.i1(i1 %not_err3, i1 true)
+  br i1 %6, label %after_check5, label %assign_optional4
+assign_optional4:                                 ; preds = %noerr_block
+  store i64 %5, ptr %error_var2, align 8
+  br label %guard_block6
+after_check5:                                     ; preds = %noerr_block
+  br label %noerr_block7
+guard_block6:                                     ; preds = %assign_optional4
+  br label %voiderr
+noerr_block7:                                     ; preds = %after_check5
+  %7 = call i64 @std.io.File.flush(ptr %1)
+  %not_err9 = icmp eq i64 %7, 0
+  %8 = call i1 @llvm.expect.i1(i1 %not_err9, i1 true)
+  br i1 %8, label %after_check11, label %assign_optional10
+assign_optional10:                                ; preds = %noerr_block7
+  store i64 %7, ptr %error_var8, align 8
+  br label %guard_block12
+after_check11:                                    ; preds = %noerr_block7
+  br label %noerr_block13
+guard_block12:                                    ; preds = %assign_optional10
+  br label %voiderr
+noerr_block13:                                    ; preds = %after_check11
+  %9 = load i64, ptr %len, align 8
+  %add = add i64 %9, 1
+  br label %voiderr
+voiderr:                                          ; preds = %noerr_block13, %guard_block12, %guard_block6, %guard_block
   ret void
 }
 ; Function Attrs: nounwind
