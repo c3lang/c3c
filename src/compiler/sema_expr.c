@@ -1512,6 +1512,10 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 		if (!sema_analyse_expr(context, vararg_splat)) return false;
 
 		// 11d. If it is allowed.
+		if (!variadic_type)
+		{
+			RETURN_SEMA_ERROR(vararg_splat, "Splat may not be used with raw varargs.");
+		}
 		if (!expr_may_splat_as_vararg(vararg_splat, variadic_type))
 		{
 			SEMA_ERROR(vararg_splat, "It's not possible to splat %s as vararg of type %s",
