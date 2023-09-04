@@ -153,6 +153,10 @@ fn usz! Formatter.out_str(&self, any arg) @private
 		case FUNC:
 			return self.out_substr("<function>");
 		case DISTINCT:
+			if (arg.type == ZString.typeid)
+			{
+				return self.out_substr(((ZString*)arg).as_str());
+			}
 			if (arg.type == DString.typeid)
 			{
 				return self.out_substr(((DString*)arg).as_str());
