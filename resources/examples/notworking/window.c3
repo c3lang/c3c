@@ -1,6 +1,6 @@
 import gtk;
 
-const string CLICK_ME = "Click Me";
+const String CLICK_ME = "Click Me";
 uint counter = 0;
 
 fn void clickedme(GtkButton *o, void *d)
@@ -8,11 +8,11 @@ fn void clickedme(GtkButton *o, void *d)
     (GtkLabel*)(d).set_text(string.format("You clicked me %d times", ++counter));
 }
 
-int main(int argc as string[] argv)
+fn void main(int argc, char** argv)
 {
-    gtk::init(&argc, &argv);
+    gtk::init(argc, argv);
 
-    GtkWindow *win = gtk::windowCreate(GtkWindow::TOPLEVEL);
+    GtkWindow *win = gtk::windowCreate(GtkWindow.TOPLEVEL);
     win.set_title(CLICK_ME);
 
     GtkButton *button = gtk::buttonCreateWithLabel(CLICK_ME);
@@ -31,5 +31,4 @@ int main(int argc as string[] argv)
 
     win.showAll();
     gtk::main();
-    return 0;
 }

@@ -4,18 +4,18 @@ fn int main(void)
 {
     Curl curl;
 
-    catch (e = curl.init())
+    if (catch e = curl.init())
     {
-        printf("Failed to create new curl: %s\n", e.message);
+        io::printfn("Failed to create new curl: %s\n", e);
         exit(FAILURE);
     }
 
     curl.setopt(URL, "http://www.rosettacode.org/");
     curl.setopt(FOLLOWLOCATION, 1);
 
-    catch (e = curl.perform())
+    if (catch err = curl.perform())
     {
-        printf("Error making request: %s\n", e.message);
+        io::printfn("Error making request: %s\n", e);
         exit(FAILURE);
     }
 
