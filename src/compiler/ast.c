@@ -383,6 +383,19 @@ bool decl_is_local(Decl *decl)
 	return !decl->is_external_visible && decl->visibility != VISIBLE_PUBLIC && !decl->is_export;
 }
 
+bool decl_needs_prefix(Decl *decl)
+{
+	switch (decl->decl_kind)
+	{
+		case DECL_VAR:
+		case DECL_FUNC:
+		case DECL_MACRO:
+			return !decl->is_autoimport;
+		default:
+			return false;
+	}
+}
+
 Decl *decl_find_enum_constant(Decl *decl, const char *name)
 {
 	VECEACH(decl->enums.values, i)

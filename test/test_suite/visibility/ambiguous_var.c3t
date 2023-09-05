@@ -23,5 +23,5 @@ fn void test2()
     c = foo::b;
     c = bar::b;
     c = foo::a;
-    c = b; // #error: global variable 'b' is defined in both 'foo' and 'bar', please use either foo::b or bar::b to resolve the ambiguity
+    c = b; // #error: global variable needs a path prefix (e.g. 'foo::b')
 }

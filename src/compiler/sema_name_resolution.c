@@ -510,6 +510,11 @@ static void sema_report_error_on_decl(Decl *found, NameResolve *name_resolve)
 		}
 		else
 		{
+			if (decl_needs_prefix(found))
+			{
+				sema_error_at(span, "The %s needs a path prefix (e.g. '%s::%s').", symbol_type, found_path, symbol);
+				return;
+			}
 			sema_error_at(span,
 						  "The %s '%s' is defined in both '%s' and '%s', please use either "
 						  "%s::%s or %s::%s to resolve the ambiguity.",

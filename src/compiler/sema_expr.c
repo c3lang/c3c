@@ -908,10 +908,10 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 		return false;
 	}
 
-	if (decl->decl_kind == DECL_VAR || decl->decl_kind == DECL_FUNC || decl->decl_kind == DECL_MACRO)
+	if (decl_needs_prefix(decl))
 	{
 		if (!sema_analyse_decl(context, decl)) return false;
-		if (decl->unit->module != context->unit->module && !decl->is_autoimport && !expr->identifier_expr.path)
+		if (decl->unit->module != context->unit->module && !expr->identifier_expr.path)
 		{
 			const char *message;
 			switch (decl->decl_kind)

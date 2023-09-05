@@ -264,7 +264,7 @@ bool parse_module(ParseContext *c, AstId contracts)
 	Visibility visibility = VISIBLE_PUBLIC;
 	Attr** attrs = NULL;
 	bool is_cond;
-	if (!parse_attributes(c, &attrs, &visibility, &is_cond)) return false;
+	if (!parse_attributes(c, &attrs, &visibility, NULL, &is_cond)) return false;
 	FOREACH_BEGIN(Attr *attr, attrs)
 		if (attr->is_custom) RETURN_SEMA_ERROR(attr, "Custom attributes cannot be used with 'module'.");
 		switch (attr->attr_kind)
@@ -732,7 +732,7 @@ Decl *parse_local_decl_after_type(ParseContext *c, TypeInfo *type)
 	Decl *decl = decl_new_var_current(c, type, VARDECL_LOCAL);
 	advance(c);
 
-	if (!parse_attributes(c, &decl->attributes, NULL, NULL)) return poisoned_decl;
+	if (!parse_attributes(c, &decl->attributes, NULL, NULL, NULL)) return poisoned_decl;
 	if (tok_is(c, TOKEN_EQ))
 	{
 		if (!decl)
@@ -796,7 +796,7 @@ Decl *parse_const_declaration(ParseContext *c, bool is_global)
 	}
 	else
 	{
-		if (!parse_attributes(c, &decl->attributes, NULL, NULL)) return poisoned_decl;
+		if (!parse_attributes(c, &decl->attributes, NULL, NULL, NULL)) return poisoned_decl;
 	}
 
 	// Required initializer
@@ -966,9 +966,11 @@ static bool parse_attributes_for_global(ParseContext *c, Decl *decl)
 	if (decl->decl_kind == DECL_FUNC) decl->func_decl.attr_test = c->unit->test_by_default;
 	if (decl->decl_kind == DECL_FUNC) decl->func_decl.attr_benchmark = c->unit->benchmark_by_default;
 	decl->is_export = c->unit->export_by_default;
+	bool is_builtin = false;
 	bool is_cond;
-	if (!parse_attributes(c, &decl->attributes, &visibility, &is_cond)) return false;
+	if (!parse_attributes(c, &decl->attributes, &visibility, decl_needs_prefix(decl) ? &is_builtin : NULL, &is_cond)) return false;
 	decl->is_cond = is_cond;
+	decl->is_autoimport = is_builtin;
 	decl->visibility = visibility;
 	return true;
 }
@@ -976,11 +978,11 @@ static bool parse_attributes_for_global(ParseContext *c, Decl *decl)
 /**
  * attribute_list ::= attribute*
  *
- * Patch visibility attributes immediately.
+ * Patch visibility and builtin attributes immediately.
  *
  * @return true if parsing succeeded, false if recovery is needed
  */
-bool parse_attributes(ParseContext *c, Attr ***attributes_ref, Visibility *visibility_ref, bool *cond_ref)
+bool parse_attributes(ParseContext *c, Attr ***attributes_ref, Visibility *visibility_ref, bool *builtin_ref, bool *cond_ref)
 {
 	Visibility visibility = -1;
 	if (cond_ref) *cond_ref = false;
@@ -989,6 +991,7 @@ bool parse_attributes(ParseContext *c, Attr ***attributes_ref, Visibility *visib
 		Attr *attr;
 		if (!parse_attribute(c, &attr, false)) return false;
 		if (!attr) return true;
+		bool parsed_builtin = false;
 		Visibility parsed_visibility = -1;
 		if (!attr->is_custom)
 		{
@@ -1006,12 +1009,21 @@ bool parse_attributes(ParseContext *c, Attr ***attributes_ref, Visibility *visib
 				case ATTRIBUTE_LOCAL:
 					parsed_visibility = VISIBLE_LOCAL;
 					break;
+				case ATTRIBUTE_BUILTIN:
+					parsed_builtin = true;
+					break;
 				case ATTRIBUTE_IF:
 					if (!cond_ref) RETURN_SEMA_ERROR(attr, "'%s' cannot be used here.", attr->name);
 					*cond_ref = true;
 					break;
 				default:
 					break;
+			}
+			if (parsed_builtin)
+			{
+				if (!builtin_ref) RETURN_SEMA_ERROR(attr, "'@builtin' cannot be used here.");
+				*builtin_ref = true;
+				continue;
 			}
 			if (parsed_visibility != -1)
 			{
@@ -1358,7 +1370,7 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 		}
 		Decl *param = decl_new_var(name, span, type, param_kind);
 		param->var.type_info = type;
-		if (!parse_attributes(c, &param->attributes, NULL, NULL)) return false;
+		if (!parse_attributes(c, &param->attributes, NULL, NULL, NULL)) return false;
 		if (!no_name)
 		{
 			if (try_consume(c, TOKEN_EQ))
@@ -1457,7 +1469,7 @@ bool parse_struct_body(ParseContext *c, Decl *parent)
 			else
 			{
 				bool is_cond;
-				if (!parse_attributes(c, &member->attributes, NULL, &is_cond)) return false;
+				if (!parse_attributes(c, &member->attributes, NULL, NULL, &is_cond)) return false;
 				member->is_cond = true;
 				if (!parse_struct_body(c, member)) return decl_poison(parent);
 			}
@@ -1499,7 +1511,7 @@ bool parse_struct_body(ParseContext *c, Decl *parent)
 			}
 			advance(c);
 			bool is_cond;
-			if (!parse_attributes(c, &member->attributes, NULL, &is_cond)) return false;
+			if (!parse_attributes(c, &member->attributes, NULL, NULL, &is_cond)) return false;
 			member->is_cond = true;
 			if (!try_consume(c, TOKEN_COMMA)) break;
 			if (was_inline)
@@ -1930,7 +1942,7 @@ static inline Decl *parse_def_attribute(ParseContext *c)
 	CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
 
 	bool is_cond;
-	if (!parse_attributes(c, &attributes, NULL, &is_cond)) return poisoned_decl;
+	if (!parse_attributes(c, &attributes, NULL, NULL, &is_cond)) return poisoned_decl;
 	CONSUME_OR_RET(TOKEN_RBRACE, poisoned_decl);
 	decl->attr_decl.attrs = attributes;
 	decl->is_cond = is_cond;
@@ -2311,7 +2323,7 @@ static inline Decl *parse_static_top_level(ParseContext *c)
 	advance(c);
 	Attr *attr = NULL;
 	bool is_cond;
-	if (!parse_attributes(c, &init->attributes, NULL, &is_cond)) return poisoned_decl;
+	if (!parse_attributes(c, &init->attributes, NULL, NULL, &is_cond)) return poisoned_decl;
 	init->is_cond = is_cond;
 	ASSIGN_ASTID_OR_RET(init->xxlizer.init, parse_compound_stmt(c), poisoned_decl);
 	RANGE_EXTEND_PREV(init);

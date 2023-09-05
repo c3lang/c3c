@@ -1732,6 +1732,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 		case ATTRIBUTE_PRIVATE:
 		case ATTRIBUTE_PUBLIC:
 		case ATTRIBUTE_LOCAL:
+		case ATTRIBUTE_BUILTIN:
 			// These are pseudo-attributes.
 			UNREACHABLE;
 		case ATTRIBUTE_DEPRECATED:
@@ -1928,9 +1929,6 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 		case ATTRIBUTE_NAKED:
 			assert(domain == ATTR_FUNC);
 			decl->func_decl.attr_naked = true;
-			break;
-		case ATTRIBUTE_BUILTIN:
-			decl->is_autoimport = true;
 			break;
 		case ATTRIBUTE_OVERLAP:
 			decl->bitstruct.overlap = true;
