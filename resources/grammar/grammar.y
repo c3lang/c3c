@@ -1172,9 +1172,9 @@ define_ident
         ;
 
 define_declaration
-	: DEF define_ident ';'
-	| DEF define_attribute ';'
-	| DEF TYPE_IDENT opt_attributes '=' opt_distinct_inline typedef_type ';'
+	: DEF define_ident opt_attributes ';'
+	| DEF define_attribute opt_attributes';'
+	| DEF TYPE_IDENT opt_attributes '=' opt_distinct_inline typedef_type opt_attributes ';'
 	;
 
 tl_ct_if
