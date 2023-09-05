@@ -92,7 +92,7 @@ struct CallstackElement
 fn void default_panic(String message, String file, String function, uint line)
 {
 	CallstackElement* stack = $$stacktrace();
-	$if $defined(io::stderr) && $defined(File.printf):
+	$if $defined(io::stderr) && $defined(Stream.printf):
 	if (stack) stack = stack.prev;
 	if (stack)
 	{

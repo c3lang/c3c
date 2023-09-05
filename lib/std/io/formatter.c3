@@ -121,8 +121,14 @@ fn usz! Formatter.out_str(&self, any arg) @private
 			unreachable();
 		case SIGNED_INT:
 		case UNSIGNED_INT:
+			PrintFlags flags = self.flags;
+			defer self.flags = flags;
+			self.flags = {};
 			return self.ntoa_any(arg, 10);
 		case FLOAT:
+			PrintFlags flags = self.flags;
+			defer self.flags = flags;
+			self.flags = {};
 			return self.ftoa(float_from_any(arg)!!);
 		case BOOL:
 			return self.out_substr(*(bool*)arg.ptr ? "true" : "false");
@@ -163,9 +169,15 @@ fn usz! Formatter.out_str(&self, any arg) @private
 			}
 			return self.out_str(any { arg.ptr, arg.type.inner });
 		case POINTER:
+			PrintFlags flags = self.flags;
+			self.flags = {};
+			defer self.flags = flags;
 			return self.ntoa_any(arg, 16);
 		case ARRAY:
 			// this is SomeType[*] so grab the "SomeType"
+			PrintFlags flags = self.flags;
+			defer self.flags = flags;
+			self.flags = {};
 			typeid inner = arg.type.inner;
 			usz size = inner.sizeof;
 			usz alen = arg.type.len;
@@ -181,6 +193,9 @@ fn usz! Formatter.out_str(&self, any arg) @private
 			len += self.out(']')!;
 			return len;
 		case VECTOR:
+			PrintFlags flags = self.flags;
+			defer self.flags = flags;
+			self.flags = {};
 			// this is SomeType[*] so grab the "SomeType"
 			typeid inner = arg.type.inner;
 			usz size = inner.sizeof;
@@ -204,6 +219,9 @@ fn usz! Formatter.out_str(&self, any arg) @private
 				return self.out_substr(*(String*)arg);
 			}
 			if (inner == void.typeid) inner = char.typeid;
+			PrintFlags flags = self.flags;
+			defer self.flags = flags;
+			self.flags = {};
 			usz size = inner.sizeof;
 			// Pretend this is a String
 			String* temp = (void*)arg.ptr;
@@ -347,38 +365,17 @@ fn usz! Formatter.vprintf(&self, String format, any[] anys)
 				self.out_char(current)!;
 				continue;
 			case 's':
-				PrintFlags flags = self.flags;
-				uint width = self.width;
-				String str;
-				if (flags.precision)
-				{
-					switch (s = current)
-					{
-						case String:
-							if (s.len > self.prec)
-							{
-								str = (*s)[:self.prec];
-								current = &str;
-							}
-					}
-				}
-				defer {
-					self.flags = flags;
-					self.width = width;
-				}
-				self.flags = {};
-				self.width = 0;
-				if (flags.left)
+				if (self.flags.left)
 				{
 					usz len = self.out_str(current)!;
-					self.pad(' ', width, len)!;
+					self.pad(' ', self.width, len)!;
 					continue;
 				}
 				OutputFn out_fn = self.out_fn;
 				self.out_fn = (OutputFn)&out_null_fn;
 				usz len = self.out_str(current)!;
 				self.out_fn = out_fn;
-				self.pad(' ', width, len)!;
+				self.pad(' ', self.width, len)!;
 				self.out_str(current)!;
 				continue;
 			case 'p':
