@@ -317,10 +317,6 @@ void sema_process_includes(CompilationUnit *unit)
 void sema_analysis_pass_register_global_declarations(Module *module)
 {
 	DEBUG_LOG("Pass: Register globals for module '%s'.", module->name->module);
-	if (str_eq("std::core::env", module->name->module))
-	{
-		printf("");
-	}
 	VECEACH(module->units, index)
 	{
 		CompilationUnit *unit = module->units[index];

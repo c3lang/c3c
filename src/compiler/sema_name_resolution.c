@@ -319,7 +319,15 @@ static Decl *sema_find_decl_in_global_new(CompilationUnit *unit, DeclTable *tabl
 			maybe_decl = candidate;
 			continue;
 		}
-		if (!ambiguous)
+		if (ambiguous)
+		{
+			if (candidate->is_autoimport && !decl->is_autoimport)
+			{
+				ambiguous = NULL;
+				decl = candidate;
+			}
+		}
+		else
 		{
 			ambiguous = decl;
 			decl = candidate;
