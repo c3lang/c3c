@@ -46,4 +46,8 @@ fn void printf_a()
 	assert(s == "[<12, 23>]          ", "got '%s'; want '[<12, 23>]          '", s);
 	s = string::printf("%20s", vec);
 	assert(s == "          [<12, 23>]", "got '%s'; want '          [<12, 23>]'", s);
+
+	String ss = "hello world";
+	s = string::printf("%.4s %.5s", ss, ss);
+	assert(s == "hell hello", "got '%s'; want 'hell hello'", s);
 }

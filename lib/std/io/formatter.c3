@@ -49,13 +49,13 @@ struct Formatter
 
 bitstruct PrintFlags : uint
 {
-	bool zeropad : 0;
-	bool left : 1;
-	bool plus : 2;
-	bool space : 3;
-	bool hash : 4;
-	bool uppercase : 5;
-	bool precision : 6;
+	bool zeropad;
+	bool left;
+	bool plus;
+	bool space;
+	bool hash;
+	bool uppercase;
+	bool precision;
 }
 
 fn void Formatter.init(&self, OutputFn out_fn, void* data = null)
@@ -349,6 +349,19 @@ fn usz! Formatter.vprintf(&self, String format, any[] anys)
 			case 's':
 				PrintFlags flags = self.flags;
 				uint width = self.width;
+				String str;
+				if (flags.precision)
+				{
+					switch (s = current)
+					{
+						case String:
+							if (s.len > self.prec)
+							{
+								str = (*s)[:self.prec];
+								current = &str;
+							}
+					}
+				}
 				defer {
 					self.flags = flags;
 					self.width = width;
