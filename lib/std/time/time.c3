@@ -5,16 +5,20 @@ def Duration = distinct long @inline;
 def Clock = distinct ulong @inline;
 def NanoDuration = distinct long @inline;
 
-fn Duration ms(long l) @inline => (Duration)l * 1000;
-fn Duration sec(long l) @inline => (Duration)l * MICROSECONDS_PER_SECOND;
-fn Duration min(long l) @inline => (Duration)l * MICROSECONDS_PER_MINUTE;
-fn Duration hour(long l) @inline => (Duration)l * MICROSECONDS_PER_HOUR;
+const Duration MS = 1_000;
+const Duration SEC = 1_000_000;
+const Duration MIN = 60 * SEC;
+const Duration HOUR = 60 * MIN;
+const Duration DAY = 24 * HOUR;
+const Duration WEEK = 7 * DAY;
+const Duration MONTH = 30 * WEEK;
+const Duration YEAR = 36525 * DAY / 100;
 
-const Duration MICROSECONDS_PER_SECOND = 1_000_000;
-const Duration MICROSECONDS_PER_MINUTE = MICROSECONDS_PER_SECOND * 60;
-const Duration MICROSECONDS_PER_HOUR = MICROSECONDS_PER_MINUTE * 60;
-const Duration MICROSECONDS_PER_DAY = MICROSECONDS_PER_HOUR * 24;
-const Duration MICROSECONDS_PER_WEEK = MICROSECONDS_PER_DAY * 7;
+fn Duration ms(long l) @inline => (Duration)l * MS;
+fn Duration sec(long l) @inline => (Duration)l * SEC;
+fn Duration min(long l) @inline => (Duration)l * MIN;
+fn Duration hour(long l) @inline => (Duration)l * HOUR;
+fn Duration from_float(double s) @inline => (Duration)(s * SEC);
 
 struct DateTime
 {
@@ -73,18 +77,19 @@ fn Time now()
 	$endif
 }
 
-fn Time Time.add_seconds(time, long seconds) => time + (Time)(seconds * (long)MICROSECONDS_PER_SECOND);
-fn Time Time.add_minutes(time, long minutes) => time + (Time)(minutes * (long)MICROSECONDS_PER_MINUTE);
-fn Time Time.add_hours(time, long hours) => time + (Time)(hours * (long)MICROSECONDS_PER_HOUR);
-fn Time Time.add_days(time, long days) => time + (Time)(days * (long)MICROSECONDS_PER_DAY);
-fn Time Time.add_weeks(time, long weeks) => time + (Time)(weeks * (long)MICROSECONDS_PER_WEEK);
-fn double Time.to_seconds(time) => (long)time / (double)MICROSECONDS_PER_SECOND;
+fn Time Time.add_seconds(time, long seconds) => time + (Time)(seconds * (long)MS);
+fn Time Time.add_minutes(time, long minutes) => time + (Time)(minutes * (long)MIN);
+fn Time Time.add_hours(time, long hours) => time + (Time)(hours * (long)HOUR);
+fn Time Time.add_days(time, long days) => time + (Time)(days * (long)DAY);
+fn Time Time.add_weeks(time, long weeks) => time + (Time)(weeks * (long)WEEK);
+fn Time Time.add_duration(time, Duration duration) => time + (Time)duration;
+fn double Time.to_seconds(time) => (long)time / (double)SEC;
 fn Duration Time.diff_us(time, Time other) => (Duration)(time - other);
-fn double Time.diff_sec(time, Time other) => (long)time.diff_us(other) / (double)MICROSECONDS_PER_SECOND;
-fn double Time.diff_min(time, Time other) => (long)time.diff_us(other) / (double)MICROSECONDS_PER_MINUTE;
-fn double Time.diff_hour(time, Time other) => (long)time.diff_us(other) / (double)MICROSECONDS_PER_HOUR;
-fn double Time.diff_days(time, Time other) => (long)time.diff_us(other) / (double)MICROSECONDS_PER_DAY;
-fn double Time.diff_weeks(time, Time other) => (long)time.diff_us(other) / (double)MICROSECONDS_PER_WEEK;
+fn double Time.diff_sec(time, Time other) => (long)time.diff_us(other) / (double)SEC;
+fn double Time.diff_min(time, Time other) => (long)time.diff_us(other) / (double)MIN;
+fn double Time.diff_hour(time, Time other) => (long)time.diff_us(other) / (double)HOUR;
+fn double Time.diff_days(time, Time other) => (long)time.diff_us(other) / (double)DAY;
+fn double Time.diff_weeks(time, Time other) => (long)time.diff_us(other) / (double)WEEK;
 
 fn double NanoDuration.to_sec(nd) => (double)nd / 1_000_000_000.0;
 fn long NanoDuration.to_ms(nd) => (long)nd / 1_000_000;

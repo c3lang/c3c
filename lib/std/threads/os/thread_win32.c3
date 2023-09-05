@@ -317,20 +317,10 @@ fn bool NativeThread.equals(thread, NativeThread other)
 	return win32::getThreadId(thread) == win32::getThreadId(other);
 }
 
-/**
- * @require ms < uint.max "Too long sleep"
- **/
-fn void! native_sleep_ms(ulong ms)
+fn void! native_sleep_nano(NanoDuration ns)
 {
-	if (win32::sleepEx((uint)ms, true) == win32::WAIT_IO_COMPLETION) return ThreadFault.INTERRUPTED?;
-}
-
-fn void! native_sleep(double s)
-{
-	return native_sleep_ms((uint)s * 1000);
-}
-
-fn void! native_sleep_nano(ulong ns)
-{
-	return native_sleep_ms(ns < 1000_000 ? 1 : ns / 1000_000);
+	long ms = ns.to_ms();
+	if (ms <= 0) return;
+	if (ms > Win32_DWORD.max) ms = Win32_DWORD.max;
+	if (win32::sleepEx((Win32_DWORD)ms, (Win32_BOOL)true) == win32::WAIT_IO_COMPLETION) return ThreadFault.INTERRUPTED?;
 }

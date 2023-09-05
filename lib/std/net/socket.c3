@@ -54,6 +54,11 @@ struct Poll
 	PollEvents revents;
 }
 
+fn ulong! poll_ms(Poll[] polls, long timeout_ms)
+{
+	return poll(polls, time::ms(timeout_ms)) @inline;
+}
+
 /**
  * @param [inout] polls
  * @param timeout "duration to poll."

@@ -191,22 +191,9 @@ struct PosixThreadData @private
 	void* arg;
 }
 
-fn void! native_sleep_nano(ulong nano)
+fn void! native_sleep_nano(NanoDuration nano)
 {
-	TimeSpec to = { .s = 0, .ns = (CLong)nano };
-	if (libc::nanosleep(&to, null)) return ThreadFault.INTERRUPTED?;
-}
-
-fn void! native_sleep_ms(ulong ms)
-{
-	TimeSpec to = { .s = (Time_t)(ms / 1000), .ns = (CLong)((ms % 1000) * 1000_000) };
-	if (libc::nanosleep(&to, null)) return ThreadFault.INTERRUPTED?;
-}
-
-fn void! native_sleep(double s)
-{
-	Time_t si = (Time_t)s;
-	TimeSpec to = { .s = si, .ns = (CLong)((s - si) * 1000_000_000) };
-	if (libc::nanosleep(&to, null)) return ThreadFault.INTERRUPTED?;
+	if (nano <= 0) return;
+	if (libc::nanosleep(&&nano.to_timespec(), null)) return ThreadFault.INTERRUPTED?;
 }
 

@@ -26,7 +26,7 @@ fn TzDateTime DateTime.to_local(&self)
 	Time_t time_t = (Time_t)self.time.to_seconds();
 	libc::localtime_r(&time_t, &tm);
 	TzDateTime dt;
-	dt.usec = (int)((long)self.time % (long)time::MICROSECONDS_PER_SECOND);
+	dt.usec = (int)((long)self.time % (long)time::SEC);
 	dt.sec = (char)tm.tm_sec;
 	dt.min = (char)tm.tm_min;
 	dt.hour = (char)tm.tm_hour;
@@ -64,7 +64,7 @@ fn void DateTime.set_date(&self, int year, Month month = JANUARY, int day = 1, i
 	tm.tm_mday = day;
 	tm.tm_year = year - 1900;
 	Time_t time = libc::timegm(&tm);
-	self.set_time((Time)(time * (long)time::MICROSECONDS_PER_SECOND + us));
+	self.set_time((Time)(time * (long)time::SEC + us));
 }
 
 fn void DateTime.set_time(&self, Time time)
@@ -72,7 +72,7 @@ fn void DateTime.set_time(&self, Time time)
 	Tm tm @noinit;
 	Time_t time_t = (Time_t)time.to_seconds();
 	libc::gmtime_r(&time_t, &tm);
-	self.usec = (int)((long)time % (long)time::MICROSECONDS_PER_SECOND);
+	self.usec = (int)((long)time % (long)time::SEC);
 	self.sec = (char)tm.tm_sec;
 	self.min = (char)tm.tm_min;
 	self.hour = (char)tm.tm_hour;
@@ -162,7 +162,7 @@ fn int DateTime.diff_years(&self, DateTime from)
 
 fn double DateTime.diff_sec(self, DateTime from)
 {
-	return (double)self.time.diff_us(from.time) / (double)time::MICROSECONDS_PER_SECOND;
+	return (double)self.time.diff_us(from.time) / (double)time::SEC;
 }
 fn Duration DateTime.diff_us(self, DateTime from)
 {

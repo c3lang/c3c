@@ -43,7 +43,7 @@ extern fn uint waitForMultipleObjects(uint count, Win32_HANDLE* handles, bool wa
 extern fn Win32_BOOL resetEvent(Win32_HANDLE event) @extern("ResetEvent");
 extern fn Win32_BOOL setEvent(Win32_HANDLE handle) @extern("SetEvent");
 extern fn long interlockedCompareExchange(int* dest, int exchange, int comperand) @extern("InterlockedCompareExchange");
-extern fn uint sleepEx(uint ms, bool alertable) @extern("SleepEx");
+extern fn Win32_DWORD sleepEx(Win32_DWORD ms, Win32_BOOL alertable) @extern("SleepEx");
 extern fn Win32_HANDLE createThread(void* attributes, usz stack, ThreadFn func, void* arg, uint flags, uint* thread_id) @extern("CreateThread");
 extern fn Win32_BOOL getExitCodeThread(Win32_HANDLE handle, uint* exit_code) @extern("GetExitCodeThread");
 extern fn Win32_BOOL getExitCodeProcess(Win32_HANDLE hProcess, Win32_LPDWORD lpExitCode) @extern("GetExitCodeProcess");

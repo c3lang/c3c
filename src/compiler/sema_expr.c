@@ -6993,7 +6993,6 @@ static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr)
 	Expr *main_var = expr->ct_call_expr.main_var;
 	Decl *decl = sema_expr_analyse_var_path(context, main_var);
 	if (!decl) return false;
-	Type *type = decl->type;
 
 	TokenType name_type = expr->ct_call_expr.token_type;
 
