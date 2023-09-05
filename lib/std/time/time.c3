@@ -18,7 +18,7 @@ fn Duration ms(long l) @inline => (Duration)l * MS;
 fn Duration sec(long l) @inline => (Duration)l * SEC;
 fn Duration min(long l) @inline => (Duration)l * MIN;
 fn Duration hour(long l) @inline => (Duration)l * HOUR;
-fn Duration from_float(double s) @inline => (Duration)(s * SEC);
+fn Duration from_float(double s) @inline => (Duration)(s * (double)SEC);
 
 struct DateTime
 {
