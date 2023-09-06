@@ -20,6 +20,7 @@ fn void! NativeMutex.init(&self, MutexType type)
 		if (posix::pthread_mutexattr_settype(&attr, posix::PTHREAD_MUTEX_RECURSIVE)) return ThreadFault.INIT_FAILED?;
 	}
 	if (posix::pthread_mutex_init(self, &attr)) return ThreadFault.INIT_FAILED?;
+	assert(self.is_initialized());
 }
 
 fn bool NativeMutex.is_initialized(&self)
@@ -37,11 +38,13 @@ fn void! NativeMutex.destroy(&self)
 	*self = NativeMutex {};
 }
 
-/**
- * @require self.is_initialized() : "Mutex was not initialized"
- **/
 fn void! NativeMutex.lock(&self)
 {
+	if (!self.is_initialized())
+	{
+		io::printfn("Mutex was: %s", *self);
+		assert(false);
+	}
 	if (posix::pthread_mutex_lock(self)) return ThreadFault.LOCK_FAILED?;
 }
 
