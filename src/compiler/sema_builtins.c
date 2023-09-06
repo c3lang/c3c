@@ -321,7 +321,6 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_SET_ROUNDING_MODE:
 			assert(arg_count == 1);
 			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_INTEGER }, 1)) return false;
-			if (!sema_check_builtin_args_match(args, 1)) return false;
 			rtype = type_void;
 			break;
 		case BUILTIN_SYSCALL:

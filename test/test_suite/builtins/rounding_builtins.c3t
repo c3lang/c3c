@@ -29,6 +29,8 @@ fn void main()
     double[<2>] vd9 = $$round(vd);
     double[<2>] vd10 = $$roundeven(vd);
 
+    $$set_rounding_mode(0);
+
     return;
 }
 
@@ -46,3 +48,4 @@ fn void main()
   %19 = call <2 x double> @llvm.rint.v2f64(<2 x double> %18)
   %21 = call <2 x double> @llvm.round.v2f64(<2 x double> %20)
   %23 = call <2 x double> @llvm.roundeven.v2f64(<2 x double> %22)
+  call void @llvm.set.rounding(i32 0)
