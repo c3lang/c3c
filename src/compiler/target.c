@@ -536,6 +536,7 @@ static void x86_features_add_feature(X86Features *cpu_features, X86Feature featu
 		case X86_FEAT_AVX2:
 		case X86_FEAT_F16C:
 		case X86_FEAT_FMA:
+		case X86_FEAT_SM3:
 			x86_features_add_feature(cpu_features, X86_FEAT_AVX);
 			return;
 		case X86_FEAT_VAES:
@@ -573,12 +574,16 @@ static void x86_features_add_feature(X86Features *cpu_features, X86Feature featu
 		case X86_FEAT_AMX_BF16:
 		case X86_FEAT_AMX_FP16:
 		case X86_FEAT_AMX_INT8:
+		case X86_FEAT_AMX_COMPLEX:
 			x86_features_add_feature(cpu_features, X86_FEAT_AMX_TILE);
 			return;
 		case X86_FEAT_AVXVNNIINT8:
+		case X86_FEAT_AVXVNNIINT16:
 		case X86_FEAT_AVXIFMA:
 		case X86_FEAT_AVXNECONVERT:
 		case X86_FEAT_AVXVNNI:
+		case X86_FEAT_SHA512:
+		case X86_FEAT_SM4:
 			x86_features_add_feature(cpu_features, X86_FEAT_AVX2);
 			return;
 		case X86_FEAT_AVX512FP16:
