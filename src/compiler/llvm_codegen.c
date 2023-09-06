@@ -980,6 +980,11 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 	ABIArgInfo *ret_abi_info = prototype->ret_abi_info;
 	llvm_emit_param_attributes(c, function, ret_abi_info, true, 0, 0);
 	unsigned params = vec_size(prototype->param_types);
+	if (c->debug.enable_stacktrace)
+	{
+		llvm_attribute_add_string(c, function, "frame-pointer", "all", -1);
+	}
+	llvm_attribute_add_string(c, function, "no-trapping-math", "true", -1);
 	if (prototype->ret_by_ref)
 	{
 		ABIArgInfo *info = prototype->ret_by_ref_abi_info;

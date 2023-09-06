@@ -33,5 +33,3 @@ entry:
   call void @hello2(i64 %lo, i64 %hi)
   ret void
 }
-
-attributes #0 = { nounwind }

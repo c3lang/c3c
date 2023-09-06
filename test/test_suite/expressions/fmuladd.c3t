@@ -49,8 +49,34 @@ fn void main()
 /* #expect: test.ll
 
   %3 = call float @llvm.fmuladd.f32(float %0, float %1, float %2)
+
   %3 = call float @llvm.fmuladd.f32(float %0, float %1, float %2)
+
+  %3 = load float, ptr %c, align 4
+  %fneg = fneg float %3
+  store float %fneg, ptr %c, align 4
+  %4 = load float, ptr %c, align 4
+  %5 = fneg float %4
   %6 = call float @llvm.fmuladd.f32(float %0, float %1, float %5)
+
+  %fneg = fneg float %3
+  store float %fneg, ptr %c, align 4
+  %4 = load float, ptr %c, align 4
+  %fneg1 = fneg float %4
   %5 = call float @llvm.fmuladd.f32(float %0, float %1, float %fneg1)
-  %6 = call float @llvm.fmuladd.f32(float %0, float %1, float %5)
+
+  %3 = load float, ptr %c, align 4
+  %fneg = fneg float %3
+  store float %fneg, ptr %c, align 4
+  %4 = load float, ptr %c, align 4
+  %5 = fneg float %1
+  %6 = call float @llvm.fmuladd.f32(float %0, float %5, float %4)
+  %fneg1 = fneg float %6
+
+  %3 = load float, ptr %c, align 4
+  %fneg = fneg float %3
+  store float %fneg, ptr %c, align 4
+  %fneg1 = fneg float %0
+  %4 = load float, ptr %c, align 4
   %5 = call float @llvm.fmuladd.f32(float %fneg1, float %1, float %4)
+  %fneg2 = fneg float %5

@@ -3947,9 +3947,13 @@ typedef enum {
 
 INLINE FmulTransformation llvm_get_fmul_transformation(Expr *lhs, Expr *rhs)
 {
+	// x * y + z
 	if (expr_is_mult(lhs)) return FMUL_LHS_MULT;
+	// -(x * y) + z
 	if (expr_is_neg(lhs) && expr_is_mult(lhs->unary_expr.expr)) return FMUL_LHS_NEG_MULT;
+	// x + y * z
 	if (expr_is_mult(rhs)) return FMUL_RHS_MULT;
+	// x - (y * z)
 	if (expr_is_neg(rhs) && expr_is_mult(rhs->unary_expr.expr)) return FMUL_RHS_NEG_MULT;
 	return FMUL_NONE;
 }
@@ -3994,28 +3998,32 @@ INLINE bool llvm_emit_fmuladd_maybe(GenContext *c, BEValue *be_value, Expr *expr
 			break;
 		case FMUL_RHS_MULT:
 			args[2] = llvm_emit_expr_to_rvalue(c, lhs);
-			if (negate_rhs)
-			{
-				args[2] = LLVMBuildFNeg(c->builder, args[2], "");
-				negate_result = true;
-			}
 			args[0] = llvm_emit_exprid_to_rvalue(c, rhs->binary_expr.left);
 			args[1] = llvm_emit_exprid_to_rvalue(c, rhs->binary_expr.right);
+			if (negate_rhs)
+			{
+				args[1] = LLVMBuildFNeg(c->builder, args[1], "");
+				negate_result = false;
+			}
 			break;
 		case FMUL_RHS_NEG_MULT:
 			rhs = rhs->unary_expr.expr;
 			assert(!negate_rhs);
+			args[0] = llvm_emit_exprid_to_rvalue(c, rhs->binary_expr.left);
+			args[1] = llvm_emit_exprid_to_rvalue(c, rhs->binary_expr.right);
+
 			if (expr_is_neg(lhs))
 			{
+				// -x - (y * z) => -(x + y * z)
 				args[2] = llvm_emit_expr_to_rvalue(c, lhs->unary_expr.expr);
+				negate_result = true;
 			}
 			else
 			{
-				args[2] = LLVMBuildFNeg(c->builder, llvm_emit_expr_to_rvalue(c, lhs), "");
+				// x - (y * z) => x + (-y) * z
+				args[1] = LLVMBuildFNeg(c->builder, args[1], "");
+				args[2] = llvm_emit_expr_to_rvalue(c, lhs->unary_expr.expr);
 			}
-			args[0] = llvm_emit_exprid_to_rvalue(c, rhs->binary_expr.left);
-			args[1] = llvm_emit_exprid_to_rvalue(c, rhs->binary_expr.right);
-			negate_result = true;
 			break;
 		default:
 			UNREACHABLE

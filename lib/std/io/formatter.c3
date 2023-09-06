@@ -122,13 +122,25 @@ fn usz! Formatter.out_str(&self, any arg) @private
 		case SIGNED_INT:
 		case UNSIGNED_INT:
 			PrintFlags flags = self.flags;
-			defer self.flags = flags;
+			uint width = self.width;
+			defer
+			{
+				self.flags = flags;
+				self.width = width;
+			}
 			self.flags = {};
+			self.width = 0;
 			return self.ntoa_any(arg, 10);
 		case FLOAT:
 			PrintFlags flags = self.flags;
-			defer self.flags = flags;
+			uint width = self.width;
+			defer
+			{
+				self.flags = flags;
+				self.width = width;
+			}
 			self.flags = {};
+			self.width = 0;
 			return self.ftoa(float_from_any(arg)!!);
 		case BOOL:
 			return self.out_substr(*(bool*)arg.ptr ? "true" : "false");
@@ -170,14 +182,26 @@ fn usz! Formatter.out_str(&self, any arg) @private
 			return self.out_str(any { arg.ptr, arg.type.inner });
 		case POINTER:
 			PrintFlags flags = self.flags;
+			uint width = self.width;
+			defer
+			{
+				self.flags = flags;
+				self.width = width;
+			}
 			self.flags = {};
-			defer self.flags = flags;
+			self.width = 0;
 			return self.ntoa_any(arg, 16);
 		case ARRAY:
 			// this is SomeType[*] so grab the "SomeType"
 			PrintFlags flags = self.flags;
-			defer self.flags = flags;
+			uint width = self.width;
+			defer
+			{
+				self.flags = flags;
+				self.width = width;
+			}
 			self.flags = {};
+			self.width = 0;
 			typeid inner = arg.type.inner;
 			usz size = inner.sizeof;
 			usz alen = arg.type.len;
@@ -194,8 +218,14 @@ fn usz! Formatter.out_str(&self, any arg) @private
 			return len;
 		case VECTOR:
 			PrintFlags flags = self.flags;
-			defer self.flags = flags;
+			uint width = self.width;
+			defer
+			{
+				self.flags = flags;
+				self.width = width;
+			}
 			self.flags = {};
+			self.width = 0;
 			// this is SomeType[*] so grab the "SomeType"
 			typeid inner = arg.type.inner;
 			usz size = inner.sizeof;
@@ -220,8 +250,14 @@ fn usz! Formatter.out_str(&self, any arg) @private
 			}
 			if (inner == void.typeid) inner = char.typeid;
 			PrintFlags flags = self.flags;
-			defer self.flags = flags;
+			uint width = self.width;
+			defer
+			{
+				self.flags = flags;
+				self.width = width;
+			}
 			self.flags = {};
+			self.width = 0;
 			usz size = inner.sizeof;
 			// Pretend this is a String
 			String* temp = (void*)arg.ptr;
