@@ -513,6 +513,7 @@ void compiler_compile(void)
 			printf("Launching %s...\n", output_exe);
 			int ret = system(platform_target.os == OS_TYPE_WIN32 ? output_exe : str_printf("./%s", output_exe));
 			printf("Program finished with exit code %d.\n", ret);
+			if (ret != 0) exit(EXIT_FAILURE);
 		}
 	}
 	else if (output_static)

@@ -1,7 +1,13 @@
 module std::threads::os @if(env::POSIX);
 import std::os::posix;
 import libc;
-def NativeMutex = Pthread_mutex_t;
+
+struct NativeMutex
+{
+	Pthread_mutex_t mutex;
+	bool initialized;
+}
+
 def NativeConditionVariable = Pthread_cond_t;
 def NativeThread = Pthread_t;
 def NativeOnceFlag = Pthread_once_t;
@@ -19,12 +25,13 @@ fn void! NativeMutex.init(&self, MutexType type)
 	{
 		if (posix::pthread_mutexattr_settype(&attr, posix::PTHREAD_MUTEX_RECURSIVE)) return ThreadFault.INIT_FAILED?;
 	}
-	if (posix::pthread_mutex_init(self, &attr)) return ThreadFault.INIT_FAILED?;
+	if (posix::pthread_mutex_init(&self.mutex, &attr)) return ThreadFault.INIT_FAILED?;
+	self.initialized = true;
 }
 
 fn bool NativeMutex.is_initialized(&self)
 {
-	return *self != NativeMutex {};
+	return self.initialized;
 }
 
 /**
@@ -33,8 +40,8 @@ fn bool NativeMutex.is_initialized(&self)
  **/
 fn void! NativeMutex.destroy(&self)
 {
-	if (posix::pthread_mutex_destroy(self)) return ThreadFault.DESTROY_FAILED?;
-	*self = NativeMutex {};
+	if (posix::pthread_mutex_destroy(&self.mutex)) return ThreadFault.DESTROY_FAILED?;
+	*self = {};
 }
 
 /**
@@ -42,17 +49,17 @@ fn void! NativeMutex.destroy(&self)
  **/
 fn void! NativeMutex.lock(&self)
 {
-	if (posix::pthread_mutex_lock(self)) return ThreadFault.LOCK_FAILED?;
+	if (posix::pthread_mutex_lock(&self.mutex)) return ThreadFault.LOCK_FAILED?;
 }
 
 /**
- * @require mtx.is_initialized() : "Mutex was not initialized"
+ * @require self.is_initialized() : "Mutex was not initialized"
  **/
-fn void! NativeMutex.lock_timeout(&mtx, ulong ms)
+fn void! NativeMutex.lock_timeout(&self, ulong ms)
 {
 	/* Try to acquire the lock and, if we fail, sleep for 5ms. */
 	Errno result;
-	while ((result = posix::pthread_mutex_trylock(mtx)) == errno::EBUSY)
+	while ((result = posix::pthread_mutex_trylock(&self.mutex)) == errno::EBUSY)
 	{
 		if (!ms) break;
 		ulong sleep = min(5, ms);
@@ -76,7 +83,7 @@ fn void! NativeMutex.lock_timeout(&mtx, ulong ms)
  **/
 fn bool NativeMutex.try_lock(&self)
 {
-	return !posix::pthread_mutex_trylock(self);
+	return !posix::pthread_mutex_trylock(&self.mutex);
 }
 
 /**
@@ -84,7 +91,7 @@ fn bool NativeMutex.try_lock(&self)
  **/
 fn void! NativeMutex.unlock(&self)
 {
-	if (posix::pthread_mutex_unlock(self)) return ThreadFault.UNLOCK_FAILED?;
+	if (posix::pthread_mutex_unlock(&self.mutex)) return ThreadFault.UNLOCK_FAILED?;
 }
 
 fn void! NativeConditionVariable.init(&cond)
@@ -107,18 +114,24 @@ fn void! NativeConditionVariable.broadcast(&cond)
 	if (posix::pthread_cond_broadcast(cond)) return ThreadFault.SIGNAL_FAILED?;
 }
 
+/**
+ * @require mtx.is_initialized()
+ **/
 fn void! NativeConditionVariable.wait(&cond, NativeMutex* mtx)
 {
-	if (posix::pthread_cond_wait(cond, mtx)) return ThreadFault.WAIT_FAILED?;
+	if (posix::pthread_cond_wait(cond, &mtx.mutex)) return ThreadFault.WAIT_FAILED?;
 }
 
+/**
+ * @require mtx.is_initialized()
+ **/
 fn void! NativeConditionVariable.wait_timeout(&cond, NativeMutex* mtx, ulong ms)
 {
 	TimeSpec now;
 	if (libc::timespec_get(&now, libc::TIME_UTC) != libc::TIME_UTC) return ThreadFault.WAIT_FAILED?;
 	now.s += (Time_t)(ms / 1000);
 	now.ns += (CLong)((ms % 1000) * 1000_000);
-	switch (posix::pthread_cond_timedwait(cond, mtx, &now))
+	switch (posix::pthread_cond_timedwait(cond, &mtx.mutex, &now))
 	{
 		case errno::ETIMEDOUT:
 			return ThreadFault.WAIT_TIMEOUT?;

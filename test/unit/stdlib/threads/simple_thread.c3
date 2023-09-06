@@ -15,18 +15,19 @@ fn void! testrun() @test
 	assert(t.join()! == 10);
 }
 
-Mutex m;
+
+Mutex m_global;
 
 fn void! testrun_mutex() @test
 {
 	Thread[20] ts;
 	a = 0;
-	m.init()!;
+	m_global.init()!;
 	foreach (&t : ts)
 	{
 		t.create(fn int(void* arg) {
-			m.lock()!!;
-			defer m.unlock()!!;
+			m_global.lock()!!;
+			defer m_global.unlock()!!;
 			a += 10;
 			thread::sleep_ms(5);
 			a *= 10;
@@ -44,7 +45,7 @@ fn void! testrun_mutex() @test
         assert(t.join()! == 0);
     }
 	assert(a == ts.len);
-	m.destroy()!;
+	m_global.destroy()!;
 }
 
 fn void! testrun_mutex_try() @test
