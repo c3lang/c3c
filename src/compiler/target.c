@@ -360,7 +360,10 @@ static char *x86_feature_name[] = {
 		[X86_FEAT_SAHF] = "sahf",
 		[X86_FEAT_SERIALIZE] = "serialize",
 		[X86_FEAT_SGX] = "sgx",
+		[X86_FEAT_SM3] = "sm3",
+		[X86_FEAT_SM4] = "sm4",
 		[X86_FEAT_SHA] = "sha",
+		[X86_FEAT_SHA512] = "sha512",
 		[X86_FEAT_SHSTK] = "shstk",
 		[X86_FEAT_TBM] = "tbm",
 		[X86_FEAT_TSXLDTRK] = "tsxldtrk",
@@ -378,11 +381,13 @@ static char *x86_feature_name[] = {
 		[X86_FEAT_RAOINT] = "raoint",
 		[X86_FEAT_AVX512FP16] = "avx512fp16",
 		[X86_FEAT_AMX_FP16] = "amx-fp16",
+		[X86_FEAT_AMX_COMPLEX] = "amx-complex",
 		[X86_FEAT_CMPCCXADD] = "cmpccxadd",
 		[X86_FEAT_AVXNECONVERT] = "avxneconvert",
 		[X86_FEAT_AVXVNNI] = "avxvnni",
 		[X86_FEAT_AVXIFMA] = "avxifma",
 		[X86_FEAT_AVXVNNIINT8] = "avxvnniint8",
+		[X86_FEAT_AVXVNNIINT16] = "avxvnniint16",
 };
 static X86Feature x86feature_from_string(const char *str)
 {
