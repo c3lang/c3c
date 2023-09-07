@@ -64,7 +64,7 @@ jobs:
       - name: Compile run unit tests
         run: |
           cd test
-          ..\build\${{ matrix.build_type }}\c3c.exe compile-test unit -g1 --safe
+          ..\build\${{ matrix.build_type }}\c3c.exe compile-test unit -g1 -O1 --safe
 
       - name: upload artifacts
         uses: actions/upload-artifact@v3
