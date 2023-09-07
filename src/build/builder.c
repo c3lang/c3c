@@ -108,7 +108,7 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 			target->single_module = true;
 			FALLTHROUGH;
 		case OPT_SETTING_O1:
-			target->optimization_level = OPTIMIZATION_DEFAULT;
+			target->optimization_level = OPTIMIZATION_LESS;
 			target->size_optimization_level = SIZE_OPTIMIZATION_NONE;
 			target->feature.safe_mode = false;
 			break;
@@ -360,7 +360,7 @@ void init_default_build_target(BuildTarget *target, BuildOptions *options)
 		.type = TARGET_TYPE_EXECUTABLE,
 		.source_dirs = options->files,
 		.name = options->output_name,
-		.optimization_level = OPTIMIZATION_DEFAULT,
+		.optimization_level = OPTIMIZATION_NONE,
 		.memory_environment = MEMORY_ENV_NORMAL,
 		.size_optimization_level = SIZE_OPTIMIZATION_NONE,
 		.symtab_size = options->symtab_size ? options->symtab_size : DEFAULT_SYMTAB_SIZE,

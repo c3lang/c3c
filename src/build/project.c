@@ -451,7 +451,7 @@ static void project_add_targets(Project *project, JSONObject *project_data)
 			[TARGET_TYPE_OBJECT_FILES] = "object files"};
 
 	BuildTarget default_target = {
-			.optimization_level = OPTIMIZATION_DEFAULT,
+			.optimization_level = OPTIMIZATION_NONE,
 			.memory_environment = MEMORY_ENV_NORMAL,
 			.size_optimization_level = SIZE_OPTIMIZATION_NONE,
 			.arch_os_target = ARCH_OS_TARGET_DEFAULT,

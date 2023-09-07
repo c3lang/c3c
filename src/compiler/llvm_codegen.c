@@ -835,10 +835,10 @@ static inline void llvm_optimize(GenContext *c)
 	switch (active_target.optimization_level)
 	{
 		case OPTIMIZATION_NONE:
+		case OPTIMIZATION_NOT_SET:
 			passes = "default<O0>";
 			break;
-		case OPTIMIZATION_NOT_SET:
-		case OPTIMIZATION_DEFAULT:
+		case OPTIMIZATION_LESS:
 			if (!passes) passes = "default<O1>";
 			break;
 		case OPTIMIZATION_MORE:
