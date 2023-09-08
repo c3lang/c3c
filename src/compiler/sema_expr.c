@@ -5119,6 +5119,42 @@ static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, 
 
 }
 
+INLINE bool sema_is_valid_pointer_offset_type(Type *canonical_type, Expr *ptr_expr, Expr *add_expr, const char *error)
+{
+	if (!type_is_integer(canonical_type))
+	{
+		RETURN_SEMA_ERROR(ptr_expr, "A value of type '%s' cannot %s '%s', an integer was expected here.",
+		           type_to_error_string(add_expr->type),
+				   error,
+		           type_to_error_string(add_expr->type));
+	}
+	return true;
+}
+
+INLINE bool sema_is_valid_vector_pointer_offset_type(Type *canonical_type, Type *canonical_pointer_type, Expr *ptr_expr, Expr *add_expr, const char *error)
+{
+	if (canonical_type->type_kind == TYPE_VECTOR)
+	{
+		// Reduce according to inline.
+		Type *element = type_flat_inline(canonical_type->array.base);
+		if (type_is_integer(element))
+		{
+			if (canonical_type->array.len != canonical_pointer_type->array.len)
+			{
+				RETURN_SEMA_ERROR(ptr_expr, "A value of type '%s' cannot %s '%s', vector widths must be the same.",
+				                  type_to_error_string(add_expr->type),
+								  error,
+				                  type_to_error_string(add_expr->type));
+			}
+			return true;
+		}
+	}
+	RETURN_SEMA_ERROR(ptr_expr, "A value of type '%s' cannot %s to '%s', an integer vector was expected here.",
+	                  type_to_error_string(add_expr->type),
+					  error,
+	                  type_to_error_string(add_expr->type));
+}
+
 /**
  * Analyse a + b
  * @return true if it succeeds.

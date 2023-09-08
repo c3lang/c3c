@@ -7,6 +7,35 @@ const MAX_MEMORY_ALIGNMENT = 0x1000_0000;
 const DEFAULT_MEM_ALIGNMENT = (void*.alignof) * 2;
 
 
+/**
+ * @param ptr "The pointer address to load from."
+ * @param mask "The mask for the load"
+ * @param passthru "The value to use for non masked values"
+ * @checked $typeof(ptr) x = &&passthru : "Pointer and passthru must match"
+ * @require @typekind(passthru) == VECTOR : "Expected passthru to be a vector"
+ * @require passthru.len == mask.len : "Mask and passthru must have the same length"
+ *
+ * @return "A vector with the loaded values where the mask is true, passthru where the mask is false"
+ **/
+macro @masked_load(ptr, bool[<*>] mask, passthru, usz $alignment = 0)
+{
+	return $$masked_load(ptr, mask, passthru, $alignment);
+}
+
+/**
+ * @param ptr "The pointer address to store from."
+ * @param value "The value to store masked"
+ * @param mask "The mask for the store"
+ * @checked $typeof(ptr) x = &&value : "Pointer and value must match"
+ * @require @typekind(value) == VECTOR : "Expected value to be a vector"
+ * @require value.len == mask.len : "Mask and value must have the same length"
+ *
+ **/
+macro @masked_store(ptr, value, bool[<*>] mask, usz $alignment = 0)
+{
+	return $$masked_store(ptr, value, mask, $alignment);
+}
+
 macro @volatile_load(&x) @builtin
 {
 	return $$volatile_load(x);

@@ -446,12 +446,50 @@ void llvm_emit_simple_builtin(GenContext *c, BEValue *be_value, Expr *expr, unsi
 {
 	Expr **args = expr->call_expr.arguments;
 	unsigned count = vec_size(args);
-	assert(count <= 3);
+	assert(count <= 4);
 	assert(count > 0);
-	LLVMValueRef arg_slots[3];
+	LLVMValueRef arg_slots[4];
 	llvm_emit_intrinsic_args(c, args, arg_slots, count);
 	LLVMTypeRef call_type = LLVMTypeOf(arg_slots[0]);
 	LLVMValueRef result = llvm_emit_call_intrinsic(c, intrinsic, &call_type, 1, arg_slots, count);
+	llvm_value_set(be_value, result, expr->type);
+}
+
+static void llvm_emit_masked_load(GenContext *c, BEValue *be_value, Expr *expr)
+{
+	Expr **args = expr->call_expr.arguments;
+	assert(vec_size(args) == 4);
+	LLVMValueRef arg_slots[4];
+	llvm_emit_intrinsic_args(c, args, arg_slots, 3);
+	// Rearrange to match our builtin with the intrinsic which is ptr, align, mask, passthru
+	LLVMValueRef passthru = arg_slots[2];
+	LLVMValueRef mask = arg_slots[1];
+	uint64_t alignment = args[3]->const_expr.ixx.i.low;
+	LLVMTypeRef call_type[2] = { LLVMTypeOf(passthru), c->ptr_type };
+	arg_slots[1] = llvm_const_int(c, type_uint, alignment ? alignment : llvm_abi_alignment(c, call_type[0]));
+	arg_slots[2] = mask;
+	arg_slots[3] = passthru;
+	LLVMValueRef result = llvm_emit_call_intrinsic(c, intrinsic_id.masked_load, call_type, 2, arg_slots, 4);
+	llvm_value_set(be_value, result, expr->type);
+}
+
+static void llvm_emit_masked_store(GenContext *c, BEValue *be_value, Expr *expr)
+{
+	Expr **args = expr->call_expr.arguments;
+	assert(vec_size(args) == 4);
+	LLVMValueRef arg_slots[4];
+	llvm_emit_intrinsic_args(c, args, arg_slots, 3);
+	// Rearrange to match our builtin with the intrinsic which is value, ptr, align, mask
+	LLVMValueRef ptr = arg_slots[0];
+	LLVMValueRef value = arg_slots[1];
+	LLVMValueRef mask = arg_slots[2];
+	arg_slots[0] = value;
+	arg_slots[1] = ptr;
+	uint64_t alignment = args[3]->const_expr.ixx.i.low;
+	LLVMTypeRef call_type[2] = { LLVMTypeOf(value), c->ptr_type };
+	arg_slots[2] = llvm_const_int(c, type_uint, alignment ? alignment : llvm_abi_alignment(c, call_type[0]));
+	arg_slots[3] = mask;
+	LLVMValueRef result = llvm_emit_call_intrinsic(c, intrinsic_id.masked_store, call_type, 2, arg_slots, 4);
 	llvm_value_set(be_value, result, expr->type);
 }
 
@@ -753,6 +791,12 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 			return;
 		case BUILTIN_EXPECT:
 			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.expect);
+			return;
+		case BUILTIN_MASKED_STORE:
+			llvm_emit_masked_store(c, result_value, expr);
+			return;
+		case BUILTIN_MASKED_LOAD:
+			llvm_emit_masked_load(c, result_value, expr);
 			return;
 		case BUILTIN_EXPECT_WITH_PROBABILITY:
 			if (active_target.optimization_level == OPTIMIZATION_NONE)

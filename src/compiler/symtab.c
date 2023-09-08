@@ -227,6 +227,8 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_LOG] = KW_DEF("log");
 	builtin_list[BUILTIN_LOG2] = KW_DEF("log2");
 	builtin_list[BUILTIN_LOG10] = KW_DEF("log10");
+	builtin_list[BUILTIN_MASKED_LOAD] = KW_DEF("masked_load");
+	builtin_list[BUILTIN_MASKED_STORE] = KW_DEF("masked_store");
 	builtin_list[BUILTIN_MEMCOPY] = KW_DEF("memcpy");
 	builtin_list[BUILTIN_MEMCOPY_INLINE] = KW_DEF("memcpy_inline");
 	builtin_list[BUILTIN_MEMMOVE] = KW_DEF("memmove");

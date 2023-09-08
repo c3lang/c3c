@@ -2655,6 +2655,11 @@ INLINE CanonicalType *type_pointer_type(Type *type)
 	return res->pointer;
 }
 
+INLINE bool type_is_pointer_vector(Type *type)
+{
+	return type->type_kind == TYPE_VECTOR && type->array.base->canonical->type_kind == TYPE_POINTER;
+}
+
 INLINE bool type_is_pointer(Type *type)
 {
 	DECL_TYPE_KIND_REAL(kind, type);
@@ -2834,6 +2839,18 @@ static inline Type *type_base(Type *type)
 				return type;
 		}
 	}
+}
+static inline Type *type_flat_inline(Type *type)
+{
+	do
+	{
+		type = type->canonical;
+		if (type->type_kind != TYPE_DISTINCT) break;
+		Decl *decl = type->decl;
+		if (!decl->is_substruct) break;
+		type = decl->distinct_decl.base_type;
+	} while (1);
+	return type;
 }
 
 static inline Type *type_flatten(Type *type)
