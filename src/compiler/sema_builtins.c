@@ -335,6 +335,18 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_check_builtin_args_match(args, 2)) return false;
 			rtype = type_get_vector(type_bool, type_flatten(args[0]->type)->array.len);
 			break;
+		case BUILTIN_SELECT:
+		{
+			assert(arg_count == 3);
+			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_VEC, BA_VEC, BA_VEC }, 3)) return false;
+			if (!sema_check_builtin_args_match(&args[1], 2)) return false;
+			Type *first = type_flatten(args[0]->type);
+			if (!type_flat_is_bool_vector(first)) RETURN_SEMA_ERROR(args[0], "Expected a bool vector.");
+			rtype = args[1]->type;
+			Type *element = type_flatten(rtype);
+			if (element->array.len != first->array.len) RETURN_SEMA_ERROR(args[0], "The predicate must have the same length as the arguments.");
+			break;
+		}
 		case BUILTIN_OVERFLOW_ADD:
 		case BUILTIN_OVERFLOW_MUL:
 		case BUILTIN_OVERFLOW_SUB:
@@ -729,6 +741,7 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_OVERFLOW_SUB:
 		case BUILTIN_PREFETCH:
 		case BUILTIN_ATOMIC_LOAD:
+		case BUILTIN_SELECT:
 			return 3;
 		case BUILTIN_ATOMIC_STORE:
 			return 4;

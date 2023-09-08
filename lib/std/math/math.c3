@@ -80,6 +80,11 @@ enum RoundingMode : int
 	TOWARD_NEG_INFINITY
 }
 
+fault MathError
+{
+	OVERFLOW,
+}
+
 fault MatrixError
 {
 	MATRIX_INVERSE_DOESNT_EXIST,
@@ -545,6 +550,23 @@ macro normalize(x) @private
 	return x * (1 / len);
 }
 
+/**
+ * Use a mask to select values from either "then" or "else" vectors.
+ *
+ * @param mask "The mask to use for the select, 'true' will pick the then_value, 'false' the else_value"
+ * @param then_value "The vector to get elements from where the mask is 'true'"
+ * @param else_value "The vector to get elements from where the mask is 'false'"
+ * @require values::@is_vector(then_value) && values::@is_vector(else_value) "'Then' and 'else' must be vectors."
+ * @require values::@is_same_type(then_value, else_value) "'Then' and 'else' vectors must be of the same type."
+ * @require then_value.len == mask.len "Mask and selected vectors must be of the same width."
+ *
+ * @return "a vector of the same type as then/else"
+ **/
+macro select(bool[<*>] mask, then_value, else_value)
+{
+	return $$select(mask, then_value, else_value);
+}
+
 macro float float.ceil(float x) => $$ceil(x);
 macro float float.clamp(float x, float lower, float upper) => $$max(lower, $$min(x, upper));
 macro float float.copysign(float mag, float sgn) => $$copysign(mag, sgn);
@@ -798,52 +820,82 @@ macro char char.sat_add(char x, char y) => $$sat_add(x, y);
 macro char char.sat_sub(char x, char y) => $$sat_sub(x, y);
 macro char char.sat_mul(char x, char y) => $$sat_mul(x, y);
 macro char char.sat_shl(char x, char y) => $$sat_shl(x, y);
+macro char! char.overflow_add(char x, char y) => overflow_add_helper(x, y);
+macro char! char.overflow_sub(char x, char y) => overflow_sub_helper(x, y);
+macro char! char.overflow_mul(char x, char y) => overflow_mul_helper(x, y);
+
 
 macro ichar ichar.sat_add(ichar x, ichar y) => $$sat_add(x, y);
 macro ichar ichar.sat_sub(ichar x, ichar y) => $$sat_sub(x, y);
 macro ichar ichar.sat_mul(ichar x, ichar y) => $$sat_mul(x, y);
 macro ichar ichar.sat_shl(ichar x, ichar y) => $$sat_shl(x, y);
+macro ichar! ichar.overflow_add(ichar x, ichar y) => overflow_add_helper(x, y);
+macro ichar! ichar.overflow_sub(ichar x, ichar y) => overflow_sub_helper(x, y);
+macro ichar! ichar.overflow_mul(ichar x, ichar y) => overflow_mul_helper(x, y);
 
 macro ushort ushort.sat_add(ushort x, ushort y) => $$sat_add(x, y);
 macro ushort ushort.sat_sub(ushort x, ushort y) => $$sat_sub(x, y);
 macro ushort ushort.sat_mul(ushort x, ushort y) => $$sat_mul(x, y);
 macro ushort ushort.sat_shl(ushort x, ushort y) => $$sat_shl(x, y);
+macro ushort! ushort.overflow_add(ushort x, ushort y) => overflow_add_helper(x, y);
+macro ushort! ushort.overflow_sub(ushort x, ushort y) => overflow_sub_helper(x, y);
+macro ushort! ushort.overflow_mul(ushort x, ushort y) => overflow_mul_helper(x, y);
 
 macro short short.sat_add(short x, short y) => $$sat_add(x, y);
 macro short short.sat_sub(short x, short y) => $$sat_sub(x, y);
 macro short short.sat_mul(short x, short y) => $$sat_mul(x, y);
 macro short short.sat_shl(short x, short y) => $$sat_shl(x, y);
+macro short! short.overflow_add(short x, short y) => overflow_add_helper(x, y);
+macro short! short.overflow_sub(short x, short y) => overflow_sub_helper(x, y);
+macro short! short.overflow_mul(short x, short y) => overflow_mul_helper(x, y);
 
 macro uint uint.sat_add(uint x, uint y) => $$sat_add(x, y);
 macro uint uint.sat_sub(uint x, uint y) => $$sat_sub(x, y);
 macro uint uint.sat_mul(uint x, uint y) => $$sat_mul(x, y);
 macro uint uint.sat_shl(uint x, uint y) => $$sat_shl(x, y);
+macro uint! uint.overflow_add(uint x, uint y) => overflow_add_helper(x, y);
+macro uint! uint.overflow_sub(uint x, uint y) => overflow_sub_helper(x, y);
+macro uint! uint.overflow_mul(uint x, uint y) => overflow_mul_helper(x, y);
 
 macro int int.sat_add(int x, int y) => $$sat_add(x, y);
 macro int int.sat_sub(int x, int y) => $$sat_sub(x, y);
 macro int int.sat_mul(int x, int y) => $$sat_mul(x, y);
 macro int int.sat_shl(int x, int y) => $$sat_shl(x, y);
+macro int! int.overflow_add(int x, int y) => overflow_add_helper(x, y);
+macro int! int.overflow_sub(int x, int y) => overflow_sub_helper(x, y);
+macro int! int.overflow_mul(int x, int y) => overflow_mul_helper(x, y);
 
 macro ulong ulong.sat_add(ulong x, ulong y) => $$sat_add(x, y);
 macro ulong ulong.sat_sub(ulong x, ulong y) => $$sat_sub(x, y);
 macro ulong ulong.sat_mul(ulong x, ulong y) => $$sat_mul(x, y);
 macro ulong ulong.sat_shl(ulong x, ulong y) => $$sat_shl(x, y);
+macro ulong! ulong.overflow_add(ulong x, ulong y) => overflow_add_helper(x, y);
+macro ulong! ulong.overflow_sub(ulong x, ulong y) => overflow_sub_helper(x, y);
+macro ulong! ulong.overflow_mul(ulong x, ulong y) => overflow_mul_helper(x, y);
 
 macro long long.sat_add(long x, long y) => $$sat_add(x, y);
 macro long long.sat_sub(long x, long y) => $$sat_sub(x, y);
 macro long long.sat_mul(long x, long y) => $$sat_mul(x, y);
 macro long long.sat_shl(long x, long y) => $$sat_shl(x, y);
+macro long! long.overflow_add(long x, long y) => overflow_add_helper(x, y);
+macro long! long.overflow_sub(long x, long y) => overflow_sub_helper(x, y);
+macro long! long.overflow_mul(long x, long y) => overflow_mul_helper(x, y);
 
 macro uint128 uint128.sat_add(uint128 x, uint128 y) => $$sat_add(x, y);
 macro uint128 uint128.sat_sub(uint128 x, uint128 y) => $$sat_sub(x, y);
 macro uint128 uint128.sat_mul(uint128 x, uint128 y) => $$sat_mul(x, y);
 macro uint128 uint128.sat_shl(uint128 x, uint128 y) => $$sat_shl(x, y);
+macro uint128! uint128.overflow_add(uint128 x, uint128 y) => overflow_add_helper(x, y);
+macro uint128! uint128.overflow_sub(uint128 x, uint128 y) => overflow_sub_helper(x, y);
+macro uint128! uint128.overflow_mul(uint128 x, uint128 y) => overflow_mul_helper(x, y);
 
 macro int128 int128.sat_add(int128 x, int128 y) => $$sat_add(x, y);
 macro int128 int128.sat_sub(int128 x, int128 y) => $$sat_sub(x, y);
 macro int128 int128.sat_mul(int128 x, int128 y) => $$sat_mul(x, y);
 macro int128 int128.sat_shl(int128 x, int128 y) => $$sat_shl(x, y);
-
+macro int128! int128.overflow_add(int128 x, int128 y) => overflow_add_helper(x, y);
+macro int128! int128.overflow_sub(int128 x, int128 y) => overflow_sub_helper(x, y);
+macro int128! int128.overflow_mul(int128 x, int128 y) => overflow_mul_helper(x, y);
 /**
  * @require values::@is_int(x) `The input must be an integer`
  **/
@@ -986,4 +1038,25 @@ fn float _frexpf(float x, int* e)
 			i |= 0x3f000000u32;
 			return bitcast(i, float);
 	}
+}
+
+macro overflow_add_helper(x, y) @local
+{
+	$typeof(x) res @noinit;
+	if ($$overflow_add(x, y, &res)) return MathError.OVERFLOW?;
+	return res;
+}
+
+macro overflow_sub_helper(x, y) @local
+{
+	$typeof(x) res @noinit;
+	if ($$overflow_sub(x, y, &res)) return MathError.OVERFLOW?;
+	return res;
+}
+
+macro overflow_mul_helper(x, y) @local
+{
+	$typeof(x) res @noinit;
+	if ($$overflow_mul(x, y, &res)) return MathError.OVERFLOW?;
+	return res;
 }

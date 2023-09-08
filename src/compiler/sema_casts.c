@@ -1310,7 +1310,7 @@ static bool cast_from_vector(SemaContext *context, Expr *expr, Type *from, Type 
 	{
 		if (silent) return false;
 		// Give us a nice hint that explicit conversion would work.
-		return sema_error_cannot_convert(expr, to, true, true);
+		return sema_error_cannot_convert(expr, to, true, false);
 	}
 	return cast_with_optional(expr, to_type, add_optional);
 }

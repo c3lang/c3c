@@ -88,6 +88,13 @@ static void gencontext_destroy(GenContext *context)
 	free(context);
 }
 
+LLVMBuilderRef llvm_create_builder(GenContext *c)
+{
+	LLVMBuilderRef builder = LLVMCreateBuilderInContext(c->context);
+	LLVMBuilderSetFastMathFlags(builder, active_target.feature.fp_math);
+	return builder;
+}
+
 LLVMValueRef llvm_emit_is_no_opt(GenContext *c, LLVMValueRef error_value)
 {
 	LLVMValueRef compare = LLVMBuildICmp(c->builder, LLVMIntEQ, error_value, llvm_get_zero(c, type_anyfault), "not_err");
@@ -709,28 +716,37 @@ static void llvm_codegen_setup()
 	intrinsic_id.vector_reduce_and = lookup_intrinsic("llvm.vector.reduce.and");
 	intrinsic_id.vector_reduce_or = lookup_intrinsic("llvm.vector.reduce.or");
 	intrinsic_id.vector_reduce_xor = lookup_intrinsic("llvm.vector.reduce.xor");
+	intrinsic_id.vector_predicate_select = lookup_intrinsic("llvm.vp.select");
 	intrinsic_id.wasm_memory_grow = lookup_intrinsic("llvm.wasm.memory.grow");
 	intrinsic_id.wasm_memory_size = lookup_intrinsic("llvm.wasm.memory.size");
 
+	attribute_id.afn = lookup_attribute("afn");
 	attribute_id.align = lookup_attribute("align");
 	attribute_id.alwaysinline = lookup_attribute("alwaysinline");
+	attribute_id.arcp = lookup_attribute("arcp");
 	attribute_id.byval = lookup_attribute("byval");
+	attribute_id.contract = lookup_attribute("contract");
 	attribute_id.elementtype = lookup_attribute("elementtype");
+	attribute_id.fast = lookup_attribute("fast");
 	attribute_id.inlinehint = lookup_attribute("inlinehint");
 	attribute_id.inreg = lookup_attribute("inreg");
 	attribute_id.naked = lookup_attribute("naked");
+	attribute_id.ninf = lookup_attribute("ninf");
+	attribute_id.nnan = lookup_attribute("nnan");
 	attribute_id.noalias = lookup_attribute("noalias");
 	attribute_id.noinline = lookup_attribute("noinline");
 	attribute_id.noreturn = lookup_attribute("noreturn");
 	attribute_id.nounwind = lookup_attribute("nounwind");
+	attribute_id.nsz = lookup_attribute("nsz");
 	attribute_id.optnone = lookup_attribute("optnone");
 	attribute_id.readonly = lookup_attribute("readonly");
+	attribute_id.reassoc = lookup_attribute("reassoc");
 	attribute_id.sext = lookup_attribute("signext");
 	attribute_id.sret = lookup_attribute("sret");
+	attribute_id.target_features = lookup_attribute("target-features");
 	attribute_id.uwtable = lookup_attribute("uwtable");
 	attribute_id.writeonly = lookup_attribute("writeonly");
 	attribute_id.zext = lookup_attribute("zeroext");
-	attribute_id.target_features = lookup_attribute("target-features");
 	intrinsics_setup = true;
 }
 
@@ -1126,7 +1142,7 @@ static void llvm_gen_test_main(GenContext *c)
 	LLVMValueRef func = LLVMAddFunction(c->module, kw_main, main_type);
 	LLVMValueRef other_func = LLVMAddFunction(c->module, test_runner->extname, runner_type);
 	LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(c->context, func, "entry");
-	LLVMBuilderRef builder = LLVMCreateBuilderInContext(c->context);
+	LLVMBuilderRef builder = llvm_create_builder(c);
 	LLVMPositionBuilderAtEnd(builder, entry);
 	LLVMValueRef val = LLVMBuildCall2(builder, runner_type, other_func, NULL, 0, "");
 	val = LLVMBuildSelect(builder, LLVMBuildTrunc(builder, val, c->bool_type, ""),
@@ -1224,7 +1240,7 @@ static void llvm_gen_benchmark_main(GenContext *c)
 	LLVMValueRef func = LLVMAddFunction(c->module, kw_main, main_type);
 	LLVMValueRef other_func = LLVMAddFunction(c->module, benchmark_runner->extname, runner_type);
 	LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(c->context, func, "entry");
-	LLVMBuilderRef builder = LLVMCreateBuilderInContext(c->context);
+	LLVMBuilderRef builder = llvm_create_builder(c);
 	LLVMPositionBuilderAtEnd(builder, entry);
 	LLVMValueRef val = LLVMBuildCall2(builder, runner_type, other_func, NULL, 0, "");
 	val = LLVMBuildSelect(builder, LLVMBuildTrunc(builder, val, c->bool_type, ""),

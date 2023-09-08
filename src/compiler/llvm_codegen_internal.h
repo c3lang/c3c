@@ -236,6 +236,7 @@ typedef struct
 	unsigned vector_reduce_and;
 	unsigned vector_reduce_or;
 	unsigned vector_reduce_xor;
+	unsigned vector_predicate_select;
 	unsigned wasm_memory_size;
 	unsigned wasm_memory_grow;
 } LLVMIntrinsics;
@@ -244,25 +245,33 @@ extern LLVMIntrinsics intrinsic_id;
 
 typedef struct
 {
-	unsigned align; // align
-	unsigned alwaysinline; // Force inlining
-	unsigned byval; // ByVal (param)
-	unsigned elementtype; // elementtype (type)
-	unsigned inlinehint; // "Inline possibly"
-	unsigned inreg; // inreg (param)
-	unsigned naked; // naked function
-	unsigned noalias; // noalias (pointer)
-	unsigned noinline; // No function inlining
-	unsigned noreturn; // No function return
-	unsigned nounwind; // No exceptions
-	unsigned optnone; // No optimization
-	unsigned readonly; // No reads on pointer
-	unsigned sext; // sign extend
-	unsigned sret; // struct return pointer
-	unsigned uwtable;
-	unsigned writeonly; // No writes on pointer
-	unsigned zext; // zero extend
+	unsigned afn;             // allow approximate functions
+	unsigned align;           // align
+	unsigned alwaysinline;    // Force inlining
+	unsigned arcp;            // allow reciprocal
+	unsigned byval;           // ByVal (param)
+	unsigned contract;        // allow fused multiply-and-add
+	unsigned elementtype;     // elementtype (type)
+	unsigned fast;            // fast fp
+	unsigned inlinehint;      // "Inline possibly"
+	unsigned inreg;           // inreg (param)
+	unsigned naked;           // naked function
+	unsigned ninf;            // no infs
+	unsigned nnan;            // no nans
+	unsigned noalias;         // noalias (pointer)
+	unsigned noinline;        // No function inlining
+	unsigned noreturn;        // No function return
+	unsigned nounwind;        // No exceptions
+	unsigned nsz;             // no signed zeros
+	unsigned optnone;         // No optimization
+	unsigned readonly;        // No reads on pointer
+	unsigned reassoc;         // allow reassociateion
+	unsigned sext;            // sign extend
+	unsigned sret;            // struct return pointer
 	unsigned target_features; // target-features for function compilation
+	unsigned uwtable;
+	unsigned writeonly;       // No writes on pointer
+	unsigned zext;            // zero extend
 } LLVMAttributes;
 
 extern LLVMAttributes attribute_id;
@@ -275,10 +284,14 @@ void gencontext_end_module(GenContext *context);
 
 // Patched functions
 LLVMValueRef LLVMConstBswap(LLVMValueRef ConstantVal);
+void LLVMBuilderSetFastMathFlags(LLVMBuilderRef Builder, FpOpt option);
+
 #ifndef LLVMCreateTypeAttribute
 LLVMAttributeRef LLVMCreateTypeAttribute(LLVMContextRef C, unsigned KindID,
 										 LLVMTypeRef type_ref);
 #endif
+
+LLVMBuilderRef llvm_create_builder(GenContext *c);
 
 static inline LLVMValueRef decl_optional_ref(Decl *decl)
 {
@@ -476,6 +489,8 @@ void llvm_emit_vararg_parameter(GenContext *c, BEValue *value, Type *vararg_type
 
 // -- C3 Lowering --
 void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr);
+LLVMValueRef llvm_emit_expr_to_rvalue(GenContext *c, Expr *expr);
+LLVMValueRef llvm_emit_exprid_to_rvalue(GenContext *c, ExprId expr_id);
 void llvm_emit_ignored_expr(GenContext *c, Expr *expr);
 void llvm_emit_stmt(GenContext *c, Ast *ast);
 void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *panic_name, SourceSpan loc,

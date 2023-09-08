@@ -9,8 +9,6 @@ static LLVMValueRef llvm_emit_coerce_alignment(GenContext *c, BEValue *be_value,
 static bool bitstruct_requires_bitswap(Decl *decl);
 static inline LLVMValueRef llvm_const_high_bitmask(GenContext *c, LLVMTypeRef type, int type_bits, int high_bits);
 static inline LLVMValueRef llvm_const_low_bitmask(GenContext *c, LLVMTypeRef type, int type_bits, int low_bits);
-static inline LLVMValueRef llvm_emit_expr_to_rvalue(GenContext *c, Expr *expr);
-static inline LLVMValueRef llvm_emit_exprid_to_rvalue(GenContext *c, ExprId expr_id);
 static inline LLVMValueRef llvm_update_vector(GenContext *c, LLVMValueRef vector, LLVMValueRef value, MemberIndex index);
 static inline void llvm_emit_expression_list_expr(GenContext *c, BEValue *be_value, Expr *expr);
 static LLVMValueRef llvm_emit_dynamic_search(GenContext *c, LLVMValueRef type_id_ptr, LLVMValueRef selector);
@@ -51,7 +49,6 @@ static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVM
 static inline void llvm_emit_initialize_reference_designated_bitstruct(GenContext *c, BEValue *ref, Decl *bitstruct, Expr **elements);
 INLINE LLVMValueRef llvm_emit_bitstruct_value_update(GenContext *c, LLVMValueRef current_val, TypeSize bits, LLVMTypeRef bitstruct_type, Decl *member, LLVMValueRef val);
 INLINE void llvm_emit_initialize_reference_bitstruct_array(GenContext *c, BEValue *ref, Decl *bitstruct, Expr** elements);
-
 #define MAX_AGG 16
 
 /**
@@ -60,7 +57,7 @@ INLINE void llvm_emit_initialize_reference_bitstruct_array(GenContext *c, BEValu
  * @param expr the expression to emit
  * @return the LLVM value.
  */
-static inline LLVMValueRef llvm_emit_expr_to_rvalue(GenContext *c, Expr *expr)
+LLVMValueRef llvm_emit_expr_to_rvalue(GenContext *c, Expr *expr)
 {
 	BEValue value;
 	llvm_emit_expr(c, &value, expr);
@@ -68,7 +65,7 @@ static inline LLVMValueRef llvm_emit_expr_to_rvalue(GenContext *c, Expr *expr)
 	return value.value;
 }
 
-static inline LLVMValueRef llvm_emit_exprid_to_rvalue(GenContext *c, ExprId expr_id)
+LLVMValueRef llvm_emit_exprid_to_rvalue(GenContext *c, ExprId expr_id)
 {
 	BEValue value;
 	llvm_emit_exprid(c, &value, expr_id);
@@ -3947,6 +3944,7 @@ typedef enum {
 
 INLINE FmulTransformation llvm_get_fmul_transformation(Expr *lhs, Expr *rhs)
 {
+	if (active_target.feature.fp_math <= FP_STRICT) return FMUL_NONE;
 	// x * y + z
 	if (expr_is_mult(lhs)) return FMUL_LHS_MULT;
 	// -(x * y) + z
@@ -5531,7 +5529,7 @@ static LLVMValueRef llvm_emit_dynamic_search(GenContext *c, LLVMValueRef type_id
 		LLVMSetUnnamedAddress(func, LLVMGlobalUnnamedAddr);
 		LLVMSetLinkage(func, LLVMWeakODRLinkage);
 		llvm_set_comdat(c, func);
-		LLVMBuilderRef builder = LLVMCreateBuilderInContext(c->context);
+		LLVMBuilderRef builder = llvm_create_builder(c);
 
 		LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(c->context, func, "entry");
 		LLVMPositionBuilderAtEnd(builder, entry);

@@ -147,6 +147,7 @@ static void usage(void)
 	OUTPUT("  --memory-env=<option>     - Set the memory environment: normal, small, tiny, none.");
 	OUTPUT("  --strip-unused            - Strip unused code and globals from the output. (Enabled by default)");
 	OUTPUT("  --no-strip-unused         - Do not strip unused code and globals from the output.");
+	OUTPUT("  --fp-math=<option>        - FP math behaviour: strict, relaxed, fast.");
 	OUTPUT("");
 	OUTPUT("  --debug-stats             - Print debug statistics.");
 #ifndef NDEBUG
@@ -662,6 +663,11 @@ static void parse_option(BuildOptions *options)
 				options->no_strip_unused = true;
 				return;
 			}
+			if ((argopt = match_argopt("fp-math")))
+			{
+				options->fp_math = (FpOpt)parse_multi_option(argopt, 3, fp_math);
+				return;
+			}
 			if (match_longopt("strip-unused"))
 			{
 				options->no_strip_unused = false;
@@ -1017,6 +1023,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.reloc_model = RELOC_DEFAULT,
 		.backend = BACKEND_LLVM,
 		.x86_vector_capability = X86VECTOR_DEFAULT,
+		.fp_math = FP_DEFAULT,
 		.x86_cpu_set = X86CPU_DEFAULT,
 		.riscv_float_capability = RISCVFLOAT_DEFAULT,
 		.memory_environment = MEMORY_ENV_NOT_SET,

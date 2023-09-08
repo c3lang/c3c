@@ -274,6 +274,10 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	if (options->win.crt_linking != WIN_CRT_DEFAULT) target->win.crt_linking = options->win.crt_linking;
 	if (options->linuxpaths.crt) target->linuxpaths.crt = options->linuxpaths.crt;
 	if (options->linuxpaths.crtbegin) target->linuxpaths.crtbegin = options->linuxpaths.crtbegin;
+	if (options->fp_math != FP_DEFAULT)
+	{
+		target->feature.fp_math = options->fp_math;
+	}
 	if (options->x86_vector_capability != X86VECTOR_DEFAULT)
 	{
 		target->feature.x86_vector_capability = options->x86_vector_capability;
@@ -370,6 +374,7 @@ void init_default_build_target(BuildTarget *target, BuildOptions *options)
 		.reloc_model = RELOC_DEFAULT,
 		.feature.x86_vector_capability = X86VECTOR_DEFAULT,
 		.feature.x86_cpu_set = X86CPU_DEFAULT,
+		.feature.fp_math = FP_DEFAULT,
 		.feature.riscv_float_capability = RISCVFLOAT_DEFAULT,
 		.win.crt_linking = WIN_CRT_DEFAULT,
 		.feature.safe_mode = true,

@@ -60,7 +60,12 @@ typedef enum
 	AR_COFF,
 } ArFormat;
 
-
+typedef enum
+{
+	STRICT,
+	RELAXED,
+	FAST
+} FastMathOption;
 
 static bool llvm_link(ObjFormat format, const char **args, int arg_count, const char** error_string)
 {
@@ -177,6 +182,26 @@ extern "C" {
 	{
 		auto machine = reinterpret_cast<llvm::TargetMachine *>(ref);
 		machine->Options.UseInitArray = use_init_array;
+	}
+
+	void LLVMBuilderSetFastMathFlags(LLVMBuilderRef Builder, FastMathOption option)
+	{
+		llvm::FastMathFlags math_flags {};
+		switch (option)
+		{
+			case RELAXED:
+				math_flags.setAllowReassoc(true);
+				math_flags.setAllowReciprocal(true);
+				math_flags.setAllowContract(true);
+				break;
+			case FAST:
+				math_flags.setFast(true);
+				break;
+			case STRICT:
+			default:
+				return;
+		}
+		llvm::unwrap(Builder)->setFastMathFlags(math_flags);
 	}
 
 	LLVMValueRef LLVMConstBswap(LLVMValueRef ConstantVal)
