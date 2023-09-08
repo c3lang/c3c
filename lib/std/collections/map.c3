@@ -210,13 +210,20 @@ fn Key[] HashMap.key_list(&map, Allocator* using = mem::heap())
 
 macro HashMap.@each(map; @body(key, value))
 {
+	map.@each_entry(; Entry* entry) {
+		@body(entry.key, entry.value);
+	};
+}
+
+macro HashMap.@each_entry(map; @body(entry))
+{
 	if (map.count)
 	{
 		foreach (Entry* entry : map.table)
 		{
 			while (entry)
 			{
-				@body(entry.key, entry.value);
+				@body(entry);
 				entry = entry.next;
 			}
 		}
