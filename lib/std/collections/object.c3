@@ -104,7 +104,7 @@ macro Object* new_enum(e, Allocator* using = mem::heap())
 	return o;
 }
 
-fn Object* new_float(double f, Allocator* using = mem::current_allocator())
+fn Object* new_float(double f, Allocator* using = mem::heap())
 {
 	Object* o = malloc(Object, .using = using);
 	*o = { .f = f, .allocator = using, .type = double.typeid };
@@ -139,14 +139,9 @@ fn void Object.free(&self)
 			}
 			self.array.free();
 		case ObjectInternalMap:
-			@pool()
-			{
-				foreach (key : self.map.key_tlist())
-				{
-					(void)self.map.get(key).free();
-					free(key, .using = self.allocator);
-				}
-				self.map.free();
+			self.map.@each_entry(; ObjectInternalMapEntry* entry) {
+				free(entry.key, .using = self.allocator);
+				entry.value.free();
 			};
 		default:
 			break;
@@ -477,7 +472,7 @@ fn double! Object.get_float_at(&self, usz index)
 fn Object* Object.get_or_create_obj(&self, String key)
 {
 	if (try obj = self.get(key) && !obj.is_null()) return obj;
-	Object* container = new_obj();
+	Object* container = new_obj(self.allocator);
 	self.set(key, container);
 	return container;
 }

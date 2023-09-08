@@ -8,6 +8,7 @@ fn void! simple_test()
 	ByteReader reader;
 	reader.init(`{ "b": 123, "c": [ { "d": 66 }, null, "hello", false, { "id": "xyz" } ] }`);
 	Object* o = json::parse(&reader)!;
+	defer o.free();
 	assert(o.get_int("b")! == 123);
 	assert(o.get("c").get_len()! == 5);
 	assert(o.get("c").get_at(0).get_int("d")! == 66);
@@ -15,4 +16,12 @@ fn void! simple_test()
 	assert(o.get("c").get_string_at(2)! == "hello");
 	assert(o.get("c").get_bool_at(3)! == false);
 	assert(o.get("c").get_at(4).get_string("id")! == "xyz");
+}
+
+fn void! simple_test2()
+{
+	ByteReader reader;
+	reader.init(`{"jsonrpc":"2.0","id":null,"method":"initialize"}`);
+	Object* o = json::parse(&reader)!;
+	defer o.free();
 }
