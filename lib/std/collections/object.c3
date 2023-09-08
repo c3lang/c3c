@@ -199,17 +199,17 @@ fn void Object.set_object(&self, String key, Object* new_object) @private
 	self.map.set(key.copy(self.map.allocator), new_object);
 }
 
-macro Object* object_from_value(value) @private
+macro Object* Object.object_from_value(&self, value) @private
 {
 	var $Type = $typeof(value);
 
 	$switch
 		$case types::is_int($Type):
-			return new_int(value);
+			return new_int(value, self.allocator);
 		$case types::is_float($Type):
-			return new_float(value);
+			return new_float(value, self.allocator);
 		$case $Type.typeid == String.typeid:
-			return new_string(value);
+			return new_string(value, self.allocator);
 		$case $Type.typeid == bool.typeid:
 			return new_bool(value);
 		$case $Type.typeid == Object*.typeid:
@@ -218,7 +218,7 @@ macro Object* object_from_value(value) @private
 			if (value != null) return CastResult.TYPE_MISMATCH?;
 			return &NULL_OBJECT;
 		$case $checks(String s = value):
-			return new_string(value);
+			return new_string(value, self.allocator);
 		$default:
 			$error "Unsupported object type.";
 	$endswitch
@@ -227,7 +227,7 @@ macro Object* object_from_value(value) @private
 
 macro Object* Object.set(&self, String key, value)
 {
-	Object* val = object_from_value(value);
+	Object* val = self.object_from_value(value);
 	self.set_object(key, val);
 	return val;
 }
@@ -237,7 +237,7 @@ macro Object* Object.set(&self, String key, value)
  **/
 macro Object* Object.set_at(&self, usz index, String key, value)
 {
-	Object* val = object_from_value(value);
+	Object* val = self.object_from_value(value);
 	self.set_object_at(key, index, val);
 	return val;
 }
@@ -248,7 +248,7 @@ macro Object* Object.set_at(&self, usz index, String key, value)
  **/
 macro Object* Object.append(&self, value)
 {
-	Object* val = object_from_value(value);
+	Object* val = self.object_from_value(value);
 	self.append_object(val);
 	return val;
 }
