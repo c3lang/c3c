@@ -50,9 +50,11 @@ struct JsonContext @local
 	DString last_string;
 	double last_number;
 	char current;
-	anyfault current_err;
-	bool skip_comments;
-	bool reached_end;
+	bitstruct : char {
+		bool skip_comments;
+		bool reached_end;
+		bool pushed_back;
+	}
 }
 
 
@@ -122,7 +124,7 @@ fn JsonTokenType! lex_number(JsonContext *context, char c) @local
 				c = read_next(context)!;
 			}
 		}
-		pushback(context);
+		pushback(context, c);
 		double! d = t.as_str().to_double() ?? JsonParsingError.INVALID_NUMBER?;
 		context.last_number = d!;
 		return NUMBER;
@@ -180,14 +182,24 @@ fn Object*! parse_array(JsonContext* context) @local
 	return list;
 }
 
-fn void pushback(JsonContext* context) @local
+fn void pushback(JsonContext* context, char c) @local
 {
-	if (!context.reached_end) context.stream.pushback_byte()!!;
+	if (!context.reached_end)
+	{
+		assert(!context.pushed_back);
+		context.pushed_back = true;
+		context.current = c;
+	}
 }
 
 fn char! read_next(JsonContext* context) @local
 {
 	if (context.reached_end) return '\0';
+	if (context.pushed_back)
+	{
+		context.pushed_back = false;
+		return context.current;
+	}
 	char! c = context.stream.read_byte();
 	if (catch err = c)
 	{
@@ -225,7 +237,7 @@ fn JsonTokenType! advance(JsonContext* context) @local
 				c = read_next(context)!;
 				if (c != '*')
 				{
-					pushback(context);
+					pushback(context, c);
 					break WS;
 				}
 				while COMMENT: (true)
