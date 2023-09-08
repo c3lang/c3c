@@ -431,7 +431,7 @@ static void llvm_emit_stacktrace_definitions(GenContext *c)
 	LLVMTypeRef func_type = c->debug.stack_init_fn_type = LLVMFunctionType(LLVMVoidTypeInContext(c->context), args, 7, false);
 	LLVMValueRef func = c->debug.stack_init_fn = LLVMAddFunction(c->module, ".stacktrace_init", func_type);
 	llvm_set_weak(c, func);
-	LLVMBuilderRef builder = LLVMCreateBuilderInContext(c->context);
+	LLVMBuilderRef builder = llvm_create_builder(c);
 	LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(c->context, func, "entry");
 	LLVMPositionBuilderAtEnd(builder, entry);
 	c->builder = builder;
@@ -570,7 +570,7 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 	LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(c->context, c->function, "entry");
 	c->current_block = entry;
 	c->current_block_is_target = true;
-	c->builder = LLVMCreateBuilderInContext(c->context);
+	c->builder = llvm_create_builder(c);
 	LLVMPositionBuilderAtEnd(c->builder, entry);
 
 	LLVMValueRef alloca_point = LLVMBuildAlloca(c->builder, LLVMInt32TypeInContext(c->context), "alloca_point");
@@ -714,7 +714,7 @@ void llvm_emit_dynamic_functions(GenContext *c, Decl **funcs)
 	if (!vec_size(funcs)) return;
 	LLVMValueRef initializer = llvm_add_xxlizer(c, 1, true);
 	LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(c->context, initializer, "entry");
-	LLVMBuilderRef builder = LLVMCreateBuilderInContext(c->context);
+	LLVMBuilderRef builder = llvm_create_builder(c);
 	LLVMPositionBuilderAtEnd(builder, entry);
 	LLVMBasicBlockRef last_block = entry;
 	FOREACH_BEGIN(Decl *decl, funcs)

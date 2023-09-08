@@ -166,6 +166,14 @@ typedef enum
 
 typedef enum
 {
+	FP_DEFAULT = -1,
+	FP_STRICT = 0,
+	FP_RELAXED,
+	FP_FAST,
+} FpOpt;
+
+typedef enum
+{
 	RISCVFLOAT_DEFAULT = -1,
 	RISCVFLOAT_NONE = 0,
 	RISCVFLOAT_FLOAT = 1,
@@ -191,6 +199,12 @@ static const char *x86_cpu_set[8] = {
 		[X86CPU_AVX2_V2] = "avx2-v2",
 		[X86CPU_AVX512] = "avx512",
 		[X86CPU_NATIVE] = "native"
+};
+
+static const char *fp_math[3] = {
+		[FP_STRICT] = "strict",
+		[FP_RELAXED] = "relaxed",
+		[FP_FAST] = "fast",
 };
 
 static const char *riscv_capability[3] = {
@@ -353,6 +367,7 @@ typedef struct BuildOptions_
 	RelocModel reloc_model;
 	X86VectorCapability x86_vector_capability;
 	X86CpuSet x86_cpu_set;
+	FpOpt fp_math;
 	RiscvFloatCapability riscv_float_capability;
 	MemoryEnvironment memory_environment;
 	bool no_strip_unused;
@@ -467,6 +482,7 @@ typedef struct
 		StructReturn x86_struct_return : 3;
 		X86VectorCapability x86_vector_capability : 4;
 		RiscvFloatCapability riscv_float_capability : 4;
+		FpOpt fp_math : 4;
 		bool trap_on_wrap : 1;
 		bool safe_mode : 1;
 		X86CpuSet x86_cpu_set;

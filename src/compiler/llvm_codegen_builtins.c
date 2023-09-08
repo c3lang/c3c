@@ -4,6 +4,8 @@
 
 #include "llvm_codegen_internal.h"
 
+INLINE void llvm_emit_intrinsic_args(GenContext *c, Expr **args, LLVMValueRef *slots, unsigned count);
+
 INLINE void llvm_emit_reverse(GenContext *c, BEValue *result_value, Expr *expr)
 {
 	Expr **args = expr->call_expr.arguments;
@@ -22,6 +24,15 @@ INLINE void llvm_emit_reverse(GenContext *c, BEValue *result_value, Expr *expr)
 	}
 	LLVMValueRef mask = LLVMConstVector(mask_element, elements);
 	llvm_value_set(result_value, LLVMBuildShuffleVector(c->builder, arg1, arg2, mask, "reverse"), rtype);
+}
+
+INLINE void llvm_emit_select(GenContext *c, BEValue *result_value, Expr *expr)
+{
+	Expr **args = expr->call_expr.arguments;
+	LLVMValueRef arg_slots[3];
+	llvm_emit_intrinsic_args(c, args, arg_slots, 3);
+	LLVMValueRef result = LLVMBuildSelect(c->builder, arg_slots[0], arg_slots[1], arg_slots[2], "select");
+	llvm_value_set(result_value, result, expr->type);
 }
 
 INLINE void llvm_emit_swizzle(GenContext *c, BEValue *result_value, Expr *expr, bool swizzle_two)
@@ -634,6 +645,9 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 			llvm_value_set(result_value, value, expr->type);
 			return;
 		}
+		case BUILTIN_SELECT:
+			llvm_emit_select(c, result_value, expr);
+			return;
 		case BUILTIN_VECCOMPLT:
 		case BUILTIN_VECCOMPLE:
 		case BUILTIN_VECCOMPNE:
