@@ -185,6 +185,12 @@ typedef struct
 	unsigned log10;
 	unsigned lrint;
 	unsigned lround;
+	unsigned masked_compressstore;
+	unsigned masked_expandload;
+	unsigned masked_gather;
+	unsigned masked_load;
+	unsigned masked_scatter;
+	unsigned masked_store;
 	unsigned maximum;
 	unsigned maxnum;
 	unsigned memcpy;

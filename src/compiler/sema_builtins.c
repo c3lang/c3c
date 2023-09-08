@@ -15,6 +15,7 @@ typedef enum
 	BA_FLOAT,
 	BA_INTLIKE,
 	BA_NUMLIKE,
+	BA_BOOLVEC,
 	BA_BOOLINTVEC,
 	BA_BOOLINT,
 	BA_INTVEC,
@@ -30,6 +31,16 @@ static bool sema_expr_analyse_syscall(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, bool swizzle_two);
 static inline int builtin_expected_args(BuiltinFunction func);
 static inline bool is_valid_atomicity(Expr* expr);
+static bool sema_check_alignment_expression(SemaContext *context, Expr *align);
+
+static bool sema_expr_is_valid_mask_for_value(Expr *expr, Expr *value)
+{
+	if (type_flatten(value->type)->array.len != type_flatten(expr->type)->array.len)
+	{
+		RETURN_SEMA_ERROR(expr, "The mask must have the same length as the value.");
+	}
+	return true;
+}
 
 /**
  * Used for when we have a builtin that has a constraint between argument types that
@@ -58,6 +69,18 @@ static bool sema_check_builtin_args_const(Expr **args, size_t arg_len)
 	for (size_t i = 0; i < arg_len; i++)
 	{
 		if (!expr_is_const(args[i])) RETURN_SEMA_ERROR(args[i], "Expected a compile time constant value for this argument.");
+	}
+	return true;
+}
+
+static bool sema_check_alignment_expression(SemaContext *context, Expr *align)
+{
+	if (!sema_analyse_expr_rhs(context, type_usz, align, false)) return false;
+	if (!expr_is_const_int(align)
+	    || !int_fits(align->const_expr.ixx, TYPE_U64)
+	    || (!is_power_of_two(align->const_expr.ixx.i.low) && align->const_expr.ixx.i.low))
+	{
+		RETURN_SEMA_ERROR(align, "Expected a constant power-of-two alignment or zero.");
 	}
 	return true;
 }
@@ -98,6 +121,9 @@ static bool sema_check_builtin_args(Expr **args, BuiltinArg *arg_type, size_t ar
 			case BA_BOOLINT:
 				if (type_is_integer_or_bool_kind(type)) continue;
 				RETURN_SEMA_ERROR(arg, "Expected a boolean or integer value.");
+			case BA_BOOLVEC:
+				if (type_flat_is_bool_vector(type)) continue;
+				RETURN_SEMA_ERROR(arg, "Expected a boolean vector.");
 			case BA_BOOLINTVEC:
 				if (type->type_kind == TYPE_VECTOR && type_flat_is_boolintlike(type->array.base)) continue;
 				RETURN_SEMA_ERROR(arg, "Expected a boolean or integer vector.");
@@ -210,13 +236,7 @@ static bool sema_expr_analyse_compare_exchange(SemaContext *context, Expr *expr)
 		RETURN_SEMA_ERROR(args[6], "Failure ordering may not be RELEASE / ACQUIRE_RELEASE.");
 	}
 	Expr *align = args[7];
-	if (!sema_analyse_expr_rhs(context, type_usz, align, false)) return false;
-	if (!expr_is_const_int(align)
-		|| !int_fits(align->const_expr.ixx, TYPE_U64)
-		|| (!is_power_of_two(align->const_expr.ixx.i.low) && align->const_expr.ixx.i.low))
-	{
-		RETURN_SEMA_ERROR(args[7], "Expected a constant power-of-two alignment or zero.");
-	}
+	if (!sema_check_alignment_expression(context, align)) return false;
 	expr->type = type_add_optional(args[1]->type, optional);
 	return true;
 }
@@ -336,17 +356,12 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			rtype = type_get_vector(type_bool, type_flatten(args[0]->type)->array.len);
 			break;
 		case BUILTIN_SELECT:
-		{
 			assert(arg_count == 3);
-			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_VEC, BA_VEC, BA_VEC }, 3)) return false;
+			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_BOOLVEC, BA_VEC, BA_VEC }, 3)) return false;
 			if (!sema_check_builtin_args_match(&args[1], 2)) return false;
-			Type *first = type_flatten(args[0]->type);
-			if (!type_flat_is_bool_vector(first)) RETURN_SEMA_ERROR(args[0], "Expected a bool vector.");
 			rtype = args[1]->type;
-			Type *element = type_flatten(rtype);
-			if (element->array.len != first->array.len) RETURN_SEMA_ERROR(args[0], "The predicate must have the same length as the arguments.");
+			if (!sema_expr_is_valid_mask_for_value(args[0], args[1])) return false;
 			break;
-		}
 		case BUILTIN_OVERFLOW_ADD:
 		case BUILTIN_OVERFLOW_MUL:
 		case BUILTIN_OVERFLOW_SUB:
@@ -544,6 +559,36 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_NUMLIKE }, 1)) return false;
 			rtype = args[0]->type;
 			break;
+		case BUILTIN_MASKED_LOAD:
+		{
+			assert(arg_count == 4);
+			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_POINTER, BA_BOOLVEC, BA_VEC, BA_INTEGER }, 4)) return false;
+			Type *pointer_type = args[0]->type;
+			if (!type_is_pointer(pointer_type)) RETURN_SEMA_ERROR(args[0], "Expected a direct pointer.");
+			if (pointer_type->pointer->canonical != args[2]->type->canonical)
+			{
+				RETURN_SEMA_ERROR(args[2], "Expected the value to be of type '%s'.", type_quoted_error_string(pointer_type->pointer));
+			}
+			if (!sema_check_alignment_expression(context, args[3])) return false;
+			if (!sema_expr_is_valid_mask_for_value(args[1], args[2])) return false;
+ 			rtype = pointer_type->pointer;
+			break;
+		}
+		case BUILTIN_MASKED_STORE:
+		{
+			assert(arg_count == 4);
+			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_POINTER, BA_VEC, BA_BOOLVEC, BA_INTEGER }, 4)) return false;
+			Type *pointer_type = args[0]->type;
+			if (!type_is_pointer(pointer_type)) RETURN_SEMA_ERROR(args[0], "Expected a direct pointer.");
+			if (pointer_type->pointer->canonical != args[1]->type->canonical)
+			{
+				RETURN_SEMA_ERROR(args[2], "Expected the value to be of type '%s'.", type_quoted_error_string(pointer_type->pointer));
+			}
+			if (!sema_check_alignment_expression(context, args[3])) return false;
+			if (!sema_expr_is_valid_mask_for_value(args[2], args[1])) return false;
+			rtype = type_void;
+			break;
+		}
 		case BUILTIN_MAX:
 		case BUILTIN_MIN:
 			assert(arg_count == 2);
@@ -744,6 +789,8 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_SELECT:
 			return 3;
 		case BUILTIN_ATOMIC_STORE:
+		case BUILTIN_MASKED_STORE:
+		case BUILTIN_MASKED_LOAD:
 			return 4;
 		case BUILTIN_MEMCOPY:
 		case BUILTIN_MEMCOPY_INLINE:

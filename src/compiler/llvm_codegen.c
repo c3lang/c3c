@@ -664,6 +664,12 @@ static void llvm_codegen_setup()
 	intrinsic_id.log10 = lookup_intrinsic("llvm.log10");
 	intrinsic_id.lrint = lookup_intrinsic("llvm.lrint");
 	intrinsic_id.lround = lookup_intrinsic("llvm.lround");
+	intrinsic_id.masked_compressstore = lookup_intrinsic("llvm.masked.compressstore");
+	intrinsic_id.masked_expandload = lookup_intrinsic("llvm.masked.expandload");
+	intrinsic_id.masked_gather = lookup_intrinsic("llvm.masked.gather");
+	intrinsic_id.masked_load = lookup_intrinsic("llvm.masked.load");
+	intrinsic_id.masked_scatter = lookup_intrinsic("llvm.masked.scatter");
+	intrinsic_id.masked_store = lookup_intrinsic("llvm.masked.store");
 	intrinsic_id.maximum = lookup_intrinsic("llvm.maximum");
 	intrinsic_id.maxnum = lookup_intrinsic("llvm.maxnum");
 	intrinsic_id.memcpy = lookup_intrinsic("llvm.memcpy");
