@@ -33,7 +33,7 @@ fn void! bytewriter_buffer()
 	s.write_byte(0)!!;
 	String o = ((ZString)&z).as_str();
 	assert(o == "hello");
-	assert(@catchof(s.write("xxxx")));
+	assert(@catch(s.write("xxxx")));
 }
 
 fn void! bytewriter_read_from()

@@ -81,7 +81,7 @@ fn void! test_index_of()
 	assert(test.index_of("o")! == 4);
 	assert(test.index_of("ll")! == 2);
 	assert(test.index_of(" hello")! == 11);
-	assert(@catchof(test.index_of("wi")));
+	assert(@catch(test.index_of("wi")));
 }
 
 fn void! test_rindex_of()
@@ -92,7 +92,7 @@ fn void! test_rindex_of()
 	assert(test.rindex_of("he")! == 12);
 	assert(test.rindex_of("world")! == 6);
 	assert(test.rindex_of("hello ")! == 0);
-	assert(@catchof(test.rindex_of("wi")));
+	assert(@catch(test.rindex_of("wi")));
 }
 
 fn void! test_index_of_char()
@@ -101,7 +101,7 @@ fn void! test_index_of_char()
 	assert(test.index_of_char('o')! == 4);
 	assert(test.index_of_char('l')! == 2);
 	assert(test.index_of_char('h')! == 0);
-	assert(@catchof(test.index_of_char('x')));
+	assert(@catch(test.index_of_char('x')));
 }
 
 fn void! test_rindex_of_char()
@@ -110,5 +110,5 @@ fn void! test_rindex_of_char()
 	assert(test.rindex_of_char('o')! == 16);
 	assert(test.rindex_of_char('l')! == 15);
 	assert(test.rindex_of_char('h')! == 12);
-	assert(@catchof(test.index_of_char('x')));
+	assert(@catch(test.index_of_char('x')));
 }

@@ -1558,10 +1558,7 @@ static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, boo
 	if (!sema_resolve_type_decl(context, from_type)) return false;
 
 	// Step one, cast from optional.
-	// This handles:
-	// 1. *! -> any type
-	// 2. void! -> anyfault
-	// 3. void! -> SomeFault (explicit)
+	// This handles: *! + type -> type! and stops casts when they may not be optional.
 	if (type_is_optional(from_type))
 	{
 		Type *opt = from_type->optional;
@@ -1580,31 +1577,6 @@ static bool cast_expr_inner(SemaContext *context, Expr *expr, Type *to_type, boo
 			return true;
 		}
 
-		// If it is void!, then there are special rules:
-		if (opt == type_void)
-		{
-			// void! x; anyfault y = x;
-			if (!type_is_optional(to_type) && type_is_anyfault(to))
-			{
-				cast(expr, to_type);
-				return true;
-			}
-
-			// void! x; FooFault y = (FooFault)x;
-			// Only allowed if explicit.
-			if (to->type_kind == TYPE_FAULTTYPE)
-			{
-				if (!is_explicit)
-				{
-					if (silent) return false;
-					SEMA_ERROR(expr, "A 'void!' can only be cast into %s using an explicit cast. You can try using (%s)",
-							   type_quoted_error_string(to_type), type_to_error_string(to_type));
-					return false;
-				}
-				cast(expr, to_type);
-				return true;
-			}
-		}
 		if (may_not_be_optional)
 		{
 			if (silent) return false;

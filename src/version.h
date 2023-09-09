@@ -1,1 +1,1 @@
-#define COMPILER_VERSION "0.4.640"
+#define COMPILER_VERSION "0.4.641"

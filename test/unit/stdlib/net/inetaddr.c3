@@ -34,11 +34,11 @@ fn void! test_ipv4_parse()
 	assert(a.ipv4.a == 127 && a.ipv4.b == 0 && a.ipv4.c == 0 && a.ipv4.d == 1);
 	a = net::ipv4_from_str("255.254.253.255")!;
 	assert(a.ipv4.a == 255 && a.ipv4.b == 254 && a.ipv4.c == 253 && a.ipv4.d == 255);
-	assert(@catchof(net::ipv4_from_str(".1.1.1.1")));
-	assert(@catchof(net::ipv4_from_str("1..1.1")));
-	assert(@catchof(net::ipv4_from_str("1..1.1.1")));
-	assert(@catchof(net::ipv4_from_str("1.1.1.256")));
-	assert(@catchof(net::ipv4_from_str("256.1.1.1")));
+	assert(@catch(net::ipv4_from_str(".1.1.1.1")));
+	assert(@catch(net::ipv4_from_str("1..1.1")));
+	assert(@catch(net::ipv4_from_str("1..1.1.1")));
+	assert(@catch(net::ipv4_from_str("1.1.1.256")));
+	assert(@catch(net::ipv4_from_str("256.1.1.1")));
 }
 
 fn void test_ipv6()

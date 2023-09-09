@@ -899,7 +899,7 @@ static inline bool sema_analyse_last_cond(SemaContext *context, Expr *expr, Cond
 		case EXPR_CATCH_UNWRAP:
 			if (cond_type != COND_TYPE_UNWRAP_BOOL && cond_type != COND_TYPE_UNWRAP)
 			{
-				SEMA_ERROR(expr, "Catch unwrapping is only allowed inside of a 'while' or 'if' conditional, maybe '@catchof(<expr>)' will do what you need?");
+				SEMA_ERROR(expr, "Catch unwrapping is only allowed inside of a 'while' or 'if' conditional, maybe '@catch(<expr>)' will do what you need?");
 				return false;
 			}
 			return sema_analyse_catch_unwrap(context, expr);
@@ -1062,7 +1062,7 @@ static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType 
 	{
 		if (type_no_optional(last->type) == type_void && cast_to_bool)
 		{
-			SEMA_ERROR(last, "Use '@ok(<expr>)' or '@catchof(<expr>)' to explicitly convert a 'void!' to a boolean.");
+			SEMA_ERROR(last, "Use '@ok(<expr>)' or '@catch(<expr>)' to explicitly convert a 'void!' to a boolean.");
 			return false;
 		}
 		SEMA_ERROR(last, "The expression may not be an optional, but was %s.", type_quoted_error_string(last->type));

@@ -285,7 +285,7 @@ macro bool @convertible(#expr, $To) @builtin
 	return $checks($To x = #expr);
 }
 
-macro anyfault @catchof(#expr) @builtin
+macro anyfault @catch(#expr) @builtin
 {
 	if (catch f = #expr) return f;
 	return anyfault {};

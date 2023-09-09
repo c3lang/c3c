@@ -6,7 +6,7 @@ fn void! find()
 	assert(array::index_of(a, 2)! == 1);
 	assert(array::index_of(a, 1)! == 0);
 	assert(array::index_of(a, 3)! == 2);
-	assert(@catchof(array::index_of(a, 4)) == SearchResult.MISSING);
+	assert(@catch(array::index_of(a, 4)) == SearchResult.MISSING);
 }
 
 fn void! find_subarray()
@@ -15,7 +15,7 @@ fn void! find_subarray()
 	assert(array::index_of(a, 2)! == 1);
 	assert(array::index_of(a, 1)! == 0);
 	assert(array::index_of(a, 3)! == 2);
-	assert(@catchof(array::index_of(a, 4)) == SearchResult.MISSING);
+	assert(@catch(array::index_of(a, 4)) == SearchResult.MISSING);
 }
 
 fn void! concat()

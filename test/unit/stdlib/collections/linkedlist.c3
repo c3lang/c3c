@@ -158,7 +158,7 @@ fn void! test_pop()
 	assert(list.first()! == 23);
 	assert(list.pop()! == 23);
 	assert(list.len() == 0);
-	assert(@catchof(list.pop()));
+	assert(@catch(list.pop()));
 	assert(list.len() == 0);
 	list.push(55);
 	assert(list.len() == 1);
@@ -182,7 +182,7 @@ fn void! test_remove_first()
 	assert(list.first()! == 23);
 	assert(@ok(list.remove_first()));
 	assert(list.len() == 0);
-	assert(@catchof(list.pop()));
+	assert(@catch(list.pop()));
 	assert(list.len() == 0);
 	list.push(55);
 	assert(list.len() == 1);
@@ -206,7 +206,7 @@ fn void! test_remove_last()
 	assert(list.last()! == -3);
 	assert(@ok(list.remove_last()));
 	assert(list.len() == 0);
-	assert(@catchof(list.remove_last()));
+	assert(@catch(list.remove_last()));
 	assert(list.len() == 0);
 	list.push(55);
 	assert(list.len() == 1);

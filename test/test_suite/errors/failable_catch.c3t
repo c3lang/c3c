@@ -22,7 +22,7 @@ fn int main()
     (void)printf("a = %d\n", a);
     (void)printf("b = %d\n", b);
     (void)printf("c = %d\n", c);
-    if (@catchof(c)) printf("c had error\n");
+    if (@catch(c)) printf("c had error\n");
     c = 3;
     (void)printf("c = %d\n", c);
     return 0;

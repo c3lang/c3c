@@ -3,9 +3,9 @@ module std::io::path @test;
 fn void! test_parent()
 {
 	Path p = path::new("")!;
-	assert(@catchof(p.parent()));
+	assert(@catch(p.parent()));
 	p = path::new("/", .path_env = PathEnv.POSIX)!;
-	assert(@catchof(p.parent()));
+	assert(@catch(p.parent()));
 	p = path::new("/a/b/c", .path_env = PathEnv.POSIX)!;
 	assert(p.parent().as_str()! == "/a/b");
 	p = path::new("/a/b/c", .path_env = PathEnv.WIN32)!;
@@ -15,25 +15,25 @@ fn void! test_parent()
 fn void! test_path_normalized()
 {
 	assert(path::new("",  .path_env = PathEnv.WIN32).as_str()! == "");
-	assert(@catchof(path::new("1:\\a\\b\\c.txt", .path_env = PathEnv.WIN32)));
-	assert(@catchof(path::new(":", .path_env = PathEnv.WIN32)));
-	assert(@catchof(path::new("1:", .path_env = PathEnv.WIN32)));
-	assert(@catchof(path::new("1:a", .path_env = PathEnv.WIN32)));
-//	assert(@catchof(path::new(`\\\a\b\c.txt`, .path_env = PathEnv.WIN32)));
-	assert(@catchof(path::new(`\\server\a\b\..\..\..\c`, .path_env = PathEnv.WIN32)));
+	assert(@catch(path::new("1:\\a\\b\\c.txt", .path_env = PathEnv.WIN32)));
+	assert(@catch(path::new(":", .path_env = PathEnv.WIN32)));
+	assert(@catch(path::new("1:", .path_env = PathEnv.WIN32)));
+	assert(@catch(path::new("1:a", .path_env = PathEnv.WIN32)));
+//	assert(@catch(path::new(`\\\a\b\c.txt`, .path_env = PathEnv.WIN32)));
+	assert(@catch(path::new(`\\server\a\b\..\..\..\c`, .path_env = PathEnv.WIN32)));
 
-	assert(@catchof(path::new(`\\a`, .path_env = PathEnv.WIN32)));
-	assert(@catchof(path::new(`/a/b/../../../c`, .path_env = PathEnv.WIN32)));
-	assert(@catchof(path::new(`/a/b/../../../c`, .path_env = PathEnv.POSIX)));
-	assert(@catchof(path::new(`/a/b/../../..`, .path_env = PathEnv.WIN32)));
-	assert(@catchof(path::new(`/a/b/../../..`, .path_env = PathEnv.POSIX)));
-	assert(@catchof(path::new(`/../a`, .path_env = PathEnv.WIN32)));
-	assert(@catchof(path::new(`/../a`, .path_env = PathEnv.POSIX)));
-	assert(@catchof(path::new(`/..`, .path_env = PathEnv.WIN32)));
-	assert(@catchof(path::new(`/..`, .path_env = PathEnv.POSIX)));
-	assert(@catchof(path::new(`C:/a/b/../../../c`, .path_env = PathEnv.WIN32)));
-	assert(@catchof(path::new(`C:/../a`, .path_env = PathEnv.WIN32)));
-	assert(@catchof(path::new(`C:/..`, .path_env = PathEnv.WIN32)));
+	assert(@catch(path::new(`\\a`, .path_env = PathEnv.WIN32)));
+	assert(@catch(path::new(`/a/b/../../../c`, .path_env = PathEnv.WIN32)));
+	assert(@catch(path::new(`/a/b/../../../c`, .path_env = PathEnv.POSIX)));
+	assert(@catch(path::new(`/a/b/../../..`, .path_env = PathEnv.WIN32)));
+	assert(@catch(path::new(`/a/b/../../..`, .path_env = PathEnv.POSIX)));
+	assert(@catch(path::new(`/../a`, .path_env = PathEnv.WIN32)));
+	assert(@catch(path::new(`/../a`, .path_env = PathEnv.POSIX)));
+	assert(@catch(path::new(`/..`, .path_env = PathEnv.WIN32)));
+	assert(@catch(path::new(`/..`, .path_env = PathEnv.POSIX)));
+	assert(@catch(path::new(`C:/a/b/../../../c`, .path_env = PathEnv.WIN32)));
+	assert(@catch(path::new(`C:/../a`, .path_env = PathEnv.WIN32)));
+	assert(@catch(path::new(`C:/..`, .path_env = PathEnv.WIN32)));
 
 	assert(path::new("/", .path_env = PathEnv.POSIX).as_str()! == "/");
 	assert(path::new("/./", .path_env = PathEnv.POSIX).as_str()! == "/");
@@ -190,11 +190,11 @@ fn void! test_path_normalized()
 
 fn void! test_extension()
 {
-	assert(@catchof(path::new(`C:`, .path_env = PathEnv.WIN32).extension()));
-	assert(@catchof(path::new(`C:`, .path_env = PathEnv.POSIX).extension()));
-	assert(@catchof(path::new(`file`, .path_env = PathEnv.WIN32).extension()));
-	assert(@catchof(path::new(`file`, .path_env = PathEnv.POSIX).extension()));
-	assert(@catchof(path::new(`C:\temp\foo.bar\README`, .path_env = PathEnv.WIN32).extension()));
+	assert(@catch(path::new(`C:`, .path_env = PathEnv.WIN32).extension()));
+	assert(@catch(path::new(`C:`, .path_env = PathEnv.POSIX).extension()));
+	assert(@catch(path::new(`file`, .path_env = PathEnv.WIN32).extension()));
+	assert(@catch(path::new(`file`, .path_env = PathEnv.POSIX).extension()));
+	assert(@catch(path::new(`C:\temp\foo.bar\README`, .path_env = PathEnv.WIN32).extension()));
 
 	assert(path::new_windows("file.txt").extension()! == "txt");
 	assert(path::new_posix("file.txt").extension()! == "txt");

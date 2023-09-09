@@ -98,18 +98,18 @@ fn bool run_benchmarks(BenchmarkUnit[] benchmarks)
 		name.append_repeat('.', max_name - unit.name.len + 2);
 		io::printf("%s ", name.as_str());
 
-		for(uint i = 0; i < benchmark_warmup_iterations; i++)
+		for (uint i = 0; i < benchmark_warmup_iterations; i++)
 		{
-			err = unit.func() @inline;
+			err = @catch(unit.func()) @inline;
 			@volatile_load(err);
 		}
 
 		clock = std::time::clock::now();
 		sys_clock_started = $$sysclock();
 
-		for(uint i = 0; i < benchmark_max_iterations; i++)
+		for (uint i = 0; i < benchmark_max_iterations; i++)
 		{
-			err = unit.func() @inline;
+			err = @catch(unit.func()) @inline;
 			@volatile_load(err);
 		}
 
@@ -129,7 +129,9 @@ fn bool run_benchmarks(BenchmarkUnit[] benchmarks)
 
 	io::printfn("\n%d benchmark%s run.\n", benchmark_count, benchmark_count > 1 ? "s" : "");
 	io::printfn("Benchmarks Result: %s. %d passed, %d failed.",
-		benchmarks_passed < benchmark_count ? "FAILED" : "ok", benchmarks_passed, benchmark_count - benchmarks_passed);
+		benchmarks_passed < benchmark_count ? "FAILED" : "ok",
+		benchmarks_passed,
+		benchmark_count - benchmarks_passed);
 
 	return benchmark_count == benchmarks_passed;
 }

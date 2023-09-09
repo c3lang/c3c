@@ -44,7 +44,7 @@ fn int! askGuessMulti(int high)
 	while (true)
 	{
 		int! result = askGuess(high);
-		if (@catchof(result) == InputResult.NOT_AN_INT)
+		if (@catch(result) == InputResult.NOT_AN_INT)
 		{
 		  libc::printf("I didn't understand that.\n");
 		  err_count++;

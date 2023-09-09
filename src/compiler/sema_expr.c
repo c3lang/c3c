@@ -8023,7 +8023,7 @@ bool sema_analyse_cond_expr(SemaContext *context, Expr *expr)
 	if (IS_OPTIONAL(expr))
 	{
 		SEMA_ERROR(expr, "An optional %s cannot be implicitly converted to a regular boolean value, use '@ok(<expr>)' "
-						 "and '@catchof(<expr>)' to conditionally execute on success or failure.",
+						 "and '@catch(<expr>)' to conditionally execute on success or failure.",
 				   type_quoted_error_string(expr->type));
 		return false;
 	}
