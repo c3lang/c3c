@@ -1231,51 +1231,8 @@ void llvm_emit_array_to_vector_cast(GenContext *c, BEValue *value, Type *to_type
 	llvm_value_set(value, vector, to_type);
 }
 
-void llvm_emit_voidfail_err(GenContext *c, BEValue *value, Expr *expr)
-{
-	Expr *inner = exprptr(expr->cast_expr.expr);
 
-	if (inner->expr_kind == EXPR_IDENTIFIER)
-	{
-		Decl *decl = inner->identifier_expr.decl;
-		assert(IS_OPTIONAL(decl));
-		llvm_value_set_address_abi_aligned(value, decl_optional_ref(decl), expr->type);
-		return;
-	}
-
-	if (inner->expr_kind == EXPR_OPTIONAL)
-	{
-		llvm_emit_expr(c, value, inner->inner_expr);
-		value->type = type_lowering(expr->type);
-		return;
-	}
-
-	LLVMBasicBlockRef end_block = llvm_basic_block_new(c, "noerr_block");
-
-	// Store catch/error var
-	PUSH_OPT();
-
-	LLVMValueRef error_var = llvm_emit_alloca_aligned(c, expr->type, "error_var");
-	llvm_value_set_address_abi_aligned(value, error_var, expr->type);
-	llvm_store_raw(c, value, llvm_get_zero(c, expr->type));
-	c->opt_var = error_var;
-	c->catch_block = end_block;
-
-	BEValue expr_value;
-	llvm_emit_expr(c, &expr_value, inner);
-	llvm_value_fold_optional(c, &expr_value);
-
-	// Restore.
-	POP_OPT();
-
-	// Emit success and jump to end block.
-	llvm_emit_br(c, end_block);
-
-	llvm_emit_block(c, end_block);
-
-}
-
-void llvm_emit_num_to_vec_cast(GenContext *c, BEValue *value, Type *to_type, Type *from_type)
+void llvm_emit_expand_to_vec_cast(GenContext *c, BEValue *value, Type *to_type, Type *from_type)
 {
 	llvm_value_rvalue(c, value);
 	LLVMTypeRef type = llvm_get_type(c, to_type);
@@ -1395,10 +1352,8 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 
 	switch (cast_kind)
 	{
-		case CAST_VOIDFERR:
-			UNREACHABLE
-		case CAST_NUMVEC:
-			llvm_emit_num_to_vec_cast(c, value, to_type, from_type);
+		case CAST_EXPVEC:
+			llvm_emit_expand_to_vec_cast(c, value, to_type, from_type);
 			return;
 		case CAST_BOOLVECINT:
 			llvm_emit_bool_to_intvec_cast(c, value, to_type, from_type);
@@ -1414,22 +1369,10 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 			llvm_value_aggregate_two(c, value, to_type, value->value, typeid.value);
 			return;
 		}
-		case CAST_ARRBS:
-		case CAST_BSARRY:
-			llvm_value_addr(c, value);
-			llvm_value_bitcast(c, value, to_type);
-			llvm_value_rvalue(c, value);
-			return;
-		case CAST_BSINT:
-		case CAST_INTBS:
-			llvm_value_addr(c, value);
-			llvm_value_bitcast(c, value, to_type);
-			llvm_value_rvalue(c, value);
-			return;
 		case CAST_VOID:
 			UNREACHABLE;
-		case CAST_EUINT:
 		case CAST_ERINT:
+		case CAST_IDINT:
 			to_type = type_lowering(to_type);
 			from_type = type_lowering(from_type);
 			llvm_value_rvalue(c, value);
@@ -1445,6 +1388,12 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 
 			}
 			break;
+		case CAST_ANYBOOL:
+			llvm_emit_any_pointer(c, value, value);
+			llvm_value_rvalue(c, value);
+			value->value = LLVMBuildIsNotNull(c->builder, value->value, "anybool");
+			value->kind = BE_BOOLEAN;
+			break;
 		case CAST_ANYPTR:
 			llvm_emit_any_pointer(c, value, value);
 			break;
@@ -1458,7 +1407,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 		case CAST_STRPTR:
 		case CAST_PTRPTR:
 			llvm_value_rvalue(c, value);
-			value->value = LLVMBuildPointerCast(c->builder, value->value, llvm_get_type(c, to_type), "ptrptr");
 			break;
 		case CAST_PTRINT:
 			llvm_value_rvalue(c, value);
@@ -1466,11 +1414,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 			break;
 		case CAST_APTSA:
 			llvm_emit_arr_to_subarray_cast(c, value, to_type);
-			break;
-		case CAST_SASA:
-			assert(type_is_pointer(value->type->array.base));
-			llvm_value_addr(c, value);
-			llvm_value_bitcast(c, value, to_type);
 			break;
 		case CAST_SAPTR:
 			llvm_value_fold_optional(c, value);
@@ -1486,11 +1429,11 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 		case CAST_EUER:
 			REMINDER("Improve fault to err comparison");
 			break;
-		case CAST_ERBOOL:
 		case CAST_EUBOOL:
+		case CAST_IDBOOL:
 		{
 			BEValue zero;
-			llvm_value_set_int(c, &zero, type_anyfault, 0);
+			llvm_value_set_int(c, &zero, type_iptr, 0);
 			llvm_emit_int_comp(c, value, value, &zero, BINARYOP_NE);
 			break;
 		}
@@ -1550,11 +1493,15 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 			}
 			value->value = LLVMBuildUIToFP(c->builder, value->value, llvm_get_type(c, to_type), "uifp");
 			break;
+		case CAST_IDPTR:
+		case CAST_ERPTR:
 		case CAST_INTPTR:
 			llvm_value_rvalue(c, value);
 			value->value = LLVMBuildIntToPtr(c->builder, value->value, llvm_get_type(c, to_type), "intptr");
 			break;
-		case CAST_STST:
+		case CAST_SASA:
+			// Improve this
+		case CAST_STINLINE:
 			llvm_value_addr(c, value);
 			value->type = to_type;
 			return;
@@ -1616,11 +1563,6 @@ static inline void llvm_emit_cast_expr(GenContext *context, BEValue *be_value, E
 	{
 		llvm_value_set(be_value, NULL, type_void);
 		llvm_emit_ignored_expr(context, exprptr(expr->cast_expr.expr));
-		return;
-	}
-	if (expr->cast_expr.kind == CAST_VOIDFERR)
-	{
-		llvm_emit_voidfail_err(context, be_value, expr);
 		return;
 	}
 	llvm_emit_exprid(context, be_value, expr->cast_expr.expr);
@@ -4866,16 +4808,8 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		case CONST_ERR:
 		{
 			Decl *decl = expr->const_expr.enum_err_val;
-
-			LLVMValueRef value;
-			if (decl)
-			{
-				value = LLVMBuildPtrToInt(c->builder, llvm_get_ref(c, decl), llvm_get_type(c, type_anyfault), "");
-			}
-			else
-			{
-				value = llvm_get_zero(c, type_anyfault);
-			}
+			assert(decl);
+			LLVMValueRef value = LLVMBuildPtrToInt(c->builder, llvm_get_ref(c, decl), llvm_get_type(c, type_anyfault), "");
 			llvm_value_set(be_value, value, type_anyfault);
 			return;
 		}

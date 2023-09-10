@@ -7,7 +7,7 @@ fn void test1()
 
 fn void test2()
 {
-	bar(test2()); // #error: You cannot cast 'void' into 'int' even with an explicit cast
+	bar(test2()); // #error: You cannot cast 'void' to 'int'
 }
 
 fn void test3()

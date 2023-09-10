@@ -1610,7 +1610,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		Ast *declare_ast = new_ast(AST_DECLARE_STMT, var->span);
 		declare_ast->declare_stmt = index;
 		Expr *load_idx = expr_variable(idx_decl);
-		if (!cast(load_idx, index_var_type)) return false;
+		if (!cast_explicit(context, load_idx, index_var_type)) return false;
 		index->var.init_expr = load_idx;
 		ast_append(&succ, declare_ast);
 	}
@@ -2292,7 +2292,7 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 												 ? real_type->pointer : real_type, any_switch->span),
 												 VARDECL_LOCAL);
 					Expr *var_result = expr_variable(var_holder);
-					if (!cast(var_result, real_type)) return false;
+					if (!cast_explicit(context, var_result, real_type)) return false;
 					if (any_switch->is_deref)
 					{
 						expr_rewrite_insert_deref(var_result);
@@ -2310,7 +2310,7 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 											   type_info_new_base(type, expr->span),
 											   VARDECL_LOCAL);
 					Expr *ident_converted = expr_variable(var_holder);
-					if (!cast(ident_converted, type)) return false;
+					if (!cast_explicit(context, ident_converted, type)) return false;
 					alias->var.init_expr = ident_converted;
 					alias->var.shadow = true;
 					Ast *decl_ast = new_ast(AST_DECLARE_STMT, alias->span);

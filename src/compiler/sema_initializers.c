@@ -300,7 +300,8 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 				optional = optional || IS_OPTIONAL(element);
 				continue;
 			}
-			if (!cast_implicit_maybe_optional(context, element, inner_type, true)) return false;
+			if (!cast_implicit(context, element, inner_type)) return false;
+			optional = optional || IS_OPTIONAL(element);
 		}
 		else
 		{
@@ -596,7 +597,7 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 			expr->resolve_status = RESOLVE_DONE;
 			expr_insert_addr(expr);
 			if (!sema_analyse_expr(context, expr)) return false;
-			return cast(expr, to);
+			return cast_explicit(context, expr, to);
 		}
 		case TYPE_POINTER:
 			if (is_zero_init)
@@ -1103,7 +1104,7 @@ static MemberIndex sema_analyse_designator_index(SemaContext *context, Expr *ind
 	}
 
 	// Unless we already have type_usz, cast to type_isz;
-	if (!cast_to_index(index))
+	if (!cast_to_index(context, index))
 	{
 		return -1;
 	}

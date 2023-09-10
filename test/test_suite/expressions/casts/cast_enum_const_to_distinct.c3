@@ -5,5 +5,5 @@ enum Foo
 def Abc = distinct int;
 fn void main()
 {
-	Abc d = Foo.ABC; // #error: Implicitly casting
+	Abc d = Foo.ABC; // #error: to 'Abc'
 }

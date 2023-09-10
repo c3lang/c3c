@@ -22,7 +22,7 @@ fn void test()
 {
     Foo b = {};
     int x = (int)b;
-    char[4] y = (char[4])b;
+    char[4] y = bitcast(b, char[4]);
     Foo *c = &b;
     c.x;
     int* x2 = (int*)c;
@@ -32,7 +32,7 @@ fn void test()
 fn void test2()
 {
     Foo2 b = { 3, 2, -1 };
-    int x = (int)b;
+    int x = bitcast(b, int);
     char[4] y = (char[4])b;
     Foo2 *c = &b;
     printf("%d\n", c.x);
@@ -53,14 +53,16 @@ entry:
   %b = alloca i32, align 4
   %x = alloca i32, align 4
   %y = alloca [4 x i8], align 1
+  %expr = alloca i32, align 4
   %c = alloca ptr, align 8
   %x2 = alloca ptr, align 8
   %y2 = alloca ptr, align 8
   store i32 0, ptr %b, align 4
   %0 = load i32, ptr %b, align 4
   store i32 %0, ptr %x, align 4
-  %1 = load [4 x i8], ptr %b, align 4
-  store [4 x i8] %1, ptr %y, align 1
+  %1 = load i32, ptr %b, align 4
+  store i32 %1, ptr %expr, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 1 %y, ptr align 1 %expr, i32 4, i1 false)
   store ptr %b, ptr %c, align 8
   %2 = load ptr, ptr %c, align 8
   %3 = load i32, ptr %2, align 4
@@ -78,12 +80,16 @@ define void @foo.test2() #0 {
 entry:
   %b = alloca [4 x i8], align 1
   %x = alloca i32, align 4
+  %expr = alloca [4 x i8], align 1
+  %x1 = alloca i32, align 4
   %y = alloca [4 x i8], align 1
   %c = alloca ptr, align 8
   %x2 = alloca ptr, align 8
   %y2 = alloca ptr, align 8
   store [4 x i8] c"\06\90\00\00", ptr %b, align 1
-  %0 = load i32, ptr %b, align 1
+  call void @llvm.memcpy.p0.p0.i32(ptr align 1 %expr, ptr align 1 %b, i32 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %x1, ptr align 1 %expr, i64 4, i1 false)
+  %0 = load i32, ptr %x1, align 4
   store i32 %0, ptr %x, align 4
   call void @llvm.memcpy.p0.p0.i32(ptr align 1 %y, ptr align 1 %b, i32 4, i1 false)
   store ptr %b, ptr %c, align 8

@@ -5,5 +5,5 @@ static initialize
 
 static initialize
 {
-	return 123; // #error: It is not possible to convert 'int' to 'void'
+	return 123; // #error: cannot implicitly
 }

@@ -1749,53 +1749,60 @@ TypeCmpResult type_array_element_is_equivalent(SemaContext *context, Type *eleme
 	}
 }
 
-TypeCmpResult type_is_pointer_equivalent(SemaContext *context, Type *pointer1, Type *pointer2, bool flatten_distinct)
+TypeCmpResult type_is_pointer_equivalent(SemaContext *context, Type *to_pointer, Type *from_pointer, bool flatten_distinct)
 {
 RETRY:
 	if (flatten_distinct)
 	{
-		pointer1 = type_flatten(pointer1);
-		pointer2 = type_flatten(pointer2);
+		to_pointer = type_flatten(to_pointer);
+		from_pointer = type_flatten(from_pointer);
 	}
-	if (pointer1 == pointer2) return TYPE_SAME;
-	if (pointer1 == type_voidptr || pointer2 == type_voidptr) return TYPE_SAME;
-	Type *pointee1 = pointer1->pointer->canonical;
-	Type *pointee2 = pointer2->pointer->canonical;
+	// Are they the same?
+	if (to_pointer == from_pointer) return TYPE_SAME;
+
+	// Is one of them a void*?
+	if (to_pointer == type_voidptr || from_pointer == type_voidptr) return TYPE_SAME;
+
+	// Look at the pointees.
+	Type *to_pointee = to_pointer->pointer->canonical;
+	Type *from_pointee = from_pointer->pointer->canonical;
 	if (flatten_distinct)
 	{
-		pointee1 = type_flatten(pointee1);
-		pointee2 = type_flatten(pointee2);
+		to_pointee = type_flatten(to_pointee);
+		from_pointee = type_flatten(from_pointee);
 	}
-	if (pointee1 == pointee2) return TYPE_SAME;
-	if (type_is_subtype(pointee2, pointee1)) return TYPE_SAME;
 
-	if (pointee1->type_kind != pointee2->type_kind)
+	// Are pointees same after flattening?
+	if (to_pointee == from_pointee) return TYPE_SAME;
+	if (type_is_subtype(to_pointee, from_pointee)) return TYPE_SAME;
+
+	if (to_pointee->type_kind != from_pointee->type_kind)
 	{
-		if (type_is_any_arraylike(pointee1))
+		if (type_is_any_arraylike(from_pointee))
 		{
 			// Try array equivalence.
-			if (type_is_any_arraylike(pointee2))
+			if (type_is_any_arraylike(to_pointee))
 			{
-				TypeCmpResult res = type_array_is_equivalent(context, pointee1, pointee2, flatten_distinct);
+				TypeCmpResult res = type_array_is_equivalent(context, to_pointee, from_pointee, flatten_distinct);
 				if (res != TYPE_MISMATCH) return res;
 			}
 			// A possible int[4]* -> int* decay?
-			return type_is_pointer_equivalent(context, type_get_ptr(pointee1->array.base), pointer2, flatten_distinct);
+			return type_is_pointer_equivalent(context, type_get_ptr(from_pointee->array.base), to_pointer, flatten_distinct);
 		}
 		// Not arraylike and no array decay. Failure.
 		return TYPE_MISMATCH;
 	}
 
-	if (pointee1->type_kind == TYPE_FUNC && pointee2->type_kind == TYPE_FUNC)
+	if (to_pointee->type_kind == TYPE_FUNC && from_pointee->type_kind == TYPE_FUNC)
 	{
-		if (!sema_resolve_type_decl(context, pointee1)) return TYPE_ERROR;
-		if (!sema_resolve_type_decl(context, pointee2)) return TYPE_ERROR;
-		return pointee1->function.prototype->raw_type == pointee2->function.prototype->raw_type;
+		if (!sema_resolve_type_decl(context, to_pointee)) return TYPE_ERROR;
+		if (!sema_resolve_type_decl(context, from_pointee)) return TYPE_ERROR;
+		return to_pointee->function.prototype->raw_type == from_pointee->function.prototype->raw_type;
 	}
-	if (pointee1->type_kind == TYPE_POINTER)
+	if (to_pointee->type_kind == TYPE_POINTER)
 	{
-		pointer1 = pointee1;
-		pointer2 = pointee2;
+		to_pointer = to_pointee;
+		from_pointer = from_pointee;
 		goto RETRY;
 	}
 	return false;

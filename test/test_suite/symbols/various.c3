@@ -81,8 +81,8 @@ enum Enum : int
 
 fn void test11()
 {
-    int a = Enum.A; // #error: Implicitly casting
-    ichar b = Enum.B; // #error: Implicitly casting
+    int a = Enum.A; // #error: implicitly be converted
+    ichar b = Enum.B; // #error: implicitly be converted
 }
 
 fn void test12()
@@ -157,15 +157,15 @@ fn void foo() {}
 
 fn void test22()
 {
-    ichar a = foo();             // #error: 'void' into 'ichar'
-    short b = foo();            // #error: 'void' into 'short'
-    int c = foo();              // #error: 'void' into 'int'
-    long d = foo();             // #error: 'void' into 'long'
-    char e = foo();             // #error: 'void' into 'char'
-    ushort f = foo();           // #error: 'void' into 'ushort'
-    uint g = foo();             // #error: 'void' into 'uint'
-    ulong h = foo();            // #error: 'void' into 'ulong'
-    bool i = foo();             // #error: 'void' into 'bool'
+    ichar a = foo();             // #error: 'void' to 'ichar'
+    short b = foo();            // #error: 'void' to 'short'
+    int c = foo();              // #error: 'void' to 'int'
+    long d = foo();             // #error: 'void' to 'long'
+    char e = foo();             // #error: 'void' to 'char'
+    ushort f = foo();           // #error: 'void' to 'ushort'
+    uint g = foo();             // #error: 'void' to 'uint'
+    ulong h = foo();            // #error: 'void' to 'ulong'
+    bool i = foo();             // #error: 'void' to 'bool'
 }
 
 

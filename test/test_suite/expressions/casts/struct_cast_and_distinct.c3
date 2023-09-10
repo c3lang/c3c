@@ -5,7 +5,7 @@ def Foo = distinct int;
 fn void test1()
 {
 	int[2][*] x = { { 2, 3}, { 5, 6 }};
-	Foo[2][2] y = x; // #error: can do an explicit
+	Foo[2][2] y = x; // #error: explicit cast
 }
 
 fn void test2()
@@ -18,7 +18,7 @@ fn void test2()
 fn void test3()
 {
 	int[2][*] x = { { 2, 3}, { 5, 6 }};
-	Foo[2][2]* y = &x; // #error: can do an explicit
+	Foo[2][2]* y = &x; // #error: explicit cast
 }
 
 struct Bar { int x; }

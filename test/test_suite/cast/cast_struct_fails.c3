@@ -25,11 +25,11 @@ struct BazTwo
 fn void test1()
 {
     Foo x;
-    Bar z = (Baz)(x); // #error: cast 'Foo' to 'Baz'
+    Bar z = (Baz)(x); // #error: 'Foo' to 'Baz'
 }
 fn void test2()
 {
     Baz x;
-    BazTwo z = (BazTwo)(x); // #error: cast 'Baz' to 'BazTwo'
+    BazTwo z = (BazTwo)(x); // #error: 'Baz' to 'BazTwo'
 }
 

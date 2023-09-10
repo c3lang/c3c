@@ -2,7 +2,7 @@ fn void test1()
 {
     short! a = 1;
     @ok(+a);
-    short b = +a; // #error: 'int!' to 'short'.
+    short b = +a; // #error: 'short!' to 'short'.
 }
 
 fn void test2()
