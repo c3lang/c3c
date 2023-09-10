@@ -43,10 +43,10 @@ fn usz! Object.to_format(&self, Formatter* formatter) @dynamic
 			usz n = formatter.printf("[")!;
 			foreach (i, ol : self.array)
 			{
-				n += formatter.printf(i == 0 ? " " : ", ")!;
+				if (i > 0) n += formatter.printf(",")!;
 				n += ol.to_format(formatter)!;
 			}
-			n += formatter.printf(" ]")!;
+			n += formatter.printf("]")!;
 			return n;
 		case ObjectInternalMap:
 			usz n = formatter.printf("{")!;
@@ -54,12 +54,12 @@ fn usz! Object.to_format(&self, Formatter* formatter) @dynamic
 			{
 				foreach (i, key : self.map.key_tlist())
 				{
-					n += formatter.printf(i == 0 ? " " : ", ")!;
-					n += formatter.printf(`"%s": `, key)!;
+					if (i > 0) n += formatter.printf(",")!;
+					n += formatter.printf(`"%s":`, key)!;
 					n += self.map.get(key).to_format(formatter)!;
 				}
 			};
-			n += formatter.printf(" }")!;
+			n += formatter.printf("}")!;
 			return n;
 		default:
 			switch (self.type.kindof)
