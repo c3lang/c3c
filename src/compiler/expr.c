@@ -336,16 +336,8 @@ static inline bool expr_cast_is_constant_eval(Expr *expr, ConstantEvalKind eval_
 	{
 		case CAST_ERROR:
 			UNREACHABLE
-		case CAST_VOIDFERR:
-			return false;
-		case CAST_BSINT:
-		case CAST_BSARRY:
-		case CAST_INTBS:
-		case CAST_ARRBS:
-			return true;
 		case CAST_INTENUM:
 		case CAST_ANYPTR:
-		case CAST_ERBOOL:
 		case CAST_EUBOOL:
 		case CAST_EUER:
 		case CAST_EREU:
@@ -361,11 +353,10 @@ static inline bool expr_cast_is_constant_eval(Expr *expr, ConstantEvalKind eval_
 		case CAST_FPINT:
 		case CAST_INTFP:
 		case CAST_SABOOL:
-		case CAST_STST:
+		case CAST_STINLINE:
 		case CAST_VECARR:
 		case CAST_ARRVEC:
 		case CAST_BOOLVECINT:
-		case CAST_NUMVEC:
 		case CAST_INTINT:
 			if (eval_kind != CONSTANT_EVAL_NO_SIDE_EFFECTS) return false;
 			return exprid_is_constant_eval(expr->cast_expr.expr, eval_kind);
@@ -375,13 +366,18 @@ static inline bool expr_cast_is_constant_eval(Expr *expr, ConstantEvalKind eval_
 		case CAST_SAPTR:
 		case CAST_SASA:
 		case CAST_VOID:
+		case CAST_ANYBOOL:
+		case CAST_ERPTR:
+		case CAST_IDPTR:
+		case CAST_IDBOOL:
+		case CAST_EXPVEC:
 			return exprid_is_constant_eval(expr->cast_expr.expr, eval_kind);
 		case CAST_PTRANY:
 			if (eval_kind == CONSTANT_EVAL_LOCAL_INIT || eval_kind == CONSTANT_EVAL_CONSTANT_VALUE) return false;
 			return exprid_is_constant_eval(expr->cast_expr.expr, eval_kind);
-		case CAST_EUINT:
 		case CAST_ERINT:
 		case CAST_PTRINT:
+		case CAST_IDINT:
 			if (eval_kind == CONSTANT_EVAL_CONSTANT_VALUE) return false;
 			return exprid_is_constant_eval(expr->cast_expr.expr, eval_kind);
 	}

@@ -9,5 +9,5 @@ fn void main()
 	int[<*>] z = x;
 	int[<*>] w = y;
 	double[<2>] ww = x;
-	double[<2>] www = y; // #error: 'int[2]' to 'double[<2>]'
+	short[<2>] www = y; // #error: implicitly be converted
 }

@@ -161,10 +161,13 @@ macro void unsupported(String string = "Unsupported function invoked") @builtin 
  **/
 macro bitcast(expr, $Type) @builtin
 {
-	usz $size = $sizeof(expr);
-	$Type x @noinit;
-	mem::copy(&x, &expr, $size, $Type.alignof, $alignof(expr));
-	return x;
+	$if $Type.alignof <= $alignof(expr):
+		return *($Type*)&expr;
+	$else
+		$Type x @noinit;
+		$$memcpy(&x, &expr, $sizeof(expr), false, $Type.alignof, $alignof(expr));
+		return x;
+	$endif
 }
 
 /**

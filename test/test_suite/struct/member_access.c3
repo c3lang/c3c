@@ -71,7 +71,7 @@ struct Aa1
 fn void test_conversion_struct()
 {
     Aa1 a1;
-    int aa = a1.bb;    // #error: 'bb' into 'int'
+    int aa = a1.bb;    // #error: 'bb' to 'int'
 }
 
 struct Struct

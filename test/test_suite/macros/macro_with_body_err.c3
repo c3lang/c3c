@@ -17,7 +17,7 @@ fn int Foo.mutate(Foo *foo)
 macro @macro_with_body(foo, &x; @body(x, y))
 {
     *x = foo.x;
-    @body(foo.mutate(), x); // #error: Implicitly casting
+    @body(foo.mutate(), x); // #error: 'int*' to 'int'
 }
 
 

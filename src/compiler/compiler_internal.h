@@ -2096,16 +2096,13 @@ AsmRegister *asm_reg_by_index(unsigned index);
 
 bool cast_implicit_silent(SemaContext *context, Expr *expr, Type *to_type);
 bool cast_implicit(SemaContext *context, Expr *expr, Type *to_type);
-bool cast_implicit_maybe_optional(SemaContext *context, Expr *expr, Type *to_type, bool may_be_optional);
 bool cast_explicit(SemaContext *context, Expr *expr, Type *to_type);
+bool may_cast(SemaContext *cc, Expr *expr, Type *to_type, bool is_explicit);
 
-bool cast(Expr *expr, Type *to_type);
-
+void cast_no_check(Expr *expr, Type *to_type, bool add_optional);
 Type *type_infer_len_from_actual_type(Type *to_infer, Type *actual_type);
-bool cast_to_index(Expr *index);
 
-bool cast_untyped_to_type(SemaContext *context, Expr *expr, Type *to_type);
-
+bool cast_to_index(SemaContext *context, Expr *index);
 CastKind cast_to_bool_kind(Type *type);
 
 const char *llvm_codegen(void *context);
@@ -2415,7 +2412,7 @@ typedef enum
 	TYPE_ERROR = -1,
 } TypeCmpResult;
 
-TypeCmpResult type_is_pointer_equivalent(SemaContext *context, Type *pointer1, Type *pointer2, bool flatten_distinct);
+TypeCmpResult type_is_pointer_equivalent(SemaContext *context, Type *to_pointer, Type *from_pointer, bool flatten_distinct);
 TypeCmpResult type_array_element_is_equivalent(SemaContext *context, Type *element1, Type *element2, bool is_explicit);
 FunctionPrototype *type_get_resolved_prototype(Type *type);
 const char *type_to_error_string(Type *type);
@@ -3425,6 +3422,11 @@ INLINE bool expr_is_const_string(Expr *expr)
 INLINE bool expr_is_const_enum(Expr *expr)
 {
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_ENUM;
+}
+
+INLINE bool expr_is_const_fault(Expr *expr)
+{
+	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_ERR;
 }
 
 INLINE bool expr_is_const_pointer(Expr *expr)
