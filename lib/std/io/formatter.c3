@@ -293,6 +293,7 @@ fn usz! Formatter.vprintf(&self, String format, any[] anys)
 		// use null output function
 		self.out_fn = &out_null_fn;
 	}
+	usz total_len;
 	usz format_len = format.len;
 	usz variant_index = 0;
 	for (usz i = 0; i < format_len; i++)
@@ -302,7 +303,7 @@ fn usz! Formatter.vprintf(&self, String format, any[] anys)
 		if (c != '%')
 		{
 			// no
-			self.out(c)!;
+			total_len += self.out(c)!;
 			continue;
 		}
 		i++;
@@ -310,7 +311,7 @@ fn usz! Formatter.vprintf(&self, String format, any[] anys)
 		c = format[i];
 		if (c == '%')
 		{
-			self.out(c)!;
+			total_len += self.out(c)!;
 			continue;
 		}
 		// evaluate flags
@@ -377,42 +378,43 @@ fn usz! Formatter.vprintf(&self, String format, any[] anys)
 				self.flags.uppercase = true;
 				nextcase;
 			case 'a':
-				self.atoa(float_from_any(current)!!)!;
+				total_len += self.atoa(float_from_any(current)!!)!;
 				continue;
 			case 'F' :
 				self.flags.uppercase = true;
 				nextcase;
 			case 'f':
-				self.ftoa(float_from_any(current)!!)!;
+				total_len += self.ftoa(float_from_any(current)!!)!;
 				continue;
 			case 'E':
 				self.flags.uppercase = true;
 				nextcase;
 			case 'e':
-				self.etoa(float_from_any(current)!!)!;
+				total_len += self.etoa(float_from_any(current)!!)!;
 				continue;
 			case 'G':
 				self.flags.uppercase = true;
 				nextcase;
 			case 'g':
-				self.gtoa(float_from_any(current)!!)!;
+				total_len += self.gtoa(float_from_any(current)!!)!;
 				continue;
 			case 'c':
-				self.out_char(current)!;
+				total_len += self.out_char(current)!;
 				continue;
 			case 's':
 				if (self.flags.left)
 				{
 					usz len = self.out_str(current)!;
-					self.pad(' ', self.width, len)!;
+					total_len += len;
+					total_len += self.pad(' ', self.width, len)!;
 					continue;
 				}
 				OutputFn out_fn = self.out_fn;
 				self.out_fn = (OutputFn)&out_null_fn;
 				usz len = self.out_str(current)!;
 				self.out_fn = out_fn;
-				self.pad(' ', self.width, len)!;
-				self.out_str(current)!;
+				total_len += self.pad(' ', self.width, len)!;
+				total_len += self.out_str(current)!;
 				continue;
 			case 'p':
 				self.flags.zeropad = true;
@@ -432,13 +434,13 @@ fn usz! Formatter.vprintf(&self, String format, any[] anys)
 		bool is_neg;
 		uint128 v = int_from_any(current, &is_neg)!!;
 
-		self.ntoa(v, is_neg, base)!;
+		total_len += self.ntoa(v, is_neg, base)!;
 	}
 	// termination
 	//	out((char)0, buffer, idx < maxlen ? idx : maxlen - 1U, maxlen);
 
 	// return written chars without terminating \0
-	return self.idx;
+	return total_len;
 }
 
 
