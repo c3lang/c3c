@@ -1,4 +1,4 @@
-module std::io::stream;
+module std::io;
 
 struct LimitReader
 {

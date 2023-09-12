@@ -43,10 +43,10 @@ fn usz! Object.to_format(&self, Formatter* formatter) @dynamic
 			usz n = formatter.printf("[")!;
 			foreach (i, ol : self.array)
 			{
-				n += formatter.printf(i == 0 ? " " : ", ")!;
+				if (i > 0) n += formatter.printf(",")!;
 				n += ol.to_format(formatter)!;
 			}
-			n += formatter.printf(" ]")!;
+			n += formatter.printf("]")!;
 			return n;
 		case ObjectInternalMap:
 			usz n = formatter.printf("{")!;
@@ -54,12 +54,12 @@ fn usz! Object.to_format(&self, Formatter* formatter) @dynamic
 			{
 				foreach (i, key : self.map.key_tlist())
 				{
-					n += formatter.printf(i == 0 ? " " : ", ")!;
-					n += formatter.printf(`"%s": `, key)!;
+					if (i > 0) n += formatter.printf(",")!;
+					n += formatter.printf(`"%s":`, key)!;
 					n += self.map.get(key).to_format(formatter)!;
 				}
 			};
-			n += formatter.printf(" }")!;
+			n += formatter.printf("}")!;
 			return n;
 		default:
 			switch (self.type.kindof)
@@ -104,7 +104,7 @@ macro Object* new_enum(e, Allocator* using = mem::heap())
 	return o;
 }
 
-fn Object* new_float(double f, Allocator* using = mem::current_allocator())
+fn Object* new_float(double f, Allocator* using = mem::heap())
 {
 	Object* o = malloc(Object, .using = using);
 	*o = { .f = f, .allocator = using, .type = double.typeid };
@@ -139,14 +139,9 @@ fn void Object.free(&self)
 			}
 			self.array.free();
 		case ObjectInternalMap:
-			@pool()
-			{
-				foreach (key : self.map.key_tlist())
-				{
-					(void)self.map.get(key).free();
-					free(key, .using = self.allocator);
-				}
-				self.map.free();
+			self.map.@each_entry(; ObjectInternalMapEntry* entry) {
+				free(entry.key, .using = self.allocator);
+				entry.value.free();
 			};
 		default:
 			break;
@@ -204,17 +199,17 @@ fn void Object.set_object(&self, String key, Object* new_object) @private
 	self.map.set(key.copy(self.map.allocator), new_object);
 }
 
-macro Object* object_from_value(value) @private
+macro Object* Object.object_from_value(&self, value) @private
 {
 	var $Type = $typeof(value);
 
 	$switch
 		$case types::is_int($Type):
-			return new_int(value);
+			return new_int(value, self.allocator);
 		$case types::is_float($Type):
-			return new_float(value);
+			return new_float(value, self.allocator);
 		$case $Type.typeid == String.typeid:
-			return new_string(value);
+			return new_string(value, self.allocator);
 		$case $Type.typeid == bool.typeid:
 			return new_bool(value);
 		$case $Type.typeid == Object*.typeid:
@@ -223,7 +218,7 @@ macro Object* object_from_value(value) @private
 			if (value != null) return CastResult.TYPE_MISMATCH?;
 			return &NULL_OBJECT;
 		$case $checks(String s = value):
-			return new_string(value);
+			return new_string(value, self.allocator);
 		$default:
 			$error "Unsupported object type.";
 	$endswitch
@@ -232,7 +227,7 @@ macro Object* object_from_value(value) @private
 
 macro Object* Object.set(&self, String key, value)
 {
-	Object* val = object_from_value(value);
+	Object* val = self.object_from_value(value);
 	self.set_object(key, val);
 	return val;
 }
@@ -242,7 +237,7 @@ macro Object* Object.set(&self, String key, value)
  **/
 macro Object* Object.set_at(&self, usz index, String key, value)
 {
-	Object* val = object_from_value(value);
+	Object* val = self.object_from_value(value);
 	self.set_object_at(key, index, val);
 	return val;
 }
@@ -253,7 +248,7 @@ macro Object* Object.set_at(&self, usz index, String key, value)
  **/
 macro Object* Object.append(&self, value)
 {
-	Object* val = object_from_value(value);
+	Object* val = self.object_from_value(value);
 	self.append_object(val);
 	return val;
 }
@@ -477,7 +472,7 @@ fn double! Object.get_float_at(&self, usz index)
 fn Object* Object.get_or_create_obj(&self, String key)
 {
 	if (try obj = self.get(key) && !obj.is_null()) return obj;
-	Object* container = new_obj();
+	Object* container = new_obj(self.allocator);
 	self.set(key, container);
 	return container;
 }

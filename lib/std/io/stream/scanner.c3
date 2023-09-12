@@ -2,7 +2,8 @@ module std::io;
 
 struct Scanner
 {
-	Stream* stream;
+	inline Stream stream;
+	Stream* wrapped_stream;
 	char[] buf;
 	usz pattern_idx;
 	usz read_idx;
@@ -20,8 +21,13 @@ struct Scanner
  **/
 fn void Scanner.init(&self, Stream* stream, char[] buffer)
 {
-	*self = { .stream = stream, .buf = buffer };
+	*self = { .stream.fns = &SCANNER_INTERFACE, .wrapped_stream = stream, .buf = buffer };
 }
+
+const StreamInterface SCANNER_INTERFACE = {
+	.read_fn = (ReadStreamFn)&Scanner.read,
+	.read_byte_fn = (ReadByteStreamFn)&Scanner.read_byte,
+};
 
 /**
  * Return and clear any remaining unscanned data.
@@ -85,7 +91,7 @@ macro usz! Scanner.find(&self, buf, pattern) @private
 
 macro usz! Scanner.refill(&self, buf) @private
 {
-	usz! n = self.stream.read(buf);
+	usz! n = self.wrapped_stream.read(buf);
 	if (catch err = n)
 	{
 		case IoError.EOF:
@@ -94,4 +100,27 @@ macro usz! Scanner.refill(&self, buf) @private
 			return err?;
 	}
 	return n;
+}
+
+fn usz! Scanner.read(&self, char[] bytes)
+{
+	usz n;
+	if (self.pattern_idx < self.read_idx)
+	{
+		n = min(bytes.len, self.read_idx - self.pattern_idx);
+		bytes[:n] = self.buf[self.pattern_idx:n];
+		self.pattern_idx += n;
+		bytes = bytes[n..];
+	}
+	n += self.wrapped_stream.read(bytes)!;
+	return n;
+}
+
+fn char! Scanner.read_byte(&self)
+{
+	if (self.pattern_idx < self.read_idx)
+	{
+		return self.buf[self.pattern_idx++];
+	}
+	return self.wrapped_stream.read_byte();
 }
