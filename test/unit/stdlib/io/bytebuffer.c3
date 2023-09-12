@@ -1,7 +1,7 @@
-module bytebuffer_test @test;
+module std::io::bytebuffer @test;
 import std::io;
 
-fn void! write_read_test()
+fn void! write_read()
 {
 	ByteBuffer buffer;
 	buffer.init(0)!;

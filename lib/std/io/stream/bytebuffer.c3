@@ -30,9 +30,19 @@ fn ByteBuffer*! ByteBuffer.tinit(&self, usz max_read, usz initial_capacity = 16)
 	return self.init(max_read, initial_capacity, mem::temp())!;
 }
 
+/**
+ * @require buf.len > 0
+ * @require self.bytes.len == 0 "Buffer already initialized."
+ **/
+fn ByteBuffer*! ByteBuffer.init_with_buffer(&self, char[] buf)
+{
+	*self = { .stream.fns = &BYTEBUFFER_INTERFACE, .max_read = buf.len, .bytes = buf };
+	return self;
+}
+
 fn void! ByteBuffer.free(&self)
 {
-	self.allocator.free(self.bytes)!;
+	if (self.allocator) self.allocator.free(self.bytes)!;
 	*self = {};
 }
 
@@ -102,6 +112,23 @@ fn void! ByteBuffer.pushback_byte(&self)
 	assert(self.read_idx > 0);
 	self.read_idx--;
 	self.has_last = false;
+}
+
+fn void! ByteBuffer.seek(&self, isz offset, Seek seek)
+{
+	switch (seek)
+	{
+		case SET:
+			if (offset < 0 || offset > self.write_idx) return IoError.INVALID_POSITION?;
+			self.read_idx = offset;
+		case CURSOR:
+			if ((offset < 0 && self.read_idx < -offset) ||
+				(offset > 0 && self.read_idx + offset > self.write_idx)) return IoError.INVALID_POSITION?;
+			self.read_idx += offset;
+		case END:
+			if (offset < 0 || offset > self.write_idx) return IoError.INVALID_POSITION?;
+			self.read_idx = self.write_idx - offset;
+	}
 }
 
 fn usz! ByteBuffer.available(&self) @inline
