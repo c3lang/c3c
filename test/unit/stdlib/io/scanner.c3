@@ -1,6 +1,5 @@
-module scanner_test @test;
+module std::io @test;
 import std::collections::list;
-import std::io;
 
 def Results = List(<String>);
 
@@ -11,7 +10,7 @@ struct ScanTest
     String left_over;
 }
 
-fn void! test_scanner()
+fn void! scanner()
 {
     ScanTest[] tcases = {
         {"aa,,bb", {"aa"}, "bb"},
@@ -48,4 +47,21 @@ fn void! test_scanner()
         String left_over = (String)fl;
         assert(left_over == tc.left_over, "%s -> %s", tc.in, left_over);
     }
+}
+
+fn void! scanner_as_reader()
+{
+	ByteReader br;
+	br.init("Lorem ipsum sit.");
+	Scanner sc;
+	char[8] buffer;
+	sc.init(&br, buffer[..]);
+
+	sc.scan(" ")!;
+
+	char[16] res;
+	usz n = sc.read(&res)!;
+	String str = (String)res[:n];
+
+	assert(str == "ipsum sit.", "got '%s'; want 'ipsum sit.'", str);
 }
