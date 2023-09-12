@@ -141,17 +141,17 @@ fn void putchar(char c) @inline
 	(void)stdout_file.putc(c);
 }
 
-fn File stdout()
+fn File* stdout()
 {
-	return stdout_file;
+	return &stdout_file;
 }
 
-fn File stderr()
+fn File* stderr()
 {
-	return stderr_file;
+	return &stderr_file;
 }
 
-fn File stdin()
+fn File* stdin()
 {
-	return stdin_file;
+	return &stdin_file;
 }
