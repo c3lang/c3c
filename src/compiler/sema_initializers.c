@@ -308,7 +308,6 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 			if (!sema_analyse_expr_rhs(context, inner_type, element, true)) return false;
 			if (inner_is_inferred)
 			{
-				Type *element_type = type_no_optional(element->type);
 				if (inferred_element)
 				{
 					if (!cast_implicit(context, element, inferred_element))
@@ -319,7 +318,7 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 				}
 				else
 				{
-					inferred_element = type_infer_len_from_actual_type(inner_type, element_type);
+					inferred_element = element->type;
 				}
 			}
 		}

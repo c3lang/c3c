@@ -72,9 +72,7 @@ fn ulong! poll(Poll[] polls, Duration timeout)
 	$else
 		CInt result = os::poll((Posix_pollfd*)polls.ptr, (Posix_nfds_t)polls.len, (CInt)time_ms);
 	$endif
-	if (result == 0) return 0;
-    if (result > 0) return (ulong)result;
-	return os::socket_error()?;
+	return result < 0 ? os::socket_error()? : (ulong)result;
 }
 
 macro Socket new_socket(fd, ai)

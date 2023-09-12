@@ -8109,10 +8109,21 @@ static MemberIndex len_from_const_initializer(ConstInitializer *init)
 	}
 	UNREACHABLE
 }
-MemberIndex sema_len_from_const(Expr *expr_maybe_const)
+MemberIndex sema_len_from_const(Expr *expr)
 {
-	if (!expr_is_const(expr_maybe_const)) return -1;
-	switch (expr_maybe_const->const_expr.const_kind)
+	// We also handle the case where we have a cast from a const array.
+	if (!expr_is_const(expr))
+	{
+		if (expr->type->type_kind != TYPE_SUBARRAY) return -1;
+		if (expr->expr_kind != EXPR_CAST) return -1;
+		if (expr->cast_expr.kind != CAST_APTSA) return -1;
+		Expr *inner = exprptr(expr->cast_expr.expr);
+		if (inner->expr_kind != EXPR_UNARY || inner->unary_expr.operator != UNARYOP_ADDR) return -1;
+		inner = inner->unary_expr.expr;
+		if (!expr_is_const(inner)) return -1;
+		expr = inner;
+	}
+	switch (expr->const_expr.const_kind)
 	{
 		case CONST_FLOAT:
 		case CONST_INTEGER:
@@ -8125,11 +8136,11 @@ MemberIndex sema_len_from_const(Expr *expr_maybe_const)
 			return -1;
 		case CONST_BYTES:
 		case CONST_STRING:
-			return expr_maybe_const->const_expr.bytes.len;
+			return expr->const_expr.bytes.len;
 		case CONST_INITIALIZER:
-			return len_from_const_initializer(expr_maybe_const->const_expr.initializer);
+			return len_from_const_initializer(expr->const_expr.initializer);
 		case CONST_UNTYPED_LIST:
-			return vec_size(expr_maybe_const->const_expr.untyped_list);
+			return vec_size(expr->const_expr.untyped_list);
 	}
 	UNREACHABLE
 }

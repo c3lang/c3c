@@ -255,12 +255,11 @@ Type *type_infer_len_from_actual_type(Type *to_infer, Type *actual_type)
 		case TYPE_INFERRED_VECTOR:
 			assert(type_is_arraylike(type_flatten(actual_type)));
 			return type_add_optional(type_get_vector(indexed, type_flatten(actual_type)->array.len), is_optional);
+		case TYPE_SUBARRAY:
+			return type_add_optional(type_get_subarray(indexed), is_optional);
 		case TYPE_VECTOR:
 			// This is unreachable, because unlike arrays, there is no inner type that may be
 			// the inferred part.
-			UNREACHABLE
-		case TYPE_SUBARRAY:
-			// The case of int[*][] y = ... is disallowed
 			UNREACHABLE
 		default:
 			UNREACHABLE
@@ -761,7 +760,7 @@ static bool rule_int_to_ptr(CastContext *cc, bool is_explicit, bool is_silent)
 
 static bool rule_ptr_to_int(CastContext *cc, bool is_explicit, bool is_silent)
 {
-	bool too_small = type_size(cc->to_type) < type_size(type_uptr);
+	bool too_small = type_size(cc->to) < type_size(type_uptr);
 	if (!is_explicit) return sema_cast_error(cc, !too_small, is_silent);
 
 	// The type must be uptr or bigger.
@@ -883,7 +882,7 @@ static bool rule_arr_to_arr(CastContext *cc, bool is_explicit, bool is_silent)
 static bool rule_arr_to_vec(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	ArraySize len = cc->from_type->array.len;
-	if (len != cc->to_type->array.len) return sema_cast_error(cc, false, is_silent);
+	if (len != cc->to->array.len) return sema_cast_error(cc, false, is_silent);
 	Type *base = cc->from_type->array.base;
 	switch (type_to_group(type_flatten(base)))
 	{
@@ -908,7 +907,7 @@ static bool rule_arr_to_vec(CastContext *cc, bool is_explicit, bool is_silent)
 static bool rule_vec_to_arr(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	ArraySize len = cc->from_type->array.len;
-	if (len != cc->to_type->array.len) return sema_cast_error(cc, false, is_silent);
+	if (len != cc->to->array.len) return sema_cast_error(cc, false, is_silent);
 	Type *base = cc->from_type->array.base;
 	cast_context_set_from(cc, type_get_array(base, len));
 	return cast_is_allowed(cc, is_explicit, is_silent);
@@ -946,6 +945,14 @@ static bool rule_sa_to_vecarr(CastContext *cc, bool is_explicit, bool is_silent)
 static bool rule_sa_to_infer(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	Expr *expr = cc->expr;
+	// 1. We might infer something above.
+	if (cc->to->type_kind == TYPE_SUBARRAY)
+	{
+		cast_context_set_from(cc, cc->from_type->array.base);
+		cast_context_set_to(cc, cc->to->array.base);
+		return cast_is_allowed(cc, is_explicit, is_silent);
+	}
+	// 2. Otherwise there is a vector matching.
 	MemberIndex size = sema_len_from_const(expr);
 	if (size < 0)
 	{
@@ -963,16 +970,16 @@ static bool rule_sa_to_infer(CastContext *cc, bool is_explicit, bool is_silent)
 
 static bool rule_vecarr_to_infer(CastContext *cc, bool is_explicit, bool is_silent)
 {
-	Type *new_type = type_infer_len_from_actual_type(cc->from_type, cc->to_type);
+	Type *new_type = type_infer_len_from_actual_type(cc->to, cc->from_type);
 	cast_context_set_to(cc, new_type);
 	return cast_is_allowed(cc, is_explicit, is_silent);
 }
 
 static bool rule_ptr_to_infer(CastContext *cc, bool is_explicit, bool is_silent)
 {
-	if (cc->to_type->type_kind != TYPE_POINTER) return sema_cast_error(cc, false, is_silent);
+	if (cc->to->type_kind != TYPE_POINTER) return sema_cast_error(cc, false, is_silent);
 
-	Type *new_type = type_infer_len_from_actual_type(cc->from_type, cc->to_type);
+	Type *new_type = type_infer_len_from_actual_type(cc->to, cc->from_type);
 	cast_context_set_to(cc, new_type->pointer->canonical);
 	cast_context_set_from(cc, cc->from_type->pointer);
 	return cast_is_allowed(cc, is_explicit, is_silent);
@@ -1108,7 +1115,7 @@ static bool rule_struct_to_struct(CastContext *cc, bool is_explicit, bool is_sil
 
 static bool rule_vec_to_vec(CastContext *cc, bool is_explicit, bool is_silent)
 {
-	if (cc->from_type->array.len != cc->to_type->array.len) return sema_cast_error(cc, false, is_silent);
+	if (cc->from_type->array.len != cc->to->array.len) return sema_cast_error(cc, false, is_silent);
 	Type *from_base = cc->from_type->array.base;
 	cast_context_set_to(cc, cc->to->array.base);
 	// Allow bool vectors to expand to any int.
@@ -1167,8 +1174,8 @@ static bool rule_bits_to_arr(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	if (is_silent && !is_explicit) return false;
 	Type *base_type = cc->from_type->decl->bitstruct.base_type->type->canonical;
-	Type *to_type = cc->to_type;
-	if (base_type != to_type) return sema_cast_error(cc, false, is_silent);
+	Type *to = cc->to;
+	if (base_type != to) return sema_cast_error(cc, false, is_silent);
 	if (!is_explicit) return sema_cast_error(cc, true, is_silent);
 	return true;
 }
@@ -1177,10 +1184,10 @@ static bool rule_bits_to_int(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	if (is_silent && !is_explicit) return false;
 	Type *base_type = cc->from_type->decl->bitstruct.base_type->type->canonical;
-	Type *to_type = cc->to_type;
-	if (base_type != to_type)
+	Type *to = cc->to;
+	if (base_type != to)
 	{
-		if (!type_is_integer(base_type) || type_size(to_type) != type_size(base_type))
+		if (!type_is_integer(base_type) || type_size(to) != type_size(base_type))
 		{
 			return sema_cast_error(cc, false, is_silent);
 		}
@@ -1729,6 +1736,14 @@ static void cast_sa_to_sa(Expr *expr, Type *to_type)
 
 static void cast_sa_to_vecarr(Expr *expr, Type *to_type)
 {
+	if (!expr_is_const(expr))
+	{
+		assert(expr->expr_kind == EXPR_CAST);
+		Expr *inner = exprptr(expr->cast_expr.expr)->unary_expr.expr;
+		expr_replace(expr, inner);
+		cast_no_check(expr, to_type, false);
+		return;
+	}
 	assert(expr_is_const(expr));
 	expr->type = to_type;
 	return;
@@ -1736,18 +1751,11 @@ static void cast_sa_to_vecarr(Expr *expr, Type *to_type)
 
 static void cast_sa_to_infer(Expr *expr, Type *to_type)
 {
-	assert(expr_is_const(expr));
-	Type *index = type_get_indexed_type(to_type);
-	MemberIndex size = sema_len_from_const(expr);
-	assert(size > 0);
-	if (type_flatten(to_type)->type_kind == TYPE_VECTOR)
-	{
-		expr->type = type_get_vector(index, size);
-	}
-	else
-	{
-		expr->type = type_get_array(index, size);
-	}
+	ArraySize len = sema_len_from_const(expr);
+	assert(len > 0);
+	Type *indexed = type_get_indexed_type(expr->type);
+	to_type = type_infer_len_from_actual_type(to_type, type_get_array(indexed, len));
+	cast_no_check(expr, to_type, false);
 }
 
 static void cast_vecarr_to_infer(Expr *expr, Type *to_type)

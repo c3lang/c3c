@@ -2100,7 +2100,6 @@ bool cast_explicit(SemaContext *context, Expr *expr, Type *to_type);
 bool may_cast(SemaContext *cc, Expr *expr, Type *to_type, bool is_explicit);
 
 void cast_no_check(Expr *expr, Type *to_type, bool add_optional);
-Type *type_infer_len_from_actual_type(Type *to_infer, Type *actual_type);
 
 bool cast_to_index(SemaContext *context, Expr *index);
 CastKind cast_to_bool_kind(Type *type);
