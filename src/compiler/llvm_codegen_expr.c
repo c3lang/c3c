@@ -722,13 +722,17 @@ static inline void llvm_emit_pointer_offset(GenContext *c, BEValue *value, Expr 
 	llvm_emit_expr(c, &offset, offset_expr);
 	llvm_value_rvalue(c, &offset);
 
+	LLVMTypeRef element_type;
+	ArraySize vec_len = pointer->type->type_kind == TYPE_VECTOR ? pointer->type->array.len : 0;
 	if (expr->pointer_offset_expr.raw_offset)
 	{
-		// COERCE UPDATE bitcast removed, check for ways to optimize
-		value->value = llvm_emit_pointer_gep_raw(c, c->byte_type, value->value, offset.value);
-		return;
+		element_type = vec_len ? LLVMVectorType(c->byte_type, vec_len) : c->byte_type;
 	}
-	value->value = llvm_emit_pointer_gep_raw(c, llvm_get_pointee_type(c, pointer->type), value->value, offset.value);
+	else
+	{
+		element_type = llvm_get_pointee_type(c, vec_len ? pointer->type->array.base : pointer->type);
+	}
+	value->value = llvm_emit_pointer_gep_raw(c, element_type, value->value, offset.value);
 }
 
 
@@ -4072,7 +4076,35 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 			val = llvm_emit_mult_int(c, lhs_type, lhs_value, rhs_value, expr->span);
 			break;
 		case BINARYOP_SUB:
-			if (lhs_type->type_kind == TYPE_POINTER)
+			if (type_is_pointer_vector(lhs_type))
+			{
+				Type *element_type = lhs_type->array.base->pointer;
+				unsigned len = lhs_type->array.len;
+				LLVMTypeRef int_vec_type = llvm_get_type(c, type_get_vector(type_isz, len));
+				if (lhs_type == rhs_type)
+				{
+					val = LLVMBuildSub(c->builder, LLVMBuildPtrToInt(c->builder, lhs_value, int_vec_type, ""),
+					                   LLVMBuildPtrToInt(c->builder, rhs_value, int_vec_type, ""), "");
+					LLVMValueRef slots[256];
+					LLVMValueRef *ptr = slots;
+					if (len > 256)
+					{
+						ptr = MALLOC(len * sizeof(LLVMValueRef));
+					}
+					AlignSize diff = type_abi_alignment(element_type);
+					for (ArraySize i = 0; i < len; i++)
+					{
+						ptr[i] = llvm_const_int(c, type_isz, diff);
+					}
+					LLVMValueRef divisor = LLVMConstVector(ptr, len);
+					val = LLVMBuildExactSDiv(c->builder, val, divisor, "");
+					break;
+				}
+				rhs_value = LLVMBuildNeg(c->builder, rhs_value, "");
+				val = llvm_emit_pointer_gep_raw(c, llvm_get_type(c, element_type), lhs_value, rhs_value);
+				break;
+			}
+			else if (lhs_type->type_kind == TYPE_POINTER)
 			{
 				if (lhs_type == rhs_type)
 				{

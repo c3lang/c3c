@@ -258,9 +258,8 @@ Type *type_infer_len_from_actual_type(Type *to_infer, Type *actual_type)
 		case TYPE_SUBARRAY:
 			return type_add_optional(type_get_subarray(indexed), is_optional);
 		case TYPE_VECTOR:
-			// This is unreachable, because unlike arrays, there is no inner type that may be
-			// the inferred part.
-			UNREACHABLE
+			// The case of int[*]*[<2>] x = ...
+			return type_add_optional(type_get_vector(indexed, to_infer->array.len), is_optional);
 		default:
 			UNREACHABLE
 	}
@@ -1557,6 +1556,7 @@ static void cast_vec_to_vec(Expr *expr, Type *to_type)
 			case TYPE_ANYFAULT:
 			case TYPE_FAULTTYPE:
 				insert_runtime_cast(expr, CAST_PTRPTR, to_type);
+				return;
 			default:
 				UNREACHABLE;
 		}

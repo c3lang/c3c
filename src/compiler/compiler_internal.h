@@ -2651,6 +2651,13 @@ INLINE CanonicalType *type_pointer_type(Type *type)
 	return res->pointer;
 }
 
+INLINE bool type_is_pointer_like(Type *type)
+{
+	CanonicalType *res = type->canonical;
+	TypeKind kind = type->type_kind;
+	return kind == TYPE_POINTER || (kind == TYPE_VECTOR && type->array.base->canonical->type_kind == TYPE_POINTER);
+}
+
 INLINE bool type_is_pointer_vector(Type *type)
 {
 	return type->type_kind == TYPE_VECTOR && type->array.base->canonical->type_kind == TYPE_POINTER;
@@ -2925,7 +2932,7 @@ INLINE bool type_is_inferred(Type *type)
 INLINE bool type_is_numeric(Type *type)
 {
 	DECL_TYPE_KIND_REAL(kind, type);
-	return (kind >= TYPE_I8 && kind <= TYPE_FLOAT_LAST) || kind == TYPE_VECTOR;
+	return (kind >= TYPE_I8 && kind <= TYPE_FLOAT_LAST) || (kind == TYPE_VECTOR && !type_is_pointer_vector(type->canonical));
 }
 
 INLINE bool type_underlying_is_numeric(Type *type)
