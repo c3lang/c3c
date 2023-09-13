@@ -488,7 +488,11 @@ bool sema_analyse_asm(SemaContext *context, AsmInlineBlock *block, Ast *asm_stmt
 		SEMA_ERROR(asm_stmt, "Unsupported architecture for asm.");
 		return false;
 	}
-	init_asm();
+	static bool initialized_asm = false;
+	if (!initialized_asm) {
+		init_asm();
+		initialized_asm = true;
+	}
 	AsmInstruction *instr = asm_instr_by_name(asm_stmt->asm_stmt.instruction);
 	if (!instr)
 	{
