@@ -1093,7 +1093,16 @@ bool type_is_valid_for_vector(Type *type)
 		case ALL_INTS:
 		case ALL_FLOATS:
 		case TYPE_BOOL:
+		case TYPE_POINTER:
+		case TYPE_ENUM:
+		case TYPE_TYPEID:
+		case TYPE_FAULTTYPE:
+		case TYPE_ANYFAULT:
 			return true;
+		case TYPE_DISTINCT:
+			assert(type->decl->resolve_status == RESOLVE_DONE);
+			type = type->decl->distinct_decl.base_type;
+			goto RETRY;
 		case TYPE_TYPEDEF:
 			type = type->canonical;
 			goto RETRY;

@@ -3,6 +3,7 @@
 ## 0.5.0 Change List
 
 ### Changes / improvements
+- vectors may now contain pointers.
 - `void!` does not convert to `anyfault`.
 - `$$masked_load` / `$$masked_store` for vector masked load/store. 
 - `$$select` builtin for vector masked select.

@@ -2699,13 +2699,16 @@ static inline bool sema_expr_analyse_pointer_offset(SemaContext *context, Expr *
 	// 2. Evaluate the offset.
 	Expr *offset = exprptr(expr->pointer_offset_expr.offset);
 	if (!sema_analyse_expr(context, offset)) return false;
-	if (!cast_implicit(context, offset, type_isz)) return false;
+	Type *flat = type_flatten(pointer->type);
+	unsigned vec_len = flat->type_kind == TYPE_VECTOR ? flat->array.len : 0;
+
+	if (!cast_implicit(context, offset, vec_len ? type_get_vector(type_isz, vec_len) : type_isz)) return false;
 
 	// 3. Store optionality
 	bool is_optional = IS_OPTIONAL(pointer) || IS_OPTIONAL(offset);
 
 	// 4. Possibly constant fold
-	if (expr_is_const(pointer) && expr_is_const(offset))
+	if (!vec_len && expr_is_const(pointer) && expr_is_const(offset))
 	{
 		assert(!is_optional);
 		Int mul = { .i.low = type_size(type_flatten(pointer->type)->pointer), .type = offset->const_expr.ixx.type };
@@ -4983,54 +4986,68 @@ static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, 
 	Type *left_type = type_no_optional(left->type)->canonical;
 	Type *right_type = type_no_optional(right->type)->canonical;
 
+	bool left_is_pointer_vector = type_is_pointer_vector(left_type);
+	bool left_is_pointer = left_is_pointer_vector || left_type->type_kind == TYPE_POINTER;
 	// 2. Handle the ptr - x and ptr - other_pointer
-	if (left_type->type_kind == TYPE_POINTER)
+	if (left_is_pointer)
 	{
+		ArraySize vec_len = left_is_pointer_vector ? left_type->array.len : 0;
+		// We restore the type to ensure distinct types are tested against each other.
 		left_type = type_no_optional(left->type)->canonical;
 
+		bool right_is_pointer_vector = type_is_pointer_vector(right_type);
+		bool right_is_pointer = right_is_pointer_vector || right_type->type_kind == TYPE_POINTER;
+
+		Type *offset_type = vec_len ? type_get_vector(type_isz, vec_len) : type_isz;
+
 		// 3. ptr - other pointer
-		if (right_type->type_kind == TYPE_POINTER)
+		if (right_is_pointer)
 		{
+
+			// Restore the type
 			right_type = type_no_optional(right->type)->canonical;
 
 			// 3a. Require that both types are the same.
 			sema_binary_unify_voidptr(left, right, &left_type, &right_type);
 			if (left_type != right_type)
 			{
-				SEMA_ERROR(expr, "'%s' - '%s' is not allowed. Subtracting pointers of different types from each other is not possible.", type_to_error_string(left_type), type_to_error_string(right_type));
+				SEMA_ERROR(expr, "'%s' - '%s' is not allowed. Subtracting pointers of different types is not allowed.", type_to_error_string(left_type), type_to_error_string(right_type));
 				return false;
 			}
 
-			if (expr_both_const(left, right) && sema_constant_fold_ops(left))
+			if (!right_is_pointer_vector && !left_is_pointer_vector && expr_both_const(left, right) && sema_constant_fold_ops(left))
 			{
 				expr_rewrite_const_int(expr, type_isz, (left->const_expr.ptr - right->const_expr.ptr) /
 													   type_size(left_type->pointer));
 				return true;
 			}
 			// 3b. Set the type
-			expr->type = type_isz;
-
+			expr->type = offset_type;
 			return true;
 		}
 
 		right_type = right->type->canonical;
 
+		bool right_is_vector = right_type->type_kind == TYPE_VECTOR;
 		// 4. Check that the right hand side is an integer.
-		if (!type_is_integer(right_type))
+		if (!type_flat_is_intlike(right_type))
 		{
 			SEMA_ERROR(expr, "Cannot subtract '%s' from '%s'", type_to_error_string(right_type), type_to_error_string(left_type));
 			return false;
 		}
 
 		// 5. Make sure that the integer does not exceed isz in size.
-		if (type_size(right_type) > type_size(type_isz))
+		ArraySize max_size = right_is_vector ? type_size(offset_type) : type_size(type_isz);
+		if (type_size(right_type) > max_size)
 		{
-			SEMA_ERROR(expr, "Cannot subtract a '%s' from a pointer, please first cast it to '%s'.", type_to_error_string(right_type), type_to_error_string(type_isz));
-			return false;
+			RETURN_SEMA_ERROR(expr, "Cannot subtract %s from a %s, you need to add an explicit a narrowing cast to %s.",
+							  type_quoted_error_string(right->type),
+							  left_is_pointer_vector ? "pointer vector" : "pointer",
+							  type_quoted_error_string(right_is_vector ? offset_type : type_isz));
 		}
 
 		// 6. Convert to isz
-		if (!cast_implicit(context, right, type_isz)) return true;
+		if (!cast_implicit(context, right, offset_type)) return true;
 
 		if (left->expr_kind == EXPR_POINTER_OFFSET)
 		{
@@ -5169,34 +5186,43 @@ static bool sema_expr_analyse_add(SemaContext *context, Expr *expr, Expr *left, 
 	Type *left_type = type_no_optional(left->type)->canonical;
 	Type *right_type = type_no_optional(right->type)->canonical;
 
+	bool right_is_pointer = type_is_pointer_like(right_type);
+	bool left_is_pointer = type_is_pointer_like(left_type);
 	// 2. To detect pointer additions, reorder if needed
-	if (right_type->type_kind == TYPE_POINTER && left_type->type_kind != TYPE_POINTER)
+	if (right_is_pointer && !left_is_pointer)
 	{
 		Expr *temp = right;
 		right = left;
 		left = temp;
 		right_type = left_type;
 		left_type = left->type->canonical;
+		left_is_pointer = true;
+		right_is_pointer = false;
 		expr->binary_expr.left = exprid(left);
 		expr->binary_expr.right = exprid(right);
 	}
 
 	// 3. The "left" will now always be the pointer.
 	//    so check if we want to do the normal pointer add special handling.
-	if (left_type->type_kind == TYPE_POINTER)
+	if (left_is_pointer)
 	{
+		bool left_is_vec = left_type->type_kind == TYPE_VECTOR;
+		bool right_is_vec = right_type->type_kind == TYPE_VECTOR;
+		ArraySize vec_len = left_is_vec ? left_type->array.len : 0;
 		// 3a. Check that the other side is an integer of some sort.
 		if (!type_is_integer(right_type))
 		{
-			SEMA_ERROR(right, "A value of type '%s' cannot be added to '%s', an integer was expected here.",
-					   type_to_error_string(right->type),
-					   type_to_error_string(left->type));
-			return false;
+			if (!left_is_vec || !right_is_vec || !type_is_integer(right_type->array.base))
+			{
+				RETURN_SEMA_ERROR(right, "A value of type '%s' cannot be added to '%s', an integer was expected here.",
+				                  type_to_error_string(right->type),
+				                  type_to_error_string(left->type));
+			}
 		}
 
 		// 3b. Cast it to usz or isz depending on underlying type.
 		//     Either is fine, but it looks a bit nicer if we actually do this and keep the sign.
-		bool success = cast_explicit(context, right, type_isz);
+		bool success = cast_explicit(context, right, left_is_vec ? type_get_vector(type_isz, vec_len) : type_isz);
 
 		// No need to check the cast we just ensured it was an integer.
 		assert(success && "This should always work");
@@ -7083,7 +7109,7 @@ RETRY:
 			if (!type_is_valid_for_vector(type))
 			{
 				SEMA_ERROR(type_info->array.base,
-						   "%s cannot be vectorized. Only integers, floats and booleans are allowed.",
+						   "%s is not of a vectorizable type.",
 						   type_quoted_error_string(type));
 				return poisoned_type;
 			}
