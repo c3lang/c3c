@@ -5,8 +5,9 @@
 ### Changes / improvements
 - vectors may now contain pointers.
 - `void!` does not convert to `anyfault`.
-- `$$masked_load` / `$$masked_store` / `$$gather` / `$$scatter` for vector masked load/store. 
+- `$$masked_load` / `$$masked_store` / `$$gather` / `$$scatter` for vector masked load/store.
 - `$$select` builtin for vector masked select.
+- Added builtin benchmarks by `benchmark`, `compile-benchmark` commands and `@benchmark` attribute.
 - Subtype matching in type switches.
 - Added parentof typeid property.
 - Slice assignment is expanded.
