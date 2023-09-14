@@ -430,6 +430,7 @@ static void init_asm_x86(void)
 void init_asm(void)
 {
 	if (asm_target.initialized) return;
+	asm_target.initialized = true;
 	switch (platform_target.arch)
 	{
 		case ARCH_UNSUPPORTED:
