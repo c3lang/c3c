@@ -21,6 +21,8 @@ typedef enum
 	BA_INTVEC,
 	BA_FLOATVEC,
 	BA_VEC,
+	BA_NUMVEC,
+	BA_PTRVEC,
 } BuiltinArg;
 
 static bool sema_check_builtin_args_match(Expr **args, size_t arg_len);
@@ -115,6 +117,12 @@ static bool sema_check_builtin_args(Expr **args, BuiltinArg *arg_type, size_t ar
 			case BA_VEC:
 				if (type->type_kind == TYPE_VECTOR) continue;
 				RETURN_SEMA_ERROR(arg, "Expected a vector.");
+			case BA_PTRVEC:
+				if (type_is_pointer_vector(type)) continue;
+				RETURN_SEMA_ERROR(arg, "Expected a pointer vector.");
+			case BA_NUMVEC:
+				if (type->type_kind == TYPE_VECTOR && type_is_number_or_bool(type->array.base)) continue;
+				RETURN_SEMA_ERROR(arg, "Expected a numeric vector.");
 			case BA_INTVEC:
 				if (type->type_kind == TYPE_VECTOR && type_flat_is_intlike(type->array.base)) continue;
 				RETURN_SEMA_ERROR(arg, "Expected an integer vector.");
@@ -344,17 +352,21 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			rtype = type_void;
 			break;
 		case BUILTIN_SYSCALL:
+			UNREACHABLE
 		case BUILTIN_VECCOMPGE:
 		case BUILTIN_VECCOMPEQ:
 		case BUILTIN_VECCOMPLE:
 		case BUILTIN_VECCOMPGT:
 		case BUILTIN_VECCOMPLT:
 		case BUILTIN_VECCOMPNE:
+		{
 			assert(arg_count == 2);
-			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_VEC, BA_VEC }, 2)) return false;
+			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_NUMVEC, BA_NUMVEC }, 2)) return false;
 			if (!sema_check_builtin_args_match(args, 2)) return false;
-			rtype = type_get_vector(type_bool, type_flatten(args[0]->type)->array.len);
+			Type *vec_type = type_flatten(args[0]->type);
+			rtype = type_get_vector(type_bool, vec_type->array.len);
 			break;
+		}
 		case BUILTIN_SELECT:
 			assert(arg_count == 3);
 			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_BOOLVEC, BA_VEC, BA_VEC }, 3)) return false;
@@ -541,10 +553,12 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			break;
 		case BUILTIN_REDUCE_MAX:
 		case BUILTIN_REDUCE_MIN:
+		{
 			assert(arg_count == 1);
-			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_VEC }, 1)) return false;
+			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_NUMVEC }, 1)) return false;
 			rtype = type_get_indexed_type(args[0]->type);
 			break;
+		}
 		case BUILTIN_REDUCE_ADD:
 		case BUILTIN_REDUCE_AND:
 		case BUILTIN_REDUCE_OR:
@@ -559,6 +573,53 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_NUMLIKE }, 1)) return false;
 			rtype = args[0]->type;
 			break;
+		case BUILTIN_GATHER:
+		{
+			assert(arg_count == 4);
+			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_PTRVEC, BA_BOOLVEC, BA_VEC, BA_INTEGER }, 4)) return false;
+			Type *flat_pointer_vec = type_flatten(args[0]->type);
+			Type *flat_passthru_vec = type_flatten(args[2]->type);
+			Type *pointer_type = flat_pointer_vec->array.base;
+			ArraySize len = flat_pointer_vec->array.len;
+			if (pointer_type->pointer->canonical != flat_passthru_vec->array.base->canonical)
+			{
+				RETURN_SEMA_ERROR(args[2], "Expected the vector to have elements of type %s.", type_quoted_error_string(pointer_type->pointer));
+			}
+			if (len != flat_passthru_vec->array.len)
+			{
+				RETURN_SEMA_ERROR(args[2], "Expected the vector to be %s, not %s.",
+				                  type_quoted_error_string(
+						                  type_get_vector(pointer_type->pointer, len)),
+				                  type_quoted_error_string(args[2]->type));
+			}
+			if (!sema_check_alignment_expression(context, args[3])) return false;
+			if (!sema_expr_is_valid_mask_for_value(args[1], args[2])) return false;
+			rtype = type_get_vector(pointer_type->pointer, len);
+			break;
+		}
+		case BUILTIN_SCATTER:
+		{
+			assert(arg_count == 4);
+			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_PTRVEC, BA_VEC, BA_BOOLVEC, BA_INTEGER }, 4)) return false;
+			Type *flat_pointer_vec = type_flatten(args[0]->type);
+			Type *flat_value_vec = type_flatten(args[1]->type);
+			Type *pointer_type = flat_pointer_vec->array.base;
+			if (pointer_type->pointer->canonical != flat_value_vec->array.base->canonical)
+			{
+				RETURN_SEMA_ERROR(args[1], "Expected the vector to have elements of type %s.", type_quoted_error_string(pointer_type->pointer));
+			}
+			if (flat_pointer_vec->array.len != flat_value_vec->array.len)
+			{
+				RETURN_SEMA_ERROR(args[1], "Expected the vector to be %s, not %s.",
+				                  type_quoted_error_string(
+						                  type_get_vector(pointer_type->pointer, flat_pointer_vec->array.len)),
+				                  type_quoted_error_string(args[2]->type));
+			}
+			if (!sema_check_alignment_expression(context, args[3])) return false;
+			if (!sema_expr_is_valid_mask_for_value(args[2], args[1])) return false;
+			rtype = type_void;
+			break;
+		}
 		case BUILTIN_MASKED_LOAD:
 		{
 			assert(arg_count == 4);
@@ -582,7 +643,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!type_is_pointer(pointer_type)) RETURN_SEMA_ERROR(args[0], "Expected a direct pointer.");
 			if (pointer_type->pointer->canonical != args[1]->type->canonical)
 			{
-				RETURN_SEMA_ERROR(args[2], "Expected the value to be of type '%s'.", type_quoted_error_string(pointer_type->pointer));
+				RETURN_SEMA_ERROR(args[2], "Expected the value to be of type %s.", type_quoted_error_string(pointer_type->pointer));
 			}
 			if (!sema_check_alignment_expression(context, args[3])) return false;
 			if (!sema_expr_is_valid_mask_for_value(args[2], args[1])) return false;
@@ -791,6 +852,8 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_ATOMIC_STORE:
 		case BUILTIN_MASKED_STORE:
 		case BUILTIN_MASKED_LOAD:
+		case BUILTIN_GATHER:
+		case BUILTIN_SCATTER:
 			return 4;
 		case BUILTIN_MEMCOPY:
 		case BUILTIN_MEMCOPY_INLINE:

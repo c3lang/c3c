@@ -7,7 +7,11 @@ const MAX_MEMORY_ALIGNMENT = 0x1000_0000;
 const DEFAULT_MEM_ALIGNMENT = (void*.alignof) * 2;
 
 
+
+
 /**
+ * Load a vector from memory according to a mask assuming default alignment.
+ *
  * @param ptr "The pointer address to load from."
  * @param mask "The mask for the load"
  * @param passthru "The value to use for non masked values"
@@ -17,23 +21,140 @@ const DEFAULT_MEM_ALIGNMENT = (void*.alignof) * 2;
  *
  * @return "A vector with the loaded values where the mask is true, passthru where the mask is false"
  **/
-macro @masked_load(ptr, bool[<*>] mask, passthru, usz $alignment = 0)
+macro masked_load(ptr, bool[<*>] mask, passthru)
+{
+	return $$masked_load(ptr, mask, passthru, 0);
+}
+
+/**
+ * Load a vector from memory according to a mask.
+ *
+ * @param ptr "The pointer address to load from."
+ * @param mask "The mask for the load"
+ * @param passthru "The value to use for non masked values"
+ * @param $alignment "The alignment to assume for the pointer"
+ *
+ * @checked $typeof(ptr) x = &&passthru : "Pointer and passthru must match"
+ * @require @typekind(passthru) == VECTOR : "Expected passthru to be a vector"
+ * @require passthru.len == mask.len : "Mask and passthru must have the same length"
+ * @require math::is_power_of_2($alignment) : "The alignment must be a power of two"
+ *
+ * @return "A vector with the loaded values where the mask is true, passthru where the mask is false"
+ **/
+macro @masked_load_aligned(ptr, bool[<*>] mask, passthru, usz $alignment)
 {
 	return $$masked_load(ptr, mask, passthru, $alignment);
 }
 
 /**
- * @param ptr "The pointer address to store from."
+ * Load values from a pointer vector, assuming default alignment.
+ *
+ * @param ptrvec "The vector of pointers to load from."
+ * @param mask "The mask for the load"
+ * @param passthru "The value to use for non masked values"
+ *
+ * @require @typekind(ptrvec) == VECTOR : "Expected ptrvec to be a vector"
+ * @require @typekind(passthru) == VECTOR : "Expected passthru to be a vector"
+ * @checked $typeof(ptrvec[0]) x = &&passthru[0] : "Pointer and passthru must match"
+ * @require passthru.len == mask.len : "Mask and passthru must have the same length"
+ * @require mask.len == ptrvec.len : "Mask and ptrvec must have the same length"
+ *
+ * @return "A vector with the loaded values where the mask is true, passthru where the mask is false"
+ **/
+macro gather(ptrvec, bool[<*>] mask, passthru)
+{
+	return $$gather(ptrvec, mask, passthru, 0);
+}
+
+
+/**
+ * Load values from a pointer vector.
+ *
+ * @param ptrvec "The vector of pointers to load from."
+ * @param mask "The mask for the load"
+ * @param passthru "The value to use for non masked values"
+ * @param $alignment "The alignment to assume for the pointers"
+ *
+ * @require @typekind(ptrvec) == VECTOR : "Expected ptrvec to be a vector"
+ * @require @typekind(passthru) == VECTOR : "Expected passthru to be a vector"
+ * @checked $typeof(ptrvec[0]) x = &&passthru[0] : "Pointer and passthru must match"
+ * @require passthru.len == mask.len : "Mask and passthru must have the same length"
+ * @require mask.len == ptrvec.len : "Mask and ptrvec must have the same length"
+ * @require math::is_power_of_2($alignment) : "The alignment must be a power of two"
+ *
+ * @return "A vector with the loaded values where the mask is true, passthru where the mask is false"
+ **/
+macro @gather_aligned(ptrvec, bool[<*>] mask, passthru, usz $alignment)
+{
+	return $$gather(ptrvec, mask, passthru, $alignment);
+}
+
+
+/**
+ * Store parts of a vector according to the mask, assuming default alignment.
+ *
+ * @param ptr "The pointer address to store to."
  * @param value "The value to store masked"
  * @param mask "The mask for the store"
+ *
  * @checked $typeof(ptr) x = &&value : "Pointer and value must match"
  * @require @typekind(value) == VECTOR : "Expected value to be a vector"
  * @require value.len == mask.len : "Mask and value must have the same length"
+ **/
+macro masked_store(ptr, value, bool[<*>] mask)
+{
+	return $$masked_store(ptr, value, mask, 0);
+}
+
+/**
+ * @param ptr "The pointer address to store to."
+ * @param value "The value to store masked"
+ * @param mask "The mask for the store"
+ * @param $alignment "The alignment of the pointer"
+ *
+ * @checked $typeof(ptr) x = &&value : "Pointer and value must match"
+ * @require @typekind(value) == VECTOR : "Expected value to be a vector"
+ * @require value.len == mask.len : "Mask and value must have the same length"
+ * @require math::is_power_of_2($alignment) : "The alignment must be a power of two"
  *
  **/
-macro @masked_store(ptr, value, bool[<*>] mask, usz $alignment = 0)
+macro @masked_store_aligned(ptr, value, bool[<*>] mask, usz $alignment)
 {
 	return $$masked_store(ptr, value, mask, $alignment);
+}
+
+/**
+ * @param ptrvec "The vector pointer containing the addresses to store to."
+ * @param value "The value to store masked"
+ * @param mask "The mask for the store"
+ * @require @typekind(ptrvec) == VECTOR : "Expected ptrvec to be a vector"
+ * @require @typekind(value) == VECTOR : "Expected value to be a vector"
+ * @checked $typeof(ptrvec[0]) x = &&value[0] : "Pointer and value must match"
+ * @require value.len == mask.len : "Mask and value must have the same length"
+ * @require mask.len == ptrvec.len : "Mask and ptrvec must have the same length"
+ *
+ **/
+macro scatter(ptrvec, value, bool[<*>] mask)
+{
+	return $$scatter(ptrvec, value, mask, 0);
+}
+
+/**
+ * @param ptrvec "The vector pointer containing the addresses to store to."
+ * @param value "The value to store masked"
+ * @param mask "The mask for the store"
+ * @param $alignment "The alignment of the load"
+ *
+ * @require @typekind(ptrvec) == VECTOR : "Expected ptrvec to be a vector"
+ * @require @typekind(value) == VECTOR : "Expected value to be a vector"
+ * @checked $typeof(ptrvec[0]) x = &&value[0] : "Pointer and value must match"
+ * @require value.len == mask.len : "Mask and value must have the same length"
+ * @require mask.len == ptrvec.len : "Mask and ptrvec must have the same length"
+ * @require math::is_power_of_2($alignment) : "The alignment must be a power of two"
+ **/
+macro @scatter_aligned(ptrvec, value, bool[<*>] mask, usz $alignment)
+{
+	return $$scatter(ptrvec, value, mask, $alignment);
 }
 
 macro @volatile_load(&x) @builtin

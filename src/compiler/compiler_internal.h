@@ -2929,10 +2929,23 @@ INLINE bool type_is_inferred(Type *type)
 	return kind == TYPE_INFERRED_VECTOR || kind == TYPE_INFERRED_ARRAY;
 }
 
-INLINE bool type_is_numeric(Type *type)
+INLINE bool type_is_number_or_bool(Type *type)
 {
 	DECL_TYPE_KIND_REAL(kind, type);
-	return (kind >= TYPE_I8 && kind <= TYPE_FLOAT_LAST) || (kind == TYPE_VECTOR && !type_is_pointer_vector(type->canonical));
+	return (kind >= TYPE_BOOL) && (kind <= TYPE_FLOAT_LAST);
+}
+
+INLINE bool type_is_numeric(Type *type)
+{
+	RETRY:;
+	DECL_TYPE_KIND_REAL(kind, type);
+	if ((kind >= TYPE_I8) & (kind <= TYPE_FLOAT_LAST)) return true;
+	if (type->type_kind == TYPE_VECTOR)
+	{
+		type = type->array.base;
+		goto RETRY;
+	}
+	return false;
 }
 
 INLINE bool type_underlying_is_numeric(Type *type)

@@ -650,6 +650,7 @@ static void llvm_codegen_setup()
 	intrinsic_id.frameaddress = lookup_intrinsic("llvm.frameaddress");
 	intrinsic_id.fshl = lookup_intrinsic("llvm.fshl");
 	intrinsic_id.fshr = lookup_intrinsic("llvm.fshr");
+	intrinsic_id.gather = lookup_intrinsic("llvm.masked.gather");
 #if LLVM_VERSION_MAJOR < 16
 	intrinsic_id.get_rounding = lookup_intrinsic("llvm.flt.rounds");
 #else
@@ -666,9 +667,7 @@ static void llvm_codegen_setup()
 	intrinsic_id.lround = lookup_intrinsic("llvm.lround");
 	intrinsic_id.masked_compressstore = lookup_intrinsic("llvm.masked.compressstore");
 	intrinsic_id.masked_expandload = lookup_intrinsic("llvm.masked.expandload");
-	intrinsic_id.masked_gather = lookup_intrinsic("llvm.masked.gather");
 	intrinsic_id.masked_load = lookup_intrinsic("llvm.masked.load");
-	intrinsic_id.masked_scatter = lookup_intrinsic("llvm.masked.scatter");
 	intrinsic_id.masked_store = lookup_intrinsic("llvm.masked.store");
 	intrinsic_id.maximum = lookup_intrinsic("llvm.maximum");
 	intrinsic_id.maxnum = lookup_intrinsic("llvm.maxnum");
@@ -690,6 +689,7 @@ static void llvm_codegen_setup()
 	intrinsic_id.roundeven = lookup_intrinsic("llvm.roundeven");
 	intrinsic_id.sadd_overflow = lookup_intrinsic("llvm.sadd.with.overflow");
 	intrinsic_id.sadd_sat = lookup_intrinsic("llvm.sadd.sat");
+	intrinsic_id.scatter = lookup_intrinsic("llvm.masked.scatter");
 	intrinsic_id.set_rounding = lookup_intrinsic("llvm.set.rounding");
 	intrinsic_id.sin = lookup_intrinsic("llvm.sin");
 	intrinsic_id.sshl_sat = lookup_intrinsic("llvm.sshl.sat");

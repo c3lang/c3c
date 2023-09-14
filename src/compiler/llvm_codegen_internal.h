@@ -175,6 +175,7 @@ typedef struct
 	unsigned frameaddress;
 	unsigned fshl;
 	unsigned fshr;
+	unsigned gather;
 	unsigned get_rounding;
 	unsigned lifetime_end;
 	unsigned lifetime_start;
@@ -187,9 +188,7 @@ typedef struct
 	unsigned lround;
 	unsigned masked_compressstore;
 	unsigned masked_expandload;
-	unsigned masked_gather;
 	unsigned masked_load;
-	unsigned masked_scatter;
 	unsigned masked_store;
 	unsigned maximum;
 	unsigned maxnum;
@@ -210,6 +209,7 @@ typedef struct
 	unsigned roundeven;
 	unsigned sadd_overflow;
 	unsigned sadd_sat;
+	unsigned scatter;
 	unsigned set_rounding;
 	unsigned sin;
 	unsigned smax;
