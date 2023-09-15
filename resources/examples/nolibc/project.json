@@ -1,0 +1,21 @@
+{
+  "authors": [ "Dmitry Atamanov https://github.com/data-man" ],
+  "version": "0.0.1 Omega",
+  "sources": [ "./**" ],
+  "targets": {
+    "hello_world": {
+      "type": "executable",
+      "opt": "O3",
+      "nolibc": true,
+      "nostdlib": true
+    },
+  },
+  "debug-info": "none",
+  "target": "linux-x64",
+  "reloc": "none",
+  "trap-on-wrap": false,
+  "soft-float": false,
+  "x86vec": "sse",
+  "cpu": "generic",
+  "output": "."
+}
