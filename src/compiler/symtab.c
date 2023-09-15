@@ -200,6 +200,7 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_ATOMIC_LOAD] = KW_DEF("atomic_load");
 	builtin_list[BUILTIN_ATOMIC_STORE] = KW_DEF("atomic_store");
 	builtin_list[BUILTIN_ATOMIC_FETCH_ADD] = KW_DEF("atomic_fetch_add");
+	builtin_list[BUILTIN_ATOMIC_FETCH_EXCHANGE] = KW_DEF("atomic_fetch_exchange");
 	builtin_list[BUILTIN_ATOMIC_FETCH_SUB] = KW_DEF("atomic_fetch_sub");
 	builtin_list[BUILTIN_ATOMIC_FETCH_MAX] = KW_DEF("atomic_fetch_max");
 	builtin_list[BUILTIN_ATOMIC_FETCH_MIN] = KW_DEF("atomic_fetch_min");

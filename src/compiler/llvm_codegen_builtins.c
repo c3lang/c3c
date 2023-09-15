@@ -192,6 +192,9 @@ INLINE void llvm_emit_atomic_fetch(GenContext *c, BuiltinFunction func, BEValue 
 	static LLVMAtomicRMWBinOp LLVMAtomicRMWBinOpUDecWrap = LLVMAtomicRMWBinOpFMin + 2;
 	switch (func)
 	{
+		case BUILTIN_ATOMIC_FETCH_EXCHANGE:
+			op = LLVMAtomicRMWBinOpXchg;
+			break;
 		case BUILTIN_ATOMIC_FETCH_ADD:
 			op = is_float ? LLVMAtomicRMWBinOpFAdd : LLVMAtomicRMWBinOpAdd;
 			break;
@@ -815,6 +818,7 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 		case BUILTIN_ATOMIC_FETCH_MIN:
 		case BUILTIN_ATOMIC_FETCH_SUB:
 		case BUILTIN_ATOMIC_FETCH_DEC_WRAP:
+		case BUILTIN_ATOMIC_FETCH_EXCHANGE:
 			llvm_emit_atomic_fetch(c, func, result_value, expr);
 			return;
 		case BUILTIN_ATOMIC_LOAD:

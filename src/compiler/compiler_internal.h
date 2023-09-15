@@ -2663,6 +2663,24 @@ INLINE bool type_is_pointer_vector(Type *type)
 	return type->type_kind == TYPE_VECTOR && type->array.base->canonical->type_kind == TYPE_POINTER;
 }
 
+INLINE bool type_is_atomic(Type *type_flat)
+{
+	switch (type_flat->type_kind)
+	{
+		case ALL_UNSIGNED_INTS:
+		case ALL_SIGNED_INTS:
+		case ALL_FLOATS:
+		case TYPE_ENUM:
+		case TYPE_FAULTTYPE:
+		case TYPE_ANYFAULT:
+		case TYPE_TYPEID:
+			break;
+		default:
+			return false;
+	}
+	return type_size(type_flat) <= type_size(type_iptr);
+}
+
 INLINE bool type_is_pointer(Type *type)
 {
 	DECL_TYPE_KIND_REAL(kind, type);

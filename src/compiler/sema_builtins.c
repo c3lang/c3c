@@ -779,6 +779,29 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			rtype = args[1]->type;
 			break;
 		}
+		case BUILTIN_ATOMIC_FETCH_EXCHANGE:
+		{
+			assert(arg_count == 5);
+			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_POINTER }, 1)) return false;
+			Type *original = type_flatten(args[0]->type);
+			if (original != type_voidptr)
+			{
+				if (!cast_implicit(context, args[1], original->pointer)) return false;
+			}
+			Type *val = type_flatten(args[1]->type);
+			if (!type_is_atomic(val)) RETURN_SEMA_ERROR(args[1], "%s exceeds pointer size.", val);
+			if (!expr_is_const(args[2])) RETURN_SEMA_ERROR(args[2], "'is_volatile' must be a compile time constant.");
+			if (!expr_is_const(args[3])) RETURN_SEMA_ERROR(args[3], "Ordering must be a compile time constant.");
+			if (!is_valid_atomicity(args[3])) return false;
+			switch (args[3]->const_expr.ixx.i.low)
+			{
+				case ATOMIC_UNORDERED:
+					RETURN_SEMA_ERROR(args[3], "'unordered' is not valid ordering.");
+			}
+			if (!sema_check_alignment_expression(context, args[4])) return false;
+			rtype = args[1]->type;
+			break;
+		}
 		case BUILTIN_ATOMIC_FETCH_ADD:
 		case BUILTIN_ATOMIC_FETCH_SUB:
 		case BUILTIN_ATOMIC_FETCH_MAX:
@@ -939,6 +962,7 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_GATHER:
 		case BUILTIN_SCATTER:
 			return 4;
+		case BUILTIN_ATOMIC_FETCH_EXCHANGE:
 		case BUILTIN_ATOMIC_FETCH_ADD:
 		case BUILTIN_ATOMIC_FETCH_INC_WRAP:
 		case BUILTIN_ATOMIC_FETCH_NAND:
