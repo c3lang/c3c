@@ -323,7 +323,6 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_GET_ROUNDING_MODE:
 			expr->type = type_int;
 			return true;
-		case BUILTIN_FRAMEADDRESS:
 		case BUILTIN_STACKTRACE:
 			expr->type = type_voidptr;
 			return true;
@@ -350,6 +349,13 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			assert(arg_count == 1);
 			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_INTEGER }, 1)) return false;
 			rtype = type_void;
+			break;
+		case BUILTIN_FRAMEADDRESS:
+		case BUILTIN_RETURNADDRESS:
+			assert(arg_count == 1);
+			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_INTEGER }, 1)) return false;
+			if (!sema_check_builtin_args_const(args, 1)) return false;
+			rtype = type_voidptr;
 			break;
 		case BUILTIN_SYSCALL:
 			UNREACHABLE
@@ -743,7 +749,6 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		}
 		case BUILTIN_NONE:
 		case BUILTIN_COMPARE_EXCHANGE:
-		case BUILTIN_FRAMEADDRESS:
 		case BUILTIN_GET_ROUNDING_MODE:
 		case BUILTIN_SWIZZLE:
 		case BUILTIN_SWIZZLE2:
@@ -772,7 +777,6 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_SYSCLOCK:
 		case BUILTIN_TRAP:
 		case BUILTIN_UNREACHABLE:
-		case BUILTIN_FRAMEADDRESS:
 			return 0;
 		case BUILTIN_ABS:
 		case BUILTIN_BITREVERSE:
@@ -786,6 +790,7 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_EXP:
 		case BUILTIN_EXP2:
 		case BUILTIN_FLOOR:
+		case BUILTIN_FRAMEADDRESS:
 		case BUILTIN_LLRINT:
 		case BUILTIN_LLROUND:
 		case BUILTIN_LOG:
@@ -809,6 +814,7 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_REDUCE_XOR:
 		case BUILTIN_REDUCE_MAX:
 		case BUILTIN_REDUCE_MIN:
+		case BUILTIN_RETURNADDRESS:
 		case BUILTIN_SET_ROUNDING_MODE:
 		case BUILTIN_WASM_MEMORY_SIZE:
 			return 1;

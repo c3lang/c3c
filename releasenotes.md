@@ -3,6 +3,7 @@
 ## 0.5.0 Change List
 
 ### Changes / improvements
+- `$$return_address` builtin.
 - vectors may now contain pointers.
 - `void!` does not convert to `anyfault`.
 - `$$masked_load` / `$$masked_store` / `$$gather` / `$$scatter` for vector masked load/store.

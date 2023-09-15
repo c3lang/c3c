@@ -220,7 +220,7 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_FLOOR] = KW_DEF("floor");
 	builtin_list[BUILTIN_FMA] = KW_DEF("fma");
 	builtin_list[BUILTIN_FMULADD] = KW_DEF("fmuladd");
-	builtin_list[BUILTIN_FRAMEADDRESS] = KW_DEF("frameaddress");
+	builtin_list[BUILTIN_FRAMEADDRESS] = KW_DEF("frame_address");
 	builtin_list[BUILTIN_FSHL] = KW_DEF("fshl");
 	builtin_list[BUILTIN_FSHR] = KW_DEF("fshr");
 	builtin_list[BUILTIN_GATHER] = KW_DEF("gather");
@@ -252,6 +252,7 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_REDUCE_MUL] = KW_DEF("reduce_mul");
 	builtin_list[BUILTIN_REDUCE_OR] = KW_DEF("reduce_or");
 	builtin_list[BUILTIN_REDUCE_XOR] = KW_DEF("reduce_xor");
+	builtin_list[BUILTIN_RETURNADDRESS] = KW_DEF("return_address");
 	builtin_list[BUILTIN_REVERSE] = KW_DEF("reverse");
 	builtin_list[BUILTIN_RINT] = KW_DEF("rint");
 	builtin_list[BUILTIN_ROUND] = KW_DEF("round");
