@@ -11,5 +11,7 @@ fn int main()
     printf("Hello World!\n");
     bar::test();
     printf("Hello double: %d\n", test_doubler(11));
+	if ($feature(ABCD)) io::printn("ABCD");
+
     return 0;
 }

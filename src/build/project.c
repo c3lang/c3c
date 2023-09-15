@@ -41,6 +41,7 @@ const char *project_default_keys[] = {
 		"winsdk",
 		"x86-stack-struct-return",
 		"x86vec",
+		"features"
 };
 
 const int project_default_keys_count = sizeof(project_default_keys) / sizeof(char*);
@@ -86,6 +87,7 @@ const char* project_target_keys[] = {
 		"winsdk",
 		"x86-stack-struct-return",
 		"x86vec",
+		"features",
 };
 
 const int project_target_keys_count = sizeof(project_target_keys) / sizeof(char*);
@@ -356,6 +358,18 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	// fp-math
 	int fpmath = get_valid_string_setting(json, "fp-math", type, fp_math, 0, 3, "strict, relaxed, fast");
 	if (fpmath > -1) target->feature.fp_math = fpmath;
+
+	const char **features = get_valid_array(json, "features", type, false);
+	if (features)
+	{
+		FOREACH_BEGIN(const char *feature, features)
+			if (!str_is_valid_constant(feature))
+			{
+				error_exit("Error reading 'features': '%s' is not a valid feature name.", feature);
+			}
+			vec_add(target->feature_list, feature);
+		FOREACH_END();
+	}
 
 	// x86vec
 	int x86vec = get_valid_string_setting(json, "x86vec", type, x86_vector_capability, 0, 6, "none, native, mmx, sse, avx or avx512");
