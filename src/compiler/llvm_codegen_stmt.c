@@ -1139,7 +1139,7 @@ static inline void llvm_emit_asm_block_stmt(GenContext *c, Ast *ast)
 			result_types[result_count++] = llvm_get_type(c, decl->type);
 		FOREACH_END();
 
-		FOREACH_BEGIN(ExprAsmArg * val, block->input)
+		FOREACH_BEGIN(ExprAsmArg *val, block->input)
 			BEValue value;
 			codegen_new_constraint(&clobber_list);
 			pointer_type[param_count] = NULL;

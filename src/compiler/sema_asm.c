@@ -434,7 +434,7 @@ static inline bool sema_check_asm_arg_value(SemaContext *context, AsmInlineBlock
 		return false;
 	}
 	Type *type = type_flatten(inner->type);
-	if (type_is_pointer(type)) type = type_uptr;
+	if (type_is_pointer(type)) type = type_uptr->canonical;
 	if (type_is_integer(type))
 	{
 		if (!sema_reg_int_suported_type(arg_type, type))

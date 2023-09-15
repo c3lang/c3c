@@ -228,7 +228,12 @@ static inline bool parse_asm_addr(ParseContext *c, ExprAsmArg *asm_arg)
 	if (type == TOKEN_MINUS) asm_arg->neg_offset = true;
 
 	// If it's an integer, then it's [foo + 123] or [foo - 213]
-	if (tok_is(c, TOKEN_INTEGER)) return parse_asm_offset(c, asm_arg);
+	if (tok_is(c, TOKEN_INTEGER))
+	{
+		if (!parse_asm_offset(c, asm_arg)) return false;
+		CONSUME_OR_RET(TOKEN_RBRACKET, false);
+		return true;
+	}
 
 	// Otherwise we expect the index.
 	ASSIGN_EXPRID_OR_RET(asm_arg->idx, parse_asm_expr(c), false);
