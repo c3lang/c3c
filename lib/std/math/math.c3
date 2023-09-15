@@ -310,8 +310,8 @@ macro floor(x) => $$floor(values::promote_int(x));
  * @require values::@is_promotable_to_floatlike(a) `The input must be a number or float vector`
  * @require values::@is_promotable_to_floatlike(b) `The input must be a number or float vector`
  * @require values::@is_promotable_to_floatlike(c) `The input must be a number or float vector`
- * @require types::@is_same_vector_type(a, b) `The input types must be equal`
- * @require types::@is_same_vector_type(a, c) `The input types must match`
+ * @require values::@is_same_vector_type(a, b) `The input types must be equal`
+ * @require values::@is_same_vector_type(a, c) `The input types must match`
  **/
 macro fma(a, b, c) => $$fma(a, b, c);
 
@@ -319,14 +319,20 @@ macro fma(a, b, c) => $$fma(a, b, c);
 /**
  * @require values::@is_promotable_to_floatlike(x) `The input must be a number or a float vector`
  * @require values::@is_promotable_to_floatlike(y) `The input must be a number or a float vector`
- * @require types::@is_same_vector_type(x, y) `The input types must match`
+ * @require values::@is_same_vector_type(x, y) `The input types must match`
  **/
 macro hypot(x, y) => sqrt(sqr(x) + sqr(y));
 
 /**
  * @require values::@is_promotable_to_floatlike(x) `The input must be a number or a float vector`
  **/
-macro log(x) => $$log(values::promote_int(x));
+macro ln(x) => $$log(values::promote_int(x));
+
+/**
+ * @require values::@is_promotable_to_floatlike(x) `The input must be a number or a float vector`
+ * @require values::@is_promotable_to_floatlike(base) `The base must be a number or a float vector`
+ **/
+macro log(x, base) => $$log(values::promote_int(x)) / $$log(values::promote_int(base));
 
 /**
  * @require values::@is_promotable_to_floatlike(x) `The input must be a number or a float vector`
