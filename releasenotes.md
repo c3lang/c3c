@@ -115,8 +115,9 @@
 - Update addition and subtraction on enums.
 - `@ensure` checks only non-optional results.
 - `assert` may now take varargs for formatting.
- 
+
 ### Stdlib changes
+- Added `math::log(x , base)` and `math::ln(x)`.
 - Hashmap keys implicitly copied if copy/free are defined.
 - Socket handling.
 - `csv` package.
