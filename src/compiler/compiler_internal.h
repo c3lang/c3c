@@ -2935,6 +2935,12 @@ INLINE bool type_is_number_or_bool(Type *type)
 	return (kind >= TYPE_BOOL) && (kind <= TYPE_FLOAT_LAST);
 }
 
+INLINE bool type_is_number(Type *type)
+{
+	DECL_TYPE_KIND_REAL(kind, type);
+	return (kind >= TYPE_I8) && (kind <= TYPE_FLOAT_LAST);
+}
+
 INLINE bool type_is_numeric(Type *type)
 {
 	RETRY:;

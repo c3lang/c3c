@@ -179,6 +179,64 @@ INLINE void llvm_emit_atomic_store(GenContext *c, BEValue *result_value, Expr *e
 	}
 }
 
+INLINE void llvm_emit_atomic_fetch(GenContext *c, BuiltinFunction func, BEValue *result_value, Expr *expr)
+{
+	BEValue value;
+	llvm_emit_expr(c, &value, expr->call_expr.arguments[0]);
+	llvm_emit_expr(c, result_value, expr->call_expr.arguments[1]);
+	llvm_value_rvalue(c, &value);
+	bool is_float = type_is_float(result_value->type);
+	bool is_unsigned = !is_float && type_is_unsigned(result_value->type);
+	LLVMAtomicRMWBinOp op;
+	static LLVMAtomicRMWBinOp LLVMAtomicRMWBinOpUIncWrap = LLVMAtomicRMWBinOpFMin + 1;
+	static LLVMAtomicRMWBinOp LLVMAtomicRMWBinOpUDecWrap = LLVMAtomicRMWBinOpFMin + 2;
+	switch (func)
+	{
+		case BUILTIN_ATOMIC_FETCH_ADD:
+			op = is_float ? LLVMAtomicRMWBinOpFAdd : LLVMAtomicRMWBinOpAdd;
+			break;
+		case BUILTIN_ATOMIC_FETCH_SUB:
+			op = is_float ? LLVMAtomicRMWBinOpFAdd : LLVMAtomicRMWBinOpAdd;
+			break;
+		case BUILTIN_ATOMIC_FETCH_MAX:
+			op = is_float ? LLVMAtomicRMWBinOpFMax : (is_unsigned ? LLVMAtomicRMWBinOpUMax : LLVMAtomicRMWBinOpMax);
+			break;
+		case BUILTIN_ATOMIC_FETCH_MIN:
+			op = is_float ? LLVMAtomicRMWBinOpFMin : (is_unsigned ? LLVMAtomicRMWBinOpUMin : LLVMAtomicRMWBinOpMin);
+			break;
+		case BUILTIN_ATOMIC_FETCH_OR:
+			op = LLVMAtomicRMWBinOpOr;
+			break;
+		case BUILTIN_ATOMIC_FETCH_XOR:
+			op = LLVMAtomicRMWBinOpXor;
+			break;
+		case BUILTIN_ATOMIC_FETCH_NAND:
+			op = LLVMAtomicRMWBinOpNand;
+			break;
+		case BUILTIN_ATOMIC_FETCH_AND:
+			op = LLVMAtomicRMWBinOpAnd;
+			break;
+		case BUILTIN_ATOMIC_FETCH_INC_WRAP:
+			op = LLVMAtomicRMWBinOpUIncWrap;
+			break;
+		case BUILTIN_ATOMIC_FETCH_DEC_WRAP:
+			op = LLVMAtomicRMWBinOpUDecWrap;
+			break;
+		default:
+			UNREACHABLE
+	}
+	LLVMValueRef res = LLVMBuildAtomicRMW(c->builder, op, value.value, llvm_load_value(c, result_value),
+	                   llvm_atomic_ordering(expr->call_expr.arguments[3]->const_expr.ixx.i.low),
+					   false);
+	if (expr->call_expr.arguments[2]->const_expr.b) LLVMSetVolatile(res, true);
+	uint64_t alignment = expr->call_expr.arguments[3]->const_expr.ixx.i.low;
+	if (alignment)
+	{
+		LLVMSetAlignment(res, alignment);
+	}
+	llvm_value_set(result_value, res, result_value->type);
+}
+
 INLINE void llvm_emit_atomic_load(GenContext *c, BEValue *result_value, Expr *expr)
 {
 	llvm_emit_expr(c, result_value, expr->call_expr.arguments[0]);
@@ -746,6 +804,18 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 			return;
 		case BUILTIN_ATOMIC_STORE:
 			llvm_emit_atomic_store(c, result_value, expr);
+			return;
+		case BUILTIN_ATOMIC_FETCH_ADD:
+		case BUILTIN_ATOMIC_FETCH_INC_WRAP:
+		case BUILTIN_ATOMIC_FETCH_NAND:
+		case BUILTIN_ATOMIC_FETCH_AND:
+		case BUILTIN_ATOMIC_FETCH_OR:
+		case BUILTIN_ATOMIC_FETCH_XOR:
+		case BUILTIN_ATOMIC_FETCH_MAX:
+		case BUILTIN_ATOMIC_FETCH_MIN:
+		case BUILTIN_ATOMIC_FETCH_SUB:
+		case BUILTIN_ATOMIC_FETCH_DEC_WRAP:
+			llvm_emit_atomic_fetch(c, func, result_value, expr);
 			return;
 		case BUILTIN_ATOMIC_LOAD:
 			llvm_emit_atomic_load(c, result_value, expr);

@@ -199,6 +199,16 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_ABS] = KW_DEF("abs");
 	builtin_list[BUILTIN_ATOMIC_LOAD] = KW_DEF("atomic_load");
 	builtin_list[BUILTIN_ATOMIC_STORE] = KW_DEF("atomic_store");
+	builtin_list[BUILTIN_ATOMIC_FETCH_ADD] = KW_DEF("atomic_fetch_add");
+	builtin_list[BUILTIN_ATOMIC_FETCH_SUB] = KW_DEF("atomic_fetch_sub");
+	builtin_list[BUILTIN_ATOMIC_FETCH_MAX] = KW_DEF("atomic_fetch_max");
+	builtin_list[BUILTIN_ATOMIC_FETCH_MIN] = KW_DEF("atomic_fetch_min");
+	builtin_list[BUILTIN_ATOMIC_FETCH_AND] = KW_DEF("atomic_fetch_and");
+	builtin_list[BUILTIN_ATOMIC_FETCH_NAND] = KW_DEF("atomic_fetch_nand");
+	builtin_list[BUILTIN_ATOMIC_FETCH_OR] = KW_DEF("atomic_fetch_or");
+	builtin_list[BUILTIN_ATOMIC_FETCH_XOR] = KW_DEF("atomic_fetch_xor");
+	builtin_list[BUILTIN_ATOMIC_FETCH_INC_WRAP] = KW_DEF("atomic_fetch_inc_wrap");
+	builtin_list[BUILTIN_ATOMIC_FETCH_DEC_WRAP] = KW_DEF("atomic_fetch_dec_wrap");
 	builtin_list[BUILTIN_BITREVERSE] = KW_DEF("bitreverse");
 	builtin_list[BUILTIN_BSWAP] = KW_DEF("bswap");
 	builtin_list[BUILTIN_CEIL] = KW_DEF("ceil");
