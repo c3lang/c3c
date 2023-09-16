@@ -199,7 +199,7 @@ INLINE void llvm_emit_atomic_fetch(GenContext *c, BuiltinFunction func, BEValue 
 			op = is_float ? LLVMAtomicRMWBinOpFAdd : LLVMAtomicRMWBinOpAdd;
 			break;
 		case BUILTIN_ATOMIC_FETCH_SUB:
-			op = is_float ? LLVMAtomicRMWBinOpFAdd : LLVMAtomicRMWBinOpAdd;
+			op = is_float ? LLVMAtomicRMWBinOpFSub : LLVMAtomicRMWBinOpSub;
 			break;
 		case BUILTIN_ATOMIC_FETCH_MAX:
 			op = is_float ? LLVMAtomicRMWBinOpFMax : (is_unsigned ? LLVMAtomicRMWBinOpUMax : LLVMAtomicRMWBinOpMax);
