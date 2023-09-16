@@ -698,7 +698,7 @@ void llvm_emit_xxlizer(GenContext *c, Decl *decl)
 														true,
 														row,
 														LLVMDIFlagZero,
-														active_target.optimization_level != OPTIMIZATION_NONE);
+														active_target.optlevel != OPTIMIZATION_NONE);
 		LLVMSetSubprogram(function, c->debug.function);
 	}
 	llvm_emit_body(c,

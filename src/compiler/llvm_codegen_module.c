@@ -181,7 +181,7 @@ void gencontext_init_file_emit(GenContext *c, CompilationUnit *unit)
 		// Set runtime version here.
 		unit->llvm.debug_file = llvm_get_debug_file(c, unit->file->file_id);
 
-		bool is_optimized = active_target.optimization_level != OPTIMIZATION_NONE;
+		bool is_optimized = active_target.optlevel != OPTIMIZATION_NONE;
 		const char *dwarf_flags = "";
 		unsigned runtime_version = 0;
 		LLVMDWARFEmissionKind emission_kind =

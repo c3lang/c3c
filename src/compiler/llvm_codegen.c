@@ -843,7 +843,7 @@ static inline void llvm_optimize(GenContext *c)
 	LLVMPassBuilderOptionsSetDebugLogging(options, debug_log);
 #endif
 	const char *passes = NULL;
-	switch (active_target.size_optimization_level)
+	switch (active_target.optsize)
 	{
 		case SIZE_OPTIMIZATION_SMALL:
 			passes = "default<Os>";
@@ -854,7 +854,7 @@ static inline void llvm_optimize(GenContext *c)
 		default:
 			break;
 	}
-	switch (active_target.optimization_level)
+	switch (active_target.optlevel)
 	{
 		case OPTIMIZATION_NONE:
 		case OPTIMIZATION_NOT_SET:

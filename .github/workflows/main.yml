@@ -64,7 +64,7 @@ jobs:
       - name: Compile run unit tests
         run: |
           cd test
-          ..\build\${{ matrix.build_type }}\c3c.exe compile-test unit -g1 -O1 --safe
+          ..\build\${{ matrix.build_type }}\c3c.exe compile-test unit -O1
 
       - name: upload artifacts
         uses: actions/upload-artifact@v3
@@ -263,7 +263,7 @@ jobs:
       - name: Compile run unit tests
         run: |
           cd test
-          ../build/c3c compile-test unit -g1 --safe
+          ../build/c3c compile-test unit
 
       - name: Build testproject
         run: |
@@ -368,7 +368,7 @@ jobs:
       - name: Compile run unit tests
         run: |
           cd test
-          ../build/c3c compile-test unit -g1 --safe
+          ../build/c3c compile-test unit
 
       - name: Build testproject
         run: |
@@ -440,7 +440,7 @@ jobs:
       - name: Compile run unit tests
         run: |
           cd test
-          ../build/c3c compile-test unit -g1 --safe
+          ../build/c3c compile-test unit
 
       - name: Build testproject
         run: |
