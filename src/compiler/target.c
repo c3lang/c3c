@@ -459,7 +459,7 @@ static void x86features_as_diff_to_scratch(X86Features *cpu_features, X86CpuSet 
 			x86_features_add_feature(&diff, X86_FEAT_CMPXCHG8B);
 			break;
 	}
-	for (int i = 0; i <= X86_FEATURE_LAST; i++)
+	for (X86Feature i = 0; i <= X86_FEATURE_LAST; i++)
 	{
 		if (i == X86_FEAT_AVX5124FMAPS || i == X86_FEAT_AVX5124VNNIW) continue;
 		bool diff_has = x64features_contains(&diff, (X86Feature)i);

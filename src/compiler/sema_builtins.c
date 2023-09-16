@@ -215,14 +215,21 @@ static bool sema_expr_analyse_compare_exchange(SemaContext *context, Expr *expr)
 	Expr *pointer = args[0];
 
 	if (!sema_analyse_expr(context, pointer)) return false;
+
 	bool optional = IS_OPTIONAL(pointer);
 	Type *comp_type = type_flatten(pointer->type);
 	if (!type_is_pointer(comp_type)) RETURN_SEMA_ERROR(pointer, "Expected a pointer here.");
-
 	Type *pointee = comp_type->pointer;
 	for (int i = 1; i < 3; i++)
 	{
-		if (!sema_analyse_expr_rhs(context, pointee, args[i], true)) return false;
+		Expr *arg = args[i];
+		if (!sema_analyse_expr_rhs(context, pointee == type_void ? NULL : pointee, arg, true)) return false;
+		if (pointee == type_void) pointee = arg->type->canonical;
+		if (!type_is_atomic(type_flatten(arg->type)))
+		{
+			RETURN_SEMA_ERROR(arg, "%s may not be used with atomics.", type_quoted_error_string(arg->type));
+		}
+
 		optional = optional || IS_OPTIONAL(args[i]);
 	}
 	for (int i = 3; i < 5; i++)
