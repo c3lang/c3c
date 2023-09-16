@@ -127,9 +127,9 @@ class Issues:
         for opt in self.opts:
             opts += ' ' + opt
         if self.safe:
-            opts += " --safe"
+            opts += " --safe=yes"
         else:
-            opts += " --fast"
+            opts += " --safe=no"
         code = subprocess.run(self.conf.compiler + target + ' -O0 ' + opts + ' ' + debug + args,
                               universal_newlines=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         os.chdir(self.conf.cwd)

@@ -78,6 +78,13 @@ typedef enum
 
 typedef enum
 {
+	SAFETY_NOT_SET = -1,
+	SAFETY_OFF = 0,
+	SAFETY_ON = 1,
+} SafetyLevel;
+
+typedef enum
+{
 	TRUST_NONE,
 	TRUST_INCLUDE,
 	TRUST_FULL
@@ -103,6 +110,8 @@ typedef enum
 	OPT_SETTING_O2_PLUS,
 	OPT_SETTING_O3,
 	OPT_SETTING_O3_PLUS,
+	OPT_SETTING_O4,
+	OPT_SETTING_O4_PLUS,
 	OPT_SETTING_OSMALL,
 	OPT_SETTING_OSMALL_PLUS,
 	OPT_SETTING_OTINY,
@@ -205,6 +214,24 @@ static const char *fp_math[3] = {
 		[FP_STRICT] = "strict",
 		[FP_RELAXED] = "relaxed",
 		[FP_FAST] = "fast",
+};
+
+static const char *optlevels[4] = {
+		[OPTIMIZATION_NONE] = "none",
+		[OPTIMIZATION_LESS] = "less",
+		[OPTIMIZATION_MORE] = "more",
+		[OPTIMIZATION_AGGRESSIVE] = "max",
+};
+
+static const char *optsizes[3] = {
+		[SIZE_OPTIMIZATION_NONE] = "none",
+		[SIZE_OPTIMIZATION_SMALL] = "small",
+		[SIZE_OPTIMIZATION_TINY] = "more",
+};
+
+static const char *safety_levels[2] = {
+		[SAFETY_OFF] = "no",
+		[SAFETY_ON] = "yes",
 };
 
 static const char *riscv_capability[3] = {
@@ -342,10 +369,10 @@ typedef struct BuildOptions_
 	CompileOption compile_option;
 	TrustLevel trust_level;
 	DiagnosticsSeverity severity[DIAG_END_SENTINEL];
-	OptimizationSetting optimization_setting_override;
+	OptimizationSetting optsetting;
 	DebugInfo debug_info_override;
 	ArchOsTarget arch_os_target_override;
-	int safe_mode;
+	SafetyLevel safety_level;
 	bool emit_llvm;
 	bool emit_asm;
 	bool benchmark_mode;
@@ -368,6 +395,8 @@ typedef struct BuildOptions_
 	X86VectorCapability x86_vector_capability;
 	X86CpuSet x86_cpu_set;
 	FpOpt fp_math;
+	OptimizationLevel optlevel;
+	SizeOptimizationLevel optsize;
 	RiscvFloatCapability riscv_float_capability;
 	MemoryEnvironment memory_environment;
 	bool no_strip_unused;
@@ -460,9 +489,10 @@ typedef struct
 	bool no_emit_stdlib;
 	int build_threads;
 	TrustLevel trust_level;
-	OptimizationLevel optimization_level;
+	OptimizationSetting optsetting;
+	OptimizationLevel optlevel;
 	MemoryEnvironment memory_environment;
-	SizeOptimizationLevel size_optimization_level;
+	SizeOptimizationLevel optsize;
 	bool single_module;
 	DebugInfo debug_info;
 	RelocModel reloc_model;
@@ -482,9 +512,9 @@ typedef struct
 		StructReturn x86_struct_return : 3;
 		X86VectorCapability x86_vector_capability : 4;
 		RiscvFloatCapability riscv_float_capability : 4;
-		FpOpt fp_math : 4;
 		bool trap_on_wrap : 1;
-		bool safe_mode : 1;
+		FpOpt fp_math;
+		SafetyLevel safe_mode;
 		X86CpuSet x86_cpu_set;
 	} feature;
 	struct

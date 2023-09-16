@@ -917,7 +917,7 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 			llvm_emit_masked_load(c, result_value, expr);
 			return;
 		case BUILTIN_EXPECT_WITH_PROBABILITY:
-			if (active_target.optimization_level == OPTIMIZATION_NONE)
+			if (active_target.optlevel == OPTIMIZATION_NONE)
 			{
 				Expr **args = expr->call_expr.arguments;
 				llvm_emit_expr(c, result_value, args[0]);

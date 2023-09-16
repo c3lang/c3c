@@ -129,7 +129,7 @@ void llvm_emit_debug_function(GenContext *c, Decl *decl)
 													true,
 													row,
 													flags,
-													active_target.optimization_level != OPTIMIZATION_NONE);
+													active_target.optlevel != OPTIMIZATION_NONE);
 	LLVMSetSubprogram(decl->backend_ref, c->debug.function);
 
 }
@@ -153,7 +153,7 @@ void llvm_emit_debug_local_var(GenContext *c, Decl *decl)
 			c->debug.file.debug_file,
 			row,
 			llvm_get_debug_type(c, decl->type),
-			active_target.optimization_level != OPTIMIZATION_NONE,
+			active_target.optlevel != OPTIMIZATION_NONE,
 			LLVMDIFlagZero,
 			decl->alignment);
 	decl->var.backend_debug_ref = var;

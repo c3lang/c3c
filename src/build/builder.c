@@ -94,61 +94,76 @@ bool command_is_projectless(CompilerCommand command)
 
 void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting level)
 {
+	if (level == OPT_SETTING_NOT_SET) level = OPT_SETTING_O0;
+	OptimizationLevel optlevel = OPTIMIZATION_NONE;
+	SizeOptimizationLevel optsize = SIZE_OPTIMIZATION_NONE;
+	DebugInfo debug = DEBUG_INFO_FULL;
+	SafetyLevel safety_level = SAFETY_ON;
+	bool single_module = false;
+	FpOpt fp_opt = FP_STRICT;
 	switch (level)
 	{
 		case OPT_SETTING_O0_PLUS:
-			target->single_module = true;
-			FALLTHROUGH;
+			single_module = true;
+			break;
 		case OPT_SETTING_O0:
-			target->optimization_level = OPTIMIZATION_NONE;
-			target->size_optimization_level = SIZE_OPTIMIZATION_NONE;
-			target->feature.safe_mode = true;
 			break;
 		case OPT_SETTING_O1_PLUS:
-			target->single_module = true;
+			single_module = true;
 			FALLTHROUGH;
 		case OPT_SETTING_O1:
-			target->optimization_level = OPTIMIZATION_LESS;
-			target->size_optimization_level = SIZE_OPTIMIZATION_NONE;
-			target->feature.safe_mode = false;
+			optlevel = OPTIMIZATION_MORE;
 			break;
 		case OPT_SETTING_O2_PLUS:
-			target->single_module = true;
+			single_module = true;
 			FALLTHROUGH;
 		case OPT_SETTING_O2:
-			target->optimization_level = OPTIMIZATION_MORE;
-			target->size_optimization_level = SIZE_OPTIMIZATION_NONE;
-			target->feature.safe_mode = false;
+			optlevel = OPTIMIZATION_MORE;
+			safety_level = false;
 			break;
 		case OPT_SETTING_O3_PLUS:
-			target->single_module = true;
+			single_module = true;
 			FALLTHROUGH;
 		case OPT_SETTING_O3:
-			target->optimization_level = OPTIMIZATION_AGGRESSIVE;
-			target->size_optimization_level = SIZE_OPTIMIZATION_NONE;
-			target->feature.safe_mode = false;
+			optlevel = OPTIMIZATION_AGGRESSIVE;
+			safety_level = SAFETY_OFF;
+			fp_opt = FP_RELAXED;
+			break;
+		case OPT_SETTING_O4_PLUS:
+			single_module = true;
+			FALLTHROUGH;
+		case OPT_SETTING_O4:
+			optlevel = OPTIMIZATION_AGGRESSIVE;
+			safety_level = SAFETY_OFF;
+			fp_opt = FP_FAST;
 			break;
 		case OPT_SETTING_OSMALL_PLUS:
-			target->single_module = true;
+			single_module = true;
 			FALLTHROUGH;
 		case OPT_SETTING_OSMALL:
-			target->optimization_level = OPTIMIZATION_MORE;
-			target->size_optimization_level = SIZE_OPTIMIZATION_SMALL;
-			target->feature.safe_mode = false;
+			optlevel = OPTIMIZATION_MORE;
+			optsize = SIZE_OPTIMIZATION_SMALL;
+			safety_level = SAFETY_OFF;
 			break;
 		case OPT_SETTING_OTINY_PLUS:
 			target->single_module = true;
 			FALLTHROUGH;
 		case OPT_SETTING_OTINY:
-			target->optimization_level = OPTIMIZATION_MORE;
-			target->size_optimization_level = SIZE_OPTIMIZATION_TINY;
-			target->feature.safe_mode = false;
+			optlevel = OPTIMIZATION_MORE;
+			optsize = SIZE_OPTIMIZATION_TINY;
+			safety_level = SAFETY_OFF;
+			debug = DEBUG_INFO_NONE;
 			break;
 		case OPT_SETTING_NOT_SET:
-			break;
 		default:
 			UNREACHABLE
 	}
+	if (target->optsize == SIZE_OPTIMIZATION_NOT_SET) target->optsize = optsize;
+	if (target->optlevel == OPTIMIZATION_NOT_SET) target->optlevel = optlevel;
+	if (target->feature.safe_mode == SAFETY_NOT_SET) target->feature.safe_mode = safety_level;
+	if (target->debug_info == DEBUG_INFO_NOT_SET) target->debug_info = debug;
+	if (target->feature.fp_math == FP_DEFAULT) target->feature.fp_math = fp_opt;
+	if (single_module) target->single_module = true;
 }
 static void update_build_target_from_options(BuildTarget *target, BuildOptions *options)
 {
@@ -220,12 +235,18 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	FOREACH_END();
 
 
-	update_build_target_with_opt_level(target, options->optimization_setting_override);
-
 	if (options->cc) target->cc = options->cc;
-	if (options->safe_mode > -1)
+	if (options->optlevel != OPTIMIZATION_NOT_SET)
 	{
-		target->feature.safe_mode = options->safe_mode == 1;
+		target->optlevel = options->optlevel;
+	}
+	if (options->optsize != SIZE_OPTIMIZATION_NOT_SET)
+	{
+		target->optsize = options->optsize;
+	}
+	if (options->safety_level != SAFETY_NOT_SET)
+	{
+		target->feature.safe_mode = options->safety_level;
 	}
 	if (options->no_strip_unused || options->test_mode) target->no_strip_unused = true;
 
@@ -355,6 +376,13 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	{
 		vec_add(target->libs, options->libs[i]);
 	}
+	if (options->optsetting != OPT_SETTING_NOT_SET)
+	{
+		target->optsetting = options->optsetting;
+	}
+	update_build_target_with_opt_level(target, target->optsetting);
+
+
 }
 
 void init_default_build_target(BuildTarget *target, BuildOptions *options)
@@ -364,9 +392,10 @@ void init_default_build_target(BuildTarget *target, BuildOptions *options)
 		.type = TARGET_TYPE_EXECUTABLE,
 		.source_dirs = options->files,
 		.name = options->output_name,
-		.optimization_level = OPTIMIZATION_NONE,
+		.optsetting = OPT_SETTING_NOT_SET,
+		.optlevel = OPTIMIZATION_NOT_SET,
 		.memory_environment = MEMORY_ENV_NORMAL,
-		.size_optimization_level = SIZE_OPTIMIZATION_NONE,
+		.optsize = SIZE_OPTIMIZATION_NOT_SET,
 		.symtab_size = options->symtab_size ? options->symtab_size : DEFAULT_SYMTAB_SIZE,
 		.switchrange_max_size = DEFAULT_SWITCHRANGE_MAX_SIZE,
 		.debug_info = DEBUG_INFO_NOT_SET,
@@ -376,8 +405,8 @@ void init_default_build_target(BuildTarget *target, BuildOptions *options)
 		.feature.x86_cpu_set = X86CPU_DEFAULT,
 		.feature.fp_math = FP_DEFAULT,
 		.feature.riscv_float_capability = RISCVFLOAT_DEFAULT,
+		.feature.safe_mode = SAFETY_NOT_SET,
 		.win.crt_linking = WIN_CRT_DEFAULT,
-		.feature.safe_mode = true,
 	};
 	update_build_target_from_options(target, options);
 }

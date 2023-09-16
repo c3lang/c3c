@@ -1741,7 +1741,7 @@ void target_setup(BuildTarget *target)
 	// Create a specific target machine
 	LLVMCodeGenOptLevel level;
 
-	switch (target->optimization_level)
+	switch (target->optlevel)
 	{
 		case OPTIMIZATION_NOT_SET:
 			UNREACHABLE;

@@ -98,18 +98,20 @@ static void usage(void)
 	OUTPUT("  -C                        - Only lex, parse and check.");
 	OUTPUT("  -                         - Read code from standard in.");
 	OUTPUT("  -o <file>                 - Write output to <file>.");
-	OUTPUT("  -O0                       - Optimizations off.");
-	OUTPUT("  -O1                       - Simple optimizations only.");
-	OUTPUT("  -O2                       - Default optimization level.");
-	OUTPUT("  -O3                       - Aggressive optimization.");
-	OUTPUT("  -Os                       - Optimize for size.");
-	OUTPUT("  -Oz                       - Optimize for tiny size.");
-	OUTPUT("  -O0+                      - No optimization, single module.");
-	OUTPUT("  -O1+                      - Simple optimizations, single module.");
-	OUTPUT("  -O2+                      - Default optimization level, single module");
-	OUTPUT("  -O3+                      - Aggressive optimization, single module.");
-	OUTPUT("  -Os+                      - Optimize for size, single module.");
-	OUTPUT("  -Oz+                      - Optimize for tiny size, single module.");
+	OUTPUT("  -O0                       - Safe, no optimizations, emit debug info.");
+	OUTPUT("  -O1                       - Safe, high optimization, emit debug info.");
+	OUTPUT("  -O2                       - Unsafe, high optimization, emit debug info.");
+	OUTPUT("  -O3                       - Unsafe, highest optimization, relaxed maths, emit debug info.");
+	OUTPUT("  -O4                       - Unsafe, highest optimization, fast maths, emit debug info.");
+	OUTPUT("  -Os                       - Unsafe, high optimization, small code, no debug info.");
+	OUTPUT("  -Oz                       - Unsafe, high optimization, tiny code, no debug info.");
+	OUTPUT("  -O0+                      - O0, single module.");
+	OUTPUT("  -O1+                      - O1, single module.");
+	OUTPUT("  -O2+                      - O2, single module.");
+	OUTPUT("  -O3+                      - O3, single module.");
+	OUTPUT("  -O4+                      - O4, single module.");
+	OUTPUT("  -Os+                      - Os, single module.");
+	OUTPUT("  -Oz+                      - Oz, single module.");
 	OUTPUT("  -t1                       - Trust level 1 - don't allow $include nor $exec (default).");
 	OUTPUT("  -t2                       - Trust level 2 - allow $include but not $exec / exec directives.");
 	OUTPUT("  -t3                       - Trust level 3 - full trust, allow both include and exec.");
@@ -127,12 +129,12 @@ static void usage(void)
 	OUTPUT("  --no-emit-stdlib          - Do not output object files (nor asm or ir) for the standard library.");
 	OUTPUT("  --target <target>         - Compile for a particular architecture + OS target.");
 	OUTPUT("  --threads <number>        - Set the number of threads to use for compilation.");
-	OUTPUT("  --safe                    - Set mode to 'safe', generating runtime traps on overflows and contract violations.");
-	OUTPUT("  --fast                    - Set mode to 'fast', removes runtime traps.");
+	OUTPUT("  --safe=<yes|no>           - Turn safety (contracts, runtime bounds checking, null pointer checks etc) on or off.");
+	OUTPUT("  --optlevel=<option>       - Code optimization level: none, less, more, max.");
+	OUTPUT("  --optsize=<option>        - Code size optimization: none, small, tiny.");
 	OUTPUT("");
-	OUTPUT("  -g                        - Emit full debug info.");
+	OUTPUT("  -g                        - Emit debug info.");
 	OUTPUT("  -g0                       - Emit no debug info.");
-	OUTPUT("  -gline-tables-only        - Only emit line tables for debugging.");
 	OUTPUT("");
 	OUTPUT("");
 	OUTPUT("  -l <library>              - Link with the library provided.");
@@ -533,51 +535,59 @@ static void parse_option(BuildOptions *options)
 		case 'O':
 			if (match_shortopt("O0+"))
 			{
-				options->optimization_setting_override = OPT_SETTING_O0_PLUS;
+				options->optsetting = OPT_SETTING_O0_PLUS;
 			}
 			else if (match_shortopt("O0"))
 			{
-				options->optimization_setting_override = OPT_SETTING_O0;
+				options->optsetting = OPT_SETTING_O0;
 			}
 			else if (match_shortopt("O1+"))
 			{
-				options->optimization_setting_override = OPT_SETTING_O1_PLUS;
+				options->optsetting = OPT_SETTING_O1_PLUS;
 			}
 			else if (match_shortopt("O1"))
 			{
-				options->optimization_setting_override = OPT_SETTING_O1;
+				options->optsetting = OPT_SETTING_O1;
 			}
 			else if (match_shortopt("O2+"))
 			{
-				options->optimization_setting_override = OPT_SETTING_O2_PLUS;
+				options->optsetting = OPT_SETTING_O2_PLUS;
 			}
 			else if (match_shortopt("O2"))
 			{
-				options->optimization_setting_override = OPT_SETTING_O2;
+				options->optsetting = OPT_SETTING_O2;
 			}
 			else if (match_shortopt("O3+"))
 			{
-				options->optimization_setting_override = OPT_SETTING_O3_PLUS;
+				options->optsetting = OPT_SETTING_O3_PLUS;
 			}
 			else if (match_shortopt("O3"))
 			{
-				options->optimization_setting_override = OPT_SETTING_O3;
+				options->optsetting = OPT_SETTING_O3;
+			}
+			else if (match_shortopt("O4+"))
+			{
+				options->optsetting = OPT_SETTING_O4_PLUS;
+			}
+			else if (match_shortopt("O4"))
+			{
+				options->optsetting = OPT_SETTING_O4;
 			}
 			else if (match_shortopt("Os+"))
 			{
-				options->optimization_setting_override = OPT_SETTING_OSMALL_PLUS;
+				options->optsetting = OPT_SETTING_OSMALL_PLUS;
 			}
 			else if (match_shortopt("Os"))
 			{
-				options->optimization_setting_override = OPT_SETTING_OSMALL;
+				options->optsetting = OPT_SETTING_OSMALL;
 			}
 			else if (match_shortopt("Oz+"))
 			{
-				options->optimization_setting_override = OPT_SETTING_OTINY_PLUS;
+				options->optsetting = OPT_SETTING_OTINY_PLUS;
 			}
 			else if (match_shortopt("Oz"))
 			{
-				options->optimization_setting_override = OPT_SETTING_OTINY;
+				options->optsetting = OPT_SETTING_OTINY;
 			}
 			else
 			{
@@ -666,6 +676,21 @@ static void parse_option(BuildOptions *options)
 			if ((argopt = match_argopt("fp-math")))
 			{
 				options->fp_math = (FpOpt)parse_multi_option(argopt, 3, fp_math);
+				return;
+			}
+			if ((argopt = match_argopt("optsize")))
+			{
+				options->optsize = (SizeOptimizationLevel)parse_multi_option(argopt, 3, optsizes);
+				return;
+			}
+			if ((argopt = match_argopt("optlevel")))
+			{
+				options->optlevel = (OptimizationLevel)parse_multi_option(argopt, 4, optlevels);
+				return;
+			}
+			if ((argopt = match_argopt("safe")))
+			{
+				options->safety_level = (SafetyLevel)parse_multi_option(argopt, 2, safety_levels);
 				return;
 			}
 			if (match_longopt("strip-unused"))
@@ -967,16 +992,6 @@ static void parse_option(BuildOptions *options)
 				options->linuxpaths.crtbegin = check_dir(next_arg());
 				return;
 			}
-			if (match_longopt("safe"))
-			{
-				options->safe_mode = 1;
-				return;
-			}
-			if (match_longopt("fast"))
-			{
-				options->safe_mode = 0;
-				return;
-			}
 			if (match_longopt("benchmarking"))
 			{
 				options->benchmarking = true;
@@ -1015,9 +1030,11 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 	BuildOptions build_options = {
 		.path = ".",
 		.emit_llvm = false,
-		.optimization_setting_override = OPT_SETTING_NOT_SET,
+		.optsetting = OPT_SETTING_NOT_SET,
 		.debug_info_override = DEBUG_INFO_NOT_SET,
-		.safe_mode = -1,
+		.safety_level = SAFETY_NOT_SET,
+		.optlevel = OPTIMIZATION_NOT_SET,
+		.optsize = SIZE_OPTIMIZATION_NOT_SET,
 		.build_threads = cpus(),
 		.command = COMMAND_MISSING,
 		.reloc_model = RELOC_DEFAULT,

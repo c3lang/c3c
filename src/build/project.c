@@ -298,7 +298,7 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	DebugInfo info = get_valid_string_setting(json, "debug-info", type, debug_infos, 0, 3, "one of 'full' 'line-table' or 'none'.");
 	if (info > -1) target->debug_info = info;
 
-	static const char *opt_settings[12] = {
+	static const char *opt_settings[14] = {
 			[OPT_SETTING_O0] = "O0",
 			[OPT_SETTING_O0_PLUS] = "O0+",
 			[OPT_SETTING_O1] = "O1",
@@ -312,7 +312,7 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 			[OPT_SETTING_OTINY] = "Oz",
 			[OPT_SETTING_OTINY_PLUS] = "Oz+"
 	};
-	OptimizationSetting opt = (OptimizationSetting)get_valid_string_setting(json, "opt", type, opt_settings, 0, 12, "'O0', 'O1' etc.");
+	OptimizationSetting opt = (OptimizationSetting)get_valid_string_setting(json, "opt", type, opt_settings, 0, 14, "'O0', 'O1' etc.");
 	update_build_target_with_opt_level(target, opt);
 
 	MemoryEnvironment env = get_valid_string_setting(json, "memory-env", type, memory_environment, 0, 4, "one of 'normal', 'small', 'tiny' or 'none'.");
@@ -469,9 +469,10 @@ static void project_add_targets(Project *project, JSONObject *project_data)
 			[TARGET_TYPE_OBJECT_FILES] = "object files"};
 
 	BuildTarget default_target = {
-			.optimization_level = OPTIMIZATION_NONE,
+			.optlevel = OPTIMIZATION_NOT_SET,
+			.optsetting = OPT_SETTING_NOT_SET,
 			.memory_environment = MEMORY_ENV_NORMAL,
-			.size_optimization_level = SIZE_OPTIMIZATION_NONE,
+			.optsize = SIZE_OPTIMIZATION_NOT_SET,
 			.arch_os_target = ARCH_OS_TARGET_DEFAULT,
 			.debug_info = DEBUG_INFO_NOT_SET,
 			.symtab_size = DEFAULT_SYMTAB_SIZE,
@@ -484,7 +485,7 @@ static void project_add_targets(Project *project, JSONObject *project_data)
 			.feature.trap_on_wrap = false,
 			.feature.x86_vector_capability = X86VECTOR_DEFAULT,
 			.feature.x86_cpu_set = X86CPU_DEFAULT,
-			.feature.safe_mode = true,
+			.feature.safe_mode = SAFETY_NOT_SET,
 			.win.crt_linking = WIN_CRT_DEFAULT,
 	};
 	load_into_build_target(project_data, "default target", &default_target, true);
