@@ -175,10 +175,14 @@ fn CInt __atomic_compare_exchange(CInt size, any* ptr, any* expected, any* desir
 			int de = *(int*)desired;
 			if (ex == @__atomic_compare_exchange_ordering_success(pt, ex, de, success, failure)) return 1;
 		case 8:
-			long* pt = (long*)ptr;
-			long ex = *(long*)expected;
-			long de = *(long*)desired;
-			if (ex == @__atomic_compare_exchange_ordering_success(pt, ex, de, success, failure)) return 1;
+			$if iptr.sizeof >= 8:
+				long* pt = (long*)ptr;
+				long ex = *(long*)expected;
+				long de = *(long*)desired;
+				if (ex == @__atomic_compare_exchange_ordering_success(pt, ex, de, success, failure)) return 1;
+			$else
+				nextcase;
+			$endif
 		default:
 			assert(false, "Unsuported size (%d) for atomic_compare_exchange", size);
 	}
