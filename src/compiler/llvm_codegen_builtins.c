@@ -112,6 +112,7 @@ INLINE void llvm_emit_compare_exchange(GenContext *c, BEValue *result_value, Exp
 												 ordering_to_llvm(success_ordering), ordering_to_llvm(failure_ordering), false);
 	if (alignment && alignment >= type_abi_alignment(type))
 	{
+		assert(is_power_of_two(alignment));
 		LLVMSetAlignment(result, alignment);
 	}
 	if (is_volatile)
@@ -232,9 +233,10 @@ INLINE void llvm_emit_atomic_fetch(GenContext *c, BuiltinFunction func, BEValue 
 	                   llvm_atomic_ordering(expr->call_expr.arguments[3]->const_expr.ixx.i.low),
 					   false);
 	if (expr->call_expr.arguments[2]->const_expr.b) LLVMSetVolatile(res, true);
-	uint64_t alignment = expr->call_expr.arguments[3]->const_expr.ixx.i.low;
+	uint64_t alignment = expr->call_expr.arguments[4]->const_expr.ixx.i.low;
 	if (alignment)
 	{
+		assert(is_power_of_two(alignment));
 		LLVMSetAlignment(res, alignment);
 	}
 	llvm_value_set(result_value, res, result_value->type);

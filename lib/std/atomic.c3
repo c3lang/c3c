@@ -129,13 +129,15 @@ macro @atomic_exec(#func, data, value, ordering) @local
 }
 
 module std::atomic;
+import std::math;
 
 /**
  * @param [&in] ptr "the variable or dereferenced pointer to the data."
  * @param [in] y "the value to be added to ptr."
  * @param $ordering "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  * @return "returns the old value of ptr"
- * 
+ *
+ * @require !$alignment || math::is_power_of_2($alignment) "Alignment must be a power of two."
  * @require types::is_int($typeof(*ptr)) || types::is_float($typeof(*ptr)) "Only integer/float pointers may be used."
  * @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED "Acquire ordering is not valid."
  **/
@@ -153,6 +155,7 @@ macro fetch_add(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatil
  * @param $ordering "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  * @return "returns the old value of ptr"
  * 
+ * @require !$alignment || math::is_power_of_2($alignment) "Alignment must be a power of two."
  * @require types::is_int($typeof(*ptr)) || types::is_float($typeof(*ptr)) "Only integer/float pointers may be used."
  * @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED "Acquire ordering is not valid."
  **/
@@ -170,8 +173,8 @@ macro fetch_sub(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatil
  * @param $ordering "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  * @return "returns the old value of ptr"
  * 
-* @require types::is_int($typeof(*ptr)) || types::is_float($typeof(*ptr)) "Only integer/float pointers may be used."
-* @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED "Acquire ordering is not valid."
+ * @require types::is_int($typeof(*ptr)) || types::is_float($typeof(*ptr)) "Only integer/float pointers may be used."
+ * @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED "Acquire ordering is not valid."
  **/
 macro fetch_mul(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
@@ -243,6 +246,7 @@ macro fetch_div(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
  * @param $ordering "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  * @return "returns the old value of ptr"
  * 
+ * @require !$alignment || math::is_power_of_2($alignment) "Alignment must be a power of two."
  * @require types::is_int($typeof(*ptr)) "Only intege pointers may be used."
  * @require types::is_int($typeof(y)) "The value for or must be an int"
  * @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED "Acquire ordering is not valid."
@@ -285,6 +289,7 @@ macro fetch_or(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile
  * @param $ordering "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  * @return "returns the old value of ptr"
  * 
+ * @require !$alignment || math::is_power_of_2($alignment) "Alignment must be a power of two."
  * @require types::is_int($typeof(*ptr)) "Only integer pointers may be used."
  * @require types::is_int($typeof(y)) "The value for or must be an int"
  * @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED "Acquire ordering is not valid."
@@ -327,6 +332,7 @@ macro fetch_xor(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatil
  * @param $ordering "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  * @return "returns the old value of ptr"
  * 
+ * @require !$alignment || math::is_power_of_2($alignment) "Alignment must be a power of two."
  * @require types::is_int($typeof(*ptr)) "Only integer pointers may be used."
  * @require types::is_int($typeof(y)) "The value for or must be an int"
  * @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED "Acquire ordering is not valid."
