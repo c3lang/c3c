@@ -91,6 +91,7 @@ typedef enum
 	TRUST_INCLUDE,
 	TRUST_FULL
 } TrustLevel;
+
 typedef enum
 {
 	COMPILE_NORMAL,

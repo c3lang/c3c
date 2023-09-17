@@ -16,32 +16,40 @@ const char *project_default_keys[] = {
 		"debug-info",
 		"dependencies",
 		"dependency-search-paths",
+		"features",
+		"fp-math",
 		"langrev",
-		"link-args",
 		"linked-libraries",
 		"linker-search-paths",
+		"link-args",
+		"link-libc",
 		"macossdk",
 		"memory-env",
 		"no-entry",
-		"nolibc",
-		"nostdlib",
 		"opt",
+		"optlevel",
+		"optsize",
 		"output",
 		"panicfn",
 		"reloc",
+		"safe",
+		"single-module",
 		"soft-float",
 		"sources",
+		"strip-unused",
 		"symtab",
+		"system-linker",
 		"target",
 		"targets",
 		"trap-on-wrap",
+		"use-stdlib",
 		"version",
 		"warnings",
 		"wincrt",
 		"winsdk",
-		"x86-stack-struct-return",
+		"x86cpu",
 		"x86vec",
-		"features"
+		"x86-stack-struct-return",
 };
 
 const int project_default_keys_count = sizeof(project_default_keys) / sizeof(char*);
@@ -58,36 +66,44 @@ const char* project_target_keys[] = {
 		"dependencies-override",
 		"dependency-search-paths-add",
 		"dependency-search-paths-override",
+		"features",
+		"fp-math",
 		"langrev",
-		"link-args-add",
-		"link-args-override",
 		"linked-libraries-add",
 		"linked-libraries-override",
 		"linker-search-paths-add",
 		"linker-search-paths-override",
+		"link-args-add",
+		"link-args-override",
+		"link-libc",
 		"macossdk",
 		"memory-env",
 		"no-entry",
-		"nolibc",
-		"nostdlib",
 		"opt",
+		"optlevel",
+		"optsize",
 		"output"
 		"panicfn",
 		"reloc",
+		"safe",
+		"single-module",
 		"soft-float",
 		"sources-add",
 		"sources-override",
+		"strip-unused",
 		"symtab",
+		"system-linker",
 		"target",
 		"trap-on-wrap",
 		"type",
+		"use-stdlib",
 		"version",
 		"warnings",
 		"wincrt",
 		"winsdk",
-		"x86-stack-struct-return",
+		"x86cpu",
 		"x86vec",
-		"features",
+		"x86-stack-struct-return",
 };
 
 const int project_target_keys_count = sizeof(project_target_keys) / sizeof(char*);
@@ -298,6 +314,25 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	DebugInfo info = get_valid_string_setting(json, "debug-info", type, debug_infos, 0, 3, "one of 'full' 'line-table' or 'none'.");
 	if (info > -1) target->debug_info = info;
 
+	// Optimization Level
+	static const char *opt_level_settings[4] = {
+			[OPTIMIZATION_NONE] = "none",
+			[OPTIMIZATION_LESS] = "less",
+			[OPTIMIZATION_MORE] = "more",
+			[OPTIMIZATION_AGGRESSIVE] = "max",
+	};
+	OptimizationLevel optlevel = (OptimizationLevel)get_valid_string_setting(json, "optlevel", type, opt_level_settings, 0, 4, "`none`, `less`, `more`, `max`.");
+	target->optlevel = optlevel;
+
+	// Size optimization Level
+	static const char *opt_size_settings[3] = {
+			[SIZE_OPTIMIZATION_NONE] = "none",
+			[SIZE_OPTIMIZATION_SMALL] = "small",
+			[SIZE_OPTIMIZATION_TINY] = "tiny",
+	};
+	SizeOptimizationLevel optsize = (SizeOptimizationLevel)get_valid_string_setting(json, "optsize", type, opt_size_settings, 0, 4, "`none`, `small`, `tiny`.");
+	target->optsize = optsize;
+
 	static const char *opt_settings[8] = {
 			[OPT_SETTING_O0] = "O0",
 			[OPT_SETTING_O1] = "O1",
@@ -310,6 +345,12 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	};
 	OptimizationSetting opt = (OptimizationSetting)get_valid_string_setting(json, "opt", type, opt_settings, 0, 8, "'O0', 'O1' etc.");
 	update_build_target_with_opt_level(target, opt);
+
+	// Safety level
+	target->feature.safe_mode = (SafetyLevel)get_valid_bool(json, "safe", type, target->feature.safe_mode);
+
+	// Single module
+	target->single_module = (SingleModule)get_valid_bool(json, "single-module", type, target->single_module);
 
 	MemoryEnvironment env = get_valid_string_setting(json, "memory-env", type, memory_environment, 0, 4, "one of 'normal', 'small', 'tiny' or 'none'.");
 	if (env > -1) target->memory_environment = env;
@@ -352,7 +393,7 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	if (wincrt > -1) target->win.crt_linking = (WinCrtLinking)wincrt;
 
 	// fp-math
-	int fpmath = get_valid_string_setting(json, "fp-math", type, fp_math, 0, 3, "strict, relaxed, fast");
+	int fpmath = get_valid_string_setting(json, "fp-math", type, fp_math, 0, 3, "`strict`, `relaxed` or `fast`.");
 	if (fpmath > -1) target->feature.fp_math = fpmath;
 
 	const char **features = get_valid_array(json, "features", type, false);
@@ -368,15 +409,15 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	}
 
 	// x86vec
-	int x86vec = get_valid_string_setting(json, "x86vec", type, x86_vector_capability, 0, 6, "none, native, mmx, sse, avx or avx512");
+	int x86vec = get_valid_string_setting(json, "x86vec", type, x86_vector_capability, 0, 6, "`none`, `native`, `mmx`, `sse`, `avx` or `avx512`.");
 	if (x86vec > -1) target->feature.x86_vector_capability = x86vec;
 
 	// x86vec
-	int x86cpu = get_valid_string_setting(json, "x86cpu", type, x86_cpu_set, 0, 8, "baseline, ssse3, sse4, avx1, avx2-v1, avx2-v2, avx512 or native");
+	int x86cpu = get_valid_string_setting(json, "x86cpu", type, x86_cpu_set, 0, 8, "`baseline`, `ssse3`, `sse4`, `avx1`, `avx2-v1`, `avx2-v2`, `avx512` or `native`.");
 	if (x86cpu > -1) target->feature.x86_cpu_set = x86cpu;
 
 	// riscvfloat
-	int riscv_float = get_valid_string_setting(json, "riscvfloat", type, riscv_capability, 0, 3, "none, float or double");
+	int riscv_float = get_valid_string_setting(json, "riscvfloat", type, riscv_capability, 0, 3, "`none`, `float` or `double`.");
 	if (riscv_float > -1) target->feature.riscv_float_capability = riscv_float;
 
 	// winsdk
@@ -410,7 +451,13 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	target->panicfn = panicfn;
 
 	// link-libc
-	target->link_libc = (LinkLibc)get_valid_bool(json, "nolibc", type, target->link_libc);
+	target->link_libc = (LinkLibc)get_valid_bool(json, "link-libc", type, target->link_libc);
+
+	// strip-unused
+	target->strip_unused = (StripUnused)get_valid_bool(json, "strip-unused", type, target->strip_unused);
+
+	// system-linker
+	target->system_linker = (SystemLinker)get_valid_bool(json, "system-linker", type, target->system_linker);
 
 	// no-entry
 	target->no_entry = get_valid_bool(json, "no-entry", type, target->no_entry);
