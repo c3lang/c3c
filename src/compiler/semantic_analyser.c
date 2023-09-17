@@ -241,7 +241,7 @@ static void sema_analyze_to_stage(AnalysisStage stage)
 
 static void assign_panicfn(void)
 {
-	if (!active_target.panicfn && active_target.no_stdlib)
+	if (!active_target.panicfn && no_stdlib())
 	{
 		global_context.panic_var = NULL;
 		global_context.panicf = NULL;
@@ -272,7 +272,7 @@ static void assign_panicfn(void)
 	global_context.panic_var = decl;
 	decl->no_strip = true;
 
-	if (active_target.no_stdlib) return;
+	if (no_stdlib()) return;
 
 	const char *panicf = "std::core::builtin::panicf";
 	if (sema_splitpathref(panicf, strlen(panicf), &path, &ident) != TOKEN_IDENT || path == NULL || !ident)
@@ -359,7 +359,7 @@ RESOLVE_LAMBDA:;
 
 	assign_panicfn();
 
-	if (!active_target.no_strip_unused)
+	if (strip_unused())
 	{
 		sema_trace_liveness();
 	}

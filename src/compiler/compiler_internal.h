@@ -1941,6 +1941,26 @@ INLINE Type *typeinfotype(TypeInfoId id_)
 	return id_ ? type_infoptr(id_)->type : NULL;
 }
 
+INLINE bool safe_mode_enabled(void)
+{
+	return active_target.feature.safe_mode != SAFETY_OFF;
+}
+
+INLINE bool link_libc(void)
+{
+	return active_target.link_libc != LINK_LIBC_OFF;
+}
+
+INLINE bool strip_unused(void)
+{
+	return active_target.strip_unused != STRIP_UNUSED_OFF;
+}
+
+INLINE bool no_stdlib(void)
+{
+	return active_target.use_stdlib == USE_STDLIB_OFF;
+}
+
 bool ast_is_not_empty(Ast *ast);
 bool ast_is_compile_time(Ast *ast);
 bool ast_supports_continue(Ast *stmt);

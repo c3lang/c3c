@@ -83,8 +83,6 @@ static void usage(void)
 	OUTPUT("Options:");
 	OUTPUT("  --tb                      - Use Tilde Backend for compilation.");
 	OUTPUT("  --stdlib <dir>            - Use this directory as the C3 standard library path.");
-	OUTPUT("  --nostdlib                - Do not include the standard library.");
-	OUTPUT("  --nolibc                  - Do not implicitly link libc nor any associated files.");
 	OUTPUT("  --no-entry                - Do not generate (or require) a main function.");
 	OUTPUT("  --libdir <dir>            - Add this directory to the C3 library search paths.");
 	OUTPUT("  --lib <name>              - Add this library to the compilation.");
@@ -101,17 +99,11 @@ static void usage(void)
 	OUTPUT("  -O0                       - Safe, no optimizations, emit debug info.");
 	OUTPUT("  -O1                       - Safe, high optimization, emit debug info.");
 	OUTPUT("  -O2                       - Unsafe, high optimization, emit debug info.");
-	OUTPUT("  -O3                       - Unsafe, highest optimization, relaxed maths, emit debug info.");
-	OUTPUT("  -O4                       - Unsafe, highest optimization, fast maths, emit debug info.");
-	OUTPUT("  -Os                       - Unsafe, high optimization, small code, no debug info.");
-	OUTPUT("  -Oz                       - Unsafe, high optimization, tiny code, no debug info.");
-	OUTPUT("  -O0+                      - O0, single module.");
-	OUTPUT("  -O1+                      - O1, single module.");
-	OUTPUT("  -O2+                      - O2, single module.");
-	OUTPUT("  -O3+                      - O3, single module.");
-	OUTPUT("  -O4+                      - O4, single module.");
-	OUTPUT("  -Os+                      - Os, single module.");
-	OUTPUT("  -Oz+                      - Oz, single module.");
+	OUTPUT("  -O3                       - Unsafe, high optimization, single module, emit debug info.");
+	OUTPUT("  -O4                       - Unsafe, highest optimization, relaxed maths, single module, emit debug info.");
+	OUTPUT("  -O5                       - Unsafe, highest optimization, fast maths, single module, emit debug info.");
+	OUTPUT("  -Os                       - Unsafe, high optimization, small code, single module, no debug info.");
+	OUTPUT("  -Oz                       - Unsafe, high optimization, tiny code, single module, no debug info.");
 	OUTPUT("  -t1                       - Trust level 1 - don't allow $include nor $exec (default).");
 	OUTPUT("  -t2                       - Trust level 2 - allow $include but not $exec / exec directives.");
 	OUTPUT("  -t3                       - Trust level 3 - full trust, allow both include and exec.");
@@ -125,13 +117,12 @@ static void usage(void)
 	OUTPUT("  --emit-asm                - Emit asm as a .s file per module.");
 	OUTPUT("  --obj                     - Emit object files. (Enabled by default)");
 	OUTPUT("  --no-obj                  - Do not output object files, this is only valid for `compile-only`.");
-	OUTPUT("  --emit-stdlib             - Output files for the standard library. (Enabled by default)");
-	OUTPUT("  --no-emit-stdlib          - Do not output object files (nor asm or ir) for the standard library.");
 	OUTPUT("  --target <target>         - Compile for a particular architecture + OS target.");
 	OUTPUT("  --threads <number>        - Set the number of threads to use for compilation.");
 	OUTPUT("  --safe=<yes|no>           - Turn safety (contracts, runtime bounds checking, null pointer checks etc) on or off.");
 	OUTPUT("  --optlevel=<option>       - Code optimization level: none, less, more, max.");
 	OUTPUT("  --optsize=<option>        - Code size optimization: none, small, tiny.");
+	OUTPUT("  --single-module=<yes|no>  - Compile all modules together, enables more inlining.");
 	OUTPUT("");
 	OUTPUT("  -g                        - Emit debug info.");
 	OUTPUT("  -g0                       - Emit no debug info.");
@@ -140,15 +131,19 @@ static void usage(void)
 	OUTPUT("  -l <library>              - Link with the library provided.");
 	OUTPUT("  -L <library dir>          - Append the directory to the linker search paths.");
 	OUTPUT("  -z <argument>             - Send the <argument> as a parameter to the linker.");
-	OUTPUT("  --forcelinker             - Force built in linker usage when doing non-cross linking.");
+	OUTPUT("  --system-linker=<yes|no>  - Use the system linker (default: no for cross compilation, yes otherwise).");
+	OUTPUT("");
+	OUTPUT("  --use-stdlib=<yes|no>     - Include the standard library (default: yes).");
+	OUTPUT("  --link-libc=<yes|no>      - Link libc other default libraries (default: yes).");
+	OUTPUT("  --emit-stdlib=<yes|no>    - Output files for the standard library. (default: yes)");
+	OUTPUT("  --panicfn <name>          - Override the panic function name.");
 	OUTPUT("");
 	OUTPUT("  --reloc=<option>          - Relocation model: none, pic, PIC, pie, PIE.");
 	OUTPUT("  --x86cpu=<option>         - Set general level of x64 cpu: baseline, ssse3, sse4, avx1, avx2-v1, avx2-v2 (Skylake/Zen1+), avx512 (Icelake/Zen4+), native.");
 	OUTPUT("  --x86vec=<option>         - Set max type of vector use: none, mmx, sse, avx, avx512, native.");
 	OUTPUT("  --riscvfloat=<option>     - Set type of RISC-V float support: none, float, double");
 	OUTPUT("  --memory-env=<option>     - Set the memory environment: normal, small, tiny, none.");
-	OUTPUT("  --strip-unused            - Strip unused code and globals from the output. (Enabled by default)");
-	OUTPUT("  --no-strip-unused         - Do not strip unused code and globals from the output.");
+	OUTPUT("  --strip-unused=<yes|no>   - Strip unused code and globals from the output. (default: yes)");
 	OUTPUT("  --fp-math=<option>        - FP math behaviour: strict, relaxed, fast.");
 	OUTPUT("");
 	OUTPUT("  --debug-stats             - Print debug statistics.");
@@ -533,57 +528,33 @@ static void parse_option(BuildOptions *options)
 			}
 			break;
 		case 'O':
-			if (match_shortopt("O0+"))
-			{
-				options->optsetting = OPT_SETTING_O0_PLUS;
-			}
-			else if (match_shortopt("O0"))
+			if (match_shortopt("O0"))
 			{
 				options->optsetting = OPT_SETTING_O0;
-			}
-			else if (match_shortopt("O1+"))
-			{
-				options->optsetting = OPT_SETTING_O1_PLUS;
 			}
 			else if (match_shortopt("O1"))
 			{
 				options->optsetting = OPT_SETTING_O1;
 			}
-			else if (match_shortopt("O2+"))
-			{
-				options->optsetting = OPT_SETTING_O2_PLUS;
-			}
 			else if (match_shortopt("O2"))
 			{
 				options->optsetting = OPT_SETTING_O2;
-			}
-			else if (match_shortopt("O3+"))
-			{
-				options->optsetting = OPT_SETTING_O3_PLUS;
 			}
 			else if (match_shortopt("O3"))
 			{
 				options->optsetting = OPT_SETTING_O3;
 			}
-			else if (match_shortopt("O4+"))
-			{
-				options->optsetting = OPT_SETTING_O4_PLUS;
-			}
 			else if (match_shortopt("O4"))
 			{
 				options->optsetting = OPT_SETTING_O4;
 			}
-			else if (match_shortopt("Os+"))
+			else if (match_shortopt("O5"))
 			{
-				options->optsetting = OPT_SETTING_OSMALL_PLUS;
+				options->optsetting = OPT_SETTING_O5;
 			}
 			else if (match_shortopt("Os"))
 			{
 				options->optsetting = OPT_SETTING_OSMALL;
-			}
-			else if (match_shortopt("Oz+"))
-			{
-				options->optsetting = OPT_SETTING_OTINY_PLUS;
 			}
 			else if (match_shortopt("Oz"))
 			{
@@ -591,7 +562,7 @@ static void parse_option(BuildOptions *options)
 			}
 			else
 			{
-				FAIL_WITH_ERR("Invalid optimization level.");
+				FAIL_WITH_ERR("Invalid optimization level, expected O0 - O5, Os or Oz.");
 			}
 			return;
 		case 'E':
@@ -658,20 +629,10 @@ static void parse_option(BuildOptions *options)
 				options->symtab_size = next_highest_power_of_2(symtab);
 				return;
 			}
-			if (match_longopt("forcelinker"))
-			{
-				options->force_linker = true;
-				return;
-			}
 			if (match_longopt("version"))
 			{
 				print_version();
 				exit_compiler(COMPILER_SUCCESS_EXIT);
-			}
-			if (match_longopt("no-strip-unused"))
-			{
-				options->no_strip_unused = true;
-				return;
 			}
 			if ((argopt = match_argopt("fp-math")))
 			{
@@ -690,12 +651,37 @@ static void parse_option(BuildOptions *options)
 			}
 			if ((argopt = match_argopt("safe")))
 			{
-				options->safety_level = (SafetyLevel)parse_multi_option(argopt, 2, safety_levels);
+				options->safety_level = (SafetyLevel)parse_multi_option(argopt, 2, on_off);
 				return;
 			}
-			if (match_longopt("strip-unused"))
+			if ((argopt = match_argopt("single-module")))
 			{
-				options->no_strip_unused = false;
+				options->single_module = (SingleModule)parse_multi_option(argopt, 2, on_off);
+				return;
+			}
+			if ((argopt = match_argopt("system-linker")))
+			{
+				options->system_linker = (SystemLinker)parse_multi_option(argopt, 2, on_off);
+				return;
+			}
+			if ((argopt = match_argopt("link-libc")))
+			{
+				options->link_libc = (LinkLibc)parse_multi_option(argopt, 2, on_off);
+				return;
+			}
+			if ((argopt = match_argopt("strip-unused")))
+			{
+				options->strip_unused = (StripUnused)parse_multi_option(argopt, 2, on_off);
+				return;
+			}
+			if ((argopt = match_argopt("emit-stdlib")))
+			{
+				options->emit_stdlib = (EmitStdlib)parse_multi_option(argopt, 2, on_off);
+				return;
+			}
+			if ((argopt = match_argopt("use-stdlib")))
+			{
+				options->use_stdlib = (UseStdlib)parse_multi_option(argopt, 2, on_off);
 				return;
 			}
 			if ((argopt = match_argopt("x86vec")))
@@ -737,16 +723,6 @@ static void parse_option(BuildOptions *options)
 			if (match_longopt("obj"))
 			{
 				options->no_obj = false;
-				return;
-			}
-			if (match_longopt("no-emit-stdlib"))
-			{
-				options->no_emit_stdlib = true;
-				return;
-			}
-			if (match_longopt("emit-stdlib"))
-			{
-				options->no_emit_stdlib = false;
 				return;
 			}
 			if (match_longopt("debug-log"))
@@ -866,17 +842,7 @@ static void parse_option(BuildOptions *options)
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --stdlib needs a directory.");
 				options->std_lib_dir = check_dir(next_arg());
-				options->no_stdlib = false;
-				return;
-			}
-			if (match_longopt("nostdlib"))
-			{
-				options->no_stdlib = true;
-				return;
-			}
-			if (match_longopt("nolibc"))
-			{
-				options->no_libc = true;
+				options->emit_stdlib = EMIT_STDLIB_ON;
 				return;
 			}
 			if (match_longopt("panicfn"))
@@ -966,6 +932,7 @@ static void parse_option(BuildOptions *options)
 			if (match_longopt("test"))
 			{
 				options->test_mode = true;
+				options->strip_unused = STRIP_UNUSED_OFF;
 				return;
 			}
 			if (match_longopt("template"))
@@ -1045,6 +1012,12 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.riscv_float_capability = RISCVFLOAT_DEFAULT,
 		.memory_environment = MEMORY_ENV_NOT_SET,
 		.win.crt_linking = WIN_CRT_DEFAULT,
+		.emit_stdlib = EMIT_STDLIB_NOT_SET,
+		.link_libc = LINK_LIBC_NOT_SET,
+		.use_stdlib = USE_STDLIB_NOT_SET,
+		.system_linker = SYSTEM_LINKER_NOT_SET,
+		.strip_unused = STRIP_UNUSED_NOT_SET,
+		.single_module = SINGLE_MODULE_NOT_SET,
 		.files = NULL,
 		.build_dir = NULL,
 

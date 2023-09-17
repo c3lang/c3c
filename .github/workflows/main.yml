@@ -273,7 +273,7 @@ jobs:
       - name: Build testproject direct linker
         run: |
           cd resources/testproject
-          ../../build/c3c run --debug-log --forcelinker
+          ../../build/c3c run --debug-log --system-linker=no
 
       - name: run compiler tests
         run: |
@@ -378,7 +378,7 @@ jobs:
       - name: Build testproject direct linker
         run: |
           cd resources/testproject
-          ../../build/c3c run --debug-log --forcelinker
+          ../../build/c3c run --debug-log --system-linker=no
 
       - name: run compiler tests
         run: |
@@ -450,7 +450,7 @@ jobs:
       - name: Build testproject direct linker
         run: |
           cd resources/testproject
-          ../../build/c3c run --debug-log --forcelinker
+          ../../build/c3c run --debug-log --system-linker=no
 
       - name: Build testproject lib
         run: |

@@ -667,13 +667,13 @@ static inline void gencontext_emit_subscript(GenContext *c, BEValue *value, Expr
 	bool needs_len = false;
 	if (parent_type_kind == TYPE_SUBARRAY)
 	{
-		needs_len = active_target.feature.safe_mode || expr->subscript_expr.range.start_from_end;
+		needs_len = safe_mode_enabled() || expr->subscript_expr.range.start_from_end;
 	}
 	else if (parent_type_kind == TYPE_ARRAY)
 	{
 		// From back should always be folded.
 		assert(!expr_is_const(expr) || !expr->subscript_expr.range.start_from_end);
-		needs_len = (active_target.feature.safe_mode && !expr_is_const(expr)) || expr->subscript_expr.range.start_from_end;
+		needs_len = (safe_mode_enabled() && !expr_is_const(expr)) || expr->subscript_expr.range.start_from_end;
 	}
 	if (needs_len)
 	{
@@ -694,7 +694,7 @@ static inline void gencontext_emit_subscript(GenContext *c, BEValue *value, Expr
 		assert(needs_len);
 		index.value = LLVMBuildNUWSub(c->builder, llvm_zext_trunc(c, len.value, llvm_get_type(c, index.type)), index.value, "");
 	}
-	if (needs_len && active_target.feature.safe_mode && !llvm_is_global_eval(c))
+	if (needs_len && safe_mode_enabled() && !llvm_is_global_eval(c))
 	{
 		llvm_emit_array_bounds_check(c, &index, len.value, index_expr->span);
 	}
@@ -1510,7 +1510,7 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 			value->type = to_type;
 			return;
 		case CAST_INTENUM:
-			if (active_target.feature.safe_mode && c->builder != c->global_builder)
+			if (safe_mode_enabled() && c->builder != c->global_builder)
 			{
 				llvm_value_rvalue(c, value);
 				BEValue check;
@@ -2490,7 +2490,7 @@ static inline void llvm_emit_deref(GenContext *c, BEValue *value, Expr *inner, T
 	}
 	llvm_emit_expr(c, value, inner);
 	llvm_value_rvalue(c, value);
-	if (active_target.feature.safe_mode)
+	if (safe_mode_enabled())
 	{
 		LLVMValueRef check = LLVMBuildICmp(c->builder, LLVMIntEQ, value->value, llvm_get_zero(c, inner->type), "checknull");
 		scratch_buffer_clear();
@@ -2714,7 +2714,7 @@ void llvm_emit_len_for_expr(GenContext *c, BEValue *be_value, BEValue *expr_to_l
 static void llvm_emit_trap_negative(GenContext *c, Expr *expr, LLVMValueRef value, const char *error,
 									BEValue *index_val)
 {
-	if (!active_target.feature.safe_mode) return;
+	if (!safe_mode_enabled()) return;
 	if (type_is_integer_unsigned(expr->type->canonical)) return;
 
 	LLVMValueRef zero = llvm_const_int(c, expr->type, 0);
@@ -2724,7 +2724,7 @@ static void llvm_emit_trap_negative(GenContext *c, Expr *expr, LLVMValueRef valu
 
 static void llvm_emit_trap_zero(GenContext *c, Type *type, LLVMValueRef value, const char *error, SourceSpan loc)
 {
-	if (!active_target.feature.safe_mode) return;
+	if (!safe_mode_enabled()) return;
 
 	assert(type == type_flatten(type));
 
@@ -2753,7 +2753,7 @@ static void llvm_emit_trap_zero(GenContext *c, Type *type, LLVMValueRef value, c
 
 static void llvm_emit_trap_invalid_shift(GenContext *c, LLVMValueRef value, Type *type, const char *error, SourceSpan loc)
 {
-	if (!active_target.feature.safe_mode) return;
+	if (!safe_mode_enabled()) return;
 	BEValue val;
 	type = type_flatten(type);
 	llvm_value_set(&val, value, type);
@@ -2843,7 +2843,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 	bool check_end = true;
 	bool start_from_end = slice->subscript_expr.range.start_from_end;
 	bool end_from_end = slice->subscript_expr.range.end_from_end;
-	if (!end || start_from_end || end_from_end || active_target.feature.safe_mode)
+	if (!end || start_from_end || end_from_end || safe_mode_enabled())
 	{
 		switch (parent_type->type_kind)
 		{
@@ -2872,7 +2872,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 	}
 
 	// Check that index does not extend beyond the length.
-	if (check_end && active_target.feature.safe_mode)
+	if (check_end && safe_mode_enabled())
 	{
 		assert(len.value);
 		BEValue exceeds_size;
@@ -2908,7 +2908,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 		}
 
 		// This will trap any bad negative index, so we're fine.
-		if (active_target.feature.safe_mode && !is_len_range)
+		if (safe_mode_enabled() && !is_len_range)
 		{
 			BEValue excess;
 			llvm_emit_int_comp(c, &excess, &start_index, &end_index, BINARYOP_GT);
@@ -3004,7 +3004,7 @@ static void llvm_emit_slice_copy(GenContext *c, BEValue *be_value, Expr *expr)
 	llvm_emit_subarray_len(c, be_value, &from_len);
 	llvm_value_rvalue(c, &from_len);
 
-	if (active_target.feature.safe_mode)
+	if (safe_mode_enabled())
 	{
 		BEValue to_len;
 		llvm_emit_subarray_len(c, &assigned_to, &to_len);
@@ -6345,7 +6345,7 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 		llvm_value_set(value, parent_value, expr->type);
 		return;
 	}
-	bool safe_mode = active_target.feature.safe_mode;
+	bool safe_mode = safe_mode_enabled();
 	if (safe_mode || info_kind == TYPEID_INFO_KIND)
 	{
 		kind = llvm_emit_struct_gep_raw(c, ref, c->introspect_type, INTROSPECT_INDEX_KIND, align, &alignment);

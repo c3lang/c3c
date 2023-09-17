@@ -1334,7 +1334,7 @@ void **llvm_gen(Module** modules, unsigned module_count)
 	if (!module_count) return NULL;
 	GenContext **gen_contexts = NULL;
 	llvm_codegen_setup();
-	if (active_target.single_module)
+	if (active_target.single_module == SINGLE_MODULE_ON)
 	{
 		GenContext *first_context;
 		unsigned first_element;
@@ -1413,7 +1413,7 @@ static bool module_is_stdlib(Module *module)
 static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context)
 {
 	if (!vec_size(module->units)) return NULL;
-	if (active_target.no_emit_stdlib && module_is_stdlib(module)) return NULL;
+	if (active_target.emit_stdlib == EMIT_STDLIB_OFF && module_is_stdlib(module)) return NULL;
 
 	assert(intrinsics_setup);
 
@@ -1422,7 +1422,7 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 	gencontext_init(gen_context, module, shared_context);
 	gencontext_begin_module(gen_context);
 
-	bool only_used = !active_target.no_strip_unused;
+	bool only_used = strip_unused();
 
 	FOREACH_BEGIN(CompilationUnit *unit, module->units)
 

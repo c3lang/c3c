@@ -298,21 +298,17 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	DebugInfo info = get_valid_string_setting(json, "debug-info", type, debug_infos, 0, 3, "one of 'full' 'line-table' or 'none'.");
 	if (info > -1) target->debug_info = info;
 
-	static const char *opt_settings[14] = {
+	static const char *opt_settings[8] = {
 			[OPT_SETTING_O0] = "O0",
-			[OPT_SETTING_O0_PLUS] = "O0+",
 			[OPT_SETTING_O1] = "O1",
-			[OPT_SETTING_O1_PLUS] = "O1+",
 			[OPT_SETTING_O2] = "O2",
-			[OPT_SETTING_O2_PLUS] = "O2+",
 			[OPT_SETTING_O3] = "O3",
-			[OPT_SETTING_O3_PLUS] = "O3+",
+			[OPT_SETTING_O4] = "O4",
+			[OPT_SETTING_O5] = "O5",
 			[OPT_SETTING_OSMALL] = "Os",
-			[OPT_SETTING_OSMALL_PLUS] = "Os+",
-			[OPT_SETTING_OTINY] = "Oz",
-			[OPT_SETTING_OTINY_PLUS] = "Oz+"
+			[OPT_SETTING_OTINY] = "Oz"
 	};
-	OptimizationSetting opt = (OptimizationSetting)get_valid_string_setting(json, "opt", type, opt_settings, 0, 14, "'O0', 'O1' etc.");
+	OptimizationSetting opt = (OptimizationSetting)get_valid_string_setting(json, "opt", type, opt_settings, 0, 8, "'O0', 'O1' etc.");
 	update_build_target_with_opt_level(target, opt);
 
 	MemoryEnvironment env = get_valid_string_setting(json, "memory-env", type, memory_environment, 0, 4, "one of 'normal', 'small', 'tiny' or 'none'.");
@@ -413,14 +409,20 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	const char *panicfn = get_valid_string(json, "panicfn", type, false);
 	target->panicfn = panicfn;
 
-	// nolibc
-	target->no_libc = get_valid_bool(json, "nolibc", type, target->no_libc);
+	// link-libc
+	target->link_libc = (LinkLibc)get_valid_bool(json, "nolibc", type, target->link_libc);
 
 	// no-entry
 	target->no_entry = get_valid_bool(json, "no-entry", type, target->no_entry);
 
-	// nostdlib
-	target->no_stdlib = get_valid_bool(json, "nostdlib", type, target->no_stdlib);
+	// use-stdlib
+	target->use_stdlib = (UseStdlib)get_valid_bool(json, "use-stdlib", type, target->use_stdlib);
+
+	// emit-stdlib
+	target->emit_stdlib = (EmitStdlib)get_valid_bool(json, "emit-stdlib", type, target->emit_stdlib);
+
+	// single-module
+	target->single_module = (SingleModule)get_valid_bool(json, "single-module", type, target->single_module);
 
 	// Trap on wrap
 	target->feature.trap_on_wrap = get_valid_bool(json, "trap-on-wrap", type, target->feature.trap_on_wrap);
@@ -468,26 +470,7 @@ static void project_add_targets(Project *project, JSONObject *project_data)
 			[TARGET_TYPE_TEST] = "test suite",
 			[TARGET_TYPE_OBJECT_FILES] = "object files"};
 
-	BuildTarget default_target = {
-			.optlevel = OPTIMIZATION_NOT_SET,
-			.optsetting = OPT_SETTING_NOT_SET,
-			.memory_environment = MEMORY_ENV_NORMAL,
-			.optsize = SIZE_OPTIMIZATION_NOT_SET,
-			.arch_os_target = ARCH_OS_TARGET_DEFAULT,
-			.debug_info = DEBUG_INFO_NOT_SET,
-			.symtab_size = DEFAULT_SYMTAB_SIZE,
-			.cc = "cc",
-			.version = "1.0.0",
-			.langrev = "1",
-			.cpu = "generic",
-			.feature.x86_struct_return = STRUCT_RETURN_DEFAULT,
-			.feature.soft_float = SOFT_FLOAT_DEFAULT,
-			.feature.trap_on_wrap = false,
-			.feature.x86_vector_capability = X86VECTOR_DEFAULT,
-			.feature.x86_cpu_set = X86CPU_DEFAULT,
-			.feature.safe_mode = SAFETY_NOT_SET,
-			.win.crt_linking = WIN_CRT_DEFAULT,
-	};
+	BuildTarget default_target = default_build_target;
 	load_into_build_target(project_data, "default target", &default_target, true);
 	JSONObject *targets_json = json_obj_get(project_data, "targets");
 	if (!targets_json)

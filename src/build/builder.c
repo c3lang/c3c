@@ -103,55 +103,43 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 	FpOpt fp_opt = FP_STRICT;
 	switch (level)
 	{
-		case OPT_SETTING_O0_PLUS:
-			single_module = true;
-			break;
 		case OPT_SETTING_O0:
 			break;
-		case OPT_SETTING_O1_PLUS:
-			single_module = true;
-			FALLTHROUGH;
 		case OPT_SETTING_O1:
 			optlevel = OPTIMIZATION_MORE;
 			break;
-		case OPT_SETTING_O2_PLUS:
-			single_module = true;
-			FALLTHROUGH;
 		case OPT_SETTING_O2:
 			optlevel = OPTIMIZATION_MORE;
 			safety_level = false;
 			break;
-		case OPT_SETTING_O3_PLUS:
-			single_module = true;
-			FALLTHROUGH;
 		case OPT_SETTING_O3:
-			optlevel = OPTIMIZATION_AGGRESSIVE;
-			safety_level = SAFETY_OFF;
-			fp_opt = FP_RELAXED;
-			break;
-		case OPT_SETTING_O4_PLUS:
+			optlevel = OPTIMIZATION_MORE;
+			safety_level = false;
 			single_module = true;
-			FALLTHROUGH;
+			break;
 		case OPT_SETTING_O4:
 			optlevel = OPTIMIZATION_AGGRESSIVE;
 			safety_level = SAFETY_OFF;
-			fp_opt = FP_FAST;
-			break;
-		case OPT_SETTING_OSMALL_PLUS:
+			fp_opt = FP_RELAXED;
 			single_module = true;
-			FALLTHROUGH;
+			break;
+		case OPT_SETTING_O5:
+			single_module = true;
+			optlevel = OPTIMIZATION_AGGRESSIVE;
+			safety_level = SAFETY_OFF;
+			fp_opt = FP_FAST;
+			single_module = true;
+			break;
 		case OPT_SETTING_OSMALL:
 			optlevel = OPTIMIZATION_MORE;
 			optsize = SIZE_OPTIMIZATION_SMALL;
 			safety_level = SAFETY_OFF;
 			break;
-		case OPT_SETTING_OTINY_PLUS:
-			target->single_module = true;
-			FALLTHROUGH;
 		case OPT_SETTING_OTINY:
 			optlevel = OPTIMIZATION_MORE;
 			optsize = SIZE_OPTIMIZATION_TINY;
 			safety_level = SAFETY_OFF;
+			single_module = true;
 			debug = DEBUG_INFO_NONE;
 			break;
 		case OPT_SETTING_NOT_SET:
@@ -163,7 +151,7 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 	if (target->feature.safe_mode == SAFETY_NOT_SET) target->feature.safe_mode = safety_level;
 	if (target->debug_info == DEBUG_INFO_NOT_SET) target->debug_info = debug;
 	if (target->feature.fp_math == FP_DEFAULT) target->feature.fp_math = fp_opt;
-	if (single_module) target->single_module = true;
+	if (target->single_module == SINGLE_MODULE_NOT_SET && single_module) target->single_module = SINGLE_MODULE_ON;
 }
 static void update_build_target_from_options(BuildTarget *target, BuildOptions *options)
 {
@@ -235,6 +223,9 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	FOREACH_END();
 
 
+	target->read_stdin = options->read_stdin;
+
+
 	if (options->cc) target->cc = options->cc;
 	if (options->optlevel != OPTIMIZATION_NOT_SET)
 	{
@@ -248,7 +239,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	{
 		target->feature.safe_mode = options->safety_level;
 	}
-	if (options->no_strip_unused || options->test_mode) target->no_strip_unused = true;
+	if (options->strip_unused != STRIP_UNUSED_NOT_SET) target->strip_unused = options->strip_unused;
 
 	if (options->memory_environment != MEMORY_ENV_NOT_SET)
 	{
@@ -264,6 +255,8 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	}
 	if (options->reloc_model != RELOC_DEFAULT) target->reloc_model = options->reloc_model;
 
+	if (options->symtab_size) target->symtab_size = options->symtab_size;
+
 	for (int i = 0; i < options->linker_arg_count; i++)
 	{
 		vec_add(target->link_args, options->linker_args[i]);
@@ -277,14 +270,15 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 		vec_add(target->linker_libs, options->linker_libs[i]);
 	}
 	target->trust_level = options->trust_level;
-	if (options->no_stdlib) target->no_stdlib = true;
-	if (options->no_libc) target->no_libc = true;
+	if (options->use_stdlib != USE_STDLIB_NOT_SET) target->use_stdlib = options->use_stdlib;
+	if (options->link_libc != LINK_LIBC_NOT_SET) target->link_libc = options->link_libc;
+	if (options->system_linker != SYSTEM_LINKER_NOT_SET) target->system_linker = options->system_linker;
+	if (options->emit_stdlib != EMIT_STDLIB_NOT_SET) target->emit_stdlib = options->emit_stdlib;
 	if (options->no_entry) target->no_entry = true;
 	target->print_output = options->print_output;
 	target->emit_llvm = options->emit_llvm;
 	target->build_threads = options->build_threads;
 	target->emit_asm = options->emit_asm;
-	target->force_linker = options->force_linker;
 	target->panicfn = options->panicfn;
 	target->benchmarking = options->benchmarking;
 	target->testing = options->testing;
@@ -367,7 +361,6 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	{
 		target->emit_object_files = false;
 	}
-	target->no_emit_stdlib = options->no_emit_stdlib;
 	for (int i = 0; i < options->lib_dir_count; i++)
 	{
 		vec_add(target->libdirs, options->lib_dir[i]);
@@ -381,33 +374,13 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 		target->optsetting = options->optsetting;
 	}
 	update_build_target_with_opt_level(target, target->optsetting);
-
-
 }
 
 void init_default_build_target(BuildTarget *target, BuildOptions *options)
 {
-	*target = (BuildTarget) {
-		.read_stdin = options->read_stdin,
-		.type = TARGET_TYPE_EXECUTABLE,
-		.source_dirs = options->files,
-		.name = options->output_name,
-		.optsetting = OPT_SETTING_NOT_SET,
-		.optlevel = OPTIMIZATION_NOT_SET,
-		.memory_environment = MEMORY_ENV_NORMAL,
-		.optsize = SIZE_OPTIMIZATION_NOT_SET,
-		.symtab_size = options->symtab_size ? options->symtab_size : DEFAULT_SYMTAB_SIZE,
-		.switchrange_max_size = DEFAULT_SWITCHRANGE_MAX_SIZE,
-		.debug_info = DEBUG_INFO_NOT_SET,
-		.arch_os_target = ARCH_OS_TARGET_DEFAULT,
-		.reloc_model = RELOC_DEFAULT,
-		.feature.x86_vector_capability = X86VECTOR_DEFAULT,
-		.feature.x86_cpu_set = X86CPU_DEFAULT,
-		.feature.fp_math = FP_DEFAULT,
-		.feature.riscv_float_capability = RISCVFLOAT_DEFAULT,
-		.feature.safe_mode = SAFETY_NOT_SET,
-		.win.crt_linking = WIN_CRT_DEFAULT,
-	};
+	*target = default_build_target;
+	target->source_dirs = options->files;
+	target->name = options->output_name;
 	update_build_target_from_options(target, options);
 }
 
