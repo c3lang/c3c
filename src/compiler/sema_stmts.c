@@ -2511,7 +2511,7 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 		initializer = collection->const_expr.initializer;
 		ConstInitType init_type = initializer->kind;
 		const_list_type = type_flatten(collection->type);
-		if (const_list_type->type_kind == TYPE_ARRAY)
+		if (const_list_type->type_kind == TYPE_ARRAY || const_list_type->type_kind == TYPE_VECTOR)
 		{
 			count = const_list_type->array.len;
 		}
@@ -2521,6 +2521,7 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 			if (init_type == CONST_INIT_ZERO)
 			{
 				sema_context_pop_ct_stack(context, ct_context);
+				statement->ast_kind = AST_NOP_STMT;
 				return true;
 			}
 			if (init_type != CONST_INIT_ARRAY_FULL)
