@@ -1001,7 +1001,7 @@ static inline void llvm_emit_assert_stmt(GenContext *c, Ast *ast)
 	ExprId exprid = ast->assert_stmt.expr;
 	Expr *assert_expr = exprptr(exprid);
 
-	if (active_target.feature.safe_mode)
+	if (safe_mode_enabled())
 	{
 		BEValue value;
 		llvm_emit_expr(c, &value, assert_expr);

@@ -157,7 +157,7 @@ void gencontext_begin_module(GenContext *c)
 
 		c->debug.runtime_version = 1;
 		c->debug.builder = LLVMCreateDIBuilder(c->module);
-		if (active_target.debug_info == DEBUG_INFO_FULL && active_target.feature.safe_mode)
+		if (active_target.debug_info == DEBUG_INFO_FULL && safe_mode_enabled())
 		{
 			c->debug.stack_type = LLVMStructCreateNamed(c->context, ".$callstack");
 			LLVMTypeRef types[5] = { c->ptr_type,

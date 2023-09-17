@@ -11,6 +11,8 @@
 #define MAX_FILES 2048
 #define MAX_INCLUDES 2048
 #define MAX_THREADS 0xFFFF
+#define DEFAULT_SYMTAB_SIZE (256 * 1024)
+#define DEFAULT_SWITCHRANGE_MAX_SIZE (256)
 
 void update_feature_flags(const char ***flags, const char ***removed_flag, const char *arg, bool add);
 
@@ -103,19 +105,13 @@ typedef enum
 {
 	OPT_SETTING_NOT_SET = -1,
 	OPT_SETTING_O0 = 0,
-	OPT_SETTING_O0_PLUS,
 	OPT_SETTING_O1,
-	OPT_SETTING_O1_PLUS,
 	OPT_SETTING_O2,
-	OPT_SETTING_O2_PLUS,
 	OPT_SETTING_O3,
-	OPT_SETTING_O3_PLUS,
 	OPT_SETTING_O4,
-	OPT_SETTING_O4_PLUS,
+	OPT_SETTING_O5,
 	OPT_SETTING_OSMALL,
-	OPT_SETTING_OSMALL_PLUS,
 	OPT_SETTING_OTINY,
-	OPT_SETTING_OTINY_PLUS
 } OptimizationSetting;
 
 typedef enum
@@ -126,6 +122,48 @@ typedef enum
 	OPTIMIZATION_MORE = 2,          // -O2
 	OPTIMIZATION_AGGRESSIVE = 3,    // -O3
 } OptimizationLevel;
+
+typedef enum
+{
+	SINGLE_MODULE_NOT_SET = -1,
+	SINGLE_MODULE_OFF = 0,
+	SINGLE_MODULE_ON = 1
+} SingleModule;
+
+typedef enum
+{
+	BUILTIN_LINKER_NOT_SET = -1,
+	BUILTIN_LINKER_OFF = 0,
+	BUILTIN_LINKER_ON = 1
+} BuiltinLinker;
+
+typedef enum
+{
+	STRIP_UNUSED_NOT_SET = -1,
+	STRIP_UNUSED_OFF = 0,
+	STRIP_UNUSED_ON = 1
+} StripUnused;
+
+typedef enum
+{
+	LINK_LIBC_NOT_SET = -1,
+	LINK_LIBC_OFF = 0,
+	LINK_LIBC_ON = 1
+} LinkLibc;
+
+typedef enum
+{
+	EMIT_STDLIB_NOT_SET = -1,
+	EMIT_STDLIB_OFF = 0,
+	EMIT_STDLIB_ON = 1
+} EmitStdlib;
+
+typedef enum
+{
+	USE_STDLIB_NOT_SET = -1,
+	USE_STDLIB_OFF = 0,
+	USE_STDLIB_ON = 1
+} UseStdlib;
 
 typedef enum
 {
@@ -229,7 +267,7 @@ static const char *optsizes[3] = {
 		[SIZE_OPTIMIZATION_TINY] = "more",
 };
 
-static const char *safety_levels[2] = {
+static const char *on_off[2] = {
 		[SAFETY_OFF] = "no",
 		[SAFETY_ON] = "yes",
 };
@@ -373,16 +411,13 @@ typedef struct BuildOptions_
 	DebugInfo debug_info_override;
 	ArchOsTarget arch_os_target_override;
 	SafetyLevel safety_level;
+	SingleModule single_module;
 	bool emit_llvm;
 	bool emit_asm;
 	bool benchmark_mode;
 	bool test_mode;
-	bool no_stdlib;
 	bool no_entry;
-	bool no_libc;
 	bool no_obj;
-	bool no_emit_stdlib;
-	bool force_linker;
 	bool read_stdin;
 	bool print_output;
 	const char *panicfn;
@@ -395,11 +430,15 @@ typedef struct BuildOptions_
 	X86VectorCapability x86_vector_capability;
 	X86CpuSet x86_cpu_set;
 	FpOpt fp_math;
+	EmitStdlib emit_stdlib;
+	UseStdlib use_stdlib;
+	LinkLibc link_libc;
+	BuiltinLinker builtin_linker;
+	StripUnused strip_unused;
 	OptimizationLevel optlevel;
 	SizeOptimizationLevel optsize;
 	RiscvFloatCapability riscv_float_capability;
 	MemoryEnvironment memory_environment;
-	bool no_strip_unused;
 	bool print_keywords;
 	bool print_attributes;
 	bool print_builtins;
@@ -476,28 +515,28 @@ typedef struct
 	bool check_only;
 	bool emit_llvm;
 	bool emit_asm;
-	bool no_stdlib;
-	bool no_libc;
-	bool no_strip_unused;
 	bool emit_object_files;
-	bool force_linker;
 	bool benchmarking;
 	bool testing;
 	bool read_stdin;
 	bool print_output;
 	bool no_entry;
-	bool no_emit_stdlib;
 	int build_threads;
 	TrustLevel trust_level;
 	OptimizationSetting optsetting;
 	OptimizationLevel optlevel;
 	MemoryEnvironment memory_environment;
 	SizeOptimizationLevel optsize;
-	bool single_module;
+	SingleModule single_module;
+	UseStdlib use_stdlib;
+	EmitStdlib emit_stdlib;
+	LinkLibc link_libc;
+	StripUnused strip_unused;
 	DebugInfo debug_info;
 	RelocModel reloc_model;
 	ArchOsTarget arch_os_target;
 	CompilerBackend backend;
+	BuiltinLinker builtin_linker;
 	uint32_t symtab_size;
 	uint32_t switchrange_max_size;
 	const char *panicfn;
@@ -541,3 +580,35 @@ BuildOptions parse_arguments(int argc, const char *argv[]);
 ArchOsTarget arch_os_target_from_string(const char *target);
 bool command_is_projectless(CompilerCommand command);
 void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting level);
+
+static BuildTarget default_build_target = {
+		.optlevel = OPTIMIZATION_NOT_SET,
+		.optsetting = OPT_SETTING_NOT_SET,
+		.memory_environment = MEMORY_ENV_NORMAL,
+		.optsize = SIZE_OPTIMIZATION_NOT_SET,
+		.arch_os_target = ARCH_OS_TARGET_DEFAULT,
+		.debug_info = DEBUG_INFO_NOT_SET,
+		.use_stdlib = USE_STDLIB_NOT_SET,
+		.link_libc = LINK_LIBC_NOT_SET,
+		.emit_stdlib = EMIT_STDLIB_NOT_SET,
+		.builtin_linker = BUILTIN_LINKER_NOT_SET,
+		.single_module = SINGLE_MODULE_NOT_SET,
+		.strip_unused = STRIP_UNUSED_NOT_SET,
+		.symtab_size = DEFAULT_SYMTAB_SIZE,
+		.reloc_model = RELOC_DEFAULT,
+		.cc = "cc",
+		.version = "1.0.0",
+		.langrev = "1",
+		.cpu = "generic",
+		.type = TARGET_TYPE_EXECUTABLE,
+		.feature.x86_struct_return = STRUCT_RETURN_DEFAULT,
+		.feature.soft_float = SOFT_FLOAT_DEFAULT,
+		.feature.fp_math = FP_DEFAULT,
+		.feature.trap_on_wrap = false,
+		.feature.riscv_float_capability = RISCVFLOAT_DEFAULT,
+		.feature.x86_vector_capability = X86VECTOR_DEFAULT,
+		.feature.x86_cpu_set = X86CPU_DEFAULT,
+		.feature.safe_mode = SAFETY_NOT_SET,
+		.win.crt_linking = WIN_CRT_DEFAULT,
+		.switchrange_max_size = DEFAULT_SWITCHRANGE_MAX_SIZE,
+};

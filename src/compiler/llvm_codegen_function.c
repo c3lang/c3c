@@ -176,7 +176,7 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIAr
 	DIRECT_FROM_COERCE:
 		{
 			LLVMValueRef param_value = llvm_get_next_param(c, index);
-			if (decl->var.not_null && active_target.feature.safe_mode)
+			if (decl->var.not_null && safe_mode_enabled())
 			{
 				LLVMValueRef is_null = LLVMBuildIsNull(c->builder, param_value, "");
 				scratch_buffer_clear();

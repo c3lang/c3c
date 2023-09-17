@@ -278,7 +278,7 @@ void compiler_parse(void)
 	global_context_clear_errors();
 
 	// Add the standard library
-	if (global_context.lib_dir && !active_target.no_stdlib)
+	if (global_context.lib_dir && !no_stdlib())
 	{
 		file_add_wildcard_files(&global_context.sources, global_context.lib_dir, true, c3_suffix_list, 3);
 	}
@@ -485,7 +485,8 @@ void compiler_compile(void)
 
 	if (output_exe)
 	{
-		if (!active_target.no_libc && platform_target.os != OS_TYPE_WIN32 && active_target.arch_os_target == default_target && !active_target.force_linker)
+		if (link_libc() && platform_target.os != OS_TYPE_WIN32
+			&& active_target.arch_os_target == default_target && active_target.builtin_linker != BUILTIN_LINKER_ON)
 		{
 			platform_linker(output_exe, obj_files, output_file_count);
 			compiler_link_time = bench_mark();
@@ -855,11 +856,11 @@ void compile()
 	setup_bool_define("PLATFORM_F16_SUPPORTED", platform_target.float16);
 	setup_int_define("ARCH_TYPE", (uint64_t)platform_target.arch, type_int);
 	setup_int_define("MEMORY_ENVIRONMENT", (uint64_t)active_target.memory_environment, type_int);
-	setup_bool_define("COMPILER_LIBC_AVAILABLE", !active_target.no_libc);
+	setup_bool_define("COMPILER_LIBC_AVAILABLE", link_libc());
 	setup_int_define("COMPILER_OPT_LEVEL", (uint64_t)active_target.optlevel, type_int);
 	setup_int_define("OS_TYPE", (uint64_t)platform_target.os, type_int);
 	setup_int_define("COMPILER_SIZE_OPT_LEVEL", (uint64_t)active_target.optsize, type_int);
-	setup_bool_define("COMPILER_SAFE_MODE", active_target.feature.safe_mode);
+	setup_bool_define("COMPILER_SAFE_MODE", safe_mode_enabled());
 	setup_bool_define("DEBUG_SYMBOLS", active_target.debug_info == DEBUG_INFO_FULL);
 	setup_int_define("LLVM_VERSION", llvm_version_major, type_int);
 	setup_bool_define("BENCHMARKING", active_target.benchmarking);
