@@ -141,6 +141,9 @@ module std::atomic;
  **/
 macro fetch_add(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, usz $alignment = 0)
 {
+	$if $alignment == 0:
+		$alignment = $typeof(*ptr).sizeof;
+	$endif
 	return $$atomic_fetch_add(ptr, y, $volatile, $ordering.ordinal, $alignment);
 }
 
@@ -155,6 +158,9 @@ macro fetch_add(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatil
  **/
 macro fetch_sub(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, usz $alignment = 0)
 {
+	$if $alignment == 0:
+		$alignment = $typeof(*ptr).sizeof;
+	$endif
 	return $$atomic_fetch_sub(ptr, y, $volatile, $ordering.ordinal, $alignment);
 }
 
@@ -484,6 +490,9 @@ macro flag_clear(ptr, AtomicOrdering $ordering = SEQ_CONSISTENT)
  **/
 macro fetch_max(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, usz $alignment = 0)
 {
+	$if $alignment == 0:
+		$alignment = $typeof(*ptr).sizeof;
+	$endif
 	return $$atomic_fetch_max(ptr, y, $volatile, $ordering.ordinal, $alignment);
 }
 
@@ -498,5 +507,8 @@ macro fetch_max(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatil
  **/
 macro fetch_min(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, usz $alignment = 0)
 {
+	$if $alignment == 0:
+		$alignment = $typeof(*ptr).sizeof;
+	$endif
 	return $$atomic_fetch_min(ptr, y, $volatile, $ordering.ordinal, $alignment);
 }
