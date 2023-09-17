@@ -131,7 +131,7 @@ static void usage(void)
 	OUTPUT("  -l <library>              - Link with the library provided.");
 	OUTPUT("  -L <library dir>          - Append the directory to the linker search paths.");
 	OUTPUT("  -z <argument>             - Send the <argument> as a parameter to the linker.");
-	OUTPUT("  --builtinlinker=<yes|no>  - Use the built-in linker (default: yes for cross compilation, no otherwise).");
+	OUTPUT("  --system-linker=<yes|no>  - Use the system linker (default: no for cross compilation, yes otherwise).");
 	OUTPUT("");
 	OUTPUT("  --use-stdlib=<yes|no>     - Include the standard library (default: yes).");
 	OUTPUT("  --link-libc=<yes|no>      - Link libc other default libraries (default: yes).");
@@ -659,9 +659,9 @@ static void parse_option(BuildOptions *options)
 				options->single_module = (SingleModule)parse_multi_option(argopt, 2, on_off);
 				return;
 			}
-			if ((argopt = match_argopt("builtinlinker")))
+			if ((argopt = match_argopt("system-linker")))
 			{
-				options->builtin_linker = (BuiltinLinker)parse_multi_option(argopt, 2, on_off);
+				options->system_linker = (SystemLinker)parse_multi_option(argopt, 2, on_off);
 				return;
 			}
 			if ((argopt = match_argopt("link-libc")))
@@ -1015,7 +1015,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.emit_stdlib = EMIT_STDLIB_NOT_SET,
 		.link_libc = LINK_LIBC_NOT_SET,
 		.use_stdlib = USE_STDLIB_NOT_SET,
-		.builtin_linker = BUILTIN_LINKER_NOT_SET,
+		.system_linker = SYSTEM_LINKER_NOT_SET,
 		.strip_unused = STRIP_UNUSED_NOT_SET,
 		.single_module = SINGLE_MODULE_NOT_SET,
 		.files = NULL,

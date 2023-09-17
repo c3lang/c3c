@@ -132,10 +132,10 @@ typedef enum
 
 typedef enum
 {
-	BUILTIN_LINKER_NOT_SET = -1,
-	BUILTIN_LINKER_OFF = 0,
-	BUILTIN_LINKER_ON = 1
-} BuiltinLinker;
+	SYSTEM_LINKER_NOT_SET = -1,
+	SYSTEM_LINKER_OFF = 0,
+	SYSTEM_LINKER_ON = 1
+} SystemLinker;
 
 typedef enum
 {
@@ -433,7 +433,7 @@ typedef struct BuildOptions_
 	EmitStdlib emit_stdlib;
 	UseStdlib use_stdlib;
 	LinkLibc link_libc;
-	BuiltinLinker builtin_linker;
+	SystemLinker system_linker;
 	StripUnused strip_unused;
 	OptimizationLevel optlevel;
 	SizeOptimizationLevel optsize;
@@ -536,7 +536,7 @@ typedef struct
 	RelocModel reloc_model;
 	ArchOsTarget arch_os_target;
 	CompilerBackend backend;
-	BuiltinLinker builtin_linker;
+	SystemLinker system_linker;
 	uint32_t symtab_size;
 	uint32_t switchrange_max_size;
 	const char *panicfn;
@@ -591,7 +591,7 @@ static BuildTarget default_build_target = {
 		.use_stdlib = USE_STDLIB_NOT_SET,
 		.link_libc = LINK_LIBC_NOT_SET,
 		.emit_stdlib = EMIT_STDLIB_NOT_SET,
-		.builtin_linker = BUILTIN_LINKER_NOT_SET,
+		.system_linker = SYSTEM_LINKER_NOT_SET,
 		.single_module = SINGLE_MODULE_NOT_SET,
 		.strip_unused = STRIP_UNUSED_NOT_SET,
 		.symtab_size = DEFAULT_SYMTAB_SIZE,

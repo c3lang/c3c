@@ -272,7 +272,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	target->trust_level = options->trust_level;
 	if (options->use_stdlib != USE_STDLIB_NOT_SET) target->use_stdlib = options->use_stdlib;
 	if (options->link_libc != LINK_LIBC_NOT_SET) target->link_libc = options->link_libc;
-	if (options->builtin_linker != BUILTIN_LINKER_NOT_SET) target->builtin_linker = options->builtin_linker;
+	if (options->system_linker != SYSTEM_LINKER_NOT_SET) target->system_linker = options->system_linker;
 	if (options->emit_stdlib != EMIT_STDLIB_NOT_SET) target->emit_stdlib = options->emit_stdlib;
 	if (options->no_entry) target->no_entry = true;
 	target->print_output = options->print_output;

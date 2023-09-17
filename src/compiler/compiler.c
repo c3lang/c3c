@@ -486,7 +486,7 @@ void compiler_compile(void)
 	if (output_exe)
 	{
 		if (link_libc() && platform_target.os != OS_TYPE_WIN32
-			&& active_target.arch_os_target == default_target && active_target.builtin_linker != BUILTIN_LINKER_ON)
+			&& active_target.arch_os_target == default_target && active_target.system_linker != SYSTEM_LINKER_OFF)
 		{
 			platform_linker(output_exe, obj_files, output_file_count);
 			compiler_link_time = bench_mark();
