@@ -11,9 +11,9 @@ fn TcpSocket! connect(String host, uint port, Duration timeout = 0, SocketOption
 	defer os::freeaddrinfo(ai);
 	if (timeout > 0)
 	{
-		return connect_to(ai, ...options);
+		return (TcpSocket)net::connect_with_timeout_from_addrinfo(ai, options, timeout)!;
 	}
-	return (TcpSocket)net::connect_with_timeout_from_addrinfo(ai, options, timeout)!;
+	return connect_to(ai, ...options);
 }
 
 fn TcpSocket! connect_async(String host, uint port, SocketOption... options, IpProtocol protocol = UNSPECIFIED)
