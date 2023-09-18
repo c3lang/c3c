@@ -364,6 +364,23 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			break;
 		case BUILTIN_SYSCALL:
 			UNREACHABLE
+		case BUILTIN_IS_FPCLASS:
+		{
+			assert(arg_count == 2);
+			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_FLOATLIKE, BA_INTEGER }, 2)) return false;
+			if (!expr_is_const(args[1])) RETURN_SEMA_ERROR(args[1], "A constant value is required.");
+			if (!cast_implicit(context, args[1], type_int)) return false;
+
+			if (type_flat_is_vector(args[0]->type))
+			{
+				rtype = type_get_vector(type_bool, args[0]->type->array.len);
+			}
+			else
+			{
+				rtype = type_bool;
+			}
+			break;
+		}
 		case BUILTIN_VECCOMPGE:
 		case BUILTIN_VECCOMPEQ:
 		case BUILTIN_VECCOMPLE:
@@ -933,6 +950,7 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_EXACT_MUL:
 		case BUILTIN_EXACT_SUB:
 		case BUILTIN_EXPECT:
+		case BUILTIN_IS_FPCLASS:
 		case BUILTIN_MAX:
 		case BUILTIN_MIN:
 		case BUILTIN_POW:

@@ -1,0 +1,24 @@
+// #target: macos-x64
+module test;
+
+fn void main()
+{
+    double d1 = 1.0;
+    double d2 = double.nan;
+
+    double[<*>] vd1 = { 0, 0 };
+    double[<*>] vd2 = { 0.0, double.nan };
+
+    bool b1 = $$is_fpclass(d1, 1);
+    bool b2 = $$is_fpclass(d2, 2);
+
+    bool[<*>] b3 = $$is_fpclass(vd1, 1);
+    bool[<*>] b4 = $$is_fpclass(vd2, 2);
+}
+
+/* #expect: test.ll
+
+  %1 = call i1 @llvm.is.fpclass.f64(double %0, i32 1)
+  %4 = call i1 @llvm.is.fpclass.f64(double %3, i32 2)
+  %7 = call <2 x i1> @llvm.is.fpclass.v2f64(<2 x double> %6, i32 1)
+  %10 = call <2 x i1> @llvm.is.fpclass.v2f64(<2 x double> %9, i32 2)

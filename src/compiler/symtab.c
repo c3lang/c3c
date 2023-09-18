@@ -236,6 +236,7 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_FSHR] = KW_DEF("fshr");
 	builtin_list[BUILTIN_GATHER] = KW_DEF("gather");
 	builtin_list[BUILTIN_GET_ROUNDING_MODE] = KW_DEF("get_rounding_mode");
+	builtin_list[BUILTIN_IS_FPCLASS] = KW_DEF("is_fpclass");
 	builtin_list[BUILTIN_LOG] = KW_DEF("log");
 	builtin_list[BUILTIN_LOG2] = KW_DEF("log2");
 	builtin_list[BUILTIN_LOG10] = KW_DEF("log10");

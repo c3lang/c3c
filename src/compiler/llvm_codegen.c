@@ -656,6 +656,7 @@ static void llvm_codegen_setup()
 #else
 	intrinsic_id.get_rounding = lookup_intrinsic("llvm.get.rounding");
 #endif
+	intrinsic_id.is_fpclass = lookup_intrinsic("llvm.is.fpclass");
 	intrinsic_id.lifetime_end = lookup_intrinsic("llvm.lifetime.end");
 	intrinsic_id.lifetime_start = lookup_intrinsic("llvm.lifetime.start");
 	intrinsic_id.llrint = lookup_intrinsic("llvm.llrint");

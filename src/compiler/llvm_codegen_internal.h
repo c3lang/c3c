@@ -177,6 +177,7 @@ typedef struct
 	unsigned fshr;
 	unsigned gather;
 	unsigned get_rounding;
+	unsigned is_fpclass;
 	unsigned lifetime_end;
 	unsigned lifetime_start;
 	unsigned llrint;
