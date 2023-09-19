@@ -113,7 +113,7 @@ static Type *sema_subscript_find_indexable_type_recursively(Type **type, Expr **
 
 // -- binary helper functions
 static void expr_binary_unify_failability(Expr *expr, Expr *left, Expr *right);
-static inline bool sema_binary_promote_top_down(SemaContext *context, Expr *binary, Expr *left, Expr *right);
+
 static inline bool sema_binary_analyse_subexpr(SemaContext *context, Expr *binary, Expr *left, Expr *right);
 static inline bool sema_binary_analyse_arithmetic_subexpr(SemaContext *context, Expr *expr, const char *error, bool bool_and_bitstruct_is_allowed);
 static inline bool sema_binary_analyse_ct_identifier_lvalue(SemaContext *context, Expr *expr);
@@ -174,7 +174,7 @@ static inline bool sema_create_const_max(SemaContext *context, Expr *expr, Type 
 static inline bool sema_create_const_params(SemaContext *context, Expr *expr, Type *type);
 static inline void sema_create_const_membersof(SemaContext *context, Expr *expr, Type *type, AlignSize alignment,
 											   AlignSize offset);
-void expr_insert_widening_type(Expr *expr, Type *infer_type);
+
 static inline int64_t expr_get_index_max(Expr *expr);
 static inline bool expr_both_any_integer_or_integer_vector(Expr *left, Expr *right);
 static inline bool expr_both_any_integer_or_integer_bool_vector(Expr *left, Expr *right);
@@ -1023,13 +1023,6 @@ static inline bool sema_expr_analyse_hash_identifier(SemaContext *context, Expr 
 }
 
 
-static inline bool sema_binary_promote_top_down(SemaContext *context, Expr *binary, Expr *left, Expr *right)
-{
-	if (!binary->binary_expr.widen) return true;
-	Type *to = binary->type;
-	return cast_widen_top_down(context, left, to) && cast_widen_top_down(context, right, to);
-}
-
 static inline bool sema_binary_analyse_subexpr(SemaContext *context, Expr *binary, Expr *left, Expr *right)
 {
 	// Special handling of f = FOO_BAR
@@ -1079,7 +1072,7 @@ static inline bool sema_binary_analyse_arithmetic_subexpr(SemaContext *context, 
 	// 1. Analyse both sides.
 	if (!sema_binary_analyse_subexpr(context, expr, left, right)) return false;
 
-	if (!sema_binary_promote_top_down(context, expr, left, right)) return false;
+	//if (!sema_binary_promote_top_down(context, expr, left, right)) return false;
 
 	Type *left_type = type_no_optional(left->type)->canonical;
 	Type *right_type = type_no_optional(right->type)->canonical;
@@ -5090,8 +5083,6 @@ static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, 
 		return sema_expr_analyse_enum_add_sub(context, expr, left, right);
 	}
 
-	if (!sema_binary_promote_top_down(context, expr, left, right)) return false;
-
 	left_type = type_no_optional(left->type)->canonical;
 	right_type = type_no_optional(right->type)->canonical;
 
@@ -5269,8 +5260,6 @@ static bool sema_expr_analyse_add(SemaContext *context, Expr *expr, Expr *left, 
 	{
 		return sema_expr_analyse_enum_add_sub(context, expr, left, right);
 	}
-
-	if (!sema_binary_promote_top_down(context, expr, left, right)) return false;
 
 	left_type = type_no_optional(left->type)->canonical;
 	right_type = type_no_optional(right->type)->canonical;
@@ -5512,8 +5501,6 @@ static bool sema_expr_analyse_shift(SemaContext *context, Expr *expr, Expr *left
 	{
 		return sema_type_error_on_binop(expr);
 	}
-
-	if (expr->binary_expr.widen && !cast_widen_top_down(context, left, expr->type)) return false;
 
 	// 3. Promote lhs using the usual numeric promotion.
 	if (!cast_implicit(context, left, cast_numeric_arithmetic_promotion(type_no_optional(left->type)))) return false;
@@ -6011,7 +5998,6 @@ static inline bool sema_expr_analyse_neg_plus(SemaContext *context, Expr *expr)
 	Expr *inner = expr->unary_expr.expr;
 	bool is_plus = expr->unary_expr.operator == UNARYOP_PLUS;
 	if (!sema_analyse_expr(context, inner)) return false;
-	if (expr->unary_expr.widen && !cast_widen_top_down(context, inner, expr->type)) return false;
 
 	// 2. Check if it's possible to negate this (i.e. is it an int, float or vector)
 	Type *no_fail = type_no_optional(inner->type);
@@ -6068,8 +6054,6 @@ static inline bool sema_expr_analyse_bit_not(SemaContext *context, Expr *expr)
 	// 1. Analyse the inner expression.
 	Expr *inner = expr->unary_expr.expr;
 	if (!sema_analyse_expr(context, inner)) return false;
-
-	if (expr->unary_expr.widen && !cast_widen_top_down(context, inner, expr->type)) return false;
 
 	// 2. Check that it's a vector, bool
 	Type *canonical = type_no_optional(inner->type)->canonical;
@@ -6319,8 +6303,6 @@ static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr)
 		if (!sema_analyse_expr(context, lhs)) return false;
 	}
 
-	if (expr->binary_expr.widen && !cast_widen_top_down(context, lhs, expr->type)) return false;
-
 	Type *type = lhs->type;
 	if (!type_is_optional(type))
 	{
@@ -6335,7 +6317,6 @@ static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr)
 
 	// First we analyse the "else" and try to implictly cast.
 	if (!sema_analyse_expr(context, rhs)) return false;
-	if (expr->binary_expr.widen && !cast_widen_top_down(context, rhs, expr->type)) return false;
 
 	if (lhs->expr_kind == EXPR_OPTIONAL)
 	{
@@ -8350,58 +8331,6 @@ RETRY:
 	UNREACHABLE
 }
 
-void expr_insert_widening_type(Expr *expr, Type *infer_type)
-{
-	if (!infer_type) return;
-	switch (expr->expr_kind)
-	{
-		case EXPR_BINARY:
-			switch (expr->binary_expr.operator)
-			{
-				case BINARYOP_MULT:
-				case BINARYOP_SUB:
-				case BINARYOP_ADD:
-				case BINARYOP_DIV:
-				case BINARYOP_MOD:
-				case BINARYOP_SHR:
-				case BINARYOP_SHL:
-				case BINARYOP_BIT_OR:
-				case BINARYOP_BIT_XOR:
-				case BINARYOP_BIT_AND:
-				case BINARYOP_ELSE:
-					if (!expr_is_simple(exprptr(expr->binary_expr.left)) || !expr_is_simple(exprptr(expr->binary_expr.right))) return;
-					expr->type = infer_type;
-					expr->binary_expr.widen = true;
-					return;
-				default:
-					return;
-			}
-		case EXPR_GROUP:
-			expr_insert_widening_type(expr->inner_expr, infer_type);
-			return;
-		case EXPR_TERNARY:
-			if (!exprid_is_simple(expr->ternary_expr.else_expr)) return;
-			if (expr->ternary_expr.then_expr && !exprid_is_simple(expr->ternary_expr.else_expr)) return;
-			expr->type = infer_type;
-			expr->ternary_expr.widen = true;
-			return;
-		case EXPR_UNARY:
-			switch (expr->unary_expr.operator)
-			{
-				case UNARYOP_NEG:
-				case UNARYOP_BITNEG:
-					if (!expr_is_simple(expr->unary_expr.expr)) return;
-					expr->type = infer_type;
-					expr->unary_expr.widen = true;
-					return;
-				default:
-					return;
-			}
-		default:
-			return;
-	}
-	UNREACHABLE
-}
 bool sema_analyse_inferred_expr(SemaContext *context, Type *infer_type, Expr *expr)
 {
 	infer_type = type_no_optional(infer_type);
@@ -8436,7 +8365,6 @@ bool sema_analyse_inferred_expr(SemaContext *context, Type *infer_type, Expr *ex
 			if (!sema_expr_analyse_lambda(context, infer_type, expr)) return expr_poison(expr);
 			break;
 		default:
-			expr_insert_widening_type(expr, infer_type);
 			if (!sema_analyse_expr_dispatch(context, expr)) return expr_poison(expr);
 			break;
 	}

@@ -46,7 +46,7 @@ fn int main(int argc, char **argv)
 				byte_acc = 0;
 				bit_num = 0;
 			}
-			else if (x == w - 1)
+			else if (x == (double)w - 1)
 			{
 				byte_acc <<= (8 - w % 8);
 				putchar(byte_acc);

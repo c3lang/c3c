@@ -7,7 +7,7 @@ fn void main()
 	int x = 222;
 	int y = 223;
 	long z = 0;
-	z = x + y;
+	z = (long)x + y;
 	z *= x;
 	int g = 0;
 	int* gp = &g;

@@ -73,8 +73,8 @@ fn int main(int c, char** v)
     GameBoard board;
     board.w = w;
     board.h = h;
-    board.world = malloc(h * w);
-    board.temp = malloc(h * w);
+    board.world = malloc((isz)h * w);
+    board.temp = malloc((isz)h * w);
 
     for (int i = h * w - 1; i >= 0; i--)
     {
