@@ -383,3 +383,61 @@ macro usz! copy_through_buffer(Stream *self, Stream* dst, char[] buffer) @local
 		if (written != len) return IoError.INCOMPLETE_WRITE?;
 	}
 }
+
+const char[*] MAX_VARS @private = { [2] = 3, [4] = 5, [8] = 10 };
+
+/**
+ * @require $typeof(x_ptr).kindof == POINTER && $typeof(x_ptr).inner.kindof.is_int()
+ **/
+macro usz! Stream.read_varint(&self, x_ptr)
+{
+	var $Type = $typefrom($typeof(x_ptr).inner);
+	const MAX = MAX_VARS[$Type.sizeof];
+	$Type x;
+	uint shift;
+	usz n;
+	for (usz i = 0; i < MAX; i++)
+	{
+		char! c = self.read_byte();
+		if (catch err = c)
+		{
+			case IoError.EOF:
+				return IoError.UNEXPECTED_EOF?;
+			default:
+				return err?;
+		}
+		n++;
+		if (c & 0x80 == 0)
+		{
+			if (i + 1 == MAX && c > 1) break;
+			x |= c << shift;
+			$if $Type.kindof == SIGNED_INT:
+				x = x & 1 == 0 ? x >> 1 : ~(x >> 1);
+			$endif
+			*x_ptr = x;
+			return n;
+		}
+		x |= (c & 0x7F) << shift;
+		shift += 7;
+	}
+	return MathError.OVERFLOW?;
+}
+
+/**
+ * @require $typeof(x).kindof.is_int()
+ **/
+macro usz! Stream.write_varint(&self, x)
+{
+	var $Type = $typeof(x);
+	const MAX = MAX_VARS[$Type.sizeof];
+	char[MAX] buffer;
+	usz i;
+	while (x >= 0x80)
+	{
+		buffer[i] = (char)(x | 0x80);
+		x >>= 7;
+		i++;
+	}
+	buffer[i] = (char)x;
+	return self.write_all(buffer[:i + 1]);
+}
