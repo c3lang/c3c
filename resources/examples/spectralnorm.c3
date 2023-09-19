@@ -6,7 +6,7 @@ double[] temparr;
 
 fn double eval_A(int i, int j)
 {
-	return 1.0 / ((i + j) * (i + j + 1) / 2 + i + 1);
+	return 1.0 / (double)((i + j) * (i + j + 1) / 2 + i + 1);
 }
 
 fn void eval_A_times_u(double[] u, double[] au, double[] x)

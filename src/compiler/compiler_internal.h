@@ -755,14 +755,12 @@ typedef struct
 	ExprId left;
 	ExprId right;
 	BinaryOp operator : 8;
-	bool widen : 1;
 } ExprBinary;
 
 typedef struct
 {
 	Expr* expr;
 	UnaryOp operator : 8;
-	bool widen : 1;
 } ExprUnary;
 
 
@@ -2186,7 +2184,7 @@ Expr *expr_new(ExprKind kind, SourceSpan start);
 Expr *expr_new_const_int(SourceSpan span, Type *type, uint64_t v);
 Expr *expr_new_const_bool(SourceSpan span, Type *type, bool value);
 Expr *expr_new_const_typeid(SourceSpan span, Type *type);
-bool expr_is_simple(Expr *expr);
+bool expr_is_simple(Expr *expr, bool to_float);
 bool expr_is_pure(Expr *expr);
 bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind);
 bool expr_is_compile_time(Expr *ast);
@@ -2203,7 +2201,7 @@ bool expr_may_splat_as_vararg(Expr *expr, Type *variadic_base_type);
 INLINE Expr *expr_new_expr(ExprKind kind, Expr *expr);
 INLINE bool expr_ok(Expr *expr);
 INLINE void expr_resolve_ident(Expr *expr, Decl *decl);
-INLINE bool exprid_is_simple(ExprId expr_id);
+INLINE bool exprid_is_simple(ExprId expr_id, bool to_float);
 INLINE bool exprid_is_pure(ExprId expr_id);
 INLINE Type *exprtype(ExprId expr_id);
 INLINE void expr_replace(Expr *expr, Expr *replacement);
@@ -3152,7 +3150,7 @@ INLINE void expr_replace(Expr *expr, Expr *replacement)
 
 INLINE bool expr_ok(Expr *expr) { return expr == NULL || expr->expr_kind != EXPR_POISONED; }
 
-INLINE bool exprid_is_simple(ExprId expr_id) { return expr_is_simple(exprptr(expr_id)); }
+INLINE bool exprid_is_simple(ExprId expr_id, bool to_float) { return expr_is_simple(exprptr(expr_id), to_float); }
 
 INLINE void expr_resolve_ident(Expr *expr, Decl *decl)
 {

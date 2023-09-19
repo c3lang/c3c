@@ -2,15 +2,15 @@ fn void test()
 {
     int x;
     int y;
-    long z = x * y;
+    long z = (long)x * y;
     z = x / y;
-    z = x + y;
-    z = x - y;
+    z = (long)x + y;
+    z = (long)x - y;
     z = x % y;
-    z = x << y;
-    z = x >> y;
-    z = ~x;
-    z = -x;
+    z = (long)x << y;
+    z = (long)x >> y;
+    z = (long)~x;
+    z = (long)-x;
     int! w;
     z = w ?? 1;
 }
@@ -33,70 +33,64 @@ entry:
   %mul = mul i64 %sext, %sext1
   store i64 %mul, ptr %z, align 8
   %2 = load i32, ptr %x, align 4
-  %sext2 = sext i32 %2 to i64
   %3 = load i32, ptr %y, align 4
-  %sext3 = sext i32 %3 to i64
-  %sdiv = sdiv i64 %sext2, %sext3
-  store i64 %sdiv, ptr %z, align 8
+  %sdiv = sdiv i32 %2, %3
+  %sext2 = sext i32 %sdiv to i64
+  store i64 %sext2, ptr %z, align 8
   %4 = load i32, ptr %x, align 4
-  %sext4 = sext i32 %4 to i64
+  %sext3 = sext i32 %4 to i64
   %5 = load i32, ptr %y, align 4
-  %sext5 = sext i32 %5 to i64
-  %add = add i64 %sext4, %sext5
+  %sext4 = sext i32 %5 to i64
+  %add = add i64 %sext3, %sext4
   store i64 %add, ptr %z, align 8
   %6 = load i32, ptr %x, align 4
-  %sext6 = sext i32 %6 to i64
+  %sext5 = sext i32 %6 to i64
   %7 = load i32, ptr %y, align 4
-  %sext7 = sext i32 %7 to i64
-  %sub = sub i64 %sext6, %sext7
+  %sext6 = sext i32 %7 to i64
+  %sub = sub i64 %sext5, %sext6
   store i64 %sub, ptr %z, align 8
   %8 = load i32, ptr %x, align 4
-  %sext8 = sext i32 %8 to i64
   %9 = load i32, ptr %y, align 4
-  %sext9 = sext i32 %9 to i64
-  %smod = srem i64 %sext8, %sext9
-  store i64 %smod, ptr %z, align 8
+  %smod = srem i32 %8, %9
+  %sext7 = sext i32 %smod to i64
+  store i64 %sext7, ptr %z, align 8
   %10 = load i32, ptr %x, align 4
-  %sext10 = sext i32 %10 to i64
+  %sext8 = sext i32 %10 to i64
   %11 = load i32, ptr %y, align 4
   %zext = zext i32 %11 to i64
-  %shl = shl i64 %sext10, %zext
+  %shl = shl i64 %sext8, %zext
   %12 = freeze i64 %shl
   store i64 %12, ptr %z, align 8
   %13 = load i32, ptr %x, align 4
-  %sext11 = sext i32 %13 to i64
+  %sext9 = sext i32 %13 to i64
   %14 = load i32, ptr %y, align 4
-  %zext12 = zext i32 %14 to i64
-  %ashr = ashr i64 %sext11, %zext12
+  %zext10 = zext i32 %14 to i64
+  %ashr = ashr i64 %sext9, %zext10
   %15 = freeze i64 %ashr
   store i64 %15, ptr %z, align 8
   %16 = load i32, ptr %x, align 4
-  %sext13 = sext i32 %16 to i64
-  %bnot = xor i64 %sext13, -1
-  store i64 %bnot, ptr %z, align 8
+  %bnot = xor i32 %16, -1
+  %sext11 = sext i32 %bnot to i64
+  store i64 %sext11, ptr %z, align 8
   %17 = load i32, ptr %x, align 4
-  %sext14 = sext i32 %17 to i64
   %18 = load i32, ptr %x, align 4
-  %sext15 = sext i32 %18 to i64
-  %neg = sub i64 0, %sext15
-  store i64 %neg, ptr %z, align 8
+  %neg = sub i32 0, %18
+  %sext12 = sext i32 %neg to i64
+  store i64 %sext12, ptr %z, align 8
   store i64 0, ptr %w.f, align 8
   store i32 0, ptr %w, align 4
   %optval = load i64, ptr %w.f, align 8
   %not_err = icmp eq i64 %optval, 0
   %19 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
   br i1 %19, label %after_check, label %else_block
-
 after_check:                                      ; preds = %entry
   %20 = load i32, ptr %w, align 4
-  %sext16 = sext i32 %20 to i64
   br label %phi_block
-
 else_block:                                       ; preds = %entry
   br label %phi_block
-
 phi_block:                                        ; preds = %else_block, %after_check
-  %val = phi i64 [ %sext16, %after_check ], [ 1, %else_block ]
-  store i64 %val, ptr %z, align 8
+  %val = phi i32 [ %20, %after_check ], [ 1, %else_block ]
+  %sext13 = sext i32 %val to i64
+  store i64 %sext13, ptr %z, align 8
   ret void
 }

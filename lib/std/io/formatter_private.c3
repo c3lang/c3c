@@ -193,7 +193,7 @@ fn usz! Formatter.floatformat(&self, FloatFormatting formatting, double y) @priv
 		is_neg = true;
 		y = -y;
 	}
-	int pl = is_neg || self.flags.plus ? 1 : 0;
+	isz pl = is_neg || self.flags.plus ? 1 : 0;
 	// Print inf/nan
 	if (!math::is_finite(y))
 	{

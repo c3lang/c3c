@@ -622,27 +622,6 @@ bool cast_to_index(SemaContext *context, Expr *index)
 	}
 }
 
-bool cast_widen_top_down(SemaContext *context, Expr *expr, Type *type)
-{
-	Type *to = type_no_optional(type);
-	Type *from = type_no_optional(expr->type);
-	RETRY:
-	if (type_is_integer(from) && type_is_integer(to)) goto CONVERT_IF_BIGGER;
-	if (type_is_float(from) && type_is_float(to)) goto CONVERT_IF_BIGGER;
-	if (type_is_integer(from) && type_is_float(to)) goto CONVERT;
-	if (type_flat_is_vector(from) && type_flat_is_vector(to))
-	{
-		to = type_vector_type(to);
-		from = type_vector_type(from);
-		goto RETRY;
-	}
-	return true;
-	CONVERT_IF_BIGGER:
-	if (type_size(to) <= type_size(from)) return true;
-	CONVERT:
-	return cast_implicit(context, expr, type);
-}
-
 Type *cast_numeric_arithmetic_promotion(Type *type)
 {
 	if (!type) return NULL;
@@ -995,6 +974,21 @@ static bool rule_explicit_ok(CastContext *cc, bool is_explicit, bool silent)
 }
 
 
+static bool rule_int_to_float(CastContext *cc, bool is_explicit, bool is_silent)
+{
+	if (is_explicit) return true;
+
+	Expr *expr = cc->expr;
+
+	if (!expr_is_simple(expr, true))
+	{
+		if (is_silent) return false;
+		RETURN_SEMA_ERROR(expr, "This conversion requires an explicit cast to %s, because the widening of the expression may be done in more than one way.",
+		           type_quoted_error_string(cc->to_type));
+	}
+	return true;
+}
+
 static bool rule_widen_narrow(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	if (is_explicit) return true;
@@ -1006,11 +1000,11 @@ static bool rule_widen_narrow(CastContext *cc, bool is_explicit, bool is_silent)
 	// If widening, require simple.
 	if (to_size > from_size)
 	{
-		if (expr_is_simple(cc->expr)) return true;
+		if (expr_is_simple(cc->expr, type_is_float(cc->to))) return true;
 		if (is_silent) return false;
 		{
 			SEMA_ERROR(expr, "This conversion requires an explicit cast to %s, because the widening of the expression may be done in more than one way.",
-					   type_quoted_error_string(cc->to_type));
+			           type_quoted_error_string(cc->to_type));
 		}
 		return false;
 	}
@@ -1023,7 +1017,7 @@ static bool rule_widen_narrow(CastContext *cc, bool is_explicit, bool is_silent)
 			if (cc->to_group != CONV_INT)
 			{
 				RETURN_SEMA_ERROR(expr, "The value '%s' is out of range for %s, so you need an explicit cast to truncate the value.", expr_const_to_error_string(&expr->const_expr),
-				           type_quoted_error_string(cc->to_type));
+				                  type_quoted_error_string(cc->to_type));
 			}
 			sema_error_const_int_out_of_range(expr, expr, cc->to_type);
 		}
@@ -1042,7 +1036,7 @@ static bool rule_widen_narrow(CastContext *cc, bool is_explicit, bool is_silent)
 		if (type_is_integer(type_flatten(problem->type))) expr = problem;
 		// Otherwise require a cast.
 		SEMA_ERROR(expr, "%s cannot implicitly be converted to %s, but you may use a cast.",
-				   type_quoted_error_string(expr->type), type_quoted_error_string(cc->to_type));
+		           type_quoted_error_string(expr->type), type_quoted_error_string(cc->to_type));
 		return false;
 	}
 	return true;
@@ -1868,6 +1862,7 @@ static void cast_typeid_to_bool(Expr *expr, Type *to_type)
 #define REXPL &rule_explicit_ok           /* Is explicit                                                                                       */
 #define _NA__ &rule_not_applicable        /* "Not applicable" - should not be seen.                                                            */
 #define RIFIF &rule_widen_narrow          /* Widen / narrow conversion of int/float                                                            */
+#define RINFL &rule_int_to_float          /* Simple expressions, check sizes                                                                   */
 #define ROKOK &rule_all_ok                /* Always works                                                                                      */
 #define RINPT &rule_int_to_ptr            /* Int -> ptr (explicit + size match)                                                                */
 #define RPTIN &rule_ptr_to_int            /* Ptr -> int (explicit + size match)                                                                */
@@ -1897,7 +1892,7 @@ CastRule cast_rules[CONV_LAST + 1][CONV_LAST + 1] = {
  {_NA__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // VOID    (from)
  {ROKOK, _NA__, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, _NO__}, // WILDCARD
  {REXPL, _NO__, _NA__, REXPL, REXPL, _NO__, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // BOOL
- {REXPL, _NO__, REXPL, RIFIF, ROKOK, RINPT, _NO__, ROKOK, RINBS, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, RINEN, _NO__, _NO__, RINPT, RINPT, _NO__}, // INT
+ {REXPL, _NO__, REXPL, RIFIF, RINFL, RINPT, _NO__, ROKOK, RINBS, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, RINEN, _NO__, _NO__, RINPT, RINPT, _NO__}, // INT
  {REXPL, _NO__, REXPL, REXPL, RIFIF, _NO__, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // FLOAT
  {REXPL, _NO__, REXPL, RPTIN, _NO__, RPTPT, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, _NO__, _NO__, _NO__, _NO__, ROKOK, RPTPT, RPTFE}, // PTR
  {REXPL, _NO__, REXPL, _NO__, _NO__, RSAPT, RSASA, RSAVA, _NO__, RXXDI, RSAVA, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, RSAPT, RSAFE}, // SARRAY

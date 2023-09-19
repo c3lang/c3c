@@ -768,7 +768,7 @@ bool expr_is_pure(Expr *expr)
 }
 
 
-bool expr_is_simple(Expr *expr)
+bool expr_is_simple(Expr *expr, bool to_float)
 {
 	RETRY:
 	switch (expr->expr_kind)
@@ -777,7 +777,7 @@ bool expr_is_simple(Expr *expr)
 			expr = expr->inner_expr;
 			goto RETRY;
 		case EXPR_TERNARY:
-			return expr_is_simple(exprptr(expr->ternary_expr.else_expr)) && expr_is_simple(exprptr(expr->ternary_expr.then_expr));
+			return exprid_is_simple(expr->ternary_expr.else_expr, to_float) && exprid_is_simple(expr->ternary_expr.then_expr, to_float);
 		case EXPR_RETHROW:
 			expr = expr->rethrow_expr.inner;
 			goto RETRY;
@@ -786,6 +786,12 @@ bool expr_is_simple(Expr *expr)
 		case EXPR_BINARY:
 			switch (expr->binary_expr.operator)
 			{
+				case BINARYOP_DIV:
+					if (to_float) return false;
+					FALLTHROUGH;
+				case BINARYOP_MOD:
+				case BINARYOP_ELSE:
+					return exprid_is_simple(expr->binary_expr.left, to_float) && exprid_is_simple(expr->binary_expr.right, to_float);
 				case BINARYOP_AND:
 				case BINARYOP_OR:
 				case BINARYOP_GT:
@@ -806,6 +812,9 @@ bool expr_is_simple(Expr *expr)
 				case BINARYOP_SHL_ASSIGN:
 				case BINARYOP_SUB_ASSIGN:
 					return true;
+				case BINARYOP_SHL:
+				case BINARYOP_SHR:
+					return to_float;
 				default:
 					return false;
 			}
@@ -813,8 +822,9 @@ bool expr_is_simple(Expr *expr)
 		case EXPR_UNARY:
 			switch (expr->unary_expr.operator)
 			{
-				case UNARYOP_NEG:
 				case UNARYOP_BITNEG:
+					return to_float;
+				case UNARYOP_NEG:
 					return false;
 				default:
 					return true;
