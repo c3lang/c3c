@@ -448,7 +448,8 @@ typedef struct VarDecl_
 	bool is_addr : 1;
 	bool is_threadlocal : 1;
 	bool no_init : 1;
-	TypeInfo *type_info;
+	bool bit_is_expr : 1;
+	TypeInfoId type_info;
 	union
 	{
 		Expr *init_expr;
@@ -1934,7 +1935,12 @@ ARENA_DEF(decl, Decl)
 ARENA_DEF(type_info, TypeInfo)
 
 
-INLINE Type *typeinfotype(TypeInfoId id_)
+INLINE TypeInfo *vartype(Decl *var)
+{
+	return type_infoptrzero(var->var.type_info);
+}
+
+INLINE Type *typeget(TypeInfoId id_)
 {
 	return id_ ? type_infoptr(id_)->type : NULL;
 }
@@ -2810,6 +2816,12 @@ INLINE TypeInfo *type_info_new_base(Type *type, SourceSpan span)
 	type_info->type = type;
 	type_info->span = span;
 	return type_info;
+}
+
+
+INLINE TypeInfoId type_info_id_new_base(Type *type, SourceSpan span)
+{
+	return type_infoid(type_info_new_base(type, span));
 }
 
 INLINE Type *type_new(TypeKind kind, const char *name)

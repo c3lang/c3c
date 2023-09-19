@@ -1049,7 +1049,7 @@ static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType 
 			return false;
 		}
 		// TODO document
-		if (!decl->var.unwrap && cast_to_bool && cast_to_bool_kind(decl->var.type_info->type) == CAST_ERROR)
+		if (!decl->var.unwrap && cast_to_bool && cast_to_bool_kind(typeget(decl->var.type_info)) == CAST_ERROR)
 		{
 			SEMA_ERROR(last->decl_expr->var.init_expr, "The expression needs to be convertible to a boolean.");
 			return false;
@@ -1350,7 +1350,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 			}
 			assert(size >= 0);
 
-			TypeInfo *variable_type_info = var->var.type_info;
+			TypeInfo *variable_type_info = vartype(var);
 
 			if (!variable_type_info)
 			{
@@ -1360,7 +1360,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 			// First infer the type of the variable.
 			if (!sema_resolve_type_info(context, variable_type_info)) return false;
 			// And create the inferred type:
-			inferred_type = type_get_array(var->var.type_info->type, (ArraySize)size);
+			inferred_type = type_get_array(variable_type_info->type, (ArraySize)size);
 		}
 
 		// because we don't want the index + variable to move into the internal scope
@@ -1439,17 +1439,19 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	}
 
 
+	TypeInfo *type_info = vartype(var);
 	// Set up the value, assigning the type as needed.
 	// Element *value @noinit
-	if (!var->var.type_info)
+	if (!type_info)
 	{
-		var->var.type_info = type_info_new_base(value_type, var->span);
+		type_info = type_info_new_base(value_type, var->span);
+		var->var.type_info = type_infoid(type_info);
 	}
-	if (!sema_resolve_type_info(context, var->var.type_info)) return false;
+	if (!sema_resolve_type_info(context, type_info)) return false;
 
-	if (type_is_optional(var->var.type_info->type))
+	if (type_is_optional(type_info->type))
 	{
-		SEMA_ERROR(var->var.type_info, "The variable may not be an optional.");
+		SEMA_ERROR(type_info, "The variable may not be an optional.");
 		return false;
 	}
 
@@ -1457,17 +1459,22 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	Type *index_var_type = NULL;
 	if (index)
 	{
-		if (!index->var.type_info) index->var.type_info = type_info_new_base(index_type, enumerator->span);
-		if (!sema_resolve_type_info(context, index->var.type_info)) return false;
-		index_var_type = index->var.type_info->type;
+		TypeInfo *idx_type_info = vartype(index);
+		if (!idx_type_info)
+		{
+			idx_type_info = type_info_new_base(index_type, enumerator->span);
+			index->var.type_info = type_infoid(idx_type_info);
+		}
+		if (!sema_resolve_type_info(context, idx_type_info)) return false;
+		index_var_type = idx_type_info->type;
 		if (type_is_optional(index_var_type))
 		{
-			SEMA_ERROR(index->var.type_info, "The index may not be an optional.");
+			SEMA_ERROR(idx_type_info, "The index may not be an optional.");
 			return false;
 		}
 		if (!type_is_integer(type_flatten(index_var_type)))
 		{
-			SEMA_ERROR(index->var.type_info,
+			SEMA_ERROR(idx_type_info,
 					   "Index must be an integer type, '%s' is not valid.",
 					   type_to_error_string(index_var_type));
 			return false;
@@ -3060,8 +3067,8 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 
 		Signature any_sig = any->func_decl.signature;
 		Signature this_sig = func->func_decl.signature;
-		Type *any_rtype = typeinfotype(any_sig.rtype);
-		Type *this_rtype = typeinfotype(this_sig.rtype);
+		Type *any_rtype = typeget(any_sig.rtype);
+		Type *this_rtype = typeget(this_sig.rtype);
 		if (any_rtype->canonical != this_rtype->canonical)
 		{
 			SEMA_ERROR(type_infoptr(this_sig.rtype), "The prototype method has a return type %s, but this function returns %s, they need to match.",
@@ -3093,9 +3100,9 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 			if (i == 0) continue;
 			if (param->type->canonical != any_params[i]->type->canonical)
 			{
-				SEMA_ERROR(param->var.type_info, "The prototype argument has type %s, but in this function it has type %s. Please make them match.",
+				SEMA_ERROR(vartype(param), "The prototype argument has type %s, but in this function it has type %s. Please make them match.",
 						   type_quoted_error_string(any_params[i]->type), type_quoted_error_string(param->type));
-				SEMA_NOTE(any_params[i]->var.type_info, "The interface definition is here.");
+				SEMA_NOTE(vartype(any_params[i]), "The interface definition is here.");
 				return false;
 			}
 

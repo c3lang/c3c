@@ -128,7 +128,7 @@ static void llvm_emit_decl_expr_list(GenContext *context, BEValue *be_value, Exp
 	llvm_emit_expr(context, be_value, last);
 	if (last->expr_kind == EXPR_DECL)
 	{
-		type = last->decl_expr->var.type_info->type;
+		type = typeget(last->decl_expr->var.type_info);
 
 		LLVMValueRef decl_value = llvm_get_ref(context, last->decl_expr);
 		if (bool_cast && last->decl_expr->var.unwrap)

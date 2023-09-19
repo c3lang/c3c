@@ -198,7 +198,7 @@ Decl *decl_new_var(const char *name, SourceSpan loc, TypeInfo *type, VarDeclKind
 {
 	Decl *decl = decl_new(DECL_VAR, name, loc);
 	decl->var.kind = kind;
-	decl->var.type_info = type;
+	decl->var.type_info = type ? type_infoid(type) : 0;
 	return decl;
 }
 
@@ -212,7 +212,7 @@ Decl *decl_new_generated_var(Type *type, VarDeclKind kind, SourceSpan span)
 	decl->type = type;
 	decl->alignment = type ? type_alloca_alignment(type) : 0;
 	assert(!type || !type_is_user_defined(type) || type->decl->resolve_status == RESOLVE_DONE);
-	decl->var.type_info = type_info_new_base(type, span);
+	decl->var.type_info = type_info_id_new_base(type, span);
 	decl->resolve_status = RESOLVE_DONE;
 	return decl;
 }

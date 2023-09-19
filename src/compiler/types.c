@@ -598,7 +598,7 @@ bool type_func_match(Type *fn_type, Type *rtype, unsigned arg_count, ...)
 {
 	assert(type_is_func_ptr(fn_type));
 	Signature *sig = fn_type->pointer->function.signature;
-	if (rtype->canonical != typeinfotype(sig->rtype)->canonical) return false;
+	if (rtype->canonical != typeget(sig->rtype)->canonical) return false;
 	if (vec_size(sig->params) != arg_count) return false;
 	va_list ap;
 	va_start(ap, arg_count);
@@ -1378,7 +1378,7 @@ static inline Type *func_create_new_func_proto(Signature *sig, CallABI abi, uint
 		{
 			Decl *decl = decl_copy(sig->params[i]);
 			decl->type = decl->type->canonical;
-			decl->var.type_info = NULL;
+			decl->var.type_info = 0;
 			decl->var.init_expr = NULL;
 			decl->name = NULL;
 			vec_add(param_types, decl->type);

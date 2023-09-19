@@ -168,6 +168,7 @@
 - Added posix socket functions.
 
 ### Fixes
+- Reevaluating a bitstruct (due to checked) would break.
 - Fix missing comparison between `any`.
 - Fix issue of designated initializers containing bitstructs.
 - Fix issue of designated initializers that had optional arguments.

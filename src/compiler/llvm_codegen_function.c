@@ -718,7 +718,7 @@ void llvm_emit_dynamic_functions(GenContext *c, Decl **funcs)
 	LLVMPositionBuilderAtEnd(builder, entry);
 	LLVMBasicBlockRef last_block = entry;
 	FOREACH_BEGIN(Decl *decl, funcs)
-		Type *type = typeinfotype(decl->func_decl.type_parent);
+		Type *type = typeget(decl->func_decl.type_parent);
 		scratch_buffer_clear();
 		scratch_buffer_append("$ct.dyn.");
 		scratch_buffer_append(decl_get_extname(decl));

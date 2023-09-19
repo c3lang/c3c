@@ -1369,7 +1369,7 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 			return false;
 		}
 		Decl *param = decl_new_var(name, span, type, param_kind);
-		param->var.type_info = type;
+		param->var.type_info = type ? type_infoid(type) : 0;
 		if (!parse_attributes(c, &param->attributes, NULL, NULL, NULL)) return false;
 		if (!no_name)
 		{
@@ -1593,6 +1593,7 @@ static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl)
 		}
 		CONSUME_OR_RET(TOKEN_COLON, false);
 		ASSIGN_EXPR_OR_RET(member_decl->var.start, parse_constant_expr(c), false);
+		member_decl->var.bit_is_expr = true;
 		if (try_consume(c, TOKEN_DOTDOT))
 		{
 			ASSIGN_EXPR_OR_RET(member_decl->var.end, parse_constant_expr(c), false);

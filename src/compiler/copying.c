@@ -911,7 +911,6 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			MACRO_COPY_DECL_LIST(copy->bitstruct.members);
 			MACRO_COPY_TYPE(copy->bitstruct.base_type);
 			MACRO_COPY_DECL_LIST(copy->methods);
-			MACRO_COPY_DECL_LIST(copy->methods);
 			break;
 		case DECL_ENUM:
 		case DECL_FAULT:
@@ -932,14 +931,22 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			MACRO_COPY_ASTID(copy->func_decl.body);
 			break;
 		case DECL_VAR:
-			MACRO_COPY_TYPE(copy->var.type_info);
-			if (copy->var.kind == VARDECL_UNWRAPPED)
+			MACRO_COPY_TYPEID(copy->var.type_info);
+			switch (copy->var.kind)
 			{
-				MACRO_COPY_DECL(copy->var.alias);
-			}
-			else
-			{
-				MACRO_COPY_EXPR(copy->var.init_expr);
+				case VARDECL_UNWRAPPED:
+					MACRO_COPY_DECL(copy->var.alias);
+					break;
+				case VARDECL_BITMEMBER:
+					if (copy->var.bit_is_expr)
+					{
+						MACRO_COPY_EXPR(copy->var.start);
+						MACRO_COPY_EXPR(copy->var.end);
+					}
+					break;
+				default:
+					MACRO_COPY_EXPR(copy->var.init_expr);
+					break;
 			}
 			break;
 		case DECL_LABEL:

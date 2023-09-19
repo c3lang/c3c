@@ -549,7 +549,7 @@ static void sema_trace_func_liveness(Signature *sig)
 	FOREACH_BEGIN(Decl *param, sig->params)
 		sema_trace_decl_liveness(param);
 	FOREACH_END();
-	sema_trace_type_liveness(typeinfotype(sig->rtype));
+	sema_trace_type_liveness(typeget(sig->rtype));
 }
 
 static void sema_trace_decl_liveness(Decl *decl)

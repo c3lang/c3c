@@ -188,7 +188,7 @@ static inline void emit_func_data(FILE *file, Module *module, Decl *func)
 		fprintf(file, "\t\t\t\t\t\"type\": \"");
 		if (decl->var.type_info)
 		{
-			print_type(file, decl->var.type_info);
+			print_type(file, type_infoptr(decl->var.type_info));
 		}
 		else
 		{

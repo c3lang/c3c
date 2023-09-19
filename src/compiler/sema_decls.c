@@ -184,8 +184,8 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 		case DECL_VAR:
 			assert(decl->var.kind == VARDECL_MEMBER);
 			decl->resolve_status = RESOLVE_RUNNING;
-			if (!sema_resolve_type_info_maybe_inferred(context, decl->var.type_info, true)) return decl_poison(decl);
-			decl->type = decl->var.type_info->type;
+			if (!sema_resolve_type_info_maybe_inferred(context, type_infoptrzero(decl->var.type_info), true)) return decl_poison(decl);
+			decl->type = typeget(decl->var.type_info);
 			decl->resolve_status = RESOLVE_DONE;
 			Type *member_type = type_flatten(decl->type);
 			if (member_type->type_kind == TYPE_ARRAY)
@@ -517,6 +517,7 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *par
 		return true;
 	}
 
+	TypeInfo *type_info = type_infoptr(member->var.type_info);
 	if (member->resolve_status == RESOLVE_RUNNING)
 	{
 		RETURN_SEMA_ERROR(member, "Circular dependency resolving member.");
@@ -541,8 +542,8 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *par
 	bool is_consecutive = parent->bitstruct.consecutive;
 
 	// Resolve the type.
-	if (!sema_resolve_type_info(context, member->var.type_info)) return false;
-	member->type = member->var.type_info->type;
+	if (!sema_resolve_type_info(context, type_info)) return false;
+	member->type = type_info->type;
 
 	// Flatten the distinct and enum types.
 	Type *member_type = type_flatten_for_bitstruct(member->type);
@@ -550,7 +551,7 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *par
 	// Only accept (flattened) integer and bool types
 	if (!type_is_integer(member_type) && member_type != type_bool)
 	{
-		SEMA_ERROR(member->var.type_info, "%s is not supported in a bitstruct, only enums, integer and boolean values may be used.",
+		SEMA_ERROR(type_info, "%s is not supported in a bitstruct, only enums, integer and boolean values may be used.",
 				   type_quoted_error_string(member->type));
 		return false;
 	}
@@ -571,9 +572,10 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *par
 
 	if (is_consecutive)
 	{
+		assert(!member->var.bit_is_expr && "Should always me inferred");
 		if (member_type != type_bool)
 		{
-			SEMA_ERROR(member->var.type_info, "For bitstructs without bit ranges, the types must all be 'bool'.");
+			SEMA_ERROR(type_info, "For bitstructs without bit ranges, the types must all be 'bool'.");
 			return false;
 		}
 		start_bit = end_bit = member->var.start_bit;
@@ -585,61 +587,67 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *par
 		goto AFTER_BIT_CHECK;
 	}
 
-	Expr *start = member->var.start;
-	if (!sema_analyse_expr(context, start)) return false;
-
-	// Check for negative, non integer or non const values.
-	if (!expr_is_const(start) || !type_is_integer(start->type) || int_is_neg(start->const_expr.ixx))
+	if (member->var.bit_is_expr)
 	{
-		SEMA_ERROR(start, "This must be a constant non-negative integer value.");
-		return false;
-	}
-
-	// Check that we didn't exceed max bits.
-	if (int_comp(start->const_expr.ixx, max_bits, BINARYOP_GE))
-	{
-		SEMA_ERROR(start, "Expected at the most a bit index of %d\n", bits - 1);
-		return false;
-	}
-
-	end_bit = start_bit = (unsigned)start->const_expr.ixx.i.low;
-
-	// Handle the end
-	Expr *end = member->var.end;
-	if (end)
-	{
-		// Analyse the end
+		Expr *start = member->var.start;
 		if (!sema_analyse_expr(context, start)) return false;
-		if (!expr_is_const(end) || !type_is_integer(end->type) || int_is_neg(end->const_expr.ixx))
+
+		// Check for negative, non integer or non const values.
+		if (!expr_is_const(start) || !type_is_integer(start->type) || int_is_neg(start->const_expr.ixx))
 		{
-			SEMA_ERROR(end, "This must be a constant non-negative integer value.");
+			SEMA_ERROR(start, "This must be a constant non-negative integer value.");
 			return false;
 		}
-		if (int_comp(end->const_expr.ixx, max_bits, BINARYOP_GE))
+
+		// Check that we didn't exceed max bits.
+		if (int_comp(start->const_expr.ixx, max_bits, BINARYOP_GE))
 		{
-			SEMA_ERROR(end, "Expected at the most a bit index of %d.", bits - 1);
+			SEMA_ERROR(start, "Expected at the most a bit index of %d\n", bits - 1);
 			return false;
 		}
-		end_bit = (unsigned)end->const_expr.ixx.i.low;
+
+		end_bit = start_bit = (unsigned)start->const_expr.ixx.i.low;
+
+		// Handle the end
+		Expr *end = member->var.end;
+		if (end)
+		{
+			// Analyse the end
+			if (!sema_analyse_expr(context, start)) return false;
+			if (!expr_is_const(end) || !type_is_integer(end->type) || int_is_neg(end->const_expr.ixx))
+			{
+				SEMA_ERROR(end, "This must be a constant non-negative integer value.");
+				return false;
+			}
+			if (int_comp(end->const_expr.ixx, max_bits, BINARYOP_GE))
+			{
+				SEMA_ERROR(end, "Expected at the most a bit index of %d.", bits - 1);
+				return false;
+			}
+			end_bit = (unsigned)end->const_expr.ixx.i.low;
+		}
+		else
+		{
+			// No end bit, this is only ok if the type is bool, otherwise a range is needed.
+			// This prevents confusion with C style bits.
+			if (member_type->type_kind != TYPE_BOOL)
+			{
+				SEMA_ERROR(member, "Only booleans may use non-range indices, try using %d..%d instead.", start_bit, start_bit);
+				return false;
+			}
+		}
+		// Check that we actually have a positive range.
+		if (start_bit > end_bit)
+		{
+			SEMA_ERROR(start, "The start bit must be smaller than the end bit index.");
+			return false;
+		}
 	}
 	else
 	{
-		// No end bit, this is only ok if the type is bool, otherwise a range is needed.
-		// This prevents confusion with C style bits.
-		if (member_type->type_kind != TYPE_BOOL)
-		{
-			SEMA_ERROR(member, "Only booleans may use non-range indices, try using %d..%d instead.", start_bit, start_bit);
-			return false;
-		}
+		start_bit = member->var.start_bit;
+		end_bit = member->var.end_bit;
 	}
-
-	// Check that we actually have a positive range.
-	if (start_bit > end_bit)
-	{
-		SEMA_ERROR(start, "The start bit must be smaller than the end bit index.");
-		return false;
-	}
-
 
 	// Check how many bits we need.
 	TypeSize bitsize_type = member_type == type_bool ? 1 : type_size(member_type) * 8;
@@ -658,6 +666,7 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *par
 	// Store the bits.
 	member->var.start_bit = start_bit;
 	member->var.end_bit = end_bit;
+	member->var.bit_is_expr = false;
 
 AFTER_BIT_CHECK:
 	// Check for overlap
@@ -789,7 +798,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 			default:
 				goto CHECK_PARAMS;
 		}
-		param->var.type_info = type_info_new_base(inferred_type, param->span);
+		param->var.type_info = type_info_id_new_base(inferred_type, param->span);
 	}
 
 	CHECK_PARAMS:
@@ -826,17 +835,18 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		param->unit = context->unit;
 		assert(param->decl_kind == DECL_VAR);
 		VarDeclKind var_kind = param->var.kind;
-		if (param->var.type_info)
+		TypeInfo *type_info = type_infoptrzero(param->var.type_info);
+		if (type_info)
 		{
-			if (!sema_resolve_type_info_maybe_inferred(context, param->var.type_info, is_macro)) return decl_poison(param);
-			param->type = param->var.type_info->type;
+			if (!sema_resolve_type_info_maybe_inferred(context, type_info, is_macro)) return decl_poison(param);
+			param->type = type_info->type;
 		}
 		switch (var_kind)
 		{
 			case VARDECL_PARAM_REF:
-				if (param->var.type_info && !type_is_pointer(param->type))
+				if (type_info && !type_is_pointer(param->type))
 				{
-					SEMA_ERROR(param->var.type_info, "A pointer type was expected for a ref argument, did you mean %s?",
+					RETURN_SEMA_ERROR(type_info, "A pointer type was expected for a ref argument, did you mean %s?",
 							   type_quoted_error_string(type_get_ptr(param->type)));
 					return decl_poison(param);
 				}
@@ -870,9 +880,9 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 				assert(!erase_decl);
 				break;
 			case VARDECL_PARAM_CT_TYPE:
-				if (param->var.type_info)
+				if (type_info)
 				{
-					SEMA_ERROR(param->var.type_info, "A compile time type parameter cannot have a type itself.");
+					SEMA_ERROR(type_info, "A compile time type parameter cannot have a type itself.");
 					return decl_poison(param);
 				}
 				if (!is_macro)
@@ -900,7 +910,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 				SEMA_ERROR(param, "Only regular parameters may be vararg.");
 				return decl_poison(param);
 			}
-			if (!param->var.type_info)
+			if (!type_info)
 			{
 				SEMA_ERROR(param, "Only typed parameters may be vararg.");
 				return decl_poison(param);
@@ -914,12 +924,11 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 					return decl_poison(param);
 				}
 			}
-			param->var.type_info->type = type_get_subarray(param->var.type_info->type);
+			type_info->type = type_get_subarray(type_info->type);
 		}
 
-		if (param->var.type_info)
+		if (type_info)
 		{
-			TypeInfo *type_info = param->var.type_info;
 			if (!sema_resolve_type_structure(context, type_info->type, type_info->span)) return false;
 
 			param->type = type_info->type;
@@ -1075,12 +1084,13 @@ static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param, bo
 		SEMA_ERROR(param->attributes[0], "There are no valid attributes for associated values.");
 		return false;
 	}
-	if (!sema_resolve_type_info(context, param->var.type_info)) return false;
+	TypeInfo *type_info = type_infoptrzero(param->var.type_info);
+	if (!sema_resolve_type_info(context, type_info)) return false;
 	if (param->var.vararg)
 	{
-		param->var.type_info->type = type_get_subarray(param->var.type_info->type);
+		type_info->type = type_get_subarray(type_info->type);
 	}
-	param->type = param->var.type_info->type;
+	param->type = type_info->type;
 	assert(param->name);
 	if (param->name == kw_nameof)
 	{
@@ -2615,7 +2625,8 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 		decl_set_external_name(decl);
 	}
 
-	bool is_any_interface = decl->func_decl.attr_interface && decl->func_decl.type_parent && type_is_any(typeinfotype(decl->func_decl.type_parent));
+	bool is_any_interface = decl->func_decl.attr_interface && decl->func_decl.type_parent && type_is_any(
+			typeget(decl->func_decl.type_parent));
 	// Do we have fn void any.foo(void*) { ... }?
 	if (decl->func_decl.body && is_any_interface) RETURN_SEMA_ERROR(decl, "Interface methods declarations may not have a body.");
 	if (!decl->func_decl.body && !decl->is_extern && !decl->unit->is_interface_file && !is_any_interface)
@@ -2723,10 +2734,11 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *er
 		Decl *param = body_parameters[i];
 		param->resolve_status = RESOLVE_RUNNING;
 		assert(param->decl_kind == DECL_VAR);
+		TypeInfo *type_info = type_infoptrzero(param->var.type_info);
 		switch (param->var.kind)
 		{
 			case VARDECL_PARAM:
-				if (param->var.type_info && !sema_resolve_type_info(context, param->var.type_info)) return decl_poison(decl);
+				if (type_info && !sema_resolve_type_info(context, type_info)) return decl_poison(decl);
 				break;
 			case VARDECL_PARAM_EXPR:
 			case VARDECL_PARAM_CT:
@@ -2810,13 +2822,14 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 {
 	Expr *init;
 	assert(decl->decl_kind == DECL_VAR);
+	TypeInfo *type_info = vartype(decl);
 	switch (decl->var.kind)
 	{
 		case VARDECL_LOCAL_CT_TYPE:
 			// Locally declared compile time type.
-			if (decl->var.type_info)
+			if (type_info)
 			{
-				SEMA_ERROR(decl->var.type_info, "Compile time type variables may not have a type.");
+				SEMA_ERROR(type_info, "Compile time type variables may not have a type.");
 				goto FAIL;
 			}
 			if ((init = decl->var.init_expr))
@@ -2830,10 +2843,10 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 			}
 			break;
 		case VARDECL_LOCAL_CT:
-			if (decl->var.type_info && !sema_resolve_type_info(context, decl->var.type_info)) goto FAIL;
-			if (decl->var.type_info)
+			if (type_info && !sema_resolve_type_info(context, type_info)) goto FAIL;
+			if (type_info)
 			{
-				decl->type = decl->var.type_info->type->canonical;
+				decl->type = type_info->type->canonical;
 				init = decl->var.init_expr;
 				if (!init)
 				{
@@ -2896,9 +2909,10 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 			break;
 	}
 
+	TypeInfo *type_info = vartype(decl);
 	// We expect a constant to actually be parsed correctly so that it has a value, so
 	// this should always be true.
-	assert(decl->var.type_info || decl->var.init_expr);
+	assert(type_info || decl->var.init_expr);
 
 	if (is_global)
 	{
@@ -2930,7 +2944,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 		return true;
 	}
 	// 1. Local or global constants: const int FOO = 123.
-	if (!decl->var.type_info)
+	if (!type_info)
 	{
 		Expr *init_expr = decl->var.init_expr;
 		// 1a. We require an init expression.
@@ -2946,7 +2960,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 			return decl_poison(decl);
 		}
 		assert(!decl->var.no_init);
-		if (!decl->var.type_info)
+		if (!type_info)
 		{
 			if (!sema_analyse_expr(context, init_expr)) return decl_poison(decl);
 			if (is_global && !expr_is_constant_eval(init_expr, CONSTANT_EVAL_GLOBAL_INIT))
@@ -2989,15 +3003,15 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 		}
 	}
 
-	if (!sema_resolve_type_info_maybe_inferred(context, decl->var.type_info, decl->var.init_expr != NULL)) return decl_poison(decl);
+	if (!sema_resolve_type_info_maybe_inferred(context, type_info, decl->var.init_expr != NULL)) return decl_poison(decl);
 
-	Type *type = decl->type = decl->var.type_info->type;
-	if (!sema_analyse_decl_type(context, decl->type, decl->var.type_info->span)) return decl_poison(decl);
+	Type *type = decl->type = type_info->type;
+	if (!sema_analyse_decl_type(context, decl->type, type_info->span)) return decl_poison(decl);
 
 	if (type) type = type_no_optional(type);
 	if (type_is_user_defined(type))
 	{
-		sema_display_deprecated_warning_on_use(context, type->decl, decl->var.type_info->span);
+		sema_display_deprecated_warning_on_use(context, type->decl, type_info->span);
 	}
 
 	bool is_static = decl->var.is_static;
@@ -3018,7 +3032,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 	bool infer_len = type_len_is_inferred(decl->type);
 	if (!decl->var.init_expr && infer_len)
 	{
-		SEMA_ERROR(decl->var.type_info, "The length cannot be inferred without an initializer.");
+		SEMA_ERROR(type_info, "The length cannot be inferred without an initializer.");
 		return decl_poison(decl);
 	}
 	if (decl->var.init_expr)

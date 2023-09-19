@@ -1842,7 +1842,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 				Expr *literal = expr_new(EXPR_COMPOUND_LITERAL, exprs ? exprs[0]->span : param->span);
 				Expr *initializer_list = expr_new_expr(EXPR_INITIALIZER_LIST, literal);
 				initializer_list->initializer_list = exprs;
-				literal->expr_compound_literal.type_info = param->var.type_info;
+				literal->expr_compound_literal.type_info = vartype(param);
 				literal->expr_compound_literal.initializer = initializer_list;
 				if (!sema_analyse_expr(context, args[i] = literal)) return false;
 			}
@@ -1876,17 +1876,17 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 			SEMA_ERROR(body_arg, "Expected a type parameter before this variable name.");
 			return false;
 		}
-		if (!sema_resolve_type_info(context, body_arg->var.type_info)) return false;
-		body_arg->type = body_arg->var.type_info->type;
-		if (body_param->var.type_info)
+		TypeInfo *type_info = vartype(body_arg);
+		if (!sema_resolve_type_info(context, type_info)) return false;
+		body_arg->type = type_info->type;
+		if (type_info)
 		{
-			Type *declare_type = body_param->var.type_info->type->canonical;
+			Type *declare_type = type_info->type->canonical;
 			if (declare_type != body_arg->type->canonical)
 			{
-				SEMA_ERROR(body_arg->var.type_info, "This parameter should be %s but was %s",
-						   type_quoted_error_string(declare_type),
-						   type_quoted_error_string(body_arg->type));
-				return false;
+				RETURN_SEMA_ERROR(type_info, "This parameter should be %s but was %s",
+				                  type_quoted_error_string(declare_type),
+				                  type_quoted_error_string(body_arg->type));
 			}
 		}
 		if (!body_arg->alignment)
@@ -1906,7 +1906,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	macro_context.compilation_unit = context->unit;
 	macro_context.macro_call_depth = context->macro_call_depth + 1;
 	macro_context.call_env = context->call_env;
-	rtype = typeinfotype(sig->rtype);
+	rtype = typeget(sig->rtype);
 	macro_context.expected_block_type = rtype;
 	bool optional_return = rtype && type_is_optional(rtype);
 	bool may_be_optional = !rtype || optional_return;
@@ -6471,7 +6471,7 @@ static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr)
 	if (context->active_scope.flags & (SCOPE_EXPR_BLOCK | SCOPE_MACRO))
 	{
 		TypeInfoId rtype = context->active_scope.flags & SCOPE_MACRO ? context->current_macro->func_decl.signature.rtype : 0;
-		if (rtype && !type_is_optional(typeinfotype(rtype)))
+		if (rtype && !type_is_optional(typeget(rtype)))
 		{
 			RETURN_SEMA_ERROR(expr, "Rethrow is only allowed in macros with an optional or inferred return type. "
 									"Did you mean to use '!!' instead?");
@@ -7210,9 +7210,9 @@ static inline bool sema_expr_analyse_ct_checks(SemaContext *context, Expr *expr)
 static inline bool sema_may_reuse_lambda(SemaContext *context, Decl *lambda, Type **types)
 {
 	Signature *sig = &lambda->func_decl.signature;
-	if (typeinfotype(sig->rtype)->canonical != types[0]) return false;
+	if (typeget(sig->rtype)->canonical != types[0]) return false;
 	FOREACH_BEGIN_IDX(i, Decl *param, sig->params)
-		TypeInfo *info = param->var.type_info;
+		TypeInfo *info = vartype(param);
 		if (info->type->canonical != types[i + 1]) return false;
 	FOREACH_END();
 	return true;
@@ -7279,9 +7279,9 @@ static inline Decl *sema_find_cached_lambda(SemaContext *context, Type *func_typ
 	Type *types[200];
 	types[0] = rtype;
 	FOREACH_BEGIN_IDX(i, Decl *param, sig->params)
-		TypeInfo *info = param->var.type_info;
+		TypeInfo *info = vartype(param);
 		if (!info) return NULL;
-		Type *type = sema_evaluate_type_copy(context, param->var.type_info);
+		Type *type = sema_evaluate_type_copy(context, info);
 		if (!type) return NULL;
 		assert(i < 198);
 		types[i + 1] = type;
@@ -7425,7 +7425,7 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 	if (!sig->rtype)
 	{
 		if (!to_sig) goto FAIL_NO_INFER;
-		sig->rtype = type_infoid(type_info_new_base(typeinfotype(to_sig->rtype), expr->span));
+		sig->rtype = type_info_id_new_base(typeget(to_sig->rtype), expr->span);
 	}
 	if (to_sig && vec_size(to_sig->params) != vec_size(sig->params))
 	{
@@ -7435,7 +7435,7 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 	FOREACH_BEGIN_IDX(i, Decl *param, sig->params)
 		if (param->var.type_info) continue;
 		if (!to_sig) goto FAIL_NO_INFER;
-		param->var.type_info = type_info_new_base(to_sig->params[i]->type, param->span);
+		param->var.type_info = type_info_id_new_base(to_sig->params[i]->type, param->span);
 	FOREACH_END();
 	CompilationUnit *unit = decl->unit = context->unit;
 	assert(!decl->name);

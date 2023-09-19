@@ -163,7 +163,7 @@ static void header_gen_function_ptr(FILE *file, HTable *table, Type *type)
 {
 	TypeFunction *fun = &type_flatten(type)->pointer->function;
 	Signature *sig = fun->signature;
-	Type *rtype = typeinfotype(sig->rtype);
+	Type *rtype = typeget(sig->rtype);
 	Type *extra_ret = NULL;
 	if (type_is_optional(rtype))
 	{
@@ -202,7 +202,7 @@ static void header_gen_function(FILE *file, FILE *file_types, HTable *table, Dec
 	if (!decl->is_export) return;
 	Signature *sig = &decl->func_decl.signature;
 	OUTPUT("extern ");
-	Type *rtype = typeinfotype(sig->rtype);
+	Type *rtype = typeget(sig->rtype);
 	Type *extra_ret = NULL;
 	if (type_is_optional(rtype))
 	{
