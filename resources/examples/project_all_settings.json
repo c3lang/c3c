@@ -4,7 +4,7 @@
   // Warnings used for all targets.
   "warnings": [ "no-unused" ],
   // Directories where C3 library files may be found.
-  "dependency-search-paths": [ ],
+  "dependency-search-paths": [ "lib" ],
   // Libraries to use for all targets.
   "dependencies": [ ],
   // Authors, optionally with email.
@@ -12,25 +12,22 @@
   // Version using semantic versioning.
   "version": "0.1.0",
   // Sources compiled for all targets.
-  "sources": [ "./**" ],
+  "sources": [ "src/**" ],
   // C sources if the project also compiles C sources
   // relative to the project file.
   // "c-sources": [ "csource/**" ],
   // Output location, relative to project file.
-  "output": ".",
+  "output": "../build",
   // Architecture and OS target.
   // You can use 'c3c --list-targets' to list all valid targets.
-  "target": "linux-x64",
+  // "target": "windows-x64",
   // Targets.
   "targets": {
-    "hello_world": {
+    "complete": {
+      // Executable or library.
       "type": "executable",
-      "debug-info": "none",
-      "link-libc": false,
-      "opt": "O0",
-      "safe": false,
-      "system-linker": true,
-      "use-stdlib": false,
+      // Additional libraries, sources
+      // and overrides of global settings here.
     },
   },
   // Global settings.
