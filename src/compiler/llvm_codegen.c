@@ -1006,7 +1006,9 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 	{
 		llvm_attribute_add_string(c, function, "frame-pointer", "all", -1);
 	}
+	llvm_attribute_add_string(c, function, "stack-protector-buffer-size", "8", -1);
 	llvm_attribute_add_string(c, function, "no-trapping-math", "true", -1);
+
 	if (prototype->ret_by_ref)
 	{
 		ABIArgInfo *info = prototype->ret_by_ref_abi_info;

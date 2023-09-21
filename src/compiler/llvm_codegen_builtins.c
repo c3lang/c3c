@@ -138,7 +138,7 @@ INLINE void llvm_emit_unreachable_stmt(GenContext *c, BEValue *result_value, Exp
 
 INLINE void llvm_emit_stacktrace(GenContext *c, BEValue *result_value, Expr *expr)
 {
-	if (!c->debug.enable_stacktrace)
+	if (!c->debug.emulated_stacktrace)
 	{
 		llvm_value_set(result_value, llvm_get_zero(c, type_voidptr), type_voidptr);
 		return;

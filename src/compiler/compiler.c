@@ -23,6 +23,7 @@ double compiler_ir_gen_time;
 double compiler_codegen_time;
 double compiler_link_time;
 
+
 const char* c3_suffix_list[3] = { ".c3", ".c3t", ".c3i" };
 
 extern int llvm_version_major;
@@ -1024,3 +1025,4 @@ File *compile_and_invoke(const char *file, const char *args)
 	}
 	return source_file_text_load(file, out);
 }
+

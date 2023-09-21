@@ -466,7 +466,7 @@ static void llvm_emit_stacktrace_definitions(GenContext *c)
 
 void llvm_emit_pop_stacktrace(GenContext *c, Stacktrace *slot)
 {
-	if (!c->debug.enable_stacktrace) return;
+	if (!c->debug.emulated_stacktrace) return;
 	if (slot)
 	{
 		c->debug.stacktrace = *slot;
@@ -475,7 +475,7 @@ void llvm_emit_pop_stacktrace(GenContext *c, Stacktrace *slot)
 }
 void llvm_emit_update_stack_row(GenContext *c, uint32_t row)
 {
-	if (!c->debug.enable_stacktrace) return;
+	if (!c->debug.emulated_stacktrace) return;
 	if (row == 0) row = 1;
 	if (c->debug.stacktrace.last_row == row) return;
 	c->debug.stacktrace.last_row = row;
@@ -520,7 +520,7 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 	LLVMValueRef prev_function = c->function;
 	LLVMBuilderRef prev_builder = c->builder;
 
-	bool use_stacktrace = emit_debug && c->debug.enable_stacktrace;
+	bool use_stacktrace = emit_debug && c->debug.emulated_stacktrace;
 	if (use_stacktrace && !c->debug.stack_init_fn)
 	{
 		llvm_emit_stacktrace_definitions(c);

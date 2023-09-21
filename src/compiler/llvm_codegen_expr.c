@@ -6093,7 +6093,7 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 	if (llvm_use_debug(c))
 	{
 		llvm_debug_push_lexical_scope(c, astptr(expr->macro_block.first_stmt)->span);
-		if (c->debug.enable_stacktrace)
+		if (c->debug.emulated_stacktrace)
 		{
 			restore_at_exit = true;
 			llvm_emit_update_stack_row(c, expr->span.row);

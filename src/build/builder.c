@@ -124,7 +124,6 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 			single_module = true;
 			break;
 		case OPT_SETTING_O5:
-			single_module = true;
 			optlevel = OPTIMIZATION_AGGRESSIVE;
 			safety_level = SAFETY_OFF;
 			fp_opt = FP_FAST;

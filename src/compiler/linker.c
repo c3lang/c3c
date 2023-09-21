@@ -747,6 +747,7 @@ const char *concat_string_parts(const char **args)
 	return output;
 }
 
+
 void platform_linker(const char *output_file, const char **files, unsigned file_count)
 {
 	DEBUG_LOG("Using cc linker.");
@@ -762,6 +763,16 @@ void platform_linker(const char *output_file, const char **files, unsigned file_
 	if (system(output) != 0)
 	{
 		error_exit("Failed to link executable '%s' using command '%s'.\n", output_file, output);
+	}
+	if (os_is_apple(platform_target.os) && active_target.debug_info == DEBUG_INFO_FULL)
+	{
+		// Create .dSYM
+		scratch_buffer_clear();
+		scratch_buffer_printf("dsymutil %s", output_file);
+		if (system(scratch_buffer_to_string()) != 0)
+		{
+			puts("Failed to create .dSYM files, debugging will be impacted.");
+		}
 	}
 	printf("Program linked to executable '%s'.\n", output_file);
 }

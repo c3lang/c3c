@@ -89,7 +89,47 @@ struct CallstackElement
 	uint line;
 }
 
-fn void default_panic(String message, String file, String function, uint line)
+fn bool print_backtrace(String message, int backtraces_to_ignore) @if(env::DARWIN)
+{
+	@stack_mem(4096; Allocator *mem)
+	{
+		BacktraceList! backtrace = darwin::backtrace_load(mem);
+		if (catch backtrace) return false;
+		if (backtrace.len() <= backtraces_to_ignore) return false;
+		(void)io::stderr().print("\nERROR: '");
+        (void)io::stderr().print(message);
+        io::printn("'");
+		foreach (i, &trace : backtrace)
+        {
+            if (i < backtraces_to_ignore) continue;
+            if (trace.is_unknown())
+            {
+				(void)io::stderr().printn("  in ???");
+				continue;
+			}
+			if (trace.has_file())
+            {
+                (void)io::stderr().printfn("  in %s (%s:%d) [%s]", trace.function, trace.file, trace.line, trace.object_file);
+                continue;
+            }
+            (void)io::stderr().printfn("  in %s (source unavailable) [%s]", trace.function, trace.object_file);
+		}
+		return true;
+	};
+}
+fn void default_panic(String message, String file, String function, uint line) @if(env::DARWIN)
+{
+	$if $defined(io::stderr) && $defined(Stream.printf):
+	if (!print_backtrace(message, 2))
+	{
+		(void)io::stderr().printfn("\nERROR: '%s', in %s (%s:%d)", message, function, file, line);
+		return;
+	}
+	$endif
+	$$trap();
+
+}
+fn void default_panic(String message, String file, String function, uint line) @if(!env::DARWIN)
 {
 	CallstackElement* stack = $$stacktrace();
 	$if $defined(io::stderr) && $defined(Stream.printf):
@@ -323,7 +363,12 @@ macro uint char[].hash(char[] c) => (uint)fnv32a::encode(c);
 module std::core::builtin @if((env::LINUX || env::DARWIN) && env::COMPILER_SAFE_MODE && env::DEBUG_SYMBOLS);
 import libc;
 
-fn void sig_panic(String message)
+fn void sig_panic(String message) @if(env::DARWIN)
+{
+	default_panic(message, "???", "???", 0);
+}
+
+fn void sig_panic(String message) @if(!env::DARWIN)
 {
 	$if $defined(io::stderr) && $defined(File.printf):
 	CallstackElement* stack = $$stacktrace();
@@ -353,7 +398,6 @@ fn void sig_bus_error(CInt i)
 fn void sig_segmentation_fault(CInt i)
 {
 	sig_panic("Out of bounds memory access.");
-	$$trap();
 }
 
 fn void install_signal_handler(CInt signal, SignalFunction func) @local

@@ -73,6 +73,7 @@ typedef struct
 {
 	unsigned runtime_version : 8;
 	bool enable_stacktrace : 1;
+	bool emulated_stacktrace : 1;
 	LLVMDIBuilderRef builder;
 	DebugFile *debug_files;
 	DebugFile file;

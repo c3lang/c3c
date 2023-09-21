@@ -88,5 +88,3 @@ switch.exit:                                      ; preds = %switch.default
 loop.exit:                                        ; preds = %loop.cond
   ret i32 0
 }
-
-attributes #0 = { nounwind "no-trapping-math"="true" }

@@ -9,8 +9,8 @@ fn uint num_cpu()
 	usz len = 4;
 	uint count;
 
-	nm = { macos::CTL_HW, macos::HW_NCPU };
-	macos::sysctl(&nm, 2, &count, &len, null, 0);
+	nm = { darwin::CTL_HW, darwin::HW_NCPU };
+	darwin::sysctl(&nm, 2, &count, &len, null, 0);
 	if (count < 1) count = 1;
 	return count;
 }

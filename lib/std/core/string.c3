@@ -290,7 +290,7 @@ fn usz! String.rindex_of(s, String needle)
 
 fn String ZString.as_str(str)
 {
-	return (String)((char*)str)[:str.len()];
+	return (String)(str[:str.len()]);
 }
 
 fn usz ZString.char_len(str)
