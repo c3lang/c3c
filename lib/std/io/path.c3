@@ -1,5 +1,6 @@
 module std::io::path;
 import std::collections::list;
+import std::os::env;
 
 const PathEnv DEFAULT_PATH_ENV = env::WIN32 ? PathEnv.WIN32 : PathEnv.POSIX;
 const char PREFERRED_SEPARATOR_WIN32 = '\\';
