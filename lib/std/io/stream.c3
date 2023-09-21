@@ -144,7 +144,7 @@ macro usz! print_gen(self, x)
 	$endswitch
 }
 
-macro usz! printn_gen(self, x)
+macro usz! printn_gen(self, x) @maydiscard
 {
 	usz len = print_gen(self, x)!;
 	self.write_byte('\n')!;
