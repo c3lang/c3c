@@ -91,9 +91,9 @@ struct CallstackElement
 
 fn bool print_backtrace(String message, int backtraces_to_ignore) @if(env::DARWIN)
 {
-	@stack_mem(4096; Allocator *mem)
+	@pool()
 	{
-		BacktraceList! backtrace = darwin::backtrace_load(mem);
+		BacktraceList! backtrace = darwin::backtrace_load(mem::temp());
 		if (catch backtrace) return false;
 		if (backtrace.len() <= backtraces_to_ignore) return false;
 		(void)io::stderr().print("\nERROR: '");
@@ -391,13 +391,32 @@ SignalFunction old_segmentation_fault;
 
 fn void sig_bus_error(CInt i)
 {
-	sig_panic("Illegal memory access.");
+	$if !env::DARWIN:
+		sig_panic("Illegal memory access.");
+	$else
+		$if $defined(io::stderr) && $defined(Stream.printf):
+			if (!print_backtrace("Illegal memory access.", 1))
+			{
+				(void)io::stderr().printn("\nERROR: 'Illegal memory access'.");
+			}
+		$endif
+	$endif
 	$$trap();
 }
 
 fn void sig_segmentation_fault(CInt i)
 {
-	sig_panic("Out of bounds memory access.");
+	$if !env::DARWIN:
+		sig_panic("Out of bounds memory access.");
+	$else
+		$if $defined(io::stderr) && $defined(Stream.printf):
+			if (!print_backtrace("Out of bounds memory access.", 1))
+			{
+				(void)io::stderr().printn("\nERROR: Memory error without backtrace, possible stack overflow.");
+			}
+		$endif
+	$endif
+	$$trap();
 }
 
 fn void install_signal_handler(CInt signal, SignalFunction func) @local

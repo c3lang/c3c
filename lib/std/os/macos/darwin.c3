@@ -97,23 +97,23 @@ fn uptr! load_address() @local
 
 fn Backtrace! backtrace_load_element(String execpath, void* buffer, void* load_address, Allocator* using = mem::heap()) @local
 {
-	@stack_mem(1024; Allocator* mem)
+	@pool(using)
 	{
 		if (buffer)
 		{
 			SubProcess process = process::create({ "atos",
 				"-o", execpath, "-arch", env::AARCH64 ? "arm64" : "x86_64", "-l",
-				string::printf("%p", load_address, .using = mem),
-				string::printf("%p", buffer, .using = mem),
+				string::tprintf("%p", load_address),
+				string::tprintf("%p", buffer),
 				 "-fullPath" })!;
 			process.join()!;
-			char[4096] buf;
-			usz len = process.read_stdout(&buf, buf.len)!;
+			char* buf = tmalloc(1024);
+			usz len = process.read_stdout(buf, 1024)!;
 			String s = (String)buf[:len - 1];
-			String[] parts = s.split(" ", .using = mem);
+			String[] parts = s.tsplit(" ");
 			if (parts.len == 4)
 			{
-				String[] path_parts = parts[3].split(":", .using = mem);
+				String[] path_parts = parts[3].tsplit(":");
 				return {
 					.offset = (uptr)buffer,
                     .function = parts[0].copy(using),
@@ -151,12 +151,11 @@ fn BacktraceList! backtrace_load(Allocator* using = mem::heap())
 		}
 		list.free();
 	}
-	@stack_mem(256; Allocator* mem)
+	@pool(using)
 	{
-		String execpath = executable_path(mem)!;
+		String execpath = executable_path(mem::temp())!;
 		for (usz i = 1; i < size; i++)
 		{
-			char[1024] fname;
 			void* buffer = bt_buffer[i];
 			Backtrace trace = backtrace_load_element(execpath, buffer, load_addr, .using = using)!;
 			list.append(trace);

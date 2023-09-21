@@ -275,6 +275,7 @@ typedef struct
 	unsigned reassoc;         // allow reassociateion
 	unsigned sext;            // sign extend
 	unsigned sret;            // struct return pointer
+	unsigned ssp;             // safe stack protection
 	unsigned target_features; // target-features for function compilation
 	unsigned uwtable;
 	unsigned writeonly;       // No writes on pointer

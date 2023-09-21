@@ -37,8 +37,7 @@ def CompareFunction = fn int(void*, void*);
 def JmpBuf = uptr[$$JMP_BUF_SIZE];
 def Fd = CInt;
 def Fpos_t = long; // TODO make sure fpos is correct on all targets.
-def SignalFunction = fn void(int);
-
+def SignalFunction = fn void(CInt);
 
 const CInt SIGHUP = 1;
 const CInt SIGINT = 2;

@@ -749,6 +749,7 @@ static void llvm_codegen_setup()
 	attribute_id.reassoc = lookup_attribute("reassoc");
 	attribute_id.sext = lookup_attribute("signext");
 	attribute_id.sret = lookup_attribute("sret");
+	attribute_id.ssp = lookup_attribute("ssp");
 	attribute_id.target_features = lookup_attribute("target-features");
 	attribute_id.uwtable = lookup_attribute("uwtable");
 	attribute_id.writeonly = lookup_attribute("writeonly");
@@ -1005,6 +1006,7 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 	if (c->debug.enable_stacktrace)
 	{
 		llvm_attribute_add_string(c, function, "frame-pointer", "all", -1);
+		llvm_attribute_add(c, function, attribute_id.ssp, -1);
 	}
 	llvm_attribute_add_string(c, function, "stack-protector-buffer-size", "8", -1);
 	llvm_attribute_add_string(c, function, "no-trapping-math", "true", -1);
