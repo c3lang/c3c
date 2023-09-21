@@ -55,3 +55,12 @@ fn void clear_var(String name)
 	};
 	$endif
 }
+
+fn String! executable_path(Allocator *using = mem::heap())
+{
+	$if env::DARWIN:
+		return darwin::executable_path();
+	$else
+		return "<Unsupported>";
+	$endif
+}

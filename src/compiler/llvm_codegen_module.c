@@ -168,6 +168,7 @@ void gencontext_begin_module(GenContext *c)
 			LLVMStructSetBody(c->debug.stack_type, types, 5, false);
 			c->debug.current_stack_ptr = NULL;
 			c->debug.enable_stacktrace = true;
+			c->debug.emulated_stacktrace = !os_is_apple(platform_target.os);
 		}
 	}
 	c->global_builder = LLVMCreateBuilder();

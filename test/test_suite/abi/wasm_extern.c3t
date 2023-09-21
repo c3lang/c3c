@@ -13,5 +13,5 @@ target triple = "wasm32-unknown-unknown"
 declare i32 @get_abc() #0
 define i32 @fgh() #1
 
-attributes #0 = { nounwind "no-trapping-math"="true" "wasm-import-name"="get_abc" }
-attributes #1 = { nounwind "no-trapping-math"="true" "wasm-export-name"="fgh" }
+attributes #0 = { nounwind "no-trapping-math"="true" "stack-protector-buffer-size"="8" "wasm-import-name"="get_abc" }
+attributes #1 = { nounwind "no-trapping-math"="true" "stack-protector-buffer-size"="8" "wasm-export-name"="fgh" }
