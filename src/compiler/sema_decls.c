@@ -3191,6 +3191,10 @@ static bool sema_append_generate_parameterized_name(SemaContext *c, Module *modu
 			if (type->type_kind == TYPE_OPTIONAL) RETURN_SEMA_ERROR(type_info, "Expected a non-optional type.");
 			if (type == type_void) RETURN_SEMA_ERROR(type_info, "A 'void' type cannot be used as a parameter type.");
 			if (type_is_invalid_storage_type(type)) RETURN_SEMA_ERROR(type_info, "Expected a runtime type.");
+			if (type_is_func_ptr(type))
+			{
+				if (!sema_resolve_type_decl(c, type->pointer)) return false;
+			}
 			if (mangled)
 			{
 				type_mangle_introspect_name_to_buffer(type);

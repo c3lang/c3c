@@ -209,7 +209,30 @@ void create_project(BuildOptions *build_options)
 
 	file = fopen("main.c3", "w");
 	if (!file) goto ERROR;
-	(void) fprintf(file, MAIN_TEMPLATE, build_options->project_name);
+
+	scratch_buffer_clear();
+	size_t len = strlen(build_options->project_name);
+	bool has_char = false;
+	for (size_t i = 0; i < len; i++)
+	{
+		char c = build_options->project_name[i];
+		if (c >= '0' && c <= '9')
+		{
+			if (!has_char) scratch_buffer_append("m_");
+			has_char = true;
+			scratch_buffer_append_char(c);
+			continue;
+		}
+		if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'))
+		{
+			scratch_buffer_append_char(c | 0x20);
+			has_char = true;
+			continue;
+		}
+		scratch_buffer_append_char('_');
+	}
+	if (!has_char) scratch_buffer_append("module");
+	(void) fprintf(file, MAIN_TEMPLATE, scratch_buffer_to_string());
 	if (fclose(file)) goto ERROR;
 
 	if (!dir_change("..")) goto ERROR;
