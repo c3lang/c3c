@@ -9,6 +9,7 @@
 
 const char *project_default_keys[] = {
 		"authors",
+		"benchfn",
 		"c-sources",
 		"cc",
 		"cflags",
@@ -41,6 +42,7 @@ const char *project_default_keys[] = {
 		"system-linker",
 		"target",
 		"targets",
+		"testfn",
 		"trap-on-wrap",
 		"use-stdlib",
 		"version",
@@ -55,6 +57,7 @@ const char *project_default_keys[] = {
 const int project_default_keys_count = sizeof(project_default_keys) / sizeof(char*);
 
 const char* project_target_keys[] = {
+		"benchfn",
 		"c-sources-add",
 		"c-sources-override",
 		"cc",
@@ -94,6 +97,7 @@ const char* project_target_keys[] = {
 		"symtab",
 		"system-linker",
 		"target",
+		"testfn",
 		"trap-on-wrap",
 		"type",
 		"use-stdlib",
@@ -449,6 +453,14 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	// panicfn
 	const char *panicfn = get_valid_string(json, "panicfn", type, false);
 	target->panicfn = panicfn;
+
+	// testfn
+	const char *testfn = get_valid_string(json, "testfn", type, false);
+	target->testfn = testfn;
+
+	// testfn
+	const char *benchfn = get_valid_string(json, "benchfn", type, false);
+	target->benchfn = benchfn;
 
 	// link-libc
 	target->link_libc = (LinkLibc)get_valid_bool(json, "link-libc", type, target->link_libc);

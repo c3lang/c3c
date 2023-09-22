@@ -245,6 +245,7 @@ static void assign_panicfn(void)
 	{
 		global_context.panic_var = NULL;
 		global_context.panicf = NULL;
+		return;
 	}
 
 	const char *panicfn = active_target.panicfn ? active_target.panicfn : "std::core::builtin::panic";
@@ -299,6 +300,72 @@ static void assign_panicfn(void)
 		error_exit("Expected panic function to have the signature fn void(String, String, String, uint, ...).");
 	}
 	global_context.panicf = panicf_decl;
+}
+
+static void assign_testfn(void)
+{
+	if (!active_target.testing) return;
+	if (!active_target.testfn && no_stdlib())
+	{
+		global_context.test_func = NULL;
+		return;
+	}
+	const char *testfn = active_target.testfn ? active_target.testfn : "std::core::runtime::default_test_runner";
+	Path *path;
+	const char *ident;
+	TokenType type;
+	if (sema_splitpathref(testfn, strlen(testfn), &path, &ident) != TOKEN_IDENT || path == NULL || !ident)
+	{
+		error_exit("'%s' is not a valid test function.", testfn);
+	}
+	Decl *decl = sema_find_decl_in_modules(global_context.module_list, path, ident);
+	if (!decl)
+	{
+		error_exit("Test function '%s::%s' could not be found.", path->module, ident);
+	}
+	if (decl->decl_kind != DECL_FUNC)
+	{
+		error_exit("'%s::%s' is not a function.", path->module, ident);
+	}
+	if (!type_func_match(type_get_ptr(decl->type->canonical), type_bool, 0))
+	{
+		error_exit("Expected test runner to have the signature fn void().");
+	}
+	global_context.test_func = decl;
+	decl->no_strip = true;
+}
+
+static void assign_benchfn(void)
+{
+	if (!active_target.benchmarking) return;
+	if (!active_target.benchfn && no_stdlib())
+	{
+		global_context.benchmark_func = NULL;
+		return;
+	}
+	const char *testfn = active_target.benchfn ? active_target.benchfn : "std::core::runtime::default_benchmark_runner";
+	Path *path;
+	const char *ident;
+	TokenType type;
+	if (sema_splitpathref(testfn, strlen(testfn), &path, &ident) != TOKEN_IDENT || path == NULL || !ident)
+	{
+		error_exit("'%s' is not a valid benchmark function.", testfn);
+	}
+	Decl *decl = sema_find_decl_in_modules(global_context.module_list, path, ident);
+	if (!decl)
+	{
+		error_exit("Benchmark function '%s::%s' could not be found.", path->module, ident);
+	}
+	if (decl->decl_kind != DECL_FUNC)
+	{
+		error_exit("'%s::%s' is not a function.", path->module, ident);
+	}
+	if (!type_func_match(type_get_ptr(decl->type->canonical), type_bool, 0))
+	{
+		error_exit("Expected benchmark function to have the signature fn void().");
+	}
+	global_context.benchmark_func = decl;
+	decl->no_strip = true;
 }
 
 /**
@@ -358,6 +425,8 @@ RESOLVE_LAMBDA:;
 	halt_on_error();
 
 	assign_panicfn();
+	assign_testfn();
+	assign_benchfn();
 
 	if (strip_unused())
 	{

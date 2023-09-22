@@ -137,6 +137,8 @@ static void usage(void)
 	OUTPUT("  --link-libc=<yes|no>      - Link libc other default libraries (default: yes).");
 	OUTPUT("  --emit-stdlib=<yes|no>    - Output files for the standard library. (default: yes)");
 	OUTPUT("  --panicfn <name>          - Override the panic function name.");
+	OUTPUT("  --testfn <name>           - Override the test runner function name.");
+	OUTPUT("  --benchfn <name>          - Override the benchmark runner function name.");
 	OUTPUT("");
 	OUTPUT("  --reloc=<option>          - Relocation model: none, pic, PIC, pie, PIE.");
 	OUTPUT("  --x86cpu=<option>         - Set general level of x64 cpu: baseline, ssse3, sse4, avx1, avx2-v1, avx2-v2 (Skylake/Zen1+), avx512 (Icelake/Zen4+), native.");
@@ -849,6 +851,18 @@ static void parse_option(BuildOptions *options)
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --panicfn needs a function name.");
 				options->panicfn = next_arg();
+				return;
+			}
+			if (match_longopt("testfn"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --testfn needs a function name.");
+				options->testfn = next_arg();
+				return;
+			}
+			if (match_longopt("benchfn"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --benchfn needs a function name.");
+				options->benchfn = next_arg();
 				return;
 			}
 			if (match_longopt("macossdk"))
