@@ -1887,8 +1887,6 @@ extern const char *type_property_list[NUMBER_OF_TYPE_PROPERTIES];
 extern const char *kw_std__core;
 extern const char *kw_std__core__types;
 extern const char *kw_std__io;
-extern const char *kw___run_default_benchmark_runner;
-extern const char *kw___run_default_test_runner;
 extern const char *kw_typekind;
 extern const char *kw_FILE_NOT_FOUND;
 extern const char *kw_IoError;

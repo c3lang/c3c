@@ -2528,26 +2528,6 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 
 	if (*erase_decl) return true;
 
-	if (decl->name == kw___run_default_benchmark_runner)
-	{
-		if (global_context.benchmark_func)
-		{
-			SEMA_ERROR(decl, "Multiple benchmark runners defined.");
-			return false;
-		}
-		global_context.benchmark_func = decl;
-		if (active_target.benchmarking) decl->no_strip = true;
-	}
-	if (decl->name == kw___run_default_test_runner)
-	{
-		if (global_context.test_func)
-		{
-			SEMA_ERROR(decl, "Multiple test runners defined.");
-			return false;
-		}
-		global_context.test_func = decl;
-		if (active_target.testing) decl->no_strip = true;
-	}
 	bool is_test = decl->func_decl.attr_test;
 	bool is_benchmark = decl->func_decl.attr_benchmark;
 	Signature *sig = &decl->func_decl.signature;

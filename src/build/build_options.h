@@ -422,6 +422,8 @@ typedef struct BuildOptions_
 	bool read_stdin;
 	bool print_output;
 	const char *panicfn;
+	const char *benchfn;
+	const char *testfn;
 	const char *cc;
 	const char *build_dir;
 	const char *llvm_out;
@@ -541,6 +543,8 @@ typedef struct
 	uint32_t symtab_size;
 	uint32_t switchrange_max_size;
 	const char *panicfn;
+	const char *benchfn;
+	const char *testfn;
 	const char *cc;
 	const char *cflags;
 	const char **csource_dirs;

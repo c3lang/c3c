@@ -278,7 +278,9 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	target->emit_llvm = options->emit_llvm;
 	target->build_threads = options->build_threads;
 	target->emit_asm = options->emit_asm;
-	target->panicfn = options->panicfn;
+	if (options->panicfn) target->panicfn = options->panicfn;
+	if (options->testfn) target->testfn = options->testfn;
+	if (options->benchfn) target->benchfn = options->benchfn;
 	target->benchmarking = options->benchmarking;
 	target->testing = options->testing;
 	if (options->macos.sdk) target->macos.sdk = options->macos.sdk;

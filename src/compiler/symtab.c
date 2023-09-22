@@ -73,8 +73,6 @@ const char *kw_std;
 const char *kw_std__core;
 const char *kw_std__core__types;
 const char *kw_std__io;
-const char *kw___run_default_benchmark_runner;
-const char *kw___run_default_test_runner;
 const char *kw_type;
 const char *kw_typekind;
 const char *kw_winmain;
@@ -167,8 +165,6 @@ void symtab_init(uint32_t capacity)
 	kw_std__core = KW_DEF("std::core");
 	kw_std__core__types = KW_DEF("std::core::types");
 	kw_std__io = KW_DEF("std::io");
-	kw___run_default_benchmark_runner = KW_DEF("__run_default_benchmark_runner");
-	kw___run_default_test_runner = KW_DEF("__run_default_test_runner");
 	kw_type = KW_DEF("type");
 	kw_winmain = KW_DEF("wWinMain");
 	kw_wmain = KW_DEF("wmain");

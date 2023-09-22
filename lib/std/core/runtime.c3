@@ -136,7 +136,7 @@ fn bool run_benchmarks(BenchmarkUnit[] benchmarks)
 	return benchmark_count == benchmarks_passed;
 }
 
-fn bool __run_default_benchmark_runner()
+fn bool default_benchmark_runner()
 {
 	@pool()
 	{
@@ -245,7 +245,7 @@ fn bool run_tests(TestUnit[] tests)
 	return test_count == tests_passed;
 }
 
-fn bool __run_default_test_runner()
+fn bool default_test_runner()
 {
 	@pool()
 	{
