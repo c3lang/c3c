@@ -1,0 +1,86 @@
+// #target: macos-x64
+module oups;
+import std::io;
+
+fn void! main()
+{
+	ByteReader r;
+	r.foo()!;
+}
+
+macro Stream.foo(&self)
+{
+	char! c = self.read_byte();
+	if (catch err = c)
+	{
+		return err?;
+	}
+	return;
+}
+
+
+/* #expect: oups.ll
+
+
+define i64 @oups.main() #0 {
+entry:
+  %r = alloca %ByteReader, align 8
+  %error_var = alloca i64, align 8
+  %c = alloca i8, align 1
+  %c.f = alloca i64, align 8
+  %retparam = alloca i8, align 1
+  %err = alloca i64, align 8
+  call void @llvm.memset.p0.i64(ptr align 8 %r, i8 0, i64 32, i1 false)
+  %0 = getelementptr inbounds %ByteReader, ptr %r, i32 0, i32 0
+  %1 = call i64 @std.io.Stream.read_byte(ptr %retparam, ptr %0) #3
+  %not_err = icmp eq i64 %1, 0
+  %2 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %2, label %after_check, label %assign_optional
+
+assign_optional:                                  ; preds = %entry
+  store i64 %1, ptr %c.f, align 8
+  br label %after_assign
+
+after_check:                                      ; preds = %entry
+  %3 = load i8, ptr %retparam, align 1
+  store i8 %3, ptr %c, align 1
+  store i64 0, ptr %c.f, align 8
+  br label %after_assign
+
+after_assign:                                     ; preds = %after_check, %assign_optional
+  br label %testblock
+
+testblock:                                        ; preds = %after_assign
+  %optval = load i64, ptr %c.f, align 8
+  %not_err1 = icmp eq i64 %optval, 0
+  %4 = call i1 @llvm.expect.i1(i1 %not_err1, i1 true)
+  br i1 %4, label %after_check3, label %assign_optional2
+
+assign_optional2:                                 ; preds = %testblock
+  store i64 %optval, ptr %err, align 8
+  br label %end_block
+
+after_check3:                                     ; preds = %testblock
+  store i64 0, ptr %err, align 8
+  br label %end_block
+
+end_block:                                        ; preds = %after_check3, %assign_optional2
+  %5 = load i64, ptr %err, align 8
+  %neq = icmp ne i64 %5, 0
+  br i1 %neq, label %if.then, label %if.exit
+
+if.then:                                          ; preds = %end_block
+  %6 = load i64, ptr %err, align 8
+  store i64 %6, ptr %error_var, align 8
+  br label %guard_block
+
+if.exit:                                          ; preds = %end_block
+  br label %noerr_block
+
+guard_block:                                      ; preds = %if.then
+  %7 = load i64, ptr %error_var, align 8
+  ret i64 %7
+
+noerr_block:                                      ; preds = %if.exit
+  ret i64 0
+}

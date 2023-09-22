@@ -1747,6 +1747,7 @@ static inline Type *context_unify_returns(SemaContext *context)
 			Expr *ret_expr = return_stmt->return_stmt.expr;
 			if (!ret_expr)
 			{
+				if (common_type == type_void) continue;
 				context_unify_returns(context);
 			}
 			// 8. All casts should work.
