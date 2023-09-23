@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2020-2023 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by a LGPLv3.0
 // a copy of which can be found in the LICENSE file.
 
@@ -6,111 +6,110 @@
 #include "build_internal.h"
 #define MAX_SYMTAB_SIZE (1024 * 1024)
 
-
 const char *project_default_keys[] = {
-		"authors",
-		"benchfn",
-		"c-sources",
-		"cc",
-		"cflags",
-		"cpu",
-		"debug-info",
-		"dependencies",
-		"dependency-search-paths",
-		"features",
-		"fp-math",
-		"langrev",
-		"linked-libraries",
-		"linker-search-paths",
-		"link-args",
-		"link-libc",
-		"macossdk",
-		"memory-env",
-		"no-entry",
-		"opt",
-		"optlevel",
-		"optsize",
-		"output",
-		"panicfn",
-		"reloc",
-		"safe",
-		"single-module",
-		"soft-float",
-		"sources",
-		"strip-unused",
-		"symtab",
-		"system-linker",
-		"target",
-		"targets",
-		"testfn",
-		"trap-on-wrap",
-		"use-stdlib",
-		"version",
-		"warnings",
-		"wincrt",
-		"winsdk",
-		"x86cpu",
-		"x86vec",
-		"x86-stack-struct-return",
+	"authors",
+	"benchfn",
+	"c-sources",
+	"cc",
+	"cflags",
+	"cpu",
+	"debug-info",
+	"dependencies",
+	"dependency-search-paths",
+	"features",
+	"fp-math",
+	"langrev",
+	"linked-libraries",
+	"linker-search-paths",
+	"link-args",
+	"link-libc",
+	"macossdk",
+	"memory-env",
+	"no-entry",
+	"opt",
+	"optlevel",
+	"optsize",
+	"output",
+	"panicfn",
+	"reloc",
+	"safe",
+	"single-module",
+	"soft-float",
+	"sources",
+	"strip-unused",
+	"symtab",
+	"system-linker",
+	"target",
+	"targets",
+	"testfn",
+	"trap-on-wrap",
+	"use-stdlib",
+	"version",
+	"warnings",
+	"wincrt",
+	"winsdk",
+	"x86cpu",
+	"x86vec",
+	"x86-stack-struct-return",
 };
 
-const int project_default_keys_count = sizeof(project_default_keys) / sizeof(char*);
+const int project_default_keys_count = ELEMENTLEN(project_default_keys);
 
 const char* project_target_keys[] = {
-		"benchfn",
-		"c-sources-add",
-		"c-sources-override",
-		"cc",
-		"cflags-add",
-		"cflags-override",
-		"cpu",
-		"debug-info",
-		"dependencies-add",
-		"dependencies-override",
-		"dependency-search-paths-add",
-		"dependency-search-paths-override",
-		"features",
-		"fp-math",
-		"langrev",
-		"linked-libraries-add",
-		"linked-libraries-override",
-		"linker-search-paths-add",
-		"linker-search-paths-override",
-		"link-args-add",
-		"link-args-override",
-		"link-libc",
-		"macossdk",
-		"memory-env",
-		"no-entry",
-		"opt",
-		"optlevel",
-		"optsize",
-		"output"
-		"panicfn",
-		"reloc",
-		"safe",
-		"single-module",
-		"soft-float",
-		"sources-add",
-		"sources-override",
-		"strip-unused",
-		"symtab",
-		"system-linker",
-		"target",
-		"testfn",
-		"trap-on-wrap",
-		"type",
-		"use-stdlib",
-		"version",
-		"warnings",
-		"wincrt",
-		"winsdk",
-		"x86cpu",
-		"x86vec",
-		"x86-stack-struct-return",
+	"benchfn",
+	"c-sources-add",
+	"c-sources-override",
+	"cc",
+	"cflags-add",
+	"cflags-override",
+	"cpu",
+	"debug-info",
+	"dependencies-add",
+	"dependencies-override",
+	"dependency-search-paths-add",
+	"dependency-search-paths-override",
+	"features",
+	"fp-math",
+	"langrev",
+	"linked-libraries-add",
+	"linked-libraries-override",
+	"linker-search-paths-add",
+	"linker-search-paths-override",
+	"link-args-add",
+	"link-args-override",
+	"link-libc",
+	"macossdk",
+	"memory-env",
+	"no-entry",
+	"opt",
+	"optlevel",
+	"optsize",
+	"output"
+	"panicfn",
+	"reloc",
+	"safe",
+	"single-module",
+	"soft-float",
+	"sources-add",
+	"sources-override",
+	"strip-unused",
+	"symtab",
+	"system-linker",
+	"target",
+	"testfn",
+	"trap-on-wrap",
+	"type",
+	"use-stdlib",
+	"version",
+	"warnings",
+	"wincrt",
+	"winsdk",
+	"x86cpu",
+	"x86vec",
+	"x86-stack-struct-return",
 };
 
-const int project_target_keys_count = sizeof(project_target_keys) / sizeof(char*);
+const int project_target_keys_count = ELEMENTLEN(project_target_keys);
 
 const char *get_valid_string(JSONObject *table, const char *key, const char *category, bool mandatory)
 {
@@ -252,11 +251,11 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 {
 	if (is_default)
 	{
-		check_json_keys(project_default_keys, sizeof(project_default_keys) / sizeof(char*), json, type);
+		check_json_keys(project_default_keys, project_default_keys_count, json, type);
 	}
 	else
 	{
-		check_json_keys(project_target_keys, sizeof(project_target_keys) / sizeof(char*), json, type);
+		check_json_keys(project_target_keys, project_target_keys_count, json, type);
 	}
 	const char *cc = get_valid_string(json, "cc", type, false);
 	if (cc) target->cc = cc;
@@ -315,26 +314,15 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 			[DEBUG_INFO_NONE] = "none",
 			[DEBUG_INFO_LINE_TABLES] = "line-tables"
 	};
-	DebugInfo info = get_valid_string_setting(json, "debug-info", type, debug_infos, 0, 3, "one of 'full' 'line-table' or 'none'.");
+	DebugInfo info = get_valid_string_setting(json, "debug-info", type, debug_infos, 0, ELEMENTLEN(debug_infos), "one of 'full' 'line-table' or 'none'.");
 	if (info > -1) target->debug_info = info;
 
 	// Optimization Level
-	static const char *opt_level_settings[4] = {
-			[OPTIMIZATION_NONE] = "none",
-			[OPTIMIZATION_LESS] = "less",
-			[OPTIMIZATION_MORE] = "more",
-			[OPTIMIZATION_AGGRESSIVE] = "max",
-	};
-	OptimizationLevel optlevel = (OptimizationLevel)get_valid_string_setting(json, "optlevel", type, opt_level_settings, 0, 4, "`none`, `less`, `more`, `max`.");
+	OptimizationLevel optlevel = (OptimizationLevel)get_valid_string_setting(json, "optlevel", type, optlevels, 0, ELEMENTLEN(optlevels), "`none`, `less`, `more`, `max`.");
 	target->optlevel = optlevel;
 
-	// Size optimization Level
-	static const char *opt_size_settings[3] = {
-			[SIZE_OPTIMIZATION_NONE] = "none",
-			[SIZE_OPTIMIZATION_SMALL] = "small",
-			[SIZE_OPTIMIZATION_TINY] = "tiny",
-	};
-	SizeOptimizationLevel optsize = (SizeOptimizationLevel)get_valid_string_setting(json, "optsize", type, opt_size_settings, 0, 4, "`none`, `small`, `tiny`.");
+	// Size optimization
+	SizeOptimizationLevel optsize = (SizeOptimizationLevel)get_valid_string_setting(json, "optsize", type, optsizes, 0, ELEMENTLEN(optlevels), "`none`, `small`, `tiny`.");
 	target->optsize = optsize;
 
 	static const char *opt_settings[8] = {
@@ -347,7 +335,7 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 			[OPT_SETTING_OSMALL] = "Os",
 			[OPT_SETTING_OTINY] = "Oz"
 	};
-	OptimizationSetting opt = (OptimizationSetting)get_valid_string_setting(json, "opt", type, opt_settings, 0, 8, "'O0', 'O1' etc.");
+	OptimizationSetting opt = (OptimizationSetting)get_valid_string_setting(json, "opt", type, opt_settings, 0, ELEMENTLEN(opt_settings), "'O0', 'O1' etc.");
 	update_build_target_with_opt_level(target, opt);
 
 	// Safety level
@@ -356,7 +344,8 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	// Single module
 	target->single_module = (SingleModule)get_valid_bool(json, "single-module", type, target->single_module);
 
-	MemoryEnvironment env = get_valid_string_setting(json, "memory-env", type, memory_environment, 0, 4, "one of 'normal', 'small', 'tiny' or 'none'.");
+	// Memory environment for memory constrained environments.
+	MemoryEnvironment env = get_valid_string_setting(json, "memory-env", type, memory_environment, 0, ELEMENTLEN(memory_environment), "one of 'normal', 'small', 'tiny' or 'none'.");
 	if (env > -1) target->memory_environment = env;
 
 	// Symtab
@@ -384,20 +373,19 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	}
 
 	// Reloc
-	int reloc = get_valid_string_setting(json, "reloc", type, reloc_models, 0, 5, "'none', 'pic', 'PIC', 'pie' or 'PIE'.");
+	int reloc = get_valid_string_setting(json, "reloc", type, reloc_models, 0, ELEMENTLEN(reloc_models), "'none', 'pic', 'PIC', 'pie' or 'PIE'.");
 	if (reloc > -1) target->reloc_model = (RelocModel)reloc;
-
 
 	// Cpu
 	const char *cpu = get_valid_string(json, "cpu", type, false);
 	if (cpu) target->cpu = cpu;
 
 	// WinCRT
-	int wincrt = get_valid_string_setting(json, "wincrt", type, wincrt_linking, 0, 5, "'none', 'static' or 'dynamic'.");
+	int wincrt = get_valid_string_setting(json, "wincrt", type, wincrt_linking, 0, ELEMENTLEN(wincrt_linking), "'none', 'static' or 'dynamic'.");
 	if (wincrt > -1) target->win.crt_linking = (WinCrtLinking)wincrt;
 
 	// fp-math
-	int fpmath = get_valid_string_setting(json, "fp-math", type, fp_math, 0, 3, "`strict`, `relaxed` or `fast`.");
+	int fpmath = get_valid_string_setting(json, "fp-math", type, fp_math, 0, ELEMENTLEN(fp_math), "`strict`, `relaxed` or `fast`.");
 	if (fpmath > -1) target->feature.fp_math = fpmath;
 
 	const char **features = get_valid_array(json, "features", type, false);
@@ -413,15 +401,15 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	}
 
 	// x86vec
-	int x86vec = get_valid_string_setting(json, "x86vec", type, x86_vector_capability, 0, 6, "`none`, `native`, `mmx`, `sse`, `avx` or `avx512`.");
+	int x86vec = get_valid_string_setting(json, "x86vec", type, x86_vector_capability, 0, ELEMENTLEN(x86_vector_capability), "`none`, `native`, `mmx`, `sse`, `avx` or `avx512`.");
 	if (x86vec > -1) target->feature.x86_vector_capability = x86vec;
 
 	// x86vec
-	int x86cpu = get_valid_string_setting(json, "x86cpu", type, x86_cpu_set, 0, 8, "`baseline`, `ssse3`, `sse4`, `avx1`, `avx2-v1`, `avx2-v2`, `avx512` or `native`.");
+	int x86cpu = get_valid_string_setting(json, "x86cpu", type, x86_cpu_set, 0, ELEMENTLEN(x86_cpu_set), "`baseline`, `ssse3`, `sse4`, `avx1`, `avx2-v1`, `avx2-v2`, `avx512` or `native`.");
 	if (x86cpu > -1) target->feature.x86_cpu_set = x86cpu;
 
 	// riscvfloat
-	int riscv_float = get_valid_string_setting(json, "riscvfloat", type, riscv_capability, 0, 3, "`none`, `float` or `double`.");
+	int riscv_float = get_valid_string_setting(json, "riscvfloat", type, riscv_capability, 0, ELEMENTLEN(riscv_capability), "`none`, `float` or `double`.");
 	if (riscv_float > -1) target->feature.riscv_float_capability = riscv_float;
 
 	// winsdk
@@ -515,19 +503,22 @@ static void project_add_target(Project *project, BuildTarget *default_target,  J
 static void project_add_targets(Project *project, JSONObject *project_data)
 {
 	assert(project_data->type == J_OBJECT);
-	static const char* targets[6] = { [TARGET_TYPE_EXECUTABLE] = "executable",
-									  [TARGET_TYPE_STATIC_LIB] = "static-lib",
-									  [TARGET_TYPE_DYNAMIC_LIB] = "dynamic-lib",
-									  [TARGET_TYPE_BENCHMARK] = "benchmark",
-									  [TARGET_TYPE_TEST] = "test",
-									  [TARGET_TYPE_OBJECT_FILES] = "object-files"};
+	static const char* targets[6] = {
+			[TARGET_TYPE_EXECUTABLE] = "executable",
+			[TARGET_TYPE_STATIC_LIB] = "static-lib",
+			[TARGET_TYPE_DYNAMIC_LIB] = "dynamic-lib",
+			[TARGET_TYPE_BENCHMARK] = "benchmark",
+			[TARGET_TYPE_TEST] = "test",
+			[TARGET_TYPE_OBJECT_FILES] = "object-files"
+	};
 	static const char *target_desc[6] = {
 			[TARGET_TYPE_EXECUTABLE] = "Executable",
 			[TARGET_TYPE_STATIC_LIB] = "Static library",
 			[TARGET_TYPE_DYNAMIC_LIB] = "Dynamic library",
 			[TARGET_TYPE_BENCHMARK] = "benchmark suite",
 			[TARGET_TYPE_TEST] = "test suite",
-			[TARGET_TYPE_OBJECT_FILES] = "object files"};
+			[TARGET_TYPE_OBJECT_FILES] = "object files"
+	};
 
 	BuildTarget default_target = default_build_target;
 	load_into_build_target(project_data, "default target", &default_target, true);
@@ -548,12 +539,19 @@ static void project_add_targets(Project *project, JSONObject *project_data)
 		{
 			error_exit("Invalid data in target '%s'", key);
 		}
-		int type = get_valid_string_setting(object, "type", "Target type", targets, 0, 5, "a target type like 'executable' or 'static-lib'");
+		int type = get_valid_string_setting(object, "type", "Target type", targets, 0, ELEMENTLEN(targets), "a target type like 'executable' or 'static-lib'");
 		if (type < 0) error_exit("Target %s did not contain 'type' key.", key);
 		project_add_target(project, &default_target, object, key, target_desc[type], type);
 	}
 }
 
+/**
+ * Grab the default target, this will be the executable if one exists, otherwise
+ * it's the first target in the list.
+ *
+ * @param project
+ * @return the selected build target.
+ */
 static BuildTarget *project_select_default_target(Project *project)
 {
 	VECEACH(project->targets, i)
@@ -564,6 +562,14 @@ static BuildTarget *project_select_default_target(Project *project)
 	return project->targets[0];
 }
 
+/**
+ * Select the project target. This may be given a target, if so it is looked for.
+ * If the project has no targets, or the optional target can't be found, issue an error.
+ *
+ * @param project the project to look in.
+ * @param optional_target the selected target, may be NULL.
+ * @return the target if one is provided, otherwise the default target.
+ */
 BuildTarget *project_select_target(Project *project, const char *optional_target)
 {
 	if (!vec_size(project->targets))
@@ -577,7 +583,7 @@ BuildTarget *project_select_target(Project *project, const char *optional_target
 	VECEACH(project->targets, i)
 	{
 		BuildTarget *target = project->targets[i];
-		if (strcmp(target->name, optional_target) == 0) return target;
+		if (str_eq(target->name, optional_target)) return target;
 	}
 	error_exit("No build target named '%s' was found in %s. Was it misspelled?", optional_target, PROJECT_JSON);
 }

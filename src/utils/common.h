@@ -13,13 +13,15 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#ifndef _MSC_VER
+#include <unistd.h>
+#endif
 
 #define NO_ARENA 0
 #define MAX_VECTOR_WIDTH 65536
 #define MAX_ARRAY_SIZE INT64_MAX
 #define MAX_SOURCE_LOCATION_LEN 255
 #define PROJECT_JSON "project.json"
-
 
 #if defined( _WIN32 ) || defined( __WIN32__ ) || defined( _WIN64 )
 #define PLATFORM_WINDOWS 1

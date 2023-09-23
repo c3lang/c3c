@@ -1,6 +1,5 @@
 #pragma once
-
-// Copyright (c) 2019 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2019-2023 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
 
@@ -13,8 +12,6 @@
 #define MAX_THREADS 0xFFFF
 #define DEFAULT_SYMTAB_SIZE (256 * 1024)
 #define DEFAULT_SWITCHRANGE_MAX_SIZE (256)
-
-void update_feature_flags(const char ***flags, const char ***removed_flag, const char *arg, bool add);
 
 typedef enum
 {
@@ -228,57 +225,6 @@ typedef enum
 	RISCVFLOAT_DOUBLE = 2,
 } RiscvFloatCapability;
 
-
-static const char *x86_vector_capability[6] = {
-		[X86VECTOR_NONE] = "none",
-		[X86VECTOR_MMX] = "mmx",
-		[X86VECTOR_SSE] = "sse",
-		[X86VECTOR_AVX] = "avx",
-		[X86VECTOR_AVX512] = "avx512",
-		[X86VECTOR_NATIVE] = "native"
-};
-
-static const char *x86_cpu_set[8] = {
-		[X86CPU_BASELINE] = "baseline",
-		[X86CPU_SSSE3] = "ssse3",
-		[X86CPU_SSE4] = "sse4",
-		[X86CPU_AVX1] = "avx1",
-		[X86CPU_AVX2_V1] = "avx2-v1",
-		[X86CPU_AVX2_V2] = "avx2-v2",
-		[X86CPU_AVX512] = "avx512",
-		[X86CPU_NATIVE] = "native"
-};
-
-static const char *fp_math[3] = {
-		[FP_STRICT] = "strict",
-		[FP_RELAXED] = "relaxed",
-		[FP_FAST] = "fast",
-};
-
-static const char *optlevels[4] = {
-		[OPTIMIZATION_NONE] = "none",
-		[OPTIMIZATION_LESS] = "less",
-		[OPTIMIZATION_MORE] = "more",
-		[OPTIMIZATION_AGGRESSIVE] = "max",
-};
-
-static const char *optsizes[3] = {
-		[SIZE_OPTIMIZATION_NONE] = "none",
-		[SIZE_OPTIMIZATION_SMALL] = "small",
-		[SIZE_OPTIMIZATION_TINY] = "more",
-};
-
-static const char *on_off[2] = {
-		[SAFETY_OFF] = "no",
-		[SAFETY_ON] = "yes",
-};
-
-static const char *riscv_capability[3] = {
-		[RISCVFLOAT_NONE] = "none",
-		[RISCVFLOAT_FLOAT] = "float",
-		[RISCVFLOAT_DOUBLE] = "double",
-};
-
 typedef enum
 {
 	MEMORY_ENV_NOT_SET = -1,
@@ -288,13 +234,6 @@ typedef enum
 	MEMORY_ENV_NONE = 3,
 } MemoryEnvironment;
 
-static const char *memory_environment[6] = {
-		[MEMORY_ENV_NORMAL] = "normal",
-		[MEMORY_ENV_SMALL] = "small",
-		[MEMORY_ENV_TINY] = "tiny",
-		[MEMORY_ENV_NONE] = "none",
-};
-
 typedef enum
 {
 	WIN_CRT_DEFAULT = -1,
@@ -302,12 +241,6 @@ typedef enum
 	WIN_CRT_DYNAMIC = 1,
 	WIN_CRT_STATIC = 2,
 } WinCrtLinking;
-
-static const char *wincrt_linking[3] = {
-		[WIN_CRT_NONE] = "none",
-		[WIN_CRT_DYNAMIC] = "dynamic",
-		[WIN_CRT_STATIC] = "static",
-};
 
 typedef enum
 {
@@ -318,14 +251,6 @@ typedef enum
 	RELOC_SMALL_PIE = 3,
 	RELOC_BIG_PIE = 4,
 } RelocModel;
-
-static const char *reloc_models[5] = {
-		[RELOC_NONE] = "none",
-		[RELOC_SMALL_PIC] = "pic",
-		[RELOC_BIG_PIC] = "PIC",
-		[RELOC_SMALL_PIE] = "pie",
-		[RELOC_BIG_PIE] = "PIE",
-};
 
 typedef enum
 {
@@ -454,9 +379,6 @@ typedef struct BuildOptions_
 	bool testing;
 } BuildOptions;
 
-
-
-
 typedef enum
 {
 	TARGET_TYPE_EXECUTABLE,
@@ -580,11 +502,16 @@ typedef struct
 	} linuxpaths;
 } BuildTarget;
 
-
-BuildOptions parse_arguments(int argc, const char *argv[]);
-ArchOsTarget arch_os_target_from_string(const char *target);
-bool command_is_projectless(CompilerCommand command);
-void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting level);
+static const char *x86_cpu_set[8] = {
+	[X86CPU_BASELINE] = "baseline",
+	[X86CPU_SSSE3] = "ssse3",
+	[X86CPU_SSE4] = "sse4",
+	[X86CPU_AVX1] = "avx1",
+	[X86CPU_AVX2_V1] = "avx2-v1",
+	[X86CPU_AVX2_V2] = "avx2-v2",
+	[X86CPU_AVX512] = "avx512",
+	[X86CPU_NATIVE] = "native"
+};
 
 static BuildTarget default_build_target = {
 		.optlevel = OPTIMIZATION_NOT_SET,
@@ -617,3 +544,10 @@ static BuildTarget default_build_target = {
 		.win.crt_linking = WIN_CRT_DEFAULT,
 		.switchrange_max_size = DEFAULT_SWITCHRANGE_MAX_SIZE,
 };
+
+BuildOptions parse_arguments(int argc, const char *argv[]);
+ArchOsTarget arch_os_target_from_string(const char *target);
+bool command_accepts_files(CompilerCommand command);
+void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting level);
+void create_project(BuildOptions *build_options);
+

@@ -1,15 +1,8 @@
-// Copyright (c) 2019 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2019-2023 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
 
-#include <stdio.h>
-#include <stdlib.h>
-#ifndef _MSC_VER
-#include <unistd.h>
-#endif
-#include "project_creation.h"
-#include "build_options.h"
-#include "../utils/lib.h"
+#include "build_internal.h"
 
 const char* JSON_EXE =
 		"{\n"

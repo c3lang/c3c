@@ -15,6 +15,7 @@
 const char *download_file(const char *url, const char *resource, const char *file_path);
 #endif
 
+#define ELEMENTLEN(x) (sizeof(x) / sizeof(x[0]))
 extern const char *compiler_exe_name;
 
 typedef struct StringSlice_

@@ -1,7 +1,6 @@
 #include <compiler_tests/benchmark.h>
 #include "compiler/compiler.h"
-#include "build/build_options.h"
-#include "build/project_creation.h"
+#include "build/build.h"
 #include "compiler_tests/tests.h"
 #include "utils/lib.h"
 

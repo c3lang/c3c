@@ -1,8 +1,7 @@
-// Copyright (c) 2019 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2019-2023 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by a LGPLv3.0
 // a copy of which can be found in the LICENSE file.
 #include "build_internal.h"
-#include "build_options.h"
 
 void load_library_files(void) {}
 
@@ -60,7 +59,7 @@ ArchOsTarget default_target = ELF_RISCV64;
 ArchOsTarget default_target = ARCH_OS_TARGET_DEFAULT;
 #endif
 
-bool command_is_projectless(CompilerCommand command)
+bool command_accepts_files(CompilerCommand command)
 {
 	switch (command)
 	{
@@ -306,7 +305,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	{
 		target->feature.riscv_float_capability = options->riscv_float_capability;
 	}
-	if (command_is_projectless(options->command))
+	if (command_accepts_files(options->command))
 	{
 		target->build_dir = options->build_dir ? options->build_dir : NULL;
 		target->object_file_dir = options->obj_out ? options->obj_out : target->build_dir;

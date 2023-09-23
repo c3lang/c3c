@@ -1,17 +1,8 @@
-// Copyright (c) 2019 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2019-2023 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
 
-#include "build_options.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <assert.h>
-#ifndef _MSC_VER
-#include <unistd.h>
-#endif
-#include <stdbool.h>
-#include <string.h>
-#include <utils/lib.h>
+#include "build_internal.h"
 #include "../utils/whereami.h"
 
 extern int llvm_version_major;
@@ -24,30 +15,30 @@ extern const char* llvm_version;
 extern const char* llvm_target;
 
 char *arch_os_target[ARCH_OS_TARGET_LAST + 1] = {
-		[ELF_AARCH64] = "elf-aarch64",
-		[ELF_RISCV32] = "elf-riscv32",
-		[ELF_RISCV64] = "elf-riscv64",
-		[ELF_X86] = "elf-x86",
-		[ELF_X64] = "elf-x64",
-		[FREEBSD_X86] = "freebsd-x86",
-		[FREEBSD_X64] = "freebsd-x64",
-		[LINUX_AARCH64] = "linux-aarch64",
-		[LINUX_RISCV32] = "linux-riscv32",
-		[LINUX_RISCV64] = "linux-riscv64",
-		[LINUX_X86] = "linux-x86",
-		[LINUX_X64] = "linux-x64",
-		[MACOS_AARCH64] = "macos-aarch64",
-		[MACOS_X64] = "macos-x64",
-		[MCU_X86] = "mcu-x86",
-		[MINGW_X64] = "mingw-x64",
-		[NETBSD_X86] = "netbsd-x86",
-		[NETBSD_X64] = "netbsd-x64",
-		[OPENBSD_X86] = "openbsd-x86",
-		[OPENBSD_X64] = "openbsd-x64",
-		[WASM32] = "wasm32",
-		[WASM64] = "wasm64",
-		[WINDOWS_AARCH64] = "windows-aarch64",
-		[WINDOWS_X64] = "windows-x64",
+	[ELF_AARCH64] = "elf-aarch64",
+	[ELF_RISCV32] = "elf-riscv32",
+	[ELF_RISCV64] = "elf-riscv64",
+	[ELF_X86] = "elf-x86",
+	[ELF_X64] = "elf-x64",
+	[FREEBSD_X86] = "freebsd-x86",
+	[FREEBSD_X64] = "freebsd-x64",
+	[LINUX_AARCH64] = "linux-aarch64",
+	[LINUX_RISCV32] = "linux-riscv32",
+	[LINUX_RISCV64] = "linux-riscv64",
+	[LINUX_X86] = "linux-x86",
+	[LINUX_X64] = "linux-x64",
+	[MACOS_AARCH64] = "macos-aarch64",
+	[MACOS_X64] = "macos-x64",
+	[MCU_X86] = "mcu-x86",
+	[MINGW_X64] = "mingw-x64",
+	[NETBSD_X86] = "netbsd-x86",
+	[NETBSD_X64] = "netbsd-x64",
+	[OPENBSD_X86] = "openbsd-x86",
+	[OPENBSD_X64] = "openbsd-x64",
+	[WASM32] = "wasm32",
+	[WASM64] = "wasm64",
+	[WINDOWS_AARCH64] = "windows-aarch64",
+	[WINDOWS_X64] = "windows-x64",
 };
 
 #define EOUTPUT(string, ...) fprintf(stderr, string "\n", ##__VA_ARGS__)
@@ -404,28 +395,39 @@ static void add_linker_arg(BuildOptions *options, const char *arg)
 	options->linker_args[options->linker_arg_count++] = arg;
 }
 
+/**
+ * Update feature flags, adding to one list and removing it from the other.
+ * @param flags the "add" flags
+ * @param removed_flags the "undef" flags
+ * @param arg the argument to add or undef
+ * @param add true if we add, false to undef
+ */
 void update_feature_flags(const char ***flags, const char ***removed_flags, const char *arg, bool add)
 {
-	const char **to_remove_from = add ? *removed_flags : *flags;
-	unsigned len = vec_size(to_remove_from);
-	// Remove if it's in there.
-	for (unsigned i = 0; i < len; i++)
-	{
-		if (str_eq(to_remove_from[i], arg))
+	// We keep two lists "remove" and "add" lists:
+	const char ***to_remove_from = add ? removed_flags : flags;
+
+	// Remove from opposite list using string equality
+	// More elegant would be using a Set or Map, but that's overkill
+	// for something that's likely just 1-2 values.
+	FOREACH_BEGIN_IDX(i, const char *value, *to_remove_from)
+		if (str_eq(value, arg))
 		{
-			vec_erase_ptr_at(to_remove_from, i);
+			vec_erase_ptr_at(*to_remove_from, i);
 			break;
 		}
-	}
+	FOREACH_END();
+
+	// First we check that it's not in the list
 	const char ***to_add_to_ref = add ? flags : removed_flags;
-	unsigned add_len = vec_size(*to_add_to_ref);
-	for (unsigned i = 0; i < add_len; i++)
-	{
-		if (str_eq((*to_add_to_ref)[i], arg)) return;
-	}
+	FOREACH_BEGIN(const char *value, *to_add_to_ref)
+		// If we have a match, we don't add it.
+		if (str_eq(value, arg)) return;
+	FOREACH_END();
+
+	// No match, so add it.
 	vec_add(*to_add_to_ref, arg);
 }
-
 
 static int parse_multi_option(const char *start, unsigned count, const char** elements)
 {
@@ -1062,7 +1064,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 			parse_command(&build_options);
 			continue;
 		}
-		if (command_is_projectless(build_options.command) || build_options.command == COMMAND_GENERATE_HEADERS)
+		if (command_accepts_files(build_options.command) || build_options.command == COMMAND_GENERATE_HEADERS)
 		{
 			append_file(&build_options);
 			continue;
