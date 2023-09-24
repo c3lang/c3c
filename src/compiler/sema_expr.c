@@ -1332,21 +1332,17 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
 				sema_error_at_after(args[num_args - 1]->span, "Expected '.%s = ...' after this argument.", param->name);
 				return false;
 			}
-			if (num_args)
+			if (num_args > (callee->struct_var ? 1 : 0))
 			{
 				unsigned needed = func_param_count - num_args;
-				SEMA_ERROR(args[num_args - 1],
-						   "Expected %d more %s after this one, did you forget %s?",
-						   needed, needed == 1 ? "argument" : "arguments", needed == 1 ? "it" : "them");
+				RETURN_SEMA_ERROR(args[num_args - 1],
+				                  "Expected %d more %s after this one, did you forget %s?",
+				                  needed, needed == 1 ? "argument" : "arguments", needed == 1 ? "it" : "them");
 			}
-			else
-			{
-				SEMA_ERROR(call, "'%s' expects %d parameters, but none was provided.", callee->name, func_param_count);
-			}
-			return false;
+			RETURN_SEMA_ERROR(call, "'%s' expects %d parameter(s), but none was provided.",
+							  callee->name, callee->struct_var ? func_param_count - 1 : func_param_count);
 		}
-		SEMA_ERROR(call, "The parameter '%s' must be set, did you forget it?", param->name);
-		return false;
+		RETURN_SEMA_ERROR(call, "The parameter '%s' must be set, did you forget it?", param->name);
 	}
 	call->call_expr.arguments = actual_args;
 	return true;

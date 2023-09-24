@@ -18,8 +18,6 @@ ABIArgInfo *abi_arg_ignore(void)
 	return &info;
 }
 
-
-
 bool abi_type_is_integer(AbiType type)
 {
 	return !abi_type_is_type(type) || type_is_integer(type.type);

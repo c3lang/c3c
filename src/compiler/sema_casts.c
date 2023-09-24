@@ -306,6 +306,7 @@ static bool cast_if_valid(SemaContext *context, Expr *expr, Type *to_type, bool 
 			.expr = expr,
 			.context = context
 	};
+	if (!sema_resolve_type_decl(context, to)) return false;
 	if (!cast_is_allowed(&cc, is_explicit, false))
 	{
 		return false;
