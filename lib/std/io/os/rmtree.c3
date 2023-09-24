@@ -2,7 +2,7 @@ module std::io::file::os @if(env::POSIX);
 import libc;
 
 /**
- * @require dir.as_str()
+ * @require dir.str_view()
  **/
 fn void! native_rmtree(Path dir)
 {
@@ -14,7 +14,7 @@ fn void! native_rmtree(Path dir)
 	{
 		@pool()
 		{
-			String name = ((ZString)&entry.name).as_str();
+			String name = ((ZString)&entry.name).str_view();
 			if (!name || name == "." || name == "..") continue;
 			Path new_path = dir.tappend(name)!;
 			if (entry.d_type == posix::DT_DIR)
@@ -37,7 +37,7 @@ module std::io::os @if(env::WIN32);
 fn void! native_rmtree(Path path)
 {
 	Win32_WIN32_FIND_DATAW find_data;
-	String s = path.as_str().tconcat("\\*");
+	String s = path.str_view().tconcat("\\*");
 	Win32_HANDLE find = win32::findFirstFileW(s.to_utf16(mem::temp()), &find_data)!;
 
 	if (find == win32::INVALID_HANDLE_VALUE) return IoError.CANNOT_READ_DIR?;
@@ -55,7 +55,7 @@ fn void! native_rmtree(Path path)
 			}
 			else
 			{
-				win32::deleteFileW(file_path.as_str().to_temp_wstring()!!);
+				win32::deleteFileW(file_path.str_view().to_temp_wstring()!!);
 			}
 		};
 	} while (win32::findNextFileW(find, &find_data) != 0);

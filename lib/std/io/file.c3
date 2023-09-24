@@ -17,7 +17,7 @@ fn File! open(String filename, String mode)
 
 fn File! open_path(Path path, String mode)
 {
-	return from_handle(os::native_fopen(path.as_str(), mode));
+	return from_handle(os::native_fopen(path.str_view(), mode));
 }
 
 fn File from_handle(CFile file)

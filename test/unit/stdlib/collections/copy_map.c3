@@ -13,12 +13,12 @@ fn void! copy_map() @test
 		x.init();
 		DString y;
 		y.append("hello");
-		x.set(y.as_str(), 123);
+		x.set(y.str_view(), 123);
 		y.append("bye");
-		x.set(y.as_str(), 333);
+		x.set(y.str_view(), 333);
 		y.clear();
 		y.append("bye");
-		x.set(y.as_str(), 444);
+		x.set(y.str_view(), 444);
 		assert(x.get("hello")! == 123);
 		assert(x.get("hellobye")! == 333);
 		assert(x.get("bye")! == 444);

@@ -132,9 +132,9 @@ macro usz! print_gen(self, x)
 	$case String:
 		return self.write(x);
 	$case ZString:
-		return self.write(x.as_str());
+		return self.write(x.str_view());
 	$case DString:
-		return self.write(x.as_str());
+		return self.write(x.str_view());
 	$default:
 		$if @convertible(x, String):
 			return self.write((String)x);

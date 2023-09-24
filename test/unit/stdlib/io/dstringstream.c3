@@ -11,6 +11,6 @@ fn void! test_writing()
 	ByteReader r;
 	String test_str = "2134";
 	s.read_from(r.init(test_str))!;
-	String o = foo.as_str();
+	String o = foo.str_view();
 	assert(o == "hello-what?-------------------------------------------------------2134");
 }

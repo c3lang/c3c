@@ -27,7 +27,7 @@ const StreamInterface READBUFFER_INTERFACE = {
 	.read_byte_fn = (ReadByteStreamFn)&ReadBuffer.read_byte,
 };
 
-fn String ReadBuffer.as_str(&self) @inline
+fn String ReadBuffer.str_view(&self) @inline
 {
 	return (String)self.bytes[self.read_idx:self.write_idx - self.read_idx];
 }
@@ -90,7 +90,7 @@ const StreamInterface WRITEBUFFER_INTERFACE = {
 	.write_byte_fn = (WriteByteStreamFn)&WriteBuffer.write_byte,
 };
 
-fn String WriteBuffer.as_str(&self) @inline
+fn String WriteBuffer.str_view(&self) @inline
 {
 	return (String)self.bytes[:self.index];
 }

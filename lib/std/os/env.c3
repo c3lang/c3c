@@ -14,7 +14,7 @@ fn String! get_var(String name)
 	@pool()
 	{
 		ZString val = libc::getenv(name.zstr_tcopy());
-		return val ? val.as_str() : SearchResult.MISSING?;
+		return val ? val.str_view() : SearchResult.MISSING?;
 	};
 	$else
 	return "";

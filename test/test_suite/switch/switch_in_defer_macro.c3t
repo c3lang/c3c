@@ -294,7 +294,7 @@ fn String! Lexer.parse_string(&self, char quote) @private
             {
                 self.span = (uint)str.len();
                 self.column += self.span + 2;
-                return str.as_str();
+                return str.str_view();
             }
             prev = c;
             continue;
@@ -366,7 +366,7 @@ fn void! Lexer.parse_comment(&self, String end) @private
         }
         if (end == (String)buf)
         {
-            self.string = acc.as_str();
+            self.string = acc.str_view();
             return;
         }
         acc.append_char(buf[0]);
@@ -400,11 +400,11 @@ fn String! Lexer.parse_ident(&self) @private
         if (catch err = c)
         {
             case IoError.EOF:
-                return str.as_str();
+                return str.str_view();
             default:
                 return err?;
         }
-        if (!self.ident(str.len(), c)) return str.as_str();
+        if (!self.ident(str.len(), c)) return str.str_view();
         str.append_char(c);
     }
 }

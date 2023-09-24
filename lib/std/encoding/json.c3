@@ -69,7 +69,7 @@ fn Object*! parse_from_token(JsonContext* context, JsonTokenType token) @local
 		case RBRACE:
 		case RBRACKET:
 		case COLON: return JsonParsingError.UNEXPECTED_CHARACTER?;
-		case STRING: return object::new_string(context.last_string.as_str(), context.allocator);
+		case STRING: return object::new_string(context.last_string.str_view(), context.allocator);
 		case NUMBER: return object::new_float(context.last_number, context.allocator);
 		case TRUE: return object::new_bool(true);
 		case FALSE: return object::new_bool(false);
@@ -125,7 +125,7 @@ fn JsonTokenType! lex_number(JsonContext *context, char c) @local
 			}
 		}
 		pushback(context, c);
-		double! d = t.as_str().to_double() ?? JsonParsingError.INVALID_NUMBER?;
+		double! d = t.str_view().to_double() ?? JsonParsingError.INVALID_NUMBER?;
 		context.last_number = d!;
 		return NUMBER;
 	};
@@ -143,14 +143,14 @@ fn Object*! parse_map(JsonContext* context) @local
 	{
 		if (token != JsonTokenType.STRING) return JsonParsingError.UNEXPECTED_CHARACTER?;
 		DString string = context.last_string;
-		if (map.has_key(string.as_str())) return JsonParsingError.DUPLICATE_MEMBERS?;
+		if (map.has_key(string.str_view())) return JsonParsingError.DUPLICATE_MEMBERS?;
 		// Copy the key to our temp holder. We do this to work around the issue
 		// if the temp allocator should be used as the default allocator.
 		temp_key.clear();
 		temp_key.append(string);
 		parse_expected(context, COLON)!;
 		Object* element = parse_any(context)!;
-		map.set(temp_key.as_str(), element);
+		map.set(temp_key.str_view(), element);
 		token = advance(context)!;
 		if (token == JsonTokenType.COMMA)
 		{

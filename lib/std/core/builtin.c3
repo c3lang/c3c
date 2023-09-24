@@ -167,7 +167,7 @@ fn void panicf(String fmt, String file, String function, uint line, args...)
 		DString s;
 		s.init(.using = mem);
 		s.printf(fmt, ...args);
-		panic(s.as_str(), file, function, line);
+		panic(s.str_view(), file, function, line);
 	};
 }
 

@@ -15,12 +15,12 @@ fn void! bytestream()
 	w.init();
 	Stream* ws = &w;
 	ws.write("helloworld")!;
-	assert(w.as_str() == "helloworld");
+	assert(w.str_view() == "helloworld");
 	s.seek(0, SET)!;
 	ws.read_from(s)!;
 	s.seek(1, SET)!;
 	s.write_to(ws)!;
-	assert(w.as_str() == "helloworldabcbc");
+	assert(w.str_view() == "helloworldabcbc");
 }
 
 fn void! bytewriter_buffer()
@@ -31,7 +31,7 @@ fn void! bytewriter_buffer()
 	Stream* s = &writer;
 	s.write("hello")!!;
 	s.write_byte(0)!!;
-	String o = ((ZString)&z).as_str();
+	String o = ((ZString)&z).str_view();
 	assert(o == "hello");
 	assert(@catch(s.write("xxxx")));
 }
@@ -46,7 +46,7 @@ fn void! bytewriter_read_from()
     bw.tinit();
     bw.read_from(s)!;
 
-    assert(bw.as_str() == data);
+    assert(bw.str_view() == data);
 }
 
 module std::io;

@@ -32,7 +32,7 @@ fn void! readbuffer()
     usz n = reader_buf.copy_to(&bw)!;
 
     assert(n == DATA.len, "got %d; want %d", n, DATA.len);
-    String got = bw.as_str();
+    String got = bw.str_view();
     assert(got == DATA, "got %d; want %d", got, DATA);
 }
 
@@ -47,7 +47,7 @@ fn void! writebuffer_large()
     usz n = write_buf.write(DATA)!;
 
     assert(n == DATA.len, "large write failed: got %d; want %d", n, DATA.len);
-    String got = out.as_str();
+    String got = out.str_view();
     assert(got == DATA, "large write failed: got %d; want %d", got, DATA);
 }
 
@@ -64,6 +64,6 @@ fn void! writebuffer()
     usz n = br.copy_to(&write_buf)!;
 
     assert(n == DATA.len, "got %d; want %d", n, DATA.len);
-    String got = out.as_str();
+    String got = out.str_view();
     assert(got == DATA, "got %d; want %d", got, DATA);
 }

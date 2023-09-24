@@ -4,13 +4,13 @@ fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Al
 {
 	PathList list;
 	list.init(.using = using);
-	DIRPtr directory = posix::opendir(dir.as_str() ? dir.as_zstr() : (ZString)".");
+	DIRPtr directory = posix::opendir(dir.str_view() ? dir.as_zstr() : (ZString)".");
 	defer if (directory) posix::closedir(directory);
 	if (!directory) return (path::is_dir(dir) ? IoError.CANNOT_READ_DIR : IoError.FILE_NOT_DIR)?;
 	Posix_dirent* entry;
 	while ((entry = posix::readdir(directory)))
 	{
-		String name = ((ZString)&entry.name).as_str();
+		String name = ((ZString)&entry.name).str_view();
 		if (!name || name == "." || name == "..") continue;
 		if (entry.d_type == posix::DT_LNK && no_symlinks) continue;
 		if (entry.d_type == posix::DT_DIR && no_dirs) continue;
@@ -29,7 +29,7 @@ fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Al
 
 	@pool(using)
 	{
-		WString result = dir.as_str().tconcat(`\*`).to_temp_wstring()!!;
+		WString result = dir.str_view().tconcat(`\*`).to_temp_wstring()!!;
 		Win32_WIN32_FIND_DATAW find_data;
 		Win32_HANDLE find = win32::findFirstFileW(result, &find_data);
 		if (find == win32::INVALID_HANDLE_VALUE) return IoError.CANNOT_READ_DIR?;

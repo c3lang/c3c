@@ -160,5 +160,5 @@ fn usz! NanoDuration.to_format(&self, Formatter* formatter) @dynamic
 			str.printf("%ds", sec);
 		}
 	}
-	return formatter.printf(str.as_str())!;
+	return formatter.printf(str.str_view())!;
 }

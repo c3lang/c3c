@@ -119,6 +119,7 @@
 - `assert` may now take varargs for formatting.
 
 ### Stdlib changes
+- `.as_str()` replaced by `.str_view()`
 - Added `math::log(x , base)` and `math::ln(x)`.
 - Hashmap keys implicitly copied if copy/free are defined.
 - Socket handling.

@@ -173,11 +173,11 @@ fn usz! Formatter.out_str(&self, any arg) @private
 		case DISTINCT:
 			if (arg.type == ZString.typeid)
 			{
-				return self.out_substr(((ZString*)arg).as_str());
+				return self.out_substr(((ZString*)arg).str_view());
 			}
 			if (arg.type == DString.typeid)
 			{
-				return self.out_substr(((DString*)arg).as_str());
+				return self.out_substr(((DString*)arg).str_view());
 			}
 			return self.out_str(any { arg.ptr, arg.type.inner });
 		case POINTER:

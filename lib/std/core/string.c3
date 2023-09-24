@@ -47,7 +47,7 @@ macro String tprintf(String fmt, ...)
 	DString str;
 	str.tinit();
 	str.printf(fmt, $vasplat());
-	return str.as_str();
+	return str.str_view();
 }
 
 macro bool char_in_set(char c, String set)
@@ -288,7 +288,7 @@ fn usz! String.rindex_of(s, String needle)
 	return SearchResult.MISSING?;
 }
 
-fn String ZString.as_str(str)
+fn String ZString.str_view(str)
 {
 	return (String)(str[:str.len()]);
 }
@@ -355,8 +355,8 @@ fn void String.free(&s, Allocator* using = mem::heap())
 
 fn String String.tcopy(s) => s.copy(mem::temp()) @inline;
 
-fn String ZString.copy(z, Allocator* using = mem::heap()) => z.as_str().copy(using) @inline;
-fn String ZString.tcopy(z) => z.as_str().copy(mem::temp()) @inline;
+fn String ZString.copy(z, Allocator* using = mem::heap()) => z.str_view().copy(using) @inline;
+fn String ZString.tcopy(z) => z.str_view().copy(mem::temp()) @inline;
 
 /**
  * Convert an UTF-8 string to UTF-16

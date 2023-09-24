@@ -88,7 +88,7 @@ fn uptr! load_address() @local
 	{
 		ZString image_name = darwin::_dyld_get_image_name(i);
 		if (!image_name) continue;
-		if (image_name.as_str() != path) continue;
+		if (image_name.str_view() != path) continue;
 		return cmd.vmaddr + darwin::_dyld_get_image_vmaddr_slide(i);
 	}
 	return BacktraceFault.IMAGE_NOT_FOUND?;

@@ -96,7 +96,7 @@ fn bool run_benchmarks(BenchmarkUnit[] benchmarks)
 		defer name.clear();
 		name.printf("Benchmarking %s ", unit.name);
 		name.append_repeat('.', max_name - unit.name.len + 2);
-		io::printf("%s ", name.as_str());
+		io::printf("%s ", name.str_view());
 
 		for (uint i = 0; i < benchmark_warmup_iterations; i++)
 		{
@@ -225,7 +225,7 @@ fn bool run_tests(TestUnit[] tests)
 		defer name.clear();
 		name.printf("Testing %s ", unit.name);
 		name.append_repeat('.', max_name - unit.name.len + 2);
-		io::printf("%s ", name.as_str());
+		io::printf("%s ", name.str_view());
 		CallstackElement* stack = $$stacktrace();
 		if (stack) stack.prev = null;
 		if (libc::setjmp(&context.buf) == 0)

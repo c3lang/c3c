@@ -34,14 +34,14 @@ fn Path! getcwd(Allocator* using = mem::heap())
 	};
 }
 
-fn bool is_dir(Path path) => os::native_is_dir(path.as_str());
-fn bool is_file(Path path) => os::native_is_file(path.as_str());
-fn usz! file_size(Path path) => os::native_file_size(path.as_str());
-fn bool exists(Path path) => os::native_file_or_dir_exists(path.as_str());
+fn bool is_dir(Path path) => os::native_is_dir(path.str_view());
+fn bool is_file(Path path) => os::native_is_file(path.str_view());
+fn usz! file_size(Path path) => os::native_file_size(path.str_view());
+fn bool exists(Path path) => os::native_file_or_dir_exists(path.str_view());
 fn Path! tgetcwd() => getcwd(mem::temp()) @inline;
 fn void! chdir(Path path) => os::native_chdir(path) @inline;
 fn Path! temp_directory(Allocator* using = mem::heap()) => os::native_temp_directory(using);
-fn void! delete(Path path) => os::native_remove(path.as_str()) @inline;
+fn void! delete(Path path) => os::native_remove(path.str_view()) @inline;
 
 macro bool is_separator(char c, PathEnv path_env = DEFAULT_PATH_ENV)
 {
@@ -168,7 +168,7 @@ fn usz Path.start_of_base_name(self) @local
 
 fn bool! Path.is_absolute(self)
 {
-	String path_str = self.as_str();
+	String path_str = self.str_view();
 	if (!path_str.len) return false;
 	usz path_start = volume_name_len(path_str, self.env)!;
 	return path_start < path_str.len && is_separator(path_str[path_start], self.env);
@@ -176,7 +176,7 @@ fn bool! Path.is_absolute(self)
 
 fn Path! Path.absolute(self, Allocator* using = mem::heap())
 {
-	String path_str = self.as_str();
+	String path_str = self.str_view();
 	if (!path_str.len) path_str = ".";
 	if (path_str == ".")
 	{
@@ -225,7 +225,7 @@ fn String! Path.extension(self)
 
 fn String Path.volume_name(self)
 {
-	usz len = volume_name_len(self.as_str(), self.env)!!;
+	usz len = volume_name_len(self.str_view(), self.env)!!;
 	if (!len) return "";
 	return self.path_string[:len];
 }
@@ -387,7 +387,7 @@ fn ZString Path.as_zstr(self) => (ZString)self.path_string.ptr;
 
 fn String Path.root_directory(self)
 {
-	String path_str = self.as_str();
+	String path_str = self.str_view();
 	usz len = path_str.len;
 	if (!len) return "";
 	if (self.env == PathEnv.WIN32)
@@ -422,8 +422,8 @@ fn bool! Path.walk(self, PathWalker w, void* data)
 		PathList files = ls(abs, .using = using)!;
 		foreach (f : files)
 		{
-			if (f.as_str() == "." || f.as_str() == "..") continue;
-			f = abs.append(f.as_str(), using)!;
+			if (f.str_view() == "." || f.str_view() == "..") continue;
+			f = abs.append(f.str_view(), using)!;
 			bool is_directory = is_dir(f);
 			if (w(f, is_directory, data)!) return true;
 			if (is_directory && f.walk(w, data)!) return true;
@@ -432,7 +432,7 @@ fn bool! Path.walk(self, PathWalker w, void* data)
 	return false;
 }
 
-fn String Path.as_str(self) @inline
+fn String Path.str_view(self) @inline
 {
 	return self.path_string;
 }
@@ -440,7 +440,7 @@ fn String Path.as_str(self) @inline
 
 fn bool Path.has_suffix(self, String str)
 {
-	return self.as_str().ends_with(str);
+	return self.str_view().ends_with(str);
 }
 
 fn void Path.free(self)
