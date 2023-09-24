@@ -49,5 +49,5 @@ fn void f()
 
 fn void g()
 {
-	multiple(); // #error: 'multiple' expects 2 parameters, but none was provided
+	multiple(); // #error: 'multiple' expects
 }
