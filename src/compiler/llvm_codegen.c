@@ -602,7 +602,7 @@ void llvm_emit_and_set_decl_alloca(GenContext *c, Decl *decl)
 
 void llvm_emit_local_var_alloca(GenContext *c, Decl *decl)
 {
-	assert(!decl->var.is_static);
+	assert(!decl->var.is_static && decl->var.kind != VARDECL_CONST);
 	llvm_emit_and_set_decl_alloca(c, decl);
 	if (llvm_use_debug(c))
 	{

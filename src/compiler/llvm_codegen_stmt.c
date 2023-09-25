@@ -33,9 +33,9 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 	Type *var_type = type_lowering(decl->type);
 	LLVMTypeRef alloc_type = llvm_get_type(c, var_type);
 
-	// 2. In the case we have a static variable,
+	// 2. In the case we have a static variable or constant,
 	//    then we essentially treat this as a global.
-	if (decl->var.is_static)
+	if (decl->var.is_static || decl->var.kind == VARDECL_CONST)
 	{
 		// In defers we might already have generated this variable.
 		if (decl->backend_ref)
