@@ -2917,6 +2917,18 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 	bool erase_decl = false;
 	if (!sema_analyse_attributes_for_var(context, decl, &erase_decl)) return decl_poison(decl);
 
+	bool is_static = decl->var.is_static;
+	bool global_level_var = is_static || decl->var.kind == VARDECL_CONST || is_global;
+
+	if (global_level_var && !decl->has_extname)
+	{
+		scratch_buffer_clear();
+		scratch_buffer_append(context->call_env.kind == CALL_ENV_FUNCTION ? context->call_env.current_function->name : ".global");
+		scratch_buffer_append_char('.');
+		scratch_buffer_append(decl->name);
+		decl->extname = scratch_buffer_copy();
+	}
+
 	if (erase_decl)
 	{
 		decl->decl_kind = DECL_ERASED;
@@ -2943,7 +2955,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 		if (!type_info)
 		{
 			if (!sema_analyse_expr(context, init_expr)) return decl_poison(decl);
-			if (is_global && !expr_is_constant_eval(init_expr, CONSTANT_EVAL_GLOBAL_INIT))
+			if (global_level_var && !expr_is_constant_eval(init_expr, CONSTANT_EVAL_GLOBAL_INIT))
 			{
 				SEMA_ERROR(init_expr, "This expression cannot be evaluated at compile time.");
 				return decl_poison(decl);
@@ -2988,25 +3000,16 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 	Type *type = decl->type = type_info->type;
 	if (!sema_analyse_decl_type(context, decl->type, type_info->span)) return decl_poison(decl);
 
-	if (type) type = type_no_optional(type);
-	if (type_is_user_defined(type))
+	type = type_no_optional(type);
+	if (type_is_user_defined(type) && type->decl)
 	{
 		sema_display_deprecated_warning_on_use(context, type->decl, type_info->span);
 	}
 
-	bool is_static = decl->var.is_static;
 	if (is_static && context->call_env.pure)
 	{
 		SEMA_ERROR(decl, "'@pure' functions may not have static variables.");
 		return decl_poison(decl);
-	}
-	if (is_static && !decl->has_extname)
-	{
-		scratch_buffer_clear();
-		scratch_buffer_append(context->call_env.kind == CALL_ENV_FUNCTION ? context->call_env.current_function->name : ".global");
-		scratch_buffer_append_char('.');
-		scratch_buffer_append(decl->name);
-		decl->extname = scratch_buffer_copy();
 	}
 
 	bool infer_len = type_len_is_inferred(decl->type);
@@ -3046,7 +3049,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 		Expr *init_expr = decl->var.init_expr;
 
 		// 2. Check const-ness
-		if ((is_global || decl->var.is_static) && !expr_is_constant_eval(init_expr, CONSTANT_EVAL_GLOBAL_INIT))
+		if (global_level_var && !expr_is_constant_eval(init_expr, CONSTANT_EVAL_GLOBAL_INIT))
 		{
 			SEMA_ERROR(init_expr, "The expression must be a constant value.");
 			return decl_poison(decl);

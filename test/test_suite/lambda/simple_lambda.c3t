@@ -17,11 +17,11 @@ fn void main()
 
 /* #expect: simple_lambda.ll
 
+@main.F = protected unnamed_addr constant ptr @"simple_lambda.main$lambda1", align 8
+
 define void @simple_lambda.main() #0 {
 entry:
-  %F = alloca ptr, align 8
   %z = alloca i32, align 4
-  store ptr @"simple_lambda.main$lambda1", ptr %F, align 8
   %0 = call i32 @simple_lambda.xy(ptr @"simple_lambda.main$lambda1")
   %5 = call i32 @simple_lambda.xy(ptr @"simple_lambda.main$lambda2")
 

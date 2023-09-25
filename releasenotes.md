@@ -3,6 +3,7 @@
 ## 0.5.0 Change List
 
 ### Changes / improvements
+- Local `const` work like namespaced global `const`.
 - Added `$$atomic_fetch_*` builtins.
 - vectors may now contain pointers.
 - `void!` does not convert to `anyfault`.
