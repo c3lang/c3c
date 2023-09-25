@@ -448,6 +448,17 @@ fn void Path.free(self)
 	free(self.path_string.ptr);
 }
 
+
+fn usz! Path.to_format(&self, Formatter* formatter) @dynamic
+{
+	return formatter.print(self.str_view());
+}
+
+fn String Path.to_string(&self, Allocator* using = mem::heap()) @dynamic
+{
+	return self.str_view().copy(using);
+}
+
 const bool[256] RESERVED_PATH_CHAR_POSIX = {
 	[0] = true,
 	['/'] = true,

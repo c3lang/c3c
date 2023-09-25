@@ -430,7 +430,7 @@ macro usz! Stream.write_varint(&self, x)
 {
 	var $Type = $typeof(x);
 	const MAX = MAX_VARS[$Type.sizeof];
-	char[MAX] buffer;
+	char[MAX] buffer @noinit;
 	usz i;
 	while (x >= 0x80)
 	{
