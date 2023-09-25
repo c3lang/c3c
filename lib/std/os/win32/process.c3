@@ -83,7 +83,15 @@ extern fn Win32_BOOL getOverlappedResult(
 	Win32_LPDWORD      lpNumberOfBytesTransferred,
 	Win32_BOOL         bWait
 ) @extern("GetOverlappedResult");
-
+extern fn Win32_DWORD getEnvironmentVariableW(
+	Win32_LPCWSTR lpName,
+	Win32_LPWSTR  lpBuffer,
+    Win32_DWORD   nSize
+) @extern("GetEnvironmentVariableW");
+extern fn Win32_BOOL setEnvironmentVariableW(
+	Win32_LPCWSTR lpName,
+	Win32_LPCWSTR lpValue
+) @extern("SetEnvironmentVariableW");
 
 struct SystemInfo
 {
