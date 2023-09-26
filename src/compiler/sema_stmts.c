@@ -426,12 +426,16 @@ static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *state
 	statement->ast_kind = AST_BLOCK_EXIT_STMT;
 	context->active_scope.jump_end = true;
 	Type *block_type = context->expected_block_type;
+	if (type_is_optional(block_type))
+	{
+		puts("foek");
+	}
 	Expr *ret_expr = statement->return_stmt.expr;
 	if (ret_expr)
 	{
 		if (block_type)
 		{
-			if (!sema_analyse_expr_rhs(context, block_type, ret_expr, type_is_optional(block_type))) return false;
+			if (!sema_analyse_expr_rhs(context, block_type, ret_expr, true)) return false;
 		}
 		else
 		{

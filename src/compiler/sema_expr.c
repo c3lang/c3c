@@ -1904,10 +1904,10 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	macro_context.macro_call_depth = context->macro_call_depth + 1;
 	macro_context.call_env = context->call_env;
 	rtype = typeget(sig->rtype);
-	macro_context.expected_block_type = rtype;
 	bool optional_return = rtype && type_is_optional(rtype);
 	bool may_be_optional = !rtype || optional_return;
 	if (rtype) rtype = type_no_optional(rtype);
+	macro_context.expected_block_type = rtype;
 
 	context_change_scope_with_flags(&macro_context, SCOPE_MACRO);
 
@@ -1941,7 +1941,8 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	macro_context.macro_has_ensures = has_ensures;
 
 	if (!sema_analyse_statement(&macro_context, body)) goto EXIT_FAIL;
-
+	assert(macro_context.active_scope.depth == 1);
+	bool implicit_void_return = !macro_context.active_scope.jump_end;
 	params = macro_context.macro_params;
 	bool is_no_return = sig->attrs.noreturn;
 
@@ -2003,15 +2004,33 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 			}
 			ret_expr->type = type_add_optional(ret_expr->type, optional_return);
 		}
-		call_expr->type = type_add_optional(rtype, optional_return || has_optional_arg);
 	}
 	else
 	{
-		Type *sum_returns = context_unify_returns(&macro_context);
-		if (!sum_returns) goto EXIT_FAIL;
-		optional_return = type_is_optional(sum_returns);
-		call_expr->type = type_add_optional(sum_returns, optional_return || has_optional_arg);
+		rtype = context_unify_returns(&macro_context);
+		if (!rtype) goto EXIT_FAIL;
 	}
+
+	// Handle the implicit return.
+	if (implicit_void_return)
+	{
+		if (type_is_wildcard(rtype))
+		{
+			optional_return = optional_return || type_is_optional(rtype);
+			rtype = type_void;
+		}
+		else
+		{
+			Type *flat = type_flatten(rtype);
+			if (flat != type_void)
+			{
+				RETURN_SEMA_ERROR(decl, "Macro implicitly returns 'void' at the end, which cannot be cast to the inferred %s.",
+				                  type_quoted_error_string(rtype));
+			}
+		}
+	}
+
+	call_expr->type = type_add_optional(rtype, optional_return || has_optional_arg);
 
 	assert(call_expr->type);
 	bool must_use = false;
@@ -2026,7 +2045,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	{
 		is_no_return = true;
 	}
-	if (returns_found == 1)
+	if (returns_found == 1 && !implicit_void_return)
 	{
 		Ast *ret = macro_context.returns[0];
 		Expr *result = ret ? ret->return_stmt.expr : NULL;
