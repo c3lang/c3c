@@ -170,6 +170,7 @@
 - Added posix socket functions.
 
 ### Fixes
+- Macros with implicit return didn't correctly deduct the return type.
 - Reevaluating a bitstruct (due to checked) would break.
 - Fix missing comparison between `any`.
 - Fix issue of designated initializers containing bitstructs.
