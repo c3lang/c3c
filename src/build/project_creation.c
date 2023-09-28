@@ -123,7 +123,25 @@ const char* JSON_DYNAMIC =
 		"  // See resources/examples/project_all_settings.json and 'c3c --list-project-properties' to see more properties.\n"
 		"}";
 
-const char* MAIN_TEMPLATE =
+const char *MAINFEST_TEMPLATE =
+		"{\n"
+		"  \"provides\" : \"%s\",\n"
+		"  \"targets\" : {\n"
+		"%s"
+		"  }\n"
+		"}";
+
+const char *MAINIFEST_TARGET =
+		"    \"%s\" : {\n"
+		"      // Extra flags to the linker for this target:\n"
+		"      \"linkflags\" : [],\n"
+		"      // C3 libraries this target depends on:\n"
+		"      \"dependencies\" : [],\n"
+		"      // The external libraries to link for this target:\n"
+		"      \"linked-libs\" : []\n"
+		"    },\n";
+
+const char *MAIN_TEMPLATE =
 		"module %s;\n"
 		"import std::io;\n"
 		"\n"
@@ -132,6 +150,72 @@ const char* MAIN_TEMPLATE =
 		"\tio::printn(\"Hello, World!\");\n"
 		"\treturn 0;\n"
 		"}\n";
+
+const char* MAIN_INTERFACE_TEMPLATE =
+		"module %s;\n"
+		"\n"
+		"// extern fn int some_library_function();\n";
+
+const char* DEFAULT_TARGETS[] = {
+		"freebsd-x64",
+		"linux-aarch64",
+		"linux-riscv32",
+		"linux-riscv64",
+		"linux-x86",
+		"linux-x64",
+		"macos-aarch64",
+		"macos-x64",
+		"netbsd-x64",
+		"openbsd-x64",
+		"wasm32",
+		"wasm64",
+		"windows-aarch64",
+		"windows-x64"
+};
+
+const char *LIB_README = "Welcome to the %s library.\n";
+
+static bool check_name(const char *name);
+static void exit_fail(const char *fmt, ...);
+static void delete_dir_and_exit(BuildOptions *build_options, const char *fmt, ...);
+static void mkdir_or_fail(BuildOptions *build_options, const char *name);
+static void chdir_or_fail(BuildOptions *build_options, const char *name);
+static void create_file_or_fail(BuildOptions *build_options, const char *filename, const char *fmt, ...);
+static const char *module_name(BuildOptions *build_options);
+
+void create_library(BuildOptions *build_options)
+{
+	if (!check_name(build_options->project_name))
+	{
+		exit_fail("'%s' is not a valid library name.", build_options->project_name);
+	}
+	if (!dir_change(build_options->path))
+	{
+		exit_fail("Can't open path %s", build_options->path);
+	}
+
+	if (!dir_make(build_options->project_name))
+	{
+		exit_fail("Could not create directory %s.", build_options->project_name);
+	}
+
+	chdir_or_fail(build_options, build_options->project_name);
+	create_file_or_fail(build_options, "LICENSE", NULL);
+	create_file_or_fail(build_options, "README.md", LIB_README, build_options->project_name);
+	mkdir_or_fail(build_options, "run");
+	scratch_buffer_clear();
+	scratch_buffer_printf("%s.c3i", build_options->project_name);
+	const char *interface_file = scratch_buffer_copy();
+	create_file_or_fail(build_options, interface_file, MAIN_INTERFACE_TEMPLATE, module_name(build_options));
+	scratch_buffer_clear();
+	for (int i = 0; i < sizeof(DEFAULT_TARGETS) / sizeof(char*); i++)
+	{
+		const char *target = DEFAULT_TARGETS[i];
+		scratch_buffer_printf(MAINIFEST_TARGET, target);
+		mkdir_or_fail(build_options, target);
+	}
+	create_file_or_fail(build_options, "manifest.json", MAINFEST_TEMPLATE, build_options->project_name, scratch_buffer_to_string());
+}
 
 void create_project(BuildOptions *build_options)
 {
@@ -153,58 +237,45 @@ void create_project(BuildOptions *build_options)
 		size_t len;
 		template = file_read_all(build_options->template, &len);
 	}
-	for (int i = 0; ; i++)
+	if (!check_name(build_options->project_name))
 	{
-		char c = build_options->project_name[i];
-		if (c == '\0') break;
-		if (!char_is_alphanum_(c))
-		{
-			fprintf(stderr, "'%s' is not a valid project name.\n", build_options->project_name);
-			exit_compiler(EXIT_FAILURE);
-		}
+		error_exit("'%s' is not a valid project name.", build_options->project_name);
 	}
 
 	if (!dir_change(build_options->path))
 	{
-		fprintf(stderr, "Can't open path %s\n", build_options->path);
-		exit_compiler(EXIT_FAILURE);
+		error_exit("Can't open path '%s'.", build_options->path);
 	}
 
 	if (!dir_make(build_options->project_name))
 	{
-		fprintf(stderr, "Could not create directory %s.\n", build_options->project_name);
-		exit_compiler(EXIT_FAILURE);
+		error_exit("Could not create directory '%s'.", build_options->project_name);
 	}
 
-	if (!dir_change(build_options->project_name)) goto ERROR;
+	chdir_or_fail(build_options, build_options->project_name);
+	create_file_or_fail(build_options, "LICENSE", NULL);
+	create_file_or_fail(build_options, "README.md", NULL);
+	create_file_or_fail(build_options, template, build_options->project_name);
+	mkdir_or_fail(build_options, "build");
+	mkdir_or_fail(build_options, "docs");
+	mkdir_or_fail(build_options, "lib");
+	mkdir_or_fail(build_options, "resources");
+	mkdir_or_fail(build_options, "run");
+	mkdir_or_fail(build_options, "src");
+	chdir_or_fail(build_options, "src");
 
-	if (!file_touch("LICENSE")) goto ERROR;
+	create_file_or_fail(build_options, MAIN_TEMPLATE, module_name(build_options));
+	chdir_or_fail(build_options, "..");
+	mkdir_or_fail(build_options, "test");
 
-	if (!file_touch("README.md")) goto ERROR;
+	(void) printf("Project '%s' created.\n", build_options->project_name);
+	exit_compiler(COMPILER_SUCCESS_EXIT);
+}
 
+// Helper functions:
 
-	FILE *file = fopen("project.json", "a");
-	if (!file) goto ERROR;
-	(void) fprintf(file, template, build_options->project_name);
-	if (fclose(file)) goto ERROR;
-
-	if (!dir_make("build")) goto ERROR;
-
-	if (!dir_make("docs")) goto ERROR;
-
-	if (!dir_make("lib")) goto ERROR;
-
-	if (!dir_make("resources")) goto ERROR;
-
-	if (!dir_make("run")) goto ERROR;
-
-	if (!dir_make("src")) goto ERROR;
-
-	if (!dir_change("src")) goto ERROR;
-
-	file = fopen("main.c3", "w");
-	if (!file) goto ERROR;
-
+static const char *module_name(BuildOptions *build_options)
+{
 	scratch_buffer_clear();
 	size_t len = strlen(build_options->project_name);
 	bool has_char = false;
@@ -227,22 +298,80 @@ void create_project(BuildOptions *build_options)
 		scratch_buffer_append_char('_');
 	}
 	if (!has_char) scratch_buffer_append("module");
-	(void) fprintf(file, MAIN_TEMPLATE, scratch_buffer_to_string());
-	if (fclose(file)) goto ERROR;
+	return scratch_buffer_to_string();
+}
+static void create_file_or_fail(BuildOptions *build_options, const char *filename, const char *fmt, ...)
+{
+	if (!fmt)
+	{
+		if (!file_touch(filename))
+		{
+			delete_dir_and_exit(build_options, "Could not create '%s' file.", filename);
+		}
+		return;
+	}
+	FILE *file = fopen(filename, "a");
+	if (!file)
+	{
+		delete_dir_and_exit(build_options, "Couldn't create '%s' file.", filename);
+	}
+	va_list list;
+	va_start(list, fmt);
+	(void) vfprintf(file, fmt, list);
+	va_end(list);
+	if (fclose(file))
+	{
+		delete_dir_and_exit(build_options, "Couldn't close the '%s' file.", filename);
+	}
+}
 
-	if (!dir_change("..")) goto ERROR;
+static bool check_name(const char *name)
+{
+	for (int i = 0; ; i++)
+	{
+		char c = name[i];
+		if (c == '\0') break;
+		if (!char_is_alphanum_(c)) return false;
+	}
+	return true;
+}
 
-	if (!dir_make("test")) goto ERROR;
+static void chdir_or_fail(BuildOptions *build_options, const char *name)
+{
+	if (!dir_change(name))
+	{
+		delete_dir_and_exit(build_options, "Failed to open directory '%s'.", name);
+	}
+}
 
-	(void) printf("Project '%s' created.\n", build_options->project_name);
-	exit_compiler(COMPILER_SUCCESS_EXIT);
+static void exit_fail(const char *fmt, ...)
+{
+	va_list list;
+	va_start(list, fmt);
+	vfprintf(stderr, fmt, list);
+	va_end(list);
+	fputs("", stderr);
+	exit_compiler(EXIT_FAILURE);
+}
 
-ERROR:
-	fprintf(stderr, "Error creating the project.\n");
+static void delete_dir_and_exit(BuildOptions *build_options, const char *fmt, ...)
+{
+	va_list list;
+	va_start(list, fmt);
 	if (dir_change(build_options->path))
 	{
 		(void)rmdir(build_options->project_name);
 	}
+	vfprintf(stderr, fmt, list);
+	va_end(list);
+	fputs("", stderr);
 	exit_compiler(EXIT_FAILURE);
 }
 
+static void mkdir_or_fail(BuildOptions *build_options, const char *name)
+{
+	if (!dir_make(name))
+	{
+		delete_dir_and_exit(build_options, "Failed to create directory '%s'.", name);
+	}
+}

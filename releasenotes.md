@@ -3,6 +3,7 @@
 ## 0.5.0 Change List
 
 ### Changes / improvements
+- Added `init-lib` to simplify library creation.
 - Local `const` work like namespaced global `const`.
 - Added `$$atomic_fetch_*` builtins.
 - vectors may now contain pointers.

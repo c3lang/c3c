@@ -53,6 +53,7 @@ static void usage(void)
 	OUTPUT("");
 	OUTPUT("  compile <file1> [<file2> ...]           Compile files without a project into an executable.");
 	OUTPUT("  init <project name>                     Initialize a new project structure.");
+	OUTPUT("  init-lib <library name>                 Initialize a new library structure.");
 	OUTPUT("  build [<target>]                        Build the target in the current project.");
 	OUTPUT("  benchmark                               Run the benchmarks in the current project.");
 	OUTPUT("  test                                    Run the unit tests in the current project.");
@@ -253,6 +254,13 @@ static void parse_command(BuildOptions *options)
 	{
 		options->command = COMMAND_INIT;
 		if (at_end() || next_is_opt()) error_exit("Expected a project name after init");
+		options->project_name = next_arg();
+		return;
+	}
+	if (arg_match("init-lib"))
+	{
+		options->command = COMMAND_INIT_LIB;
+		if (at_end() || next_is_opt()) error_exit("Expected a library name after init");
 		options->project_name = next_arg();
 		return;
 	}

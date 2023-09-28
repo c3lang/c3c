@@ -28,6 +28,7 @@ typedef enum
 	COMMAND_COMPILE_TEST,
 	COMMAND_GENERATE_HEADERS,
 	COMMAND_INIT,
+	COMMAND_INIT_LIB,
 	COMMAND_BUILD,
 	COMMAND_COMPILE_RUN,
 	COMMAND_STATIC_LIB,
@@ -550,4 +551,4 @@ ArchOsTarget arch_os_target_from_string(const char *target);
 bool command_accepts_files(CompilerCommand command);
 void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting level);
 void create_project(BuildOptions *build_options);
-
+void create_library(BuildOptions *build_options);

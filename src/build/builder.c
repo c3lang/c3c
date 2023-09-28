@@ -75,6 +75,7 @@ bool command_accepts_files(CompilerCommand command)
 		case COMMAND_MISSING:
 		case COMMAND_GENERATE_HEADERS:
 		case COMMAND_INIT:
+		case COMMAND_INIT_LIB:
 		case COMMAND_BUILD:
 		case COMMAND_RUN:
 		case COMMAND_CLEAN_RUN:

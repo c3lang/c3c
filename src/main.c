@@ -55,6 +55,9 @@ int main_real(int argc, const char *argv[])
 		case COMMAND_INIT:
 			create_project(&build_options);
 			break;
+		case COMMAND_INIT_LIB:
+			create_library(&build_options);
+			break;
 		case COMMAND_UNIT_TEST:
 			compiler_tests();
 			break;
