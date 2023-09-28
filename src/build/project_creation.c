@@ -196,6 +196,8 @@ void create_project(BuildOptions *build_options)
 
 	if (!dir_make("resources")) goto ERROR;
 
+	if (!dir_make("run")) goto ERROR;
+
 	if (!dir_make("src")) goto ERROR;
 
 	if (!dir_change("src")) goto ERROR;
