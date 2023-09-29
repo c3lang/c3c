@@ -123,7 +123,7 @@ const char* JSON_DYNAMIC =
 		"  // See resources/examples/project_all_settings.json and 'c3c --list-project-properties' to see more properties.\n"
 		"}";
 
-const char *MAINFEST_TEMPLATE =
+const char *MANIFEST_TEMPLATE =
 		"{\n"
 		"  \"provides\" : \"%s\",\n"
 		"  \"targets\" : {\n"
@@ -214,7 +214,7 @@ void create_library(BuildOptions *build_options)
 		scratch_buffer_printf(MAINIFEST_TARGET, target);
 		mkdir_or_fail(build_options, target);
 	}
-	create_file_or_fail(build_options, "manifest.json", MAINFEST_TEMPLATE, build_options->project_name, scratch_buffer_to_string());
+	create_file_or_fail(build_options, "manifest.json", MANIFEST_TEMPLATE, build_options->project_name, scratch_buffer_to_string());
 }
 
 void create_project(BuildOptions *build_options)
@@ -255,7 +255,7 @@ void create_project(BuildOptions *build_options)
 	chdir_or_fail(build_options, build_options->project_name);
 	create_file_or_fail(build_options, "LICENSE", NULL);
 	create_file_or_fail(build_options, "README.md", NULL);
-	create_file_or_fail(build_options, template, build_options->project_name);
+	create_file_or_fail(build_options, "project.json", template, build_options->project_name);
 	mkdir_or_fail(build_options, "build");
 	mkdir_or_fail(build_options, "docs");
 	mkdir_or_fail(build_options, "lib");
