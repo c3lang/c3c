@@ -131,7 +131,7 @@ const char *MANIFEST_TEMPLATE =
 		"  }\n"
 		"}";
 
-const char *MAINIFEST_TARGET =
+const char *MANIFEST_TARGET =
 		"    \"%s\" : {\n"
 		"      // Extra flags to the linker for this target:\n"
 		"      \"linkflags\" : [],\n"
@@ -211,7 +211,7 @@ void create_library(BuildOptions *build_options)
 	for (int i = 0; i < sizeof(DEFAULT_TARGETS) / sizeof(char*); i++)
 	{
 		const char *target = DEFAULT_TARGETS[i];
-		scratch_buffer_printf(MAINIFEST_TARGET, target);
+		scratch_buffer_printf(MANIFEST_TARGET, target);
 		mkdir_or_fail(build_options, target);
 	}
 	create_file_or_fail(build_options, "manifest.json", MANIFEST_TEMPLATE, build_options->project_name, scratch_buffer_to_string());
@@ -264,7 +264,7 @@ void create_project(BuildOptions *build_options)
 	mkdir_or_fail(build_options, "src");
 	chdir_or_fail(build_options, "src");
 
-	create_file_or_fail(build_options, MAIN_TEMPLATE, module_name(build_options));
+	create_file_or_fail(build_options, "main.c3", MAIN_TEMPLATE, module_name(build_options));
 	chdir_or_fail(build_options, "..");
 	mkdir_or_fail(build_options, "test");
 

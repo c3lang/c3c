@@ -733,18 +733,21 @@ void print_syntax(BuildOptions *options)
 	}
 	if (options->print_project_properties)
 	{
+		int width;
 		puts("Project properties");
 		puts("------------------");
+		width = find_padding_length(project_default_keys, project_default_keys_count);
 		for (int i = 0; i < project_default_keys_count; i++)
 		{
-			printf("%2d %s\n", i + 1, project_default_keys[i]);
+			printf("%2d %-*s%s\n", i + 1, width, project_default_keys[i], project_default_descriptions[i]);
 		}
 		puts("");
 		puts("Target properties");
 		puts("-----------------");
+		width = find_padding_length(project_target_keys, project_target_keys_count);
 		for (int i = 0; i < project_target_keys_count; i++)
 		{
-			printf("%2d %s\n", i + 1, project_target_keys[i]);
+			printf("%2d %-*s%s\n", i + 1, width, project_target_keys[i], project_target_descriptions[i]);
 		}
 		puts("");
 	}
@@ -1026,3 +1029,15 @@ File *compile_and_invoke(const char *file, const char *args)
 	return source_file_text_load(file, out);
 }
 
+int find_padding_length(const char** arr, const int count)
+{
+	int width = 0;
+	for (int i = 0; i < count; i++)
+	{
+		const char* str = arr[i];
+		int len = strlen(str);
+		if (width < len) width = len;
+	}
+	width += 2;
+	return width;
+}

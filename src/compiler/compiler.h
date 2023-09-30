@@ -17,6 +17,7 @@ void symtab_init(uint32_t max_size);
 void symtab_destroy();
 void print_syntax(BuildOptions *options);
 void vendor_fetch(BuildOptions *options);
+int find_padding_length(const char** str, const int count);
 
 extern double compiler_init_time;
 extern double compiler_parsing_time;

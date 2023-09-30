@@ -46,8 +46,10 @@ typedef uint16_t SectionId;
 #define MAX_CLOBBER_FLAGS (64 * CLOBBER_FLAG_ELEMENTS)
 
 extern const char *project_default_keys[];
+extern const char *project_default_descriptions[];
 extern const int project_default_keys_count;
 extern const char* project_target_keys[];
+extern const char* project_target_descriptions[];
 extern const int project_target_keys_count;
 
 typedef struct Ast_ Ast;
