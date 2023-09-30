@@ -6,210 +6,115 @@
 #include "build_internal.h"
 #define MAX_SYMTAB_SIZE (1024 * 1024)
 
-const char *project_default_keys[] = {
-	"authors",
-	"benchfn",
-	"c-sources",
-	"cc",
-	"cflags",
-	"cpu",
-	"debug-info",
-	"dependencies",
-	"dependency-search-paths",
-	"features",
-	"fp-math",
-	"langrev",
-	"linked-libraries",
-	"linker-search-paths",
-	"link-args",
-	"link-libc",
-	"macossdk",
-	"memory-env",
-	"no-entry",
-	"opt",
-	"optlevel",
-	"optsize",
-	"output",
-	"panicfn",
-	"reloc",
-	"safe",
-	"single-module",
-	"soft-float",
-	"sources",
-	"strip-unused",
-	"symtab",
-	"system-linker",
-	"target",
-	"targets",
-	"testfn",
-	"trap-on-wrap",
-	"use-stdlib",
-	"version",
-	"warnings",
-	"wincrt",
-	"winsdk",
-	"x86cpu",
-	"x86vec",
-	"x86-stack-struct-return",
+const char *project_default_keys[][2] = {
+		{"authors", "Authors, optionally with email."},
+		{"benchfn", "Override the benchmark function."},
+		{"c-sources", "Set the C sources to be compiled."},
+		{"cc", "Set C compiler (defaults to 'cc')."},
+		{"cflags", "C compiler flags."},
+		{"cpu", "CPU name, used for optimizations in the compiler backend."},
+		{"debug-info", "Debug level: none, line-tables, full."},
+		{"dependencies", "C3 library dependencies for all targets."},
+		{"dependency-search-paths", "The C3 library search paths."},
+		{"exec", "Scripts run for all targets.."},
+		{"features", "Features enabled for all targets."},
+		{"fp-math", "Set math behaviour: `strict`, `relaxed` or `fast`."},
+		{"langrev", "Version of the C3 language used."},
+		{"linked-libraries", "Libraries linked by the linker for all targets."},
+		{"linker-search-paths", "Linker search paths."},
+		{"link-args", "Linker arguments for all targets."},
+		{"link-libc", "Link libc (default: true)."},
+		{"macossdk", "Set the directory for the MacOS SDK for cross compilation."},
+		{"memory-env", "Set the memory environment: normal, small, tiny, none."},
+		{"no-entry", "Do not generate (or require) a main function."},
+		{"opt", "Link libc (default: true)."},
+		{"optlevel", "Code optimization level: none, less, more, max."},
+		{"optsize", "Code size optimization: none, small, tiny."},
+		{"output", "Output location, relative to project file."},
+		{"panicfn", "Override the panic function."},
+		{"reloc", "Relocation model: none, pic, PIC, pie, PIE."},
+		{"safe", "Set safety (contracts, runtime bounds checking, null pointer checks etc) on or off."},
+		{"script-dir", "The directory where 'exec' is run."},
+		{"single-module", "Compile all modules together, enables more inlining."},
+		{"soft-float", "Output soft-float functions."},
+		{"sources", "Paths to project sources for all targets."},
+		{"strip-unused", "Strip unused code and globals from the output. (default: true)"},
+		{"symtab", "Sets the preferred symtab size."},
+		{"system-linker", "Use the system linker (default: no for cross compilation, yes otherwise)."},
+		{"target", "Compile for a particular architecture + OS target."},
+		{"targets", "Set of targets for the project."},
+		{"testfn", "Override the test function."},
+		{"trap-on-wrap", "Make signed and unsigned integer overflow generate a panic rather than wrapping."},
+		{"use-stdlib", "Include the standard library (default: true)."},
+		{"version", "Version using semantic versioning."},
+		{"warnings", "Warnings used for all targets."},
+		{"wincrt", "Windows CRT linking: none, static, dynamic (default)."},
+		{"winsdk", "Set the path to Windows system library files for cross compilation."},
+		{"x86cpu", "Set general level of x64 cpu: baseline, ssse3, sse4, avx1, avx2-v1, avx2-v2 (Skylake/Zen1+), avx512 (Icelake/Zen4+), native."},
+		{"x86vec", "Set max type of vector use: none, mmx, sse, avx, avx512, native."},
+		{"x86-stack-struct-return", "Return structs on the stack for x86."},
 };
 
 const int project_default_keys_count = ELEMENTLEN(project_default_keys);
 
-const char *project_default_descriptions[] = {
-	"Authors, optionally with email.",
-	"Override the benchmark function name.",
-	"Override C sources to be compiled.",
-	"Specify the C compiler.",
-	"Add flags for the C compiler.",
-	"CPU name, used for optimizations in the compiler backend.",
-	"Add debug info.",
-	"Add dependencies for all targets.",
-	"Override dependencies for all targets.",
-"features",
-"fp-math",
-	"Language version of C3.",
-	"The external libraries to link for all targets.",
-	"The path used to search for external libraries.",
-	"Extra arguments to the linker for all targets.",
-	"Link libc other default libraries (default: yes).",
-	"Set the directory for the MacOS SDK for cross compilation.",
-	"Set the memory environment: normal, small, tiny, none.",
-	"Do not generate (or require) a main function.",
-"opt",
-	"Code optimization level: none, less, more, max.",
-	"Code size optimization: none, small, tiny.",
-	"Output location, relative to project file.",
-	"Override the panic function name.",
-	"Relocation model: none, pic, PIC, pie, PIE.",
-	"Turn safety (contracts, runtime bounds checking, null pointer checks etc) on or off.",
-	"Compile all modules together, enables more inlining.",
-"soft-float",
-	"Sources compiled for all targets.",
-	"Strip unused code and globals from the output. (default: yes)",
-	"Sets the preferred symtab size.",
-	"Use the system linker (default: no for cross compilation, yes otherwise).",
-	"Compile for a particular architecture + OS target.",
-	"Set of targets for the project.",
-	"Override the test function name.",
-"trap-on-wrap",
-	"Use this directory as the C3 standard library path.",
-	"Version using semantic versioning.",
-	"Warnings used for all targets.",
-	"Windows CRT linking: none, static, dynamic (default).",
-	"Set the directory for Windows system library files for cross compilation.",
-	"Set general level of x64 cpu: baseline, ssse3, sse4, avx1, avx2-v1, avx2-v2 (Skylake/Zen1+), avx512 (Icelake/Zen4+), native.",
-	"Set max type of vector use: none, mmx, sse, avx, avx512, native.",
-"x86-stack-struct-return",
-};
-
-const char* project_target_keys[] = {
-	"benchfn",
-	"c-sources-add",
-	"c-sources-override",
-	"cc",
-	"cflags-add",
-	"cflags-override",
-	"cpu",
-	"debug-info",
-	"dependencies-add",
-	"dependencies-override",
-	"dependency-search-paths-add",
-	"dependency-search-paths-override",
-	"features",
-	"fp-math",
-	"langrev",
-	"linked-libraries-add",
-	"linked-libraries-override",
-	"linker-search-paths-add",
-	"linker-search-paths-override",
-	"link-args-add",
-	"link-args-override",
-	"link-libc",
-	"macossdk",
-	"memory-env",
-	"no-entry",
-	"opt",
-	"optlevel",
-	"optsize",
-	"output"
-	"panicfn",
-	"reloc",
-	"safe",
-	"single-module",
-	"soft-float",
-	"sources-add",
-	"sources-override",
-	"strip-unused",
-	"symtab",
-	"system-linker",
-	"target",
-	"testfn",
-	"trap-on-wrap",
-	"type",
-	"use-stdlib",
-	"version",
-	"warnings",
-	"wincrt",
-	"winsdk",
-	"x86cpu",
-	"x86vec",
-	"x86-stack-struct-return",
+const char* project_target_keys[][2] = {
+		{"benchfn", "Override the benchmark function."},
+		{"c-sources-add", "Additional C sources to be compiled for the target."},
+		{"c-sources-override", "C sources to be compiled, overriding global settings."},
+		{"cc", "Set C compiler (defaults to 'cc')."},
+		{"cflags-add", "Additional C compiler flags for the target."},
+		{"cflags-override", "C compiler flags for the target, overriding global settings."},
+		{"cpu", "CPU name, used for optimizations in the compiler backend."},
+		{"debug-info", "Debug level: none, line-tables, full."},
+		{"dependencies-add", "Additional C3 library dependencies for the target."},
+		{"dependencies-override", "C3 library dependencies for this target, overriding global settings."},
+		{"dependency-search-paths-add", "Additional C3 library search paths for the target."},
+		{"dependency-search-paths-override", "C3 library search paths for this target, overriding global settings."},
+		{"exec-add", "Additional scripts to run for the target."},
+		{"exec-override", "Scripts to run for this target, overriding global settings."},
+		{"features", "Features enabled for all targets."},
+		{"fp-math", "Set math behaviour: `strict`, `relaxed` or `fast`."},
+		{"langrev", "Version of the C3 language used."},
+		{"linked-libraries-add", "Additional libraries linked by the linker for the target."},
+		{"linked-libraries-override", "Libraries linked by the linker for this target, overriding global settings."},
+		{"linker-search-paths-add", "Additional linker search paths for the target."},
+		{"linker-search-paths-override", "Linker search paths for this target, overriding global settings."},
+		{"link-args-add", "Additional linker arguments for the target."},
+		{"link-args-override", "Linker arguments for this target, overriding global settings."},
+		{"link-libc", "Link libc (default: true)."},
+		{"macossdk", "Set the directory for the MacOS SDK for cross compilation."},
+		{"memory-env", "Set the memory environment: normal, small, tiny, none."},
+		{"no-entry", "Do not generate (or require) a main function."},
+		{"opt", "Link libc (default: true)."},
+		{"optlevel", "Code optimization level: none, less, more, max."},
+		{"optsize", "Code size optimization: none, small, tiny."},
+		{"output", "Output location, relative to project file."},
+		{"panicfn", "Override the panic function."},
+		{"reloc", "Relocation model: none, pic, PIC, pie, PIE."},
+		{"safe", "Set safety (contracts, runtime bounds checking, null pointer checks etc) on or off."},
+		{"script-dir", "The directory where 'exec' is run."},
+		{"single-module", "Compile all modules together, enables more inlining."},
+		{"soft-float", "Output soft-float functions."},
+		{"sources-add", "Additional paths to project sources for the target."},
+		{"sources-override", "Paths to project sources for this target, overriding global settings."},
+		{"strip-unused", "Strip unused code and globals from the output. (default: true)"},
+		{"symtab", "Sets the preferred symtab size."},
+		{"system-linker", "Use the system linker (default: no for cross compilation, yes otherwise)."},
+		{"target", "Compile for a particular architecture + OS target."},
+		{"testfn", "Override the test function."},
+		{"trap-on-wrap", "Make signed and unsigned integer overflow generate a panic rather than wrapping."},
+		{"type", "Type of output, one of 'executable', 'static-lib', 'dynamic-lib', 'benchmark', 'test', 'object-files'." },
+		{"use-stdlib", "Include the standard library (default: true)."},
+		{"version", "Version using semantic versioning."},
+		{"warnings", "Warnings used for all targets."},
+		{"wincrt", "Windows CRT linking: none, static, dynamic (default)."},
+		{"winsdk", "Set the path to Windows system library files for cross compilation."},
+		{"x86cpu", "Set general level of x64 cpu: baseline, ssse3, sse4, avx1, avx2-v1, avx2-v2 (Skylake/Zen1+), avx512 (Icelake/Zen4+), native."},
+		{"x86vec", "Set max type of vector use: none, mmx, sse, avx, avx512, native."},
+		{"x86-stack-struct-return", "Return structs on the stack for x86."},
 };
 
 const int project_target_keys_count = ELEMENTLEN(project_target_keys);
-
-const char* project_target_descriptions[] = {
-	"Override the benchmark function name.",
-	"Add C sources to be compiled.",
-	"Override C sources to be compiled.",
-	"Specify the C compiler.",
-	"Add flags for the C compiler.",
-	"Override flags for the C compiler.",
-	"CPU name, used for optimizations in the compiler backend.",
-	"Add debug info.",
-	"Add dependencies for this target.",
-	"Override dependencies for this target.",
-	"Add directories where C3 library files may be found",
-	"Override directories where C3 library files may be found",
-"features",
-	"FP math behaviour: strict, relaxed, fast.",
-	"Language version of C3.",
-	"Additional libraries to be linked.",
-	"Override libraries to be linked.",
-	"Add search paths for the linker.",
-	"Override search paths for the linker.",
-	"Add arguments for the linker.",
-	"Override arguments for the linker.",
-	"Link libc other default libraries (default: yes).",
-	"Set the directory for the MacOS SDK for cross compilation.",
-	"Set the memory environment: normal, small, tiny, none.",
-	"Do not generate (or require) a main function.",
-"opt",
-	"Code optimization level: none, less, more, max.",
-	"Code size optimization: none, small, tiny.",
-	"Override the panic function name.",
-	"Relocation model: none, pic, PIC, pie, PIE.",
-	"Turn safety (contracts, runtime bounds checking, null pointer checks etc) on or off.",
-	"Compile all modules together, enables more inlining.",
-"soft-float",
-	"Add sources for the target.",
-	"Override sources for the target.",
-	"Strip unused code and globals from the output. (default: yes)",
-	"Sets the preferred symtab size.",
-	"Use the system linker (default: no for cross compilation, yes otherwise).",
-	"Compile for a particular architecture + OS target.",
-	"Override the test function name.",
-"trap-on-wrap",
-	"Executable or library.",
-	"Use this directory as the C3 standard library path.",
-	"Version using semantic versioning.",
-	"Warnings used for this target.",
-	"Windows CRT linking: none, static, dynamic (default).",
-	"Set the directory for Windows system library files for cross compilation.",
-	"Set general level of x64 cpu: baseline, ssse3, sse4, avx1, avx2-v1, avx2-v2 (Skylake/Zen1+), avx512 (Icelake/Zen4+), native.",
-	"Set max type of vector use: none, mmx, sse, avx, avx512, native.",
-"x86-stack-struct-return",
-};
 
 const char *get_valid_string(JSONObject *table, const char *key, const char *category, bool mandatory)
 {
@@ -303,7 +208,7 @@ static const char **get_valid_array(JSONObject *table, const char *key, const ch
 	return values;
 }
 
-static void check_json_keys(const char** valid_keys, size_t key_count, JSONObject *json, const char *type)
+static void check_json_keys(const char* valid_keys[][2], size_t key_count, JSONObject *json, const char *type)
 {
 	static bool failed_shown = false;
 	bool failed = false;
@@ -312,7 +217,7 @@ static void check_json_keys(const char** valid_keys, size_t key_count, JSONObjec
 		const char *key = json->keys[i];
 		for (size_t j = 0; j < key_count; j++)
 		{
-			if (strcmp(key, valid_keys[j]) == 0) goto OK;
+			if (strcmp(key, valid_keys[j][0]) == 0) goto OK;
 		}
 		eprintf("WARNING: Unknown parameter '%s' in '%s'.\n", key, type);
 		failed = true;
@@ -359,6 +264,30 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	}
 	const char *cc = get_valid_string(json, "cc", type, false);
 	if (cc) target->cc = cc;
+
+	const char *script_dir = get_valid_string(json, "script-dir", type, false);
+	if (script_dir) target->script_dir = script_dir;
+
+	// Exec
+	const char **exec = get_valid_array(json, is_default ? "exec" : "exec-override" , type, false);
+	const char **exec_add = is_default ? NULL : get_valid_array(json, "exec-add" , type, false);
+	if (exec && exec_add)
+	{
+		error_exit("'%s' is combining both 'exec-add' and 'exec-override', only one may be used.", type);
+	}
+	if (exec_add && !target->exec)
+	{
+		target->exec = exec_add;
+		exec_add = NULL;
+	}
+	if (exec) target->exec = exec;
+	if (exec_add)
+	{
+		assert(target->exec);
+		FOREACH_BEGIN(const char *exec_command, exec_add)
+			vec_add(target->exec, exec_command);
+		FOREACH_END();
+	}
 
 	// CFlags
 	const char *cflags = get_valid_string(json, is_default ? "cflags" : "cflags-override" , type, false);

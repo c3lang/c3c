@@ -736,18 +736,16 @@ void print_syntax(BuildOptions *options)
 		int width;
 		puts("Project properties");
 		puts("------------------");
-		width = find_padding_length(project_default_keys, project_default_keys_count);
 		for (int i = 0; i < project_default_keys_count; i++)
 		{
-			printf("%2d %-*s%s\n", i + 1, width, project_default_keys[i], project_default_descriptions[i]);
+			printf("%2d %-*s%s\n", i + 1, 35, project_default_keys[i][0], project_default_keys[i][1]);
 		}
 		puts("");
 		puts("Target properties");
 		puts("-----------------");
-		width = find_padding_length(project_target_keys, project_target_keys_count);
 		for (int i = 0; i < project_target_keys_count; i++)
 		{
-			printf("%2d %-*s%s\n", i + 1, width, project_target_keys[i], project_target_descriptions[i]);
+			printf("%2d %-*s%s\n", i + 1, 35, project_target_keys[i][0], project_target_keys[i][1]);
 		}
 		puts("");
 	}
@@ -827,6 +825,39 @@ static int jump_buffer_size()
 	UNREACHABLE
 }
 
+static void execute_scripts(void)
+{
+	if (!vec_size(active_target.exec)) return;
+	if (active_target.trust_level < TRUST_FULL)
+	{
+		error_exit("This target has 'exec' directives, to run it trust level must be set to '--trust=full'.");
+	}
+	char *old_path = NULL;
+	if (active_target.script_dir)
+	{
+		old_path = getcwd(NULL, 0);
+		if (!dir_change(active_target.script_dir))
+		{
+			free(old_path);
+			error_exit("Failed to open script dir '%s'", active_target.script_dir);
+		}
+	}
+	FOREACH_BEGIN(const char *exec, active_target.exec)
+		StringSlice execs = slice_from_string(exec);
+		StringSlice call = slice_next_token(&execs, ' ');
+		if (call.len < 3 || call.ptr[call.len - 3] != '.' || call.ptr[call.len - 2] != 'c' || call.ptr[call.len - 2] != '3')
+		{
+			(void)execute_cmd(exec);
+			continue;
+		}
+		scratch_buffer_clear();
+		scratch_buffer_append_len(call.ptr, call.len);
+		(void)compile_and_invoke(scratch_buffer_to_string(), execs.len ? execs.ptr : "");
+	FOREACH_END();
+	dir_change(old_path);
+	free(old_path);
+}
+
 void compile()
 {
 	symtab_init(active_target.symtab_size);
@@ -836,6 +867,7 @@ void compile()
 		static const char* c_suffix_list[3] = { ".c" };
 		active_target.csources = target_expand_source_names(active_target.csource_dirs, c_suffix_list, 1, false);
 	}
+	execute_scripts();
 	global_context.main = NULL;
 	global_context.string_type = NULL;
 	asm_target.initialized = false;
@@ -876,6 +908,11 @@ void compile()
 	compiler_init_time = bench_mark();
 
 	if (!vec_size(active_target.sources) && !active_target.read_stdin) error_exit("No files to compile.");
+
+	if (active_target.exec)
+	{
+
+	}
 	if (active_target.lex_only)
 	{
 		compiler_lex();
@@ -1004,15 +1041,24 @@ File *compile_and_invoke(const char *file, const char *args)
 	scratch_buffer_clear();
 	scratch_buffer_append(compiler_path);
 #if (_MSC_VER)
-	const char *output = "__c3_exec.exe";
+	const char *output = "__c3exec__.exe";
 #else
-	const char *output = "__c3_exec";
+	const char *output = "__c3exec__";
 #endif
-	scratch_buffer_printf(" compile %s -o %s", file, output);
+	scratch_buffer_append(" compile");
+	StringSlice slice = slice_from_string(file);
+	while (slice.len > 0)
+	{
+		StringSlice file_name = slice_next_token(&slice, ';');
+		if (!file_name.len) continue;
+		scratch_buffer_append_char(' ');
+		scratch_buffer_append_len(file_name.ptr, file_name.len);
+	}
+	scratch_buffer_printf(" -o %s", output);
 	const char *out;
 	if (!execute_cmd_failable(scratch_buffer_to_string(), &out))
 	{
-		error_exit("Failed to compile script %s.", file);
+		error_exit("Failed to compile script '%s'.", file);
 	}
 	DEBUG_LOG("EXEC OUT: %s", out);
 	scratch_buffer_clear();
@@ -1024,7 +1070,7 @@ File *compile_and_invoke(const char *file, const char *args)
 	scratch_buffer_append(args);
 	if (!execute_cmd_failable(scratch_buffer_to_string(), &out))
 	{
-		error_exit("Error invoking script %s with arguments %s.", file, args);
+		error_exit("Error invoking script '%s' with arguments %s.", file, args);
 	}
 	return source_file_text_load(file, out);
 }

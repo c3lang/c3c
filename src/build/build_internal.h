@@ -25,6 +25,12 @@ static const char *wincrt_linking[3] = {
 	[WIN_CRT_STATIC] = "static",
 };
 
+static const char *trust_level[3] = {
+	[TRUST_NONE] = "none",
+	[TRUST_INCLUDE] = "include",
+	[TRUST_FULL] = "full",
+};
+
 static const char *optsizes[3] = {
 	[SIZE_OPTIMIZATION_NONE] = "none",
 	[SIZE_OPTIMIZATION_SMALL] = "small",

@@ -96,13 +96,12 @@ static void usage(void)
 	OUTPUT("  -O5                       - Unsafe, highest optimization, fast maths, single module, emit debug info.");
 	OUTPUT("  -Os                       - Unsafe, high optimization, small code, single module, no debug info.");
 	OUTPUT("  -Oz                       - Unsafe, high optimization, tiny code, single module, no debug info.");
-	OUTPUT("  -t1                       - Trust level 1 - don't allow $include nor $exec (default).");
-	OUTPUT("  -t2                       - Trust level 2 - allow $include but not $exec / exec directives.");
-	OUTPUT("  -t3                       - Trust level 3 - full trust, allow both include and exec.");
 	OUTPUT("  -D <name>                 - Add feature flag <name>.");
 	OUTPUT("  -U <name>                 - Remove feature flag <name>.");
+	OUTPUT("  --trust=<option>          - Trust level: none (default), include ($include allowed), full ($exec / exec allowed).");
 	OUTPUT("  --build-dir <dir>         - Override build output directory.");
 	OUTPUT("  --obj-out <dir>           - Override object file output directory.");
+	OUTPUT("  --script-dir <dir>        - Override the base directory for $exec.");
 	OUTPUT("  --llvm-out <dir>          - Override llvm output directory for '--emit-llvm'.");
 	OUTPUT("  --emit-llvm               - Emit LLVM IR as a .ll file per module.");
 	OUTPUT("  --asm-out <dir>           - Override asm output directory for '--emit-asm'.");
@@ -887,6 +886,11 @@ static void parse_option(BuildOptions *options)
 				options->win.sdk = check_dir(next_arg());
 				return;
 			}
+			if ((argopt = match_argopt("trust")))
+			{
+				options->trust_level = (TrustLevel) parse_multi_option(argopt, 3, trust_level);
+				return;
+			}
 			if ((argopt = match_argopt("wincrt")))
 			{
 				options->win.crt_linking = (WinCrtLinking)parse_multi_option(argopt, 3, wincrt_linking);
@@ -914,6 +918,12 @@ static void parse_option(BuildOptions *options)
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --obj-out needs a directory.");
 				options->obj_out = next_arg();
+				return;
+			}
+			if (match_longopt("script-dir"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --script-dir needs a directory.");
+				options->script_dir = next_arg();
 				return;
 			}
 			if (match_longopt("llvm-out"))
@@ -1044,6 +1054,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.single_module = SINGLE_MODULE_NOT_SET,
 		.files = NULL,
 		.build_dir = NULL,
+		.script_dir = NULL,
 
 	};
 	for (int i = DIAG_NONE; i < DIAG_WARNING_TYPE; i++)
