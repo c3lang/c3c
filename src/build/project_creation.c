@@ -264,7 +264,7 @@ void create_project(BuildOptions *build_options)
 	mkdir_or_fail(build_options, "src");
 	chdir_or_fail(build_options, "src");
 
-	create_file_or_fail(build_options, MAIN_TEMPLATE, module_name(build_options));
+	create_file_or_fail(build_options, "main.c3", MAIN_TEMPLATE, module_name(build_options));
 	chdir_or_fail(build_options, "..");
 	mkdir_or_fail(build_options, "test");
 
