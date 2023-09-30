@@ -145,7 +145,7 @@ static void usage(void)
 	OUTPUT("  --debug-log               - Print debug logging to stdout.");
 #endif
 	OUTPUT("");
-	OUTPUT("  --benchmarking            - Run builtin benchmarks.");
+	OUTPUT("  --benchmarking            - Run built-in benchmarks.");
 	OUTPUT("  --testing                 - Run built-in tests.");
 	OUTPUT("");
 	OUTPUT("  --list-attributes         - List all attributes.");
