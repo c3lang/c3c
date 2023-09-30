@@ -163,7 +163,7 @@ static Decl **sema_load_include(CompilationUnit *unit, Decl *decl)
 {
 	if (active_target.trust_level < TRUST_INCLUDE)
 	{
-		SEMA_ERROR(decl, "'$include' not permitted, trust level must be set to '-t2' or '-t3' to permit it.");
+		SEMA_ERROR(decl, "'$include' not permitted, trust level must be set to '--trust=include' or '--trust=full' to permit it.");
 		return NULL;
 	}
 	SemaContext context;
@@ -192,7 +192,7 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 {
 	if (active_target.trust_level < TRUST_FULL)
 	{
-		SEMA_ERROR(decl, "'$exec' not permitted, trust level must be set to '-t3' to permit it.");
+		SEMA_ERROR(decl, "'$exec' not permitted, trust level must be set to '--trust=full' to permit it.");
 		return NULL;
 	}
 	SemaContext context;
@@ -266,6 +266,18 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 		UNREACHABLE
 	FOREACH_END();
 	File *file;
+	// TODO fix Win32
+	char *old_path = NULL;
+	if (active_target.script_dir)
+	{
+		old_path = getcwd(NULL, 0);
+		if (!dir_change(active_target.script_dir))
+		{
+			free(old_path);
+			SEMA_ERROR(decl, "Failed to open script dir '%s'", active_target.script_dir);
+			return NULL;
+		}
+	}
 	if (c3_script)
 	{
 		file = compile_and_invoke(file_str, scratch_buffer_copy());
@@ -274,6 +286,16 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 	{
 		const char *output = execute_cmd(scratch_buffer_to_string());
 		file = source_file_text_load(scratch_buffer_to_string(), output);
+	}
+	if (old_path)
+	{
+		success = dir_change(old_path);
+		free(old_path);
+		if (!success)
+		{
+			SEMA_ERROR(decl, "Failed to open run dir '%s'", active_target.script_dir);
+			return NULL;
+		}
 	}
 	if (global_context.includes_used++ > MAX_INCLUDES)
 	{

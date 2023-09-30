@@ -355,6 +355,7 @@ typedef struct BuildOptions_
 	const char *llvm_out;
 	const char *asm_out;
 	const char *obj_out;
+	const char *script_dir;
 	RelocModel reloc_model;
 	X86VectorCapability x86_vector_capability;
 	X86CpuSet x86_cpu_set;
@@ -429,6 +430,7 @@ typedef struct
 	const char *object_file_dir;
 	const char *ir_file_dir;
 	const char *asm_file_dir;
+	const char *script_dir;
 	bool run_after_compile;
 	bool generate_benchmark_runner;
 	bool generate_test_runner;
@@ -470,6 +472,7 @@ typedef struct
 	const char *testfn;
 	const char *cc;
 	const char *cflags;
+	const char **exec;
 	const char **csource_dirs;
 	const char **csources;
 	const char **feature_list;

@@ -312,6 +312,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 		target->object_file_dir = options->obj_out ? options->obj_out : target->build_dir;
 		target->ir_file_dir = options->llvm_out ? options->llvm_out : target->build_dir;
 		target->asm_file_dir = options->asm_out ? options->asm_out : target->build_dir;
+		target->script_dir = options->script_dir ? options->script_dir : target->script_dir;
 	}
 	else
 	{
@@ -319,6 +320,8 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 		target->object_file_dir = options->obj_out ? options->obj_out : file_append_path(target->build_dir, "tmp");
 		target->ir_file_dir = options->llvm_out ? options->llvm_out : file_append_path(target->build_dir, "llvm_ir");
 		target->asm_file_dir = options->asm_out ? options->asm_out : file_append_path(target->build_dir, "asm");
+		target->script_dir = options->script_dir ? options->script_dir : target->script_dir;
+		if (!target->script_dir) target->script_dir = "scripts";
 	}
 	switch (options->compile_option)
 	{
