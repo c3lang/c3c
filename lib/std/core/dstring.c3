@@ -56,13 +56,14 @@ fn DString DString.new_concat(self, DString b, Allocator* using = mem::heap())
 
 fn DString DString.new_tconcat(self, DString b) => self.new_concat(b, mem::temp());
 
-fn ZString DString.zstr(self)
+fn ZString DString.zstr_view(&self)
 {
 	StringData* data = self.data();
 	if (!data) return "";
 	if (data.capacity == data.len)
 	{
 		self.reserve(1);
+		data = self.data();
 		data.chars[data.len] = 0;
 	}
 	else if (data.chars[data.len] != 0)
@@ -284,7 +285,7 @@ fn void DString.append_char(&self, char c)
 		*self = new_with_capacity(MIN_CAPACITY);
 	}
 	self.reserve(1);
-	StringData* data = (StringData*)*self;
+	StringData* data = self.data();
 	data.chars[data.len++] = c;
 }
 
