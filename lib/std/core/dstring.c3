@@ -56,7 +56,7 @@ fn DString DString.new_concat(self, DString b, Allocator* using = mem::heap())
 
 fn DString DString.new_tconcat(self, DString b) => self.new_concat(b, mem::temp());
 
-fn ZString DString.zstr(&self)
+fn ZString DString.zstr_view(&self)
 {
 	StringData* data = self.data();
 	if (!data) return "";
