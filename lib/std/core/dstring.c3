@@ -175,8 +175,8 @@ fn DString DString.copy(self, Allocator* using = null)
 		if (using) return new_with_capacity(0, using);
 		return (DString)null;
 	}
-	if (!using) using = mem::heap();
 	StringData* data = self.data();
+	if (!using) using = data.allocator;
 	DString new_string = new_with_capacity(data.capacity, using);
 	mem::copy((char*)new_string.data(), (char*)data, StringData.sizeof + data.len);
 	return new_string;
