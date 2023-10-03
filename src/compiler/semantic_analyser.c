@@ -187,8 +187,6 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 			case DECL_CT_ASSERT:
 			case DECL_CT_ECHO:
 			case DECL_DECLARRAY:
-			case DECL_INITIALIZE:
-			case DECL_FINALIZE:
 			case DECL_ERASED:
 			case DECL_FNTYPE:
 				continue;

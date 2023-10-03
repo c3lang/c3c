@@ -122,8 +122,6 @@ void decl_register(Decl *decl)
 	{
 		case DECL_ERASED:
 			return;
-		case DECL_INITIALIZE:
-		case DECL_FINALIZE:
 		case DECL_POISONED:
 		case DECL_CT_ASSERT:
 		case DECL_CT_ECHO:
@@ -245,10 +243,6 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			return;
 		case DECL_CT_ASSERT:
 			vec_add(unit->ct_asserts, decl);
-			return;
-		case DECL_INITIALIZE:
-		case DECL_FINALIZE:
-			vec_add(unit->xxlizers, decl);
 			return;
 	}
 	DEBUG_LOG("Registering symbol '%s' in %s.", decl->name, unit->module->name->module);

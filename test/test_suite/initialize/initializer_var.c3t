@@ -1,6 +1,6 @@
 module test;
 
-static initialize
+fn void init() @init
 {
 	int a;
 	a = 1;

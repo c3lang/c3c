@@ -6,6 +6,7 @@
 #include "llvm_codegen_internal.h"
 
 static LLVMValueRef llvm_add_xxlizer(GenContext *c, unsigned priority, bool is_finalizer);
+static void llvm_append_xxlizer(GenContext *c, unsigned  priority, bool is_initializer, LLVMValueRef function);
 static void llvm_emit_param_attributes(GenContext *c, LLVMValueRef function, ABIArgInfo *info, bool is_return, int index, int last_index);
 static inline void llvm_emit_return_value(GenContext *context, LLVMValueRef value);
 static void llvm_expand_from_args(GenContext *c, Type *type, LLVMValueRef ref, unsigned *index, AlignSize alignment);
@@ -412,6 +413,10 @@ void llvm_emit_function_body(GenContext *c, Decl *decl, StacktraceType type)
 	DEBUG_LOG("Generating function %s.", decl->extname);
 	if (decl->func_decl.attr_dynamic) vec_add(c->dynamic_functions, decl);
 	assert(decl->backend_ref);
+	if (decl->func_decl.attr_init || decl->func_decl.attr_finalizer)
+	{
+		llvm_append_xxlizer(c, decl->func_decl.priority, decl->func_decl.attr_init, decl->backend_ref);
+	}
 	llvm_emit_body(c,
 	               decl->backend_ref,
 	               type_get_resolved_prototype(decl->type),
@@ -549,12 +554,6 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 		case ST_MACRO:
 			function_name = decl->name;
 			break;
-		case ST_INITIALIZER:
-			function_name = "[static initializer]";
-			break;
-		case ST_FINALIZER:
-			function_name = "[static finalizer]";
-			break;
 		default:
 			UNREACHABLE
 	}
@@ -658,6 +657,13 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 	c->function = prev_function;
 }
 
+static void llvm_append_xxlizer(GenContext *c, unsigned  priority, bool is_initializer, LLVMValueRef function)
+{
+	LLVMValueRef **array_ref = is_initializer ? &c->constructors : &c->destructors;
+	LLVMValueRef vals[3] = { llvm_const_int(c, type_int, priority), function, llvm_get_zero(c, type_voidptr) };
+	vec_add(*array_ref, LLVMConstStructInContext(c->context, vals, 3, false));
+}
+
 static LLVMValueRef llvm_add_xxlizer(GenContext *c, unsigned priority, bool is_initializer)
 {
 	LLVMTypeRef initializer_type = LLVMFunctionType(LLVMVoidTypeInContext(c->context), NULL, 0, false);
@@ -669,43 +675,6 @@ static LLVMValueRef llvm_add_xxlizer(GenContext *c, unsigned priority, bool is_i
 	LLVMValueRef vals[3] = { llvm_const_int(c, type_int, priority), function, llvm_get_zero(c, type_voidptr) };
 	vec_add(*array_ref, LLVMConstStructInContext(c->context, vals, 3, false));
 	return function;
-}
-
-void llvm_emit_xxlizer(GenContext *c, Decl *decl)
-{
-	Ast *body = astptrzero(decl->xxlizer.init);
-	if (!body)
-	{
-		// Skip if it doesn't have a body.
-		return;
-	}
-	bool is_initializer = decl->decl_kind == DECL_INITIALIZE;
-	LLVMValueRef function = llvm_add_xxlizer(c, decl->xxlizer.priority, is_initializer);
-	if (llvm_use_debug(c))
-	{
-		uint32_t row = decl->span.row;
-		if (!row) row = 1;
-		LLVMMetadataRef type = LLVMDIBuilderCreateSubroutineType(c->debug.builder, c->debug.file.debug_file, NULL, 0, 0);
-
-		c->debug.function = LLVMDIBuilderCreateFunction(c->debug.builder,
-														c->debug.file.debug_file,
-														scratch_buffer.str, scratch_buffer.len,
-														scratch_buffer.str, scratch_buffer.len,
-														c->debug.file.debug_file,
-														row,
-														type,
-														true,
-														true,
-														row,
-														LLVMDIFlagZero,
-														active_target.optlevel != OPTIMIZATION_NONE);
-		LLVMSetSubprogram(function, c->debug.function);
-	}
-	llvm_emit_body(c,
-	               function,
-	               NULL,
-	               NULL,
-	               body, decl, is_initializer ? ST_INITIALIZER : ST_FINALIZER);
 }
 
 

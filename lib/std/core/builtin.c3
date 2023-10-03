@@ -76,8 +76,6 @@ enum CallLocation : int(String name)
 	MACRO("macro"),
 	LAMBDA("lambda"),
 	TEST("test"),
-	INITIALIZER("initializer"),
-	FINALIZER("finalizer")
 }
 
 struct CallstackElement
@@ -427,7 +425,7 @@ fn void install_signal_handler(CInt signal, SignalFunction func) @local
 }
 
 // Clean this up
-static initialize @priority(101)
+fn void install_signal_handlers() @init(101) @local
 {
 	install_signal_handler(libc::SIGBUS, &sig_bus_error);
 	install_signal_handler(libc::SIGSEGV, &sig_segmentation_fault);

@@ -58,8 +58,6 @@ typedef enum
 	ST_LAMBDA,
 	ST_BENCHMARK,
 	ST_TEST,
-	ST_INITIALIZER,
-	ST_FINALIZER
 } StacktraceType;
 
 typedef struct
@@ -345,7 +343,6 @@ LLVMMetadataRef llvm_get_debug_type(GenContext *c, Type *type);
 LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type);
 LLVMTypeRef llvm_get_pointee_type(GenContext *c, Type *any_type);
 void llvm_emit_function_decl(GenContext *c, Decl *decl);
-void llvm_emit_xxlizer(GenContext *c, Decl *decl);
 bool llvm_types_are_similar(LLVMTypeRef original, LLVMTypeRef coerce);
 
 // -- Attributes ---

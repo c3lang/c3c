@@ -47,12 +47,10 @@ static inline const char *decl_type_to_string(Decl *type)
 		case DECL_ENUM_CONSTANT: return "enum_const";
 		case DECL_FAULT: return "fault";
 		case DECL_FAULTVALUE: return "fault_val";
-		case DECL_FINALIZE: return "finalizer";
 		case DECL_FNTYPE: return "fntype";
 		case DECL_FUNC: return "function";
 		case DECL_GLOBALS: return "global";
 		case DECL_IMPORT: return "import";
-		case DECL_INITIALIZE: return "initializer";
 		case DECL_MACRO: return "macro";
 		case DECL_STRUCT: return "struct";
 		case DECL_UNION: return "union";

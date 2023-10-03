@@ -1,9 +1,9 @@
-static initialize
+fn void foo() @init
 {
 	return; // This is fine
 }
 
-static initialize
+fn int foo2() @init // #error: '@init' and '@finalizer' functions may only
 {
-	return 123; // #error: cannot implicitly
+	return 123;
 }

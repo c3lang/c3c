@@ -656,7 +656,7 @@ module std::core::mem @if(WASM_NOLIBC);
 SimpleHeapAllocator wasm_allocator @private;
 extern int __heap_base;
 
-static initialize @priority(1)
+fn void initialize_wasm_mem() @init(1) @private
 {
 	allocator::wasm_memory.allocate_block(mem::DEFAULT_MEM_ALIGNMENT)!!; // Give us a valid null.
 	// Check if we need to move the heap.

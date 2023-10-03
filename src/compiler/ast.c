@@ -112,12 +112,10 @@ const char *decl_to_a_name(Decl *decl)
 		case DECL_ERASED: return "an erased declaration";
 		case DECL_FAULT: return "a fault";
 		case DECL_FAULTVALUE: return "a fault value";
-		case DECL_FINALIZE: return "a static finalizer";
 		case DECL_FNTYPE: return "a function type";
 		case DECL_FUNC: return "a function";
 		case DECL_GLOBALS: return "globals";
 		case DECL_IMPORT: return "an import";
-		case DECL_INITIALIZE: return "a static initializer";
 		case DECL_LABEL: return "a label";
 		case DECL_MACRO: return "a macro";
 		case DECL_POISONED: return "a poisoned decl";

@@ -1626,14 +1626,8 @@ static const char *attribute_domain_to_string(AttributeDomain domain)
 			return "def";
 		case ATTR_CALL:
 			return "call";
-		case ATTR_INITIALIZER:
-			return "static initializer";
-		case ATTR_FINALIZER:
-			return "static finalizer";
 		case ATTR_DEFINE:
 			return "define";
-		case ATTR_XXLIZER:
-			UNREACHABLE
 	}
 	UNREACHABLE
 }
@@ -1695,7 +1689,9 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_DYNAMIC] = ATTR_FUNC,
 			[ATTRIBUTE_EXPORT] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | EXPORTED_USER_DEFINED_TYPES,
 			[ATTRIBUTE_EXTERN] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES,
+			[ATTRIBUTE_FINALIZER] = ATTR_FUNC,
 			[ATTRIBUTE_IF] = (AttributeDomain)~(ATTR_CALL | ATTR_LOCAL),
+			[ATTRIBUTE_INIT] = ATTR_FUNC,
 			[ATTRIBUTE_INLINE] = ATTR_FUNC | ATTR_CALL,
 			[ATTRIBUTE_INTERFACE] = ATTR_FUNC,
 			[ATTRIBUTE_LITTLEENDIAN] = ATTR_BITSTRUCT,
@@ -1711,15 +1707,14 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_OPERATOR] = ATTR_MACRO | ATTR_FUNC,
 			[ATTRIBUTE_OVERLAP] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_PACKED] = ATTR_STRUCT | ATTR_UNION,
-			[ATTRIBUTE_PRIORITY] = ATTR_XXLIZER,
 			[ATTRIBUTE_PRIVATE] = ATTR_FUNC | ATTR_MACRO | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES | ATTR_DEFINE,
 			[ATTRIBUTE_PUBLIC] = ATTR_FUNC | ATTR_MACRO | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES | ATTR_DEFINE,
 			[ATTRIBUTE_PURE] = ATTR_CALL,
 			[ATTRIBUTE_REFLECT] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES,
 			[ATTRIBUTE_SECTION] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
 			[ATTRIBUTE_TEST] = ATTR_FUNC,
-			[ATTRIBUTE_UNUSED] = (AttributeDomain)~(ATTR_CALL | ATTR_XXLIZER),
-			[ATTRIBUTE_USED] = (AttributeDomain)~(ATTR_CALL | ATTR_XXLIZER ),
+			[ATTRIBUTE_UNUSED] = (AttributeDomain)~(ATTR_CALL),
+			[ATTRIBUTE_USED] = (AttributeDomain)~(ATTR_CALL),
 			[ATTRIBUTE_WASM] = ATTR_FUNC,
 			[ATTRIBUTE_WEAK] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
 			[ATTRIBUTE_WINMAIN] = ATTR_FUNC,
@@ -1878,6 +1873,28 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			}
 			if (!expr->const_expr.b) *erase_decl = true;
 			return true;
+		case ATTRIBUTE_FINALIZER:
+			decl->func_decl.attr_finalizer = true;
+			// Ugly
+			goto PARSE;
+		case ATTRIBUTE_INIT:
+			decl->func_decl.attr_init = true;
+		PARSE:;
+			if (expr)
+			{
+				if (!sema_analyse_expr(context, expr)) return false;
+				if (!expr_is_const_int(expr))
+				{
+					RETURN_SEMA_ERROR(attr, "Expected an integer value.");
+				}
+				uint64_t prio = decl->func_decl.priority = expr->const_expr.ixx.i.low;
+				if (expr_const_will_overflow(&expr->const_expr, TYPE_U16) || prio > MAX_PRIORITY || prio < 1)
+				{
+					RETURN_SEMA_ERROR(attr, "The priority must be a value between 1 and %d", MAX_PRIORITY);
+				}
+			}
+			if (!decl->func_decl.priority) decl->func_decl.priority = MAX_PRIORITY;
+			return true;
 		case ATTRIBUTE_SECTION:
 		case ATTRIBUTE_EXTERN:
 			if (context->unit->module->is_generic)
@@ -1968,19 +1985,6 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 		case ATTRIBUTE_USED:
 			decl->is_must_use = true;
 			break;
-		case ATTRIBUTE_PRIORITY:
-			if (!expr || !expr_is_const_int(expr)) goto ERROR_PRIORITY;
-			{
-				Int i = expr->const_expr.ixx;
-				if (!int_fits(i, TYPE_I64)) goto ERROR_PRIORITY;
-				int64_t priority = int_to_i64(i);
-				if (priority < 1 || priority > MAX_PRIORITY) goto ERROR_PRIORITY;
-				decl->xxlizer.priority = priority;
-				return true;
-			}
-		ERROR_PRIORITY:
-			SEMA_ERROR(attr, "Expected an argument to '@priority' between 1 and %d.", MAX_PRIORITY);
-			return decl_poison(decl);
 		case ATTRIBUTE_PURE:
 			// Only used for calls.
 			UNREACHABLE
@@ -2472,54 +2476,6 @@ static inline bool sema_analyse_func_macro(SemaContext *context, Decl *decl, boo
 	return true;
 }
 
-static inline bool sema_analyse_xxlizer(SemaContext *context, Decl *decl, bool *erase_decl)
-{
-	if (!sema_analyse_attributes(context,
-								 decl,
-								 decl->attributes,
-								 decl->decl_kind == DECL_INITIALIZE ? ATTR_INITIALIZER : ATTR_FINALIZER,
-								 erase_decl)) return decl_poison(decl);
-	if (*erase_decl) return true;
-	if (decl->xxlizer.priority == 0) decl->xxlizer.priority = MAX_PRIORITY;
-	context->call_env = (CallEnv) { .kind = decl->decl_kind == DECL_INITIALIZE ? CALL_ENV_INITIALIZER : CALL_ENV_FINALIZER };
-	context->rtype = type_void;
-	context->active_scope = (DynamicScope) {
-			.scope_id = 0,
-			.depth = 0,
-			.label_start = 0,
-			.current_local = 0
-	};
-
-	// Clear returns
-	vec_resize(context->returns, 0);
-	context->scope_id = 0;
-	context->continue_target = NULL;
-	context->next_target = 0;
-	context->next_switch = 0;
-	context->break_target = 0;
-	Ast *body = astptr(decl->xxlizer.init);
-
-	// Insert an implicit return
-	AstId *next_id = &body->compound_stmt.first_stmt;
-	if (!*next_id)
-	{
-		decl->xxlizer.init = 0;
-	}
-	SourceSpan span = body->span;
-	if (*next_id)
-	{
-		Ast *last = ast_last(astptr(*next_id));
-		// Cleanup later
-		if (last->ast_kind == AST_RETURN_STMT) goto SKIP_NEW_RETURN;
-		span = last->span;
-		next_id = &last->next;
-	}
-	Ast *ret = new_ast(AST_RETURN_STMT, span);
-	ast_append(&next_id, ret);
-SKIP_NEW_RETURN:
-	return sema_analyse_statement(context, body);
-}
-
 static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *erase_decl)
 {
 	DEBUG_LOG("----Analysing function %s", decl->name);
@@ -2530,24 +2486,42 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 
 	bool is_test = decl->func_decl.attr_test;
 	bool is_benchmark = decl->func_decl.attr_benchmark;
+	bool is_init_finalizer = decl->func_decl.attr_init || decl->func_decl.attr_finalizer;
 	Signature *sig = &decl->func_decl.signature;
-	if (is_test || is_benchmark)
+	if (is_init_finalizer && (is_test || is_benchmark))
+	{
+		RETURN_SEMA_ERROR(decl, "Test and benchmark functions may not also be marked '@init' or '@finalizer'.");
+	}
+	if (is_test || is_benchmark || is_init_finalizer)
 	{
 		if (vec_size(sig->params))
 		{
-			SEMA_ERROR(sig->params[0], "'@test' and '@benchmark' functions may not take any parameters.");
-			return false;
+			SEMA_ERROR(sig->params[0], "%s functions may not take any parameters.",
+			           is_init_finalizer ? "'@init' and '@finalizer'" : "'@test' and '@benchmark'");
+			return decl_poison(decl);
 		}
 		TypeInfo *rtype_info = type_infoptr(sig->rtype);
 		if (!sema_resolve_type_info(context, rtype_info)) return false;
-		if (type_no_optional(rtype_info->type) != type_void)
+		Type *rtype = rtype_info->type;
+		if (is_init_finalizer)
 		{
-			SEMA_ERROR(rtype_info, "'@test' and '@benchmark' functions may only return 'void' or 'void!'.");
-			return false;
+			if (rtype->canonical != type_void)
+			{
+				SEMA_ERROR(rtype_info, "'@init' and '@finalizer' functions may only return 'void'.");
+				return decl_poison(decl);
+			}
 		}
-		if (rtype_info->type == type_void)
+		else
 		{
-			rtype_info->type = type_get_optional(rtype_info->type);
+			if (type_no_optional(rtype) != type_void)
+			{
+				SEMA_ERROR(rtype_info, "'@test' and '@benchmark' functions may only return 'void' or 'void!'.");
+				return decl_poison(decl);
+			}
+			if (rtype->canonical == type_void)
+			{
+				rtype_info->type = type_get_optional(rtype);
+			}
 		}
 	}
 
@@ -2574,6 +2548,11 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 	}
 	if (decl->func_decl.type_parent)
 	{
+		if (is_init_finalizer)
+		{
+			SEMA_ERROR(decl, "Methods may not have '@init' or '@finalizer' attributes.");
+			return decl_poison(decl);
+		}
 		if (is_test || is_benchmark)
 		{
 			SEMA_ERROR(decl, "Methods may not be annotated %s.", is_test ? "@test" : "@benchmark");
@@ -3550,10 +3529,6 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 			break;
 		case DECL_DEFINE:
 			if (!sema_analyse_define(context, decl, &erase_decl)) goto FAILED;
-			break;
-		case DECL_INITIALIZE:
-		case DECL_FINALIZE:
-			if (!sema_analyse_xxlizer(context, decl, &erase_decl)) goto FAILED;
 			break;
 		case DECL_POISONED:
 		case DECL_IMPORT:

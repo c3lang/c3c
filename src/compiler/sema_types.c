@@ -275,8 +275,6 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 		case DECL_ATTRIBUTE:
 			SEMA_ERROR(type_info, "This is not a type.");
 			return type_info_poison(type_info);
-		case DECL_INITIALIZE:
-		case DECL_FINALIZE:
 		case DECL_CT_ASSERT:
 		case DECL_CT_ECHO:
 		case DECL_DECLARRAY:

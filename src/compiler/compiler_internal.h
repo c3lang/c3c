@@ -551,9 +551,12 @@ typedef struct
 			bool attr_winmain : 1;
 			bool attr_dynamic : 1;
 			bool attr_interface : 1;
+			bool attr_init : 1;
+			bool attr_finalizer : 1;
 			bool is_lambda : 1;
 			union
 			{
+				uint32_t priority;
 				DeclId any_prototype;
 				Decl **generated_lambda;
 				Decl **lambda_ct_parameters;
@@ -640,13 +643,6 @@ typedef struct
 	AstId parent;
 } LabelDecl;
 
-typedef struct
-{
-	unsigned priority;
-	AstId init;
-} InitializerDecl;
-
-
 typedef struct Decl_
 {
 	const char *name;
@@ -696,7 +692,6 @@ typedef struct Decl_
 	Type *type;
 	union
 	{
-		InitializerDecl xxlizer;
 		Decl** decl_list;
 		struct
 		{
@@ -1607,7 +1602,6 @@ struct CompilationUnit_
 	Decl **ct_asserts;
 	Decl **ct_echos;
 	Decl **ct_includes;
-	Decl **xxlizers;
 	Decl **vars;
 	Decl **macros;
 	Decl **methods;
@@ -1901,10 +1895,8 @@ extern const char *kw_at_require;
 extern const char *kw_at_return;
 extern const char *kw_check_assign;
 extern const char *kw_deprecated;
-extern const char *kw_finalize;
 extern const char *kw_in;
 extern const char *kw_incr;
-extern const char *kw_initialize;
 extern const char *kw_inout;
 extern const char *kw_kind;
 extern const char *kw_len;
