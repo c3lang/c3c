@@ -1125,8 +1125,6 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 		case DECL_TYPEDEF:
 		case DECL_UNION:
 		case DECL_DECLARRAY:
-		case DECL_INITIALIZE:
-		case DECL_FINALIZE:
 		case DECL_BODYPARAM:
 		case DECL_CT_ECHO:
 		case DECL_CT_EXEC:
@@ -1435,11 +1433,6 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 		gen_context->debug.file = (DebugFile){
 				.debug_file = unit->llvm.debug_file,
 				.file_id = unit->file->file_id };
-
-		FOREACH_BEGIN(Decl *initializer, unit->xxlizers)
-			has_elements = true;
-			llvm_emit_xxlizer(gen_context, initializer);
-		FOREACH_END();
 
 		FOREACH_BEGIN(Decl *method, unit->methods)
 			if (only_used && !method->is_live) continue;

@@ -890,10 +890,6 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 		case DECL_CT_INCLUDE:
 			MACRO_COPY_EXPR(copy->include.filename);
 			break;
-		case DECL_INITIALIZE:
-		case DECL_FINALIZE:
-			MACRO_COPY_ASTID(copy->xxlizer.init);
-			break;
 		case DECL_BODYPARAM:
 			MACRO_COPY_DECL_LIST(copy->body_params);
 			break;

@@ -1,16 +1,16 @@
 
-static initialize @priority("hello") // #error: Expected an argument to '@priority'
+fn void init1() @init("hello") // #error: Expected an integer value
 {
 }
 
-static initialize @priority(1, 2) // #error: Too many arguments for
+fn void init2() @init(1, 2) // #error: Too many arguments for
 {
 }
 
-static initialize @priority(0) // #error: Expected an argument to '@priority'
+fn void init3() @init(0) // #error: The priority must be a value
 {
 }
 
-static initialize @priority(65536) // #error: Expected an argument to '@priority'
+fn void init4() @init(65536) // #error: The priority must be a value
 {
 }

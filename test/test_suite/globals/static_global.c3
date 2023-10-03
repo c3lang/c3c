@@ -1,1 +1,1 @@
-static int ifej; // #error: 'static' can only used with local variables, to hide global variables
+static int ifej; // #error: 'static' is only used

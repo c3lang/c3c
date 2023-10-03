@@ -1,1 +1,1 @@
-static foo {} ; // #error: Expected 'static initialize'
+static foo {} ; // #error: 'static' is only used

@@ -8,55 +8,56 @@ fn void main()
 }
 extern fn void puts(char*);
 
-static initialize @priority(300)
+fn void startup2() @init(300)
 {
 	puts("Hello startup2");
 }
-static initialize
+fn void start_main() @init
 {
 	puts("Let's start main...");
 }
-static initialize @priority(200)
+fn void startup1() @init(200)
 {
 	puts("Hello startup");
 }
 
-static initialize
+fn void empty_startup() @init
 {}
 
-static finalize
+fn void shutdown() @finalizer
 {
 	puts("Bye bye");
 }
 
 /* #expect: test.ll
 
-@llvm.global_ctors = appending global [3 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 300, ptr @.static_initialize.0, ptr null }, { i32, ptr, ptr } { i32 65535, ptr @.static_initialize.1, ptr null }, { i32, ptr, ptr } { i32 200, ptr @.static_initialize.2, ptr null }]
-@llvm.global_dtors = appending global [1 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 65535, ptr @.static_finalize.0, ptr null }]
+@llvm.global_ctors = appending global [4 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 300, ptr @test.startup2, ptr null }, { i32, ptr, ptr } { i32 65535, ptr @test.start_main, ptr null }, { i32, ptr, ptr } { i32 200, ptr @test.startup1, ptr null }, { i32, ptr, ptr } { i32 65535, ptr @test.empty_startup, ptr null }]
+@llvm.global_dtors = appending global [1 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 65535, ptr @test.shutdown, ptr null }]
 
-define internal void @.static_initialize.0() {
-entry:
-  call void @puts(ptr @.str)
-  ret void
-}
-
-; Function Attrs: nounwind
-declare void @puts(ptr) #0
-
-define internal void @.static_initialize.1() {
+define void @test.startup2() #0 {
 entry:
   call void @puts(ptr @.str.1)
   ret void
 }
 
-define internal void @.static_initialize.2() {
+define void @test.start_main() #0 {
 entry:
   call void @puts(ptr @.str.2)
   ret void
 }
 
-define internal void @.static_finalize.0() {
+define void @test.startup1() #0 {
 entry:
   call void @puts(ptr @.str.3)
+  ret void
+}
+define void @test.empty_startup() #0 {
+entry:
+  ret void
+}
+
+define void @test.shutdown() #0 {
+entry:
+  call void @puts(ptr @.str.4)
   ret void
 }

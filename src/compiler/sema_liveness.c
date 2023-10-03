@@ -511,7 +511,7 @@ void sema_trace_liveness(void)
 	FOREACH_BEGIN(Module *module, global_context.module_list)
 		FOREACH_BEGIN(CompilationUnit *unit, module->units)
 			FOREACH_BEGIN(Decl *function, unit->functions)
-				if (function->is_export || function->no_strip ||
+				if (function->is_export || function->no_strip || function->func_decl.attr_finalizer || function->func_decl.attr_init ||
 				   (function->func_decl.attr_test && keep_tests) ||
 				   (function->func_decl.attr_benchmark && keep_benchmarks)) sema_trace_decl_liveness(function);
 			FOREACH_END();
@@ -523,9 +523,6 @@ void sema_trace_liveness(void)
 			FOREACH_END();
 			FOREACH_BEGIN(Decl *method, unit->local_method_extensions)
 				if (method->is_export || method->no_strip) sema_trace_decl_liveness(method);
-			FOREACH_END();
-			FOREACH_BEGIN(Decl *xxlizer, unit->xxlizers)
-				sema_trace_decl_liveness(xxlizer);
 			FOREACH_END();
 		FOREACH_END();
 	FOREACH_END();
@@ -620,10 +617,6 @@ RETRY:
 					sema_trace_expr_liveness(decl->var.init_expr);
 					break;
 			}
-			return;
-		case DECL_INITIALIZE:
-		case DECL_FINALIZE:
-			sema_trace_stmt_liveness(astptrzero(decl->xxlizer.init));
 			return;
 		case DECL_DECLARRAY:
 			UNREACHABLE

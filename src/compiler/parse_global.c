@@ -9,7 +9,6 @@ static bool context_next_is_path_prefix_start(ParseContext *c);
 static inline Decl *parse_func_definition(ParseContext *c, AstId contracts, bool is_interface);
 static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl);
 static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref);
-static inline Decl *parse_static_top_level(ParseContext *c);
 static Decl *parse_include(ParseContext *c);
 static Decl *parse_exec(ParseContext *c);
 static bool parse_attributes_for_global(ParseContext *c, Decl *decl);
@@ -2297,39 +2296,6 @@ static inline Decl *parse_func_definition(ParseContext *c, AstId contracts, bool
 	return func;
 }
 
-static inline Decl *parse_static_top_level(ParseContext *c)
-{
-	advance_and_verify(c, TOKEN_STATIC);
-	Decl *init = decl_calloc();
-	if (!tok_is(c, TOKEN_IDENT))
-	{
-		if (token_is_any_type(c->tok))
-		{
-			SEMA_ERROR_HERE("'static' can only used with local variables, to hide global variables and functions, use 'private'.");
-			return poisoned_decl;
-		}
-		SEMA_ERROR_HERE("Expected 'static initialize' or 'static finalize'.");
-		return poisoned_decl;
-	}
-	init->decl_kind = DECL_INITIALIZE;
-	if (c->data.string == kw_finalize)
-	{
-		init->decl_kind = DECL_FINALIZE;
-	}
-	else if (c->data.string != kw_initialize)
-	{
-		SEMA_ERROR_HERE("Expected 'static initialize' or 'static finalize'.");
-		return poisoned_decl;
-	}
-	advance(c);
-	Attr *attr = NULL;
-	bool is_cond;
-	if (!parse_attributes(c, &init->attributes, NULL, NULL, &is_cond)) return poisoned_decl;
-	init->is_cond = is_cond;
-	ASSIGN_ASTID_OR_RET(init->xxlizer.init, parse_compound_stmt(c), poisoned_decl);
-	RANGE_EXTEND_PREV(init);
-	return init;
-}
 
 
 /**
@@ -2746,10 +2712,6 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 		case TOKEN_FN:
 			decl = parse_func_definition(c, contracts, c->unit->is_interface_file);
 			break;
-		case TOKEN_STATIC:
-			if (contracts) goto CONTRACT_NOT_ALLOWED;
-			decl = parse_static_top_level(c);
-			break;
 		case TOKEN_CT_ASSERT:
 			{
 				if (contracts) goto CONTRACT_NOT_ALLOWED;
@@ -2821,6 +2783,9 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 			break;
 		case TOKEN_EOF:
 			SEMA_ERROR_LAST("Expected a top level declaration.");
+			return poisoned_decl;
+		case TOKEN_STATIC:
+			SEMA_ERROR_HERE("'static' is only used with local variable declarations.");
 			return poisoned_decl;
 		case TOKEN_CT_CONST_IDENT:
 			if (peek(c) == TOKEN_EQ)

@@ -51,11 +51,11 @@ int x;
 
 Mutex work_done;
 
-static initialize {
+fn void startup() @init {
 	work_done.init()!!;
 }
 
-static finalize {
+fn void shutdown() @finalizer {
 	work_done.destroy()!!;
 }
 

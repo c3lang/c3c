@@ -324,7 +324,9 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_DYNAMIC] = KW_DEF("@dynamic");
 	attribute_list[ATTRIBUTE_EXPORT] = KW_DEF("@export");
 	attribute_list[ATTRIBUTE_EXTERN] = KW_DEF("@extern");
+	attribute_list[ATTRIBUTE_FINALIZER] = KW_DEF("@finalizer");
 	attribute_list[ATTRIBUTE_IF] = KW_DEF("@if");
+	attribute_list[ATTRIBUTE_INIT] = KW_DEF("@init");
 	attribute_list[ATTRIBUTE_INLINE] = KW_DEF("@inline");
 	attribute_list[ATTRIBUTE_INTERFACE] = KW_DEF("@interface");
 	attribute_list[ATTRIBUTE_LITTLEENDIAN] = KW_DEF("@littleendian");
@@ -340,7 +342,6 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_OPERATOR] = KW_DEF("@operator");
 	attribute_list[ATTRIBUTE_OVERLAP] = KW_DEF("@overlap");
 	attribute_list[ATTRIBUTE_PACKED] = KW_DEF("@packed");
-	attribute_list[ATTRIBUTE_PRIORITY] = KW_DEF("@priority");
 	attribute_list[ATTRIBUTE_PRIVATE] = KW_DEF("@private");
 	attribute_list[ATTRIBUTE_PURE] = kw_at_pure;
 	attribute_list[ATTRIBUTE_PUBLIC] = KW_DEF("@public");
