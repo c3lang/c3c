@@ -134,36 +134,14 @@ fn void DString.append_repeat(&self, char c, usz times)
  */
 fn void DString.append_char32(&self, Char32 c)
 {
-	if (c < 0x7f)
-	{
-		self.reserve(1);
-		StringData* data = self.data();
-		data.chars[data.len++] = (char)c;
-		return;
-	}
-	if (c < 0x7ff)
-	{
-		self.reserve(2);
-		StringData* data = self.data();
-		data.chars[data.len++] = (char)(0xC0 | c >> 6);
-		data.chars[data.len++] = (char)(0x80 | (c & 0x3F));
-		return;
-	}
-	if (c < 0xffff)
-	{
-		self.reserve(3);
-		StringData* data = self.data();
-		data.chars[data.len++] = (char)(0xE0 | c >> 12);
-		data.chars[data.len++] = (char)(0x80 | (c >> 6 & 0x3F));
-		data.chars[data.len++] = (char)(0x80 | (c & 0x3F));
-		return;
-	}
-	self.reserve(4);
+	char[4] buffer @noinit;
+	char* p = &buffer;
+	conv::char32_to_utf8_unsafe(c, &p);
+	usz n = p - (char*)&buffer;
+	self.reserve(n);
 	StringData* data = self.data();
-	data.chars[data.len++] = (char)(0xF0 | c >> 18);
-	data.chars[data.len++] = (char)(0x80 | (c >> 12 & 0x3F));
-	data.chars[data.len++] = (char)(0x80 | (c >> 6 & 0x3F));
-	data.chars[data.len++] = (char)(0x80 | (c & 0x3F));
+	data.chars[data.len:n] = buffer[:n];
+	data.len += n;
 }
 
 fn DString DString.tcopy(&self) => self.copy(mem::temp());
