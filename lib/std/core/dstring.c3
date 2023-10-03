@@ -96,7 +96,7 @@ fn void DString.chop(self, usz new_size)
 
 fn String DString.str_view(self)
 {
-	StringData* data = (StringData*)self;
+	StringData* data = self.data();
 	if (!data) return "";
 	return (String)data.chars[:data.len];
 }
@@ -267,7 +267,7 @@ fn Char32[] DString.copy_utf32(&self, Allocator* using = mem::heap())
 
 fn void DString.append_string(&self, DString str)
 {
-	StringData* other = (StringData*)str;
+	StringData* other = str.data();
 	if (!other) return;
 	self.append(str.str_view());
 }
@@ -315,6 +315,37 @@ macro void DString.append(&self, value)
 	$endswitch
 }
 
+fn void DString.insert_at(&self, usz index, String s)
+{
+	if (s.len == 0) return;
+	self.reserve(s.len);
+	StringData* data = self.data();
+	usz len = self.len();
+	if (data.chars[:len].ptr == s.ptr)
+	{
+		// Source and destination are the same: nothing to do.
+		return;
+	}
+	index = min(index, len);
+	data.len += s.len;
+
+	char* start = data.chars[index:s.len].ptr; // area to insert into
+	mem::move(start + s.len, start, len - index); // move existing data
+	switch
+	{
+		case s.ptr <= start && start < s.ptr + s.len:
+			// Overlapping areas.
+			foreach_r (i, c : s)
+			{
+				data.chars[index + i] = c;
+			}
+		case start <= s.ptr && s.ptr < start + len:
+			// Source has moved.
+			mem::move(start, s.ptr + s.len, s.len);
+		default:
+			mem::move(start, s, s.len);
+	}
+}
 
 fn usz! DString.printf(&self, String format, args...) @maydiscard
 {
