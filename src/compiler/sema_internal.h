@@ -79,7 +79,7 @@ bool sema_analyse_asm(SemaContext *context, AsmInlineBlock *block, Ast *asm_stmt
 bool sema_bit_assignment_check(Expr *right, Decl *member);
 int sema_check_comp_time_bool(SemaContext *context, Expr *expr);
 bool sema_expr_check_assign(SemaContext *c, Expr *expr);
-bool sema_analyse_function_signature(SemaContext *context, Decl *func_decl, CallABI abi, Signature *signature, bool is_real_function);
+bool sema_analyse_function_signature(SemaContext *context, Decl *func_decl, CallABI abi, Signature *signature);
 
 MemberIndex sema_len_from_const(Expr *expr);
 

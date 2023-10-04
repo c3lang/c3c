@@ -30,7 +30,6 @@ static inline void llvm_emit_pre_inc_dec(GenContext *c, BEValue *value, Expr *ex
 static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type *type, AstId current, BlockExit **block_exit, Stacktrace *old_stack_trace);
 static inline void llvm_emit_subscript_addr_with_base(GenContext *c, BEValue *result, BEValue *parent, BEValue *index, SourceSpan loc);
 static inline void llvm_emit_try_unwrap(GenContext *c, BEValue *value, Expr *expr);
-static inline void llvm_emit_any(GenContext *c, BEValue *value, Expr *expr);
 static inline void llvm_emit_vector_initializer_list(GenContext *c, BEValue *value, Expr *expr);
 static inline void llvm_extract_bitvalue_from_array(GenContext *c, BEValue *be_value, Decl *member, Decl *parent_decl);
 static inline void llvm_emit_type_from_any(GenContext *c, BEValue *be_value);
@@ -3759,6 +3758,7 @@ void llvm_emit_lhs_is_subtype(GenContext *c, BEValue *result, BEValue *lhs, BEVa
 
 void llvm_emit_comp(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, BinaryOp binary_op)
 {
+	assert(type_lowering(lhs->type) == lhs->type);
 	assert(binary_op >= BINARYOP_GT && binary_op <= BINARYOP_EQ);
 	switch (lhs->type->type_kind)
 	{
@@ -3781,10 +3781,12 @@ void llvm_emit_comp(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, 
 			return;
 		case TYPE_FUNC:
 			break;
-		case TYPE_ANY:
+		case TYPE_ANYPTR:
 			llvm_emit_any_comparison(c, result, lhs, rhs, binary_op);
 			return;
 		case LOWERED_TYPES:
+		case TYPE_ANY:
+		case TYPE_PROTOCOL:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_FLEXIBLE_ARRAY:
@@ -4893,6 +4895,8 @@ static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVM
 		case LOWERED_TYPES:
 		case TYPE_VOID:
 		case TYPE_FUNC:
+		case TYPE_ANY:
+		case TYPE_PROTOCOL:
 		case TYPE_FLEXIBLE_ARRAY:
 			UNREACHABLE
 			break;
@@ -4915,7 +4919,7 @@ static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVM
 		case TYPE_UNION:
 		case TYPE_SUBARRAY:
 		case TYPE_VECTOR:
-		case TYPE_ANY:
+		case TYPE_ANYPTR:
 			TODO
 			break;
 	}
@@ -6518,31 +6522,12 @@ void llvm_emit_any_from_value(GenContext *c, BEValue *value, Type *type)
 	BEValue typeid;
 	llvm_emit_typeid(c, &typeid, type);
 	llvm_value_rvalue(c, &typeid);
-	LLVMValueRef var = llvm_get_undef(c, type_any);
+	LLVMValueRef var = llvm_get_undef(c, type_anyptr);
 	var = llvm_emit_insert_value(c, var, value->value, 0);
 	var = llvm_emit_insert_value(c, var, typeid.value, 1);
-	llvm_value_set(value, var, type_any);
+	llvm_value_set(value, var, type_anyptr);
 }
 
-static inline void llvm_emit_any(GenContext *c, BEValue *value, Expr *expr)
-{
-	if (!expr->any_expr.ptr && !expr->any_expr.type_id)
-	{
-		llvm_value_set(value, llvm_get_zero(c, type_any), type_any);
-		return;
-	}
-	BEValue ptr;
-	llvm_emit_exprid(c, &ptr, expr->any_expr.ptr);
-	llvm_value_rvalue(c, &ptr);
-	BEValue typeid;
-	llvm_emit_exprid(c, &typeid, expr->any_expr.type_id);
-	llvm_value_rvalue(c, &typeid);
-	LLVMValueRef var = llvm_get_undef(c, type_any);
-	var = llvm_emit_insert_value(c, var, ptr.value, 0);
-	var = llvm_emit_insert_value(c, var, typeid.value, 1);
-	assert(!LLVMIsConstant(ptr.value) || !LLVMIsConstant(typeid.value) || LLVMIsConstant(var));
-	llvm_value_set(value, var, type_any);
-}
 
 static inline void llvm_emit_type_from_any(GenContext *c, BEValue *be_value)
 {
@@ -6551,7 +6536,7 @@ static inline void llvm_emit_type_from_any(GenContext *c, BEValue *be_value)
 		AlignSize alignment = 0;
 		LLVMValueRef pointer_addr = llvm_emit_struct_gep_raw(c,
 															 be_value->value,
-															 llvm_get_type(c, type_any),
+															 llvm_get_type(c, type_anyptr),
 															 1,
 															 be_value->alignment,
 															 &alignment);
@@ -6784,9 +6769,6 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			return;
 		case EXPR_RETVAL:
 			*value = c->retval;
-			return;
-		case EXPR_ANY:
-			llvm_emit_any(c, value, expr);
 			return;
 		case EXPR_TRY_UNWRAP_CHAIN:
 			llvm_emit_try_unwrap_chain(c, value, expr);

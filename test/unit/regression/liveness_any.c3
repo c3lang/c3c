@@ -1,7 +1,11 @@
 module liveness;
 
-fn void any.tesT(void*) @interface;
-fn void Test.tesT(&self) @dynamic
+protocol TestProto
+{
+	fn void tesT(&self);
+}
+
+fn void Test.tesT(&self) : TestProto
 {}
 
 struct Test
@@ -11,6 +15,6 @@ struct Test
 
 fn void reflect_test() @test
 {
-	any b = malloc(Test);
+	TestProto* b = malloc(Test);
 	b.tesT();
 }

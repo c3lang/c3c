@@ -29,12 +29,12 @@ fn Type Range.get(&self, usz index) @operator([])
 	return self.start + (Type)index;
 }
 
-fn String Range.to_string(&self, Allocator* using = mem::heap()) @dynamic
+fn String Range.to_string(&self, Allocator* using = mem::heap()) : Printable
 {
 	return string::printf("[%s..%s]", self.start, self.end);
 }
 
-fn usz! Range.to_format(&self, Formatter* formatter) @dynamic
+fn usz! Range.to_format(&self, Formatter* formatter) : Printable
 {
 	return formatter.printf("[%s..%s]", self.start, self.end)!;
 }
@@ -56,12 +56,12 @@ fn bool ExclusiveRange.contains(&self, Type value) @inline
 	return value >= self.start && value < self.end;
 }
 
-fn usz! ExclusiveRange.to_format(&self, Formatter* formatter) @dynamic
+fn usz! ExclusiveRange.to_format(&self, Formatter* formatter) : Printable
 {
 	return formatter.printf("[%s..<%s]", self.start, self.end)!;
 }
 
-fn String ExclusiveRange.to_string(&self, Allocator* using = mem::heap()) @dynamic
+fn String ExclusiveRange.to_string(&self, Allocator* using = mem::heap()) : Printable
 {
 	return string::printf("[%s..<%s]", self.start, self.end);
 }

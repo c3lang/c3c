@@ -11,7 +11,7 @@ fault ConversionResult
 /**
  * @require $Type.kindof.is_int() || $Type.kindof == TypeKind.ENUM "Argument was not an integer"
  **/
-macro any_to_int(any v, $Type)
+macro any_to_int(any* v, $Type)
 {
 	typeid any_type = v.type;
 	TypeKind kind = any_type.kindof;

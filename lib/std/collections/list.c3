@@ -6,7 +6,7 @@ import std::io;
 import std::math;
 
 def ElementPredicate = fn bool(Type *type);
-def ElementTest = fn bool(Type *type, any context);
+def ElementTest = fn bool(Type *type, any* context);
 const ELEMENT_IS_EQUATABLE = types::is_equatable_type(Type);
 const ELEMENT_IS_POINTER = Type.kindof == POINTER;
 
@@ -42,7 +42,7 @@ fn void List.tinit(&self, usz initial_capacity = 16)
 	self.init(initial_capacity, mem::temp()) @inline;
 }
 
-fn usz! List.to_format(&self, Formatter* formatter) @dynamic
+fn usz! List.to_format(&self, Formatter* formatter) : Printable
 {
 	switch (self.size)
 	{
@@ -62,7 +62,7 @@ fn usz! List.to_format(&self, Formatter* formatter) @dynamic
 	}
 }
 
-fn String List.to_string(&self, Allocator* using = mem::heap()) @dynamic
+fn String List.to_string(&self, Allocator* using = mem::heap()) : Printable
 {
 	return string::printf("%s", *self);
 }
@@ -286,12 +286,12 @@ macro usz List._remove_if(&self, ElementPredicate filter, bool $invert) @local
 	return size - self.size;
 }
 
-fn usz List.remove_using_test(&self, ElementTest filter, any context)
+fn usz List.remove_using_test(&self, ElementTest filter, any* context)
 {
 	return self._remove_using_test(filter, false, context);
 }
 
-fn usz List.retain_using_test(&self, ElementTest filter, any context)
+fn usz List.retain_using_test(&self, ElementTest filter, any* context)
 {
 	return self._remove_using_test(filter, true, context);
 }

@@ -84,7 +84,7 @@ fn usz! Stream.available(&self) @inline
 	return IoError.NOT_SEEKABLE?;
 }
 
-fn usz! Stream.read_any(&self, any ref)
+fn usz! Stream.read_any(&self, any* ref)
 {
 	return self.read_all(ref.ptr[:ref.type.sizeof]);
 }
@@ -94,7 +94,7 @@ fn usz! Stream.read_any(&self, any ref)
  * @require ref.ptr != null
  * @ensure return == ref.type.sizeof
  */
-fn usz! Stream.write_any(&self, any ref)
+fn usz! Stream.write_any(&self, any* ref)
 {
 	return self.write_all(ref.ptr[:ref.type.sizeof]);
 }

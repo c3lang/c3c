@@ -30,7 +30,7 @@ fn bool Backtrace.is_unknown(&self)
 	return !self.object_file.len;
 }
 
-fn usz! Backtrace.to_format(&self, Formatter* formatter) @dynamic
+fn usz! Backtrace.to_format(&self, Formatter* formatter) : Printable
 {
 	if (self.has_file())
 	{

@@ -24,6 +24,7 @@ typedef enum
 	BA_NUMVEC,
 	BA_PTRVEC,
 	BA_NUM,
+	BA_TYPEID,
 } BuiltinArg;
 
 static bool sema_check_builtin_args_match(Expr **args, size_t arg_len);
@@ -111,6 +112,9 @@ static bool sema_check_builtin_args(Expr **args, BuiltinArg *arg_type, size_t ar
 			case BA_NUM:
 				if (type_is_number(type)) continue;
 				RETURN_SEMA_ERROR(arg, "Expected an integer or a float.");
+			case BA_TYPEID:
+				if (type == type_typeid) continue;
+				RETURN_SEMA_ERROR(arg, "Expected a typeid.");
 			case BA_NUMLIKE:
 				if (type_flat_is_numlike(type)) continue;
 				RETURN_SEMA_ERROR(arg, "Expected a number or vector.");
@@ -410,6 +414,11 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_INTEGER, BA_INTEGER }, 2)) return false;
 			if (!sema_check_builtin_args_match(args, 2)) return false;
 			rtype = args[0]->type->canonical;
+			break;
+		case BUILTIN_ANY_MAKE:
+			assert(arg_count == 2);
+			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_POINTER, BA_TYPEID }, 2)) return false;
+			rtype = type_anyptr;
 			break;
 		case BUILTIN_EXACT_NEG:
 			assert(arg_count == 1);
@@ -950,6 +959,7 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_VECCOMPGT:
 		case BUILTIN_VECCOMPEQ:
 		case BUILTIN_WASM_MEMORY_GROW:
+		case BUILTIN_ANY_MAKE:
 			return 2;
 		case BUILTIN_EXPECT_WITH_PROBABILITY:
 		case BUILTIN_FMA:

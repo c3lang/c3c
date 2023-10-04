@@ -4,8 +4,11 @@ import libc;
 
 const int PRINTF_NTOA_BUFFER_SIZE = 256;
 
-fn String any.to_string(void* value, Allocator *using) @interface;
-fn usz! any.to_format(void* value, Formatter* formatter) @interface;
+protocol Printable
+{
+	fn String to_string(&self, Allocator *using);
+	fn usz! to_format(&self, Formatter* formatter);
+}
 
 fault PrintFault
 {
@@ -69,7 +72,7 @@ fn usz! Formatter.out(&self, char c) @private
 	return 1;
 }
 
-macro usz! Formatter.print_with_function(&self, any arg)
+fn usz! Formatter.print_with_function(&self, Printable* arg)
 {
 	if (&arg.to_format)
 	{
@@ -104,7 +107,7 @@ macro usz! Formatter.print_with_function(&self, any arg)
 }
 
 
-fn usz! Formatter.out_str(&self, any arg) @private
+fn usz! Formatter.out_str(&self, any* arg) @private
 {
 	switch (arg.type.kindof)
 	{
@@ -116,7 +119,7 @@ fn usz! Formatter.out_str(&self, any arg) @private
 		case FAULT:
 			return self.out_substr((*(anyfault*)arg.ptr).nameof);
 		case ANY:
-			return self.out_str(*(any*)arg);
+			return self.out_str(*(any**)arg);
 		case OPTIONAL:
 			unreachable();
 		case SIGNED_INT:
@@ -146,14 +149,16 @@ fn usz! Formatter.out_str(&self, any arg) @private
 			return self.out_substr(*(bool*)arg.ptr ? "true" : "false");
 		default:
 	}
-	usz! n = self.print_with_function(arg);
+	usz! n = self.print_with_function((Printable*)arg);
 	if (catch err = n)
 	{
 		case SearchResult.MISSING:
 			break;
 		default:
 			return err?;
-	} else {
+	}
+	else
+	{
 		return n;
 	}
 	switch (arg.type.kindof)
@@ -179,7 +184,7 @@ fn usz! Formatter.out_str(&self, any arg) @private
 			{
 				return self.out_substr(((DString*)arg).str_view());
 			}
-			return self.out_str(any { arg.ptr, arg.type.inner });
+			return self.out_str(arg.as_inner());
 		case POINTER:
 			PrintFlags flags = self.flags;
 			uint width = self.width;
@@ -211,7 +216,7 @@ fn usz! Formatter.out_str(&self, any arg) @private
 			for (usz i = 0; i < alen; i++)
 			{
 				if (i != 0) len += self.out_substr(", ")!;
-				len += self.out_str(any { ptr, inner })!;
+				len += self.out_str(any_make(ptr, inner))!;
 				ptr += size;
 			}
 			len += self.out(']')!;
@@ -236,7 +241,7 @@ fn usz! Formatter.out_str(&self, any arg) @private
 			for (usz i = 0; i < vlen; i++)
 			{
 				if (i != 0) len += self.out_substr(", ")!;
-				len += self.out_str(any { ptr, inner })!;
+				len += self.out_str(any_make(ptr, inner))!;
 				ptr += size;
 			}
 			len += self.out_substr(">]")!;
@@ -267,7 +272,7 @@ fn usz! Formatter.out_str(&self, any arg) @private
 			for (usz i = 0; i < slen; i++)
 			{
 				if (i != 0) len += self.out_substr(", ")!;
-				len += self.out_str(any { ptr, inner })!;
+				len += self.out_str(any_make(ptr, inner))!;
 				ptr += size;
 			}
 			len += self.out(']')!;
@@ -286,7 +291,7 @@ fn void! out_null_fn(void* data @unused, char c @unused) @private
 
 
 
-fn usz! Formatter.vprintf(&self, String format, any[] anys)
+fn usz! Formatter.vprintf(&self, String format, any*[] anys)
 {
 	if (!self.out_fn)
 	{
@@ -353,7 +358,7 @@ fn usz! Formatter.vprintf(&self, String format, any[] anys)
 		// evaluate specifier
 		uint base = 0;
 		if (variant_index >= anys.len) return PrintFault.MISSING_ARG?;
-		any current = anys[variant_index++];
+		any* current = anys[variant_index++];
 		switch (c)
 		{
 			case 'd':

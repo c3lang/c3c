@@ -193,6 +193,7 @@ void symtab_init(uint32_t capacity)
 	type_property_list[TYPE_PROPERTY_VALUES] = KW_DEF("values");
 
 	builtin_list[BUILTIN_ABS] = KW_DEF("abs");
+	builtin_list[BUILTIN_ANY_MAKE] = KW_DEF("any_make");
 	builtin_list[BUILTIN_ATOMIC_LOAD] = KW_DEF("atomic_load");
 	builtin_list[BUILTIN_ATOMIC_STORE] = KW_DEF("atomic_store");
 	builtin_list[BUILTIN_ATOMIC_FETCH_ADD] = KW_DEF("atomic_fetch_add");
@@ -321,14 +322,12 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_BUILTIN] = KW_DEF("@builtin");
 	attribute_list[ATTRIBUTE_CALLCONV] = KW_DEF("@callconv");
 	attribute_list[ATTRIBUTE_DEPRECATED] = KW_DEF("@deprecated");
-	attribute_list[ATTRIBUTE_DYNAMIC] = KW_DEF("@dynamic");
 	attribute_list[ATTRIBUTE_EXPORT] = KW_DEF("@export");
 	attribute_list[ATTRIBUTE_EXTERN] = KW_DEF("@extern");
 	attribute_list[ATTRIBUTE_FINALIZER] = KW_DEF("@finalizer");
 	attribute_list[ATTRIBUTE_IF] = KW_DEF("@if");
 	attribute_list[ATTRIBUTE_INIT] = KW_DEF("@init");
 	attribute_list[ATTRIBUTE_INLINE] = KW_DEF("@inline");
-	attribute_list[ATTRIBUTE_INTERFACE] = KW_DEF("@interface");
 	attribute_list[ATTRIBUTE_LITTLEENDIAN] = KW_DEF("@littleendian");
 	attribute_list[ATTRIBUTE_LOCAL] = KW_DEF("@local");
 	attribute_list[ATTRIBUTE_MAYDISCARD] = KW_DEF("@maydiscard");
@@ -340,6 +339,7 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_NOSTRIP] = KW_DEF("@nostrip");
 	attribute_list[ATTRIBUTE_OBFUSCATE] = KW_DEF("@obfuscate");
 	attribute_list[ATTRIBUTE_OPERATOR] = KW_DEF("@operator");
+	attribute_list[ATTRIBUTE_OPTIONAL] = KW_DEF("@optional");
 	attribute_list[ATTRIBUTE_OVERLAP] = KW_DEF("@overlap");
 	attribute_list[ATTRIBUTE_PACKED] = KW_DEF("@packed");
 	attribute_list[ATTRIBUTE_PRIVATE] = KW_DEF("@private");

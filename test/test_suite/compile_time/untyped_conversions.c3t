@@ -27,7 +27,7 @@ fn void main()
 %.introspect = type { i8, i64, ptr, i64, i64, i64, [0 x i64] }
 %Foo = type { i32, i32 }
 %"int[]" = type { ptr, i64 }
-%any = type { ptr, i64 }
+%"any*" = type { ptr, i64 }
 
 @"$ct.test.Foo" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @.str = private unnamed_addr constant [9 x i8] c"%s %s %s\00", align 1
@@ -56,24 +56,24 @@ entry:
   %b = alloca %"int[]", align 8
   %c = alloca <2 x i32>, align 8
   %retparam = alloca i64, align 8
-  %varargslots = alloca [3 x %any], align 16
+  %varargslots = alloca [3 x %"any*"], align 16
   store i64 %0, ptr %a, align 4
   store ptr %1, ptr %b, align 8
   %ptroffset = getelementptr inbounds i64, ptr %b, i64 1
   store i64 %2, ptr %ptroffset, align 8
   store double %3, ptr %c, align 8
-  %4 = insertvalue %any undef, ptr %a, 0
-  %5 = insertvalue %any %4, i64 ptrtoint (ptr @"$ct.a2$int" to i64), 1
-  %6 = getelementptr inbounds [3 x %any], ptr %varargslots, i64 0, i64 0
-  store %any %5, ptr %6, align 16
-  %7 = insertvalue %any undef, ptr %b, 0
-  %8 = insertvalue %any %7, i64 ptrtoint (ptr @"$ct.sa$int" to i64), 1
-  %9 = getelementptr inbounds [3 x %any], ptr %varargslots, i64 0, i64 1
-  store %any %8, ptr %9, align 16
-  %10 = insertvalue %any undef, ptr %c, 0
-  %11 = insertvalue %any %10, i64 ptrtoint (ptr @"$ct.v2$int" to i64), 1
-  %12 = getelementptr inbounds [3 x %any], ptr %varargslots, i64 0, i64 2
-  store %any %11, ptr %12, align 16
+  %4 = insertvalue %"any*" undef, ptr %a, 0
+  %5 = insertvalue %"any*" %4, i64 ptrtoint (ptr @"$ct.a2$int" to i64), 1
+  %6 = getelementptr inbounds [3 x %"any*"], ptr %varargslots, i64 0, i64 0
+  store %"any*" %5, ptr %6, align 16
+  %7 = insertvalue %"any*" undef, ptr %b, 0
+  %8 = insertvalue %"any*" %7, i64 ptrtoint (ptr @"$ct.sa$int" to i64), 1
+  %9 = getelementptr inbounds [3 x %"any*"], ptr %varargslots, i64 0, i64 1
+  store %"any*" %8, ptr %9, align 16
+  %10 = insertvalue %"any*" undef, ptr %c, 0
+  %11 = insertvalue %"any*" %10, i64 ptrtoint (ptr @"$ct.v2$int" to i64), 1
+  %12 = getelementptr inbounds [3 x %"any*"], ptr %varargslots, i64 0, i64 2
+  store %"any*" %11, ptr %12, align 16
   %13 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 8, ptr %varargslots, i64 3)
   ret void
 }
@@ -86,7 +86,7 @@ entry:
   %y = alloca [1 x [2 x i32]], align 4
   %y2 = alloca [1 x [2 x double]], align 16
   %retparam = alloca i64, align 8
-  %varargslots = alloca [4 x %any], align 16
+  %varargslots = alloca [4 x %"any*"], align 16
   %literal = alloca [2 x i32], align 4
   %literal1 = alloca [2 x i32], align 4
   %taddr = alloca <2 x i32>, align 8
@@ -97,24 +97,24 @@ entry:
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %defg, ptr align 4 @.__const.1, i32 8, i1 false)
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %y, ptr align 4 @.__const.2, i32 8, i1 false)
   call void @llvm.memcpy.p0.p0.i32(ptr align 16 %y2, ptr align 16 @.__const.3, i32 16, i1 false)
-  %0 = insertvalue %any undef, ptr %y, 0
-  %1 = insertvalue %any %0, i64 ptrtoint (ptr @"$ct.a1$a2$int" to i64), 1
-  %2 = getelementptr inbounds [4 x %any], ptr %varargslots, i64 0, i64 0
-  store %any %1, ptr %2, align 16
-  %3 = insertvalue %any undef, ptr %y2, 0
-  %4 = insertvalue %any %3, i64 ptrtoint (ptr @"$ct.a1$a2$double" to i64), 1
-  %5 = getelementptr inbounds [4 x %any], ptr %varargslots, i64 0, i64 1
-  store %any %4, ptr %5, align 16
+  %0 = insertvalue %"any*" undef, ptr %y, 0
+  %1 = insertvalue %"any*" %0, i64 ptrtoint (ptr @"$ct.a1$a2$int" to i64), 1
+  %2 = getelementptr inbounds [4 x %"any*"], ptr %varargslots, i64 0, i64 0
+  store %"any*" %1, ptr %2, align 16
+  %3 = insertvalue %"any*" undef, ptr %y2, 0
+  %4 = insertvalue %"any*" %3, i64 ptrtoint (ptr @"$ct.a1$a2$double" to i64), 1
+  %5 = getelementptr inbounds [4 x %"any*"], ptr %varargslots, i64 0, i64 1
+  store %"any*" %4, ptr %5, align 16
   %6 = getelementptr inbounds %Foo, ptr %defg, i32 0, i32 0
-  %7 = insertvalue %any undef, ptr %6, 0
-  %8 = insertvalue %any %7, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  %9 = getelementptr inbounds [4 x %any], ptr %varargslots, i64 0, i64 2
-  store %any %8, ptr %9, align 16
+  %7 = insertvalue %"any*" undef, ptr %6, 0
+  %8 = insertvalue %"any*" %7, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  %9 = getelementptr inbounds [4 x %"any*"], ptr %varargslots, i64 0, i64 2
+  store %"any*" %8, ptr %9, align 16
   %10 = getelementptr inbounds %Foo, ptr %defg, i32 0, i32 1
-  %11 = insertvalue %any undef, ptr %10, 0
-  %12 = insertvalue %any %11, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  %13 = getelementptr inbounds [4 x %any], ptr %varargslots, i64 0, i64 3
-  store %any %12, ptr %13, align 16
+  %11 = insertvalue %"any*" undef, ptr %10, 0
+  %12 = insertvalue %"any*" %11, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  %13 = getelementptr inbounds [4 x %"any*"], ptr %varargslots, i64 0, i64 3
+  store %"any*" %12, ptr %13, align 16
   %14 = call i64 @std.io.printfn(ptr %retparam, ptr @.str.4, i64 14, ptr %varargslots, i64 4)
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal, ptr align 4 @.__const.5, i32 8, i1 false)
   %15 = load i64, ptr %literal, align 4

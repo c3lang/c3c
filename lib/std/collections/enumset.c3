@@ -125,7 +125,7 @@ fn EnumSet EnumSet.xor_of(&self, EnumSet s)
 	$endif
 }
 
-fn usz! EnumSet.to_format(&set, Formatter* formatter) @dynamic
+fn usz! EnumSet.to_format(&set, Formatter* formatter) : Printable
 {
 	usz n = formatter.print("[")!;
 	bool found;
@@ -140,7 +140,7 @@ fn usz! EnumSet.to_format(&set, Formatter* formatter) @dynamic
 	return n;
 }
 
-fn String EnumSet.to_string(&set, Allocator* using = mem::heap()) @dynamic
+fn String EnumSet.to_string(&set, Allocator* using = mem::heap()) : Printable
 {
 	return string::printf("%s", *set);
 }

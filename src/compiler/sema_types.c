@@ -4,18 +4,19 @@
 
 #include "sema_internal.h"
 
-static inline bool sema_resolve_ptr_type(SemaContext *context, TypeInfo *type_info, bool allow_inferred);
-static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type, bool allow_inferred, bool shallow);
-static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, bool allow_inferred_type, bool is_pointee);
+
+static inline bool sema_resolve_ptr_type(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_kind);
+static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type, ResolveTypeKind resolve_kind);
+static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_kind);
 INLINE bool sema_resolve_vatype(SemaContext *context, TypeInfo *type_info);
-INLINE bool sema_resolve_evaltype(SemaContext *context, TypeInfo *type_info, bool is_pointee);
+INLINE bool sema_resolve_evaltype(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_kind);
 INLINE bool sema_resolve_typefrom(SemaContext *context, TypeInfo *type_info);
 INLINE bool sema_resolve_typeof(SemaContext *context, TypeInfo *type_info);
 
-static inline bool sema_resolve_ptr_type(SemaContext *context, TypeInfo *type_info, bool allow_inferred)
+static inline bool sema_resolve_ptr_type(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_kind)
 {
 	// Try to resolve this type shallowly.
-	if (!sema_resolve_type(context, type_info->pointer, allow_inferred, true))
+	if (!sema_resolve_type(context, type_info->pointer, resolve_kind | RESOLVE_TYPE_PTR))
 	{
 		return type_info_poison(type_info);
 	}
@@ -25,14 +26,9 @@ static inline bool sema_resolve_ptr_type(SemaContext *context, TypeInfo *type_in
 	return true;
 }
 
-bool sema_resolve_type_info(SemaContext *context, TypeInfo *type_info)
+bool sema_resolve_type_info(SemaContext *context, TypeInfo *type_info, ResolveTypeKind kind)
 {
-	return sema_resolve_type_info_maybe_inferred(context, type_info, false);
-}
-
-bool sema_resolve_type_info_maybe_inferred(SemaContext *context, TypeInfo *type_info, bool allow_inferred_type)
-{
-	return sema_resolve_type(context, type_info, allow_inferred_type, false);
+	return sema_resolve_type(context, type_info, kind);
 }
 
 bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, ArraySize *len_ref)
@@ -99,21 +95,21 @@ bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, Arra
 }
 
 // TODO cleanup.
-static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type, bool allow_inferred, bool shallow)
+static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type, ResolveTypeKind resolve_type_kind)
 {
 	TypeInfoKind kind = type->kind;
 	// We can resolve the base type in a shallow way if we don't use it to determine
 	// length and alignment
-	if (kind == TYPE_INFO_SUBARRAY || shallow)
+	if (kind == TYPE_INFO_SUBARRAY || (resolve_type_kind & RESOLVE_TYPE_IS_POINTEE))
 	{
-		if (!sema_resolve_type(context, type->array.base, allow_inferred, true))
+		if (!sema_resolve_type(context, type->array.base, resolve_type_kind))
 		{
 			return type_info_poison(type);
 		}
 	}
 	else
 	{
-		if (!sema_resolve_type_info_maybe_inferred(context, type->array.base, allow_inferred))
+		if (!sema_resolve_type(context, type->array.base, resolve_type_kind & ~RESOLVE_TYPE_IS_POINTEE))
 		{
 			return type_info_poison(type);
 		}
@@ -234,6 +230,7 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 		case DECL_UNION:
 		case DECL_FAULT:
 		case DECL_ENUM:
+		case DECL_PROTOCOL:
 			type_info->type = decl->type;
 			type_info->resolve_status = RESOLVE_DONE;
 			DEBUG_LOG("Resolved %s.", type_info->unresolved.name);
@@ -290,7 +287,7 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 
 
 // $evaltype("Foo")
-INLINE bool sema_resolve_evaltype(SemaContext *context, TypeInfo *type_info, bool is_pointee)
+INLINE bool sema_resolve_evaltype(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_kind)
 {
 	Expr *expr = type_info->unresolved_type_expr;
 	Expr *inner = sema_ct_eval_expr(context, "$evaltype", expr, true);
@@ -301,7 +298,7 @@ INLINE bool sema_resolve_evaltype(SemaContext *context, TypeInfo *type_info, boo
 		return false;
 	}
 	TypeInfo *inner_type = inner->type_expr;
-	if (!sema_resolve_type(context, inner_type, false, is_pointee)) return false;
+	if (!sema_resolve_type(context, inner_type, resolve_kind)) return false;
 	if (type_is_invalid_storage_type(inner_type->type))
 	{
 		SEMA_ERROR(expr, "Compile-time types may not be used with $evaltype.");
@@ -377,10 +374,27 @@ INLINE bool sema_resolve_generic_type(SemaContext *context, TypeInfo *type_info)
 	return true;
 }
 
-static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, bool allow_inferred_type, bool is_pointee)
+static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_type_kind)
 {
 	// Ok, already resolved.
-	if (type_info->resolve_status == RESOLVE_DONE) return type_info_ok(type_info);
+	if (type_info->resolve_status == RESOLVE_DONE)
+	{
+		if (!type_info_ok(type_info)) return false;
+		if (!(resolve_type_kind & RESOLVE_TYPE_ALLOW_ANY))
+		{
+			switch (type_no_optional(type_info->type)->canonical->type_kind)
+			{
+				case TYPE_ANY:
+				case TYPE_PROTOCOL:
+					RETURN_SEMA_ERROR(type_info, "%s has no valid runtime size, you should use '%s' instead.",
+					                  type_quoted_error_string(type_no_optional(type_info->type)),
+					                  type_quoted_error_string(type_get_ptr(type_no_optional(type_info->type))));
+				default:
+					break;
+			}
+		}
+		return true;
+	}
 
 	// We might have the resolve already running, if so then that's bad.
 	if (type_info->resolve_status == RESOLVE_RUNNING)
@@ -402,9 +416,22 @@ static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, 
 
 	// Type compression means we don't need that many nested type infos.
 	TypeInfoCompressedKind kind = type_info->subtype;
-	if (kind != TYPE_COMPRESSED_NONE)
+	switch (kind)
 	{
-		is_pointee = true;
+		case TYPE_COMPRESSED_NONE:
+			break;
+		case TYPE_COMPRESSED_PTR:
+		case TYPE_COMPRESSED_PTRPTR:
+		case TYPE_COMPRESSED_PTRSUB:
+			resolve_type_kind |= RESOLVE_TYPE_PTR;
+			break;
+		case TYPE_COMPRESSED_SUB:
+		case TYPE_COMPRESSED_SUBPTR:
+		case TYPE_COMPRESSED_SUBSUB:
+			resolve_type_kind |= RESOLVE_TYPE_IS_POINTEE;
+			break;
+		default:
+			UNREACHABLE
 	}
 
 	switch (type_info->kind)
@@ -423,7 +450,7 @@ static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, 
 			if (!sema_resolve_type_identifier(context, type_info)) return type_info_poison(type_info);
 			goto APPEND_QUALIFIERS;
 		case TYPE_INFO_EVALTYPE:
-			if (!sema_resolve_evaltype(context, type_info, is_pointee)) return type_info_poison(type_info);
+			if (!sema_resolve_evaltype(context, type_info, resolve_type_kind)) return type_info_poison(type_info);
 			goto APPEND_QUALIFIERS;
 		case TYPE_INFO_TYPEOF:
 			if (!sema_resolve_typeof(context, type_info)) return type_info_poison(type_info);
@@ -433,7 +460,7 @@ static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, 
 			goto APPEND_QUALIFIERS;
 		case TYPE_INFO_INFERRED_ARRAY:
 		case TYPE_INFO_INFERRED_VECTOR:
-			if (!allow_inferred_type)
+			if (!(resolve_type_kind & RESOLVE_TYPE_ALLOW_INFER))
 			{
 				SEMA_ERROR(type_info, "Inferred %s types can only be used in declarations with initializers and as macro parameters.",
 						   type_info->kind == TYPE_INFO_INFERRED_VECTOR ? "vector" : "array");
@@ -443,16 +470,37 @@ static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, 
 		case TYPE_INFO_SUBARRAY:
 		case TYPE_INFO_ARRAY:
 		case TYPE_INFO_VECTOR:
-			if (!sema_resolve_array_type(context, type_info, allow_inferred_type, is_pointee))
+			if (!sema_resolve_array_type(context, type_info, resolve_type_kind))
 			{
 				return type_info_poison(type_info);
 			}
 			break;
 		case TYPE_INFO_POINTER:
-			if (!sema_resolve_ptr_type(context, type_info, allow_inferred_type)) return type_info_poison(type_info);
+			if (!sema_resolve_ptr_type(context, type_info, resolve_type_kind)) return type_info_poison(type_info);
 			break;
 	}
 APPEND_QUALIFIERS:
+	switch (type_info->type->type_kind)
+	{
+		case TYPE_ANY:
+			if (!(resolve_type_kind & RESOLVE_TYPE_ALLOW_ANY))
+			{
+				SEMA_ERROR(type_info, "An 'any' has undefined size, please use 'any*' instead.");
+				return type_info_poison(type_info);
+			}
+			break;
+		case TYPE_PROTOCOL:
+			if (!(resolve_type_kind & RESOLVE_TYPE_ALLOW_ANY))
+			{
+				SEMA_ERROR(type_info, "%s is a protocol and has undefined size, please use %s instead.",
+				           type_quoted_error_string(type_info->type),
+				           type_quoted_error_string(type_get_ptr(type_info->type)));
+				return type_info_poison(type_info);
+			}
+			break;
+		default:
+			break;
+	}
 	switch (kind)
 	{
 		case TYPE_COMPRESSED_NONE:

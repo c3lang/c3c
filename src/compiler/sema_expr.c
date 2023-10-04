@@ -511,7 +511,6 @@ static bool sema_binary_is_expr_lvalue(Expr *top_expr, Expr *expr)
 		case EXPR_TYPEID:
 		case EXPR_TYPEID_INFO:
 		case EXPR_TYPEINFO:
-		case EXPR_ANY:
 		case EXPR_ANYSWITCH:
 		case EXPR_VASPLAT:
 		case EXPR_BENCHMARK_HOOK:
@@ -625,7 +624,6 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_TYPEID:
 		case EXPR_TYPEID_INFO:
 		case EXPR_TYPEINFO:
-		case EXPR_ANY:
 		case EXPR_ANYSWITCH:
 		case EXPR_VASPLAT:
 		case EXPR_BENCHMARK_HOOK:
@@ -697,6 +695,9 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 			return expr_poison(expr);
 		case DECL_STRUCT:
 			SEMA_ERROR(expr, "Expected struct followed by {...} or '.'.");
+			return expr_poison(expr);
+		case DECL_PROTOCOL:
+			SEMA_ERROR(expr, "Expected a protocol to be followed by '.' when used as an expression.");
 			return expr_poison(expr);
 		case DECL_UNION:
 			SEMA_ERROR(expr, "Expected union followed by {...} or '.'.");
@@ -1537,7 +1538,7 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 				// &foo
 				if (!sema_analyse_expr_lvalue(context, arg)) return false;
 				if (!sema_expr_check_assign(context, arg)) return false;
-				expr_insert_addr(arg);
+				if (!type_is_any_protocol_ptr(arg->type)) expr_insert_addr(arg);
 				*optional |= IS_OPTIONAL(arg);
 				if (!sema_call_check_contract_param_match(context, param, arg)) return false;
 				if (type_is_invalid_storage_type(type) || type == type_void)
@@ -1773,7 +1774,7 @@ static inline bool sema_expr_analyse_func_call(SemaContext *context, Expr *expr,
 	sema_display_deprecated_warning_on_use(context, decl, expr->span);
 
 	// Tag dynamic dispatch.
-	if (struct_var && decl->func_decl.attr_interface) expr->call_expr.is_dynamic_dispatch = true;
+	if (struct_var && decl->func_decl.attr_protocol_method) expr->call_expr.is_dynamic_dispatch = true;
 
 	return sema_call_analyse_func_invocation(context,
 											 decl->type,
@@ -1872,7 +1873,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 			return false;
 		}
 		TypeInfo *type_info = vartype(body_arg);
-		if (!sema_resolve_type_info(context, type_info)) return false;
+		if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
 		body_arg->type = type_info->type;
 		if (type_info)
 		{
@@ -3907,7 +3908,8 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr)
 	assert(parent->resolve_status == RESOLVE_DONE);
 
 	// 7. Is this a pointer? If so we insert a deref.
-	bool is_pointer = type_no_optional(parent->type)->canonical->type_kind == TYPE_POINTER;
+	Type *underlying_type = type_no_optional(parent->type)->canonical;
+	bool is_pointer = underlying_type->type_kind == TYPE_POINTER;
 	if (is_pointer)
 	{
 		if (!sema_cast_rvalue(context, parent)) return false;
@@ -3923,7 +3925,7 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr)
 	const char *kw = identifier->identifier_expr.ident;
 	if (kw_type == kw)
 	{
-		if (flat_type->type_kind == TYPE_ANY)
+		if (flat_type->type_kind == TYPE_ANYPTR)
 		{
 			expr_rewrite_to_builtin_access(expr, parent, ACCESS_TYPEOFANY, type_typeid);
 			return true;
@@ -3990,7 +3992,7 @@ CHECK_DEEPER:
 			expr_rewrite_to_builtin_access(expr, current_parent, ACCESS_PTR, type_get_ptr(flat_type->array.base));
 			return true;
 		}
-		if (flat_type->type_kind == TYPE_ANY)
+		if (flat_type->type_kind == TYPE_ANYPTR)
 		{
 			expr_rewrite_to_builtin_access(expr, current_parent, ACCESS_PTR, type_voidptr);
 			return true;
@@ -4050,12 +4052,14 @@ CHECK_DEEPER:
 		}
 	}
 
-	// 9. At this point we may only have distinct, struct, union, error, enum
+	// 9. At this point we may only have distinct, struct, union, error, enum, protocol
 	if (!type_may_have_sub_elements(type))
 	{
 		Decl *ambiguous = NULL;
 		Decl *private = NULL;
-		Decl *method = sema_resolve_type_method(context->unit, type, kw, &ambiguous, &private);
+		// We look at any for any* and protocol for protocol*
+		Type *actual = type_is_any_protocol_ptr(type) ? type->pointer : type;
+		Decl *method = sema_resolve_type_method(context->unit, actual, kw, &ambiguous, &private);
 		if (private)
 		{
 			RETURN_SEMA_ERROR(expr, "The method '%s' has private visibility.", kw);
@@ -4068,7 +4072,7 @@ CHECK_DEEPER:
 		}
 		if (!method)
 		{
-			RETURN_SEMA_ERROR(expr, "There is no member or method '%s' on '%s'", kw, type_to_error_string(type));
+			RETURN_SEMA_ERROR(expr, "There is no member or method '%s' on '%s'", kw, type_to_error_string(actual));
 		}
 		expr->access_expr.parent = current_parent;
 		expr->type = method->type ? type_add_optional(method->type, optional) : NULL;
@@ -4078,7 +4082,7 @@ CHECK_DEEPER:
 	}
 
 	// 10. Dump all members and methods into the scope.
-	Decl *decl = type->decl;
+	Decl *decl = type->type_kind == TYPE_PROPTR ? type->pointer->decl : type->decl;
 
 	Decl *member = sema_decl_stack_find_decl_member(decl, kw);
 
@@ -4352,7 +4356,7 @@ static inline bool sema_expr_analyse_cast(SemaContext *context, Expr *expr)
 {
 	Expr *inner = exprptr(expr->cast_expr.expr);
 	TypeInfo *type_info = type_infoptr(expr->cast_expr.type_info);
-	bool success = sema_resolve_type_info(context, type_info);
+	bool success = sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT);
 	if (!sema_analyse_expr(context, inner) || !success) return false;
 
 	Type *target_type = type_info->type;
@@ -5936,7 +5940,7 @@ static const char *sema_addr_check_may_take(Expr *inner)
 			Decl *decl = inner->access_expr.ref;
 			if (decl->decl_kind == DECL_FUNC)
 			{
-				if (decl->func_decl.attr_interface) return NULL;
+				if (decl->func_decl.attr_protocol_method) return NULL;
 				return "Taking the address of a method should be done through the type e.g. '&Foo.method' not through the value.";
 			}
 			return sema_addr_check_may_take(inner->access_expr.parent);
@@ -6524,7 +6528,7 @@ static inline bool sema_expr_analyse_force_unwrap(SemaContext *context, Expr *ex
 
 static inline bool sema_expr_analyse_typeid(SemaContext *context, Expr *expr)
 {
-	if (!sema_resolve_type_info(context, expr->typeid_expr)) return expr_poison(expr);
+	if (!sema_resolve_type_info(context, expr->typeid_expr, RESOLVE_TYPE_DEFAULT)) return expr_poison(expr);
 	Type *type = expr->type_expr->type;
 	expr->expr_kind = EXPR_CONST;
 	expr->const_expr.const_kind = CONST_TYPEID;
@@ -7136,11 +7140,11 @@ RETRY:
 			return decl->type->canonical;
 		}
 		case TYPE_INFO_VATYPE:
-			if (!sema_resolve_type_info(context, type_info)) return poisoned_type;
+			if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return poisoned_type;
 			return type_info->type->canonical;
 		case TYPE_INFO_TYPEFROM:
 		case TYPE_INFO_TYPEOF:
-			if (!sema_resolve_type_info(context, type_info)) return poisoned_type;
+			if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return poisoned_type;
 			return type_info->type;
 		case TYPE_INFO_EVALTYPE:
 		{
@@ -7236,7 +7240,7 @@ static inline Type *sema_evaluate_type_copy(SemaContext *context, TypeInfo *type
 {
 	if (type_info->resolve_status == RESOLVE_DONE) return type_info->type;
 	type_info = copy_type_info_single(type_info);
-	if (!sema_resolve_type_info(context, type_info)) return NULL;
+	if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return NULL;
 	return type_info->type;
 }
 
@@ -7493,7 +7497,7 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 	scratch_buffer_append_unsigned_int(++unit->lambda_count);
 	decl->extname = decl->name = scratch_buffer_copy();
 	decl->type = type_new_func(decl, sig);
-	if (!sema_analyse_function_signature(context, decl, sig->abi, sig, true)) return false;
+	if (!sema_analyse_function_signature(context, decl, sig->abi, sig)) return false;
 	decl->func_decl.lambda_ct_parameters = ct_lambda_parameters;
 	decl->func_decl.is_lambda = true;
 	decl->alignment = type_alloca_alignment(decl->type);
@@ -7891,7 +7895,7 @@ static inline bool sema_expr_analyse_builtin(SemaContext *context, Expr *expr, b
 static inline bool sema_expr_analyse_compound_literal(SemaContext *context, Expr *expr)
 {
 	TypeInfo *type_info = expr->expr_compound_literal.type_info;
-	if (!sema_resolve_type_info(context, type_info)) return false;
+	if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
 	Type *type = type_info->type;
 	if (type_is_optional(type))
 	{
@@ -7941,9 +7945,6 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 			return sema_expr_analyse_ct_checks(context, expr);
 		case EXPR_CT_ARG:
 			return sema_expr_analyse_ct_arg(context, expr);
-		case EXPR_ANY:
-			// Created from compound statement.
-			UNREACHABLE;
 		case EXPR_STRINGIFY:
 			if (!sema_expr_analyse_ct_stringify(context, expr)) return false;
 			return true;
@@ -7979,7 +7980,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 			UNREACHABLE
 		case EXPR_TYPEINFO:
 			expr->type = type_typeinfo;
-			return sema_resolve_type_info(context, expr->type_expr);
+			return sema_resolve_type_info(context, expr->type_expr, RESOLVE_TYPE_DEFAULT);
 		case EXPR_SLICE:
 			return sema_expr_analyse_slice(context, expr);
 		case EXPR_FORCE_UNWRAP:

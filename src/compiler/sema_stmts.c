@@ -645,7 +645,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 	// 2. If we have a type for the variable, resolve it.
 	if (var_type)
 	{
-		if (!sema_resolve_type_info(context, var_type)) return false;
+		if (!sema_resolve_type_info(context, var_type, RESOLVE_TYPE_DEFAULT)) return false;
 		if (IS_OPTIONAL(var_type))
 		{
 			SEMA_ERROR(var_type, "Only non-optional types may be used as types for 'try', please remove the '!'.");
@@ -809,7 +809,7 @@ static inline bool sema_analyse_catch_unwrap(SemaContext *context, Expr *expr)
 	{
 		type = type ? type : type_info_new_base(type_anyfault, expr->span);
 
-		if (!sema_resolve_type_info(context, type)) return false;
+		if (!sema_resolve_type_info(context, type, RESOLVE_TYPE_DEFAULT)) return false;
 
 		if (type->type->canonical != type_anyfault)
 		{
@@ -926,13 +926,13 @@ static inline bool sema_analyse_last_cond(SemaContext *context, Expr *expr, Cond
 		if (is_deref) right = right->unary_expr.expr;
 		if (!sema_analyse_expr_rhs(context, NULL, right, false)) return false;
 		Type *type = right->type->canonical;
-		if (type == type_get_ptr(type_any) && is_deref)
+		if (type == type_get_ptr(type_anyptr) && is_deref)
 		{
 			is_deref = false;
 			right = exprptr(expr->binary_expr.right);
 			if (!sema_analyse_expr_rhs(context, NULL, right, false)) return false;
 		}
-		if (type != type_any) goto NORMAL_EXPR;
+		if (type != type_anyptr) goto NORMAL_EXPR;
 		// Found an expansion here
 		expr->expr_kind = EXPR_ANYSWITCH;
 		expr->any_switch.new_ident = left->identifier_expr.ident;
@@ -946,7 +946,7 @@ static inline bool sema_analyse_last_cond(SemaContext *context, Expr *expr, Cond
 	}
 	if (!sema_analyse_expr(context, expr)) return false;
 	Type *type = expr->type->canonical;
-	if (type != type_any) return true;
+	if (type != type_anyptr) return true;
 	if (expr->expr_kind == EXPR_IDENTIFIER)
 	{
 		Decl *decl = expr->identifier_expr.decl;
@@ -1358,7 +1358,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 				return SCOPE_POP_ERROR();
 			}
 			// First infer the type of the variable.
-			if (!sema_resolve_type_info(context, variable_type_info)) return false;
+			if (!sema_resolve_type_info(context, variable_type_info, RESOLVE_TYPE_DEFAULT)) return false;
 			// And create the inferred type:
 			inferred_type = type_get_array(variable_type_info->type, (ArraySize)size);
 		}
@@ -1447,7 +1447,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		type_info = type_info_new_base(value_type, var->span);
 		var->var.type_info = type_infoid(type_info);
 	}
-	if (!sema_resolve_type_info(context, type_info)) return false;
+	if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
 
 	if (type_is_optional(type_info->type))
 	{
@@ -1465,7 +1465,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 			idx_type_info = type_info_new_base(index_type, enumerator->span);
 			index->var.type_info = type_infoid(idx_type_info);
 		}
-		if (!sema_resolve_type_info(context, idx_type_info)) return false;
+		if (!sema_resolve_type_info(context, idx_type_info, RESOLVE_TYPE_DEFAULT)) return false;
 		index_var_type = idx_type_info->type;
 		if (type_is_optional(index_var_type))
 		{
@@ -1942,7 +1942,7 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 	if (value->expr_kind == EXPR_TYPEINFO)
 	{
 		TypeInfo *type_info = value->type_expr;
-		if (!sema_resolve_type_info(context, type_info)) return false;
+		if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
 		statement->nextcase_stmt.defer_id = context_get_defers(context, context->active_scope.defer_last, parent->switch_stmt.defer, true);
 		if (cond->type->canonical != type_typeid)
 		{
@@ -2617,7 +2617,7 @@ static inline bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement
 				if (var_switch.is_assign)
 				{
 					inner = expr_new(EXPR_DECL, last->span);
-					any_decl = decl_new_generated_var(type_any, VARDECL_LOCAL, last->span);
+					any_decl = decl_new_generated_var(type_anyptr, VARDECL_LOCAL, last->span);
 					any_decl->var.init_expr = var_switch.any_expr;
 					inner->decl_expr = any_decl;
 					if (!sema_analyse_expr(context, inner)) return false;
@@ -2627,7 +2627,7 @@ static inline bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement
 					inner = expr_new(EXPR_IDENTIFIER, last->span);
 					any_decl = var_switch.variable;
 					expr_resolve_ident(inner, any_decl);
-					inner->type = type_any;
+					inner->type = type_anyptr;
 				}
 				expr_rewrite_to_builtin_access(last, inner, ACCESS_TYPEOFANY, type_typeid);
 				switch_type = type_typeid;
@@ -2955,7 +2955,7 @@ static bool sema_analyse_optional_returns(SemaContext *context, Ast *directive)
 		TypeInfo *type_info = ret->contract_fault.type;
 		const char *ident = ret->contract_fault.ident;
 		if (type_info->kind != TYPE_INFO_IDENTIFIER) RETURN_SEMA_ERROR(type_info, "Expected a fault name here.");
-		if (!sema_resolve_type_info(context, type_info)) return false;
+		if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
 		Type *type = type_info->type;
 		if (type->type_kind != TYPE_FAULTTYPE) RETURN_SEMA_ERROR(type_info, "A fault type is required.");
 		if (!ident)
@@ -3053,62 +3053,7 @@ bool sema_analyse_contracts(SemaContext *context, AstId doc, AstId **asserts, So
 bool sema_analyse_function_body(SemaContext *context, Decl *func)
 {
 	if (!decl_ok(func)) return false;
-	if (func->func_decl.attr_dynamic)
-	{
-		Decl *ambiguous = NULL;
-		Decl *private = NULL;
-		Decl *any = sema_resolve_type_method(context->unit, type_any, func->name, &ambiguous, &private);
-		if (!any)
-		{
-			SEMA_ERROR(func, "To define a '@dynamic' method, the prototype method 'any.%s(...)' must exist. Did you spell the method name right?",
-					   func->name);
-			return false;
-		}
 
-		Signature any_sig = any->func_decl.signature;
-		Signature this_sig = func->func_decl.signature;
-		Type *any_rtype = typeget(any_sig.rtype);
-		Type *this_rtype = typeget(this_sig.rtype);
-		if (any_rtype->canonical != this_rtype->canonical)
-		{
-			SEMA_ERROR(type_infoptr(this_sig.rtype), "The prototype method has a return type %s, but this function returns %s, they need to match.",
-					   type_quoted_error_string(any_rtype), type_quoted_error_string(this_rtype));
-			SEMA_NOTE(type_infoptr(any_sig.rtype), "The interface definition is here.");
-			return false;
-		}
-		Decl **any_params = any_sig.params;
-		Decl **this_params = this_sig.params;
-		unsigned any_param_count = vec_size(any_params);
-		unsigned this_param_count = vec_size(this_params);
-		if (any_param_count != this_param_count)
-		{
-			if (any_param_count > this_param_count)
-			{
-				SEMA_ERROR(func, "This function is missing parameters, %d parameters were expected.", any_param_count);
-				SEMA_NOTE(any_params[this_param_count], "Compare with the interface definition.");
-				return false;
-			}
-			else
-			{
-				SEMA_ERROR(this_params[any_param_count], "This function has too many parameters (%d).", this_param_count);
-				SEMA_NOTE(any, "Compare with the interface, which has only %d parameter%s.",
-						  any_param_count, any_param_count == 1 ? "" : "s");
-			}
-			return false;
-		}
-		FOREACH_BEGIN_IDX(i, Decl *param, this_params)
-			if (i == 0) continue;
-			if (param->type->canonical != any_params[i]->type->canonical)
-			{
-				SEMA_ERROR(vartype(param), "The prototype argument has type %s, but in this function it has type %s. Please make them match.",
-						   type_quoted_error_string(any_params[i]->type), type_quoted_error_string(param->type));
-				SEMA_NOTE(vartype(any_params[i]), "The interface definition is here.");
-				return false;
-			}
-
-		FOREACH_END();
-		func->func_decl.any_prototype = declid(any);
-	}
 	Signature *signature = &func->func_decl.signature;
 	FunctionPrototype *prototype = func->type->function.prototype;
 	assert(prototype);

@@ -449,12 +449,12 @@ fn void Path.free(self)
 }
 
 
-fn usz! Path.to_format(&self, Formatter* formatter) @dynamic
+fn usz! Path.to_format(&self, Formatter* formatter) : Printable
 {
 	return formatter.print(self.str_view());
 }
 
-fn String Path.to_string(&self, Allocator* using = mem::heap()) @dynamic
+fn String Path.to_string(&self, Allocator* using = mem::heap()) : Printable
 {
 	return self.str_view().copy(using);
 }

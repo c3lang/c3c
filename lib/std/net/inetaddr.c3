@@ -45,7 +45,7 @@ struct InetAddress
 }
 
 
-fn usz! InetAddress.to_format(InetAddress* addr, Formatter* formatter) @dynamic
+fn usz! InetAddress.to_format(InetAddress* addr, Formatter* formatter) : Printable
 {
 	if (addr.is_ipv6)
 	{
@@ -56,7 +56,7 @@ fn usz! InetAddress.to_format(InetAddress* addr, Formatter* formatter) @dynamic
 	return formatter.printf("%d.%d.%d.%d", addr.ipv4.a, addr.ipv4.b, addr.ipv4.c, addr.ipv4.d)!;
 }
 
-fn String InetAddress.to_string(InetAddress* addr, Allocator* using = mem::heap()) @dynamic
+fn String InetAddress.to_string(InetAddress* addr, Allocator* using = mem::heap()) : Printable
 {
 	if (addr.is_ipv6)
 	{

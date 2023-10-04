@@ -327,6 +327,9 @@ CastKind cast_to_bool_kind(Type *type)
 {
 	switch (type_flatten(type)->type_kind)
 	{
+		case FLATTENED_TYPES:
+			// These are not possible due to flattening.
+			UNREACHABLE
 		case TYPE_WILDCARD:
 		case TYPE_BOOL:
 			return CAST_BOOLBOOL;
@@ -341,10 +344,9 @@ CastKind cast_to_bool_kind(Type *type)
 			return CAST_FPBOOL;
 		case TYPE_POINTER:
 			return CAST_PTRBOOL;
-		case TYPE_ENUM:
-		case FLATTENED_TYPES:
-			// These are not possible due to flattening.
-			UNREACHABLE
+		case TYPE_ANYPTR:
+		case TYPE_PROPTR:
+			return CAST_ANYBOOL;
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
 			// These should never be here, type should already be known.
@@ -360,9 +362,11 @@ CastKind cast_to_bool_kind(Type *type)
 		case TYPE_VECTOR:
 		case TYPE_BITSTRUCT:
 		case TYPE_UNTYPED_LIST:
-		case TYPE_ANY:
 		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_ENUM:
 		case TYPE_MEMBER:
+		case TYPE_ANY:
+		case TYPE_PROTOCOL:
 			// Everything else is an error
 			return CAST_ERROR;
 	}
@@ -1889,53 +1893,55 @@ static void cast_typeid_to_bool(Expr *expr, Type *to_type)
 #define RPTFE &rule_ptr_to_infer          /* Ptr -> infer (if pointee may infer)                                                               */
 
 CastRule cast_rules[CONV_LAST + 1][CONV_LAST + 1] = {
-// void, wildc,  bool,   int, float,   ptr,  sarr,   vec, bitst, distc, array, strct, union,   any, fault,  enum, typid, afaul, voidp, arrpt,  infer  (to)
- {_NA__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // VOID    (from)
- {ROKOK, _NA__, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, _NO__}, // WILDCARD
- {REXPL, _NO__, _NA__, REXPL, REXPL, _NO__, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // BOOL
- {REXPL, _NO__, REXPL, RIFIF, RINFL, RINPT, _NO__, ROKOK, RINBS, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, RINEN, _NO__, _NO__, RINPT, RINPT, _NO__}, // INT
- {REXPL, _NO__, REXPL, REXPL, RIFIF, _NO__, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // FLOAT
- {REXPL, _NO__, REXPL, RPTIN, _NO__, RPTPT, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, _NO__, _NO__, _NO__, _NO__, ROKOK, RPTPT, RPTFE}, // PTR
- {REXPL, _NO__, REXPL, _NO__, _NO__, RSAPT, RSASA, RSAVA, _NO__, RXXDI, RSAVA, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, RSAPT, RSAFE}, // SARRAY
- {REXPL, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RVCVC, _NO__, RXXDI, RVCAR, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RVAFE}, // VECTOR
- {REXPL, _NO__, _NO__, RBSIN, _NO__, _NO__, _NO__, _NO__, _NO__, RXXDI, RBSAR, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // BITSTRUCT
- {REXPL, _NO__, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX}, // DISTINCT
- {REXPL, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RARVC, RARBS, RXXDI, RARAR, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RVAFE}, // ARRAY
- {REXPL, _NO__, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTDI, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, _NO__}, // STRUCT
- {REXPL, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // UNION
- {REXPL, _NO__, REXPL, _NO__, _NO__, REXPL, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, _NA__, _NO__, _NO__, _NO__, _NO__, REXPL, REXPL, _NO__}, // ANY
- {REXPL, _NO__, REXPL, RPTIN, _NO__, REXPL, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, REXPL, REXPL, _NO__}, // FAULT
- {REXPL, _NO__, _NO__, REXPL, _NO__, _NO__, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // ENUM
- {REXPL, _NO__, REXPL, RPTIN, _NO__, REXPL, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NA__, _NO__, REXPL, REXPL, _NO__}, // TYPEID
- {REXPL, _NO__, REXPL, RPTIN, _NO__, REXPL, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, REXPL, _NO__, _NO__, _NA__, REXPL, REXPL, _NO__}, // ANYFAULT
- {REXPL, _NO__, REXPL, RPTIN, _NO__, ROKOK, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, _NO__, _NO__, _NO__, _NO__, _NA__, ROKOK, _NO__}, // VOIDPTR
- {REXPL, _NO__, REXPL, RPTIN, _NO__, RPTPT, RAPSA, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, _NO__, _NO__, _NO__, _NO__, ROKOK, RPTPT, RPTFE}, // ARRPTR
- {_NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // INFERRED
+// void, wildc,  bool,   int, float,   ptr,  sarr,   vec, bitst, distc, array, strct, union,   any,  prot, fault,  enum, typid, afaul, voidp, arrpt,  infer  (to)
+ {_NA__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // VOID    (from)
+ {ROKOK, _NA__, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, _NO__}, // WILDCARD
+ {REXPL, _NO__, _NA__, REXPL, REXPL, _NO__, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // BOOL
+ {REXPL, _NO__, REXPL, RIFIF, RINFL, RINPT, _NO__, ROKOK, RINBS, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RINEN, _NO__, _NO__, RINPT, RINPT, _NO__}, // INT
+ {REXPL, _NO__, REXPL, REXPL, RIFIF, _NO__, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // FLOAT
+ {REXPL, _NO__, REXPL, RPTIN, _NO__, RPTPT, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, ROKOK, _NO__, _NO__, _NO__, _NO__, ROKOK, RPTPT, RPTFE}, // PTR
+ {REXPL, _NO__, REXPL, _NO__, _NO__, RSAPT, RSASA, RSAVA, _NO__, RXXDI, RSAVA, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, RSAPT, RSAFE}, // SARRAY
+ {REXPL, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RVCVC, _NO__, RXXDI, RVCAR, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RVAFE}, // VECTOR
+ {REXPL, _NO__, _NO__, RBSIN, _NO__, _NO__, _NO__, _NO__, _NO__, RXXDI, RBSAR, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // BITSTRUCT
+ {REXPL, _NO__, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX}, // DISTINCT
+ {REXPL, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RARVC, RARBS, RXXDI, RARAR, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RVAFE}, // ARRAY
+ {REXPL, _NO__, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTDI, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, _NO__}, // STRUCT
+ {REXPL, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // UNION
+ {REXPL, _NO__, REXPL, _NO__, _NO__, REXPL, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, _NA__, ROKOK, _NO__, _NO__, _NO__, _NO__, REXPL, REXPL, _NO__}, // ANY
+ {REXPL, _NO__, REXPL, _NO__, _NO__, REXPL, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, _NA__, _NO__, _NO__, _NO__, _NO__, REXPL, REXPL, _NO__}, // PROTOCOL
+ {REXPL, _NO__, REXPL, RPTIN, _NO__, REXPL, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, REXPL, REXPL, _NO__}, // FAULT
+ {REXPL, _NO__, _NO__, REXPL, _NO__, _NO__, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // ENUM
+ {REXPL, _NO__, REXPL, RPTIN, _NO__, REXPL, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NA__, _NO__, REXPL, REXPL, _NO__}, // TYPEID
+ {REXPL, _NO__, REXPL, RPTIN, _NO__, REXPL, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, REXPL, _NO__, _NO__, _NA__, REXPL, REXPL, _NO__}, // ANYFAULT
+ {REXPL, _NO__, REXPL, RPTIN, _NO__, ROKOK, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, ROKOK, _NO__, _NO__, _NO__, _NO__, _NA__, ROKOK, _NO__}, // VOIDPTR
+ {REXPL, _NO__, REXPL, RPTIN, _NO__, RPTPT, RAPSA, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, ROKOK, _NO__, _NO__, _NO__, _NO__, ROKOK, RPTPT, RPTFE}, // ARRPTR
+ {_NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // INFERRED
 };
 
 CastFunction cast_function[CONV_LAST + 1][CONV_LAST + 1] = {
-//void,  wildcd, bool, int,   float, ptr,   sarr,  vec,   bitst, dist,  array, struct,union, any,   fault, enum,  typeid,anyfa, vptr,  aptr,  ulist, infer(to)
- {0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // VOID (from)
- {XX2XX, 0,     XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, 0, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX,     0     }, // WILDCARD
- {XX2VO, 0,     0,     BO2IN, BO2FP, 0,     0,     EX2VC, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // BOOL
- {XX2VO, 0,     IN2BO, IN2IN, IN2FP, IN2PT, 0,     EX2VC, XX2XX, 0,     0,     0,     0,     0,     0,     IN2EN, 0,     0,     IN2PT, IN2PT, 0     }, // INT
- {XX2VO, 0,     FP2BO, FP2IN, FP2FP, 0,     0,     EX2VC, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // FLOAT
- {XX2VO, 0,     PT2BO, PT2IN, 0,     PT2PT, 0,     EX2VC, 0,     0,     0,     0,     0,     PT2AY, 0,     0,     0,     0,     PT2PT, PT2PT, PT2FE }, // PTR
- {XX2VO, 0,     SA2BO, 0,     0,     SA2PT, SA2SA, SA2VA, 0,     0,     SA2VA, 0,     0,     0,     0,     0,     0,     0,     SA2PT, SA2PT, SA2FE }, // SARRAY
- {XX2VO, 0,     0,     0,     0,     0,     0,     VC2VC, 0,     0,     VC2AR, 0,     0,     0,     0,     0,     0,     0,     0,     0,     VA2FE }, // VECTOR
- {XX2VO, 0,     0,     XX2XX, 0,     0,     0,     0,     0,     0,     XX2XX, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // BITSTRUCT
- {0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // DISTINCT
- {XX2VO, 0,     0,     0,     0,     0,     0,     AR2VC, XX2XX, 0,     AR2AR, 0,     0,     0,     0,     0,     0,     0,     0,     0,     VA2FE }, // ARRAY
- {XX2VO, 0,     ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, 0,     ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, 0     }, // STRUCT
- {XX2VO, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // UNION
- {XX2VO, 0,     AY2BO, 0,     0,     AY2PT, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     AY2PT, AY2PT, 0     }, // ANY
- {XX2VO, 0,     AF2BO, FA2IN, 0,     FA2PT, 0,     EX2VC, 0,     0,     0,     0,     0,     0,     0,     0,     0,     FA2AF, FA2PT, FA2PT, 0     }, // FAULT
- {XX2VO, 0,     0,     EN2IN, 0,     0,     0,     EX2VC, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // ENUM
- {XX2VO, 0,     TI2BO, TI2IN, 0,     TI2PT, 0,     EX2VC, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     TI2PT, TI2PT, 0     }, // TYPEID
- {XX2VO, 0,     AF2BO, FA2IN, 0,     FA2IN, 0,     EX2VC, 0,     0,     0,     0,     0,     0,     AF2FA, 0,     0,     0,     FA2IN, FA2IN, 0     }, // ANYFAULT
- {XX2VO, 0,     PT2BO, PT2IN, 0,     PT2PT, 0,     EX2VC, 0,     0,     0,     0,     0,     PT2AY, 0,     0,     0,     0,     0,     PT2PT, 0     }, // VOIDPTR
- {XX2VO, 0,     PT2BO, PT2IN, 0,     PT2PT, AP2SA, EX2VC, 0,     0,     0,     0,     0,     PT2AY, 0,     0,     0,     0,     PT2PT, PT2PT, PT2FE }, // ARRAYPTR
- {    0, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // INFERRED
+//void,  wildcd, bool, int,   float, ptr,   sarr,  vec,   bitst, dist,  array, struct,union, any,   prot,  fault, enum,  typeid,anyfa, vptr,  aptr,  ulist, infer(to)
+ {0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // VOID (from)
+ {XX2XX, 0,     XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, 0,     XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, 0     }, // WILDCARD
+ {XX2VO, 0,     0,     BO2IN, BO2FP, 0,     0,     EX2VC, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // BOOL
+ {XX2VO, 0,     IN2BO, IN2IN, IN2FP, IN2PT, 0,     EX2VC, XX2XX, 0,     0,     0,     0,     0,     0,     0,     IN2EN, 0,     0,     IN2PT, IN2PT, 0     }, // INT
+ {XX2VO, 0,     FP2BO, FP2IN, FP2FP, 0,     0,     EX2VC, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // FLOAT
+ {XX2VO, 0,     PT2BO, PT2IN, 0,     PT2PT, 0,     EX2VC, 0,     0,     0,     0,     0,     PT2AY, PT2AY, 0,     0,     0,     0,     PT2PT, PT2PT, PT2FE }, // PTR
+ {XX2VO, 0,     SA2BO, 0,     0,     SA2PT, SA2SA, SA2VA, 0,     0,     SA2VA, 0,     0,     0,     0,     0,     0,     0,     0,     SA2PT, SA2PT, SA2FE }, // SARRAY
+ {XX2VO, 0,     0,     0,     0,     0,     0,     VC2VC, 0,     0,     VC2AR, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     VA2FE }, // VECTOR
+ {XX2VO, 0,     0,     XX2XX, 0,     0,     0,     0,     0,     0,     XX2XX, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // BITSTRUCT
+ {0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // DISTINCT
+ {XX2VO, 0,     0,     0,     0,     0,     0,     AR2VC, XX2XX, 0,     AR2AR, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     VA2FE }, // ARRAY
+ {XX2VO, 0,     ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, 0,     ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, 0     }, // STRUCT
+ {XX2VO, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // UNION
+ {XX2VO, 0,     AY2BO, 0,     0,     AY2PT, 0,     0,     0,     0,     0,     0,     0,     PT2PT, PT2PT, 0,     0,     0,     0,     AY2PT, AY2PT, 0     }, // ANY
+ {XX2VO, 0,     AY2BO, 0,     0,     AY2PT, 0,     0,     0,     0,     0,     0,     0,     PT2PT, PT2PT, 0,     0,     0,     0,     AY2PT, AY2PT, 0     }, // PROTOCOL
+ {XX2VO, 0,     AF2BO, FA2IN, 0,     FA2PT, 0,     EX2VC, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     FA2AF, FA2PT, FA2PT, 0     }, // FAULT
+ {XX2VO, 0,     0,     EN2IN, 0,     0,     0,     EX2VC, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // ENUM
+ {XX2VO, 0,     TI2BO, TI2IN, 0,     TI2PT, 0,     EX2VC, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     TI2PT, TI2PT, 0     }, // TYPEID
+ {XX2VO, 0,     AF2BO, FA2IN, 0,     FA2IN, 0,     EX2VC, 0,     0,     0,     0,     0,     0,     0,     AF2FA, 0,     0,     0,     FA2IN, FA2IN, 0     }, // ANYFAULT
+ {XX2VO, 0,     PT2BO, PT2IN, 0,     PT2PT, 0,     EX2VC, 0,     0,     0,     0,     0,     PT2AY, PT2AY, 0,     0,     0,     0,     0,     PT2PT, 0     }, // VOIDPTR
+ {XX2VO, 0,     PT2BO, PT2IN, 0,     PT2PT, AP2SA, EX2VC, 0,     0,     0,     0,     0,     PT2AY, PT2AY, 0,     0,     0,     0,     PT2PT, PT2PT, PT2FE }, // ARRAYPTR
+ {    0, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // INFERRED
 };
 
 static ConvGroup group_from_type[TYPE_LAST + 1] = {
@@ -1957,7 +1963,8 @@ static ConvGroup group_from_type[TYPE_LAST + 1] = {
 	[TYPE_F32]              = CONV_FLOAT,
 	[TYPE_F64]              = CONV_FLOAT,
 	[TYPE_F128]             = CONV_FLOAT,
-	[TYPE_ANY]              = CONV_ANY,
+	[TYPE_ANY]              = CONV_NO,
+	[TYPE_PROTOCOL]         = CONV_NO,
 	[TYPE_ANYFAULT]         = CONV_ANYFAULT,
 	[TYPE_TYPEID]           = CONV_TYPEID,
 	[TYPE_POINTER]          = CONV_POINTER,
@@ -1970,6 +1977,8 @@ static ConvGroup group_from_type[TYPE_LAST + 1] = {
 	[TYPE_TYPEDEF]          = CONV_NO,
 	[TYPE_DISTINCT]         = CONV_DISTINCT,
 	[TYPE_ARRAY]            = CONV_ARRAY,
+	[TYPE_PROPTR]           = CONV_PROTOCOL,
+	[TYPE_ANYPTR]           = CONV_ANY,
 	[TYPE_SUBARRAY]         = CONV_SUBARRAY,
 	[TYPE_FLEXIBLE_ARRAY]   = CONV_NO,
 	[TYPE_INFERRED_ARRAY]   = CONV_NO,

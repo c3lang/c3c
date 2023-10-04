@@ -47,6 +47,8 @@ static void header_print_type(FILE *file, Type *type)
 	{
 		case CT_TYPES:
 		case TYPE_OPTIONAL:
+		case TYPE_PROTOCOL:
+		case TYPE_ANY:
 			UNREACHABLE
 		case TYPE_VOID:
 			OUTPUT("void");
@@ -133,7 +135,8 @@ static void header_print_type(FILE *file, Type *type)
 			header_print_type(file, type->array.base);
 			OUTPUT(" arr[%d]; }", type->array.len);
 			return;
-		case TYPE_ANY:
+		case TYPE_ANYPTR:
+		case TYPE_PROPTR:
 			OUTPUT("c3any_t");
 			return;
 		case TYPE_SUBARRAY:
@@ -311,6 +314,7 @@ static void header_gen_type_decl(FILE *file, int indent, Decl *decl)
 			return;
 		case DECL_TYPEDEF:
 		case DECL_DISTINCT:
+		case DECL_PROTOCOL:
 			// Ignore
 			return;
 		case DECL_STRUCT:
@@ -358,26 +362,28 @@ RETRY:
 	type = type_flatten(type);
 	switch (type->type_kind)
 	{
+		case FLATTENED_TYPES:
 		case TYPE_POISONED:
-		case TYPE_TYPEDEF:
-		case TYPE_DISTINCT:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_UNTYPED_LIST:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_WILDCARD:
+		case TYPE_PROTOCOL:
+		case TYPE_ANY:
 			UNREACHABLE
 		case TYPE_VOID:
 		case TYPE_BOOL:
 		case ALL_FLOATS:
 		case ALL_INTS:
-		case TYPE_ANY:
 		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
 		case TYPE_BITSTRUCT:
 		case TYPE_FAULTTYPE:
 		case TYPE_SUBARRAY:
+		case TYPE_ANYPTR:
+		case TYPE_PROPTR:
 			return;
 		case TYPE_POINTER:
 			type = type->pointer;
@@ -442,10 +448,6 @@ RETRY:
 		case TYPE_FLEXIBLE_ARRAY:
 			type = type->array.base;
 			goto RETRY;
-		case TYPE_OPTIONAL:
-			type = type->optional;
-			goto RETRY;
-			break;
 		case TYPE_VECTOR:
 			if (htable_get(table, type)) return;
 			OUTPUT("typedef ");
