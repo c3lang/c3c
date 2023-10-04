@@ -1285,7 +1285,7 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 					// This is "foo..."
 					*variadic = VARIADIC_ANY;
 					// We generate the type as type_any
-					type = type_info_new_base(type_any, c->span);
+					type = type_info_new_base(type_anyptr, c->span);
 				}
 				break;
 			case TOKEN_CT_IDENT:
@@ -1612,6 +1612,45 @@ static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl)
 	decl->bitstruct.consecutive = is_consecutive;
 	return true;
 }
+
+INLINE bool parse_protocol_body(ParseContext *c, Decl *protocol)
+{
+	CONSUME_OR_RET(TOKEN_LBRACE, false);
+	Decl **fns = NULL;
+	while (!try_consume(c, TOKEN_RBRACE))
+	{
+		AstId contracts = 0;
+		if (!parse_contracts(c, &contracts)) return poisoned_decl;
+		ASSIGN_DECL_OR_RET(Decl *protocol_fn, parse_func_definition(c, contracts, true), false);
+		vec_add(fns, protocol_fn);
+	}
+	protocol->protocol_decl.protocol_methods = fns;
+	return true;
+}
+/**
+ * protocol_declaration ::= 'protocol' TYPE_IDENT ':' (TYPE_IDENT (',' TYPE_IDENT) protocol_body
+ */
+static inline Decl *parse_protocol_declaration(ParseContext *c)
+{
+	advance_and_verify(c, TOKEN_PROTOCOL);
+	Decl *decl = decl_new_with_type(symstr(c), c->span, DECL_PROTOCOL);
+	if (!consume_type_name(c, "protocol")) return poisoned_decl;
+	const char **parents = NULL;
+	if (try_consume(c, TOKEN_COLON))
+	{
+		do
+		{
+			vec_add(parents, symstr(c));
+			if (!try_consume(c, TOKEN_TYPE_IDENT))
+			{
+				RETURN_SEMA_ERROR_HERE("A protocol name was expected here.");
+			}
+		} while (try_consume(c, TOKEN_COMMA));
+	}
+	decl->protocol_decl.parents = parents;
+	if (!parse_protocol_body(c, decl)) return poisoned_decl;
+	return decl;
+}
 /**
  * bitstruct_declaration ::= 'bitstruct' TYPE_IDENT ':' type bitstruct_body
  */
@@ -1792,6 +1831,7 @@ static inline Decl *parse_def_type(ParseContext *c)
 		decl->is_substruct = is_inline;
 		TypedefDecl typedef_decl = decl->typedef_decl; // Ensure value semantics.
 		decl->distinct_decl.typedef_decl = typedef_decl;
+		decl->protocols = NULL;
 		decl->methods = NULL;
 		decl->type->type_kind = TYPE_DISTINCT;
 		decl->decl_kind = DECL_DISTINCT;
@@ -2254,7 +2294,11 @@ static inline Decl *parse_func_definition(ParseContext *c, AstId contracts, bool
 	}
 	if (!parse_fn_parameter_list(c, &(func->func_decl.signature), is_interface)) return poisoned_decl;
 	if (!parse_attributes_for_global(c, func)) return poisoned_decl;
-
+	if (try_consume(c, TOKEN_COLON))
+	{
+		ASSIGN_TYPEID_OR_RET(func->func_decl.protocol_unresolved, parse_type(c), poisoned_decl);
+		func->func_decl.is_dynamic = true;
+	}
 	if (is_interface)
 	{
 		if (tok_is(c, TOKEN_LBRACE) || tok_is(c, TOKEN_IMPLIES))
@@ -2641,6 +2685,7 @@ static Decl *parse_exec(ParseContext *c)
  *                       | global_declaration | macro_declaration | func_definition | typedef_declaration
  *                       | conditional_compilation | define_declaration | import_declaration | module_declaration
  *                       | static_declaration | ct_assert_declaration | ct_echo_declaration | bitstruct_declaration
+ *                       | protocol_declaration
  *
  * @return Decl* or a poison value if parsing failed
  */
@@ -2756,6 +2801,10 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 		case TOKEN_BITSTRUCT:
 			if (contracts) goto CONTRACT_NOT_ALLOWED;
 			decl = parse_bitstruct_declaration(c);
+			break;
+		case TOKEN_PROTOCOL:
+			if (contracts) goto CONTRACT_NOT_ALLOWED;
+			decl = parse_protocol_declaration(c);
 			break;
 		case TOKEN_CONST:
 			if (contracts) goto CONTRACT_NOT_ALLOWED;

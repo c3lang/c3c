@@ -17,7 +17,7 @@ def NativeSocket = distinct uptr;
 
 extern fn CInt ioctlsocket(NativeSocket, CLong cmd, CULong *argp);
 extern fn WSAError closesocket(NativeSocket);
-extern fn NativeSocket socket(AIFamily af, AISockType type, AIProtocol protocol);
+extern fn NativeSocket socket(AIFamily af, AISockType type, AIProtocol ip_protocol);
 extern fn int connect(NativeSocket, SockAddrPtr address, Socklen_t address_len);
 extern fn int bind(NativeSocket, SockAddrPtr address, Socklen_t address_len);
 extern fn int listen(NativeSocket, int backlog);

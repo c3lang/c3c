@@ -119,7 +119,6 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_TRY_UNWRAP_CHAIN:
 		case EXPR_TYPEID:
 		case EXPR_TYPEID_INFO:
-		case EXPR_ANY:
 		case EXPR_VASPLAT:
 		case EXPR_SWIZZLE:
 		case EXPR_LAMBDA:
@@ -184,8 +183,6 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 					break;
 			}
 			return exprid_is_constant_eval(expr->builtin_access_expr.inner, eval_kind);
-		case EXPR_ANY:
-			return exprid_is_constant_eval(expr->any_expr.type_id, eval_kind) && exprid_is_constant_eval(expr->any_expr.ptr, eval_kind);
 		case EXPR_BINARY:
 			return expr_binary_is_constant_eval(expr, eval_kind);
 		case EXPR_CAST:
@@ -564,6 +561,8 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 		case TYPE_VOID:
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_WILDCARD:
+		case TYPE_ANY:
+		case TYPE_PROTOCOL:
 			UNREACHABLE
 		case ALL_INTS:
 			expr_rewrite_const_int(expr, type, 0);
@@ -576,7 +575,8 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 			return;
 		case TYPE_POINTER:
 		case TYPE_FAULTTYPE:
-		case TYPE_ANY:
+		case TYPE_ANYPTR:
+		case TYPE_PROPTR:
 		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
 			expr_rewrite_const_null(expr, type);
@@ -656,8 +656,6 @@ bool expr_is_pure(Expr *expr)
 			return exprid_is_pure(expr->swizzle_expr.parent);
 		case EXPR_BUILTIN_ACCESS:
 			return exprid_is_pure(expr->builtin_access_expr.inner);
-		case EXPR_ANY:
-			return exprid_is_pure(expr->any_expr.type_id) && exprid_is_pure(expr->any_expr.ptr);
 		case EXPR_POINTER_OFFSET:
 			return exprid_is_pure(expr->pointer_offset_expr.ptr) && exprid_is_pure(expr->pointer_offset_expr.offset);
 		case EXPR_COMPILER_CONST:

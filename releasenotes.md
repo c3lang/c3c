@@ -34,7 +34,7 @@
 - Delete object files after successful linking.
 - Compile time subscript of constant strings and bytes.
 - `@if` introduced, other top level conditional compilation removed.
-- `@dynamic` and `@interface` for dynamic dispatch.
+- Dynamically dispatched interfaces.
 - `$if` now uses `$if <expr>:` syntax.
 - `$assert` now uses `$assert <expr> : <optional message>`
 - `$error` is syntax sugar for `$assert false : "Some message"`

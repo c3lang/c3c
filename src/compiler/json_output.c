@@ -52,6 +52,7 @@ static inline const char *decl_type_to_string(Decl *type)
 		case DECL_GLOBALS: return "global";
 		case DECL_IMPORT: return "import";
 		case DECL_MACRO: return "macro";
+		case DECL_PROTOCOL: return "protocol";
 		case DECL_STRUCT: return "struct";
 		case DECL_UNION: return "union";
  		case DECL_TYPEDEF: return "typedef";

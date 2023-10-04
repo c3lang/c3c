@@ -16,7 +16,7 @@ struct Posix_pollfd
 def Posix_nfds_t = CUInt;
 
 extern fn CInt connect(NativeSocket socket, SockAddrPtr address, Socklen_t address_len);
-extern fn NativeSocket socket(AIFamily af, AISockType type, AIProtocol protocol) @extern("socket");
+extern fn NativeSocket socket(AIFamily af, AISockType type, AIProtocol ip_protocol) @extern("socket");
 extern fn int fcntl(NativeSocket socket, int cmd, ...) @extern("fcntl");
 extern fn CInt bind(NativeSocket socket, SockAddrPtr address, Socklen_t address_len) @extern("bind");
 extern fn CInt listen(NativeSocket socket, CInt backlog) @extern("listen");

@@ -276,8 +276,8 @@ entry:
   %using12 = alloca ptr, align 8
   %allocator = alloca ptr, align 8
   %retparam = alloca ptr, align 8
-  %varargslots = alloca [1 x %any], align 16
-  %indirectarg = alloca %"any[]", align 8
+  %varargslots = alloca [1 x %"any*"], align 16
+  %indirectarg = alloca %"any*[]", align 8
   %reterr22 = alloca i64, align 8
   %literal23 = alloca %Doc, align 8
   %error_var24 = alloca i64, align 8
@@ -290,8 +290,8 @@ entry:
   %using31 = alloca ptr, align 8
   %allocator33 = alloca ptr, align 8
   %retparam35 = alloca ptr, align 8
-  %varargslots40 = alloca [1 x %any], align 16
-  %indirectarg42 = alloca %"any[]", align 8
+  %varargslots40 = alloca [1 x %"any*"], align 16
+  %indirectarg42 = alloca %"any*[]", align 8
   %value49 = alloca %Head, align 8
   %temp50 = alloca ptr, align 8
   %using51 = alloca ptr, align 8
@@ -299,8 +299,8 @@ entry:
   %using53 = alloca ptr, align 8
   %allocator55 = alloca ptr, align 8
   %retparam57 = alloca ptr, align 8
-  %varargslots62 = alloca [1 x %any], align 16
-  %indirectarg64 = alloca %"any[]", align 8
+  %varargslots62 = alloca [1 x %"any*"], align 16
+  %indirectarg64 = alloca %"any*[]", align 8
   %len = alloca i64, align 8
   %str = alloca ptr, align 8
   %using72 = alloca ptr, align 8
@@ -308,8 +308,8 @@ entry:
   %using74 = alloca ptr, align 8
   %allocator75 = alloca ptr, align 8
   %retparam77 = alloca ptr, align 8
-  %varargslots82 = alloca [1 x %any], align 16
-  %indirectarg84 = alloca %"any[]", align 8
+  %varargslots82 = alloca [1 x %"any*"], align 16
+  %indirectarg84 = alloca %"any*[]", align 8
   %reterr91 = alloca i64, align 8
   %literal92 = alloca %Doc, align 8
   %error_var93 = alloca i64, align 8
@@ -322,8 +322,8 @@ entry:
   %using101 = alloca ptr, align 8
   %allocator103 = alloca ptr, align 8
   %retparam105 = alloca ptr, align 8
-  %varargslots110 = alloca [1 x %any], align 16
-  %indirectarg112 = alloca %"any[]", align 8
+  %varargslots110 = alloca [1 x %"any*"], align 16
+  %indirectarg112 = alloca %"any*[]", align 8
   %value119 = alloca %Head, align 8
   %temp120 = alloca ptr, align 8
   %using121 = alloca ptr, align 8
@@ -331,8 +331,8 @@ entry:
   %using123 = alloca ptr, align 8
   %allocator125 = alloca ptr, align 8
   %retparam127 = alloca ptr, align 8
-  %varargslots132 = alloca [1 x %any], align 16
-  %indirectarg134 = alloca %"any[]", align 8
+  %varargslots132 = alloca [1 x %"any*"], align 16
+  %indirectarg134 = alloca %"any*[]", align 8
   store ptr %1, ptr %url, align 8
   %ptroffset = getelementptr inbounds i64, ptr %url, i64 1
   store i64 %2, ptr %ptroffset, align 8
@@ -398,13 +398,13 @@ after_check:                                      ; preds = %if.then7
   br label %noerr_block
 
 panic_block:                                      ; preds = %assign_optional
-  %26 = insertvalue %any undef, ptr %error_var11, 0
-  %27 = insertvalue %any %26, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
-  %28 = getelementptr inbounds [1 x %any], ptr %varargslots, i64 0, i64 0
-  store %any %27, ptr %28, align 16
-  %29 = insertvalue %"any[]" undef, ptr %varargslots, 0
-  %"#temp#" = insertvalue %"any[]" %29, i64 1, 1
-  store %"any[]" %"#temp#", ptr %indirectarg, align 8
+  %26 = insertvalue %"any*" undef, ptr %error_var11, 0
+  %27 = insertvalue %"any*" %26, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  %28 = getelementptr inbounds [1 x %"any*"], ptr %varargslots, i64 0, i64 0
+  store %"any*" %27, ptr %28, align 16
+  %29 = insertvalue %"any*[]" undef, ptr %varargslots, 0
+  %"#temp#" = insertvalue %"any*[]" %29, i64 1, 1
+  store %"any*[]" %"#temp#", ptr %indirectarg, align 8
   call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func, i64 7
   unreachable
 
@@ -471,13 +471,13 @@ after_check38:                                    ; preds = %if.then21
   br label %noerr_block43
 
 panic_block39:                                    ; preds = %assign_optional37
-  %50 = insertvalue %any undef, ptr %error_var30, 0
-  %51 = insertvalue %any %50, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
-  %52 = getelementptr inbounds [1 x %any], ptr %varargslots40, i64 0, i64 0
-  store %any %51, ptr %52, align 16
-  %53 = insertvalue %"any[]" undef, ptr %varargslots40, 0
-  %"#temp#41" = insertvalue %"any[]" %53, i64 1, 1
-  store %"any[]" %"#temp#41", ptr %indirectarg42, align 8
+  %50 = insertvalue %"any*" undef, ptr %error_var30, 0
+  %51 = insertvalue %"any*" %50, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  %52 = getelementptr inbounds [1 x %"any*"], ptr %varargslots40, i64 0, i64 0
+  store %"any*" %51, ptr %52, align 16
+  %53 = insertvalue %"any*[]" undef, ptr %varargslots40, 0
+  %"#temp#41" = insertvalue %"any*[]" %53, i64 1, 1
+  store %"any*[]" %"#temp#41", ptr %indirectarg42, align 8
   call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func
   unreachable
 
@@ -528,13 +528,13 @@ after_check60:                                    ; preds = %noerr_block48
   br label %noerr_block65
 
 panic_block61:                                    ; preds = %assign_optional59
-  %68 = insertvalue %any undef, ptr %error_var52, 0
-  %69 = insertvalue %any %68, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
-  %70 = getelementptr inbounds [1 x %any], ptr %varargslots62, i64 0, i64 0
-  store %any %69, ptr %70, align 16
-  %71 = insertvalue %"any[]" undef, ptr %varargslots62, 0
-  %"#temp#63" = insertvalue %"any[]" %71, i64 1, 1
-  store %"any[]" %"#temp#63", ptr %indirectarg64, align 8
+  %68 = insertvalue %"any*" undef, ptr %error_var52, 0
+  %69 = insertvalue %"any*" %68, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  %70 = getelementptr inbounds [1 x %"any*"], ptr %varargslots62, i64 0, i64 0
+  store %"any*" %69, ptr %70, align 16
+  %71 = insertvalue %"any*[]" undef, ptr %varargslots62, 0
+  %"#temp#63" = insertvalue %"any*[]" %71, i64 1, 1
+  store %"any*[]" %"#temp#63", ptr %indirectarg64, align 8
   call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func
   unreachable
 
@@ -599,13 +599,13 @@ after_check80:                                    ; preds = %if.exit71
   br label %noerr_block85
 
 panic_block81:                                    ; preds = %assign_optional79
-  %92 = insertvalue %any undef, ptr %error_var73, 0
-  %93 = insertvalue %any %92, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
-  %94 = getelementptr inbounds [1 x %any], ptr %varargslots82, i64 0, i64 0
-  store %any %93, ptr %94, align 16
-  %95 = insertvalue %"any[]" undef, ptr %varargslots82, 0
-  %"#temp#83" = insertvalue %"any[]" %95, i64 1, 1
-  store %"any[]" %"#temp#83", ptr %indirectarg84, align 8
+  %92 = insertvalue %"any*" undef, ptr %error_var73, 0
+  %93 = insertvalue %"any*" %92, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  %94 = getelementptr inbounds [1 x %"any*"], ptr %varargslots82, i64 0, i64 0
+  store %"any*" %93, ptr %94, align 16
+  %95 = insertvalue %"any*[]" undef, ptr %varargslots82, 0
+  %"#temp#83" = insertvalue %"any*[]" %95, i64 1, 1
+  store %"any*[]" %"#temp#83", ptr %indirectarg84, align 8
   call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func
   unreachable
 
@@ -664,13 +664,13 @@ after_check108:                                   ; preds = %if.exit88
   br label %noerr_block113
 
 panic_block109:                                   ; preds = %assign_optional107
-  %121 = insertvalue %any undef, ptr %error_var100, 0
-  %122 = insertvalue %any %121, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
-  %123 = getelementptr inbounds [1 x %any], ptr %varargslots110, i64 0, i64 0
-  store %any %122, ptr %123, align 16
-  %124 = insertvalue %"any[]" undef, ptr %varargslots110, 0
-  %"#temp#111" = insertvalue %"any[]" %124, i64 1, 1
-  store %"any[]" %"#temp#111", ptr %indirectarg112, align 8
+  %121 = insertvalue %"any*" undef, ptr %error_var100, 0
+  %122 = insertvalue %"any*" %121, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  %123 = getelementptr inbounds [1 x %"any*"], ptr %varargslots110, i64 0, i64 0
+  store %"any*" %122, ptr %123, align 16
+  %124 = insertvalue %"any*[]" undef, ptr %varargslots110, 0
+  %"#temp#111" = insertvalue %"any*[]" %124, i64 1, 1
+  store %"any*[]" %"#temp#111", ptr %indirectarg112, align 8
   call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func
   unreachable
 
@@ -721,13 +721,13 @@ after_check130:                                   ; preds = %noerr_block118
   br label %noerr_block135
 
 panic_block131:                                   ; preds = %assign_optional129
-  %139 = insertvalue %any undef, ptr %error_var122, 0
-  %140 = insertvalue %any %139, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
-  %141 = getelementptr inbounds [1 x %any], ptr %varargslots132, i64 0, i64 0
-  store %any %140, ptr %141, align 16
-  %142 = insertvalue %"any[]" undef, ptr %varargslots132, 0
-  %"#temp#133" = insertvalue %"any[]" %142, i64 1, 1
-  store %"any[]" %"#temp#133", ptr %indirectarg134, align 8
+  %139 = insertvalue %"any*" undef, ptr %error_var122, 0
+  %140 = insertvalue %"any*" %139, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  %141 = getelementptr inbounds [1 x %"any*"], ptr %varargslots132, i64 0, i64 0
+  store %"any*" %140, ptr %141, align 16
+  %142 = insertvalue %"any*[]" undef, ptr %varargslots132, 0
+  %"#temp#133" = insertvalue %"any*[]" %142, i64 1, 1
+  store %"any*[]" %"#temp#133", ptr %indirectarg134, align 8
   call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func, i64 7
   unreachable
 

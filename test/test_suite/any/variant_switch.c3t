@@ -3,7 +3,7 @@ module foo;
 
 extern fn void printf(char*, ...);
 
-fn void test(any z)
+fn void test(any* z)
 {
     switch (z)
     {
@@ -36,14 +36,14 @@ fn int main()
 
 define void @foo.test(i64 %0, ptr %1) #0 {
 entry:
-  %z = alloca %any, align 8
+  %z = alloca %"any*", align 8
   %switch = alloca i64, align 8
   %z1 = alloca ptr, align 8
   %z8 = alloca ptr, align 8
   store i64 %0, ptr %z, align 8
   %ptroffset = getelementptr inbounds ptr, ptr %z, i64 1
   store ptr %1, ptr %ptroffset, align 8
-  %2 = getelementptr inbounds %any, ptr %z, i32 0, i32 1
+  %2 = getelementptr inbounds %"any*", ptr %z, i32 0, i32 1
   %3 = load i64, ptr %2, align 8
   store i64 %3, ptr %switch, align 8
   br label %switch.entry
@@ -69,7 +69,7 @@ result_block:                                     ; preds = %parent_type_block, 
   br i1 %9, label %switch.case, label %next_if
 
 switch.case:                                      ; preds = %result_block
-  %10 = getelementptr inbounds %any, ptr %z, i32 0, i32 0
+  %10 = getelementptr inbounds %"any*", ptr %z, i32 0, i32 0
   %11 = load ptr, ptr %10, align 8
   store ptr %11, ptr %z1, align 8
   %12 = load ptr, ptr %z1, align 8
@@ -99,7 +99,7 @@ result_block6:                                    ; preds = %parent_type_block4,
   br i1 %19, label %switch.case7, label %next_if9
 
 switch.case7:                                     ; preds = %result_block6
-  %20 = getelementptr inbounds %any, ptr %z, i32 0, i32 0
+  %20 = getelementptr inbounds %"any*", ptr %z, i32 0, i32 0
   %21 = load ptr, ptr %20, align 8
   store ptr %21, ptr %z8, align 8
   %22 = load ptr, ptr %z8, align 8
@@ -115,13 +115,13 @@ switch.default:                                   ; preds = %next_if9
   br label %switch.exit
 
 switch.exit:                                      ; preds = %switch.default, %switch.case7, %switch.case
-  %24 = getelementptr inbounds %any, ptr %z, i32 0, i32 1
+  %24 = getelementptr inbounds %"any*", ptr %z, i32 0, i32 1
   %25 = load i64, ptr %24, align 8
   %eq10 = icmp eq i64 %25, ptrtoint (ptr @"$ct.int" to i64)
   br i1 %eq10, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %switch.exit
-  %26 = getelementptr inbounds %any, ptr %z, i32 0, i32 0
+  %26 = getelementptr inbounds %"any*", ptr %z, i32 0, i32 0
   %27 = load ptr, ptr %26, align 8
   %28 = load i32, ptr %27, align 4
   call void (ptr, ...) @printf(ptr @.str.3, i32 %28)
@@ -135,33 +135,33 @@ if.exit:                                          ; preds = %if.then, %switch.ex
 define i32 @main() #0 {
 entry:
   %taddr = alloca double, align 8
-  %taddr1 = alloca %any, align 8
+  %taddr1 = alloca %"any*", align 8
   %taddr2 = alloca i32, align 4
-  %taddr3 = alloca %any, align 8
+  %taddr3 = alloca %"any*", align 8
   %taddr6 = alloca i8, align 1
-  %taddr7 = alloca %any, align 8
+  %taddr7 = alloca %"any*", align 8
   store double 1.230000e+02, ptr %taddr, align 8
-  %0 = insertvalue %any undef, ptr %taddr, 0
-  %1 = insertvalue %any %0, i64 ptrtoint (ptr @"$ct.double" to i64), 1
-  store %any %1, ptr %taddr1, align 8
+  %0 = insertvalue %"any*" undef, ptr %taddr, 0
+  %1 = insertvalue %"any*" %0, i64 ptrtoint (ptr @"$ct.double" to i64), 1
+  store %"any*" %1, ptr %taddr1, align 8
   %2 = getelementptr inbounds { i64, ptr }, ptr %taddr1, i32 0, i32 0
   %lo = load i64, ptr %2, align 8
   %3 = getelementptr inbounds { i64, ptr }, ptr %taddr1, i32 0, i32 1
   %hi = load ptr, ptr %3, align 8
   call void @foo.test(i64 %lo, ptr %hi)
   store i32 1, ptr %taddr2, align 4
-  %4 = insertvalue %any undef, ptr %taddr2, 0
-  %5 = insertvalue %any %4, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %any %5, ptr %taddr3, align 8
+  %4 = insertvalue %"any*" undef, ptr %taddr2, 0
+  %5 = insertvalue %"any*" %4, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %"any*" %5, ptr %taddr3, align 8
   %6 = getelementptr inbounds { i64, ptr }, ptr %taddr3, i32 0, i32 0
   %lo4 = load i64, ptr %6, align 8
   %7 = getelementptr inbounds { i64, ptr }, ptr %taddr3, i32 0, i32 1
   %hi5 = load ptr, ptr %7, align 8
   call void @foo.test(i64 %lo4, ptr %hi5)
   store i8 1, ptr %taddr6, align 1
-  %8 = insertvalue %any undef, ptr %taddr6, 0
-  %9 = insertvalue %any %8, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
-  store %any %9, ptr %taddr7, align 8
+  %8 = insertvalue %"any*" undef, ptr %taddr6, 0
+  %9 = insertvalue %"any*" %8, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
+  store %"any*" %9, ptr %taddr7, align 8
   %10 = getelementptr inbounds { i64, ptr }, ptr %taddr7, i32 0, i32 0
   %lo8 = load i64, ptr %10, align 8
   %11 = getelementptr inbounds { i64, ptr }, ptr %taddr7, i32 0, i32 1

@@ -27,7 +27,7 @@ struct Object
 }
 
 
-fn usz! Object.to_format(&self, Formatter* formatter) @dynamic
+fn usz! Object.to_format(&self, Formatter* formatter) : Printable
 {
 	switch (self.type)
 	{

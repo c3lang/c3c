@@ -343,10 +343,6 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_DECL:
 			MACRO_COPY_DECL(expr->decl_expr);
 			return expr;
-		case EXPR_ANY:
-			MACRO_COPY_EXPRID(expr->any_expr.ptr);
-			MACRO_COPY_EXPRID(expr->any_expr.type_id);
-			return expr;
 		case EXPR_CT_CALL:
 			MACRO_COPY_EXPR(expr->ct_call_expr.main_var);
 			return expr;
@@ -882,6 +878,9 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 		case DECL_POISONED:
 			break;
 		case DECL_ERASED:
+			break;
+		case DECL_PROTOCOL:
+			MACRO_COPY_DECL_LIST(copy->protocol_decl.protocol_methods);
 			break;
 		case DECL_CT_EXEC:
 			MACRO_COPY_EXPR(copy->exec_decl.filename);

@@ -99,7 +99,16 @@ typedef enum
 	CONST_INIT_ARRAY_VALUE,
 } ConstInitType;
 
-
+typedef enum
+{
+	RESOLVE_TYPE_DEFAULT,
+	RESOLVE_TYPE_ALLOW_INFER    = 0x01,
+	RESOLVE_TYPE_ALLOW_ANY      = 0x02,
+	RESOLVE_TYPE_IS_POINTEE     = 0x04,
+	RESOLVE_TYPE_PTR            = RESOLVE_TYPE_ALLOW_ANY | RESOLVE_TYPE_IS_POINTEE,
+	RESOLVE_TYPE_MACRO_METHOD   = RESOLVE_TYPE_ALLOW_ANY | RESOLVE_TYPE_ALLOW_INFER,
+	RESOLVE_TYPE_FUNC_METHOD    = RESOLVE_TYPE_ALLOW_ANY
+} ResolveTypeKind;
 
 struct ConstInitializer_
 {
@@ -549,15 +558,17 @@ typedef struct
 			bool attr_benchmark : 1;
 			bool attr_test : 1;
 			bool attr_winmain : 1;
-			bool attr_dynamic : 1;
-			bool attr_interface : 1;
+			bool attr_optional : 1;
 			bool attr_init : 1;
 			bool attr_finalizer : 1;
+			bool attr_protocol_method : 1;
 			bool is_lambda : 1;
+			bool is_dynamic : 1;
 			union
 			{
 				uint32_t priority;
-				DeclId any_prototype;
+				TypeInfoId protocol_unresolved;
+				DeclId protocol_method;
 				Decl **generated_lambda;
 				Decl **lambda_ct_parameters;
 			};
@@ -631,6 +642,11 @@ typedef struct
 
 typedef struct
 {
+	const char **parents;
+	Decl **protocol_methods;
+} ProtocolDecl;
+typedef struct
+{
 	AstId defer;
 	bool next_target : 1;
 	union
@@ -695,6 +711,7 @@ typedef struct Decl_
 		Decl** decl_list;
 		struct
 		{
+			Decl **protocols;
 			Decl **methods;
 			union
 			{
@@ -720,6 +737,7 @@ typedef struct Decl_
 		ImportDecl import;
 		IncludeDecl include;
 		LabelDecl label;
+		ProtocolDecl protocol_decl;
 		TypedefDecl typedef_decl;
 		VarDecl var;
 	};
@@ -812,12 +830,6 @@ typedef struct
 	ExprId left;
 	ExprId right;
 } ExprSliceAssign;
-
-typedef struct
-{
-	ExprId ptr;
-	ExprId type_id;
-} ExprAny;
 
 typedef struct
 {
@@ -1135,7 +1147,6 @@ struct Expr_
 	ResolveStatus resolve_status : 4;
 	union {
 		ExprAccess access_expr;                     // 16
-		ExprAny any_expr;                           // 8
 		ExprAnySwitch any_switch;                   // 32
 		ExprBinary binary_expr;                     // 12
 		ExprBodyExpansion body_expansion_expr;      // 24
@@ -1862,8 +1873,7 @@ extern Type *type_ichar, *type_short, *type_int, *type_long, *type_isz;
 extern Type *type_char, *type_ushort, *type_uint, *type_ulong, *type_usz;
 extern Type *type_iptr, *type_uptr;
 extern Type *type_u128, *type_i128;
-extern Type *type_typeid, *type_anyfault, *type_typeinfo, *type_member;
-extern Type *type_any;
+extern Type *type_typeid, *type_anyfault, *type_anyptr, *type_typeinfo, *type_member;
 extern Type *type_untypedlist;
 extern Type *type_wildcard;
 extern Type *type_cint;
@@ -2307,8 +2317,8 @@ Decl *sema_resolve_symbol(SemaContext *context, const char *symbol, Path *path, 
 bool sema_symbol_is_defined_in_scope(SemaContext *c, const char *symbol);
 
 bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, ArraySize *len_ref);
-bool sema_resolve_type_info(SemaContext *context, TypeInfo *type_info);
-bool sema_resolve_type_info_maybe_inferred(SemaContext *context, TypeInfo *type_info, bool allow_inferred_type);
+
+bool sema_resolve_type_info(SemaContext *context, TypeInfo *type_info, ResolveTypeKind kind);
 
 void sema_error_at(SourceSpan loc, const char *message, ...);
 void sema_error_at_after(SourceSpan loc, const char *message, ...);
@@ -2586,9 +2596,31 @@ INLINE bool type_is_wildcard(Type *type)
 	return type == type_wildcard || type == type_wildcard_optional;
 }
 
+INLINE bool type_is_any_raw(Type *type)
+{
+	switch (type->type_kind)
+	{
+		case TYPE_ANY:
+		case TYPE_PROTOCOL:
+			return true;
+		default:
+			return false;
+	}
+}
+INLINE bool type_is_any_protocol_ptr(Type *type)
+{
+	switch (type->canonical->type_kind)
+	{
+		case TYPE_ANYPTR:
+		case TYPE_PROPTR:
+			return true;
+		default:
+			return false;
+	}
+}
 INLINE bool type_is_any(Type *type)
 {
-	return type->canonical == type_any;
+	return type->canonical == type_anyptr;
 }
 
 INLINE bool type_is_anyfault(Type *type)

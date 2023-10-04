@@ -120,13 +120,16 @@ static bool x86_should_return_type_in_reg(Type *type)
 		case CT_TYPES:
 		case TYPE_OPTIONAL:
 		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_PROTOCOL:
+		case TYPE_ANY:
+		case TYPE_PROPTR:
 			UNREACHABLE
 		case ALL_INTS:
 		case ALL_FLOATS:
 		case TYPE_BOOL:
 		case TYPE_POINTER:
 		case TYPE_SUBARRAY:
-		case TYPE_ANY:
+		case TYPE_ANYPTR:
 			return true;
 		case TYPE_ARRAY:
 			// Small arrays <= 8 bytes.
@@ -456,6 +459,8 @@ static ABIArgInfo *x86_classify_argument(CallABI call, Regs *regs, Type *type)
 		case LOWERED_TYPES:
 		case TYPE_VOID:
 		case TYPE_FUNC:
+		case TYPE_ANY:
+		case TYPE_PROTOCOL:
 		case TYPE_FLEXIBLE_ARRAY:
 			UNREACHABLE
 		case ALL_FLOATS:
@@ -468,7 +473,7 @@ static ABIArgInfo *x86_classify_argument(CallABI call, Regs *regs, Type *type)
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_SUBARRAY:
-		case TYPE_ANY:
+		case TYPE_ANYPTR:
 		case TYPE_ARRAY:
 			return x86_classify_aggregate(call, regs, type);
 			UNREACHABLE

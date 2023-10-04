@@ -167,36 +167,22 @@ bool type_homogenous_aggregate_small_enough(Type *type, unsigned members)
  */
 bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 {
+	assert(type_lowering(type) == type);
 	*elements = 0;
-	RETRY:
 	switch (type->type_kind)
 	{
-		case TYPE_OPTIONAL:
-			type = type->optional;
-			goto RETRY;
-		case TYPE_DISTINCT:
-			type = type->decl->distinct_decl.base_type;
-			goto RETRY;
-		case TYPE_BITSTRUCT:
-			type = type->decl->bitstruct.base_type->type;
-			goto RETRY;
+		case LOWERED_TYPES:
+		case TYPE_ANY:
+		case TYPE_PROTOCOL:
+			UNREACHABLE;
 		case TYPE_VOID:
-		case TYPE_TYPEID:
 		case TYPE_FUNC:
 		case TYPE_SUBARRAY:
-		case CT_TYPES:
 			return false;
-		case TYPE_ANY:
+		case TYPE_ANYPTR:
 			*base = type_iptr->canonical;
 			*elements = 2;
 			return true;
-		case TYPE_ANYFAULT:
-		case TYPE_FAULTTYPE:
-			type = type_iptr;
-			goto RETRY;
-		case TYPE_TYPEDEF:
-			type = type->canonical;
-			goto RETRY;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 			if (type->decl->has_variable_array) return false;
@@ -218,7 +204,7 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 					unsigned member_members = 0;
 
 					// Check recursively if the field member is homogenous
-					if (!type_is_homogenous_aggregate(member_type, base, &member_members)) return false;
+					if (!type_is_homogenous_aggregate(type_lowering(member_type), base, &member_members)) return false;
 					member_members *= member_mult;
 					// In the case of a union, grab the bigger set of elements.
 					if (type->type_kind == TYPE_UNION)
@@ -244,12 +230,9 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 			// Empty arrays? Not homogenous.
 			if (type->array.len == 0) return false;
 			// Check the underlying type and multiply by length.
-			if (!type_is_homogenous_aggregate(type->array.base, base, elements)) return false;
+			if (!type_is_homogenous_aggregate(type_lowering(type->array.base), base, elements)) return false;
 			*elements *= type->array.len;
 			goto TYPECHECK;
-		case TYPE_ENUM:
-			type = type->decl->enums.type_info->type;
-			goto RETRY;
 		case TYPE_BOOL:
 			// Lower bool to unsigned char
 			type = type_char;

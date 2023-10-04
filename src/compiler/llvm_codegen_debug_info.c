@@ -554,6 +554,8 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 	switch (type->type_kind)
 	{
 		case CT_TYPES:
+		case TYPE_PROTOCOL:
+		case TYPE_ANY:
 			UNREACHABLE
 		case TYPE_BITSTRUCT:
 		case TYPE_OPTIONAL:
@@ -607,7 +609,8 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 			return type->backend_debug_type = llvm_debug_subarray_type(c, type);
 		case TYPE_ANYFAULT:
 			return type->backend_debug_type = llvm_debug_errunion_type(c, type);
-		case TYPE_ANY:
+		case TYPE_PROPTR:
+		case TYPE_ANYPTR:
 			return type->backend_debug_type = llvm_debug_any_type(c, type);
 	}
 	UNREACHABLE

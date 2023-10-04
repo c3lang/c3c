@@ -36,6 +36,8 @@ static inline Type *type_lowering(Type *type)
 			case TYPE_ENUM:
 				type = type->decl->enums.type_info->type;
 				continue;
+			case TYPE_PROPTR:
+				return type_anyptr;
 			case TYPE_ANYFAULT:
 			case TYPE_TYPEID:
 			case TYPE_FAULTTYPE:

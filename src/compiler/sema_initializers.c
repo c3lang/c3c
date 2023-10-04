@@ -526,42 +526,6 @@ static void sema_create_const_initializer_from_designated_init(ConstInitializer 
 	}
 }
 
-static bool sema_analyse_variant_init(SemaContext *context, Expr *expr)
-{
-	unsigned elements = expr->expr_kind == EXPR_INITIALIZER_LIST ? vec_size(expr->initializer_list) : (unsigned)-1;
-	if (elements != 2 && elements != 0)
-	{
-		SEMA_ERROR(expr, "Expected an initializer with arguments '{ ptr, typeid }'.");
-		return false;
-	}
-	if (elements == 0)
-	{
-		expr->expr_kind = EXPR_ANY;
-		expr->any_expr = (ExprAny) { 0, 0 };
-		expr->type = type_any;
-		return true;
-	}
-	Expr *ptr = expr->initializer_list[0];
-	Expr *typeid = expr->initializer_list[1];
-	if (!sema_analyse_expr(context, ptr)) return false;
-	if (!sema_analyse_expr(context, typeid)) return false;
-	if (!type_is_pointer(ptr->type))
-	{
-		SEMA_ERROR(ptr, "Expected a pointer, but was %s.", type_quoted_error_string(ptr->type));
-		return false;
-	}
-	if (typeid->type != type_typeid)
-	{
-		SEMA_ERROR(ptr, "Expected a 'typeid', but was %s.", type_quoted_error_string(ptr->type));
-		return false;
-	}
-	expr->expr_kind = EXPR_ANY;
-	expr->any_expr.ptr = exprid(ptr);
-	expr->any_expr.type_id = exprid(typeid);
-	expr->type = type_any;
-	return true;
-}
-
 bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *expr)
 {
 	if (!to) to = type_untypedlist;
@@ -571,6 +535,9 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 	if (!sema_resolve_type_structure(context, to, expr->span)) return false;
 	switch (flattened->type_kind)
 	{
+		case TYPE_ANY:
+		case TYPE_PROTOCOL:
+			UNREACHABLE
 		case TYPE_UNTYPED_LIST:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
@@ -614,8 +581,6 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
 			break;
-		case TYPE_ANY:
-			return sema_analyse_variant_init(context, expr);
 		default:
 			if (is_zero_init)
 			{

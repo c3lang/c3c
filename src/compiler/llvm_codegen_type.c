@@ -17,6 +17,7 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 		case DECL_ERASED:
 		case NON_TYPE_DECLS:
 		case DECL_FNTYPE:
+		case DECL_PROTOCOL:
 			UNREACHABLE
 		case DECL_BITSTRUCT:
 			return llvm_get_type(c, decl->bitstruct.base_type->type);
@@ -314,6 +315,9 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 		case LOWERED_TYPES:
 			// If this is reachable, then we're not doing the proper lowering.
 			UNREACHABLE
+		case TYPE_ANY:
+		case TYPE_PROTOCOL:
+			UNREACHABLE
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 			return any_type->backend_type = llvm_type_from_decl(c, any_type->decl);
@@ -349,7 +353,7 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 			LLVMStructSetBody(array_type, types, 2, false);
 			return any_type->backend_type = array_type;
 		}
-		case TYPE_ANY:
+		case TYPE_ANYPTR:
 		{
 			LLVMTypeRef virtual_type = LLVMStructCreateNamed(c->context, any_type->name);
 			LLVMTypeRef types[2] = { c->ptr_type, c->typeid_type };
@@ -638,6 +642,10 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_ARRAY, type->array.base, type->array.len, NULL, false);
 		case TYPE_SUBARRAY:
 			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_SUBARRAY, type->array.base, 0, NULL, false);
+		case TYPE_ANYPTR:
+			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_ANY, NULL, 0, NULL, false);
+		case TYPE_PROPTR:
+			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_PROTOCOL, NULL, 0, NULL, false);
 		case TYPE_POINTER:
 			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_POINTER, type->pointer, 0, NULL, false);
 		case TYPE_DISTINCT:
@@ -664,6 +672,8 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 		case TYPE_TYPEDEF:
 			return llvm_get_typeid(c, type->canonical);
 		case CT_TYPES:
+		case TYPE_ANY:
+		case TYPE_PROTOCOL:
 			UNREACHABLE
 		case TYPE_VOID:
 			return llvm_get_introspection_for_builtin_type(c, type, INTROSPECT_TYPE_VOID, 0);
@@ -684,8 +694,6 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 														   type_kind_bitsize(type->type_kind));
 		case TYPE_ANYFAULT:
 			return llvm_get_introspection_for_builtin_type(c, type, INTROSPECT_TYPE_ANYFAULT, 0);
-		case TYPE_ANY:
-			return llvm_get_introspection_for_builtin_type(c, type, INTROSPECT_TYPE_ANY, 0);
 		case TYPE_TYPEID:
 			return llvm_get_introspection_for_builtin_type(c, type, INTROSPECT_TYPE_TYPEID, 0);
 	}

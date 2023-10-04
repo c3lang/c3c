@@ -5,9 +5,9 @@ import libc;
 def TcpSocket = distinct inline Socket;
 def TcpServerSocket = distinct inline Socket;
 
-fn TcpSocket! connect(String host, uint port, Duration timeout = 0, SocketOption... options, IpProtocol protocol = UNSPECIFIED)
+fn TcpSocket! connect(String host, uint port, Duration timeout = 0, SocketOption... options, IpProtocol ip_protocol = UNSPECIFIED)
 {
-	AddrInfo* ai =  net::addrinfo(host, port, protocol.ai_family, os::SOCK_STREAM)!;
+	AddrInfo* ai =  net::addrinfo(host, port, ip_protocol.ai_family, os::SOCK_STREAM)!;
 	defer os::freeaddrinfo(ai);
 	if (timeout > 0)
 	{
@@ -16,9 +16,9 @@ fn TcpSocket! connect(String host, uint port, Duration timeout = 0, SocketOption
 	return connect_to(ai, ...options);
 }
 
-fn TcpSocket! connect_async(String host, uint port, SocketOption... options, IpProtocol protocol = UNSPECIFIED)
+fn TcpSocket! connect_async(String host, uint port, SocketOption... options, IpProtocol ip_protocol = UNSPECIFIED)
 {
-	AddrInfo* ai = net::addrinfo(host, port, protocol.ai_family, os::SOCK_STREAM)!;
+	AddrInfo* ai = net::addrinfo(host, port, ip_protocol.ai_family, os::SOCK_STREAM)!;
 	defer os::freeaddrinfo(ai);
 	return connect_async_to(ai, ...options);
 }
@@ -33,9 +33,9 @@ fn TcpSocket! connect_async_to(AddrInfo* ai, SocketOption... options)
 	return (TcpSocket)net::connect_async_from_addrinfo(ai, options);
 }
 
-fn TcpServerSocket! listen(String host, uint port, uint backlog, SocketOption... options, IpProtocol protocol = UNSPECIFIED)
+fn TcpServerSocket! listen(String host, uint port, uint backlog, SocketOption... options, IpProtocol ip_protocol = UNSPECIFIED)
 {
-	AddrInfo* ai = net::addrinfo(host, port, protocol.ai_family, os::SOCK_STREAM)!;
+	AddrInfo* ai = net::addrinfo(host, port, ip_protocol.ai_family, os::SOCK_STREAM)!;
 	defer os::freeaddrinfo(ai);
 	return listen_to(ai, backlog, ...options);
 }

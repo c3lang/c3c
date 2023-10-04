@@ -133,12 +133,12 @@ fn Type PrivatePriorityQueue.peek_at(&self, usz index) @operator([])
 	return self.heap[index];
 }
 
-fn usz! PrivatePriorityQueue.to_format(&self, Formatter* formatter) @dynamic
+fn usz! PrivatePriorityQueue.to_format(&self, Formatter* formatter) : Printable
 {
 	return self.heap.to_format(formatter);
 }
 
-fn String PrivatePriorityQueue.to_string(&self, Allocator* using = mem::heap()) @dynamic
+fn String PrivatePriorityQueue.to_string(&self, Allocator* using = mem::heap()) : Printable
 {
 	return self.heap.to_string(using);
 }

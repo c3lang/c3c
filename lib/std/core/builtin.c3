@@ -62,7 +62,7 @@ macro void @swap(&a, &b) @builtin
  * @ensure @typeis(return, $Type*)
  * @return! CastResult.TYPE_MISMATCH
  **/
-macro anycast(any v, $Type) @builtin
+macro anycast(any* v, $Type) @builtin
 {
 	if (v.type != $Type.typeid) return CastResult.TYPE_MISMATCH?;
 	return ($Type*)v.ptr;
@@ -188,6 +188,21 @@ macro void unsupported(String string = "Unsupported function invoked") @builtin 
 {
 	panicf(string, $$FILE, $$FUNC, $$LINE, $vasplat());
 	$$unreachable();
+}
+
+macro any_make(void* ptr, typeid type) @builtin
+{
+	return $$any_make(ptr, type);
+}
+
+macro any.retype_to(&self, typeid type)
+{
+	return $$any_make(self.ptr, type);
+}
+
+macro any.as_inner(&self)
+{
+	return $$any_make(self.ptr, self.type.inner);
 }
 
 /**

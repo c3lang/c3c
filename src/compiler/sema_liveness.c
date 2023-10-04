@@ -263,7 +263,6 @@ RETRY:
 	{
 		case EXPR_SUBSCRIPT_ASSIGN:
 		case EXPR_GROUP:
-		case EXPR_BUILTIN:
 		case EXPR_OPERATOR_CHARS:
 		case EXPR_VASPLAT:
 		case EXPR_POISONED:
@@ -279,6 +278,8 @@ RETRY:
 		case EXPR_EMBED:
 		case EXPR_MACRO_BODY:
 			UNREACHABLE
+		case EXPR_BUILTIN:
+			TODO
 		case EXPR_DESIGNATOR:
 			sema_trace_expr_liveness(expr->designator_expr.value);
 			return;
@@ -488,10 +489,6 @@ RETRY:
 			return;
 		case EXPR_TYPEID:
 			return;
-		case EXPR_ANY:
-			sema_trace_exprid_liveness(expr->any_expr.ptr);
-			sema_trace_exprid_liveness(expr->any_expr.type_id);
-			return;
 	}
 	UNREACHABLE
 }
@@ -505,7 +502,7 @@ void sema_trace_liveness(void)
 	bool keep_tests = active_target.testing;
 	bool keep_benchmarks = active_target.benchmarking;
 	FOREACH_BEGIN(Decl *function, global_context.method_extensions)
-		if (function->func_decl.attr_dynamic) function->no_strip = true;
+		if (function->func_decl.is_dynamic) function->no_strip = true;
 		if (function->is_export || function->no_strip) sema_trace_decl_liveness(function);
 	FOREACH_END();
 	FOREACH_BEGIN(Module *module, global_context.module_list)
@@ -537,7 +534,7 @@ INLINE void sema_trace_decl_dynamic_methods(Decl *decl)
 	for (unsigned i = 0; i < method_count; i++)
 	{
 		Decl *method = methods[i];
-		if (method->decl_kind == DECL_MACRO || !method->func_decl.attr_dynamic) continue;
+		if (method->decl_kind == DECL_MACRO || !method->func_decl.is_dynamic) continue;
 		sema_trace_decl_liveness(method);
 	}
 }
@@ -578,6 +575,7 @@ RETRY:
 		case DECL_ATTRIBUTE:
 		case DECL_ENUM_CONSTANT:
 		case DECL_FAULTVALUE:
+		case DECL_PROTOCOL:
 			return;
 		case DECL_CT_ASSERT:
 		case DECL_CT_ECHO:
