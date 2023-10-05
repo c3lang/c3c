@@ -104,24 +104,28 @@ fn void! char16_to_utf8_unsafe(Char16 *ptr, usz *available, char** output)
  * @param c `The utf32 codepoint to convert`
  * @param [inout] output `the resulting buffer`
  **/
-fn void char32_to_utf8_unsafe(Char32 c, char** output)
+fn usz char32_to_utf8_unsafe(Char32 c, char** output)
 {
-	switch (true)
+	switch
 	{
 		case c < 0x7f:
 			(*output)++[0] = (char)c;
+			return 1;
 		case c < 0x7ff:
 			(*output)++[0] = (char)(0xC0 | c >> 6);
 			(*output)++[0] = (char)(0x80 | (c & 0x3F));
+			return 2;
 		case c < 0xffff:
 			(*output)++[0] = (char)(0xE0 | c >> 12);
 			(*output)++[0] = (char)(0x80 | (c >> 6 & 0x3F));
 			(*output)++[0] = (char)(0x80 | (c & 0x3F));
+			return 3;
 		default:
 			(*output)++[0] = (char)(0xF0 | c >> 18);
 			(*output)++[0] = (char)(0x80 | (c >> 12 & 0x3F));
 			(*output)++[0] = (char)(0x80 | (c >> 6 & 0x3F));
 			(*output)++[0] = (char)(0x80 | (c & 0x3F));
+			return 4;
 	}
 }
 
