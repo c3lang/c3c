@@ -96,7 +96,7 @@ fn void DString.chop(self, usz new_size)
 
 fn String DString.str_view(self)
 {
-	StringData* data = (StringData*)self;
+	StringData* data = self.data();
 	if (!data) return "";
 	return (String)data.chars[:data.len];
 }
@@ -134,36 +134,14 @@ fn void DString.append_repeat(&self, char c, usz times)
  */
 fn void DString.append_char32(&self, Char32 c)
 {
-	if (c < 0x7f)
-	{
-		self.reserve(1);
-		StringData* data = self.data();
-		data.chars[data.len++] = (char)c;
-		return;
-	}
-	if (c < 0x7ff)
-	{
-		self.reserve(2);
-		StringData* data = self.data();
-		data.chars[data.len++] = (char)(0xC0 | c >> 6);
-		data.chars[data.len++] = (char)(0x80 | (c & 0x3F));
-		return;
-	}
-	if (c < 0xffff)
-	{
-		self.reserve(3);
-		StringData* data = self.data();
-		data.chars[data.len++] = (char)(0xE0 | c >> 12);
-		data.chars[data.len++] = (char)(0x80 | (c >> 6 & 0x3F));
-		data.chars[data.len++] = (char)(0x80 | (c & 0x3F));
-		return;
-	}
-	self.reserve(4);
+	char[4] buffer @noinit;
+	char* p = &buffer;
+	conv::char32_to_utf8_unsafe(c, &p);
+	usz n = p - (char*)&buffer;
+	self.reserve(n);
 	StringData* data = self.data();
-	data.chars[data.len++] = (char)(0xF0 | c >> 18);
-	data.chars[data.len++] = (char)(0x80 | (c >> 12 & 0x3F));
-	data.chars[data.len++] = (char)(0x80 | (c >> 6 & 0x3F));
-	data.chars[data.len++] = (char)(0x80 | (c & 0x3F));
+	data.chars[data.len:n] = buffer[:n];
+	data.len += n;
 }
 
 fn DString DString.tcopy(&self) => self.copy(mem::temp());
@@ -175,8 +153,8 @@ fn DString DString.copy(self, Allocator* using = null)
 		if (using) return new_with_capacity(0, using);
 		return (DString)null;
 	}
-	if (!using) using = mem::heap();
 	StringData* data = self.data();
+	if (!using) using = mem::heap();
 	DString new_string = new_with_capacity(data.capacity, using);
 	mem::copy((char*)new_string.data(), (char*)data, StringData.sizeof + data.len);
 	return new_string;
@@ -267,7 +245,7 @@ fn Char32[] DString.copy_utf32(&self, Allocator* using = mem::heap())
 
 fn void DString.append_string(&self, DString str)
 {
-	StringData* other = (StringData*)str;
+	StringData* other = str.data();
 	if (!other) return;
 	self.append(str.str_view());
 }
@@ -315,6 +293,37 @@ macro void DString.append(&self, value)
 	$endswitch
 }
 
+fn void DString.insert_at(&self, usz index, String s)
+{
+	if (s.len == 0) return;
+	self.reserve(s.len);
+	StringData* data = self.data();
+	usz len = self.len();
+	if (data.chars[:len].ptr == s.ptr)
+	{
+		// Source and destination are the same: nothing to do.
+		return;
+	}
+	index = min(index, len);
+	data.len += s.len;
+
+	char* start = data.chars[index:s.len].ptr; // area to insert into
+	mem::move(start + s.len, start, len - index); // move existing data
+	switch
+	{
+		case s.ptr <= start && start < s.ptr + s.len:
+			// Overlapping areas.
+			foreach_r (i, c : s)
+			{
+				data.chars[index + i] = c;
+			}
+		case start <= s.ptr && s.ptr < start + len:
+			// Source has moved.
+			mem::move(start, s.ptr + s.len, s.len);
+		default:
+			mem::move(start, s, s.len);
+	}
+}
 
 fn usz! DString.printf(&self, String format, args...) @maydiscard
 {

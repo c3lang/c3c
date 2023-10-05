@@ -12,29 +12,28 @@ const uint UTF16_SURROGATE_HIGH_VALUE @private = 0xD800;
 /**
  * @param c `The utf32 codepoint to convert`
  * @param [out] output `the resulting buffer`
- * @param available `the size available`
  **/
-fn usz! char32_to_utf8(Char32 c, char* output, usz available)
+fn usz! char32_to_utf8(Char32 c, char[] output)
 {
-	if (!available) return UnicodeResult.CONVERSION_FAILED?;
+	if (!output.len) return UnicodeResult.CONVERSION_FAILED?;
 	switch (true)
 	{
 		case c <= 0x7f:
 			output[0] = (char)c;
 			return 1;
 		case c <= 0x7ff:
-			if (available < 2) return UnicodeResult.CONVERSION_FAILED?;
+			if (output.len < 2) return UnicodeResult.CONVERSION_FAILED?;
 			output[0] = (char)(0xC0 | c >> 6);
 			output[1] = (char)(0x80 | (c & 0x3F));
 			return 2;
 		case c <= 0xffff:
-			if (available < 3) return UnicodeResult.CONVERSION_FAILED?;
+			if (output.len < 3) return UnicodeResult.CONVERSION_FAILED?;
 			output[0] = (char)(0xE0 | c >> 12);
 			output[1] = (char)(0x80 | (c >> 6 & 0x3F));
 			output[2] = (char)(0x80 | (c & 0x3F));
 			return 3;
 		case c <= 0x10ffff:
-			if (available < 4) return UnicodeResult.CONVERSION_FAILED?;
+			if (output.len < 4) return UnicodeResult.CONVERSION_FAILED?;
 			output[0] = (char)(0xF0 | c >> 18);
 			output[1] = (char)(0x80 | (c >> 12 & 0x3F));
 			output[2] = (char)(0x80 | (c >> 6 & 0x3F));
@@ -297,19 +296,17 @@ fn usz utf16len_for_utf32(Char32[] utf32)
  * @param [out] utf8_buffer
  * @return `the number of bytes written.`
  **/
-fn usz! utf32to8(Char32[] utf32, String utf8_buffer)
+fn usz! utf32to8(Char32[] utf32, char[] utf8_buffer)
 {
-	usz len = utf8_buffer.len;
-	char* ptr = utf8_buffer.ptr;
-	foreach (Char32 uc : utf32)
+	char[] buffer = utf8_buffer;
+	foreach (uc : utf32)
 	{
-		usz used = char32_to_utf8(uc, ptr, len) @inline!;
-		len -= used;
-		ptr += used;
+		usz used = char32_to_utf8(uc, buffer) @inline!;
+		buffer = buffer[used..];
 	}
 	// Zero terminate if there is space.
-	if (len > 0) ptr[0] = 0;
-	return utf8_buffer.len - len;
+	if (buffer.len > 0) buffer[0] = 0;
+	return utf8_buffer.len - buffer.len;
 }
 
 /**
