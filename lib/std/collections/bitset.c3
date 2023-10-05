@@ -106,10 +106,15 @@ fn void GrowableBitSet.set(&self, usz i)
 {
 	usz q = i / BITS;
 	usz r = i % BITS;
-	if (q >= self.data.len())
+	usz current_len = self.data.len();
+	if (q >= current_len)
 	{
 		usz n = q + 1;
 		self.data.reserve(n);
+		if (n - 1 >= current_len)
+		{
+			self.data.entries[current_len .. (n - 1)] = 0;
+		}
 		self.data.size = n;
 	}
 	self.data.set(q, self.data[q] | (1 << r));

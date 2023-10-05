@@ -47,7 +47,6 @@ fn void! set_get()
 }
 
 def GrowableBitSet = GrowableBitSet(<char>);
-
 fn void! growable_set_get()
 {
 	GrowableBitSet bs;
