@@ -283,7 +283,6 @@ static void linker_setup_macos(const char ***args_ref, LinkerType linker_type)
 	add_arg("CoreFoundation");
 	if (linker_type == LINKER_CC)
 	{
-		add_arg("-ld_classic");
 		return;
 	}
 	add_arg("-arch");
