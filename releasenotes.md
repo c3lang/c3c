@@ -173,6 +173,7 @@
 - Added posix socket functions.
 
 ### Fixes
+- Indexing into arrays would not always widen the index safely.
 - Macros with implicit return didn't correctly deduct the return type.
 - Reevaluating a bitstruct (due to checked) would break.
 - Fix missing comparison between `any`.

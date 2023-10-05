@@ -606,7 +606,7 @@ static inline void llvm_emit_subscript_addr_with_base(GenContext *c, BEValue *re
 		case TYPE_VECTOR:
 		{
 			AlignSize alignment;
-			LLVMValueRef ptr = llvm_emit_array_gep_raw_index(c, parent->value, llvm_get_type(c, type), index->value, parent->alignment, &alignment);
+			LLVMValueRef ptr = llvm_emit_array_gep_raw_index(c, parent->value, llvm_get_type(c, type), index, parent->alignment, &alignment);
 			llvm_value_set_address(result, ptr, type->array.base, alignment);
 			return;
 		}
@@ -1167,7 +1167,7 @@ static inline void llvm_emit_access_addr(GenContext *c, BEValue *be_value, Expr 
 		LLVMTypeRef value_type = llvm_get_type(c, type_get_array(member->type, vec_size(flat_type->decl->enums.values)));
 		AlignSize align = LLVMGetAlignment(member->backend_ref);
 		AlignSize alignment;
-		LLVMValueRef ptr = llvm_emit_array_gep_raw_index(c, member->backend_ref, value_type, be_value->value, align, &alignment);
+		LLVMValueRef ptr = llvm_emit_array_gep_raw_index(c, member->backend_ref, value_type, be_value, align, &alignment);
 		llvm_value_set_address(be_value, ptr, member->type, alignment);
 		return;
 	}
@@ -2966,7 +2966,7 @@ static void gencontext_emit_slice(GenContext *c, BEValue *be_value, Expr *expr)
 		{
 			// Move pointer
 			AlignSize alignment;
-			start_pointer = llvm_emit_array_gep_raw_index(c, parent.value, llvm_get_type(c, parent.type), start.value, type_abi_alignment(parent.type), &alignment);
+			start_pointer = llvm_emit_array_gep_raw_index(c, parent.value, llvm_get_type(c, parent.type), &start, type_abi_alignment(parent.type), &alignment);
 			break;
 		}
 		case TYPE_SUBARRAY:
@@ -3656,12 +3656,13 @@ static void llvm_emit_array_comp(GenContext *c, BEValue *be_value, BEValue *lhs,
 
 	AlignSize align_lhs;
 	BEValue lhs_v;
-	LLVMValueRef index = llvm_load_value(c, &index_var);
-	LLVMValueRef lhs_ptr = llvm_emit_array_gep_raw_index(c, lhs->value, array_type, index, lhs->alignment, &align_lhs);
+	BEValue index_copy = index_var;
+	llvm_value_rvalue(c, &index_copy);
+	LLVMValueRef lhs_ptr = llvm_emit_array_gep_raw_index(c, lhs->value, array_type, &index_copy, lhs->alignment, &align_lhs);
 	llvm_value_set_address(&lhs_v, lhs_ptr, array_base_type, align_lhs);
 	AlignSize align_rhs;
 	BEValue rhs_v;
-	LLVMValueRef rhs_ptr = llvm_emit_array_gep_raw_index(c, rhs->value, array_type, index, rhs->alignment, &align_rhs);
+	LLVMValueRef rhs_ptr = llvm_emit_array_gep_raw_index(c, rhs->value, array_type, &index_copy, rhs->alignment, &align_rhs);
 	llvm_value_set_address(&rhs_v, rhs_ptr, array_base_type, align_rhs);
 	BEValue comp;
 	llvm_emit_comp(c, &comp, &lhs_v, &rhs_v, BINARYOP_EQ);
@@ -3669,7 +3670,7 @@ static void llvm_emit_array_comp(GenContext *c, BEValue *be_value, BEValue *lhs,
 	llvm_emit_cond_br(c, &comp, comparison, exit);
 	llvm_emit_block(c, comparison);
 
-	LLVMValueRef new_index = LLVMBuildAdd(c->builder, index, one, "inc");
+	LLVMValueRef new_index = LLVMBuildAdd(c->builder, index_copy.value, one, "inc");
 	llvm_store_raw(c, &index_var, new_index);
 	llvm_emit_int_comp_raw(c, &comp, type_usz, type_usz, new_index, len_val, BINARYOP_LT);
 	comparison_phi = c->current_block;
@@ -4948,16 +4949,26 @@ LLVMValueRef llvm_emit_struct_gep_raw(GenContext *context, LLVMValueRef ptr, LLV
 }
 
 
-LLVMValueRef llvm_emit_array_gep_raw_index(GenContext *c, LLVMValueRef ptr, LLVMTypeRef array_type, LLVMValueRef index, AlignSize array_alignment, AlignSize *alignment)
+LLVMValueRef llvm_emit_array_gep_raw_index(GenContext *c, LLVMValueRef ptr, LLVMTypeRef array_type, BEValue *index, AlignSize array_alignment, AlignSize *alignment)
 {
+	LLVMValueRef index_val = llvm_load_value(c, index);
+	Type *index_type = index->type;
+	assert(type_is_integer(index_type));
+	if (type_is_unsigned(index_type) && type_size(index_type) < type_size(type_usz))
+	{
+		index_type = type_usz->canonical;
+		index_val = llvm_zext_trunc(c, index_val, llvm_get_type(c, index_type));
+	}
 	*alignment = type_min_alignment(llvm_store_size(c, LLVMGetElementType(array_type)), array_alignment);
-	LLVMValueRef idx[2] = { llvm_get_zero_raw(LLVMTypeOf(index)), index };
+	LLVMValueRef idx[2] = { llvm_get_zero(c, index_type), index_val };
 	return LLVMBuildInBoundsGEP2(c->builder, array_type, ptr, idx, 2, "");
 }
 
 LLVMValueRef llvm_emit_array_gep_raw(GenContext *c, LLVMValueRef ptr, LLVMTypeRef array_type, unsigned index, AlignSize array_alignment, AlignSize *alignment)
 {
-	return llvm_emit_array_gep_raw_index(c, ptr, array_type, llvm_const_int(c, type_usz, index), array_alignment, alignment);
+	BEValue index_value;
+	llvm_value_set(&index_value, llvm_const_int(c, type_usz, index), type_usz);
+	return llvm_emit_array_gep_raw_index(c, ptr, array_type, &index_value, array_alignment, alignment);
 }
 
 LLVMValueRef llvm_emit_pointer_gep_raw(GenContext *c, LLVMTypeRef pointee_type, LLVMValueRef ptr, LLVMValueRef offset)
