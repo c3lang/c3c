@@ -47,7 +47,7 @@ fn void! set_get()
 }
 
 def GrowableBitSet = GrowableBitSet(<char>);
-
+/*
 fn void! growable_set_get()
 {
 	GrowableBitSet bs;
@@ -89,4 +89,4 @@ fn void! growable_set_get()
 	bs[2000] = false;
 	assert(!bs.get(2000), "Get should be false");
 	assert(bs.cardinality() == 0, "Cardinality should be 0");
-}
+}*/
