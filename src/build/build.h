@@ -291,6 +291,8 @@ typedef enum
 	ARCH_OS_TARGET_LAST = WINDOWS_X64
 } ArchOsTarget;
 
+#define ANY_WINDOWS_ARCH_OS WINDOWS_AARCH64: case WINDOWS_X64: case MINGW_X64
+
 typedef struct BuildOptions_
 {
 	const char *lib_dir[MAX_LIB_DIRS];

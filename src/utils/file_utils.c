@@ -485,11 +485,11 @@ bool file_delete_all_files_in_dir_with_suffix(const char *path, const char *suff
 {
 	assert(path);
 #if (_MSC_VER)
-	const char *cmd = "del /q";
+	const char *cmd = "del /q %s\\*%s";
 #else
-	const char *cmd = "rm -f";
+	const char *cmd = "rm -f %s/*%s";
 #endif
-	return execute_cmd(str_printf("%s %s/*%s", cmd, path, suffix)) == 0;
+	return execute_cmd(str_printf(cmd, path, suffix)) == 0;
 }
 
 #if (_MSC_VER)

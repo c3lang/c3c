@@ -189,12 +189,12 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 			case DECL_DECLARRAY:
 			case DECL_ERASED:
 			case DECL_FNTYPE:
+			case DECL_CT_INCLUDE:
+			case DECL_CT_EXEC:
 				continue;
 			case DECL_ATTRIBUTE:
 				break;
 			case DECL_BODYPARAM:
-			case DECL_CT_INCLUDE:
-			case DECL_CT_EXEC:
 			case DECL_GLOBALS:
 				UNREACHABLE
 			case DECL_MACRO:

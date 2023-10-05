@@ -981,9 +981,7 @@ const char *get_object_extension(void)
 {
 	switch (active_target.arch_os_target)
 	{
-		case WINDOWS_X64:
-		case WINDOWS_AARCH64:
-		case MINGW_X64:
+		case ANY_WINDOWS_ARCH_OS:
 			return ".obj";
 		default:
 			return ".o";
@@ -1045,7 +1043,7 @@ File *compile_and_invoke(const char *file, const char *args)
 #else
 	const char *output = "__c3exec__";
 #endif
-	scratch_buffer_append(" compile");
+	scratch_buffer_append(" compile -g0 --single-module=yes");
 	StringSlice slice = slice_from_string(file);
 	while (slice.len > 0)
 	{
@@ -1072,6 +1070,7 @@ File *compile_and_invoke(const char *file, const char *args)
 	{
 		error_exit("Error invoking script '%s' with arguments %s.", file, args);
 	}
+	file_delete_file(output);
 	return source_file_text_load(file, out);
 }
 

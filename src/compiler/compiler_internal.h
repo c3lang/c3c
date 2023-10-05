@@ -2145,6 +2145,7 @@ INLINE const char *section_from_id(SectionId id);
 Module *compiler_find_or_create_module(Path *module_name, const char **parameters);
 Module *global_context_find_module(const char *name);
 const char *get_object_extension(void);
+const char *get_exe_extension(void);
 
 CompilationUnit * unit_create(File *file);
 void unit_register_global_decl(CompilationUnit *unit, Decl *decl);
