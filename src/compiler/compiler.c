@@ -597,17 +597,24 @@ void compile_target(BuildOptions *options)
 	compile();
 }
 
+void clean_obj_files(void)
+{
+	file_delete_all_files_in_dir_with_suffix(active_target.ir_file_dir, ".ll");
+	file_delete_all_files_in_dir_with_suffix(active_target.asm_file_dir, ".s");
+	file_delete_all_files_in_dir_with_suffix(active_target.object_file_dir, ".obj");
+	file_delete_all_files_in_dir_with_suffix(active_target.object_file_dir, ".o");
+}
 void compile_clean(BuildOptions *options)
 {
 	init_build_target(&active_target, options);
-	file_delete_all_files_in_dir_with_suffix(active_target.build_dir, get_object_extension());
+	clean_obj_files();
 }
 void compile_file_list(BuildOptions *options)
 {
 	init_build_target(&active_target, options);
 	if (options->command == COMMAND_CLEAN_RUN)
 	{
-		file_delete_all_files_in_dir_with_suffix(active_target.build_dir, get_object_extension());
+		clean_obj_files();
 	}
 	compile();
 }
