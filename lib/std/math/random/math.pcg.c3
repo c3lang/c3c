@@ -1,4 +1,4 @@
-module std::math;
+module std::math::random;
 
 // Move ODD_PHI into a shared module
 const ODD_PHI128 @local = 0x9e3779b97f4a7c15f39cc0605cedc835;
@@ -14,43 +14,16 @@ const MUL_LCG16 @local = 0x915d; // TODO: Find good constant
 
 // -------------------------------- Pcg128_64 --------------------------------
 
-struct Pcg128Random
+
+def Pcg128Random = distinct uint128;
+
+fn void  Pcg128Random.set_seed(&self, char[] input) : Random
 {
-	inline Random random;
-	Pcg128RandomState state;
+	*self = (Pcg128Random)random::make_seed(uint128, input);
 }
 
-def Pcg128RandomState = distinct uint128;
 
-const RandomInterface PCG_128_RANDOM_INTERFACE @local = {
-	.seed_fn = (RandomSeedFn)&Pcg128Random.set_seed,
-	.next_bytes_fn = (RandomNextBytesFn)&Pcg128Random.next_bytes,
-};
-
-fn void Pcg128Random.init(&self)
-{
-	self.random.fns = &PCG_128_RANDOM_INTERFACE;
-}
-
-fn void  Pcg128Random.set_seed(&self, char[] input)
-{
-	self.state.set_seed(random::make_seed(uint128, input));
-}
-
-/**
- * @require bytes.len > 0
- **/
-fn void Pcg128Random.next_bytes(&self, char[] bytes)
-{
-	@random_value_to_bytes(self.state.next_long, bytes);
-}
-
-fn void Pcg128RandomState.set_seed(&self, uint128 seed)
-{
-	*self = (Pcg128RandomState)seed;
-}
-
-fn ulong Pcg128RandomState.next_long(&self)
+fn ulong Pcg128Random.next_long(&self)
 {
 	const ROT_SHIFT = 64 - 6;
 	uint128* s = (uint128*)self;
@@ -60,46 +33,25 @@ fn ulong Pcg128RandomState.next_long(&self)
 	return ((ulong)(xor >> ROT_SHIFT)).rotr(rot);
 }
 
-
-// -------------------------------- Pcg64_32 --------------------------------
-
-struct Pcg64Random
-{
-	inline Random random;
-	Pcg64RandomState state;
-}
-
-def Pcg64RandomState = distinct ulong;
-
-const RandomInterface PCG_64_RANDOM_INTERFACE @local = {
-	.seed_fn = (RandomSeedFn)&Pcg64Random.set_seed,
-	.next_bytes_fn = (RandomNextBytesFn)&Pcg64Random.next_bytes,
-};
-
-fn void Pcg64Random.init(&self)
-{
-	self.random.fns = &PCG_64_RANDOM_INTERFACE;
-}
-
-fn void  Pcg64Random.set_seed(&self, char[] input)
-{
-	self.state.set_seed(random::make_seed(ulong, input));
-}
-
 /**
  * @require bytes.len > 0
  **/
-fn void Pcg64Random.next_bytes(&self, char[] bytes)
+fn void Pcg128Random.next_bytes(&self, char[] bytes) : Random => @random_value_to_bytes(self.next_long, bytes);
+fn uint128 Pcg128Random.next_int128(&self) : Random => @long_to_int128(self.next_long());
+fn uint Pcg128Random.next_int(&self) : Random => (uint)self.next_long();
+fn ushort Pcg128Random.next_short(&self) : Random => (ushort)self.next_long();
+fn char Pcg128Random.next_byte(&self) : Random => (char)self.next_long();
+
+// -------------------------------- Pcg64_32 --------------------------------
+
+def Pcg64Random = distinct ulong;
+
+fn void Pcg64Random.set_seed(&self, char[] input) : Random
 {
-	@random_value_to_bytes(self.state.next_int, bytes);
+	*self = (Pcg64Random)random::make_seed(ulong, input);
 }
 
-fn void Pcg64RandomState.set_seed(&self, ulong seed)
-{
-	*self = (Pcg64RandomState)seed;
-}
-
-fn uint Pcg64RandomState.next_int(&self)
+fn uint Pcg64Random.next_int(&self) : Random
 {
 	const ROT_SHIFT = 32 - 5;
 	ulong* s = (ulong*)self;
@@ -109,46 +61,26 @@ fn uint Pcg64RandomState.next_int(&self)
 	return ((uint)(xor >> ROT_SHIFT)).rotr(rot);
 }
 
-
-// -------------------------------- Pcg32_16 --------------------------------
-
-struct Pcg32Random
-{
-	inline Random random;
-	Pcg32RandomState state;
-}
-
-def Pcg32RandomState = distinct uint;
-
-const RandomInterface PCG_32_RANDOM_INTERFACE @local = {
-	.seed_fn = (RandomSeedFn)&Pcg32Random.set_seed,
-	.next_bytes_fn = (RandomNextBytesFn)&Pcg32Random.next_bytes,
-};
-
-fn void Pcg32Random.init(&self)
-{
-	self.random.fns = &PCG_32_RANDOM_INTERFACE;
-}
-
-fn void  Pcg32Random.set_seed(&self, char[] input)
-{
-	self.state.set_seed(random::make_seed(uint, input));
-}
-
 /**
  * @require bytes.len > 0
  **/
-fn void Pcg32Random.next_bytes(&self, char[] bytes)
+fn void Pcg64Random.next_bytes(&self, char[] bytes) : Random => @random_value_to_bytes(self.next_int, bytes);
+fn uint128 Pcg64Random.next_int128(&self) : Random => @long_to_int128(self.next_long());
+fn ulong Pcg64Random.next_long(&self) : Random => @int_to_long(self.next_int());
+fn ushort Pcg64Random.next_short(&self) : Random => (ushort)self.next_int();
+fn char Pcg64Random.next_byte(&self) : Random => (char)self.next_int();
+
+
+// -------------------------------- Pcg32_16 --------------------------------
+
+def Pcg32Random = distinct uint;
+
+fn void Pcg32Random.set_seed(&self, char[] input) : Random
 {
-	@random_value_to_bytes(self.state.next_short, bytes);
+	*self = (Pcg32Random)random::make_seed(uint, input);
 }
 
-fn void Pcg32RandomState.set_seed(&self, uint seed)
-{
-	*self = (Pcg32RandomState)seed;
-}
-
-fn ushort Pcg32RandomState.next_short(&self)
+fn ushort Pcg32Random.next_short(&self) : Random
 {
 	const ROT_SHIFT = 16 - 4;
 	uint* s = (uint*)self;
@@ -158,46 +90,25 @@ fn ushort Pcg32RandomState.next_short(&self)
 	return ((ushort)(xor >> ROT_SHIFT)).rotr(rot);
 }
 
-
-// -------------------------------- Pcg16_8 --------------------------------
-
-struct Pcg16Random
-{
-	inline Random random;
-	Pcg16RandomState state;
-}
-
-def Pcg16RandomState = distinct ushort;
-
-const RandomInterface PCG_16_RANDOM_INTERFACE @local = {
-	.seed_fn = (RandomSeedFn)&Pcg16Random.set_seed,
-	.next_bytes_fn = (RandomNextBytesFn)&Pcg16Random.next_bytes,
-};
-
-fn void Pcg16Random.init(&self)
-{
-	self.random.fns = &PCG_16_RANDOM_INTERFACE;
-}
-
-fn void  Pcg16Random.set_seed(&self, char[] input)
-{
-	self.state.set_seed(random::make_seed(ushort, input));
-}
-
 /**
  * @require bytes.len > 0
  **/
-fn void Pcg16Random.next_bytes(&self, char[] bytes)
+fn void Pcg32Random.next_bytes(&self, char[] bytes) : Random => @random_value_to_bytes(self.next_short, bytes);
+fn uint128 Pcg32Random.next_int128(&self) : Random => @long_to_int128(self.next_long());
+fn ulong Pcg32Random.next_long(&self) : Random => @int_to_long(self.next_int());
+fn uint Pcg32Random.next_int(&self) : Random => @short_to_int(self.next_short());
+fn char Pcg32Random.next_byte(&self) : Random => (char)self.next_short();
+
+// -------------------------------- Pcg16_8 --------------------------------
+
+def Pcg16Random = distinct ushort;
+
+fn void Pcg16Random.set_seed(&self, char[] input) : Random
 {
-	@random_value_to_bytes(self.state.next_byte, bytes);
+	*self = (Pcg16Random)random::make_seed(ushort, input);
 }
 
-fn void Pcg16RandomState.set_seed(&self, ushort seed)
-{
-	*self = (Pcg16RandomState)seed;
-}
-
-fn char Pcg16RandomState.next_byte(&self)
+fn char Pcg16Random.next_byte(&self) : Random
 {
 	const ROT_SHIFT = 8 - 3;
 	ushort* s = (ushort*)self;
@@ -206,3 +117,9 @@ fn char Pcg16RandomState.next_byte(&self)
 	*s = *s * MUL_LCG16 + ODD_PHI16;
 	return ((char)(xor >> ROT_SHIFT)).rotr(rot);
 }
+
+fn void Pcg16Random.next_bytes(&self, char[] bytes) : Random => @random_value_to_bytes(self.next_byte, bytes);
+fn uint128 Pcg16Random.next_int128(&self) : Random => @long_to_int128(self.next_long());
+fn ulong Pcg16Random.next_long(&self) : Random => @int_to_long(self.next_int());
+fn uint Pcg16Random.next_int(&self) : Random => @short_to_int(self.next_short());
+fn ushort Pcg16Random.next_short(&self) : Random => @char_to_short(self.next_byte());

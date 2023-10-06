@@ -1,4 +1,4 @@
-module std::math;
+module std::math::random;
 
 // Move ODD_PHI into a shared module
 const ODD_PHI128 @local = 0x9e3779b97f4a7c15f39cc0605cedc835;
@@ -12,45 +12,16 @@ const MUL_LCG32 @local = 0x915f77f5;
 const MUL_LCG16 @local = 0x915d; // TODO: Find good constant
 
 
-// -------------------------------- Lcg128_64 --------------------------------
+// Lcg128_64
+def Lcg128Random = distinct uint128;
 
-struct Lcg128Random
+fn void Lcg128Random.set_seed(&self, char[] input) : Random
 {
-	inline Random random;
-	Lcg128RandomState state;
+	*self = (Lcg128Random)random::make_seed(uint128, input);
 }
 
-def Lcg128RandomState = distinct uint128;
 
-const RandomInterface LCG_128_RANDOM_INTERFACE @local = {
-	.seed_fn = (RandomSeedFn)&Lcg128Random.set_seed,
-	.next_bytes_fn = (RandomNextBytesFn)&Lcg128Random.next_bytes,
-};
-
-fn void Lcg128Random.init(&self)
-{
-	self.random.fns = &LCG_128_RANDOM_INTERFACE;
-}
-
-fn void Lcg128Random.set_seed(&self, char[] input)
-{
-	self.state.set_seed(random::make_seed(uint128, input));
-}
-
-/**
- * @require bytes.len > 0
- **/
-fn void Lcg128Random.next_bytes(&self, char[] bytes)
-{
-	@random_value_to_bytes(self.state.next_long, bytes);
-}
-
-fn void Lcg128RandomState.set_seed(&self, uint128 seed) @inline
-{
-	*self = (Lcg128RandomState)seed;
-}
-
-fn ulong Lcg128RandomState.next_long(&self)
+fn ulong Lcg128Random.next_long(&self) : Random
 {
 	uint128* s = (uint128*)self;
 	ulong result = (ulong)(*s >> 64);
@@ -58,46 +29,26 @@ fn ulong Lcg128RandomState.next_long(&self)
 	return result;
 }
 
-
-// -------------------------------- Lcg64_32 --------------------------------
-
-struct Lcg64Random
-{
-	inline Random random;
-	Lcg64RandomState state;
-}
-
-def Lcg64RandomState = distinct ulong;
-
-const RandomInterface LCG_64_RANDOM_INTERFACE @local = {
-	.seed_fn = (RandomSeedFn)&Lcg64Random.set_seed,
-	.next_bytes_fn = (RandomNextBytesFn)&Lcg64Random.next_bytes,
-};
-
-fn void Lcg64Random.init(&self)
-{
-	self.random.fns = &LCG_64_RANDOM_INTERFACE;
-}
-
-fn void Lcg64Random.set_seed(&self, char[] seed)
-{
-	self.state.set_seed(random::make_seed(ulong, seed));
-}
-
 /**
  * @require bytes.len > 0
  **/
-fn void Lcg64Random.next_bytes(&self, char[] bytes)
+fn void Lcg128Random.next_bytes(&self, char[] bytes) : Random => @random_value_to_bytes(self.next_long, bytes);
+fn uint128 Lcg128Random.next_int128(&self) : Random => @long_to_int128(self.next_long());
+fn uint Lcg128Random.next_int(&self) : Random => (uint)self.next_long();
+fn ushort Lcg128Random.next_short(&self) : Random => (ushort)self.next_long();
+fn char Lcg128Random.next_byte(&self) : Random => (char)self.next_long();
+
+
+// -------------------------------- Lcg64_32 --------------------------------
+def Lcg64Random = distinct ulong;
+
+fn void Lcg64Random.set_seed(&self, char[] seed) : Random
 {
-	@random_value_to_bytes(self.state.next_int, bytes);
+	*self = (Lcg64Random)random::make_seed(ulong, seed);
 }
 
-fn void Lcg64RandomState.set_seed(&self, ulong seed)
-{
-	*self = (Lcg64RandomState)seed;
-}
 
-fn uint Lcg64RandomState.next_int(&self)
+fn uint Lcg64Random.next_int(&self) : Random
 {
 	ulong* s = (ulong*)self;
 	uint result = (uint)(*s >> 32);
@@ -105,17 +56,25 @@ fn uint Lcg64RandomState.next_int(&self)
 	return result;
 }
 
+/**
+ * @require bytes.len > 0
+ **/
+fn void Lcg64Random.next_bytes(&self, char[] bytes) : Random => @random_value_to_bytes(self.next_int, bytes);
+fn uint128 Lcg64Random.next_int128(&self) : Random => @long_to_int128(self.next_long());
+fn ulong Lcg64Random.next_long(&self) : Random => @int_to_long(self.next_int());
+fn ushort Lcg64Random.next_short(&self) : Random => (ushort)self.next_int();
+fn char Lcg64Random.next_byte(&self) : Random => (char)self.next_int();
 
 // -------------------------------- Lcg32_16 --------------------------------
 
-def Lcg32RandomState = distinct uint;
+def Lcg32Random = distinct uint;
 
-fn void Lcg32RandomState.set_seed(&self, uint seed)
+fn void Lcg32Random.set_seed(&self, char[] seed) : Random
 {
-	*self = (Lcg32RandomState)seed;
+	*self = (Lcg32Random)random::make_seed(uint, seed);
 }
 
-fn ushort Lcg32RandomState.next_short(&self)
+fn ushort Lcg32Random.next_short(&self) : Random
 {
 	uint* s = (uint*)self;
 	ushort result = (ushort)(*s >> 16);
@@ -123,20 +82,31 @@ fn ushort Lcg32RandomState.next_short(&self)
 	return result;
 }
 
+fn void Lcg32Random.next_bytes(&self, char[] bytes) : Random => @random_value_to_bytes(self.next_short, bytes);
+fn uint128 Lcg32Random.next_int128(&self) : Random => @long_to_int128(self.next_long());
+fn ulong Lcg32Random.next_long(&self) : Random => @int_to_long(self.next_int());
+fn uint Lcg32Random.next_int(&self) : Random => @short_to_int(self.next_short());
+fn char Lcg32Random.next_byte(&self) : Random => (char)self.next_short();
+
 
 // -------------------------------- Lcg16_8 --------------------------------
+def Lcg16Random = distinct ushort;
 
-def Lcg16RandomState = distinct ushort;
-
-fn void Lcg16RandomState.set_seed(&self, ushort seed)
+fn void Lcg16Random.set_seed(&self, char[] seed) : Random
 {
-	*self = (Lcg16RandomState)seed;
+	*self = (Lcg16Random)random::make_seed(ushort, seed);
 }
 
-fn char Lcg16RandomState.next_byte(&self)
+fn char Lcg16Random.next_byte(&self) : Random
 {
 	ushort* s = (ushort*)self;
 	char result = (char)(*s >> 8);
 	*s = *s * MUL_LCG16 + ODD_PHI16;
 	return result;
 }
+
+fn void Lcg16Random.next_bytes(&self, char[] bytes) : Random => @random_value_to_bytes(self.next_byte, bytes);
+fn uint128 Lcg16Random.next_int128(&self) : Random => @long_to_int128(self.next_long());
+fn ulong Lcg16Random.next_long(&self) : Random => @int_to_long(self.next_int());
+fn uint Lcg16Random.next_int(&self) : Random => @short_to_int(self.next_short());
+fn ushort Lcg16Random.next_short(&self) : Random => @char_to_short(self.next_byte());
