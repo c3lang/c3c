@@ -1,4 +1,128 @@
-module std::core::dstring::tests @test;
+module std::core::dstring2 @test;
+
+const TEST_STRING = "hello world";
+
+fn void test_append()
+{
+	DString str = dstring::new(TEST_STRING);
+	defer str.free();
+	String s;
+
+	assert(str.len() == TEST_STRING.len);
+	assert(str.capacity() == 16);
+
+	s = str.str_view();
+	assert(s == TEST_STRING, "got '%s'; want '%s'", s, TEST_STRING);
+	ZString zs;
+	zs = str.zstr_view();
+	assert(s.ptr[s.len] == 0, "got '%c'; want 0", s.ptr[s.len]);
+
+	str.chop(5);
+	s = str.str_view();
+	assert(s == TEST_STRING[:5], "got '%s'; want '%s'", s, TEST_STRING[:5]);
+
+	str.append(TEST_STRING[5..]);
+	s = str.str_view();
+	assert(s == TEST_STRING, "got '%s'; want '%s'", s, TEST_STRING);
+
+	str.append_char('x');
+	s = str.str_view();
+	assert(s[^1] == 'x', "got '%c'; want 'x'", s[^1]);
+
+	str.append('y');
+	s = str.str_view();
+	assert(s[^1] == 'y', "got '%c'; want 'y'", s[^1]);
+
+	str.set(0, 'z');
+	s = str.str_view();
+	assert(s[0] == 'z', "got '%c'; want 'z'", s[0]);
+
+	str.clear();
+	assert(str.len() == 0);
+
+	str.append_char32('é');
+	s = str.str_view();
+	assert(s == "é", "got '%s'; want 'é'", s);
+
+	str.append_utf32({ 'è', 'à' });
+	s = str.str_view();
+	assert(s == "éèà", "got '%s'; want 'éèà'", s);
+	str.clear();
+
+	str.append_chars("foo");
+	s = str.str_view();
+	assert(s == "foo", "got '%s'; want 'foo'", s);
+	str.clear();
+
+	str.append_repeat('x', 3);
+	s = str.str_view();
+	assert(s == "xxx", "got '%s'; want 'xxx'", s);
+
+	DString str2 = dstring::new("yyy");
+	defer str2.free();
+	DString str3 = str.new_concat(str2);
+	defer str3.free();
+	s = str3.str_view();
+	assert(s == "xxxyyy", "got '%s'; want 'xxxyyy'", s);
+
+	str3.clear();
+	str3.append_string(str2);
+	s = str3.str_view();
+	assert(s == "yyy", "got '%s'; want 'yyy'", s);
+}
+
+fn void test_print()
+{
+	DString str = dstring::new("");
+	defer str.free();
+	String s;
+
+	str.printf("_%s_", "foo");
+	s = str.str_view();
+	assert(s == "_foo_", "got '%s'; want '_foo_'", s);
+
+	str.clear();
+	str.printfn("_%s_", "foo");
+	s = str.str_view();
+	assert(s == "_foo_\n", "got '%s'; want '_foo_\n'", s);
+}
+
+fn void test_copy()
+{
+	DString str = dstring::new(TEST_STRING);
+	defer str.free();
+	String s;
+
+	DString str2 = str.copy();
+	defer str2.free();
+	s = str2.str_view();
+	assert(s == TEST_STRING, "got '%s'; want '%s'", s, TEST_STRING);
+}
+
+fn void test_cmp()
+{
+	DString str = dstring::new(TEST_STRING);
+	defer str.free();
+
+	DString str2 = dstring::new(TEST_STRING);
+	defer str2.free();
+
+	assert(str.equals(str2));
+
+	str2.clear();
+	str2.append("hello you..");
+	assert(str.len() == str2.len());
+	assert(!str.less(str2));
+}
+
+fn void test_join()
+{
+	DString str = dstring::new_join({"hello", "world"}, " ");
+	defer str.free();
+
+	String s = str.str_view();
+	assert(s == TEST_STRING, "got '%s'; want '%s'", s, TEST_STRING);
+}
 
 fn void test_insert_at()
 {
