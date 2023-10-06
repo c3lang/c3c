@@ -1,95 +1,19 @@
-module std::math;
+module std::math::random;
 
-struct Random
+protocol Random
 {
-	RandomInterface* fns;
+	fn void set_seed(&self, char[] input);
+	fn char next_byte(&self);
+	fn ushort next_short(&self);
+	fn uint next_int(&self);
+	fn ulong next_long(&self);
+	fn uint128 next_int128(&self);
+	fn void next_bytes(&self, char[] buffer);
 }
 
-def RandomSeedFn = fn void(Random*, char[] seed);
-def RandomNextBytesFn = fn void(Random*, char[] buffer);
-
-struct RandomInterface
+macro Random.seed(&self, seed)
 {
-	RandomSeedFn seed_fn;
-	RandomNextBytesFn next_bytes_fn;
-}
-
-/**
- * @param [&inout] random
- * @param [inout] buffer
- **/
-fn void Random.next_bytes(&random, char[] buffer)
-{
-	if (!buffer.len) return;
-	random.fns.next_bytes_fn(random, buffer);
-}
-
-/**
- * @param [&inout] self
- **/
-fn char Random.next_byte(&self)
-{
-	char result @noinit;
-	self.next_bytes(((char*)&result)[:1]);
-	return result;
-}
-
-/**
- * @param [&inout] self
- **/
-fn ushort Random.next_short(&self)
-{
-	ushort result @noinit;
-	self.next_bytes(((char*)&result)[:2]);
-	return result;
-}
-
-/**
- * @param [&inout] self
- **/
-fn uint Random.next_int(&self)
-{
-	uint result @noinit;
-	self.next_bytes(((char*)&result)[:4]);
-	return result;
-}
-
-/**
- * @param [&inout] self
- **/
-fn ulong Random.next_long(&self)
-{
-	ulong result @noinit;
-	self.next_bytes(((char*)&result)[:8]);
-	return result;
-}
-
-/**
- * @param [&inout] self
- **/
-fn uint128 Random.next_uint128(&self)
-{
-	uint128 result @noinit;
-	self.next_bytes(((char*)&result)[:16]);
-	return result;
-}
-
-/**
- * @param [&inout] self
- * @require types::is_numerical($typeof(seed))
- **/
-macro void Random.seed_random(&self, seed)
-{
-	self.fns.seed_fn(self, @as_char_view(seed)) @inline;
-}
-
-/**
- * @param [&inout] random
- * @param [in] seed
- **/
-fn void Random.set_seed(&random, char[] seed)
-{
-	random.fns.seed_fn(random, seed);
+	self.set_seed(@as_char_view(seed));
 }
 
 fn int Random.next(&random, int max)
@@ -97,9 +21,6 @@ fn int Random.next(&random, int max)
 	return (int)(random.next_double() * max);
 }
 
-/**
- * @param [&inout] self
- **/
 fn bool Random.next_bool(&self)
 {
 	return self.next_byte() & 1 == 0;
@@ -116,6 +37,11 @@ fn double Random.next_double(&self)
 	ulong val = self.next_long() & (1UL << 53 - 1);
 	return val * 0x1.0p-53;
 }
+
+macro uint128 @long_to_int128(#function) => (uint128)#function << 64 + #function;
+macro ulong @int_to_long(#function) => (ulong)#function << 32 + #function;
+macro uint @short_to_int(#function) => (uint)#function << 16 + #function;
+macro ushort @char_to_short(#function) => (ushort)#function << 8 + #function;
 
 macro @random_value_to_bytes(#function, char[] bytes)
 {
