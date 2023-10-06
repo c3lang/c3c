@@ -1,6 +1,6 @@
 module std::core::dstring;
 
-def DString = distinct void*;
+distinct DString = void*;
 
 const usz MIN_CAPACITY @private = 16;
 

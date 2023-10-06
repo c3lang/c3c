@@ -1,9 +1,9 @@
 module std::os::macos::objc @if(env::DARWIN);
 
-def Class = distinct void*;
-def Method = distinct void*;
-def Ivar = distinct void*;
-def Selector = distinct void*;
+distinct Class = void*;
+distinct Method = void*;
+distinct Ivar = void*;
+distinct Selector = void*;
 
 fault ObjcFailure
 {

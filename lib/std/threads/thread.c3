@@ -1,19 +1,19 @@
 module std::thread;
 import std::thread::os;
 
-def MutexType = distinct int;
+distinct MutexType = int;
 
 const MutexType MUTEX_PLAIN = 0;
 const MutexType MUTEX_TIMED = 1;
 const MutexType MUTEX_RECURSIVE = 2;
 
-def Mutex = distinct NativeMutex;
-def TimedMutex = distinct inline Mutex;
-def RecursiveMutex = distinct inline Mutex;
-def TimedRecursiveMutex = distinct inline Mutex;
-def ConditionVariable = distinct NativeConditionVariable;
-def Thread = distinct NativeThread;
-def OnceFlag = distinct NativeOnceFlag;
+distinct Mutex = NativeMutex;
+distinct TimedMutex = inline Mutex;
+distinct RecursiveMutex = inline Mutex;
+distinct TimedRecursiveMutex = inline Mutex;
+distinct ConditionVariable = NativeConditionVariable;
+distinct Thread = NativeThread;
+distinct OnceFlag = NativeOnceFlag;
 def OnceFn = fn void();
 
 def ThreadFn = fn int(void* arg);

@@ -1,6 +1,6 @@
 def Number8 = char;
 def Number32 = int;
-def DNumber32 = distinct int;
+distinct DNumber32 = int;
 fn void test1()
 {
     int a = (ichar)(10);

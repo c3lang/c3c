@@ -2,7 +2,7 @@ module std::os::posix @if(env::POSIX);
 import libc;
 
 def Mode_t = uint;
-def DIRPtr = distinct void*;
+distinct DIRPtr = void*;
 
 struct Posix_dirent
 {

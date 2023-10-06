@@ -1,10 +1,8 @@
 def Foo = fn void(int x);
 
-def Bar = distinct Foo;
-def Baz = distinct fn void(int x);
+distinct Bar = Foo;
 
 fn void main()
 {
     Bar t = fn (x) { };
-    Baz w = fn (x) { };
 }

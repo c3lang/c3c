@@ -492,6 +492,9 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 void llvm_emit_parameter(GenContext *c, LLVMValueRef *args, unsigned *arg_count_ref, ABIArgInfo *info, BEValue *be_value, Type *type);
 void llvm_emit_vararg_parameter(GenContext *c, BEValue *value, Type *vararg_type, ABIArgInfo *abi_info, Expr **varargs, Expr *vararg_splat);
 
+// -- Dynamic protocol --
+LLVMValueRef llvm_get_selector(GenContext *c, const char *name);
+
 // -- C3 Lowering --
 void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr);
 LLVMValueRef llvm_emit_expr_to_rvalue(GenContext *c, Expr *expr);

@@ -31,7 +31,7 @@ fn void errno_set(Errno e)
 	os::errno_set((int)e);
 }
 
-def Errno = distinct inline CInt;
+distinct Errno = inline CInt;
 def TerminateFunction = fn void();
 def CompareFunction = fn int(void*, void*);
 def JmpBuf = uptr[$$JMP_BUF_SIZE];

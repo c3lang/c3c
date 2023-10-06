@@ -59,6 +59,7 @@ void sema_analysis_pass_decls(Module *module);
 void sema_analysis_pass_ct_assert(Module *module);
 void sema_analysis_pass_ct_echo(Module *module);
 void sema_analysis_pass_functions(Module *module);
+void sema_analysis_pass_protocol(Module *module);
 
 void sema_analysis_pass_lambda(Module *module);
 void sema_analyze_stage(Module *module, AnalysisStage stage);

@@ -13,7 +13,7 @@ const int FIONREAD = 1074030207;
 const int FIONBIO = -2147195266;
 const int FIOASYNC = -2147195267;
 
-def NativeSocket = distinct uptr;
+distinct NativeSocket = uptr;
 
 extern fn CInt ioctlsocket(NativeSocket, CLong cmd, CULong *argp);
 extern fn WSAError closesocket(NativeSocket);

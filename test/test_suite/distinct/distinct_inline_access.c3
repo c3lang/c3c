@@ -7,7 +7,7 @@ fn void main()
     FooInt foo;
 }
 
-def FooInt = distinct inline Foo;
+distinct FooInt = inline Foo;
 
 struct Bar
 {

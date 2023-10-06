@@ -139,15 +139,6 @@ static Expr *parse_precedence(ParseContext *c, Precedence precedence)
 	return parse_precedence_with_left_side(c, left_side, precedence);
 }
 
-/**
- * Since generic parameters can't be longer expressions, we require they have
- * ADDITIVE precedence or higher. This excludes <> and we can use those safely.
- */
-Expr *parse_generic_parameter(ParseContext *c)
-{
-	return parse_precedence(c, PREC_ADDITIVE);
-}
-
 /*
  * Parse anything with higher precedence than &&, that means <= >= etc are ok.
  */
@@ -155,8 +146,6 @@ static inline Expr *parse_relational_expr(ParseContext *c)
 {
 	return parse_precedence(c, PREC_RELATIONAL);
 }
-
-
 
 /**
  * catch_unwrap ::= CATCH (IDENT | type? IDENT '=' catch_chain) | catch_chain

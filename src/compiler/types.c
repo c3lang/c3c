@@ -279,7 +279,7 @@ RETRY:
 			goto RETRY;
 		case TYPE_DISTINCT:
 			assert(type->decl->resolve_status == RESOLVE_DONE);
-			type = type->decl->distinct_decl.base_type;
+			type = type->decl->distinct->type;
 			goto RETRY;
 		case TYPE_VECTOR:
 		{
@@ -395,7 +395,7 @@ bool type_is_abi_aggregate(Type *type)
 			type = type->optional;
 			goto RETRY;
 		case TYPE_DISTINCT:
-			type = type->decl->distinct_decl.base_type;
+			type = type->decl->distinct->type;
 			goto RETRY;
 		case TYPE_TYPEDEF:
 			type = type->canonical;
@@ -464,7 +464,7 @@ bool type_is_ordered(Type *type)
 			type = type->canonical;
 			goto RETRY;
 		case TYPE_DISTINCT:
-			type = type->decl->distinct_decl.base_type;
+			type = type->decl->distinct->type;
 			goto RETRY;
 		default:
 			return false;
@@ -499,7 +499,7 @@ bool type_is_comparable(Type *type)
 			type = type->array.base;
 			goto RETRY;
 		case TYPE_DISTINCT:
-			type = type->decl->distinct_decl.base_type;
+			type = type->decl->distinct->type;
 			goto RETRY;
 		case TYPE_BOOL:
 		case ALL_INTS:
@@ -672,7 +672,7 @@ AlignSize type_abi_alignment(Type *type)
 			type = type->optional;
 			goto RETRY;
 		case TYPE_DISTINCT:
-			type = type->decl->distinct_decl.base_type;
+			type = type->decl->distinct->type;
 			goto RETRY;
 		case TYPE_TYPEDEF:
 			type = type->canonical;
@@ -1043,7 +1043,7 @@ Type *type_get_indexed_type(Type *type)
 		case TYPE_VECTOR:
 			return type->array.base->canonical;
 		case TYPE_DISTINCT:
-			type = type->decl->distinct_decl.base_type;
+			type = type->decl->distinct->type;
 			goto RETRY;
 		case TYPE_OPTIONAL:
 			type = type->optional;
@@ -1125,7 +1125,7 @@ bool type_is_valid_for_vector(Type *type)
 			return true;
 		case TYPE_DISTINCT:
 			assert(type->decl->resolve_status == RESOLVE_DONE);
-			type = type->decl->distinct_decl.base_type;
+			type = type->decl->distinct->type;
 			goto RETRY;
 		case TYPE_TYPEDEF:
 			type = type->canonical;
@@ -1142,7 +1142,7 @@ bool type_is_valid_for_array(Type *type)
 	{
 		case TYPE_DISTINCT:
 			assert(!type->decl || type->decl->resolve_status == RESOLVE_DONE);
-			type = type->decl->distinct_decl.base_type;
+			type = type->decl->distinct->type;
 			goto RETRY;
 		case TYPE_ANYPTR:
 		case TYPE_PROPTR:
@@ -1557,7 +1557,7 @@ void type_setup(PlatformTarget *target)
 	Decl *string_decl = decl_new_with_type(symtab_preset("String", TOKEN_TYPE_IDENT), INVALID_SPAN, DECL_DISTINCT);
 	string_decl->extname = string_decl->name;
 	string_decl->is_substruct = true;
-	string_decl->distinct_decl.base_type = type_chars;
+	string_decl->distinct = type_info_new_base(type_chars, INVALID_SPAN);
 	string_decl->resolve_status = RESOLVE_DONE;
 	type_string = string_decl->type;
 	global_context_add_type(string_decl->type);
@@ -1624,7 +1624,7 @@ bool type_is_scalar(Type *type)
 			type = type->decl->bitstruct.base_type->type;
 			goto RETRY;
 		case TYPE_DISTINCT:
-			type = type->decl->distinct_decl.base_type;
+			type = type->decl->distinct->type;
 			goto RETRY;
 		case TYPE_OPTIONAL:
 			type = type->optional;
@@ -1645,7 +1645,7 @@ Type *type_find_parent_type(Type *type)
 		case TYPE_DISTINCT:
 		{
 			Decl *decl = type->decl;
-			return decl->is_substruct ? decl->distinct_decl.base_type : NULL;
+			return decl->is_substruct ? decl->distinct->type : NULL;
 		}
 		case TYPE_STRUCT:
 		{
@@ -2044,8 +2044,8 @@ Type *type_find_max_type(Type *type, Type *other)
 	if (other == type_wildcard) return type;
 
 	// Lower inlined distinct types.
-	while (type->type_kind == TYPE_DISTINCT && type->decl->is_substruct) type = type->decl->distinct_decl.base_type;
-	while (other->type_kind == TYPE_DISTINCT && other->decl->is_substruct) other = other->decl->distinct_decl.base_type;
+	while (type->type_kind == TYPE_DISTINCT && type->decl->is_substruct) type = type->decl->distinct->type;
+	while (other->type_kind == TYPE_DISTINCT && other->decl->is_substruct) other = other->decl->distinct->type;
 
 	// We may now have a match.
 	if (type == other) return type;
@@ -2087,7 +2087,7 @@ Type *type_find_max_type(Type *type, Type *other)
 			if (other->type_kind == TYPE_VECTOR) return other;
 			return type_find_max_num_type(type, other);
 		case ALL_FLOATS:
-			if (other->type_kind == TYPE_DISTINCT && type_is_float(other->decl->distinct_decl.base_type)) return other;
+			if (other->type_kind == TYPE_DISTINCT && type_is_float(other->decl->distinct->type)) return other;
 			if (other->type_kind == TYPE_VECTOR) return other;
 			return type_find_max_num_type(type, other);
 		case TYPE_POINTER:

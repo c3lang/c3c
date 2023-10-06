@@ -562,12 +562,11 @@ typedef struct
 			bool attr_init : 1;
 			bool attr_finalizer : 1;
 			bool attr_protocol_method : 1;
+			bool attr_dynamic : 1;
 			bool is_lambda : 1;
-			bool is_dynamic : 1;
 			union
 			{
 				uint32_t priority;
-				TypeInfoId protocol_unresolved;
 				DeclId protocol_method;
 				Decl **generated_lambda;
 				Decl **lambda_ct_parameters;
@@ -591,24 +590,12 @@ typedef struct
 typedef struct
 {
 	bool is_func : 1;
-	bool is_distinct : 1;
 	union
 	{
 		Decl *decl;
 		TypeInfo *type_info;
 	};
 } TypedefDecl;
-
-
-typedef struct
-{
-	union
-	{
-		TypedefDecl typedef_decl;
-		Type *base_type;
-	};
-} DistinctDecl;
-
 
 
 typedef enum
@@ -711,14 +698,14 @@ typedef struct Decl_
 		Decl** decl_list;
 		struct
 		{
-			Decl **protocols;
+			TypeInfo **protocols;
 			Decl **methods;
 			union
 			{
 				BitStructDecl bitstruct;
 				// Enums and Fault
 				EnumDecl enums;
-				DistinctDecl distinct_decl;
+				TypeInfo *distinct;
 				// Unions, Struct use strukt
 				StructDecl strukt;
 			};
@@ -2608,6 +2595,7 @@ INLINE bool type_is_any_raw(Type *type)
 			return false;
 	}
 }
+
 INLINE bool type_is_any_protocol_ptr(Type *type)
 {
 	switch (type->canonical->type_kind)
@@ -2634,6 +2622,23 @@ INLINE bool type_is_optional(Type *type)
 	if (!type) return false;
 	DECL_TYPE_KIND_REAL(kind, type);
 	return kind == TYPE_OPTIONAL;
+}
+
+INLINE bool type_may_implement_protocol(Type *type)
+{
+	DECL_TYPE_KIND_REAL(kind, type);
+	switch (kind)
+	{
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		case TYPE_ENUM:
+		case TYPE_DISTINCT:
+		case TYPE_FAULTTYPE:
+		case TYPE_BITSTRUCT:
+			return true;
+		default:
+			return false;
+	}
 }
 
 INLINE bool type_is_void(Type *type)
@@ -2756,7 +2761,7 @@ INLINE bool type_may_negate(Type *type)
 		case ALL_INTS:
 			return true;
 		case TYPE_DISTINCT:
-			type = type->decl->distinct_decl.base_type;
+			type = type->decl->distinct->type;
 			goto RETRY;
 		case TYPE_TYPEDEF:
 			type = type->canonical;
@@ -2880,7 +2885,7 @@ INLINE Type *type_flatten_for_bitstruct(Type *type)
 	RETRY:
 	while (type->type_kind == TYPE_DISTINCT)
 	{
-		type = type->decl->distinct_decl.base_type;
+		type = type->decl->distinct->type;
 	}
 	if (type->type_kind == TYPE_ENUM)
 	{
@@ -2898,7 +2903,7 @@ static inline Type *type_base(Type *type)
 		switch (type->type_kind)
 		{
 			case TYPE_DISTINCT:
-				type = type->decl->distinct_decl.base_type;
+				type = type->decl->distinct->type;
 				break;
 			case TYPE_ENUM:
 				type = type->decl->enums.type_info->type;
@@ -2921,7 +2926,7 @@ static inline Type *type_flat_inline(Type *type)
 		if (type->type_kind != TYPE_DISTINCT) break;
 		Decl *decl = type->decl;
 		if (!decl->is_substruct) break;
-		type = decl->distinct_decl.base_type;
+		type = decl->distinct->type;
 	} while (1);
 	return type;
 }
@@ -2934,7 +2939,7 @@ static inline Type *type_flatten(Type *type)
 		switch (type->type_kind)
 		{
 			case TYPE_DISTINCT:
-				type = type->decl->distinct_decl.base_type;
+				type = type->decl->distinct->type;
 				break;
 			case TYPE_OPTIONAL:
 				type = type->optional;

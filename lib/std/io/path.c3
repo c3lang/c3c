@@ -14,7 +14,7 @@ fault PathResult
 	NO_PARENT,
 }
 
-struct Path
+struct Path (Printable)
 {
 	String path_string;
 	PathEnv env;
@@ -449,12 +449,12 @@ fn void Path.free(self)
 }
 
 
-fn usz! Path.to_format(&self, Formatter* formatter) : Printable
+fn usz! Path.to_format(&self, Formatter* formatter) @dynamic
 {
 	return formatter.print(self.str_view());
 }
 
-fn String Path.to_string(&self, Allocator* using = mem::heap()) : Printable
+fn String Path.to_string(&self, Allocator* using = mem::heap()) @dynamic
 {
 	return self.str_view().copy(using);
 }

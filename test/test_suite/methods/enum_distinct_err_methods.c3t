@@ -8,7 +8,7 @@ fault Foo
     X
 }
 
-def Bar = distinct int;
+distinct Bar = int;
 
 enum MyEnum
 {

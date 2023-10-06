@@ -4,7 +4,7 @@ import libc;
 const int F_GETFL = 3;
 const int F_SETFL = 4;
 
-def NativeSocket = distinct inline Fd;
+distinct NativeSocket = inline Fd;
 
 struct Posix_pollfd
 {

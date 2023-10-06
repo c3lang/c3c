@@ -80,7 +80,6 @@ bool try_consume(ParseContext *c, TokenType type);
 bool consume(ParseContext *c, TokenType type, const char *message, ...);
 bool consume_const_name(ParseContext *c, const char* type);
 Expr *parse_precedence_with_left_side(ParseContext *c, Expr *left_side, Precedence precedence);
-Expr *parse_generic_parameter(ParseContext *c);
 
 INLINE const char *symstr(ParseContext *c)
 {

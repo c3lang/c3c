@@ -1,7 +1,7 @@
 module std::thread::os @if(env::WIN32);
 import std::os::win32;
 
-def NativeThread = distinct inline Win32_HANDLE;
+distinct NativeThread = inline Win32_HANDLE;
 
 struct NativeMutex
 {

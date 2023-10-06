@@ -13,7 +13,7 @@ module foo;
 import foo::private;
 
 // Bug #856
-def Foo = distinct inline PrivateFoo(<int>); // #error: could not be found
+distinct Foo = inline PrivateFoo(<int>); // #error: could not be found
 
 module foo::private(<Type>) @local;
 

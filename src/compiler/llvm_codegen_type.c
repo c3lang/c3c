@@ -26,7 +26,7 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 		case DECL_TYPEDEF:
 			return llvm_get_type(c, decl->typedef_decl.type_info->type);
 		case DECL_DISTINCT:
-			return llvm_get_type(c, decl->distinct_decl.base_type);
+			return llvm_get_type(c, decl->distinct->type);
 		case DECL_STRUCT:
 		{
 			LLVMTypeRef *types = NULL;
@@ -649,7 +649,7 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 		case TYPE_POINTER:
 			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_POINTER, type->pointer, 0, NULL, false);
 		case TYPE_DISTINCT:
-			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_DISTINCT, type->decl->distinct_decl.base_type, 0, NULL, false);
+			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_DISTINCT, type->decl->distinct->type, 0, NULL, false);
 		case TYPE_ENUM:
 			return llvm_get_introspection_for_enum(c, type);
 		case TYPE_FAULTTYPE:

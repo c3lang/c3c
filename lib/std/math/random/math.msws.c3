@@ -8,19 +8,19 @@ const ODD_PHI16 @local = 0x9e37;
 const ODD_PHI8 @local = 0x9f;
 
 // Msws128
-struct Msws128Random
+struct Msws128Random (Random)
 {
 	uint128 state0, state1;
 	uint128 weyl0, weyl1;
 }
 
-fn void Msws128Random.set_seed(&self, char[] input) : Random
+fn void Msws128Random.set_seed(&self, char[] input) @dynamic
 {
 	*self = bitcast(random::make_seed(uint128[4], input), Msws128Random);
 }
 
 
-fn uint128 Msws128Random.next_int128(&self)
+fn uint128 Msws128Random.next_int128(&self) @dynamic
 {
 	uint128 s0 = self.state0;
 	self.state0 = self.state0 * self.state0 + self.weyl0;
@@ -38,26 +38,26 @@ fn uint128 Msws128Random.next_int128(&self)
 /**
  * @require bytes.len > 0
  **/
-fn void Msws128Random.next_bytes(&self, char[] bytes) : Random => @random_value_to_bytes(self.next_int128, bytes);
-fn ulong Msws128Random.next_long(&self) : Random => (ulong)self.next_int128();
-fn uint Msws128Random.next_int(&self) : Random => (uint)self.next_int128();
-fn ushort Msws128Random.next_short(&self) : Random => (ushort)self.next_int128();
-fn char Msws128Random.next_byte(&self) : Random => (char)self.next_int128();
+fn void Msws128Random.next_bytes(&self, char[] bytes) @dynamic => @random_value_to_bytes(self.next_int128, bytes);
+fn ulong Msws128Random.next_long(&self) @dynamic => (ulong)self.next_int128();
+fn uint Msws128Random.next_int(&self) @dynamic => (uint)self.next_int128();
+fn ushort Msws128Random.next_short(&self) @dynamic => (ushort)self.next_int128();
+fn char Msws128Random.next_byte(&self) @dynamic => (char)self.next_int128();
 
 
 // Msws64
-struct Msws64Random
+struct Msws64Random (Random)
 {
 	ulong state0, state1;
 	ulong weyl0, weyl1;
 }
 
-fn void  Msws64Random.set_seed(&self, char[] input) : Random
+fn void  Msws64Random.set_seed(&self, char[] input) @dynamic
 {
 	*self = bitcast(random::make_seed(ulong[4], input), Msws64Random);
 }
 
-fn ulong Msws64Random.next_long(&self) : Random
+fn ulong Msws64Random.next_long(&self) @dynamic
 {
 	ulong s0 = self.state0;
 	self.state0 = self.state0 * self.state0 + self.weyl0;
@@ -75,26 +75,26 @@ fn ulong Msws64Random.next_long(&self) : Random
 /**
  * @require bytes.len > 0
  **/
-fn void Msws64Random.next_bytes(&self, char[] bytes) : Random => @random_value_to_bytes(self.next_long, bytes);
-fn uint128 Msws64Random.next_int128(&self) : Random => @long_to_int128(self.next_long());
-fn uint Msws64Random.next_int(&self) : Random => (uint)self.next_long();
-fn ushort Msws64Random.next_short(&self) : Random => (ushort)self.next_long();
-fn char Msws64Random.next_byte(&self) : Random => (char)self.next_long();
+fn void Msws64Random.next_bytes(&self, char[] bytes) @dynamic => @random_value_to_bytes(self.next_long, bytes);
+fn uint128 Msws64Random.next_int128(&self) @dynamic => @long_to_int128(self.next_long());
+fn uint Msws64Random.next_int(&self) @dynamic => (uint)self.next_long();
+fn ushort Msws64Random.next_short(&self) @dynamic => (ushort)self.next_long();
+fn char Msws64Random.next_byte(&self) @dynamic => (char)self.next_long();
 
 // Msws32
-struct Msws32Random
+struct Msws32Random (Random)
 {
 	uint state0, state1;
 	uint weyl0, weyl1;
 }
 
-fn void  Msws32Random.set_seed(&self, char[] input) : Random
+fn void  Msws32Random.set_seed(&self, char[] input) @dynamic
 {
 	*self = bitcast(random::make_seed(uint[4], input), Msws32Random);
 }
 
 
-fn uint Msws32Random.next_int(&self) : Random
+fn uint Msws32Random.next_int(&self) @dynamic
 {
 	uint s0 = self.state0;
 	self.state0 = self.state0 * self.state0 + self.weyl0;
@@ -112,27 +112,27 @@ fn uint Msws32Random.next_int(&self) : Random
 /**
  * @require bytes.len > 0
  **/
-fn void Msws32Random.next_bytes(&self, char[] bytes) : Random => @random_value_to_bytes(self.next_int, bytes);
-fn uint128 Msws32Random.next_int128(&self) : Random => @long_to_int128(self.next_long());
-fn ulong Msws32Random.next_long(&self) : Random => @int_to_long(self.next_int());
-fn ushort Msws32Random.next_short(&self) : Random => (ushort)self.next_int();
-fn char Msws32Random.next_byte(&self) : Random => (char)self.next_int();
+fn void Msws32Random.next_bytes(&self, char[] bytes) @dynamic => @random_value_to_bytes(self.next_int, bytes);
+fn uint128 Msws32Random.next_int128(&self) @dynamic => @long_to_int128(self.next_long());
+fn ulong Msws32Random.next_long(&self) @dynamic => @int_to_long(self.next_int());
+fn ushort Msws32Random.next_short(&self) @dynamic => (ushort)self.next_int();
+fn char Msws32Random.next_byte(&self) @dynamic => (char)self.next_int();
 
 // Msws16
 
-struct Msws16Random
+struct Msws16Random (Random)
 {
 	ushort state0, state1;
 	ushort weyl0, weyl1;
 }
 
-fn void  Msws16Random.set_seed(&self, char[] input) : Random
+fn void  Msws16Random.set_seed(&self, char[] input) @dynamic
 {
 	*self = bitcast(random::make_seed(ushort[4], input), Msws16Random);
 }
 
 
-fn ushort Msws16Random.next_short(&self) : Random
+fn ushort Msws16Random.next_short(&self) @dynamic
 {
 	ushort s0 = self.state0;
 	self.state0 = self.state0 * self.state0 + self.weyl0;
@@ -150,25 +150,25 @@ fn ushort Msws16Random.next_short(&self) : Random
 /**
  * @require bytes.len > 0
  **/
-fn void Msws16Random.next_bytes(&self, char[] bytes) : Random => @random_value_to_bytes(self.next_short, bytes);
-fn uint128 Msws16Random.next_int128(&self) : Random => @long_to_int128(self.next_long());
-fn ulong Msws16Random.next_long(&self) : Random => @int_to_long(self.next_int());
-fn uint Msws16Random.next_int(&self) : Random => @short_to_int(self.next_short());
-fn char Msws16Random.next_byte(&self) : Random => (char)self.next_short();
+fn void Msws16Random.next_bytes(&self, char[] bytes) @dynamic => @random_value_to_bytes(self.next_short, bytes);
+fn uint128 Msws16Random.next_int128(&self) @dynamic => @long_to_int128(self.next_long());
+fn ulong Msws16Random.next_long(&self) @dynamic => @int_to_long(self.next_int());
+fn uint Msws16Random.next_int(&self) @dynamic => @short_to_int(self.next_short());
+fn char Msws16Random.next_byte(&self) @dynamic => (char)self.next_short();
 
 // Msws8
-struct Msws8Random
+struct Msws8Random (Random)
 {
 	char state0, state1;
 	char weyl0, weyl1;
 }
 
-fn void  Msws8Random.set_seed(&self, char[] input) : Random
+fn void  Msws8Random.set_seed(&self, char[] input) @dynamic
 {
 	*self = bitcast(random::make_seed(char[4], input), Msws8Random);
 }
 
-fn char Msws8Random.next_byte(&self) : Random
+fn char Msws8Random.next_byte(&self) @dynamic
 {
 	char s0 = self.state0;
 	self.state0 = self.state0 * self.state0 + self.weyl0;
@@ -183,8 +183,8 @@ fn char Msws8Random.next_byte(&self) : Random
 	return s0 + s1;
 }
 
-fn void Msws8Random.next_bytes(&self, char[] bytes) : Random => @random_value_to_bytes(self.next_byte, bytes);
-fn uint128 Msws8Random.next_int128(&self) : Random => @long_to_int128(self.next_long());
-fn ulong Msws8Random.next_long(&self) : Random => @int_to_long(self.next_int());
-fn uint Msws8Random.next_int(&self) : Random => @short_to_int(self.next_short());
-fn ushort Msws8Random.next_short(&self) : Random => @char_to_short(self.next_byte());
+fn void Msws8Random.next_bytes(&self, char[] bytes) @dynamic => @random_value_to_bytes(self.next_byte, bytes);
+fn uint128 Msws8Random.next_int128(&self) @dynamic => @long_to_int128(self.next_long());
+fn ulong Msws8Random.next_long(&self) @dynamic => @int_to_long(self.next_int());
+fn uint Msws8Random.next_int(&self) @dynamic => @short_to_int(self.next_short());
+fn ushort Msws8Random.next_short(&self) @dynamic => @char_to_short(self.next_byte());

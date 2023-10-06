@@ -1,6 +1,6 @@
 module std::collections::enummap(<Enum, ValueType>);
 
-struct EnumMap
+struct EnumMap (Printable)
 {
 	ValueType[Enum.len] values;
 }
@@ -13,7 +13,7 @@ fn void EnumMap.init(&self, ValueType init_value)
 	}
 }
 
-fn usz! EnumMap.to_format(&self, Formatter* formatter) : Printable
+fn usz! EnumMap.to_format(&self, Formatter* formatter) @dynamic
 {
 	usz n = formatter.print("{ ")!;
 	foreach (i, &value : self.values)
@@ -25,7 +25,7 @@ fn usz! EnumMap.to_format(&self, Formatter* formatter) : Printable
 	return n;
 }
 
-fn String EnumMap.to_string(&self, Allocator* using = mem::heap()) : Printable
+fn String EnumMap.to_string(&self, Allocator* using = mem::heap()) @dynamic
 {
 	return string::printf("%s", *self);
 }

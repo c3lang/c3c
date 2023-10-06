@@ -1,9 +1,9 @@
 module std::math::random;
 
-def SimpleRandom = distinct ulong;
+distinct SimpleRandom (Random) = ulong;
 
 
-fn void SimpleRandom.set_seed(&self, char[] seed) : Random
+fn void SimpleRandom.set_seed(&self, char[] seed) @dynamic
 {
 	char[8] full;
 	foreach (i, c : seed)
@@ -13,7 +13,7 @@ fn void SimpleRandom.set_seed(&self, char[] seed) : Random
 	*self = (SimpleRandom)(bitcast(full, ulong) ^ SIMPLE_RANDOM_MULTIPLIER) & SIMPLE_RANDOM_MASK;
 }
 
-fn uint SimpleRandom.next_int(&self) : Random
+fn uint SimpleRandom.next_int(&self) @dynamic
 {
 	ulong nextseed = ((ulong)*self * SIMPLE_RANDOM_MULTIPLIER + SIMPLE_RANDOM_ADDEND) & SIMPLE_RANDOM_MASK;
 	*self = (SimpleRandom)nextseed;
@@ -23,11 +23,11 @@ fn uint SimpleRandom.next_int(&self) : Random
 /**
  * @require bytes.len > 0
  **/
-fn void SimpleRandom.next_bytes(&self, char[] bytes) : Random => @random_value_to_bytes(self.next_int, bytes);
-fn uint128 SimpleRandom.next_int128(&self) : Random => @long_to_int128(self.next_long());
-fn ulong SimpleRandom.next_long(&self) : Random => @int_to_long(self.next_int());
-fn ushort SimpleRandom.next_short(&self) : Random => (ushort)self.next_int();
-fn char SimpleRandom.next_byte(&self) : Random => (char)self.next_int();
+fn void SimpleRandom.next_bytes(&self, char[] bytes) @dynamic => @random_value_to_bytes(self.next_int, bytes);
+fn uint128 SimpleRandom.next_int128(&self) @dynamic => @long_to_int128(self.next_long());
+fn ulong SimpleRandom.next_long(&self) @dynamic => @int_to_long(self.next_int());
+fn ushort SimpleRandom.next_short(&self) @dynamic => (ushort)self.next_int();
+fn char SimpleRandom.next_byte(&self) @dynamic => (char)self.next_int();
 
 const long SIMPLE_RANDOM_MULTIPLIER @local = 0x5DEECE66D;
 const long SIMPLE_RANDOM_ADDEND @local = 0xB;

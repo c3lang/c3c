@@ -130,6 +130,7 @@ int comment_level = 0;
 "module"        { count(); return(MODULE); }
 "nextcase"      { count(); return(NEXTCASE); }
 "null"          { count(); return(NUL); }
+"protocol"      { count(); return(PROTOCOL); }
 "return"		{ count(); return(RETURN); }
 "short"			{ count(); return(SHORT); }
 "struct"		{ count(); return(STRUCT); }

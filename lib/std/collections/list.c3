@@ -10,7 +10,7 @@ def ElementTest = fn bool(Type *type, any* context);
 const ELEMENT_IS_EQUATABLE = types::is_equatable_type(Type);
 const ELEMENT_IS_POINTER = Type.kindof == POINTER;
 
-struct List
+struct List (Printable)
 {
 	usz size;
 	usz capacity;
@@ -42,7 +42,7 @@ fn void List.tinit(&self, usz initial_capacity = 16)
 	self.init(initial_capacity, mem::temp()) @inline;
 }
 
-fn usz! List.to_format(&self, Formatter* formatter) : Printable
+fn usz! List.to_format(&self, Formatter* formatter) @dynamic
 {
 	switch (self.size)
 	{
@@ -62,7 +62,7 @@ fn usz! List.to_format(&self, Formatter* formatter) : Printable
 	}
 }
 
-fn String List.to_string(&self, Allocator* using = mem::heap()) : Printable
+fn String List.to_string(&self, Allocator* using = mem::heap()) @dynamic
 {
 	return string::printf("%s", *self);
 }

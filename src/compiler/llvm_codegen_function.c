@@ -411,7 +411,7 @@ void llvm_emit_return_implicit(GenContext *c)
 void llvm_emit_function_body(GenContext *c, Decl *decl, StacktraceType type)
 {
 	DEBUG_LOG("Generating function %s.", decl->extname);
-	if (decl->func_decl.is_dynamic) vec_add(c->dynamic_functions, decl);
+	if (decl->func_decl.attr_dynamic) vec_add(c->dynamic_functions, decl);
 	assert(decl->backend_ref);
 	if (decl->func_decl.attr_init || decl->func_decl.attr_finalizer)
 	{
@@ -692,8 +692,8 @@ void llvm_emit_dynamic_functions(GenContext *c, Decl **funcs)
 		scratch_buffer_append("$ct.dyn.");
 		scratch_buffer_append(decl_get_extname(decl));
 		LLVMValueRef global = llvm_add_global_raw(c, scratch_buffer_to_string(), c->dtable_type, 0);
-		Decl *proto = declptr(decl->func_decl.protocol_method);
-		LLVMValueRef proto_ref = llvm_get_ref(c, proto);
+		Decl *proto = declptrzero(decl->func_decl.protocol_method);
+		LLVMValueRef proto_ref = proto ? llvm_get_ref(c, proto) : llvm_get_selector(c, decl->name);
 		LLVMValueRef vals[3] = { llvm_get_ref(c, decl), proto_ref, LLVMConstNull(c->ptr_type) };
 		LLVMSetInitializer(global, LLVMConstNamedStruct(c->dtable_type, vals, 3));
 		LLVMValueRef type_id_ptr = LLVMBuildIntToPtr(builder, llvm_get_typeid(c, type), c->ptr_type, "");

@@ -3,7 +3,7 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::hash::fnv64a;
 
-def Fnv64a = distinct ulong;
+distinct Fnv64a = ulong;
 
 const FNV64A_START @private = 0xcbf29ce484222325;
 const FNV64A_MUL @private = 0x00000100000001b3;

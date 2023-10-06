@@ -1,9 +1,9 @@
 module std::time;
 
-def Time = distinct long;
-def Duration = distinct long;
-def Clock = distinct ulong;
-def NanoDuration = distinct long;
+distinct Time = long;
+distinct Duration = long;
+distinct Clock = ulong;
+distinct NanoDuration (Printable) = long;
 
 const Duration MS = 1_000;
 const Duration SEC = 1_000_000;
@@ -97,7 +97,7 @@ fn Duration NanoDuration.to_duration(nd) => (Duration)nd / 1_000;
 fn NanoDuration Duration.to_nano(td) => (NanoDuration)td * 1_000;
 fn long Duration.to_ms(td) => (long)td / 1_000;
 
-fn usz! NanoDuration.to_format(&self, Formatter* formatter) : Printable
+fn usz! NanoDuration.to_format(&self, Formatter* formatter) @dynamic
 {
 	NanoDuration nd = *self;
 	if (nd == 0)

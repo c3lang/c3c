@@ -141,13 +141,9 @@ static inline bool parse_optional_module_params(ParseContext *c, const char ***t
 
 	*tokens_ref = NULL;
 
-	SourceSpan span = c->span;
-	bool is_old_style = try_consume(c, TOKEN_LESS);
-	if (!is_old_style && !try_consume(c, TOKEN_LGENPAR)) return true;
+	if (!try_consume(c, TOKEN_LGENPAR)) return true;
 
-	// TODO remove after deprecation time
-	TokenType end_token = is_old_style ? TOKEN_GREATER : TOKEN_RGENPAR;
-	if (try_consume(c, end_token)) RETURN_SEMA_ERROR_HERE("Generic parameter list cannot be empty.");
+	if (try_consume(c, TOKEN_RGENPAR)) RETURN_SEMA_ERROR_HERE("Generic parameter list cannot be empty.");
 
 	// No params
 	while (1)
@@ -171,12 +167,7 @@ static inline bool parse_optional_module_params(ParseContext *c, const char ***t
 		advance(c);
 		if (!try_consume(c, TOKEN_COMMA))
 		{
-			if (!consume(c, end_token, "Expected '>)'.")) return false;
-			if (is_old_style)
-			{
-				span = extend_span_with_token(span, c->prev_span);
-				sema_warning_at(span, "Generics with <...> syntax is deprecated, use (<...>) instead.");
-			}
+			if (!consume(c, TOKEN_RGENPAR, "Expected '>)'.")) return false;
 			return true;
 		}
 	}
@@ -703,6 +694,24 @@ TypeInfo *parse_optional_type(ParseContext *c)
 
 
 // --- Decl parsing
+
+bool parse_protocol_impls(ParseContext *c, TypeInfo ***protocols_ref)
+{
+	if (!try_consume(c, TOKEN_LPAREN)) return true;
+	TypeInfo **protocols = NULL;
+	while (!try_consume(c, TOKEN_RPAREN))
+	{
+		ASSIGN_TYPE_OR_RET(TypeInfo *protocol, parse_type(c), false);
+		vec_add(protocols, protocol);
+		if (!try_consume(c, TOKEN_COMMA))
+		{
+			CONSUME_OR_RET(TOKEN_RPAREN, false);
+			break;
+		}
+	}
+	*protocols_ref = protocols;
+	return true;
+}
 
 /**
  * after_type ::= (CT_IDENT | IDENT) attributes? ('=' decl_initializer)?
@@ -1525,9 +1534,39 @@ bool parse_struct_body(ParseContext *c, Decl *parent)
 }
 
 
+/**
+ * distinct_declaration ::= 'distinct' TYPE_IDENT opt_protocols '=' 'inline'? type ';'
+ */
+static inline Decl *parse_distinct_declaration(ParseContext *c)
+{
+	advance_and_verify(c, TOKEN_DISTINCT);
+
+	Decl *decl = decl_new_with_type(symstr(c), c->span, DECL_DISTINCT);
+
+	if (!consume_type_name(c, "distinct type")) return poisoned_decl;
+	if (!parse_protocol_impls(c, &decl->protocols)) return poisoned_decl;
+
+	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
+
+	decl->type->type_kind = TYPE_DISTINCT;
+	decl->decl_kind = DECL_DISTINCT;
+
+	CONSUME_OR_RET(TOKEN_EQ, poisoned_decl);
+
+	decl->is_substruct = try_consume(c, TOKEN_INLINE);
+
+	// 2. Now parse the type which we know is here.
+	ASSIGN_TYPE_OR_RET(decl->distinct, parse_type(c), poisoned_decl);
+
+	assert(!tok_is(c, TOKEN_LGENPAR));
+
+	RANGE_EXTEND_PREV(decl);
+	CONSUME_EOS_OR_RET(poisoned_decl);
+	return decl;
+}
 
 /**
- * struct_declaration ::= struct_or_union TYPE_IDENT opt_attributes struct_body
+ * struct_declaration ::= struct_or_union TYPE_IDENT opt_protocols opt_attributes struct_body
  */
 static inline Decl *parse_struct_declaration(ParseContext *c)
 {
@@ -1539,7 +1578,9 @@ static inline Decl *parse_struct_declaration(ParseContext *c)
 	Decl *decl = decl_new_with_type(symstr(c), c->span, decl_from_token(type));
 
 	if (!consume_type_name(c, type_name)) return poisoned_decl;
+	if (!parse_protocol_impls(c, &decl->protocols)) return poisoned_decl;
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
+
 	if (!parse_struct_body(c, decl)) return poisoned_decl;
 
 	DEBUG_LOG("Parsed %s %s completely.", type_name, decl->name);
@@ -1726,17 +1767,15 @@ static bool parse_macro_params(ParseContext *c, Decl *macro)
  *
  * @return NULL if parsing failed, otherwise a list of Type*
  */
-static inline Expr **parse_generic_parameters(ParseContext *c, bool old_style)
+static inline Expr **parse_generic_parameters(ParseContext *c)
 {
 	Expr **params = NULL;
-	// TODO remove deprecation
-	TokenType end_token = old_style ? TOKEN_GREATER : TOKEN_RGENPAR;
-	while (!try_consume(c, end_token))
+	while (!try_consume(c, TOKEN_RGENPAR))
 	{
-		ASSIGN_EXPR_OR_RET(Expr *arg, old_style ? parse_generic_parameter(c) : parse_expr(c), NULL);
+		ASSIGN_EXPR_OR_RET(Expr *arg, parse_expr(c), NULL);
 		vec_add(params, arg);
 		TokenType tok = c->tok;
-		if (tok != end_token)
+		if (tok != TOKEN_RGENPAR)
 		{
 			TRY_CONSUME_OR_RET(TOKEN_COMMA, "Expected ',' after the argument.", NULL);
 		}
@@ -1781,18 +1820,6 @@ static inline Decl *parse_def_type(ParseContext *c)
 	}
 
 	CONSUME_OR_RET(TOKEN_EQ, poisoned_decl);
-	bool distinct = false;
-	bool is_inline = false;
-	if (tok_is(c, TOKEN_INLINE))
-	{
-		SEMA_ERROR_HERE("'inline' must always follow 'distinct'.");
-		return poisoned_decl;
-	}
-	if (try_consume(c, TOKEN_DISTINCT))
-	{
-		distinct = true;
-		is_inline = try_consume(c, TOKEN_INLINE);
-	}
 
 	// 1. Did we have `fn`? In that case it's a function pointer.
 	if (try_consume(c, TOKEN_FN))
@@ -1800,8 +1827,6 @@ static inline Decl *parse_def_type(ParseContext *c)
 		decl->decl_kind = DECL_TYPEDEF;
 		decl_add_type(decl, TYPE_TYPEDEF);
 		decl->typedef_decl.is_func = true;
-		decl->typedef_decl.is_distinct = distinct;
-		decl->is_substruct = is_inline;
 		Decl *decl_type = decl_new(DECL_FNTYPE, decl->name, c->prev_span);
 		decl->typedef_decl.decl = decl_type;
 		ASSIGN_TYPE_OR_RET(TypeInfo *type_info, parse_optional_type(c), poisoned_decl);
@@ -1821,26 +1846,10 @@ static inline Decl *parse_def_type(ParseContext *c)
 
 	assert(!tok_is(c, TOKEN_LGENPAR));
 
-	REMINDER("Distinct fn??");
 	decl->typedef_decl.type_info = type_info;
 	decl->typedef_decl.is_func = false;
-	if (distinct)
-	{
-		decl->decl_kind = DECL_DISTINCT;
-		decl_add_type(decl, TYPE_DISTINCT);
-		decl->is_substruct = is_inline;
-		TypedefDecl typedef_decl = decl->typedef_decl; // Ensure value semantics.
-		decl->distinct_decl.typedef_decl = typedef_decl;
-		decl->protocols = NULL;
-		decl->methods = NULL;
-		decl->type->type_kind = TYPE_DISTINCT;
-		decl->decl_kind = DECL_DISTINCT;
-	}
-	else
-	{
-		decl->decl_kind = DECL_TYPEDEF;
-		decl_add_type(decl, TYPE_TYPEDEF);
-	}
+	decl->decl_kind = DECL_TYPEDEF;
+	decl_add_type(decl, TYPE_TYPEDEF);
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 
 	RANGE_EXTEND_PREV(decl);
@@ -1933,22 +1942,16 @@ static inline Decl *parse_def_ident(ParseContext *c)
 	decl->define_decl.span = c->span;
 	advance(c);
 
-	bool old_style_encountered = try_consume(c, TOKEN_LESS);
-
-	if (old_style_encountered || try_consume(c, TOKEN_LGENPAR) )
+	if (try_consume(c, TOKEN_LGENPAR))
 	{
 		decl->define_decl.define_kind = DEFINE_IDENT_GENERIC;
-		Expr **params = parse_generic_parameters(c, old_style_encountered);
+		Expr **params = parse_generic_parameters(c);
 		if (!params) return poisoned_decl;
 		decl->define_decl.generic_params = params;
 	}
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 
 	RANGE_EXTEND_PREV(decl);
-	if (old_style_encountered)
-	{
-		sema_warning_at(decl->span, "Use of <...> for generics is deprecated, please use (<...>) instead.");
-	}
 	CONSUME_EOS_OR_RET(poisoned_decl);
 	return decl;
 }
@@ -2111,7 +2114,7 @@ static inline Decl *parse_macro_declaration(ParseContext *c, AstId docs)
 
 
 /**
- * fault_declaration ::= FAULT TYPE_IDENT opt_attributes '{' faults ','? '}'
+ * fault_declaration ::= FAULT TYPE_IDENT opt_protocols opt_attributes '{' faults ','? '}'
  */
 static inline Decl *parse_fault_declaration(ParseContext *c)
 {
@@ -2119,6 +2122,7 @@ static inline Decl *parse_fault_declaration(ParseContext *c)
 
 	Decl *decl = decl_new_with_type(symstr(c), c->span, DECL_FAULT);
 	if (!consume_type_name(c, "fault")) return poisoned_decl;
+	if (!parse_protocol_impls(c, &decl->protocols)) return poisoned_decl;
 
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 
@@ -2189,7 +2193,7 @@ static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref
 /**
  * Parse an enum declaration (after "enum")
  *
- * enum ::= ENUM TYPE_IDENT (':' type enum_param_list)? opt_attributes '{' enum_body '}'
+ * enum ::= ENUM TYPE_IDENT opt_protocols (':' type enum_param_list)? opt_attributes '{' enum_body '}'
  * enum_body ::= enum_def (',' enum_def)* ','?
  * enum_def ::= CONST_IDENT ('(' arg_list ')')?
  */
@@ -2199,6 +2203,7 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 
 	Decl *decl = decl_new_with_type(symstr(c), c->span, DECL_ENUM);
 	if (!consume_type_name(c, "enum")) return poisoned_decl;
+	if (!parse_protocol_impls(c, &decl->protocols)) return poisoned_decl;
 
 	TypeInfo *type = NULL;
 	// Parse the spec
@@ -2294,11 +2299,6 @@ static inline Decl *parse_func_definition(ParseContext *c, AstId contracts, bool
 	}
 	if (!parse_fn_parameter_list(c, &(func->func_decl.signature), is_interface)) return poisoned_decl;
 	if (!parse_attributes_for_global(c, func)) return poisoned_decl;
-	if (try_consume(c, TOKEN_COLON))
-	{
-		ASSIGN_TYPEID_OR_RET(func->func_decl.protocol_unresolved, parse_type(c), poisoned_decl);
-		func->func_decl.is_dynamic = true;
-	}
 	if (is_interface)
 	{
 		if (tok_is(c, TOKEN_LBRACE) || tok_is(c, TOKEN_IMPLIES))
@@ -2684,8 +2684,8 @@ static Decl *parse_exec(ParseContext *c)
  * top_level_statement ::= struct_declaration | enum_declaration | fault_declaration | const_declaration
  *                       | global_declaration | macro_declaration | func_definition | typedef_declaration
  *                       | conditional_compilation | define_declaration | import_declaration | module_declaration
+ *                       | distinct_declaration | protocol_declaration
  *                       | static_declaration | ct_assert_declaration | ct_echo_declaration | bitstruct_declaration
- *                       | protocol_declaration
  *
  * @return Decl* or a poison value if parsing failed
  */
@@ -2805,6 +2805,10 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 		case TOKEN_PROTOCOL:
 			if (contracts) goto CONTRACT_NOT_ALLOWED;
 			decl = parse_protocol_declaration(c);
+			break;
+		case TOKEN_DISTINCT:
+			if (contracts) goto CONTRACT_NOT_ALLOWED;
+			decl = parse_distinct_declaration(c);
 			break;
 		case TOKEN_CONST:
 			if (contracts) goto CONTRACT_NOT_ALLOWED;

@@ -1,4 +1,4 @@
-def Foo = distinct double[];
+distinct Foo = double[];
 
 fn void main()
 {

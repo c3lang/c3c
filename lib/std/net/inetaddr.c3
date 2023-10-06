@@ -9,7 +9,7 @@ enum IpProtocol : char (AIFamily ai_family)
 	IPV6        (os::AF_INET6),
 }
 
-struct InetAddress
+struct InetAddress (Printable)
 {
 	bool is_ipv6;
 	union
@@ -45,7 +45,7 @@ struct InetAddress
 }
 
 
-fn usz! InetAddress.to_format(InetAddress* addr, Formatter* formatter) : Printable
+fn usz! InetAddress.to_format(InetAddress* addr, Formatter* formatter) @dynamic
 {
 	if (addr.is_ipv6)
 	{
@@ -56,7 +56,7 @@ fn usz! InetAddress.to_format(InetAddress* addr, Formatter* formatter) : Printab
 	return formatter.printf("%d.%d.%d.%d", addr.ipv4.a, addr.ipv4.b, addr.ipv4.c, addr.ipv4.d)!;
 }
 
-fn String InetAddress.to_string(InetAddress* addr, Allocator* using = mem::heap()) : Printable
+fn String InetAddress.to_string(InetAddress* addr, Allocator* using = mem::heap()) @dynamic
 {
 	if (addr.is_ipv6)
 	{

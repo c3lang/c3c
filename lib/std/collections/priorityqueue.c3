@@ -23,8 +23,8 @@
 module std::collections::priorityqueue(<Type>);
 import std::collections::priorityqueue::private;
 
-def PriorityQueue = distinct inline PrivatePriorityQueue(<Type, false>);
-def PriorityQueueMax = distinct inline PrivatePriorityQueue(<Type, true>);
+distinct PriorityQueue = inline PrivatePriorityQueue(<Type, false>);
+distinct PriorityQueueMax = inline PrivatePriorityQueue(<Type, true>);
 
 module std::collections::priorityqueue::private(<Type, MAX>);
 import std::collections::list;
@@ -133,12 +133,13 @@ fn Type PrivatePriorityQueue.peek_at(&self, usz index) @operator([])
 	return self.heap[index];
 }
 
-fn usz! PrivatePriorityQueue.to_format(&self, Formatter* formatter) : Printable
+fn usz! PrivatePriorityQueue.to_format(&self, Formatter* formatter)
 {
 	return self.heap.to_format(formatter);
 }
 
-fn String PrivatePriorityQueue.to_string(&self, Allocator* using = mem::heap()) : Printable
+fn String PrivatePriorityQueue.to_string(&self, Allocator* using = mem::heap())
 {
 	return self.heap.to_string(using);
 }
+

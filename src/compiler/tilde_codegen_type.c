@@ -298,7 +298,7 @@ TB_Global *tilde_get_typeid(TildeContext *c, Type *type)
 		case TYPE_POINTER:
 			return tilde_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_POINTER, type->pointer, 0, NULL, false);
 		case TYPE_DISTINCT:
-			return tilde_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_DISTINCT, type->decl->distinct_decl.base_type, 0, NULL, false);
+			return tilde_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_DISTINCT, type->decl->distinct->type, 0, NULL, false);
 		case TYPE_ENUM:
 			return tilde_generate_introspection_global(c, type);
 		case TYPE_FAULTTYPE:

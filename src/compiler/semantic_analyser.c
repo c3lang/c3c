@@ -163,6 +163,9 @@ void sema_analyze_stage(Module *module, AnalysisStage stage)
 			case ANALYSIS_FUNCTIONS:
 				sema_analysis_pass_functions(module);
 				break;
+			case ANALYSIS_PROTOCOL:
+				sema_analysis_pass_protocol(module);
+				break;
 			case ANALYSIS_FINALIZE:
 				break;
 		}

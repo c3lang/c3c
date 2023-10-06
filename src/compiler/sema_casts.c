@@ -958,6 +958,26 @@ static bool rule_vecarr_to_infer(CastContext *cc, bool is_explicit, bool is_sile
 	return cast_is_allowed(cc, is_explicit, is_silent);
 }
 
+static bool rule_ptr_to_protocol(CastContext *cc, bool is_explicit, bool is_silent)
+{
+	if (is_explicit) return true;
+
+	Type *pointee = cc->from_type->pointer;
+	if (type_may_implement_protocol(pointee))
+	{
+		Type *protocol = cc->to->pointer;
+		Decl *pointee_decl = pointee->decl;
+		FOREACH_BEGIN(TypeInfo *protocol_type, pointee_decl->protocols)
+			if (!sema_resolve_type_info(cc->context, protocol_type, RESOLVE_TYPE_ALLOW_ANY)) return false;
+			if (protocol_type->type == protocol) return true;
+		FOREACH_END();
+	}
+	if (is_silent) return false;
+	RETURN_SEMA_ERROR(cc->expr, "%s cannot be implicitly cast to %s, but you can use an explicit "
+					  "cast to (unsafely) assume the protocol is implemented.",
+	                  type_quoted_error_string(cc->expr->type), type_quoted_error_string(cc->to_type));
+}
+
 static bool rule_ptr_to_infer(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	if (cc->to->type_kind != TYPE_POINTER) return sema_cast_error(cc, false, is_silent);
@@ -1367,7 +1387,7 @@ static inline Type *type_flatten_to_int(Type *type)
 		switch (type->type_kind)
 		{
 			case TYPE_DISTINCT:
-				type = type->decl->distinct_decl.base_type;
+				type = type->decl->distinct->type;
 				break;
 			case TYPE_OPTIONAL:
 				type = type->optional;
@@ -1891,6 +1911,7 @@ static void cast_typeid_to_bool(Expr *expr, Type *to_type)
 #define RSAFE &rule_sa_to_infer           /* Subarray -> infer (only if subarray is constant or can infer)                                     */
 #define RVAFE &rule_vecarr_to_infer       /* Vec/arr -> infer (if base matches)                                                                */
 #define RPTFE &rule_ptr_to_infer          /* Ptr -> infer (if pointee may infer)                                                               */
+#define RPTPR &rule_ptr_to_protocol       /* Ptr -> Protocol if the pointee implements it                                                      */
 
 CastRule cast_rules[CONV_LAST + 1][CONV_LAST + 1] = {
 // void, wildc,  bool,   int, float,   ptr,  sarr,   vec, bitst, distc, array, strct, union,   any,  prot, fault,  enum, typid, afaul, voidp, arrpt,  infer  (to)
@@ -1899,7 +1920,7 @@ CastRule cast_rules[CONV_LAST + 1][CONV_LAST + 1] = {
  {REXPL, _NO__, _NA__, REXPL, REXPL, _NO__, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // BOOL
  {REXPL, _NO__, REXPL, RIFIF, RINFL, RINPT, _NO__, ROKOK, RINBS, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RINEN, _NO__, _NO__, RINPT, RINPT, _NO__}, // INT
  {REXPL, _NO__, REXPL, REXPL, RIFIF, _NO__, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // FLOAT
- {REXPL, _NO__, REXPL, RPTIN, _NO__, RPTPT, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, ROKOK, _NO__, _NO__, _NO__, _NO__, ROKOK, RPTPT, RPTFE}, // PTR
+ {REXPL, _NO__, REXPL, RPTIN, _NO__, RPTPT, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, RPTPR, _NO__, _NO__, _NO__, _NO__, ROKOK, RPTPT, RPTFE}, // PTR
  {REXPL, _NO__, REXPL, _NO__, _NO__, RSAPT, RSASA, RSAVA, _NO__, RXXDI, RSAVA, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, RSAPT, RSAFE}, // SARRAY
  {REXPL, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RVCVC, _NO__, RXXDI, RVCAR, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RVAFE}, // VECTOR
  {REXPL, _NO__, _NO__, RBSIN, _NO__, _NO__, _NO__, _NO__, _NO__, RXXDI, RBSAR, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // BITSTRUCT

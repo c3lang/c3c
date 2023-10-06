@@ -1,6 +1,6 @@
 module std::os::macos::cf @if(env::DARWIN);
 
-def CFTypeRef = distinct void*;
+distinct CFTypeRef = void*;
 def CFIndex = isz;
 struct CFRange
 {

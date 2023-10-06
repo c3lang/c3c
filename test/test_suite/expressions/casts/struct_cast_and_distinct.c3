@@ -1,6 +1,6 @@
 module test;
 
-def Foo = distinct int;
+distinct Foo = int;
 
 fn void test1()
 {
