@@ -51,3 +51,24 @@ fn void printf_a()
 	s = string::printf("%.4s %.5s", ss, ss);
 	assert(s == "hell hello", "got '%s'; want 'hell hello'", s);
 }
+
+enum PrintfTest : ushort
+{
+	ENUMA,
+	ENUMB,
+}
+
+fn void printf_enum()
+{
+	String s;
+
+	s = string::printf("%s", PrintfTest.ENUMA);
+	assert(s == "ENUMA", "got '%s'; want 'ENUMA'", s);
+	s = string::printf("%s", PrintfTest.ENUMB);
+	assert(s == "ENUMB", "got '%s'; want 'ENUMB'", s);
+
+	s = string::printf("%d", PrintfTest.ENUMA);
+	assert(s == "0", "got '%s'; want '0'", s);
+	s = string::printf("%d", PrintfTest.ENUMB);
+	assert(s == "1", "got '%s'; want '1'", s);
+}

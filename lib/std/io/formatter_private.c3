@@ -11,15 +11,17 @@ fn usz! Formatter.adjust(&self, usz len) @local
 
 fn uint128! int_from_any(any* arg, bool *is_neg) @private
 {
+	switch (arg.type.kindof)
+	{
+		case TypeKind.POINTER:
+			*is_neg = false;
+			return (uint128)(uptr)*(void**)arg.ptr;
+		case TypeKind.DISTINCT:
+		case TypeKind.ENUM:
+			return int_from_any(arg.as_inner(), is_neg);
+		default:
+	}
 	*is_neg = false;
-	if (arg.type.kindof == TypeKind.POINTER)
-	{
-		return (uint128)(uptr)*(void**)arg.ptr;
-	}
-	if (arg.type.kindof == TypeKind.DISTINCT)
-	{
-		return int_from_any(arg.as_inner(), is_neg);
-	}
 	switch (arg)
 	{
 		case bool:
