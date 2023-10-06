@@ -188,7 +188,7 @@ union Win32_LARGE_INTEGER
 	ulong quadPart;
 }
 
-def Win32_CRITICAL_SECTION = distinct ulong[5];
+distinct Win32_CRITICAL_SECTION = ulong[5];
 
 struct Win32_SECURITY_ATTRIBUTES
 {

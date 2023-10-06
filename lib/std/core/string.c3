@@ -1,8 +1,8 @@
 module std::core::string;
 import std::ascii;
 
-def ZString = distinct inline char*;
-def WString = distinct inline Char16*;
+distinct ZString = inline char*;
+distinct WString = inline Char16*;
 def Char32 = uint;
 def Char16 = ushort;
 

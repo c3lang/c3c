@@ -10,7 +10,7 @@ fault BacktraceFault
 
 const Backtrace BACKTRACE_UNKNOWN = { 0, "", "", "", 0, null };
 
-struct Backtrace
+struct Backtrace (Printable)
 {
 	uptr offset;
 	String function;
@@ -30,7 +30,7 @@ fn bool Backtrace.is_unknown(&self)
 	return !self.object_file.len;
 }
 
-fn usz! Backtrace.to_format(&self, Formatter* formatter) : Printable
+fn usz! Backtrace.to_format(&self, Formatter* formatter) @dynamic
 {
 	if (self.has_file())
 	{

@@ -31,7 +31,7 @@ static inline Type *type_lowering(Type *type)
 				type = type->optional;
 				continue;
 			case TYPE_DISTINCT:
-				type = type->decl->distinct_decl.base_type;
+				type = type->decl->distinct->type;
 				continue;
 			case TYPE_ENUM:
 				type = type->decl->enums.type_info->type;

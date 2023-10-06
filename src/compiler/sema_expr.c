@@ -3230,7 +3230,7 @@ static inline bool sema_create_const_inner(SemaContext *context, Expr *expr, Typ
 			inner = type->optional;
 			break;
 		case TYPE_DISTINCT:
-			inner = type->decl->distinct_decl.base_type->canonical;
+			inner = type->decl->distinct->type->canonical;
 			break;
 		case TYPE_ENUM:
 			inner = type->decl->enums.type_info->type->canonical;
@@ -4128,7 +4128,7 @@ CHECK_DEEPER:
 		if (type->type_kind == TYPE_DISTINCT && decl->is_substruct)
 		{
 			Expr *inner_expr = expr_copy(current_parent);
-			type = type->decl->distinct_decl.base_type;
+			type = type->decl->distinct->type;
 			inner_expr->type = type;
 			current_parent = inner_expr;
 			goto CHECK_DEEPER;
@@ -8330,7 +8330,7 @@ RETRY:
 			type = type->canonical;
 			goto RETRY;
 		case TYPE_DISTINCT:
-			type = type->decl->distinct_decl.base_type;
+			type = type->decl->distinct->type;
 			goto RETRY;
 		case TYPE_UNTYPED_LIST:
 			UNREACHABLE

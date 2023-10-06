@@ -61,7 +61,7 @@ fn void test6()
 }
 
 def Baz = Foo;
-def Bar = distinct int;
+distinct Bar = int;
 fault Err { FOO }
 union Un { int x; }
 enum MyEnum { BAR }

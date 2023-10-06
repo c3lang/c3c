@@ -6,7 +6,7 @@ const PTHREAD_MUTEX_ERRORCHECK = 1;
 const PTHREAD_MUTEX_RECURSIVE = 2;
 
 def PosixThreadFn = fn void*(void*);
-def Pthread_t = distinct void*;
+distinct Pthread_t = void*;
 
 extern fn CInt pthread_create(Pthread_t*, Pthread_attr_t*, PosixThreadFn, void*);
 extern fn CInt pthread_cancel(Pthread_t*);
@@ -88,25 +88,25 @@ extern fn void pthread_cleanup_push(PosixThreadFn routine, void* routine_arg);
 extern fn int sched_yield();
 
 module std::thread::os @if(env::POSIX && !env::LINUX);
-def Pthread_attr_t = distinct ulong[8];
-def Pthread_cond_t = distinct ulong[6];
-def Pthread_condattr_t = distinct ulong[8];
-def Pthread_key_t = distinct ulong;
-def Pthread_mutex_t = distinct ulong[8];
-def Pthread_mutexattr_t = distinct ulong[2];
-def Pthread_once_t = distinct ulong[2];
-def Pthread_rwlock_t = distinct ulong[25];
-def Pthread_rwlockattr_t = distinct ulong[3];
-def Pthread_sched_param = distinct ulong;
+distinct Pthread_attr_t = ulong[8];
+distinct Pthread_cond_t = ulong[6];
+distinct Pthread_condattr_t = ulong[8];
+distinct Pthread_key_t = ulong;
+distinct Pthread_mutex_t = ulong[8];
+distinct Pthread_mutexattr_t = ulong[2];
+distinct Pthread_once_t = ulong[2];
+distinct Pthread_rwlock_t = ulong[25];
+distinct Pthread_rwlockattr_t = ulong[3];
+distinct Pthread_sched_param = ulong;
 
 module std::thread::os @if(env::LINUX);
-def Pthread_attr_t = distinct ulong[7]; // 24 on 32bit
-def Pthread_cond_t = distinct ulong[6];
-def Pthread_condattr_t = distinct uint;
-def Pthread_key_t = distinct uint;
-def Pthread_mutex_t = distinct ulong[5]; // 24 on 32 bit
-def Pthread_mutexattr_t = distinct uint;
-def Pthread_once_t = distinct int;
-def Pthread_rwlock_t = distinct ulong[7]; // 32 on 3bit
-def Pthread_rwlockattr_t = distinct uint;
-def Pthread_sched_param = distinct uint;
+distinct Pthread_attr_t = ulong[7]; // 24 on 32bit
+distinct Pthread_cond_t = ulong[6];
+distinct Pthread_condattr_t = uint;
+distinct Pthread_key_t = uint;
+distinct Pthread_mutex_t = ulong[5]; // 24 on 32 bit
+distinct Pthread_mutexattr_t = uint;
+distinct Pthread_once_t = int;
+distinct Pthread_rwlock_t = ulong[7]; // 32 on 3bit
+distinct Pthread_rwlockattr_t = uint;
+distinct Pthread_sched_param = uint;

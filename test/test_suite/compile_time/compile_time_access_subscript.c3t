@@ -22,7 +22,7 @@ macro check_type($Type)
 
 enum Blurb { FOO }
 
-def Bdd = distinct Abc;
+distinct Bdd = Abc;
 fn void main()
 {
 	var $i = int[4] { 1, 2, 3, 4 };

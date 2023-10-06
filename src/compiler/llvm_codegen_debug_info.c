@@ -465,7 +465,7 @@ static LLVMMetadataRef llvm_debug_typedef_type(GenContext *c, Type *type)
 										  NULL, 0, NULL, 0);
 	}
 
-	Type *original_type = type->type_kind == TYPE_TYPEDEF ? type->canonical : decl->distinct_decl.base_type;
+	Type *original_type = type->type_kind == TYPE_TYPEDEF ? type->canonical : decl->distinct->type;
 
 	// Use forward references in case we haven't resolved the original type, since we could have this:
 	if (!type->canonical->backend_debug_type)

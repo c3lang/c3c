@@ -25,7 +25,7 @@ void yyerror(char *s);
 %token STRUCT UNION ENUM ELLIPSIS DOTDOT BYTES
 
 %token CT_ERROR
-%token CASE DEFAULT IF ELSE SWITCH WHILE DO FOR CONTINUE BREAK RETURN FOREACH_R FOREACH
+%token CASE DEFAULT IF ELSE SWITCH WHILE DO FOR CONTINUE BREAK RETURN FOREACH_R FOREACH PROTOCOL
 %token FN FAULT MACRO CT_IF CT_ENDIF CT_ELSE CT_SWITCH CT_CASE CT_DEFAULT CT_FOR CT_FOREACH CT_ENDFOREACH
 %token CT_ENDFOR CT_ENDSWITCH BUILTIN IMPLIES INITIALIZE FINALIZE CT_ECHO CT_ASSERT CT_EVALTYPE CT_VATYPE
 %token TRY CATCH SCOPE DEFER LVEC RVEC OPTELSE CT_TYPEFROM CT_TYPEOF TLOCAL
@@ -454,6 +454,16 @@ opt_arg_list_trailing
 	| empty
 	;
 
+protocols
+	: TYPE_IDENT opt_generic_parameters
+	| protocols ',' TYPE_IDENT opt_generic_parameters
+	;
+
+opt_protocol_impl
+	: '(' protocols ')'
+	| '(' ')'
+	| empty
+	;
 enum_constants
     : enum_constant
     | enum_constants ',' enum_constant
@@ -888,7 +898,7 @@ ct_echo_stmt
 	: CT_ECHO constant_expr ';'
 
 bitstruct_declaration
-	: BITSTRUCT TYPE_IDENT ':' type opt_attributes bitstruct_body
+	: BITSTRUCT TYPE_IDENT opt_protocol_impl ':' type opt_attributes bitstruct_body
 
 bitstruct_body
 	: '{' '}'
@@ -981,7 +991,7 @@ struct_or_union
 	;
 
 struct_declaration
-	: struct_or_union TYPE_IDENT opt_attributes struct_body
+	: struct_or_union TYPE_IDENT opt_protocol_impl opt_attributes struct_body
     	;
 
 struct_body
@@ -1021,7 +1031,7 @@ enum_spec
 	;
 
 enum_declaration
-	: ENUM TYPE_IDENT enum_spec opt_attributes '{' enum_list '}'
+	: ENUM TYPE_IDENT opt_protocol_impl enum_spec opt_attributes '{' enum_list '}'
 	;
 
 faults
@@ -1030,8 +1040,8 @@ faults
     ;
 
 fault_declaration
-    	: FAULT TYPE_IDENT opt_attributes '{' faults '}'
-    	| FAULT TYPE_IDENT opt_attributes '{' faults ',' '}'
+    	: FAULT TYPE_IDENT opt_protocol_impl opt_attributes '{' faults '}'
+    	| FAULT TYPE_IDENT opt_protocol_impl opt_attributes '{' faults ',' '}'
     	;
 
 func_macro_name
@@ -1043,7 +1053,6 @@ func_header
 	: optional_type type '.' func_macro_name
 	| optional_type func_macro_name
 	;
-
 
 macro_header
 	: func_header
@@ -1095,11 +1104,8 @@ func_typedef
     : FN optional_type fn_parameter_list
     ;
 
-opt_distinct_inline
-	: DISTINCT
-	| DISTINCT INLINE
-	| INLINE DISTINCT
-	| INLINE
+opt_inline
+	: INLINE
 	| empty
 	;
 
@@ -1174,7 +1180,21 @@ define_ident
 define_declaration
 	: DEF define_ident opt_attributes ';'
 	| DEF define_attribute opt_attributes';'
-	| DEF TYPE_IDENT opt_attributes '=' opt_distinct_inline typedef_type opt_attributes ';'
+	| DEF TYPE_IDENT opt_attributes '=' typedef_type opt_attributes ';'
+	;
+
+protocol_body
+	: func_typedef
+	| protocol_body func_typedef
+	;
+
+protocol_declaration
+	: PROTOCOL TYPE_IDENT '{' '}'
+	| PROTOCOL TYPE_IDENT '{' protocol_body '}'
+	;
+
+distinct_declaration
+	: DISTINCT TYPE_IDENT opt_protocol_impl opt_attributes '=' opt_inline type opt_generic_parameters ';'
 	;
 
 tl_ct_if
@@ -1243,6 +1263,8 @@ top_level
 	| define_declaration
 	| static_declaration
 	| bitstruct_declaration
+	| distinct_declaration
+	| protocol_declaration
 	;
 
 

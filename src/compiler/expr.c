@@ -609,7 +609,7 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 			return;
 		}
 		case TYPE_DISTINCT:
-			expr_rewrite_to_const_zero(expr, type->decl->distinct_decl.base_type);
+			expr_rewrite_to_const_zero(expr, type->decl->distinct->type);
 			break;
 	}
 	expr->type = type;

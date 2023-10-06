@@ -502,7 +502,7 @@ void sema_trace_liveness(void)
 	bool keep_tests = active_target.testing;
 	bool keep_benchmarks = active_target.benchmarking;
 	FOREACH_BEGIN(Decl *function, global_context.method_extensions)
-		if (function->func_decl.is_dynamic) function->no_strip = true;
+		if (function->func_decl.attr_dynamic) function->no_strip = true;
 		if (function->is_export || function->no_strip) sema_trace_decl_liveness(function);
 	FOREACH_END();
 	FOREACH_BEGIN(Module *module, global_context.module_list)
@@ -534,7 +534,7 @@ INLINE void sema_trace_decl_dynamic_methods(Decl *decl)
 	for (unsigned i = 0; i < method_count; i++)
 	{
 		Decl *method = methods[i];
-		if (method->decl_kind == DECL_MACRO || !method->func_decl.is_dynamic) continue;
+		if (method->decl_kind == DECL_MACRO || !method->func_decl.attr_dynamic) continue;
 		sema_trace_decl_liveness(method);
 	}
 }
@@ -562,7 +562,7 @@ RETRY:
 			decl = decl->define_decl.alias;
 			goto RETRY;
 		case DECL_DISTINCT:
-			sema_trace_type_liveness(decl->distinct_decl.base_type);
+			sema_trace_type_liveness(decl->distinct->type);
 			FALLTHROUGH;
 		case DECL_ENUM:
 		case DECL_BITSTRUCT:

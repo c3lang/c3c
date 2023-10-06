@@ -117,6 +117,24 @@ INLINE void llvm_emit_xtor(GenContext *c, LLVMValueRef *list, const char *name)
 	LLVMSetLinkage(global, LLVMAppendingLinkage);
 	LLVMSetInitializer(global, array);
 }
+
+LLVMValueRef llvm_get_selector(GenContext *c, const char *name)
+{
+	scratch_buffer_clear();
+	scratch_buffer_printf("$sel.%s", name);
+	const char *sel_name = scratch_buffer_to_string();
+	LLVMValueRef selector_old = LLVMGetNamedGlobal(c->module, sel_name);
+	if (selector_old) return selector_old;
+	size_t name_len = strlen(name);
+	LLVMTypeRef char_array_type = LLVMArrayType(c->byte_type, name_len + 1);
+	LLVMValueRef selector = llvm_add_global_raw(c, sel_name, char_array_type, 0);
+	LLVMSetGlobalConstant(selector, 1);
+	LLVMSetInitializer(selector, llvm_get_zstring(c, name, name_len));
+	LLVMSetLinkage(selector, LLVMLinkOnceODRLinkage);
+	llvm_set_comdat(c, selector);
+	return selector;
+}
+
 void llvm_emit_constructors_and_destructors(GenContext *c)
 {
 	llvm_emit_xtor(c, c->constructors, "llvm.global_ctors");
@@ -1082,14 +1100,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 		case DECL_FUNC:
 			if (decl->func_decl.attr_protocol_method)
 			{
-				size_t name_len = strlen(decl->name);
-				LLVMTypeRef char_array_type = LLVMArrayType(c->byte_type, name_len + 1);
-				LLVMValueRef selector = llvm_add_global_raw(c, decl_get_extname(decl), char_array_type, 0);
-				LLVMSetGlobalConstant(selector, 1);
-				LLVMSetInitializer(selector, llvm_get_zstring(c, decl->name, name_len));
-				LLVMSetLinkage(selector, LLVMLinkOnceODRLinkage);
-				llvm_set_comdat(c, selector);
-				return decl->backend_ref = selector;
+				return decl->backend_ref = llvm_get_selector(c, decl->name);
 			}
 			backend_ref = decl->backend_ref = LLVMAddFunction(c->module, decl_get_extname(decl), llvm_get_type(c, decl->type));
 			llvm_append_function_attributes(c, decl);

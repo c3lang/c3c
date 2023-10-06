@@ -43,7 +43,7 @@ static bool sema_analyse_attributes(SemaContext *context, Decl *decl, Attr **att
 									bool *erase_decl);
 static bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl, bool *erase_decl);
 static bool sema_check_section(SemaContext *context, Attr *attr);
-static inline bool sema_analyse_attribute_decl(SemaContext *c, Decl *decl);
+static inline bool sema_analyse_attribute_decl(SemaContext *c, Decl *decl, bool *erase_decl);
 
 static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *erase_decl);
 bool sema_analyse_decl_type(SemaContext *context, Type *type, SourceSpan span);
@@ -57,7 +57,7 @@ static Module *module_instantiate_generic(SemaContext *context, Module *module, 
 
 static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param, bool *has_default);
 static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *erase_decl);
-static inline bool sema_analyse_error(SemaContext *context, Decl *decl);
+static inline bool sema_analyse_error(SemaContext *context, Decl *decl, bool *erase_decl);
 
 
 static bool sema_check_section(SemaContext *context, Attr *attr)
@@ -127,6 +127,30 @@ static inline bool sema_check_param_uniqueness_and_type(Decl **decls, Decl *curr
 			decl_poison(decls[i]);
 			decl_poison(current);
 			return false;
+		}
+	}
+	return true;
+}
+
+static inline bool sema_analyse_protocols(SemaContext *context, Decl *decl)
+{
+	TypeInfo **protocols = decl->protocols;
+	unsigned count = vec_size(protocols);
+	for (unsigned i = 0; i < count; i++)
+	{
+		TypeInfo *proto = protocols[i];
+		if (!sema_resolve_type_info(context, proto, RESOLVE_TYPE_ALLOW_ANY)) return false;
+		Type *proto_type = proto->type->canonical;
+		if (proto_type->type_kind != TYPE_PROTOCOL)
+		{
+			RETURN_SEMA_ERROR(proto, "Expected a protocol name.");
+		}
+		for (unsigned j = 0; j < i; j++)
+		{
+			if (protocols[j]->type->canonical == proto_type)
+			{
+				RETURN_SEMA_ERROR(proto, "Included protocol '%s' more than once, please remove duplicates.", proto_type->name);
+			}
 		}
 	}
 	return true;
@@ -468,6 +492,7 @@ static bool sema_analyse_struct_union(SemaContext *context, Decl *decl, bool *er
 
 	if (!sema_analyse_attributes(context, decl, decl->attributes, domain, erase_decl)) return decl_poison(decl);
 	if (*erase_decl) return true;
+	if (!sema_analyse_protocols(context, decl)) return decl_poison(decl);
 
 	DEBUG_LOG("Beginning analysis of %s.", decl->name ? decl->name : ".anon");
 	bool success;
@@ -750,6 +775,7 @@ static bool sema_analyse_protocol(SemaContext *context, Decl *decl, bool *erase_
 static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl, bool *erase_decl)
 {
 	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_BITSTRUCT, erase_decl)) return decl_poison(decl);
+	if (!sema_analyse_protocols(context, decl)) return decl_poison(decl);
 	if (*erase_decl) return true;
 	DEBUG_LOG("Beginning analysis of %s.", decl->name ? decl->name : ".anon");
 	if (!sema_resolve_type_info(context, decl->bitstruct.base_type, RESOLVE_TYPE_DEFAULT)) return false;
@@ -1088,24 +1114,17 @@ static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl, bool 
 {
 	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_DISTINCT, erase)) return false;
 	if (*erase) return true;
+	if (!sema_analyse_protocols(context, decl)) return decl_poison(decl);
 
-	if (decl->distinct_decl.typedef_decl.is_func)
-	{
-		Decl *fn_decl = decl->distinct_decl.typedef_decl.decl;
-		fn_decl->unit = decl->unit;
-		fn_decl->type = type_new_func(fn_decl, &fn_decl->fntype_decl);
-		decl->distinct_decl.base_type = type_get_ptr(fn_decl->type);
-		return true;
-	}
-	TypeInfo *info = decl->distinct_decl.typedef_decl.type_info;
+	TypeInfo *info = decl->distinct;
 	if (!sema_resolve_type_info(context, info, RESOLVE_TYPE_DEFAULT)) return false;
 	if (type_is_optional(info->type))
 	{
 		SEMA_ERROR(decl, "You cannot create a distinct type from an optional.");
 		return false;
 	}
-	Type *base = info->type->canonical;
-	decl->distinct_decl.base_type = base;
+	// Distinct types drop the canonical
+	Type *base = info->type = info->type->canonical;
 	switch (base->type_kind)
 	{
 		case TYPE_FUNC:
@@ -1210,6 +1229,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 {
 	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_ENUM, erase_decl)) return decl_poison(decl);
 	if (*erase_decl) return true;
+	if (!sema_analyse_protocols(context, decl)) return decl_poison(decl);
 
 	// Resolve the type of the enum.
 	if (!sema_resolve_type_info(context, decl->enums.type_info, RESOLVE_TYPE_DEFAULT)) return false;
@@ -1353,8 +1373,12 @@ ERR:
 	return false;
 }
 
-static inline bool sema_analyse_error(SemaContext *context, Decl *decl)
+static inline bool sema_analyse_error(SemaContext *context, Decl *decl, bool *erase_decl)
 {
+	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_FAULT, erase_decl)) return decl_poison(decl);
+	if (*erase_decl) return true;
+	if (!sema_analyse_protocols(context, decl)) return decl_poison(decl);
+
 	bool success = true;
 	unsigned enums = vec_size(decl->enums.values);
 
@@ -1651,32 +1675,44 @@ static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type
 
 }
 
-static inline Decl *sema_find_protocol_for_method(SemaContext *context, Decl **protocols, Decl *decl)
+
+static inline Decl *sema_find_protocol_for_method(SemaContext *context, Type *parent_type, Decl *method)
 {
-	const char *name = decl->name;
+	// Can the parent even implement a protocol?
+	switch (parent_type->type_kind)
+	{
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		case TYPE_DISTINCT:
+		case TYPE_FAULTTYPE:
+		case TYPE_ENUM:
+			break;
+		default:
+			return NULL;
+	}
+	const char *name = method->name;
 	Decl *first_match = NULL;
 	Decl *first_protocol = NULL;
-	FOREACH_BEGIN(Decl *proto, protocols)
-		FOREACH_BEGIN(Decl *method, proto->protocol_decl.protocol_methods)
-			if (method->name == name)
+	FOREACH_BEGIN(TypeInfo *proto, parent_type->decl->protocols)
+		FOREACH_BEGIN(Decl *proto_method, proto->type->decl->protocol_decl.protocol_methods)
+			if (proto_method->name == name)
 			{
 				if (first_match)
 				{
-					SEMA_ERROR(decl, "Both '%s' and '%s' protocols have a method matching '%s', which prevents it from being implemented.",
-					           first_protocol->name, proto->name, name);
-					return NULL;
+					SEMA_ERROR(method, "Both '%s' and '%s' protocols have a method matching '%s', which prevents it from being implemented.",
+					           first_protocol->name, proto->type->name, name);
+					return poisoned_decl;
 				}
-				first_match = method;
-				first_protocol = proto;
+				first_match = proto_method;
+				first_protocol = proto->type->decl;
 			}
 		FOREACH_END();
 	FOREACH_END();
 	if (!first_match)
 	{
-		SEMA_ERROR(decl, "No matching implemented protocol has the method '%s'", name);
 		return NULL;
 	}
-	if (!sema_analyse_decl(context, first_protocol)) return NULL;
+	if (!sema_analyse_decl(context, first_protocol)) return poisoned_decl;
 	return first_match;
 }
 
@@ -1697,76 +1733,66 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 	if (!sema_resolve_type_info(context, parent_type, RESOLVE_TYPE_FUNC_METHOD)) return false;
 	Type *par_type = parent_type->type->canonical;
 	Decl **params = decl->func_decl.signature.params;
-	bool is_dynamic = decl->func_decl.is_dynamic;
+	bool is_dynamic = decl->func_decl.attr_dynamic;
 	if (!vec_size(params)) RETURN_SEMA_ERROR(decl, "A method must start with an argument of the type "
 												   "it is a method of, e.g. 'fn Foo.test(Foo* foo)'.");
 	if (!sema_is_valid_method_param(context, params[0], par_type, is_dynamic)) return false;
 
 	if (is_dynamic)
 	{
-		TypeInfo *parent = type_infoptr(decl->func_decl.protocol_unresolved);
-		if (!sema_resolve_type_info(context, parent, RESOLVE_TYPE_ALLOW_ANY)) return false;
-		Type *protocol = parent->type;
-		if (protocol->type_kind != TYPE_PROTOCOL) RETURN_SEMA_ERROR(parent, "Expected a protocol not a normal type.");
-		Decl *proto_decl = protocol->decl;
-		if (!sema_analyse_decl(context, proto_decl)) return false;
-		const char *name = decl->name;
-		Decl *implemented_method = NULL;
-		FOREACH_BEGIN(Decl *method, proto_decl->protocol_decl.protocol_methods)
-			if (method->name == name)
+		if (!sema_resolve_type_decl(context, par_type)) return false;
+		Decl *implemented_method = sema_find_protocol_for_method(context, par_type, decl);
+		if (!decl_ok(implemented_method)) return false;
+		if (implemented_method)
+		{
+			Signature protocol_sig = implemented_method->func_decl.signature;
+			Signature this_sig = decl->func_decl.signature;
+			Type *any_rtype = typeget(protocol_sig.rtype);
+			Type *this_rtype = typeget(this_sig.rtype);
+			if (any_rtype->canonical != this_rtype->canonical)
 			{
-				implemented_method = method;
-				break;
-			}
-		FOREACH_END();
-		if (!implemented_method)
-		{
-			RETURN_SEMA_ERROR(decl, "No method named '%s' was found in protocol '%s'.", name, proto_decl->name);
-		}
-
-		Signature protocol_sig = implemented_method->func_decl.signature;
-		Signature this_sig = decl->func_decl.signature;
-		Type *any_rtype = typeget(protocol_sig.rtype);
-		Type *this_rtype = typeget(this_sig.rtype);
-		if (any_rtype->canonical != this_rtype->canonical)
-		{
-			SEMA_ERROR(type_infoptr(this_sig.rtype), "The prototype method has a return type %s, but this function returns %s, they need to match.",
-			           type_quoted_error_string(any_rtype), type_quoted_error_string(this_rtype));
-			SEMA_NOTE(type_infoptr(protocol_sig.rtype), "The interface definition is here.");
-			return false;
-		}
-		Decl **any_params = protocol_sig.params;
-		Decl **this_params = this_sig.params;
-		unsigned any_param_count = vec_size(any_params);
-		unsigned this_param_count = vec_size(this_params);
-		if (any_param_count != this_param_count)
-		{
-			if (any_param_count > this_param_count)
-			{
-				SEMA_ERROR(decl, "This function is missing parameters, %d parameters were expected.", any_param_count);
-				SEMA_NOTE(any_params[this_param_count], "Compare with the interface definition.");
+				SEMA_ERROR(type_infoptr(this_sig.rtype), "The prototype method has a return type %s, but this function returns %s, they need to match.",
+				           type_quoted_error_string(any_rtype), type_quoted_error_string(this_rtype));
+				SEMA_NOTE(type_infoptr(protocol_sig.rtype), "The interface definition is here.");
 				return false;
 			}
-			else
+			Decl **any_params = protocol_sig.params;
+			Decl **this_params = this_sig.params;
+			unsigned any_param_count = vec_size(any_params);
+			unsigned this_param_count = vec_size(this_params);
+			if (any_param_count != this_param_count)
 			{
-				SEMA_ERROR(this_params[any_param_count], "This function has too many parameters (%d).", this_param_count);
-				SEMA_NOTE(decl, "Compare with the interface, which has only %d parameter%s.",
-				          any_param_count, any_param_count == 1 ? "" : "s");
-			}
-			return false;
-		}
-		FOREACH_BEGIN_IDX(i, Decl *param, this_params)
-			if (i == 0) continue;
-			if (param->type->canonical != any_params[i]->type->canonical)
-			{
-				SEMA_ERROR(vartype(param), "The prototype argument has type %s, but in this function it has type %s. Please make them match.",
-				           type_quoted_error_string(any_params[i]->type), type_quoted_error_string(param->type));
-				SEMA_NOTE(vartype(any_params[i]), "The interface definition is here.");
+				if (any_param_count > this_param_count)
+				{
+					SEMA_ERROR(decl, "This function is missing parameters, %d parameters were expected.", any_param_count);
+					SEMA_NOTE(any_params[this_param_count], "Compare with the interface definition.");
+					return false;
+				}
+				else
+				{
+					SEMA_ERROR(this_params[any_param_count], "This function has too many parameters (%d).", this_param_count);
+					SEMA_NOTE(decl, "Compare with the interface, which has only %d parameter%s.",
+					          any_param_count, any_param_count == 1 ? "" : "s");
+				}
 				return false;
 			}
-		FOREACH_END();
+			FOREACH_BEGIN_IDX(i, Decl *param, this_params)
+				if (i == 0) continue;
+				if (param->type->canonical != any_params[i]->type->canonical)
+				{
+					SEMA_ERROR(vartype(param), "The prototype argument has type %s, but in this function it has type %s. Please make them match.",
+					           type_quoted_error_string(any_params[i]->type), type_quoted_error_string(param->type));
+					SEMA_NOTE(vartype(any_params[i]), "The interface definition is here.");
+					return false;
+				}
+			FOREACH_END();
 
-		decl->func_decl.protocol_method = declid(implemented_method);
+			decl->func_decl.protocol_method = declid(implemented_method);
+		}
+		else
+		{
+			decl->func_decl.protocol_method = 0;
+		}
 	}
 	return unit_add_method_like(context->unit, par_type, decl);
 }
@@ -1870,6 +1896,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_BUILTIN] = ATTR_MACRO | ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST,
 			[ATTRIBUTE_CALLCONV] = ATTR_FUNC | ATTR_PROTOCOL_METHOD,
 			[ATTRIBUTE_DEPRECATED] = USER_DEFINED_TYPES | CALLABLE_TYPE | ATTR_CONST | ATTR_GLOBAL | ATTR_MEMBER | ATTR_BITSTRUCT_MEMBER,
+			[ATTRIBUTE_DYNAMIC] = ATTR_FUNC,
 			[ATTRIBUTE_EXPORT] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | EXPORTED_USER_DEFINED_TYPES,
 			[ATTRIBUTE_EXTERN] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES,
 			[ATTRIBUTE_FINALIZER] = ATTR_FUNC,
@@ -1887,6 +1914,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_NOSTRIP] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | EXPORTED_USER_DEFINED_TYPES,
 			[ATTRIBUTE_OBFUSCATE] = ATTR_ENUM | ATTR_FAULT,
 			[ATTRIBUTE_OPERATOR] = ATTR_MACRO | ATTR_FUNC,
+			[ATTRIBUTE_OPTIONAL] = ATTR_PROTOCOL_METHOD,
 			[ATTRIBUTE_OVERLAP] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_PACKED] = ATTR_STRUCT | ATTR_UNION,
 			[ATTRIBUTE_PRIVATE] = ATTR_FUNC | ATTR_MACRO | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES | ATTR_DEF,
@@ -2138,6 +2166,9 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			break;
 		case ATTRIBUTE_OVERLAP:
 			decl->bitstruct.overlap = true;
+			break;
+		case ATTRIBUTE_DYNAMIC:
+			decl->func_decl.attr_dynamic = true;
 			break;
 		case ATTRIBUTE_BIGENDIAN:
 			if (decl->bitstruct.little_endian)
@@ -2733,7 +2764,7 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 	}
 	else if (!is_protocol_method)
 	{
-		if (decl->func_decl.is_dynamic)
+		if (decl->func_decl.attr_dynamic)
 		{
 			SEMA_ERROR(decl, "Only methods may implement protocols.");
 			return decl_poison(decl);
@@ -3533,8 +3564,11 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 	return symbol;
 }
 
-static inline bool sema_analyse_attribute_decl(SemaContext *c, Decl *decl)
+static inline bool sema_analyse_attribute_decl(SemaContext *c, Decl *decl, bool *erase_decl)
 {
+	if (!sema_analyse_attributes(c, decl, decl->attributes, ATTR_DEF, erase_decl)) return decl_poison(decl);
+	if (*erase_decl) return true;
+
 	Decl **params = decl->attr_decl.params;
 	unsigned param_count = vec_size(params);
 	for (unsigned i = 0; i < param_count; i++)
@@ -3571,6 +3605,7 @@ static inline bool sema_analyse_attribute_decl(SemaContext *c, Decl *decl)
 static inline bool sema_analyse_define(SemaContext *c, Decl *decl, bool *erase_decl)
 {
 	if (!sema_analyse_attributes(c, decl, decl->attributes, ATTR_DEF, erase_decl)) return decl_poison(decl);
+	if (*erase_decl) return true;
 
 	// 1. The plain define
 	if (decl->define_decl.define_kind == DEFINE_IDENT_ALIAS)
@@ -3624,7 +3659,7 @@ RETRY:
 			goto RETRY;
 		case TYPE_DISTINCT:
 			if (!sema_analyse_decl(context, type->decl)) return false;
-			type = type->decl->distinct_decl.base_type;
+			type = type->decl->distinct->type;
 			goto RETRY;
 		case TYPE_ARRAY:
 		case TYPE_SUBARRAY:
@@ -3690,7 +3725,7 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 			set_external_name = true;
 			break;
 		case DECL_ATTRIBUTE:
-			if (!sema_analyse_attribute_decl(context, decl)) goto FAILED;
+			if (!sema_analyse_attribute_decl(context, decl, &erase_decl)) goto FAILED;
 			break;
 		case DECL_DISTINCT:
 			if (!sema_analyse_distinct(context, decl, &erase_decl)) goto FAILED;
@@ -3704,7 +3739,7 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 			set_external_name = true;
 			break;
 		case DECL_FAULT:
-			if (!sema_analyse_error(context, decl)) goto FAILED;
+			if (!sema_analyse_error(context, decl, &erase_decl)) goto FAILED;
 			set_external_name = true;
 			break;
 		case DECL_DEFINE:

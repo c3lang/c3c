@@ -414,7 +414,7 @@ Decl *decl_find_enum_constant(Decl *decl, const char *name)
 AlignSize decl_find_member_offset(Decl *decl, Decl *member)
 {
 	static const AlignSize NO_MATCH = ~(AlignSize)0;
-	while (decl->decl_kind == DECL_DISTINCT) decl = decl->distinct_decl.base_type->decl;
+	while (decl->decl_kind == DECL_DISTINCT) decl = decl->distinct->type->decl;
 	Decl **members = NULL;
 	switch (decl->decl_kind)
 	{

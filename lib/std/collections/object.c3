@@ -10,7 +10,7 @@ const Object TRUE_OBJECT = { .b = true, .type = bool.typeid };
 const Object FALSE_OBJECT = { .b = false, .type = bool.typeid };
 const Object NULL_OBJECT = { .type = void*.typeid };
 
-struct Object
+struct Object (Printable)
 {
 	typeid type;
 	Allocator* allocator;
@@ -27,7 +27,7 @@ struct Object
 }
 
 
-fn usz! Object.to_format(&self, Formatter* formatter) : Printable
+fn usz! Object.to_format(&self, Formatter* formatter) @dynamic
 {
 	switch (self.type)
 	{

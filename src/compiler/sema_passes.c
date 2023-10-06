@@ -500,7 +500,7 @@ INLINE void sema_analyse_inner_func_ptr(SemaContext *c, Decl *decl)
 	switch (decl->decl_kind)
 	{
 		case DECL_DISTINCT:
-			inner = decl->distinct_decl.base_type;
+			inner = decl->distinct->type;
 			break;
 		case DECL_TYPEDEF:
 			inner = decl->type->canonical;
@@ -598,6 +598,77 @@ void sema_analysis_pass_lambda(Module *module)
 			}
 			sema_context_destroy(&context);
 		}
+	}
+
+	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);
+}
+
+static inline bool sema_check_protocols(Decl *decl)
+{
+	Decl **store = sema_decl_stack_store();
+	FOREACH_BEGIN(Decl *method, decl->methods)
+		sema_decl_stack_push(method);
+	FOREACH_END();
+	FOREACH_BEGIN(TypeInfo *protocol_type, decl->protocols)
+		Decl *protocol = protocol_type->type->decl;
+		FOREACH_BEGIN(Decl *method, protocol->methods)
+			if (method->func_decl.attr_optional) continue;
+			Decl *matching_method = sema_decl_stack_resolve_symbol(method->name);
+			if (!matching_method)
+			{
+				SEMA_ERROR(protocol_type, "'%s' was not fully implemented, required method '%s' needs to be implemented, did you forget it?",
+				           protocol->name, method->name);
+				sema_decl_stack_restore(store);
+				return false;
+			}
+			if (matching_method->decl_kind != DECL_FUNC)
+			{
+				SEMA_ERROR(matching_method, "'%s' was not fully implemented, it requires '%s' to be a function marked '@dynamic'.",
+				           protocol->name, method->name);
+				sema_decl_stack_restore(store);
+				return false;
+			}
+			if (!matching_method->func_decl.attr_dynamic)
+			{
+				SEMA_ERROR(matching_method, "'%s' was not fully implemented, you need to mark '%s' as '@dynamic'.",
+				           protocol->name, method->name);
+				sema_decl_stack_restore(store);
+				return false;
+			}
+		FOREACH_END();
+	FOREACH_END();
+	sema_decl_stack_restore(store);
+	return true;
+}
+
+void sema_analysis_pass_protocol(Module *module)
+{
+	DEBUG_LOG("Pass: Protocol analysis %s", module->name->module);
+
+	VECEACH(module->units, index)
+	{
+		CompilationUnit *unit = module->units[index];
+		SemaContext context;
+		sema_context_init(&context, unit);
+		FOREACH_BEGIN(Decl *decl, unit->types)
+			switch (decl->decl_kind)
+			{
+				case DECL_DISTINCT:
+				case DECL_STRUCT:
+				case DECL_UNION:
+				case DECL_ENUM:
+				case DECL_FAULT:
+				case DECL_BITSTRUCT:
+					break;
+				default:
+					continue;
+			}
+			if (decl->protocols)
+			{
+				sema_check_protocols(decl);
+			}
+		}
+		sema_context_destroy(&context);
 	}
 
 	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);

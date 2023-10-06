@@ -1,6 +1,6 @@
 module test;
 
-def Foo = distinct int;
+distinct Foo = int;
 
 struct Struct
 {
@@ -8,8 +8,8 @@ struct Struct
     int y;
 }
 
-def Struct2 = distinct Struct;
-def StructArr = distinct Struct2[3];
+distinct Struct2 = Struct;
+distinct StructArr = Struct2[3];
 
 fn void test(int x)
 {

@@ -10,7 +10,7 @@ module std::collections::enumset(<Enum>);
 def EnumSetType = $typefrom(private::type_for_enum_elements(Enum.elements)) @private ;
 
 const IS_CHAR_ARRAY = Enum.elements > 128;
-def EnumSet = distinct EnumSetType;
+distinct EnumSet (Printable) = EnumSetType;
 
 fn void EnumSet.add(&self, Enum v)
 {
@@ -125,7 +125,7 @@ fn EnumSet EnumSet.xor_of(&self, EnumSet s)
 	$endif
 }
 
-fn usz! EnumSet.to_format(&set, Formatter* formatter) : Printable
+fn usz! EnumSet.to_format(&set, Formatter* formatter) @dynamic
 {
 	usz n = formatter.print("[")!;
 	bool found;
@@ -140,7 +140,7 @@ fn usz! EnumSet.to_format(&set, Formatter* formatter) : Printable
 	return n;
 }
 
-fn String EnumSet.to_string(&set, Allocator* using = mem::heap()) : Printable
+fn String EnumSet.to_string(&set, Allocator* using = mem::heap()) @dynamic
 {
 	return string::printf("%s", *set);
 }

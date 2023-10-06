@@ -3,7 +3,7 @@ enum Foo : char
 	ABC,
 	BCD
 }
-def Abc = distinct int;
+distinct Abc = int;
 fn void main()
 {
 	$assert (Foo.ABC - Foo.BCD) == 255;

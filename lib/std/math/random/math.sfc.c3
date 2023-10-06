@@ -10,14 +10,14 @@ const ODD_PHI8 @local = 0x9f;
 
 // Sfc128
 
-def Sfc128Random = distinct uint128[4];
+distinct Sfc128Random (Random) = uint128[4];
 
-fn void  Sfc128Random.set_seed(&self, char[] input) : Random
+fn void  Sfc128Random.set_seed(&self, char[] input) @dynamic
 {
 	*self = (Sfc128Random)random::make_seed(uint128[4], input);
 }
 
-fn uint128 Sfc128Random.next_int128(&self) : Random // TODO: Find good constant
+fn uint128 Sfc128Random.next_int128(&self) @dynamic // TODO: Find good constant
 {
 	uint128* s = (uint128[4]*)self;
 	uint128 result = s[0] + s[1] + s[3];
@@ -31,23 +31,23 @@ fn uint128 Sfc128Random.next_int128(&self) : Random // TODO: Find good constant
 /**
  * @require bytes.len > 0
  **/
-fn void Sfc128Random.next_bytes(&self, char[] bytes) : Random => @random_value_to_bytes(self.next_int128, bytes);
-fn ulong Sfc128Random.next_long(&self) : Random => (uint)self.next_int128();
-fn uint Sfc128Random.next_int(&self) : Random => (uint)self.next_int128();
-fn ushort Sfc128Random.next_short(&self) : Random => (ushort)self.next_int128();
-fn char Sfc128Random.next_byte(&self) : Random => (char)self.next_int128();
+fn void Sfc128Random.next_bytes(&self, char[] bytes) @dynamic => @random_value_to_bytes(self.next_int128, bytes);
+fn ulong Sfc128Random.next_long(&self) @dynamic => (uint)self.next_int128();
+fn uint Sfc128Random.next_int(&self) @dynamic => (uint)self.next_int128();
+fn ushort Sfc128Random.next_short(&self) @dynamic => (ushort)self.next_int128();
+fn char Sfc128Random.next_byte(&self) @dynamic => (char)self.next_int128();
 
 
 // -------------------------------- Sfc64 --------------------------------
 
-def Sfc64Random = distinct ulong[4];
+distinct Sfc64Random (Random) = ulong[4];
 
-fn void  Sfc64Random.set_seed(&self, char[] input) : Random
+fn void  Sfc64Random.set_seed(&self, char[] input) @dynamic
 {
 	*self = (Sfc64Random)random::make_seed(ulong[4], input);
 }
 
-fn ulong Sfc64Random.next_long(&self) : Random
+fn ulong Sfc64Random.next_long(&self) @dynamic
 {
 	ulong* s = (ulong[4]*)self;
 	ulong result = s[0] + s[1] + s[3];
@@ -61,22 +61,22 @@ fn ulong Sfc64Random.next_long(&self) : Random
 /**
  * @require bytes.len > 0
  **/
-fn void Sfc64Random.next_bytes(&self, char[] bytes) : Random => @random_value_to_bytes(self.next_long, bytes);
-fn uint128 Sfc64Random.next_int128(&self) : Random => @long_to_int128(self.next_long());
-fn uint Sfc64Random.next_int(&self) : Random => (uint)self.next_long();
-fn ushort Sfc64Random.next_short(&self) : Random => (ushort)self.next_long();
-fn char Sfc64Random.next_byte(&self) : Random => (char)self.next_long();
+fn void Sfc64Random.next_bytes(&self, char[] bytes) @dynamic => @random_value_to_bytes(self.next_long, bytes);
+fn uint128 Sfc64Random.next_int128(&self) @dynamic => @long_to_int128(self.next_long());
+fn uint Sfc64Random.next_int(&self) @dynamic => (uint)self.next_long();
+fn ushort Sfc64Random.next_short(&self) @dynamic => (ushort)self.next_long();
+fn char Sfc64Random.next_byte(&self) @dynamic => (char)self.next_long();
 
 // -------------------------------- Sfc32 --------------------------------
 
-def Sfc32Random = distinct uint[4];
+distinct Sfc32Random (Random) = uint[4];
 
-fn void  Sfc32Random.set_seed(&self, char[] input) : Random
+fn void  Sfc32Random.set_seed(&self, char[] input) @dynamic
 {
 	*self = (Sfc32Random)random::make_seed(uint[4], input);
 }
 
-fn uint Sfc32Random.next_int(&sfc) : Random
+fn uint Sfc32Random.next_int(&sfc) @dynamic
 {
 	uint* s = (uint[4]*)sfc;
 	uint result = s[0] + s[1] + s[3];
@@ -90,23 +90,23 @@ fn uint Sfc32Random.next_int(&sfc) : Random
 /**
  * @require bytes.len > 0
  **/
-fn void Sfc32Random.next_bytes(&self, char[] bytes) : Random => @random_value_to_bytes(self.next_int, bytes);
-fn uint128 Sfc32Random.next_int128(&self) : Random => @long_to_int128(self.next_long());
-fn ulong Sfc32Random.next_long(&self) : Random => @int_to_long(self.next_int());
-fn ushort Sfc32Random.next_short(&self) : Random => (ushort)self.next_int();
-fn char Sfc32Random.next_byte(&self) : Random => (char)self.next_int();
+fn void Sfc32Random.next_bytes(&self, char[] bytes) @dynamic => @random_value_to_bytes(self.next_int, bytes);
+fn uint128 Sfc32Random.next_int128(&self) @dynamic => @long_to_int128(self.next_long());
+fn ulong Sfc32Random.next_long(&self) @dynamic => @int_to_long(self.next_int());
+fn ushort Sfc32Random.next_short(&self) @dynamic => (ushort)self.next_int();
+fn char Sfc32Random.next_byte(&self) @dynamic => (char)self.next_int();
 
 // -------------------------------- Sfc16 --------------------------------
 
-def Sfc16Random = distinct ushort[4];
+distinct Sfc16Random (Random) = ushort[4];
 
-fn void  Sfc16Random.set_seed(&self, char[] input) : Random
+fn void  Sfc16Random.set_seed(&self, char[] input) @dynamic
 {
 	*self = (Sfc16Random)random::make_seed(ushort[4], input);
 }
 
 
-fn ushort Sfc16Random.next_short(&seed) : Random
+fn ushort Sfc16Random.next_short(&seed) @dynamic
 {
 	ushort* s = (ushort[4]*)seed;
 	ushort result = s[0] + s[1] + s[3];
@@ -120,23 +120,23 @@ fn ushort Sfc16Random.next_short(&seed) : Random
 /**
  * @require bytes.len > 0
  **/
-fn void Sfc16Random.next_bytes(&self, char[] bytes) : Random => @random_value_to_bytes(self.next_short, bytes);
-fn uint128 Sfc16Random.next_int128(&self) : Random => @long_to_int128(self.next_long());
-fn ulong Sfc16Random.next_long(&self) : Random => @int_to_long(self.next_int());
-fn uint Sfc16Random.next_int(&self) : Random => @short_to_int(self.next_short());
-fn char Sfc16Random.next_byte(&self) : Random => (char)self.next_short();
+fn void Sfc16Random.next_bytes(&self, char[] bytes) @dynamic => @random_value_to_bytes(self.next_short, bytes);
+fn uint128 Sfc16Random.next_int128(&self) @dynamic => @long_to_int128(self.next_long());
+fn ulong Sfc16Random.next_long(&self) @dynamic => @int_to_long(self.next_int());
+fn uint Sfc16Random.next_int(&self) @dynamic => @short_to_int(self.next_short());
+fn char Sfc16Random.next_byte(&self) @dynamic => (char)self.next_short();
 
 // -------------------------------- Sfc8 --------------------------------
 
 
-def Sfc8Random = distinct char[4];
+distinct Sfc8Random (Random) = char[4];
 
-fn void  Sfc8Random.set_seed(&self, char[] input) : Random
+fn void  Sfc8Random.set_seed(&self, char[] input) @dynamic
 {
 	*self = (Sfc8Random)random::make_seed(char[4], input);
 }
 
-fn char Sfc8Random.next_byte(&self) : Random // TODO: Find better constants
+fn char Sfc8Random.next_byte(&self) @dynamic // TODO: Find better constants
 {
 	char* s = (char[4]*)self;
 	char result = s[0] + s[1] + s[3];
@@ -147,8 +147,8 @@ fn char Sfc8Random.next_byte(&self) : Random // TODO: Find better constants
 	return result;
 }
 
-fn void Sfc8Random.next_bytes(&self, char[] bytes) : Random => @random_value_to_bytes(self.next_byte, bytes);
-fn uint128 Sfc8Random.next_int128(&self) : Random => @long_to_int128(self.next_long());
-fn ulong Sfc8Random.next_long(&self) : Random => @int_to_long(self.next_int());
-fn uint Sfc8Random.next_int(&self) : Random => @short_to_int(self.next_short());
-fn ushort Sfc8Random.next_short(&self) : Random => @char_to_short(self.next_byte());
+fn void Sfc8Random.next_bytes(&self, char[] bytes) @dynamic => @random_value_to_bytes(self.next_byte, bytes);
+fn uint128 Sfc8Random.next_int128(&self) @dynamic => @long_to_int128(self.next_long());
+fn ulong Sfc8Random.next_long(&self) @dynamic => @int_to_long(self.next_int());
+fn uint Sfc8Random.next_int(&self) @dynamic => @short_to_int(self.next_short());
+fn ushort Sfc8Random.next_short(&self) @dynamic => @char_to_short(self.next_byte());

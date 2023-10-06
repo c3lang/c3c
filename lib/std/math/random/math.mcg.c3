@@ -7,9 +7,9 @@ const MUL_MCG16 @local = 0x93d5; // TODO: Find good constant
 
 // Mcg128_64
 
-def Mcg128Random = distinct uint128;
+distinct Mcg128Random (Random) = uint128;
 
-fn void Mcg128Random.set_seed(&self, char[] seed) : Random
+fn void Mcg128Random.set_seed(&self, char[] seed) @dynamic
 {
 	*self = (Mcg128Random)(random::make_seed(uint128, seed) | 1);
 }
@@ -17,12 +17,12 @@ fn void Mcg128Random.set_seed(&self, char[] seed) : Random
 /**
  * @require bytes.len > 0
  **/
-fn void Mcg128Random.next_bytes(&self, char[] bytes) : Random
+fn void Mcg128Random.next_bytes(&self, char[] bytes) @dynamic
 {
 	@random_value_to_bytes(self.next_long, bytes);
 }
 
-fn ulong Mcg128Random.next_long(&self) : Random
+fn ulong Mcg128Random.next_long(&self) @dynamic
 {
 	uint128* s = (uint128*)self;
 	ulong result = (ulong)(*s >> 64);
@@ -30,19 +30,19 @@ fn ulong Mcg128Random.next_long(&self) : Random
 	return result;
 }
 
-fn uint128 Mcg128Random.next_int128(&self) : Random => @long_to_int128(self.next_long());
-fn uint Mcg128Random.next_int(&self) : Random => (uint)self.next_long();
-fn ushort Mcg128Random.next_short(&self) : Random => (ushort)self.next_long();
-fn char Mcg128Random.next_byte(&self) : Random => (char)self.next_long();
+fn uint128 Mcg128Random.next_int128(&self) @dynamic => @long_to_int128(self.next_long());
+fn uint Mcg128Random.next_int(&self) @dynamic => (uint)self.next_long();
+fn ushort Mcg128Random.next_short(&self) @dynamic => (ushort)self.next_long();
+fn char Mcg128Random.next_byte(&self) @dynamic => (char)self.next_long();
 
 
 
 
 // Mcg64RandomState
 
-def Mcg64Random = distinct ulong;
+distinct Mcg64Random (Random) = ulong;
 
-fn void Mcg64Random.set_seed(&self, char[] seed) : Random
+fn void Mcg64Random.set_seed(&self, char[] seed) @dynamic
 {
 	*self = (Mcg64Random)random::make_seed(ulong, seed) | 1;
 }
@@ -50,12 +50,12 @@ fn void Mcg64Random.set_seed(&self, char[] seed) : Random
 /**
  * @require bytes.len > 0
  **/
-fn void Mcg64Random.next_bytes(&self, char[] bytes) : Random
+fn void Mcg64Random.next_bytes(&self, char[] bytes) @dynamic
 {
 	@random_value_to_bytes(self.next_int, bytes);
 }
 
-fn uint Mcg64Random.next_int(&self) : Random
+fn uint Mcg64Random.next_int(&self) @dynamic
 {
 	ulong* s = (ulong*)self;
 	uint result = (uint)(*s >> 32);
@@ -63,22 +63,22 @@ fn uint Mcg64Random.next_int(&self) : Random
 	return result;
 }
 
-fn uint128 Mcg64Random.next_int128(&self) : Random => @long_to_int128(self.next_long());
-fn ulong Mcg64Random.next_long(&self) : Random => @int_to_long(self.next_int());
-fn ushort Mcg64Random.next_short(&self) : Random => (ushort)self.next_int();
-fn char Mcg64Random.next_byte(&self) : Random => (char)self.next_int();
+fn uint128 Mcg64Random.next_int128(&self) @dynamic => @long_to_int128(self.next_long());
+fn ulong Mcg64Random.next_long(&self) @dynamic => @int_to_long(self.next_int());
+fn ushort Mcg64Random.next_short(&self) @dynamic => (ushort)self.next_int();
+fn char Mcg64Random.next_byte(&self) @dynamic => (char)self.next_int();
 
 
 // Mcg32Random
 
-def Mcg32Random = distinct uint;
+distinct Mcg32Random (Random) = uint;
 
-fn void Mcg32Random.set_seed(&self, char[] seed) : Random
+fn void Mcg32Random.set_seed(&self, char[] seed) @dynamic
 {
 	*self = (Mcg32Random)random::make_seed(uint, seed) | 1;
 }
 
-fn ushort Mcg32Random.next_short(&self)
+fn ushort Mcg32Random.next_short(&self) @dynamic
 {
 	uint* s = (uint*)self;
 	ushort result = (ushort)(*s >> 16);
@@ -89,22 +89,22 @@ fn ushort Mcg32Random.next_short(&self)
 /**
  * @require bytes.len > 0
  **/
-fn void Mcg32Random.next_bytes(&self, char[] bytes) : Random => @random_value_to_bytes(self.next_short, bytes);
-fn uint128 Mcg32Random.next_int128(&self) : Random => @long_to_int128(self.next_long());
-fn ulong Mcg32Random.next_long(&self) : Random => @int_to_long(self.next_int());
-fn uint Mcg32Random.next_int(&self) : Random => @short_to_int(self.next_short());
-fn char Mcg32Random.next_byte(&self) : Random => (char)self.next_short();
+fn void Mcg32Random.next_bytes(&self, char[] bytes) @dynamic => @random_value_to_bytes(self.next_short, bytes);
+fn uint128 Mcg32Random.next_int128(&self) @dynamic => @long_to_int128(self.next_long());
+fn ulong Mcg32Random.next_long(&self) @dynamic => @int_to_long(self.next_int());
+fn uint Mcg32Random.next_int(&self) @dynamic => @short_to_int(self.next_short());
+fn char Mcg32Random.next_byte(&self) @dynamic => (char)self.next_short();
 
 // -------------------------------- Mcg16RandomState --------------------------------
 
-def Mcg16Random = distinct ushort;
+distinct Mcg16Random (Random) = ushort;
 
-fn void Mcg16Random.set_seed(&self, char[] seed) : Random
+fn void Mcg16Random.set_seed(&self, char[] seed) @dynamic
 {
 	*self = (Mcg16Random)random::make_seed(ushort, seed) | 1;
 }
 
-fn char Mcg16Random.next_byte(&self) : Random
+fn char Mcg16Random.next_byte(&self) @dynamic
 {
 	ushort* s = (ushort*)self;
 	char result = (char)(*s >> 8);
@@ -112,8 +112,8 @@ fn char Mcg16Random.next_byte(&self) : Random
 	return result;
 }
 
-fn void Mcg16Random.next_bytes(&self, char[] bytes) : Random => @random_value_to_bytes(self.next_byte, bytes);
-fn uint128 Mcg16Random.next_int128(&self) : Random => @long_to_int128(self.next_long());
-fn ulong Mcg16Random.next_long(&self) : Random => @int_to_long(self.next_int());
-fn uint Mcg16Random.next_int(&self) : Random => @short_to_int(self.next_short());
-fn ushort Mcg16Random.next_short(&self) : Random => @char_to_short(self.next_byte());
+fn void Mcg16Random.next_bytes(&self, char[] bytes) @dynamic => @random_value_to_bytes(self.next_byte, bytes);
+fn uint128 Mcg16Random.next_int128(&self) @dynamic => @long_to_int128(self.next_long());
+fn ulong Mcg16Random.next_long(&self) @dynamic => @int_to_long(self.next_int());
+fn uint Mcg16Random.next_int(&self) @dynamic => @short_to_int(self.next_short());
+fn ushort Mcg16Random.next_short(&self) @dynamic => @char_to_short(self.next_byte());

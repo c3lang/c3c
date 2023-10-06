@@ -1,7 +1,7 @@
 module std::net::udp @if(os::SUPPORTS_INET);
 import std::net @public;
 
-def UdpSocket = distinct inline Socket;
+distinct UdpSocket = inline Socket;
 
 fn UdpSocket! connect(String host, uint port, SocketOption... options, IpProtocol ip_protocol = UNSPECIFIED)
 {
