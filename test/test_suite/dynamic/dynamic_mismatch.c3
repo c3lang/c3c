@@ -1,6 +1,6 @@
 protocol TestProto
 {
-	fn int test(&self, int ag);
+	fn int test(int ag);
 }
 
 

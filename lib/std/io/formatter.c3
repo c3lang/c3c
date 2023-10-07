@@ -6,8 +6,8 @@ const int PRINTF_NTOA_BUFFER_SIZE = 256;
 
 protocol Printable
 {
-	fn String to_string(&self, Allocator *using) @optional;
-	fn usz! to_format(&self, Formatter* formatter) @optional;
+	fn String to_string(Allocator *using) @optional;
+	fn usz! to_format(Formatter* formatter) @optional;
 }
 
 fault PrintFault

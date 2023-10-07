@@ -2,13 +2,13 @@ module std::math::random;
 
 protocol Random
 {
-	fn void set_seed(&self, char[] input);
-	fn char next_byte(&self);
-	fn ushort next_short(&self);
-	fn uint next_int(&self);
-	fn ulong next_long(&self);
-	fn uint128 next_int128(&self);
-	fn void next_bytes(&self, char[] buffer);
+	fn void set_seed(char[] input);
+	fn char next_byte();
+	fn ushort next_short();
+	fn uint next_int();
+	fn ulong next_long();
+	fn uint128 next_int128();
+	fn void next_bytes(char[] buffer);
 }
 
 macro Random.seed(&self, seed)

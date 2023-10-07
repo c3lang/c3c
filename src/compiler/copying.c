@@ -880,6 +880,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 		case DECL_ERASED:
 			break;
 		case DECL_PROTOCOL:
+			MACRO_COPY_TYPE_LIST(copy->protocol_decl.parents);
 			MACRO_COPY_DECL_LIST(copy->protocol_decl.protocol_methods);
 			break;
 		case DECL_CT_EXEC:

@@ -69,6 +69,7 @@ const char *kw_out;
 const char *kw_ptr;
 const char *kw_pure;
 const char *kw_return;
+const char *kw_self;
 const char *kw_std;
 const char *kw_std__core;
 const char *kw_std__core__types;
@@ -161,6 +162,7 @@ void symtab_init(uint32_t capacity)
 	kw_ptr = KW_DEF("ptr");
 	kw_pure = KW_DEF("pure");
 	KW_DEF("returns");
+	kw_self = KW_DEF("self");
 	kw_std = KW_DEF("std");
 	kw_std__core = KW_DEF("std::core");
 	kw_std__core__types = KW_DEF("std::core::types");
