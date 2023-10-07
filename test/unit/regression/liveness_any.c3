@@ -2,7 +2,7 @@ module liveness;
 
 protocol TestProto
 {
-	fn void tesT(&self);
+	fn void tesT();
 }
 
 fn void Test.tesT(&self) @dynamic

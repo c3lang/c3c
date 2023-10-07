@@ -4100,6 +4100,14 @@ CHECK_DEEPER:
 	{
 		Decl *ambiguous = NULL;
 		member = sema_resolve_method(context->unit, decl, kw, &ambiguous, &private);
+		// Look at protocol parents
+		if (!member && decl->decl_kind == DECL_PROTOCOL)
+		{
+			FOREACH_BEGIN(TypeInfo *parent_protocol, decl->protocol_decl.parents)
+				member = sema_resolve_method(context->unit, parent_protocol->type->decl, kw, &ambiguous, &private);
+				if (member) break;
+			FOREACH_END();
+		}
 		if (ambiguous)
 		{
 			SEMA_ERROR(expr, "'%s' is an ambiguous name and so cannot be resolved, it may refer to method defined in '%s' or one in '%s'",
@@ -4139,7 +4147,12 @@ CHECK_DEEPER:
 			SEMA_ERROR(expr, "The method '%s' has private visibility.", kw);
 			return false;
 		}
-		SEMA_ERROR(expr, "There is no field or method '%s.%s'.", type_to_error_string(parent->type), kw);
+		if (parent->type->canonical->type_kind == TYPE_PROPTR)
+		{
+			sema_expr_analyse_access(context, expr);
+			RETURN_SEMA_ERROR(expr, "The '%s' protocol has no method '%s', did you spell it correctly?", parent->type->canonical->pointer->canonical->name, kw);
+		}
+		RETURN_SEMA_ERROR(expr, "There is no field or method '%s.%s'.", type_to_error_string(parent->type), kw);
 		return false;
 	}
 

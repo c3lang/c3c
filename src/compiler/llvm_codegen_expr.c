@@ -1445,6 +1445,9 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 			value->value = LLVMBuildIsNotNull(c->builder, value->value, "ptrbool");
 			value->kind = BE_BOOLEAN;
 			break;
+		case CAST_BSINTARR:
+		case CAST_INTARRBS:
+			break;
 		case CAST_BOOLINT:
 			llvm_value_rvalue(c, value);
 			value->value =  LLVMBuildZExt(c->builder, value->value, llvm_get_type(c, to_type), "boolsi");

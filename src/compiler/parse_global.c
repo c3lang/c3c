@@ -1676,16 +1676,13 @@ static inline Decl *parse_protocol_declaration(ParseContext *c)
 	advance_and_verify(c, TOKEN_PROTOCOL);
 	Decl *decl = decl_new_with_type(symstr(c), c->span, DECL_PROTOCOL);
 	if (!consume_type_name(c, "protocol")) return poisoned_decl;
-	const char **parents = NULL;
+	TypeInfo **parents = NULL;
 	if (try_consume(c, TOKEN_COLON))
 	{
 		do
 		{
-			vec_add(parents, symstr(c));
-			if (!try_consume(c, TOKEN_TYPE_IDENT))
-			{
-				RETURN_SEMA_ERROR_HERE("A protocol name was expected here.");
-			}
+			ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_type(c), poisoned_decl);
+			vec_add(parents, type);
 		} while (try_consume(c, TOKEN_COMMA));
 	}
 	decl->protocol_decl.parents = parents;

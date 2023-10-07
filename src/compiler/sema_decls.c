@@ -718,6 +718,15 @@ static bool sema_analyse_protocol(SemaContext *context, Decl *decl, bool *erase_
 {
 	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_INTERFACE, erase_decl)) return decl_poison(decl);
 	if (*erase_decl) return true;
+	FOREACH_BEGIN(TypeInfo *parent, decl->protocol_decl.parents)
+		if (!sema_resolve_type_info(context, parent, RESOLVE_TYPE_ALLOW_ANY)) return decl_poison(decl);
+		if (parent->type->canonical->type_kind != TYPE_PROTOCOL)
+		{
+			SEMA_ERROR(parent, "Only protocols are allowed here.");
+			return decl_poison(decl);
+		}
+		if (!sema_resolve_type_decl(context, parent->type)) return decl_poison(decl);
+	FOREACH_END();
 	Decl **functions = decl->protocol_decl.protocol_methods;
 	unsigned count = vec_size(functions);
 	for (unsigned i = 0; i < count; i++)
@@ -736,23 +745,13 @@ static bool sema_analyse_protocol(SemaContext *context, Decl *decl, bool *erase_
 		}
 		method->func_decl.attr_protocol_method = true;
 		bool erase = false;
-		Decl **params = method->func_decl.signature.params;
-		if (!vec_size(params))
-		{
-			SEMA_ERROR(method, "A protocol method needs to contain a `&self` argument.");
-			return decl_poison(decl);
-		}
-		Decl *first = params[0];
-		if (first->var.type_info || first->var.kind != VARDECL_PARAM_REF)
-		{
-			SEMA_ERROR(first, "The first argument must be `&self`.");
-			return decl_poison(decl);
-		}
+		Decl *first = decl_new_var(kw_self, decl->span, NULL, VARDECL_PARAM);
 		first->type = type_voidptr;
 		first->var.kind = VARDECL_PARAM;
 		first->unit = context->unit;
 		first->resolve_status = RESOLVE_DONE;
 		first->alignment = type_abi_alignment(type_voidptr);
+		vec_insert_first(method->func_decl.signature.params, first);
 		method->unit = context->unit;
 		if (!sema_analyse_func(context, method, &erase)) return decl_poison(decl);
 		if (!method->extname)
@@ -1675,6 +1674,17 @@ static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type
 
 }
 
+static Decl *sema_protocol_method_by_name(Decl *protocol, const char *name)
+{
+	FOREACH_BEGIN(Decl *method, protocol->protocol_decl.protocol_methods)
+		if (method->name == name) return method;
+	FOREACH_END();
+	FOREACH_BEGIN(TypeInfo *parent_type, protocol->protocol_decl.parents)
+		Decl *res = sema_protocol_method_by_name(parent_type->type->decl, name);
+		if (res) return res;
+	FOREACH_END();
+	return NULL;
+}
 
 static inline Decl *sema_find_protocol_for_method(SemaContext *context, Type *parent_type, Decl *method)
 {
@@ -1694,19 +1704,20 @@ static inline Decl *sema_find_protocol_for_method(SemaContext *context, Type *pa
 	Decl *first_match = NULL;
 	Decl *first_protocol = NULL;
 	FOREACH_BEGIN(TypeInfo *proto, parent_type->decl->protocols)
-		FOREACH_BEGIN(Decl *proto_method, proto->type->decl->protocol_decl.protocol_methods)
-			if (proto_method->name == name)
-			{
-				if (first_match)
-				{
-					SEMA_ERROR(method, "Both '%s' and '%s' protocols have a method matching '%s', which prevents it from being implemented.",
-					           first_protocol->name, proto->type->name, name);
-					return poisoned_decl;
-				}
-				first_match = proto_method;
-				first_protocol = proto->type->decl;
-			}
-		FOREACH_END();
+		Decl *protocol = proto->type->decl;
+		Decl *match = sema_protocol_method_by_name(protocol, name);
+		if (!match) continue;
+		if (first_match)
+		{
+			if (first_match->type->function.prototype->raw_type == match->type->function.prototype->raw_type) continue;
+			SEMA_ERROR(method,
+			           "Both '%s' and '%s' protocols have a method matching '%s' but their signatures are different, "
+			           "which prevents it from being implemented.",
+			           first_protocol->name, protocol->name, name);
+			return NULL;
+		}
+		first_match = match;
+		first_protocol = protocol;
 	FOREACH_END();
 	if (!first_match)
 	{

@@ -629,7 +629,7 @@ typedef struct
 
 typedef struct
 {
-	const char **parents;
+	TypeInfo **parents;
 	Decl **protocol_methods;
 } ProtocolDecl;
 typedef struct
@@ -1908,6 +1908,7 @@ extern const char *kw_out;
 extern const char *kw_ptr;
 extern const char *kw_pure;
 extern const char *kw_return;
+extern const char *kw_self;
 extern const char *kw_std;
 extern const char *kw_type;
 extern const char *kw_winmain;

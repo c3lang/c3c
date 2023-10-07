@@ -978,6 +978,22 @@ static bool rule_ptr_to_protocol(CastContext *cc, bool is_explicit, bool is_sile
 	                  type_quoted_error_string(cc->expr->type), type_quoted_error_string(cc->to_type));
 }
 
+static bool rule_protocol_to_protocol(CastContext *cc, bool is_explicit, bool is_silent)
+{
+	if (is_explicit) return true;
+
+	Type *from_protocol = cc->from_type->pointer;
+	Type *protocol = cc->to->pointer->canonical;
+	if (!sema_resolve_type_decl(cc->context, from_protocol)) return false;
+	FOREACH_BEGIN(TypeInfo *parent, from_protocol->decl->protocol_decl.parents)
+		if (parent->type->canonical == protocol) return true;
+	FOREACH_END();
+	if (is_silent) return false;
+	RETURN_SEMA_ERROR(cc->expr, "%s is not a child protocol of %s, but you can make an (unsafe) explicit cast to %s.",
+	                  type_quoted_error_string(from_protocol), type_quoted_error_string(cc->to->pointer),
+	                  type_quoted_error_string(cc->to_type));
+}
+
 static bool rule_ptr_to_infer(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	if (cc->to->type_kind != TYPE_POINTER) return sema_cast_error(cc, false, is_silent);
@@ -1443,6 +1459,26 @@ static void cast_expand_to_vec(Expr *expr, Type *type)
 	insert_runtime_cast(expr, CAST_EXPVEC, type);
 }
 
+static void cast_bitstruct_to_int_arr(Expr *expr, Type *type)
+{
+	if (expr->expr_kind == EXPR_CAST && expr->cast_expr.kind == CAST_INTARRBS)
+	{
+		expr_replace(expr, exprptr(expr->cast_expr.expr));
+		return;
+	}
+	insert_runtime_cast(expr, CAST_BSINTARR, type);
+}
+
+static void cast_int_arr_to_bitstruct(Expr *expr, Type *type)
+{
+	if (expr->expr_kind == EXPR_CAST && expr->cast_expr.kind == CAST_BSINTARR)
+	{
+		expr_replace(expr, exprptr(expr->cast_expr.expr));
+		return;
+	}
+	insert_runtime_cast(expr, CAST_INTARRBS, type);
+}
+
 /**
  * Cast a signed or unsigned integer -> floating point, using CAST_INTFP
  * for runtime, otherwise do const transformation.
@@ -1841,7 +1877,9 @@ static void cast_typeid_to_bool(Expr *expr, Type *to_type)
 }
 
 #define XX2XX &cast_retype
-#define EX2VC &cast_expand_to_vec        
+#define BS2IA &cast_bitstruct_to_int_arr
+#define IA2BS &cast_int_arr_to_bitstruct
+#define EX2VC &cast_expand_to_vec
 #define BO2IN &cast_bool_to_int          
 #define BO2FP &cast_bool_to_float        
 #define IN2BO &cast_int_to_bool          
@@ -1911,8 +1949,8 @@ static void cast_typeid_to_bool(Expr *expr, Type *to_type)
 #define RSAFE &rule_sa_to_infer           /* Subarray -> infer (only if subarray is constant or can infer)                                     */
 #define RVAFE &rule_vecarr_to_infer       /* Vec/arr -> infer (if base matches)                                                                */
 #define RPTFE &rule_ptr_to_infer          /* Ptr -> infer (if pointee may infer)                                                               */
-#define RPTPR &rule_ptr_to_protocol       /* Ptr -> Protocol if the pointee implements it                                                      */
-
+#define RPTPC &rule_ptr_to_protocol       /* Ptr -> Protocol if the pointee implements it                                                      */
+#define RPCPC &rule_protocol_to_protocol /* Protocol -> Protocol if the latter implements all of the former                                   */
 CastRule cast_rules[CONV_LAST + 1][CONV_LAST + 1] = {
 // void, wildc,  bool,   int, float,   ptr,  sarr,   vec, bitst, distc, array, strct, union,   any,  prot, fault,  enum, typid, afaul, voidp, arrpt,  infer  (to)
  {_NA__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // VOID    (from)
@@ -1920,7 +1958,7 @@ CastRule cast_rules[CONV_LAST + 1][CONV_LAST + 1] = {
  {REXPL, _NO__, _NA__, REXPL, REXPL, _NO__, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // BOOL
  {REXPL, _NO__, REXPL, RIFIF, RINFL, RINPT, _NO__, ROKOK, RINBS, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RINEN, _NO__, _NO__, RINPT, RINPT, _NO__}, // INT
  {REXPL, _NO__, REXPL, REXPL, RIFIF, _NO__, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // FLOAT
- {REXPL, _NO__, REXPL, RPTIN, _NO__, RPTPT, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, RPTPR, _NO__, _NO__, _NO__, _NO__, ROKOK, RPTPT, RPTFE}, // PTR
+ {REXPL, _NO__, REXPL, RPTIN, _NO__, RPTPT, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, RPTPC, _NO__, _NO__, _NO__, _NO__, ROKOK, RPTPT, RPTFE}, // PTR
  {REXPL, _NO__, REXPL, _NO__, _NO__, RSAPT, RSASA, RSAVA, _NO__, RXXDI, RSAVA, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, RSAPT, RSAFE}, // SARRAY
  {REXPL, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RVCVC, _NO__, RXXDI, RVCAR, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RVAFE}, // VECTOR
  {REXPL, _NO__, _NO__, RBSIN, _NO__, _NO__, _NO__, _NO__, _NO__, RXXDI, RBSAR, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // BITSTRUCT
@@ -1929,7 +1967,7 @@ CastRule cast_rules[CONV_LAST + 1][CONV_LAST + 1] = {
  {REXPL, _NO__, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTDI, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, _NO__}, // STRUCT
  {REXPL, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // UNION
  {REXPL, _NO__, REXPL, _NO__, _NO__, REXPL, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, _NA__, ROKOK, _NO__, _NO__, _NO__, _NO__, REXPL, REXPL, _NO__}, // ANY
- {REXPL, _NO__, REXPL, _NO__, _NO__, REXPL, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, _NA__, _NO__, _NO__, _NO__, _NO__, REXPL, REXPL, _NO__}, // PROTOCOL
+ {REXPL, _NO__, REXPL, _NO__, _NO__, REXPL, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, RPCPC, _NO__, _NO__, _NO__, _NO__, REXPL, REXPL, _NO__}, // PROTOCOL
  {REXPL, _NO__, REXPL, RPTIN, _NO__, REXPL, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, REXPL, REXPL, _NO__}, // FAULT
  {REXPL, _NO__, _NO__, REXPL, _NO__, _NO__, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // ENUM
  {REXPL, _NO__, REXPL, RPTIN, _NO__, REXPL, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NA__, _NO__, REXPL, REXPL, _NO__}, // TYPEID
@@ -1944,14 +1982,14 @@ CastFunction cast_function[CONV_LAST + 1][CONV_LAST + 1] = {
  {0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // VOID (from)
  {XX2XX, 0,     XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, 0,     XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, 0     }, // WILDCARD
  {XX2VO, 0,     0,     BO2IN, BO2FP, 0,     0,     EX2VC, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // BOOL
- {XX2VO, 0,     IN2BO, IN2IN, IN2FP, IN2PT, 0,     EX2VC, XX2XX, 0,     0,     0,     0,     0,     0,     0,     IN2EN, 0,     0,     IN2PT, IN2PT, 0     }, // INT
+ {XX2VO, 0,     IN2BO, IN2IN, IN2FP, IN2PT, 0,     EX2VC, IA2BS, 0,     0,     0,     0,     0,     0,     0,     IN2EN, 0,     0,     IN2PT, IN2PT, 0     }, // INT
  {XX2VO, 0,     FP2BO, FP2IN, FP2FP, 0,     0,     EX2VC, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // FLOAT
  {XX2VO, 0,     PT2BO, PT2IN, 0,     PT2PT, 0,     EX2VC, 0,     0,     0,     0,     0,     PT2AY, PT2AY, 0,     0,     0,     0,     PT2PT, PT2PT, PT2FE }, // PTR
  {XX2VO, 0,     SA2BO, 0,     0,     SA2PT, SA2SA, SA2VA, 0,     0,     SA2VA, 0,     0,     0,     0,     0,     0,     0,     0,     SA2PT, SA2PT, SA2FE }, // SARRAY
  {XX2VO, 0,     0,     0,     0,     0,     0,     VC2VC, 0,     0,     VC2AR, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     VA2FE }, // VECTOR
- {XX2VO, 0,     0,     XX2XX, 0,     0,     0,     0,     0,     0,     XX2XX, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // BITSTRUCT
+ {XX2VO, 0,     0,     BS2IA, 0,     0,     0,     0,     0,     0,     BS2IA, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // BITSTRUCT
  {0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // DISTINCT
- {XX2VO, 0,     0,     0,     0,     0,     0,     AR2VC, XX2XX, 0,     AR2AR, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     VA2FE }, // ARRAY
+ {XX2VO, 0,     0,     0,     0,     0,     0,     AR2VC, IA2BS, 0,     AR2AR, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     VA2FE }, // ARRAY
  {XX2VO, 0,     ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, 0,     ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, 0     }, // STRUCT
  {XX2VO, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // UNION
  {XX2VO, 0,     AY2BO, 0,     0,     AY2PT, 0,     0,     0,     0,     0,     0,     0,     PT2PT, PT2PT, 0,     0,     0,     0,     AY2PT, AY2PT, 0     }, // ANY
