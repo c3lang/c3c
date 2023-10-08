@@ -691,7 +691,7 @@ void print_syntax(BuildOptions *options)
 			if (name[0] == '$' || (name[0] >= 'a' && name[0] <= 'z'))
 			{
 				if (name[1] == '$' || name[1] == '\0') continue;
-				printf("%2d %s\n", index++, name);
+				printf("%3d %s\n", index++, name);
 			}
 		}
 	}
@@ -723,7 +723,7 @@ void print_syntax(BuildOptions *options)
 	{
 		for (int i = 0; i < NUMBER_OF_BUILTINS; i++)
 		{
-			printf("%2d $$%s\n", i + 1, builtin_list[i]);
+			printf("%3d $$%s\n", i + 1, builtin_list[i]);
 		}
 		puts("---");
 		for (int i = 0; i < NUMBER_OF_BUILTIN_DEFINES; i++)
