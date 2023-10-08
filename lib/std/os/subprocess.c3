@@ -455,7 +455,7 @@ fn usz! SubProcess.read_stderr(&self, char* buffer, usz size)
 	$endif
 }
 
-fn bool! SubProcess.is_alive(&self)
+fn bool! SubProcess.is_running(&self)
 {
 	if (!self.is_alive) return false;
 	$if env::WIN32:
