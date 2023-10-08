@@ -136,8 +136,7 @@ fn void DString.append_char32(&self, Char32 c)
 {
 	char[4] buffer @noinit;
 	char* p = &buffer;
-	conv::char32_to_utf8_unsafe(c, &p);
-	usz n = p - (char*)&buffer;
+	usz n = conv::char32_to_utf8_unsafe(c, &p);
 	self.reserve(n);
 	StringData* data = self.data();
 	data.chars[data.len:n] = buffer[:n];
