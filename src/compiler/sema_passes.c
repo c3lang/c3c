@@ -611,7 +611,7 @@ static inline bool sema_check_protocols(Decl *decl)
 	FOREACH_END();
 	FOREACH_BEGIN(TypeInfo *protocol_type, decl->protocols)
 		Decl *protocol = protocol_type->type->decl;
-		FOREACH_BEGIN(Decl *method, protocol->methods)
+		FOREACH_BEGIN(Decl *method, protocol->protocol_methods)
 			if (method->func_decl.attr_optional) continue;
 			Decl *matching_method = sema_decl_stack_resolve_symbol(method->name);
 			if (!matching_method)

@@ -1022,6 +1022,7 @@ bool type_is_user_defined(Type *type)
 		case TYPE_DISTINCT:
 		case TYPE_BITSTRUCT:
 		case TYPE_TYPEDEF:
+		case TYPE_PROTOCOL:
 			return type->decl != NULL;
 		default:
 			return false;
