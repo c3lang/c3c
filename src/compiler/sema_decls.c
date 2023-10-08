@@ -132,7 +132,7 @@ static inline bool sema_check_param_uniqueness_and_type(Decl **decls, Decl *curr
 	return true;
 }
 
-static inline bool sema_analyse_protocols(SemaContext *context, Decl *decl)
+static inline bool sema_resolve_implemented_protocols(SemaContext *context, Decl *decl, bool deep)
 {
 	TypeInfo **protocols = decl->protocols;
 	unsigned count = vec_size(protocols);
@@ -152,6 +152,7 @@ static inline bool sema_analyse_protocols(SemaContext *context, Decl *decl)
 				RETURN_SEMA_ERROR(proto, "Included protocol '%s' more than once, please remove duplicates.", proto_type->name);
 			}
 		}
+		if (deep && !sema_resolve_type_decl(context, proto_type)) return false;
 	}
 	return true;
 }
@@ -492,7 +493,7 @@ static bool sema_analyse_struct_union(SemaContext *context, Decl *decl, bool *er
 
 	if (!sema_analyse_attributes(context, decl, decl->attributes, domain, erase_decl)) return decl_poison(decl);
 	if (*erase_decl) return true;
-	if (!sema_analyse_protocols(context, decl)) return decl_poison(decl);
+	if (!sema_resolve_implemented_protocols(context, decl, false)) return decl_poison(decl);
 
 	DEBUG_LOG("Beginning analysis of %s.", decl->name ? decl->name : ".anon");
 	bool success;
@@ -718,16 +719,8 @@ static bool sema_analyse_protocol(SemaContext *context, Decl *decl, bool *erase_
 {
 	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_INTERFACE, erase_decl)) return decl_poison(decl);
 	if (*erase_decl) return true;
-	FOREACH_BEGIN(TypeInfo *parent, decl->protocol_decl.parents)
-		if (!sema_resolve_type_info(context, parent, RESOLVE_TYPE_ALLOW_ANY)) return decl_poison(decl);
-		if (parent->type->canonical->type_kind != TYPE_PROTOCOL)
-		{
-			SEMA_ERROR(parent, "Only protocols are allowed here.");
-			return decl_poison(decl);
-		}
-		if (!sema_resolve_type_decl(context, parent->type)) return decl_poison(decl);
-	FOREACH_END();
-	Decl **functions = decl->protocol_decl.protocol_methods;
+	if (!sema_resolve_implemented_protocols(context, decl, true)) return false;
+	Decl **functions = decl->protocol_methods;
 	unsigned count = vec_size(functions);
 	for (unsigned i = 0; i < count; i++)
 	{
@@ -754,13 +747,6 @@ static bool sema_analyse_protocol(SemaContext *context, Decl *decl, bool *erase_
 		vec_insert_first(method->func_decl.signature.params, first);
 		method->unit = context->unit;
 		if (!sema_analyse_func(context, method, &erase)) return decl_poison(decl);
-		if (!method->extname)
-		{
-			scratch_buffer_clear();
-			type_mangle_introspect_name_to_buffer(decl->type);
-			scratch_buffer_printf(".%s", method->name);
-			method->extname = scratch_buffer_copy();
-		}
 		if (erase)
 		{
 			vec_erase_ptr_at(functions, i);
@@ -768,13 +754,32 @@ static bool sema_analyse_protocol(SemaContext *context, Decl *decl, bool *erase_
 			if (i >= count) break;
 			goto RETRY;
 		}
+		const char *name = method->name;
+		for (unsigned j = 0; j < i; j++)
+		{
+			if (functions[j]->name == name)
+			{
+				SEMA_ERROR(method, "Duplicate definition of method '%s'.", name);
+				SEMA_NOTE(functions[j], "The previous definition was here.");
+				return decl_poison(decl);
+				return false;
+			}
+		}
+		vec_add(decl->methods, method);
+		if (!method->extname)
+		{
+			scratch_buffer_clear();
+			type_mangle_introspect_name_to_buffer(decl->type);
+			scratch_buffer_printf(".%s", name);
+			method->extname = scratch_buffer_copy();
+		}
 	}
 	return true;
 }
 static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl, bool *erase_decl)
 {
 	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_BITSTRUCT, erase_decl)) return decl_poison(decl);
-	if (!sema_analyse_protocols(context, decl)) return decl_poison(decl);
+	if (!sema_resolve_implemented_protocols(context, decl, false)) return decl_poison(decl);
 	if (*erase_decl) return true;
 	DEBUG_LOG("Beginning analysis of %s.", decl->name ? decl->name : ".anon");
 	if (!sema_resolve_type_info(context, decl->bitstruct.base_type, RESOLVE_TYPE_DEFAULT)) return false;
@@ -1113,7 +1118,7 @@ static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl, bool 
 {
 	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_DISTINCT, erase)) return false;
 	if (*erase) return true;
-	if (!sema_analyse_protocols(context, decl)) return decl_poison(decl);
+	if (!sema_resolve_implemented_protocols(context, decl, false)) return decl_poison(decl);
 
 	TypeInfo *info = decl->distinct;
 	if (!sema_resolve_type_info(context, info, RESOLVE_TYPE_DEFAULT)) return false;
@@ -1228,7 +1233,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 {
 	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_ENUM, erase_decl)) return decl_poison(decl);
 	if (*erase_decl) return true;
-	if (!sema_analyse_protocols(context, decl)) return decl_poison(decl);
+	if (!sema_resolve_implemented_protocols(context, decl, false)) return decl_poison(decl);
 
 	// Resolve the type of the enum.
 	if (!sema_resolve_type_info(context, decl->enums.type_info, RESOLVE_TYPE_DEFAULT)) return false;
@@ -1376,7 +1381,7 @@ static inline bool sema_analyse_error(SemaContext *context, Decl *decl, bool *er
 {
 	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_FAULT, erase_decl)) return decl_poison(decl);
 	if (*erase_decl) return true;
-	if (!sema_analyse_protocols(context, decl)) return decl_poison(decl);
+	if (!sema_resolve_implemented_protocols(context, decl, false)) return decl_poison(decl);
 
 	bool success = true;
 	unsigned enums = vec_size(decl->enums.values);
@@ -1676,10 +1681,10 @@ static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type
 
 static Decl *sema_protocol_method_by_name(Decl *protocol, const char *name)
 {
-	FOREACH_BEGIN(Decl *method, protocol->protocol_decl.protocol_methods)
+	FOREACH_BEGIN(Decl *method, protocol->protocol_methods)
 		if (method->name == name) return method;
 	FOREACH_END();
-	FOREACH_BEGIN(TypeInfo *parent_type, protocol->protocol_decl.parents)
+	FOREACH_BEGIN(TypeInfo *parent_type, protocol->protocols)
 		Decl *res = sema_protocol_method_by_name(parent_type->type->decl, name);
 		if (res) return res;
 	FOREACH_END();

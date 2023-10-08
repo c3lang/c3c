@@ -1665,7 +1665,7 @@ INLINE bool parse_protocol_body(ParseContext *c, Decl *protocol)
 		ASSIGN_DECL_OR_RET(Decl *protocol_fn, parse_func_definition(c, contracts, true), false);
 		vec_add(fns, protocol_fn);
 	}
-	protocol->protocol_decl.protocol_methods = fns;
+	protocol->protocol_methods = fns;
 	return true;
 }
 /**
@@ -1685,7 +1685,7 @@ static inline Decl *parse_protocol_declaration(ParseContext *c)
 			vec_add(parents, type);
 		} while (try_consume(c, TOKEN_COMMA));
 	}
-	decl->protocol_decl.parents = parents;
+	decl->protocols = parents;
 	if (!parse_protocol_body(c, decl)) return poisoned_decl;
 	return decl;
 }

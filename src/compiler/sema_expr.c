@@ -4103,7 +4103,7 @@ CHECK_DEEPER:
 		// Look at protocol parents
 		if (!member && decl->decl_kind == DECL_PROTOCOL)
 		{
-			FOREACH_BEGIN(TypeInfo *parent_protocol, decl->protocol_decl.parents)
+			FOREACH_BEGIN(TypeInfo *parent_protocol, decl->protocols)
 				member = sema_resolve_method(context->unit, parent_protocol->type->decl, kw, &ambiguous, &private);
 				if (member) break;
 			FOREACH_END();
@@ -4149,7 +4149,6 @@ CHECK_DEEPER:
 		}
 		if (parent->type->canonical->type_kind == TYPE_PROPTR)
 		{
-			sema_expr_analyse_access(context, expr);
 			RETURN_SEMA_ERROR(expr, "The '%s' protocol has no method '%s', did you spell it correctly?", parent->type->canonical->pointer->canonical->name, kw);
 		}
 		RETURN_SEMA_ERROR(expr, "There is no field or method '%s.%s'.", type_to_error_string(parent->type), kw);

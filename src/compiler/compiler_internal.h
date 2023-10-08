@@ -627,11 +627,7 @@ typedef struct
 	};
 } DefineDecl;
 
-typedef struct
-{
-	TypeInfo **parents;
-	Decl **protocol_methods;
-} ProtocolDecl;
+
 typedef struct
 {
 	AstId defer;
@@ -708,6 +704,7 @@ typedef struct Decl_
 				TypeInfo *distinct;
 				// Unions, Struct use strukt
 				StructDecl strukt;
+				Decl **protocol_methods;
 			};
 		};
 		AttrDecl attr_decl;
@@ -724,7 +721,6 @@ typedef struct Decl_
 		ImportDecl import;
 		IncludeDecl include;
 		LabelDecl label;
-		ProtocolDecl protocol_decl;
 		TypedefDecl typedef_decl;
 		VarDecl var;
 	};

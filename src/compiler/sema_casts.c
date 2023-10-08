@@ -985,13 +985,13 @@ static bool rule_protocol_to_protocol(CastContext *cc, bool is_explicit, bool is
 	Type *from_protocol = cc->from_type->pointer;
 	Type *protocol = cc->to->pointer->canonical;
 	if (!sema_resolve_type_decl(cc->context, from_protocol)) return false;
-	FOREACH_BEGIN(TypeInfo *parent, from_protocol->decl->protocol_decl.parents)
+	FOREACH_BEGIN(TypeInfo *parent, from_protocol->decl->protocols)
 		if (parent->type->canonical == protocol) return true;
 	FOREACH_END();
 	if (is_silent) return false;
-	RETURN_SEMA_ERROR(cc->expr, "%s is not a child protocol of %s, but you can make an (unsafe) explicit cast to %s.",
-	                  type_quoted_error_string(from_protocol), type_quoted_error_string(cc->to->pointer),
-	                  type_quoted_error_string(cc->to_type));
+	RETURN_SEMA_ERROR(cc->expr, "%s is not a parent protocol of %s, but you can insert an explicit cast '(%s)value' to enforce the (unsafe) conversion.",
+	                  type_quoted_error_string(cc->to->pointer), type_quoted_error_string(from_protocol),
+	                  type_to_error_string(cc->to_type));
 }
 
 static bool rule_ptr_to_infer(CastContext *cc, bool is_explicit, bool is_silent)
@@ -1966,7 +1966,7 @@ CastRule cast_rules[CONV_LAST + 1][CONV_LAST + 1] = {
  {REXPL, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RARVC, RARBS, RXXDI, RARAR, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RVAFE}, // ARRAY
  {REXPL, _NO__, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTDI, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, _NO__}, // STRUCT
  {REXPL, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // UNION
- {REXPL, _NO__, REXPL, _NO__, _NO__, REXPL, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, _NA__, ROKOK, _NO__, _NO__, _NO__, _NO__, REXPL, REXPL, _NO__}, // ANY
+ {REXPL, _NO__, REXPL, _NO__, _NO__, REXPL, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, _NA__, REXPL, _NO__, _NO__, _NO__, _NO__, REXPL, REXPL, _NO__}, // ANY
  {REXPL, _NO__, REXPL, _NO__, _NO__, REXPL, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, RPCPC, _NO__, _NO__, _NO__, _NO__, REXPL, REXPL, _NO__}, // PROTOCOL
  {REXPL, _NO__, REXPL, RPTIN, _NO__, REXPL, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, REXPL, REXPL, _NO__}, // FAULT
  {REXPL, _NO__, _NO__, REXPL, _NO__, _NO__, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // ENUM

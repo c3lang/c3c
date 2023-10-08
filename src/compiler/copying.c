@@ -880,8 +880,9 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 		case DECL_ERASED:
 			break;
 		case DECL_PROTOCOL:
-			MACRO_COPY_TYPE_LIST(copy->protocol_decl.parents);
-			MACRO_COPY_DECL_LIST(copy->protocol_decl.protocol_methods);
+			MACRO_COPY_TYPE_LIST(copy->protocols);
+			MACRO_COPY_DECL_LIST(copy->methods);
+			MACRO_COPY_DECL_LIST(copy->protocol_methods);
 			break;
 		case DECL_CT_EXEC:
 			MACRO_COPY_EXPR(copy->exec_decl.filename);
