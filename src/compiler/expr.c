@@ -857,6 +857,7 @@ Expr *expr_new_const_int(SourceSpan span, Type *type, uint64_t v)
 	}
 	expr->const_expr.ixx.i.low = v;
 	expr->const_expr.ixx.type = kind;
+	expr->const_expr.is_character = false;
 	expr->const_expr.const_kind = CONST_INTEGER;
 	expr->resolve_status = RESOLVE_DONE;
 	return expr;

@@ -1402,6 +1402,7 @@ EXIT:
 		return poisoned_expr;
 	}
 	expr_int->const_expr.const_kind = CONST_INTEGER;
+	expr_int->const_expr.is_character = false;
 	expr_int->const_expr.is_hex = hex_characters > 0;
 	Type *type_base = NULL;
 	if (type_bits)

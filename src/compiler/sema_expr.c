@@ -3295,6 +3295,7 @@ static inline bool sema_create_const_min(SemaContext *context, Expr *expr, Type 
 	{
 		expr->expr_kind = EXPR_CONST;
 		expr->const_expr.const_kind = CONST_INTEGER;
+		expr->const_expr.is_character = false;
 		expr->type = type;
 		expr->resolve_status = RESOLVE_DONE;
 		expr->const_expr.ixx.type = flat->type_kind;
@@ -3398,6 +3399,7 @@ static inline bool sema_create_const_max(SemaContext *context, Expr *expr, Type 
 	{
 		expr->expr_kind = EXPR_CONST;
 		expr->const_expr.const_kind = CONST_INTEGER;
+		expr->const_expr.is_character = false;
 		expr->type = type;
 		expr->resolve_status = RESOLVE_DONE;
 		expr->const_expr.ixx.type = flat->type_kind;
@@ -4959,6 +4961,7 @@ static bool sema_expr_analyse_enum_add_sub(SemaContext *context, Expr *expr, Exp
 				expr->const_expr.ixx = int_add(left->const_expr.ixx, right->const_expr.ixx);
 			}
 			expr->const_expr.const_kind = CONST_INTEGER;
+			expr->const_expr.is_character = false;
 			expr->expr_kind = EXPR_CONST;
 		}
 		return true;

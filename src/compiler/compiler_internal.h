@@ -3388,6 +3388,7 @@ INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v)
 	}
 	(&expr->const_expr)->ixx.i.low = v;
 	(&expr->const_expr)->ixx.type = kind;
+	(&expr->const_expr)->is_character = false;
 	(&expr->const_expr)->const_kind = CONST_INTEGER;
 }
 

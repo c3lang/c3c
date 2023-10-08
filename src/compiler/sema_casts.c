@@ -1297,10 +1297,11 @@ static void vector_const_initializer_convert_to_type(ConstInitializer *initializ
 			if (is_neg_conversion)
 			{
 				bool is_true = initializer->init_value->const_expr.b;
-				initializer->init_value->const_expr.const_kind = CONST_INTEGER;
-				initializer->init_value->const_expr.ixx = (Int)
-						{ .i = is_true ? (Int128) { UINT64_MAX, UINT64_MAX } : (Int128) { 0, 0 },
-								.type = to_flat->type_kind };
+				initializer->init_value->const_expr = (ExprConst)
+						{
+							.const_kind = CONST_INTEGER,
+							.ixx = (Int) { .i = is_true ? (Int128) { UINT64_MAX, UINT64_MAX } : (Int128) { 0, 0 }, .type = to_flat->type_kind },
+						};
 				initializer->init_value->type = to_type;
 			}
 			else
@@ -1368,6 +1369,7 @@ static void cast_float_to_int(Expr *expr, Type *type)
 	Real d = expr->const_expr.fxx.f;
 	expr->const_expr.ixx = int_from_real(d, type_flatten(type)->type_kind);
 	expr->const_expr.const_kind = CONST_INTEGER;
+	expr->const_expr.is_character = false;
 	expr->type = type;
 	expr->const_expr.is_hex = false;
 }
