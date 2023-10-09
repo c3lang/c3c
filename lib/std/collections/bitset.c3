@@ -139,7 +139,7 @@ fn bool GrowableBitSet.get(&self, usz i) @operator([]) @inline
 fn usz GrowableBitSet.len(&self) @operator(len)
 {
 	usz n = self.data.len() * BITS;
-	if (n > 0) n -= (usz)self.data[n - 1].ctz() - 1;
+	if (n > 0) n -= (usz)self.data[^1].clz();
 	return n;
 }
 

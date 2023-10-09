@@ -106,8 +106,14 @@ fn void*! libc_allocator_fn(Allocator* unused, usz bytes, usz alignment, usz off
 	{
 		case ALIGNED_ALLOC:
 			data = @aligned_alloc(libc::malloc, bytes, alignment, offset)!!;
+			$if env::TESTING:
+				for (usz i = 0; i < bytes; i++) ((char*)data)[i] = 0xAA;
+			$endif
 		case ALLOC:
 			data = libc::malloc(bytes);
+			$if env::TESTING:
+				for (usz i = 0; i < bytes; i++) ((char*)data)[i] = 0xAA;
+			$endif
 		case ALIGNED_CALLOC:
 			data = @aligned_calloc(fn void*(usz bytes) => libc::calloc(bytes, 1), bytes, alignment, offset)!!;
 		case CALLOC:
