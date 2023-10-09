@@ -352,11 +352,11 @@ fn void List.set(&self, usz index, Type value) @operator([]=)
 fn void List.ensure_capacity(&self, usz added = 1) @inline @private
 {
 	usz new_size = self.size + added;
-	if (self.capacity > new_size) return;
+	if (self.capacity >= new_size) return;
 
 	assert(new_size < usz.max / 2U);
 	usz new_capacity = self.capacity ? 2U * self.capacity : 16U;
-	while (new_size >= new_capacity) new_capacity *= 2U;
+	while (new_capacity < new_size) new_capacity *= 2U;
 	self.reserve(new_capacity);
 }
 
