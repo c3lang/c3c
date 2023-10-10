@@ -22,32 +22,32 @@ fn int main()
 
 define i32 @main() #0 {
 entry:
-  %retparam = alloca i64, align 8
   %varargslots = alloca [1 x %"any*"], align 16
   %taddr = alloca %"char[]", align 8
-  %retparam1 = alloca i64, align 8
-  %varargslots2 = alloca [1 x %"any*"], align 16
-  %taddr3 = alloca %"char[]", align 8
-  %retparam4 = alloca i64, align 8
-  %varargslots5 = alloca [1 x %"any*"], align 16
-  %taddr6 = alloca %"char[]", align 8
+  %retparam = alloca i64, align 8
+  %varargslots1 = alloca [1 x %"any*"], align 16
+  %taddr2 = alloca %"char[]", align 8
+  %retparam3 = alloca i64, align 8
+  %varargslots4 = alloca [1 x %"any*"], align 16
+  %taddr5 = alloca %"char[]", align 8
+  %retparam6 = alloca i64, align 8
   store %"char[]" { ptr @.str.2, i64 3 }, ptr %taddr, align 8
   %0 = insertvalue %"any*" undef, ptr %taddr, 0
   %1 = insertvalue %"any*" %0, i64 ptrtoint (ptr @"$ct.String" to i64), 1
   %2 = getelementptr inbounds [1 x %"any*"], ptr %varargslots, i64 0, i64 0
   store %"any*" %1, ptr %2, align 16
   %3 = call i64 @std.io.printfn(ptr %retparam, ptr @.str.1, i64 2, ptr %varargslots, i64 1)
-  store %"char[]" { ptr @.str.4, i64 6 }, ptr %taddr3, align 8
-  %4 = insertvalue %"any*" undef, ptr %taddr3, 0
+  store %"char[]" { ptr @.str.4, i64 6 }, ptr %taddr2, align 8
+  %4 = insertvalue %"any*" undef, ptr %taddr2, 0
   %5 = insertvalue %"any*" %4, i64 ptrtoint (ptr @"$ct.String" to i64), 1
-  %6 = getelementptr inbounds [1 x %"any*"], ptr %varargslots2, i64 0, i64 0
+  %6 = getelementptr inbounds [1 x %"any*"], ptr %varargslots1, i64 0, i64 0
   store %"any*" %5, ptr %6, align 16
-  %7 = call i64 @std.io.printfn(ptr %retparam1, ptr @.str.3, i64 2, ptr %varargslots2, i64 1)
-  store %"char[]" { ptr @.str.6, i64 6 }, ptr %taddr6, align 8
-  %8 = insertvalue %"any*" undef, ptr %taddr6, 0
+  %7 = call i64 @std.io.printfn(ptr %retparam3, ptr @.str.3, i64 2, ptr %varargslots1, i64 1)
+  store %"char[]" { ptr @.str.6, i64 6 }, ptr %taddr5, align 8
+  %8 = insertvalue %"any*" undef, ptr %taddr5, 0
   %9 = insertvalue %"any*" %8, i64 ptrtoint (ptr @"$ct.String" to i64), 1
-  %10 = getelementptr inbounds [1 x %"any*"], ptr %varargslots5, i64 0, i64 0
+  %10 = getelementptr inbounds [1 x %"any*"], ptr %varargslots4, i64 0, i64 0
   store %"any*" %9, ptr %10, align 16
-  %11 = call i64 @std.io.printfn(ptr %retparam4, ptr @.str.5, i64 2, ptr %varargslots5, i64 1)
+  %11 = call i64 @std.io.printfn(ptr %retparam6, ptr @.str.5, i64 2, ptr %varargslots4, i64 1)
   ret i32 0
 }

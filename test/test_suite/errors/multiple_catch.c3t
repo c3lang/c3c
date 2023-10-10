@@ -46,12 +46,12 @@ define void @demo1.main() #0 {
 entry:
   %err = alloca i64, align 8
   %retparam = alloca i32, align 4
-  %retparam5 = alloca i64, align 8
   %varargslots = alloca [1 x %"any*"], align 16
+  %retparam5 = alloca i64, align 8
   %err8 = alloca i64, align 8
   %retparam10 = alloca i32, align 4
-  %retparam21 = alloca i64, align 8
-  %varargslots22 = alloca [1 x %"any*"], align 16
+  %varargslots21 = alloca [1 x %"any*"], align 16
+  %retparam22 = alloca i64, align 8
   %temp_err = alloca i64, align 8
   %retparam27 = alloca i32, align 4
   %len = alloca i64, align 8
@@ -61,8 +61,8 @@ entry:
   %error_var49 = alloca i64, align 8
   %err56 = alloca i64, align 8
   %retparam58 = alloca i32, align 4
-  %retparam69 = alloca i64, align 8
-  %varargslots70 = alloca [1 x %"any*"], align 16
+  %varargslots69 = alloca [1 x %"any*"], align 16
+  %retparam70 = alloca i64, align 8
   br label %testblock
 
 testblock:                                        ; preds = %entry
@@ -143,9 +143,9 @@ end_block18:                                      ; preds = %after_check17, %ass
 if.then20:                                        ; preds = %end_block18
   %14 = insertvalue %"any*" undef, ptr %err8, 0
   %15 = insertvalue %"any*" %14, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
-  %16 = getelementptr inbounds [1 x %"any*"], ptr %varargslots22, i64 0, i64 0
+  %16 = getelementptr inbounds [1 x %"any*"], ptr %varargslots21, i64 0, i64 0
   store %"any*" %15, ptr %16, align 16
-  %17 = call i64 @std.io.printfn(ptr %retparam21, ptr @.str.4, i64 8, ptr %varargslots22, i64 1)
+  %17 = call i64 @std.io.printfn(ptr %retparam22, ptr @.str.4, i64 8, ptr %varargslots21, i64 1)
   br label %if.exit25
 
 if.exit25:                                        ; preds = %if.then20, %end_block18
@@ -280,9 +280,9 @@ end_block66:                                      ; preds = %after_check65, %ass
 if.then68:                                        ; preds = %end_block66
   %37 = insertvalue %"any*" undef, ptr %err56, 0
   %38 = insertvalue %"any*" %37, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
-  %39 = getelementptr inbounds [1 x %"any*"], ptr %varargslots70, i64 0, i64 0
+  %39 = getelementptr inbounds [1 x %"any*"], ptr %varargslots69, i64 0, i64 0
   store %"any*" %38, ptr %39, align 16
-  %40 = call i64 @std.io.printfn(ptr %retparam69, ptr @.str.6, i64 8, ptr %varargslots70, i64 1)
+  %40 = call i64 @std.io.printfn(ptr %retparam70, ptr @.str.6, i64 8, ptr %varargslots69, i64 1)
   br label %if.exit73
 
 if.exit73:                                        ; preds = %if.then68, %end_block66

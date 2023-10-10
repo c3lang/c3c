@@ -31,8 +31,8 @@ entry:
   %a = alloca i32, align 4
   %x = alloca i32, align 4
   %y = alloca i32, align 4
-  %retparam = alloca i64, align 8
   %varargslots = alloca [1 x %"any*"], align 16
+  %retparam = alloca i64, align 8
   call void @llvm.dbg.declare(metadata ptr %a, metadata !9, metadata !DIExpression()), !dbg !11
   store i32 111, ptr %a, align 4, !dbg !12
   call void @llvm.dbg.declare(metadata ptr %x, metadata !13, metadata !DIExpression()), !dbg !14

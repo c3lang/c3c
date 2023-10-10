@@ -174,12 +174,12 @@ cond.phi:                                         ; preds = %cond.rhs, %cond.lhs
   %8 = load i64, ptr %7, align 8
   %trunc = trunc i64 %8 to i32
   %9 = getelementptr inbounds %"char[]", ptr %title, i32 0, i32 0
-  %10 = load ptr, ptr %9, align 8
-  %11 = getelementptr inbounds %Summary, ptr %0, i32 0, i32 1
-  %12 = load i8, ptr %11, align 8
-  %13 = trunc i8 %12 to i1
-  %ternary = select i1 %13, ptr @.str.30, ptr @.str.31
-  %14 = call i32 (ptr, ptr, ...) @fprintf(ptr %1, ptr @.str.29, i32 %trunc, ptr %10, ptr %ternary)
+  %10 = getelementptr inbounds %Summary, ptr %0, i32 0, i32 1
+  %11 = load i8, ptr %10, align 8
+  %12 = trunc i8 %11 to i1
+  %ternary = select i1 %12, ptr @.str.30, ptr @.str.31
+  %13 = load ptr, ptr %9, align 8
+  %14 = call i32 (ptr, ptr, ...) @fprintf(ptr %1, ptr @.str.29, i32 %trunc, ptr %13, ptr %ternary)
   ret void
 }
 
@@ -403,9 +403,9 @@ panic_block:                                      ; preds = %assign_optional
   %28 = getelementptr inbounds [1 x %"any*"], ptr %varargslots, i64 0, i64 0
   store %"any*" %27, ptr %28, align 16
   %29 = insertvalue %"any*[]" undef, ptr %varargslots, 0
-  %"#temp#" = insertvalue %"any*[]" %29, i64 1, 1
-  store %"any*[]" %"#temp#", ptr %indirectarg, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func, i64 7
+  %"$$temp" = insertvalue %"any*[]" %29, i64 1, 1
+  store %"any*[]" %"$$temp", ptr %indirectarg, align 8
+  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func, i64 7, i32 392, ptr byval(%"any*[]") align 8 %indirectarg)
   unreachable
 
 noerr_block:                                      ; preds = %after_check
@@ -476,9 +476,9 @@ panic_block39:                                    ; preds = %assign_optional37
   %52 = getelementptr inbounds [1 x %"any*"], ptr %varargslots40, i64 0, i64 0
   store %"any*" %51, ptr %52, align 16
   %53 = insertvalue %"any*[]" undef, ptr %varargslots40, 0
-  %"#temp#41" = insertvalue %"any*[]" %53, i64 1, 1
-  store %"any*[]" %"#temp#41", ptr %indirectarg42, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func
+  %"$$temp41" = insertvalue %"any*[]" %53, i64 1, 1
+  store %"any*[]" %"$$temp41", ptr %indirectarg42, align 8
+  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func, i64 7, i32 392, ptr byval(%"any*[]") align 8 %indirectarg42)
   unreachable
 
 noerr_block43:                                    ; preds = %after_check38
@@ -533,9 +533,9 @@ panic_block61:                                    ; preds = %assign_optional59
   %70 = getelementptr inbounds [1 x %"any*"], ptr %varargslots62, i64 0, i64 0
   store %"any*" %69, ptr %70, align 16
   %71 = insertvalue %"any*[]" undef, ptr %varargslots62, 0
-  %"#temp#63" = insertvalue %"any*[]" %71, i64 1, 1
-  store %"any*[]" %"#temp#63", ptr %indirectarg64, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func
+  %"$$temp63" = insertvalue %"any*[]" %71, i64 1, 1
+  store %"any*[]" %"$$temp63", ptr %indirectarg64, align 8
+  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func, i64 7, i32 392, ptr byval(%"any*[]") align 8 %indirectarg64)
   unreachable
 
 noerr_block65:                                    ; preds = %after_check60
@@ -604,9 +604,9 @@ panic_block81:                                    ; preds = %assign_optional79
   %94 = getelementptr inbounds [1 x %"any*"], ptr %varargslots82, i64 0, i64 0
   store %"any*" %93, ptr %94, align 16
   %95 = insertvalue %"any*[]" undef, ptr %varargslots82, 0
-  %"#temp#83" = insertvalue %"any*[]" %95, i64 1, 1
-  store %"any*[]" %"#temp#83", ptr %indirectarg84, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func
+  %"$$temp83" = insertvalue %"any*[]" %95, i64 1, 1
+  store %"any*[]" %"$$temp83", ptr %indirectarg84, align 8
+  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func, i64 7, i32 392, ptr byval(%"any*[]") align 8 %indirectarg84)
   unreachable
 
 noerr_block85:                                    ; preds = %after_check80
@@ -619,15 +619,15 @@ if.then87:                                        ; preds = %noerr_block85
   ret i64 ptrtoint (ptr @"test.ReadError$OUT_OF_MEMORY" to i64)
 
 if.exit88:                                        ; preds = %noerr_block85
-  %97 = load ptr, ptr %str, align 8
-  %98 = load i64, ptr %len, align 8
-  %add89 = add i64 %98, 1
-  %99 = getelementptr inbounds %"char[]", ptr %url, i32 0, i32 1
-  %100 = load i64, ptr %99, align 8
-  %trunc90 = trunc i64 %100 to i32
-  %101 = getelementptr inbounds %"char[]", ptr %url, i32 0, i32 0
-  %102 = load ptr, ptr %101, align 8
-  %103 = call i32 (ptr, i64, ptr, ...) @snprintf(ptr %97, i64 %add89, ptr @.str.8, i32 %trunc90, ptr %102)
+  %97 = load i64, ptr %len, align 8
+  %add89 = add i64 %97, 1
+  %98 = getelementptr inbounds %"char[]", ptr %url, i32 0, i32 1
+  %99 = load i64, ptr %98, align 8
+  %trunc90 = trunc i64 %99 to i32
+  %100 = getelementptr inbounds %"char[]", ptr %url, i32 0, i32 0
+  %101 = load ptr, ptr %str, align 8
+  %102 = load ptr, ptr %100, align 8
+  %103 = call i32 (ptr, i64, ptr, ...) @snprintf(ptr %101, i64 %add89, ptr @.str.8, i32 %trunc90, ptr %102)
   %104 = getelementptr inbounds %Doc, ptr %literal92, i32 0, i32 0
   store ptr null, ptr %literal94, align 8
   %105 = getelementptr inbounds %Head, ptr %literal94, i32 0, i32 0
@@ -669,9 +669,9 @@ panic_block109:                                   ; preds = %assign_optional107
   %123 = getelementptr inbounds [1 x %"any*"], ptr %varargslots110, i64 0, i64 0
   store %"any*" %122, ptr %123, align 16
   %124 = insertvalue %"any*[]" undef, ptr %varargslots110, 0
-  %"#temp#111" = insertvalue %"any*[]" %124, i64 1, 1
-  store %"any*[]" %"#temp#111", ptr %indirectarg112, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func
+  %"$$temp111" = insertvalue %"any*[]" %124, i64 1, 1
+  store %"any*[]" %"$$temp111", ptr %indirectarg112, align 8
+  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func, i64 7, i32 392, ptr byval(%"any*[]") align 8 %indirectarg112)
   unreachable
 
 noerr_block113:                                   ; preds = %after_check108
@@ -726,9 +726,9 @@ panic_block131:                                   ; preds = %assign_optional129
   %141 = getelementptr inbounds [1 x %"any*"], ptr %varargslots132, i64 0, i64 0
   store %"any*" %140, ptr %141, align 16
   %142 = insertvalue %"any*[]" undef, ptr %varargslots132, 0
-  %"#temp#133" = insertvalue %"any*[]" %142, i64 1, 1
-  store %"any*[]" %"#temp#133", ptr %indirectarg134, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func, i64 7
+  %"$$temp133" = insertvalue %"any*[]" %142, i64 1, 1
+  store %"any*[]" %"$$temp133", ptr %indirectarg134, align 8
+  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 6, ptr @.func, i64 7, i32 392, ptr byval(%"any*[]") align 8 %indirectarg134)
   unreachable
 
 noerr_block135:                                   ; preds = %after_check130
@@ -874,8 +874,8 @@ define i64 @test.readWhetherTitleNonEmpty(ptr %0, ptr %1, i64 %2) #0 {
 entry:
   %url = alloca %"char[]", align 8
   %reterr = alloca i64, align 8
-  %retparam = alloca i8, align 1
-  %retparam1 = alloca %Doc, align 8
+  %retparam = alloca %Doc, align 8
+  %retparam1 = alloca i8, align 1
   store ptr %1, ptr %url, align 8
   %ptroffset = getelementptr inbounds i64, ptr %url, i64 1
   store i64 %2, ptr %ptroffset, align 8
@@ -883,7 +883,7 @@ entry:
   %lo = load ptr, ptr %3, align 8
   %4 = getelementptr inbounds %"char[]", ptr %url, i32 0, i32 1
   %hi = load i64, ptr %4, align 8
-  %5 = call i64 @test.readDoc(ptr %retparam1, ptr %lo, i64 %hi)
+  %5 = call i64 @test.readDoc(ptr %retparam, ptr %lo, i64 %hi)
   %not_err = icmp eq i64 %5, 0
   %6 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
   br i1 %6, label %after_check, label %assign_optional
@@ -893,8 +893,8 @@ assign_optional:                                  ; preds = %entry
   br label %err_retblock
 
 after_check:                                      ; preds = %entry
-  %7 = load ptr, ptr %retparam1, align 8
-  %8 = call i64 @test.isTitleNonEmpty(ptr %retparam, ptr %7)
+  %7 = load ptr, ptr %retparam, align 8
+  %8 = call i64 @test.isTitleNonEmpty(ptr %retparam1, ptr %7)
   %not_err2 = icmp eq i64 %8, 0
   %9 = call i1 @llvm.expect.i1(i1 %not_err2, i1 true)
   br i1 %9, label %after_check4, label %assign_optional3
@@ -904,7 +904,7 @@ assign_optional3:                                 ; preds = %after_check
   br label %err_retblock
 
 after_check4:                                     ; preds = %after_check
-  %10 = load i8, ptr %retparam, align 1
+  %10 = load i8, ptr %retparam1, align 1
   store i8 %10, ptr %0, align 1
   ret i64 0
 

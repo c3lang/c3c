@@ -170,14 +170,14 @@ entry:
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 4 @.__const.2, i32 12, i1 false)
   %0 = getelementptr inbounds %Foo, ptr %x, i32 0, i32 0
   %1 = getelementptr inbounds [3 x i32], ptr %0, i64 0, i64 0
-  %2 = load i32, ptr %1, align 4
-  %3 = getelementptr inbounds %Foo, ptr %x, i32 0, i32 0
-  %4 = getelementptr inbounds [3 x i32], ptr %3, i64 0, i64 1
-  %5 = load i32, ptr %4, align 4
-  %6 = getelementptr inbounds %Foo, ptr %x, i32 0, i32 0
-  %7 = getelementptr inbounds [3 x i32], ptr %6, i64 0, i64 2
-  %8 = load i32, ptr %7, align 4
-  call void (ptr, ...) @printf(ptr @.str.3, i32 %2, i32 %5, i32 %8)
+  %2 = getelementptr inbounds %Foo, ptr %x, i32 0, i32 0
+  %3 = getelementptr inbounds [3 x i32], ptr %2, i64 0, i64 1
+  %4 = getelementptr inbounds %Foo, ptr %x, i32 0, i32 0
+  %5 = getelementptr inbounds [3 x i32], ptr %4, i64 0, i64 2
+  %6 = load i32, ptr %1, align 4
+  %7 = load i32, ptr %3, align 4
+  %8 = load i32, ptr %5, align 4
+  call void (ptr, ...) @printf(ptr @.str.3, i32 %6, i32 %7, i32 %8)
   %9 = call ptr @foo.call(ptr %x)
   store ptr %9, ptr %.anon, align 8
   %10 = load ptr, ptr %.anon, align 8
@@ -236,10 +236,10 @@ loop.body7:                                       ; preds = %loop.cond5
   %31 = load i32, ptr %30, align 4
   %add12 = add i32 %31, 1
   store i32 %add12, ptr %30, align 4
-  %32 = load i32, ptr %i8, align 4
-  %33 = load ptr, ptr %y9, align 8
-  %34 = load i32, ptr %33, align 4
-  call void (ptr, ...) @printf(ptr @.str.5, i32 %32, i32 %34)
+  %32 = load ptr, ptr %y9, align 8
+  %33 = load i32, ptr %i8, align 4
+  %34 = load i32, ptr %32, align 4
+  call void (ptr, ...) @printf(ptr @.str.5, i32 %33, i32 %34)
   %35 = load i32, ptr %.anon4, align 4
   %add13 = add i32 %35, 1
   store i32 %add13, ptr %.anon4, align 4
@@ -421,11 +421,11 @@ loop.body71:                                      ; preds = %loop.cond69
 loop.exit75:                                      ; preds = %loop.cond69
   %96 = getelementptr inbounds %Foo, ptr %x, i32 0, i32 0
   %97 = getelementptr inbounds [3 x i32], ptr %96, i64 0, i64 0
-  %98 = load i32, ptr %97, align 4
-  %99 = getelementptr inbounds %Foo, ptr %x, i32 0, i32 0
-  %100 = getelementptr inbounds [3 x i32], ptr %99, i64 0, i64 1
-  %101 = load i32, ptr %100, align 4
-  call void (ptr, ...) @printf(ptr @.str.13, i32 %98, i32 %101)
+  %98 = getelementptr inbounds %Foo, ptr %x, i32 0, i32 0
+  %99 = getelementptr inbounds [3 x i32], ptr %98, i64 0, i64 1
+  %100 = load i32, ptr %97, align 4
+  %101 = load i32, ptr %99, align 4
+  call void (ptr, ...) @printf(ptr @.str.13, i32 %100, i32 %101)
   %102 = getelementptr inbounds %Foo, ptr %x, i32 0, i32 0
   %103 = getelementptr inbounds [3 x i32], ptr %102, i64 0, i64 1
   store ptr %103, ptr %y76, align 8
@@ -435,10 +435,10 @@ loop.exit75:                                      ; preds = %loop.cond69
   store i32 %add77, ptr %104, align 4
   %106 = getelementptr inbounds %Foo, ptr %x, i32 0, i32 0
   %107 = getelementptr inbounds [3 x i32], ptr %106, i64 0, i64 0
-  %108 = load i32, ptr %107, align 4
-  %109 = getelementptr inbounds %Foo, ptr %x, i32 0, i32 0
-  %110 = getelementptr inbounds [3 x i32], ptr %109, i64 0, i64 1
-  %111 = load i32, ptr %110, align 4
-  call void (ptr, ...) @printf(ptr @.str.14, i32 %108, i32 %111)
+  %108 = getelementptr inbounds %Foo, ptr %x, i32 0, i32 0
+  %109 = getelementptr inbounds [3 x i32], ptr %108, i64 0, i64 1
+  %110 = load i32, ptr %107, align 4
+  %111 = load i32, ptr %109, align 4
+  call void (ptr, ...) @printf(ptr @.str.14, i32 %110, i32 %111)
   ret void
 }

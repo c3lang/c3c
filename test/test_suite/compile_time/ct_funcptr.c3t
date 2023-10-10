@@ -19,9 +19,9 @@ fn void main()
 define void @test.test(i32 %0) #0 {
 entry:
   %ptr = alloca ptr, align 8
-  %retparam = alloca i64, align 8
   %varargslots = alloca [1 x %"any*"], align 16
   %taddr = alloca i32, align 4
+  %retparam = alloca i64, align 8
   store ptr @test.test, ptr %ptr, align 8
   store i32 %0, ptr %taddr, align 4
   %1 = insertvalue %"any*" undef, ptr %taddr, 0

@@ -45,8 +45,8 @@ fn void main()
   store float %7, ptr %f2, align 4
   %8 = load float, ptr %f, align 4
   %fpfpext = fpext float %8 to double
-  %9 = load i32, ptr %i, align 4
-  %10 = load float, ptr %f2, align 4
-  %fpfpext4 = fpext float %10 to double
-  call void (ptr, ...) @printf(ptr @.str, double %fpfpext, i32 %9, double %fpfpext4)
+  %9 = load float, ptr %f2, align 4
+  %fpfpext4 = fpext float %9 to double
+  %10 = load i32, ptr %i, align 4
+  call void (ptr, ...) @printf(ptr @.str, double %fpfpext, i32 %10, double %fpfpext4)
   ret void

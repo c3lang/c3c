@@ -30,22 +30,22 @@ fn void main()
 define void @test.main() #0 {
 entry:
   %set = alloca i32, align 4
-  %retparam = alloca i64, align 8
   %varargslots = alloca [1 x %"any*"], align 16
   %taddr = alloca i8, align 1
-  %retparam1 = alloca i64, align 8
-  %varargslots2 = alloca [1 x %"any*"], align 16
-  %taddr3 = alloca i8, align 1
-  %retparam4 = alloca i64, align 8
-  %varargslots5 = alloca [1 x %"any*"], align 16
-  %taddr6 = alloca i8, align 1
+  %retparam = alloca i64, align 8
+  %varargslots1 = alloca [1 x %"any*"], align 16
+  %taddr2 = alloca i8, align 1
+  %retparam3 = alloca i64, align 8
+  %varargslots4 = alloca [1 x %"any*"], align 16
+  %taddr5 = alloca i8, align 1
+  %retparam6 = alloca i64, align 8
   %set2 = alloca i32, align 4
-  %retparam7 = alloca i64, align 8
-  %varargslots8 = alloca [1 x %"any*"], align 16
-  %taddr9 = alloca i8, align 1
-  %retparam10 = alloca i64, align 8
-  %varargslots11 = alloca [1 x %"any*"], align 16
-  %taddr12 = alloca i8, align 1
+  %varargslots7 = alloca [1 x %"any*"], align 16
+  %taddr8 = alloca i8, align 1
+  %retparam9 = alloca i64, align 8
+  %varargslots10 = alloca [1 x %"any*"], align 16
+  %taddr11 = alloca i8, align 1
+  %retparam12 = alloca i64, align 8
   store i32 0, ptr %set, align 4
   %0 = call i8 @"std.collections.enumset$test.Abc$.EnumSet.has"(ptr %set, i32 1)
   store i8 %0, ptr %taddr, align 1
@@ -56,38 +56,38 @@ entry:
   %4 = call i64 @std.io.printf(ptr %retparam, ptr @.str, i64 14, ptr %varargslots, i64 1)
   call void @"std.collections.enumset$test.Abc$.EnumSet.add"(ptr %set, i32 0)
   %5 = call i8 @"std.collections.enumset$test.Abc$.EnumSet.has"(ptr %set, i32 1)
-  store i8 %5, ptr %taddr3, align 1
-  %6 = insertvalue %"any*" undef, ptr %taddr3, 0
+  store i8 %5, ptr %taddr2, align 1
+  %6 = insertvalue %"any*" undef, ptr %taddr2, 0
   %7 = insertvalue %"any*" %6, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
-  %8 = getelementptr inbounds [1 x %"any*"], ptr %varargslots2, i64 0, i64 0
+  %8 = getelementptr inbounds [1 x %"any*"], ptr %varargslots1, i64 0, i64 0
   store %"any*" %7, ptr %8, align 16
-  %9 = call i64 @std.io.printf(ptr %retparam1, ptr @.str.1, i64 14, ptr %varargslots2, i64 1)
+  %9 = call i64 @std.io.printf(ptr %retparam3, ptr @.str.1, i64 14, ptr %varargslots1, i64 1)
   call void @"std.collections.enumset$test.Abc$.EnumSet.add"(ptr %set, i32 1)
   %10 = call i8 @"std.collections.enumset$test.Abc$.EnumSet.has"(ptr %set, i32 1)
-  store i8 %10, ptr %taddr6, align 1
-  %11 = insertvalue %"any*" undef, ptr %taddr6, 0
+  store i8 %10, ptr %taddr5, align 1
+  %11 = insertvalue %"any*" undef, ptr %taddr5, 0
   %12 = insertvalue %"any*" %11, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
-  %13 = getelementptr inbounds [1 x %"any*"], ptr %varargslots5, i64 0, i64 0
+  %13 = getelementptr inbounds [1 x %"any*"], ptr %varargslots4, i64 0, i64 0
   store %"any*" %12, ptr %13, align 16
-  %14 = call i64 @std.io.printf(ptr %retparam4, ptr @.str.2, i64 14, ptr %varargslots5, i64 1)
+  %14 = call i64 @std.io.printf(ptr %retparam6, ptr @.str.2, i64 14, ptr %varargslots4, i64 1)
   store i32 0, ptr %set2, align 4
   %15 = load i32, ptr %set, align 4
   call void @"std.collections.enumset$test.Abc$.EnumSet.add_all"(ptr %set2, i32 %15)
   %16 = call i8 @"std.collections.enumset$test.Abc$.EnumSet.has"(ptr %set2, i32 1)
-  store i8 %16, ptr %taddr9, align 1
-  %17 = insertvalue %"any*" undef, ptr %taddr9, 0
+  store i8 %16, ptr %taddr8, align 1
+  %17 = insertvalue %"any*" undef, ptr %taddr8, 0
   %18 = insertvalue %"any*" %17, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
-  %19 = getelementptr inbounds [1 x %"any*"], ptr %varargslots8, i64 0, i64 0
+  %19 = getelementptr inbounds [1 x %"any*"], ptr %varargslots7, i64 0, i64 0
   store %"any*" %18, ptr %19, align 16
-  %20 = call i64 @std.io.printf(ptr %retparam7, ptr @.str.3, i64 14, ptr %varargslots8, i64 1)
+  %20 = call i64 @std.io.printf(ptr %retparam9, ptr @.str.3, i64 14, ptr %varargslots7, i64 1)
   %21 = load i32, ptr %set2, align 4
   call void @"std.collections.enumset$test.Abc$.EnumSet.remove_all"(ptr %set, i32 %21)
   %22 = call i8 @"std.collections.enumset$test.Abc$.EnumSet.has"(ptr %set, i32 1)
-  store i8 %22, ptr %taddr12, align 1
-  %23 = insertvalue %"any*" undef, ptr %taddr12, 0
+  store i8 %22, ptr %taddr11, align 1
+  %23 = insertvalue %"any*" undef, ptr %taddr11, 0
   %24 = insertvalue %"any*" %23, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
-  %25 = getelementptr inbounds [1 x %"any*"], ptr %varargslots11, i64 0, i64 0
+  %25 = getelementptr inbounds [1 x %"any*"], ptr %varargslots10, i64 0, i64 0
   store %"any*" %24, ptr %25, align 16
-  %26 = call i64 @std.io.printf(ptr %retparam10, ptr @.str.4, i64 14, ptr %varargslots11, i64 1)
+  %26 = call i64 @std.io.printf(ptr %retparam12, ptr @.str.4, i64 14, ptr %varargslots10, i64 1)
   ret void
 }

@@ -60,19 +60,19 @@ entry:
   %ptroffset3 = getelementptr [3 x i32], ptr %11, i64 -1
   store ptr %ptroffset3, ptr %zz, align 8
   %12 = load ptr, ptr %y, align 8
-  %13 = load ptr, ptr %z, align 8
-  %14 = load ptr, ptr %zz, align 8
-  %15 = load ptr, ptr %y, align 8
-  %16 = getelementptr inbounds [3 x i32], ptr %15, i64 0, i64 1
+  %13 = getelementptr inbounds [3 x i32], ptr %12, i64 0, i64 1
+  %14 = load ptr, ptr %y, align 8
+  %15 = load ptr, ptr %z, align 8
+  %16 = load ptr, ptr %zz, align 8
   %17 = load ptr, ptr %xx, align 8
-  call void (ptr, ...) @printf(ptr @.str, ptr %12, ptr %13, ptr %14, ptr %16, ptr %17)
+  call void (ptr, ...) @printf(ptr @.str, ptr %14, ptr %15, ptr %16, ptr %13, ptr %17)
   %18 = getelementptr inbounds [3 x i32], ptr %x, i64 0, i64 1
   store i32 123, ptr %18, align 4
   %19 = getelementptr inbounds [3 x i32], ptr %x, i64 0, i64 1
-  %20 = load i32, ptr %19, align 4
-  %21 = load ptr, ptr %z, align 8
-  %ptroffset4 = getelementptr inbounds i32, ptr %21, i64 1
+  %20 = load ptr, ptr %z, align 8
+  %ptroffset4 = getelementptr inbounds i32, ptr %20, i64 1
+  %21 = load i32, ptr %19, align 4
   %22 = load i32, ptr %ptroffset4, align 4
-  call void (ptr, ...) @printf(ptr @.str.1, i32 %20, i32 %22)
+  call void (ptr, ...) @printf(ptr @.str.1, i32 %21, i32 %22)
   ret void
 }

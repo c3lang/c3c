@@ -41,19 +41,19 @@ entry:
   %0 = load i32, ptr %f, align 4
   %zext = zext i32 %0 to i64
   %1 = getelementptr inbounds [2 x i32], ptr @"test.Foo$val", i64 0, i64 %zext
-  %2 = load i32, ptr %1, align 4
-  %3 = load i32, ptr %f, align 4
-  %zext1 = zext i32 %3 to i64
-  %4 = getelementptr inbounds [2 x ptr], ptr @"test.Foo$testme", i64 0, i64 %zext1
-  %5 = load ptr, ptr %4, align 8
+  %2 = load i32, ptr %f, align 4
+  %zext1 = zext i32 %2 to i64
+  %3 = getelementptr inbounds [2 x ptr], ptr @"test.Foo$testme", i64 0, i64 %zext1
+  %4 = load i32, ptr %g, align 4
+  %zext2 = zext i32 %4 to i64
+  %5 = getelementptr inbounds [2 x i32], ptr @"test.Foo$val", i64 0, i64 %zext2
   %6 = load i32, ptr %g, align 4
-  %zext2 = zext i32 %6 to i64
-  %7 = getelementptr inbounds [2 x i32], ptr @"test.Foo$val", i64 0, i64 %zext2
-  %8 = load i32, ptr %7, align 4
-  %9 = load i32, ptr %g, align 4
-  %zext3 = zext i32 %9 to i64
-  %10 = getelementptr inbounds [2 x ptr], ptr @"test.Foo$testme", i64 0, i64 %zext3
-  %11 = load ptr, ptr %10, align 8
-  %12 = call i32 (ptr, ...) @printf(ptr @.str.2, i32 %2, ptr %5, i32 %8, ptr %11)
+  %zext3 = zext i32 %6 to i64
+  %7 = getelementptr inbounds [2 x ptr], ptr @"test.Foo$testme", i64 0, i64 %zext3
+  %8 = load i32, ptr %1, align 4
+  %9 = load ptr, ptr %3, align 8
+  %10 = load i32, ptr %5, align 4
+  %11 = load ptr, ptr %7, align 8
+  %12 = call i32 (ptr, ...) @printf(ptr @.str.2, i32 %8, ptr %9, i32 %10, ptr %11)
   ret void
 }

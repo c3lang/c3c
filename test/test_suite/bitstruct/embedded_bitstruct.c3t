@@ -53,26 +53,26 @@ entry:
   %0 = getelementptr inbounds %Bar, ptr %b, i32 0, i32 1
   %1 = getelementptr inbounds %.anon, ptr %0, i32 0, i32 0
   %2 = getelementptr inbounds %.anon.0, ptr %1, i32 0, i32 0
-  %3 = load i32, ptr %2, align 4
-  %4 = getelementptr inbounds %Bar, ptr %b, i32 0, i32 2
-  %5 = load i32, ptr %4, align 4
-  %shl = shl i32 %5, 21
+  %3 = getelementptr inbounds %Bar, ptr %b, i32 0, i32 2
+  %4 = load i32, ptr %3, align 4
+  %shl = shl i32 %4, 21
   %ashr = ashr i32 %shl, 23
-  call void (ptr, ...) @printf(ptr @.str, i32 %3, i32 %ashr)
+  %5 = load i32, ptr %2, align 4
+  call void (ptr, ...) @printf(ptr @.str, i32 %5, i32 %ashr)
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %f, ptr align 4 @.__const.10, i32 16, i1 false)
   %6 = getelementptr inbounds %Foo, ptr %f, i32 0, i32 0
   %7 = getelementptr inbounds %.anon.1, ptr %6, i32 0, i32 0
   %8 = getelementptr inbounds %.anon.2, ptr %7, i32 0, i32 0
-  %9 = load i32, ptr %8, align 4
-  %10 = getelementptr inbounds %Foo, ptr %f, i32 0, i32 0
-  %11 = getelementptr inbounds %.anon.1, ptr %10, i32 0, i32 1
-  %12 = getelementptr inbounds %.anon.3, ptr %11, i32 0, i32 0
-  %13 = load i32, ptr %12, align 4
-  %14 = getelementptr inbounds %Foo, ptr %f, i32 0, i32 0
-  %15 = getelementptr inbounds %.anon.1, ptr %14, i32 0, i32 2
-  %16 = load i32, ptr %15, align 4
-  %17 = getelementptr inbounds %Foo, ptr %f, i32 0, i32 1
-  %18 = load i32, ptr %17, align 4
-  call void (ptr, ...) @printf(ptr @.str.11, i32 %9, i32 %13, i32 %16, i32 %18)
+  %9 = getelementptr inbounds %Foo, ptr %f, i32 0, i32 0
+  %10 = getelementptr inbounds %.anon.1, ptr %9, i32 0, i32 1
+  %11 = getelementptr inbounds %.anon.3, ptr %10, i32 0, i32 0
+  %12 = getelementptr inbounds %Foo, ptr %f, i32 0, i32 0
+  %13 = getelementptr inbounds %.anon.1, ptr %12, i32 0, i32 2
+  %14 = getelementptr inbounds %Foo, ptr %f, i32 0, i32 1
+  %15 = load i32, ptr %8, align 4
+  %16 = load i32, ptr %11, align 4
+  %17 = load i32, ptr %13, align 4
+  %18 = load i32, ptr %14, align 4
+  call void (ptr, ...) @printf(ptr @.str.11, i32 %15, i32 %16, i32 %17, i32 %18)
   ret void
 }

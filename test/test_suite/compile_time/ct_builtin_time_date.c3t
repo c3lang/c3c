@@ -28,9 +28,9 @@ fn void main()
 
 define void @test.test(i32 %0) #0 {
 entry:
-  %retparam = alloca i64, align 8
   %varargslots = alloca [1 x %"any*"], align 16
   %taddr = alloca i32, align 4
+  %retparam = alloca i64, align 8
   %len = alloca i64, align 8
   %error_var = alloca i64, align 8
   %retparam2 = alloca i64, align 8
@@ -41,12 +41,12 @@ entry:
   %retparam18 = alloca i64, align 8
   %error_var24 = alloca i64, align 8
   %error_var30 = alloca i64, align 8
-  %retparam38 = alloca i64, align 8
-  %varargslots39 = alloca [1 x %"any*"], align 16
-  %taddr40 = alloca i64, align 8
-  %retparam43 = alloca i64, align 8
-  %varargslots44 = alloca [1 x %"any*"], align 16
-  %taddr45 = alloca i64, align 8
+  %varargslots38 = alloca [1 x %"any*"], align 16
+  %taddr39 = alloca i64, align 8
+  %retparam40 = alloca i64, align 8
+  %varargslots43 = alloca [1 x %"any*"], align 16
+  %taddr44 = alloca i64, align 8
+  %retparam45 = alloca i64, align 8
   %len48 = alloca i64, align 8
   %error_var49 = alloca i64, align 8
   %retparam51 = alloca i64, align 8
@@ -156,18 +156,18 @@ noerr_block35:                                    ; preds = %after_check33
   %add36 = add i64 %22, 1
   br label %voiderr37
 voiderr37:                                        ; preds = %noerr_block35, %guard_block34, %guard_block28, %guard_block22
-  store i64 14, ptr %taddr40, align 8
-  %23 = insertvalue %"any*" undef, ptr %taddr40, 0
+  store i64 14, ptr %taddr39, align 8
+  %23 = insertvalue %"any*" undef, ptr %taddr39, 0
   %24 = insertvalue %"any*" %23, i64 ptrtoint (ptr @"$ct.long" to i64), 1
-  %25 = getelementptr inbounds [1 x %"any*"], ptr %varargslots39, i64 0, i64 0
+  %25 = getelementptr inbounds [1 x %"any*"], ptr %varargslots38, i64 0, i64 0
   store %"any*" %24, ptr %25, align 16
-  %26 = call i64 @std.io.printfn(ptr %retparam38, ptr @.str.3, i64 2, ptr %varargslots39, i64 1)
-  store i64 6, ptr %taddr45, align 8
-  %27 = insertvalue %"any*" undef, ptr %taddr45, 0
+  %26 = call i64 @std.io.printfn(ptr %retparam40, ptr @.str.3, i64 2, ptr %varargslots38, i64 1)
+  store i64 6, ptr %taddr44, align 8
+  %27 = insertvalue %"any*" undef, ptr %taddr44, 0
   %28 = insertvalue %"any*" %27, i64 ptrtoint (ptr @"$ct.long" to i64), 1
-  %29 = getelementptr inbounds [1 x %"any*"], ptr %varargslots44, i64 0, i64 0
+  %29 = getelementptr inbounds [1 x %"any*"], ptr %varargslots43, i64 0, i64 0
   store %"any*" %28, ptr %29, align 16
-  %30 = call i64 @std.io.printfn(ptr %retparam43, ptr @.str.4, i64 2, ptr %varargslots44, i64 1)
+  %30 = call i64 @std.io.printfn(ptr %retparam45, ptr @.str.4, i64 2, ptr %varargslots43, i64 1)
   %31 = call ptr @std.io.stdout()
   %32 = call i64 @std.io.File.write(ptr %retparam51, ptr %31, ptr @.str.5, i64 23)
   %not_err52 = icmp eq i64 %32, 0
