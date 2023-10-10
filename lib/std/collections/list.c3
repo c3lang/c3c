@@ -42,6 +42,18 @@ fn void List.tinit(&self, usz initial_capacity = 16)
 	self.init(initial_capacity, mem::temp()) @inline;
 }
 
+/**
+ * Initialize the List by referencing the provided types.
+ * @require self.size == 0 "The List must be empty"
+ **/
+fn void List.init_wrapping_array(&self, Type[] types, Allocator* using = mem::heap())
+{
+	self.allocator = using;
+	self.size = types.len;
+	self.capacity = types.len;
+	self.entries = types.ptr;
+}
+
 fn usz! List.to_format(&self, Formatter* formatter) @dynamic
 {
 	switch (self.size)
