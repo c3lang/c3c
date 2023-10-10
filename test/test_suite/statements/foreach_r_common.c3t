@@ -177,10 +177,10 @@ loop.body20:                                      ; preds = %loop.cond18
   %24 = getelementptr inbounds [3 x float], ptr %foo, i64 0, i64 %23
   %25 = load float, ptr %24, align 4
   store float %25, ptr %a22, align 4
-  %26 = load i64, ptr %i, align 8
-  %27 = load float, ptr %a22, align 4
-  %fpfpext23 = fpext float %27 to double
-  call void (ptr, ...) @printf(ptr @.str.3, i64 %26, double %fpfpext23)
+  %26 = load float, ptr %a22, align 4
+  %fpfpext23 = fpext float %26 to double
+  %27 = load i64, ptr %i, align 8
+  call void (ptr, ...) @printf(ptr @.str.3, i64 %27, double %fpfpext23)
   br label %loop.cond18
 
 loop.exit24:                                      ; preds = %loop.cond18
@@ -299,10 +299,10 @@ loop.body62:                                      ; preds = %loop.cond60
   %60 = load i64, ptr %.anon59, align 8
   %61 = extractelement <3 x float> %59, i64 %60
   store float %61, ptr %a65, align 4
-  %62 = load i64, ptr %i64, align 8
-  %63 = load float, ptr %a65, align 4
-  %fpfpext66 = fpext float %63 to double
-  call void (ptr, ...) @printf(ptr @.str.8, i64 %62, double %fpfpext66)
+  %62 = load float, ptr %a65, align 4
+  %fpfpext66 = fpext float %62 to double
+  %63 = load i64, ptr %i64, align 8
+  call void (ptr, ...) @printf(ptr @.str.8, i64 %63, double %fpfpext66)
   br label %loop.cond60
 
 loop.exit67:                                      ; preds = %loop.cond60

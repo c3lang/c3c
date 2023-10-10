@@ -10,7 +10,7 @@
 #include <llvm-c/Linker.h>
 
 const char *varargslots_name = "varargslots";
-const char *temp_name = "#temp#";
+const char *temp_name = "$$temp";
 typedef struct LLVMOpaquePassBuilderOptions *LLVMPassBuilderOptionsRef;
 LLVMErrorRef LLVMRunPasses(LLVMModuleRef M, const char *Passes,
 						   LLVMTargetMachineRef TM,

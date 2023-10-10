@@ -60,8 +60,8 @@ entry:
   %x = alloca ptr, align 8
   %a = alloca i32, align 4
   %z = alloca %"char[]", align 8
-  %retparam = alloca i64, align 8
   %varargslots = alloca [1 x %"any*"], align 16
+  %retparam = alloca i64, align 8
   store ptr %0, ptr %args, align 8
   %ptroffset = getelementptr inbounds i64, ptr %args, i64 1
   store i64 %1, ptr %ptroffset, align 8

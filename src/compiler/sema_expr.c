@@ -1716,6 +1716,7 @@ static inline Type *context_unify_returns(SemaContext *context)
 		// 5. No match -> error.
 		if (!max)
 		{
+			assert(return_stmt);
 			SEMA_ERROR(return_stmt, "Cannot find a common parent type of %s and %s",
 					   type_quoted_error_string(rtype), type_quoted_error_string(common_type));
 			Ast *prev = context->returns[i - 1];

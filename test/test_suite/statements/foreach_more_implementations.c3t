@@ -49,15 +49,15 @@ entry:
   %.anon1 = alloca i64, align 8
   %ref = alloca ptr, align 8
   %element = alloca i64, align 8
-  %retparam = alloca i64, align 8
   %varargslots = alloca [1 x %"any*"], align 16
+  %retparam = alloca i64, align 8
   %.anon3 = alloca i64, align 8
   %vector4 = alloca %Vector, align 8
   %.anon5 = alloca i64, align 8
   %i = alloca i32, align 4
   %element9 = alloca i64, align 8
-  %retparam11 = alloca i64, align 8
-  %varargslots12 = alloca [1 x %"any*"], align 16
+  %varargslots11 = alloca [1 x %"any*"], align 16
+  %retparam12 = alloca i64, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 4 @.__const, i32 8, i1 false)
   %0 = getelementptr inbounds %Vector, ptr %v, i32 0, i32 0
   store i64 2, ptr %0, align 8
@@ -124,9 +124,9 @@ loop.body8:                                       ; preds = %loop.cond6
   store i32 %26, ptr %i, align 4
   %27 = insertvalue %"any*" undef, ptr %i, 0
   %28 = insertvalue %"any*" %27, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  %29 = getelementptr inbounds [1 x %"any*"], ptr %varargslots12, i64 0, i64 0
+  %29 = getelementptr inbounds [1 x %"any*"], ptr %varargslots11, i64 0, i64 0
   store %"any*" %28, ptr %29, align 16
-  %30 = call i64 @std.io.printf(ptr %retparam11, ptr @.str.1, i64 3, ptr %varargslots12, i64 1)
+  %30 = call i64 @std.io.printf(ptr %retparam12, ptr @.str.1, i64 3, ptr %varargslots11, i64 1)
   %31 = load i64, ptr %.anon5, align 8
   %add13 = add i64 %31, 1
   store i64 %add13, ptr %.anon5, align 8

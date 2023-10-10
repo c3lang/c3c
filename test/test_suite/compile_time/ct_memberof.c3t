@@ -151,67 +151,71 @@ entry:
   %retparam132 = alloca i64, align 8
   %error_var138 = alloca i64, align 8
   %error_var144 = alloca i64, align 8
-  %retparam152 = alloca i64, align 8
   %varargslots = alloca [1 x %"any*"], align 16
   %taddr = alloca %"char[]", align 8
-  %retparam155 = alloca i64, align 8
-  %varargslots156 = alloca [2 x %"any*"], align 16
+  %retparam152 = alloca i64, align 8
+  %varargslots155 = alloca [2 x %"any*"], align 16
+  %taddr156 = alloca %"char[]", align 8
   %taddr157 = alloca %"char[]", align 8
-  %taddr158 = alloca %"char[]", align 8
-  %retparam161 = alloca i64, align 8
-  %varargslots162 = alloca [2 x %"any*"], align 16
+  %retparam158 = alloca i64, align 8
+  %varargslots161 = alloca [2 x %"any*"], align 16
+  %taddr162 = alloca %"char[]", align 8
   %taddr163 = alloca %"char[]", align 8
-  %taddr164 = alloca %"char[]", align 8
-  %retparam167 = alloca i64, align 8
-  %varargslots168 = alloca [2 x %"any*"], align 16
+  %retparam164 = alloca i64, align 8
+  %varargslots167 = alloca [2 x %"any*"], align 16
+  %taddr168 = alloca %"char[]", align 8
   %taddr169 = alloca %"char[]", align 8
-  %taddr170 = alloca %"char[]", align 8
-  %retparam173 = alloca i64, align 8
-  %varargslots174 = alloca [2 x %"any*"], align 16
+  %retparam170 = alloca i64, align 8
+  %varargslots173 = alloca [2 x %"any*"], align 16
+  %taddr174 = alloca %"char[]", align 8
   %taddr175 = alloca %"char[]", align 8
-  %taddr176 = alloca %"char[]", align 8
-  %retparam179 = alloca i64, align 8
-  %varargslots180 = alloca [1 x %"any*"], align 16
-  %taddr181 = alloca %"char[]", align 8
-  %retparam184 = alloca i64, align 8
-  %varargslots185 = alloca [2 x %"any*"], align 16
+  %retparam176 = alloca i64, align 8
+  %varargslots179 = alloca [1 x %"any*"], align 16
+  %taddr180 = alloca %"char[]", align 8
+  %retparam181 = alloca i64, align 8
+  %varargslots184 = alloca [2 x %"any*"], align 16
+  %taddr185 = alloca %"char[]", align 8
   %taddr186 = alloca %"char[]", align 8
-  %taddr187 = alloca %"char[]", align 8
-  %retparam190 = alloca i64, align 8
-  %varargslots191 = alloca [2 x %"any*"], align 16
+  %retparam187 = alloca i64, align 8
+  %varargslots190 = alloca [2 x %"any*"], align 16
+  %taddr191 = alloca %"char[]", align 8
   %taddr192 = alloca %"char[]", align 8
-  %taddr193 = alloca %"char[]", align 8
-  %retparam196 = alloca i64, align 8
-  %varargslots197 = alloca [2 x %"any*"], align 16
+  %retparam193 = alloca i64, align 8
+  %varargslots196 = alloca [2 x %"any*"], align 16
+  %taddr197 = alloca %"char[]", align 8
   %taddr198 = alloca %"char[]", align 8
-  %taddr199 = alloca %"char[]", align 8
-  %retparam202 = alloca i64, align 8
-  %varargslots203 = alloca [2 x %"any*"], align 16
+  %retparam199 = alloca i64, align 8
+  %varargslots202 = alloca [2 x %"any*"], align 16
+  %taddr203 = alloca %"char[]", align 8
   %taddr204 = alloca %"char[]", align 8
-  %taddr205 = alloca %"char[]", align 8
-  %retparam208 = alloca i64, align 8
-  %varargslots209 = alloca [1 x %"any*"], align 16
-  %taddr210 = alloca %"char[]", align 8
-  %retparam213 = alloca i64, align 8
-  %varargslots214 = alloca [2 x %"any*"], align 16
+  %retparam205 = alloca i64, align 8
+  %varargslots208 = alloca [1 x %"any*"], align 16
+  %taddr209 = alloca %"char[]", align 8
+  %retparam210 = alloca i64, align 8
+  %varargslots213 = alloca [2 x %"any*"], align 16
+  %taddr214 = alloca %"char[]", align 8
   %taddr215 = alloca %"char[]", align 8
-  %taddr216 = alloca %"char[]", align 8
-  %retparam219 = alloca i64, align 8
-  %varargslots220 = alloca [2 x %"any*"], align 16
+  %retparam216 = alloca i64, align 8
+  %varargslots219 = alloca [2 x %"any*"], align 16
+  %taddr220 = alloca %"char[]", align 8
   %taddr221 = alloca %"char[]", align 8
-  %taddr222 = alloca %"char[]", align 8
+  %retparam222 = alloca i64, align 8
   %1 = call ptr @std.io.stdout()
   %2 = call i64 @std.io.File.write(ptr %retparam, ptr %1, ptr @.str, i64 3)
   %not_err = icmp eq i64 %2, 0
   %3 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
   br i1 %3, label %after_check, label %assign_optional
+
 assign_optional:                                  ; preds = %entry
   store i64 %2, ptr %error_var, align 8
   br label %guard_block
+
 after_check:                                      ; preds = %entry
   br label %noerr_block
+
 guard_block:                                      ; preds = %assign_optional
   br label %voiderr
+
 noerr_block:                                      ; preds = %after_check
   %4 = load i64, ptr %retparam, align 8
   store i64 %4, ptr %len, align 8
@@ -219,42 +223,55 @@ noerr_block:                                      ; preds = %after_check
   %not_err3 = icmp eq i64 %5, 0
   %6 = call i1 @llvm.expect.i1(i1 %not_err3, i1 true)
   br i1 %6, label %after_check5, label %assign_optional4
+
 assign_optional4:                                 ; preds = %noerr_block
   store i64 %5, ptr %error_var2, align 8
   br label %guard_block6
+
 after_check5:                                     ; preds = %noerr_block
   br label %noerr_block7
+
 guard_block6:                                     ; preds = %assign_optional4
   br label %voiderr
+
 noerr_block7:                                     ; preds = %after_check5
   %7 = call i64 @std.io.File.flush(ptr %1)
   %not_err9 = icmp eq i64 %7, 0
   %8 = call i1 @llvm.expect.i1(i1 %not_err9, i1 true)
   br i1 %8, label %after_check11, label %assign_optional10
+
 assign_optional10:                                ; preds = %noerr_block7
   store i64 %7, ptr %error_var8, align 8
   br label %guard_block12
+
 after_check11:                                    ; preds = %noerr_block7
   br label %noerr_block13
+
 guard_block12:                                    ; preds = %assign_optional10
   br label %voiderr
+
 noerr_block13:                                    ; preds = %after_check11
   %9 = load i64, ptr %len, align 8
   %add = add i64 %9, 1
   br label %voiderr
+
 voiderr:                                          ; preds = %noerr_block13, %guard_block12, %guard_block6, %guard_block
   %10 = call ptr @std.io.stdout()
   %11 = call i64 @std.io.File.write(ptr %retparam17, ptr %10, ptr @.str.10, i64 3)
   %not_err18 = icmp eq i64 %11, 0
   %12 = call i1 @llvm.expect.i1(i1 %not_err18, i1 true)
   br i1 %12, label %after_check20, label %assign_optional19
+
 assign_optional19:                                ; preds = %voiderr
   store i64 %11, ptr %error_var15, align 8
   br label %guard_block21
+
 after_check20:                                    ; preds = %voiderr
   br label %noerr_block22
+
 guard_block21:                                    ; preds = %assign_optional19
   br label %voiderr36
+
 noerr_block22:                                    ; preds = %after_check20
   %13 = load i64, ptr %retparam17, align 8
   store i64 %13, ptr %len14, align 8
@@ -262,42 +279,55 @@ noerr_block22:                                    ; preds = %after_check20
   %not_err24 = icmp eq i64 %14, 0
   %15 = call i1 @llvm.expect.i1(i1 %not_err24, i1 true)
   br i1 %15, label %after_check26, label %assign_optional25
+
 assign_optional25:                                ; preds = %noerr_block22
   store i64 %14, ptr %error_var23, align 8
   br label %guard_block27
+
 after_check26:                                    ; preds = %noerr_block22
   br label %noerr_block28
+
 guard_block27:                                    ; preds = %assign_optional25
   br label %voiderr36
+
 noerr_block28:                                    ; preds = %after_check26
   %16 = call i64 @std.io.File.flush(ptr %10)
   %not_err30 = icmp eq i64 %16, 0
   %17 = call i1 @llvm.expect.i1(i1 %not_err30, i1 true)
   br i1 %17, label %after_check32, label %assign_optional31
+
 assign_optional31:                                ; preds = %noerr_block28
   store i64 %16, ptr %error_var29, align 8
   br label %guard_block33
+
 after_check32:                                    ; preds = %noerr_block28
   br label %noerr_block34
+
 guard_block33:                                    ; preds = %assign_optional31
   br label %voiderr36
+
 noerr_block34:                                    ; preds = %after_check32
   %18 = load i64, ptr %len14, align 8
   %add35 = add i64 %18, 1
   br label %voiderr36
+
 voiderr36:                                        ; preds = %noerr_block34, %guard_block33, %guard_block27, %guard_block21
   %19 = call ptr @std.io.stdout()
   %20 = call i64 @std.io.File.write(ptr %retparam40, ptr %19, ptr @.str.11, i64 6)
   %not_err41 = icmp eq i64 %20, 0
   %21 = call i1 @llvm.expect.i1(i1 %not_err41, i1 true)
   br i1 %21, label %after_check43, label %assign_optional42
+
 assign_optional42:                                ; preds = %voiderr36
   store i64 %20, ptr %error_var38, align 8
   br label %guard_block44
+
 after_check43:                                    ; preds = %voiderr36
   br label %noerr_block45
+
 guard_block44:                                    ; preds = %assign_optional42
   br label %voiderr59
+
 noerr_block45:                                    ; preds = %after_check43
   %22 = load i64, ptr %retparam40, align 8
   store i64 %22, ptr %len37, align 8
@@ -305,42 +335,55 @@ noerr_block45:                                    ; preds = %after_check43
   %not_err47 = icmp eq i64 %23, 0
   %24 = call i1 @llvm.expect.i1(i1 %not_err47, i1 true)
   br i1 %24, label %after_check49, label %assign_optional48
+
 assign_optional48:                                ; preds = %noerr_block45
   store i64 %23, ptr %error_var46, align 8
   br label %guard_block50
+
 after_check49:                                    ; preds = %noerr_block45
   br label %noerr_block51
+
 guard_block50:                                    ; preds = %assign_optional48
   br label %voiderr59
+
 noerr_block51:                                    ; preds = %after_check49
   %25 = call i64 @std.io.File.flush(ptr %19)
   %not_err53 = icmp eq i64 %25, 0
   %26 = call i1 @llvm.expect.i1(i1 %not_err53, i1 true)
   br i1 %26, label %after_check55, label %assign_optional54
+
 assign_optional54:                                ; preds = %noerr_block51
   store i64 %25, ptr %error_var52, align 8
   br label %guard_block56
+
 after_check55:                                    ; preds = %noerr_block51
   br label %noerr_block57
+
 guard_block56:                                    ; preds = %assign_optional54
   br label %voiderr59
+
 noerr_block57:                                    ; preds = %after_check55
   %27 = load i64, ptr %len37, align 8
   %add58 = add i64 %27, 1
   br label %voiderr59
+
 voiderr59:                                        ; preds = %noerr_block57, %guard_block56, %guard_block50, %guard_block44
   %28 = call ptr @std.io.stdout()
   %29 = call i64 @std.io.File.write(ptr %retparam63, ptr %28, ptr @.str.12, i64 6)
   %not_err64 = icmp eq i64 %29, 0
   %30 = call i1 @llvm.expect.i1(i1 %not_err64, i1 true)
   br i1 %30, label %after_check66, label %assign_optional65
+
 assign_optional65:                                ; preds = %voiderr59
   store i64 %29, ptr %error_var61, align 8
   br label %guard_block67
+
 after_check66:                                    ; preds = %voiderr59
   br label %noerr_block68
+
 guard_block67:                                    ; preds = %assign_optional65
   br label %voiderr82
+
 noerr_block68:                                    ; preds = %after_check66
   %31 = load i64, ptr %retparam63, align 8
   store i64 %31, ptr %len60, align 8
@@ -348,42 +391,55 @@ noerr_block68:                                    ; preds = %after_check66
   %not_err70 = icmp eq i64 %32, 0
   %33 = call i1 @llvm.expect.i1(i1 %not_err70, i1 true)
   br i1 %33, label %after_check72, label %assign_optional71
+
 assign_optional71:                                ; preds = %noerr_block68
   store i64 %32, ptr %error_var69, align 8
   br label %guard_block73
+
 after_check72:                                    ; preds = %noerr_block68
   br label %noerr_block74
+
 guard_block73:                                    ; preds = %assign_optional71
   br label %voiderr82
+
 noerr_block74:                                    ; preds = %after_check72
   %34 = call i64 @std.io.File.flush(ptr %28)
   %not_err76 = icmp eq i64 %34, 0
   %35 = call i1 @llvm.expect.i1(i1 %not_err76, i1 true)
   br i1 %35, label %after_check78, label %assign_optional77
+
 assign_optional77:                                ; preds = %noerr_block74
   store i64 %34, ptr %error_var75, align 8
   br label %guard_block79
+
 after_check78:                                    ; preds = %noerr_block74
   br label %noerr_block80
+
 guard_block79:                                    ; preds = %assign_optional77
   br label %voiderr82
+
 noerr_block80:                                    ; preds = %after_check78
   %36 = load i64, ptr %len60, align 8
   %add81 = add i64 %36, 1
   br label %voiderr82
+
 voiderr82:                                        ; preds = %noerr_block80, %guard_block79, %guard_block73, %guard_block67
   %37 = call ptr @std.io.stdout()
-  %38 = call i64 @std.io.File.write(ptr %retparam86, ptr %37, ptr @.str.13
+  %38 = call i64 @std.io.File.write(ptr %retparam86, ptr %37, ptr @.str.13, i64 6)
   %not_err87 = icmp eq i64 %38, 0
   %39 = call i1 @llvm.expect.i1(i1 %not_err87, i1 true)
   br i1 %39, label %after_check89, label %assign_optional88
+
 assign_optional88:                                ; preds = %voiderr82
   store i64 %38, ptr %error_var84, align 8
   br label %guard_block90
+
 after_check89:                                    ; preds = %voiderr82
   br label %noerr_block91
+
 guard_block90:                                    ; preds = %assign_optional88
   br label %voiderr105
+
 noerr_block91:                                    ; preds = %after_check89
   %40 = load i64, ptr %retparam86, align 8
   store i64 %40, ptr %len83, align 8
@@ -391,42 +447,55 @@ noerr_block91:                                    ; preds = %after_check89
   %not_err93 = icmp eq i64 %41, 0
   %42 = call i1 @llvm.expect.i1(i1 %not_err93, i1 true)
   br i1 %42, label %after_check95, label %assign_optional94
+
 assign_optional94:                                ; preds = %noerr_block91
   store i64 %41, ptr %error_var92, align 8
   br label %guard_block96
+
 after_check95:                                    ; preds = %noerr_block91
   br label %noerr_block97
+
 guard_block96:                                    ; preds = %assign_optional94
   br label %voiderr105
+
 noerr_block97:                                    ; preds = %after_check95
   %43 = call i64 @std.io.File.flush(ptr %37)
   %not_err99 = icmp eq i64 %43, 0
   %44 = call i1 @llvm.expect.i1(i1 %not_err99, i1 true)
   br i1 %44, label %after_check101, label %assign_optional100
+
 assign_optional100:                               ; preds = %noerr_block97
   store i64 %43, ptr %error_var98, align 8
   br label %guard_block102
+
 after_check101:                                   ; preds = %noerr_block97
   br label %noerr_block103
+
 guard_block102:                                   ; preds = %assign_optional100
   br label %voiderr105
+
 noerr_block103:                                   ; preds = %after_check101
   %45 = load i64, ptr %len83, align 8
   %add104 = add i64 %45, 1
   br label %voiderr105
+
 voiderr105:                                       ; preds = %noerr_block103, %guard_block102, %guard_block96, %guard_block90
   %46 = call ptr @std.io.stdout()
   %47 = call i64 @std.io.File.write(ptr %retparam109, ptr %46, ptr @.str.14, i64 4)
   %not_err110 = icmp eq i64 %47, 0
   %48 = call i1 @llvm.expect.i1(i1 %not_err110, i1 true)
   br i1 %48, label %after_check112, label %assign_optional111
+
 assign_optional111:                               ; preds = %voiderr105
   store i64 %47, ptr %error_var107, align 8
   br label %guard_block113
+
 after_check112:                                   ; preds = %voiderr105
   br label %noerr_block114
+
 guard_block113:                                   ; preds = %assign_optional111
   br label %voiderr128
+
 noerr_block114:                                   ; preds = %after_check112
   %49 = load i64, ptr %retparam109, align 8
   store i64 %49, ptr %len106, align 8
@@ -434,42 +503,55 @@ noerr_block114:                                   ; preds = %after_check112
   %not_err116 = icmp eq i64 %50, 0
   %51 = call i1 @llvm.expect.i1(i1 %not_err116, i1 true)
   br i1 %51, label %after_check118, label %assign_optional117
+
 assign_optional117:                               ; preds = %noerr_block114
   store i64 %50, ptr %error_var115, align 8
   br label %guard_block119
+
 after_check118:                                   ; preds = %noerr_block114
   br label %noerr_block120
+
 guard_block119:                                   ; preds = %assign_optional117
   br label %voiderr128
+
 noerr_block120:                                   ; preds = %after_check118
   %52 = call i64 @std.io.File.flush(ptr %46)
   %not_err122 = icmp eq i64 %52, 0
   %53 = call i1 @llvm.expect.i1(i1 %not_err122, i1 true)
   br i1 %53, label %after_check124, label %assign_optional123
+
 assign_optional123:                               ; preds = %noerr_block120
   store i64 %52, ptr %error_var121, align 8
   br label %guard_block125
+
 after_check124:                                   ; preds = %noerr_block120
   br label %noerr_block126
+
 guard_block125:                                   ; preds = %assign_optional123
   br label %voiderr128
+
 noerr_block126:                                   ; preds = %after_check124
   %54 = load i64, ptr %len106, align 8
   %add127 = add i64 %54, 1
   br label %voiderr128
+
 voiderr128:                                       ; preds = %noerr_block126, %guard_block125, %guard_block119, %guard_block113
   %55 = call ptr @std.io.stdout()
   %56 = call i64 @std.io.File.write(ptr %retparam132, ptr %55, ptr @.str.15, i64 3)
   %not_err133 = icmp eq i64 %56, 0
   %57 = call i1 @llvm.expect.i1(i1 %not_err133, i1 true)
   br i1 %57, label %after_check135, label %assign_optional134
+
 assign_optional134:                               ; preds = %voiderr128
   store i64 %56, ptr %error_var130, align 8
   br label %guard_block136
+
 after_check135:                                   ; preds = %voiderr128
   br label %noerr_block137
+
 guard_block136:                                   ; preds = %assign_optional134
   br label %voiderr151
+
 noerr_block137:                                   ; preds = %after_check135
   %58 = load i64, ptr %retparam132, align 8
   store i64 %58, ptr %len129, align 8
@@ -477,29 +559,38 @@ noerr_block137:                                   ; preds = %after_check135
   %not_err139 = icmp eq i64 %59, 0
   %60 = call i1 @llvm.expect.i1(i1 %not_err139, i1 true)
   br i1 %60, label %after_check141, label %assign_optional140
+
 assign_optional140:                               ; preds = %noerr_block137
   store i64 %59, ptr %error_var138, align 8
   br label %guard_block142
+
 after_check141:                                   ; preds = %noerr_block137
   br label %noerr_block143
+
 guard_block142:                                   ; preds = %assign_optional140
   br label %voiderr151
+
 noerr_block143:                                   ; preds = %after_check141
   %61 = call i64 @std.io.File.flush(ptr %55)
   %not_err145 = icmp eq i64 %61, 0
   %62 = call i1 @llvm.expect.i1(i1 %not_err145, i1 true)
   br i1 %62, label %after_check147, label %assign_optional146
+
 assign_optional146:                               ; preds = %noerr_block143
   store i64 %61, ptr %error_var144, align 8
   br label %guard_block148
+
 after_check147:                                   ; preds = %noerr_block143
   br label %noerr_block149
+
 guard_block148:                                   ; preds = %assign_optional146
   br label %voiderr151
+
 noerr_block149:                                   ; preds = %after_check147
   %63 = load i64, ptr %len129, align 8
   %add150 = add i64 %63, 1
   br label %voiderr151
+
 voiderr151:                                       ; preds = %noerr_block149, %guard_block148, %guard_block142, %guard_block136
   store %"char[]" { ptr @.str.17, i64 3 }, ptr %taddr, align 8
   %64 = insertvalue %"any*" undef, ptr %taddr, 0
@@ -507,280 +598,281 @@ voiderr151:                                       ; preds = %noerr_block149, %gu
   %66 = getelementptr inbounds [1 x %"any*"], ptr %varargslots, i64 0, i64 0
   store %"any*" %65, ptr %66, align 16
   %67 = call i64 @std.io.printfn(ptr %retparam152, ptr @.str.16, i64 8, ptr %varargslots, i64 1)
-  store %"char[]" { ptr @.str.19, i64 1 }, ptr %taddr157, align 8
-  %68 = insertvalue %"any*" undef, ptr %taddr157, 0
+  store %"char[]" { ptr @.str.19, i64 1 }, ptr %taddr156, align 8
+  %68 = insertvalue %"any*" undef, ptr %taddr156, 0
   %69 = insertvalue %"any*" %68, i64 ptrtoint (ptr @"$ct.String" to i64), 1
-  %70 = getelementptr inbounds [2 x %"any*"], ptr %varargslots156, i64 0, i64 0
+  %70 = getelementptr inbounds [2 x %"any*"], ptr %varargslots155, i64 0, i64 0
   store %"any*" %69, ptr %70, align 16
-  store %"char[]" { ptr @.str.20, i64 3 }, ptr %taddr158, align 8
-  %71 = insertvalue %"any*" undef, ptr %taddr158, 0
+  store %"char[]" { ptr @.str.20, i64 3 }, ptr %taddr157, align 8
+  %71 = insertvalue %"any*" undef, ptr %taddr157, 0
   %72 = insertvalue %"any*" %71, i64 ptrtoint (ptr @"$ct.String" to i64), 1
-  %73 = getelementptr inbounds [2 x %"any*"], ptr %varargslots156, i64 0, i64 1
+  %73 = getelementptr inbounds [2 x %"any*"], ptr %varargslots155, i64 0, i64 1
   store %"any*" %72, ptr %73, align 16
-  %74 = call i64 @std.io.printfn(ptr %retparam155, ptr @.str.18, i64 6, ptr %varargslots156, i64 2)
-  store %"char[]" { ptr @.str.22, i64 4 }, ptr %taddr163, align 8
-  %75 = insertvalue %"any*" undef, ptr %taddr163, 0
+  %74 = call i64 @std.io.printfn(ptr %retparam158, ptr @.str.18, i64 6, ptr %varargslots155, i64 2)
+  store %"char[]" { ptr @.str.22, i64 4 }, ptr %taddr162, align 8
+  %75 = insertvalue %"any*" undef, ptr %taddr162, 0
   %76 = insertvalue %"any*" %75, i64 ptrtoint (ptr @"$ct.String" to i64), 1
-  %77 = getelementptr inbounds [2 x %"any*"], ptr %varargslots162, i64 0, i64 0
+  %77 = getelementptr inbounds [2 x %"any*"], ptr %varargslots161, i64 0, i64 0
   store %"any*" %76, ptr %77, align 16
-  store %"char[]" { ptr @.str.23, i64 4 }, ptr %taddr164, align 8
-  %78 = insertvalue %"any*" undef, ptr %taddr164, 0
+  store %"char[]" { ptr @.str.23, i64 4 }, ptr %taddr163, align 8
+  %78 = insertvalue %"any*" undef, ptr %taddr163, 0
   %79 = insertvalue %"any*" %78, i64 ptrtoint (ptr @"$ct.String" to i64), 1
-  %80 = getelementptr inbounds [2 x %"any*"], ptr %varargslots162, i64 0, i64 1
+  %80 = getelementptr inbounds [2 x %"any*"], ptr %varargslots161, i64 0, i64 1
   store %"any*" %79, ptr %80, align 16
-  %81 = call i64 @std.io.printfn(ptr %retparam161, ptr @.str.21, i64 6, ptr %varargslots162, i64 2)
-  store %"char[]" zeroinitializer, ptr %taddr169, align 8
-  %82 = insertvalue %"any*" undef, ptr %taddr169, 0
+  %81 = call i64 @std.io.printfn(ptr %retparam164, ptr @.str.21, i64 6, ptr %varargslots161, i64 2)
+  store %"char[]" zeroinitializer, ptr %taddr168, align 8
+  %82 = insertvalue %"any*" undef, ptr %taddr168, 0
   %83 = insertvalue %"any*" %82, i64 ptrtoint (ptr @"$ct.String" to i64), 1
-  %84 = getelementptr inbounds [2 x %"any*"], ptr %varargslots168, i64 0, i64 0
+  %84 = getelementptr inbounds [2 x %"any*"], ptr %varargslots167, i64 0, i64 0
   store %"any*" %83, ptr %84, align 16
-  store %"char[]" { ptr @.str.25, i64 5 }, ptr %taddr170, align 8
-  %85 = insertvalue %"any*" undef, ptr %taddr170, 0
+  store %"char[]" { ptr @.str.25, i64 5 }, ptr %taddr169, align 8
+  %85 = insertvalue %"any*" undef, ptr %taddr169, 0
   %86 = insertvalue %"any*" %85, i64 ptrtoint (ptr @"$ct.String" to i64), 1
-  %87 = getelementptr inbounds [2 x %"any*"], ptr %varargslots168, i64 0, i64 1
+  %87 = getelementptr inbounds [2 x %"any*"], ptr %varargslots167, i64 0, i64 1
   store %"any*" %86, ptr %87, align 16
-  %88 = call i64 @std.io.printfn(ptr %retparam167, ptr @.str.24, i64 6, ptr %varargslots168, i64 2)
-  store %"char[]" { ptr @.str.27, i64 1 }, ptr %taddr175, align 8
-  %89 = insertvalue %"any*" undef, ptr %taddr175, 0
+  %88 = call i64 @std.io.printfn(ptr %retparam170, ptr @.str.24, i64 6, ptr %varargslots167, i64 2)
+  store %"char[]" { ptr @.str.27, i64 1 }, ptr %taddr174, align 8
+  %89 = insertvalue %"any*" undef, ptr %taddr174, 0
   %90 = insertvalue %"any*" %89, i64 ptrtoint (ptr @"$ct.String" to i64), 1
-  %91 = getelementptr inbounds [2 x %"any*"], ptr %varargslots174, i64 0, i64 0
+  %91 = getelementptr inbounds [2 x %"any*"], ptr %varargslots173, i64 0, i64 0
   store %"any*" %90, ptr %91, align 16
-  store %"char[]" { ptr @.str.28, i64 6 }, ptr %taddr176, align 8
-  %92 = insertvalue %"any*" undef, ptr %taddr176, 0
+  store %"char[]" { ptr @.str.28, i64 6 }, ptr %taddr175, align 8
+  %92 = insertvalue %"any*" undef, ptr %taddr175, 0
   %93 = insertvalue %"any*" %92, i64 ptrtoint (ptr @"$ct.String" to i64), 1
-  %94 = getelementptr inbounds [2 x %"any*"], ptr %varargslots174, i64 0, i64 1
+  %94 = getelementptr inbounds [2 x %"any*"], ptr %varargslots173, i64 0, i64 1
   store %"any*" %93, ptr %94, align 16
-  %95 = call i64 @std.io.printfn(ptr %retparam173, ptr @.str.26, i64 6, ptr %varargslots174, i64 2)
-  store %"char[]" { ptr @.str.30, i64 3 }, ptr %taddr181, align 8
-  %96 = insertvalue %"any*" undef, ptr %taddr181, 0
+  %95 = call i64 @std.io.printfn(ptr %retparam176, ptr @.str.26, i64 6, ptr %varargslots173, i64 2)
+  store %"char[]" { ptr @.str.30, i64 3 }, ptr %taddr180, align 8
+  %96 = insertvalue %"any*" undef, ptr %taddr180, 0
   %97 = insertvalue %"any*" %96, i64 ptrtoint (ptr @"$ct.String" to i64), 1
-  %98 = getelementptr inbounds [1 x %"any*"], ptr %varargslots180, i64 0, i64 0
+  %98 = getelementptr inbounds [1 x %"any*"], ptr %varargslots179, i64 0, i64 0
   store %"any*" %97, ptr %98, align 16
-  %99 = call i64 @std.io.printfn(ptr %retparam179, ptr @.str.29, i64 8, ptr %varargslots180, i64 1)
-  store %"char[]" { ptr @.str.32, i64 1 }, ptr %taddr186, align 8
-  %100 = insertvalue %"any*" undef, ptr %taddr186, 0
+  %99 = call i64 @std.io.printfn(ptr %retparam181, ptr @.str.29, i64 8, ptr %varargslots179, i64 1)
+  store %"char[]" { ptr @.str.32, i64 1 }, ptr %taddr185, align 8
+  %100 = insertvalue %"any*" undef, ptr %taddr185, 0
   %101 = insertvalue %"any*" %100, i64 ptrtoint (ptr @"$ct.String" to i64), 1
-  %102 = getelementptr inbounds [2 x %"any*"], ptr %varargslots185, i64 0, i64 0
+  %102 = getelementptr inbounds [2 x %"any*"], ptr %varargslots184, i64 0, i64 0
   store %"any*" %101, ptr %102, align 16
-  store %"char[]" { ptr @.str.33, i64 4 }, ptr %taddr187, align 8
-  %103 = insertvalue %"any*" undef, ptr %taddr187, 0
+  store %"char[]" { ptr @.str.33, i64 4 }, ptr %taddr186, align 8
+  %103 = insertvalue %"any*" undef, ptr %taddr186, 0
   %104 = insertvalue %"any*" %103, i64 ptrtoint (ptr @"$ct.String" to i64), 1
-  %105 = getelementptr inbounds [2 x %"any*"], ptr %varargslots185, i64 0, i64 1
+  %105 = getelementptr inbounds [2 x %"any*"], ptr %varargslots184, i64 0, i64 1
   store %"any*" %104, ptr %105, align 16
-  %106 = call i64 @std.io.printfn(ptr %retparam184, ptr @.str.31, i64 6, ptr %varargslots185, i64 2)
-  store %"char[]" { ptr @.str.35, i64 1 }, ptr %taddr192, align 8
-  %107 = insertvalue %"any*" undef, ptr %taddr192, 0
+  %106 = call i64 @std.io.printfn(ptr %retparam187, ptr @.str.31, i64 6, ptr %varargslots184, i64 2)
+  store %"char[]" { ptr @.str.35, i64 1 }, ptr %taddr191, align 8
+  %107 = insertvalue %"any*" undef, ptr %taddr191, 0
   %108 = insertvalue %"any*" %107, i64 ptrtoint (ptr @"$ct.String" to i64), 1
-  %109 = getelementptr inbounds [2 x %"any*"], ptr %varargslots191, i64 0, i64 0
+  %109 = getelementptr inbounds [2 x %"any*"], ptr %varargslots190, i64 0, i64 0
   store %"any*" %108, ptr %109, align 16
-  store %"char[]" { ptr @.str.36, i64 5 }, ptr %taddr193, align 8
-  %110 = insertvalue %"any*" undef, ptr %taddr193, 0
+  store %"char[]" { ptr @.str.36, i64 5 }, ptr %taddr192, align 8
+  %110 = insertvalue %"any*" undef, ptr %taddr192, 0
   %111 = insertvalue %"any*" %110, i64 ptrtoint (ptr @"$ct.String" to i64), 1
-  %112 = getelementptr inbounds [2 x %"any*"], ptr %varargslots191, i64 0, i64 1
+  %112 = getelementptr inbounds [2 x %"any*"], ptr %varargslots190, i64 0, i64 1
   store %"any*" %111, ptr %112, align 16
-  %113 = call i64 @std.io.printfn(ptr %retparam190, ptr @.str.34, i64 6, ptr %varargslots191, i64 2)
-  store %"char[]" zeroinitializer, ptr %taddr198, align 8
-  %114 = insertvalue %"any*" undef, ptr %taddr198, 0
+  %113 = call i64 @std.io.printfn(ptr %retparam193, ptr @.str.34, i64 6, ptr %varargslots190, i64 2)
+  store %"char[]" zeroinitializer, ptr %taddr197, align 8
+  %114 = insertvalue %"any*" undef, ptr %taddr197, 0
   %115 = insertvalue %"any*" %114, i64 ptrtoint (ptr @"$ct.String" to i64), 1
-  %116 = getelementptr inbounds [2 x %"any*"], ptr %varargslots197, i64 0, i64 0
+  %116 = getelementptr inbounds [2 x %"any*"], ptr %varargslots196, i64 0, i64 0
   store %"any*" %115, ptr %116, align 16
-  store %"char[]" { ptr @.str.38, i64 5 }, ptr %taddr199, align 8
-  %117 = insertvalue %"any*" undef, ptr %taddr199, 0
+  store %"char[]" { ptr @.str.38, i64 5 }, ptr %taddr198, align 8
+  %117 = insertvalue %"any*" undef, ptr %taddr198, 0
   %118 = insertvalue %"any*" %117, i64 ptrtoint (ptr @"$ct.String" to i64), 1
-  %119 = getelementptr inbounds [2 x %"any*"], ptr %varargslots197, i64 0, i64 1
+  %119 = getelementptr inbounds [2 x %"any*"], ptr %varargslots196, i64 0, i64 1
   store %"any*" %118, ptr %119, align 16
-  %120 = call i64 @std.io.printfn(ptr %retparam196, ptr @.str.37, i64 6, ptr %varargslots197, i64 2)
-  store %"char[]" { ptr @.str.40, i64 3 }, ptr %taddr204, align 8
-  %121 = insertvalue %"any*" undef, ptr %taddr204, 0
+  %120 = call i64 @std.io.printfn(ptr %retparam199, ptr @.str.37, i64 6, ptr %varargslots196, i64 2)
+  store %"char[]" { ptr @.str.40, i64 3 }, ptr %taddr203, align 8
+  %121 = insertvalue %"any*" undef, ptr %taddr203, 0
   %122 = insertvalue %"any*" %121, i64 ptrtoint (ptr @"$ct.String" to i64), 1
-  %123 = getelementptr inbounds [2 x %"any*"], ptr %varargslots203, i64 0, i64 0
+  %123 = getelementptr inbounds [2 x %"any*"], ptr %varargslots202, i64 0, i64 0
   store %"any*" %122, ptr %123, align 16
-  store %"char[]" { ptr @.str.41, i64 3 }, ptr %taddr205, align 8
-  %124 = insertvalue %"any*" undef, ptr %taddr205, 0
+  store %"char[]" { ptr @.str.41, i64 3 }, ptr %taddr204, align 8
+  %124 = insertvalue %"any*" undef, ptr %taddr204, 0
   %125 = insertvalue %"any*" %124, i64 ptrtoint (ptr @"$ct.String" to i64), 1
-  %126 = getelementptr inbounds [2 x %"any*"], ptr %varargslots203, i64 0, i64 1
+  %126 = getelementptr inbounds [2 x %"any*"], ptr %varargslots202, i64 0, i64 1
   store %"any*" %125, ptr %126, align 16
-  %127 = call i64 @std.io.printfn(ptr %retparam202, ptr @.str.39, i64 6, ptr %varargslots203, i64 2)
-  store %"char[]" { ptr @.str.43, i64 4 }, ptr %taddr210, align 8
-  %128 = insertvalue %"any*" undef, ptr %taddr210, 0
+  %127 = call i64 @std.io.printfn(ptr %retparam205, ptr @.str.39, i64 6, ptr %varargslots202, i64 2)
+  store %"char[]" { ptr @.str.43, i64 4 }, ptr %taddr209, align 8
+  %128 = insertvalue %"any*" undef, ptr %taddr209, 0
   %129 = insertvalue %"any*" %128, i64 ptrtoint (ptr @"$ct.String" to i64), 1
-  %130 = getelementptr inbounds [1 x %"any*"], ptr %varargslots209, i64 0, i64 0
+  %130 = getelementptr inbounds [1 x %"any*"], ptr %varargslots208, i64 0, i64 0
   store %"any*" %129, ptr %130, align 16
-  %131 = call i64 @std.io.printfn(ptr %retparam208, ptr @.str.42, i64 8, ptr %varargslots209, i64 1)
-  store %"char[]" { ptr @.str.45, i64 1 }, ptr %taddr215, align 8
-  %132 = insertvalue %"any*" undef, ptr %taddr215, 0
+  %131 = call i64 @std.io.printfn(ptr %retparam210, ptr @.str.42, i64 8, ptr %varargslots208, i64 1)
+  store %"char[]" { ptr @.str.45, i64 1 }, ptr %taddr214, align 8
+  %132 = insertvalue %"any*" undef, ptr %taddr214, 0
   %133 = insertvalue %"any*" %132, i64 ptrtoint (ptr @"$ct.String" to i64), 1
-  %134 = getelementptr inbounds [2 x %"any*"], ptr %varargslots214, i64 0, i64 0
+  %134 = getelementptr inbounds [2 x %"any*"], ptr %varargslots213, i64 0, i64 0
   store %"any*" %133, ptr %134, align 16
-  store %"char[]" { ptr @.str.46, i64 3 }, ptr %taddr216, align 8
-  %135 = insertvalue %"any*" undef, ptr %taddr216, 0
+  store %"char[]" { ptr @.str.46, i64 3 }, ptr %taddr215, align 8
+  %135 = insertvalue %"any*" undef, ptr %taddr215, 0
   %136 = insertvalue %"any*" %135, i64 ptrtoint (ptr @"$ct.String" to i64), 1
-  %137 = getelementptr inbounds [2 x %"any*"], ptr %varargslots214, i64 0, i64 1
+  %137 = getelementptr inbounds [2 x %"any*"], ptr %varargslots213, i64 0, i64 1
   store %"any*" %136, ptr %137, align 16
-  %138 = call i64 @std.io.printfn(ptr %retparam213, ptr @.str.44, i64 6, ptr %varargslots214, i64 2)
-  store %"char[]" { ptr @.str.48, i64 1 }, ptr %taddr221, align 8
-  %139 = insertvalue %"any*" undef, ptr %taddr221, 0
+  %138 = call i64 @std.io.printfn(ptr %retparam216, ptr @.str.44, i64 6, ptr %varargslots213, i64 2)
+  store %"char[]" { ptr @.str.48, i64 1 }, ptr %taddr220, align 8
+  %139 = insertvalue %"any*" undef, ptr %taddr220, 0
   %140 = insertvalue %"any*" %139, i64 ptrtoint (ptr @"$ct.String" to i64), 1
-  %141 = getelementptr inbounds [2 x %"any*"], ptr %varargslots220, i64 0, i64 0
+  %141 = getelementptr inbounds [2 x %"any*"], ptr %varargslots219, i64 0, i64 0
   store %"any*" %140, ptr %141, align 16
-  store %"char[]" { ptr @.str.49, i64 5 }, ptr %taddr222, align 8
-  %142 = insertvalue %"any*" undef, ptr %taddr222, 0
+  store %"char[]" { ptr @.str.49, i64 5 }, ptr %taddr221, align 8
+  %142 = insertvalue %"any*" undef, ptr %taddr221, 0
   %143 = insertvalue %"any*" %142, i64 ptrtoint (ptr @"$ct.String" to i64), 1
-  %144 = getelementptr inbounds [2 x %"any*"], ptr %varargslots220, i64 0, i64 1
+  %144 = getelementptr inbounds [2 x %"any*"], ptr %varargslots219, i64 0, i64 1
   store %"any*" %143, ptr %144, align 16
-  %145 = call i64 @std.io.printfn(ptr %retparam219, ptr @.str.47, i64 6, ptr %varargslots220, i64 2)
+  %145 = call i64 @std.io.printfn(ptr %retparam222, ptr @.str.47, i64 6, ptr %varargslots219, i64 2)
   ret void
 }
+
 ; Function Attrs: nounwind
 define void @test.main() #0 {
 entry:
-  %retparam = alloca i64, align 8
   %varargslots = alloca [1 x %"any*"], align 16
   %taddr = alloca i64, align 8
-  %retparam1 = alloca i64, align 8
-  %varargslots2 = alloca [1 x %"any*"], align 16
-  %taddr3 = alloca i64, align 8
-  %retparam4 = alloca i64, align 8
-  %varargslots5 = alloca [2 x %"any*"], align 16
+  %retparam = alloca i64, align 8
+  %varargslots1 = alloca [1 x %"any*"], align 16
+  %taddr2 = alloca i64, align 8
+  %retparam3 = alloca i64, align 8
+  %varargslots4 = alloca [2 x %"any*"], align 16
+  %taddr5 = alloca i64, align 8
   %taddr6 = alloca i64, align 8
-  %taddr7 = alloca i64, align 8
-  %retparam8 = alloca i64, align 8
-  %varargslots9 = alloca [2 x %"any*"], align 16
+  %retparam7 = alloca i64, align 8
+  %varargslots8 = alloca [2 x %"any*"], align 16
+  %taddr9 = alloca i64, align 8
   %taddr10 = alloca i64, align 8
-  %taddr11 = alloca i64, align 8
-  %retparam12 = alloca i64, align 8
-  %varargslots13 = alloca [2 x %"any*"], align 16
+  %retparam11 = alloca i64, align 8
+  %varargslots12 = alloca [2 x %"any*"], align 16
+  %taddr13 = alloca i64, align 8
   %taddr14 = alloca i64, align 8
-  %taddr15 = alloca i64, align 8
-  %retparam16 = alloca i64, align 8
-  %varargslots17 = alloca [2 x %"any*"], align 16
+  %retparam15 = alloca i64, align 8
+  %varargslots16 = alloca [2 x %"any*"], align 16
+  %taddr17 = alloca i64, align 8
   %taddr18 = alloca i64, align 8
-  %taddr19 = alloca i64, align 8
-  %retparam20 = alloca i64, align 8
-  %varargslots21 = alloca [2 x %"any*"], align 16
+  %retparam19 = alloca i64, align 8
+  %varargslots20 = alloca [2 x %"any*"], align 16
+  %taddr21 = alloca i64, align 8
   %taddr22 = alloca i64, align 8
-  %taddr23 = alloca i64, align 8
-  %retparam24 = alloca i64, align 8
-  %varargslots25 = alloca [2 x %"any*"], align 16
+  %retparam23 = alloca i64, align 8
+  %varargslots24 = alloca [2 x %"any*"], align 16
+  %taddr25 = alloca i64, align 8
   %taddr26 = alloca i64, align 8
-  %taddr27 = alloca i64, align 8
-  %retparam28 = alloca i64, align 8
-  %varargslots29 = alloca [2 x %"any*"], align 16
+  %retparam27 = alloca i64, align 8
+  %varargslots28 = alloca [2 x %"any*"], align 16
+  %taddr29 = alloca i64, align 8
   %taddr30 = alloca i64, align 8
-  %taddr31 = alloca i64, align 8
-  %retparam32 = alloca i64, align 8
-  %varargslots33 = alloca [1 x %"any*"], align 16
-  %taddr34 = alloca i64, align 8
-  %retparam35 = alloca i64, align 8
-  %varargslots36 = alloca [2 x %"any*"], align 16
+  %retparam31 = alloca i64, align 8
+  %varargslots32 = alloca [1 x %"any*"], align 16
+  %taddr33 = alloca i64, align 8
+  %retparam34 = alloca i64, align 8
+  %varargslots35 = alloca [2 x %"any*"], align 16
+  %taddr36 = alloca i64, align 8
   %taddr37 = alloca i64, align 8
-  %taddr38 = alloca i64, align 8
+  %retparam38 = alloca i64, align 8
   store i64 4, ptr %taddr, align 8
   %0 = insertvalue %"any*" undef, ptr %taddr, 0
   %1 = insertvalue %"any*" %0, i64 ptrtoint (ptr @"$ct.long" to i64), 1
   %2 = getelementptr inbounds [1 x %"any*"], ptr %varargslots, i64 0, i64 0
   store %"any*" %1, ptr %2, align 16
   %3 = call i64 @std.io.printfn(ptr %retparam, ptr @.str.50, i64 7, ptr %varargslots, i64 1)
-  store i64 1, ptr %taddr3, align 8
-  %4 = insertvalue %"any*" undef, ptr %taddr3, 0
+  store i64 1, ptr %taddr2, align 8
+  %4 = insertvalue %"any*" undef, ptr %taddr2, 0
   %5 = insertvalue %"any*" %4, i64 ptrtoint (ptr @"$ct.long" to i64), 1
-  %6 = getelementptr inbounds [1 x %"any*"], ptr %varargslots2, i64 0, i64 0
+  %6 = getelementptr inbounds [1 x %"any*"], ptr %varargslots1, i64 0, i64 0
   store %"any*" %5, ptr %6, align 16
-  %7 = call i64 @std.io.printfn(ptr %retparam1, ptr @.str.51, i64 7, ptr %varargslots2, i64 1)
-  store i64 0, ptr %taddr6, align 8
-  %8 = insertvalue %"any*" undef, ptr %taddr6, 0
+  %7 = call i64 @std.io.printfn(ptr %retparam3, ptr @.str.51, i64 7, ptr %varargslots1, i64 1)
+  store i64 0, ptr %taddr5, align 8
+  %8 = insertvalue %"any*" undef, ptr %taddr5, 0
   %9 = insertvalue %"any*" %8, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1
-  %10 = getelementptr inbounds [2 x %"any*"], ptr %varargslots5, i64 0, i64 0
+  %10 = getelementptr inbounds [2 x %"any*"], ptr %varargslots4, i64 0, i64 0
   store %"any*" %9, ptr %10, align 16
-  store i64 4, ptr %taddr7, align 8
-  %11 = insertvalue %"any*" undef, ptr %taddr7, 0
+  store i64 4, ptr %taddr6, align 8
+  %11 = insertvalue %"any*" undef, ptr %taddr6, 0
   %12 = insertvalue %"any*" %11, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1
-  %13 = getelementptr inbounds [2 x %"any*"], ptr %varargslots5, i64 0, i64 1
+  %13 = getelementptr inbounds [2 x %"any*"], ptr %varargslots4, i64 0, i64 1
   store %"any*" %12, ptr %13, align 16
-  %14 = call i64 @std.io.printfn(ptr %retparam4, ptr @.str.52, i64 8, ptr %varargslots5, i64 2)
-  store i64 2, ptr %taddr10, align 8
-  %15 = insertvalue %"any*" undef, ptr %taddr10, 0
+  %14 = call i64 @std.io.printfn(ptr %retparam7, ptr @.str.52, i64 8, ptr %varargslots4, i64 2)
+  store i64 2, ptr %taddr9, align 8
+  %15 = insertvalue %"any*" undef, ptr %taddr9, 0
   %16 = insertvalue %"any*" %15, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1
-  %17 = getelementptr inbounds [2 x %"any*"], ptr %varargslots9, i64 0, i64 0
+  %17 = getelementptr inbounds [2 x %"any*"], ptr %varargslots8, i64 0, i64 0
   store %"any*" %16, ptr %17, align 16
-  store i64 2, ptr %taddr11, align 8
-  %18 = insertvalue %"any*" undef, ptr %taddr11, 0
+  store i64 2, ptr %taddr10, align 8
+  %18 = insertvalue %"any*" undef, ptr %taddr10, 0
   %19 = insertvalue %"any*" %18, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1
-  %20 = getelementptr inbounds [2 x %"any*"], ptr %varargslots9, i64 0, i64 1
+  %20 = getelementptr inbounds [2 x %"any*"], ptr %varargslots8, i64 0, i64 1
   store %"any*" %19, ptr %20, align 16
-  %21 = call i64 @std.io.printfn(ptr %retparam8, ptr @.str.53, i64 8, ptr %varargslots9, i64 2)
-  store i64 4, ptr %taddr14, align 8
-  %22 = insertvalue %"any*" undef, ptr %taddr14, 0
+  %21 = call i64 @std.io.printfn(ptr %retparam11, ptr @.str.53, i64 8, ptr %varargslots8, i64 2)
+  store i64 4, ptr %taddr13, align 8
+  %22 = insertvalue %"any*" undef, ptr %taddr13, 0
   %23 = insertvalue %"any*" %22, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1
-  %24 = getelementptr inbounds [2 x %"any*"], ptr %varargslots13, i64 0, i64 0
+  %24 = getelementptr inbounds [2 x %"any*"], ptr %varargslots12, i64 0, i64 0
   store %"any*" %23, ptr %24, align 16
-  store i64 4, ptr %taddr15, align 8
-  %25 = insertvalue %"any*" undef, ptr %taddr15, 0
+  store i64 4, ptr %taddr14, align 8
+  %25 = insertvalue %"any*" undef, ptr %taddr14, 0
   %26 = insertvalue %"any*" %25, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1
-  %27 = getelementptr inbounds [2 x %"any*"], ptr %varargslots13, i64 0, i64 1
+  %27 = getelementptr inbounds [2 x %"any*"], ptr %varargslots12, i64 0, i64 1
   store %"any*" %26, ptr %27, align 16
-  %28 = call i64 @std.io.printfn(ptr %retparam12, ptr @.str.54, i64 8, ptr %varargslots13, i64 2)
-  store i64 4, ptr %taddr18, align 8
-  %29 = insertvalue %"any*" undef, ptr %taddr18, 0
+  %28 = call i64 @std.io.printfn(ptr %retparam15, ptr @.str.54, i64 8, ptr %varargslots12, i64 2)
+  store i64 4, ptr %taddr17, align 8
+  %29 = insertvalue %"any*" undef, ptr %taddr17, 0
   %30 = insertvalue %"any*" %29, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1
-  %31 = getelementptr inbounds [2 x %"any*"], ptr %varargslots17, i64 0, i64 0
+  %31 = getelementptr inbounds [2 x %"any*"], ptr %varargslots16, i64 0, i64 0
   store %"any*" %30, ptr %31, align 16
-  store i64 4, ptr %taddr19, align 8
-  %32 = insertvalue %"any*" undef, ptr %taddr19, 0
+  store i64 4, ptr %taddr18, align 8
+  %32 = insertvalue %"any*" undef, ptr %taddr18, 0
   %33 = insertvalue %"any*" %32, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1
-  %34 = getelementptr inbounds [2 x %"any*"], ptr %varargslots17, i64 0, i64 1
+  %34 = getelementptr inbounds [2 x %"any*"], ptr %varargslots16, i64 0, i64 1
   store %"any*" %33, ptr %34, align 16
-  %35 = call i64 @std.io.printfn(ptr %retparam16, ptr @.str.55, i64 8, ptr %varargslots17, i64 2)
-  store i64 4, ptr %taddr22, align 8
-  %36 = insertvalue %"any*" undef, ptr %taddr22, 0
+  %35 = call i64 @std.io.printfn(ptr %retparam19, ptr @.str.55, i64 8, ptr %varargslots16, i64 2)
+  store i64 4, ptr %taddr21, align 8
+  %36 = insertvalue %"any*" undef, ptr %taddr21, 0
   %37 = insertvalue %"any*" %36, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1
-  %38 = getelementptr inbounds [2 x %"any*"], ptr %varargslots21, i64 0, i64 0
+  %38 = getelementptr inbounds [2 x %"any*"], ptr %varargslots20, i64 0, i64 0
   store %"any*" %37, ptr %38, align 16
-  store i64 4, ptr %taddr23, align 8
-  %39 = insertvalue %"any*" undef, ptr %taddr23, 0
+  store i64 4, ptr %taddr22, align 8
+  %39 = insertvalue %"any*" undef, ptr %taddr22, 0
   %40 = insertvalue %"any*" %39, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1
-  %41 = getelementptr inbounds [2 x %"any*"], ptr %varargslots21, i64 0, i64 1
+  %41 = getelementptr inbounds [2 x %"any*"], ptr %varargslots20, i64 0, i64 1
   store %"any*" %40, ptr %41, align 16
-  %42 = call i64 @std.io.printfn(ptr %retparam20, ptr @.str.56, i64 9, ptr %varargslots21, i64 2)
-  store i64 5, ptr %taddr26, align 8
-  %43 = insertvalue %"any*" undef, ptr %taddr26, 0
+  %42 = call i64 @std.io.printfn(ptr %retparam23, ptr @.str.56, i64 9, ptr %varargslots20, i64 2)
+  store i64 5, ptr %taddr25, align 8
+  %43 = insertvalue %"any*" undef, ptr %taddr25, 0
   %44 = insertvalue %"any*" %43, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1
-  %45 = getelementptr inbounds [2 x %"any*"], ptr %varargslots25, i64 0, i64 0
+  %45 = getelementptr inbounds [2 x %"any*"], ptr %varargslots24, i64 0, i64 0
   store %"any*" %44, ptr %45, align 16
-  store i64 1, ptr %taddr27, align 8
-  %46 = insertvalue %"any*" undef, ptr %taddr27, 0
+  store i64 1, ptr %taddr26, align 8
+  %46 = insertvalue %"any*" undef, ptr %taddr26, 0
   %47 = insertvalue %"any*" %46, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1
-  %48 = getelementptr inbounds [2 x %"any*"], ptr %varargslots25, i64 0, i64 1
+  %48 = getelementptr inbounds [2 x %"any*"], ptr %varargslots24, i64 0, i64 1
   store %"any*" %47, ptr %48, align 16
-  %49 = call i64 @std.io.printfn(ptr %retparam24, ptr @.str.57, i64 9, ptr %varargslots25, i64 2)
-  store i64 8, ptr %taddr30, align 8
-  %50 = insertvalue %"any*" undef, ptr %taddr30, 0
+  %49 = call i64 @std.io.printfn(ptr %retparam27, ptr @.str.57, i64 9, ptr %varargslots24, i64 2)
+  store i64 8, ptr %taddr29, align 8
+  %50 = insertvalue %"any*" undef, ptr %taddr29, 0
   %51 = insertvalue %"any*" %50, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1
-  %52 = getelementptr inbounds [2 x %"any*"], ptr %varargslots29, i64 0, i64 0
+  %52 = getelementptr inbounds [2 x %"any*"], ptr %varargslots28, i64 0, i64 0
   store %"any*" %51, ptr %52, align 16
-  store i64 4, ptr %taddr31, align 8
-  %53 = insertvalue %"any*" undef, ptr %taddr31, 0
+  store i64 4, ptr %taddr30, align 8
+  %53 = insertvalue %"any*" undef, ptr %taddr30, 0
   %54 = insertvalue %"any*" %53, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1
-  %55 = getelementptr inbounds [2 x %"any*"], ptr %varargslots29, i64 0, i64 1
+  %55 = getelementptr inbounds [2 x %"any*"], ptr %varargslots28, i64 0, i64 1
   store %"any*" %54, ptr %55, align 16
-  %56 = call i64 @std.io.printfn(ptr %retparam28, ptr @.str.58, i64 10, ptr %varargslots29, i64 2)
-  store i64 4, ptr %taddr34, align 8
-  %57 = insertvalue %"any*" undef, ptr %taddr34, 0
+  %56 = call i64 @std.io.printfn(ptr %retparam31, ptr @.str.58, i64 10, ptr %varargslots28, i64 2)
+  store i64 4, ptr %taddr33, align 8
+  %57 = insertvalue %"any*" undef, ptr %taddr33, 0
   %58 = insertvalue %"any*" %57, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1
-  %59 = getelementptr inbounds [1 x %"any*"], ptr %varargslots33, i64 0, i64 0
+  %59 = getelementptr inbounds [1 x %"any*"], ptr %varargslots32, i64 0, i64 0
   store %"any*" %58, ptr %59, align 16
-  %60 = call i64 @std.io.printfn(ptr %retparam32, ptr @.str.59, i64 7, ptr %varargslots33, i64 1)
-  store i64 8, ptr %taddr37, align 8
-  %61 = insertvalue %"any*" undef, ptr %taddr37, 0
+  %60 = call i64 @std.io.printfn(ptr %retparam34, ptr @.str.59, i64 7, ptr %varargslots32, i64 1)
+  store i64 8, ptr %taddr36, align 8
+  %61 = insertvalue %"any*" undef, ptr %taddr36, 0
   %62 = insertvalue %"any*" %61, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1
-  %63 = getelementptr inbounds [2 x %"any*"], ptr %varargslots36, i64 0, i64 0
+  %63 = getelementptr inbounds [2 x %"any*"], ptr %varargslots35, i64 0, i64 0
   store %"any*" %62, ptr %63, align 16
-  store i64 4, ptr %taddr38, align 8
-  %64 = insertvalue %"any*" undef, ptr %taddr38, 0
+  store i64 4, ptr %taddr37, align 8
+  %64 = insertvalue %"any*" undef, ptr %taddr37, 0
   %65 = insertvalue %"any*" %64, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1
-  %66 = getelementptr inbounds [2 x %"any*"], ptr %varargslots36, i64 0, i64 1
+  %66 = getelementptr inbounds [2 x %"any*"], ptr %varargslots35, i64 0, i64 1
   store %"any*" %65, ptr %66, align 16
-  %67 = call i64 @std.io.printfn(ptr %retparam35, ptr @.str.60, i64 10, ptr %varargslots36, i64 2)
+  %67 = call i64 @std.io.printfn(ptr %retparam38, ptr @.str.60, i64 10, ptr %varargslots35, i64 2)
   call void @test.test(i32 10)
   ret void
 }

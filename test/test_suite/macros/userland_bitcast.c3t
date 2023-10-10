@@ -259,10 +259,10 @@ loop.exit14:                                      ; preds = %loop.cond8
   store float %17, ptr %f2, align 4
   %18 = load float, ptr %f, align 4
   %fpfpext = fpext float %18 to double
-  %19 = load i32, ptr %i, align 4
-  %20 = load float, ptr %f2, align 4
-  %fpfpext15 = fpext float %20 to double
-  call void (ptr, ...) @printf(ptr @.str, double %fpfpext, i32 %19, double %fpfpext15)
+  %19 = load float, ptr %f2, align 4
+  %fpfpext15 = fpext float %19 to double
+  %20 = load i32, ptr %i, align 4
+  call void (ptr, ...) @printf(ptr @.str, double %fpfpext, i32 %20, double %fpfpext15)
   store double 1.235300e+268, ptr %d, align 8
   %21 = load double, ptr %d, align 8
   store double %21, ptr %expr16, align 8

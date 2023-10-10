@@ -563,11 +563,13 @@ typedef struct
 			bool attr_finalizer : 1;
 			bool attr_protocol_method : 1;
 			bool attr_dynamic : 1;
+			bool attr_default : 1;
 			bool is_lambda : 1;
 			union
 			{
 				uint32_t priority;
 				DeclId protocol_method;
+				DeclId default_method;
 				Decl **generated_lambda;
 				Decl **lambda_ct_parameters;
 			};

@@ -33,8 +33,8 @@ entry:
   %2 = getelementptr inbounds [3 x i32], ptr %varargslots, i64 0, i64 2
   store i32 3, ptr %2, align 4
   %3 = insertvalue %"int[]" undef, ptr %varargslots, 0
-  %"#temp#" = insertvalue %"int[]" %3, i64 3, 1
-  store %"int[]" %"#temp#", ptr %indirectarg, align 8
+  %"$$temp" = insertvalue %"int[]" %3, i64 3, 1
+  store %"int[]" %"$$temp", ptr %indirectarg, align 8
   %4 = call i32 @sum_us(ptr align 8 %indirectarg)
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 4 @.__const, i32 12, i1 false)
   %5 = insertvalue %"int[]" undef, ptr %x, 0

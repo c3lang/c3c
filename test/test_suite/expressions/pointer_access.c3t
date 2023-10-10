@@ -79,26 +79,26 @@ entry:
   %14 = getelementptr inbounds %c, ptr %13, i32 0, i32 4
   store double 3.400000e+00, ptr %14, align 8
   %15 = getelementptr inbounds %ExtraSimple, ptr %a, i32 0, i32 0
-  %16 = load i32, ptr %15, align 8
-  %17 = getelementptr inbounds %ExtraSimple, ptr %a, i32 0, i32 2
-  %18 = getelementptr inbounds %c, ptr %17, i32 0, i32 0
-  %19 = load double, ptr %18, align 8
+  %16 = getelementptr inbounds %ExtraSimple, ptr %a, i32 0, i32 2
+  %17 = getelementptr inbounds %c, ptr %16, i32 0, i32 0
+  %18 = getelementptr inbounds %ExtraSimple, ptr %a, i32 0, i32 2
+  %19 = getelementptr inbounds %c, ptr %18, i32 0, i32 3
   %20 = getelementptr inbounds %ExtraSimple, ptr %a, i32 0, i32 2
-  %21 = getelementptr inbounds %c, ptr %20, i32 0, i32 3
-  %22 = load double, ptr %21, align 8
-  %23 = getelementptr inbounds %ExtraSimple, ptr %a, i32 0, i32 2
-  %24 = getelementptr inbounds %c, ptr %23, i32 0, i32 4
-  %25 = load double, ptr %24, align 8
-  %26 = getelementptr inbounds %ExtraSimple, ptr %a, i32 0, i32 5
-  %27 = load i32, ptr %26, align 8
-  %28 = getelementptr inbounds %ExtraSimple, ptr %a, i32 0, i32 4
-  %29 = load double, ptr %28, align 8
-  %30 = getelementptr inbounds %ExtraSimple, ptr %a, i32 0, i32 3
-  %31 = getelementptr inbounds %.anon, ptr %30, i32 0, i32 0
-  %32 = load i32, ptr %31, align 8
-  %33 = getelementptr inbounds %ExtraSimple, ptr %a, i32 0, i32 3
-  %34 = getelementptr inbounds %.anon, ptr %33, i32 0, i32 1
-  %35 = load i32, ptr %34, align 4
-  call void (ptr, ...) @printf(ptr @.str, i32 %16, double %19, double %22, double %25, i32 %27, double %29, i32 %32, i32 %35)
+  %21 = getelementptr inbounds %c, ptr %20, i32 0, i32 4
+  %22 = getelementptr inbounds %ExtraSimple, ptr %a, i32 0, i32 5
+  %23 = getelementptr inbounds %ExtraSimple, ptr %a, i32 0, i32 4
+  %24 = getelementptr inbounds %ExtraSimple, ptr %a, i32 0, i32 3
+  %25 = getelementptr inbounds %.anon, ptr %24, i32 0, i32 0
+  %26 = getelementptr inbounds %ExtraSimple, ptr %a, i32 0, i32 3
+  %27 = getelementptr inbounds %.anon, ptr %26, i32 0, i32 1
+  %28 = load i32, ptr %15, align 8
+  %29 = load double, ptr %17, align 8
+  %30 = load double, ptr %19, align 8
+  %31 = load double, ptr %21, align 8
+  %32 = load i32, ptr %22, align 8
+  %33 = load double, ptr %23, align 8
+  %34 = load i32, ptr %25, align 8
+  %35 = load i32, ptr %27, align 4
+  call void (ptr, ...) @printf(ptr @.str, i32 %28, double %29, double %30, double %31, i32 %32, double %33, i32 %34, i32 %35)
   ret void
 }

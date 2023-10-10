@@ -41,9 +41,9 @@ fn void main()
 
 define i64 @foo.test(i32 %0) #0 {
 entry:
-  %retparam = alloca i64, align 8
   %varargslots = alloca [1 x %"any*"], align 16
   %taddr = alloca i32, align 4
+  %retparam = alloca i64, align 8
   %error_var = alloca i64, align 8
   %blockret = alloca i32, align 4
   %len = alloca i64, align 8
@@ -341,9 +341,9 @@ voiderr96:                                        ; preds = %noerr_block94, %gua
 ; Function Attrs: nounwind
 define i64 @foo.test2(i32 %0) #0 {
 entry:
-  %retparam = alloca i64, align 8
   %varargslots = alloca [1 x %"any*"], align 16
   %taddr = alloca i32, align 4
+  %retparam = alloca i64, align 8
   %error_var = alloca i64, align 8
   %blockret = alloca i32, align 4
   %len = alloca i64, align 8

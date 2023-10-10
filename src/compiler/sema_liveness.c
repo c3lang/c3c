@@ -17,6 +17,7 @@ RETRY:
 		type = type->canonical;
 		switch (type->type_kind)
 		{
+			case TYPE_PROPTR:
 			case TYPE_POINTER:
 				type = type->pointer;
 				goto RETRY;
@@ -534,8 +535,11 @@ INLINE void sema_trace_decl_dynamic_methods(Decl *decl)
 	for (unsigned i = 0; i < method_count; i++)
 	{
 		Decl *method = methods[i];
-		if (method->decl_kind == DECL_MACRO || !method->func_decl.attr_dynamic) continue;
-		sema_trace_decl_liveness(method);
+		if (method->decl_kind == DECL_MACRO) continue;
+		if (method->func_decl.attr_dynamic || method->func_decl.attr_default)
+		{
+			sema_trace_decl_liveness(method);
+		}
 	}
 }
 static void sema_trace_func_liveness(Signature *sig)
@@ -569,13 +573,13 @@ RETRY:
 		case DECL_FAULT:
 		case DECL_STRUCT:
 		case DECL_UNION:
+		case DECL_PROTOCOL:
 			sema_trace_decl_dynamic_methods(decl);
 			return;
 		case DECL_POISONED:
 		case DECL_ATTRIBUTE:
 		case DECL_ENUM_CONSTANT:
 		case DECL_FAULTVALUE:
-		case DECL_PROTOCOL:
 			return;
 		case DECL_CT_ASSERT:
 		case DECL_CT_ECHO:

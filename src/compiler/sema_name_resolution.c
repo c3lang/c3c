@@ -87,6 +87,17 @@ static void add_members_to_decl_stack(Decl *decl)
 			sema_decl_stack_push(members[i]);
 		}
 	}
+	if (decl->decl_kind == DECL_PROTOCOL)
+	{
+		FOREACH_BEGIN(TypeInfo *parent_protocol, decl->protocols)
+			FOREACH_BEGIN(Decl *protocol, parent_protocol->type->decl->protocol_methods)
+				sema_decl_stack_push(protocol);
+			FOREACH_END();
+		FOREACH_END();
+		FOREACH_BEGIN(Decl *protocol, decl->protocol_methods)
+			sema_decl_stack_push(protocol);
+		FOREACH_END();
+	}
 	if (decl_is_struct_type(decl) || decl->decl_kind == DECL_BITSTRUCT)
 	{
 		Decl **members = decl->strukt.members;
@@ -650,15 +661,20 @@ Decl *sema_resolve_method_in_module(Module *module, Type *actual_type, const cha
 
 Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref)
 {
-	// 1. Look at the previously defined ones.
-	VECEACH(type->methods, i)
+	// Protocol, prefer protocol methods.
+	if (type->decl_kind == DECL_PROTOCOL)
 	{
-		Decl *func = type->methods[i];
-		if (method_name == func->name)
-		{
-			return func;
-		}
+		FOREACH_BEGIN(Decl *method, type->protocol_methods)
+			if (method_name == method->name) return method;
+		FOREACH_END();
 	}
+	// Look through natively defined methods.
+	FOREACH_BEGIN(Decl *method, type->methods)
+		if (method_name == method->name)
+		{
+			return method;
+		}
+	FOREACH_END();
 
 	return sema_resolve_type_method(unit, type->type, method_name, ambiguous_ref, private_ref);
 }

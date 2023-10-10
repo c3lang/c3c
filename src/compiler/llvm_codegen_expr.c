@@ -5209,30 +5209,7 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef *args, unsigned *arg_count_
 	}
 }
 
-static void llvm_emit_splatted_variadic_arg(GenContext *c, Expr *expr, Type *vararg_type, BEValue *subarray)
-{
-	BEValue value;
-	llvm_emit_expr(c, &value, expr);
-	Type *type = expr->type->canonical;
-	switch (type->type_kind)
-	{
-		case TYPE_ARRAY:
-			llvm_value_addr(c, &value);
-			llvm_value_bitcast(c, &value, type->array.base);
-			llvm_value_aggregate_two(c, subarray, vararg_type, value.value, llvm_const_int(c, type_usz, type->array.len));
-			return;
-		case TYPE_POINTER:
-			// Load the pointer
-			llvm_value_rvalue(c, &value);
-			llvm_value_aggregate_two(c, subarray, vararg_type, value.value, llvm_const_int(c, type_usz, type->pointer->array.len));
-			return;
-		case TYPE_SUBARRAY:
-			*subarray = value;
-			return;
-		default:
-			UNREACHABLE
-	}
-}
+
 
 void llvm_add_abi_call_attributes(GenContext *c, LLVMValueRef call_value, int count, ABIArgInfo **infos)
 {
@@ -5265,47 +5242,6 @@ void llvm_add_abi_call_attributes(GenContext *c, LLVMValueRef call_value, int co
 		}
 	}
 
-}
-
-void llvm_emit_vararg_parameter(GenContext *c, BEValue *value, Type *vararg_type, ABIArgInfo *abi_info, Expr **varargs, Expr *vararg_splat)
-{
-	REMINDER("All varargs should be called with non-alias!");
-
-	// 9a. Special case, empty argument
-	if (!vararg_splat && !varargs)
-	{
-		// Just set the size to zero.
-		llvm_value_set(value, llvm_get_zero(c, vararg_type), vararg_type);
-		return;
-	}
-	if (vararg_splat)
-	{
-		// 9b. We splat the last type which is either a slice, an array or a dynamic array.
-		llvm_emit_splatted_variadic_arg(c, vararg_splat, vararg_type, value);
-		return;
-	}
-	BEValue temp_value;
-	// 9b. Otherwise, we also need to allocate memory for the arguments:
-	Type *pointee_type = vararg_type->array.base;
-	unsigned elements = vec_size(varargs);
-	Type *array = type_get_array(pointee_type, elements);
-	LLVMTypeRef llvm_array_type = llvm_get_type(c, array);
-	AlignSize alignment = type_alloca_alignment(array);
-	LLVMValueRef array_ref = llvm_emit_alloca(c, llvm_array_type, alignment, varargslots_name);
-	foreach(Expr*, varargs)
-	{
-		llvm_emit_expr(c, &temp_value, val);
-		AlignSize store_alignment;
-		LLVMValueRef slot = llvm_emit_array_gep_raw(c,
-													array_ref,
-													llvm_array_type,
-													foreach_index,
-													alignment,
-													&store_alignment);
-		llvm_store_to_ptr_aligned(c, slot, &temp_value, store_alignment);
-	}
-	llvm_value_aggregate_two(c, value, vararg_type, array_ref, llvm_const_int(c, type_usz, elements));
-	LLVMSetValueName2(value->value, temp_name, 6);
 }
 
 
@@ -5630,115 +5566,30 @@ static LLVMValueRef llvm_emit_dynamic_search(GenContext *c, LLVMValueRef type_id
 	return phi;
 }
 
-static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr, BEValue *target)
+/**
+ * We assume all optionals are already folded for the arguments.
+ */
+INLINE void llvm_emit_call_invocation(GenContext *c, BEValue *result_value,
+									  BEValue *target,
+									  SourceSpan span,
+									  FunctionPrototype *prototype,
+									  Expr **args,
+									  BEValue *values,
+									  int inline_flag,
+									  LLVMValueRef func,
+									  LLVMTypeRef func_type,
+									  Expr **varargs)
 {
-	if (expr->call_expr.is_builtin)
-	{
-		llvm_emit_builtin_call(c, result_value, expr);
-		return;
-	}
-
-	llvm_emit_update_stack_row(c, expr->span.row);
-
-	LLVMTypeRef func_type;
-	LLVMValueRef func;
-	BEValue temp_value;
-
-	bool always_inline = false;
-
-	FunctionPrototype *prototype;
-	Expr **args = expr->call_expr.arguments;
-
-	BEValue arg0_pointer = { .value = NULL };
-
-	// 1. Dynamic dispatch.
-	if (expr->call_expr.is_dynamic_dispatch)
-	{
-		assert(vec_size(args));
-		Expr *any_val = args[0];
-		assert(any_val->expr_kind == EXPR_CAST);
-		any_val = exprptr(any_val->cast_expr.expr)->unary_expr.expr;
-		BEValue result;
-		llvm_emit_expr(c, &result, any_val);
-		BEValue typeid = result;
-		llvm_emit_type_from_any(c, &typeid);
-		llvm_value_rvalue(c, &typeid);
-		llvm_emit_any_pointer(c, &result, &arg0_pointer);
-		LLVMValueRef introspect = LLVMBuildIntToPtr(c->builder, typeid.value, c->ptr_type, "");
-
-		LLVMBasicBlockRef missing_function = llvm_basic_block_new(c, "missing_function");
-		LLVMBasicBlockRef match = llvm_basic_block_new(c, "match");
-
-		AlignSize align;
-		Decl *dyn_fn = declptr(expr->call_expr.func_ref);
-		func = llvm_emit_dynamic_search(c, introspect, llvm_get_ref(c, dyn_fn));
-		LLVMValueRef cmp = LLVMBuildICmp(c->builder, LLVMIntEQ, func, LLVMConstNull(c->ptr_type), "");
-		llvm_emit_cond_br_raw(c, cmp, missing_function, match);
-		llvm_emit_block(c, missing_function);
-		scratch_buffer_clear();
-		scratch_buffer_printf("No method '%s' could be found on target", dyn_fn->name);
-		llvm_emit_panic(c, scratch_buffer_to_string(), expr->span, NULL, NULL);
-		llvm_emit_unreachable(c);
-		llvm_emit_block(c, match);
-
-		prototype = type_get_resolved_prototype(dyn_fn->type);
-		func_type = llvm_get_type(c, dyn_fn->type);
-	}
-	else if (!expr->call_expr.is_func_ref)
-	{
-		// Call through a pointer.
-		Expr *function = exprptr(expr->call_expr.function);
-
-		// 1a. Find the pointee type for the function pointer:
-		Type *type = function->type->canonical->pointer;
-
-		// 1b. Find the type signature using the underlying pointer.
-		prototype = type_get_resolved_prototype(type);
-
-		// 1c. Evaluate the pointer expression.
-		BEValue func_value;
-		llvm_emit_expr(c, &func_value, function);
-
-		// 1d. Load it as a value
-		func = llvm_load_value_store(c, &func_value);
-
-		// 1e. Calculate the function type
-		func_type = llvm_get_type(c, type);
-	}
-	else
-	{
-		// 2a. Get the function declaration
-
-		Decl *function_decl = declptr(expr->call_expr.func_ref);
-		always_inline = function_decl->func_decl.attr_inline;
-
-		// 2b. Set signature, function and function type
-		prototype = type_get_resolved_prototype(function_decl->type);
-		func = llvm_get_ref(c, function_decl);
-		assert(func);
-		func_type = llvm_get_type(c, function_decl->type);
-	}
 	LLVMValueRef arg_values[512];
 	unsigned arg_count = 0;
 	Type **params = prototype->param_types;
 	ABIArgInfo **abi_args = prototype->abi_args;
 	unsigned param_count = vec_size(params);
-	Expr **varargs = NULL;
-	Expr *vararg_splat = NULL;
-	if (expr->call_expr.splat_vararg)
-	{
-		vararg_splat = expr->call_expr.splat;
-	}
-	else
-	{
-		varargs = expr->call_expr.varargs;
-	}
 	FunctionPrototype copy;
 	if (prototype->raw_variadic)
 	{
-		if (varargs || vararg_splat)
+		if (varargs)
 		{
-			assert(!vararg_splat);
 			copy = *prototype;
 			copy.varargs = NULL;
 
@@ -5787,9 +5638,9 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 				break;
 			}
 			llvm_value_set_address(result_value,
-								   llvm_emit_alloca(c, llvm_get_type(c, call_return_type), alignment, "sretparam"),
-								   call_return_type,
-								   alignment);
+			                       llvm_emit_alloca(c, llvm_get_type(c, call_return_type), alignment, "sretparam"),
+			                       call_return_type,
+			                       alignment);
 
 			// 6c. Add the pointer to the list of arguments.
 			arg_values[arg_count++] = result_value->value;
@@ -5821,67 +5672,174 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 		llvm_value_set_address_abi_aligned(&synthetic_return_param, synthetic_return_param.value, actual_return_type);
 	}
 
+	BEValue temp_value;
 
 	// 8. Add all other arguments.
 	for (unsigned i = 0; i < param_count; i++)
 	{
 		// 8a. Evaluate the expression.
-		Expr *arg_expr = args[i];
 		Type *param = params[i];
 		ABIArgInfo *info = abi_args[i];
 
-		if (arg_expr)
-		{
-			if (i == 0 && arg0_pointer.value)
-			{
-				temp_value = arg0_pointer;
-			}
-			else
-			{
-				llvm_emit_expr(c, &temp_value, arg_expr);
-			}
-		}
-		else
-		{
-			llvm_emit_vararg_parameter(c, &temp_value, param, info, varargs, vararg_splat);
-		}
-
 		// 8b. Emit the parameter according to ABI rules.
-		llvm_emit_parameter(c, arg_values, &arg_count, info, &temp_value, param);
+		BEValue value_copy = values[i];
+		llvm_emit_parameter(c, arg_values, &arg_count, info, &value_copy, param);
 	}
 
 	// 9. Typed varargs
 
 	if (prototype->raw_variadic)
 	{
+		unsigned vararg_count = vec_size(varargs);
 		if (prototype->abi_varargs)
 		{
 			// 9. Emit varargs.
 			unsigned index = 0;
 			ABIArgInfo **abi_varargs = prototype->abi_varargs;
-			foreach(Expr*, varargs)
+			for (unsigned i = 0; i < vararg_count; i++)
 			{
-				llvm_emit_expr(c, &temp_value, val);
 				ABIArgInfo *info = abi_varargs[index];
-				llvm_emit_parameter(c, arg_values, &arg_count, info, &temp_value, prototype->varargs[index]);
+				BEValue value_copy = values[i + param_count];
+				llvm_emit_parameter(c, arg_values, &arg_count, info, &value_copy, prototype->varargs[index]);
 				index++;
 			}
 		}
 		else
 		{
 			// 9. Emit varargs.
-			foreach(Expr*, varargs)
+			for (unsigned i = 0; i < vararg_count; i++)
 			{
-				llvm_emit_expr(c, &temp_value, val);
 				REMINDER("Varargs should be expanded correctly");
-				arg_values[arg_count++] = llvm_load_value_store(c, &temp_value);
+				arg_values[arg_count++] = llvm_load_value_store(c, &values[i + param_count]);
 			}
 		}
 	}
 
 
 	// 10. Create the actual call (remember to emit a loc, because we might have shifted loc emitting the params)
-	EMIT_LOC(c, expr);
+	if (c->debug.builder) llvm_emit_debug_location(c, span);
+
+	llvm_emit_raw_call(c, result_value, prototype, func_type, func, arg_values, arg_count, inline_flag, error_var, sret_return, &synthetic_return_param);
+
+	// Emit the current stack into the thread local or things will get messed up.
+	llvm_emit_pop_stacktrace(c, NULL);
+
+	// 17i. The simple case here is where there is a normal return.
+	//      In this case be_value already holds the result
+}
+
+INLINE void llvm_emit_varargs_expr(GenContext *c, BEValue *value_ref, Expr **varargs, Type *param)
+{
+	BEValue inner_temp;
+	// 9b. Otherwise, we also need to allocate memory for the arguments:
+	Type *pointee_type = param->array.base;
+	unsigned elements = vec_size(varargs);
+	Type *array = type_get_array(pointee_type, elements);
+	LLVMTypeRef llvm_array_type = llvm_get_type(c, array);
+	AlignSize alignment = type_alloca_alignment(array);
+	LLVMValueRef array_ref = llvm_emit_alloca(c, llvm_array_type, alignment, varargslots_name);
+	foreach(Expr*, varargs)
+	{
+		llvm_emit_expr(c, &inner_temp, val);
+		llvm_value_fold_optional(c, &inner_temp);
+		AlignSize store_alignment;
+		LLVMValueRef slot = llvm_emit_array_gep_raw(c,
+		                                            array_ref,
+		                                            llvm_array_type,
+		                                            foreach_index,
+		                                            alignment,
+		                                            &store_alignment);
+		llvm_store_to_ptr_aligned(c, slot, &inner_temp, store_alignment);
+	}
+	llvm_value_aggregate_two(c, value_ref, param, array_ref, llvm_const_int(c, type_usz, elements));
+	LLVMSetValueName2(value_ref->value, temp_name, 6);
+}
+
+INLINE void llvm_emit_vasplat_expr(GenContext *c, BEValue *value_ref, Expr *vasplat, Type *param)
+{
+	llvm_emit_expr(c, value_ref, vasplat);
+	llvm_value_fold_optional(c, value_ref);
+	Type *type = value_ref->type;
+	switch (type->type_kind)
+	{
+		case TYPE_ARRAY:
+			llvm_value_addr(c, value_ref);
+			llvm_value_bitcast(c, value_ref, type->array.base);
+			llvm_value_aggregate_two(c, value_ref, param, value_ref->value, llvm_const_int(c, type_usz, type->array.len));
+			return;
+		case TYPE_POINTER:
+			// Load the pointer
+			llvm_value_rvalue(c, value_ref);
+			llvm_value_aggregate_two(c, value_ref, param, value_ref->value, llvm_const_int(c, type_usz, type->pointer->array.len));
+			return;
+		case TYPE_SUBARRAY:
+			return;
+		default:
+			UNREACHABLE
+	}
+
+}
+static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr, BEValue *target)
+{
+	if (expr->call_expr.is_builtin)
+	{
+		llvm_emit_builtin_call(c, result_value, expr);
+		return;
+	}
+
+	llvm_emit_update_stack_row(c, expr->span.row);
+
+	LLVMTypeRef func_type;
+	LLVMValueRef func;
+
+	BEValue values[256];
+	Expr **args = expr->call_expr.arguments;
+	unsigned arg_count = vec_size(args);
+	bool always_inline = false;
+	FunctionPrototype *prototype;
+
+	// 1. Dynamic dispatch.
+	if (expr->call_expr.is_dynamic_dispatch)
+	{
+		assert(arg_count);
+		Expr *any_val = args[0];
+		assert(any_val->expr_kind == EXPR_CAST);
+		args[0] = exprptr(any_val->cast_expr.expr)->unary_expr.expr;
+	}
+
+	if (!expr->call_expr.is_func_ref)
+	{
+		// Call through a pointer.
+		Expr *function = exprptr(expr->call_expr.function);
+
+		// 1a. Find the pointee type for the function pointer:
+		Type *type = function->type->canonical->pointer;
+
+		// 1b. Find the type signature using the underlying pointer.
+		prototype = type_get_resolved_prototype(type);
+
+		// 1c. Evaluate the pointer expression.
+		BEValue func_value;
+		llvm_emit_expr(c, &func_value, function);
+
+		// 1d. Load it as a value
+		func = llvm_load_value_store(c, &func_value);
+
+		// 1e. Calculate the function type
+		func_type = llvm_get_type(c, type);
+	}
+	else
+	{
+		// 2a. Get the function declaration
+		Decl *function_decl = declptr(expr->call_expr.func_ref);
+		always_inline = function_decl->func_decl.attr_inline;
+
+		// 2b. Set signature, function and function type
+		prototype = type_get_resolved_prototype(function_decl->type);
+		func = llvm_get_ref(c, function_decl);
+		assert(func);
+		func_type = llvm_get_type(c, function_decl->type);
+	}
 	int inline_flag = 0;
 	if (expr->call_expr.attr_force_noinline)
 	{
@@ -5891,14 +5849,121 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 	{
 		inline_flag = expr->call_expr.attr_force_inline || always_inline ? 1 : 0;
 	}
-	llvm_emit_raw_call(c, result_value, prototype, func_type, func, arg_values, arg_count, inline_flag, error_var, sret_return, &synthetic_return_param);
 
-	// Emit the current stack into the thread local or things will get messed up.
-	llvm_emit_pop_stacktrace(c, NULL);
+	Expr *vararg_splat = NULL;
+	Expr **varargs = NULL;
+	if (expr->call_expr.splat_vararg)
+	{
+		vararg_splat = expr->call_expr.splat;
+	}
+	else
+	{
+		varargs = expr->call_expr.varargs;
+	}
 
-	// 17i. The simple case here is where there is a normal return.
-	//      In this case be_value already holds the result
-	return;
+	for (unsigned i = 0; i < arg_count; i++)
+	{
+		BEValue *value_ref = &values[i];
+		Expr *arg = args[i];
+		if (arg)
+		{
+			llvm_emit_expr(c, value_ref, args[i]);
+			llvm_value_fold_optional(c, value_ref);
+			continue;
+		}
+		Type *param = prototype->param_types[i];
+		if (vararg_splat)
+		{
+			llvm_emit_vasplat_expr(c, value_ref, vararg_splat, param);
+			continue;
+		}
+		if (varargs)
+		{
+			llvm_emit_varargs_expr(c, value_ref, varargs, param);
+			continue;
+		}
+		// Just set the size to zero.
+		llvm_value_set(value_ref, llvm_get_zero(c, param), param);
+	}
+	// Emit raw varargs
+	if (prototype->raw_variadic && varargs)
+	{
+		FOREACH_BEGIN_IDX(i, Expr *vararg, varargs)
+			BEValue *value_ref = &values[arg_count + i];
+			llvm_emit_expr(c, value_ref, vararg);
+			llvm_value_fold_optional(c, value_ref);
+		FOREACH_END();
+	}
+
+	// 1. Dynamic dispatch.
+	if (expr->call_expr.is_dynamic_dispatch)
+	{
+		assert(arg_count);
+		BEValue result = values[0];
+		BEValue typeid = result;
+		llvm_emit_type_from_any(c, &typeid);
+		llvm_value_rvalue(c, &typeid);
+		llvm_emit_any_pointer(c, &result, &result);
+		LLVMValueRef introspect = LLVMBuildIntToPtr(c->builder, typeid.value, c->ptr_type, "");
+
+		LLVMBasicBlockRef missing_function = llvm_basic_block_new(c, "missing_function");
+		LLVMBasicBlockRef match = llvm_basic_block_new(c, "match");
+
+		AlignSize align;
+		Decl *dyn_fn = declptr(expr->call_expr.func_ref);
+		prototype = type_get_resolved_prototype(dyn_fn->type);
+		func_type = llvm_get_type(c, dyn_fn->type);
+		func = llvm_emit_dynamic_search(c, introspect, llvm_get_ref(c, dyn_fn));
+		LLVMValueRef cmp = LLVMBuildICmp(c->builder, LLVMIntEQ, func, LLVMConstNull(c->ptr_type), "");
+		llvm_emit_cond_br_raw(c, cmp, missing_function, match);
+		llvm_emit_block(c, missing_function);
+		Decl *default_method = declptrzero(dyn_fn->func_decl.protocol_method);
+		if (default_method)
+		{
+			LLVMBasicBlockRef after = llvm_basic_block_new(c, "after_call");
+			FunctionPrototype *default_prototype = type_get_resolved_prototype(default_method->type);
+			BEValue default_res;
+			llvm_emit_call_invocation(c, &default_res, target, expr->span, default_prototype, args, values, inline_flag,
+			                          llvm_get_ref(c, default_method),
+			                          llvm_get_type(c, default_method->type),
+			                          varargs);
+			LLVMValueRef default_val = llvm_load_value(c, &default_res);
+			LLVMBasicBlockRef default_block = c->current_block;
+			llvm_emit_br(c, after);
+			llvm_emit_block(c, match);
+			prototype = type_get_resolved_prototype(dyn_fn->type);
+			func_type = llvm_get_type(c, dyn_fn->type);
+			BEValue normal_res;
+			values[0] = result;
+			llvm_emit_call_invocation(c, &normal_res, target, expr->span, prototype, args, values, inline_flag, func, func_type,
+			                          varargs);
+			LLVMValueRef normal_val = llvm_load_value(c, &normal_res);
+			LLVMBasicBlockRef normal_block = c->current_block;
+			llvm_emit_br(c, after);
+			llvm_emit_block(c, after);
+			if (normal_val)
+			{
+				LLVMValueRef phi = LLVMBuildPhi(c->builder, LLVMTypeOf(normal_val), "result");
+				llvm_set_phi(phi, default_val, default_block, normal_val, normal_block);
+				llvm_value_set(result_value, phi, default_res.type);
+			}
+			else
+			{
+				*result_value = (BEValue) { .value = NULL };
+			}
+			return;
+		}
+		scratch_buffer_clear();
+		scratch_buffer_printf("No method '%s' could be found on target", dyn_fn->name);
+		llvm_emit_panic(c, scratch_buffer_to_string(), expr->span, NULL, NULL);
+		llvm_emit_unreachable(c);
+		llvm_emit_block(c, match);
+		values[0] = result;
+
+	}
+
+	llvm_emit_call_invocation(c, result_value, target, expr->span, prototype, args, values, inline_flag, func, func_type,
+							  varargs);
 }
 
 

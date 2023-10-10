@@ -765,7 +765,6 @@ static bool sema_analyse_protocol(SemaContext *context, Decl *decl, bool *erase_
 				return false;
 			}
 		}
-		vec_add(decl->methods, method);
 		if (!method->extname)
 		{
 			scratch_buffer_clear();
@@ -1640,7 +1639,7 @@ static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type
 	Decl *ambiguous = NULL;
 	Decl *private = NULL;
 	method = sema_resolve_method(unit, parent, name, &ambiguous, &private);
-	if (method)
+	if (method && !method->func_decl.attr_protocol_method)
 	{
 		SEMA_ERROR(method_like, "This %s is already defined for '%s'.",
 				   method_name_by_decl(method_like), parent_type->name);
@@ -1731,6 +1730,51 @@ static inline Decl *sema_find_protocol_for_method(SemaContext *context, Type *pa
 	if (!sema_analyse_decl(context, first_protocol)) return poisoned_decl;
 	return first_match;
 }
+static inline bool sema_compare_method_with_protocol(SemaContext *context, Decl *decl, Decl *implemented_method)
+{
+	Signature protocol_sig = implemented_method->func_decl.signature;
+	Signature this_sig = decl->func_decl.signature;
+	Type *any_rtype = typeget(protocol_sig.rtype);
+	Type *this_rtype = typeget(this_sig.rtype);
+	if (any_rtype->canonical != this_rtype->canonical)
+	{
+		SEMA_ERROR(type_infoptr(this_sig.rtype), "The prototype method has a return type %s, but this function returns %s, they need to match.",
+		           type_quoted_error_string(any_rtype), type_quoted_error_string(this_rtype));
+		SEMA_NOTE(type_infoptr(protocol_sig.rtype), "The interface definition is here.");
+		return false;
+	}
+	Decl **any_params = protocol_sig.params;
+	Decl **this_params = this_sig.params;
+	unsigned any_param_count = vec_size(any_params);
+	unsigned this_param_count = vec_size(this_params);
+	if (any_param_count != this_param_count)
+	{
+		if (any_param_count > this_param_count)
+		{
+			SEMA_ERROR(decl, "This function is missing parameters, %d parameters were expected.", any_param_count);
+			SEMA_NOTE(any_params[this_param_count], "Compare with the interface definition.");
+			return false;
+		}
+		else
+		{
+			SEMA_ERROR(this_params[any_param_count], "This function has too many parameters (%d).", this_param_count);
+			SEMA_NOTE(decl, "Compare with the interface, which has only %d parameter%s.",
+			          any_param_count, any_param_count == 1 ? "" : "s");
+		}
+		return false;
+	}
+	FOREACH_BEGIN_IDX(i, Decl *param, this_params)
+		if (i == 0) continue;
+		if (param->type->canonical != any_params[i]->type->canonical)
+		{
+			SEMA_ERROR(vartype(param), "The prototype argument has type %s, but in this function it has type %s. Please make them match.",
+			           type_quoted_error_string(any_params[i]->type), type_quoted_error_string(param->type));
+			SEMA_NOTE(vartype(any_params[i]), "The interface definition is here.");
+			return false;
+		}
+	FOREACH_END();
+	return true;
+}
 
 static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 {
@@ -1748,61 +1792,45 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 	TypeInfo *parent_type = type_infoptr(decl->func_decl.type_parent);
 	if (!sema_resolve_type_info(context, parent_type, RESOLVE_TYPE_FUNC_METHOD)) return false;
 	Type *par_type = parent_type->type->canonical;
+	if (!sema_resolve_type_decl(context, par_type)) return false;
 	Decl **params = decl->func_decl.signature.params;
 	bool is_dynamic = decl->func_decl.attr_dynamic;
 	if (!vec_size(params)) RETURN_SEMA_ERROR(decl, "A method must start with an argument of the type "
 												   "it is a method of, e.g. 'fn Foo.test(Foo* foo)'.");
 	if (!sema_is_valid_method_param(context, params[0], par_type, is_dynamic)) return false;
 
+	if (decl->func_decl.attr_default)
+	{
+		if (par_type->type_kind != TYPE_PROTOCOL)
+		{
+			RETURN_SEMA_ERROR(decl, "Only protocols may have @default methods.");
+		}
+		Decl *implemented_method = sema_protocol_method_by_name(par_type->decl, decl->name);
+		if (!implemented_method)
+		{
+			RETURN_SEMA_ERROR(decl, "No matching protocol method could be found for the '%s' method.", decl->name);
+		}
+		if (!implemented_method->func_decl.attr_optional)
+		{
+			SEMA_ERROR(decl, "Only @optional protocol methods may have @default implementations.", decl->name);
+			SEMA_NOTE(implemented_method, "The definition of the protocol method is here.");
+			return false;
+		}
+		if (!sema_compare_method_with_protocol(context, decl, implemented_method)) return false;
+		implemented_method->func_decl.default_method = declid(decl);
+		decl->func_decl.protocol_method = declid(implemented_method);
+	}
 	if (is_dynamic)
 	{
-		if (!sema_resolve_type_decl(context, par_type)) return false;
+		if (par_type->type_kind == TYPE_PROTOCOL)
+		{
+			RETURN_SEMA_ERROR(decl, "Protocols may not implement @dynamic methods.");
+		}
 		Decl *implemented_method = sema_find_protocol_for_method(context, par_type, decl);
 		if (!decl_ok(implemented_method)) return false;
 		if (implemented_method)
 		{
-			Signature protocol_sig = implemented_method->func_decl.signature;
-			Signature this_sig = decl->func_decl.signature;
-			Type *any_rtype = typeget(protocol_sig.rtype);
-			Type *this_rtype = typeget(this_sig.rtype);
-			if (any_rtype->canonical != this_rtype->canonical)
-			{
-				SEMA_ERROR(type_infoptr(this_sig.rtype), "The prototype method has a return type %s, but this function returns %s, they need to match.",
-				           type_quoted_error_string(any_rtype), type_quoted_error_string(this_rtype));
-				SEMA_NOTE(type_infoptr(protocol_sig.rtype), "The interface definition is here.");
-				return false;
-			}
-			Decl **any_params = protocol_sig.params;
-			Decl **this_params = this_sig.params;
-			unsigned any_param_count = vec_size(any_params);
-			unsigned this_param_count = vec_size(this_params);
-			if (any_param_count != this_param_count)
-			{
-				if (any_param_count > this_param_count)
-				{
-					SEMA_ERROR(decl, "This function is missing parameters, %d parameters were expected.", any_param_count);
-					SEMA_NOTE(any_params[this_param_count], "Compare with the interface definition.");
-					return false;
-				}
-				else
-				{
-					SEMA_ERROR(this_params[any_param_count], "This function has too many parameters (%d).", this_param_count);
-					SEMA_NOTE(decl, "Compare with the interface, which has only %d parameter%s.",
-					          any_param_count, any_param_count == 1 ? "" : "s");
-				}
-				return false;
-			}
-			FOREACH_BEGIN_IDX(i, Decl *param, this_params)
-				if (i == 0) continue;
-				if (param->type->canonical != any_params[i]->type->canonical)
-				{
-					SEMA_ERROR(vartype(param), "The prototype argument has type %s, but in this function it has type %s. Please make them match.",
-					           type_quoted_error_string(any_params[i]->type), type_quoted_error_string(param->type));
-					SEMA_NOTE(vartype(any_params[i]), "The interface definition is here.");
-					return false;
-				}
-			FOREACH_END();
-
+			if (!sema_compare_method_with_protocol(context, decl, implemented_method)) return false;
 			decl->func_decl.protocol_method = declid(implemented_method);
 		}
 		else
@@ -1911,6 +1939,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_BIGENDIAN] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_BUILTIN] = ATTR_MACRO | ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST,
 			[ATTRIBUTE_CALLCONV] = ATTR_FUNC | ATTR_PROTOCOL_METHOD,
+			[ATTRIBUTE_DEFAULT] = ATTR_FUNC | ATTR_MACRO,
 			[ATTRIBUTE_DEPRECATED] = USER_DEFINED_TYPES | CALLABLE_TYPE | ATTR_CONST | ATTR_GLOBAL | ATTR_MEMBER | ATTR_BITSTRUCT_MEMBER,
 			[ATTRIBUTE_DYNAMIC] = ATTR_FUNC,
 			[ATTRIBUTE_EXPORT] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | EXPORTED_USER_DEFINED_TYPES,
@@ -2182,6 +2211,9 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			break;
 		case ATTRIBUTE_OVERLAP:
 			decl->bitstruct.overlap = true;
+			break;
+		case ATTRIBUTE_DEFAULT:
+			decl->func_decl.attr_default = true;
 			break;
 		case ATTRIBUTE_DYNAMIC:
 			decl->func_decl.attr_dynamic = true;

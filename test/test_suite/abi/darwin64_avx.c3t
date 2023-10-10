@@ -180,8 +180,8 @@ declare void @test52_helper(i32, ...) #0
 define void @test.test52() #0 {
 entry:
   %literal = alloca %Complex, align 8
-  %0 = load <8 x float>, ptr @test.x52, align 32
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const, i32 16, i1 false)
+  %0 = load <8 x float>, ptr @test.x52, align 32
   %1 = getelementptr inbounds %Complex, ptr %literal, i32 0, i32 0
   %lo = load double, ptr %1, align 8
   %2 = getelementptr inbounds %Complex, ptr %literal, i32 0, i32 1
@@ -196,17 +196,17 @@ define void @test.test54() #0 {
 entry:
   %literal = alloca %Complex, align 8
   %literal1 = alloca %Complex, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const.6, i32 16, i1 false)
   %0 = load <8 x float>, ptr @test.x54, align 32
   %1 = load <8 x float>, ptr @test.x54, align 32
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const.6, i32 16, i1 false)
   %2 = getelementptr inbounds %Complex, ptr %literal, i32 0, i32 0
   %lo = load double, ptr %2, align 8
   %3 = getelementptr inbounds %Complex, ptr %literal, i32 0, i32 1
   %hi = load double, ptr %3, align 8
   call void (<8 x float>, ...) @test54_helper(<8 x float> %0, <8 x float> %1, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double %lo, double %hi)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal1, ptr align 8 @.__const.7, i32 16, i1 false)
   %4 = load <8 x float>, ptr @test.x54, align 32
   %5 = load <8 x float>, ptr @test.x54, align 32
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal1, ptr align 8 @.__const.7, i32 16, i1 false)
   call void (<8 x float>, ...) @test54_helper(<8 x float> %4, <8 x float> %5, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, ptr byval(%Complex) align 8 %literal1)
   ret void
 }

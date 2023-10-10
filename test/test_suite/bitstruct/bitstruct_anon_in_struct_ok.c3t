@@ -31,17 +31,17 @@ fn void main() {
 define void @foo.main() #0 {
 entry:
   %test = alloca %Test, align 2
-  %retparam = alloca i64, align 8
   %varargslots = alloca [3 x %"any*"], align 16
   %taddr = alloca i8, align 1
   %taddr2 = alloca i8, align 1
   %taddr3 = alloca i16, align 2
-  %retparam4 = alloca i64, align 8
-  %varargslots5 = alloca [4 x %"any*"], align 16
-  %taddr8 = alloca i8, align 1
-  %taddr11 = alloca i8, align 1
-  %taddr14 = alloca i8, align 1
-  %taddr17 = alloca i8, align 1
+  %retparam = alloca i64, align 8
+  %varargslots4 = alloca [4 x %"any*"], align 16
+  %taddr7 = alloca i8, align 1
+  %taddr10 = alloca i8, align 1
+  %taddr13 = alloca i8, align 1
+  %taddr16 = alloca i8, align 1
+  %retparam17 = alloca i64, align 8
   %0 = getelementptr inbounds %Test, ptr %test, i32 0, i32 0
   store i16 0, ptr %0, align 2
   %1 = getelementptr inbounds %Test, ptr %test, i32 0, i32 1
@@ -78,45 +78,45 @@ entry:
   %21 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 18, ptr %varargslots, i64 3)
   %22 = getelementptr inbounds %Test, ptr %test, i32 0, i32 1
   %23 = load i16, ptr %22, align 2
-  %lshrl6 = lshr i16 %23, 7
-  %24 = and i16 1, %lshrl6
-  %trunc7 = trunc i16 %24 to i8
-  store i8 %trunc7, ptr %taddr8, align 1
-  %25 = insertvalue %"any*" undef, ptr %taddr8, 0
+  %lshrl5 = lshr i16 %23, 7
+  %24 = and i16 1, %lshrl5
+  %trunc6 = trunc i16 %24 to i8
+  store i8 %trunc6, ptr %taddr7, align 1
+  %25 = insertvalue %"any*" undef, ptr %taddr7, 0
   %26 = insertvalue %"any*" %25, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
-  %27 = getelementptr inbounds [4 x %"any*"], ptr %varargslots5, i64 0, i64 0
+  %27 = getelementptr inbounds [4 x %"any*"], ptr %varargslots4, i64 0, i64 0
   store %"any*" %26, ptr %27, align 16
   %28 = getelementptr inbounds %Test, ptr %test, i32 0, i32 1
   %29 = load i16, ptr %28, align 2
-  %lshrl9 = lshr i16 %29, 6
-  %30 = and i16 1, %lshrl9
-  %trunc10 = trunc i16 %30 to i8
-  store i8 %trunc10, ptr %taddr11, align 1
-  %31 = insertvalue %"any*" undef, ptr %taddr11, 0
+  %lshrl8 = lshr i16 %29, 6
+  %30 = and i16 1, %lshrl8
+  %trunc9 = trunc i16 %30 to i8
+  store i8 %trunc9, ptr %taddr10, align 1
+  %31 = insertvalue %"any*" undef, ptr %taddr10, 0
   %32 = insertvalue %"any*" %31, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
-  %33 = getelementptr inbounds [4 x %"any*"], ptr %varargslots5, i64 0, i64 1
+  %33 = getelementptr inbounds [4 x %"any*"], ptr %varargslots4, i64 0, i64 1
   store %"any*" %32, ptr %33, align 16
   %34 = getelementptr inbounds %Test, ptr %test, i32 0, i32 1
   %35 = load i16, ptr %34, align 2
-  %lshrl12 = lshr i16 %35, 5
-  %36 = and i16 1, %lshrl12
-  %trunc13 = trunc i16 %36 to i8
-  store i8 %trunc13, ptr %taddr14, align 1
-  %37 = insertvalue %"any*" undef, ptr %taddr14, 0
+  %lshrl11 = lshr i16 %35, 5
+  %36 = and i16 1, %lshrl11
+  %trunc12 = trunc i16 %36 to i8
+  store i8 %trunc12, ptr %taddr13, align 1
+  %37 = insertvalue %"any*" undef, ptr %taddr13, 0
   %38 = insertvalue %"any*" %37, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
-  %39 = getelementptr inbounds [4 x %"any*"], ptr %varargslots5, i64 0, i64 2
+  %39 = getelementptr inbounds [4 x %"any*"], ptr %varargslots4, i64 0, i64 2
   store %"any*" %38, ptr %39, align 16
   %40 = getelementptr inbounds %Test, ptr %test, i32 0, i32 1
   %41 = load i16, ptr %40, align 2
-  %lshrl15 = lshr i16 %41, 4
-  %42 = and i16 1, %lshrl15
-  %trunc16 = trunc i16 %42 to i8
-  store i8 %trunc16, ptr %taddr17, align 1
-  %43 = insertvalue %"any*" undef, ptr %taddr17, 0
+  %lshrl14 = lshr i16 %41, 4
+  %42 = and i16 1, %lshrl14
+  %trunc15 = trunc i16 %42 to i8
+  store i8 %trunc15, ptr %taddr16, align 1
+  %43 = insertvalue %"any*" undef, ptr %taddr16, 0
   %44 = insertvalue %"any*" %43, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
-  %45 = getelementptr inbounds [4 x %"any*"], ptr %varargslots5, i64 0, i64 3
+  %45 = getelementptr inbounds [4 x %"any*"], ptr %varargslots4, i64 0, i64 3
   store %"any*" %44, ptr %45, align 16
-  %46 = call i64 @std.io.printfn(ptr %retparam4, ptr @.str.1, i64 12, ptr %varargslots5, i64 4)
+  %46 = call i64 @std.io.printfn(ptr %retparam17, ptr @.str.1, i64 12, ptr %varargslots4, i64 4)
   ret void
 }
 

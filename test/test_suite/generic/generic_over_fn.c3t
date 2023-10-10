@@ -118,12 +118,12 @@ loop.body:                                        ; preds = %loop.cond
   %22 = getelementptr inbounds %"int[]", ptr %list, i32 0, i32 1
   %23 = load i64, ptr %22, align 8
   store i64 %23, ptr %len, align 8
-  %24 = getelementptr inbounds %"int[]", ptr %list, i32 0, i32 0
-  %lo = load ptr, ptr %24, align 8
-  %25 = getelementptr inbounds %"int[]", ptr %list, i32 0, i32 1
-  %hi = load i64, ptr %25, align 8
-  %26 = load i64, ptr %len, align 8
-  %sub = sub i64 %26, 1
+  %24 = load i64, ptr %len, align 8
+  %sub = sub i64 %24, 1
+  %25 = getelementptr inbounds %"int[]", ptr %list, i32 0, i32 0
+  %lo = load ptr, ptr %25, align 8
+  %26 = getelementptr inbounds %"int[]", ptr %list, i32 0, i32 1
+  %hi = load i64, ptr %26, align 8
   call void @"test_generic$sa$int$p$fn$int$int$$int$$.sort"(ptr %lo, i64 %hi, i64 0, i64 %sub, ptr @sort_test.cmp_int_value)
   %27 = load i64, ptr %.anon5, align 8
   %add = add i64 %27, 1
@@ -195,12 +195,12 @@ loop.body:                                        ; preds = %loop.cond
   %22 = getelementptr inbounds %"int[]", ptr %list, i32 0, i32 1
   %23 = load i64, ptr %22, align 8
   store i64 %23, ptr %len, align 8
-  %24 = getelementptr inbounds %"int[]", ptr %list, i32 0, i32 0
-  %lo = load ptr, ptr %24, align 8
-  %25 = getelementptr inbounds %"int[]", ptr %list, i32 0, i32 1
-  %hi = load i64, ptr %25, align 8
-  %26 = load i64, ptr %len, align 8
-  %sub = sub i64 %26, 1
+  %24 = load i64, ptr %len, align 8
+  %sub = sub i64 %24, 1
+  %25 = getelementptr inbounds %"int[]", ptr %list, i32 0, i32 0
+  %lo = load ptr, ptr %25, align 8
+  %26 = getelementptr inbounds %"int[]", ptr %list, i32 0, i32 1
+  %hi = load i64, ptr %26, align 8
   call void @"test_generic$sa$int$p$fn$int$int$$int$$.sort"(ptr %lo, i64 %hi, i64 0, i64 %sub, ptr @sort_test.cmp_int_value2)
   %27 = load i64, ptr %.anon5, align 8
   %add = add i64 %27, 1
