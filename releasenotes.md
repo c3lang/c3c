@@ -3,6 +3,7 @@
 ## 0.5.0 Change List
 
 ### Changes / improvements
+- Distinct methods changed to separate syntax.
 - 'exec' directive to run scripts at compile time.
 - Project key descriptions in --list command.
 - Added `init-lib` to simplify library creation.
@@ -34,7 +35,7 @@
 - Delete object files after successful linking.
 - Compile time subscript of constant strings and bytes.
 - `@if` introduced, other top level conditional compilation removed.
-- Dynamically dispatched interfaces.
+- Dynamically dispatched protocols with optional methods.
 - `$if` now uses `$if <expr>:` syntax.
 - `$assert` now uses `$assert <expr> : <optional message>`
 - `$error` is syntax sugar for `$assert false : "Some message"`
