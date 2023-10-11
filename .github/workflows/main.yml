@@ -46,6 +46,7 @@ jobs:
         run: |
           cd resources/testproject
           ..\..\build\${{ matrix.build_type }}\c3c.exe --debug-log run hello_world_win32
+          ..\..\build\${{ matrix.build_type }}\c3c.exe clean
 
       - name: Build testproject lib
         run: |
