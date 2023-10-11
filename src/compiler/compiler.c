@@ -854,7 +854,7 @@ static void execute_scripts(void)
 		StringSlice call = slice_next_token(&execs, ' ');
 		if (call.len < 3 || call.ptr[call.len - 3] != '.' || call.ptr[call.len - 2] != 'c' || call.ptr[call.len - 2] != '3')
 		{
-			(void)execute_cmd(exec);
+			(void) execute_cmd(exec, false);
 			continue;
 		}
 		scratch_buffer_clear();

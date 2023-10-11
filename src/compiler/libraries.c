@@ -257,11 +257,11 @@ void resolve_libraries(void)
 		}
 		FOREACH_BEGIN(const char *exec, library->execs)
 			printf("] Execute '%s' for library '%s':", exec, library->provides);
-			puts(execute_cmd(exec));
+			puts(execute_cmd(exec, false));
 		FOREACH_END();
 		FOREACH_BEGIN(const char *exec, target->execs)
 			printf("] Execute '%s' for library '%s':", exec, library->provides);
-			puts(execute_cmd(exec));
+			puts(execute_cmd(exec, false));
 		FOREACH_END();
 	}
 }

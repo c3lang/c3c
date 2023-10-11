@@ -481,15 +481,15 @@ bool file_delete_file(const char *path)
 #endif
 }
 
-bool file_delete_all_files_in_dir_with_suffix(const char *path, const char *suffix)
+void file_delete_all_files_in_dir_with_suffix(const char *path, const char *suffix)
 {
 	assert(path);
 #if (_MSC_VER)
-	const char *cmd = "del /q \"%s\\*%s\"";
+	const char *cmd = "del /q \"%s\\*%s\" >nul 2>&1";
 #else
 	const char *cmd = "rm -f %s/*%s";
 #endif
-	return execute_cmd(str_printf(cmd, path, suffix)) == 0;
+	execute_cmd(str_printf(cmd, path, suffix), true);
 }
 
 #if (_MSC_VER)
@@ -571,7 +571,7 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 #endif
 
 #define BUFSIZE 1024
-const char *execute_cmd(const char *cmd)
+const char *execute_cmd(const char *cmd, bool ignore_failure)
 {
 	char buffer[BUFSIZE];
 	char *output = "";
@@ -579,11 +579,13 @@ const char *execute_cmd(const char *cmd)
 #if (_MSC_VER)
 	if (!(process = _wpopen(win_utf8to16(cmd), L"r")))
 	{
+		if (ignore_failure) return "";
 		error_exit("Failed to open a pipe for command '%s'.", cmd);
 	}
 #else
 	if (!(process = popen(cmd, "r")))
 	{
+		if (ignore_failure) return "";
 		error_exit("Failed to open a pipe for command '%s'.", cmd);
 	}
 #endif
@@ -598,6 +600,7 @@ const char *execute_cmd(const char *cmd)
 #endif
 	if (err)
 	{
+		if (ignore_failure) return "";
 		error_exit("Failed to execute '%s'.", cmd);
 	}
 
