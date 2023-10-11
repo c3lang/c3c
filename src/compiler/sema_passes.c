@@ -284,7 +284,7 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 	}
 	else
 	{
-		const char *output = execute_cmd(scratch_buffer_to_string());
+		const char *output = execute_cmd(scratch_buffer_to_string(), false);
 		file = source_file_text_load(scratch_buffer_to_string(), output);
 	}
 	if (old_path)

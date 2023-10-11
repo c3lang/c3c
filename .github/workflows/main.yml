@@ -45,8 +45,11 @@ jobs:
       - name: Build testproject
         run: |
           cd resources/testproject
-          ..\..\build\${{ matrix.build_type }}\c3c.exe --debug-log run hello_world_win32
+          ..\..\build\${{ matrix.build_type }}\c3c.exe --debug-log --emit-llvm run hello_world_win32
+          dir build\llvm_ir
           ..\..\build\${{ matrix.build_type }}\c3c.exe clean
+          dir build\llvm_ir
+          
 
       - name: Build testproject lib
         run: |

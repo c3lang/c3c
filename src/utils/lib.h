@@ -72,7 +72,8 @@ bool file_namesplit(const char *path, char** filename_ptr, char** directory_ptr)
 const char* file_expand_path(const char* path);
 const char* find_lib_dir(void);
 const char *find_rel_exe_dir(const char *dir);
-bool file_delete_all_files_in_dir_with_suffix(const char *dir, const char *suffix);
+
+void file_delete_all_files_in_dir_with_suffix(const char *dir, const char *suffix);
 bool file_delete_file(const char *path);
 bool file_is_dir(const char *file);
 bool file_exists(const char *path);
@@ -86,7 +87,7 @@ bool file_has_suffix_in_list(const char *file_name, int name_len, const char **s
 void file_add_wildcard_files(const char ***files, const char *path, bool recursive, const char **suffix_list, int suffix_count);
 const char *file_append_path(const char *path, const char *name);
 
-const char *execute_cmd(const char *cmd);
+const char *execute_cmd(const char *cmd, bool ignore_failure);
 bool execute_cmd_failable(const char *cmd, const char **result);
 void *cmalloc(size_t size);
 void *ccalloc(size_t size, size_t elements);
