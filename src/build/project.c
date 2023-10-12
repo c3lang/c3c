@@ -445,7 +445,7 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	target->win.sdk = get_valid_string(json, "winsdk", type, false);
 
 	// macossdk
-	target->macos.sdk = get_valid_string(json, "macossdk", type, false);
+	target->macos.sysroot = get_valid_string(json, "macossdk", type, false);
 
 	// macos-min-version
 	target->macos.min_version = get_valid_string(json, "macos-min-version", type, false);

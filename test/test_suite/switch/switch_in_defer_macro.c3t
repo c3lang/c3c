@@ -683,7 +683,7 @@ fn void test()
 ; ModuleID = 'lexer_test'
 source_filename = "lexer_test"
 target datalayout = "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-apple-darwin"
+target triple = "x86_64-apple-macosx"
 %.introspect = type { i8, i64, ptr, i64, i64, i64, [0 x i64] }
 %"char[]" = type { ptr, i64 }
 %"UintTest[]" = type { ptr, i64 }

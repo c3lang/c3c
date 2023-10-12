@@ -68,7 +68,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--show-versions", const=True, action="store_const", help="Show available MSVC and Windows SDK versions")
 ap.add_argument("--accept-license", const=True, action="store_const", help="Automatically accept license")
 ap.add_argument("--msvc-version", help="Get specific MSVC version")
-ap.add_argument("--sdk-version", help="Get specific Windows SDK version")
+ap.add_argument("--sdk_path-version", help="Get specific Windows SDK version")
 args = ap.parse_args()
 
 
@@ -92,7 +92,7 @@ for p in vsmanifest["packages"]:
   packages.setdefault(p["id"].lower(), []).append(p)
 
 msvc = {}
-sdk = {}
+sdk_path = {}
 
 for pid,p in packages.items():
   if pid.startswith("Microsoft.VisualStudio.Component.VC.".lower()) and pid.endswith(".x86.x64".lower()):
@@ -103,15 +103,15 @@ for pid,p in packages.items():
        pid.startswith("Microsoft.VisualStudio.Component.Windows11SDK.".lower()):
     pver = pid.split(".")[-1]
     if pver.isnumeric():
-      sdk[pver] = pid
+      sdk_path[pver] = pid
 
 if args.show_versions:
   print("MSVC versions:", " ".join(sorted(msvc.keys())))
-  print("Windows SDK versions:", " ".join(sorted(sdk.keys())))
+  print("Windows SDK versions:", " ".join(sorted(sdk_path.keys())))
   exit(0)
 
 msvc_ver = args.msvc_version or max(sorted(msvc.keys()))
-sdk_ver = args.sdk_version or max(sorted(sdk.keys()))
+sdk_ver = args.sdk_version or max(sorted(sdk_path.keys()))
 
 if msvc_ver in msvc:
   msvc_pid = msvc[msvc_ver]
@@ -119,8 +119,8 @@ if msvc_ver in msvc:
 else:
   exit(f"Unknown MSVC version: f{args.msvc_version}")
 
-if sdk_ver in sdk:
-  sdk_pid = sdk[sdk_ver]
+if sdk_ver in sdk_path:
+  sdk_pid = sdk_path[sdk_ver]
 else:
   exit(f"Unknown Windows SDK version: f{args.sdk_version}")
 

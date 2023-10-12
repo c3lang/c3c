@@ -296,13 +296,11 @@ static void linker_setup_macos(const char ***args_ref, LinkerType linker_type)
 	// Skip if no libc.
 	if (!link_libc()) return;
 
-	const char *sysroot = active_target.macos.sdk ? active_target.macos.sdk : macos_sysroot();
-	if (!sysroot)
+	const char *sysroot = active_target.macos.sysroot ? active_target.macos.sysroot : macos_sysroot();
+	if (active_target.macos.sdk)
 	{
 		error_exit("Cannot crosslink MacOS without providing --macossdk.");
 	}
-	DEBUG_LOG("Macos SDK: %s", sysroot);
-	MacSDK *mac_sdk = macos_sysroot_sdk_information(sysroot);
 	add_arg("-lSystem");
 	add_arg("-lm");
 	add_arg("-syslibroot");
@@ -317,7 +315,7 @@ static void linker_setup_macos(const char ***args_ref, LinkerType linker_type)
 	}
 	else
 	{
-		add_arg(str_printf("%d.%d.0", mac_sdk->macos_min_deploy_target.major, mac_sdk->macos_min_deploy_target.minor));
+		add_arg(str_printf("%d.%d.0", active_target.macos.sdk->macos_min_deploy_target.major, active_target.macos.sdk->macos_min_deploy_target.minor));
 	}
 	if (active_target.macos.sdk_version)
 	{
@@ -325,7 +323,7 @@ static void linker_setup_macos(const char ***args_ref, LinkerType linker_type)
 	}
 	else
 	{
-		add_arg(str_printf("%d.%d", mac_sdk->macos_deploy_target.major, mac_sdk->macos_deploy_target.minor));
+		add_arg(str_printf("%d.%d", active_target.macos.sdk->macos_deploy_target.major, active_target.macos.sdk->macos_deploy_target.minor));
 	}
 }
 

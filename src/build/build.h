@@ -3,8 +3,8 @@
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
 
-#include "../utils/common.h"
 #include "../version.h"
+#include "../utils/lib.h"
 
 #define MAX_LIB_DIRS 1024
 #define MAX_FILES 2048
@@ -491,9 +491,10 @@ typedef struct
 	} feature;
 	struct
 	{
-		const char *sdk;
+		const char *sysroot;
 		const char *min_version;
 		const char *sdk_version;
+		MacSDK *sdk;
 	} macos;
 	struct
 	{

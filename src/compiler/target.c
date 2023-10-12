@@ -1681,15 +1681,15 @@ INLINE const char *llvm_macos_target_triple(void)
 		scratch_buffer_append(active_target.macos.min_version);
 		return scratch_buffer_to_string();
 	}
-	const char *sysroot = active_target.macos.sdk ? active_target.macos.sdk : macos_sysroot();
-	if (!sysroot)
+	MacSDK *mac_sdk = active_target.macos.sdk;
+
+	if (!mac_sdk)
 	{
 		scratch_buffer_clear();
 		scratch_buffer_append(platform_target.target_triple);
 		scratch_buffer_append("10.15.0");
 		return scratch_buffer_to_string();
 	}
-	MacSDK *mac_sdk = macos_sysroot_sdk_information(sysroot);
 	scratch_buffer_clear();
 	scratch_buffer_append(platform_target.target_triple);
 	scratch_buffer_printf("%d.%d.0", mac_sdk->macos_min_deploy_target.major, mac_sdk->macos_min_deploy_target.minor);
@@ -1939,6 +1939,16 @@ void target_setup(BuildTarget *target)
 		platform_target.reloc_model = target->reloc_model;
 	}
 
+	if (platform_target.os == OS_TYPE_MACOSX)
+	{
+		const char *sysroot = active_target.macos.sysroot ? active_target.macos.sysroot : macos_sysroot();
+		active_target.macos.sdk = NULL;
+		if (sysroot)
+		{
+			DEBUG_LOG("Macos SDK: %s", sysroot);
+			active_target.macos.sdk = macos_sysroot_sdk_information(sysroot);
+		}
+	}
 	assert(platform_target.reloc_model != RELOC_DEFAULT);
 
 
