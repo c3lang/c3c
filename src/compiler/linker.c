@@ -296,15 +296,14 @@ static void linker_setup_macos(const char ***args_ref, LinkerType linker_type)
 	// Skip if no libc.
 	if (!link_libc()) return;
 
-	const char *sysroot = active_target.macos.sysroot ? active_target.macos.sysroot : macos_sysroot();
-	if (active_target.macos.sdk)
+	if (!active_target.macos.sdk)
 	{
 		error_exit("Cannot crosslink MacOS without providing --macossdk.");
 	}
 	add_arg("-lSystem");
 	add_arg("-lm");
 	add_arg("-syslibroot");
-	add_arg(sysroot);
+	add_arg(active_target.macos.sysroot);
 	if (is_no_pie(platform_target.reloc_model)) add_arg("-no_pie");
 	if (is_pie(platform_target.reloc_model)) add_arg("-pie");
 	add_arg("-platform_version");

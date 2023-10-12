@@ -283,7 +283,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	if (options->benchfn) target->benchfn = options->benchfn;
 	target->benchmarking = options->benchmarking;
 	target->testing = options->testing;
-	if (options->macos.sdk) target->macos.sysroot = options->macos.sdk;
+	if (options->macos.sysroot) target->macos.sysroot = options->macos.sysroot;
 	if (options->win.sdk) target->win.sdk = options->win.sdk;
 	if (options->macos.min_version) target->macos.min_version = options->macos.min_version;
 	if (options->macos.sdk_version) target->macos.sdk_version = options->macos.sdk_version;

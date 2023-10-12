@@ -877,7 +877,7 @@ static void parse_option(BuildOptions *options)
 			if (match_longopt("macossdk"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --macossdk needs a directory.");
-				options->macos.sdk = check_dir(next_arg());
+				options->macos.sysroot = check_dir(next_arg());
 				return;
 			}
 			if (match_longopt("winsdk"))

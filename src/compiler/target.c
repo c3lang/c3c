@@ -1941,7 +1941,9 @@ void target_setup(BuildTarget *target)
 
 	if (platform_target.os == OS_TYPE_MACOSX)
 	{
+		if (!active_target.macos.sysroot) active_target.macos.sysroot = macos_sysroot();
 		const char *sysroot = active_target.macos.sysroot ? active_target.macos.sysroot : macos_sysroot();
+
 		active_target.macos.sdk = NULL;
 		if (sysroot)
 		{

@@ -311,7 +311,7 @@ typedef struct BuildOptions_
 		WinCrtLinking crt_linking;
 	} win;
 	struct {
-		const char *sdk;
+		const char *sysroot;
 		const char *min_version;
 		const char *sdk_version;
 	} macos;
