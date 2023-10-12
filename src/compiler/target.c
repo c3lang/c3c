@@ -1009,7 +1009,7 @@ static char *arch_to_target_triple[ARCH_OS_TARGET_LAST + 1] = {
 		[MCU_X86] = "i386-pc-elfiamcu",
 		[LINUX_X86] = "i386-unknown-linux",
 		[ELF_X86] = "i386-unknown-elf",
-		[MACOS_X64] = "x86_64-apple-darwin",
+		[MACOS_X64] = "x86_64-apple-macosx",
 		[LINUX_X64] = "x86_64-pc-linux-gnu",
 		[WINDOWS_X64] = "x86_64-pc-windows-msvc",
 		[MINGW_X64] = "x86_64-w64-windows-gnu",
@@ -1018,7 +1018,7 @@ static char *arch_to_target_triple[ARCH_OS_TARGET_LAST + 1] = {
 		[OPENBSD_X64] = "x86_64-pc-openbsd",
 		[ELF_X64] = "x86_64-unknown-elf",
 		[LINUX_AARCH64] = "aarch64-unknown-linux-gnu",
-		[MACOS_AARCH64] = "aarch64-apple-darwin",
+		[MACOS_AARCH64] = "aarch64-apple-macosx",
 		[ELF_AARCH64] = "aarch64-unknown-elf",
 		[WINDOWS_AARCH64] = "aarch64-pc-windows-msvc",
 		[LINUX_RISCV32] = "riscv32-unknown-linux",
@@ -1672,6 +1672,29 @@ static bool arch_os_pic_default_forced(ArchType arch, OsType os)
   LLVMInitialize ## X ## TargetMC(); \
  } while(0)
 
+INLINE const char *llvm_macos_target_triple(void)
+{
+	if (active_target.macos.min_version)
+	{
+		scratch_buffer_clear();
+		scratch_buffer_append(platform_target.target_triple);
+		scratch_buffer_append(active_target.macos.min_version);
+		return scratch_buffer_to_string();
+	}
+	const char *sysroot = active_target.macos.sdk ? active_target.macos.sdk : macos_sysroot();
+	if (!sysroot)
+	{
+		scratch_buffer_clear();
+		scratch_buffer_append(platform_target.target_triple);
+		scratch_buffer_append("10.15.0");
+		return scratch_buffer_to_string();
+	}
+	MacSDK *mac_sdk = macos_sysroot_sdk_information(sysroot);
+	scratch_buffer_clear();
+	scratch_buffer_append(platform_target.target_triple);
+	scratch_buffer_printf("%d.%d.0", mac_sdk->macos_min_deploy_target.major, mac_sdk->macos_min_deploy_target.minor);
+	return scratch_buffer_to_string();
+}
 void *llvm_target_machine_create(void)
 {
 	static bool llvm_initialized = false;
@@ -1712,7 +1735,12 @@ void *llvm_target_machine_create(void)
 	}
 	DEBUG_LOG("CPU: %s", platform_target.cpu);
 	DEBUG_LOG("Features: %s", platform_target.features);
-	void *result = LLVMCreateTargetMachine(target, platform_target.target_triple,
+	const char *target_triple = platform_target.target_triple;
+	if (platform_target.os == OS_TYPE_MACOSX)
+	{
+		target_triple = llvm_macos_target_triple();
+	}
+	void *result = LLVMCreateTargetMachine(target, target_triple,
 										   platform_target.cpu ? platform_target.cpu : "", platform_target.features ? platform_target.features : "",
 										   (LLVMCodeGenOptLevel)platform_target.llvm_opt_level,
 										   reloc_mode, LLVMCodeModelDefault);
