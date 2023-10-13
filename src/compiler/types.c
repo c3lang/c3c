@@ -2059,6 +2059,7 @@ Type *type_find_max_type(Type *type, Type *other)
 		other = temp;
 	}
 
+	// The following relies on type kind ordering
 	switch (type->type_kind)
 	{
 		case TYPE_INFERRED_ARRAY:
@@ -2070,12 +2071,6 @@ Type *type_find_max_type(Type *type, Type *other)
 		case TYPE_PROTOCOL:
 		case TYPE_ANY:
 			return NULL;
-		case TYPE_ANYPTR:
-			// any + protocol => any
-			return other->type_kind == TYPE_PROPTR ? type : NULL;
-		case TYPE_PROPTR:
-			// protocol + protocol => any
-			return other->type_kind == TYPE_PROPTR ? type_any : NULL;
 		case TYPE_VOID:
 		case TYPE_BOOL:
 		case TYPE_TYPEINFO:
@@ -2091,6 +2086,13 @@ Type *type_find_max_type(Type *type, Type *other)
 			if (other->type_kind == TYPE_DISTINCT && type_is_float(other->decl->distinct->type)) return other;
 			if (other->type_kind == TYPE_VECTOR) return other;
 			return type_find_max_num_type(type, other);
+		case TYPE_ANYPTR:
+			// any + protocol => any
+			if (other == type_voidptr) return other;
+			return other->type_kind == TYPE_PROPTR ? type : NULL;
+		case TYPE_PROPTR:
+			// protocol + void* => void*
+			return other == type_voidptr ? type_voidptr : NULL;
 		case TYPE_POINTER:
 			if (type->pointer->type_kind == TYPE_ARRAY)
 			{
@@ -2121,7 +2123,6 @@ Type *type_find_max_type(Type *type, Type *other)
 			type = type_decay_array_pointer(type);
 			// And possibly the other pointer as well
 			if (other->type_kind == TYPE_POINTER) other = type_decay_array_pointer(other);
-
 			return type_find_max_ptr_type(type, other);
 		case TYPE_ENUM:
 			// IMPROVE: should there be implicit conversion between one enum and the other in

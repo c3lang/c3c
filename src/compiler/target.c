@@ -1672,12 +1672,12 @@ static bool arch_os_pic_default_forced(ArchType arch, OsType os)
   LLVMInitialize ## X ## TargetMC(); \
  } while(0)
 
-INLINE const char *llvm_macos_target_triple(void)
+INLINE const char *llvm_macos_target_triple(const char *triple)
 {
 	if (active_target.macos.min_version)
 	{
 		scratch_buffer_clear();
-		scratch_buffer_append(platform_target.target_triple);
+		scratch_buffer_append(triple);
 		scratch_buffer_append(active_target.macos.min_version);
 		return scratch_buffer_to_string();
 	}
@@ -1686,12 +1686,12 @@ INLINE const char *llvm_macos_target_triple(void)
 	if (!mac_sdk)
 	{
 		scratch_buffer_clear();
-		scratch_buffer_append(platform_target.target_triple);
+		scratch_buffer_append(triple);
 		scratch_buffer_append("10.15.0");
 		return scratch_buffer_to_string();
 	}
 	scratch_buffer_clear();
-	scratch_buffer_append(platform_target.target_triple);
+	scratch_buffer_append(triple);
 	scratch_buffer_printf("%d.%d.0", mac_sdk->macos_min_deploy_target.major, mac_sdk->macos_min_deploy_target.minor);
 	return scratch_buffer_to_string();
 }
@@ -1735,12 +1735,7 @@ void *llvm_target_machine_create(void)
 	}
 	DEBUG_LOG("CPU: %s", platform_target.cpu);
 	DEBUG_LOG("Features: %s", platform_target.features);
-	const char *target_triple = platform_target.target_triple;
-	if (platform_target.os == OS_TYPE_MACOSX)
-	{
-		target_triple = llvm_macos_target_triple();
-	}
-	void *result = LLVMCreateTargetMachine(target, target_triple,
+	void *result = LLVMCreateTargetMachine(target, platform_target.target_triple,
 										   platform_target.cpu ? platform_target.cpu : "", platform_target.features ? platform_target.features : "",
 										   (LLVMCodeGenOptLevel)platform_target.llvm_opt_level,
 										   reloc_mode, LLVMCodeModelDefault);
@@ -1950,9 +1945,10 @@ void target_setup(BuildTarget *target)
 			DEBUG_LOG("Macos SDK: %s", sysroot);
 			active_target.macos.sdk = macos_sysroot_sdk_information(sysroot);
 		}
+		platform_target.target_triple = strdup(llvm_macos_target_triple(platform_target.target_triple));
+
 	}
 	assert(platform_target.reloc_model != RELOC_DEFAULT);
-
 
 		// TODO remove
 	type_setup(&platform_target);
