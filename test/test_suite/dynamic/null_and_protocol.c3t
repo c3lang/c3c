@@ -1,6 +1,5 @@
+// #target: macos-x64
 module test;
-import std::io;
-import std::time;
 
 protocol Test {}
 
