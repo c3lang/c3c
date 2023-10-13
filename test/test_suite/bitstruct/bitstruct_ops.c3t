@@ -216,7 +216,7 @@ entry:
   %77 = call i64 @std.io.printfn(ptr %retparam32, ptr @.str.4, i64 8, ptr %varargslots26, i64 3)
   %78 = load i104, ptr %b3, align 1
   %bnot33 = xor i104 %78, -1
-  store i104 %bnot33, ptr %1, align 8
+  store i104 %bnot33, ptr %1, align 1
   call void @llvm.memcpy.p0.p0.i32(ptr align 1 %b3, ptr align 1 %1, i32 13, i1 false)
   %79 = getelementptr inbounds [13 x i8], ptr %b3, i64 0, i64 0
   %80 = load i8, ptr %79, align 1

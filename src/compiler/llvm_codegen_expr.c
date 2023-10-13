@@ -2621,7 +2621,7 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 				LLVMValueRef val = llvm_load(c, big_int, value->value, value->alignment, "");
 				val = LLVMBuildNot(c->builder, val, "bnot");
 				LLVMValueRef store = llvm_emit_alloca(c, big_int, value->alignment, "");
-				LLVMBuildStore(c->builder, val, store);
+				llvm_store_to_ptr_raw_aligned(c, store, val, value->alignment);
 				llvm_value_set_address(value, store, value->type, value->alignment);
 				return;
 			}
