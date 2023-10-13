@@ -4012,7 +4012,7 @@ void llvm_emit_bitstruct_binary_op(GenContext *c, BEValue *be_value, BEValue *lh
 			UNREACHABLE
 	}
 	LLVMValueRef store = llvm_emit_alloca(c, big_int, lhs->alignment, "");
-	LLVMBuildStore(c->builder, val, store);
+	llvm_store_to_ptr_raw_aligned(c, store, val, lhs->alignment);
 	llvm_value_set_address(be_value, store, lhs->type, lhs->alignment);
 }
 
