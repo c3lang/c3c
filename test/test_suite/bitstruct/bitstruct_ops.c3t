@@ -182,7 +182,7 @@ entry:
   %54 = load i104, ptr %b1, align 1
   %55 = load i104, ptr %b2, align 1
   %and25 = and i104 %54, %55
-  store i104 %and25, ptr %0, align 8
+  store i104 %and25, ptr %0, align 1
   call void @llvm.memcpy.p0.p0.i32(ptr align 1 %b3, ptr align 1 %0, i32 13, i1 false)
   %56 = getelementptr inbounds [13 x i8], ptr %b3, i64 0, i64 0
   %57 = load i8, ptr %56, align 1
@@ -252,7 +252,7 @@ entry:
   %101 = load i104, ptr %b3, align 1
   %102 = load i104, ptr %taddr41, align 1
   %xor42 = xor i104 %101, %102
-  store i104 %xor42, ptr %2, align 8
+  store i104 %xor42, ptr %2, align 1
   call void @llvm.memcpy.p0.p0.i32(ptr align 1 %b3, ptr align 1 %2, i32 13, i1 false)
   %103 = getelementptr inbounds [13 x i8], ptr %b3, i64 0, i64 0
   %104 = load i8, ptr %103, align 1
@@ -286,3 +286,4 @@ entry:
   %124 = call i64 @std.io.printfn(ptr %retparam49, ptr @.str.6, i64 8, ptr %varargslots43, i64 3)
   ret void
 }
+
