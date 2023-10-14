@@ -3,6 +3,7 @@
 ## 0.5.0 Change List
 
 ### Changes / improvements
+- Asm string blocks use AT&T syntax for better reliability.
 - Distinct methods changed to separate syntax.
 - 'exec' directive to run scripts at compile time.
 - Project key descriptions in --list command.
@@ -174,6 +175,7 @@
 - Added posix socket functions.
 
 ### Fixes
+- Naked functions now correctly handles `asm`.
 - Indexing into arrays would not always widen the index safely.
 - Macros with implicit return didn't correctly deduct the return type.
 - Reevaluating a bitstruct (due to checked) would break.

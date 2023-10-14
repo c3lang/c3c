@@ -1,11 +1,19 @@
 // #target: macos-x64
 module testing;
-import std::io;
 
-fn void test() @naked @export("hello")
-{
-	asm("nop");
+fn void start() @export("_start") @naked @nostrip {
+        asm {
+                movq $rax, 0x3c;
+                movq $rdi, 42;
+                syscall;
+        }
 }
-fn void main()
-{
+
+/* #expect: testing.ll
+
+define void @_start() #0 {
+entry:
+  call void asm alignstack "movq $$60, %rax\0Amovq $$42, %rdi\0Asyscall \0A", "~{cc},~{rax},~{rcx},~{r8},~{r11},~{flags},~{dirflag},~{fspr}"()
+  ret void
 }
+

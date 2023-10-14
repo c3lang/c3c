@@ -3115,6 +3115,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 				}
 			}
 			assert_first = 0;
+			if (!sema_analyse_compound_statement_no_scope(context, body)) return false;
 		}
 		else
 		{
