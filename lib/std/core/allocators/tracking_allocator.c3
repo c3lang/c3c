@@ -10,9 +10,8 @@ def PtrMap = HashMap(<uptr, usz>);
 // A simple tracking allocator.
 // It tracks allocations using a hash map but
 // is not compatible with allocators that uses mark()
-struct TrackingAllocator
+struct TrackingAllocator (Allocator)
 {
-	inline Allocator allocator;
 	Allocator* inner_allocator;
 	PtrMap map;
 	usz mem_total;
@@ -26,7 +25,7 @@ struct TrackingAllocator
  **/
 fn void TrackingAllocator.init(&self, Allocator* using)
 {
-	*self = { .inner_allocator = using, .allocator.function = &tracking_allocator_fn };
+	*self = { .inner_allocator = using };
 	self.map.init(.using = using);
 }
 
@@ -67,41 +66,42 @@ fn usz TrackingAllocator.total_allocation_count(&self) => self.allocs_total;
  **/
 fn usz TrackingAllocator.allocation_count(&self) => self.map.count;
 
-/**
- * @param [inout] data
- * @require !alignment || math::is_power_of_2(alignment)
- */
-fn void*! tracking_allocator_fn(Allocator* data, usz size, usz alignment, usz offset, void* old_pointer, AllocationKind kind) @private
+fn void*! TrackingAllocator.acquire(&self, usz size, bool clear, usz alignment, usz offset) @dynamic
 {
-	TrackingAllocator* this = (TrackingAllocator*)data;
-	void* result = this.inner_allocator.function(this.inner_allocator, size, alignment, offset, old_pointer, kind)!;
-	switch (kind)
+	void* data = self.inner_allocator.acquire(size, clear, alignment, offset)!;
+	self.allocs_total++;
+	if (data)
 	{
-		case CALLOC:
-		case ALIGNED_CALLOC:
-		case ALLOC:
-		case ALIGNED_ALLOC:
-			this.map.set((uptr)result, size);
-			this.mem_total += size;
-			this.allocs_total++;
-			return result;
-		case REALLOC:
-		case ALIGNED_REALLOC:
-			this.map.remove((uptr)old_pointer);
-			this.map.set((uptr)result, size);
-			this.mem_total += size;
-			if (size > 0) this.allocs_total++;
-			return result;
-		case ALIGNED_FREE:
-		case FREE:
-			if (!old_pointer) return null;
-			this.map.remove((uptr)old_pointer);
-			return null;
-		case MARK:
-			// Unsupported
-			return null;
-		case RESET:
-			this.map.clear();
-			return null;
+		self.map.set((uptr)data, size);
+    	self.mem_total += size;
+		self.allocs_total++;
 	}
+	return data;
+}
+
+fn void*! TrackingAllocator.resize(&self, void* old_pointer, usz size, usz alignment, usz offset) @dynamic
+{
+	void* data = self.inner_allocator.resize(old_pointer, size, alignment, offset)!;
+	if (old_pointer)
+	{
+		self.map.remove((uptr)old_pointer);
+	}
+	if (data)
+	{
+		self.map.set((uptr)data, size);
+    	self.mem_total += size;
+		self.allocs_total++;
+	}
+	return data;
+}
+
+fn void TrackingAllocator.release(&self, void* old_pointer, bool is_aligned) @dynamic
+{
+	self.inner_allocator.release(old_pointer, is_aligned);
+	if (old_pointer) self.map.remove((uptr)old_pointer);
+}
+
+fn void TrackingAllocator.clear(&self)
+{
+	self.map.clear();
 }

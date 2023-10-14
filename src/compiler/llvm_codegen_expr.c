@@ -2606,6 +2606,12 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 					llvm_value_rvalue(c, value);
 					llvm_value = LLVMBuildIsNull(c->builder, value->value, "not");
 					break;
+				case TYPE_ANYPTR:
+				case TYPE_PROPTR:
+					llvm_emit_any_pointer(c, value, value);
+					llvm_value_rvalue(c, value);
+					llvm_value = LLVMBuildIsNull(c->builder, value->value, "not");
+					break;
 				default:
 					DEBUG_LOG("Unexpectedly tried to not %s", type_quoted_error_string(inner->type));
 					UNREACHABLE

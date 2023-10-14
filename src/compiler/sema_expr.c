@@ -1377,6 +1377,14 @@ static inline bool sema_call_check_contract_param_match(SemaContext *context, De
 	}
 	return true;
 }
+INLINE bool sema_arg_is_pass_through_ref(Expr *expr)
+{
+	if (expr->expr_kind != EXPR_IDENTIFIER) return false;
+	Decl *decl = expr->identifier_expr.decl;
+	if (decl->decl_kind != DECL_VAR) return false;
+	return decl->var.kind == VARDECL_PARAM_REF;
+}
+
 static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call, CalledDecl callee, bool *optional)
 {
 	// 1. Check body arguments (for macro calls, or possibly broken )
@@ -1537,7 +1545,7 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 			case VARDECL_PARAM_REF:
 				// &foo
 				if (!sema_analyse_expr_lvalue(context, arg)) return false;
-				if (!sema_expr_check_assign(context, arg)) return false;
+				if (!sema_arg_is_pass_through_ref(arg) && !sema_expr_check_assign(context, arg)) return false;
 				if (!type_is_any_protocol_ptr(arg->type)) expr_insert_addr(arg);
 				*optional |= IS_OPTIONAL(arg);
 				if (!sema_call_check_contract_param_match(context, param, arg)) return false;

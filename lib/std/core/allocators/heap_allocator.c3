@@ -1,13 +1,12 @@
-// Copyright (c) 2021 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2021-2023 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 
 module std::core::mem::allocator;
 
 
-struct SimpleHeapAllocator
+struct SimpleHeapAllocator (Allocator)
 {
-	inline Allocator allocator;
 	MemoryAllocFn alloc_fn;
 	Header* free_list;
 }
@@ -19,47 +18,44 @@ struct SimpleHeapAllocator
 fn void SimpleHeapAllocator.init(&self, MemoryAllocFn allocator)
 {
 	self.alloc_fn = allocator;
-	static AllocatorFunction alloc_fn = &simple_heap_allocator_function;
-	self.allocator = { alloc_fn };
 	self.free_list = null;
 }
 
-/**
- * @param [&inout] this "The allocator"
- * @param [inout] old_pointer "The pointer to free/realloc"
- * @require !alignment || math::is_power_of_2(alignment) "Alignment must be a power of 2"
- */
-fn void*! simple_heap_allocator_function(Allocator* this, usz size, usz alignment, usz offset, void* old_pointer, AllocationKind kind) @private
+fn void*! SimpleHeapAllocator.acquire(&self, usz size, bool clear, usz alignment, usz offset) @dynamic
 {
-	SimpleHeapAllocator* heap = (SimpleHeapAllocator*)this;
-	switch (kind)
+	if (!size) return null;
+	if (clear)
 	{
-		case ALIGNED_ALLOC:
-			return @aligned_alloc(heap._alloc, size, alignment, offset);
-		case ALLOC:
-			return heap._alloc(size);
-		case ALIGNED_CALLOC:
-			return @aligned_calloc(heap._calloc, size, alignment, offset);
-		case CALLOC:
-			return heap._calloc(size);
-		case ALIGNED_REALLOC:
-			if (!size) nextcase ALIGNED_FREE;
-			if (!old_pointer) nextcase ALIGNED_CALLOC;
-			return @aligned_realloc(heap._calloc, heap._free, old_pointer, size, alignment, offset);
-		case REALLOC:
-			if (!size) nextcase FREE;
-			if (!old_pointer) nextcase CALLOC;
-			return heap._realloc(old_pointer, size);
-		case RESET:
-			unreachable("Reset unsupported");
-		case ALIGNED_FREE:
-			@aligned_free(heap._free, old_pointer)!;
-			return null;
-		case FREE:
-			heap._free(old_pointer);
-			return null;
-		default:
-			unreachable();
+		return alignment > 0 ? @aligned_calloc(self._calloc, size, alignment, offset) : self._calloc(size);
+	}
+	return alignment > 0 ? @aligned_alloc(self._alloc, size, alignment, offset) : self._alloc(size);
+}
+
+fn void*! SimpleHeapAllocator.resize(&self, void* old_pointer, usz size, usz alignment, usz offset) @dynamic
+{
+	if (!size)
+	{
+		self.release(old_pointer, alignment > 0);
+		return null;
+	}
+	if (!old_pointer)
+	{
+		return self.acquire(size, true, alignment, offset);
+	}
+	return alignment > 0
+		? @aligned_realloc(self._calloc, self._free, old_pointer, size, alignment, offset)
+		:  self._realloc(old_pointer, size);
+}
+
+fn void SimpleHeapAllocator.release(&self, void* old_pointer, bool aligned) @dynamic
+{
+	if (aligned)
+	{
+		@aligned_free(self._free, old_pointer)!!;
+	}
+	else
+	{
+		self._free(old_pointer);
 	}
 }
 
@@ -131,7 +127,7 @@ fn void*! SimpleHeapAllocator._alloc(&self, usz bytes) @local
 		}
 	}
 	self.add_block(aligned_bytes)!;
-	return self.alloc(aligned_bytes);
+	return self._alloc(aligned_bytes);
 }
 
 fn void! SimpleHeapAllocator.add_block(&self, usz aligned_bytes) @local

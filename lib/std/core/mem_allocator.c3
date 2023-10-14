@@ -3,55 +3,63 @@ module std::core::mem::allocator;
 const DEFAULT_SIZE_PREFIX = usz.sizeof;
 const DEFAULT_SIZE_PREFIX_ALIGNMENT = usz.alignof;
 
-const Allocator* NULL_ALLOCATOR = &_NULL_ALLOCATOR;
-const Allocator* LIBC_ALLOCATOR = &_SYSTEM_ALLOCATOR;
+protocol Allocator
+{
+	fn void reset(usz mark) @optional;
+	fn usz mark() @optional;
+	fn void*! acquire(usz size, bool clear = false, usz alignment = 0, usz offset = 0);
+	fn void*! resize(void* ptr, usz new_size, usz alignment = 0, usz offset = 0);
+	fn void release(void* ptr, bool aligned = false);
+}
 
-def AllocatorFunction = fn void*!(Allocator* allocator, usz new_size, usz alignment, usz offset, void* old_pointer, AllocationKind kind);
+const LibcAllocator LIBC_ALLOCATOR = {};
+
 def MemoryAllocFn = fn char[]!(usz);
 
-macro bool is_allocator($Type)
+// Allocator "functions"
+
+macro void*! Allocator.alloc_checked(&self, usz size)
 {
-	return $checks(
-		$Type mem,
-		usz sz = 1,
-		void*! x = mem.alloc(sz),
-		void*! y = mem.calloc(sz),
-		void*! z = mem.realloc(x, sz),
-		(void)mem.free(x)
-	);
+	$if env::TESTING:
+		char* data = self.acquire(size, false, 0, 0)!;
+		mem::set(data, 0xAA, size, mem::DEFAULT_MEM_ALIGNMENT);
+		return data;
+	$else
+		return self.acquire(size, false, 0, 0);
+	$endif
 }
 
-macro bool is_valid_aligned_allocator($Type)
+macro void*! Allocator.calloc_checked(&self, usz size) => self.acquire(size, true, 0, 0);
+macro void*! Allocator.realloc_checked(&self, void* ptr, usz new_size) => self.resize(ptr, new_size, 0, 0);
+
+macro void* Allocator.alloc(&self, usz size) @nodiscard => self.alloc_checked(size)!!;
+macro void* Allocator.calloc(&self, usz size) @nodiscard => self.acquire(size, true, 0, 0)!!;
+macro void* Allocator.realloc(&self, void* ptr, usz new_size) @nodiscard => self.resize(ptr, new_size, 0, 0)!!;
+macro void*! Allocator.alloc_aligned(&self, usz size, usz alignment, usz offset = 0)
 {
-	return !$checks($Type.alloc_aligned) ||
-		$checks(
-			$Type mem,
-			usz sz = 1,
-			void*! x = mem.alloc_aligned(sz, sz, az),
-			void*! y = mem.calloc_aligned(sz, sz, sz),
-			void*! z = mem.realloc_aligned(x, sz, sz, sz),
-			(void)mem.free_aligned(x, sz, sz)
-		);
+	$if env::TESTING:
+		char* data = self.acquire(size, false, alignment, offset)!;
+		mem::set(data, 0xAA, size, mem::DEFAULT_MEM_ALIGNMENT);
+		return data;
+	$else
+		return self.acquire(size, false, alignment, offset);
+	$endif
 }
-
-
-struct Allocator
+macro void*! Allocator.calloc_aligned(&self, usz size, usz alignment, usz offset = 0) => self.acquire(size, true, alignment, offset);
+macro void*! Allocator.realloc_aligned(&self, void* ptr, usz new_size, usz alignment = 0, usz offset = 0) => self.resize(ptr, new_size, alignment, offset);
+macro void Allocator.free(&self, void* ptr)
 {
-	AllocatorFunction function;
+	$if env::TESTING:
+		if (ptr) ((char*)ptr)[0] = 0xBA;
+	$endif
+	self.release(ptr, false);
 }
-
-enum AllocationKind
+macro void Allocator.free_aligned(&self, void* ptr)
 {
-	ALLOC,
-	CALLOC,
-	REALLOC,
-	FREE,
-	ALIGNED_ALLOC,
-	ALIGNED_CALLOC,
-	ALIGNED_REALLOC,
-	ALIGNED_FREE,
-	RESET,
-	MARK,
+	$if env::TESTING:
+		if (ptr) ((char*)ptr)[0] = 0xBA;
+	$endif
+	self.release(ptr, true);
 }
 
 fault AllocationFailure
@@ -60,75 +68,9 @@ fault AllocationFailure
 	CHUNK_TOO_LARGE,
 }
 
-
-
-macro void*! Allocator.alloc(&allocator, usz size)
-{
-	return allocator.function(allocator, size, 0, 0, null, ALLOC);
-}
-
-/**
- * @require alignment && math::is_power_of_2(alignment)
- */
-macro void*! Allocator.alloc_aligned(&allocator, usz size, usz alignment, usz offset = 0)
-{
-	return allocator.function(allocator, size, alignment, offset, null, ALIGNED_ALLOC);
-}
-
-macro void*! Allocator.realloc(&allocator, void* old_pointer, usz size)
-{
-	return allocator.function(allocator, size, 0, 0, old_pointer, REALLOC);
-}
-
-/**
- * @require alignment && math::is_power_of_2(alignment)
- */
-macro void*! Allocator.realloc_aligned(&allocator, void* old_pointer, usz size, usz alignment, usz offset = 0)
-{
-	return allocator.function(allocator, size, alignment, offset, old_pointer, ALIGNED_REALLOC);
-}
-
-macro usz Allocator.mark(&allocator)
-{
-	return (usz)(uptr)allocator.function(allocator, 0, 0, 0, null, MARK) ?? 0;
-}
-
-
-macro void*! Allocator.calloc(&allocator, usz size)
-{
-	return allocator.function(allocator, size, 0, 0, null, CALLOC);
-}
-
-/**
- * @require alignment && math::is_power_of_2(alignment)
- */
-macro void*! Allocator.calloc_aligned(&allocator, usz size, usz alignment, usz offset = 0)
-{
-	return allocator.function(allocator, size, alignment, offset, null, ALIGNED_CALLOC);
-}
-
-macro void! Allocator.free(&allocator, void* old_pointer)
-{
-	allocator.function(allocator, 0, 0, 0, old_pointer, FREE)!;
-}
-
-macro void! Allocator.free_aligned(&allocator, void* old_pointer)
-{
-	allocator.function(allocator, 0, 0, 0, old_pointer, ALIGNED_FREE)!;
-}
-
-macro void Allocator.reset(&allocator, usz mark = 0)
-{
-	(void)allocator.function(allocator, mark, 0, 0, null, RESET);
-}
-
 fn usz alignment_for_allocation(usz alignment) @inline @private
 {
-	if (alignment < mem::DEFAULT_MEM_ALIGNMENT)
-	{
-		alignment = mem::DEFAULT_MEM_ALIGNMENT;
-	}
-	return alignment;
+	return alignment < mem::DEFAULT_MEM_ALIGNMENT ? alignment = mem::DEFAULT_MEM_ALIGNMENT : alignment;
 }
 
 

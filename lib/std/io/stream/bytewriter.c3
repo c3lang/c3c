@@ -12,7 +12,7 @@ struct ByteWriter
  * @param [&inout] self
  * @param [&in] using
  * @require self.bytes.len == 0 "Init may not run on on already initialized data"
- * @ensure using != null, self.index == 0
+ * @ensure (bool)using, self.index == 0
  **/
 fn ByteWriter* ByteWriter.init(&self, Allocator* using = mem::heap())
 {

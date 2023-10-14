@@ -24,7 +24,7 @@ struct HashMap
  * @require load_factor > 0.0 "The load factor must be higher than 0"
  * @require !map.allocator "Map was already initialized"
  * @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
- * @require using != null "The allocator must be non-null"
+ * @require (bool)using "The allocator must be non-null"
  **/
 fn void HashMap.init(&map, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator* using = mem::heap())
 {
@@ -54,7 +54,7 @@ fn void HashMap.tinit(&map, uint capacity = DEFAULT_INITIAL_CAPACITY, float load
  **/
 fn bool HashMap.is_initialized(&map)
 {
-	return map.allocator != null;
+	return (bool)map.allocator;
 }
 
 fn void HashMap.init_from_map(&map, HashMap* other_map, Allocator* using = mem::heap())
@@ -354,7 +354,7 @@ fn void HashMap.put_for_create(&map, Key key, Value value) @private
 
 fn void HashMap.free_internal(&map, void* ptr) @inline @private
 {
-	map.allocator.free(ptr)!!;
+	map.allocator.free(ptr);
 }
 
 fn bool HashMap.remove_entry_for_key(&map, Key key) @private

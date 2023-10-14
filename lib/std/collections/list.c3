@@ -19,7 +19,7 @@ struct List (Printable)
 }
 
 /**
- * @require using != null "A valid allocator must be provided"
+ * @require using "A valid allocator must be provided"
  **/
 fn void List.init(&self, usz initial_capacity = 16, Allocator* using = mem::heap())
 {

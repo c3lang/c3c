@@ -2401,7 +2401,7 @@ static inline bool sema_analyse_doc_header(AstId doc, Decl **params, Decl **extr
 	NEXT:;
 		Type *type = param->type;
 		if (type) type = type_flatten(type);
-		bool may_be_pointer = !type || type_is_pointer(type);
+		bool may_be_pointer = !type || type_is_pointer(type) || type_is_any_protocol_ptr(type);
 		if (directive->contract_stmt.param.by_ref)
 		{
 			if (!may_be_pointer)

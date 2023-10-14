@@ -67,13 +67,13 @@ fn void! Lexer.init(&self, Stream* reader, Ident ident, Allocator* using = mem::
         assert(end.len > 0 && end.len <= ushort.max);
         max_token = max(max_token, (ushort)end.len);
     }
-    char* buf = using.alloc(max_token)!;
+    char* buf = using.alloc_checked(max_token)!;
     *self = { .allocator = using, .reader = reader, .buf = buf[:max_token], .tokens = trie };
 }
 
 fn void! Lexer.free(&self)
 {
-    self.allocator.free(self.buf)!;
+    self.allocator.free(self.buf);
     *self = {};
 }
 
@@ -680,20 +680,18 @@ fn void test()
 
 /* #expect: lexer_test.ll
 
-; ModuleID = 'lexer_test'
-source_filename = "lexer_test"
-target datalayout = "e-m:o-p270:32:32-p271:32
-target triple = "x86_64-apple
 %.introspect = type { i8, i64, ptr, i64, i64, i64, [0 x i64] }
 %"char[]" = type { ptr, i64 }
+%"any*" = type { ptr, i64 }
 %"UintTest[]" = type { ptr, i64 }
 %UintTest = type { %"char[]", i64 }
 %ByteReader = type { %Stream, %"char[]", i64 }
 %Stream = type { ptr }
-%Lexer = type { ptr, ptr, %"char[]", %Trie, ptr, i8, i8, i32, i32, i32, %.anon }
+%Lexer = type { %"any*", ptr, %"char[]", %Trie, ptr, i8, i8, i32, i32, i32, %.anon }
 %Trie = type { %List }
-%List = type { i64, i64, ptr, ptr }
+%List = type { i64, i64, %"any*", ptr }
 %.anon = type { %"char[]" }
+
 @"$ct.lexer_test.UintTest" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 24, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @.enum.KEYWORD1 = internal constant [9 x i8] c"KEYWORD1\00", align 1
 @.enum.KEYWORD2 = internal constant [9 x i8] c"KEYWORD2\00", align 1
@@ -711,34 +709,42 @@ target triple = "x86_64-apple
 @.str.4 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @.str.5 = private unnamed_addr constant [3 x i8] c"*/\00", align 1
 @"lexer_test.Comment$end" = linkonce constant [2 x %"char[]"] [%"char[]" { ptr @.str.4, i64 1 }, %"char[]" { ptr @.str.5, i64 2 }], align 8
-@std.core.mem.thread_allocator = external thread_local global ptr, align 8
+@std.core.mem.thread_allocator = external thread_local global %"any*", align 8
+
 ; Function Attrs: nounwind
 define zeroext i8 @lexer_test.is_ident_char(i64 %0, i8 zeroext %1) #0 {
 entry:
   %eq = icmp eq i64 0, %0
   br i1 %eq, label %and.rhs, label %and.phi
+
 and.rhs:                                          ; preds = %entry
   %2 = call i8 @char.is_alpha(i8 zeroext %1)
   %3 = trunc i8 %2 to i1
   br label %and.phi
+
 and.phi:                                          ; preds = %and.rhs, %entry
   %val = phi i1 [ false, %entry ], [ %3, %and.rhs ]
   br i1 %val, label %or.phi, label %or.rhs
+
 or.rhs:                                           ; preds = %and.phi
   %lt = icmp ult i64 0, %0
   br i1 %lt, label %and.rhs1, label %and.phi2
+
 and.rhs1:                                         ; preds = %or.rhs
   %4 = call i8 @char.is_alnum(i8 zeroext %1)
   %5 = trunc i8 %4 to i1
   br label %and.phi2
+
 and.phi2:                                         ; preds = %and.rhs1, %or.rhs
   %val3 = phi i1 [ false, %or.rhs ], [ %5, %and.rhs1 ]
   br label %or.phi
+
 or.phi:                                           ; preds = %and.phi2, %and.phi
   %val4 = phi i1 [ true, %and.phi ], [ %val3, %and.phi2 ]
   %6 = zext i1 %val4 to i8
   ret i8 %6
 }
+
 ; Function Attrs: nounwind
 define i64 @lexer_test.lex_uint() #0 {
 entry:
@@ -750,7 +756,7 @@ entry:
   %lex = alloca %Lexer, align 8
   %error_var = alloca i64, align 8
   %kind = alloca i8, align 1
-  %error_var2 = alloca i64, align 8
+  %error_var4 = alloca i64, align 8
   %retparam = alloca i8, align 1
   store %"UintTest[]" zeroinitializer, ptr %tcases, align 8
   %0 = getelementptr inbounds %"UintTest[]", ptr %tcases, i32 0, i32 1
@@ -758,11 +764,13 @@ entry:
   store i64 %1, ptr %.anon, align 8
   store i64 0, ptr %.anon1, align 8
   br label %loop.cond
-loop.cond:                                        ; preds = %noerr_block7, %entry
+
+loop.cond:                                        ; preds = %noerr_block9, %entry
   %2 = load i64, ptr %.anon1, align 8
   %3 = load i64, ptr %.anon, align 8
   %lt = icmp ult i64 %2, %3
   br i1 %lt, label %loop.body, label %loop.exit
+
 loop.body:                                        ; preds = %loop.cond
   %4 = getelementptr inbounds %"UintTest[]", ptr %tcases, i32 0, i32 0
   %5 = load ptr, ptr %4, align 8
@@ -770,49 +778,59 @@ loop.body:                                        ; preds = %loop.cond
   %ptroffset = getelementptr inbounds %UintTest, ptr %5, i64 %6
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %tc, ptr align 8 %ptroffset, i32 24, i1 false)
   call void @llvm.memset.p0.i64(ptr align 8 %br, i8 0, i64 32, i1 false)
-  call void @llvm.memset.p0.i64(ptr align 8 %lex, i8 0, i64 104, i1 false)
+  call void @llvm.memset.p0.i64(ptr align 8 %lex, i8 0, i64 120, i1 false)
   %7 = getelementptr inbounds %UintTest, ptr %tc, i32 0, i32 0
   %8 = getelementptr inbounds %"char[]", ptr %7, i32 0, i32 0
   %lo = load ptr, ptr %8, align 8
   %9 = getelementptr inbounds %"char[]", ptr %7, i32 0, i32 1
   %hi = load i64, ptr %9, align 8
   %10 = call ptr @std.io.ByteReader.init(ptr %br, ptr %lo, i64 %hi)
-  %11 = load ptr, ptr @std.core.mem.thread_allocator, align 8
-  %12 = call i64 @"lexer$lexer_test.Token$lexer_test.Comment$.Lexer.init"(ptr %lex, ptr %10, ptr @lexer_test.is_ident_char, ptr %11)
-  %not_err = icmp eq i64 %12, 0
-  %13 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
-  br i1 %13, label %after_check, label %assign_optional
+  %lo2 = load i64, ptr @std.core.mem.thread_allocator, align 8
+  %hi3 = load ptr, ptr getelementptr inbounds ({ i64, ptr }, ptr @std.core.mem.thread_allocator, i32 0, i32 1), align 8
+  %11 = call i64 @"lexer$lexer_test.Token$lexer_test.Comment$.Lexer.init"(ptr %lex, ptr %10, ptr @lexer_test.is_ident_char, i64 %lo2, ptr %hi3)
+  %not_err = icmp eq i64 %11, 0
+  %12 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %12, label %after_check, label %assign_optional
+
 assign_optional:                                  ; preds = %loop.body
-  store i64 %12, ptr %error_var, align 8
+  store i64 %11, ptr %error_var, align 8
   br label %guard_block
+
 after_check:                                      ; preds = %loop.body
   br label %noerr_block
+
 guard_block:                                      ; preds = %assign_optional
-  %14 = load i64, ptr %error_var, align 8
-  ret i64 %14
+  %13 = load i64, ptr %error_var, align 8
+  ret i64 %13
+
 noerr_block:                                      ; preds = %after_check
-  %15 = call i64 @"lexer$lexer_test.Token$lexer_test.Comment$.Lexer.next"(ptr %retparam, ptr %lex)
-  %not_err3 = icmp eq i64 %15, 0
-  %16 = call i1 @llvm.expect.i1(i1 %not_err3, i1 true)
-  br i1 %16, label %after_check5, label %assign_optional4
-assign_optional4:                                 ; preds = %noerr_block
-  store i64 %15, ptr %error_var2, align 8
-  br label %guard_block6
-after_check5:                                     ; preds = %noerr_block
-  br label %noerr_block7
-guard_block6:                                     ; preds = %assign_optional4
-  %17 = load i64, ptr %error_var2, align 8
-  ret i64 %17
-noerr_block7:                                     ; preds = %after_check5
-  %18 = load i8, ptr %retparam, align 1
-  store i8 %18, ptr %kind, align 1
-  %19 = load i8, ptr %kind, align 1
-  %eq = icmp eq i8 %19, 1
+  %14 = call i64 @"lexer$lexer_test.Token$lexer_test.Comment$.Lexer.next"(ptr %retparam, ptr %lex)
+  %not_err5 = icmp eq i64 %14, 0
+  %15 = call i1 @llvm.expect.i1(i1 %not_err5, i1 true)
+  br i1 %15, label %after_check7, label %assign_optional6
+
+assign_optional6:                                 ; preds = %noerr_block
+  store i64 %14, ptr %error_var4, align 8
+  br label %guard_block8
+
+after_check7:                                     ; preds = %noerr_block
+  br label %noerr_block9
+
+guard_block8:                                     ; preds = %assign_optional6
+  %16 = load i64, ptr %error_var4, align 8
+  ret i64 %16
+
+noerr_block9:                                     ; preds = %after_check7
+  %17 = load i8, ptr %retparam, align 1
+  store i8 %17, ptr %kind, align 1
+  %18 = load i8, ptr %kind, align 1
+  %eq = icmp eq i8 %18, 1
   call void @llvm.assume(i1 %eq)
-  %20 = load i64, ptr %.anon1, align 8
-  %add = add i64 %20, 1
+  %19 = load i64, ptr %.anon1, align 8
+  %add = add i64 %19, 1
   store i64 %add, ptr %.anon1, align 8
   br label %loop.cond
+
 loop.exit:                                        ; preds = %loop.cond
   ret i64 0
 }

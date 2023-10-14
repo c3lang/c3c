@@ -7,8 +7,6 @@ const MAX_MEMORY_ALIGNMENT = 0x1000_0000;
 const DEFAULT_MEM_ALIGNMENT = (void*.alignof) * 2;
 
 
-
-
 /**
  * Load a vector from memory according to a mask assuming default alignment.
  *
@@ -403,12 +401,12 @@ macro malloc_checked(..., Allocator* using = mem::heap(), usz end_padding = 0) @
 		$assert !type_alloc_must_be_aligned($vatype(0)) :  "Type must be allocated with malloc_aligned";
 		$if $vacount == 2:
 			usz size = $vaarg(1);
-			return (($Type*)using.alloc($Type.sizeof * size + end_padding))[:size];
+			return (($Type*)using.alloc_checked($Type.sizeof * size + end_padding))[:size];
 		$else
-			return ($Type*)using.alloc($Type.sizeof + end_padding);
+			return ($Type*)using.alloc_checked($Type.sizeof + end_padding);
 		$endif
 	$else
-		return using.alloc($vaarg(0) + end_padding);
+		return using.alloc_checked($vaarg(0) + end_padding);
 	$endif
 }
 
@@ -453,12 +451,12 @@ macro calloc_checked(..., Allocator* using = mem::heap(), usz end_padding = 0) @
 		$assert !type_alloc_must_be_aligned($vatype(0)) : "Type must be allocated with calloc_aligned";
 		$if $vacount == 2:
 			usz size = $vaarg(1);
-			return (($Type*)using.calloc($Type.sizeof * size + end_padding))[:size];
+			return (($Type*)using.calloc_checked($Type.sizeof * size + end_padding))[:size];
 		$else
-			return ($Type*)using.calloc($Type.sizeof + end_padding);
+			return ($Type*)using.calloc_checked($Type.sizeof + end_padding);
 		$endif
 	$else
-		return using.calloc($vaarg(0) + end_padding);
+		return using.calloc_checked($vaarg(0) + end_padding);
 	$endif
 }
 
@@ -485,12 +483,12 @@ macro calloc_aligned(..., usz alignment = 0, Allocator* using = mem::heap(), usz
 
 fn void* realloc(void *ptr, usz new_size, Allocator* using = mem::heap()) @builtin @inline
 {
-	return using.realloc(ptr, new_size)!!;
+	return using.realloc(ptr, new_size);
 }
 
 fn void*! realloc_checked(void *ptr, usz new_size, Allocator* using = mem::heap()) @builtin @inline
 {
-	return using.realloc(ptr, new_size);
+	return using.realloc_checked(ptr, new_size);
 }
 
 /**
@@ -501,10 +499,10 @@ fn void*! realloc_aligned(void *ptr, usz new_size, usz alignment, Allocator* usi
 	return using.realloc_aligned(ptr, new_size, alignment);
 }
 
-macro void free(void* ptr, Allocator* using = mem::heap()) @builtin => using.free(ptr)!!;
-macro void! free_checked(void* ptr, Allocator* using = mem::heap()) @builtin => using.free(ptr);
-macro void free_aligned(void* ptr, Allocator* using = mem::heap()) @builtin => using.free_aligned(ptr)!!;
-macro void! free_aligned_checked(void* ptr, Allocator* using = mem::heap()) @builtin => using.free_aligned(ptr);
+macro void free(void* ptr, Allocator* using = mem::heap()) @builtin => using.free(ptr);
+//macro void! free_checked(void* ptr, Allocator* using = mem::heap()) @builtin => using.free(ptr);
+macro void free_aligned(void* ptr, Allocator* using = mem::heap()) @builtin => using.free_aligned(ptr);
+//macro void! free_aligned_checked(void* ptr, Allocator* using = mem::heap()) @builtin => using.free_aligned(ptr);
 
 /**
  * Run with a specific allocator inside of the macro body.
@@ -527,12 +525,12 @@ macro tmalloc(..., usz end_padding = 0, usz alignment = DEFAULT_MEM_ALIGNMENT) @
 		var $Type = $vatype(0);
 		$if $vacount == 2:
 			usz size = $vaarg(1);
-			return (($Type*)temp().alloc_aligned($Type.sizeof * size + end_padding, alignment))[:size]!!;
+			return (($Type*)temp().acquire($Type.sizeof * size + end_padding, false, alignment, 0))[:size]!!;
 		$else
-			return ($Type*)temp().alloc_aligned($Type.sizeof + end_padding, alignment)!!;
+			return ($Type*)temp().acquire($Type.sizeof + end_padding, false, alignment, 0)!!;
 		$endif
 	$else
-		return temp().alloc_aligned($vaarg(0) + end_padding, alignment)!!;
+		return temp().acquire($vaarg(0) + end_padding, false, alignment, 0)!!;
 	$endif
 }
 
@@ -546,18 +544,18 @@ macro tcalloc(..., usz end_padding = 0, usz alignment = mem::DEFAULT_MEM_ALIGNME
 		var $Type = $vatype(0);
 		$if $vacount == 2:
 			usz size = $vaarg(1);
-			return (($Type*)temp().calloc_aligned($Type.sizeof * size + end_padding, alignment))[:size]!!;
+			return (($Type*)temp().acquire($Type.sizeof * size + end_padding, true, alignment, 0))[:size]!!;
 		$else
-			return ($Type*)temp().calloc_aligned($Type.sizeof + end_padding, alignment)!!;
+			return ($Type*)temp().acquire($Type.sizeof + end_padding, true, alignment, 0)!!;
 		$endif
 	$else
-		return temp().calloc_aligned($vaarg(0) + end_padding, alignment)!!;
+		return temp().acquire($vaarg(0) + end_padding, true, alignment, 0)!!;
 	$endif
 }
 
 fn void* trealloc(void* ptr, usz size, usz alignment = mem::DEFAULT_MEM_ALIGNMENT) @builtin @inline
 {
-	return temp().realloc_aligned(ptr, size, alignment)!!;
+	return temp().resize(ptr, size, alignment, 0)!!;
 }
 
 macro void @stack_mem(usz $size; @body(Allocator* mem)) @builtin
@@ -587,7 +585,7 @@ macro void @pool(TempAllocator* #other_temp = null; @body) @builtin
 	var $has_arg = !$checks(var $x = #other_temp);
 	$if $has_arg:
 		TempAllocator* original = current;
-		if (current == #other_temp) current = temp_allocator_next();
+		if (current == (void*)#other_temp) current = temp_allocator_next();
 	$endif
 	usz mark = current.used;
 	defer
@@ -600,7 +598,7 @@ macro void @pool(TempAllocator* #other_temp = null; @body) @builtin
 	@body();
 }
 
-tlocal Allocator* thread_allocator @private = allocator::LIBC_ALLOCATOR;
+tlocal Allocator* thread_allocator @private = &allocator::LIBC_ALLOCATOR;
 tlocal TempAllocator* thread_temp_allocator @private = null;
 tlocal TempAllocator*[2] temp_allocator_pair @private;
 
