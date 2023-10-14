@@ -402,6 +402,7 @@ static inline Ast* parse_asm_block_stmt(ParseContext *c)
 			prev = &block_stmt->next;
 		}
 		ast->asm_block_stmt.block = block;
+		ast->asm_block_stmt.is_volatile = true;
 		return ast;
 	}
 	ast->asm_block_stmt.is_string = true;
