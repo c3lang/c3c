@@ -28,9 +28,15 @@ fn void main(String[] args)
 		iretl;
 		iretw;
 		iretq;
+		push 1;
+		pushw 2;
+		pushw $ax;
+		pushw [&x];
+		pushq $rax;
+		pushq [&x];
 	}
 }
 
 /* #expect: test.ll
 
-"in $$3, %eax\0Ain %dx, %ax\0Aincb %al\0Aincw %bx\0Aincl %eax\0Aincq %rax\0Aincl $0\0Ainsb \0Ainsw \0Ainsl \0Aint $$8\0Aint3 \0Ainvd \0Ainvlpg $0\0Ainvpcid $1, %rax\0Ainvlpga %rax, %ecx\0Airet \0Airetl \0Airetw \0Airetq \0A", "=*&m,*m,~{cc},~{rax},~{rbx},~{flags},~{dirflag},~{fspr}"
+"in $$3, %eax\0Ain %dx, %ax\0Aincb %al\0Aincw %bx\0Aincl %eax\0Aincq %rax\0Aincl $0\0Ainsb \0Ainsw \0Ainsl \0Aint $$8\0Aint3 \0Ainvd \0Ainvlpg $0\0Ainvpcid $1, %rax\0Ainvlpga %rax, %ecx\0Airet \0Airetl \0Airetw \0Airetq \0Apush $$1\0Apushw $$2\0Apushw %ax\0Apushw $1\0Apushq %rax\0Apushq $1\0A", "=*&m,*m,~{cc},~{rax},~{rbx},~{flags},~{dirflag},~{fspr}"

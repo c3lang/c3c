@@ -298,10 +298,12 @@ static void init_asm_x86(void)
 	{
 		reg_instr_clob("aaa", rax_mask, 0);
 		reg_instr_clob("into", cc_flag_mask, NULL);
+		reg_instr("pushl", "r32/mem/imm32");
 	}
 	if (is_x64)
 	{
 		reg_instr_clob("syscall", clobbers_make_from(cc_flag_mask, X86_RAX, X86_R11, X86_RCX, -1), NULL);
+		reg_instr("pushq", "r64/mem");
 	}
 	reg_instr_clob("adcb", cc_flag_mask, "rw:r8/mem, r8/mem/imm8");
 	reg_instr_clob("adcw", cc_flag_mask, "rw:r16/mem, r16/mem/imm16/immi8");
@@ -404,6 +406,8 @@ static void init_asm_x86(void)
 	reg_instr("rdtsc", NULL);
 	reg_instr("rdtscp", NULL);
 	reg_instr("ret", NULL);
+	reg_instr("push", "imm8");
+	reg_instr("pushw", "r16/mem/imm16");
 
 	asm_target.clobber_name_list = X86ClobberNames;
 	asm_target.extra_clobbers = "~{flags},~{dirflag},~{fspr}";
