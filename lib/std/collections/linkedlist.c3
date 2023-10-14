@@ -40,7 +40,7 @@ fn void LinkedList.tinit(&self) => self.init(mem::temp()) @inline;
  **/
 macro void LinkedList.free_node(&self, Node* node) @private
 {
-	self.allocator.free(node)!!;
+	self.allocator.free(node);
 }
 macro Node* LinkedList.alloc_node(&self) @private
 {

@@ -3,9 +3,8 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::mem::allocator;
 
-struct ArenaAllocator
+struct ArenaAllocator (Allocator)
 {
-	inline Allocator allocator;
 	char[] data;
 	usz used;
 }
@@ -15,83 +14,46 @@ struct ArenaAllocator
  **/
 fn void ArenaAllocator.init(&self, char[] data)
 {
-	self.function = &arena_allocator_function;
 	self.data = data;
 	self.used = 0;
 }
 
-fn void ArenaAllocator.reset(&self)
+fn void ArenaAllocator.clear(&self)
 {
 	self.used = 0;
 }
 
-
-module std::core::mem::allocator @private;
-
-struct ArenaAllocatorHeader
+struct ArenaAllocatorHeader @local
 {
 	usz size;
 	char[*] data;
 }
 
-/**
- * @require !alignment || math::is_power_of_2(alignment)
- * @require data `unexpectedly missing the allocator`
- */
-fn void*! arena_allocator_function(Allocator* data, usz size, usz alignment, usz offset, void* old_pointer, AllocationKind kind)
+fn void ArenaAllocator.release(&self, void* ptr, bool) @dynamic
 {
-	ArenaAllocator* arena = (ArenaAllocator*)data;
-	bool clear = false;
-	switch (kind)
+	if (!ptr) return;
+	assert((uptr)ptr >= (uptr)self.data.ptr, "Pointer originates from a different allocator.");
+	ArenaAllocatorHeader* header = ptr - ArenaAllocatorHeader.sizeof;
+	// Reclaim memory if it's the last element.
+	if (ptr + header.size == &self.data[self.used])
 	{
-		case CALLOC:
-		case ALIGNED_CALLOC:
-			clear = true;
-			nextcase;
-		case ALLOC:
-		case ALIGNED_ALLOC:
-			assert(!old_pointer, "Unexpected old pointer for alloc.");
-			if (!size) return null;
-			alignment = alignment_for_allocation(alignment);
-			void* mem = arena._alloc(size, alignment, offset)!;
-			if (clear) mem::clear(mem, size, mem::DEFAULT_MEM_ALIGNMENT);
-			return mem;
-		case ALIGNED_REALLOC:
-		case REALLOC:
-			if (!size) nextcase FREE;
-			if (!old_pointer) nextcase ALLOC;
-			alignment = alignment_for_allocation(alignment);
-			return arena._realloc(old_pointer, size, alignment, offset)!;
-		case ALIGNED_FREE:
-		case FREE:
-			if (!old_pointer) return null;
-			assert((uptr)old_pointer >= (uptr)arena.data.ptr, "Pointer originates from a different allocator.");
-			ArenaAllocatorHeader* header = old_pointer - ArenaAllocatorHeader.sizeof;
-			// Reclaim memory if it's the last element.
-			if (old_pointer + header.size == &arena.data[arena.used])
-			{
-				arena.used -= header.size + ArenaAllocatorHeader.sizeof;
-			}
-			return null;
-		case MARK:
-			return (void*)(uptr)arena.used;
-		case RESET:
-			arena.used = size;
-			return null;
+		self.used -= header.size + ArenaAllocatorHeader.sizeof;
 	}
 }
+fn usz ArenaAllocator.mark(&self) @dynamic => self.used;
+fn void ArenaAllocator.reset(&self, usz mark) @dynamic => self.used = mark;
 
 /**
- * @require alignment > 0 `alignment must be non zero`
- * @require math::is_power_of_2(alignment)
- * @require size > 0
+ * @require !alignment || math::is_power_of_2(alignment)
  * @require alignment <= mem::MAX_MEMORY_ALIGNMENT `alignment too big`
  * @require offset <= mem::MAX_MEMORY_ALIGNMENT `offset too big`
  * @require offset <= size && offset >= 0
  * @require mem::aligned_offset(offset, ArenaAllocatorHeader.alignof) == offset
  **/
-fn void*! ArenaAllocator._alloc(&self, usz size, usz alignment, usz offset)
+fn void*! ArenaAllocator.acquire(&self, usz size, bool clear, usz alignment, usz offset) @dynamic
 {
+	if (!size) return null;
+	alignment = alignment_for_allocation(alignment);
 	usz total_len = self.data.len;
 	if (size > total_len) return AllocationFailure.CHUNK_TOO_LARGE?;
 	void* start_mem = self.data.ptr;
@@ -103,20 +65,29 @@ fn void*! ArenaAllocator._alloc(&self, usz size, usz alignment, usz offset)
 	void* mem = aligned_pointer_to_offset - offset;
 	ArenaAllocatorHeader* header = mem - ArenaAllocatorHeader.sizeof;
 	header.size = size;
+	if (clear) mem::clear(mem, size, mem::DEFAULT_MEM_ALIGNMENT);
 	return mem;
 }
 
 /**
- * @require alignment > 0 `alignment must be non zero`
- * @require math::is_power_of_2(alignment)
- * @require size > 0
+ * @require !alignment || math::is_power_of_2(alignment)
  * @require alignment <= mem::MAX_MEMORY_ALIGNMENT `alignment too big`
  * @require offset <= mem::MAX_MEMORY_ALIGNMENT `offset too big`
  * @require offset <= size && offset >= 0
  * @require mem::aligned_offset(offset, ArenaAllocatorHeader.alignof) == offset
  **/
-fn void*! ArenaAllocator._realloc(&self, void *old_pointer, usz size, usz alignment, usz offset)
+fn void*! ArenaAllocator.resize(&self, void *old_pointer, usz size, usz alignment, usz offset) @dynamic
 {
+	if (!size)
+	{
+		self.release(old_pointer, alignment > 0);
+		return null;
+	}
+	if (!old_pointer)
+	{
+		return self.acquire(size, true, alignment, offset);
+	}
+	alignment = alignment_for_allocation(alignment);
 	assert(old_pointer >= self.data.ptr, "Pointer originates from a different allocator.");
 	usz total_len = self.data.len;
 	if (size > total_len) return AllocationFailure.CHUNK_TOO_LARGE?;
@@ -139,7 +110,7 @@ fn void*! ArenaAllocator._realloc(&self, void *old_pointer, usz size, usz alignm
 		return old_pointer;
 	}
 	// Otherwise just allocate new memory.
-	void* mem = self._alloc(size, alignment, offset)!;
+	void* mem = self.acquire(size, false, alignment, offset)!;
 	mem::copy(mem, old_pointer, old_size, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
 	return mem;
 }

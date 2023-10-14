@@ -40,9 +40,9 @@ fn ByteBuffer*! ByteBuffer.init_with_buffer(&self, char[] buf)
 	return self;
 }
 
-fn void! ByteBuffer.free(&self)
+fn void ByteBuffer.free(&self)
 {
-	if (self.allocator) self.allocator.free(self.bytes)!;
+	if (self.allocator) self.allocator.free(self.bytes);
 	*self = {};
 }
 

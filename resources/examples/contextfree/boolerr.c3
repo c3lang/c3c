@@ -13,7 +13,7 @@ struct Summary
 
 struct StringData @private
 {
-	Allocator allocator;
+	Allocator* allocator;
 	usz len;
 	usz capacity;
 	char[*] chars;

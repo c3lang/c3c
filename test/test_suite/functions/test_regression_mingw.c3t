@@ -241,8 +241,9 @@ fn Type getValue(Blob blob)
 %Foo2 = type { i32 }
 %Bobo = type { i16, float, i16, i16, float, i16 }
 %"int[]" = type { ptr, i64 }
-%LinkedList = type { ptr, i64, ptr, ptr }
-%List = type { i64, i64, ptr, ptr }
+%LinkedList = type { %"any*", i64, ptr, ptr }
+%"any*" = type { ptr, i64 }
+%List = type { i64, i64, %"any*", ptr }
 %Foo = type { i32, i32 }
 
 $"$ct.test.Bobo" = comdat any
@@ -476,7 +477,7 @@ entry:
   %1 = call i32 @test.test_static()
   %2 = call i32 @test.test_static()
   call void @hello_world.hello()
-  call void @llvm.memset.p0.i64(ptr align 8 %list, i8 0, i64 32, i1 false)
+  call void @llvm.memset.p0.i64(ptr align 8 %list, i8 0, i64 40, i1 false)
   call void @"std.collections.linkedlist$int$.LinkedList.push"(ptr %list, i32 10)
   call void @"std.collections.linkedlist$int$.LinkedList.push"(ptr %list, i32 15)
   call void @"std.collections.linkedlist$int$.LinkedList.push"(ptr %list, i32 30)
@@ -506,7 +507,7 @@ loop.exit:                                        ; preds = %loop.cond
   %10 = call i32 (ptr, ...) @printf(ptr @.str.3, i32 3)
   store i32 3, ptr %elements, align 4
   %11 = call i32 (ptr, ...) @printf(ptr @.str.4)
-  call void @llvm.memset.p0.i64(ptr align 8 %array, i8 0, i64 32, i1 false)
+  call void @llvm.memset.p0.i64(ptr align 8 %array, i8 0, i64 40, i1 false)
   call void @"std.collections.list$int$.List.append"(ptr %array, i32 100)
   call void @"std.collections.list$int$.List.append"(ptr %array, i32 200)
   call void @"std.collections.list$int$.List.append"(ptr %array, i32 400)
