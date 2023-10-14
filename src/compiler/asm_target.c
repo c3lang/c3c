@@ -301,7 +301,7 @@ static void init_asm_x86(void)
 	}
 	if (is_x64)
 	{
-		reg_instr_clob("syscall", clobbers_make_from(cc_flag_mask, X86_R11, X86_RCX, -1), NULL);
+		reg_instr_clob("syscall", clobbers_make_from(cc_flag_mask, X86_RAX, X86_R11, X86_RCX, -1), NULL);
 	}
 	reg_instr_clob("adcb", cc_flag_mask, "rw:r8/mem, r8/mem/imm8");
 	reg_instr_clob("adcw", cc_flag_mask, "rw:r16/mem, r16/mem/imm16/immi8");
