@@ -1,0 +1,11 @@
+// #target: macos-x64
+module testing;
+import std::io;
+
+fn void test() @naked @export("hello")
+{
+	asm("nop");
+}
+fn void main()
+{
+}

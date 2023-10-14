@@ -3108,7 +3108,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 			while (current)
 			{
 				Ast *stmt = ast_next(&current);
-				if (stmt->ast_kind != AST_ASM_STMT)
+				if (stmt->ast_kind != AST_ASM_BLOCK_STMT)
 				{
 					SEMA_ERROR(stmt, "Only asm statements are allowed inside of a naked function.");
 					return false;
