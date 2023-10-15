@@ -383,7 +383,7 @@ static inline Ast *parse_asm_stmt(ParseContext *c)
 }
 
 /**
- * asm ::= 'asm' '{' asm_stmt* '}' | 'asm' '(' string ')'
+ * asm ::= 'asm' @pure? '{' asm_stmt* '}' | 'asm' '(' string ')'
  * @param c
  * @return
  */
@@ -391,6 +391,24 @@ static inline Ast* parse_asm_block_stmt(ParseContext *c)
 {
 	Ast *ast = new_ast(AST_ASM_BLOCK_STMT, c->span);
 	advance_and_verify(c, TOKEN_ASM);
+	bool is_volatile = true;
+	if (tok_is(c, TOKEN_AT_IDENT))
+	{
+		if (symstr(c) == kw_at_pure)
+		{
+			is_volatile = false;
+		}
+		else
+		{
+			SEMA_ERROR_HERE("Only the '@pure' attribute is allowed.");
+			return false;
+		}
+		advance_and_verify(c, TOKEN_AT_IDENT);
+		if (!tok_is(c, TOKEN_LBRACE))
+		{
+			SEMA_ERROR_HERE("Expected '{' after the attribute.");
+		}
+	}
 	if (try_consume(c, TOKEN_LBRACE))
 	{
 		AsmInlineBlock *block = CALLOCS(AsmInlineBlock);
@@ -402,15 +420,27 @@ static inline Ast* parse_asm_block_stmt(ParseContext *c)
 			prev = &block_stmt->next;
 		}
 		ast->asm_block_stmt.block = block;
-		ast->asm_block_stmt.is_volatile = true;
+		ast->asm_block_stmt.is_volatile = is_volatile;
 		return ast;
 	}
 	ast->asm_block_stmt.is_string = true;
-	// TODO use attributes, like volatile
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_ast);
 	ASSIGN_EXPRID_OR_RET(ast->asm_block_stmt.asm_string, parse_expr(c), poisoned_ast);
-	ast->asm_block_stmt.is_volatile = true;
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_ast);
+	if (tok_is(c, TOKEN_AT_IDENT))
+	{
+		if (symstr(c) == kw_at_pure)
+		{
+			is_volatile = false;
+		}
+		else
+		{
+			SEMA_ERROR_HERE("Only the '@pure' attribute is allowed.");
+			return false;
+		}
+		advance_and_verify(c, TOKEN_AT_IDENT);
+	}
+	ast->asm_block_stmt.is_volatile = is_volatile;
 	RANGE_EXTEND_PREV(ast);
 	CONSUME_EOS_OR_RET(poisoned_ast);
 	return ast;

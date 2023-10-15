@@ -3102,32 +3102,15 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 		bool has_ensures = false;
 		if (!sema_analyse_contracts(context, func->func_decl.docs, &next, INVALID_SPAN, &has_ensures)) return false;
 		context->call_env.ensures = has_ensures;
-		if (func->func_decl.attr_naked)
+		bool is_naked = func->func_decl.attr_naked;
+		if (!is_naked) sema_append_contract_asserts(assert_first, body);
+		Type *canonical_rtype = type_no_optional(prototype->rtype)->canonical;
+		if (!sema_analyse_compound_statement_no_scope(context, body)) return false;
+		assert(context->active_scope.depth == 1);
+		if (!context->active_scope.jump_end && canonical_rtype != type_void)
 		{
-			AstId current = body->compound_stmt.first_stmt;
-			while (current)
-			{
-				Ast *stmt = ast_next(&current);
-				if (stmt->ast_kind != AST_ASM_BLOCK_STMT)
-				{
-					SEMA_ERROR(stmt, "Only asm statements are allowed inside of a naked function.");
-					return false;
-				}
-			}
-			assert_first = 0;
-			if (!sema_analyse_compound_statement_no_scope(context, body)) return false;
-		}
-		else
-		{
-			sema_append_contract_asserts(assert_first, body);
-			Type *canonical_rtype = type_no_optional(prototype->rtype)->canonical;
-			if (!sema_analyse_compound_statement_no_scope(context, body)) return false;
-			assert(context->active_scope.depth == 1);
-			if (!context->active_scope.jump_end && canonical_rtype != type_void)
-			{
-				SEMA_ERROR(func, "Missing return statement at the end of the function.");
-				return false;
-			}
+			SEMA_ERROR(func, "Missing return statement at the end of the function.");
+			return false;
 		}
 	SCOPE_END;
 	if (lambda_params)

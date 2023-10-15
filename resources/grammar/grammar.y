@@ -819,9 +819,12 @@ asm_stmt
 	;
 
 asm_block_stmt
-	: ASM '(' constant_expr ')'
+	: ASM '(' constant_expr ')' ';'
+	| ASM '(' constant_expr ')' AT_IDENT ';'
 	| ASM '{' asm_stmts '}'
+	| ASM AT_IDENT '{' asm_stmts '}'
 	| ASM '{' '}'
+	| ASM AT_IDENT '{' '}'
 	;
 
 
