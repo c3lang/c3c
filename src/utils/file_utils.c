@@ -381,10 +381,15 @@ const char *find_lib_dir(void)
 		path[strlen_path - 1] = '\0';
 	}
 	const char *lib_path = NULL;
+	if ((lib_path = lib_find(path, "/../lib/c3"))) goto DONE;
 	if ((lib_path = lib_find(path, "/../lib/"))) goto DONE;
+	if ((lib_path = lib_find(path, "/lib/c3"))) goto DONE;
 	if ((lib_path = lib_find(path, "/lib/"))) goto DONE;
+	if ((lib_path = lib_find(path, "/c3"))) goto DONE;
 	if ((lib_path = lib_find(path, "/"))) goto DONE;
+	if ((lib_path = lib_find(path, "/../c3"))) goto DONE;
 	if ((lib_path = lib_find(path, "/../"))) goto DONE;
+	if ((lib_path = lib_find(path, "/../../lib/c3"))) goto DONE;
 	if ((lib_path = lib_find(path, "/../../lib/"))) goto DONE;
 
 	DEBUG_LOG("Could not find the standard library /lib/std/");
