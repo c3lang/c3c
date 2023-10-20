@@ -17,7 +17,7 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 		case DECL_ERASED:
 		case NON_TYPE_DECLS:
 		case DECL_FNTYPE:
-		case DECL_PROTOCOL:
+		case DECL_INTERFACE:
 			UNREACHABLE
 		case DECL_BITSTRUCT:
 			return llvm_get_type(c, decl->bitstruct.base_type->type);
@@ -316,7 +316,7 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 			// If this is reachable, then we're not doing the proper lowering.
 			UNREACHABLE
 		case TYPE_ANY:
-		case TYPE_PROTOCOL:
+		case TYPE_INTERFACE:
 			UNREACHABLE
 		case TYPE_STRUCT:
 		case TYPE_UNION:
@@ -644,8 +644,8 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_SUBARRAY, type->array.base, 0, NULL, false);
 		case TYPE_ANYPTR:
 			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_ANY, NULL, 0, NULL, false);
-		case TYPE_PROPTR:
-			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_PROTOCOL, NULL, 0, NULL, false);
+		case TYPE_INFPTR:
+			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_INTERFACE, NULL, 0, NULL, false);
 		case TYPE_POINTER:
 			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_POINTER, type->pointer, 0, NULL, false);
 		case TYPE_DISTINCT:
@@ -673,7 +673,7 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 			return llvm_get_typeid(c, type->canonical);
 		case CT_TYPES:
 		case TYPE_ANY:
-		case TYPE_PROTOCOL:
+		case TYPE_INTERFACE:
 			UNREACHABLE
 		case TYPE_VOID:
 			return llvm_get_introspection_for_builtin_type(c, type, INTROSPECT_TYPE_VOID, 0);

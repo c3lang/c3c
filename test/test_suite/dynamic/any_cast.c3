@@ -1,9 +1,9 @@
 module test;
 
-protocol Abc : Def
+interface Abc : Def
 {}
 
-protocol Def
+interface Def
 {}
 
 fn void! test()
@@ -18,5 +18,5 @@ fn void! test2()
 	Abc* x;
 	any* d = x;
 	Def* e = x;
-	x = e; // #error: is not a parent protocol of 'Def'
+	x = e; // #error: is not a parent interface of 'Def'
 }

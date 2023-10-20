@@ -842,7 +842,7 @@ static void llvm_emit_type_decls(GenContext *context, Decl *decl)
 		case DECL_FUNC:
 			// Never directly invoked.
 			UNREACHABLE
-		case DECL_PROTOCOL:
+		case DECL_INTERFACE:
 			break;
 		case DECL_DISTINCT:
 		case DECL_STRUCT:
@@ -1098,7 +1098,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 			}
 			return decl->backend_ref;
 		case DECL_FUNC:
-			if (decl->func_decl.attr_protocol_method)
+			if (decl->func_decl.attr_interface_method)
 			{
 				return decl->backend_ref = llvm_get_selector(c, decl->name);
 			}
@@ -1143,7 +1143,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 		case DECL_CT_EXEC:
 		case DECL_CT_INCLUDE:
 		case DECL_GLOBALS:
-		case DECL_PROTOCOL:
+		case DECL_INTERFACE:
 			UNREACHABLE;
 	}
 	UNREACHABLE

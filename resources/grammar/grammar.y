@@ -25,9 +25,9 @@ void yyerror(char *s);
 %token STRUCT UNION ENUM ELLIPSIS DOTDOT BYTES
 
 %token CT_ERROR
-%token CASE DEFAULT IF ELSE SWITCH WHILE DO FOR CONTINUE BREAK RETURN FOREACH_R FOREACH PROTOCOL
+%token CASE DEFAULT IF ELSE SWITCH WHILE DO FOR CONTINUE BREAK RETURN FOREACH_R FOREACH INTERFACE
 %token FN FAULT MACRO CT_IF CT_ENDIF CT_ELSE CT_SWITCH CT_CASE CT_DEFAULT CT_FOR CT_FOREACH CT_ENDFOREACH
-%token CT_ENDFOR CT_ENDSWITCH BUILTIN IMPLIES INITIALIZE FINALIZE CT_ECHO CT_ASSERT CT_EVALTYPE CT_VATYPE
+%token CT_ENDFOR CT_ENDSWITCH BUILTIN IMPLIES CT_ECHO CT_ASSERT CT_EVALTYPE CT_VATYPE
 %token TRY CATCH SCOPE DEFER LVEC RVEC OPTELSE CT_TYPEFROM CT_TYPEOF TLOCAL
 %token CT_VASPLAT INLINE DISTINCT CT_VACONST CT_NAMEOF CT_VAREF CT_VACOUNT CT_VAARG
 %token CT_SIZEOF CT_STRINGIFY CT_QNAMEOF CT_OFFSETOF CT_VAEXPR CT_FEATURE
@@ -454,13 +454,13 @@ opt_arg_list_trailing
 	| empty
 	;
 
-protocols
+interfaces
 	: TYPE_IDENT opt_generic_parameters
-	| protocols ',' TYPE_IDENT opt_generic_parameters
+	| interfaces ',' TYPE_IDENT opt_generic_parameters
 	;
 
-opt_protocol_impl
-	: '(' protocols ')'
+opt_interface_impl
+	: '(' interfaces ')'
 	| '(' ')'
 	| empty
 	;
@@ -901,7 +901,7 @@ ct_echo_stmt
 	: CT_ECHO constant_expr ';'
 
 bitstruct_declaration
-	: BITSTRUCT TYPE_IDENT opt_protocol_impl ':' type opt_attributes bitstruct_body
+	: BITSTRUCT TYPE_IDENT opt_interface_impl ':' type opt_attributes bitstruct_body
 
 bitstruct_body
 	: '{' '}'
@@ -924,10 +924,6 @@ bitstruct_def
 	| base_type IDENT ':' constant_expr ';'
 	;
 
-static_declaration
-	: STATIC INITIALIZE opt_attributes compound_statement
-	| STATIC FINALIZE opt_attributes compound_statement
-	;
 
 attribute_name
 	: AT_IDENT
@@ -994,7 +990,7 @@ struct_or_union
 	;
 
 struct_declaration
-	: struct_or_union TYPE_IDENT opt_protocol_impl opt_attributes struct_body
+	: struct_or_union TYPE_IDENT opt_interface_impl opt_attributes struct_body
     	;
 
 struct_body
@@ -1034,7 +1030,7 @@ enum_spec
 	;
 
 enum_declaration
-	: ENUM TYPE_IDENT opt_protocol_impl enum_spec opt_attributes '{' enum_list '}'
+	: ENUM TYPE_IDENT opt_interface_impl enum_spec opt_attributes '{' enum_list '}'
 	;
 
 faults
@@ -1043,8 +1039,8 @@ faults
     ;
 
 fault_declaration
-    	: FAULT TYPE_IDENT opt_protocol_impl opt_attributes '{' faults '}'
-    	| FAULT TYPE_IDENT opt_protocol_impl opt_attributes '{' faults ',' '}'
+    	: FAULT TYPE_IDENT opt_interface_impl opt_attributes '{' faults '}'
+    	| FAULT TYPE_IDENT opt_interface_impl opt_attributes '{' faults ',' '}'
     	;
 
 func_macro_name
@@ -1186,23 +1182,27 @@ define_declaration
 	| DEF TYPE_IDENT opt_attributes '=' typedef_type opt_attributes ';'
 	;
 
-protocol_body
+interface_body
 	: func_typedef
-	| protocol_body func_typedef
+	| interface_body func_typedef
 	;
 
-protocol_declaration
-	: PROTOCOL TYPE_IDENT '{' '}'
-	| PROTOCOL TYPE_IDENT '{' protocol_body '}'
+interface_declaration
+	: INTERFACE TYPE_IDENT '{' '}'
+	| INTERFACE TYPE_IDENT '{' interface_body '}'
 	;
 
 distinct_declaration
-	: DISTINCT TYPE_IDENT opt_protocol_impl opt_attributes '=' opt_inline type opt_generic_parameters ';'
+	: DISTINCT TYPE_IDENT opt_interface_impl opt_attributes '=' opt_inline type opt_generic_parameters ';'
 	;
 
 tl_ct_if
-	: CT_IF constant_expr ':' opt_tl_stmts CT_ENDIF
-	| CT_IF constant_expr ':' opt_tl_stmts CT_ELSE opt_tl_stmts CT_ENDIF
+	: CT_IF constant_expr ':' opt_tl_stmts tl_ct_if_tail
+	;
+
+tl_ct_if_tail
+	: CT_ENDIF
+	| CT_ELSE opt_tl_stmts CT_ENDIF
 	;
 
 tl_ct_switch
@@ -1264,10 +1264,9 @@ top_level
 	| enum_declaration
 	| macro_declaration
 	| define_declaration
-	| static_declaration
 	| bitstruct_declaration
 	| distinct_declaration
-	| protocol_declaration
+	| interface_declaration
 	;
 
 

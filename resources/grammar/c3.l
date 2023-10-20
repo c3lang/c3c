@@ -107,7 +107,6 @@ int comment_level = 0;
 "extern"        { count(); return(EXTERN); }
 "false"         { count(); return(FALSE); }
 "fault"		    { count(); return(FAULT); }
-"finalize"      { count(); return(FINALIZE); }
 "float"			{ count(); return(FLOAT); }
 "bfloat16"      { count(); return(BFLOAT16); }
 "float16"       { count(); return(FLOAT16); }
@@ -119,10 +118,10 @@ int comment_level = 0;
 "ichar"         { count(); return(ICHAR); }
 "if"			{ count(); return(IF); }
 "import"        { count(); return(IMPORT); }
-"initialize"    { count(); return(INITIALIZE); }
 "inline"		{ count(); return(INLINE); }
 "int"			{ count(); return(INT); }
 "int128"		{ count(); return(INT128); }
+"interface"     { count(); return(INTERFACE); }
 "iptr"          { count(); return(IPTR); }
 "isz"           { count(); return(ISZ); }
 "long"			{ count(); return(LONG); }
@@ -130,7 +129,6 @@ int comment_level = 0;
 "module"        { count(); return(MODULE); }
 "nextcase"      { count(); return(NEXTCASE); }
 "null"          { count(); return(NUL); }
-"protocol"      { count(); return(PROTOCOL); }
 "return"		{ count(); return(RETURN); }
 "short"			{ count(); return(SHORT); }
 "struct"		{ count(); return(STRUCT); }

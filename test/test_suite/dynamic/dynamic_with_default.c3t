@@ -1,7 +1,7 @@
 // #target: macos-x64
 module test;
 
-protocol Abc
+interface Abc
 {
 	fn int[<2>] test() @optional;
 	fn int bye();

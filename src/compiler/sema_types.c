@@ -230,7 +230,7 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 		case DECL_UNION:
 		case DECL_FAULT:
 		case DECL_ENUM:
-		case DECL_PROTOCOL:
+		case DECL_INTERFACE:
 			type_info->type = decl->type;
 			type_info->resolve_status = RESOLVE_DONE;
 			DEBUG_LOG("Resolved %s.", type_info->unresolved.name);
@@ -385,7 +385,7 @@ static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, 
 			switch (type_no_optional(type_info->type)->canonical->type_kind)
 			{
 				case TYPE_ANY:
-				case TYPE_PROTOCOL:
+				case TYPE_INTERFACE:
 					RETURN_SEMA_ERROR(type_info, "%s has no valid runtime size, you should use '%s' instead.",
 					                  type_quoted_error_string(type_no_optional(type_info->type)),
 					                  type_quoted_error_string(type_get_ptr(type_no_optional(type_info->type))));
@@ -489,10 +489,10 @@ APPEND_QUALIFIERS:
 				return type_info_poison(type_info);
 			}
 			break;
-		case TYPE_PROTOCOL:
+		case TYPE_INTERFACE:
 			if (!(resolve_type_kind & RESOLVE_TYPE_ALLOW_ANY))
 			{
-				SEMA_ERROR(type_info, "%s is a protocol and has undefined size, please use %s instead.",
+				SEMA_ERROR(type_info, "%s is an interface and has undefined size, please use %s instead.",
 				           type_quoted_error_string(type_info->type),
 				           type_quoted_error_string(type_get_ptr(type_info->type)));
 				return type_info_poison(type_info);

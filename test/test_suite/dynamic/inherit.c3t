@@ -2,16 +2,16 @@
 module inherit;
 import std::io;
 
-protocol Base
+interface Base
 {
 	fn void tesT();
 }
 
-protocol TestProto2 : Base
+interface TestProto2 : Base
 {
 }
 
-protocol TestProto : Base
+interface TestProto : Base
 {
 	fn void hello();
 }

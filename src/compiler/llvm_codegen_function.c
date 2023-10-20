@@ -692,7 +692,7 @@ void llvm_emit_dynamic_functions(GenContext *c, Decl **funcs)
 		scratch_buffer_append("$ct.dyn.");
 		scratch_buffer_append(decl_get_extname(decl));
 		LLVMValueRef global = llvm_add_global_raw(c, scratch_buffer_to_string(), c->dtable_type, 0);
-		Decl *proto = declptrzero(decl->func_decl.protocol_method);
+		Decl *proto = declptrzero(decl->func_decl.interface_method);
 		LLVMValueRef proto_ref = proto ? llvm_get_ref(c, proto) : llvm_get_selector(c, decl->name);
 		LLVMValueRef vals[3] = { llvm_get_ref(c, decl), proto_ref, LLVMConstNull(c->ptr_type) };
 		LLVMSetInitializer(global, LLVMConstNamedStruct(c->dtable_type, vals, 3));

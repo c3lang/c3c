@@ -163,8 +163,8 @@ void sema_analyze_stage(Module *module, AnalysisStage stage)
 			case ANALYSIS_FUNCTIONS:
 				sema_analysis_pass_functions(module);
 				break;
-			case ANALYSIS_PROTOCOL:
-				sema_analysis_pass_protocol(module);
+			case ANALYSIS_INTERFACE:
+				sema_analysis_pass_interface(module);
 				break;
 			case ANALYSIS_FINALIZE:
 				break;
@@ -211,7 +211,7 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 			case DECL_UNION:
 			case DECL_VAR:
 			case DECL_BITSTRUCT:
-			case DECL_PROTOCOL:
+			case DECL_INTERFACE:
 				break;
 		}
 		htable_set(&unit->module->symbols, (void *)decl->name, decl);

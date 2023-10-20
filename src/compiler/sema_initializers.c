@@ -536,7 +536,7 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 	switch (flattened->type_kind)
 	{
 		case TYPE_ANY:
-		case TYPE_PROTOCOL:
+		case TYPE_INTERFACE:
 			UNREACHABLE
 		case TYPE_UNTYPED_LIST:
 		case TYPE_STRUCT:

@@ -695,21 +695,21 @@ TypeInfo *parse_optional_type(ParseContext *c)
 
 // --- Decl parsing
 
-bool parse_protocol_impls(ParseContext *c, TypeInfo ***protocols_ref)
+bool parse_interface_impls(ParseContext *c, TypeInfo ***interfaces_ref)
 {
 	if (!try_consume(c, TOKEN_LPAREN)) return true;
-	TypeInfo **protocols = NULL;
+	TypeInfo **interfaces = NULL;
 	while (!try_consume(c, TOKEN_RPAREN))
 	{
-		ASSIGN_TYPE_OR_RET(TypeInfo *protocol, parse_type(c), false);
-		vec_add(protocols, protocol);
+		ASSIGN_TYPE_OR_RET(TypeInfo *interface, parse_type(c), false);
+		vec_add(interfaces, interface);
 		if (!try_consume(c, TOKEN_COMMA))
 		{
 			CONSUME_OR_RET(TOKEN_RPAREN, false);
 			break;
 		}
 	}
-	*protocols_ref = protocols;
+	*interfaces_ref = interfaces;
 	return true;
 }
 
@@ -1535,7 +1535,7 @@ bool parse_struct_body(ParseContext *c, Decl *parent)
 
 
 /**
- * distinct_declaration ::= 'distinct' TYPE_IDENT opt_protocols '=' 'inline'? type ';'
+ * distinct_declaration ::= 'distinct' TYPE_IDENT opt_interfaces '=' 'inline'? type ';'
  */
 static inline Decl *parse_distinct_declaration(ParseContext *c)
 {
@@ -1544,7 +1544,7 @@ static inline Decl *parse_distinct_declaration(ParseContext *c)
 	Decl *decl = decl_new_with_type(symstr(c), c->span, DECL_DISTINCT);
 
 	if (!consume_type_name(c, "distinct type")) return poisoned_decl;
-	if (!parse_protocol_impls(c, &decl->protocols)) return poisoned_decl;
+	if (!parse_interface_impls(c, &decl->interfaces)) return poisoned_decl;
 
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 
@@ -1566,7 +1566,7 @@ static inline Decl *parse_distinct_declaration(ParseContext *c)
 }
 
 /**
- * struct_declaration ::= struct_or_union TYPE_IDENT opt_protocols opt_attributes struct_body
+ * struct_declaration ::= struct_or_union TYPE_IDENT opt_interfaces opt_attributes struct_body
  */
 static inline Decl *parse_struct_declaration(ParseContext *c)
 {
@@ -1578,7 +1578,7 @@ static inline Decl *parse_struct_declaration(ParseContext *c)
 	Decl *decl = decl_new_with_type(symstr(c), c->span, decl_from_token(type));
 
 	if (!consume_type_name(c, type_name)) return poisoned_decl;
-	if (!parse_protocol_impls(c, &decl->protocols)) return poisoned_decl;
+	if (!parse_interface_impls(c, &decl->interfaces)) return poisoned_decl;
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 
 	if (!parse_struct_body(c, decl)) return poisoned_decl;
@@ -1654,7 +1654,7 @@ static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl)
 	return true;
 }
 
-INLINE bool parse_protocol_body(ParseContext *c, Decl *protocol)
+INLINE bool parse_interface_body(ParseContext *c, Decl *interface)
 {
 	CONSUME_OR_RET(TOKEN_LBRACE, false);
 	Decl **fns = NULL;
@@ -1662,20 +1662,20 @@ INLINE bool parse_protocol_body(ParseContext *c, Decl *protocol)
 	{
 		AstId contracts = 0;
 		if (!parse_contracts(c, &contracts)) return poisoned_decl;
-		ASSIGN_DECL_OR_RET(Decl *protocol_fn, parse_func_definition(c, contracts, true), false);
-		vec_add(fns, protocol_fn);
+		ASSIGN_DECL_OR_RET(Decl *interface_fn, parse_func_definition(c, contracts, true), false);
+		vec_add(fns, interface_fn);
 	}
-	protocol->protocol_methods = fns;
+	interface->interface_methods = fns;
 	return true;
 }
 /**
- * protocol_declaration ::= 'protocol' TYPE_IDENT ':' (TYPE_IDENT (',' TYPE_IDENT) protocol_body
+ * interface_declaration ::= 'interface' TYPE_IDENT ':' (TYPE_IDENT (',' TYPE_IDENT) interface_body
  */
-static inline Decl *parse_protocol_declaration(ParseContext *c)
+static inline Decl *parse_interface_declaration(ParseContext *c)
 {
-	advance_and_verify(c, TOKEN_PROTOCOL);
-	Decl *decl = decl_new_with_type(symstr(c), c->span, DECL_PROTOCOL);
-	if (!consume_type_name(c, "protocol")) return poisoned_decl;
+	advance_and_verify(c, TOKEN_INTERFACE);
+	Decl *decl = decl_new_with_type(symstr(c), c->span, DECL_INTERFACE);
+	if (!consume_type_name(c, "interface")) return poisoned_decl;
 	TypeInfo **parents = NULL;
 	if (try_consume(c, TOKEN_COLON))
 	{
@@ -1685,8 +1685,8 @@ static inline Decl *parse_protocol_declaration(ParseContext *c)
 			vec_add(parents, type);
 		} while (try_consume(c, TOKEN_COMMA));
 	}
-	decl->protocols = parents;
-	if (!parse_protocol_body(c, decl)) return poisoned_decl;
+	decl->interfaces = parents;
+	if (!parse_interface_body(c, decl)) return poisoned_decl;
 	return decl;
 }
 /**
@@ -2111,7 +2111,7 @@ static inline Decl *parse_macro_declaration(ParseContext *c, AstId docs)
 
 
 /**
- * fault_declaration ::= FAULT TYPE_IDENT opt_protocols opt_attributes '{' faults ','? '}'
+ * fault_declaration ::= FAULT TYPE_IDENT opt_interfaces opt_attributes '{' faults ','? '}'
  */
 static inline Decl *parse_fault_declaration(ParseContext *c)
 {
@@ -2119,7 +2119,7 @@ static inline Decl *parse_fault_declaration(ParseContext *c)
 
 	Decl *decl = decl_new_with_type(symstr(c), c->span, DECL_FAULT);
 	if (!consume_type_name(c, "fault")) return poisoned_decl;
-	if (!parse_protocol_impls(c, &decl->protocols)) return poisoned_decl;
+	if (!parse_interface_impls(c, &decl->interfaces)) return poisoned_decl;
 
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 
@@ -2190,7 +2190,7 @@ static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref
 /**
  * Parse an enum declaration (after "enum")
  *
- * enum ::= ENUM TYPE_IDENT opt_protocols (':' type enum_param_list)? opt_attributes '{' enum_body '}'
+ * enum ::= ENUM TYPE_IDENT opt_interfaces (':' type enum_param_list)? opt_attributes '{' enum_body '}'
  * enum_body ::= enum_def (',' enum_def)* ','?
  * enum_def ::= CONST_IDENT ('(' arg_list ')')?
  */
@@ -2200,7 +2200,7 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 
 	Decl *decl = decl_new_with_type(symstr(c), c->span, DECL_ENUM);
 	if (!consume_type_name(c, "enum")) return poisoned_decl;
-	if (!parse_protocol_impls(c, &decl->protocols)) return poisoned_decl;
+	if (!parse_interface_impls(c, &decl->interfaces)) return poisoned_decl;
 
 	TypeInfo *type = NULL;
 	// Parse the spec
@@ -2681,7 +2681,7 @@ static Decl *parse_exec(ParseContext *c)
  * top_level_statement ::= struct_declaration | enum_declaration | fault_declaration | const_declaration
  *                       | global_declaration | macro_declaration | func_definition | typedef_declaration
  *                       | conditional_compilation | define_declaration | import_declaration | module_declaration
- *                       | distinct_declaration | protocol_declaration
+ *                       | distinct_declaration | interface_declaration
  *                       | static_declaration | ct_assert_declaration | ct_echo_declaration | bitstruct_declaration
  *
  * @return Decl* or a poison value if parsing failed
@@ -2799,9 +2799,9 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 			if (contracts) goto CONTRACT_NOT_ALLOWED;
 			decl = parse_bitstruct_declaration(c);
 			break;
-		case TOKEN_PROTOCOL:
+		case TOKEN_INTERFACE:
 			if (contracts) goto CONTRACT_NOT_ALLOWED;
-			decl = parse_protocol_declaration(c);
+			decl = parse_interface_declaration(c);
 			break;
 		case TOKEN_DISTINCT:
 			if (contracts) goto CONTRACT_NOT_ALLOWED;

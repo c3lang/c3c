@@ -879,10 +879,10 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			break;
 		case DECL_ERASED:
 			break;
-		case DECL_PROTOCOL:
-			MACRO_COPY_TYPE_LIST(copy->protocols);
+		case DECL_INTERFACE:
+			MACRO_COPY_TYPE_LIST(copy->interfaces);
 			MACRO_COPY_DECL_LIST(copy->methods);
-			MACRO_COPY_DECL_LIST(copy->protocol_methods);
+			MACRO_COPY_DECL_LIST(copy->interface_methods);
 			break;
 		case DECL_CT_EXEC:
 			MACRO_COPY_EXPR(copy->exec_decl.filename);
@@ -897,7 +897,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 		case DECL_UNION:
 		case DECL_STRUCT:
 			copy_decl_type(copy);
-			MACRO_COPY_TYPE_LIST(copy->protocols);
+			MACRO_COPY_TYPE_LIST(copy->interfaces);
 			MACRO_COPY_DECL_LIST(copy->strukt.members);
 			MACRO_COPY_DECL_LIST(copy->methods);
 			break;
@@ -906,7 +906,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			UNREACHABLE
 		case DECL_BITSTRUCT:
 			copy_decl_type(copy);
-			MACRO_COPY_TYPE_LIST(copy->protocols);
+			MACRO_COPY_TYPE_LIST(copy->interfaces);
 			MACRO_COPY_DECL_LIST(copy->bitstruct.members);
 			MACRO_COPY_TYPE(copy->bitstruct.base_type);
 			MACRO_COPY_DECL_LIST(copy->methods);
@@ -914,7 +914,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 		case DECL_ENUM:
 		case DECL_FAULT:
 			copy_decl_type(copy);
-			MACRO_COPY_TYPE_LIST(copy->protocols);
+			MACRO_COPY_TYPE_LIST(copy->interfaces);
 			MACRO_COPY_DECL_LIST(copy->methods);
 			MACRO_COPY_DECL_LIST(copy->enums.parameters);
 			MACRO_COPY_TYPE(copy->enums.type_info);
@@ -970,7 +970,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			break;
 		case DECL_DISTINCT:
 			copy_decl_type(copy);
-			MACRO_COPY_TYPE_LIST(copy->protocols);
+			MACRO_COPY_TYPE_LIST(copy->interfaces);
 			MACRO_COPY_DECL_LIST(copy->methods);
 			MACRO_COPY_TYPE(copy->distinct);
 			break;

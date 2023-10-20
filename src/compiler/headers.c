@@ -47,7 +47,7 @@ static void header_print_type(FILE *file, Type *type)
 	{
 		case CT_TYPES:
 		case TYPE_OPTIONAL:
-		case TYPE_PROTOCOL:
+		case TYPE_INTERFACE:
 		case TYPE_ANY:
 			UNREACHABLE
 		case TYPE_VOID:
@@ -136,7 +136,7 @@ static void header_print_type(FILE *file, Type *type)
 			OUTPUT(" arr[%d]; }", type->array.len);
 			return;
 		case TYPE_ANYPTR:
-		case TYPE_PROPTR:
+		case TYPE_INFPTR:
 			OUTPUT("c3any_t");
 			return;
 		case TYPE_SUBARRAY:
@@ -314,7 +314,7 @@ static void header_gen_type_decl(FILE *file, int indent, Decl *decl)
 			return;
 		case DECL_TYPEDEF:
 		case DECL_DISTINCT:
-		case DECL_PROTOCOL:
+		case DECL_INTERFACE:
 			// Ignore
 			return;
 		case DECL_STRUCT:
@@ -370,7 +370,7 @@ RETRY:
 		case TYPE_MEMBER:
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_WILDCARD:
-		case TYPE_PROTOCOL:
+		case TYPE_INTERFACE:
 		case TYPE_ANY:
 			UNREACHABLE
 		case TYPE_VOID:
@@ -383,7 +383,7 @@ RETRY:
 		case TYPE_FAULTTYPE:
 		case TYPE_SUBARRAY:
 		case TYPE_ANYPTR:
-		case TYPE_PROPTR:
+		case TYPE_INFPTR:
 			return;
 		case TYPE_POINTER:
 			type = type->pointer;

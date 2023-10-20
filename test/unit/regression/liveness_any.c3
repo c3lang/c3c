@@ -1,6 +1,6 @@
 module liveness;
 
-protocol TestProto
+interface TestProto
 {
 	fn void tesT();
 }

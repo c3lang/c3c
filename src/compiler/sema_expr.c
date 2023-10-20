@@ -696,8 +696,8 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 		case DECL_STRUCT:
 			SEMA_ERROR(expr, "Expected struct followed by {...} or '.'.");
 			return expr_poison(expr);
-		case DECL_PROTOCOL:
-			SEMA_ERROR(expr, "Expected a protocol to be followed by '.' when used as an expression.");
+		case DECL_INTERFACE:
+			SEMA_ERROR(expr, "Expected an interface to be followed by '.' when used as an expression.");
 			return expr_poison(expr);
 		case DECL_UNION:
 			SEMA_ERROR(expr, "Expected union followed by {...} or '.'.");
@@ -1546,7 +1546,7 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 				// &foo
 				if (!sema_analyse_expr_lvalue(context, arg)) return false;
 				if (!sema_arg_is_pass_through_ref(arg) && !sema_expr_check_assign(context, arg)) return false;
-				if (!type_is_any_protocol_ptr(arg->type)) expr_insert_addr(arg);
+				if (!type_is_any_interface_ptr(arg->type)) expr_insert_addr(arg);
 				*optional |= IS_OPTIONAL(arg);
 				if (!sema_call_check_contract_param_match(context, param, arg)) return false;
 				if (type_is_invalid_storage_type(type) || type == type_void)
@@ -1783,7 +1783,7 @@ static inline bool sema_expr_analyse_func_call(SemaContext *context, Expr *expr,
 	sema_display_deprecated_warning_on_use(context, decl, expr->span);
 
 	// Tag dynamic dispatch.
-	if (struct_var && decl->func_decl.attr_protocol_method) expr->call_expr.is_dynamic_dispatch = true;
+	if (struct_var && decl->func_decl.attr_interface_method) expr->call_expr.is_dynamic_dispatch = true;
 
 	return sema_call_analyse_func_invocation(context,
 											 decl->type,
@@ -4063,13 +4063,13 @@ CHECK_DEEPER:
 		}
 	}
 
-	// 9. At this point we may only have distinct, struct, union, error, enum, protocol
+	// 9. At this point we may only have distinct, struct, union, error, enum, interface
 	if (!type_may_have_sub_elements(type))
 	{
 		Decl *ambiguous = NULL;
 		Decl *private = NULL;
-		// We look at any for any* and protocol for protocol*
-		Type *actual = type_is_any_protocol_ptr(type) ? type->pointer : type;
+		// We look at any for any* and interface for interface*
+		Type *actual = type_is_any_interface_ptr(type) ? type->pointer : type;
 		Decl *method = sema_resolve_type_method(context->unit, actual, kw, &ambiguous, &private);
 		if (private)
 		{
@@ -4093,7 +4093,7 @@ CHECK_DEEPER:
 	}
 
 	// 10. Dump all members and methods into the scope.
-	Decl *decl = type->type_kind == TYPE_PROPTR ? type->pointer->decl : type->decl;
+	Decl *decl = type->type_kind == TYPE_INFPTR ? type->pointer->decl : type->decl;
 
 	Decl *member = sema_decl_stack_find_decl_member(decl, kw);
 
@@ -4111,11 +4111,11 @@ CHECK_DEEPER:
 	{
 		Decl *ambiguous = NULL;
 		member = sema_resolve_method(context->unit, decl, kw, &ambiguous, &private);
-		// Look at protocol parents
-		if (!member && decl->decl_kind == DECL_PROTOCOL)
+		// Look at interface parents
+		if (!member && decl->decl_kind == DECL_INTERFACE)
 		{
-			FOREACH_BEGIN(TypeInfo *parent_protocol, decl->protocols)
-				member = sema_resolve_method(context->unit, parent_protocol->type->decl, kw, &ambiguous, &private);
+			FOREACH_BEGIN(TypeInfo *parent_interface, decl->interfaces)
+				member = sema_resolve_method(context->unit, parent_interface->type->decl, kw, &ambiguous, &private);
 				if (member) break;
 			FOREACH_END();
 		}
@@ -4158,9 +4158,9 @@ CHECK_DEEPER:
 			SEMA_ERROR(expr, "The method '%s' has private visibility.", kw);
 			return false;
 		}
-		if (parent->type->canonical->type_kind == TYPE_PROPTR)
+		if (parent->type->canonical->type_kind == TYPE_INFPTR)
 		{
-			RETURN_SEMA_ERROR(expr, "The '%s' protocol has no method '%s', did you spell it correctly?", parent->type->canonical->pointer->canonical->name, kw);
+			RETURN_SEMA_ERROR(expr, "The '%s' interface has no method '%s', did you spell it correctly?", parent->type->canonical->pointer->canonical->name, kw);
 		}
 		RETURN_SEMA_ERROR(expr, "There is no field or method '%s.%s'.", type_to_error_string(parent->type), kw);
 		return false;
@@ -5964,7 +5964,7 @@ static const char *sema_addr_check_may_take(Expr *inner)
 			Decl *decl = inner->access_expr.ref;
 			if (decl->decl_kind == DECL_FUNC)
 			{
-				if (decl->func_decl.attr_protocol_method) return NULL;
+				if (decl->func_decl.attr_interface_method) return NULL;
 				return "Taking the address of a method should be done through the type e.g. '&Foo.method' not through the value.";
 			}
 			return sema_addr_check_may_take(inner->access_expr.parent);

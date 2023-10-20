@@ -121,10 +121,10 @@ static void type_append_name_to_scratch(Type *type)
 		case TYPE_UNION:
 		case TYPE_DISTINCT:
 		case TYPE_BITSTRUCT:
-		case TYPE_PROTOCOL:
+		case TYPE_INTERFACE:
 			scratch_buffer_append(type->decl->name);
 			break;
-		case TYPE_PROPTR:
+		case TYPE_INFPTR:
 		case TYPE_ANYPTR:
 		case TYPE_POINTER:
 			type_append_name_to_scratch(type->pointer);
@@ -223,7 +223,7 @@ const char *type_to_error_string(Type *type)
 		case TYPE_UNION:
 		case TYPE_DISTINCT:
 		case TYPE_BITSTRUCT:
-		case TYPE_PROTOCOL:
+		case TYPE_INTERFACE:
 		{
 			Decl *decl = type->decl;
 			if (!decl || !decl->unit || !decl->unit->module->generic_suffix) return type->name;
@@ -246,7 +246,7 @@ const char *type_to_error_string(Type *type)
 			return "typeinfo";
 		case TYPE_TYPEID:
 			return "typeid";
-		case TYPE_PROPTR:
+		case TYPE_INFPTR:
 		case TYPE_POINTER:
 			if (type->pointer->type_kind == TYPE_FUNC)
 			{
@@ -313,7 +313,7 @@ RETRY:
 			assert(type->decl->resolve_status == RESOLVE_DONE);
 			return type->decl->strukt.size;
 		case TYPE_VOID:
-		case TYPE_PROTOCOL:
+		case TYPE_INTERFACE:
 		case TYPE_ANY:
 			return 1;
 		case TYPE_BOOL:
@@ -322,7 +322,7 @@ RETRY:
 		case ALL_FLOATS:
 		case TYPE_ANYFAULT:
 			return type->builtin.bytesize;
-		case TYPE_PROPTR:
+		case TYPE_INFPTR:
 		case TYPE_ANYPTR:
 			return t.iptr.canonical->builtin.bytesize * 2;
 		case TYPE_FUNC:
@@ -413,14 +413,14 @@ bool type_is_abi_aggregate(Type *type)
 		case TYPE_ANYFAULT:
 		case TYPE_FAULTTYPE:
 		case TYPE_ANY:
-		case TYPE_PROTOCOL:
+		case TYPE_INTERFACE:
 			return false;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_SUBARRAY:
 		case TYPE_ARRAY:
 		case TYPE_ANYPTR:
-		case TYPE_PROPTR:
+		case TYPE_INFPTR:
 			return true;
 		case CT_TYPES:
 		case TYPE_FLEXIBLE_ARRAY:
@@ -488,7 +488,7 @@ bool type_is_comparable(Type *type)
 		case TYPE_OPTIONAL:
 		case TYPE_MEMBER:
 		case TYPE_ANY:
-		case TYPE_PROTOCOL:
+		case TYPE_INTERFACE:
 			return false;
 		case TYPE_TYPEDEF:
 			type = type->canonical;
@@ -505,7 +505,7 @@ bool type_is_comparable(Type *type)
 		case ALL_INTS:
 		case ALL_FLOATS:
 		case TYPE_ANYPTR:
-		case TYPE_PROPTR:
+		case TYPE_INFPTR:
 		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
 		case TYPE_POINTER:
@@ -539,7 +539,7 @@ void type_mangle_introspect_name_to_buffer(Type *type)
 		case TYPE_TYPEID:
 			scratch_buffer_append(type->name);
 			return;
-		case TYPE_PROPTR:
+		case TYPE_INFPTR:
 		case TYPE_POINTER:
 			scratch_buffer_append("p$");
 			type_mangle_introspect_name_to_buffer(type->pointer);
@@ -606,7 +606,7 @@ void type_mangle_introspect_name_to_buffer(Type *type)
 		case TYPE_BITSTRUCT:
 		case TYPE_FAULTTYPE:
 		case TYPE_DISTINCT:
-		case TYPE_PROTOCOL:
+		case TYPE_INTERFACE:
 			scratch_buffer_append(type->decl->extname);
 			return;
 		case TYPE_TYPEDEF:
@@ -665,7 +665,7 @@ AlignSize type_abi_alignment(Type *type)
 			return alignment;
 		}
 		case TYPE_VOID:
-		case TYPE_PROTOCOL:
+		case TYPE_INTERFACE:
 		case TYPE_ANY:
 			return 1;
 		case TYPE_OPTIONAL:
@@ -692,7 +692,7 @@ AlignSize type_abi_alignment(Type *type)
 		case TYPE_ANYFAULT:
 			return type->builtin.abi_alignment;
 		case TYPE_FUNC:
-		case TYPE_PROPTR:
+		case TYPE_INFPTR:
 		case TYPE_ANYPTR:
 		case TYPE_POINTER:
 		case TYPE_TYPEID:
@@ -727,7 +727,7 @@ static Type *type_generate_ptr(Type *ptr_type, bool canonical)
 	Type *ptr = ptr_type->type_cache[PTR_OFFSET];
 	if (ptr == NULL)
 	{
-		ptr = type_new(ptr_type->type_kind == TYPE_PROTOCOL ? TYPE_PROPTR : TYPE_POINTER, str_printf("%s*", ptr_type->name));
+		ptr = type_new(ptr_type->type_kind == TYPE_INTERFACE ? TYPE_INFPTR : TYPE_POINTER, str_printf("%s*", ptr_type->name));
 		ptr->pointer = ptr_type;
 		ptr_type->type_cache[PTR_OFFSET] = ptr;
 		if (ptr_type == ptr_type->canonical)
@@ -1022,7 +1022,7 @@ bool type_is_user_defined(Type *type)
 		case TYPE_DISTINCT:
 		case TYPE_BITSTRUCT:
 		case TYPE_TYPEDEF:
-		case TYPE_PROTOCOL:
+		case TYPE_INTERFACE:
 			return type->decl != NULL;
 		default:
 			return false;
@@ -1146,7 +1146,7 @@ bool type_is_valid_for_array(Type *type)
 			type = type->decl->distinct->type;
 			goto RETRY;
 		case TYPE_ANYPTR:
-		case TYPE_PROPTR:
+		case TYPE_INFPTR:
 		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
 		case TYPE_POINTER:
@@ -1180,7 +1180,7 @@ bool type_is_valid_for_array(Type *type)
 		case TYPE_POISONED:
 		case TYPE_VOID:
 		case TYPE_ANY:
-		case TYPE_PROTOCOL:
+		case TYPE_INTERFACE:
 			return false;
 	}
 	UNREACHABLE
@@ -1598,7 +1598,7 @@ bool type_is_scalar(Type *type)
 	switch (type->type_kind)
 	{
 		case CT_TYPES:
-		case TYPE_PROTOCOL:
+		case TYPE_INTERFACE:
 		case TYPE_ANY:
 			UNREACHABLE
 		case TYPE_VOID:
@@ -1609,7 +1609,7 @@ bool type_is_scalar(Type *type)
 		case TYPE_SUBARRAY:
 		case TYPE_VECTOR:
 		case TYPE_ANYPTR:
-		case TYPE_PROPTR:
+		case TYPE_INFPTR:
 		case TYPE_FLEXIBLE_ARRAY:
 			return false;
 		case TYPE_BOOL:
@@ -1875,7 +1875,7 @@ bool type_may_have_method(Type *type)
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_VECTOR:
 		case TYPE_BOOL:
-		case TYPE_PROTOCOL:
+		case TYPE_INTERFACE:
 			return true;
 		case TYPE_TYPEDEF:
 			UNREACHABLE
@@ -1889,7 +1889,7 @@ bool type_may_have_method(Type *type)
 		case TYPE_MEMBER:
 		case TYPE_WILDCARD:
 		case TYPE_ANYPTR:
-		case TYPE_PROPTR:
+		case TYPE_INFPTR:
 			return false;
 	}
 	UNREACHABLE
@@ -1906,7 +1906,7 @@ bool type_may_have_sub_elements(Type *type)
 		case TYPE_ENUM:
 		case TYPE_FAULTTYPE:
 		case TYPE_BITSTRUCT:
-		case TYPE_PROPTR:
+		case TYPE_INFPTR:
 			return true;
 		default:
 			return false;
@@ -2068,7 +2068,7 @@ Type *type_find_max_type(Type *type, Type *other)
 		case TYPE_OPTIONAL:
 		case TYPE_WILDCARD:
 			UNREACHABLE
-		case TYPE_PROTOCOL:
+		case TYPE_INTERFACE:
 		case TYPE_ANY:
 			return NULL;
 		case TYPE_VOID:
@@ -2087,11 +2087,11 @@ Type *type_find_max_type(Type *type, Type *other)
 			if (other->type_kind == TYPE_VECTOR) return other;
 			return type_find_max_num_type(type, other);
 		case TYPE_ANYPTR:
-			// any + protocol => any
+			// any + interface => any
 			if (other == type_voidptr) return other;
-			return other->type_kind == TYPE_PROPTR ? type : NULL;
-		case TYPE_PROPTR:
-			// protocol + void* => void*
+			return other->type_kind == TYPE_INFPTR ? type : NULL;
+		case TYPE_INFPTR:
+			// interface + void* => void*
 			return other == type_voidptr ? type_voidptr : NULL;
 		case TYPE_POINTER:
 			if (type->pointer->type_kind == TYPE_ARRAY)
@@ -2247,13 +2247,13 @@ unsigned type_get_introspection_kind(TypeKind kind)
 			return INTROSPECT_TYPE_ANY;
 		case TYPE_ANYFAULT:
 			return INTROSPECT_TYPE_ANYFAULT;
-		case TYPE_PROTOCOL:
-			return INTROSPECT_TYPE_PROTOCOL;
+		case TYPE_INTERFACE:
+			return INTROSPECT_TYPE_INTERFACE;
 		case TYPE_TYPEID:
 			return INTROSPECT_TYPE_TYPEID;
 		case TYPE_POINTER:
 		case TYPE_ANYPTR:
-		case TYPE_PROPTR:
+		case TYPE_INFPTR:
 			return INTROSPECT_TYPE_POINTER;
 		case TYPE_ENUM:
 			return INTROSPECT_TYPE_ENUM;
@@ -2307,7 +2307,7 @@ Module *type_base_module(Type *type)
 		case TYPE_TYPEID:
 		case TYPE_WILDCARD:
 			return NULL;
-		case TYPE_PROPTR:
+		case TYPE_INFPTR:
 		case TYPE_POINTER:
 			type = type->pointer;
 			goto RETRY;
@@ -2319,7 +2319,7 @@ Module *type_base_module(Type *type)
 		case TYPE_BITSTRUCT:
 		case TYPE_FAULTTYPE:
 		case TYPE_DISTINCT:
-		case TYPE_PROTOCOL:
+		case TYPE_INTERFACE:
 			return type->decl->unit ? type->decl->unit->module : NULL;
 		case TYPE_TYPEDEF:
 			type = type->canonical;

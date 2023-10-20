@@ -383,7 +383,7 @@ static void x64_classify(Type *type, ByteSize offset_base, X64Class *lo_class, X
 		case LOWERED_TYPES:
 		case TYPE_FUNC:
 		case TYPE_ANY:
-		case TYPE_PROTOCOL:
+		case TYPE_INTERFACE:
 			UNREACHABLE
 		case TYPE_VOID:
 			*current = CLASS_NO_CLASS;
@@ -566,7 +566,7 @@ AbiType x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_typ
 		case TYPE_VOID:
 		case TYPE_FUNC:
 		case TYPE_ANY:
-		case TYPE_PROTOCOL:
+		case TYPE_INTERFACE:
 			UNREACHABLE
 		case TYPE_U64:
 		case TYPE_I64:
