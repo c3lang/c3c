@@ -2607,7 +2607,7 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 					llvm_value = LLVMBuildIsNull(c->builder, value->value, "not");
 					break;
 				case TYPE_ANYPTR:
-				case TYPE_PROPTR:
+				case TYPE_INFPTR:
 					llvm_emit_any_pointer(c, value, value);
 					llvm_value_rvalue(c, value);
 					llvm_value = LLVMBuildIsNull(c->builder, value->value, "not");
@@ -3796,7 +3796,7 @@ void llvm_emit_comp(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, 
 			return;
 		case LOWERED_TYPES:
 		case TYPE_ANY:
-		case TYPE_PROTOCOL:
+		case TYPE_INTERFACE:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_FLEXIBLE_ARRAY:
@@ -4906,7 +4906,7 @@ static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVM
 		case TYPE_VOID:
 		case TYPE_FUNC:
 		case TYPE_ANY:
-		case TYPE_PROTOCOL:
+		case TYPE_INTERFACE:
 		case TYPE_FLEXIBLE_ARRAY:
 			UNREACHABLE
 			break;
@@ -5923,7 +5923,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 		LLVMValueRef cmp = LLVMBuildICmp(c->builder, LLVMIntEQ, func, LLVMConstNull(c->ptr_type), "");
 		llvm_emit_cond_br_raw(c, cmp, missing_function, match);
 		llvm_emit_block(c, missing_function);
-		Decl *default_method = declptrzero(dyn_fn->func_decl.protocol_method);
+		Decl *default_method = declptrzero(dyn_fn->func_decl.interface_method);
 		if (default_method)
 		{
 			LLVMBasicBlockRef after = llvm_basic_block_new(c, "after_call");

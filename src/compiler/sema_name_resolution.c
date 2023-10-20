@@ -87,15 +87,15 @@ static void add_members_to_decl_stack(Decl *decl)
 			sema_decl_stack_push(members[i]);
 		}
 	}
-	if (decl->decl_kind == DECL_PROTOCOL)
+	if (decl->decl_kind == DECL_INTERFACE)
 	{
-		FOREACH_BEGIN(TypeInfo *parent_protocol, decl->protocols)
-			FOREACH_BEGIN(Decl *protocol, parent_protocol->type->decl->protocol_methods)
-				sema_decl_stack_push(protocol);
+		FOREACH_BEGIN(TypeInfo *parent_interface, decl->interfaces)
+			FOREACH_BEGIN(Decl *interface, parent_interface->type->decl->interface_methods)
+				sema_decl_stack_push(interface);
 			FOREACH_END();
 		FOREACH_END();
-		FOREACH_BEGIN(Decl *protocol, decl->protocol_methods)
-			sema_decl_stack_push(protocol);
+		FOREACH_BEGIN(Decl *interface, decl->interface_methods)
+			sema_decl_stack_push(interface);
 		FOREACH_END();
 	}
 	if (decl_is_struct_type(decl) || decl->decl_kind == DECL_BITSTRUCT)
@@ -661,10 +661,10 @@ Decl *sema_resolve_method_in_module(Module *module, Type *actual_type, const cha
 
 Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref)
 {
-	// Protocol, prefer protocol methods.
-	if (type->decl_kind == DECL_PROTOCOL)
+	// Interface, prefer interface methods.
+	if (type->decl_kind == DECL_INTERFACE)
 	{
-		FOREACH_BEGIN(Decl *method, type->protocol_methods)
+		FOREACH_BEGIN(Decl *method, type->interface_methods)
 			if (method_name == method->name) return method;
 		FOREACH_END();
 	}
@@ -734,9 +734,9 @@ bool sema_resolve_type_decl(SemaContext *context, Type *type)
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_VECTOR:
 		case TYPE_SUBARRAY:
-		case TYPE_PROPTR:
+		case TYPE_INFPTR:
 		case TYPE_ANY:
-		case TYPE_PROTOCOL:
+		case TYPE_INTERFACE:
 			return true;
 		case TYPE_OPTIONAL:
 			return sema_resolve_type_decl(context, type->optional);
@@ -767,7 +767,7 @@ bool sema_resolve_type_decl(SemaContext *context, Type *type)
 Decl *sema_resolve_type_method(CompilationUnit *unit, Type *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref)
 {
 	assert(type == type->canonical);
-	if (type->type_kind == TYPE_PROPTR)
+	if (type->type_kind == TYPE_INFPTR)
 	{
 		type = type->pointer;
 	}

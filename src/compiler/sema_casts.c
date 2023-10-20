@@ -345,7 +345,7 @@ CastKind cast_to_bool_kind(Type *type)
 		case TYPE_POINTER:
 			return CAST_PTRBOOL;
 		case TYPE_ANYPTR:
-		case TYPE_PROPTR:
+		case TYPE_INFPTR:
 			return CAST_ANYBOOL;
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
@@ -366,7 +366,7 @@ CastKind cast_to_bool_kind(Type *type)
 		case TYPE_ENUM:
 		case TYPE_MEMBER:
 		case TYPE_ANY:
-		case TYPE_PROTOCOL:
+		case TYPE_INTERFACE:
 			// Everything else is an error
 			return CAST_ERROR;
 	}
@@ -958,39 +958,39 @@ static bool rule_vecarr_to_infer(CastContext *cc, bool is_explicit, bool is_sile
 	return cast_is_allowed(cc, is_explicit, is_silent);
 }
 
-static bool rule_ptr_to_protocol(CastContext *cc, bool is_explicit, bool is_silent)
+static bool rule_ptr_to_interface(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	if (is_explicit) return true;
 
 	Type *pointee = cc->from_type->pointer;
-	if (type_may_implement_protocol(pointee))
+	if (type_may_implement_interface(pointee))
 	{
-		Type *protocol = cc->to->pointer;
+		Type *interface = cc->to->pointer;
 		Decl *pointee_decl = pointee->decl;
-		FOREACH_BEGIN(TypeInfo *protocol_type, pointee_decl->protocols)
-			if (!sema_resolve_type_info(cc->context, protocol_type, RESOLVE_TYPE_ALLOW_ANY)) return false;
-			if (protocol_type->type == protocol) return true;
+		FOREACH_BEGIN(TypeInfo *interface_type, pointee_decl->interfaces)
+			if (!sema_resolve_type_info(cc->context, interface_type, RESOLVE_TYPE_ALLOW_ANY)) return false;
+			if (interface_type->type == interface) return true;
 		FOREACH_END();
 	}
 	if (is_silent) return false;
 	RETURN_SEMA_ERROR(cc->expr, "%s cannot be implicitly cast to %s, but you can use an explicit "
-					  "cast to (unsafely) assume the protocol is implemented.",
+					  "cast to (unsafely) assume the interface is implemented.",
 	                  type_quoted_error_string(cc->expr->type), type_quoted_error_string(cc->to_type));
 }
 
-static bool rule_protocol_to_protocol(CastContext *cc, bool is_explicit, bool is_silent)
+static bool rule_interface_to_interface(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	if (is_explicit) return true;
 
-	Type *from_protocol = cc->from_type->pointer;
-	Type *protocol = cc->to->pointer->canonical;
-	if (!sema_resolve_type_decl(cc->context, from_protocol)) return false;
-	FOREACH_BEGIN(TypeInfo *parent, from_protocol->decl->protocols)
-		if (parent->type->canonical == protocol) return true;
+	Type *from_interface = cc->from_type->pointer;
+	Type *interface = cc->to->pointer->canonical;
+	if (!sema_resolve_type_decl(cc->context, from_interface)) return false;
+	FOREACH_BEGIN(TypeInfo *parent, from_interface->decl->interfaces)
+		if (parent->type->canonical == interface) return true;
 	FOREACH_END();
 	if (is_silent) return false;
-	RETURN_SEMA_ERROR(cc->expr, "%s is not a parent protocol of %s, but you can insert an explicit cast '(%s)value' to enforce the (unsafe) conversion.",
-	                  type_quoted_error_string(cc->to->pointer), type_quoted_error_string(from_protocol),
+	RETURN_SEMA_ERROR(cc->expr, "%s is not a parent interface of %s, but you can insert an explicit cast '(%s)value' to enforce the (unsafe) conversion.",
+	                  type_quoted_error_string(cc->to->pointer), type_quoted_error_string(from_interface),
 	                  type_to_error_string(cc->to_type));
 }
 
@@ -1926,7 +1926,7 @@ static void cast_typeid_to_bool(Expr *expr, Type *to_type)
 #define RXXDI &rule_to_distinct           /* Type -> distinct (match + is explicit)                                                            */
 #define REXPL &rule_explicit_ok           /* Is explicit                                                                                       */
 #define _NA__ &rule_not_applicable        /* "Not applicable" - should not be seen.                                                            */
-#define RIFIF &rule_widen_narrow          /* Widen / narrow conversion of int/float                                                            */
+#define RWIDE &rule_widen_narrow          /* Widen / narrow conversion of int/float                                                            */
 #define RINFL &rule_int_to_float          /* Simple expressions, check sizes                                                                   */
 #define ROKOK &rule_all_ok                /* Always works                                                                                      */
 #define RINPT &rule_int_to_ptr            /* Int -> ptr (explicit + size match)                                                                */
@@ -1951,16 +1951,16 @@ static void cast_typeid_to_bool(Expr *expr, Type *to_type)
 #define RSAFE &rule_sa_to_infer           /* Subarray -> infer (only if subarray is constant or can infer)                                     */
 #define RVAFE &rule_vecarr_to_infer       /* Vec/arr -> infer (if base matches)                                                                */
 #define RPTFE &rule_ptr_to_infer          /* Ptr -> infer (if pointee may infer)                                                               */
-#define RPTPC &rule_ptr_to_protocol       /* Ptr -> Protocol if the pointee implements it                                                      */
-#define RPCPC &rule_protocol_to_protocol /* Protocol -> Protocol if the latter implements all of the former                                   */
+#define RPTIF &rule_ptr_to_interface      /* Ptr -> Interface if the pointee implements it                                                     */
+#define RIFIF &rule_interface_to_interface/* Interface -> Interface if the latter implements all of the former                                 */
 CastRule cast_rules[CONV_LAST + 1][CONV_LAST + 1] = {
-// void, wildc,  bool,   int, float,   ptr,  sarr,   vec, bitst, distc, array, strct, union,   any,  prot, fault,  enum, typid, afaul, voidp, arrpt,  infer  (to)
+// void, wildc,  bool,   int, float,   ptr,  sarr,   vec, bitst, distc, array, strct, union,   any,  infc, fault,  enum, typid, afaul, voidp, arrpt,  infer  (to)
  {_NA__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // VOID    (from)
  {ROKOK, _NA__, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, _NO__}, // WILDCARD
  {REXPL, _NO__, _NA__, REXPL, REXPL, _NO__, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // BOOL
- {REXPL, _NO__, REXPL, RIFIF, RINFL, RINPT, _NO__, ROKOK, RINBS, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RINEN, _NO__, _NO__, RINPT, RINPT, _NO__}, // INT
- {REXPL, _NO__, REXPL, REXPL, RIFIF, _NO__, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // FLOAT
- {REXPL, _NO__, REXPL, RPTIN, _NO__, RPTPT, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, RPTPC, _NO__, _NO__, _NO__, _NO__, ROKOK, RPTPT, RPTFE}, // PTR
+ {REXPL, _NO__, REXPL, RWIDE, RINFL, RINPT, _NO__, ROKOK, RINBS, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RINEN, _NO__, _NO__, RINPT, RINPT, _NO__}, // INT
+ {REXPL, _NO__, REXPL, REXPL, RWIDE, _NO__, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // FLOAT
+ {REXPL, _NO__, REXPL, RPTIN, _NO__, RPTPT, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, RPTIF, _NO__, _NO__, _NO__, _NO__, ROKOK, RPTPT, RPTFE}, // PTR
  {REXPL, _NO__, REXPL, _NO__, _NO__, RSAPT, RSASA, RSAVA, _NO__, RXXDI, RSAVA, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, RSAPT, RSAFE}, // SARRAY
  {REXPL, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RVCVC, _NO__, RXXDI, RVCAR, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RVAFE}, // VECTOR
  {REXPL, _NO__, _NO__, RBSIN, _NO__, _NO__, _NO__, _NO__, _NO__, RXXDI, RBSAR, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // BITSTRUCT
@@ -1969,7 +1969,7 @@ CastRule cast_rules[CONV_LAST + 1][CONV_LAST + 1] = {
  {REXPL, _NO__, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTDI, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, _NO__}, // STRUCT
  {REXPL, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // UNION
  {REXPL, _NO__, REXPL, _NO__, _NO__, REXPL, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, _NA__, REXPL, _NO__, _NO__, _NO__, _NO__, ROKOK, REXPL, _NO__}, // ANY
- {REXPL, _NO__, REXPL, _NO__, _NO__, REXPL, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, RPCPC, _NO__, _NO__, _NO__, _NO__, ROKOK, REXPL, _NO__}, // PROTOCOL
+ {REXPL, _NO__, REXPL, _NO__, _NO__, REXPL, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, RIFIF, _NO__, _NO__, _NO__, _NO__, ROKOK, REXPL, _NO__}, // INTERFACE
  {REXPL, _NO__, REXPL, RPTIN, _NO__, REXPL, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, REXPL, REXPL, _NO__}, // FAULT
  {REXPL, _NO__, _NO__, REXPL, _NO__, _NO__, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // ENUM
  {REXPL, _NO__, REXPL, RPTIN, _NO__, REXPL, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NA__, _NO__, REXPL, REXPL, _NO__}, // TYPEID
@@ -1980,7 +1980,7 @@ CastRule cast_rules[CONV_LAST + 1][CONV_LAST + 1] = {
 };
 
 CastFunction cast_function[CONV_LAST + 1][CONV_LAST + 1] = {
-//void,  wildcd, bool, int,   float, ptr,   sarr,  vec,   bitst, dist,  array, struct,union, any,   prot,  fault, enum,  typeid,anyfa, vptr,  aptr,  ulist, infer(to)
+//void,  wildcd, bool, int,   float, ptr,   sarr,  vec,   bitst, dist,  array, struct,union, any,   infc,  fault, enum,  typeid,anyfa, vptr,  aptr,  ulist, infer(to)
  {0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // VOID (from)
  {XX2XX, 0,     XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, 0,     XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, 0     }, // WILDCARD
  {XX2VO, 0,     0,     BO2IN, BO2FP, 0,     0,     EX2VC, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // BOOL
@@ -1995,7 +1995,7 @@ CastFunction cast_function[CONV_LAST + 1][CONV_LAST + 1] = {
  {XX2VO, 0,     ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, 0,     ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, 0     }, // STRUCT
  {XX2VO, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // UNION
  {XX2VO, 0,     AY2BO, 0,     0,     AY2PT, 0,     0,     0,     0,     0,     0,     0,     PT2PT, PT2PT, 0,     0,     0,     0,     AY2PT, AY2PT, 0     }, // ANY
- {XX2VO, 0,     AY2BO, 0,     0,     AY2PT, 0,     0,     0,     0,     0,     0,     0,     PT2PT, PT2PT, 0,     0,     0,     0,     AY2PT, AY2PT, 0     }, // PROTOCOL
+ {XX2VO, 0,     AY2BO, 0,     0,     AY2PT, 0,     0,     0,     0,     0,     0,     0,     PT2PT, PT2PT, 0,     0,     0,     0,     AY2PT, AY2PT, 0     }, // INTERFACE
  {XX2VO, 0,     AF2BO, FA2IN, 0,     FA2PT, 0,     EX2VC, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     FA2AF, FA2PT, FA2PT, 0     }, // FAULT
  {XX2VO, 0,     0,     EN2IN, 0,     0,     0,     EX2VC, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // ENUM
  {XX2VO, 0,     TI2BO, TI2IN, 0,     TI2PT, 0,     EX2VC, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     TI2PT, TI2PT, 0     }, // TYPEID
@@ -2025,7 +2025,7 @@ static ConvGroup group_from_type[TYPE_LAST + 1] = {
 	[TYPE_F64]              = CONV_FLOAT,
 	[TYPE_F128]             = CONV_FLOAT,
 	[TYPE_ANY]              = CONV_NO,
-	[TYPE_PROTOCOL]         = CONV_NO,
+	[TYPE_INTERFACE]         = CONV_NO,
 	[TYPE_ANYFAULT]         = CONV_ANYFAULT,
 	[TYPE_TYPEID]           = CONV_TYPEID,
 	[TYPE_POINTER]          = CONV_POINTER,
@@ -2038,7 +2038,7 @@ static ConvGroup group_from_type[TYPE_LAST + 1] = {
 	[TYPE_TYPEDEF]          = CONV_NO,
 	[TYPE_DISTINCT]         = CONV_DISTINCT,
 	[TYPE_ARRAY]            = CONV_ARRAY,
-	[TYPE_PROPTR]           = CONV_PROTOCOL,
+	[TYPE_INFPTR]           = CONV_INTERFACE,
 	[TYPE_ANYPTR]           = CONV_ANY,
 	[TYPE_SUBARRAY]         = CONV_SUBARRAY,
 	[TYPE_FLEXIBLE_ARRAY]   = CONV_NO,

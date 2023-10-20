@@ -561,14 +561,14 @@ typedef struct
 			bool attr_optional : 1;
 			bool attr_init : 1;
 			bool attr_finalizer : 1;
-			bool attr_protocol_method : 1;
+			bool attr_interface_method : 1;
 			bool attr_dynamic : 1;
 			bool attr_default : 1;
 			bool is_lambda : 1;
 			union
 			{
 				uint32_t priority;
-				DeclId protocol_method;
+				DeclId interface_method;
 				DeclId default_method;
 				Decl **generated_lambda;
 				Decl **lambda_ct_parameters;
@@ -696,7 +696,7 @@ typedef struct Decl_
 		Decl** decl_list;
 		struct
 		{
-			TypeInfo **protocols;
+			TypeInfo **interfaces;
 			Decl **methods;
 			union
 			{
@@ -706,7 +706,7 @@ typedef struct Decl_
 				TypeInfo *distinct;
 				// Unions, Struct use strukt
 				StructDecl strukt;
-				Decl **protocol_methods;
+				Decl **interface_methods;
 			};
 		};
 		AttrDecl attr_decl;
@@ -2588,19 +2588,19 @@ INLINE bool type_is_any_raw(Type *type)
 	switch (type->type_kind)
 	{
 		case TYPE_ANY:
-		case TYPE_PROTOCOL:
+		case TYPE_INTERFACE:
 			return true;
 		default:
 			return false;
 	}
 }
 
-INLINE bool type_is_any_protocol_ptr(Type *type)
+INLINE bool type_is_any_interface_ptr(Type *type)
 {
 	switch (type->canonical->type_kind)
 	{
 		case TYPE_ANYPTR:
-		case TYPE_PROPTR:
+		case TYPE_INFPTR:
 			return true;
 		default:
 			return false;
@@ -2623,7 +2623,7 @@ INLINE bool type_is_optional(Type *type)
 	return kind == TYPE_OPTIONAL;
 }
 
-INLINE bool type_may_implement_protocol(Type *type)
+INLINE bool type_may_implement_interface(Type *type)
 {
 	DECL_TYPE_KIND_REAL(kind, type);
 	switch (kind)

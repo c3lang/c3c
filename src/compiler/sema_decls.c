@@ -132,27 +132,27 @@ static inline bool sema_check_param_uniqueness_and_type(Decl **decls, Decl *curr
 	return true;
 }
 
-static inline bool sema_resolve_implemented_protocols(SemaContext *context, Decl *decl, bool deep)
+static inline bool sema_resolve_implemented_interfaces(SemaContext *context, Decl *decl, bool deep)
 {
-	TypeInfo **protocols = decl->protocols;
-	unsigned count = vec_size(protocols);
+	TypeInfo **interfaces = decl->interfaces;
+	unsigned count = vec_size(interfaces);
 	for (unsigned i = 0; i < count; i++)
 	{
-		TypeInfo *proto = protocols[i];
+		TypeInfo *proto = interfaces[i];
 		if (!sema_resolve_type_info(context, proto, RESOLVE_TYPE_ALLOW_ANY)) return false;
-		Type *proto_type = proto->type->canonical;
-		if (proto_type->type_kind != TYPE_PROTOCOL)
+		Type *inf_type = proto->type->canonical;
+		if (inf_type->type_kind != TYPE_INTERFACE)
 		{
-			RETURN_SEMA_ERROR(proto, "Expected a protocol name.");
+			RETURN_SEMA_ERROR(proto, "Expected an interface name.");
 		}
 		for (unsigned j = 0; j < i; j++)
 		{
-			if (protocols[j]->type->canonical == proto_type)
+			if (interfaces[j]->type->canonical == inf_type)
 			{
-				RETURN_SEMA_ERROR(proto, "Included protocol '%s' more than once, please remove duplicates.", proto_type->name);
+				RETURN_SEMA_ERROR(proto, "Included interface '%s' more than once, please remove duplicates.", inf_type->name);
 			}
 		}
-		if (deep && !sema_resolve_type_decl(context, proto_type)) return false;
+		if (deep && !sema_resolve_type_decl(context, inf_type)) return false;
 	}
 	return true;
 }
@@ -493,7 +493,7 @@ static bool sema_analyse_struct_union(SemaContext *context, Decl *decl, bool *er
 
 	if (!sema_analyse_attributes(context, decl, decl->attributes, domain, erase_decl)) return decl_poison(decl);
 	if (*erase_decl) return true;
-	if (!sema_resolve_implemented_protocols(context, decl, false)) return decl_poison(decl);
+	if (!sema_resolve_implemented_interfaces(context, decl, false)) return decl_poison(decl);
 
 	DEBUG_LOG("Beginning analysis of %s.", decl->name ? decl->name : ".anon");
 	bool success;
@@ -715,12 +715,12 @@ AFTER_BIT_CHECK:
 	member->resolve_status = RESOLVE_DONE;
 	return true;
 }
-static bool sema_analyse_protocol(SemaContext *context, Decl *decl, bool *erase_decl)
+static bool sema_analyse_interface(SemaContext *context, Decl *decl, bool *erase_decl)
 {
 	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_INTERFACE, erase_decl)) return decl_poison(decl);
 	if (*erase_decl) return true;
-	if (!sema_resolve_implemented_protocols(context, decl, true)) return false;
-	Decl **functions = decl->protocol_methods;
+	if (!sema_resolve_implemented_interfaces(context, decl, true)) return false;
+	Decl **functions = decl->interface_methods;
 	unsigned count = vec_size(functions);
 	for (unsigned i = 0; i < count; i++)
 	{
@@ -733,10 +733,10 @@ static bool sema_analyse_protocol(SemaContext *context, Decl *decl, bool *erase_
 		}
 		if (method->func_decl.type_parent)
 		{
-			SEMA_ERROR(type_infoptr(method->func_decl.type_parent), "Protocols should not be declared as methods.");
+			SEMA_ERROR(type_infoptr(method->func_decl.type_parent), "Interfaces should not be declared as methods.");
 			return decl_poison(decl);
 		}
-		method->func_decl.attr_protocol_method = true;
+		method->func_decl.attr_interface_method = true;
 		bool erase = false;
 		Decl *first = decl_new_var(kw_self, decl->span, NULL, VARDECL_PARAM);
 		first->type = type_voidptr;
@@ -778,7 +778,7 @@ static bool sema_analyse_protocol(SemaContext *context, Decl *decl, bool *erase_
 static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl, bool *erase_decl)
 {
 	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_BITSTRUCT, erase_decl)) return decl_poison(decl);
-	if (!sema_resolve_implemented_protocols(context, decl, false)) return decl_poison(decl);
+	if (!sema_resolve_implemented_interfaces(context, decl, false)) return decl_poison(decl);
 	if (*erase_decl) return true;
 	DEBUG_LOG("Beginning analysis of %s.", decl->name ? decl->name : ".anon");
 	if (!sema_resolve_type_info(context, decl->bitstruct.base_type, RESOLVE_TYPE_DEFAULT)) return false;
@@ -925,7 +925,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		}
 		if (i == 0 && param->resolve_status == RESOLVE_DONE)
 		{
-			assert(param->type == type_voidptr && "Expected the first parameter of a protocol method.");
+			assert(param->type == type_voidptr && "Expected the first parameter of an interface method.");
 			continue;
 		}
 
@@ -945,7 +945,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		switch (var_kind)
 		{
 			case VARDECL_PARAM_REF:
-				if (type_info && !type_is_pointer(param->type) && !type_is_any_protocol_ptr(param->type))
+				if (type_info && !type_is_pointer(param->type) && !type_is_any_interface_ptr(param->type))
 				{
 					RETURN_SEMA_ERROR(type_info, "A pointer type was expected for a ref argument, did you mean %s?",
 							   type_quoted_error_string(type_get_ptr(param->type)));
@@ -1117,7 +1117,7 @@ static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl, bool 
 {
 	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_DISTINCT, erase)) return false;
 	if (*erase) return true;
-	if (!sema_resolve_implemented_protocols(context, decl, false)) return decl_poison(decl);
+	if (!sema_resolve_implemented_interfaces(context, decl, false)) return decl_poison(decl);
 
 	TypeInfo *info = decl->distinct;
 	if (!sema_resolve_type_info(context, info, RESOLVE_TYPE_DEFAULT)) return false;
@@ -1135,7 +1135,7 @@ static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl, bool 
 		case CT_TYPES:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_ANY:
-		case TYPE_PROTOCOL:
+		case TYPE_INTERFACE:
 			UNREACHABLE
 			return false;
 		case TYPE_OPTIONAL:
@@ -1146,8 +1146,8 @@ static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl, bool 
 		case TYPE_ANYFAULT:
 			SEMA_ERROR(decl, "You cannot create a distinct type from an error union.");
 			return false;
-		case TYPE_PROPTR:
-			SEMA_ERROR(decl, "You cannot create a distinct type from a protocol pointer.");
+		case TYPE_INFPTR:
+			SEMA_ERROR(decl, "You cannot create a distinct type from an interface pointer.");
 			return false;
 		case TYPE_ANYPTR:
 			SEMA_ERROR(decl, "You cannot create a distinct type from an 'any*'.");
@@ -1232,7 +1232,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 {
 	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_ENUM, erase_decl)) return decl_poison(decl);
 	if (*erase_decl) return true;
-	if (!sema_resolve_implemented_protocols(context, decl, false)) return decl_poison(decl);
+	if (!sema_resolve_implemented_interfaces(context, decl, false)) return decl_poison(decl);
 
 	// Resolve the type of the enum.
 	if (!sema_resolve_type_info(context, decl->enums.type_info, RESOLVE_TYPE_DEFAULT)) return false;
@@ -1380,7 +1380,7 @@ static inline bool sema_analyse_error(SemaContext *context, Decl *decl, bool *er
 {
 	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_FAULT, erase_decl)) return decl_poison(decl);
 	if (*erase_decl) return true;
-	if (!sema_resolve_implemented_protocols(context, decl, false)) return decl_poison(decl);
+	if (!sema_resolve_implemented_interfaces(context, decl, false)) return decl_poison(decl);
 
 	bool success = true;
 	unsigned enums = vec_size(decl->enums.values);
@@ -1639,7 +1639,7 @@ static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type
 	Decl *ambiguous = NULL;
 	Decl *private = NULL;
 	method = sema_resolve_method(unit, parent, name, &ambiguous, &private);
-	if (method && !method->func_decl.attr_protocol_method)
+	if (method && !method->func_decl.attr_interface_method)
 	{
 		SEMA_ERROR(method_like, "This %s is already defined for '%s'.",
 				   method_name_by_decl(method_like), parent_type->name);
@@ -1678,21 +1678,21 @@ static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type
 
 }
 
-static Decl *sema_protocol_method_by_name(Decl *protocol, const char *name)
+static Decl *sema_interface_method_by_name(Decl *interface, const char *name)
 {
-	FOREACH_BEGIN(Decl *method, protocol->protocol_methods)
+	FOREACH_BEGIN(Decl *method, interface->interface_methods)
 		if (method->name == name) return method;
 	FOREACH_END();
-	FOREACH_BEGIN(TypeInfo *parent_type, protocol->protocols)
-		Decl *res = sema_protocol_method_by_name(parent_type->type->decl, name);
+	FOREACH_BEGIN(TypeInfo *parent_type, interface->interfaces)
+		Decl *res = sema_interface_method_by_name(parent_type->type->decl, name);
 		if (res) return res;
 	FOREACH_END();
 	return NULL;
 }
 
-static inline Decl *sema_find_protocol_for_method(SemaContext *context, Type *parent_type, Decl *method)
+static inline Decl *sema_find_interface_for_method(SemaContext *context, Type *parent_type, Decl *method)
 {
-	// Can the parent even implement a protocol?
+	// Can the parent even implement a interface?
 	switch (parent_type->type_kind)
 	{
 		case TYPE_STRUCT:
@@ -1706,44 +1706,44 @@ static inline Decl *sema_find_protocol_for_method(SemaContext *context, Type *pa
 	}
 	const char *name = method->name;
 	Decl *first_match = NULL;
-	Decl *first_protocol = NULL;
-	FOREACH_BEGIN(TypeInfo *proto, parent_type->decl->protocols)
-		Decl *protocol = proto->type->decl;
-		Decl *match = sema_protocol_method_by_name(protocol, name);
+	Decl *first_interface = NULL;
+	FOREACH_BEGIN(TypeInfo *proto, parent_type->decl->interfaces)
+		Decl *interface = proto->type->decl;
+		Decl *match = sema_interface_method_by_name(interface, name);
 		if (!match) continue;
 		if (first_match)
 		{
 			if (first_match->type->function.prototype->raw_type == match->type->function.prototype->raw_type) continue;
 			SEMA_ERROR(method,
-			           "Both '%s' and '%s' protocols have a method matching '%s' but their signatures are different, "
+			           "Both '%s' and '%s' interfaces have a method matching '%s' but their signatures are different, "
 			           "which prevents it from being implemented.",
-			           first_protocol->name, protocol->name, name);
+			           first_interface->name, interface->name, name);
 			return NULL;
 		}
 		first_match = match;
-		first_protocol = protocol;
+		first_interface = interface;
 	FOREACH_END();
 	if (!first_match)
 	{
 		return NULL;
 	}
-	if (!sema_analyse_decl(context, first_protocol)) return poisoned_decl;
+	if (!sema_analyse_decl(context, first_interface)) return poisoned_decl;
 	return first_match;
 }
-static inline bool sema_compare_method_with_protocol(SemaContext *context, Decl *decl, Decl *implemented_method)
+static inline bool sema_compare_method_with_interface(SemaContext *context, Decl *decl, Decl *implemented_method)
 {
-	Signature protocol_sig = implemented_method->func_decl.signature;
+	Signature interface_sig = implemented_method->func_decl.signature;
 	Signature this_sig = decl->func_decl.signature;
-	Type *any_rtype = typeget(protocol_sig.rtype);
+	Type *any_rtype = typeget(interface_sig.rtype);
 	Type *this_rtype = typeget(this_sig.rtype);
 	if (any_rtype->canonical != this_rtype->canonical)
 	{
 		SEMA_ERROR(type_infoptr(this_sig.rtype), "The prototype method has a return type %s, but this function returns %s, they need to match.",
 		           type_quoted_error_string(any_rtype), type_quoted_error_string(this_rtype));
-		SEMA_NOTE(type_infoptr(protocol_sig.rtype), "The interface definition is here.");
+		SEMA_NOTE(type_infoptr(interface_sig.rtype), "The interface definition is here.");
 		return false;
 	}
-	Decl **any_params = protocol_sig.params;
+	Decl **any_params = interface_sig.params;
 	Decl **this_params = this_sig.params;
 	unsigned any_param_count = vec_size(any_params);
 	unsigned this_param_count = vec_size(this_params);
@@ -1801,41 +1801,41 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 
 	if (decl->func_decl.attr_default)
 	{
-		if (par_type->type_kind != TYPE_PROTOCOL)
+		if (par_type->type_kind != TYPE_INTERFACE)
 		{
-			RETURN_SEMA_ERROR(decl, "Only protocols may have @default methods.");
+			RETURN_SEMA_ERROR(decl, "Only interfaces may have @default methods.");
 		}
-		Decl *implemented_method = sema_protocol_method_by_name(par_type->decl, decl->name);
+		Decl *implemented_method = sema_interface_method_by_name(par_type->decl, decl->name);
 		if (!implemented_method)
 		{
-			RETURN_SEMA_ERROR(decl, "No matching protocol method could be found for the '%s' method.", decl->name);
+			RETURN_SEMA_ERROR(decl, "No matching interface method could be found for the '%s' method.", decl->name);
 		}
 		if (!implemented_method->func_decl.attr_optional)
 		{
-			SEMA_ERROR(decl, "Only @optional protocol methods may have @default implementations.", decl->name);
-			SEMA_NOTE(implemented_method, "The definition of the protocol method is here.");
+			SEMA_ERROR(decl, "Only @optional interface methods may have @default implementations.", decl->name);
+			SEMA_NOTE(implemented_method, "The definition of the interface method is here.");
 			return false;
 		}
-		if (!sema_compare_method_with_protocol(context, decl, implemented_method)) return false;
+		if (!sema_compare_method_with_interface(context, decl, implemented_method)) return false;
 		implemented_method->func_decl.default_method = declid(decl);
-		decl->func_decl.protocol_method = declid(implemented_method);
+		decl->func_decl.interface_method = declid(implemented_method);
 	}
 	if (is_dynamic)
 	{
-		if (par_type->type_kind == TYPE_PROTOCOL)
+		if (par_type->type_kind == TYPE_INTERFACE)
 		{
-			RETURN_SEMA_ERROR(decl, "Protocols may not implement @dynamic methods.");
+			RETURN_SEMA_ERROR(decl, "Interfaces may not implement @dynamic methods.");
 		}
-		Decl *implemented_method = sema_find_protocol_for_method(context, par_type, decl);
+		Decl *implemented_method = sema_find_interface_for_method(context, par_type, decl);
 		if (!decl_ok(implemented_method)) return false;
 		if (implemented_method)
 		{
-			if (!sema_compare_method_with_protocol(context, decl, implemented_method)) return false;
-			decl->func_decl.protocol_method = declid(implemented_method);
+			if (!sema_compare_method_with_interface(context, decl, implemented_method)) return false;
+			decl->func_decl.interface_method = declid(implemented_method);
 		}
 		else
 		{
-			decl->func_decl.protocol_method = 0;
+			decl->func_decl.interface_method = 0;
 		}
 	}
 	return unit_add_method_like(context->unit, par_type, decl);
@@ -1879,8 +1879,8 @@ static const char *attribute_domain_to_string(AttributeDomain domain)
 			return "call";
 		case ATTR_DISTINCT:
 			return "distinct";
-		case ATTR_PROTOCOL_METHOD:
-			return "protocol method";
+		case ATTR_INTERFACE_METHOD:
+			return "interface method";
 	}
 	UNREACHABLE
 }
@@ -1927,7 +1927,7 @@ static bool update_call_abi_from_string(Decl *decl, Expr *expr)
 }
 
 #define EXPORTED_USER_DEFINED_TYPES (ATTR_ENUM | ATTR_UNION | ATTR_STRUCT | ATTR_FAULT)
-#define CALLABLE_TYPE (ATTR_FUNC | ATTR_PROTOCOL_METHOD | ATTR_MACRO)
+#define CALLABLE_TYPE (ATTR_FUNC | ATTR_INTERFACE_METHOD | ATTR_MACRO)
 #define USER_DEFINED_TYPES EXPORTED_USER_DEFINED_TYPES | ATTR_BITSTRUCT | ATTR_DISTINCT
 static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr, AttributeDomain domain, bool *erase_decl)
 {
@@ -1938,7 +1938,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_BENCHMARK] = ATTR_FUNC,
 			[ATTRIBUTE_BIGENDIAN] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_BUILTIN] = ATTR_MACRO | ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST,
-			[ATTRIBUTE_CALLCONV] = ATTR_FUNC | ATTR_PROTOCOL_METHOD,
+			[ATTRIBUTE_CALLCONV] = ATTR_FUNC | ATTR_INTERFACE_METHOD,
 			[ATTRIBUTE_DEFAULT] = ATTR_FUNC | ATTR_MACRO,
 			[ATTRIBUTE_DEPRECATED] = USER_DEFINED_TYPES | CALLABLE_TYPE | ATTR_CONST | ATTR_GLOBAL | ATTR_MEMBER | ATTR_BITSTRUCT_MEMBER,
 			[ATTRIBUTE_DYNAMIC] = ATTR_FUNC,
@@ -1959,7 +1959,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_NOSTRIP] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | EXPORTED_USER_DEFINED_TYPES,
 			[ATTRIBUTE_OBFUSCATE] = ATTR_ENUM | ATTR_FAULT,
 			[ATTRIBUTE_OPERATOR] = ATTR_MACRO | ATTR_FUNC,
-			[ATTRIBUTE_OPTIONAL] = ATTR_PROTOCOL_METHOD,
+			[ATTRIBUTE_OPTIONAL] = ATTR_INTERFACE_METHOD,
 			[ATTRIBUTE_OVERLAP] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_PACKED] = ATTR_STRUCT | ATTR_UNION,
 			[ATTRIBUTE_PRIVATE] = ATTR_FUNC | ATTR_MACRO | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES | ATTR_DEF,
@@ -2401,7 +2401,7 @@ static inline bool sema_analyse_doc_header(AstId doc, Decl **params, Decl **extr
 	NEXT:;
 		Type *type = param->type;
 		if (type) type = type_flatten(type);
-		bool may_be_pointer = !type || type_is_pointer(type) || type_is_any_protocol_ptr(type);
+		bool may_be_pointer = !type || type_is_pointer(type) || type_is_any_interface_ptr(type);
 		if (directive->contract_stmt.param.by_ref)
 		{
 			if (!may_be_pointer)
@@ -2739,8 +2739,8 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 {
 	DEBUG_LOG("----Analysing function %s", decl->name);
 
-	bool is_protocol_method = decl->func_decl.attr_protocol_method;
-	if (!sema_analyse_func_macro(context, decl, is_protocol_method ? ATTR_PROTOCOL_METHOD : ATTR_FUNC, erase_decl)) return false;
+	bool is_interface_method = decl->func_decl.attr_interface_method;
+	if (!sema_analyse_func_macro(context, decl, is_interface_method ? ATTR_INTERFACE_METHOD : ATTR_FUNC, erase_decl)) return false;
 	if (*erase_decl) return true;
 
 	bool is_test = decl->func_decl.attr_test;
@@ -2753,7 +2753,7 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 	}
 	if (is_test || is_benchmark || is_init_finalizer)
 	{
-		assert(!is_protocol_method);
+		assert(!is_interface_method);
 		if (vec_size(sig->params))
 		{
 			SEMA_ERROR(sig->params[0], "%s functions may not take any parameters.",
@@ -2810,11 +2810,11 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 	{
 		if (!sema_analyse_method(context, decl)) return decl_poison(decl);
 	}
-	else if (!is_protocol_method)
+	else if (!is_interface_method)
 	{
 		if (decl->func_decl.attr_dynamic)
 		{
-			SEMA_ERROR(decl, "Only methods may implement protocols.");
+			SEMA_ERROR(decl, "Only methods may implement interfaces.");
 			return decl_poison(decl);
 		}
 		if (decl->name == kw_main)
@@ -2830,7 +2830,7 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 	}
 
 	// Do we have fn void any.foo(void*) { ... }?
-	if (!decl->func_decl.body && !decl->is_extern && !decl->unit->is_interface_file && !is_protocol_method)
+	if (!decl->func_decl.body && !decl->is_extern && !decl->unit->is_interface_file && !is_interface_method)
 	{
 		SEMA_ERROR(decl, "Expected a function body, if you want to declare an extern function use 'extern' or place it in an .c3i file.");
 		return false;
@@ -2867,7 +2867,7 @@ static inline bool sema_is_valid_method_param(SemaContext *context, Decl *param,
 	switch (param_type->type_kind)
 	{
 		case TYPE_ANYPTR:
-		case TYPE_PROPTR:
+		case TYPE_INFPTR:
 		case TYPE_POINTER:
 			if (param_type->pointer == parent_type) return true;
 			break;
@@ -3674,7 +3674,7 @@ bool sema_resolve_type_structure(SemaContext *context, Type *type, SourceSpan sp
 RETRY:
 	switch (type->type_kind)
 	{
-		case TYPE_PROTOCOL:
+		case TYPE_INTERFACE:
 		case TYPE_ANY:
 		case TYPE_POISONED:
 		case TYPE_VOID:
@@ -3698,7 +3698,7 @@ RETRY:
 		case TYPE_BITSTRUCT:
 		case TYPE_FAULTTYPE:
 			return sema_analyse_decl(context, type->decl);
-		case TYPE_PROPTR:
+		case TYPE_INFPTR:
 		case TYPE_POINTER:
 			type = type->pointer;
 			goto RETRY;
@@ -3746,8 +3746,8 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 	{
 		case DECL_ERASED:
 			break;
-		case DECL_PROTOCOL:
-			if (!sema_analyse_protocol(context, decl, &erase_decl)) goto FAILED;
+		case DECL_INTERFACE:
+			if (!sema_analyse_interface(context, decl, &erase_decl)) goto FAILED;
 			set_external_name = true;
 			break;
 		case DECL_BITSTRUCT:

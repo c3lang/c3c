@@ -2,12 +2,12 @@
 module overlap;
 import std::io;
 
-protocol TestProto
+interface TestProto
 {
 	fn void tesT();
 }
 
-protocol TestProto2
+interface TestProto2
 {
 	fn void tesT();
 }

@@ -1,6 +1,6 @@
 module std::math::random;
 
-protocol Random
+interface Random
 {
 	fn void set_seed(char[] input);
 	fn char next_byte();

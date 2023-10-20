@@ -1,6 +1,6 @@
 module test;
 
-protocol Abc
+interface Abc
 {
 	fn void abc();
 	fn void abc(); // #error: Duplicate definition

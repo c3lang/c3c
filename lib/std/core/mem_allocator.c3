@@ -3,7 +3,7 @@ module std::core::mem::allocator;
 const DEFAULT_SIZE_PREFIX = usz.sizeof;
 const DEFAULT_SIZE_PREFIX_ALIGNMENT = usz.alignof;
 
-protocol Allocator
+interface Allocator
 {
 	fn void reset(usz mark) @optional;
 	fn usz mark() @optional;

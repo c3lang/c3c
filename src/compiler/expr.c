@@ -564,7 +564,7 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_WILDCARD:
 		case TYPE_ANY:
-		case TYPE_PROTOCOL:
+		case TYPE_INTERFACE:
 			UNREACHABLE
 		case ALL_INTS:
 			expr_rewrite_const_int(expr, type, 0);
@@ -578,7 +578,7 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 		case TYPE_POINTER:
 		case TYPE_FAULTTYPE:
 		case TYPE_ANYPTR:
-		case TYPE_PROPTR:
+		case TYPE_INFPTR:
 		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
 			expr_rewrite_const_null(expr, type);

@@ -148,7 +148,7 @@ void decl_register(Decl *decl)
 		case DECL_MACRO:
 		case DECL_VAR:
 		case DECL_FNTYPE:
-		case DECL_PROTOCOL:
+		case DECL_INTERFACE:
 			global_context_add_decl(decl);
 			break;
 	}
@@ -198,7 +198,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			decl_set_external_name(decl);
 			decl_register(decl);
 			break;
-		case DECL_PROTOCOL:
+		case DECL_INTERFACE:
 		case DECL_DISTINCT:
 		case DECL_STRUCT:
 		case DECL_UNION:

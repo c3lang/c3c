@@ -120,9 +120,9 @@ static bool x86_should_return_type_in_reg(Type *type)
 		case CT_TYPES:
 		case TYPE_OPTIONAL:
 		case TYPE_FLEXIBLE_ARRAY:
-		case TYPE_PROTOCOL:
+		case TYPE_INTERFACE:
 		case TYPE_ANY:
-		case TYPE_PROPTR:
+		case TYPE_INFPTR:
 			UNREACHABLE
 		case ALL_INTS:
 		case ALL_FLOATS:
@@ -460,7 +460,7 @@ static ABIArgInfo *x86_classify_argument(CallABI call, Regs *regs, Type *type)
 		case TYPE_VOID:
 		case TYPE_FUNC:
 		case TYPE_ANY:
-		case TYPE_PROTOCOL:
+		case TYPE_INTERFACE:
 		case TYPE_FLEXIBLE_ARRAY:
 			UNREACHABLE
 		case ALL_FLOATS:

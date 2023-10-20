@@ -603,35 +603,35 @@ void sema_analysis_pass_lambda(Module *module)
 	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);
 }
 
-static inline bool sema_check_protocols(Decl *decl)
+static inline bool sema_check_interfaces(Decl *decl)
 {
 	Decl **store = sema_decl_stack_store();
 	FOREACH_BEGIN(Decl *method, decl->methods)
 		sema_decl_stack_push(method);
 	FOREACH_END();
-	FOREACH_BEGIN(TypeInfo *protocol_type, decl->protocols)
-		Decl *protocol = protocol_type->type->decl;
-		FOREACH_BEGIN(Decl *method, protocol->protocol_methods)
+	FOREACH_BEGIN(TypeInfo *interface_type, decl->interfaces)
+		Decl *interface = interface_type->type->decl;
+		FOREACH_BEGIN(Decl *method, interface->interface_methods)
 			if (method->func_decl.attr_optional) continue;
 			Decl *matching_method = sema_decl_stack_resolve_symbol(method->name);
 			if (!matching_method)
 			{
-				SEMA_ERROR(protocol_type, "'%s' was not fully implemented, required method '%s' needs to be implemented, did you forget it?",
-				           protocol->name, method->name);
+				SEMA_ERROR(interface_type, "'%s' was not fully implemented, required method '%s' needs to be implemented, did you forget it?",
+				           interface->name, method->name);
 				sema_decl_stack_restore(store);
 				return false;
 			}
 			if (matching_method->decl_kind != DECL_FUNC)
 			{
 				SEMA_ERROR(matching_method, "'%s' was not fully implemented, it requires '%s' to be a function marked '@dynamic'.",
-				           protocol->name, method->name);
+				           interface->name, method->name);
 				sema_decl_stack_restore(store);
 				return false;
 			}
 			if (!matching_method->func_decl.attr_dynamic)
 			{
 				SEMA_ERROR(matching_method, "'%s' was not fully implemented, you need to mark '%s' as '@dynamic'.",
-				           protocol->name, method->name);
+				           interface->name, method->name);
 				sema_decl_stack_restore(store);
 				return false;
 			}
@@ -641,9 +641,9 @@ static inline bool sema_check_protocols(Decl *decl)
 	return true;
 }
 
-void sema_analysis_pass_protocol(Module *module)
+void sema_analysis_pass_interface(Module *module)
 {
-	DEBUG_LOG("Pass: Protocol analysis %s", module->name->module);
+	DEBUG_LOG("Pass: Interface analysis %s", module->name->module);
 
 	VECEACH(module->units, index)
 	{
@@ -663,9 +663,9 @@ void sema_analysis_pass_protocol(Module *module)
 				default:
 					continue;
 			}
-			if (decl->protocols)
+			if (decl->interfaces)
 			{
-				sema_check_protocols(decl);
+				sema_check_interfaces(decl);
 			}
 		}
 		sema_context_destroy(&context);

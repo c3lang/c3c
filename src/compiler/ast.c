@@ -54,8 +54,8 @@ Decl *decl_new_with_type(const char *name, SourceSpan loc, DeclKind decl_type)
 		case DECL_FNTYPE:
 		case DECL_FUNC:
 			UNREACHABLE
-		case DECL_PROTOCOL:
-			kind = TYPE_PROTOCOL;
+		case DECL_INTERFACE:
+			kind = TYPE_INTERFACE;
 			break;
 		case DECL_UNION:
 			kind = TYPE_UNION;
@@ -122,7 +122,7 @@ const char *decl_to_a_name(Decl *decl)
 		case DECL_LABEL: return "a label";
 		case DECL_MACRO: return "a macro";
 		case DECL_POISONED: return "a poisoned decl";
-		case DECL_PROTOCOL: return "a protocol";
+		case DECL_INTERFACE: return "an interface";
 		case DECL_STRUCT: return "a struct";
 		case DECL_UNION: return "a union";
 		case DECL_VAR:

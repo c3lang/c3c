@@ -173,7 +173,7 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 	{
 		case LOWERED_TYPES:
 		case TYPE_ANY:
-		case TYPE_PROTOCOL:
+		case TYPE_INTERFACE:
 			UNREACHABLE;
 		case TYPE_VOID:
 		case TYPE_FUNC:

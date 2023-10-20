@@ -4,7 +4,7 @@ import libc;
 
 const int PRINTF_NTOA_BUFFER_SIZE = 256;
 
-protocol Printable
+interface Printable
 {
 	fn String to_string(Allocator *using) @optional;
 	fn usz! to_format(Formatter* formatter) @optional;

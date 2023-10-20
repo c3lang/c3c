@@ -1,7 +1,7 @@
 module test;
 import std::io;
 
-protocol Abc
+interface Abc
 {
 	fn void test();
 }

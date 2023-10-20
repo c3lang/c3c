@@ -17,7 +17,7 @@ RETRY:
 		type = type->canonical;
 		switch (type->type_kind)
 		{
-			case TYPE_PROPTR:
+			case TYPE_INFPTR:
 			case TYPE_POINTER:
 				type = type->pointer;
 				goto RETRY;
@@ -573,7 +573,7 @@ RETRY:
 		case DECL_FAULT:
 		case DECL_STRUCT:
 		case DECL_UNION:
-		case DECL_PROTOCOL:
+		case DECL_INTERFACE:
 			sema_trace_decl_dynamic_methods(decl);
 			return;
 		case DECL_POISONED:

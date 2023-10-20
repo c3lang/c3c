@@ -1,4 +1,4 @@
-protocol TestProto
+interface TestProto
 {
 	fn int test(int ag);
 }

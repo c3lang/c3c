@@ -237,6 +237,8 @@ const char *token_type_to_string(TokenType type)
 			return "if";
 		case TOKEN_INLINE:
 			return "inline";
+		case TOKEN_INTERFACE:
+			return "interface";
 		case TOKEN_IMPORT:
 			return "import";
 		case TOKEN_MACRO:
@@ -247,8 +249,6 @@ const char *token_type_to_string(TokenType type)
 			return "nextcase";
 		case TOKEN_NULL:
 			return "null";
-		case TOKEN_PROTOCOL:
-			return "protocol";
 		case TOKEN_RETURN:
 			return "return";
 		case TOKEN_STATIC:
