@@ -62,7 +62,8 @@ static inline bool sema_analyse_error(SemaContext *context, Decl *decl, bool *er
 
 static bool sema_check_section(SemaContext *context, Attr *attr)
 {
-	const char *section_string = attr->exprs[0]->const_expr.bytes.ptr;
+	Expr *expr = attr->exprs[0];
+	const char *section_string = expr->const_expr.bytes.ptr;
 	// No restrictions except for MACH-O
 	if (platform_target.object_format != OBJ_FORMAT_MACHO)
 	{
@@ -77,47 +78,41 @@ static bool sema_check_section(SemaContext *context, Attr *attr)
 	(void)attrs;
 	(void)stub_size_str;
 
-	if (slice.len)
-	{
-		SEMA_ERROR(attr->exprs[0], "Too many parts to the Mach-o section description.");
-	}
+	if (slice.len) RETURN_SEMA_ERROR(expr, "Too many parts to the Mach-o section description.");
+
 	slice_trim(&segment);
-	if (segment.len == 0)
-	{
-		SEMA_ERROR(attr->exprs[0], "The segment is missing, did you type it correctly?");
-		return false;
-	}
+	if (!segment.len) RETURN_SEMA_ERROR(expr, "The segment is missing, did you type it correctly?");
+
 	slice_trim(&section);
-	if (section.len == 0)
-	{
-		SEMA_ERROR(attr->exprs[0], "Mach-o requires 'segment,section' as the format, did you type it correctly?");
-		return false;
-	}
-	if (section.len > 16)
-	{
-		SEMA_ERROR(attr->exprs[0], "Mach-o requires the section to be at the most 16 characters, can you shorten it?");
-		return false;
-	}
+	if (!section.len) RETURN_SEMA_ERROR(expr, "Mach-o requires 'segment,section' as the format, did you type it correctly?");
+
+	if (section.len > 16) RETURN_SEMA_ERROR(expr, "Mach-o requires the section to be at the most 16 characters, can you shorten it?");
+
 	REMINDER("Improve section type checking for Mach-o like Clang has.");
 	return true;
 }
 
+/**
+ * Check parameter name uniqueness and that the type is not void.
+ */
 static inline bool sema_check_param_uniqueness_and_type(Decl **decls, Decl *current, unsigned current_index, unsigned count)
 {
-	if (current->type && current->type == type_void)
+	// We may have `void` arguments. They are not allowed in C3. Theoretically they could
+	// be permitted, but it would complicate semantics in general.
+	if (current->type && type_flatten(current->type) == type_void)
 	{
 		if (count == 1 && !current->name && current->var.kind == VARDECL_PARAM)
 		{
-			SEMA_ERROR(current, "C-style 'foo(void)' style argument declarations are not valid, please remove 'void'.");
+			RETURN_SEMA_ERROR(current, "C-style 'foo(void)' style argument declarations are not valid, please remove 'void'.");
 		}
-		else
-		{
-			SEMA_ERROR(current, "Parameters may not be of type 'void'.");
-		}
-		return false;
+		RETURN_SEMA_ERROR(current, "Parameters may not be of type 'void'.");
 	}
 	const char *name = current->name;
+	// There is no need to do a check if it is anonymous.
 	if (!name) return true;
+	// Check for a duplicate name, this algorithm is O(n^2),
+	// but is fine as parameters are typically few, and doing something like
+	// a hash map would be more expensive to set up.
 	for (int i = 0; i < current_index; i++)
 	{
 		if (decls[i] && name == decls[i]->name)
@@ -132,46 +127,64 @@ static inline bool sema_check_param_uniqueness_and_type(Decl **decls, Decl *curr
 	return true;
 }
 
+/**
+ * Look at all the interface declarations, optionally type check the interfaces completely if needed.
+ */
 static inline bool sema_resolve_implemented_interfaces(SemaContext *context, Decl *decl, bool deep)
 {
 	TypeInfo **interfaces = decl->interfaces;
 	unsigned count = vec_size(interfaces);
+	// No interfaces? Then we're done. This is the most common case.
+	if (!count) return true;
+
 	for (unsigned i = 0; i < count; i++)
 	{
-		TypeInfo *proto = interfaces[i];
-		if (!sema_resolve_type_info(context, proto, RESOLVE_TYPE_ALLOW_ANY)) return false;
-		Type *inf_type = proto->type->canonical;
+		TypeInfo *inf_info = interfaces[i];
+		// Resolve the name
+		if (!sema_resolve_type_info(context, inf_info, RESOLVE_TYPE_ALLOW_ANY)) return false;
+		Type *inf_type = inf_info->type->canonical;
 		if (inf_type->type_kind != TYPE_INTERFACE)
 		{
-			RETURN_SEMA_ERROR(proto, "Expected an interface name.");
+			RETURN_SEMA_ERROR(inf_info, "Expected an interface name, but %s is not an interface.",
+							  type_quoted_error_string(inf_type));
 		}
+		// We don't permit duplicates as this would affect the implementation ordering.
 		for (unsigned j = 0; j < i; j++)
 		{
 			if (interfaces[j]->type->canonical == inf_type)
 			{
-				RETURN_SEMA_ERROR(proto, "Included interface '%s' more than once, please remove duplicates.", inf_type->name);
+				RETURN_SEMA_ERROR(inf_info, "The interface '%s' was included more than once, "
+											"this is not allowed, so please remove the duplicates.",
+								  inf_type->name);
 			}
 		}
+		// If this is a deep check, then we also resolve the interface itself (this would mean resolving function types)
 		if (deep && !sema_resolve_type_decl(context, inf_type)) return false;
 	}
 	return true;
 }
 
+/**
+ * Analyse a struct or union field.
+ */
 static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent, Decl *decl, bool *erase_decl)
 {
+	// Resolution might already have been completed in some cases due to $checks
 	if (decl->resolve_status == RESOLVE_DONE)
 	{
 		if (!decl_ok(decl)) return false;
 		if (decl->name) sema_decl_stack_push(decl);
 		return true;
 	}
-	if (decl->resolve_status == RESOLVE_RUNNING)
-	{
-		RETURN_SEMA_ERROR(decl, "Circular dependency resolving member.");
-	}
+
+	// Detect circular dependency.
+	if (decl->resolve_status == RESOLVE_RUNNING) RETURN_SEMA_ERROR(decl, "Circular dependency resolving member.");
+
+	// Mark the unit, it should not have been assigned at this point.
 	assert(!decl->unit || decl->unit->module->is_generic || decl->unit == parent->unit);
 	decl->unit = parent->unit;
 
+	// Pick the domain for attribute analysis.
 	AttributeDomain domain = ATTR_MEMBER;
 	switch (decl->decl_kind)
 	{
@@ -189,9 +202,13 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 		default:
 			UNREACHABLE
 	}
+	// Check attributes.
 	if (!sema_analyse_attributes(context, decl, decl->attributes, domain, erase_decl)) return decl_poison(decl);
+
+	// If we should erase this declaration due to an @if, exit here.
 	if (*erase_decl) return true;
 
+	// If it has a name, place it in the decl stack to ensure it is unique.
 	if (decl->name)
 	{
 		Decl *other = sema_decl_stack_resolve_symbol(decl->name);
@@ -201,26 +218,20 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 			SEMA_NOTE(other, "Previous declaration was here.");
 			return false;
 		}
-		if (decl->name) sema_decl_stack_push(decl);
+		// Push the name onto the stack.
+		sema_decl_stack_push(decl);
 	}
 
+	// Analysis depends on the underlying type.
 	switch (decl->decl_kind)
 	{
 		case DECL_VAR:
 			assert(decl->var.kind == VARDECL_MEMBER);
 			decl->resolve_status = RESOLVE_RUNNING;
-			if (!sema_resolve_type_info(context, type_infoptrzero(decl->var.type_info), RESOLVE_TYPE_ALLOW_INFER)) return decl_poison(decl);
+			// Inferred types are not strictly allowed, but we use the int[*] for the flexible array member.
+			if (!sema_resolve_type_info(context, type_infoptrzero(decl->var.type_info), RESOLVE_TYPE_ALLOW_FLEXIBLE)) return decl_poison(decl);
 			decl->type = typeget(decl->var.type_info);
 			decl->resolve_status = RESOLVE_DONE;
-			Type *member_type = type_flatten(decl->type);
-			if (member_type->type_kind == TYPE_ARRAY)
-			{
-				if (member_type->array.len == 0)
-				{
-					SEMA_ERROR(decl, "Zero length arrays are not valid members.");
-					return false;
-				}
-			}
 			return true;
 		case DECL_STRUCT:
 		case DECL_UNION:
@@ -232,6 +243,9 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 	}
 }
 
+/**
+ * Analyse union members, calculating alignment.
+ */
 static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
 {
 	AlignSize max_size = 0;
@@ -241,30 +255,39 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
 	bool has_named_parameter = false;
 	Decl **members = decl->strukt.members;
 	unsigned member_count = vec_size(members);
+	assert(member_count > 0);
+
+	// Check all members
 	for (unsigned i = 0; i < member_count; i++)
 	{
 		AGAIN:;
 		Decl *member = members[i];
-		if (!decl_ok(member))
-		{
-			return decl_poison(decl);
-		}
+
+		// The member may already have been resolved if it is poisoned, then exit.
+		if (!decl_ok(member)) return decl_poison(decl);
 		bool erase_decl = false;
+
+		// Check the member
 		if (!sema_analyse_struct_member(context, decl, member, &erase_decl))
 		{
+			// Error, so declare both as poisoned.
 			return decl_poison(member) || decl_poison(decl);
 		}
+
+		// If we need to erase it then do so.
 		if (erase_decl)
 		{
 			vec_erase_ptr_at(members, i);
 			member_count--;
+			// Go back and take the next one.
 			if (i < member_count) goto AGAIN;
 			break;
 		}
 		if (member->type->type_kind == TYPE_INFERRED_ARRAY)
 		{
-			SEMA_ERROR(member, "Flexible array members not allowed in unions.");
-			return decl_poison(member) || decl_poison(decl);
+			decl_poison(member);
+			decl_poison(decl);
+			RETURN_SEMA_ERROR(member, "Flexible array members not allowed in unions.");
 		}
 		AlignSize member_alignment;
 		if (!sema_set_abi_alignment(context, member->type, &member_alignment)) return false;
@@ -303,6 +326,7 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
 	// We're only packed if the max alignment is > 1
 	decl->is_packed = decl->is_packed && max_alignment > 1;
 
+	// "Representative" type is the one with the maximum alignment.
 	decl->strukt.union_rep = max_alignment_element;
 
 	// All members share the same alignment
@@ -311,11 +335,7 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
 		members[i]->alignment = decl->alignment;
 	}
 
-	if (!max_size)
-	{
-		SEMA_ERROR(decl, "Zero size unions are not allowed.");
-		return false;
-	}
+	assert(max_size);
 
 	// The actual size might be larger than the max size due to alignment.
 	AlignSize size = aligned_offset(max_size, decl->alignment);
@@ -323,17 +343,19 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
 	ByteSize rep_size = type_size(members[max_alignment_element]->type);
 
 	// If the actual size is bigger than the real size, add
-	// padding.
+	// padding – typically used with LLVM lowering.
 	if (size > rep_size)
 	{
 		decl->strukt.padding = (AlignSize)(size - rep_size);
 	}
 
 	decl->strukt.size = size;
-
 	return true;
 }
 
+/*
+ * Analyse the members of a struct, assumed to be 1 or more (should already be checked before calling the function)
+ */
 static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 {
 	// Default alignment is 1 even if it is empty.
@@ -344,6 +366,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 	bool is_packed = decl->is_packed;
 	Decl **struct_members = decl->strukt.members;
 	unsigned member_count = vec_size(struct_members);
+	assert(member_count > 0);
 
 	for (unsigned i = 0; i < member_count; i++)
 	{

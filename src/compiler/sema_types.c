@@ -458,9 +458,10 @@ static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, 
 		case TYPE_INFO_TYPEFROM:
 			if (!sema_resolve_typefrom(context, type_info)) return type_info_poison(type_info);
 			goto APPEND_QUALIFIERS;
-		case TYPE_INFO_INFERRED_ARRAY:
 		case TYPE_INFO_INFERRED_VECTOR:
-			if (!(resolve_type_kind & RESOLVE_TYPE_ALLOW_INFER))
+		case TYPE_INFO_INFERRED_ARRAY:
+			if (!(resolve_type_kind & RESOLVE_TYPE_ALLOW_INFER)
+				&& (type_info->kind != TYPE_INFO_INFERRED_ARRAY || !(resolve_type_kind & RESOLVE_TYPE_ALLOW_FLEXIBLE)))
 			{
 				SEMA_ERROR(type_info, "Inferred %s types can only be used in declarations with initializers and as macro parameters.",
 						   type_info->kind == TYPE_INFO_INFERRED_VECTOR ? "vector" : "array");
