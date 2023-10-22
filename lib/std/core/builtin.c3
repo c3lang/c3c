@@ -44,7 +44,7 @@ macro void @scope(&variable; @body) @builtin
 
 /**
  * Swap two variables
- * @checked *a = *b, *b = *a
+ * @require $assignable(*b, $typeof(*a)) && $assignable(*a, $typeof(*b))
  **/
 macro void @swap(&a, &b) @builtin
 {
@@ -280,7 +280,7 @@ macro bool @unlikely(bool #value, $probability = 1.0) @builtin
 
 /**
  * @require values::@is_int(#value) || values::@is_bool(#value)
- * @checked $typeof(#value) a = expected
+ * @require $assignable(expected, $typeof(#value))
  * @require $probability >= 0 && $probability <= 1.0
  **/
 macro @expect(#value, expected, $probability = 1.0) @builtin
@@ -329,16 +329,6 @@ macro swizzle(v, ...) @builtin
 macro swizzle2(v, v2, ...) @builtin
 {
 	return $$swizzle2(v, v2, $vasplat());
-}
-
-macro bool @castable(#expr, $To) @builtin
-{
-	return $checks(($To)#expr);
-}
-
-macro bool @convertible(#expr, $To) @builtin
-{
-	return $checks($To x = #expr);
 }
 
 macro anyfault @catch(#expr) @builtin

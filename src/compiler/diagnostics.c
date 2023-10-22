@@ -160,14 +160,12 @@ static void vprint_error(SourceSpan location, const char *message, va_list args)
 
 void sema_verror_range(SourceSpan location, const char *message, va_list args)
 {
-	if (global_context.suppress_errors) return;
 	vprint_error(location, message, args);
 	global_context.errors_found++;
 }
 
 void sema_warning_at(SourceSpan loc, const char *message, ...)
 {
-	if (global_context.suppress_errors) return;
 	va_list list;
 	va_start(list, message);
 	print_error(loc, str_vprintf(message, list), PRINT_TYPE_NOTE);
@@ -195,7 +193,6 @@ void sema_error_at_after(SourceSpan loc, const char *message, ...)
 
 void sema_error_prev_at(SourceSpan loc, const char *message, ...)
 {
-	if (global_context.suppress_errors) return;
 	va_list args;
 	va_start(args, message);
 #define MAX_ERROR_LEN 4096
@@ -213,7 +210,6 @@ void sema_error_prev_at(SourceSpan loc, const char *message, ...)
 
 void sema_error(ParseContext *context, const char *message, ...)
 {
-	if (global_context.suppress_errors) return;
 	global_context.errors_found++;
 	File *file = context->unit->file;
 	va_list list;

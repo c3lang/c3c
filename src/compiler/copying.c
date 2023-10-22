@@ -421,13 +421,20 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 					return expr;
 			}
 			UNREACHABLE
+		case EXPR_CT_CASTABLE:
+			MACRO_COPY_EXPRID(expr->castable_expr.expr);
+			MACRO_COPY_TYPEID(expr->castable_expr.type);
+			return expr;
+		case EXPR_CT_AND_OR:
+			MACRO_COPY_EXPR_LIST(expr->ct_and_or_expr.args);
+			return expr;
 		case EXPR_FORCE_UNWRAP:
 		case EXPR_OPTIONAL:
 		case EXPR_GROUP:
 		case EXPR_STRINGIFY:
 		case EXPR_CT_EVAL:
-		case EXPR_CT_CHECKS:
 		case EXPR_CT_DEFINED:
+		case EXPR_CT_IS_CONST:
 			MACRO_COPY_EXPR(expr->inner_expr);
 			return expr;
 		case EXPR_TYPEID_INFO:
@@ -531,7 +538,6 @@ void doc_ast_copy(CopyStruct *c, AstContractStmt *doc)
 	{
 		case CONTRACT_REQUIRE:
 		case CONTRACT_ENSURE:
-		case CONTRACT_CHECKED:
 			MACRO_COPY_EXPR(doc->contract.decl_exprs);
 			break;
 		case CONTRACT_OPTIONALS:

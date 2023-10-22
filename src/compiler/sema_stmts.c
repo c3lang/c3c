@@ -1413,9 +1413,9 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 
 	if (!value_type)
 	{
-		len = sema_find_operator(context, enumerator, OVERLOAD_LEN);
-		Decl *by_val = sema_find_operator(context, enumerator, OVERLOAD_ELEMENT_AT);
-		Decl *by_ref = sema_find_operator(context, enumerator, OVERLOAD_ELEMENT_REF);
+		len = sema_find_operator(context, enumerator->type, OVERLOAD_LEN);
+		Decl *by_val = sema_find_operator(context, enumerator->type, OVERLOAD_ELEMENT_AT);
+		Decl *by_ref = sema_find_operator(context, enumerator->type, OVERLOAD_ELEMENT_REF);
 		if (!len || (!by_val && !by_ref))
 		{
 			SEMA_ERROR(enumerator, "It's not possible to enumerate an expression of type %s.", type_quoted_error_string(enumerator->type));
@@ -2983,32 +2983,6 @@ NEXT:;
 	return true;
 }
 
-bool sema_analyse_checked(SemaContext *context, Ast *directive, SourceSpan span)
-{
-	Expr *declexpr = directive->contract_stmt.contract.decl_exprs;
-	bool success = true;
-	bool suppress_error = global_context.suppress_errors;
-	global_context.suppress_errors = true;
-	CallEnvKind eval_kind = context->call_env.kind;
-	context->call_env.kind = CALL_ENV_CHECKS;
-	SCOPE_START_WITH_FLAGS(SCOPE_CHECKS)
-		VECEACH(declexpr->cond_expr, j)
-		{
-			Expr *expr = declexpr->cond_expr[j];
-			if (sema_analyse_expr(context, expr)) continue;
-			const char *comment = directive->contract_stmt.contract.comment;
-			global_context.suppress_errors = suppress_error;
-			sema_error_at(span.row == 0 ? expr->span : span, "Contraint failed: %s",
-						  comment ? comment : directive->contract_stmt.contract.expr_string);
-			success = false;
-			goto END;
-		}
-END:
-	context->call_env.kind = eval_kind;
-	SCOPE_END;
-	global_context.suppress_errors = suppress_error;
-	return success;
-}
 
 void sema_append_contract_asserts(AstId assert_first, Ast* compound_stmt)
 {
@@ -3031,9 +3005,6 @@ bool sema_analyse_contracts(SemaContext *context, AstId doc, AstId **asserts, So
 				break;
 			case CONTRACT_REQUIRE:
 				if (!sema_analyse_require(context, directive, asserts, call_span)) return false;
-				break;
-			case CONTRACT_CHECKED:
-				if (!sema_analyse_checked(context, directive, call_span)) return false;
 				break;
 			case CONTRACT_PARAM:
 				break;

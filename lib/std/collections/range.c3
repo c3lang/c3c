@@ -1,6 +1,5 @@
 /**
- * @checked Type{} < Type{} : "The type must be comparable"
- * @checked Type{} + (Type)1 : "The type must be possible to add to"
+ * @require Type.is_ordered : "The type must be ordered"
  **/
 module std::collections::range(<Type>);
 
@@ -13,7 +12,7 @@ struct Range (Printable)
 fn usz Range.len(&self) @operator(len)
 {
 	if (self.end < self.start) return 0;
-	return (usz)(self.end - self.start + (Type)1);
+	return (usz)(self.end - self.start) + 1;
 }
 
 fn bool Range.contains(&self, Type value) @inline
@@ -26,7 +25,7 @@ fn bool Range.contains(&self, Type value) @inline
  **/
 fn Type Range.get(&self, usz index) @operator([])
 {
-	return self.start + (Type)index;
+	return (Type)(self.start + (usz)index);
 }
 
 fn String Range.to_string(&self, Allocator* using = mem::heap()) @dynamic
@@ -71,5 +70,5 @@ fn String ExclusiveRange.to_string(&self, Allocator* using = mem::heap()) @dynam
  **/
 fn Type ExclusiveRange.get(&self, usz index) @operator([])
 {
-	return self.start + (Type)index;
+	return (Type)(self.start + index);
 }

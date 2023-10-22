@@ -3,8 +3,8 @@ module std::sort;
 /**
  * Perform a binary search over the sorted array and return the index
  * in [0, array.len) where x would be inserted or cmp(i) is true and cmp(j) is true for j in [i, array.len).
- * @require is_searchable(list) "The list must be indexable and support .len or .len()"
- * @require !cmp || is_comparer(cmp, list) "Expected a comparison function which compares values"
+ * @require $defined(list[0]) && $defined(list.len) "The list must be indexable"
+ * @require $or($typeof(cmp).typeid == void*.typeid, @is_comparer(cmp, list)) "Expected a comparison function which compares values"
  **/
 macro usz binarysearch(list, x, cmp = null) @builtin
 {
@@ -13,7 +13,7 @@ macro usz binarysearch(list, x, cmp = null) @builtin
 	for (usz j = len; i < j;)
 	{
 		usz half = i + (j - i) / 2;
-		$if $checks(!cmp):
+		$if $typeof(cmp).typeid == void*.typeid:
 			switch
 			{
 				case greater(list[half], x): j = half;
@@ -22,9 +22,9 @@ macro usz binarysearch(list, x, cmp = null) @builtin
 			}
 		$else
 			$switch
-				$case $checks(cmp(list[0], list[0])):
+				$case $typeof(cmp).params[0] == $typeof(list[0]).typeid:
 					int res = cmp(list[half], x);
-				$case $checks(cmp(&list[0], &list[0])):
+				$default:
 					int res = cmp(&list[half], &x);
 			$endswitch
 			switch

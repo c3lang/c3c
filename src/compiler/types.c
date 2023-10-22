@@ -2280,9 +2280,10 @@ unsigned type_get_introspection_kind(TypeKind kind)
 		case TYPE_VECTOR:
 		case TYPE_INFERRED_VECTOR:
 			return INTROSPECT_TYPE_VECTOR;
+		case TYPE_OPTIONAL:
+			return INTROSPECT_TYPE_OPTIONAL;
 		case TYPE_UNTYPED_LIST:
 		case TYPE_TYPEINFO:
-		case TYPE_OPTIONAL:
 		case TYPE_MEMBER:
 		case TYPE_WILDCARD:
 			UNREACHABLE

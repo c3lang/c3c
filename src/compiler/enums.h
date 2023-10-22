@@ -162,7 +162,8 @@ typedef enum
 	case DECL_POISONED
 
 #define NON_RUNTIME_EXPR EXPR_DESIGNATOR: case EXPR_POISONED: \
-		case EXPR_CT_CHECKS: case EXPR_CT_DEFINED: \
+		case EXPR_CT_DEFINED: case EXPR_CT_AND_OR:\
+		case EXPR_CT_CASTABLE: case EXPR_CT_IS_CONST: \
 		case EXPR_CT_ARG: case EXPR_TYPEINFO: case EXPR_CT_IDENT: case EXPR_HASH_IDENT: \
 		case EXPR_COMPILER_CONST: case EXPR_CT_CALL: \
 		case EXPR_ANYSWITCH: case EXPR_STRINGIFY: case EXPR_CT_EVAL
@@ -172,7 +173,6 @@ typedef enum
 	CONTRACT_UNKNOWN,
 	CONTRACT_PURE,
 	CONTRACT_REQUIRE,
-	CONTRACT_CHECKED,
 	CONTRACT_PARAM,
 	CONTRACT_OPTIONALS,
 	CONTRACT_ENSURE,
@@ -220,9 +220,11 @@ typedef enum
 	EXPR_COMPOUND_LITERAL,
 	EXPR_COND,
 	EXPR_CONST,
+	EXPR_CT_AND_OR,
 	EXPR_CT_ARG,
 	EXPR_CT_CALL,
-	EXPR_CT_CHECKS,
+	EXPR_CT_CASTABLE,
+	EXPR_CT_IS_CONST,
 	EXPR_CT_DEFINED,
 	EXPR_CT_EVAL,
 	EXPR_CT_IDENT,
@@ -357,11 +359,10 @@ typedef enum
 typedef enum
 {
 	SCOPE_NONE = 0,
-	SCOPE_CHECKS = 1 << 0,
-	SCOPE_ENSURE = 1 << 2,
-	SCOPE_ENSURE_MACRO = 1 << 3,
-	SCOPE_EXPR_BLOCK = 1 << 5,
-	SCOPE_MACRO = 1 << 6,
+	SCOPE_ENSURE = 1 << 1,
+	SCOPE_ENSURE_MACRO = 1 << 2,
+	SCOPE_EXPR_BLOCK = 1 << 3,
+	SCOPE_MACRO = 1 << 4,
 } ScopeFlags;
 
 typedef enum
@@ -560,9 +561,10 @@ typedef enum
 	TOKEN_LAST_NON_CT_KEYWORD = TOKEN_WHILE,
 
 	TOKEN_CT_ALIGNOF,           // $alignof
+	TOKEN_CT_AND,               // $and
 	TOKEN_CT_ASSERT,            // $assert
+	TOKEN_CT_ASSIGNABLE,        // $assignable
 	TOKEN_CT_CASE,              // $case
-	TOKEN_CT_CHECKS,            // $checks
 	TOKEN_CT_DEFAULT,           // $default
 	TOKEN_CT_DEFINED,           // $defined
 	TOKEN_CT_ECHO,              // $echo
@@ -582,8 +584,10 @@ typedef enum
 	TOKEN_CT_FOREACH,           // $foreach
 	TOKEN_CT_IF,                // $if
 	TOKEN_CT_INCLUDE,           // $include
+	TOKEN_CT_IS_CONST,          // $is_const
 	TOKEN_CT_NAMEOF,            // $nameof
 	TOKEN_CT_OFFSETOF,          // $offsetof
+	TOKEN_CT_OR,                // $or
 	TOKEN_CT_QNAMEOF,           // $qnameof
 	TOKEN_CT_SIZEOF,            // $sizeof
 	TOKEN_CT_STRINGIFY,         // $stringify
@@ -980,6 +984,8 @@ typedef enum
 	TYPE_PROPERTY_ELEMENTS,
 	TYPE_PROPERTY_EXTNAMEOF,
 	TYPE_PROPERTY_INF,
+	TYPE_PROPERTY_IS_EQ,
+	TYPE_PROPERTY_IS_ORDERED,
 	TYPE_PROPERTY_LEN,
 	TYPE_PROPERTY_MAX,
 	TYPE_PROPERTY_MEMBERSOF,
@@ -1074,5 +1080,6 @@ typedef enum
 	CONV_VOIDPTR,
 	CONV_VAPTR,
 	CONV_INFERRED,
-	CONV_LAST = CONV_INFERRED
+	CONV_UNTYPED_LIST,
+	CONV_LAST = CONV_UNTYPED_LIST
 } ConvGroup;

@@ -270,23 +270,24 @@ RETRY:
 		case EXPR_COMPILER_CONST:
 		case EXPR_CT_ARG:
 		case EXPR_CT_CALL:
-		case EXPR_CT_CHECKS:
 		case EXPR_CT_DEFINED:
+		case EXPR_CT_IS_CONST:
 		case EXPR_CT_EVAL:
 		case EXPR_CT_IDENT:
 		case EXPR_ANYSWITCH:
 		case EXPR_GENERIC_IDENT:
 		case EXPR_EMBED:
+		case EXPR_CT_CASTABLE:
+		case EXPR_CT_AND_OR:
 		case EXPR_MACRO_BODY:
 			UNREACHABLE
-		case EXPR_BUILTIN:
-			TODO
 		case EXPR_DESIGNATOR:
 			sema_trace_expr_liveness(expr->designator_expr.value);
 			return;
 		case EXPR_HASH_IDENT:
 		case EXPR_STRINGIFY:
 		case EXPR_TYPEINFO:
+		case EXPR_BUILTIN:
 			return;
 		case EXPR_ACCESS:
 		case EXPR_BITACCESS:

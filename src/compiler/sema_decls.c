@@ -119,7 +119,6 @@ static inline bool sema_check_param_uniqueness_and_type(Decl **decls, Decl *curr
 		{
 			SEMA_ERROR(current, "Duplicate parameter name '%s'.", name);
 			SEMA_NOTE(decls[i], "Previous use of the name was here.");
-			decl_poison(decls[i]);
 			decl_poison(current);
 			return false;
 		}
@@ -264,14 +263,14 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
 		Decl *member = members[i];
 
 		// The member may already have been resolved if it is poisoned, then exit.
-		if (!decl_ok(member)) return decl_poison(decl);
+		if (!decl_ok(member)) return false;
 		bool erase_decl = false;
 
 		// Check the member
 		if (!sema_analyse_struct_member(context, decl, member, &erase_decl))
 		{
-			// Error, so declare both as poisoned.
-			return decl_poison(member) || decl_poison(decl);
+			// Failed
+			return decl_poison(member);
 		}
 
 		// If we need to erase it then do so.
@@ -286,7 +285,6 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
 		if (member->type->type_kind == TYPE_INFERRED_ARRAY)
 		{
 			decl_poison(member);
-			decl_poison(decl);
 			RETURN_SEMA_ERROR(member, "Flexible array members not allowed in unions.");
 		}
 		AlignSize member_alignment;
@@ -315,7 +313,7 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
 		member->offset = 0;
 	}
 
-	if (!decl_ok(decl)) return false;
+	assert(decl_ok(decl));
 
 	// 1. If packed, then the alignment is zero, unless previously given
 	if (decl->is_packed && !decl->alignment) decl->alignment = 1;
@@ -366,18 +364,21 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 	bool is_packed = decl->is_packed;
 	Decl **struct_members = decl->strukt.members;
 	unsigned member_count = vec_size(struct_members);
-	assert(member_count > 0);
+	assert(member_count > 0 && "This analysis should only be called on member_count > 0");
 
 	for (unsigned i = 0; i < member_count; i++)
 	{
 	AGAIN:;
 		Decl *member = struct_members[i];
+		// We might have already analysed and poisoned this decl, if so, exit.
 		if (!decl_ok(member)) return decl_poison(decl);
 		bool erase_decl = false;
+		// Check the member
 		if (!sema_analyse_struct_member(context, decl, member, &erase_decl))
 		{
-			return decl_poison(member) || decl_poison(decl);
+			return decl_poison(decl);
 		}
+		// If we should erase it, do so.
 		if (erase_decl)
 		{
 			vec_erase_ptr_at(struct_members, i);
@@ -385,38 +386,53 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 			if (i < member_count) goto AGAIN;
 			break;
 		}
+
 		Type *member_type = type_flatten(member->type);
+		// If this is a struct and it has a variable array ending, then it must also be the last struct.
+		// So this is ok:
+		// struct Foo { int x; struct { int x; int[*] y; } }
+		// But not this:
+		// struct Bar { struct { int x; int[*] y; } int x; }
 		if (member_type->type_kind == TYPE_STRUCT && member_type->decl->has_variable_array)
 		{
 			if (i != member_count - 1)
 			{
-				SEMA_ERROR(member, "A struct member with a flexible array must be the last element.");
-				return decl_poison(member) || decl_poison(decl);
+				decl_poison(member);
+				RETURN_SEMA_ERROR(member, "A struct member with a flexible array must be the last element.");
 			}
+			// Mark it as a variable array.
 			decl->has_variable_array = true;
 		}
-		if (member_type->type_kind == TYPE_INFERRED_ARRAY)
+		else if (member_type->type_kind == TYPE_INFERRED_ARRAY)
 		{
+			// Check chat it is the last element.
 			if (i != member_count - 1)
 			{
-				SEMA_ERROR(member, "The flexible array member must be the last element.");
-				return decl_poison(member) || decl_poison(decl);
+				decl_poison(member);
+				RETURN_SEMA_ERROR(member, "The flexible array member must be the last element.");
 			}
+			// And that it isn't the only element.
 			if (i == 0)
 			{
-				SEMA_ERROR(member, "The flexible array member cannot be the only element.");
-				return decl_poison(member) || decl_poison(decl);
+				decl_poison(member);
+				RETURN_SEMA_ERROR(member, "The flexible array member cannot be the only element.");
 			}
+			// Now replace the type, because we want a TYPE_FLEXIBLE_ARRAY rather than the assumed TYPE_INFERRED_ARRAY
 			member->type = type_get_flexible_array(member->type->array.base);
+			// And mark as variable array
 			decl->has_variable_array = true;
 		}
 
-		if (!decl_ok(decl)) return false;
+		assert(decl_ok(decl) && "The declaration should be fine at this point.");
 
+		// Grab the ABI alignment as its natural alignment
 		AlignSize member_natural_alignment;
 		if (!sema_set_abi_alignment(context, member->type, &member_natural_alignment)) return decl_poison(decl);
+
+		// If packed, then the alignment is 1
 		AlignSize member_alignment = is_packed ? 1 : member_natural_alignment;
 
+		// If a member has an assigned alignment, then we use that one, even if it is packed.
 		if (member->alignment)
 		{
 			member_alignment = member->alignment;
@@ -498,62 +514,44 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 
 static bool sema_analyse_struct_union(SemaContext *context, Decl *decl, bool *erase_decl)
 {
-	AttributeDomain domain;
-	switch (decl->decl_kind)
-	{
-		case DECL_STRUCT:
-			domain = ATTR_STRUCT;
-			break;
-		case DECL_UNION:
-			domain = ATTR_UNION;
-			break;
-		case DECL_FAULT:
-			domain = ATTR_FAULT;
-			break;
-		default:
-			UNREACHABLE
-	}
-
+	// Begin by analysing attributes
+	bool is_union = decl->decl_kind == DECL_UNION;
+	AttributeDomain domain = is_union ? ATTR_UNION : ATTR_STRUCT;
 	if (!sema_analyse_attributes(context, decl, decl->attributes, domain, erase_decl)) return decl_poison(decl);
+
+	// If an @if attribute erases it, end here
 	if (*erase_decl) return true;
+
+	// Resolve any implemented interfaces shallowly (i.e. functions are not resolved)
 	if (!sema_resolve_implemented_interfaces(context, decl, false)) return decl_poison(decl);
 
 	DEBUG_LOG("Beginning analysis of %s.", decl->name ? decl->name : ".anon");
-	bool success;
 	Decl **members = decl->strukt.members;
+
+	// We require at least one member in C3. This simplifies semantics in corner cases.
 	if (!vec_size(members))
 	{
-		SEMA_ERROR(decl, decl->decl_kind == DECL_UNION ? "Zero sized unions are not permitted." : "Zero sized structs are not permitted.");
-		return false;
+		RETURN_SEMA_ERROR(decl, "Zero sized %s are not permitted.", is_union ? "unions" : "structs");
 	}
-	if (decl->name)
-	{
-		Decl** state = sema_decl_stack_store();
-		if (decl->decl_kind == DECL_UNION)
-		{
-			success = sema_analyse_union_members(context, decl);
-		}
-		else
-		{
-			success = sema_analyse_struct_members(context, decl);
-		}
-		sema_decl_stack_restore(state);
-	}
-	else
-	{
-		if (decl->decl_kind == DECL_UNION)
-		{
-			success = sema_analyse_union_members(context, decl);
-		}
-		else
-		{
-			success = sema_analyse_struct_members(context, decl);
-		}
-	}
+
+	// If we have a name, we need to create a new decl stack
+	Decl** state = decl->name ? sema_decl_stack_store() : NULL;
+
+	bool success = is_union
+			? sema_analyse_union_members(context, decl)
+			: sema_analyse_struct_members(context, decl);
+
+	// Restore if needed.
+	if (decl->name) sema_decl_stack_restore(state);
+
 	DEBUG_LOG("Struct/union size %d, alignment %d.", (int)decl->strukt.size, (int)decl->alignment);
 	DEBUG_LOG("Analysis complete.");
+
+	// Failed, so exit.
 	if (!success) return decl_poison(decl);
-	return decl_ok(decl);
+
+	assert(decl_ok(decl));
+	return true;
 }
 
 static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *parent, Decl *member, unsigned index, bool allow_overlap, bool *erase_decl)
@@ -738,29 +736,49 @@ AFTER_BIT_CHECK:
 	member->resolve_status = RESOLVE_DONE;
 	return true;
 }
+
+/*
+ * Analyse an interface declaration, because it is only called from analyse_decl, it is safe
+ * to just return false (and not poison explicitly), if it should be called from elsewhere,
+ * then this needs to be handled.
+ */
 static bool sema_analyse_interface(SemaContext *context, Decl *decl, bool *erase_decl)
 {
-	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_INTERFACE, erase_decl)) return decl_poison(decl);
+	// Begin with analysing attributes.
+	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_INTERFACE, erase_decl)) return false;
+
+	// If erased using @if, we exit.
 	if (*erase_decl) return true;
+
+	// Resolve the inherited interfaces deeply
 	if (!sema_resolve_implemented_interfaces(context, decl, true)) return false;
+
+	// Walk through the methods.
 	Decl **functions = decl->interface_methods;
 	unsigned count = vec_size(functions);
+
+	// Note that zero functions are allowed, this is useful for creating combinations of interfaces.
 	for (unsigned i = 0; i < count; i++)
 	{
 		RETRY:;
 		Decl *method = functions[i];
-		if (method->decl_kind != DECL_FUNC)
+		// The method might have been resolved earlier, if so we either exit or go to the next.
+		// This might happen for example if it was resolved using $checks
+		if (method->resolve_status == RESOLVE_DONE)
 		{
-			SEMA_ERROR(method, "Only functions are allowed here.");
-			return decl_poison(decl);
+			if (!decl_ok(method)) return false;
+			continue;
 		}
+
+		if (method->decl_kind != DECL_FUNC) RETURN_SEMA_ERROR(method, "Only functions are allowed here.");
 		if (method->func_decl.type_parent)
 		{
-			SEMA_ERROR(type_infoptr(method->func_decl.type_parent), "Interfaces should not be declared as methods.");
-			return decl_poison(decl);
+			RETURN_SEMA_ERROR(type_infoptr(method->func_decl.type_parent), "Interfaces should not be declared as methods.");
 		}
 		method->func_decl.attr_interface_method = true;
 		bool erase = false;
+
+		// Insert the first parameter, which is the implicit `void*`
 		Decl *first = decl_new_var(kw_self, decl->span, NULL, VARDECL_PARAM);
 		first->type = type_voidptr;
 		first->var.kind = VARDECL_PARAM;
@@ -769,7 +787,17 @@ static bool sema_analyse_interface(SemaContext *context, Decl *decl, bool *erase
 		first->alignment = type_abi_alignment(type_voidptr);
 		vec_insert_first(method->func_decl.signature.params, first);
 		method->unit = context->unit;
-		if (!sema_analyse_func(context, method, &erase)) return decl_poison(decl);
+
+		// Now we analyse the function as a regular function.
+		if (!sema_analyse_func(context, method, &erase))
+		{
+			// This is necessary in order to allow this check to run again.
+			decl_poison(method);
+			vec_erase_ptr_at(method->func_decl.signature.params, 0);
+			return false;
+		}
+
+		// We might need to erase the function.
 		if (erase)
 		{
 			vec_erase_ptr_at(functions, i);
@@ -777,14 +805,17 @@ static bool sema_analyse_interface(SemaContext *context, Decl *decl, bool *erase
 			if (i >= count) break;
 			goto RETRY;
 		}
+
 		const char *name = method->name;
+		// Do a simple check to ensure the same function isn't defined twice.
+		// note that this doesn't check if it's overlapping an inherited method, this is deliberate.
 		for (unsigned j = 0; j < i; j++)
 		{
 			if (functions[j]->name == name)
 			{
 				SEMA_ERROR(method, "Duplicate definition of method '%s'.", name);
 				SEMA_NOTE(functions[j], "The previous definition was here.");
-				return decl_poison(decl);
+				decl_poison(method);
 				return false;
 			}
 		}
@@ -1493,11 +1524,9 @@ static inline Decl *operator_in_module(SemaContext *c, Module *module, OperatorO
 	return NULL;
 }
 
-Decl *sema_find_operator(SemaContext *context, Expr *expr, OperatorOverload operator_overload)
+Decl *sema_find_operator(SemaContext *context, Type *type, OperatorOverload operator_overload)
 {
-	Decl *ambiguous = NULL;
-	Decl *private = NULL;
-	Type *type = expr->type->canonical;
+	type = type->canonical;
 	if (!type_may_have_sub_elements(type)) return NULL;
 	Decl *def = type->decl;
 	Decl **funcs = def->methods;
@@ -1963,7 +1992,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_BUILTIN] = ATTR_MACRO | ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST,
 			[ATTRIBUTE_CALLCONV] = ATTR_FUNC | ATTR_INTERFACE_METHOD,
 			[ATTRIBUTE_DEFAULT] = ATTR_FUNC | ATTR_MACRO,
-			[ATTRIBUTE_DEPRECATED] = USER_DEFINED_TYPES | CALLABLE_TYPE | ATTR_CONST | ATTR_GLOBAL | ATTR_MEMBER | ATTR_BITSTRUCT_MEMBER,
+			[ATTRIBUTE_DEPRECATED] = USER_DEFINED_TYPES | CALLABLE_TYPE | ATTR_CONST | ATTR_GLOBAL | ATTR_MEMBER | ATTR_BITSTRUCT_MEMBER | ATTR_INTERFACE,
 			[ATTRIBUTE_DYNAMIC] = ATTR_FUNC,
 			[ATTRIBUTE_EXPORT] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | EXPORTED_USER_DEFINED_TYPES,
 			[ATTRIBUTE_EXTERN] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES,
@@ -1972,7 +2001,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_INIT] = ATTR_FUNC,
 			[ATTRIBUTE_INLINE] = ATTR_FUNC | ATTR_CALL,
 			[ATTRIBUTE_LITTLEENDIAN] = ATTR_BITSTRUCT,
-			[ATTRIBUTE_LOCAL] = ATTR_FUNC | ATTR_MACRO | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES | ATTR_DEF | ATTR_DISTINCT,
+			[ATTRIBUTE_LOCAL] = ATTR_FUNC | ATTR_MACRO | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES | ATTR_DEF | ATTR_INTERFACE,
 			[ATTRIBUTE_MAYDISCARD] = CALLABLE_TYPE,
 			[ATTRIBUTE_NAKED] = ATTR_FUNC,
 			[ATTRIBUTE_NODISCARD] = CALLABLE_TYPE,
@@ -1985,8 +2014,8 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_OPTIONAL] = ATTR_INTERFACE_METHOD,
 			[ATTRIBUTE_OVERLAP] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_PACKED] = ATTR_STRUCT | ATTR_UNION,
-			[ATTRIBUTE_PRIVATE] = ATTR_FUNC | ATTR_MACRO | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES | ATTR_DEF,
-			[ATTRIBUTE_PUBLIC] = ATTR_FUNC | ATTR_MACRO | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES | ATTR_DEF,
+			[ATTRIBUTE_PRIVATE] = ATTR_FUNC | ATTR_MACRO | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES | ATTR_DEF | ATTR_INTERFACE,
+			[ATTRIBUTE_PUBLIC] = ATTR_FUNC | ATTR_MACRO | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES | ATTR_DEF | ATTR_INTERFACE,
 			[ATTRIBUTE_PURE] = ATTR_CALL,
 			[ATTRIBUTE_REFLECT] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES,
 			[ATTRIBUTE_SECTION] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
@@ -3511,32 +3540,26 @@ static bool sema_analyse_generic_module_contracts(SemaContext *c, Module *module
 		contract = ast->next;
 		assert(ast->ast_kind == AST_CONTRACT);
 		SemaContext temp_context;
-
-		assert(ast->contract_stmt.kind == CONTRACT_CHECKED || ast->contract_stmt.kind == CONTRACT_REQUIRE);
+		assert(ast->contract_stmt.kind == CONTRACT_REQUIRE);
 		SemaContext *new_context = context_transform_for_eval(c, &temp_context, module->units[0]);
-		if (ast->contract_stmt.kind == CONTRACT_CHECKED)
-		{
-			if (!sema_analyse_checked(new_context, ast, error_span)) return false;
-		}
-		else
-		{
-			FOREACH_BEGIN(Expr *expr, ast->contract_stmt.contract.decl_exprs->expression_list)
-				int res = sema_check_comp_time_bool(new_context, expr);
-				if (res == -1) return false;
-				if (res) continue;
-				if (ast->contract_stmt.contract.comment)
-				{
-					sema_error_at(error_span,
-								  "Parameter(s) would violate constraint: %s.",
-								  ast->contract_stmt.contract.comment);
-				}
-				else
-				{
-					sema_error_at(error_span, "Parameter(s) failed validation: %s", ast->contract_stmt.contract.expr_string);
-				}
-				return false;
-			FOREACH_END();
-		}
+		FOREACH_BEGIN(Expr *expr, ast->contract_stmt.contract.decl_exprs->expression_list)
+			int res = sema_check_comp_time_bool(new_context, expr);
+			if (res == -1) goto FAIL;
+			if (res) continue;
+			if (ast->contract_stmt.contract.comment)
+			{
+				sema_error_at(error_span,
+				              "Parameter(s) would violate constraint: %s.",
+				              ast->contract_stmt.contract.comment);
+			} else
+			{
+				sema_error_at(error_span, "Parameter(s) failed validation: %s",
+				              ast->contract_stmt.contract.expr_string);
+			}
+		FAIL:
+			sema_context_destroy(&temp_context);
+			return false;
+		FOREACH_END();
 		sema_context_destroy(&temp_context);
 	}
 	return true;
