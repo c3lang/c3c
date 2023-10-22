@@ -986,6 +986,12 @@ typedef struct
 
 typedef struct
 {
+	bool is_and;
+	Expr** args;
+} ExprCtAndOr;
+
+typedef struct
+{
 	CastKind kind : 8;
 	ExprId expr;
 	TypeInfoId type_info;
@@ -1123,6 +1129,12 @@ typedef struct
 	const char *swizzle;
 } ExprSwizzle;
 
+typedef struct
+{
+	bool is_assign;
+	ExprId expr;
+	TypeInfoId type;
+} ExprCastable;
 
 
 struct Expr_
@@ -1144,6 +1156,8 @@ struct Expr_
 		Expr** cond_expr;                           // 8
 		ExprConst const_expr;                       // 32
 		ExprCtArg ct_arg_expr;
+		ExprCtAndOr ct_and_or_expr;
+		ExprCastable castable_expr;
 		ExprCtCall ct_call_expr;                    // 24
 		ExprIdentifierRaw ct_ident_expr;            // 24
 		Decl *decl_expr;                            // 8
@@ -1631,9 +1645,6 @@ typedef enum
 {
 	CALL_ENV_GLOBAL_INIT,
 	CALL_ENV_FUNCTION,
-	CALL_ENV_INITIALIZER,
-	CALL_ENV_FINALIZER,
-	CALL_ENV_CHECKS,
 	CALL_ENV_ATTR,
 } CallEnvKind;
 
@@ -1708,7 +1719,6 @@ typedef struct
 	unsigned errors_found;
 	unsigned warnings_found;
 	unsigned includes_used;
-	bool suppress_errors;
 	Decl ***locals_list;
 	HTable compiler_defines;
 	HTable features;
@@ -1882,7 +1892,6 @@ extern const char *kw_IoError;
 
 extern const char *kw_argc;
 extern const char *kw_argv;
-extern const char *kw_at_checked;
 extern const char *kw_at_deprecated;
 extern const char *kw_at_ensure;
 extern const char *kw_at_param;
@@ -2106,10 +2115,12 @@ AsmRegister *asm_reg_by_index(unsigned index);
 
 bool cast_implicit_silent(SemaContext *context, Expr *expr, Type *to_type);
 bool cast_implicit(SemaContext *context, Expr *expr, Type *to_type);
+bool cast_explicit_silent(SemaContext *context, Expr *expr, Type *to_type);
 bool cast_explicit(SemaContext *context, Expr *expr, Type *to_type);
-bool may_cast(SemaContext *cc, Expr *expr, Type *to_type, bool is_explicit);
 
-void cast_no_check(Expr *expr, Type *to_type, bool add_optional);
+bool may_cast(SemaContext *cc, Expr *expr, Type *to_type, bool is_explicit, bool is_silent);
+
+void cast_no_check(SemaContext *context, Expr *expr, Type *to_type, bool add_optional);
 
 bool cast_to_index(SemaContext *context, Expr *index);
 CastKind cast_to_bool_kind(Type *type);
@@ -2286,7 +2297,9 @@ bool sema_analyse_statement(SemaContext *context, Ast *statement);
 bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type *left_type, Expr *right, bool is_unwrapped_var);
 bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *expr);
 Expr **sema_expand_vasplat_exprs(SemaContext *c, Expr **exprs);
-bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl, Expr *struct_var, bool optional);
+
+bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl, Expr *struct_var, bool optional,
+                                    bool *no_match_ref);
 
 Decl *sema_decl_stack_resolve_symbol(const char *symbol);
 Decl *sema_find_decl_in_modules(Module **module_list, Path *path, const char *interned_name);
@@ -2672,11 +2685,6 @@ INLINE bool type_is_integer_unsigned(Type *type)
 
 INLINE bool type_info_poison(TypeInfo *type)
 {
-	if (global_context.suppress_errors)
-	{
-		type->resolve_status = RESOLVE_NOT_DONE;
-		return false;
-	}
 	type->kind = TYPE_INFO_POISON;
 	type->type = poisoned_type;
 	type->resolve_status = RESOLVE_DONE;
@@ -3076,11 +3084,6 @@ INLINE bool decl_ok(Decl *decl)
 
 INLINE bool decl_poison(Decl *decl)
 {
-	if (global_context.suppress_errors)
-	{
-		if (decl->resolve_status == RESOLVE_RUNNING) decl->resolve_status = RESOLVE_NOT_DONE;
-		return false;
-	}
 	decl->decl_kind = DECL_POISONED; decl->resolve_status = RESOLVE_DONE; return false;
 }
 

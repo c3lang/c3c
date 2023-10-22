@@ -182,6 +182,8 @@ void symtab_init(uint32_t capacity)
 	type_property_list[TYPE_PROPERTY_EXTNAMEOF] = KW_DEF("extnameof");
 	type_property_list[TYPE_PROPERTY_INF] = KW_DEF("inf");
 	type_property_list[TYPE_PROPERTY_INNER] = KW_DEF("inner");
+	type_property_list[TYPE_PROPERTY_IS_EQ] = KW_DEF("is_eq");
+	type_property_list[TYPE_PROPERTY_IS_ORDERED] = KW_DEF("is_ordered");
 	type_property_list[TYPE_PROPERTY_KINDOF] = KW_DEF("kindof");
 	type_property_list[TYPE_PROPERTY_MEMBERSOF] = KW_DEF("membersof");
 	type_property_list[TYPE_PROPERTY_NAMEOF] = KW_DEF("nameof");
@@ -310,7 +312,6 @@ void symtab_init(uint32_t capacity)
 
 	type = TOKEN_AT_IDENT;
 
-	kw_at_checked = KW_DEF("@checked");
 	kw_at_ensure = KW_DEF("@ensure");
 	kw_at_deprecated = KW_DEF("@deprecated");
 	kw_at_param = KW_DEF("@param");

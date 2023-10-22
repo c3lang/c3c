@@ -247,7 +247,7 @@ macro fetch_div(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
  * @return "returns the old value of ptr"
  * 
  * @require !$alignment || math::is_power_of_2($alignment) "Alignment must be a power of two."
- * @require types::is_int($typeof(*ptr)) "Only intege pointers may be used."
+ * @require types::is_int($typeof(*ptr)) "Only integer pointers may be used."
  * @require types::is_int($typeof(y)) "The value for or must be an int"
  * @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED "Acquire ordering is not valid."
  **/

@@ -1076,16 +1076,17 @@ static Expr *parse_ct_sizeof(ParseContext *c, Expr *left)
 	return access;
 }
 
+
 /**
- * ct_checks ::= CT_CHECKS '(' expression_list ')'
+ * ct_is_const ::= CT_IS_CONST '(' expr ')'
  */
-static Expr *parse_ct_checks(ParseContext *c, Expr *left)
+static Expr *parse_ct_is_const(ParseContext *c, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
-	Expr *checks = expr_new(EXPR_CT_CHECKS, c->span);
-	advance_and_verify(c, TOKEN_CT_CHECKS);
+	Expr *checks = expr_new(EXPR_CT_IS_CONST, c->span);
+	advance_and_verify(c, TOKEN_CT_IS_CONST);
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
-	ASSIGN_EXPR_OR_RET(checks->inner_expr, parse_expression_list(c, true), poisoned_expr);
+	ASSIGN_EXPR_OR_RET(checks->inner_expr, parse_expr(c), poisoned_expr);
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 	RANGE_EXTEND_PREV(checks);
 	return checks;
@@ -1126,6 +1127,42 @@ static Expr *parse_ct_call(ParseContext *c, Expr *left)
 	if (!parse_param_path(c, &elements)) return poisoned_expr;
 	expr->ct_call_expr.main_var = internal;
 	expr->ct_call_expr.flat_path = elements;
+	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
+	RANGE_EXTEND_PREV(expr);
+	return expr;
+}
+
+static Expr *parse_ct_and_or(ParseContext *c, Expr *left)
+{
+	assert(!left && "Unexpected left hand side");
+	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_AND_OR);
+	expr->ct_and_or_expr.is_and = tok_is(c, TOKEN_CT_AND);
+	advance(c);
+	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
+	Expr **exprs = NULL;
+	while (true)
+	{
+		ASSIGN_EXPR_OR_RET(Expr* internal, parse_expr(c), poisoned_expr);
+		vec_add(exprs, internal);
+		if (try_consume(c, TOKEN_COMMA)) continue;
+		CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
+		break;
+	}
+	expr->ct_and_or_expr.args = exprs;
+	RANGE_EXTEND_PREV(expr);
+	return expr;
+}
+
+static Expr *parse_ct_castable(ParseContext *c, Expr *left)
+{
+	assert(!left && "Unexpected left hand side");
+	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_CASTABLE);
+	expr->castable_expr.is_assign = c->tok == TOKEN_CT_ASSIGNABLE;
+	advance(c);
+	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
+	ASSIGN_EXPRID_OR_RET(expr->castable_expr.expr, parse_expr(c), poisoned_expr);
+	CONSUME_OR_RET(TOKEN_COMMA, poisoned_expr);
+	ASSIGN_TYPEID_OR_RET(expr->castable_expr.type, parse_type(c), poisoned_expr);
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 	RANGE_EXTEND_PREV(expr);
 	return expr;
@@ -1913,13 +1950,16 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_FN] = { parse_lambda, NULL, PREC_NONE },
 		[TOKEN_CT_SIZEOF] = { parse_ct_sizeof, NULL, PREC_NONE },
 		[TOKEN_CT_ALIGNOF] = { parse_ct_call, NULL, PREC_NONE },
+		[TOKEN_CT_AND] = {parse_ct_and_or, NULL, PREC_NONE },
+		[TOKEN_CT_ASSIGNABLE] = { parse_ct_castable, NULL, PREC_NONE },
 		[TOKEN_CT_DEFINED] = { parse_ct_defined, NULL, PREC_NONE },
-		[TOKEN_CT_CHECKS] = { parse_ct_checks, NULL, PREC_NONE },
+		[TOKEN_CT_IS_CONST] = {parse_ct_is_const, NULL, PREC_NONE },
 		[TOKEN_CT_EMBED] = { parse_ct_embed, NULL, PREC_NONE },
 		[TOKEN_CT_EVAL] = { parse_ct_eval, NULL, PREC_NONE },
 		[TOKEN_CT_FEATURE] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_EXTNAMEOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_OFFSETOF] = { parse_ct_call, NULL, PREC_NONE },
+		[TOKEN_CT_OR] = {parse_ct_and_or, NULL, PREC_NONE },
 		[TOKEN_CT_NAMEOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_QNAMEOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_TYPEFROM] = { parse_type_expr, NULL, PREC_NONE },

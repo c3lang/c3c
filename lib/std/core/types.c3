@@ -108,28 +108,6 @@ fn bool TypeKind.is_int(kind) @inline
 	return kind == TypeKind.SIGNED_INT || kind == TypeKind.UNSIGNED_INT;
 }
 
-macro bool is_indexable($Type)
-{
-	return $checks($Type t, int i, t[i]);
-}
-
-macro bool is_comparable($Type)
-{
-	var $kind = $Type.kindof;
-	$if $kind == TypeKind.DISTINCT:
-		return is_comparable($typefrom($Type.inner));
-	$else
-		return $kind == TypeKind.SIGNED_INT || $kind == TypeKind.UNSIGNED_INT || $kind == TypeKind.FLOAT
-			|| $kind == TypeKind.VECTOR || $kind == TypeKind.BOOL || $kind == TypeKind.POINTER
-			|| $kind == TypeKind.ENUM;
-	$endif
-}
-
-macro bool is_equatable($Type)
-{
-	return $checks($Type a, a == a);
-}
-
 macro bool is_subarray_convertable($Type)
 {
 	$switch ($Type.kindof)
@@ -158,6 +136,18 @@ macro bool is_intlike($Type)
 	$endswitch
 }
 
+macro bool is_underlying_int($Type)
+{
+	$switch ($Type.kindof)
+		$case SIGNED_INT:
+		$case UNSIGNED_INT:
+			return true;
+		$case DISTINCT:
+			return is_underlying_int($typefrom($Type.inner));
+		$default:
+			return false;
+	$endswitch
+}
 
 macro bool is_float($Type) => $Type.kindof == TypeKind.FLOAT;
 
@@ -185,11 +175,6 @@ macro TypeKind inner_kind($Type)
 	$else
 		return $Type.kindof;
 	$endif
-}
-
-macro bool @convertable(#a, $TypeB) @builtin
-{
-	return $checks($TypeB x = #a);
 }
 
 macro bool is_same($TypeA, $TypeB)
@@ -269,7 +254,7 @@ macro bool is_equatable_type($Type)
 	$if $defined($Type.less) || $defined($Type.compare_to) || $defined($Type.equals):
 		return true;
 	$else
-		return is_equatable($Type);
+		return $Type.is_eq;
 	$endif
 }
 
@@ -278,7 +263,7 @@ macro bool is_equatable_type($Type)
  **/
 macro bool implements_copy($Type)
 {
-	return $checks(Allocator *a, $Type x, $Type y = x.copy(a), $Type z = x.copy(), z.free(a), z.free());
+	return $defined($Type.copy) && $defined($Type.free);
 }
 
 macro bool is_equatable_value(value)
@@ -291,7 +276,7 @@ macro bool is_comparable_value(value)
 	$if $defined(value.less) || $defined(value.compare_to):
 		return true;
 	$else
-		return is_comparable($typeof(value));
+		return $typeof(value).is_ordered;
 	$endif
 }
 

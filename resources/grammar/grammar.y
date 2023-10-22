@@ -31,9 +31,9 @@ void yyerror(char *s);
 %token TRY CATCH SCOPE DEFER LVEC RVEC OPTELSE CT_TYPEFROM CT_TYPEOF TLOCAL
 %token CT_VASPLAT INLINE DISTINCT CT_VACONST CT_NAMEOF CT_VAREF CT_VACOUNT CT_VAARG
 %token CT_SIZEOF CT_STRINGIFY CT_QNAMEOF CT_OFFSETOF CT_VAEXPR CT_FEATURE
-%token CT_EXTNAMEOF CT_EVAL CT_DEFINED CT_CHECKS CT_ALIGNOF ASSERT
+%token CT_EXTNAMEOF CT_EVAL CT_DEFINED CT_ALIGNOF ASSERT
 %token ASM CHAR_LITERAL REAL TRUE FALSE CT_CONST_IDENT
-%token LBRAPIPE RBRAPIPE HASH_CONST_IDENT
+%token LBRAPIPE RBRAPIPE HASH_CONST_IDENT CT_CASTABLE CT_ASSIGNABLE CT_AND CT_IS_CONST
 
 %start translation_unit
 %%
@@ -71,17 +71,22 @@ local_ident_expr
 
 ct_call
 	: CT_ALIGNOF
-	| CT_DEFINED
 	| CT_EXTNAMEOF
 	| CT_NAMEOF
 	| CT_OFFSETOF
 	| CT_QNAMEOF
 	;
 
+ct_castable
+	: CT_ASSIGNABLE
+	;
+
 ct_analyse
 	: CT_EVAL
+	| CT_DEFINED
 	| CT_SIZEOF
 	| CT_STRINGIFY
+	| CT_IS_CONST
 	;
 
 ct_arg
@@ -140,7 +145,8 @@ base_expr
 	| ct_analyse '(' expr ')'
 	| CT_VACOUNT
 	| CT_FEATURE '(' CONST_IDENT ')'
-	| CT_CHECKS '(' expression_list ')'
+	| CT_AND '(' expression_list ')'
+	| ct_castable '(' expr ',' type ')'
 	| lambda_decl compound_statement
 	;
 

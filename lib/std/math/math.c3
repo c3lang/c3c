@@ -138,7 +138,7 @@ macro sign(x)
 
 /**
  * @require values::@is_int(x) || values::@is_float(x) "Expected an integer or floating point value"
- * @checked x + y
+ * @require values::@is_int(y) || values::@is_float(y) "Expected an integer or floating point value"
  **/
 macro atan2(x, y)
 {
@@ -151,8 +151,8 @@ macro atan2(x, y)
 
 /**
  * @require values::@is_int(x) || values::@is_float(x) "Expected an integer or floating point value"
- * @checked (*y)[0] = x, y.len
- * @require y.len == 2
+ * @require $and(@typekind(y) == ARRAY || @typekind(y) == VECTOR, y.len == 2)
+ * @require $assignable(x, $typeof(y[0]))
  **/
 macro sincos(x, y)
 {
@@ -165,7 +165,6 @@ macro sincos(x, y)
 
 /**
  * @require values::@is_int(x) || values::@is_float(x) "Expected an integer or floating point value"
- * @checked x
  **/
 macro atan(x)
 {
@@ -250,14 +249,14 @@ macro ceil(x) => $$ceil(x);
  * @return "lower if x < lower, upper if x > upper, otherwise return x."
  *
  * @require types::is_numerical($typeof(x)) `The input must be a numerical value or numerical vector`
- * @checked $typeof(x) z = lower `The lower bound must be convertable to the value type.`
- * @checked $typeof(x) z = upper `The upper bound must be convertable to the value type.`
+ * @require values::@assign_to(lower, x) `The lower bound must be convertable to the value type.`
+ * @require values::@assign_to(upper, x) `The upper bound must be convertable to the value type.`
  **/
 macro clamp(x, lower, upper) => $$max(($typeof(x))lower, $$min(x, ($typeof(x))upper));
 
 /**
  * @require values::@is_promotable_to_floatlike(mag) `The input must be a number value or float vector`
- * @require @convertable(sgn, $typeof(values::promote_int(mag)))
+ * @require values::@assign_to(sgn, values::promote_int(mag))
  **/
 macro copysign(mag, sgn) => $$copysign(values::promote_int(mag), ($typeof(values::promote_int(mag)))sgn);
 
@@ -391,7 +390,7 @@ macro nearbyint(x) => $$nearbyint(x);
 
 /**
  * @require values::@is_promotable_to_floatlike(x) `The input must be a number or a float vector`
- * @require values::@convertable_to(exp, x) || values::@is_int(exp) `The input must be an integer, castable to the type of x`
+ * @require $assignable(exp, $typeof(x)) || values::@is_int(exp) `The input must be an integer, castable to the type of x`
  **/
 macro pow(x, exp)
 {
@@ -943,7 +942,7 @@ macro bool int128.is_even(int128 x) => is_even(x);
 macro bool int128.is_odd(int128 x) => is_odd(x);
 
 /**
- * @checked x & 1
+ * @require types::is_underlying_int($typeof(x)) : `is_power_of_2 may only be used on integer types`
  */
 macro bool is_power_of_2(x)
 {

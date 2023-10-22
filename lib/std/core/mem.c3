@@ -13,7 +13,7 @@ const DEFAULT_MEM_ALIGNMENT = (void*.alignof) * 2;
  * @param ptr "The pointer address to load from."
  * @param mask "The mask for the load"
  * @param passthru "The value to use for non masked values"
- * @checked $typeof(ptr) x = &&passthru : "Pointer and passthru must match"
+ * @require $assignable(&&passthru, $typeof(ptr)) : "Pointer and passthru must match"
  * @require @typekind(passthru) == VECTOR : "Expected passthru to be a vector"
  * @require passthru.len == mask.len : "Mask and passthru must have the same length"
  *
@@ -32,7 +32,7 @@ macro masked_load(ptr, bool[<*>] mask, passthru)
  * @param passthru "The value to use for non masked values"
  * @param $alignment "The alignment to assume for the pointer"
  *
- * @checked $typeof(ptr) x = &&passthru : "Pointer and passthru must match"
+ * @require $assignable(&&passthru, $typeof(ptr)) : "Pointer and passthru must match"
  * @require @typekind(passthru) == VECTOR : "Expected passthru to be a vector"
  * @require passthru.len == mask.len : "Mask and passthru must have the same length"
  * @require math::is_power_of_2($alignment) : "The alignment must be a power of two"
@@ -53,7 +53,7 @@ macro @masked_load_aligned(ptr, bool[<*>] mask, passthru, usz $alignment)
  *
  * @require @typekind(ptrvec) == VECTOR : "Expected ptrvec to be a vector"
  * @require @typekind(passthru) == VECTOR : "Expected passthru to be a vector"
- * @checked $typeof(ptrvec[0]) x = &&passthru[0] : "Pointer and passthru must match"
+ * @require $assignable(&&passthru[0], $typeof(ptrvec[0])) : "Pointer and passthru must match"
  * @require passthru.len == mask.len : "Mask and passthru must have the same length"
  * @require mask.len == ptrvec.len : "Mask and ptrvec must have the same length"
  *
@@ -75,7 +75,7 @@ macro gather(ptrvec, bool[<*>] mask, passthru)
  *
  * @require @typekind(ptrvec) == VECTOR : "Expected ptrvec to be a vector"
  * @require @typekind(passthru) == VECTOR : "Expected passthru to be a vector"
- * @checked $typeof(ptrvec[0]) x = &&passthru[0] : "Pointer and passthru must match"
+ * @require $assignable(&&passthru[0], $typeof(ptrvec[0])) : "Pointer and passthru must match"
  * @require passthru.len == mask.len : "Mask and passthru must have the same length"
  * @require mask.len == ptrvec.len : "Mask and ptrvec must have the same length"
  * @require math::is_power_of_2($alignment) : "The alignment must be a power of two"
@@ -95,7 +95,7 @@ macro @gather_aligned(ptrvec, bool[<*>] mask, passthru, usz $alignment)
  * @param value "The value to store masked"
  * @param mask "The mask for the store"
  *
- * @checked $typeof(ptr) x = &&value : "Pointer and value must match"
+ * @require $assignable(&&value, $typeof(ptr)) : "Pointer and value must match"
  * @require @typekind(value) == VECTOR : "Expected value to be a vector"
  * @require value.len == mask.len : "Mask and value must have the same length"
  **/
@@ -110,7 +110,7 @@ macro masked_store(ptr, value, bool[<*>] mask)
  * @param mask "The mask for the store"
  * @param $alignment "The alignment of the pointer"
  *
- * @checked $typeof(ptr) x = &&value : "Pointer and value must match"
+ * @require $assignable(&&value, $typeof(ptr)) : "Pointer and value must match"
  * @require @typekind(value) == VECTOR : "Expected value to be a vector"
  * @require value.len == mask.len : "Mask and value must have the same length"
  * @require math::is_power_of_2($alignment) : "The alignment must be a power of two"
@@ -127,7 +127,7 @@ macro @masked_store_aligned(ptr, value, bool[<*>] mask, usz $alignment)
  * @param mask "The mask for the store"
  * @require @typekind(ptrvec) == VECTOR : "Expected ptrvec to be a vector"
  * @require @typekind(value) == VECTOR : "Expected value to be a vector"
- * @checked $typeof(ptrvec[0]) x = &&value[0] : "Pointer and value must match"
+ * @require $assignable(&&value[0], $typeof(ptrvec[0])) : "Pointer and value must match"
  * @require value.len == mask.len : "Mask and value must have the same length"
  * @require mask.len == ptrvec.len : "Mask and ptrvec must have the same length"
  *
@@ -145,7 +145,7 @@ macro scatter(ptrvec, value, bool[<*>] mask)
  *
  * @require @typekind(ptrvec) == VECTOR : "Expected ptrvec to be a vector"
  * @require @typekind(value) == VECTOR : "Expected value to be a vector"
- * @checked $typeof(ptrvec[0]) x = &&value[0] : "Pointer and value must match"
+ * @require $assignable(&&value[0], $typeof(ptrvec[0])) : "Pointer and value must match"
  * @require value.len == mask.len : "Mask and value must have the same length"
  * @require mask.len == ptrvec.len : "Mask and ptrvec must have the same length"
  * @require math::is_power_of_2($alignment) : "The alignment must be a power of two"
@@ -161,7 +161,7 @@ macro @volatile_load(&x) @builtin
 }
 
 /**
- * @checked *x == y : "The value doesn't match the variable"
+ * @require $assignable(y, $typeof(*x)) : "The value doesn't match the variable"
  **/
 macro @volatile_store(&x, y) @builtin
 {
@@ -321,7 +321,7 @@ macro void set(void* dst, char val, usz len, usz $dst_align = 0, bool $is_volati
  * @require values::@inner_kind(b) == TypeKind.SUBARRAY || values::@inner_kind(b) == TypeKind.POINTER
  * @require values::@inner_kind(a) != TypeKind.SUBARRAY || len == -1
  * @require values::@inner_kind(a) != TypeKind.POINTER || len > -1
- * @checked (a = b), (b = a)
+ * @require values::@assign_to(a, b) && values::@assign_to(b, a)
  **/
 macro bool equals(a, b, isz len = -1, usz $align = 0)
 {
@@ -383,7 +383,7 @@ macro type_alloc_must_be_aligned($Type)
 }
 /**
  * @require $vacount > 0 && $vacount < 3 "Expected size, type, or type + len"
- * @require $vacount != 2 || $checks($vatype(0).sizeof) "Expected 'malloc(Foo, 12)'"
+ * @require $vacount != 2 || $defined($vatype(0)) "Expected 'malloc(Foo, 12)'"
  **/
 macro malloc(..., Allocator* using = mem::heap(), usz end_padding = 0) @builtin
 {
@@ -392,13 +392,13 @@ macro malloc(..., Allocator* using = mem::heap(), usz end_padding = 0) @builtin
 
 /**
  * @require $vacount > 0 && $vacount < 3 "Expected size, type, or type + len"
- * @require $vacount != 2 || $checks($vatype(0).sizeof) "Expected 'malloc(Foo, 12)'"
+ * @require $vacount != 2 || $defined($vatype(0)) "Expected 'malloc(Foo, 12)'"
  **/
 macro malloc_checked(..., Allocator* using = mem::heap(), usz end_padding = 0) @builtin
 {
-	$if $checks($vatype(0).sizeof):
+	$if $defined($vatype(0)):
 		var $Type = $vatype(0);
-		$assert !type_alloc_must_be_aligned($vatype(0)) :  "Type must be allocated with malloc_aligned";
+		$assert !type_alloc_must_be_aligned($Type) :  "Type must be allocated with malloc_aligned";
 		$if $vacount == 2:
 			usz size = $vaarg(1);
 			return (($Type*)using.alloc_checked($Type.sizeof * size + end_padding))[:size];
@@ -413,12 +413,12 @@ macro malloc_checked(..., Allocator* using = mem::heap(), usz end_padding = 0) @
 
 /**
  * @require $vacount > 0 && $vacount < 3 "Expected size, type, or type + len"
- * @require $vacount != 2 || $checks($vatype(0).sizeof) "Expected 'malloc(Foo, 12)'"
+ * @require $vacount != 2 || $defined($vatype(0)) "Expected 'malloc(Foo, 12)'"
  * @require alignment && math::is_power_of_2(alignment)
  **/
 macro malloc_aligned(..., usz alignment = 0, usz end_padding = 0, Allocator* using = mem::heap()) @builtin
 {
-	$if $checks($vatype(0).sizeof):
+	$if $defined($vatype(0)):
 		var $Type = $vatype(0);
 		$if $vacount == 2:
 			usz size = $vaarg(1);
@@ -433,7 +433,7 @@ macro malloc_aligned(..., usz alignment = 0, usz end_padding = 0, Allocator* usi
 
 /**
  * @require $vacount > 0 && $vacount < 3 "Expected size, type, or type + len"
- * @require $vacount != 2 || $checks($vatype(0).sizeof) "Expected 'malloc(Foo, 12)'"
+ * @require $vacount != 2 || $defined($vatype(0)) "Expected 'malloc(Foo, 12)'"
  **/
 macro calloc(..., Allocator* using = mem::heap(), usz end_padding = 0) @builtin
 {
@@ -442,13 +442,13 @@ macro calloc(..., Allocator* using = mem::heap(), usz end_padding = 0) @builtin
 
 /**
  * @require $vacount > 0 && $vacount < 3 "Expected size, type, or type + len"
- * @require $vacount != 2 || $checks($vatype(0).sizeof) "Expected 'malloc(Foo, 12)'"
+ * @require $vacount != 2 || $defined($vatype(0)) "Expected 'malloc(Foo, 12)'"
  **/
 macro calloc_checked(..., Allocator* using = mem::heap(), usz end_padding = 0) @builtin
 {
-	$if $checks($vatype(0).sizeof):
+	$if $defined($vatype(0)):
 		var $Type = $vatype(0);
-		$assert !type_alloc_must_be_aligned($vatype(0)) : "Type must be allocated with calloc_aligned";
+		$assert !type_alloc_must_be_aligned($Type) : "Type must be allocated with calloc_aligned";
 		$if $vacount == 2:
 			usz size = $vaarg(1);
 			return (($Type*)using.calloc_checked($Type.sizeof * size + end_padding))[:size];
@@ -463,12 +463,12 @@ macro calloc_checked(..., Allocator* using = mem::heap(), usz end_padding = 0) @
 
 /**
  * @require $vacount > 0 && $vacount < 3 "Expected size, type, or type + len"
- * @require $vacount != 2 || $checks($vatype(0).sizeof) "Expected 'malloc(Foo, 12)'"
+ * @require $vacount != 2 || $defined($vatype(0)) "Expected 'malloc(Foo, 12)'"
  * @require alignment && math::is_power_of_2(alignment)
  **/
 macro calloc_aligned(..., usz alignment = 0, Allocator* using = mem::heap(), usz end_padding = 0) @builtin
 {
-	$if $checks($vatype(0).sizeof):
+	$if $defined($vatype(0)):
 		var $Type = $vatype(0);
 		$if $vacount == 2:
 			usz size = $vaarg(1);
@@ -517,11 +517,11 @@ macro void @scoped(Allocator* using; @body())
 
 /**
  * @require $vacount > 0 && $vacount < 3 "Expected size, type, or type + len"
- * @require $vacount != 2 || $checks($vatype(0).sizeof) "Expected 'malloc(Foo, 12)'"
+ * @require $vacount != 2 || $defined($vatype(0)) "Expected 'malloc(Foo, 12)'"
  **/
 macro tmalloc(..., usz end_padding = 0, usz alignment = DEFAULT_MEM_ALIGNMENT) @builtin
 {
-	$if $checks($vatype(0).sizeof):
+	$if $defined($vatype(0)):
 		var $Type = $vatype(0);
 		$if $vacount == 2:
 			usz size = $vaarg(1);
@@ -536,11 +536,11 @@ macro tmalloc(..., usz end_padding = 0, usz alignment = DEFAULT_MEM_ALIGNMENT) @
 
 /**
  * @require $vacount > 0 && $vacount < 3 "Expected size, type, or type + len"
- * @require $vacount != 2 || $checks($vatype(0).sizeof) "Expected 'malloc(Foo, 12)'"
+ * @require $vacount != 2 || $defined($vatype(0)) "Expected 'malloc(Foo, 12)'"
  **/
 macro tcalloc(..., usz end_padding = 0, usz alignment = mem::DEFAULT_MEM_ALIGNMENT) @builtin
 {
-	$if $checks($vatype(0).sizeof):
+	$if $defined($vatype(0)):
 		var $Type = $vatype(0);
 		$if $vacount == 2:
 			usz size = $vaarg(1);
@@ -582,7 +582,7 @@ macro void @stack_pool(usz $size; @body) @builtin
 macro void @pool(TempAllocator* #other_temp = null; @body) @builtin
 {
 	TempAllocator* current = temp();
-	var $has_arg = !$checks(var $x = #other_temp);
+	var $has_arg = !$is_const(#other_temp);
 	$if $has_arg:
 		TempAllocator* original = current;
 		if (current == (void*)#other_temp) current = temp_allocator_next();

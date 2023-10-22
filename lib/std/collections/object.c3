@@ -217,7 +217,7 @@ macro Object* Object.object_from_value(&self, value) @private
 		$case $Type.typeid == void*.typeid:
 			if (value != null) return CastResult.TYPE_MISMATCH?;
 			return &NULL_OBJECT;
-		$case $checks(String s = value):
+		$case $assignable(value, String):
 			return new_string(value, self.allocator);
 		$default:
 			$error "Unsupported object type.";
@@ -307,7 +307,6 @@ fn void Object.set_object_at(&self, usz index, Object* to_set)
 
 /**
  * @require $Type.kindof.is_int() "Expected an integer type."
- * @checked ($Type)1.0 "Expected an integer type."
  **/
 macro get_integer_value(Object* value, $Type)
 {

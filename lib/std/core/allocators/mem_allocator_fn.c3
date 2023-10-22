@@ -19,7 +19,7 @@ struct AlignedBlock
 macro void*! @aligned_alloc(#alloc_fn, usz bytes, usz alignment, usz offset)
 {
 	usz header = mem::aligned_offset(AlignedBlock.sizeof + offset, alignment) - offset;
-	$if $checks(#alloc_fn(bytes)!):
+	$if @typekind(#alloc_fn(bytes)) == OPTIONAL:
 		void* data = #alloc_fn(header + bytes)!;
 	$else
 		void* data = #alloc_fn(header + bytes);
@@ -38,7 +38,7 @@ macro void*! @aligned_alloc(#alloc_fn, usz bytes, usz alignment, usz offset)
 macro void*! @aligned_calloc(#calloc_fn, usz bytes, usz alignment, usz offset)
 {
 	usz header = mem::aligned_offset(AlignedBlock.sizeof + offset, alignment) - offset;
-	$if $checks(#calloc_fn(bytes)!):
+	$if @typekind(#calloc_fn(bytes)) == OPTIONAL:
 		void* data = #calloc_fn(header + bytes)!;
 	$else
 		void* data = #calloc_fn(header + bytes);
@@ -60,7 +60,7 @@ macro void*! @aligned_realloc(#calloc_fn, #free_fn, void* old_pointer, usz bytes
 	void* data_start = desc.start;
 	void* new_data = @aligned_calloc(#calloc_fn, bytes, alignment, offset)!;
 	mem::copy(new_data, old_pointer, desc.len < bytes ? desc.len : bytes, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
-	$if $checks(#free_fn(data_start)!):
+	$if @typekind(#free_fn(data_start)) == OPTIONAL:
 	#free_fn(data_start)!;
 	$else
 	#free_fn(data_start);
@@ -71,7 +71,7 @@ macro void*! @aligned_realloc(#calloc_fn, #free_fn, void* old_pointer, usz bytes
 macro void! @aligned_free(#free_fn, void* old_pointer)
 {
 	AlignedBlock* desc = (AlignedBlock*)old_pointer - 1;
-	$if $checks(#free_fn(desc.start)!):
+	$if @typekind(#free_fn(desc.start)) == OPTIONAL:
 	#free_fn(desc.start)!;
 	$else
 	#free_fn(desc.start);

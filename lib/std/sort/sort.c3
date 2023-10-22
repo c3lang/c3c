@@ -1,21 +1,33 @@
 module std::sort;
 
-macro bool is_searchable(list)
-{
-	return $checks(list[0]) && ($checks(list.len) || $checks(list.len()));
-}
 
 macro usz @len_from_list(&list)
 {
-	$if $checks(list.len()):
+	$if $defined(list.len()):
 		return list.len();
 	$else
 		return list.len;
 	$endif
 }
 
-macro bool is_comparer(cmp, list)
+macro bool @is_comparer(#cmp, #list)
 {
-	return $checks(int i = cmp(list[0], list[0]))
-		|| $checks(int i = cmp(&list[0], &list[0]));
+	var $params = $typeof(#cmp).params;
+	$if $params.len != 2:
+		return false;
+	$else
+		$if $params[0] != $params[1]:
+			return false;
+		$else
+			var $element = $typeof(#list[0]).typeid;
+			$switch
+				$case $element == $params[0]:
+					return true;
+				$case $and($params[0].kindof == POINTER, $params[0].inner == $element):
+					return true;
+				$default:
+					return false;
+			$endswitch
+		$endif
+	$endif
 }

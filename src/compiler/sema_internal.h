@@ -70,11 +70,13 @@ bool sema_analyse_expr_lvalue(SemaContext *context, Expr *expr);
 bool sema_analyse_expr_lvalue_fold_const(SemaContext *context, Expr *expr);
 Expr *expr_access_inline_member(Expr *parent, Decl *parent_decl);
 bool sema_analyse_ct_expr(SemaContext *context, Expr *expr);
-Decl *sema_find_operator(SemaContext *context, Expr *expr, OperatorOverload operator_overload);
+Decl *sema_find_operator(SemaContext *context, Type *type, OperatorOverload operator_overload);
 bool sema_insert_method_call(SemaContext *context, Expr *method_call, Decl *method_decl, Expr *parent, Expr **arguments);
 bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr);
-bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *struct_var, Decl *decl, bool optional);
-Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, Expr *index_expr, unsigned *index_ref);
+
+bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *struct_var, Decl *decl, bool optional,
+                                  bool *no_match_ref);
+Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, Expr *index_expr, unsigned *index_ref, bool report_error);
 Expr *sema_ct_eval_expr(SemaContext *c, bool is_type, Expr *inner, bool report_missing);
 bool sema_analyse_asm(SemaContext *context, AsmInlineBlock *block, Ast *asm_stmt);
 bool sema_bit_assignment_check(Expr *right, Decl *member);
@@ -84,13 +86,12 @@ bool sema_analyse_function_signature(SemaContext *context, Decl *func_decl, Call
 
 MemberIndex sema_len_from_const(Expr *expr);
 
-void cast_promote_vararg(Expr *arg);
+void cast_promote_vararg(SemaContext *context, Expr *arg);
 Type *cast_numeric_arithmetic_promotion(Type *type);
-void cast_to_int_to_max_bit_size(Expr *lhs, Expr *rhs, Type *left_type, Type *right_type);
+void cast_to_int_to_max_bit_size(SemaContext *context, Expr *lhs, Expr *rhs, Type *left_type, Type *right_type);
 bool sema_decl_if_cond(SemaContext *context, Decl *decl);
 bool sema_flattened_expr_is_const(SemaContext *context, Expr *expr);
 Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, const char *name, SourceSpan span, Expr **params);
-bool sema_analyse_checked(SemaContext *context, Ast *directive, SourceSpan span);
 
 INLINE bool sema_set_abi_alignment(SemaContext *context, Type *type, AlignSize *result);
 INLINE bool sema_set_alloca_alignment(SemaContext *context, Type *type, AlignSize *result);

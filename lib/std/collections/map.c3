@@ -7,7 +7,7 @@ import std::math;
 const uint DEFAULT_INITIAL_CAPACITY = 16;
 const uint MAXIMUM_CAPACITY = 1u << 31;
 const float DEFAULT_LOAD_FACTOR = 0.75;
-const VALUE_IS_EQUATABLE = types::is_equatable(Value);
+const VALUE_IS_EQUATABLE = Value.is_eq;
 const bool COPY_KEYS = types::implements_copy(Key);
 
 struct HashMap

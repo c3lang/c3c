@@ -2,7 +2,7 @@ module test;
 import libc;
 
 /**
- * @checked *a = *b, *b = *a
+ * @require values::@assign_to(*b, *a) && values::@assign_to(*a, *b)
  */
 macro void @swap(&a, &b)
 {

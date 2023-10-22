@@ -3,6 +3,10 @@
 ## 0.5.0 Change List
 
 ### Changes / improvements
+- `$and` compile time "and" which does not check expressions after the first is an error.
+- `$is_const` returns true if an expression is compile time const.
+- `$assignable` returns true is an expression may be implicitly cast to a type.
+- `$checks` and `@checked` removed, replaced by an improved `$defined`
 - Asm string blocks use AT&T syntax for better reliability.
 - Distinct methods changed to separate syntax.
 - 'exec' directive to run scripts at compile time.

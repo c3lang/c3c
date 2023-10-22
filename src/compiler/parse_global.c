@@ -245,10 +245,9 @@ bool parse_module(ParseContext *c, AstId contracts)
 				case CONTRACT_ENSURE:
 					break;
 				case CONTRACT_REQUIRE:
-				case CONTRACT_CHECKED:
 					continue;
 			}
-			RETURN_SEMA_ERROR(current, "Invalid constraint - only '@require' and '@checked' are valid for modules.");
+			RETURN_SEMA_ERROR(current, "Invalid constraint - only '@require' is valid for modules.");
 		}
 	}
 	Visibility visibility = VISIBLE_PUBLIC;
@@ -2414,7 +2413,7 @@ static inline bool parse_doc_contract(ParseContext *c, AstId *docs, AstId **docs
 	ast->contract_stmt.kind = kind;
 	const char *start = c->lexer.data.lex_start;
 	advance(c);
-	ASSIGN_EXPR_OR_RET(ast->contract_stmt.contract.decl_exprs, parse_expression_list(c, kind == CONTRACT_CHECKED), false);
+	ASSIGN_EXPR_OR_RET(ast->contract_stmt.contract.decl_exprs, parse_expression_list(c, false), false);
 	const char *end = start + 1;
 	while (end[0] != '\n' && end[0] != '\0') end++;
 	if (end > c->data.lex_start) end = c->data.lex_start;
@@ -2422,9 +2421,6 @@ static inline bool parse_doc_contract(ParseContext *c, AstId *docs, AstId **docs
 	scratch_buffer_clear();
 	switch (kind)
 	{
-		case CONTRACT_CHECKED:
-			scratch_buffer_append("@checked \"");
-			break;
 		case CONTRACT_ENSURE:
 			scratch_buffer_append("@ensure \"");
 			break;
@@ -2605,11 +2601,6 @@ static bool parse_contracts(ParseContext *c, AstId *contracts_ref)
 				else if (name == kw_at_require)
 				{
 					if (!parse_doc_contract(c, contracts_ref, next, CONTRACT_REQUIRE)) return false;
-					break;
-				}
-				else if (name == kw_at_checked)
-				{
-					if (!parse_doc_contract(c, contracts_ref, next, CONTRACT_CHECKED)) return false;
 					break;
 				}
 				else if (name == kw_at_ensure)

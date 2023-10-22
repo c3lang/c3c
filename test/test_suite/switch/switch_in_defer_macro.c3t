@@ -2,8 +2,8 @@
 
 /**
  * @require Token.kindof == ENUM && $typefrom(Token.inner).kindof == UNSIGNED_INT
- * @require $checks(((Token)0).token)
- * @require $checks(((Comment)0).start) && $checks(((Comment)0).end)
+ * @require $defined(((Token)0).token)
+ * @require $defined(((Comment)0).start) && $defined(((Comment)0).end)
  **/
 module lexer(<Token, Comment>);
 import std::io;

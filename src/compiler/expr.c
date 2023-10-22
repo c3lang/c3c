@@ -191,8 +191,10 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 			return true;
 		case EXPR_OPERATOR_CHARS:
 		case EXPR_STRINGIFY:
-		case EXPR_CT_CHECKS:
+		case EXPR_CT_AND_OR:
+		case EXPR_CT_CASTABLE:
 		case EXPR_CT_DEFINED:
+		case EXPR_CT_IS_CONST:
 		case EXPR_LAMBDA:
 		case EXPR_EMBED:
 			return true;
@@ -662,22 +664,24 @@ bool expr_is_pure(Expr *expr)
 			return exprid_is_pure(expr->pointer_offset_expr.ptr) && exprid_is_pure(expr->pointer_offset_expr.offset);
 		case EXPR_COMPILER_CONST:
 		case EXPR_CONST:
-		case EXPR_IDENTIFIER:
-		case EXPR_NOP:
-		case EXPR_STRINGIFY:
-		case EXPR_RETVAL:
-		case EXPR_TYPEINFO:
+		case EXPR_CT_AND_OR:
+		case EXPR_CT_ARG:
+		case EXPR_CT_CALL:
+		case EXPR_CT_CASTABLE:
+		case EXPR_CT_DEFINED:
+		case EXPR_CT_IS_CONST:
 		case EXPR_CT_EVAL:
 		case EXPR_CT_IDENT:
-		case EXPR_CT_CALL:
-		case EXPR_TYPEID:
-		case EXPR_CT_ARG:
-		case EXPR_OPERATOR_CHARS:
-		case EXPR_CT_CHECKS:
-		case EXPR_CT_DEFINED:
-		case EXPR_LAMBDA:
 		case EXPR_EMBED:
+		case EXPR_IDENTIFIER:
+		case EXPR_LAMBDA:
 		case EXPR_MACRO_BODY:
+		case EXPR_NOP:
+		case EXPR_OPERATOR_CHARS:
+		case EXPR_RETVAL:
+		case EXPR_STRINGIFY:
+		case EXPR_TYPEID:
+		case EXPR_TYPEINFO:
 			return true;
 		case EXPR_VASPLAT:
 			return true;

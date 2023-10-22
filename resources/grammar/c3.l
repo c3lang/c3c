@@ -39,9 +39,9 @@ int comment_level = 0;
 
 
 "$alignof"      { count(); return(CT_ALIGNOF); }
+"$and"          { count(); return(CT_AND); }
 "$assert"       { count(); return(CT_ASSERT); }
 "$case"         { count(); return(CT_CASE); }
-"$checks"       { count(); return(CT_CHECKS); }
 "$default"      { count(); return(CT_DEFAULT); }
 "$defined"      { count(); return(CT_DEFINED); }
 "$echo"         { count(); return(CT_ECHO); }
@@ -58,6 +58,7 @@ int comment_level = 0;
 "$for"          { count(); return(CT_FOR); }
 "$foreach"      { count(); return(CT_FOREACH); }
 "$if"           { count(); return(CT_IF); }
+"$is_const"     { count(); return(CT_IS_CONST); }
 "$include"      { count(); return(CT_INCLUDE); }
 "$nameof"       { count(); return(CT_NAMEOF); }
 "$offsetof"     { count(); return(CT_OFFSETOF); }

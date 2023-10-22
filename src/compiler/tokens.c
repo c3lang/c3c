@@ -324,12 +324,14 @@ const char *token_type_to_string(TokenType type)
 
 		case TOKEN_CT_ALIGNOF:
 			return "$alignof";
+		case TOKEN_CT_AND:
+			return "$and";
 		case TOKEN_CT_ASSERT:
 			return "$assert";
+		case TOKEN_CT_ASSIGNABLE:
+			return "$assignable";
 		case TOKEN_CT_CASE:
 			return "$case";
-		case TOKEN_CT_CHECKS:
-			return "$checks";
 		case TOKEN_CT_DEFAULT:
 			return "$default";
 		case TOKEN_CT_DEFINED:
@@ -364,6 +366,8 @@ const char *token_type_to_string(TokenType type)
 			return "$foreach";
 		case TOKEN_CT_IF:
 			return "$if";
+		case TOKEN_CT_IS_CONST:
+			return "$is_const";
 		case TOKEN_CT_INCLUDE:
 			return "$include";
 		case TOKEN_CT_VACOUNT:
@@ -384,6 +388,8 @@ const char *token_type_to_string(TokenType type)
 			return "$nameof";
 		case TOKEN_CT_OFFSETOF:
 			return "$offsetof";
+		case TOKEN_CT_OR:
+			return "$or";
 		case TOKEN_CT_QNAMEOF:
 			return "$qnameof";
 		case TOKEN_CT_SIZEOF:
