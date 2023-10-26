@@ -282,10 +282,10 @@ macro void DString.append(&self, value)
 			self.append_char32(value);
 		$default:
 			$switch
-				$case $assignable(value, Char32):
-					self.append_char32(value);
-				$case $assignable(value, String):
-					self.append_chars(value);
+				$case $defined((Char32)value):
+					self.append_char32((Char32)value);
+				$case $defined((String)value):
+					self.append_chars((String)value);
 				$default:
 					$error "Unsupported type for append – use printf instead.";
 			$endswitch

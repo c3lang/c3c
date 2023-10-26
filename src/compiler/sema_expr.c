@@ -3984,8 +3984,7 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 
 	// 7. Is this a pointer? If so we insert a deref.
 	Type *underlying_type = type_no_optional(parent->type)->canonical;
-	bool is_pointer = underlying_type->type_kind == TYPE_POINTER;
-	if (is_pointer)
+	if (underlying_type->type_kind == TYPE_POINTER && underlying_type != type_voidptr)
 	{
 		if (!sema_cast_rvalue(context, parent)) return false;
 		expr_rewrite_insert_deref(expr->access_expr.parent);

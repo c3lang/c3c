@@ -2945,10 +2945,7 @@ static bool sema_analyse_macro_method(SemaContext *context, Decl *decl)
 	Type *parent_type = parent_type_info->type;
 	if (!type_may_have_method(parent_type))
 	{
-		SEMA_ERROR(parent_type_info,
-				   "Methods can not be associated with '%s'",
-				   type_to_error_string(parent_type));
-		return false;
+		RETURN_SEMA_ERROR(parent_type_info, "Methods can not be associated with '%s'", type_to_error_string(parent_type));
 	}
 	if (!vec_size(decl->func_decl.signature.params))
 	{

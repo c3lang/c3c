@@ -1879,9 +1879,10 @@ bool type_may_have_method(Type *type)
 			return true;
 		case TYPE_TYPEDEF:
 			UNREACHABLE
+		case TYPE_POINTER:
+			return type == type_voidptr;
 		case TYPE_POISONED:
 		case TYPE_VOID:
-		case TYPE_POINTER:
 		case TYPE_FUNC:
 		case TYPE_UNTYPED_LIST:
 		case TYPE_OPTIONAL:

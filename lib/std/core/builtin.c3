@@ -362,6 +362,7 @@ macro uint bool.hash(bool b) => (uint)b;
 macro uint typeid.hash(typeid t) => ((ulong)(uptr)t).hash();
 macro uint String.hash(String c) => (uint)fnv32a::encode(c);
 macro uint char[].hash(char[] c) => (uint)fnv32a::encode(c);
+macro uint void*.hash(void* ptr) => ((ulong)(uptr)ptr).hash();
 
 module std::core::builtin @if((env::LINUX || env::DARWIN) && env::COMPILER_SAFE_MODE && env::DEBUG_SYMBOLS);
 import libc;
