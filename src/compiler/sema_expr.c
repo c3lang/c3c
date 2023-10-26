@@ -7760,12 +7760,12 @@ RETRY:;
 		case EXPR_OPERATOR_CHARS:
 		case EXPR_MACRO_BODY_EXPANSION:
 		case EXPR_BUILTIN_ACCESS:
+		case EXPR_DECL:
 			UNREACHABLE
 		case EXPR_BINARY:
 		case EXPR_BITACCESS:
 		case EXPR_BITASSIGN:
 		case EXPR_COMPOUND_LITERAL:
-		case EXPR_DECL:
 		case EXPR_EMBED:
 		case EXPR_GENERIC_IDENT:
 		case EXPR_POINTER_OFFSET:
@@ -7778,6 +7778,8 @@ RETRY:;
 		case EXPR_SUBSCRIPT_ASSIGN:
 		case EXPR_VASPLAT:
 		case EXPR_MACRO_BODY:
+			REMINDER("Check if these should be analysed");
+			FALLTHROUGH;
 			// Above needs to be analysed
 		case EXPR_GROUP:
 		case EXPR_INITIALIZER_LIST:
