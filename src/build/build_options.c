@@ -486,7 +486,7 @@ static void parse_option(BuildOptions *options)
 		case 'h':
 			break;
 		case 'z':
-			if (match_shortopt("U"))
+			if (match_shortopt("z"))
 			{
 				if (at_end()) error_exit("error: -z needs a value.");
 				add_linker_arg(options, next_arg());
