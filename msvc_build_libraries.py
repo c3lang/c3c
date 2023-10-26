@@ -68,7 +68,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--show-versions", const=True, action="store_const", help="Show available MSVC and Windows SDK versions")
 ap.add_argument("--accept-license", const=True, action="store_const", help="Automatically accept license")
 ap.add_argument("--msvc-version", help="Get specific MSVC version")
-ap.add_argument("--sdk_path-version", help="Get specific Windows SDK version")
+ap.add_argument("--sdk-version", help="Get specific Windows SDK version")
 args = ap.parse_args()
 
 
