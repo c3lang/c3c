@@ -136,7 +136,7 @@ macro usz! print_gen(self, x)
 	$case DString:
 		return self.write(x.str_view());
 	$default:
-		$if @convertible(x, String):
+		$if $assignable(x, String):
 			return self.write((String)x);
 		$else
 			return printf("%s", x);
