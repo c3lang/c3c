@@ -45,7 +45,7 @@ fn TempAllocator*! new_temp(usz size, Allocator* using)
 	return allocator;
 }
 
-fn usz TempAllocator.mark(&self) => self.used;
+fn usz TempAllocator.mark(&self) @dynamic => self.used;
 
 fn void TempAllocator.release(&self, void* old_pointer, bool) @dynamic
 {
