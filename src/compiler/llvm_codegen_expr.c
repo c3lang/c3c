@@ -768,6 +768,7 @@ static void llvm_emit_member_addr(GenContext *c, BEValue *value, Decl *parent, D
 				llvm_value_bitcast(c, value, found->type);
 				break;
 			case TYPE_STRUCT:
+				llvm_value_addr(c, value);
 				llvm_value_struct_gep(c, value, value, (unsigned)index);
 				break;
 			default:

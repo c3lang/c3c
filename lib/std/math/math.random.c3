@@ -11,30 +11,47 @@ interface Random
 	fn void next_bytes(char[] buffer);
 }
 
-macro Random.seed(&self, seed)
+macro bool is_random(random) => $assignable(random, Random*);
+
+/**
+ * @require is_random(random)
+ **/
+macro void seed(random, seed)
 {
-	self.set_seed(@as_char_view(seed));
+	random.set_seed(@as_char_view(seed));
 }
 
-fn int Random.next(&random, int max)
+/**
+ * @require is_random(random)
+ **/
+macro int next(random, int max)
 {
-	return (int)(random.next_double() * max);
+	return (int)(next_double(random) * max);
 }
 
-fn bool Random.next_bool(&self)
+/**
+ * @require is_random(random)
+ **/
+macro void next_bool(random)
 {
-	return self.next_byte() & 1 == 0;
+	return random.next_byte() & 1;
 }
 
-fn float Random.next_float(&self)
+/**
+ * @require is_random(random)
+ **/
+macro float next_float(random)
 {
-	uint val = self.next_int() & (1 << 24 - 1);
+	uint val = random.next_int() & (1 << 24 - 1);
 	return val / (float)(1 << 24);
 }
 
-fn double Random.next_double(&self)
+/**
+ * @require is_random(random)
+ **/
+macro double next_double(random)
 {
-	ulong val = self.next_long() & (1UL << 53 - 1);
+	ulong val = random.next_long() & (1UL << 53 - 1);
 	return val * 0x1.0p-53;
 }
 

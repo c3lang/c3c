@@ -368,14 +368,14 @@ macro bool equals(a, b, isz len = -1, usz $align = 0)
 	return true;
 }
 
-macro @clone(&value, Allocator *using = mem::heap()) @builtin
+macro @clone(value, Allocator *using = mem::heap()) @builtin
 {
 	$typeof(value)* x = malloc($typeof(value), .using = using);
 	*x = value;
 	return x;
 }
 
-macro @tclone(&value) @builtin => @clone(value, mem::temp());
+macro @tclone(value) @builtin => @clone(value, mem::temp());
 
 macro type_alloc_must_be_aligned($Type)
 {
@@ -601,16 +601,17 @@ macro void @pool(TempAllocator* #other_temp = null; @body) @builtin
 tlocal Allocator* thread_allocator @private = &allocator::LIBC_ALLOCATOR;
 tlocal TempAllocator* thread_temp_allocator @private = null;
 tlocal TempAllocator*[2] temp_allocator_pair @private;
+Allocator* temp_base_allocator @private = &allocator::LIBC_ALLOCATOR;
 
-macro TempAllocator* create_default_sized_temp_allocator() @local
+macro TempAllocator* create_default_sized_temp_allocator(Allocator* allocator) @local
 {
 	$switch (env::MEMORY_ENV)
 	$case NORMAL:
-		return allocator::new_temp(1024 * 256, thread_allocator)!!;
+		return allocator::new_temp(1024 * 256, allocator)!!;
 	$case SMALL:
-		return allocator::new_temp(1024 * 16, thread_allocator)!!;
+		return allocator::new_temp(1024 * 16, allocator)!!;
 	$case TINY:
-		return allocator::new_temp(1024 * 2, thread_allocator)!!;
+		return allocator::new_temp(1024 * 2, allocator)!!;
 	$case NONE:
 		unreachable("Temp allocator must explicitly created when memory-env is set to 'none'.");
 	$endswitch
@@ -631,8 +632,8 @@ import libc;
 
 fn void init_default_temp_allocators() @private
 {
-	temp_allocator_pair[0] = create_default_sized_temp_allocator();
-	temp_allocator_pair[1] = create_default_sized_temp_allocator();
+	temp_allocator_pair[0] = create_default_sized_temp_allocator(temp_base_allocator);
+	temp_allocator_pair[1] = create_default_sized_temp_allocator(temp_base_allocator);
 	thread_temp_allocator = temp_allocator_pair[0];
 }
 
@@ -661,5 +662,6 @@ fn void initialize_wasm_mem() @init(1) @private
 	uptr start = (uptr)&__heap_base;
 	if (start > mem::DEFAULT_MEM_ALIGNMENT) allocator::wasm_memory.use = start;
 	wasm_allocator.init(fn (x) => allocator::wasm_memory.allocate_block(x));
+	temp_base_allocator = &wasm_allocator;
 	thread_allocator = &wasm_allocator;
 }
