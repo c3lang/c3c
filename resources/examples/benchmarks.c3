@@ -20,7 +20,7 @@ fn void! very_long_name_bench() @benchmark
     return std::thread::sleep_ms(10);
 }
 
-static initialize
+fn void initialize() @init
 {
     set_benchmark_warmup_iterations(5);
     set_benchmark_max_iterations(1000);

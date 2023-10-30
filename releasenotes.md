@@ -3,6 +3,7 @@
 ## 0.5.0 Change List
 
 ### Changes / improvements
+- `$defined` can take a list of expressions.
 - `$and` compile time "and" which does not check expressions after the first is an error.
 - `$is_const` returns true if an expression is compile time const.
 - `$assignable` returns true is an expression may be implicitly cast to a type.
@@ -129,6 +130,7 @@
 - `assert` may now take varargs for formatting.
 
 ### Stdlib changes
+- Tuple and Maybe types.
 - `.as_str()` replaced by `.str_view()`
 - Added `math::log(x , base)` and `math::ln(x)`.
 - Hashmap keys implicitly copied if copy/free are defined.
@@ -179,6 +181,7 @@
 - Added posix socket functions.
 
 ### Fixes
+- Structs returned from macros and then indexed into directly could previously be miscompiled.
 - Naked functions now correctly handles `asm`.
 - Indexing into arrays would not always widen the index safely.
 - Macros with implicit return didn't correctly deduct the return type.
