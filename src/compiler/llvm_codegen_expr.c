@@ -5810,7 +5810,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 		assert(arg_count);
 		Expr *any_val = args[0];
 		assert(any_val->expr_kind == EXPR_CAST);
-		args[0] = exprptr(any_val->cast_expr.expr)->unary_expr.expr;
+		args[0] = exprptr(any_val->cast_expr.expr);
 	}
 
 	if (!expr->call_expr.is_func_ref)

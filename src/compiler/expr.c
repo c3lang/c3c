@@ -283,6 +283,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 			assert(!exprid_is_constant_eval(expr->ternary_expr.cond, eval_kind));
 			return false;
 		case EXPR_FORCE_UNWRAP:
+			return false;
 		case EXPR_TYPEID:
 			return eval_kind != CONSTANT_EVAL_CONSTANT_VALUE;
 		case EXPR_UNARY:

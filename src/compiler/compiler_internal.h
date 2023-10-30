@@ -2282,7 +2282,7 @@ void sema_erase_var(SemaContext *context, Decl *decl);
 void sema_erase_unwrapped(SemaContext *context, Decl *decl);
 bool sema_analyse_cond_expr(SemaContext *context, Expr *expr);
 
-bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allow_optional);
+bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allow_optional, bool *no_match_ref);
 MemberIndex sema_get_initializer_const_array_size(SemaContext *context, Expr *initializer, bool *may_be_array, bool *is_const_size);
 bool sema_analyse_expr(SemaContext *context, Expr *expr);
 bool sema_expr_check_discard(Expr *expr);

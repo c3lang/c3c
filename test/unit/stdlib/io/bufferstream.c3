@@ -29,7 +29,7 @@ fn void! readbuffer()
     ByteWriter bw;
     bw.tinit();
 
-    usz n = reader_buf.copy_to(&bw)!;
+    usz n = io::copy_to(&reader_buf, &bw)!;
 
     assert(n == DATA.len, "got %d; want %d", n, DATA.len);
     String got = bw.str_view();
@@ -61,7 +61,7 @@ fn void! writebuffer()
     WriteBuffer write_buf;
     write_buf.init(&out, buf[..]);
 
-    usz n = br.copy_to(&write_buf)!;
+    usz n = io::copy_to(&br, &write_buf)!;
 
     assert(n == DATA.len, "got %d; want %d", n, DATA.len);
     String got = out.str_view();

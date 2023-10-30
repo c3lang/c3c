@@ -1,19 +1,23 @@
 module std::io;
 
-struct ByteReader
+struct ByteReader (InStream)
 {
-	inline Stream stream;
 	char[] bytes;
 	usz index;
 }
 
+fn usz ByteReader.len(&self) @dynamic
+{
+	return self.bytes.len;
+}
+
 fn ByteReader* ByteReader.init(&self, char[] bytes)
 {
-	*self = { .stream = { &BYTEREADER_INTERFACE }, .bytes = bytes };
+	*self = { .bytes = bytes };
 	return self;
 }
 
-fn usz! ByteReader.read(&self, char[] bytes)
+fn usz! ByteReader.read(&self, char[] bytes) @dynamic
 {
 	if (self.index >= self.bytes.len) return IoError.EOF?;
 	usz len = min(self.bytes.len - self.index, bytes.len);
@@ -23,19 +27,19 @@ fn usz! ByteReader.read(&self, char[] bytes)
 	return len;
 }
 
-fn char! ByteReader.read_byte(&self)
+fn char! ByteReader.read_byte(&self) @dynamic
 {
 	if (self.index >= self.bytes.len) return IoError.EOF?;
 	return self.bytes[self.index++];
 }
 
-fn void! ByteReader.pushback_byte(&self)
+fn void! ByteReader.pushback_byte(&self) @dynamic
 {
 	if (!self.index) return IoError.INVALID_PUSHBACK?;
 	self.index--;
 }
 
-fn usz! ByteReader.seek(&self, isz offset, Seek seek)
+fn usz! ByteReader.seek(&self, isz offset, Seek seek) @dynamic
 {
 	isz new_index;
 	switch (seek)
@@ -49,7 +53,7 @@ fn usz! ByteReader.seek(&self, isz offset, Seek seek)
 	return new_index;
 }
 
-fn usz! ByteReader.write_stream(&self, Stream* writer)
+fn usz! ByteReader.write_to(&self, OutStream* writer) @dynamic
 {
 	if (self.index >= self.bytes.len) return 0;
 	usz written = writer.write(self.bytes[self.index..])!;
@@ -58,19 +62,7 @@ fn usz! ByteReader.write_stream(&self, Stream* writer)
 	return written;
 }
 
-fn usz ByteReader.available(&self) @inline
+fn usz! ByteReader.available(&self) @inline @dynamic
 {
 	return max(0, self.bytes.len - self.index);
 }
-
-const StreamInterface BYTEREADER_INTERFACE = {
-	.len_fn = fn (Stream* self) => ((ByteReader*)self).bytes.len,
-	.read_fn = (ReadStreamFn)&ByteReader.read,
-	.read_byte_fn = (ReadByteStreamFn)&ByteReader.read_byte,
-	.pushback_byte_fn = (PushbackByteStreamFn)&ByteReader.pushback_byte,
-	.seek_fn = (SeekStreamFn)&ByteReader.seek,
-	.write_stream_fn = (WriteToStreamFn)&ByteReader.write_stream,
-	.available_fn = fn (Stream* self) => ((ByteReader*)self).available(),
-};
-
-

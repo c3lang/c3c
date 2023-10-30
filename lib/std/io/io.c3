@@ -45,21 +45,133 @@ fault IoError
 }
 
 
+/**
+ * @param stream
+ * @require @is_instream(stream)
+ **/
+macro  String! readline(stream = io::stdin(), Allocator* using = mem::heap())
+{
+	bool $is_stream = $typeof(stream).typeid == InStream*.typeid;
+	$if $is_stream:
+		$typeof(&stream.read_byte) func = &stream.read_byte;
+		char val = func((void*)stream)!;
+	$else
+		char val = stream.read_byte()!;
+	$endif
+
+    if (val == '\n') return "";
+    @pool(using)
+    {
+        DString str = dstring::tnew_with_capacity(256);
+    	if (val != '\r') str.append(val);
+    	while (1)
+    	{
+    	    $if $is_stream:
+    	        char! c = func((void*)stream);
+    	    $else
+    	        char! c = stream.read_byte();
+    	    $endif
+    		if (catch err = c)
+    		{
+    			if (err == IoError.EOF) break;
+    			return err?;
+    		}
+    		if (c == '\r') continue;
+    		if (c == '\n') break;
+    		str.append_char(c);
+    	}
+    	return str.copy_str(using);
+    };
+}
+
+macro String! treadline(stream = io::stdin()) => readline(stream, mem::temp()) @inline;
+
+/**
+ * @require @is_outstream(out) "The output must implement OutStream"
+ */
+macro usz! fprint(out, x)
+{
+	var $Type = $typeof(x);
+	$switch ($Type)
+	$case String:
+		return out.write(x);
+	$case ZString:
+		return out.write(x.str_view());
+	$case DString:
+		return out.write(x.str_view());
+	$default:
+		$if $assignable(x, String):
+			return out.write((String)x);
+		$else
+			return printf("%s", x, .out = out);
+		$endif
+	$endswitch
+}
+
+fn usz! fprintf(OutStream* out, String format, args...)
+{
+	Formatter formatter;
+	formatter.init(&out_putstream_fn, &out);
+	return formatter.vprintf(format, args);
+}
+
+fn usz! fprintfn(OutStream* out, String format, args...) @maydiscard
+{
+	Formatter formatter;
+	formatter.init(&out_putstream_fn, &out);
+	usz len = formatter.vprintf(format, args)!;
+	out.write_byte('\n')!;
+	if (&out.flush) out.flush()!;
+	return len + 1;
+}
+
+/**
+ * @require @is_outstream(out) "The output must implement OutStream"
+ */
+macro usz! fprintn(out, x = "")
+{
+	usz len = fprint(out, x)!;
+	out.write_byte('\n')!;
+	$switch
+		$case $typeof(out).typeid == OutStream*.typeid:
+			if (&out.flush) out.flush()!;
+		$case $defined(out.flush):
+			out.flush()!;
+	$endswitch
+	return len + 1;
+}
+
 macro void print(x)
 {
-	(void)print_gen(stdout(), x);
+	(void)fprint(io::stdout(), x);
 }
 
 macro void printn(x = "")
 {
-	(void)printn_gen(stdout(), x);
+	(void)fprintn(io::stdout(), x);
+}
+
+macro void eprint(x)
+{
+	(void)fprint(io::stderr(), x);
+}
+
+macro void eprintn(x)
+{
+	(void)fprintn(io::stderr(), x);
+}
+
+
+fn void! out_putstream_fn(void* data, char c) @private
+{
+	OutStream** stream = data;
+	return (*stream).write_byte(c);
 }
 
 fn void! out_putchar_fn(void* data @unused, char c) @private
 {
 	libc::putchar(c);
 }
-
 
 fn usz! printf(String format, args...) @maydiscard
 {
@@ -74,7 +186,28 @@ fn usz! printfn(String format, args...) @maydiscard
 	formatter.init(&out_putchar_fn);
 	usz len = formatter.vprintf(format, args)!;
 	putchar('\n');
+	io::stdout().flush()!;
 	return len + 1;
+}
+
+fn usz! eprintf(String format, args...) @maydiscard
+{
+	Formatter formatter;
+	OutStream* stream = stderr();
+	formatter.init(&out_putstream_fn, &stream);
+	return formatter.vprintf(format, args);
+}
+
+
+fn usz! eprintfn(String format, args...) @maydiscard
+{
+	Formatter formatter;
+	OutStream* stream = stderr();
+	formatter.init(&out_putstream_fn, &stream);
+	usz len = formatter.vprintf(format, args)! + 1;
+	stderr().write_byte('\n')!;
+	stderr().flush()!;
+	return len;
 }
 
 fn char[]! bprintf(char[] buffer, String format, args...) @maydiscard
@@ -112,21 +245,21 @@ fn void putchar(char c) @inline
 fn File* stdout()
 {
 	static File file;
-	if (!file.fns) file = file::from_handle(libc::stdout());
+	if (!file.file) file = file::from_handle(libc::stdout());
 	return &file;
 }
 
 fn File* stderr()
 {
 	static File file;
-	if (!file.fns) file = file::from_handle(libc::stderr());
+	if (!file.file) file = file::from_handle(libc::stderr());
 	return &file;
 }
 
 fn File* stdin()
 {
 	static File file;
-	if (!file.fns) file = file::from_handle(libc::stdin());
+	if (!file.file) file = file::from_handle(libc::stdin());
 	return &file;
 }
 

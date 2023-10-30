@@ -433,9 +433,11 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_GROUP:
 		case EXPR_STRINGIFY:
 		case EXPR_CT_EVAL:
-		case EXPR_CT_DEFINED:
 		case EXPR_CT_IS_CONST:
 			MACRO_COPY_EXPR(expr->inner_expr);
+			return expr;
+		case EXPR_CT_DEFINED:
+			MACRO_COPY_EXPR_LIST(expr->expression_list);
 			return expr;
 		case EXPR_TYPEID_INFO:
 			MACRO_COPY_EXPRID(expr->typeid_info_expr.parent);

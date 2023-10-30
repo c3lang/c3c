@@ -38,7 +38,7 @@ struct TextTag
 	TextTagKind kind;
 	union {
 		String* data;
-		Stream template;
+		TextTemplate* template;
 	}
 }
 
@@ -102,16 +102,7 @@ fn void! TextTemplate.free(&self)
 	*self = {};
 }
 
-fn StreamWrapper TextTemplate.as_stream(&self)
-{
-    return { .stream.fns = &texttemplate_interface, .data = self };
-}
-
-StreamInterface texttemplate_interface @private = {
-    .write_stream_fn = fn (s, out) => ((TextTemplate*)(((StreamWrapper*)s).data)).write_to(out),
-};
-
-fn usz! TextTemplate.write_to(&self, Stream* writer)
+fn usz! TextTemplate.write_to(&self, OutStream* writer)
 {
 	usz n;
 	usz pos;
@@ -125,7 +116,7 @@ fn usz! TextTemplate.write_to(&self, Stream* writer)
 	return n;
 }
 
-fn usz! TextTag.write(&self, Stream* writer)
+fn usz! TextTag.write(&self, OutStream* writer)
 {
 	switch (self.kind)
 	{
@@ -247,7 +238,7 @@ panic_block:                                      ; preds = %assign_optional4
   %14 = insertvalue %"any*[]" undef, ptr %varargslots, 0
   %"$$temp" = insertvalue %"any*[]" %14, i64 1, 1
   store %"any*[]" %"$$temp", ptr %indirectarg6, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 25, ptr @.func, i64 4, i32 173, ptr byval(%"any*[]") align 8 %indirectarg6)
+  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 25
   unreachable
 
 noerr_block7:                                     ; preds = %after_check5

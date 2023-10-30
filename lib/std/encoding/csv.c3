@@ -3,11 +3,11 @@ import std::io;
 
 struct CsvReader
 {
-	Stream* stream;
+	InStream* stream;
 	String separator;
 }
 
-fn void CsvReader.init(&self, Stream* stream, String separator = ",")
+fn void CsvReader.init(&self, InStream* stream, String separator = ",")
 {
 	self.stream = stream;
 	self.separator = separator;
@@ -15,9 +15,9 @@ fn void CsvReader.init(&self, Stream* stream, String separator = ",")
 
 fn String[]! CsvReader.read_row(self, Allocator* using = mem::heap())
 {
-	@pool()
+	@pool(using)
 	{
-		return self.stream.treadline().split(self.separator, .using = using);
+		return io::treadline(self.stream).split(self.separator, .using = using);
 	};
 }
 
@@ -30,13 +30,13 @@ fn void! CsvReader.skip_row(self) @maydiscard
 {
 	@pool()
 	{
-		self.stream.readline(mem::temp())!;
+		(void)io::treadline(self.stream);
 	};
 }
 
 macro CsvReader.@each_row(self, int rows = int.max; @body(String[] row))
 {
-	Stream* stream = self.stream;
+	InputStream* stream = self.stream;
 	String sep = self.separator;
 	while (rows--)
 	{

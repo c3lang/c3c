@@ -57,13 +57,13 @@ fn void! read_write_any()
 
     File file = file::open("__file_read_write_any_test_file", "wb")!!;
 
-    file.write_any(&data)!!;
+    io::write_any(&file, &data)!!;
     file.flush()!;
     file.close()!!;
 
     file = file::open("__file_read_write_any_test_file", "rb")!!;
     Data rdata;
-    file.read_any(&rdata)!!;
+    io::read_any(&file, &rdata)!!;
 
     file.close()!!;
 

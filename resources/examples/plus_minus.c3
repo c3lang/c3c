@@ -13,7 +13,7 @@ fault TokenResult
 fn void! main(String[] args)
 {
 	// Grab a string from stdin
-	String s = io::stdin().readline()!;
+	String s = io::readline()!;
 	// Delete it at scope end [defer]
 	defer s.free();
 

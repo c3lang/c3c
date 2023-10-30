@@ -2,15 +2,12 @@ module std::io;
 
 struct BitReader
 {
-	Stream reader;
+	InStream* reader;
 	uint bits;
 	uint len;
 }
 
-/**
- * @require byte_reader.supports_read_byte()
- **/
-fn void BitReader.init(&self, Stream byte_reader)
+fn void BitReader.init(&self, InStream* byte_reader)
 {
 	*self = { .reader = byte_reader };
 }
@@ -43,15 +40,12 @@ fn char! BitReader.read_bits(&self, uint nbits)
 
 struct BitWriter
 {
-	Stream writer;
+	OutStream* writer;
 	uint bits;
 	uint len;
 }
 
-/**
- * @require byte_writer.supports_write_byte()
- **/
-fn void BitWriter.init(&self, Stream byte_writer)
+fn void BitWriter.init(&self, OutStream* byte_writer)
 {
 	*self = { .writer = byte_writer };
 }
@@ -63,7 +57,7 @@ fn void! BitWriter.flush(&self)
 	uint n = (self.len + 7) / 8;
 	char[4] buffer;
 	bitorder::write(bits, &buffer, UIntBE);
-	self.writer.write_all(buffer[:n])!;
+	io::write_all(self.writer, buffer[:n])!;
 	self.len = 0;
 }
 
@@ -83,7 +77,7 @@ fn void! BitWriter.write_bits(&self, uint bits, uint nbits)
 		lbits |= (ulong)(bits >> left) << (64 - (n - left));
 		char[8] buffer;
 		bitorder::write(lbits, &buffer, ULongBE);
-		self.writer.write_all(buffer[:to_write])!;
+		io::write_all(self.writer, buffer[:to_write])!;
 	}
 	self.bits <<= left;
 	self.bits |= bits & ((1 << left) - 1);
