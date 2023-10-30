@@ -202,21 +202,21 @@ fn void*! TempAllocator.acquire(&self, usz size, bool clear, usz alignment, usz 
 	return &page.data[0];
 }
 
-fn void TempAllocator.print_pages(&self, File f)
+fn void! TempAllocator.print_pages(&self, File f)
 {
 	TempAllocatorPage *last_page = self.last_page;
 	if (!last_page)
 	{
-		f.printf("No pages.\n");
+		io::fprintf(&f, "No pages.\n")!;
 		return;
 	}
-	f.printf("---Pages----\n");
+	io::fprintf(&f, "---Pages----\n")!;
 	uint index = 0;
 	while (last_page)
 	{
 		bool is_not_aligned = !(last_page.size & (1u64 << 63));
-		f.printf("%d. Alloc: %d %d at %p%s\n", ++index,
-				last_page.size & ~(1u64 << 63), last_page.mark, &last_page.data[0], is_not_aligned ? "" : " [aligned]");
+		io::fprintf(&f, "%d. Alloc: %d %d at %p%s\n", ++index,
+				last_page.size & ~(1u64 << 63), last_page.mark, &last_page.data[0], is_not_aligned ? "" : " [aligned]")!;
 		last_page = last_page.prev_page;
 	}
 }

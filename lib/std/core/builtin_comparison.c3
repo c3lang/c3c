@@ -83,9 +83,9 @@ macro greater_eq(a, b) @builtin
 macro bool equals(a, b) @builtin
 {
 	$switch
-	$case $defined(a.equals):
+	$case $defined(a.equals, a.equals(b)):
 		return a.equals(b);
-	$case $defined(a.compare_to):
+	$case $defined(a.compare_to, a.compare_to(b)):
 		return a.compare_to(b) == 0;
 	$case $defined(a.less):
 		return !a.less(b) && !b.less(a);

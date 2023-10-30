@@ -79,7 +79,7 @@ static bool sema_check_builtin_args_const(Expr **args, size_t arg_len)
 
 static bool sema_check_alignment_expression(SemaContext *context, Expr *align)
 {
-	if (!sema_analyse_expr_rhs(context, type_usz, align, false)) return false;
+	if (!sema_analyse_expr_rhs(context, type_usz, align, false, NULL)) return false;
 	if (!expr_is_const_int(align)
 	    || !int_fits(align->const_expr.ixx, TYPE_U64)
 	    || (!is_power_of_two(align->const_expr.ixx.i.low) && align->const_expr.ixx.i.low))
@@ -188,7 +188,7 @@ static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, b
 	for (unsigned i = first_mask_value; i < arg_count; i++)
 	{
 		Expr *mask_val = args[i];
-		if (!sema_analyse_expr_rhs(context, type_int, mask_val, false)) return false;
+		if (!sema_analyse_expr_rhs(context, type_int, mask_val, false, NULL)) return false;
 		if (!expr_is_const_int(mask_val))
 		{
 			RETURN_SEMA_ERROR(mask_val, "The swizzle positions must be compile time constants.");
@@ -227,7 +227,7 @@ static bool sema_expr_analyse_compare_exchange(SemaContext *context, Expr *expr)
 	for (int i = 1; i < 3; i++)
 	{
 		Expr *arg = args[i];
-		if (!sema_analyse_expr_rhs(context, pointee == type_void ? NULL : pointee, arg, true)) return false;
+		if (!sema_analyse_expr_rhs(context, pointee == type_void ? NULL : pointee, arg, true, NULL)) return false;
 		if (pointee == type_void) pointee = arg->type->canonical;
 		if (!type_is_atomic(type_flatten(arg->type)))
 		{
@@ -238,7 +238,7 @@ static bool sema_expr_analyse_compare_exchange(SemaContext *context, Expr *expr)
 	}
 	for (int i = 3; i < 5; i++)
 	{
-		if (!sema_analyse_expr_rhs(context, type_bool, args[i], false)) return false;
+		if (!sema_analyse_expr_rhs(context, type_bool, args[i], false, NULL)) return false;
 		if (!expr_is_const(args[i]))
 		{
 			SEMA_ERROR(args[i], "Expected a constant boolean value.");
@@ -247,7 +247,7 @@ static bool sema_expr_analyse_compare_exchange(SemaContext *context, Expr *expr)
 	}
 	for (int i = 5; i < 7; i++)
 	{
-		if (!sema_analyse_expr_rhs(context, type_char, args[i], false)) return false;
+		if (!sema_analyse_expr_rhs(context, type_char, args[i], false, NULL)) return false;
 		if (!is_valid_atomicity(args[i])) return false;
 	}
 	unsigned success = args[5]->const_expr.ixx.i.low;
@@ -276,7 +276,7 @@ static bool sema_expr_analyse_syscall(SemaContext *context, Expr *expr)
 	for (unsigned i = 0; i < arg_count; i++)
 	{
 		Expr *arg = args[i];
-		if (!sema_analyse_expr_rhs(context, type_uptr, arg, true)) return false;
+		if (!sema_analyse_expr_rhs(context, type_uptr, arg, true, NULL)) return false;
 		optional = optional || type_is_optional(arg->type);
 	}
 	switch (platform_target.arch)

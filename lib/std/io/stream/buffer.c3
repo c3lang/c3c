@@ -1,9 +1,8 @@
 module std::io;
 
-struct ReadBuffer
+struct ReadBuffer (InStream)
 {
-	inline Stream stream;
-	Stream* wrapped_stream;
+	InStream* wrapped_stream;
 	char[] bytes;
 	usz read_idx;
 	usz write_idx;
@@ -15,24 +14,22 @@ struct ReadBuffer
  * @require bytes.len > 0
  * @require self.bytes.len == 0 "Init may not run on already initialized data"
  **/
-fn ReadBuffer* ReadBuffer.init(&self, Stream* wrapped_stream, char[] bytes)
+fn ReadBuffer* ReadBuffer.init(&self, InStream* wrapped_stream, char[] bytes)
 {
-	*self = { .stream.fns = &READBUFFER_INTERFACE, .wrapped_stream = wrapped_stream, .bytes = bytes };
+	*self = { .wrapped_stream = wrapped_stream, .bytes = bytes };
 	return self;
 }
-
-
-const StreamInterface READBUFFER_INTERFACE = {
-	.read_fn = (ReadStreamFn)&ReadBuffer.read,
-	.read_byte_fn = (ReadByteStreamFn)&ReadBuffer.read_byte,
-};
-
 fn String ReadBuffer.str_view(&self) @inline
 {
 	return (String)self.bytes[self.read_idx:self.write_idx - self.read_idx];
 }
 
-fn usz! ReadBuffer.read(&self, char[] bytes)
+fn void! ReadBuffer.close(&self) @dynamic
+{
+	if (&self.wrapped_stream.close) self.wrapped_stream.close()!;
+}
+
+fn usz! ReadBuffer.read(&self, char[] bytes) @dynamic
 {
 	if (self.read_idx == self.write_idx)
 	{
@@ -49,7 +46,7 @@ fn usz! ReadBuffer.read(&self, char[] bytes)
 	return n;
 }
 
-fn char! ReadBuffer.read_byte(&self)
+fn char! ReadBuffer.read_byte(&self) @dynamic
 {
 	if (self.read_idx == self.write_idx) self.refill()!;
 	if (self.read_idx == self.write_idx) return IoError.EOF?;
@@ -64,10 +61,9 @@ fn void! ReadBuffer.refill(&self) @local @inline
 	self.write_idx = self.wrapped_stream.read(self.bytes)!;
 }
 
-struct WriteBuffer
+struct WriteBuffer (OutStream)
 {
-	inline Stream stream;
-	Stream* wrapped_stream;
+	OutStream* wrapped_stream;
 	char[] bytes;
 	usz index;
 }
@@ -78,30 +74,29 @@ struct WriteBuffer
  * @require bytes.len > 0 "Non-empty buffer required"
  * @require self.bytes.len == 0 "Init may not run on already initialized data"
  **/
-fn WriteBuffer* WriteBuffer.init(&self, Stream* wrapped_stream, char[] bytes)
+fn WriteBuffer* WriteBuffer.init(&self, OutStream* wrapped_stream, char[] bytes)
 {
-	*self = { .stream.fns = &WRITEBUFFER_INTERFACE, .wrapped_stream = wrapped_stream, .bytes = bytes };
+	*self = { .wrapped_stream = wrapped_stream, .bytes = bytes };
 	return self;
 }
-
-const StreamInterface WRITEBUFFER_INTERFACE = {
-	.flush_fn = (FlushStreamFn)&WriteBuffer.flush,
-	.write_fn = (WriteStreamFn)&WriteBuffer.write,
-	.write_byte_fn = (WriteByteStreamFn)&WriteBuffer.write_byte,
-};
 
 fn String WriteBuffer.str_view(&self) @inline
 {
 	return (String)self.bytes[:self.index];
 }
 
-fn void! WriteBuffer.flush(&self)
+fn void! WriteBuffer.close(&self) @dynamic
 {
-	self.write_pending()!;
-	if (self.wrapped_stream.supports_flush()) self.wrapped_stream.flush()!;
+	if (&self.wrapped_stream.close) return self.wrapped_stream.close();
 }
 
-fn usz! WriteBuffer.write(&self, char[] bytes)
+fn void! WriteBuffer.flush(&self) @dynamic
+{
+	self.write_pending()!;
+	if (&self.wrapped_stream.flush) self.wrapped_stream.flush()!;
+}
+
+fn usz! WriteBuffer.write(&self, char[] bytes) @dynamic
 {
 	usz n = self.bytes.len - self.index;
 	if (bytes.len < n)
@@ -123,7 +118,7 @@ fn usz! WriteBuffer.write(&self, char[] bytes)
 	return bytes.len;
 }
 
-fn void! WriteBuffer.write_byte(&self, char c)
+fn void! WriteBuffer.write_byte(&self, char c) @dynamic
 {
 	usz n = self.bytes.len - self.index;
 	if (n == 0) self.write_pending()!;

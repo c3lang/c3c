@@ -1,9 +1,8 @@
 module std::io;
 import std::math;
 
-struct ByteBuffer
+struct ByteBuffer (InStream, OutStream)
 {
-	inline Stream stream;
 	Allocator* allocator;
 	usz max_read;
 	char[] bytes;
@@ -19,7 +18,7 @@ struct ByteBuffer
  **/
 fn ByteBuffer*! ByteBuffer.init(&self, usz max_read, usz initial_capacity = 16, Allocator* using = mem::heap())
 {
-	*self = { .stream.fns = &BYTEBUFFER_INTERFACE, .allocator = using, .max_read = max_read };
+	*self = { .allocator = using, .max_read = max_read };
 	initial_capacity = max(initial_capacity, 16);
 	self.grow(initial_capacity)!;
 	return self;
@@ -36,7 +35,7 @@ fn ByteBuffer*! ByteBuffer.tinit(&self, usz max_read, usz initial_capacity = 16)
  **/
 fn ByteBuffer*! ByteBuffer.init_with_buffer(&self, char[] buf)
 {
-	*self = { .stream.fns = &BYTEBUFFER_INTERFACE, .max_read = buf.len, .bytes = buf };
+	*self = { .max_read = buf.len, .bytes = buf };
 	return self;
 }
 
@@ -46,16 +45,7 @@ fn void ByteBuffer.free(&self)
 	*self = {};
 }
 
-const StreamInterface BYTEBUFFER_INTERFACE = {
-	.write_fn = (WriteStreamFn)&ByteBuffer.write,
-	.write_byte_fn = (WriteByteStreamFn)&ByteBuffer.write_byte,
-	.read_fn = (ReadStreamFn)&ByteBuffer.read,
-	.read_byte_fn = (ReadByteStreamFn)&ByteBuffer.read_byte,
-	.pushback_byte_fn = (PushbackByteStreamFn)&ByteBuffer.pushback_byte,
-	.available_fn = (AvailableStreamFn)&ByteBuffer.available
-};
-
-fn usz! ByteBuffer.write(&self, char[] bytes)
+fn usz! ByteBuffer.write(&self, char[] bytes) @dynamic
 {
 	usz cap = self.bytes.len - self.write_idx;
 	if (cap < bytes.len) self.grow(bytes.len)!;
@@ -64,7 +54,7 @@ fn usz! ByteBuffer.write(&self, char[] bytes)
 	return bytes.len;
 }
 
-fn void! ByteBuffer.write_byte(&self, char c)
+fn void! ByteBuffer.write_byte(&self, char c) @dynamic
 {
 	usz cap = self.bytes.len - self.write_idx;
 	if (cap == 0) self.grow(1)!;
@@ -72,7 +62,7 @@ fn void! ByteBuffer.write_byte(&self, char c)
 	self.write_idx++;
 }
 
-fn usz! ByteBuffer.read(&self, char[] bytes)
+fn usz! ByteBuffer.read(&self, char[] bytes) @dynamic
 {
 	usz readable = self.write_idx - self.read_idx;
 	if (readable == 0)
@@ -88,7 +78,7 @@ fn usz! ByteBuffer.read(&self, char[] bytes)
 	return n;
 }
 
-fn char! ByteBuffer.read_byte(&self)
+fn char! ByteBuffer.read_byte(&self) @dynamic
 {
 	usz readable = self.write_idx - self.read_idx;
 	if (readable == 0)
@@ -106,7 +96,7 @@ fn char! ByteBuffer.read_byte(&self)
 /*
  * Only the last byte of a successful read can be pushed back.
  */
-fn void! ByteBuffer.pushback_byte(&self)
+fn void! ByteBuffer.pushback_byte(&self) @dynamic
 {
 	if (!self.has_last) return IoError.EOF?;
 	assert(self.read_idx > 0);
@@ -114,13 +104,14 @@ fn void! ByteBuffer.pushback_byte(&self)
 	self.has_last = false;
 }
 
-fn void! ByteBuffer.seek(&self, isz offset, Seek seek)
+fn usz! ByteBuffer.seek(&self, isz offset, Seek seek) @dynamic
 {
 	switch (seek)
 	{
 		case SET:
 			if (offset < 0 || offset > self.write_idx) return IoError.INVALID_POSITION?;
 			self.read_idx = offset;
+			return offset;
 		case CURSOR:
 			if ((offset < 0 && self.read_idx < -offset) ||
 				(offset > 0 && self.read_idx + offset > self.write_idx)) return IoError.INVALID_POSITION?;
@@ -129,9 +120,10 @@ fn void! ByteBuffer.seek(&self, isz offset, Seek seek)
 			if (offset < 0 || offset > self.write_idx) return IoError.INVALID_POSITION?;
 			self.read_idx = self.write_idx - offset;
 	}
+	return self.read_idx;
 }
 
-fn usz! ByteBuffer.available(&self) @inline
+fn usz! ByteBuffer.available(&self) @inline @dynamic
 {
 	return self.write_idx - self.read_idx;
 }

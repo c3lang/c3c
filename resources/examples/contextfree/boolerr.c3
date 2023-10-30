@@ -22,7 +22,7 @@ struct StringData @private
 fn void Summary.print(Summary *s, File* out)
 {
 	String title = s.title ? s.title.str_view() : "missing";
-	out.printf("Summary({ .title = %s, .ok = %s})", title, s.ok);
+	(void)io::fprintf(out, "Summary({ .title = %s, .ok = %s})", title, s.ok);
 }
 
 fn bool contains(String haystack, String needle)

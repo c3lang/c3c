@@ -2,9 +2,8 @@ module std::net @if(os::SUPPORTS_INET);
 import std::io;
 import libc;
 
-struct Socket
+struct Socket (InStream, OutStream)
 {
-	inline Stream stream;
 	NativeSocket sock;
 	Socklen_t ai_addrlen;
 	// TODO proper way to get the size of sockaddr_storage
@@ -77,7 +76,7 @@ fn ulong! poll(Poll[] polls, Duration timeout)
 
 macro Socket new_socket(fd, ai)
 {
-	Socket sock = { .stream.fns = &SOCKETSTREAM_INTERFACE, .sock = fd, .ai_addrlen = ai.ai_addrlen };
+	Socket sock = { .sock = fd, .ai_addrlen = ai.ai_addrlen };
 	assert(sock.ai_addr_storage.len >= ai.ai_addrlen, "storage %d < addrlen %d", sock.ai_addr_storage.len, ai.ai_addrlen);
 	mem::copy(&sock.ai_addr_storage, (void*)ai.ai_addr, ai.ai_addrlen);
 	return sock;
@@ -92,12 +91,6 @@ enum SocketOption : char (CInt value)
 	OOBINLINE (os::SO_OOBINLINE),
 	DONTROUTE (os::SO_DONTROUTE),
 }
-
-const StreamInterface SOCKETSTREAM_INTERFACE = {
-	.read_fn = (ReadStreamFn)&Socket.read,
-	.write_fn = (WriteStreamFn)&Socket.write,
-	.close_fn = (CloseStreamFn)&Socket.close,
-};
 
 fn bool! Socket.get_broadcast(&self) => self.get_option(BROADCAST);
 fn bool! Socket.get_keepalive(&self) => self.get_option(KEEPALIVE);
@@ -126,21 +119,29 @@ fn bool! Socket.get_option(&self, SocketOption option)
 	return (bool)flag;
 }
 
-fn usz! Socket.read(&self, char[] bytes)
+fn usz! Socket.read(&self, char[] bytes) @dynamic
 {
 	isz n = libc::read((Fd)self.sock, bytes.ptr, bytes.len);
 	if (n < 0) return NetError.READ_FAILED?;
 	return (usz)n;
 }
 
-fn usz! Socket.write(&self, char[] bytes)
+fn char! Socket.read_byte(&self) @dynamic => io::@read_byte_using_read(self);
+
+fn usz! Socket.write(&self, char[] bytes) @dynamic
 {
 	isz n = libc::write((Fd)self.sock, bytes.ptr, bytes.len);
 	if (n < 0) return NetError.WRITE_FAILED?;
 	return (usz)n;
 }
 
-fn void! Socket.close(&self) @inline
+fn void! Socket.write_byte(&self, char byte) @dynamic => io::@write_byte_using_write(self, byte);
+
+fn void! Socket.destroy(&self) @dynamic
+{
+	self.close()!;
+}
+fn void! Socket.close(&self) @inline @dynamic
 {
 	self.sock.close()!;
 }

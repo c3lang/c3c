@@ -1,9 +1,8 @@
 module std::io;
 
-struct Scanner
+struct Scanner (InStream)
 {
-	inline Stream stream;
-	Stream* wrapped_stream;
+	InStream* wrapped_stream;
 	char[] buf;
 	usz pattern_idx;
 	usz read_idx;
@@ -16,23 +15,17 @@ struct Scanner
  *
  * @param [&in] stream "The stream to read data from."
  * @require buffer.len > 0 "Non-empty buffer required."
- * @require stream.supports_read() "The stream must support read."
- *
  **/
-fn void Scanner.init(&self, Stream* stream, char[] buffer)
+fn void Scanner.init(&self, InStream* stream, char[] buffer)
 {
-	*self = { .stream.fns = &SCANNER_INTERFACE, .wrapped_stream = stream, .buf = buffer };
+	*self = { .wrapped_stream = stream, .buf = buffer };
 }
 
-const StreamInterface SCANNER_INTERFACE = {
-	.read_fn = (ReadStreamFn)&Scanner.read,
-	.read_byte_fn = (ReadByteStreamFn)&Scanner.read_byte,
-};
 
 /**
  * Return and clear any remaining unscanned data.
  **/
-fn char[] Scanner.flush(&self)
+fn char[] Scanner.flush(&self) @dynamic
 {
 	assert(self.read_idx >= self.pattern_idx);
 	usz n = self.read_idx - self.pattern_idx;
@@ -40,6 +33,11 @@ fn char[] Scanner.flush(&self)
 	self.pattern_idx = 0;
 	self.read_idx = 0;
 	return buf;
+}
+
+fn void! Scanner.close(&self) @dynamic
+{
+	if (&self.wrapped_stream.close) return self.wrapped_stream.close();
 }
 
 /**
@@ -102,7 +100,7 @@ macro usz! Scanner.refill(&self, buf) @private
 	return n;
 }
 
-fn usz! Scanner.read(&self, char[] bytes)
+fn usz! Scanner.read(&self, char[] bytes) @dynamic
 {
 	usz n;
 	if (self.pattern_idx < self.read_idx)
@@ -116,7 +114,7 @@ fn usz! Scanner.read(&self, char[] bytes)
 	return n;
 }
 
-fn char! Scanner.read_byte(&self)
+fn char! Scanner.read_byte(&self) @dynamic
 {
 	if (self.pattern_idx < self.read_idx)
 	{

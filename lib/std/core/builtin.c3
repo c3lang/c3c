@@ -94,33 +94,33 @@ fn bool print_backtrace(String message, int backtraces_to_ignore) @if(env::DARWI
 		BacktraceList! backtrace = darwin::backtrace_load(mem::temp());
 		if (catch backtrace) return false;
 		if (backtrace.len() <= backtraces_to_ignore) return false;
-		(void)io::stderr().print("\nERROR: '");
-        (void)io::stderr().print(message);
-        io::printn("'");
+		io::eprint("\nERROR: '");
+        io::eprint(message);
+        io::eprintn("'");
 		foreach (i, &trace : backtrace)
         {
             if (i < backtraces_to_ignore) continue;
             if (trace.is_unknown())
             {
-				(void)io::stderr().printn("  in ???");
+				io::eprintn("  in ???");
 				continue;
 			}
 			if (trace.has_file())
             {
-                (void)io::stderr().printfn("  in %s (%s:%d) [%s]", trace.function, trace.file, trace.line, trace.object_file);
+                io::eprintfn("  in %s (%s:%d) [%s]", trace.function, trace.file, trace.line, trace.object_file);
                 continue;
             }
-            (void)io::stderr().printfn("  in %s (source unavailable) [%s]", trace.function, trace.object_file);
+            io::eprintfn("  in %s (source unavailable) [%s]", trace.function, trace.object_file);
 		}
 		return true;
 	};
 }
 fn void default_panic(String message, String file, String function, uint line) @if(env::DARWIN)
 {
-	$if $defined(io::stderr) && $defined(Stream.printf):
+	$if $defined(io::stderr):
 	if (!print_backtrace(message, 2))
 	{
-		(void)io::stderr().printfn("\nERROR: '%s', in %s (%s:%d)", message, function, file, line);
+		io::eprintfn("\nERROR: '%s', in %s (%s:%d)", message, function, file, line);
 		return;
 	}
 	$endif
@@ -130,23 +130,23 @@ fn void default_panic(String message, String file, String function, uint line) @
 fn void default_panic(String message, String file, String function, uint line) @if(!env::DARWIN)
 {
 	CallstackElement* stack = $$stacktrace();
-	$if $defined(io::stderr) && $defined(Stream.printf):
+	$if $defined(io::stderr):
 	if (stack) stack = stack.prev;
 	if (stack)
 	{
-		(void)io::stderr().print("\nERROR: '");
-		(void)io::stderr().print(message);
-		(void)io::stderr().printn("'");
+		io::eprint("\nERROR: '");
+		io::eprint(message);
+		io::eprintn("'");
 	}
 	else
 	{
-		(void)io::stderr().print("\nERROR: '");
-		(void)io::stderr().print(message);
-		(void)io::stderr().printfn("', in %s (%s:%d)", function, file, line);
+		io::eprint("\nERROR: '");
+		io::eprint(message);
+		io::eprintfn("', in %s (%s:%d)", function, file, line);
 	}
 	while (stack)
 	{
-		(void)io::stderr().printfn("  in %s %s (%s:%d)", stack.location.name, stack.function, stack.file, stack.line);
+		io::eprintfn("  in %s %s (%s:%d)", stack.location.name, stack.function, stack.file, stack.line);
 		if (stack == stack.prev) break;
 		stack = stack.prev;
 	}
@@ -398,10 +398,10 @@ fn void sig_bus_error(CInt i)
 	$if !env::DARWIN:
 		sig_panic("Illegal memory access.");
 	$else
-		$if $defined(io::stderr) && $defined(Stream.printf):
+		$if $defined(io::stderr):
 			if (!print_backtrace("Illegal memory access.", 1))
 			{
-				(void)io::stderr().printn("\nERROR: 'Illegal memory access'.");
+				io::eprintn("\nERROR: 'Illegal memory access'.");
 			}
 		$endif
 	$endif
@@ -413,10 +413,10 @@ fn void sig_segmentation_fault(CInt i)
 	$if !env::DARWIN:
 		sig_panic("Out of bounds memory access.");
 	$else
-		$if $defined(io::stderr) && $defined(Stream.printf):
+		$if $defined(io::stderr):
 			if (!print_backtrace("Out of bounds memory access.", 1))
 			{
-				(void)io::stderr().printn("\nERROR: Memory error without backtrace, possible stack overflow.");
+				io::eprintn("\nERROR: Memory error without backtrace, possible stack overflow.");
 			}
 		$endif
 	$endif

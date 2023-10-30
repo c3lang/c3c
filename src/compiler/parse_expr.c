@@ -1044,9 +1044,19 @@ static Expr *parse_ct_defined(ParseContext *c, Expr *left)
 	assert(!left && "Unexpected left hand side");
 	Expr *defined = expr_new(EXPR_CT_DEFINED, c->span);
 	advance(c);
+	Expr **list = NULL;
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
-	ASSIGN_EXPR_OR_RET(defined->inner_expr, parse_expr(c), poisoned_expr);
-	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
+	while (!try_consume(c, TOKEN_RPAREN))
+	{
+		ASSIGN_EXPR_OR_RET(Expr *expr, parse_expr(c), poisoned_expr);
+		vec_add(list, expr);
+		if (!try_consume(c, TOKEN_COMMA))
+		{
+			CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
+			break;
+		}
+	}
+	defined->expression_list = list;
 	return defined;
 
 }

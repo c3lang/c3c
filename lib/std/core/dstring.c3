@@ -1,6 +1,7 @@
 module std::core::dstring;
+import std::io;
 
-distinct DString = void*;
+distinct DString (OutStream) = void*;
 
 const usz MIN_CAPACITY @private = 16;
 
@@ -79,9 +80,9 @@ fn usz DString.capacity(self)
 	return self.data().capacity;
 }
 
-fn usz DString.len(self)
+fn usz DString.len(&self) @dynamic
 {
-	if (!self) return 0;
+	if (!*self) return 0;
 	return self.data().len;
 }
 
@@ -255,6 +256,17 @@ fn void DString.clear(self)
 	self.data().len = 0;
 }
 
+fn usz! DString.write(&self, char[] buffer) @dynamic
+{
+	self.append_chars((String)buffer);
+	return buffer.len;
+}
+
+fn void! DString.write_byte(&self, char c) @dynamic
+{
+	self.append_char(c);
+}
+
 fn void DString.append_char(&self, char c)
 {
 	if (!*self)
@@ -387,9 +399,9 @@ fn void DString.reserve(&self, usz addition)
 	*self = (DString)realloc(data, StringData.sizeof + new_capacity, .using = data.allocator);
 }
 
-fn usz! DString.read_from_stream(&self, Stream* reader)
+fn usz! DString.read_from_stream(&self, InStream* reader)
 {
-	if (reader.supports_available())
+	if (&reader.available)
 	{
 		usz total_read = 0;
 		while (usz available = reader.available()!)

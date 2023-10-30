@@ -4,8 +4,8 @@ fn void! bytestream()
 {
 	ByteReader r;
 	r.init("abc");
-	Stream* s = &r;
-	assert(s.len()! == 3);
+	InStream* s = &r;
+	assert(s.len() == 3);
 	char[5] buffer;
 	assert('a' == s.read_byte()!);
 	s.pushback_byte()!;
@@ -13,11 +13,11 @@ fn void! bytestream()
 	assert((String)buffer[:len] == "abc");
 	ByteWriter w;
 	w.init();
-	Stream* ws = &w;
+	OutStream* ws = &w;
 	ws.write("helloworld")!;
 	assert(w.str_view() == "helloworld");
 	s.seek(0, SET)!;
-	ws.read_from(s)!;
+	io::copy_to(s, ws)!;
 	s.seek(1, SET)!;
 	s.write_to(ws)!;
 	assert(w.str_view() == "helloworldabcbc");
@@ -28,7 +28,7 @@ fn void! bytewriter_buffer()
 	ByteWriter writer;
 	char[8] z;
 	writer.init_buffer(&z);
-	Stream* s = &writer;
+	OutStream* s = &writer;
 	s.write("hello")!!;
 	s.write_byte(0)!!;
 	String o = ((ZString)&z).str_view();
@@ -40,7 +40,7 @@ fn void! bytewriter_read_from()
 {
     char[] data = "Lorem ipsum dolor sit amet biam.";
     TestReader r = { .bytes = data };
-    Stream* s = &&r.as_stream();
+    InStream* s = &r;
 
     ByteWriter bw;
     bw.tinit();
@@ -52,27 +52,20 @@ fn void! bytewriter_read_from()
 module std::io;
 // TestReader only has the read method to trigger the path
 // in ByteWriter.read_from that does not rely on the available method.
-struct TestReader
+struct TestReader (InStream)
 {
     char[] bytes;
     usz index;
 }
 
-fn StreamWrapper TestReader.as_stream(TestReader *r)
+fn usz! TestReader.read(&self, char[] bytes) @dynamic
 {
-    return { .stream = { &testReader_interface }, .data = r };
-}
-
-fn usz! TestReader.read(TestReader *r, char[] bytes)
-{
-    usz left = r.bytes.len - r.index;
+    usz left = self.bytes.len - self.index;
     if (left == 0) return 0;
     usz n = min(left, bytes.len);
-    mem::copy(bytes.ptr, &r.bytes[r.index], n);
-    r.index += n;
+    mem::copy(bytes.ptr, &self.bytes[self.index], n);
+    self.index += n;
     return n;
 }
 
-StreamInterface testReader_interface = {
-    .read_fn = fn(s, char[] bytes) => ((TestReader*)((StreamWrapper*)s).data).read(bytes),
-};
+fn char! TestReader.read_byte(&self) @dynamic => io::@read_byte_using_read(self);

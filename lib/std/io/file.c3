@@ -1,9 +1,8 @@
 module std::io;
 import libc;
 
-struct File
+struct File (InStream, OutStream)
 {
-	inline Stream stream;
 	CFile file;
 }
 
@@ -22,7 +21,7 @@ fn File! open_path(Path path, String mode)
 
 fn File from_handle(CFile file)
 {
-	return { .stream.fns = &FILESTREAM_INTERFACE, .file = file };
+	return { .file = file };
 }
 
 fn bool is_file(String path)
@@ -49,7 +48,7 @@ fn void! File.reopen(&self, String filename, String mode)
 /**
  * @require self.file != null
  **/
-fn usz! File.seek(&self, isz offset, Seek seek_mode = Seek.SET)
+fn usz! File.seek(&self, isz offset, Seek seek_mode = Seek.SET) @dynamic
 {
 	os::native_fseek(self.file, offset, seek_mode)!;
 	return os::native_ftell(self.file);
@@ -75,7 +74,7 @@ fn void! File.memopen(File* file, char[] data, String mode)
 /**
  * @require self.file != null
  */
-fn void! File.write_byte(&self, char c)
+fn void! File.write_byte(&self, char c) @dynamic
 {
 	if (!libc::fputc(c, self.file)) return IoError.EOF?;
 }
@@ -83,7 +82,7 @@ fn void! File.write_byte(&self, char c)
 /**
  * @param [&inout] self
  */
-fn void! File.close(&self) @inline
+fn void! File.close(&self) @inline @dynamic
 {
 	if (self.file && libc::fclose(self.file))
 	{
@@ -117,7 +116,7 @@ fn bool File.eof(&self) @inline
 /**
  * @param [in] buffer
  */
-fn usz! File.read(&self, char[] buffer)
+fn usz! File.read(&self, char[] buffer) @dynamic
 {
 	return os::native_fread(self.file, buffer);
 }
@@ -126,13 +125,13 @@ fn usz! File.read(&self, char[] buffer)
  * @param [out] buffer
  * @require self.file `File must be initialized`
  */
-fn usz! File.write(&self, char[] buffer)
+fn usz! File.write(&self, char[] buffer) @dynamic
 {
 	return os::native_fwrite(self.file, buffer);
 }
 
 
-fn char! File.read_byte(&self)
+fn char! File.read_byte(&self) @dynamic
 {
 	int c = libc::fgetc(self.file);
 	if (c == -1) return IoError.EOF?;
@@ -142,17 +141,7 @@ fn char! File.read_byte(&self)
 /**
  * @require self.file `File must be initialized`
  */
-fn void! File.flush(&self)
+fn void! File.flush(&self) @dynamic
 {
 	libc::fflush(self.file);
 }
-
-const StreamInterface FILESTREAM_INTERFACE = {
-	.close_fn = (CloseStreamFn)&File.close,
-	.seek_fn = (SeekStreamFn)&File.seek,
-	.read_fn = (ReadStreamFn)&File.read,
-	.read_byte_fn = (ReadByteStreamFn)&File.read_byte,
-	.write_fn = (WriteStreamFn)&File.write,
-	.write_byte_fn = (WriteByteStreamFn)&File.write_byte,
-	.flush_fn = (FlushStreamFn)&File.flush
-};

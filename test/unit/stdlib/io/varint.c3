@@ -9,14 +9,14 @@ fn void! write_read()
 	uint x;
 	uint y;
 
-	n = buf.write_varint(123)!;
+	n = io::write_varint(&buf, 123)!;
 	assert(n == 1, "got %d; want 1", n);
-	buf.read_varint(&y)!;
+	io::read_varint(&buf, &y)!;
 	assert(y == 123, "got %d; want 123", y);
 
-	n = buf.write_varint(123456789)!;
+	n = io::write_varint(&buf, 123456789)!;
 	assert(n == 4, "got %d; want 4", n);
-	buf.read_varint(&y)!;
+	io::read_varint(&buf, &y)!;
 	assert(y == 123456789, "got %d; want 123456789", y);
 }
 
@@ -46,7 +46,7 @@ fn void! samples()
 	{
 		ByteWriter bw;
 		bw.tinit();
-		usz n = bw.write_varint(tc.in)!;
+		usz n = io::write_varint(&bw, tc.in)!;
 		assert(n == tc.bytes.len, "got %d; want %d", n, tc.bytes.len);
 		char[] bytes = bw.bytes[:bw.index];
 		assert(bytes == tc.bytes, "got %d; want %d", bytes, tc.bytes);

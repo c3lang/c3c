@@ -1,8 +1,7 @@
 module std::io;
 
-struct ByteWriter
+struct ByteWriter (OutStream)
 {
-	inline Stream stream;
 	char[] bytes;
 	usz index;
 	Allocator* allocator;
@@ -16,13 +15,13 @@ struct ByteWriter
  **/
 fn ByteWriter* ByteWriter.init(&self, Allocator* using = mem::heap())
 {
-	*self = { .stream.fns = &BYTEWRITER_INTERFACE, .bytes = {}, .allocator = using };
+	*self = { .bytes = {}, .allocator = using };
 	return self;
 }
 
 fn ByteWriter* ByteWriter.init_buffer(&self, char[] data)
 {
-	*self = { .stream.fns = &BYTEWRITER_INTERFACE, .bytes = data, .allocator = null };
+	*self = { .bytes = data, .allocator = null };
 	return self;
 }
 
@@ -35,7 +34,7 @@ fn ByteWriter* ByteWriter.tinit(&self)
 	return self.init(mem::temp());
 }
 
-fn void ByteWriter.destroy(&self)
+fn void! ByteWriter.destroy(&self) @dynamic
 {
 	if (!self.allocator) return;
 	if (void* ptr = self.bytes.ptr) free(ptr, .using = self.allocator);
@@ -57,7 +56,7 @@ fn void! ByteWriter.ensure_capacity(&self, usz len) @inline
 	self.bytes = new_ptr[:new_capacity];
 }
 
-fn usz! ByteWriter.write(&self, char[] bytes)
+fn usz! ByteWriter.write(&self, char[] bytes) @dynamic
 {
 	self.ensure_capacity(self.index + bytes.len)!;
 	mem::copy(&self.bytes[self.index], bytes.ptr, bytes.len);
@@ -65,7 +64,7 @@ fn usz! ByteWriter.write(&self, char[] bytes)
 	return bytes.len;
 }
 
-fn void! ByteWriter.write_byte(&self, char c)
+fn void! ByteWriter.write_byte(&self, char c) @dynamic
 {
 	self.ensure_capacity(self.index + 1)!;
 	self.bytes[self.index++] = c;
@@ -75,10 +74,10 @@ fn void! ByteWriter.write_byte(&self, char c)
  * @param [&inout] self
  * @param reader
  **/
-fn usz! ByteWriter.read_from(&self, Stream* reader)
+fn usz! ByteWriter.read_from(&self, InStream* reader) @dynamic
 {
 	usz start_index = self.index;
-	if (reader.supports_available())
+	if (&reader.available)
 	{
 		while (usz available = reader.available()!)
 		{
@@ -110,11 +109,3 @@ fn usz! ByteWriter.read_from(&self, Stream* reader)
 		// Otherwise go another round
 	}
 }
-
-const StreamInterface BYTEWRITER_INTERFACE = {
-	.destroy_fn = fn (s) => ((ByteWriter*)s).destroy(),
-	.len_fn = fn (s) => ((ByteWriter*)s).bytes.len,
-	.write_fn = (WriteStreamFn)&ByteWriter.write,
-	.write_byte_fn = (WriteByteStreamFn)&ByteWriter.write_byte,
-	.read_stream_fn = (ReadFromStreamFn)&ByteWriter.read_from,
-};

@@ -1094,7 +1094,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 			Expr *expr = param->var.init_expr;
 			if (expr_is_const(expr))
 			{
-				if (!sema_analyse_expr_rhs(context, param->type, expr, true)) return decl_poison(param);
+				if (!sema_analyse_expr_rhs(context, param->type, expr, true, NULL)) return decl_poison(param);
 			}
 		}
 		if (!sema_check_param_uniqueness_and_type(params, param, i, param_count)) return decl_poison(param);
@@ -1266,7 +1266,7 @@ static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param, bo
 	{
 		Expr *expr = param->var.init_expr;
 
-		if (!sema_analyse_expr_rhs(context, param->type, expr, true)) return false;
+		if (!sema_analyse_expr_rhs(context, param->type, expr, true, NULL)) return false;
 		if (IS_OPTIONAL(expr))
 		{
 			SEMA_ERROR(expr, "Default arguments may not be optionals.");
@@ -1414,7 +1414,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 		{
 			Expr *arg = args[j];
 
-			if (!sema_analyse_expr_rhs(context, associated_values[j]->type, arg, false)) return false;
+			if (!sema_analyse_expr_rhs(context, associated_values[j]->type, arg, false, NULL)) return false;
 			if (!expr_is_constant_eval(arg, CONSTANT_EVAL_GLOBAL_INIT))
 			{
 				SEMA_ERROR(arg, "Expected a constant expression as parameter.");
@@ -3111,7 +3111,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 					decl->var.init_expr = init = expr_new(EXPR_POISONED, decl->span);
 					expr_rewrite_to_const_zero(init, decl->type);
 				}
-				if (!sema_analyse_expr_rhs(context, decl->type, init, false)) goto FAIL;
+				if (!sema_analyse_expr_rhs(context, decl->type, init, false, NULL)) goto FAIL;
 				if (!expr_is_constant_eval(init, CONSTANT_EVAL_CONSTANT_VALUE))
 				{
 					SEMA_ERROR(init, "Expected a constant expression assigned to %s.", decl->name);
