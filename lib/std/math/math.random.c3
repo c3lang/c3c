@@ -21,6 +21,11 @@ macro void seed(random, seed)
 	random.set_seed(@as_char_view(seed));
 }
 
+macro void seed_entropy(random)
+{
+	random.set_seed(&&entropy());
+}
+
 /**
  * @require is_random(random)
  **/
@@ -29,6 +34,17 @@ macro int next(random, int max)
 	return (int)(next_double(random) * max);
 }
 
+fn int rand(int max) @builtin
+{
+	tlocal Sfc64Random default_random;
+	tlocal bool initialized = false;
+	if (!initialized)
+	{
+		seed_entropy(&default_random);
+		initialized = true;
+	}
+	return next(&default_random, max);
+}
 /**
  * @require is_random(random)
  **/

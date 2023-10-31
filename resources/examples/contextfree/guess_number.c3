@@ -69,10 +69,8 @@ fn void Game.update(Game *game, int guess)
 
 fn void! main()
 {
-	Lcg128Random rand;
-	random::seed(&rand, clock::now());
 	int high = 100;
-	int answer = random::next(&rand, high) + 1;
+	int answer = rand(high) + 1;
 	Game game = { .answer = answer, .high = high };
 	(void)game.play();
 	io::printfn("Finished in %d guesses.", game.guesses);
