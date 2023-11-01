@@ -103,7 +103,7 @@ macro usz! fprint(out, x)
 		$if $assignable(x, String):
 			return out.write((String)x);
 		$else
-			return printf("%s", x, .out = out);
+			return fprintf(out, "%s", x);
 		$endif
 	$endswitch
 }
