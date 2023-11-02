@@ -486,6 +486,10 @@ void compiler_compile(void)
 
 	if (output_exe)
 	{
+		if (file_is_dir(output_exe))
+		{
+			error_exit("Cannot create exe with the name '%s' - there is already a directory with that name.", output_exe);
+		}
 		if (link_libc() && platform_target.os != OS_TYPE_WIN32
 			&& active_target.arch_os_target == default_target && active_target.system_linker != SYSTEM_LINKER_OFF)
 		{
@@ -520,6 +524,10 @@ void compiler_compile(void)
 	}
 	else if (output_static)
 	{
+		if (file_is_dir(output_static))
+		{
+			error_exit("Cannot create a static library with the name '%s' - there is already a directory with that name.", output_exe);
+		}
 		if (!static_lib_linker(output_static, obj_files, output_file_count))
 		{
 			error_exit("Failed to produce static library '%s'.", output_static);
@@ -531,9 +539,13 @@ void compiler_compile(void)
 	}
 	else if (output_dynamic)
 	{
+		if (file_is_dir(output_dynamic))
+		{
+			error_exit("Cannot create a dynamic library with the name '%s' - there is already a directory with that name.", output_exe);
+		}
 		if (!dynamic_lib_linker(output_dynamic, obj_files, output_file_count))
 		{
-			error_exit("Failed to produce static library '%s'.", output_dynamic);
+			error_exit("Failed to produce dynamic library '%s'.", output_dynamic);
 		}
 		delete_object_files(obj_files, output_file_count);
 		printf("Dynamic library '%s' created.\n", output_dynamic);
