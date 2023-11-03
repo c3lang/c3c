@@ -1664,9 +1664,12 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Type 
 	Type *rtype = type->function.prototype->rtype;
 
 	expr->call_expr.has_optional_arg = optional;
+
 	if (rtype != type_void)
 	{
-		expr->call_expr.must_use = sig->attrs.nodiscard || (type_is_optional(rtype) && !sig->attrs.maydiscard);
+		bool is_optional_return = type_is_optional(rtype);
+		expr->call_expr.is_optional_return = is_optional_return;
+		expr->call_expr.must_use = sig->attrs.nodiscard || (is_optional_return && !sig->attrs.maydiscard);
 	}
 	expr->type = type_add_optional(rtype, optional);
 
@@ -2098,6 +2101,7 @@ NOT_CT:
 	call_expr->expr_kind = EXPR_MACRO_BLOCK;
 	call_expr->macro_block.had_optional_arg = has_optional_arg;
 	call_expr->macro_block.is_must_use = must_use;
+	call_expr->macro_block.is_optional_return = optional_return;
 	call_expr->macro_block.first_stmt = body->compound_stmt.first_stmt;
 	call_expr->macro_block.macro = decl;
 	call_expr->macro_block.params = params;
@@ -8530,21 +8534,41 @@ bool sema_analyse_expr_lvalue(SemaContext *context, Expr *expr)
 
 bool sema_expr_check_discard(Expr *expr)
 {
-	if (!IS_OPTIONAL(expr)) return true;
 	if (expr->expr_kind == EXPR_SUBSCRIPT_ASSIGN || expr->expr_kind == EXPR_SLICE_ASSIGN) return true;
 	if (expr->expr_kind == EXPR_BINARY && expr->binary_expr.operator >= BINARYOP_ASSIGN) return true;
 	if (expr->expr_kind == EXPR_MACRO_BLOCK)
 	{
-		if (expr->macro_block.is_must_use) RETURN_SEMA_ERROR(expr, "The result of the macro must be used.");
+		if (expr->macro_block.is_must_use)
+		{
+			if (expr->macro_block.is_optional_return)
+			{
+				RETURN_SEMA_ERROR(expr, "The macro returns %s, which is an optional and must be handled. "
+				                        "You can either assign it to a variable, rethrow it using '!', "
+				                        "panic with '!!', use if-catch etc. You can also silence the error using a void cast (e.g. '(void)the_call()') to ignore the error.",
+				                  type_quoted_error_string(expr->type));
+			}
+			RETURN_SEMA_ERROR(expr, "The called macro is marked `@nodiscard` meaning the result should be kept. You can still discard it using a void cast (e.g. '(void)the_call()') if you want.");
+		}
 		if (expr->macro_block.had_optional_arg) goto ERROR_ARGS;
 		return true;
 	}
 	if (expr->expr_kind == EXPR_CALL)
 	{
-		if (expr->call_expr.must_use) RETURN_SEMA_ERROR(expr, "The result of the function must be used.");
+		if (expr->call_expr.must_use)
+		{
+			if (expr->call_expr.is_optional_return)
+			{
+				RETURN_SEMA_ERROR(expr, "The function returns %s, which is an optional and must be handled. "
+				                        "You can either assign it to a variable, rethrow it using '!', "
+										"panic with '!!', use if-catch etc. You can also silence the error using a void cast (e.g. '(void)the_call()') to ignore the error.",
+										type_quoted_error_string(expr->type));
+			}
+			RETURN_SEMA_ERROR(expr, "The called function is marked `@nodiscard` meaning the result should be kept. You can still discard it using a void cast (e.g. '(void)the_call()') if you want.");
+		}
 		if (expr->call_expr.has_optional_arg) goto ERROR_ARGS;
 		return true;
 	}
+	if (!IS_OPTIONAL(expr)) return true;
 	RETURN_SEMA_ERROR(expr, "An optional value may not be discarded, you can ignore it with a void cast '(void)', rethrow on optional with '!' or panic '!!' to avoid this error.");
 ERROR_ARGS:
 	RETURN_SEMA_ERROR(expr, "The result of this call is optional due to its argument(s). The optional result may not be implicitly discarded. Consider using '(void)', '!' or '!!' to handle this.");

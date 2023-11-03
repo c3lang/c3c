@@ -784,6 +784,7 @@ typedef struct
 	bool is_dynamic_dispatch : 1;
 	bool has_optional_arg : 1;
 	bool must_use : 1;
+	bool is_optional_return : 1;
 	Expr **arguments;
 	union
 	{
@@ -1025,6 +1026,7 @@ typedef struct
 	AstId first_stmt;
 	bool is_noreturn : 1;
 	bool is_must_use : 1;
+	bool is_optional_return : 1;
 	bool had_optional_arg : 1;
 	Decl **params;
 	Decl *macro;

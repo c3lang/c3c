@@ -37,14 +37,14 @@ fn void test5()
 {
 	int! x;
 	int y;
-	def3(y); // #error: The result of the macro must
+	def3(y); // #error: The macro returns 'int!'
 }
 
 fn void test6()
 {
 	int! x;
 	int y;
-	def3(x); // #error: The result of the macro must
+	def3(x); // #error: The macro returns 'int!'
 }
 
 fn void test7()
