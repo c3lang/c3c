@@ -58,7 +58,7 @@ fn void! create_named_pipe_helper(void** rd, void **wr) @local @if(env::WIN32)
 	long unique = index++;
 	@pool()
 	{
-		String s = string::tprintf(`\\.\pipe\c3_subprocess.%08x.%08x.%d`, win32::getCurrentProcessId(), win32::getCurrentThreadId(), unique);
+		String s = string::tformat(`\\.\pipe\c3_subprocess.%08x.%08x.%d`, win32::getCurrentProcessId(), win32::getCurrentThreadId(), unique);
 		Win32_LPCSTR str = (Win32_LPCSTR)s.ptr;
 		*rd = win32::createNamedPipeA(
 			str,
@@ -75,8 +75,7 @@ fn void! create_named_pipe_helper(void** rd, void **wr) @local @if(env::WIN32)
 
 fn WString convert_command_line_win32(String[] command_line) @inline @if(env::WIN32) @local
 {
-	DString str;
-	str.tinit(512);
+	DString str = dstring::temp_with_capacity(512);
 	foreach (i, s : command_line)
 	{
 		if (i != 0) str.append(' ');
@@ -142,8 +141,7 @@ fn SubProcess! create(String[] command_line, SubProcessOptions options = {}, Str
 		WString used_environment = null;
 		if (!options.inherit_environment)
 		{
-			DString env;
-			env.tinit();
+			DString env = dstring::temp_with_capacity(64);
 			if (!environment.len)
 			{
 				env.append("\0");
@@ -249,7 +247,7 @@ fn SubProcess! create(String[] command_line, SubProcessOptions options = {}, Str
  **/
 fn ZString* tcopy_command_line(String[] command_line) @local @inline @if(env::POSIX)
 {
-	ZString* copy = tmalloc(ZString, command_line.len + 1);
+	ZString* copy = mem::temp_array(ZString, command_line.len + 1);
 	foreach (i, str : command_line)
 	{
 		copy[i] = str.zstr_tcopy();
@@ -262,7 +260,7 @@ const ZString[1] EMPTY_ENVIRONMENT @if(env::POSIX) = { null };
 fn ZString* tcopy_env(String[] environment) @local @inline @if(env::POSIX)
 {
 	if (!environment.len) return &EMPTY_ENVIRONMENT;
-	ZString* copy = tmalloc(ZString, environment.len + 1);
+	ZString* copy = mem::temp_array(ZString, environment.len + 1);
 	copy[environment.len] = null;
 	foreach (i, str : environment)
 	{

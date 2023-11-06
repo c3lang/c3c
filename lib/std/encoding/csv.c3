@@ -13,17 +13,22 @@ fn void CsvReader.init(&self, InStream* stream, String separator = ",")
 	self.separator = separator;
 }
 
-fn String[]! CsvReader.read_row(self, Allocator* using = mem::heap())
+fn String[]! CsvReader.read_new_row(self, Allocator* allocator = mem::heap())
 {
-	@pool(using)
+	return self.read_new_row_with_allocator(mem::temp()) @inline;
+}
+
+fn String[]! CsvReader.read_new_row_with_allocator(self, Allocator* allocator = mem::heap())
+{
+	@pool(allocator)
 	{
-		return io::treadline(self.stream).split(self.separator, .using = using);
+		return io::treadline(self.stream).split(self.separator, .allocator = allocator);
 	};
 }
 
-fn String[]! CsvReader.tread_row(self)
+fn String[]! CsvReader.read_temp_row(self)
 {
-	return self.read_row(mem::temp()) @inline;
+	return self.read_new_row_with_allocator(mem::temp()) @inline;
 }
 
 fn void! CsvReader.skip_row(self) @maydiscard
@@ -45,13 +50,13 @@ macro CsvReader.@each_row(self, int rows = int.max; @body(String[] row))
 			String[] parts;
 			@pool()
 			{
-				String! s = stream.readline(mem::temp());
+				String! s = stream.treadline();
 				if (catch err = s)
 				{
 					if (err == IoError.EOF) return;
 					return err?;
 				}
-				parts = s.split(sep, .using = mem);
+				parts = s.split(sep, .allocator = mem);
 			};
 			@body(parts);
 		};

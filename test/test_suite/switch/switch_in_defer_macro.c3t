@@ -282,7 +282,7 @@ fn String! Lexer.parse_string(&self, char quote) @private
     char c = self.read_char_for_string()!;
     if (c == quote) return "";
     DString str;
-    str.init(8, self.allocator);
+    str.init_new(8, self.allocator);
     char prev;
     while (true)
     {
@@ -352,7 +352,7 @@ fn void! Lexer.parse_comment(&self, String end) @private
 {
     // Find the end token and accumulate the data in between.
     DString acc;
-    acc.init(8, self.allocator);
+    acc.init_new(8, self.allocator);
     char[] buf = self.buf[:end.len];
     while (true)
     {
@@ -393,7 +393,7 @@ macro Lexer.unread(self, n) @private
 fn String! Lexer.parse_ident(&self) @private
 {
     DString str;
-    str.init(8, self.allocator);
+    str.init_new(8, self.allocator);
     while (true)
     {
         char! c = self.reader.read_byte();
@@ -492,7 +492,7 @@ struct TrieNode
 fn void Trie.init(&self, usz initial_capacity = 8, Allocator* using = mem::heap())
 {
     *self = {};
-    self.nodes.init(initial_capacity, using);
+    self.nodes.init_new(initial_capacity, .allocator = using);
     self.nodes.push(TrieNode{});
 }
 
@@ -534,7 +534,7 @@ fn void! Trie.del(&self, char[] key)
         return;
     }
     TriePath path;
-    path.init(8, self.nodes.allocator);
+    path.init_new(8, self.nodes.allocator);
     defer path.free();
     path.push(0);
     self.nodes[0].del(self, key, path)!;

@@ -1551,7 +1551,7 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 			case VARDECL_PARAM_REF:
 				// &foo
 				if (!sema_analyse_expr_lvalue(context, arg)) return false;
-				if (!sema_arg_is_pass_through_ref(arg) && !sema_expr_check_assign(context, arg)) return false;
+				if (!type_is_any_interface_ptr(arg->type) && !sema_arg_is_pass_through_ref(arg) && !sema_expr_check_assign(context, arg)) return false;
 				if (!type_is_any_interface_ptr(arg->type)) expr_insert_addr(arg);
 				*optional |= IS_OPTIONAL(arg);
 				if (!sema_call_check_contract_param_match(context, param, arg)) return false;

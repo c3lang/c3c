@@ -9,9 +9,9 @@ fn String add(String s, Allocator* a, int x)
         tmp = "foo".tconcat(s);
         tmp = add(tmp, a, x - 1);
     };
-    ulong* y = malloc(ulong, .using = mem::temp());
+    ulong* y = mem::new_temp(ulong);
     *y = 0xAAAA_AAAA_AAAA_AAAA;
-    return tmp.concat("a", .using = a);
+    return tmp.concat("a", .allocator = a);
 }
 
 fn String breakit(String s, Allocator* a)
@@ -26,10 +26,10 @@ fn String inner2(String s, Allocator* a)
 {
     @pool(a)
     {
-        ulong* z1 = tmalloc(ulong);
+        ulong* z1 = mem::new_temp(ulong);
         *z1 = 0xAAAA_AAAA_AAAA_AAAA;
         String y = inner3(s, a);
-        ulong* z = tmalloc(ulong);
+        ulong* z = mem::new_temp(ulong);
         *z = 0xAAAA_AAAA_AAAA_AAAA;
         return y;
     };
@@ -39,10 +39,10 @@ fn String inner3(String s, Allocator* a)
 {
     @pool(a)
     {
-        ulong* z1 = tmalloc(ulong);
+        ulong* z1 = mem::new_temp(ulong);
         *z1 = 0xAAAA_AAAA_AAAA_AAAA;
         String y = inner4(s, a);
-        ulong* z = tmalloc(ulong);
+        ulong* z = mem::new_temp(ulong);
         *z = 0xAAAA_AAAA_AAAA_AAAA;
         return y;
     };

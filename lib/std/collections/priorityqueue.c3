@@ -31,19 +31,19 @@ import std::collections::list;
 
 def Heap = List(<Type>);
 
-struct PrivatePriorityQueue
+struct PrivatePriorityQueue (Printable)
 {
 	Heap heap;
 }
 
-fn void PrivatePriorityQueue.init(&self, usz initial_capacity = 16, Allocator* using = mem::heap()) @inline
+fn void PrivatePriorityQueue.init_new(&self, usz initial_capacity = 16, Allocator* allocator = mem::heap()) @inline
 {
-	self.heap.init(initial_capacity, using);
+	self.heap.init_new(initial_capacity, allocator);
 }
 
-fn void PrivatePriorityQueue.tinit(&self, usz initial_capacity = 16) @inline
+fn void PrivatePriorityQueue.init_temp(&self, usz initial_capacity = 16) @inline
 {
-	self.init(initial_capacity, mem::temp());
+	self.heap.init_new(initial_capacity, mem::temp()) @inline;
 }
 
 fn void PrivatePriorityQueue.push(&self, Type element)
@@ -133,13 +133,13 @@ fn Type PrivatePriorityQueue.peek_at(&self, usz index) @operator([])
 	return self.heap[index];
 }
 
-fn usz! PrivatePriorityQueue.to_format(&self, Formatter* formatter)
+fn usz! PrivatePriorityQueue.to_format(&self, Formatter* formatter) @dynamic
 {
 	return self.heap.to_format(formatter);
 }
 
-fn String PrivatePriorityQueue.to_string(&self, Allocator* using = mem::heap())
+fn String PrivatePriorityQueue.to_new_string(&self, Allocator* allocator = mem::heap()) @dynamic
 {
-	return self.heap.to_string(using);
+	return self.heap.to_new_string(allocator);
 }
 

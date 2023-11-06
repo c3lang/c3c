@@ -12,7 +12,7 @@ fn void! bytestream()
 	usz len = s.read(&buffer)!;
 	assert((String)buffer[:len] == "abc");
 	ByteWriter w;
-	w.init();
+	w.init_new();
 	OutStream* ws = &w;
 	ws.write("helloworld")!;
 	assert(w.str_view() == "helloworld");
@@ -27,7 +27,7 @@ fn void! bytewriter_buffer()
 {
 	ByteWriter writer;
 	char[8] z;
-	writer.init_buffer(&z);
+	writer.init_with_buffer(&z);
 	OutStream* s = &writer;
 	s.write("hello")!!;
 	s.write_byte(0)!!;
@@ -43,7 +43,7 @@ fn void! bytewriter_read_from()
     InStream* s = &r;
 
     ByteWriter bw;
-    bw.tinit();
+    bw.init_temp();
     bw.read_from(s)!;
 
     assert(bw.str_view() == data);

@@ -4,7 +4,6 @@ import libc;
 
 struct VarString
 {
-    Allocator allocator;
     usz len;
     usz capacity;
     char* ptr;

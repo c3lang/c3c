@@ -77,12 +77,12 @@ fn void test_print()
 	defer str.free();
 	String s;
 
-	str.printf("_%s_", "foo");
+	str.appendf("_%s_", "foo");
 	s = str.str_view();
 	assert(s == "_foo_", "got '%s'; want '_foo_'", s);
 
 	str.clear();
-	str.printfn("_%s_", "foo");
+	str.appendfn("_%s_", "foo");
 	s = str.str_view();
 	assert(s == "_foo_\n", "got '%s'; want '_foo_\n'", s);
 }
@@ -126,7 +126,7 @@ fn void test_join()
 
 fn void test_insert_at()
 {
-	DString str = dstring::tnew(" world");
+	DString str = dstring::temp_new(" world");
 	String s;
 
 	str.insert_at(0, "");
@@ -144,7 +144,7 @@ fn void test_insert_at()
 
 fn void test_insert_at_overlaps()
 {
-	DString str = dstring::tnew("abc");
+	DString str = dstring::temp_new("abc");
 	String s;
 	String v;
 

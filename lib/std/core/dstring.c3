@@ -8,34 +8,36 @@ const usz MIN_CAPACITY @private = 16;
 /**
  * @require !self.data() "String already initialized"
  **/
-fn void DString.init(&self, usz capacity = MIN_CAPACITY, Allocator* using = mem::heap())
+fn DString DString.init_new(&self, usz capacity = MIN_CAPACITY, Allocator* allocator = mem::heap())
 {
 	if (capacity < MIN_CAPACITY) capacity = MIN_CAPACITY;
-	StringData* data = malloc(StringData, 1, .using = using, .end_padding = capacity);
-	data.allocator = using;
+	StringData* data = allocator.new(StringData, .end_padding = capacity);
+	data.allocator = allocator;
 	data.len = 0;
 	data.capacity = capacity;
-	*self = (DString)data;
+	return *self = (DString)data;
 }
 
 /**
  * @require !self.data() "String already initialized"
  **/
-fn void DString.tinit(&self, usz capacity = MIN_CAPACITY) => self.init(capacity, mem::temp()) @inline;
-
-fn DString new_with_capacity(usz capacity, Allocator* using = mem::heap())
+fn DString DString.init_temp(&self, usz capacity = MIN_CAPACITY)
 {
-	DString dstr;
-	dstr.init(capacity, using);
-	return dstr;
+	self.init_new(capacity, mem::temp()) @inline;
+	return *self;
 }
 
-fn DString tnew_with_capacity(usz capacity) => new_with_capacity(capacity, mem::temp()) @inline;
+fn DString new_with_capacity(usz capacity, Allocator* allocator = mem::heap())
+{
+	return DString{}.init_new(capacity, allocator);
+}
 
-fn DString new(String c = "", Allocator* using = mem::heap())
+fn DString temp_with_capacity(usz capacity) => new_with_capacity(capacity, mem::temp()) @inline;
+
+fn DString new(String c = "", Allocator* allocator = mem::heap())
 {
 	usz len = c.len;
-	StringData* data = (StringData*)new_with_capacity(len, using);
+	StringData* data = (StringData*)new_with_capacity(len, allocator);
 	if (len)
 	{
 		data.len = len;
@@ -44,12 +46,12 @@ fn DString new(String c = "", Allocator* using = mem::heap())
 	return (DString)data;
 }
 
-fn DString tnew(String s = "") => new(s, mem::temp()) @inline;
+fn DString temp_new(String s = "") => new(s, mem::temp()) @inline;
 
-fn DString DString.new_concat(self, DString b, Allocator* using = mem::heap())
+fn DString DString.new_concat(self, DString b, Allocator* allocator = mem::heap())
 {
 	DString string;
-	string.init(self.len() + b.len(), using);
+	string.init_new(self.len() + b.len(), allocator);
 	string.append(self);
 	string.append(b);
 	return string;
@@ -146,37 +148,37 @@ fn void DString.append_char32(&self, Char32 c)
 
 fn DString DString.tcopy(&self) => self.copy(mem::temp());
 
-fn DString DString.copy(self, Allocator* using = null)
+fn DString DString.copy(self, Allocator* allocator = null)
 {
 	if (!self)
 	{
-		if (using) return new_with_capacity(0, using);
+		if (allocator) return new_with_capacity(0, allocator);
 		return (DString)null;
 	}
 	StringData* data = self.data();
-	if (!using) using = mem::heap();
-	DString new_string = new_with_capacity(data.capacity, using);
+	if (!allocator) allocator = mem::heap();
+	DString new_string = new_with_capacity(data.capacity, allocator);
 	mem::copy((char*)new_string.data(), (char*)data, StringData.sizeof + data.len);
 	return new_string;
 }
 
-fn ZString DString.copy_zstr(self, Allocator* using = mem::heap())
+fn ZString DString.copy_zstr(self, Allocator* allocator = mem::heap())
 {
 	usz str_len = self.len();
 	if (!str_len)
 	{
-		return (ZString)calloc(1, .using = using);
+		return (ZString)allocator.calloc(1);
 	}
-	char* zstr = malloc(str_len + 1, .using = using);
+	char* zstr = allocator.alloc(str_len + 1);
 	StringData* data = self.data();
 	mem::copy(zstr, &data.chars, str_len);
 	zstr[str_len] = 0;
 	return (ZString)zstr;
 }
 
-fn String DString.copy_str(self, Allocator* using = mem::heap())
+fn String DString.copy_str(self, Allocator* allocator = mem::heap())
 {
-	return (String)self.copy_zstr(using)[:self.len()];
+	return (String)self.copy_zstr(allocator)[:self.len()];
 }
 
 fn String DString.tcopy_str(self) => self.copy_str(mem::temp()) @inline;
@@ -202,7 +204,7 @@ fn void DString.free(&self)
 	if (!*self) return;
 	StringData* data = self.data();
 	if (!data) return;
-	free(data, .using = data.allocator);
+	data.allocator.free(data);
 	*self = (DString)null;
 }
 
@@ -238,9 +240,9 @@ fn void DString.append_chars(&self, String str)
 	data.len += other_len;
 }
 
-fn Char32[] DString.copy_utf32(&self, Allocator* using = mem::heap())
+fn Char32[] DString.copy_utf32(&self, Allocator* allocator = mem::heap())
 {
-	return self.str_view().to_utf32(using) @inline!!;
+	return self.str_view().to_new_utf32(allocator) @inline!!;
 }
 
 fn void DString.append_string(&self, DString str)
@@ -299,7 +301,7 @@ macro void DString.append(&self, value)
 				$case $defined((String)value):
 					self.append_chars((String)value);
 				$default:
-					$error "Unsupported type for append – use printf instead.";
+					$error "Unsupported type for append – use appendf instead.";
 			$endswitch
 	$endswitch
 }
@@ -336,14 +338,14 @@ fn void DString.insert_at(&self, usz index, String s)
 	}
 }
 
-fn usz! DString.printf(&self, String format, args...) @maydiscard
+fn usz! DString.appendf(&self, String format, args...) @maydiscard
 {
 	Formatter formatter;
 	formatter.init(&out_string_append_fn, self);
 	return formatter.vprintf(format, args);
 }
 
-fn usz! DString.printfn(&self, String format, args...) @maydiscard
+fn usz! DString.appendfn(&self, String format, args...) @maydiscard
 {
 	Formatter formatter;
 	formatter.init(&out_string_append_fn, self);
@@ -352,7 +354,7 @@ fn usz! DString.printfn(&self, String format, args...) @maydiscard
 	return len + 1;
 }
 
-fn DString new_join(String[] s, String joiner, Allocator* using = mem::heap())
+fn DString new_join(String[] s, String joiner, Allocator* allocator = mem::heap())
 {
 	if (!s.len) return (DString)null;
 	usz total_size = joiner.len * s.len;
@@ -360,7 +362,7 @@ fn DString new_join(String[] s, String joiner, Allocator* using = mem::heap())
 	{
 		total_size += str.len;
 	}
-	DString res = new_with_capacity(total_size, using);
+	DString res = new_with_capacity(total_size, allocator);
 	res.append(s[0]);
 	foreach (String* &str : s[1..])
 	{
@@ -396,7 +398,7 @@ fn void DString.reserve(&self, usz addition)
 	if (new_capacity < MIN_CAPACITY) new_capacity = MIN_CAPACITY;
 	while (new_capacity < len) new_capacity *= 2;
 	data.capacity = new_capacity;
-	*self = (DString)realloc(data, StringData.sizeof + new_capacity, .using = data.allocator);
+	*self = (DString)data.allocator.realloc(data, StringData.sizeof + new_capacity);
 }
 
 fn usz! DString.read_from_stream(&self, InStream* reader)

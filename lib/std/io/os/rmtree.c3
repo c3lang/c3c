@@ -38,7 +38,7 @@ fn void! native_rmtree(Path path)
 {
 	Win32_WIN32_FIND_DATAW find_data;
 	String s = path.str_view().tconcat("\\*");
-	Win32_HANDLE find = win32::findFirstFileW(s.to_utf16(mem::temp()), &find_data)!;
+	Win32_HANDLE find = win32::findFirstFileW(s.to_temp_utf16(), &find_data)!;
 
 	if (find == win32::INVALID_HANDLE_VALUE) return IoError.CANNOT_READ_DIR?;
 	defer win32::findClose(find);
@@ -46,7 +46,7 @@ fn void! native_rmtree(Path path)
 	{
 		@pool()
 		{
-			String filename = string::from_wstring((WString)&find_data.cFileName, mem::temp())!;
+			String filename = string::new_from_wstring((WString)&find_data.cFileName, mem::temp())!;
 			if (filename == "." || filename == "..") continue;
 			Path file_path = path.tappend(filename)!;
 			if (find_data.dwFileAttributes & win32::FILE_ATTRIBUTE_DIRECTORY)

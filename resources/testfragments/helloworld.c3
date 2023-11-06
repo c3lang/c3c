@@ -1,8 +1,7 @@
 module helloworld;
-
-extern fn void printf(char *str, ...);
+import std::io;
 
 fn void main()
 {
-    printf("Hello World!\n");
+    io::printn("Hello, World!");
 }

@@ -108,26 +108,25 @@ fn usz! NanoDuration.to_format(&self, Formatter* formatter) @dynamic
 	bool neg = nd < 0;
 	if (neg) nd = -nd;
 
-	DString str;
-	str.tinit();
+	DString str = dstring::temp_with_capacity(64);
 	if (nd < 1_000_000_000)
 	{
 		// Less than 1s: print milliseconds, microseconds and nanoseconds.
 		NanoDuration ms = nd / 1_000_000;
 		if (ms > 0)
 		{
-			str.printf("%dms", ms);
+			str.appendf("%dms", ms);
 			nd -= ms * 1_000_000;
 		}
 		NanoDuration us = nd / 1000;
 		if (us > 0)
 		{
-			str.printf("%dµs", us);
+			str.appendf("%dµs", us);
 			nd -= us * 1000;
 		}
 		if (nd > 0)
 		{
-			str.printf("%dns", nd);
+			str.appendf("%dns", nd);
 		}
 	}
 	else
@@ -139,13 +138,13 @@ fn usz! NanoDuration.to_format(&self, Formatter* formatter) @dynamic
 		NanoDuration hour = nd / 3600;
 		if (hour > 0)
 		{
-			str.printf("%dh", hour);
+			str.appendf("%dh", hour);
 			nd -= hour * 3600;
 		}
 		NanoDuration min = nd / 60;
 		if (min > 0)
 		{
-			str.printf("%dm", min);
+			str.appendf("%dm", min);
 			nd -= min * 60;
 		}
 		NanoDuration sec = nd;
@@ -153,11 +152,11 @@ fn usz! NanoDuration.to_format(&self, Formatter* formatter) @dynamic
 		{
 			// Ignore trailing zeroes.
 			while (ms / 10 * 10 == ms) ms /= 10;
-			str.printf("%d.%ds", sec, ms);
+			str.appendf("%d.%ds", sec, ms);
 		}
 		else
 		{
-			str.printf("%ds", sec);
+			str.appendf("%ds", sec);
 		}
 	}
 	return formatter.printf(str.str_view())!;

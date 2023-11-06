@@ -9,7 +9,7 @@ enum Foo
 
 fn void print_pages()
 {
-	mem::temp().print_pages(io::stdout());
+	mem::temp().print_pages(io::stdout())!!;
 }
 
 fn void setstring(char* dst, String str)
@@ -28,12 +28,12 @@ fn void testAllocator(Allocator* a, int val)
 	io::printf("Aligned with offset %p, align 16: %s offset align 128: %s\n", data, mem::ptr_is_aligned(data, 16), mem::ptr_is_aligned(data + 16, 128));
 	data = a.calloc_aligned(val, 128, 16)!!;
 	io::printf("Aligned with offset %p, align 16: %s offset align 128: %s\n", data, mem::ptr_is_aligned(data, 16), mem::ptr_is_aligned(data + 16, 128));
-	data = a.realloc_aligned(data, val + 1, 128, 16)!!;
+	data = a.realloc_aligned(data, (usz)val + 1, 128, 16)!!;
 	io::printf("Aligned with offset %p, align 16: %s offset align 128: %s\n", data, mem::ptr_is_aligned(data, 16), mem::ptr_is_aligned(data + 16, 128));
-	data = a.realloc_aligned(data, val + 1, 128, 0)!!;
+	data = a.realloc_aligned(data, (usz)val + 1, 128, 0)!!;
 	io::printf("No offset %p, align 16: %s offset align 128: %s\n", data, mem::ptr_is_aligned(data, 16), mem::ptr_is_aligned(data + 16, 128));
 	io::printfn("Freeing %p", data);
-	a.free_aligned(data)!!;
+	a.free_aligned(data);
 }
 fn void main()
 {
@@ -63,7 +63,7 @@ fn void main()
 	io::printf("First big: %p\n", first_big);
 	print_pages();
 	};
-	mem::@tscoped()
+	mem::@scoped(mem::temp())
 	{
 		io::printf("Malloc: %p\n", (void*)malloc(23));
 		io::printf("Malloc: %p\n", (void*)malloc(23));
@@ -80,7 +80,7 @@ fn void main()
 	testAllocator(&aa, 126);
 	io::printn("Test dynamic arena");
 	DynamicArenaAllocator dynamic_arena;
-	dynamic_arena.init(1024);
+	dynamic_arena.init(1024, mem::heap());
     testAllocator(&dynamic_arena, 112);
     testAllocator(&dynamic_arena, 712);
 	first_big[3] = 123;

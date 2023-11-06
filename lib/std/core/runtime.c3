@@ -32,11 +32,11 @@ struct BenchmarkUnit
 	BenchmarkFn func;
 }
 
-fn BenchmarkUnit[] benchmark_collection_create(Allocator* using = mem::heap())
+fn BenchmarkUnit[] benchmark_collection_create(Allocator* allocator = mem::heap())
 {
 	BenchmarkFn[] fns = $$BENCHMARK_FNS;
 	String[] names = $$BENCHMARK_NAMES;
-	BenchmarkUnit[] benchmarks = malloc(BenchmarkUnit, names.len, .using = using);
+	BenchmarkUnit[] benchmarks = allocator.new_array(BenchmarkUnit, names.len);
 	foreach (i, benchmark : fns)
 	{
 		benchmarks[i] = { names[i], fns[i] };
@@ -74,9 +74,7 @@ fn bool run_benchmarks(BenchmarkUnit[] benchmarks)
 
 	usz len = max_name + 9;
 
-	DString name;
-
-	name.tinit();
+	DString name = dstring::temp_with_capacity(64);
 	name.append_repeat('-', len / 2);
 	name.append(" BENCHMARKS ");
 	name.append_repeat('-', len - len / 2);
@@ -94,7 +92,7 @@ fn bool run_benchmarks(BenchmarkUnit[] benchmarks)
 	foreach(unit : benchmarks)
 	{
 		defer name.clear();
-		name.printf("Benchmarking %s ", unit.name);
+		name.appendf("Benchmarking %s ", unit.name);
 		name.append_repeat('.', max_name - unit.name.len + 2);
 		io::printf("%s ", name.str_view());
 
@@ -152,11 +150,11 @@ struct TestUnit
 	TestFn func;
 }
 
-fn TestUnit[] test_collection_create(Allocator* using = mem::heap())
+fn TestUnit[] test_collection_create(Allocator* allocator = mem::heap())
 {
 	TestFn[] fns = $$TEST_FNS;
 	String[] names = $$TEST_NAMES;
-	TestUnit[] tests = malloc(TestUnit, names.len, .using = using);
+	TestUnit[] tests = allocator.new_array(TestUnit, names.len);
 	foreach (i, test : fns)
 	{
 		tests[i] = { names[i], fns[i] };
@@ -212,8 +210,7 @@ fn bool run_tests(TestUnit[] tests)
 	builtin::panic = &test_panic;
 	int tests_passed = 0;
 	int test_count = tests.len;
-	DString name;
-	name.tinit();
+	DString name = dstring::temp_with_capacity(64);
 	usz len = max_name + 9;
 	name.append_repeat('-', len / 2);
 	name.append(" TESTS ");
@@ -223,7 +220,7 @@ fn bool run_tests(TestUnit[] tests)
 	foreach(unit : tests)
 	{
 		defer name.clear();
-		name.printf("Testing %s ", unit.name);
+		name.appendf("Testing %s ", unit.name);
 		name.append_repeat('.', max_name - unit.name.len + 2);
 		io::printf("%s ", name.str_view());
 		CallstackElement* stack = $$stacktrace();

@@ -82,14 +82,24 @@ struct GrowableBitSet
 	GrowableBitSetList data;
 }
 
-fn void GrowableBitSet.init(&self, usz initial_capacity = 1, Allocator* using = mem::heap())
+/**
+ * @param initial_capacity
+ * @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
+ **/
+fn GrowableBitSet* GrowableBitSet.init_new(&self, usz initial_capacity = 1, Allocator* allocator = mem::heap())
 {
-	self.data.init(initial_capacity, using);
+	self.data.init_new(initial_capacity, allocator);
+	return self;
 }
 
-fn void GrowableBitSet.tinit(&self)
+fn GrowableBitSet* GrowableBitSet.init_temp(&self, usz initial_capacity = 1)
 {
-	self.init(.using = mem::temp());
+	return self.init_new(initial_capacity, mem::temp()) @inline;
+}
+
+fn void GrowableBitSet.free(&self)
+{
+	self.data.free();
 }
 
 fn usz GrowableBitSet.cardinality(&self)

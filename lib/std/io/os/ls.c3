@@ -1,9 +1,9 @@
 module std::io::file::os @if(env::POSIX);
 
-fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Allocator* using)
+fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Allocator* allocator)
 {
 	PathList list;
-	list.init(.using = using);
+	list.init_new(.allocator = allocator);
 	DIRPtr directory = posix::opendir(dir.str_view() ? dir.as_zstr() : (ZString)".");
 	defer if (directory) posix::closedir(directory);
 	if (!directory) return (path::is_dir(dir) ? IoError.CANNOT_READ_DIR : IoError.FILE_NOT_DIR)?;
@@ -14,7 +14,7 @@ fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Al
 		if (!name || name == "." || name == "..") continue;
 		if (entry.d_type == posix::DT_LNK && no_symlinks) continue;
 		if (entry.d_type == posix::DT_DIR && no_dirs) continue;
-		Path path = path::new(name, using)!!;
+		Path path = path::new(name, allocator)!!;
 		list.append(path);
 	}
 	return list;
@@ -22,12 +22,12 @@ fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Al
 
 module std::io::os @if(env::WIN32);
 
-fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Allocator* using)
+fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Allocator* allocator)
 {
 	PathList list;
-	list.init(.using = using);
+	list.init_new(.allocator = allocator);
 
-	@pool(using)
+	@pool(allocator)
 	{
 		WString result = dir.str_view().tconcat(`\*`).to_temp_wstring()!!;
 		Win32_WIN32_FIND_DATAW find_data;
@@ -37,11 +37,11 @@ fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Al
 		do
 		{
 			if (no_dirs && (find_data.dwFileAttributes & win32::FILE_ATTRIBUTE_DIRECTORY)) continue;
-			@pool(using)
+			@pool(allocator)
 			{
 				String filename = string::temp_from_wstring((WString)&find_data.cFileName)!;
 				if (filename == ".." || filename == ".") continue;
-				list.append(path::new(filename, using)!);
+				list.append(path::new(filename, allocator)!);
 			};
 		} while (win32::findNextFileW(find, &find_data));
 		return list;

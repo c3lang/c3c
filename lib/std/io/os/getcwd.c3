@@ -1,7 +1,7 @@
 module std::io::os;
 import libc;
 
-macro String! getcwd(Allocator* using = mem::heap())
+macro String! getcwd(Allocator* allocator = mem::heap())
 {
 	$switch
 		$case env::WIN32:
@@ -17,7 +17,7 @@ macro String! getcwd(Allocator* using = mem::heap())
 				free = true;
 			}
 			Char16[] str16 = res[:win32::wcslen(res)];
-			return string::from_utf16(str16, using);
+			return string::new_from_utf16(str16, allocator);
 
 		$case env::POSIX:
 			const usz DEFAULT_BUFFER = 256;
@@ -32,7 +32,7 @@ macro String! getcwd(Allocator* using = mem::heap())
 				free = true;
 			}
 			defer if (free) libc::free((void*)res);
-			return res.copy(using);
+			return res.copy(allocator);
 
 		$default:
 			return IoError.UNSUPPORTED_OPERATION?;

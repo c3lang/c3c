@@ -23,15 +23,15 @@ struct TopoList
 
 fn void sort(InputPair[] pairs, uint elements)
 {
-    InputPair[] result = malloc(InputPair, pairs.len);
-    TopoList* top = malloc(TopoList, elements);
+    InputPair[] result = mem::new_array(InputPair, pairs.len);
+    TopoList* top = mem::new_array(TopoList, elements);
     for (int i = 0; i < pairs.len; i++)
     {
         InputPair pair = pairs[i];
         assert(pair.value >= 0 && pair.value < elements);
         assert(pair.successor >= 0 && pair.successor < elements);
         top[pair.successor].count++;
-        Entry* successor_entry = mem::malloc(Entry);
+        Entry* successor_entry = mem::new(Entry);
         *successor_entry = { pair.successor, null };
         Entry** next_ref = &top[pair.value].next;
         while (*next_ref)
@@ -40,7 +40,7 @@ fn void sort(InputPair[] pairs, uint elements)
         }
         *next_ref = successor_entry;
     }
-    int[] intout = malloc(int, elements);
+    int[] intout = mem::new_array(int, elements);
     int count = 0;
     while LOOP: (1)
     {

@@ -28,12 +28,20 @@ fn void LinkedList.push_last(&self, Type value)
 	self.link_last(value);
 }
 
-fn void LinkedList.init(&self, Allocator* using = mem::heap())
+/**
+ * @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
+ * @return "the initialized list"
+ **/
+fn LinkedList* LinkedList.init_new(&self, Allocator* allocator = mem::heap())
 {
-	*self = { .allocator = using };
+	*self = { .allocator = allocator };
+	return self;
 }
 
-fn void LinkedList.tinit(&self) => self.init(mem::temp()) @inline;
+fn LinkedList* LinkedList.init_temp(&self)
+{
+	return self.init_new(mem::temp()) @inline;
+}
 
 /**
  * @require self.allocator
@@ -45,7 +53,7 @@ macro void LinkedList.free_node(&self, Node* node) @private
 macro Node* LinkedList.alloc_node(&self) @private
 {
 	if (!self.allocator) self.allocator = mem::heap();
-	return malloc(Node, .using = self.allocator);
+	return self.allocator.new(Node);
 }
 
 fn void LinkedList.link_first(&self, Type value) @private
@@ -175,7 +183,7 @@ fn void LinkedList.insert(&self, usz index, Type element)
 fn void LinkedList.link_before(&self, Node *succ, Type value) @private
 {
 	Node* pred = succ.prev;
-	Node* new_node = malloc(Node);
+	Node* new_node = self.alloc_node();
 	*new_node = { .prev = pred, .next = succ, .value = value };
 	succ.prev = new_node;
 	if (!pred)

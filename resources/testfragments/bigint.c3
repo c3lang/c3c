@@ -1,5 +1,6 @@
 module bigint;
 import libc;
+import std::io;
 
 macro @max(a, b)
 {
@@ -22,9 +23,9 @@ fn void BigInt.init(BigInt* bigInt)
 	bigInt.sign = 1;
 }
 
-fn void BigInt.initFromString(BigInt* bigInt, char* str)
+fn void BigInt.initFromString(BigInt* bigInt, ZString str)
 {
-	uint size = (uint)libc::strlen(str);
+	uint size = (uint)str.len();
 	bigInt.sign = 1;
 	switch (str[0])
 	{
@@ -230,8 +231,8 @@ fn char* BigInt.toCharArray(BigInt* bigInt)
 
 fn void BigInt.print(BigInt* bigInt)
 {
-	char* chars = bigInt.toCharArray();
-	libc::puts(chars);
+	ZString chars = (ZString)bigInt.toCharArray();
+	io::printn(chars);
 	free(chars);
 }
 
