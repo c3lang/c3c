@@ -45,9 +45,9 @@ fn usz! Backtrace.to_format(&self, Formatter* formatter) @dynamic
 fn void Backtrace.free(&self)
 {
 	if (!self.allocator) return;
-	free(self.function, .using = self.allocator);
-	free(self.object_file, .using = self.allocator);
-	free(self.file, .using = self.allocator);
+	self.allocator.free(self.function);
+	self.allocator.free(self.object_file);
+	self.allocator.free(self.file);
 }
 
 fn Backtrace* Backtrace.init(&self, uptr offset, String function, String object_file, String file = "", uint line = 0, Allocator* using = mem::heap())

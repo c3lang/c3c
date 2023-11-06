@@ -160,11 +160,11 @@ PanicFn panic = &default_panic;
 
 fn void panicf(String fmt, String file, String function, uint line, args...)
 {
-	@stack_mem(512; Allocator* mem)
+	@stack_mem(512; Allocator* allocator)
 	{
 		DString s;
-		s.init(.using = mem);
-		s.printf(fmt, ...args);
+		s.init_new(.allocator = allocator);
+		s.appendf(fmt, ...args);
 		panic(s.str_view(), file, function, line);
 	};
 }

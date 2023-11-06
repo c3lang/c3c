@@ -15,9 +15,9 @@ fault JsonParsingError
 	INVALID_NUMBER,
 }
 
-fn Object*! parse(InStream* s, Allocator* using = mem::heap())
+fn Object*! parse(InStream* s, Allocator* allocator = mem::heap())
 {
-	JsonContext context = { .last_string = dstring::new_with_capacity(64, using), .stream = s, .allocator = using };
+	JsonContext context = { .last_string = dstring::new_with_capacity(64, allocator), .stream = s, .allocator = allocator };
 	defer context.last_string.free();
 	return parse_any(&context);
 }
@@ -86,7 +86,7 @@ fn JsonTokenType! lex_number(JsonContext *context, char c) @local
 {
 	@pool()
 	{
-		DString t = dstring::tnew_with_capacity(32);
+		DString t = dstring::temp_with_capacity(32);
 		bool negate = c == '-';
 		if (negate)
 		{

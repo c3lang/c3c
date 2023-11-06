@@ -78,10 +78,10 @@ fn usz! Object.to_format(&self, Formatter* formatter) @dynamic
 	}
 }
 
-fn Object* new_obj(Allocator* using = mem::heap())
+fn Object* new_obj(Allocator* allocator)
 {
-	Object* o = malloc(Object, .using = using);
-	*o = { .allocator = using, .type = void.typeid };
+	Object* o = allocator.new(Object);
+	*o = { .allocator = allocator, .type = void.typeid };
 	return o;
 }
 
@@ -90,31 +90,31 @@ fn Object* new_null()
 	return &NULL_OBJECT;
 }
 
-fn Object* new_int(int128 i, Allocator* using = mem::heap())
+fn Object* new_int(int128 i, Allocator* allocator)
 {
-	Object* o = malloc(Object, .using = using);
-	*o = { .i = i, .allocator = using, .type = int128.typeid };
+	Object* o = allocator.new(Object);
+	*o = { .i = i, .allocator = allocator, .type = int128.typeid };
 	return o;
 }
 
-macro Object* new_enum(e, Allocator* using = mem::heap())
+macro Object* new_enum(e, Allocator* allocator)
 {
-	Object* o = malloc(Object, .using = using);
-	*o = { .i = (int128)e, .allocator = using, .type = $typeof(e).typeid };
+	Object* o = allocator.new(Object);
+	*o = { .i = (int128)e, .allocator = allocator, .type = $typeof(e).typeid };
 	return o;
 }
 
-fn Object* new_float(double f, Allocator* using = mem::heap())
+fn Object* new_float(double f, Allocator* allocator)
 {
-	Object* o = malloc(Object, .using = using);
-	*o = { .f = f, .allocator = using, .type = double.typeid };
+	Object* o = allocator.new(Object);
+	*o = { .f = f, .allocator = allocator, .type = double.typeid };
 	return o;
 }
 
-fn Object* new_string(String s, Allocator* using = mem::heap())
+fn Object* new_string(String s, Allocator* allocator)
 {
-	Object* o = malloc(Object, .using = using);
-	*o = { .s = s.copy(using), .allocator = using, .type = String.typeid };
+	Object* o = allocator.new(Object);
+	*o = { .s = s.copy(allocator), .allocator = allocator, .type = String.typeid };
 	return o;
 }
 
@@ -131,7 +131,7 @@ fn void Object.free(&self)
 		case void:
 			break;
 		case String:
-			free(self.s, .using = self.allocator);
+			self.allocator.free(self.s);
 		case ObjectInternalList:
 			foreach (ol : self.array)
 			{
@@ -140,13 +140,13 @@ fn void Object.free(&self)
 			self.array.free();
 		case ObjectInternalMap:
 			self.map.@each_entry(; ObjectInternalMapEntry* entry) {
-				free(entry.key, .using = self.allocator);
+				self.allocator.free(entry.key);
 				entry.value.free();
 			};
 		default:
 			break;
 	}
-	if (self.allocator) free(self, .using = self.allocator);
+	if (self.allocator) self.allocator.free(self);
 }
 
 fn bool Object.is_null(&self) @inline => self == &NULL_OBJECT;
@@ -168,7 +168,7 @@ fn void Object.init_map_if_needed(&self) @private
 	if (self.is_empty())
 	{
 		self.type = ObjectInternalMap.typeid;
-		self.map.init(.using = self.allocator);
+		self.map.init_new(.allocator = self.allocator);
 	}
 }
 
@@ -180,7 +180,7 @@ fn void Object.init_array_if_needed(&self) @private
 	if (self.is_empty())
 	{
 		self.type = ObjectInternalList.typeid;
-		self.array.init(.using = self.allocator);
+		self.array.init_new(.allocator = self.allocator);
 	}
 }
 
@@ -193,7 +193,7 @@ fn void Object.set_object(&self, String key, Object* new_object) @private
 	ObjectInternalMapEntry*! entry = self.map.get_entry(key);
 	defer
 	{
-		(void)free(entry.key, .using = self.allocator);
+		(void)self.allocator.free(entry.key);
 		(void)entry.value.free();
 	}
 	self.map.set(key.copy(self.map.allocator), new_object);

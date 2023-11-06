@@ -28,9 +28,14 @@ fn Type Range.get(&self, usz index) @operator([])
 	return (Type)(self.start + (usz)index);
 }
 
-fn String Range.to_string(&self, Allocator* using = mem::heap()) @dynamic
+fn String Range.to_new_string(&self, Allocator* allocator = mem::heap()) @dynamic
 {
-	return string::printf("[%s..%s]", self.start, self.end);
+	return string::new_format("[%s..%s]", self.start, self.end, .allocator = allocator);
+}
+
+fn String Range.to_tstring(&self)
+{
+	return self.to_new_string(mem::temp());
 }
 
 fn usz! Range.to_format(&self, Formatter* formatter) @dynamic
@@ -60,9 +65,14 @@ fn usz! ExclusiveRange.to_format(&self, Formatter* formatter) @dynamic
 	return formatter.printf("[%s..<%s]", self.start, self.end)!;
 }
 
-fn String ExclusiveRange.to_string(&self, Allocator* using = mem::heap()) @dynamic
+fn String ExclusiveRange.to_new_string(&self, Allocator* allocator = mem::heap()) @dynamic
 {
-	return string::printf("[%s..<%s]", self.start, self.end);
+	return string::new_format("[%s..<%s]", self.start, self.end, .allocator = allocator);
+}
+
+fn String ExclusiveRange.to_tstring(&self)
+{
+	return self.to_new_string(mem::temp());
 }
 
 /**

@@ -15,6 +15,6 @@ struct Test (TestProto)
 
 fn void reflect_test() @test
 {
-	TestProto* b = malloc(Test);
+	TestProto* b = mem::new(Test);
 	b.tesT();
 }

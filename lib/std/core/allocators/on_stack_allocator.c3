@@ -17,12 +17,13 @@ struct OnStackAllocatorExtraChunk @local
 }
 
 /**
+ * @param [&inout] allocator
  * Initialize a memory arena for use using the provided bytes.
  **/
-fn void OnStackAllocator.init(&self, char[] data, Allocator* using = mem::heap())
+fn void OnStackAllocator.init(&self, char[] data, Allocator* allocator)
 {
 	self.data = data;
-	self.backing_allocator = using;
+	self.backing_allocator = allocator;
 	self.used = 0;
 }
 

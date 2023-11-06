@@ -4,7 +4,7 @@ import std::io;
 fn void! write_read()
 {
 	ByteBuffer buffer;
-	buffer.init(0)!;
+	buffer.init_new(0)!;
 
 	buffer.write("hello")!;
 

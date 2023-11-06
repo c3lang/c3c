@@ -12,14 +12,15 @@ struct DynamicArenaAllocator (Allocator)
 }
 
 /**
+ * @param [&inout] allocator
  * @require page_size >= 128
  **/
-fn void DynamicArenaAllocator.init(&self, usz page_size, Allocator* using = mem::heap())
+fn void DynamicArenaAllocator.init(&self, usz page_size, Allocator* allocator)
 {
 	self.page = null;
 	self.unused_page = null;
 	self.page_size = page_size;
-	self.backing_allocator = using;
+	self.backing_allocator = allocator;
 }
 
 fn void DynamicArenaAllocator.free(&self)
@@ -140,10 +141,10 @@ fn void*! DynamicArenaAllocator._alloc_new(&self, usz size, usz alignment, usz o
 
 	// Grab the page without alignment (we do it ourselves)
 	void* mem = self.backing_allocator.alloc_checked(page_size)!;
-	DynamicArenaPage*! page = malloc(DynamicArenaPage, .using = self.backing_allocator);
+	DynamicArenaPage*! page = self.backing_allocator.new(DynamicArenaPage);
 	if (catch err = page)
 	{
-		free(mem, .using = self.backing_allocator);
+		self.backing_allocator.free(mem);
 		return err?;
 	}
 	page.memory = mem;

@@ -32,6 +32,53 @@ macro void*! Allocator.alloc_checked(&self, usz size)
 macro void*! Allocator.calloc_checked(&self, usz size) => self.acquire(size, true, 0, 0);
 macro void*! Allocator.realloc_checked(&self, void* ptr, usz new_size) => self.resize(ptr, new_size, 0, 0);
 
+macro Allocator.new_array(&self, $Type, usz size, usz end_padding = 0)
+{
+	return (($Type*)self.alloc_checked($Type.sizeof * size + end_padding))[:size]!!;
+}
+
+macro Allocator.new_array_checked(&self, $Type, usz size, usz end_padding = 0)
+{
+	return (($Type*)self.alloc_checked($Type.sizeof * size + end_padding))[:size];
+}
+
+macro Allocator.new_zero_array(&self, $Type, usz size, usz end_padding = 0)
+{
+	return (($Type*)self.calloc_checked($Type.sizeof * size + end_padding))[:size]!!;
+}
+
+macro Allocator.new_zero_array_checked(&self, $Type, usz size, usz end_padding = 0)
+{
+	return (($Type*)self.calloc_checked($Type.sizeof * size + end_padding))[:size];
+}
+
+macro Allocator.new(&self, $Type, usz end_padding = 0) @nodiscard
+{
+	return ($Type*)self.alloc_checked($Type.sizeof + end_padding)!!;
+}
+
+macro Allocator.new_checked(&self, $Type, usz end_padding = 0) @nodiscard
+{
+	return ($Type*)self.alloc_checked($Type.sizeof + end_padding);
+}
+
+macro Allocator.new_clear(&self, $Type, usz end_padding = 0) @nodiscard
+{
+	return ($Type*)self.calloc_checked($Type.sizeof + end_padding)!!;
+}
+
+macro Allocator.new_clear_checked(&self, $Type, usz end_padding = 0) @nodiscard
+{
+	return ($Type*)self.calloc_checked($Type.sizeof + end_padding);
+}
+
+macro Allocator.clone(&self, value)
+{
+	var x = self.alloc($typeof(value));
+	*x = value;
+	return x;
+}
+
 macro void* Allocator.alloc(&self, usz size) @nodiscard => self.alloc_checked(size)!!;
 macro void* Allocator.calloc(&self, usz size) @nodiscard => self.acquire(size, true, 0, 0)!!;
 macro void* Allocator.realloc(&self, void* ptr, usz new_size) @nodiscard => self.resize(ptr, new_size, 0, 0)!!;

@@ -4,9 +4,9 @@ import std::math;
 
 fn int fannkuchredux(int n)
 {
-	int[] perm = malloc(int, n)[:n];
-	int[] perm1 = malloc(int, n)[:n];
-	int* count = malloc(int, n);
+	int[] perm = mem::new_array(int, n);
+	int[] perm1 = mem::new_array(int, n);
+	int* count = mem::new_array(int, n);
 	int max_flips_count;
 	int perm_count;
 	int checksum;

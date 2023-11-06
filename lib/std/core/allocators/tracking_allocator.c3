@@ -21,12 +21,12 @@ struct TrackingAllocator (Allocator)
 /**
  * Initialize a tracking allocator to wrap (and track) another allocator.
  *
- * @param [&inout] using "The allocator to track"
+ * @param [&inout] allocator "The allocator to track"
  **/
-fn void TrackingAllocator.init(&self, Allocator* using)
+fn void TrackingAllocator.init(&self, Allocator* allocator)
 {
-	*self = { .inner_allocator = using };
-	self.map.init(.using = using);
+	*self = { .inner_allocator = allocator };
+	self.map.init_new(.allocator = allocator);
 }
 
 /**

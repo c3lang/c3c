@@ -56,7 +56,7 @@ fn usz! InetAddress.to_format(InetAddress* addr, Formatter* formatter) @dynamic
 	return formatter.printf("%d.%d.%d.%d", addr.ipv4.a, addr.ipv4.b, addr.ipv4.c, addr.ipv4.d)!;
 }
 
-fn String InetAddress.to_string(InetAddress* addr, Allocator* using = mem::heap()) @dynamic
+fn String InetAddress.to_new_string(InetAddress* addr, Allocator* allocator = mem::heap()) @dynamic
 {
 	if (addr.is_ipv6)
 	{
@@ -64,11 +64,11 @@ fn String InetAddress.to_string(InetAddress* addr, Allocator* using = mem::heap(
 		String res = (String)io::bprintf(&buffer, "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x",
 			addr.ipv6.a, addr.ipv6.b, addr.ipv6.c, addr.ipv6.d,
 			addr.ipv6.e, addr.ipv6.f, addr.ipv6.g, addr.ipv6.h)!!;
-		return res.copy(using);
+		return res.copy(allocator);
 	}
 	char[3 * 4 + 3 + 1] buffer;
 	String res = (String)io::bprintf(&buffer, "%d.%d.%d.%d", addr.ipv4.a, addr.ipv4.b, addr.ipv4.c, addr.ipv4.d)!!;
-	return res.copy(using);
+	return res.copy(allocator);
 }
 
 fn InetAddress! ipv6_from_str(String s)
@@ -262,12 +262,11 @@ fn AddrInfo*! addrinfo(String host, uint port, AIFamily ai_family, AISockType ai
 	@pool()
 	{
 		ZString zhost = host.zstr_tcopy();
-		DString str;
-		str.tinit();
-		str.printf("%d", port);
+		DString str = dstring::temp_with_capacity(32);
+		str.appendf("%d", port);
 		AddrInfo hints = { .ai_family = ai_family, .ai_socktype = ai_socktype };
 		AddrInfo* ai;
-		if (os::getaddrinfo(zhost, str.copy_zstr(mem::temp()), &hints, &ai)) return NetError.ADDRINFO_FAILED?;
+		if (os::getaddrinfo(zhost, str.zstr_view(), &hints, &ai)) return NetError.ADDRINFO_FAILED?;
 		return ai;
 	};
 }

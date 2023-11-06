@@ -140,9 +140,14 @@ fn usz! EnumSet.to_format(&set, Formatter* formatter) @dynamic
 	return n;
 }
 
-fn String EnumSet.to_string(&set, Allocator* using = mem::heap()) @dynamic
+fn String EnumSet.to_new_string(&set, Allocator* allocator = mem::heap()) @dynamic
 {
-	return string::printf("%s", *set);
+	return string::new_format("%s", *set, .allocator = allocator);
+}
+
+fn String EnumSet.to_tstring(&set) @dynamic
+{
+	return string::tformat("%s", *set);
 }
 
 module std::collections::enumset::private;

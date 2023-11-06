@@ -10,7 +10,7 @@ fn void! copy_map() @test
     mem::@scoped(&alloc)
 	{
 		HashMap(<String, int>) x;
-		x.init();
+		x.init_new();
 		DString y;
 		y.append("hello");
 		x.set(y.str_view(), 123);

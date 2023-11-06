@@ -9,19 +9,19 @@ import libc;
  * @require name.len > 0
  * @return! SearchResult.MISSING
  **/
-fn String! get_var(String name, Allocator* using = mem::heap())
+fn String! get_var(String name, Allocator* allocator = mem::heap())
 {
-	@pool(using)
+	@pool(allocator)
 	{
 	$switch
 	$case env::LIBC && !env::WIN32:
 		ZString val = libc::getenv(name.zstr_tcopy());
-		return val ? val.copy(using) : SearchResult.MISSING?;
+		return val ? val.copy(allocator) : SearchResult.MISSING?;
 	$case env::WIN32:
 		// https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getenvironmentvariable
 		const usz BUFSIZE = 1024;
 		WString buff = (WString)tcalloc(BUFSIZE * 2 + 2);
-		WString wstr = name.to_wstring(mem::temp())!;
+		WString wstr = name.to_temp_wstring()!;
 		usz len = win32::getEnvironmentVariableW(wstr, buff, BUFSIZE);
 		if (len == 0) return SearchResult.MISSING?;
 		if (len > BUFSIZE)
@@ -29,13 +29,17 @@ fn String! get_var(String name, Allocator* using = mem::heap())
 			buff = (WString)tmalloc(len * 2 + 2);
 			win32::getEnvironmentVariableW(wstr, buff, (Win32_DWORD)len);
 		}
-		return string::from_wstring(buff, using);
+		return string::new_from_wstring(buff, allocator);
 	$default:
 		return "";
 	$endswitch
 	};
 }
 
+fn String! get_var_temp(String name)
+{
+	return get_var(name, mem::temp());
+}
 
 /**
  * @param [in] name
@@ -48,14 +52,14 @@ fn bool set_var(String name, String value, bool overwrite = true)
 	{
 	$switch
 	$case env::WIN32:
-		WString wname = name.to_wstring(mem::temp())!!;
+		WString wname = name.to_temp_wstring()!!;
 		if (!overwrite)
 		{
 			Char16[8] buff;
 			if (win32::getEnvironmentVariableW(wname, &buff, 8) > 0) return true;
 		}
 		// https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-setenvironmentvariable
-		return (win32::setEnvironmentVariableW(wname, value.to_wstring(mem::temp())) ?? 1) == 0;
+		return (win32::setEnvironmentVariableW(wname, value.to_temp_wstring()) ?? 1) == 0;
 	$case env::LIBC && !env::WIN32:
 		return libc::setenv(name.zstr_tcopy(), value.zstr_copy(), (int)overwrite) == 0;
 	$default:
@@ -82,21 +86,21 @@ fn String! get_home_dir(Allocator* using = mem::heap())
 /**
  * Returns the current user's config directory.
  **/
-fn Path! get_config_dir(Allocator* using = mem::heap())
+fn Path! get_config_dir(Allocator* allocator = mem::heap())
 {
-	@pool(using)
+	@pool(allocator)
 	{
 	$if env::WIN32:
-		return path::new(get_var("AppData", .using = mem::temp()), .using = using);
+		return path::new(get_var_temp("AppData"), allocator);
 	$else
 		$if env::DARWIN:
-			String s = get_var("HOME", .using = mem::temp())!;
+			String s = get_var_temp("HOME")!;
 			const DIR = "Library/Application Support";
 		$else
-			String s = get_var("XDG_CONFIG_HOME", .using = mem::temp()) ?? get_var("HOME", .using = mem::temp())!;
+			String s = get_var_temp("XDG_CONFIG_HOME") ?? get_var_temp("HOME")!;
 			const DIR = ".config";
 		$endif
-		return path::new(s, .using = mem::temp()).append(DIR, .using = using);
+		return path::temp_new(s).append(DIR, .allocator = allocator);
 	$endif
 	};
 }
@@ -112,7 +116,7 @@ fn bool clear_var(String name)
 	{
 	$switch
 	$case env::WIN32:
-		WString wname = name.to_wstring(mem::temp())!!;
+		WString wname = name.to_temp_wstring()!!;
 		return win32::setEnvironmentVariableW(wname, null) == 0;
 	$case env::LIBC && !env::WIN32:
 		return libc::unsetenv(name.zstr_tcopy()) == 0;
@@ -122,10 +126,10 @@ fn bool clear_var(String name)
 	};
 }
 
-fn String! executable_path(Allocator *using = mem::heap())
+fn String! executable_path(Allocator *allocator = mem::heap())
 {
 	$if env::DARWIN:
-		return darwin::executable_path();
+		return darwin::executable_path(allocator);
 	$else
 		return "<Unsupported>";
 	$endif

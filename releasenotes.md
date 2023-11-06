@@ -130,6 +130,9 @@
 - `assert` may now take varargs for formatting.
 
 ### Stdlib changes
+
+- `init_new`/`init_temp` for allocating init methods.
+- `DString.printf` is now `DString.appendf`.
 - Tuple and Maybe types.
 - `.as_str()` replaced by `.str_view()`
 - Added `math::log(x , base)` and `math::ln(x)`.

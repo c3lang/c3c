@@ -35,16 +35,16 @@ macro rindex_of(array, element)
  *
  * @param [in] arr1
  * @param [in] arr2
- * @param [&inout] using "The allocator to use, default is the heap allocator"
+ * @param [&inout] allocator "The allocator to use, default is the heap allocator"
  * @require @typekind(arr1) == SUBARRAY || @typekind(arr1) == ARRAY
  * @require @typekind(arr2) == SUBARRAY || @typekind(arr2) == ARRAY
  * @require @typeis(arr1[0], $typeof(arr2[0])) "Arrays must have the same type"
  * @ensure result.len == arr1.len + arr2.len
  **/
-macro concat(arr1, arr2, Allocator* using = mem::heap())
+macro concat_new(arr1, arr2, Allocator* allocator = mem::heap())
 {
 	var $Type = $typeof(arr1[0]);
-	$Type[] result = malloc($Type, arr1.len + arr2.len, .using = using);
+	$Type[] result = allocator.new_array($Type, arr1.len + arr2.len);
 	if (arr1.len > 0)
 	{
 		mem::copy(result.ptr, &arr1[0], arr1.len * $Type.sizeof, $Type.alignof, $Type.alignof);

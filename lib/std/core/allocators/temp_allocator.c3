@@ -35,14 +35,14 @@ macro bool TempAllocatorPage.is_aligned(&self) => self.size & PAGE_IS_ALIGNED ==
 /**
  * @require size >= 16
  **/
-fn TempAllocator*! new_temp(usz size, Allocator* using)
+fn TempAllocator*! new_temp(usz size, Allocator* allocator)
 {
-	TempAllocator* allocator = malloc_checked(TempAllocator, .using = using, .end_padding = size)!;
-	allocator.last_page = null;
-	allocator.backing_allocator = using;
-	allocator.used = 0;
-	allocator.capacity = size;
-	return allocator;
+	TempAllocator* temp = allocator.alloc_checked(TempAllocator.sizeof + size)!;
+	temp.last_page = null;
+	temp.backing_allocator = allocator;
+	temp.used = 0;
+	temp.capacity = size;
+	return temp;
 }
 
 fn usz TempAllocator.mark(&self) @dynamic => self.used;
@@ -202,20 +202,20 @@ fn void*! TempAllocator.acquire(&self, usz size, bool clear, usz alignment, usz 
 	return &page.data[0];
 }
 
-fn void! TempAllocator.print_pages(&self, File f)
+fn void! TempAllocator.print_pages(&self, File* f)
 {
 	TempAllocatorPage *last_page = self.last_page;
 	if (!last_page)
 	{
-		io::fprintf(&f, "No pages.\n")!;
+		io::fprintf(f, "No pages.\n")!;
 		return;
 	}
-	io::fprintf(&f, "---Pages----\n")!;
+	io::fprintf(f, "---Pages----\n")!;
 	uint index = 0;
 	while (last_page)
 	{
 		bool is_not_aligned = !(last_page.size & (1u64 << 63));
-		io::fprintf(&f, "%d. Alloc: %d %d at %p%s\n", ++index,
+		io::fprintf(f, "%d. Alloc: %d %d at %p%s\n", ++index,
 				last_page.size & ~(1u64 << 63), last_page.mark, &last_page.data[0], is_not_aligned ? "" : " [aligned]")!;
 		last_page = last_page.prev_page;
 	}

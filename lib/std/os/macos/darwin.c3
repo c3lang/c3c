@@ -68,12 +68,12 @@ struct Darwin_segment_command_64
 }
 
 
-fn String! executable_path(Allocator *using = mem::heap())
+fn String! executable_path(Allocator *allocator)
 {
 	char[4096] path;
 	uint len = path.len;
 	if (darwin_NSGetExecutablePath(&path, &len) < 0) return SearchResult.MISSING?;
-	return ((ZString)&path).copy(.using = using);
+	return ((ZString)&path).copy(allocator);
 }
 
 def BacktraceList = List(<Backtrace>);
@@ -95,16 +95,16 @@ fn uptr! load_address() @local
 }
 
 
-fn Backtrace! backtrace_load_element(String execpath, void* buffer, void* load_address, Allocator* using = mem::heap()) @local
+fn Backtrace! backtrace_load_element(String execpath, void* buffer, void* load_address, Allocator* allocator = mem::heap()) @local
 {
-	@pool(using)
+	@pool(allocator)
 	{
 		if (buffer)
 		{
 			SubProcess process = process::create({ "atos",
 				"-o", execpath, "-arch", env::AARCH64 ? "arm64" : "x86_64", "-l",
-				string::tprintf("%p", load_address),
-				string::tprintf("%p", buffer),
+				string::tformat("%p", load_address),
+				string::tformat("%p", buffer),
 				 "-fullPath" })!;
 			process.join()!;
 			char* buf = tmalloc(1024);
@@ -116,11 +116,11 @@ fn Backtrace! backtrace_load_element(String execpath, void* buffer, void* load_a
 				String[] path_parts = parts[3].tsplit(":");
 				return {
 					.offset = (uptr)buffer,
-                    .function = parts[0].copy(using),
-                    .object_file = parts[2][..^2].copy(using),
-                    .file = path_parts[0][1..].copy(using),
+                    .function = parts[0].copy(allocator),
+                    .object_file = parts[2][..^2].copy(allocator),
+                    .file = path_parts[0][1..].copy(allocator),
                     .line = path_parts[1][..^2].to_uint()!,
-                    .allocator = using
+                    .allocator = allocator
 				};
 			}
 		}
@@ -128,21 +128,21 @@ fn Backtrace! backtrace_load_element(String execpath, void* buffer, void* load_a
 		if (!buffer || !darwin::dladdr(buffer, &info)) return backtrace::BACKTRACE_UNKNOWN;
 		return {
 			.offset = (uptr)buffer,
-			.function = info.dli_sname ? info.dli_sname.copy(using) : "???".copy(using),
-			.object_file = info.dli_fname.copy(using),
-			.file = "".copy(using),
+			.function = info.dli_sname ? info.dli_sname.copy(allocator) : "???".copy(allocator),
+			.object_file = info.dli_fname.copy(allocator),
+			.file = "".copy(allocator),
 			.line = 0
 		};
 	};
 }
 
-fn BacktraceList! backtrace_load(Allocator* using = mem::heap())
+fn BacktraceList! backtrace_load(Allocator* allocator)
 {
 	void*[256] bt_buffer;
 	CInt size = posix::backtrace(&bt_buffer, 256);
 	void *load_addr = (void *)load_address()!;
 	BacktraceList list;
-	list.init(size, .using = using);
+	list.init_new(size, allocator);
 	defer catch
 	{
 		foreach (trace : list)
@@ -151,13 +151,13 @@ fn BacktraceList! backtrace_load(Allocator* using = mem::heap())
 		}
 		list.free();
 	}
-	@pool(using)
+	@pool(allocator)
 	{
 		String execpath = executable_path(mem::temp())!;
 		for (usz i = 1; i < size; i++)
 		{
 			void* buffer = bt_buffer[i];
-			Backtrace trace = backtrace_load_element(execpath, buffer, load_addr, .using = using)!;
+			Backtrace trace = backtrace_load_element(execpath, buffer, load_addr, allocator)!;
 			list.append(trace);
 		}
 	};

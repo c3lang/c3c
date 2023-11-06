@@ -9,35 +9,36 @@ struct ByteWriter (OutStream)
 
 /**
  * @param [&inout] self
- * @param [&in] using
+ * @param [&inout] allocator
  * @require self.bytes.len == 0 "Init may not run on on already initialized data"
- * @ensure (bool)using, self.index == 0
+ * @ensure (bool)allocator, self.index == 0
  **/
-fn ByteWriter* ByteWriter.init(&self, Allocator* using = mem::heap())
+fn ByteWriter* ByteWriter.init_new(&self, Allocator* allocator = mem::heap())
 {
-	*self = { .bytes = {}, .allocator = using };
-	return self;
-}
-
-fn ByteWriter* ByteWriter.init_buffer(&self, char[] data)
-{
-	*self = { .bytes = data, .allocator = null };
+	*self = { .bytes = {}, .allocator = allocator };
 	return self;
 }
 
 /**
  * @param [&inout] self
  * @require self.bytes.len == 0 "Init may not run on on already initialized data"
+ * @ensure self.index == 0
  **/
-fn ByteWriter* ByteWriter.tinit(&self)
+fn ByteWriter* ByteWriter.init_temp(&self)
 {
-	return self.init(mem::temp());
+	return self.init_new(mem::temp());
+}
+
+fn ByteWriter* ByteWriter.init_with_buffer(&self, char[] data)
+{
+	*self = { .bytes = data, .allocator = null };
+	return self;
 }
 
 fn void! ByteWriter.destroy(&self) @dynamic
 {
 	if (!self.allocator) return;
-	if (void* ptr = self.bytes.ptr) free(ptr, .using = self.allocator);
+	if (void* ptr = self.bytes.ptr) self.allocator.free(ptr);
 	*self = { };
 }
 
@@ -52,7 +53,7 @@ fn void! ByteWriter.ensure_capacity(&self, usz len) @inline
 	if (!self.allocator) return IoError.OUT_OF_SPACE?;
 	if (len < 16) len = 16;
 	usz new_capacity = math::next_power_of_2(len);
-	char* new_ptr = realloc_checked(self.bytes.ptr, new_capacity, .using = self.allocator)!;
+	char* new_ptr = self.allocator.realloc_checked(self.bytes.ptr, new_capacity)!;
 	self.bytes = new_ptr[:new_capacity];
 }
 

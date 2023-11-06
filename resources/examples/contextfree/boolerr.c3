@@ -38,7 +38,7 @@ fn Doc! read_doc(String url)
 	if (url.contains("head-missing")) return { };
 	if (url.contains("title-missing")) return { .head = new_head_val({}) };
 	if (url.contains("title-empty")) return { .head = new_head_val({ .title = new_string_val("")}) };
-	return { .head = new_head_val({ .title = new_string_val(string::printf("Title of %s", url)) }) };
+	return { .head = new_head_val({ .title = new_string_val(string::new_format("Title of %s", url)) }) };
 }
 
 fn Summary build_summary(Doc doc)
@@ -75,7 +75,7 @@ fn void main()
 {
     const String[] URLS = { "good", "title-empty", "title-missing", "head-missing", "fail" };
     DynamicArenaAllocator dynamic_arena;
-	dynamic_arena.init(1024);
+	dynamic_arena.init(1024, mem::heap());
 	OutStream* out = io::stdout();
     foreach (String url : URLS)
     {

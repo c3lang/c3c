@@ -49,7 +49,7 @@ fault IoError
  * @param stream
  * @require @is_instream(stream)
  **/
-macro  String! readline(stream = io::stdin(), Allocator* using = mem::heap())
+macro  String! readline(stream = io::stdin(), Allocator* allocator = mem::heap())
 {
 	bool $is_stream = $typeof(stream).typeid == InStream*.typeid;
 	$if $is_stream:
@@ -60,9 +60,9 @@ macro  String! readline(stream = io::stdin(), Allocator* using = mem::heap())
 	$endif
 
     if (val == '\n') return "";
-    @pool(using)
+    @pool(allocator)
     {
-        DString str = dstring::tnew_with_capacity(256);
+        DString str = dstring::temp_with_capacity(256);
     	if (val != '\r') str.append(val);
     	while (1)
     	{
@@ -80,7 +80,7 @@ macro  String! readline(stream = io::stdin(), Allocator* using = mem::heap())
     		if (c == '\n') break;
     		str.append_char(c);
     	}
-    	return str.copy_str(using);
+    	return str.copy_str(allocator);
     };
 }
 
