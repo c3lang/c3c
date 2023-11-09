@@ -3028,6 +3028,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 	Signature *signature = &func->func_decl.signature;
 	FunctionPrototype *prototype = func->type->function.prototype;
 	assert(prototype);
+	context->original_inline_line = 0;
 	context->call_env = (CallEnv) {
 		.current_function = func,
 		.kind = CALL_ENV_FUNCTION,

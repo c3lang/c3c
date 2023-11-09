@@ -1305,7 +1305,7 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
 				SemaContext *new_context = context_transform_for_eval(context, &default_context, param->unit);
 				bool success;
 				SCOPE_START
-					new_context->original_inline_line = context->original_inline_line ? context->original_inline_line : init_expr->span.row;
+					new_context->original_inline_line = context->original_inline_line ? context->original_inline_line : call->span.row;
 					success = sema_analyse_expr_rhs(new_context, param->type, arg, true, no_match_ref);
 				SCOPE_END;
 				sema_context_destroy(&default_context);
@@ -6783,9 +6783,19 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 			expr_rewrite_to_string(expr, date_get());
 			return true;
 		case BUILTIN_DEF_FILE:
+			if (context->call_env.current_function)
+			{
+				expr_rewrite_to_string(expr, context->call_env.current_function->unit->file->name);
+				return true;
+			}
 			expr_rewrite_to_string(expr, context->compilation_unit->file->name);
 			return true;
 		case BUILTIN_DEF_FILEPATH:
+			if (context->call_env.current_function)
+			{
+				expr_rewrite_to_string(expr, context->call_env.current_function->unit->file->full_path);
+				return true;
+			}
 			expr_rewrite_to_string(expr, context->compilation_unit->file->full_path);
 			return true;
 		case BUILTIN_DEF_MODULE:

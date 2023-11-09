@@ -16,11 +16,11 @@ struct ByteBuffer (InStream, OutStream)
  * max_read defines how many bytes might be kept before its internal buffer is shrinked.
  * @require self.bytes.len == 0 "Buffer already initialized."
  **/
-fn ByteBuffer*! ByteBuffer.init_new(&self, usz max_read, usz initial_capacity = 16, Allocator* allocator = mem::heap())
+fn ByteBuffer*! ByteBuffer.init_new(&self, usz max_read, usz initial_capacity = 16, Allocator* allocator = mem::heap(), TrackingEnv* env = mem::get_tracking_env())
 {
 	*self = { .allocator = allocator, .max_read = max_read };
 	initial_capacity = max(initial_capacity, 16);
-	self.grow(initial_capacity)!;
+	self.grow(initial_capacity, env)!;
 	return self;
 }
 
@@ -128,10 +128,10 @@ fn usz! ByteBuffer.available(&self) @inline @dynamic
 	return self.write_idx - self.read_idx;
 }
 
-fn void! ByteBuffer.grow(&self, usz n)
+fn void! ByteBuffer.grow(&self, usz n, TrackingEnv* env = mem::get_tracking_env())
 {
 	n = math::next_power_of_2(n);
-	char* p = self.allocator.realloc_aligned(self.bytes, n, .alignment = char.alignof)!;
+	char* p = self.allocator.realloc_aligned(self.bytes, n, .alignment = char.alignof, .env = env)!;
 	self.bytes = p[:n];
 }
 
