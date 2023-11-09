@@ -368,91 +368,11 @@ macro bool equals(a, b, isz len = -1, usz $align = 0)
 	return true;
 }
 
-macro @clone(value) @builtin
-{
-	return mem::heap().clone(value);
-}
-
-macro @tclone(value) @builtin
-{
-	return mem::temp().clone(value);
-}
 
 macro type_alloc_must_be_aligned($Type)
 {
 	return $Type.alignof > DEFAULT_MEM_ALIGNMENT;
 }
-
-fn void* malloc(usz size) @builtin @inline
-{
-	return mem::heap().alloc(size);
-}
-
-fn void* tmalloc(usz size, usz alignment = 0, usz offset = 0) @builtin @inline
-{
-	return temp().acquire(size, false, alignment, offset)!!;
-}
-
-macro new($Type)
-{
-	return heap().new($Type);
-}
-
-macro new_clear($Type)
-{
-	return heap().new_clear($Type);
-}
-
-macro new_temp($Type)
-{
-	return tmalloc($Type.sizeof);
-}
-
-macro new_temp_clear($Type)
-{
-	return tcalloc($Type.sizeof);
-}
-
-macro new_array($Type, usz elements)
-{
-	return heap().new_array($Type, elements);
-}
-
-macro temp_array($Type, usz elements)
-{
-	return (($Type*)tmalloc($Type.sizeof * elements, $Type.alignof))[:elements];
-}
-
-macro new_zero_array($Type, usz elements)
-{
-	return heap().new_zero_array($Type, elements);
-}
-
-macro temp_zero_array($Type, usz elements)
-{
-	return (($Type*)tcalloc($Type.sizeof * elements, $Type.alignof))[:elements];
-}
-
-fn void* calloc(usz size) @builtin @inline
-{
-	return heap().calloc(size);
-}
-
-fn void* tcalloc(usz size, usz alignment = 0, usz offset = 0) @builtin @inline
-{
-	return temp().acquire(size, false, alignment, offset)!!;
-}
-
-fn void* realloc(void *ptr, usz new_size) @builtin @inline
-{
-	return heap().realloc(ptr, new_size);
-}
-
-fn void free(void* ptr) @builtin @inline
-{
-	heap().free(ptr);
-}
-
 
 /**
  * Run with a specific allocator inside of the macro body.
@@ -465,10 +385,6 @@ macro void @scoped(Allocator* allocator; @body())
 	@body();
 }
 
-fn void* trealloc(void* ptr, usz size, usz alignment = mem::DEFAULT_MEM_ALIGNMENT) @builtin @inline
-{
-	return temp().resize(ptr, size, alignment, 0)!!;
-}
 
 macro void @stack_mem(usz $size; @body(Allocator* mem)) @builtin
 {
@@ -577,3 +493,91 @@ fn void initialize_wasm_mem() @init(1) @private
 	temp_base_allocator = &wasm_allocator;
 	thread_allocator = &wasm_allocator;
 }
+
+module std::core::mem @if(!env::TRACK_MEMORY);
+
+macro @clone(value) @builtin
+{
+	return mem::heap().clone(value);
+}
+
+macro @tclone(value) @builtin
+{
+	return mem::temp().clone(value);
+}
+
+fn void* malloc(usz size) @builtin @inline
+{
+	return mem::heap().alloc(size);
+}
+
+fn void* tmalloc(usz size, usz alignment = 0, usz offset = 0) @builtin @inline
+{
+	return temp().acquire(size, false, alignment, offset, null)!!;
+}
+
+macro new($Type)
+{
+	return heap().new($Type);
+}
+
+macro new_clear($Type)
+{
+	return heap().new_clear($Type);
+}
+
+macro new_temp($Type)
+{
+	return tmalloc($Type.sizeof);
+}
+
+macro new_temp_clear($Type)
+{
+	return tcalloc($Type.sizeof);
+}
+
+macro new_array($Type, usz elements)
+{
+	return heap().new_array($Type, elements);
+}
+
+macro temp_array($Type, usz elements)
+{
+	return (($Type*)tmalloc($Type.sizeof * elements, $Type.alignof))[:elements];
+}
+
+macro new_zero_array($Type, usz elements)
+{
+	return heap().new_zero_array($Type, elements);
+}
+
+macro temp_zero_array($Type, usz elements)
+{
+	return (($Type*)tcalloc($Type.sizeof * elements, $Type.alignof))[:elements];
+}
+
+fn void* calloc(usz size) @builtin @inline
+{
+	return heap().calloc(size);
+}
+
+fn void* tcalloc(usz size, usz alignment = 0, usz offset = 0) @builtin @inline
+{
+	return temp().acquire(size, false, alignment, offset, null)!!;
+}
+
+fn void* realloc(void *ptr, usz new_size) @builtin @inline
+{
+	return heap().realloc(ptr, new_size);
+}
+
+fn void free(void* ptr) @builtin @inline
+{
+	heap().free(ptr);
+}
+
+fn void* trealloc(void* ptr, usz size, usz alignment = mem::DEFAULT_MEM_ALIGNMENT) @builtin @inline
+{
+	return temp().resize(ptr, size, alignment, 0, null)!!;
+}
+

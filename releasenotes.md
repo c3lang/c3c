@@ -131,6 +131,7 @@
 
 ### Stdlib changes
 
+- Tracking allocator with location.
 - `init_new`/`init_temp` for allocating init methods.
 - `DString.printf` is now `DString.appendf`.
 - Tuple and Maybe types.

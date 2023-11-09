@@ -21,7 +21,7 @@ fn void SimpleHeapAllocator.init(&self, MemoryAllocFn allocator)
 	self.free_list = null;
 }
 
-fn void*! SimpleHeapAllocator.acquire(&self, usz size, bool clear, usz alignment, usz offset) @dynamic
+fn void*! SimpleHeapAllocator.acquire(&self, usz size, bool clear, usz alignment, usz offset, TrackingEnv* env) @dynamic
 {
 	if (!size) return null;
 	if (clear)
@@ -31,23 +31,23 @@ fn void*! SimpleHeapAllocator.acquire(&self, usz size, bool clear, usz alignment
 	return alignment > 0 ? @aligned_alloc(self._alloc, size, alignment, offset) : self._alloc(size);
 }
 
-fn void*! SimpleHeapAllocator.resize(&self, void* old_pointer, usz size, usz alignment, usz offset) @dynamic
+fn void*! SimpleHeapAllocator.resize(&self, void* old_pointer, usz size, usz alignment, usz offset, TrackingEnv* env) @dynamic
 {
 	if (!size)
 	{
-		self.release(old_pointer, alignment > 0);
+		self.release(old_pointer, alignment > 0, env);
 		return null;
 	}
 	if (!old_pointer)
 	{
-		return self.acquire(size, true, alignment, offset);
+		return self.acquire(size, true, alignment, offset, env);
 	}
 	return alignment > 0
 		? @aligned_realloc(self._calloc, self._free, old_pointer, size, alignment, offset)
 		:  self._realloc(old_pointer, size);
 }
 
-fn void SimpleHeapAllocator.release(&self, void* old_pointer, bool aligned) @dynamic
+fn void SimpleHeapAllocator.release(&self, void* old_pointer, bool aligned, TrackingEnv* env) @dynamic
 {
 	if (aligned)
 	{
