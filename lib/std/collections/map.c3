@@ -26,13 +26,13 @@ struct HashMap
  * @require !map.allocator "Map was already initialized"
  * @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
  **/
-fn HashMap* HashMap.init_new(&map, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator* allocator = mem::heap())
+fn HashMap* HashMap.init_new(&map, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator* allocator = mem::heap(), TrackingEnv* env = mem::get_tracking_env())
 {
 	capacity = math::next_power_of_2(capacity);
 	map.allocator = allocator;
 	map.load_factor = load_factor;
 	map.threshold = (uint)(capacity * load_factor);
-	map.table = allocator.new_zero_array(Entry*, capacity);
+	map.table = allocator.new_zero_array(Entry*, capacity, .env = env);
 	return map;
 }
 
@@ -62,9 +62,9 @@ fn bool HashMap.is_initialized(&map)
  * @param [&inout] allocator "The allocator to use"
  * @param [&in] other_map "The map to copy from."
  **/
-fn HashMap* HashMap.init_new_from_map(&self, HashMap* other_map, Allocator* allocator = mem::heap())
+fn HashMap* HashMap.init_new_from_map(&self, HashMap* other_map, Allocator* allocator = mem::heap(), TrackingEnv* env = mem::get_tracking_env())
 {
-	self.init_new(other_map.table.len, other_map.load_factor, allocator);
+	self.init_new(other_map.table.len, other_map.load_factor, allocator, env);
 	self.put_all_for_create(other_map);
 	return self;
 }

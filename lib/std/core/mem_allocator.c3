@@ -9,6 +9,8 @@ struct TrackingEnv
 	String function;
 	uint line;
 }
+
+
 interface Allocator
 {
 	fn void reset(usz mark) @optional;
@@ -103,116 +105,120 @@ fn usz alignment_for_allocation(usz alignment) @inline @private
 	return alignment < mem::DEFAULT_MEM_ALIGNMENT ? alignment = mem::DEFAULT_MEM_ALIGNMENT : alignment;
 }
 
-module std::core::mem::allocator @if(!env::TRACK_MEMORY);
-
 // Allocator "functions"
 
-macro void*! Allocator.alloc_checked(&self, usz size)
+macro void*! Allocator.alloc_checked(&self, usz size, TrackingEnv* env = mem::get_tracking_env())
 {
 	$if env::TESTING:
-		char* data = self.acquire(size, false, 0, 0, null)!;
+		char* data = self.acquire(size, false, 0, 0, env)!;
 		mem::set(data, 0xAA, size, mem::DEFAULT_MEM_ALIGNMENT);
 		return data;
 	$else
-		return self.acquire(size, false, 0, 0, null);
+		return self.acquire(size, false, 0, 0, env);
 	$endif
 }
 
-macro void*! Allocator.calloc_checked(&self, usz size) => self.acquire(size, true, 0, 0, null);
-macro void*! Allocator.realloc_checked(&self, void* ptr, usz new_size) => self.resize(ptr, new_size, 0, 0, null);
-
-macro Allocator.new_array(&self, $Type, usz size, usz end_padding = 0)
+macro void*! Allocator.calloc_checked(&self, usz size, TrackingEnv* env = mem::get_tracking_env())
 {
-	return (($Type*)self.alloc_checked($Type.sizeof * size + end_padding))[:size]!!;
+	return self.acquire(size, true, 0, 0, env);
+}
+macro void*! Allocator.realloc_checked(&self, void* ptr, usz new_size, TrackingEnv* env = mem::get_tracking_env())
+{
+	return self.resize(ptr, new_size, 0, 0, env);
 }
 
-macro Allocator.new_array_checked(&self, $Type, usz size, usz end_padding = 0)
+macro Allocator.new_array(&self, $Type, usz size, usz end_padding = 0, TrackingEnv* env = mem::get_tracking_env())
 {
-	return (($Type*)self.alloc_checked($Type.sizeof * size + end_padding))[:size];
+	return (($Type*)self.alloc_checked($Type.sizeof * size + end_padding, env))[:size]!!;
 }
 
-macro Allocator.new_zero_array(&self, $Type, usz size, usz end_padding = 0)
+macro Allocator.new_array_checked(&self, $Type, usz size, usz end_padding = 0, TrackingEnv* env = mem::get_tracking_env())
 {
-	return (($Type*)self.calloc_checked($Type.sizeof * size + end_padding))[:size]!!;
+	return (($Type*)self.alloc_checked($Type.sizeof * size + end_padding, env))[:size];
 }
 
-macro Allocator.new_zero_array_checked(&self, $Type, usz size, usz end_padding = 0)
+macro Allocator.new_zero_array(&self, $Type, usz size, usz end_padding = 0, TrackingEnv* env = mem::get_tracking_env())
 {
-	return (($Type*)self.calloc_checked($Type.sizeof * size + end_padding))[:size];
+	return (($Type*)self.calloc_checked($Type.sizeof * size + end_padding, env))[:size]!!;
 }
 
-macro Allocator.new(&self, $Type, usz end_padding = 0) @nodiscard
+macro Allocator.new_zero_array_checked(&self, $Type, usz size, usz end_padding = 0, TrackingEnv* env = mem::get_tracking_env())
 {
-	return ($Type*)self.alloc_checked($Type.sizeof + end_padding)!!;
+	return (($Type*)self.calloc_checked($Type.sizeof * size + end_padding, env))[:size];
 }
 
-macro Allocator.new_checked(&self, $Type, usz end_padding = 0) @nodiscard
+macro Allocator.new(&self, $Type, usz end_padding = 0, TrackingEnv* env = mem::get_tracking_env()) @nodiscard
 {
-	return ($Type*)self.alloc_checked($Type.sizeof + end_padding);
+	return ($Type*)self.alloc_checked($Type.sizeof + end_padding, env)!!;
 }
 
-macro Allocator.new_clear(&self, $Type, usz end_padding = 0) @nodiscard
+macro Allocator.new_checked(&self, $Type, usz end_padding = 0, TrackingEnv* env = mem::get_tracking_env()) @nodiscard
 {
-	return ($Type*)self.calloc_checked($Type.sizeof + end_padding)!!;
+	return ($Type*)self.alloc_checked($Type.sizeof + end_padding, env);
 }
 
-macro Allocator.new_clear_checked(&self, $Type, usz end_padding = 0) @nodiscard
+macro Allocator.new_clear(&self, $Type, usz end_padding = 0, TrackingEnv* env = mem::get_tracking_env()) @nodiscard
 {
-	return ($Type*)self.calloc_checked($Type.sizeof + end_padding);
+	return ($Type*)self.calloc_checked($Type.sizeof + end_padding, env)!!;
 }
 
-macro Allocator.clone(&self, value)
+macro Allocator.new_clear_checked(&self, $Type, usz end_padding = 0, TrackingEnv* env = mem::get_tracking_env()) @nodiscard
 {
-	var x = self.alloc($typeof(value));
+	return ($Type*)self.calloc_checked($Type.sizeof + end_padding, env);
+}
+
+macro Allocator.clone(&self, value, TrackingEnv* env = mem::get_tracking_env())
+{
+	var x = self.alloc($typeof(value), env);
 	*x = value;
 	return x;
 }
 
-macro void* Allocator.alloc(&self, usz size) @nodiscard
+macro void* Allocator.alloc(&self, usz size, TrackingEnv* env = mem::get_tracking_env()) @nodiscard
 {
-	return self.alloc_checked(size)!!;
+	return self.alloc_checked(size, env)!!;
 }
-macro void* Allocator.calloc(&self, usz size) @nodiscard
+macro void* Allocator.calloc(&self, usz size, TrackingEnv* env = mem::get_tracking_env()) @nodiscard
 {
-	return self.acquire(size, true, 0, 0, null)!!;
+	return self.acquire(size, true, 0, 0, env)!!;
 }
-macro void* Allocator.realloc(&self, void* ptr, usz new_size) @nodiscard
+macro void* Allocator.realloc(&self, void* ptr, usz new_size, TrackingEnv* env = mem::get_tracking_env()) @nodiscard
 {
-	return self.resize(ptr, new_size, 0, 0, null)!!;
+	return self.resize(ptr, new_size, 0, 0, env)!!;
 }
 
-macro void*! Allocator.alloc_aligned(&self, usz size, usz alignment, usz offset = 0)
+macro void*! Allocator.alloc_aligned(&self, usz size, usz alignment, usz offset = 0, TrackingEnv* env = mem::get_tracking_env())
 {
 	$if env::TESTING:
-		char* data = self.acquire(size, false, alignment, offset, null)!;
+		char* data = self.acquire(size, false, alignment, offset, env)!;
 		mem::set(data, 0xAA, size, mem::DEFAULT_MEM_ALIGNMENT);
 		return data;
 	$else
-		return self.acquire(size, false, alignment, offset, null);
+		return self.acquire(size, false, alignment, offset, env);
 	$endif
 }
-macro void*! Allocator.calloc_aligned(&self, usz size, usz alignment, usz offset = 0)
+macro void*! Allocator.calloc_aligned(&self, usz size, usz alignment, usz offset = 0, TrackingEnv* env = mem::get_tracking_env())
 {
-	return self.acquire(size, true, alignment, offset, null);
+	return self.acquire(size, true, alignment, offset, env);
 }
-macro void*! Allocator.realloc_aligned(&self, void* ptr, usz new_size, usz alignment = 0, usz offset = 0)
+macro void*! Allocator.realloc_aligned(&self, void* ptr, usz new_size, usz alignment = 0, usz offset = 0, TrackingEnv* env = mem::get_tracking_env())
 {
-	return self.resize(ptr, new_size, alignment, offset, null);
+	return self.resize(ptr, new_size, alignment, offset, env);
 }
 
-macro void Allocator.free(&self, void* ptr)
+macro void Allocator.free(&self, void* ptr, TrackingEnv* env = mem::get_tracking_env())
 {
 	$if env::TESTING:
 		if (ptr) ((char*)ptr)[0] = 0xBA;
 	$endif
-	self.release(ptr, false, null);
+	self.release(ptr, false, env);
 }
-macro void Allocator.free_aligned(&self, void* ptr)
+macro void Allocator.free_aligned(&self, void* ptr, TrackingEnv* env = mem::get_tracking_env())
 {
 	$if env::TESTING:
 		if (ptr) ((char*)ptr)[0] = 0xBA;
 	$endif
-	self.release(ptr, true, null);
+	self.release(ptr, true, env);
 }
 
 

@@ -385,6 +385,20 @@ macro void @scoped(Allocator* allocator; @body())
 	@body();
 }
 
+macro void @report_heap_allocs_in_scope(;@body())
+{
+	TrackingAllocator tracker;
+	tracker.init(thread_allocator);
+	Allocator* old_allocator = thread_allocator;
+	thread_allocator = &tracker;
+	defer
+	{
+		thread_allocator = old_allocator;
+		tracker.print_report();
+		tracker.free();
+	}
+	@body();
+}
 
 macro void @stack_mem(usz $size; @body(Allocator* mem)) @builtin
 {
@@ -494,11 +508,21 @@ fn void initialize_wasm_mem() @init(1) @private
 	thread_allocator = &wasm_allocator;
 }
 
-module std::core::mem @if(!env::TRACK_MEMORY);
+module std::core::mem;
 
-macro @clone(value) @builtin
+
+macro TrackingEnv* get_tracking_env()
 {
-	return mem::heap().clone(value);
+	$if env::TRACK_MEMORY:
+		return &&TrackingEnv { $$FILE, $$FUNC, $$LINE };
+	$else
+		return null;
+	$endif
+}
+
+macro @clone(value, TrackingEnv* env = mem::get_tracking_env()) @builtin
+{
+	return mem::heap().clone(value, env);
 }
 
 macro @tclone(value) @builtin
@@ -506,24 +530,24 @@ macro @tclone(value) @builtin
 	return mem::temp().clone(value);
 }
 
-fn void* malloc(usz size) @builtin @inline
+fn void* malloc(usz size, TrackingEnv* env = mem::get_tracking_env()) @builtin @inline
 {
-	return mem::heap().alloc(size);
+	return mem::heap().alloc(size, env);
 }
 
-fn void* tmalloc(usz size, usz alignment = 0, usz offset = 0) @builtin @inline
+fn void* tmalloc(usz size, usz alignment = 0, usz offset = 0, TrackingEnv* env = mem::get_tracking_env()) @builtin @inline
 {
-	return temp().acquire(size, false, alignment, offset, null)!!;
+	return temp().acquire(size, false, alignment, offset, env)!!;
 }
 
-macro new($Type)
+macro new($Type, TrackingEnv* env = mem::get_tracking_env())
 {
-	return heap().new($Type);
+	return heap().new($Type, .env = env);
 }
 
-macro new_clear($Type)
+macro new_clear($Type, TrackingEnv* env = mem::get_tracking_env())
 {
-	return heap().new_clear($Type);
+	return heap().new_clear($Type, env);
 }
 
 macro new_temp($Type)
@@ -536,9 +560,9 @@ macro new_temp_clear($Type)
 	return tcalloc($Type.sizeof);
 }
 
-macro new_array($Type, usz elements)
+macro new_array($Type, usz elements, TrackingEnv* env = mem::get_tracking_env())
 {
-	return heap().new_array($Type, elements);
+	return heap().new_array($Type, elements, .env = env);
 }
 
 macro temp_array($Type, usz elements)
@@ -546,9 +570,9 @@ macro temp_array($Type, usz elements)
 	return (($Type*)tmalloc($Type.sizeof * elements, $Type.alignof))[:elements];
 }
 
-macro new_zero_array($Type, usz elements)
+macro new_zero_array($Type, usz elements, TrackingEnv* env = mem::get_tracking_env())
 {
-	return heap().new_zero_array($Type, elements);
+	return heap().new_zero_array($Type, elements, env);
 }
 
 macro temp_zero_array($Type, usz elements)
@@ -556,9 +580,9 @@ macro temp_zero_array($Type, usz elements)
 	return (($Type*)tcalloc($Type.sizeof * elements, $Type.alignof))[:elements];
 }
 
-fn void* calloc(usz size) @builtin @inline
+fn void* calloc(usz size, TrackingEnv* env = mem::get_tracking_env()) @builtin @inline
 {
-	return heap().calloc(size);
+	return heap().calloc(size, env);
 }
 
 fn void* tcalloc(usz size, usz alignment = 0, usz offset = 0) @builtin @inline
@@ -566,14 +590,14 @@ fn void* tcalloc(usz size, usz alignment = 0, usz offset = 0) @builtin @inline
 	return temp().acquire(size, false, alignment, offset, null)!!;
 }
 
-fn void* realloc(void *ptr, usz new_size) @builtin @inline
+fn void* realloc(void *ptr, usz new_size, TrackingEnv* env = mem::get_tracking_env()) @builtin @inline
 {
-	return heap().realloc(ptr, new_size);
+	return heap().realloc(ptr, new_size, env);
 }
 
-fn void free(void* ptr) @builtin @inline
+fn void free(void* ptr, TrackingEnv* env = mem::get_tracking_env()) @builtin @inline
 {
-	heap().free(ptr);
+	heap().free(ptr, env);
 }
 
 fn void* trealloc(void* ptr, usz size, usz alignment = mem::DEFAULT_MEM_ALIGNMENT) @builtin @inline

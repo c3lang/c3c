@@ -78,9 +78,9 @@ fn usz! Object.to_format(&self, Formatter* formatter) @dynamic
 	}
 }
 
-fn Object* new_obj(Allocator* allocator)
+fn Object* new_obj(Allocator* allocator, TrackingEnv* env = mem::get_tracking_env())
 {
-	Object* o = allocator.new(Object);
+	Object* o = allocator.new(Object, .env = env);
 	*o = { .allocator = allocator, .type = void.typeid };
 	return o;
 }
