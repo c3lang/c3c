@@ -32,6 +32,10 @@ int target_alloca_addr_space()
 	return platform_target.alloca_address_space;
 }
 
+bool os_supports_stacktrace(OsType os_type)
+{
+	return os_type == OS_TYPE_LINUX || os_is_apple(os_type);
+}
 bool os_is_apple(OsType os_type)
 {
 	return os_type == OS_TYPE_TVOS || os_type == OS_TYPE_WATCHOS ||

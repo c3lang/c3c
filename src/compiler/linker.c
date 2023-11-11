@@ -386,8 +386,16 @@ static void linker_setup_linux(const char ***args_ref, LinkerType linker_type)
 {
 	if (linker_type == LINKER_CC)
 	{
+		if (active_target.debug_info == DEBUG_INFO_FULL)
+		{
+			add_arg("-rdynamic");
+		}
 		add_arg("-pthread");
 		return;
+	}
+	if (active_target.debug_info == DEBUG_INFO_FULL)
+	{
+		add_arg("-export-dynamic");
 	}
 	if (is_no_pie(platform_target.reloc_model)) add_arg("-no-pie");
 	if (is_pie(platform_target.reloc_model)) add_arg("-pie");

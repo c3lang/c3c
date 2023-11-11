@@ -22,43 +22,44 @@ fn void main()
 /* #expect: test.ll
 %.introspect = type { i8, i64, ptr, i64, i64, i64, [0 x i64] }
 %"any*" = type { ptr, i64 }
+
 @"$ct.test.Ghh" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 12, i64 0, i64 3, [0 x i64] zeroinitializer }, align 8
 @.str = private unnamed_addr constant [3 x i8] c"%d\00", align 1
 @"$ct.int" = linkonce global %.introspect { i8 2, i64 0, ptr null, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
 
-define void @test.main() #0 !dbg !5 {
+define void @test.main() #0 !dbg !6 {
 entry:
   %a = alloca i32, align 4
   %x = alloca i32, align 4
   %y = alloca i32, align 4
   %varargslots = alloca [1 x %"any*"], align 16
   %retparam = alloca i64, align 8
-  call void @llvm.dbg.declare(metadata ptr %a, metadata !9, metadata !DIExpression()), !dbg !11
-  store i32 111, ptr %a, align 4, !dbg !12
-  call void @llvm.dbg.declare(metadata ptr %x, metadata !13, metadata !DIExpression()), !dbg !14
-  %0 = load atomic i32, ptr %a seq_cst, align 4, !dbg !15
-  store i32 %0, ptr %x, align 4, !dbg !15
-  call void @llvm.dbg.declare(metadata ptr %y, metadata !18, metadata !DIExpression()), !dbg !19
-  %1 = load atomic volatile i32, ptr %a monotonic, align 4, !dbg !20
-  store i32 %1, ptr %y, align 4, !dbg !20
-  %2 = load i32, ptr %x, align 4, !dbg !22
-  %add = add i32 123, %2, !dbg !23
-  store atomic i32 %add, ptr %a seq_cst, align 4, !dbg !24
-  %3 = load i32, ptr %y, align 4, !dbg !26
-  %add1 = add i32 33, %3, !dbg !27
-  store atomic volatile i32 %add1, ptr %a monotonic, align 4, !dbg !28
-  %4 = insertvalue %"any*" undef, ptr %a, 0, !dbg !30
-  %5 = insertvalue %"any*" %4, i64 ptrtoint (ptr @"$ct.int" to i64), 1, !dbg !30
-  %6 = getelementptr inbounds [1 x %"any*"], ptr %varargslots, i64 0, i64 0, !dbg !30
-  store %"any*" %5, ptr %6, align 16, !dbg !30
-  %7 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 2, ptr %varargslots, i64 1), !dbg !31
-  ret void, !dbg !31
+  call void @llvm.dbg.declare(metadata ptr %a, metadata !10, metadata !DIExpression()), !dbg !12
+  store i32 111, ptr %a, align 4, !dbg !13
+  call void @llvm.dbg.declare(metadata ptr %x, metadata !14, metadata !DIExpression()), !dbg !15
+  %0 = load atomic i32, ptr %a seq_cst, align 4, !dbg !16
+  store i32 %0, ptr %x, align 4, !dbg !16
+  call void @llvm.dbg.declare(metadata ptr %y, metadata !19, metadata !DIExpression()), !dbg !20
+  %1 = load atomic volatile i32, ptr %a monotonic, align 4, !dbg !21
+  store i32 %1, ptr %y, align 4, !dbg !21
+  %2 = load i32, ptr %x, align 4, !dbg !23
+  %add = add i32 123, %2, !dbg !24
+  store atomic i32 %add, ptr %a seq_cst, align 4, !dbg !25
+  %3 = load i32, ptr %y, align 4, !dbg !27
+  %add1 = add i32 33, %3, !dbg !28
+  store atomic volatile i32 %add1, ptr %a monotonic, align 4, !dbg !29
+  %4 = insertvalue %"any*" undef, ptr %a, 0, !dbg !31
+  %5 = insertvalue %"any*" %4, i64 ptrtoint (ptr @"$ct.int" to i64), 1, !dbg !31
+  %6 = getelementptr inbounds [1 x %"any*"], ptr %varargslots, i64 0, i64 0, !dbg !31
+  store %"any*" %5, ptr %6, align 16, !dbg !31
+  %7 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 2, ptr %varargslots, i64 1), !dbg !32
+  ret void, !dbg !32
 }
 
-define i32 @main(i32 %0, ptr %1) #0 !dbg !32 {
+define i32 @main(i32 %0, ptr %1) #0 !dbg !33 {
 entry:
-  call void @test.main(), !dbg !38
-  ret i32 0, !dbg !41
+  call void @test.main(), !dbg !39
+  ret i32 0, !dbg !42
 }
 
 declare void @llvm.dbg.declare(metadata, metadata, metadata) #1
@@ -68,47 +69,49 @@ declare i64 @std.io.printfn(ptr, ptr, i64, ptr, i64) #0
 
 declare i1 @llvm.expect.i1(i1, i1) #2
 
-!llvm.module.flags = !{!0, !1, !2}
-!llvm.dbg.cu = !{!3}
+!llvm.module.flags = !{!0, !1, !2, !3}
+!llvm.dbg.cu = !{!4}
+
 !0 = !{i32 2, !"Dwarf Version", i32 4}
 !1 = !{i32 2, !"Debug Info Version", i32 3}
-!2 = !{i32 1, !"uwtable", i32 2}
-!3 = distinct !DICompileUnit(language: DW_LANG_C11, file: !4, producer: "c3c", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!4 = !DIFile(filename: "atomic_load_store_debug.c3"
-!5 = distinct !DISubprogram(name: "main", linkageName: "test.main", scope: !4, file: !4, line: 10, type: !6, scopeLine: 10, flags: DIFlagPrototyped, spFlags: DISPFlagDefinition, unit: !3, retainedNodes: !8)
-!6 = !DISubroutineType(types: !7)
-!7 = !{null}
-!8 = !{}
-!9 = !DILocalVariable(name: "a", scope: !5, file: !4, line: 12, type: !10, align: 4)
-!10 = !DIBasicType(name: "int", size: 32, encoding: DW_ATE_signed)
-!11 = !DILocation(line: 12, column: 6, scope: !5)
-!12 = !DILocation(line: 12, column: 10, scope: !5)
-!13 = !DILocalVariable(name: "x", scope: !5, file: !4, line: 13, type: !10, align: 4)
-!14 = !DILocation(line: 13, column: 6, scope: !5)
-!15 = !DILocation(line:
-!16 = distinct !DILexicalBlock(scope: !5, file: !17,
-!17 = !DIFile(filename: "mem.c3",
-!18 = !DILocalVariable(name: "y", scope: !5, file: !4, line: 14, type: !10, align: 4)
-!19 = !DILocation(line: 14, column: 6, scope: !5)
-!20 = !DILocation(line:
-!21 = distinct !DILexicalBlock(scope: !5, file: !17,
-!22 = !DILocation(line: 15, column: 25, scope: !5)
-!23 = !DILocation(line: 15, column: 19, scope: !5)
-!24 = !DILocation(line:
-!25 = distinct !DILexicalBlock(scope: !5, file: !17,
-!26 = !DILocation(line: 16, column: 24, scope: !5)
-!27 = !DILocation(line: 16, column: 19, scope: !5)
-!28 = !DILocation(line:
-!29 = distinct !DILexicalBlock(scope: !5, file: !17, line:
-!30 = !DILocation(line: 17, column: 20, scope: !5)
-!31 = !DILocation(line: 17, column: 6, scope: !5)
-!32 = distinct !DISubprogram(name: "_$main", linkageName: "main", scope: !4, file: !4, line: 10, type: !33, scopeLine: 10, flags: DIFlagPrototyped, spFlags: DISPFlagDefinition, unit: !3, retainedNodes: !8)
-!33 = !DISubroutineType(types: !34)
-!34 = !{!10, !10, !35}
-!35 = !DIDerivedType(tag: DW_TAG_pointer_type, name: "char**", baseType: !36, size: 64, align: 64, dwarfAddressSpace: 0)
-!36 = !DIDerivedType(tag: DW_TAG_pointer_type, name: "char*", baseType: !37, size: 64, align: 64, dwarfAddressSpace: 0)
-!37 = !DIBasicType(name: "char", size: 8, encoding: DW_ATE_unsigned_char)
-!38 = !DILocation(line: 18, column: 2, scope: !39)
-!39 = distinct !DILexicalBlock(scope: !32, file: !40, line: 18, column: 2)
-!40 = !DIFile(filename: "main_stub.c3",
-!41 = !DILocation(line: 19, column: 9, scope: !39)
+!2 = !{i32 2, !"frame-pointer", i32 2}
+!3 = !{i32 1, !"uwtable", i32 2}
+!4 = distinct !DICompileUnit(language: DW_LANG_C11, file: !5, producer: "c3c", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
+!5 = !DIFile(filename: "atomic_load_store_debug.c3"
+!6 = distinct !DISubprogram(name: "main", linkageName: "test.main", scope: !5, file: !5, line: 10, type: !7, scopeLine: 10, flags: DIFlagPrototyped, spFlags: DISPFlagDefinition, unit: !4, retainedNodes: !9)
+!7 = !DISubroutineType(types: !8)
+!8 = !{null}
+!9 = !{}
+!10 = !DILocalVariable(name: "a", scope: !6, file: !5, line: 12, type: !11, align: 4)
+!11 = !DIBasicType(name: "int", size: 32, encoding: DW_ATE_signed)
+!12 = !DILocation(line: 12, column: 6, scope: !6)
+!13 = !DILocation(line: 12, column: 10, scope: !6)
+!14 = !DILocalVariable(name: "x", scope: !6, file: !5, line: 13, type: !11, align: 4)
+!15 = !DILocation(line: 13, column: 6, scope: !6)
+!16 = !DILocation(line: 195, column: 23, scope: !17)
+!17 = distinct !DILexicalBlock(scope: !6, file: !18, line: 195, column: 9)
+!18 = !DIFile(filename: "mem.c3"
+!19 = !DILocalVariable(name: "y", scope: !6, file: !5, line: 14, type: !11, align: 4)
+!20 = !DILocation(line: 14, column: 6, scope: !6)
+!21 = !DILocation(line: 195, column: 23, scope: !22)
+!22 = distinct !DILexicalBlock(scope: !6, file: !18, line: 195, column: 9)
+!23 = !DILocation(line: 15, column: 25, scope: !6)
+!24 = !DILocation(line: 15, column: 19, scope: !6)
+!25 = !DILocation(line: 210, column: 20, scope: !26)
+!26 = distinct !DILexicalBlock(scope: !6, file: !18, line: 210, column: 2)
+!27 = !DILocation(line: 16, column: 24, scope: !6)
+!28 = !DILocation(line: 16, column: 19, scope: !6)
+!29 = !DILocation(line: 210, column: 20, scope: !30)
+!30 = distinct !DILexicalBlock(scope: !6, file: !18, line: 210, column: 2)
+!31 = !DILocation(line: 17, column: 20, scope: !6)
+!32 = !DILocation(line: 17, column: 6, scope: !6)
+!33 = distinct !DISubprogram(name: "_$main", linkageName: "main"
+!34 = !DISubroutineType(types: !35)
+!35 = !{!11, !11, !36}
+!36 = !DIDerivedType(tag: DW_TAG_pointer_type, name: "char**", baseType: !37, size: 64, align: 64, dwarfAddressSpace: 0)
+!37 = !DIDerivedType(tag: DW_TAG_pointer_type, name: "char*", baseType: !38, size: 64, align: 64, dwarfAddressSpace: 0)
+!38 = !DIBasicType(name: "char", size: 8, encoding: DW_ATE_unsigned_char)
+!39 = !DILocation(line: 18, column: 2, scope: !40)
+!40 = distinct !DILexicalBlock(scope: !33, file: !41, line: 18, column: 2)
+!41 = !DIFile(filename: "main_stub.c3"
+!42 = !DILocation(line: 19, column: 9, scope: !40)

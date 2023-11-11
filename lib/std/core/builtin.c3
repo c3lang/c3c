@@ -87,11 +87,11 @@ struct CallstackElement
 	uint line;
 }
 
-fn bool print_backtrace(String message, int backtraces_to_ignore) @if(env::DARWIN)
+fn bool print_backtrace(String message, int backtraces_to_ignore) @if(env::DARWIN || env::LINUX)
 {
 	@pool()
 	{
-		BacktraceList! backtrace = darwin::backtrace_load(mem::temp());
+		BacktraceList! backtrace = backtrace::backtrace_load(mem::temp());
 		if (catch backtrace) return false;
 		if (backtrace.len() <= backtraces_to_ignore) return false;
 		io::eprint("\nERROR: '");

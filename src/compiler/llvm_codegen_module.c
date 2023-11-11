@@ -152,6 +152,7 @@ void gencontext_begin_module(GenContext *c)
 		{
 			llvm_set_module_flag(c, LLVMModuleFlagBehaviorWarning, "Dwarf Version", 4, type_uint);
 			llvm_set_module_flag(c, LLVMModuleFlagBehaviorWarning, "Debug Info Version", 3, type_uint);
+			llvm_set_module_flag(c, LLVMModuleFlagBehaviorWarning, "frame-pointer", 2, type_uint);
 		}
 		llvm_set_module_flag(c, LLVMModuleFlagBehaviorError, "uwtable", 2, type_uint);
 
@@ -168,7 +169,7 @@ void gencontext_begin_module(GenContext *c)
 			LLVMStructSetBody(c->debug.stack_type, types, 5, false);
 			c->debug.current_stack_ptr = NULL;
 			c->debug.enable_stacktrace = true;
-			c->debug.emulated_stacktrace = !os_is_apple(platform_target.os);
+			c->debug.emulated_stacktrace = !os_supports_stacktrace(platform_target.os);
 		}
 	}
 	c->global_builder = LLVMCreateBuilder();

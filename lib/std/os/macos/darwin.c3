@@ -101,15 +101,12 @@ fn Backtrace! backtrace_load_element(String execpath, void* buffer, void* load_a
 	{
 		if (buffer)
 		{
-			SubProcess process = process::create({ "atos",
-				"-o", execpath, "-arch", env::AARCH64 ? "arm64" : "x86_64", "-l",
+			char* buf = tmalloc(1024);
+			String s = process::execute_stdout_to_buffer(buf[:1024],
+				{ "atos", "-o", execpath, "-arch", env::AARCH64 ? "arm64" : "x86_64", "-l",
 				string::tformat("%p", load_address),
 				string::tformat("%p", buffer),
 				 "-fullPath" })!;
-			process.join()!;
-			char* buf = tmalloc(1024);
-			usz len = process.read_stdout(buf, 1024)!;
-			String s = (String)buf[:len - 1];
 			String[] parts = s.tsplit(" ");
 			if (parts.len == 4)
 			{

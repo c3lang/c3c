@@ -264,6 +264,7 @@ jobs:
           ../build/c3c compile-run examples/load_world.c3
           ../build/c3c compile-run examples/process.c3
           ../build/c3c compile-run examples/ls.c3
+          ../build/c3c compile-run linux_stack.c3
 
       - name: Compile run unit tests
         run: |
