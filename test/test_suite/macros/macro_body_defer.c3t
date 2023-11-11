@@ -85,7 +85,7 @@ loop.body1:                                       ; preds = %loop.exit
   ret i64 0
 }
 
-; Function Attrs: nounwind
+
 define i32 @main(i32 %0, ptr %1) #0 {
 entry:
   %blockret = alloca i32, align 4

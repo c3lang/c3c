@@ -87,7 +87,7 @@ struct CallstackElement
 	uint line;
 }
 
-fn bool print_backtrace(String message, int backtraces_to_ignore) @if(env::DARWIN || env::LINUX)
+fn bool print_backtrace(String message, int backtraces_to_ignore) @if(env::NATIVE_STACKTRACE)
 {
 	@pool()
 	{
@@ -115,7 +115,7 @@ fn bool print_backtrace(String message, int backtraces_to_ignore) @if(env::DARWI
 		return true;
 	};
 }
-fn void default_panic(String message, String file, String function, uint line) @if(env::DARWIN)
+fn void default_panic(String message, String file, String function, uint line) @if(env::NATIVE_STACKTRACE)
 {
 	$if $defined(io::stderr):
 	if (!print_backtrace(message, 2))
@@ -127,7 +127,7 @@ fn void default_panic(String message, String file, String function, uint line) @
 	$$trap();
 
 }
-fn void default_panic(String message, String file, String function, uint line) @if(!env::DARWIN)
+fn void default_panic(String message, String file, String function, uint line) @if(!env::NATIVE_STACKTRACE)
 {
 	CallstackElement* stack = $$stacktrace();
 	$if $defined(io::stderr):
@@ -367,27 +367,9 @@ macro uint void*.hash(void* ptr) => ((ulong)(uptr)ptr).hash();
 module std::core::builtin @if((env::LINUX || env::DARWIN) && env::COMPILER_SAFE_MODE && env::DEBUG_SYMBOLS);
 import libc;
 
-fn void sig_panic(String message) @if(env::DARWIN)
+fn void sig_panic(String message)
 {
 	default_panic(message, "???", "???", 0);
-}
-
-fn void sig_panic(String message) @if(!env::DARWIN)
-{
-	$if $defined(io::stderr) && $defined(File.printf):
-	CallstackElement* stack = $$stacktrace();
-	if (stack) stack = stack.prev;
-	if (stack) stack = stack.prev;
-	(void)io::stderr().print("\nSYSTEM ERROR: '");
-	(void)io::stderr().print(message);
-	(void)io::stderr().printn("'");
-	while (stack)
-	{
-		(void)io::stderr().printfn("  in %s %s (%s:%s)", stack.location.name, stack.function, stack.file, stack.line);
-		if (stack == stack.prev) break;
-		stack = stack.prev;
-	}
-	$endif
 }
 
 SignalFunction old_bus_error;
@@ -395,7 +377,7 @@ SignalFunction old_segmentation_fault;
 
 fn void sig_bus_error(CInt i)
 {
-	$if !env::DARWIN:
+	$if !env::NATIVE_STACKTRACE:
 		sig_panic("Illegal memory access.");
 	$else
 		$if $defined(io::stderr):
@@ -410,7 +392,7 @@ fn void sig_bus_error(CInt i)
 
 fn void sig_segmentation_fault(CInt i)
 {
-	$if !env::DARWIN:
+	$if !env::NATIVE_STACKTRACE:
 		sig_panic("Out of bounds memory access.");
 	$else
 		$if $defined(io::stderr):

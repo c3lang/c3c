@@ -169,6 +169,7 @@ void gencontext_begin_module(GenContext *c)
 			LLVMStructSetBody(c->debug.stack_type, types, 5, false);
 			c->debug.current_stack_ptr = NULL;
 			c->debug.enable_stacktrace = true;
+			c->debug.x = false;
 			c->debug.emulated_stacktrace = !os_supports_stacktrace(platform_target.os);
 		}
 	}

@@ -61,7 +61,7 @@ noerr_block:                                      ; preds = %after_check
   ret i64 0
 }
 
-; Function Attrs: nounwind
+
 define i64 @test.test2() #0 {
 entry:
   %x = alloca %Bar, align 4
@@ -91,7 +91,7 @@ noerr_block:                                      ; preds = %after_check
   ret i64 0
 }
 
-; Function Attrs: nounwind
+
 define void @test.main() #0 {
 entry:
   %0 = call i64 @test.test1()

@@ -34,10 +34,10 @@ fn void main()
 @.str = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
 @.str.1 = private unnamed_addr constant [17 x i8] c"Not visible: %d\0A\00", align 1
 
-; Function Attrs: nounwind
+
 declare i32 @printf(ptr, ...) #0
 
-; Function Attrs: nounwind
+
 define void @test.main() #0 {
 entry:
   %z = alloca i32, align 4

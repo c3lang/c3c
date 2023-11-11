@@ -131,7 +131,7 @@ if.exit:                                          ; preds = %if.then, %switch.ex
   ret void
 }
 
-; Function Attrs: nounwind
+
 define i32 @main() #0 {
 entry:
   %taddr = alloca double, align 8

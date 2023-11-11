@@ -72,6 +72,7 @@ typedef struct
 	unsigned runtime_version : 8;
 	bool enable_stacktrace : 1;
 	bool emulated_stacktrace : 1;
+	bool x : 1;
 	LLVMDIBuilderRef builder;
 	DebugFile *debug_files;
 	DebugFile file;
@@ -547,7 +548,7 @@ void llvm_emit_debug_local_var(GenContext *c, Decl *var);
 void llvm_emit_debug_global_var(GenContext *c, Decl *global);
 void llvm_emit_update_stack_row(GenContext *c, uint32_t row);
 void llvm_emit_pop_stacktrace(GenContext *c, Stacktrace *slot);
-void llvm_emit_push_stacktrace(GenContext *c, Decl *decl, const char *function_name, StacktraceType type);
+void llvm_emit_push_emulated_stacktrace(GenContext *c, Decl *decl, const char *function_name, StacktraceType type);
 
 #define EMIT_LOC(c, x) do { if (c->debug.builder) llvm_emit_debug_location(c, x->span); } while (0);
 

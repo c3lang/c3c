@@ -164,7 +164,7 @@ after_check30:                                    ; preds = %after_check23, %aft
   ret void
 }
 
-; Function Attrs: nounwind
+
 define void @test.test2() #0 {
 entry:
   %x = alloca i32, align 4
@@ -307,7 +307,7 @@ after_check35:                                    ; preds = %after_check28, %aft
   ret void
 }
 
-; Function Attrs: nounwind
+
 define void @test.test3() #0 {
 entry:
   %x = alloca i32, align 4

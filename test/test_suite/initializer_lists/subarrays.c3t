@@ -64,7 +64,7 @@ fn int main()
 @.str.9 = private unnamed_addr constant [25 x i8] c"Fofeo second element %d\0A\00", align 1
 @.__const.10 = private unnamed_addr constant { i32, [4 x i8] } { i32 1, [4 x i8] undef }, align 8
 @.str.12 = private unnamed_addr constant [3 x i8] c"Ok\00", align 1
-; Function Attrs: nounwind
+
 define i32 @main() #0 {
 entry:
   %w = alloca %Bar, align 4

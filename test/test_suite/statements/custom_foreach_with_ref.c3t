@@ -103,10 +103,10 @@ fn void main()
 @.str.13 = private unnamed_addr constant [7 x i8] c"%d %d\0A\00", align 1
 @.str.14 = private unnamed_addr constant [7 x i8] c"%d %d\0A\00", align 1
 
-; Function Attrs: nounwind
+
 declare void @printf(ptr, ...) #0
 
-; Function Attrs: nounwind
+
 define void @foo.getFields(ptr noalias sret([5 x i32]) align 4 %0) #0 {
 entry:
   %literal = alloca [5 x i32], align 16
@@ -116,14 +116,14 @@ entry:
   ret void
 }
 
-; Function Attrs: nounwind
+
 define ptr @foo.call(ptr %0) #0 {
 entry:
   call void (ptr, ...) @printf(ptr @.str.1)
   ret ptr %0
 }
 
-; Function Attrs: nounwind
+
 define void @foo.main() #0 {
 entry:
   %x = alloca %Foo, align 4

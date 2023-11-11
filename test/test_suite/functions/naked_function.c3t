@@ -12,4 +12,4 @@ entry:
   ret void
 }
 
-attributes #0 = { naked nounwind "no-trapping-math"="true" "stack-protector-buffer-size"="8" }
+attributes #0 = { naked nounwind uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }

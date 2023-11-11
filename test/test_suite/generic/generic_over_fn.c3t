@@ -134,7 +134,7 @@ loop.exit:                                        ; preds = %loop.cond
   ret void
 }
 
-; Function Attrs: nounwind
+
 define void @sort_test.quicksort_with_value2() #0 {
 entry:
   %tcases = alloca %"int[][]", align 8
@@ -211,6 +211,6 @@ loop.exit:                                        ; preds = %loop.cond
   ret void
 }
 
-; Function Attrs: nounwind
+
 declare void @"test_generic$sa$int$p$fn$int$int$$int$$.sort"(ptr, i64, i64, i64, ptr) #0
 

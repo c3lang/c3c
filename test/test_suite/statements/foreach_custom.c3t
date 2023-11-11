@@ -33,7 +33,7 @@ extern fn int printf(char *fmt, ...);
 
 /* #expect: test.ll
 
-; Function Attrs: nounwind
+
 define void @test.main() #0 {
 entry:
   %i = alloca [3 x i32], align 4
@@ -81,10 +81,10 @@ loop.exit:                                        ; preds = %loop.body2, %loop.c
   ret void
 }
 
-; Function Attrs: nounwind
+
 declare i32 @printf(ptr, ...) #0
 
-; Function Attrs: nounwind
+
 define i32 @main(i32 %0, ptr %1) #0 {
 entry:
   call void @test.main()

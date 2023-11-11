@@ -170,7 +170,7 @@ fn void! main()
 /* #expect: text_test.ll
 
 
-; Function Attrs: nounwind
+
 define i64 @text_test.main() #0 {
 entry:
   %foo_tmpl = alloca %"char[]", align 8

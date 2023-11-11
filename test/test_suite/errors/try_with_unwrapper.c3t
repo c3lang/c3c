@@ -42,17 +42,17 @@ fn void test2()
 
 /* #expect: try_with_unwrapper.ll
 
-; Function Attrs: nounwind
+
 define i32 @try_with_unwrapper.hello(i32 %0) #0 {
 entry:
   %add = add i32 %0, 1
   ret i32 %add
 }
 
-; Function Attrs: nounwind
+
 declare i32 @printf(ptr, ...) #0
 
-; Function Attrs: nounwind
+
 define i64 @try_with_unwrapper.tester(ptr %0) #0 {
 entry:
   %reterr = alloca i64, align 8
@@ -61,7 +61,7 @@ entry:
   ret i64 0
 }
 
-; Function Attrs: nounwind
+
 define void @try_with_unwrapper.test1() #0 {
 entry:
   %a = alloca i32, align 4
@@ -131,7 +131,7 @@ if.exit:                                          ; preds = %if.then, %end_chain
 }
 
 
-; Function Attrs: nounwind
+
 define void @try_with_unwrapper.test2() #0 {
 entry:
   %a = alloca i32, align 4

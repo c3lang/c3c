@@ -51,7 +51,7 @@ fn void main()
    ret void
  }
 
- ; Function Attrs: nounwind
+
  define i32 @main(i32 %0, ptr %1) #0 {
  entry:
    call void @test.main()

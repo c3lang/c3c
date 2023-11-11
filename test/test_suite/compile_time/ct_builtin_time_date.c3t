@@ -256,7 +256,7 @@ noerr_block91:                                    ; preds = %after_check89
 voiderr93:                                        ; preds = %noerr_block91, %guard_block90, %guard_block84, %guard_block78
   ret void
 }
-; Function Attrs: nounwind
+
 define void @test.main() #0 {
 entry:
   %is_def2 = alloca i8, align 1

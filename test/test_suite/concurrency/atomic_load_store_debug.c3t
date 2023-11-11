@@ -64,7 +64,7 @@ entry:
 
 declare void @llvm.dbg.declare(metadata, metadata, metadata) #1
 
-; Function Attrs: nounwind
+
 declare i64 @std.io.printfn(ptr, ptr, i64, ptr, i64) #0
 
 declare i1 @llvm.expect.i1(i1, i1) #2

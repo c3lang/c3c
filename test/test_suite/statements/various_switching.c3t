@@ -289,7 +289,7 @@ switch.exit45:                                    ; preds = %switch.default44, %
   ret void
 }
 
-; Function Attrs: nounwind
+
 define void @mymodule.main() #0 {
 entry:
   call void @mymodule.test()

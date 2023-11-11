@@ -39,7 +39,7 @@ entry:
   ret void
 }
 
-; Function Attrs: nounwind
+
 define void @foo.test2(i32 %0, ptr %1, i64 %2, i32 %3) #0 {
 entry:
   %y = alloca %"any*[]", align 8
@@ -53,7 +53,7 @@ entry:
   ret void
 }
 
-; Function Attrs: nounwind
+
 define void @foo.main() #0 {
 entry:
   %varargslots = alloca [2 x i32], align 4

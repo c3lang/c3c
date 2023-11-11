@@ -332,7 +332,7 @@ entry:
   ret void
 }
 
-; Function Attrs: nounwind
+
 define void @foo.test2() #0 {
 entry:
   %xx = alloca [3 x i8], align 1
@@ -729,7 +729,7 @@ entry:
   ret void
 }
 
-; Function Attrs: nounwind
+
 define void @foo.test3() #0 {
 entry:
   %xx = alloca [3 x i8], align 1

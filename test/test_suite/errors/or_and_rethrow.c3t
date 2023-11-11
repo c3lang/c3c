@@ -338,7 +338,7 @@ voiderr96:                                        ; preds = %noerr_block94, %gua
   ret i64 0
 }
 
-; Function Attrs: nounwind
+
 define i64 @foo.test2(i32 %0) #0 {
 entry:
   %varargslots = alloca [1 x %"any*"], align 16
@@ -510,7 +510,7 @@ voiderr47:                                        ; preds = %noerr_block45, %gua
   ret i64 0
 }
 
-; Function Attrs: nounwind
+
 define void @foo.main() #0 {
 entry:
   %a = alloca i64, align 8
@@ -660,7 +660,7 @@ expr_block.exit33:                                ; preds = %if.exit32, %if.then
   ret void
 }
 
-; Function Attrs: nounwind
+
 define i32 @main(i32 %0, ptr %1) #0 {
 entry:
   call void @foo.main()

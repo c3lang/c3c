@@ -37,13 +37,13 @@ target triple = "x86_64-apple
 @.str = private unnamed_addr constant [2 x i8] c"3\00", align 1
 @.str.1 = private unnamed_addr constant [2 x i8] c"4\00", align 1
 
-; Function Attrs: nounwind
+
 declare i32 @printf(ptr, ...) #0
 
-; Function Attrs: nounwind
+
 declare i32 @foo() #0
 
-; Function Attrs: nounwind
+
 define i32 @main() #0 {
 entry:
   %switch = alloca i32, align 4

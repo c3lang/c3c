@@ -29,7 +29,7 @@ fn void main()
 @.str.1 = private unnamed_addr constant [9 x i8] c"Number B\00", align 1
 @"test.Foo$testme" = linkonce constant [2 x ptr] [ptr @.str, ptr @.str.1], align 8
 @.str.2 = private unnamed_addr constant [17 x i8] c"%d (%s) %d (%s)\0A\00", align 1
-; Function Attrs: nounwind
+
 define void @test.main() #0 {
 entry:
   %x = alloca i32, align 4

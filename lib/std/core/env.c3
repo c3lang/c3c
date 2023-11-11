@@ -132,7 +132,7 @@ const MemoryEnvironment MEMORY_ENV = (MemoryEnvironment)$$MEMORY_ENVIRONMENT;
 const bool TRACK_MEMORY = DEBUG_SYMBOLS && (COMPILER_SAFE_MODE || TESTING);
 const bool X86_64 = ARCH_TYPE == X86_64;
 const bool AARCH64 = ARCH_TYPE == AARCH64;
-
+const bool NATIVE_STACKTRACE = LINUX || DARWIN;
 const bool LINUX = LIBC && OS_TYPE == LINUX;
 const bool DARWIN = LIBC && os_is_darwin();
 const bool WIN32 = LIBC && OS_TYPE == WIN32;

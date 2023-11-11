@@ -114,7 +114,7 @@ loop.exit:                                        ; preds = %loop.cond
   unreachable
 }
 
-; Function Attrs: nounwind
+
 define void @examples.demo_enum(i32 %0) #0 {
 entry:
   %switch = alloca i32, align 4

@@ -261,7 +261,7 @@ entry:
   ret void
 }
 
-; Function Attrs: nounwind
+
 define i32 @test.Foo2.mutate(ptr %0) #0 {
 entry:
   %1 = call i32 (ptr, ...) @printf(ptr @.str.22)
@@ -272,17 +272,17 @@ entry:
   ret i32 %add
 }
 
-; Function Attrs: nounwind
+
 declare i32 @printf(ptr, ...) #0
 
-; Function Attrs: nounwind
+
 define void @test.helloWorld() #0 {
 entry:
   %0 = call i32 (ptr, ...) @printf(ptr @.str)
   ret void
 }
 
-; Function Attrs: nounwind
+
 define i32 @test.test_static() #0 {
 entry:
   %0 = load i32, ptr @test_static.x, align 4
@@ -294,7 +294,7 @@ entry:
   ret i32 %3
 }
 
-; Function Attrs: nounwind
+
 define i32 @test.helo(double %0, ptr byval(%Bobo) align 8 %1) #0 {
 entry:
   %de = alloca [3 x i32], align 4
@@ -307,7 +307,7 @@ entry:
   ret i32 1
 }
 
-; Function Attrs: nounwind
+
 define i32 @test.test1(i32 %0, i32 %1) #0 {
 entry:
   %a = alloca i32, align 4
@@ -327,7 +327,7 @@ if.exit:                                          ; preds = %entry
   ret i32 %4
 }
 
-; Function Attrs: nounwind
+
 define i32 @test.sum_us(ptr %0, i64 %1) #0 {
 entry:
   %x = alloca %"int[]", align 8
@@ -367,7 +367,7 @@ if.exit:                                          ; preds = %entry
   ret i32 %15
 }
 
-; Function Attrs: nounwind
+
 define i32 @test.sumd(ptr %0, i64 %1) #0 {
 entry:
   %x = alloca %"int[]", align 8
@@ -410,7 +410,7 @@ loop.exit:                                        ; preds = %loop.cond
   ret i32 %11
 }
 
-; Function Attrs: nounwind
+
 define void @test.main() #0 {
 entry:
   %list = alloca %LinkedList, align 8

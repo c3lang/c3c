@@ -40,7 +40,7 @@ entry:
   ret void
 }
 
-; Function Attrs: nounwind
+
 define void @test.f_double_s_arg(i64 %0) #0 {
 entry:
   %a = alloca %Double_s, align 8
@@ -48,7 +48,7 @@ entry:
   ret void
 }
 
-; Function Attrs: nounwind
+
 define i64 @test.f_ret_double_s() #0 {
 entry:
   %literal = alloca %Double_s, align 8
@@ -57,13 +57,13 @@ entry:
   ret i64 %0
 }
 
-; Function Attrs: nounwind
+
 define void @test.f_double_double_s_arg(ptr align 8 %0) #0 {
 entry:
   ret void
 }
 
-; Function Attrs: nounwind
+
 define void @test.f_ret_double_double_s(ptr noalias sret(%Double_double_s) align 8 %0) #0 {
 entry:
   %literal = alloca %Double_double_s, align 8
@@ -72,13 +72,13 @@ entry:
   ret void
 }
 
-; Function Attrs: nounwind
+
 define void @test.f_int_double_s_arg(ptr align 8 %0) #0 {
 entry:
   ret void
 }
 
-; Function Attrs: nounwind
+
 define void @test.f_ret_int_double_s(ptr noalias sret(%Int_double_s) align 8 %0) #0 {
 entry:
   %literal = alloca %Int_double_s, align 8
