@@ -269,6 +269,13 @@ fn ZString* tcopy_env(String[] environment) @local @inline @if(env::POSIX)
 	return copy;
 }
 
+fn String! execute_stdout_to_buffer(char[] buffer, String[] command_line, SubProcessOptions options = {}, String[] environment = {})
+{
+	SubProcess process = process::create(command_line, options, environment)!;
+	process.join()!;
+	usz len = process.read_stdout(buffer.ptr, buffer.len)!;
+	return (String)buffer[:len - 1];
+}
 
 /**
  * @require !environment || !options.inherit_environment

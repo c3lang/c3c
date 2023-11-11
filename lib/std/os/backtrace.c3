@@ -50,6 +50,9 @@ fn void Backtrace.free(&self)
 	self.allocator.free(self.file);
 }
 
+def backtrace_load = darwin::backtrace_load @if(env::DARWIN);
+def backtrace_load = linux::backtrace_load @if(env::LINUX);
+
 fn Backtrace* Backtrace.init(&self, uptr offset, String function, String object_file, String file = "", uint line = 0, Allocator* using = mem::heap())
 {
 	if (!using)
