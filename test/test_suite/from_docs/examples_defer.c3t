@@ -243,7 +243,7 @@ voiderr78:                                        ; preds = %noerr_block76, %gua
   ret void
 }
 
-; Function Attrs: nounwind
+
 define void @defer1.main() #0 {
 entry:
   call void @defer1.test(i32 1)

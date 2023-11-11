@@ -1408,7 +1408,7 @@ void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_na
 		}
 	}
 	llvm_emit_panic(c, panic_name, loc, fmt, values);
-	llvm_emit_br(c, ok_block);
+	llvm_emit_unreachable(c);
 	llvm_emit_block(c, ok_block);
 }
 

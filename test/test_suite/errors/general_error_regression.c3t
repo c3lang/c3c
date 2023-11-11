@@ -138,7 +138,7 @@ voiderr:                                          ; preds = %noerr_block13, %gua
   ret void
 }
 
-; Function Attrs: nounwind
+
 define void @foo.Bar.hello(ptr %0) #0 {
 entry:
   %len = alloca i64, align 8
@@ -205,7 +205,7 @@ voiderr:                                          ; preds = %noerr_block13, %gua
   ret void
 }
 
-; Function Attrs: nounwind
+
 define void @foo.MyEnum.hello(ptr %0) #0 {
 entry:
   %len = alloca i64, align 8
@@ -272,7 +272,7 @@ voiderr:                                          ; preds = %noerr_block13, %gua
   ret void
 }
 
-; Function Attrs: nounwind
+
 define void @foo.main() #0 {
 entry:
   %f = alloca i64, align 8

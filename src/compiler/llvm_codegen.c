@@ -1066,6 +1066,7 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 		llvm_set_alignment(function, decl->alignment);
 	}
 	llvm_attribute_add(c, function, attribute_id.nounwind, -1);
+	llvm_attribute_add_int(c, function, attribute_id.uwtable, 2, -1);
 	if (decl->func_decl.attr_naked)
 	{
 		llvm_attribute_add(c, function, attribute_id.naked, -1);

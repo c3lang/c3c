@@ -3,8 +3,20 @@ import std::io;
 import std::collections::map;
 import std::os;
 
-fn void! main()
+fn void! test2()
 {
-	int x = 2;
-	builtin::print_backtrace("Hello", 0);
+	BacktraceList list = linux::backtrace_load(mem::heap())!;
+    foreach (Backtrace trace : list)
+    {
+		io::printfn("%s", trace);
+	}
+}
+
+fn void test1()
+{
+	(void)test2();
+}
+fn void main()
+{
+	test1();
 }

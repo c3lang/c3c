@@ -163,7 +163,7 @@ switch.default:                                   ; preds = %next_if21
 switch.exit:                                      ; preds = %switch.default, %switch.case20, %switch.case13, %switch.case6, %switch.case
   ret void
 }
-; Function Attrs: nounwind
+
 define void @foo.test_all(ptr %0, i64 %1) #0 {
 entry:
   %y = alloca %"any*[]", align 8
@@ -201,7 +201,7 @@ loop.body:                                        ; preds = %loop.cond
 loop.exit:                                        ; preds = %loop.cond
   ret void
 }
-; Function Attrs: nounwind
+
 define void @foo.main() #0 {
 entry:
   %x = alloca %"any*", align 8

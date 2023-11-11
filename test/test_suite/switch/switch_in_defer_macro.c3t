@@ -711,7 +711,7 @@ fn void test()
 @"$ct.std.io.ByteReader" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 24, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @std.core.mem.thread_allocator = external thread_local global %"any*", align 8
 
-; Function Attrs: nounwind
+
 define zeroext i8 @lexer_test.is_ident_char(i64 %0, i8 zeroext %1) #0 {
 entry:
   %eq = icmp eq i64 0, %0
@@ -745,7 +745,7 @@ or.phi:                                           ; preds = %and.phi2, %and.phi
   ret i8 %6
 }
 
-; Function Attrs: nounwind
+
 define i64 @lexer_test.lex_uint() #0 {
 entry:
   %tcases = alloca %"UintTest[]", align 8

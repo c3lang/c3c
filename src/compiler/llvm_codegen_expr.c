@@ -6189,7 +6189,7 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 			llvm_emit_update_stack_row(c, expr->span.row);
 			Decl *macro = expr->macro_block.macro;
 			old_stack_trace = c->debug.stacktrace;
-			llvm_emit_push_stacktrace(c, macro, macro->name, ST_MACRO);
+			llvm_emit_push_emulated_stacktrace(c, macro, macro->name, ST_MACRO);
 		}
 	}
 	llvm_emit_return_block(c, be_value, expr->type, expr->macro_block.first_stmt, expr->macro_block.block_exit, restore_at_exit ? &old_stack_trace : NULL);

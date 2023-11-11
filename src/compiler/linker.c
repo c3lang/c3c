@@ -386,6 +386,12 @@ static void linker_setup_linux(const char ***args_ref, LinkerType linker_type)
 {
 	if (linker_type == LINKER_CC)
 	{
+		if (!link_libc())
+		{
+			add_arg("-nostdlib");
+			return;
+		}
+		vec_add(active_target.linker_libs, "dl");
 		if (active_target.debug_info == DEBUG_INFO_FULL)
 		{
 			add_arg("-rdynamic");
@@ -430,6 +436,9 @@ static void linker_setup_linux(const char ***args_ref, LinkerType linker_type)
 	}
 	add_arg2(crt_dir, "crtn.o");
 	add_arg2("-L", crt_dir);
+	add_arg("-L");
+	add_arg("/usr/lib/x86_64-linux-gnu/libdl.so");
+	add_arg("-ldl");
 	add_arg("--dynamic-linker=/lib64/ld-linux-x86-64.so.2");
 	add_arg("-lm");
 	add_arg("-lpthread");

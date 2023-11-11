@@ -200,7 +200,7 @@ entry:
   ret void
 }
 
-; Function Attrs: nounwind
+
 define i32 @test.do_merge(ptr %0, ptr %1) #0 {
 entry:
   %lvalid = alloca i32, align 4

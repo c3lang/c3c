@@ -61,10 +61,10 @@ fn void f64() {
 
 declare void @f55(<16 x float>) #0
 
-; Function Attrs: nounwind
+
 declare void @f56(<16 x float>) #0
 
-; Function Attrs: nounwind
+
 define void @test.f57() #0 {
 entry:
   %0 = load <16 x float>, ptr @test.x55, align 64
@@ -74,30 +74,30 @@ entry:
   ret void
 }
 
-; Function Attrs: nounwind
+
 declare void @f58(ptr byval(%Two256) align 32) #0
 
-; Function Attrs: nounwind
+
 define void @test.f59(ptr byval(%Two256) align 32 %0) #0 {
 entry:
   call void @f58(ptr byval(%Two256) align 32 %0)
   ret void
 }
 
-; Function Attrs: nounwind
+
 declare void @f60(ptr byval(%SAtwo256) align 32) #0
 
-; Function Attrs: nounwind
+
 define void @test.f61(ptr byval(%SAtwo256) align 32 %0) #0 {
 entry:
   call void @f60(ptr byval(%SAtwo256) align 32 %0)
   ret void
 }
 
-; Function Attrs: nounwind
+
 declare void @f62_helper(i32, ...) #0
 
-; Function Attrs: nounwind
+
 define void @test.f62() #0 {
 entry:
   %literal = alloca %Complex, align 8
@@ -111,10 +111,10 @@ entry:
   ret void
 }
 
-; Function Attrs: nounwind
+
 declare void @f64_helper(<16 x float>, ...) #0
 
-; Function Attrs: nounwind
+
 define void @test.f64() #0 {
 entry:
   %literal = alloca %Complex, align 8

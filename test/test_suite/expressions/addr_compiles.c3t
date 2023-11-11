@@ -57,7 +57,7 @@ entry:
   ret void
 }
 
-; Function Attrs: nounwind
+
 define void @test.test() #0 {
 entry:
   %f = alloca i32, align 4
@@ -79,7 +79,7 @@ entry:
   ret void
 }
 
-; Function Attrs: nounwind
+
 define void @test.test2() #0 {
 entry:
   %w = alloca ptr, align 8
@@ -90,7 +90,7 @@ entry:
   ret void
 }
 
-; Function Attrs: nounwind
+
 define void @test.test3() #0 {
 entry:
   %h = alloca %Foo, align 4

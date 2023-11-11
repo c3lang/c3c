@@ -268,7 +268,7 @@ expr_block.exit75:                                ; preds = %if.exit74, %if.then
   ret void
 }
 
-; Function Attrs: nounwind
+
 define i64 @test.get_a(ptr %0, i32 %1) #0 {
 entry:
   %reterr = alloca i64, align 8
@@ -285,7 +285,7 @@ if.exit:                                          ; preds = %entry
   ret i64 0
 }
 
-; Function Attrs: nounwind
+
 define i64 @test.get_b(ptr %0, i32 %1) #0 {
 entry:
   %reterr = alloca i64, align 8

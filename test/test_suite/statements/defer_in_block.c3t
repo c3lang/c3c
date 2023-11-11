@@ -77,7 +77,7 @@ if.exit6:                                         ; preds = %if.exit3
   ret void
 }
 
-; Function Attrs: nounwind
+
 define void @foo.main() #0 {
 entry:
   call void @foo.test(i32 123)

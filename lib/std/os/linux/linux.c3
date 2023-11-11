@@ -140,15 +140,16 @@ fn Backtrace! backtrace_load_element(void* addr, Allocator* allocator = mem::hea
 		if (!addr) return backtrace::BACKTRACE_UNKNOWN;
 		char[] buf = mem::temp_array(char, 1024);
     	Linux_Dl_info info;
-        if (dladdr(addr, &info) == 0) return backtrace::BACKTRACE_UNKNOWN;
+    	if (dladdr(addr, &info) == 0) return backtrace::BACKTRACE_UNKNOWN;
         void* obj_address = addr - (uptr)info.dli_fbase + (uptr)elf_module_image_base(info.dli_fname.str_view())!;
         ZString obj_path = info.dli_fname;
+        ZString sname = info.dli_sname ? info.dli_sname : (ZString)"???";
         String s = process::execute_stdout_to_buffer(buf, { "addr2line", "-p", "-i", "-C", "-f", "-e", obj_path.str_view(), string::tformat("0x%x", obj_address) })!;
         String[] parts = s.tsplit(" at ");
 		if (parts.len != 2)
 		{
 			return {
-				.function = info.dli_sname ? info.dli_sname.copy(allocator) : "???".copy(allocator),
+				.function = sname.copy(allocator),
                 .object_file = info.dli_fname.copy(allocator),
 				.offset = (uptr)addr,
 				.file = "".copy(allocator),
@@ -177,6 +178,7 @@ fn BacktraceList! backtrace_load(Allocator* allocator)
 {
 	void*[256] bt_buffer;
 	CInt size = posix::backtrace(&bt_buffer, 256);
+	io::printfn("Backtrace list %s", size);
 	BacktraceList list;
 	list.init_new(size, allocator);
 	defer catch
@@ -189,7 +191,7 @@ fn BacktraceList! backtrace_load(Allocator* allocator)
 	}
 	@pool(allocator)
 	{
-		for (usz i = 1; i < size; i++)
+		for (usz i = 0; i < size; i++)
 		{
 			Backtrace trace = backtrace_load_element(bt_buffer[i], allocator)!;
 			list.append(trace);

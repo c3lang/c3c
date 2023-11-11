@@ -144,7 +144,7 @@ switch.exit:                                      ; preds = %switch.default, %sw
   ret void
 }
 
-; Function Attrs: nounwind
+
 define void @foo.test2(i64 %0, ptr %1) #0 {
 entry:
   %y = alloca %"any*", align 8
@@ -234,7 +234,7 @@ switch.exit:                                      ; preds = %switch.default, %sw
   ret void
 }
 
-; Function Attrs: nounwind
+
 define void @foo.test3(i64 %0, ptr %1) #0 {
 entry:
   %y = alloca %"any*", align 8

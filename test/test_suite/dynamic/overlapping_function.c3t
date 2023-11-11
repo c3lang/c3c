@@ -39,7 +39,7 @@ fn void main()
 @"$sel.foo" = linkonce_odr constant [4 x i8] c"foo\00", align 1
 @llvm.global_ctors = appending global [1 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 1, ptr @.static_initialize.0, ptr null }]
 
-; Function Attrs: nounwind
+
 define void @overlap.main() #0 {
 entry:
   %z = alloca %"any*", align 8

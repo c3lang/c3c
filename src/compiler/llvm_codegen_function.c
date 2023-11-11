@@ -487,7 +487,7 @@ void llvm_emit_update_stack_row(GenContext *c, uint32_t row)
 	llvm_store_to_ptr_raw_aligned(c, c->debug.stacktrace.row, llvm_const_int(c, type_uint, row), type_abi_alignment(type_uint));
 
 }
-void llvm_emit_push_stacktrace(GenContext *c, Decl *decl, const char *function_name, StacktraceType type)
+void llvm_emit_push_emulated_stacktrace(GenContext *c, Decl *decl, const char *function_name, StacktraceType type)
 {
 	LLVMTypeRef slot_type = c->debug.stack_type;
 	AlignSize alignment = llvm_abi_alignment(c, slot_type);
@@ -525,11 +525,26 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 	LLVMValueRef prev_function = c->function;
 	LLVMBuilderRef prev_builder = c->builder;
 
-	bool use_stacktrace = emit_debug && c->debug.emulated_stacktrace;
-	if (use_stacktrace && !c->debug.stack_init_fn)
+	bool use_emulated_stacktrace = emit_debug && c->debug.emulated_stacktrace;
+	if (use_emulated_stacktrace && !c->debug.stack_init_fn)
 	{
 		llvm_emit_stacktrace_definitions(c);
 		c->builder = prev_builder;
+	}
+	else if (c->debug.enable_stacktrace && !c->debug.x && false)
+	{
+		{
+			c->debug.x = true;
+			LLVMTypeRef func_type = LLVMFunctionType(LLVMVoidTypeInContext(c->context), NULL, 0, false);
+			LLVMValueRef func = LLVMAddFunction(c->module, "foo", func_type);
+			LLVMSetLinkage(func, LLVMInternalLinkage);
+			LLVMSetVisibility(func, LLVMDefaultVisibility);
+			LLVMBuilderRef builder = LLVMCreateBuilderInContext(c->context);
+			LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(c->context, func, "entry");
+			LLVMPositionBuilderAtEnd(builder, entry);
+			LLVMBuildUnreachable(builder);
+			LLVMDisposeBuilder(builder);
+		}
 	}
 	c->opt_var = NULL;
 	c->catch_block = NULL;
@@ -582,9 +597,9 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 	{
 		llvm_debug_scope_push(c, c->debug.function);
 		EMIT_LOC(c, body);
-		if (use_stacktrace)
+		if (use_emulated_stacktrace)
 		{
-			llvm_emit_push_stacktrace(c, decl, function_name, type);
+			llvm_emit_push_emulated_stacktrace(c, decl, function_name, type);
 		}
 	}
 

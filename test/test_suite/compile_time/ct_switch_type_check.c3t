@@ -33,10 +33,10 @@ fn void main()
 @.str.4 = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
 @.str.5 = private unnamed_addr constant [10 x i8] c"any other\00", align 1
 
-; Function Attrs: nounwind
+
 declare void @printf(ptr, ...) #0
 
-; Function Attrs: nounwind
+
 define void @test.main() #0 {
 entry:
   call void (ptr, ...) @printf(ptr @.str, ptr @.str.1)

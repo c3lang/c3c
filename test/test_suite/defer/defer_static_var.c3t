@@ -66,7 +66,7 @@ if.exit:                                          ; preds = %entry
   call void (ptr, ...) @printf(ptr @.str.1, i32 %4)
   ret i32 %0
 }
-; Function Attrs: nounwind
+
 define void @foo.main() #0 {
 entry:
   %i = alloca i32, align 4

@@ -87,7 +87,7 @@ fn int main()
 @init.foo = internal unnamed_addr global ptr @"test.$global$lambda1", align 8
 @init.foo.2 = internal unnamed_addr global ptr @"test.$global$lambda2", align 8
 
-; Function Attrs: nounwind
+
 define void @test.Foo.test(ptr %0, i32 %1) #0 {
 entry:
   %2 = getelementptr inbounds %Foo, ptr %0, i32 0, i32 0
@@ -96,7 +96,7 @@ entry:
   ret void
 }
 
-; Function Attrs: nounwind
+
 define void @test.FooTest.init(ptr %0) #0 {
 entry:
   %1 = getelementptr inbounds %FooTest, ptr %0, i32 0, i32 0
@@ -124,7 +124,7 @@ if.exit:                                          ; preds = %entry
   ret void
 }
 
-; Function Attrs: nounwind
+
 define internal void @"test.$global$lambda2"(ptr %0, i32 %1) #0 {
 entry:
   %z = alloca ptr, align 8

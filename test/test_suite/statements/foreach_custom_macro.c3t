@@ -39,7 +39,7 @@ extern fn int printf(char *fmt, ...);
 @.__const = private unnamed_addr constant [3 x i32] [i32 1, i32 3, i32 10], align 4
 @.str = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
 
-; Function Attrs: nounwind
+
 define void @foo.main() #0 {
 entry:
   %i = alloca [3 x i32], align 4
@@ -87,10 +87,10 @@ loop.exit:                                        ; preds = %loop.body2, %loop.c
   ret void
 }
 
-; Function Attrs: nounwind
+
 declare i32 @printf(ptr, ...) #0
 
-; Function Attrs: nounwind
+
 define i32 @main(i32 %0, ptr %1) #0 {
 entry:
   call void @foo.main()

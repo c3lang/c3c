@@ -24,7 +24,7 @@ entry:
   ret i64 0
 }
 
-; Function Attrs: nounwind
+
 define void @test.main() #0 {
 entry:
   %error_var = alloca i64, align 8

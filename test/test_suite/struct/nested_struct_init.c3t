@@ -48,7 +48,7 @@ fn void main()
 @.__const.8 = private unnamed_addr constant %Matrix2x2_b { %.anon.1 { [4 x float] [float 1.000000e+00, float 2.000000e+00, float 3.000000e+00, float 4.000000e+00] } }, align 4
 @.str = private unnamed_addr constant [13 x i8] c"%f %f %f %f\0A\00", align 1
 
-; Function Attrs: nounwind
+
 define void @foo.main() #0 {
 entry:
   %m = alloca %Matrix2x2, align 4

@@ -30,15 +30,15 @@ define i64 @anyfault_void.errorThing() #0 {
 entry:
   ret i64 ptrtoint (ptr @"anyfault_void.MyError$BAR" to i64)
 }
-; Function Attrs: nounwind
+
 define i64 @anyfault_void.errorThing2() #0 {
 entry:
   %reterr = alloca i64, align 8
   ret i64 0
 }
-; Function Attrs: nounwind
+
 declare void @printf(ptr, ...) #0
-; Function Attrs: nounwind
+
 define void @anyfault_void.main() #0 {
 entry:
   %z = alloca i64, align 8

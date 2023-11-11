@@ -112,7 +112,7 @@ entry:
   ret void
 }
 
-; Function Attrs: nounwind
+
 define void @vector_incdec.testi() #0 {
 entry:
   %y = alloca <4 x i32>, align 16

@@ -113,7 +113,7 @@ entry:
   store i64 %5, ptr %ptroffset1, align 8
   ret void
 }
-; Function Attrs: nounwind
+
 define void @test.test(i32 %0) #0 {
 entry:
   %len = alloca i64, align 8
@@ -723,7 +723,7 @@ voiderr151:                                       ; preds = %noerr_block149, %gu
   ret void
 }
 
-; Function Attrs: nounwind
+
 define void @test.main() #0 {
 entry:
   %varargslots = alloca [1 x %"any*"], align 16

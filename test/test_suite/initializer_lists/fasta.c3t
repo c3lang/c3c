@@ -131,7 +131,7 @@ fn int main(int argc, char **argv)
 @.str.15 = private unnamed_addr constant [26 x i8] c">TWO IUB ambiguity codes\0A\00", align 1
 @.str.16 = private unnamed_addr constant [31 x i8] c">THREE Homo sapiens frequency\0A\00", align 1
 
-; Function Attrs: nounwind
+
 define float @fasta.fasta_rand(float %0) #0 {
 entry:
   %1 = load i32, ptr @fasta.seed, align 4
@@ -146,16 +146,16 @@ entry:
   ret float %fdiv
 }
 
-; Function Attrs: nounwind
+
 declare i32 @atoi(ptr) #0
 
-; Function Attrs: nounwind
+
 declare i32 @printf(ptr, ...) #0
 
-; Function Attrs: nounwind
+
 declare void @putchar(i32) #0
 
-; Function Attrs: nounwind
+
 define void @fasta.repeat_fasta(ptr %0, i64 %1, i32 %2) #0 {
 entry:
   %seq = alloca %"char[]", align 8
@@ -215,7 +215,7 @@ if.exit5:                                         ; preds = %if.then4, %loop.exi
   ret void
 }
 
-; Function Attrs: nounwind
+
 define void @fasta.random_fasta(ptr %0, i64 %1, ptr %2, i64 %3, i32 %4) #0 {
 entry:
   %symb = alloca %"char[]", align 8
@@ -323,7 +323,7 @@ if.exit16:                                        ; preds = %if.then15, %loop.ex
   ret void
 }
 
-; Function Attrs: nounwind
+
 define i32 @main(i32 %0, ptr %1) #0 {
 entry:
   %n = alloca i32, align 4

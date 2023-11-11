@@ -86,7 +86,7 @@ entry:
   ret { ptr, i64 } %17
 }
 
-; Function Attrs: nounwind
+
 define void @test.main() #0 {
 entry:
   %map = alloca %HashMap, align 8
