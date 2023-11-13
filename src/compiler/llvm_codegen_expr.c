@@ -4418,10 +4418,9 @@ static inline void llvm_emit_force_unwrap_expr(GenContext *c, BEValue *be_value,
 		llvm_emit_any_from_value(c, &fault_arg, type_anyfault);
 		vec_add(varargs, fault_arg);
 		llvm_emit_panic(c, "Force unwrap failed!", loc, "Unexpected fault '%s' was unwrapped!", varargs);
-		llvm_emit_unreachable(c);
 	}
 	llvm_emit_block(c, no_err_block);
-
+	EMIT_LOC(c, expr);
 }
 
 
@@ -5963,8 +5962,8 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 		scratch_buffer_clear();
 		scratch_buffer_printf("No method '%s' could be found on target", dyn_fn->name);
 		llvm_emit_panic(c, scratch_buffer_to_string(), expr->span, NULL, NULL);
-		llvm_emit_unreachable(c);
 		llvm_emit_block(c, match);
+		EMIT_LOC(c, expr);
 		values[0] = result;
 
 	}
@@ -6469,8 +6468,8 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 					llvm_emit_block(c, next);
 				}
 				llvm_emit_panic(c, "Attempted to access 'inner' on non composite type", expr->span, NULL, NULL);
-				llvm_emit_unreachable(c);
 				llvm_emit_block(c, exit);
+				EMIT_LOC(c, expr);
 			}
 			{
 				LLVMValueRef val = llvm_emit_struct_gep_raw(c, ref, c->introspect_type, INTROSPECT_INDEX_INNER, align, &alignment);
@@ -6498,8 +6497,8 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 					llvm_emit_block(c, next);
 				}
 				llvm_emit_panic(c, "Attempted to access 'names' on non enum/fault type.", expr->span, NULL, NULL);
-				llvm_emit_unreachable(c);
 				llvm_emit_block(c, exit);
+				EMIT_LOC(c, expr);
 			}
 			{
 				LLVMValueRef len = llvm_emit_struct_gep_raw(c, ref, c->introspect_type, INTROSPECT_INDEX_LEN, align, &alignment);
@@ -6531,8 +6530,8 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 					llvm_emit_block(c, next);
 				}
 				llvm_emit_panic(c, "Attempted to access 'len' on non array type", expr->span, NULL, NULL);
-				llvm_emit_unreachable(c);
 				llvm_emit_block(c, exit);
+				EMIT_LOC(c, expr);
 			}
 			{
 				LLVMValueRef val = llvm_emit_struct_gep_raw(c, ref, c->introspect_type, INTROSPECT_INDEX_LEN, align, &alignment);

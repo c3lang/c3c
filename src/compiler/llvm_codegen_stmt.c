@@ -470,9 +470,7 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 			SourceSpan loc = ast->span;
 
 			llvm_emit_panic(c, "Infinite loop found", loc, NULL, NULL);
-			llvm_emit_unreachable(c);
-			LLVMBasicBlockRef block = llvm_basic_block_new(c, "unreachable_block");
-			llvm_emit_block(c, block);
+			llvm_emit_block(c, llvm_basic_block_new(c, "unreachable_block"));
 			return;
 		}
 		return;
@@ -1000,7 +998,6 @@ static inline void llvm_emit_assert_stmt(GenContext *c, Ast *ast)
 {
 	ExprId exprid = ast->assert_stmt.expr;
 	Expr *assert_expr = exprptr(exprid);
-
 	if (safe_mode_enabled())
 	{
 		BEValue value;
@@ -1036,8 +1033,9 @@ static inline void llvm_emit_assert_stmt(GenContext *c, Ast *ast)
 			}
 		}
 		llvm_emit_panic(c, error, loc, fmt, values);
-		llvm_emit_unreachable(c);
 		llvm_emit_block(c, on_ok);
+		EMIT_LOC(c, ast);
+		return;
 	}
 	llvm_emit_assume(c, exprptr(ast->assert_stmt.expr));
 }
@@ -1312,6 +1310,7 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const c
 	if (!panic_var)
 	{
 		llvm_emit_call_intrinsic(c, intrinsic_id.trap, NULL, 0, NULL, 0);
+		llvm_emit_unreachable(c);
 		return;
 	}
 
@@ -1368,6 +1367,7 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const c
 		if (c->debug.builder) llvm_emit_debug_location(c, loc);
 		llvm_emit_raw_call(c, &res, prototype, llvm_func_type(c, prototype), llvm_get_ref(c, panicf), actual_args,
 						   count, 0, NULL, false, NULL);
+		llvm_emit_unreachable(c);
 		return;
 	}
 
@@ -1379,6 +1379,7 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const c
 	if (c->debug.builder) llvm_emit_debug_location(c, loc);
 	llvm_emit_raw_call(c, &res, prototype, llvm_func_type(c, prototype), val.value, actual_args,
 					   count, 0, NULL, false, NULL);
+	llvm_emit_unreachable(c);
 }
 
 void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_name, SourceSpan loc, const char *fmt, BEValue *value_1,
@@ -1408,8 +1409,8 @@ void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_na
 		}
 	}
 	llvm_emit_panic(c, panic_name, loc, fmt, values);
-	llvm_emit_unreachable(c);
 	llvm_emit_block(c, ok_block);
+	EMIT_SPAN(c, loc);
 }
 
 void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *panic_name, SourceSpan loc,
