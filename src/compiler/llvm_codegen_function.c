@@ -531,21 +531,6 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 		llvm_emit_stacktrace_definitions(c);
 		c->builder = prev_builder;
 	}
-	else if (c->debug.enable_stacktrace && !c->debug.x && false)
-	{
-		{
-			c->debug.x = true;
-			LLVMTypeRef func_type = LLVMFunctionType(LLVMVoidTypeInContext(c->context), NULL, 0, false);
-			LLVMValueRef func = LLVMAddFunction(c->module, "foo", func_type);
-			LLVMSetLinkage(func, LLVMInternalLinkage);
-			LLVMSetVisibility(func, LLVMDefaultVisibility);
-			LLVMBuilderRef builder = LLVMCreateBuilderInContext(c->context);
-			LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(c->context, func, "entry");
-			LLVMPositionBuilderAtEnd(builder, entry);
-			LLVMBuildUnreachable(builder);
-			LLVMDisposeBuilder(builder);
-		}
-	}
 	c->opt_var = NULL;
 	c->catch_block = NULL;
 
