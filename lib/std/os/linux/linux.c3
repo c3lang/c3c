@@ -6,8 +6,6 @@ import std::collections::list;
 
 extern fn isz readlink(ZString path, char* buf, usz bufsize);
 
-def BacktraceList = List(<Backtrace>);
-
 const PT_PHDR = 6;
 const EI_NIDENT = 16;
 def Elf32_Half = ushort;
@@ -153,7 +151,8 @@ fn Backtrace! backtrace_load_element(void* addr, Allocator* allocator = mem::hea
                 .object_file = info.dli_fname.copy(allocator),
 				.offset = (uptr)addr,
 				.file = "".copy(allocator),
-                .line = 0
+                .line = 0,
+                .allocator = allocator
             };
         }
         uint line = 0;
@@ -174,13 +173,10 @@ fn Backtrace! backtrace_load_element(void* addr, Allocator* allocator = mem::hea
 	};
 }
 
-fn BacktraceList! backtrace_load(Allocator* allocator)
+fn BacktraceList! symbolize_backtrace(void*[] backtrace, Allocator* allocator)
 {
-	void*[256] bt_buffer;
-	CInt size = posix::backtrace(&bt_buffer, 256);
-	io::printfn("Backtrace list %s", size);
 	BacktraceList list;
-	list.init_new(size, allocator);
+	list.init_new(backtrace.len, allocator);
 	defer catch
 	{
 		foreach (trace : list)
@@ -191,9 +187,9 @@ fn BacktraceList! backtrace_load(Allocator* allocator)
 	}
 	@pool(allocator)
 	{
-		for (usz i = 0; i < size; i++)
+		foreach (addr : backtrace)
 		{
-			Backtrace trace = backtrace_load_element(bt_buffer[i], allocator)!;
+			Backtrace trace = backtrace_load_element(addr, allocator)!;
 			list.append(trace);
 		}
 	};

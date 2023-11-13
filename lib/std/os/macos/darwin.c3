@@ -76,8 +76,6 @@ fn String! executable_path(Allocator *allocator)
 	return ((ZString)&path).copy(allocator);
 }
 
-def BacktraceList = List(<Backtrace>);
-
 fn uptr! load_address() @local
 {
 	Darwin_segment_command_64* cmd = darwin::getsegbyname("__TEXT");
@@ -128,18 +126,17 @@ fn Backtrace! backtrace_load_element(String execpath, void* buffer, void* load_a
 			.function = info.dli_sname ? info.dli_sname.copy(allocator) : "???".copy(allocator),
 			.object_file = info.dli_fname.copy(allocator),
 			.file = "".copy(allocator),
-			.line = 0
+			.line = 0,
+			.allocator = allocator
 		};
 	};
 }
 
-fn BacktraceList! backtrace_load(Allocator* allocator)
+fn BacktraceList! symbolize_backtrace(void*[] backtrace, Allocator* allocator)
 {
-	void*[256] bt_buffer;
-	CInt size = posix::backtrace(&bt_buffer, 256);
 	void *load_addr = (void *)load_address()!;
 	BacktraceList list;
-	list.init_new(size, allocator);
+	list.init_new(backtrace.len, allocator);
 	defer catch
 	{
 		foreach (trace : list)
@@ -151,11 +148,9 @@ fn BacktraceList! backtrace_load(Allocator* allocator)
 	@pool(allocator)
 	{
 		String execpath = executable_path(mem::temp())!;
-		for (usz i = 1; i < size; i++)
+		foreach (addr : backtrace)
 		{
-			void* buffer = bt_buffer[i];
-			Backtrace trace = backtrace_load_element(execpath, buffer, load_addr, allocator)!;
-			list.append(trace);
+			list.append(backtrace_load_element(execpath, addr, load_addr, allocator) ?? backtrace::BACKTRACE_UNKNOWN);
 		}
 	};
 	return list;

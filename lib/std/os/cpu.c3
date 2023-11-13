@@ -28,7 +28,7 @@ import std::os::win32;
 
 fn uint num_cpu()
 {
-	SystemInfo info;
-	win32::get_system_info(&info);
+	Win32_SYSTEM_INFO info;
+	win32::getSystemInfo(&info);
 	return info.dwNumberOfProcessors;
 }

@@ -78,6 +78,7 @@ static const char *string_esc(const char *str)
 static void linker_setup_windows(const char ***args_ref, LinkerType linker_type, const char ***additional_linked_ref)
 {
 	add_arg(active_target.win.use_win_subsystem ? "/SUBSYSTEM:WINDOWS" : "/SUBSYSTEM:CONSOLE");
+	vec_add(*additional_linked_ref, "dbghelp");
 	if (linker_type == LINKER_CC) return;
 	//add_arg("/MACHINE:X64");
 	bool is_debug = false;
@@ -382,8 +383,9 @@ static const char *find_linux_crt_begin(void)
 	return NULL;
 }
 
-static void linker_setup_linux(const char ***args_ref, LinkerType linker_type)
+static void linker_setup_linux(const char ***args_ref, LinkerType linker_type, const char ***additional_linked_ref)
 {
+	vec_add(*additional_linked_ref, "dl");
 	if (linker_type == LINKER_CC)
 	{
 		if (!link_libc())
@@ -391,7 +393,6 @@ static void linker_setup_linux(const char ***args_ref, LinkerType linker_type)
 			add_arg("-nostdlib");
 			return;
 		}
-		vec_add(active_target.linker_libs, "dl");
 		if (active_target.debug_info == DEBUG_INFO_FULL)
 		{
 			add_arg("-rdynamic");
@@ -438,7 +439,6 @@ static void linker_setup_linux(const char ***args_ref, LinkerType linker_type)
 	add_arg2("-L", crt_dir);
 	add_arg("-L");
 	add_arg("/usr/lib/x86_64-linux-gnu/libdl.so");
-	add_arg("-ldl");
 	add_arg("--dynamic-linker=/lib64/ld-linux-x86-64.so.2");
 	add_arg("-lm");
 	add_arg("-lpthread");
@@ -583,7 +583,7 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 			linker_setup_freebsd(args_ref, linker_type);
 			break;
 		case OS_TYPE_LINUX:
-			linker_setup_linux(args_ref, linker_type);
+			linker_setup_linux(args_ref, linker_type, &additional_linked);
 			break;
 		case OS_TYPE_UNKNOWN:
 			if (link_libc())

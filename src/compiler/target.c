@@ -34,7 +34,7 @@ int target_alloca_addr_space()
 
 bool os_supports_stacktrace(OsType os_type)
 {
-	return os_type == OS_TYPE_LINUX || os_is_apple(os_type);
+	return os_type == OS_TYPE_LINUX || os_is_apple(os_type) || os_type == OS_TYPE_WIN32;
 }
 bool os_is_apple(OsType os_type)
 {

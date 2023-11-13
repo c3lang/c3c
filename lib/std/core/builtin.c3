@@ -91,7 +91,10 @@ fn bool print_backtrace(String message, int backtraces_to_ignore) @if(env::NATIV
 {
 	@pool()
 	{
-		BacktraceList! backtrace = backtrace::backtrace_load(mem::temp());
+		void*[256] buffer;
+		void*[] backtraces = backtrace::capture_current(&buffer);
+		backtraces_to_ignore++;
+		BacktraceList! backtrace = backtrace::symbolize_backtrace(backtraces, mem::temp());
 		if (catch backtrace) return false;
 		if (backtrace.len() <= backtraces_to_ignore) return false;
 		io::eprint("\nERROR: '");
