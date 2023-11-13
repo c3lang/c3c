@@ -1,4 +1,5 @@
 module std::os::backtrace;
+import std::collections::list;
 
 fault BacktraceFault
 {
@@ -6,6 +7,7 @@ fault BacktraceFault
 	EXECUTABLE_PATH_NOT_FOUND,
 	IMAGE_NOT_FOUND,
 	NO_BACKTRACE_SYMBOLS,
+	RESOLUTION_FAILED,
 }
 
 const Backtrace BACKTRACE_UNKNOWN = { 0, "", "", "", 0, null };
@@ -19,6 +21,7 @@ struct Backtrace (Printable)
 	uint line;
 	Allocator* allocator;
 }
+
 
 fn bool Backtrace.has_file(&self)
 {
@@ -50,12 +53,9 @@ fn void Backtrace.free(&self)
 	self.allocator.free(self.file);
 }
 
-def backtrace_load = darwin::backtrace_load @if(env::DARWIN);
-def backtrace_load = linux::backtrace_load @if(env::LINUX);
-
-fn Backtrace* Backtrace.init(&self, uptr offset, String function, String object_file, String file = "", uint line = 0, Allocator* using = mem::heap())
+fn Backtrace* Backtrace.init(&self, uptr offset, String function, String object_file, String file = "", uint line = 0, Allocator* allocator)
 {
-	if (!using)
+	if (!allocator)
 	{
 		self.offset = offset;
 		self.function = function;
@@ -66,11 +66,31 @@ fn Backtrace* Backtrace.init(&self, uptr offset, String function, String object_
 		return self;
 	}
 	self.offset = offset;
-	self.function = function.copy(using);
-	self.object_file = object_file.copy(using);
-	self.file = file.copy(using);
-	self.allocator = using;
+	self.function = function.copy(allocator);
+	self.object_file = object_file.copy(allocator);
+	self.file = file.copy(allocator);
+	self.allocator = allocator;
 	self.line = line;
 	return self;
 }
 
+fn void*[] capture_current(void*[] buffer) @if(env::POSIX || env::WIN32)
+{
+	if (!buffer.len) return buffer[:0];
+	$switch
+		$case env::POSIX:
+			CInt len = posix::backtrace(buffer.ptr, buffer.len);
+			return buffer[:len];
+		$case env::WIN32:
+			Win32_WORD len = win32::rtlCaptureStackBackTrace(0, buffer.len, buffer.ptr, null);
+			return buffer[:len];
+		$default:
+			return buffer[:0];
+	$endswitch
+}
+
+def BacktraceList = List(<Backtrace>);
+
+def symbolize_backtrace = linux::symbolize_backtrace @if(env::LINUX);
+def symbolize_backtrace = win32::symbolize_backtrace @if(env::WIN32);
+def symbolize_backtrace = darwin::symbolize_backtrace @if(env::DARWIN);

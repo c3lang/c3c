@@ -30,7 +30,7 @@
 - New generic syntax.
 - Slice initialization.
 - `$feature` for feature flags.
-- Improved stack trace.
+- Native stacktrace for Linux, MacOS and Windows.
 - Macro ref parameters are now of pointer type and ref parameters are not assignable.
 - Added `nextcase default`.
 - Added `$embed` to embed binary data.

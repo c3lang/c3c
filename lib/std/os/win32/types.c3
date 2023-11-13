@@ -266,3 +266,431 @@ struct Win32_PROCESS_INFORMATION
 
 def Win32_PPROCESS_INFORMATION = Win32_PROCESS_INFORMATION*;
 def Win32_LPPROCESS_INFORMATION = Win32_PROCESS_INFORMATION*;
+
+struct Win32_SYSTEM_INFO
+{
+	union
+	{
+		Win32_DWORD dwOemId;
+		struct
+		{
+			Win32_WORD wProcessorArchitecture;
+			Win32_WORD wReserved;
+		}
+	}
+	Win32_DWORD         dwPageSize;
+	Win32_LPVOID        lpMinimumApplicationAddress;
+	Win32_LPVOID        lpMaximumApplicationAddress;
+	Win32_DWORD_PTR     dwActiveProcessorMask;
+	Win32_DWORD         dwNumberOfProcessors;
+	Win32_DWORD         dwProcessorType;
+	Win32_DWORD         dwAllocationGranularity;
+	Win32_WORD          wProcessorLevel;
+	Win32_WORD          wProcessorRevision;
+}
+
+def Win32_LPSYSTEM_INFO = Win32_SYSTEM_INFO*;
+
+struct Win32_MODULEINFO
+{
+	Win32_LPVOID lpBaseOfDll;
+	Win32_DWORD  sizeOfImage;
+	Win32_LPVOID entryPoint;
+}
+
+struct Win32_IMAGEHLP_LINE64
+{
+	Win32_DWORD   sizeOfStruct;
+	Win32_PVOID   key;
+	Win32_DWORD   lineNumber;
+	Win32_PCHAR   fileName;
+	Win32_DWORD64 address;
+}
+
+enum Win32_SYM_TYPE
+{
+	SYM_NONE,
+	SYM_COFF,
+	SYM_CV,
+	SYM_PDB,
+	SYM_EXPORT,
+	SYM_DEFERRED,
+	SYM_SYM,
+	SYM_DIA,
+	SYM_VIRTUAL
+}
+
+struct Win32_GUID
+{
+	CULong data1;
+    CUShort data2;
+    CUShort data3;
+    char[8] data4;
+}
+
+struct Win32_IMAGEHLP_MODULE64
+{
+    Win32_DWORD     sizeOfStruct;
+    Win32_DWORD64   baseOfImage;
+    Win32_DWORD     imageSize;
+    Win32_DWORD     timeDateStamp;
+    Win32_DWORD     checkSum;
+    Win32_DWORD     numSyms;
+    Win32_SYM_TYPE  symType;
+    Win32_CHAR[32]  moduleName;
+    Win32_CHAR[256] imageName;
+    Win32_CHAR[256] loadedImageName;
+    Win32_CHAR[256] loadedPdbName;
+    Win32_DWORD     cVSig;
+    Win32_CHAR**    cVData;
+    Win32_DWORD     pdbSig;
+    Win32_GUID      pdbSig70;
+    Win32_DWORD     pdbAge;
+    Win32_BOOL      pdbUnmatched;
+    Win32_BOOL      dbgUnmatched;
+    Win32_BOOL      lineNumbers;
+    Win32_BOOL      globalSymbols;
+    Win32_BOOL      typeInfo;
+    Win32_BOOL      sourceIndexed;
+    Win32_BOOL      publics;
+    Win32_DWORD     machineType;
+    Win32_DWORD     reserved;
+}
+
+def Win32_PIMAGEHLP_MODULE64 = Win32_IMAGEHLP_MODULE64*;
+
+struct Win32_ARM64_NT_CONTEXT @align(16)
+{
+	Win32_DWORD   contextFlags;
+	Win32_DWORD   cpsr;
+    union
+    {
+		struct
+		{
+            Win32_DWORD64 x0;
+            Win32_DWORD64 x1;
+            Win32_DWORD64 x2;
+            Win32_DWORD64 x3;
+            Win32_DWORD64 x4;
+            Win32_DWORD64 x5;
+            Win32_DWORD64 x6;
+            Win32_DWORD64 x7;
+            Win32_DWORD64 x8;
+            Win32_DWORD64 x9;
+            Win32_DWORD64 x10;
+            Win32_DWORD64 x11;
+            Win32_DWORD64 x12;
+            Win32_DWORD64 x13;
+            Win32_DWORD64 x14;
+            Win32_DWORD64 x15;
+            Win32_DWORD64 x16;
+            Win32_DWORD64 x17;
+            Win32_DWORD64 x18;
+            Win32_DWORD64 x19;
+            Win32_DWORD64 x20;
+            Win32_DWORD64 x21;
+            Win32_DWORD64 x22;
+            Win32_DWORD64 x23;
+            Win32_DWORD64 x24;
+            Win32_DWORD64 x25;
+            Win32_DWORD64 x26;
+            Win32_DWORD64 x27;
+            Win32_DWORD64 x28;
+            Win32_DWORD64 fp;
+            Win32_DWORD64 lr;
+        }
+        Win32_DWORD64[31] x;
+    }
+	Win32_DWORD64                           sp;
+	Win32_DWORD64                           pc;
+	Win32_ARM64_NT_NEON128[32]              v;
+	Win32_DWORD                             fpcr;
+	Win32_DWORD                             fpsr;
+	Win32_DWORD[ARM64_MAX_BREAKPOINTS]      bcr;
+	Win32_DWORD64[ARM64_MAX_BREAKPOINTS]    bvr;
+	Win32_DWORD[ARM64_MAX_WATCHPOINTS]      wcr;
+	Win32_DWORD64[ARM64_MAX_WATCHPOINTS]    wvr;
+}
+const ARM64_MAX_BREAKPOINTS = 8;
+const ARM64_MAX_WATCHPOINTS = 2;
+
+struct Win32_ARM64_NT_NEON128
+{
+    Win32_ULONGLONG low;
+    Win32_LONGLONG  high;
+}
+
+struct Win32_XMM_SAVE_AREA32
+{
+	Win32_USHORT    controlWord;
+	Win32_USHORT    statusWord;
+	Win32_UCHAR     tagWord;
+	Win32_UCHAR     reserved1;
+	Win32_USHORT    errorOpcode;
+	Win32_ULONG     errrorOffset;
+	Win32_USHORT    errorSelector;
+	Win32_USHORT    reserved2;
+	Win32_ULONG     dataOffset;
+	Win32_USHORT    dataSelector;
+	Win32_USHORT    reserved3;
+	Win32_ULONG     mxCsr;
+	Win32_ULONG     mxCsr_Mask;
+	Win32_M128A[8]  floatRegisters;
+	Win32_M128A[16] xmmRegisters;
+	Win32_UCHAR[96] reserved4;
+}
+
+struct Win32_AMD64_CONTEXT @align(16)
+{
+	Win32_DWORD64 p1Home;
+	Win32_DWORD64 p2Home;
+	Win32_DWORD64 p3Home;
+	Win32_DWORD64 p4Home;
+	Win32_DWORD64 p5Home;
+	Win32_DWORD64 p6Home;
+	Win32_DWORD   contextFlags;
+	Win32_DWORD   mxCsr;
+	Win32_WORD    segCs;
+	Win32_WORD    segDs;
+	Win32_WORD    segEs;
+	Win32_WORD    segFs;
+	Win32_WORD    segGs;
+	Win32_WORD    segSs;
+	Win32_DWORD   eFlags;
+	Win32_DWORD64 dr0;
+	Win32_DWORD64 dr1;
+	Win32_DWORD64 dr2;
+	Win32_DWORD64 dr3;
+	Win32_DWORD64 dr6;
+	Win32_DWORD64 dr7;
+	Win32_DWORD64 rax;
+	Win32_DWORD64 rcx;
+	Win32_DWORD64 rdx;
+	Win32_DWORD64 rbx;
+	Win32_DWORD64 rsp;
+	Win32_DWORD64 rbp;
+	Win32_DWORD64 rsi;
+	Win32_DWORD64 rdi;
+	Win32_DWORD64 r8;
+	Win32_DWORD64 r9;
+	Win32_DWORD64 r10;
+	Win32_DWORD64 r11;
+	Win32_DWORD64 r12;
+	Win32_DWORD64 r13;
+	Win32_DWORD64 r14;
+	Win32_DWORD64 r15;
+	Win32_DWORD64 rip;
+    union
+    {
+        Win32_XMM_SAVE_AREA32   fltSave;
+        //Win32_NEON128[16]       q;
+        Win32_ULONGLONG[32]     d;
+        struct
+        {
+            Win32_M128A[2]  header;
+            Win32_M128A[8]  legacy;
+            Win32_M128A     xmm0;
+            Win32_M128A     xmm1;
+            Win32_M128A     xmm2;
+            Win32_M128A     xmm3;
+            Win32_M128A     xmm4;
+            Win32_M128A     xmm5;
+            Win32_M128A     xmm6;
+            Win32_M128A     xmm7;
+            Win32_M128A     xmm8;
+            Win32_M128A     xmm9;
+            Win32_M128A     xmm10;
+            Win32_M128A     xmm11;
+            Win32_M128A     xmm12;
+            Win32_M128A     xmm13;
+            Win32_M128A     xmm14;
+            Win32_M128A     xmm15;
+        }
+        Win32_DWORD[32]     s;
+    }
+	Win32_M128A[26]         vectorRegister;
+	Win32_DWORD64           vectorControl;
+	Win32_DWORD64           debugControl;
+	Win32_DWORD64           lastBranchToRip;
+	Win32_DWORD64           lastBranchFromRip;
+	Win32_DWORD64           lastExceptionToRip;
+	Win32_DWORD64           lastExceptionFromRip;
+}
+
+const CONTEXT_AMD64 = 0x00100000;
+const CONTEXT_AMD64_CONTROL = CONTEXT_AMD64 | 0x0001;
+const CONTEXT_AMD64_INTEGER = CONTEXT_AMD64 | 0x0002;
+const CONTEXT_AMD64_SEGMENTS = CONTEXT_AMD64 | 0x0004;
+const CONTEXT_AMD64_FLOATING_POINT = CONTEXT_AMD64 | 0x0008;
+const CONTEXT_AMD64_DEBUG_REGISTERS = CONTEXT_AMD64 | 0x0010;
+const CONTEXT_AMD64_FULL = CONTEXT_AMD64_CONTROL | CONTEXT_AMD64_INTEGER | CONTEXT_AMD64_FLOATING_POINT;
+const CONTEXT_AMD64_ALL = CONTEXT_AMD64_CONTROL | CONTEXT_AMD64_INTEGER | CONTEXT_AMD64_SEGMENTS | CONTEXT_AMD64_FLOATING_POINT | CONTEXT_AMD64_DEBUG_REGISTERS;
+
+def CONTEXT_CONTROL = CONTEXT_AMD64_CONTROL;
+def CONTEXT_FULL = CONTEXT_AMD64_FULL;
+def CONTEXT_ALL = CONTEXT_AMD64_ALL;
+
+def Win32_CONTEXT = Win32_AMD64_CONTEXT;
+def Win32_PCONTEXT = Win32_CONTEXT*;
+
+struct Win32_M128A @align(16)
+{
+    Win32_ULONGLONG low;
+    Win32_LONGLONG  high;
+}
+
+struct Win32_IMAGE_DATA_DIRECTORY
+{
+    Win32_ULONG   virtualAddress;
+    Win32_ULONG   size;
+}
+
+struct Win32_IMAGE_OPTIONAL_HEADER64
+{
+	Win32_WORD                 magic;
+	Win32_BYTE                 majorLinkerVersion;
+	Win32_BYTE                 minorLinkerVersion;
+	Win32_DWORD                sizeOfCode;
+	Win32_DWORD                sizeOfInitializedData;
+	Win32_DWORD                sizeOfUninitializedData;
+	Win32_DWORD                addressOfEntryPoint;
+	Win32_DWORD                baseOfCode;
+	Win32_ULONGLONG            imageBase;
+	Win32_DWORD                sectionAlignment;
+	Win32_DWORD                fileAlignment;
+	Win32_WORD                 majorOperatingSystemVersion;
+	Win32_WORD                 minorOperatingSystemVersion;
+	Win32_WORD                 majorImageVersion;
+	Win32_WORD                 minorImageVersion;
+	Win32_WORD                 majorSubsystemVersion;
+	Win32_WORD                 minorSubsystemVersion;
+	Win32_DWORD                win32VersionValue;
+	Win32_DWORD                sizeOfImage;
+	Win32_DWORD                sizeOfHeaders;
+	Win32_DWORD                checkSum;
+	Win32_WORD                 subsystem;
+	Win32_WORD                 dllCharacteristics;
+	Win32_ULONGLONG            sizeOfStackReserve;
+	Win32_ULONGLONG            sizeOfStackCommit;
+	Win32_ULONGLONG            sizeOfHeapReserve;
+	Win32_ULONGLONG            sizeOfHeapCommit;
+	Win32_DWORD                loaderFlags;
+	Win32_DWORD                numberOfRvaAndSizes;
+	Win32_IMAGE_DATA_DIRECTORY[16] dataDirectory;
+}
+
+def Win32_PIMAGE_OPTIONAL_HEADER64 = Win32_IMAGE_OPTIONAL_HEADER64*;
+struct Win32_IMAGE_FILE_HEADER
+{
+    Win32_WORD      machine;
+    Win32_WORD      numberOfSections;
+    Win32_DWORD     timeDateStamp;
+    Win32_DWORD     pointerToSymbolTable;
+    Win32_DWORD     numberOfSymbols;
+    Win32_WORD      sizeOfOptionalHeader;
+    Win32_WORD      characteristics;
+}
+
+def Win32_PIMAGE_FILE_HEADER = Win32_IMAGE_FILE_HEADER*;
+
+struct Win32_IMAGE_NT_HEADERS
+{
+    Win32_DWORD signature;
+    Win32_IMAGE_FILE_HEADER fileHeader;
+    Win32_IMAGE_OPTIONAL_HEADER64 optionalHeader;
+}
+
+def Win32_PIMAGE_NT_HEADERS = Win32_IMAGE_NT_HEADERS*;
+
+struct Win32_SYMBOL_INFO
+{
+	Win32_ULONG         sizeOfStruct;
+	Win32_ULONG         typeIndex;
+	Win32_ULONG64[2]    reserved;
+	Win32_ULONG         index;
+	Win32_ULONG         size;
+	Win32_ULONG64       modBase;
+	Win32_ULONG         flags;
+	Win32_ULONG64       value;
+	Win32_ULONG64       address;
+	Win32_ULONG         register;
+	Win32_ULONG         scope;
+	Win32_ULONG         tag;
+	Win32_ULONG         nameLen;
+	Win32_ULONG         maxNameLen;
+	Win32_CHAR[1]       name;
+}
+
+def Win32_PSYMBOL_INFO = Win32_SYMBOL_INFO*;
+
+struct Win32_MODLOAD_DATA
+{
+	Win32_DWORD ssize;
+	Win32_DWORD ssig;
+	Win32_PVOID data;
+	Win32_DWORD size;
+	Win32_DWORD flags;
+}
+
+enum Win32_ADDRESS_MODE
+{
+	ADDR_MODE_1616,
+    ADDR_MODE_1632,
+    ADDR_MODE_REAL,
+    ADDR_MODE_FLAT,
+}
+
+struct Win32_ADDRESS64
+{
+	Win32_DWORD64       offset;
+	Win32_WORD          segment;
+	Win32_ADDRESS_MODE  mode;
+}
+
+struct Win32_KDHELP64
+{
+    Win32_DWORD64       thread;
+    Win32_DWORD         thCallbackStack;
+    Win32_DWORD         thCallbackBStore;
+    Win32_DWORD         nextCallback;
+    Win32_DWORD         framePointer;
+    Win32_DWORD64       kiCallUserMode;
+    Win32_DWORD64       keUserCallbackDispatcher;
+    Win32_DWORD64       systemRangeStart;
+    Win32_DWORD64       kiUserExceptionDispatcher;
+    Win32_DWORD64       stackBase;
+    Win32_DWORD64       stackLimit;
+    Win32_DWORD         buildVersion;
+    Win32_DWORD         retpolineStubFunctionTableSize;
+    Win32_DWORD64       retpolineStubFunctionTable;
+    Win32_DWORD         retpolineStubOffset;
+    Win32_DWORD         retpolineStubSize;
+    Win32_DWORD64[2]    reserved0;
+}
+
+struct Win32_STACKFRAME64
+{
+	Win32_ADDRESS64     addrPC;
+	Win32_ADDRESS64     addrReturn;
+	Win32_ADDRESS64     addrFrame;
+	Win32_ADDRESS64     addrStack;
+	Win32_ADDRESS64     addrBStore;
+	Win32_PVOID         funcTableEntry;
+	Win32_DWORD64[4]    params;
+	Win32_BOOL          far;
+	Win32_BOOL          virtual;
+	Win32_DWORD64[3]    reserved;
+	Win32_KDHELP64      kdHelp;
+}
+
+def Win32_PREAD_PROCESS_MEMORY_ROUTINE64 = fn Win32_BOOL(Win32_HANDLE hProcess, Win32_DWORD64 qwBaseAddress, Win32_PVOID lpBuffer, Win32_DWORD nSize, Win32_LPDWORD lpNumberOfBytesRead);
+def Win32_PFUNCTION_TABLE_ACCESS_ROUTINE64 = fn Win32_PVOID(Win32_HANDLE ahProcess, Win32_DWORD64 addrBase);
+def Win32_PGET_MODULE_BASE_ROUTINE64 = fn Win32_DWORD64(Win32_HANDLE hProcess, Win32_DWORD64 address);
+def Win32_PTRANSLATE_ADDRESS_ROUTINE64 = fn Win32_DWORD64(Win32_HANDLE hProcess, Win32_HANDLE hThread, Win32_LPADDRESS64 lpaddr);
+def Win32_PKDHELP64 = Win32_KDHELP64*;
+def Win32_LPADDRESS64 = Win32_ADDRESS64*;
+def Win32_LPSTACKFRAME64 = Win32_STACKFRAME64*;
+def Win32_PMODLOAD_DATA = Win32_MODLOAD_DATA*;
+def Win32_PIMAGEHLP_LINE64 = Win32_IMAGEHLP_LINE64*;
+def Win32_LPMODULEINFO = Win32_MODULEINFO*;
+
