@@ -5723,7 +5723,7 @@ INLINE void llvm_emit_call_invocation(GenContext *c, BEValue *result_value,
 
 
 	// 10. Create the actual call (remember to emit a loc, because we might have shifted loc emitting the params)
-	if (c->debug.builder) llvm_emit_debug_location(c, span);
+	EMIT_SPAN(c, span);
 
 	llvm_emit_raw_call(c, result_value, prototype, func_type, func, arg_values, arg_count, inline_flag, error_var, sret_return, &synthetic_return_param);
 

@@ -105,7 +105,7 @@ fn Backtrace! backtrace_load_element(String execpath, void* buffer, void* load_a
 			String s = process::execute_stdout_to_buffer(buf[:1024],
 				{ "atos", "-o", execpath, "-arch", env::AARCH64 ? "arm64" : "x86_64", "-l",
 				string::tformat("%p", load_address),
-				string::tformat("%p", buffer),
+				string::tformat("%p", buffer - 1),
 				 "-fullPath" })!;
 			String[] parts = s.tsplit(" ");
 			if (parts.len == 4)

@@ -144,7 +144,7 @@ fn Backtrace! backtrace_load_element(void* addr, Allocator* allocator = mem::hea
         void* obj_address = addr - (uptr)info.dli_fbase + (uptr)elf_module_image_base(info.dli_fname.str_view())!;
         ZString obj_path = info.dli_fname;
         ZString sname = info.dli_sname ? info.dli_sname : (ZString)"???";
-        String s = process::execute_stdout_to_buffer(buf, { "addr2line", "-p", "-i", "-C", "-f", "-e", obj_path.str_view(), string::tformat("0x%x", obj_address) })!;
+        String s = process::execute_stdout_to_buffer(buf, { "addr2line", "-p", "-i", "-C", "-f", "-e", obj_path.str_view(), string::tformat("0x%x", obj_address - 1) })!;
         String[] parts = s.tsplit(" at ");
 		if (parts.len != 2)
 		{
