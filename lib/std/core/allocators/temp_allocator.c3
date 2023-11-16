@@ -47,7 +47,7 @@ fn TempAllocator*! new_temp(usz size, Allocator* allocator)
 
 fn usz TempAllocator.mark(&self) @dynamic => self.used;
 
-fn void TempAllocator.release(&self, void* old_pointer, bool, TrackingEnv* env) @dynamic
+fn void TempAllocator.release(&self, void* old_pointer, bool) @dynamic
 {
 	usz old_size = *(usz*)(old_pointer - DEFAULT_SIZE_PREFIX);
 	if (old_pointer + old_size == &self.data[self.used])
@@ -75,7 +75,7 @@ fn void! TempAllocator._free_page(&self, TempAllocatorPage* page) @inline @local
 	return self.backing_allocator.free(mem);
 }
 
-fn void*! TempAllocator._realloc_page(&self, TempAllocatorPage* page, usz size, usz alignment, usz offset, TrackingEnv* env) @inline @local
+fn void*! TempAllocator._realloc_page(&self, TempAllocatorPage* page, usz size, usz alignment, usz offset) @inline @local
 {
 	// Then the actual start pointer:
 	void* real_pointer = page.start;
@@ -90,7 +90,7 @@ fn void*! TempAllocator._realloc_page(&self, TempAllocatorPage* page, usz size, 
 	*pointer_to_prev = page.prev_page;
 	usz page_size = page.pagesize();
 	// Clear on size > original size.
-	void* data = self.acquire(size, size > page_size, alignment, offset, env)!;
+	void* data = self.acquire(size, size > page_size, alignment, offset)!;
 	mem::copy(data, &page.data[0], page_size, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
 	if (page.is_aligned())
 	{
@@ -103,16 +103,16 @@ fn void*! TempAllocator._realloc_page(&self, TempAllocatorPage* page, usz size, 
 	return data;
 }
 
-fn void*! TempAllocator.resize(&self, void* pointer, usz size, usz alignment, usz offset, TrackingEnv* env) @dynamic
+fn void*! TempAllocator.resize(&self, void* pointer, usz size, usz alignment, usz offset) @dynamic
 {
 	if (!size)
 	{
-		self.release(pointer, alignment > 0, env);
+		self.release(pointer, alignment > 0);
 		return null;
 	}
 	if (!pointer)
 	{
-		return self.acquire(size, true, alignment, offset, env);
+		return self.acquire(size, true, alignment, offset);
 	}
 	TempAllocatorChunk *chunk = pointer - TempAllocatorChunk.sizeof;
 	if (chunk.size == (usz)-1)
@@ -120,11 +120,11 @@ fn void*! TempAllocator.resize(&self, void* pointer, usz size, usz alignment, us
 		assert(self.last_page, "Realloc of non temp pointer");
 		// First grab the page
 		TempAllocatorPage *page = pointer - TempAllocatorPage.sizeof;
-		return self._realloc_page(page, size, alignment, offset, env);
+		return self._realloc_page(page, size, alignment, offset);
 	}
 
 	// TODO optimize last allocation
-	TempAllocatorChunk* data = self.acquire(size, size > chunk.size, alignment, offset, env)!;
+	TempAllocatorChunk* data = self.acquire(size, size > chunk.size, alignment, offset)!;
 	mem::copy(data, pointer, chunk.size, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
 
 	return data;
@@ -134,7 +134,7 @@ fn void*! TempAllocator.resize(&self, void* pointer, usz size, usz alignment, us
  * @require !alignment || math::is_power_of_2(alignment)
  * @require alignment <= mem::MAX_MEMORY_ALIGNMENT `alignment too big`
  **/
-fn void*! TempAllocator.acquire(&self, usz size, bool clear, usz alignment, usz offset, TrackingEnv* env) @dynamic
+fn void*! TempAllocator.acquire(&self, usz size, bool clear, usz alignment, usz offset) @dynamic
 {
 	if (!size) return null;
 	alignment = alignment_for_allocation(alignment);
@@ -182,7 +182,7 @@ fn void*! TempAllocator.acquire(&self, usz size, bool clear, usz alignment, usz 
 		// Here we might need to pad
 		usz padded_header_size = mem::aligned_offset(TempAllocatorPage.sizeof, mem::DEFAULT_MEM_ALIGNMENT);
 		usz total_alloc_size = padded_header_size + size;
-		void* alloc = self.backing_allocator.acquire(total_alloc_size, clear, 0, 0, null)!;
+		void* alloc = self.backing_allocator.acquire(total_alloc_size, clear, 0, 0)!;
 
 		// Find the page.
 		page = alloc + padded_header_size - TempAllocatorPage.sizeof;

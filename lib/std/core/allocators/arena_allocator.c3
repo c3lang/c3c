@@ -29,7 +29,7 @@ struct ArenaAllocatorHeader @local
 	char[*] data;
 }
 
-fn void ArenaAllocator.release(&self, void* ptr, bool, TrackingEnv* env = null) @dynamic
+fn void ArenaAllocator.release(&self, void* ptr, bool) @dynamic
 {
 	if (!ptr) return;
 	assert((uptr)ptr >= (uptr)self.data.ptr, "Pointer originates from a different allocator.");
@@ -50,7 +50,7 @@ fn void ArenaAllocator.reset(&self, usz mark) @dynamic => self.used = mark;
  * @require offset <= size && offset >= 0
  * @require mem::aligned_offset(offset, ArenaAllocatorHeader.alignof) == offset
  **/
-fn void*! ArenaAllocator.acquire(&self, usz size, bool clear, usz alignment, usz offset, TrackingEnv* env = null) @dynamic
+fn void*! ArenaAllocator.acquire(&self, usz size, bool clear, usz alignment, usz offset) @dynamic
 {
 	if (!size) return null;
 	alignment = alignment_for_allocation(alignment);
@@ -76,7 +76,7 @@ fn void*! ArenaAllocator.acquire(&self, usz size, bool clear, usz alignment, usz
  * @require offset <= size && offset >= 0
  * @require mem::aligned_offset(offset, ArenaAllocatorHeader.alignof) == offset
  **/
-fn void*! ArenaAllocator.resize(&self, void *old_pointer, usz size, usz alignment, usz offset, TrackingEnv* env) @dynamic
+fn void*! ArenaAllocator.resize(&self, void *old_pointer, usz size, usz alignment, usz offset) @dynamic
 {
 	if (!size)
 	{
@@ -110,7 +110,7 @@ fn void*! ArenaAllocator.resize(&self, void *old_pointer, usz size, usz alignmen
 		return old_pointer;
 	}
 	// Otherwise just allocate new memory.
-	void* mem = self.acquire(size, false, alignment, offset, env)!;
+	void* mem = self.acquire(size, false, alignment, offset)!;
 	mem::copy(mem, old_pointer, old_size, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
 	return mem;
 }

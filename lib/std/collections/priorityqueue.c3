@@ -36,9 +36,9 @@ struct PrivatePriorityQueue (Printable)
 	Heap heap;
 }
 
-fn void PrivatePriorityQueue.init_new(&self, usz initial_capacity = 16, Allocator* allocator = mem::heap(), TrackingEnv* env = mem::get_tracking_env()) @inline
+fn void PrivatePriorityQueue.init_new(&self, usz initial_capacity = 16, Allocator* allocator = mem::heap()) @inline
 {
-	self.heap.init_new(initial_capacity, allocator, .env = env);
+	self.heap.init_new(initial_capacity, allocator);
 }
 
 fn void PrivatePriorityQueue.init_temp(&self, usz initial_capacity = 16) @inline

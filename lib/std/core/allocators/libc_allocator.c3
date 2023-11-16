@@ -10,7 +10,7 @@ const LibcAllocator LIBC_ALLOCATOR = {};
 
 distinct LibcAllocator (Allocator) = uptr;
 
-fn void*! LibcAllocator.acquire(&self, usz bytes, bool clear, usz alignment, usz offset, TrackingEnv* env) @dynamic
+fn void*! LibcAllocator.acquire(&self, usz bytes, bool clear, usz alignment, usz offset) @dynamic
 {
 	assert(alignment != 0 || offset == 0);
 	if (clear)
@@ -29,17 +29,17 @@ fn void*! LibcAllocator.acquire(&self, usz bytes, bool clear, usz alignment, usz
 	}
 }
 
-fn void*! LibcAllocator.resize(&self, void* old_ptr, usz new_bytes, usz alignment, usz offset, TrackingEnv* env) @dynamic
+fn void*! LibcAllocator.resize(&self, void* old_ptr, usz new_bytes, usz alignment, usz offset) @dynamic
 {
 	assert(alignment != 0 || offset == 0);
 	if (!new_bytes)
 	{
-		self.release(old_ptr, alignment > 0, env);
+		self.release(old_ptr, alignment > 0);
 		return null;
 	}
 	if (!old_ptr)
 	{
-		return self.acquire(new_bytes, true, alignment, offset, env);
+		return self.acquire(new_bytes, true, alignment, offset);
 	}
 	if (alignment)
 	{
@@ -50,7 +50,7 @@ fn void*! LibcAllocator.resize(&self, void* old_ptr, usz new_bytes, usz alignmen
 }
 
 
-fn void LibcAllocator.release(&self, void* old_ptr, bool aligned, TrackingEnv* env) @dynamic
+fn void LibcAllocator.release(&self, void* old_ptr, bool aligned) @dynamic
 {
 	if (aligned)
 	{

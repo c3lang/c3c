@@ -22,14 +22,14 @@ struct List (Printable)
  * @param initial_capacity "The initial capacity to reserve"
  * @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
  **/
-fn List* List.init_new(&self, usz initial_capacity = 16, Allocator* allocator = mem::heap(), TrackingEnv* env = mem::get_tracking_env())
+fn List* List.init_new(&self, usz initial_capacity = 16, Allocator* allocator = mem::heap())
 {
 	self.allocator = allocator;
 	self.size = 0;
 	if (initial_capacity > 0)
 	{
 		initial_capacity = math::next_power_of_2(initial_capacity);
-		self.entries = allocator.alloc_aligned(Type.sizeof * initial_capacity, .alignment = Type[1].alignof, .env = env)!!;
+		self.entries = allocator.alloc_aligned(Type.sizeof * initial_capacity, .alignment = Type[1].alignof)!!;
 	}
 	else
 	{

@@ -38,13 +38,13 @@ macro String tformat(String fmt, ...)
 	return str.str_view();
 }
 
-macro String new_format(String fmt, ..., Allocator* allocator = mem::heap(), TrackingEnv* env = mem::get_tracking_env())
+macro String new_format(String fmt, ..., Allocator* allocator = mem::heap())
 {
 	@pool(allocator)
 	{
 		DString str = dstring::temp_with_capacity(fmt.len + $vacount * 8);
 		str.appendf(fmt, $vasplat());
-		return str.copy_str(allocator, env);
+		return str.copy_str(allocator);
 	};
 }
 
@@ -55,11 +55,11 @@ macro bool char_in_set(char c, String set)
 	return false;
 }
 
-fn String join_new(String[] s, String joiner, Allocator* allocator = mem::heap(), TrackingEnv* env = mem::get_tracking_env())
+fn String join_new(String[] s, String joiner, Allocator* allocator = mem::heap())
 {
 	if (!s)
 	{
-		return (String)allocator.new_zero_array(char, 2, .env = env)[:0];
+		return (String)allocator.new_zero_array(char, 2)[:0];
 	}
 
 	usz total_size = joiner.len * s.len;
@@ -76,7 +76,7 @@ fn String join_new(String[] s, String joiner, Allocator* allocator = mem::heap()
 			res.append(joiner);
 			res.append(*str);
 		}
-		return res.copy_str(allocator, env);
+		return res.copy_str(allocator);
 	};
 }
 
@@ -153,11 +153,11 @@ fn String String.strip_end(string, String needle)
  * @require needle.len > 0 "The needle must be at least 1 character long"
  * @ensure return.len > 0
  **/
-fn String[] String.split(s, String needle, usz max = 0, Allocator* allocator = mem::heap(), TrackingEnv* env = mem::get_tracking_env())
+fn String[] String.split(s, String needle, usz max = 0, Allocator* allocator = mem::heap())
 {
 	usz capacity = 16;
 	usz i = 0;
-	String* holder = allocator.new_array(String, capacity, .env = env);
+	String* holder = allocator.new_array(String, capacity);
 	bool no_more = false;
 	while (!no_more)
 	{
@@ -176,7 +176,7 @@ fn String[] String.split(s, String needle, usz max = 0, Allocator* allocator = m
 		if (i == capacity)
 		{
 			capacity *= 2;
-			holder = allocator.realloc(holder, String.sizeof * capacity, env);
+			holder = allocator.realloc(holder, String.sizeof * capacity);
 		}
 		holder[i++] = res;
 	}
@@ -312,19 +312,19 @@ fn usz ZString.len(str)
 }
 
 
-fn ZString String.zstr_copy(s, Allocator* allocator = mem::heap(), TrackingEnv* env = mem::get_tracking_env())
+fn ZString String.zstr_copy(s, Allocator* allocator = mem::heap())
 {
 	usz len = s.len;
-	char* str = allocator.alloc(len + 1, env);
+	char* str = allocator.alloc(len + 1);
 	mem::copy(str, s.ptr, len);
 	str[len] = 0;
 	return (ZString)str;
 }
 
-fn String String.concat(s1, String s2, Allocator* allocator = mem::heap(), TrackingEnv* env = mem::get_tracking_env())
+fn String String.concat(s1, String s2, Allocator* allocator = mem::heap())
 {
 	usz full_len = s1.len + s2.len;
-	char* str = allocator.alloc(full_len + 1, env);
+	char* str = allocator.alloc(full_len + 1);
 	usz s1_len = s1.len;
 	mem::copy(str, s1.ptr, s1_len);
 	mem::copy(str + s1_len, s2.ptr, s2.len);
@@ -337,27 +337,27 @@ fn String String.tconcat(s1, String s2) => s1.concat(s2, mem::temp());
 
 fn ZString String.zstr_tcopy(s) => s.zstr_copy(mem::temp()) @inline;
 
-fn String String.copy(s, Allocator* allocator = mem::heap(), TrackingEnv* env = mem::get_tracking_env())
+fn String String.copy(s, Allocator* allocator = mem::heap())
 {
 	usz len = s.len;
-	char* str = allocator.alloc(len + 1, env);
+	char* str = allocator.alloc(len + 1);
 	mem::copy(str, s.ptr, len);
 	str[len] = 0;
 	return (String)str[:len];
 }
 
-fn void String.free(&s, Allocator* allocator = mem::heap(), TrackingEnv* env = mem::get_tracking_env())
+fn void String.free(&s, Allocator* allocator = mem::heap())
 {
 	if (!s.len) return;
-	allocator.free(s.ptr, env);
+	allocator.free(s.ptr);
 	*s = "";
 }
 
 fn String String.tcopy(s) => s.copy(mem::temp()) @inline;
 
-fn String ZString.copy(z, Allocator* allocator = mem::temp(), TrackingEnv* env = mem::get_tracking_env())
+fn String ZString.copy(z, Allocator* allocator = mem::temp())
 {
-	return z.str_view().copy(allocator, env) @inline;
+	return z.str_view().copy(allocator) @inline;
 }
 
 fn String ZString.tcopy(z)
@@ -371,10 +371,10 @@ fn String ZString.tcopy(z)
  * @return! UnicodeResult.INVALID_UTF8 "If the string contained an invalid UTF-8 sequence"
  * @return! AllocationFailure "If allocation of the string fails"
  **/
-fn Char16[]! String.to_new_utf16(s, Allocator* allocator = mem::heap(), TrackingEnv* env = mem::get_tracking_env())
+fn Char16[]! String.to_new_utf16(s, Allocator* allocator = mem::heap())
 {
 	usz len16 = conv::utf16len_for_utf8(s);
-	Char16* data = allocator.new_array_checked(Char16, len16 + 1, .env = env)!;
+	Char16* data = allocator.new_array_checked(Char16, len16 + 1)!;
 	conv::utf8to16_unsafe(s, data)!;
 	data[len16] = 0;
 	return data[:len16];
@@ -391,9 +391,9 @@ fn Char16[]! String.to_temp_utf16(s)
 	return s.to_new_utf16(mem::temp());
 }
 
-fn WString! String.to_new_wstring(s, Allocator* allocator = mem::heap(), TrackingEnv* env = mem::get_tracking_env())
+fn WString! String.to_new_wstring(s, Allocator* allocator = mem::heap())
 {
-	return (WString)s.to_new_utf16(allocator, env).ptr;
+	return (WString)s.to_new_utf16(allocator).ptr;
 }
 
 fn WString! String.to_temp_wstring(s)
@@ -401,10 +401,10 @@ fn WString! String.to_temp_wstring(s)
 	return (WString)s.to_temp_utf16().ptr;
 }
 
-fn Char32[]! String.to_new_utf32(s, Allocator* allocator = mem::heap(), TrackingEnv* env = mem::get_tracking_env())
+fn Char32[]! String.to_new_utf32(s, Allocator* allocator = mem::heap())
 {
 	usz codepoints = conv::utf8_codepoints(s);
-	Char32* data = allocator.new_array(Char32, codepoints + 1, .env = env);
+	Char32* data = allocator.new_array(Char32, codepoints + 1);
 	conv::utf8to32_unsafe(s, data)!;
 	data[codepoints] = 0;
 	return data[:codepoints];
@@ -449,32 +449,32 @@ fn String String.temp_ascii_to_upper(s)
 	return s.new_ascii_to_upper(mem::temp());
 }
 
-fn String! new_from_utf32(Char32[] utf32, Allocator* allocator = mem::heap(), TrackingEnv* env = mem::get_tracking_env())
+fn String! new_from_utf32(Char32[] utf32, Allocator* allocator = mem::heap())
 {
 	usz len = conv::utf8len_for_utf32(utf32);
-	char* data = allocator.alloc_checked(len + 1, env)!;
+	char* data = allocator.alloc_checked(len + 1)!;
 	defer catch allocator.free(data);
 	conv::utf32to8_unsafe(utf32, data);
 	data[len] = 0;
 	return (String)data[:len];
 }
 
-fn String! new_from_utf16(Char16[] utf16, Allocator* allocator = mem::heap(), TrackingEnv* env = mem::get_tracking_env())
+fn String! new_from_utf16(Char16[] utf16, Allocator* allocator = mem::heap())
 {
 	usz len = conv::utf8len_for_utf16(utf16);
-	char* data = allocator.alloc_checked(len + 1, env)!;
+	char* data = allocator.alloc_checked(len + 1)!;
 	defer catch allocator.free(data);
 	conv::utf16to8_unsafe(utf16, data)!;
 	data[len] = 0;
 	return (String)data[:len];
 }
 
-fn String! new_from_wstring(WString wstring, Allocator* allocator = mem::heap(), TrackingEnv* env = mem::get_tracking_env())
+fn String! new_from_wstring(WString wstring, Allocator* allocator = mem::heap())
 {
 	usz utf16_len;
 	while (wstring[utf16_len] != 0) utf16_len++;
 	Char16[] utf16 = wstring[:utf16_len];
-	return new_from_utf16(utf16, allocator, env);
+	return new_from_utf16(utf16, allocator);
 }
 
 fn String! temp_from_wstring(WString wstring) => new_from_wstring(wstring, mem::temp()) @inline;
