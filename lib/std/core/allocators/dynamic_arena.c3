@@ -60,7 +60,7 @@ struct DynamicArenaChunk @local
 /**
  * @require self.page `tried to free pointer on invalid allocator`
  */
-fn void DynamicArenaAllocator.release(&self, void* ptr, bool, TrackingEnv* env) @dynamic
+fn void DynamicArenaAllocator.release(&self, void* ptr, bool) @dynamic
 {
 	if (!ptr) return;
 	DynamicArenaPage* current_page = self.page;
@@ -74,16 +74,16 @@ fn void DynamicArenaAllocator.release(&self, void* ptr, bool, TrackingEnv* env) 
 /**
  * @require self.page `tried to realloc pointer on invalid allocator`
  */
-fn void*! DynamicArenaAllocator.resize(&self, void* old_pointer, usz size, usz alignment, usz offset, TrackingEnv* env) @dynamic
+fn void*! DynamicArenaAllocator.resize(&self, void* old_pointer, usz size, usz alignment, usz offset) @dynamic
 {
 	if (!size)
 	{
-		self.release(old_pointer, alignment > 0, env);
+		self.release(old_pointer, alignment > 0);
 		return null;
 	}
 	if (!old_pointer)
 	{
-		return self.acquire(size, true, alignment, offset, env);
+		return self.acquire(size, true, alignment, offset);
 	}
 	DynamicArenaPage* current_page = self.page;
 	alignment = alignment_for_allocation(alignment);
@@ -108,7 +108,7 @@ fn void*! DynamicArenaAllocator.resize(&self, void* old_pointer, usz size, usz a
 		current_page.used += add_size;
 		return old_pointer;
 	}
-	void* new_mem = self.acquire(size, false, alignment, offset, env)!;
+	void* new_mem = self.acquire(size, false, alignment, offset)!;
 	mem::copy(new_mem, old_pointer, old_size, mem::DEFAULT_MEM_ALIGNMENT);
 	return new_mem;
 }
@@ -163,7 +163,7 @@ fn void*! DynamicArenaAllocator._alloc_new(&self, usz size, usz alignment, usz o
 /**
  * @require !alignment || math::is_power_of_2(alignment)
  */
-fn void*! DynamicArenaAllocator.acquire(&self, usz size, bool clear, usz alignment, usz offset, TrackingEnv* env) @dynamic
+fn void*! DynamicArenaAllocator.acquire(&self, usz size, bool clear, usz alignment, usz offset) @dynamic
 {
 	if (!size) return null;
 	alignment = alignment_for_allocation(alignment);

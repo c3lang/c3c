@@ -332,7 +332,7 @@ if.then7:                                         ; preds = %if.exit4
   %15 = getelementptr inbounds %Doc, ptr %literal9, i32 0, i32 0
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal10, ptr align 8 @.__const.5, i32 8, i1 false)
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %value, ptr align 8 %literal10, i32 8, i1 false)
-  %16 = call ptr @std.core.mem.malloc(i64 8, ptr null) #3
+  %16 = call ptr @std.core.mem.malloc(i64 8) #3
   store ptr %16, ptr %temp, align 8
   %17 = load ptr, ptr %temp, align 8
   %not = icmp eq ptr %17, null
@@ -371,7 +371,7 @@ if.then16:                                        ; preds = %if.exit13
   store ptr null, ptr %literal20, align 8
   %26 = getelementptr inbounds %Head, ptr %literal20, i32 0, i32 0
   store %"char[]" zeroinitializer, ptr %value22, align 8
-  %27 = call ptr @std.core.mem.malloc(i64 16, ptr null) #3
+  %27 = call ptr @std.core.mem.malloc(i64 16) #3
   store ptr %27, ptr %temp23, align 8
   %28 = load ptr, ptr %temp23, align 8
   %not24 = icmp eq ptr %28, null
@@ -394,7 +394,7 @@ noerr_block28:                                    ; preds = %if.exit26
   %31 = load ptr, ptr %temp23, align 8
   store ptr %31, ptr %26, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %value29, ptr align 8 %literal20, i32 8, i1 false)
-  %32 = call ptr @std.core.mem.malloc(i64 8, ptr null) #3
+  %32 = call ptr @std.core.mem.malloc(i64 8) #3
   store ptr %32, ptr %temp30, align 8
   %33 = load ptr, ptr %temp30, align 8
   %not31 = icmp eq ptr %33, null
@@ -430,7 +430,7 @@ if.exit36:                                        ; preds = %if.exit13
   store i64 %sext, ptr %len, align 8
   %42 = load i64, ptr %len, align 8
   %add = add i64 %42, 1
-  %43 = call ptr @std.core.mem.malloc(i64 %add, ptr null) #3
+  %43 = call ptr @std.core.mem.malloc(i64 %add) #3
   store ptr %43, ptr %str, align 8
   %44 = load ptr, ptr %str, align 8
   %not37 = icmp eq ptr %44, null
@@ -461,7 +461,7 @@ if.exit39:                                        ; preds = %if.exit36
   %57 = insertvalue %"char[]" undef, ptr %ptroffset47, 0
   %58 = insertvalue %"char[]" %57, i64 %size, 1
   store %"char[]" %58, ptr %value48, align 8
-  %59 = call ptr @std.core.mem.malloc(i64 16, ptr null) #3
+  %59 = call ptr @std.core.mem.malloc(i64 16) #3
   store ptr %59, ptr %temp49, align 8
   %60 = load ptr, ptr %temp49, align 8
   %not50 = icmp eq ptr %60, null
@@ -484,7 +484,7 @@ noerr_block54:                                    ; preds = %if.exit52
   %63 = load ptr, ptr %temp49, align 8
   store ptr %63, ptr %53, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %value55, ptr align 8 %literal45, i32 8, i1 false)
-  %64 = call ptr @std.core.mem.malloc(i64 8, ptr null) #3
+  %64 = call ptr @std.core.mem.malloc(i64 8) #3
   store ptr %64, ptr %temp56, align 8
   %65 = load ptr, ptr %temp56, align 8
   %not57 = icmp eq ptr %65, null

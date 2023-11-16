@@ -86,9 +86,9 @@ struct GrowableBitSet
  * @param initial_capacity
  * @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
  **/
-fn GrowableBitSet* GrowableBitSet.init_new(&self, usz initial_capacity = 1, Allocator* allocator = mem::heap(), TrackingEnv* env = mem::get_tracking_env())
+fn GrowableBitSet* GrowableBitSet.init_new(&self, usz initial_capacity = 1, Allocator* allocator = mem::heap())
 {
-	self.data.init_new(initial_capacity, allocator, env);
+	self.data.init_new(initial_capacity, allocator);
 	return self;
 }
 

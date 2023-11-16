@@ -54,7 +54,7 @@ struct OnStackAllocatorHeader
 	char[*] data;
 }
 
-fn void OnStackAllocator.release(&self, void* old_pointer, bool aligned, TrackingEnv* env = null) @dynamic
+fn void OnStackAllocator.release(&self, void* old_pointer, bool aligned) @dynamic
 {
 	if (!old_pointer) return;
 	if (allocation_in_stack_mem(self, old_pointer)) return;
@@ -103,18 +103,18 @@ fn OnStackAllocatorExtraChunk* on_stack_allocator_find_chunk(OnStackAllocator* a
  * @require offset <= size && offset >= 0
  * @require mem::aligned_offset(offset, OnStackAllocatorExtraChunk.alignof) == offset
  **/
-fn void*! OnStackAllocator.resize(&self, void* old_pointer, usz size, usz alignment, usz offset, TrackingEnv* env) @dynamic
+fn void*! OnStackAllocator.resize(&self, void* old_pointer, usz size, usz alignment, usz offset) @dynamic
 {
 	if (!allocation_in_stack_mem(self, old_pointer))
 	{
 		OnStackAllocatorExtraChunk* chunk = on_stack_allocator_find_chunk(self, old_pointer);
 		assert(chunk, "Tried to realloc pointer not belonging to the allocator");
-		return chunk.data = self.backing_allocator.resize(old_pointer, size, alignment, offset, env)!;
+		return chunk.data = self.backing_allocator.resize(old_pointer, size, alignment, offset)!;
 	}
 
 	OnStackAllocatorHeader* header = old_pointer - OnStackAllocatorHeader.sizeof;
 	usz old_size = header.size;
-	void* mem = self.acquire(size, true, alignment, offset, env)!;
+	void* mem = self.acquire(size, true, alignment, offset)!;
 	mem::copy(mem, old_pointer, old_size, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
 	return mem;
 }
@@ -126,7 +126,7 @@ fn void*! OnStackAllocator.resize(&self, void* old_pointer, usz size, usz alignm
  * @require offset == 0 || alignment > 0
  * @require mem::aligned_offset(offset, OnStackAllocatorHeader.alignof) == offset
  **/
-fn void*! OnStackAllocator.acquire(&self, usz size, bool clear, usz alignment, usz offset, TrackingEnv* env) @dynamic
+fn void*! OnStackAllocator.acquire(&self, usz size, bool clear, usz alignment, usz offset) @dynamic
 {
 	if (size == 0) return null;
 	bool aligned = alignment > 0;
@@ -144,7 +144,7 @@ fn void*! OnStackAllocator.acquire(&self, usz size, bool clear, usz alignment, u
 		defer catch backing_allocator.free(chunk);
 		defer try self.chunk = chunk;
 		*chunk = { .prev = self.chunk, .is_aligned = aligned };
-		return chunk.data = backing_allocator.acquire(size, clear, aligned ? alignment : 0, offset, env)!;
+		return chunk.data = backing_allocator.acquire(size, clear, aligned ? alignment : 0, offset)!;
 	}
 	self.used = end;
 	void *mem = aligned_pointer_to_offset - offset;

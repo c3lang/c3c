@@ -81,7 +81,6 @@ entry:
   %type = load ptr, ptr %.cachedtype, align 8
   %4 = icmp eq ptr %3, %type
   br i1 %4, label %cache_hit, label %cache_miss
-
 cache_miss:                                       ; preds = %entry
   %5 = getelementptr inbounds %.introspect, ptr %3, i32 0, i32 2
   %6 = load ptr, ptr %5, align 8
@@ -89,36 +88,29 @@ cache_miss:                                       ; preds = %entry
   store ptr %7, ptr %.inlinecache, align 8
   store ptr %3, ptr %.cachedtype, align 8
   br label %8
-
 cache_hit:                                        ; preds = %entry
   %cache_hit_fn = load ptr, ptr %.inlinecache, align 8
   br label %8
-
 8:                                                ; preds = %cache_hit, %cache_miss
   %fn_phi = phi ptr [ %cache_hit_fn, %cache_hit ], [ %7, %cache_miss ]
   %9 = icmp eq ptr %fn_phi, null
   br i1 %9, label %missing_function, label %match
-
 missing_function:                                 ; preds = %8
   %10 = load ptr, ptr @std.core.builtin.panic, align 8
   call void %10(ptr @.panic_msg, i64 44, ptr @.file, i64 16
   unreachable
-
 match:                                            ; preds = %8
   %11 = load ptr, ptr %2, align 8
-  %12 = call i64 %fn_phi(ptr %retparam, ptr %11, i64 8, i8 zeroext 0, i64 0, i64 0, ptr null)
+  %12 = call i64 %fn_phi(ptr %retparam, ptr %11, i64 8, i8 zeroext 0, i64 0, i64 0)
   %not_err = icmp eq i64 %12, 0
   %13 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
   br i1 %13, label %after_check, label %assign_optional
-
 assign_optional:                                  ; preds = %match
   store i64 %12, ptr %error_var, align 8
   br label %panic_block
-
 after_check:                                      ; preds = %match
   %14 = load ptr, ptr %retparam, align 8
   br label %noerr_block
-
 panic_block:                                      ; preds = %assign_optional
   %15 = insertvalue %"any*" undef, ptr %error_var, 0
   %16 = insertvalue %"any*" %15, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
@@ -129,7 +121,6 @@ panic_block:                                      ; preds = %assign_optional
   store %"any*[]" %"$$temp", ptr %indirectarg, align 8
   call void @std.core.builtin.panicf(ptr @.panic_msg.1, i64 36, ptr @.file
   unreachable
-
 noerr_block:                                      ; preds = %after_check
   %19 = insertvalue %"any*" undef, ptr %14, 0
   %20 = insertvalue %"any*" %19, i64 ptrtoint (ptr @"$ct.inherit.Test" to i64), 1
@@ -141,7 +132,6 @@ noerr_block:                                      ; preds = %after_check
   %type4 = load ptr, ptr %.cachedtype3, align 8
   %25 = icmp eq ptr %24, %type4
   br i1 %25, label %cache_hit6, label %cache_miss5
-
 cache_miss5:                                      ; preds = %noerr_block
   %26 = getelementptr inbounds %.introspect, ptr %24, i32 0, i32 2
   %27 = load ptr, ptr %26, align 8
@@ -149,21 +139,17 @@ cache_miss5:                                      ; preds = %noerr_block
   store ptr %28, ptr %.inlinecache2, align 8
   store ptr %24, ptr %.cachedtype3, align 8
   br label %29
-
 cache_hit6:                                       ; preds = %noerr_block
   %cache_hit_fn7 = load ptr, ptr %.inlinecache2, align 8
   br label %29
-
 29:                                               ; preds = %cache_hit6, %cache_miss5
   %fn_phi8 = phi ptr [ %cache_hit_fn7, %cache_hit6 ], [ %28, %cache_miss5 ]
   %30 = icmp eq ptr %fn_phi8, null
   br i1 %30, label %missing_function9, label %match10
-
 missing_function9:                                ; preds = %29
   %31 = load ptr, ptr @std.core.builtin.panic, align 8
   call void %31(ptr @.panic_msg.2, i64 41
   unreachable
-
 match10:                                          ; preds = %29
   %32 = load ptr, ptr %23, align 8
   call void %fn_phi8(ptr %32)
@@ -176,7 +162,6 @@ match10:                                          ; preds = %29
   %type13 = load ptr, ptr %.cachedtype12, align 8
   %38 = icmp eq ptr %37, %type13
   br i1 %38, label %cache_hit15, label %cache_miss14
-
 cache_miss14:                                     ; preds = %match10
   %39 = getelementptr inbounds %.introspect, ptr %37, i32 0, i32 2
   %40 = load ptr, ptr %39, align 8
@@ -184,21 +169,17 @@ cache_miss14:                                     ; preds = %match10
   store ptr %41, ptr %.inlinecache11, align 8
   store ptr %37, ptr %.cachedtype12, align 8
   br label %42
-
 cache_hit15:                                      ; preds = %match10
   %cache_hit_fn16 = load ptr, ptr %.inlinecache11, align 8
   br label %42
-
 42:                                               ; preds = %cache_hit15, %cache_miss14
   %fn_phi17 = phi ptr [ %cache_hit_fn16, %cache_hit15 ], [ %41, %cache_miss14 ]
   %43 = icmp eq ptr %fn_phi17, null
   br i1 %43, label %missing_function18, label %match19
-
 missing_function18:                               ; preds = %42
   %44 = load ptr, ptr @std.core.builtin.panic, align 8
   call void %44(ptr @.panic_msg.2, i64 41, ptr @.file.3, i64 10, ptr @.func, i64 4, i32 36)
   unreachable
-
 match19:                                          ; preds = %42
   %45 = load ptr, ptr %36, align 8
   call void %fn_phi17(ptr %45)
@@ -209,25 +190,20 @@ match19:                                          ; preds = %42
 define weak_odr ptr @.dyn_search(ptr %0, ptr %1) unnamed_addr {
 entry:
   br label %check
-
 check:                                            ; preds = %no_match, %entry
   %2 = phi ptr [ %0, %entry ], [ %9, %no_match ]
   %3 = icmp eq ptr %2, null
   br i1 %3, label %missing_function, label %compare
-
 missing_function:                                 ; preds = %check
   ret ptr null
-
 compare:                                          ; preds = %check
   %4 = getelementptr inbounds { ptr, ptr, ptr }, ptr %2, i32 0, i32 1
   %5 = load ptr, ptr %4, align 8
   %6 = icmp eq ptr %5, %1
   br i1 %6, label %match, label %no_match
-
 match:                                            ; preds = %compare
   %7 = load ptr, ptr %2, align 8
   ret ptr %7
-
 no_match:                                         ; preds = %compare
   %8 = getelementptr inbounds { ptr, ptr, ptr }, ptr %2, i32 0, i32 2
   %9 = load ptr, ptr %8, align 8
@@ -237,31 +213,25 @@ no_match:                                         ; preds = %compare
 define internal void @.static_initialize.0() {
 entry:
   br label %dtable_check
-
 dtable_check:                                     ; preds = %dtable_next, %entry
   %dtable_ref = phi ptr [ getelementptr inbounds (%.introspect, ptr @"$ct.inherit.Test", i32 0, i32 2), %entry ], [ %next_dtable_ref, %dtable_next ]
   %dtable_ptr = load ptr, ptr %dtable_ref, align 8
   %0 = icmp eq ptr %dtable_ptr, null
   br i1 %0, label %dtable_found, label %dtable_next
-
 dtable_next:                                      ; preds = %dtable_check
   %next_dtable_ref = getelementptr inbounds { ptr, ptr, ptr }, ptr %dtable_ptr, i32 0, i32 2
   br label %dtable_check
-
 dtable_found:                                     ; preds = %dtable_check
   store ptr @"$ct.dyn.inherit.Test.tesT", ptr %dtable_ref, align 8
   br label %dtable_check1
-
 dtable_check1:                                    ; preds = %dtable_next4, %dtable_found
   %dtable_ref2 = phi ptr [ getelementptr inbounds (%.introspect, ptr @"$ct.inherit.Test", i32 0, i32 2), %dtable_found ], [ %next_dtable_ref5, %dtable_next4 ]
   %dtable_ptr3 = load ptr, ptr %dtable_ref2, align 8
   %1 = icmp eq ptr %dtable_ptr3, null
   br i1 %1, label %dtable_found6, label %dtable_next4
-
 dtable_next4:                                     ; preds = %dtable_check1
   %next_dtable_ref5 = getelementptr inbounds { ptr, ptr, ptr }, ptr %dtable_ptr3, i32 0, i32 2
   br label %dtable_check1
-
 dtable_found6:                                    ; preds = %dtable_check1
   store ptr @"$ct.dyn.inherit.Test.hello", ptr %dtable_ref2, align 8
   ret void

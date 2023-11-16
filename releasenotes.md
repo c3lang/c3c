@@ -3,6 +3,7 @@
 ## 0.5.0 Change List
 
 ### Changes / improvements
+- Trackable allocator with leak allocation backtraces.
 - `$defined` can take a list of expressions.
 - `$and` compile time "and" which does not check expressions after the first is an error.
 - `$is_const` returns true if an expression is compile time const.

@@ -74,7 +74,7 @@ fn Backtrace* Backtrace.init(&self, uptr offset, String function, String object_
 	return self;
 }
 
-fn void*[] capture_current(void*[] buffer) @if(env::POSIX || env::WIN32)
+fn void*[] capture_current(void*[] buffer)
 {
 	if (!buffer.len) return buffer[:0];
 	$switch
@@ -94,3 +94,8 @@ def BacktraceList = List(<Backtrace>);
 def symbolize_backtrace = linux::symbolize_backtrace @if(env::LINUX);
 def symbolize_backtrace = win32::symbolize_backtrace @if(env::WIN32);
 def symbolize_backtrace = darwin::symbolize_backtrace @if(env::DARWIN);
+
+fn BacktraceList! symbolize_backtrace(void*[] backtrace, Allocator* allocator) @if(!env::NATIVE_STACKTRACE)
+{
+	return {};
+}

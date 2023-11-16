@@ -6,11 +6,12 @@ module std::core::mem::allocator;
 import std::collections::map;
 import std::collections::list;
 
+const MAX_BACKTRACE = 8;
 struct Allocation
 {
-	usz size;
-	TrackingEnv tracking_env;
 	void* ptr;
+	usz size;
+	void*[MAX_BACKTRACE] backtrace;
 }
 
 def AllocMap = HashMap(<uptr, Allocation>);
@@ -79,38 +80,42 @@ fn Allocation[] TrackingAllocator.allocations_tlist(&self, Allocator* allocator)
  **/
 fn usz TrackingAllocator.allocation_count(&self) => self.map.count;
 
-fn void*! TrackingAllocator.acquire(&self, usz size, bool clear, usz alignment, usz offset, TrackingEnv* env) @dynamic
+fn void*! TrackingAllocator.acquire(&self, usz size, bool clear, usz alignment, usz offset) @dynamic
 {
-	void* data = self.inner_allocator.acquire(size, clear, alignment, offset, env)!;
+	void* data = self.inner_allocator.acquire(size, clear, alignment, offset)!;
 	self.allocs_total++;
 	if (data)
 	{
-		self.map.set((uptr)data, { .size = size, .ptr = data, .tracking_env = env ? *env : TrackingEnv{} });
+		void*[MAX_BACKTRACE] bt;
+		backtrace::capture_current(&bt);
+		self.map.set((uptr)data, { data, size, bt });
     	self.mem_total += size;
 		self.allocs_total++;
 	}
 	return data;
 }
 
-fn void*! TrackingAllocator.resize(&self, void* old_pointer, usz size, usz alignment, usz offset, TrackingEnv* env) @dynamic
+fn void*! TrackingAllocator.resize(&self, void* old_pointer, usz size, usz alignment, usz offset) @dynamic
 {
-	void* data = self.inner_allocator.resize(old_pointer, size, alignment, offset, env)!;
+	void* data = self.inner_allocator.resize(old_pointer, size, alignment, offset)!;
 	if (old_pointer)
 	{
 		self.map.remove((uptr)old_pointer);
 	}
 	if (data)
 	{
-		self.map.set((uptr)data, { .size = size, .ptr = data, .tracking_env = env ? *env : TrackingEnv{} });
+		void*[8] bt;
+		backtrace::capture_current(&bt);
+		self.map.set((uptr)data, { data, size, bt });
     	self.mem_total += size;
 		self.allocs_total++;
 	}
 	return data;
 }
 
-fn void TrackingAllocator.release(&self, void* old_pointer, bool is_aligned, TrackingEnv* env) @dynamic
+fn void TrackingAllocator.release(&self, void* old_pointer, bool is_aligned) @dynamic
 {
-	self.inner_allocator.release(old_pointer, is_aligned, env);
+	self.inner_allocator.release(old_pointer, is_aligned);
 	if (old_pointer) self.map.remove((uptr)old_pointer);
 }
 
@@ -126,41 +131,84 @@ fn void! TrackingAllocator.fprint_report(&self, OutStream* out)
 
 	usz total = 0;
 	usz entries = 0;
+	bool leaks = false;
 	@pool()
 	{
 		Allocation[] allocs = self.map.value_tlist();
 		if (allocs.len)
 		{
-			$if (!env::TRACK_MEMORY):
-			io::fprintn(out, "======== Memory Report ========")!;
-			io::fprintn(out, "Size in bytes   Address")!;
-			foreach (i, &allocation : allocs)
+			if (!allocs[0].backtrace[0])
 			{
-				entries++;
-				total += allocation.size;
-				io::fprintfn(out, "%13s   %p", allocation.size, allocation.ptr)!;
+				io::fprintn(out, "======== Memory Report ========")!;
+            	io::fprintn(out, "Size in bytes   Address")!;
+            	foreach (i, &allocation : allocs)
+            	{
+            	    entries++;
+            		total += allocation.size;
+            		io::fprintfn(out, "%13s   %p", allocation.size, allocation.ptr)!;
+            	}
+            	io::fprintn(out, "===============================")!;
+
 			}
-			io::fprintn(out, "===============================")!;
-			$else
-			io::fprintn(out, "================================== Memory Report ==================================")!;
-			io::fprintn(out, "Size in bytes   Address          Function                       File")!;
-			foreach (i, &allocation : allocs)
+			else
 			{
-				entries++;
-				total += allocation.size;
-				TrackingEnv *env = &allocation.tracking_env;
-				io::fprintfn(out, "%13s   %p   %-30s %s:%d", allocation.size, allocation.ptr, env.function, env.file, env.line)!;
+				io::fprintn(out, "================================== Memory Report ==================================")!;
+				io::fprintn(out, "Size in bytes   Address          Function                       ")!;
+				foreach (i, &allocation : allocs)
+				{
+					entries++;
+					total += allocation.size;
+					BacktraceList backtraces = {};
+					Backtrace trace = backtrace::BACKTRACE_UNKNOWN;
+					if (allocation.backtrace[3])
+					{
+						trace = backtrace::symbolize_backtrace(allocation.backtrace[3:1], mem::temp()).get(0) ?? backtrace::BACKTRACE_UNKNOWN;
+					}
+					if (trace.function.len)	leaks = true;
+					io::fprintfn(out, "%13s   %p   %s:%d", allocation.size,
+						allocation.ptr, trace.function.len ? trace.function : "???",
+						trace.line ? trace.line : 0)!;
+				}
+				io::fprintn(out, "===================================================================================")!;
 			}
-			io::fprintn(out, "===================================================================================")!;
-			$endif
 		}
 		else
 		{
 			io::fprintn(out, "* NO ALLOCATIONS FOUND *")!;
 		}
+		io::fprintfn(out, "- Total currently allocated memory:            %d", total)!;
+        io::fprintfn(out, "- Total current allocations:                   %d", entries)!;
+        io::fprintfn(out, "- Total allocations (freed and retained):      %d", self.allocs_total)!;
+        io::fprintfn(out, "- Total allocated memory (freed and retained): %d", self.mem_total)!;
+        if (leaks)
+        {
+			io::fprintn(out)!;
+			io::fprintn(out, "Full leak report:")!;
+            foreach (i, &allocation : allocs)
+            {
+                if (!allocation.backtrace[3])
+                {
+                    io::fprintfn(out, "Allocation %d (%d bytes) - no backtrace available.", i + 1, allocation.size)!;
+                	continue;
+				}
+                BacktraceList backtraces = {};
+                usz end = MAX_BACKTRACE;
+                foreach (j, val : allocation.backtrace)
+                {
+                    if (!val)
+                	{
+                	    end = j;
+                	    break;
+					}
+				}
+        		BacktraceList list = backtrace::symbolize_backtrace(allocation.backtrace[3..(end - 1)], mem::temp())!;
+                io::fprintfn(out, "Allocation %d (%d bytes): ", i + 1, allocation.size)!;
+        		foreach (trace : list)
+        		{
+        		    io::fprintfn(out, "   %s", trace);
+				}
+        	}
+        }
 	};
-	io::fprintfn(out, "- Total currently allocated memory:            %d", total)!;
-	io::fprintfn(out, "- Total current allocations:                   %d", entries)!;
-	io::fprintfn(out, "- Total allocations (freed and retained):      %d", self.allocs_total)!;
-	io::fprintfn(out, "- Total allocated memory (freed and retained): %d", self.mem_total)!;
+
 }
