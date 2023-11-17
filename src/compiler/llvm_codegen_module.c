@@ -160,16 +160,7 @@ void gencontext_begin_module(GenContext *c)
 		c->debug.builder = LLVMCreateDIBuilder(c->module);
 		if (active_target.debug_info == DEBUG_INFO_FULL && safe_mode_enabled())
 		{
-			c->debug.stack_type = LLVMStructCreateNamed(c->context, ".$callstack");
-			LLVMTypeRef types[5] = { c->ptr_type,
-									 c->chars_type,
-									 c->chars_type,
-									 llvm_get_type(c, type_uint),
-									 llvm_get_type(c, type_uint) };
-			LLVMStructSetBody(c->debug.stack_type, types, 5, false);
-			c->debug.current_stack_ptr = NULL;
-			c->debug.enable_stacktrace = true;
-			c->debug.emulated_stacktrace = !os_supports_stacktrace(platform_target.os);
+			c->debug.enable_stacktrace = os_supports_stacktrace(platform_target.os);
 		}
 	}
 	c->global_builder = LLVMCreateBuilder();

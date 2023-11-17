@@ -278,7 +278,6 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_SWIZZLE] = KW_DEF("swizzle");
 	builtin_list[BUILTIN_SWIZZLE2] = KW_DEF("swizzle2");
 	builtin_list[BUILTIN_SQRT] = KW_DEF("sqrt");
-	builtin_list[BUILTIN_STACKTRACE] = KW_DEF("stacktrace");
 	builtin_list[BUILTIN_SYSCALL] = KW_DEF("syscall");
 	builtin_list[BUILTIN_SYSCLOCK] = KW_DEF("sysclock");
 	builtin_list[BUILTIN_TRAP] = KW_DEF("trap");

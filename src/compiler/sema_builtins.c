@@ -339,7 +339,6 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			expr->type = type_int;
 			return true;
 		case BUILTIN_FRAMEADDRESS:
-		case BUILTIN_STACKTRACE:
 			expr->type = type_voidptr;
 			return true;
 		case BUILTIN_COMPARE_EXCHANGE:
@@ -870,7 +869,6 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_GET_ROUNDING_MODE:
 		case BUILTIN_SWIZZLE:
 		case BUILTIN_SWIZZLE2:
-		case BUILTIN_STACKTRACE:
 		case BUILTIN_SYSCLOCK:
 		case BUILTIN_TRAP:
 		case BUILTIN_UNREACHABLE:
@@ -891,7 +889,6 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_SWIZZLE2:
 			return -3;
 		case BUILTIN_GET_ROUNDING_MODE:
-		case BUILTIN_STACKTRACE:
 		case BUILTIN_SYSCLOCK:
 		case BUILTIN_TRAP:
 		case BUILTIN_UNREACHABLE:

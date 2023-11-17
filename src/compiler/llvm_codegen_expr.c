@@ -27,7 +27,7 @@ static inline void llvm_emit_initializer_list_expr(GenContext *c, BEValue *value
 static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr *expr);
 static inline void llvm_emit_post_inc_dec(GenContext *c, BEValue *value, Expr *expr, int diff);
 static inline void llvm_emit_pre_inc_dec(GenContext *c, BEValue *value, Expr *expr, int diff);
-static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type *type, AstId current, BlockExit **block_exit, Stacktrace *old_stack_trace);
+static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type *type, AstId current, BlockExit **block_exit);
 static inline void llvm_emit_subscript_addr_with_base(GenContext *c, BEValue *result, BEValue *parent, BEValue *index, SourceSpan loc);
 static inline void llvm_emit_try_unwrap(GenContext *c, BEValue *value, Expr *expr);
 static inline void llvm_emit_vector_initializer_list(GenContext *c, BEValue *value, Expr *expr);
@@ -5398,9 +5398,6 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 	{
 		BEValue no_err;
 
-		// Emit the current stack into the thread local or things will get messed up.
-		llvm_emit_pop_stacktrace(c, NULL);
-
 		// 17a. If we used the error var as the indirect recipient, then that will hold the error.
 		//      otherwise it's whatever value in be_value.
 		BEValue error_holder = *result_value;
@@ -5434,9 +5431,6 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 		*result_value = *synthetic_return_param;
 		return;
 	}
-
-	// Emit the current stack into the thread local or things will get messed up.
-	llvm_emit_pop_stacktrace(c, NULL);
 
 	// 17i. The simple case here is where there is a normal return.
 	//      In this case be_value already holds the result
@@ -5727,9 +5721,6 @@ INLINE void llvm_emit_call_invocation(GenContext *c, BEValue *result_value,
 
 	llvm_emit_raw_call(c, result_value, prototype, func_type, func, arg_values, arg_count, inline_flag, error_var, sret_return, &synthetic_return_param);
 
-	// Emit the current stack into the thread local or things will get messed up.
-	llvm_emit_pop_stacktrace(c, NULL);
-
 	// 17i. The simple case here is where there is a normal return.
 	//      In this case be_value already holds the result
 }
@@ -5792,8 +5783,6 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 		llvm_emit_builtin_call(c, result_value, expr);
 		return;
 	}
-
-	llvm_emit_update_stack_row(c, expr->span.row);
 
 	LLVMTypeRef func_type;
 	LLVMValueRef func;
@@ -5983,7 +5972,7 @@ static inline void llvm_emit_expression_list_expr(GenContext *c, BEValue *be_val
 	}
 }
 
-static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type *type, AstId current, BlockExit **block_exit, Stacktrace *old_stack_trace)
+static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type *type, AstId current, BlockExit **block_exit)
 {
 	Type *type_lowered = type_lowering(type);
 
@@ -6009,7 +5998,6 @@ static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type
 		if (!type_is_optional(type))
 		{
 			llvm_emit_expr(c, be_value, expr);
-			if (old_stack_trace) llvm_emit_pop_stacktrace(c, old_stack_trace);
 			return;
 		}
 	}
@@ -6020,12 +6008,6 @@ static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type
 	LLVMValueRef return_out = NULL;
 	LLVMBasicBlockRef expr_block = llvm_basic_block_new(c, "expr_block.exit");
 	LLVMBasicBlockRef cleanup_error_block = error_block;
-	bool error_env_restore = false;
-	if (old_stack_trace && error_block)
-	{
-		cleanup_error_block = llvm_basic_block_new(c, "restore_env_block");
-		error_env_restore = true;
-	}
 	BlockExit exit = {
 			.block_return_exit = expr_block,
 			.block_optional_exit = cleanup_error_block,
@@ -6053,7 +6035,7 @@ static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type
 	{
 		// Do we have more than one exit?
 		// Then follow the normal path.
-		if (!llvm_basic_block_is_unused(expr_block) || error_env_restore) break;
+		if (!llvm_basic_block_is_unused(expr_block)) break;
 
 		// Do we have a void function? That's the only
 		// possible case if the last statement isn't return.
@@ -6084,7 +6066,6 @@ static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type
 
 		// Output directly to a value
 		llvm_emit_expr(c, be_value, ret_expr);
-		if (old_stack_trace) llvm_emit_pop_stacktrace(c, old_stack_trace);
 		return;
 
 	} while (0);
@@ -6093,7 +6074,7 @@ static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type
 	llvm_emit_stmt(c, value);
 
 	// In the case of a void with no return, then this may be true.
-	if (llvm_basic_block_is_unused(expr_block) && !error_env_restore)
+	if (llvm_basic_block_is_unused(expr_block))
 	{
 		// Skip the expr block.
 		llvm_value_set(be_value, llvm_get_undef(c, type_lowered), type_lowered);
@@ -6102,12 +6083,6 @@ static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type
 
 	llvm_emit_br(c, expr_block);
 
-	if (error_env_restore)
-	{
-		llvm_emit_block(c, cleanup_error_block);
-		llvm_emit_pop_stacktrace(c, old_stack_trace);
-		llvm_emit_br(c, error_block);
-	}
 	// Emit the exit block.
 	llvm_emit_block(c, expr_block);
 
@@ -6121,7 +6096,6 @@ static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type
 	}
 
 DONE:
-	if (old_stack_trace) llvm_emit_pop_stacktrace(c, old_stack_trace);
 
 	c->return_out = old_ret_out;
 	c->catch_block = error_block;
@@ -6131,8 +6105,7 @@ DONE:
 
 static inline void llvm_emit_expr_block(GenContext *context, BEValue *be_value, Expr *expr)
 {
-	llvm_emit_return_block(context, be_value, expr->type, expr->expr_block.first_stmt, expr->expr_block.block_exit_ref,
-	                       NULL);
+	llvm_emit_return_block(context, be_value, expr->type, expr->expr_block.first_stmt, expr->expr_block.block_exit_ref);
 }
 
 static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr *expr)
@@ -6177,22 +6150,11 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 		val->backend_value = value.value;
 	FOREACH_END();
 
-	bool restore_at_exit = false;
-	Stacktrace old_stack_trace;
 	if (llvm_use_debug(c))
 	{
 		llvm_debug_push_lexical_scope(c, astptr(expr->macro_block.first_stmt)->span);
-		if (c->debug.emulated_stacktrace)
-		{
-			restore_at_exit = true;
-			llvm_emit_update_stack_row(c, expr->span.row);
-			Decl *macro = expr->macro_block.macro;
-			old_stack_trace = c->debug.stacktrace;
-			llvm_emit_push_emulated_stacktrace(c, macro, macro->name, ST_MACRO);
-		}
 	}
-	llvm_emit_return_block(c, be_value, expr->type, expr->macro_block.first_stmt, expr->macro_block.block_exit, restore_at_exit ? &old_stack_trace : NULL);
-	if (restore_at_exit) c->debug.stacktrace = old_stack_trace;
+	llvm_emit_return_block(c, be_value, expr->type, expr->macro_block.first_stmt, expr->macro_block.block_exit);
 	bool is_unreachable = expr->macro_block.is_noreturn && c->current_block && c->current_block_is_target;
 	if (is_unreachable)
 	{

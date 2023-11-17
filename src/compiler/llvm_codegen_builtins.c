@@ -136,16 +136,6 @@ INLINE void llvm_emit_unreachable_stmt(GenContext *c, BEValue *result_value, Exp
 	llvm_emit_block(c, after_unreachable);
 }
 
-INLINE void llvm_emit_stacktrace(GenContext *c, BEValue *result_value, Expr *expr)
-{
-	if (!c->debug.emulated_stacktrace)
-	{
-		llvm_value_set(result_value, llvm_get_zero(c, type_voidptr), type_voidptr);
-		return;
-	}
-	llvm_value_set(result_value, c->debug.stacktrace.ref, type_voidptr);
-}
-
 INLINE void llvm_emit_volatile_store(GenContext *c, BEValue *result_value, Expr *expr)
 {
 	BEValue value;
@@ -824,9 +814,6 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 			return;
 		case BUILTIN_REVERSE:
 			llvm_emit_reverse(c, result_value, expr);
-			return;
-		case BUILTIN_STACKTRACE:
-			llvm_emit_stacktrace(c, result_value, expr);
 			return;
 		case BUILTIN_VOLATILE_STORE:
 			llvm_emit_volatile_store(c, result_value, expr);
