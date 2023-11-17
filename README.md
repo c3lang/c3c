@@ -55,7 +55,7 @@ fn void Stack.push(Stack* this, Type element)
     {
         this.capacity *= 2;
 		if (this.capacity < 16) this.capacity = 16;
-        this.elems = mem::realloc(this.elems, Type.sizeof * this.capacity);
+        this.elems = realloc(this.elems, Type.sizeof * this.capacity);
     }
     this.elems[this.size++] = element;
 }
@@ -149,7 +149,38 @@ or discuss C3 on its dedicated Discord: [https://discord.gg/qN76R87](https://dis
 
 The compiler is currently verified to compile on Linux, Windows and MacOS.
 
+**Support matrix**
 
+| Platform                 | C3 compiler available? | Target supported        | Stack trace | Threads  | Sockets  | Inline asm |
+|--------------------------|------------------------|-------------------------|-------------|----------|----------|------------|
+| Win32 x64                | Yes                    | Yes + cross compilation | Yes         | Yes      | Yes      | Yes*       |
+| Win32 Aarch64            | Untested               | Untested                | Untested    | Untested | Untested | Yes*       |
+| MacOS x64                | Yes                    | Yes + cross compilation | Yes         | Yes      | Yes      | Yes*       |
+| MacOS Aarch64            | Yes                    | Yes + cross compilation | Yes         | Yes      | Yes      | Yes*       |
+| iOS Aarch64              | No                     | Untested                | Untested    | Yes      | Yes      | Yes*       |
+| Linux x86                | Yes                    | Yes                     | Yes         | Yes      | Yes      | Yes*       |
+| Linux x64                | Yes                    | Yes                     | Yes         | Yes      | Yes      | Yes*       |
+| Linux Aarch64            | Yes                    | Yes                     | Yes         | Yes      | Yes      | Yes*       |
+| Linux Riscv32            | Yes                    | Yes                     | Yes         | Yes      | Yes      | Untested   |
+| Linux Riscv64            | Yes                    | Yes                     | Yes         | Yes      | Yes      | Untested   |
+| ELF freestanding x86     | No                     | Untested                | No          | No       | No       | Yes*       |
+| ELF freestanding x64     | No                     | Untested                | No          | No       | No       | Yes*       |
+| ELF freestanding Aarch64 | No                     | Untested                | No          | No       | No       | Yes*       |
+| ELF freestanding Riscv64 | No                     | Untested                | No          | No       | No       | Untested   |
+| ELF freestanding Riscv32 | No                     | Untested                | No          | No       | No       | Untested   |
+| FreeBSD x86              | Untested               | Untested                | No          | Yes      | Untested | Yes*       |
+| FreeBSD x64              | Untested               | Untested                | No          | Yes      | Untested | Yes*       |
+| NetBSD x86               | Untested               | Untested                | No          | Yes      | Untested | Yes*       |
+| NetBSD x64               | Untested               | Untested                | No          | Yes      | Untested | Yes*       |
+| OpenBSD x86              | Untested               | Untested                | No          | Yes      | Untested | Yes*       |
+| OpenBSD x64              | Untested               | Untested                | No          | Yes      | Untested | Yes*       |
+| MCU x86                  | No                     | Untested                | No          | No       | No       | Yes*       |
+| Wasm32                   | No                     | Yes                     | No          | No       | No       | No         |
+| Wasm64                   | No                     | Untested                | No          | No       | No       | No         |
+
+*\* Inline asm is still a work in progress*
+
+More platforms will be supported in the future.
 
 #### What can you help with?
 
